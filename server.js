@@ -10494,6 +10494,54 @@ app.get('/api/oi-reachability', async (req, res) => {
 });
 function fmtN(v) { return Number.isFinite(v) ? (Math.abs(v) >= 100 ? v.toFixed(2) : v.toFixed(5)) : '—'; }
 
+// GET /api/futures-ohlc?pair=NAS100_USD&granularity=M15  - the FUTURES contract's candles (Yahoo, free; same {values:[{t,open,high,low,close}]} shape as /api/oanda_ohlc5m)
+// Front-month continuous series (NQ=F, GC=F, 6E=F ...). Prices are in the exchange's own units (grains in cents). Nothing here trades; it is a display feed for the OI Lab's futures toggle.
+const _FUT_OHLC_CACHE = new Map();
+app.get('/api/futures-ohlc', async (req, res) => {
+  try {
+    const pair = String(req.query.pair || '');
+    const MAP = { 'EUR/USD': '6E=F', 'GBP/USD': '6B=F', 'AUD/USD': '6A=F', 'XAU/USD': 'GC=F', 'NAS100_USD': 'NQ=F', 'SPX500_USD': 'ES=F', 'US30_USD': 'YM=F', 'US2000_USD': 'RTY=F' };
+    for (const [k, v] of Object.entries(_OI_SPEC)) if (v.yahoo) MAP[k] = v.yahoo;
+    const symbol = MAP[pair];
+    if (!symbol) return res.status(404).json({ error: 'No futures series for this pair' });
+    const gran = String(req.query.granularity || 'M15').toUpperCase();
+    const G = { M5: ['5m', '3d', 0], M15: ['15m', '5d', 0], M30: ['30m', '10d', 0], H1: ['60m', '1mo', 0], H4: ['60m', '6mo', 14400] }[gran];
+    if (!G) return res.status(400).json({ error: `Unsupported granularity: ${gran}` });
+    const key = symbol + '|' + gran, c = _FUT_OHLC_CACHE.get(key);
+    if (c && Date.now() - c.ts < 20_000) return res.json(c.data);
+    let j = null, lastErr = 'no response';
+    for (const host of ['query1', 'query2']) {
+      try {
+        const r = await fetch(`https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${G[0]}&range=${G[1]}&includePrePost=true`, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(12_000) });
+        if (!r.ok) { lastErr = 'Yahoo HTTP ' + r.status; continue; }
+        j = await r.json(); if (j?.chart?.result?.[0]) break;
+      } catch (e) { lastErr = e.message; }
+    }
+    const r0 = j?.chart?.result?.[0];
+    if (!r0) return res.status(502).json({ error: lastErr });
+    const ts = r0.timestamp || [], q = r0.indicators?.quote?.[0] || {};
+    let rows = [];
+    for (let i = 0; i < ts.length; i++) {
+      const o = q.open?.[i], hi = q.high?.[i], lo = q.low?.[i], cl = q.close?.[i];
+      if ([o, hi, lo, cl].some(v => v == null || !Number.isFinite(v))) continue;
+      rows.push({ t: ts[i], open: o, high: hi, low: lo, close: cl });
+    }
+    // Yahoo's futures feed carries the odd bad tick (a one-bar wick far outside the move). Clamp any wick longer than 5 median bar-ranges beyond the candle body.
+    if (rows.length > 20) {
+      const rg = rows.map(b => b.high - b.low).sort((x, y) => x - y), cap = 5 * (rg[Math.floor(rg.length / 2)] || 0);
+      if (cap > 0) for (const b of rows) { b.high = Math.min(b.high, Math.max(b.open, b.close) + cap); b.low = Math.max(b.low, Math.min(b.open, b.close) - cap); }
+    }
+    if (G[2]) {   // 4-hour bars are built from the hourly ones
+      const m = new Map();
+      for (const b of rows) { const k = Math.floor(b.t / G[2]) * G[2]; const a = m.get(k); if (!a) m.set(k, { t: k, open: b.open, high: b.high, low: b.low, close: b.close }); else { a.high = Math.max(a.high, b.high); a.low = Math.min(a.low, b.low); a.close = b.close; } }
+      rows = [...m.values()].sort((x, y) => x.t - y.t);
+    }
+    const out = { values: rows.slice(-1500), meta: { symbol, source: 'yahoo-futures', granularity: gran, at: Date.now() } };
+    _FUT_OHLC_CACHE.set(key, { data: out, ts: Date.now() }); if (_FUT_OHLC_CACHE.size > 80) _FUT_OHLC_CACHE.delete(_FUT_OHLC_CACHE.keys().next().value);
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: String(e?.message || e) }); }
+});
+
 app.get('/api/futures-quote', async (req, res) => {
   const FUTURES_MAP = {
     'EUR/USD': '6E=F', 'GBP/USD': '6B=F', 'USD/JPY': '6J=F', 'AUD/USD': '6A=F',

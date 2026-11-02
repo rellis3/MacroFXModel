@@ -109,7 +109,7 @@ svg text{font-family:var(--mono)}
       <span class="tgl"><span class="pill" data-tf="M5">5m</span><span class="pill on" data-tf="M15">15m</span><span class="pill" data-tf="M30">30m</span><span class="pill" data-tf="H1">1h</span><span class="pill" data-tf="H4">4h</span></span></h2>
     <div class="sub"><b>How to read it:</b> a live TradingView chart (updates every 10 s, scroll and zoom as normal). The glowing bands behind the candles are zones of dealer gamma. <b style="color:rgb(70,184,122)">Green</b> = dealers lean against moves, so price tends to stall and pin. <b style="color:rgb(232,97,95)">Red</b> = dealers push with the move, so price tends to speed up through it. Brighter = more gamma; the biggest zones are named. The curve on the right is this page's own <b>gamma if price were at that level</b> — where it crosses zero is the flip (the legend under the chart says which book).</div>
     <div id="lwLive" class="minis" style="margin:6px 0 8px"></div>
-    <div class="tgl" style="margin:0 0 8px"><span class="pill on" data-bgon="1" title="Show or hide the green/red gamma colour behind the candles (PIN ZONE / SPEEDS UP shading)">gamma colour</span><span class="pill on" data-gsrc="1" title="Where the colour bands come from. Profile book: the same gamma-by-price the OI Profile indicator draws its lines from, so colour, lines and indicator agree. Page calc: this page's own near-expiry or whole-book sum (follows the Near / Whole book toggle at the top).">colour: Profile book</span><span class="pill on" data-plv="on" title="Draw the OI Profile indicator's own levels on this chart (the same export you paste into TradingView)">OI Profile lines</span><span class="pill" data-plv="books" title="Add the lines of every expiry book, not only the strongest one (the 'All lines' export)">every expiry book</span><span class="pill" data-plv="minor" title="Also draw gamma peak, vanna flip, charm flip and volume lines (the indicator hides these by default)">minor levels</span><span class="pill on" data-bar="gex" title="Net gamma at each price, drawn beside the candles and locked to the price scale (green = dealers long, red = short)">gamma bars</span><span class="pill on" data-bar="vol" title="Volume at each price (the Profile's volume bars)">volume bars</span><span class="pill" data-bar="chg" title="Change in open interest at each price since the last snapshot (teal built, amber run down)">OI change bars</span><span class="pill" data-bar="van" title="Vanna at each price">vanna bars</span><span class="pill on" data-bar="stack" title="Highlight prices where two or more bar lanes are at least half strength (descriptive, not a signal)">stacked bands</span><span class="pill" data-plv="cboe" title="Dashed lines from Cboe's delayed index-options book (NQ, SPX, RUT, US30), re-built every 5 minutes">Cboe live levels</span></div>
+    <div class="tgl" style="margin:0 0 8px"><span class="pill on" data-bgon="1" title="Show or hide the green/red gamma colour behind the candles (PIN ZONE / SPEEDS UP shading)">gamma colour</span><span class="pill" data-fut="1">futures prices</span><span class="pill on" data-gsrc="1" title="Where the colour bands come from. Profile book: the same gamma-by-price the OI Profile indicator draws its lines from, so colour, lines and indicator agree. Page calc: this page's own near-expiry or whole-book sum (follows the Near / Whole book toggle at the top).">colour: Profile book</span><span class="pill on" data-plv="on" title="Draw the OI Profile indicator's own levels on this chart (the same export you paste into TradingView)">OI Profile lines</span><span class="pill" data-plv="books" title="Add the lines of every expiry book, not only the strongest one (the 'All lines' export)">every expiry book</span><span class="pill" data-plv="minor" title="Also draw gamma peak, vanna flip, charm flip and volume lines (the indicator hides these by default)">minor levels</span><span class="pill on" data-bar="gex" title="Net gamma at each price, drawn beside the candles and locked to the price scale (green = dealers long, red = short)">gamma bars</span><span class="pill on" data-bar="vol" title="Volume at each price (the Profile's volume bars)">volume bars</span><span class="pill" data-bar="chg" title="Change in open interest at each price since the last snapshot (teal built, amber run down)">OI change bars</span><span class="pill" data-bar="van" title="Vanna at each price">vanna bars</span><span class="pill on" data-bar="stack" title="Highlight prices where two or more bar lanes are at least half strength (descriptive, not a signal)">stacked bands</span><span class="pill" data-plv="cboe" title="Dashed lines from Cboe's delayed index-options book (NQ, SPX, RUT, US30), re-built every 5 minutes">Cboe live levels</span></div>
     <div class="lwrow"><div id="lw"><div id="lwMsg" style="position:absolute;inset:0;z-index:5;display:none;align-items:center;justify-content:center;text-align:center;padding:20px;pointer-events:none;color:#a8b1bd;font-size:14px;background:rgba(8,11,16,.55)"></div><canvas id="bg"></canvas><canvas id="barsCv"></canvas></div><canvas id="curve"></canvas></div>
     <div class="legend"><span><i style="background:rgb(var(--long))"></i>long gamma — pins</span><span><i style="background:rgb(var(--short))"></i>short gamma — speeds up</span><span><i style="background:var(--vio)"></i>GEX flip</span><span><i style="background:#d9c04a"></i>max pain</span></div>
     <div id="lwSrc" class="legend" style="margin-top:6px"></div>
@@ -331,6 +331,17 @@ function gexCurve(sym, e, lo, hi, n = 150){
 // to the right prices while you pan and zoom.
 let LW = null, FIELD = [], PEAKS = [], CURVE = null, TF = 'M15', _bgSig = '', _poll = null, BGON = true, GSRC = 'profile', _dtTok = 0, _rfTok = 0;
 const CANDLES = {};
+// ── Futures prices: the chart can show the futures contract (NQ1!, GC1!, 6E1! ...) instead of the CFD/spot. Everything underneath stays in spot terms (the levels, bands and bars are stored that way);
+// the futures candles are moved into spot terms by the stored basis, and the price axis, price-line labels, tooltip and price tile add the basis back, so every number on screen is a real futures price.
+// Pairs quoted the other way up (USD/JPY, USD/CAD, USD/CHF futures are 6J/6C/6S) are left out: their conversion is 1/x, which would flip the axis.
+const FUTX = { on: false };
+const FUT_OK = (s) => !!STORE[s] && !INVERTED.has(s) && (CMDTY.has(s) || ['XAU/USD', 'NAS100_USD', 'SPX500_USD', 'US2000_USD', 'US30_USD', 'EUR/USD', 'GBP/USD', 'AUD/USD'].includes(s));
+const futOn = () => FUTX.on && FUT_OK(SYM);
+const futB = () => (futOn() && Number.isFinite(STORE[SYM]?.basis)) ? STORE[SYM].basis : 0;
+const futPS = () => (futOn() && STORE[SYM]?.priceScale > 0) ? STORE[SYM].priceScale : 1;
+const futDisp = (p) => futOn() ? (p + futB()) / futPS() : p;      // spot-terms price -> what the futures chart would print
+const FUT_CODE = { 'XAU/USD': 'GC', 'NAS100_USD': 'NQ', 'SPX500_USD': 'ES', 'US2000_USD': 'RTY', 'US30_USD': 'YM', 'EUR/USD': '6E', 'GBP/USD': '6B', 'AUD/USD': '6A' };
+function futPill(){ document.querySelectorAll('[data-fut]').forEach(b => { const ok = FUT_OK(SYM); b.classList.toggle('on', futOn()); b.style.opacity = ok ? '' : '.4'; b.title = ok ? "Show the futures contract's candles and prices (the spot-terms levels are moved by the stored basis). Yahoo front-month data, may be about 10 min delayed." : 'No usable futures series for this pair (its futures are quoted the other way up, or there is none).'; }); }
 
 function lwInit(){
   if (LW) return LW;
@@ -346,7 +357,7 @@ function lwInit(){
   host.addEventListener('mousemove', ev => { if (!CUR) return; const r = host.getBoundingClientRect(); const p = series.coordinateToPrice(ev.clientY - r.top); if (p == null) return hideTip();
     const near = FIELD.length ? FIELD.reduce((b, f) => Math.abs(f.P - p) < Math.abs(b.P - p) ? f : b) : null;
     let g = ''; if (CURVE) { const c = CURVE.reduce((b, c) => Math.abs(c.P - p) < Math.abs(b.P - p) ? c : b); const v = NEAR && c.near != null ? c.near : c.all; g = `<br>${NEAR && c.near != null ? 'near-expiry' : 'whole-book'} curve at this price: <b>${v >= 0 ? 'LONG gamma — dealers fade moves' : 'SHORT gamma — dealers chase moves'}</b>`; }
-    showTip(ev, `<b>${px(p)}</b> · ${((p / CUR.spot - 1) * 100).toFixed(2)}% from OI spot${near ? `<br>zone here: ${near.v >= 0 ? 'long-gamma (pin)' : 'short-gamma (speeds up)'}` : ''}${g}${barsAt(p)}`); });
+    showTip(ev, `<b>${px(futDisp(p))}</b>${futOn() ? ' <span style="opacity:.7">futures</span>' : ''} · ${((p / CUR.spot - 1) * 100).toFixed(2)}% from OI spot${near ? `<br>zone here: ${near.v >= 0 ? 'long-gamma (pin)' : 'short-gamma (speeds up)'}` : ''}${g}${barsAt(p)}`); });
   host.addEventListener('mouseleave', hideTip);
   // keep the backdrop + curve glued to the price scale (also catches autoscale changes when a new candle arrives)
   let _warned = false;
@@ -355,15 +366,16 @@ function lwInit(){
 }
 
 async function loadCandlesTF(sym, tf, tries = 3){
-  const key = sym + '|' + tf; let err = '';
+  const fut = futOn(), b0 = futB(), ps0 = futPS(), key = sym + '|' + tf + (fut ? '|F' + b0 : ''); let err = '';
   for (let a = 0; a < tries; a++) {
     const ac = new AbortController(), to = setTimeout(() => ac.abort(), 18000);
     try {
-      const r = await fetch('/api/oanda_ohlc5m?symbol=' + OANDA[sym] + '&granularity=' + tf + '&incomplete=1', { signal: ac.signal });
+      const r = await fetch(fut ? '/api/futures-ohlc?pair=' + encodeURIComponent(sym) + '&granularity=' + tf : '/api/oanda_ohlc5m?symbol=' + OANDA[sym] + '&granularity=' + tf + '&incomplete=1', { signal: ac.signal });
       const j = await r.json();
       if (!r.ok || !Array.isArray(j.values)) throw new Error(j.error || ('HTTP ' + r.status));
       const seen = new Set();
-      const rows = j.values.map(v => ({ time: +v.t, open: +v.open, high: +v.high, low: +v.low, close: +v.close }))
+      const mv = fut ? (x => x * ps0 - b0) : (x => x);   // futures candles go into spot terms; the axis adds the basis back
+      const rows = j.values.map(v => ({ time: +v.t, open: mv(+v.open), high: mv(+v.high), low: mv(+v.low), close: mv(+v.close) }))
         .sort((x, y) => x.time - y.time).filter(c => !seen.has(c.time) && seen.add(c.time));
       if (rows.length) { CANDLES[key] = rows; return { rows, err: '' }; }
       err = 'no candles came back';
@@ -410,7 +422,7 @@ function paintBackdrop(){
   oc.globalCompositeOperation = 'destination-in'; const gr = oc.createLinearGradient(0, 0, plotW, 0); gr.addColorStop(0, 'rgba(0,0,0,.55)'); gr.addColorStop(1, 'rgba(0,0,0,1)'); oc.fillStyle = gr; oc.fillRect(0, 0, plotW, h);
   c.drawImage(off, 0, 0, plotW, h);
   c.font = '600 11px ui-monospace,Consolas,monospace'; c.textAlign = 'right';
-  (BGON ? PEAKS.slice(0, 6) : []).forEach(f => { const y = S.priceToCoordinate(f.P); if (y == null || y < 14 || y > h - 14) return; const t = (f.v >= 0 ? 'PIN ZONE ' : 'SPEEDS UP ') + px(f.P); c.lineWidth = 4; c.strokeStyle = 'rgba(6,8,12,.92)'; c.strokeText(t, plotW - 10, y + 4); c.fillStyle = f.v >= 0 ? 'rgb(120,230,164)' : 'rgb(255,140,138)'; c.fillText(t, plotW - 10, y + 4); });
+  (BGON ? PEAKS.slice(0, 6) : []).forEach(f => { const y = S.priceToCoordinate(f.P); if (y == null || y < 14 || y > h - 14) return; const t = (f.v >= 0 ? 'PIN ZONE ' : 'SPEEDS UP ') + px(futDisp(f.P)); c.lineWidth = 4; c.strokeStyle = 'rgba(6,8,12,.92)'; c.strokeText(t, plotW - 10, y + 4); c.fillStyle = f.v >= 0 ? 'rgb(120,230,164)' : 'rgb(255,140,138)'; c.fillText(t, plotW - 10, y + 4); });
   // gamma-vs-price curve
   cu.width = cu.clientWidth * dpr; cu.height = h * dpr; const k = cu.getContext('2d'); k.setTransform(dpr, 0, 0, dpr, 0, 0); const cw = cu.clientWidth;
   k.strokeStyle = 'rgba(255,255,255,.08)'; k.strokeRect(0.5, 0.5, cw - 1, h - 1);
@@ -519,11 +531,11 @@ function updateLwLive() {
   const el = $('#lwLive'); if (!el || !LW) return;
   const last = LW.last, open = LW.dayOpen, chg = last != null && open ? (last / open - 1) * 100 : null, M = PLV.meta || {};
   const hhmm = ms => (ms ? new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '–');
-  el.innerHTML = `<div class="mini"><div class="k">Price (updates every 10 s)</div><div class="v">${last != null ? px(last) : '–'}</div><div class="n" style="color:${chg == null ? 'inherit' : chg >= 0 ? 'rgb(70,184,122)' : 'rgb(232,97,95)'}">${chg == null ? '' : (chg >= 0 ? '+' : '') + chg.toFixed(2) + '% on the day'}</div></div>`
+  el.innerHTML = `<div class="mini"><div class="k">${futOn() ? 'Futures price (updates every 10 s)' : 'Price (updates every 10 s)'}</div><div class="v">${last != null ? px(futDisp(last)) : '–'}</div><div class="n" style="color:${chg == null ? 'inherit' : chg >= 0 ? 'rgb(70,184,122)' : 'rgb(232,97,95)'}">${chg == null ? '' : (chg >= 0 ? '+' : '') + chg.toFixed(2) + '% on the day'}</div></div>`
     + `<div class="mini"><div class="k">Regime</div><div class="v" style="font-size:15px">${esc(M.regime || '–')}</div><div class="n">${M.book ? esc(M.book) + ' book' : ''}</div></div>`
     + `<div class="mini"><div class="k">Profile lines</div><div class="v" style="font-size:15px">${PLV.on ? (PLV.lines.length || '–') : 'off'}</div><div class="n">${PLV.err ? 'error: ' + esc(PLV.err) : 'refreshed ' + hhmm(PLV.at) + ' · OI saved ' + esc(M.saved || '–')}</div></div>`
     + (PLV.cboe ? `<div class="mini"><div class="k">Cboe levels</div><div class="v" style="font-size:15px">${PLV.cboeLines.length || '–'}</div><div class="n">${(SYM in DD_PAIRS) ? 'refreshed ' + hhmm(PLV.cAt) + ' · delayed ~15 min' : 'not available for this market'}</div></div>` : '');
-  const src = $('#lwSrc'); if (src) src.innerHTML = `<span><b>Where each layer comes from:</b> the colour bands: <b>${FIELD.src === 'profile' ? 'the OI Profile\'s own gamma by price' : GSRC === 'profile' ? 'the page\'s own ' + (NEAR ? 'near-expiry' : 'whole-book') + ' calc (the Profile has not loaded yet)' : 'the page\'s own ' + (NEAR ? 'near-expiry (3 days or less)' : 'whole-book') + ' calc'}</b>. The strength bars and the labelled lines: the OI Profile\'s <b>${esc(M.book || 'traded')} book</b>. The curve on the right is always the page\'s own ${NEAR ? 'near-expiry' : 'whole-book'} calc (the Profile does not export a curve), so where it crosses zero can differ from the ZERO GAMMA line.</span>`;
+  const src = $('#lwSrc'); if (src) src.innerHTML = `<span>${futOn() ? `<b style="color:#f0b04a">Futures prices on.</b> Candles are the ${FUT_CODE[SYM] || ''} front-month contract (Yahoo). The levels, bands and bars are the OI Lab's spot-terms numbers moved by the stored basis (${Number.isFinite(STORE[SYM]?.basis) ? STORE[SYM].basis.toFixed(2) : '0'}), so axis labels are real futures prices. The panels below the chart stay in spot terms. ` : ''}</span><span><b>Where each layer comes from:</b> the colour bands: <b>${FIELD.src === 'profile' ? 'the OI Profile\'s own gamma by price' : GSRC === 'profile' ? 'the page\'s own ' + (NEAR ? 'near-expiry' : 'whole-book') + ' calc (the Profile has not loaded yet)' : 'the page\'s own ' + (NEAR ? 'near-expiry (3 days or less)' : 'whole-book') + ' calc'}</b>. The strength bars and the labelled lines: the OI Profile\'s <b>${esc(M.book || 'traded')} book</b>. The curve on the right is always the page\'s own ${NEAR ? 'near-expiry' : 'whole-book'} calc (the Profile does not export a curve), so where it crosses zero can differ from the ZERO GAMMA line.</span>`;
   const mv = $('#lwMoves');
   if (mv) { mv.style.display = PLV.moves.length ? '' : 'none'; mv.innerHTML = PLV.moves.length ? '<span><b>Levels that moved since the page opened:</b></span>' + PLV.moves.map(m => `<span>${hhmm(m.t)} ${esc(m.label)} ${px(m.from)} → ${px(m.to)}</span>`).join('') : ''; }
 }
@@ -580,7 +592,7 @@ async function drawTerrain(){
   if (!window.LightweightCharts) { $('#lw').innerHTML = '<div class="err">TradingView chart library did not load.</div>'; return; }
   const tok = ++_dtTok;
   lwInit();
-  { const s0 = CUR && CUR.spot, dp4 = !(s0 > 0) ? 2 : s0 < 10 ? 4 : 2; LW.series.applyOptions({ priceFormat: { type: 'price', precision: dp4, minMove: Math.pow(10, -dp4) } }); }   // FX and cheap commodities show 4 decimals, everything else 2
+  { const s0 = CUR && futDisp(CUR.spot), dp4 = !(s0 > 0) ? 2 : s0 < 10 ? 4 : 2, mm = Math.pow(10, -dp4); LW.series.applyOptions({ priceFormat: futOn() ? { type: 'custom', minMove: mm, formatter: p => futDisp(p).toFixed(dp4) } : { type: 'price', precision: dp4, minMove: mm } }); }   // FX and cheap commodities show 4 decimals, everything else 2
   // never leave the previous asset's candles or price axis on screen while the new ones load
   clearInterval(_poll); LW.series.setData([]); LW.lastT = 0; LW.last = null; LW.dayOpen = null;
   try { buildField(); } catch (err) { FIELD = []; PEAKS = []; CURVE = null; console.warn('[oi-v2] buildField', err.message); }
@@ -1743,6 +1755,7 @@ function rail(){
 
 async function refresh(){
   const my = ++_rfTok;
+  futPill();
   try { CUR = derive(SYM); rail(); } catch (err) { console.warn('[oi-v2] derive', err.message); lwMsg('Could not read the options data for ' + esc(NAMES[SYM] || SYM) + ': ' + esc(err.message)); return; }
   drawHedging();     // async and self-contained: first, so a failure in another panel cannot skip it
   for (const f of [stats, drawCog, drawBars, drawRipple, drawGreeks, drawHedgeFlow, drawDayDrift, drawSurfaceDay, drawFootprint, oixDecorate, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
@@ -1797,6 +1810,7 @@ document.querySelectorAll('[data-bar]').forEach(b => b.onclick = () => { const k
 document.querySelectorAll('[data-bgon]').forEach(b => b.onclick = () => { BGON = !BGON; b.classList.toggle('on', BGON); _bgSig = ''; });
 document.querySelectorAll('[data-gsrc]').forEach(b => b.onclick = () => { GSRC = GSRC === 'profile' ? 'page' : 'profile'; b.classList.toggle('on', GSRC === 'profile'); b.textContent = GSRC === 'profile' ? 'colour: Profile book' : 'colour: page calc'; try { buildField(); } catch (_) {} _bgSig = ''; updateLwLive(); });
 document.addEventListener('click', e => { if (e.target && e.target.id === 'lwRetry') drawTerrain(); });
+document.querySelectorAll('[data-fut]').forEach(b => b.onclick = () => { if (!FUT_OK(SYM)) return; FUTX.on = !FUTX.on; futPill(); _bgSig = ''; drawTerrain(); });
 document.querySelectorAll('[data-tf]').forEach(b => b.onclick = () => { TF = b.dataset.tf; document.querySelectorAll('[data-tf]').forEach(x => x.classList.toggle('on', x === b)); drawTerrain(); });
 
 (async () => {
