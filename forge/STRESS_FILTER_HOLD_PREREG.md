@@ -165,8 +165,25 @@ Drawdown reductions are reported as CONTEXT; they are expected and not a claim.
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-02 — PRE-RESULTS (describe only)
+Two loader details fixed before any outcome was computed:
+- The USD 3m rate is monthly with month-start dates. It is now read without the weekday filter, which had dropped weekend month starts.
+- The evaluation starts 2004-03-16, not 2004-01-02, because the 252-row VIX percentile needs history on the NQ calendar, which begins 2003-03-24.
 
-## RESULTS
+## RESULTS — run 2026-11-02
 
-(not run)
+Full write-up: `analysis/output/stress-filter-hold/RESULTS.md`. NQ, 5,795 days, 1,122 stressed. Holm across the five cells:
+
+| Cell | Statistic | 95% CI | Holm p | Verdict |
+|---|---|---|---|---|
+| H1 | Δz **+0.022σ** (wrong sign, both halves) | [−0.051, +0.089] | 1.0 | UNDERPOWERED |
+| H2a | ΔSharpe −0.079 | [−0.330, +0.204] | 1.0 | UNDERPOWERED |
+| H2b | +0.013 | [−0.105, +0.133] | 1.0 | NULL |
+| H3 | −0.029 (beyond vol target) | [−0.113, +0.069] | 1.0 | NULL |
+| H4 | −0.006 (Moreira–Muir) | [−0.263, +0.257] | 1.0 | UNDERPOWERED |
+
+Secondary: 0 of 40 cells survive BH q 0.10.
+- Stress filters' drawdown cut disappears at matched volatility (−57% vs −55%).
+- Vol sizing gives −42%, and 1/σ² gives −30%.
+
+Ledger forecaster `stress-vix-p80` added per §8.
