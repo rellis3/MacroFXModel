@@ -428,8 +428,18 @@ if barstate.islast
                     if te == "exp_hi" or te == "exp_lo"
                         array.set(sel, i, true)
             float gap = ref * 0.11
+            // levels that share a price get ONE line and ONE label naming them all, so a label never sits away from its own line
+            array<int> lead = array.new_int(nL, -1)
+            array<string> also = array.new_string(nL, "")
             for i = 0 to nL - 1
                 if array.get(sel, i)
+                    for j = 0 to i - 1
+                        if array.get(sel, j) and array.get(lead, j) == -1 and math.abs(array.get(lvPrice, j) - array.get(lvPrice, i)) <= ref * 0.012
+                            array.set(lead, i, j)
+                            array.set(also, j, array.get(also, j) + " · " + array.get(lvLabel, i))
+                            break
+            for i = 0 to nL - 1
+                if array.get(sel, i) and array.get(lead, i) == -1
                     string t = array.get(lvType, i)
                     float p = array.get(lvPrice, i)
                     color col = f_lvCol(t)
@@ -445,8 +455,11 @@ if barstate.islast
                         lastY := ly
                         float tp = array.get(lvTouch, i)
                         float et = array.get(lvEta, i)
-                        string txt = array.get(lvLabel, i) + "  " + str.tostring(p, format.mintick) + (array.get(lvExp, i) != "" ? "  ·  " + array.get(lvExp, i) : "") + (f_chgChip(i)) + (na(tp) ? "" : "  ·  " + str.tostring(tp, "#") + "%" + (na(et) ? "" : "~" + str.tostring(et, "#") + "m"))
+                        string txt = array.get(lvLabel, i) + array.get(also, i) + "  " + str.tostring(p, format.mintick) + (array.get(lvExp, i) != "" ? "  ·  " + array.get(lvExp, i) : "") + (f_chgChip(i)) + (na(tp) ? "" : "  ·  " + str.tostring(tp, "#") + "%" + (na(et) ? "" : "~" + str.tostring(et, "#") + "m"))
                         array.push(dLbl, label.new(x=labX, y=ly, text=txt, xloc=xloc.bar_index, yloc=yloc.price, color=color.new(#0d1117, 12), style=(labLeft ? label.style_label_right : label.style_label_left), textcolor=col, size=f_lblSize()))
+                        // a label that had to be moved to clear its neighbour stays tied to its own line by a dotted connector
+                        if math.abs(ly - p) > ref * 0.02
+                            array.push(dLine, line.new(x1=labX, y1=p, x2=labX, y2=ly, xloc=xloc.bar_index, color=color.new(col, 30), style=line.style_dotted, width=1))
 
         // ── column titles + spines ──
         float yT = pTop + ref * 0.12
