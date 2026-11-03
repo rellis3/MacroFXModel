@@ -140,6 +140,14 @@ and never edited. The updates are stored beside it and scored in the evening as 
 old view over the rest of the day, size-weighted. They are in no scored cell, and no cell here changes. The power
 amendment named in §5 is now A3. No outcome had been computed.
 
+### A4 — 2026-11-03 — PRE-RESULTS
+Two additions, neither a scored cell. **Attribution** (Phase 10, `js/deskAttribution.js`): each layer is scored as its
+own book on the same moves (the global tone alone, the currency ranking alone, the asset desks, the Head unweighted,
+the Head sized), with what each step added. **The data quality officer** (Phase 14, `js/deskDataQuality.js`): before a
+run, a pack it would hold (no forecast lines, three or more critical feeds out, or an analyst seeing under 40% of its
+data) is rebuilt once. A run still counts only if it finishes before 08:00 London (§3); this changes no rule. No
+outcome had been computed.
+
 ---
 
 ## RESULTS — not run

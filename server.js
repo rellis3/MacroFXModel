@@ -223,6 +223,8 @@ import { reflectionSections as _dsReflectSections, memoryFeed as _dsMemoryFeed, 
 import { validateReflection as _dsValidateReflection, validateNewsletterIssue as _dsValidateIssue, validateSessionUpdate as _duValidate } from './js/deskSchemas.js';
 import { SLOTS as _DU_SLOTS, slotMs as _duSlotMs, marketSince as _duMarketSince, marketText as _duMarketText, liveView as _duLiveView, scoreUpdates as _duScoreUpdates } from './js/deskUpdate.js';
 import { sliceFeed as _deskSliceFeed } from './js/deskSlices.js';
+import { assess as _dqAssess, afterRun as _dqAfterRun } from './js/deskDataQuality.js';
+import { attribution as _atAttribution, attributionRecord as _atRecord } from './js/deskAttribution.js';
 import { dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
@@ -4607,7 +4609,16 @@ async function _deskPackBuild(trigger = 'manual') {
   await Promise.all(Array.from({ length: _DP_CONCURRENCY }, async () => {
     while (next < feeds.length) { const i = next++; results[i] = { feed: feeds[i], result: await _dpFetchFeed(feeds[i]) }; }
   }));
+  // Phase 14: one more try for every feed that timed out or failed to connect, all at once with a longer wait
+  // (a slow route under the first pass's load often answers on its own). Errors the route returned are kept.
+  const retry = results.map((r, i) => i).filter(i => results[i].result.timedOut || (results[i].result.error && results[i].result.httpStatus == null)).slice(0, 12);
+  if (retry.length) {
+    const again = await Promise.all(retry.map(i => _dpFetchFeed({ ...feeds[i], timeoutMs: 120_000 })));
+    retry.forEach((i, k) => { if (!again[k].timedOut && !again[k].error) results[i] = { feed: feeds[i], result: { ...again[k], retried: true } }; });
+    console.log(`[desk-pack] retried ${retry.length} feed(s): ${again.filter(r => !r.timedOut && !r.error).length} answered`);
+  }
   const pack = _dpBuild(results, { now: Date.now(), startedAt, trigger });
+  pack.dataQuality = _dqAssess(pack.health);   // Phase 14: the data quality officer's morning read
   _dpLatest = pack;
   const gz = zlib.gzipSync(Buffer.from(JSON.stringify(pack)), { level: 9 }).toString('base64');
   try {
@@ -4715,6 +4726,12 @@ async function _deskRun(trigger, job, mode = 'full') {
     job.stage = 'building the desk pack'; job.packReason = fresh.reason;
     pack = await _deskPackBuild(`desk-run:${trigger}`);
   }
+  // Phase 14: a pack the data quality officer would hold (no forecast lines, several critical feeds out, or an analyst
+  // nearly blind) is rebuilt once before the run. The run then goes ahead either way: the Head is told what failed.
+  if (!job.resumes && (pack.dataQuality ?? _dqAssess(pack.health)).decision === 'hold' && !/hold-retry/.test(pack.trigger ?? '')) {
+    job.stage = 'rebuilding the desk pack: the data quality officer held it';
+    pack = await _deskPackBuild(`desk-run:${trigger}:hold-retry`);
+  }
   const checkpoint = await _drCheckpoint(pack.date);
   job.date = pack.date;
   job.resumedStages = checkpoint.found;
@@ -4736,6 +4753,7 @@ async function _deskRun(trigger, job, mode = 'full') {
     },
   });
   run.trigger = trigger;
+  run.dataQuality = _dqAfterRun(pack.dataQuality ?? _dqAssess(pack.health), run);   // Phase 14: which gaps mattered
   // The desk edition goes into the newsletter archive beside the regular issue (kind "desk", never scored as a daily).
   if (run.newsletter?.ok) {
     try {
@@ -4911,6 +4929,8 @@ async function _dsScore(date, { reflect = true } = {}) {
   // Phase 5: the session updates, scored on their own (descriptive; the book above is scored as written)
   const updates = await _duLoad(date);
   if (Object.keys(updates.slots ?? {}).length) score.updates = _duScoreUpdates(run, updates, bars, date);
+  // Phase 10: which layer earned or lost the day (descriptive; prereg amendment A4)
+  try { score.attribution = _atAttribution(run, bars, date, score.S); } catch (e) { console.warn('[desk-score] attribution:', e.message); }
   await kv.put(_DS_SCORE_KEY(date), JSON.stringify(score));
   const { cards, ...row } = score;
   const idx = (await _dsLoadIndex()).filter(r => r.date !== date); idx.push(row); idx.sort((a, b) => a.date.localeCompare(b.date));
@@ -4943,7 +4963,7 @@ app.get('/api/desk-score', async (req, res) => {
 });
 // GET /api/desk-score/record: the running record over every scored day (interim, not judged; prereg §5 and §7)
 app.get('/api/desk-score/record', async (_req, res) => {
-  try { res.set('Cache-Control', 'no-store'); const days = await _dsLoadIndex(); res.json({ ok: true, record: _dsRecord(days, { seed: _DS_SEED }), days: days.slice(-60), job: _dsJob }); }
+  try { res.set('Cache-Control', 'no-store'); const days = await _dsLoadIndex(); res.json({ ok: true, record: _dsRecord(days, { seed: _DS_SEED }), attribution: _atRecord(days), days: days.slice(-60), job: _dsJob }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/desk-memory: the last five days' reflections, for the morning evidence clerk (Desk Pack feed desk-memory)
@@ -5011,6 +5031,17 @@ function _duStart(slot, date) {
     .catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
   return job;
 }
+// GET /api/desk-quality?date=: the data quality officer's read of the day's pack, and after the run which gaps mattered
+app.get('/api/desk-quality', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : _dpLondonDate(Date.now());
+    const pack = _dpLatest?.date === date ? _dpLatest : await _dpLoad(date), run = await _drLoad(date);
+    if (!pack) return res.status(404).json({ ok: false, error: `no Desk Pack for ${date}` });
+    const q = run?.dataQuality ?? pack.dataQuality ?? _dqAssess(pack.health);
+    res.json({ ok: true, date, packBuiltAt: pack.builtAt, trigger: pack.trigger, afterRun: !!run?.dataQuality, health: { ok: pack.health.ok, stale: pack.health.stale, total: pack.health.total, usable: pack.health.usable }, ...q });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // GET /api/desk-update?date=: the day's session updates and the live view (the book with the updates applied)
 app.get('/api/desk-update', async (req, res) => {
   try {
