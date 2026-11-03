@@ -174,7 +174,7 @@ export function seriesIndexEntry(series) {
  * On the LAST day only, when sigmaAnnual is given: gamma = { regime PIN|BREAKOUT, flipPx } for this expiry alone
  * (js/fullBookGex.js at a flat vol). Descriptive: no test yet says a book's lean moves price.
  */
-export function expiryView(series, { awayFrac = 0.01, topN = 6, sigmaAnnual = null } = {}) {
+export function expiryView(series, { awayFrac = 0.01, topN = 6, sigmaAnnual = null, withLadder = false } = {}) {
   if (!series?.days?.length) return null;
   if (series.days.every(d => isWeekendDate(d.date))) return null;   // a phantom series folded before the weekend guard
   const inverted = !!series.inverted;
@@ -233,6 +233,12 @@ export function expiryView(series, { awayFrac = 0.01, topN = 6, sigmaAnnual = nu
     if (gk) last.greeks = { ...gk, charmFlipPx: gk.charmFlipK != null ? round(toSpot(gk.charmFlipK, { basis: last.basis ?? 0, inverted })) : null,
       vannaFlipPx: gk.vannaFlipK != null ? round(toSpot(gk.vannaFlipK, { basis: last.basis ?? 0, inverted })) : null };
   }
+  // withLadder: the last night's whole book (inside the tail cut) as [spot price, calls, puts] in SPOT terms; an inverted
+  // pair's futures call is a spot put, so the two columns swap
+  if (last && withLadder) last.ladder = last._rows.map(r => {
+    const k = round(toSpot(r[0], { basis: last.basis ?? 0, inverted }));
+    return inverted ? [k, r[2], r[1]] : [k, r[1], r[2]];
+  });
   for (const d of days) delete d._rows;
   return { pair: series.pair, expiry: series.expiry, code: series.code ?? null, inverted, n: days.length, days };
 }

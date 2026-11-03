@@ -40053,14 +40053,14 @@ async function _swingMapExpiries(names, sigmaAnnual = null) {
     if (!live.length) continue;
     const out = [];
     for (const e of live) {
-      const v = await _expiryTrack().view(pair, e.expiry, { topN: 6, sigmaAnnual }).catch(() => null);
+      const v = await _expiryTrack().view(pair, e.expiry, { topN: 6, sigmaAnnual, withLadder: true }).catch(() => null);
       const d = v?.days?.at(-1);
       if (!d) continue;
       const firstDay = v.days[0];
       out.push({ pair, expiry: e.expiry, code: v.code, dte: d.dte, date: d.date, stale: d.stale, totalOI: d.totalOI,
         totalOIFirst: firstDay?.totalOI ?? null, firstSeen: firstDay?.date ?? null, nights: v.n,
         centrePx: d.centrePx, centrePxFirst: firstDay?.centrePx ?? null, maxPain: d.maxPain,
-        chgNearSpot: d.chgNearSpot, chgAwayFromSpot: d.chgAwayFromSpot, zones: d.zones,
+        chgNearSpot: d.chgNearSpot, chgAwayFromSpot: d.chgAwayFromSpot, zones: d.zones, ladder: d.ladder ?? null,
         oiAbove: d.oiAbove, oiBelow: d.oiBelow, shareAbove: d.shareAbove, pullPct: d.pullPct,
         buildAbove: d.buildAbove, buildBelow: d.buildBelow, gamma: d.gamma ?? null, greeks: _swingGreeksNotional(pair, d),
         // the conveyor belt: how this expiry's lean has moved night by night as it counted down

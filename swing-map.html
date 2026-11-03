@@ -60,10 +60,10 @@
       <select id="inst" aria-label="Instrument"></select>
       <button id="refresh" title="Rebuild now instead of the 30-minute cache">Refresh</button>
       <span class="seg" role="group" aria-label="Chart style"><button id="mPaths" data-m="paths" class="on">Two paths</button><button id="mCone" data-m="cone">Range cone</button><button id="mMc" data-m="mc">Monte Carlo</button><button id="mModal" data-m="modal">Most-touched path</button><button id="mWalk" data-m="walk">Zone walk</button></span>
-      <span class="mcopt" id="walkOpts">follow <select id="walkA" aria-label="What each expiry's step goes to"><option value="strike" selected>strongest strike</option><option value="maxPain">max pain</option><option value="centre">OI centre</option></select>
+      <span class="mcopt" id="walkOpts">follow <select id="walkA" aria-label="What each expiry's step goes to"><option value="gamma" selected>gamma pull</option><option value="strike">strongest strike</option><option value="maxPain">max pain</option><option value="centre">OI centre</option></select>
         <label title="Weekly and daily books are small next to the quarterlies; on = show their steps, faint"><input type="checkbox" id="walkThin" checked> small books</label>
         <label title="Off (default) = the zone walk alone; on = also the strongest zones, level lines, option lines and expected moves"><input type="checkbox" id="walkOther"> other lines</label>
-        <label title="Only step to a strike price could plausibly reach by that expiry: inside the 90% range of a random walk at today's volatility, from the previous step and from today. Off = the raw biggest strike, however far."><input type="checkbox" id="walkReach" checked> within reach</label></span>
+        <label title="Only step to a strike price could plausibly reach by that expiry: inside the 90% range of a random walk at today's volatility, from the previous step and from today. Off = the raw biggest strike, however far."><input type="checkbox" id="walkReach"> within reach</label></span>
       <span class="mcopt" id="mcOpts">horizon <select id="mcH" aria-label="Horizon in sessions"><option>10</option><option selected>20</option><option>40</option><option>60</option></select>
         pull <select id="mcK" aria-label="Pull strength"><option value="0">off</option><option value="0.25">weak</option><option value="0.5" selected>medium</option><option value="1">strong</option></select></span>
       <span class="seg" role="group" aria-label="Lines"><button id="sZones" data-s="zones">Strongest zones</button><button id="sLevels" data-s="levels">Level lines</button><button id="sOi" data-s="oi">Option lines</button></span>
@@ -301,6 +301,16 @@ function drawChart(m) {
       // each step gets a callout: number, price and date in a box at the first clear distance, joined to its dot
       dots.push({ x, y, r });
       callouts.push({ x, y, r, text: `${stepN} · ${p.notBiggest ? '◇' : ''}${px(p.px)} · ${fmtDay(p.expiry)}`, color: c, prefer: p.dir === 'down' ? 1 : -1, op: p.thin ? 0.75 : 1 });
+      // where the money really sits: a dotted pointer to the book's biggest strike when it holds 1.5x+ the pulled one's OI
+      const b = p.biggest;
+      if (b && !p.thin && (b.oi || 0) >= 1.5 * (p.oi || 0)) {
+        const yb = Y(b.px), off = yb < T + 8 || yb > H - B - 8, y2 = Math.min(H - B - 8, Math.max(T + 8, yb)), dn = y2 > y;
+        o.push(`<line x1="${x}" y1="${y + (dn ? r : -r)}" x2="${x}" y2="${y2}" stroke="var(--text3)" stroke-width="1" stroke-dasharray="1.5 3"/>`
+          + `<path d="M${x - 3.5},${y2 + (dn ? -5 : 5)} L${x},${y2} L${x + 3.5},${y2 + (dn ? -5 : 5)}" fill="none" stroke="var(--text3)" stroke-width="1"/>`
+          + `<title>${fmtDay(p.expiry)}: this book's biggest strike is ${px(b.px)} (${fmt((b.strength ?? 0) * 100, 1)}% of all live OI), but at that distance dealers hedge it far less than ${px(p.px)}</title>`);
+        dots.push({ x, y: y2, r: 3 });
+        callouts.push({ x, y: y2, r: 3, text: `${off ? (dn ? '↓ ' : '↑ ') : ''}biggest ${px(b.px)}`, color: '#8b949e', prefer: dn ? 1 : -1, op: 0.85 });
+      }
       x0 = x; y0 = y;
     }
   } else {
@@ -607,8 +617,8 @@ function pineScript(m) {
 // one place for the walk's settings, so the chart, the note and the TradingView script agree
 function walkSigma(m) { const mb = m.bands?.[1]; return mb?.sigmaUsedPct ? mb.sigmaUsedPct / 100 / Math.sqrt(20) : m.state.sigmaDailyPct / 100; }
 function walkOpts(m) {
-  const reach = $('walkReach')?.checked !== false;
-  return { close: m.state.close, anchor: $('walkA').value, includeThin: $('walkThin').checked, ...(reach ? { sigma: walkSigma(m), date: m.state.date } : {}) };
+  const reach = !!$('walkReach')?.checked;
+  return { close: m.state.close, anchor: $('walkA').value, includeThin: $('walkThin').checked, vol: walkSigma(m), date: m.state.date, ...(reach ? { sigma: walkSigma(m) } : {}) };
 }
 // the walk as a ladder: one row per expiry, the level it steps to, and how far that is from today and from the step before
 function walkTable(m, w) {
@@ -616,25 +626,28 @@ function walkTable(m, w) {
   const rows = w.points.map((p, i) => ({ ...p, n: i + 1 })).concat((w.skipped || []).map(k => ({ ...k, skip: true })))
     .sort((a, b) => (a.expiry < b.expiry ? -1 : 1));
   if (!rows.length) { $('walkTable').innerHTML = ''; return; }
-  const what = { strike: 'Strongest strike', maxPain: 'Max pain', centre: 'OI centre' }[$('walkA').value];
+  const what = { gamma: 'Gamma pull', strike: 'Strongest strike', maxPain: 'Max pain', centre: 'OI centre' }[$('walkA').value];
   $('walkTable').innerHTML = `<div class="tbl"><table class="ladder"><tr><th>#</th><th>Expiry</th><th>Days</th><th>${what}</th><th>From today</th><th>Step</th><th>Book</th><th style="text-align:left">Note</th></tr>`
     + rows.map(r => r.skip
       ? `<tr class="thin"><td>–</td><td>${fmtDay(r.expiry)}</td><td>${r.dte}</td><td>${px(r.px)}</td><td>${pct((r.px / close - 1) * 100, 1)}</td><td>–</td><td></td><td style="text-align:left">out of reach (the range allowed ±${r.capPct.toFixed(1)}%), left out</td></tr>`
       : `<tr class="${r.thin ? 'thin' : ''}"><td><b>${r.n}</b></td><td>${fmtDay(r.expiry)}</td><td>${r.dte}</td><td><b class="${r.dir === 'up' ? 'good' : r.dir === 'down' ? 'bad' : ''}">${r.dir === 'up' ? '▲' : r.dir === 'down' ? '▼' : '◆'} ${px(r.px)}</b></td>`
         + `<td>${pct((r.px / close - 1) * 100, 1)}</td><td>${pct(r.movePct, 1)}</td><td>${r.strength != null ? fmt(r.strength * 100, 1) + '%' : ''}</td>`
-        + `<td style="text-align:left">${[r.thin ? 'small book' : '', r.notBiggest ? '◇ biggest strike in reach' : '', r.building ? 'building' : ''].filter(Boolean).join(' · ')}</td></tr>`).join('')
+        + `<td style="text-align:left">${[r.thin ? 'small book' : '', r.biggest ? `◇ biggest strike ${px(r.biggest.px)} (${fmt((r.biggest.strength ?? 0) * 100, 1)}% of OI, ${pct((r.biggest.px / close - 1) * 100, 1)} from today)` : r.notBiggest ? '◇ biggest strike in reach' : '', r.pullShare != null ? `${Math.round(r.pullShare * 100)}% of this book's pull` : '', r.building ? 'building' : ''].filter(Boolean).join(' · ')}</td></tr>`).join('')
     + `</table></div><p class="note">Book = that strike's share of all live open interest. From today = distance from the last close (${px(close)}). Step = the move from the row before.</p>`;
 }
 function walkNote(m, w) {
-  const what = { strike: 'strongest strike', maxPain: 'max pain', centre: 'OI centre' }[$('walkA').value];
+  const what = { gamma: 'gamma pull (the strike dealers must hedge hardest, seen from the step before)', strike: 'strongest strike', maxPain: 'max pain', centre: 'OI centre' }[$('walkA').value];
   if (!w.points.length) { $('chartNote').innerHTML = '<span class="warn">No readable expiries for this instrument, so there is no walk.</span>'; return; }
   const runs = w.runs.map(r => `<span class="${r.dir === 'up' ? 'good' : r.dir === 'down' ? 'bad' : ''}">${r.dir === 'up' ? '▲' : r.dir === 'down' ? '▼' : '◆'} ${px(r.px)} by ${fmtDay(r.expiry)} (${r.to}d)</span>`).join(' → ');
   $('chartNote').innerHTML = `Zone walk ${tag('UNTESTED')}: from today's close, a straight step to each readable expiry's <b>${what}</b>, in date order (${w.points.length} expiries${$('walkThin').checked ? `; ${w.points.filter(p => p.thin).length} small books, under 10% of live OI, drawn hollow and dashed` : '; small books under 10% of live OI left out'}). `
-    + `Dot size = how much of all live open interest that expiry's biggest strike holds.<br>The turns: <b>${runs}</b>.<br>`
+    + `Dot size = how much of all live open interest the strike it steps to holds.<br>The turns: <b>${runs}</b>.<br>`
+    + ($('walkA').value === 'gamma' ? `<b>Gamma pull</b> ${tag('UNTESTED')}: every strike in the book is scored by its open interest times how much dealers must hedge it (gamma) with price at the step before, over the time left to that expiry, at ${(walkSigma(m) * 100).toFixed(2)}% a session. `
+      + `Near expiries pull to the big strike next to price; later ones can pull to a big zone further away. Puts far below price and calls far above (beyond one expected move) count half: those are mostly bought protection and sold calls, not hedging that moves price (the half is chosen, not fitted). `
+      + `A dotted pointer marks the book's biggest strike when it holds at least 1.5x the chosen one's OI and the pull went elsewhere.<br>` : '')
     + (w.capped ? `<b>Within reach</b> (on): each step only goes to a strike inside the 90% range of a random walk at ${(walkSigma(m) * 100).toFixed(2)}% a session, from the previous step and from today, so no step asks for an impossible day. `
         + (w.points.some(p => p.notBiggest) ? `${w.points.filter(p => p.notBiggest).length} step${w.points.filter(p => p.notBiggest).length === 1 ? '' : 's'} went to that expiry's biggest strike <i>in reach</i>, not its biggest overall (marked ◇). ` : '')
         + (w.skipped.length ? `Left out, nothing in reach: ${w.skipped.map(k => `${fmtDay(k.expiry)} (its zone ${px(k.px)} is ${k.movePct >= 0 ? '+' : ''}${k.movePct.toFixed(1)}% away; the range allowed ±${k.capPct.toFixed(1)}%)`).join('; ')}.` : '') + '<br>'
-      : `<span class="warn">Within reach is off: steps go to each expiry's biggest strike however far, so a step can ask for a move no day delivers.</span><br>`)
+      : $('walkA').value === 'gamma' ? '' : `<span class="warn">Within reach is off: steps go to each expiry's ${what} however far, so a step can ask for a move no day delivers.</span><br>`)
     + `<span class="note">This draws the idea that price visits each expiry's zone by its date; it is not a forecast. A strike can hold the most OI and still be far from where price settles, and the earlier tests found walls behave like ordinary levels and max pain does not pin. `
     + `Whether price ends nearer an expiry's OI than chance is what the pending expiry-pull score measures; until it passes, read the walk as where the books sit, in order, not where price goes. Steps between expiries are drawn straight: nothing here says when within the gap the move happens.</span>`;
 }

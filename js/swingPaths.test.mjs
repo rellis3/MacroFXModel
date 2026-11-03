@@ -1,6 +1,7 @@
 // Swing Map Monte Carlo: reproducible, random walk when k = 0, and the pull does what it says.
 //   node js/swingPaths.test.mjs
-import { simulatePaths, touchShare, mulberry32, driftSegments, zoneWalk } from './swingPaths.js';
+import { simulatePaths, touchShare, mulberry32, driftSegments, zoneWalk, gammaPullScores, HEDGE_W } from './swingPaths.js';
+import { bsGamma } from './gammaGreeks.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  → ' + e : ''}`); if (!c) fails++; };
@@ -80,6 +81,23 @@ console.log('[zone walk: the reach limit]');
   ok('a far expiry with more time can still take a bigger step', w.points.some(p => p.expiry === '2026-11-21' && p.px === 29878));
   ok('every step within its range', w.points.every(p => Math.abs(p.movePct) <= p.capPct + 1e-9));
   ok('max pain out of range is skipped too', zoneWalk(ex, { close: 28110, sigma: 0.014, date: '2026-11-02', anchor: 'maxPain' }).skipped.some(s => s.expiry === '2026-11-05'));
+}
+
+console.log('[zone walk: gamma pull]');
+{
+  // NQ-like, 28,110 close: the 3 Nov book holds 3,000 puts at 24,878 (protection, -11.5%) and 1,200 at 28,000
+  const ex = [
+    { expiry: '2026-11-03', dte: 1, totalOI: 8000, ladder: [[24878, 0, 3000], [28000, 600, 600], [28500, 900, 0]] },
+    { expiry: '2026-11-20', dte: 18, totalOI: 30000, ladder: [[28000, 500, 500], [29500, 6000, 0], [24000, 0, 9000]] },
+  ];
+  const w = zoneWalk(ex, { close: 28110, anchor: 'gamma', vol: 0.014, date: '2026-11-02' });
+  ok('a 1-day book pulls to the big strike next to price, not the far protection', w.points[0].px === 28000, JSON.stringify(w.points[0]));
+  ok('and says where the biggest strike really is', w.points[0].biggest?.px === 24878 && w.points[0].notBiggest);
+  ok('an 18-day book can still pull to a big zone 5% away', w.points[1].px === 29500, JSON.stringify(w.points[1]));
+  ok('pullShare is a share', w.points.every(p => p.pullShare > 0 && p.pullShare <= 1));
+  const sc = gammaPullScores([[27000, 0, 1000], [29200, 0, 1000]], 28110, 5 / 252, 0.014 * Math.sqrt(252));
+  ok('far puts below count at HEDGE_W against the same puts above', Math.abs(sc[0].score / sc[1].score - HEDGE_W * bsGamma(28110, 27000, 5 / 252, 0.014 * Math.sqrt(252)) / bsGamma(28110, 29200, 5 / 252, 0.014 * Math.sqrt(252))) < 1e-9);
+  ok('no ladder: falls back to the top zones', zoneWalk([{ expiry: '2026-11-03', dte: 1, totalOI: 1, zones: [{ px: 28000, oi: 5 }] }], { close: 28110, anchor: 'gamma', vol: 0.014, date: '2026-11-02' }).points[0]?.px === 28000);
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

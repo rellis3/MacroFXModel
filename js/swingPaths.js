@@ -17,8 +17,9 @@
  *
  * The most-touched path: for each session ahead, the price bin that the most paths sit in (the density peak), lightly
  * smoothed. Under a random walk that is ~flat at the start price; any shape it takes comes from the pull.
- * Pure and browser-safe: no imports.
+ * Pure and browser-safe: one import, the Black-Scholes gamma (js/gammaGreeks.js, also browser-safe).
  */
+import { bsGamma } from './gammaGreeks.js';
 
 export function mulberry32(seed) {
   let a = seed >>> 0;
@@ -148,9 +149,29 @@ export function driftSegments(drift, { minLen = 2 } = {}) {
  * to the biggest strike INSIDE that range; an expiry with none in range (or whose max pain / centre is out of range) is
  * left out of the walk and listed in `skipped` with how far its zone was and what the range allowed.
  */
+/*
+ * Gamma pull (owner, 2026-11-03: the reach limit lost the walk's point, which was to go where the money is). The
+ * 'gamma' anchor scores every strike in the expiry's book by how hard dealers must hedge it while price sits at the
+ * previous step: OI x Black-Scholes gamma at that price, over the sessions left from the previous step to the expiry,
+ * at `vol` (daily). Gamma is large only near price and near expiry, so a 1-day book pulls to the big strike next to
+ * price and a 20-day book can still pull to a big zone several percent away, with no hard range. An option far out of
+ * the money on the protection side (puts below price, calls above, beyond one expected move) counts at HEDGE_W: those
+ * are mostly bought protection and overwriting, not the hedging that moves price. HEDGE_W is chosen, not fitted.
+ * Each point also carries `biggest`, the book's largest strike by OI, when the pull went elsewhere.
+ */
+export const HEDGE_W = 0.5;
+export function gammaPullScores(ladder, S, T, sigmaAnnual) {
+  if (!Array.isArray(ladder) || !(S > 0) || !(T > 0) || !(sigmaAnnual > 0)) return [];
+  const em = sigmaAnnual * Math.sqrt(T);
+  return ladder.filter(r => r[0] > 0).map(([k, c, p]) => {
+    const far = Math.abs(Math.log(k / S)) > em;
+    const cw = far && k > S ? HEDGE_W : 1, pw = far && k < S ? HEDGE_W : 1;
+    return { px: k, oi: (c || 0) + (p || 0), score: (bsGamma(S, k, T, sigmaAnnual) || 0) * ((c || 0) * cw + (p || 0) * pw) };
+  });
+}
 const _weekdays = (a, b) => { let t = Date.parse(`${a}T00:00:00Z`), e = Date.parse(`${b}T00:00:00Z`), k = 0; while (t < e) { t += 864e5; const w = new Date(t).getUTCDay(); if (w && w !== 6) k++; } return k; };
 
-export function zoneWalk(expiries, { close, anchor = 'strike', maxDte = 100, thin = 0.10, includeThin = false, flatPct = 0.1, sigma = null, date = null, zcap = 1.645 } = {}) {
+export function zoneWalk(expiries, { close, anchor = 'strike', maxDte = 100, thin = 0.10, includeThin = false, flatPct = 0.1, sigma = null, date = null, zcap = 1.645, vol = null } = {}) {
   if (!(close > 0)) return { points: [], runs: [], text: '' };
   const all = (expiries || []).reduce((a, e) => a + (e.totalOI || 0), 0);
   const isThin = e => !!e.thin || (all > 0 && (e.totalOI || 0) / all < thin);
@@ -160,11 +181,21 @@ export function zoneWalk(expiries, { close, anchor = 'strike', maxDte = 100, thi
   const capped = sigma > 0 && date;
   let prev = close, prevDate = date;
   for (const e of live) {
-    const byOI = (e.zones || []).slice().sort((a, b) => (b.oi || 0) - (a.oi || 0));
+    const book = Array.isArray(e.ladder) && e.ladder.length ? e.ladder.map(([k, c, p]) => ({ px: k, oi: (c || 0) + (p || 0), call: c, put: p }))
+      : (e.zones || []).map(z => ({ px: z.px, oi: z.oi, call: z.call ?? z.oi, put: z.put ?? 0 }));
+    const byOI = (anchor === 'gamma' ? book : (e.zones || [])).slice().sort((a, b) => (b.oi || 0) - (a.oi || 0));
     const capFrom = (from, fromDate) => zcap * sigma * Math.sqrt(Math.max(1, _weekdays(fromDate, e.expiry)));
     const ok = px => !capped || (Math.abs(Math.log(px / prev)) <= capFrom(prev, prevDate) && Math.abs(Math.log(px / close)) <= capFrom(close, date));
-    let top = byOI[0];
+    let top = byOI[0], pullShare = null;
     if (anchor === 'strike' && capped) top = byOI.find(z => z.px > 0 && ok(z.px));
+    if (anchor === 'gamma') {
+      const n = date || prevDate ? Math.max(1, _weekdays(prevDate || date, e.expiry)) : Math.max(1, e.dte * 252 / 365);
+      const sc = gammaPullScores(book.map(z => [z.px, z.call, z.put]), prev, n / 252, (vol || sigma || 0.01) * Math.sqrt(252));
+      const tot = sc.reduce((a, z) => a + z.score, 0);
+      const best = sc.filter(z => ok(z.px)).sort((a, b) => b.score - a.score)[0];
+      top = best ? book.find(z => z.px === best.px) : null;
+      pullShare = best && tot > 0 ? best.score / tot : null;
+    }
     const px = anchor === 'maxPain' ? e.maxPain : anchor === 'centre' ? e.centrePx : top?.px;
     if (!(px > 0) || !ok(px)) {
       const far = anchor === 'maxPain' ? e.maxPain : anchor === 'centre' ? e.centrePx : byOI[0]?.px;
@@ -177,7 +208,8 @@ export function zoneWalk(expiries, { close, anchor = 'strike', maxDte = 100, thi
     points.push({ expiry: e.expiry, dte: e.dte, px, from: prev, dir, movePct, thin: isThin(e),
       strength: all > 0 && top ? (top.oi || 0) / all : null, oi: top?.oi ?? null,
       building: !!top && ((top.buildStreak ?? 0) >= 2 || (top.chgSinceFirst ?? 0) > 0),
-      notBiggest: anchor === 'strike' && !!byOI[0] && top !== byOI[0], capPct: capped ? (Math.exp(capFrom(prev, prevDate)) - 1) * 100 : null });
+      notBiggest: (anchor === 'strike' || anchor === 'gamma') && !!byOI[0] && top.px !== byOI[0].px, capPct: capped ? (Math.exp(capFrom(prev, prevDate)) - 1) * 100 : null,
+      pullShare, biggest: byOI[0] && top && byOI[0].px !== top.px ? { px: byOI[0].px, oi: byOI[0].oi, strength: all > 0 ? (byOI[0].oi || 0) / all : null } : null });
     prev = px; prevDate = e.expiry;
   }
   // consecutive steps the same way merge into one run; a flat step joins the run it sits in
