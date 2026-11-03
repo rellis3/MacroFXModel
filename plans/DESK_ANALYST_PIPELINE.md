@@ -174,6 +174,11 @@ Analyst report (all Layer 1 skills):
   pages read the cached result. A button reruns one instrument on demand.
 - Token counts are logged per run (the router reports tokens, not prices, by design).
 
+**Model, for now (owner, 2026-11-03):** both desk tasks run on **Claude Sonnet 5** (`models` on the task in
+`js/modelRouter.js`), estimated at about $0.80 a run, roughly half of Opus 5. To move one back without a deploy, set
+`AI_TASK_MODEL_DESK_HEAD=claude-opus-5-5` (or `_DESK_ANALYST`) on Railway. A task pin applies only on the provider it
+names, so a task routed to DeepSeek never receives an Anthropic model id.
+
 ## 7. Phases
 
 | Phase | Builds | Done when |
