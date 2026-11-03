@@ -123,7 +123,12 @@ informative here.
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-03 — PRE-RESULTS
+
+A planted-signal check is added as **descriptive** (it does not enter the gate). Add +0.15 to the DR of whichever
+market's book is short on disagreement days, re-fit, and confirm β rises by about +0.15. This follows the
+`research-protocol` lesson to plant a known effect in the exact pipeline before trusting its power. It also
+confirms the β = (b₊ − b₋)/2 bookkeeping. No outcome had been computed; the script was written but not run.
 
 ---
 
