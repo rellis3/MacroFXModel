@@ -53,6 +53,7 @@ IB_SPEC = {   # name: (IBKR symbol, exchange, currency, contract-month parameter
 }
 CORE = ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7', 'IM7']      # IM7: becomes I2! when IZ6 expires (14 Dec 2026), so the stitched I2 line stays live
 BONDS = ['ZTZ6', 'ZFZ6', 'ZNZ6', 'ZBZ6', 'UBZ6', 'FGBS2612', 'FGBM2612', 'FGBL2612', 'FGBX2612']      # US 2/5/10/30/ultra and German 2/5/10/30: pulled on every run too (2026-10-23)
+FEDFUNDS = ['ZQX6', 'ZQZ6', 'ZQF7', 'ZQH7']      # fed funds months on the chart: pulled on every run (2026-11-03; they had stopped at 10-19). Expired months are skipped by the pull
 MACRO = ['FBTP2612', 'FOAT2612', 'DXZ6', 'VXX6', 'VXZ6', 'VVIX', 'VIX', 'VXN', 'NQZ6', '6EZ6', '6BZ6', '6JZ6', 'GCZ6', 'ESZ6']      # euro spreads, dollar, vol: pulled on every run too (2026-10-23)
 last = [0.0]
 
@@ -87,7 +88,7 @@ if __name__ == '__main__':
     ap.add_argument('--all', action='store_true', help='pull every contract in IB_SPEC, not only the seven core legs (about 4 minutes per week of history)')
     a = ap.parse_args()
     now = datetime.now(timezone.utc)
-    names = [n.strip() for n in a.names.split(',') if n.strip()] if a.names else (list(IB_SPEC) if a.all else CORE + BONDS + MACRO)
+    names = [n.strip() for n in a.names.split(',') if n.strip()] if a.names else (list(IB_SPEC) if a.all else CORE + BONDS + FEDFUNDS + MACRO)
     found = B.discover()
     stem = lambda n: found[n]['stem'] if n in found else f'{IB_SPEC[n][1]}_{n}'
     if not a.no_pull:
