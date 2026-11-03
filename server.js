@@ -336,7 +336,7 @@ import { evaluateIntradayAllHorizons } from './js/intradayForecastResearch.js';
 import { analyzeCrossPair, portfolioIndependence } from './js/crossPairResearch.js';
 import { scanFeatures } from './js/forecastFeatureScan.js';
 import { bandCalcAB } from './js/bandCalcAB.js';
-import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
+import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, getBuffer as _r2GetBuffer, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
 import { INSTRUMENTS as _DL_INSTRUMENTS, HORIZONS as _DL_HORIZONS, closesFromCandles as _dlClosesFromCandles, issueRecord as _dlIssue, outcomeRecord as _dlOutcome, summarise as _dlSummarise } from './js/directionLedger.js';
 import { RESEARCH as _DL_RESEARCH, volFlags as _dlVolFlags, FX_CARRY_EUR_OFFSET as _DL_EUR_OFFSET, FX_CARRY_MAX_AGE_DAYS as _DL_RATE_MAX_AGE_DAYS } from './js/directionResearch.js';
 import { scoreTrack as _dlScoreTrack } from './js/directionScore.js';
@@ -416,6 +416,22 @@ import { loadEngine as _loadGliEngine } from './GlobalLiquidity/engineLoader.mjs
 import { CBOE_INDICES as _CBOE_INDICES, YAHOO_LONG as _YAHOO_LONG, OVERNIGHT as _OVERNIGHT, fetchCboe as _fetchCboe, fetchYahooLong as _fetchYahooLong, fetchYahooDaily as _fetchYahooDaily } from './js/marketHistory.js';
 // The permanent record of data that cannot be re-fetched (plans/DATA_ASSET_MAP.md §4A–B): R2, append-only.
 const _archive = createDataArchive({ putJSON: _r2PutJSON, getJSON: _r2GetJSON, listKeys: _r2ListKeys, configured: _r2Ok, log: console });
+
+// Durable store for records that must survive a redeploy but are too chatty for the Cloudflare KV write budget.
+// kv.js routes a key outside _CF_EXACT to the local file, which Railway wipes on every deploy, so these keys
+// live in R2 (state/<name>.json). R2 not configured -> kv, as before. A read failure THROWS, never reads as empty.
+// A key still sitting in the old local kv is read once as a migration fallback (empty after a deploy, so a no-op).
+async function _durableGet(name) {
+  if (_r2Ok()) {
+    const o = await _r2GetJSON(`state/${name}.json`);
+    if (o != null) return JSON.stringify(o);
+  }
+  return await kv.getStrict(name);
+}
+async function _durablePut(name, json) {
+  if (_r2Ok()) { await _r2PutJSON(`state/${name}.json`, JSON.parse(json)); return; }
+  await kv.put(name, json);
+}
 
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
@@ -504,10 +520,51 @@ function svcRun(id, fn) {
   try { out = fn(); }
   catch (e) { st.errors++; done(); throw e; }
   if (out && typeof out.then === 'function') {
-    return out.then(v => { done(); return v; }, e => { st.errors++; done(); throw e; });
+    return out.then(v => { done(); _ledgerMark(id); return v; }, e => { st.errors++; done(); throw e; });
   }
-  done();
+  done(); _ledgerMark(id);
   return out;
+}
+
+// ── Boot runs that skip when the last run was recent ─────────────────────────
+// Railway redeploys on every push (~16 boots a day) and every one-shot boot run re-did work whose result already
+// sat in KV / R2. `ops/run-ledger.json` (R2, one small object) records when each id in _LEDGER_IDS last finished
+// a run -- boot OR scheduled, svcRun stamps both. `svcBoot` is svcTimeout that first asks the ledger: ran within
+// maxAgeMs -> skip (logged), otherwise run as before. Fails OPEN: R2 absent / unreadable / id unknown = run.
+// Only for jobs whose readers serve from KV / R2, never from a process cache the boot run would have filled.
+// maxAgeMs is kept under the job's interval so a skip can never push a refresh past one interval.
+const _LEDGER_KEY = 'ops/run-ledger.json';
+const _LEDGER_IDS = new Set(['bankCredit', 'fundingRead', 'regimeStudy', 'fredDashboard', 'macroContext', 'vixCapture', 'nasdaqMacroLead', 'sessionResearchFull']);
+let _ledger = null, _ledgerLoading = null, _ledgerTimer = null;
+function _ledgerLoad() {
+  if (_ledger) return Promise.resolve(_ledger);
+  if (!_ledgerLoading) _ledgerLoading = (async () => {
+    try { _ledger = (_r2Ok() && await _r2GetJSON(_LEDGER_KEY)) || {}; }
+    catch (e) { console.warn('[run-ledger] unreadable, boot runs will not be skipped:', e.message); _ledger = {}; }
+    return _ledger;
+  })();
+  return _ledgerLoading;
+}
+function _ledgerMark(id) {
+  if (!_LEDGER_IDS.has(id) || !_r2Ok()) return;
+  _ledgerLoad().then(L => {
+    L[id] = Date.now();
+    if (_ledgerTimer) return;
+    _ledgerTimer = setTimeout(() => {      // debounced: one PUT however many jobs finish together
+      _ledgerTimer = null;
+      _r2PutJSON(_LEDGER_KEY, _ledger).catch(e => console.warn('[run-ledger] write failed:', e.message));
+    }, 15_000);
+  });
+}
+function svcBoot(id, fn, delayMs, maxAgeMs) {
+  if (!svcEnabled(id)) return null;
+  _svcStat(id).started = true;
+  return setTimeout(async () => {
+    const L = await _ledgerLoad();
+    const age = Date.now() - (L[id] ?? 0);
+    if (L[id] && age < maxAgeMs) { console.log(`[boot-skip] ${id}: last run ${Math.round(age / 60_000)} min ago (< ${Math.round(maxAgeMs / 60_000)}), not re-running at boot`); return; }
+    return svcRun(id, fn);
+  }, delayMs);
 }
 
 /** Gated, timed `setInterval`. Returns null (and starts nothing) when the service is off. */
@@ -4717,7 +4774,7 @@ async function _ratesRegimeTick(opts = {}) {
     const [bond, nq] = await Promise.all([fetchIntraday('USB02Y_USD', 'M15', { from }), fetchIntraday('NAS100_USD', 'M15', { from })]);
     const cur = _ratesRegimeRead({ bond, nq });
     let prev = null, daily = [];
-    try { const raw = await kv.getStrict(_RR_KV); if (raw) { const p = JSON.parse(raw); prev = p.state ?? null; daily = Array.isArray(p.daily) ? p.daily : []; } }
+    try { const raw = await _durableGet(_RR_KV); if (raw) { const p = JSON.parse(raw); prev = p.state ?? null; daily = Array.isArray(p.daily) ? p.daily : []; } }
     catch (e) { console.warn('[rates-regime] store unreadable, not overwriting:', e.message); throw e; }
     let sent = false, msg = null;
     if (cur.ok) {
@@ -4725,7 +4782,7 @@ async function _ratesRegimeTick(opts = {}) {
       daily = daily.filter(r => r.date !== d).concat([{ date: d, corr: cur.corr, beta: cur.betaPctPerBp, band: cur.band.key }]).slice(-400);
       msg = prev && !cur.stale ? _ratesRegimeAlert(prev, cur) : null;     // first run after deploy: record, do not page
       if (msg && !opts.silent && tgOn('ratesRegime') && state.tg?.token && state.tg?.chatId) sent = await sendTelegram(state.tg.token, state.tg.chatId, msg);
-      await kv.put(_RR_KV, JSON.stringify({ state: cur, daily, updatedAt: new Date().toISOString(), lastAlert: msg ? { at: new Date().toISOString(), text: msg, sent } : (prev?.lastAlert ?? null) }));
+      await _durablePut(_RR_KV, JSON.stringify({ state: cur, daily, updatedAt: new Date().toISOString(), lastAlert: msg ? { at: new Date().toISOString(), text: msg, sent } : (prev?.lastAlert ?? null) }));
     }
     _rrLast = { at: Date.now(), ok: cur.ok, reason: cur.reason ?? null, band: cur.band?.key ?? null, alerted: !!msg, sent, error: null };
     return _rrLast;
@@ -4737,7 +4794,7 @@ async function _ratesRegimeTick(opts = {}) {
 }
 app.get('/api/rates-regime', async (_req, res) => {
   try {
-    const raw = await kv.get(_RR_KV);
+    const raw = await _durableGet(_RR_KV).catch(() => null);
     const p = raw ? JSON.parse(raw) : null;
     const s = p?.state ?? null;
     res.json({ ok: !!s?.ok, state: s, daily: p?.daily ?? [], updatedAt: p?.updatedAt ?? null, lastAlert: p?.lastAlert ?? null,
@@ -4838,6 +4895,31 @@ const _CC_ASSETS = {
   GOLD: ['XAU_USD', 'Gold'], NAS100: ['NAS100_USD', 'Indices'], SPX500: ['SPX500_USD', 'Indices'], US30: ['US30_USD', 'Indices'], US2000: ['US2000_USD', 'Indices'], DE30: ['DE30_EUR', 'Indices'], UK100: ['UK100_GBP', 'Indices'],
 };
 const _CC_TF = { '5m': 'M5', '15m': 'M15', '1h': 'H1', '4h': 'H4' };
+// The leg files' home is R2 (rates-legs/cog_chart/, sent by scripts/rates_line/legs_r2.py on the laptop), not git: this copies every file whose
+// sha256 in the manifest differs from what was last written here onto this server's disk, so every _cogJson(_CC_DIR ...) read below is unchanged
+// (its mtime check picks the new file up). No manifest or no R2 = nothing is touched.
+const _ccSynced = new Map();
+let _ccSync = { at: null, asOf: null, files: 0, error: null };
+async function _ccSyncFromR2() {
+  try {
+    const man = await _r2GetJSON('rates-legs/cog_chart/manifest.json');
+    if (!man?.files) return;
+    fs.mkdirSync(_CC_DIR, { recursive: true });
+    let n = 0;
+    for (const [name, f] of Object.entries(man.files)) {
+      if (!/^[\w.-]+\.json$/.test(name) || _ccSynced.get(name) === f.sha256) continue;
+      const gz = await _r2GetBuffer(`rates-legs/cog_chart/${name}.gz`);
+      if (!gz) continue;
+      const tmp = path.join(_CC_DIR, `.${name}.tmp`);
+      fs.writeFileSync(tmp, zlib.gunzipSync(gz)); fs.renameSync(tmp, path.join(_CC_DIR, name));
+      _ccSynced.set(name, f.sha256); n++;
+    }
+    _ccSync = { at: new Date().toISOString(), asOf: man.generatedAt, files: n, error: null };
+    if (n) console.log(`[rates-legs] ${n} leg file(s) from R2 (as of ${man.generatedAt})`);
+  } catch (e) { _ccSync = { ..._ccSync, at: new Date().toISOString(), error: e.message }; console.error('[rates-legs]', e.message); }
+}
+svcTimeout('ratesLegsSync', _ccSyncFromR2, 5_000);
+svcInterval('ratesLegsSync', _ccSyncFromR2, 30 * 60_000);
 const _ccLegNames = () => _cogJson(path.join(_CC_DIR, 'legs_meta.json')).map(l => l.name);      // every US / euro rates contract the builder found (scripts/rates_line/build_leg_bars.py)
 let _ccLive = { at: 0, v: null };
 async function _ccLivePush() {
@@ -5181,7 +5263,7 @@ async function _dofSession(inst, anchorMs, now) {
 }
 async function _dofLoad() {
   if (_dof.loaded) return;
-  const raw = await kv.getStrict(_DOF_KV);            // throws on a read failure: never start from empty over a real record
+  const raw = await _durableGet(_DOF_KV);            // throws on a read failure: never start from empty over a real record
   const p = raw ? JSON.parse(raw) : null;
   for (const r of p?.rows ?? []) _dof.rows.set(`${r.inst}|${r.date}`, r);
   _dof.loaded = true;
@@ -5219,7 +5301,7 @@ async function _dofTick() {
     for (const list of byInst.values()) list.sort((x, y) => y.anchorMs - x.anchorMs).slice(_DOF_KEEP).forEach(r => _dof.rows.delete(`${r.inst}|${r.date}`));
     // write on a phase change (fill, close, no setup) at most every 2 min, otherwise every 30 min (CF KV write budget)
     if ((_dof.dirty && now - _dof.lastWrite > 2 * 60e3) || now - _dof.lastWrite > 30 * 60e3) {
-      await kv.put(_DOF_KV, JSON.stringify({ rows: [..._dof.rows.values()], updatedAt: new Date().toISOString() }));
+      await _durablePut(_DOF_KV, JSON.stringify({ rows: [..._dof.rows.values()], updatedAt: new Date().toISOString() }));
       _dof.lastWrite = now; _dof.dirty = false;
     }
     _dof.lastTick = now; _dof.error = errors.length ? errors.slice(0, 8) : null;
@@ -5480,7 +5562,7 @@ app.post('/api/bank-credit/tick', async (req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 svcInterval('bankCredit', () => _bcTick().catch(e => console.error('[bank-credit]', e.message)), 12 * 3600_000);
-svcTimeout('bankCredit', () => _bcTick({ silent: true }).catch(e => console.error('[bank-credit]', e.message)), 3 * 60_000);
+svcBoot('bankCredit', () => _bcTick({ silent: true }).catch(e => console.error('[bank-credit]', e.message)), 3 * 60_000, 6 * 3600_000);
 
 // ── Funding & leverage read (js/fundingRead.js; live side of the feature-store funding archive) ──
 // Fed swap lines, SOFR−IORB, SOFR volume, ON RRP, reserves (FRED), CFTC leveraged-fund net Treasury futures
@@ -5528,7 +5610,7 @@ app.post('/api/funding-read/tick', async (_req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 svcInterval('fundingRead', () => _frTick().catch(e => console.error('[funding-read]', e.message)), 6 * 3600_000);
-svcTimeout('fundingRead', () => _frTick().catch(e => console.error('[funding-read]', e.message)), 150_000);
+svcBoot('fundingRead', () => _frTick().catch(e => console.error('[funding-read]', e.message)), 150_000, 3 * 3600_000);
 
 app.post('/api/rates-regime/tick', async (req, res) => {
   try { res.json({ ok: true, ...(await _ratesRegimeTick({ silent: req.query.silent === '1' })) }); }
@@ -17609,7 +17691,7 @@ app.post('/api/macro-regime-fx/refresh', async (_req, res) => {
 });
 // Daily rebuild — the underlying series are daily and one more day changes nothing
 // abruptly, so this is a cheap keep-warm rather than a schedule anything depends on.
-svcTimeout('regimeStudy', () => { _refreshRegimeStudy().catch(e => console.warn('[regime-fx] initial build skipped:', e.message)); }, 120_000);
+svcBoot('regimeStudy', () => _refreshRegimeStudy().catch(e => console.warn('[regime-fx] initial build skipped:', e.message)), 120_000, 12 * 3600_000);
 svcInterval('regimeStudy', () => { _refreshRegimeStudy().catch(e => console.warn('[regime-fx] rebuild failed:', e.message)); }, _REGIME_TTL_MS);
 
 // -- Economic surprise index (actual vs consensus, per currency) ---------------
@@ -31186,7 +31268,7 @@ svcTimeout('feed', () => svcRun('feed', () => feed.tick('boot')), 180_000);
 // the minute-level history for testing the VIX-vs-Nasdaq divergence idea later. Status: /api/vix-capture.
 const vixCapture = createVixCapture({ r2: { configured: _r2Ok, getJSON: _r2GetJSON, putJSON: _r2PutJSON } });
 vixCapture.mount(app);
-svcTimeout('vixCapture', () => svcRun('vixCapture', () => vixCapture.tick('boot')), 2 * 60_000);
+svcBoot('vixCapture', () => vixCapture.tick('boot'), 2 * 60_000, 3 * 3600_000);
 svcInterval('vixCapture', () => svcRun('vixCapture', () => vixCapture.tick('scheduled')), 6 * 60 * 60_000);
 
 // Report M1 cache status and Drive IDs for download instructions
@@ -32024,7 +32106,7 @@ const SESSION_RESEARCH_FULL_INTERVAL_MS = (parseInt(process.env.SESSION_RESEARCH
 // had), then on its own interval — fire-and-forget, does not block server
 // startup below.
 if (svcEnabled('sessionResearchLive')) svcRun('sessionResearchLive', _sessionResearchLiveTick);
-if (svcEnabled('sessionResearchFull')) svcRun('sessionResearchFull', _sessionResearchFullTick);
+svcBoot('sessionResearchFull', _sessionResearchFullTick, 10 * 60_000, 12 * 3600_000);   // outputs are on the deploy's own disk (1.1 GB), so a skip serves the committed copy until the next full run
 svcInterval('sessionResearchLive', _sessionResearchLiveTick, SESSION_RESEARCH_LIVE_INTERVAL_MS);
 svcInterval('sessionResearchFull', _sessionResearchFullTick, SESSION_RESEARCH_FULL_INTERVAL_MS);
 
@@ -32208,6 +32290,7 @@ async function _runNasdaqMacroLeadOnce() {
   const summary = await _computeNasdaqMacroLeadSummary();
   fs.mkdirSync(path.dirname(NASDAQ_MACRO_LEAD_SUMMARY_PATH), { recursive: true });
   fs.writeFileSync(NASDAQ_MACRO_LEAD_SUMMARY_PATH, JSON.stringify(summary));
+  if (_r2Ok()) await _r2PutJSON('nasdaq-macro-lead/dashboard_summary.json', summary).catch(e => console.warn('[nasdaq-macro-lead] R2 copy failed:', e.message));   // the disk copy dies with the deploy; the route falls back to this
   console.log(`[nasdaq-macro-lead] run done in ${((Date.now() - startedAt) / 1000).toFixed(0)}s `
     + `(${summary.candles.length} candles, fast ok=${summary.variants.fast.ok}, fred ok=${summary.variants.fred.ok})`);
   return summary;
@@ -32224,7 +32307,7 @@ async function _nasdaqMacroLeadTick() {
   catch (e) { console.warn(`[nasdaq-macro-lead] tick failed: ${e.message}`); }
   finally { _nasdaqMacroLeadBusy = false; }
 }
-if (svcEnabled('nasdaqMacroLead')) svcRun('nasdaqMacroLead', _nasdaqMacroLeadTick);
+svcBoot('nasdaqMacroLead', _nasdaqMacroLeadTick, 5 * 60_000, 2 * 3600_000);
 svcInterval('nasdaqMacroLead', _nasdaqMacroLeadTick, NASDAQ_MACRO_LEAD_INTERVAL_MS);
 
 app.get('/api/nasdaq-macro-lead/summary', async (_req, res) => {
@@ -40951,12 +41034,12 @@ setTimeout(() => {
 }, 35_000);
 
 // Macro context (VIX, HY spread, yield curve via FRED) — refresh every 6h, run once at startup
-if (svcEnabled('macroContext')) svcRun('macroContext', refreshMacroContext).catch(console.error);
+svcBoot('macroContext', () => refreshMacroContext().catch(console.error), 15_000, 3 * 3600_000);   // boot loads the stored copy into state (below), so a skip leaves nothing empty
 svcInterval('macroContext', refreshMacroContext, MACRO_REFRESH_MS);
 
 // FRED dashboard cache — sequential fetch at startup + every 6h to pre-populate fred_data_v3
 // so /api/fred always serves from KV without client-triggered concurrent FRED batches.
-if (svcEnabled('fredDashboard')) svcRun('fredDashboard', refreshFredDashboard).catch(console.error);
+svcBoot('fredDashboard', () => refreshFredDashboard().catch(console.error), 20_000, 3 * 3600_000);   // /api/fred serves fred_data_v3 from KV
 svcInterval('fredDashboard', refreshFredDashboard, MACRO_REFRESH_MS);
 
 // Event-blackout windows — hourly Finnhub calendar → eventGateCore →
