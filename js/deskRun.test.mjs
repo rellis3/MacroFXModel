@@ -190,6 +190,17 @@ await t('runDesk full mode: a failed stage is recorded and the next stage falls 
   assert.equal(full.calls - one.calls, 4, 'one round = no rebuttals in either debate');
 });
 
+await t('runDesk: a dropped connection is retried once; a 4xx is not', async () => {
+  let n1 = 0, n2 = 0;
+  const flaky = async args => { if (args.task !== 'desk-head' && n1++ === 0) { const e = new Error('Anthropic request failed: fetch failed'); e.status = 504; throw e; } return fakeModel().fn(args); };
+  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: flaky, parseJson, now: clock, mode: 'quick', retryDelayMs: 0 });
+  assert.equal(run.failed.length, 0, 'the analyst that hit the dropped connection recovered');
+  const bad = async args => { if (args.task !== 'desk-head') { n2++; const e = new Error('Anthropic 401: invalid x-api-key'); e.status = 502; throw e; } return fakeModel().fn(args); };
+  const run2 = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: bad, parseJson, now: clock, mode: 'quick', retryDelayMs: 0 });
+  assert.equal(n2, roles.filter(r => r.output === 'analyst_report').length, 'one call each, no retry on a 401');
+  assert.ok(run2.head.skipped);
+});
+
 await t('head prompt lists every instrument with its legs and the analysts in global-first order', () => {
   const reports = { vol_iv: { skill: 'vol_iv', layer: 'asset', report: { confidence: 'high' } }, global_market: { skill: 'global_market', layer: 'global', report: { confidence: 'low' } } };
   const p = buildHeadPrompt({ role: roles.find(r => r.id === 'head_of_desk'), pack, reports, failed: ['options_oi'] });

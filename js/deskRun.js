@@ -22,13 +22,21 @@ const TASK = { quick: 'desk-analyst', deep: 'desk-head' };
 export const CAPS = { analyst: 16_000, debate: 12_000, manager: 12_000, asset: 16_000, risk: 10_000, head: 32_000 };
 const MAX_CAP = 32_000;
 
-async function askValidated({ callModel, parseJson, task, system, prompt, maxTokens, validate, label }) {
+// A provider error worth one more try: a dropped connection, a timeout, rate limiting or a server error. A 4xx
+// (bad key, bad request) is not. On 2026-11-03 the evidence clerk was lost to one "fetch failed".
+const transient = e => /fetch failed|ECONNRESET|socket|timed? ?out|did not answer/i.test(e?.message ?? '') || e?.status === 504 || e?.status === 429 || / (429|5\d\d)\b/.test(e?.message ?? '');
+
+async function askValidated({ callModel, parseJson, task, system, prompt, maxTokens, validate, label, retryDelayMs = 4000 }) {
   const attempts = [];
   let userPrompt = prompt, cap = maxTokens;
   for (let i = 0; i < 2; i++) {
     let reply;
     try { reply = await callModel({ task, system, prompt: userPrompt, maxTokens: cap }); }
-    catch (e) { attempts.push({ error: e.message }); break; }               // a provider error is not retried here: the router already has its own limits
+    catch (e) {
+      attempts.push({ error: e.message });
+      if (i === 0 && transient(e)) { await new Promise(r => setTimeout(r, retryDelayMs)); continue; }   // one more try after a short wait
+      break;
+    }
     const parsed = parseJson(reply.text, label);
     // A reply cut off at the token cap (thinking counts against it) is retried with twice the room, not the same
     // cap: on 2026-11-03 every analyst hit a 3,000 cap twice and the run produced nothing.
@@ -54,7 +62,7 @@ async function pool(items, limit, fn) {
  * roles: parsed role files (js/deskRoles.js parseRole), analysts plus one with id head_of_desk.
  * Returns the run record that the server saves and the pages read.
  */
-export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, concurrency = 4, onProgress = () => {}, mode = 'full', rounds = 2 }) {
+export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, concurrency = 4, onProgress = () => {}, mode = 'full', rounds = 2, retryDelayMs = 4000 }) {
   if (!pack?.skills) throw new Error('no desk pack to run on');
   const head = roles.find(r => r.id === 'head_of_desk');
   if (!head) throw new Error('role head_of_desk is missing');
@@ -62,7 +70,7 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
   const startedAt = now();
   const results = await pool(analysts, concurrency, async role => {
     const { system, prompt, meta } = buildAnalystPrompt({ role, pack, ledger });
-    const r = await askValidated({ callModel, parseJson, task: TASK[role.tier], system, prompt, maxTokens: CAPS.analyst, label: `desk:${role.id}`,
+    const r = await askValidated({ callModel, parseJson, retryDelayMs, task: TASK[role.tier], system, prompt, maxTokens: CAPS.analyst, label: `desk:${role.id}`,
       validate: o => validateAnalystReport(o, role.id) });
     onProgress({ stage: 'analyst', id: role.id, ok: r.ok, label: 'analysts' });
     return { id: role.id, layer: role.layer, ok: r.ok, report: r.value ?? null, notes: r.notes ?? [], errors: r.errors ?? [], attempts: r.attempts, input: meta };
@@ -74,7 +82,7 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
   if (good.length < Math.ceil(analysts.length / 2)) {
     headOut = { ok: false, skipped: true, errors: [`only ${good.length} of ${analysts.length} analysts succeeded; the Head of Desk did not run`] };
   } else if (mode === 'full') {
-    debate = await runDebate({ pack, roles, ledger, callModel, parseJson, results, rounds, onProgress });
+    debate = await runDebate({ pack, roles, ledger, callModel, parseJson, results, rounds, onProgress, retryDelayMs });
     const sections = [
       ['Global ruling', debate.global.view ?? '(the global ruling failed today: read the global analysts below)'],
       ['Currency ruling', debate.currency.view ?? '(the currency ruling failed today: read the currency analysts below)'],
@@ -88,13 +96,13 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
     const missing = [...failed, ...debate.failed];
     const { system, prompt } = buildStagePrompt({ role: head, pack, ledger: [], sections,
       tail: `${missing.length ? `Stages that failed today (treat their areas as unseen): ${missing.join(', ')}.\n` : ''}Write a card for every one of the ${allInstruments().length} instruments, with size and plan where the asset desks and the risk desk support them.` });
-    const r = await askValidated({ callModel, parseJson, task: TASK[head.tier], system, prompt, maxTokens: CAPS.head, label: 'desk:head',
+    const r = await askValidated({ callModel, parseJson, retryDelayMs, task: TASK[head.tier], system, prompt, maxTokens: CAPS.head, label: 'desk:head',
       validate: o => validateHeadBook(o, allInstruments()) });
     headOut = { ok: r.ok, book: r.value ?? null, notes: r.notes ?? [], errors: r.errors ?? [], attempts: r.attempts };
   } else {
     const reports = Object.fromEntries(good.map(r => [r.id, { skill: r.id, layer: r.layer, report: r.report }]));
     const { system, prompt } = buildHeadPrompt({ role: head, pack, reports, failed });
-    const r = await askValidated({ callModel, parseJson, task: TASK[head.tier], system, prompt, maxTokens: CAPS.head, label: 'desk:head',
+    const r = await askValidated({ callModel, parseJson, retryDelayMs, task: TASK[head.tier], system, prompt, maxTokens: CAPS.head, label: 'desk:head',
       validate: o => validateHeadBook(o, allInstruments()) });
     headOut = { ok: r.ok, book: r.value ?? null, notes: r.notes ?? [], errors: r.errors ?? [], attempts: r.attempts };
   }
@@ -126,12 +134,12 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
  * Layers 2 and 3. Every stage reads the stage above it; a stage that fails is recorded and the next stage falls
  * back to the analysts' reports for that area, so one bad reply costs that stage, not the morning.
  */
-export async function runDebate({ pack, roles, ledger, callModel, parseJson, results, rounds = 2, onProgress = () => {} }) {
+export async function runDebate({ pack, roles, ledger, callModel, parseJson, results, rounds = 2, onProgress = () => {}, retryDelayMs = 4000 }) {
   const role = id => { const r = roles.find(x => x.id === id); if (!r) throw new Error(`role ${id} is missing`); return r; };
   const attempts = [];
   const ask = async (r, sections, validate, cap, tail = '') => {
     const { system, prompt } = buildStagePrompt({ role: r, pack, ledger, sections, tail });
-    const out = await askValidated({ callModel, parseJson, task: TASK[r.tier], system, prompt, maxTokens: cap, label: `desk:${r.id}`, validate });
+    const out = await askValidated({ callModel, parseJson, retryDelayMs, task: TASK[r.tier], system, prompt, maxTokens: cap, label: `desk:${r.id}`, validate });
     attempts.push(...out.attempts);
     return { ok: out.ok, view: out.value ?? null, notes: out.notes ?? [], errors: out.errors ?? [] };
   };

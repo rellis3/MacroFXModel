@@ -170,10 +170,13 @@ function showRunning(j) {
     <div>${esc(STAGE_TEXT(j.stage ?? ''))}</div><div class="muted">${mins}m ${String(secs).padStart(2, '0')}s so far · a full run takes about 10-15 minutes, a quick run 6-10 · this page updates by itself</div>
     <div class="bar"><i></i></div></div>`;
 }
+let pollTimer = null;
 async function poll() {
+  clearTimeout(pollTimer);
   const s = await getJson('/api/desk-run/status');
   const j = s.job;
-  if (j?.status === 'running') { showRunning(j); setTimeout(poll, 5000); return; }
+  if (j?.status === 'running') { showRunning(j); pollTimer = setTimeout(poll, 5000); return; }
+  pollTimer = null;   // the run is over: stop following it
   if (j?.status === 'error') { $('status').textContent = ''; $('out').innerHTML = `<div class="panel fail">The run failed: ${esc(j.error)}</div>`; return; }
   await loadDays(); await load();
 }
@@ -189,6 +192,14 @@ async function start(mode) {
 $('run').addEventListener('click', () => start('full'));
 $('quick').addEventListener('click', () => start('quick'));
 $('day').addEventListener('change', e => load(e.target.value));
+// Phones pause a page that is not on screen, so a run can finish while the page still shows "1 of 11" from when it
+// was last visible (2026-11-03). Coming back to the page checks again at once.
+document.addEventListener('visibilitychange', async () => {
+  if (document.hidden) return;
+  const s = await getJson('/api/desk-run/status').catch(() => null);
+  if (s?.job?.status === 'running' || pollTimer != null) poll();   // pollTimer is set only while a run is being followed
+});
+
 // On open: a run in progress takes the page over; otherwise show the latest saved run.
 getJson('/api/desk-run/status').then(async s => { await loadDays(); if (s.job?.status === 'running') poll(); else load(); });
 </script>
