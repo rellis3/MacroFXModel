@@ -30,6 +30,29 @@ and `evidence.md`), the case study (`education/forecaster-portfolio-case-study/L
   flows"
 - (2026-11-01, quoted in `forge/STRESS_FILTER_HOLD_PREREG.md`): "test some simple filters, such as high stress or low
   stress"
+- Basket vs one index (§6, DM 2026-07-28): "The best thing to do would be to target a basket of equities / Rather than
+  Nasdaq alone / Probability of success is much much higher with this and will relatively easy to expand to"
+- New systems, not more functions (§7, DM 2026-08-18): "an even better option would be to instead spread out into new
+  system construction and then run everything at a portfolio level / This will open significantly more doors for you
+  and then the risk diversification benefit is very real"
+- Pinning vs acceleration (§7): "using variance and volatility intraday may be too noisy / What you'll need is possibly
+  an external factor that has predictive power towards forecasting pinning vs acceleration / The place most people
+  begin with that is open interest"
+- Mechanism first, leg by leg (§8, DM 2026-10-08): "Sofr is to capture the us side of the leg / And then estr is to
+  capture the ecb/€ side of the leg / And then a differential between those could potential have data that may not be
+  filled priced into evenly between all market types / They're both short term rate benchmarks and a growth/tech stock
+  like the Nasdaq is very sensitive to rates"
+- Data sufficiency (§8): "6 months is also enough already to start doing some testing / It most likely doesn't go back
+  further because of a contract roll potentially / So you can request a continuous series / Or try probe contract by
+  contract"
+- Sizing (§9, ~Oct 2026): "What I would be most interested in is how close the position sizing is to the theoretical
+  ceiling / There could be soemtbung very valuable there that would also then close in that max dd / And even possibly
+  increase returns"
+- Pinned (§10): "If we know that within all systems, we have a distribution that includes both positive and negative
+  returning positions / Rather than thinking okay how do I now completely remove the losses( this will never work and
+  you'll overfit and end up killing the model) / You should instead understand okay I …"
+- Information hierarchy (§11): "This is using a yield spread / Yields are the return on bonds and information hierarchy
+  means that in …"
 
 **Videos**
 - "Looking at the OHLC data alone … there's probably some overfitting in hindsight you could use to say why this move
@@ -90,7 +113,10 @@ and `evidence.md`), the case study (`education/forecaster-portfolio-case-study/L
 | **H. Benchmark / control / mirror** | buy-and-hold, an instrument that should disagree, the mirror leg, gross vs net | "two markets chosen because they should disagree" |
 | **I. The separate practical question** | profitability and rule survival are different questions | "would it survive the rules?" |
 | **J. Relative to its own history** | percentile of itself, not an absolute level | "more or less negative than its recent distribution" |
-| **K. Context relevance** | a variable from outside the chart with an economic reason to lead | "Why would this predict returns?" |
+| **K. Context relevance** | a variable from outside the chart with an economic reason to lead | "Why would this predict returns?"; "an external factor that has predictive power towards forecasting pinning vs acceleration" |
+| **L. Mechanism first** | name what each leg captures and why the target should care, before testing | "Sofr is to capture the us side of the leg / And then estr … the ecb/€ side" |
+| **M. Sizing as its own dimension** | where sizing sits against its theoretical ceiling, separate from the entry rule | "how close the position sizing is to the theoretical ceiling" |
+| **N. Breadth / portfolio level** | more instruments or more systems before more filters on one | "target a basket of equities rather than Nasdaq alone"; "run everything at a portfolio level" |
 
 **Template at his level:** *Build [derived variable] from [X, Y] (per unit time). Make it a time series. When it is at
 an extreme / in [regime], what happens to [outcome] over [a family of horizons]? Find the noise threshold below which
@@ -119,6 +145,15 @@ in the statement; the spec line says what the sweep covers.
 - **MAE/MFE**: engineer stops to the system's distribution.
 - **benchmark**: buy-and-hold.
 - **dynamic hedging, conditional feedback loops, market flows**: his options framing.
+- **external factor**: an input from outside the price series (his phrase for context relevance), e.g. open interest.
+- **pinning vs acceleration**: whether price holds near a level or extends its range; a range question, not direction.
+- **theoretical ceiling**: the maximum sizing the system's distribution supports; distance from it is a lever on max dd
+  and returns.
+- **portfolio level / risk diversification**: run several systems together rather than refine one.
+- **leg**: one side of a spread and what it captures ("the us side of the leg").
+- **information hierarchy**: the order in which markets price information (rates/bonds first, then credit, FX,
+  equities; course page Cross-Asset Synthesis).
+- **continuous series vs contract by contract**: two ways round a futures roll.
 
 ## What he says not to do
 
@@ -133,3 +168,6 @@ in the statement; the spec line says what the sweep covers.
 - Bury a gross-strong / net-flat result, or write off a control leg.
 - Confuse fit with prediction, or significance with size after costs.
 - Forget the variations: "How many variations did you try before this one, and where are they?"
+- Try to remove all the losses: "this will never work and you'll overfit and end up killing the model" (§10).
+- Rely on intraday variance and volatility alone to forecast pinning vs acceleration: "may be too noisy" (§7).
+- Keep adding functions to one system when new systems at portfolio level would diversify more (§7).

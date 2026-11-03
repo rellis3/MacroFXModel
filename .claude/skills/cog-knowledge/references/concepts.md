@@ -62,7 +62,7 @@ choice, **not a validated improvement**. `bandMode:'feller'` reverts it. (`MD fi
 
 ## C.OG's blue line
 
-A SOFR-vs-**Euribor (ICE I2!)** spread indicator = (SOFR Sep26 − Euribor Mar27) in bp × 0.1 + 1.445, identified 2026-10-13 (RECONSTRUCTION.md §10); earlier notes said €STR — our inference from his video "Macro Variable Context Relevance" (16–23 Sep 2026), built in Python
+A SOFR-vs-**Euribor (ICE I2!)** spread indicator = (SOFR Sep26 − Euribor Mar27) in bp × 0.1 + 1.445, identified 2026-10-13 (RECONSTRUCTION.md §10); earlier notes said €STR. **Corrected 2026-11-03:** €STR was not only our inference; C.OG named it in a DM to Rich on 2026-10-08 ("estr is to capture the ecb/€ side of the leg", `education/cog-snippets.md` §8), then pointed to I2! on 2026-10-13. From his video "Macro Variable Context Relevance" (16–23 Sep 2026), built in Python
 and imported into TradingView. Not reconstructed (see verdicts). Notes:
 `education/macro-variable-context-relevance-notes.md`.
 
