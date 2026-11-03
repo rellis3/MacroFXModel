@@ -217,7 +217,9 @@ import { buildQuestion as _buildQuestion, DRILL_SERIES as _DRILL_SERIES, GENERAT
 import { plannedInWindow } from './js/endOfDay.js';
 import { buildGlobalRead as _buildGlobalRead, recordRow as _grRecordRow, snapshotRow as _grSnapshotRow, attachRealised as _grAttachRealised, scoreRecord as _grScoreRecord } from './js/globalReadCore.js';
 import { assembleGlobalReadInput as _grAssemble, GLOBAL_READ_ENDPOINTS as _GR_ENDPOINTS } from './js/globalReadInputs.js';
-import { expandFeeds as _dpExpandFeeds, buildDeskPack as _dpBuild, packForSkill as _dpForSkill, packSummary as _dpSummary, indexRow as _dpIndexRow, upsertIndex as _dpUpsertIndex, shouldBuild as _dpShouldBuild, londonDate as _dpLondonDate, DESK_SKILLS as _DP_SKILLS } from './js/deskPack.js';
+import { parseRole as _deskParseRole } from './js/deskRoles.js';
+import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
+import { expandFeeds as _dpExpandFeeds, buildDeskPack as _dpBuild, packForSkill as _dpForSkill, packSummary as _dpSummary, indexRow as _dpIndexRow, upsertIndex as _dpUpsertIndex, shouldBuild as _dpShouldBuild, londonDate as _dpLondonDate, DESK_SKILLS as _DP_SKILLS, DESK_UNIVERSE as _DP_UNIVERSE } from './js/deskPack.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { scoreClaimFires as _scoreClaimFires, CLAIMS as _WATCH_CLAIMS } from './js/claimWatch.js';   // the watch register (Crown setups + desk findings) — rides the desk-watch tick, log and Telegram
 import { evaluateGauges as _evaluateGauges } from './js/deskWatch.js';
@@ -4563,7 +4565,7 @@ app.get('/api/desk-pack/index', async (_req, res) => {
   try { res.set('Cache-Control', 'no-store'); res.json({ ok: true, days: await _dpLoadIndex() }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-app.get('/api/desk-pack/feeds', (_req, res) => res.json({ ok: true, skills: _DP_SKILLS, feeds: _dpExpandFeeds() }));
+app.get('/api/desk-pack/feeds', (_req, res) => res.json({ ok: true, skills: _DP_SKILLS, universe: _DP_UNIVERSE, feeds: _dpExpandFeeds() }));
 app.get('/api/desk-pack/status', (_req, res) => { res.set('Cache-Control', 'no-store'); res.json({ ok: true, job: _dpJob, latest: _dpLatest ? { date: _dpLatest.date, builtAt: _dpLatest.builtAt, health: _dpLatest.health } : null }); });
 // Takes 1-3 minutes, so it answers at once (202) and the build runs in the background; poll /api/desk-pack/status.
 app.post('/api/desk-pack/build', (_req, res) => {
@@ -4578,6 +4580,97 @@ svcInterval('deskPack', async () => {
   if (_dpJob?.status === 'running' || !_dpShouldBuild(now, _dpLatest?.date ?? null)) return;
   if ((await _dpLoadIndex()).some(r => r.date === today)) { _dpLatest = await _dpLoad(today) ?? _dpLatest; if (_dpLatest?.date === today) return; }
   _dpStart('schedule');
+}, 10 * 60_000);
+
+// ── Desk Run (js/deskRun.js; plans/DESK_ANALYST_PIPELINE.md, Phase 1) ───────────
+// The analysts (desk/roles/*.md) read their slices of today's Desk Pack and report; the Head of Desk turns the
+// reports into one card per instrument on the five-step scale. Paid model calls (tasks desk-analyst / desk-head),
+// so the daily schedule is OFF by default (service deskRun, SVC_DESKRUN=1 turns it on); POST /api/desk-run runs it
+// on demand. Role files are read at the start of every run, not at boot: a broken role file fails that run with
+// its reason and can never stop the server. Saved gzipped to desk_run_<date>, index in desk_run_index.
+const _DR_INDEX_KV = 'desk_run_index';
+const _DR_KEY = date => `desk_run_${date}`;
+let _drLatest = null, _drJob = null;
+function _deskLoadRoles() {
+  const dir = path.join(__dirname, 'desk', 'roles');
+  return fs.readdirSync(dir).filter(f => f.endsWith('.md')).sort().map(f => _deskParseRole(fs.readFileSync(path.join(dir, f), 'utf8'), f));
+}
+async function _drLoadIndex() { try { const raw = await kv.get(_DR_INDEX_KV); return raw ? JSON.parse(raw) : []; } catch { return []; } }
+async function _drLoad(date) {
+  if (_drLatest?.date === date) return _drLatest;
+  try { const raw = await kv.get(_DR_KEY(date)); return raw ? JSON.parse(zlib.gunzipSync(Buffer.from(raw, 'base64')).toString('utf8')) : null; } catch { return null; }
+}
+async function _deskRun(trigger, job) {
+  const roles = _deskLoadRoles();
+  const today = _dpLondonDate(Date.now());
+  let pack = _dpLatest?.date === today ? _dpLatest : await _dpLoad(today);
+  if (!pack) { job.stage = 'building the desk pack'; pack = await _deskPackBuild(`desk-run:${trigger}`); }
+  job.stage = 'analysts';
+  const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+  const run = await _runDesk({
+    pack, roles, ledger: DESK_EVIDENCE, now: Date.now, concurrency: 4,
+    parseJson: (txt, label) => _parseModelJson(txt, label),
+    callModel: async ({ task, system, prompt, maxTokens }) => {
+      const r = await callModel({ task, system, prompt, maxTokens });
+      return { text: r.text ?? _antText(r), usage: r.usage ?? null, model: r.model ?? null, truncated: !!r.truncated };
+    },
+    onProgress: p => { job.done = (job.done ?? 0) + 1; job.stage = p.stage === 'head' ? 'head of desk done' : `analysts (${job.done})`; },
+  });
+  run.trigger = trigger;
+  _drLatest = run;
+  const gz = zlib.gzipSync(Buffer.from(JSON.stringify(run)), { level: 9 }).toString('base64');
+  try {
+    await kv.put(_DR_KEY(run.date), gz);
+    const idx = (await _drLoadIndex()).filter(r => r.date !== run.date);
+    idx.push({ date: run.date, finishedAt: run.finishedAt, trigger, headOk: !!run.head?.ok, failed: run.failed, usage: run.usage });
+    await kv.put(_DR_INDEX_KV, JSON.stringify(idx.slice(-400)));
+  } catch (e) { console.warn('[desk-run] save failed:', e.message); }
+  console.log(`[desk-run] ${run.date}: ${Object.values(run.analysts).filter(a => a.ok).length}/${Object.keys(run.analysts).length} analysts, head ${run.head?.ok ? 'ok' : 'FAILED'}, tokens in ${run.usage.in} out ${run.usage.out}`);
+  return run;
+}
+function _drStart(trigger) {
+  if (_drJob?.status === 'running') return null;
+  const job = _drJob = { status: 'running', trigger, stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null, date: null };
+  _deskRun(trigger, job)
+    .then(r => { job.status = 'done'; job.date = r.date; })
+    .catch(e => { job.status = 'error'; job.error = e.message; console.error('[desk-run]', e.message); })
+    .finally(() => { job.finishedAt = Date.now(); });
+  return job;
+}
+// Several minutes of model calls, so it answers at once (202) and runs in the background; poll /api/desk-run/status.
+app.post('/api/desk-run', (_req, res) => {
+  if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
+  const job = _drStart('manual');
+  if (!job) return res.status(409).json({ ok: false, error: 'a desk run is already running', job: _drJob });
+  res.status(202).json({ ok: true, job });
+});
+// GET /api/desk-run: today's run (or the latest saved); ?date=YYYY-MM-DD a saved day; ?summary=1 headlines and ratings only
+app.get('/api/desk-run', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : null;
+    let run = date ? await _drLoad(date) : _drLatest;
+    if (!run && !date) { const last = (await _drLoadIndex()).at(-1); if (last) run = await _drLoad(last.date); }
+    if (!run) return res.status(404).json({ ok: false, error: date ? `no desk run saved for ${date}` : 'no desk run yet: POST /api/desk-run', running: _drJob?.status === 'running' });
+    res.json({ ok: true, ...(req.query.summary === '1' ? _deskRunSummary(run) : run) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/desk-run/index', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); res.json({ ok: true, days: await _drLoadIndex() }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/desk-run/status', (_req, res) => { res.set('Cache-Control', 'no-store'); res.json({ ok: true, job: _drJob }); });
+app.get('/api/desk-run/roles', (_req, res) => {
+  try { res.json({ ok: true, roles: _deskLoadRoles().map(({ body, ...r }) => ({ ...r, chars: body.length })) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// Every 10 min, when switched on: once per London weekday from 06:55, after the 06:40 pack.
+svcInterval('deskRun', async () => {
+  const now = Date.now(), today = _dpLondonDate(now);
+  if (_drJob?.status === 'running' || _dpJob?.status === 'running' || !_aiAnyKey()) return;
+  if (!_dpShouldBuild(now, _drLatest?.date ?? null, { hour: 6, minute: 55 })) return;
+  if ((await _drLoadIndex()).some(r => r.date === today)) { _drLatest = await _drLoad(today) ?? _drLatest; if (_drLatest?.date === today) return; }
+  _drStart('schedule');
 }, 10 * 60_000);
 
 // ── Rates vs Nasdaq regime (js/ratesRegime.js) ───────────────────────────────

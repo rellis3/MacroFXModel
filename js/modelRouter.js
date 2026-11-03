@@ -101,6 +101,10 @@ export const TASK_CLASS = {
   'currency':     { ledger: null,    label: 'Currency analysis' },
   'explain':      { ledger: null,    label: 'Explain a reading' },
   'oi-explain':   { ledger: null,    label: 'OI Lab panel explainer' },
+  // desk analyst pipeline (plans/DESK_ANALYST_PIPELINE.md): each call carries a SLICE of the ledger chosen for its
+  // area (js/deskRoles.js selectEvidence), so 'brief' -- not routed to a cheap model unless the owner says so.
+  'desk-analyst': { ledger: 'brief', label: 'Desk pipeline: analysts' },
+  'desk-head':    { ledger: 'brief', label: 'Desk pipeline: Head of Desk' },
   // summarising supplied text — the cheap jobs
   'headlines':    { ledger: null,    label: 'Headline summary',  cheapSafe: true },
   'doc-summary':  { ledger: null,    label: 'Document summary',  cheapSafe: true },
