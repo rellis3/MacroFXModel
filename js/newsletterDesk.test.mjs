@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { prose, ladderSvg, deskPages, deskCover, instName } from './newsletterDesk.js';
+import { prose, ladderSvg, deskPages, deskCover, instName, groupPages, deskBrief } from './newsletterDesk.js';
+import { releaseNewsletterV3 } from './newsletterV3.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 const H = { esc: s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') };
@@ -62,4 +63,36 @@ t('no run, or a failed head, gives no pages; the cover only changes when there i
   assert.equal(c.headline, 'Dollar and yen bid'); assert.equal(c.lede, 'Opening.'); assert.match(c.kicker, /^Desk edition · RBA day/);
 });
 
+
+t('groupPages: one page per asset group with a card row per market and a ladder per live card with levels', () => {
+  const pages = groupPages({ ...run, debate: { ...run.debate, assets: { fx_majors: { view: { summary: 'Dollar firm (rates_cb: fomc).' } } } } }, H);
+  const maj = pages.find(p => p.section === 'FX majors'), cr = pages.find(p => p.section === 'FX crosses');
+  assert.ok(maj && cr, 'majors and crosses have pages; empty groups have none');
+  assert.equal(pages.length, 2);
+  assert.match(maj.html, /FX majors: 1 short, 0 long, 1 flat/);
+  assert.ok(maj.html.includes('Dollar firm.') && !maj.html.includes('rates_cb'), 'the asset desk reading, without source tags');
+  assert.ok(maj.html.includes('EUR/USD') && maj.html.includes('USD/CHF') && maj.html.includes('class="ldg"'), 'cards and the ladder grid');
+  assert.ok(!cr.html.includes('class="ldg"'), 'no ladder without levels');
+  assert.deepEqual(groupPages(null, H), []);
+});
+
+t('deskBrief: the ruling, the currencies, the clearest ideas and what could break the day, in one read', () => {
+  const html = deskBrief(run, H);
+  assert.ok(html.includes('The desk brief') && html.includes('risk-off') && html.includes('THE CURRENCIES, STRONGEST TO WEAKEST'));
+  assert.ok(html.includes('The clearest ideas') && html.includes('AUD/JPY') && html.includes('What could break the day') && html.includes('What the desk could not see'));
+  assert.ok(!/events_news|credit_funding/.test(html));
+  assert.equal(deskBrief({ head: { ok: false } }, H), '');
+});
+
+t('the two formats as whole issues: the magazine drops the regular pages that would contradict the desk; the brief is the cover and one read; the regular issue is unchanged', () => {
+  const base = { date: 'Tuesday 3 November 2026', isoDate: '2026-11-03', regimeWord: 'MIXED' };
+  const reg = releaseNewsletterV3(base), reg2 = releaseNewsletterV3({ ...base, deskMode: 'magazine' });
+  assert.equal(reg.html, reg2.html, 'a mode without a desk run changes nothing');
+  const mag = releaseNewsletterV3({ ...base, desk: run, deskMode: 'magazine' }), br = releaseNewsletterV3({ ...base, desk: run, deskMode: 'brief' }), ed = releaseNewsletterV3({ ...base, desk: run });
+  assert.ok(mag.html.includes('Desk magazine') && mag.html.includes('FX majors:') && mag.html.includes('Where the desk leans today') && mag.html.includes('pgflow'));
+  assert.ok(!mag.html.includes('Pair by pair, today'), 'no regular pair-by-pair page');
+  assert.ok(br.html.includes('Desk brief') && br.html.includes('the day in one read') && !br.html.includes('FX majors:'));
+  assert.ok(br.html.length < mag.html.length && ed.html.includes('Desk edition'));
+  assert.equal(mag.subject, 'Dollar and yen bid');
+});
 console.log(`newsletterDesk: ${n} tests passed`);

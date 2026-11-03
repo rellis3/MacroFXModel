@@ -13,6 +13,7 @@
  * byte-identical without it. Tested in js/newsletterDesk.test.mjs. Design: plans/DESK_ANALYST_PIPELINE.md §9h.
  */
 import { barFigure, flatTable, guide, tileRow, evBadge } from './newsletterMag.js';
+import { DESK_UNIVERSE } from './deskPack.js';
 
 const T = { bg: '#0b1220', grid: '#1c2a40', zero: '#5b7090', txt: '#8aa0bd', hi: '#e6eefb', up: '#19d3a0', down: '#ff5d73', amber: '#ffb020', cyan: '#4cc9f0' };
 const VIEW = { STRONG_LONG: ['Strong long', 1.5], LONG: ['Long', 1], FLAT: ['Flat', 0], SHORT: ['Short', -1], STRONG_SHORT: ['Strong short', -1.5], REVIEW: ['Review', 0] };
@@ -111,7 +112,7 @@ ${fig}${flatTable(['Currency', 'Bias', 'The ruling, and the strongest case each 
 <p class="evl">${evBadge('untested')}${note('The Head of Desk\'s book after the asset desks and the risk desk; sizes after the per-currency cap. 1 is a normal position, 0 stands aside.')}</p>
 ${tiles}${expFig}
 <h3 class="ss" style="margin:12px 0 6px">The clearest ideas</h3>${ideaRows.length ? flatTable(['Market', 'View', 'Size', 'Where', 'Wrong if'], ideaRows, ['l', 'l', 'l', 'l', 'l']) : '<p>The desk is flat everywhere today.</p>'}
-${ladders.length ? `<figure><div class="two" style="gap:10px">${ladders.join('')}</div><figcaption>${evBadge('model')}<b>Today's forecast lines in price.</b> The open in white; the p50, p75 and p90 lines either side are the desk's own volatility forecast, the size of a typical day and of one in four and one in ten days. The shaded side is the way the desk leans. A line is a size, not a target.</figcaption></figure>` : ''}` });
+${ladders.length ? `<figure class="lad"><div class="ldg">${ladders.map(x => `<div>${x}</div>`).join('')}</div><figcaption>${evBadge('model')}<b>Today's forecast lines in price.</b> The open in white; the p50, p75 and p90 lines either side are the desk's own volatility forecast, the size of a typical day and of one in four and one in ten days. The shaded side is the way the desk leans. A line is a size, not a target.</figcaption></figure>` : ''}` });
 
   // ── D4: the risk desk and what the desk could not see ──
   const voice = (who, v) => (v?.view ? `<div class="box"><h4>${esc(who)}</h4><p>${esc(prose(v.view.headline, { sentences: 2, chars: 300 }))}</p>${v.view.adjustments.slice(0, 5).map(a => `<p style="margin:2px 0"><b>${esc(a.target === 'ALL' ? 'Whole book' : instName(a.target))}</b> size ${a.size}${a.veto ? ' · <b style="color:#b4232f">veto</b>' : ''} · ${esc(prose(a.reason, { sentences: 1, chars: 140 }))}</p>`).join('')}</div>` : '');
@@ -126,8 +127,71 @@ ${(b.gaps ?? []).length ? `<div class="box warn"><h4>What the desk could not see
 }
 
 /** The cover for the desk edition: the writer's headline and opening in place of the brief's, with a desk kicker. */
-export function deskCover(today, run) {
+export function deskCover(today, run, mode = null) {
   const nl = run?.newsletter?.ok ? run.newsletter.issue : null;
   if (!today || !nl) return today;
-  return { ...today, kicker: `Desk edition · ${today.kicker ?? ''}`.replace(/ · $/, ''), headline: nl.subject, lede: nl.standfirst, note: 'Headline and opening written by the desk pipeline from this morning\'s desk book; the desk\'s pages follow Today by level.' };
+  return { ...today, kicker: `${mode === 'brief' ? 'Desk brief' : mode === 'magazine' ? 'Desk magazine' : 'Desk edition'} · ${today.kicker ?? ''}`.replace(/ · $/, ''), headline: nl.subject, lede: prose(nl.standfirst, { sentences: 8, chars: 1100 }), note: mode ? 'Headline and opening written by the desk pipeline from this morning\'s desk book.' : 'Headline and opening written by the desk pipeline from this morning\'s desk book; the desk\'s pages follow Today by level.' };
+}
+
+// ── The two desk-only formats (owner, 2026-11-03: "do both under 2 buttons") ─────────────────────────────────────
+// The magazine: a full issue built around the desk, top-down (global ruling, the backdrop, the currencies, every asset
+// group with its cards and price ladders, the book, the risk desk), without the regular pages that would contradict
+// it. The brief: the cover and one tight read of the desk's view and its clearest ideas.
+
+const GROUPS = [
+  ['FX majors', ['fx_majors']], ['FX crosses', ['fx_crosses']], ['Stock indices', ['indices']],
+  ['Metals and energy', ['metals', 'energy']], ['Agriculture and crypto', ['ags', 'crypto']],
+];
+
+/** One page per asset group: the asset desk's reading, every card (view, size, why, plan, wrong if), and a ladder per live card. */
+export function groupPages(run, H) {
+  const b = run?.head?.ok ? run.head.book : null; if (!b) return [];
+  const { esc } = H, cards = b.instruments ?? {}, assets = run.debate?.assets ?? {};
+  return GROUPS.map(([label, keys]) => {
+    const names = keys.flatMap(k => DESK_UNIVERSE[k] ?? []).filter(n => cards[n]);
+    if (!names.length) return null;
+    const reads = keys.map(k => assets[k]?.view?.summary).filter(Boolean).map(t => `<p>${esc(prose(t, { sentences: 3, chars: 520 }))}</p>`).join('');
+    const rows = names.map(n => { const c = cards[n], pl = c.plan ?? {};
+      return [`<b>${esc(instName(n))}</b>`, `${chip(c.rating)}<small style="display:block;color:#5b6b82;margin-top:2px">${esc(c.conviction ?? '')}</small>`, sizeBar(c.size, c.sizeBeforeCap),
+        `${esc(prose(c.why ?? '', { sentences: 2, chars: 300 }))}${pl.zone ? `<small style="display:block;color:#3a4756;margin-top:3px"><b>Plan:</b> ${esc(prose(pl.zone, { sentences: 1, chars: 140 }))}${pl.timing ? ` · ${esc(prose(pl.timing, { sentences: 1, chars: 60 }))}` : ''}</small>` : ''}`,
+        esc(prose(pl.invalidation ?? c.invalidation ?? '', { sentences: 1, chars: 130 }))]; });
+    const live = names.filter(n => (VIEW[cards[n].rating]?.[1] ?? 0) !== 0 && cards[n].levels);
+    const ladders = live.map(n => ladderSvg(n, cards[n], H)).filter(Boolean);
+    const longs = names.filter(n => (VIEW[cards[n].rating]?.[1] ?? 0) > 0).length, shorts = names.filter(n => (VIEW[cards[n].rating]?.[1] ?? 0) < 0).length;
+    return { section: label, html: `<div class="kick">The asset desks · ${esc(label.toLowerCase())}</div><h2 class="sh">${esc(label)}: ${shorts} short, ${longs} long, ${names.length - shorts - longs} flat</h2>
+<p class="evl">${evBadge('untested')}<span style="font:11px var(--sans,system-ui);color:#5b6b82">The asset desk rated each market from its currency legs, today's session and its own data; the Head of Desk set the final view and size, after the per-currency cap.</span></p>
+${reads}${flatTable(['Market', 'View', 'Size', 'Why, and the plan', 'Wrong if'], rows, ['l', 'l', 'l', 'l', 'l'])}
+${ladders.length ? `<figure class="lad"><div class="ldg">${ladders.map(x => `<div>${x}</div>`).join('')}</div><figcaption>${evBadge('model')}<b>Today's forecast lines in price.</b> The open in white; the p50, p75 and p90 lines either side are the volatility forecast. The shaded side is the way the desk leans. A line is a size, not a target.</figcaption></figure>` : ''}` };
+  }).filter(Boolean);
+}
+
+/** The desk brief: one tight read after the cover. The global ruling, the currencies, the clearest ideas with their ladders, what could break the day. */
+export function deskBrief(run, H, { flag = () => '' } = {}) {
+  const b = run?.head?.ok ? run.head.book : null; if (!b) return '';
+  const { esc } = H, d = run.debate ?? {}, g = d.global?.view, cv = d.currency?.view, nl = run.newsletter?.ok ? run.newsletter.issue : null, cards = b.instruments ?? {};
+  const order = cv ? (cv.ranking?.length === 8 ? cv.ranking : Object.keys(cv.currencies)) : [];
+  const live = Object.entries(cards).filter(([, c]) => (VIEW[c.rating]?.[1] ?? 0) !== 0);
+  const ideas = (nl?.ideas ?? []).map(i => [i.instrument, { ...cards[i.instrument], rating: i.view, size: i.size ?? cards[i.instrument]?.size, plan: { zone: i.level, invalidation: i.invalidation } }])
+    .concat(live.sort((x, y) => Math.abs((VIEW[y[1].rating]?.[1] ?? 0) * (y[1].size ?? 1)) - Math.abs((VIEW[x[1].rating]?.[1] ?? 0) * (x[1].size ?? 1))))
+    .filter((x, i, arr) => cards[x[0]] && arr.findIndex(y => y[0] === x[0]) === i).slice(0, 6);
+  const tiles = tileRow([
+    { name: 'Global tone', value: TONE[g?.tone ?? b.global?.tone] ?? 'mixed', sub: g?.conviction ? `${g.conviction} conviction` : '', tone: /off/.test(g?.tone ?? b.global?.tone ?? '') ? 'dn' : /on/.test(g?.tone ?? '') ? 'up' : '' },
+    { name: 'Strongest currency', value: order[0] ?? '·', sub: order[0] ? `bias ${cv.currencies[order[0]]?.bias > 0 ? '+' : ''}${cv.currencies[order[0]]?.bias}` : '', tone: 'up' },
+    { name: 'Weakest currency', value: order.at(-1) ?? '·', sub: order.length ? `bias ${cv.currencies[order.at(-1)]?.bias}` : '', tone: 'dn' },
+  ], H);
+  const fig = cv ? barFigure('The currencies, strongest to weakest', order.map(c => ({ label: c, v: cv.currencies[c]?.bias ?? 0, note: cv.currencies[c]?.conviction ?? '' })), H, { unit: '', note: 'The desk\'s bias on each currency, −2 to +2, after a strengthen and a weaken advocate argued it.' }) : '';
+  const rows = ideas.map(([n, c]) => [`<b>${esc(instName(n))}</b>`, chip(c.rating), sizeBar(c.size, cards[n]?.sizeBeforeCap), esc(prose(c.plan?.zone ?? '', { sentences: 1, chars: 110 })), esc(prose(c.plan?.invalidation ?? c.invalidation ?? '', { sentences: 1, chars: 100 }))]);
+  const ladders = ideas.slice(0, 4).map(([n, c]) => ladderSvg(n, { ...cards[n], rating: c.rating, size: c.size }, H)).filter(Boolean);
+  const ccyLine = order.map(c => `${flag(c)}<b>${esc(c)}</b> ${esc(prose(cv.currencies[c]?.why ?? '', { sentences: 1, chars: 150 }))}`);
+  return `<div class="kick">The desk brief · the day in one read</div><h2 class="sh">${esc(prose(String(b.headline ?? nl?.subject ?? '').split(/:\s/)[0], { sentences: 1, chars: 120 }))}</h2>
+<p class="evl">${evBadge('model')}${evBadge('untested')}<span style="font:11px var(--sans,system-ui);color:#5b6b82">Eleven analysts, a debate at each level, an asset desk per group and a risk desk. Context, not a tested signal.</span></p>
+${tiles}
+<h3 class="ss">The global ruling</h3><p>${esc(prose(g?.summary ?? b.global?.summary ?? '', { sentences: 3, chars: 520 }))}</p>
+${(g?.flip ?? []).length ? `<p class="small3"><b>It flips if:</b> ${esc((g.flip ?? []).slice(0, 2).map(x => prose(x, { sentences: 1, chars: 130 }).replace(/\.$/, '')).join('; '))}.</p>` : ''}
+${fig}${ccyLine.length ? `<div class="small3" style="columns:2;column-gap:18px;margin:4px 0 10px">${ccyLine.map(x => `<p style="margin:0 0 5px;font-size:11.5px;break-inside:avoid">${x}</p>`).join('')}</div>` : ''}
+<h3 class="ss">The clearest ideas</h3>${rows.length ? flatTable(['Market', 'View', 'Size', 'Where', 'Wrong if'], rows, ['l', 'l', 'l', 'l', 'l']) : '<p>The desk is flat everywhere today.</p>'}
+${ladders.length ? `<figure class="lad"><div class="ldg">${ladders.map(x => `<div>${x}</div>`).join('')}</div><figcaption>${evBadge('model')}<b>Forecast lines in price.</b> Open in white, p50/p75/p90 either side; shaded the way the desk leans. A line is a size, not a target.</figcaption></figure>` : ''}
+${(b.risks ?? []).length ? `<h3 class="ss">What could break the day</h3><ul class="lst">${b.risks.slice(0, 4).map(x => `<li>${esc(prose(x, { sentences: 1, chars: 220 }))}</li>`).join('')}</ul>` : ''}
+${(b.gaps ?? []).length ? `<div class="box warn"><h4>What the desk could not see</h4><ul class="lst" style="margin:0">${b.gaps.slice(0, 3).map(x => `<li>${esc(prose(x, { sentences: 1, chars: 200 }))}</li>`).join('')}</ul></div>` : ''}
+<p class="small3">Built from ${run.calls ?? '?'} model calls on ${run.packHealth?.ok ?? '?'} of ${run.packHealth?.total ?? '?'} data feeds. Not scored until its pre-registration is in place. Not financial advice.</p>`;
 }

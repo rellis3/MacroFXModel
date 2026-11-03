@@ -101,11 +101,14 @@ export const MAG_CSS = `
 .pg .al b.n2{font-family:Georgia,serif;font-size:26px;display:block;line-height:1}
 @media (max-width:560px){.pg figure{overflow-x:auto}.pg .fw{min-width:540px}.pg .chain-fig svg{min-width:720px}.pg .mh span:nth-child(2){display:none}.pg .mh{font-size:9px}.pg .mh b{font-size:15px}.pg{padding:18px 15px 20px;border-radius:0}.pg h1.hd{font-size:31px}.pg .deskhd{margin:-18px -15px 14px;padding:14px 15px 12px}.pg aside.side{margin-top:6px}.acctn{grid-template-columns:1fr}}
 @page land{size:A4 landscape;margin:10mm}
+.pg .ldg{font-size:0;margin:4px 0 2px}.pg .ldg>div{display:inline-block;vertical-align:top;width:calc(50% - 5px);margin:0 10px 10px 0}.pg .ldg>div:nth-child(2n){margin-right:0}@media (max-width:560px){.pg .ldg>div{width:100%;margin-right:0}}
 @media print{
   html,body{background:#fff!important}
   .mgw{max-width:none;padding:0;margin:0}
   .pg{box-shadow:none;border-radius:0;margin:0;padding:0;break-after:page;page-break-after:always}
   .pg:last-of-type{break-after:auto}
+  .pg .ldg>div{break-inside:avoid}
+  .pg.pgflow{break-after:auto;page-break-after:auto;margin-top:18px}.pg.pgflow .box,.pg.pgflow tr,.pg.pgflow .two>*,.pg.pgflow figcaption{break-inside:avoid}.pg.pgflow .ft tr:first-child{break-after:avoid}.pg.pgflow h2.sh,.pg.pgflow .evl,.pg.pgflow h3.ss{break-after:avoid}.pg.pgflow .tl6{break-inside:avoid}.pg.pgflow figure.lad{break-inside:auto}
   .pg.land{page:land}
   .pg .cols{column-count:2}.pg .split{display:grid;grid-template-columns:1fr 200px;gap:22px}.pg .two{display:grid;grid-template-columns:1fr 1fr;gap:20px}.pg .fig2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .pg .notes{grid-template-columns:1fr 1fr 1fr 1fr}
@@ -438,7 +441,7 @@ ${c.today.lede ? `<p class="ld">${esc(c.today.lede)}</p>` : ''}${c.today.note ? 
 <p class="mo"><span class="sfl">${esc(c.today.story ?? 'The month in one line')}</span><b>${esc(feature.headline)}</b>${feature.standfirst ? ' ' + esc(feature.standfirst) : ''}</p>` : `<div class="kick">${esc(M.regime)} regime · the investigation</div><h1 class="hd">${esc(feature.headline)}</h1>${feature.standfirst ? `<p class="sf"><span class="sfl">The desk's reading</span>${esc(feature.standfirst)}</p>` : ''}`}
 <p class="by">By The Chain research desk · ${esc(M.date)}</p>
 <div class="split"${c.v3 ? ' style="display:block"' : ''}><div>${c.intro && !c.v3 ? threeVoices(c.intro, H) : ''}
-<p class="map"><b>How the issue builds.</b> ${c.v3 ? 'Today by level: the global backdrop, the currencies, then pair by pair · the 20-day backdrop · Stress and data checks · the Data Desk' : '1 What happened · 2 Why it might be happening · 3 How markets connect · 4 What broke · 5 Stress and data checks · 6 Competing explanations · 7 What does not fit · 8 The scorecard · the Data Desk'}</p>
+<p class="map"><b>How the issue builds.</b> ${c.mapText ? esc(c.mapText) : c.v3 ? 'Today by level: the global backdrop, the currencies, then pair by pair · the 20-day backdrop · Stress and data checks · the Data Desk' : '1 What happened · 2 Why it might be happening · 3 How markets connect · 4 What broke · 5 Stress and data checks · 6 Competing explanations · 7 What does not fit · 8 The scorecard · the Data Desk'}</p>
 <p class="evkey" style="margin-top:6px"><span>LABELS</span>${evBadge('observed')}${evBadge('model')}${evBadge('tested')}${evBadge('context')}${evBadge('hyp')}${evBadge('untested')}</p></div>
 ${c.v3 ? `<p class="g3"><b>${esc(c.glance.broken)}</b> of ${esc(c.glance.testable)} chain links broken over 20 days · <b>${esc(c.glance.stress)}</b> broad stress warnings${c.glance.next ? ` · Next: <b>${esc(c.glance.next)}</b>` : ''}</p>` : `<aside class="side"><h4>At a glance</h4><span class="big">${esc(c.glance.broken)}<small>chain links broken of ${esc(c.glance.testable)} judged</small></span>${c.glance.next ? `<p><b>Next:</b> ${esc(c.glance.next)}</p>` : ''}<h4 style="margin-top:14px">Two kinds of alarm</h4>${c.alarms}${(c.checks ?? []).some(k => k.id === 'dollar') ? '<p class="chk"><b>Check:</b> the dollar links use an index that ends days before the rest. See the data check in Exhibit 5.</p>' : ''}</aside>`}</div></div>`;
   // page 2: what happened, the first piece of evidence
@@ -492,6 +495,15 @@ ${c.watch ? `<div class="kick" style="margin-top:14px">The next test</div><h2 cl
     const pR = c.aheadHtml ? `<div class="pg">${mh('Releases to come')}<div class="kick">Still to come</div><h2 class="sh">The releases that can move the day</h2>${c.aheadHtml}</div>` : '';
     // The desk edition's pages (js/newsletterDesk.js), after Today by level; absent from the regular issue.
     const pD = (c.deskPages ?? []).map(p => `<div class="pg">${mh(p.section)}${p.html}</div>`).join('');
+    // The two desk-only formats (js/newsletterDesk.js). Pages flow on in print (no forced page break after each
+    // section), so a short section does not leave half a sheet blank.
+    const fl = p => `<div class="pg pgflow">${mh(p.section)}${p.html}</div>`;
+    if (c.deskMode === 'brief') return `<div class="mg">${p1}${c.deskBrief ? fl({ section: 'The desk brief', html: c.deskBrief }) : ''}</div>`;
+    if (c.deskMode === 'magazine') {
+      const [dG, dC, dB, dR] = c.deskPages ?? [];
+      const pBack = `<div class="pg pgflow">${mh('The backdrop')}<div class="kick">The state of the levels today</div><h2 class="sh">The backdrop: rates, credit, fear and the dollar</h2>${t.globalHtml}</div>`;
+      return `<div class="mg">${p1}${dG ? fl(dG) : ''}${pBack}${dC ? fl(dC) : ''}${(c.deskGroups ?? []).map(fl).join('')}${dB ? fl(dB) : ''}${dR ? fl(dR) : ''}${pR}${p2}${back}</div>`;
+    }
     return `<div class="mg">${p1}${pT}${pD}${pP}${p2}${pR}${bd}${p6}${desk}${back}</div>`;
   }
   return `<div class="mg">${p1}${p2}${p3}${p4}${p5}${p6}${p7}${p8}${p9}${pAhead}${pAcc}${desk}${back}</div>`;
