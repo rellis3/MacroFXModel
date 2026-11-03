@@ -32,14 +32,42 @@
 
 export const DESK_PACK_VERSION = 1;
 
-/** The instruments the asset layer covers (same keys as SWING_MAP_INSTRUMENTS in server.js). */
+/**
+ * The instruments the asset layer covers: every instrument the vol forecast covers (js/volForecastScheduler.js
+ * INSTRUMENTS, 41 names, owner's choice 2026-11-03), grouped the way the asset layer batches them. A test keeps
+ * this list equal to the scheduler's, so adding an instrument there without adding it here fails the build.
+ */
 export const DESK_UNIVERSE = {
-  fx: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GBPJPY'],
-  indices: ['NQ', 'SPX500'],
-  commodities: ['GOLD'],
+  fx_majors: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'],
+  fx_crosses: ['GBPJPY', 'EURGBP', 'EURJPY', 'EURCHF', 'GBPCHF', 'AUDJPY', 'CADJPY', 'EURAUD', 'EURCAD', 'EURNZD', 'GBPAUD', 'GBPCAD', 'AUDCAD', 'NZDCAD', 'NZDJPY'],
+  indices: ['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
+  metals: ['GOLD', 'SILVER', 'COPPER', 'PLATINUM', 'PALLADIUM'],
+  energy: ['WTI', 'BRENT', 'NATGAS'],
+  ags: ['SOYBEAN', 'WHEAT', 'CORN', 'SUGAR'],
+  crypto: ['BTCUSD'],
+};
+/** Instruments some feeds only serve for a subset of the universe (swing map, trade decision engine). */
+export const DESK_SUBSETS = {
+  swingMap: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GBPJPY', 'GOLD', 'NQ', 'SPX500'],   // SWING_MAP_INSTRUMENTS in server.js
+  tde: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GBPJPY'],
 };
 export const DESK_CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
-export const allInstruments = () => [...DESK_UNIVERSE.fx, ...DESK_UNIVERSE.indices, ...DESK_UNIVERSE.commodities];
+export const allInstruments = (u = DESK_UNIVERSE) => Object.values(u).flat();
+export const groupOf = name => Object.keys(DESK_UNIVERSE).find(g => DESK_UNIVERSE[g].includes(name)) ?? null;
+
+// Equity indices map to the currency of their home market; commodities and crypto are priced in USD.
+const INDEX_CCY = { NQ: 'USD', SPX500: 'USD', US30: 'USD', US2000: 'USD', DE30: 'EUR', UK100: 'GBP' };
+/**
+ * Which currency views an instrument is read from in the asset layer (top-down: global, then currency, then
+ * asset). An FX pair has two legs, base then quote; everything else has one.
+ */
+export function instrumentLegs(name) {
+  const g = groupOf(name);
+  if (g === 'fx_majors' || g === 'fx_crosses') return [name.slice(0, 3), name.slice(3, 6)];
+  if (g === 'indices') return [INDEX_CCY[name]];
+  if (g) return ['USD'];
+  return null;
+}
 
 /**
  * The analyst skills, in the owner's top-down order. Each one becomes a role prompt in Phase 1
@@ -148,15 +176,16 @@ export const DESK_FEEDS = [
 
 /** Feeds read once per instrument. `{inst}` is the upper-case key, `{lower}` the lower-case one. */
 export const DESK_INSTRUMENT_FEEDS = [
-  { skill: 'options_oi', tpl: 'swing-map?inst={inst}', base: 'swing-map', maxAgeH: 3 * D, universe: 'all' },
-  { skill: 'levels_structure', tpl: 'trade-decision/state/{lower}', base: 'trade-decision/state', maxAgeH: 1 * D, universe: 'fx' },
+  { skill: 'options_oi', tpl: 'swing-map?inst={inst}', base: 'swing-map', maxAgeH: 3 * D, subset: 'swingMap' },
+  { skill: 'levels_structure', tpl: 'trade-decision/state/{lower}', base: 'trade-decision/state', maxAgeH: 1 * D, subset: 'tde' },
 ];
 
 /** The full list of requests for one build, instrument feeds expanded. */
-export function expandFeeds(feeds = DESK_FEEDS, instFeeds = DESK_INSTRUMENT_FEEDS, universe = DESK_UNIVERSE) {
+export function expandFeeds(feeds = DESK_FEEDS, instFeeds = DESK_INSTRUMENT_FEEDS, universe = DESK_UNIVERSE, subsets = DESK_SUBSETS) {
   const out = feeds.map(f => ({ ...f }));
   for (const t of instFeeds) {
-    const list = t.universe === 'all' ? [...universe.fx, ...universe.indices, ...universe.commodities] : (universe[t.universe] ?? []);
+    const all = allInstruments(universe);
+    const list = t.subset ? (subsets[t.subset] ?? []).filter(x => all.includes(x)) : all;
     for (const inst of list) {
       const path = t.tpl.replace('{inst}', inst).replace('{lower}', inst.toLowerCase());
       out.push({ id: `${t.base}:${inst}`, skill: t.skill, path, maxAgeH: t.maxAgeH, instrument: inst, ...(t.keep ? { keep: t.keep } : {}) });

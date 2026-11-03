@@ -50,7 +50,7 @@ that order at every layer:
 ## 4. Architecture
 
 ```
-Layer 0  Desk Pack (no LLM)            one dated snapshot of ~100 feeds, gaps marked          ← BUILT (Phase 0)
+Layer 0  Desk Pack (no LLM)            one dated snapshot of ~107 feeds, gaps marked          ← BUILT (Phase 0)
 Layer 1  Analysts (parallel, cheap)    11 skills, one typed report each
 Layer 2  Top-down debate               2a Global: risk-on vs risk-off → Global Manager
                                        2b Currency: strengthen vs weaken, per currency → Currency Manager
@@ -82,8 +82,22 @@ The research and backtest pages (Vol BT, Decision-Zone BT, Forecast Line Backtes
 Record, Bot Audit, Honest Harness …) are **not daily feeds**. Their verdicts reach the pipeline through the Evidence
 Book, via the Evidence Clerk.
 
-Universe: FX `EURUSD GBPUSD USDJPY AUDUSD NZDUSD USDCAD USDCHF GBPJPY`, indices `NQ SPX500`, commodities `GOLD`
-(`DESK_UNIVERSE`).
+Universe (owner, 2026-11-03): **every instrument the vol forecast covers**, 41 names (`DESK_UNIVERSE`, kept equal
+to `js/volForecastScheduler.js` INSTRUMENTS by a test):
+
+| Group | Instruments | Read from (legs) |
+|---|---|---|
+| FX majors | EURUSD GBPUSD USDJPY AUDUSD NZDUSD USDCAD USDCHF | base and quote currency views |
+| FX crosses | GBPJPY EURGBP EURJPY EURCHF GBPCHF AUDJPY CADJPY EURAUD EURCAD EURNZD GBPAUD GBPCAD AUDCAD NZDCAD NZDJPY | base and quote currency views |
+| Indices | NQ SPX500 US30 US2000 DE30 UK100 | home currency (USD, EUR for DE30, GBP for UK100) + global view |
+| Metals | GOLD SILVER COPPER PLATINUM PALLADIUM | USD + global view |
+| Energy | WTI BRENT NATGAS | USD + global view |
+| Ags | SOYBEAN WHEAT CORN SUGAR | USD + global view |
+| Crypto | BTCUSD | USD + global view |
+
+Every leg is one of the eight currencies, so the currency layer stays at eight debates however wide the asset layer
+gets. Swing map and trade-decision state exist only for a subset (`DESK_SUBSETS`); the other instruments are read
+from the vol forecast, levels and the currency views.
 
 ### Layer 2: top-down debate
 
@@ -91,23 +105,28 @@ Universe: FX `EURUSD GBPUSD USDJPY AUDUSD NZDUSD USDCAD USDCHF GBPJPY`, indices 
 |---|---|---|---|
 | 2a Global | Risk-On advocate vs Risk-Off advocate, 1–2 rounds → **Global Manager** | global analyst reports + evidence | `global_view`: regime, risk tone, conviction, drivers, what would flip it |
 | 2b Currency | per currency: Strengthen vs Weaken advocate, 1 round → **Currency Manager** (one call ranks all eight) | `global_view` + currency-layer reports + evidence | `currency_views[8]`: bias, conviction, drivers, flip conditions; a strength ranking |
-| 2c Asset | **Research Manager** per instrument (no separate debate: the debate already happened at currency level) | `currency_views` of the two legs (or global + USD for NQ/SPX/gold) + asset-layer reports + DecisionEngine permissions | `instrument_view`: direction, conviction, held to the permissions |
+| 2c Asset | **Research Manager**, one call per group (FX majors, FX crosses, indices, metals, energy, ags, crypto); no separate debate, which already happened at currency level | `currency_views` of each instrument's legs (`instrumentLegs`) + the global view + asset-layer reports + DecisionEngine permissions where they exist | `instrument_views`: direction, conviction, held to the permissions |
 
 This is 8 currency debates rather than one per pair. It matches how the macro pages think (The Economies, one CB per
-currency), and it is cheaper: about 2 + 16 + 1 + 11 calls rather than ~6 per pair.
+currency), and it keeps cost flat as the universe grows: about 2 + 16 + 1 + 7 calls for all 41 instruments.
 
 ### Layer 3: trader and risk desk
 
 - **Trader** (per instrument): zones, entry, stop, target in σ from the forecast bands and levels; session timing.
 - **Aggressive / Conservative / Neutral** (one call each, covering all instruments): argue size and timing against the
   calendar, the vol regime and correlation between ideas.
-- **Head of Desk**: final per-instrument card: rating on the five-step scale (Strong long / Long / Flat / Short /
-  Strong short, or `REVIEW`), size multiplier, invalidation, "what would change my mind".
+- **Head of Desk**: final per-instrument card: rating on the **five-step scale** (owner, 2026-11-03): `STRONG_LONG`,
+  `LONG`, `FLAT`, `SHORT`, `STRONG_SHORT`, or `REVIEW` when no rating can be read. Plus size multiplier,
+  invalidation, and "what would change my mind". The tested engines' permissions bound the rating: where shorts
+  aren't permitted, the floor is `FLAT`.
 
 ### Layer 4: writers (one skill each, same inputs, different jobs)
 
-1. **Newsletter**: the narrative issue for Atlas and Telegram (replaces the current newsletter prompt; archived through
-   `newsletter_archive_v1` as now).
+1. **Newsletter**: **runs side by side with the current issue** (owner, 2026-11-03). The current newsletter is
+   untouched: same code, same prompt, same style, still the one that's sent. The pipeline writer is given the
+   current newsletter's style rules and recent issues as examples, so it writes in the same voice, and its issue is
+   archived beside the current one (a separate `kind` in `newsletter_archive_v1`). Atlas shows the two for the
+   same day next to each other so the owner can check the content. It replaces nothing until the owner decides.
 2. **Directional analysis**: per instrument bias, conviction, the evidence behind it, what would flip it.
 3. **Day forecast**: per instrument the expected range (bucket against the session σ), **trend day vs range day**,
    continue vs exhaust, which session carries the move. This is the "predict the day" output, and the most gradable one.
@@ -205,10 +224,9 @@ Until then everything the pipeline says is labelled **context, untested**.
 - Known limitations, for Phase 1: as-of detection is generic (`vol-forecast` reads as undated), and the slimming cut
   is generic. Both are replaced by hand-written slicers per skill.
 
-## 10. Open questions for the owner
+## 10. Owner decisions (2026-11-03)
 
-1. Is the five-step instrument scale right, or should the Head of Desk speak the DecisionEngine's own vocabulary
-   (mode / permissions / participation)?
-2. Newsletter: should the pipeline replace the current issue, or run beside it for a month first? (The comparison in
-   §8 argues for side by side.)
-3. Which instruments beyond the 11 (DAX, crude, silver)? Adding one is a line in `DESK_UNIVERSE`, but each widens Layer 2c.
+1. **Rating scale:** the five-step scale (§4, Layer 3).
+2. **Newsletter:** side by side with the current one, keeping its style; the owner checks the content before anything
+   is replaced (§4, Layer 4).
+3. **Instruments:** all 41 instruments in the vol forecast (§4, Layer 1).
