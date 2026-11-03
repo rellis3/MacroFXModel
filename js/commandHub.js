@@ -557,9 +557,17 @@ window.chubHealthOpen = function () {
       result[catId]=((saved&&saved[catId])||[]).filter(function(h){return registry[h]&&!placed[h];});
       result[catId].forEach(function(h){placed[h]=true;});
     });
+    // A page new to the saved layout goes next to the page it follows in the default menu (e.g. Desk Run right after
+    // Desk Atlas), when that page sits in the same tab; otherwise at the end of its tab. Appending every new page to the
+    // end hid it under a long custom list (2026-11-03: the owner could not find Desk Run in Live).
     CATS.forEach(function(catId){
-      defaultLayout[catId].forEach(function(h){
-        if(!placed[h]){result[catId].push(h);placed[h]=true;}
+      var def=defaultLayout[catId];
+      def.forEach(function(h,i){
+        if(placed[h])return;
+        var at=-1;
+        for(var j=i-1;j>=0&&at<0;j--){var k=result[catId].indexOf(def[j]);if(k>=0)at=k+1;}
+        if(at<0)result[catId].push(h);else result[catId].splice(at,0,h);
+        placed[h]=true;
       });
     });
     return result;

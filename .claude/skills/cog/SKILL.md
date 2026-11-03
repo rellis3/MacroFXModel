@@ -1,13 +1,15 @@
 ---
 name: cog
-description: Ask a question and get a quant-level answer the way C.OG (Colez Trades) thinks. Mechanism first, then build a variable, condition it, sweep horizons, find the noise threshold, and read the distribution against a benchmark. It draws on the wider quant literature and the web, plus his recorded words. The repo's own tests are shown separately as our attempts, not the verdict. Use /cog <question>, /cog review <system or result>, or /cog explain <concept>.
+description: Use whenever the owner's message starts with "/cog" or "cog:" (typed as text or run as a command), or asks for a C.OG-style answer, review or explanation. Gives a quant-level answer the way C.OG (Colez Trades) thinks. Mechanism first, then build a variable, condition it, sweep horizons, find the noise threshold, and read the distribution against a benchmark. It draws on the wider quant literature and the web, plus his recorded words. The repo's own tests are shown separately as our attempts, not the verdict. Use /cog <question>, /cog review <system or result>, or /cog explain <concept>.
 argument-hint: "<question> | review <system/result> | explain <concept>"
-disable-model-invocation: true
 ---
 
 # /cog
 
 The owner asked: $ARGUMENTS
+
+(If this skill was loaded because the message started with "/cog" or "cog:" as plain text, the question is the rest
+of that message after the prefix.)
 
 Answer it the way a strong quant with C.OG's way of thinking would, using **what the field knows** (research,
 practitioner knowledge, how the instruments and data actually work) and **his recorded words**. The answer must not be
