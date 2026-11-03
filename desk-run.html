@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Desk Run — analysts and the Head of Desk book</title>
+<style>
+:root{--bg:#0b0d10;--bg2:#12161c;--bg3:#181d24;--line:#262c35;--line2:#333b46;--tx:#eef1f5;--tx2:#a8b1bd;--tx3:#71798a;--acc:#e0a339;--up:#3fb27f;--dn:#e5534b;--mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1280px;margin:0 auto;padding:0 16px 80px}
+a{color:var(--acc)}
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:20px 0 16px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.top h1{margin:0;font-size:22px;font-weight:650;letter-spacing:.1em;text-transform:uppercase}
+.top h1 span{color:var(--acc)}
+.top .sub{color:var(--tx2);font-size:13px}
+.top .right{margin-left:auto;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.btn{background:var(--bg3);border:1px solid var(--line2);color:var(--tx2);padding:8px 14px;border-radius:5px;font-size:13px;font-family:var(--mono);cursor:pointer;text-decoration:none}
+.btn:hover{border-color:var(--acc);color:var(--tx)}
+select.btn{padding:7px 10px}
+.panel{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin-bottom:18px;overflow-x:auto}
+.panel h2{margin:0 0 10px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);font-weight:650}
+.untested{display:inline-block;font:11px var(--mono);color:var(--acc);border:1px solid var(--acc);border-radius:4px;padding:1px 6px;margin-left:8px;vertical-align:middle}
+.headline{font-size:18px;font-weight:600;margin:0 0 6px}
+.muted{color:var(--tx3);font-size:12.5px}
+.ccys{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.ccy{background:var(--bg3);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:13px}
+.ccy b{font-family:var(--mono)}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:760px}
+th{text-align:left;color:var(--tx3);font-weight:600;font-size:11px;letter-spacing:.07em;text-transform:uppercase;padding:0 8px 8px;border-bottom:1px solid var(--line)}
+td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+td.n{font-family:var(--mono);font-weight:650;white-space:nowrap}
+.r{font:12px var(--mono);font-weight:700;padding:2px 7px;border-radius:4px;white-space:nowrap}
+.STRONG_LONG{background:#1d4d36;color:#8ff0bf}.LONG{background:#173326;color:var(--up)}.FLAT{background:var(--bg3);color:var(--tx2)}
+.SHORT{background:#3a1a19;color:var(--dn)}.STRONG_SHORT{background:#5a1f1c;color:#ffb3ad}.REVIEW{background:#3b3014;color:var(--acc)}
+.grp td{color:var(--acc);font:11px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding-top:14px}
+details{border-top:1px solid var(--line);padding:8px 0}
+details:first-of-type{border-top:0}
+summary{cursor:pointer;font-weight:600}
+summary .muted{font-weight:400;margin-left:6px}
+.pt{margin:6px 0 0 14px;font-size:13.5px}
+.pt code{font:12px var(--mono);color:var(--tx3)}
+.imp{font:12px var(--mono);margin-left:6px}
+.pos{color:var(--up)}.neg{color:var(--dn)}
+.fail{color:var(--dn)}
+.empty{color:var(--tx2);padding:30px 0;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Desk <span>Run</span></h1>
+    <div class="sub">global → currency → asset · analysts, then the Head of Desk · <span class="untested">context, untested</span></div>
+    <div class="right">
+      <select id="day" class="btn" aria-label="Day"></select>
+      <button id="run" class="btn" type="button">Run now</button>
+      <a class="btn" href="/api/desk-pack?summary=1">Desk Pack health</a>
+    </div>
+  </div>
+  <div id="status" class="muted"></div>
+  <div id="out"></div>
+</div>
+<script>
+const GROUPS = [['fx_majors', 'FX majors'], ['fx_crosses', 'FX crosses'], ['indices', 'Indices'], ['metals', 'Metals'], ['energy', 'Energy'], ['ags', 'Ags'], ['crypto', 'Crypto']];
+const LAYERS = ['global', 'currency', 'asset', 'evidence'];
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const sgn = v => v > 0 ? `<span class="pos">+${v}</span>` : v < 0 ? `<span class="neg">${v}</span>` : `<span>${v ?? '–'}</span>`;
+const $ = id => document.getElementById(id);
+
+async function getJson(url, opts) { const r = await fetch(url, opts); return r.json(); }
+
+function render(run, universe) {
+  const h = run.head, parts = [];
+  if (h?.ok) {
+    const b = h.book;
+    parts.push(`<div class="panel"><p class="headline">${esc(b.headline)}</p>
+      <div class="muted">Global tone: <b>${esc(b.global.tone.replace('_', '-'))}</b> · ${esc(run.date)} · pack ${esc(run.packHealth?.ok)} ok of ${esc(run.packHealth?.total)} feeds</div>
+      <p>${esc(b.global.summary)}</p>
+      ${b.risks.length ? `<div class="muted">Risks: ${b.risks.map(esc).join(' · ')}</div>` : ''}
+      ${b.gaps.length ? `<div class="muted">Could not see: ${b.gaps.map(esc).join(' · ')}</div>` : ''}</div>`);
+    parts.push(`<div class="panel"><h2>Currencies</h2><div class="ccys">${Object.entries(b.currencies).map(([c, v]) =>
+      `<div class="ccy"><b>${c}</b> ${sgn(v.bias)}<div class="muted">${esc(v.why)}</div></div>`).join('')}</div></div>`);
+    const rows = GROUPS.map(([g, label]) => {
+      const names = universe?.[g] ?? [];
+      if (!names.length) return '';
+      return `<tr class="grp"><td colspan="4">${label}</td></tr>` + names.map(n => { const c = b.instruments[n] ?? { rating: 'REVIEW' };
+        return `<tr><td class="n">${n}</td><td><span class="r ${c.rating}">${c.rating.replace('_', ' ')}</span><div class="muted">${esc(c.conviction)}</div></td><td>${esc(c.why) || '<span class="muted">no card</span>'}</td><td class="muted">${esc(c.invalidation)}</td></tr>`; }).join('');
+    }).join('');
+    parts.push(`<div class="panel"><h2>Instruments · five-step scale</h2><table><thead><tr><th>Instrument</th><th>Rating</th><th>Why</th><th>Wrong if</th></tr></thead><tbody>${rows}</tbody></table>
+      ${h.notes?.length ? `<p class="muted">Repairs: ${h.notes.map(esc).join(' · ')}</p>` : ''}</div>`);
+  } else {
+    parts.push(`<div class="panel fail">The Head of Desk did not produce a book: ${esc((h?.errors ?? []).join('; '))}</div>`);
+  }
+  const an = Object.values(run.analysts).sort((a, b) => LAYERS.indexOf(a.layer) - LAYERS.indexOf(b.layer));
+  parts.push(`<div class="panel"><h2>Analysts</h2>${an.map(a => a.ok ? `<details><summary>${esc(a.id)}<span class="muted">${esc(a.layer)} · ${esc(a.report.confidence)} · ${a.input?.usable ?? '?'} of ${a.input?.feeds ?? '?'} feeds</span><div style="font-weight:400">${esc(a.report.headline)}</div></summary>
+      ${a.report.points.map(p => `<div class="pt">${esc(p.claim)} <code>${esc(p.evidence)}</code>${Object.entries(p.impact).map(([k, v]) => `<span class="imp">${k} ${sgn(v)}</span>`).join('')}</div>`).join('')}
+      ${a.report.gaps.length ? `<div class="pt muted">Gaps: ${a.report.gaps.map(esc).join(' · ')}</div>` : ''}</details>`
+    : `<details><summary class="fail">${esc(a.id)} failed</summary><div class="pt muted">${esc(a.errors.join('; '))}</div></details>`).join('')}</div>`);
+  parts.push(`<p class="muted">Tokens: in ${run.usage?.in ?? '?'} · out ${run.usage?.out ?? '?'} · finished ${esc(run.finishedAt)} · ${esc(run.trigger ?? '')}. This book is context from the analyst pipeline (plans/DESK_ANALYST_PIPELINE.md). It is not a tested signal: it is scored only once its pre-registration is in place.</p>`);
+  $('out').innerHTML = parts.join('');
+}
+
+async function load(date) {
+  $('status').textContent = 'Loading…';
+  const [run, feeds] = await Promise.all([getJson(`/api/desk-run${date ? `?date=${date}` : ''}`), getJson('/api/desk-pack/feeds').catch(() => null)]);
+  if (!run.ok) { $('status').textContent = ''; $('out').innerHTML = `<div class="panel empty">${esc(run.error)}</div>`; return; }
+  $('status').textContent = '';
+  render(run, feeds?.universe ?? null);
+}
+
+async function loadDays() {
+  const idx = await getJson('/api/desk-run/index').catch(() => ({ days: [] }));
+  const days = (idx.days ?? []).slice().reverse();
+  $('day').innerHTML = days.length ? days.map(d => `<option value="${d.date}">${d.date}${d.headOk ? '' : ' (head failed)'}</option>`).join('') : '<option value="">no runs yet</option>';
+}
+
+async function poll() {
+  const s = await getJson('/api/desk-run/status');
+  const j = s.job;
+  if (j?.status === 'running') { $('status').textContent = `Running: ${j.stage}…`; setTimeout(poll, 5000); return; }
+  if (j?.status === 'error') { $('status').textContent = `Run failed: ${j.error}`; return; }
+  await loadDays(); await load();
+}
+
+$('run').addEventListener('click', async () => {
+  $('run').disabled = true;
+  const r = await getJson('/api/desk-run', { method: 'POST' });
+  $('run').disabled = false;
+  if (!r.ok) { $('status').textContent = r.error; return; }
+  poll();
+});
+$('day').addEventListener('change', e => load(e.target.value));
+loadDays().then(() => load()).then(async () => { const s = await getJson('/api/desk-run/status'); if (s.job?.status === 'running') poll(); });
+</script>
+</body>
+</html>

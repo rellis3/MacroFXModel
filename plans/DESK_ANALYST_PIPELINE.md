@@ -1,6 +1,6 @@
 # Desk Analyst Pipeline: design
 
-*Started 2026-11-03 on branch `ccr-4824155b-3im5ze`. Register row: `desk-analyst-pipeline`. Status: Phase 0 built.*
+*Started 2026-11-03 on branch `ccr-4824155b-3im5ze`. Register row: `desk-analyst-pipeline`. Status: Phases 0 and 1 built.*
 
 ## 1. What this is
 
@@ -179,7 +179,7 @@ Analyst report (all Layer 1 skills):
 | Phase | Builds | Done when |
 |---|---|---|
 | **0** | Desk Pack: feed registry, daily build 06:40 London, gaps and freshness, saved per day | **built**: `js/deskPack.js`, `/api/desk-pack*`, service `deskPack` |
-| 1 | Role files + schemas; Layer 1 analysts on real slices (hand-written slicers replace the generic cut); Head of Desk reading analysts only; Atlas panel | a full morning runs end to end; every report validates; gaps quoted |
+| 1 | Role files + schemas; Layer 1 analysts; Head of Desk reading analysts only; desk-run page | **built** (§9b); hand-written slicers and an Atlas panel follow the first Railway runs |
 | 2 | Layer 2 top-down debate + Layer 3 trader and risk desk; debate visible as expandable sections | currency views and instrument cards produced daily |
 | 3 | Layer 4 writers (newsletter first, then day forecast, directional, ideas, risk) | the newsletter is written from the pipeline |
 | 4 | Layer 5 memory + grading; the pre-registered comparison (§8) starts counting | first graded month |
@@ -223,6 +223,30 @@ Until then everything the pipeline says is labelled **context, untested**.
   relies on it.
 - Known limitations, for Phase 1: as-of detection is generic (`vol-forecast` reads as undated), and the slimming cut
   is generic. Both are replaced by hand-written slicers per skill.
+
+## 9b. Phase 1 as built (2026-11-03)
+
+- **Role files** in `desk/roles/`: eleven analysts (one per Desk Pack skill, in the owner's order) and
+  `head_of_desk.md`. Front matter says what each reads, which Evidence Book domains it gets, its model tier and its
+  output schema (format in `js/deskRoles.js`). Edit the prose to tune a role; a test checks every pack skill has
+  exactly one analyst and every domain exists.
+- **Schemas** in `js/deskSchemas.js`: `analyst_report` and `head_book`. Replies are repaired where small (scores
+  clamped to −2..+2, ratings normalised to the five steps) with every repair noted; an unreadable rating is `REVIEW`,
+  never `FLAT`. A reply that can't be used is retried once with its errors, then the skill is recorded as failed.
+- **Run** in `js/deskRun.js`: analysts four at a time, then the Head of Desk. Phase 1's Head reads the analysts'
+  reports directly (the debate layers come in Phase 2). It writes the global tone, a bias for each of the eight
+  currencies, and a card for every one of the 41 instruments, read from its legs. If fewer than half the analysts
+  succeed, the Head does not run.
+- **Model tasks** `desk-analyst` and `desk-head` (`js/modelRouter.js`). Both carry a ledger slice, so neither is
+  sent to a cheap provider unless the owner chooses it on the AI config screen.
+- **Server:** `POST /api/desk-run` (runs in the background; builds today's pack first if there isn't one),
+  `GET /api/desk-run` (`?date=`, `?summary=1`), `/index`, `/status`, `/roles`. Saved to `desk_run_<date>`.
+  Service `deskRun` is **off by default** because each run is paid: about 12 calls. `SVC_DESKRUN=1` runs it at 06:55
+  London on weekdays.
+- **Page** `desk-run.html`: the Head's book (headline, tone, currencies, every instrument by group with its
+  rating), then each analyst's report with its points, impacts and gaps. "Run now" starts a run.
+- **Limits:** the data each analyst sees is still the pack's generic cut (§9). Hand-written slicers follow the first
+  Railway pack audit. Nothing here is scored yet (§8).
 
 ## 10. Owner decisions (2026-11-03)
 
