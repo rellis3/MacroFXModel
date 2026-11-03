@@ -236,7 +236,7 @@ import { watchPlan as _twPlan, check as _twCheck, message as _twMessage } from '
 import { tradeRows as _jcRows, coach as _jcCoach, execution as _jcExec } from './js/deskJournal.js';   // Phases 8 and 13
 import { parseRegister as _tdParseRegister, opsReport as _tdOps, outline as _tdOutline, section as _tdSection, readingList as _tdReadingList, registerText as _tdRegisterText, screen as _tdScreen, validateTheories as _tdValidate } from './js/theoryDesk.js';   // Phases 9 and 12
 import { upcoming as _rpUpcoming, playbookText as _rpPlaybookText } from './js/releasePlaybook.js';
-import { dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
+import { currencyStrength as _evCcy, dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
 import { expandFeeds as _dpExpandFeeds, buildDeskPack as _dpBuild, packForSkill as _dpForSkill, packSummary as _dpSummary, indexRow as _dpIndexRow, upsertIndex as _dpUpsertIndex, shouldBuild as _dpShouldBuild, londonDate as _dpLondonDate, DESK_SKILLS as _DP_SKILLS, DESK_UNIVERSE as _DP_UNIVERSE, DESK_SUBSETS as _DP_SUBSETS, packFresh as _dpFresh } from './js/deskPack.js';
@@ -4921,6 +4921,7 @@ async function _dsEvening(run, score, reflection, bars, idx) {
   const cards = run.head.book.instruments ?? {}, moves = _evDayMoves(bars, cards, run.date), d = run.debate ?? {};
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
   const { system, prompt } = _deskStagePrompt({ role, pack: { date: run.date }, ledger: DESK_EVIDENCE, sections: [
+    ['The currencies today, strongest to weakest (the average move in u across each one\'s pairs; the issue draws this chart)', _evCcy(moves).map(c => `${c.ccy} ${c.v > 0 ? '+' : ''}${c.v} u (${c.n} pairs)`).join(', ')],
     ['Every market, 08:00 to 21:00 London (move, in u, range in u, the morning view)', _evMovesText(moves, cards)],
     ["The morning's global ruling", d.global?.view ? { tone: d.global.view.tone, conviction: d.global.view.conviction, summary: d.global.view.summary } : run.head.book.global],
     ["The morning's currency ranking", d.currency?.view ? { ranking: d.currency.view.ranking, biases: Object.fromEntries(Object.entries(d.currency.view.currencies ?? {}).map(([k, v]) => [k, v.bias])) } : run.head.book.currencies],
@@ -7857,7 +7858,7 @@ app.post('/api/newsletter/archive', express.json({ limit: '3mb' }), async (req, 
     const b = req.body ?? {}, snap = b.snapshot ?? {};
     if (typeof b.html !== 'string' || b.html.length < 200 || !/^\d{4}-\d{2}-\d{2}$/.test(snap.date ?? '')) return res.status(400).json({ ok: false, error: 'need html and snapshot.date (YYYY-MM-DD)' });
     const issues = await _nlLoad(); if (issues === null) return res.status(503).json({ ok: false, error: 'the archive could not be read, so nothing was written' });
-    const kind = snap.kind === 'weekly' ? 'weekly' : snap.kind === 'desk' ? 'desk' : snap.kind === 'desk-brief' ? 'desk-brief' : 'daily', id = `${kind}-${snap.date}`;   // desk-brief: the short desk format (never scored)   // desk: the desk edition built on Atlas (never scored)
+    const kind = snap.kind === 'weekly' ? 'weekly' : snap.kind === 'desk' ? 'desk' : snap.kind === 'desk-brief' ? 'desk-brief' : snap.kind === 'desk-terminal' ? 'desk-terminal' : 'daily', id = `${kind}-${snap.date}`;   // desk-brief: the short desk format (never scored)   // desk: the desk edition built on Atlas (never scored)
     const rec = { id, kind, date: snap.date, subject: String(b.subject ?? '').slice(0, 200), savedAt: new Date().toISOString(), snapshot: snap, text: String(b.text ?? '').slice(0, 24000), htmlGz: zlib.gzipSync(Buffer.from(b.html, 'utf8')).toString('base64'), score: null };
     const next = [rec, ...issues.filter(x => x.id !== id)].sort((x, y) => y.date.localeCompare(x.date) || x.kind.localeCompare(y.kind)).slice(0, _NL_KEEP);
     await kv.put(_NL_KEY, JSON.stringify({ issues: next }));

@@ -480,6 +480,14 @@ The owner asked for the evening review to reach the reader, in both forms.
     issues now.
   - The Desk Run track-record panel links to it, and the Atlas archive labels it "Desk evening".
 
+**Shorter evening edition (owner, 2026-11-03: "too wordy").** The first issue ran ~2,000 words over 7 pages and told
+the JPY/CHF story six times. Now: a two-sentence standfirst and three short sections ("The day", "What stood out",
+"Into tomorrow", ~180 words in all, each capped at three sentences); a currency-strength chart computed from the pairs
+(`currencyStrength`, also given to the writer so its prose matches the chart) instead of the currencies paragraph; one
+colour grid of every market (`moveGrid`) instead of the table and seven group charts; and the book page in its
+compact form (plain-English heading and tiles, the cards chart and the made/lost line; the lessons, the watch list and
+the record line stay in the Desk Office). Three pages instead of seven.
+
 ## 9m. Phase 5 as built: session updates (2026-11-03)
 
 At the London open (08:05) and the New York open (14:35), the intraday manager (`desk/roles/session_update.md`, one
@@ -780,6 +788,17 @@ the p50 and the p75 against their 50% and 25% targets; and a calendar of the des
 Scores /10 are the desk's own −2..+2 views rescaled (5 = no view); grades are the book's conviction, never a hit
 rate, and the page says so. Still to come: the data below (rate expectations beyond the Fed and the ECB, a headline
 feed), seasonality and skew panels.
+
+**The Terminal edition (owner, 2026-11-03: "a futuristic newsletter ... without losing any of the existing outputs").**
+A third desk format beside the desk magazine and the desk brief (`js/newsletterTerminal.js`, tested; built on Atlas
+with the other two, a "🛰 Terminal edition" button with PDF, archived as kind `desk-terminal`). The terminal's look as
+a self-contained issue (inline SVG only, print keeps the dark background): a cover with the regime dial, the book's
+thesis, live/strongest/weakest tiles, the drivers and the overnight tier-1 wire; the world map (paths computed on
+Atlas with d3 and the world atlas at build time) with the banks, rates and the strongest-to-weakest arc, score rings
+for the eight currencies and the two end currencies' cases; the six largest cards as playbooks (grade, score ring,
+gold thesis, forecast ladder with the entry zone, entry/target/invalid); every market as a tile grid; the release
+bands and the risk desk's warnings; and yesterday reviewed in plain words with the cards chart. Analyst ids are
+stripped from every line a reader sees.
 
 **Data to get:**
 
