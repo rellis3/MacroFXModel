@@ -698,8 +698,10 @@ class Mt5Broker:
             'symbol':       mt5_sym,
             'volume':       vol,
             'type':         order_type,
-            'price':        exec_price,
-            'sl':           round(sl, digits),
+            'price':        float(exec_price),
+            # float() always: MT5 rejects an int sl/tp/price (-2 'Invalid "sl" argument'),
+            # and levels reloaded from JSON state come back as ints (3890.0 -> 3890).
+            'sl':           round(float(sl), digits),
             'deviation':    self.deviation,
             'magic':        self.magic,
             'comment':      safe_comment,
@@ -707,7 +709,7 @@ class Mt5Broker:
             'type_filling': self.filling_mode(mt5_sym),
         }
         if tp and tp > 0:
-            order['tp'] = round(tp, digits)
+            order['tp'] = round(float(tp), digits)
 
         res = mt5.order_send(order)
 
@@ -717,7 +719,7 @@ class Mt5Broker:
             time.sleep(0.5)
             tick = mt5.symbol_info_tick(mt5_sym)
             if tick:
-                order['price'] = tick.ask if direction == 'LONG' else tick.bid
+                order['price'] = float(tick.ask if direction == 'LONG' else tick.bid)
                 res = mt5.order_send(order)
                 if res is None:
                     self.log.error(f'MT5 retry also returned None  last_error={mt5.last_error()}')
@@ -956,9 +958,9 @@ class Mt5Broker:
             'symbol':       mt5_sym,
             'volume':       vol,
             'type':         otype,
-            'price':        round(price, digits),
-            'sl':           round(sl, digits) if sl else 0.0,
-            'tp':           round(tp, digits) if tp else 0.0,
+            'price':        round(float(price), digits),             # float(): see enter()
+            'sl':           round(float(sl), digits) if sl else 0.0,
+            'tp':           round(float(tp), digits) if tp else 0.0,
             'deviation':    self.deviation,
             'magic':        self.magic,
             'comment':      self._safe_comment(comment, f'Bot {kind[0].upper()}{direction[0]}'),
