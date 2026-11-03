@@ -227,3 +227,23 @@ ${lessons ? `<h3 class="ss">What the desk takes from it</h3><ul class="lst">${le
 ${ref?.watch?.length ? `<h3 class="ss">Carried into today</h3><ul class="lst">${ref.watch.slice(0, 4).map(x => `<li>${esc(prose(x, { sentences: 1, chars: 200 }))}</li>`).join('')}</ul>` : ''}
 <p class="small3">${esc(recLine)}</p>` };
 }
+
+// ── Phases 6 and 15 in the issue: "The releases ahead" (for readers: the economist's briefs and the playbooks) ────────
+const ukTime = iso => new Date(iso).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+const sgnU = (x, u) => (Number.isFinite(x) ? `${x > 0 ? '+' : x < 0 ? '−' : ''}${Math.abs(x)}${u}` : '–');
+/** One page: per release, the economist's brief and the history table (size, speed, after hot, after cold). */
+export function economistPage(run, H) {
+  const e = run?.economist; if (!e?.ok || !e.view?.briefs?.length) return null;
+  const { esc } = H;
+  const blocks = e.view.briefs.map((b, i) => {
+    const r = e.releases?.[i], p = r?.playbook, rows = p ? Object.values(p.markets).slice(0, 6).map(m => [`<b>${esc(m.label)}</b>`, `${m.abs30}${m.unit}`, `${m.abs240}${m.unit}`, `${m.peakMin} min · ${Math.round((m.kept ?? 0) * 100)}% kept`,
+      m.hot ? `${sgnU(m.hot.m30, m.unit)} <small style="color:#5b6b82">n ${m.hot.n}</small>` : '–', m.cold ? `${sgnU(m.cold.m30, m.unit)} <small style="color:#5b6b82">n ${m.cold.n}</small>` : '–']) : [];
+    return `<div class="box" style="margin:10px 0"><h4>${esc(r ? ukTime(r.at) : '')} · ${esc(b.event)}${r?.estimate ? ` <span style="font-weight:400">· consensus ${esc(r.estimate)}${r.prev ? `, previous ${esc(r.prev)}` : ''}</span>` : ''}</h4>
+${b.priced ? `<p><b>What is priced.</b> ${esc(prose(b.priced, { sentences: 2, chars: 300 }))}</p>` : ''}<p><b>Size and speed.</b> ${esc(prose(b.sizeAndSpeed, { sentences: 3, chars: 420 }))}</p>
+${b.ifHot || b.ifCold ? `<div class="two"><p><b style="color:#b4232f">If hot.</b> ${esc(prose(b.ifHot, { sentences: 2, chars: 300 }))}</p><p><b style="color:#0b7a55">If cold.</b> ${esc(prose(b.ifCold, { sentences: 2, chars: 300 }))}</p></div>` : ''}
+${b.bookAtRisk ? `<p><b>The book.</b> ${esc(prose(b.bookAtRisk, { sentences: 2, chars: 300 }))}</p>` : ''}
+${rows.length ? flatTable(['Market', 'Typical, 30 min', 'Typical, 4 h', 'Peak and kept', 'After hot, 30 min', 'After cold, 30 min'], rows, ['l', 'l', 'l', 'l', 'l', 'l']) + `<p class="small3">${evBadge('observed')} From the desk's record of ${p.n} past releases, ${esc(p.from)} to ${esc(p.to)}; the surprise was recorded for ${p.surprises.known} (${p.surprises.hot} hot, ${p.surprises.cold} cold). History, not a forecast of the next surprise.</p>` : ''}</div>`;
+  }).join('');
+  return { section: 'The releases ahead', html: `<div class="kick">The economist · the next day and a half</div><h2 class="sh">${esc(prose(e.view.headline, { sentences: 1, chars: 140 }))}</h2>
+<p class="evl">${evBadge('observed')}${evBadge('untested')}<span style="font:11px var(--sans,system-ui);color:#5b6b82">The size and speed of past moves are measured; the reading of them is the economist's. Nobody can tell in advance which way a surprise will go.</span></p>${blocks}` };
+}

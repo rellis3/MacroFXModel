@@ -226,6 +226,7 @@ import { sliceFeed as _deskSliceFeed } from './js/deskSlices.js';
 import { assess as _dqAssess, afterRun as _dqAfterRun } from './js/deskDataQuality.js';
 import { attribution as _atAttribution, attributionRecord as _atRecord } from './js/deskAttribution.js';
 import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
+import { upcoming as _rpUpcoming } from './js/releasePlaybook.js';
 import { dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
@@ -4739,8 +4740,15 @@ async function _deskRun(trigger, job, mode = 'full') {
   await kv.put(_DR_JOB_KV, JSON.stringify({ status: 'running', trigger, mode, date: pack.date, startedAt: new Date(job.startedAt).toISOString(), resumes: job.resumes ?? 0 })).catch(() => {});
   job.stage = 'analysts';
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+  // Phases 6 and 15: the high-impact releases in the next 36 h with the release study's history of each
+  let releases = [];
+  try {
+    const { rows } = await _rlRows();
+    const [ev, ca] = await Promise.all(['events', 'calendar-ahead'].map(p => _dpFetchFeed({ id: p, path: p, timeoutMs: 60_000 })));
+    releases = _rpUpcoming([...(Array.isArray(ev.json) ? ev.json : ev.json?.events ?? []), ...(ca.json?.rows ?? [])], rows, Date.now());
+  } catch (e) { console.warn('[desk-run] releases ahead:', e.message); }
   const run = await _runDesk({
-    pack, roles, ledger: DESK_EVIDENCE, now: Date.now, concurrency: 4, mode, checkpoint,
+    pack, roles, ledger: DESK_EVIDENCE, now: Date.now, concurrency: 4, mode, checkpoint, releases,
     exposureCap: Number(process.env.DESK_EXPOSURE_CAP ?? 4),   // per-currency cap in normal-size units; 0 turns it off
     styleExamples: _deskStyleExamples(await _nlLoad().catch(() => []) ?? []),   // the latest regular issues, so the desk edition matches their voice
     parseJson: (txt, label) => _parseModelJson(txt, label),

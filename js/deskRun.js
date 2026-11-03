@@ -22,13 +22,14 @@ import { validateAnalystReport, validateHeadBook, validateDebateCase, validateGl
 import { allInstruments, DESK_UNIVERSE, DESK_CCYS, instrumentLegs } from './deskPack.js';
 import { capExposure, netExposure } from './deskExposure.js';
 import { newsletterSections } from './deskNewsletter.js';
-import { validateNewsletterIssue, validateRedTeam } from './deskSchemas.js';
+import { validateNewsletterIssue, validateRedTeam, validateEconomist } from './deskSchemas.js';
+import { playbookText } from './releasePlaybook.js';
 import { createHash } from 'node:crypto';
 
 export const DESK_RUN_VERSION = 1;
 const TASK = { quick: 'desk-analyst', deep: 'desk-head' };
 // Output caps. They must leave room for the model's thinking, which is billed as output and counts against the cap.
-export const CAPS = { analyst: 16_000, debate: 12_000, manager: 12_000, asset: 16_000, risk: 10_000, head: 32_000, writer: 16_000, control: 32_000, redTeam: 12_000 };
+export const CAPS = { analyst: 16_000, debate: 12_000, manager: 12_000, asset: 16_000, risk: 10_000, head: 32_000, writer: 16_000, control: 32_000, redTeam: 12_000, economist: 16_000 };
 const MAX_CAP = 32_000;
 
 // A provider error worth one more try: a dropped connection, a timeout, rate limiting or a server error. A 4xx
@@ -87,7 +88,7 @@ async function pool(items, limit, fn) {
  * roles: parsed role files (js/deskRoles.js parseRole), analysts plus one with id head_of_desk.
  * Returns the run record that the server saves and the pages read.
  */
-export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, concurrency = 4, onProgress = () => {}, mode = 'full', rounds = 2, retryDelayMs = 4000, exposureCap = 4, styleExamples = [], checkpoint = null }) {
+export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, concurrency = 4, onProgress = () => {}, mode = 'full', rounds = 2, retryDelayMs = 4000, exposureCap = 4, styleExamples = [], checkpoint = null, releases = [] }) {
   if (!pack?.skills) throw new Error('no desk pack to run on');
   const head = roles.find(r => r.id === 'head_of_desk');
   if (!head) throw new Error('role head_of_desk is missing');
@@ -163,6 +164,22 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
     headOut.book.instruments = capped.cards;
     headOut.book.exposure = capped.report;
   }
+  // Phases 6 and 15: the economist's briefs on the high-impact releases in the next day and a half, from the desk's
+  // own release history (js/releasePlaybook.js), with the cards they put at risk. Full runs only; one call.
+  let economist = null;
+  const eco = roles.find(r => r.id === 'economist');
+  if (mode === 'full' && headOut.ok && eco && releases.length) {
+    onProgress({ stage: 'economist', label: 'the economist' });
+    const MK = { eurusd: ['EURUSD'], gbpusd: ['GBPUSD'], usdjpy: ['USDJPY'], dx: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF'], gold: ['GOLD'], nq: ['NQ'], es: ['SPX500'], dax: ['DE30'], ftse: ['UK100'] };
+    const exposed = [...new Set(releases.flatMap(r => Object.keys(r.playbook.markets).slice(0, 6).flatMap(m => MK[m] ?? [])))];
+    const cards = headOut.book.instruments;
+    const { system, prompt } = buildStagePrompt({ role: eco, pack, ledger, sections: [
+      ['Releases ahead, with the desk\'s history of each', releases.map((r, i) => `${i + 1}. ${r.event} (${r.country}) at ${r.at}; consensus ${r.estimate ?? 'n/a'}, previous ${r.prev ?? 'n/a'}\n${playbookText(r.playbook)}`).join('\n\n')],
+      ["The desk's book on the markets these releases move", Object.fromEntries(exposed.filter(n => cards[n]).map(n => [n, { view: cards[n].rating, size: cards[n].size ?? null, forecastP50: cards[n].levels ? `${cards[n].levels.down.p50} to ${cards[n].levels.up.p50}` : null }]))],
+    ], tail: `Write one brief for each of the ${releases.length} releases, in that order.` });
+    const r = await ask({ callModel, parseJson, retryDelayMs, task: TASK[eco.tier], system, prompt, maxTokens: CAPS.economist, label: 'desk:economist', validate: o => validateEconomist(o, releases) });
+    economist = { ok: r.ok, view: r.value ?? null, releases, errors: r.errors ?? [], attempts: r.attempts };
+  }
   // Layer 4, the desk edition of the newsletter (full runs only; beside the regular issue, never instead of it).
   let newsletter = null;
   const writer = roles.find(r => r.id === 'newsletter_writer');
@@ -191,7 +208,7 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
   }
   onProgress({ stage: 'head', ok: headOut.ok, label: 'head of desk done' });
   const usage = { in: 0, out: 0 };
-  const allAttempts = [...results.flatMap(r => r.attempts), ...(debate?.attempts ?? []), ...(headOut.attempts ?? []), ...(newsletter?.attempts ?? []), ...(control?.attempts ?? [])];
+  const allAttempts = [...results.flatMap(r => r.attempts), ...(debate?.attempts ?? []), ...(headOut.attempts ?? []), ...(newsletter?.attempts ?? []), ...(control?.attempts ?? []), ...(economist?.attempts ?? [])];
   for (const a of allAttempts) { usage.in += a.usage?.in ?? 0; usage.out += a.usage?.out ?? 0; }
   return {
     version: DESK_RUN_VERSION,
@@ -208,6 +225,7 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
     head: headOut,
     newsletter,
     control,
+    economist,
     // which role files wrote this book (prereg §3: the desk is scored as operated; results are also read by version)
     rolesHash: createHash('sha1').update(roles.map(r => `${r.id}\n${r.body}`).sort().join('\n')).digest('hex').slice(0, 12),
     calls: allAttempts.length,

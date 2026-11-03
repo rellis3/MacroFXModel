@@ -193,7 +193,14 @@ function renderYou() {
 function renderResearch() {
   $('research').innerHTML = planned(9, 'Theory desk', 'Testable theories about the system\'s own output, from the Evidence Book, Theory Lab, your QuantConnect notes, the SSRN list and the scored history, each ready to pre-register.')
     + planned(12, 'Research ops', 'The research register at a glance: pre-registrations with no verdict, stale studies, and results ready to bank in the Evidence Book.')
-    + planned(15, 'Scenario playbooks', '"If hot / if cold" before each big release, from the desk\'s release history. These also go into the newsletter.');
+    + '<div id="ecopanel"></div>';
+  // Phases 6 and 15: the economist's briefs and playbooks (also in the newsletter's "The releases ahead" page)
+  getJson('/api/desk-run').then(run => {
+    const e = run?.ok && run.date === today ? run.economist : null, el = $('ecopanel'); if (!el) return;
+    if (!e?.view?.briefs?.length) { el.innerHTML = `<div class="panel"><h2>The releases ahead</h2><p class="muted">${e ? 'The economist found no high-impact release with a history in the next 36 hours.' : 'No brief yet today: it is written with the morning book.'}</p></div>`; return; }
+    el.innerHTML = `<div class="panel"><h2>The releases ahead <i>the economist, from the desk's release history · also in the newsletter</i></h2><p>${esc(e.view.headline)}</p>${e.view.briefs.map((b, i) => { const r = e.releases?.[i], p = r?.playbook;
+      return `<h3 style="font-size:14px;margin:12px 0 4px">${esc(r ? new Date(r.at).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : '')} · ${esc(b.event)}</h3><p>${esc(b.sizeAndSpeed)}</p>${b.ifHot ? `<p><b class="dn">If hot:</b> ${esc(b.ifHot)}<br><b class="up">If cold:</b> ${esc(b.ifCold)}</p>` : ''}${b.bookAtRisk ? `<p class="muted">The book: ${esc(b.bookAtRisk)}</p>` : ''}${p ? `<table><thead><tr><th>Market</th><th>30 min</th><th>4 h</th><th>After hot</th><th>After cold</th></tr></thead><tbody>${Object.values(p.markets).slice(0, 6).map(m => `<tr><td>${esc(m.label)}</td><td class="n">${m.abs30}${m.unit}</td><td class="n">${m.abs240}${m.unit}</td><td class="n">${m.hot ? f(m.hot.m30) + m.unit + ' (n ' + m.hot.n + ')' : '–'}</td><td class="n">${m.cold ? f(m.cold.m30) + m.unit + ' (n ' + m.cold.n + ')' : '–'}</td></tr>`).join('')}</tbody></table>` : ''}`; }).join('')}</div>`;
+  });
 }
 
 renderToday(); renderPerf(); renderYou(); renderResearch();

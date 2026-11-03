@@ -499,11 +499,12 @@ ${c.watch ? `<div class="kick" style="margin-top:14px">The next test</div><h2 cl
     // section), so a short section does not leave half a sheet blank.
     const fl = p => `<div class="pg pgflow">${mh(p.section)}${p.html}</div>`;
     const pRv = c.deskReview ? fl(c.deskReview) : '';
-    if (c.deskMode === 'brief') return `<div class="mg">${p1}${c.deskBrief ? fl({ section: 'The desk brief', html: c.deskBrief }) : ''}${pRv}</div>`;
+    const pEc = c.deskEconomist ? fl(c.deskEconomist) : '';
+    if (c.deskMode === 'brief') return `<div class="mg">${p1}${c.deskBrief ? fl({ section: 'The desk brief', html: c.deskBrief }) : ''}${pEc}${pRv}</div>`;
     if (c.deskMode === 'magazine') {
       const [dG, dC, dB, dR] = c.deskPages ?? [];
       const pBack = `<div class="pg pgflow">${mh('The backdrop')}<div class="kick">The state of the levels today</div><h2 class="sh">The backdrop: rates, credit, fear and the dollar</h2>${t.globalHtml}</div>`;
-      return `<div class="mg">${p1}${pRv}${dG ? fl(dG) : ''}${pBack}${dC ? fl(dC) : ''}${(c.deskGroups ?? []).map(fl).join('')}${dB ? fl(dB) : ''}${dR ? fl(dR) : ''}${pR}${p2}${back}</div>`;
+      return `<div class="mg">${p1}${pRv}${dG ? fl(dG) : ''}${pBack}${dC ? fl(dC) : ''}${(c.deskGroups ?? []).map(fl).join('')}${dB ? fl(dB) : ''}${dR ? fl(dR) : ''}${pEc}${pR}${p2}${back}</div>`;
     }
     return `<div class="mg">${p1}${pT}${pD}${pP}${p2}${pR}${bd}${p6}${desk}${back}</div>`;
   }

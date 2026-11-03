@@ -610,6 +610,94 @@ Desk Run keeps the morning book. Its track-record and session-update panels move
   - the book as if held over each recent session: the worst day and the 1-in-20 day
 - **Shown.** On the Desk Office Today tab. It describes the book; it does not forecast.
 
+## 9q. Phases 6 and 15 as built: the economist and the scenario playbooks (2026-11-03)
+
+The history is the release study's record (`analysis/output/release_layer1/summary.json`, served by
+`/api/release-layer1`). It holds 150 releases from 2024-04 to 2026-10:
+
+| Family | Releases |
+|---|---|
+| NFP | 28 |
+| CPI | 25 |
+| ECB, BoE, BoJ | 20 each |
+| FOMC | 19 |
+| Refunding | 10 |
+| UK fiscal | 5 |
+| Retail sales | 2 |
+| PCE | 1 |
+
+Each release has the actual, the consensus and the surprise, plus how about 20 markets moved 1 to 240 minutes after it.
+
+- **The numbers** (`js/releasePlaybook.js`, code). For each high-impact release in the next 36 hours (from
+  `/api/events` and `/api/calendar-ahead`, mapped to a family by event and country):
+  - the median absolute move per market at 30 minutes and 4 hours
+  - the median time to the peak and how much of it is kept
+  - where surprises are recorded, the median signed move after hot prints and after cold prints, with counts
+
+  For CPI that is 16 recorded surprises: 5 hot and 11 cold.
+- **The economist** (`desk/roles/economist.md`, one call per full run, after the Head, so the scored book is
+  unchanged). It writes a brief per release: what is priced, size and speed, if hot, if cold, the book's cards at risk,
+  and what to watch. Every number comes from the playbook with its count, and it never forecasts the surprise
+  (`validateEconomist` flags forecasting words).
+- **Where it shows.** These are for readers. "The releases ahead" page goes in the desk magazine (after the risk desk)
+  and the desk brief, with the brief and the history table for each release. The Desk Office Research tab shows the
+  same.
+
+## 9r. Phase 17 (planned): the Desk Terminal (owner, 2026-11-03)
+
+A private terminal for the owner, built last, after the remaining phases. The model is FundaBias
+(fundabias.com), with design ideas from its public pages, made with this repo's data and agents. It never goes into
+the newsletter.
+
+**Design brief**, from FundaBias's public pages and terminal preview:
+
+- **Look.** A deep navy-indigo background with purple and gold accents.
+- **Top bar.** Market-session clocks for New York, London, Tokyo and Sydney, each marked open or closed.
+- **Module tabs**, grouped:
+  - OVERVIEW: daily, week ahead, strength
+  - MACRO: central banks, rate expectations, divergence, calendar
+  - POSITIONING: COT, retail sentiment, institutional positioning
+  - ADVANCED: seasonality, vol skew
+  - AI: the assistant
+- **News ticker.** A scrolling ticker of tagged headlines.
+- **Dense panels:**
+  - a world map of geopolitical risk with an events list
+  - a sentiment gauge with long/short bars per pair
+  - seasonality
+  - the calendar
+- **Per-asset report cards.** Each has a bias chip, a highlighted thesis line, key-driver chips and the analysis.
+- **Assistant.** A floating "ask" button.
+
+Ours is a design of its own in that spirit, not a copy.
+
+**Modules and where the data is:**
+
+| Module | Our source | Status |
+|---|---|---|
+| Daily report, London and New York updates | the book, session updates | have |
+| Currency strength, with the parts behind each score | currency manager, macro scorecard, strength | have |
+| Central-bank divergence heatmap | the central bank feeds (stance, hawkishness) | have, needs the heatmap |
+| Rate differential matrix (2y, 10y, real) | rate-diff, intl-yields, real-yield | have, needs the matrix |
+| Rate expectations and repricing, in bp since the last meeting | Fed: ZQ futures; ECB: Euribor (IBKR pulls) | **partial: needs SONIA, CORRA, BAX, ASX and NZ futures, or OIS** |
+| COT with the WILLCO index | cot-state, cot-extremes | have; compute WILLCO |
+| Retail sentiment | oanda-book | have; Myfxbook optional (`MYFXBOOK_SESSION` exists) |
+| Seasonality | daily bars (R2 history) | compute |
+| Vol skew | cvol, the options chain read | have |
+| Calendar and week ahead, release playbooks | calendar feeds, the economist | have |
+| Geopolitical map | gpr | have (country detail to check) |
+| News ticker | news-outcome, events | partial: a headline feed would help |
+| Pair drill-down (card, lines, walls, vol, seasonality, sentiment) | the book, levels, oi-levels, vol forecast | have |
+| Ask the desk | one model call over the day's pack, book and memory | new |
+| Journal | Phase 8 | planned |
+
+**Data to get:**
+
+1. Rate futures for the other central banks, through the same IBKR pulls that already fetch ZQ and Euribor: SONIA
+   (SR3/ICE), €STR, BAX (CORRA), ASX 30-day, NZ OIS. Or an OIS source.
+2. A live headline feed for the ticker: an RSS aggregator of central bank and agency headlines with no key, or a news
+   API.
+3. Optional: Myfxbook community sentiment, which the server already has a session variable for.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
@@ -618,7 +706,7 @@ Not built yet. The order is the owner's call; each item names what it needs firs
 - **Phase 5 · Session updates.** *Built (§9m).* A cheap quick run at the London open (08:00) and the New York open (14:30). It
   reads what changed since the morning book (prices against the lines, new releases, the risk flags) and updates
   only the cards it must, saying why. Never scored as a new book; logged against the morning one.
-- **Phase 6 · Event agent.** A short brief before each high-impact release, from the desk's own history of how that
+- **Phase 6 · Event agent.** *Built (§9q).* A short brief before each high-impact release, from the desk's own history of how that
   release moves each market (the event-window and release-history feeds). It covers what is priced, how big a
   surprise usually moves things and how fast. It never gives a direction for the surprise. It feeds the newsletter's
   "releases to come".
@@ -637,7 +725,7 @@ Not built yet. The order is the owner's call; each item names what it needs firs
   - It proposes and designs; it never declares a result.
   - Weekly, not daily. It works best once Phase 4 has some months of scored days.
 
-**Built since this list was written:** the evening edition (§9l); Phase 5 session updates (§9m); the Desk Office (§9n); Phases 14 and 10 (§9o); Phases 7 and 11 (§9p).
+**Built since this list was written:** the evening edition (§9l); Phase 5 session updates (§9m); the Desk Office (§9n); Phases 14 and 10 (§9o); Phases 7 and 11 (§9p); Phases 6 and 15 (§9q).
 
 **Proposed (owner, 2026-11-03), from the hedge-fund roles; order to be confirmed**
 - **Phase 10 · Performance attribution.** *Built (§9o).* Split each day's score by stage (global ruling, currency ranking, asset
@@ -650,8 +738,9 @@ Not built yet. The order is the owner's call; each item names what it needs firs
   timing, entries.
 - **Phase 14 · Data quality officer.** *Built (§9o).* Turns the Desk Pack health into actions: what failed, why, and whether to
   hold the run.
-- **Phase 15 · Scenario strategist.** "If hot / if cold" playbooks before big releases from the desk's
+- **Phase 15 · Scenario strategist.** *Built (§9q).* "If hot / if cold" playbooks before big releases from the desk's
   release-history data. Pairs with the economist (Phase 6).
+- **Phase 17 · Desk Terminal.** The owner's private terminal, built last (§9r).
 - **Phase 16 · Claims checker.** Checks everything published against the data and the Evidence Book.
 
 **Build items**
