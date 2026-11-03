@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { prose, ladderSvg, deskPages, deskCover, instName, groupPages, deskBrief } from './newsletterDesk.js';
+import { prose, ladderSvg, deskPages, deskCover, instName, groupPages, deskBrief, moveText, cardMove, isFxPair } from './newsletterDesk.js';
 import { releaseNewsletterV3 } from './newsletterV3.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
@@ -94,5 +94,11 @@ t('the two formats as whole issues: the magazine drops the regular pages that wo
   assert.ok(br.html.includes('Desk brief') && br.html.includes('the day in one read') && !br.html.includes('FX majors:'));
   assert.ok(br.html.length < mag.html.length && ed.html.includes('Desk edition'));
   assert.equal(mag.subject, 'Dollar and yen bid');
+});
+t('moves in pips (FX, yen pairs on 0.01) or points, and percent; old scores without prices give nothing', () => {
+  assert.equal(moveText('USDJPY', 0.83, 0.54), '+83 pips, +0.54%'); assert.equal(moveText('EURUSD', -0.0012, -0.11), '−12 pips, −0.11%');
+  assert.equal(moveText('GOLD', -25.3, -0.9), '−25.3 pts, −0.90%'); assert.equal(moveText('BTCUSD', 1450, 1.42), '+1450 pts, +1.42%');
+  assert.ok(isFxPair('GBPCHF') && !isFxPair('BTCUSD') && !isFxPair('SPX500'));
+  assert.equal(cardMove('USDJPY', { entry: 157.5, exit: 158.33 }), '+83 pips, +0.53%'); assert.equal(cardMove('USDJPY', { R: 1 }), null);
 });
 console.log(`newsletterDesk: ${n} tests passed`);

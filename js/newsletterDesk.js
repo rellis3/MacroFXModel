@@ -31,6 +31,25 @@ const sizeBar = (s, was) => { const w = Math.round(Math.max(0, Math.min(1.5, s ?
 const PLAIN = { global_market: 'the global analyst', credit_funding: 'the credit analyst', events_news: 'the events analyst', rates_cb: 'the rates analyst', yields_curve: 'the yields analyst',
   macro_economy: 'the macro analyst', cot_positioning: 'the positioning analyst', vol_iv: 'the volatility analyst', options_oi: 'the options analyst', levels_structure: 'the levels analyst',
   evidence_memory: 'the evidence clerk', risk_aggressive: 'the aggressive risk voice', risk_conservative: 'the conservative risk voice', risk_neutral: 'the neutral risk voice' };
+/**
+ * A market's move in the units a trader reads: pips for FX pairs (0.01 for yen pairs, 0.0001 otherwise), points in the
+ * market's own price for everything else, and the percent. chg = exit - entry (the market's direction, not the card's).
+ */
+const CCY8 = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
+export const isFxPair = n => /^[A-Z]{6}$/.test(n ?? '') && CCY8.includes(n.slice(0, 3)) && CCY8.includes(n.slice(3));
+export function pipsText(n, chg) {
+  if (!Number.isFinite(chg)) return null;
+  const sg = chg > 0 ? '+' : chg < 0 ? '−' : '';
+  if (isFxPair(n)) return `${sg}${Math.round(Math.abs(chg) / (n.endsWith('JPY') ? 0.01 : 0.0001))} pips`;
+  const a = Math.abs(chg); return `${sg}${a.toFixed(a >= 100 ? 0 : a >= 10 ? 1 : a >= 0.1 ? 2 : 3)} pts`;
+}
+export function moveText(n, chg, pct) {
+  const p = pipsText(n, chg), q = Number.isFinite(pct) ? `${pct > 0 ? '+' : pct < 0 ? '−' : ''}${Math.abs(pct).toFixed(2)}%` : null;
+  return [p, q].filter(Boolean).join(', ');
+}
+/** A scored card's market move (from its stored entry and exit), as "+83 pips, +0.54%"; null for scores kept before 2026-11-04. */
+export const cardMove = (n, c) => (Number.isFinite(c?.entry) && Number.isFinite(c?.exit) && c.entry > 0 ? moveText(n, c.exit - c.entry, (c.exit / c.entry - 1) * 100) : null);
+
 export function prose(text, { sentences = 3, chars = 600 } = {}) {
   let t = String(text ?? '').replace(/\s*\(([^()]*)\)/g, (m, inner) => (/\b[a-z]+_[a-z_]+\b|\b[a-z0-9-]+\/[a-z0-9/-]+|\b(global|currency) ruling\b|\bTESTED[- ]NULL\b|\bREOPENED\b/.test(inner) ? '' : m))
     .replace(/\b(global_market|credit_funding|events_news|rates_cb|yields_curve|macro_economy|cot_positioning|vol_iv|options_oi|levels_structure|evidence_memory|risk_aggressive|risk_conservative|risk_neutral)\b(?:'s)?/g, m => PLAIN[m.replace(/'s$/, '')] + (m.endsWith("'s") ? "'s" : ''))
@@ -214,16 +233,16 @@ export function reviewPage(review, H, { title = 'Yesterday, reviewed', compact =
     { name: 'Single analyst, same data', value: sc.control?.unweighted != null ? `${sgn2(sc.control.unweighted)} u` : 'not run', sub: sc.unweighted != null ? `the desk, unweighted: ${sgn2(sc.unweighted)} u` : '', tone: '' },
     { name: 'Lean-side line first', value: sc.race?.resolved ? `${sc.race.leanFirst} of ${sc.race.resolved}` : '–', sub: 'cards that reached a p50 line', tone: '' },
   ], H);
-  const cards = Object.entries(sc.cards ?? {}).filter(([, c]) => !c.missing && c.size > 0).map(([n, c]) => ({ n, w: c.size * c.R, R: c.R, dir: c.dir }))
+  const cards = Object.entries(sc.cards ?? {}).filter(([, c]) => !c.missing && c.size > 0).map(([n, c]) => ({ n, w: c.size * c.R, R: c.R, dir: c.dir, mv: cardMove(n, c) }))
     .sort((a, b) => Math.abs(b.w) - Math.abs(a.w)).slice(0, 12).sort((a, b) => b.w - a.w);
-  const fig = cards.length ? barFigure('The cards that moved the day, size × score', cards.map(c => ({ label: instName(c.n), v: +c.w.toFixed(2), note: `${c.dir > 0 ? 'long' : 'short'} · ${sgn2(c.R)} u` })), H,
+  const fig = cards.length ? barFigure('The cards that moved the day, size × score', cards.map(c => ({ label: instName(c.n), v: +c.w.toFixed(2), note: `${c.dir > 0 ? 'long' : 'short'} · ${sgn2(c.R)} u${c.mv ? ` · mkt ${c.mv}` : ''}` })), H,
     { unit: '', note: 'Each bar is a card\'s size times its score: the move from 08:00 to 21:00 London in the day\'s own forecast unit (u, the p50 distance), signed by the card\'s view. Green helped the book; red hurt it.' }) : '';
   const lessons = (ref?.lessons ?? []).map(l => `<li><b>${esc(l.scope)}${l.about ? ` · ${esc(l.about)}` : ''}.</b> ${esc(prose(l.lesson, { sentences: 2, chars: 300 }))}</li>`).join('');
   const recLine = rec?.eligibleDays ? `Running record, interim and not judged: ${rec.eligibleDays} counted day${rec.eligibleDays === 1 ? '' : 's'}, mean ${sgn2(rec.S?.mean)} u${rec.S?.ci ? ` [${sgn2(rec.S.ci.lo)}, ${sgn2(rec.S.ci.hi)}]` : ''}; vs the single analyst ${sgn2(rec.vsControl?.mean)} u. Judged at 120+ counted days.` : 'The pre-registered record starts counting with books written before 08:00 London.';
   return { section: title, html: `<div class="kick">${esc(title)} · ${esc(day)}</div><h2 class="sh">${esc(compact ? plainHead : ref?.headline ? prose(ref.headline, { sentences: 1, chars: 160 }) : `The book scored ${sgn2(sc.S)} u`)}</h2>
 <p class="evl">${evBadge('observed')}${evBadge('model')}<span style="font:11px var(--sans,system-ui);color:#5b6b82">${compact ? `The morning book scored against the day. ${sc.eligible ? 'This day counts in the desk\'s test.' : 'This day does not count in the desk\'s test (the book was written after 08:00 London).'}` : `The morning book scored against the day (forge/DESK_ANALYST_PIPELINE_PREREG.md), then the desk's evening review. ${sc.eligible ? 'This day counts in the test.' : 'This day does not count in the test: the book was written after 08:00 London.'}`}</span></p>
 ${tiles}${fig}
-${mv && (mv.best?.length || mv.worst?.length) ? `<p class="small3"><b>Made the day:</b> ${mv.best.map(m => `${esc(instName(m.inst))} ${sgn2(m.R)} u`).join(', ') || '–'} · <b>Lost it:</b> ${mv.worst.map(m => `${esc(instName(m.inst))} ${sgn2(m.R)} u`).join(', ') || '–'}</p>` : ''}
+${mv && (mv.best?.length || mv.worst?.length) ? `<p class="small3"><b>Made the day:</b> ${mv.best.map(m => `${esc(instName(m.inst))} ${sgn2(m.R)} u${cardMove(m.inst, sc.cards?.[m.inst]) ? ` (${esc(cardMove(m.inst, sc.cards[m.inst]))})` : ''}`).join(', ') || '–'} · <b>Lost it:</b> ${mv.worst.map(m => `${esc(instName(m.inst))} ${sgn2(m.R)} u${cardMove(m.inst, sc.cards?.[m.inst]) ? ` (${esc(cardMove(m.inst, sc.cards[m.inst]))})` : ''}`).join(', ') || '–'}</p>` : ''}
 ${compact ? '' : (ref?.worked?.length || ref?.failed?.length) ? `<div class="two">${ref.worked?.length ? `<div class="box"><h4>What the book got right</h4><ul class="lst" style="margin:0">${ref.worked.slice(0, 4).map(x => `<li>${esc(prose(x, { sentences: 1, chars: 220 }))}</li>`).join('')}</ul></div>` : ''}${ref.failed?.length ? `<div class="box warn"><h4>What it got wrong</h4><ul class="lst" style="margin:0">${ref.failed.slice(0, 4).map(x => `<li>${esc(prose(x, { sentences: 1, chars: 220 }))}</li>`).join('')}</ul></div>` : ''}</div>` : ''}
 ${!compact && lessons ? `<h3 class="ss">What the desk takes from it</h3><ul class="lst">${lessons}</ul><p class="small3">${evBadge('untested')} One day is an anecdote: these are things to check today, not findings.</p>` : ''}
 ${!compact && ref?.watch?.length ? `<h3 class="ss">Carried into today</h3><ul class="lst">${ref.watch.slice(0, 4).map(x => `<li>${esc(prose(x, { sentences: 1, chars: 200 }))}</li>`).join('')}</ul>` : ''}

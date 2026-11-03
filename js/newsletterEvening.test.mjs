@@ -46,7 +46,7 @@ t('the evening edition: a whole page with the moves, the writer\'s sections labe
 t('compact evening: currency chart from the pairs, a market grid, no lessons or watch list, no prereg path', () => {
   const cs = currencyStrength({ USDJPY: { u: 2 }, EURJPY: { u: 1 }, EURUSD: { u: -1 }, GOLD: { u: 1 } });
   assert.deepEqual(cs.map(c => c.ccy), ['USD', 'EUR', 'JPY']); assert.equal(cs[0].v, 1.5); assert.equal(cs.at(-1).v, -1.5);
-  assert.match(moveGrid({ EURUSD: { u: -1 } }, { EURUSD: { rating: 'SHORT' } }, H), /EUR\/USD.*−1\.0u.*short/s);
+  assert.match(moveGrid({ EURUSD: { u: -1, chg: -0.0012, pct: -0.11 }, USDJPY: { u: 2.44, chg: 0.83, pct: 0.54 } }, { EURUSD: { rating: 'SHORT' } }, H), /EUR\/USD.*short.*−1\.0u.*−12 pips, −0\.11%.*USD\/JPY.*\+83 pips, \+0\.54%/s);
   const issue = { subject: 'S', standfirst: 'One. Two. Three. Four.', sections: [{ title: 'The day', label: 'Observed data', body: 'A. B. C. D. E.' }] };
   const out = renderEvening({ date: '2026-11-04', issue, score, reflection, movers: null, record, moves: dayMoves(bars, cards, '2026-11-04'), cards }, H);
   assert.ok(!out.html.includes('What the desk takes from it') && !out.html.includes('Carried into today') && !out.html.includes('PREREG'));

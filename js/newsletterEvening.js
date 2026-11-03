@@ -10,7 +10,7 @@
  */
 import { MAG_CSS, barFigure, flatTable, tileRow, evBadge } from './newsletterMag.js';
 import { BASE_CSS, DISCLAIMER } from './newsletter.js';
-import { instName, prose, reviewPage } from './newsletterDesk.js';
+import { instName, prose, reviewPage, moveText } from './newsletterDesk.js';
 import { DESK_UNIVERSE } from './deskPack.js';
 import { windowFor, unitOf } from './deskScore.js';
 
@@ -27,7 +27,7 @@ export function dayMoves(barsByInst, cards, date) {
     if (!w.length) continue;
     const o = w[0].open, c = w.at(-1).close, hi = Math.max(...w.map(b => b.high)), lo = Math.min(...w.map(b => b.low));
     const u = unitOf(cards?.[n]?.levels);
-    out[n] = { pct: +((c / o - 1) * 100).toFixed(3), u: u ? +((c - o) / u).toFixed(2) : null, rangeU: u ? +((hi - lo) / u).toFixed(2) : null };
+    out[n] = { pct: +((c / o - 1) * 100).toFixed(3), chg: c - o, u: u ? +((c - o) / u).toFixed(2) : null, rangeU: u ? +((hi - lo) / u).toFixed(2) : null };
   }
   return out;
 }
@@ -60,7 +60,7 @@ export function moveGrid(moves, cards, H) {
   const groups = Object.entries(DESK_UNIVERSE).map(([g, names]) => {
     const rows = names.filter(n => moves[n]?.u != null); if (!rows.length) return '';
     return `<div style="margin:6px 0 2px;font:700 10px var(--sans,system-ui);letter-spacing:.08em;color:#5b6b82">${esc(GROUP_LABEL[g].toUpperCase())}</div><div style="display:flex;flex-wrap:wrap;gap:4px">${rows.map(n => { const u = moves[n].u, dark = Math.abs(u) > 1.2, v = cards?.[n]?.rating ? cards[n].rating.replace('STRONG_', '').toLowerCase() : '';
-      return `<div style="width:84px;padding:5px 6px;border-radius:6px;background:${col(u)};color:${dark ? '#fff' : '#14202e'};font:11px var(--sans,system-ui)"><b style="display:block;font-size:11px">${esc(instName(n))}</b><span style="font-family:Consolas,Menlo,monospace">${u > 0 ? '+' : u < 0 ? '−' : ''}${Math.abs(u).toFixed(1)}u</span>${v && v !== 'flat' ? ` <span style="opacity:.8">· ${esc(v)}</span>` : ''}</div>`; }).join('')}</div>`;
+      return `<div style="width:118px;padding:5px 6px;border-radius:6px;background:${col(u)};color:${dark ? '#fff' : '#14202e'};font:11px var(--sans,system-ui)"><b style="display:block;font-size:11px">${esc(instName(n))}${v && v !== 'flat' ? ` <span style="font-weight:400;opacity:.8">· ${esc(v)}</span>` : ''}</b><span style="font-family:Consolas,Menlo,monospace">${u > 0 ? '+' : u < 0 ? '−' : ''}${Math.abs(u).toFixed(1)}u</span><span style="display:block;font-size:9.5px;opacity:.85">${esc(moveText(n, moves[n].chg, moves[n].pct))}</span></div>`; }).join('')}</div>`;
   }).join('');
   return `<div style="margin:6px 0 10px">${groups}</div>`;
 }
@@ -93,7 +93,7 @@ export function renderEvening(ev, H) {
   const p1 = `<div class="pg p1">${mh('The day')}<div class="kick">Evening edition · ${esc(M.date)}</div><h1 class="hd">${esc(is.subject ?? 'The day, in the markets')}</h1>
 ${is.standfirst ? `<p class="ld">${esc(prose(is.standfirst, { sentences: 2, chars: 300 }))}</p>` : ''}<p class="small3">Written by the desk pipeline at the close from the day's prices, the morning book and the evening review. Moves run 08:00 to 21:00 London; u is the morning forecast's p50 distance, so 1 u is a typical half-day move.</p>
 ${tiles}${ccyFig}${sections ? `<div class="kick" style="margin-top:12px">What happened</div>${sections}` : ''}</div>`;
-  const p2 = `<div class="pg pgflow">${mh('Every market')}<div class="kick">The day in every market</div><h2 class="sh">Where the moves were</h2><p class="evl">${evBadge('observed')}<span style="font:11px var(--sans,system-ui);color:#5b6b82">08:00 to 21:00 London, in u (1 u = a typical half-day move). Green rose, red fell; the label is the morning book's view.</span></p>${moveGrid(moves, cards, H)}</div>`;
+  const p2 = `<div class="pg pgflow">${mh('Every market')}<div class="kick">The day in every market</div><h2 class="sh">Where the moves were</h2><p class="evl">${evBadge('observed')}<span style="font:11px var(--sans,system-ui);color:#5b6b82">08:00 to 21:00 London, in u (1 u = that market's typical half-day move), with the move in pips (FX) or points and in percent. Green rose, red fell; the label is the morning book's view.</span></p>${moveGrid(moves, cards, H)}</div>`;
   const p3 = rv ? `<div class="pg pgflow">${mh(rv.section)}${rv.html}</div>` : '';
   const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">The Chain · evening ${esc(ev.date)}</div></div>`;
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${BASE_CSS}${MAG_CSS}</style></head><body><div class="wrap mgw"><div class="mg">${p1}${p2}${p3}</div>${foot}</div></body></html>`;
