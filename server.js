@@ -236,7 +236,7 @@ import { watchPlan as _twPlan, check as _twCheck, message as _twMessage } from '
 import { tradeRows as _jcRows, coach as _jcCoach, execution as _jcExec } from './js/deskJournal.js';   // Phases 8 and 13
 import { parseRegister as _tdParseRegister, opsReport as _tdOps, outline as _tdOutline, section as _tdSection, readingList as _tdReadingList, registerText as _tdRegisterText, screen as _tdScreen, validateTheories as _tdValidate } from './js/theoryDesk.js';   // Phases 9 and 12
 import { upcoming as _rpUpcoming, playbookText as _rpPlaybookText } from './js/releasePlaybook.js';
-import { dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
+import { currencyStrength as _evCcy, dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
 import { expandFeeds as _dpExpandFeeds, buildDeskPack as _dpBuild, packForSkill as _dpForSkill, packSummary as _dpSummary, indexRow as _dpIndexRow, upsertIndex as _dpUpsertIndex, shouldBuild as _dpShouldBuild, londonDate as _dpLondonDate, DESK_SKILLS as _DP_SKILLS, DESK_UNIVERSE as _DP_UNIVERSE, DESK_SUBSETS as _DP_SUBSETS, packFresh as _dpFresh } from './js/deskPack.js';
@@ -4921,6 +4921,7 @@ async function _dsEvening(run, score, reflection, bars, idx) {
   const cards = run.head.book.instruments ?? {}, moves = _evDayMoves(bars, cards, run.date), d = run.debate ?? {};
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
   const { system, prompt } = _deskStagePrompt({ role, pack: { date: run.date }, ledger: DESK_EVIDENCE, sections: [
+    ['The currencies today, strongest to weakest (the average move in u across each one\'s pairs; the issue draws this chart)', _evCcy(moves).map(c => `${c.ccy} ${c.v > 0 ? '+' : ''}${c.v} u (${c.n} pairs)`).join(', ')],
     ['Every market, 08:00 to 21:00 London (move, in u, range in u, the morning view)', _evMovesText(moves, cards)],
     ["The morning's global ruling", d.global?.view ? { tone: d.global.view.tone, conviction: d.global.view.conviction, summary: d.global.view.summary } : run.head.book.global],
     ["The morning's currency ranking", d.currency?.view ? { ranking: d.currency.view.ranking, biases: Object.fromEntries(Object.entries(d.currency.view.currencies ?? {}).map(([k, v]) => [k, v.bias])) } : run.head.book.currencies],

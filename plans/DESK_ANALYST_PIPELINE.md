@@ -480,6 +480,14 @@ The owner asked for the evening review to reach the reader, in both forms.
     issues now.
   - The Desk Run track-record panel links to it, and the Atlas archive labels it "Desk evening".
 
+**Shorter evening edition (owner, 2026-11-03: "too wordy").** The first issue ran ~2,000 words over 7 pages and told
+the JPY/CHF story six times. Now: a two-sentence standfirst and three short sections ("The day", "What stood out",
+"Into tomorrow", ~180 words in all, each capped at three sentences); a currency-strength chart computed from the pairs
+(`currencyStrength`, also given to the writer so its prose matches the chart) instead of the currencies paragraph; one
+colour grid of every market (`moveGrid`) instead of the table and seven group charts; and the book page in its
+compact form (plain-English heading and tiles, the cards chart and the made/lost line; the lessons, the watch list and
+the record line stay in the Desk Office). Three pages instead of seven.
+
 ## 9m. Phase 5 as built: session updates (2026-11-03)
 
 At the London open (08:05) and the New York open (14:35), the intraday manager (`desk/roles/session_update.md`, one

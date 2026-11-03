@@ -41,6 +41,30 @@ export function movesText(moves, cards) {
   }).filter(Boolean).join('\n');
 }
 
+
+const CCY8 = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
+/** Each currency's day, read from its pairs: the mean move in u across every pair it is in, signed for that currency. */
+export function currencyStrength(moves) {
+  const acc = Object.fromEntries(CCY8.map(c => [c, []]));
+  for (const [n, m] of Object.entries(moves ?? {})) {
+    if (n.length !== 6 || m.u == null) continue;
+    const a = n.slice(0, 3), b = n.slice(3);
+    if (acc[a]) acc[a].push(m.u); if (acc[b]) acc[b].push(-m.u);
+  }
+  return CCY8.filter(c => acc[c].length).map(c => ({ ccy: c, v: +(acc[c].reduce((x, y) => x + y, 0) / acc[c].length).toFixed(2), n: acc[c].length })).sort((x, y) => y.v - x.v);
+}
+
+/** Every market as a coloured tile (green up, red down, stronger colour for a bigger move in u), grouped. */
+export function moveGrid(moves, cards, H) {
+  const { esc } = H, col = u => { const z = Math.max(-1, Math.min(1, u / 2.5)); return z >= 0 ? `rgba(11,122,85,${0.12 + z * 0.75})` : `rgba(180,35,47,${0.12 - z * 0.75})`; };
+  const groups = Object.entries(DESK_UNIVERSE).map(([g, names]) => {
+    const rows = names.filter(n => moves[n]?.u != null); if (!rows.length) return '';
+    return `<div style="margin:6px 0 2px;font:700 10px var(--sans,system-ui);letter-spacing:.08em;color:#5b6b82">${esc(GROUP_LABEL[g].toUpperCase())}</div><div style="display:flex;flex-wrap:wrap;gap:4px">${rows.map(n => { const u = moves[n].u, dark = Math.abs(u) > 1.2, v = cards?.[n]?.rating ? cards[n].rating.replace('STRONG_', '').toLowerCase() : '';
+      return `<div style="width:84px;padding:5px 6px;border-radius:6px;background:${col(u)};color:${dark ? '#fff' : '#14202e'};font:11px var(--sans,system-ui)"><b style="display:block;font-size:11px">${esc(instName(n))}</b><span style="font-family:Consolas,Menlo,monospace">${u > 0 ? '+' : u < 0 ? '−' : ''}${Math.abs(u).toFixed(1)}u</span>${v && v !== 'flat' ? ` <span style="opacity:.8">· ${esc(v)}</span>` : ''}</div>`; }).join('')}</div>`;
+  }).join('');
+  return `<div style="margin:6px 0 10px">${groups}</div>`;
+}
+
 const sg = x => `${x > 0 ? '+' : x < 0 ? '−' : ''}${Math.abs(x).toFixed(2)}`;
 
 /**
@@ -61,19 +85,15 @@ export function renderEvening(ev, H) {
     { name: 'Moves past a typical half-day', value: String(big), sub: 'at least 1 u either way', tone: '' },
     { name: "The book's day score", value: ev.score?.S != null ? `${sg(ev.score.S)} u` : '–', sub: ev.score?.eligible ? 'counts in the test' : 'does not count in the test', tone: ev.score?.S > 0 ? 'up' : ev.score?.S < 0 ? 'dn' : '' },
   ], H);
-  const groupFigs = Object.entries(DESK_UNIVERSE).map(([g, names]) => {
-    const rows = names.filter(n => moves[n]?.u != null).map(n => ({ label: instName(n), v: moves[n].u, note: cards[n]?.rating ? cards[n].rating.toLowerCase().replace('_', ' ') : '' })).sort((a, b) => b.v - a.v);
-    return rows.length ? barFigure(`${GROUP_LABEL[g]}, the day in u`, rows, H, { unit: '', note: '' }) : '';
-  }).filter(Boolean);
-  const table = flatTable(['Market', 'Move', 'In u', 'Range in u', "Book's view"], Object.entries(moves).sort((a, b) => Math.abs(b[1].u ?? 0) - Math.abs(a[1].u ?? 0)).slice(0, 14)
-    .map(([n, m]) => [`<b>${esc(instName(n))}</b>`, `<span class="${m.pct > 0 ? 'up' : m.pct < 0 ? 'dn' : ''}">${m.pct > 0 ? '+' : ''}${m.pct.toFixed(2)}%</span>`, m.u != null ? sg(m.u) : '–', m.rangeU ?? '–', esc((cards[n]?.rating ?? '–').replace('_', ' ').toLowerCase())]), ['l', 'r', 'r', 'r', 'l']);
-  const sections = (is.sections ?? []).map(s => `<h3 class="ss" style="margin:14px 0 4px">${esc(s.title)}</h3><p class="evl">${evBadge(LBL[s.label] ?? 'untested')}</p><p>${esc(prose(s.body, { sentences: 8, chars: 1400 }))}</p>`).join('');
-  const rv = reviewPage({ score: ev.score, reflection: ev.reflection, movers: ev.movers, record: ev.record }, H, { title: 'The book against the day' });
+  const cs = currencyStrength(moves);
+  const ccyFig = cs.length >= 4 ? barFigure('The currencies today, strongest to weakest (average move in u across their pairs)', cs.map(c => ({ label: c.ccy, v: c.v, note: `${c.n} pairs` })), H, { unit: '', note: '' }) : '';
+  const sections = (is.sections ?? []).map(s => `<h3 class="ss" style="margin:14px 0 4px">${esc(s.title)}</h3><p class="evl">${evBadge(LBL[s.label] ?? 'untested')}</p><p>${esc(prose(s.body, { sentences: 3, chars: 420 }))}</p>`).join('');
+  const rv = reviewPage({ score: ev.score, reflection: ev.reflection, movers: ev.movers, record: ev.record }, H, { title: 'The book against the day', compact: true });
   const subject = is.subject ? `Evening: ${is.subject}` : `Evening: the day in ${all.length} markets`;
   const p1 = `<div class="pg p1">${mh('The day')}<div class="kick">Evening edition · ${esc(M.date)}</div><h1 class="hd">${esc(is.subject ?? 'The day, in the markets')}</h1>
-${is.standfirst ? `<p class="ld">${esc(prose(is.standfirst, { sentences: 6, chars: 900 }))}</p>` : ''}<p class="small3">Written by the desk pipeline at the close from the day's prices, the morning book and the evening review. Moves run 08:00 to 21:00 London; u is the morning forecast's p50 distance, so 1 u is a typical half-day move.</p>
-${tiles}${sections ? `<div class="kick" style="margin-top:12px">What happened</div>${sections}` : ''}</div>`;
-  const p2 = `<div class="pg pgflow">${mh('Every market')}<div class="kick">The day in every market</div><h2 class="sh">Where the moves were</h2><p class="evl">${evBadge('observed')}<span style="font:11px var(--sans,system-ui);color:#5b6b82">OANDA mid prices, 08:00 to 21:00 London, in the day's own forecast unit. The label on each bar is the morning book's view.</span></p>${table}${groupFigs.join('')}</div>`;
+${is.standfirst ? `<p class="ld">${esc(prose(is.standfirst, { sentences: 2, chars: 300 }))}</p>` : ''}<p class="small3">Written by the desk pipeline at the close from the day's prices, the morning book and the evening review. Moves run 08:00 to 21:00 London; u is the morning forecast's p50 distance, so 1 u is a typical half-day move.</p>
+${tiles}${ccyFig}${sections ? `<div class="kick" style="margin-top:12px">What happened</div>${sections}` : ''}</div>`;
+  const p2 = `<div class="pg pgflow">${mh('Every market')}<div class="kick">The day in every market</div><h2 class="sh">Where the moves were</h2><p class="evl">${evBadge('observed')}<span style="font:11px var(--sans,system-ui);color:#5b6b82">08:00 to 21:00 London, in u (1 u = a typical half-day move). Green rose, red fell; the label is the morning book's view.</span></p>${moveGrid(moves, cards, H)}</div>`;
   const p3 = rv ? `<div class="pg pgflow">${mh(rv.section)}${rv.html}</div>` : '';
   const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">The Chain · evening ${esc(ev.date)}</div></div>`;
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${BASE_CSS}${MAG_CSS}</style></head><body><div class="wrap mgw"><div class="mg">${p1}${p2}${p3}</div>${foot}</div></body></html>`;

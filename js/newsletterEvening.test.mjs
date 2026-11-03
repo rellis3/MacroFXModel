@@ -1,6 +1,6 @@
 // Tests for js/newsletterEvening.js and the "Yesterday, reviewed" page.   node js/newsletterEvening.test.mjs
 import assert from 'node:assert/strict';
-import { dayMoves, movesText, renderEvening } from './newsletterEvening.js';
+import { dayMoves, movesText, renderEvening, currencyStrength, moveGrid } from './newsletterEvening.js';
 import { reviewPage } from './newsletterDesk.js';
 import { londonMs } from './deskScore.js';
 
@@ -41,6 +41,16 @@ t('the evening edition: a whole page with the moves, the writer\'s sections labe
   assert.ok(out.html.includes('The book against the day') && out.html.includes('NOT FINANCIAL ADVICE'));
   assert.ok(out.html.includes('Untested interpretation') && !out.html.includes('yields_curve'), 'labelled, no source tags');
   assert.ok(out.text.includes('WHAT MOVED') && out.text.includes('NOT FINANCIAL ADVICE'));
+});
+
+t('compact evening: currency chart from the pairs, a market grid, no lessons or watch list, no prereg path', () => {
+  const cs = currencyStrength({ USDJPY: { u: 2 }, EURJPY: { u: 1 }, EURUSD: { u: -1 }, GOLD: { u: 1 } });
+  assert.deepEqual(cs.map(c => c.ccy), ['USD', 'EUR', 'JPY']); assert.equal(cs[0].v, 1.5); assert.equal(cs.at(-1).v, -1.5);
+  assert.match(moveGrid({ EURUSD: { u: -1 } }, { EURUSD: { rating: 'SHORT' } }, H), /EUR\/USD.*−1\.0u.*short/s);
+  const issue = { subject: 'S', standfirst: 'One. Two. Three. Four.', sections: [{ title: 'The day', label: 'Observed data', body: 'A. B. C. D. E.' }] };
+  const out = renderEvening({ date: '2026-11-04', issue, score, reflection, movers: null, record, moves: dayMoves(bars, cards, '2026-11-04'), cards }, H);
+  assert.ok(!out.html.includes('What the desk takes from it') && !out.html.includes('Carried into today') && !out.html.includes('PREREG'));
+  assert.ok(!out.html.includes('Four.'), 'the standfirst is capped at two sentences');
 });
 
 console.log(`newsletterEvening: ${n} tests passed`);

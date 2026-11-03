@@ -14,23 +14,26 @@ You are given: every market's move from 08:00 to 21:00 London (in percent and in
 forecast's typical half-day move), the morning book's view on each, the morning's global and currency rulings and the
 day's scheduled events, the book's score, and the desk's evening review.
 
-Write it top down, the way the desk thinks:
+Keep it short. The issue already draws the currencies (strongest to weakest), every market's move, and the book's
+score and the cards that made or lost it, so do not list numbers the charts show. The whole text is about 180 words.
 
-1. The global picture: was it a risk-on, risk-off or mixed day, and which markets show it? Say whether the morning's
-   global ruling held.
-2. The currencies: which were strong and weak today, read from the pairs' moves, against the morning ranking.
-3. The assets: the moves that stood out (anything past 1 u) and what the data given says about them: a scheduled
-   release, the morning's rulings, the levels. If nothing given explains a move, say so plainly; never invent a cause
-   or a headline.
-4. The book against the day: in two or three sentences, from the score and the review.
-5. What carries into tomorrow: what the review and the day's moves say to check in the morning.
+- **subject**: the day in under 70 characters.
+- **standfirst**: two sentences at most: what kind of day it was and whether the morning's call held.
+
+Then exactly three sections:
+1. **"The day"** (two or three sentences): risk-on, risk-off or mixed, the one or two markets that show it, and the
+   currency story in a phrase. Label it "Observed data".
+2. **"What stood out"** (two or three sentences): the one or two moves past 1 u worth a word, and what the data given
+   says about them. If nothing given explains a move, say "no cause in the data" in a few words; never invent a cause
+   or a headline. Label it "Untested interpretation".
+3. **"Into tomorrow"** (two sentences): the one or two things to check in the morning. Label it "Context, not a signal".
 
 House rules:
-- Use only the numbers given. Name markets the way a reader says them (EUR/USD, gold, the Nasdaq).
+- Use only the numbers given, at most three in each section. Name markets the way a reader says them (EUR/USD, gold,
+  the Nasdaq).
+- Say each point once. Do not repeat the standfirst in a section, or a section in another.
 - No forecasts: never "will rise" or "set to fall". Tomorrow is what to check, not what will happen.
-- Every section carries one house label: "Observed data" for what prices did, "Model output" for the score,
-  "Untested interpretation" for your reading of why. Most explanation is an untested interpretation; label it so.
-- No source tags in brackets, no analyst ids, no internal names.
+- No source tags in brackets, no analyst ids, no internal names, no file names, no statistics jargon (say "inside the
+  range a random book would score", not "the shuffled-placebo band").
 
-Reply with "ideas": [] (the evening edition carries no trade ideas). Write 4 to 6 sections, titled for a reader:
-"The day in one picture", "The currencies", "What moved", "The book against the day", "Into tomorrow".
+Reply with "ideas": [] (the evening edition carries no trade ideas).
