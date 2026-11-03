@@ -110,6 +110,12 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
     headOut = { ok: r.ok, book: r.value ?? null, notes: r.notes ?? [], errors: r.errors ?? [], attempts: r.attempts };
   }
   // The per-currency exposure cap (js/deskExposure.js): arithmetic on the Head's sizes, after the model.
+  // Today's forecast lines in price on every card (arithmetic, js/deskRoles.js priceLadder), for the newsletter's
+  // ladder charts and the page.
+  if (headOut.ok) {
+    const gd = groupData(pack, allInstruments());
+    for (const [n, c] of Object.entries(headOut.book.instruments)) if (gd[n]?.levels) c.levels = gd[n].levels;
+  }
   if (headOut.ok && exposureCap > 0) {
     const capped = capExposure(headOut.book.instruments, { cap: exposureCap });
     headOut.book.instruments = capped.cards;
