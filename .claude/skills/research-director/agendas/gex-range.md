@@ -34,7 +34,7 @@ dealer`. Hand chosen cards to `research-protocol` to claim.
 
 ## Questions, ranked
 
-### Q1. Split-book mirror: NQ against ES on the days their books disagree — score 14/15
+### Q1. Split-book mirror: NQ against ES on the days their books disagree — score 14/15 — **RUN 2026-11-03: NULL** (`gex-split-book`)
 
 > Take the days when NQ's and ES's dealer books disagree, one short gamma and the other long. Build the spread of their
 > next-session diffusion ratios. The two markets share the recent fall that drives the leverage effect, but not the
@@ -152,6 +152,26 @@ Scores: value 2 · answerable 2 · mechanism 2 · novelty 2 · cost 3.
 | Falsifier | no decay with age, or pseudo-flips score as well |
 
 Scores: value 1 · answerable 2 · mechanism 2 · novelty 2 · cost 3.
+
+## Result of Q1 and what it changes (2026-11-03)
+
+`gex-split-book` came back **NULL**: β +0.027 [−0.024, +0.078], t 1.0, placebo 85th percentile, and the NQ-side mirror
+had the wrong sign (`oi_research_book/GEX_SPLIT_BOOK_RESULTS.md`). Post-hoc: disagreement days are **weak-book days**
+(both books near zero), and on them both markets widen together. So the per-instrument effect reads as a common move
+that the gamma sign correlates with. Per the prereg, **Q2–Q5 on the CME book are closed.** The live question becomes
+whether a *strongly* short book does anything, which the CME book can't answer.
+
+**Follow-up questions this raises (not yet scored):**
+
+> **Q1b (forward, Cboe book).** On the full index + ETF book, take days the two books are strong and opposite: each
+> beyond its own median strength, opposite signs. Build the same NQ−ES range spread. Does it lean toward the short book
+> by more than the shifted-label noise? Compare it with weak-disagreement days as the control. Unpark at ~100
+> strong-opposite days of the Cboe capture (count them monthly).
+
+> **Q1c (what the common driver is).** On the days both books flip short together, decompose the range widening into
+> what trailing σ, VIX/VXN level and recent drawdown already price, and what is left. Is any of the "short gamma"
+> widening left once implied vol is in the baseline? Uses data in the repo; it is the IV leg the earlier controls never
+> had.
 
 ## Parked
 
