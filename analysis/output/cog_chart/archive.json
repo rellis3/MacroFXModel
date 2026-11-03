@@ -264,6 +264,17 @@
   "days": 254
  },
  {
+  "name": "IH5",
+  "label": "Euribor 3M Mar25 (ICE IH5)",
+  "group": "Euribor 3M (ICE I)",
+  "file": "stir/ICEEU_IH5.csv",
+  "source": "IBKR 15-minute TRADES",
+  "first": "2024-07-26",
+  "last": "2024-12-23",
+  "bars": 8554,
+  "days": 107
+ },
+ {
   "name": "IH6",
   "label": "Euribor 3M Mar26 (ICE IH6)",
   "group": "Euribor 3M (ICE I)",
@@ -271,8 +282,19 @@
   "source": "IBKR 15-minute TRADES",
   "first": "2025-03-17",
   "last": "2026-03-16",
-  "bars": 19960,
-  "days": 252
+  "bars": 20200,
+  "days": 255
+ },
+ {
+  "name": "IM5",
+  "label": "Euribor 3M Jun25 (ICE IM5)",
+  "group": "Euribor 3M (ICE I)",
+  "file": "stir/ICEEU_IM5.csv",
+  "source": "IBKR 15-minute TRADES",
+  "first": "2024-10-22",
+  "last": "2025-03-24",
+  "bars": 8482,
+  "days": 107
  },
  {
   "name": "IM6",
@@ -282,8 +304,19 @@
   "source": "IBKR 15-minute TRADES",
   "first": "2025-06-16",
   "last": "2026-06-15",
-  "bars": 19990,
-  "days": 252
+  "bars": 20230,
+  "days": 255
+ },
+ {
+  "name": "IU5",
+  "label": "Euribor 3M Sep25 (ICE IU5)",
+  "group": "Euribor 3M (ICE I)",
+  "file": "stir/ICEEU_IU5.csv",
+  "source": "IBKR 15-minute TRADES",
+  "first": "2025-01-21",
+  "last": "2025-06-23",
+  "bars": 8540,
+  "days": 107
  },
  {
   "name": "IU6",
@@ -293,8 +326,19 @@
   "source": "IBKR 15-minute TRADES",
   "first": "2025-09-15",
   "last": "2026-09-14",
-  "bars": 19944,
-  "days": 252
+  "bars": 20183,
+  "days": 255
+ },
+ {
+  "name": "IZ4",
+  "label": "Euribor 3M Dec24 (ICE IZ4)",
+  "group": "Euribor 3M (ICE I)",
+  "file": "stir/ICEEU_IZ4.csv",
+  "source": "IBKR 15-minute TRADES",
+  "first": "2024-04-25",
+  "last": "2024-09-23",
+  "bars": 8555,
+  "days": 107
  },
  {
   "name": "IZ5",
@@ -304,8 +348,8 @@
   "source": "IBKR 15-minute TRADES",
   "first": "2024-12-16",
   "last": "2025-12-15",
-  "bars": 19943,
-  "days": 252
+  "bars": 20183,
+  "days": 255
  },
  {
   "name": "IZ6",
