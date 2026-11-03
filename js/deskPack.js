@@ -359,6 +359,23 @@ export function buildDeskPack(results, { now, startedAt = now, trigger = 'manual
   };
 }
 
+/**
+ * Is a saved pack still the right one to run the desk on? A run reads the morning as it is now, so a pack more
+ * than `maxAgeMs` old is rebuilt, and so is one built from an older feed list (feeds added or dropped since).
+ * On 2026-11-03 the 13:08 run read the 04:46 pack: eight hours old, and from before that morning's feed fixes.
+ */
+export function packFresh(pack, now, { maxAgeMs = 90 * 60_000 } = {}) {
+  if (!pack?.skills) return { fresh: false, reason: 'no pack' };
+  if (pack.date !== londonDate(now)) return { fresh: false, reason: `pack is for ${pack.date}` };
+  const ageMs = now - Date.parse(pack.builtAt);
+  if (!(ageMs <= maxAgeMs)) return { fresh: false, reason: `pack is ${Math.round(ageMs / 60_000)} minutes old` };
+  const have = new Set(Object.values(pack.skills).flatMap(s => Object.keys(s.feeds ?? {})));
+  const want = expandFeeds().map(f => f.id);
+  const missing = want.filter(id => !have.has(id)), extra = [...have].filter(id => !want.includes(id));
+  if (missing.length || extra.length) return { fresh: false, reason: `feed list changed (${[...missing.map(x => `+${x}`), ...extra.map(x => `-${x}`)].slice(0, 6).join(', ')})` };
+  return { fresh: true, reason: null };
+}
+
 /** One skill's part of a pack (what that analyst will be handed in Phase 1), with the pack's header. */
 export function packForSkill(pack, skillId) {
   const s = pack?.skills?.[skillId];

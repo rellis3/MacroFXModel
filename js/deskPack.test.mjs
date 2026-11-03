@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import {
   DESK_FEEDS, DESK_SKILLS, expandFeeds, findAsOf, toMs, isEmptyPayload, slimPayload, packEntry, buildDeskPack,
   packForSkill, packSummary, upsertIndex, indexRow, shouldBuild, londonDate, allInstruments, instrumentLegs, groupOf,
-  DESK_SUBSETS, DESK_CCYS,
+  DESK_SUBSETS, DESK_CCYS, packFresh,
 } from './deskPack.js';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -161,6 +161,17 @@ t('shouldBuild: London weekdays from 06:40, once a day, across the clock change'
   assert.equal(shouldBuild(Date.parse('2026-07-01T05:45:00Z'), null), true);          // 06:45 BST
   assert.equal(shouldBuild(Date.parse('2026-07-01T05:30:00Z'), null), false);         // 06:30 BST
   assert.equal(londonDate(Date.parse('2026-07-01T23:30:00Z')), '2026-07-02');
+});
+
+t('packFresh: rebuild a pack that is old, from another day, or from an older feed list', () => {
+  const now = Date.parse('2026-11-03T13:00:00Z');
+  const mk = at => buildDeskPack(expandFeeds().map(f => ({ feed: f, result: { json: { asOf: '2026-11-03T06:00:00Z', v: 1 }, httpStatus: 200 } })), { now: at });
+  assert.equal(packFresh(mk(now - 30 * 60_000), now).fresh, true);
+  assert.match(packFresh(mk(Date.parse('2026-11-03T04:46:00Z')), now).reason, /minutes old/);
+  assert.match(packFresh(mk(Date.parse('2026-11-02T12:50:00Z')), now).reason, /pack is for 2026-11-02/);
+  const p = mk(now); const [skill] = Object.keys(p.skills); const [id] = Object.keys(p.skills[skill].feeds); delete p.skills[skill].feeds[id];
+  assert.match(packFresh(p, now).reason, /feed list changed/);
+  assert.equal(packFresh(null, now).fresh, false);
 });
 
 console.log(`deskPack: ${n} tests passed`);
