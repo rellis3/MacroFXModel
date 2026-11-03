@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Desk Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Desk Terminal (plans/DESK_ANALYST_PIPELINE.md §9r, Phase 17): the owner's private terminal over the desk's own book,
+   agents and data. Never in the newsletter. A design of its own in the spirit of modern macro terminals: deep navy,
+   purple for anything you can press, gold for theses and grades, green and red only for direction. */
+:root{
+  --bg:#070a17;--bg1:#0c1124;--bg2:#111833;--bg3:#18203f;--line:#1f2950;--line2:#2c3866;
+  --tx:#eef0fb;--tx2:#a9b0d0;--tx3:#6d7599;
+  --pur:#8b7cf6;--pur2:#b4a9ff;--purbg:rgba(139,124,246,.12);
+  --gold:#e8b85a;--goldbg:rgba(232,184,90,.10);
+  --up:#2fd39a;--upbg:rgba(47,211,154,.12);--dn:#ff5d78;--dnbg:rgba(255,93,120,.12);--flat:#8a93b8;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;--sans:Inter,ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --r:12px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.55 var(--sans)}
+body{background:radial-gradient(1200px 600px at 80% -10%,rgba(139,124,246,.10),transparent 60%),radial-gradient(900px 500px at -10% 10%,rgba(232,184,90,.05),transparent 60%),var(--bg);min-height:100vh}
+a{color:var(--pur2)}
+button{font:inherit}
+.lbl{font:600 10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--tx3)}
+.mono{font-family:var(--mono)}
+/* top bar */
+.top{position:sticky;top:0;z-index:20;background:rgba(7,10,23,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topin{max-width:1440px;margin:0 auto;padding:10px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font:700 15px var(--mono);letter-spacing:.18em}
+.brand i{width:10px;height:10px;border-radius:50%;background:var(--pur);box-shadow:0 0 12px var(--pur)}
+.brand span{color:var(--gold)}
+.clocks{display:flex;gap:6px;flex-wrap:wrap}
+.clk{display:flex;align-items:center;gap:7px;padding:5px 10px;border:1px solid var(--line);border-radius:999px;background:var(--bg1);font:600 11px var(--mono);letter-spacing:.06em}
+.clk b{font-weight:600;color:var(--tx2)}
+.clk em{font-style:normal;color:var(--tx)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--tx3)}
+.dot.on{background:var(--up);box-shadow:0 0 8px var(--up)}
+.tright{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font:600 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid var(--line2);color:var(--tx2);background:var(--bg2);white-space:nowrap}
+.chip.up{color:var(--up);border-color:rgba(47,211,154,.4);background:var(--upbg)}
+.chip.dn{color:var(--dn);border-color:rgba(255,93,120,.4);background:var(--dnbg)}
+.chip.gold{color:var(--gold);border-color:rgba(232,184,90,.45);background:var(--goldbg)}
+.chip.pur{color:var(--pur2);border-color:rgba(139,124,246,.45);background:var(--purbg)}
+.btn{cursor:pointer;border:1px solid var(--line2);background:var(--bg2);color:var(--tx2);padding:6px 12px;border-radius:8px;font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;text-decoration:none}
+.btn:hover,.btn:focus-visible{border-color:var(--pur);color:var(--tx);outline:none}
+/* ticker */
+.ticker{border-bottom:1px solid var(--line);background:var(--bg1);overflow:hidden;white-space:nowrap}
+.tk{display:inline-flex;gap:34px;padding:8px 0;animation:tk 90s linear infinite;font:12px var(--mono);color:var(--tx2)}
+.ticker:hover .tk{animation-play-state:paused}
+.tk span b{color:var(--tx);font-weight:600}
+@keyframes tk{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.tk{animation:none}}
+/* tabs */
+.wrap{max-width:1440px;margin:0 auto;padding:16px 16px 90px}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 18px;padding:4px;background:var(--bg1);border:1px solid var(--line);border-radius:12px;width:max-content;max-width:100%}
+.tabs button{cursor:pointer;background:none;border:0;color:var(--tx3);padding:8px 14px;border-radius:8px;font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase}
+.tabs button[aria-selected="true"]{background:var(--purbg);color:var(--pur2);box-shadow:inset 0 0 0 1px rgba(139,124,246,.4)}
+.tabs button:focus-visible{outline:2px solid var(--pur)}
+/* cards */
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))}
+.card{background:linear-gradient(180deg,var(--bg2),var(--bg1));border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;min-width:0}
+.card.click{cursor:pointer;transition:border-color .15s,transform .15s}
+.card.click:hover,.card.click:focus-visible{border-color:var(--pur);outline:none;transform:translateY(-1px)}
+.ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.ch h3{margin:0;font-size:16px;font-weight:650;letter-spacing:.01em}
+.ch .r{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;min-width:0}
+.sec{display:flex;align-items:baseline;gap:10px;margin:22px 0 10px}
+.sec h2{margin:0;font:600 11px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--tx2)}
+.sec .lbl{letter-spacing:.06em;text-transform:none;font-weight:400;font-family:var(--sans);font-size:12px}
+.thesis{border-left:2px solid var(--gold);padding:2px 0 2px 12px;margin:10px 0;color:#f3e3bf;font-style:italic}
+.synth{border-left:2px solid var(--gold);background:var(--goldbg);padding:10px 12px;border-radius:0 8px 8px 0;margin:10px 0}
+.muted{color:var(--tx3);font-size:12.5px}
+.drv{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.drv span{font:11px var(--mono);padding:3px 8px;border-radius:6px;background:var(--bg3);border:1px solid var(--line);color:var(--tx2)}
+.score{display:flex;align-items:center;gap:10px}
+.score b{font:700 22px var(--mono)}
+.score small{color:var(--tx3);font:12px var(--mono)}
+.bar{height:6px;border-radius:99px;background:var(--bg3);overflow:hidden;flex:1;min-width:60px}
+.bar i{display:block;height:100%;border-radius:99px}
+.pb{display:grid;gap:6px;margin-top:10px}
+.pb div{display:grid;grid-template-columns:96px 1fr;gap:10px;padding:7px 10px;border-radius:8px;background:var(--bg3);border-left:3px solid var(--line2);font-size:13px}
+.pb div b{font:600 10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);padding-top:2px}
+.pb .en{border-left-color:var(--up)}.pb .tg{border-left-color:var(--gold)}.pb .iv{border-left-color:var(--dn)}
+.grade{font:700 13px var(--mono);color:var(--gold);border:1px solid rgba(232,184,90,.5);border-radius:7px;padding:2px 8px;background:var(--goldbg)}
+.up{color:var(--up)}.dn{color:var(--dn)}.fl{color:var(--flat)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font:600 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);padding:0 8px 8px;border-bottom:1px solid var(--line)}
+td{padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.n{font-family:var(--mono);white-space:nowrap}
+.scroll{overflow-x:auto}
+.ladder{position:relative;height:30px;margin:10px 0 2px}
+.ladder .rail{position:absolute;left:0;right:0;top:13px;height:4px;border-radius:9px;background:linear-gradient(90deg,var(--dnbg),var(--bg3) 45%,var(--bg3) 55%,var(--upbg))}
+.ladder .tick{position:absolute;top:6px;width:1px;height:18px;background:var(--line2)}
+.ladder .tick.o{background:var(--tx);height:22px;top:4px;width:2px}
+.ladder .zone{position:absolute;top:9px;height:12px;border-radius:4px;background:var(--purbg);border:1px solid rgba(139,124,246,.6)}
+.ladlab{display:flex;justify-content:space-between;font:10.5px var(--mono);color:var(--tx3)}
+.regime{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.regime .big{font:700 26px var(--mono);letter-spacing:.06em}
+.lists{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px;margin-top:12px}
+.lists ul{margin:6px 0 0;padding:0;list-style:none}
+.lists li{padding:6px 0;border-bottom:1px solid var(--line);font-size:13px;display:flex;gap:8px;align-items:baseline}
+.strength{display:grid;grid-template-columns:repeat(8,1fr);gap:8px}
+@media (max-width:760px){.strength{grid-template-columns:repeat(4,1fr)}}
+.sbox{background:var(--bg3);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;cursor:pointer}
+.sbox:hover,.sbox:focus-visible{border-color:var(--pur);outline:none}
+.sbox b{display:block;font:700 15px var(--mono)}
+.sbox .v{font:700 20px var(--mono);margin:4px 0}
+.vbar{height:42px;display:flex;align-items:flex-end;justify-content:center}
+.vbar i{width:14px;border-radius:4px 4px 0 0}
+.heat td{text-align:center;font-family:var(--mono);font-size:12px;border:1px solid var(--bg)}
+.gauge{height:10px;border-radius:99px;display:flex;overflow:hidden;background:var(--bg3)}
+.gauge i{display:block;height:100%}
+/* modal */
+.modal{position:fixed;inset:0;z-index:50;background:rgba(3,5,12,.72);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px;overflow-y:auto}
+.modal .card{max-width:760px;width:100%;box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 1px rgba(139,124,246,.25)}
+.x{margin-left:auto;cursor:pointer;background:none;border:1px solid var(--line2);color:var(--tx2);border-radius:8px;width:30px;height:30px}
+/* ask */
+.fab{position:fixed;right:20px;bottom:20px;z-index:30;cursor:pointer;border:0;border-radius:999px;padding:12px 18px;background:linear-gradient(135deg,var(--pur),#6a5be0);color:#fff;font:600 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;box-shadow:0 10px 30px rgba(139,124,246,.4)}
+textarea{width:100%;min-height:80px;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:10px;padding:10px;font:14px var(--sans);resize:vertical}
+textarea:focus{outline:none;border-color:var(--pur)}
+.ans{white-space:pre-wrap;margin-top:12px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.filters button{cursor:pointer;background:var(--bg1);border:1px solid var(--line);color:var(--tx3);padding:5px 11px;border-radius:999px;font:600 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.filters button[aria-pressed="true"]{border-color:var(--pur);color:var(--pur2);background:var(--purbg)}
+[hidden]{display:none!important}
+details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;margin-top:8px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="topin">
+    <div class="brand"><i></i>DESK <span>TERMINAL</span></div>
+    <div class="clocks" id="clocks"></div>
+    <div class="tright"><span id="bookchip" class="chip">book…</span><span id="dqchip" class="chip">data…</span><a class="btn" href="desk-office.html">Desk Office</a><a class="btn" href="desk-run.html">Desk Run</a></div>
+  </div>
+  <div class="ticker" aria-label="headlines"><div class="tk" id="tk"><span>Loading the desk…</span></div></div>
+</header>
+<main class="wrap">
+  <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" aria-selected="true" data-t="overview">Overview</button>
+    <button role="tab" aria-selected="false" data-t="ccy">Currencies</button>
+    <button role="tab" aria-selected="false" data-t="assets">Assets</button>
+    <button role="tab" aria-selected="false" data-t="macro">Macro</button>
+    <button role="tab" aria-selected="false" data-t="pos">Positioning</button>
+    <button role="tab" aria-selected="false" data-t="cal">Calendar</button>
+  </nav>
+  <section id="overview"></section>
+  <section id="ccy" hidden></section>
+  <section id="assets" hidden></section>
+  <section id="macro" hidden></section>
+  <section id="pos" hidden></section>
+  <section id="cal" hidden></section>
+</main>
+<button class="fab" id="askbtn">✦ Ask the desk</button>
+<div class="modal" id="modal" hidden></div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const getJson = u => fetch(u, { cache: 'no-store' }).then(r => r.json()).catch(e => ({ ok: false, error: e.message }));
+const f = (x, d = 2) => (x == null || !Number.isFinite(+x) ? '–' : (+x > 0 ? '+' : '') + (+x).toFixed(d));
+const LONDON = 'Europe/London';
+const CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
+const FLAG = { USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', JPY: '🇯🇵', AUD: '🇦🇺', NZD: '🇳🇿', CAD: '🇨🇦', CHF: '🇨🇭' };
+const BANK = { USD: 'Federal Reserve', EUR: 'European Central Bank', GBP: 'Bank of England', JPY: 'Bank of Japan', AUD: 'Reserve Bank of Australia', NZD: 'Reserve Bank of New Zealand', CAD: 'Bank of Canada', CHF: 'Swiss National Bank' };
+const BANKSHORT = { USD: 'Fed', EUR: 'ECB', GBP: 'BoE', JPY: 'BoJ', AUD: 'RBA', NZD: 'RBNZ', CAD: 'BoC', CHF: 'SNB' };
+const GROUPS = { fx_majors: 'FX majors', fx_crosses: 'FX crosses', indices: 'Indices', metals: 'Metals', energy: 'Energy', ags: 'Agriculturals', crypto: 'Crypto' };
+const UNIVERSE = { fx_majors: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'], fx_crosses: ['GBPJPY', 'EURGBP', 'EURJPY', 'EURCHF', 'GBPCHF', 'AUDJPY', 'CADJPY', 'EURAUD', 'EURCAD', 'EURNZD', 'GBPAUD', 'GBPCAD', 'AUDCAD', 'NZDCAD', 'NZDJPY'], indices: ['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'], metals: ['GOLD', 'SILVER', 'COPPER', 'PLATINUM', 'PALLADIUM'], energy: ['WTI', 'BRENT', 'NATGAS'], ags: ['SOYBEAN', 'WHEAT', 'CORN', 'SUGAR'], crypto: ['BTCUSD'] };
+const groupOf = n => Object.keys(UNIVERSE).find(g => UNIVERSE[g].includes(n)) ?? 'other';
+const NAME = { NQ: 'Nasdaq 100', SPX500: 'S&P 500', US30: 'Dow 30', US2000: 'Russell 2000', DE30: 'DAX', UK100: 'FTSE 100', GOLD: 'Gold', SILVER: 'Silver', COPPER: 'Copper', PLATINUM: 'Platinum', PALLADIUM: 'Palladium', WTI: 'WTI crude', BRENT: 'Brent crude', NATGAS: 'Natural gas', SOYBEAN: 'Soybeans', WHEAT: 'Wheat', CORN: 'Corn', SUGAR: 'Sugar', BTCUSD: 'Bitcoin' };
+const nice = n => NAME[n] ?? (n.length === 6 ? `${n.slice(0, 3)}/${n.slice(3)}` : n);
+const DIR = { STRONG_LONG: 2, LONG: 1, FLAT: 0, NEUTRAL: 0, SHORT: -1, STRONG_SHORT: -2 };
+const CONV = { low: 0.6, medium: 0.8, high: 1 };
+// The desk's −2..+2 views put on a /10 scale: 5 is no view, 10 is a strong long at high conviction.
+const assetScore = c => +(5 + 2.5 * (DIR[c.rating] ?? 0) * (CONV[c.conviction] ?? 0.8)).toFixed(1);
+const ccyScore = bias => +(5 + 2.5 * (Number(bias) || 0)).toFixed(1);
+const grade = c => { const d = Math.abs(DIR[c.rating] ?? 0); if (!d || !(c.size > 0)) return null; return d === 2 && c.conviction === 'high' ? 'A+' : c.conviction === 'high' ? 'A' : c.conviction === 'medium' ? (d === 2 ? 'A-' : 'B+') : 'B'; };
+const dirCls = v => (v > 0 ? 'up' : v < 0 ? 'dn' : 'fl');
+const rateChip = r => { const d = DIR[r] ?? 0; return `<span class="chip ${d > 0 ? 'up' : d < 0 ? 'dn' : ''}">${d > 0 ? '▲' : d < 0 ? '▼' : '●'} ${esc(String(r ?? 'FLAT').replace('_', ' '))}</span>`; };
+const biasChip = b => `<span class="chip ${b > 0 ? 'up' : b < 0 ? 'dn' : ''}">${b >= 2 ? 'Strong bullish' : b > 0 ? 'Bullish' : b <= -2 ? 'Strong bearish' : b < 0 ? 'Bearish' : 'Neutral'}</span>`;
+const scoreBar = (s, w = '100%') => `<div class="score" style="width:${w}"><b class="${dirCls(s - 5)}">${s.toFixed(1)}</b><small>/10</small><div class="bar"><i style="width:${s * 10}%;background:${s > 5.2 ? 'var(--up)' : s < 4.8 ? 'var(--dn)' : 'var(--flat)'}"></i></div></div>`;
+const firstSentence = t => { const m = String(t ?? '').match(/^.{20,260}?[.;](\s|$)/); return (m ? m[0] : String(t ?? '').slice(0, 220)).trim(); };
+// the analyst ids the desk cites in brackets become driver chips
+const SRC = { rates_cb: 'CB', macro_economy: 'MACRO', cot_positioning: 'COT', yields_curve: 'RATES', credit_funding: 'CREDIT', events_news: 'EVENT', options_oi: 'OPTIONS', levels_structure: 'LEVELS', vol_iv: 'VOL', global_market: 'GLOBAL', evidence_memory: 'EVIDENCE' };
+const sources = t => [...new Set([...String(t ?? '').matchAll(/\b(rates_cb|macro_economy|cot_positioning|yields_curve|credit_funding|events_news|options_oi|levels_structure|vol_iv|global_market|evidence_memory)\b/g)].map(m => SRC[m[1]]))];
+
+let D = {};   // everything the page loaded
+
+// ── clocks: the four trading centres, open on their local weekday 08:00 to 17:00 ──
+const CENTRES = [['Sydney', 'Australia/Sydney'], ['Tokyo', 'Asia/Tokyo'], ['London', LONDON], ['New York', 'America/New_York']];
+function clocks() {
+  const now = new Date();
+  $('clocks').innerHTML = CENTRES.map(([n, tz]) => {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', weekday: 'short', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));
+    const open = !['Sat', 'Sun'].includes(p.weekday) && +p.hour >= 8 && +p.hour < 17;
+    return `<span class="clk" title="${open ? 'open' : 'closed'}"><i class="dot${open ? ' on' : ''}"></i><b>${n.toUpperCase()}</b><em>${p.hour}:${p.minute}</em></span>`;
+  }).join('');
+}
+clocks(); setInterval(clocks, 20_000);
+
+// ── tabs ──
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
+  ['overview', 'ccy', 'assets', 'macro', 'pos', 'cal'].forEach(id => $(id).hidden = id !== b.dataset.t);
+  try { localStorage.setItem('deskTerminalTab', b.dataset.t); } catch { /* private window */ }
+});
+try { const t = localStorage.getItem('deskTerminalTab'); if (t) document.querySelector(`#tabs [data-t="${t}"]`)?.click(); } catch { /* ignore */ }
+
+// ── modal ──
+function openModal(html) { const m = $('modal'); m.innerHTML = `<div class="card" role="dialog" aria-modal="true">${html}</div>`; m.hidden = false; m.querySelector('.x')?.focus(); m.querySelector('.x')?.addEventListener('click', closeModal); }
+function closeModal() { $('modal').hidden = true; $('modal').innerHTML = ''; }
+$('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ── data ──
+async function load() {
+  const [run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev] = await Promise.all([
+    getJson('/api/desk-run'), getJson('/api/desk-score/record'), getJson('/api/desk-update'), getJson('/api/desk-quality'),
+    getJson('/api/macro-scorecard'), getJson('/api/rate-diff'), getJson('/api/real-yield'), getJson('/api/rates'),
+    getJson('/api/cot-state'), getJson('/api/oanda-book/history'), getJson('/api/gpr'), getJson('/api/events')]);
+  D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
+  const ok = run?.ok && run.head?.ok;
+  D.cards = ok ? run.head.book.instruments : {};
+  D.ccy = ok ? (run.debate?.currency?.view?.currencies ?? Object.fromEntries(Object.entries(run.head.book.currencies ?? {}).map(([k, v]) => [k, { bias: v.bias, why: v.why }]))) : {};
+  D.ranking = ok ? (run.debate?.currency?.view?.ranking ?? CCYS) : CCYS;
+  // the session updates applied on top of the morning book (the live view), where there are any
+  D.live = upd?.live?.instruments ?? null;
+  header(); ticker(); overview(); currencies(); assets(); macro(); positioning(); calendar();
+}
+
+function header() {
+  const r = D.run;
+  if (!r?.ok || !r.head?.ok) { $('bookchip').className = 'chip dn'; $('bookchip').textContent = 'no book today'; }
+  else {
+    const t = new Date(r.finishedAt).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' });
+    $('bookchip').className = 'chip pur'; $('bookchip').textContent = `book ${r.date} · ${t}`;
+    $('bookchip').title = `${r.mode} run, finished ${t} London`;
+  }
+  const q = D.dq; if (q?.ok) { $('dqchip').className = `chip ${q.decision === 'hold' ? 'dn' : q.decision === 'run-with-gaps' ? 'gold' : 'up'}`; $('dqchip').textContent = `data ${q.health?.usable ?? q.health?.ok ?? '?'}/${q.health?.total ?? '?'}`; }
+  else { $('dqchip').textContent = 'data –'; }
+}
+
+function upcoming(hours = 48) {
+  const now = Date.now();
+  return D.ev.filter(e => { const ms = Number(e.ms ?? Date.parse(e.time)); return ms > now - 30 * 60_000 && ms < now + hours * 3600e3; }).sort((a, b) => (a.ms ?? 0) - (b.ms ?? 0));
+}
+const lt = ms => new Date(ms).toLocaleString('en-GB', { timeZone: LONDON, weekday: 'short', hour: '2-digit', minute: '2-digit' });
+
+function ticker() {
+  const items = [];
+  const g = D.run?.head?.book?.global; if (g) items.push(`<span><b>REGIME</b> ${esc(String(g.tone).replace('_', '-').toUpperCase())}</span>`);
+  for (const e of upcoming(36).filter(e => /high/i.test(e.impact)).slice(0, 10)) items.push(`<span><b>${esc(e.country)}</b> ${esc(e.event)} · ${lt(e.ms)}${e.estimate ? ` · est ${esc(e.estimate)}` : ''}</span>`);
+  for (const s of Object.values(D.upd?.slots ?? {})) if (s?.view?.headline) items.push(`<span><b>UPDATE</b> ${esc(s.view.headline)}</span>`);
+  for (const r of (D.run?.head?.book?.risks ?? []).slice(0, 4)) items.push(`<span><b>RISK</b> ${esc(firstSentence(r))}</span>`);
+  if (D.gpr?.ok) items.push(`<span><b>GEOPOLITICAL RISK</b> ${D.gpr.level} · z ${f(D.gpr.z, 1)} · ${esc(D.gpr.trend)}</span>`);
+  const html = items.join('') || '<span>No headlines.</span>';
+  $('tk').innerHTML = html + html;   // twice, so the scroll loops
+}
+
+// ── OVERVIEW ──
+function regimeCard() {
+  const v = D.run?.debate?.global?.view ?? D.run?.head?.book?.global;
+  if (!v) return `<div class="card"><p class="muted">No global ruling today.</p></div>`;
+  const on = /on/.test(v.tone), off = /off/.test(v.tone);
+  const live = Object.entries(D.cards).filter(([, c]) => DIR[c.rating] && c.size > 0);
+  const top = s => live.filter(([, c]) => Math.sign(DIR[c.rating]) === s).sort((a, b) => b[1].size * (CONV[b[1].conviction] ?? .8) - a[1].size * (CONV[a[1].conviction] ?? .8)).slice(0, 5);
+  const li = ([n, c]) => `<li><b class="mono" style="min-width:74px">${esc(n)}</b><span class="muted">${esc(firstSentence(c.why).slice(0, 120))}</span></li>`;
+  return `<div class="card"><div class="ch"><span class="lbl">Market regime</span><span class="r"><span class="chip gold">conviction ${esc(v.conviction ?? '–')}</span></span></div>
+<div class="regime"><span class="big ${on ? 'up' : off ? 'dn' : 'fl'}">${esc(String(v.tone ?? '').replace('_', '-').toUpperCase())}</span><span class="muted">environment, ruled by the Global Manager over the risk-on and risk-off cases</span></div>
+<div class="synth">${esc(v.summary)}</div>
+${v.drivers?.length ? `<div class="drv">${v.drivers.slice(0, 5).map(d => `<span title="${esc(d)}">${esc(d.length > 70 ? d.slice(0, 68) + '…' : d)}</span>`).join('')}</div>` : ''}
+<div class="lists"><div><span class="lbl up">Buy</span><ul>${top(1).map(li).join('') || '<li class="muted">No longs.</li>'}</ul></div><div><span class="lbl dn">Sell</span><ul>${top(-1).map(li).join('') || '<li class="muted">No shorts.</li>'}</ul></div></div>
+${v.flip?.length ? `<details><summary>What would flip it</summary><ul>${v.flip.map(x => `<li class="muted">${esc(x)}</li>`).join('')}</ul></details>` : ''}</div>`;
+}
+function strengthStrip() {
+  return `<div class="card"><div class="ch"><span class="lbl">Currency strength</span><span class="r muted">strongest → weakest, the Currency Manager's ruling · tap for the card</span></div><div class="strength">${D.ranking.map(c => { const b = D.ccy[c]?.bias ?? 0, s = ccyScore(b);
+    return `<div class="sbox" tabindex="0" data-ccy="${c}"><b>${FLAG[c] ?? ''} ${c}</b><div class="vbar"><i style="height:${Math.max(6, s * 4)}px;background:${b > 0 ? 'var(--up)' : b < 0 ? 'var(--dn)' : 'var(--flat)'}"></i></div><div class="v ${dirCls(b)}">${s.toFixed(1)}</div><span class="muted">${BANKSHORT[c]}</span></div>`; }).join('')}</div></div>`;
+}
+function playbookCard(n, c) {
+  const L = c.levels, d = Math.sign(DIR[c.rating] ?? 0), g = grade(c);
+  const tgt = L && d ? (d > 0 ? `p50 ${L.up?.p50} · p75 ${L.up?.p75}` : `p50 ${L.down?.p50} · p75 ${L.down?.p75}`) : null;
+  return `<div class="card click" tabindex="0" data-inst="${esc(n)}"><div class="ch"><h3>${esc(nice(n))}</h3>${rateChip(c.rating)}<span class="r">${g ? `<span class="grade">${g}</span>` : ''}</span></div>
+<div class="muted">${esc(firstSentence(c.why))}</div>
+<div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${esc(c.plan.zone)}</span></div>` : ''}${tgt ? `<div class="tg"><b>Target</b><span class="mono">${esc(tgt)} <span class="muted">(today's forecast lines)</span></span></div>` : ''}<div class="iv"><b>Invalid</b><span>${esc(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div></div>
+<div class="muted" style="margin-top:8px">size ${f(c.size, 2).replace('+', '')}${c.cappedBy?.length ? ` · cut by the ${c.cappedBy.join('/')} cap` : ''}${c.plan?.timing ? ` · ${esc(c.plan.timing)}` : ''}</div></div>`;
+}
+function recordCard() {
+  const r = D.rec?.record;
+  if (!r) return '';
+  return `<div class="card"><div class="ch"><span class="lbl">The desk's record</span><span class="r" style="min-width:0"><span class="chip" style="white-space:normal">${esc(r.label ?? 'running')}</span></span></div>
+<div class="grid g4" style="gap:10px">${[['Counted days', r.eligibleDays, ''], ['Mean day', r.S?.mean == null ? '–' : f(r.S.mean) + ' u', dirCls(r.S?.mean)], ['vs single analyst', f(r.vsControl?.mean), dirCls(r.vsControl?.mean)], ['Lean side first', r.race?.leanFirstShare == null ? '–' : Math.round(r.race.leanFirstShare * 100) + '%', '']].map(([k, v, c]) => `<div><span class="lbl">${k}</span><div class="mono ${c}" style="font-size:20px;font-weight:700">${v}</div></div>`).join('')}</div>
+<p class="muted">Judged at 120+ counted days under the pre-registration. Until then a running number, nothing tuned to it. Grades below are the book's own conviction, not a tested hit rate.</p></div>`;
+}
+function releasesCard() {
+  const e = D.run?.economist, rel = e?.releases ?? [];
+  const list = e?.view?.briefs?.length ? e.view.briefs.map((b, i) => { const r = rel[i], m = r?.playbook ? Object.values(r.playbook.markets)[0] : null;
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div class="ch" style="margin:0 0 4px"><span class="chip gold">tier 1</span><b>${esc(b.event)}</b><span class="r mono muted">${r ? lt(Date.parse(r.at)) : ''}</span></div><div class="muted">${esc(b.sizeAndSpeed)}</div>${m ? `<div class="mono" style="font-size:12px;margin-top:4px">${esc(m.label)}: typical ${m.abs30}${m.unit} at 30 min, ${m.abs240}${m.unit} at 4 h <span class="muted">(n ${m.n})</span></div>` : ''}${b.watch ? `<div style="margin-top:4px"><span class="lbl" style="color:var(--gold)">Watch</span> ${esc(b.watch)}</div>` : ''}</div>`; }).join('')
+    : upcoming(36).filter(e => /high/i.test(e.impact)).slice(0, 6).map(e => `<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>${esc(e.country)} ${esc(e.event)}</b> <span class="mono muted">${lt(e.ms)}</span></div>`).join('') || '<p class="muted">Nothing high-impact in the next 36 hours.</p>';
+  return `<div class="card"><div class="ch"><span class="lbl">Releases ahead</span><span class="r muted">the economist, from the desk's release history</span></div>${list}</div>`;
+}
+function overview() {
+  if (!D.run?.ok) { $('overview').innerHTML = `<div class="card"><p>No desk book yet today.</p><p class="muted">${esc(D.run?.error ?? '')} The book is written at 06:55 London when the Desk Run service is on, or from the Desk Run page.</p></div>`; return; }
+  const live = Object.entries(D.cards).filter(([, c]) => DIR[c.rating] && c.size > 0).sort((a, b) => b[1].size * (CONV[b[1].conviction] ?? .8) * Math.abs(DIR[b[1].rating]) - a[1].size * (CONV[a[1].conviction] ?? .8) * Math.abs(DIR[a[1].rating])).slice(0, 6);
+  $('overview').innerHTML = `${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span class="lbl">Today's book</span><div class="thesis" style="font-size:16px">${esc(D.run.head.book.headline)}</div></div>` : ''}
+<div class="grid g2">${regimeCard()}<div class="grid" style="align-content:start">${strengthStrip()}${recordCard()}</div></div>
+<div class="sec"><h2>Playbooks</h2><span class="lbl">the six largest cards · tap for the full analysis</span></div><div class="grid g3">${live.map(([n, c]) => playbookCard(n, c)).join('')}</div>
+<div class="sec"><h2>Releases and risks</h2></div><div class="grid g2">${releasesCard()}<div class="card"><div class="ch"><span class="lbl">Risk desk warnings</span></div><ul style="margin:0;padding-left:18px">${(D.run.head.book.risks ?? []).map(r => `<li style="margin:6px 0">${esc(r)}</li>`).join('') || '<li class="muted">None.</li>'}</ul></div></div>`;
+  wire($('overview'));
+}
+
+// ── CURRENCIES ──
+function ccyDrivers(c) {
+  // the analysts' points that move this currency, tagged TIER1 (impact ±2) or TIER2 (±1), signed, with the analyst's type
+  const out = [];
+  for (const a of Object.values(D.run?.analysts ?? {})) for (const p of a.report?.points ?? []) {
+    const v = p.impact?.[c]; if (!v) continue;
+    out.push({ tier: Math.abs(v) >= 2 ? 'TIER1' : 'TIER2', sign: v > 0 ? '+' : '−', type: SRC[a.id] ?? a.id.toUpperCase(), claim: p.claim, v });
+  }
+  return out.sort((a, b) => Math.abs(b.v) - Math.abs(a.v)).slice(0, 6);
+}
+function bestExpressions(c) {
+  const b = D.ccy[c]?.bias ?? 0;
+  return Object.entries(D.cards).filter(([n, x]) => n.length === 6 && n.includes(c) && DIR[x.rating] && x.size > 0)
+    .map(([n, x]) => { const sideForC = (n.startsWith(c) ? 1 : -1) * Math.sign(DIR[x.rating]); const other = n.startsWith(c) ? n.slice(3) : n.slice(0, 3); return { n, x, agrees: Math.sign(b) === sideForC, gap: Math.abs((D.ccy[c]?.bias ?? 0) - (D.ccy[other]?.bias ?? 0)) }; })
+    .sort((a, b2) => (b2.agrees - a.agrees) || (b2.gap - a.gap) || (b2.x.size - a.x.size)).slice(0, 4);
+}
+function ccyModal(c) {
+  const v = D.ccy[c] ?? {}, s = ccyScore(v.bias), cb = D.sc?.cbSentiment?.[c], rate = D.rd?.byCcy?.[c], real = D.ry?.byCcy?.[c], exp = D.run?.head?.book?.exposure;
+  const drv = ccyDrivers(c), best = bestExpressions(c);
+  openModal(`<div class="ch"><span style="font-size:28px">${FLAG[c] ?? ''}</span><div><h3 style="font-size:20px">${c}</h3><span class="muted">${BANK[c]}</span></div>${biasChip(v.bias)}<button class="x" aria-label="Close">✕</button></div>
+${scoreBar(s)}
+<div class="synth">${esc(v.why ?? 'No ruling.')}</div>
+<div class="drv">${cb ? `<span class="chip ${cb.regime === 'HAWKISH' ? 'gold' : cb.regime === 'DOVISH' ? 'pur' : ''}">${esc(cb.regime)} · hawk ${cb.score}</span><span>last meeting ${esc(cb.meetingDate)}</span>` : ''}${rate ? `<span>policy ${rate.latestRate}%</span>` : ''}${real ? `<span>real 10y ${f(real.latestReal)}%</span>` : ''}${exp?.after?.[c] != null ? `<span>book exposure ${f(exp.after[c])}${exp.before?.[c] !== exp.after?.[c] ? ` (was ${f(exp.before[c])})` : ''}</span>` : ''}<span>conviction ${esc(v.conviction ?? '–')}</span></div>
+<div class="sec" style="margin-top:14px"><h2>Key drivers</h2><span class="lbl">from today's analyst reports</span></div>
+${drv.length ? drv.map(d => `<div style="display:flex;gap:10px;padding:8px 10px;margin:6px 0;border-radius:8px;background:var(--bg3);border-left:3px solid ${d.v > 0 ? 'var(--up)' : 'var(--dn)'}"><span class="mono" style="font-size:10.5px;white-space:nowrap;color:${d.v > 0 ? 'var(--up)' : 'var(--dn)'}">[${d.tier} ${d.sign}${d.type}]</span><span style="font-size:13px">${esc(d.claim)}</span></div>`).join('') : '<p class="muted">No analyst point scored this currency today.</p>'}
+<div class="sec"><h2>Best expressions</h2><span class="lbl">the book's cards on this currency</span></div>
+${best.length ? `<div class="grid g2">${best.map(e => `<div class="card click" tabindex="0" data-inst="${esc(e.n)}" style="padding:10px 12px"><div class="ch" style="margin:0"><b class="mono">${esc(nice(e.n))}</b>${rateChip(e.x.rating)}<span class="r">${e.agrees ? '<span class="chip gold">fits the bias</span>' : '<span class="chip">against the bias</span>'}</span></div><span class="muted">bias gap ${e.gap} · size ${e.x.size}</span></div>`).join('')}</div>` : '<p class="muted">No live card on this currency.</p>'}
+${v.flip ? `<div class="sec"><h2>What would flip it</h2></div><p>${esc(v.flip)}</p>` : ''}
+<p class="muted">Score: the Currency Manager's −2..+2 bias put on /10 (5 = neutral). Drivers are the analysts' scored points, not tested signals.</p>`);
+  wire($('modal'));
+}
+function currencies() {
+  $('ccy').innerHTML = `<div class="grid g4">${D.ranking.map(c => { const v = D.ccy[c] ?? {}, cb = D.sc?.cbSentiment?.[c];
+    return `<div class="card click" tabindex="0" data-ccy="${c}"><div class="ch"><span style="font-size:22px">${FLAG[c] ?? ''}</span><h3>${c}</h3>${biasChip(v.bias)}</div>${scoreBar(ccyScore(v.bias))}<div class="muted" style="margin-top:8px">${esc(firstSentence(v.why))}</div><div class="drv">${cb ? `<span>${BANKSHORT[c]} ${esc(cb.regime.toLowerCase())}</span>` : ''}${D.rd?.byCcy?.[c] ? `<span>${D.rd.byCcy[c].latestRate}%</span>` : ''}</div></div>`; }).join('')}</div>`;
+  wire($('ccy'));
+}
+
+// ── ASSETS ──
+let assetFilter = 'all';
+function ladder(c) {
+  const L = c.levels; if (!L?.up?.p90 || !L?.down?.p90) return '';
+  const lo = L.down.p90, hi = L.up.p90, x = v => ((v - lo) / (hi - lo)) * 100;
+  const nums = String(c.plan?.zone ?? '').match(/\d+(?:\.\d+)?/g)?.map(Number).filter(v => v > lo * 0.9 && v < hi * 1.1) ?? [];
+  const z = nums.length >= 2 ? [Math.min(...nums), Math.max(...nums)] : null;
+  return `<div class="ladder"><div class="rail"></div>${['p90', 'p75', 'p50'].flatMap(q => [L.down[q], L.up[q]]).map(v => `<i class="tick" style="left:${x(v)}%"></i>`).join('')}<i class="tick o" style="left:${x(L.open)}%"></i>${z ? `<i class="zone" style="left:${Math.max(0, x(z[0]))}%;width:${Math.max(1.5, Math.min(100, x(z[1])) - Math.max(0, x(z[0])))}%" title="entry zone"></i>` : ''}</div><div class="ladlab"><span>${lo}</span><span>open ${L.open}</span><span>${hi}</span></div>`;
+}
+function assetCard(n, c, full = false) {
+  const s = assetScore(c), g = grade(c), live = D.live?.[n];
+  return `<div class="${full ? '' : 'card click'}" ${full ? '' : `tabindex="0" data-inst="${esc(n)}"`}><div class="ch"><span class="chip">${esc(GROUPS[groupOf(n)] ?? '')}</span><span class="chip">${esc(n)}</span><span class="r">${g ? `<span class="grade">${g}</span>` : ''}${full ? '<button class="x" aria-label="Close">✕</button>' : ''}</span></div>
+<h3 style="margin:0 0 8px;font-size:${full ? 22 : 17}px">Analysis of ${esc(nice(n))}</h3>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${rateChip(c.rating)}${scoreBar(s, '200px')}${live && live.rating !== c.rating ? `<span class="chip gold" title="${esc(live.why ?? '')}">updated → ${esc(live.rating)}</span>` : ''}</div>
+<div class="thesis">“${esc(firstSentence(c.why))}”</div>
+<div class="drv">${sources(c.why).map(t => `<span>${t}</span>`).join('')}<span>conviction ${esc(c.conviction)}</span><span>size ${c.size ?? 0}${c.sizeBeforeCap && c.sizeBeforeCap !== c.size ? ` (from ${c.sizeBeforeCap})` : ''}</span></div>
+${ladder(c)}
+${full ? `<p>${esc(c.why)}</p><div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${esc(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Target</b><span class="mono">${Math.sign(DIR[c.rating] ?? 0) >= 0 ? `up p50 ${c.levels.up.p50} · p75 ${c.levels.up.p75} · p90 ${c.levels.up.p90}` : `down p50 ${c.levels.down.p50} · p75 ${c.levels.down.p75} · p90 ${c.levels.down.p90}`}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${esc(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${esc(c.plan.timing)}</span></div>` : ''}</div>
+${deskView(n)}<p class="muted">The ladder is today's forecast range (p50, p75, p90 each side of the open); the purple band is the entry zone where the plan names one. Grades are the book's conviction, not a hit rate.</p>` : `<div class="muted" style="margin-top:6px">Read full analysis →</div>`}</div>`;
+}
+function deskView(n) {
+  const g = groupOf(n), a = D.run?.debate?.assets?.[g]?.view?.instruments?.[n];
+  return a ? `<div class="sec"><h2>The ${esc(GROUPS[g])} desk said</h2></div><p>${rateChip(a.rating)} <span class="muted">${esc(a.conviction ?? '')}</span></p><p class="muted">${esc(a.why ?? '')}</p>` : '';
+}
+function assets() {
+  const entries = Object.entries(D.cards).filter(([n]) => assetFilter === 'all' || groupOf(n) === assetFilter);
+  $('assets').innerHTML = `<div class="filters">${[['all', 'All'], ...Object.entries(GROUPS)].map(([k, l]) => `<button aria-pressed="${k === assetFilter}" data-g="${k}">${l}</button>`).join('')}</div>
+<div class="grid g3">${entries.sort((a, b) => Math.abs(assetScore(b[1]) - 5) - Math.abs(assetScore(a[1]) - 5)).map(([n, c]) => assetCard(n, c)).join('') || '<div class="card muted">No cards.</div>'}</div>`;
+  $('assets').querySelectorAll('[data-g]').forEach(b => b.onclick = () => { assetFilter = b.dataset.g; assets(); });
+  wire($('assets'));
+}
+
+// ── MACRO ──
+function macro() {
+  const rd = D.rd?.byCcy ?? {}, ry = D.ry?.byCcy ?? {}, cb = D.sc?.cbSentiment ?? {}, have = CCYS.filter(c => rd[c]?.latestRate != null);
+  const heat = v => { const a = Math.min(1, Math.abs(v) / 4); return v > 0 ? `rgba(47,211,154,${0.08 + a * 0.45})` : v < 0 ? `rgba(255,93,120,${0.08 + a * 0.45})` : 'var(--bg3)'; };
+  const R = D.rates?.now ?? {}, ch = D.rates?.change20d ?? {};
+  const usRow = [['Policy', 'policy'], ['US 2y', 'us2y'], ['US 10y', 'us10y'], ['US 30y', 'us30y'], ['10y real', 'real'], ['Breakeven', 'bei'], ['SOFR', 'sofr']].filter(([, k]) => R[k]);
+  const sc = D.sc?.ranked ?? [];
+  $('macro').innerHTML = `<div class="sec" style="margin-top:0"><h2>Central banks</h2><span class="lbl">policy rate, stance from the last statement, real 10y yield</span></div>
+<div class="grid g4">${CCYS.map(c => { const s = cb[c]; return `<div class="card click" tabindex="0" data-ccy="${c}"><div class="ch"><span style="font-size:20px">${FLAG[c]}</span><h3>${BANKSHORT[c]}</h3><span class="r">${s ? `<span class="chip ${s.regime === 'HAWKISH' ? 'gold' : s.regime === 'DOVISH' ? 'pur' : ''}">${esc(s.regime)}</span>` : ''}</span></div>
+<div class="mono" style="font-size:24px;font-weight:700">${rd[c]?.latestRate != null ? rd[c].latestRate + '%' : '–'}</div><div class="muted">policy rate · ${esc(rd[c]?.latestDate ?? '')}</div>
+${s ? `<div style="margin-top:10px"><span class="lbl">Hawkishness</span><div class="bar" style="margin-top:4px"><i style="width:${s.score * 100}%;background:linear-gradient(90deg,var(--pur),var(--gold))"></i></div><span class="muted">${s.score} · meeting ${esc(s.meetingDate)}</span></div>` : ''}
+${ry[c] ? `<div class="muted" style="margin-top:6px">real 10y <b class="${dirCls(ry[c].latestReal)}">${f(ry[c].latestReal)}%</b> (10y ${ry[c].latestY10}% − CPI ${ry[c].latestCpiYoy}%)</div>` : ''}</div>`; }).join('')}</div>
+<div class="grid g2" style="margin-top:14px"><div class="card"><div class="ch"><span class="lbl">Policy-rate differential</span><span class="r muted">row minus column, percentage points</span></div><div class="scroll"><table class="heat"><thead><tr><th></th>${have.map(c => `<th style="text-align:center">${c}</th>`).join('')}</tr></thead><tbody>${have.map(a => `<tr><th>${a}</th>${have.map(b => { const v = rd[a].latestRate - rd[b].latestRate; return `<td style="background:${a === b ? 'transparent' : heat(v)}">${a === b ? '·' : f(v)}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div></div>
+<div class="card"><div class="ch"><span class="lbl">US rates</span><span class="r muted">level and 20-day change (bp)</span></div><table><tbody>${usRow.map(([l, k]) => `<tr><td>${l}</td><td class="n">${R[k].value}%</td><td class="n ${dirCls(ch[k])}">${ch[k] == null ? '' : f(ch[k], 0) + ' bp'}</td><td class="muted">${esc(R[k].date)}</td></tr>`).join('')}</tbody></table></div></div>
+${sc.length ? `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">Macro scorecard</span><span class="r muted">composite of rates, inflation, growth and labour by currency</span></div><div class="scroll"><table><thead><tr><th>Currency</th><th>Composite</th>${Object.values(sc[0].factors ?? {}).map(x => `<th>${esc(x.label)}</th>`).join('')}</tr></thead><tbody>${sc.map(r => `<tr><td class="n">${FLAG[r.ccy] ?? ''} ${r.ccy}</td><td class="n ${dirCls(r.composite)}">${f(r.composite)}</td>${Object.values(r.factors ?? {}).map(x => `<td class="n ${dirCls(x.score)}">${x.score == null ? '–' : f(x.score)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>` : ''}
+${D.gpr?.ok ? `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">Geopolitical risk index</span><span class="r"><span class="chip ${D.gpr.trend === 'rising' ? 'gold' : ''}">${esc(D.gpr.trend)}</span></span></div><div class="score"><b>${D.gpr.level}</b><small>z ${f(D.gpr.z, 1)} · ${esc(D.gpr.asOfDate)}</small></div></div>` : ''}
+<p class="muted">Rate expectations for the banks other than the Fed and the ECB need their futures (SONIA, €STR, BAX, ASX, NZ): the next step for this tab (plan §9r).</p>`;
+  wire($('macro'));
+}
+
+// ── POSITIONING ──
+function positioning() {
+  const cot = D.cot?.instruments ?? {}, bk = D.book?.instruments ?? {};
+  const rows = Object.entries(bk).map(([k, v]) => ({ k, inst: k.replace('_', '').replace('XAUUSD', 'GOLD').replace('XAGUSD', 'SILVER'), long: v.latest?.[2], d24: v.change24h?.delta, lu: v.latest?.[4], su: v.latest?.[5] })).filter(r => Number.isFinite(r.long)).sort((a, b) => Math.abs(b.long - 50) - Math.abs(a.long - 50));
+  $('pos').innerHTML = `<div class="grid g2"><div class="card"><div class="ch"><span class="lbl">Retail sentiment</span><span class="r muted">OANDA position book: share of positions long</span></div>
+${rows.map(r => `<div style="display:grid;grid-template-columns:84px 1fr 120px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)"><b class="mono">${esc(r.inst)}</b><div><div class="gauge"><i style="width:${r.long}%;background:var(--up)"></i><i style="width:${100 - r.long}%;background:var(--dn)"></i></div></div><span class="mono" style="font-size:12px">${r.long.toFixed(0)}% L ${r.d24 != null ? `<span class="${dirCls(r.d24)}">${f(r.d24, 1)}</span>` : ''}</span></div>`).join('') || '<p class="muted">No position-book data.</p>'}
+<p class="muted">Context, not a signal. The 24h change is in percentage points.</p></div>
+<div class="card"><div class="ch"><span class="lbl">COT: speculators against the trend</span><span class="r muted">report ${esc(D.cot?.reportDate ?? '–')}</span></div><div class="scroll"><table><thead><tr><th>Market</th><th>Side</th><th>Crowding</th><th>State</th><th>Tested?</th></tr></thead><tbody>${Object.entries(cot).map(([n, c]) => `<tr><td class="n">${esc(n)}</td><td class="${c.side === 'long' ? 'up' : c.side === 'short' ? 'dn' : ''}">${esc(c.side ?? '–')}</td><td><div class="bar"><i style="width:${c.posT ?? 0}%;background:${(c.posT ?? 0) > 80 ? 'var(--gold)' : 'var(--pur)'}"></i></div><span class="muted mono">${c.posT ?? '–'}</span></td><td>${esc(c.label ?? '')}</td><td><span class="chip ${c.verdict === 'validated' ? 'up' : ''}">${esc(c.verdict ?? 'untested')}</span></td></tr>`).join('')}</tbody></table></div>
+<p class="muted">${esc(D.cot?.note ?? '')}</p></div></div>`;
+}
+
+// ── CALENDAR ──
+function calendar() {
+  const ev = upcoming(24 * 7).filter(e => !/holiday/i.test(e.impact));
+  const days = {}; for (const e of ev) { const d = new Date(e.ms).toLocaleDateString('en-GB', { timeZone: LONDON, weekday: 'long', day: 'numeric', month: 'short' }); (days[d] ||= []).push(e); }
+  const fam = (D.run?.economist?.releases ?? []);
+  $('cal').innerHTML = Object.entries(days).map(([d, es]) => `<div class="sec"><h2>${esc(d)}</h2></div><div class="card scroll"><table><tbody>${es.map(e => { const pb = fam.find(r => Math.abs(Date.parse(r.at) - e.ms) < 60_000);
+    return `<tr><td class="n" style="width:70px">${new Date(e.ms).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</td><td style="width:44px"><b>${esc(e.country)}</b></td><td>${esc(e.event)}${pb ? ` <span class="chip gold">playbook</span>` : ''}</td><td><span class="chip ${/high/i.test(e.impact) ? 'dn' : /medium/i.test(e.impact) ? 'gold' : ''}">${esc(e.impact)}</span></td><td class="muted mono" style="font-size:12px">${e.estimate ? `est ${esc(e.estimate)}` : ''}${e.prev ? ` · prev ${esc(e.prev)}` : ''}${e.actual ? ` · <b class="mono" style="color:var(--tx)">${esc(e.actual)}</b>` : ''}</td></tr>`; }).join('')}</tbody></table></div>`).join('') || '<div class="card muted">No events in the calendar feed.</div>';
+}
+
+// clicking a currency or an instrument anywhere opens its card
+function wire(root) {
+  root.querySelectorAll('[data-ccy]').forEach(el => { const go = () => ccyModal(el.dataset.ccy); el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
+  root.querySelectorAll('[data-inst]').forEach(el => { const go = () => { const c = D.cards[el.dataset.inst]; if (c) { openModal(assetCard(el.dataset.inst, c, true)); } }; el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
+}
+
+// ── Ask the desk ──
+$('askbtn').onclick = () => {
+  openModal(`<div class="ch"><span class="lbl">Ask the desk</span><button class="x" aria-label="Close">✕</button></div>
+<p class="muted">One answer from today's book, the analysts' reports, the desk's memory and the Evidence Book. It cites what it uses and says when the data does not answer the question.</p>
+<textarea id="q" placeholder="Why is the desk short USD/JPY when the Fed is hawkish?"></textarea>
+<div style="display:flex;gap:8px;margin-top:8px"><button class="btn" id="qgo">Ask</button><span id="qst" class="muted"></span></div><div class="ans" id="qa"></div>`);
+  $('q').focus();
+  $('qgo').onclick = async () => {
+    const q = $('q').value.trim(); if (!q) return;
+    $('qgo').disabled = true; $('qst').textContent = 'Thinking…'; $('qa').textContent = '';
+    const r = await fetch('/api/desk-ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q }) }).then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
+    $('qgo').disabled = false; $('qst').textContent = r.ok ? `${r.model ?? ''}` : '';
+    $('qa').innerHTML = r.ok ? `<div class="synth" style="font-style:normal">${esc(r.answer)}</div>${r.sources?.length ? `<div class="drv">${r.sources.map(s => `<span>${esc(s)}</span>`).join('')}</div>` : ''}` : `<p class="dn">${esc(r.error ?? 'failed')}</p>`;
+  };
+};
+
+load();
+setInterval(() => { if (!document.hidden) load(); }, 5 * 60_000);
+</script>
+</body>
+</html>

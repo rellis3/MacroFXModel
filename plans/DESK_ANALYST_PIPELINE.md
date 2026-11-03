@@ -643,7 +643,7 @@ Each release has the actual, the consensus and the surprise, plus how about 20 m
   and the desk brief, with the brief and the history table for each release. The Desk Office Research tab shows the
   same.
 
-## 9r. Phase 17 (planned): the Desk Terminal (owner, 2026-11-03)
+## 9r. Phase 17: the Desk Terminal (owner, 2026-11-03; v1 built 2026-11-03)
 
 A private terminal for the owner, built last, after the remaining phases. The model is FundaBias
 (fundabias.com), with design ideas from its public pages, made with this repo's data and agents. It never goes into
@@ -720,6 +720,36 @@ Ours is a design of its own in that spirit, not a copy.
 | Pair drill-down (card, lines, walls, vol, seasonality, sentiment) | the book, levels, oi-levels, vol forecast | have |
 | Ask the desk | one model call over the day's pack, book and memory | new |
 | Journal | Phase 8 (`/api/desk-journal`) | have |
+
+**Built, v1 (`desk-terminal.html`, linked from the command hub and the Desk Office):**
+
+- Top bar: Sydney, Tokyo, London and New York clocks with an open dot (local weekday 08:00-17:00), the book chip
+  (date and time written) and the data-health chip. A scrolling ticker of the regime, the next 36 hours' high-impact
+  releases, the session-update headlines, the risk desk's warnings and the geopolitical index.
+- **Overview:** today's book headline as a gold thesis; the regime card (tone, conviction, the Global Manager's
+  synthesis ruled in gold, driver chips, BUY and SELL lists from the largest live cards, what would flip it); the
+  currency strength strip (the ranking, bias on /10); the desk's record (counted days, mean day, vs the single
+  analyst); the six largest cards as playbook cards (grade from conviction, Entry / Target from today's forecast
+  lines / Invalidation); the economist's releases; the risk desk's warnings.
+- **Currencies:** a card per currency and a modal: bias chip, score /10, the ruling ruled in gold, the bank's stance
+  and hawkishness, policy rate, real 10y, the book's net exposure before and after the cap, key drivers from the
+  analysts' scored points tagged `[TIER1 +CB]` / `[TIER2 −RATES]`, best expressions (the book's cards on that
+  currency, those that fit the bias first, by bias gap), and what would flip it.
+- **Assets:** every card, filterable by group: class and instrument chips, "Analysis of X", rating chip, score /10,
+  gold thesis, source chips, a forecast ladder (p50/p75/p90 each side of the open, entry zone in purple), and a full
+  view with the plan rows and what the asset desk said, plus any session update that changed the card.
+- **Macro:** a central-bank board (rate, stance, hawkishness, last meeting, real 10y), the policy-rate differential
+  heatmap, US rates with 20-day changes, the macro scorecard, the geopolitical index.
+- **Positioning:** retail long share per pair with its 24h change, and the COT crowding table with each state's
+  tested verdict.
+- **Calendar:** seven days by London day, impact chips, and a "playbook" chip where the economist has one.
+- **Ask the desk:** `POST /api/desk-ask`, one model call (task desk-analyst) over today's book, the analysts'
+  reports, the last three evening reviews and the Evidence Book; answers from those only, with its sources. One at
+  a time, 60 a day.
+
+Scores /10 are the desk's own −2..+2 views rescaled (5 = no view); grades are the book's conviction, never a hit
+rate, and the page says so. Still to come: the data below (rate expectations beyond the Fed and the ECB, a headline
+feed), a world map for the banks, seasonality and skew panels.
 
 **Data to get:**
 
@@ -813,7 +843,7 @@ Not built yet. The order is the owner's call; each item names what it needs firs
   hold the run.
 - **Phase 15 · Scenario strategist.** *Built (§9q).* "If hot / if cold" playbooks before big releases from the desk's
   release-history data. Pairs with the economist (Phase 6).
-- **Phase 17 · Desk Terminal.** The owner's private terminal, built last (§9r).
+- **Phase 17 · Desk Terminal.** *v1 built (§9r).* The owner's private terminal, built last.
 - **Phase 16 · Claims checker.** Checks everything published against the data and the Evidence Book.
 
 **Build items**

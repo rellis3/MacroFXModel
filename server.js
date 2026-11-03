@@ -5177,6 +5177,38 @@ svcInterval('deskTheory', async () => {
   if (raw && JSON.parse(raw).week === _tdWeek(date)) return;
   _tdStart();
 }, 30 * 60_000);
+// POST /api/desk-ask {q}: the Desk Terminal's "Ask the desk" (Phase 17, §9r). One model call over today's book, the
+// analysts' reports, the last evening reviews and the Evidence Book. Answers from those only and says when they do
+// not answer the question. One at a time, at most 60 a day.
+let _askBusy = false, _askDay = { date: null, n: 0 };
+app.post('/api/desk-ask', express.json({ limit: '16kb' }), async (req, res) => {
+  try {
+    const q = String(req.body?.q ?? '').trim().slice(0, 800);
+    if (q.length < 3) return res.status(400).json({ ok: false, error: 'ask a question' });
+    if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key on the server' });
+    const today = _dpLondonDate(Date.now());
+    if (_askDay.date !== today) _askDay = { date: today, n: 0 };
+    if (_askDay.n >= 60) return res.status(429).json({ ok: false, error: 'the daily limit of 60 questions is reached' });
+    if (_askBusy) return res.status(409).json({ ok: false, error: 'the desk is answering another question; try again in a moment' });
+    _askBusy = true; _askDay.n++;
+    try {
+      const run = await _drLoad(today), idx = (await _dsLoadIndex().catch(() => [])).slice(-3);
+      const refl = await Promise.all(idx.map(async r => { const x = await kv.get(_DS_REFLECT_KEY(r.date)).catch(() => null); return x ? { date: r.date, score: r.S, review: JSON.parse(x) } : null; }));
+      const { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js');
+      const book = run?.head?.ok ? { date: run.date, writtenAt: run.finishedAt, headline: run.head.book.headline, global: run.head.book.global, currencies: run.head.book.currencies, risks: run.head.book.risks,
+        cards: Object.fromEntries(Object.entries(run.head.book.instruments).map(([n, c]) => [n, { rating: c.rating, conviction: c.conviction, size: c.size, why: c.why, plan: c.plan, levels: c.levels ? { open: c.levels.open, up: c.levels.up, down: c.levels.down } : null }])) } : null;
+      const analysts = run ? Object.fromEntries(Object.entries(run.analysts ?? {}).filter(([, a]) => a.ok).map(([id, a]) => [id, { headline: a.report.headline, points: (a.report.points ?? []).map(p => ({ claim: p.claim, evidence: p.evidence, impact: p.impact })) }])) : {};
+      const system = `You are the desk's analyst on call, answering the owner's question in the Desk Terminal. Use only the material below: today's book, the analysts' reports, the last evening reviews and the Evidence Book. If it does not answer the question, say so plainly and say what data would. Never invent a number. An Evidence Book entry marked null or underpowered was tested and found no reliable edge: never present it as working. This is context, not a trade instruction. Be direct and short: at most 200 words.
+Reply with JSON only: { "answer": "plain text", "sources": ["analyst ids, card names or ledger tags you used"] }`;
+      const prompt = `Question: ${q}\n\n## Today's book (${today})\n${book ? JSON.stringify(book) : '(no book today)'}\n\n## Analysts' reports\n${JSON.stringify(analysts)}\n\n## Last evening reviews\n${JSON.stringify(refl.filter(Boolean))}\n\n## Evidence Book\n${evidenceBrief(DESK_EVIDENCE)}`;
+      const r = await callModel({ task: 'desk-analyst', system, prompt, maxTokens: 2_000 });
+      const j = _parseModelJson(r.text ?? _antText(r), 'desk:ask');
+      const answer = typeof j?.answer === 'string' ? j.answer.slice(0, 4000) : null;
+      if (!answer) return res.status(502).json({ ok: false, error: 'the model did not return an answer' });
+      res.json({ ok: true, answer, sources: Array.isArray(j.sources) ? j.sources.slice(0, 12).map(String) : [], model: r.model ?? null, bookDate: book?.date ?? null });
+    } finally { _askBusy = false; }
+  } catch (e) { _askBusy = false; res.status(500).json({ ok: false, error: e.message }); }
+});
 // GET /api/desk-quality?date=: the data quality officer's read of the day's pack, and after the run which gaps mattered
 app.get('/api/desk-quality', async (req, res) => {
   try {
