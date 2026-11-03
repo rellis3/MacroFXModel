@@ -140,25 +140,45 @@ export function driftSegments(drift, { minLen = 2 } = {}) {
  * 'maxPain' or 'centre' (its OI-weighted centre). Thin books (under `thin` of all live OI) are skipped unless includeThin, then kept and flagged thin.
  * Returns { points:[{expiry,dte,px,from,dir,movePct,strength,oi,building}], runs:[{dir,from,to,px,expiry}], text }.
  * A drawing of the hypothesis that price visits each expiry's zone by its date. Untested.
+ *
+ * Reach limit (owner, 2026-11-02: "a 4k drop in a day would be an insane day"): when `sigma` (daily, fraction) and `date`
+ * (the last close's date) are given, a step may only go to a strike price could plausibly reach by that expiry, i.e.
+ * within zcap * sigma * sqrt(sessions) of BOTH the previous point (sessions since it) and today's close (sessions
+ * from today). zcap 1.645 = the two-sided 90% range of a random walk at that sigma. For the strike anchor, the step goes
+ * to the biggest strike INSIDE that range; an expiry with none in range (or whose max pain / centre is out of range) is
+ * left out of the walk and listed in `skipped` with how far its zone was and what the range allowed.
  */
-export function zoneWalk(expiries, { close, anchor = 'strike', maxDte = 100, thin = 0.10, includeThin = false, flatPct = 0.1 } = {}) {
+const _weekdays = (a, b) => { let t = Date.parse(`${a}T00:00:00Z`), e = Date.parse(`${b}T00:00:00Z`), k = 0; while (t < e) { t += 864e5; const w = new Date(t).getUTCDay(); if (w && w !== 6) k++; } return k; };
+
+export function zoneWalk(expiries, { close, anchor = 'strike', maxDte = 100, thin = 0.10, includeThin = false, flatPct = 0.1, sigma = null, date = null, zcap = 1.645 } = {}) {
   if (!(close > 0)) return { points: [], runs: [], text: '' };
   const all = (expiries || []).reduce((a, e) => a + (e.totalOI || 0), 0);
   const isThin = e => !!e.thin || (all > 0 && (e.totalOI || 0) / all < thin);
   const live = (expiries || []).filter(e => e.dte >= 0 && e.dte <= maxDte && (includeThin || !isThin(e)))
     .slice().sort((a, b) => (a.expiry < b.expiry ? -1 : a.expiry > b.expiry ? 1 : 0));
-  const points = [];
-  let prev = close;
+  const points = [], skipped = [];
+  const capped = sigma > 0 && date;
+  let prev = close, prevDate = date;
   for (const e of live) {
-    const top = (e.zones || []).slice().sort((a, b) => (b.oi || 0) - (a.oi || 0))[0];
+    const byOI = (e.zones || []).slice().sort((a, b) => (b.oi || 0) - (a.oi || 0));
+    const capFrom = (from, fromDate) => zcap * sigma * Math.sqrt(Math.max(1, _weekdays(fromDate, e.expiry)));
+    const ok = px => !capped || (Math.abs(Math.log(px / prev)) <= capFrom(prev, prevDate) && Math.abs(Math.log(px / close)) <= capFrom(close, date));
+    let top = byOI[0];
+    if (anchor === 'strike' && capped) top = byOI.find(z => z.px > 0 && ok(z.px));
     const px = anchor === 'maxPain' ? e.maxPain : anchor === 'centre' ? e.centrePx : top?.px;
-    if (!(px > 0)) continue;
+    if (!(px > 0) || !ok(px)) {
+      const far = anchor === 'maxPain' ? e.maxPain : anchor === 'centre' ? e.centrePx : byOI[0]?.px;
+      if (far > 0) skipped.push({ expiry: e.expiry, dte: e.dte, px: far, movePct: (far / prev - 1) * 100,
+        capPct: capped ? (Math.exp(capFrom(prev, prevDate)) - 1) * 100 : null, thin: isThin(e) });
+      continue;
+    }
     const movePct = (px / prev - 1) * 100;
     const dir = Math.abs(movePct) < flatPct ? 'flat' : movePct > 0 ? 'up' : 'down';
     points.push({ expiry: e.expiry, dte: e.dte, px, from: prev, dir, movePct, thin: isThin(e),
       strength: all > 0 && top ? (top.oi || 0) / all : null, oi: top?.oi ?? null,
-      building: !!top && ((top.buildStreak ?? 0) >= 2 || (top.chgSinceFirst ?? 0) > 0) });
-    prev = px;
+      building: !!top && ((top.buildStreak ?? 0) >= 2 || (top.chgSinceFirst ?? 0) > 0),
+      notBiggest: anchor === 'strike' && !!byOI[0] && top !== byOI[0], capPct: capped ? (Math.exp(capFrom(prev, prevDate)) - 1) * 100 : null });
+    prev = px; prevDate = e.expiry;
   }
   // consecutive steps the same way merge into one run; a flat step joins the run it sits in
   const runs = [];
@@ -168,5 +188,5 @@ export function zoneWalk(expiries, { close, anchor = 'strike', maxDte = 100, thi
     else runs.push({ dir: p.dir, from: p.dte, to: p.dte, px: p.px, expiry: p.expiry });
   }
   const text = runs.map(r => `${r.dir} to ${r.px} by ${r.expiry} (${r.to}d)`).join(', then ');
-  return { points, runs, text };
+  return { points, runs, text, skipped, capped: !!capped, zcap };
 }

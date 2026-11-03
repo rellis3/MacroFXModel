@@ -63,5 +63,24 @@ console.log('[zone walk: north, south, north by expiry date]');
   ok('includeThin keeps the thin book, flagged', th.points.length === 4 && th.points[2].expiry === '2026-11-12' && th.points[2].thin && !th.points[0].thin);
 }
 
+console.log('[zone walk: the reach limit]');
+{
+  const z = (px, oi) => ({ px, oi });
+  // NQ-like: 28,110 close, ~1.4% a day; the 3 Nov book's biggest strike is 24,878 (-11.5% in a day)
+  const ex = [
+    { expiry: '2026-11-03', dte: 1, totalOI: 8000, zones: [z(24878, 3000), z(28000, 1200), z(28500, 900)] },
+    { expiry: '2026-11-05', dte: 3, totalOI: 6000, maxPain: 33000, zones: [z(30378, 2000)] },
+    { expiry: '2026-11-21', dte: 19, totalOI: 24000, zones: [z(29878, 5000)] },
+  ];
+  const raw = zoneWalk(ex, { close: 28110 });
+  const w = zoneWalk(ex, { close: 28110, sigma: 0.014, date: '2026-11-02' });
+  ok('without a limit the walk drops to 24,878 in a day', raw.points[0].px === 24878);
+  ok('with it, the 3 Nov step goes to the biggest strike in reach (28,000), flagged not-the-biggest', w.points[0].px === 28000 && w.points[0].notBiggest, JSON.stringify(w.points[0]));
+  ok('a book with nothing in reach is skipped and listed (30,378 is +8.5% in 2 days)', w.skipped.some(s => s.expiry === '2026-11-05') && !w.points.some(p => p.expiry === '2026-11-05'), JSON.stringify(w.skipped));
+  ok('a far expiry with more time can still take a bigger step', w.points.some(p => p.expiry === '2026-11-21' && p.px === 29878));
+  ok('every step within its range', w.points.every(p => Math.abs(p.movePct) <= p.capPct + 1e-9));
+  ok('max pain out of range is skipped too', zoneWalk(ex, { close: 28110, sigma: 0.014, date: '2026-11-02', anchor: 'maxPain' }).skipped.some(s => s.expiry === '2026-11-05'));
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);
