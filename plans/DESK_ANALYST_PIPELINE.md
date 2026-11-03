@@ -371,6 +371,27 @@ regular V3 issue with the desk's pages added**, built by the same builder from t
   attaches each card's price levels so the ladders have real numbers. The server's text-only edition stays as a
   fallback and never overwrites the Atlas one.
 
+## 9i. Runs survive a server restart (2026-11-03)
+
+The owner pressed Run now at about 10:00 London. Merges to main at 10:14 and 10:35 redeployed Railway, which
+killed the in-memory job. Nothing was saved, and the page still showed the 07:06 run.
+
+- `js/deskRun.js` `checkpointed`: each stage that succeeds is saved as it finishes, under its label plus a hash of
+  its exact task, system and prompt. A run started again finds a stage it has already finished and uses the saved
+  result without a model call. Later stages read the earlier ones' outputs, so their prompts, and so their keys,
+  come out the same. A changed role file or changed data misses the store and is asked again. Saved attempts keep
+  their usage, because it was paid for. The run record carries `resumed: { stages }`.
+- `server.js`: stages are saved to `desk_run_ckpt_<date>` (gzipped, whole store per save, saves in order).
+  `desk_run_job` marks a run in progress. On boot (after 20s), a marked run for today is started again, at most 3
+  times. A marker from another day, or one with no model key, is cleared. A checkpoint older than 6 hours is not
+  reused. The checkpoint is cleared once the whole run is saved. A failed run keeps its checkpoint, so the next
+  Run now pays only for what is left.
+- `desk-run.html`: while running it says the run was picked up after a restart and how many stages were kept. The
+  footer of a finished run says the same.
+- Tested: `js/deskRun.test.mjs` cuts a run off after 15 calls, then restarts it on the same store. It asks only the
+  remaining calls and produces the same book. A local server boot with a planted marker resumed the run and
+  cleared the marker and the checkpoint.
+
 ## 10. Owner decisions (2026-11-03)
 
 1. **Rating scale:** the five-step scale (§4, Layer 3).
