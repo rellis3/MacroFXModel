@@ -18,6 +18,8 @@ Work through:
    (release-calls and the Evidence Book). Do not inflate an event the desk has found to be noise.
 3. The latest prints that surprised, and how prices reacted (news-outcome).
 4. Earnings, Treasury auctions and fiscal events that matter for indices and the dollar.
+5. The overnight wire (desk-news): the last 18 hours' important headlines, each with the news analyst's read. A
+   headline is a fact to weigh, not a signal: pass on the ones that change today's event risk, and say which.
 
 List times. Put the event-risk read in points with impact on the currencies affected; a big event with an unknown
 outcome has no direction, so leave impact empty and say it widens the range instead.

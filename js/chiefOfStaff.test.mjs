@@ -15,6 +15,7 @@ t('morning: the call, cards, what to fix, releases, research; escaped', () => {
   assert.match(m, /RISK-OFF/); assert.match(m, /&lt;today&gt;/); assert.match(m, /Fix 2 thing/); assert.match(m, /US CPI 13:30/); assert.match(m, /2 result\(s\) ready to bank/);
   assert.match(morningText({ date: 'd', run, claims: { ok: true, verdict: 'clean' } }), /Nothing needs you/);
   assert.match(morningText({ date: 'd', run, rules: { bots: [{ label: 'OI Gamma', flags: [{ severity: 'high' }] }, { label: 'X', flags: [{ severity: 'low' }] }] } }), /1 bot\(s\) trading against the research: OI Gamma/);
+  assert.match(morningText({ date: 'd', run, news: [{ title: 'Fed hikes', tier: 1 }, { title: 'noise', tier: 3 }] }), /Overnight: Fed hikes$/m);
   assert.equal(morningText({ date: 'd', run: {} }), null);
 });
 t('evening: score, watcher, review, record', () => {

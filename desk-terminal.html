@@ -439,11 +439,11 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 
 // ── data ──
 async function load() {
-  const [run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev, tw, wk] = await Promise.all([
+  const [run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev, tw, wk, news] = await Promise.all([
     getJson('/api/desk-run'), getJson('/api/desk-score/record'), getJson('/api/desk-update'), getJson('/api/desk-quality'),
     getJson('/api/macro-scorecard'), getJson('/api/rate-diff'), getJson('/api/real-yield'), getJson('/api/rates'),
-    getJson('/api/cot-state'), getJson('/api/oanda-book/history'), getJson('/api/gpr'), getJson('/api/events'), getJson('/api/trade-watch'), getJson('/api/desk-weekly')]);
-  D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, tw, wk, ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
+    getJson('/api/cot-state'), getJson('/api/oanda-book/history'), getJson('/api/gpr'), getJson('/api/events'), getJson('/api/trade-watch'), getJson('/api/desk-weekly'), getJson('/api/desk-news?hours=24&tier=2')]);
+  D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, tw, wk, news: news?.ok ? news.items : [], ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
   const ok = run?.ok && run.head?.ok;
   D.cards = ok ? run.head.book.instruments : {};
   D.ccy = ok ? (run.debate?.currency?.view?.currencies ?? Object.fromEntries(Object.entries(run.head.book.currencies ?? {}).map(([k, v]) => [k, { bias: v.bias, why: v.why }]))) : {};
@@ -473,6 +473,7 @@ const lt = ms => new Date(ms).toLocaleString('en-GB', { timeZone: LONDON, weekda
 
 function ticker() {
   const items = [];
+  for (const h of D.news.filter(h => (h.read?.tier ?? h.tier) === 1).slice(0, 8)) items.push(`<span><b>📰 ${new Date(h.ms).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</b> ${esc(h.title)}${impactTxt(h)}</span>`);
   for (const e of (D.tw?.events ?? []).slice(-6).reverse()) items.push(`<span><b>${e.kind === 'zone' ? '🎯 IN ZONE' : e.kind === 'target' ? '✅ TARGET' : '⛔ INVALID'}</b> ${esc(e.inst)} @ ${px(e.price)} · ${new Date(e.at).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</span>`);
   const g = D.run?.head?.book?.global; if (g) items.push(`<span><b>REGIME</b> ${esc(String(g.tone).replace('_', '-').toUpperCase())}</span>`);
   for (const e of upcoming(36).filter(e => /high/i.test(e.impact)).slice(0, 10)) items.push(`<span><b>${esc(e.country)}</b> ${esc(e.event)} · ${lt(e.ms)}${e.estimate ? ` · est ${esc(e.estimate)}` : ''}</span>`);
@@ -554,6 +555,16 @@ function watchBoard() {
 ${(t.events ?? []).length ? `<div class="drv">${t.events.slice(-8).reverse().map(e => `<span>${new Date(e.at).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })} ${esc(e.inst)} ${esc(e.kind)}</span>`).join('')}</div>` : ''}
 <p class="muted">Telegram sends each event once (⚙ Alerts → "Desk trade watcher" to mute). Context, never an order.</p></div>`;
 }
+
+// the news analyst's read of a headline as arrows per currency
+const impactTxt = h => { const im = h.read?.impact ?? {}; const k = Object.keys(im); return k.length ? ` <b>${k.map(c => `${c}${im[c] > 0 ? '▲' : '▼'}`).join(' ')}</b>` : ''; };
+const impactChips = h => { const im = h.read?.impact ?? {}; return Object.keys(im).length ? Object.entries(im).map(([c, v]) => `<span class="chip ${v > 0 ? 'up' : 'dn'}">${esc(c)} ${v > 0 ? '▲' : '▼'}</span>`).join(' ') : (h.touches ?? []).map(c => `<span class="chip">${esc(c)}</span>`).join(' '); };
+function wireCard(items, title = 'The wire', limit = 14) {
+  if (!items.length) return `<div class="card"><div class="ch"><span class="lbl">${title}</span></div><p class="muted">No important headlines in the last 24 hours (the news analyst runs every 10 minutes).</p></div>`;
+  return `<div class="card"><div class="ch"><span class="lbl">${title}</span><span class="r muted">the news analyst · tier 1 and 2 · last 24 h</span></div>${items.slice(0, limit).map(h => { const t = h.read?.tier ?? h.tier;
+    return `<div style="display:grid;grid-template-columns:52px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)"><div><span class="mono muted" style="font-size:11px">${new Date(h.ms).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</span><br><span class="chip ${t === 1 ? 'gold' : ''}" style="margin-top:4px">T${t}</span></div>
+<div><a href="${esc(h.link ?? '#')}" target="_blank" rel="noopener" style="color:var(--tx);text-decoration:none;font-weight:600">${esc(h.title)}</a><div class="drv" style="margin:5px 0 0">${impactChips(h)}<span>${esc(h.source)}</span></div>${h.read?.why ? `<div class="muted">${esc(h.read.why)}</div>` : ''}${h.read?.book ? `<div style="color:var(--gold);font-size:12.5px">The book: ${esc(h.read.book)}</div>` : ''}</div></div>`; }).join('')}<p class="muted">Arrows are the first reaction the headline implies, read by the news analyst: context, never a signal.</p></div>`;
+}
 function overview() {
   if (!D.run?.ok) { $('overview').innerHTML = `<div class="card"><p>No desk book yet today.</p><p class="muted">${esc(D.run?.error ?? '')} The book is written at 06:55 London when the Desk Run service is on, or from the Desk Run page.</p></div>`; return; }
   const live = Object.entries(D.cards).filter(([, c]) => DIR[c.rating] && c.size > 0).sort((a, b) => b[1].size * (CONV[b[1].conviction] ?? .8) * Math.abs(DIR[b[1].rating]) - a[1].size * (CONV[a[1].conviction] ?? .8) * Math.abs(DIR[a[1].rating])).slice(0, 6);
@@ -563,7 +574,7 @@ ${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span
 ${weekSection()}
 <div class="sec"><h2>Trade watch</h2><span class="lbl">the book against live prices, every 2 minutes</span></div>${watchBoard()}
 <div class="sec"><h2>Playbooks</h2><span class="lbl">the six largest cards · tap for the full analysis</span></div><div class="grid g3">${live.map(([n, c]) => playbookCard(n, c)).join('')}</div>
-<div class="sec"><h2>Releases and risks</h2></div><div class="grid g2">${releasesCard()}<div class="card"><div class="ch"><span class="lbl">Risk desk warnings</span></div><ul style="margin:0;padding-left:18px">${(D.run.head.book.risks ?? []).map(r => `<li style="margin:6px 0">${esc(r)}</li>`).join('') || '<li class="muted">None.</li>'}</ul></div></div>`;
+<div class="sec"><h2>News, releases and risks</h2></div><div class="grid g2">${wireCard(D.news)}<div class="grid" style="align-content:start">${releasesCard()}<div class="card"><div class="ch"><span class="lbl">Risk desk warnings</span></div><ul style="margin:0;padding-left:18px">${(D.run.head.book.risks ?? []).map(r => `<li style="margin:6px 0">${esc(r)}</li>`).join('') || '<li class="muted">None.</li>'}</ul></div></div></div>`;
   wire($('overview'));
   let view = 'globe'; try { view = localStorage.getItem('deskTerminalHero') || 'globe'; } catch { /* default */ }
   const showHero = v => { view = v; document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === v)); try { localStorage.setItem('deskTerminalHero', v); } catch { /* fine */ } if (v === 'globe') drawGlobe($('heromap')); else { stopGlobe(); drawMap($('heromap'), 'bias'); } };
@@ -606,7 +617,7 @@ function ccyModal(c) {
 ${drv.length ? drv.map(d => `<div style="display:flex;gap:10px;padding:8px 10px;margin:6px 0;border-radius:8px;background:var(--bg3);border-left:3px solid ${d.v > 0 ? 'var(--up)' : 'var(--dn)'}"><span class="mono" style="font-size:10.5px;white-space:nowrap;color:${d.v > 0 ? 'var(--up)' : 'var(--dn)'}">[${d.tier} ${d.sign}${d.type}]</span><span style="font-size:13px">${esc(d.claim)}</span></div>`).join('') : '<p class="muted">No analyst point scored this currency today.</p>'}
 <div class="sec"><h2>Best expressions</h2><span class="lbl">the book's cards on this currency</span></div>
 ${best.length ? `<div class="grid g2">${best.map(e => `<div class="card click" tabindex="0" data-inst="${esc(e.n)}" style="padding:10px 12px"><div class="ch" style="margin:0"><b class="mono">${esc(nice(e.n))}</b>${rateChip(e.x.rating)}<span class="r">${e.agrees ? '<span class="chip gold">fits the bias</span>' : '<span class="chip">against the bias</span>'}</span></div><span class="muted">bias gap ${e.gap} · size ${e.x.size}</span></div>`).join('')}</div>` : '<p class="muted">No live card on this currency.</p>'}
-${v.flip ? `<div class="sec"><h2>What would flip it</h2></div><p>${esc(v.flip)}</p>` : ''}
+${v.flip ? `<div class="sec"><h2>What would flip it</h2></div><p>${esc(v.flip)}</p>` : ''}${(() => { const hs = D.news.filter(h => (h.touches ?? []).includes(c) || h.read?.impact?.[c]).slice(0, 5); return hs.length ? `<div class="sec"><h2>On the wire</h2><span class="lbl">the last 24 h</span></div>${hs.map(h => `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><span class="mono muted" style="font-size:11px">${new Date(h.ms).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</span> ${esc(h.title)} ${h.read?.impact?.[c] ? `<span class="chip ${h.read.impact[c] > 0 ? 'up' : 'dn'}">${c} ${h.read.impact[c] > 0 ? '▲' : '▼'}</span>` : ''}</div>`).join('')}` : ''; })()}
 <p class="muted">Score: the Currency Manager's −2..+2 bias put on /10 (5 = neutral). Drivers are the analysts' scored points, not tested signals.</p>`);
   wire($('modal'));
 }

@@ -716,7 +716,7 @@ Ours is a design of its own in that spirit, not a copy.
 | Vol skew | cvol, the options chain read | have |
 | Calendar and week ahead, release playbooks | calendar feeds, the economist | have |
 | Geopolitical map | gpr | have (country detail to check) |
-| News ticker | news-outcome, events | partial: a headline feed would help |
+| News ticker | the news analyst's wire (§9z) | have |
 | Pair drill-down (card, lines, walls, vol, seasonality, sentiment) | the book, levels, oi-levels, vol forecast | have |
 | Ask the desk | one model call over the day's pack, book and memory | new |
 | Journal | Phase 8 (`/api/desk-journal`) | have |
@@ -908,6 +908,28 @@ Desk Office "You" tab; a line in the chief of staff's morning note when any bot 
   ("a level to know about, not a magnet") and trade before oi-wall-building-forward has a verdict; they and the
   Signal Copier report live while the registry lists them as paper. It reports; it never changes a bot.
 
+## 9z. Agent 21: the news analyst (built 2026-11-03)
+
+`js/newsAnalyst.js` (pure, tested in `js/newsAnalyst.test.mjs`), `desk/roles/news_analyst.md` (schema `news_read`);
+service `newsWire` (every 10 min); `GET /api/desk-news` (`?hours`, `?tier`, `?ccy`; `?pack=1` is the Desk Pack feed),
+`POST /api/desk-news/run`; Telegram master switch `newsWire`.
+
+- **Sources:** the Fed, ECB and BoE press feeds; Finnhub forex and general news (`FINNHUB_KEY`, already set for the
+  calendar); MarketWatch top stories; Investing.com forex news; Yahoo headlines for EURUSD, GBPUSD, USDJPY, gold, oil,
+  the S&P, the dollar index and the 10-year. FXStreet, ForexLive and CNBC refuse automated requests and are not used.
+  Fed Chair names are redacted as in the morning brief.
+- **Rules (no model):** each headline gets the currencies and markets it touches (a central bank's own feed carries its
+  currency), a topic (central bank, data, geopolitics, trade, fiscal, energy, earnings) and a tier. Tier 1 is a
+  policy item from a central bank's own feed, or macro news with a big word (a rate move, a surprise, a strike,
+  sanctions, tariffs) that touches a market; tier 2 is macro-relevant; tier 3 is background. Near-duplicates across
+  feeds are dropped; 72 hours are kept (`desk_news_wire`).
+- **Read (one model call, task desk-analyst, only when new tier-1/2 headlines arrive, at most 25 a batch):** the tier,
+  the first-reaction direction per currency and market, a one-line why, and whether it bears on a card in the book.
+- **Where it goes:** the Desk Terminal (tier 1 in the ticker, a "The wire" panel on the Overview, each currency card's
+  headlines); the session updates (headlines since the book); the chief of staff's morning note (overnight tier 1);
+  Telegram for a tier-1 headline that bears on the book (at most 10 a day); and the Desk Pack feed `desk-news` for the
+  events analyst (prereg amendment A7).
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
@@ -954,7 +976,7 @@ Not built yet. The order is the owner's call; each item names what it needs firs
 - **Agent 18 · Trade watcher.** *Built (§9u).* Alerts when a card reaches its entry zone, first target or invalidation.
 - **Agent 19 · Weekly strategist.** *Built (§9x).* Sunday's week view and edition, and Monday's starting point.
 - **Agent 20 · Rules keeper.** *Built (§9y).* The live bots' settings against the research verdicts.
-- **Agent 21 · News analyst.** Tags a headline feed by currency and tier (needs the feed).
+- **Agent 21 · News analyst.** *Built (§9z).* Tags a headline feed by currency and tier (needs the feed).
 - **Agent 22 · Chief of staff.** *Built (§9w).* One short Telegram each morning and evening summing up the Desk Office.
 - **Phase 16 · Claims checker.** *Built (§9v).* Checks everything published against the data and the Evidence Book.
 
