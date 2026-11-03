@@ -770,6 +770,13 @@ speculators' net share of open interest over three years per market with the top
 up years from up to 20 years of daily bars, `GET /api/desk-season`, with a weekday view per market), labelled as
 history with ~15-20 draws per cell.
 
+**Globe, vol chart, score calendar (2026-11-03):** the Overview hero opens as a 3D globe (d3 orthographic, turning
+slowly, drag to spin, with the map one tap away): currency zones shaded by bias, glowing banks with rates, the
+strongest-to-weakest arc. Analytics adds the vol forecast against what happened (`GET /api/desk-volcheck`,
+`js/volCheck.js`): each archived day's London-day high-to-low p50-p75 band against the range the market made from
+the first H1 bar after London midnight to the next (the forecast's own definition), with the share of days above
+the p50 and the p75 against their 50% and 25% targets; and a calendar of the desk's scored days.
+
 Scores /10 are the desk's own −2..+2 views rescaled (5 = no view); grades are the book's conviction, never a hit
 rate, and the page says so. Still to come: the data below (rate expectations beyond the Fed and the ECB, a headline
 feed), seasonality and skew panels.

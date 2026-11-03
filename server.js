@@ -227,6 +227,7 @@ import { assess as _dqAssess, afterRun as _dqAfterRun } from './js/deskDataQuali
 import { attribution as _atAttribution, attributionRecord as _atRecord } from './js/deskAttribution.js';
 import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
 import { isoWeek as _wkIso, weekBooks as _wkBooks, weekCalendar as _wkCalendar, validateWeekly as _wkValidate, weeklyNote as _wkNote } from './js/weeklyDesk.js';   // agent 19
+import { realisedDays as _vcRealised, compare as _vcCompare } from './js/volCheck.js';   // the terminal's vol chart
 import { morningText as _cosMorning, eveningText as _cosEvening } from './js/chiefOfStaff.js';   // agent 22
 import { numberCheck as _ccNumbers, claimsSections as _ccSections, validateClaims as _ccValidate } from './js/claimsCheck.js';   // Phase 16
 import { watchPlan as _twPlan, check as _twCheck, message as _twMessage } from './js/tradeWatch.js';   // agent 18: the trade watcher
@@ -5432,6 +5433,36 @@ app.get('/api/desk-season', async (req, res) => {
     const st = a => { const n = a.length; if (!n) return { n: 0, mean: null, up: null, sd: null }; const mean = a.reduce((x, y) => x + y, 0) / n, sd = Math.sqrt(a.reduce((x, y) => x + (y - mean) ** 2, 0) / Math.max(1, n - 1)); return { n, mean: +mean.toFixed(3), up: +(a.filter(x => x > 0).length / n).toFixed(2), sd: +sd.toFixed(3) }; };
     const data = { ok: true, inst, from: bars[0]?.date ?? null, to: bars.at(-1)?.date ?? null, months: months.map(st), weekdays: wd.map(st), label: 'history, not a forecast: each month is one draw per year' };
     _seasonCache.set(inst, { at: Date.now(), data });
+    res.json(data);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/desk-volcheck?inst=EURUSD&days=60: each archived day's vol forecast (London-day high-to-low p50/p75, % of
+// the London-midnight open) against that day's realised range built the same way from H1 bars (js/volCheck.js).
+const _vcFcCache = new Map(), _vcCache = new Map();
+app.get('/api/desk-volcheck', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const inst = String(req.query.inst ?? '').toUpperCase(), sym = _dsOanda[inst];
+    if (!sym) return res.status(400).json({ ok: false, error: `unknown instrument ${inst}` });
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 60, 10), 120), key = `${inst}|${days}`, hit = _vcCache.get(key);
+    if (hit && Date.now() - hit.at < 60 * 60_000) return res.json(hit.data);
+    const today = _dpLondonDate(Date.now()), from = new Date(Date.now() - days * 864e5).toISOString().slice(0, 10);
+    const idx = JSON.parse((await kv.get('vol_forecast_index').catch(() => null)) ?? '[]');
+    const dates = [...new Set(idx.map(e => e.date))].filter(d => d && d >= from && d < today).sort();
+    const forecasts = {};
+    for (const d of dates) {
+      if (!_vcFcCache.has(d)) { const raw = await kv.get(`vol_forecast_${d}`).catch(() => null); let fc = null; try { fc = raw ? JSON.parse(raw).instruments ?? null : null; } catch { /* unreadable day */ } _vcFcCache.set(d, fc); }
+      const ins = _vcFcCache.get(d); const k = ins && Object.keys(ins).find(x => x.toUpperCase() === inst);
+      if (k && !ins[k].stale) forecasts[d] = { hl_median: ins[k].hl_median, hl_75: ins[k].hl_75 };
+    }
+    if (_vcFcCache.size > 400) _vcFcCache.clear();
+    const fd = Object.keys(forecasts);
+    if (!fd.length) return res.json({ ok: false, inst, error: 'no archived forecasts in the window' });
+    const fromISO = new Date(Date.parse(`${fd[0]}T00:00:00Z`) - 864e5).toISOString().slice(0, 10) + 'T00:00:00Z';   // the London day starts the evening before in UTC (BST)
+    const bars = (await fetchOandaCandleRange(sym, 'H1', fromISO, new Date().toISOString().slice(0, 19) + 'Z'))
+      .map(v => ({ time: v.t, open: +v.open, high: +v.high, low: +v.low, close: +v.close }));
+    const data = { ok: true, inst, from: fd[0], to: fd.at(-1), definition: 'London day (first H1 bar from London midnight to the next), high-to-low as % of that open', ..._vcCompare(forecasts, _vcRealised(bars, fd)) };
+    _vcCache.set(key, { at: Date.now(), data });
     res.json(data);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });

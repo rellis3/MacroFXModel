@@ -293,6 +293,55 @@ async function drawMap(el, mode = 'bias') {
   }
   el.innerHTML = ''; el.append(svg.node());
 }
+
+// the 3D globe: an orthographic world that turns slowly; drag to spin it; the same zones, banks and arc as the map
+let GLOBE = null;
+const LABEL_OFF = { USD: [-16, 20], CAD: [-16, -16], GBP: [-40, -30], EUR: [34, -36], CHF: [34, 30], JPY: [14, -8], AUD: [-14, -6], NZD: [-16, 18] };
+function stopGlobe() { if (GLOBE?.timer) GLOBE.timer.stop(); GLOBE = null; }
+async function drawGlobe(el) {
+  stopGlobe();
+  const geo = await world();
+  if (!geo || !window.d3) { drawMap(el, 'bias'); return; }
+  const W = Math.max(320, el.clientWidth || 900), H = Math.round(Math.min(W * 0.62, 620)), R = Math.min(W, H) / 2 - 22;
+  const proj = d3.geoOrthographic().scale(R).translate([W / 2, H / 2 + 10]).clipAngle(90).rotate([-20, -25]), path = d3.geoPath(proj);
+  const svg = d3.create('svg').attr('viewBox', `0 0 ${W} ${H + 20}`).attr('role', 'img').attr('aria-label', 'globe of the desk\'s currency bias');
+  const defs = svg.append('defs');
+  const atm = defs.append('radialGradient').attr('id', 'atm'); atm.append('stop').attr('offset', '82%').attr('stop-color', 'rgba(139,124,246,0)'); atm.append('stop').attr('offset', '92%').attr('stop-color', 'rgba(139,124,246,.35)'); atm.append('stop').attr('offset', '100%').attr('stop-color', 'rgba(139,124,246,0)');
+  const sea = defs.append('radialGradient').attr('id', 'sea').attr('cx', '38%').attr('cy', '32%'); sea.append('stop').attr('offset', '0%').attr('stop-color', '#1b2452'); sea.append('stop').attr('offset', '100%').attr('stop-color', '#070a17');
+  const gl = defs.append('filter').attr('id', 'gglow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%'); gl.append('feGaussianBlur').attr('stdDeviation', 3.5).attr('result', 'b'); const fm = gl.append('feMerge'); fm.append('feMergeNode').attr('in', 'b'); fm.append('feMergeNode').attr('in', 'SourceGraphic');
+  const [cx, cy] = proj.translate();
+  svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', R * 1.12).attr('fill', 'url(#atm)');
+  svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', R).attr('fill', 'url(#sea)').attr('stroke', 'rgba(139,124,246,.35)');
+  const grat = svg.append('path').attr('class', 'grat');
+  const land = svg.append('g').selectAll('path').data(geo.features).join('path').attr('class', d => (ZONE[d.id] ? 'land zone' : 'land'))
+    .attr('style', d => (ZONE[d.id] ? `fill:${biasFill(D.ccy[ZONE[d.id]]?.bias ?? 0)}` : null))
+    .on('mousemove', (e, d) => { const c = ZONE[d.id]; if (!c) return tip(e, null); const v = D.ccy[c] ?? {}; tip(e, `<b>${esc(d.properties.name)} · ${c}</b><br><span class="${dirCls(v.bias)}">bias ${v.bias ?? 0} · ${ccyScore(v.bias).toFixed(1)}/10</span>`); })
+    .on('mouseleave', () => tip(null)).on('click', (e, d) => { tip(null); if (ZONE[d.id]) ccyModal(ZONE[d.id]); });
+  const arcEl = svg.append('path').attr('class', 'arc');
+  const a = CB_GEO[D.ranking?.[0]], b = CB_GEO[D.ranking?.at(-1)];
+  const dots = svg.append('g');
+  const nodes = CCYS.map(c => { const bb = D.ccy[c]?.bias ?? 0, col = bb > 0 ? '#2fd39a' : bb < 0 ? '#ff5d78' : '#b4a9ff', g = dots.append('g').attr('class', 'cb').style('cursor', 'pointer').on('click', () => ccyModal(c));
+    g.append('circle').attr('class', 'pulse').attr('r', 5).attr('fill', col).attr('opacity', .6); g.append('circle').attr('r', 5).attr('fill', col).attr('filter', 'url(#gglow)'); g.append('circle').attr('r', 1.8).attr('fill', '#fff');
+    const [lx, ly] = LABEL_OFF[c] ?? [10, -8], left = lx < 0;
+    if (Math.abs(lx) > 20 || Math.abs(ly) > 18) g.append('line').attr('x1', 0).attr('y1', 0).attr('x2', lx * 0.8).attr('y2', ly * 0.8).attr('stroke', 'rgba(238,240,251,.35)');
+    g.append('text').attr('class', 'lab').attr('x', lx).attr('y', ly).attr('text-anchor', left ? 'end' : 'start').text(`${BANKSHORT[c]} ${D.rd?.byCcy?.[c]?.latestRate != null ? D.rd.byCcy[c].latestRate + '%' : ''}`);
+    g.append('text').attr('class', 'lab2').attr('x', lx).attr('y', ly + 12).attr('text-anchor', left ? 'end' : 'start').attr('fill', col).text(`${c} ${bb > 0 ? '▲' : bb < 0 ? '▼' : '●'}`);
+    return { c, g }; });
+  const render = () => {
+    grat.attr('d', path(d3.geoGraticule10())); land.attr('d', path);
+    if (a && b) arcEl.attr('d', path({ type: 'LineString', coordinates: [a, b] }));
+    const centre = proj.invert([cx, cy]);
+    for (const { c, g } of nodes) { const p = CB_GEO[c], vis = d3.geoDistance([p[0], p[1]], centre) < Math.PI / 2 - 0.05, xy = proj([p[0], p[1]]); g.attr('display', vis ? null : 'none'); if (vis) g.attr('transform', `translate(${xy[0]},${xy[1]})`); }
+  };
+  render();
+  el.innerHTML = ''; el.append(svg.node());
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const state = GLOBE = { spin: !reduce, timer: null, last: null };
+  let dragging = false;
+  d3.select(svg.node()).call(d3.drag().on('start', () => { dragging = true; state.spin = false; }).on('drag', ev => { const r = proj.rotate(); proj.rotate([r[0] + ev.dx * 0.35, Math.max(-60, Math.min(60, r[1] - ev.dy * 0.35))]); render(); }).on('end', () => { dragging = false; setTimeout(() => { if (GLOBE === state && !reduce) state.spin = true; }, 2500); }));
+  state.timer = d3.timer(t => { if (!state.spin || dragging || document.hidden || !el.isConnected) { state.last = t; return; } const dt = t - (state.last ?? t); state.last = t; const r = proj.rotate(); proj.rotate([r[0] + dt * 0.006, r[1]]); render(); });
+}
+
 // a semicircle dial: risk-off on the left, risk-on on the right, the needle at the ruling times its conviction
 function regimeGauge(tone, conviction) {
   const v = (/on/.test(tone) ? 1 : /off/.test(tone) ? -1 : 0) * ({ low: 0.35, medium: 0.65, high: 0.92 }[conviction] ?? 0.6);
@@ -508,7 +557,7 @@ ${(t.events ?? []).length ? `<div class="drv">${t.events.slice(-8).reverse().map
 function overview() {
   if (!D.run?.ok) { $('overview').innerHTML = `<div class="card"><p>No desk book yet today.</p><p class="muted">${esc(D.run?.error ?? '')} The book is written at 06:55 London when the Desk Run service is on, or from the Desk Run page.</p></div>`; return; }
   const live = Object.entries(D.cards).filter(([, c]) => DIR[c.rating] && c.size > 0).sort((a, b) => b[1].size * (CONV[b[1].conviction] ?? .8) * Math.abs(DIR[b[1].rating]) - a[1].size * (CONV[a[1].conviction] ?? .8) * Math.abs(DIR[a[1].rating])).slice(0, 6);
-  $('overview').innerHTML = `<div class="card hero glow" style="margin-bottom:14px"><div class="hhead"><span class="lbl">The desk's world · ${esc(D.run.date)}</span><h2>${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest</h2></div><div class="map" id="heromap" style="min-height:240px"></div><div class="legend"><span><i style="background:rgba(47,211,154,.6)"></i>bullish</span><span><i style="background:rgba(255,93,120,.6)"></i>bearish</span><span><i style="background:var(--gold)"></i>strongest → weakest</span><span>tap a bank or a country</span></div></div>
+  $('overview').innerHTML = `<div class="card hero glow" style="margin-bottom:14px"><div class="hhead"><span class="lbl">The desk's world · ${esc(D.run.date)}</span><h2>${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest</h2></div><div class="map" id="heromap" style="min-height:240px"></div><div style="position:absolute;right:16px;top:14px;z-index:3;display:flex;gap:6px" class="filters"><button aria-pressed="true" data-view="globe">Globe</button><button aria-pressed="false" data-view="map">Map</button></div><div class="legend"><span><i style="background:rgba(47,211,154,.6)"></i>bullish</span><span><i style="background:rgba(255,93,120,.6)"></i>bearish</span><span><i style="background:var(--gold)"></i>strongest → weakest</span><span>tap a bank or a country</span></div></div>
 ${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span class="lbl">Today's book</span><div class="thesis" style="font-size:16px">${esc(D.run.head.book.headline)}</div></div>` : ''}
 <div class="grid g2">${regimeCard()}<div class="grid" style="align-content:start">${strengthStrip()}${exposureChart()}${recordCard()}</div></div>
 ${weekSection()}
@@ -516,7 +565,10 @@ ${weekSection()}
 <div class="sec"><h2>Playbooks</h2><span class="lbl">the six largest cards · tap for the full analysis</span></div><div class="grid g3">${live.map(([n, c]) => playbookCard(n, c)).join('')}</div>
 <div class="sec"><h2>Releases and risks</h2></div><div class="grid g2">${releasesCard()}<div class="card"><div class="ch"><span class="lbl">Risk desk warnings</span></div><ul style="margin:0;padding-left:18px">${(D.run.head.book.risks ?? []).map(r => `<li style="margin:6px 0">${esc(r)}</li>`).join('') || '<li class="muted">None.</li>'}</ul></div></div>`;
   wire($('overview'));
-  drawMap($('heromap'), 'bias');
+  let view = 'globe'; try { view = localStorage.getItem('deskTerminalHero') || 'globe'; } catch { /* default */ }
+  const showHero = v => { view = v; document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === v)); try { localStorage.setItem('deskTerminalHero', v); } catch { /* fine */ } if (v === 'globe') drawGlobe($('heromap')); else { stopGlobe(); drawMap($('heromap'), 'bias'); } };
+  document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => showHero(b.dataset.view));
+  showHero(view);
   $('overview').querySelectorAll('.spk').forEach(el => sparkline(el, el.dataset.spk, D.cards[el.dataset.spk]));
 }
 
@@ -651,8 +703,10 @@ async function analytics() {
 <div class="card"><div class="ch"><span class="lbl">Currency strength over time</span><span class="r muted">the Currency Manager's bias each morning</span></div><div id="heat"></div></div></div>
 <div class="grid g2" style="margin-top:14px"><div class="card"><div class="ch"><span class="lbl">Track record</span><span class="r muted">day score in u, cumulative, against the controls</span></div><div id="track"></div></div>
 <div class="card"><div class="ch"><span class="lbl">Which layer earned it</span><span class="r muted">${day?.ok ? esc(day.score.date) : 'latest scored day'} · attribution waterfall</span></div><div id="fall"></div></div></div>
+<div class="sec"><h2>Vol forecast against what happened</h2><span class="lbl">each London day's forecast high-to-low range (p50 to p75 band) and the range the market actually made</span></div><div class="card"><div class="filters" id="vcsel"></div><div id="volc"></div></div>
+<div class="sec"><h2>The desk's days</h2><span class="lbl">each scored day, coloured by its score in u</span></div><div class="card"><div id="cal2"></div></div>
 <div class="sec"><h2>Release reactions</h2><span class="lbl">how markets moved after past releases of each kind coming up · the desk's release history</span></div><div class="grid g2" id="fans"></div>`;
-  corrWeb($('web'), risk); strengthHeat($('heat'), hist); trackChart($('track'), hist); waterfall($('fall'), day); releaseFans($('fans'));
+  corrWeb($('web'), risk); strengthHeat($('heat'), hist); trackChart($('track'), hist); waterfall($('fall'), day); releaseFans($('fans')); volPicker(); scoreCalendar($('cal2'), hist);
 }
 function corrWeb(el, r) {
   const c = r?.corr; if (!r?.ok || !c?.names?.length) { el.innerHTML = `<p class="muted">${esc(r?.reason ?? r?.error ?? 'No portfolio-risk read yet.')}</p>`; return; }
@@ -705,6 +759,42 @@ ${steps.map(([l, v], i) => { const prev = i ? steps[i - 1][1] : 0, x = 40 + i * 
     return `<rect x="${x}" y="${y0}" width="${bw * 0.62}" height="${h0}" rx="4" fill="${final ? '#e8b85a' : up ? '#2fd39a' : '#ff5d78'}" opacity=".85"/>${i < steps.length - 1 ? `<line x1="${x + bw * 0.62}" x2="${x + bw}" y1="${Y(v)}" y2="${Y(v)}" stroke="#6d7599" stroke-dasharray="3 3"/>` : ''}<text x="${x + bw * 0.31}" y="${H - 18}" text-anchor="middle" fill="#a9b0d0" font-family="JetBrains Mono" font-size="10">${l}</text><text x="${x + bw * 0.31}" y="${y0 - 5}" text-anchor="middle" fill="#eef0fb" font-family="JetBrains Mono" font-size="10">${f(v)}</text>`; }).join('')}</svg>
 <div class="muted">Each bar is that stage's book scored on the day (u); green where a stage improved on the one before, red where it gave back; gold is the sized book, the day score.</div>`;
 }
+
+const VC_INSTS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'GOLD', 'NQ', 'SPX500', 'WTI', 'BTCUSD'];
+let VC_SEL = 'EURUSD';
+function volPicker() {
+  $('vcsel').innerHTML = VC_INSTS.map(i => `<button aria-pressed="${i === VC_SEL}" data-vc="${i}">${i}</button>`).join('');
+  $('vcsel').querySelectorAll('[data-vc]').forEach(b => b.onclick = () => { VC_SEL = b.dataset.vc; volPicker(); });
+  volChart($('volc'), VC_SEL);
+}
+async function volChart(el, inst) {
+  el.innerHTML = '<p class="muted">Reading the forecast archive and the hourly bars…</p>';
+  const r = await getJson(`/api/desk-volcheck?inst=${inst}&days=90`);
+  if (!r?.ok || !r.rows?.length) { el.innerHTML = `<p class="muted">${esc(r?.error ?? 'No archived forecasts yet.')}</p>`; return; }
+  const rows = r.rows, W = 1000, H = 300, lo = 0, hi = Math.max(...rows.flatMap(x => [x.p75, x.hl])) * 1.08;
+  const X = i => 46 + (i / Math.max(1, rows.length - 1)) * (W - 70), Y = v => H - 28 - ((v - lo) / (hi - lo)) * (H - 50);
+  const band = `<polygon points="${rows.map((x, i) => `${X(i)},${Y(x.p75)}`).join(' ')} ${rows.map((x, i) => `${X(i)},${Y(x.p50)}`).reverse().join(' ')}" fill="rgba(139,124,246,.22)"/>`;
+  const ln = k => `<polyline points="${rows.map((x, i) => `${X(i)},${Y(x[k])}`).join(' ')}" fill="none" stroke="${k === 'p50' ? '#8b7cf6' : '#b4a9ff'}" stroke-width="1.4" ${k === 'p75' ? 'stroke-dasharray="4 3"' : ''}/>`;
+  const dot = (x, i) => { const col = x.over75 ? '#ff5d78' : x.over50 ? '#e8b85a' : '#2fd39a'; return `<circle cx="${X(i)}" cy="${Y(x.hl)}" r="${rows.length > 60 ? 3 : 4}" fill="${col}" style="filter:drop-shadow(0 0 4px ${col})"><title>${x.date}: realised ${x.hl}% · forecast p50 ${x.p50}% · p75 ${x.p75}%</title></circle>`; };
+  const ticks = [0, hi / 3, (2 * hi) / 3].map(v => `<line x1="46" x2="${W - 24}" y1="${Y(v)}" y2="${Y(v)}" stroke="#1f2950"/><text x="40" y="${Y(v) + 4}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="10">${v.toFixed(2)}%</text>`).join('');
+  const gauge = (lab, v, tgt) => `<div><span class="lbl">${lab}</span><div style="position:relative;height:12px;background:var(--bg3);border-radius:6px;margin:6px 0"><i style="position:absolute;left:0;top:0;bottom:0;width:${(v ?? 0) * 100}%;border-radius:6px;background:linear-gradient(90deg,var(--pur),var(--gold))"></i><i style="position:absolute;left:${tgt * 100}%;top:-4px;bottom:-4px;width:2px;background:#eef0fb"></i></div><span class="mono">${v == null ? '–' : Math.round(v * 100) + '%'}</span> <span class="muted">target ${tgt * 100}%</span></div>`;
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(inst)} vol forecast against realised">${ticks}${band}${ln('p50')}${ln('p75')}${rows.map(dot).join('')}
+<text x="46" y="${H - 8}" fill="#6d7599" font-family="JetBrains Mono" font-size="10">${esc(r.from)}</text><text x="${W - 24}" y="${H - 8}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="10">${esc(r.to)}</text></svg>
+<div class="grid g3" style="margin-top:10px">${gauge('Days above the p50', r.over50, 0.5)}${gauge('Days above the p75', r.over75, 0.25)}<div><span class="lbl">Realised ÷ p50, median day</span><div class="mono" style="font-size:22px;font-weight:700;margin-top:4px">${r.medianRatio ?? '–'}×</div><span class="muted">${r.n} days</span></div></div>
+<p class="muted"><span style="color:#2fd39a">●</span> inside the p50 · <span style="color:var(--gold)">●</span> between p50 and p75 · <span style="color:#ff5d78">●</span> beyond the p75. ${esc(r.definition)}. A calibrated forecast puts about half the days above the p50 and a quarter above the p75; a few weeks of days is not enough to call it either way.</p>`;
+}
+function scoreCalendar(el, h) {
+  const rows = (h?.rows ?? []).filter(r => r.score && Number.isFinite(r.score.S));
+  if (!rows.length) { el.innerHTML = '<p class="muted">No scored day yet: each weekday is scored after 21:10 London. This fills in like a contribution calendar.</p>'; return; }
+  const first = new Date(`${rows[0].date}T12:00:00Z`), start = new Date(first); start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7));
+  const by = Object.fromEntries(rows.map(r => [r.date, r])), last = new Date(`${rows.at(-1).date}T12:00:00Z`), weeks = Math.ceil((last - start) / (7 * 864e5)) + 1, cs = 16;
+  const col = v => { const z = Math.max(-1, Math.min(1, v / 0.6)); return z > 0 ? `rgba(47,211,154,${0.2 + z * 0.75})` : `rgba(255,93,120,${0.2 - z * 0.75})`; };
+  let cells = '';
+  for (let w = 0; w < weeks; w++) for (let d = 0; d < 5; d++) { const dt = new Date(start.getTime() + (w * 7 + d) * 864e5).toISOString().slice(0, 10), r = by[dt];
+    cells += `<rect x="${40 + w * (cs + 3)}" y="${10 + d * (cs + 3)}" width="${cs}" height="${cs}" rx="3" fill="${r ? col(r.score.S) : 'var(--bg3)'}" ${r && !r.score.counts ? 'opacity=".45"' : ''}><title>${dt}${r ? `: ${f(r.score.S)} u${r.score.counts ? '' : ' (not counted)'}` : ''}</title></rect>`; }
+  el.innerHTML = `<div class="scroll"><svg viewBox="0 0 ${50 + weeks * (cs + 3)} ${20 + 5 * (cs + 3)}" width="${Math.max(300, 50 + weeks * (cs + 3))}" style="max-width:100%">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((d, i) => `<text x="0" y="${22 + i * (cs + 3)}" fill="#6d7599" font-family="JetBrains Mono" font-size="10">${d}</text>`).join('')}${cells}</svg></div><div class="muted">Green = the book made money in u that day, red = lost; faded = not counted in the test.</div>`;
+}
+
 function releaseFans(el) {
   const rel = D.run?.economist?.releases ?? [];
   if (!rel.length) { el.innerHTML = '<div class="card muted">No high-impact release with a history in the next 36 hours (the economist writes these with the morning book).</div>'; return; }
