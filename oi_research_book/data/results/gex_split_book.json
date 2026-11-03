@@ -1,0 +1,85 @@
+{
+  "seed": 20261103,
+  "prereg": "oi_research_book/GEX_SPLIT_BOOK_PREREG.md",
+  "prereg_commit": "264d7df5",
+  "ranAt": "2026-11-03T00:44:30.465563+00:00",
+  "window": [
+    "2020-11-03",
+    "2026-08-20"
+  ],
+  "counts": {
+    "NQ": {
+      "raw_rows": 772,
+      "oi_date_not_a_session": 0,
+      "target_past_end": 2,
+      "dropped_nonfinite": 0,
+      "used": 770
+    },
+    "ES": {
+      "raw_rows": 772,
+      "oi_date_not_a_session": 0,
+      "target_past_end": 2,
+      "dropped_nonfinite": 0,
+      "used": 770
+    },
+    "join": {
+      "nq_rows": 770,
+      "es_rows": 770,
+      "joined": 770,
+      "dropped_nonfinite": 0
+    },
+    "nq_only_short": 83,
+    "es_only_short": 52,
+    "agree": 635
+  },
+  "primary": {
+    "beta": 0.026620416200346744,
+    "b_plus": -0.025405094505318394,
+    "b_minus": -0.07864592690601188,
+    "se": 0.02607590258148025,
+    "ci95": [
+      -0.024488352859354547,
+      0.07772918526004803
+    ],
+    "t": 1.0208818704228946,
+    "placebo": {
+      "n_shifts": 130,
+      "mean": -0.0017424299543797909,
+      "sd": 0.02648049090917496,
+      "real_above_share": 0.8538461538461538
+    }
+  },
+  "gate": {
+    "beta_ge_0.05": false,
+    "ci_lower_gt_0": "False",
+    "placebo_above_95pct": false,
+    "mirror_b_plus_gt_0": false,
+    "mirror_b_minus_lt_0": true,
+    "min_state_n": true
+  },
+  "placebo_too_noisy": false,
+  "verdict": "NULL",
+  "descriptive": {
+    "raw_dS": -0.015809039642443803,
+    "mean_S": {
+      "nq_only_short": -0.08842360106512769,
+      "es_only_short": -0.07261456142268388,
+      "both_short": -0.08792451422658748,
+      "both_long": -0.004403222842911612
+    },
+    "uncontrolled_beta": -0.007904519821221902,
+    "halves": {
+      "first": 0.07511928116811101,
+      "second": -0.0384711054948547
+    },
+    "horizon_family": {
+      "h0": 0.026620416200346744,
+      "h2": 0.006906066460020496,
+      "h4": -0.0013567937297071543
+    },
+    "planted_check": {
+      "planted_beta": 0.15,
+      "recovered_beta_minus_real": 0.14999999999999988
+    }
+  }
+}
