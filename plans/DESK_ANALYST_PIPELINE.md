@@ -392,6 +392,25 @@ killed the in-memory job. Nothing was saved, and the page still showed the 07:06
   remaining calls and produces the same book. A local server boot with a planted marker resumed the run and
   cleared the marker and the checkpoint.
 
+## 9j. Two desk formats: the magazine and the brief (2026-11-03)
+
+The owner read the 33-page desk edition (the regular issue with nine desk pages added) and asked for both a full and
+a short format, under two buttons. The edition repeated the regular issue's own currency ranking (CHF first) beside
+the desk's (JPY first), and a forced page break after every section left half-blank pages.
+
+- **Desk magazine** (`deskMode: 'magazine'`, archived as kind `desk`). The cover with the writer's headline,
+  then top down: the global ruling, the backdrop table, the currencies ranked, one page per asset group
+  (`groupPages`: the asset desk's reading, every card with view, size, why, plan and wrong-if, and a price ladder
+  for each card with a lean), the book, the risk desk, releases to come, what happened. It leaves out the regular
+  currency table and the pair-by-pair page, which would contradict the desk. 17 A4 pages on the 13:08 run.
+- **Desk brief** (`deskMode: 'brief'`, archived as kind `desk-brief`). The cover, then one read (`deskBrief`):
+  the tone and the strongest and weakest currencies, the ruling, the currency bars, the six clearest ideas with
+  four ladders, what could break the day, and what the desk could not see. 4 pages.
+- Desk pages flow on in print (`.pg.pgflow`: no forced break, cards and boxes kept whole, a table header kept with
+  its first row). Ladders sit in an inline grid that breaks between rows.
+- Atlas: "Desk magazine" and "Desk brief" buttons, each with a PDF button. The compare view shows the magazine
+  beside the regular issue. Neither format is scored.
+
 ## 10. Owner decisions (2026-11-03)
 
 1. **Rating scale:** the five-step scale (§4, Layer 3).
