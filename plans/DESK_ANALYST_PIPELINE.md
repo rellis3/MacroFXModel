@@ -291,6 +291,20 @@ invalidation, timing) → **risk desk** (Aggressive, Conservative and Neutral vo
 - Estimated cost on Sonnet 5 at medium/high effort: about $1.50–2 a full run. Measure it from the first real run
   (the page footer and `/api/desk-run/index` show tokens and calls).
 
+## 9e. First full run, 2026-11-03 06:55 London
+
+- **Worked end to end:** 32 calls in 11.7 minutes, every debate stage succeeded, Head OK. Global ruling risk-off
+  (liquidity gate BLOCKED on six indices, creditZ -2.85, HY wider); currency ranking USD > JPY > CAD > CHF > GBP >
+  EUR > NZD > AUD; book 30 SHORT, 2 STRONG_SHORT, 3 LONG, 6 FLAT, with levels in the plans. The risk desk named the
+  concentration ("one trade wearing twenty tickers"), vetoed AUDUSD (range spent) and trimmed for the US midterms.
+  The Global Manager rejected a rebuttal that leaned on a tested null, which is what the evidence rules are for.
+- **Cost:** 513,717 tokens in, 123,035 out, about $2.25 on Sonnet 5 (medium/high effort). Output was higher than
+  estimated because of thinking.
+- **Faults found:** the evidence clerk was lost to one dropped connection ("fetch failed"), so transient provider
+  errors (network, timeout, 429, 5xx) now get one retry after a short wait; a 4xx does not. The page froze on a phone
+  that had paused it, so it now re-checks when it becomes visible again. The level feeds had timed out in that
+  morning's pack, which was built before the 90 s timeout shipped.
+
 ## 10. Owner decisions (2026-11-03)
 
 1. **Rating scale:** the five-step scale (§4, Layer 3).
