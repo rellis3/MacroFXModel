@@ -749,6 +749,28 @@ Private, in the Desk Office "You" tab; never in a newsletter. `js/deskJournal.js
 - **Rules:** description, not a test. Any group under 20 trades is labelled as too few to lean on. Nothing here feeds
   the book or the prereg.
 
+## 9t. Phases 9 and 12: the theory desk and research ops (built 2026-11-03)
+
+Private, in the Desk Office "Research" tab. `js/theoryDesk.js` (pure, tested in `js/theoryDesk.test.mjs`).
+
+- **Phase 12, research ops** (`GET /api/research-ops`, no model call): parses `plans/RESEARCH_REGISTER.md` as
+  deployed and walks the study files (PREREG / RESULTS / ADDENDUM / AMENDMENT under forge, analysis, MD files, plans,
+  research). It lists: results written but not banked, each with an Evidence Book entry skeleton (verdict, result and
+  use left as TODO for the owner); rows with no update for over 14 days; pre-registered rows with no verdict;
+  exploratory finds whose next step waits on the owner; banked rows with no ledger entry; and a count of older
+  pre-registrations not in the register. It reads main only; the research-protocol status script still shows
+  in-flight work on other branches.
+- **Phase 9, the theory desk** (`desk/roles/theory_desk.md`, schema `theory_ideas`): one model call a week (service
+  `deskTheory`, Saturday from 09:00 London, once per ISO week; `POST /api/desk-theory/run` on demand). It reads the
+  Evidence Book, the whole register (dead hypotheses included), the desk's scored record and layer attribution, the
+  151-strategies screen (tiers 1 and 2), outlines of the QuantConnect strategy and blog notes, and the SSRN/arXiv
+  reading list. It proposes 3 to 6 theories, each with a variable, a condition, a horizon family, an outcome, a
+  benchmark, a placebo, the data, a power estimate, a source and why it is new. The validator drops any without a
+  variable, benchmark and placebo, and notes result wording. Each is screened by word overlap against the register
+  and the Evidence Book; a near-repeat shows a red "close to" chip. Saved as `desk_theory_latest`.
+- **Rules:** proposals only. Nothing is run, claimed or banked by either phase; taking a theory forward means a
+  register row and a prereg under the research protocol.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
@@ -766,7 +788,7 @@ Not built yet. The order is the owner's call; each item names what it needs firs
   the window. The Head answers or changes the card. Logged, so the record shows whether the red team helps.
 - **Phase 8 · Journal coach.** *Built (§9s).* Reads the owner's actual MT5 trades (the bot trade logs) against the book: where they
   followed it, where they went against it, and how each did. Private, weekly.
-- **Phase 9 · Theory desk (quant theory agent).**
+- **Phase 9 · Theory desk (quant theory agent).** *Built (§9t).*
   - Reads the Evidence Book, the research register (including dead hypotheses), the Theory Lab lessons,
     `education/quantconnect_strategies.md` and `quantconnect_blogs.md`, *151 Trading Strategies*, the SSRN reading
     list (`education/papers/open/READING_LIST.md`), and the desk's own scored history from Phase 4.
@@ -783,7 +805,7 @@ Not built yet. The order is the owner's call; each item names what it needs firs
   desk, risk sizing) to show which layer earned or lost. Mostly code on the Phase 4 scores.
 - **Phase 11 · Portfolio risk manager.** *Built (§9p).* The book's correlation and stress scenarios ("USD +1σ: what does the whole
   book do?") from the vol forecasts and cross-asset links. It puts a number on "two or three bets".
-- **Phase 12 · Research ops.** Watches the research register, flags preregs with no verdict, nudges stale studies
+- **Phase 12 · Research ops.** *Built (§9t).* Watches the research register, flags preregs with no verdict, nudges stale studies
   and drafts banking entries.
 - **Phase 13 · Execution and cost analyst.** *Built (§9s).* The MT5 bot logs and give-back data against the plan zones: slippage,
   timing, entries.

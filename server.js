@@ -227,6 +227,7 @@ import { assess as _dqAssess, afterRun as _dqAfterRun } from './js/deskDataQuali
 import { attribution as _atAttribution, attributionRecord as _atRecord } from './js/deskAttribution.js';
 import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
 import { tradeRows as _jcRows, coach as _jcCoach, execution as _jcExec } from './js/deskJournal.js';   // Phases 8 and 13
+import { parseRegister as _tdParseRegister, opsReport as _tdOps, outline as _tdOutline, section as _tdSection, readingList as _tdReadingList, registerText as _tdRegisterText, screen as _tdScreen, validateTheories as _tdValidate } from './js/theoryDesk.js';   // Phases 9 and 12
 import { upcoming as _rpUpcoming } from './js/releasePlaybook.js';
 import { dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
@@ -5092,6 +5093,90 @@ app.get('/api/desk-journal', async (req, res) => {
     res.json(out);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── Phases 12 and 9: research ops and the theory desk (js/theoryDesk.js, plans/DESK_ANALYST_PIPELINE.md §9t) ──
+// Both read the repo as deployed (the register, the study files, the notes), so they show main, not other branches;
+// the research-protocol status script is still the way to see in-flight work.
+const _tdRead = rel => { try { return fs.readFileSync(path.join(__dirname, rel), 'utf8'); } catch { return ''; } };
+function _tdStudyFiles() {
+  const out = [], walk = (rel, depth) => {
+    let ents = []; try { ents = fs.readdirSync(path.join(__dirname, rel), { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      const r = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) { if (depth < 4 && !/^(node_modules|\.git|data|cache)$/.test(e.name)) walk(r, depth + 1); }
+      else if (/(PREREG|RESULTS?|ADDENDUM|AMENDMENT)[^/]*\.md$/.test(e.name) && !/TEMPLATE/.test(e.name)) out.push(r);
+    }
+  };
+  for (const d of ['forge', 'analysis', 'MD files', 'plans', 'research']) walk(d, 1);
+  return out;
+}
+let _roCache = { at: 0, data: null };
+function _tdOpsNow() {
+  if (_roCache.data && Date.now() - _roCache.at < 10 * 60_000) return _roCache.data;
+  const rows = _tdParseRegister(_tdRead('plans/RESEARCH_REGISTER.md'));
+  const data = { ok: true, generatedAt: Date.now(), source: 'plans/RESEARCH_REGISTER.md on the deployed main', ..._tdOps(rows, { files: _tdStudyFiles(), exists: p => fs.existsSync(path.join(__dirname, p)), today: _dpLondonDate(Date.now()) }) };
+  _roCache = { at: Date.now(), data, rows };
+  return data;
+}
+// GET /api/research-ops: Phase 12. Stale rows, preregs with no verdict, results ready to bank (with an Evidence Book draft).
+app.get('/api/research-ops', (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); res.json(_tdOpsNow()); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+const _TD_KEY = 'desk_theory_latest';
+const _tdWeek = date => { const d = new Date(`${date}T12:00:00Z`); const day = (d.getUTCDay() + 6) % 7; d.setUTCDate(d.getUTCDate() - day + 3); const y = d.getUTCFullYear(), w1 = new Date(Date.UTC(y, 0, 4)); return `${y}-W${String(1 + Math.round(((d - w1) / 864e5 - 3 + ((w1.getUTCDay() + 6) % 7)) / 7)).padStart(2, '0')}`; };
+let _tdJob = null;
+async function _tdRun() {
+  const role = _deskLoadRoles().find(r => r.id === 'theory_desk');
+  if (!role) return { ok: false, error: 'no theory_desk role' };
+  if (!_aiAnyKey()) return { ok: false, error: 'no model key' };
+  const { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js');
+  _tdOpsNow(); const rows = _roCache.rows ?? [];
+  const idx = await _dsLoadIndex().catch(() => []);
+  const date = _dpLondonDate(Date.now());
+  const { system, prompt } = _deskStagePrompt({ role, pack: { date }, ledger: DESK_EVIDENCE, sections: [
+    ['The Evidence Book (every entry: [tag] claim -> use)', evidenceBrief(DESK_EVIDENCE)],
+    ['The research register (id [status] question -> next)', _tdRegisterText(rows)],
+    ["The desk's scored record (Phase 4)", idx.length ? { record: _dsRecord(idx, { seed: _DS_SEED }), attribution: _atRecord(idx), lastDays: idx.slice(-20).map(d => ({ date: d.date, S: d.S, counts: d.eligible, scored: d.scored })) } : '(no scored days yet)'],
+    ['151 Trading Strategies: the screen of the book against this repo', [_tdSection(_tdRead('education/151_STRATEGIES_PROPOSALS.md'), '3.', 6000), _tdSection(_tdRead('education/151_STRATEGIES_PROPOSALS.md'), '4.', 4000)].join('\n\n')],
+    ["QuantConnect strategy notes (outline)", _tdOutline(_tdRead('education/quantconnect_strategies.md'))],
+    ['QuantConnect blog notes (outline)', _tdOutline(_tdRead('education/quantconnect_blogs.md'))],
+    ['The SSRN and arXiv reading list', _tdReadingList(_tdRead('education/papers/open/reading_list.csv'))],
+  ] });
+  let out = null, errors = [];
+  for (let i = 0; i < 2 && !out; i++) {
+    try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 16_000 }); const v = _tdValidate(_parseModelJson(r.text ?? _antText(r), 'desk:theory')); if (v.ok) out = { ...v.value, notes: v.notes, model: r.model ?? null }; else errors.push(...v.errors); }
+    catch (e) { errors.push(e.message); }
+  }
+  if (!out) return { ok: false, error: errors.join('; ') || 'no valid reply' };
+  const rec = { ok: true, week: _tdWeek(date), date, writtenAt: new Date().toISOString(), headline: out.headline, notes: out.notes, model: out.model,
+    theories: _tdScreen(out.theories, rows, DESK_EVIDENCE), label: 'proposals to pre-register, not results' };
+  await kv.put(_TD_KEY, JSON.stringify(rec));
+  return rec;
+}
+function _tdStart() {
+  if (_tdJob?.status === 'running') return null;
+  const job = _tdJob = { status: 'running', startedAt: Date.now(), finishedAt: null, error: null };
+  _tdRun().then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; })
+    .catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
+  return job;
+}
+// GET /api/desk-theory: Phase 9, the latest week's proposals. POST /api/desk-theory/run: write them now.
+app.get('/api/desk-theory', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const raw = await kv.get(_TD_KEY).catch(() => null); res.json(raw ? { ...JSON.parse(raw), job: _tdJob } : { ok: false, error: 'no theories yet: the theory desk writes on Saturday mornings, or run it now', job: _tdJob }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/desk-theory/run', (_req, res) => {
+  const job = _tdStart();
+  if (!job) return res.status(409).json({ ok: false, error: 'the theory desk is already writing', job: _tdJob });
+  res.status(202).json({ ok: true, job });
+});
+// Weekly: Saturday from 09:00 London, once per ISO week.
+svcInterval('deskTheory', async () => {
+  const now = Date.now(), date = _dpLondonDate(now);
+  if (new Date(_dsLondonMs(date, 12)).getUTCDay() !== 6 || now < _dsLondonMs(date, 9) || _tdJob?.status === 'running' || !_aiAnyKey()) return;
+  const raw = await kv.get(_TD_KEY).catch(() => null);
+  if (raw && JSON.parse(raw).week === _tdWeek(date)) return;
+  _tdStart();
+}, 30 * 60_000);
 // GET /api/desk-quality?date=: the data quality officer's read of the day's pack, and after the run which gaps mattered
 app.get('/api/desk-quality', async (req, res) => {
   try {

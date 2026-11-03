@@ -211,9 +211,8 @@ ${c.hours.length ? `<h3 style="font-size:14px;margin:14px 0 6px">Entries by Lond
   document.querySelectorAll('[data-jdays]').forEach(b => b.onclick = () => renderYou(+b.dataset.jdays));
 }
 function renderResearch() {
-  $('research').innerHTML = planned(9, 'Theory desk', 'Testable theories about the system\'s own output, from the Evidence Book, Theory Lab, your QuantConnect notes, the SSRN list and the scored history, each ready to pre-register.')
-    + planned(12, 'Research ops', 'The research register at a glance: pre-registrations with no verdict, stale studies, and results ready to bank in the Evidence Book.')
-    + '<div id="ecopanel"></div>';
+  $('research').innerHTML = '<div class="panel" id="theorypanel"><h2>Theory desk</h2><p class="muted">Loading…</p></div><div class="panel" id="opspanel"><h2>Research ops</h2><p class="muted">Loading…</p></div><div id="ecopanel"></div>';
+  renderTheory(); renderOps();
   // Phases 6 and 15: the economist's briefs and playbooks (also in the newsletter's "The releases ahead" page)
   getJson('/api/desk-run').then(run => {
     const e = run?.ok && run.date === today ? run.economist : null, el = $('ecopanel'); if (!el) return;
@@ -221,6 +220,34 @@ function renderResearch() {
     el.innerHTML = `<div class="panel"><h2>The releases ahead <i>the economist, from the desk's release history · also in the newsletter</i></h2><p>${esc(e.view.headline)}</p>${e.view.briefs.map((b, i) => { const r = e.releases?.[i], p = r?.playbook;
       return `<h3 style="font-size:14px;margin:12px 0 4px">${esc(r ? new Date(r.at).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : '')} · ${esc(b.event)}</h3><p>${esc(b.sizeAndSpeed)}</p>${b.ifHot ? `<p><b class="dn">If hot:</b> ${esc(b.ifHot)}<br><b class="up">If cold:</b> ${esc(b.ifCold)}</p>` : ''}${b.bookAtRisk ? `<p class="muted">The book: ${esc(b.bookAtRisk)}</p>` : ''}${p ? `<table><thead><tr><th>Market</th><th>30 min</th><th>4 h</th><th>After hot</th><th>After cold</th></tr></thead><tbody>${Object.values(p.markets).slice(0, 6).map(m => `<tr><td>${esc(m.label)}</td><td class="n">${m.abs30}${m.unit}</td><td class="n">${m.abs240}${m.unit}</td><td class="n">${m.hot ? f(m.hot.m30) + m.unit + ' (n ' + m.hot.n + ')' : '–'}</td><td class="n">${m.cold ? f(m.cold.m30) + m.unit + ' (n ' + m.cold.n + ')' : '–'}</td></tr>`).join('')}</tbody></table>` : ''}`; }).join('')}</div>`;
   });
+}
+
+// Phase 9 (/api/desk-theory): the week's proposals, each screened against the register and the Evidence Book.
+async function renderTheory() {
+  const t = await getJson('/api/desk-theory'), el = $('theorypanel'); if (!el) return;
+  const running = t?.job?.status === 'running';
+  const btn = `<button class="btn" id="tdrun"${running ? ' disabled' : ''}>${running ? 'Writing…' : 'Write this week\'s theories now'}</button>`;
+  if (!t?.ok) { el.innerHTML = `<h2>Theory desk <i>weekly, Saturday mornings</i></h2><p class="muted">${esc(t?.error ?? 'not available')}${t?.job?.error ? ` · last attempt: ${esc(t.job.error)}` : ''}</p><p>${btn}</p>`; }
+  else el.innerHTML = `<h2>Theory desk <i>${esc(t.label)} · ${esc(t.week)} · written ${esc(new Date(t.writtenAt).toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'medium', timeStyle: 'short' }))}</i></h2>
+<p><b>${esc(t.headline)}</b></p>${t.notes?.length ? `<p class="muted">${t.notes.map(esc).join(' · ')}</p>` : ''}
+${t.theories.map(x => `<div style="border-top:1px solid var(--line);padding:10px 0"><h3 style="font-size:15px;margin:0 0 4px">${esc(x.title)} <span class="chip ${x.priority === 'high' ? 'ok' : x.priority === 'low' ? '' : 'warn'}">${esc(x.priority)}</span>${x.near?.length ? ` <span class="chip bad" title="${esc(x.near.map(n => `${n.kind} ${n.id} (${n.status}, overlap ${n.score})`).join('; '))}">close to ${esc(x.near[0].id)}</span>` : ''}</h3>
+<table><tbody>${[['Variable', x.variable], ['Condition', x.condition], ['Horizons', x.horizons], ['Outcome', x.outcome], ['Benchmark', x.benchmark], ['Placebo', x.placebo], ['Data', x.data], ['Power', x.power], ['Source', x.source], ['Why new', x.whyNew]].filter(([, v]) => v).map(([k, v]) => `<tr><td class="muted" style="width:110px">${k}</td><td>${esc(v)}</td></tr>`).join('')}</tbody></table></div>`).join('')}
+<p>${btn} <span class="muted">To take one forward: claim a register row and write the prereg (the research-protocol skill). A red "close to" chip means it overlaps an existing study or ledger entry: check that before claiming.</span></p>`;
+  const b = $('tdrun'); if (b) b.onclick = async () => { b.disabled = true; b.textContent = 'Writing…'; await fetch('/api/desk-theory/run', { method: 'POST' }).catch(() => null); const poll = setInterval(async () => { const j = await getJson('/api/desk-theory'); if (j?.job?.status !== 'running') { clearInterval(poll); renderTheory(); } }, 10_000); };
+}
+// Phase 12 (/api/research-ops): what in the register needs a hand.
+async function renderOps() {
+  const r = await getJson('/api/research-ops'), el = $('opspanel'); if (!el) return;
+  if (!r?.ok) { el.innerHTML = `<h2>Research ops</h2><p class="muted">${esc(r?.error ?? 'not available')}</p>`; return; }
+  const list = (title, rows, fn, empty) => `<h3 style="font-size:14px;margin:14px 0 6px">${title} <span class="muted">(${rows.length})</span></h3>${rows.length ? `<ul>${rows.map(fn).join('')}</ul>` : `<p class="muted">${empty}</p>`}`;
+  el.innerHTML = `<h2>Research ops <i>${esc(r.source)} · ${r.rows} rows, ${r.active} active</i></h2>
+<div class="tiles">${Object.entries(r.counts).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<div class="tile"><span>${esc(k)}</span><b>${v}</b></div>`).join('')}</div>
+${list('Results written, not banked', r.readyToBank, x => `<li><b class="n">${esc(x.id)}</b> <span class="chip warn">${esc(x.status)}</span> ${x.results ? `<span class="muted">${esc(x.results)}</span>` : ''}${x.next ? `<br><span class="muted">${esc(x.next)}</span>` : ''}<details><summary class="muted">Evidence Book draft</summary><pre style="white-space:pre-wrap;font:12px var(--mono);color:var(--tx2)">${esc(x.draft)}</pre></details></li>`, 'Nothing waiting to bank.')}
+${list('Stale: no update for over two weeks', r.stale, x => `<li><b class="n">${esc(x.id)}</b> <span class="chip">${esc(x.status)}</span> <span class="muted">${x.days} days since ${esc(x.updated)}</span><br><span class="muted">${esc(x.next)}</span></li>`, 'Nothing stale.')}
+${list('Pre-registered, no verdict yet', r.preregNoVerdict, x => `<li><b class="n">${esc(x.id)}</b> <span class="chip">${esc(x.status)}</span> <span class="muted">${esc(x.prereg)}${x.results ? ` · results: ${esc(x.results)}` : ''}</span></li>`, 'None.')}
+${list('Exploratory finds waiting on your call', r.exploratory, x => `<li><b class="n">${esc(x.id)}</b><br><span class="muted">${esc(x.next)}</span></li>`, 'None.')}
+${r.noLedger.length ? list('Banked with no ledger entry', r.noLedger, x => `<li class="n">${esc(x.id)}</li>`, '') : ''}
+<p class="muted">${r.orphanCount} older pre-registration files are not in the register (most predate it, 2026-10-18). The status script lists them: <code>node .claude/skills/research-protocol/scripts/research_status.mjs</code>. This panel reads main only; in-flight work on other branches shows in that script.</p>`;
 }
 
 renderToday(); renderPerf(); renderYou(); renderResearch();

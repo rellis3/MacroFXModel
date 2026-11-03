@@ -391,6 +391,13 @@ size: 0 to 1.5 (1 = normal). veto: true only when the trade should not be taken 
   "briefs": [ { "event": "the release", "priced": "consensus vs previous, and what that means", "sizeAndSpeed": "typical move by market at 30 min and 4 h, peak time, how much is kept, with counts",
                "ifHot": "what history shows after hot prints, with counts", "ifCold": "after cold prints, with counts", "bookAtRisk": "the desk's cards exposed, view and size", "watch": "one thing to watch" } ]   // one per release, in the order given
 }`,
+  theory_ideas: `{
+  "headline": "the most promising question this week, in one sentence",
+  "theories": [ { "title": "short name", "variable": "the variable to construct, exactly, from data we have", "condition": "the regime or extreme to condition on",
+                 "horizons": "the family of horizons to sweep", "outcome": "what is measured", "benchmark": "what it must beat", "placebo": "the shuffle or placebo",
+                 "data": "the feeds or files it needs, and the span", "power": "rough count of events and whether that is enough", "source": "the note, paper, ledger entry or scored-history fact it comes from",
+                 "whyNew": "why it is not a repeat of a register row or Evidence Book entry", "priority": "high | medium | low" } ]   // 3 to 6
+}`,
   red_team: `{
   "headline": "the biggest weakness in the draft book, in one sentence",
   "challenges": [ { "target": "ALL | an instrument | a currency", "kind": "crowding | contradiction | tested-null | event | data | stretched | other", "severity": "high | medium | low", "challenge": "what is wrong, with the numbers", "ask": "what the Head should do or answer" } ]   // at most 8, most serious first; [] if the book is sound
