@@ -210,6 +210,28 @@ export function validateRiskCase(obj, targets) {
   return { ok: true, notes, value: { headline, adjustments, warnings: strList(obj.warnings) } };
 }
 
+// ── Phase 4: the end-of-day reflection ──────────────────────────────────────────────────────────────────────────
+
+const SCOPES = ['global', 'currency', 'asset', 'risk', 'process'];
+/**
+ * The reflection: what the morning book got right and wrong once the day is scored, and at most five lessons. Each
+ * lesson is one day's anecdote and is labelled so wherever it is shown; nothing here is evidence until a prereg tests
+ * it (forge/DESK_ANALYST_PIPELINE_PREREG.md; plans/DESK_ANALYST_PIPELINE.md §9k).
+ */
+export function validateReflection(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return { ok: false, errors: ['reply is not a JSON object'] };
+  const headline = str(obj.headline, 300);
+  if (!headline) return { ok: false, errors: ['headline missing'] };
+  const notes = [], lessons = [];
+  for (const l of (Array.isArray(obj.lessons) ? obj.lessons : []).slice(0, 5)) {
+    const lesson = str(l?.lesson, 400); if (!lesson) { notes.push('a lesson with no text was dropped'); continue; }
+    const scope = SCOPES.includes(String(l?.scope)) ? String(l.scope) : 'process';
+    lessons.push({ lesson, scope, about: str(l?.about, 60) ?? '', evidence: str(l?.evidence, 400) ?? '' });
+  }
+  if (!lessons.length) return { ok: false, errors: ['at least one lesson is required'] };
+  return { ok: true, notes, value: { headline, worked: strList(obj.worked).slice(0, 6), failed: strList(obj.failed).slice(0, 6), lessons, watch: strList(obj.watch).slice(0, 5) } };
+}
+
 // ── Phase 3: the newsletter writer ───────────────────────────────────────────────────────────────────────────────
 
 /** The house labels every newsletter section carries (the regular issue's legend). */
@@ -302,6 +324,14 @@ bias: integer -2..+2.`,
   "warnings": ["what could go wrong today"]
 }
 size: 0 to 1.5 (1 = normal). veto: true only when the trade should not be taken today at all.`,
+  reflection: `{
+  "headline": "the day against the book, in one sentence",
+  "worked": ["what the book got right, naming the cards and the move in u"],
+  "failed": ["what it got wrong, naming the cards and the move in u"],
+  "lessons": [ { "lesson": "one sentence a desk could act on tomorrow", "scope": "global | currency | asset | risk | process", "about": "USD, GOLD, the risk desk...", "evidence": "the cards, scores and data behind it" } ],   // 1 to 5
+  "watch": ["what tomorrow's desk should check because of today"]
+}
+A lesson from one day is an anecdote, not evidence. Never claim an edge or a pattern from a single day.`,
   newsletter_issue: `{
   "subject": "the headline, under 70 characters",
   "standfirst": "the opening paragraph, 3-5 sentences",

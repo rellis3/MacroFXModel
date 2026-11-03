@@ -18,6 +18,10 @@ Work through:
    adjectives.
 3. Yesterday's morning brief and end-of-day review: what they expected, and whether it happened.
 4. Data health: which feeds the desk could not see this morning.
+5. The desk's own memory (feed desk-memory): the last few evenings' reviews of the desk's book, each with its day
+   score and up to five lessons. Pass on the lessons that matter for today as things to check, and say how many days
+   each rests on. They are one-day anecdotes from the desk's own reviewer, not evidence: never treat one as a finding,
+   and never let it outrank the Evidence Book.
 
 Your headline should be the one thing the rest of the desk most needs to remember today. Put feeds that are down in
 "gaps". Impact only where a validated finding gives a direction.

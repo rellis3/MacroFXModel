@@ -17,7 +17,7 @@
  *
  * Design: plans/DESK_ANALYST_PIPELINE.md (Layers 1 and 3, Phase 1; §9i restarts).
  */
-import { buildAnalystPrompt, buildHeadPrompt, buildStagePrompt, reportsText, groupData, universeText } from './deskRoles.js';
+import { buildAnalystPrompt, buildHeadPrompt, buildStagePrompt, reportsText, groupData, universeText, sliceText } from './deskRoles.js';
 import { validateAnalystReport, validateHeadBook, validateDebateCase, validateGlobalView, validateCurrencyViews, validateAssetViews, validateRiskCase } from './deskSchemas.js';
 import { allInstruments, DESK_UNIVERSE, DESK_CCYS, instrumentLegs } from './deskPack.js';
 import { capExposure } from './deskExposure.js';
@@ -28,7 +28,7 @@ import { createHash } from 'node:crypto';
 export const DESK_RUN_VERSION = 1;
 const TASK = { quick: 'desk-analyst', deep: 'desk-head' };
 // Output caps. They must leave room for the model's thinking, which is billed as output and counts against the cap.
-export const CAPS = { analyst: 16_000, debate: 12_000, manager: 12_000, asset: 16_000, risk: 10_000, head: 32_000, writer: 16_000 };
+export const CAPS = { analyst: 16_000, debate: 12_000, manager: 12_000, asset: 16_000, risk: 10_000, head: 32_000, writer: 16_000, control: 32_000 };
 const MAX_CAP = 32_000;
 
 // A provider error worth one more try: a dropped connection, a timeout, rate limiting or a server error. A 4xx
@@ -155,9 +155,24 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
       validate: o => validateNewsletterIssue(o, allInstruments()) });
     newsletter = { ok: r.ok, issue: r.value ?? null, notes: r.notes ?? [], errors: r.errors ?? [], attempts: r.attempts };
   }
+  // The single-prompt control (prereg H2): one analyst, the whole pack in one slice, the same card schema. Full runs
+  // only, after the book, and it never sees the book. Its cards get the same price levels so they score the same way.
+  let control = null;
+  const ctl = roles.find(r => r.id === 'control_single');
+  if (mode === 'full' && headOut.ok && ctl) {
+    onProgress({ stage: 'control', label: 'the single-prompt control' });
+    const { system, prompt } = buildStagePrompt({ role: ctl, pack, ledger, sections: [
+      ["Today's Desk Pack, every area in one slice", sliceText(pack, Object.keys(pack.skills), { maxChars: 60_000 }).text],
+      ['Instruments (with the currency legs each is read from)', universeText()],
+    ], tail: `Write a card for every one of the ${allInstruments().length} instruments.` });
+    const r = await ask({ callModel, parseJson, retryDelayMs, task: TASK[ctl.tier], system, prompt, maxTokens: CAPS.control, label: 'desk:control',
+      validate: o => validateHeadBook(o, allInstruments()) });
+    control = { ok: r.ok, book: r.value ?? null, errors: r.errors ?? [], attempts: r.attempts };
+    if (control.ok) { const gd = groupData(pack, allInstruments()); for (const [n, c] of Object.entries(control.book.instruments)) if (gd[n]?.levels) c.levels = gd[n].levels; }
+  }
   onProgress({ stage: 'head', ok: headOut.ok, label: 'head of desk done' });
   const usage = { in: 0, out: 0 };
-  const allAttempts = [...results.flatMap(r => r.attempts), ...(debate?.attempts ?? []), ...(headOut.attempts ?? []), ...(newsletter?.attempts ?? [])];
+  const allAttempts = [...results.flatMap(r => r.attempts), ...(debate?.attempts ?? []), ...(headOut.attempts ?? []), ...(newsletter?.attempts ?? []), ...(control?.attempts ?? [])];
   for (const a of allAttempts) { usage.in += a.usage?.in ?? 0; usage.out += a.usage?.out ?? 0; }
   return {
     version: DESK_RUN_VERSION,
@@ -173,6 +188,9 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
     debate: debate ? { global: debate.global, currency: debate.currency, assets: debate.assets, risk: debate.risk, failed: debate.failed } : null,
     head: headOut,
     newsletter,
+    control,
+    // which role files wrote this book (prereg §3: the desk is scored as operated; results are also read by version)
+    rolesHash: createHash('sha1').update(roles.map(r => `${r.id}\n${r.body}`).sort().join('\n')).digest('hex').slice(0, 12),
     calls: allAttempts.length,
     usage,
     ...(counter.resumed ? { resumed: { stages: counter.resumed } } : {}),
