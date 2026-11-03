@@ -17,12 +17,12 @@
  *
  * Prompts are built from three parts: the role's own text, the slice of today's Desk Pack it reads (each feed
  * with its status and date, gaps named), and only the Evidence Book entries for its domains. The data part is
- * cut to a character budget per feed. That cut is generic in Phase 1; plans/DESK_ANALYST_PIPELINE.md §9 says
- * hand-written slicers replace it once the first Railway packs show the real payloads.
+ * sliced by hand per feed (js/deskSlices.js, built from the first Railway pack) and then held to a character budget.
  *
  * Pure: the server reads the files and passes their text in. Tested in js/deskRoles.test.mjs.
  */
 import { citable } from './deskEvidence.js';
+import { sliceFeed } from './deskSlices.js';
 import { SCHEMA_PROMPTS } from './deskSchemas.js';
 import { DESK_UNIVERSE, instrumentLegs, allInstruments } from './deskPack.js';
 
@@ -66,24 +66,39 @@ export function evidenceBlock(entries) {
   return entries.map(e => `- [${e.id} | ${citable(e).tag}] ${e.claim}. USE: ${e.use}`).join('\n');
 }
 
-/** One feed as prompt text: a header with status and age, then its data cut to `budget` characters. */
-export function feedBlock(entry, budget) {
+/** One feed as prompt text: a header with status and age, then its slice (js/deskSlices.js) cut to `budget` characters. */
+export function feedBlock(entry, budget, sliced) {
   const age = entry.ageH != null ? `, ${entry.ageH}h old` : entry.asOf == null ? ', undated' : '';
   const head = `### ${entry.id} [${entry.status}${entry.asOf ? `, as of ${entry.asOf}` : ''}${age}]`;
   if (entry.status !== 'ok' && entry.status !== 'stale') return `${head}\nGAP: ${entry.error ?? entry.status}`;
-  let json = JSON.stringify(entry.data);
+  let json = sliced ?? JSON.stringify(sliceFeed(entry.id, entry.data));
   if (json.length > budget) json = json.slice(0, budget) + ' …[cut]';
-  const cut = entry.truncatedCount ? `\n(long arrays were cut to their recent end in the pack: ${entry.truncatedCount} cuts)` : '';
-  return `${head}${entry.status === 'stale' ? '\nSTALE: older than this feed should be; say so if you use it.' : ''}${cut}\n${json}`;
+  return `${head}${entry.status === 'stale' ? '\nSTALE: older than this feed should be; say so if you use it.' : ''}\n${json}`;
 }
 
-/** The data section for a role: every feed in its slices, the budget shared between the feeds that have data. */
-export function sliceText(pack, reads, { maxChars = 36_000 } = {}) {
+/**
+ * Share a character budget fairly: feeds that need less than an equal share take what they need, and what they
+ * leave is shared between the bigger ones. So a 15 KB vol-forecast slice is not cut to an equal split with a
+ * 100-byte feed.
+ */
+export function shareBudget(sizes, total) {
+  const order = sizes.map((n, i) => [n, i]).sort((a, b) => a[0] - b[0]);
+  const out = new Array(sizes.length);
+  let left = total, n = sizes.length;
+  for (const [size, i] of order) { const fair = Math.floor(left / n); out[i] = Math.min(size, fair); left -= out[i]; n--; }
+  return out;
+}
+
+/** The data section for a role: every feed in its slices, the budget shared fairly between the feeds with data. */
+export function sliceText(pack, reads, { maxChars = 40_000 } = {}) {
   const entries = reads.flatMap(r => Object.values(pack?.skills?.[r]?.feeds ?? {}));
   if (!entries.length) return { text: '(no feeds in this slice)', feeds: 0, usable: 0 };
-  const usable = entries.filter(e => e.status === 'ok' || e.status === 'stale');
-  const per = Math.max(1200, Math.floor(maxChars / Math.max(1, usable.length)));
-  return { text: entries.map(e => feedBlock(e, per)).join('\n\n'), feeds: entries.length, usable: usable.length };
+  const isUsable = e => e.status === 'ok' || e.status === 'stale';
+  const usable = entries.filter(isUsable);
+  const sliced = new Map(usable.map(e => [e, JSON.stringify(sliceFeed(e.id, e.data))]));
+  const budgets = shareBudget(usable.map(e => sliced.get(e).length), maxChars);
+  const budgetOf = new Map(usable.map((e, i) => [e, budgets[i]]));
+  return { text: entries.map(e => feedBlock(e, budgetOf.get(e) ?? 0, sliced.get(e))).join('\n\n'), feeds: entries.length, usable: usable.length };
 }
 
 const RULES = `Rules:
@@ -117,4 +132,46 @@ export function buildHeadPrompt({ role, pack, reports, failed = [] }) {
   const system = `${role.body}\n\n${RULES}\n${SCHEMA_PROMPTS[role.output]}`;
   const prompt = `Desk date: ${pack.date}.\n\n## Instruments (with the currency legs each is read from)\n${universeText()}\n\n## The analysts' reports, global first\n${lines.join('\n\n')}${missing}\n\nWrite a card for every one of the ${allInstruments().length} instruments.`;
   return { system, prompt };
+}
+
+// ── Phase 2: prompts for the debate, the managers, the asset desks and the risk desk ─────────────────────────────
+
+const STAGE_RULES = `Rules:
+- Use only the reports, rulings and data given below and the Evidence Book entries listed. Never invent a number.
+- Name your sources (an analyst id, a feed id or a ledger tag) for every claim that carries weight.
+- An Evidence Book entry tagged null or underpowered is an idea the desk tested and found no reliable edge in: do not lean on it as if it worked.
+- This is context for the desk, not a tested signal.
+- Reply with JSON only, no text before or after it, in exactly this shape:`;
+
+/** Analyst reports of one layer as prompt text. */
+export function reportsText(results, layer) {
+  const rs = results.filter(r => r.ok && (layer == null || r.layer === layer));
+  return rs.length ? rs.map(r => `### ${r.id} (confidence ${r.report.confidence})\n${JSON.stringify(r.report)}`).join('\n\n') : '(no analyst reports for this layer today)';
+}
+
+/** One pipeline stage's prompts: the role, its evidence, then named sections in order. */
+export function buildStagePrompt({ role, pack, ledger, sections, tail = '' }) {
+  const ev = selectEvidence(ledger ?? [], role.evidence, { max: 15 });
+  const system = `${role.body}\n\n${STAGE_RULES}\n${SCHEMA_PROMPTS[role.output]}`;
+  const body = sections.filter(([, text]) => text != null && text !== '').map(([title, text]) => `## ${title}\n${typeof text === 'string' ? text : JSON.stringify(text)}`).join('\n\n');
+  const prompt = `Desk date: ${pack.date}.\n\n${ev.length ? `## Evidence Book entries for your area\n${evidenceBlock(ev)}\n\n` : ''}${body}${tail ? `\n\n${tail}` : ''}`;
+  return { system, prompt, meta: { evidence: ev.map(e => e.id) } };
+}
+
+/** Per-instrument data from the pack for one asset group: the vol lines, today's session, and the swing map / trade-decision state where they exist. */
+export function groupData(pack, names) {
+  const feed = id => Object.values(pack?.skills ?? {}).map(s => s.feeds?.[id]).find(Boolean);
+  const out = {};
+  const vf = sliceFeed('vol-forecast', feed('vol-forecast')?.data ?? {}), ses = sliceFeed('vol-forecast/session', feed('vol-forecast/session')?.data ?? {});
+  const intel = sliceFeed('vol-forecast/intelligence', feed('vol-forecast/intelligence')?.data ?? {});
+  for (const n of names) {
+    const row = { legs: instrumentLegs(n) };
+    if (vf.instruments?.[n]) row.lines = vf.instruments[n];
+    if (ses.instruments?.[n]) row.session = ses.instruments[n];
+    if (intel.instruments?.[n]) row.implied = intel.instruments[n];
+    const sm = feed(`swing-map:${n}`); if (sm?.data) row.swing = sliceFeed(`swing-map:${n}`, sm.data);
+    const td = feed(`trade-decision/state:${n}`); if (td?.data) row.tradeDecision = sliceFeed(`trade-decision/state:${n}`, td.data);
+    out[n] = row;
+  }
+  return out;
 }

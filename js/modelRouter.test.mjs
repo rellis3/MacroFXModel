@@ -214,3 +214,16 @@ test('a task can pin its own model on a provider; env overrides it; it never lea
   // routed to DeepSeek: the Anthropic pin does not follow it there
   assert.equal(resolveTask('desk-analyst', { keys, tasks: { 'desk-analyst': 'deepseek' } }).model, DEFAULT_MODELS.deepseek.id);
 });
+
+test('a task can set its effort (Anthropic only); the request carries it; env overrides it', () => {
+  const keys = { anthropic: true, deepseek: true };
+  assert.equal(resolveTask('desk-analyst', { keys }).effort, 'medium');
+  assert.equal(resolveTask('desk-head', { keys }).effort, 'high');
+  assert.equal(resolveTask('brief', { keys }).effort, null);
+  assert.equal(resolveTask('desk-analyst', { keys, tasks: { 'desk-analyst': 'deepseek' } }).effort, null);
+  assert.equal(resolveTask('desk-analyst', configFromEnv({ ANT_KEY: 'k', AI_TASK_EFFORT_DESK_ANALYST: 'low' })).effort, 'low');
+  const req = buildRequest({ provider: 'anthropic', model: 'm', prompt: 'p', effort: 'medium' });
+  assert.deepEqual(req.body.output_config, { effort: 'medium' });
+  assert.ok(!('output_config' in buildRequest({ provider: 'anthropic', model: 'm', prompt: 'p' }).body), 'no effort, no field: other tasks byte-identical');
+  assert.ok(!('output_config' in buildRequest({ provider: 'deepseek', model: 'm', prompt: 'p', effort: 'medium' }).body));
+});

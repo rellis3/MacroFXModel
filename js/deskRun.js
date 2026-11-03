@@ -18,18 +18,24 @@ import { allInstruments } from './deskPack.js';
 
 export const DESK_RUN_VERSION = 1;
 const TASK = { quick: 'desk-analyst', deep: 'desk-head' };
+// Output caps. They must leave room for the model's thinking, which is billed as output and counts against the cap.
+export const CAPS = { analyst: 16_000, debate: 12_000, manager: 12_000, asset: 16_000, risk: 10_000, head: 32_000 };
+const MAX_CAP = 32_000;
 
 async function askValidated({ callModel, parseJson, task, system, prompt, maxTokens, validate, label }) {
   const attempts = [];
-  let userPrompt = prompt;
+  let userPrompt = prompt, cap = maxTokens;
   for (let i = 0; i < 2; i++) {
     let reply;
-    try { reply = await callModel({ task, system, prompt: userPrompt, maxTokens }); }
+    try { reply = await callModel({ task, system, prompt: userPrompt, maxTokens: cap }); }
     catch (e) { attempts.push({ error: e.message }); break; }               // a provider error is not retried here: the router already has its own limits
     const parsed = parseJson(reply.text, label);
-    const v = parsed ? validate(parsed) : { ok: false, errors: ['reply was not parseable JSON'] };
+    // A reply cut off at the token cap (thinking counts against it) is retried with twice the room, not the same
+    // cap: on 2026-11-03 every analyst hit a 3,000 cap twice and the run produced nothing.
+    const v = parsed ? validate(parsed) : { ok: false, errors: [reply.truncated ? `reply was cut off at the ${cap}-token cap before the JSON was complete` : 'reply was not parseable JSON'] };
     attempts.push({ ok: v.ok, errors: v.ok ? undefined : v.errors, usage: reply.usage ?? null, model: reply.model ?? null, truncated: !!reply.truncated });
     if (v.ok) return { ok: true, value: v.value, notes: v.notes, attempts };
+    if (reply.truncated) { cap = Math.min(cap * 2, MAX_CAP); continue; }       // same prompt, more room
     userPrompt = `${prompt}\n\nYour previous reply could not be used: ${v.errors.join('; ')}. Reply again with JSON only, in the exact shape given.`;
   }
   return { ok: false, attempts, errors: attempts.at(-1)?.errors ?? [attempts.at(-1)?.error ?? 'failed'] };
@@ -56,7 +62,7 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
   const startedAt = now();
   const results = await pool(analysts, concurrency, async role => {
     const { system, prompt, meta } = buildAnalystPrompt({ role, pack, ledger });
-    const r = await askValidated({ callModel, parseJson, task: TASK[role.tier], system, prompt, maxTokens: 3000, label: `desk:${role.id}`,
+    const r = await askValidated({ callModel, parseJson, task: TASK[role.tier], system, prompt, maxTokens: CAPS.analyst, label: `desk:${role.id}`,
       validate: o => validateAnalystReport(o, role.id) });
     onProgress({ stage: 'analyst', id: role.id, ok: r.ok });
     return { id: role.id, layer: role.layer, ok: r.ok, report: r.value ?? null, notes: r.notes ?? [], errors: r.errors ?? [], attempts: r.attempts, input: meta };
@@ -70,7 +76,7 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
   } else {
     const reports = Object.fromEntries(good.map(r => [r.id, { skill: r.id, layer: r.layer, report: r.report }]));
     const { system, prompt } = buildHeadPrompt({ role: head, pack, reports, failed });
-    const r = await askValidated({ callModel, parseJson, task: TASK[head.tier], system, prompt, maxTokens: 12000, label: 'desk:head',
+    const r = await askValidated({ callModel, parseJson, task: TASK[head.tier], system, prompt, maxTokens: CAPS.head, label: 'desk:head',
       validate: o => validateHeadBook(o, allInstruments()) });
     headOut = { ok: r.ok, book: r.value ?? null, notes: r.notes ?? [], errors: r.errors ?? [], attempts: r.attempts };
   }

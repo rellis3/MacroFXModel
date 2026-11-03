@@ -44,6 +44,11 @@ summary .muted{font-weight:400;margin-left:6px}
 .pos{color:var(--up)}.neg{color:var(--dn)}
 .fail{color:var(--dn)}
 .empty{color:var(--tx2);padding:30px 0;text-align:center}
+.running{border-color:var(--acc);text-align:center;padding:26px 18px}
+.running .big{font-size:18px;font-weight:600;color:var(--tx);margin-bottom:6px}
+.running .bar{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin:14px auto 0;max-width:420px}
+.running .bar i{display:block;height:100%;width:30%;background:var(--acc);animation:slide 1.4s ease-in-out infinite}
+@keyframes slide{0%{margin-left:-30%}100%{margin-left:100%}}
 </style>
 </head>
 <body>
@@ -114,23 +119,36 @@ async function loadDays() {
   $('day').innerHTML = days.length ? days.map(d => `<option value="${d.date}">${d.date}${d.headOk ? '' : ' (head failed)'}</option>`).join('') : '<option value="">no runs yet</option>';
 }
 
+// What each stage means to the reader, and roughly how long the run has left.
+const STAGE_TEXT = s => /desk pack/.test(s) ? 'Collecting this morning\'s data (the Desk Pack): about 1-2 minutes'
+  : /analysts/.test(s) ? `The analysts are reading their data: ${s.replace(/^analysts\s*/, '') || 'starting'}`
+  : /head/.test(s) ? 'The Head of Desk is writing the book' : s;
+function showRunning(j) {
+  const mins = Math.floor((Date.now() - j.startedAt) / 60000), secs = Math.floor((Date.now() - j.startedAt) / 1000) % 60;
+  $('status').textContent = '';
+  $('out').innerHTML = `<div class="panel running"><div class="big">Desk run in progress</div>
+    <div>${esc(STAGE_TEXT(j.stage ?? ''))}</div><div class="muted">${mins}m ${String(secs).padStart(2, '0')}s so far · a full run takes about 6-10 minutes · this page updates by itself</div>
+    <div class="bar"><i></i></div></div>`;
+}
 async function poll() {
   const s = await getJson('/api/desk-run/status');
   const j = s.job;
-  if (j?.status === 'running') { $('status').textContent = `Running: ${j.stage}…`; setTimeout(poll, 5000); return; }
-  if (j?.status === 'error') { $('status').textContent = `Run failed: ${j.error}`; return; }
+  if (j?.status === 'running') { showRunning(j); setTimeout(poll, 5000); return; }
+  if (j?.status === 'error') { $('status').textContent = ''; $('out').innerHTML = `<div class="panel fail">The run failed: ${esc(j.error)}</div>`; return; }
   await loadDays(); await load();
 }
 
 $('run').addEventListener('click', async () => {
   $('run').disabled = true;
+  $('out').innerHTML = '<div class="panel running"><div class="big">Starting the desk run…</div><div class="bar"><i></i></div></div>';
   const r = await getJson('/api/desk-run', { method: 'POST' });
   $('run').disabled = false;
-  if (!r.ok) { $('status').textContent = r.error; return; }
-  poll();
+  if (!r.ok && !r.job) { $('out').innerHTML = `<div class="panel fail">${esc(r.error)}</div>`; return; }
+  poll();   // 409 (already running) also lands here and shows the run in progress
 });
 $('day').addEventListener('change', e => load(e.target.value));
-loadDays().then(() => load()).then(async () => { const s = await getJson('/api/desk-run/status'); if (s.job?.status === 'running') poll(); });
+// On open: a run in progress takes the page over; otherwise show the latest saved run.
+getJson('/api/desk-run/status').then(async s => { await loadDays(); if (s.job?.status === 'running') poll(); else load(); });
 </script>
 </body>
 </html>

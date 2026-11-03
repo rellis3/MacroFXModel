@@ -3663,6 +3663,7 @@ async function callModel({ task = 'misc', system = '', standing = '', prompt = '
   const req = aiBuildRequest({
     provider: r.provider, model: r.model, system, standing, prompt,
     maxTokens, maxOutput: r.maxOutput, cache: cfg.cache, temperature,
+    effort: r.provider === 'anthropic' ? r.effort : null,
   });
   const started = Date.now();
   // A provider that never answers must not hold the single brief slot forever (every retry gets a 409 until it ends), so the call is bounded.
@@ -4494,12 +4495,13 @@ svcTimeout('globalRead', () => _globalReadTick().catch(e => console.error('[glob
 // ── Desk Pack (js/deskPack.js; plans/DESK_ANALYST_PIPELINE.md, Phase 0) ──────────
 // One dated snapshot of every feed the desk reads, built once per London weekday at 06:40 (and on demand), so
 // every analyst skill in the pipeline reads the SAME morning and what each one saw can be graded later. Reads
-// only this server's own routes, six at a time, 45 s each (a feed may carry its own timeoutMs); a failed or empty feed is recorded as a gap, never
+// only this server's own routes, six at a time, 90 s each (a feed may carry its own timeoutMs); a failed or empty feed is recorded as a gap, never
 // dropped. Each day's pack is gzipped into desk_pack_<date> (CF KV via the desk_pack_ prefix in kv.js) with a
 // small index in desk_pack_index. No model is called here.
 const _DP_INDEX_KV = 'desk_pack_index';
 const _DP_KEY = date => `desk_pack_${date}`;
-const _DP_TIMEOUT_MS = 45_000, _DP_CONCURRENCY = 6;
+// 90 s: on the first Railway pack eight routes needed 50-62 s while the server was busy (asia-today, weekmap, daily-open-fib, swing maps).
+const _DP_TIMEOUT_MS = 90_000, _DP_CONCURRENCY = 6;
 let _dpLatest = null, _dpJob = null;
 async function _dpFetchFeed(feed) {
   const t0 = Date.now();

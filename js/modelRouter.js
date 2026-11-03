@@ -105,8 +105,11 @@ export const TASK_CLASS = {
   // area (js/deskRoles.js selectEvidence), so 'brief' -- not routed to a cheap model unless the owner says so.
   // `models` pins a model for this task on a given provider, over that provider's default (owner 2026-11-03:
   // Sonnet 5 for the desk pipeline "for now"). AI_TASK_MODEL_DESK_ANALYST / _DESK_HEAD override it from the env.
-  'desk-analyst': { ledger: 'brief', label: 'Desk pipeline: analysts',     models: { anthropic: 'claude-sonnet-5' } },
-  'desk-head':    { ledger: 'brief', label: 'Desk pipeline: Head of Desk', models: { anthropic: 'claude-sonnet-5' } },
+  // `effort` (Anthropic only) sets how hard the model thinks. Thinking is billed as output and counts against
+  // max_tokens: on the first Railway run (2026-11-03) every analyst spent its whole 3,000-token cap thinking and
+  // returned no JSON. Medium for the analysts, debaters and desks; high for the managers and the Head.
+  'desk-analyst': { ledger: 'brief', label: 'Desk pipeline: analysts',     models: { anthropic: 'claude-sonnet-5' }, effort: { anthropic: 'medium' } },
+  'desk-head':    { ledger: 'brief', label: 'Desk pipeline: Head of Desk', models: { anthropic: 'claude-sonnet-5' }, effort: { anthropic: 'high' } },
   // summarising supplied text — the cheap jobs
   'headlines':    { ledger: null,    label: 'Headline summary',  cheapSafe: true },
   'doc-summary':  { ledger: null,    label: 'Document summary',  cheapSafe: true },
@@ -141,6 +144,7 @@ export function resolveTask(task, cfg = {}) {
   return {
     provider,
     model: taskModel ?? o.id ?? d.id,
+    effort: (cfg.taskEffort ?? {})[task] ?? TASK_CLASS[task]?.effort?.[provider] ?? null,
     maxOutput: o.maxOutput ?? d.maxOutput,
     context: o.context ?? d.context,
     fellBack,
@@ -161,7 +165,7 @@ export function resolveTask(task, cfg = {}) {
  */
 export function buildRequest({
   provider = 'anthropic', model, system = '', standing = '', prompt = '',
-  maxTokens = 4000, maxOutput = null, cache = true, temperature = null,
+  maxTokens = 4000, maxOutput = null, cache = true, temperature = null, effort = null,
 } = {}) {
   const P = PROVIDERS[provider];
   if (!P) throw new Error(`unknown provider: ${provider}`);
@@ -186,6 +190,7 @@ export function buildRequest({
       body: {
         model, max_tokens, system: sys,
         ...(temperature == null ? {} : { temperature }),
+        ...(effort ? { output_config: { effort } } : {}),
         messages: [{ role: 'user', content: prompt }],
       },
     };
@@ -323,10 +328,16 @@ export function configFromEnv(env = {}) {
     const [id, prov = 'anthropic'] = String(v).split('@');
     if (id && PROVIDERS[prov]) taskModels[t] = { id, provider: prov };
   }
+  // AI_TASK_EFFORT_<TASK>=low|medium|high|xhigh|max (Anthropic only).
+  const taskEffort = {};
+  for (const t of Object.keys(TASK_CLASS)) {
+    const v = env[`AI_TASK_EFFORT_${t.replace(/-/g, '_').toUpperCase()}`];
+    if (['low', 'medium', 'high', 'xhigh', 'max'].includes(v)) taskEffort[t] = v;
+  }
   return {
     provider: PROVIDERS[env.AI_PROVIDER] ? env.AI_PROVIDER : 'anthropic',
     cache: env.AI_CACHE !== '0',
-    keys, models, prices, tasks, taskModels,
+    keys, models, prices, tasks, taskModels, taskEffort,
   };
 }
 
