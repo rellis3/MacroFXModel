@@ -4,7 +4,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   DESK_FEEDS, DESK_SKILLS, expandFeeds, findAsOf, toMs, isEmptyPayload, slimPayload, packEntry, buildDeskPack,
-  packForSkill, packSummary, upsertIndex, indexRow, shouldBuild, londonDate, allInstruments,
+  packForSkill, packSummary, upsertIndex, indexRow, shouldBuild, londonDate, allInstruments, instrumentLegs, groupOf,
+  DESK_SUBSETS, DESK_CCYS,
 } from './deskPack.js';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -25,9 +26,33 @@ t('skills run in the owner\'s order: global, then currency, then asset, then evi
   assert.deepEqual(layers, [...layers].sort((a, b) => a - b));
 });
 
-t('expandFeeds: one swing-map per instrument, one TDE state per FX pair, ids unique', () => {
+t('the universe is every instrument the vol forecast covers, each in exactly one group', () => {
+  const src = fs.readFileSync(path.join(root, 'js/volForecastScheduler.js'), 'utf8');
+  const block = src.slice(src.indexOf('export const INSTRUMENTS = ['), src.indexOf('];', src.indexOf('export const INSTRUMENTS = [')));
+  const names = [...block.matchAll(/name:\s*'([^']+)'/g)].map(m => m[1]);
+  assert.ok(names.length >= 41, String(names.length));
+  assert.deepEqual([...allInstruments()].sort(), [...names].sort(), 'js/deskPack.js DESK_UNIVERSE has drifted from the vol forecast\'s INSTRUMENTS');
+  assert.equal(new Set(allInstruments()).size, allInstruments().length);
+});
+
+t('instrumentLegs: FX = base and quote; indices = home currency; commodities and crypto = USD; every leg is one of the 8', () => {
+  assert.deepEqual(instrumentLegs('EURJPY'), ['EUR', 'JPY']);
+  assert.deepEqual(instrumentLegs('DE30'), ['EUR']);
+  assert.deepEqual(instrumentLegs('UK100'), ['GBP']);
+  assert.deepEqual(instrumentLegs('WHEAT'), ['USD']);
+  assert.deepEqual(instrumentLegs('BTCUSD'), ['USD']);
+  assert.equal(instrumentLegs('XYZ'), null);
+  for (const i of allInstruments()) for (const c of instrumentLegs(i)) assert.ok(DESK_CCYS.includes(c), `${i} -> ${c}`);
+  assert.equal(groupOf('GBPJPY'), 'fx_crosses');
+});
+
+t('expandFeeds: swing-map and TDE only for the instruments those routes serve, ids unique', () => {
   const all = expandFeeds();
-  assert.equal(all.filter(f => f.id.startsWith('swing-map:')).length, allInstruments().length);
+  assert.equal(all.filter(f => f.id.startsWith('swing-map:')).length, DESK_SUBSETS.swingMap.length);
+  for (const x of [...DESK_SUBSETS.swingMap, ...DESK_SUBSETS.tde]) assert.ok(allInstruments().includes(x), x);
+  const srv = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
+  const sm = srv.slice(srv.indexOf('const SWING_MAP_INSTRUMENTS = {'), srv.indexOf('};', srv.indexOf('const SWING_MAP_INSTRUMENTS = {')));
+  assert.deepEqual([...sm.matchAll(/(\w+): \{ oanda/g)].map(m => m[1]).sort(), [...DESK_SUBSETS.swingMap].sort(), 'swingMap subset drifted from SWING_MAP_INSTRUMENTS');
   assert.ok(all.some(f => f.path === 'trade-decision/state/eurusd'));
   assert.ok(!all.some(f => f.path === 'trade-decision/state/gold'));
   assert.equal(new Set(all.map(f => f.id)).size, all.length);
