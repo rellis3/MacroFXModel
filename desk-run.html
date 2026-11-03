@@ -177,6 +177,29 @@ async function load(date) {
   $('status').textContent = '';
   render(run, feeds?.universe ?? null);
   renderTrack(run.date).catch(() => {});
+  renderUpdates(run.date).catch(() => {});
+}
+
+// Phase 5: the London-open and New York-open updates. The morning book above stays as written; these sit beside it.
+async function renderUpdates(date) {
+  const u = await getJson(`/api/desk-update?date=${date}`).catch(() => null);
+  if (!u?.ok) return;
+  const sc = await getJson(`/api/desk-score?date=${date}`).catch(() => null), us = sc?.ok ? sc.score?.updates?.slots ?? {} : {};
+  const LABEL = { london: 'London open · 08:05', ny: 'New York open · 14:35' }, f = x => (x == null ? '–' : (x > 0 ? '+' : '') + x.toFixed(2));
+  const slots = ['london', 'ny'].map(k => {
+    const s = u.slots?.[k];
+    if (!s) return `<div class="muted"><b>${LABEL[k]}</b>: not run yet (it runs within 90 minutes of its time when a book was written before it, or press the button).</div>`;
+    const sco = us[k], row = c => { const r = sco?.changes?.find(x => x.instrument === c.instrument); return `<tr><td><b>${esc(c.instrument)}</b></td><td>${esc(c.to.replace('_', ' '))}${c.size != null ? ` · size ${c.size}` : ''}</td><td>${esc(c.why)}</td><td>${r?.delta != null ? `<b class="${r.delta > 0 ? 'up' : r.delta < 0 ? 'dn' : ''}">${f(r.delta)} u</b>` : '<span class="muted">scored after 21:10</span>'}</td></tr>`; };
+    return `<div><p><b>${LABEL[k]}</b> <span class="muted">${esc(new Date(s.at).toISOString().slice(11, 16))} UTC · global ruling ${s.globalStillHolds ? 'holds' : '<b class="dn">no longer holds</b>'}</span><br>${esc(s.headline)}</p>
+${s.changes.length ? `<table><thead><tr><th>Market</th><th>Now</th><th>Why</th><th>Did it help?</th></tr></thead><tbody>${s.changes.map(row).join('')}</tbody></table>` : '<p class="muted">No card changed.</p>'}
+${s.watch?.length ? `<p class="muted">Watch: ${s.watch.map(esc).join(' · ')}</p>` : ''}${sco ? `<p class="muted">Evening: ${sco.helped} change(s) helped, ${sco.hurt} hurt, net ${f(sco.netDelta)} u (size-weighted, new view minus old, to 21:00). Descriptive only.</p>` : ''}</div>`;
+  }).join('<hr style="border:0;border-top:1px solid #24334d;margin:10px 0">');
+  const btn = k => `<button class="btn" data-up="${k}">Run the ${k === 'ny' ? 'New York' : 'London'} update now</button>`;
+  document.getElementById('out').insertAdjacentHTML('afterbegin', `<div class="panel"><h2>Session updates · the book stays as written</h2>${slots}<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">${btn('london')}${btn('ny')}</div></div>`);
+  document.querySelectorAll('[data-up]').forEach(b => b.onclick = async () => {
+    b.disabled = true; const r = await getJson(`/api/desk-update/run?slot=${b.dataset.up}`, { method: 'POST' }).catch(e => ({ error: e.message }));
+    b.textContent = r?.ok ? 'Running: refresh in a minute' : (r?.error ?? 'failed');
+  });
 }
 
 // Phase 4: the track record (forge/DESK_ANALYST_PIPELINE_PREREG.md). Interim until the judgement date: shown, never judged.

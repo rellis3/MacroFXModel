@@ -451,7 +451,7 @@ entry and exit windows. §8's first sketch is narrowed to what can be scored hon
   `/api/desk-score`, `/api/desk-score/record`, `/api/desk-memory`, `POST /api/desk-score/run?date=`.
 - **Page.** desk-run.html shows a "Track record · interim, not judged" panel: the running mean with its interval,
   vs the control, vs drift, the race share, the day's movers and the evening review.
-- **Judging.** At day 20, amendment A2 records the placebo's SD, the MDE and N_req. The test is judged at
+- **Judging.** At day 20, amendment A3 records the placebo's SD, the MDE and N_req. The test is judged at
   max(120, N_req) counted days, or closes UNDERPOWERED on 2027-12-31.
 
 ## 9l. The review in the issues: "Yesterday, reviewed" and the evening edition (2026-11-03)
@@ -480,12 +480,37 @@ The owner asked for the evening review to reach the reader, in both forms.
     issues now.
   - The Desk Run track-record panel links to it, and the Atlas archive labels it "Desk evening".
 
+## 9m. Phase 5 as built: session updates (2026-11-03)
+
+At the London open (08:05) and the New York open (14:35), the intraday manager (`desk/roles/session_update.md`, one
+model call, task desk-head) re-reads the desk and changes only the cards it must. It reads:
+
+- the morning book and its rulings
+- the book as it stands after any earlier update
+- every market now, in u, with the forecast lines it has touched (`js/deskUpdate.js` `marketSince`)
+- eight feeds fetched fresh: calendar, events, the event day, release calls, news outcome, risk flags, the
+  liquidity gate, credit stress
+
+Its rules, and how updates are handled:
+
+- **Rules.** It changes a card only for a fact it can name. It cuts size rather than flipping when the lean-side
+  p75/p90 has been reached. It never flips on a move alone and never adds risk to chase. No change is the default.
+- **The book stays as written.** Updates are saved in `desk_run_update_<date>` beside the book. The pre-registered
+  test scores the book as written before 08:00 (prereg amendment A2; the power amendment is now A3). The page shows
+  the live view (`liveView`) next to the book.
+- **Scored on their own.** In the evening each change is scored from its update to 21:00, size-weighted, new view
+  minus old view (`scoreUpdates`). This is descriptive only. The evening reviewer sees whether the updates helped.
+- **Server.** Service `deskUpdate` (on) runs every 5 minutes on weekdays. Each slot runs once, within 90 minutes of
+  its time, and only over a book written before it. Routes: `GET /api/desk-update`,
+  `POST /api/desk-update/run?slot=london|ny`. desk-run.html has a "Session updates" panel with a button for each
+  slot.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
 
 **Agents**
-- **Phase 5 · Session updates.** A cheap quick run at the London open (08:00) and the New York open (14:30). It
+- **Phase 5 · Session updates.** *Built (§9m).* A cheap quick run at the London open (08:00) and the New York open (14:30). It
   reads what changed since the morning book (prices against the lines, new releases, the risk flags) and updates
   only the cards it must, saying why. Never scored as a new book; logged against the morning one.
 - **Phase 6 · Event agent.** A short brief before each high-impact release, from the desk's own history of how that
@@ -507,7 +532,22 @@ Not built yet. The order is the owner's call; each item names what it needs firs
   - It proposes and designs; it never declares a result.
   - Weekly, not daily. It works best once Phase 4 has some months of scored days.
 
-**Built since this list was written:** the evening edition (§9l).
+**Built since this list was written:** the evening edition (§9l); Phase 5 session updates (§9m).
+
+**Proposed (owner, 2026-11-03), from the hedge-fund roles; order to be confirmed**
+- **Phase 10 · Performance attribution.** Split each day's score by stage (global ruling, currency ranking, asset
+  desk, risk sizing) to show which layer earned or lost. Mostly code on the Phase 4 scores.
+- **Phase 11 · Portfolio risk manager.** The book's correlation and stress scenarios ("USD +1σ: what does the whole
+  book do?") from the vol forecasts and cross-asset links. It puts a number on "two or three bets".
+- **Phase 12 · Research ops.** Watches the research register, flags preregs with no verdict, nudges stale studies
+  and drafts banking entries.
+- **Phase 13 · Execution and cost analyst.** The MT5 bot logs and give-back data against the plan zones: slippage,
+  timing, entries.
+- **Phase 14 · Data quality officer.** Turns the Desk Pack health into actions: what failed, why, and whether to
+  hold the run.
+- **Phase 15 · Scenario strategist.** "If hot / if cold" playbooks before big releases from the desk's
+  release-history data. Pairs with the economist (Phase 6).
+- **Phase 16 · Claims checker.** Checks everything published against the data and the Evidence Book.
 
 **Build items**
 - **Daily schedule.** The owner sets `SVC_DESKRUN=1` for the 06:55 run once a fresh-pack run has been read. Without
