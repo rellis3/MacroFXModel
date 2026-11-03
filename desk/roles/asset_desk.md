@@ -21,5 +21,9 @@ For each instrument:
    forecast lines in the reports), the level or event that would prove it wrong, and the session or window it belongs
    to. Where trade-decision permissions are reported for a pair, stay inside them.
 
-Use FLAT when the legs cancel or the asset evidence argues against the leg read. Do not invent levels: if the reports
-give none for an instrument, say "no level in the reports" in the plan.
+Use FLAT when the legs cancel or the asset evidence argues against the leg read.
+
+Levels: every instrument's data carries `levels`, today's forecast lines in price (the open, then the up and down
+lines at p50, p75 and p90). Use them for the zone and the invalidation when nothing better is reported (an options
+wall, a swing-map barrier or a trade-decision zone is better, so prefer those where they exist). Quote the price, not
+the percentile alone. Do not invent levels beyond these.

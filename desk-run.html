@@ -92,12 +92,17 @@ function render(run, universe) {
       ${b.gaps.length ? `<div class="muted">Could not see: ${b.gaps.map(esc).join(' · ')}</div>` : ''}</div>`);
     parts.push(`<div class="panel"><h2>Currencies</h2><div class="ccys">${Object.entries(b.currencies).map(([c, v]) =>
       `<div class="ccy"><b>${c}</b> ${sgn(v.bias)}<div class="muted">${esc(v.why)}</div></div>`).join('')}</div></div>`);
+    if (b.exposure) {
+      const e = b.exposure, cell = k => `<div class="ccy"><b>${k}</b> ${sgn(e.after[k])}${e.before[k] !== e.after[k] ? ` <span class="muted">(was ${e.before[k]})</span>` : ''}</div>`;
+      parts.push(`<div class="panel"><h2>Net exposure by currency · cap ${e.cap}</h2><div class="ccys">${Object.keys(e.after).map(cell).join('')}</div>
+        <p class="muted">Each card's size, signed, added to the currencies it touches (a pair is long its base and short its quote; commodities and crypto count against USD; indices are left out). ${e.cuts.length ? `Over the cap: ${e.cuts.map(x => `${x.ccy} ${x.net} → cards on that side scaled ×${x.factor}`).join('; ')}.` : 'Nothing was over the cap.'}</p></div>`);
+    }
     const rows = GROUPS.map(([g, label]) => {
       const names = universe?.[g] ?? [];
       if (!names.length) return '';
       return `<tr class="grp"><td colspan="4">${label}</td></tr>` + names.map(n => { const c = b.instruments[n] ?? { rating: 'REVIEW' };
         const plan = c.plan && (c.plan.zone || c.plan.timing) ? `<div class="plan">Plan: ${esc(c.plan.zone)}${c.plan.timing ? ` · ${esc(c.plan.timing)}` : ''}${c.plan.invalidation ? ` · wrong if ${esc(c.plan.invalidation)}` : ''}</div>` : '';
-        return `<tr><td class="n">${n}</td><td><span class="r ${c.rating}">${c.rating.replace('_', ' ')}</span><div class="muted">${esc(c.conviction)}</div>${c.size != null ? `<div class="size">size ${c.size}</div>` : ''}</td><td>${esc(c.why) || '<span class="muted">no card</span>'}${plan}</td><td class="muted">${esc(c.invalidation)}</td></tr>`; }).join('');
+        return `<tr><td class="n">${n}</td><td><span class="r ${c.rating}">${c.rating.replace('_', ' ')}</span><div class="muted">${esc(c.conviction)}</div>${c.size != null ? `<div class="size">size ${c.size}${c.sizeBeforeCap != null ? ` <span class="muted">(was ${c.sizeBeforeCap}, ${esc((c.cappedBy ?? []).join('/'))} cap)</span>` : ''}</div>` : ''}</td><td>${esc(c.why) || '<span class="muted">no card</span>'}${plan}</td><td class="muted">${esc(c.invalidation)}</td></tr>`; }).join('');
     }).join('');
     parts.push(`<div class="panel"><h2>Instruments · five-step scale</h2><table><thead><tr><th>Instrument</th><th>Rating</th><th>Why</th><th>Wrong if</th></tr></thead><tbody>${rows}</tbody></table>
       ${h.notes?.length ? `<p class="muted">Repairs: ${h.notes.map(esc).join(' · ')}</p>` : ''}</div>`);

@@ -305,6 +305,31 @@ invalidation, timing) → **risk desk** (Aggressive, Conservative and Neutral vo
   that had paused it, so it now re-checks when it becomes visible again. The level feeds had timed out in that
   morning's pack, which was built before the 90 s timeout shipped.
 
+## 9f. Fixes after the first full run (2026-11-03)
+
+- **RBNZ:** the RBNZ firewall blocks the server from its statement pages (HTTP 403 on every statement since July). The
+  code does not work around that: the fix for full statements is an allowlist request to Servicedesk@rbnz.govt.nz.
+  The news RSS does answer, and its titles carry each decision, so `/api/rbnz/decisions` gives the OCR path
+  headline-only (Apr hold 2.25%, May hold 2.25%, Jul hike to 2.50%, Sep +25bp to 2.75%, Oct hold 2.75%). It is in the
+  rates analyst's slice. Before this, the desk read NZD as "no catalyst".
+- **Rate differentials:** not broken. The store is wiped on each deploy and refills within about two minutes; the
+  04:43 pack ran just after a deploy.
+- **Fed path:** not broken. The Atlanta Fed tracker publishes about two business days late; the fed funds futures leg
+  (zq) is fresh nightly. Freshness allowance raised to 6 days.
+- **Forward track:** the live record of the Pooled VuManChu Fade only refreshes when someone presses Refresh on
+  forward-track.html; it was pressed once on 2026-07-15. Dropped from the pack, because a dead record misleads the
+  evidence clerk. Scheduling it is the owner's call.
+- **Price levels for every instrument:** `priceLadder` turns the vol forecast's lines (percent from the open) into
+  prices: open, then up and down at p50/p75/p90. The asset desks are told to use them when no options wall,
+  swing-map barrier or trade-decision zone exists. On the first run, 9 instruments had "no level in the reports".
+- **Session open precision:** `anchor_open` was rounded to 2 decimals for every instrument (EURUSD 1.12 for
+  1.11799, about 20 pips off), and js/levels.js builds its forecast levels from it too. It is now full precision.
+- **Per-currency exposure cap** (`js/deskExposure.js`): plain arithmetic after the Head. Each card's signed size goes
+  on the currencies it touches (a pair is long its base and short its quote; commodities and crypto count against
+  USD; indices are left out). Over the cap (default 4 normal-size units, `DESK_EXPOSURE_CAP`), the cards on that side
+  shrink in proportion. On the first run's book, USD was 8.95: the 16 USD-long cards would have been roughly halved.
+  The page shows net exposure before and after, and each cut card shows its old size.
+
 ## 10. Owner decisions (2026-11-03)
 
 1. **Rating scale:** the five-step scale (§4, Layer 3).

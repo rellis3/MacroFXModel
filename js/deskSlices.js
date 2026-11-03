@@ -89,7 +89,6 @@ export const SLICES = {
   'trade-decision/state': d => slimDefault(pick(d, ['pair', 'mode', 'regime', 'price', 'dayOpen', 'sigmaDaily', 'volPct', 'macro', 'credit', 'oi', 'intraday', 'zones', 'permissions'])),
   // ── evidence and memory ──
   'data-health': d => ({ summary: d.summary, worst: d.worst, counts: d.counts, needsEyes: d.needsEyes, problems: slimDefault((d.rows ?? []).filter(r => r && r.status && r.status !== 'ok'), { maxArray: 15, keep: 'first' }) }),
-  'forward-track': d => ({ meta: d.meta, forward: d.stats?.forward ?? null, note: 'forward record: lastRefresh in meta' }),
   'ledger': d => slimDefault(pick(d, ['summary', 'latestDay'])),
   'morning-brief': d => ({ generatedAt: d.generatedAt, session: d.session, analysis: slimDefault(d.analysis, { maxArray: 5, maxString: 500 }) }),
   'eod-review': d => ({ generatedAt: d.generatedAt, stale: d.stale, review: slimDefault(d.review, { maxArray: 5, maxString: 500 }) }),

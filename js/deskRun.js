@@ -15,6 +15,7 @@
 import { buildAnalystPrompt, buildHeadPrompt, buildStagePrompt, reportsText, groupData, universeText } from './deskRoles.js';
 import { validateAnalystReport, validateHeadBook, validateDebateCase, validateGlobalView, validateCurrencyViews, validateAssetViews, validateRiskCase } from './deskSchemas.js';
 import { allInstruments, DESK_UNIVERSE, DESK_CCYS, instrumentLegs } from './deskPack.js';
+import { capExposure } from './deskExposure.js';
 
 export const DESK_RUN_VERSION = 1;
 const TASK = { quick: 'desk-analyst', deep: 'desk-head' };
@@ -62,7 +63,7 @@ async function pool(items, limit, fn) {
  * roles: parsed role files (js/deskRoles.js parseRole), analysts plus one with id head_of_desk.
  * Returns the run record that the server saves and the pages read.
  */
-export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, concurrency = 4, onProgress = () => {}, mode = 'full', rounds = 2, retryDelayMs = 4000 }) {
+export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, concurrency = 4, onProgress = () => {}, mode = 'full', rounds = 2, retryDelayMs = 4000, exposureCap = 4 }) {
   if (!pack?.skills) throw new Error('no desk pack to run on');
   const head = roles.find(r => r.id === 'head_of_desk');
   if (!head) throw new Error('role head_of_desk is missing');
@@ -105,6 +106,12 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
     const r = await askValidated({ callModel, parseJson, retryDelayMs, task: TASK[head.tier], system, prompt, maxTokens: CAPS.head, label: 'desk:head',
       validate: o => validateHeadBook(o, allInstruments()) });
     headOut = { ok: r.ok, book: r.value ?? null, notes: r.notes ?? [], errors: r.errors ?? [], attempts: r.attempts };
+  }
+  // The per-currency exposure cap (js/deskExposure.js): arithmetic on the Head's sizes, after the model.
+  if (headOut.ok && exposureCap > 0) {
+    const capped = capExposure(headOut.book.instruments, { cap: exposureCap });
+    headOut.book.instruments = capped.cards;
+    headOut.book.exposure = capped.report;
   }
   onProgress({ stage: 'head', ok: headOut.ok, label: 'head of desk done' });
   const usage = { in: 0, out: 0 };

@@ -170,7 +170,7 @@ import { FETCHERS as BOE_FETCHERS, extractVote as boeExtractVote } from './js/bo
 import { BOJ_MEETINGS, pendingAsOf as bojPendingAsOf } from './js/bojCalendar.js';
 import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl as bojStatementUrl, outlookViewUrl as bojOutlookViewUrl, outlookFullUrl as bojOutlookFullUrl, opinionsUrl as bojOpinionsUrl, minutesPdfUrl as bojMinutesPdfUrl } from './js/bojFetch.js';
 import { RBNZ_MEETINGS, pendingAsOf as rbnzPendingAsOf, allReleases as rbnzAllReleases } from './js/rbnzCalendar.js';
-import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote } from './js/rbnzFetch.js';
+import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote, fetchOcrDecisions as rbnzFetchOcrDecisions } from './js/rbnzFetch.js';
 import { RBA_MEETINGS, pendingAsOf as rbaPendingAsOf, allReleases as rbaAllReleases } from './js/rbaCalendar.js';
 import { FETCHERS as RBA_FETCHERS, extractVote as rbaExtractVote } from './js/rbaFetch.js';
 import { BOC_MEETINGS, pendingAsOf as bocPendingAsOf, allReleases as bocAllReleases } from './js/bocCalendar.js';
@@ -4611,6 +4611,7 @@ async function _deskRun(trigger, job, mode = 'full') {
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
   const run = await _runDesk({
     pack, roles, ledger: DESK_EVIDENCE, now: Date.now, concurrency: 4, mode,
+    exposureCap: Number(process.env.DESK_EXPOSURE_CAP ?? 4),   // per-currency cap in normal-size units; 0 turns it off
     parseJson: (txt, label) => _parseModelJson(txt, label),
     callModel: async ({ task, system, prompt, maxTokens }) => {
       const r = await callModel({ task, system, prompt, maxTokens });
@@ -9935,6 +9936,23 @@ async function _buildRateDiffScores() {
   await kv.put(_RATE_DIFF_KV, JSON.stringify(payload)).catch(() => {});
   return payload;
 }
+// RBNZ OCR decisions from the RSS headlines (js/rbnzFetch.js). The statement pages are firewalled from this server
+// (403 since July; the fix is an allowlist request to Servicedesk@rbnz.govt.nz), but the feed answers, and its titles
+// carry the decision: level, direction, size. Headline-only, cached 6 h.
+let _rbnzDecisions = null;
+app.get('/api/rbnz/decisions', async (req, res) => {
+  try {
+    if (!_rbnzDecisions || Date.now() - _rbnzDecisions.at > 6 * 3600e3 || req.query.refresh === '1') {
+      const r = await rbnzFetchOcrDecisions();
+      if (!r.ok) return res.status(502).json({ ok: false, error: `RBNZ RSS: ${r.error}`, last: _rbnzDecisions });
+      _rbnzDecisions = { at: Date.now(), decisions: r.decisions };
+    }
+    const d = _rbnzDecisions.decisions;
+    res.json({ ok: true, source: 'RBNZ news RSS (headline only: the statements are blocked by the RBNZ firewall)', fetchedAt: new Date(_rbnzDecisions.at).toISOString(),
+      asOf: d[0]?.date ?? null, current: d[0] ?? null, decisions: d.slice(0, 12) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/rate-diff', async (_req, res) => {
   try {
     const raw = await kv.get(_RATE_DIFF_KV);
