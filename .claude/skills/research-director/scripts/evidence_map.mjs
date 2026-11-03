@@ -18,7 +18,9 @@ const kws = args.filter(a => !a.startsWith('--')).map(k => k.toLowerCase());
 if (!kws.length) { console.error('usage: evidence_map.mjs [--brief] <keyword> [keyword …]'); process.exit(2); }
 
 const ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
-const hit = s => { const t = String(s ?? '').toLowerCase(); return kws.some(k => t.includes(k)); };
+// Keywords of 3 letters or fewer ("oi", "iv") match as whole words only; otherwise they hit half the book.
+const res = kws.map(k => k.length <= 3 ? new RegExp(`(^|[^a-z0-9])${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`) : null);
+const hit = s => { const t = String(s ?? '').toLowerCase(); return kws.some((k, i) => res[i] ? res[i].test(t) : t.includes(k)); };
 const cut = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
 
 const { DESK_EVIDENCE: E } = await import(pathToFileURL(join(ROOT, 'js/deskEvidence.js')).href);
@@ -58,4 +60,5 @@ for (const d of ['forge', 'MD files', 'oi_research_book', 'analysis/output']) wa
 L.push(`## Prereg / results files by name (${files.length})`, '');
 for (const f of files.sort()) L.push(`- \`${f}\``);
 L.push('');
+L.push('Not covered here: work on unmerged branches (run research-protocol\'s `research_status.mjs`), numbers inside', 'results data files and long research books (open the docs above for those).', '');
 console.log(L.join('\n'));

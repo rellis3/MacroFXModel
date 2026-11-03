@@ -5,12 +5,13 @@ Every question on an agenda is one card. The statement is in C.OG's register; ev
 ```markdown
 ### Q<n>. <short name> — score <total>/15
 
-> <The question, 2-5 lines, in his register: build → condition → horizons → noise threshold → distribution → benchmark.
+> <The question, 2-4 lines, in his register: build → condition → horizons → noise threshold → distribution → benchmark.
 > Leave open what the sweep decides.>
 
 | | |
 |---|---|
-| Construct | the derived variable(s), from which series, knowable when |
+| Construct | the derived variable(s), from which series |
+| Knowable when | the bar/session on which the input is public, and the first outcome bar it may score |
 | Condition | the state / extreme / regime / bucket, defined relative to its own history where possible |
 | Horizons | the family swept (e.g. 1 session, 3, 5, 10, 20) |
 | Noise threshold | how it is found (placebo distribution, shifted labels, the control's spread) |
@@ -31,11 +32,16 @@ would make it answerable.
 
 | Criterion | 0 | 1 | 2 | 3 |
 |---|---|---|---|---|
-| **Value of the answer** | changes nothing | changes a page's wording | changes the next study | changes a live line, gate or size |
+| **Value of the answer** | changes nothing | changes a page's wording | settles a confound, or changes what we say or study next | changes a live line, gate or size (only if a yes is plausible: discount a likely-null incremental test to 2) |
 | **Answerable now** | no data / data arrives later | data exists, power unknown | powered for a large effect only | powered for the effect that would matter |
 | **Mechanism** | none named | plausible story | named mechanism, untested | named mechanism with supporting evidence in the book |
 | **Novelty vs the book** | re-asks a banked null | variant of a banked result | new cut of a known effect | a question the book hasn't touched |
 | **Cost** | needs new data bought or built | days of build | a script on existing data | a re-score of existing outputs |
+
+**Seen data.** Most history here (2020-2026-08-20) has been searched many times. Cards that all re-cut the same
+window are one family: say so in the agenda, count them together for multiplicity, and prefer a design whose control
+the confound can't reach (a mirror, a split sample, a cross-instrument contrast) over another cut of the same
+series.
 
 Tie-break: prefer the question whose **"no" would also change something**. A question that only matters if it says
 yes is half a question.

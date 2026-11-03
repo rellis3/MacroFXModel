@@ -16,7 +16,8 @@ deserve that.
 ## The workflow
 
 1. **Map what is known (10 minutes, not an afternoon).**
-   `node .claude/skills/research-director/scripts/evidence_map.mjs <keywords…>` prints every Evidence Book entry,
+   `node .claude/skills/research-director/scripts/evidence_map.mjs <keywords…>` (use specific words; short ones like
+   "oi" match whole words only) prints every Evidence Book entry,
    register row and prereg matching the theme, grouped by verdict. Add `research_status.mjs` for in-flight work. Write
    the map as five to ten lines: what is validated (with the honest number, after controls), what is null or
    underpowered and why, what data exists and when more arrives. The map is the floor every question stands on.
@@ -24,7 +25,8 @@ deserve that.
    hedging flow, behaviour, information arriving slowly)? A question with no mechanism is a data-mining candidate. It's
    allowed only if labelled exploratory.
 3. **Generate questions in C.OG's register** (`references/cog-question-style.md`). Write each as a two-to-five-line
-   statement, then the six-part spec under it: **Construct → Condition → Horizons → Noise threshold → Outcome
+   statement (two to four lines; it doesn't have to name every element, because the table carries the rest), then the
+   spec under it: **Construct → Condition → Horizons → Noise threshold → Outcome
    distribution → Benchmark / control / mirror**. Generate across the angles below, then cut.
 4. **Screen every candidate** (`references/question-card.md`):
    - Already answered? Name the nearest ledger ids; a banked null is re-asked only with a new mechanism.
@@ -59,6 +61,8 @@ deserve that.
 - **Range and direction are separate questions.** The Evidence Book (312 entries, 2026-11-03): volatility/range 27 of
   86 validated, price 13 of 76, macro **0 of 82**. Direction questions need a reason to expect better.
 - **Profit and practicality are separate questions** (C.OG's "would it survive the rules?").
+- **Data after 2026-08-21 is the lockbox holdout.** Don't plan a question that scores it. A question that needs it
+  goes to Parked as an owner decision ("after the lockbox evaluation, ~late Nov 2026").
 - **Never quote a headline the record has already discounted.** Use the controlled number (e.g. GEX range "~+0.15
   after return controls", not +0.38).
 - **Every question cites the ledger ids it builds on**, so the agenda stays traceable.
