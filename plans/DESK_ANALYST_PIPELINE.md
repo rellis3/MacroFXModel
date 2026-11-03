@@ -187,7 +187,8 @@ names, so a task routed to DeepSeek never receives an Anthropic model id.
 | 1 | Role files + schemas; Layer 1 analysts; Head of Desk reading analysts only; desk-run page | **built** (§9b); hand-written slicers and an Atlas panel follow the first Railway runs |
 | 2 | Layer 2 top-down debate + Layer 3 asset desks and risk desk; debate visible on the page | **built** (§9d) |
 | 3 | Layer 4 writers (newsletter first, then day forecast, directional, ideas, risk) | newsletter desk edition **built** (§9g); day forecast next |
-| 4 | Layer 5 memory + grading; the pre-registered comparison (§8) starts counting | first graded month |
+| 4 | Layer 5 memory + grading; the pre-registered comparison (§8) starts counting | **built** (§9k); counting from 2026-11-04; judged at 120+ counted days (§9k) |
+| 5+ | The roadmap in §11: session updates, event agent, red team, journal coach, theory desk, and the build items | owner picks the order |
 
 ## 8. How it gets judged
 
@@ -410,6 +411,77 @@ the desk's (JPY first), and a forced page break after every section left half-bl
   its first row). Ladders sit in an inline grid that breaks between rows.
 - Atlas: "Desk magazine" and "Desk brief" buttons, each with a PDF button. The compare view shows the magazine
   beside the regular issue. Neither format is scored.
+
+## 9k. Phase 4 as built: scoring and memory (2026-11-03)
+
+The prereg is `forge/DESK_ANALYST_PIPELINE_PREREG.md`, pushed before any scoring code existed. Amendment A1 fixes the
+entry and exit windows. §8's first sketch is narrowed to what can be scored honestly every day:
+
+- **What is scored** (`js/deskScore.js`). Each live card (LONG or SHORT, either strength) from 08:00 to 21:00 London
+  on OANDA M1. The unit is the day's own forecast p50 distance (u). The scored cell, H1, is the size-weighted day
+  score against a within-day shuffle placebo, with a both-halves gate.
+  - Eligible days: books written before 08:00 London. A manual run later in the day is scored but does not count.
+  - Secondary cells, BH q 0.10:
+    - H2: a **single-prompt control**, one analyst on the same pack (`desk/roles/control_single.md`), which runs
+      in every full run after the book and never sees it.
+    - H3: conviction.
+    - H4: the p50 race.
+    - H5: long-everything drift.
+- **Against what.** The single-prompt control is §8's "current single prompt", run on the same pack so the inputs
+  match. "Engines alone" was dropped: no engine rates all 41 instruments.
+- **Keeping the right book.** The first eligible run of each day is kept in `desk_run_elig_<date>`, so a later manual
+  run cannot replace it. Every run records `rolesHash`, so results can be read by role-file version. The desk is
+  scored as operated.
+- **Memory (layer 5)** (`js/deskReflect.js`, `desk/roles/reflection.md`).
+  - After the score, a reviewer writes the post-mortem: what worked, what failed, up to five lessons and what to
+    watch.
+  - The next mornings' evidence clerk reads the last five through the Desk Pack feed `desk-memory`.
+  - Every lesson is labelled a one-day anecdote; none is evidence.
+- **Server.** Service `deskScore` (on) scores after 21:10 London on weekdays, makes ~41 M1 fetches and one small
+  model call, and writes `desk_run_score_<date>`, `desk_run_score_index` and `desk_run_reflect_<date>`. Routes:
+  `/api/desk-score`, `/api/desk-score/record`, `/api/desk-memory`, `POST /api/desk-score/run?date=`.
+- **Page.** desk-run.html shows a "Track record · interim, not judged" panel: the running mean with its interval,
+  vs the control, vs drift, the race share, the day's movers and the evening review.
+- **Judging.** At day 20, amendment A2 records the placebo's SD, the MDE and N_req. The test is judged at
+  max(120, N_req) counted days, or closes UNDERPOWERED on 2027-12-31.
+
+## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
+
+Not built yet. The order is the owner's call; each item names what it needs first.
+
+**Agents**
+- **Phase 5 · Session updates.** A cheap quick run at the London open (08:00) and the New York open (14:30). It
+  reads what changed since the morning book (prices against the lines, new releases, the risk flags) and updates
+  only the cards it must, saying why. Never scored as a new book; logged against the morning one.
+- **Phase 6 · Event agent.** A short brief before each high-impact release, from the desk's own history of how that
+  release moves each market (the event-window and release-history feeds). It covers what is priced, how big a
+  surprise usually moves things and how fast. It never gives a direction for the surprise. It feeds the newsletter's
+  "releases to come".
+- **Phase 7 · Red team.** A reviewer that attacks the Head's book before it is published: crowding (one bet across
+  many names), stories that contradict each other, leaning on tested-null ideas, cards that ignore an event inside
+  the window. The Head answers or changes the card. Logged, so the record shows whether the red team helps.
+- **Phase 8 · Journal coach.** Reads the owner's actual MT5 trades (the bot trade logs) against the book: where they
+  followed it, where they went against it, and how each did. Private, weekly.
+- **Phase 9 · Theory desk (quant theory agent).**
+  - Reads the Evidence Book, the research register (including dead hypotheses), the Theory Lab lessons,
+    `education/quantconnect_strategies.md` and `quantconnect_blogs.md`, *151 Trading Strategies*, the SSRN reading
+    list (`education/papers/open/READING_LIST.md`), and the desk's own scored history from Phase 4.
+  - Proposes testable theories about the system's output in the research-director's form: construct a variable,
+    condition on it, sweep the horizons, and read the outcome against a benchmark and a placebo.
+  - Screens each one against what has already been tested, and hands it to the research protocol for a prereg.
+  - It proposes and designs; it never declares a result.
+  - Weekly, not daily. It works best once Phase 4 has some months of scored days.
+
+**Build items**
+- **Daily schedule.** The owner sets `SVC_DESKRUN=1` for the 06:55 run once a fresh-pack run has been read. Without
+  it, only books written before 08:00 count in the test.
+- **Day-forecast writer** (Phase 3's remaining writer): the day as a range bucket, a trend or range day, and the
+  session shape, beside the newsletter.
+- **Prompt caching** on the shared pack slices, which could cut the cost of a run by roughly a third.
+- **Slow feeds:** asia-today, daily-open-fib, weekmap, forecast-path and three swing maps time out in the pack build.
+  Each needs a cache or a cheaper route.
+- **Forward-track refresh:** schedule it, or keep it out of the pack (§9f).
+- **RBNZ full statements:** ask the RBNZ service desk (Servicedesk@rbnz.govt.nz) to allowlist the server.
 
 ## 10. Owner decisions (2026-11-03)
 

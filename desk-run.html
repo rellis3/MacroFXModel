@@ -55,6 +55,7 @@ h3{margin:14px 0 6px;font-size:14px}
 .running .bar{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin:14px auto 0;max-width:420px}
 .running .bar i{display:block;height:100%;width:30%;background:var(--acc);animation:slide 1.4s ease-in-out infinite}
 @keyframes slide{0%{margin-left:-30%}100%{margin-left:100%}}
+.up{color:#19d3a0}.dn{color:#ff5d73}
 </style>
 </head>
 <body>
@@ -116,7 +117,7 @@ function render(run, universe) {
       ${a.report.points.map(p => `<div class="pt">${esc(p.claim)} <code>${esc(p.evidence)}</code>${Object.entries(p.impact).map(([k, v]) => `<span class="imp">${k} ${sgn(v)}</span>`).join('')}</div>`).join('')}
       ${a.report.gaps.length ? `<div class="pt muted">Gaps: ${a.report.gaps.map(esc).join(' · ')}</div>` : ''}</details>`
     : `<details><summary class="fail">${esc(a.id)} failed</summary><div class="pt muted">${esc(a.errors.join('; '))}</div></details>`).join('')}</div>`);
-  parts.push(`<p class="muted">Tokens: in ${run.usage?.in ?? '?'} · out ${run.usage?.out ?? '?'} · finished ${esc(run.finishedAt)} · ${esc(run.trigger ?? '')}${run.resumed ? ` · resumed after a server restart (${run.resumed.stages} finished stages kept, not paid for twice)` : ''}. This book is context from the analyst pipeline (plans/DESK_ANALYST_PIPELINE.md). It is not a tested signal: it is scored only once its pre-registration is in place.</p>`);
+  parts.push(`<p class="muted">Tokens: in ${run.usage?.in ?? '?'} · out ${run.usage?.out ?? '?'} · finished ${esc(run.finishedAt)} · ${esc(run.trigger ?? '')}${run.resumed ? ` · resumed after a server restart (${run.resumed.stages} finished stages kept, not paid for twice)` : ''}. This book is context from the analyst pipeline (plans/DESK_ANALYST_PIPELINE.md). It is not a tested signal: it is scored each evening under forge/DESK_ANALYST_PIPELINE_PREREG.md and judged only at the end of that test.</p>`);
   $('out').innerHTML = parts.join('');
   const cmp = document.getElementById('nlCmp');
   if (cmp) cmp.onclick = () => { const box = document.getElementById('nlCmpBox'); const show = box.style.display === 'none'; box.style.display = show ? 'grid' : 'none'; if (show) box.querySelectorAll('iframe').forEach(f => { if (f.src === 'about:blank') f.src = f.dataset.src; }); };
@@ -175,6 +176,23 @@ async function load(date) {
   if (!run.ok) { $('status').textContent = ''; $('out').innerHTML = `<div class="panel empty">${esc(run.error)}</div>`; return; }
   $('status').textContent = '';
   render(run, feeds?.universe ?? null);
+  renderTrack(run.date).catch(() => {});
+}
+
+// Phase 4: the track record (forge/DESK_ANALYST_PIPELINE_PREREG.md). Interim until the judgement date: shown, never judged.
+async function renderTrack(date) {
+  const [rec, day] = await Promise.all([getJson('/api/desk-score/record').catch(() => null), getJson(`/api/desk-score?date=${date}`).catch(() => null)]);
+  if (!rec?.ok) return;
+  const r = rec.record, f = x => (x == null ? '–' : (x > 0 ? '+' : '') + x.toFixed(2));
+  const sc = day?.ok ? day.score : null, ref = day?.ok ? day.reflection : null, mv = day?.ok ? day.movers : null;
+  const dayHtml = sc ? `<p><b>${esc(sc.date)}</b> · day score <b class="${sc.S > 0 ? 'up' : sc.S < 0 ? 'dn' : ''}">${f(sc.S)} u</b> (shuffled-book placebo 95th pct ${f(sc.placebo?.p95)}) · single-prompt control ${f(sc.control?.unweighted)} · ${sc.scored} of ${sc.live} live cards scored${sc.missing?.length ? `, ${sc.missing.length} missing` : ''} · ${sc.eligible ? 'counts in the test' : `does not count (${esc(sc.why)})`}</p>
+${mv ? `<p class="muted">Made the day: ${mv.best.map(m => `${esc(m.inst)} ${f(m.R)}`).join(', ') || '–'} · Lost it: ${mv.worst.map(m => `${esc(m.inst)} ${f(m.R)}`).join(', ') || '–'}</p>` : ''}
+${ref ? `<p><b>The evening review:</b> ${esc(ref.headline)}</p><ul>${ref.lessons.map(l => `<li><span class="muted">${esc(l.scope)}${l.about ? ` · ${esc(l.about)}` : ''}</span> ${esc(l.lesson)}</li>`).join('')}</ul><p class="muted">One day is an anecdote: these lessons go to tomorrow's evidence clerk as things to check, not as evidence.</p>` : ''}`
+    : `<p class="muted">This day is scored after 21:10 London (08:00 to 21:00, in the day's forecast p50 units).</p>`;
+  $('out').insertAdjacentHTML('afterbegin', `<div class="panel"><h2>Track record · interim, not judged</h2>
+<p>${r.eligibleDays} counted day${r.eligibleDays === 1 ? '' : 's'} (books written before 08:00 London) of ${r.allDays} scored. Mean day score <b>${f(r.S.mean)} u</b>${r.S.ci ? ` [${f(r.S.ci.lo)}, ${f(r.S.ci.hi)}]` : ''} · days the book was right ${r.S.hitDays} · vs the single-prompt control ${f(r.vsControl?.mean)} · vs long-everything ${f(r.vsDrift?.mean)} · lean-side p50 first ${r.race.leanFirstShare == null ? '–' : Math.round(r.race.leanFirstShare * 100) + '%'}</p>
+${dayHtml}
+<p class="muted">Pre-registered in forge/DESK_ANALYST_PIPELINE_PREREG.md: judged at 120+ counted days (the exact number is set at day 20). Until then these are running numbers, not a verdict, and nothing is tuned to them.</p></div>`);
 }
 
 async function loadDays() {

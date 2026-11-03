@@ -89,7 +89,7 @@ function fakeModel({ badFirst = [], alwaysBad = [], headBad = false } = {}) {
   const seen = {}, calls = [];
   const fn = async ({ task, system, prompt }) => {
     calls.push(task);
-    if (system.includes('You are the Head of Desk')) {
+    if (system.includes('You are the Head of Desk') || system.includes('single macro analyst writing the whole desk')) {
       if (headBad) return { text: '{"headline": "x", "instruments": {}}', usage: { in: 10, out: 5 } };
       const book = { headline: 'Risk-off', global: { tone: 'risk_off', summary: 's' },
         currencies: Object.fromEntries(DESK_CCYS.map(c => [c, { bias: 0, why: 'w' }])),
@@ -176,10 +176,11 @@ await t('runDesk full mode: analysts, global debate + ruling, currency debate + 
   assert.equal(d.risk.risk_conservative.view.adjustments.length, 1, 'unknown target dropped');
   assert.ok(run.head.ok);
   const analysts = roles.filter(r => r.output === 'analyst_report').length;
-  assert.equal(run.calls, analysts + 4 + 1 + 4 + 1 + Object.keys(DESK_UNIVERSE).length + 3 + 1 + 1, 'plus the newsletter writer');
+  assert.equal(run.calls, analysts + 4 + 1 + 4 + 1 + Object.keys(DESK_UNIVERSE).length + 3 + 1 + 1 + 1, 'plus the newsletter writer and the single-prompt control');
+  assert.ok(run.control.ok && run.control.book.instruments.GOLD, 'the control wrote its own book'); assert.match(run.rolesHash, /^[0-9a-f]{12}$/);
   assert.ok(run.newsletter.ok); assert.equal(run.newsletter.issue.ideas[0].instrument, 'AUDJPY');
   assert.ok(run.head.book.exposure, 'exposure report attached');
-  assert.equal(m.calls.at(-1), 'desk-head', 'the writer runs on the deep tier, last');
+  assert.equal(m.calls.at(-1), 'desk-head', 'the control runs on the deep tier, last');
 });
 
 await t('runDesk full mode: a failed stage is recorded and the next stage falls back; one round skips rebuttals', async () => {

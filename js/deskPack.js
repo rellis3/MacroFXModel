@@ -172,6 +172,7 @@ export const DESK_FEEDS = [
   F('evidence_memory', 'data-health', 1 * D),
   F('evidence_memory', 'morning-brief', 3 * D),
   F('evidence_memory', 'eod-review', 3 * D),
+  F('evidence_memory', 'desk-memory', 5 * D),   // Phase 4: the desk's own end-of-day reflections (one-day anecdotes, labelled)
 ];
 
 /** Feeds read once per instrument. `{inst}` is the upper-case key, `{lower}` the lower-case one. */

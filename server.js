@@ -217,7 +217,10 @@ import { buildQuestion as _buildQuestion, DRILL_SERIES as _DRILL_SERIES, GENERAT
 import { plannedInWindow } from './js/endOfDay.js';
 import { buildGlobalRead as _buildGlobalRead, recordRow as _grRecordRow, snapshotRow as _grSnapshotRow, attachRealised as _grAttachRealised, scoreRecord as _grScoreRecord } from './js/globalReadCore.js';
 import { assembleGlobalReadInput as _grAssemble, GLOBAL_READ_ENDPOINTS as _GR_ENDPOINTS } from './js/globalReadInputs.js';
-import { parseRole as _deskParseRole } from './js/deskRoles.js';
+import { parseRole as _deskParseRole, buildStagePrompt as _deskStagePrompt } from './js/deskRoles.js';
+import { scoreDay as _dsScoreDay, eligible as _dsEligible, windowFor as _dsWindow, record as _dsRecord, londonMs as _dsLondonMs } from './js/deskScore.js';
+import { reflectionSections as _dsReflectSections, memoryFeed as _dsMemoryFeed, movers as _dsMovers } from './js/deskReflect.js';
+import { validateReflection as _dsValidateReflection } from './js/deskSchemas.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
 import { expandFeeds as _dpExpandFeeds, buildDeskPack as _dpBuild, packForSkill as _dpForSkill, packSummary as _dpSummary, indexRow as _dpIndexRow, upsertIndex as _dpUpsertIndex, shouldBuild as _dpShouldBuild, londonDate as _dpLondonDate, DESK_SKILLS as _DP_SKILLS, DESK_UNIVERSE as _DP_UNIVERSE, DESK_SUBSETS as _DP_SUBSETS, packFresh as _dpFresh } from './js/deskPack.js';
@@ -4754,6 +4757,9 @@ async function _deskRun(trigger, job, mode = 'full') {
     const idx = (await _drLoadIndex()).filter(r => r.date !== run.date);
     idx.push({ date: run.date, finishedAt: run.finishedAt, trigger, mode: run.mode, headOk: !!run.head?.ok, failed: [...run.failed, ...(run.debate?.failed ?? [])], calls: run.calls, usage: run.usage });
     await kv.put(_DR_INDEX_KV, JSON.stringify(idx.slice(-400)));
+    // The first eligible run of each day is kept apart, so a later manual run cannot replace the book the
+    // pre-registered test scores (forge/DESK_ANALYST_PIPELINE_PREREG.md §3: the earliest eligible run counts).
+    if (_dsEligible(run).ok && !(await kv.get(_DS_ELIG_KEY(run.date)))) await kv.put(_DS_ELIG_KEY(run.date), gz);
     await checkpoint.clear();   // the run is saved whole: the next Run now starts fresh
   } catch (e) { console.warn('[desk-run] save failed:', e.message); }
   console.log(`[desk-run] ${run.date} (${run.mode}): ${Object.values(run.analysts).filter(a => a.ok).length}/${Object.keys(run.analysts).length} analysts, debate failures ${run.debate?.failed?.length ?? '-'}, head ${run.head?.ok ? 'ok' : 'FAILED'}, ${run.calls} calls, tokens in ${run.usage.in} out ${run.usage.out}`);
@@ -4816,6 +4822,116 @@ svcInterval('deskRun', async () => {
   if (!_dpShouldBuild(now, _drLatest?.date ?? null, { hour: 6, minute: 55 })) return;
   if ((await _drLoadIndex()).some(r => r.date === today)) { _drLatest = await _drLoad(today) ?? _drLatest; if (_drLatest?.date === today) return; }
   _drStart('schedule');
+}, 10 * 60_000);
+
+// ── Desk Score and memory (js/deskScore.js, js/deskReflect.js; plans/DESK_ANALYST_PIPELINE.md Phase 4) ─────────
+// After 21:10 London each weekday: the day's desk book (the first eligible run if there is one, else the latest run,
+// scored but not counted) is scored card by card on OANDA M1 from 08:00 to 21:00 London, exactly as the prereg says
+// (forge/DESK_ANALYST_PIPELINE_PREREG.md). Then the reviewer (desk/roles/reflection.md) writes the day's post-mortem,
+// and the next mornings' evidence clerk reads the last five through /api/desk-memory. Nothing here changes a card;
+// the running record is interim and labelled so until the judgement date.
+const _DS_ELIG_KEY = date => `desk_run_elig_${date}`;
+const _DS_SCORE_KEY = date => `desk_run_score_${date}`;
+const _DS_REFLECT_KEY = date => `desk_run_reflect_${date}`;
+const _DS_INDEX_KV = 'desk_run_score_index';
+const _DS_SEED = 20261103;
+const _dsOanda = Object.fromEntries(VOL_INSTRUMENTS.map(i => [i.name, i.oandaInstrument]));
+let _dsJob = null;
+const _dsGz = raw => JSON.parse(zlib.gunzipSync(Buffer.from(raw, 'base64')).toString('utf8'));
+async function _dsLoadIndex() { try { const raw = await kv.get(_DS_INDEX_KV); return raw ? JSON.parse(raw) : []; } catch { return []; } }
+async function _dsRunFor(date) {
+  try { const raw = await kv.get(_DS_ELIG_KEY(date)); if (raw) return _dsGz(raw); } catch { /* fall through to the latest run */ }
+  return _drLoad(date);
+}
+async function _dsBars(insts, date) {
+  const { entryMs, exitMs } = _dsWindow(date), out = {}, list = [...insts];
+  let next = 0;
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    while (next < list.length) {
+      const n = list[next++], sym = _dsOanda[n]; if (!sym) continue;
+      try { out[n] = await _btFetchM1Range(sym, Math.floor(entryMs / 1000), Math.floor(exitMs / 1000)); } catch (e) { out[n] = []; console.warn(`[desk-score] ${n}: ${e.message}`); }
+    }
+  }));
+  return out;
+}
+async function _dsReflect(run, score) {
+  const role = _deskLoadRoles().find(r => r.id === 'reflection');
+  if (!role || !_aiAnyKey()) return null;
+  const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+  const { system, prompt } = _deskStagePrompt({ role, pack: { date: run.date }, ledger: DESK_EVIDENCE, sections: _dsReflectSections(run, score) });
+  for (let i = 0; i < 2; i++) {
+    try {
+      const r = await callModel({ task: 'desk-analyst', system, prompt, maxTokens: 12_000 });
+      const v = _dsValidateReflection(_parseModelJson(r.text ?? _antText(r), 'desk:reflection'));
+      if (v.ok) return { ...v.value, model: r.model ?? null, usage: r.usage ?? null };
+    } catch (e) { console.warn('[desk-score] reflection:', e.message); }
+  }
+  return null;
+}
+async function _dsScore(date, { reflect = true } = {}) {
+  const run = await _dsRunFor(date);
+  if (!run?.head?.ok) return { ok: false, error: `no desk book for ${date}` };
+  const insts = new Set([...Object.keys(run.head.book.instruments ?? {}), ...Object.keys(run.control?.book?.instruments ?? {})]);
+  const bars = await _dsBars(insts, date);
+  const score = { ..._dsScoreDay(run, bars, { seed: _DS_SEED }), savedAt: new Date().toISOString() };
+  await kv.put(_DS_SCORE_KEY(date), JSON.stringify(score));
+  const { cards, ...row } = score;
+  const idx = (await _dsLoadIndex()).filter(r => r.date !== date); idx.push(row); idx.sort((a, b) => a.date.localeCompare(b.date));
+  await kv.put(_DS_INDEX_KV, JSON.stringify(idx.slice(-800)));
+  let reflection = null;
+  if (reflect) { reflection = await _dsReflect(run, score); if (reflection) await kv.put(_DS_REFLECT_KEY(date), JSON.stringify({ date, savedAt: new Date().toISOString(), ...reflection })); }
+  console.log(`[desk-score] ${date}: ${score.eligible ? 'counts' : 'does not count (' + score.why + ')'}, S ${score.S}, ${score.scored}/${score.live} cards, ${score.missing.length} missing, reflection ${reflection ? 'saved' : 'none'}`);
+  return { ok: true, score, reflection };
+}
+function _dsStart(date, opts) {
+  if (_dsJob?.status === 'running') return null;
+  const job = _dsJob = { status: 'running', date, startedAt: Date.now(), finishedAt: null, error: null };
+  _dsScore(date, opts).then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; })
+    .catch(e => { job.status = 'error'; job.error = e.message; console.error('[desk-score]', e.message); })
+    .finally(() => { job.finishedAt = Date.now(); });
+  return job;
+}
+// GET /api/desk-score: a day's scored row with every card (?date=, default the latest scored day)
+app.get('/api/desk-score', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    let date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : null;
+    if (!date) date = (await _dsLoadIndex()).at(-1)?.date ?? null;
+    if (!date) return res.status(404).json({ ok: false, error: 'no day scored yet: the first is scored after 21:10 London on a day with a desk run' });
+    const raw = await kv.get(_DS_SCORE_KEY(date)); if (!raw) return res.status(404).json({ ok: false, error: `${date} not scored` });
+    const score = JSON.parse(raw), ref = await kv.get(_DS_REFLECT_KEY(date)), run = await _dsRunFor(date);
+    res.json({ ok: true, score, reflection: ref ? JSON.parse(ref) : null, movers: run ? _dsMovers(run, score) : null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/desk-score/record: the running record over every scored day (interim, not judged; prereg §5 and §7)
+app.get('/api/desk-score/record', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const days = await _dsLoadIndex(); res.json({ ok: true, record: _dsRecord(days, { seed: _DS_SEED }), days: days.slice(-60), job: _dsJob }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/desk-memory: the last five days' reflections, for the morning evidence clerk (Desk Pack feed desk-memory)
+app.get('/api/desk-memory', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const idx = (await _dsLoadIndex()).slice(-5);
+    const days = await Promise.all(idx.map(async r => { const ref = await kv.get(_DS_REFLECT_KEY(r.date)); return { date: r.date, score: r, reflection: ref ? JSON.parse(ref) : null, savedAt: r.savedAt }; }));
+    res.json({ ok: true, ..._dsMemoryFeed(days) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/desk-score/run?date=YYYY-MM-DD: score a day now (only once its 21:00 London window has closed)
+app.post('/api/desk-score/run', (req, res) => {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : _dpLondonDate(Date.now());
+  if (Date.now() < _dsWindow(date).exitMs) return res.status(409).json({ ok: false, error: `the ${date} window closes at 21:00 London; score it after that` });
+  const job = _dsStart(date, { reflect: req.query.reflect !== '0' });
+  if (!job) return res.status(409).json({ ok: false, error: 'a scoring job is already running', job: _dsJob });
+  res.status(202).json({ ok: true, job });
+});
+svcInterval('deskScore', async () => {
+  const now = Date.now(), today = _dpLondonDate(now), dow = new Date(_dsLondonMs(today, 12)).getUTCDay();
+  if (dow === 0 || dow === 6 || _dsJob?.status === 'running') return;
+  if (now < _dsLondonMs(today, 21, 10)) return;
+  if ((await _dsLoadIndex()).some(r => r.date === today)) return;
+  if (!(await _dsRunFor(today))?.head?.ok) return;
+  _dsStart(today, { reflect: true });
 }, 10 * 60_000);
 
 // ── Rates vs Nasdaq regime (js/ratesRegime.js) ───────────────────────────────
