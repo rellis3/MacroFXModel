@@ -28,11 +28,16 @@ for /f %%d in ('powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd"') d
 set LOGFILE=logs\cog_legs_%DSTAMP%.log
 echo ================================================== >> "%LOGFILE%"
 echo  RUN STARTED %date% %time% >> "%LOGFILE%"
+REM  R2 (rates-legs/) is the store for these bars; the repo no longer carries them. legs_r2.py uses R2_ACCESS_KEY / R2_SECRET_KEY
+REM  from the user environment when set, otherwise borrows them through `railway run` (needs `railway login`). Without either it says so.
+set R2RUN=
+if not defined R2_ACCESS_KEY set R2RUN=railway run
+REM  Self-heal: if the local 1-minute history is missing (fresh checkout, or a pull removed it), rebuild it from R2 before refreshing.
+if not exist "..\..\analysis\output\stir_1m_deep\CME_SR3Z6.parquet" %R2RUN% "%PY%" legs_r2.py pull >> "%LOGFILE%" 2>&1
 "%PY%" refresh_leg_bars.py --days auto --push %* >> "%LOGFILE%" 2>&1
 set RC=%ERRORLEVEL%
-REM  Send the new bars to R2 (rates-legs/), the store the server syncs the chart legs from; the repo no longer carries them.
-REM  Needs R2_ACCESS_KEY / R2_SECRET_KEY in the user environment; without them it says so and changes nothing. Never fails the refresh.
-if %RC% EQU 0 "%PY%" legs_r2.py push >> "%LOGFILE%" 2>&1
+REM  Send the new bars to R2, the store the server syncs the chart legs from. Never fails the refresh.
+if %RC% EQU 0 %R2RUN% "%PY%" legs_r2.py push >> "%LOGFILE%" 2>&1
 echo [%date% %time%] finished with exit code %RC% >> "%LOGFILE%"
 echo.
 findstr /C:"HTTP" /C:"Could not connect" /C:"merged" /C:"legs_r2" "%LOGFILE%"

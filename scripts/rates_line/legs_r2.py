@@ -48,7 +48,7 @@ def client():
     from botocore.config import Config
     return boto3.client('s3', endpoint_url=R2_ENDPOINT, aws_access_key_id=os.environ['R2_ACCESS_KEY'],
                         aws_secret_access_key=os.environ['R2_SECRET_KEY'], region_name='auto',
-                        config=Config(max_pool_connections=32, retries={'max_attempts': 5}))
+                        config=Config(max_pool_connections=8, retries={'max_attempts': 5}))
 
 
 def bucket():
@@ -57,7 +57,13 @@ def bucket():
 
 def put(s3, key, body: bytes, ctype='application/octet-stream'):
     assert key.startswith(PREFIX), key                    # never write outside rates-legs/
-    s3.put_object(Bucket=bucket(), Key=key, Body=body, ContentType=ctype)
+    for attempt in range(5):                              # this laptop's link drops R2 TLS sessions under load (SSL EOF): retry with backoff
+        try:
+            return s3.put_object(Bucket=bucket(), Key=key, Body=body, ContentType=ctype)
+        except Exception:
+            if attempt == 4:
+                raise
+            time.sleep(2 ** attempt)
 
 
 def load_state():
@@ -79,12 +85,16 @@ def push_m1(s3, state, pool):
         day = df['time'].astype(str).str[:10]
         days = sorted(day.unique())
         todo = [d for d in days if d >= st.get('last_day', '')]
+        part = []
         for d in todo:
             buf = io.BytesIO()
             df[day == d].reset_index(drop=True).to_parquet(buf, index=False)
-            jobs.append(pool.submit(put, s3, f'{PREFIX}m1/{p.stem}/{d}.parquet', buf.getvalue()))
+            part.append(pool.submit(put, s3, f'{PREFIX}m1/{p.stem}/{d}.parquet', buf.getvalue()))
+        for j in part:
+            j.result()                                    # this contract is fully sent before its state moves on
         sent += len(todo)
         state['m1'][p.stem] = {'mtime': mtime, 'last_day': days[-1] if days else '', 'rows': int(len(df))}
+        STATE.write_text(json.dumps(state))               # a later failure does not re-send this contract
     cd = SRC / 'contract_details.json'
     if cd.exists():
         jobs.append(pool.submit(put, s3, f'{PREFIX}m1/contract_details.json', cd.read_bytes(), 'application/json'))
@@ -153,7 +163,7 @@ if __name__ == '__main__':
         pull(s3)
         sys.exit(0)
     state = load_state()
-    with ThreadPoolExecutor(16) as pool:
+    with ThreadPoolExecutor(4) as pool:
         n = push_m1(s3, state, pool)
         STATE.write_text(json.dumps(state))
         c = push_chart(s3, state, pool, ARGS.force_chart)
