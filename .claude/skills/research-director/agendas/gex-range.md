@@ -168,6 +168,10 @@ whether a *strongly* short book does anything, which the CME book can't answer.
 > by more than the shifted-label noise? Compare it with weak-disagreement days as the control. Unpark at ~100
 > strong-opposite days of the Cboe capture (count them monthly).
 
+> **Q1c — RUN 2026-11-03: UNDERPOWERED, implied vol absorbs 64% (ES) / 73% (NQ)** (`gex-range-iv`). Remainder
+> ES +0.054, NQ +0.044, inside the noise. Short-gamma days already carry ~17-18% higher implied-over-realised vol within
+> every trailing-vol bucket. Original statement:
+>
 > **Q1c (what the common driver is).** On the days both books flip short together, decompose the range widening into
 > what trailing σ, VIX/VXN level and recent drawdown already price, and what is left. Is any of the "short gamma"
 > widening left once implied vol is in the baseline? Uses data in the repo; it is the IV leg the earlier controls never

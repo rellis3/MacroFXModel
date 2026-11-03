@@ -10,16 +10,16 @@ Generated 2026-11-03.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **268** |
+| claims tested (validated + null + underpowered) | **269** |
 | validated | 49 |
 | null | 151 |
-| underpowered | 68 |
+| underpowered | 69 |
 | context (base rates, descriptions: not counted as tests) | 45 |
 | pre-registrations with no banked verdict (below) | 87 |
 
-**What the count says (Lesson 02 §05).** If none of the 268 claims were real, tests at the usual 5% size would still pass
-about **13.4** of them by luck. 49 passed, so most passes are unlikely to be luck alone, but
-**roughly 13 of the 49 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 269 claims were real, tests at the usual 5% size would still pass
+about **13.5** of them by luck. 49 passed, so most passes are unlikely to be luck alone, but
+**roughly 14 of the 49 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -339,6 +339,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-02 | v3-p50-follow-pre2020 | price | null | forge/V3_P50_FOLLOW_PRE2020_PREREG.md |
 | 2026-11-02 | vol-managed-mm | volatility | underpowered | forge/STRESS_FILTER_HOLD_PREREG.md |
 | 2026-11-02 | vwap-stretch-line-touch | price | underpowered | forge/VWAP_STRETCH_LINE_TOUCH_PREREG.md |
+| 2026-11-03 | gex-range-iv | positioning | underpowered | oi_research_book/GEX_RANGE_IV_PREREG.md |
 | 2026-11-03 | gex-split-book | positioning | null | oi_research_book/GEX_SPLIT_BOOK_PREREG.md |
 
 ## Pre-registered, but no banked verdict
