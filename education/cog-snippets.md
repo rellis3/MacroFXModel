@@ -324,3 +324,197 @@ for the micro bank model on 2016–2026 data:
 - Every time stop hurt. A z stop at 2.0 halved the result; at 3.0 it was neutral.
 - Side lead: the FX-only threshold book ran net Sharpe +0.43 / +0.38 by half. It needs a pre-registered forward
   record before anything is said about it (metals version negative).
+
+---
+
+## 6. "Target a basket of equities rather than Nasdaq alone" (DM to Rich, 2026-07-28)
+
+**Context (DM screenshot shared by Rich, processed 2026-11-03).** Rich (the owner) had sent C.OG his gate-system
+write-up: "Not great and think it won't work, backtesting looks amazong but a couple of forward tests ive left going its
+terrible"; "The 35% cagr was based off a momentum system…" (cut off in the screenshot).
+
+**C.OG (19:41), verbatim:**
+
+> The best thing to do would be to target a basket of equities
+> Rather than Nasdaq alone
+> Probability of success is much much higher with this and will relatively easy to expand to
+
+**Reading (ours).** A system tested on one index has one path of history; a basket gives many partly independent
+paths, so a real edge shows up more often and a lucky one less often, and adding names later is cheap. He doesn't say
+which equities, how many, or whether he means single stocks or other indices. It came as a reply to a backtest that
+looked strong in-sample and failed forward, which is the case where breadth helps most.
+
+### How it maps to this repo
+
+- The gate system (`cog/lessons/cog-gate-system.html`, COG 2) and the cog shadow are NQ-only. The NQ/ES pairing on
+  the GEX line (`gex-range` / `gex-range-es`) is the nearest thing to a second market, and the agenda notes ES and NQ
+  are "not two votes" (same sign on 82.5% of dates), so two indices are not the basket he means.
+- **Not built:** a cross-sectional equity basket. The micro bank's eight-instrument residual model (snippet 5,
+  `education/mean-reversion-of-residuals-notes.md`) is the closest multi-instrument frame here.
+
+## 7. System vs portfolio; "pinning vs acceleration … open interest" (DM to Rich, 2026-08-18)
+
+**Context (DM screenshot shared by Rich).** Two replies the same evening. The first answers Rich's list of things tried:
+"Distance from daily open (σ-bands), Range-budget remaining, Distance from forecast/median li…" (cut off). The second
+answers "Would you give up some of your secret sauce and help give me some direction on how to d…" (cut off).
+
+**C.OG (19:57), verbatim:**
+
+> From this I'm guessing you already have a system with a solid baseline and you're trying to add a function or
+> improve it even more
+> That is a good idea but an even better option would be to instead spread out into new system construction and then
+> run everything at a portfolio level
+> This will open significantly more doors for you and then the risk diversification benefit is very real
+
+**C.OG (20:02), verbatim:**
+
+> But if you did specially want to do this, using variance and volatility intraday may be too noisy
+>
+> What you'll need is possibly an external factor that has predictive power towards forecasting pinning vs
+> acceleration
+> The place most people begin with that is open interest
+
+**Reading (ours).** Two pieces of advice. (1) Before polishing one system with more filters, build more systems and
+run them together; diversification across systems is worth more than a further function on one. (2) If you do want
+to improve the intraday one, the price-derived inputs Rich listed (σ distance from the open, range budget, distance
+from the median line) are "possibly too noisy"; the missing input is a variable from outside the price series that
+forecasts whether price will *pin* (stay near a level, range contracts) or *accelerate* (range extends), and open
+interest is where most people start. "Pinning vs acceleration" is a range/vol question, not a direction question.
+
+### How it maps to this repo
+
+- **This is the origin of the OI / GEX-range line.** Dealer gamma from open interest as a forecast of how far price
+  travels: Evidence Book `gex-range` (NQ) and `gex-range-es` (ES), and the agenda
+  `.claude/skills/research-director/agendas/gex-range.md` (`gex-range` UNDERPOWERED, `gex-range-es` VALIDATED). The
+  pinning side is the informative one: long gamma is quieter than a vol-matched baseline (DR 0.89-0.93); short gamma
+  (DR 1.08-1.14) is ordinary movement, so "acceleration" overstates it. About half the raw effect is recent falls; the
+  gamma part after controls is ~+0.15 (post-hoc). Walls/flips as *levels* are NULL (snippet 2), so the useful reading
+  is range, as he framed it.
+- The portfolio point maps to `education/forecaster-portfolio-case-study/` and the Cross-Asset Synthesis page's
+  "Portfolio construction" section; no multi-system portfolio of our own engines is built.
+
+## 8. Why SOFR and €STR: the legs, contract months, and how much data (DM to Rich, 2026-10-08)
+
+**Context (DM screenshot shared by Rich).** Rich: "Its not the 'doing', I guess which is hard its the knowledge about
+the why. Like how the hell did you know that sofr3 - ice spresd together would cause something to show…" (cut off).
+
+**C.OG (20:01), verbatim:**
+
+> Sofr is to capture the us side of the leg
+> And then estr is to capture the ecb/€ side of the leg
+> And then a differential between those could potential have data that may not be filled priced into evenly between
+> all market types
+> They're both short term rate benchmarks and a growth/tech stock like the Nasdaq is very sensitive to rates
+
+Rich then: "I already tried to, connected to ikbr trading system earlier and pulled the intrday data, bit only had 6 …"
+(cut off).
+
+**C.OG (20:22-20:23), verbatim:**
+
+> You see all the / U / Z / H / M / That's just different contract months
+>
+> 6 months is also enough already to start doing some testing
+> It most likely doesn't go back further because of a contract roll potentially
+> So you can request a continuous series
+> Or try probe contract by contract
+
+**Reading (ours).** He explains the blue line mechanism-first: name what each leg captures (SOFR = US policy-rate
+side, €STR = ECB/euro side), then why the *differential* might carry information (it "may not be … priced into evenly"
+across markets), then why it should touch the target (Nasdaq is rate-sensitive). U/Z/H/M are the Sep/Dec/Mar/Jun
+quarterly codes. Six months of intraday futures data is enough to start; the short history is probably a roll limit,
+so either ask the vendor for a continuous series or pull contract by contract and stitch.
+
+**Correction this forces (2026-11-03).** Our notes said C.OG never named ESTR and that €STR was our inference. He did:
+"estr is to capture the ecb/€ side of the leg" (20:01, this snippet). Five days later (2026-10-13) he pointed to
+`I2!`, ICE 3-month Euribor futures ("Try sofr and i2!"), which is what his shared Pine uses. Both are euro short-rate
+benchmarks; the Pine (Euribor) is what the line is built from.
+
+### How it maps to this repo
+
+- Reconstruction: `analysis/output/cog_video_0918/RECONSTRUCTION.md` (§10 identifies I2!), the Pine
+  `pine/C.OG — Euribor vs SOFR Rate Spread.txt`; the line is not reconstructed (cog-knowledge `references/verdicts.md`).
+- Open item in cog-knowledge `references/open-questions.md`: "Rerun S1/S3 using real SR3 − €STR short-rate futures"; his
+  "6 months is also enough" supports starting on the IBKR pull rather than waiting for a year of data.
+- Corrected the same day in cog-knowledge `references/open-questions.md` (Q1) and `references/concepts.md` (blue line).
+
+## 9. Sizing against the theoretical ceiling (#Vip-Discussion, ~early October 2026)
+
+**Context (Discord search screenshot shared by Rich; shown as "~1 mo" ago on 2026-11-03; the member's post is not in
+the screenshot).** C.OG, consecutive messages, verbatim:
+
+> What I would be most interested in is how close the position sizing is to the theoretical ceiling
+> There could be soemtbung very valuable there that would also then close in that max dd
+> And even possibly increase returns
+> What do the returns look like relative to …
+
+(the last line is cut off)
+
+**Reading (ours).** The "theoretical ceiling" is most likely the growth-optimal (Kelly-type) size implied by the
+system's own return distribution; his word is "ceiling", and he doesn't name Kelly. His point: before changing the
+signal, check where the current sizing sits against that ceiling, because sizing alone can cut the max drawdown and
+may raise return. Sizing is a separate dimension from the entry rule.
+
+### How it maps to this repo
+
+- Not built as a standard check. Results cards report R and MAE per trade, from which the distribution-implied sizing
+  could be computed; the Prop Firm Toolkit and the Cross-Asset Synthesis page ("Risk contribution … vol-adjusted
+  sizing") are the nearest material.
+
+## 10. Pinned: the distribution of outcomes; don't try to remove the losses (#Vip-Discussion pins, 2026)
+
+**Context (pins screenshot shared by Rich; dates not shown, within six months of 2026-11-03).** Two pinned C.OG
+messages, both cut off in the screenshot, verbatim:
+
+> If we know that within all systems, we have a distribution that includes both positive and negative returning
+> positions
+> Rather than thinking okay how do I now completely remove the losses( this will never work and you'll overfit and end
+> up killing the model)
+> You should instead understand okay I …
+
+> Yes I can see exactly how that output was concluded and it won't be based on anything you'll be able to infer from
+> the nq chart or movement
+> Within all systems, there's a distribution of outcomes and that consists of both winning positions and losing
+> positions
+> The things we care about is …
+
+Also pinned (verbatim): "Also @everyone this is really important information to be aware of and understand / It will
+come in very handy for you all when making systems / As a independent trader you actually have some real world
+benefits over hedge funds"; and "What would you all think of an implementation of a longer term holding system alongside
+what we currently run. I'm also working on the other systems I've mentioned so that is also be added to the group".
+
+**Reading (ours).** Losses are part of the distribution, not defects to be filtered out one by one; adding rules until
+the losing trades disappear fits the history and kills the model. The second message adds that a system's output
+can't be judged from the NQ chart. What "we care about" is cut off; from snippets 1 and 5 it is probably the shape of
+the distribution (expectancy, tails, MAE/MFE).
+
+### How it maps to this repo
+
+- Same rule as snippets 1 and 5 (engineer from the distribution) and the overfitting rules in the `data-rules` and
+  `research-protocol` skills (multiple testing, lockbox). Rich's gate system (snippet 6) is the case in point: filters
+  added to remove losers, strong in-sample, poor forward.
+
+## 11. "Information hierarchy" and the calculus fragments (#Vip-Discussion, October 2026)
+
+**Context (Discord search screenshot shared by Rich).** About a month before 2026-11-03, after a member's yield-spread
+chart, C.OG wrote (cut off), verbatim:
+
+> Using historic data like this is extremely good and a very good step in a strong direction
+> This is using a yield spread
+> Yields are the return on bonds and information hierarchy means that in …
+
+The brownian-motion/integration lines from the VVIX thread ("Are you familiar with stuff like differentiation and
+integration?" … "Same with stuff like brownian motion and stochastic modeling they use integrals to describe how random
+processes accumulate over time") are already filed verbatim in snippet 3c and are not repeated here.
+
+**Reading (ours).** "Information hierarchy" is the course's ordering of which markets price news first: the
+Cross-Asset Synthesis page's "Information Flow Hierarchy" (rates/sovereign bonds "first to price macro shifts", then
+credit, FX, equity indices) and the Fixed-Income page ("Information cascades through hierarchy: Policy → Bonds → FX →
+Equities"). The cut-off sentence most likely says bonds price information before equities, which is why a yield spread
+can lead the index. That last step is ours.
+
+### How it maps to this repo
+
+- Same rationale as the blue line (snippet 8) and context relevance (`education/macro-variable-context-relevance-notes.md`).
+  Course text: `education/bank-verbatim/Cross-Asset-Synthesis/PAGE_TEXT.md`, `education/bank-verbatim/Fixed-Income/PAGE_TEXT.md`.
+- Cut off (ask Rich for the rest): "information hierarchy means that in …", "What do the returns look like relative
+  to …" (§9), and the two pinned endings (§10).

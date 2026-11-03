@@ -140,3 +140,45 @@ export function extractVote(text) {
   if (/\bunanimous(?:ly)?\b/i.test(text)) return { unanimous: true, consensus: false, majority: null, minority: null };
   return null;
 }
+
+// ── Decisions from the RSS headlines (2026-11-03) ──────────────────────────────────────────────────────────────
+// The RBNZ firewall blocks the deployed server from the news pages (403, every statement since July), but the RSS
+// feed answers. Its OCR items carry the decision in the title ("OCR increased by 25 basis points to 2.75%", "OCR held
+// at 2.75%"), which is enough for the rate path: level, direction and size. This is headline-only and labelled so;
+// it does not replace the statement analysis, which needs the RBNZ to allowlist the server (see the header above).
+
+/** "OCR increased by 25 basis points to 2.75%" -> { action: 'hike', rate: 2.75, changeBp: 25 }; null if not a decision. */
+export function parseOcrTitle(title) {
+  const t = String(title || '');
+  if (!OCR_TITLE_RE.test(t)) return null;
+  const rateM = t.match(/(\d+(?:\.\d+)?)\s*(?:%|percent)/i);
+  if (!rateM) return null;
+  const rate = Number(rateM[1]);
+  const bpM = t.match(/(\d+)\s*basis points/i);
+  let action = null;
+  if (/\b(increase|increased|raise|raised|hike|hiked|up)\b/i.test(t)) action = 'hike';
+  else if (/\b(decrease|decreased|cut|reduced|lower|lowered|down)\b/i.test(t)) action = 'cut';
+  else if (/\b(held|hold|unchanged|on hold|steady|maintained)\b/i.test(t)) action = 'hold';
+  if (!action) return null;
+  return { action, rate, changeBp: action === 'hold' ? 0 : (bpM ? Number(bpM[1]) * (action === 'cut' ? -1 : 1) : null) };
+}
+
+/** OCR decisions from RSS items, newest first, with the change filled from the previous level where the title omits it. */
+export function ocrDecisionsFromItems(items) {
+  const out = [];
+  for (const it of items) {
+    const d = parseOcrTitle(it.title);
+    const date = rssLocalDate(it.pubDate);
+    if (d && date && /\/news-and-events\/news\//.test(it.link || '')) out.push({ date, title: String(it.title).trim(), ...d, link: it.link });
+  }
+  out.sort((a, b) => (a.date < b.date ? 1 : -1));
+  for (let i = 0; i < out.length - 1; i++) if (out[i].changeBp == null) out[i].changeBp = Math.round((out[i].rate - out[i + 1].rate) * 100);
+  return out;
+}
+
+/** Fetch the RSS and return the OCR decisions (headline-only). */
+export async function fetchOcrDecisions() {
+  const feed = await fetchHtml(NEWS_RSS_URL, { blockedRe: BLOCKED_RE });
+  if (!feed.ok) return { ok: false, error: feed.error || `HTTP ${feed.status}` };
+  return { ok: true, decisions: ocrDecisionsFromItems(parseRssItems(feed.raw)) };
+}

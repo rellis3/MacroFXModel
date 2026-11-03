@@ -170,7 +170,7 @@ import { FETCHERS as BOE_FETCHERS, extractVote as boeExtractVote } from './js/bo
 import { BOJ_MEETINGS, pendingAsOf as bojPendingAsOf } from './js/bojCalendar.js';
 import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl as bojStatementUrl, outlookViewUrl as bojOutlookViewUrl, outlookFullUrl as bojOutlookFullUrl, opinionsUrl as bojOpinionsUrl, minutesPdfUrl as bojMinutesPdfUrl } from './js/bojFetch.js';
 import { RBNZ_MEETINGS, pendingAsOf as rbnzPendingAsOf, allReleases as rbnzAllReleases } from './js/rbnzCalendar.js';
-import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote } from './js/rbnzFetch.js';
+import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote, fetchOcrDecisions as rbnzFetchOcrDecisions } from './js/rbnzFetch.js';
 import { RBA_MEETINGS, pendingAsOf as rbaPendingAsOf, allReleases as rbaAllReleases } from './js/rbaCalendar.js';
 import { FETCHERS as RBA_FETCHERS, extractVote as rbaExtractVote } from './js/rbaFetch.js';
 import { BOC_MEETINGS, pendingAsOf as bocPendingAsOf, allReleases as bocAllReleases } from './js/bocCalendar.js';
@@ -219,6 +219,7 @@ import { buildGlobalRead as _buildGlobalRead, recordRow as _grRecordRow, snapsho
 import { assembleGlobalReadInput as _grAssemble, GLOBAL_READ_ENDPOINTS as _GR_ENDPOINTS } from './js/globalReadInputs.js';
 import { parseRole as _deskParseRole } from './js/deskRoles.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
+import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
 import { expandFeeds as _dpExpandFeeds, buildDeskPack as _dpBuild, packForSkill as _dpForSkill, packSummary as _dpSummary, indexRow as _dpIndexRow, upsertIndex as _dpUpsertIndex, shouldBuild as _dpShouldBuild, londonDate as _dpLondonDate, DESK_SKILLS as _DP_SKILLS, DESK_UNIVERSE as _DP_UNIVERSE } from './js/deskPack.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { scoreClaimFires as _scoreClaimFires, CLAIMS as _WATCH_CLAIMS } from './js/claimWatch.js';   // the watch register (Crown setups + desk findings) — rides the desk-watch tick, log and Telegram
@@ -4611,6 +4612,8 @@ async function _deskRun(trigger, job, mode = 'full') {
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
   const run = await _runDesk({
     pack, roles, ledger: DESK_EVIDENCE, now: Date.now, concurrency: 4, mode,
+    exposureCap: Number(process.env.DESK_EXPOSURE_CAP ?? 4),   // per-currency cap in normal-size units; 0 turns it off
+    styleExamples: _deskStyleExamples(await _nlLoad().catch(() => []) ?? []),   // the latest regular issues, so the desk edition matches their voice
     parseJson: (txt, label) => _parseModelJson(txt, label),
     callModel: async ({ task, system, prompt, maxTokens }) => {
       const r = await callModel({ task, system, prompt, maxTokens });
@@ -4622,6 +4625,24 @@ async function _deskRun(trigger, job, mode = 'full') {
     },
   });
   run.trigger = trigger;
+  // The desk edition goes into the newsletter archive beside the regular issue (kind "desk", never scored as a daily).
+  if (run.newsletter?.ok) {
+    try {
+      const { html, text } = _renderDeskNewsletter(run.newsletter.issue, { date: run.date, runFinishedAt: run.finishedAt, packHealth: run.packHealth });
+      const issues = await _nlLoad();
+      if (issues !== null) {
+        const id = `desk-${run.date}`;
+        const rec = { id, kind: 'desk', date: run.date, subject: run.newsletter.issue.subject.slice(0, 200), savedAt: new Date().toISOString(),
+          snapshot: { date: run.date, kind: 'desk' }, text: text.slice(0, 24000), htmlGz: zlib.gzipSync(Buffer.from(html, 'utf8')).toString('base64'), score: null };
+        // A text-only fallback: the full desk edition (the regular issue plus the desk's pages) is built on Atlas and wins; this never overwrites it.
+        if (!issues.some(x => x.id === id)) {
+          const next = [{ ...rec, simple: true }, ...issues].sort((x, y) => y.date.localeCompare(x.date) || x.kind.localeCompare(y.kind)).slice(0, _NL_KEEP);
+          await kv.put(_NL_KEY, JSON.stringify({ issues: next }));
+        }
+        run.newsletter.archiveId = id;
+      }
+    } catch (e) { console.warn('[desk-run] newsletter archive failed:', e.message); run.newsletter.archiveError = e.message; }
+  }
   _drLatest = run;
   const gz = zlib.gzipSync(Buffer.from(JSON.stringify(run)), { level: 9 }).toString('base64');
   try {
@@ -6832,7 +6853,8 @@ ${context}`;
 // Every built issue is saved (snapshot + plain text + gzipped html) so the next one can say what changed and the week can say
 // how the days came out against the sizes the issues printed. Scoring is a RANGE-CALIBRATION check against the stored session
 // audit (js/newsletterRecord.js); direction is never scored because none is forecast. All click-only: nothing here is scheduled.
-const _NL_KEY = 'newsletter_archive_v1', _NL_KEEP = 40;
+// 60 (was 40): the desk edition (kind "desk", plans/DESK_ANALYST_PIPELINE.md §9g) shares the archive and must not push dailies out.
+const _NL_KEY = 'newsletter_archive_v1', _NL_KEEP = 60;
 async function _nlLoad() {
   try { const raw = await kv.get(_NL_KEY); const p = raw ? JSON.parse(raw) : null; return Array.isArray(p?.issues) ? p.issues : []; }
   catch (e) { console.warn('[newsletter] archive unreadable, not touching it:', e.message); return null; }   // null = leave it for a human, never overwrite
@@ -6843,7 +6865,7 @@ app.post('/api/newsletter/archive', express.json({ limit: '3mb' }), async (req, 
     const b = req.body ?? {}, snap = b.snapshot ?? {};
     if (typeof b.html !== 'string' || b.html.length < 200 || !/^\d{4}-\d{2}-\d{2}$/.test(snap.date ?? '')) return res.status(400).json({ ok: false, error: 'need html and snapshot.date (YYYY-MM-DD)' });
     const issues = await _nlLoad(); if (issues === null) return res.status(503).json({ ok: false, error: 'the archive could not be read, so nothing was written' });
-    const kind = snap.kind === 'weekly' ? 'weekly' : 'daily', id = `${kind}-${snap.date}`;
+    const kind = snap.kind === 'weekly' ? 'weekly' : snap.kind === 'desk' ? 'desk' : 'daily', id = `${kind}-${snap.date}`;   // desk: the desk edition built on Atlas (never scored)
     const rec = { id, kind, date: snap.date, subject: String(b.subject ?? '').slice(0, 200), savedAt: new Date().toISOString(), snapshot: snap, text: String(b.text ?? '').slice(0, 24000), htmlGz: zlib.gzipSync(Buffer.from(b.html, 'utf8')).toString('base64'), score: null };
     const next = [rec, ...issues.filter(x => x.id !== id)].sort((x, y) => y.date.localeCompare(x.date) || x.kind.localeCompare(y.kind)).slice(0, _NL_KEEP);
     await kv.put(_NL_KEY, JSON.stringify({ issues: next }));
@@ -9935,6 +9957,23 @@ async function _buildRateDiffScores() {
   await kv.put(_RATE_DIFF_KV, JSON.stringify(payload)).catch(() => {});
   return payload;
 }
+// RBNZ OCR decisions from the RSS headlines (js/rbnzFetch.js). The statement pages are firewalled from this server
+// (403 since July; the fix is an allowlist request to Servicedesk@rbnz.govt.nz), but the feed answers, and its titles
+// carry the decision: level, direction, size. Headline-only, cached 6 h.
+let _rbnzDecisions = null;
+app.get('/api/rbnz/decisions', async (req, res) => {
+  try {
+    if (!_rbnzDecisions || Date.now() - _rbnzDecisions.at > 6 * 3600e3 || req.query.refresh === '1') {
+      const r = await rbnzFetchOcrDecisions();
+      if (!r.ok) return res.status(502).json({ ok: false, error: `RBNZ RSS: ${r.error}`, last: _rbnzDecisions });
+      _rbnzDecisions = { at: Date.now(), decisions: r.decisions };
+    }
+    const d = _rbnzDecisions.decisions;
+    res.json({ ok: true, source: 'RBNZ news RSS (headline only: the statements are blocked by the RBNZ firewall)', fetchedAt: new Date(_rbnzDecisions.at).toISOString(),
+      asOf: d[0]?.date ?? null, current: d[0] ?? null, decisions: d.slice(0, 12) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/rate-diff', async (_req, res) => {
   try {
     const raw = await kv.get(_RATE_DIFF_KV);

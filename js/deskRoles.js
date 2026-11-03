@@ -158,16 +158,39 @@ export function buildStagePrompt({ role, pack, ledger, sections, tail = '' }) {
   return { system, prompt, meta: { evidence: ev.map(e => e.id) } };
 }
 
+/** Decimal places for a price of this size, so levels read like quotes (1.12345, 157.734, 3940.8). */
+const dp = p => (p >= 1000 ? 1 : p >= 100 ? 2 : p >= 10 ? 3 : p >= 2 ? 4 : 5);
+
+/**
+ * Today's forecast lines as PRICES: the vol forecast keeps them as percent moves from the day's open (oh/ol at
+ * p50/p75/p90), and the session feed has the open, so each line is open x (1 +/- pct/100). This gives every
+ * instrument a level, including the ones with no options or level-engine coverage (metals, energy, ags, DE30,
+ * UK100, BTC). Arithmetic on the desk's own lines only; nothing is invented.
+ */
+export function priceLadder(open, ladder) {
+  if (!Number.isFinite(open) || open <= 0 || !ladder?.oh || !ladder?.ol) return null;
+  const r = x => Number(x.toFixed(dp(open)));
+  const up = {}, down = {};
+  for (const q of ['p50', 'p75', 'p90']) {
+    if (Number.isFinite(ladder.oh[q])) up[q] = r(open * (1 + ladder.oh[q] / 100));
+    if (Number.isFinite(ladder.ol[q])) down[q] = r(open * (1 - ladder.ol[q] / 100));
+  }
+  return { open: r(open), up, down, note: 'today\'s forecast lines in price: up = open-to-high, down = open-to-low, p50/p75/p90' };
+}
+
 /** Per-instrument data from the pack for one asset group: the vol lines, today's session, and the swing map / trade-decision state where they exist. */
 export function groupData(pack, names) {
   const feed = id => Object.values(pack?.skills ?? {}).map(s => s.feeds?.[id]).find(Boolean);
   const out = {};
   const vf = sliceFeed('vol-forecast', feed('vol-forecast')?.data ?? {}), ses = sliceFeed('vol-forecast/session', feed('vol-forecast/session')?.data ?? {});
   const intel = sliceFeed('vol-forecast/intelligence', feed('vol-forecast/intelligence')?.data ?? {});
+  const rawVf = feed('vol-forecast')?.data?.instruments ?? {}, rawSes = feed('vol-forecast/session')?.data?.instruments ?? {};
   for (const n of names) {
     const row = { legs: instrumentLegs(n) };
     if (vf.instruments?.[n]) row.lines = vf.instruments[n];
     if (ses.instruments?.[n]) row.session = ses.instruments[n];
+    const lv = priceLadder(Number(rawSes[n]?.anchor_open), rawVf[n]?.ladder);
+    if (lv) row.levels = lv;
     if (intel.instruments?.[n]) row.implied = intel.instruments[n];
     const sm = feed(`swing-map:${n}`); if (sm?.data) row.swing = sliceFeed(`swing-map:${n}`, sm.data);
     const td = feed(`trade-decision/state:${n}`); if (td?.data) row.tradeDecision = sliceFeed(`trade-decision/state:${n}`, td.data);

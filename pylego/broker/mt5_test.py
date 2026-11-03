@@ -534,6 +534,37 @@ def test_positions_with_tag():
     assert _broker(fake).positions_with_tag('101-0') == [5]
 
 
+
+class FakeMt5MarketWatch(FakeMt5):
+    """Like a freshly logged-in terminal: no tick for a symbol until it is in Market Watch."""
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.watch, self.select_calls = set(), []
+
+    def symbol_select(self, sym, enable=True):
+        self.select_calls.append(sym)
+        self.watch.add(sym)
+        return True
+
+    def symbol_info_tick(self, sym):
+        return self._tick if sym in self.watch else None
+
+
+def test_price_adds_the_symbol_to_market_watch_once():
+    fake = FakeMt5MarketWatch(tick=SimpleNamespace(bid=28860.0, ask=28861.0))
+    b = _broker(fake, pip=1)
+    assert b.price('NAS100') == 28860.5          # was None: "no price for NAS100"
+    assert b.spread('NAS100') == 1.0
+    b.price('NAS100')
+    assert fake.select_calls == ['NAS100']       # selected once, not on every tick
+
+
+def test_enter_works_on_a_symbol_not_yet_in_market_watch():
+    fake = FakeMt5MarketWatch(tick=SimpleNamespace(bid=1.10000, ask=1.10010))
+    b = _broker(fake)
+    assert b.enter('EURUSD', 'LONG', 1.0950, 1.1100, 0.1, 5.0, False) == 555111, b.last_reject_reason
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:

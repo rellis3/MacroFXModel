@@ -829,7 +829,9 @@ function computeSessionMetrics(bar, fc, bars = []) {
     oh_target_med: r2(ohTargetMed), oh_target_75: r2(ohTarget75),
     ol_target_med: r2(olTargetMed), ol_target_75: r2(olTarget75),
     drift_d: fc.drift_d ?? 0,
-    anchor_open: r2(o),
+    // Full precision: rounded to 2 decimals it read 1.12 for EURUSD at 1.11799, ~20 pips off, and js/levels.js and the
+    // desk pipeline build price levels from it (fixed 2026-11-03).
+    anchor_open: Number.isFinite(+o) ? Number((+o).toPrecision(10)) : null,
     oh_reached_at:    ohReachedAt,
     ol_reached_at:    olReachedAt,
     oc_reached_at:    ocReachedAt,
