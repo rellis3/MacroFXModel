@@ -809,6 +809,21 @@ Private, in the Desk Office "Research" tab. `js/theoryDesk.js` (pure, tested in 
 - **Rules:** proposals only. Nothing is run, claimed or banked by either phase; taking a theory forward means a
   register row and a prereg under the research protocol.
 
+## 9u. Agent 18: the trade watcher (built 2026-11-03)
+
+`js/tradeWatch.js` (pure, tested in `js/tradeWatch.test.mjs`); service `tradeWatch`; `GET /api/trade-watch`. Not to
+be confused with `js/deskWatch.js`, the market early-warning layer.
+
+- Every 2 minutes on weekdays 07:00-21:00 London, one OANDA pricing call for the book's live cards.
+- Each card's watch plan comes from the Head's own plan and the vol forecast: the entry zone (the prices named in
+  `plan.zone`, kept within 10% of the open), the invalidation (the nearest named price against the card) and the first
+  target (today's p50 line on the lean side). A session update that flips or flattens a card removes it from the watch.
+- A level counts as reached when the path from the last price to this one crosses it. Each of zone, target and
+  invalid fires once per card per day; nothing fires on a card after its invalidation.
+- Events go to Telegram (master switch `tradeWatch` in the ⚙ Alerts modal) and to `desk_trade_watch_<date>`. The
+  Desk Terminal shows a live board (price against zone, target and invalidation) and puts the events in its ticker.
+- No model call and never an order: the watcher reports what the plan named.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
@@ -852,6 +867,11 @@ Not built yet. The order is the owner's call; each item names what it needs firs
 - **Phase 15 · Scenario strategist.** *Built (§9q).* "If hot / if cold" playbooks before big releases from the desk's
   release-history data. Pairs with the economist (Phase 6).
 - **Phase 17 · Desk Terminal.** *v1 built (§9r).* The owner's private terminal, built last.
+- **Agent 18 · Trade watcher.** *Built (§9u).* Alerts when a card reaches its entry zone, first target or invalidation.
+- **Agent 19 · Weekly strategist.** Sunday's week view and edition, and Monday's starting point.
+- **Agent 20 · Rules keeper.** The live bots' settings against the research verdicts.
+- **Agent 21 · News analyst.** Tags a headline feed by currency and tier (needs the feed).
+- **Agent 22 · Chief of staff.** One short Telegram each morning and evening summing up the Desk Office.
 - **Phase 16 · Claims checker.** Checks everything published against the data and the Evidence Book.
 
 **Build items**

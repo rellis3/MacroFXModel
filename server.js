@@ -226,6 +226,7 @@ import { sliceFeed as _deskSliceFeed } from './js/deskSlices.js';
 import { assess as _dqAssess, afterRun as _dqAfterRun } from './js/deskDataQuality.js';
 import { attribution as _atAttribution, attributionRecord as _atRecord } from './js/deskAttribution.js';
 import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
+import { watchPlan as _twPlan, check as _twCheck, message as _twMessage } from './js/tradeWatch.js';   // agent 18: the trade watcher
 import { tradeRows as _jcRows, coach as _jcCoach, execution as _jcExec } from './js/deskJournal.js';   // Phases 8 and 13
 import { parseRegister as _tdParseRegister, opsReport as _tdOps, outline as _tdOutline, section as _tdSection, readingList as _tdReadingList, registerText as _tdRegisterText, screen as _tdScreen, validateTheories as _tdValidate } from './js/theoryDesk.js';   // Phases 9 and 12
 import { upcoming as _rpUpcoming } from './js/releasePlaybook.js';
@@ -2197,6 +2198,7 @@ const TG_SENDERS = {
   ratesRegime:       'Rates vs Nasdaq regime change / rate shock (context, not a signal)',
   spreadEpisodes:    'Spread-turn episodes: confirmed turn (Case 1 full sequence / Case 2 every turn), context only',
   bankCredit:        'BIS cross-border bank credit: new quarter released (regime context, not a signal)',
+  tradeWatch:        'Desk trade watcher: a card reached its entry zone, first target or invalidation (context, not an order)',
   // volatility_bot_v2 (the Python bot) checks this directly via ai_alert_cfg
   // (see its own tg_master_on doc) — unlike every other sender above, this
   // one is NOT enforced by server.js's tgOn(), since the bot that actually
@@ -5194,6 +5196,52 @@ app.get('/api/desk-bars', async (req, res) => {
     if (_dbCache.size > 200) _dbCache.clear();
     _dbCache.set(key, { at: Date.now(), data });
     res.json(data);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── Agent 18: the trade watcher (js/tradeWatch.js, plan §9u) ──
+// Every 2 minutes on weekdays 07:00-21:00 London: today's book (with any session-update change applied; a card whose
+// update flipped or flattened it is dropped, since its plan no longer fits) against OANDA mids, one batch call. Each
+// card's entry zone, first target and invalidation fire once a day, on Telegram (tgMaster.tradeWatch) and in
+// desk_trade_watch_<date>. No model call, never an order.
+const _TW_KEY = d => `desk_trade_watch_${d}`;
+let _tw = { date: null, runAt: null, upd: null, plan: {}, cards: {}, state: { fired: {}, last: {} }, events: [], loaded: false };
+async function _twTick() {
+  const now = Date.now(), date = _dpLondonDate(now), dow = new Date(_dsLondonMs(date, 12)).getUTCDay();
+  if (dow === 0 || dow === 6 || now < _dsLondonMs(date, 7) || now > _dsLondonMs(date, 21)) return { ok: false, why: 'outside the watch hours' };
+  if (_tw.date !== date) _tw = { date, runAt: null, upd: null, plan: {}, cards: {}, state: { fired: {}, last: {} }, events: [], loaded: false };
+  if (!_tw.loaded) { const raw = await kv.get(_TW_KEY(date)).catch(() => null); if (raw) { const j = JSON.parse(raw); _tw.state.fired = j.fired ?? {}; _tw.events = j.events ?? []; } _tw.loaded = true; }
+  const run = await _drLoad(date);
+  if (!run?.head?.ok) return { ok: false, why: 'no book today' };
+  const updates = await _duLoad(date), updKey = JSON.stringify(Object.keys(updates.slots ?? {}));
+  if (_tw.runAt !== run.finishedAt || _tw.upd !== updKey) {
+    const view = _duLiveView(run.head.book, updates), cards = {};
+    for (const [n, c] of Object.entries(run.head.book.instruments)) { const v = view[n]; if (!v) continue; const d0 = Math.sign({ STRONG_LONG: 1, LONG: 1, SHORT: -1, STRONG_SHORT: -1 }[c.rating] ?? 0), d1 = Math.sign({ STRONG_LONG: 1, LONG: 1, SHORT: -1, STRONG_SHORT: -1 }[v.rating] ?? 0); if (d0 && d0 === d1) cards[n] = { ...c, rating: v.rating, size: v.size ?? c.size }; }
+    _tw.cards = cards; _tw.plan = _twPlan(cards); _tw.runAt = run.finishedAt; _tw.upd = updKey;
+  }
+  const insts = Object.keys(_tw.plan).filter(n => _dsOanda[n]);
+  if (!insts.length) return { ok: true, watching: 0 };
+  const q = await _fetchSpreads(insts.map(n => _dsOanda[n]));
+  if (!q.ok) return { ok: false, why: q.reason };
+  const prices = {};
+  for (const n of insts) { const p = q.pairs[_dsOanda[n]]; if (p?.tradeable !== false && Number.isFinite(p?.bid) && Number.isFinite(p?.ask)) prices[n] = (p.bid + p.ask) / 2; }
+  const evs = _twCheck(_tw.plan, prices, _tw.state);
+  if (evs.length) {
+    const at = new Date().toISOString();
+    _tw.events.push(...evs.map(e => ({ ...e, at })));
+    await kv.put(_TW_KEY(date), JSON.stringify({ date, fired: _tw.state.fired, events: _tw.events }), { expirationTtl: 40 * 86400 }).catch(e => console.warn('[trade-watch] save:', e.message));
+    if (tgOn('tradeWatch') && state.tg?.token && state.tg?.chatId) for (const e of evs) await sendTelegram(state.tg.token, state.tg.chatId, _twMessage(e, _tw.cards[e.inst], { date }));
+    console.log(`[trade-watch] ${evs.map(e => `${e.inst} ${e.kind}`).join(', ')}`);
+  }
+  return { ok: true, watching: insts.length, events: evs.length };
+}
+svcInterval('tradeWatch', () => _twTick().catch(e => console.warn('[trade-watch]', e.message)), 2 * 60_000);
+// GET /api/trade-watch: today's watch plan, each card's status, and the events so far
+app.get('/api/trade-watch', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = _dpLondonDate(Date.now());
+    if (_tw.date !== date) { const raw = await kv.get(_TW_KEY(date)).catch(() => null); const j = raw ? JSON.parse(raw) : {}; return res.json({ ok: true, date, live: false, events: j.events ?? [], fired: j.fired ?? {}, plan: {} }); }
+    res.json({ ok: true, date, live: true, events: _tw.events, fired: _tw.state.fired, last: _tw.state.last, plan: _tw.plan });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // POST /api/desk-ask {q}: the Desk Terminal's "Ask the desk" (Phase 17, §9r). One model call over today's book, the

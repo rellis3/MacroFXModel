@@ -383,11 +383,11 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 
 // ── data ──
 async function load() {
-  const [run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev] = await Promise.all([
+  const [run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev, tw] = await Promise.all([
     getJson('/api/desk-run'), getJson('/api/desk-score/record'), getJson('/api/desk-update'), getJson('/api/desk-quality'),
     getJson('/api/macro-scorecard'), getJson('/api/rate-diff'), getJson('/api/real-yield'), getJson('/api/rates'),
-    getJson('/api/cot-state'), getJson('/api/oanda-book/history'), getJson('/api/gpr'), getJson('/api/events')]);
-  D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
+    getJson('/api/cot-state'), getJson('/api/oanda-book/history'), getJson('/api/gpr'), getJson('/api/events'), getJson('/api/trade-watch')]);
+  D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, tw, ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
   const ok = run?.ok && run.head?.ok;
   D.cards = ok ? run.head.book.instruments : {};
   D.ccy = ok ? (run.debate?.currency?.view?.currencies ?? Object.fromEntries(Object.entries(run.head.book.currencies ?? {}).map(([k, v]) => [k, { bias: v.bias, why: v.why }]))) : {};
@@ -417,6 +417,7 @@ const lt = ms => new Date(ms).toLocaleString('en-GB', { timeZone: LONDON, weekda
 
 function ticker() {
   const items = [];
+  for (const e of (D.tw?.events ?? []).slice(-6).reverse()) items.push(`<span><b>${e.kind === 'zone' ? '🎯 IN ZONE' : e.kind === 'target' ? '✅ TARGET' : '⛔ INVALID'}</b> ${esc(e.inst)} @ ${e.price} · ${new Date(e.at).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</span>`);
   const g = D.run?.head?.book?.global; if (g) items.push(`<span><b>REGIME</b> ${esc(String(g.tone).replace('_', '-').toUpperCase())}</span>`);
   for (const e of upcoming(36).filter(e => /high/i.test(e.impact)).slice(0, 10)) items.push(`<span><b>${esc(e.country)}</b> ${esc(e.event)} · ${lt(e.ms)}${e.estimate ? ` · est ${esc(e.estimate)}` : ''}</span>`);
   for (const s of Object.values(D.upd?.slots ?? {})) if (s?.view?.headline) items.push(`<span><b>UPDATE</b> ${esc(s.view.headline)}</span>`);
@@ -468,12 +469,29 @@ function releasesCard() {
     : upcoming(36).filter(e => /high/i.test(e.impact)).slice(0, 6).map(e => `<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>${esc(e.country)} ${esc(e.event)}</b> <span class="mono muted">${lt(e.ms)}</span></div>`).join('') || '<p class="muted">Nothing high-impact in the next 36 hours.</p>';
   return `<div class="card"><div class="ch"><span class="lbl">Releases ahead</span><span class="r muted">the economist, from the desk's release history</span></div>${list}</div>`;
 }
+// the trade watcher's board: each watched card, where price is against its zone, target and invalidation
+function watchBoard() {
+  const t = D.tw; if (!t?.ok) return '';
+  const plan = t.plan ?? {}, last = t.last ?? {}, fired = t.fired ?? {}, names = Object.keys(plan);
+  if (!names.length && !(t.events ?? []).length) return `<div class="card"><div class="ch"><span class="lbl">Trade watch</span></div><p class="muted">The watcher runs on weekdays 07:00-21:00 London over today's book.</p></div>`;
+  const st = n => (fired[n] ?? []).includes('invalid') ? ['invalid', 'dn', '⛔ invalidated'] : (fired[n] ?? []).includes('target') ? ['target', 'up', '✅ target hit'] : (fired[n] ?? []).includes('zone') ? ['zone', 'gold', '🎯 zone touched'] : ['wait', '', 'waiting'];
+  const rank = { invalid: 3, target: 1, zone: 0, wait: 2 };
+  const rows = names.map(n => ({ n, p: plan[n], px: last[n], s: st(n) })).sort((a, b) => rank[a.s[0]] - rank[b.s[0]]);
+  // a bar from invalidation to target with the live price and the zone on it
+  const bar = r => { const p = r.p, ends = [p.invalid, p.target, ...(p.zone ?? []), r.px].filter(Number.isFinite); if (ends.length < 2) return ''; const lo = Math.min(...ends), hi = Math.max(...ends), x = v => ((v - lo) / (hi - lo || 1)) * 100;
+    return `<div style="position:relative;height:16px;background:var(--bg3);border-radius:5px">${p.zone ? `<i style="position:absolute;top:2px;bottom:2px;left:${x(Math.min(...p.zone))}%;width:${Math.max(1.5, x(Math.max(...p.zone)) - x(Math.min(...p.zone)))}%;background:var(--purbg);border:1px solid rgba(139,124,246,.6);border-radius:3px"></i>` : ''}${Number.isFinite(p.invalid) ? `<i style="position:absolute;top:0;bottom:0;left:${x(p.invalid)}%;width:2px;background:var(--dn)"></i>` : ''}${Number.isFinite(p.target) ? `<i style="position:absolute;top:0;bottom:0;left:${x(p.target)}%;width:2px;background:var(--gold)"></i>` : ''}${Number.isFinite(r.px) ? `<i style="position:absolute;top:-3px;left:calc(${x(r.px)}% - 5px);width:10px;height:22px;border-radius:4px;background:#eef0fb;box-shadow:0 0 10px rgba(255,255,255,.6)"></i>` : ''}</div>`; };
+  return `<div class="card"><div class="ch"><span class="lbl">Trade watch</span><span class="r muted">live price (white) against the zone (purple), first target (gold) and invalidation (red) · ${t.live ? 'watching' : 'not running now'}</span></div>
+<div class="scroll" style="max-height:560px;overflow-y:auto"><table><tbody>${rows.map(r => `<tr><td class="n" style="width:80px"><a href="#" data-inst="${esc(r.n)}" style="color:var(--tx);text-decoration:none">${esc(r.n)}</a></td><td style="width:90px">${rateChip(D.cards[r.n]?.rating)}</td><td style="min-width:160px">${bar(r)}</td><td class="n" style="width:80px">${Number.isFinite(r.px) ? r.px.toFixed(r.px >= 100 ? 2 : 4) : '–'}</td><td style="width:120px"><span class="chip ${r.s[1]}">${r.s[2]}</span></td></tr>`).join('')}</tbody></table></div>
+${(t.events ?? []).length ? `<div class="drv">${t.events.slice(-8).reverse().map(e => `<span>${new Date(e.at).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })} ${esc(e.inst)} ${esc(e.kind)}</span>`).join('')}</div>` : ''}
+<p class="muted">Telegram sends each event once (⚙ Alerts → "Desk trade watcher" to mute). Context, never an order.</p></div>`;
+}
 function overview() {
   if (!D.run?.ok) { $('overview').innerHTML = `<div class="card"><p>No desk book yet today.</p><p class="muted">${esc(D.run?.error ?? '')} The book is written at 06:55 London when the Desk Run service is on, or from the Desk Run page.</p></div>`; return; }
   const live = Object.entries(D.cards).filter(([, c]) => DIR[c.rating] && c.size > 0).sort((a, b) => b[1].size * (CONV[b[1].conviction] ?? .8) * Math.abs(DIR[b[1].rating]) - a[1].size * (CONV[a[1].conviction] ?? .8) * Math.abs(DIR[a[1].rating])).slice(0, 6);
   $('overview').innerHTML = `<div class="card hero glow" style="margin-bottom:14px"><div class="hhead"><span class="lbl">The desk's world · ${esc(D.run.date)}</span><h2>${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest</h2></div><div class="map" id="heromap" style="min-height:240px"></div><div class="legend"><span><i style="background:rgba(47,211,154,.6)"></i>bullish</span><span><i style="background:rgba(255,93,120,.6)"></i>bearish</span><span><i style="background:var(--gold)"></i>strongest → weakest</span><span>tap a bank or a country</span></div></div>
 ${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span class="lbl">Today's book</span><div class="thesis" style="font-size:16px">${esc(D.run.head.book.headline)}</div></div>` : ''}
 <div class="grid g2">${regimeCard()}<div class="grid" style="align-content:start">${strengthStrip()}${exposureChart()}${recordCard()}</div></div>
+<div class="sec"><h2>Trade watch</h2><span class="lbl">the book against live prices, every 2 minutes</span></div>${watchBoard()}
 <div class="sec"><h2>Playbooks</h2><span class="lbl">the six largest cards · tap for the full analysis</span></div><div class="grid g3">${live.map(([n, c]) => playbookCard(n, c)).join('')}</div>
 <div class="sec"><h2>Releases and risks</h2></div><div class="grid g2">${releasesCard()}<div class="card"><div class="ch"><span class="lbl">Risk desk warnings</span></div><ul style="margin:0;padding-left:18px">${(D.run.head.book.risks ?? []).map(r => `<li style="margin:6px 0">${esc(r)}</li>`).join('') || '<li class="muted">None.</li>'}</ul></div></div>`;
   wire($('overview'));
