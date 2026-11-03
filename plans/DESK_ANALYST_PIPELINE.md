@@ -747,9 +747,17 @@ Ours is a design of its own in that spirit, not a copy.
   reports, the last three evening reviews and the Evidence Book; answers from those only, with its sources. One at
   a time, 60 a day.
 
+**v1 graphics (owner: "the style, the cool world maps, images, graphics"):** an interactive world map (d3-geo,
+world-atlas) on the Overview and Currencies tabs, with currency zones shaded by the desk's bias, glowing pulsing
+central-bank dots and an animated great-circle arc from the strongest currency to the weakest; the same map on the
+Macro tab shaded by hawkishness with dots sized by the policy rate; a risk-off/risk-on dial; score rings; H1
+sparklines on the playbook cards and a candle chart in each asset card with today's forecast lines, entry zone and
+invalidation (lightweight-charts, `GET /api/desk-bars`); a net-exposure chart before and after the cap; retail
+donuts; the US curve now against 20 sessions ago; rate bars in the currency card.
+
 Scores /10 are the desk's own −2..+2 views rescaled (5 = no view); grades are the book's conviction, never a hit
 rate, and the page says so. Still to come: the data below (rate expectations beyond the Fed and the ECB, a headline
-feed), a world map for the banks, seasonality and skew panels.
+feed), seasonality and skew panels.
 
 **Data to get:**
 

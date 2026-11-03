@@ -5177,6 +5177,25 @@ svcInterval('deskTheory', async () => {
   if (raw && JSON.parse(raw).week === _tdWeek(date)) return;
   _tdStart();
 }, 30 * 60_000);
+// GET /api/desk-bars?inst=USDJPY&days=5: H1 candles for one desk instrument (Desk Terminal charts and sparklines).
+// The desk's names map to OANDA through the vol-forecast list. Cached 10 minutes per instrument and span.
+const _dbCache = new Map();
+app.get('/api/desk-bars', async (req, res) => {
+  try {
+    const inst = String(req.query.inst ?? '').toUpperCase(), sym = _dsOanda[inst];
+    if (!sym) return res.status(400).json({ ok: false, error: `unknown instrument ${inst}` });
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 5, 1), 20), key = `${inst}|${days}`, hit = _dbCache.get(key);
+    if (hit && Date.now() - hit.at < 10 * 60_000) return res.json(hit.data);
+    const to = new Date(), from = new Date(Date.now() - (days + 2) * 864e5);
+    const vals = await fetchOandaCandleRange(sym, 'H1', from.toISOString().slice(0, 10) + 'T00:00:00Z', to.toISOString().slice(0, 19) + 'Z');
+    const bars = vals.map(v => ({ time: v.t, open: +v.open, high: +v.high, low: +v.low, close: +v.close })).filter(b => Number.isFinite(b.close));
+    const cut = Date.now() / 1000 - days * 86400;
+    const data = { ok: true, inst, bars: bars.filter(b => b.time >= cut) };
+    if (_dbCache.size > 200) _dbCache.clear();
+    _dbCache.set(key, { at: Date.now(), data });
+    res.json(data);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // POST /api/desk-ask {q}: the Desk Terminal's "Ask the desk" (Phase 17, §9r). One model call over today's book, the
 // analysts' reports, the last evening reviews and the Evidence Book. Answers from those only and says when they do
 // not answer the question. One at a time, at most 60 a day.
