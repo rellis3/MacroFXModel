@@ -500,7 +500,9 @@ class Copier:
         pair, d = o["symbol"], (1 if o["side"] == "BUY" else -1)
         px = self.price(pair)
         if px is None:
-            return self._skip(o, f"no price for {pair} ({self.bsym(pair)}) — check the symbol map")
+            return self._skip(o, f"no live quote for {pair} ({self.bsym(pair)}) from "
+                                 f"{'MT5' if self.data else 'the dashboard quote feed'} — market closed, symbol not in the "
+                                 f"terminal's Market Watch, or wrong name in the symbol map")
         if isinstance(self.broker, PaperBroker):
             self.broker.set_price(pair, px)
         # "XAUUSD buy" with no price: his entry is the market price when we see it

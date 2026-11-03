@@ -77,6 +77,7 @@ class Mt5Broker:
         # call (cleared) and again at whichever failure branch fires; read it
         # immediately after a failed enter() call, before the next one runs.
         self.last_reject_reason: str | None = None
+        self._selected: set[str] = set()       # symbols already added to Market Watch (see _sym)
 
         if mt5_module is not None:
             self.mt5 = mt5_module
@@ -95,6 +96,25 @@ class Mt5Broker:
         # reader can tell a broker-clock stamp from a true-UTC one instead of
         # guessing — see pylego/broker/clock.py.
         self.clock = ServerClock(self.mt5, log=self.log)
+
+    def _sym(self, pair: str) -> str:
+        """The broker symbol for `pair`, added to the terminal's Market Watch the
+        first time it is used. MT5's Python API returns no tick
+        (`symbol_info_tick` -> None) and no bars for a symbol that isn't in Market
+        Watch -- on a freshly logged-in account that is most of them, while
+        `verify_symbols` (which reads the full symbol list) still passes.
+        Found 2026-11-03: a new demo account skipped every Signal Copier trade
+        with "no price". `symbol_select` is idempotent and harmless."""
+        sym = self.resolve(pair)
+        if sym not in self._selected and self.available:
+            try:
+                if self.mt5.symbol_select(sym, True):
+                    self._selected.add(sym)
+                else:
+                    self.log.warning(f'could not add {sym} to Market Watch: {self.mt5.last_error()}')
+            except Exception:
+                pass
+        return sym
 
     # ── Connection ──────────────────────────────────────────────────────────
     def connect(self, account: str, password: str, server: str, path: str | None = None) -> bool:
@@ -245,7 +265,7 @@ class Mt5Broker:
         if not self.available:
             return None
         try:
-            tick = self.mt5.symbol_info_tick(self.resolve(pair))
+            tick = self.mt5.symbol_info_tick(self._sym(pair))
             if tick and tick.bid > 0:
                 return round((tick.bid + tick.ask) / 2, 6)
         except Exception:
@@ -261,7 +281,7 @@ class Mt5Broker:
         if not self.available:
             return None
         try:
-            tick = self.mt5.symbol_info_tick(self.resolve(pair))
+            tick = self.mt5.symbol_info_tick(self._sym(pair))
             if tick and tick.bid > 0 and tick.ask >= tick.bid:
                 return round(tick.ask - tick.bid, 6)
         except Exception:
@@ -275,7 +295,7 @@ class Mt5Broker:
         try:
             mt5 = self.mt5
             timeframe = mt5.TIMEFRAME_M5 if tf == '5m' else mt5.TIMEFRAME_M30
-            bars = mt5.copy_rates_from_pos(self.resolve(pair), timeframe, 0, period)
+            bars = mt5.copy_rates_from_pos(self._sym(pair), timeframe, 0, period)
             if bars is None or len(bars) < 2:
                 return None
             atr = abs(float(bars[1]['high']) - float(bars[1]['low']))
@@ -301,7 +321,7 @@ class Mt5Broker:
             mt5 = self.mt5
             timeframe = tf if tf is not None else mt5.TIMEFRAME_M1
             start = datetime.fromtimestamp(int(since_epoch), tz=timezone.utc)
-            rates = mt5.copy_rates_range(self.resolve(pair), timeframe, start, datetime.now(timezone.utc))
+            rates = mt5.copy_rates_range(self._sym(pair), timeframe, start, datetime.now(timezone.utc))
             if rates is None:
                 return []
             return [{'open': float(r['open']), 'high': float(r['high']), 'low': float(r['low']),
@@ -589,7 +609,7 @@ class Mt5Broker:
             return None
 
         mt5 = self.mt5
-        mt5_sym = self.resolve(pair)
+        mt5_sym = self._sym(pair)
 
         # Trade-mode guard. Index/commodity CFDs keep streaming quotes outside their
         # cash session but reject orders with retcode 10017 ("Trade disabled") — e.g.
@@ -743,7 +763,7 @@ class Mt5Broker:
             return False
 
         mt5 = self.mt5
-        mt5_sym = self.resolve(pair)
+        mt5_sym = self._sym(pair)
         positions = [p for p in (mt5.positions_get(symbol=mt5_sym) or [])
                      if p.ticket == ticket and p.magic == self.magic]
         if not positions:
@@ -794,7 +814,7 @@ class Mt5Broker:
         if not self.available:
             return False
         mt5 = self.mt5
-        mt5_sym = self.resolve(pair)
+        mt5_sym = self._sym(pair)
         positions = [p for p in (mt5.positions_get(symbol=mt5_sym) or [])
                      if p.ticket == ticket and p.magic == self.magic]
         if not positions:
@@ -892,7 +912,7 @@ class Mt5Broker:
             self.last_reject_reason = 'mt5_not_installed'
             return None
         mt5 = self.mt5
-        mt5_sym = self.resolve(pair)
+        mt5_sym = self._sym(pair)
         info = mt5.symbol_info(mt5_sym)
         tick = mt5.symbol_info_tick(mt5_sym)
         if not tick:
@@ -1012,7 +1032,7 @@ class Mt5Broker:
         a rejected order. Unknown/uncheckable → True (don't block)."""
         if not self.available:
             return True
-        info = self.mt5.symbol_info(self.resolve(pair))
+        info = self.mt5.symbol_info(self._sym(pair))
         if info is None:
             return True
         disabled = (self.mt5.SYMBOL_TRADE_MODE_DISABLED, self.mt5.SYMBOL_TRADE_MODE_CLOSEONLY)
