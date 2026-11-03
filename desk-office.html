@@ -129,8 +129,10 @@ ${rt.view.challenges.length ? `<table><thead><tr><th>Target</th><th>Kind</th><th
   } else parts.push(`<div class="panel"><h2>Red team</h2><p class="muted">${b ? 'This book was written before the red team existed, or it failed today.' : 'No book for today yet.'}</p></div>`);
   // Phase 11: portfolio risk and stress (fetched after the page draws: it reads ~60 days of bars per card)
   parts.push(`<div class="panel" id="riskpanel"><h2>Portfolio risk and stress</h2><p class="muted">${b ? 'Reading about 60 days of daily bars for each card…' : 'No book for today yet.'}</p></div>`);
+  parts.unshift(`<div class="panel" id="claimspanel"><h2>Claims check</h2><p class="muted">Loading…</p></div>`);
   $('today').innerHTML = parts.join('');
   if (b) renderRisk();
+  renderClaims();
   document.querySelectorAll('[data-up]').forEach(btn => btn.onclick = async () => {
     btn.disabled = true; const r = await getJson(`/api/desk-update/run?slot=${btn.dataset.up}`, { method: 'POST' });
     $('upmsg').textContent = r?.ok ? 'Running: this panel refreshes in a minute.' : (r?.error ?? 'failed');
@@ -138,6 +140,21 @@ ${rt.view.challenges.length ? `<table><thead><tr><th>Target</th><th>Kind</th><th
   });
 }
 
+// Phase 16: the claims check of the desk edition (/api/desk-claims)
+async function renderClaims() {
+  const c = await getJson('/api/desk-claims'), el = $('claimspanel'); if (!el) return;
+  const btn = `<button class="btn" id="ccrun"${c?.job?.status === 'running' ? ' disabled' : ''}>${c?.job?.status === 'running' ? 'Checking…' : 'Check again'}</button>`;
+  if (!c?.ok) { el.innerHTML = `<h2>Claims check</h2><p class="muted">${esc(c?.error ?? 'not available')}. It runs after each full desk run with a newsletter.</p><p>${btn}</p>`; }
+  else {
+    const items = c.review?.items ?? [], tone = c.verdict === 'hold' ? 'bad' : c.verdict === 'fix' ? 'warn' : 'ok';
+    el.innerHTML = `<h2>Claims check <i>the desk edition and the release briefs, before sharing · ${esc(new Date(c.checkedAt).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }))}</i></h2>
+<p><span class="chip ${tone}">${esc(c.verdict.toUpperCase())}</span> ${esc(c.review?.summary ?? '')} <span class="muted">${c.numbers.checked} numbers checked, ${c.numbers.unsourced.length} not found in the desk's material.</span></p>
+${items.length ? `<table><thead><tr><th>Severity</th><th>Problem</th><th>Quote</th><th>Fix</th></tr></thead><tbody>${items.map(x => `<tr><td><span class="chip ${x.severity === 'high' ? 'bad' : x.severity === 'medium' ? 'warn' : ''}">${esc(x.severity)}</span></td><td>${esc(x.problem)}</td><td>“${esc(x.quote)}”<br><span class="muted">${esc(x.why)}</span></td><td>${esc(x.fix)}</td></tr>`).join('')}</tbody></table>` : ''}
+${c.numbers.unsourced.length ? `<details><summary class="muted">Numbers the script could not find</summary><ul>${c.numbers.unsourced.map(u => `<li><b class="n">${esc(u.raw)}</b> <span class="muted">${esc(u.where)}</span>: ${esc(u.sentence)}</li>`).join('')}</ul></details>` : ''}
+${c.error ? `<p class="muted">Note: ${esc(c.error)}</p>` : ''}<p>${btn}</p>`;
+  }
+  const b = $('ccrun'); if (b) b.onclick = async () => { b.disabled = true; b.textContent = 'Checking…'; await fetch('/api/desk-claims/run', { method: 'POST' }).catch(() => null); const poll = setInterval(async () => { const j = await getJson('/api/desk-claims'); if (j?.job?.status !== 'running') { clearInterval(poll); renderClaims(); } }, 8000); };
+}
 async function renderRisk() {
   const r = await getJson(`/api/desk-risk?date=${today}`), el = $('riskpanel'); if (!el) return;
   if (!r?.ok) { el.innerHTML = `<h2>Portfolio risk and stress</h2><p class="muted">${esc(r?.reason ?? r?.error ?? 'not available')}</p>`; return; }

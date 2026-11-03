@@ -824,6 +824,23 @@ be confused with `js/deskWatch.js`, the market early-warning layer.
   Desk Terminal shows a live board (price against zone, target and invalidation) and puts the events in its ticker.
 - No model call and never an order: the watcher reports what the plan named.
 
+## 9v. Phase 16: the claims checker (built 2026-11-03)
+
+`js/claimsCheck.js` (pure, tested in `js/claimsCheck.test.mjs`), `desk/roles/claims_checker.md` (schema
+`claims_check`). It runs after every full desk run that wrote a newsletter, once the run is saved, and on
+`POST /api/desk-claims/run`; `GET /api/desk-claims`. Saved apart in `desk_run_claims_<date>`: the scored book is never
+touched.
+
+- **Numbers pass (no model):** every number in the desk edition and the economist's briefs is looked for in the run's
+  own material (book, debate, analysts, release playbooks). It counts when written the same way, or as an exact
+  rounding of a more precise source number (2.85 as 2.9), or as a fraction written as a percent. Times, dates,
+  years and counts up to 12 are skipped. Tested with planted numbers: invented ones are caught, rounded real ones are
+  not. A number that exists in the source but is used for the wrong thing is the model's job.
+- **Claims pass (one model call, task desk-head):** unsourced, overstated, tested-null, forecast, contradiction; each
+  with the exact quote, why, and a fix to paste. Verdict clean / fix / hold; any listed item overrides "clean".
+- **Where it shows:** a coloured line above the desk-edition buttons in Atlas (expand for the items) and a panel at
+  the top of the Desk Office's Today tab with a "Check again" button.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
@@ -872,7 +889,7 @@ Not built yet. The order is the owner's call; each item names what it needs firs
 - **Agent 20 · Rules keeper.** The live bots' settings against the research verdicts.
 - **Agent 21 · News analyst.** Tags a headline feed by currency and tier (needs the feed).
 - **Agent 22 · Chief of staff.** One short Telegram each morning and evening summing up the Desk Office.
-- **Phase 16 · Claims checker.** Checks everything published against the data and the Evidence Book.
+- **Phase 16 · Claims checker.** *Built (§9v).* Checks everything published against the data and the Evidence Book.
 
 **Build items**
 - **Daily schedule.** The owner sets `SVC_DESKRUN=1` for the 06:55 run once a fresh-pack run has been read. Without

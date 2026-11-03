@@ -226,6 +226,7 @@ import { sliceFeed as _deskSliceFeed } from './js/deskSlices.js';
 import { assess as _dqAssess, afterRun as _dqAfterRun } from './js/deskDataQuality.js';
 import { attribution as _atAttribution, attributionRecord as _atRecord } from './js/deskAttribution.js';
 import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
+import { numberCheck as _ccNumbers, claimsSections as _ccSections, validateClaims as _ccValidate } from './js/claimsCheck.js';   // Phase 16
 import { watchPlan as _twPlan, check as _twCheck, message as _twMessage } from './js/tradeWatch.js';   // agent 18: the trade watcher
 import { tradeRows as _jcRows, coach as _jcCoach, execution as _jcExec } from './js/deskJournal.js';   // Phases 8 and 13
 import { parseRegister as _tdParseRegister, opsReport as _tdOps, outline as _tdOutline, section as _tdSection, readingList as _tdReadingList, registerText as _tdRegisterText, screen as _tdScreen, validateTheories as _tdValidate } from './js/theoryDesk.js';   // Phases 9 and 12
@@ -4797,6 +4798,7 @@ async function _deskRun(trigger, job, mode = 'full') {
     if (_dsEligible(run).ok && !(await kv.get(_DS_ELIG_KEY(run.date)))) await kv.put(_DS_ELIG_KEY(run.date), gz);
     await checkpoint.clear();   // the run is saved whole: the next Run now starts fresh
   } catch (e) { console.warn('[desk-run] save failed:', e.message); }
+  if (run.newsletter?.ok) { job.stage = 'claims check'; await _ccRun(run.date).catch(e => console.warn('[desk-claims]', e.message)); }   // Phase 16, after the save
   console.log(`[desk-run] ${run.date} (${run.mode}): ${Object.values(run.analysts).filter(a => a.ok).length}/${Object.keys(run.analysts).length} analysts, debate failures ${run.debate?.failed?.length ?? '-'}, head ${run.head?.ok ? 'ok' : 'FAILED'}, ${run.calls} calls, tokens in ${run.usage.in} out ${run.usage.out}`);
   return run;
 }
@@ -5197,6 +5199,49 @@ app.get('/api/desk-bars', async (req, res) => {
     _dbCache.set(key, { at: Date.now(), data });
     res.json(data);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── Phase 16: the claims checker (js/claimsCheck.js, desk/roles/claims_checker.md, plan §9v) ──
+// After each full run with a newsletter: the numbers pass (no model) and one model pass over what will be shared.
+// Saved apart from the run (desk_run_claims_<date>), so the scored book is never touched.
+const _CC_KEY = d => `desk_run_claims_${d}`;
+let _ccJob = null;
+async function _ccRun(date) {
+  const run = await _drLoad(date);
+  if (!run?.newsletter?.ok) return { ok: false, error: `no desk newsletter for ${date}` };
+  const numbers = _ccNumbers(run), out = { ok: true, date, runFinishedAt: run.finishedAt, checkedAt: new Date().toISOString(), numbers, review: null, error: null };
+  const role = _deskLoadRoles().find(r => r.id === 'claims_checker');
+  if (role && _aiAnyKey()) {
+    const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+    const { system, prompt } = _deskStagePrompt({ role, pack: { date }, ledger: DESK_EVIDENCE, sections: _ccSections(run, numbers, DESK_EVIDENCE) });
+    for (let i = 0; i < 2 && !out.review; i++) {
+      try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 8_000 }); const v = _ccValidate(_parseModelJson(r.text ?? _antText(r), 'desk:claims')); if (v.ok) out.review = { ...v.value, model: r.model ?? null }; else out.error = v.errors.join('; '); }
+      catch (e) { out.error = e.message; }
+    }
+  } else out.error = 'no claims_checker role or model key: numbers pass only';
+  out.verdict = out.review?.verdict ?? (numbers.unsourced.length ? 'fix' : 'clean');
+  await kv.put(_CC_KEY(date), JSON.stringify(out));
+  return out;
+}
+function _ccStart(date) {
+  if (_ccJob?.status === 'running') return null;
+  const job = _ccJob = { status: 'running', date, startedAt: Date.now(), finishedAt: null, error: null };
+  _ccRun(date).then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; }).catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
+  return job;
+}
+// GET /api/desk-claims?date=: the claims check of the day's desk edition. POST /api/desk-claims/run?date=: check again.
+app.get('/api/desk-claims', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : _dpLondonDate(Date.now());
+    const raw = await kv.get(_CC_KEY(date)).catch(() => null);
+    res.json(raw ? { ...JSON.parse(raw), job: _ccJob } : { ok: false, date, error: 'not checked yet', job: _ccJob });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/desk-claims/run', (req, res) => {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : _dpLondonDate(Date.now());
+  const job = _ccStart(date);
+  if (!job) return res.status(409).json({ ok: false, error: 'a check is already running', job: _ccJob });
+  res.status(202).json({ ok: true, job });
 });
 // ── Agent 18: the trade watcher (js/tradeWatch.js, plan §9u) ──
 // Every 2 minutes on weekdays 07:00-21:00 London: today's book (with any session-update change applied; a card whose
