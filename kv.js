@@ -438,6 +438,9 @@ function isCfKey(key) {
   if (key.startsWith('vol_session_')) return true;
   // vol_forecast_* are daily vol forecasts + index — must survive Railway redeploys
   if (key.startsWith('vol_forecast_')) return true;
+  // desk_pack_<date> (gzipped) and desk_pack_index: the Desk Pack, one dated snapshot of every feed the analyst
+  // pipeline read that morning (js/deskPack.js). Point-in-time and not re-derivable once the feeds move on.
+  if (key.startsWith('desk_pack_')) return true;
   // vol_reference_* are user-pasted reference exports — cannot be auto-rebuilt
   if (key.startsWith('vol_reference_')) return true;
   // vmlog_* are the VuManChu forward-validation log (one key per UTC day) — the

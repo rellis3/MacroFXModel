@@ -1,0 +1,373 @@
+/**
+ * The Desk Pack: one dated snapshot of every feed the desk reads, built once a day before London.
+ *
+ * WHY. The plan in plans/DESK_ANALYST_PIPELINE.md runs the day's analysis as a chain of skills (analysts →
+ * debate → risk desk → writers), modelled on TradingAgents' structure but fed with this desk's own data. Every
+ * skill must read the SAME morning: if the newsletter writer and the directional analyst each fetched their own
+ * feeds at different minutes, they would disagree for reasons that have nothing to do with judgement, and
+ * nothing could be graded afterwards because nobody would know what each one saw. So Phase 0 is this: call
+ * every feed once, stamp what each one is and how old its data is, mark the gaps, and save it under the date.
+ *
+ * ORDER FOLLOWS THE OWNER'S METHOD: global market first, then what it means for each currency, then the
+ * assets (FX, indices, commodities). The `layer` of each skill says where it sits in that order.
+ *
+ * WHAT A FEED'S STATUS MEANS
+ *   ok       answered, has content, and its data is no older than the feed's maxAgeH (or carries no date)
+ *   stale    answered with content, but its newest date is older than maxAgeH -- the skill must say so
+ *   empty    answered but with nothing in it (null, {}, [], or ok:false) -- a GAP, never read as "nothing happened"
+ *   error    non-2xx or the request threw
+ *   timeout  no answer inside the time limit
+ *   oversize answered, but still too big after slimming; only its shape is kept
+ * A gap is information: the Fed Path card that says "the odds are not loaded right now" must reach the
+ * analyst as a gap, not as silence.
+ *
+ * SLIMMING. Some routes return years of history. The pack keeps the shape of every payload but cuts long arrays
+ * to the most recent `maxArray` items (or the first ones for calendars, `keep: 'first'`) and long strings, and
+ * records every cut in `truncated`, so a skill knows it is looking at a window. Phase 1 replaces this generic
+ * cut with a hand-written slice per skill.
+ *
+ * Pure: no fetch, no KV, no clock reads (pass `now`). The server does the requests (server.js, "Desk Pack").
+ * Tested in js/deskPack.test.mjs.
+ */
+
+export const DESK_PACK_VERSION = 1;
+
+/** The instruments the asset layer covers (same keys as SWING_MAP_INSTRUMENTS in server.js). */
+export const DESK_UNIVERSE = {
+  fx: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GBPJPY'],
+  indices: ['NQ', 'SPX500'],
+  commodities: ['GOLD'],
+};
+export const DESK_CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
+export const allInstruments = () => [...DESK_UNIVERSE.fx, ...DESK_UNIVERSE.indices, ...DESK_UNIVERSE.commodities];
+
+/**
+ * The analyst skills, in the owner's top-down order. Each one becomes a role prompt in Phase 1
+ * (desk/roles/<id>.md); here it only names which feeds that role will read.
+ */
+export const DESK_SKILLS = [
+  { id: 'global_market',   layer: 'global',   label: 'Global market and cross-asset tone', pages: 'Market View, Terminal, Surface Lab, Market State, Regime, Spread-turn episodes, Market-Sense' },
+  { id: 'credit_funding',  layer: 'global',   label: 'Credit, banking and funding',        pages: 'Stocks/bonds & credit, Bank credit & funding, Book Stress, Global Liquidity' },
+  { id: 'events_news',     layer: 'global',   label: 'Events and news',                    pages: 'Event Book, Release why, Release reaction, Labour market due, The Feed, Fiscal events' },
+  { id: 'rates_cb',        layer: 'currency', label: 'Central banks and rates',            pages: 'Rates & Policy, Fed Path Odds, 8 CB Sentiment pages, Rate Matrix, Beige Book, Treasury auctions' },
+  { id: 'yields_curve',    layer: 'currency', label: 'Yields and curve',                   pages: 'Yield Curve, Real Yield, Yield-Shape Regime, Rate legs vs price, Rates vs Nasdaq' },
+  { id: 'macro_economy',   layer: 'currency', label: 'Macro economy',                    pages: 'CPI..Consumer Confidence, Macro Scorecard, The Economies, The Week Scored' },
+  { id: 'cot_positioning', layer: 'currency', label: 'COT and retail positioning',         pages: 'COT Extremes, OANDA book' },
+  { id: 'vol_iv',          layer: 'asset',    label: 'Volatility and implied vol',         pages: 'Vol Forecast v2/v3, Expected Moves, Daily Read, Exhaustion research, Forecast Path, Live Range' },
+  { id: 'options_oi',      layer: 'asset',    label: 'Options open interest and dealer gamma', pages: 'OI Analytics, OI Lab (v2), Open interest, Swing Map' },
+  { id: 'levels_structure', layer: 'asset',   label: 'Levels and structure',               pages: 'Level Scenarios, Level/Fib Atlas vote portfolios, Asia Fib Atlas Live, Daily Plan, Trade Decision' },
+  { id: 'evidence_memory', layer: 'evidence', label: 'Evidence clerk and memory',          pages: 'Evidence Book, Chapters, direction ledger, forward track, yesterday\'s brief and review' },
+];
+
+// maxAgeH: how old the newest date in the payload may be before the feed counts as stale. Monthly macro prints
+// are allowed weeks; intraday reads a few hours. null = the payload carries no usable date, so freshness is not
+// judged (the status stays ok and asOf stays null -- "undated", which the skills are told).
+const H = 1, D = 24 * H;
+const F = (skill, path, maxAgeH, extra = {}) => ({ id: path.replace(/\?.*$/, ''), skill, path, maxAgeH, ...extra });
+
+export const DESK_FEEDS = [
+  // ── global ──────────────────────────────────────────────────────────────────
+  F('global_market', 'global-read', 2 * H),
+  F('global_market', 'wider-market', 1 * D),
+  F('global_market', 'risk-flags', 1 * D),
+  F('global_market', 'regime', 45 * D),
+  F('global_market', 'hmm/regimes', 1 * D),
+  F('global_market', 'macro-regime-fx', 45 * D),
+  F('global_market', 'gpr', 10 * D),
+  F('global_market', 'crack', 10 * D),
+  F('global_market', 'gold-etf-flow', 5 * D),
+  F('global_market', 'desk-watch', 1 * D),
+  F('global_market', 'spread-episodes/live', 3 * D),
+  F('global_market', 'trend-basket', 3 * D),
+  F('global_market', 'daily-snapshot?days=2', 3 * D),
+  F('global_market', 'market-sense/last', 10 * D),
+  F('credit_funding', 'credit-stress', 4 * D),
+  F('credit_funding', 'credit-quality', 4 * D),
+  F('credit_funding', 'bank-credit', 120 * D),
+  F('credit_funding', 'funding-read?spark=0', 4 * D),
+  F('credit_funding', 'liquidity-pulse/data', 10 * D),
+  F('credit_funding', 'liquidity-gate/live', 4 * D),
+  F('events_news', 'calendar-ahead', 1 * D, { keep: 'first', timeoutMs: 150_000 }),   // cold cache = 9 sequential Nasdaq calls
+  F('events_news', 'events', 1 * D, { keep: 'first' }),
+  F('events_news', 'event-day', 1 * D, { keep: 'first' }),
+  F('events_news', 'release-calls', 4 * D),
+  F('events_news', 'news-outcome', 4 * D),
+  F('events_news', 'earnings-ahead', 4 * D, { keep: 'first' }),
+  F('events_news', 'fiscal/events', 30 * D, { keep: 'first' }),
+  // ── currency ────────────────────────────────────────────────────────────────
+  F('rates_cb', 'rates', 4 * D),
+  F('rates_cb', 'rate-diff', 4 * D),
+  F('rates_cb', 'rates-regime', 4 * D),
+  F('rates_cb', 'fed-path', 4 * D),
+  F('rates_cb', 'fed-speakers', 7 * D),
+  ...['fomc', 'ecb', 'boe', 'boj', 'boc', 'rba', 'rbnz', 'snb'].map(b => F('rates_cb', `${b}/latest`, null)),
+  F('rates_cb', 'beigebook/latest', null),
+  F('rates_cb', 'treasury-auctions', 10 * D, { keep: 'first' }),
+  F('yields_curve', 'yield-curve', 4 * D),
+  F('yields_curve', 'intl-yields', 4 * D),
+  F('yields_curve', 'real-yield', 4 * D),
+  F('yields_curve', 'yield-context', 4 * D),
+  F('yields_curve', 'yield-coupling', 4 * D),
+  F('yields_curve', 'yield-spread/plan', 4 * D),
+  ...['cpi', 'ppi', 'gdp', 'ism', 'labor-market', 'retail-sales', 'trade-balance', 'consumer-confidence'].map(p => F('macro_economy', p, 100 * D)),
+  F('macro_economy', 'econ-surprise', 7 * D),
+  F('macro_economy', 'econ-trend', 45 * D),
+  F('macro_economy', 'nowcast', 10 * D),
+  F('macro_economy', 'macro-scorecard', 4 * D),
+  F('macro_economy', 'macro-changes', 7 * D),
+  F('cot_positioning', 'cot-state', 10 * D),
+  F('cot_positioning', 'cot-extremes', 10 * D),
+  F('cot_positioning', 'oanda-book/history', 2 * D),
+  // ── asset ───────────────────────────────────────────────────────────────────
+  F('vol_iv', 'vol-forecast', 1 * D, { maxBytes: 400_000 }),   // the core vol feed: every instrument's lines; ~200 KB raw
+  F('vol_iv', 'vol-forecast/session', 1 * D),
+  F('vol_iv', 'vol-forecast/weekly', 7 * D),
+  F('vol_iv', 'vol-forecast/intelligence', 1 * D),
+  F('vol_iv', 'cvol', 3 * D),
+  F('vol_iv', 'forecast-path/summary', 3 * D),
+  F('vol_iv', 'forecast-path/iv', 3 * D),
+  F('vol_iv', 'exhaustion-ladder', 3 * D),
+  F('vol_iv', 'daily-read', 3 * D),
+  F('vol_iv', 'today-reads', 1 * D),
+  F('options_oi', 'oi-today', 3 * D),
+  F('options_oi', 'oi-levels', 3 * D),
+  F('options_oi', 'chain-read', 3 * D),
+  F('levels_structure', 'levels', 1 * D),
+  F('levels_structure', 'asia-today', 1 * D),
+  F('levels_structure', 'weekmap', 7 * D),
+  F('levels_structure', 'range-calls', 3 * D),
+  F('levels_structure', 'daily-open-fib', 3 * D),
+  // ── evidence & memory ───────────────────────────────────────────────────────
+  F('evidence_memory', 'ledger', 7 * D),
+  F('evidence_memory', 'direction-ledger', 7 * D),
+  F('evidence_memory', 'forward-track', 7 * D),
+  F('evidence_memory', 'data-health', 1 * D),
+  F('evidence_memory', 'morning-brief', 3 * D),
+  F('evidence_memory', 'eod-review', 3 * D),
+];
+
+/** Feeds read once per instrument. `{inst}` is the upper-case key, `{lower}` the lower-case one. */
+export const DESK_INSTRUMENT_FEEDS = [
+  { skill: 'options_oi', tpl: 'swing-map?inst={inst}', base: 'swing-map', maxAgeH: 3 * D, universe: 'all' },
+  { skill: 'levels_structure', tpl: 'trade-decision/state/{lower}', base: 'trade-decision/state', maxAgeH: 1 * D, universe: 'fx' },
+];
+
+/** The full list of requests for one build, instrument feeds expanded. */
+export function expandFeeds(feeds = DESK_FEEDS, instFeeds = DESK_INSTRUMENT_FEEDS, universe = DESK_UNIVERSE) {
+  const out = feeds.map(f => ({ ...f }));
+  for (const t of instFeeds) {
+    const list = t.universe === 'all' ? [...universe.fx, ...universe.indices, ...universe.commodities] : (universe[t.universe] ?? []);
+    for (const inst of list) {
+      const path = t.tpl.replace('{inst}', inst).replace('{lower}', inst.toLowerCase());
+      out.push({ id: `${t.base}:${inst}`, skill: t.skill, path, maxAgeH: t.maxAgeH, instrument: inst, ...(t.keep ? { keep: t.keep } : {}) });
+    }
+  }
+  const ids = new Set();
+  for (const f of out) { if (ids.has(f.id)) throw new Error(`duplicate desk feed id ${f.id}`); ids.add(f.id); }
+  return out;
+}
+
+// ── dates ─────────────────────────────────────────────────────────────────────
+
+/** The London calendar date of `now` (ms), YYYY-MM-DD: the desk's day. */
+export function londonDate(now) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date(now));
+}
+/** London hour and minute of `now`, and whether it is a weekday there. */
+export function londonClock(now) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', weekday: 'short', hour12: false })
+    .formatToParts(new Date(now)).map(p => [p.type, p.value]));
+  const hour = Number(parts.hour) % 24, minute = Number(parts.minute);
+  return { hour, minute, weekday: !['Sat', 'Sun'].includes(parts.weekday) };
+}
+
+// Field names that say when a payload's data is from, in priority order. A top-level hit wins; otherwise the
+// newest hit one level down (payloads keyed by instrument or by series).
+const ASOF_KEYS = ['asOf', 'as_of', 'asof', 'dataAsOf', 'latestDate', 'lastDate', 'last_date', 'updatedAt', 'updated_at', 'lastUpdated',
+  'updated', 'generatedAt', 'generated_at', 'builtAt', 'fetchedAt', 'computedAt', 'ts', 'timestamp', 'date', 'day'];
+
+/** A date-like value as ms, or null. Numbers below 1e11 are taken as seconds. */
+export function toMs(v) {
+  if (v == null || v === '' || typeof v === 'boolean') return null;
+  if (typeof v === 'number') { if (!Number.isFinite(v) || v <= 0) return null; return v < 1e11 ? v * 1000 : v; }
+  if (typeof v !== 'string') return null;
+  if (!/^\d{4}-\d{2}(-\d{2})?/.test(v)) return null;           // only ISO-shaped strings; "Tue 03:30" is not a date
+  const ms = Date.parse(v.length === 7 ? `${v}-01` : v);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * When a payload's data is from, as { ms, key } or null. Times more than a day in the future are ignored (a
+ * calendar's next event is not the feed's as-of).
+ */
+export function findAsOf(json, now) {
+  if (!json || typeof json !== 'object' || Array.isArray(json)) {
+    if (Array.isArray(json)) {               // an array of rows: the newest dated row
+      let best = null;
+      for (const row of json.slice(-200)) { const h = findAsOf(row, now); if (h && (!best || h.ms > best.ms)) best = h; }
+      return best;
+    }
+    return null;
+  }
+  const ok = ms => ms != null && ms <= now + D * 3600e3;
+  for (const k of ASOF_KEYS) { const ms = toMs(json[k]); if (ok(ms)) return { ms, key: k }; }
+  let best = null;
+  for (const [k1, v] of Object.entries(json)) {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) continue;
+    for (const k of ASOF_KEYS) { const ms = toMs(v[k]); if (ok(ms) && (!best || ms > best.ms)) best = { ms, key: `${k1}.${k}` }; }
+  }
+  return best;
+}
+
+/** Whether a payload has nothing in it. `{ ok: false, ... }` counts as empty: the route said it has no data. */
+export function isEmptyPayload(json) {
+  if (json == null) return true;
+  if (Array.isArray(json)) return json.length === 0;
+  if (typeof json !== 'object') return json === '';
+  if (json.ok === false) return true;
+  const keys = Object.keys(json).filter(k => !['ok', 'cached', 'error', 'note'].includes(k));
+  if (!keys.length) return true;
+  return keys.every(k => { const v = json[k]; return v == null || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length); });
+}
+
+/**
+ * Cut a payload down to fit the pack. Arrays over `maxArray` keep their last (or first, keep:'first') items;
+ * strings over `maxString` chars are cut. Every cut is listed in `truncated` as { path, total, kept }.
+ */
+export function slimPayload(json, { maxArray = 60, maxString = 4000, maxDepth = 8, keep = 'last' } = {}) {
+  const truncated = [];
+  const walk = (v, path, depth) => {
+    if (typeof v === 'string') { if (v.length > maxString) { truncated.push({ path, total: v.length, kept: maxString }); return v.slice(0, maxString) + '…'; } return v; }
+    if (!v || typeof v !== 'object') return v;
+    if (depth >= maxDepth) { truncated.push({ path, total: null, kept: 0, note: 'depth' }); return Array.isArray(v) ? `[array ${v.length}]` : '[object]'; }
+    if (Array.isArray(v)) {
+      let arr = v;
+      if (v.length > maxArray) { truncated.push({ path, total: v.length, kept: maxArray, from: keep }); arr = keep === 'first' ? v.slice(0, maxArray) : v.slice(-maxArray); }
+      return arr.map((x, i) => walk(x, `${path}[${i}]`, depth + 1));
+    }
+    const o = {};
+    for (const [k, x] of Object.entries(v)) o[k] = walk(x, path ? `${path}.${k}` : k, depth + 1);
+    return o;
+  };
+  return { data: walk(json, '', 0), truncated };
+}
+
+const bytesOf = v => { try { return Buffer.byteLength(JSON.stringify(v) ?? ''); } catch { return Infinity; } };
+
+/** A payload's shape only (top-level keys and their types), for oversize feeds. */
+export function shapeOf(json) {
+  if (Array.isArray(json)) return { type: 'array', length: json.length };
+  if (!json || typeof json !== 'object') return { type: typeof json };
+  return { type: 'object', keys: Object.fromEntries(Object.entries(json).slice(0, 60).map(([k, v]) => [k, Array.isArray(v) ? `array(${v.length})` : v === null ? 'null' : typeof v])) };
+}
+
+/**
+ * One feed's entry in the pack, from what the request returned.
+ * result: { json, httpStatus, error, timedOut, ms } as the server measured it.
+ */
+export function packEntry(feed, result, now, { maxBytes = feed.maxBytes ?? 150_000 } = {}) {
+  const base = { id: feed.id, skill: feed.skill, path: feed.path, ...(feed.instrument ? { instrument: feed.instrument } : {}), ms: result.ms ?? null };
+  if (result.timedOut) return { ...base, status: 'timeout', error: result.error ?? 'timed out', asOf: null, data: null };
+  if (result.error || (result.httpStatus && (result.httpStatus < 200 || result.httpStatus >= 300))) {
+    const err = result.error ?? (typeof result.json?.error === 'string' ? result.json.error : `HTTP ${result.httpStatus}`);
+    return { ...base, status: 'error', httpStatus: result.httpStatus ?? null, error: String(err).slice(0, 300), asOf: null, data: null };
+  }
+  const json = result.json;
+  if (isEmptyPayload(json)) {
+    const why = ['error', 'message', 'reason', 'note'].map(k => json?.[k]).find(v => typeof v === 'string' && v) ?? null;
+    return { ...base, status: 'empty', ...(why ? { error: why.slice(0, 300) } : {}), asOf: null, data: null };
+  }
+  const hit = findAsOf(json, now);
+  const asOf = hit ? new Date(hit.ms).toISOString() : null;
+  const ageH = hit ? Math.round(((now - hit.ms) / 3600e3) * 10) / 10 : null;
+  const stale = feed.maxAgeH != null && ageH != null && ageH > feed.maxAgeH;
+  const rawBytes = bytesOf(json);
+  let { data, truncated } = slimPayload(json, { keep: feed.keep ?? 'last' });
+  let bytes = bytesOf(data);
+  if (bytes > maxBytes) { ({ data, truncated } = slimPayload(json, { keep: feed.keep ?? 'last', maxArray: 15, maxString: 1500, maxDepth: 6 })); bytes = bytesOf(data); }
+  if (bytes > maxBytes) return { ...base, status: 'oversize', asOf, asOfKey: hit?.key ?? null, ageH, rawBytes, data: null, shape: shapeOf(json) };
+  return {
+    ...base, status: stale ? 'stale' : 'ok', asOf, asOfKey: hit?.key ?? null, ageH, maxAgeH: feed.maxAgeH ?? null,
+    rawBytes, bytes, ...(truncated.length ? { truncated: truncated.slice(0, 40), truncatedCount: truncated.length } : {}), data,
+  };
+}
+
+/** Counts by status, overall and per skill, plus the list of gaps. */
+export function packHealth(entries) {
+  const blank = () => ({ ok: 0, stale: 0, empty: 0, error: 0, timeout: 0, oversize: 0, total: 0 });
+  const all = blank(), bySkill = {};
+  const gaps = [];
+  for (const e of entries) {
+    const s = (bySkill[e.skill] ??= blank());
+    all[e.status]++; all.total++; s[e.status]++; s.total++;
+    if (e.status !== 'ok') gaps.push({ id: e.id, skill: e.skill, status: e.status, ...(e.ageH != null ? { ageH: e.ageH } : {}), ...(e.error ? { error: e.error } : {}) });
+  }
+  return { ...all, usable: all.ok + all.stale, bySkill, gaps };
+}
+
+/**
+ * Assemble the pack from the measured results.
+ * results: array of { feed, result } in any order.
+ */
+export function buildDeskPack(results, { now, startedAt = now, trigger = 'manual' } = {}) {
+  const entries = results.map(({ feed, result }) => packEntry(feed, result, now));
+  const order = new Map(DESK_SKILLS.map((s, i) => [s.id, i]));
+  entries.sort((a, b) => (order.get(a.skill) ?? 99) - (order.get(b.skill) ?? 99) || a.id.localeCompare(b.id));
+  const skills = {};
+  for (const s of DESK_SKILLS) skills[s.id] = { layer: s.layer, label: s.label, feeds: {} };
+  for (const e of entries) (skills[e.skill] ??= { layer: 'unknown', label: e.skill, feeds: {} }).feeds[e.id] = e;
+  return {
+    version: DESK_PACK_VERSION,
+    date: londonDate(now),
+    builtAt: new Date(now).toISOString(),
+    buildMs: now - startedAt,
+    trigger,
+    universe: DESK_UNIVERSE,
+    currencies: DESK_CCYS,
+    layers: ['global', 'currency', 'asset', 'evidence'],
+    health: packHealth(entries),
+    skills,
+  };
+}
+
+/** One skill's part of a pack (what that analyst will be handed in Phase 1), with the pack's header. */
+export function packForSkill(pack, skillId) {
+  const s = pack?.skills?.[skillId];
+  if (!s) return null;
+  return { version: pack.version, date: pack.date, builtAt: pack.builtAt, skill: skillId, ...s, health: pack.health?.bySkill?.[skillId] ?? null };
+}
+
+/** A pack without payloads: health, and per feed its status, date and size. For the index and quick checks. */
+export function packSummary(pack) {
+  if (!pack) return null;
+  const feeds = {};
+  for (const [sid, s] of Object.entries(pack.skills ?? {})) for (const [fid, e] of Object.entries(s.feeds)) {
+    feeds[fid] = { skill: sid, status: e.status, asOf: e.asOf ?? null, ageH: e.ageH ?? null, bytes: e.bytes ?? null, ms: e.ms ?? null, ...(e.error ? { error: e.error } : {}) };
+  }
+  return { version: pack.version, date: pack.date, builtAt: pack.builtAt, buildMs: pack.buildMs, trigger: pack.trigger, health: pack.health, feeds };
+}
+
+/** The index row kept for each saved pack. */
+export function indexRow(pack, storedBytes) {
+  const h = pack.health;
+  return { date: pack.date, builtAt: pack.builtAt, trigger: pack.trigger, ok: h.ok, stale: h.stale, gaps: h.total - h.usable, total: h.total, storedBytes };
+}
+
+/** Add or replace a day's row, newest last, keeping `keepDays`. */
+export function upsertIndex(index, row, keepDays = 400) {
+  const rows = (Array.isArray(index) ? index : []).filter(r => r.date !== row.date);
+  rows.push(row);
+  rows.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  return rows.slice(-keepDays);
+}
+
+/**
+ * Whether the scheduler should build now: a London weekday, at or after the build time, and no pack for today
+ * yet. Weekends are skipped on purpose -- the desk's day is a trading day.
+ */
+export function shouldBuild(now, haveDate, { hour = 6, minute = 40 } = {}) {
+  const c = londonClock(now);
+  if (!c.weekday) return false;
+  if (c.hour < hour || (c.hour === hour && c.minute < minute)) return false;
+  return haveDate !== londonDate(now);
+}

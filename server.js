@@ -217,6 +217,7 @@ import { buildQuestion as _buildQuestion, DRILL_SERIES as _DRILL_SERIES, GENERAT
 import { plannedInWindow } from './js/endOfDay.js';
 import { buildGlobalRead as _buildGlobalRead, recordRow as _grRecordRow, snapshotRow as _grSnapshotRow, attachRealised as _grAttachRealised, scoreRecord as _grScoreRecord } from './js/globalReadCore.js';
 import { assembleGlobalReadInput as _grAssemble, GLOBAL_READ_ENDPOINTS as _GR_ENDPOINTS } from './js/globalReadInputs.js';
+import { expandFeeds as _dpExpandFeeds, buildDeskPack as _dpBuild, packForSkill as _dpForSkill, packSummary as _dpSummary, indexRow as _dpIndexRow, upsertIndex as _dpUpsertIndex, shouldBuild as _dpShouldBuild, londonDate as _dpLondonDate, DESK_SKILLS as _DP_SKILLS } from './js/deskPack.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { scoreClaimFires as _scoreClaimFires, CLAIMS as _WATCH_CLAIMS } from './js/claimWatch.js';   // the watch register (Crown setups + desk findings) — rides the desk-watch tick, log and Telegram
 import { evaluateGauges as _evaluateGauges } from './js/deskWatch.js';
@@ -4487,6 +4488,97 @@ app.get('/api/global-read/record', async (req, res) => {
 });
 svcInterval('globalRead', () => _globalReadTick().catch(e => console.error('[global-read]', e.message)), _GR_EVERY_MS);
 svcTimeout('globalRead', () => _globalReadTick().catch(e => console.error('[global-read]', e.message)), 120_000);
+
+// ── Desk Pack (js/deskPack.js; plans/DESK_ANALYST_PIPELINE.md, Phase 0) ──────────
+// One dated snapshot of every feed the desk reads, built once per London weekday at 06:40 (and on demand), so
+// every analyst skill in the pipeline reads the SAME morning and what each one saw can be graded later. Reads
+// only this server's own routes, six at a time, 45 s each (a feed may carry its own timeoutMs); a failed or empty feed is recorded as a gap, never
+// dropped. Each day's pack is gzipped into desk_pack_<date> (CF KV via the desk_pack_ prefix in kv.js) with a
+// small index in desk_pack_index. No model is called here.
+const _DP_INDEX_KV = 'desk_pack_index';
+const _DP_KEY = date => `desk_pack_${date}`;
+const _DP_TIMEOUT_MS = 45_000, _DP_CONCURRENCY = 6;
+let _dpLatest = null, _dpJob = null;
+async function _dpFetchFeed(feed) {
+  const t0 = Date.now();
+  try {
+    const r = await fetch(`http://127.0.0.1:${PORT}/api/${feed.path}`, { signal: AbortSignal.timeout(feed.timeoutMs ?? _DP_TIMEOUT_MS) });
+    let json = null; try { json = await r.json(); } catch { json = null; }
+    return { json, httpStatus: r.status, ms: Date.now() - t0, ...(json == null && r.ok ? { error: 'not JSON' } : {}) };
+  } catch (e) {
+    const timedOut = e?.name === 'TimeoutError' || e?.name === 'AbortError';
+    return { timedOut, error: e?.message ?? String(e), ms: Date.now() - t0 };
+  }
+}
+async function _dpLoadIndex() { try { const raw = await kv.get(_DP_INDEX_KV); return raw ? JSON.parse(raw) : []; } catch { return []; } }
+async function _dpLoad(date) {
+  if (_dpLatest?.date === date) return _dpLatest;
+  try { const raw = await kv.get(_DP_KEY(date)); return raw ? JSON.parse(zlib.gunzipSync(Buffer.from(raw, 'base64')).toString('utf8')) : null; } catch { return null; }
+}
+async function _deskPackBuild(trigger = 'manual') {
+  const startedAt = Date.now();
+  const feeds = _dpExpandFeeds();
+  const results = new Array(feeds.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: _DP_CONCURRENCY }, async () => {
+    while (next < feeds.length) { const i = next++; results[i] = { feed: feeds[i], result: await _dpFetchFeed(feeds[i]) }; }
+  }));
+  const pack = _dpBuild(results, { now: Date.now(), startedAt, trigger });
+  _dpLatest = pack;
+  const gz = zlib.gzipSync(Buffer.from(JSON.stringify(pack)), { level: 9 }).toString('base64');
+  try {
+    await kv.put(_DP_KEY(pack.date), gz);
+    await kv.put(_DP_INDEX_KV, JSON.stringify(_dpUpsertIndex(await _dpLoadIndex(), _dpIndexRow(pack, gz.length))));
+  } catch (e) { console.warn('[desk-pack] save failed:', e.message); }
+  console.log(`[desk-pack] ${pack.date} built in ${(pack.buildMs / 1000).toFixed(1)}s: ${pack.health.ok} ok, ${pack.health.stale} stale, ${pack.health.total - pack.health.usable} gaps of ${pack.health.total} (${Math.round(gz.length / 1024)} KB gz)`);
+  return pack;
+}
+function _dpStart(trigger) {
+  if (_dpJob?.status === 'running') return _dpJob;
+  const job = _dpJob = { status: 'running', trigger, startedAt: Date.now(), finishedAt: null, error: null, date: null };
+  _deskPackBuild(trigger)
+    .then(p => { job.status = 'done'; job.date = p.date; })
+    .catch(e => { job.status = 'error'; job.error = e.message; console.error('[desk-pack]', e.message); })
+    .finally(() => { job.finishedAt = Date.now(); });
+  return job;
+}
+// GET /api/desk-pack                 today's pack (the latest built today), full
+//   ?date=YYYY-MM-DD                 a saved day
+//   ?skill=<id>                      one skill's slice (what that analyst will be handed)
+//   ?summary=1                       no payloads: health + per-feed status, date, size
+app.get('/api/desk-pack', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : null;
+    const pack = date ? await _dpLoad(date) : (_dpLatest ?? await _dpLoad(_dpLondonDate(Date.now())));
+    if (!pack) return res.status(404).json({ ok: false, error: date ? `no desk pack saved for ${date}` : 'no desk pack built yet today: POST /api/desk-pack/build', building: _dpJob?.status === 'running' });
+    if (req.query.skill) {
+      const s = _dpForSkill(pack, String(req.query.skill));
+      return s ? res.json({ ok: true, ...s }) : res.status(400).json({ ok: false, error: `unknown skill; one of ${_DP_SKILLS.map(x => x.id).join(', ')}` });
+    }
+    res.json({ ok: true, ...(req.query.summary === '1' ? _dpSummary(pack) : pack) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/desk-pack/index', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); res.json({ ok: true, days: await _dpLoadIndex() }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/desk-pack/feeds', (_req, res) => res.json({ ok: true, skills: _DP_SKILLS, feeds: _dpExpandFeeds() }));
+app.get('/api/desk-pack/status', (_req, res) => { res.set('Cache-Control', 'no-store'); res.json({ ok: true, job: _dpJob, latest: _dpLatest ? { date: _dpLatest.date, builtAt: _dpLatest.builtAt, health: _dpLatest.health } : null }); });
+// Takes 1-3 minutes, so it answers at once (202) and the build runs in the background; poll /api/desk-pack/status.
+app.post('/api/desk-pack/build', (_req, res) => {
+  const already = _dpJob?.status === 'running';
+  const job = _dpStart('manual');
+  res.status(already ? 409 : 202).json({ ok: !already, job, ...(already ? { error: 'a desk pack is already building' } : {}) });
+});
+// Every 10 min: build once the London weekday reaches 06:40. The KV index is read only when a build is due and
+// this process has no pack for today (after a redeploy), so a pack saved earlier today is not rebuilt.
+svcInterval('deskPack', async () => {
+  const now = Date.now(), today = _dpLondonDate(now);
+  if (_dpJob?.status === 'running' || !_dpShouldBuild(now, _dpLatest?.date ?? null)) return;
+  if ((await _dpLoadIndex()).some(r => r.date === today)) { _dpLatest = await _dpLoad(today) ?? _dpLatest; if (_dpLatest?.date === today) return; }
+  _dpStart('schedule');
+}, 10 * 60_000);
 
 // ── Rates vs Nasdaq regime (js/ratesRegime.js) ───────────────────────────────
 // Context only: "are rates driving Nasdaq right now?" (rolling 20-day same-bar link between the US 2y bond CFD and
