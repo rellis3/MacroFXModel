@@ -716,7 +716,7 @@ Ours is a design of its own in that spirit, not a copy.
 | Vol skew | cvol, the options chain read | have |
 | Calendar and week ahead, release playbooks | calendar feeds, the economist | have |
 | Geopolitical map | gpr | have (country detail to check) |
-| News ticker | news-outcome, events | partial: a headline feed would help |
+| News ticker | the news analyst's wire (§9z) | have |
 | Pair drill-down (card, lines, walls, vol, seasonality, sentiment) | the book, levels, oi-levels, vol forecast | have |
 | Ask the desk | one model call over the day's pack, book and memory | new |
 | Journal | Phase 8 (`/api/desk-journal`) | have |
@@ -760,6 +760,22 @@ purple where one hedges the other, from the portfolio-risk read; `bookRisk` now 
 currency-strength heat timeline (`GET /api/desk-history`), the cumulative track record against the single-analyst
 control and long-everything, the attribution waterfall of the latest scored day, and release-reaction bands for the
 releases ahead (typical move at 30 min and 4 h, with the median after hot and cold prints and the counts).
+
+**Charts tab (2026-11-03):** how today's book was built (a flow from the global ruling through each currency to the
+sixteen largest cards, ribbon width = size, green long / red short that currency); the macro regime as a
+growth-against-inflation quadrant with the last 24 months' trail and a 20-year regime strip (`/api/regime`); every
+release against consensus over 120 days by currency with the decayed surprise index (`/api/econ-surprise`);
+speculators' net share of open interest over three years per market with the top and bottom 10% shaded
+(`GET /api/desk-cot-history`, from the cached COT series); and a seasonality heatmap (mean monthly return and share of
+up years from up to 20 years of daily bars, `GET /api/desk-season`, with a weekday view per market), labelled as
+history with ~15-20 draws per cell.
+
+**Globe, vol chart, score calendar (2026-11-03):** the Overview hero opens as a 3D globe (d3 orthographic, turning
+slowly, drag to spin, with the map one tap away): currency zones shaded by bias, glowing banks with rates, the
+strongest-to-weakest arc. Analytics adds the vol forecast against what happened (`GET /api/desk-volcheck`,
+`js/volCheck.js`): each archived day's London-day high-to-low p50-p75 band against the range the market made from
+the first H1 bar after London midnight to the next (the forecast's own definition), with the share of days above
+the p50 and the p75 against their 50% and 25% targets; and a calendar of the desk's scored days.
 
 Scores /10 are the desk's own −2..+2 views rescaled (5 = no view); grades are the book's conviction, never a hit
 rate, and the page says so. Still to come: the data below (rate expectations beyond the Fed and the ECB, a headline
@@ -875,6 +891,45 @@ touched.
 - Monday's evidence clerk reads it through the Desk Pack feed `desk-weekly` as the desk's own context, never as
   evidence or a card (prereg amendment A6; both the desk and the single-prompt control see it).
 
+## 9y. Agent 20: the rules keeper (built 2026-11-03)
+
+`js/rulesKeeper.js` (pure, tested in `js/rulesKeeper.test.mjs`); `GET /api/rules-keeper`; a panel at the top of the
+Desk Office "You" tab; a line in the chief of staff's morning note when any bot has a high flag. No model call.
+
+- Reads every bot in `js/botRegistry.js` and its own status (mode, running, last update, open positions, today's
+  closes), and the research behind its idea from a curated map (`BOT_BASIS`: bot → Evidence Book entries and register
+  rows). The test checks every id in the map exists, so a renamed entry fails the build.
+- Flags: **tested-against** (a linked null whose own words say not to trade it, quoted; high when the bot reports live),
+  **before-verdict** (the deciding study is still open; high when live), **no-basis** (live with no study linked),
+  **mode-mismatch** (registry paper, bot reports live, or the reverse), **silent** (no update for 3 h on a weekday),
+  **usage-rule** (a null that limits how the idea may be used, e.g. QMR as a day selector, not a direction),
+  **new-verdict** (a linked entry banked in the last 14 days), **kill-switch**.
+- First read (2026-11-03, the statuses the public route returns): OI Gamma and OI-Vol report live, target max pain
+  ("a level to know about, not a magnet") and trade before oi-wall-building-forward has a verdict; they and the
+  Signal Copier report live while the registry lists them as paper. It reports; it never changes a bot.
+
+## 9z. Agent 21: the news analyst (built 2026-11-03)
+
+`js/newsAnalyst.js` (pure, tested in `js/newsAnalyst.test.mjs`), `desk/roles/news_analyst.md` (schema `news_read`);
+service `newsWire` (every 10 min); `GET /api/desk-news` (`?hours`, `?tier`, `?ccy`; `?pack=1` is the Desk Pack feed),
+`POST /api/desk-news/run`; Telegram master switch `newsWire`.
+
+- **Sources:** the Fed, ECB and BoE press feeds; Finnhub forex and general news (`FINNHUB_KEY`, already set for the
+  calendar); MarketWatch top stories; Investing.com forex news; Yahoo headlines for EURUSD, GBPUSD, USDJPY, gold, oil,
+  the S&P, the dollar index and the 10-year. FXStreet, ForexLive and CNBC refuse automated requests and are not used.
+  Fed Chair names are redacted as in the morning brief.
+- **Rules (no model):** each headline gets the currencies and markets it touches (a central bank's own feed carries its
+  currency), a topic (central bank, data, geopolitics, trade, fiscal, energy, earnings) and a tier. Tier 1 is a
+  policy item from a central bank's own feed, or macro news with a big word (a rate move, a surprise, a strike,
+  sanctions, tariffs) that touches a market; tier 2 is macro-relevant; tier 3 is background. Near-duplicates across
+  feeds are dropped; 72 hours are kept (`desk_news_wire`).
+- **Read (one model call, task desk-analyst, only when new tier-1/2 headlines arrive, at most 25 a batch):** the tier,
+  the first-reaction direction per currency and market, a one-line why, and whether it bears on a card in the book.
+- **Where it goes:** the Desk Terminal (tier 1 in the ticker, a "The wire" panel on the Overview, each currency card's
+  headlines); the session updates (headlines since the book); the chief of staff's morning note (overnight tier 1);
+  Telegram for a tier-1 headline that bears on the book (at most 10 a day); and the Desk Pack feed `desk-news` for the
+  events analyst (prereg amendment A7).
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
@@ -920,8 +975,8 @@ Not built yet. The order is the owner's call; each item names what it needs firs
 - **Phase 17 · Desk Terminal.** *v1 built (§9r).* The owner's private terminal, built last.
 - **Agent 18 · Trade watcher.** *Built (§9u).* Alerts when a card reaches its entry zone, first target or invalidation.
 - **Agent 19 · Weekly strategist.** *Built (§9x).* Sunday's week view and edition, and Monday's starting point.
-- **Agent 20 · Rules keeper.** The live bots' settings against the research verdicts.
-- **Agent 21 · News analyst.** Tags a headline feed by currency and tier (needs the feed).
+- **Agent 20 · Rules keeper.** *Built (§9y).* The live bots' settings against the research verdicts.
+- **Agent 21 · News analyst.** *Built (§9z).* Tags a headline feed by currency and tier (needs the feed).
 - **Agent 22 · Chief of staff.** *Built (§9w).* One short Telegram each morning and evening summing up the Desk Office.
 - **Phase 16 · Claims checker.** *Built (§9v).* Checks everything published against the data and the Evidence Book.
 

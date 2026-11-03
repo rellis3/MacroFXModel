@@ -166,6 +166,13 @@ reports when prices reach a card's plan levels; the chief of staff (agent 22) se
 execution analyst (Phases 8 and 13) read the bots' trades. The desk is still scored as operated, by role version
 (`rolesHash`). The single-prompt control (H2) reads the whole pack as before, so it sees `desk-weekly` too: both arms get the same inputs. No outcome had been computed.
 
+### A7 — 2026-11-03 — PRE-RESULTS
+Before the first counted day, the Desk Pack gains the feed `desk-news`: the last 18 hours of tier-1 and tier-2
+headlines from the news analyst (agent 21: central-bank feeds, Finnhub and market RSS, tagged by rule and read by a
+model). The events analyst reads it as facts to weigh, never as a signal; the session updates (not scored, A2) read
+the headlines since the book. The single-prompt control reads the whole pack, so both arms see it. No outcome had
+been computed.
+
 ---
 
 ## RESULTS — not run

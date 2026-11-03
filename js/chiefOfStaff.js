@@ -22,7 +22,7 @@ export function topCards(cards, k = 4) {
  * Morning. in: { date, run, claims, dataQuality, ops, theory, releases }. run is the day's desk run; claims the claims
  * check; ops the research-ops report; theory the latest theory-desk record; releases the economist's releases.
  */
-export function morningText({ date, run, claims, ops, theory } = {}) {
+export function morningText({ date, run, claims, ops, theory, rules, news } = {}) {
   const b = run?.head?.book; if (!b) return null;
   const L = [`☀️ <b>Desk morning · ${esc(date)}</b>`];
   L.push(`<b>${esc(String(b.global?.tone ?? '').replace('_', '-').toUpperCase())}</b>: ${esc(b.headline ?? '')}`);
@@ -35,6 +35,10 @@ export function morningText({ date, run, claims, ops, theory } = {}) {
   const dq = run?.dataQuality; if (dq?.decision === 'hold') todo.push(`📉 The data officer flagged the pack: ${esc((dq.reasons ?? []).slice(0, 2).join('; ') || 'see the Desk Office')}`);
   if ((run?.failed ?? []).length) todo.push(`⚠️ Analysts that failed: ${run.failed.map(esc).join(', ')}`);
   if (todo.length) L.push(...todo); else L.push('✅ Nothing needs you before sharing.');
+  const hi = (rules?.bots ?? []).filter(b => b.flags.some(f => f.severity === 'high'));
+  if (hi.length) L.push(`🛡 Rules keeper: ${hi.length} bot(s) trading against the research: ${hi.slice(0, 4).map(b => esc(b.label)).join(', ')} (Desk Office → You).`);
+  const wire1 = (news ?? []).filter(h => (h.read?.tier ?? h.tier) === 1).slice(0, 3);
+  if (wire1.length) L.push(`📰 Overnight: ${wire1.map(h => esc(h.title)).join(' · ')}`);
   const rel = run?.economist?.releases ?? [];
   if (rel.length) L.push(`📅 ${rel.map(r => `${esc(r.event)} ${new Date(r.at).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' })}`).join(' · ')}`);
   const r = [];

@@ -183,6 +183,7 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
     <button role="tab" aria-selected="false" data-t="pos">Positioning</button>
     <button role="tab" aria-selected="false" data-t="cal">Calendar</button>
     <button role="tab" aria-selected="false" data-t="ana">Analytics</button>
+    <button role="tab" aria-selected="false" data-t="charts">Charts</button>
   </nav>
   <section id="overview"></section>
   <section id="ccy" hidden></section>
@@ -191,6 +192,7 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
   <section id="pos" hidden></section>
   <section id="cal" hidden></section>
   <section id="ana" hidden></section>
+  <section id="charts" hidden></section>
 </main>
 <button class="fab" id="askbtn">✦ Ask the desk</button>
 <div class="modal" id="modal" hidden></div>
@@ -291,6 +293,55 @@ async function drawMap(el, mode = 'bias') {
   }
   el.innerHTML = ''; el.append(svg.node());
 }
+
+// the 3D globe: an orthographic world that turns slowly; drag to spin it; the same zones, banks and arc as the map
+let GLOBE = null;
+const LABEL_OFF = { USD: [-16, 20], CAD: [-16, -16], GBP: [-40, -30], EUR: [34, -36], CHF: [34, 30], JPY: [14, -8], AUD: [-14, -6], NZD: [-16, 18] };
+function stopGlobe() { if (GLOBE?.timer) GLOBE.timer.stop(); GLOBE = null; }
+async function drawGlobe(el) {
+  stopGlobe();
+  const geo = await world();
+  if (!geo || !window.d3) { drawMap(el, 'bias'); return; }
+  const W = Math.max(320, el.clientWidth || 900), H = Math.round(Math.min(W * 0.62, 620)), R = Math.min(W, H) / 2 - 22;
+  const proj = d3.geoOrthographic().scale(R).translate([W / 2, H / 2 + 10]).clipAngle(90).rotate([-20, -25]), path = d3.geoPath(proj);
+  const svg = d3.create('svg').attr('viewBox', `0 0 ${W} ${H + 20}`).attr('role', 'img').attr('aria-label', 'globe of the desk\'s currency bias');
+  const defs = svg.append('defs');
+  const atm = defs.append('radialGradient').attr('id', 'atm'); atm.append('stop').attr('offset', '82%').attr('stop-color', 'rgba(139,124,246,0)'); atm.append('stop').attr('offset', '92%').attr('stop-color', 'rgba(139,124,246,.35)'); atm.append('stop').attr('offset', '100%').attr('stop-color', 'rgba(139,124,246,0)');
+  const sea = defs.append('radialGradient').attr('id', 'sea').attr('cx', '38%').attr('cy', '32%'); sea.append('stop').attr('offset', '0%').attr('stop-color', '#1b2452'); sea.append('stop').attr('offset', '100%').attr('stop-color', '#070a17');
+  const gl = defs.append('filter').attr('id', 'gglow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%'); gl.append('feGaussianBlur').attr('stdDeviation', 3.5).attr('result', 'b'); const fm = gl.append('feMerge'); fm.append('feMergeNode').attr('in', 'b'); fm.append('feMergeNode').attr('in', 'SourceGraphic');
+  const [cx, cy] = proj.translate();
+  svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', R * 1.12).attr('fill', 'url(#atm)');
+  svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', R).attr('fill', 'url(#sea)').attr('stroke', 'rgba(139,124,246,.35)');
+  const grat = svg.append('path').attr('class', 'grat');
+  const land = svg.append('g').selectAll('path').data(geo.features).join('path').attr('class', d => (ZONE[d.id] ? 'land zone' : 'land'))
+    .attr('style', d => (ZONE[d.id] ? `fill:${biasFill(D.ccy[ZONE[d.id]]?.bias ?? 0)}` : null))
+    .on('mousemove', (e, d) => { const c = ZONE[d.id]; if (!c) return tip(e, null); const v = D.ccy[c] ?? {}; tip(e, `<b>${esc(d.properties.name)} · ${c}</b><br><span class="${dirCls(v.bias)}">bias ${v.bias ?? 0} · ${ccyScore(v.bias).toFixed(1)}/10</span>`); })
+    .on('mouseleave', () => tip(null)).on('click', (e, d) => { tip(null); if (ZONE[d.id]) ccyModal(ZONE[d.id]); });
+  const arcEl = svg.append('path').attr('class', 'arc');
+  const a = CB_GEO[D.ranking?.[0]], b = CB_GEO[D.ranking?.at(-1)];
+  const dots = svg.append('g');
+  const nodes = CCYS.map(c => { const bb = D.ccy[c]?.bias ?? 0, col = bb > 0 ? '#2fd39a' : bb < 0 ? '#ff5d78' : '#b4a9ff', g = dots.append('g').attr('class', 'cb').style('cursor', 'pointer').on('click', () => ccyModal(c));
+    g.append('circle').attr('class', 'pulse').attr('r', 5).attr('fill', col).attr('opacity', .6); g.append('circle').attr('r', 5).attr('fill', col).attr('filter', 'url(#gglow)'); g.append('circle').attr('r', 1.8).attr('fill', '#fff');
+    const [lx, ly] = LABEL_OFF[c] ?? [10, -8], left = lx < 0;
+    if (Math.abs(lx) > 20 || Math.abs(ly) > 18) g.append('line').attr('x1', 0).attr('y1', 0).attr('x2', lx * 0.8).attr('y2', ly * 0.8).attr('stroke', 'rgba(238,240,251,.35)');
+    g.append('text').attr('class', 'lab').attr('x', lx).attr('y', ly).attr('text-anchor', left ? 'end' : 'start').text(`${BANKSHORT[c]} ${D.rd?.byCcy?.[c]?.latestRate != null ? D.rd.byCcy[c].latestRate + '%' : ''}`);
+    g.append('text').attr('class', 'lab2').attr('x', lx).attr('y', ly + 12).attr('text-anchor', left ? 'end' : 'start').attr('fill', col).text(`${c} ${bb > 0 ? '▲' : bb < 0 ? '▼' : '●'}`);
+    return { c, g }; });
+  const render = () => {
+    grat.attr('d', path(d3.geoGraticule10())); land.attr('d', path);
+    if (a && b) arcEl.attr('d', path({ type: 'LineString', coordinates: [a, b] }));
+    const centre = proj.invert([cx, cy]);
+    for (const { c, g } of nodes) { const p = CB_GEO[c], vis = d3.geoDistance([p[0], p[1]], centre) < Math.PI / 2 - 0.05, xy = proj([p[0], p[1]]); g.attr('display', vis ? null : 'none'); if (vis) g.attr('transform', `translate(${xy[0]},${xy[1]})`); }
+  };
+  render();
+  el.innerHTML = ''; el.append(svg.node());
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const state = GLOBE = { spin: !reduce, timer: null, last: null };
+  let dragging = false;
+  d3.select(svg.node()).call(d3.drag().on('start', () => { dragging = true; state.spin = false; }).on('drag', ev => { const r = proj.rotate(); proj.rotate([r[0] + ev.dx * 0.35, Math.max(-60, Math.min(60, r[1] - ev.dy * 0.35))]); render(); }).on('end', () => { dragging = false; setTimeout(() => { if (GLOBE === state && !reduce) state.spin = true; }, 2500); }));
+  state.timer = d3.timer(t => { if (!state.spin || dragging || document.hidden || !el.isConnected) { state.last = t; return; } const dt = t - (state.last ?? t); state.last = t; const r = proj.rotate(); proj.rotate([r[0] + dt * 0.006, r[1]]); render(); });
+}
+
 // a semicircle dial: risk-off on the left, risk-on on the right, the needle at the ruling times its conviction
 function regimeGauge(tone, conviction) {
   const v = (/on/.test(tone) ? 1 : /off/.test(tone) ? -1 : 0) * ({ low: 0.35, medium: 0.65, high: 0.92 }[conviction] ?? 0.6);
@@ -373,8 +424,9 @@ clocks(); setInterval(clocks, 20_000);
 // ── tabs ──
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
-  ['overview', 'ccy', 'assets', 'macro', 'pos', 'cal', 'ana'].forEach(id => $(id).hidden = id !== b.dataset.t);
+  ['overview', 'ccy', 'assets', 'macro', 'pos', 'cal', 'ana', 'charts'].forEach(id => $(id).hidden = id !== b.dataset.t);
   if (b.dataset.t === 'ana') analytics();
+  if (b.dataset.t === 'charts') charts();
   try { localStorage.setItem('deskTerminalTab', b.dataset.t); } catch { /* private window */ }
 });
 try { const t = localStorage.getItem('deskTerminalTab'); if (t) document.querySelector(`#tabs [data-t="${t}"]`)?.click(); } catch { /* ignore */ }
@@ -387,11 +439,11 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 
 // ── data ──
 async function load() {
-  const [run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev, tw, wk] = await Promise.all([
+  const [run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev, tw, wk, news] = await Promise.all([
     getJson('/api/desk-run'), getJson('/api/desk-score/record'), getJson('/api/desk-update'), getJson('/api/desk-quality'),
     getJson('/api/macro-scorecard'), getJson('/api/rate-diff'), getJson('/api/real-yield'), getJson('/api/rates'),
-    getJson('/api/cot-state'), getJson('/api/oanda-book/history'), getJson('/api/gpr'), getJson('/api/events'), getJson('/api/trade-watch'), getJson('/api/desk-weekly')]);
-  D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, tw, wk, ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
+    getJson('/api/cot-state'), getJson('/api/oanda-book/history'), getJson('/api/gpr'), getJson('/api/events'), getJson('/api/trade-watch'), getJson('/api/desk-weekly'), getJson('/api/desk-news?hours=24&tier=2')]);
+  D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, tw, wk, news: news?.ok ? news.items : [], ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
   const ok = run?.ok && run.head?.ok;
   D.cards = ok ? run.head.book.instruments : {};
   D.ccy = ok ? (run.debate?.currency?.view?.currencies ?? Object.fromEntries(Object.entries(run.head.book.currencies ?? {}).map(([k, v]) => [k, { bias: v.bias, why: v.why }]))) : {};
@@ -421,6 +473,7 @@ const lt = ms => new Date(ms).toLocaleString('en-GB', { timeZone: LONDON, weekda
 
 function ticker() {
   const items = [];
+  for (const h of D.news.filter(h => (h.read?.tier ?? h.tier) === 1).slice(0, 8)) items.push(`<span><b>📰 ${new Date(h.ms).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</b> ${esc(h.title)}${impactTxt(h)}</span>`);
   for (const e of (D.tw?.events ?? []).slice(-6).reverse()) items.push(`<span><b>${e.kind === 'zone' ? '🎯 IN ZONE' : e.kind === 'target' ? '✅ TARGET' : '⛔ INVALID'}</b> ${esc(e.inst)} @ ${px(e.price)} · ${new Date(e.at).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</span>`);
   const g = D.run?.head?.book?.global; if (g) items.push(`<span><b>REGIME</b> ${esc(String(g.tone).replace('_', '-').toUpperCase())}</span>`);
   for (const e of upcoming(36).filter(e => /high/i.test(e.impact)).slice(0, 10)) items.push(`<span><b>${esc(e.country)}</b> ${esc(e.event)} · ${lt(e.ms)}${e.estimate ? ` · est ${esc(e.estimate)}` : ''}</span>`);
@@ -502,18 +555,31 @@ function watchBoard() {
 ${(t.events ?? []).length ? `<div class="drv">${t.events.slice(-8).reverse().map(e => `<span>${new Date(e.at).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })} ${esc(e.inst)} ${esc(e.kind)}</span>`).join('')}</div>` : ''}
 <p class="muted">Telegram sends each event once (⚙ Alerts → "Desk trade watcher" to mute). Context, never an order.</p></div>`;
 }
+
+// the news analyst's read of a headline as arrows per currency
+const impactTxt = h => { const im = h.read?.impact ?? {}; const k = Object.keys(im); return k.length ? ` <b>${k.map(c => `${c}${im[c] > 0 ? '▲' : '▼'}`).join(' ')}</b>` : ''; };
+const impactChips = h => { const im = h.read?.impact ?? {}; return Object.keys(im).length ? Object.entries(im).map(([c, v]) => `<span class="chip ${v > 0 ? 'up' : 'dn'}">${esc(c)} ${v > 0 ? '▲' : '▼'}</span>`).join(' ') : (h.touches ?? []).map(c => `<span class="chip">${esc(c)}</span>`).join(' '); };
+function wireCard(items, title = 'The wire', limit = 14) {
+  if (!items.length) return `<div class="card"><div class="ch"><span class="lbl">${title}</span></div><p class="muted">No important headlines in the last 24 hours (the news analyst runs every 10 minutes).</p></div>`;
+  return `<div class="card"><div class="ch"><span class="lbl">${title}</span><span class="r muted">the news analyst · tier 1 and 2 · last 24 h</span></div>${items.slice(0, limit).map(h => { const t = h.read?.tier ?? h.tier;
+    return `<div style="display:grid;grid-template-columns:52px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)"><div><span class="mono muted" style="font-size:11px">${new Date(h.ms).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</span><br><span class="chip ${t === 1 ? 'gold' : ''}" style="margin-top:4px">T${t}</span></div>
+<div><a href="${esc(h.link ?? '#')}" target="_blank" rel="noopener" style="color:var(--tx);text-decoration:none;font-weight:600">${esc(h.title)}</a><div class="drv" style="margin:5px 0 0">${impactChips(h)}<span>${esc(h.source)}</span></div>${h.read?.why ? `<div class="muted">${esc(h.read.why)}</div>` : ''}${h.read?.book ? `<div style="color:var(--gold);font-size:12.5px">The book: ${esc(h.read.book)}</div>` : ''}</div></div>`; }).join('')}<p class="muted">Arrows are the first reaction the headline implies, read by the news analyst: context, never a signal.</p></div>`;
+}
 function overview() {
   if (!D.run?.ok) { $('overview').innerHTML = `<div class="card"><p>No desk book yet today.</p><p class="muted">${esc(D.run?.error ?? '')} The book is written at 06:55 London when the Desk Run service is on, or from the Desk Run page.</p></div>`; return; }
   const live = Object.entries(D.cards).filter(([, c]) => DIR[c.rating] && c.size > 0).sort((a, b) => b[1].size * (CONV[b[1].conviction] ?? .8) * Math.abs(DIR[b[1].rating]) - a[1].size * (CONV[a[1].conviction] ?? .8) * Math.abs(DIR[a[1].rating])).slice(0, 6);
-  $('overview').innerHTML = `<div class="card hero glow" style="margin-bottom:14px"><div class="hhead"><span class="lbl">The desk's world · ${esc(D.run.date)}</span><h2>${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest</h2></div><div class="map" id="heromap" style="min-height:240px"></div><div class="legend"><span><i style="background:rgba(47,211,154,.6)"></i>bullish</span><span><i style="background:rgba(255,93,120,.6)"></i>bearish</span><span><i style="background:var(--gold)"></i>strongest → weakest</span><span>tap a bank or a country</span></div></div>
+  $('overview').innerHTML = `<div class="card hero glow" style="margin-bottom:14px"><div class="hhead"><span class="lbl">The desk's world · ${esc(D.run.date)}</span><h2>${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest</h2></div><div class="map" id="heromap" style="min-height:240px"></div><div style="position:absolute;right:16px;top:14px;z-index:3;display:flex;gap:6px" class="filters"><button aria-pressed="true" data-view="globe">Globe</button><button aria-pressed="false" data-view="map">Map</button></div><div class="legend"><span><i style="background:rgba(47,211,154,.6)"></i>bullish</span><span><i style="background:rgba(255,93,120,.6)"></i>bearish</span><span><i style="background:var(--gold)"></i>strongest → weakest</span><span>tap a bank or a country</span></div></div>
 ${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span class="lbl">Today's book</span><div class="thesis" style="font-size:16px">${esc(D.run.head.book.headline)}</div></div>` : ''}
 <div class="grid g2">${regimeCard()}<div class="grid" style="align-content:start">${strengthStrip()}${exposureChart()}${recordCard()}</div></div>
 ${weekSection()}
 <div class="sec"><h2>Trade watch</h2><span class="lbl">the book against live prices, every 2 minutes</span></div>${watchBoard()}
 <div class="sec"><h2>Playbooks</h2><span class="lbl">the six largest cards · tap for the full analysis</span></div><div class="grid g3">${live.map(([n, c]) => playbookCard(n, c)).join('')}</div>
-<div class="sec"><h2>Releases and risks</h2></div><div class="grid g2">${releasesCard()}<div class="card"><div class="ch"><span class="lbl">Risk desk warnings</span></div><ul style="margin:0;padding-left:18px">${(D.run.head.book.risks ?? []).map(r => `<li style="margin:6px 0">${esc(r)}</li>`).join('') || '<li class="muted">None.</li>'}</ul></div></div>`;
+<div class="sec"><h2>News, releases and risks</h2></div><div class="grid g2">${wireCard(D.news)}<div class="grid" style="align-content:start">${releasesCard()}<div class="card"><div class="ch"><span class="lbl">Risk desk warnings</span></div><ul style="margin:0;padding-left:18px">${(D.run.head.book.risks ?? []).map(r => `<li style="margin:6px 0">${esc(r)}</li>`).join('') || '<li class="muted">None.</li>'}</ul></div></div></div>`;
   wire($('overview'));
-  drawMap($('heromap'), 'bias');
+  let view = 'globe'; try { view = localStorage.getItem('deskTerminalHero') || 'globe'; } catch { /* default */ }
+  const showHero = v => { view = v; document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === v)); try { localStorage.setItem('deskTerminalHero', v); } catch { /* fine */ } if (v === 'globe') drawGlobe($('heromap')); else { stopGlobe(); drawMap($('heromap'), 'bias'); } };
+  document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => showHero(b.dataset.view));
+  showHero(view);
   $('overview').querySelectorAll('.spk').forEach(el => sparkline(el, el.dataset.spk, D.cards[el.dataset.spk]));
 }
 
@@ -551,7 +617,7 @@ function ccyModal(c) {
 ${drv.length ? drv.map(d => `<div style="display:flex;gap:10px;padding:8px 10px;margin:6px 0;border-radius:8px;background:var(--bg3);border-left:3px solid ${d.v > 0 ? 'var(--up)' : 'var(--dn)'}"><span class="mono" style="font-size:10.5px;white-space:nowrap;color:${d.v > 0 ? 'var(--up)' : 'var(--dn)'}">[${d.tier} ${d.sign}${d.type}]</span><span style="font-size:13px">${esc(d.claim)}</span></div>`).join('') : '<p class="muted">No analyst point scored this currency today.</p>'}
 <div class="sec"><h2>Best expressions</h2><span class="lbl">the book's cards on this currency</span></div>
 ${best.length ? `<div class="grid g2">${best.map(e => `<div class="card click" tabindex="0" data-inst="${esc(e.n)}" style="padding:10px 12px"><div class="ch" style="margin:0"><b class="mono">${esc(nice(e.n))}</b>${rateChip(e.x.rating)}<span class="r">${e.agrees ? '<span class="chip gold">fits the bias</span>' : '<span class="chip">against the bias</span>'}</span></div><span class="muted">bias gap ${e.gap} · size ${e.x.size}</span></div>`).join('')}</div>` : '<p class="muted">No live card on this currency.</p>'}
-${v.flip ? `<div class="sec"><h2>What would flip it</h2></div><p>${esc(v.flip)}</p>` : ''}
+${v.flip ? `<div class="sec"><h2>What would flip it</h2></div><p>${esc(v.flip)}</p>` : ''}${(() => { const hs = D.news.filter(h => (h.touches ?? []).includes(c) || h.read?.impact?.[c]).slice(0, 5); return hs.length ? `<div class="sec"><h2>On the wire</h2><span class="lbl">the last 24 h</span></div>${hs.map(h => `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><span class="mono muted" style="font-size:11px">${new Date(h.ms).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</span> ${esc(h.title)} ${h.read?.impact?.[c] ? `<span class="chip ${h.read.impact[c] > 0 ? 'up' : 'dn'}">${c} ${h.read.impact[c] > 0 ? '▲' : '▼'}</span>` : ''}</div>`).join('')}` : ''; })()}
 <p class="muted">Score: the Currency Manager's −2..+2 bias put on /10 (5 = neutral). Drivers are the analysts' scored points, not tested signals.</p>`);
   wire($('modal'));
 }
@@ -648,8 +714,10 @@ async function analytics() {
 <div class="card"><div class="ch"><span class="lbl">Currency strength over time</span><span class="r muted">the Currency Manager's bias each morning</span></div><div id="heat"></div></div></div>
 <div class="grid g2" style="margin-top:14px"><div class="card"><div class="ch"><span class="lbl">Track record</span><span class="r muted">day score in u, cumulative, against the controls</span></div><div id="track"></div></div>
 <div class="card"><div class="ch"><span class="lbl">Which layer earned it</span><span class="r muted">${day?.ok ? esc(day.score.date) : 'latest scored day'} · attribution waterfall</span></div><div id="fall"></div></div></div>
+<div class="sec"><h2>Vol forecast against what happened</h2><span class="lbl">each London day's forecast high-to-low range (p50 to p75 band) and the range the market actually made</span></div><div class="card"><div class="filters" id="vcsel"></div><div id="volc"></div></div>
+<div class="sec"><h2>The desk's days</h2><span class="lbl">each scored day, coloured by its score in u</span></div><div class="card"><div id="cal2"></div></div>
 <div class="sec"><h2>Release reactions</h2><span class="lbl">how markets moved after past releases of each kind coming up · the desk's release history</span></div><div class="grid g2" id="fans"></div>`;
-  corrWeb($('web'), risk); strengthHeat($('heat'), hist); trackChart($('track'), hist); waterfall($('fall'), day); releaseFans($('fans'));
+  corrWeb($('web'), risk); strengthHeat($('heat'), hist); trackChart($('track'), hist); waterfall($('fall'), day); releaseFans($('fans')); volPicker(); scoreCalendar($('cal2'), hist);
 }
 function corrWeb(el, r) {
   const c = r?.corr; if (!r?.ok || !c?.names?.length) { el.innerHTML = `<p class="muted">${esc(r?.reason ?? r?.error ?? 'No portfolio-risk read yet.')}</p>`; return; }
@@ -702,6 +770,42 @@ ${steps.map(([l, v], i) => { const prev = i ? steps[i - 1][1] : 0, x = 40 + i * 
     return `<rect x="${x}" y="${y0}" width="${bw * 0.62}" height="${h0}" rx="4" fill="${final ? '#e8b85a' : up ? '#2fd39a' : '#ff5d78'}" opacity=".85"/>${i < steps.length - 1 ? `<line x1="${x + bw * 0.62}" x2="${x + bw}" y1="${Y(v)}" y2="${Y(v)}" stroke="#6d7599" stroke-dasharray="3 3"/>` : ''}<text x="${x + bw * 0.31}" y="${H - 18}" text-anchor="middle" fill="#a9b0d0" font-family="JetBrains Mono" font-size="10">${l}</text><text x="${x + bw * 0.31}" y="${y0 - 5}" text-anchor="middle" fill="#eef0fb" font-family="JetBrains Mono" font-size="10">${f(v)}</text>`; }).join('')}</svg>
 <div class="muted">Each bar is that stage's book scored on the day (u); green where a stage improved on the one before, red where it gave back; gold is the sized book, the day score.</div>`;
 }
+
+const VC_INSTS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'GOLD', 'NQ', 'SPX500', 'WTI', 'BTCUSD'];
+let VC_SEL = 'EURUSD';
+function volPicker() {
+  $('vcsel').innerHTML = VC_INSTS.map(i => `<button aria-pressed="${i === VC_SEL}" data-vc="${i}">${i}</button>`).join('');
+  $('vcsel').querySelectorAll('[data-vc]').forEach(b => b.onclick = () => { VC_SEL = b.dataset.vc; volPicker(); });
+  volChart($('volc'), VC_SEL);
+}
+async function volChart(el, inst) {
+  el.innerHTML = '<p class="muted">Reading the forecast archive and the hourly bars…</p>';
+  const r = await getJson(`/api/desk-volcheck?inst=${inst}&days=90`);
+  if (!r?.ok || !r.rows?.length) { el.innerHTML = `<p class="muted">${esc(r?.error ?? 'No archived forecasts yet.')}</p>`; return; }
+  const rows = r.rows, W = 1000, H = 300, lo = 0, hi = Math.max(...rows.flatMap(x => [x.p75, x.hl])) * 1.08;
+  const X = i => 46 + (i / Math.max(1, rows.length - 1)) * (W - 70), Y = v => H - 28 - ((v - lo) / (hi - lo)) * (H - 50);
+  const band = `<polygon points="${rows.map((x, i) => `${X(i)},${Y(x.p75)}`).join(' ')} ${rows.map((x, i) => `${X(i)},${Y(x.p50)}`).reverse().join(' ')}" fill="rgba(139,124,246,.22)"/>`;
+  const ln = k => `<polyline points="${rows.map((x, i) => `${X(i)},${Y(x[k])}`).join(' ')}" fill="none" stroke="${k === 'p50' ? '#8b7cf6' : '#b4a9ff'}" stroke-width="1.4" ${k === 'p75' ? 'stroke-dasharray="4 3"' : ''}/>`;
+  const dot = (x, i) => { const col = x.over75 ? '#ff5d78' : x.over50 ? '#e8b85a' : '#2fd39a'; return `<circle cx="${X(i)}" cy="${Y(x.hl)}" r="${rows.length > 60 ? 3 : 4}" fill="${col}" style="filter:drop-shadow(0 0 4px ${col})"><title>${x.date}: realised ${x.hl}% · forecast p50 ${x.p50}% · p75 ${x.p75}%</title></circle>`; };
+  const ticks = [0, hi / 3, (2 * hi) / 3].map(v => `<line x1="46" x2="${W - 24}" y1="${Y(v)}" y2="${Y(v)}" stroke="#1f2950"/><text x="40" y="${Y(v) + 4}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="10">${v.toFixed(2)}%</text>`).join('');
+  const gauge = (lab, v, tgt) => `<div><span class="lbl">${lab}</span><div style="position:relative;height:12px;background:var(--bg3);border-radius:6px;margin:6px 0"><i style="position:absolute;left:0;top:0;bottom:0;width:${(v ?? 0) * 100}%;border-radius:6px;background:linear-gradient(90deg,var(--pur),var(--gold))"></i><i style="position:absolute;left:${tgt * 100}%;top:-4px;bottom:-4px;width:2px;background:#eef0fb"></i></div><span class="mono">${v == null ? '–' : Math.round(v * 100) + '%'}</span> <span class="muted">target ${tgt * 100}%</span></div>`;
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(inst)} vol forecast against realised">${ticks}${band}${ln('p50')}${ln('p75')}${rows.map(dot).join('')}
+<text x="46" y="${H - 8}" fill="#6d7599" font-family="JetBrains Mono" font-size="10">${esc(r.from)}</text><text x="${W - 24}" y="${H - 8}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="10">${esc(r.to)}</text></svg>
+<div class="grid g3" style="margin-top:10px">${gauge('Days above the p50', r.over50, 0.5)}${gauge('Days above the p75', r.over75, 0.25)}<div><span class="lbl">Realised ÷ p50, median day</span><div class="mono" style="font-size:22px;font-weight:700;margin-top:4px">${r.medianRatio ?? '–'}×</div><span class="muted">${r.n} days</span></div></div>
+<p class="muted"><span style="color:#2fd39a">●</span> inside the p50 · <span style="color:var(--gold)">●</span> between p50 and p75 · <span style="color:#ff5d78">●</span> beyond the p75. ${esc(r.definition)}. A calibrated forecast puts about half the days above the p50 and a quarter above the p75; a few weeks of days is not enough to call it either way.</p>`;
+}
+function scoreCalendar(el, h) {
+  const rows = (h?.rows ?? []).filter(r => r.score && Number.isFinite(r.score.S));
+  if (!rows.length) { el.innerHTML = '<p class="muted">No scored day yet: each weekday is scored after 21:10 London. This fills in like a contribution calendar.</p>'; return; }
+  const first = new Date(`${rows[0].date}T12:00:00Z`), start = new Date(first); start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7));
+  const by = Object.fromEntries(rows.map(r => [r.date, r])), last = new Date(`${rows.at(-1).date}T12:00:00Z`), weeks = Math.ceil((last - start) / (7 * 864e5)) + 1, cs = 16;
+  const col = v => { const z = Math.max(-1, Math.min(1, v / 0.6)); return z > 0 ? `rgba(47,211,154,${0.2 + z * 0.75})` : `rgba(255,93,120,${0.2 - z * 0.75})`; };
+  let cells = '';
+  for (let w = 0; w < weeks; w++) for (let d = 0; d < 5; d++) { const dt = new Date(start.getTime() + (w * 7 + d) * 864e5).toISOString().slice(0, 10), r = by[dt];
+    cells += `<rect x="${40 + w * (cs + 3)}" y="${10 + d * (cs + 3)}" width="${cs}" height="${cs}" rx="3" fill="${r ? col(r.score.S) : 'var(--bg3)'}" ${r && !r.score.counts ? 'opacity=".45"' : ''}><title>${dt}${r ? `: ${f(r.score.S)} u${r.score.counts ? '' : ' (not counted)'}` : ''}</title></rect>`; }
+  el.innerHTML = `<div class="scroll"><svg viewBox="0 0 ${50 + weeks * (cs + 3)} ${20 + 5 * (cs + 3)}" width="${Math.max(300, 50 + weeks * (cs + 3))}" style="max-width:100%">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((d, i) => `<text x="0" y="${22 + i * (cs + 3)}" fill="#6d7599" font-family="JetBrains Mono" font-size="10">${d}</text>`).join('')}${cells}</svg></div><div class="muted">Green = the book made money in u that day, red = lost; faded = not counted in the test.</div>`;
+}
+
 function releaseFans(el) {
   const rel = D.run?.economist?.releases ?? [];
   if (!rel.length) { el.innerHTML = '<div class="card muted">No high-impact release with a history in the next 36 hours (the economist writes these with the morning book).</div>'; return; }
@@ -714,6 +818,106 @@ function releaseFans(el) {
 ${m.hot ? `<circle cx="${300 + Math.sign(m.hot.m30) * sc(m.hot.m30, m.unit)}" cy="${y}" r="4.5" fill="#ff5d78"><title>after hot prints: ${m.hot.m30}${m.unit} at 30 min (n ${m.hot.n})</title></circle>` : ''}${m.cold ? `<circle cx="${300 + Math.sign(m.cold.m30) * sc(m.cold.m30, m.unit)}" cy="${y}" r="4.5" fill="#4fb3ff"><title>after cold prints: ${m.cold.m30}${m.unit} at 30 min (n ${m.cold.n})</title></circle>` : ''}
 <text x="520" y="${y + 4}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="9">${m.abs30}${m.unit} · ${m.abs240}${m.unit}</text>`; }).join('')}</svg>
 <div class="muted">Bands: the typical move either way at 30 min (inner) and 4 h (outer). <span style="color:#ff5d78">●</span> after hot prints, <span style="color:#4fb3ff">●</span> after cold, at 30 min. ${r.playbook.n} past releases, ${esc(r.playbook.from)} to ${esc(r.playbook.to)}. History, not a forecast.</div></div>`; }).join('');
+}
+
+
+// ── CHARTS: the book's flow, the macro regime, data surprises, positioning history, seasonality ──
+let CH = null;
+const CC2 = { US: 'USD', EU: 'EUR', DE: 'EUR', FR: 'EUR', IT: 'EUR', ES: 'EUR', GB: 'GBP', JP: 'JPY', AU: 'AUD', NZ: 'NZD', CA: 'CAD', CH: 'CHF' };
+const SEASON_INSTS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX500', 'WTI', 'BTCUSD'];
+async function charts() {
+  if (!D.run) return;
+  if (!CH) {
+    $('charts').innerHTML = '<div class="card muted">Drawing…</div>';
+    const [reg, sur, cot] = await Promise.all([getJson('/api/regime'), getJson('/api/econ-surprise'), getJson('/api/desk-cot-history?weeks=156')]);
+    CH = { reg, sur, cot, season: {} };
+  }
+  $('charts').innerHTML = `<div class="card glow"><div class="ch"><span class="lbl">How today's book was built</span><span class="r muted">the global ruling → each currency's net exposure → the cards · ribbon width = size</span></div><div id="flow"></div></div>
+<div class="grid g2" style="margin-top:14px"><div class="card"><div class="ch"><span class="lbl">Macro regime</span><span class="r muted">growth against inflation, the last 24 months</span></div><div id="quad"></div></div>
+<div class="card"><div class="ch"><span class="lbl">Data surprises</span><span class="r muted">each release against consensus (z), last 120 days, by currency</span></div><div id="surp"></div></div></div>
+<div class="sec"><h2>Positioning history</h2><span class="lbl">speculators' net share of open interest, 3 years · shaded = the top and bottom 10% · dot = latest week</span></div><div class="grid g4" id="cotgrid"></div>
+<div class="sec"><h2>Seasonality</h2><span class="lbl">mean return by calendar month over the history · this month outlined · tap a market for its weekdays</span></div><div class="card"><div id="season"><p class="muted">Reading up to 20 years of daily bars for ${SEASON_INSTS.length} markets…</p></div><div id="wkday"></div></div>`;
+  bookFlow($('flow')); regimeQuad($('quad'), CH.reg); surprises($('surp'), CH.sur); cotGrid($('cotgrid'), CH.cot); seasonHeat($('season'));
+}
+// a three-column flow: tone → currencies → cards, ribbons sized by the cards' size
+function bookFlow(el) {
+  const b = D.run?.head?.book; if (!b) { el.innerHTML = '<p class="muted">No book today.</p>'; return; }
+  const live = Object.entries(b.instruments).filter(([, c]) => DIR[c.rating] && c.size > 0).sort((a, b2) => b2[1].size - a[1].size).slice(0, 16);
+  const W = 1100, H = 520, top = 30, colX = [40, 470, 900], bw = 14;
+  // middle column: the currencies the shown cards use, sized by the shown cards' size through them
+  const legs = n => (n.length === 6 && CCYS.includes(n.slice(0, 3)) ? [n.slice(0, 3), n.slice(3)] : [{ NQ: 'USD', SPX500: 'USD', US30: 'USD', US2000: 'USD', DE30: 'EUR', UK100: 'GBP' }[n] ?? 'USD']);
+  const ccyW = {}; for (const [n, c] of live) for (const l of legs(n)) if (CCYS.includes(l)) ccyW[l] = (ccyW[l] ?? 0) + c.size / legs(n).length;
+  const ccys = CCYS.filter(c => ccyW[c]).sort((a, b2) => (D.ranking.indexOf(a) - D.ranking.indexOf(b2)));
+  const total = Object.values(ccyW).reduce((x, y) => x + y, 0), avail = H - top - 20, gap = 8;
+  const scale = (avail - gap * (Math.max(ccys.length, live.length) - 1)) / total;
+  let y = top; const cy = {}; for (const c of ccys) { const h = ccyW[c] * scale; cy[c] = { y, h, used: 0 }; y += h + gap; }
+  y = top; const ky = {}; for (const [n, c] of live) { const h = c.size * scale; ky[n] = { y, h, used: 0 }; y += h + gap; }
+  const tone = b.global?.tone ?? '', toneCol = /off/.test(tone) ? '#ff5d78' : /on/.test(tone) ? '#2fd39a' : '#8a93b8', tH = total * scale, tY = top;
+  let tUsed = 0;
+  const ribbon = (x1, y1, h1, x2, y2, h2, col, op, title) => `<path d="M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2} L${x2},${y2 + h2} C${(x1 + x2) / 2},${y2 + h2} ${(x1 + x2) / 2},${y1 + h1} ${x1},${y1 + h1} Z" fill="${col}" opacity="${op}"><title>${esc(title)}</title></path>`;
+  const left = ccys.map(c => { const h = cy[c].h, r = ribbon(colX[0] + bw, tY + tUsed, h, colX[1], cy[c].y, h, toneCol, 0.18, `${tone} → ${c}`); tUsed += h; return r; }).join('');
+  const right = live.map(([n, c]) => { const ls = legs(n).filter(l => cy[l]), d = Math.sign(DIR[c.rating]); return ls.map((l, i) => { const h = c.size * scale / ls.length, side = n.startsWith(l) ? d : -d, src = cy[l], r = ribbon(colX[1] + bw, src.y + src.used, h, colX[2], ky[n].y + ky[n].used, h, side > 0 ? '#2fd39a' : '#ff5d78', 0.32, `${l} ${side > 0 ? 'long' : 'short'} via ${n}`); src.used += h; ky[n].used += h; return r; }).join(''); }).join('');
+  const bias = c => D.ccy[c]?.bias ?? 0;
+  el.innerHTML = `<div class="scroll"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:640px" role="img" aria-label="how the book was built">${left}${right}
+<rect x="${colX[0]}" y="${tY}" width="${bw}" height="${tH}" rx="4" fill="${toneCol}" style="filter:drop-shadow(0 0 8px ${toneCol})"/><text x="${colX[0]}" y="${tY - 10}" fill="#eef0fb" font-family="JetBrains Mono" font-size="12" font-weight="700">${esc(tone.replace('_', '-').toUpperCase())}</text>
+${ccys.map(c => `<g data-ccy="${c}" style="cursor:pointer"><rect x="${colX[1]}" y="${cy[c].y}" width="${bw}" height="${cy[c].h}" rx="3" fill="${bias(c) > 0 ? '#2fd39a' : bias(c) < 0 ? '#ff5d78' : '#8a93b8'}"/><text x="${colX[1] - 8}" y="${cy[c].y + cy[c].h / 2 + 4}" text-anchor="end" fill="#eef0fb" font-family="JetBrains Mono" font-size="12">${FLAG[c] ?? ''} ${c} ${bias(c) > 0 ? '+' : ''}${bias(c)}</text></g>`).join('')}
+${live.map(([n, c]) => `<g data-inst="${esc(n)}" style="cursor:pointer"><rect x="${colX[2]}" y="${ky[n].y}" width="${bw}" height="${Math.max(2, ky[n].h)}" rx="3" fill="${DIR[c.rating] > 0 ? '#2fd39a' : '#ff5d78'}"/><text x="${colX[2] + bw + 8}" y="${ky[n].y + Math.max(2, ky[n].h) / 2 + 4}" fill="#eef0fb" font-family="JetBrains Mono" font-size="11">${esc(n)} <tspan fill="#6d7599">${c.size}</tspan></text></g>`).join('')}
+</svg></div><div class="muted">The sixteen largest cards. Each card's size is split across its two currency legs; a ribbon is green where the card is long that currency, red where it is short it.</div>`;
+  wire(el);
+}
+const REG_COL = { goldilocks: '#2fd39a', reflation: '#e8b85a', stagflation: '#ff5d78', deflation: '#4fb3ff' };
+function regimeQuad(el, r) {
+  const h = r?.history ?? []; if (!h.length) { el.innerHTML = '<p class="muted">No regime history.</p>'; return; }
+  const last = h.slice(-24), W = 520, H = 340, cx = W / 2, cy = H / 2 - 10, m = Math.max(0.3, ...last.flatMap(p => [Math.abs(p.growth), Math.abs(p.inflation)])) * 1.15;
+  const X = g => cx + (g / m) * (W / 2 - 30), Y = i => cy - (i / m) * (H / 2 - 40);
+  const quad = (x, y, w, hh, reg, lab, ax, ay) => `<rect x="${x}" y="${y}" width="${w}" height="${hh}" fill="${REG_COL[reg]}" opacity=".07"/><text x="${ax}" y="${ay}" fill="${REG_COL[reg]}" font-family="JetBrains Mono" font-size="11" letter-spacing="1" text-anchor="${ax < cx ? 'start' : 'end'}">${lab}</text>`;
+  const pts = last.map(p => [X(p.growth), Y(p.inflation)]);
+  const strip = h.slice(-240), sw = (W - 20) / strip.length;
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H + 40}" width="100%" role="img" aria-label="macro regime quadrant">
+${quad(cx, 10, W / 2 - 10, cy - 10, 'reflation', 'REFLATION', W - 20, 26)}${quad(10, 10, W / 2 - 10, cy - 10, 'stagflation', 'STAGFLATION', 20, 26)}${quad(10, cy, W / 2 - 10, H - 40 - cy, 'deflation', 'DEFLATION', 20, H - 46)}${quad(cx, cy, W / 2 - 10, H - 40 - cy, 'goldilocks', 'GOLDILOCKS', W - 20, H - 46)}
+<line x1="10" x2="${W - 10}" y1="${cy}" y2="${cy}" stroke="#2c3866"/><line x1="${cx}" x2="${cx}" y1="10" y2="${H - 40}" stroke="#2c3866"/>
+<text x="${W - 12}" y="${cy - 6}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="9">GROWTH →</text><text x="${cx + 6}" y="20" fill="#6d7599" font-family="JetBrains Mono" font-size="9">INFLATION ↑</text>
+<polyline points="${pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="rgba(238,240,251,.35)" stroke-width="1.5"/>
+${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === pts.length - 1 ? 7 : 2.5 + i / 12}" fill="${REG_COL[last[i].regime]}" opacity="${0.35 + 0.65 * i / pts.length}" ${i === pts.length - 1 ? 'style="filter:drop-shadow(0 0 8px #fff)"' : ''}><title>${last[i].m}: ${last[i].regime}</title></circle>`).join('')}
+<text x="${pts.at(-1)[0] + 10}" y="${pts.at(-1)[1] - 8}" fill="#eef0fb" font-family="JetBrains Mono" font-size="11">${esc(last.at(-1).m)} ${esc(r.now?.label ?? '')}</text>
+${strip.map((p, i) => `<rect x="${10 + i * sw}" y="${H - 18}" width="${sw + 0.3}" height="14" fill="${REG_COL[p.regime]}" opacity=".75"><title>${p.m} ${p.regime}</title></rect>`).join('')}
+<text x="10" y="${H + 10}" fill="#6d7599" font-family="JetBrains Mono" font-size="9">${esc(strip[0].m)}</text><text x="${W - 10}" y="${H + 10}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="9">${esc(strip.at(-1).m)}</text></svg>
+<div class="muted">${esc(r.now?.what ?? '')}. ${esc(String(r.now?.usual ?? '').replace(/([^.])$/, '$1.'))} The strip is the regime month by month over ${Math.round(strip.length / 12)} years. Context, not a signal.</div>`;
+}
+function surprises(el, s) {
+  if (!s?.ok) { el.innerHTML = '<p class="muted">No surprise data.</p>'; return; }
+  const now = Date.now(), from = now - 120 * 864e5, pts = [];
+  for (const [k, arr] of Object.entries(s.series ?? {})) { const c = CC2[k.split('|')[0]]; if (!c) continue; for (const p of arr ?? []) if (p.ms >= from && Number.isFinite(p.z)) pts.push({ c, ms: p.ms, z: Math.max(-4, Math.min(4, p.z)), ev: k.split('|')[1] }); }
+  const W = 520, rowH = 34, H = 26 + CCYS.length * rowH, X = ms => 70 + ((ms - from) / (now - from)) * (W - 140);
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="data surprises">${CCYS.map((c, i) => { const y = 20 + i * rowH + rowH / 2, sc = s.byCcy?.[c]?.score;
+    return `<line x1="70" x2="${W - 70}" y1="${y}" y2="${y}" stroke="#1f2950"/><text x="0" y="${y + 4}" fill="#a9b0d0" font-family="JetBrains Mono" font-size="11">${FLAG[c] ?? ''} ${c}</text>
+${pts.filter(p => p.c === c).map(p => `<circle cx="${X(p.ms)}" cy="${y - p.z * 3.6}" r="${2 + Math.abs(p.z) * 0.9}" fill="${p.z > 0 ? '#2fd39a' : '#ff5d78'}" opacity=".7"><title>${new Date(p.ms).toISOString().slice(0, 10)} ${esc(p.ev)}: z ${p.z.toFixed(2)}</title></circle>`).join('')}
+<rect x="${W - 60}" y="${y - 7}" width="50" height="14" rx="4" fill="var(--bg3)"/><rect x="${W - 35}" y="${y - 7}" width="${Math.min(25, Math.abs(sc ?? 0) * 25)}" height="14" rx="3" fill="${(sc ?? 0) > 0 ? '#2fd39a' : '#ff5d78'}" opacity=".4" transform="${(sc ?? 0) < 0 ? `translate(${-Math.min(25, Math.abs(sc) * 25)},0)` : ''}"/><text x="${W - 35}" y="${y + 4}" text-anchor="middle" fill="#eef0fb" font-family="JetBrains Mono" font-size="10" font-weight="700" paint-order="stroke" stroke="#070a17" stroke-width="2.5">${sc == null ? '–' : f(sc)}</text>`; }).join('')}
+<text x="70" y="${H - 2}" fill="#6d7599" font-family="JetBrains Mono" font-size="9">${new Date(from).toISOString().slice(5, 10)}</text><text x="${W - 70}" y="${H - 2}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="9">today</text></svg>
+<div class="muted">Each dot is one release: above the line beat consensus, below missed it, bigger = a bigger surprise. Right: the decayed surprise index per currency.</div>`;
+}
+function cotGrid(el, c) {
+  const S = c?.series ?? {}, want = ['EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD', 'GOLD', 'NQ', 'SPX'];
+  const syms = want.filter(k => S[k]).concat(Object.keys(S).filter(k => !want.includes(k))).slice(0, 12);
+  if (!syms.length) { el.innerHTML = `<div class="card muted">${esc(c?.error ?? 'No COT history.')}</div>`; return; }
+  el.innerHTML = syms.map(k => { const v = S[k].specShare.map(x => (x == null ? null : +x)), ok = v.filter(Number.isFinite), sorted = [...ok].sort((a, b) => a - b);
+    const p10 = sorted[Math.floor(sorted.length * 0.1)], p90 = sorted[Math.floor(sorted.length * 0.9)], lo = Math.min(...ok), hi = Math.max(...ok), W = 300, H = 110, X = i => (i / (v.length - 1)) * W, Y = x => H - 6 - ((x - lo) / (hi - lo || 1)) * (H - 12);
+    const last = ok.at(-1), ext = last >= p90 ? 'crowded long' : last <= p10 ? 'crowded short' : null;
+    const line = v.map((x, i) => (Number.isFinite(x) ? `${X(i).toFixed(1)},${Y(x).toFixed(1)}` : null)).filter(Boolean).join(' ');
+    return `<div class="card" style="padding:12px 14px"><div class="ch" style="margin-bottom:4px"><b class="mono">${esc(S[k].label ?? k)}</b><span class="r">${ext ? `<span class="chip ${last > 0 ? 'up' : 'dn'}">${ext}</span>` : ''}<span class="mono ${dirCls(last)}" style="font-size:12px">${f(last, 1)}%</span></span></div>
+<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="none" role="img" aria-label="${esc(k)} positioning"><rect x="0" y="0" width="${W}" height="${Y(p90)}" fill="rgba(47,211,154,.07)"/><rect x="0" y="${Y(p10)}" width="${W}" height="${H - Y(p10)}" fill="rgba(255,93,120,.07)"/>${lo < 0 && hi > 0 ? `<line x1="0" x2="${W}" y1="${Y(0)}" y2="${Y(0)}" stroke="#2c3866"/>` : ''}<polyline points="${line}" fill="none" stroke="#b4a9ff" stroke-width="1.6" vector-effect="non-scaling-stroke"/><circle cx="${X(v.length - 1)}" cy="${Y(last)}" r="4" fill="${last > 0 ? '#2fd39a' : '#ff5d78'}" style="filter:drop-shadow(0 0 5px ${last > 0 ? '#2fd39a' : '#ff5d78'})"/></svg>
+<div class="muted" style="font-size:11px">${esc(S[k].dates[0])} → ${esc(S[k].dates.at(-1))}</div></div>`; }).join('');
+}
+async function seasonHeat(el) {
+  const got = await Promise.all(SEASON_INSTS.map(i => CH.season[i] ? CH.season[i] : getJson(`/api/desk-season?inst=${i}`).then(r => (CH.season[i] = r))));
+  const rows = SEASON_INSTS.map((i, k) => [i, got[k]]).filter(([, r]) => r?.ok);
+  if (!rows.length) { el.innerHTML = '<p class="muted">No daily history available.</p>'; return; }
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], cm = new Date().getUTCMonth();
+  const col = (m, sd) => { if (m == null) return 'var(--bg3)'; const z = Math.max(-1, Math.min(1, m / Math.max(0.3, sd ?? 1) * 1.5)); return z > 0 ? `rgba(47,211,154,${0.12 + z * 0.6})` : `rgba(255,93,120,${0.12 - z * 0.6})`; };
+  el.innerHTML = `<div class="scroll"><table class="heat" style="min-width:720px"><thead><tr><th></th>${MON.map((m, i) => `<th style="text-align:center;${i === cm ? 'color:var(--gold)' : ''}">${m}</th>`).join('')}<th>Since</th></tr></thead><tbody>${rows.map(([i, r]) => `<tr><th><a href="#" data-wk="${i}" style="color:var(--tx);text-decoration:none">${esc(i)}</a></th>${r.months.map((m, k) => `<td style="background:${col(m.mean, m.sd)};${k === cm ? 'outline:2px solid var(--gold);outline-offset:-2px' : ''}" title="${MON[k]}: mean ${m.mean}% · up ${Math.round((m.up ?? 0) * 100)}% of ${m.n} years">${m.mean == null ? '' : (m.mean > 0 ? '+' : '') + m.mean.toFixed(1)}<br><span style="font-size:9px;opacity:.7">${m.up == null ? '' : Math.round(m.up * 100) + '%↑'}</span></td>`).join('')}<td class="muted" style="font-size:10px">${esc(r.from?.slice(0, 4))}</td></tr>`).join('')}</tbody></table></div>
+<div class="muted">Mean monthly return (%) and the share of years it rose. Each month is one draw per year, so ~15-20 per cell: history, not a forecast, and most cells are within noise.</div>`;
+  el.querySelectorAll('[data-wk]').forEach(a => a.onclick = ev => { ev.preventDefault(); const r = CH.season[a.dataset.wk], D5 = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], m = Math.max(...r.weekdays.map(w => Math.abs(w.mean ?? 0)), 0.001);
+    $('wkday').innerHTML = `<div class="sec"><h2>${esc(a.dataset.wk)} by weekday</h2><span class="lbl">mean daily return and share up, ${esc(r.from)} to ${esc(r.to)}</span></div><svg viewBox="0 0 520 150" width="100%" style="max-width:640px">${r.weekdays.map((w, k) => { const x = 40 + k * 95, h = Math.abs(w.mean ?? 0) / m * 50; return `<rect x="${x}" y="${w.mean >= 0 ? 70 - h : 70}" width="60" height="${h}" rx="4" fill="${w.mean >= 0 ? '#2fd39a' : '#ff5d78'}" opacity=".8"/><text x="${x + 30}" y="140" text-anchor="middle" fill="#a9b0d0" font-family="JetBrains Mono" font-size="11">${D5[k]}</text><text x="${x + 30}" y="${w.mean >= 0 ? 64 - h : 86 + h}" text-anchor="middle" fill="#eef0fb" font-family="JetBrains Mono" font-size="10">${w.mean == null ? '' : (w.mean > 0 ? '+' : '') + w.mean.toFixed(3)}% · ${Math.round((w.up ?? 0) * 100)}%↑</text>`; }).join('')}<line x1="30" x2="510" y1="70" y2="70" stroke="#2c3866"/></svg>`; });
 }
 
 // clicking a currency or an instrument anywhere opens its card
@@ -739,7 +943,7 @@ $('askbtn').onclick = () => {
 };
 
 load();
-setInterval(() => { if (!document.hidden) { ANA = null; load(); if (!$('ana').hidden) analytics(); } }, 5 * 60_000);
+setInterval(() => { if (!document.hidden) { ANA = null; load(); if (!$('ana').hidden) analytics(); } }, 5 * 60_000);   // the Charts tab's sources change daily at most: drawn once per visit
 </script>
 </body>
 </html>

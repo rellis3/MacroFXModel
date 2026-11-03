@@ -205,15 +205,31 @@ ${us.length ? `<h3 style="font-size:14px;margin:10px 0 4px">Did the session upda
 
 // ── YOU and RESEARCH: filled by the later phases ──
 // Phases 8 and 13 (js/deskJournal.js via /api/desk-journal): the bots' trades against the book, and how they were executed.
+// Agent 20 (/api/rules-keeper): each bot against the research behind its idea
+async function renderRules() {
+  const r = await getJson('/api/rules-keeper'), el = $('rulespanel'); if (!el) return;
+  if (!r?.ok) { el.innerHTML = `<h2>Rules keeper</h2><p class="muted">${esc(r?.error ?? 'not available')}</p>`; return; }
+  const SEV = { high: 'bad', medium: 'warn', low: '' }, shown = r.bots.filter(b => b.present || b.flags.length);
+  const ago = m => (m == null ? '–' : m < 90 ? `${m} min` : m < 2880 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} d`);
+  el.innerHTML = `<h2>Rules keeper <i>${esc(r.label)} · ${r.reporting} of ${r.total} bots reporting, ${r.live} live</i></h2>
+<div class="tiles"><div class="tile"><span>High</span><b class="${r.counts.high ? 'dn' : ''}">${r.counts.high}</b></div><div class="tile"><span>Medium</span><b>${r.counts.medium}</b></div><div class="tile"><span>Low</span><b>${r.counts.low}</b></div></div>
+<table><thead><tr><th>Bot</th><th>Mode</th><th>Last update</th><th>Today</th><th>Its idea and the research</th><th>Flags</th></tr></thead><tbody>${shown.map(b => `<tr><td><b>${esc(b.label)}</b><br><span class="muted">${esc(b.key)}</span></td>
+<td>${b.mode ? `<span class="chip ${b.live ? 'warn' : ''}">${esc(b.mode)}</span>` : '<span class="muted">–</span>'}<br><span class="muted">registry: ${b.registryPaper ? 'paper' : 'live'}</span></td>
+<td class="n">${b.present ? ago(b.ageMin) : '<span class="muted">no status</span>'}</td>
+<td class="n">${b.positions} open${b.todayClosed ? `<br>${b.todayClosed} closed, <span class="${cls(b.todayPnl)}">${f(b.todayPnl)}</span>` : ''}</td>
+<td>${b.idea ? esc(b.idea) : '<span class="muted">no study linked</span>'}${b.evidence.length ? `<br>${b.evidence.map(e => `<span class="chip ${e.bearing === 'against' ? 'bad' : e.bearing === 'support' ? 'ok' : ''}" title="${esc(e.use)}">${esc(e.id)} · ${esc(e.verdict)}</span>`).join(' ')}` : ''}${b.register.length ? `<br>${b.register.map(x => `<span class="chip warn" title="${esc(x.next)}">${esc(x.id)} · ${esc(x.status)}</span>`).join(' ')}` : ''}</td>
+<td>${b.flags.length ? b.flags.map(fl => `<div style="margin:3px 0"><span class="chip ${SEV[fl.severity]}">${esc(fl.severity)} · ${esc(fl.kind)}</span> <span class="muted">${esc(fl.text)}</span></div>`).join('') : '<span class="chip ok">clear</span>'}</td></tr>`).join('')}</tbody></table>
+<p class="muted">The map of bots to research is curated in js/rulesKeeper.js (BOT_BASIS); a bot it does not know shows "no study linked". Hover a chip for the Evidence Book's own words. It reports only: it never changes a bot.</p>`;
+}
 async function renderYou(days = 28) {
   const j = await getJson(`/api/desk-journal?days=${days}`);
-  if (!j?.ok) { $('you').innerHTML = `<div class="panel"><h2>Journal coach</h2><p class="muted">${esc(j?.error ?? 'not available')}</p></div>`; return; }
+  if (!j?.ok) { $('you').innerHTML = `<div class="panel" id="rulespanel"><h2>Rules keeper</h2><p class="muted">Loading…</p></div><div class="panel"><h2>Journal coach</h2><p class="muted">${esc(j?.error ?? 'not available')}</p></div>`; renderRules(); return; }
   const c = j.coach, x = j.execution, pct = v => (v == null ? '–' : Math.round(v * 100) + '%');
   const ST = [['with', 'With the book', 'the card leaned the same way'], ['against', 'Against the book', 'the card leaned the other way'], ['no view', 'No view', 'the book had the market, no lean'], ['off book', 'Off book', 'no book, opened before it, or not in it']];
   const row = (l, w, g) => `<tr><td><b>${l}</b>${w ? `<br><span class="muted">${w}</span>` : ''}</td><td class="n">${g.n}</td><td class="n">${pct(g.winRate)}</td><td class="n ${cls(g.meanR)}">${f(g.meanR)}</td><td class="n ${cls(g.profit)}">${f(g.profit)}</td></tr>`;
   const head = '<thead><tr><th></th><th>Trades</th><th>Win rate</th><th>Mean R</th><th>Profit</th></tr></thead>';
   const sel = [7, 28, 90].map(d => `<button class="btn" data-jdays="${d}"${d === days ? ' style="border-color:var(--acc);color:var(--acc)"' : ''}>${d} days</button>`).join(' ');
-  $('you').innerHTML = `<div class="panel"><h2>Journal coach <i>${esc(j.label)} · ${j.trades} trades on ${j.daysTraded} days, a book on ${j.booksFound}</i></h2>
+  $('you').innerHTML = `<div class="panel" id="rulespanel"><h2>Rules keeper</h2><p class="muted">Loading…</p></div><div class="panel"><h2>Journal coach <i>${esc(j.label)} · ${j.trades} trades on ${j.daysTraded} days, a book on ${j.booksFound}</i></h2>
 <p>${sel}</p>${c.notes.map(n => `<p>${esc(n)}</p>`).join('')}
 <div class="grid2"><div><table>${head}<tbody>${ST.map(([k, l, w]) => row(l, w, c.byStance[k])).join('')}</tbody></table></div>
 <div><h3 style="font-size:14px;margin:0 0 6px">By bot</h3><table><thead><tr><th>Bot</th><th>With</th><th>Against</th><th>Mean R with</th><th>Mean R against</th></tr></thead><tbody>${Object.entries(c.byBot).map(([b, s]) => `<tr><td>${esc(b)}</td><td class="n">${s.with.n}</td><td class="n">${s.against.n}</td><td class="n ${cls(s.with.meanR)}">${f(s.with.meanR)}</td><td class="n ${cls(s.against.meanR)}">${f(s.against.meanR)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">No trades.</td></tr>'}</tbody></table></div></div>
@@ -227,6 +243,7 @@ ${c.trades.length ? `<h3 style="font-size:14px;margin:14px 0 6px">Latest trades<
 ${c.hours.length ? `<h3 style="font-size:14px;margin:14px 0 6px">Entries by London hour</h3><table><thead><tr><th>Hour</th><th>Trades</th><th>Win rate</th><th>Mean R</th><th>Profit</th></tr></thead><tbody>${c.hours.map(h => `<tr><td class="n">${String(h.hour).padStart(2, '0')}:00</td><td class="n">${h.n}</td><td class="n">${pct(h.winRate)}</td><td class="n ${cls(h.meanR)}">${f(h.meanR)}</td><td class="n ${cls(h.profit)}">${f(h.profit)}</td></tr>`).join('')}</tbody></table>` : ''}
 <p class="muted">R is measured against the stop at entry. MFE is the best move while the trade was open (logged by the bot or rebuilt from M1 on the Give-back page). "Entry vs zone" needs the zone's planned entry on the trade, which only some bots record; positive means a worse fill than planned.</p></div>`;
   document.querySelectorAll('[data-jdays]').forEach(b => b.onclick = () => renderYou(+b.dataset.jdays));
+  renderRules();
 }
 function renderResearch() {
   $('research').innerHTML = '<div class="panel" id="theorypanel"><h2>Theory desk</h2><p class="muted">Loading…</p></div><div class="panel" id="opspanel"><h2>Research ops</h2><p class="muted">Loading…</p></div><div id="ecopanel"></div>';
