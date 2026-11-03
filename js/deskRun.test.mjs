@@ -77,6 +77,9 @@ const PHASE2 = {
   currency_views: () => ({ currencies: Object.fromEntries(DESK_CCYS.map((c, i) => [c, { bias: (i % 5) - 2, conviction: 'medium', why: 'w', flip: 'f' }])), ranking: [] }),
   asset_views: (id, prompt) => { const names = prompt.match(/Rate every instrument in your group: ([^.]+)\./)[1].split(', ');
     return { summary: 's', instruments: Object.fromEntries(names.map(n => [n, { rating: 'SHORT', conviction: 'low', why: `${n} legs`, plan: { zone: 'z', invalidation: 'i', timing: 'London' } }])) }; },
+  newsletter_issue: () => ({ subject: 'Dollar and yen bid as credit cracks', standfirst: 'Credit widened. The desk reads risk-off. Midterms at 15:16 UK time.',
+    sections: [{ title: 'The global backdrop', label: 'Model output', body: 'b' }, { title: 'The currencies', label: 'Untested interpretation', body: 'c' }, { title: 'What could break the day', label: 'Observed data', body: 'e' }],
+    ideas: [{ instrument: 'AUDJPY', view: 'SHORT', size: 0.7, level: 'l', invalidation: 'i', why: 'w' }] }),
   risk_case: id => ({ headline: `${id} view`, adjustments: [{ target: 'ALL', size: id === 'risk_conservative' ? 0.5 : 1, veto: false, reason: 'r' }, { target: 'XYZ', size: 1 }], warnings: ['NFP'] }),
 };
 
@@ -173,8 +176,10 @@ await t('runDesk full mode: analysts, global debate + ruling, currency debate + 
   assert.equal(d.risk.risk_conservative.view.adjustments.length, 1, 'unknown target dropped');
   assert.ok(run.head.ok);
   const analysts = roles.filter(r => r.output === 'analyst_report').length;
-  assert.equal(run.calls, analysts + 4 + 1 + 4 + 1 + Object.keys(DESK_UNIVERSE).length + 3 + 1);
-  assert.equal(m.calls.at(-1), 'desk-head');
+  assert.equal(run.calls, analysts + 4 + 1 + 4 + 1 + Object.keys(DESK_UNIVERSE).length + 3 + 1 + 1, 'plus the newsletter writer');
+  assert.ok(run.newsletter.ok); assert.equal(run.newsletter.issue.ideas[0].instrument, 'AUDJPY');
+  assert.ok(run.head.book.exposure, 'exposure report attached');
+  assert.equal(m.calls.at(-1), 'desk-head', 'the writer runs on the deep tier, last');
 });
 
 await t('runDesk full mode: a failed stage is recorded and the next stage falls back; one round skips rebuttals', async () => {

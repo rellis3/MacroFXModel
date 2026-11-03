@@ -15,11 +15,14 @@
 import { buildAnalystPrompt, buildHeadPrompt, buildStagePrompt, reportsText, groupData, universeText } from './deskRoles.js';
 import { validateAnalystReport, validateHeadBook, validateDebateCase, validateGlobalView, validateCurrencyViews, validateAssetViews, validateRiskCase } from './deskSchemas.js';
 import { allInstruments, DESK_UNIVERSE, DESK_CCYS, instrumentLegs } from './deskPack.js';
+import { capExposure } from './deskExposure.js';
+import { newsletterSections } from './deskNewsletter.js';
+import { validateNewsletterIssue } from './deskSchemas.js';
 
 export const DESK_RUN_VERSION = 1;
 const TASK = { quick: 'desk-analyst', deep: 'desk-head' };
 // Output caps. They must leave room for the model's thinking, which is billed as output and counts against the cap.
-export const CAPS = { analyst: 16_000, debate: 12_000, manager: 12_000, asset: 16_000, risk: 10_000, head: 32_000 };
+export const CAPS = { analyst: 16_000, debate: 12_000, manager: 12_000, asset: 16_000, risk: 10_000, head: 32_000, writer: 16_000 };
 const MAX_CAP = 32_000;
 
 // A provider error worth one more try: a dropped connection, a timeout, rate limiting or a server error. A 4xx
@@ -62,7 +65,7 @@ async function pool(items, limit, fn) {
  * roles: parsed role files (js/deskRoles.js parseRole), analysts plus one with id head_of_desk.
  * Returns the run record that the server saves and the pages read.
  */
-export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, concurrency = 4, onProgress = () => {}, mode = 'full', rounds = 2, retryDelayMs = 4000 }) {
+export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, concurrency = 4, onProgress = () => {}, mode = 'full', rounds = 2, retryDelayMs = 4000, exposureCap = 4, styleExamples = [] }) {
   if (!pack?.skills) throw new Error('no desk pack to run on');
   const head = roles.find(r => r.id === 'head_of_desk');
   if (!head) throw new Error('role head_of_desk is missing');
@@ -106,9 +109,26 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
       validate: o => validateHeadBook(o, allInstruments()) });
     headOut = { ok: r.ok, book: r.value ?? null, notes: r.notes ?? [], errors: r.errors ?? [], attempts: r.attempts };
   }
+  // The per-currency exposure cap (js/deskExposure.js): arithmetic on the Head's sizes, after the model.
+  if (headOut.ok && exposureCap > 0) {
+    const capped = capExposure(headOut.book.instruments, { cap: exposureCap });
+    headOut.book.instruments = capped.cards;
+    headOut.book.exposure = capped.report;
+  }
+  // Layer 4, the desk edition of the newsletter (full runs only; beside the regular issue, never instead of it).
+  let newsletter = null;
+  const writer = roles.find(r => r.id === 'newsletter_writer');
+  if (mode === 'full' && headOut.ok && writer) {
+    onProgress({ stage: 'newsletter', label: 'writing the desk edition of the newsletter' });
+    const sections = newsletterSections({ head: headOut, debate, analysts: analystsOut }, styleExamples);
+    const { system, prompt } = buildStagePrompt({ role: writer, pack, ledger: [], sections });
+    const r = await askValidated({ callModel, parseJson, retryDelayMs, task: TASK[writer.tier], system, prompt, maxTokens: CAPS.writer, label: 'desk:newsletter',
+      validate: o => validateNewsletterIssue(o, allInstruments()) });
+    newsletter = { ok: r.ok, issue: r.value ?? null, notes: r.notes ?? [], errors: r.errors ?? [], attempts: r.attempts };
+  }
   onProgress({ stage: 'head', ok: headOut.ok, label: 'head of desk done' });
   const usage = { in: 0, out: 0 };
-  const allAttempts = [...results.flatMap(r => r.attempts), ...(debate?.attempts ?? []), ...(headOut.attempts ?? [])];
+  const allAttempts = [...results.flatMap(r => r.attempts), ...(debate?.attempts ?? []), ...(headOut.attempts ?? []), ...(newsletter?.attempts ?? [])];
   for (const a of allAttempts) { usage.in += a.usage?.in ?? 0; usage.out += a.usage?.out ?? 0; }
   return {
     version: DESK_RUN_VERSION,
@@ -123,6 +143,7 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
     failed,
     debate: debate ? { global: debate.global, currency: debate.currency, assets: debate.assets, risk: debate.risk, failed: debate.failed } : null,
     head: headOut,
+    newsletter,
     calls: allAttempts.length,
     usage,
   };

@@ -186,7 +186,7 @@ names, so a task routed to DeepSeek never receives an Anthropic model id.
 | **0** | Desk Pack: feed registry, daily build 06:40 London, gaps and freshness, saved per day | **built**: `js/deskPack.js`, `/api/desk-pack*`, service `deskPack` |
 | 1 | Role files + schemas; Layer 1 analysts; Head of Desk reading analysts only; desk-run page | **built** (§9b); hand-written slicers and an Atlas panel follow the first Railway runs |
 | 2 | Layer 2 top-down debate + Layer 3 asset desks and risk desk; debate visible on the page | **built** (§9d) |
-| 3 | Layer 4 writers (newsletter first, then day forecast, directional, ideas, risk) | the newsletter is written from the pipeline |
+| 3 | Layer 4 writers (newsletter first, then day forecast, directional, ideas, risk) | newsletter desk edition **built** (§9g); day forecast next |
 | 4 | Layer 5 memory + grading; the pre-registered comparison (§8) starts counting | first graded month |
 
 ## 8. How it gets judged
@@ -304,6 +304,49 @@ invalidation, timing) → **risk desk** (Aggressive, Conservative and Neutral vo
   errors (network, timeout, 429, 5xx) now get one retry after a short wait; a 4xx does not. The page froze on a phone
   that had paused it, so it now re-checks when it becomes visible again. The level feeds had timed out in that
   morning's pack, which was built before the 90 s timeout shipped.
+
+## 9f. Fixes after the first full run (2026-11-03)
+
+- **RBNZ:** the RBNZ firewall blocks the server from its statement pages (HTTP 403 on every statement since July). The
+  code does not work around that: the fix for full statements is an allowlist request to Servicedesk@rbnz.govt.nz.
+  The news RSS does answer, and its titles carry each decision, so `/api/rbnz/decisions` gives the OCR path
+  headline-only (Apr hold 2.25%, May hold 2.25%, Jul hike to 2.50%, Sep +25bp to 2.75%, Oct hold 2.75%). It is in the
+  rates analyst's slice. Before this, the desk read NZD as "no catalyst".
+- **Rate differentials:** not broken. The store is wiped on each deploy and refills within about two minutes; the
+  04:43 pack ran just after a deploy.
+- **Fed path:** not broken. The Atlanta Fed tracker publishes about two business days late; the fed funds futures leg
+  (zq) is fresh nightly. Freshness allowance raised to 6 days.
+- **Forward track:** the live record of the Pooled VuManChu Fade only refreshes when someone presses Refresh on
+  forward-track.html; it was pressed once on 2026-07-15. Dropped from the pack, because a dead record misleads the
+  evidence clerk. Scheduling it is the owner's call.
+- **Price levels for every instrument:** `priceLadder` turns the vol forecast's lines (percent from the open) into
+  prices: open, then up and down at p50/p75/p90. The asset desks are told to use them when no options wall,
+  swing-map barrier or trade-decision zone exists. On the first run, 9 instruments had "no level in the reports".
+- **Session open precision:** `anchor_open` was rounded to 2 decimals for every instrument (EURUSD 1.12 for
+  1.11799, about 20 pips off), and js/levels.js builds its forecast levels from it too. It is now full precision.
+- **Per-currency exposure cap** (`js/deskExposure.js`): plain arithmetic after the Head. Each card's signed size goes
+  on the currencies it touches (a pair is long its base and short its quote; commodities and crypto count against
+  USD; indices are left out). Over the cap (default 4 normal-size units, `DESK_EXPOSURE_CAP`), the cards on that side
+  shrink in proportion. On the first run's book, USD was 8.95: the 16 USD-long cards would have been roughly halved.
+  The page shows net exposure before and after, and each cut card shows its old size.
+
+## 9g. Phase 3 as built: the desk edition of the newsletter (2026-11-03)
+
+- **Side by side, never instead** (owner): the regular issue is untouched (still built on Atlas from measured rows,
+  still the one sent). A full run now ends with a **newsletter writer** (`desk/roles/newsletter_writer.md`, deep tier)
+  that writes the desk edition of The Chain from the desk book.
+- **The voice is taken from the real issues:** the role holds the house rules (plain English, numbers with units and
+  windows, a short "X, but Y" headline, a 3-5 sentence opening with UK times, one house label per section), and the
+  run passes the headline and opening of the three latest regular dailies as examples (`styleExamples`).
+- **The desk's views are labelled:** sections carry the house labels (an unknown label is read as "Untested
+  interpretation"); views are the desk's untested reads; forecasting wording in the opening is flagged in the
+  writer notes on the page. At most 8 ideas, each with view, size after the exposure cap, level and invalidation.
+- **Saved beside the daily:** rendered in The Chain's look (`js/deskNewsletter.js`) and saved to
+  `newsletter_archive_v1` as kind `desk`, id `desk-<date>`. It is never scored as a daily (scoring reads
+  `kind === 'daily'` only), and the archive keeps 60 issues (was 40) so desk editions do not push dailies out.
+  Atlas lists it as "Desk edition"; Desk Run shows the headline and opening with **Open the desk edition**, **Open
+  today's regular issue** and **Compare side by side**.
+- One more deep call per full run (about 33 calls in all).
 
 ## 10. Owner decisions (2026-11-03)
 

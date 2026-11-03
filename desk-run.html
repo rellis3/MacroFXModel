@@ -92,18 +92,24 @@ function render(run, universe) {
       ${b.gaps.length ? `<div class="muted">Could not see: ${b.gaps.map(esc).join(' · ')}</div>` : ''}</div>`);
     parts.push(`<div class="panel"><h2>Currencies</h2><div class="ccys">${Object.entries(b.currencies).map(([c, v]) =>
       `<div class="ccy"><b>${c}</b> ${sgn(v.bias)}<div class="muted">${esc(v.why)}</div></div>`).join('')}</div></div>`);
+    if (b.exposure) {
+      const e = b.exposure, cell = k => `<div class="ccy"><b>${k}</b> ${sgn(e.after[k])}${e.before[k] !== e.after[k] ? ` <span class="muted">(was ${e.before[k]})</span>` : ''}</div>`;
+      parts.push(`<div class="panel"><h2>Net exposure by currency · cap ${e.cap}</h2><div class="ccys">${Object.keys(e.after).map(cell).join('')}</div>
+        <p class="muted">Each card's size, signed, added to the currencies it touches (a pair is long its base and short its quote; commodities and crypto count against USD; indices are left out). ${e.cuts.length ? `Over the cap: ${e.cuts.map(x => `${x.ccy} ${x.net} → cards on that side scaled ×${x.factor}`).join('; ')}.` : 'Nothing was over the cap.'}</p></div>`);
+    }
     const rows = GROUPS.map(([g, label]) => {
       const names = universe?.[g] ?? [];
       if (!names.length) return '';
       return `<tr class="grp"><td colspan="4">${label}</td></tr>` + names.map(n => { const c = b.instruments[n] ?? { rating: 'REVIEW' };
         const plan = c.plan && (c.plan.zone || c.plan.timing) ? `<div class="plan">Plan: ${esc(c.plan.zone)}${c.plan.timing ? ` · ${esc(c.plan.timing)}` : ''}${c.plan.invalidation ? ` · wrong if ${esc(c.plan.invalidation)}` : ''}</div>` : '';
-        return `<tr><td class="n">${n}</td><td><span class="r ${c.rating}">${c.rating.replace('_', ' ')}</span><div class="muted">${esc(c.conviction)}</div>${c.size != null ? `<div class="size">size ${c.size}</div>` : ''}</td><td>${esc(c.why) || '<span class="muted">no card</span>'}${plan}</td><td class="muted">${esc(c.invalidation)}</td></tr>`; }).join('');
+        return `<tr><td class="n">${n}</td><td><span class="r ${c.rating}">${c.rating.replace('_', ' ')}</span><div class="muted">${esc(c.conviction)}</div>${c.size != null ? `<div class="size">size ${c.size}${c.sizeBeforeCap != null ? ` <span class="muted">(was ${c.sizeBeforeCap}, ${esc((c.cappedBy ?? []).join('/'))} cap)</span>` : ''}</div>` : ''}</td><td>${esc(c.why) || '<span class="muted">no card</span>'}${plan}</td><td class="muted">${esc(c.invalidation)}</td></tr>`; }).join('');
     }).join('');
     parts.push(`<div class="panel"><h2>Instruments · five-step scale</h2><table><thead><tr><th>Instrument</th><th>Rating</th><th>Why</th><th>Wrong if</th></tr></thead><tbody>${rows}</tbody></table>
       ${h.notes?.length ? `<p class="muted">Repairs: ${h.notes.map(esc).join(' · ')}</p>` : ''}</div>`);
   } else {
     parts.push(`<div class="panel fail">The Head of Desk did not produce a book: ${esc((h?.errors ?? []).join('; '))}</div>`);
   }
+  if (run.newsletter) parts.push(renderNewsletter(run));
   if (run.debate) parts.push(renderDebate(run.debate));
   const an = Object.values(run.analysts).sort((a, b) => LAYERS.indexOf(a.layer) - LAYERS.indexOf(b.layer));
   parts.push(`<div class="panel"><h2>Analysts</h2>${an.map(a => a.ok ? `<details><summary>${esc(a.id)}<span class="muted">${esc(a.layer)} · ${esc(a.report.confidence)} · ${a.input?.usable ?? '?'} of ${a.input?.feeds ?? '?'} feeds</span><div style="font-weight:400">${esc(a.report.headline)}</div></summary>
@@ -112,6 +118,26 @@ function render(run, universe) {
     : `<details><summary class="fail">${esc(a.id)} failed</summary><div class="pt muted">${esc(a.errors.join('; '))}</div></details>`).join('')}</div>`);
   parts.push(`<p class="muted">Tokens: in ${run.usage?.in ?? '?'} · out ${run.usage?.out ?? '?'} · finished ${esc(run.finishedAt)} · ${esc(run.trigger ?? '')}. This book is context from the analyst pipeline (plans/DESK_ANALYST_PIPELINE.md). It is not a tested signal: it is scored only once its pre-registration is in place.</p>`);
   $('out').innerHTML = parts.join('');
+  const cmp = document.getElementById('nlCmp');
+  if (cmp) cmp.onclick = () => { const box = document.getElementById('nlCmpBox'); const show = box.style.display === 'none'; box.style.display = show ? 'grid' : 'none'; if (show) box.querySelectorAll('iframe').forEach(f => { if (f.src === 'about:blank') f.src = f.dataset.src; }); };
+}
+
+// The desk edition of The Chain, beside today's regular issue (owner, 2026-11-03: compare before anything is replaced).
+function renderNewsletter(run) {
+  const n = run.newsletter;
+  if (!n.ok) return `<div class="panel"><h2>Newsletter · desk edition</h2><div class="fail">The writer failed: ${esc((n.errors ?? []).join('; '))}</div></div>`;
+  const desk = n.archiveId ? `/api/newsletter/issue?id=${encodeURIComponent(n.archiveId)}` : null, reg = `/api/newsletter/issue?id=${encodeURIComponent(`daily-${run.date}`)}`;
+  return `<div class="panel"><h2>Newsletter · desk edition, beside the regular issue</h2>
+    <p class="headline">${esc(n.issue.subject)}</p><p>${esc(n.issue.standfirst)}</p>
+    ${n.notes?.length ? `<p class="muted">Writer notes: ${n.notes.map(esc).join(' · ')}</p>` : ''}
+    <p style="display:flex;gap:8px;flex-wrap:wrap">${desk ? `<a class="btn" href="${desk}" target="_blank" rel="noopener">Open the desk edition</a>` : '<span class="muted">not saved to the archive</span>'}
+      <a class="btn" href="${reg}" target="_blank" rel="noopener">Open today's regular issue</a>
+      ${desk ? `<button class="btn" type="button" id="nlCmp">Compare side by side</button>` : ''}</p>
+    <div id="nlCmpBox" style="display:none;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:10px;margin-top:10px">
+      <iframe title="Desk edition" src="about:blank" data-src="${desk ?? ''}" style="width:100%;height:70vh;border:1px solid var(--line);border-radius:6px;background:#fff"></iframe>
+      <iframe title="Regular issue" src="about:blank" data-src="${reg}" style="width:100%;height:70vh;border:1px solid var(--line);border-radius:6px;background:#fff"></iframe>
+    </div>
+    <p class="muted">If today's regular issue has not been built yet, its frame shows "not found": build it on Atlas first.</p></div>`;
 }
 
 function caseHtml(label, stage, subj) {
@@ -162,7 +188,7 @@ const STAGE_TEXT = s => /desk pack/.test(s) ? 'Collecting this morning\'s data (
   : /analysts/.test(s) ? `The analysts are reading their data: ${s.replace(/^analysts\s*/, '') || 'starting'}`
   : /debate/.test(s) ? `The advocates are arguing (${s})` : /ruling/.test(s) ? `The manager is ruling (${s})`
   : /asset desks/.test(s) ? `The asset desks are rating their groups (${s})` : /risk desk/.test(s) ? 'The risk desk is sizing the book'
-  : /head/.test(s) ? 'The Head of Desk is writing the book' : s;
+  : /newsletter/.test(s) ? 'Writing the desk edition of the newsletter' : /head/.test(s) ? 'The Head of Desk is writing the book' : s;
 function showRunning(j) {
   const mins = Math.floor((Date.now() - j.startedAt) / 60000), secs = Math.floor((Date.now() - j.startedAt) / 1000) % 60;
   $('status').textContent = '';

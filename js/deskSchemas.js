@@ -210,6 +210,47 @@ export function validateRiskCase(obj, targets) {
   return { ok: true, notes, value: { headline, adjustments, warnings: strList(obj.warnings) } };
 }
 
+// ── Phase 3: the newsletter writer ───────────────────────────────────────────────────────────────────────────────
+
+/** The house labels every newsletter section carries (the regular issue's legend). */
+export const NL_LABELS = ['Observed data', 'Model output', 'Tested association', 'Context, not a signal', 'Hypothesis', 'Untested interpretation'];
+const FORECAST_WORDS = /\b(will (?:rise|fall|rally|drop|climb|slide|bounce|break)|set to (?:rise|fall|rally)|expect(?:ed)? (?:a )?(?:rally|drop|rise|fall)|bound to)\b/i;
+
+/**
+ * The desk edition: { subject, standfirst, sections[{title, label, body}], ideas[{instrument, view, size, level,
+ * invalidation, why}] }. A section with an unknown label gets "Untested interpretation" (the safe label) and a note.
+ * Forecasting wording in the opening is reported in notes, so the owner can see it on the page.
+ */
+export function validateNewsletterIssue(obj, instruments = allInstruments()) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return { ok: false, errors: ['reply is not a JSON object'] };
+  const errors = [], notes = [];
+  const subject = str(obj.subject, 120);
+  if (!subject) errors.push('subject missing');
+  const standfirst = str(obj.standfirst, 1500);
+  if (!standfirst) errors.push('standfirst missing');
+  if (FORECAST_WORDS.test(standfirst)) notes.push('the opening uses forecasting wording');
+  const sections = [];
+  for (const [i, x] of (Array.isArray(obj.sections) ? obj.sections : []).slice(0, 8).entries()) {
+    const title = str(x?.title, 120), body = str(x?.body, 2500);
+    if (!title || !body) { notes.push(`section ${i + 1} dropped: no title or body`); continue; }
+    let label = NL_LABELS.find(l => l.toLowerCase() === String(x?.label ?? '').trim().toLowerCase());
+    if (!label) { notes.push(`section "${title}": label "${x?.label}" is not a house label, read as Untested interpretation`); label = 'Untested interpretation'; }
+    sections.push({ title, label, body });
+  }
+  if (sections.length < 3) errors.push(`only ${sections.length} usable sections`);
+  const ideas = [];
+  for (const x of (Array.isArray(obj.ideas) ? obj.ideas : []).slice(0, 8)) {
+    const instrument = String(x?.instrument ?? '').toUpperCase().replace('/', '');
+    if (!instruments.includes(instrument)) { notes.push(`idea on unknown instrument ${x?.instrument} dropped`); continue; }
+    const view = normalizeRating(x?.view);
+    if (view === RATING_REVIEW) { notes.push(`idea ${instrument}: view "${x?.view}" unreadable, dropped`); continue; }
+    const size = Number(x?.size);
+    ideas.push({ instrument, view, size: Number.isFinite(size) ? Math.max(0, Math.min(1.5, size)) : null, level: str(x?.level, 200), invalidation: str(x?.invalidation, 200), why: str(x?.why, 400) });
+  }
+  if (errors.length) return { ok: false, errors };
+  return { ok: true, notes, value: { subject, standfirst, sections, ideas } };
+}
+
 /** The JSON shape each schema asks for, written into the prompt so the model sees the exact contract. */
 export const SCHEMA_PROMPTS = {
   analyst_report: `{
@@ -261,4 +302,10 @@ bias: integer -2..+2.`,
   "warnings": ["what could go wrong today"]
 }
 size: 0 to 1.5 (1 = normal). veto: true only when the trade should not be taken today at all.`,
+  newsletter_issue: `{
+  "subject": "the headline, under 70 characters",
+  "standfirst": "the opening paragraph, 3-5 sentences",
+  "sections": [ { "title": "The global backdrop", "label": "one of: Observed data | Model output | Tested association | Context, not a signal | Hypothesis | Untested interpretation", "body": "2-5 sentences" }, ... 4 to 6 sections, in the order given ],
+  "ideas": [ { "instrument": "EURUSD", "view": "STRONG_LONG | LONG | FLAT | SHORT | STRONG_SHORT", "size": 0.85, "level": "zone or level from the book", "invalidation": "what proves it wrong", "why": "one sentence" } ]   // at most 8
+}`,
 };

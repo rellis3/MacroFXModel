@@ -63,5 +63,27 @@ console.log('[firewall page recognised]');
   ok('the real block wording matches BLOCKED_RE', BLOCKED_RE.test('Your access to the Reserve Bank website has been restricted. If you think you should be able to access our website please email'));
 }
 
+// ── decisions from RSS headlines (2026-11-03) ──
+{
+  const { parseOcrTitle, ocrDecisionsFromItems } = await import('./rbnzFetch.js');
+  const eq = (name, got, want) => ok(name, JSON.stringify(got) === JSON.stringify(want));
+  eq('hike with bp', parseOcrTitle('OCR increased by 25 basis points to 2.75%'), { action: 'hike', rate: 2.75, changeBp: 25 });
+  eq('hold', parseOcrTitle('OCR held at 2.75%'), { action: 'hold', rate: 2.75, changeBp: 0 });
+  eq('on hold', parseOcrTitle('OCR on hold at 2.25%'), { action: 'hold', rate: 2.25, changeBp: 0 });
+  eq('hike without bp', parseOcrTitle('OCR increased to 2.50% to return inflation to 2%'), { action: 'hike', rate: 2.5, changeBp: null });
+  eq('cut', parseOcrTitle('Official Cash Rate reduced by 50 basis points to 3.00 percent'), { action: 'cut', rate: 3, changeBp: -50 });
+  eq('not a decision', parseOcrTitle('Updates to the October MPR'), null);
+  const items = [
+    { title: 'OCR held at 2.75%', pubDate: 'Wed, 28 Oct 2026 00:00:00 +1300', link: 'https://www.rbnz.govt.nz/news-and-events/news/2026/10/ocr-held' },
+    { title: 'OCR increased by 25 basis points to 2.75%', pubDate: 'Wed, 02 Sep 2026 00:00:00 +1200', link: '/news-and-events/news/2026/09/x' },
+    { title: 'OCR increased to 2.50% to return inflation to 2%', pubDate: 'Wed, 08 Jul 2026 00:00:00 +1200', link: '/news-and-events/news/2026/07/y' },
+    { title: 'OCR held at 2.25%', pubDate: 'Wed, 27 May 2026 00:00:00 +1200', link: '/news-and-events/news/2026/05/z' },
+    { title: 'A speech on the OCR', pubDate: 'Thu, 29 Oct 2026 00:00:00 +1300', link: '/news-and-events/speeches/s' },
+  ];
+  const d = ocrDecisionsFromItems(items);
+  eq('dates newest first, speech excluded', d.map(x => x.date), ['2026-10-28', '2026-09-02', '2026-07-08', '2026-05-27']);
+  eq('missing change filled from the previous level', d[2].changeBp, 25);
+}
+
 if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }
 console.log('\nAll rbnzFetch tests passed.');

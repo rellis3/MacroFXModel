@@ -126,10 +126,11 @@ export const DESK_FEEDS = [
   F('rates_cb', 'rates', 4 * D),
   F('rates_cb', 'rate-diff', 4 * D),
   F('rates_cb', 'rates-regime', 4 * D),
-  F('rates_cb', 'fed-path', 4 * D),
+  F('rates_cb', 'fed-path', 6 * D),   // the Atlanta Fed tracker publishes ~2 business days late (asOf); the fresh leg is zq (fed funds futures, nightly)
   F('rates_cb', 'fed-speakers', 7 * D),
   ...['fomc', 'ecb', 'boe', 'boj', 'boc', 'rba', 'rbnz', 'snb'].map(b => F('rates_cb', `${b}/latest`, null)),
   F('rates_cb', 'beigebook/latest', null),
+  F('rates_cb', 'rbnz/decisions', 120 * D),   // OCR decisions from RSS headlines: the RBNZ statements are firewalled from the server
   F('rates_cb', 'treasury-auctions', 10 * D, { keep: 'first' }),
   F('yields_curve', 'yield-curve', 4 * D),
   F('yields_curve', 'intl-yields', 4 * D),
@@ -168,7 +169,6 @@ export const DESK_FEEDS = [
   // ── evidence & memory ───────────────────────────────────────────────────────
   F('evidence_memory', 'ledger', 7 * D),
   F('evidence_memory', 'direction-ledger', 7 * D),
-  F('evidence_memory', 'forward-track', 7 * D),   // first Railway pack: last refresh 2026-07-15, i.e. the forward record has stopped -- a real gap, kept visible
   F('evidence_memory', 'data-health', 1 * D),
   F('evidence_memory', 'morning-brief', 3 * D),
   F('evidence_memory', 'eod-review', 3 * D),
