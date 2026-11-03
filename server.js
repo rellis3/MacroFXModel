@@ -5394,6 +5394,47 @@ app.get('/api/trade-watch', async (_req, res) => {
     res.json({ ok: true, date, live: true, events: _tw.events, fired: _tw.state.fired, last: _tw.state.last, plan: _tw.plan });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// GET /api/desk-cot-history?weeks=156: speculators' net share of open interest by week, per market, from the COT
+// series the cot-extremes engine caches (cot_series_v2). For the Desk Terminal's positioning charts.
+app.get('/api/desk-cot-history', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const weeks = Math.min(Math.max(parseInt(req.query.weeks, 10) || 156, 26), 520);
+    const raw = await kv.get(COT_KV.series).catch(() => null);
+    const all = raw ? JSON.parse(raw)?.series ?? {} : {};
+    const out = {};
+    for (const [sym, s] of Object.entries(all)) {
+      if (!s?.dates?.length || !s?.specShare?.length) continue;
+      const n = Math.min(weeks, s.dates.length);
+      out[sym] = { label: s.label ?? sym, dates: s.dates.slice(-n), specShare: s.specShare.slice(-n) };
+    }
+    res.json({ ok: Object.keys(out).length > 0, series: out, error: Object.keys(out).length ? null : 'no COT series cached yet' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/desk-season?inst=EURUSD: seasonality from up to ~20 years of OANDA daily bars: the mean return and the share of
+// up months for each calendar month, and the mean daily return by weekday, with counts. History, not a forecast.
+const _seasonCache = new Map();
+app.get('/api/desk-season', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const inst = String(req.query.inst ?? '').toUpperCase(), sym = _dsOanda[inst];
+    if (!sym) return res.status(400).json({ ok: false, error: `unknown instrument ${inst}` });
+    const hit = _seasonCache.get(inst);
+    if (hit && Date.now() - hit.at < 12 * 3600e3) return res.json(hit.data);
+    const bars = (await _btFetchD1(sym, 5000)).sort((a, b) => (a.date < b.date ? -1 : 1));
+    const byMonth = new Map();
+    for (const b of bars) { const k = b.date.slice(0, 7); const m = byMonth.get(k); if (!m) byMonth.set(k, { open: b.open, close: b.close }); else m.close = b.close; }
+    const cur = new Date().toISOString().slice(0, 7);
+    const months = Array.from({ length: 12 }, () => []);
+    for (const [k, m] of byMonth) if (k !== cur && m.open > 0) months[+k.slice(5, 7) - 1].push((m.close / m.open - 1) * 100);
+    const wd = Array.from({ length: 5 }, () => []);
+    for (let i = 1; i < bars.length; i++) { const d = new Date(`${bars[i].date}T12:00:00Z`).getUTCDay(); if (d >= 1 && d <= 5 && bars[i - 1].close > 0) wd[d - 1].push((bars[i].close / bars[i - 1].close - 1) * 100); }
+    const st = a => { const n = a.length; if (!n) return { n: 0, mean: null, up: null, sd: null }; const mean = a.reduce((x, y) => x + y, 0) / n, sd = Math.sqrt(a.reduce((x, y) => x + (y - mean) ** 2, 0) / Math.max(1, n - 1)); return { n, mean: +mean.toFixed(3), up: +(a.filter(x => x > 0).length / n).toFixed(2), sd: +sd.toFixed(3) }; };
+    const data = { ok: true, inst, from: bars[0]?.date ?? null, to: bars.at(-1)?.date ?? null, months: months.map(st), weekdays: wd.map(st), label: 'history, not a forecast: each month is one draw per year' };
+    _seasonCache.set(inst, { at: Date.now(), data });
+    res.json(data);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // POST /api/desk-ask {q}: the Desk Terminal's "Ask the desk" (Phase 17, §9r). One model call over today's book, the
 // analysts' reports, the last evening reviews and the Evidence Book. Answers from those only and says when they do
 // not answer the question. One at a time, at most 60 a day.

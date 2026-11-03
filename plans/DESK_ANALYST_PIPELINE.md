@@ -761,6 +761,15 @@ currency-strength heat timeline (`GET /api/desk-history`), the cumulative track 
 control and long-everything, the attribution waterfall of the latest scored day, and release-reaction bands for the
 releases ahead (typical move at 30 min and 4 h, with the median after hot and cold prints and the counts).
 
+**Charts tab (2026-11-03):** how today's book was built (a flow from the global ruling through each currency to the
+sixteen largest cards, ribbon width = size, green long / red short that currency); the macro regime as a
+growth-against-inflation quadrant with the last 24 months' trail and a 20-year regime strip (`/api/regime`); every
+release against consensus over 120 days by currency with the decayed surprise index (`/api/econ-surprise`);
+speculators' net share of open interest over three years per market with the top and bottom 10% shaded
+(`GET /api/desk-cot-history`, from the cached COT series); and a seasonality heatmap (mean monthly return and share of
+up years from up to 20 years of daily bars, `GET /api/desk-season`, with a weekday view per market), labelled as
+history with ~15-20 draws per cell.
+
 Scores /10 are the desk's own −2..+2 views rescaled (5 = no view); grades are the book's conviction, never a hit
 rate, and the page says so. Still to come: the data below (rate expectations beyond the Fed and the ECB, a headline
 feed), seasonality and skew panels.

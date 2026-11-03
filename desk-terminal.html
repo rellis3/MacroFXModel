@@ -183,6 +183,7 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
     <button role="tab" aria-selected="false" data-t="pos">Positioning</button>
     <button role="tab" aria-selected="false" data-t="cal">Calendar</button>
     <button role="tab" aria-selected="false" data-t="ana">Analytics</button>
+    <button role="tab" aria-selected="false" data-t="charts">Charts</button>
   </nav>
   <section id="overview"></section>
   <section id="ccy" hidden></section>
@@ -191,6 +192,7 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
   <section id="pos" hidden></section>
   <section id="cal" hidden></section>
   <section id="ana" hidden></section>
+  <section id="charts" hidden></section>
 </main>
 <button class="fab" id="askbtn">✦ Ask the desk</button>
 <div class="modal" id="modal" hidden></div>
@@ -373,8 +375,9 @@ clocks(); setInterval(clocks, 20_000);
 // ── tabs ──
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
-  ['overview', 'ccy', 'assets', 'macro', 'pos', 'cal', 'ana'].forEach(id => $(id).hidden = id !== b.dataset.t);
+  ['overview', 'ccy', 'assets', 'macro', 'pos', 'cal', 'ana', 'charts'].forEach(id => $(id).hidden = id !== b.dataset.t);
   if (b.dataset.t === 'ana') analytics();
+  if (b.dataset.t === 'charts') charts();
   try { localStorage.setItem('deskTerminalTab', b.dataset.t); } catch { /* private window */ }
 });
 try { const t = localStorage.getItem('deskTerminalTab'); if (t) document.querySelector(`#tabs [data-t="${t}"]`)?.click(); } catch { /* ignore */ }
@@ -716,6 +719,106 @@ ${m.hot ? `<circle cx="${300 + Math.sign(m.hot.m30) * sc(m.hot.m30, m.unit)}" cy
 <div class="muted">Bands: the typical move either way at 30 min (inner) and 4 h (outer). <span style="color:#ff5d78">●</span> after hot prints, <span style="color:#4fb3ff">●</span> after cold, at 30 min. ${r.playbook.n} past releases, ${esc(r.playbook.from)} to ${esc(r.playbook.to)}. History, not a forecast.</div></div>`; }).join('');
 }
 
+
+// ── CHARTS: the book's flow, the macro regime, data surprises, positioning history, seasonality ──
+let CH = null;
+const CC2 = { US: 'USD', EU: 'EUR', DE: 'EUR', FR: 'EUR', IT: 'EUR', ES: 'EUR', GB: 'GBP', JP: 'JPY', AU: 'AUD', NZ: 'NZD', CA: 'CAD', CH: 'CHF' };
+const SEASON_INSTS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX500', 'WTI', 'BTCUSD'];
+async function charts() {
+  if (!D.run) return;
+  if (!CH) {
+    $('charts').innerHTML = '<div class="card muted">Drawing…</div>';
+    const [reg, sur, cot] = await Promise.all([getJson('/api/regime'), getJson('/api/econ-surprise'), getJson('/api/desk-cot-history?weeks=156')]);
+    CH = { reg, sur, cot, season: {} };
+  }
+  $('charts').innerHTML = `<div class="card glow"><div class="ch"><span class="lbl">How today's book was built</span><span class="r muted">the global ruling → each currency's net exposure → the cards · ribbon width = size</span></div><div id="flow"></div></div>
+<div class="grid g2" style="margin-top:14px"><div class="card"><div class="ch"><span class="lbl">Macro regime</span><span class="r muted">growth against inflation, the last 24 months</span></div><div id="quad"></div></div>
+<div class="card"><div class="ch"><span class="lbl">Data surprises</span><span class="r muted">each release against consensus (z), last 120 days, by currency</span></div><div id="surp"></div></div></div>
+<div class="sec"><h2>Positioning history</h2><span class="lbl">speculators' net share of open interest, 3 years · shaded = the top and bottom 10% · dot = latest week</span></div><div class="grid g4" id="cotgrid"></div>
+<div class="sec"><h2>Seasonality</h2><span class="lbl">mean return by calendar month over the history · this month outlined · tap a market for its weekdays</span></div><div class="card"><div id="season"><p class="muted">Reading up to 20 years of daily bars for ${SEASON_INSTS.length} markets…</p></div><div id="wkday"></div></div>`;
+  bookFlow($('flow')); regimeQuad($('quad'), CH.reg); surprises($('surp'), CH.sur); cotGrid($('cotgrid'), CH.cot); seasonHeat($('season'));
+}
+// a three-column flow: tone → currencies → cards, ribbons sized by the cards' size
+function bookFlow(el) {
+  const b = D.run?.head?.book; if (!b) { el.innerHTML = '<p class="muted">No book today.</p>'; return; }
+  const live = Object.entries(b.instruments).filter(([, c]) => DIR[c.rating] && c.size > 0).sort((a, b2) => b2[1].size - a[1].size).slice(0, 16);
+  const W = 1100, H = 520, top = 30, colX = [40, 470, 900], bw = 14;
+  // middle column: the currencies the shown cards use, sized by the shown cards' size through them
+  const legs = n => (n.length === 6 && CCYS.includes(n.slice(0, 3)) ? [n.slice(0, 3), n.slice(3)] : [{ NQ: 'USD', SPX500: 'USD', US30: 'USD', US2000: 'USD', DE30: 'EUR', UK100: 'GBP' }[n] ?? 'USD']);
+  const ccyW = {}; for (const [n, c] of live) for (const l of legs(n)) if (CCYS.includes(l)) ccyW[l] = (ccyW[l] ?? 0) + c.size / legs(n).length;
+  const ccys = CCYS.filter(c => ccyW[c]).sort((a, b2) => (D.ranking.indexOf(a) - D.ranking.indexOf(b2)));
+  const total = Object.values(ccyW).reduce((x, y) => x + y, 0), avail = H - top - 20, gap = 8;
+  const scale = (avail - gap * (Math.max(ccys.length, live.length) - 1)) / total;
+  let y = top; const cy = {}; for (const c of ccys) { const h = ccyW[c] * scale; cy[c] = { y, h, used: 0 }; y += h + gap; }
+  y = top; const ky = {}; for (const [n, c] of live) { const h = c.size * scale; ky[n] = { y, h, used: 0 }; y += h + gap; }
+  const tone = b.global?.tone ?? '', toneCol = /off/.test(tone) ? '#ff5d78' : /on/.test(tone) ? '#2fd39a' : '#8a93b8', tH = total * scale, tY = top;
+  let tUsed = 0;
+  const ribbon = (x1, y1, h1, x2, y2, h2, col, op, title) => `<path d="M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2} L${x2},${y2 + h2} C${(x1 + x2) / 2},${y2 + h2} ${(x1 + x2) / 2},${y1 + h1} ${x1},${y1 + h1} Z" fill="${col}" opacity="${op}"><title>${esc(title)}</title></path>`;
+  const left = ccys.map(c => { const h = cy[c].h, r = ribbon(colX[0] + bw, tY + tUsed, h, colX[1], cy[c].y, h, toneCol, 0.18, `${tone} → ${c}`); tUsed += h; return r; }).join('');
+  const right = live.map(([n, c]) => { const ls = legs(n).filter(l => cy[l]), d = Math.sign(DIR[c.rating]); return ls.map((l, i) => { const h = c.size * scale / ls.length, side = n.startsWith(l) ? d : -d, src = cy[l], r = ribbon(colX[1] + bw, src.y + src.used, h, colX[2], ky[n].y + ky[n].used, h, side > 0 ? '#2fd39a' : '#ff5d78', 0.32, `${l} ${side > 0 ? 'long' : 'short'} via ${n}`); src.used += h; ky[n].used += h; return r; }).join(''); }).join('');
+  const bias = c => D.ccy[c]?.bias ?? 0;
+  el.innerHTML = `<div class="scroll"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:640px" role="img" aria-label="how the book was built">${left}${right}
+<rect x="${colX[0]}" y="${tY}" width="${bw}" height="${tH}" rx="4" fill="${toneCol}" style="filter:drop-shadow(0 0 8px ${toneCol})"/><text x="${colX[0]}" y="${tY - 10}" fill="#eef0fb" font-family="JetBrains Mono" font-size="12" font-weight="700">${esc(tone.replace('_', '-').toUpperCase())}</text>
+${ccys.map(c => `<g data-ccy="${c}" style="cursor:pointer"><rect x="${colX[1]}" y="${cy[c].y}" width="${bw}" height="${cy[c].h}" rx="3" fill="${bias(c) > 0 ? '#2fd39a' : bias(c) < 0 ? '#ff5d78' : '#8a93b8'}"/><text x="${colX[1] - 8}" y="${cy[c].y + cy[c].h / 2 + 4}" text-anchor="end" fill="#eef0fb" font-family="JetBrains Mono" font-size="12">${FLAG[c] ?? ''} ${c} ${bias(c) > 0 ? '+' : ''}${bias(c)}</text></g>`).join('')}
+${live.map(([n, c]) => `<g data-inst="${esc(n)}" style="cursor:pointer"><rect x="${colX[2]}" y="${ky[n].y}" width="${bw}" height="${Math.max(2, ky[n].h)}" rx="3" fill="${DIR[c.rating] > 0 ? '#2fd39a' : '#ff5d78'}"/><text x="${colX[2] + bw + 8}" y="${ky[n].y + Math.max(2, ky[n].h) / 2 + 4}" fill="#eef0fb" font-family="JetBrains Mono" font-size="11">${esc(n)} <tspan fill="#6d7599">${c.size}</tspan></text></g>`).join('')}
+</svg></div><div class="muted">The sixteen largest cards. Each card's size is split across its two currency legs; a ribbon is green where the card is long that currency, red where it is short it.</div>`;
+  wire(el);
+}
+const REG_COL = { goldilocks: '#2fd39a', reflation: '#e8b85a', stagflation: '#ff5d78', deflation: '#4fb3ff' };
+function regimeQuad(el, r) {
+  const h = r?.history ?? []; if (!h.length) { el.innerHTML = '<p class="muted">No regime history.</p>'; return; }
+  const last = h.slice(-24), W = 520, H = 340, cx = W / 2, cy = H / 2 - 10, m = Math.max(0.3, ...last.flatMap(p => [Math.abs(p.growth), Math.abs(p.inflation)])) * 1.15;
+  const X = g => cx + (g / m) * (W / 2 - 30), Y = i => cy - (i / m) * (H / 2 - 40);
+  const quad = (x, y, w, hh, reg, lab, ax, ay) => `<rect x="${x}" y="${y}" width="${w}" height="${hh}" fill="${REG_COL[reg]}" opacity=".07"/><text x="${ax}" y="${ay}" fill="${REG_COL[reg]}" font-family="JetBrains Mono" font-size="11" letter-spacing="1" text-anchor="${ax < cx ? 'start' : 'end'}">${lab}</text>`;
+  const pts = last.map(p => [X(p.growth), Y(p.inflation)]);
+  const strip = h.slice(-240), sw = (W - 20) / strip.length;
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H + 40}" width="100%" role="img" aria-label="macro regime quadrant">
+${quad(cx, 10, W / 2 - 10, cy - 10, 'reflation', 'REFLATION', W - 20, 26)}${quad(10, 10, W / 2 - 10, cy - 10, 'stagflation', 'STAGFLATION', 20, 26)}${quad(10, cy, W / 2 - 10, H - 40 - cy, 'deflation', 'DEFLATION', 20, H - 46)}${quad(cx, cy, W / 2 - 10, H - 40 - cy, 'goldilocks', 'GOLDILOCKS', W - 20, H - 46)}
+<line x1="10" x2="${W - 10}" y1="${cy}" y2="${cy}" stroke="#2c3866"/><line x1="${cx}" x2="${cx}" y1="10" y2="${H - 40}" stroke="#2c3866"/>
+<text x="${W - 12}" y="${cy - 6}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="9">GROWTH →</text><text x="${cx + 6}" y="20" fill="#6d7599" font-family="JetBrains Mono" font-size="9">INFLATION ↑</text>
+<polyline points="${pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="rgba(238,240,251,.35)" stroke-width="1.5"/>
+${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === pts.length - 1 ? 7 : 2.5 + i / 12}" fill="${REG_COL[last[i].regime]}" opacity="${0.35 + 0.65 * i / pts.length}" ${i === pts.length - 1 ? 'style="filter:drop-shadow(0 0 8px #fff)"' : ''}><title>${last[i].m}: ${last[i].regime}</title></circle>`).join('')}
+<text x="${pts.at(-1)[0] + 10}" y="${pts.at(-1)[1] - 8}" fill="#eef0fb" font-family="JetBrains Mono" font-size="11">${esc(last.at(-1).m)} ${esc(r.now?.label ?? '')}</text>
+${strip.map((p, i) => `<rect x="${10 + i * sw}" y="${H - 18}" width="${sw + 0.3}" height="14" fill="${REG_COL[p.regime]}" opacity=".75"><title>${p.m} ${p.regime}</title></rect>`).join('')}
+<text x="10" y="${H + 10}" fill="#6d7599" font-family="JetBrains Mono" font-size="9">${esc(strip[0].m)}</text><text x="${W - 10}" y="${H + 10}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="9">${esc(strip.at(-1).m)}</text></svg>
+<div class="muted">${esc(r.now?.what ?? '')}. ${esc(String(r.now?.usual ?? '').replace(/([^.])$/, '$1.'))} The strip is the regime month by month over ${Math.round(strip.length / 12)} years. Context, not a signal.</div>`;
+}
+function surprises(el, s) {
+  if (!s?.ok) { el.innerHTML = '<p class="muted">No surprise data.</p>'; return; }
+  const now = Date.now(), from = now - 120 * 864e5, pts = [];
+  for (const [k, arr] of Object.entries(s.series ?? {})) { const c = CC2[k.split('|')[0]]; if (!c) continue; for (const p of arr ?? []) if (p.ms >= from && Number.isFinite(p.z)) pts.push({ c, ms: p.ms, z: Math.max(-4, Math.min(4, p.z)), ev: k.split('|')[1] }); }
+  const W = 520, rowH = 34, H = 26 + CCYS.length * rowH, X = ms => 70 + ((ms - from) / (now - from)) * (W - 140);
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="data surprises">${CCYS.map((c, i) => { const y = 20 + i * rowH + rowH / 2, sc = s.byCcy?.[c]?.score;
+    return `<line x1="70" x2="${W - 70}" y1="${y}" y2="${y}" stroke="#1f2950"/><text x="0" y="${y + 4}" fill="#a9b0d0" font-family="JetBrains Mono" font-size="11">${FLAG[c] ?? ''} ${c}</text>
+${pts.filter(p => p.c === c).map(p => `<circle cx="${X(p.ms)}" cy="${y - p.z * 3.6}" r="${2 + Math.abs(p.z) * 0.9}" fill="${p.z > 0 ? '#2fd39a' : '#ff5d78'}" opacity=".7"><title>${new Date(p.ms).toISOString().slice(0, 10)} ${esc(p.ev)}: z ${p.z.toFixed(2)}</title></circle>`).join('')}
+<rect x="${W - 60}" y="${y - 7}" width="50" height="14" rx="4" fill="var(--bg3)"/><rect x="${W - 35}" y="${y - 7}" width="${Math.min(25, Math.abs(sc ?? 0) * 25)}" height="14" rx="3" fill="${(sc ?? 0) > 0 ? '#2fd39a' : '#ff5d78'}" opacity=".4" transform="${(sc ?? 0) < 0 ? `translate(${-Math.min(25, Math.abs(sc) * 25)},0)` : ''}"/><text x="${W - 35}" y="${y + 4}" text-anchor="middle" fill="#eef0fb" font-family="JetBrains Mono" font-size="10" font-weight="700" paint-order="stroke" stroke="#070a17" stroke-width="2.5">${sc == null ? '–' : f(sc)}</text>`; }).join('')}
+<text x="70" y="${H - 2}" fill="#6d7599" font-family="JetBrains Mono" font-size="9">${new Date(from).toISOString().slice(5, 10)}</text><text x="${W - 70}" y="${H - 2}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="9">today</text></svg>
+<div class="muted">Each dot is one release: above the line beat consensus, below missed it, bigger = a bigger surprise. Right: the decayed surprise index per currency.</div>`;
+}
+function cotGrid(el, c) {
+  const S = c?.series ?? {}, want = ['EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD', 'GOLD', 'NQ', 'SPX'];
+  const syms = want.filter(k => S[k]).concat(Object.keys(S).filter(k => !want.includes(k))).slice(0, 12);
+  if (!syms.length) { el.innerHTML = `<div class="card muted">${esc(c?.error ?? 'No COT history.')}</div>`; return; }
+  el.innerHTML = syms.map(k => { const v = S[k].specShare.map(x => (x == null ? null : +x)), ok = v.filter(Number.isFinite), sorted = [...ok].sort((a, b) => a - b);
+    const p10 = sorted[Math.floor(sorted.length * 0.1)], p90 = sorted[Math.floor(sorted.length * 0.9)], lo = Math.min(...ok), hi = Math.max(...ok), W = 300, H = 110, X = i => (i / (v.length - 1)) * W, Y = x => H - 6 - ((x - lo) / (hi - lo || 1)) * (H - 12);
+    const last = ok.at(-1), ext = last >= p90 ? 'crowded long' : last <= p10 ? 'crowded short' : null;
+    const line = v.map((x, i) => (Number.isFinite(x) ? `${X(i).toFixed(1)},${Y(x).toFixed(1)}` : null)).filter(Boolean).join(' ');
+    return `<div class="card" style="padding:12px 14px"><div class="ch" style="margin-bottom:4px"><b class="mono">${esc(S[k].label ?? k)}</b><span class="r">${ext ? `<span class="chip ${last > 0 ? 'up' : 'dn'}">${ext}</span>` : ''}<span class="mono ${dirCls(last)}" style="font-size:12px">${f(last, 1)}%</span></span></div>
+<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="none" role="img" aria-label="${esc(k)} positioning"><rect x="0" y="0" width="${W}" height="${Y(p90)}" fill="rgba(47,211,154,.07)"/><rect x="0" y="${Y(p10)}" width="${W}" height="${H - Y(p10)}" fill="rgba(255,93,120,.07)"/>${lo < 0 && hi > 0 ? `<line x1="0" x2="${W}" y1="${Y(0)}" y2="${Y(0)}" stroke="#2c3866"/>` : ''}<polyline points="${line}" fill="none" stroke="#b4a9ff" stroke-width="1.6" vector-effect="non-scaling-stroke"/><circle cx="${X(v.length - 1)}" cy="${Y(last)}" r="4" fill="${last > 0 ? '#2fd39a' : '#ff5d78'}" style="filter:drop-shadow(0 0 5px ${last > 0 ? '#2fd39a' : '#ff5d78'})"/></svg>
+<div class="muted" style="font-size:11px">${esc(S[k].dates[0])} → ${esc(S[k].dates.at(-1))}</div></div>`; }).join('');
+}
+async function seasonHeat(el) {
+  const got = await Promise.all(SEASON_INSTS.map(i => CH.season[i] ? CH.season[i] : getJson(`/api/desk-season?inst=${i}`).then(r => (CH.season[i] = r))));
+  const rows = SEASON_INSTS.map((i, k) => [i, got[k]]).filter(([, r]) => r?.ok);
+  if (!rows.length) { el.innerHTML = '<p class="muted">No daily history available.</p>'; return; }
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], cm = new Date().getUTCMonth();
+  const col = (m, sd) => { if (m == null) return 'var(--bg3)'; const z = Math.max(-1, Math.min(1, m / Math.max(0.3, sd ?? 1) * 1.5)); return z > 0 ? `rgba(47,211,154,${0.12 + z * 0.6})` : `rgba(255,93,120,${0.12 - z * 0.6})`; };
+  el.innerHTML = `<div class="scroll"><table class="heat" style="min-width:720px"><thead><tr><th></th>${MON.map((m, i) => `<th style="text-align:center;${i === cm ? 'color:var(--gold)' : ''}">${m}</th>`).join('')}<th>Since</th></tr></thead><tbody>${rows.map(([i, r]) => `<tr><th><a href="#" data-wk="${i}" style="color:var(--tx);text-decoration:none">${esc(i)}</a></th>${r.months.map((m, k) => `<td style="background:${col(m.mean, m.sd)};${k === cm ? 'outline:2px solid var(--gold);outline-offset:-2px' : ''}" title="${MON[k]}: mean ${m.mean}% · up ${Math.round((m.up ?? 0) * 100)}% of ${m.n} years">${m.mean == null ? '' : (m.mean > 0 ? '+' : '') + m.mean.toFixed(1)}<br><span style="font-size:9px;opacity:.7">${m.up == null ? '' : Math.round(m.up * 100) + '%↑'}</span></td>`).join('')}<td class="muted" style="font-size:10px">${esc(r.from?.slice(0, 4))}</td></tr>`).join('')}</tbody></table></div>
+<div class="muted">Mean monthly return (%) and the share of years it rose. Each month is one draw per year, so ~15-20 per cell: history, not a forecast, and most cells are within noise.</div>`;
+  el.querySelectorAll('[data-wk]').forEach(a => a.onclick = ev => { ev.preventDefault(); const r = CH.season[a.dataset.wk], D5 = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], m = Math.max(...r.weekdays.map(w => Math.abs(w.mean ?? 0)), 0.001);
+    $('wkday').innerHTML = `<div class="sec"><h2>${esc(a.dataset.wk)} by weekday</h2><span class="lbl">mean daily return and share up, ${esc(r.from)} to ${esc(r.to)}</span></div><svg viewBox="0 0 520 150" width="100%" style="max-width:640px">${r.weekdays.map((w, k) => { const x = 40 + k * 95, h = Math.abs(w.mean ?? 0) / m * 50; return `<rect x="${x}" y="${w.mean >= 0 ? 70 - h : 70}" width="60" height="${h}" rx="4" fill="${w.mean >= 0 ? '#2fd39a' : '#ff5d78'}" opacity=".8"/><text x="${x + 30}" y="140" text-anchor="middle" fill="#a9b0d0" font-family="JetBrains Mono" font-size="11">${D5[k]}</text><text x="${x + 30}" y="${w.mean >= 0 ? 64 - h : 86 + h}" text-anchor="middle" fill="#eef0fb" font-family="JetBrains Mono" font-size="10">${w.mean == null ? '' : (w.mean > 0 ? '+' : '') + w.mean.toFixed(3)}% · ${Math.round((w.up ?? 0) * 100)}%↑</text>`; }).join('')}<line x1="30" x2="510" y1="70" y2="70" stroke="#2c3866"/></svg>`; });
+}
+
 // clicking a currency or an instrument anywhere opens its card
 function wire(root) {
   root.querySelectorAll('[data-ccy]').forEach(el => { const go = () => ccyModal(el.dataset.ccy); el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
@@ -739,7 +842,7 @@ $('askbtn').onclick = () => {
 };
 
 load();
-setInterval(() => { if (!document.hidden) { ANA = null; load(); if (!$('ana').hidden) analytics(); } }, 5 * 60_000);
+setInterval(() => { if (!document.hidden) { ANA = null; load(); if (!$('ana').hidden) analytics(); } }, 5 * 60_000);   // the Charts tab's sources change daily at most: drawn once per visit
 </script>
 </body>
 </html>
