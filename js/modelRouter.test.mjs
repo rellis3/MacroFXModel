@@ -199,3 +199,18 @@ test('token estimate is rough but monotonic', () => {
   assert.ok(estimateTokens('a'.repeat(4000)) > estimateTokens('a'.repeat(400)));
   assert.equal(estimateTokens(null), 0);
 });
+
+test('a task can pin its own model on a provider; env overrides it; it never leaks to another provider', () => {
+  const keys = { anthropic: true, deepseek: true };
+  assert.equal(resolveTask('desk-analyst', { keys }).model, 'claude-sonnet-5');
+  assert.equal(resolveTask('desk-head', { keys }).model, 'claude-sonnet-5');
+  // a provider-wide pin does not beat the task's own pin, but does apply to tasks without one
+  assert.equal(resolveTask('desk-analyst', { keys, models: { anthropic: { id: 'claude-opus-5' } } }).model, 'claude-sonnet-5');
+  assert.equal(resolveTask('brief', { keys, models: { anthropic: { id: 'claude-opus-5' } } }).model, 'claude-opus-5');
+  // env pin wins
+  const cfg = { ...configFromEnv({ ANT_KEY: 'k', DEEPSEEK_KEY: 'k', AI_TASK_MODEL_DESK_HEAD: 'claude-opus-5-5' }) };
+  assert.equal(resolveTask('desk-head', cfg).model, 'claude-opus-5-5');
+  assert.deepEqual(cfg.taskModels['desk-head'], { id: 'claude-opus-5-5', provider: 'anthropic' });
+  // routed to DeepSeek: the Anthropic pin does not follow it there
+  assert.equal(resolveTask('desk-analyst', { keys, tasks: { 'desk-analyst': 'deepseek' } }).model, DEFAULT_MODELS.deepseek.id);
+});

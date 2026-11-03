@@ -103,8 +103,10 @@ export const TASK_CLASS = {
   'oi-explain':   { ledger: null,    label: 'OI Lab panel explainer' },
   // desk analyst pipeline (plans/DESK_ANALYST_PIPELINE.md): each call carries a SLICE of the ledger chosen for its
   // area (js/deskRoles.js selectEvidence), so 'brief' -- not routed to a cheap model unless the owner says so.
-  'desk-analyst': { ledger: 'brief', label: 'Desk pipeline: analysts' },
-  'desk-head':    { ledger: 'brief', label: 'Desk pipeline: Head of Desk' },
+  // `models` pins a model for this task on a given provider, over that provider's default (owner 2026-11-03:
+  // Sonnet 5 for the desk pipeline "for now"). AI_TASK_MODEL_DESK_ANALYST / _DESK_HEAD override it from the env.
+  'desk-analyst': { ledger: 'brief', label: 'Desk pipeline: analysts',     models: { anthropic: 'claude-sonnet-5' } },
+  'desk-head':    { ledger: 'brief', label: 'Desk pipeline: Head of Desk', models: { anthropic: 'claude-sonnet-5' } },
   // summarising supplied text — the cheap jobs
   'headlines':    { ledger: null,    label: 'Headline summary',  cheapSafe: true },
   'doc-summary':  { ledger: null,    label: 'Document summary',  cheapSafe: true },
@@ -131,9 +133,14 @@ export function resolveTask(task, cfg = {}) {
   const fellBack = provider !== wanted;
   const d = DEFAULT_MODELS[provider] ?? DEFAULT_MODELS.anthropic;
   const o = (cfg.models ?? {})[provider] ?? {};
+  // A task-level model (env AI_TASK_MODEL_<TASK>, then the task's own `models` default) is more specific than the
+  // provider-wide one, so it wins -- but only on the provider it names: a task pinned to an Anthropic model that
+  // falls back to DeepSeek must not send DeepSeek an Anthropic id.
+  const envTm = (cfg.taskModels ?? {})[task];
+  const taskModel = (envTm && envTm.provider === provider ? envTm.id : null) ?? TASK_CLASS[task]?.models?.[provider] ?? null;
   return {
     provider,
-    model: o.id ?? d.id,
+    model: taskModel ?? o.id ?? d.id,
     maxOutput: o.maxOutput ?? d.maxOutput,
     context: o.context ?? d.context,
     fellBack,
@@ -308,10 +315,18 @@ export function configFromEnv(env = {}) {
     const v = env[`AI_TASK_${t.replace(/-/g, '_').toUpperCase()}`];
     if (v && PROVIDERS[v]) tasks[t] = v;
   }
+  // AI_TASK_MODEL_<TASK>=<model id>[@provider] pins a model for one task; the provider defaults to anthropic.
+  const taskModels = {};
+  for (const t of Object.keys(TASK_CLASS)) {
+    const v = env[`AI_TASK_MODEL_${t.replace(/-/g, '_').toUpperCase()}`];
+    if (!v) continue;
+    const [id, prov = 'anthropic'] = String(v).split('@');
+    if (id && PROVIDERS[prov]) taskModels[t] = { id, provider: prov };
+  }
   return {
     provider: PROVIDERS[env.AI_PROVIDER] ? env.AI_PROVIDER : 'anthropic',
     cache: env.AI_CACHE !== '0',
-    keys, models, prices, tasks,
+    keys, models, prices, tasks, taskModels,
   };
 }
 
