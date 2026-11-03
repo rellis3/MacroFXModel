@@ -1,6 +1,6 @@
 # Desk Analyst Pipeline: design
 
-*Started 2026-11-03 on branch `ccr-4824155b-3im5ze`. Register row: `desk-analyst-pipeline`. Status: Phases 0 and 1 built.*
+*Started 2026-11-03 on branch `ccr-4824155b-3im5ze`. Register row: `desk-analyst-pipeline`. Status: Phases 0, 1 and 2 built.*
 
 ## 1. What this is
 
@@ -185,7 +185,7 @@ names, so a task routed to DeepSeek never receives an Anthropic model id.
 |---|---|---|
 | **0** | Desk Pack: feed registry, daily build 06:40 London, gaps and freshness, saved per day | **built**: `js/deskPack.js`, `/api/desk-pack*`, service `deskPack` |
 | 1 | Role files + schemas; Layer 1 analysts; Head of Desk reading analysts only; desk-run page | **built** (§9b); hand-written slicers and an Atlas panel follow the first Railway runs |
-| 2 | Layer 2 top-down debate + Layer 3 trader and risk desk; debate visible as expandable sections | currency views and instrument cards produced daily |
+| 2 | Layer 2 top-down debate + Layer 3 asset desks and risk desk; debate visible on the page | **built** (§9d) |
 | 3 | Layer 4 writers (newsletter first, then day forecast, directional, ideas, risk) | the newsletter is written from the pipeline |
 | 4 | Layer 5 memory + grading; the pre-registered comparison (§8) starts counting | first graded month |
 
@@ -267,6 +267,29 @@ Until then everything the pipeline says is labelled **context, untested**.
 - **Slices:** `js/deskSlices.js`, written from that pack's real payloads, cuts the analysts' data from 1.69 MB to
   0.38 MB (vol-forecast 210 KB → 15 KB with all 41 instruments). The budget inside each analyst is now shared fairly,
   so a big feed is not cut to an even split with a tiny one. Expected cost per Phase 1 run: about $1.
+
+## 9d. Phase 2 as built (2026-11-03)
+
+A full run (`POST /api/desk-run`, the page's **Run now**) is now: 11 analysts → **global debate** (Risk-On vs
+Risk-Off: openings side by side, then each rebuts the other) → **Global Manager** ruling → **currency debate**
+(Strengthen vs Weaken, each arguing all eight currencies, opening + rebuttal) → **Currency Manager** (bias per
+currency and a strongest-to-weakest ranking) → **7 asset desks**, one per group, each given its instruments' own vol
+lines, session, implied vol, swing map and trade-decision state, rating every instrument with a plan (zone,
+invalidation, timing) → **risk desk** (Aggressive, Conservative and Neutral voices size the whole book, with vetoes)
+→ **Head of Desk**, who adopts the rulings unless the evidence contradicts them and sets each card's size (0 to 1.5).
+
+- About **32 calls** a full run (11 + 4 + 1 + 4 + 1 + 7 + 3 + 1); `?mode=quick` (the page's **Quick run**) is
+  the Phase 1 path, about 12 calls. `rounds: 1` drops the rebuttals (4 fewer calls).
+- **Deviation from §4, for cost:** the currency debate is 2 advocates arguing all eight currencies, not 16 separate
+  advocates; the research manager and trader are one "asset desk" call per group, not two per instrument.
+- **Failure rules:** each stage reads the stage above; a failed stage is recorded in `debate.failed` and the next
+  stage falls back to the analysts' reports for that area. A failed rebuttal falls back to its opening.
+- Roles: `risk_on`, `risk_off`, `global_manager`, `ccy_strengthen`, `ccy_weaken`, `currency_manager`, `asset_desk`,
+  `risk_aggressive`, `risk_conservative`, `risk_neutral` in `desk/roles/`; schemas in `js/deskSchemas.js`.
+- The page shows the debate: global ruling with both cases and the rebuttals, currency ranking with each
+  currency's strengthen and weaken arguments, each asset desk's summary, and the three risk voices' adjustments.
+- Estimated cost on Sonnet 5 at medium/high effort: about $1.50–2 a full run. Measure it from the first real run
+  (the page footer and `/api/desk-run/index` show tokens and calls).
 
 ## 10. Owner decisions (2026-11-03)
 

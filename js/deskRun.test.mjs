@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseRole, selectEvidence, sliceText, buildAnalystPrompt, buildHeadPrompt, feedBlock, shareBudget } from './deskRoles.js';
 import { runDesk, runSummary, CAPS } from './deskRun.js';
-import { DESK_SKILLS, expandFeeds, buildDeskPack, allInstruments, DESK_CCYS } from './deskPack.js';
+import { DESK_SKILLS, expandFeeds, buildDeskPack, allInstruments, DESK_CCYS, DESK_UNIVERSE } from './deskPack.js';
 import { DESK_EVIDENCE } from './deskEvidence.js';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -69,23 +69,34 @@ await t('analyst prompt carries the role, the schema, its evidence and its data;
   assert.ok(p.meta.evidence.length > 0 && p.meta.evidence.every(id => DESK_EVIDENCE.find(e => e.id === id).domain === 'volatility'));
 });
 
+// Valid replies for the Phase 2 roles, keyed by output schema.
+const PHASE2 = {
+  debate_case: (id, prompt) => ({ headline: `${id} case`, rebuttal: prompt.includes('other side') ? 'their case is thin' : '',
+    cases: Object.fromEntries((id.startsWith('risk_') ? ['GLOBAL'] : DESK_CCYS).map(c => [c, { argument: `${id} on ${c}`, evidence: ['global_market'], strength: 'medium' }])) }),
+  global_view: () => ({ tone: 'risk-off', conviction: 'medium', summary: 'Risk-off won.', drivers: ['credit wider'], flip: ['strong NFP'] }),
+  currency_views: () => ({ currencies: Object.fromEntries(DESK_CCYS.map((c, i) => [c, { bias: (i % 5) - 2, conviction: 'medium', why: 'w', flip: 'f' }])), ranking: [] }),
+  asset_views: (id, prompt) => { const names = prompt.match(/Rate every instrument in your group: ([^.]+)\./)[1].split(', ');
+    return { summary: 's', instruments: Object.fromEntries(names.map(n => [n, { rating: 'SHORT', conviction: 'low', why: `${n} legs`, plan: { zone: 'z', invalidation: 'i', timing: 'London' } }])) }; },
+  risk_case: id => ({ headline: `${id} view`, adjustments: [{ target: 'ALL', size: id === 'risk_conservative' ? 0.5 : 1, veto: false, reason: 'r' }, { target: 'XYZ', size: 1 }], warnings: ['NFP'] }),
+};
+
 // A fake model: answers every analyst with a valid report and the head with a book. `badFirst` makes chosen
 // skills reply with junk on their first try, `alwaysBad` on every try.
 function fakeModel({ badFirst = [], alwaysBad = [], headBad = false } = {}) {
   const seen = {}, calls = [];
   const fn = async ({ task, system, prompt }) => {
     calls.push(task);
-    if (task === 'desk-head') {
+    if (system.includes('You are the Head of Desk')) {
       if (headBad) return { text: '{"headline": "x", "instruments": {}}', usage: { in: 10, out: 5 } };
       const book = { headline: 'Risk-off', global: { tone: 'risk_off', summary: 's' },
         currencies: Object.fromEntries(DESK_CCYS.map(c => [c, { bias: 0, why: 'w' }])),
         instruments: Object.fromEntries(allInstruments().map(i => [i, { rating: 'LONG', conviction: 'medium', why: 'w', invalidation: 'i' }])), risks: [], gaps: [] };
       return { text: JSON.stringify(book), usage: { in: 100, out: 50 } };
     }
-    const id = roles.find(r => system.startsWith(r.body)).id;
+    const role = roles.find(r => system.startsWith(r.body)), id = role.id;
     seen[id] = (seen[id] ?? 0) + 1;
     if (alwaysBad.includes(id) || (badFirst.includes(id) && seen[id] === 1)) return { text: 'sorry, here is my analysis', usage: { in: 10, out: 5 } };
-    return { text: JSON.stringify({ headline: `${id} says`, points: [{ claim: 'c', evidence: 'e', impact: { USD: 1 } }], gaps: [], confidence: 'medium' }), usage: { in: 10, out: 5 } };
+    return { text: JSON.stringify(PHASE2[role.output]?.(id, prompt) ?? { headline: `${id} says`, points: [{ claim: 'c', evidence: 'e', impact: { USD: 1 } }], gaps: [], confidence: 'medium' }), usage: { in: 10, out: 5 } };
   };
   return { fn, calls, seen };
 }
@@ -94,7 +105,7 @@ const clock = () => NOW;
 
 await t('runDesk: full morning, every analyst then the Head, usage summed, labelled untested', async () => {
   const m = fakeModel();
-  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: m.fn, parseJson, now: clock });
+  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: m.fn, parseJson, now: clock, mode: 'quick' });
   const analysts = roles.filter(r => r.output === 'analyst_report').length;
   assert.equal(Object.values(run.analysts).filter(a => a.ok).length, analysts);
   assert.ok(run.head.ok); assert.equal(run.head.book.instruments.GOLD.rating, 'LONG');
@@ -107,7 +118,7 @@ await t('runDesk: full morning, every analyst then the Head, usage summed, label
 
 await t('runDesk: a bad first reply is retried once with the errors; a skill that keeps failing is recorded and the Head is told', async () => {
   const m = fakeModel({ badFirst: ['rates_cb'], alwaysBad: ['options_oi'] });
-  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: m.fn, parseJson, now: clock });
+  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: m.fn, parseJson, now: clock, mode: 'quick' });
   assert.ok(run.analysts.rates_cb.ok); assert.equal(run.analysts.rates_cb.attempts.length, 2);
   assert.equal(run.analysts.options_oi.ok, false); assert.equal(m.seen.options_oi, 2);
   assert.deepEqual(run.failed, ['options_oi']);
@@ -116,15 +127,15 @@ await t('runDesk: a bad first reply is retried once with the errors; a skill tha
 
 await t('runDesk: the Head does not run when fewer than half the analysts succeed; a bad Head book is a failed head', async () => {
   const ids = roles.filter(r => r.output === 'analyst_report').map(r => r.id);
-  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: fakeModel({ alwaysBad: ids.slice(0, 7) }).fn, parseJson, now: clock });
+  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: fakeModel({ alwaysBad: ids.slice(0, 7) }).fn, parseJson, now: clock, mode: 'quick' });
   assert.equal(run.head.ok, false); assert.ok(run.head.skipped);
-  const run2 = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: fakeModel({ headBad: true }).fn, parseJson, now: clock });
+  const run2 = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: fakeModel({ headBad: true }).fn, parseJson, now: clock, mode: 'quick' });
   assert.equal(run2.head.ok, false); assert.equal(run2.head.attempts.length, 2);
 });
 
 await t('runDesk: a provider error fails that skill without retrying it', async () => {
   let calls = 0;
-  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, now: clock, parseJson,
+  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, now: clock, parseJson, mode: 'quick',
     callModel: async () => { calls++; throw new Error('ANT_KEY not configured'); } });
   assert.equal(calls, roles.filter(r => r.output === 'analyst_report').length);
   assert.ok(Object.values(run.analysts).every(a => !a.ok && a.attempts[0].error));
@@ -133,17 +144,50 @@ await t('runDesk: a provider error fails that skill without retrying it', async 
 await t('runDesk: a reply cut off at the token cap is retried with twice the cap, same prompt (the 2026-11-03 failure)', async () => {
   const caps = [];
   const fn = async ({ task, maxTokens, prompt }) => {
-    if (task === 'desk-head') return fakeModel().fn({ task });
+    if (task === 'desk-head') return fakeModel().fn({ task, system: 'You are the Head of Desk' });
     caps.push(maxTokens);
     if (maxTokens <= CAPS.analyst) return { text: '{"headline": "cut', truncated: true, usage: { in: 1, out: maxTokens } };
     return { text: JSON.stringify({ headline: 'h', points: [{ claim: 'c', evidence: 'e', impact: {} }], gaps: [], confidence: 'low' }), usage: { in: 1, out: 1 } };
   };
-  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: fn, parseJson, now: clock });
+  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: fn, parseJson, now: clock, mode: 'quick' });
   assert.ok(Object.values(run.analysts).every(a => a.ok), 'all recovered on the bigger cap');
   assert.ok(caps.includes(CAPS.analyst) && caps.includes(CAPS.analyst * 2));
-  const stuck = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, now: clock, parseJson,
-    callModel: async ({ task }) => task === 'desk-head' ? fakeModel().fn({ task }) : { text: '{"head', truncated: true, usage: {} } });
+  const stuck = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, now: clock, parseJson, mode: 'quick',
+    callModel: async ({ task }) => task === 'desk-head' ? fakeModel().fn({ task, system: 'You are the Head of Desk' }) : { text: '{"head', truncated: true, usage: {} } });
   assert.match(Object.values(stuck.analysts)[0].errors[0], /cut off at the 32000-token cap/);
+});
+
+await t('runDesk full mode: analysts, global debate + ruling, currency debate + ruling, 7 asset desks, 3 risk voices, then the Head', async () => {
+  const m = fakeModel();
+  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: m.fn, parseJson, now: clock });
+  assert.equal(run.mode, 'full');
+  const d = run.debate;
+  assert.deepEqual(d.failed, []);
+  assert.equal(d.global.view.tone, 'risk_off');
+  assert.match(d.global.debate.risk_on.view.rebuttal, /thin/, 'rebuttal round ran');
+  assert.ok(d.global.debate.openings);
+  assert.equal(d.currency.view.ranking.length, 8, 'ranking rebuilt from biases when the manager leaves it out');
+  assert.deepEqual(Object.keys(d.assets).sort(), Object.keys(DESK_UNIVERSE).sort());
+  assert.equal(d.assets.fx_crosses.view.instruments.EURJPY.plan.timing, 'London');
+  assert.deepEqual(Object.keys(d.risk).sort(), ['risk_aggressive', 'risk_conservative', 'risk_neutral']);
+  assert.equal(d.risk.risk_conservative.view.adjustments.length, 1, 'unknown target dropped');
+  assert.ok(run.head.ok);
+  const analysts = roles.filter(r => r.output === 'analyst_report').length;
+  assert.equal(run.calls, analysts + 4 + 1 + 4 + 1 + Object.keys(DESK_UNIVERSE).length + 3 + 1);
+  assert.equal(m.calls.at(-1), 'desk-head');
+});
+
+await t('runDesk full mode: a failed stage is recorded and the next stage falls back; one round skips rebuttals', async () => {
+  const m = fakeModel({ alwaysBad: ['global_manager', 'risk_off'] });
+  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: m.fn, parseJson, now: clock });
+  assert.ok(run.debate.failed.includes('global_manager') && run.debate.failed.includes('risk_off'));
+  assert.equal(run.debate.global.view, null);
+  assert.ok(run.debate.currency.ok, 'currency stage still ran on the global analysts');
+  assert.ok(run.head.ok);
+  const one = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: fakeModel().fn, parseJson, now: clock, rounds: 1 });
+  assert.equal(one.debate.global.debate.openings, undefined);
+  const full = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: fakeModel().fn, parseJson, now: clock });
+  assert.equal(full.calls - one.calls, 4, 'one round = no rebuttals in either debate');
 });
 
 await t('head prompt lists every instrument with its legs and the analysts in global-first order', () => {

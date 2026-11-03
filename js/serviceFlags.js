@@ -203,7 +203,7 @@ export const SERVICES = [
     cadence: 'every 10 min; builds once per London weekday from 06:40 (and on POST /api/desk-pack/build); reads ~100 of this server\'s own routes six at a time, no upstream fetches, no model calls', cost: 'low', lean: false, on: true,
     feeds: '/api/desk-pack (?skill=, ?date=, ?summary=1), /api/desk-pack/index, /api/desk-pack/status. Writes desk_pack_<date> (gzipped) and desk_pack_index. Off = no pack for the day; the later pipeline phases have nothing to read.' },
   { id: 'deskRun', where: 'server', label: 'Desk Run: the analyst skills + Head of Desk book from the Desk Pack (plans/DESK_ANALYST_PIPELINE.md, Phase 1)',
-    cadence: 'every 10 min; runs once per London weekday from 06:55 when on; ~12 paid model calls per run (tasks desk-analyst, desk-head)', cost: 'med', lean: false, on: false,
+    cadence: 'every 10 min; runs once per London weekday from 06:55 when on; ~32 paid model calls per full run, ~12 for ?mode=quick (tasks desk-analyst, desk-head)', cost: 'med', lean: false, on: false,
     feeds: '/api/desk-run (?date=, ?summary=1), /api/desk-run/index, /api/desk-run/status, desk-run.html. Off by default (2026-11-03): each run spends model tokens, so it runs on demand (POST /api/desk-run) until the owner sets SVC_DESKRUN=1. Writes desk_run_<date> and desk_run_index.',
     note: 'OFF since 2026-11-03 (new, off from the start): each run is ~12 paid model calls (analysts on the desk-analyst task, the Head on desk-head). Off = no automatic morning run; POST /api/desk-run still runs it on demand.' },
   { id: 'ratesRegime', where: 'server', label: 'Rates vs Nasdaq regime (same-bar link, move attribution, rate-shock alerts)',

@@ -43,6 +43,12 @@ summary .muted{font-weight:400;margin-left:6px}
 .imp{font:12px var(--mono);margin-left:6px}
 .pos{color:var(--up)}.neg{color:var(--dn)}
 .fail{color:var(--dn)}
+.size{font:12px var(--mono);color:var(--tx2)}
+.plan{font-size:12.5px;color:var(--tx2);margin-top:3px}
+.rank{font:13px var(--mono);letter-spacing:.04em}
+.case{margin:6px 0 0 14px;font-size:13.5px}
+.case b{color:var(--tx2);font-weight:600}
+h3{margin:14px 0 6px;font-size:14px}
 .empty{color:var(--tx2);padding:30px 0;text-align:center}
 .running{border-color:var(--acc);text-align:center;padding:26px 18px}
 .running .big{font-size:18px;font-weight:600;color:var(--tx);margin-bottom:6px}
@@ -58,7 +64,8 @@ summary .muted{font-weight:400;margin-left:6px}
     <div class="sub">global → currency → asset · analysts, then the Head of Desk · <span class="untested">context, untested</span></div>
     <div class="right">
       <select id="day" class="btn" aria-label="Day"></select>
-      <button id="run" class="btn" type="button">Run now</button>
+      <button id="run" class="btn" type="button" title="Full run: analysts, the global and currency debates, asset desks, risk desk, then the Head (~32 calls, about $1.50-2)">Run now</button>
+      <button id="quick" class="btn" type="button" title="Analysts and the Head only (~12 calls, about $1)">Quick run</button>
       <a class="btn" href="/api/desk-pack?summary=1">Desk Pack health</a>
     </div>
   </div>
@@ -89,13 +96,15 @@ function render(run, universe) {
       const names = universe?.[g] ?? [];
       if (!names.length) return '';
       return `<tr class="grp"><td colspan="4">${label}</td></tr>` + names.map(n => { const c = b.instruments[n] ?? { rating: 'REVIEW' };
-        return `<tr><td class="n">${n}</td><td><span class="r ${c.rating}">${c.rating.replace('_', ' ')}</span><div class="muted">${esc(c.conviction)}</div></td><td>${esc(c.why) || '<span class="muted">no card</span>'}</td><td class="muted">${esc(c.invalidation)}</td></tr>`; }).join('');
+        const plan = c.plan && (c.plan.zone || c.plan.timing) ? `<div class="plan">Plan: ${esc(c.plan.zone)}${c.plan.timing ? ` · ${esc(c.plan.timing)}` : ''}${c.plan.invalidation ? ` · wrong if ${esc(c.plan.invalidation)}` : ''}</div>` : '';
+        return `<tr><td class="n">${n}</td><td><span class="r ${c.rating}">${c.rating.replace('_', ' ')}</span><div class="muted">${esc(c.conviction)}</div>${c.size != null ? `<div class="size">size ${c.size}</div>` : ''}</td><td>${esc(c.why) || '<span class="muted">no card</span>'}${plan}</td><td class="muted">${esc(c.invalidation)}</td></tr>`; }).join('');
     }).join('');
     parts.push(`<div class="panel"><h2>Instruments · five-step scale</h2><table><thead><tr><th>Instrument</th><th>Rating</th><th>Why</th><th>Wrong if</th></tr></thead><tbody>${rows}</tbody></table>
       ${h.notes?.length ? `<p class="muted">Repairs: ${h.notes.map(esc).join(' · ')}</p>` : ''}</div>`);
   } else {
     parts.push(`<div class="panel fail">The Head of Desk did not produce a book: ${esc((h?.errors ?? []).join('; '))}</div>`);
   }
+  if (run.debate) parts.push(renderDebate(run.debate));
   const an = Object.values(run.analysts).sort((a, b) => LAYERS.indexOf(a.layer) - LAYERS.indexOf(b.layer));
   parts.push(`<div class="panel"><h2>Analysts</h2>${an.map(a => a.ok ? `<details><summary>${esc(a.id)}<span class="muted">${esc(a.layer)} · ${esc(a.report.confidence)} · ${a.input?.usable ?? '?'} of ${a.input?.feeds ?? '?'} feeds</span><div style="font-weight:400">${esc(a.report.headline)}</div></summary>
       ${a.report.points.map(p => `<div class="pt">${esc(p.claim)} <code>${esc(p.evidence)}</code>${Object.entries(p.impact).map(([k, v]) => `<span class="imp">${k} ${sgn(v)}</span>`).join('')}</div>`).join('')}
@@ -103,6 +112,35 @@ function render(run, universe) {
     : `<details><summary class="fail">${esc(a.id)} failed</summary><div class="pt muted">${esc(a.errors.join('; '))}</div></details>`).join('')}</div>`);
   parts.push(`<p class="muted">Tokens: in ${run.usage?.in ?? '?'} · out ${run.usage?.out ?? '?'} · finished ${esc(run.finishedAt)} · ${esc(run.trigger ?? '')}. This book is context from the analyst pipeline (plans/DESK_ANALYST_PIPELINE.md). It is not a tested signal: it is scored only once its pre-registration is in place.</p>`);
   $('out').innerHTML = parts.join('');
+}
+
+function caseHtml(label, stage, subj) {
+  if (!stage?.ok) return `<div class="case fail">${esc(label)}: failed (${esc((stage?.errors ?? []).join('; '))})</div>`;
+  const c = stage.view.cases[subj];
+  return `<div class="case"><b>${esc(label)}</b> (${esc(c?.strength ?? '–')}): ${esc(c?.argument ?? 'no argument')}${subj === 'GLOBAL' && stage.view.rebuttal ? `<div class="muted">Rebuttal: ${esc(stage.view.rebuttal)}</div>` : ''}</div>`;
+}
+function renderDebate(d) {
+  const out = ['<div class="panel"><h2>The debate · global → currency → asset → risk</h2>'];
+  const g = d.global;
+  out.push('<h3>Global ruling</h3>');
+  if (g.ok) out.push(`<div><b>${esc(g.view.tone.replace('_', '-'))}</b> · ${esc(g.view.conviction)} conviction</div><p>${esc(g.view.summary)}</p>
+    ${g.view.drivers.length ? `<div class="muted">Decided by: ${g.view.drivers.map(esc).join(' · ')}</div>` : ''}${g.view.flip.length ? `<div class="muted">Would flip if: ${g.view.flip.map(esc).join(' · ')}</div>` : ''}`);
+  else out.push(`<div class="fail">The Global Manager failed: ${esc(g.errors.join('; '))}</div>`);
+  out.push(`<details><summary>The cases<span class="muted">Risk-On vs Risk-Off</span></summary>${caseHtml('Risk-On', g.debate?.risk_on, 'GLOBAL')}${caseHtml('Risk-Off', g.debate?.risk_off, 'GLOBAL')}</details>`);
+  const c = d.currency;
+  out.push('<h3>Currency ruling</h3>');
+  if (c.ok) {
+    out.push(`<div class="rank">Strongest → weakest: ${c.view.ranking.join(' › ')}</div>`);
+    out.push(Object.entries(c.view.currencies).map(([k, v]) => `<details><summary>${k} ${sgn(v.bias)}<span class="muted">${esc(v.conviction)} · ${esc(v.why)}</span></summary>
+      ${caseHtml('Strengthen', c.debate?.ccy_strengthen, k)}${caseHtml('Weaken', c.debate?.ccy_weaken, k)}${v.flip ? `<div class="case muted">Would change if: ${esc(v.flip)}</div>` : ''}</details>`).join(''));
+  } else out.push(`<div class="fail">The Currency Manager failed: ${esc(c.errors.join('; '))}</div>`);
+  out.push('<h3>Asset desks</h3>' + Object.entries(d.assets).map(([grp, a]) => `<div class="case"><b>${esc(grp.replace('_', ' '))}</b>: ${a.ok ? esc(a.view.summary) : `<span class="fail">failed (${esc(a.errors.join('; '))})</span>`}</div>`).join(''));
+  out.push('<h3>Risk desk</h3>' + Object.entries(d.risk).map(([k, r]) => r.ok ? `<details><summary>${esc(k.replace('risk_', ''))}<span class="muted">${esc(r.view.headline)}</span></summary>
+      ${r.view.adjustments.map(a => `<div class="case">${esc(a.target)}: size ${a.size}${a.veto ? ' · <b class="fail">veto</b>' : ''} · ${esc(a.reason)}</div>`).join('')}
+      ${r.view.warnings.length ? `<div class="case muted">Warnings: ${r.view.warnings.map(esc).join(' · ')}</div>` : ''}</details>` : `<div class="case fail">${esc(k)} failed</div>`).join(''));
+  if (d.failed.length) out.push(`<p class="muted">Stages that failed: ${d.failed.map(esc).join(', ')}</p>`);
+  out.push('</div>');
+  return out.join('');
 }
 
 async function load(date) {
@@ -122,12 +160,14 @@ async function loadDays() {
 // What each stage means to the reader, and roughly how long the run has left.
 const STAGE_TEXT = s => /desk pack/.test(s) ? 'Collecting this morning\'s data (the Desk Pack): about 1-2 minutes'
   : /analysts/.test(s) ? `The analysts are reading their data: ${s.replace(/^analysts\s*/, '') || 'starting'}`
+  : /debate/.test(s) ? `The advocates are arguing (${s})` : /ruling/.test(s) ? `The manager is ruling (${s})`
+  : /asset desks/.test(s) ? `The asset desks are rating their groups (${s})` : /risk desk/.test(s) ? 'The risk desk is sizing the book'
   : /head/.test(s) ? 'The Head of Desk is writing the book' : s;
 function showRunning(j) {
   const mins = Math.floor((Date.now() - j.startedAt) / 60000), secs = Math.floor((Date.now() - j.startedAt) / 1000) % 60;
   $('status').textContent = '';
   $('out').innerHTML = `<div class="panel running"><div class="big">Desk run in progress</div>
-    <div>${esc(STAGE_TEXT(j.stage ?? ''))}</div><div class="muted">${mins}m ${String(secs).padStart(2, '0')}s so far · a full run takes about 6-10 minutes · this page updates by itself</div>
+    <div>${esc(STAGE_TEXT(j.stage ?? ''))}</div><div class="muted">${mins}m ${String(secs).padStart(2, '0')}s so far · a full run takes about 10-15 minutes, a quick run 6-10 · this page updates by itself</div>
     <div class="bar"><i></i></div></div>`;
 }
 async function poll() {
@@ -138,14 +178,16 @@ async function poll() {
   await loadDays(); await load();
 }
 
-$('run').addEventListener('click', async () => {
-  $('run').disabled = true;
+async function start(mode) {
+  $('run').disabled = $('quick').disabled = true;
   $('out').innerHTML = '<div class="panel running"><div class="big">Starting the desk run…</div><div class="bar"><i></i></div></div>';
-  const r = await getJson('/api/desk-run', { method: 'POST' });
-  $('run').disabled = false;
+  const r = await getJson(`/api/desk-run${mode === 'quick' ? '?mode=quick' : ''}`, { method: 'POST' });
+  $('run').disabled = $('quick').disabled = false;
   if (!r.ok && !r.job) { $('out').innerHTML = `<div class="panel fail">${esc(r.error)}</div>`; return; }
   poll();   // 409 (already running) also lands here and shows the run in progress
-});
+}
+$('run').addEventListener('click', () => start('full'));
+$('quick').addEventListener('click', () => start('quick'));
 $('day').addEventListener('change', e => load(e.target.value));
 // On open: a run in progress takes the page over; otherwise show the latest saved run.
 getJson('/api/desk-run/status').then(async s => { await loadDays(); if (s.job?.status === 'running') poll(); else load(); });

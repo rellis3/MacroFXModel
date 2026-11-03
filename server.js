@@ -4602,7 +4602,7 @@ async function _drLoad(date) {
   if (_drLatest?.date === date) return _drLatest;
   try { const raw = await kv.get(_DR_KEY(date)); return raw ? JSON.parse(zlib.gunzipSync(Buffer.from(raw, 'base64')).toString('utf8')) : null; } catch { return null; }
 }
-async function _deskRun(trigger, job) {
+async function _deskRun(trigger, job, mode = 'full') {
   const roles = _deskLoadRoles();
   const today = _dpLondonDate(Date.now());
   let pack = _dpLatest?.date === today ? _dpLatest : await _dpLoad(today);
@@ -4610,13 +4610,16 @@ async function _deskRun(trigger, job) {
   job.stage = 'analysts';
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
   const run = await _runDesk({
-    pack, roles, ledger: DESK_EVIDENCE, now: Date.now, concurrency: 4,
+    pack, roles, ledger: DESK_EVIDENCE, now: Date.now, concurrency: 4, mode,
     parseJson: (txt, label) => _parseModelJson(txt, label),
     callModel: async ({ task, system, prompt, maxTokens }) => {
       const r = await callModel({ task, system, prompt, maxTokens });
       return { text: r.text ?? _antText(r), usage: r.usage ?? null, model: r.model ?? null, truncated: !!r.truncated };
     },
-    onProgress: p => { job.done = (job.done ?? 0) + 1; job.stage = p.stage === 'head' ? 'head of desk done' : `analysts (${job.done})`; },
+    onProgress: p => {
+      if (p.stage === 'analyst') { job.analystsDone = (job.analystsDone ?? 0) + 1; job.stage = `analysts (${job.analystsDone} of ${roles.filter(r => r.output === 'analyst_report').length})`; }
+      else job.stage = p.label ?? p.stage;
+    },
   });
   run.trigger = trigger;
   _drLatest = run;
@@ -4624,25 +4627,26 @@ async function _deskRun(trigger, job) {
   try {
     await kv.put(_DR_KEY(run.date), gz);
     const idx = (await _drLoadIndex()).filter(r => r.date !== run.date);
-    idx.push({ date: run.date, finishedAt: run.finishedAt, trigger, headOk: !!run.head?.ok, failed: run.failed, usage: run.usage });
+    idx.push({ date: run.date, finishedAt: run.finishedAt, trigger, mode: run.mode, headOk: !!run.head?.ok, failed: [...run.failed, ...(run.debate?.failed ?? [])], calls: run.calls, usage: run.usage });
     await kv.put(_DR_INDEX_KV, JSON.stringify(idx.slice(-400)));
   } catch (e) { console.warn('[desk-run] save failed:', e.message); }
-  console.log(`[desk-run] ${run.date}: ${Object.values(run.analysts).filter(a => a.ok).length}/${Object.keys(run.analysts).length} analysts, head ${run.head?.ok ? 'ok' : 'FAILED'}, tokens in ${run.usage.in} out ${run.usage.out}`);
+  console.log(`[desk-run] ${run.date} (${run.mode}): ${Object.values(run.analysts).filter(a => a.ok).length}/${Object.keys(run.analysts).length} analysts, debate failures ${run.debate?.failed?.length ?? '-'}, head ${run.head?.ok ? 'ok' : 'FAILED'}, ${run.calls} calls, tokens in ${run.usage.in} out ${run.usage.out}`);
   return run;
 }
-function _drStart(trigger) {
+function _drStart(trigger, mode = 'full') {
   if (_drJob?.status === 'running') return null;
-  const job = _drJob = { status: 'running', trigger, stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null, date: null };
-  _deskRun(trigger, job)
+  const job = _drJob = { status: 'running', trigger, mode, stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null, date: null };
+  _deskRun(trigger, job, mode)
     .then(r => { job.status = 'done'; job.date = r.date; })
     .catch(e => { job.status = 'error'; job.error = e.message; console.error('[desk-run]', e.message); })
     .finally(() => { job.finishedAt = Date.now(); });
   return job;
 }
 // Several minutes of model calls, so it answers at once (202) and runs in the background; poll /api/desk-run/status.
-app.post('/api/desk-run', (_req, res) => {
+// ?mode=quick runs the analysts and the Head only (Phase 1, ~12 calls); the default runs the full debate (~32 calls).
+app.post('/api/desk-run', (req, res) => {
   if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
-  const job = _drStart('manual');
+  const job = _drStart('manual', req.query?.mode === 'quick' ? 'quick' : 'full');
   if (!job) return res.status(409).json({ ok: false, error: 'a desk run is already running', job: _drJob });
   res.status(202).json({ ok: true, job });
 });
