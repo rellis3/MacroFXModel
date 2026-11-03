@@ -84,14 +84,14 @@ No day has been scored, so there is no control sample yet. Rule, fixed now:
 
 | Cell | Planned n | Outcome SD | Design effect | MDE (80%, α 0.05 two-sided) | Pass bar | Verdict |
 |---|---|---|---|---|---|---|
-| H1 day score | ≥ 120 eligible days | from the **shuffle placebo's** day-score SD over the first 20 eligible days (a control sample: it never uses the book's own signs) | 1 (one observation per day; block bootstrap handles serial correlation) | `mdeMeanDiff`, filled in Amendment A1 at day 20 | 0.05 u | POWERED if MDE ≤ 0.05 u at the planned n |
+| H1 day score | ≥ 120 eligible days | from the **shuffle placebo's** day-score SD over the first 20 eligible days (a control sample: it never uses the book's own signs) | 1 (one observation per day; block bootstrap handles serial correlation) | `mdeMeanDiff`, filled in Amendment A3 at day 20 | 0.05 u | POWERED if MDE ≤ 0.05 u at the planned n |
 
-- At day 20, Amendment A1 (PRE-RESULTS for the scored cells: it reads only placebo SDs) records the SD, the MDE at
+- At day 20, Amendment A3 (PRE-RESULTS for the scored cells: it reads only placebo SDs) records the SD, the MDE at
   120 days, and **N_req**, the eligible days needed for MDE ≤ 0.05 u.
 - **Judgement date** = the day the eligible count reaches max(120, N_req). If that has not happened by
   **2027-12-31**, H1 is **UNDERPOWERED** and the test closes.
 - Rough expectation, for scale: with a day-score SD near 0.4 u, 120 days gives an MDE near 0.10 u, so the pass bar
-  may need about 500 days. If A1 says so, the verdict is very likely UNDERPOWERED unless the owner extends the
+  may need about 500 days. If A3 says so, the verdict is very likely UNDERPOWERED unless the owner extends the
   window. That is written here so it cannot be argued later.
 
 ## 6. Multiplicity — how many cells, and the corrected bar (required)
@@ -132,6 +132,13 @@ now, before any card has been scored: **entry** = the open of the first M1 bar i
 the close of the last M1 bar in [16:00, 21:00) London (US grain and soft CFDs stop trading before 21:00, and their
 last bar of the day is their exit). A card with no bar in either window is missing, counted and reported by
 instrument. The power amendment named in §5 is now A2. No outcome had been computed.
+
+### A2 — 2026-11-03 — PRE-RESULTS
+Session updates (Phase 5) are built: at 08:05 and 14:35 London an update agent may change some cards. They do not
+touch this test. The scored book is the morning book as written before 08:00, kept apart in `desk_run_elig_<date>`
+and never edited. The updates are stored beside it and scored in the evening as a description only: new view minus
+old view over the rest of the day, size-weighted. They are in no scored cell, and no cell here changes. The power
+amendment named in §5 is now A3. No outcome had been computed.
 
 ---
 

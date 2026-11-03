@@ -220,7 +220,9 @@ import { assembleGlobalReadInput as _grAssemble, GLOBAL_READ_ENDPOINTS as _GR_EN
 import { parseRole as _deskParseRole, buildStagePrompt as _deskStagePrompt } from './js/deskRoles.js';
 import { scoreDay as _dsScoreDay, eligible as _dsEligible, windowFor as _dsWindow, record as _dsRecord, londonMs as _dsLondonMs } from './js/deskScore.js';
 import { reflectionSections as _dsReflectSections, memoryFeed as _dsMemoryFeed, movers as _dsMovers } from './js/deskReflect.js';
-import { validateReflection as _dsValidateReflection, validateNewsletterIssue as _dsValidateIssue } from './js/deskSchemas.js';
+import { validateReflection as _dsValidateReflection, validateNewsletterIssue as _dsValidateIssue, validateSessionUpdate as _duValidate } from './js/deskSchemas.js';
+import { SLOTS as _DU_SLOTS, slotMs as _duSlotMs, marketSince as _duMarketSince, marketText as _duMarketText, liveView as _duLiveView, scoreUpdates as _duScoreUpdates } from './js/deskUpdate.js';
+import { sliceFeed as _deskSliceFeed } from './js/deskSlices.js';
 import { dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
@@ -4845,8 +4847,8 @@ async function _dsRunFor(date) {
   try { const raw = await kv.get(_DS_ELIG_KEY(date)); if (raw) return _dsGz(raw); } catch { /* fall through to the latest run */ }
   return _drLoad(date);
 }
-async function _dsBars(insts, date) {
-  const { entryMs, exitMs } = _dsWindow(date), out = {}, list = [...insts];
+async function _dsBars(insts, date, range = null) {
+  const { entryMs, exitMs } = range ?? _dsWindow(date), out = {}, list = [...insts];
   let next = 0;
   await Promise.all(Array.from({ length: 4 }, async () => {
     while (next < list.length) {
@@ -4906,6 +4908,9 @@ async function _dsScore(date, { reflect = true } = {}) {
   const insts = new Set([...Object.keys(run.head.book.instruments ?? {}), ...Object.keys(run.control?.book?.instruments ?? {})]);
   const bars = await _dsBars(insts, date);
   const score = { ..._dsScoreDay(run, bars, { seed: _DS_SEED }), savedAt: new Date().toISOString() };
+  // Phase 5: the session updates, scored on their own (descriptive; the book above is scored as written)
+  const updates = await _duLoad(date);
+  if (Object.keys(updates.slots ?? {}).length) score.updates = _duScoreUpdates(run, updates, bars, date);
   await kv.put(_DS_SCORE_KEY(date), JSON.stringify(score));
   const { cards, ...row } = score;
   const idx = (await _dsLoadIndex()).filter(r => r.date !== date); idx.push(row); idx.sort((a, b) => a.date.localeCompare(b.date));
@@ -4958,6 +4963,85 @@ app.post('/api/desk-score/run', (req, res) => {
   if (!job) return res.status(409).json({ ok: false, error: 'a scoring job is already running', job: _dsJob });
   res.status(202).json({ ok: true, job });
 });
+// ── Desk session updates (js/deskUpdate.js, desk/roles/session_update.md; plans/DESK_ANALYST_PIPELINE.md Phase 5) ──
+// At the London open (08:05) and the New York open (14:35) the desk re-reads what changed since the morning book:
+// every market in u with the lines it has touched, and the events, risk and liquidity feeds fetched fresh. One model
+// call (task desk-head) changes only the cards it must. The morning book is never edited (prereg amendment A2); the
+// updates are saved beside it in desk_run_update_<date> and scored on their own after 21:10.
+const _DU_KEY = date => `desk_run_update_${date}`;
+const _DU_FEEDS = ['calendar-ahead', 'events', 'event-day', 'release-calls', 'news-outcome', 'risk-flags', 'liquidity-gate/live', 'credit-stress'];
+let _duJob = null;
+async function _duLoad(date) { try { const raw = await kv.get(_DU_KEY(date)); return raw ? JSON.parse(raw) : { date, slots: {} }; } catch { return { date, slots: {} }; } }
+async function _duRun(slot, date) {
+  const run = await _dsRunFor(date);
+  if (!run?.head?.ok) return { ok: false, error: `no desk book for ${date}` };
+  const role = _deskLoadRoles().find(r => r.id === 'session_update');
+  if (!role || !_aiAnyKey()) return { ok: false, error: 'no session_update role or no model key' };
+  const now = Date.now(), book = run.head.book, updates = await _duLoad(date), view = _duLiveView(book, updates);
+  const bars = await _dsBars(Object.keys(book.instruments), date, { entryMs: _dsLondonMs(date, 0), exitMs: now });
+  const market = _duMarketSince(book.instruments, bars, date, now);
+  const feeds = _dpExpandFeeds().filter(f => _DU_FEEDS.includes(f.id));
+  const fresh = await Promise.all(feeds.map(async f => { const r = await _dpFetchFeed({ ...f, timeoutMs: 30_000 }); return `### ${f.id}\n${r.json ? JSON.stringify(_deskSliceFeed(f.id, r.json)).slice(0, 5000) : `GAP: ${r.error ?? `HTTP ${r.httpStatus}`}`}`; }));
+  const d = run.debate ?? {};
+  const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+  const { system, prompt } = _deskStagePrompt({ role, pack: { date }, ledger: DESK_EVIDENCE, sections: [
+    ['Session', `${_DU_SLOTS[slot].label}, ${new Date(now).toISOString()} (the book was written at ${run.finishedAt})`],
+    ["The morning's global ruling", d.global?.view ? { tone: d.global.view.tone, conviction: d.global.view.conviction, summary: d.global.view.summary, flip: d.global.view.flip } : book.global],
+    ["The morning's currency ranking", d.currency?.view ? Object.fromEntries(Object.entries(d.currency.view.currencies ?? {}).map(([k, v]) => [k, v.bias])) : book.currencies],
+    ['Every market now (u = the morning p50 distance), with the book as it stands', _duMarketText(market, view)],
+    ['Why each card was written', Object.fromEntries(Object.entries(book.instruments).filter(([, c]) => c.rating !== 'FLAT').map(([n, c]) => [n, String(c.why ?? '').slice(0, 200)]))],
+    ['Earlier update today', Object.values(updates.slots ?? {}).map(u => ({ headline: u.headline, changes: u.changes })) ],
+    ['Events, risk and liquidity, read now', fresh.join('\n\n')],
+  ] });
+  let value = null, model = null;
+  for (let i = 0; i < 2 && !value; i++) {
+    try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 16_000 }); model = r.model ?? null; const v = _duValidate(_parseModelJson(r.text ?? _antText(r), 'desk:update'), view); if (v.ok) value = v.value; }
+    catch (e) { console.warn('[desk-update]', e.message); }
+  }
+  if (!value) return { ok: false, error: 'the update agent did not return a usable update' };
+  updates.slots = { ...(updates.slots ?? {}), [slot]: { at: new Date(now).toISOString(), ...value, model } };
+  await kv.put(_DU_KEY(date), JSON.stringify(updates));
+  console.log(`[desk-update] ${date} ${slot}: ${value.changes.length} change(s): ${value.headline}`);
+  return { ok: true, update: updates.slots[slot] };
+}
+function _duStart(slot, date) {
+  if (_duJob?.status === 'running') return null;
+  const job = _duJob = { status: 'running', slot, date, startedAt: Date.now(), finishedAt: null, error: null };
+  _duRun(slot, date).then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; })
+    .catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
+  return job;
+}
+// GET /api/desk-update?date=: the day's session updates and the live view (the book with the updates applied)
+app.get('/api/desk-update', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : _dpLondonDate(Date.now());
+    const updates = await _duLoad(date), run = await _dsRunFor(date);
+    res.json({ ok: true, date, slots: updates.slots ?? {}, live: run?.head?.ok ? _duLiveView(run.head.book, updates) : null, job: _duJob });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/desk-update/run?slot=london|ny: run a session update now (any time after its slot opens)
+app.post('/api/desk-update/run', (req, res) => {
+  const slot = req.query.slot === 'ny' ? 'ny' : 'london', date = _dpLondonDate(Date.now());
+  if (Date.now() < _duSlotMs(date, slot)) return res.status(409).json({ ok: false, error: `the ${_DU_SLOTS[slot].label} update opens at ${_DU_SLOTS[slot].hh}:${String(_DU_SLOTS[slot].mm).padStart(2, '0')} London` });
+  const job = _duStart(slot, date);
+  if (!job) return res.status(409).json({ ok: false, error: 'an update is already running', job: _duJob });
+  res.status(202).json({ ok: true, job });
+});
+// Every 5 min on weekdays: each slot once, within 90 minutes of its time, and only over a book written before it.
+svcInterval('deskUpdate', async () => {
+  const now = Date.now(), date = _dpLondonDate(now), dow = new Date(_dsLondonMs(date, 12)).getUTCDay();
+  if (dow === 0 || dow === 6 || _duJob?.status === 'running' || !_aiAnyKey()) return;
+  for (const slot of Object.keys(_DU_SLOTS)) {
+    const t = _duSlotMs(date, slot);
+    if (now < t || now > t + 90 * 60_000) continue;
+    if ((await _duLoad(date)).slots?.[slot]) continue;
+    const run = await _dsRunFor(date);
+    if (!run?.head?.ok || !(Date.parse(run.finishedAt) < t)) continue;
+    _duStart(slot, date); return;
+  }
+}, 5 * 60_000);
+
 svcInterval('deskScore', async () => {
   const now = Date.now(), today = _dpLondonDate(now), dow = new Date(_dsLondonMs(today, 12)).getUTCDay();
   if (dow === 0 || dow === 6 || _dsJob?.status === 'running') return;

@@ -33,6 +33,8 @@ export function reflectionSections(run, score) {
     ['Every live card, with its result', cards.join('\n') || '(no live cards)'],
     ["The morning's global ruling", d.global?.view ? { tone: d.global.view.tone, conviction: d.global.view.conviction, summary: d.global.view.summary } : b.global ?? null],
     ["The morning's currency ruling", d.currency?.view ? Object.fromEntries(Object.entries(d.currency.view.currencies ?? {}).map(([k, v]) => [k, { bias: v.bias, why: v.why }])) : b.currencies ?? null],
+    ...(score?.updates?.slots && Object.keys(score.updates.slots).length ? [['The session updates and whether they helped (move from the update to 21:00, size-weighted, new view minus old)',
+      Object.fromEntries(Object.entries(score.updates.slots).map(([k, v]) => [k, { helped: v.helped, hurt: v.hurt, netDelta: v.netDelta, changes: v.changes.map(c => `${c.instrument} ${c.from} -> ${c.to}${c.delta != null ? `: ${c.delta > 0 ? '+' : ''}${c.delta} u` : ` (${c.missing})`}`) }]))]] : []),
     ["The risk desk's warnings and the Head's risks", { risks: b.risks ?? [], gaps: b.gaps ?? [], warnings: Object.values(d.risk ?? {}).flatMap(v => v?.view?.warnings ?? []).slice(0, 8) }],
   ];
 }

@@ -232,6 +232,30 @@ export function validateReflection(obj) {
   return { ok: true, notes, value: { headline, worked: strList(obj.worked).slice(0, 6), failed: strList(obj.failed).slice(0, 6), lessons, watch: strList(obj.watch).slice(0, 5) } };
 }
 
+// ── Phase 5: session updates ────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A session update: what changed since the book and the few cards that must change. current: { INST: { rating, size } }
+ * (the live view before this update). A "change" that changes nothing is dropped; at most 12 are kept.
+ */
+export function validateSessionUpdate(obj, current) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return { ok: false, errors: ['reply is not a JSON object'] };
+  const headline = str(obj.headline, 300);
+  if (!headline) return { ok: false, errors: ['headline missing'] };
+  const notes = [], changes = [];
+  for (const c of (Array.isArray(obj.changes) ? obj.changes : []).slice(0, 20)) {
+    const instrument = String(c?.instrument ?? '').toUpperCase().replace('/', '');
+    if (!current[instrument]) { notes.push(`change on unknown instrument ${c?.instrument} dropped`); continue; }
+    const to = normalizeRating(c?.to);
+    if (to === RATING_REVIEW) { notes.push(`${instrument}: rating "${c?.to}" unreadable, dropped`); continue; }
+    const sz = Number(c?.size), size = Number.isFinite(sz) ? Math.max(0, Math.min(1.5, sz)) : null;
+    if (to === current[instrument].rating && (size == null || size === current[instrument].size)) { notes.push(`${instrument}: no change, dropped`); continue; }
+    const why = str(c?.why, 400); if (!why) { notes.push(`${instrument}: a change with no reason, dropped`); continue; }
+    if (changes.length < 12) changes.push({ instrument, to, size, why });
+  }
+  return { ok: true, notes, value: { headline, globalStillHolds: obj.globalStillHolds !== false, changes, watch: strList(obj.watch).slice(0, 5) } };
+}
+
 // ── Phase 3: the newsletter writer ───────────────────────────────────────────────────────────────────────────────
 
 /** The house labels every newsletter section carries (the regular issue's legend). */
@@ -324,6 +348,12 @@ bias: integer -2..+2.`,
   "warnings": ["what could go wrong today"]
 }
 size: 0 to 1.5 (1 = normal). veto: true only when the trade should not be taken today at all.`,
+  session_update: `{
+  "headline": "what changed since the book, in one sentence",
+  "globalStillHolds": true,
+  "changes": [ { "instrument": "EURUSD", "to": "STRONG_LONG | LONG | FLAT | SHORT | STRONG_SHORT", "size": 0.5, "why": "the new fact that forces it" } ],   // only the cards that must change; [] is a good answer
+  "watch": ["what to check before the next session"]
+}`,
   reflection: `{
   "headline": "the day against the book, in one sentence",
   "worked": ["what the book got right, naming the cards and the move in u"],
