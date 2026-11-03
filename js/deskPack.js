@@ -97,7 +97,7 @@ export const DESK_FEEDS = [
   // ── global ──────────────────────────────────────────────────────────────────
   F('global_market', 'global-read', 2 * H),
   F('global_market', 'wider-market', 1 * D),
-  F('global_market', 'risk-flags', 1 * D),
+  F('global_market', 'risk-flags', 4 * D),   // US daily closes: a Monday read is ~3 days old by construction
   F('global_market', 'regime', 45 * D),
   F('global_market', 'hmm/regimes', 1 * D),
   F('global_market', 'macro-regime-fx', 45 * D),
@@ -138,7 +138,7 @@ export const DESK_FEEDS = [
   F('yields_curve', 'yield-coupling', 4 * D),
   F('yields_curve', 'yield-spread/plan', 4 * D),
   ...['cpi', 'ppi', 'gdp', 'ism', 'labor-market', 'retail-sales', 'trade-balance', 'consumer-confidence'].map(p => F('macro_economy', p, 100 * D)),
-  F('macro_economy', 'econ-surprise', 7 * D),
+  F('macro_economy', 'econ-surprise', 7 * D, { maxBytes: 400_000 }),   // oversize at 150 KB on the first Railway pack
   F('macro_economy', 'econ-trend', 45 * D),
   F('macro_economy', 'nowcast', 10 * D),
   F('macro_economy', 'macro-scorecard', 4 * D),
@@ -168,7 +168,7 @@ export const DESK_FEEDS = [
   // ── evidence & memory ───────────────────────────────────────────────────────
   F('evidence_memory', 'ledger', 7 * D),
   F('evidence_memory', 'direction-ledger', 7 * D),
-  F('evidence_memory', 'forward-track', 7 * D),
+  F('evidence_memory', 'forward-track', 7 * D),   // first Railway pack: last refresh 2026-07-15, i.e. the forward record has stopped -- a real gap, kept visible
   F('evidence_memory', 'data-health', 1 * D),
   F('evidence_memory', 'morning-brief', 3 * D),
   F('evidence_memory', 'eod-review', 3 * D),

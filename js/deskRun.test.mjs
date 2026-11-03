@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseRole, selectEvidence, sliceText, buildAnalystPrompt, buildHeadPrompt, feedBlock } from './deskRoles.js';
-import { runDesk, runSummary } from './deskRun.js';
+import { parseRole, selectEvidence, sliceText, buildAnalystPrompt, buildHeadPrompt, feedBlock, shareBudget } from './deskRoles.js';
+import { runDesk, runSummary, CAPS } from './deskRun.js';
 import { DESK_SKILLS, expandFeeds, buildDeskPack, allInstruments, DESK_CCYS } from './deskPack.js';
 import { DESK_EVIDENCE } from './deskEvidence.js';
 
@@ -54,7 +54,9 @@ await t('selectEvidence: domain filter, validated first then nulls, capped; "val
 await t('slice text: gaps named, stale flagged, data cut to budget', () => {
   assert.match(feedBlock({ id: 'fed-path', status: 'empty', error: 'no capture yet' }, 100), /GAP: no capture yet/);
   assert.match(feedBlock({ id: 'x', status: 'stale', asOf: '2026-10-01T00:00:00Z', ageH: 800, data: { a: 1 } }, 100), /STALE/);
-  assert.match(feedBlock({ id: 'x', status: 'ok', data: { s: 'y'.repeat(5000) } }, 1200), /…\[cut\]$/);
+  assert.match(feedBlock({ id: 'x', status: 'ok', data: { rows: Array.from({ length: 8 }, () => ({ s: 'y'.repeat(590) })) } }, 1200), /…\[cut\]$/);
+  assert.deepEqual(shareBudget([100, 50_000, 300, 20_000], 30_000), [100, 14_800, 300, 14_800], 'small feeds take what they need, big ones share the rest');
+  assert.deepEqual(shareBudget([10, 20], 1000), [10, 20]);
   const s = sliceText(pack, ['rates_cb'], { maxChars: 20000 });
   assert.ok(s.feeds > 10 && s.usable < s.feeds && s.text.includes('GAP: down'));
 });
@@ -126,6 +128,22 @@ await t('runDesk: a provider error fails that skill without retrying it', async 
     callModel: async () => { calls++; throw new Error('ANT_KEY not configured'); } });
   assert.equal(calls, roles.filter(r => r.output === 'analyst_report').length);
   assert.ok(Object.values(run.analysts).every(a => !a.ok && a.attempts[0].error));
+});
+
+await t('runDesk: a reply cut off at the token cap is retried with twice the cap, same prompt (the 2026-11-03 failure)', async () => {
+  const caps = [];
+  const fn = async ({ task, maxTokens, prompt }) => {
+    if (task === 'desk-head') return fakeModel().fn({ task });
+    caps.push(maxTokens);
+    if (maxTokens <= CAPS.analyst) return { text: '{"headline": "cut', truncated: true, usage: { in: 1, out: maxTokens } };
+    return { text: JSON.stringify({ headline: 'h', points: [{ claim: 'c', evidence: 'e', impact: {} }], gaps: [], confidence: 'low' }), usage: { in: 1, out: 1 } };
+  };
+  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: fn, parseJson, now: clock });
+  assert.ok(Object.values(run.analysts).every(a => a.ok), 'all recovered on the bigger cap');
+  assert.ok(caps.includes(CAPS.analyst) && caps.includes(CAPS.analyst * 2));
+  const stuck = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, now: clock, parseJson,
+    callModel: async ({ task }) => task === 'desk-head' ? fakeModel().fn({ task }) : { text: '{"head', truncated: true, usage: {} } });
+  assert.match(Object.values(stuck.analysts)[0].errors[0], /cut off at the 32000-token cap/);
 });
 
 await t('head prompt lists every instrument with its legs and the analysts in global-first order', () => {

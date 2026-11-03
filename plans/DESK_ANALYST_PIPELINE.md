@@ -253,6 +253,21 @@ Until then everything the pipeline says is labelled **context, untested**.
 - **Limits:** the data each analyst sees is still the pack's generic cut (§9). Hand-written slicers follow the first
   Railway pack audit. Nothing here is scored yet (§8).
 
+## 9c. First Railway run, 2026-11-03 04:43 London
+
+- **Pack:** 84 of 107 feeds usable, built in 171 s. Real gaps: fed-path 4 days old ("odds not loaded"), eod-review
+  from Friday, rate-diff / rates-regime / RBNZ never fetched, trade-decision state empty for 7 of 8 pairs,
+  gold-etf-flow and hmm/regimes empty, funding-read not built. **forward-track stopped on 2026-07-15** (zero forward
+  signals since): the forward record is dead, not mis-dated. Eight feeds timed out at 45 s under load, so the
+  timeout is now 90 s. `econ-surprise` was oversize; it now has a 400 KB allowance.
+- **Run:** all 11 analysts failed. Sonnet 5 thinks before answering, thinking counts against `max_tokens`, and the
+  3,000 cap ran out before any JSON was written; the retry repeated the same cap. Cost about $1.60, nothing usable.
+  Fixed: caps of 16k (analysts) to 32k (Head), a cut-off reply is retried with twice the cap, and a per-task
+  `effort` (medium for analysts, high for the Head) bounds the thinking.
+- **Slices:** `js/deskSlices.js`, written from that pack's real payloads, cuts the analysts' data from 1.69 MB to
+  0.38 MB (vol-forecast 210 KB → 15 KB with all 41 instruments). The budget inside each analyst is now shared fairly,
+  so a big feed is not cut to an even split with a tiny one. Expected cost per Phase 1 run: about $1.
+
 ## 10. Owner decisions (2026-11-03)
 
 1. **Rating scale:** the five-step scale (§4, Layer 3).
