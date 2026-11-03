@@ -610,6 +610,205 @@ Desk Run keeps the morning book. Its track-record and session-update panels move
   - the book as if held over each recent session: the worst day and the 1-in-20 day
 - **Shown.** On the Desk Office Today tab. It describes the book; it does not forecast.
 
+## 9q. Phases 6 and 15 as built: the economist and the scenario playbooks (2026-11-03)
+
+The history is the release study's record (`analysis/output/release_layer1/summary.json`, served by
+`/api/release-layer1`). It holds 150 releases from 2024-04 to 2026-10:
+
+| Family | Releases |
+|---|---|
+| NFP | 28 |
+| CPI | 25 |
+| ECB, BoE, BoJ | 20 each |
+| FOMC | 19 |
+| Refunding | 10 |
+| UK fiscal | 5 |
+| Retail sales | 2 |
+| PCE | 1 |
+
+Each release has the actual, the consensus and the surprise, plus how about 20 markets moved 1 to 240 minutes after it.
+
+- **The numbers** (`js/releasePlaybook.js`, code). For each high-impact release in the next 36 hours (from
+  `/api/events` and `/api/calendar-ahead`, mapped to a family by event and country):
+  - the median absolute move per market at 30 minutes and 4 hours
+  - the median time to the peak and how much of it is kept
+  - where surprises are recorded, the median signed move after hot prints and after cold prints, with counts
+
+  For CPI that is 16 recorded surprises: 5 hot and 11 cold.
+- **The economist** (`desk/roles/economist.md`, one call per full run, after the Head, so the scored book is
+  unchanged). It writes a brief per release: what is priced, size and speed, if hot, if cold, the book's cards at risk,
+  and what to watch. Every number comes from the playbook with its count, and it never forecasts the surprise
+  (`validateEconomist` flags forecasting words).
+- **Where it shows.** These are for readers. "The releases ahead" page goes in the desk magazine (after the risk desk)
+  and the desk brief, with the brief and the history table for each release. The Desk Office Research tab shows the
+  same.
+
+## 9r. Phase 17: the Desk Terminal (owner, 2026-11-03; v1 built 2026-11-03)
+
+A private terminal for the owner, built last, after the remaining phases. The model is FundaBias
+(fundabias.com), with design ideas from its public pages, made with this repo's data and agents. It never goes into
+the newsletter.
+
+**Design brief**, from FundaBias's public pages and terminal preview:
+
+- **Look.** A deep navy-indigo background with purple and gold accents.
+- **Top bar.** Market-session clocks for New York, London, Tokyo and Sydney, each marked open or closed.
+- **Module tabs**, grouped:
+  - OVERVIEW: daily, week ahead, strength
+  - MACRO: central banks, rate expectations, divergence, calendar
+  - POSITIONING: COT, retail sentiment, institutional positioning
+  - ADVANCED: seasonality, vol skew
+  - AI: the assistant
+- **News ticker.** A scrolling ticker of tagged headlines.
+- **Dense panels:**
+  - a world map of geopolitical risk with an events list
+  - a sentiment gauge with long/short bars per pair
+  - seasonality
+  - the calendar
+- **Per-asset report cards.** Each has a bias chip, a highlighted thesis line, key-driver chips and the analysis.
+- **Assistant.** A floating "ask" button.
+
+More patterns from the owner's screenshots of their pages (2026-11-03). We take the look, not the product:
+
+- **Currency card** (a modal per currency):
+  - flag, code, central bank and a bias chip (NEUTRAL)
+  - a score out of 10 with a bar
+  - a synthesis paragraph ruled in gold on the left
+  - key-driver boxes, each tagged by tier and type ([TIER1 +CB], [TIER2 -MACRO])
+  - "best expressions": the pair this currency is best traded through, with a BULLISH chip and the score gap
+  - a monetary-cycle chip (Hawkish Hold)
+  - an AI footer with the time
+
+  Ours maps the Currency Manager's −2..+2 bias to /10. The drivers come from the strengthen and weaken cases. The
+  best expressions are the book's cards on that currency's legs. Each driver is tagged with the Evidence Book label
+  (tested, null or untested), which they do not have.
+- **Asset card** (the daily report): instrument and class chips, "Analysis of X", a bias chip with an arrow and a
+  score out of 10, the thesis as a gold italic quote, key-driver chips, the analysis text with "Read full analysis",
+  and dark rounded cards with thin borders. Ours comes from the Head's card, the asset desk's why, the plan and the
+  levels.
+- **Central-bank world map.** A dark map with a glowing dot per central bank and a legend of policy rates with the
+  real rate. Clicking a bank opens a panel with the real rate (rate minus CPI), bars for rate, CPI, GDP and
+  unemployment against target, and the bank's upcoming releases.
+- **Playbook card.** A title, a grade chip (A+, A, B+), a one-line setup, then coloured rows: Entry (green rule),
+  Target (amber), Invalidation (red). Ours are the book's plans, graded by conviction. Our tested record gets a line
+  too: "how this kind of setup has scored".
+- **Regime card.** "RISK-ON environment, triggered by …", then BUY and SELL lists with a reason each. Ours is the
+  Global Manager's ruling and its flip conditions.
+- **Tier-1 release card.** Release time, why it matters, the average move and a pro tip. Ours is the economist's
+  playbook with the measured move and counts (§9q).
+- **Throughout:** deep navy or near-black, purple accents for interactive elements, gold for theses and grades, green
+  and red only for direction, mono labels in caps with letter-spacing, and thin rounded borders.
+
+Ours is a design of its own in that spirit, not a copy.
+
+**Modules and where the data is:**
+
+| Module | Our source | Status |
+|---|---|---|
+| Daily report, London and New York updates | the book, session updates | have |
+| Currency strength, with the parts behind each score | currency manager, macro scorecard, strength | have |
+| Central-bank divergence heatmap | the central bank feeds (stance, hawkishness) | have, needs the heatmap |
+| Rate differential matrix (2y, 10y, real) | rate-diff, intl-yields, real-yield | have, needs the matrix |
+| Rate expectations and repricing, in bp since the last meeting | Fed: ZQ futures; ECB: Euribor (IBKR pulls) | **partial: needs SONIA, CORRA, BAX, ASX and NZ futures, or OIS** |
+| COT with the WILLCO index | cot-state, cot-extremes | have; compute WILLCO |
+| Retail sentiment | oanda-book | have; Myfxbook optional (`MYFXBOOK_SESSION` exists) |
+| Seasonality | daily bars (R2 history) | compute |
+| Vol skew | cvol, the options chain read | have |
+| Calendar and week ahead, release playbooks | calendar feeds, the economist | have |
+| Geopolitical map | gpr | have (country detail to check) |
+| News ticker | news-outcome, events | partial: a headline feed would help |
+| Pair drill-down (card, lines, walls, vol, seasonality, sentiment) | the book, levels, oi-levels, vol forecast | have |
+| Ask the desk | one model call over the day's pack, book and memory | new |
+| Journal | Phase 8 (`/api/desk-journal`) | have |
+
+**Built, v1 (`desk-terminal.html`, linked from the command hub and the Desk Office):**
+
+- Top bar: Sydney, Tokyo, London and New York clocks with an open dot (local weekday 08:00-17:00), the book chip
+  (date and time written) and the data-health chip. A scrolling ticker of the regime, the next 36 hours' high-impact
+  releases, the session-update headlines, the risk desk's warnings and the geopolitical index.
+- **Overview:** today's book headline as a gold thesis; the regime card (tone, conviction, the Global Manager's
+  synthesis ruled in gold, driver chips, BUY and SELL lists from the largest live cards, what would flip it); the
+  currency strength strip (the ranking, bias on /10); the desk's record (counted days, mean day, vs the single
+  analyst); the six largest cards as playbook cards (grade from conviction, Entry / Target from today's forecast
+  lines / Invalidation); the economist's releases; the risk desk's warnings.
+- **Currencies:** a card per currency and a modal: bias chip, score /10, the ruling ruled in gold, the bank's stance
+  and hawkishness, policy rate, real 10y, the book's net exposure before and after the cap, key drivers from the
+  analysts' scored points tagged `[TIER1 +CB]` / `[TIER2 −RATES]`, best expressions (the book's cards on that
+  currency, those that fit the bias first, by bias gap), and what would flip it.
+- **Assets:** every card, filterable by group: class and instrument chips, "Analysis of X", rating chip, score /10,
+  gold thesis, source chips, a forecast ladder (p50/p75/p90 each side of the open, entry zone in purple), and a full
+  view with the plan rows and what the asset desk said, plus any session update that changed the card.
+- **Macro:** a central-bank board (rate, stance, hawkishness, last meeting, real 10y), the policy-rate differential
+  heatmap, US rates with 20-day changes, the macro scorecard, the geopolitical index.
+- **Positioning:** retail long share per pair with its 24h change, and the COT crowding table with each state's
+  tested verdict.
+- **Calendar:** seven days by London day, impact chips, and a "playbook" chip where the economist has one.
+- **Ask the desk:** `POST /api/desk-ask`, one model call (task desk-analyst) over today's book, the analysts'
+  reports, the last three evening reviews and the Evidence Book; answers from those only, with its sources. One at
+  a time, 60 a day.
+
+**v1 graphics (owner: "the style, the cool world maps, images, graphics"):** an interactive world map (d3-geo,
+world-atlas) on the Overview and Currencies tabs, with currency zones shaded by the desk's bias, glowing pulsing
+central-bank dots and an animated great-circle arc from the strongest currency to the weakest; the same map on the
+Macro tab shaded by hawkishness with dots sized by the policy rate; a risk-off/risk-on dial; score rings; H1
+sparklines on the playbook cards and a candle chart in each asset card with today's forecast lines, entry zone and
+invalidation (lightweight-charts, `GET /api/desk-bars`); a net-exposure chart before and after the cap; retail
+donuts; the US curve now against 20 sessions ago; rate bars in the currency card.
+
+Scores /10 are the desk's own −2..+2 views rescaled (5 = no view); grades are the book's conviction, never a hit
+rate, and the page says so. Still to come: the data below (rate expectations beyond the Fed and the ECB, a headline
+feed), seasonality and skew panels.
+
+**Data to get:**
+
+1. Rate futures for the other central banks, through the same IBKR pulls that already fetch ZQ and Euribor: SONIA
+   (SR3/ICE), €STR, BAX (CORRA), ASX 30-day, NZ OIS. Or an OIS source.
+2. A live headline feed for the ticker: an RSS aggregator of central bank and agency headlines with no key, or a news
+   API.
+3. Optional: Myfxbook community sentiment, which the server already has a session variable for.
+
+## 9s. Phases 8 and 13: the journal coach and the execution analyst (built 2026-11-03)
+
+Private, in the Desk Office "You" tab; never in a newsletter. `js/deskJournal.js` (pure, tested in
+`js/deskJournal.test.mjs`), served by `GET /api/desk-journal?days=7|28|90` (cached 10 minutes).
+
+- **Source:** the bots' durable closed-trade logs (`range_line_trade_log`, `oi_bot_trade_log`, `confluence_trade_log`)
+  plus today's closes from each bot's status. Broker-clock epochs are moved to UTC with `tz_offset_sec` (rows written
+  before it was kept use the broker's current offset). Trades are dated by their London open.
+- **Phase 8, the coach:** each trade against the morning book for its date (the counted run where there is one):
+  *with* (the card leaned the same way), *against*, *no view* (neutral or size 0), *off book* (no book, the market not
+  in it, or the trade opened before the book was written). For each group and each bot: trades, win rate, mean and
+  median R, profit. Also week by week, by London hour, and where the entry sat in the day's forecast unit u, signed
+  by direction (chasing above +0.5u against patient below −0.25u).
+- **Phase 13, execution:** per bot, from the trade's own stop and target at entry: planned R, realised R, the best
+  move in R (MFE), the share of it kept, R left on the table, trades half an R up that closed at or below zero, exit
+  reasons with what each returned, holding time, and the fill against the zone's planned entry where the bot
+  recorded one in its zone features.
+- **Rules:** description, not a test. Any group under 20 trades is labelled as too few to lean on. Nothing here feeds
+  the book or the prereg.
+
+## 9t. Phases 9 and 12: the theory desk and research ops (built 2026-11-03)
+
+Private, in the Desk Office "Research" tab. `js/theoryDesk.js` (pure, tested in `js/theoryDesk.test.mjs`).
+
+- **Phase 12, research ops** (`GET /api/research-ops`, no model call): parses `plans/RESEARCH_REGISTER.md` as
+  deployed and walks the study files (PREREG / RESULTS / ADDENDUM / AMENDMENT under forge, analysis, MD files, plans,
+  research). It lists: results written but not banked, each with an Evidence Book entry skeleton (verdict, result and
+  use left as TODO for the owner); rows with no update for over 14 days; pre-registered rows with no verdict;
+  exploratory finds whose next step waits on the owner; banked rows with no ledger entry; and a count of older
+  pre-registrations not in the register. It reads main only; the research-protocol status script still shows
+  in-flight work on other branches.
+- **Phase 9, the theory desk** (`desk/roles/theory_desk.md`, schema `theory_ideas`): one model call a week (service
+  `deskTheory`, Saturday from 09:00 London, once per ISO week; `POST /api/desk-theory/run` on demand). It reads the
+  Evidence Book, the whole register (dead hypotheses included), the desk's scored record and layer attribution, the
+  151-strategies screen (tiers 1 and 2), outlines of the QuantConnect strategy and blog notes, and the SSRN/arXiv
+  reading list. It proposes 3 to 6 theories, each with a variable, a condition, a horizon family, an outcome, a
+  benchmark, a placebo, the data, a power estimate, a source and why it is new. The validator drops any without a
+  variable, benchmark and placebo, and notes result wording. Each is screened by word overlap against the register
+  and the Evidence Book; a near-repeat shows a red "close to" chip. Saved as `desk_theory_latest`.
+- **Rules:** proposals only. Nothing is run, claimed or banked by either phase; taking a theory forward means a
+  register row and a prereg under the research protocol.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
@@ -618,16 +817,16 @@ Not built yet. The order is the owner's call; each item names what it needs firs
 - **Phase 5 · Session updates.** *Built (§9m).* A cheap quick run at the London open (08:00) and the New York open (14:30). It
   reads what changed since the morning book (prices against the lines, new releases, the risk flags) and updates
   only the cards it must, saying why. Never scored as a new book; logged against the morning one.
-- **Phase 6 · Event agent.** A short brief before each high-impact release, from the desk's own history of how that
+- **Phase 6 · Event agent.** *Built (§9q).* A short brief before each high-impact release, from the desk's own history of how that
   release moves each market (the event-window and release-history feeds). It covers what is priced, how big a
   surprise usually moves things and how fast. It never gives a direction for the surprise. It feeds the newsletter's
   "releases to come".
 - **Phase 7 · Red team.** *Built (§9p).* A reviewer that attacks the Head's book before it is published: crowding (one bet across
   many names), stories that contradict each other, leaning on tested-null ideas, cards that ignore an event inside
   the window. The Head answers or changes the card. Logged, so the record shows whether the red team helps.
-- **Phase 8 · Journal coach.** Reads the owner's actual MT5 trades (the bot trade logs) against the book: where they
+- **Phase 8 · Journal coach.** *Built (§9s).* Reads the owner's actual MT5 trades (the bot trade logs) against the book: where they
   followed it, where they went against it, and how each did. Private, weekly.
-- **Phase 9 · Theory desk (quant theory agent).**
+- **Phase 9 · Theory desk (quant theory agent).** *Built (§9t).*
   - Reads the Evidence Book, the research register (including dead hypotheses), the Theory Lab lessons,
     `education/quantconnect_strategies.md` and `quantconnect_blogs.md`, *151 Trading Strategies*, the SSRN reading
     list (`education/papers/open/READING_LIST.md`), and the desk's own scored history from Phase 4.
@@ -637,21 +836,22 @@ Not built yet. The order is the owner's call; each item names what it needs firs
   - It proposes and designs; it never declares a result.
   - Weekly, not daily. It works best once Phase 4 has some months of scored days.
 
-**Built since this list was written:** the evening edition (§9l); Phase 5 session updates (§9m); the Desk Office (§9n); Phases 14 and 10 (§9o); Phases 7 and 11 (§9p).
+**Built since this list was written:** the evening edition (§9l); Phase 5 session updates (§9m); the Desk Office (§9n); Phases 14 and 10 (§9o); Phases 7 and 11 (§9p); Phases 6 and 15 (§9q); Phases 8 and 13 (§9s).
 
 **Proposed (owner, 2026-11-03), from the hedge-fund roles; order to be confirmed**
 - **Phase 10 · Performance attribution.** *Built (§9o).* Split each day's score by stage (global ruling, currency ranking, asset
   desk, risk sizing) to show which layer earned or lost. Mostly code on the Phase 4 scores.
 - **Phase 11 · Portfolio risk manager.** *Built (§9p).* The book's correlation and stress scenarios ("USD +1σ: what does the whole
   book do?") from the vol forecasts and cross-asset links. It puts a number on "two or three bets".
-- **Phase 12 · Research ops.** Watches the research register, flags preregs with no verdict, nudges stale studies
+- **Phase 12 · Research ops.** *Built (§9t).* Watches the research register, flags preregs with no verdict, nudges stale studies
   and drafts banking entries.
-- **Phase 13 · Execution and cost analyst.** The MT5 bot logs and give-back data against the plan zones: slippage,
+- **Phase 13 · Execution and cost analyst.** *Built (§9s).* The MT5 bot logs and give-back data against the plan zones: slippage,
   timing, entries.
 - **Phase 14 · Data quality officer.** *Built (§9o).* Turns the Desk Pack health into actions: what failed, why, and whether to
   hold the run.
-- **Phase 15 · Scenario strategist.** "If hot / if cold" playbooks before big releases from the desk's
+- **Phase 15 · Scenario strategist.** *Built (§9q).* "If hot / if cold" playbooks before big releases from the desk's
   release-history data. Pairs with the economist (Phase 6).
+- **Phase 17 · Desk Terminal.** *v1 built (§9r).* The owner's private terminal, built last.
 - **Phase 16 · Claims checker.** Checks everything published against the data and the Evidence Book.
 
 **Build items**

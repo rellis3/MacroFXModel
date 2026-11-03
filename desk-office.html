@@ -55,6 +55,7 @@ li{margin:3px 0}
     <h1>Desk <span>Office</span></h1>
     <div class="sub">the desk's internal analysis · for you, never in the newsletter</div>
     <div class="right">
+      <a class="btn" href="desk-terminal.html">Desk Terminal →</a>
       <a class="btn" href="desk-run.html">Desk Run (the book) →</a>
     </div>
   </div>
@@ -186,14 +187,68 @@ ${us.length ? `<h3 style="font-size:14px;margin:10px 0 4px">Did the session upda
 }
 
 // ── YOU and RESEARCH: filled by the later phases ──
-function renderYou() {
-  $('you').innerHTML = planned(8, 'Journal coach', 'Your MT5 trades against the book, weekly: where you followed it, where you went against it, and how each did.')
-    + planned(13, 'Execution and costs', 'Your bots\' entries against the plan zones: slippage, timing, and how much of the move was given back.');
+// Phases 8 and 13 (js/deskJournal.js via /api/desk-journal): the bots' trades against the book, and how they were executed.
+async function renderYou(days = 28) {
+  const j = await getJson(`/api/desk-journal?days=${days}`);
+  if (!j?.ok) { $('you').innerHTML = `<div class="panel"><h2>Journal coach</h2><p class="muted">${esc(j?.error ?? 'not available')}</p></div>`; return; }
+  const c = j.coach, x = j.execution, pct = v => (v == null ? '–' : Math.round(v * 100) + '%');
+  const ST = [['with', 'With the book', 'the card leaned the same way'], ['against', 'Against the book', 'the card leaned the other way'], ['no view', 'No view', 'the book had the market, no lean'], ['off book', 'Off book', 'no book, opened before it, or not in it']];
+  const row = (l, w, g) => `<tr><td><b>${l}</b>${w ? `<br><span class="muted">${w}</span>` : ''}</td><td class="n">${g.n}</td><td class="n">${pct(g.winRate)}</td><td class="n ${cls(g.meanR)}">${f(g.meanR)}</td><td class="n ${cls(g.profit)}">${f(g.profit)}</td></tr>`;
+  const head = '<thead><tr><th></th><th>Trades</th><th>Win rate</th><th>Mean R</th><th>Profit</th></tr></thead>';
+  const sel = [7, 28, 90].map(d => `<button class="btn" data-jdays="${d}"${d === days ? ' style="border-color:var(--acc);color:var(--acc)"' : ''}>${d} days</button>`).join(' ');
+  $('you').innerHTML = `<div class="panel"><h2>Journal coach <i>${esc(j.label)} · ${j.trades} trades on ${j.daysTraded} days, a book on ${j.booksFound}</i></h2>
+<p>${sel}</p>${c.notes.map(n => `<p>${esc(n)}</p>`).join('')}
+<div class="grid2"><div><table>${head}<tbody>${ST.map(([k, l, w]) => row(l, w, c.byStance[k])).join('')}</tbody></table></div>
+<div><h3 style="font-size:14px;margin:0 0 6px">By bot</h3><table><thead><tr><th>Bot</th><th>With</th><th>Against</th><th>Mean R with</th><th>Mean R against</th></tr></thead><tbody>${Object.entries(c.byBot).map(([b, s]) => `<tr><td>${esc(b)}</td><td class="n">${s.with.n}</td><td class="n">${s.against.n}</td><td class="n ${cls(s.with.meanR)}">${f(s.with.meanR)}</td><td class="n ${cls(s.against.meanR)}">${f(s.against.meanR)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">No trades.</td></tr>'}</tbody></table></div></div>
+${c.weeks.length ? `<h3 style="font-size:14px;margin:14px 0 6px">Week by week</h3><table><thead><tr><th>Week</th><th>Trades</th><th>With</th><th>Against</th><th>Profit with</th><th>Profit against</th><th>Total</th></tr></thead><tbody>${c.weeks.map(w => `<tr><td class="n">${esc(w.week)}</td><td class="n">${w.n}</td><td class="n">${w.with}</td><td class="n">${w.against}</td><td class="n ${cls(w.withProfit)}">${f(w.withProfit)}</td><td class="n ${cls(w.againstProfit)}">${f(w.againstProfit)}</td><td class="n ${cls(w.profit)}">${f(w.profit)}</td></tr>`).join('')}</tbody></table>` : ''}
+${c.chase.n ? `<h3 style="font-size:14px;margin:14px 0 6px">Where you got in <i class="muted" style="font-style:normal">in the day's forecast unit u, + means beyond the open in the trade's direction</i></h3><table>${head}<tbody>${row('Chasing', 'more than 0.5u beyond the open', c.chase.chased)}${row('Patient', '0.25u or more on the other side', c.chase.patient)}</tbody></table><p class="muted">Median entry ${f(c.chase.medianU)}u over ${c.chase.n} trades with a forecast.</p>` : ''}
+${c.trades.length ? `<h3 style="font-size:14px;margin:14px 0 6px">Latest trades</h3><table><thead><tr><th>Day</th><th>Bot</th><th>Market</th><th>Side</th><th>Book</th><th>Entry</th><th>R</th><th>Profit</th><th>Exit</th></tr></thead><tbody>${c.trades.slice(0, 15).map(t => `<tr><td class="n">${esc(t.date)}</td><td>${esc(t.bot)}</td><td class="n">${esc(t.inst)}</td><td>${esc(t.side)}</td><td><span class="chip ${t.stance === 'with' ? 'ok' : t.stance === 'against' ? 'bad' : ''}">${esc(t.stance)}</span>${t.rating ? ` <span class="muted">${esc(t.rating)}</span>` : ''}</td><td class="n">${t.entryU == null ? '–' : f(t.entryU) + 'u'}</td><td class="n ${cls(t.R)}">${f(t.R)}</td><td class="n ${cls(t.profit)}">${f(t.profit)}</td><td class="muted">${esc(t.reason ?? '')}</td></tr>`).join('')}</tbody></table>` : ''}
+<p class="muted">The book is the morning one (the counted run where there is one). A trade that opened before the book was written is off book. Read it over weeks: a few trades say nothing.</p></div>
+<div class="panel"><h2>Execution and costs <i>per bot, from its own stops and targets</i></h2>${x.notes.map(n => `<p>${esc(n)}</p>`).join('') || '<p class="muted">No trades in the window.</p>'}
+<table><thead><tr><th>Bot</th><th>Trades</th><th>Planned R</th><th>Realised R</th><th>Best move (MFE)</th><th>Kept of best</th><th>Left on table</th><th>Up 0.5R, closed ≤ 0</th><th>Hold</th><th>Entry vs zone</th></tr></thead><tbody>${Object.entries(x.bots).map(([b, s]) => `<tr><td>${esc(b)}</td><td class="n">${s.n}</td><td class="n">${f(s.plannedR)}</td><td class="n ${cls(s.realisedR)}">${f(s.realisedR)}</td><td class="n">${f(s.mfeR)}R</td><td class="n">${pct(s.keptOfBest)}</td><td class="n">${f(s.leftOnTableR)}R</td><td class="n">${s.greenThenRed}</td><td class="n">${s.holdMin == null ? '–' : Math.round(s.holdMin) + ' min'}</td><td class="n">${s.entrySlipR ? `${f(s.entrySlipR.median)}R (n ${s.entrySlipR.n})` : '–'}</td></tr>`).join('')}</tbody></table>
+<div class="grid2" style="margin-top:12px">${Object.entries(x.bots).map(([b, s]) => `<div><h3 style="font-size:14px;margin:0 0 6px">${esc(b)}: how trades ended</h3><table><tbody>${s.reasons.map(r => `<tr><td>${esc(r.reason)}</td><td class="n">${r.n} (${pct(r.share)})</td><td class="n ${cls(r.meanR)}">${f(r.meanR)}R</td><td class="n ${cls(r.profit)}">${f(r.profit)}</td></tr>`).join('')}</tbody></table></div>`).join('')}</div>
+${c.hours.length ? `<h3 style="font-size:14px;margin:14px 0 6px">Entries by London hour</h3><table><thead><tr><th>Hour</th><th>Trades</th><th>Win rate</th><th>Mean R</th><th>Profit</th></tr></thead><tbody>${c.hours.map(h => `<tr><td class="n">${String(h.hour).padStart(2, '0')}:00</td><td class="n">${h.n}</td><td class="n">${pct(h.winRate)}</td><td class="n ${cls(h.meanR)}">${f(h.meanR)}</td><td class="n ${cls(h.profit)}">${f(h.profit)}</td></tr>`).join('')}</tbody></table>` : ''}
+<p class="muted">R is measured against the stop at entry. MFE is the best move while the trade was open (logged by the bot or rebuilt from M1 on the Give-back page). "Entry vs zone" needs the zone's planned entry on the trade, which only some bots record; positive means a worse fill than planned.</p></div>`;
+  document.querySelectorAll('[data-jdays]').forEach(b => b.onclick = () => renderYou(+b.dataset.jdays));
 }
 function renderResearch() {
-  $('research').innerHTML = planned(9, 'Theory desk', 'Testable theories about the system\'s own output, from the Evidence Book, Theory Lab, your QuantConnect notes, the SSRN list and the scored history, each ready to pre-register.')
-    + planned(12, 'Research ops', 'The research register at a glance: pre-registrations with no verdict, stale studies, and results ready to bank in the Evidence Book.')
-    + planned(15, 'Scenario playbooks', '"If hot / if cold" before each big release, from the desk\'s release history. These also go into the newsletter.');
+  $('research').innerHTML = '<div class="panel" id="theorypanel"><h2>Theory desk</h2><p class="muted">Loading…</p></div><div class="panel" id="opspanel"><h2>Research ops</h2><p class="muted">Loading…</p></div><div id="ecopanel"></div>';
+  renderTheory(); renderOps();
+  // Phases 6 and 15: the economist's briefs and playbooks (also in the newsletter's "The releases ahead" page)
+  getJson('/api/desk-run').then(run => {
+    const e = run?.ok && run.date === today ? run.economist : null, el = $('ecopanel'); if (!el) return;
+    if (!e?.view?.briefs?.length) { el.innerHTML = `<div class="panel"><h2>The releases ahead</h2><p class="muted">${e ? 'The economist found no high-impact release with a history in the next 36 hours.' : 'No brief yet today: it is written with the morning book.'}</p></div>`; return; }
+    el.innerHTML = `<div class="panel"><h2>The releases ahead <i>the economist, from the desk's release history · also in the newsletter</i></h2><p>${esc(e.view.headline)}</p>${e.view.briefs.map((b, i) => { const r = e.releases?.[i], p = r?.playbook;
+      return `<h3 style="font-size:14px;margin:12px 0 4px">${esc(r ? new Date(r.at).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : '')} · ${esc(b.event)}</h3><p>${esc(b.sizeAndSpeed)}</p>${b.ifHot ? `<p><b class="dn">If hot:</b> ${esc(b.ifHot)}<br><b class="up">If cold:</b> ${esc(b.ifCold)}</p>` : ''}${b.bookAtRisk ? `<p class="muted">The book: ${esc(b.bookAtRisk)}</p>` : ''}${p ? `<table><thead><tr><th>Market</th><th>30 min</th><th>4 h</th><th>After hot</th><th>After cold</th></tr></thead><tbody>${Object.values(p.markets).slice(0, 6).map(m => `<tr><td>${esc(m.label)}</td><td class="n">${m.abs30}${m.unit}</td><td class="n">${m.abs240}${m.unit}</td><td class="n">${m.hot ? f(m.hot.m30) + m.unit + ' (n ' + m.hot.n + ')' : '–'}</td><td class="n">${m.cold ? f(m.cold.m30) + m.unit + ' (n ' + m.cold.n + ')' : '–'}</td></tr>`).join('')}</tbody></table>` : ''}`; }).join('')}</div>`;
+  });
+}
+
+// Phase 9 (/api/desk-theory): the week's proposals, each screened against the register and the Evidence Book.
+async function renderTheory() {
+  const t = await getJson('/api/desk-theory'), el = $('theorypanel'); if (!el) return;
+  const running = t?.job?.status === 'running';
+  const btn = `<button class="btn" id="tdrun"${running ? ' disabled' : ''}>${running ? 'Writing…' : 'Write this week\'s theories now'}</button>`;
+  if (!t?.ok) { el.innerHTML = `<h2>Theory desk <i>weekly, Saturday mornings</i></h2><p class="muted">${esc(t?.error ?? 'not available')}${t?.job?.error ? ` · last attempt: ${esc(t.job.error)}` : ''}</p><p>${btn}</p>`; }
+  else el.innerHTML = `<h2>Theory desk <i>${esc(t.label)} · ${esc(t.week)} · written ${esc(new Date(t.writtenAt).toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'medium', timeStyle: 'short' }))}</i></h2>
+<p><b>${esc(t.headline)}</b></p>${t.notes?.length ? `<p class="muted">${t.notes.map(esc).join(' · ')}</p>` : ''}
+${t.theories.map(x => `<div style="border-top:1px solid var(--line);padding:10px 0"><h3 style="font-size:15px;margin:0 0 4px">${esc(x.title)} <span class="chip ${x.priority === 'high' ? 'ok' : x.priority === 'low' ? '' : 'warn'}">${esc(x.priority)}</span>${x.near?.length ? ` <span class="chip bad" title="${esc(x.near.map(n => `${n.kind} ${n.id} (${n.status}, overlap ${n.score})`).join('; '))}">close to ${esc(x.near[0].id)}</span>` : ''}</h3>
+<table><tbody>${[['Variable', x.variable], ['Condition', x.condition], ['Horizons', x.horizons], ['Outcome', x.outcome], ['Benchmark', x.benchmark], ['Placebo', x.placebo], ['Data', x.data], ['Power', x.power], ['Source', x.source], ['Why new', x.whyNew]].filter(([, v]) => v).map(([k, v]) => `<tr><td class="muted" style="width:110px">${k}</td><td>${esc(v)}</td></tr>`).join('')}</tbody></table></div>`).join('')}
+<p>${btn} <span class="muted">To take one forward: claim a register row and write the prereg (the research-protocol skill). A red "close to" chip means it overlaps an existing study or ledger entry: check that before claiming.</span></p>`;
+  const b = $('tdrun'); if (b) b.onclick = async () => { b.disabled = true; b.textContent = 'Writing…'; await fetch('/api/desk-theory/run', { method: 'POST' }).catch(() => null); const poll = setInterval(async () => { const j = await getJson('/api/desk-theory'); if (j?.job?.status !== 'running') { clearInterval(poll); renderTheory(); } }, 10_000); };
+}
+// Phase 12 (/api/research-ops): what in the register needs a hand.
+async function renderOps() {
+  const r = await getJson('/api/research-ops'), el = $('opspanel'); if (!el) return;
+  if (!r?.ok) { el.innerHTML = `<h2>Research ops</h2><p class="muted">${esc(r?.error ?? 'not available')}</p>`; return; }
+  const list = (title, rows, fn, empty) => `<h3 style="font-size:14px;margin:14px 0 6px">${title} <span class="muted">(${rows.length})</span></h3>${rows.length ? `<ul>${rows.map(fn).join('')}</ul>` : `<p class="muted">${empty}</p>`}`;
+  el.innerHTML = `<h2>Research ops <i>${esc(r.source)} · ${r.rows} rows, ${r.active} active</i></h2>
+<div class="tiles">${Object.entries(r.counts).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<div class="tile"><span>${esc(k)}</span><b>${v}</b></div>`).join('')}</div>
+${list('Results written, not banked', r.readyToBank, x => `<li><b class="n">${esc(x.id)}</b> <span class="chip warn">${esc(x.status)}</span> ${x.results ? `<span class="muted">${esc(x.results)}</span>` : ''}${x.next ? `<br><span class="muted">${esc(x.next)}</span>` : ''}<details><summary class="muted">Evidence Book draft</summary><pre style="white-space:pre-wrap;font:12px var(--mono);color:var(--tx2)">${esc(x.draft)}</pre></details></li>`, 'Nothing waiting to bank.')}
+${list('Stale: no update for over two weeks', r.stale, x => `<li><b class="n">${esc(x.id)}</b> <span class="chip">${esc(x.status)}</span> <span class="muted">${x.days} days since ${esc(x.updated)}</span><br><span class="muted">${esc(x.next)}</span></li>`, 'Nothing stale.')}
+${list('Pre-registered, no verdict yet', r.preregNoVerdict, x => `<li><b class="n">${esc(x.id)}</b> <span class="chip">${esc(x.status)}</span> <span class="muted">${esc(x.prereg)}${x.results ? ` · results: ${esc(x.results)}` : ''}</span></li>`, 'None.')}
+${list('Exploratory finds waiting on your call', r.exploratory, x => `<li><b class="n">${esc(x.id)}</b><br><span class="muted">${esc(x.next)}</span></li>`, 'None.')}
+${r.noLedger.length ? list('Banked with no ledger entry', r.noLedger, x => `<li class="n">${esc(x.id)}</li>`, '') : ''}
+<p class="muted">${r.orphanCount} older pre-registration files are not in the register (most predate it, 2026-10-18). The status script lists them: <code>node .claude/skills/research-protocol/scripts/research_status.mjs</code>. This panel reads main only; in-flight work on other branches shows in that script.</p>`;
 }
 
 renderToday(); renderPerf(); renderYou(); renderResearch();

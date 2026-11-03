@@ -226,6 +226,9 @@ import { sliceFeed as _deskSliceFeed } from './js/deskSlices.js';
 import { assess as _dqAssess, afterRun as _dqAfterRun } from './js/deskDataQuality.js';
 import { attribution as _atAttribution, attributionRecord as _atRecord } from './js/deskAttribution.js';
 import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
+import { tradeRows as _jcRows, coach as _jcCoach, execution as _jcExec } from './js/deskJournal.js';   // Phases 8 and 13
+import { parseRegister as _tdParseRegister, opsReport as _tdOps, outline as _tdOutline, section as _tdSection, readingList as _tdReadingList, registerText as _tdRegisterText, screen as _tdScreen, validateTheories as _tdValidate } from './js/theoryDesk.js';   // Phases 9 and 12
+import { upcoming as _rpUpcoming } from './js/releasePlaybook.js';
 import { dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
@@ -4739,8 +4742,15 @@ async function _deskRun(trigger, job, mode = 'full') {
   await kv.put(_DR_JOB_KV, JSON.stringify({ status: 'running', trigger, mode, date: pack.date, startedAt: new Date(job.startedAt).toISOString(), resumes: job.resumes ?? 0 })).catch(() => {});
   job.stage = 'analysts';
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+  // Phases 6 and 15: the high-impact releases in the next 36 h with the release study's history of each
+  let releases = [];
+  try {
+    const { rows } = await _rlRows();
+    const [ev, ca] = await Promise.all(['events', 'calendar-ahead'].map(p => _dpFetchFeed({ id: p, path: p, timeoutMs: 60_000 })));
+    releases = _rpUpcoming([...(Array.isArray(ev.json) ? ev.json : ev.json?.events ?? []), ...(ca.json?.rows ?? [])], rows, Date.now());
+  } catch (e) { console.warn('[desk-run] releases ahead:', e.message); }
   const run = await _runDesk({
-    pack, roles, ledger: DESK_EVIDENCE, now: Date.now, concurrency: 4, mode, checkpoint,
+    pack, roles, ledger: DESK_EVIDENCE, now: Date.now, concurrency: 4, mode, checkpoint, releases,
     exposureCap: Number(process.env.DESK_EXPOSURE_CAP ?? 4),   // per-currency cap in normal-size units; 0 turns it off
     styleExamples: _deskStyleExamples(await _nlLoad().catch(() => []) ?? []),   // the latest regular issues, so the desk edition matches their voice
     parseJson: (txt, label) => _parseModelJson(txt, label),
@@ -5052,6 +5062,171 @@ app.get('/api/desk-risk', async (req, res) => {
     _rkCache.set(key, out);
     res.json(out);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/desk-journal?days=28: the journal coach (Phase 8) and the execution analyst (Phase 13), js/deskJournal.js.
+// The bots' closed trades (the three durable logs plus today's closes) against each day's morning book. Private: the
+// Desk Office "You" tab. Cached 10 minutes.
+let _jcCache = { key: null, at: 0, data: null };
+app.get('/api/desk-journal', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 28, 1), 120);
+    if (req.query.refresh !== '1' && _jcCache.key === days && Date.now() - _jcCache.at < 10 * 60_000) return res.json(_jcCache.data);
+    const BOTS = { 'Range-Line': ['range_line_trade_log', 'range_line_bot_status'], 'OI Gamma': ['oi_bot_trade_log', 'oi_bot_status'], Confluence: ['confluence_trade_log', 'confluence_bot_status'] };
+    const since = Date.now() - days * 86400e3, logs = {};
+    let tzNow = 0;
+    for (const [bot, [logKey, stKey]] of Object.entries(BOTS)) {
+      const [log, st] = await Promise.all([_kvJson(logKey), _kvJson(stKey)]);
+      const today = st?.today_closed_trades || [];
+      tzNow = tzNow || ([...today, ...(st?.mt5_positions || [])].find(t => Number.isFinite(t.tz_offset_sec))?.tz_offset_sec ?? 0);
+      logs[bot] = [...(Array.isArray(log) ? log : []), ...today].map(t => { let pip = null; try { pip = _pipSize(t.key || resolveKey(t.symbol)) || null; } catch { /* no pip: MFE in R is skipped */ } return { ...t, pip }; });
+    }
+    const trades = _jcRows(logs, { tzNow }).filter(t => t.openMs >= since);
+    const dates = [...new Set(trades.map(t => t.date))], books = {};
+    for (const d of dates) {
+      const run = await _dsRunFor(d).catch(() => null);
+      if (run?.head?.ok) books[d] = { at: Date.parse(run.finishedAt), cards: run.head.book.instruments };
+    }
+    const out = { ok: true, days, generatedAt: Date.now(), trades: trades.length, booksFound: Object.keys(books).length, daysTraded: dates.length,
+      label: 'description of the bots\' own trades, not a test; small counts are labelled', coach: _jcCoach(trades, books), execution: _jcExec(trades) };
+    _jcCache = { key: days, at: Date.now(), data: out };
+    res.json(out);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── Phases 12 and 9: research ops and the theory desk (js/theoryDesk.js, plans/DESK_ANALYST_PIPELINE.md §9t) ──
+// Both read the repo as deployed (the register, the study files, the notes), so they show main, not other branches;
+// the research-protocol status script is still the way to see in-flight work.
+const _tdRead = rel => { try { return fs.readFileSync(path.join(__dirname, rel), 'utf8'); } catch { return ''; } };
+function _tdStudyFiles() {
+  const out = [], walk = (rel, depth) => {
+    let ents = []; try { ents = fs.readdirSync(path.join(__dirname, rel), { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      const r = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) { if (depth < 4 && !/^(node_modules|\.git|data|cache)$/.test(e.name)) walk(r, depth + 1); }
+      else if (/(PREREG|RESULTS?|ADDENDUM|AMENDMENT)[^/]*\.md$/.test(e.name) && !/TEMPLATE/.test(e.name)) out.push(r);
+    }
+  };
+  for (const d of ['forge', 'analysis', 'MD files', 'plans', 'research']) walk(d, 1);
+  return out;
+}
+let _roCache = { at: 0, data: null };
+function _tdOpsNow() {
+  if (_roCache.data && Date.now() - _roCache.at < 10 * 60_000) return _roCache.data;
+  const rows = _tdParseRegister(_tdRead('plans/RESEARCH_REGISTER.md'));
+  const data = { ok: true, generatedAt: Date.now(), source: 'plans/RESEARCH_REGISTER.md on the deployed main', ..._tdOps(rows, { files: _tdStudyFiles(), exists: p => fs.existsSync(path.join(__dirname, p)), today: _dpLondonDate(Date.now()) }) };
+  _roCache = { at: Date.now(), data, rows };
+  return data;
+}
+// GET /api/research-ops: Phase 12. Stale rows, preregs with no verdict, results ready to bank (with an Evidence Book draft).
+app.get('/api/research-ops', (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); res.json(_tdOpsNow()); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+const _TD_KEY = 'desk_theory_latest';
+const _tdWeek = date => { const d = new Date(`${date}T12:00:00Z`); const day = (d.getUTCDay() + 6) % 7; d.setUTCDate(d.getUTCDate() - day + 3); const y = d.getUTCFullYear(), w1 = new Date(Date.UTC(y, 0, 4)); return `${y}-W${String(1 + Math.round(((d - w1) / 864e5 - 3 + ((w1.getUTCDay() + 6) % 7)) / 7)).padStart(2, '0')}`; };
+let _tdJob = null;
+async function _tdRun() {
+  const role = _deskLoadRoles().find(r => r.id === 'theory_desk');
+  if (!role) return { ok: false, error: 'no theory_desk role' };
+  if (!_aiAnyKey()) return { ok: false, error: 'no model key' };
+  const { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js');
+  _tdOpsNow(); const rows = _roCache.rows ?? [];
+  const idx = await _dsLoadIndex().catch(() => []);
+  const date = _dpLondonDate(Date.now());
+  const { system, prompt } = _deskStagePrompt({ role, pack: { date }, ledger: DESK_EVIDENCE, sections: [
+    ['The Evidence Book (every entry: [tag] claim -> use)', evidenceBrief(DESK_EVIDENCE)],
+    ['The research register (id [status] question -> next)', _tdRegisterText(rows)],
+    ["The desk's scored record (Phase 4)", idx.length ? { record: _dsRecord(idx, { seed: _DS_SEED }), attribution: _atRecord(idx), lastDays: idx.slice(-20).map(d => ({ date: d.date, S: d.S, counts: d.eligible, scored: d.scored })) } : '(no scored days yet)'],
+    ['151 Trading Strategies: the screen of the book against this repo', [_tdSection(_tdRead('education/151_STRATEGIES_PROPOSALS.md'), '3.', 6000), _tdSection(_tdRead('education/151_STRATEGIES_PROPOSALS.md'), '4.', 4000)].join('\n\n')],
+    ["QuantConnect strategy notes (outline)", _tdOutline(_tdRead('education/quantconnect_strategies.md'))],
+    ['QuantConnect blog notes (outline)', _tdOutline(_tdRead('education/quantconnect_blogs.md'))],
+    ['The SSRN and arXiv reading list', _tdReadingList(_tdRead('education/papers/open/reading_list.csv'))],
+  ] });
+  let out = null, errors = [];
+  for (let i = 0; i < 2 && !out; i++) {
+    try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 16_000 }); const v = _tdValidate(_parseModelJson(r.text ?? _antText(r), 'desk:theory')); if (v.ok) out = { ...v.value, notes: v.notes, model: r.model ?? null }; else errors.push(...v.errors); }
+    catch (e) { errors.push(e.message); }
+  }
+  if (!out) return { ok: false, error: errors.join('; ') || 'no valid reply' };
+  const rec = { ok: true, week: _tdWeek(date), date, writtenAt: new Date().toISOString(), headline: out.headline, notes: out.notes, model: out.model,
+    theories: _tdScreen(out.theories, rows, DESK_EVIDENCE), label: 'proposals to pre-register, not results' };
+  await kv.put(_TD_KEY, JSON.stringify(rec));
+  return rec;
+}
+function _tdStart() {
+  if (_tdJob?.status === 'running') return null;
+  const job = _tdJob = { status: 'running', startedAt: Date.now(), finishedAt: null, error: null };
+  _tdRun().then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; })
+    .catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
+  return job;
+}
+// GET /api/desk-theory: Phase 9, the latest week's proposals. POST /api/desk-theory/run: write them now.
+app.get('/api/desk-theory', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const raw = await kv.get(_TD_KEY).catch(() => null); res.json(raw ? { ...JSON.parse(raw), job: _tdJob } : { ok: false, error: 'no theories yet: the theory desk writes on Saturday mornings, or run it now', job: _tdJob }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/desk-theory/run', (_req, res) => {
+  const job = _tdStart();
+  if (!job) return res.status(409).json({ ok: false, error: 'the theory desk is already writing', job: _tdJob });
+  res.status(202).json({ ok: true, job });
+});
+// Weekly: Saturday from 09:00 London, once per ISO week.
+svcInterval('deskTheory', async () => {
+  const now = Date.now(), date = _dpLondonDate(now);
+  if (new Date(_dsLondonMs(date, 12)).getUTCDay() !== 6 || now < _dsLondonMs(date, 9) || _tdJob?.status === 'running' || !_aiAnyKey()) return;
+  const raw = await kv.get(_TD_KEY).catch(() => null);
+  if (raw && JSON.parse(raw).week === _tdWeek(date)) return;
+  _tdStart();
+}, 30 * 60_000);
+// GET /api/desk-bars?inst=USDJPY&days=5: H1 candles for one desk instrument (Desk Terminal charts and sparklines).
+// The desk's names map to OANDA through the vol-forecast list. Cached 10 minutes per instrument and span.
+const _dbCache = new Map();
+app.get('/api/desk-bars', async (req, res) => {
+  try {
+    const inst = String(req.query.inst ?? '').toUpperCase(), sym = _dsOanda[inst];
+    if (!sym) return res.status(400).json({ ok: false, error: `unknown instrument ${inst}` });
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 5, 1), 20), key = `${inst}|${days}`, hit = _dbCache.get(key);
+    if (hit && Date.now() - hit.at < 10 * 60_000) return res.json(hit.data);
+    const to = new Date(), from = new Date(Date.now() - (days + 2) * 864e5);
+    const vals = await fetchOandaCandleRange(sym, 'H1', from.toISOString().slice(0, 10) + 'T00:00:00Z', to.toISOString().slice(0, 19) + 'Z');
+    const bars = vals.map(v => ({ time: v.t, open: +v.open, high: +v.high, low: +v.low, close: +v.close })).filter(b => Number.isFinite(b.close));
+    const cut = Date.now() / 1000 - days * 86400;
+    const data = { ok: true, inst, bars: bars.filter(b => b.time >= cut) };
+    if (_dbCache.size > 200) _dbCache.clear();
+    _dbCache.set(key, { at: Date.now(), data });
+    res.json(data);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/desk-ask {q}: the Desk Terminal's "Ask the desk" (Phase 17, §9r). One model call over today's book, the
+// analysts' reports, the last evening reviews and the Evidence Book. Answers from those only and says when they do
+// not answer the question. One at a time, at most 60 a day.
+let _askBusy = false, _askDay = { date: null, n: 0 };
+app.post('/api/desk-ask', express.json({ limit: '16kb' }), async (req, res) => {
+  try {
+    const q = String(req.body?.q ?? '').trim().slice(0, 800);
+    if (q.length < 3) return res.status(400).json({ ok: false, error: 'ask a question' });
+    if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key on the server' });
+    const today = _dpLondonDate(Date.now());
+    if (_askDay.date !== today) _askDay = { date: today, n: 0 };
+    if (_askDay.n >= 60) return res.status(429).json({ ok: false, error: 'the daily limit of 60 questions is reached' });
+    if (_askBusy) return res.status(409).json({ ok: false, error: 'the desk is answering another question; try again in a moment' });
+    _askBusy = true; _askDay.n++;
+    try {
+      const run = await _drLoad(today), idx = (await _dsLoadIndex().catch(() => [])).slice(-3);
+      const refl = await Promise.all(idx.map(async r => { const x = await kv.get(_DS_REFLECT_KEY(r.date)).catch(() => null); return x ? { date: r.date, score: r.S, review: JSON.parse(x) } : null; }));
+      const { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js');
+      const book = run?.head?.ok ? { date: run.date, writtenAt: run.finishedAt, headline: run.head.book.headline, global: run.head.book.global, currencies: run.head.book.currencies, risks: run.head.book.risks,
+        cards: Object.fromEntries(Object.entries(run.head.book.instruments).map(([n, c]) => [n, { rating: c.rating, conviction: c.conviction, size: c.size, why: c.why, plan: c.plan, levels: c.levels ? { open: c.levels.open, up: c.levels.up, down: c.levels.down } : null }])) } : null;
+      const analysts = run ? Object.fromEntries(Object.entries(run.analysts ?? {}).filter(([, a]) => a.ok).map(([id, a]) => [id, { headline: a.report.headline, points: (a.report.points ?? []).map(p => ({ claim: p.claim, evidence: p.evidence, impact: p.impact })) }])) : {};
+      const system = `You are the desk's analyst on call, answering the owner's question in the Desk Terminal. Use only the material below: today's book, the analysts' reports, the last evening reviews and the Evidence Book. If it does not answer the question, say so plainly and say what data would. Never invent a number. An Evidence Book entry marked null or underpowered was tested and found no reliable edge: never present it as working. This is context, not a trade instruction. Be direct and short: at most 200 words.
+Reply with JSON only: { "answer": "plain text", "sources": ["analyst ids, card names or ledger tags you used"] }`;
+      const prompt = `Question: ${q}\n\n## Today's book (${today})\n${book ? JSON.stringify(book) : '(no book today)'}\n\n## Analysts' reports\n${JSON.stringify(analysts)}\n\n## Last evening reviews\n${JSON.stringify(refl.filter(Boolean))}\n\n## Evidence Book\n${evidenceBrief(DESK_EVIDENCE)}`;
+      const r = await callModel({ task: 'desk-analyst', system, prompt, maxTokens: 2_000 });
+      const j = _parseModelJson(r.text ?? _antText(r), 'desk:ask');
+      const answer = typeof j?.answer === 'string' ? j.answer.slice(0, 4000) : null;
+      if (!answer) return res.status(502).json({ ok: false, error: 'the model did not return an answer' });
+      res.json({ ok: true, answer, sources: Array.isArray(j.sources) ? j.sources.slice(0, 12).map(String) : [], model: r.model ?? null, bookDate: book?.date ?? null });
+    } finally { _askBusy = false; }
+  } catch (e) { _askBusy = false; res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/desk-quality?date=: the data quality officer's read of the day's pack, and after the run which gaps mattered
 app.get('/api/desk-quality', async (req, res) => {

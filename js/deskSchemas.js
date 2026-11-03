@@ -278,6 +278,22 @@ export function validateRedTeam(obj, instruments) {
   return { ok: true, notes, value: { headline, challenges } };
 }
 
+// ── Phases 6 and 15: the economist's release briefs ─────────────────────────────────────────────────────────────
+
+/** One brief per upcoming release, in the order given; at most as many as were given. */
+export function validateEconomist(obj, releases) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return { ok: false, errors: ['reply is not a JSON object'] };
+  const headline = str(obj.headline, 300);
+  if (!headline) return { ok: false, errors: ['headline missing'] };
+  const briefs = (Array.isArray(obj.briefs) ? obj.briefs : []).slice(0, releases.length).map((b, i) => ({
+    family: releases[i]?.family ?? null, at: releases[i]?.at ?? null, event: str(b?.event, 160) ?? releases[i]?.event ?? '',
+    priced: str(b?.priced, 400) ?? '', sizeAndSpeed: str(b?.sizeAndSpeed, 500) ?? '', ifHot: str(b?.ifHot, 400) ?? '', ifCold: str(b?.ifCold, 400) ?? '', bookAtRisk: str(b?.bookAtRisk, 400) ?? '', watch: str(b?.watch, 300) ?? '',
+  })).filter(b => b.sizeAndSpeed);
+  if (!briefs.length && releases.length) return { ok: false, errors: ['no usable brief'] };
+  const notes = FORECAST_WORDS.test(JSON.stringify(briefs)) ? ['forecasting wording found'] : [];
+  return { ok: true, notes, value: { headline, briefs } };
+}
+
 // ── Phase 3: the newsletter writer ───────────────────────────────────────────────────────────────────────────────
 
 /** The house labels every newsletter section carries (the regular issue's legend). */
@@ -370,6 +386,18 @@ bias: integer -2..+2.`,
   "warnings": ["what could go wrong today"]
 }
 size: 0 to 1.5 (1 = normal). veto: true only when the trade should not be taken today at all.`,
+  economist_briefs: `{
+  "headline": "the release that matters most for the book, in one sentence",
+  "briefs": [ { "event": "the release", "priced": "consensus vs previous, and what that means", "sizeAndSpeed": "typical move by market at 30 min and 4 h, peak time, how much is kept, with counts",
+               "ifHot": "what history shows after hot prints, with counts", "ifCold": "after cold prints, with counts", "bookAtRisk": "the desk's cards exposed, view and size", "watch": "one thing to watch" } ]   // one per release, in the order given
+}`,
+  theory_ideas: `{
+  "headline": "the most promising question this week, in one sentence",
+  "theories": [ { "title": "short name", "variable": "the variable to construct, exactly, from data we have", "condition": "the regime or extreme to condition on",
+                 "horizons": "the family of horizons to sweep", "outcome": "what is measured", "benchmark": "what it must beat", "placebo": "the shuffle or placebo",
+                 "data": "the feeds or files it needs, and the span", "power": "rough count of events and whether that is enough", "source": "the note, paper, ledger entry or scored-history fact it comes from",
+                 "whyNew": "why it is not a repeat of a register row or Evidence Book entry", "priority": "high | medium | low" } ]   // 3 to 6
+}`,
   red_team: `{
   "headline": "the biggest weakness in the draft book, in one sentence",
   "challenges": [ { "target": "ALL | an instrument | a currency", "kind": "crowding | contradiction | tested-null | event | data | stretched | other", "severity": "high | medium | low", "challenge": "what is wrong, with the numbers", "ask": "what the Head should do or answer" } ]   // at most 8, most serious first; [] if the book is sound

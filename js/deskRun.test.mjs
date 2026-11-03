@@ -80,6 +80,7 @@ const PHASE2 = {
   newsletter_issue: () => ({ subject: 'Dollar and yen bid as credit cracks', standfirst: 'Credit widened. The desk reads risk-off. Midterms at 15:16 UK time.',
     sections: [{ title: 'The global backdrop', label: 'Model output', body: 'b' }, { title: 'The currencies', label: 'Untested interpretation', body: 'c' }, { title: 'What could break the day', label: 'Observed data', body: 'e' }],
     ideas: [{ instrument: 'AUDJPY', view: 'SHORT', size: 0.7, level: 'l', invalidation: 'i', why: 'w' }] }),
+  economist_briefs: () => ({ headline: 'CPI matters most', briefs: [{ event: 'US CPI', priced: '0.3% vs 0.3%', sizeAndSpeed: 'Nasdaq 0.3% at 30 min after 5 releases', ifHot: 'n/a', ifCold: 'n/a', bookAtRisk: 'NQ short', watch: 'core' }, { event: 'extra' , sizeAndSpeed: 'x' }] }),
   red_team: () => ({ headline: 'One USD bet in many names', challenges: [{ target: 'USD', kind: 'crowding', severity: 'high', challenge: 'USD long across 9 cards, net +7', ask: 'cut the weakest' }, { target: 'NOPE', challenge: 'x' }] }),
   risk_case: id => ({ headline: `${id} view`, adjustments: [{ target: 'ALL', size: id === 'risk_conservative' ? 0.5 : 1, veto: false, reason: 'r' }, { target: 'XYZ', size: 1 }], warnings: ['NFP'] }),
 };
@@ -238,6 +239,15 @@ await t('runDesk: a run cut off mid-way (server restart) picks up from its check
   const m3 = fakeModel();
   await runDesk({ pack, roles, ledger: [], callModel: m3.fn, parseJson, now: clock, checkpoint, retryDelayMs: 1, mode: 'quick' });
   assert.equal(m3.calls.length, roles.filter(r => r.output === 'analyst_report').length + 1);
+});
+
+await t('the economist briefs each release ahead from its playbook, one call, after the book; none without releases', async () => {
+  const pb = { family: 'CPI', n: 5, from: '2025-01-15', to: '2026-10-14', surprises: { known: 0, hot: 0, cold: 0 }, markets: { nq: { label: 'Nasdaq', unit: '%', n: 5, abs30: 0.3, abs240: 0.4, peakMin: 8, kept: 0.7, hot: null, cold: null } } };
+  const releases = [{ family: 'CPI', event: 'Core CPI m/m', country: 'US', at: '2026-11-04T13:30:00Z', estimate: '0.3%', prev: '0.3%', playbook: pb }];
+  const m = fakeModel(), run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: m.fn, parseJson, now: clock, releases, retryDelayMs: 1 });
+  assert.ok(run.economist.ok); assert.equal(run.economist.view.briefs.length, 1, 'no more briefs than releases'); assert.equal(run.economist.view.briefs[0].family, 'CPI');
+  const m2 = fakeModel(), run2 = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: m2.fn, parseJson, now: clock, retryDelayMs: 1 });
+  assert.equal(run2.economist, null); assert.equal(m.calls.length, m2.calls.length + 1);
 });
 
 console.log(`deskRun: ${n} tests passed`);
