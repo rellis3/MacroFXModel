@@ -220,7 +220,8 @@ import { assembleGlobalReadInput as _grAssemble, GLOBAL_READ_ENDPOINTS as _GR_EN
 import { parseRole as _deskParseRole, buildStagePrompt as _deskStagePrompt } from './js/deskRoles.js';
 import { scoreDay as _dsScoreDay, eligible as _dsEligible, windowFor as _dsWindow, record as _dsRecord, londonMs as _dsLondonMs } from './js/deskScore.js';
 import { reflectionSections as _dsReflectSections, memoryFeed as _dsMemoryFeed, movers as _dsMovers } from './js/deskReflect.js';
-import { validateReflection as _dsValidateReflection } from './js/deskSchemas.js';
+import { validateReflection as _dsValidateReflection, validateNewsletterIssue as _dsValidateIssue } from './js/deskSchemas.js';
+import { dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
 import { expandFeeds as _dpExpandFeeds, buildDeskPack as _dpBuild, packForSkill as _dpForSkill, packSummary as _dpSummary, indexRow as _dpIndexRow, upsertIndex as _dpUpsertIndex, shouldBuild as _dpShouldBuild, londonDate as _dpLondonDate, DESK_SKILLS as _DP_SKILLS, DESK_UNIVERSE as _DP_UNIVERSE, DESK_SUBSETS as _DP_SUBSETS, packFresh as _dpFresh } from './js/deskPack.js';
@@ -4869,6 +4870,36 @@ async function _dsReflect(run, score) {
   }
   return null;
 }
+// The evening edition (js/newsletterEvening.js, desk/roles/evening_writer.md): the day's moves, the morning's rulings,
+// the score and the review, written up and saved to the newsletter archive as kind "desk-evening" (never scored).
+async function _dsEvening(run, score, reflection, bars, idx) {
+  const role = _deskLoadRoles().find(r => r.id === 'evening_writer');
+  if (!role || !_aiAnyKey()) return null;
+  const cards = run.head.book.instruments ?? {}, moves = _evDayMoves(bars, cards, run.date), d = run.debate ?? {};
+  const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+  const { system, prompt } = _deskStagePrompt({ role, pack: { date: run.date }, ledger: DESK_EVIDENCE, sections: [
+    ['Every market, 08:00 to 21:00 London (move, in u, range in u, the morning view)', _evMovesText(moves, cards)],
+    ["The morning's global ruling", d.global?.view ? { tone: d.global.view.tone, conviction: d.global.view.conviction, summary: d.global.view.summary } : run.head.book.global],
+    ["The morning's currency ranking", d.currency?.view ? { ranking: d.currency.view.ranking, biases: Object.fromEntries(Object.entries(d.currency.view.currencies ?? {}).map(([k, v]) => [k, v.bias])) } : run.head.book.currencies],
+    ["The morning's risks and events", { risks: run.head.book.risks ?? [], gaps: run.head.book.gaps ?? [] }],
+    ["The book's score", { dayScore: score.S, placebo: score.placebo, singleAnalyst: score.control?.unweighted ?? null, counts: score.eligible }],
+    ['The evening review', reflection ?? '(no review today)'],
+  ] });
+  let issue = null;
+  for (let i = 0; i < 2 && !issue; i++) {
+    try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 16_000 }); const v = _dsValidateIssue(_parseModelJson(r.text ?? _antText(r), 'desk:evening')); if (v.ok) issue = v.value; }
+    catch (e) { console.warn('[desk-score] evening writer:', e.message); }
+  }
+  if (!issue) return null;
+  const { html, text, subject } = _evRender({ date: run.date, issue, score, reflection, movers: _dsMovers(run, score), record: _dsRecord(idx, { seed: _DS_SEED }), moves, cards }, { esc: s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') });
+  const issues = await _nlLoad();
+  if (issues === null) return null;
+  const id = `desk-evening-${run.date}`;
+  const rec = { id, kind: 'desk-evening', date: run.date, subject, savedAt: new Date().toISOString(), snapshot: { date: run.date, kind: 'desk-evening' }, text: text.slice(0, 24000), htmlGz: zlib.gzipSync(Buffer.from(html, 'utf8')).toString('base64'), score: null };
+  const next = [rec, ...issues.filter(x => x.id !== id)].sort((x, y) => y.date.localeCompare(x.date) || x.kind.localeCompare(y.kind)).slice(0, _NL_KEEP);
+  await kv.put(_NL_KEY, JSON.stringify({ issues: next }));
+  return { id, subject };
+}
 async function _dsScore(date, { reflect = true } = {}) {
   const run = await _dsRunFor(date);
   if (!run?.head?.ok) return { ok: false, error: `no desk book for ${date}` };
@@ -4879,10 +4910,11 @@ async function _dsScore(date, { reflect = true } = {}) {
   const { cards, ...row } = score;
   const idx = (await _dsLoadIndex()).filter(r => r.date !== date); idx.push(row); idx.sort((a, b) => a.date.localeCompare(b.date));
   await kv.put(_DS_INDEX_KV, JSON.stringify(idx.slice(-800)));
-  let reflection = null;
+  let reflection = null, evening = null;
   if (reflect) { reflection = await _dsReflect(run, score); if (reflection) await kv.put(_DS_REFLECT_KEY(date), JSON.stringify({ date, savedAt: new Date().toISOString(), ...reflection })); }
-  console.log(`[desk-score] ${date}: ${score.eligible ? 'counts' : 'does not count (' + score.why + ')'}, S ${score.S}, ${score.scored}/${score.live} cards, ${score.missing.length} missing, reflection ${reflection ? 'saved' : 'none'}`);
-  return { ok: true, score, reflection };
+  if (reflect) evening = await _dsEvening(run, score, reflection, bars, idx).catch(e => { console.warn('[desk-score] evening edition:', e.message); return null; });
+  console.log(`[desk-score] ${date}: ${score.eligible ? 'counts' : 'does not count (' + score.why + ')'}, S ${score.S}, ${score.scored}/${score.live} cards, ${score.missing.length} missing, reflection ${reflection ? 'saved' : 'none'}, evening edition ${evening ? 'saved' : 'none'}`);
+  return { ok: true, score, reflection, evening };
 }
 function _dsStart(date, opts) {
   if (_dsJob?.status === 'running') return null;
@@ -7114,7 +7146,7 @@ ${context}`;
 // how the days came out against the sizes the issues printed. Scoring is a RANGE-CALIBRATION check against the stored session
 // audit (js/newsletterRecord.js); direction is never scored because none is forecast. All click-only: nothing here is scheduled.
 // 60 (was 40): the desk edition (kind "desk", plans/DESK_ANALYST_PIPELINE.md §9g) shares the archive and must not push dailies out.
-const _NL_KEY = 'newsletter_archive_v1', _NL_KEEP = 60;
+const _NL_KEY = 'newsletter_archive_v1', _NL_KEEP = 100;   // 2026-11-03: up to four issues a day now (daily, desk magazine, desk brief, desk evening); ~50 KB gz each
 async function _nlLoad() {
   try { const raw = await kv.get(_NL_KEY); const p = raw ? JSON.parse(raw) : null; return Array.isArray(p?.issues) ? p.issues : []; }
   catch (e) { console.warn('[newsletter] archive unreadable, not touching it:', e.message); return null; }   // null = leave it for a human, never overwrite

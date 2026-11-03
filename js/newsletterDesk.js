@@ -195,3 +195,35 @@ ${(b.risks ?? []).length ? `<h3 class="ss">What could break the day</h3><ul clas
 ${(b.gaps ?? []).length ? `<div class="box warn"><h4>What the desk could not see</h4><ul class="lst" style="margin:0">${b.gaps.slice(0, 3).map(x => `<li>${esc(prose(x, { sentences: 1, chars: 200 }))}</li>`).join('')}</ul></div>` : ''}
 <p class="small3">Built from ${run.calls ?? '?'} model calls on ${run.packHealth?.ok ?? '?'} of ${run.packHealth?.total ?? '?'} data feeds. Not scored until its pre-registration is in place. Not financial advice.</p>`;
 }
+
+// ── Phase 4 in the issue: "Yesterday, reviewed" (owner, 2026-11-03) ─────────────────────────────────────────────────
+// Last night's score and the evening review on a page of the morning issue: what the book said, what the day did,
+// what the desk takes from it. Read from /api/desk-score and /api/desk-score/record; the running record is interim.
+
+const sgn2 = x => (Number.isFinite(x) ? `${x > 0 ? '+' : x < 0 ? '−' : ''}${Math.abs(x).toFixed(2)}` : '–');
+/** review: { score, reflection, movers, record } (the API's shapes). Returns { section, html } or null. */
+export function reviewPage(review, H, { title = 'Yesterday, reviewed' } = {}) {
+  const sc = review?.score; if (!sc || sc.S == null && !sc.scored) return null;
+  const { esc } = H, ref = review.reflection, mv = review.movers, rec = review.record;
+  const day = new Date(sc.date + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  const beat = sc.S != null && sc.placebo?.p95 != null ? (sc.S > sc.placebo.p95 ? 'above the shuffled book\'s 95th percentile' : sc.S > (sc.placebo.mean ?? 0) ? 'above the shuffled book\'s average, inside its range' : 'below the shuffled book\'s average') : '';
+  const tiles = tileRow([
+    { name: 'Day score, size-weighted', value: `${sgn2(sc.S)} u`, sub: beat || `${sc.scored} of ${sc.live} cards scored`, tone: sc.S > 0 ? 'up' : sc.S < 0 ? 'dn' : '' },
+    { name: 'Single analyst, same data', value: sc.control?.unweighted != null ? `${sgn2(sc.control.unweighted)} u` : 'not run', sub: sc.unweighted != null ? `the desk, unweighted: ${sgn2(sc.unweighted)} u` : '', tone: '' },
+    { name: 'Lean-side line first', value: sc.race?.resolved ? `${sc.race.leanFirst} of ${sc.race.resolved}` : '–', sub: 'cards that reached a p50 line', tone: '' },
+  ], H);
+  const cards = Object.entries(sc.cards ?? {}).filter(([, c]) => !c.missing && c.size > 0).map(([n, c]) => ({ n, w: c.size * c.R, R: c.R, dir: c.dir }))
+    .sort((a, b) => Math.abs(b.w) - Math.abs(a.w)).slice(0, 12).sort((a, b) => b.w - a.w);
+  const fig = cards.length ? barFigure('The cards that moved the day, size × score', cards.map(c => ({ label: instName(c.n), v: +c.w.toFixed(2), note: `${c.dir > 0 ? 'long' : 'short'} · ${sgn2(c.R)} u` })), H,
+    { unit: '', note: 'Each bar is a card\'s size times its score: the move from 08:00 to 21:00 London in the day\'s own forecast unit (u, the p50 distance), signed by the card\'s view. Green helped the book; red hurt it.' }) : '';
+  const lessons = (ref?.lessons ?? []).map(l => `<li><b>${esc(l.scope)}${l.about ? ` · ${esc(l.about)}` : ''}.</b> ${esc(prose(l.lesson, { sentences: 2, chars: 300 }))}</li>`).join('');
+  const recLine = rec?.eligibleDays ? `Running record, interim and not judged: ${rec.eligibleDays} counted day${rec.eligibleDays === 1 ? '' : 's'}, mean ${sgn2(rec.S?.mean)} u${rec.S?.ci ? ` [${sgn2(rec.S.ci.lo)}, ${sgn2(rec.S.ci.hi)}]` : ''}; vs the single analyst ${sgn2(rec.vsControl?.mean)} u. Judged at 120+ counted days.` : 'The pre-registered record starts counting with books written before 08:00 London.';
+  return { section: title, html: `<div class="kick">${esc(title)} · ${esc(day)}</div><h2 class="sh">${esc(ref?.headline ? prose(ref.headline, { sentences: 1, chars: 160 }) : `The book scored ${sgn2(sc.S)} u`)}</h2>
+<p class="evl">${evBadge('observed')}${evBadge('model')}<span style="font:11px var(--sans,system-ui);color:#5b6b82">The morning book scored against the day (forge/DESK_ANALYST_PIPELINE_PREREG.md), then the desk's evening review. ${sc.eligible ? 'This day counts in the test.' : 'This day does not count in the test: the book was written after 08:00 London.'}</span></p>
+${tiles}${fig}
+${mv && (mv.best?.length || mv.worst?.length) ? `<p class="small3"><b>Made the day:</b> ${mv.best.map(m => `${esc(instName(m.inst))} ${sgn2(m.R)} u`).join(', ') || '–'} · <b>Lost it:</b> ${mv.worst.map(m => `${esc(instName(m.inst))} ${sgn2(m.R)} u`).join(', ') || '–'}</p>` : ''}
+${(ref?.worked?.length || ref?.failed?.length) ? `<div class="two">${ref.worked?.length ? `<div class="box"><h4>What the book got right</h4><ul class="lst" style="margin:0">${ref.worked.slice(0, 4).map(x => `<li>${esc(prose(x, { sentences: 1, chars: 220 }))}</li>`).join('')}</ul></div>` : ''}${ref.failed?.length ? `<div class="box warn"><h4>What it got wrong</h4><ul class="lst" style="margin:0">${ref.failed.slice(0, 4).map(x => `<li>${esc(prose(x, { sentences: 1, chars: 220 }))}</li>`).join('')}</ul></div>` : ''}</div>` : ''}
+${lessons ? `<h3 class="ss">What the desk takes from it</h3><ul class="lst">${lessons}</ul><p class="small3">${evBadge('untested')} One day is an anecdote: these are things to check today, not findings.</p>` : ''}
+${ref?.watch?.length ? `<h3 class="ss">Carried into today</h3><ul class="lst">${ref.watch.slice(0, 4).map(x => `<li>${esc(prose(x, { sentences: 1, chars: 200 }))}</li>`).join('')}</ul>` : ''}
+<p class="small3">${esc(recLine)}</p>` };
+}
