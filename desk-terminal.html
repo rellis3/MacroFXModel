@@ -182,6 +182,7 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
     <button role="tab" aria-selected="false" data-t="macro">Macro</button>
     <button role="tab" aria-selected="false" data-t="pos">Positioning</button>
     <button role="tab" aria-selected="false" data-t="cal">Calendar</button>
+    <button role="tab" aria-selected="false" data-t="ana">Analytics</button>
   </nav>
   <section id="overview"></section>
   <section id="ccy" hidden></section>
@@ -189,6 +190,7 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
   <section id="macro" hidden></section>
   <section id="pos" hidden></section>
   <section id="cal" hidden></section>
+  <section id="ana" hidden></section>
 </main>
 <button class="fab" id="askbtn">✦ Ask the desk</button>
 <div class="modal" id="modal" hidden></div>
@@ -214,6 +216,7 @@ const CONV = { low: 0.6, medium: 0.8, high: 1 };
 const assetScore = c => +(5 + 2.5 * (DIR[c.rating] ?? 0) * (CONV[c.conviction] ?? 0.8)).toFixed(1);
 const ccyScore = bias => +(5 + 2.5 * (Number(bias) || 0)).toFixed(1);
 const grade = c => { const d = Math.abs(DIR[c.rating] ?? 0); if (!d || !(c.size > 0)) return null; return d === 2 && c.conviction === 'high' ? 'A+' : c.conviction === 'high' ? 'A' : c.conviction === 'medium' ? (d === 2 ? 'A-' : 'B+') : 'B'; };
+const px = v => (Number.isFinite(+v) ? (+v).toFixed(+v >= 1000 ? 1 : +v >= 100 ? 2 : +v >= 10 ? 3 : 5) : '–');
 const dirCls = v => (v > 0 ? 'up' : v < 0 ? 'dn' : 'fl');
 const rateChip = r => { const d = DIR[r] ?? 0; return `<span class="chip ${d > 0 ? 'up' : d < 0 ? 'dn' : ''}">${d > 0 ? '▲' : d < 0 ? '▼' : '●'} ${esc(String(r ?? 'FLAT').replace('_', ' '))}</span>`; };
 const biasChip = b => `<span class="chip ${b > 0 ? 'up' : b < 0 ? 'dn' : ''}">${b >= 2 ? 'Strong bullish' : b > 0 ? 'Bullish' : b <= -2 ? 'Strong bearish' : b < 0 ? 'Bearish' : 'Neutral'}</span>`;
@@ -370,7 +373,8 @@ clocks(); setInterval(clocks, 20_000);
 // ── tabs ──
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
-  ['overview', 'ccy', 'assets', 'macro', 'pos', 'cal'].forEach(id => $(id).hidden = id !== b.dataset.t);
+  ['overview', 'ccy', 'assets', 'macro', 'pos', 'cal', 'ana'].forEach(id => $(id).hidden = id !== b.dataset.t);
+  if (b.dataset.t === 'ana') analytics();
   try { localStorage.setItem('deskTerminalTab', b.dataset.t); } catch { /* private window */ }
 });
 try { const t = localStorage.getItem('deskTerminalTab'); if (t) document.querySelector(`#tabs [data-t="${t}"]`)?.click(); } catch { /* ignore */ }
@@ -417,7 +421,7 @@ const lt = ms => new Date(ms).toLocaleString('en-GB', { timeZone: LONDON, weekda
 
 function ticker() {
   const items = [];
-  for (const e of (D.tw?.events ?? []).slice(-6).reverse()) items.push(`<span><b>${e.kind === 'zone' ? '🎯 IN ZONE' : e.kind === 'target' ? '✅ TARGET' : '⛔ INVALID'}</b> ${esc(e.inst)} @ ${e.price} · ${new Date(e.at).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</span>`);
+  for (const e of (D.tw?.events ?? []).slice(-6).reverse()) items.push(`<span><b>${e.kind === 'zone' ? '🎯 IN ZONE' : e.kind === 'target' ? '✅ TARGET' : '⛔ INVALID'}</b> ${esc(e.inst)} @ ${px(e.price)} · ${new Date(e.at).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</span>`);
   const g = D.run?.head?.book?.global; if (g) items.push(`<span><b>REGIME</b> ${esc(String(g.tone).replace('_', '-').toUpperCase())}</span>`);
   for (const e of upcoming(36).filter(e => /high/i.test(e.impact)).slice(0, 10)) items.push(`<span><b>${esc(e.country)}</b> ${esc(e.event)} · ${lt(e.ms)}${e.estimate ? ` · est ${esc(e.estimate)}` : ''}</span>`);
   for (const s of Object.values(D.upd?.slots ?? {})) if (s?.view?.headline) items.push(`<span><b>UPDATE</b> ${esc(s.view.headline)}</span>`);
@@ -494,7 +498,7 @@ function watchBoard() {
   const bar = r => { const p = r.p, ends = [p.invalid, p.target, ...(p.zone ?? []), r.px].filter(Number.isFinite); if (ends.length < 2) return ''; const lo = Math.min(...ends), hi = Math.max(...ends), x = v => ((v - lo) / (hi - lo || 1)) * 100;
     return `<div style="position:relative;height:16px;background:var(--bg3);border-radius:5px">${p.zone ? `<i style="position:absolute;top:2px;bottom:2px;left:${x(Math.min(...p.zone))}%;width:${Math.max(1.5, x(Math.max(...p.zone)) - x(Math.min(...p.zone)))}%;background:var(--purbg);border:1px solid rgba(139,124,246,.6);border-radius:3px"></i>` : ''}${Number.isFinite(p.invalid) ? `<i style="position:absolute;top:0;bottom:0;left:${x(p.invalid)}%;width:2px;background:var(--dn)"></i>` : ''}${Number.isFinite(p.target) ? `<i style="position:absolute;top:0;bottom:0;left:${x(p.target)}%;width:2px;background:var(--gold)"></i>` : ''}${Number.isFinite(r.px) ? `<i style="position:absolute;top:-3px;left:calc(${x(r.px)}% - 5px);width:10px;height:22px;border-radius:4px;background:#eef0fb;box-shadow:0 0 10px rgba(255,255,255,.6)"></i>` : ''}</div>`; };
   return `<div class="card"><div class="ch"><span class="lbl">Trade watch</span><span class="r muted">live price (white) against the zone (purple), first target (gold) and invalidation (red) · ${t.live ? 'watching' : 'not running now'}</span></div>
-<div class="scroll" style="max-height:560px;overflow-y:auto"><table><tbody>${rows.map(r => `<tr><td class="n" style="width:80px"><a href="#" data-inst="${esc(r.n)}" style="color:var(--tx);text-decoration:none">${esc(r.n)}</a></td><td style="width:90px">${rateChip(D.cards[r.n]?.rating)}</td><td style="min-width:160px">${bar(r)}</td><td class="n" style="width:80px">${Number.isFinite(r.px) ? r.px.toFixed(r.px >= 100 ? 2 : 4) : '–'}</td><td style="width:120px"><span class="chip ${r.s[1]}">${r.s[2]}</span></td></tr>`).join('')}</tbody></table></div>
+<div class="scroll" style="max-height:560px;overflow-y:auto"><table><tbody>${rows.map(r => `<tr><td class="n" style="width:80px"><a href="#" data-inst="${esc(r.n)}" style="color:var(--tx);text-decoration:none">${esc(r.n)}</a></td><td style="width:90px">${rateChip(D.cards[r.n]?.rating)}</td><td style="min-width:160px">${bar(r)}</td><td class="n" style="width:80px">${px(r.px)}</td><td style="width:120px"><span class="chip ${r.s[1]}">${r.s[2]}</span></td></tr>`).join('')}</tbody></table></div>
 ${(t.events ?? []).length ? `<div class="drv">${t.events.slice(-8).reverse().map(e => `<span>${new Date(e.at).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })} ${esc(e.inst)} ${esc(e.kind)}</span>`).join('')}</div>` : ''}
 <p class="muted">Telegram sends each event once (⚙ Alerts → "Desk trade watcher" to mute). Context, never an order.</p></div>`;
 }
@@ -633,6 +637,85 @@ function calendar() {
     return `<tr><td class="n" style="width:70px">${new Date(e.ms).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</td><td style="width:44px"><b>${esc(e.country)}</b></td><td>${esc(e.event)}${pb ? ` <span class="chip gold">playbook</span>` : ''}</td><td><span class="chip ${/high/i.test(e.impact) ? 'dn' : /medium/i.test(e.impact) ? 'gold' : ''}">${esc(e.impact)}</span></td><td class="muted mono" style="font-size:12px">${e.estimate ? `est ${esc(e.estimate)}` : ''}${e.prev ? ` · prev ${esc(e.prev)}` : ''}${e.actual ? ` · <b class="mono" style="color:var(--tx)">${esc(e.actual)}</b>` : ''}</td></tr>`; }).join('')}</tbody></table></div>`).join('') || '<div class="card muted">No events in the calendar feed.</div>';
 }
 
+
+// ── ANALYTICS: the desk's data drawn (correlation web, strength timeline, record, attribution, release fans) ──
+let ANA = null;
+async function analytics() {
+  if (!D.run) return;
+  if (!ANA) { $('ana').innerHTML = '<div class="card muted">Drawing…</div>'; const [risk, hist, day] = await Promise.all([getJson(`/api/desk-risk?date=${D.run?.date ?? ''}`), getJson('/api/desk-history?days=60'), getJson('/api/desk-score')]); ANA = { risk, hist, day }; }
+  const { risk, hist, day } = ANA;
+  $('ana').innerHTML = `<div class="grid g2"><div class="card glow"><div class="ch"><span class="lbl">Correlation web</span><span class="r muted">today's cards as held · lines where two cards move together</span></div><div id="web"></div></div>
+<div class="card"><div class="ch"><span class="lbl">Currency strength over time</span><span class="r muted">the Currency Manager's bias each morning</span></div><div id="heat"></div></div></div>
+<div class="grid g2" style="margin-top:14px"><div class="card"><div class="ch"><span class="lbl">Track record</span><span class="r muted">day score in u, cumulative, against the controls</span></div><div id="track"></div></div>
+<div class="card"><div class="ch"><span class="lbl">Which layer earned it</span><span class="r muted">${day?.ok ? esc(day.score.date) : 'latest scored day'} · attribution waterfall</span></div><div id="fall"></div></div></div>
+<div class="sec"><h2>Release reactions</h2><span class="lbl">how markets moved after past releases of each kind coming up · the desk's release history</span></div><div class="grid g2" id="fans"></div>`;
+  corrWeb($('web'), risk); strengthHeat($('heat'), hist); trackChart($('track'), hist); waterfall($('fall'), day); releaseFans($('fans'));
+}
+function corrWeb(el, r) {
+  const c = r?.corr; if (!r?.ok || !c?.names?.length) { el.innerHTML = `<p class="muted">${esc(r?.reason ?? r?.error ?? 'No portfolio-risk read yet.')}</p>`; return; }
+  const n = c.names.length, W = 520, H = 440, cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 56;
+  // order the ring so cards that move together sit together: by group, then by currency leg
+  const order = c.names.map((nm, i) => i).sort((a, b) => (groupOf(c.names[a]) + c.names[a]).localeCompare(groupOf(c.names[b]) + c.names[b]));
+  const pos = {}; order.forEach((i, k) => { const a = (k / n) * 2 * Math.PI - Math.PI / 2; pos[i] = [cx + R * Math.cos(a), cy + R * Math.sin(a), a]; });
+  const edges = [];
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const v = c.m[i][j]; if (Math.abs(v) >= 0.5) edges.push([i, j, v]); }
+  edges.sort((a, b) => Math.abs(a[2]) - Math.abs(b[2]));
+  const node = i => { const [x, y, a] = pos[i], w = c.weights[i], rr = 5 + Math.min(12, Math.abs(w) * 9), col = w > 0 ? '#2fd39a' : '#ff5d78', lx = cx + (R + 16) * Math.cos(a), ly = cy + (R + 16) * Math.sin(a), anchor = Math.cos(a) > 0.2 ? 'start' : Math.cos(a) < -0.2 ? 'end' : 'middle';
+    return `<g class="wn" data-i="${i}" style="cursor:pointer"><circle cx="${x}" cy="${y}" r="${rr}" fill="${col}" opacity=".9" style="filter:drop-shadow(0 0 6px ${col})"/><text x="${lx}" y="${ly + 4}" text-anchor="${anchor}" fill="#a9b0d0" font-family="JetBrains Mono" font-size="10">${esc(c.names[i])}</text></g>`; };
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="correlation web"><circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(139,124,246,.12)"/>
+${edges.map(([i, j, v]) => { const [x1, y1] = pos[i], [x2, y2] = pos[j]; return `<path class="we" data-a="${i}" data-b="${j}" d="M${x1},${y1} Q${cx},${cy} ${x2},${y2}" fill="none" stroke="${v > 0 ? '#e8b85a' : '#8b7cf6'}" stroke-width="${(Math.abs(v) - 0.4) * 5}" opacity="${0.15 + (Math.abs(v) - 0.5) * 1.2}"/>`; }).join('')}
+${order.map(node).join('')}</svg>
+<div class="muted"><span style="color:var(--gold)">━</span> the same bet (they win and lose together) · <span style="color:var(--pur2)">━</span> a hedge (one offsets the other) · dot size = card size · ${r.effectiveBets} effective bets across ${r.cards} cards. Hover a card.</div>`;
+  el.querySelectorAll('.wn').forEach(g => { g.onmouseenter = () => { const i = g.dataset.i; el.querySelectorAll('.we').forEach(p => p.style.opacity = (p.dataset.a === i || p.dataset.b === i) ? 1 : 0.04); };
+    g.onmouseleave = () => el.querySelectorAll('.we').forEach(p => p.style.opacity = ''); g.onclick = () => { const nm = c.names[g.dataset.i]; if (D.cards[nm]) { openModal(assetCard(nm, D.cards[nm], true)); assetChart($('achart'), nm, D.cards[nm]); } }; });
+}
+function strengthHeat(el, h) {
+  const rows = (h?.rows ?? []).filter(r => r.biases);
+  if (rows.length < 2) { el.innerHTML = `<p class="muted">${rows.length} desk day${rows.length === 1 ? '' : 's'} so far: the timeline fills in as the desk runs each morning.</p>${rows.length ? strengthStripFor(rows[0]) : ''}`; return; }
+  const cw = Math.max(8, Math.min(26, 520 / rows.length)), W = 50 + rows.length * cw, H = 24 + CCYS.length * 22;
+  const col = b => (b > 0 ? `rgba(47,211,154,${0.25 + 0.35 * Math.min(2, b)})` : b < 0 ? `rgba(255,93,120,${0.25 + 0.35 * Math.min(2, -b)})` : 'rgba(138,147,184,.18)');
+  el.innerHTML = `<div class="scroll"><svg viewBox="0 0 ${W} ${H}" width="${Math.max(W, 300)}" style="max-width:100%" role="img" aria-label="currency bias by day">${CCYS.map((c, i) => `<text x="0" y="${20 + i * 22 + 14}" fill="#a9b0d0" font-family="JetBrains Mono" font-size="11">${c}</text>${rows.map((r, k) => `<rect x="${50 + k * cw}" y="${20 + i * 22}" width="${cw - 2}" height="18" rx="3" fill="${col(r.biases[c] ?? 0)}"><title>${r.date} ${c} ${r.biases[c] ?? 0}</title></rect>`).join('')}`).join('')}
+${rows.map((r, k) => (k % Math.ceil(rows.length / 6) === 0 ? `<text x="${50 + k * cw}" y="12" fill="#6d7599" font-family="JetBrains Mono" font-size="9">${r.date.slice(5)}</text>` : '')).join('')}</svg></div><div class="muted">Green = bullish bias that morning, red = bearish, by strength.</div>`;
+}
+const strengthStripFor = r => `<div class="drv">${CCYS.map(c => `<span class="${dirCls(r.biases[c])}">${c} ${r.biases[c] > 0 ? '+' : ''}${r.biases[c] ?? 0}</span>`).join('')}</div>`;
+function trackChart(el, h) {
+  const rows = (h?.rows ?? []).filter(r => r.score && Number.isFinite(r.score.S));
+  if (!rows.length) { el.innerHTML = '<p class="muted">No scored day yet: each day is scored after 21:10 London, and the record is judged at 120 counted days. The chart fills in from the first.</p>'; return; }
+  const cum = k => { let a = 0; return rows.map(r => (a += Number.isFinite(r.score[k]) ? r.score[k] : 0)); };
+  const S = cum('S'), C = cum('control'), Dd = cum('drift'), all = [...S, ...C, ...Dd, 0], lo = Math.min(...all), hi = Math.max(...all);
+  const W = 520, H = 220, X = i => 30 + (i / Math.max(1, rows.length - 1)) * (W - 40), Y = v => H - 24 - ((v - lo) / (hi - lo || 1)) * (H - 44), bw = Math.max(3, (W - 40) / rows.length * 0.6);
+  const line = (arr, col, dash = '') => `<polyline points="${arr.map((v, i) => `${X(i)},${Y(v)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="2" ${dash ? `stroke-dasharray="${dash}"` : ''}/>`;
+  const sm = Math.max(...rows.map(r => Math.abs(r.score.S)), 0.1), base = H - 24;
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="track record"><line x1="30" x2="${W - 10}" y1="${Y(0)}" y2="${Y(0)}" stroke="#2c3866"/>
+${rows.map((r, i) => `<rect x="${X(i) - bw / 2}" y="${r.score.S >= 0 ? Y(0) - Math.abs(r.score.S) / sm * 30 : Y(0)}" width="${bw}" height="${Math.abs(r.score.S) / sm * 30}" fill="${r.score.S >= 0 ? 'rgba(47,211,154,.45)' : 'rgba(255,93,120,.45)'}" ${r.score.counts ? '' : 'opacity=".4"'}><title>${r.date}: ${f(r.score.S)} u${r.score.counts ? '' : ' (not counted)'}</title></rect>`).join('')}
+${line(Dd, '#6d7599', '3 4')}${line(C, '#8b7cf6', '6 4')}${line(S, '#e8b85a')}<circle cx="${X(rows.length - 1)}" cy="${Y(S.at(-1))}" r="4" fill="#e8b85a" style="filter:drop-shadow(0 0 6px #e8b85a)"/></svg>
+<div class="muted"><span style="color:var(--gold)">━</span> the desk, cumulative · <span style="color:var(--pur2)">╍</span> single-analyst control · <span>┈</span> long everything · bars = each day (faded = not counted). ${rows.length} scored day(s): running numbers, judged at 120.</div>`;
+}
+function waterfall(el, d) {
+  const L = d?.ok ? d.score.attribution?.layers : null;
+  if (!L) { el.innerHTML = '<p class="muted">Fills in from the first scored day: each layer of the desk (global ruling, currency ranking, asset desks, Head, sizing) scored as its own book on the same moves.</p>'; return; }
+  const steps = [['Global', L.global?.score], ['Currency', L.currency?.score], ['Desks', L.desks?.score], ['Head', L.head?.score], ['Sized', L.sized?.score]].filter(([, v]) => Number.isFinite(v));
+  const vals = steps.map(x => x[1]), lo = Math.min(0, ...vals), hi = Math.max(0, ...vals), W = 520, H = 220, bw = (W - 60) / steps.length, Y = v => 16 + (1 - (v - lo) / (hi - lo || 1)) * (H - 50);
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="attribution waterfall"><line x1="30" x2="${W - 10}" y1="${Y(0)}" y2="${Y(0)}" stroke="#2c3866"/>
+${steps.map(([l, v], i) => { const prev = i ? steps[i - 1][1] : 0, x = 40 + i * bw, top = Y(Math.max(prev, v)), h = Math.max(2, Math.abs(Y(prev) - Y(v))), up = v >= prev, final = i === steps.length - 1;
+    const y0 = i === 0 || final ? Math.min(Y(0), Y(v)) : top, h0 = i === 0 || final ? Math.max(2, Math.abs(Y(0) - Y(v))) : h;
+    return `<rect x="${x}" y="${y0}" width="${bw * 0.62}" height="${h0}" rx="4" fill="${final ? '#e8b85a' : up ? '#2fd39a' : '#ff5d78'}" opacity=".85"/>${i < steps.length - 1 ? `<line x1="${x + bw * 0.62}" x2="${x + bw}" y1="${Y(v)}" y2="${Y(v)}" stroke="#6d7599" stroke-dasharray="3 3"/>` : ''}<text x="${x + bw * 0.31}" y="${H - 18}" text-anchor="middle" fill="#a9b0d0" font-family="JetBrains Mono" font-size="10">${l}</text><text x="${x + bw * 0.31}" y="${y0 - 5}" text-anchor="middle" fill="#eef0fb" font-family="JetBrains Mono" font-size="10">${f(v)}</text>`; }).join('')}</svg>
+<div class="muted">Each bar is that stage's book scored on the day (u); green where a stage improved on the one before, red where it gave back; gold is the sized book, the day score.</div>`;
+}
+function releaseFans(el) {
+  const rel = D.run?.economist?.releases ?? [];
+  if (!rel.length) { el.innerHTML = '<div class="card muted">No high-impact release with a history in the next 36 hours (the economist writes these with the morning book).</div>'; return; }
+  el.innerHTML = rel.slice(0, 4).map(r => { const ms = Object.values(r.playbook.markets).slice(0, 7), mx = Math.max(...ms.map(m => (m.abs240 ?? 0) / (m.unit === 'bp' ? 10 : 1)), 0.01);
+    const sc = (v, u) => (Math.abs(v ?? 0) / (u === 'bp' ? 10 : 1)) / mx * 105;   // half-width in px around the centre (x 300)
+    return `<div class="card"><div class="ch"><span class="chip gold">${esc(r.family)}</span><b>${esc(r.event)}</b><span class="r mono muted">${lt(Date.parse(r.at))}</span></div>
+<svg viewBox="0 0 520 ${30 + ms.length * 26}" width="100%" role="img" aria-label="release reactions">${ms.map((m, i) => { const y = 20 + i * 26;
+      return `<text x="0" y="${y + 4}" fill="#a9b0d0" font-family="JetBrains Mono" font-size="10">${esc(m.label)}</text><line x1="300" x2="300" y1="${y - 10}" y2="${y + 10}" stroke="#2c3866"/>
+<rect x="${300 - sc(m.abs240, m.unit)}" y="${y - 7}" width="${sc(m.abs240, m.unit) * 2}" height="14" rx="7" fill="rgba(139,124,246,.18)"/><rect x="${300 - sc(m.abs30, m.unit)}" y="${y - 4}" width="${sc(m.abs30, m.unit) * 2}" height="8" rx="4" fill="rgba(139,124,246,.55)"/>
+${m.hot ? `<circle cx="${300 + Math.sign(m.hot.m30) * sc(m.hot.m30, m.unit)}" cy="${y}" r="4.5" fill="#ff5d78"><title>after hot prints: ${m.hot.m30}${m.unit} at 30 min (n ${m.hot.n})</title></circle>` : ''}${m.cold ? `<circle cx="${300 + Math.sign(m.cold.m30) * sc(m.cold.m30, m.unit)}" cy="${y}" r="4.5" fill="#4fb3ff"><title>after cold prints: ${m.cold.m30}${m.unit} at 30 min (n ${m.cold.n})</title></circle>` : ''}
+<text x="520" y="${y + 4}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="9">${m.abs30}${m.unit} · ${m.abs240}${m.unit}</text>`; }).join('')}</svg>
+<div class="muted">Bands: the typical move either way at 30 min (inner) and 4 h (outer). <span style="color:#ff5d78">●</span> after hot prints, <span style="color:#4fb3ff">●</span> after cold, at 30 min. ${r.playbook.n} past releases, ${esc(r.playbook.from)} to ${esc(r.playbook.to)}. History, not a forecast.</div></div>`; }).join('');
+}
+
 // clicking a currency or an instrument anywhere opens its card
 function wire(root) {
   root.querySelectorAll('[data-ccy]').forEach(el => { const go = () => ccyModal(el.dataset.ccy); el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
@@ -656,7 +739,7 @@ $('askbtn').onclick = () => {
 };
 
 load();
-setInterval(() => { if (!document.hidden) load(); }, 5 * 60_000);
+setInterval(() => { if (!document.hidden) { ANA = null; load(); if (!$('ana').hidden) analytics(); } }, 5 * 60_000);
 </script>
 </body>
 </html>

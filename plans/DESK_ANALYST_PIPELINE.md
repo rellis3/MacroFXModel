@@ -755,6 +755,12 @@ sparklines on the playbook cards and a candle chart in each asset card with toda
 invalidation (lightweight-charts, `GET /api/desk-bars`); a net-exposure chart before and after the cap; retail
 donuts; the US curve now against 20 sessions ago; rate bars in the currency card.
 
+**Analytics tab (2026-11-03):** a correlation web (the cards on a ring, gold arcs where two cards are the same bet,
+purple where one hedges the other, from the portfolio-risk read; `bookRisk` now returns the signed matrix), the
+currency-strength heat timeline (`GET /api/desk-history`), the cumulative track record against the single-analyst
+control and long-everything, the attribution waterfall of the latest scored day, and release-reaction bands for the
+releases ahead (typical move at 30 min and 4 h, with the median after hot and cold prints and the counts).
+
 Scores /10 are the desk's own −2..+2 views rescaled (5 = no view); grades are the book's conviction, never a hit
 rate, and the page says so. Still to come: the data below (rate expectations beyond the Fed and the ECB, a headline
 feed), seasonality and skew panels.

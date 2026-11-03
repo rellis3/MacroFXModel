@@ -75,5 +75,7 @@ export function bookRisk(cards, closes) {
     bookSigma: r2(Math.sqrt(V)), gross: r2(gross), effectiveBets: r2(gross * gross / V),
     contributions: contrib.slice(0, 10), bets: bets.filter(b => b.cards.length > 1).slice(0, 6), singles: bets.filter(b => b.cards.length === 1).length,
     scenarios, history: { worst: { date: worst.date, pnl: r2(worst.pnl) }, p05: r2(sorted[Math.floor(sorted.length * 0.05)].pnl), best: r2(sorted.at(-1).pnl) },
+    // the signed correlation of the cards as held (direction × correlation), for the correlation web
+    corr: { names: live, weights: w.map(r2), m: live.map((a, i) => live.map((b, j) => r2(Math.sign(w[i]) * Math.sign(w[j]) * C[i][j]))) },
   };
 }

@@ -5426,6 +5426,28 @@ Reply with JSON only: { "answer": "plain text", "sources": ["analyst ids, card n
     } finally { _askBusy = false; }
   } catch (e) { _askBusy = false; res.status(500).json({ ok: false, error: e.message }); }
 });
+// GET /api/desk-history?days=30: one compact row per desk day for the Desk Terminal's analytics (the currency
+// ranking and biases, the tone, and the day's score where there is one). Cached 15 minutes.
+let _dhCache = { at: 0, key: null, data: null };
+app.get('/api/desk-history', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 5), 90);
+    if (_dhCache.key === days && Date.now() - _dhCache.at < 15 * 60_000) return res.json(_dhCache.data);
+    const idx = (await _drLoadIndex()).filter(r => r.headOk).slice(-days), scores = Object.fromEntries((await _dsLoadIndex().catch(() => [])).map(s => [s.date, s]));
+    const rows = [];
+    for (const r of idx) {
+      const run = await _dsRunFor(r.date).catch(() => null); if (!run?.head?.ok) continue;
+      const cv = run.debate?.currency?.view, s = scores[r.date];
+      rows.push({ date: r.date, tone: run.head.book.global?.tone ?? null, conviction: run.debate?.global?.view?.conviction ?? null, ranking: cv?.ranking ?? null,
+        biases: cv?.currencies ? Object.fromEntries(Object.entries(cv.currencies).map(([k, v]) => [k, v.bias])) : Object.fromEntries(Object.entries(run.head.book.currencies ?? {}).map(([k, v]) => [k, v.bias])),
+        score: s ? { S: s.S, counts: !!s.eligible, p95: s.placebo?.p95 ?? null, control: s.control?.unweighted ?? null, drift: s.drift ?? null } : null });
+    }
+    const data = { ok: true, days: rows.length, rows };
+    _dhCache = { at: Date.now(), key: days, data };
+    res.json(data);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // GET /api/desk-quality?date=: the data quality officer's read of the day's pack, and after the run which gaps mattered
 app.get('/api/desk-quality', async (req, res) => {
   try {
