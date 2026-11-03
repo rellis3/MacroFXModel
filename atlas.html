@@ -756,6 +756,14 @@ function showDeskButtons(mag, brief) {
   $('nlOut').insertAdjacentHTML('afterbegin', `<div class="chips" style="margin:12px 0 4px;align-items:center"><b style="font-size:12px;margin-right:4px">Desk editions</b><button class="btn" id="dkMag">📰 Desk magazine</button><button class="btn" id="dkMagP">PDF</button>${brief ? '<button class="btn" id="dkBr">⚡ Desk brief</button><button class="btn" id="dkBrP">PDF</button>' : ''}</div>`);
   $('dkMag').onclick = () => open(mag, false); $('dkMagP').onclick = () => open(mag, true);
   if (brief) { $('dkBr').onclick = () => open(brief, false); $('dkBrP').onclick = () => open(brief, true); }
+  // Phase 16: the claims check of today's desk edition, before it is shared
+  fetch('/api/desk-claims', { cache: 'no-store' }).then(r => r.json()).then(c => {
+    if (!c?.ok) return;
+    const items = c.review?.items ?? [], n = items.length + (c.review ? 0 : c.numbers.unsourced.length);
+    const tone = c.verdict === 'hold' ? '#ff5d73' : c.verdict === 'fix' ? '#e0a339' : '#19d3a0';
+    const label = c.verdict === 'hold' ? 'Claims check: HOLD, do not share as written' : c.verdict === 'fix' ? `Claims check: ${n} thing${n === 1 ? '' : 's'} to fix before sharing` : 'Claims check: clean';
+    $('nlOut').insertAdjacentHTML('afterbegin', `<details style="margin:8px 0;border:1px solid ${tone};border-radius:10px;padding:8px 12px"><summary style="cursor:pointer;color:${tone};font-weight:600">${esc(label)}</summary>${c.review?.summary ? `<p class="note">${esc(c.review.summary)}</p>` : ''}${items.map(x => `<p class="note"><b>${esc(x.severity)} · ${esc(x.problem)}</b>: “${esc(x.quote)}”<br>${esc(x.why)}${x.fix ? `<br><i>Fix:</i> ${esc(x.fix)}` : ''}</p>`).join('')}${!c.review && c.numbers.unsourced.length ? c.numbers.unsourced.map(u => `<p class="note">Number not found in the desk's material: <b>${esc(u.raw)}</b> in “${esc(u.sentence)}”</p>`).join('') : ''}<p class="note">Full detail in the Desk Office.</p></details>`);
+  }).catch(() => {});
 }
 function showNl(out, kind = 'daily', out2 = null, label2 = 'Previous layout') {
   const url = URL.createObjectURL(new Blob([out.html], { type: 'text/html' })), fname = `desk-atlas-${kind}-${new Date().toISOString().slice(0, 10)}.html`;

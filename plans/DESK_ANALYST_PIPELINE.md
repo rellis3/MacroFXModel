@@ -755,6 +755,12 @@ sparklines on the playbook cards and a candle chart in each asset card with toda
 invalidation (lightweight-charts, `GET /api/desk-bars`); a net-exposure chart before and after the cap; retail
 donuts; the US curve now against 20 sessions ago; rate bars in the currency card.
 
+**Analytics tab (2026-11-03):** a correlation web (the cards on a ring, gold arcs where two cards are the same bet,
+purple where one hedges the other, from the portfolio-risk read; `bookRisk` now returns the signed matrix), the
+currency-strength heat timeline (`GET /api/desk-history`), the cumulative track record against the single-analyst
+control and long-everything, the attribution waterfall of the latest scored day, and release-reaction bands for the
+releases ahead (typical move at 30 min and 4 h, with the median after hot and cold prints and the counts).
+
 Scores /10 are the desk's own −2..+2 views rescaled (5 = no view); grades are the book's conviction, never a hit
 rate, and the page says so. Still to come: the data below (rate expectations beyond the Fed and the ECB, a headline
 feed), seasonality and skew panels.
@@ -809,6 +815,66 @@ Private, in the Desk Office "Research" tab. `js/theoryDesk.js` (pure, tested in 
 - **Rules:** proposals only. Nothing is run, claimed or banked by either phase; taking a theory forward means a
   register row and a prereg under the research protocol.
 
+## 9u. Agent 18: the trade watcher (built 2026-11-03)
+
+`js/tradeWatch.js` (pure, tested in `js/tradeWatch.test.mjs`); service `tradeWatch`; `GET /api/trade-watch`. Not to
+be confused with `js/deskWatch.js`, the market early-warning layer.
+
+- Every 2 minutes on weekdays 07:00-21:00 London, one OANDA pricing call for the book's live cards.
+- Each card's watch plan comes from the Head's own plan and the vol forecast: the entry zone (the prices named in
+  `plan.zone`, kept within 10% of the open), the invalidation (the nearest named price against the card) and the first
+  target (today's p50 line on the lean side). A session update that flips or flattens a card removes it from the watch.
+- A level counts as reached when the path from the last price to this one crosses it. Each of zone, target and
+  invalid fires once per card per day; nothing fires on a card after its invalidation.
+- Events go to Telegram (master switch `tradeWatch` in the ⚙ Alerts modal) and to `desk_trade_watch_<date>`. The
+  Desk Terminal shows a live board (price against zone, target and invalidation) and puts the events in its ticker.
+- No model call and never an order: the watcher reports what the plan named.
+
+## 9v. Phase 16: the claims checker (built 2026-11-03)
+
+`js/claimsCheck.js` (pure, tested in `js/claimsCheck.test.mjs`), `desk/roles/claims_checker.md` (schema
+`claims_check`). It runs after every full desk run that wrote a newsletter, once the run is saved, and on
+`POST /api/desk-claims/run`; `GET /api/desk-claims`. Saved apart in `desk_run_claims_<date>`: the scored book is never
+touched.
+
+- **Numbers pass (no model):** every number in the desk edition and the economist's briefs is looked for in the run's
+  own material (book, debate, analysts, release playbooks). It counts when written the same way, or as an exact
+  rounding of a more precise source number (2.85 as 2.9), or as a fraction written as a percent. Times, dates,
+  years and counts up to 12 are skipped. Tested with planted numbers: invented ones are caught, rounded real ones are
+  not. A number that exists in the source but is used for the wrong thing is the model's job.
+- **Claims pass (one model call, task desk-head):** unsourced, overstated, tested-null, forecast, contradiction; each
+  with the exact quote, why, and a fix to paste. Verdict clean / fix / hold; any listed item overrides "clean".
+- **Where it shows:** a coloured line above the desk-edition buttons in Atlas (expand for the items) and a panel at
+  the top of the Desk Office's Today tab with a "Check again" button.
+
+## 9w. Agent 22: the chief of staff (built 2026-11-03)
+
+`js/chiefOfStaff.js` (pure, tested in `js/chiefOfStaff.test.mjs`); service `chiefOfStaff`; Telegram master switch
+`chiefOfStaff`; `POST /api/desk-cos/send?which=morning|evening` to send one now.
+
+- **Morning**, once the day's book and its claims check exist (or from 08:30 London without the check): the call and
+  the book's headline, the four biggest cards, what needs the owner before sharing (claims verdict, a data-officer
+  hold, failed analysts) or "nothing needs you", the economist's releases with times, and research waiting on the
+  owner (results ready to bank, exploratory finds, new theories).
+- **Evening**, once the day is scored: the day score against the placebo, the single-analyst control, what the trade
+  watcher caught (in zone, target, invalidated), the evening review's headline and first lesson, the running record.
+- Each note once a day (`desk_cos_<date>`). Built from what the desk already wrote: no model call, no new numbers.
+
+## 9x. Agent 19: the weekly strategist (built 2026-11-03)
+
+`js/weeklyDesk.js` (pure, tested in `js/weeklyDesk.test.mjs`), `desk/roles/weekly_strategist.md` (schema
+`weekly_view`); service `deskWeekly` (Sunday from 16:00 London, once per ISO week); `GET /api/desk-weekly`,
+`POST /api/desk-weekly/run`.
+
+- Reads the last week's morning books with each day's score, the last evening reviews, the coming week's
+  high-impact calendar and the desk's release history for the releases that have one, and the Evidence Book.
+- Writes: last week in a paragraph, two to five themes, a −2..+2 bias and ranking for the eight currencies, the key
+  dates and why, two to five "if X, then the view changes to Y" scenarios, and what to watch on Monday.
+- Saved as `desk_weekly_latest` and `desk_weekly_<week>`; a Sunday Telegram note (master switch `deskWeekly`); a
+  "This week" section on the Desk Terminal's Overview (the week's ranking beside today's).
+- Monday's evidence clerk reads it through the Desk Pack feed `desk-weekly` as the desk's own context, never as
+  evidence or a card (prereg amendment A6; both the desk and the single-prompt control see it).
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
@@ -852,7 +918,12 @@ Not built yet. The order is the owner's call; each item names what it needs firs
 - **Phase 15 · Scenario strategist.** *Built (§9q).* "If hot / if cold" playbooks before big releases from the desk's
   release-history data. Pairs with the economist (Phase 6).
 - **Phase 17 · Desk Terminal.** *v1 built (§9r).* The owner's private terminal, built last.
-- **Phase 16 · Claims checker.** Checks everything published against the data and the Evidence Book.
+- **Agent 18 · Trade watcher.** *Built (§9u).* Alerts when a card reaches its entry zone, first target or invalidation.
+- **Agent 19 · Weekly strategist.** *Built (§9x).* Sunday's week view and edition, and Monday's starting point.
+- **Agent 20 · Rules keeper.** The live bots' settings against the research verdicts.
+- **Agent 21 · News analyst.** Tags a headline feed by currency and tier (needs the feed).
+- **Agent 22 · Chief of staff.** *Built (§9w).* One short Telegram each morning and evening summing up the Desk Office.
+- **Phase 16 · Claims checker.** *Built (§9v).* Checks everything published against the data and the Evidence Book.
 
 **Build items**
 - **Daily schedule.** The owner sets `SVC_DESKRUN=1` for the 06:55 run once a fresh-pack run has been read. Without

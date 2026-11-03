@@ -22,6 +22,9 @@ Work through:
    score and up to five lessons. Pass on the lessons that matter for today as things to check, and say how many days
    each rests on. They are one-day anecdotes from the desk's own reviewer, not evidence: never treat one as a finding,
    and never let it outrank the Evidence Book.
+6. The week view (feed desk-weekly): the weekly strategist's Sunday view for the week, with its currency ranking,
+   themes and scenarios. Say whether today's evidence still fits it or has moved against one of its scenarios. It is
+   the desk's own context, not evidence: never pass its biases on as a finding.
 
 Your headline should be the one thing the rest of the desk most needs to remember today. Put feeds that are down in
 "gaps". Impact only where a validated finding gives a direction.

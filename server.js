@@ -226,9 +226,13 @@ import { sliceFeed as _deskSliceFeed } from './js/deskSlices.js';
 import { assess as _dqAssess, afterRun as _dqAfterRun } from './js/deskDataQuality.js';
 import { attribution as _atAttribution, attributionRecord as _atRecord } from './js/deskAttribution.js';
 import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
+import { isoWeek as _wkIso, weekBooks as _wkBooks, weekCalendar as _wkCalendar, validateWeekly as _wkValidate, weeklyNote as _wkNote } from './js/weeklyDesk.js';   // agent 19
+import { morningText as _cosMorning, eveningText as _cosEvening } from './js/chiefOfStaff.js';   // agent 22
+import { numberCheck as _ccNumbers, claimsSections as _ccSections, validateClaims as _ccValidate } from './js/claimsCheck.js';   // Phase 16
+import { watchPlan as _twPlan, check as _twCheck, message as _twMessage } from './js/tradeWatch.js';   // agent 18: the trade watcher
 import { tradeRows as _jcRows, coach as _jcCoach, execution as _jcExec } from './js/deskJournal.js';   // Phases 8 and 13
 import { parseRegister as _tdParseRegister, opsReport as _tdOps, outline as _tdOutline, section as _tdSection, readingList as _tdReadingList, registerText as _tdRegisterText, screen as _tdScreen, validateTheories as _tdValidate } from './js/theoryDesk.js';   // Phases 9 and 12
-import { upcoming as _rpUpcoming } from './js/releasePlaybook.js';
+import { upcoming as _rpUpcoming, playbookText as _rpPlaybookText } from './js/releasePlaybook.js';
 import { dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
@@ -2197,6 +2201,9 @@ const TG_SENDERS = {
   ratesRegime:       'Rates vs Nasdaq regime change / rate shock (context, not a signal)',
   spreadEpisodes:    'Spread-turn episodes: confirmed turn (Case 1 full sequence / Case 2 every turn), context only',
   bankCredit:        'BIS cross-border bank credit: new quarter released (regime context, not a signal)',
+  deskWeekly:        'Desk weekly strategist: the Sunday week-ahead note',
+  chiefOfStaff:      'Desk chief of staff: the morning note after the book, the evening note after the score',
+  tradeWatch:        'Desk trade watcher: a card reached its entry zone, first target or invalidation (context, not an order)',
   // volatility_bot_v2 (the Python bot) checks this directly via ai_alert_cfg
   // (see its own tg_master_on doc) — unlike every other sender above, this
   // one is NOT enforced by server.js's tgOn(), since the bot that actually
@@ -4795,6 +4802,7 @@ async function _deskRun(trigger, job, mode = 'full') {
     if (_dsEligible(run).ok && !(await kv.get(_DS_ELIG_KEY(run.date)))) await kv.put(_DS_ELIG_KEY(run.date), gz);
     await checkpoint.clear();   // the run is saved whole: the next Run now starts fresh
   } catch (e) { console.warn('[desk-run] save failed:', e.message); }
+  if (run.newsletter?.ok) { job.stage = 'claims check'; await _ccRun(run.date).catch(e => console.warn('[desk-claims]', e.message)); }   // Phase 16, after the save
   console.log(`[desk-run] ${run.date} (${run.mode}): ${Object.values(run.analysts).filter(a => a.ok).length}/${Object.keys(run.analysts).length} analysts, debate failures ${run.debate?.failed?.length ?? '-'}, head ${run.head?.ok ? 'ok' : 'FAILED'}, ${run.calls} calls, tokens in ${run.usage.in} out ${run.usage.out}`);
   return run;
 }
@@ -5196,6 +5204,196 @@ app.get('/api/desk-bars', async (req, res) => {
     res.json(data);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── Phase 16: the claims checker (js/claimsCheck.js, desk/roles/claims_checker.md, plan §9v) ──
+// After each full run with a newsletter: the numbers pass (no model) and one model pass over what will be shared.
+// Saved apart from the run (desk_run_claims_<date>), so the scored book is never touched.
+const _CC_KEY = d => `desk_run_claims_${d}`;
+let _ccJob = null;
+async function _ccRun(date) {
+  const run = await _drLoad(date);
+  if (!run?.newsletter?.ok) return { ok: false, error: `no desk newsletter for ${date}` };
+  const numbers = _ccNumbers(run), out = { ok: true, date, runFinishedAt: run.finishedAt, checkedAt: new Date().toISOString(), numbers, review: null, error: null };
+  const role = _deskLoadRoles().find(r => r.id === 'claims_checker');
+  if (role && _aiAnyKey()) {
+    const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+    const { system, prompt } = _deskStagePrompt({ role, pack: { date }, ledger: DESK_EVIDENCE, sections: _ccSections(run, numbers, DESK_EVIDENCE) });
+    for (let i = 0; i < 2 && !out.review; i++) {
+      try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 8_000 }); const v = _ccValidate(_parseModelJson(r.text ?? _antText(r), 'desk:claims')); if (v.ok) out.review = { ...v.value, model: r.model ?? null }; else out.error = v.errors.join('; '); }
+      catch (e) { out.error = e.message; }
+    }
+  } else out.error = 'no claims_checker role or model key: numbers pass only';
+  out.verdict = out.review?.verdict ?? (numbers.unsourced.length ? 'fix' : 'clean');
+  await kv.put(_CC_KEY(date), JSON.stringify(out));
+  return out;
+}
+function _ccStart(date) {
+  if (_ccJob?.status === 'running') return null;
+  const job = _ccJob = { status: 'running', date, startedAt: Date.now(), finishedAt: null, error: null };
+  _ccRun(date).then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; }).catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
+  return job;
+}
+// GET /api/desk-claims?date=: the claims check of the day's desk edition. POST /api/desk-claims/run?date=: check again.
+app.get('/api/desk-claims', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : _dpLondonDate(Date.now());
+    const raw = await kv.get(_CC_KEY(date)).catch(() => null);
+    res.json(raw ? { ...JSON.parse(raw), job: _ccJob } : { ok: false, date, error: 'not checked yet', job: _ccJob });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/desk-claims/run', (req, res) => {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : _dpLondonDate(Date.now());
+  const job = _ccStart(date);
+  if (!job) return res.status(409).json({ ok: false, error: 'a check is already running', job: _ccJob });
+  res.status(202).json({ ok: true, job });
+});
+// ── Agent 19: the weekly strategist (js/weeklyDesk.js, desk/roles/weekly_strategist.md, plan §9x) ──
+// Sunday from 16:00 London, once per ISO week (the week it is written for: the coming Monday's). One model call.
+// Monday's evidence clerk reads it through the Desk Pack feed desk-weekly (memory, never a card).
+const _WK_KEY = 'desk_weekly_latest';
+let _wkJob = null;
+async function _wkRun() {
+  const role = _deskLoadRoles().find(r => r.id === 'weekly_strategist');
+  if (!role || !_aiAnyKey()) return { ok: false, error: 'no weekly_strategist role or model key' };
+  const now = Date.now(), today = _dpLondonDate(now), weekFor = _wkIso(_dpLondonDate(now + 864e5));
+  const idx = (await _drLoadIndex()).filter(r => r.headOk).slice(-7);
+  const runs = (await Promise.all(idx.map(r => _drLoad(r.date).catch(() => null)))).filter(Boolean);
+  const scores = (await _dsLoadIndex().catch(() => [])).slice(-10);
+  const refl = (await Promise.all(scores.slice(-5).map(async r => { const x = await kv.get(_DS_REFLECT_KEY(r.date)).catch(() => null); return x ? { date: r.date, ...JSON.parse(x) } : null; }))).filter(Boolean);
+  let cal = [], releases = [];
+  try {
+    const { rows } = await _rlRows();
+    const [ev, ca] = await Promise.all(['events', 'calendar-ahead'].map(p => _dpFetchFeed({ id: p, path: p, timeoutMs: 60_000 })));
+    const all = [...(Array.isArray(ev.json) ? ev.json : ev.json?.events ?? []), ...(ca.json?.rows ?? [])];
+    cal = _wkCalendar(all, now); releases = _rpUpcoming(all, rows, now, { hours: 24 * 8 });
+  } catch (e) { console.warn('[desk-weekly] calendar:', e.message); }
+  const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+  const { system, prompt } = _deskStagePrompt({ role, pack: { date: today }, ledger: DESK_EVIDENCE, sections: [
+    ["Last week's morning books, with each day's score where it was scored", _wkBooks(runs, scores)],
+    ['The last evening reviews', refl.map(r => ({ date: r.date, headline: r.headline, lessons: (r.lessons ?? []).map(l => l.lesson) }))],
+    [`The week's high-impact releases (${weekFor})`, cal.join('\n') || '(the calendar feed had none)'],
+    ["The desk's history of the releases that have one", releases.map(r => `${r.event} ${r.at}\n${_rpPlaybookText(r.playbook)}`).join('\n\n') || '(none with a history)'],
+  ], tail: 'Write the view for the week ahead.' });
+  let view = null, errors = [], model = null;
+  for (let i = 0; i < 2 && !view; i++) {
+    try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 12_000 }); const v = _wkValidate(_parseModelJson(r.text ?? _antText(r), 'desk:weekly')); if (v.ok) { view = v.value; model = r.model ?? null; } else errors.push(...v.errors); }
+    catch (e) { errors.push(e.message); }
+  }
+  if (!view) return { ok: false, error: errors.join('; ') || 'no valid reply' };
+  const rec = { ok: true, week: weekFor, writtenOn: today, writtenAt: new Date().toISOString(), model, label: 'the week\'s context for the daily desk, not a card', basedOn: runs.map(r => r.date), view };
+  await kv.put(_WK_KEY, JSON.stringify(rec));
+  await kv.put(`desk_weekly_${weekFor}`, JSON.stringify(rec)).catch(() => {});
+  if (tgOn('deskWeekly') && state.tg?.token && state.tg?.chatId) await sendTelegram(state.tg.token, state.tg.chatId, _wkNote(rec));
+  return rec;
+}
+function _wkStart() {
+  if (_wkJob?.status === 'running') return null;
+  const job = _wkJob = { status: 'running', startedAt: Date.now(), finishedAt: null, error: null };
+  _wkRun().then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; }).catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
+  return job;
+}
+// GET /api/desk-weekly: the latest week view (also the Desk Pack feed desk-weekly). POST /api/desk-weekly/run: write it now.
+app.get('/api/desk-weekly', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const raw = await kv.get(_WK_KEY).catch(() => null); res.json(raw ? { ...JSON.parse(raw), job: _wkJob } : { ok: false, error: 'no week view yet: the strategist writes on Sunday afternoons, or run it now', job: _wkJob }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/desk-weekly/run', (_req, res) => {
+  const job = _wkStart();
+  if (!job) return res.status(409).json({ ok: false, error: 'the strategist is already writing', job: _wkJob });
+  res.status(202).json({ ok: true, job });
+});
+svcInterval('deskWeekly', async () => {
+  const now = Date.now(), date = _dpLondonDate(now);
+  if (new Date(_dsLondonMs(date, 12)).getUTCDay() !== 0 || now < _dsLondonMs(date, 16) || _wkJob?.status === 'running' || !_aiAnyKey()) return;
+  const raw = await kv.get(_WK_KEY).catch(() => null);
+  if (raw && JSON.parse(raw).week === _wkIso(_dpLondonDate(now + 864e5))) return;
+  _wkStart();
+}, 30 * 60_000);
+// ── Agent 22: the chief of staff (js/chiefOfStaff.js, plan §9w) ──
+// Every 10 min on weekdays: the morning note once the day's book and its claims check exist (or from 08:30 London
+// without the check), the evening note once the day is scored. Each once a day (desk_cos_<date>). No model call.
+const _COS_KEY = d => `desk_cos_${d}`;
+async function _cosTick({ force = null } = {}) {
+  const now = Date.now(), date = _dpLondonDate(now), dow = new Date(_dsLondonMs(date, 12)).getUTCDay();
+  if (!force && (dow === 0 || dow === 6)) return { ok: false, why: 'weekend' };
+  const sent = JSON.parse((await kv.get(_COS_KEY(date)).catch(() => null)) ?? '{}'), out = {};
+  const send = async text => (tgOn('chiefOfStaff') && state.tg?.token && state.tg?.chatId ? sendTelegram(state.tg.token, state.tg.chatId, text) : false);
+  if ((force === 'morning' || (!force && !sent.morning))) {
+    const run = await _drLoad(date);
+    if (run?.head?.ok) {
+      const claims = JSON.parse((await kv.get(_CC_KEY(date)).catch(() => null)) ?? 'null');
+      if (force || claims || now > _dsLondonMs(date, 8, 30)) {
+        const theory = JSON.parse((await kv.get(_TD_KEY).catch(() => null)) ?? 'null');
+        let ops = null; try { ops = _tdOpsNow(); } catch { /* the notes still go without it */ }
+        const text = _cosMorning({ date, run, claims, ops, theory });
+        if (text) { out.morning = await send(text); sent.morning = new Date().toISOString(); out.morningText = text; }
+      }
+    }
+  }
+  if ((force === 'evening' || (!force && !sent.evening))) {
+    const raw = await kv.get(_DS_SCORE_KEY(date)).catch(() => null);
+    if (raw) {
+      const ref = await kv.get(_DS_REFLECT_KEY(date)).catch(() => null), watch = JSON.parse((await kv.get(_TW_KEY(date)).catch(() => null)) ?? 'null');
+      const idx = await _dsLoadIndex().catch(() => []);
+      const text = _cosEvening({ date, score: JSON.parse(raw), reflection: ref ? JSON.parse(ref) : null, watch, record: idx.length ? _dsRecord(idx, { seed: _DS_SEED }) : null });
+      if (text) { out.evening = await send(text); sent.evening = new Date().toISOString(); out.eveningText = text; }
+    }
+  }
+  if (out.morningText || out.eveningText) await kv.put(_COS_KEY(date), JSON.stringify(sent), { expirationTtl: 10 * 86400 }).catch(() => {});
+  return { ok: true, date, ...out };
+}
+svcInterval('chiefOfStaff', () => _cosTick().catch(e => console.warn('[chief-of-staff]', e.message)), 10 * 60_000);
+// POST /api/desk-cos/send?which=morning|evening: send a note now (also returns its text)
+app.post('/api/desk-cos/send', async (req, res) => {
+  try { const which = req.query.which === 'evening' ? 'evening' : 'morning'; res.json(await _cosTick({ force: which })); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── Agent 18: the trade watcher (js/tradeWatch.js, plan §9u) ──
+// Every 2 minutes on weekdays 07:00-21:00 London: today's book (with any session-update change applied; a card whose
+// update flipped or flattened it is dropped, since its plan no longer fits) against OANDA mids, one batch call. Each
+// card's entry zone, first target and invalidation fire once a day, on Telegram (tgMaster.tradeWatch) and in
+// desk_trade_watch_<date>. No model call, never an order.
+const _TW_KEY = d => `desk_trade_watch_${d}`;
+let _tw = { date: null, runAt: null, upd: null, plan: {}, cards: {}, state: { fired: {}, last: {} }, events: [], loaded: false };
+async function _twTick() {
+  const now = Date.now(), date = _dpLondonDate(now), dow = new Date(_dsLondonMs(date, 12)).getUTCDay();
+  if (dow === 0 || dow === 6 || now < _dsLondonMs(date, 7) || now > _dsLondonMs(date, 21)) return { ok: false, why: 'outside the watch hours' };
+  if (_tw.date !== date) _tw = { date, runAt: null, upd: null, plan: {}, cards: {}, state: { fired: {}, last: {} }, events: [], loaded: false };
+  if (!_tw.loaded) { const raw = await kv.get(_TW_KEY(date)).catch(() => null); if (raw) { const j = JSON.parse(raw); _tw.state.fired = j.fired ?? {}; _tw.events = j.events ?? []; } _tw.loaded = true; }
+  const run = await _drLoad(date);
+  if (!run?.head?.ok) return { ok: false, why: 'no book today' };
+  const updates = await _duLoad(date), updKey = JSON.stringify(Object.keys(updates.slots ?? {}));
+  if (_tw.runAt !== run.finishedAt || _tw.upd !== updKey) {
+    const view = _duLiveView(run.head.book, updates), cards = {};
+    for (const [n, c] of Object.entries(run.head.book.instruments)) { const v = view[n]; if (!v) continue; const d0 = Math.sign({ STRONG_LONG: 1, LONG: 1, SHORT: -1, STRONG_SHORT: -1 }[c.rating] ?? 0), d1 = Math.sign({ STRONG_LONG: 1, LONG: 1, SHORT: -1, STRONG_SHORT: -1 }[v.rating] ?? 0); if (d0 && d0 === d1) cards[n] = { ...c, rating: v.rating, size: v.size ?? c.size }; }
+    _tw.cards = cards; _tw.plan = _twPlan(cards); _tw.runAt = run.finishedAt; _tw.upd = updKey;
+  }
+  const insts = Object.keys(_tw.plan).filter(n => _dsOanda[n]);
+  if (!insts.length) return { ok: true, watching: 0 };
+  const q = await _fetchSpreads(insts.map(n => _dsOanda[n]));
+  if (!q.ok) return { ok: false, why: q.reason };
+  const prices = {};
+  for (const n of insts) { const p = q.pairs[_dsOanda[n]]; if (p?.tradeable !== false && Number.isFinite(p?.bid) && Number.isFinite(p?.ask)) prices[n] = (p.bid + p.ask) / 2; }
+  const evs = _twCheck(_tw.plan, prices, _tw.state);
+  if (evs.length) {
+    const at = new Date().toISOString();
+    _tw.events.push(...evs.map(e => ({ ...e, at })));
+    await kv.put(_TW_KEY(date), JSON.stringify({ date, fired: _tw.state.fired, events: _tw.events }), { expirationTtl: 40 * 86400 }).catch(e => console.warn('[trade-watch] save:', e.message));
+    if (tgOn('tradeWatch') && state.tg?.token && state.tg?.chatId) for (const e of evs) await sendTelegram(state.tg.token, state.tg.chatId, _twMessage(e, _tw.cards[e.inst], { date }));
+    console.log(`[trade-watch] ${evs.map(e => `${e.inst} ${e.kind}`).join(', ')}`);
+  }
+  return { ok: true, watching: insts.length, events: evs.length };
+}
+svcInterval('tradeWatch', () => _twTick().catch(e => console.warn('[trade-watch]', e.message)), 2 * 60_000);
+// GET /api/trade-watch: today's watch plan, each card's status, and the events so far
+app.get('/api/trade-watch', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = _dpLondonDate(Date.now());
+    if (_tw.date !== date) { const raw = await kv.get(_TW_KEY(date)).catch(() => null); const j = raw ? JSON.parse(raw) : {}; return res.json({ ok: true, date, live: false, events: j.events ?? [], fired: j.fired ?? {}, plan: {} }); }
+    res.json({ ok: true, date, live: true, events: _tw.events, fired: _tw.state.fired, last: _tw.state.last, plan: _tw.plan });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // POST /api/desk-ask {q}: the Desk Terminal's "Ask the desk" (Phase 17, §9r). One model call over today's book, the
 // analysts' reports, the last evening reviews and the Evidence Book. Answers from those only and says when they do
 // not answer the question. One at a time, at most 60 a day.
@@ -5227,6 +5425,28 @@ Reply with JSON only: { "answer": "plain text", "sources": ["analyst ids, card n
       res.json({ ok: true, answer, sources: Array.isArray(j.sources) ? j.sources.slice(0, 12).map(String) : [], model: r.model ?? null, bookDate: book?.date ?? null });
     } finally { _askBusy = false; }
   } catch (e) { _askBusy = false; res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/desk-history?days=30: one compact row per desk day for the Desk Terminal's analytics (the currency
+// ranking and biases, the tone, and the day's score where there is one). Cached 15 minutes.
+let _dhCache = { at: 0, key: null, data: null };
+app.get('/api/desk-history', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 5), 90);
+    if (_dhCache.key === days && Date.now() - _dhCache.at < 15 * 60_000) return res.json(_dhCache.data);
+    const idx = (await _drLoadIndex()).filter(r => r.headOk).slice(-days), scores = Object.fromEntries((await _dsLoadIndex().catch(() => [])).map(s => [s.date, s]));
+    const rows = [];
+    for (const r of idx) {
+      const run = await _dsRunFor(r.date).catch(() => null); if (!run?.head?.ok) continue;
+      const cv = run.debate?.currency?.view, s = scores[r.date];
+      rows.push({ date: r.date, tone: run.head.book.global?.tone ?? null, conviction: run.debate?.global?.view?.conviction ?? null, ranking: cv?.ranking ?? null,
+        biases: cv?.currencies ? Object.fromEntries(Object.entries(cv.currencies).map(([k, v]) => [k, v.bias])) : Object.fromEntries(Object.entries(run.head.book.currencies ?? {}).map(([k, v]) => [k, v.bias])),
+        score: s ? { S: s.S, counts: !!s.eligible, p95: s.placebo?.p95 ?? null, control: s.control?.unweighted ?? null, drift: s.drift ?? null } : null });
+    }
+    const data = { ok: true, days: rows.length, rows };
+    _dhCache = { at: Date.now(), key: days, data };
+    res.json(data);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/desk-quality?date=: the data quality officer's read of the day's pack, and after the run which gaps mattered
 app.get('/api/desk-quality', async (req, res) => {
