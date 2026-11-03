@@ -134,6 +134,16 @@ explicitly declined).
   two of them re-crossed within three sessions. Prior from the desk: `level-touch`,
   `daily-band-fade` — a place, not a signal. Source: CLIP_WATCH 2026-11-02 entry, step 5.
 
+- **Sector-ETF pair reversion with a real hedge ratio** — Crown (2026-11-03, "become a
+  statistician"): a ratio z-score on two names, bought cheap and sold rich. Single-name
+  history here is three years (underpowered by design); the eleven sector ETFs plus SMH/SPY/
+  RSP run six years. A pre-registration would need the hedge ratio from betas or a levels
+  regression (never a cap ratio), an Engle-Granger-strict stationarity gate, and a factor
+  audit on the spread. Prior from the desk: the reversion half is where every spread test
+  here has failed or run thin (`residual-reversion-fx` NULL, `ou-bands-fx-crosses`
+  UNDERPOWERED, `residual-pca-idx6` UNDERPOWERED, `yield-spread-sleeve` demoted). Low prior.
+  Source: 2026-11-03 entry, step 5.
+
 None of these are pre-registered — each still needs the `MARKET_SENSE_TESTS.md`
 pre-registration step (state the pass/null bar first) before it's run, per the
 standing discipline. Listed here so "cheap, low-prior, not run" doesn't have to
@@ -1700,3 +1710,104 @@ earlier — while the December hike odds sit near 89%. The tape he describes is 
   is moving with the 2-year this quarter) is a real, cheap descriptive line the desk does
   not show — the same "who's driving" idea already in the index for the chain nodes, for
   equity factors. Proposed, not built.
+
+
+---
+
+## 2026-11-03 — "Become a statistician" (spread trading, ratio charts, and the cap-ratio hedge)
+
+> *"It's about the differential between two assets... you literally do Microsoft divided
+> by Nvidia, or Nvidia divided by Micron... you don't care if the S&P is going up, you don't
+> care if FOMC is tomorrow, you don't care if the Korean stock market is crashing overnight.
+> Differentials start to reflect statistics. You buy something statistically cheap or you
+> sell something statistically rich... the hedge ratio: you do the cap of one divided by
+> the cap of the other, multiply the denominator by that, and now you're cap neutral. You
+> are truly neutral. You're beta neutral."*
+
+Pedagogy, not a tape read — no live facts to check under step 4b. Three claims and one
+piece of arithmetic, and the arithmetic is the part worth the entry.
+
+**1. The claims, stated plainly.**
+- **(a) A ratio chart "reflects statistics".** The ratio of two prices mean-reverts; buy it
+  when it is statistically cheap, sell it when rich. A spread z-score reversion claim.
+- **(b) Hedge ratio = market-cap ratio → beta neutral.** Weight the legs by the ratio of
+  their market caps and the pair no longer cares what the market does.
+- **(c) A spread is insulated from the index, the Fed and overnight shocks.** No factor
+  risk once you are long one and short the other.
+- **(d) "Easy once you know what to look for."** Not a claim.
+
+**2. What's already on this desk — this is the most-tested idea in the book.**
+- **(a) is the desk's spread programme, and the reversion half is where it has failed or
+  run thin, every time.** `yield-spread-sleeve` (the 2-year spread z-score, the house's
+  founding spread trade) was banked at Sharpe 1.1 and **demoted** after a point-in-time
+  re-run: net Sharpe 0.09, 46% win, 150 trades — the banked edge came from a lookahead on
+  the US leg. `multi-spread-sleeve` (the 10-year version) is honest but not distinguishable
+  from selection. `residual-reversion-fx` — price minus a macro fair value — **NULL**: one
+  instrument in six clears, which the pool's own consistency check reads as chance.
+  `ou-bands-fx-crosses` — optimal entry bands on the four G10 crosses everyone calls
+  mean-reverting — **UNDERPOWERED**, and the telling number: 68% of trades ended on the
+  time stop; *"they mostly drift part of the way back and rarely finish the reversion."*
+  `residual-pca-idx6` (the micro-bank residual model on six index CFDs) IC +0.011,
+  UNDERPOWERED. `price-vs-spread-divergence` NULL: when a pair detaches from its spread,
+  there is no tendency about which leg gives. One live lead, exploratory and unbanked: the
+  FX8 threshold book from `residual-pca-stops` (net Sharpe +0.43 / +0.38 by half), waiting
+  on a forward-record pre-registration. **"Statistically cheap" has a definition on this
+  desk, and the record under it is the record above.**
+- **(b) is wrong as stated, and the desk's own numbers show it.** Market capitalisation is
+  a size; beta is a sensitivity; the ratio of the first says nothing about the second. On
+  700 sessions to the lockbox (2023-11 → 2026-08-21, daily log returns against the S&P):
+
+  | | beta to S&P | annualised vol |
+  |---|---|---|
+  | Nvidia | **2.10** | 47% |
+  | Microsoft | **0.99** | 26% |
+  | Micron | **2.47** | 65% |
+
+  Long a dollar of Nvidia against a dollar of Microsoft — the "1 over 1" he tells you not to
+  do — carries a **residual beta of +1.10** and correlates **0.39 with the S&P**. It very much
+  cares whether the S&P is going up. The hedge that zeroes that is **2.11 dollars of
+  Microsoft per dollar of Nvidia** (the beta ratio); the vol-neutral weight is 1.80; the
+  market-cap ratio is roughly 1.3 at current prices and is a third, unrelated number that
+  happens to sit between them by accident. "Cap neutral" is not a thing; "beta neutral"
+  needs the betas, and even then only in sample — betas drift, which is why the desk's own
+  `HEDGING_VS_SPREAD.md` describes the journal's working pairs as *sized so the two legs are
+  beta-matched*, re-estimated, and the Theory Lab's cointegration lesson gets the hedge
+  ratio from a levels regression and then makes the spread pass a stationarity test with
+  the stricter Engle–Granger critical values, because *"the regression already picked the
+  hedge ratio to make the spread look tidy, so the ordinary test is too easy to pass."* A
+  ratio chart that looks mean-reverting is that too-easy test.
+- **(c) is the factor-audit lesson.** `spread-sleeve-factor-audit` neutralised the shared
+  currency factors in the desk's own spread book and found the book *improved* — and then
+  its §9 correction found the PC-only hedge could still leave net dollar exposure. A spread
+  is neutral to the factors you hedged, not the ones you did not name. Nvidia against
+  Micron removes the market and keeps the theme: both legs are AI hardware, and the
+  Anthropic-filing day (2026-10-26 entry) moved the pair through its theme, not its beta.
+  Microsoft against Nvidia is hyperscalers against semis — the exact rotation the 10-16 and
+  10-27 clips were about, which runs on earnings days and capex headlines. "You don't care
+  if FOMC is tomorrow" is true of the beta you hedged and false of everything else in the
+  spread, and the spread's own events (two earnings dates, not one) are the ones a spread
+  trader cannot diversify away.
+
+**3. Trading or macro-understanding.** (a) is a trading claim with a long record here and
+needs no new pre-registration on FX or rates. Single-name equity pairs are the one version
+not run, and the desk holds three years of twelve names — underpowered by design for a
+daily reversion test. The sector-ETF version (six years, eleven sectors plus SMH/SPY/RSP) is
+feasible and is logged in the index with the three conditions a pre-registration would
+have to carry. (b) is arithmetic; (c) is the factor audit.
+
+**4. Display nugget.** A pair builder: for any two names in the drill bundle, the
+dollar-neutral, vol-neutral and beta-neutral hedge ratios side by side with the residual
+beta and S&P correlation of each — the three numbers above, live, so "neutral" is a number
+rather than a word. Cheap (the bundle has the returns; `position-sizer.html` and the hedge
+pages have the plumbing). Proposed, not built.
+
+**5. Verdict and action.**
+- **Nothing to run.** The reversion claim is the desk's own history; the hedge-ratio claim
+  is corrected above with numbers; the insulation claim is the factor audit.
+- **What to keep, as three conditions on any spread trade**: the hedge ratio comes from
+  betas or a levels regression and is re-estimated, never from size; the spread must pass a
+  stationarity test stricter than "the chart looks mean-reverting"; and the spread gets its
+  own factor audit, because neutrality is only to what you hedged. The desk's record says the
+  reversion is the hard part, not the construction.
+- **One candidate logged** (index): sector-ETF pair reversion under those three conditions.
+  Low prior, stated.
