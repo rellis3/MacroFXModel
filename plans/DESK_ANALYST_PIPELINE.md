@@ -348,6 +348,29 @@ invalidation, timing) → **risk desk** (Aggressive, Conservative and Neutral vo
   today's regular issue** and **Compare side by side**.
 - One more deep call per full run (about 33 calls in all).
 
+## 9h. The desk edition, rebuilt as a full issue (2026-11-03)
+
+The owner compared the first desk edition (one page of text) with the regular 24-page issue and rejected it: a desk
+edition has to be a professional issue with charts, or it is not worth the run. So the desk edition is now **the
+regular V3 issue with the desk's pages added**, built by the same builder from the same data:
+
+- `js/newsletterDesk.js` draws four pages with the magazine's own parts (`barFigure` dark charts, `flatTable`,
+  `guide` boxes, `tileRow`, evidence badges, flags): **D1** the global ruling, the case for and against with
+  rebuttals, the desk's reading; **D2** the currencies ranked (a bias chart, then the ruling with the strongest case
+  each way); **D3** where the desk leans (counts, a net-exposure-by-currency chart before and after the cap, the
+  clearest ideas with size bars, and a **price-ladder chart** for each top idea: the open and today's p50/p75/p90 lines
+  in price, the lean shaded); **D4** the risk desk's three voices, what could break the day, what the desk could not see.
+- The cover takes the desk writer's headline and opening; the masthead says "Desk edition". The pages sit after
+  Today by level.
+- **The regular issue is byte-identical**: the builder only changes with `n.desk`. Checked by hashing the released V3,
+  the previous layout and the weekly before and after the change.
+- **Print hygiene:** model prose is cleaned for print (`prose`): source tags such as "(credit_funding: …)" removed,
+  analyst ids and ledger shorthand turned into plain words, text cut at whole sentences, never mid-word.
+- **Where it is built:** on Atlas, "Build daily newsletter" builds the daily and, when today's desk run exists, the
+  desk edition beside it (saved as kind `desk`; the compare button becomes "Compare with the desk edition"). The run
+  attaches each card's price levels so the ladders have real numbers. The server's text-only edition stays as a
+  fallback and never overwrites the Atlas one.
+
 ## 10. Owner decisions (2026-11-03)
 
 1. **Rating scale:** the five-step scale (§4, Layer 3).
