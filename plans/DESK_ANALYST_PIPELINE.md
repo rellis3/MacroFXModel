@@ -668,6 +668,37 @@ the newsletter.
 - **Per-asset report cards.** Each has a bias chip, a highlighted thesis line, key-driver chips and the analysis.
 - **Assistant.** A floating "ask" button.
 
+More patterns from the owner's screenshots of their pages (2026-11-03). We take the look, not the product:
+
+- **Currency card** (a modal per currency):
+  - flag, code, central bank and a bias chip (NEUTRAL)
+  - a score out of 10 with a bar
+  - a synthesis paragraph ruled in gold on the left
+  - key-driver boxes, each tagged by tier and type ([TIER1 +CB], [TIER2 -MACRO])
+  - "best expressions": the pair this currency is best traded through, with a BULLISH chip and the score gap
+  - a monetary-cycle chip (Hawkish Hold)
+  - an AI footer with the time
+
+  Ours maps the Currency Manager's −2..+2 bias to /10. The drivers come from the strengthen and weaken cases. The
+  best expressions are the book's cards on that currency's legs. Each driver is tagged with the Evidence Book label
+  (tested, null or untested), which they do not have.
+- **Asset card** (the daily report): instrument and class chips, "Analysis of X", a bias chip with an arrow and a
+  score out of 10, the thesis as a gold italic quote, key-driver chips, the analysis text with "Read full analysis",
+  and dark rounded cards with thin borders. Ours comes from the Head's card, the asset desk's why, the plan and the
+  levels.
+- **Central-bank world map.** A dark map with a glowing dot per central bank and a legend of policy rates with the
+  real rate. Clicking a bank opens a panel with the real rate (rate minus CPI), bars for rate, CPI, GDP and
+  unemployment against target, and the bank's upcoming releases.
+- **Playbook card.** A title, a grade chip (A+, A, B+), a one-line setup, then coloured rows: Entry (green rule),
+  Target (amber), Invalidation (red). Ours are the book's plans, graded by conviction. Our tested record gets a line
+  too: "how this kind of setup has scored".
+- **Regime card.** "RISK-ON environment, triggered by …", then BUY and SELL lists with a reason each. Ours is the
+  Global Manager's ruling and its flip conditions.
+- **Tier-1 release card.** Release time, why it matters, the average move and a pro tip. Ours is the economist's
+  playbook with the measured move and counts (§9q).
+- **Throughout:** deep navy or near-black, purple accents for interactive elements, gold for theses and grades, green
+  and red only for direction, mono labels in caps with letter-spacing, and thin rounded borders.
+
 Ours is a design of its own in that spirit, not a copy.
 
 **Modules and where the data is:**
