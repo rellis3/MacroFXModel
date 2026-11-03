@@ -240,6 +240,9 @@ function drawChart(m) {
       if (zi === 0 && !sim && !walkMode && rel >= 0.25) o.push(`<text x="${x + w / 2 + 3}" y="${Y(z.px) + 3.5}" fill="var(--violet)" font-size="10" font-weight="600">${px(z.px)} · ${fmt(str * 100, 0)}%</text>`);
     });
   }
+  // dot labels are placed last as callouts: each tries a few distances above/below its dot and takes the first clear
+  // spot, joined back to the dot by a thin leader line (no squeezing labels on top of each other)
+  const dots = [], callouts = [], taken = [];
   // range fans from today: weekly and monthly, p50/p75/p90
   const fan = (b, color) => {
     const x2 = X(tradingDaysAhead(today, b.sessions));
@@ -276,15 +279,14 @@ function drawChart(m) {
   } else if (walkMode) {
     // the zone walk: today's close, then each readable expiry's anchor in date order; green leg = up, red = down
     const maxS = Math.max(1e-9, ...walk.points.map(p => p.strength || 0));
-    let x0 = X(today), y0 = Y(s.close), lastLx = -1e9, row = 0;
+    let x0 = X(today), y0 = Y(s.close);
     for (const p of walk.points) {
       const x = X(p.expiry), y = Y(p.px), c = p.dir === 'up' ? 'var(--up)' : p.dir === 'down' ? 'var(--down)' : 'var(--text3)';
       o.push(`<line x1="${x0}" y1="${y0}" x2="${x}" y2="${y}" stroke="${c}" stroke-width="${p.thin ? 1.4 : 2.4}" stroke-opacity="${p.thin ? 0.6 : 1}"${p.thin ? ' stroke-dasharray="4 3"' : ''} stroke-linecap="round"/>`);
       const r = 3.5 + 5 * Math.sqrt((p.strength || 0) / maxS);
       o.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${p.thin ? '#0d1117' : c}" stroke="${p.thin ? c : '#0d1117'}" stroke-width="${p.thin ? 1.5 : 1}"><title>${p.expiry} (${p.dte} days): ${px(p.px)}, ${p.dir} ${pct(p.movePct, 2)} from the step before${p.strength != null ? `; its biggest strike holds ${fmt(p.strength * 100, 1)}% of all live OI` : ''}${p.building ? ', building' : ''}${p.thin ? '; small book (under 10% of live OI)' : ''}</title></circle>`);
-      row = x - lastLx < 60 ? (row + 1) % 2 : 0; lastLx = x;
-      const ly = p.dir === 'down' ? y + 16 + row * 12 : y - 9 - row * 12;
-      o.push(`<text x="${x}" y="${ly}" fill="${c}" font-size="10.5" font-weight="600" opacity="${p.thin ? 0.75 : 1}" text-anchor="middle">${px(p.px)} · ${fmtDay(p.expiry)}</text>`);
+      dots.push({ x, y, r });
+      callouts.push({ x, y, r, text: `${px(p.px)} · ${fmtDay(p.expiry)}`, color: c, prefer: p.dir === 'down' ? 1 : -1, op: p.thin ? 0.75 : 1 });
       x0 = x; y0 = y;
     }
   } else {
@@ -297,8 +299,8 @@ function drawChart(m) {
       p.points.slice(1).forEach((q, i) => {
         const [x, y] = pts[i + 1];
         o.push(`<circle cx="${x}" cy="${y}" r="4.5" fill="${c}"><title>${esc(q.label)}: ${px(q.px)} by ${q.date}</title></circle>`);
-        const above = q.px >= s.close, dy = i === 0 ? (above ? -9 : 16) : (above ? -22 : 29);
-        o.push(`<text x="${x + 6}" y="${y + dy}" fill="${c}" font-size="11" font-weight="600">${px(q.px)} · ${fmtDay(q.date)}</text>`);
+        dots.push({ x, y, r: 4.5 });
+        callouts.push({ x, y, r: 4.5, text: `${px(q.px)} · ${fmtDay(q.date)}`, color: c, prefer: q.px >= s.close ? -1 : 1, op: 1 });
       });
     }
   }
@@ -327,13 +329,41 @@ function drawChart(m) {
         o.push(`<line x1="${X(today)}" x2="${x2}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--amber)" stroke-width="1.4" opacity="0.85"><title>${tagTxt} expected move (p50 of the ${v > s.close ? 'high' : 'low'}, ${b.label}): ${px(v)}</title></line>`
           + `<line x1="${x2}" x2="${x2}" y1="${Y(v) - 4}" y2="${Y(v) + 4}" stroke="var(--amber)"/>`
           + `<text x="${x2 + 3}" y="${Y(v) + (v > s.close ? -3 : 10)}" fill="var(--amber)" font-size="9.5">${tagTxt} ${px(v)}</text>`);
+        const ty = Y(v) + (v > s.close ? -3 : 10);
+        taken.push({ x0: x2 + 1, x1: x2 + 5 + `${tagTxt} ${px(v)}`.length * 5.6, y0: ty - 9, y1: ty + 2 });
       }
+    }
+  }
+  const callOut = [];
+  function placeCallouts() {
+    const hit = b => taken.some(t => b.x0 < t.x1 && b.x1 > t.x0 && b.y0 < t.y1 && b.y1 > t.y0)
+      || dots.some(d => d.x + d.r > b.x0 && d.x - d.r < b.x1 && d.y + d.r > b.y0 && d.y - d.r < b.y1);
+    for (const c of [...callouts].sort((a, b) => a.x - b.x)) {
+      const w = c.text.length * 6.1 + 8, h = 15;
+      let best = null;
+      search: for (const dist of [14, 28, 42, 56, 72, 90]) for (const side of [c.prefer, -c.prefer]) for (const dx of [0, 24, -24, 48]) {
+        const cy = c.y + side * (c.r + dist), cx = c.x + dx;
+        const b = { x0: cx - w / 2, x1: cx + w / 2, y0: cy - h / 2, y1: cy + h / 2 };
+        if (b.x0 < L || b.x1 > W - R || b.y0 < T || b.y1 > H - B) continue;
+        if (!hit(b)) { best = { b, cx, cy, side }; break search; }
+      }
+      if (!best) { const cy = c.y + c.prefer * (c.r + 14); best = { b: { x0: c.x - w / 2, x1: c.x + w / 2, y0: cy - h / 2, y1: cy + h / 2 }, cx: c.x, cy, side: c.prefer }; }
+      taken.push(best.b);
+      const ey = best.side > 0 ? best.b.y0 : best.b.y1;          // the label edge facing the dot
+      callOut.push(`<line x1="${c.x}" y1="${c.y + best.side * c.r}" x2="${best.cx}" y2="${ey}" stroke="${c.color}" stroke-opacity="0.55" stroke-width="0.9"/>`
+        + `<rect x="${best.b.x0}" y="${best.b.y0}" width="${w}" height="${h}" rx="3" fill="#0d1117" fill-opacity="0.8" stroke="${c.color}" stroke-opacity="0.35"/>`
+        + `<text x="${best.cx}" y="${best.cy + 3.8}" fill="${c.color}" font-size="10.5" font-weight="600" opacity="${c.op}" text-anchor="middle">${c.text}</text>`);
     }
   }
   // right-margin labels, pushed apart so they never overprint
   tags.sort((a, b) => a.y - b.y);
+  for (const t of tags) t.y0 = t.y;
   for (let k = 1; k < tags.length; k++) if (tags[k].y - tags[k - 1].y < 12) tags[k].y = tags[k - 1].y + 12;
-  for (const t of tags) o.push(`<text x="${W - R + 6}" y="${t.y + 3.5}" fill="${t.color}" font-size="10.5">${esc(t.text)}</text>`);
+  for (const t of tags) {
+    if (Math.abs(t.y - t.y0) > 2) o.push(`<polyline fill="none" stroke="${t.color}" stroke-opacity="0.6" stroke-width="0.8" points="${W - R},${t.y0} ${W - R + 3},${t.y0} ${W - R + 8},${t.y}"/>`);
+    o.push(`<text x="${W - R + 10}" y="${t.y + 3.5}" fill="${t.color}" font-size="10.5">${esc(t.text)}</text>`);
+  }
+  placeCallouts();
 
   // price
   o.push(`<polyline fill="none" stroke="var(--price)" stroke-width="1.6" points="${series.map(p => `${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join(' ')}"/>`);
@@ -344,6 +374,7 @@ function drawChart(m) {
       + `<text x="${X(pv.date)}" y="${yy + (hiP ? -8 : 15)}" fill="${c}" font-size="${pv.major ? 11 : 9.5}" font-weight="${pv.major ? 700 : 500}" opacity="${pv.major ? 1 : 0.8}" text-anchor="middle">${px(pv.px)}</text>`);
   }
   o.push(`<circle cx="${X(today)}" cy="${Y(s.close)}" r="4" fill="var(--price)"/>`);
+  o.push(callOut.join(''));
   o.push('</svg>');
   $('chart').innerHTML = o.join('');
   if (MODE === 'mc' || MODE === 'modal') { mcNote(m); return; }
