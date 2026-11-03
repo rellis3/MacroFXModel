@@ -126,7 +126,12 @@ No day has been scored, so there is no control sample yet. Rule, fixed now:
 
 ## Amendments
 
-*(none yet)*
+### A1 — 2026-11-03 — PRE-RESULTS
+§3 said a card with no M1 bar "in either minute window" is missing, without saying how wide the windows are. Fixed
+now, before any card has been scored: **entry** = the open of the first M1 bar in [08:00, 09:00) London; **exit** =
+the close of the last M1 bar in [16:00, 21:00) London (US grain and soft CFDs stop trading before 21:00, and their
+last bar of the day is their exit). A card with no bar in either window is missing, counted and reported by
+instrument. The power amendment named in §5 is now A2. No outcome had been computed.
 
 ---
 
