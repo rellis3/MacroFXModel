@@ -10,7 +10,10 @@ Laptop: IB Gateway open and logged in, API on port 4002 (paper; override with en
 How it works: whole-week MIDPOINT requests ending Saturday 00:00 UTC (the same as the first deep pull and refresh_leg_bars.py), newest first, starting with the week
 before the oldest bar on disk. A contract stops at the earliest date IBKR says it holds (reqHeadTimeStamp), at --until, after --max-weeks, or after --stop-empty empty
 weeks in a row (before the contract quoted at all). Expired contracts cannot be fetched (IBKR does not serve them), so this only reaches contracts still trading.
-Bars are merged into analysis/output/stir_1m_deep/<EXCH>_<LOCAL>.parquet, the folder build_leg_bars.py already reads; the chart files are rebuilt at the end.
+Bars are merged into analysis/output/stir_1m_older/<EXCH>_<LOCAL>.parquet, which build_leg_bars.py reads alongside stir_1m_deep; the chart files are rebuilt at the end.
+A folder of its own because the 30-minute refresh (refresh_leg_bars.py) rewrites the stir_1m_deep files, and two writers on one file can drop each other's bars.
+Run it with --pace 20 or more while that refresh runs: IBKR's 60-requests-per-10-minutes limit is shared across the account. An empty week is retried twice, a minute apart,
+before it counts as empty, so a pacing rejection cannot end a contract early.
 
 --i2-archive: a separate mode for the rolling I2! line (build_leg_bars.stitch_i2). For every expired Euribor quarterly that was I2! in a window since --until
 (default here 2024-01-01), it requests the 15-minute TRADES for that window plus a week either side (includeExpired; IBKR keeps expired futures about 2 years)
@@ -18,7 +21,7 @@ and merges them into analysis/output/stir/ICEEU_<name>.csv. That fills the Monda
 older windows (IU5, IM5, IH5, IZ4 ...), so I2! can reach back to mid-2024. Contracts still trading are skipped: their 1-minute midpoints cover them.
     python scripts/rates_line/pull_deep_history.py --i2-archive [--dry-run]
 
-Resumable: each finished contract is written to analysis/output/stir_1m_deep/_deep_pull_state.json with why it stopped, and is skipped next time (--force re-tries it).
+Resumable: each finished contract is written to analysis/output/stir_1m_older/_deep_pull_state.json with why it stopped, and is skipped next time (--force re-tries it).
 If TWS drops the script reconnects for up to 30 minutes, then exits; run it again and it carries on from the oldest bar on disk.
 Pacing is 10.5 s per request (IBKR's limit is 60 requests in 10 minutes): about 9 minutes per contract-year. Far-from-expiry years are THIN (few quote changes a day):
 check the "share of minutes with a price change" the summary prints before using them."""
@@ -39,16 +42,16 @@ sys.path.insert(0, str(ROOT / 'scripts' / 'rates_line'))
 import build_leg_bars as B
 from refresh_leg_bars import IB_SPEC, CORE
 
-DEEP = ROOT / 'analysis' / 'output' / 'stir_1m_deep'
+DEEP = ROOT / 'analysis' / 'output' / 'stir_1m_older'      # its own folder: refresh_leg_bars.py rewrites the stir_1m_deep files every 30 minutes
 ARCH = ROOT / 'analysis' / 'output' / 'stir'
 STATE = DEEP / '_deep_pull_state.json'
 IB_PORT = int(os.environ.get('IB_PORT', 4002))
-PACE_S = 10.5
+PACE_S = [10.5]      # --pace sets it
 last = [0.0]
 
 
 def pace():
-    w = PACE_S - (time.time() - last[0])
+    w = PACE_S[0] - (time.time() - last[0])
     time.sleep(max(w, 0))
     last[0] = time.time()
 
@@ -119,10 +122,12 @@ if __name__ == '__main__':
     ap.add_argument('--max-weeks', type=int, default=520, help='at most this many weeks per contract on this run (default 520 = 10 years)')
     ap.add_argument('--stop-empty', type=int, default=8, help='stop a contract after this many empty weeks in a row (default 8)')
     ap.add_argument('--force', action='store_true', help='re-try contracts the state file marks as finished')
+    ap.add_argument('--pace', type=float, default=10.5, help='seconds between requests (default 10.5; IBKR allows 60 per 10 minutes across the account, so use 20+ while the 30-minute refresh runs)')
     ap.add_argument('--dry-run', action='store_true', help='print the plan and exit; needs no TWS')
     ap.add_argument('--no-build', action='store_true', help='do not rebuild the chart files at the end')
     ap.add_argument('--commit', action='store_true', help='commit and push the new parquet + chart files at the end')
     a = ap.parse_args()
+    PACE_S[0] = a.pace
 
     names = a.names or (list(IB_SPEC) if a.all else CORE)
     bad = [n for n in names if n not in IB_SPEC]
@@ -198,8 +203,8 @@ if __name__ == '__main__':
     for n, old, weeks, skip in plan:
         note = f'finished earlier: {state[n]["reason"]} (--force to retry)' if skip else ''
         print(f'{n:<10} {str(old)[:10] if old is not None else "none":<16} {weeks[0].strftime("%Y-%m-%d") if weeks else "-":<15} {len(weeks):>11}  {note}')
-    worst = sum(len(p[2]) for p in todo) * PACE_S / 3600
-    print(f'\n{len(todo)} contract(s) to pull. Worst case {worst:.1f} h at {PACE_S} s per week-request; most stop far sooner (IBKR\'s earliest date or {a.stop_empty} empty weeks).')
+    worst = sum(len(p[2]) for p in todo) * PACE_S[0] / 3600
+    print(f'\n{len(todo)} contract(s) to pull. Worst case {worst:.1f} h at {PACE_S[0]} s per week-request; most stop far sooner (IBKR\'s earliest date or {a.stop_empty} empty weeks).')
     if a.dry_run or not todo:
         sys.exit(0)
 
@@ -249,14 +254,20 @@ if __name__ == '__main__':
             if head is not None and end <= head:
                 reason = f'reached IBKR earliest date {str(head)[:10]}'
                 break
-            conn()
-            pace()
-            ib.RequestTimeout = 0
-            try:
-                bars = ib.reqHistoricalData(c, endDateTime=end, durationStr='1 W', barSizeSetting='1 min', whatToShow='MIDPOINT', useRTH=False, formatDate=2, timeout=300)
-            except Exception as e:
-                print(f'  {n} {end:%Y-%m-%d}: {type(e).__name__} {e}', flush=True)
-                bars = None
+            bars = None
+            for attempt in range(3):      # an empty answer can be a pacing rejection (the 30-minute refresh shares the account's limit): retry twice, a minute apart
+                if attempt:
+                    time.sleep(60)
+                conn()
+                pace()
+                ib.RequestTimeout = 0
+                try:
+                    bars = ib.reqHistoricalData(c, endDateTime=end, durationStr='1 W', barSizeSetting='1 min', whatToShow='MIDPOINT', useRTH=False, formatDate=2, timeout=300)
+                except Exception as e:
+                    print(f'  {n} {end:%Y-%m-%d}: {type(e).__name__} {e}', flush=True)
+                    bars = None
+                if bars:
+                    break
             if not bars:
                 empty += 1
                 if empty >= a.stop_empty:
@@ -287,7 +298,7 @@ if __name__ == '__main__':
     if not a.no_build:
         subprocess.run([sys.executable, str(ROOT / 'scripts' / 'rates_line' / 'build_leg_bars.py')], check=True)
     if a.commit:
-        subprocess.run(['git', 'add', 'analysis/output/stir_1m_deep', 'analysis/output/cog_chart'], cwd=ROOT, check=True)
+        subprocess.run(['git', 'add', 'analysis/output/stir_1m_older', 'analysis/output/cog_chart'], cwd=ROOT, check=True)
         subprocess.run(['git', 'commit', '-m', 'rates legs: deeper 1-minute history from IBKR (pull_deep_history.py)'], cwd=ROOT)
         subprocess.run(['git', 'pull', '--rebase', '--autostash'], cwd=ROOT)
         subprocess.run(['git', 'push'], cwd=ROOT)

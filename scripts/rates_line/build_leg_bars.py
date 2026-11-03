@@ -18,7 +18,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[2]
 OUTROOT = ROOT / 'analysis' / 'output'
 OUT = OUTROOT / 'cog_chart'
-DIRS = ['stir_1m_deep', 'stir_1m_meeting', 'stir_1m', 'stir_1m_i2', 'stir_1m_sweep/mid', 'stir_1m_bonds']      # midpoint folders only (the trades folders are trade prices)
+DIRS = ['stir_1m_older', 'stir_1m_deep', 'stir_1m_meeting', 'stir_1m', 'stir_1m_i2', 'stir_1m_sweep/mid', 'stir_1m_bonds']      # midpoint folders only (the trades folders are trade prices)
 MONTH = {'F': 1, 'G': 2, 'H': 3, 'J': 4, 'K': 5, 'M': 6, 'N': 7, 'Q': 8, 'U': 9, 'V': 10, 'X': 11, 'Z': 12}
 MNAME = {1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr', 5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec'}
 

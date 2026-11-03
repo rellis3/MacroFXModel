@@ -21,7 +21,7 @@ cd /d "%~dp0"
 set PY=..\..\.venv\Scripts\python.exe
 if not exist "%PY%" set PY=python
 if not exist "logs" mkdir "logs"
-"%PY%" pull_deep_history.py --commit %*
+"%PY%" pull_deep_history.py --commit --pace 20 %*
 set RC=%ERRORLEVEL%
 if %RC% NEQ 0 (echo RESULT: stopped with exit %RC% - run again to carry on) else (echo RESULT: OK)
 pause
