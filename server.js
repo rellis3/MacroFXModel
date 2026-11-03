@@ -226,6 +226,7 @@ import { sliceFeed as _deskSliceFeed } from './js/deskSlices.js';
 import { assess as _dqAssess, afterRun as _dqAfterRun } from './js/deskDataQuality.js';
 import { attribution as _atAttribution, attributionRecord as _atRecord } from './js/deskAttribution.js';
 import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
+import { morningText as _cosMorning, eveningText as _cosEvening } from './js/chiefOfStaff.js';   // agent 22
 import { numberCheck as _ccNumbers, claimsSections as _ccSections, validateClaims as _ccValidate } from './js/claimsCheck.js';   // Phase 16
 import { watchPlan as _twPlan, check as _twCheck, message as _twMessage } from './js/tradeWatch.js';   // agent 18: the trade watcher
 import { tradeRows as _jcRows, coach as _jcCoach, execution as _jcExec } from './js/deskJournal.js';   // Phases 8 and 13
@@ -2199,6 +2200,7 @@ const TG_SENDERS = {
   ratesRegime:       'Rates vs Nasdaq regime change / rate shock (context, not a signal)',
   spreadEpisodes:    'Spread-turn episodes: confirmed turn (Case 1 full sequence / Case 2 every turn), context only',
   bankCredit:        'BIS cross-border bank credit: new quarter released (regime context, not a signal)',
+  chiefOfStaff:      'Desk chief of staff: the morning note after the book, the evening note after the score',
   tradeWatch:        'Desk trade watcher: a card reached its entry zone, first target or invalidation (context, not an order)',
   // volatility_bot_v2 (the Python bot) checks this directly via ai_alert_cfg
   // (see its own tg_master_on doc) — unlike every other sender above, this
@@ -5242,6 +5244,45 @@ app.post('/api/desk-claims/run', (req, res) => {
   const job = _ccStart(date);
   if (!job) return res.status(409).json({ ok: false, error: 'a check is already running', job: _ccJob });
   res.status(202).json({ ok: true, job });
+});
+// ── Agent 22: the chief of staff (js/chiefOfStaff.js, plan §9w) ──
+// Every 10 min on weekdays: the morning note once the day's book and its claims check exist (or from 08:30 London
+// without the check), the evening note once the day is scored. Each once a day (desk_cos_<date>). No model call.
+const _COS_KEY = d => `desk_cos_${d}`;
+async function _cosTick({ force = null } = {}) {
+  const now = Date.now(), date = _dpLondonDate(now), dow = new Date(_dsLondonMs(date, 12)).getUTCDay();
+  if (!force && (dow === 0 || dow === 6)) return { ok: false, why: 'weekend' };
+  const sent = JSON.parse((await kv.get(_COS_KEY(date)).catch(() => null)) ?? '{}'), out = {};
+  const send = async text => (tgOn('chiefOfStaff') && state.tg?.token && state.tg?.chatId ? sendTelegram(state.tg.token, state.tg.chatId, text) : false);
+  if ((force === 'morning' || (!force && !sent.morning))) {
+    const run = await _drLoad(date);
+    if (run?.head?.ok) {
+      const claims = JSON.parse((await kv.get(_CC_KEY(date)).catch(() => null)) ?? 'null');
+      if (force || claims || now > _dsLondonMs(date, 8, 30)) {
+        const theory = JSON.parse((await kv.get(_TD_KEY).catch(() => null)) ?? 'null');
+        let ops = null; try { ops = _tdOpsNow(); } catch { /* the notes still go without it */ }
+        const text = _cosMorning({ date, run, claims, ops, theory });
+        if (text) { out.morning = await send(text); sent.morning = new Date().toISOString(); out.morningText = text; }
+      }
+    }
+  }
+  if ((force === 'evening' || (!force && !sent.evening))) {
+    const raw = await kv.get(_DS_SCORE_KEY(date)).catch(() => null);
+    if (raw) {
+      const ref = await kv.get(_DS_REFLECT_KEY(date)).catch(() => null), watch = JSON.parse((await kv.get(_TW_KEY(date)).catch(() => null)) ?? 'null');
+      const idx = await _dsLoadIndex().catch(() => []);
+      const text = _cosEvening({ date, score: JSON.parse(raw), reflection: ref ? JSON.parse(ref) : null, watch, record: idx.length ? _dsRecord(idx, { seed: _DS_SEED }) : null });
+      if (text) { out.evening = await send(text); sent.evening = new Date().toISOString(); out.eveningText = text; }
+    }
+  }
+  if (out.morningText || out.eveningText) await kv.put(_COS_KEY(date), JSON.stringify(sent), { expirationTtl: 10 * 86400 }).catch(() => {});
+  return { ok: true, date, ...out };
+}
+svcInterval('chiefOfStaff', () => _cosTick().catch(e => console.warn('[chief-of-staff]', e.message)), 10 * 60_000);
+// POST /api/desk-cos/send?which=morning|evening: send a note now (also returns its text)
+app.post('/api/desk-cos/send', async (req, res) => {
+  try { const which = req.query.which === 'evening' ? 'evening' : 'morning'; res.json(await _cosTick({ force: which })); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // ── Agent 18: the trade watcher (js/tradeWatch.js, plan §9u) ──
 // Every 2 minutes on weekdays 07:00-21:00 London: today's book (with any session-update change applied; a card whose

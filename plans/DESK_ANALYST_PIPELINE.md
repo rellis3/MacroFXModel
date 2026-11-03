@@ -841,6 +841,19 @@ touched.
 - **Where it shows:** a coloured line above the desk-edition buttons in Atlas (expand for the items) and a panel at
   the top of the Desk Office's Today tab with a "Check again" button.
 
+## 9w. Agent 22: the chief of staff (built 2026-11-03)
+
+`js/chiefOfStaff.js` (pure, tested in `js/chiefOfStaff.test.mjs`); service `chiefOfStaff`; Telegram master switch
+`chiefOfStaff`; `POST /api/desk-cos/send?which=morning|evening` to send one now.
+
+- **Morning**, once the day's book and its claims check exist (or from 08:30 London without the check): the call and
+  the book's headline, the four biggest cards, what needs the owner before sharing (claims verdict, a data-officer
+  hold, failed analysts) or "nothing needs you", the economist's releases with times, and research waiting on the
+  owner (results ready to bank, exploratory finds, new theories).
+- **Evening**, once the day is scored: the day score against the placebo, the single-analyst control, what the trade
+  watcher caught (in zone, target, invalidated), the evening review's headline and first lesson, the running record.
+- Each note once a day (`desk_cos_<date>`). Built from what the desk already wrote: no model call, no new numbers.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
@@ -888,7 +901,7 @@ Not built yet. The order is the owner's call; each item names what it needs firs
 - **Agent 19 · Weekly strategist.** Sunday's week view and edition, and Monday's starting point.
 - **Agent 20 · Rules keeper.** The live bots' settings against the research verdicts.
 - **Agent 21 · News analyst.** Tags a headline feed by currency and tier (needs the feed).
-- **Agent 22 · Chief of staff.** One short Telegram each morning and evening summing up the Desk Office.
+- **Agent 22 · Chief of staff.** *Built (§9w).* One short Telegram each morning and evening summing up the Desk Office.
 - **Phase 16 · Claims checker.** *Built (§9v).* Checks everything published against the data and the Evidence Book.
 
 **Build items**
