@@ -46,7 +46,9 @@ If there is no request text, ask for the question in one line and stop.
    words (`backtest`, `forward`, `live`, `distribution`, `artifact`, `drift`, `buy and hold`, `stop`, `mae`, `sizing`,
    `portfolio`, `basket`, `external factor`, `rates`, `open interest`):
    `grep -rin "<word>" education/cog-snippets.md education/*-notes.md education/bank-verbatim`. The owner's DMs with
-   him are `cog-snippets.md` §6-§8: check whether he has already answered this exact situation.
+   him are `cog-snippets.md` §6-§8: check whether he has already answered this exact situation. **If the owner's
+   wording differs from his construct** (e.g. "VVIX/VIX" when he defined "VIX % per Nasdaq % per unit time"), say so
+   in the answer and carry both.
 2. **What the field knows (web).** Use WebSearch (and WebFetch for a key page) for 2-4 targeted searches:
    - the mechanism (who trades, why: dealer hedging, funding, index rules, policy transmission…);
    - the published evidence (papers, working papers, central-bank or exchange research) and what it found, with
@@ -82,7 +84,8 @@ informed by the field's knowledge, expressed the way he reasons:
 5. **The bar**: buy-and-hold or a control, net of costs, and whether it survives the practical rules.
 6. Where it fits, **the bigger frame**: portfolio level, a basket, sizing against its ceiling.
 
-No ledger ids here, and no citations crammed in: the reasoning reads cleanly, and the sources sit in the next section.
+No ledger ids here, and no citations crammed in. Reasoning that is yours rather than a source's (e.g. "the ratio is
+mostly 1/VIX in disguise") is fine here; just don't present it as a finding: the reasoning reads cleanly, and the sources sit in the next section.
 Don't copy his typos. Frame ideas as worth testing, not as sure things.
 
 ### What the wider evidence says
@@ -112,7 +115,7 @@ One line: a quick exploratory look on repo data (labelled exploratory, with a re
 
 ## 4. Keep it tight
 
-About 600-800 words (review up to ~1,000). Tables over paragraphs. Cut anything that doesn't change what the owner
+About 800-1,100 words (review up to ~1,200). Tables over paragraphs. Cut anything that doesn't change what the owner
 would do next.
 
 ## Growing this skill
