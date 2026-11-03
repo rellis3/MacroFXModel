@@ -19,7 +19,8 @@ Go through these in order and keep only the ones that bite for the thing being r
 | 12 | **Would it survive the rules** (prop-firm or account rules), as a separate question from profitability? | Overnight-Buy-Hold page |
 | 13 | **How many variations were tried, and where are they?** | micro-learning-bank evidence.md |
 
-Then add the repo's own checks where they apply (`research-protocol` → `stats-defaults.md` lessons, `data-rules`
+Bring in the wider evidence where it bites (e.g. what the literature says about backtest overfitting, deflated
+Sharpe, or the specific signal family), with sources. Then add the repo's own checks where they apply (`research-protocol` → `stats-defaults.md` lessons, `data-rules`
 checklist). The usual ones: placebo distribution, return/drawdown confound, costs measured not assumed, concentration
 by year.
 
