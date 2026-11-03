@@ -220,7 +220,7 @@ import { assembleGlobalReadInput as _grAssemble, GLOBAL_READ_ENDPOINTS as _GR_EN
 import { parseRole as _deskParseRole } from './js/deskRoles.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
-import { expandFeeds as _dpExpandFeeds, buildDeskPack as _dpBuild, packForSkill as _dpForSkill, packSummary as _dpSummary, indexRow as _dpIndexRow, upsertIndex as _dpUpsertIndex, shouldBuild as _dpShouldBuild, londonDate as _dpLondonDate, DESK_SKILLS as _DP_SKILLS, DESK_UNIVERSE as _DP_UNIVERSE } from './js/deskPack.js';
+import { expandFeeds as _dpExpandFeeds, buildDeskPack as _dpBuild, packForSkill as _dpForSkill, packSummary as _dpSummary, indexRow as _dpIndexRow, upsertIndex as _dpUpsertIndex, shouldBuild as _dpShouldBuild, londonDate as _dpLondonDate, DESK_SKILLS as _DP_SKILLS, DESK_UNIVERSE as _DP_UNIVERSE, DESK_SUBSETS as _DP_SUBSETS, packFresh as _dpFresh } from './js/deskPack.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { scoreClaimFires as _scoreClaimFires, CLAIMS as _WATCH_CLAIMS } from './js/claimWatch.js';   // the watch register (Crown setups + desk findings) — rides the desk-watch tick, log and Telegram
 import { evaluateGauges as _evaluateGauges } from './js/deskWatch.js';
@@ -4577,8 +4577,23 @@ async function _dpLoad(date) {
   if (_dpLatest?.date === date) return _dpLatest;
   try { const raw = await kv.get(_DP_KEY(date)); return raw ? JSON.parse(zlib.gunzipSync(Buffer.from(raw, 'base64')).toString('utf8')) : null; } catch { return null; }
 }
+// The trade-decision snapshots live in memory, so every deploy empties them and the pack read 7 of 8 as "no
+// snapshot yet" on 2026-11-03. Warm the desk's pairs first (about 1-2 s each; one that fails stays a gap).
+async function _dpWarmTde() {
+  for (const p of _DP_SUBSETS.tde.map(x => x.toLowerCase())) {
+    const s = tdeGetState(p);
+    if (s && Date.now() - s.builtAt < 3600_000) continue;
+    try {
+      await Promise.race([
+        (async () => tdeRefreshPair(p, { macro: await _tdeMacroFor(p), credit: await _tdeCreditContext(), oi: await _tdeOiContext(p) }))(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timed out')), 30_000)),
+      ]);
+    } catch (e) { console.warn(`[desk-pack] trade-decision warm-up ${p}: ${e.message}`); }
+  }
+}
 async function _deskPackBuild(trigger = 'manual') {
   const startedAt = Date.now();
+  await _dpWarmTde().catch(() => {});
   const feeds = _dpExpandFeeds();
   const results = new Array(feeds.length);
   let next = 0;
@@ -4686,7 +4701,13 @@ async function _deskRun(trigger, job, mode = 'full') {
   const roles = _deskLoadRoles();
   const today = _dpLondonDate(Date.now());
   let pack = _dpLatest?.date === today ? _dpLatest : await _dpLoad(today);
-  if (!pack) { job.stage = 'building the desk pack'; pack = await _deskPackBuild(`desk-run:${trigger}`); }
+  // A fresh run reads the morning as it is now: a pack over 90 minutes old, or from an older feed list, is rebuilt.
+  // A run picked up after a restart keeps the pack it started on, so its saved stages still match.
+  const fresh = _dpFresh(pack, Date.now());
+  if (!pack || (!job.resumes && !fresh.fresh)) {
+    job.stage = 'building the desk pack'; job.packReason = fresh.reason;
+    pack = await _deskPackBuild(`desk-run:${trigger}`);
+  }
   const checkpoint = await _drCheckpoint(pack.date);
   job.date = pack.date;
   job.resumedStages = checkpoint.found;
