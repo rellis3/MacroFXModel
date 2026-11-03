@@ -789,6 +789,17 @@ Scores /10 are the desk's own −2..+2 views rescaled (5 = no view); grades are 
 rate, and the page says so. Still to come: the data below (rate expectations beyond the Fed and the ECB, a headline
 feed), seasonality and skew panels.
 
+**The Terminal edition (owner, 2026-11-03: "a futuristic newsletter ... without losing any of the existing outputs").**
+A third desk format beside the desk magazine and the desk brief (`js/newsletterTerminal.js`, tested; built on Atlas
+with the other two, a "🛰 Terminal edition" button with PDF, archived as kind `desk-terminal`). The terminal's look as
+a self-contained issue (inline SVG only, print keeps the dark background): a cover with the regime dial, the book's
+thesis, live/strongest/weakest tiles, the drivers and the overnight tier-1 wire; the world map (paths computed on
+Atlas with d3 and the world atlas at build time) with the banks, rates and the strongest-to-weakest arc, score rings
+for the eight currencies and the two end currencies' cases; the six largest cards as playbooks (grade, score ring,
+gold thesis, forecast ladder with the entry zone, entry/target/invalid); every market as a tile grid; the release
+bands and the risk desk's warnings; and yesterday reviewed in plain words with the cards chart. Analyst ids are
+stripped from every line a reader sees.
+
 **Data to get:**
 
 1. Rate futures for the other central banks, through the same IBKR pulls that already fetch ZQ and Euribor: SONIA
