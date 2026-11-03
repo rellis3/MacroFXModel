@@ -186,7 +186,7 @@ names, so a task routed to DeepSeek never receives an Anthropic model id.
 | **0** | Desk Pack: feed registry, daily build 06:40 London, gaps and freshness, saved per day | **built**: `js/deskPack.js`, `/api/desk-pack*`, service `deskPack` |
 | 1 | Role files + schemas; Layer 1 analysts; Head of Desk reading analysts only; desk-run page | **built** (§9b); hand-written slicers and an Atlas panel follow the first Railway runs |
 | 2 | Layer 2 top-down debate + Layer 3 asset desks and risk desk; debate visible on the page | **built** (§9d) |
-| 3 | Layer 4 writers (newsletter first, then day forecast, directional, ideas, risk) | the newsletter is written from the pipeline |
+| 3 | Layer 4 writers (newsletter first, then day forecast, directional, ideas, risk) | newsletter desk edition **built** (§9g); day forecast next |
 | 4 | Layer 5 memory + grading; the pre-registered comparison (§8) starts counting | first graded month |
 
 ## 8. How it gets judged
@@ -329,6 +329,24 @@ invalidation, timing) → **risk desk** (Aggressive, Conservative and Neutral vo
   USD; indices are left out). Over the cap (default 4 normal-size units, `DESK_EXPOSURE_CAP`), the cards on that side
   shrink in proportion. On the first run's book, USD was 8.95: the 16 USD-long cards would have been roughly halved.
   The page shows net exposure before and after, and each cut card shows its old size.
+
+## 9g. Phase 3 as built: the desk edition of the newsletter (2026-11-03)
+
+- **Side by side, never instead** (owner): the regular issue is untouched (still built on Atlas from measured rows,
+  still the one sent). A full run now ends with a **newsletter writer** (`desk/roles/newsletter_writer.md`, deep tier)
+  that writes the desk edition of The Chain from the desk book.
+- **The voice is taken from the real issues:** the role holds the house rules (plain English, numbers with units and
+  windows, a short "X, but Y" headline, a 3-5 sentence opening with UK times, one house label per section), and the
+  run passes the headline and opening of the three latest regular dailies as examples (`styleExamples`).
+- **The desk's views are labelled:** sections carry the house labels (an unknown label is read as "Untested
+  interpretation"); views are the desk's untested reads; forecasting wording in the opening is flagged in the
+  writer notes on the page. At most 8 ideas, each with view, size after the exposure cap, level and invalidation.
+- **Saved beside the daily:** rendered in The Chain's look (`js/deskNewsletter.js`) and saved to
+  `newsletter_archive_v1` as kind `desk`, id `desk-<date>`. It is never scored as a daily (scoring reads
+  `kind === 'daily'` only), and the archive keeps 60 issues (was 40) so desk editions do not push dailies out.
+  Atlas lists it as "Desk edition"; Desk Run shows the headline and opening with **Open the desk edition**, **Open
+  today's regular issue** and **Compare side by side**.
+- One more deep call per full run (about 33 calls in all).
 
 ## 10. Owner decisions (2026-11-03)
 

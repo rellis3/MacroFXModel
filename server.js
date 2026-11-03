@@ -219,6 +219,7 @@ import { buildGlobalRead as _buildGlobalRead, recordRow as _grRecordRow, snapsho
 import { assembleGlobalReadInput as _grAssemble, GLOBAL_READ_ENDPOINTS as _GR_ENDPOINTS } from './js/globalReadInputs.js';
 import { parseRole as _deskParseRole } from './js/deskRoles.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
+import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
 import { expandFeeds as _dpExpandFeeds, buildDeskPack as _dpBuild, packForSkill as _dpForSkill, packSummary as _dpSummary, indexRow as _dpIndexRow, upsertIndex as _dpUpsertIndex, shouldBuild as _dpShouldBuild, londonDate as _dpLondonDate, DESK_SKILLS as _DP_SKILLS, DESK_UNIVERSE as _DP_UNIVERSE } from './js/deskPack.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { scoreClaimFires as _scoreClaimFires, CLAIMS as _WATCH_CLAIMS } from './js/claimWatch.js';   // the watch register (Crown setups + desk findings) — rides the desk-watch tick, log and Telegram
@@ -4612,6 +4613,7 @@ async function _deskRun(trigger, job, mode = 'full') {
   const run = await _runDesk({
     pack, roles, ledger: DESK_EVIDENCE, now: Date.now, concurrency: 4, mode,
     exposureCap: Number(process.env.DESK_EXPOSURE_CAP ?? 4),   // per-currency cap in normal-size units; 0 turns it off
+    styleExamples: _deskStyleExamples(await _nlLoad().catch(() => []) ?? []),   // the latest regular issues, so the desk edition matches their voice
     parseJson: (txt, label) => _parseModelJson(txt, label),
     callModel: async ({ task, system, prompt, maxTokens }) => {
       const r = await callModel({ task, system, prompt, maxTokens });
@@ -4623,6 +4625,21 @@ async function _deskRun(trigger, job, mode = 'full') {
     },
   });
   run.trigger = trigger;
+  // The desk edition goes into the newsletter archive beside the regular issue (kind "desk", never scored as a daily).
+  if (run.newsletter?.ok) {
+    try {
+      const { html, text } = _renderDeskNewsletter(run.newsletter.issue, { date: run.date, runFinishedAt: run.finishedAt, packHealth: run.packHealth });
+      const issues = await _nlLoad();
+      if (issues !== null) {
+        const id = `desk-${run.date}`;
+        const rec = { id, kind: 'desk', date: run.date, subject: run.newsletter.issue.subject.slice(0, 200), savedAt: new Date().toISOString(),
+          snapshot: { date: run.date, kind: 'desk' }, text: text.slice(0, 24000), htmlGz: zlib.gzipSync(Buffer.from(html, 'utf8')).toString('base64'), score: null };
+        const next = [rec, ...issues.filter(x => x.id !== id)].sort((x, y) => y.date.localeCompare(x.date) || x.kind.localeCompare(y.kind)).slice(0, _NL_KEEP);
+        await kv.put(_NL_KEY, JSON.stringify({ issues: next }));
+        run.newsletter.archiveId = id;
+      }
+    } catch (e) { console.warn('[desk-run] newsletter archive failed:', e.message); run.newsletter.archiveError = e.message; }
+  }
   _drLatest = run;
   const gz = zlib.gzipSync(Buffer.from(JSON.stringify(run)), { level: 9 }).toString('base64');
   try {
@@ -6833,7 +6850,8 @@ ${context}`;
 // Every built issue is saved (snapshot + plain text + gzipped html) so the next one can say what changed and the week can say
 // how the days came out against the sizes the issues printed. Scoring is a RANGE-CALIBRATION check against the stored session
 // audit (js/newsletterRecord.js); direction is never scored because none is forecast. All click-only: nothing here is scheduled.
-const _NL_KEY = 'newsletter_archive_v1', _NL_KEEP = 40;
+// 60 (was 40): the desk edition (kind "desk", plans/DESK_ANALYST_PIPELINE.md §9g) shares the archive and must not push dailies out.
+const _NL_KEY = 'newsletter_archive_v1', _NL_KEEP = 60;
 async function _nlLoad() {
   try { const raw = await kv.get(_NL_KEY); const p = raw ? JSON.parse(raw) : null; return Array.isArray(p?.issues) ? p.issues : []; }
   catch (e) { console.warn('[newsletter] archive unreadable, not touching it:', e.message); return null; }   // null = leave it for a human, never overwrite
