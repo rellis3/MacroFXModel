@@ -536,6 +536,80 @@ Each later phase that is for the owner only plugs into its panel here, never int
 The phases that are for readers go in the PDFs: the economist's release briefs (6) and the scenario playbooks (15).
 Desk Run keeps the morning book. Its track-record and session-update panels moved here.
 
+## 9o. Phases 14 and 10 as built: data quality and attribution (2026-11-03)
+
+**Phase 14 · the data quality officer** (`js/deskDataQuality.js`, code, no model call)
+
+- **Retry pass.** After the first pass, the pack retries every feed that timed out or failed to connect, all at once
+  with a 120 s wait. A slow route under load often answers on the second try.
+- **Assessment** (`pack.dataQuality`). The officer reads the pack and decides:
+
+  | Decision | When |
+  |---|---|
+  | `hold` | no forecast lines (the book could not be scored), three or more critical feeds out, or an analyst seeing under 40% of its data |
+  | `run-with-gaps` | any critical feed out, or under 85% of feeds usable |
+  | `run` | everything else |
+
+  Each gap gets its likely cause and fix. The known causes come from the 2026-11-03 audit: trade-decision snapshots
+  emptied by a deploy, forward-track on manual refresh, the RBNZ block, rate-diff refilling, the Fed-path lag. Gaps
+  are also marked critical or scoring.
+- **Hold rebuilds once.** A held pack is rebuilt once before the run, and the run then goes ahead. It counts only if
+  it finishes before 08:00 (prereg A4; no rule changes). On 2026-11-03 the officer would have held the pack:
+  levels_structure could see 3 of its 13 feeds.
+- **After the run** (`run.dataQuality`), each gap is marked as having mattered when its analyst or the Head named it.
+- **Display.** Route `GET /api/desk-quality`. It is the first panel on the Desk Office's Today tab: the decision,
+  usable data by analyst, and every gap with its cause, fix and whether it mattered.
+
+**Phase 10 · attribution by layer** (`js/deskAttribution.js`, code)
+
+- **Layers.** Each night the scorer scores every layer as its own book on the same moves (08:00 to 21:00 London, in
+  u):
+  - the global tone alone, on the risk assets
+  - the currency ranking alone: each pair from its two currencies, USD-priced markets from the dollar, indices left
+    out
+  - the asset desks' ratings
+  - the Head's book unweighted
+  - the sized book
+- **Value added.** For each step, the layer minus the one it was built on: desks over currency, Head over desks,
+  sizing over the Head. Also where the Head changed a desk's view, and how those changes did.
+- **Storage.** Saved as `score.attribution`. Running averages over counted days are in `/api/desk-score/record`
+  (`attribution`).
+- **Display.** The Desk Office's Performance tab has a per-layer table and the value added at each step, and each day
+  view says which layer earned it.
+- **Status.** Descriptive only (prereg A4).
+
+## 9p. Phases 7 and 11 as built: the red team and portfolio risk (2026-11-03)
+
+**Phase 7 · the red team** (`desk/roles/red_team.md`, one desk-head call per full run)
+
+- **When.** After the risk desk and before the Head.
+- **What it reads.**
+  - the rulings
+  - the asset desks' draft book and its net exposure by currency
+  - the risk voices
+  - the events report
+  - the morning's missing feeds
+  - Evidence Book entries, including the null ones
+- **What it does.** Attacks the book, most serious first: crowding (one bet in many names), contradictions,
+  tested-null ideas, events the sizes do not respect, stretched moves, and data gaps. At most eight challenges
+  (`validateRedTeam`).
+- **The Head answers.** It answers each challenge in `redTeamAnswers` (what it did, and whether it changed the card),
+  and changes a card only where the challenge holds.
+- **Stored and shown.** Saved in `run.debate.redTeam` and shown on the Desk Office Today tab next to the Head's
+  answers. Prereg A5 records the new stage before the first counted day; the control never sees it.
+
+**Phase 11 · the portfolio risk manager** (`js/deskRisk.js`, code; `GET /api/desk-risk`)
+
+- **Unit.** One normal-size card moving one daily σ = 1 card-σ. Each card's daily returns over about 60 sessions are
+  divided by its own σ, so the correlations are between those standardised returns.
+- **What it reports.**
+  - the book's daily σ and effective bets ((Σ|w|)² ÷ w'Cw; 1 when the whole book is one trade)
+  - each card's share of the risk
+  - the bets that move together (signed correlation above 0.6)
+  - one-σ scenarios through 60-day betas: the dollar, risk-off via the Nasdaq, the yen, gold
+  - the book as if held over each recent session: the worst day and the 1-in-20 day
+- **Shown.** On the Desk Office Today tab. It describes the book; it does not forecast.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
@@ -548,7 +622,7 @@ Not built yet. The order is the owner's call; each item names what it needs firs
   release moves each market (the event-window and release-history feeds). It covers what is priced, how big a
   surprise usually moves things and how fast. It never gives a direction for the surprise. It feeds the newsletter's
   "releases to come".
-- **Phase 7 · Red team.** A reviewer that attacks the Head's book before it is published: crowding (one bet across
+- **Phase 7 · Red team.** *Built (§9p).* A reviewer that attacks the Head's book before it is published: crowding (one bet across
   many names), stories that contradict each other, leaning on tested-null ideas, cards that ignore an event inside
   the window. The Head answers or changes the card. Logged, so the record shows whether the red team helps.
 - **Phase 8 · Journal coach.** Reads the owner's actual MT5 trades (the bot trade logs) against the book: where they
@@ -563,18 +637,18 @@ Not built yet. The order is the owner's call; each item names what it needs firs
   - It proposes and designs; it never declares a result.
   - Weekly, not daily. It works best once Phase 4 has some months of scored days.
 
-**Built since this list was written:** the evening edition (§9l); Phase 5 session updates (§9m).
+**Built since this list was written:** the evening edition (§9l); Phase 5 session updates (§9m); the Desk Office (§9n); Phases 14 and 10 (§9o); Phases 7 and 11 (§9p).
 
 **Proposed (owner, 2026-11-03), from the hedge-fund roles; order to be confirmed**
-- **Phase 10 · Performance attribution.** Split each day's score by stage (global ruling, currency ranking, asset
+- **Phase 10 · Performance attribution.** *Built (§9o).* Split each day's score by stage (global ruling, currency ranking, asset
   desk, risk sizing) to show which layer earned or lost. Mostly code on the Phase 4 scores.
-- **Phase 11 · Portfolio risk manager.** The book's correlation and stress scenarios ("USD +1σ: what does the whole
+- **Phase 11 · Portfolio risk manager.** *Built (§9p).* The book's correlation and stress scenarios ("USD +1σ: what does the whole
   book do?") from the vol forecasts and cross-asset links. It puts a number on "two or three bets".
 - **Phase 12 · Research ops.** Watches the research register, flags preregs with no verdict, nudges stale studies
   and drafts banking entries.
 - **Phase 13 · Execution and cost analyst.** The MT5 bot logs and give-back data against the plan zones: slippage,
   timing, entries.
-- **Phase 14 · Data quality officer.** Turns the Desk Pack health into actions: what failed, why, and whether to
+- **Phase 14 · Data quality officer.** *Built (§9o).* Turns the Desk Pack health into actions: what failed, why, and whether to
   hold the run.
 - **Phase 15 · Scenario strategist.** "If hot / if cold" playbooks before big releases from the desk's
   release-history data. Pairs with the economist (Phase 6).

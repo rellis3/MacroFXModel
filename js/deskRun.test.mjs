@@ -80,6 +80,7 @@ const PHASE2 = {
   newsletter_issue: () => ({ subject: 'Dollar and yen bid as credit cracks', standfirst: 'Credit widened. The desk reads risk-off. Midterms at 15:16 UK time.',
     sections: [{ title: 'The global backdrop', label: 'Model output', body: 'b' }, { title: 'The currencies', label: 'Untested interpretation', body: 'c' }, { title: 'What could break the day', label: 'Observed data', body: 'e' }],
     ideas: [{ instrument: 'AUDJPY', view: 'SHORT', size: 0.7, level: 'l', invalidation: 'i', why: 'w' }] }),
+  red_team: () => ({ headline: 'One USD bet in many names', challenges: [{ target: 'USD', kind: 'crowding', severity: 'high', challenge: 'USD long across 9 cards, net +7', ask: 'cut the weakest' }, { target: 'NOPE', challenge: 'x' }] }),
   risk_case: id => ({ headline: `${id} view`, adjustments: [{ target: 'ALL', size: id === 'risk_conservative' ? 0.5 : 1, veto: false, reason: 'r' }, { target: 'XYZ', size: 1 }], warnings: ['NFP'] }),
 };
 
@@ -176,7 +177,8 @@ await t('runDesk full mode: analysts, global debate + ruling, currency debate + 
   assert.equal(d.risk.risk_conservative.view.adjustments.length, 1, 'unknown target dropped');
   assert.ok(run.head.ok);
   const analysts = roles.filter(r => r.output === 'analyst_report').length;
-  assert.equal(run.calls, analysts + 4 + 1 + 4 + 1 + Object.keys(DESK_UNIVERSE).length + 3 + 1 + 1 + 1, 'plus the newsletter writer and the single-prompt control');
+  assert.equal(run.calls, analysts + 4 + 1 + 4 + 1 + Object.keys(DESK_UNIVERSE).length + 3 + 1 + 1 + 1 + 1, 'plus the red team, the newsletter writer and the single-prompt control');
+  assert.equal(run.debate.redTeam.view.challenges.length, 1, 'unknown target dropped'); assert.equal(run.debate.redTeam.view.challenges[0].kind, 'crowding');
   assert.ok(run.control.ok && run.control.book.instruments.GOLD, 'the control wrote its own book'); assert.match(run.rolesHash, /^[0-9a-f]{12}$/);
   assert.ok(run.newsletter.ok); assert.equal(run.newsletter.issue.ideas[0].instrument, 'AUDJPY');
   assert.ok(run.head.book.exposure, 'exposure report attached');

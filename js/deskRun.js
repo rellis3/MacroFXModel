@@ -20,15 +20,15 @@
 import { buildAnalystPrompt, buildHeadPrompt, buildStagePrompt, reportsText, groupData, universeText, sliceText } from './deskRoles.js';
 import { validateAnalystReport, validateHeadBook, validateDebateCase, validateGlobalView, validateCurrencyViews, validateAssetViews, validateRiskCase } from './deskSchemas.js';
 import { allInstruments, DESK_UNIVERSE, DESK_CCYS, instrumentLegs } from './deskPack.js';
-import { capExposure } from './deskExposure.js';
+import { capExposure, netExposure } from './deskExposure.js';
 import { newsletterSections } from './deskNewsletter.js';
-import { validateNewsletterIssue } from './deskSchemas.js';
+import { validateNewsletterIssue, validateRedTeam } from './deskSchemas.js';
 import { createHash } from 'node:crypto';
 
 export const DESK_RUN_VERSION = 1;
 const TASK = { quick: 'desk-analyst', deep: 'desk-head' };
 // Output caps. They must leave room for the model's thinking, which is billed as output and counts against the cap.
-export const CAPS = { analyst: 16_000, debate: 12_000, manager: 12_000, asset: 16_000, risk: 10_000, head: 32_000, writer: 16_000, control: 32_000 };
+export const CAPS = { analyst: 16_000, debate: 12_000, manager: 12_000, asset: 16_000, risk: 10_000, head: 32_000, writer: 16_000, control: 32_000, redTeam: 12_000 };
 const MAX_CAP = 32_000;
 
 // A provider error worth one more try: a dropped connection, a timeout, rate limiting or a server error. A 4xx
@@ -109,6 +109,24 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
     headOut = { ok: false, skipped: true, errors: [`only ${good.length} of ${analysts.length} analysts succeeded; the Head of Desk did not run`] };
   } else if (mode === 'full') {
     debate = await runDebate({ pack, roles, ledger, callModel, parseJson, results, rounds, onProgress, retryDelayMs, askFn: ask });
+    // Phase 7: the red team attacks the draft book (the asset desks' ratings and the risk voices) before the Head
+    // writes it; the Head must answer each challenge. One call; a failed red team leaves the Head unchallenged.
+    const rtRole = roles.find(r => r.id === 'red_team');
+    if (rtRole) {
+      onProgress({ stage: 'red team', label: 'the red team' });
+      const draft = Object.fromEntries(Object.values(debate.assets).flatMap(a => Object.entries(a.view?.instruments ?? {})).map(([n, c]) => [n, { rating: c.rating, size: 1, conviction: c.conviction, why: c.why }]));
+      const { system, prompt } = buildStagePrompt({ role: rtRole, pack, ledger, sections: [
+        ['Global ruling', debate.global.view ?? '(failed)'], ['Currency ruling', debate.currency.view ?? '(failed)'],
+        ["The asset desks' draft book", draft],
+        ["The draft book's net exposure by currency (each card at size 1; a pair is long its base, commodities and crypto count against USD)", netExposure(draft)],
+        ['The risk voices', Object.fromEntries(Object.entries(debate.risk).map(([k, v]) => [k, v.view ? { headline: v.view.headline, warnings: v.view.warnings } : { failed: true }]))],
+        ["Events today (the events analyst's report)", reportsText(results.filter(r => r.id === 'events_news'))],
+        ['Feeds missing or stale this morning', (pack.health?.gaps ?? []).map(g => `${g.id} (${g.status})`).join(', ') || 'none'],
+      ] });
+      const r = await ask({ callModel, parseJson, retryDelayMs, task: TASK[rtRole.tier], system, prompt, maxTokens: CAPS.redTeam, label: 'desk:red_team', validate: o => validateRedTeam(o, allInstruments()) });
+      debate.redTeam = { ok: r.ok, view: r.value ?? null, errors: r.errors ?? [], attempts: r.attempts };
+      debate.attempts.push(...(r.attempts ?? []));
+    }
     const sections = [
       ['Global ruling', debate.global.view ?? '(the global ruling failed today: read the global analysts below)'],
       ['Currency ruling', debate.currency.view ?? '(the currency ruling failed today: read the currency analysts below)'],
@@ -118,10 +136,11 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
       ...(debate.currency.view ? [] : [['Currency analysts', reportsText(results, 'currency')]]),
       ['Analysts\' headlines', Object.fromEntries(good.map(r => [r.id, r.report.headline]))],
       ['Instruments (with the currency legs each is read from)', universeText()],
+      ...(debate.redTeam?.view?.challenges?.length ? [['Red team challenges (answer each one)', debate.redTeam.view]] : []),
     ];
     const missing = [...failed, ...debate.failed];
     const { system, prompt } = buildStagePrompt({ role: head, pack, ledger: [], sections,
-      tail: `${missing.length ? `Stages that failed today (treat their areas as unseen): ${missing.join(', ')}.\n` : ''}Write a card for every one of the ${allInstruments().length} instruments, with size and plan where the asset desks and the risk desk support them.` });
+      tail: `${missing.length ? `Stages that failed today (treat their areas as unseen): ${missing.join(', ')}.\n` : ''}Write a card for every one of the ${allInstruments().length} instruments, with size and plan where the asset desks and the risk desk support them.${debate.redTeam?.view?.challenges?.length ? ' Answer each red-team challenge in "redTeamAnswers": [{ "id": 1, "answer": "what you did and why", "changed": true }]; change a card only where the challenge holds.' : ''}` });
     const r = await ask({ callModel, parseJson, retryDelayMs, task: TASK[head.tier], system, prompt, maxTokens: CAPS.head, label: 'desk:head',
       validate: o => validateHeadBook(o, allInstruments()) });
     headOut = { ok: r.ok, book: r.value ?? null, notes: r.notes ?? [], errors: r.errors ?? [], attempts: r.attempts };
@@ -185,7 +204,7 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
     mode,
     analysts: analystsOut,
     failed,
-    debate: debate ? { global: debate.global, currency: debate.currency, assets: debate.assets, risk: debate.risk, failed: debate.failed } : null,
+    debate: debate ? { global: debate.global, currency: debate.currency, assets: debate.assets, risk: debate.risk, redTeam: debate.redTeam ?? null, failed: debate.failed } : null,
     head: headOut,
     newsletter,
     control,

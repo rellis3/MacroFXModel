@@ -90,15 +90,19 @@ try { const t = localStorage.getItem('deskOfficeTab'); if (t && $(t)) show(t); }
 
 // ── TODAY: data health, session updates, the book's shape ──
 async function renderToday() {
-  const [pack, upd, run] = await Promise.all([getJson('/api/desk-pack?summary=1'), getJson(`/api/desk-update?date=${today}`), getJson('/api/desk-run?summary=0')]);
+  const [pack, upd, run] = await Promise.all([getJson(`/api/desk-quality?date=${today}`), getJson(`/api/desk-update?date=${today}`), getJson('/api/desk-run?summary=0')]);
   const parts = [];
-  // data health (Phase 14 will add the reasons and a hold decision)
+  // the data quality officer (Phase 14): the decision, the reasons, and every gap with its cause and fix
   if (pack?.ok) {
-    const h = pack.health ?? {}, gaps = pack.gaps ?? h.gaps ?? [], age = pack.builtAt ? Math.round((Date.now() - Date.parse(pack.builtAt)) / 60000) : null;
-    parts.push(`<div class="panel"><h2>Data health <i>${esc(pack.date)} · built ${age != null ? (age < 120 ? age + ' min' : Math.round(age / 60) + ' h') + ' ago' : '–'}</i></h2>
-<div class="tiles"><div class="tile"><span>Fresh</span><b class="up">${h.ok ?? '–'}</b></div><div class="tile"><span>Stale</span><b>${h.stale ?? '–'}</b></div><div class="tile"><span>Empty or failed</span><b class="${(h.empty + h.error + h.timeout) > 0 ? 'dn' : ''}">${(h.empty ?? 0) + (h.error ?? 0) + (h.timeout ?? 0) + (h.oversize ?? 0)}</b></div><div class="tile"><span>Of</span><b>${h.total ?? '–'} feeds</b></div></div>
-${gaps.length ? `<table><thead><tr><th>Feed</th><th>Analyst</th><th>Status</th><th>Why</th></tr></thead><tbody>${gaps.map(g => `<tr><td class="n">${esc(g.id)}</td><td>${esc(g.skill)}</td><td><span class="chip ${g.status === 'stale' ? 'warn' : 'bad'}">${esc(g.status)}</span></td><td class="muted">${esc(g.error ?? (g.ageH != null ? `${Math.round(g.ageH)} h old` : ''))}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Every feed came back fresh.</p>'}</div>`);
-  } else parts.push(`<div class="panel"><h2>Data health</h2><p class="muted">No Desk Pack yet today (${esc(pack?.error ?? '')}).</p></div>`);
+    const h = pack.health ?? {}, age = pack.packBuiltAt ? Math.round((Date.now() - Date.parse(pack.packBuiltAt)) / 60000) : null;
+    const DEC = { run: ['ok', 'Run'], 'run-with-gaps': ['warn', 'Run with gaps'], hold: ['bad', 'Hold: rebuild the pack first'] }, [dc, dl] = DEC[pack.decision] ?? ['', pack.decision];
+    const bars = (pack.byAnalyst ?? []).map(a => `<tr><td>${esc(a.skill)}</td><td class="n">${a.usable} of ${a.total}</td><td style="width:40%"><div style="height:7px;background:var(--bg3);border-radius:4px"><i style="display:block;height:7px;border-radius:4px;width:${Math.round(a.share * 100)}%;background:${a.share < 0.4 ? '#ff5d73' : a.share < 0.8 ? 'var(--acc)' : '#19d3a0'}"></i></div></td><td class="muted">${a.missingCritical.length ? 'missing ' + a.missingCritical.map(esc).join(', ') : ''}</td></tr>`).join('');
+    parts.push(`<div class="panel"><h2>Data quality officer <i>${esc(pack.date)} · pack built ${age != null ? (age < 120 ? age + ' min' : Math.round(age / 60) + ' h') + ' ago' : '–'}${/hold-retry/.test(pack.trigger ?? '') ? ' · rebuilt after a hold' : ''}</i></h2>
+<p><span class="chip ${dc}" style="font-size:13px;padding:3px 10px">${esc(dl)}</span> ${pack.reasons?.length ? esc(pack.reasons.join('; ')) : 'Every critical feed is in and every analyst can see most of its data.'}</p>
+<div class="tiles"><div class="tile"><span>Fresh</span><b class="up">${h.ok ?? '–'}</b></div><div class="tile"><span>Stale</span><b>${h.stale ?? '–'}</b></div><div class="tile"><span>Missing</span><b class="${h.total - h.usable > 0 ? 'dn' : ''}">${h.total != null ? h.total - h.usable : '–'}</b></div><div class="tile"><span>Usable</span><b>${Math.round((pack.usableShare ?? 0) * 100)}%</b></div></div>
+<table><thead><tr><th>Analyst</th><th>Feeds usable</th><th></th><th></th></tr></thead><tbody>${bars}</tbody></table>
+${pack.gaps?.length ? `<h3 style="font-size:14px;margin:14px 0 6px">Every gap, its cause and the fix${pack.afterRun ? ` <span class="muted">· ${pack.matteredCount ?? 0} named by the analysts as something they could not see</span>` : ''}</h3><table><thead><tr><th>Feed</th><th>Status</th><th>Why</th><th>Fix</th>${pack.afterRun ? '<th>Mattered?</th>' : ''}</tr></thead><tbody>${pack.gaps.map(g => `<tr><td class="n">${esc(g.id)}${g.scoring ? ' <span class="chip bad">scoring</span>' : g.critical ? ' <span class="chip warn">critical</span>' : ''}</td><td><span class="chip ${g.status === 'stale' ? 'warn' : 'bad'}">${esc(g.status)}</span></td><td class="muted">${esc(g.cause)}${g.error ? `<br><span style="font-family:var(--mono);font-size:11.5px">${esc(String(g.error).slice(0, 140))}</span>` : ''}</td><td class="muted">${esc(g.fix)}</td>${pack.afterRun ? `<td>${g.mattered ? '<span class="chip bad">yes</span>' : '<span class="chip">no</span>'}</td>` : ''}</tr>`).join('')}</tbody></table>` : ''}</div>`);
+  } else parts.push(`<div class="panel"><h2>Data quality officer</h2><p class="muted">No Desk Pack yet today (${esc(pack?.error ?? '')}). It is built at 06:40 London, or when a run starts.</p></div>`);
   // session updates (Phase 5): the live view beside the book
   if (upd?.ok) {
     const LABEL = { london: 'London open · 08:05', ny: 'New York open · 14:35' };
@@ -114,15 +118,34 @@ ${gaps.length ? `<table><thead><tr><th>Feed</th><th>Analyst</th><th>Status</th><
     parts.push(`<div class="grid2"><div class="panel"><h2>Book shape <i>net exposure by currency, cap ${e?.cap ?? '–'}</i></h2>${e ? `<table><thead><tr><th>Currency</th><th>Before cap</th><th>After</th></tr></thead><tbody>${Object.keys(e.after).map(c => `<tr><td class="n">${esc(c)}</td><td class="n">${f(e.before[c])}</td><td class="n ${cls(e.after[c])}">${f(e.after[c])}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">No exposure report.</p>'}</div>
 <div class="panel"><h2>The risk desk's warnings</h2>${w.length ? `<ul>${w.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="muted">None today.</p>'}</div></div>`);
   } else parts.push(`<div class="panel"><h2>Book shape</h2><p class="muted">No book for today yet. Run it on <a href="desk-run.html">Desk Run</a>, or set SVC_DESKRUN=1 for the 06:55 run.</p></div>`);
-  parts.push(planned(7, 'Red team', 'The challenges put to the book before it was published (crowding, contradictions, tested-null ideas, events in the window) and how the Head answered each.'));
-  parts.push(planned(11, 'Portfolio risk and stress', 'How concentrated the book is and what it does in a scenario: "USD +1σ", "risk-off day", "yen squeeze", in forecast units across all 41 markets.'));
-  parts.push(planned(14, 'Data quality officer', 'For each failed or stale feed, why it failed and whether it mattered for today\'s book, with a recommendation to hold or run.'));
+  // Phase 7: the red team's challenges and the Head's answers
+  const rt = run?.ok && run.date === today ? run.debate?.redTeam : null;
+  if (rt?.view) {
+    const ans = Object.fromEntries((run.head?.book?.redTeamAnswers ?? []).map(a => [a.id, a]));
+    const SEV = { high: 'bad', medium: 'warn', low: '' };
+    parts.push(`<div class="panel"><h2>Red team <i>model risk: the challenges put to the draft book, and the Head's answers</i></h2><p>${esc(rt.view.headline)}</p>
+${rt.view.challenges.length ? `<table><thead><tr><th>Target</th><th>Kind</th><th>Challenge</th><th>The Head's answer</th></tr></thead><tbody>${rt.view.challenges.map(c => { const a = ans[c.id]; return `<tr><td class="n">${esc(c.target)} <span class="chip ${SEV[c.severity] ?? ''}">${esc(c.severity)}</span></td><td>${esc(c.kind)}</td><td>${esc(c.challenge)}${c.ask ? `<br><span class="muted">Ask: ${esc(c.ask)}</span>` : ''}</td><td>${a ? `${a.changed ? '<span class="chip ok">changed</span> ' : '<span class="chip">kept</span> '}${esc(a.answer)}` : '<span class="muted">no answer</span>'}</td></tr>`; }).join('')}</tbody></table>` : '<p class="muted">No challenges: the red team found the book sound.</p>'}</div>`);
+  } else parts.push(`<div class="panel"><h2>Red team</h2><p class="muted">${b ? 'This book was written before the red team existed, or it failed today.' : 'No book for today yet.'}</p></div>`);
+  // Phase 11: portfolio risk and stress (fetched after the page draws: it reads ~60 days of bars per card)
+  parts.push(`<div class="panel" id="riskpanel"><h2>Portfolio risk and stress</h2><p class="muted">${b ? 'Reading about 60 days of daily bars for each card…' : 'No book for today yet.'}</p></div>`);
   $('today').innerHTML = parts.join('');
+  if (b) renderRisk();
   document.querySelectorAll('[data-up]').forEach(btn => btn.onclick = async () => {
     btn.disabled = true; const r = await getJson(`/api/desk-update/run?slot=${btn.dataset.up}`, { method: 'POST' });
     $('upmsg').textContent = r?.ok ? 'Running: this panel refreshes in a minute.' : (r?.error ?? 'failed');
     if (r?.ok) setTimeout(renderToday, 60_000); else btn.disabled = false;
   });
+}
+
+async function renderRisk() {
+  const r = await getJson(`/api/desk-risk?date=${today}`), el = $('riskpanel'); if (!el) return;
+  if (!r?.ok) { el.innerHTML = `<h2>Portfolio risk and stress</h2><p class="muted">${esc(r?.reason ?? r?.error ?? 'not available')}</p>`; return; }
+  el.innerHTML = `<h2>Portfolio risk and stress <i>${esc(r.label)} · ${r.days} sessions to ${esc(r.to)}</i></h2>
+<div class="tiles"><div class="tile"><span>Effective bets</span><b class="${r.effectiveBets < 3 ? 'dn' : ''}">${r.effectiveBets}</b></div><div class="tile"><span>Cards</span><b>${r.cards}</b></div><div class="tile"><span>Book daily σ</span><b>${r.bookSigma} card-σ</b></div><div class="tile"><span>Worst recent day</span><b class="dn">${f(r.history.worst.pnl)}</b></div><div class="tile"><span>1-in-20 day</span><b>${f(r.history.p05)}</b></div></div>
+<div class="grid2"><div><h3 style="font-size:14px;margin:6px 0">Scenarios</h3><table><tbody>${r.scenarios.map(x => `<tr><td>${esc(x.name)}</td><td class="n ${cls(x.pnl)}">${f(x.pnl)} card-σ</td></tr>`).join('')}</tbody></table></div>
+<div><h3 style="font-size:14px;margin:6px 0">Where the risk sits</h3><table><tbody>${r.contributions.slice(0, 6).map(c => `<tr><td class="n">${esc(c.inst)}</td><td class="n">${f(c.weight)}</td><td class="n">${Math.round(c.share * 100)}% of risk</td></tr>`).join('')}</tbody></table></div></div>
+${r.bets.length ? `<h3 style="font-size:14px;margin:12px 0 6px">The same bet in several names</h3><ul>${r.bets.map(x => `<li><b>${esc(x.lead)}</b> with ${x.cards.filter(c => c !== x.lead).map(esc).join(', ')} <span class="muted">· combined size ${x.weight}</span></li>`).join('')}</ul>` : ''}
+${r.missing?.length ? `<p class="muted">No price history for: ${r.missing.map(esc).join(', ')}.</p>` : ''}<p class="muted">Effective bets is (total size)² ÷ the book's variance: 1 when every card is the same trade. Scenarios run a one-σ move in each factor through each market's 60-day beta.</p>`;
 }
 
 // ── PERFORMANCE: the track record, the latest review, the updates ──
@@ -139,7 +162,15 @@ ${days.length ? `<table><thead><tr><th>Day</th><th>Counts</th><th>Day score</th>
   }
   parts.push(`<div id="dayview">${dayHtml(day)}</div>`);
   if (mem?.ok && mem.days?.length) parts.push(`<div class="panel"><h2>The desk's memory <i>${esc(mem.label)}</i></h2>${mem.days.map(d => `<p><b class="n">${esc(d.date)}</b> <span class="muted">score ${f(d.dayScore)} u${d.counts ? '' : ' · not counted'}</span>${d.headline ? `<br>${esc(d.headline)}` : ''}</p>${d.lessons.length ? `<ul>${d.lessons.map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}`).join('')}<p class="muted">The last five evening reviews, as the morning evidence clerk reads them.</p></div>`);
-  parts.push(planned(10, 'Attribution by layer', 'Which stage earned or lost each day: the global ruling, the currency ranking, the asset desks or the risk sizing, so you know which agents to trust.'));
+  const at = rec?.attribution;
+  const LAY = [['global', 'Global ruling alone', 'risk-on longs the risk assets, risk-off shorts them'], ['currency', 'Currency ranking alone', 'each pair from its two currencies, USD-priced markets from the dollar'], ['desks', 'Asset desks', 'the desks\' ratings, before risk and the Head'], ['head', 'Head of Desk', 'the final book, unweighted'], ['sized', 'Sized book', 'the day score: after sizing and the cap']];
+  const STEP = [['desksOverCurrency', 'What the asset desks added over the currency ranking'], ['headOverDesks', 'What the Head added over the desks'], ['sizingOverHead', 'What sizing added over the Head\'s views']];
+  const cell = x => x ? `<span class="${cls(x.mean)}">${f(x.mean)} u</span> <span class="muted">${x.positive} of ${x.days} days up</span>` : '<span class="muted">–</span>';
+  parts.push(`<div class="panel"><h2>Attribution by layer <i>which stage earned or lost · descriptive, counted days only</i></h2>
+${at?.days ? '' : '<p class="muted">Fills in from the first counted day. Each layer is scored as its own book on the same moves (08:00 to 21:00 London, in u).</p>'}
+<table><thead><tr><th>Layer</th><th>What it is</th><th>Average day</th></tr></thead><tbody>${LAY.map(([k, l, w]) => `<tr><td><b>${l}</b></td><td class="muted">${w}</td><td class="n">${cell(at?.layers?.[k])}</td></tr>`).join('')}</tbody></table>
+<h3 style="font-size:14px;margin:14px 0 6px">Value added at each step</h3><table><tbody>${STEP.map(([k, l]) => `<tr><td>${l}</td><td class="n">${cell(at?.added?.[k])}</td></tr>`).join('')}</tbody></table>
+<p class="muted">A step that keeps adding below zero is a stage to look at. Read it over weeks, not days.</p></div>`);
   $('perf').innerHTML = parts.join('');
   document.querySelectorAll('[data-day]').forEach(a => a.onclick = async ev => { ev.preventDefault(); $('dayview').innerHTML = dayHtml(await getJson(`/api/desk-score?date=${a.dataset.day}`)); $('dayview').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
 }
@@ -150,6 +181,7 @@ function dayHtml(day) {
 <p>Day score <b class="${cls(s.S)}">${f(s.S)} u</b> · placebo 95th ${f(s.placebo?.p95)} · single analyst ${f(s.control?.unweighted)} · ${s.scored} of ${s.live} cards scored${s.missing?.length ? ` · missing: ${s.missing.map(m => esc(m.inst)).join(', ')}` : ''} · <a href="/api/newsletter/issue?id=desk-evening-${esc(s.date)}" target="_blank" rel="noopener">evening edition</a></p>
 ${mv && (mv.best.length || mv.worst.length) ? `<p class="muted">Made the day: ${mv.best.map(m => `${esc(m.inst)} ${f(m.R)}`).join(', ') || '–'} · Lost it: ${mv.worst.map(m => `${esc(m.inst)} ${f(m.R)}`).join(', ') || '–'}</p>` : ''}
 ${ref ? `<h3 style="font-size:14px;margin:10px 0 4px">The evening review</h3><p>${esc(ref.headline)}</p>${ref.lessons?.length ? `<ul>${ref.lessons.map(l => `<li><span class="muted">${esc(l.scope)}${l.about ? ' · ' + esc(l.about) : ''}</span> ${esc(l.lesson)}</li>`).join('')}</ul>` : ''}` : '<p class="muted">No evening review for this day.</p>'}
+${s.attribution ? `<h3 style="font-size:14px;margin:10px 0 4px">Which layer earned it</h3><p class="n" style="font-size:13px">global ${f(s.attribution.layers.global?.score)} · currency ${f(s.attribution.layers.currency?.score)} · desks ${f(s.attribution.layers.desks?.score)} · Head ${f(s.attribution.layers.head?.score)} · sized ${f(s.attribution.layers.sized?.score)} <span class="muted">· Head changed ${s.attribution.headChanges.n} desk view(s), net ${f(s.attribution.headChanges.net)} u each</span></p>` : ''}
 ${us.length ? `<h3 style="font-size:14px;margin:10px 0 4px">Did the session updates help?</h3><table><thead><tr><th>Slot</th><th>Market</th><th>Change</th><th>New view minus old, to 21:00</th></tr></thead><tbody>${us.flatMap(([k, v]) => v.changes.map(c => `<tr><td>${k === 'ny' ? 'New York' : 'London'}</td><td class="n">${esc(c.instrument)}</td><td>${esc(c.from)} → ${esc(c.to)}</td><td class="n ${cls(c.delta)}">${c.delta != null ? f(c.delta) + ' u' : esc(c.missing ?? '–')}</td></tr>`)).join('')}</tbody></table><p class="muted">Size-weighted, descriptive only: the scored book is the morning one.</p>` : ''}</div>`;
 }
 

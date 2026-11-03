@@ -109,7 +109,10 @@ export function validateHeadBook(obj, instruments = allInstruments()) {
   const risks = (Array.isArray(obj.risks) ? obj.risks : []).map(r => str(r, 300)).filter(Boolean).slice(0, 10);
   const gaps = (Array.isArray(obj.gaps) ? obj.gaps : []).map(g => str(g, 300)).filter(Boolean).slice(0, 20);
   if (errors.length) return { ok: false, errors };
-  return { ok: true, notes, value: { headline, global, currencies, instruments: cards, risks, gaps } };
+  // Phase 7: the Head's answer to each red-team challenge (optional; only when there were challenges)
+  const redTeamAnswers = (Array.isArray(obj.redTeamAnswers) ? obj.redTeamAnswers : []).slice(0, 12)
+    .map(a => ({ id: Number.isFinite(Number(a?.id)) ? Number(a.id) : null, answer: str(a?.answer, 400), changed: a?.changed === true })).filter(a => a.answer);
+  return { ok: true, notes, value: { headline, global, currencies, instruments: cards, risks, gaps, ...(redTeamAnswers.length ? { redTeamAnswers } : {}) } };
 }
 
 // ── Phase 2: the debate layers (plans/DESK_ANALYST_PIPELINE.md §4, Layers 2 and 3) ─────────────────────────────
@@ -256,6 +259,25 @@ export function validateSessionUpdate(obj, current) {
   return { ok: true, notes, value: { headline, globalStillHolds: obj.globalStillHolds !== false, changes, watch: strList(obj.watch).slice(0, 5) } };
 }
 
+// ── Phase 7: the red team ──────────────────────────────────────────────────────────────────────────────────────
+
+const RT_KINDS = ['crowding', 'contradiction', 'tested-null', 'event', 'data', 'stretched', 'other'];
+/** The red team's challenges to the draft book: at most 8, each aimed at a market, a currency or the whole book. */
+export function validateRedTeam(obj, instruments) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return { ok: false, errors: ['reply is not a JSON object'] };
+  const headline = str(obj.headline, 300);
+  if (!headline) return { ok: false, errors: ['headline missing'] };
+  const notes = [], ok = new Set(['ALL', ...instruments, 'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF']), challenges = [];
+  for (const c of (Array.isArray(obj.challenges) ? obj.challenges : []).slice(0, 12)) {
+    const target = String(c?.target ?? '').toUpperCase().replace('/', '');
+    if (!ok.has(target)) { notes.push(`challenge on unknown target ${c?.target} dropped`); continue; }
+    const challenge = str(c?.challenge, 500); if (!challenge) continue;
+    const severity = ['high', 'medium', 'low'].includes(c?.severity) ? c.severity : 'medium';
+    if (challenges.length < 8) challenges.push({ id: challenges.length + 1, target, kind: RT_KINDS.includes(c?.kind) ? c.kind : 'other', severity, challenge, ask: str(c?.ask, 300) ?? '' });
+  }
+  return { ok: true, notes, value: { headline, challenges } };
+}
+
 // ── Phase 3: the newsletter writer ───────────────────────────────────────────────────────────────────────────────
 
 /** The house labels every newsletter section carries (the regular issue's legend). */
@@ -348,6 +370,10 @@ bias: integer -2..+2.`,
   "warnings": ["what could go wrong today"]
 }
 size: 0 to 1.5 (1 = normal). veto: true only when the trade should not be taken today at all.`,
+  red_team: `{
+  "headline": "the biggest weakness in the draft book, in one sentence",
+  "challenges": [ { "target": "ALL | an instrument | a currency", "kind": "crowding | contradiction | tested-null | event | data | stretched | other", "severity": "high | medium | low", "challenge": "what is wrong, with the numbers", "ask": "what the Head should do or answer" } ]   // at most 8, most serious first; [] if the book is sound
+}`,
   session_update: `{
   "headline": "what changed since the book, in one sentence",
   "globalStillHolds": true,

@@ -22,7 +22,7 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15   # 2026-11-03: the checkout alone took 3.5-5+ min and cancelled the job twice (#1610)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

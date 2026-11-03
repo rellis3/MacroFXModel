@@ -140,6 +140,23 @@ and never edited. The updates are stored beside it and scored in the evening as 
 old view over the rest of the day, size-weighted. They are in no scored cell, and no cell here changes. The power
 amendment named in §5 is now A3. No outcome had been computed.
 
+### A4 — 2026-11-03 — PRE-RESULTS
+Two additions, neither a scored cell. **Attribution** (Phase 10, `js/deskAttribution.js`): each layer is scored as its
+own book on the same moves (the global tone alone, the currency ranking alone, the asset desks, the Head unweighted,
+the Head sized), with what each step added. **The data quality officer** (Phase 14, `js/deskDataQuality.js`): before a
+run, a pack it would hold (no forecast lines, three or more critical feeds out, or an analyst seeing under 40% of its
+data) is rebuilt once. A run still counts only if it finishes before 08:00 London (§3); this changes no rule. No
+outcome had been computed.
+
+### A5 — 2026-11-03 — PRE-RESULTS
+Before the first counted day, the morning pipeline gains one stage. **The red team** (Phase 7,
+`desk/roles/red_team.md`) attacks the asset desks' draft book after the risk desk. Its targets are crowding,
+contradictions, tested-null ideas, events in the window, stretched moves and missing data. The Head of Desk then answers
+each challenge and may change cards. The scored book is still the Head's book as written before 08:00 (§3), and the
+desk is still scored as operated. The single-prompt control (H2) is unchanged and never sees the red team. **Portfolio
+risk** (Phase 11, `js/deskRisk.js`) describes the book's concentration and scenarios and is not a scored cell. No
+outcome had been computed.
+
 ---
 
 ## RESULTS — not run
