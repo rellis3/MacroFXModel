@@ -227,6 +227,7 @@ import { assess as _dqAssess, afterRun as _dqAfterRun } from './js/deskDataQuali
 import { attribution as _atAttribution, attributionRecord as _atRecord } from './js/deskAttribution.js';
 import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
 import { isoWeek as _wkIso, weekBooks as _wkBooks, weekCalendar as _wkCalendar, validateWeekly as _wkValidate, weeklyNote as _wkNote } from './js/weeklyDesk.js';   // agent 19
+import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
 import { realisedDays as _vcRealised, compare as _vcCompare } from './js/volCheck.js';   // the terminal's vol chart
 import { morningText as _cosMorning, eveningText as _cosEvening } from './js/chiefOfStaff.js';   // agent 22
 import { numberCheck as _ccNumbers, claimsSections as _ccSections, validateClaims as _ccValidate } from './js/claimsCheck.js';   // Phase 16
@@ -5310,6 +5311,26 @@ svcInterval('deskWeekly', async () => {
   if (raw && JSON.parse(raw).week === _wkIso(_dpLondonDate(now + 864e5))) return;
   _wkStart();
 }, 30 * 60_000);
+// ── Agent 20: the rules keeper (js/rulesKeeper.js, plan §9y) ──
+// Every bot in js/botRegistry.js: its own status against the research that governs its idea. Reads only; cached 10 min.
+let _rkCacheRk = { at: 0, data: null };
+async function _rulesKeeperNow() {
+  if (_rkCacheRk.data && Date.now() - _rkCacheRk.at < 10 * 60_000) return _rkCacheRk.data;
+  const registry = _rkParseRegistry(_tdRead('js/botRegistry.js'));
+  const statuses = {};
+  await Promise.all(registry.map(async r => { try { const raw = await kv.get(r.key); if (raw) { const j = JSON.parse(raw); statuses[r.key] = j?.data ?? j; } } catch { /* unreadable: reported as no status */ } }));
+  const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+  const now = Date.now(), date = _dpLondonDate(now), dow = new Date(_dsLondonMs(date, 12)).getUTCDay();
+  const data = { ok: true, generatedAt: now, label: 'what the research says against what the bots do; reads only, changes nothing',
+    ..._rkReport(registry, statuses, { evidence: DESK_EVIDENCE, rows: _tdParseRegister(_tdRead('plans/RESEARCH_REGISTER.md')), now, weekday: dow >= 1 && dow <= 5 }) };
+  _rkCacheRk = { at: now, data };
+  return data;
+}
+// GET /api/rules-keeper: every bot, its mode and heartbeat, the research behind its idea, and the flags
+app.get('/api/rules-keeper', async (req, res) => {
+  try { res.set('Cache-Control', 'no-store'); if (req.query.refresh === '1') _rkCacheRk = { at: 0, data: null }; res.json(await _rulesKeeperNow()); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // ── Agent 22: the chief of staff (js/chiefOfStaff.js, plan §9w) ──
 // Every 10 min on weekdays: the morning note once the day's book and its claims check exist (or from 08:30 London
 // without the check), the evening note once the day is scored. Each once a day (desk_cos_<date>). No model call.
@@ -5326,7 +5347,8 @@ async function _cosTick({ force = null } = {}) {
       if (force || claims || now > _dsLondonMs(date, 8, 30)) {
         const theory = JSON.parse((await kv.get(_TD_KEY).catch(() => null)) ?? 'null');
         let ops = null; try { ops = _tdOpsNow(); } catch { /* the notes still go without it */ }
-        const text = _cosMorning({ date, run, claims, ops, theory });
+        let rules = null; try { rules = await _rulesKeeperNow(); } catch { /* the note still goes without it */ }
+        const text = _cosMorning({ date, run, claims, ops, theory, rules });
         if (text) { out.morning = await send(text); sent.morning = new Date().toISOString(); out.morningText = text; }
       }
     }

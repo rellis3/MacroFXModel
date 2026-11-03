@@ -891,6 +891,23 @@ touched.
 - Monday's evidence clerk reads it through the Desk Pack feed `desk-weekly` as the desk's own context, never as
   evidence or a card (prereg amendment A6; both the desk and the single-prompt control see it).
 
+## 9y. Agent 20: the rules keeper (built 2026-11-03)
+
+`js/rulesKeeper.js` (pure, tested in `js/rulesKeeper.test.mjs`); `GET /api/rules-keeper`; a panel at the top of the
+Desk Office "You" tab; a line in the chief of staff's morning note when any bot has a high flag. No model call.
+
+- Reads every bot in `js/botRegistry.js` and its own status (mode, running, last update, open positions, today's
+  closes), and the research behind its idea from a curated map (`BOT_BASIS`: bot → Evidence Book entries and register
+  rows). The test checks every id in the map exists, so a renamed entry fails the build.
+- Flags: **tested-against** (a linked null whose own words say not to trade it, quoted; high when the bot reports live),
+  **before-verdict** (the deciding study is still open; high when live), **no-basis** (live with no study linked),
+  **mode-mismatch** (registry paper, bot reports live, or the reverse), **silent** (no update for 3 h on a weekday),
+  **usage-rule** (a null that limits how the idea may be used, e.g. QMR as a day selector, not a direction),
+  **new-verdict** (a linked entry banked in the last 14 days), **kill-switch**.
+- First read (2026-11-03, the statuses the public route returns): OI Gamma and OI-Vol report live, target max pain
+  ("a level to know about, not a magnet") and trade before oi-wall-building-forward has a verdict; they and the
+  Signal Copier report live while the registry lists them as paper. It reports; it never changes a bot.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
@@ -936,7 +953,7 @@ Not built yet. The order is the owner's call; each item names what it needs firs
 - **Phase 17 · Desk Terminal.** *v1 built (§9r).* The owner's private terminal, built last.
 - **Agent 18 · Trade watcher.** *Built (§9u).* Alerts when a card reaches its entry zone, first target or invalidation.
 - **Agent 19 · Weekly strategist.** *Built (§9x).* Sunday's week view and edition, and Monday's starting point.
-- **Agent 20 · Rules keeper.** The live bots' settings against the research verdicts.
+- **Agent 20 · Rules keeper.** *Built (§9y).* The live bots' settings against the research verdicts.
 - **Agent 21 · News analyst.** Tags a headline feed by currency and tier (needs the feed).
 - **Agent 22 · Chief of staff.** *Built (§9w).* One short Telegram each morning and evening summing up the Desk Office.
 - **Phase 16 · Claims checker.** *Built (§9v).* Checks everything published against the data and the Evidence Book.
