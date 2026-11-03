@@ -38,6 +38,7 @@
   .note { color:var(--text3); font-size:12px; }
   .big { font-size:15px; } .good { color:var(--up); } .bad { color:var(--down); } .warn { color:var(--amber); }
   .err { color:var(--down); }
+  table.ladder td, table.ladder th { padding:4px 8px; font-size:12.5px; } #walkTable { margin-top:8px; }
   details.howto { margin-top:8px; color:var(--text2); font-size:12.5px; } details.howto summary { cursor:pointer; color:var(--blue); } details.howto li { margin:4px 0; }
   tr.thin td { opacity:0.45; }
   .seg { display:inline-flex; } .seg button { border-radius:0; } .seg button:first-child { border-radius:5px 0 0 5px; } .seg button:last-child { border-radius:0 5px 5px 0; border-left:0; }
@@ -61,6 +62,7 @@
       <span class="seg" role="group" aria-label="Chart style"><button id="mPaths" data-m="paths" class="on">Two paths</button><button id="mCone" data-m="cone">Range cone</button><button id="mMc" data-m="mc">Monte Carlo</button><button id="mModal" data-m="modal">Most-touched path</button><button id="mWalk" data-m="walk">Zone walk</button></span>
       <span class="mcopt" id="walkOpts">follow <select id="walkA" aria-label="What each expiry's step goes to"><option value="strike" selected>strongest strike</option><option value="maxPain">max pain</option><option value="centre">OI centre</option></select>
         <label title="Weekly and daily books are small next to the quarterlies; on = show their steps, faint"><input type="checkbox" id="walkThin" checked> small books</label>
+        <label title="Off (default) = the zone walk alone; on = also the strongest zones, level lines, option lines and expected moves"><input type="checkbox" id="walkOther"> other lines</label>
         <label title="Only step to a strike price could plausibly reach by that expiry: inside the 90% range of a random walk at today's volatility, from the previous step and from today. Off = the raw biggest strike, however far."><input type="checkbox" id="walkReach" checked> within reach</label></span>
       <span class="mcopt" id="mcOpts">horizon <select id="mcH" aria-label="Horizon in sessions"><option>10</option><option selected>20</option><option>40</option><option>60</option></select>
         pull <select id="mcK" aria-label="Pull strength"><option value="0">off</option><option value="0.25">weak</option><option value="0.5" selected>medium</option><option value="1">strong</option></select></span>
@@ -78,6 +80,7 @@
 
   <div class="row">
     <section class="card"><h2>Price, swings and what lies ahead</h2><div id="chart"></div>
+      <div id="walkTable"></div>
       <p class="note" id="chartNote"></p>
       <details class="howto"><summary>How to read this chart, and how to use it</summary>
         <ul>
@@ -179,6 +182,8 @@ function drawChart(m) {
   const W = cw, H = Math.round(Math.min(720, Math.max(460, cw * 0.46))), L = 64, R = 170, T = 30, B = 46;
   const s = m.state, today = s.date;
   const sim = MODE === 'mc' || MODE === 'modal', walkMode = MODE === 'walk';
+  // zone walk is read best on its own: the other lines (zones, levels, option lines, expected moves) only when asked
+  const quiet = walkMode && !$('walkOther')?.checked;
   const hr = $('histR').value;
   const histStart = hr === 'ytd' ? `${today.slice(0, 4)}-01-01` : hr !== 'auto' ? addDays(today, -hr) : addDays(today, sim ? -90 : walkMode ? -100 : MODE === 'paths' ? -120 : -160);
   const histDays = (Date.parse(today) - Date.parse(histStart)) / 864e5;
@@ -190,12 +195,13 @@ function drawChart(m) {
   const plotW = W - L - R, histW = plotW * (histDays > 200 ? 0.5 : histDays > 130 ? 0.4 : MODE === 'cone' ? 0.38 : 0.3);
   const X = d => { const t = Date.parse(d); return t <= tT ? L + (t - t0) / Math.max(1, tT - t0) * histW : L + histW + Math.sqrt((t - tT) / (t1 - tT)) * (plotW - histW); };
   const walk = walkMode ? zoneWalk(m.expiries.filter(e => e.expiry <= futEnd), walkOpts(m)) : null;
+  const walkTags = [];
   const vals = series.map(p => p[1]);
   const extra = [];
   if (walk) for (const p of walk.points) if (p.px > s.close * 0.85 && p.px < s.close * 1.15) extra.push(p.px);
   for (const b of m.bands) for (const k of ['p90']) { extra.push(b[k].up, b[k].down); }
   for (const e of m.expiries) if (!e.thin) for (const z of e.zones.slice(0, 1)) if (z.px > s.close * 0.9 && z.px < s.close * 1.1) extra.push(z.px);
-  if (SHOW.oi) for (const v of oiLineList(m).map(l => l.v)) if (v > s.close * 0.88 && v < s.close * 1.12) extra.push(v);
+  if (SHOW.oi && !quiet) for (const v of oiLineList(m).map(l => l.v)) if (v > s.close * 0.88 && v < s.close * 1.12) extra.push(v);
   let lo = Math.min(...vals, ...extra), hi = Math.max(...vals, ...extra); const pad = (hi - lo) * 0.06; lo -= pad; hi += pad;
   const Y = v => T + (hi - v) / (hi - lo) * (H - T - B);
   const o = [];
@@ -232,7 +238,7 @@ function drawChart(m) {
     if (e.thin) { o.push(`<text x="${x}" y="${T + 28}" fill="var(--text3)" font-size="10" text-anchor="middle">·<title>${e.expiry}: thin book (${fmt((e.oiShare ?? 0) * 100, 0)}% of live open interest), not read</title></text>`); continue; }
     if (e.shareAbove != null) { const up = e.shareAbove > 0.55, dn = e.shareAbove < 0.45;
       o.push(`<text x="${x}" y="${T + 28}" fill="${up ? 'var(--up)' : dn ? 'var(--down)' : 'var(--text3)'}" font-size="12" font-weight="700" text-anchor="middle">${up ? '▲' : dn ? '▼' : '◆'}<title>${e.expiry}: ${Math.round(e.shareAbove * 100)}% of OI above price, centre ${pct(e.pullPct, 2)} from price</title></text>`); }
-    if (!SHOW.zones) continue;
+    if (!SHOW.zones || quiet) continue;
     e.zones.slice(0, 3).forEach((z, zi) => {
       if (z.px < lo || z.px > hi) return;
       const str = allOI > 0 ? (z.oi || 0) / allOI : 0, rel = maxStr > 0 ? str / maxStr : 0;
@@ -283,15 +289,16 @@ function drawChart(m) {
       for (let k = 0; k <= 24; k++) { const d = addDays(today, Math.round((Date.parse(futEnd) - Date.parse(today)) / 864e5 * k / 24)); const n = Math.max(1, sessionsBetween(today, d)); pts.push([X(d), s.close * Math.exp(walk.zcap * sg * Math.sqrt(n)), s.close * Math.exp(-walk.zcap * sg * Math.sqrt(n))]); }
       o.push(`<polygon points="${pts.map(q => `${q[0].toFixed(1)},${Y(Math.min(q[1], hi)).toFixed(1)}`).join(' ')} ${pts.slice().reverse().map(q => `${q[0].toFixed(1)},${Y(Math.max(q[2], lo)).toFixed(1)}`).join(' ')}" fill="#8b949e" opacity="0.07"><title>within reach: the 90% range of a random walk at ${(sg * 100).toFixed(2)}% a session</title></polygon>`);
     }
-    let x0 = X(today), y0 = Y(s.close), lastLx = -1e9, row = 0;
+    let x0 = X(today), y0 = Y(s.close), lastLx = -1e9, row = 0, stepN = 0;
     for (const p of walk.points) {
+      stepN++;
       const x = X(p.expiry), y = Y(p.px), c = p.dir === 'up' ? 'var(--up)' : p.dir === 'down' ? 'var(--down)' : 'var(--text3)';
       o.push(`<line x1="${x0}" y1="${y0}" x2="${x}" y2="${y}" stroke="${c}" stroke-width="${p.thin ? 1.4 : 2.4}" stroke-opacity="${p.thin ? 0.6 : 1}"${p.thin ? ' stroke-dasharray="4 3"' : ''} stroke-linecap="round"/>`);
       const r = 3.5 + 5 * Math.sqrt((p.strength || 0) / maxS);
       o.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${p.thin ? '#0d1117' : c}" stroke="${p.thin ? c : '#0d1117'}" stroke-width="${p.thin ? 1.5 : 1}"><title>${p.expiry} (${p.dte} days): ${px(p.px)}, ${p.dir} ${pct(p.movePct, 2)} from the step before${p.strength != null ? `; its biggest strike holds ${fmt(p.strength * 100, 1)}% of all live OI` : ''}${p.building ? ', building' : ''}${p.thin ? '; small book (under 10% of live OI)' : ''}</title></circle>`);
-      row = x - lastLx < 60 ? (row + 1) % 2 : 0; lastLx = x;
-      const ly = p.dir === 'down' ? y + 16 + row * 12 : y - 9 - row * 12;
-      o.push(`<text x="${x}" y="${ly}" fill="${c}" font-size="10.5" font-weight="600" opacity="${p.thin ? 0.75 : 1}" text-anchor="middle">${p.notBiggest ? '◇ ' : ''}${px(p.px)} · ${fmtDay(p.expiry)}<title>${p.notBiggest ? 'the biggest strike of this expiry within reach; its biggest overall is further away' : ''}</title></text>`);
+      // the step number sits on the dot; the price and date go to the right-margin ladder, so nothing overprints
+      o.push(`<text x="${x}" y="${y - r - 3}" fill="${c}" font-size="10" font-weight="700" text-anchor="middle">${stepN}</text>`);
+      walkTags.push({ y, color: c, text: `${stepN}. ${p.notBiggest ? '◇' : ''}${px(p.px)} ${fmtDay(p.expiry)}`, thin: p.thin });
       x0 = x; y0 = y;
     }
   } else {
@@ -310,21 +317,21 @@ function drawChart(m) {
     }
   }
   // ── lines across the chart: level map, option key lines, expected moves (labels collected for the right margin) ──
-  const tags = [];
+  const tags = walkTags.map(t => ({ ...t, color: t.thin ? 'var(--text3)' : t.color }));
   const hline = (v, color, dash, label, from = L, op = 0.55, wdt = 1) => {
     if (!(v > lo && v < hi)) return;
     o.push(`<line x1="${from}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${color}" stroke-opacity="${op}" stroke-width="${wdt}" stroke-dasharray="${dash}"><title>${esc(label)}: ${px(v)}</title></line>`);
     tags.push({ y: Y(v), color, text: `${label} ${px(v)}` });
   };
   const pathMarked = new Set(MODE === 'paths' ? ['bounce', 'flush', '20d p75 hi', '20d p75 lo'] : []);
-  if (SHOW.levels) for (const lv of levelList(m)) if (!pathMarked.has(lv.short)) hline(lv.v, lv.color, '1 4', lv.short, L, 0.5);
-  if (SHOW.zones) for (const z of (m.zones?.overall || []).slice(0, 3)) {
+  if (SHOW.levels && !quiet) for (const lv of levelList(m)) if (!pathMarked.has(lv.short)) hline(lv.v, lv.color, '1 4', lv.short, L, 0.5);
+  if (SHOW.zones && !quiet) for (const z of (m.zones?.overall || []).slice(0, 3)) {
     if (!(z.px > lo && z.px < hi)) continue;
     o.push(`<rect x="${X(today)}" y="${Y(z.px) - 4}" width="${W - R - X(today)}" height="8" fill="var(--violet)" opacity="0.13"><title>strongest zone ${px(z.px)}: ${fmt(z.strength * 100, 1)}% of all live open interest across ${z.expiries.length} expir${z.expiries.length === 1 ? 'y' : 'ies'}</title></rect>`);
     tags.push({ y: Y(z.px), color: 'var(--violet)', text: `zone ${px(z.px)} · ${fmt(z.strength * 100, 0)}% · ${z.expiries.length} exp` });
   }
-  if (SHOW.oi) for (const ln of oiLineList(m)) hline(ln.v, ln.color, ln.dash, ln.short, X(today) - 40, 0.8, 1.2);
-  if (MODE !== 'cone') {
+  if (SHOW.oi && !quiet) for (const ln of oiLineList(m)) hline(ln.v, ln.color, ln.dash, ln.short, X(today) - 40, 0.8, 1.2);
+  if (MODE !== 'cone' && !quiet) {
     // the expected move as dated segments: p50 high/low reach over 1, 5 and 20 sessions from the last close
     for (const [b, tagTxt] of [[m.bandDaily, '1d'], [m.bands[0], '5d'], [m.bands[1], '20d']]) {
       if (!b) continue;
@@ -353,8 +360,9 @@ function drawChart(m) {
   o.push(`<circle cx="${X(today)}" cy="${Y(s.close)}" r="4" fill="var(--price)"/>`);
   o.push('</svg>');
   $('chart').innerHTML = o.join('');
-  if (MODE === 'mc' || MODE === 'modal') { mcNote(m); return; }
-  if (walkMode) { walkNote(m, walk); return; }
+  if (MODE === 'mc' || MODE === 'modal') { $('walkTable').innerHTML = ''; mcNote(m); return; }
+  if (walkMode) { walkNote(m, walk); walkTable(m, walk); return; }
+  $('walkTable').innerHTML = '';
   $('chartNote').innerHTML = MODE === 'paths'
     ? `Dashed paths: the two orders the next move can come in. Each waypoint is a measured number: the look-back's barrier at its median timing ${tag('EXPLORATORY')}, then the monthly reverting p75 ${tag('VALIDATED')} (faint blue lines). Dates are sessions ahead, not forecasts. `
       + `Violet columns: each CME expiry in the next ~100 days, ▲/▼ = most of its open interest sits above/below price ${tag('UNTESTED')}.`
@@ -469,6 +477,7 @@ $('mcK').addEventListener('change', () => { SIMS = null; if (LAST) drawChart(LAS
 $('walkA').addEventListener('change', () => { if (LAST) drawChart(LAST); });
 $('walkThin').addEventListener('change', () => { if (LAST) drawChart(LAST); });
 $('walkReach').addEventListener('change', () => { if (LAST) drawChart(LAST); });
+$('walkOther').addEventListener('change', () => { if (LAST) drawChart(LAST); });
 $('histR').addEventListener('change', () => { try { localStorage.setItem('swingMapHist', $('histR').value); } catch {} if (LAST) drawChart(LAST); });
 try { const h = localStorage.getItem('swingMapHist'); if (h && [...$('histR').options].some(o => o.value === h)) $('histR').value = h; } catch {}
 $('pineBtn').addEventListener('click', async () => {
@@ -569,6 +578,21 @@ function walkSigma(m) { const mb = m.bands?.[1]; return mb?.sigmaUsedPct ? mb.si
 function walkOpts(m) {
   const reach = $('walkReach')?.checked !== false;
   return { close: m.state.close, anchor: $('walkA').value, includeThin: $('walkThin').checked, ...(reach ? { sigma: walkSigma(m), date: m.state.date } : {}) };
+}
+// the walk as a ladder: one row per expiry, the level it steps to, and how far that is from today and from the step before
+function walkTable(m, w) {
+  const close = m.state.close;
+  const rows = w.points.map((p, i) => ({ ...p, n: i + 1 })).concat((w.skipped || []).map(k => ({ ...k, skip: true })))
+    .sort((a, b) => (a.expiry < b.expiry ? -1 : 1));
+  if (!rows.length) { $('walkTable').innerHTML = ''; return; }
+  const what = { strike: 'Strongest strike', maxPain: 'Max pain', centre: 'OI centre' }[$('walkA').value];
+  $('walkTable').innerHTML = `<div class="tbl"><table class="ladder"><tr><th>#</th><th>Expiry</th><th>Days</th><th>${what}</th><th>From today</th><th>Step</th><th>Book</th><th style="text-align:left">Note</th></tr>`
+    + rows.map(r => r.skip
+      ? `<tr class="thin"><td>–</td><td>${fmtDay(r.expiry)}</td><td>${r.dte}</td><td>${px(r.px)}</td><td>${pct((r.px / close - 1) * 100, 1)}</td><td>–</td><td></td><td style="text-align:left">out of reach (the range allowed ±${r.capPct.toFixed(1)}%), left out</td></tr>`
+      : `<tr class="${r.thin ? 'thin' : ''}"><td><b>${r.n}</b></td><td>${fmtDay(r.expiry)}</td><td>${r.dte}</td><td><b class="${r.dir === 'up' ? 'good' : r.dir === 'down' ? 'bad' : ''}">${r.dir === 'up' ? '▲' : r.dir === 'down' ? '▼' : '◆'} ${px(r.px)}</b></td>`
+        + `<td>${pct((r.px / close - 1) * 100, 1)}</td><td>${pct(r.movePct, 1)}</td><td>${r.strength != null ? fmt(r.strength * 100, 1) + '%' : ''}</td>`
+        + `<td style="text-align:left">${[r.thin ? 'small book' : '', r.notBiggest ? '◇ biggest strike in reach' : '', r.building ? 'building' : ''].filter(Boolean).join(' · ')}</td></tr>`).join('')
+    + `</table></div><p class="note">Book = that strike's share of all live open interest. From today = distance from the last close (${px(close)}). Step = the move from the row before.</p>`;
 }
 function walkNote(m, w) {
   const what = { strike: 'strongest strike', maxPain: 'max pain', centre: 'OI centre' }[$('walkA').value];
