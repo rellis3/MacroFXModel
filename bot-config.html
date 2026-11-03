@@ -5662,6 +5662,32 @@ python motif_bot/motif_bot.py --live --url &lt;dashboard-url&gt;</pre>
       <div id="scSymbolBox" style="margin-top:10px"></div>
     </div>
 
+    <!-- Today's signals + manual send -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:600;color:#2dd4bf">Today's Signals</span>
+        <span class="bot-banner-sub" style="margin:0" id="scTodaySince">his signals this session · resets at 17:00 New York (22:00 UK)</span>
+        <button onclick="loadScStatus()" style="margin-left:auto;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div class="bot-banner-sub" style="padding:0 16px 6px;margin:0"><b>Send to MT5</b> places one of these signals now if the bot didn't. It skips the timing and preference checks (too old, entry drift, style off, skip list, Ignore crypto, max open) and keeps the safety ones (kill switch, drawdown lockout, price past his stop, spread, sizing). Market signals go in at the current price; a limit is refused after his cancel time.</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead><tr style="background:var(--s2);color:var(--text3)">
+            <th style="padding:6px 10px;text-align:left">Posted (UK)</th><th style="padding:6px 10px;text-align:left">Signal</th>
+            <th style="padding:6px 10px;text-align:left">Type</th>
+            <th style="padding:6px 10px;text-align:right" title="His entry price from the message">His entry</th>
+            <th style="padding:6px 10px;text-align:right">SL</th><th style="padding:6px 10px;text-align:right">TP / targets</th>
+            <th style="padding:6px 10px;text-align:left">Rules</th>
+            <th style="padding:6px 10px;text-align:right" title="His risk per 0.01 lot, from the message">Risk / 0.01</th>
+            <th style="padding:6px 10px;text-align:right" title="Current price, and how far it is from his entry in R of his stop (+ = worse for this direction)">Now · drift</th>
+            <th style="padding:6px 10px;text-align:left">Bot</th><th style="padding:6px 10px"></th>
+          </tr></thead>
+          <tbody id="scTodayBody"><tr><td colspan="11" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div id="scManualResults" style="padding:6px 16px 12px;font-size:11px"></div>
+    </div>
+
     <!-- Proof of life -->
     <div class="card">
       <div class="card-title">Proof of Life</div>

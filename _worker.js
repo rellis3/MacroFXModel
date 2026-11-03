@@ -89,6 +89,7 @@ function isAllowedKVKey(key) {
     'signal_copier_config', 'signal_copier_credentials', 'signal_copier_tg_credentials', 'signal_copier_tg_login',
     'signal_copier_status', 'signal_copier_state', 'signal_copier_decision_log', 'signal_copier_signals',
     'signal_copier_backfill_report',
+    'signal_copier_manual_override',   // bot page "Send to MT5" requests; an override key, so behind KV_WRITE_SECRET when set
     'egress_audit',
     'spread_profile_v1',
     'pattern_bot_state', 'pattern_bot_status', 'pattern_bot_config',

@@ -62,6 +62,16 @@ Entry guards: kill switch, styles on/off, skip list, max open, stale market sign
 past the stop, entry drift worse than 0.25R, spread wider than 0.2 × stop, min lot that would over-risk the account.
 Every decision goes to the Decision Timeline with its reason.
 
+**Today's Signals** (top of the tab): every signal he has posted since the last session end (17:00 New York,
+22:00 UK). It shows his entry, SL, TP / all targets, cancel/close rules, risk per 0.01 lot, the live price and how
+far it has drifted from his entry, and what the bot did with it. **Send to MT5** places a signal the bot didn't take.
+It writes a request to `signal_copier_manual_override` naming his signal by id, and the bot picks it up within
+~10 s. A manual send:
+- skips: signal age, entry drift, style switch, skip list, Ignore crypto, max open
+- keeps: kill switch, drawdown lockout, price past his stop, spread, sizing
+- refuses a limit after its cancel time
+- handles each request once, and never replays a click older than 10 minutes
+
 It behaves like the other pylego bots (Vote Atlas / Motif / Fib Atlas):
 - **Risk guard:** the shared `pylego.risk_guard` daily/monthly drawdown lockout. It's on by default; the cooldown defaults to 0.
 - **Symbol check:** `verify_symbols` runs at start and on each new symbol. A mismatch shows on the tab and skips that symbol's signals.

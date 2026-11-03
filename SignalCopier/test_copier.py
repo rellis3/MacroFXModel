@@ -337,6 +337,65 @@ def test_weekend_backfill_uses_the_weekly_broker_offset():
     assert first_after["open"] == 157.69          # with offset 0 this was the 05:01 UTC price, 157.30
 
 
+def _req(kv, *pairs):
+    import time as _t
+    kv.data["signal_copier_manual_override"] = {"requests": [{"req": r, "id": i, "t": int(_t.time() * 1000)} for r, i in pairs]}
+
+
+def test_manual_send_takes_a_stale_signal_but_keeps_safety_checks():
+    cp, kv = make()
+    cp.on_message(101, DAILY, datetime.now(timezone.utc) - timedelta(minutes=30))     # every market signal too old
+    assert statuses(cp)["101:0"] == "skipped"
+    _req(kv, ("r1", "101:0"))
+    cp.check_manual()
+    assert statuses(cp)["101:0"] == "open" and cp.manual_results[-1]["ok"] is True
+    assert any(d["id"] == "101:0" and d["reason"] == "manual send from the bot page" for d in cp.decisions)
+    assert any("MANUAL ENTERED" in a for a, _ in cp.alerts)
+    # the same request again is ignored; a second request for an open trade is refused
+    cp.check_manual()
+    assert len(cp.manual_results) == 1
+    _req(kv, ("r1", "101:0"), ("r2", "101:0"))
+    cp.check_manual()
+    assert cp.manual_results[-1] == {**cp.manual_results[-1], "ok": False, "reason": "already open"}
+    # kill switch still wins
+    cp.cfg["kill_switch"] = True
+    _req(kv, ("r3", "101:1"))
+    cp.check_manual()
+    assert cp.manual_results[-1]["ok"] is False and cp.manual_results[-1]["reason"] == "kill switch on"
+
+
+def test_manual_send_ignores_old_clicks_and_unknown_ids_and_late_limits():
+    import time as _t
+    cp, kv = make()
+    cp.on_message(101, DAILY, datetime.now(timezone.utc) - timedelta(hours=1))
+    kv.data["signal_copier_manual_override"] = {"requests": [{"req": "old", "id": "101:0", "t": int((_t.time() - 3600) * 1000)}]}
+    cp.check_manual()
+    assert cp.manual_results == []                                   # a click from an hour ago is not replayed
+    _req(kv, ("x", "999:0"))
+    cp.check_manual()
+    assert cp.manual_results[-1]["reason"] == "unknown signal id"
+    o = cp.book.orders["101:7"]                                      # a limit whose cancel time has passed
+    o["cancel_at_utc"] = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+    cp.execs.pop("101:7", None)
+    _req(kv, ("x", "999:0"), ("lim", "101:7"))
+    cp.check_manual()
+    assert cp.manual_results[-1]["ok"] is False and cp.manual_results[-1]["reason"].startswith("past his cancel time")
+
+
+def test_today_lists_his_signals_with_detail_and_bot_action():
+    cp, _ = make()
+    cp.on_message(101, DAILY, datetime.now(timezone.utc))
+    t = cp.status()["today"]
+    rows = {r["id"]: r for r in t["rows"]}
+    assert len(rows) == 9 and t["since"] <= int(datetime.now(timezone.utc).timestamp())
+    nas = rows["101:7"]
+    assert (nas["order"], nas["entry"], nas["sl"], nas["tp"], nas["cancel_at"], nas["close_at"], nas["risk_usd"]) == \
+        ("limit", 28965, 29096, 28703, "13:00", "21:00", 1.31)
+    assert nas["exec"] == "pending" and nas["price_now"] == 28862 and nas["drift_r"] is None   # limits: no drift
+    assert rows["101:5"]["drift_r"] is not None                                                   # market: drift in R
+    assert rows["101:0"]["exec"] == "open" and rows["101:0"]["style"] == "swing"
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:
