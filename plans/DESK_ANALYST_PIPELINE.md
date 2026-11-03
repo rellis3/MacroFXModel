@@ -179,6 +179,15 @@ Analyst report (all Layer 1 skills):
 `AI_TASK_MODEL_DESK_HEAD=claude-opus-5-5` (or `_DESK_ANALYST`) on Railway. A task pin applies only on the provider it
 names, so a task routed to DeepSeek never receives an Anthropic model id.
 
+## 6b. The desk as a hedge fund: the data flow (2026-11-03)
+
+![The desk's data flow](desk-data-flow.jpg)
+
+Raw data goes through each agent and comes out as the next stage's input: the Desk Pack, 11 analyst reports, the
+rulings, draft ratings, size changes, the book, then the evening score and lessons, which loop back to the next
+morning's evidence clerk. Planned agents (dotted amber) sit beside the step they will join. An interactive version
+with what each agent reads is the Desk Agent Map artifact.
+
 ## 7. Phases
 
 | Phase | Builds | Done when |
