@@ -445,6 +445,32 @@ entry and exit windows. §8's first sketch is narrowed to what can be scored hon
 - **Judging.** At day 20, amendment A2 records the placebo's SD, the MDE and N_req. The test is judged at
   max(120, N_req) counted days, or closes UNDERPOWERED on 2027-12-31.
 
+## 9l. The review in the issues: "Yesterday, reviewed" and the evening edition (2026-11-03)
+
+The owner asked for the evening review to reach the reader, in both forms.
+
+- **"Yesterday, reviewed"** (`reviewPage` in `js/newsletterDesk.js`) is the first page after the cover in the
+  desk magazine and the desk brief. It shows:
+  - last night's day score, beside the single analyst and the race
+  - a bar figure of the cards that moved the day (size × score)
+  - what the book got right and wrong
+  - the lessons, labelled as one-day anecdotes
+  - what was carried into today
+  - the interim running record
+
+  Atlas reads `/api/desk-score` and `/api/desk-score/record` when it builds the issue, and only uses a day before
+  today.
+- **The evening edition** (`js/newsletterEvening.js`, `desk/roles/evening_writer.md`). After the score and the
+  review (21:10 London), one more model call (task desk-head) writes the day top down: the global picture against
+  the morning ruling, the currencies, what moved, the book against the day, and into tomorrow. It writes only from
+  the day's measured moves (08:00 to 21:00 London, % and u, every market), the morning's rulings and risks, the
+  score and the review. It never invents a cause.
+  - Rendered in the issue's look: a cover with tiles; every market in a table plus a figure per asset group with
+    the book's view on each bar; then "The book against the day".
+  - Saved to the archive as kind `desk-evening` (`desk-evening-<date>`), never scored. The archive keeps 100
+    issues now.
+  - The Desk Run track-record panel links to it, and the Atlas archive labels it "Desk evening".
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
@@ -471,6 +497,8 @@ Not built yet. The order is the owner's call; each item names what it needs firs
   - Screens each one against what has already been tested, and hands it to the research protocol for a prereg.
   - It proposes and designs; it never declares a result.
   - Weekly, not daily. It works best once Phase 4 has some months of scored days.
+
+**Built since this list was written:** the evening edition (§9l).
 
 **Build items**
 - **Daily schedule.** The owner sets `SVC_DESKRUN=1` for the 06:55 run once a fresh-pack run has been read. Without

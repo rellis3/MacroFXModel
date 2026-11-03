@@ -683,7 +683,7 @@ function drawNl() {
 }
 async function drawPast() {
   const el = $('nlPast'); if (!el) return; await loadArchive();
-  el.innerHTML = NL_ARCH.length ? NL_ARCH.slice(0, 14).map(i => `<div class="rw"><span><b>${esc(i.kind === 'weekly' ? 'Weekly' : i.kind === 'desk' ? 'Desk magazine' : i.kind === 'desk-brief' ? 'Desk brief' : 'Daily')} · ${esc(i.date)}</b><small>${esc(i.subject)}${i.score ? ' · ' + esc(`median day ${i.score.median}x the expected size, ${i.score.pastShare}% past it`) : i.kind === 'daily' ? ' · not scored yet' : ''}</small></span><span style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn" href="/api/newsletter/issue?id=${encodeURIComponent(i.id)}" target="_blank" rel="noopener">Open</a><button class="btn" data-tg="${esc(i.id)}">Send to Telegram</button></span></div>`).join('') : '<p class="note">Nothing saved yet. Build an issue and it is saved here automatically.</p>';
+  el.innerHTML = NL_ARCH.length ? NL_ARCH.slice(0, 14).map(i => `<div class="rw"><span><b>${esc(i.kind === 'weekly' ? 'Weekly' : i.kind === 'desk' ? 'Desk magazine' : i.kind === 'desk-brief' ? 'Desk brief' : i.kind === 'desk-evening' ? 'Desk evening' : 'Daily')} · ${esc(i.date)}</b><small>${esc(i.subject)}${i.score ? ' · ' + esc(`median day ${i.score.median}x the expected size, ${i.score.pastShare}% past it`) : i.kind === 'daily' ? ' · not scored yet' : ''}</small></span><span style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn" href="/api/newsletter/issue?id=${encodeURIComponent(i.id)}" target="_blank" rel="noopener">Open</a><button class="btn" data-tg="${esc(i.id)}">Send to Telegram</button></span></div>`).join('') : '<p class="note">Nothing saved yet. Build an issue and it is saved here automatically.</p>';
   el.querySelectorAll('[data-tg]').forEach(b => { b.onclick = async () => { b.disabled = true; const r = await J('/api/newsletter/telegram', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: b.getAttribute('data-tg') }) }); $('nlStatus').textContent = r?.ok ? 'Sent to Telegram.' : (r?.error ?? 'Could not send.'); b.disabled = false; }; });
 }
 // A newsletter never generates a brief. Only the Generate button does (it costs a model call, and the owner decides when). If the stored brief is old, the issue is built from it and says so.
@@ -730,7 +730,11 @@ async function buildIssue(kind) {
     // today's desk run exists. It is saved beside the daily as kind "desk" and shown side by side; the daily itself is unchanged.
     // Two desk formats (owner, 2026-11-03): the desk magazine (an issue built around the desk, top-down) and the desk brief (the cover and one read).
     let outD = null, outB = null;
-    if (!weekly) { try { const run = await J('/api/desk-run'); if (run?.ok && run.date === today && run.head?.ok) { outD = releaseNewsletterV3({ ...base, desk: run, deskMode: 'magazine' }); outB = releaseNewsletterV3({ ...base, desk: run, deskMode: 'brief' }); } } catch (e) { console.warn('[atlas newsletter] desk edition failed:', e.message); } }
+    if (!weekly) { try { const run = await J('/api/desk-run'); if (run?.ok && run.date === today && run.head?.ok) {
+      // last night's score and evening review, for the "Yesterday, reviewed" page (never today's: today is not scored until 21:10)
+      const [ds, dr] = await Promise.all([J('/api/desk-score').catch(() => null), J('/api/desk-score/record').catch(() => null)]);
+      const deskReview = ds?.ok && ds.score?.date < today ? { score: ds.score, reflection: ds.reflection, movers: ds.movers, record: dr?.ok ? dr.record : null } : null;
+      outD = releaseNewsletterV3({ ...base, desk: run, deskMode: 'magazine', deskReview }); outB = releaseNewsletterV3({ ...base, desk: run, deskMode: 'brief', deskReview }); } } catch (e) { console.warn('[atlas newsletter] desk edition failed:', e.message); } }
     showNl(out, kind, outD ?? out2, outD ? 'Desk magazine' : 'Previous layout');
     if (outD) showDeskButtons(outD, outB);
     st.textContent = `Built: ${out.subject}. Saving…`;

@@ -108,7 +108,7 @@ export const MAG_CSS = `
   .pg{box-shadow:none;border-radius:0;margin:0;padding:0;break-after:page;page-break-after:always}
   .pg:last-of-type{break-after:auto}
   .pg .ldg>div{break-inside:avoid}
-  .pg.pgflow{break-after:auto;page-break-after:auto;margin-top:18px}.pg.pgflow .box,.pg.pgflow tr,.pg.pgflow .two>*,.pg.pgflow figcaption{break-inside:avoid}.pg.pgflow .ft tr:first-child{break-after:avoid}.pg.pgflow h2.sh,.pg.pgflow .evl,.pg.pgflow h3.ss{break-after:avoid}.pg.pgflow .tl6{break-inside:avoid}.pg.pgflow figure.lad{break-inside:auto}
+  .pg.pgflow{break-after:auto;page-break-after:auto;margin-top:18px}.pg.pgflow .box,.pg.pgflow tr,.pg.pgflow .two>*,.pg.pgflow figcaption{break-inside:avoid}.pg.pgflow .ft tr:first-child{break-after:avoid}.pg.pgflow h2.sh,.pg.pgflow .evl,.pg.pgflow h3.ss{break-after:avoid}.pg.pgflow .tl6{break-inside:avoid}.pg.pgflow figure.lad{break-inside:auto}.pg.pgflow .mh,.pg.pgflow .kick{break-after:avoid}
   .pg.land{page:land}
   .pg .cols{column-count:2}.pg .split{display:grid;grid-template-columns:1fr 200px;gap:22px}.pg .two{display:grid;grid-template-columns:1fr 1fr;gap:20px}.pg .fig2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .pg .notes{grid-template-columns:1fr 1fr 1fr 1fr}
@@ -498,11 +498,12 @@ ${c.watch ? `<div class="kick" style="margin-top:14px">The next test</div><h2 cl
     // The two desk-only formats (js/newsletterDesk.js). Pages flow on in print (no forced page break after each
     // section), so a short section does not leave half a sheet blank.
     const fl = p => `<div class="pg pgflow">${mh(p.section)}${p.html}</div>`;
-    if (c.deskMode === 'brief') return `<div class="mg">${p1}${c.deskBrief ? fl({ section: 'The desk brief', html: c.deskBrief }) : ''}</div>`;
+    const pRv = c.deskReview ? fl(c.deskReview) : '';
+    if (c.deskMode === 'brief') return `<div class="mg">${p1}${c.deskBrief ? fl({ section: 'The desk brief', html: c.deskBrief }) : ''}${pRv}</div>`;
     if (c.deskMode === 'magazine') {
       const [dG, dC, dB, dR] = c.deskPages ?? [];
       const pBack = `<div class="pg pgflow">${mh('The backdrop')}<div class="kick">The state of the levels today</div><h2 class="sh">The backdrop: rates, credit, fear and the dollar</h2>${t.globalHtml}</div>`;
-      return `<div class="mg">${p1}${dG ? fl(dG) : ''}${pBack}${dC ? fl(dC) : ''}${(c.deskGroups ?? []).map(fl).join('')}${dB ? fl(dB) : ''}${dR ? fl(dR) : ''}${pR}${p2}${back}</div>`;
+      return `<div class="mg">${p1}${pRv}${dG ? fl(dG) : ''}${pBack}${dC ? fl(dC) : ''}${(c.deskGroups ?? []).map(fl).join('')}${dB ? fl(dB) : ''}${dR ? fl(dR) : ''}${pR}${p2}${back}</div>`;
     }
     return `<div class="mg">${p1}${pT}${pD}${pP}${p2}${pR}${bd}${p6}${desk}${back}</div>`;
   }

@@ -43,7 +43,7 @@ import { directionNote } from './directionRead.js';
 import { briefOpening } from './openingCheck.js';
 import { currencyNarrative, pairNarrative } from './newsletterNarrative.js';
 import { storyIntro, yieldGuide, chainGuide, relationNote, stressRead, auditGuide, positioningGuide, sectorNote, commodityNote, fearNote, currencyNote } from './newsletterExplain.js';
-import { deskPages, deskCover, groupPages, deskBrief } from './newsletterDesk.js';
+import { deskPages, deskCover, groupPages, deskBrief, reviewPage } from './newsletterDesk.js';
 import { MAG_CSS, composeMagazine, yieldDecompChart, relationChart, evidenceMatrix, accountabilityPage, evBadge, barFigure, tileRow, flatTable, guide, currencyCard, marketNarrative } from './newsletterMag.js';
 import { pressureWords } from './rangePressure.js';
 import { buildIdea } from './macroIdea.js';
@@ -618,7 +618,9 @@ export function buildNewsletter(n) {
       deskMode: n.desk ? n.deskMode ?? null : null,
       deskGroups: n.desk && n.deskMode === 'magazine' ? groupPages(n.desk, Hh) : null,
       deskBrief: n.desk && n.deskMode === 'brief' ? deskBrief(n.desk, Hh, { flag: c => flagSvg(c, 16, 11) }) : null,
-      mapText: n.desk && n.deskMode === 'magazine' ? 'Top down: the global ruling · the backdrop · the currencies, ranked · each asset group, market by market · the book · the risk desk · releases to come' : n.desk && n.deskMode === 'brief' ? 'The desk brief: the global ruling, the currencies, the clearest ideas and what could break the day' : null,
+      // last night's score and evening review (n.deskReview: /api/desk-score + /record), in both desk formats
+      deskReview: n.desk && n.deskMode && n.deskReview ? reviewPage(n.deskReview, Hh) : null,
+      mapText: n.desk && n.deskMode === 'magazine' ? (n.deskReview ? 'Yesterday, reviewed · then top down: ' : 'Top down: ') + 'the global ruling · the backdrop · the currencies, ranked · each asset group, market by market · the book · the risk desk · releases to come' : n.desk && n.deskMode === 'brief' ? 'The desk brief: the global ruling, the currencies, the clearest ideas and what could break the day' : null,
       today: v2Today, feature, glance: { broken: String(_bk), testable: String(_tl.length), stress: n.riskFlags ? `${n.riskFlags.active}/${n.riskFlags.total}` : 'n/a', next: _evTop ? `${_evTop.event}, ${ukTime(_evTop.ms)}` : '' }, alarms,
       yieldFig: yieldDecompChart(n.yieldSeries ?? S, Hh), yieldCaption, textbook, lessonBox, qod: qodHtml, intro, yieldGuide: yieldGuide(ys2, n.links), stress, theoriesData: th, notFit,
       chainFig: chainSvg(n.links, { marks: brokenL.map(l => l.id), noKey: true }), checks, chainMethod, chainGuide: chainGuide(n.links, lagging.map(x => x.key)), chainLead: `${_bk} of ${_tl.length} testable links did not hold over the last 20 days. Read every arrow as cause to effect, left to right. The numbered orange arrows are the broken ones; everything green behaved the way the textbook says.`, relationFigs, relationLead: 'Each chart shows two markets over the same 20 days, each scaled by its own usual wobble so a yield and a share index can share one axis. If the textbook link held, the lines would travel together, or apart for an inverse link. Where they do not, something other than the usual transmission is at work. That is an observation, and it only becomes evidence for a story once other checks agree.', relationFoot: '',
@@ -698,3 +700,5 @@ export function buildNewsletter(n) {
   T.push('---', 'NOT FINANCIAL ADVICE.', ...DISCLAIMER.map(d => d.replace(/^NOT FINANCIAL ADVICE\.\s*/, '')));
   return { subject, preheader, html, text: T.join('\n') };
 }
+
+export { CSS as BASE_CSS };   // the issue's base styles, for editions composed elsewhere (js/newsletterEvening.js)
