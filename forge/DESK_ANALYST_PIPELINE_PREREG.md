@@ -148,6 +148,15 @@ run, a pack it would hold (no forecast lines, three or more critical feeds out, 
 data) is rebuilt once. A run still counts only if it finishes before 08:00 London (§3); this changes no rule. No
 outcome had been computed.
 
+### A5 — 2026-11-03 — PRE-RESULTS
+Before the first counted day, the morning pipeline gains one stage. **The red team** (Phase 7,
+`desk/roles/red_team.md`) attacks the asset desks' draft book after the risk desk. Its targets are crowding,
+contradictions, tested-null ideas, events in the window, stretched moves and missing data. The Head of Desk then answers
+each challenge and may change cards. The scored book is still the Head's book as written before 08:00 (§3), and the
+desk is still scored as operated. The single-prompt control (H2) is unchanged and never sees the red team. **Portfolio
+risk** (Phase 11, `js/deskRisk.js`) describes the book's concentration and scenarios and is not a scored cell. No
+outcome had been computed.
+
 ---
 
 ## RESULTS — not run

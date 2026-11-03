@@ -225,6 +225,7 @@ import { SLOTS as _DU_SLOTS, slotMs as _duSlotMs, marketSince as _duMarketSince,
 import { sliceFeed as _deskSliceFeed } from './js/deskSlices.js';
 import { assess as _dqAssess, afterRun as _dqAfterRun } from './js/deskDataQuality.js';
 import { attribution as _atAttribution, attributionRecord as _atRecord } from './js/deskAttribution.js';
+import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
 import { dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
@@ -5031,6 +5032,27 @@ function _duStart(slot, date) {
     .catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
   return job;
 }
+// GET /api/desk-risk?date=: the portfolio risk manager (Phase 11, js/deskRisk.js) on the day's book after the cap:
+// effective bets, each card's share of risk, the bets that move together, scenarios and the book over recent sessions.
+// Daily bars from OANDA (~60 sessions per live card); cached per book in memory.
+const _rkCache = new Map();
+app.get('/api/desk-risk', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : _dpLondonDate(Date.now());
+    const run = await _drLoad(date);
+    if (!run?.head?.ok) return res.status(404).json({ ok: false, error: `no desk book for ${date}` });
+    const key = `${date}|${run.finishedAt}`;
+    if (_rkCache.has(key)) return res.json(_rkCache.get(key));
+    const cards = run.head.book.instruments, live = Object.entries(cards).filter(([, c]) => /LONG|SHORT/.test(c.rating) && c.size > 0).map(([n]) => n), closes = {};
+    let next = 0;
+    await Promise.all(Array.from({ length: 4 }, async () => { while (next < live.length) { const n = live[next++], sym = _dsOanda[n]; if (!sym) continue; try { closes[n] = (await _btFetchD1(sym, 70)).sort((a, b) => (a.date < b.date ? -1 : 1)).map(b => ({ date: b.date, close: b.close })); } catch { /* no history: listed as missing */ } } }));
+    const out = { ok: true, date, bookFinishedAt: run.finishedAt, label: 'description of the book, not a forecast; 1 card-σ = one normal-size card moving one daily σ', ..._rkBookRisk(cards, closes) };
+    if (_rkCache.size > 20) _rkCache.clear();
+    _rkCache.set(key, out);
+    res.json(out);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // GET /api/desk-quality?date=: the data quality officer's read of the day's pack, and after the run which gaps mattered
 app.get('/api/desk-quality', async (req, res) => {
   try {

@@ -118,14 +118,34 @@ ${pack.gaps?.length ? `<h3 style="font-size:14px;margin:14px 0 6px">Every gap, i
     parts.push(`<div class="grid2"><div class="panel"><h2>Book shape <i>net exposure by currency, cap ${e?.cap ?? '–'}</i></h2>${e ? `<table><thead><tr><th>Currency</th><th>Before cap</th><th>After</th></tr></thead><tbody>${Object.keys(e.after).map(c => `<tr><td class="n">${esc(c)}</td><td class="n">${f(e.before[c])}</td><td class="n ${cls(e.after[c])}">${f(e.after[c])}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">No exposure report.</p>'}</div>
 <div class="panel"><h2>The risk desk's warnings</h2>${w.length ? `<ul>${w.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="muted">None today.</p>'}</div></div>`);
   } else parts.push(`<div class="panel"><h2>Book shape</h2><p class="muted">No book for today yet. Run it on <a href="desk-run.html">Desk Run</a>, or set SVC_DESKRUN=1 for the 06:55 run.</p></div>`);
-  parts.push(planned(7, 'Red team', 'The challenges put to the book before it was published (crowding, contradictions, tested-null ideas, events in the window) and how the Head answered each.'));
-  parts.push(planned(11, 'Portfolio risk and stress', 'How concentrated the book is and what it does in a scenario: "USD +1σ", "risk-off day", "yen squeeze", in forecast units across all 41 markets.'));
+  // Phase 7: the red team's challenges and the Head's answers
+  const rt = run?.ok && run.date === today ? run.debate?.redTeam : null;
+  if (rt?.view) {
+    const ans = Object.fromEntries((run.head?.book?.redTeamAnswers ?? []).map(a => [a.id, a]));
+    const SEV = { high: 'bad', medium: 'warn', low: '' };
+    parts.push(`<div class="panel"><h2>Red team <i>model risk: the challenges put to the draft book, and the Head's answers</i></h2><p>${esc(rt.view.headline)}</p>
+${rt.view.challenges.length ? `<table><thead><tr><th>Target</th><th>Kind</th><th>Challenge</th><th>The Head's answer</th></tr></thead><tbody>${rt.view.challenges.map(c => { const a = ans[c.id]; return `<tr><td class="n">${esc(c.target)} <span class="chip ${SEV[c.severity] ?? ''}">${esc(c.severity)}</span></td><td>${esc(c.kind)}</td><td>${esc(c.challenge)}${c.ask ? `<br><span class="muted">Ask: ${esc(c.ask)}</span>` : ''}</td><td>${a ? `${a.changed ? '<span class="chip ok">changed</span> ' : '<span class="chip">kept</span> '}${esc(a.answer)}` : '<span class="muted">no answer</span>'}</td></tr>`; }).join('')}</tbody></table>` : '<p class="muted">No challenges: the red team found the book sound.</p>'}</div>`);
+  } else parts.push(`<div class="panel"><h2>Red team</h2><p class="muted">${b ? 'This book was written before the red team existed, or it failed today.' : 'No book for today yet.'}</p></div>`);
+  // Phase 11: portfolio risk and stress (fetched after the page draws: it reads ~60 days of bars per card)
+  parts.push(`<div class="panel" id="riskpanel"><h2>Portfolio risk and stress</h2><p class="muted">${b ? 'Reading about 60 days of daily bars for each card…' : 'No book for today yet.'}</p></div>`);
   $('today').innerHTML = parts.join('');
+  if (b) renderRisk();
   document.querySelectorAll('[data-up]').forEach(btn => btn.onclick = async () => {
     btn.disabled = true; const r = await getJson(`/api/desk-update/run?slot=${btn.dataset.up}`, { method: 'POST' });
     $('upmsg').textContent = r?.ok ? 'Running: this panel refreshes in a minute.' : (r?.error ?? 'failed');
     if (r?.ok) setTimeout(renderToday, 60_000); else btn.disabled = false;
   });
+}
+
+async function renderRisk() {
+  const r = await getJson(`/api/desk-risk?date=${today}`), el = $('riskpanel'); if (!el) return;
+  if (!r?.ok) { el.innerHTML = `<h2>Portfolio risk and stress</h2><p class="muted">${esc(r?.reason ?? r?.error ?? 'not available')}</p>`; return; }
+  el.innerHTML = `<h2>Portfolio risk and stress <i>${esc(r.label)} · ${r.days} sessions to ${esc(r.to)}</i></h2>
+<div class="tiles"><div class="tile"><span>Effective bets</span><b class="${r.effectiveBets < 3 ? 'dn' : ''}">${r.effectiveBets}</b></div><div class="tile"><span>Cards</span><b>${r.cards}</b></div><div class="tile"><span>Book daily σ</span><b>${r.bookSigma} card-σ</b></div><div class="tile"><span>Worst recent day</span><b class="dn">${f(r.history.worst.pnl)}</b></div><div class="tile"><span>1-in-20 day</span><b>${f(r.history.p05)}</b></div></div>
+<div class="grid2"><div><h3 style="font-size:14px;margin:6px 0">Scenarios</h3><table><tbody>${r.scenarios.map(x => `<tr><td>${esc(x.name)}</td><td class="n ${cls(x.pnl)}">${f(x.pnl)} card-σ</td></tr>`).join('')}</tbody></table></div>
+<div><h3 style="font-size:14px;margin:6px 0">Where the risk sits</h3><table><tbody>${r.contributions.slice(0, 6).map(c => `<tr><td class="n">${esc(c.inst)}</td><td class="n">${f(c.weight)}</td><td class="n">${Math.round(c.share * 100)}% of risk</td></tr>`).join('')}</tbody></table></div></div>
+${r.bets.length ? `<h3 style="font-size:14px;margin:12px 0 6px">The same bet in several names</h3><ul>${r.bets.map(x => `<li><b>${esc(x.lead)}</b> with ${x.cards.filter(c => c !== x.lead).map(esc).join(', ')} <span class="muted">· combined size ${x.weight}</span></li>`).join('')}</ul>` : ''}
+${r.missing?.length ? `<p class="muted">No price history for: ${r.missing.map(esc).join(', ')}.</p>` : ''}<p class="muted">Effective bets is (total size)² ÷ the book's variance: 1 when every card is the same trade. Scenarios run a one-σ move in each factor through each market's 60-day beta.</p>`;
 }
 
 // ── PERFORMANCE: the track record, the latest review, the updates ──
