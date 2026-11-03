@@ -735,4 +735,5 @@ education/papers/**/*.pdf
 
 # rate legs: R2 rates-legs/ is the store (scripts/rates_line/legs_r2.py push|pull); the server syncs cog_chart from it
 /analysis/output/stir_1m_deep/
+/analysis/output/stir_1m_older/
 /analysis/output/cog_chart/
