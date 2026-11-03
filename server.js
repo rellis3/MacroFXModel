@@ -4594,6 +4594,28 @@ svcInterval('deskPack', async () => {
 const _DR_INDEX_KV = 'desk_run_index';
 const _DR_KEY = date => `desk_run_${date}`;
 let _drLatest = null, _drJob = null;
+// Restarts. Railway redeploys on every merge to main and a full run takes 10-15 minutes, so a run can be killed
+// part-way (2026-11-03: a 10:00 run lost to the 10:14 deploy, with nothing saved). Every stage that succeeds is
+// saved to desk_run_ckpt_<date> as it finishes, and desk_run_job marks a run in progress. On boot a marked run for
+// today is started again and takes its finished stages from the checkpoint (js/deskRun.js checkpointed), so it pays
+// only for what was left. Gives up after 3 restarts; a checkpoint older than 6 hours is not reused.
+const _DR_CKPT_KEY = date => `desk_run_ckpt_${date}`;
+const _DR_JOB_KV = 'desk_run_job';
+const _DR_CKPT_MAX_AGE_MS = 6 * 3600_000, _DR_MAX_RESUMES = 3;
+async function _drCheckpoint(date) {
+  let saved = null;
+  try { const raw = await kv.get(_DR_CKPT_KEY(date)); if (raw) saved = JSON.parse(zlib.gunzipSync(Buffer.from(raw, 'base64')).toString('utf8')); } catch { saved = null; }
+  const fresh = saved && Date.now() - Date.parse(saved.startedAt) < _DR_CKPT_MAX_AGE_MS;
+  const state = { startedAt: fresh ? saved.startedAt : new Date().toISOString(), entries: fresh ? (saved.entries ?? {}) : {} };
+  let chain = Promise.resolve();
+  return {
+    found: fresh ? Object.keys(state.entries).length : 0,
+    get: k => state.entries[k],
+    // Saves run one after another, each writing the whole store (about 40 stages at most).
+    put: (k, v) => { state.entries[k] = v; chain = chain.then(() => kv.put(_DR_CKPT_KEY(date), zlib.gzipSync(Buffer.from(JSON.stringify(state)), { level: 6 }).toString('base64'))).catch(e => console.warn('[desk-run] checkpoint save failed:', e.message)); return chain; },
+    clear: async () => { await chain; await kv.del(_DR_CKPT_KEY(date)).catch(() => {}); },
+  };
+}
 function _deskLoadRoles() {
   const dir = path.join(__dirname, 'desk', 'roles');
   return fs.readdirSync(dir).filter(f => f.endsWith('.md')).sort().map(f => _deskParseRole(fs.readFileSync(path.join(dir, f), 'utf8'), f));
@@ -4608,10 +4630,14 @@ async function _deskRun(trigger, job, mode = 'full') {
   const today = _dpLondonDate(Date.now());
   let pack = _dpLatest?.date === today ? _dpLatest : await _dpLoad(today);
   if (!pack) { job.stage = 'building the desk pack'; pack = await _deskPackBuild(`desk-run:${trigger}`); }
+  const checkpoint = await _drCheckpoint(pack.date);
+  job.date = pack.date;
+  job.resumedStages = checkpoint.found;
+  await kv.put(_DR_JOB_KV, JSON.stringify({ status: 'running', trigger, mode, date: pack.date, startedAt: new Date(job.startedAt).toISOString(), resumes: job.resumes ?? 0 })).catch(() => {});
   job.stage = 'analysts';
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
   const run = await _runDesk({
-    pack, roles, ledger: DESK_EVIDENCE, now: Date.now, concurrency: 4, mode,
+    pack, roles, ledger: DESK_EVIDENCE, now: Date.now, concurrency: 4, mode, checkpoint,
     exposureCap: Number(process.env.DESK_EXPOSURE_CAP ?? 4),   // per-currency cap in normal-size units; 0 turns it off
     styleExamples: _deskStyleExamples(await _nlLoad().catch(() => []) ?? []),   // the latest regular issues, so the desk edition matches their voice
     parseJson: (txt, label) => _parseModelJson(txt, label),
@@ -4650,19 +4676,33 @@ async function _deskRun(trigger, job, mode = 'full') {
     const idx = (await _drLoadIndex()).filter(r => r.date !== run.date);
     idx.push({ date: run.date, finishedAt: run.finishedAt, trigger, mode: run.mode, headOk: !!run.head?.ok, failed: [...run.failed, ...(run.debate?.failed ?? [])], calls: run.calls, usage: run.usage });
     await kv.put(_DR_INDEX_KV, JSON.stringify(idx.slice(-400)));
+    await checkpoint.clear();   // the run is saved whole: the next Run now starts fresh
   } catch (e) { console.warn('[desk-run] save failed:', e.message); }
   console.log(`[desk-run] ${run.date} (${run.mode}): ${Object.values(run.analysts).filter(a => a.ok).length}/${Object.keys(run.analysts).length} analysts, debate failures ${run.debate?.failed?.length ?? '-'}, head ${run.head?.ok ? 'ok' : 'FAILED'}, ${run.calls} calls, tokens in ${run.usage.in} out ${run.usage.out}`);
   return run;
 }
-function _drStart(trigger, mode = 'full') {
+function _drStart(trigger, mode = 'full', resume = null) {
   if (_drJob?.status === 'running') return null;
-  const job = _drJob = { status: 'running', trigger, mode, stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null, date: null };
+  const job = _drJob = { status: 'running', trigger, mode, stage: resume ? 'resuming after a server restart' : 'starting', startedAt: Date.now(), finishedAt: null, error: null, date: null,
+    ...(resume ? { resumes: (resume.resumes ?? 0) + 1, firstStartedAt: resume.startedAt } : {}) };
   _deskRun(trigger, job, mode)
     .then(r => { job.status = 'done'; job.date = r.date; })
     .catch(e => { job.status = 'error'; job.error = e.message; console.error('[desk-run]', e.message); })
-    .finally(() => { job.finishedAt = Date.now(); });
+    .finally(async () => { job.finishedAt = Date.now(); await kv.del(_DR_JOB_KV).catch(() => {}); });
   return job;
 }
+// On boot: a run that was in progress when the server stopped is started again (same day only, at most 3 times).
+setTimeout(async () => {
+  try {
+    const raw = await kv.get(_DR_JOB_KV); if (!raw) return;
+    const m = JSON.parse(raw);
+    if (m?.status !== 'running' || m.date !== _dpLondonDate(Date.now()) || (m.resumes ?? 0) >= _DR_MAX_RESUMES || !_aiAnyKey()) {
+      console.warn(`[desk-run] not resuming the ${m?.date} run (${(m?.resumes ?? 0) >= _DR_MAX_RESUMES ? 'too many restarts' : 'stale or no model key'})`);
+      await kv.del(_DR_JOB_KV).catch(() => {}); return;
+    }
+    if (_drStart(m.trigger ?? 'manual', m.mode ?? 'full', m)) console.log(`[desk-run] resuming the ${m.date} ${m.mode} run after a server restart (restart ${(m.resumes ?? 0) + 1})`);
+  } catch (e) { console.warn('[desk-run] resume check failed:', e.message); }
+}, 20_000);
 // Several minutes of model calls, so it answers at once (202) and runs in the background; poll /api/desk-run/status.
 // ?mode=quick runs the analysts and the Head only (Phase 1, ~12 calls); the default runs the full debate (~32 calls).
 app.post('/api/desk-run', (req, res) => {

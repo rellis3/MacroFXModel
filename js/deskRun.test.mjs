@@ -214,4 +214,27 @@ await t('head prompt lists every instrument with its legs and the analysts in gl
   assert.ok(p.prompt.includes('failed today') && p.prompt.includes('options_oi'));
 });
 
+await t('runDesk: a run cut off mid-way (server restart) picks up from its checkpoint without paying again', async () => {
+  const store = new Map(), checkpoint = { get: k => store.get(k), put: async (k, v) => { store.set(k, structuredClone(v)); } };
+  // First process: dies after 15 model calls; calls after that never answer, as when the server is killed.
+  const m1 = fakeModel(); let died; const dead = new Promise(r => { died = r; }); let c1 = 0;
+  const dying = async a => { if (++c1 > 15) { died(); return new Promise(() => {}); } return m1.fn(a); };
+  await Promise.race([runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: dying, parseJson, now: clock, checkpoint, retryDelayMs: 1 }), dead]);
+  assert.equal(store.size, 15, 'each answered stage was saved as it finished');
+  // Second process: same day, same store.
+  const m2 = fakeModel();
+  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: m2.fn, parseJson, now: clock, checkpoint, retryDelayMs: 1 });
+  const clean = fakeModel(), ref = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: clean.fn, parseJson, now: clock, retryDelayMs: 1 });
+  assert.equal(m2.calls.length, clean.calls.length - 15, 'only the stages not yet saved were asked again');
+  assert.equal(run.resumed.stages, 15);
+  assert.ok(run.head.ok && run.newsletter?.ok);
+  assert.deepEqual(run.head.book, ref.head.book);
+  assert.equal(run.calls, ref.calls, 'saved attempts still count (they were paid for)');
+  assert.equal(ref.resumed, undefined);
+  // A changed prompt (other data, other role text) misses the store and is asked afresh.
+  const m3 = fakeModel();
+  await runDesk({ pack, roles, ledger: [], callModel: m3.fn, parseJson, now: clock, checkpoint, retryDelayMs: 1, mode: 'quick' });
+  assert.equal(m3.calls.length, roles.filter(r => r.output === 'analyst_report').length + 1);
+});
+
 console.log(`deskRun: ${n} tests passed`);

@@ -116,7 +116,7 @@ function render(run, universe) {
       ${a.report.points.map(p => `<div class="pt">${esc(p.claim)} <code>${esc(p.evidence)}</code>${Object.entries(p.impact).map(([k, v]) => `<span class="imp">${k} ${sgn(v)}</span>`).join('')}</div>`).join('')}
       ${a.report.gaps.length ? `<div class="pt muted">Gaps: ${a.report.gaps.map(esc).join(' · ')}</div>` : ''}</details>`
     : `<details><summary class="fail">${esc(a.id)} failed</summary><div class="pt muted">${esc(a.errors.join('; '))}</div></details>`).join('')}</div>`);
-  parts.push(`<p class="muted">Tokens: in ${run.usage?.in ?? '?'} · out ${run.usage?.out ?? '?'} · finished ${esc(run.finishedAt)} · ${esc(run.trigger ?? '')}. This book is context from the analyst pipeline (plans/DESK_ANALYST_PIPELINE.md). It is not a tested signal: it is scored only once its pre-registration is in place.</p>`);
+  parts.push(`<p class="muted">Tokens: in ${run.usage?.in ?? '?'} · out ${run.usage?.out ?? '?'} · finished ${esc(run.finishedAt)} · ${esc(run.trigger ?? '')}${run.resumed ? ` · resumed after a server restart (${run.resumed.stages} finished stages kept, not paid for twice)` : ''}. This book is context from the analyst pipeline (plans/DESK_ANALYST_PIPELINE.md). It is not a tested signal: it is scored only once its pre-registration is in place.</p>`);
   $('out').innerHTML = parts.join('');
   const cmp = document.getElementById('nlCmp');
   if (cmp) cmp.onclick = () => { const box = document.getElementById('nlCmpBox'); const show = box.style.display === 'none'; box.style.display = show ? 'grid' : 'none'; if (show) box.querySelectorAll('iframe').forEach(f => { if (f.src === 'about:blank') f.src = f.dataset.src; }); };
@@ -188,12 +188,13 @@ const STAGE_TEXT = s => /desk pack/.test(s) ? 'Collecting this morning\'s data (
   : /analysts/.test(s) ? `The analysts are reading their data: ${s.replace(/^analysts\s*/, '') || 'starting'}`
   : /debate/.test(s) ? `The advocates are arguing (${s})` : /ruling/.test(s) ? `The manager is ruling (${s})`
   : /asset desks/.test(s) ? `The asset desks are rating their groups (${s})` : /risk desk/.test(s) ? 'The risk desk is sizing the book'
+  : /resuming/.test(s) ? 'Picking the run up again after a server restart'
   : /newsletter/.test(s) ? 'Writing the desk edition of the newsletter' : /head/.test(s) ? 'The Head of Desk is writing the book' : s;
 function showRunning(j) {
   const mins = Math.floor((Date.now() - j.startedAt) / 60000), secs = Math.floor((Date.now() - j.startedAt) / 1000) % 60;
   $('status').textContent = '';
   $('out').innerHTML = `<div class="panel running"><div class="big">Desk run in progress</div>
-    <div>${esc(STAGE_TEXT(j.stage ?? ''))}</div><div class="muted">${mins}m ${String(secs).padStart(2, '0')}s so far · a full run takes about 10-15 minutes, a quick run 6-10 · this page updates by itself</div>
+    <div>${esc(STAGE_TEXT(j.stage ?? ''))}</div>${j.resumes ? `<div class="muted">The server restarted during this run (a deploy), so it picked up where it stopped${j.resumedStages ? `: ${j.resumedStages} finished stages kept, only the rest are being run` : ''}.</div>` : ''}<div class="muted">${mins}m ${String(secs).padStart(2, '0')}s so far · a full run takes about 10-15 minutes, a quick run 6-10 · this page updates by itself</div>
     <div class="bar"><i></i></div></div>`;
 }
 let pollTimer = null;

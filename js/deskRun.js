@@ -10,7 +10,12 @@
  * fails is recorded as failed with its errors, and the Head is told which areas went unseen. If fewer than half
  * the analysts succeed, the Head does not run: a book written from a third of the desk would read as complete.
  *
- * Design: plans/DESK_ANALYST_PIPELINE.md (Layers 1 and 3, Phase 1).
+ * Restarts: with a `checkpoint` store, every stage that succeeds is saved as it finishes, keyed by its label and a
+ * hash of its exact prompt. A run started again after a server restart (Railway redeploys on every merge to main;
+ * on 2026-11-03 a 10:00 run was lost to the 10:14 deploy) takes those stages from the store instead of paying for
+ * them again. Later stages read earlier stages' outputs, so their prompts, and their keys, come out the same.
+ *
+ * Design: plans/DESK_ANALYST_PIPELINE.md (Layers 1 and 3, Phase 1; §9i restarts).
  */
 import { buildAnalystPrompt, buildHeadPrompt, buildStagePrompt, reportsText, groupData, universeText } from './deskRoles.js';
 import { validateAnalystReport, validateHeadBook, validateDebateCase, validateGlobalView, validateCurrencyViews, validateAssetViews, validateRiskCase } from './deskSchemas.js';
@@ -18,6 +23,7 @@ import { allInstruments, DESK_UNIVERSE, DESK_CCYS, instrumentLegs } from './desk
 import { capExposure } from './deskExposure.js';
 import { newsletterSections } from './deskNewsletter.js';
 import { validateNewsletterIssue } from './deskSchemas.js';
+import { createHash } from 'node:crypto';
 
 export const DESK_RUN_VERSION = 1;
 const TASK = { quick: 'desk-analyst', deep: 'desk-head' };
@@ -52,6 +58,22 @@ async function askValidated({ callModel, parseJson, task, system, prompt, maxTok
   return { ok: false, attempts, errors: attempts.at(-1)?.errors ?? [attempts.at(-1)?.error ?? 'failed'] };
 }
 
+/**
+ * askValidated through a checkpoint store ({ get(key), put(key, value) }, get synchronous). A saved success is
+ * returned without a model call; its attempts keep their usage (it was paid for) and are marked resumed.
+ */
+export function checkpointed(checkpoint, counter = { resumed: 0 }) {
+  return async args => {
+    if (!checkpoint) return askValidated(args);
+    const key = `${args.label}:${createHash('sha1').update(`${args.task}\n${args.system}\n${args.prompt}`).digest('hex').slice(0, 16)}`;
+    const hit = checkpoint.get(key);
+    if (hit?.ok) { counter.resumed++; return { ...hit, attempts: (hit.attempts ?? []).map(a => ({ ...a, resumed: true })) }; }
+    const r = await askValidated(args);
+    if (r.ok) { try { await checkpoint.put(key, r); } catch { /* a lost save costs a repeat call after a restart, not the run */ } }
+    return r;
+  };
+}
+
 /** Run up to `limit` async jobs at a time, preserving order. */
 async function pool(items, limit, fn) {
   const out = new Array(items.length); let next = 0;
@@ -65,15 +87,16 @@ async function pool(items, limit, fn) {
  * roles: parsed role files (js/deskRoles.js parseRole), analysts plus one with id head_of_desk.
  * Returns the run record that the server saves and the pages read.
  */
-export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, concurrency = 4, onProgress = () => {}, mode = 'full', rounds = 2, retryDelayMs = 4000, exposureCap = 4, styleExamples = [] }) {
+export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, concurrency = 4, onProgress = () => {}, mode = 'full', rounds = 2, retryDelayMs = 4000, exposureCap = 4, styleExamples = [], checkpoint = null }) {
   if (!pack?.skills) throw new Error('no desk pack to run on');
   const head = roles.find(r => r.id === 'head_of_desk');
   if (!head) throw new Error('role head_of_desk is missing');
   const analysts = roles.filter(r => r.output === 'analyst_report');
   const startedAt = now();
+  const counter = { resumed: 0 }, ask = checkpointed(checkpoint, counter);
   const results = await pool(analysts, concurrency, async role => {
     const { system, prompt, meta } = buildAnalystPrompt({ role, pack, ledger });
-    const r = await askValidated({ callModel, parseJson, retryDelayMs, task: TASK[role.tier], system, prompt, maxTokens: CAPS.analyst, label: `desk:${role.id}`,
+    const r = await ask({ callModel, parseJson, retryDelayMs, task: TASK[role.tier], system, prompt, maxTokens: CAPS.analyst, label: `desk:${role.id}`,
       validate: o => validateAnalystReport(o, role.id) });
     onProgress({ stage: 'analyst', id: role.id, ok: r.ok, label: 'analysts' });
     return { id: role.id, layer: role.layer, ok: r.ok, report: r.value ?? null, notes: r.notes ?? [], errors: r.errors ?? [], attempts: r.attempts, input: meta };
@@ -85,7 +108,7 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
   if (good.length < Math.ceil(analysts.length / 2)) {
     headOut = { ok: false, skipped: true, errors: [`only ${good.length} of ${analysts.length} analysts succeeded; the Head of Desk did not run`] };
   } else if (mode === 'full') {
-    debate = await runDebate({ pack, roles, ledger, callModel, parseJson, results, rounds, onProgress, retryDelayMs });
+    debate = await runDebate({ pack, roles, ledger, callModel, parseJson, results, rounds, onProgress, retryDelayMs, askFn: ask });
     const sections = [
       ['Global ruling', debate.global.view ?? '(the global ruling failed today: read the global analysts below)'],
       ['Currency ruling', debate.currency.view ?? '(the currency ruling failed today: read the currency analysts below)'],
@@ -99,13 +122,13 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
     const missing = [...failed, ...debate.failed];
     const { system, prompt } = buildStagePrompt({ role: head, pack, ledger: [], sections,
       tail: `${missing.length ? `Stages that failed today (treat their areas as unseen): ${missing.join(', ')}.\n` : ''}Write a card for every one of the ${allInstruments().length} instruments, with size and plan where the asset desks and the risk desk support them.` });
-    const r = await askValidated({ callModel, parseJson, retryDelayMs, task: TASK[head.tier], system, prompt, maxTokens: CAPS.head, label: 'desk:head',
+    const r = await ask({ callModel, parseJson, retryDelayMs, task: TASK[head.tier], system, prompt, maxTokens: CAPS.head, label: 'desk:head',
       validate: o => validateHeadBook(o, allInstruments()) });
     headOut = { ok: r.ok, book: r.value ?? null, notes: r.notes ?? [], errors: r.errors ?? [], attempts: r.attempts };
   } else {
     const reports = Object.fromEntries(good.map(r => [r.id, { skill: r.id, layer: r.layer, report: r.report }]));
     const { system, prompt } = buildHeadPrompt({ role: head, pack, reports, failed });
-    const r = await askValidated({ callModel, parseJson, retryDelayMs, task: TASK[head.tier], system, prompt, maxTokens: CAPS.head, label: 'desk:head',
+    const r = await ask({ callModel, parseJson, retryDelayMs, task: TASK[head.tier], system, prompt, maxTokens: CAPS.head, label: 'desk:head',
       validate: o => validateHeadBook(o, allInstruments()) });
     headOut = { ok: r.ok, book: r.value ?? null, notes: r.notes ?? [], errors: r.errors ?? [], attempts: r.attempts };
   }
@@ -128,7 +151,7 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
     onProgress({ stage: 'newsletter', label: 'writing the desk edition of the newsletter' });
     const sections = newsletterSections({ head: headOut, debate, analysts: analystsOut }, styleExamples);
     const { system, prompt } = buildStagePrompt({ role: writer, pack, ledger: [], sections });
-    const r = await askValidated({ callModel, parseJson, retryDelayMs, task: TASK[writer.tier], system, prompt, maxTokens: CAPS.writer, label: 'desk:newsletter',
+    const r = await ask({ callModel, parseJson, retryDelayMs, task: TASK[writer.tier], system, prompt, maxTokens: CAPS.writer, label: 'desk:newsletter',
       validate: o => validateNewsletterIssue(o, allInstruments()) });
     newsletter = { ok: r.ok, issue: r.value ?? null, notes: r.notes ?? [], errors: r.errors ?? [], attempts: r.attempts };
   }
@@ -152,6 +175,7 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
     newsletter,
     calls: allAttempts.length,
     usage,
+    ...(counter.resumed ? { resumed: { stages: counter.resumed } } : {}),
   };
 }
 
@@ -161,12 +185,12 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
  * Layers 2 and 3. Every stage reads the stage above it; a stage that fails is recorded and the next stage falls
  * back to the analysts' reports for that area, so one bad reply costs that stage, not the morning.
  */
-export async function runDebate({ pack, roles, ledger, callModel, parseJson, results, rounds = 2, onProgress = () => {}, retryDelayMs = 4000 }) {
+export async function runDebate({ pack, roles, ledger, callModel, parseJson, results, rounds = 2, onProgress = () => {}, retryDelayMs = 4000, askFn = askValidated }) {
   const role = id => { const r = roles.find(x => x.id === id); if (!r) throw new Error(`role ${id} is missing`); return r; };
   const attempts = [];
   const ask = async (r, sections, validate, cap, tail = '') => {
     const { system, prompt } = buildStagePrompt({ role: r, pack, ledger, sections, tail });
-    const out = await askValidated({ callModel, parseJson, retryDelayMs, task: TASK[r.tier], system, prompt, maxTokens: cap, label: `desk:${r.id}`, validate });
+    const out = await askFn({ callModel, parseJson, retryDelayMs, task: TASK[r.tier], system, prompt, maxTokens: cap, label: `desk:${r.id}`, validate });
     attempts.push(...out.attempts);
     return { ok: out.ok, view: out.value ?? null, notes: out.notes ?? [], errors: out.errors ?? [] };
   };
