@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Desk Office — the desk's internal analysis</title>
+<style>
+/* Desk Office (plans/DESK_ANALYST_PIPELINE.md §9n): the owner's internal view of the desk. What the newsletter PDFs
+   never carry: data health, session updates, the book's shape, the track record, the evening reviews, and the
+   panels the later phases fill (red team, portfolio risk, attribution, journal coach, execution, theory desk,
+   research ops). Same look as desk-run.html. */
+:root{--bg:#0b0d10;--bg2:#12161c;--bg3:#181d24;--line:#262c35;--line2:#333b46;--tx:#eef1f5;--tx2:#a8b1bd;--tx3:#71798a;--acc:#e0a339;--up:#3fb27f;--dn:#e5534b;--mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1280px;margin:0 auto;padding:0 16px 80px}
+a{color:var(--acc)}
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:20px 0 14px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.top h1{margin:0;font-size:22px;font-weight:650;letter-spacing:.1em;text-transform:uppercase}
+.top h1 span{color:var(--acc)}
+.top .sub{color:var(--tx2);font-size:13px}
+.top .right{margin-left:auto;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.btn{background:var(--bg3);border:1px solid var(--line2);color:var(--tx2);padding:8px 14px;border-radius:5px;font-size:13px;font-family:var(--mono);cursor:pointer;text-decoration:none}
+.btn:hover{border-color:var(--acc);color:var(--tx)}
+.btn:disabled{opacity:.6;cursor:default}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px}
+.tabs button{background:none;border:1px solid var(--line2);color:var(--tx2);padding:8px 16px;border-radius:999px;font:600 13px var(--mono);cursor:pointer}
+.tabs button[aria-selected="true"]{border-color:var(--acc);color:var(--acc)}
+.tabs button:focus-visible,.btn:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.panel{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin-bottom:16px;overflow-x:auto}
+.panel h2{margin:0 0 10px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);font-weight:650;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.panel h2 i{font-style:normal;font-weight:500;letter-spacing:0;text-transform:none;font-size:12px;color:var(--tx3)}
+.panel.plan{border-style:dashed;border-color:#5a4520;background:transparent}
+.panel.plan h2{color:var(--acc)}
+.muted{color:var(--tx3);font-size:12.5px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:4px 0 10px}
+.tile{background:var(--bg3);border:1px solid var(--line);border-radius:6px;padding:9px 12px}
+.tile b{display:block;font:650 20px var(--mono)}
+.tile span{font-size:11.5px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;color:var(--tx3);font-weight:600;font-size:11px;letter-spacing:.07em;text-transform:uppercase;padding:0 8px 8px;border-bottom:1px solid var(--line)}
+td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+td.n{font-family:var(--mono);white-space:nowrap}
+.up{color:#19d3a0}.dn{color:#ff5d73}
+.chip{font:11px var(--mono);padding:1px 7px;border-radius:4px;background:var(--bg3);color:var(--tx2);white-space:nowrap}
+.chip.ok{color:#19d3a0}.chip.bad{color:#ff5d73}.chip.warn{color:var(--acc)}
+ul{margin:6px 0;padding-left:20px}
+li{margin:3px 0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Desk <span>Office</span></h1>
+    <div class="sub">the desk's internal analysis · for you, never in the newsletter</div>
+    <div class="right">
+      <a class="btn" href="desk-run.html">Desk Run (the book) →</a>
+    </div>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Desk Office">
+    <button role="tab" id="tab-today" aria-selected="true" data-tab="today">Today</button>
+    <button role="tab" id="tab-perf" aria-selected="false" data-tab="perf">Performance</button>
+    <button role="tab" id="tab-you" aria-selected="false" data-tab="you">You</button>
+    <button role="tab" id="tab-research" aria-selected="false" data-tab="research">Research</button>
+  </div>
+  <div id="status" class="muted"></div>
+  <section id="today" role="tabpanel"></section>
+  <section id="perf" role="tabpanel" hidden></section>
+  <section id="you" role="tabpanel" hidden></section>
+  <section id="research" role="tabpanel" hidden></section>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+async function getJson(url, opts) { try { const r = await fetch(url, opts); return await r.json(); } catch (e) { return { ok: false, error: e.message }; } }
+const f = (x, d = 2) => (x == null || !Number.isFinite(+x) ? '–' : (x > 0 ? '+' : '') + (+x).toFixed(d));
+const cls = x => (x > 0 ? 'up' : x < 0 ? 'dn' : '');
+const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date());
+// A panel a later phase fills: what it will show, so the page reads as the whole office from day one.
+const planned = (phase, title, body) => `<div class="panel plan"><h2>${esc(title)} <i>planned · Phase ${phase}</i></h2><p class="muted" style="margin:0">${esc(body)}</p></div>`;
+
+// ── tabs (remembered per browser; the page works without storage) ──
+function show(tab) {
+  for (const b of document.querySelectorAll('[data-tab]')) { const on = b.dataset.tab === tab; b.setAttribute('aria-selected', String(on)); $(b.dataset.tab).hidden = !on; }
+  try { localStorage.setItem('deskOfficeTab', tab); } catch {}
+}
+document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => show(b.dataset.tab));
+try { const t = localStorage.getItem('deskOfficeTab'); if (t && $(t)) show(t); } catch {}
+
+// ── TODAY: data health, session updates, the book's shape ──
+async function renderToday() {
+  const [pack, upd, run] = await Promise.all([getJson('/api/desk-pack?summary=1'), getJson(`/api/desk-update?date=${today}`), getJson('/api/desk-run?summary=0')]);
+  const parts = [];
+  // data health (Phase 14 will add the reasons and a hold decision)
+  if (pack?.ok) {
+    const h = pack.health ?? {}, gaps = pack.gaps ?? h.gaps ?? [], age = pack.builtAt ? Math.round((Date.now() - Date.parse(pack.builtAt)) / 60000) : null;
+    parts.push(`<div class="panel"><h2>Data health <i>${esc(pack.date)} · built ${age != null ? (age < 120 ? age + ' min' : Math.round(age / 60) + ' h') + ' ago' : '–'}</i></h2>
+<div class="tiles"><div class="tile"><span>Fresh</span><b class="up">${h.ok ?? '–'}</b></div><div class="tile"><span>Stale</span><b>${h.stale ?? '–'}</b></div><div class="tile"><span>Empty or failed</span><b class="${(h.empty + h.error + h.timeout) > 0 ? 'dn' : ''}">${(h.empty ?? 0) + (h.error ?? 0) + (h.timeout ?? 0) + (h.oversize ?? 0)}</b></div><div class="tile"><span>Of</span><b>${h.total ?? '–'} feeds</b></div></div>
+${gaps.length ? `<table><thead><tr><th>Feed</th><th>Analyst</th><th>Status</th><th>Why</th></tr></thead><tbody>${gaps.map(g => `<tr><td class="n">${esc(g.id)}</td><td>${esc(g.skill)}</td><td><span class="chip ${g.status === 'stale' ? 'warn' : 'bad'}">${esc(g.status)}</span></td><td class="muted">${esc(g.error ?? (g.ageH != null ? `${Math.round(g.ageH)} h old` : ''))}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Every feed came back fresh.</p>'}</div>`);
+  } else parts.push(`<div class="panel"><h2>Data health</h2><p class="muted">No Desk Pack yet today (${esc(pack?.error ?? '')}).</p></div>`);
+  // session updates (Phase 5): the live view beside the book
+  if (upd?.ok) {
+    const LABEL = { london: 'London open · 08:05', ny: 'New York open · 14:35' };
+    const slots = ['london', 'ny'].map(k => { const s = upd.slots?.[k];
+      if (!s) return `<p class="muted"><b>${LABEL[k]}</b>: not run yet. It runs within 90 minutes of its time when a book was written before it.</p>`;
+      return `<p><b>${LABEL[k]}</b> <span class="muted">${esc(String(s.at).slice(11, 16))} UTC · global ruling ${s.globalStillHolds ? 'holds' : '<b class="dn">no longer holds</b>'}</span><br>${esc(s.headline)}</p>${s.changes.length ? `<table><thead><tr><th>Market</th><th>Now</th><th>Why</th></tr></thead><tbody>${s.changes.map(c => `<tr><td class="n">${esc(c.instrument)}</td><td>${esc(c.to.replace('_', ' '))}${c.size != null ? ` · size ${c.size}` : ''}</td><td>${esc(c.why)}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">No card changed.</p>'}${s.watch?.length ? `<p class="muted">Watch: ${s.watch.map(esc).join(' · ')}</p>` : ''}`; }).join('');
+    parts.push(`<div class="panel"><h2>Session updates <i>the morning book stays as written</i></h2>${slots}<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><button class="btn" data-up="london">Run the London update</button><button class="btn" data-up="ny">Run the New York update</button></div><p id="upmsg" class="muted"></p></div>`);
+  }
+  // the book's shape: exposure before and after the cap, the risk desk's warnings
+  const b = run?.ok && run.date === today ? run.head?.book : null;
+  if (b) {
+    const e = b.exposure, w = Object.values(run.debate?.risk ?? {}).flatMap(v => v?.view?.warnings ?? []).slice(0, 6);
+    parts.push(`<div class="grid2"><div class="panel"><h2>Book shape <i>net exposure by currency, cap ${e?.cap ?? '–'}</i></h2>${e ? `<table><thead><tr><th>Currency</th><th>Before cap</th><th>After</th></tr></thead><tbody>${Object.keys(e.after).map(c => `<tr><td class="n">${esc(c)}</td><td class="n">${f(e.before[c])}</td><td class="n ${cls(e.after[c])}">${f(e.after[c])}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">No exposure report.</p>'}</div>
+<div class="panel"><h2>The risk desk's warnings</h2>${w.length ? `<ul>${w.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="muted">None today.</p>'}</div></div>`);
+  } else parts.push(`<div class="panel"><h2>Book shape</h2><p class="muted">No book for today yet. Run it on <a href="desk-run.html">Desk Run</a>, or set SVC_DESKRUN=1 for the 06:55 run.</p></div>`);
+  parts.push(planned(7, 'Red team', 'The challenges put to the book before it was published (crowding, contradictions, tested-null ideas, events in the window) and how the Head answered each.'));
+  parts.push(planned(11, 'Portfolio risk and stress', 'How concentrated the book is and what it does in a scenario: "USD +1σ", "risk-off day", "yen squeeze", in forecast units across all 41 markets.'));
+  parts.push(planned(14, 'Data quality officer', 'For each failed or stale feed, why it failed and whether it mattered for today\'s book, with a recommendation to hold or run.'));
+  $('today').innerHTML = parts.join('');
+  document.querySelectorAll('[data-up]').forEach(btn => btn.onclick = async () => {
+    btn.disabled = true; const r = await getJson(`/api/desk-update/run?slot=${btn.dataset.up}`, { method: 'POST' });
+    $('upmsg').textContent = r?.ok ? 'Running: this panel refreshes in a minute.' : (r?.error ?? 'failed');
+    if (r?.ok) setTimeout(renderToday, 60_000); else btn.disabled = false;
+  });
+}
+
+// ── PERFORMANCE: the track record, the latest review, the updates ──
+async function renderPerf() {
+  const [rec, day, mem] = await Promise.all([getJson('/api/desk-score/record'), getJson('/api/desk-score'), getJson('/api/desk-memory')]);
+  const parts = [];
+  if (rec?.ok) {
+    const r = rec.record, days = [...(rec.days ?? [])].reverse();
+    parts.push(`<div class="panel"><h2>Track record <i>${esc(r.label)}</i></h2>
+<div class="tiles"><div class="tile"><span>Counted days</span><b>${r.eligibleDays}</b></div><div class="tile"><span>Mean day score</span><b class="${cls(r.S.mean)}">${f(r.S.mean)} u</b></div><div class="tile"><span>95% interval</span><b>${r.S.ci ? `${f(r.S.ci.lo)} to ${f(r.S.ci.hi)}` : '–'}</b></div><div class="tile"><span>vs single analyst</span><b class="${cls(r.vsControl?.mean)}">${f(r.vsControl?.mean)}</b></div><div class="tile"><span>vs long everything</span><b class="${cls(r.vsDrift?.mean)}">${f(r.vsDrift?.mean)}</b></div><div class="tile"><span>Lean-side p50 first</span><b>${r.race.leanFirstShare == null ? '–' : Math.round(r.race.leanFirstShare * 100) + '%'}</b></div></div>
+${days.length ? `<table><thead><tr><th>Day</th><th>Counts</th><th>Day score</th><th>Placebo 95th</th><th>Single analyst</th><th>Drift</th><th>Cards scored</th><th>Updates helped</th></tr></thead><tbody>${days.map(d => { const up = Object.values(d.updates?.slots ?? {}); const h = up.reduce((s, x) => s + x.helped, 0), t = up.reduce((s, x) => s + x.helped + x.hurt, 0);
+  return `<tr><td class="n"><a href="#" data-day="${esc(d.date)}">${esc(d.date)}</a></td><td>${d.eligible ? '<span class="chip ok">yes</span>' : `<span class="chip" title="${esc(d.why)}">no</span>`}</td><td class="n ${cls(d.S)}">${f(d.S)}</td><td class="n">${f(d.placebo?.p95)}</td><td class="n">${f(d.control?.unweighted)}</td><td class="n">${f(d.drift)}</td><td class="n">${d.scored}/${d.live}</td><td class="n">${t ? `${h} of ${t}` : '–'}</td></tr>`; }).join('')}</tbody></table>` : '<p class="muted">No day scored yet. The first is scored after 21:10 London on a day with a book.</p>'}
+<p class="muted">Judged at 120+ counted days under forge/DESK_ANALYST_PIPELINE_PREREG.md. Until then these are running numbers, and nothing is tuned to them.</p></div>`);
+  }
+  parts.push(`<div id="dayview">${dayHtml(day)}</div>`);
+  if (mem?.ok && mem.days?.length) parts.push(`<div class="panel"><h2>The desk's memory <i>${esc(mem.label)}</i></h2>${mem.days.map(d => `<p><b class="n">${esc(d.date)}</b> <span class="muted">score ${f(d.dayScore)} u${d.counts ? '' : ' · not counted'}</span>${d.headline ? `<br>${esc(d.headline)}` : ''}</p>${d.lessons.length ? `<ul>${d.lessons.map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}`).join('')}<p class="muted">The last five evening reviews, as the morning evidence clerk reads them.</p></div>`);
+  parts.push(planned(10, 'Attribution by layer', 'Which stage earned or lost each day: the global ruling, the currency ranking, the asset desks or the risk sizing, so you know which agents to trust.'));
+  $('perf').innerHTML = parts.join('');
+  document.querySelectorAll('[data-day]').forEach(a => a.onclick = async ev => { ev.preventDefault(); $('dayview').innerHTML = dayHtml(await getJson(`/api/desk-score?date=${a.dataset.day}`)); $('dayview').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+}
+function dayHtml(day) {
+  if (!day?.ok) return `<div class="panel"><h2>The latest day</h2><p class="muted">${esc(day?.error ?? 'Nothing scored yet.')}</p></div>`;
+  const s = day.score, ref = day.reflection, mv = day.movers, us = Object.entries(s.updates?.slots ?? {});
+  return `<div class="panel"><h2>${esc(s.date)} <i>${s.eligible ? 'counts in the test' : esc(s.why ?? 'does not count')}</i></h2>
+<p>Day score <b class="${cls(s.S)}">${f(s.S)} u</b> · placebo 95th ${f(s.placebo?.p95)} · single analyst ${f(s.control?.unweighted)} · ${s.scored} of ${s.live} cards scored${s.missing?.length ? ` · missing: ${s.missing.map(m => esc(m.inst)).join(', ')}` : ''} · <a href="/api/newsletter/issue?id=desk-evening-${esc(s.date)}" target="_blank" rel="noopener">evening edition</a></p>
+${mv && (mv.best.length || mv.worst.length) ? `<p class="muted">Made the day: ${mv.best.map(m => `${esc(m.inst)} ${f(m.R)}`).join(', ') || '–'} · Lost it: ${mv.worst.map(m => `${esc(m.inst)} ${f(m.R)}`).join(', ') || '–'}</p>` : ''}
+${ref ? `<h3 style="font-size:14px;margin:10px 0 4px">The evening review</h3><p>${esc(ref.headline)}</p>${ref.lessons?.length ? `<ul>${ref.lessons.map(l => `<li><span class="muted">${esc(l.scope)}${l.about ? ' · ' + esc(l.about) : ''}</span> ${esc(l.lesson)}</li>`).join('')}</ul>` : ''}` : '<p class="muted">No evening review for this day.</p>'}
+${us.length ? `<h3 style="font-size:14px;margin:10px 0 4px">Did the session updates help?</h3><table><thead><tr><th>Slot</th><th>Market</th><th>Change</th><th>New view minus old, to 21:00</th></tr></thead><tbody>${us.flatMap(([k, v]) => v.changes.map(c => `<tr><td>${k === 'ny' ? 'New York' : 'London'}</td><td class="n">${esc(c.instrument)}</td><td>${esc(c.from)} → ${esc(c.to)}</td><td class="n ${cls(c.delta)}">${c.delta != null ? f(c.delta) + ' u' : esc(c.missing ?? '–')}</td></tr>`)).join('')}</tbody></table><p class="muted">Size-weighted, descriptive only: the scored book is the morning one.</p>` : ''}</div>`;
+}
+
+// ── YOU and RESEARCH: filled by the later phases ──
+function renderYou() {
+  $('you').innerHTML = planned(8, 'Journal coach', 'Your MT5 trades against the book, weekly: where you followed it, where you went against it, and how each did.')
+    + planned(13, 'Execution and costs', 'Your bots\' entries against the plan zones: slippage, timing, and how much of the move was given back.');
+}
+function renderResearch() {
+  $('research').innerHTML = planned(9, 'Theory desk', 'Testable theories about the system\'s own output, from the Evidence Book, Theory Lab, your QuantConnect notes, the SSRN list and the scored history, each ready to pre-register.')
+    + planned(12, 'Research ops', 'The research register at a glance: pre-registrations with no verdict, stale studies, and results ready to bank in the Evidence Book.')
+    + planned(15, 'Scenario playbooks', '"If hot / if cold" before each big release, from the desk\'s release history. These also go into the newsletter.');
+}
+
+renderToday(); renderPerf(); renderYou(); renderResearch();
+// Phones pause hidden pages: refresh the live tabs when the page is shown again.
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderToday(); renderPerf(); } });
+</script>
+</body>
+</html>

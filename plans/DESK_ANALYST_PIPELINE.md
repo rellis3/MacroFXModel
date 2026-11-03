@@ -505,6 +505,37 @@ Its rules, and how updates are handled:
   `POST /api/desk-update/run?slot=london|ny`. desk-run.html has a "Session updates" panel with a button for each
   slot.
 
+## 9n. The Desk Office: the internal page (2026-11-03)
+
+The owner shares the newsletter PDFs with others. The desk's internal analysis stays out of them and lives on its own
+page, `desk-office.html`, in the Live menu next to Desk Run. "Yesterday, reviewed" stays in the PDFs (owner,
+2026-11-03).
+
+The page has four tabs:
+
+- **Today:**
+  - data health: the Desk Pack's fresh, stale and failed feeds, with the reason for each
+  - session updates, with a button for each slot
+  - the book's shape: net exposure before and after the cap
+  - the risk desk's warnings
+- **Performance:**
+  - the track record (interim, not judged), with a row per scored day
+  - the selected day's score, movers, evening review, and whether the updates helped
+  - the desk's memory
+- **You** and **Research:** panels for the later phases.
+
+Each later phase that is for the owner only plugs into its panel here, never into the PDFs:
+
+| Tab | Phases |
+|---|---|
+| Today | red team (7), portfolio risk (11), data quality officer (14) |
+| Performance | attribution (10) |
+| You | journal coach (8), execution and costs (13) |
+| Research | theory desk (9), research ops (12) |
+
+The phases that are for readers go in the PDFs: the economist's release briefs (6) and the scenario playbooks (15).
+Desk Run keeps the morning book. Its track-record and session-update panels moved here.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
