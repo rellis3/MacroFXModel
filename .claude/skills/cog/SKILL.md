@@ -36,13 +36,19 @@ If there is no request text, ask for the question in one line and stop.
    questions, the structure A-N, vocabulary, the don'ts). Search his material for the topic:
    `grep -ril "<topic words>" education/cog-snippets.md education/*-notes.md education/bank-verbatim`.
 2. **What the repo knows:**
-   `node .claude/skills/research-director/scripts/evidence_map.mjs --brief <specific keywords>`. Also check
+   `node .claude/skills/research-director/scripts/evidence_map.mjs --brief <2-3 narrow keywords>` (broad words return
+   a hundred entries; then pull the honest numbers for the few that matter from `js/deskEvidence.js` by id). Also check
    `.claude/skills/cog-knowledge/references/verdicts.md` and any agenda in `.claude/skills/research-director/agendas/`.
-3. **Data reality:** whether the data exists here and its window (`data-rules`; the lockbox ends 2026-08-21).
+3. **Data reality:** whether the data exists here and its window (`data-rules`). Sessions after 2026-08-21 are the
+   lockbox holdout: don't propose scoring them. Exploratory register rows are pointers, not evidence; only banked
+   Evidence Book entries count as what the repo "knows".
 
 Keep this fast. A /cog answer should take minutes, not an afternoon.
 
 ## 3. Write the answer in this order
+
+**Start with a one-line short answer** (yes / no / it depends on X / the repo already answered this), so the owner
+gets the verdict before the reasoning.
 
 ### In C.OG's style
 Write 3-10 short lines in his register: conversational, encouraging, practical, plain words, no jargon without a
@@ -59,7 +65,8 @@ reason. His moves, in roughly the order he makes them:
 6. Where it fits, **the bigger frame**: new systems run at portfolio level beats bolting another function onto one
    system; a basket beats a single instrument; sizing against its theoretical ceiling.
 
-Don't copy his typos. Don't overstate ("this will work"); he frames ideas as worth testing ("Might even just get
+Keep this section free of ledger ids and numbers: it is the way of thinking, and the evidence goes in its own
+section below. Don't copy his typos. Don't overstate ("this will work"); he frames ideas as worth testing ("Might even just get
 yourself a system idea from this").
 
 ### What C.OG has actually said on this
@@ -71,9 +78,9 @@ inside quote marks.
 headline), and what it means for the question. Flag dead ends from the do-not-reopen list in `cog-knowledge`.
 
 ### How to test it
-One question card in the `research-director` format (`references/question-card.md` there): the 2-4 line statement,
-then the table, Construct → Knowable when → Condition → Horizons → Noise threshold → Outcome distribution →
-Benchmark/control/mirror, then Data & power, If yes / If no, and Falsifier. If the repo has already answered it,
+One **compact** question card: the 2-4 line statement in his register, then a short table with only Construct
+(+ knowable when), Condition, Horizons, Noise threshold, Benchmark/control, Data & power, If yes / If no. The full
+13-row card (`research-director` `references/question-card.md`) is for agendas, not /cog answers. If the repo has already answered it,
 say so instead and give the follow-up question the answer raises.
 
 ### Next step
@@ -83,7 +90,7 @@ a lesson via `theory-lab-lessons` (explain mode). Don't start any of them withou
 
 ## 4. Keep it short
 
-The whole answer should fit on one screen and a half. Tables over paragraphs. Cut anything that doesn't change what
+Aim for about 500-700 words; the whole answer should fit on one screen and a half. Tables over paragraphs. Cut anything that doesn't change what
 the owner would do next.
 
 ## Growing this skill
