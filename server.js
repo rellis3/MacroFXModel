@@ -4989,7 +4989,7 @@ app.get('/api/cog-chart/meta', (_req, res) => {
   try {
     const legs = _cogJson(path.join(_CC_DIR, 'legs_meta.json'));
     let archive = []; try { archive = _cogJson(path.join(_CC_DIR, 'archive.json')); } catch {}      // contracts held only in the 15-min TRADES / Schatz archives: listed on the page, not drawable
-    res.json({ ok: true, assets: Object.entries(_CC_ASSETS).map(([key, [oanda, group]]) => ({ key, oanda, group })), timeframes: Object.keys(_CC_TF), legs: [...legs, ..._ylMeta(_ylAsOf)], archive });
+    res.json({ ok: true, assets: Object.entries(_CC_ASSETS).map(([key, [oanda, group]]) => ({ key, oanda, group })), timeframes: Object.keys(_CC_TF), legs: [...legs, ..._ylMeta(_ylAsOf)], archive, r2Sync: _ccSync });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 const _ccCandleCache = new Map();

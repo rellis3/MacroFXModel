@@ -71,6 +71,19 @@ export async function getJSON(key) {
   }
 }
 
+// Read an object's raw bytes (e.g. a .gz the caller inflates). Returns null if missing or creds absent.
+export async function getBuffer(key) {
+  const client = makeR2Client();
+  if (!client) return null;
+  try {
+    const resp = await client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+    return Buffer.from(await resp.Body.transformToByteArray());
+  } catch (e) {
+    if (e?.name === 'NoSuchKey' || e?.$metadata?.httpStatusCode === 404) return null;
+    throw e;
+  }
+}
+
 // List object keys under a prefix (paginated). Returns [] if creds absent.
 export async function listKeys(prefix) {
   const client = makeR2Client();

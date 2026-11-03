@@ -30,8 +30,11 @@ echo ================================================== >> "%LOGFILE%"
 echo  RUN STARTED %date% %time% >> "%LOGFILE%"
 "%PY%" refresh_leg_bars.py --days auto --push %* >> "%LOGFILE%" 2>&1
 set RC=%ERRORLEVEL%
+REM  Send the new bars to R2 (rates-legs/), the store the server syncs the chart legs from; the repo no longer carries them.
+REM  Needs R2_ACCESS_KEY / R2_SECRET_KEY in the user environment; without them it says so and changes nothing. Never fails the refresh.
+if %RC% EQU 0 "%PY%" legs_r2.py push >> "%LOGFILE%" 2>&1
 echo [%date% %time%] finished with exit code %RC% >> "%LOGFILE%"
 echo.
-findstr /C:"HTTP" /C:"Could not connect" /C:"merged" "%LOGFILE%"
+findstr /C:"HTTP" /C:"Could not connect" /C:"merged" /C:"legs_r2" "%LOGFILE%"
 if %RC% NEQ 0 (echo RESULT: NOT UPDATED ^(exit %RC%^)) else (echo RESULT: OK)
 endlocal & exit /b %RC%
