@@ -226,6 +226,7 @@ import { sliceFeed as _deskSliceFeed } from './js/deskSlices.js';
 import { assess as _dqAssess, afterRun as _dqAfterRun } from './js/deskDataQuality.js';
 import { attribution as _atAttribution, attributionRecord as _atRecord } from './js/deskAttribution.js';
 import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
+import { tradeRows as _jcRows, coach as _jcCoach, execution as _jcExec } from './js/deskJournal.js';   // Phases 8 and 13
 import { upcoming as _rpUpcoming } from './js/releasePlaybook.js';
 import { dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
@@ -5058,6 +5059,36 @@ app.get('/api/desk-risk', async (req, res) => {
     const out = { ok: true, date, bookFinishedAt: run.finishedAt, label: 'description of the book, not a forecast; 1 card-σ = one normal-size card moving one daily σ', ..._rkBookRisk(cards, closes) };
     if (_rkCache.size > 20) _rkCache.clear();
     _rkCache.set(key, out);
+    res.json(out);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/desk-journal?days=28: the journal coach (Phase 8) and the execution analyst (Phase 13), js/deskJournal.js.
+// The bots' closed trades (the three durable logs plus today's closes) against each day's morning book. Private: the
+// Desk Office "You" tab. Cached 10 minutes.
+let _jcCache = { key: null, at: 0, data: null };
+app.get('/api/desk-journal', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 28, 1), 120);
+    if (req.query.refresh !== '1' && _jcCache.key === days && Date.now() - _jcCache.at < 10 * 60_000) return res.json(_jcCache.data);
+    const BOTS = { 'Range-Line': ['range_line_trade_log', 'range_line_bot_status'], 'OI Gamma': ['oi_bot_trade_log', 'oi_bot_status'], Confluence: ['confluence_trade_log', 'confluence_bot_status'] };
+    const since = Date.now() - days * 86400e3, logs = {};
+    let tzNow = 0;
+    for (const [bot, [logKey, stKey]] of Object.entries(BOTS)) {
+      const [log, st] = await Promise.all([_kvJson(logKey), _kvJson(stKey)]);
+      const today = st?.today_closed_trades || [];
+      tzNow = tzNow || ([...today, ...(st?.mt5_positions || [])].find(t => Number.isFinite(t.tz_offset_sec))?.tz_offset_sec ?? 0);
+      logs[bot] = [...(Array.isArray(log) ? log : []), ...today].map(t => { let pip = null; try { pip = _pipSize(t.key || resolveKey(t.symbol)) || null; } catch { /* no pip: MFE in R is skipped */ } return { ...t, pip }; });
+    }
+    const trades = _jcRows(logs, { tzNow }).filter(t => t.openMs >= since);
+    const dates = [...new Set(trades.map(t => t.date))], books = {};
+    for (const d of dates) {
+      const run = await _dsRunFor(d).catch(() => null);
+      if (run?.head?.ok) books[d] = { at: Date.parse(run.finishedAt), cards: run.head.book.instruments };
+    }
+    const out = { ok: true, days, generatedAt: Date.now(), trades: trades.length, booksFound: Object.keys(books).length, daysTraded: dates.length,
+      label: 'description of the bots\' own trades, not a test; small counts are labelled', coach: _jcCoach(trades, books), execution: _jcExec(trades) };
+    _jcCache = { key: days, at: Date.now(), data: out };
     res.json(out);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });

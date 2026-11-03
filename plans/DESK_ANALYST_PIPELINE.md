@@ -719,7 +719,7 @@ Ours is a design of its own in that spirit, not a copy.
 | News ticker | news-outcome, events | partial: a headline feed would help |
 | Pair drill-down (card, lines, walls, vol, seasonality, sentiment) | the book, levels, oi-levels, vol forecast | have |
 | Ask the desk | one model call over the day's pack, book and memory | new |
-| Journal | Phase 8 | planned |
+| Journal | Phase 8 (`/api/desk-journal`) | have |
 
 **Data to get:**
 
@@ -728,6 +728,26 @@ Ours is a design of its own in that spirit, not a copy.
 2. A live headline feed for the ticker: an RSS aggregator of central bank and agency headlines with no key, or a news
    API.
 3. Optional: Myfxbook community sentiment, which the server already has a session variable for.
+
+## 9s. Phases 8 and 13: the journal coach and the execution analyst (built 2026-11-03)
+
+Private, in the Desk Office "You" tab; never in a newsletter. `js/deskJournal.js` (pure, tested in
+`js/deskJournal.test.mjs`), served by `GET /api/desk-journal?days=7|28|90` (cached 10 minutes).
+
+- **Source:** the bots' durable closed-trade logs (`range_line_trade_log`, `oi_bot_trade_log`, `confluence_trade_log`)
+  plus today's closes from each bot's status. Broker-clock epochs are moved to UTC with `tz_offset_sec` (rows written
+  before it was kept use the broker's current offset). Trades are dated by their London open.
+- **Phase 8, the coach:** each trade against the morning book for its date (the counted run where there is one):
+  *with* (the card leaned the same way), *against*, *no view* (neutral or size 0), *off book* (no book, the market not
+  in it, or the trade opened before the book was written). For each group and each bot: trades, win rate, mean and
+  median R, profit. Also week by week, by London hour, and where the entry sat in the day's forecast unit u, signed
+  by direction (chasing above +0.5u against patient below −0.25u).
+- **Phase 13, execution:** per bot, from the trade's own stop and target at entry: planned R, realised R, the best
+  move in R (MFE), the share of it kept, R left on the table, trades half an R up that closed at or below zero, exit
+  reasons with what each returned, holding time, and the fill against the zone's planned entry where the bot
+  recorded one in its zone features.
+- **Rules:** description, not a test. Any group under 20 trades is labelled as too few to lean on. Nothing here feeds
+  the book or the prereg.
 
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
@@ -744,7 +764,7 @@ Not built yet. The order is the owner's call; each item names what it needs firs
 - **Phase 7 · Red team.** *Built (§9p).* A reviewer that attacks the Head's book before it is published: crowding (one bet across
   many names), stories that contradict each other, leaning on tested-null ideas, cards that ignore an event inside
   the window. The Head answers or changes the card. Logged, so the record shows whether the red team helps.
-- **Phase 8 · Journal coach.** Reads the owner's actual MT5 trades (the bot trade logs) against the book: where they
+- **Phase 8 · Journal coach.** *Built (§9s).* Reads the owner's actual MT5 trades (the bot trade logs) against the book: where they
   followed it, where they went against it, and how each did. Private, weekly.
 - **Phase 9 · Theory desk (quant theory agent).**
   - Reads the Evidence Book, the research register (including dead hypotheses), the Theory Lab lessons,
@@ -756,7 +776,7 @@ Not built yet. The order is the owner's call; each item names what it needs firs
   - It proposes and designs; it never declares a result.
   - Weekly, not daily. It works best once Phase 4 has some months of scored days.
 
-**Built since this list was written:** the evening edition (§9l); Phase 5 session updates (§9m); the Desk Office (§9n); Phases 14 and 10 (§9o); Phases 7 and 11 (§9p); Phases 6 and 15 (§9q).
+**Built since this list was written:** the evening edition (§9l); Phase 5 session updates (§9m); the Desk Office (§9n); Phases 14 and 10 (§9o); Phases 7 and 11 (§9p); Phases 6 and 15 (§9q); Phases 8 and 13 (§9s).
 
 **Proposed (owner, 2026-11-03), from the hedge-fund roles; order to be confirmed**
 - **Phase 10 · Performance attribution.** *Built (§9o).* Split each day's score by stage (global ruling, currency ranking, asset
@@ -765,7 +785,7 @@ Not built yet. The order is the owner's call; each item names what it needs firs
   book do?") from the vol forecasts and cross-asset links. It puts a number on "two or three bets".
 - **Phase 12 · Research ops.** Watches the research register, flags preregs with no verdict, nudges stale studies
   and drafts banking entries.
-- **Phase 13 · Execution and cost analyst.** The MT5 bot logs and give-back data against the plan zones: slippage,
+- **Phase 13 · Execution and cost analyst.** *Built (§9s).* The MT5 bot logs and give-back data against the plan zones: slippage,
   timing, entries.
 - **Phase 14 · Data quality officer.** *Built (§9o).* Turns the Desk Pack health into actions: what failed, why, and whether to
   hold the run.
