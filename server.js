@@ -410,6 +410,7 @@ import { Worker as _NodeWorker } from 'node:worker_threads';   // fx-factor-v2 /
 import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataArchive.js';
 import { createExpiryTrackStore } from './js/expiryTrackStore.js';
 import { buildSwingMap as _buildSwingMap, sigmaSeries as _swingSigma } from './js/swingMap.js';
+import { zoneWalk as _swingZoneWalk } from './js/swingPaths.js';
 import { oiContractSize as _oiContractSizeSM } from './js/oi.js';
 import { COT_MARKETS as _COT_MARKETS, fetchCotFull as _fetchCotFull } from './js/cotArchive.js';
 import { createHistorySources as _createHistorySources } from './js/stateHistorySources.js';
@@ -40087,6 +40088,11 @@ async function _archiveDaily() {
   } catch (e) { out.failed.push(`oi_raw backfill: ${e.message}`); }
   // Expiry tracker: re-cut the captures into one permanent series per expiry (js/expiryTrackStore.js).
   try { const r = await _expiryTrack().fold(); out.expiryTrack = r.folded; } catch (e) { out.failed.push(`expiry track: ${e.message}`); }
+  // Swing Map walk record: one build per instrument after the fold (writes only when the capture date is new)
+  out.swingWalks = 0;
+  for (const inst of Object.keys(SWING_MAP_INSTRUMENTS)) {
+    try { const d = await _swingMapData(inst); if (d.ok) out.swingWalks++; } catch (e) { out.failed.push(`swing walk ${inst}: ${e.message}`); }
+  }
   try {
     const raw = await kv.get('oi_history');
     const hist = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
@@ -40207,13 +40213,35 @@ async function _swingMapExpiries(names, sigmaAnnual = null) {
   }
   return [];
 }
-app.get('/api/swing-map', async (req, res) => {
-  const inst = String(req.query.inst || 'GOLD').toUpperCase();
+// Swing Map walk record (owner, 2026-11-03): each night's zone walk, for every anchor with and without the small books,
+// saved once per capture date (the first build after a new capture freezes it) at R2 swing_walk/<INST>/<capture>.json,
+// so the page can draw the last few nights behind tonight's and the walk can be scored later. Same zoneWalk and the same
+// settings as the page (vol = the monthly reverting sigma per session, no reach limit). Untested drawing, kept as a record.
+const _SWING_WALK_ANCHORS = ['gammaCentre', 'gamma', 'strike', 'maxPain', 'centre'];
+function _swingWalkVol(m) { const mb = m.bands?.[1]; return mb?.sigmaUsedPct ? mb.sigmaUsedPct / 100 / Math.sqrt(20) : (m.state?.sigmaDailyPct ?? 0) / 100; }
+async function _swingWalkRecord(inst, m) {
+  if (!_r2Ok() || !m?.ok || !m.expiries?.length) return null;
+  const captureDate = m.expiries.reduce((a, e) => (e.date > a ? e.date : a), '');
+  if (!captureDate) return null;
+  const key = `swing_walk/${inst}/${captureDate}.json`;
+  if (await _r2GetJSON(key).catch(() => null)) return null;
+  const vol = _swingWalkVol(m), walks = {};
+  for (const anchor of _SWING_WALK_ANCHORS) for (const includeThin of [false, true]) {
+    const w = _swingZoneWalk(m.expiries, { close: m.state.close, anchor, includeThin, vol, date: m.state.date });
+    walks[`${anchor}${includeThin ? '+thin' : ''}`] = w.points.map(p => [p.expiry, p.dte, Number(p.px.toPrecision(8)), p.pullShare != null ? +p.pullShare.toFixed(3) : null]);
+  }
+  const rec = { v: 1, inst, captureDate, closeDate: m.state.date, close: m.state.close, vol, savedAt: new Date().toISOString(), walks };
+  await _r2PutJSON(key, rec);
+  return rec;
+}
+async function _swingWalkHistory(inst, n = 6) {
+  if (!_r2Ok()) return [];
+  const keys = (await _r2ListKeys(`swing_walk/${inst}/`).catch(() => [])).filter(k => k.endsWith('.json')).sort().slice(-n);
+  return (await Promise.all(keys.map(k => _r2GetJSON(k).catch(() => null)))).filter(Boolean);
+}
+async function _swingMapData(inst) {
   const cfg = SWING_MAP_INSTRUMENTS[inst];
-  if (!cfg) return res.status(400).json({ ok: false, error: `unknown instrument ${inst}`, instruments: Object.keys(SWING_MAP_INSTRUMENTS) });
-  const hit = _swingMapCache.get(inst);
-  if (hit && Date.now() - hit.at < 30 * 60e3 && req.query.fresh !== '1') return res.json(hit.data);
-  try {
+  {
     // OANDA 17:00-New-York daily bars carry their OPEN time (Friday's session opens Thursday 21:00 UTC), so the
     // fetcher's date is the day before the close. Relabel to the close day so "last close" and every date ahead line up.
     const bars = (await _btFetchD1Aligned(cfg.oanda, 2600)).map(b => ({ ...b, date: new Date(Date.parse(`${b.date}T12:00:00Z`) + 864e5).toISOString().slice(0, 10) }));
@@ -40235,8 +40263,22 @@ app.get('/api/swing-map', async (req, res) => {
     }
     const data = { ...m, inst, oanda: cfg.oanda, instruments: Object.keys(SWING_MAP_INSTRUMENTS),
       forecastSession: forecastState.latest?.session_date ?? null, generatedAt: new Date().toISOString() };
-    if (m.ok) _swingMapCache.set(inst, { at: Date.now(), data });
-    res.status(m.ok ? 200 : 503).json(data);
+    if (m.ok) {
+      try { await _swingWalkRecord(inst, m); } catch (e) { console.warn('[swing walk record]', inst, e.message); }
+      data.walkHistory = await _swingWalkHistory(inst).catch(() => []);
+      _swingMapCache.set(inst, { at: Date.now(), data });
+    }
+    return data;
+  }
+}
+app.get('/api/swing-map', async (req, res) => {
+  const inst = String(req.query.inst || 'GOLD').toUpperCase();
+  if (!SWING_MAP_INSTRUMENTS[inst]) return res.status(400).json({ ok: false, error: `unknown instrument ${inst}`, instruments: Object.keys(SWING_MAP_INSTRUMENTS) });
+  const hit = _swingMapCache.get(inst);
+  if (hit && Date.now() - hit.at < 30 * 60e3 && req.query.fresh !== '1') return res.json(hit.data);
+  try {
+    const data = await _swingMapData(inst);
+    res.status(data.ok ? 200 : 503).json(data);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/expiry-track/run', requireAuth, async (req, res) => {

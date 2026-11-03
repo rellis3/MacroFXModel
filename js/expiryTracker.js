@@ -221,7 +221,7 @@ export function expiryView(series, { awayFrac = 0.01, topN = 6, sigmaAnnual = nu
       oiAbove, oiBelow, shareAbove: oiAbove + oiBelow > 0 ? round(oiAbove / (oiAbove + oiBelow), 4) : null,
       pullPct: centre != null && ref ? round((centre / ref - 1) * 100 * (inverted ? -1 : 1), 3) : null,
       buildAbove: prevMap && !d.stale ? buildAbove : null, buildBelow: prevMap && !d.stale ? buildBelow : null,
-      zones, _rows: rows });
+      zones, _rows: rows, _prev: d.stale ? null : prevMap });
     if (!d.stale) prevMap = map;
   }
   const last = days.at(-1);
@@ -233,13 +233,15 @@ export function expiryView(series, { awayFrac = 0.01, topN = 6, sigmaAnnual = nu
     if (gk) last.greeks = { ...gk, charmFlipPx: gk.charmFlipK != null ? round(toSpot(gk.charmFlipK, { basis: last.basis ?? 0, inverted })) : null,
       vannaFlipPx: gk.vannaFlipK != null ? round(toSpot(gk.vannaFlipK, { basis: last.basis ?? 0, inverted })) : null };
   }
-  // withLadder: the last night's whole book (inside the tail cut) as [spot price, calls, puts] in SPOT terms; an inverted
-  // pair's futures call is a spot put, so the two columns swap
+  // withLadder: the last night's whole book (inside the tail cut) as [spot price, calls, puts, OI change since last night
+  // (null on the first or a stale night), OI change since the expiry was first seen] in SPOT terms; an inverted pair's
+  // futures call is a spot put, so the call and put columns swap
   if (last && withLadder) last.ladder = last._rows.map(r => {
-    const k = round(toSpot(r[0], { basis: last.basis ?? 0, inverted }));
-    return inverted ? [k, r[2], r[1]] : [k, r[1], r[2]];
+    const k = round(toSpot(r[0], { basis: last.basis ?? 0, inverted })), oi = r[1] + r[2];
+    const c1 = last._prev ? oi - (last._prev.get(r[0]) ?? 0) : null, cf = oi - (firstMap.get(r[0]) ?? 0);
+    return inverted ? [k, r[2], r[1], c1, cf] : [k, r[1], r[2], c1, cf];
   });
-  for (const d of days) delete d._rows;
+  for (const d of days) { delete d._rows; delete d._prev; }
   return { pair: series.pair, expiry: series.expiry, code: series.code ?? null, inverted, n: days.length, days };
 }
 

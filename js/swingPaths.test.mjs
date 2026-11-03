@@ -1,6 +1,6 @@
 // Swing Map Monte Carlo: reproducible, random walk when k = 0, and the pull does what it says.
 //   node js/swingPaths.test.mjs
-import { simulatePaths, touchShare, mulberry32, driftSegments, zoneWalk, gammaPullScores, HEDGE_W } from './swingPaths.js';
+import { simulatePaths, touchShare, mulberry32, driftSegments, zoneWalk, gammaPullScores, HEDGE_W, buildFactor } from './swingPaths.js';
 import { bsGamma } from './gammaGreeks.js';
 
 let fails = 0;
@@ -98,6 +98,28 @@ console.log('[zone walk: gamma pull]');
   const sc = gammaPullScores([[27000, 0, 1000], [29200, 0, 1000]], 28110, 5 / 252, 0.014 * Math.sqrt(252));
   ok('far puts below count at HEDGE_W against the same puts above', Math.abs(sc[0].score / sc[1].score - HEDGE_W * bsGamma(28110, 27000, 5 / 252, 0.014 * Math.sqrt(252)) / bsGamma(28110, 29200, 5 / 252, 0.014 * Math.sqrt(252))) < 1e-9);
   ok('no ladder: falls back to the top zones', zoneWalk([{ expiry: '2026-11-03', dte: 1, totalOI: 1, zones: [{ px: 28000, oi: 5 }] }], { close: 28110, anchor: 'gamma', vol: 0.014, date: '2026-11-02' }).points[0]?.px === 28000);
+}
+
+console.log('[zone walk: gamma centre, building, charm]');
+{
+  ok('buildFactor: all new and growing caps at 2', buildFactor(100, 100, 100) === 2);
+  ok('buildFactor: being unwound floors at 0.5', buildFactor(100, -200, -300) === 0.5);
+  ok('buildFactor: unchanged = 1', buildFactor(100, 0, 0) === 1);
+  // gold-like: price 3,990, a 22-day book whose weight leans above price but with no single strike standing out
+  const lad = [[3900, 100, 900, 0, 0], [3990, 600, 600, 0, 0], [4050, 900, 100, 0, 0], [4100, 900, 100, 0, 0], [4150, 800, 100, 0, 0]];
+  const ex = [{ expiry: '2026-11-24', dte: 22, totalOI: 10000, ladder: lad, greeks: { charm1d: -40, charmNotional: -1e6 } }];
+  const g = zoneWalk(ex, { close: 3990, anchor: 'gamma', vol: 0.012, date: '2026-11-02' });
+  const c = zoneWalk(ex, { close: 3990, anchor: 'gammaCentre', vol: 0.012, date: '2026-11-02' });
+  ok('best strike sits on the round strike at price', g.points[0].px === 3990, String(g.points[0].px));
+  ok('the gamma centre leans up with the weight', c.points[0].px > 4005 && c.points[0].px < 4100, String(c.points[0].px));
+  const grown = lad.map(r => r[0] === 3900 ? [3900, 100, 900, 500, 1000] : r);
+  const cb = zoneWalk([{ ...ex[0], ladder: grown }], { close: 3990, anchor: 'gammaCentre', vol: 0.012, date: '2026-11-02' });
+  ok('a building strike below pulls the centre down', cb.points[0].px < c.points[0].px, `${cb.points[0].px} vs ${c.points[0].px}`);
+  ok('charm is carried on the step', c.points[0].charm === -40 && c.points[0].charmNotional === -1e6);
+  ok('max pain / centre / strike anchors unchanged by the new fields',
+    zoneWalk([{ ...ex[0], maxPain: 4000 }], { close: 3990, anchor: 'maxPain' }).points[0].px === 4000
+    && zoneWalk([{ ...ex[0], centrePx: 4020 }], { close: 3990, anchor: 'centre' }).points[0].px === 4020
+    && zoneWalk([{ ...ex[0], zones: [{ px: 4100, oi: 1000 }] }], { close: 3990, anchor: 'strike' }).points[0].px === 4100);
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

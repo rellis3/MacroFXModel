@@ -160,13 +160,25 @@ export function driftSegments(drift, { minLen = 2 } = {}) {
  * Each point also carries `biggest`, the book's largest strike by OI, when the pull went elsewhere.
  */
 export const HEDGE_W = 0.5;
+/*
+ * Building (owner, 2026-11-03: use the OI change as each contract counts down). A strike whose OI has grown since the
+ * expiry was first seen, and again last night, is fresh positioning; one that is shrinking is being closed or rolled.
+ * buildFactor = clamp(1 + BUILD_W * (since-first change / OI) + BUILD_W * (last-night change / OI), 0.5, 2): a strike
+ * that is all new and grew last night counts up to 2x, one being unwound down to 0.5x. BUILD_W is chosen, not fitted.
+ * Gamma already rises as the expiry nears, so a building strike close to its date pulls hardest.
+ */
+export const BUILD_W = 0.5;
+export function buildFactor(oi, chg1d, chgFirst) {
+  if (!(oi > 0)) return 1;
+  return Math.min(2, Math.max(0.5, 1 + BUILD_W * ((chgFirst ?? 0) / oi) + BUILD_W * ((chg1d ?? 0) / oi)));
+}
 export function gammaPullScores(ladder, S, T, sigmaAnnual) {
   if (!Array.isArray(ladder) || !(S > 0) || !(T > 0) || !(sigmaAnnual > 0)) return [];
   const em = sigmaAnnual * Math.sqrt(T);
-  return ladder.filter(r => r[0] > 0).map(([k, c, p]) => {
+  return ladder.filter(r => r[0] > 0).map(([k, c, p, c1, cf]) => {
     const far = Math.abs(Math.log(k / S)) > em;
-    const cw = far && k > S ? HEDGE_W : 1, pw = far && k < S ? HEDGE_W : 1;
-    return { px: k, oi: (c || 0) + (p || 0), score: (bsGamma(S, k, T, sigmaAnnual) || 0) * ((c || 0) * cw + (p || 0) * pw) };
+    const cw = far && k > S ? HEDGE_W : 1, pw = far && k < S ? HEDGE_W : 1, oi = (c || 0) + (p || 0), bf = buildFactor(oi, c1, cf);
+    return { px: k, oi, build: bf, score: (bsGamma(S, k, T, sigmaAnnual) || 0) * ((c || 0) * cw + (p || 0) * pw) * bf };
   });
 }
 const _weekdays = (a, b) => { let t = Date.parse(`${a}T00:00:00Z`), e = Date.parse(`${b}T00:00:00Z`), k = 0; while (t < e) { t += 864e5; const w = new Date(t).getUTCDay(); if (w && w !== 6) k++; } return k; };
@@ -181,24 +193,33 @@ export function zoneWalk(expiries, { close, anchor = 'strike', maxDte = 100, thi
   const capped = sigma > 0 && date;
   let prev = close, prevDate = date;
   for (const e of live) {
-    const book = Array.isArray(e.ladder) && e.ladder.length ? e.ladder.map(([k, c, p]) => ({ px: k, oi: (c || 0) + (p || 0), call: c, put: p }))
-      : (e.zones || []).map(z => ({ px: z.px, oi: z.oi, call: z.call ?? z.oi, put: z.put ?? 0 }));
-    const byOI = (anchor === 'gamma' ? book : (e.zones || [])).slice().sort((a, b) => (b.oi || 0) - (a.oi || 0));
+    const book = Array.isArray(e.ladder) && e.ladder.length ? e.ladder.map(([k, c, p, c1, cf]) => ({ px: k, oi: (c || 0) + (p || 0), call: c, put: p, c1, cf }))
+      : (e.zones || []).map(z => ({ px: z.px, oi: z.oi, call: z.call ?? z.oi, put: z.put ?? 0, c1: z.chg1d ?? null, cf: z.chgSinceFirst ?? null }));
+    const gam = anchor === 'gamma' || anchor === 'gammaCentre';
+    const byOI = (gam ? book : (e.zones || [])).slice().sort((a, b) => (b.oi || 0) - (a.oi || 0));
     const capFrom = (from, fromDate) => zcap * sigma * Math.sqrt(Math.max(1, _weekdays(fromDate, e.expiry)));
     const ok = px => !capped || (Math.abs(Math.log(px / prev)) <= capFrom(prev, prevDate) && Math.abs(Math.log(px / close)) <= capFrom(close, date));
-    let top = byOI[0], pullShare = null;
+    let top = byOI[0], pullShare = null, gCentre = null;
     if (anchor === 'strike' && capped) top = byOI.find(z => z.px > 0 && ok(z.px));
-    if (anchor === 'gamma') {
+    if (gam) {
       const n = date || prevDate ? Math.max(1, _weekdays(prevDate || date, e.expiry)) : Math.max(1, e.dte * 252 / 365);
-      const sc = gammaPullScores(book.map(z => [z.px, z.call, z.put]), prev, n / 252, (vol || sigma || 0.01) * Math.sqrt(252));
+      const sc = gammaPullScores(book.map(z => [z.px, z.call, z.put, z.c1, z.cf]), prev, n / 252, (vol || sigma || 0.01) * Math.sqrt(252));
       const tot = sc.reduce((a, z) => a + z.score, 0);
-      const best = sc.filter(z => ok(z.px)).sort((a, b) => b.score - a.score)[0];
-      top = best ? book.find(z => z.px === best.px) : null;
-      pullShare = best && tot > 0 ? best.score / tot : null;
+      if (anchor === 'gamma') {
+        const best = sc.filter(z => ok(z.px)).sort((a, b) => b.score - a.score)[0];
+        top = best ? book.find(z => z.px === best.px) : null;
+        pullShare = best && tot > 0 ? best.score / tot : null;
+      } else if (tot > 0) {
+        // the gamma centre: the pull-weighted average price (in logs), so the step moves with where the hedging weight
+        // leans even when no one strike stands out; `top` is the book's strike nearest to it, for the dot's OI
+        gCentre = Math.exp(sc.reduce((a, z) => a + z.score * Math.log(z.px), 0) / tot);
+        top = book.reduce((b, z) => (!b || Math.abs(z.px - gCentre) < Math.abs(b.px - gCentre) ? z : b), null);
+        pullShare = sc.filter(z => Math.abs(Math.log(z.px / gCentre)) <= (vol || sigma || 0.01) * Math.sqrt(n)).reduce((a, z) => a + z.score, 0) / tot;
+      }
     }
-    const px = anchor === 'maxPain' ? e.maxPain : anchor === 'centre' ? e.centrePx : top?.px;
+    const px = anchor === 'maxPain' ? e.maxPain : anchor === 'centre' ? e.centrePx : anchor === 'gammaCentre' ? gCentre : top?.px;
     if (!(px > 0) || !ok(px)) {
-      const far = anchor === 'maxPain' ? e.maxPain : anchor === 'centre' ? e.centrePx : byOI[0]?.px;
+      const far = anchor === 'maxPain' ? e.maxPain : anchor === 'centre' ? e.centrePx : anchor === 'gammaCentre' ? gCentre : byOI[0]?.px;
       if (far > 0) skipped.push({ expiry: e.expiry, dte: e.dte, px: far, movePct: (far / prev - 1) * 100,
         capPct: capped ? (Math.exp(capFrom(prev, prevDate)) - 1) * 100 : null, thin: isThin(e) });
       continue;
@@ -206,9 +227,11 @@ export function zoneWalk(expiries, { close, anchor = 'strike', maxDte = 100, thi
     const movePct = (px / prev - 1) * 100;
     const dir = Math.abs(movePct) < flatPct ? 'flat' : movePct > 0 ? 'up' : 'down';
     points.push({ expiry: e.expiry, dte: e.dte, px, from: prev, dir, movePct, thin: isThin(e),
-      strength: all > 0 && top ? (top.oi || 0) / all : null, oi: top?.oi ?? null,
+      // the gamma centre is not one strike: its strength is the whole expiry's share of all live OI
+      strength: anchor === 'gammaCentre' ? (all > 0 ? (e.totalOI || 0) / all : null) : all > 0 && top ? (top.oi || 0) / all : null, oi: top?.oi ?? null,
       building: !!top && ((top.buildStreak ?? 0) >= 2 || (top.chgSinceFirst ?? 0) > 0),
       notBiggest: (anchor === 'strike' || anchor === 'gamma') && !!byOI[0] && top.px !== byOI[0].px, capPct: capped ? (Math.exp(capFrom(prev, prevDate)) - 1) * 100 : null,
+      charm: e.greeks?.charm1d ?? null, charmNotional: e.greeks?.charmNotional ?? null,
       pullShare, biggest: byOI[0] && top && byOI[0].px !== top.px ? { px: byOI[0].px, oi: byOI[0].oi, strength: all > 0 ? (byOI[0].oi || 0) / all : null } : null });
     prev = px; prevDate = e.expiry;
   }

@@ -58,6 +58,9 @@ console.log('[fold: a contract keeps one series as its DTE counts down; +-1 day 
     `${v.days[2].chgNearSpot} / ${v.days[2].chgAwayFromSpot}`);
   ok('first day has no change figures', v.days[0].chgNearSpot === null && v.days[0].zones[0].chg1d === null);
   ok('centre is OI-weighted', Math.abs(v.days[0].centre - (3900 * 510 + 4100 * 810) / 1320) < 1e-6);
+  const vl = expiryView(s, { withLadder: true }), l41 = vl.days[2].ladder.find(r => r[0] === 4090);
+  ok('withLadder: the last-night book in spot terms with the change since last night and since first', !!l41 && l41[3] === 200 && l41[4] === 300, JSON.stringify(l41));
+  ok('withLadder off by default', expiryView(s).days[2].ladder === undefined);
   const idx = seriesIndexEntry(s);
   ok('index entry', idx.n === 3 && idx.dteNow === 20 && idx.totalOI === 1640);
 }
