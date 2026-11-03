@@ -193,6 +193,8 @@ class Copier:
         self.tg_entry_msgid: dict[str, int] = {str(k): v for k, v in (st.get("tg_entry_msgid") or {}).items()}
         self.tg_closed_alerted: set = set(st.get("tg_closed_alerted") or [])
         self.retries: dict[str, dict] = st.get("retries") or {}
+        self.manual_seen: list = list(st.get("manual_seen") or [])      # request ids already handled
+        self.manual_results: list = []
         self.guard = RiskGuard(log=log)
         self.guard.sync_cfg(cfg)
         self.guard_state: dict = {}
@@ -465,23 +467,27 @@ class Copier:
         self.decide(o, status, why)
         self.alert(f"⏭ SKIPPED {describe(o)} — {why}{self.mode_tag()}")
 
-    def _place(self, o):
+    def _place(self, o, manual=False):
+        """Enter one of his signals. `manual` (the bot page's "Send to MT5") skips
+        the timing and preference checks -- signal age, entry drift, style switch,
+        skip list, Ignore crypto, max open -- and keeps every safety check: kill
+        switch, drawdown lockout, symbol and price, beyond-the-stop, spread, sizing."""
         cfg = self.cfg
         if o["id"] in self.execs:
             return
         style = o.get("style") or "single"
         if cfg.get("kill_switch"):
             return self._skip(o, "kill switch on")
-        if not cfg.get(f"copy_{style}", True):
+        if not manual and not cfg.get(f"copy_{style}", True):
             return self._skip(o, f"{style} signals switched off")
-        if self.ignored(o["symbol"]):
+        if not manual and self.ignored(o["symbol"]):
             self.execs[o["id"]] = {"id": o["id"], "status": "skipped", "reason": "crypto ignored"}
             return self.decide(o, "skipped", "crypto ignored (Ignore crypto is on)")     # logged, no alert
-        if o["symbol"].upper() in {s.upper() for s in cfg.get("skip_symbols") or []}:
+        if not manual and o["symbol"].upper() in {s.upper() for s in cfg.get("skip_symbols") or []}:
             return self._skip(o, "symbol on skip list")
         if o.get("sl") is None:
             return self._skip(o, "no stop loss in the signal")
-        if len(self.live_execs()) >= int(cfg.get("max_open", 12)):
+        if not manual and len(self.live_execs()) >= int(cfg.get("max_open", 12)):
             return self._skip(o, f"max_open {cfg.get('max_open')} reached")
         bal = self.broker.account_balance() or 0.0
         block = self.guard.block_reason(bal, o["symbol"].lower()) if bal else None
@@ -494,7 +500,9 @@ class Copier:
             return self._skip(o, f"{bad[0]['configured']} is not a symbol on this account (closest: {sugg}) "
                                  f"— set it in the Symbol map")
         age = _now() - _ts(o["posted_at"])
-        if o["order"] == "market" and age > cfg.get("max_signal_age_secs", 300):
+        if manual and o["order"] != "market" and o.get("cancel_at_utc") and _now() >= _ts(o["cancel_at_utc"]):
+            return self._skip(o, f"past his cancel time ({o.get('cancel_at')} UK) — not placed")
+        if not manual and o["order"] == "market" and age > cfg.get("max_signal_age_secs", 300):
             return self._skip(o, f"signal is {int(age)}s old (max {cfg.get('max_signal_age_secs')}s)")
 
         pair, d = o["symbol"], (1 if o["side"] == "BUY" else -1)
@@ -517,7 +525,7 @@ class Copier:
             return self._skip(o, f"spread {spread:g} > {cfg.get('max_spread_r')}R of the {risk_dist:g} stop")
 
         as_market = o["order"] == "market"
-        if as_market:
+        if as_market and not manual:
             drift = (px - entry) * d / risk_dist
             if drift > cfg.get("max_entry_drift_r", 0.25):
                 return self._skip(o, f"price {px:g} is {drift:.2f}R worse than his entry {entry:g}")
@@ -563,10 +571,11 @@ class Copier:
         self.execs[o["id"]] = {"id": o["id"], "tag": tag, "symbol": pair, "side": o["side"], "ticket": ticket,
                                "status": "pending" if kind == "pending" else "open", "lots": lots,
                                "close_ts": _ts(o.get("close_at_utc")), "placed_at": int(_now())}
-        self.decide(o, "entered" if kind == "market" else "pending", None, lots=lots, ticket=ticket)
-        icon = "🟢" if d > 0 else "🔴"
-        mid = self.alert(f"{icon} {'ENTERED' if kind == 'market' else 'ORDER PLACED'} {describe(o)} — {lots} lots"
-                         f"{self.mode_tag()}")
+        self.decide(o, "entered" if kind == "market" else "pending", "manual send from the bot page" if manual else None,
+                    lots=lots, ticket=ticket)
+        icon = "🖐" if manual else ("🟢" if d > 0 else "🔴")
+        mid = self.alert(f"{icon} {'MANUAL ' if manual else ''}{'ENTERED' if kind == 'market' else 'ORDER PLACED'} "
+                         f"{describe(o)} — {lots} lots @ {px:g}{self.mode_tag()}")
         if mid:
             self.tg_entry_msgid[str(ticket)] = mid
 
@@ -626,6 +635,7 @@ class Copier:
         try:
             if self.dirty["state"] or force:
                 kv.put_json(f"{K}_state", {"book": self.book.to_dict(), "execs": self.execs, "retries": self.retries,
+                                           "manual_seen": self.manual_seen[-200:],
                                            "tg_entry_msgid": self.tg_entry_msgid,
                                            "tg_closed_alerted": sorted(self.tg_closed_alerted, key=str)[-2000:]})
                 self.dirty["state"] = False
@@ -638,6 +648,70 @@ class Copier:
                 self.dirty["decisions"] = False
         except Exception as e:
             log.warning(f"KV flush failed: {e}")
+
+    def check_manual(self):
+        """Run the bot page's "Send to MT5" requests: {requests: [{req, id, t}]} in
+        signal_copier_manual_override, written only by the dashboard (an 'override'
+        key, so it sits behind KV_WRITE_SECRET when that is set). Each request names
+        one of HIS parsed signals by id -- nothing typed on the page becomes an
+        order -- runs once, and only while fresh (10 min), so a restart never
+        replays an old click."""
+        try:
+            reqs = (self.kv.get_json(f"{K}_manual_override") or {}).get("requests") or []
+        except Exception as e:
+            log.warning(f"manual request read failed: {e}")
+            return
+        for r in reqs:
+            rid, sid = str(r.get("req") or ""), str(r.get("id") or "")
+            if not rid or rid in self.manual_seen or _now() - (r.get("t") or 0) / 1000 > 600:
+                continue
+            self.manual_seen.append(rid)
+            self.dirty["state"] = True
+            self.manual_results.append({"req": rid, "id": sid, "t": int(_now()), **self.send_manual(sid)})
+            del self.manual_results[:-20]
+
+    def send_manual(self, sid):
+        o = self.book.orders.get(sid)
+        if not o:
+            return {"ok": False, "reason": "unknown signal id"}
+        e = self.execs.get(sid) or {}
+        if e.get("status") in LIVE_EXEC:
+            return {"ok": False, "reason": f"already {e['status']}"}
+        if o["status"] in ("closed", "cancelled"):
+            return {"ok": False, "reason": f"he has already {o['status']} this signal"}
+        self.execs.pop(sid, None)
+        self.retries.pop(sid, None)
+        self._place(o, manual=True)
+        e = self.execs.get(sid) or {}
+        ok = e.get("status") in LIVE_EXEC
+        return {"ok": ok, "reason": None if ok else e.get("reason"), "status": e.get("status")}
+
+    def today(self):
+        """His signals since the last session end (17:00 New York), with the full
+        detail from the message, the bot's action and the live price."""
+        from zoneinfo import ZoneInfo
+        ny = datetime.now(ZoneInfo("America/New_York"))
+        start = ny.replace(hour=17, minute=0, second=0, microsecond=0)
+        if ny < start:
+            start -= timedelta(days=1)
+        t0 = start.timestamp()
+        rows = []
+        for o in self.book.orders.values():
+            if (_ts(o.get("posted_at")) or 0) < t0:
+                continue
+            e = self.execs.get(o["id"]) or {}
+            px = self.price(o["symbol"]) if o["status"] in ("open", "working") else None
+            entry, sl, d = o.get("entry"), o.get("sl"), (1 if o["side"] == "BUY" else -1)
+            # drift only means something for a market signal; a resting limit away from price is just unfilled
+            drift = (round((px - entry) * d / abs(entry - sl), 2)
+                     if o["order"] == "market" and px is not None and entry is not None and sl is not None
+                     and entry != sl else None)
+            rows.append({k: o.get(k) for k in ("id", "symbol", "side", "order", "entry", "sl", "tp", "targets", "style",
+                                               "cancel_at", "close_at", "close_rule", "risk_lots", "risk_usd", "note",
+                                               "posted_at", "status", "end_reason")}
+                        | {"exec": e.get("status"), "exec_reason": e.get("reason"), "ticket": e.get("ticket"),
+                           "lots": e.get("lots"), "price_now": px, "drift_r": drift})
+        return {"since": int(t0), "rows": sorted(rows, key=lambda r: r["posted_at"] or "")}
 
     def status(self):
         b = self.broker
@@ -664,6 +738,8 @@ class Copier:
             "symbol_problems": self.symbol_problems,
             "tg_master_on": self.tg_master_on,
             "retrying": len(self.retries),
+            "today": self.today(),
+            "manual_results": self.manual_results,
             "pushed_at": int(_now()),
         }
 
@@ -863,11 +939,17 @@ async def run(base_url, force_live, backfill_since=None, parse_only=False):
     cp.alert(f"📡 Signal Copier listening to \"{cp.tg['chat']}\" (topic {cfg.get('tg_topic') or 'all'}) — "
              f"{'PAPER' if cp.paper else 'LIVE'}, risk {cfg['risk_pct']}%/signal")
 
-    last_status = last_resolve = 0.0
+    last_status = last_resolve = last_manual = 0.0
     while True:
         try:
             cp.tick()
             now = _now()
+            if now - last_manual >= 10:              # the bot page's "Send to MT5" button
+                before = len(cp.manual_results)
+                cp.check_manual()
+                last_manual = now
+                if len(cp.manual_results) != before:
+                    cp.push_status()                  # show the result on the page straight away
             if now - last_resolve >= cp.cfg.get("resolve_secs", 60):
                 cp.resolve_open()
                 last_resolve = now

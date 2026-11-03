@@ -8305,6 +8305,7 @@ async function loadScStatus() {
   if (symBox) symBox.innerHTML = (st?.symbol_problems || []).length
     ? `<div style="font-size:12px;border-left:3px solid var(--red);padding-left:10px;color:var(--red)"><b>Broker symbol mismatch</b> — signals on these are skipped until the Symbol map is fixed:<br>${
         st.symbol_problems.map(p => `${_scEsc(p.pair)} → <code>${_scEsc(p.configured)}</code> not on this account${p.suggestions?.length ? ` (closest: ${p.suggestions.map(_scEsc).join(', ')})` : ''}`).join('<br>')}</div>` : '';
+  _renderScToday(st);
   _renderScLife(st, age, okS);
   _renderScRisk(st);
   _renderScPositions(st);
@@ -8325,6 +8326,64 @@ async function loadScStatus() {
       <td style="padding:5px 10px;color:${EXEC_C[o.exec] || 'var(--text3)'}">${_scEsc(o.exec || '—')}</td></tr>`).join('')
       : `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${st ? 'No live signals' : 'No status yet'}</td></tr>`;
   }
+}
+
+let _scToday = [];
+function _renderScToday(st) {
+  const body = document.getElementById('scTodayBody');
+  if (!body) return;
+  const t = st?.today;
+  _scToday = t?.rows || [];
+  const since = document.getElementById('scTodaySince');
+  if (since && t?.since) since.textContent = `his signals since ${_scUk(t.since)} UK · resets at 17:00 New York (22:00 UK)`;
+  const px = v => v == null ? '—' : (+v).toFixed(Math.abs(+v) >= 1000 ? 1 : Math.abs(+v) >= 20 ? 2 : 5);
+  const C = { open: '#34d399', pending: '#60a5fa', skipped: '#f59e0b', rejected: '#f87171', cancelled: 'var(--text3)', closed: 'var(--text3)' };
+  const sendable = r => !['open', 'pending'].includes(r.exec) && !['closed', 'cancelled'].includes(r.status);
+  body.innerHTML = _scToday.length ? _scToday.slice().reverse().map(r => {
+    const tps = (r.targets && r.targets.length > 1) ? r.targets.map(px).join(' / ') : px(r.tp);
+    const rules = [r.cancel_at && `cancel ${r.cancel_at}`, r.close_at && `close ${r.close_at}`,
+                   !r.close_at && r.close_rule === 'manual' && 'until he closes'].filter(Boolean).join(' · ');
+    const drift = r.drift_r == null ? '' : ` <span style="color:${r.drift_r > 0.25 ? '#f59e0b' : 'var(--text3)'}">${r.drift_r > 0 ? '+' : ''}${r.drift_r}R</span>`;
+    const his = r.status === 'closed' || r.status === 'cancelled' ? ` <small style="color:var(--text3)">(he ${r.status} it)</small>` : '';
+    return `<tr style="border-top:1px solid var(--border)">
+      <td style="padding:5px 10px;white-space:nowrap">${_scUk(r.posted_at ? Date.parse(r.posted_at) / 1000 : null)}</td>
+      <td style="padding:5px 10px;font-weight:600;color:${r.side === 'BUY' ? 'var(--green)' : 'var(--red)'}">${r.side} ${_scEsc(r.symbol)}${r.note ? ` <small style="color:var(--text3)">(${_scEsc(r.note)})</small>` : ''}</td>
+      <td style="padding:5px 10px">${_scEsc(r.order)}${r.style ? ` · ${_scEsc(r.style)}` : ''}</td>
+      <td style="padding:5px 10px;text-align:right">${r.entry == null ? 'market' : px(r.entry)}</td>
+      <td style="padding:5px 10px;text-align:right">${px(r.sl)}</td><td style="padding:5px 10px;text-align:right">${tps}</td>
+      <td style="padding:5px 10px">${rules || '—'}</td>
+      <td style="padding:5px 10px;text-align:right">${r.risk_usd != null ? `$${r.risk_usd}` : '—'}</td>
+      <td style="padding:5px 10px;text-align:right;white-space:nowrap">${px(r.price_now)}${drift}</td>
+      <td style="padding:5px 10px;color:${C[r.exec] || 'var(--text3)'}" title="${_scEsc(r.exec_reason || '')}">${_scEsc(r.exec || '—')}${r.lots ? ` · ${r.lots} lots` : ''}${his}${r.exec_reason ? `<br><small style="color:var(--text3)">${_scEsc(r.exec_reason).slice(0, 90)}</small>` : ''}</td>
+      <td style="padding:5px 10px;text-align:right">${sendable(r) ? `<button onclick="sendScManual('${_scEsc(r.id)}')" style="background:#2dd4bf;border:none;border-radius:5px;color:#062a26;font-weight:700;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap">Send to MT5</button>` : ''}</td></tr>`;
+  }).join('') : `<tr><td colspan="11" style="padding:14px;text-align:center;color:var(--text3)">${st ? 'No signals yet this session' : 'No status yet — start the bot'}</td></tr>`;
+  const res = document.getElementById('scManualResults');
+  if (res) res.innerHTML = (st?.manual_results || []).slice(-5).reverse().map(m => {
+    const row = _scToday.find(r => r.id === m.id);
+    const what = row ? `${row.side} ${_scEsc(row.symbol)}` : _scEsc(m.id);
+    return `<div style="color:${m.ok ? 'var(--green)' : '#f87171'}">${_scUk(m.t)} · manual send ${what}: ${m.ok ? `placed (${_scEsc(m.status)})` : `not placed — ${_scEsc(m.reason || m.status || 'refused')}`}</div>`;
+  }).join('');
+}
+
+// "Send to MT5": queue a request for the bot (it polls every ~10s). The request
+// names one of HIS signals by id; the bot re-checks safety and reports back.
+async function sendScManual(id) {
+  const r = _scToday.find(x => x.id === id);
+  if (!r) return;
+  let st = null;
+  try { st = await kvGet('signal_copier_status'); } catch (e) {}
+  const mode = (st?.mode || '?').toUpperCase();
+  const what = `${r.side} ${r.symbol} ${r.order}${r.entry != null ? ` @ ${r.entry}` : ''} · SL ${r.sl ?? '—'}${r.tp != null ? ` · TP ${r.tp}` : ''}`;
+  const now = r.price_now != null ? `\nPrice now ${r.price_now}${r.drift_r != null ? ` (${r.drift_r > 0 ? '+' : ''}${r.drift_r}R from his entry)` : ''}.` : '';
+  if (!confirm(`Send this signal to MT5 now (${mode})?\n\n${what}${now}\n\nThe bot sizes it to your Risk % / signal and still refuses it if the kill switch is on, the price is past his stop, or the spread is too wide.`)) return;
+  try {
+    const cur = (await kvGet('signal_copier_manual_override'))?.requests || [];
+    const req = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+    await kvSet('signal_copier_manual_override', { requests: [...cur, { req, id, t: Date.now() }].slice(-20) });
+    const res = document.getElementById('scManualResults');
+    if (res) res.insertAdjacentHTML('afterbegin', `<div style="color:var(--text3)">Sent ${_scEsc(what)} — the bot picks it up within ~10s…</div>`);
+    setTimeout(loadScStatus, 12000);
+  } catch (e) { alert(`Could not send: ${e.message}`); }
 }
 
 function _renderScLife(st, age, okS) {
@@ -8592,7 +8651,7 @@ async function loadScParseReport() {
 function loadScAll() { loadScStatus(); loadScOutcomes(); loadScDecisionLog(); loadScTradeLog(); loadScParseReport(); }
 
 Object.assign(window, { saveScConfig, saveScCreds, saveScTgCreds, resetScDefaults, testScTelegram, sendScLogin, loadScAll,
-  loadScDecisionLog, scDecShiftDay, scDecClearDate, loadScTradeLog, loadScParseReport, downloadScParseList, renderScOutcomes, exportScTemplate });
+  loadScDecisionLog, scDecShiftDay, scDecClearDate, loadScTradeLog, loadScParseReport, downloadScParseList, renderScOutcomes, exportScTemplate, sendScManual });
 document.querySelector('.tab-btn[data-tab="signalcopier"]')?.addEventListener('click', loadScAll);
 loadScConfig().then(loadScAll);         // like Vote Atlas: render at load, so a restored tab isn't blank for 30s
 loadScCreds();
