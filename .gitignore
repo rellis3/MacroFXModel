@@ -727,3 +727,8 @@ analysis/output/vmc-nq-vol-increment/data/
 
 # raw footprint tick dumps (tens of MB each; the derived json is committed)
 /analysis/output/footprint/*.pkl
+
+# Downloaded research papers (copyrighted; the repo is public). manifest.csv and MISSING.md stay tracked.
+education/papers/*.pdf
+
+education/papers/**/*.pdf

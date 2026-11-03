@@ -6,9 +6,9 @@
   "file": "stir/CBOT_ZQF7.csv",
   "source": "IBKR 15-minute TRADES",
   "first": "2026-04-12",
-  "last": "2026-10-26",
-  "bars": 12472,
-  "days": 166
+  "last": "2026-11-02",
+  "bars": 12656,
+  "days": 170
  },
  {
   "name": "ZQG7",
@@ -17,9 +17,9 @@
   "file": "stir/CBOT_ZQG7.csv",
   "source": "IBKR 15-minute TRADES",
   "first": "2026-04-12",
-  "last": "2026-10-26",
-  "bars": 12470,
-  "days": 166
+  "last": "2026-11-02",
+  "bars": 12654,
+  "days": 170
  },
  {
   "name": "ZQH7",
@@ -28,9 +28,9 @@
   "file": "stir/CBOT_ZQH7.csv",
   "source": "IBKR 15-minute TRADES",
   "first": "2026-04-12",
-  "last": "2026-10-26",
-  "bars": 12321,
-  "days": 166
+  "last": "2026-11-02",
+  "bars": 12505,
+  "days": 170
  },
  {
   "name": "ZQJ7",
@@ -39,9 +39,9 @@
   "file": "stir/CBOT_ZQJ7.csv",
   "source": "IBKR 15-minute TRADES",
   "first": "2026-04-12",
-  "last": "2026-10-26",
-  "bars": 12370,
-  "days": 166
+  "last": "2026-11-02",
+  "bars": 12554,
+  "days": 170
  },
  {
   "name": "ZQK7",
@@ -50,9 +50,9 @@
   "file": "stir/CBOT_ZQK7.csv",
   "source": "IBKR 15-minute TRADES",
   "first": "2026-04-12",
-  "last": "2026-10-26",
-  "bars": 12128,
-  "days": 165
+  "last": "2026-11-02",
+  "bars": 12312,
+  "days": 169
  },
  {
   "name": "ZQM7",
@@ -61,9 +61,9 @@
   "file": "stir/CBOT_ZQM7.csv",
   "source": "IBKR 15-minute TRADES",
   "first": "2026-04-12",
-  "last": "2026-10-26",
-  "bars": 11128,
-  "days": 159
+  "last": "2026-11-02",
+  "bars": 11312,
+  "days": 163
  },
  {
   "name": "ZQN7",
@@ -72,9 +72,9 @@
   "file": "stir/CBOT_ZQN7.csv",
   "source": "IBKR 15-minute TRADES",
   "first": "2026-04-12",
-  "last": "2026-10-26",
-  "bars": 11686,
-  "days": 165
+  "last": "2026-11-02",
+  "bars": 11868,
+  "days": 169
  },
  {
   "name": "ZQQ7",
@@ -83,9 +83,9 @@
   "file": "stir/CBOT_ZQQ7.csv",
   "source": "IBKR 15-minute TRADES",
   "first": "2026-04-12",
-  "last": "2026-10-26",
-  "bars": 10093,
-  "days": 155
+  "last": "2026-11-02",
+  "bars": 10277,
+  "days": 159
  },
  {
   "name": "ZQU7",
@@ -94,9 +94,9 @@
   "file": "stir/CBOT_ZQU7.csv",
   "source": "IBKR 15-minute TRADES",
   "first": "2026-05-04",
-  "last": "2026-10-26",
-  "bars": 5591,
-  "days": 92
+  "last": "2026-11-02",
+  "bars": 5775,
+  "days": 96
  },
  {
   "name": "ZQV6",
@@ -110,15 +110,26 @@
   "days": 166
  },
  {
+  "name": "ZQV7",
+  "label": "Fed funds 30-day Oct27 (CBOT ZQV7)",
+  "group": "Fed funds 30-day (CBOT ZQ)",
+  "file": "stir/CBOT_ZQV7.csv",
+  "source": "IBKR 15-minute TRADES",
+  "first": "2026-10-29",
+  "last": "2026-11-02",
+  "bars": 184,
+  "days": 4
+ },
+ {
   "name": "ZQX6",
   "label": "Fed funds 30-day Nov26 (CBOT ZQX6)",
   "group": "Fed funds 30-day (CBOT ZQ)",
   "file": "stir/CBOT_ZQX6.csv",
   "source": "IBKR 15-minute TRADES",
   "first": "2026-04-12",
-  "last": "2026-10-26",
-  "bars": 12473,
-  "days": 166
+  "last": "2026-11-02",
+  "bars": 12657,
+  "days": 170
  },
  {
   "name": "ZQZ6",
@@ -127,9 +138,9 @@
   "file": "stir/CBOT_ZQZ6.csv",
   "source": "IBKR 15-minute TRADES",
   "first": "2026-04-12",
-  "last": "2026-10-26",
-  "bars": 12475,
-  "days": 165
+  "last": "2026-11-02",
+  "bars": 12659,
+  "days": 169
  },
  {
   "name": "CME_ESRM7",
