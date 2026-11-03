@@ -33,11 +33,17 @@ If there is no request text, ask for the question in one line and stop.
 ## 2. Gather (quietly, before writing anything)
 
 1. **His style and words:** read `.claude/skills/research-director/references/cog-question-style.md` (verbatim
-   questions, the structure A-N, vocabulary, the don'ts). Search his material for the topic:
-   `grep -ril "<topic words>" education/cog-snippets.md education/*-notes.md education/bank-verbatim`.
+   questions, the structure A-N, vocabulary, the don'ts). Search his material for the topic **and** for the theme
+   words that carry most of his advice: `backtest`, `forward`, `paper`, `live`, `distribution`, `artifact`, `drift`,
+   `buy and hold`, `stop`, `mae`, `sizing`, `portfolio`, `basket`, `external factor`, `rates`, `open interest`, e.g.
+   `grep -rin "<word>" education/cog-snippets.md education/progression-path-breakdown-notes.md education/*-notes.md
+   education/bank-verbatim`. The owner's own DMs with him are in `cog-snippets.md` §6-§8: check whether he has
+   already answered this exact situation.
 2. **What the repo knows:**
    `node .claude/skills/research-director/scripts/evidence_map.mjs --brief <2-3 narrow keywords>` (broad words return
-   a hundred entries; then pull the honest numbers for the few that matter from `js/deskEvidence.js` by id). Also check
+   a hundred entries; ledger ids work as keywords too, e.g. `gex-range-es`; then pull the honest numbers for the few
+   that matter from `js/deskEvidence.js` by id). For the C.OG gate systems, `cog-knowledge` `references/concepts.md`
+   maps the JS gates (1A/1B/2/3) to the shadow gates (G1/G2/G3). Also check
    `.claude/skills/cog-knowledge/references/verdicts.md` and any agenda in `.claude/skills/research-director/agendas/`.
 3. **Data reality:** whether the data exists here and its window (`data-rules`). Sessions after 2026-08-21 are the
    lockbox holdout: don't propose scoring them. Exploratory register rows are pointers, not evidence; only banked
@@ -78,7 +84,10 @@ inside quote marks.
 headline), and what it means for the question. Flag dead ends from the do-not-reopen list in `cog-knowledge`.
 
 ### How to test it
-One **compact** question card: the 2-4 line statement in his register, then a short table with only Construct
+In **review** mode, replace the card with an **audit plan**: the 3-6 rebuild steps that would show where the result
+comes from (honest fills, measured costs, intraday exits, each component swapped for a placebo or switched off,
+forward record placed among simulated paths), each with what it would prove. In question mode, use one **compact**
+question card: the 2-4 line statement in his register, then a short table with only Construct
 (+ knowable when), Condition, Horizons, Noise threshold, Benchmark/control, Data & power, If yes / If no. The full
 13-row card (`research-director` `references/question-card.md`) is for agendas, not /cog answers. If the repo has already answered it,
 say so instead and give the follow-up question the answer raises.
@@ -90,7 +99,7 @@ a lesson via `theory-lab-lessons` (explain mode). Don't start any of them withou
 
 ## 4. Keep it short
 
-Aim for about 500-700 words; the whole answer should fit on one screen and a half. Tables over paragraphs. Cut anything that doesn't change what
+Aim for about 500-700 words (review mode up to ~900, and the checklist table keeps only the rows that bite); the whole answer should fit on one screen and a half. Tables over paragraphs. Cut anything that doesn't change what
 the owner would do next.
 
 ## Growing this skill

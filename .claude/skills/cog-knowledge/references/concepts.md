@@ -46,6 +46,19 @@ His daily lines are pasted from the vol-forecast "Ref" box into KV as `vol_refer
 `computeCogBands`, `bandMode:'cog'` has been the bot default since 2026-07-22. That is a consistency-with-COG product
 choice, **not a validated improvement**. `bandMode:'feller'` reverts it. (`MD files/CLAUDE.md`)
 
+## Two gate systems, two numbering schemes (don't mix them)
+
+| JS gate system (`js/cog*Gate*.js`, `js/cogConfig.js`, the owner's "NQ macro gate system") | Shadow (`cog-replication/engine/cogShadow.js`) |
+|---|---|
+| **Gate 1A** slow macro liquidity regime (Fed/ECB/BOJ balance sheets, RRP, TGA, HY credit; `cogLiquidityGate.js`) | **G1 "tide"**: net liquidity 20-day RoC + HY veto (closest to Gate 1A; NULL) |
+| **Gate 1B** fast intraday cross-asset flow (`cogLiquidityGate1B.js`) | (FLOW, emitted but unused: in-sample trap) |
+| **Gate 2** risk/vol from QQQ/SPY/own OHLC, VALID/INVALID + stop (`cogRiskGate.js`) | **G2 "transmission"**: GEX → stop % and tier (range effect real on NQ, mostly IV) |
+| **Gate 3** direction from cross-asset macro: DXY, USDJPY, EURUSD, yields, credit, metals, ES/RTY (`cogDirectionGate.js`) | **G3 "magnet"**: OI walls → direction (NULL) |
+| Gate 4 execution; exit engine; Threshold 1 blended score (`cogThreshold1Gate.js`) | rule: trade only if G1.bias = G3.direction |
+
+The two systems share ideas, not code or verdicts: a verdict on a shadow gate is evidence about the matching JS gate's
+*idea*, not a test of that gate's implementation.
+
 ## The shadow gates (`cog-replication/engine/cogShadow.js`)
 
 - **G1 "tide"**: net liquidity = WALCL − TGA − RRP; its 20-business-day RoC gives the bias; an HY OAS move above +25bp
