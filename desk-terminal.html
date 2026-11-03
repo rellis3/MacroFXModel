@@ -383,11 +383,11 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 
 // ── data ──
 async function load() {
-  const [run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev, tw] = await Promise.all([
+  const [run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev, tw, wk] = await Promise.all([
     getJson('/api/desk-run'), getJson('/api/desk-score/record'), getJson('/api/desk-update'), getJson('/api/desk-quality'),
     getJson('/api/macro-scorecard'), getJson('/api/rate-diff'), getJson('/api/real-yield'), getJson('/api/rates'),
-    getJson('/api/cot-state'), getJson('/api/oanda-book/history'), getJson('/api/gpr'), getJson('/api/events'), getJson('/api/trade-watch')]);
-  D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, tw, ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
+    getJson('/api/cot-state'), getJson('/api/oanda-book/history'), getJson('/api/gpr'), getJson('/api/events'), getJson('/api/trade-watch'), getJson('/api/desk-weekly')]);
+  D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, tw, wk, ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
   const ok = run?.ok && run.head?.ok;
   D.cards = ok ? run.head.book.instruments : {};
   D.ccy = ok ? (run.debate?.currency?.view?.currencies ?? Object.fromEntries(Object.entries(run.head.book.currencies ?? {}).map(([k, v]) => [k, { bias: v.bias, why: v.why }]))) : {};
@@ -469,6 +469,19 @@ function releasesCard() {
     : upcoming(36).filter(e => /high/i.test(e.impact)).slice(0, 6).map(e => `<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>${esc(e.country)} ${esc(e.event)}</b> <span class="mono muted">${lt(e.ms)}</span></div>`).join('') || '<p class="muted">Nothing high-impact in the next 36 hours.</p>';
   return `<div class="card"><div class="ch"><span class="lbl">Releases ahead</span><span class="r muted">the economist, from the desk's release history</span></div>${list}</div>`;
 }
+// the weekly strategist's view (agent 19): the week's ranking against today's, themes, key dates, scenarios
+function weekSection() {
+  const w = D.wk; if (!w?.ok) return '';
+  const v = w.view, today = D.ranking ?? [];
+  const pos = c => today.indexOf(c), moved = c => (pos(c) < 0 ? 0 : v.ranking.indexOf(c) - pos(c));
+  return `<div class="sec"><h2>This week</h2><span class="lbl">the weekly strategist · ${esc(w.week)} · ${esc(w.label)}</span></div>
+<div class="grid g2"><div class="card glow"><span class="lbl">The week's view</span><div class="thesis" style="font-size:15px">${esc(v.headline)}</div>
+<div class="strength" style="margin-top:10px">${v.ranking.map(c => { const b = v.currencies[c]?.bias ?? 0, m = moved(c); return `<div class="sbox" tabindex="0" data-ccy="${c}" title="${esc(v.currencies[c]?.why ?? '')}"><b>${FLAG[c] ?? ''} ${c}</b><div class="v ${dirCls(b)}">${b > 0 ? '+' : ''}${b}</div><span class="muted">${pos(c) < 0 ? '' : m === 0 ? 'same today' : `#${pos(c) + 1} today`}</span></div>`; }).join('')}</div>
+${v.themes.map(t => `<div style="margin-top:12px"><b>${esc(t.title)}</b><div class="muted">${esc(t.body)}</div></div>`).join('')}
+${v.lastWeek ? `<details><summary>Last week</summary><p class="muted">${esc(v.lastWeek)}</p></details>` : ''}</div>
+<div class="card"><span class="lbl">Key dates</span>${v.week.map(x => `<div style="display:grid;grid-template-columns:86px 1fr;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)"><span class="mono" style="color:var(--gold)">${esc(x.when)}</span><div><b>${esc(x.event)}</b><div class="muted">${esc(x.why)}</div></div></div>`).join('') || '<p class="muted">None.</p>'}
+<div style="margin-top:12px"><span class="lbl">What would change the week</span>${v.scenarios.map(x => `<div class="pb"><div class="tg"><b>If</b><span>${esc(x.if)}</span></div><div class="en"><b>Then</b><span>${esc(x.then)}</span></div></div>`).join('')}</div></div></div>`;
+}
 // the trade watcher's board: each watched card, where price is against its zone, target and invalidation
 function watchBoard() {
   const t = D.tw; if (!t?.ok) return '';
@@ -491,6 +504,7 @@ function overview() {
   $('overview').innerHTML = `<div class="card hero glow" style="margin-bottom:14px"><div class="hhead"><span class="lbl">The desk's world · ${esc(D.run.date)}</span><h2>${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest</h2></div><div class="map" id="heromap" style="min-height:240px"></div><div class="legend"><span><i style="background:rgba(47,211,154,.6)"></i>bullish</span><span><i style="background:rgba(255,93,120,.6)"></i>bearish</span><span><i style="background:var(--gold)"></i>strongest → weakest</span><span>tap a bank or a country</span></div></div>
 ${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span class="lbl">Today's book</span><div class="thesis" style="font-size:16px">${esc(D.run.head.book.headline)}</div></div>` : ''}
 <div class="grid g2">${regimeCard()}<div class="grid" style="align-content:start">${strengthStrip()}${exposureChart()}${recordCard()}</div></div>
+${weekSection()}
 <div class="sec"><h2>Trade watch</h2><span class="lbl">the book against live prices, every 2 minutes</span></div>${watchBoard()}
 <div class="sec"><h2>Playbooks</h2><span class="lbl">the six largest cards · tap for the full analysis</span></div><div class="grid g3">${live.map(([n, c]) => playbookCard(n, c)).join('')}</div>
 <div class="sec"><h2>Releases and risks</h2></div><div class="grid g2">${releasesCard()}<div class="card"><div class="ch"><span class="lbl">Risk desk warnings</span></div><ul style="margin:0;padding-left:18px">${(D.run.head.book.risks ?? []).map(r => `<li style="margin:6px 0">${esc(r)}</li>`).join('') || '<li class="muted">None.</li>'}</ul></div></div>`;

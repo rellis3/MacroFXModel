@@ -157,6 +157,15 @@ desk is still scored as operated. The single-prompt control (H2) is unchanged an
 risk** (Phase 11, `js/deskRisk.js`) describes the book's concentration and scenarios and is not a scored cell. No
 outcome had been computed.
 
+### A6 — 2026-11-03 — PRE-RESULTS
+Before the first counted day, one input and four reports are added around the scored book. **Input:** the Desk Pack
+gains the feed `desk-weekly`, the weekly strategist's Sunday view (agent 19, `desk/roles/weekly_strategist.md`), read
+by the evidence clerk as the desk's own context, never as evidence or a card. **Reports that never change the scored
+book:** the claims checker (Phase 16) reviews the published newsletter after the run; the trade watcher (agent 18)
+reports when prices reach a card's plan levels; the chief of staff (agent 22) sends a summary; the journal coach and
+execution analyst (Phases 8 and 13) read the bots' trades. The desk is still scored as operated, by role version
+(`rolesHash`). The single-prompt control (H2) reads the whole pack as before, so it sees `desk-weekly` too: both arms get the same inputs. No outcome had been computed.
+
 ---
 
 ## RESULTS — not run

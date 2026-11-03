@@ -226,12 +226,13 @@ import { sliceFeed as _deskSliceFeed } from './js/deskSlices.js';
 import { assess as _dqAssess, afterRun as _dqAfterRun } from './js/deskDataQuality.js';
 import { attribution as _atAttribution, attributionRecord as _atRecord } from './js/deskAttribution.js';
 import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
+import { isoWeek as _wkIso, weekBooks as _wkBooks, weekCalendar as _wkCalendar, validateWeekly as _wkValidate, weeklyNote as _wkNote } from './js/weeklyDesk.js';   // agent 19
 import { morningText as _cosMorning, eveningText as _cosEvening } from './js/chiefOfStaff.js';   // agent 22
 import { numberCheck as _ccNumbers, claimsSections as _ccSections, validateClaims as _ccValidate } from './js/claimsCheck.js';   // Phase 16
 import { watchPlan as _twPlan, check as _twCheck, message as _twMessage } from './js/tradeWatch.js';   // agent 18: the trade watcher
 import { tradeRows as _jcRows, coach as _jcCoach, execution as _jcExec } from './js/deskJournal.js';   // Phases 8 and 13
 import { parseRegister as _tdParseRegister, opsReport as _tdOps, outline as _tdOutline, section as _tdSection, readingList as _tdReadingList, registerText as _tdRegisterText, screen as _tdScreen, validateTheories as _tdValidate } from './js/theoryDesk.js';   // Phases 9 and 12
-import { upcoming as _rpUpcoming } from './js/releasePlaybook.js';
+import { upcoming as _rpUpcoming, playbookText as _rpPlaybookText } from './js/releasePlaybook.js';
 import { dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
@@ -2200,6 +2201,7 @@ const TG_SENDERS = {
   ratesRegime:       'Rates vs Nasdaq regime change / rate shock (context, not a signal)',
   spreadEpisodes:    'Spread-turn episodes: confirmed turn (Case 1 full sequence / Case 2 every turn), context only',
   bankCredit:        'BIS cross-border bank credit: new quarter released (regime context, not a signal)',
+  deskWeekly:        'Desk weekly strategist: the Sunday week-ahead note',
   chiefOfStaff:      'Desk chief of staff: the morning note after the book, the evening note after the score',
   tradeWatch:        'Desk trade watcher: a card reached its entry zone, first target or invalidation (context, not an order)',
   // volatility_bot_v2 (the Python bot) checks this directly via ai_alert_cfg
@@ -5245,6 +5247,68 @@ app.post('/api/desk-claims/run', (req, res) => {
   if (!job) return res.status(409).json({ ok: false, error: 'a check is already running', job: _ccJob });
   res.status(202).json({ ok: true, job });
 });
+// ── Agent 19: the weekly strategist (js/weeklyDesk.js, desk/roles/weekly_strategist.md, plan §9x) ──
+// Sunday from 16:00 London, once per ISO week (the week it is written for: the coming Monday's). One model call.
+// Monday's evidence clerk reads it through the Desk Pack feed desk-weekly (memory, never a card).
+const _WK_KEY = 'desk_weekly_latest';
+let _wkJob = null;
+async function _wkRun() {
+  const role = _deskLoadRoles().find(r => r.id === 'weekly_strategist');
+  if (!role || !_aiAnyKey()) return { ok: false, error: 'no weekly_strategist role or model key' };
+  const now = Date.now(), today = _dpLondonDate(now), weekFor = _wkIso(_dpLondonDate(now + 864e5));
+  const idx = (await _drLoadIndex()).filter(r => r.headOk).slice(-7);
+  const runs = (await Promise.all(idx.map(r => _drLoad(r.date).catch(() => null)))).filter(Boolean);
+  const scores = (await _dsLoadIndex().catch(() => [])).slice(-10);
+  const refl = (await Promise.all(scores.slice(-5).map(async r => { const x = await kv.get(_DS_REFLECT_KEY(r.date)).catch(() => null); return x ? { date: r.date, ...JSON.parse(x) } : null; }))).filter(Boolean);
+  let cal = [], releases = [];
+  try {
+    const { rows } = await _rlRows();
+    const [ev, ca] = await Promise.all(['events', 'calendar-ahead'].map(p => _dpFetchFeed({ id: p, path: p, timeoutMs: 60_000 })));
+    const all = [...(Array.isArray(ev.json) ? ev.json : ev.json?.events ?? []), ...(ca.json?.rows ?? [])];
+    cal = _wkCalendar(all, now); releases = _rpUpcoming(all, rows, now, { hours: 24 * 8 });
+  } catch (e) { console.warn('[desk-weekly] calendar:', e.message); }
+  const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+  const { system, prompt } = _deskStagePrompt({ role, pack: { date: today }, ledger: DESK_EVIDENCE, sections: [
+    ["Last week's morning books, with each day's score where it was scored", _wkBooks(runs, scores)],
+    ['The last evening reviews', refl.map(r => ({ date: r.date, headline: r.headline, lessons: (r.lessons ?? []).map(l => l.lesson) }))],
+    [`The week's high-impact releases (${weekFor})`, cal.join('\n') || '(the calendar feed had none)'],
+    ["The desk's history of the releases that have one", releases.map(r => `${r.event} ${r.at}\n${_rpPlaybookText(r.playbook)}`).join('\n\n') || '(none with a history)'],
+  ], tail: 'Write the view for the week ahead.' });
+  let view = null, errors = [], model = null;
+  for (let i = 0; i < 2 && !view; i++) {
+    try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 12_000 }); const v = _wkValidate(_parseModelJson(r.text ?? _antText(r), 'desk:weekly')); if (v.ok) { view = v.value; model = r.model ?? null; } else errors.push(...v.errors); }
+    catch (e) { errors.push(e.message); }
+  }
+  if (!view) return { ok: false, error: errors.join('; ') || 'no valid reply' };
+  const rec = { ok: true, week: weekFor, writtenOn: today, writtenAt: new Date().toISOString(), model, label: 'the week\'s context for the daily desk, not a card', basedOn: runs.map(r => r.date), view };
+  await kv.put(_WK_KEY, JSON.stringify(rec));
+  await kv.put(`desk_weekly_${weekFor}`, JSON.stringify(rec)).catch(() => {});
+  if (tgOn('deskWeekly') && state.tg?.token && state.tg?.chatId) await sendTelegram(state.tg.token, state.tg.chatId, _wkNote(rec));
+  return rec;
+}
+function _wkStart() {
+  if (_wkJob?.status === 'running') return null;
+  const job = _wkJob = { status: 'running', startedAt: Date.now(), finishedAt: null, error: null };
+  _wkRun().then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; }).catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
+  return job;
+}
+// GET /api/desk-weekly: the latest week view (also the Desk Pack feed desk-weekly). POST /api/desk-weekly/run: write it now.
+app.get('/api/desk-weekly', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const raw = await kv.get(_WK_KEY).catch(() => null); res.json(raw ? { ...JSON.parse(raw), job: _wkJob } : { ok: false, error: 'no week view yet: the strategist writes on Sunday afternoons, or run it now', job: _wkJob }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/desk-weekly/run', (_req, res) => {
+  const job = _wkStart();
+  if (!job) return res.status(409).json({ ok: false, error: 'the strategist is already writing', job: _wkJob });
+  res.status(202).json({ ok: true, job });
+});
+svcInterval('deskWeekly', async () => {
+  const now = Date.now(), date = _dpLondonDate(now);
+  if (new Date(_dsLondonMs(date, 12)).getUTCDay() !== 0 || now < _dsLondonMs(date, 16) || _wkJob?.status === 'running' || !_aiAnyKey()) return;
+  const raw = await kv.get(_WK_KEY).catch(() => null);
+  if (raw && JSON.parse(raw).week === _wkIso(_dpLondonDate(now + 864e5))) return;
+  _wkStart();
+}, 30 * 60_000);
 // ── Agent 22: the chief of staff (js/chiefOfStaff.js, plan §9w) ──
 // Every 10 min on weekdays: the morning note once the day's book and its claims check exist (or from 08:30 London
 // without the check), the evening note once the day is scored. Each once a day (desk_cos_<date>). No model call.

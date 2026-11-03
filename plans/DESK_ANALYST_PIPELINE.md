@@ -854,6 +854,21 @@ touched.
   watcher caught (in zone, target, invalidated), the evening review's headline and first lesson, the running record.
 - Each note once a day (`desk_cos_<date>`). Built from what the desk already wrote: no model call, no new numbers.
 
+## 9x. Agent 19: the weekly strategist (built 2026-11-03)
+
+`js/weeklyDesk.js` (pure, tested in `js/weeklyDesk.test.mjs`), `desk/roles/weekly_strategist.md` (schema
+`weekly_view`); service `deskWeekly` (Sunday from 16:00 London, once per ISO week); `GET /api/desk-weekly`,
+`POST /api/desk-weekly/run`.
+
+- Reads the last week's morning books with each day's score, the last evening reviews, the coming week's
+  high-impact calendar and the desk's release history for the releases that have one, and the Evidence Book.
+- Writes: last week in a paragraph, two to five themes, a −2..+2 bias and ranking for the eight currencies, the key
+  dates and why, two to five "if X, then the view changes to Y" scenarios, and what to watch on Monday.
+- Saved as `desk_weekly_latest` and `desk_weekly_<week>`; a Sunday Telegram note (master switch `deskWeekly`); a
+  "This week" section on the Desk Terminal's Overview (the week's ranking beside today's).
+- Monday's evidence clerk reads it through the Desk Pack feed `desk-weekly` as the desk's own context, never as
+  evidence or a card (prereg amendment A6; both the desk and the single-prompt control see it).
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
@@ -898,7 +913,7 @@ Not built yet. The order is the owner's call; each item names what it needs firs
   release-history data. Pairs with the economist (Phase 6).
 - **Phase 17 · Desk Terminal.** *v1 built (§9r).* The owner's private terminal, built last.
 - **Agent 18 · Trade watcher.** *Built (§9u).* Alerts when a card reaches its entry zone, first target or invalidation.
-- **Agent 19 · Weekly strategist.** Sunday's week view and edition, and Monday's starting point.
+- **Agent 19 · Weekly strategist.** *Built (§9x).* Sunday's week view and edition, and Monday's starting point.
 - **Agent 20 · Rules keeper.** The live bots' settings against the research verdicts.
 - **Agent 21 · News analyst.** Tags a headline feed by currency and tier (needs the feed).
 - **Agent 22 · Chief of staff.** *Built (§9w).* One short Telegram each morning and evening summing up the Desk Office.

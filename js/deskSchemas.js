@@ -391,6 +391,16 @@ size: 0 to 1.5 (1 = normal). veto: true only when the trade should not be taken 
   "briefs": [ { "event": "the release", "priced": "consensus vs previous, and what that means", "sizeAndSpeed": "typical move by market at 30 min and 4 h, peak time, how much is kept, with counts",
                "ifHot": "what history shows after hot prints, with counts", "ifCold": "after cold prints, with counts", "bookAtRisk": "the desk's cards exposed, view and size", "watch": "one thing to watch" } ]   // one per release, in the order given
 }`,
+  weekly_view: `{
+  "headline": "the week's view in one sentence",
+  "lastWeek": "what the desk believed last week, whether it held, and what the scores say",
+  "themes": [ { "title": "short", "body": "the theme and the evidence behind it" } ],   // 2 to 5
+  "currencies": { "USD": { "bias": -2..2, "why": "one sentence" }, ... all eight: USD EUR GBP JPY AUD NZD CAD CHF },
+  "ranking": ["strongest", ..., "weakest"],   // all eight
+  "week": [ { "when": "Wed 13:30", "event": "US CPI", "why": "what it means for the view, with the history's counts" } ],
+  "scenarios": [ { "if": "what happens", "then": "how the view changes" } ],   // 2 to 5
+  "watch": ["what to check on Monday morning"]
+}`,
   claims_check: `{
   "verdict": "clean | fix | hold",   // hold = do not share as written; fix = change the listed items first
   "summary": "one sentence for the owner",
