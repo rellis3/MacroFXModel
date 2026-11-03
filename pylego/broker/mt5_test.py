@@ -565,6 +565,22 @@ def test_enter_works_on_a_symbol_not_yet_in_market_watch():
     assert b.enter('EURUSD', 'LONG', 1.0950, 1.1100, 0.1, 5.0, False) == 555111, b.last_reject_reason
 
 
+
+def test_integer_levels_are_sent_as_floats():
+    # 2026-11-03: a signal reloaded from JSON state had SL 3890 (int, was 3890.0); MT5
+    # rejects an int sl/tp/price with -2 'Invalid "sl" argument'.
+    fake = FakeMt5(tick=SimpleNamespace(bid=3911, ask=3912))           # ints from the tick too
+    b = _broker(fake, pip=0.01)
+    assert b.enter('XAUUSD', 'LONG', 3890, 3950, 0.1, 500.0, False) == 555111, b.last_reject_reason
+    req = fake.sent_orders[-1]
+    assert all(isinstance(req[k], float) for k in ('price', 'sl', 'tp')), req
+    fake = FakeMt5Pending(tick=SimpleNamespace(bid=28860, ask=28861))
+    b = _broker(fake, pip=1)
+    assert b.place_pending('NAS100', 'SHORT', 'limit', 28965, 29096, 28703, 0.1, False) == 555111
+    req = fake.sent_orders[-1]
+    assert all(isinstance(req[k], float) for k in ('price', 'sl', 'tp')), req
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:
