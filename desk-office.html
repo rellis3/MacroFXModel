@@ -248,8 +248,8 @@ ${c.hours.length ? `<h3 style="font-size:14px;margin:14px 0 6px">Entries by Lond
   renderRules();
 }
 function renderResearch() {
-  $('research').innerHTML = '<div class="panel" id="theorypanel"><h2>Theory desk</h2><p class="muted">Loading…</p></div><div class="panel" id="opspanel"><h2>Research ops</h2><p class="muted">Loading…</p></div><div id="ecopanel"></div>';
-  renderTheory(); renderOps();
+  $('research').innerHTML = '<div class="panel" id="podpanel"><h2>Research pod</h2><p class="muted">Loading…</p></div><div class="panel" id="buildpanel" hidden></div><div class="panel" id="cardpanel" hidden></div><div class="panel" id="fleetpanel"><h2>Fleet portfolio and risk</h2><p class="muted">Loading…</p></div><div class="panel" id="valpanel"><h2>Validation desk</h2><p class="muted">Loading…</p></div><div class="panel" id="catpanel"></div><div class="panel" id="theorypanel"><h2>Theory desk</h2><p class="muted">Loading…</p></div><div class="panel" id="opspanel"><h2>Research ops</h2><p class="muted">Loading…</p></div><div id="ecopanel"></div>';
+  renderPod(); renderFleet(); renderValidation(); renderTheory(); renderOps();
   // Phases 6 and 15: the economist's briefs and playbooks (also in the newsletter's "The releases ahead" page)
   getJson('/api/desk-run').then(run => {
     const e = run?.ok && run.date === today ? run.economist : null, el = $('ecopanel'); if (!el) return;
@@ -259,6 +259,81 @@ function renderResearch() {
   });
 }
 
+// Phases 23-25 (/api/research-pod): three researchers propose new systems; you mark each one, ask them questions, and send one to the architect.
+const LENS = { quant: 'Quant', macro: 'Macro', flow: 'Flow' }, MARK = { shortlist: 'warn', build: 'ok', park: '', reject: 'bad' };
+let podFilter = 'open';
+async function renderPod() {
+  const d = await getJson('/api/research-pod'), el = $('podpanel'); if (!el) return;
+  if (!d?.ok) { el.innerHTML = `<h2>Research pod</h2><p class="muted">${esc(d?.error ?? 'not available')}</p>`; return; }
+  const running = d.job?.status === 'running', last = d.sessions?.[0];
+  const lib = d.library.filter(p => podFilter === 'all' ? true : podFilter === 'open' ? !p.feedback || ['shortlist', 'build'].includes(p.feedback.status) : p.feedback?.status === podFilter);
+  const src = p => p.sources.map(s => s.ref && /^https?:/.test(s.ref) ? `<a href="${esc(s.ref)}" target="_blank" rel="noopener">${esc(s.title)}</a>` : esc(s.title)).join(' · ');
+  const inputs = p => p.inputs.map(i => `<span class="chip ${i.status === 'have' ? 'ok' : i.status === 'partial' ? 'warn' : 'bad'}" title="${esc(i.how)}">${esc(i.what)}</span>`).join(' ');
+  el.innerHTML = `<h2>Research pod <i>three researchers propose new systems · ${esc(d.label)} · weekly on Sundays, or ask now</i></h2>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;margin:6px 0 12px"><textarea id="podbrief" rows="2" placeholder="Ask the pod: e.g. what would it take to build an FX fair-value system? what retail behaviour could we fade on gold?" style="flex:1;min-width:240px;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:8px;font:14px inherit"></textarea>
+<button class="btn" id="podrun"${running ? ' disabled' : ''}>${running ? 'The pod is working…' : 'Ask the pod'}</button></div>
+${d.job?.status === 'error' ? `<p class="muted">Last attempt failed: ${esc(d.job.error)}</p>` : ''}
+${last ? `<p><b>Latest session</b> <span class="muted">${esc(new Date(last.at).toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'medium', timeStyle: 'short' }))}${last.brief ? ` · your question: “${esc(last.brief.slice(0, 160))}”` : ' · weekly'}</span></p>
+${Object.entries(last.researchers).map(([k, r]) => `<p><span class="chip">${LENS[k]}</span> ${esc(r.headline)}${r.questionsForOwner?.length ? `<br><span class="muted">Asks you: ${r.questionsForOwner.map(esc).join(' · ')}</span>` : ''}</p>`).join('')}
+${Object.keys(last.errors ?? {}).length ? `<p class="muted">Not answered: ${Object.entries(last.errors).map(([k, v]) => `${LENS[k] ?? k} (${esc(String(v).slice(0, 80))})`).join(', ')}</p>` : ''}
+<p class="muted">Web read: ${Object.entries(last.web ?? {}).map(([k, v]) => `${esc(k)} ${esc(v)}`).join(' · ')}</p>` : '<p class="muted">No session yet. Ask a question or wait for Sunday.</p>'}
+<div class="tabs" style="margin:10px 0">${['open', 'build', 'shortlist', 'park', 'reject', 'all'].map(k => `<button data-podf="${k}" aria-selected="${podFilter === k}">${k}</button>`).join('')}</div>
+${lib.length ? lib.map(p => `<div style="border-top:1px solid var(--line);padding:10px 0"><h3 style="font-size:15px;margin:0 0 4px">${esc(p.title)} <span class="chip">${LENS[p.lens] ?? p.lens}</span> <span class="chip ${p.priority === 'high' ? 'ok' : p.priority === 'low' ? '' : 'warn'}">${esc(p.priority)} · effort ${esc(p.effort)}</span>${p.feedback ? ` <span class="chip ${MARK[p.feedback.status]}">${esc(p.feedback.status)}</span>` : ''}${p.near?.length ? ` <span class="chip bad" title="${esc(p.near.map(n => `${n.kind} ${n.id} (${n.status})`).join('; '))}">close to ${esc(p.near[0].id)}</span>` : ''}${p.card ? ` <span class="chip ok">card${p.card.review ? ` · review: ${esc(p.card.review)}` : ''}</span>` : ''}</h3>
+<p style="margin:2px 0">${esc(p.thesis)}</p><p class="muted" style="margin:2px 0">Why it should exist: ${esc(p.mechanism)}${p.counterparty ? ` · other side: ${esc(p.counterparty)}` : ''}</p>
+<details><summary class="muted">Rules, test, inputs and build steps · ${esc(p.family ?? '')}</summary><table><tbody>${[['Universe', p.rules.universe], ['Signal', p.rules.signal], ['Entry', p.rules.entry], ['Exit', p.rules.exit], ['Horizon', p.rules.horizon], ['Sizing', p.rules.sizing], ['Test', `${p.test.variable} · must beat ${p.test.benchmark} · placebo ${p.test.placebo}${p.test.horizons ? ` · horizons ${p.test.horizons}` : ''}`], ['Power', p.test.power], ['Kill if', p.killIf], ['Like an existing bot?', p.fleetOverlap]].filter(([, v]) => v).map(([k, v]) => `<tr><td class="muted" style="width:120px">${k}</td><td>${esc(v)}</td></tr>`).join('')}</tbody></table>
+${p.buildSteps?.length ? `<ol>${p.buildSteps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}</details>
+<p style="margin:4px 0">Needs: ${inputs(p)}</p><p class="muted" style="margin:2px 0">Sources: ${src(p)} · first seen ${esc(p.firstSeen ?? '')}</p>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${['shortlist', 'build', 'park', 'reject'].map(k => `<button class="btn" data-mark="${esc(p.id)}" data-st="${k}">${k}</button>`).join('')}<input data-note="${esc(p.id)}" placeholder="note for the researchers" value="${esc(p.feedback?.note ?? '')}" style="flex:1;min-width:160px;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:6px">
+<button class="btn" data-card="${esc(p.id)}">${p.card ? 'View system card' : 'Send to the architect'}</button></div></div>`).join('') : `<p class="muted">Nothing under “${podFilter}”.</p>`}`;
+  const bl = $('buildpanel');
+  if (bl) { bl.hidden = !d.buildList.length; bl.innerHTML = `<h2>What we need to build <i>every input the live proposals need and we do not have, ranked by how many need it (build counts double)</i></h2><table><thead><tr><th>Input</th><th>Status</th><th>How to get it</th><th>Needed by</th></tr></thead><tbody>${d.buildList.map(b => `<tr><td>${esc(b.what)}</td><td><span class="chip ${b.status === 'partial' ? 'warn' : 'bad'}">${esc(b.status)}</span></td><td class="muted">${esc(b.how ?? '')}</td><td class="n">${b.needs.length} <span class="muted" title="${esc(b.needs.join(', '))}">· score ${b.score}</span></td></tr>`).join('')}</tbody></table>`; }
+  const cat = $('catpanel'), cv = d.catalogue.coverage;
+  if (cat) cat.innerHTML = `<h2>System catalogue <i>the institutional list against what this repo has · a map, not a verdict</i></h2><table><thead><tr><th>Area</th><th>Have</th><th>Partial</th><th>Missing</th><th>Out of scope</th></tr></thead><tbody>${Object.entries(cv).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${v.have}</td><td class="n">${v.partial}</td><td class="n">${v.missing}</td><td class="n">${v.out}</td></tr>`).join('')}</tbody></table>
+<details><summary class="muted">Every system</summary><table><tbody>${d.catalogue.systems.map(r => `<tr><td>${esc(r.name)}</td><td><span class="chip ${r.status === 'have' ? 'ok' : r.status === 'partial' ? 'warn' : r.status === 'missing' ? 'bad' : ''}">${esc(r.status)}</span></td><td class="muted">${esc(r.where)}${r.note ? ` · ${esc(r.note)}` : ''}</td></tr>`).join('')}</tbody></table></details>`;
+  const poll = () => { const t = setInterval(async () => { const j = await getJson('/api/research-pod'); if (j?.job?.status !== 'running') { clearInterval(t); renderPod(); } }, 15_000); };
+  const b = $('podrun'); if (b) b.onclick = async () => { b.disabled = true; b.textContent = 'The pod is working…'; await fetch('/api/research-pod/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ brief: $('podbrief').value.trim() }) }).catch(() => null); poll(); };
+  if (running) poll();
+  document.querySelectorAll('[data-podf]').forEach(x => x.onclick = () => { podFilter = x.dataset.podf; renderPod(); });
+  document.querySelectorAll('[data-mark]').forEach(x => x.onclick = async () => { const id = x.dataset.mark, note = document.querySelector(`[data-note="${CSS.escape(id)}"]`)?.value ?? ''; x.disabled = true; await fetch('/api/research-pod/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: x.dataset.st, note }) }).catch(() => null); renderPod(); });
+  document.querySelectorAll('[data-card]').forEach(x => x.onclick = () => showCard(x.dataset.card, true));
+}
+// Phases 24 and 26: the architect's system card, the validation desk's review and the prereg draft.
+async function showCard(id, start) {
+  const el = $('cardpanel'); el.hidden = false; el.innerHTML = '<h2>System card</h2><p class="muted">Loading…</p>'; el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  let c = await getJson(`/api/research-pod/card?id=${encodeURIComponent(id)}`);
+  if (!c?.ok && start && c?.job?.status !== 'running') { await fetch('/api/research-pod/card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => null); c = { job: { status: 'running' } }; }
+  if (!c?.ok) { el.innerHTML = `<h2>System card</h2><p class="muted">${c?.job?.status === 'running' ? 'The architect is writing the card, then the validation desk reviews it (a few minutes)…' : esc(c?.error ?? c?.job?.error ?? 'not available')}</p>`;
+    if (c?.job?.status === 'running') setTimeout(() => showCard(id, false), 20_000); return; }
+  const k = c.card, rv = c.review;
+  el.innerHTML = `<h2>${esc(k.name)} <i>system card · written ${esc(new Date(c.at).toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'medium', timeStyle: 'short' }))}</i></h2>
+<p><b>${esc(k.hypothesis)}</b></p><table><tbody>${[['Mechanism', k.mechanism], ['Universe', k.universe.join(', ')], ['Horizon', k.horizon], ['Signal', k.signal], ['Entry', k.entry], ['Exit', k.exit], ['Sizing', k.sizing], ['Costs', k.costs], ['Primary', k.test.primary], ['Benchmark', k.test.benchmark], ['Placebo', k.test.placebo], ['Sample', k.test.sample], ['Holdout', k.test.holdout], ['Power', k.test.power], ['Kill', k.kill.join(' · ')], ['Fleet', k.fleet]].filter(([, v]) => v).map(([a, b]) => `<tr><td class="muted" style="width:110px">${a}</td><td>${esc(b)}</td></tr>`).join('')}</tbody></table>
+<h3 style="font-size:14px;margin:12px 0 4px">Data</h3><p>${k.data.map(x => `<span class="chip ${x.status === 'have' ? 'ok' : x.status === 'partial' ? 'warn' : 'bad'}" title="${esc(x.how)}">${esc(x.feed)}</span>`).join(' ')}</p>
+<h3 style="font-size:14px;margin:12px 0 4px">Build plan</h3><ol>${k.build.map(b => `<li>${esc(b.step)} <span class="chip">${esc(b.effort)}</span>${b.files.length ? ` <span class="muted">${b.files.map(esc).join(', ')}</span>` : ''}</li>`).join('')}</ol>
+${rv ? `<h3 style="font-size:14px;margin:12px 0 4px">Validation desk: <span class="chip ${rv.verdict === 'pass' ? 'ok' : rv.verdict === 'fix' ? 'warn' : 'bad'}">${esc(rv.verdict)}</span></h3><p>${esc(rv.summary)}</p>${rv.issues.length ? `<table><thead><tr><th>Kind</th><th>Issue</th><th>The test that settles it</th></tr></thead><tbody>${rv.issues.map(i => `<tr><td><span class="chip ${i.severity === 'high' ? 'bad' : i.severity === 'medium' ? 'warn' : ''}">${esc(i.kind)}</span></td><td>${esc(i.issue)}</td><td class="muted">${esc(i.test)}</td></tr>`).join('')}</tbody></table>` : ''}${rv.gates?.length ? `<p class="muted">Gates before paper trading: ${rv.gates.map(esc).join(' · ')}</p>` : ''}` : `<p class="muted">No review: ${esc((c.errors ?? []).join('; '))}</p>`}
+<p><a class="btn" href="/api/research-pod/card?id=${encodeURIComponent(id)}&format=md" target="_blank">Prereg draft (markdown)</a> <button class="btn" id="cardre">Rewrite the card</button> <span class="muted">To go ahead: claim a register row and commit the prereg (the research-protocol skill), then run it in the harness.</span></p>`;
+  $('cardre').onclick = async () => { await fetch('/api/research-pod/card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => null); el.innerHTML = '<h2>System card</h2><p class="muted">Rewriting…</p>'; setTimeout(() => showCard(id, false), 20_000); };
+}
+// Phases 27-28 (/api/fleet-portfolio): the bots together: weights, what each adds, correlation, VaR/ES, drift.
+async function renderFleet(days = 90) {
+  const r = await getJson(`/api/fleet-portfolio?days=${days}`), el = $('fleetpanel'); if (!el) return;
+  if (!r?.ok) { el.innerHTML = `<h2>Fleet portfolio and risk</h2><p class="muted">${esc(r?.error ?? 'not available')}</p>`; return; }
+  const W = Object.fromEntries(r.weights.map(w => [w.bot, w])), A = Object.fromEntries(r.adds.map(a => [a.bot, a])), D = Object.fromEntries(r.drift.map(d => [d.bot, d])), pct = x => (x == null ? '–' : Math.round(x * 100) + '%');
+  const v = r.fleet.varEs?.['0.95'], mc = r.fleet.monteCarlo;
+  el.innerHTML = `<h2>Fleet portfolio and risk <i>${esc(r.label)} · ${r.trades} trades, ${r.days} days (${esc(r.from ?? '')} to ${esc(r.to ?? '')}) · in ${esc(r.unit)}</i></h2>
+<div class="tabs" style="margin:6px 0 10px">${[30, 90, 180, 365].map(n => `<button data-fd="${n}" aria-selected="${n === r.window}">${n} days</button>`).join('')}</div>
+<div class="tiles"><div class="tile"><span>Fleet Sharpe (risk parity)</span><b>${f(r.fleet.sharpe)}</b></div><div class="tile"><span>Independent bots</span><b>${r.effN ?? '–'}</b></div><div class="tile"><span>Fleet max drawdown</span><b>${r.fleet.maxDrawdown ?? '–'} ${esc(r.unit)}</b></div><div class="tile"><span>Daily VaR / ES 95%</span><b>${v ? `${v.var} / ${v.es}` : '–'}</b></div>${mc?.ok ? `<div class="tile"><span>Drawdown it could have had (95th)</span><b>${mc.drawdown.p95}</b></div>` : ''}</div>
+<table><thead><tr><th>Bot</th><th>Trades</th><th>Days</th><th>Total</th><th>Hit</th><th>Sharpe</th><th>Max DD</th><th>Inverse-vol</th><th>Risk parity</th><th>Half-Kelly risk</th><th>Adds to fleet Sharpe</th><th>Drift</th></tr></thead><tbody>${r.bots.map(b => `<tr><td>${esc(b.bot)}</td><td class="n">${b.trades}</td><td class="n">${b.days}</td><td class="n ${cls(b.total)}">${f(b.total)}</td><td class="n">${pct(b.hit)}</td><td class="n">${f(b.sharpe)}</td><td class="n">${b.maxDrawdown ?? '–'}</td><td class="n">${W[b.bot] ? pct(W[b.bot].inverseVol) : '<span class="muted">too few days</span>'}</td><td class="n">${W[b.bot] ? pct(W[b.bot].riskParity) : '–'}</td><td class="n">${b.kelly?.ok ? `${(b.kelly.suggested * 100).toFixed(1)}%${b.kelly.capped ? ' (cap)' : ''}` : '–'}</td><td class="n ${cls(A[b.bot]?.adds)}">${A[b.bot] ? f(A[b.bot].adds) : '–'}</td><td>${D[b.bot]?.alarm ? '<span class="chip bad">below its record</span>' : D[b.bot]?.ok ? '<span class="chip ok">in line</span>' : '<span class="muted">–</span>'}</td></tr>`).join('')}</tbody></table>
+${r.breaks.length ? `<p><b>Correlation breaks</b> (last 20 days vs the whole span): ${r.breaks.map(x => `${esc(x.a)} / ${esc(x.b)} ${f(x.full)} → ${f(x.recent)}`).join(' · ')}</p>` : ''}
+<p class="muted">Logs read: ${r.logs.map(esc).join(', ') || 'none'}. Weights are what the record implies, not advice. "Adds" is the equal-weight fleet's Sharpe with the bot minus without it. Drift is a downward CUSUM on the last third of a bot's trades against its own first two thirds. Half-Kelly is capped at 2% of equity per 1R.</p>`;
+  document.querySelectorAll('[data-fd]').forEach(x => x.onclick = () => renderFleet(+x.dataset.fd));
+}
+// Phase 26 (/api/validation/harness): the promotion gates on every harness study.
+async function renderValidation() {
+  const r = await getJson('/api/validation/harness'), el = $('valpanel'); if (!el) return;
+  if (!r?.ok) { el.innerHTML = `<h2>Validation desk</h2><p class="muted">${esc(r?.error ?? 'not available')}</p>`; return; }
+  el.innerHTML = `<h2>Validation desk <i>${esc(r.label)} · every harness study in the deployed repo</i></h2><table><thead><tr><th>Study</th><th>Verdict</th><th>Failed gates</th><th>Independent markets</th></tr></thead><tbody>${r.studies.map(x => `<tr><td>${esc(x.id ?? x.file)}<br><span class="muted">${esc(x.cell ?? '')}</span></td><td><span class="chip ${x.verdict === 'pass' ? 'ok' : 'bad'}">${esc(x.verdict)}</span></td><td class="muted">${x.failed.map(esc).join(' · ') || 'none'}<details><summary>all gates</summary>${x.gates.map(g => `<div><span class="chip ${g.status === 'pass' ? 'ok' : g.status === 'fail' ? 'bad' : ''}">${esc(g.status)}</span> ${esc(g.gate)}: ${esc(String(g.value ?? '–'))} <span class="muted">(${esc(g.need)})</span></div>`).join('')}</details></td><td class="n">${x.effN ?? '–'}</td></tr>`).join('')}</tbody></table>
+<p class="muted">A study must pass every gate before its system is paper-traded. These gates sit on top of the harness's own statistics; the Evidence Book verdict stays with the research protocol.</p>`;
+}
 // Phase 9 (/api/desk-theory): the week's proposals, each screened against the register and the Evidence Book.
 async function renderTheory() {
   const t = await getJson('/api/desk-theory'), el = $('theorypanel'); if (!el) return;
