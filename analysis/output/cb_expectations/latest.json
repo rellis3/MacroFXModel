@@ -1,0 +1,485 @@
+{
+ "asOf": "2026-11-04T12:38:11Z",
+ "source": "IBKR futures (laptop pull, scripts/rates_line/refresh_cb_expectations.py)",
+ "banks": {
+  "USD": {
+   "source": "30-day fed funds (ZQ, CBOT)",
+   "kind": "1m",
+   "rungs": [
+    {
+     "local": "ZQX6",
+     "expiry": "20261130",
+     "month": "202611",
+     "price": 96.12,
+     "rate": 3.88,
+     "date": "2026-11-04",
+     "rateWeekAgo": 3.8825,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "ZQZ6",
+     "expiry": "20261231",
+     "month": "202612",
+     "price": 95.98,
+     "rate": 4.02,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.015,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "ZQF7",
+     "expiry": "20270129",
+     "month": "202701",
+     "price": 95.905,
+     "rate": 4.095,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.08,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "ZQG7",
+     "expiry": "20270226",
+     "month": "202702",
+     "price": 95.855,
+     "rate": 4.145,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.135,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "ZQH7",
+     "expiry": "20270331",
+     "month": "202703",
+     "price": 95.79,
+     "rate": 4.21,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.195,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "ZQJ7",
+     "expiry": "20270430",
+     "month": "202704",
+     "price": 95.705,
+     "rate": 4.295,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.275,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "ZQK7",
+     "expiry": "20270528",
+     "month": "202705",
+     "price": 95.65,
+     "rate": 4.35,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.33,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "ZQM7",
+     "expiry": "20270630",
+     "month": "202706",
+     "price": 95.59,
+     "rate": 4.41,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.39,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "ZQN7",
+     "expiry": "20270730",
+     "month": "202707",
+     "price": 95.565,
+     "rate": 4.435,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.415,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "ZQQ7",
+     "expiry": "20270831",
+     "month": "202708",
+     "price": 95.545,
+     "rate": 4.455,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.435,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "ZQU7",
+     "expiry": "20270930",
+     "month": "202709",
+     "price": 95.54,
+     "rate": 4.46,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.445,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "ZQV7",
+     "expiry": "20271029",
+     "month": "202710",
+     "price": 95.53,
+     "rate": 4.47,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.46,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "ZQX7",
+     "expiry": "20271130",
+     "month": "202711",
+     "price": 95.53,
+     "rate": 4.47,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.455,
+     "dateWeekAgo": "2026-10-29"
+    }
+   ]
+  },
+  "CHF": {
+   "source": "3M SARON (Eurex) (SARON, EUREX)",
+   "kind": "3m",
+   "rungs": [
+    {
+     "local": "FSR3 20261215 M",
+     "expiry": "20261215",
+     "month": "202612",
+     "price": 100.045,
+     "rate": -0.045,
+     "date": "2026-11-03",
+     "rateWeekAgo": -0.045,
+     "dateWeekAgo": "2026-10-28"
+    },
+    {
+     "local": "FSR3 20270316 M",
+     "expiry": "20270316",
+     "month": "202703",
+     "price": 100.02,
+     "rate": -0.02,
+     "date": "2026-11-03",
+     "rateWeekAgo": -0.015,
+     "dateWeekAgo": "2026-10-28"
+    },
+    {
+     "local": "FSR3 20270615 M",
+     "expiry": "20270615",
+     "month": "202706",
+     "price": 99.88,
+     "rate": 0.12,
+     "date": "2026-11-03",
+     "rateWeekAgo": 0.14,
+     "dateWeekAgo": "2026-10-28"
+    },
+    {
+     "local": "FSR3 20270914 M",
+     "expiry": "20270914",
+     "month": "202709",
+     "price": 99.725,
+     "rate": 0.275,
+     "date": "2026-11-03",
+     "rateWeekAgo": 0.315,
+     "dateWeekAgo": "2026-10-28"
+    },
+    {
+     "local": "FSR3 20271214 M",
+     "expiry": "20271214",
+     "month": "202712",
+     "price": 99.59,
+     "rate": 0.41,
+     "date": "2026-11-03",
+     "rateWeekAgo": 0.465,
+     "dateWeekAgo": "2026-10-28"
+    },
+    {
+     "local": "FSR3 20280314 M",
+     "expiry": "20280314",
+     "month": "202803",
+     "price": 99.5,
+     "rate": 0.5,
+     "date": "2026-11-03",
+     "rateWeekAgo": 0.56,
+     "dateWeekAgo": "2026-10-28"
+    }
+   ]
+  },
+  "CAD": {
+   "source": "3M CORRA (CRA, CDE)",
+   "kind": "3m",
+   "rungs": [
+    {
+     "local": "CRAU26",
+     "expiry": "20261215",
+     "month": "202612",
+     "price": 97.58,
+     "rate": 2.42,
+     "date": "2026-11-04",
+     "rateWeekAgo": 2.415,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "CRAZ26",
+     "expiry": "20270316",
+     "month": "202703",
+     "price": 97.265,
+     "rate": 2.735,
+     "date": "2026-11-04",
+     "rateWeekAgo": 2.75,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "CRAH27",
+     "expiry": "20270615",
+     "month": "202706",
+     "price": 97.045,
+     "rate": 2.955,
+     "date": "2026-11-04",
+     "rateWeekAgo": 2.99,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "CRAM27",
+     "expiry": "20270914",
+     "month": "202709",
+     "price": 96.905,
+     "rate": 3.095,
+     "date": "2026-11-04",
+     "rateWeekAgo": 3.165,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "CRAU27",
+     "expiry": "20271214",
+     "month": "202712",
+     "price": 96.795,
+     "rate": 3.205,
+     "date": "2026-11-04",
+     "rateWeekAgo": 3.31,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "CRAZ27",
+     "expiry": "20280314",
+     "month": "202803",
+     "price": 96.71,
+     "rate": 3.29,
+     "date": "2026-11-04",
+     "rateWeekAgo": 3.405,
+     "dateWeekAgo": "2026-10-29"
+    }
+   ]
+  },
+  "AUD": {
+   "source": "30-day interbank cash rate (IB, SNFE)",
+   "kind": "1m",
+   "rungs": [
+    {
+     "local": "IBX6",
+     "expiry": "20261130",
+     "month": "202611",
+     "price": 95.18,
+     "rate": 4.82,
+     "date": "2026-11-05",
+     "rateWeekAgo": 4.78,
+     "dateWeekAgo": "2026-10-30"
+    },
+    {
+     "local": "IBZ6",
+     "expiry": "20261231",
+     "month": "202612",
+     "price": 95.13,
+     "rate": 4.87,
+     "date": "2026-11-05",
+     "rateWeekAgo": 4.84,
+     "dateWeekAgo": "2026-10-30"
+    },
+    {
+     "local": "IBF7",
+     "expiry": "20270129",
+     "month": "202701",
+     "price": 95.125,
+     "rate": 4.875,
+     "date": "2026-11-05",
+     "rateWeekAgo": 4.845,
+     "dateWeekAgo": "2026-10-30"
+    },
+    {
+     "local": "IBG7",
+     "expiry": "20270226",
+     "month": "202702",
+     "price": 95.095,
+     "rate": 4.905,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.905,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "IBH7",
+     "expiry": "20270331",
+     "month": "202703",
+     "price": 95.075,
+     "rate": 4.925,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.935,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "IBJ7",
+     "expiry": "20270430",
+     "month": "202704",
+     "price": 95.075,
+     "rate": 4.925,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.94,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "IBK7",
+     "expiry": "20270531",
+     "month": "202705",
+     "price": 95.085,
+     "rate": 4.915,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.94,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "IBM7",
+     "expiry": "20270630",
+     "month": "202706",
+     "price": 95.1,
+     "rate": 4.9,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.935,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "IBN7",
+     "expiry": "20270730",
+     "month": "202707",
+     "price": 95.135,
+     "rate": 4.865,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.925,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "IBQ7",
+     "expiry": "20270831",
+     "month": "202708",
+     "price": 95.175,
+     "rate": 4.825,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.895,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "IBU7",
+     "expiry": "20270930",
+     "month": "202709",
+     "price": 95.205,
+     "rate": 4.795,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.87,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "IBV7",
+     "expiry": "20271029",
+     "month": "202710",
+     "price": 95.225,
+     "rate": 4.775,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.86,
+     "dateWeekAgo": "2026-10-29"
+    },
+    {
+     "local": "IBX7",
+     "expiry": "20271130",
+     "month": "202711",
+     "price": 95.28,
+     "rate": 4.72,
+     "date": "2026-11-04",
+     "rateWeekAgo": 4.815,
+     "dateWeekAgo": "2026-10-29"
+    }
+   ]
+  },
+  "JPY": {
+   "source": "3M TONA (TONA, OSE.JPN)",
+   "kind": "3m",
+   "rungs": [
+    {
+     "local": "161090091",
+     "expiry": "20261215",
+     "month": "202612",
+     "price": 98.795,
+     "rate": 1.205,
+     "date": "2026-11-05",
+     "rateWeekAgo": 1.2075,
+     "dateWeekAgo": "2026-10-30"
+    },
+    {
+     "local": "161120091",
+     "expiry": "20270316",
+     "month": "202703",
+     "price": 98.5475,
+     "rate": 1.4525,
+     "date": "2026-11-05",
+     "rateWeekAgo": 1.455,
+     "dateWeekAgo": "2026-10-30"
+    },
+    {
+     "local": "162030091",
+     "expiry": "20270615",
+     "month": "202706",
+     "price": 98.3375,
+     "rate": 1.6625,
+     "date": "2026-11-05",
+     "rateWeekAgo": 1.67,
+     "dateWeekAgo": "2026-10-30"
+    },
+    {
+     "local": "162060091",
+     "expiry": "20270914",
+     "month": "202709",
+     "price": 98.155,
+     "rate": 1.845,
+     "date": "2026-11-05",
+     "rateWeekAgo": 1.8475,
+     "dateWeekAgo": "2026-10-30"
+    },
+    {
+     "local": "162090091",
+     "expiry": "20271214",
+     "month": "202712",
+     "price": 98.0475,
+     "rate": 1.9525,
+     "date": "2026-11-05",
+     "rateWeekAgo": 1.9725,
+     "dateWeekAgo": "2026-10-30"
+    },
+    {
+     "local": "162120091",
+     "expiry": "20280314",
+     "month": "202803",
+     "price": 97.9375,
+     "rate": 2.0625,
+     "date": "2026-11-05",
+     "rateWeekAgo": 2.0925,
+     "dateWeekAgo": "2026-10-30"
+    }
+   ]
+  }
+ },
+ "errors": {
+  "EUR": [
+   "ER3 ICEEU: no prices",
+   "I ICEEU: no prices"
+  ],
+  "GBP": [
+   "SONIA.N ICEEU: no prices"
+  ]
+ }
+}
