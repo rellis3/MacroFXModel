@@ -209,7 +209,9 @@ validate) and with none (it must not). No real outcome had been computed.
 
 ---
 
-## RESULTS — run <YYYY-MM-DD>
+## RESULTS — run 2026-11-04
+
+Run by the owner on the laptop (`count` → `controls` (A1 passed: plant recovered, shuffle clean) → `run`). Results: `analysis/output/expiry-tracker/RESULTS.md`. P1 NULL, P2 NULL, P3 UNDERPOWERED; banked as `expiry-pull-side`, `expiry-pull-build`, `expiry-pull-flip`.
 
 *Appended below this line, or written to `analysis/output/expiry-tracker/RESULTS.md`. Nothing above it changes after the
 run.*

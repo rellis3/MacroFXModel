@@ -36,16 +36,17 @@ BASE = 'https://macrofxmodel-production.up.railway.app'
 KV_KEY = 'cb_rate_futures_v1'
 IB_PORT = int(os.environ.get('IB_PORT', 4002))
 
-# currency: [(IBKR symbol, exchange, currency, label, kind), ...] best first
+# currency: [(IBKR symbol, exchange, currency, label, kind[, tradingClass]), ...] best first. Symbols checked against the account with --search
+# (4 Nov 2026): ICE SONIA is SONIA.N (class SO3; SOA is the one-month), SARON is SARON on Eurex (FSR3) or SRFXON3 on ICE (SA3), TONA is TONA on
+# OSE (TOA3M) or SGX. IBKR lists no New Zealand rate futures for this account (only the 6N currency future), so NZD is left out here.
 CANDIDATES = {
     'USD': [('ZQ', 'CBOT', 'USD', '30-day fed funds', '1m'), ('SOFR3', 'CME', 'USD', '3M SOFR', '3m')],
     'EUR': [('ER3', 'ICEEU', 'EUR', '3M €STR', '3m'), ('I', 'ICEEU', 'EUR', '3M Euribor', 'bill')],
-    'GBP': [('SO3', 'ICEEU', 'GBP', '3M SONIA', '3m'), ('SR3', 'CME', 'GBP', '3M SONIA (CME)', '3m')],
-    'CHF': [('SA3', 'ICEEU', 'CHF', '3M SARON', '3m')],
+    'GBP': [('SONIA.N', 'ICEEU', 'GBP', '3M SONIA', '3m', 'SO3')],
+    'CHF': [('SARON', 'EUREX', 'CHF', '3M SARON (Eurex)', '3m', 'FSR3'), ('SRFXON3', 'ICEEU', 'CHF', '3M SARON (ICE)', '3m', 'SA3')],
     'CAD': [('CRA', 'CDE', 'CAD', '3M CORRA', '3m'), ('BAX', 'CDE', 'CAD', '3M bankers acceptance', 'bill')],
     'AUD': [('IB', 'SNFE', 'AUD', '30-day interbank cash rate', '1m'), ('IR', 'SNFE', 'AUD', '90-day bank bill', 'bill')],
-    'NZD': [('ZO', 'SNFE', 'NZD', '30-day OCR', '1m'), ('BB', 'SNFE', 'NZD', '90-day bank bill', 'bill')],
-    'JPY': [('TONA3M', 'OSE.JPN', 'JPY', '3M TONA', '3m')],
+    'JPY': [('TONA', 'OSE.JPN', 'JPY', '3M TONA', '3m', 'TOA3M'), ('TONA', 'SGX', 'JPY', '3M TONA (SGX)', '3m', 'TONA')],
 }
 # --search: words to look up in IBKR's symbol search for each currency, to find the right symbol when a candidate is not found
 SEARCH = {
@@ -80,12 +81,12 @@ def closes(ib, c):
     return None, None
 
 
-def strip(ib, sym, exch, ccy, n, now, discover=False):
+def strip(ib, sym, exch, ccy, n, now, discover=False, tc=''):
     from ib_insync import Future
-    det = ib.reqContractDetails(Future(symbol=sym, exchange=exch, currency=ccy))
+    det = ib.reqContractDetails(Future(symbol=sym, exchange=exch, currency=ccy, tradingClass=tc))
     if not det:
         # the exchange code may differ in IBKR: ask again on any exchange, same symbol and currency
-        det = ib.reqContractDetails(Future(symbol=sym, exchange='', currency=ccy))
+        det = ib.reqContractDetails(Future(symbol=sym, exchange='', currency=ccy, tradingClass=tc))
         if det:
             print(f'    found {sym} on {sorted({d.contract.exchange for d in det})} rather than {exch}')
     if not det:
@@ -169,10 +170,10 @@ def main():
     for ccy, cands in CANDIDATES.items():
         if only and ccy not in only:
             continue
-        for sym, exch, cur, label, kind in cands:
+        for sym, exch, cur, label, kind, *tc in cands:
             print(f'{ccy}: {label} ({sym} on {exch})')
             try:
-                rungs, err = strip(ib, sym, exch, cur, a.rungs, now, discover=a.discover)
+                rungs, err = strip(ib, sym, exch, cur, a.rungs, now, discover=a.discover, tc=(tc[0] if tc else ''))
             except Exception as e:
                 rungs, err = None, f'{type(e).__name__}: {e}'
             if err:
