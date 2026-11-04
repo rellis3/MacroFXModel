@@ -17,11 +17,11 @@ const stress = { overall: 'watch', tiles: [{ label: 'Credit', level: 'stress', d
 t('one page with every panel, from the data only', () => {
   const out = composePicto({ run, base, stress }, H), h = out.html;
   assert.ok(h.startsWith('<!doctype html>') && h.includes('THE CHAIN – DESK BRIEF') && h.includes('Wed, 4 Nov 2026'));
-  for (const x of ['Market moves', 'Key signals', 'The big picture', 'Currencies', 'Upcoming events', 'The desk\'s view', 'Bottom line', 'RISK-OFF', 'Gold', '+2.31%', '−1.52%', 'CAD leads &lt;as&gt; the dollar slips', 'Short EUR/CAD', 'A+', 'Close above 1.6200', 'Liquidity gate BLOCKED', 'STRESS', 'HY 343bp', 'Risk-off holds, but the dollar is soft', 'Fri 13:30', '(strongest)', '(weakest)'])
+  for (const x of ['Market moves', 'Key signals', 'The big picture', 'Currencies', 'Upcoming events', 'The desk\'s view', 'Bottom line', 'RISK-OFF', 'Gold', '+2.31%', '−1.52%', 'CAD leads &lt;as&gt; the dollar slips', 'Short EUR/CAD', 'A+', 'wrong above 1.6200', 'Liquidity gate BLOCKED', 'STRESS', 'HY 343bp', 'Risk-off holds, but the dollar is soft', 'Fri 13:30', '(strongest)', '(weakest)'])
     assert.ok(h.includes(x), x);
   assert.ok(!h.includes('Minor') && !h.includes('USD/JPY'), 'low-impact events and flat cards are left out');
   assert.ok(!/credit_funding/.test(h), 'no analyst ids');
-  assert.ok(!/<script|https?:\/\//.test(h), 'self-contained');
+  assert.ok(!/<script|https?:\/\/(?!www\.w3\.org)/.test(h), 'self-contained'); assert.ok(h.includes("font-family:'Kalam'") && h.includes('data:font/woff2;base64,'), 'fonts embedded');
   assert.ok(h.includes('size:A4 landscape'));
   assert.match(out.subject, /^2026-11-04 Desk brief pictograph/); assert.match(out.text, /Bottom line: Risk-off holds/);
   assert.equal(composePicto({ run: {} }, H), null);
@@ -30,7 +30,7 @@ t('missing data leaves panels out instead of placeholders; the map only with pat
   const h = composePicto({ run }, H).html;
   assert.ok(!h.includes('Market moves') && !h.includes('Key signals') && !h.includes('Upcoming events'));
   const m = composePicto({ run, map: { W: 100, H: 50, countries: [{ id: 124, d: 'M1,1' }, { id: 4, d: 'M2,2' }], banks: { CAD: [10, 10] }, arc: 'M0,0L1,1' } }, H).html;
-  assert.ok(m.includes('aria-label="the desk\'s currency bias on the world map"') && m.includes('rgba(47,158,79'));
+  assert.ok(m.includes('aria-label="the desk\'s currency bias on the world map"') && m.includes('rgba(46,154,76'));
 });
 t('titles name the saved PDF: date first, brief in the short one', () => {
   assert.equal(withTitle('<html><head><title>x</title></head></html>', '2026-11-04 Desk brief', H.esc), '<html><head><title>2026-11-04 Desk brief</title></head></html>');
