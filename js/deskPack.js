@@ -142,6 +142,7 @@ export const DESK_FEEDS = [
   F('events_news', 'release-calls', 4 * D),
   F('events_news', 'news-outcome', 4 * D),
   F('events_news', 'desk-news?pack=1', 1 * D),   // agent 21: the last 18 h of tier-1/2 headlines, tagged and read (context, never a signal)
+  F('events_news', 'release-reactions?pack=1', 14 * D),   // build list 2: how surprises actually moved markets against history (priced in / over / under), by family and regime; history, not a forecast
   F('events_news', 'earnings-ahead', 4 * D, { keep: 'first' }),
   F('events_news', 'fiscal/events', 30 * D, { keep: 'first' }),
   // ── currency ────────────────────────────────────────────────────────────────

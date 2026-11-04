@@ -17,10 +17,14 @@
 import * as CB from './chainBoard.js';
 import { whatChanged } from './whatChanged.js';
 import * as PV from './pairView.js';
+import * as CSV from './chainStatsView.js';
+import { reactionsHtml } from './reactionPanel.js';
 import { createLevelChart } from '../levelChart.js';
 
 const el = id => document.getElementById(id);
 const h = CB.esc;
+// the Calendar tab (desk-terminal.html enrichCal) draws its "Expectations vs reality" panel through this
+globalThis.ttReactionsHtml = p => reactionsHtml(p, h);
 const T = {
   tab: null, cache: {},
   chain: { inputs: null, loading: null, live: null, liveErr: null, liveTimer: null, read: {}, nodeSel: null, linkSel: null, showQuiet: true,
@@ -56,6 +60,7 @@ ${sec('The week ahead', 'high-impact releases still to come, with how the last p
     root.addEventListener('mousemove', onChainHover); root.addEventListener('mouseleave', () => tip(null));
     loadChain().then(drawChain).then(() => drawTimeline());
     J('/api/global-read').then(g => { drawGR(g); drawDay(g); });
+    J('/api/chain-stats').then(cs => { T.chain.stats = cs; drawChain(); });   // context, not a signal: per-link correlation, lead/lag, divergence
     J('/api/desk-watch').then(w => { drawWatch(w); drawTimeline(); drawChain(); });
     J('/api/macro-regime-fx').then(drawPrec);
     Promise.all([J('/api/calendar-ahead'), J('/api/econ-surprise'), ready()]).then(([ca, es]) => drawWeek(ca, es));
@@ -109,6 +114,7 @@ ${liveLine}
 ${C.linkSel ? linkCard(links.find(l => l.id === C.linkSel)) : ''}${C.nodeSel ? nodeCard(C.nodeSel, links) : ''}
 ${readHtml(links, now.vals)}
 ${linksList(links)}
+${CSV.breakingHtml(C.stats, h)}
 <p class="tt-note">It explains; it does not predict: yields → FX forward coupling is a banked null here, and none of these links is a validated forward signal. Floors are set for 20 days and scaled by √(days/20) on shorter windows (an assumption, not a test).</p>`;
 }
 
@@ -131,7 +137,7 @@ function linkCard(l) {
     : l.verdict === 'broken' ? `<b style="color:var(--gold)">Broken.</b> ${h(l.a.label)} ${h(l.a.text)} ${arr(l.a.dir)} but ${h(l.b.label)} ${h(l.b.text)} ${arr(l.b.dir)}, the wrong way round. ${h(l.read ?? '')}`
       : l.verdict === 'quiet' ? `<b>Quiet, not judged.</b> ${h(l.punch || l.read || '')}. A link is judged only when both ends move past their floors (${h(l.a.floorText ?? '')} for ${h(A.label)}, ${h(l.b.floorText ?? '')} for ${h(B.label)}).`
         : `<b>${CB.VWORD[l.verdict]}.</b> ${h(l.read ?? '')}`;
-  return `<div class="cg-card"><button class="x" data-act="close">close ✕</button><b>${h(A.label)} → ${h(B.label)}</b> <span class="vchip ${CB.VCLS[l.verdict]}">${CB.VWORD[l.verdict]}</span><br><b>The textbook:</b> ${h(l.textbook)}. They should move ${way}.<br><b>Why:</b> ${h(A.what)} <span class="muted">→</span> ${h(B.what)}<div style="margin-top:6px">${status}</div>${l.dateGapDays > 3 ? `<div class="muted" style="margin-top:4px">The two ends printed ${l.dateGapDays} days apart (${h(l.a.asOf)} vs ${h(l.b.asOf)}).</div>` : ''}</div>`;
+  return `<div class="cg-card"><button class="x" data-act="close">close ✕</button><b>${h(A.label)} → ${h(B.label)}</b> <span class="vchip ${CB.VCLS[l.verdict]}">${CB.VWORD[l.verdict]}</span><br><b>The textbook:</b> ${h(l.textbook)}. They should move ${way}.<br><b>Why:</b> ${h(A.what)} <span class="muted">→</span> ${h(B.what)}<div style="margin-top:6px">${status}</div>${l.dateGapDays > 3 ? `<div class="muted" style="margin-top:4px">The two ends printed ${l.dateGapDays} days apart (${h(l.a.asOf)} vs ${h(l.b.asOf)}).</div>` : ''}${CSV.linkStatsHtml(T.chain.stats?.links?.[l.id], h)}</div>`;
 }
 function nodeCard(k, links) {
   const n = CB.CHAIN_NODES[k]; if (!n) return '';
