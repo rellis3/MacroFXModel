@@ -29,4 +29,13 @@ t('the map page appears only with map paths', () => {
   const noMap = composeTerminal({ run }, H).html, withMap = composeTerminal({ run, map: { W: 100, H: 50, sphere: 'M0,0', grat: 'M0,0', countries: [{ id: 392, d: 'M1,1' }], banks: Object.fromEntries(['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'].map(c => [c, [10, 10]])), arc: 'M0,0' } }, H).html;
   assert.ok(!noMap.includes('dots are the central banks') && withMap.includes('dots are the central banks') && withMap.includes('rgba(47,211,154'));
 });
+t('explained, not just pasted: the writing travels with the graphics, and print does not force blank pages', () => {
+  const rich = { ...run, newsletter: { ok: true, issue: { subject: 'Full headline that is not cut', standfirst: 'The opening paragraph. It explains the day.', sections: [{ title: 'The currencies', body: 'CAD leads.' }] } },
+    debate: { ...run.debate, global: { ...run.debate.global, view: { ...run.debate.global.view, flip: ['credit stress eases'] }, debate: { risk_on: { view: { cases: { GLOBAL: { strength: 'low', argument: 'Risk flags are quiet.' } }, rebuttal: 'Funding is lagging.' } }, risk_off: { view: { cases: { GLOBAL: { strength: 'medium', argument: 'The gate is blocked.' } } } } } },
+      risk: { risk_neutral: { view: { headline: 'Keep size normal.', adjustments: [] } } } } };
+  const h = composeTerminal({ run: rich, stress: { overall: 'watch', tiles: [{ label: 'Credit', level: 'watch', detail: 'HY 343bp' }] } }, H).html;
+  for (const x of ['Full headline that is not cut', 'The opening paragraph.', 'What you are looking at', 'What is uncertain', 'The ruling flips if credit stress eases', 'The risk-on case', 'Funding is lagging.', 'The gate is blocked.', 'Each currency: the ruling', 'Three voices on how much to risk', 'World stress', 'HY 343bp'])
+    assert.ok(h.includes(x), x);
+  assert.ok(!/min-height:100vh/.test(h), 'no forced page height (it spilled every page onto a blank one)');
+});
 console.log(`newsletterTerminal: ${n} tests passed`);
