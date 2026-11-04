@@ -43,6 +43,13 @@ const REG = {
   gbpcad: { display: 'GBP/CAD', oanda: 'GBP_CAD', yahoo: 'GBPCAD=X', mt5: 'GBPCAD', assetClass: 'fx', pip: 0.0001, digits: 5 },
   gbpchf: { display: 'GBP/CHF', oanda: 'GBP_CHF', yahoo: 'GBPCHF=X', mt5: 'GBPCHF', assetClass: 'fx', pip: 0.0001, digits: 5 },
   gbpnzd: { display: 'GBP/NZD', oanda: 'GBP_NZD', yahoo: 'GBPNZD=X', mt5: 'GBPNZD', assetClass: 'fx', pip: 0.0001, digits: 5 },
+  nzdchf: { display: 'NZD/CHF', oanda: 'NZD_CHF', yahoo: 'NZDCHF=X', mt5: 'NZDCHF', assetClass: 'fx', pip: 0.0001, digits: 5 },
+  cadchf: { display: 'CAD/CHF', oanda: 'CAD_CHF', yahoo: 'CADCHF=X', mt5: 'CADCHF', assetClass: 'fx', pip: 0.0001, digits: 5 },
+  // ── Scandinavia (desk universe from 2026-11-04, prereg A13): OANDA pip 0.0001, quoted to 5 places ──
+  eurnok: { display: 'EUR/NOK', oanda: 'EUR_NOK', yahoo: 'EURNOK=X', mt5: 'EURNOK', assetClass: 'fx', pip: 0.0001, digits: 5 },
+  eursek: { display: 'EUR/SEK', oanda: 'EUR_SEK', yahoo: 'EURSEK=X', mt5: 'EURSEK', assetClass: 'fx', pip: 0.0001, digits: 5 },
+  usdnok: { display: 'USD/NOK', oanda: 'USD_NOK', yahoo: 'NOK=X',    mt5: 'USDNOK', assetClass: 'fx', pip: 0.0001, digits: 5 },
+  usdsek: { display: 'USD/SEK', oanda: 'USD_SEK', yahoo: 'SEK=X',    mt5: 'USDSEK', assetClass: 'fx', pip: 0.0001, digits: 5 },
   // ── JPY pairs (pip = 0.01) ──
   usdjpy: { display: 'USD/JPY', oanda: 'USD_JPY', yahoo: 'USDJPY=X', mt5: 'USDJPY', assetClass: 'fx', pip: 0.01, digits: 3 },
   eurjpy: { display: 'EUR/JPY', oanda: 'EUR_JPY', yahoo: 'EURJPY=X', mt5: 'EURJPY', assetClass: 'fx', pip: 0.01, digits: 3 },

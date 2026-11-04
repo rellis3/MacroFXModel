@@ -118,8 +118,11 @@ export function buildAnalystPrompt({ role, pack, ledger, maxChars }) {
 }
 
 /** The universe as prompt text: every instrument by group with the currency legs it is read from. */
+export const SCANDI_RULE = 'NOK and SEK are traded but are not among the eight debated currencies (prereg A13): read EURNOK, EURSEK, USDNOK and USDSEK from the EUR or USD view, Norges Bank and the Riksbank (world-rates NO and SE), NOK against Brent (commodity-fx) and the risk tone (both krone and krona weaken in risk-off). Give them no currency bias of their own.';
 export function universeText(universe = DESK_UNIVERSE) {
-  return Object.entries(universe).map(([g, names]) => `${g}: ${names.map(n => `${n} (${instrumentLegs(n).join('/')})`).join(', ')}`).join('\n');
+  const names = Object.values(universe).flat();
+  return Object.entries(universe).map(([g, xs]) => `${g}: ${xs.map(n => `${n} (${instrumentLegs(n).join('/')})`).join(', ')}`).join('\n')
+    + (names.some(n => /NOK|SEK/.test(n)) ? `\n${SCANDI_RULE}` : '');
 }
 
 /** The Head of Desk's prompts: the analysts' reports, in the owner's order, and the universe. */
@@ -160,6 +163,9 @@ export function buildStagePrompt({ role, pack, ledger, sections, tail = '' }) {
 
 /** Decimal places for a price of this size, so levels read like quotes (1.12345, 157.734, 3940.8). */
 const dp = p => (p >= 1000 ? 1 : p >= 100 ? 2 : p >= 10 ? 3 : p >= 2 ? 4 : 5);
+/** NOK and SEK pairs trade near 10-12 with a 0.0001 pip (OANDA), so the size rule's 3 places would be 10 pips coarse. */
+export const SCANDI_DIGITS = 4;
+const isScandi = n => /NOK|SEK/.test(String(n ?? ''));
 
 /**
  * Today's forecast lines as PRICES: the vol forecast keeps them as percent moves from the day's open (oh/ol at
@@ -167,15 +173,37 @@ const dp = p => (p >= 1000 ? 1 : p >= 100 ? 2 : p >= 10 ? 3 : p >= 2 ? 4 : 5);
  * instrument a level, including the ones with no options or level-engine coverage (metals, energy, ags, DE30,
  * UK100, BTC). Arithmetic on the desk's own lines only; nothing is invented.
  */
-export function priceLadder(open, ladder) {
+export function priceLadder(open, ladder, digits = null) {
   if (!Number.isFinite(open) || open <= 0 || !ladder?.oh || !ladder?.ol) return null;
-  const r = x => Number(x.toFixed(dp(open)));
+  const r = x => Number(x.toFixed(digits ?? dp(open)));
   const up = {}, down = {};
   for (const q of ['p50', 'p75', 'p90']) {
     if (Number.isFinite(ladder.oh[q])) up[q] = r(open * (1 + ladder.oh[q] / 100));
     if (Number.isFinite(ladder.ol[q])) down[q] = r(open * (1 - ladder.ol[q] / 100));
   }
   return { open: r(open), up, down, note: 'today\'s forecast lines in price: up = open-to-high, down = open-to-low, p50/p75/p90' };
+}
+
+/**
+ * What the desk reads a NOK or SEK pair from besides its EUR/USD leg (prereg A13; the currency debate covers only the
+ * eight): Norges Bank / the Riksbank from the BIS policy-rate board (world-rates, monthly), NOK against Brent
+ * (commodity-fx, monthly) and Brent's own session today. Read straight from the pack; null when none of it loaded.
+ */
+export function scandiContext(pack, name) {
+  const feed = id => Object.values(pack?.skills ?? {}).map(s => s.feeds?.[id]).find(Boolean);
+  const ccy = /NOK/.test(name) ? 'NOK' : 'SEK', area = ccy === 'NOK' ? 'NO' : 'SE';
+  const out = { ccy, note: `${ccy} is not in the currency debate: read the pair from its ${name.slice(0, 3) === ccy ? name.slice(3) : name.slice(0, 3)} leg's ruling, this bank's cycle${ccy === 'NOK' ? ', NOK against Brent' : ''} and the risk tone (${ccy} weakens in risk-off)` };
+  const b = feed('world-rates')?.data?.banks?.[area];
+  if (b) out.bank = { name: ccy === 'NOK' ? 'Norges Bank' : 'Riksbank', rate: b.rate, asOf: b.asOf, change3m: b.change3m, change12m: b.change12m, cycle: b.cycle };
+  const usd = feed('world-rates')?.data?.banks?.US, ez = feed('world-rates')?.data?.banks?.XM;
+  if (out.bank && (usd || ez)) out.vs = { US: usd?.rate ?? null, euroArea: ez?.rate ?? null };
+  if (ccy === 'NOK') {
+    const row = (feed('commodity-fx')?.data?.rows ?? []).find(r => r?.ccy === 'NOK');
+    if (row?.ok) out.oil = { basket: row.basket, asOf: row.asOf, brent3m: row.commodity3m, brent12m: row.commodity12m, nok3m: row.ccy3m, nok12m: row.ccy12m, gap12m: row.gap12m, corr36m: row.corr36m, read: row.read };
+    const br = feed('vol-forecast/session')?.data?.instruments?.BRENT;
+    if (br) out.brentToday = sliceFeed('vol-forecast/session', { instruments: { BRENT: br } })?.instruments?.BRENT ?? null;
+  }
+  return out.bank || out.oil || out.brentToday ? out : null;
 }
 
 /** Per-instrument data from the pack for one asset group: the vol lines, today's session, and the swing map / trade-decision state where they exist. */
@@ -189,8 +217,9 @@ export function groupData(pack, names) {
     const row = { legs: instrumentLegs(n) };
     if (vf.instruments?.[n]) row.lines = vf.instruments[n];
     if (ses.instruments?.[n]) row.session = ses.instruments[n];
-    const lv = priceLadder(Number(rawSes[n]?.anchor_open), rawVf[n]?.ladder);
+    const lv = priceLadder(Number(rawSes[n]?.anchor_open), rawVf[n]?.ladder, isScandi(n) ? SCANDI_DIGITS : null);
     if (lv) row.levels = lv;
+    if (isScandi(n)) { const sc = scandiContext(pack, n); if (sc) row.scandi = sc; }
     if (intel.instruments?.[n]) row.implied = intel.instruments[n];
     const sm = feed(`swing-map:${n}`); if (sm?.data) row.swing = sliceFeed(`swing-map:${n}`, sm.data);
     const td = feed(`trade-decision/state:${n}`); if (td?.data) row.tradeDecision = sliceFeed(`trade-decision/state:${n}`, td.data);

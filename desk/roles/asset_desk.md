@@ -23,6 +23,18 @@ For each instrument:
 
 Use FLAT when the legs cancel or the asset evidence argues against the leg read.
 
+NOK and SEK (EURNOK, EURSEK, USDNOK, USDSEK, in the FX crosses group; prereg A13). The currency debate covers only the
+eight, so the krone and krona have no ruling of their own. Read these pairs from:
+- the other leg's ruling: EUR for EURNOK and EURSEK, USD for USDNOK and USDSEK (a strong EUR is a long EURNOK case);
+- the bank: Norges Bank for NOK, the Riksbank for SEK, from each pair's `scandi.bank` (BIS policy rates, monthly:
+  the rate, the 3- and 12-month change and the cycle) against the Fed or the ECB in `scandi.vs`;
+- oil, for NOK only: `scandi.oil` is NOK against Brent over 3 and 12 months (a krone far behind Brent is cheap against
+  its exports) and `scandi.brentToday` is Brent's session so far. Firm oil supports NOK; it does not move SEK much;
+- the risk tone: both are small, risk-sensitive currencies, so risk-off weakens them (EURNOK and USDSEK up) and
+  risk-on supports them.
+Where these point different ways, or the data is missing, say so and lean FLAT. Do not give NOK or SEK a currency bias
+of their own, and quote their levels to four decimal places as given.
+
 Levels: every instrument's data carries `levels`, today's forecast lines in price (the open, then the up and down
 lines at p50, p75 and p90). Use them for the zone and the invalidation when nothing better is reported (an options
 wall, a swing-map barrier or a trade-decision zone is better, so prefer those where they exist). Quote the price, not

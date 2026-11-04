@@ -175,7 +175,7 @@ const NEWS_PATTERNS = [
 // discount. `none` is a positive statement that the calendar was read and the day is
 // clear; the two must not collapse (see detectEventTagFor's contract).
 const _CCY_COUNTRY = { USD: 'US', EUR: 'EU', GBP: 'GB', JPY: 'JP', AUD: 'AU',
-                       NZD: 'NZ', CAD: 'CA', CHF: 'CH' };
+                       NZD: 'NZ', CAD: 'CA', CHF: 'CH', NOK: 'NO', SEK: 'SE' };   // NOK/SEK: prereg A13
 
 // Instrument -> the currencies whose calendar moves it. Mirrors
 // forge/ff_calendar.py's INSTRUMENT_CCY; USD is in every set because a US macro shock

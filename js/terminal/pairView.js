@@ -4,7 +4,8 @@
  * it), and how to pick a market's row out of each board's payload. The page does the fetching and drawing.
  */
 
-const CCY = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
+// The eight the desk debates, plus NOK and SEK, which it trades in EURNOK, EURSEK, USDNOK, USDSEK (prereg A13).
+const CCY = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF', 'NOK', 'SEK'];
 /** Non-FX markets: their dollar leg and the words people use for them. */
 export const ASSET_WORDS = {
   GOLD: ['gold', 'xau', 'xauusd', 'bullion'], SILVER: ['silver', 'xag', 'xagusd'], COPPER: ['copper', 'xcu'], PLATINUM: ['platinum'], PALLADIUM: ['palladium'],
@@ -12,7 +13,7 @@ export const ASSET_WORDS = {
   DE30: ['dax', 'de30', 'de40'], UK100: ['ftse', 'uk100'], WTI: ['wti', 'crude', 'oil'], BRENT: ['brent', 'crude', 'oil'], NATGAS: ['natural gas', 'natgas', 'henry hub'],
   BTCUSD: ['bitcoin', 'btc'], SOYBEAN: ['soybean', 'soy'], WHEAT: ['wheat'], CORN: ['corn'], SUGAR: ['sugar'],
 };
-export const CCY_WORDS = { USD: ['dollar', 'usd', 'greenback'], EUR: ['euro', 'eur'], GBP: ['sterling', 'pound', 'gbp'], JPY: ['yen', 'jpy'], AUD: ['aussie', 'aud', 'australian dollar'], NZD: ['kiwi', 'nzd'], CAD: ['loonie', 'cad', 'canadian dollar'], CHF: ['franc', 'chf', 'swissie'] };
+export const CCY_WORDS = { USD: ['dollar', 'usd', 'greenback'], EUR: ['euro', 'eur'], GBP: ['sterling', 'pound', 'gbp'], JPY: ['yen', 'jpy'], AUD: ['aussie', 'aud', 'australian dollar'], NZD: ['kiwi', 'nzd'], CAD: ['loonie', 'cad', 'canadian dollar'], CHF: ['franc', 'chf', 'swissie'], NOK: ['krone', 'nok', 'norwegian'], SEK: ['krona', 'sek', 'swedish'] };
 
 /** ['EUR', 'USD'] for EURUSD; for a non-FX market its dollar pricing ([null, 'USD']), or null. */
 export function legsOf(inst) {

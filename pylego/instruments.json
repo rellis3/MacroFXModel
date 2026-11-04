@@ -128,6 +128,15 @@
       "pip": 0.0001,
       "digits": 5
     },
+    "nzdcad": {
+      "display": "NZD/CAD",
+      "oanda": "NZD_CAD",
+      "yahoo": "NZDCAD=X",
+      "mt5": "NZDCAD",
+      "assetClass": "fx",
+      "pip": 0.0001,
+      "digits": 5
+    },
     "gbpaud": {
       "display": "GBP/AUD",
       "oanda": "GBP_AUD",
@@ -160,6 +169,60 @@
       "oanda": "GBP_NZD",
       "yahoo": "GBPNZD=X",
       "mt5": "GBPNZD",
+      "assetClass": "fx",
+      "pip": 0.0001,
+      "digits": 5
+    },
+    "nzdchf": {
+      "display": "NZD/CHF",
+      "oanda": "NZD_CHF",
+      "yahoo": "NZDCHF=X",
+      "mt5": "NZDCHF",
+      "assetClass": "fx",
+      "pip": 0.0001,
+      "digits": 5
+    },
+    "cadchf": {
+      "display": "CAD/CHF",
+      "oanda": "CAD_CHF",
+      "yahoo": "CADCHF=X",
+      "mt5": "CADCHF",
+      "assetClass": "fx",
+      "pip": 0.0001,
+      "digits": 5
+    },
+    "eurnok": {
+      "display": "EUR/NOK",
+      "oanda": "EUR_NOK",
+      "yahoo": "EURNOK=X",
+      "mt5": "EURNOK",
+      "assetClass": "fx",
+      "pip": 0.0001,
+      "digits": 5
+    },
+    "eursek": {
+      "display": "EUR/SEK",
+      "oanda": "EUR_SEK",
+      "yahoo": "EURSEK=X",
+      "mt5": "EURSEK",
+      "assetClass": "fx",
+      "pip": 0.0001,
+      "digits": 5
+    },
+    "usdnok": {
+      "display": "USD/NOK",
+      "oanda": "USD_NOK",
+      "yahoo": "NOK=X",
+      "mt5": "USDNOK",
+      "assetClass": "fx",
+      "pip": 0.0001,
+      "digits": 5
+    },
+    "usdsek": {
+      "display": "USD/SEK",
+      "oanda": "USD_SEK",
+      "yahoo": "SEK=X",
+      "mt5": "USDSEK",
       "assetClass": "fx",
       "pip": 0.0001,
       "digits": 5
@@ -348,6 +411,10 @@
     "aud/chf": "audchf",
     "aud_chf": "audchf",
     "audchf=x": "audchf",
+    "nzdcad": "nzdcad",
+    "nzd/cad": "nzdcad",
+    "nzd_cad": "nzdcad",
+    "nzdcad=x": "nzdcad",
     "gbpaud": "gbpaud",
     "gbp/aud": "gbpaud",
     "gbp_aud": "gbpaud",
@@ -364,6 +431,30 @@
     "gbp/nzd": "gbpnzd",
     "gbp_nzd": "gbpnzd",
     "gbpnzd=x": "gbpnzd",
+    "nzdchf": "nzdchf",
+    "nzd/chf": "nzdchf",
+    "nzd_chf": "nzdchf",
+    "nzdchf=x": "nzdchf",
+    "cadchf": "cadchf",
+    "cad/chf": "cadchf",
+    "cad_chf": "cadchf",
+    "cadchf=x": "cadchf",
+    "eurnok": "eurnok",
+    "eur/nok": "eurnok",
+    "eur_nok": "eurnok",
+    "eurnok=x": "eurnok",
+    "eursek": "eursek",
+    "eur/sek": "eursek",
+    "eur_sek": "eursek",
+    "eursek=x": "eursek",
+    "usdnok": "usdnok",
+    "usd/nok": "usdnok",
+    "usd_nok": "usdnok",
+    "nok=x": "usdnok",
+    "usdsek": "usdsek",
+    "usd/sek": "usdsek",
+    "usd_sek": "usdsek",
+    "sek=x": "usdsek",
     "usdjpy": "usdjpy",
     "usd/jpy": "usdjpy",
     "usd_jpy": "usdjpy",
@@ -433,6 +524,7 @@
     "de30": "dax",
     "nas100": "nq",
     "ndx": "nq",
-    "us100": "nq"
+    "us100": "nq",
+    "rus2000": "rut"
   }
 }

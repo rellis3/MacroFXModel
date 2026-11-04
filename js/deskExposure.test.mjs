@@ -45,4 +45,15 @@ t('cutting a cross for one currency is re-checked against its other leg', () => 
   for (const c of ['USD', 'EUR', 'GBP', 'JPY', 'NZD', 'CAD', 'CHF']) assert.ok(Math.abs(r.report.after[c]) <= 3.01, c);
 });
 
+t('NOK and SEK legs are counted and capped like the eight (prereg A13)', () => {
+  assert.deepEqual(exposureLegs('EURNOK'), [['EUR', 1], ['NOK', -1]]);
+  assert.deepEqual(exposureLegs('USDSEK'), [['USD', 1], ['SEK', -1]]);
+  const cards = { EURNOK: card('STRONG_SHORT'), USDNOK: card('STRONG_SHORT'), EURSEK: card('SHORT'), USDSEK: card('SHORT') };
+  const { net } = netExposure(cards);
+  assert.equal(net.NOK, 3); assert.equal(net.SEK, 2); assert.equal(net.EUR, -2.5); assert.equal(net.USD, -2.5);
+  const r = capExposure(cards, { cap: 2 });
+  assert.equal(r.report.cuts[0].ccy, 'NOK');
+  for (const c of ['NOK', 'SEK', 'EUR', 'USD']) assert.ok(Math.abs(r.report.after[c]) <= 2.01, c);
+});
+
 console.log(`deskExposure: ${n} tests passed`);

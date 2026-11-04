@@ -231,6 +231,36 @@ are as before; the single-prompt control (H2) never reads the scorecard. The des
 2026-11-05 separately, as description, never as a scored cell. If the switch is turned off again, that is a further
 amendment naming the date.
 
+### A13 — 2026-11-04 — PRE-RESULTS — ten markets join the universe
+Written on 2026-11-04 at the owner's request ("yes add all 6 crosses and NOK SEK too"), without reading any desk score.
+**The universe changes from 41 to 51 markets**: the six G8 crosses the desk did not trade (GBPNZD, AUDNZD, AUDCHF,
+NZDCHF, CADCHF, CHFJPY) and four Scandinavian pairs (EURNOK, EURSEK, USDNOK, USDSEK), all in the FX crosses group
+(`js/deskPack.js` DESK_UNIVERSE, kept equal to the vol forecast's INSTRUMENTS by a test). They join the book from the
+**first desk run after the change is deployed**; every run before that is a 41-market run. Each gets the daily vol
+forecast's p50/p75/p90 lines from ~800 OANDA daily bars like every FX pair. The ladder widths are the fitted
+per-pair rows where they exist (GBPNZD, AUDNZD, AUDCHF, CADCHF, CHFJPY) and the fitted FX class default where they do
+not (NZDCHF and the four NOK/SEK pairs); no new constant was fitted.
+**NOK and SEK are traded, not debated**: the currency debate, the Currency Manager and the Head's currency views stay
+the eight, so H1-H5 and the schemas are unchanged. A NOK or SEK pair is read from its EUR or USD leg's ruling,
+Norges Bank or the Riksbank (BIS `world-rates`, monthly), NOK against Brent (`commodity-fx`) and the risk tone
+(`desk/roles/asset_desk.md`, `head_of_desk.md`, `rates_cb.md`, and `control_single.md`, so the control reads them
+the same way; `rolesHash` changes). The asset desks get each NOK/SEK pair's bank and oil context alongside its lines
+(`js/deskRoles.js` scandiContext), and its levels to four decimal places. The per-currency exposure cap
+(`js/deskExposure.js`) counts NOK and SEK legs like the eight, at the same cap.
+**Scoring is unchanged**: the eligible day, live card, unit u (each card's own p50 lines), the window, the day score,
+the shuffle placebo, the single-prompt control (now 51 cards), the drift benchmark, the gate and the judgement date
+are as in §3-§6. The desk is scored as operated, so H1 counts every live card in the book of the day, new markets
+included. As description, never as a scored cell, the verdict reports H1 (and H2, H5) **with and without** the ten new
+markets, and the days before and after the first 51-market run separately. Known limits, recorded now: the forecast's
+event tag reads no Norwegian or Swedish releases (the calendar feed carries the eight currencies and CNY only), so a
+Norges Bank or Riksbank day is priced as an ordinary day for its pairs; the analyst scorecard's realised move for a
+currency (A10) is the mean over its FX pairs, so EUR and USD now average over more pairs. The attribution's risk
+basket (A4) is unchanged.
+Length: on 2026-11-04 the Head wrote 22.8k tokens for 41 cards and the single-prompt control 28.8k (cap 32k), so 51
+cards would push the control past the cap. Both role files therefore ask for FLAT or size-0 cards in one short
+sentence (at most 20 words, no plan), the same instruction in both arms so H2 stays a fair comparison, and the two
+calls get a 10-minute answer window. The cap itself is unchanged.
+
 ---
 
 ## RESULTS — not run

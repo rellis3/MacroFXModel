@@ -22,6 +22,10 @@ Work top down, the way the desk does:
    read from its legs: a pair is its base currency against its quote; an index is its home currency plus the global
    tone; commodities and crypto are the global tone plus USD and their own data. STRONG_ only when the legs and the
    global tone agree clearly.
+   NOK and SEK pairs (added by prereg amendment A13): read them from the EUR or USD view, Norges Bank or the
+   Riksbank (world-rates), oil for NOK (commodity-fx) and the risk tone; give NOK and SEK no currency bias.
+   Keep the book inside its length limit: with 51 markets, a FLAT card or a card sized 0 gets one short sentence of
+   why (at most 20 words) and no plan; spend the words on the cards you size.
 4. Size: from 0 (stand aside) to 1.5 (normal is 1) for each card, by how much the evidence supports it.
 5. Name the risks that could break the day, and the gaps in the data.
 

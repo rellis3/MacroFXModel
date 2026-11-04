@@ -28,6 +28,10 @@ alias duplicates. `forecastLadderParams` keys SPX500/US30 vs SPX/DOW mismatch is
 | Gold | **1.0** (0.1 is a bug, fixed 2026-08-24, pinned by `js/reconcile.test.mjs`) |
 | Indices | 1.0 point |
 
+NOK/SEK pairs (`eurnok`, `eursek`, `usdnok`, `usdsek`; OANDA `EUR_NOK` etc.) are FX at pip **0.0001**, quoted to 5
+places, though they trade near 10-12 (a 0.001 move is 10 pips). `nzdchf` and `cadchf` are in the registry too
+(2026-11-04, desk prereg A13).
+
 `pylego/point_values.json`: a missing entry falls back to pip 0.0001 / pv 10, which can size 100× wrong. chfjpy and
 euraud were missing at last check.
 
@@ -35,7 +39,8 @@ euraud were missing at last check.
 
 | Instruments | Live σ | Research history |
 |---|---|---|
-| 27 FX (live runs 22), GOLD | OANDA mid | OANDA M1 (`VolRangeForecaster/data/m1`) |
+| 27 FX (the live forecast ran 22; all 28 G8 pairs from 2026-11-04), GOLD | OANDA mid | OANDA M1 (`VolRangeForecaster/data/m1`) |
+| EURNOK, EURSEK, USDNOK, USDSEK (live from 2026-11-04) | OANDA mid | none local; no fitted ladder widths (FX class default) |
 | NQ | Yahoo NQ=F (futures, matches OANDA, ratio 1.02) | OANDA M1 (`portfolioBacktest/cache`) |
 | SPX500, US30, US2000, DE30, UK100 | OANDA NY-close bars for ladders since 2026-10-06 (Yahoo cash σ ran 14–28% low) | OANDA M1 (`portfolioBacktest/cache`) |
 | BTCUSD | Yahoo | none |

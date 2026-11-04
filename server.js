@@ -1148,6 +1148,9 @@ const PIP_SIZE = {
   'EUR/AUD': 0.0001, 'EUR/CAD': 0.0001, 'EUR/NZD': 0.0001,
   'GBP/AUD': 0.0001, 'GBP/CAD': 0.0001, 'AUD/CAD': 0.0001,
   'NZD/CAD': 0.0001, 'NZD/JPY': 0.01,   'BTC/USD': 1.0,
+  // prereg A13 (2026-11-04): the desk's six new G8 crosses and the four NOK/SEK pairs (OANDA pip 0.0001; CHF/JPY 0.01)
+  'GBP/NZD': 0.0001, 'AUD/NZD': 0.0001, 'AUD/CHF': 0.0001, 'NZD/CHF': 0.0001, 'CAD/CHF': 0.0001, 'CHF/JPY': 0.01,
+  'EUR/NOK': 0.0001, 'EUR/SEK': 0.0001, 'USD/NOK': 0.0001, 'USD/SEK': 0.0001,
   'XAU/USD': 1.0,    'NAS100_USD': 1.0,
   'SPX500_USD': 1.0, 'DE30_USD': 1.0,   'UK100_GBP': 1.0,
   // OANDA quotes the DAX in euros (DE30_EUR); the DE30_USD key above never matched
@@ -1158,7 +1161,7 @@ const PIP_SIZE = {
 
 const PRICE_DIGITS = {
   'USD/JPY': 3, 'GBP/JPY': 3, 'EUR/JPY': 3, 'AUD/JPY': 3, 'CAD/JPY': 3,
-  'NZD/JPY': 3, 'BTC/USD': 1,
+  'NZD/JPY': 3, 'CHF/JPY': 3, 'BTC/USD': 1,   // NOK/SEK pairs quote to 5 places (the default)
   'XAU/USD': 2, 'NAS100_USD': 1, 'SPX500_USD': 1, 'DE30_USD': 1, 'DE30_EUR': 1, 'UK100_GBP': 1,
   'US30_USD': 1, 'US2000_USD': 1,
 };
@@ -4793,7 +4796,9 @@ async function _deskRun(trigger, job, mode = 'full') {
     styleExamples: _deskStyleExamples(await _nlLoad().catch(() => []) ?? []),   // the latest regular issues, so the desk edition matches their voice
     parseJson: (txt, label) => _parseModelJson(txt, label),
     callModel: async ({ task, system, prompt, maxTokens }) => {
-      const r = await callModel({ task, system, prompt, maxTokens });
+      // the Head and the single-prompt control write a card for every market (51 since prereg A13): up to ~30k tokens
+      // of output, which can run past the default 5-minute wait
+      const r = await callModel({ task, system, prompt, maxTokens, ...(maxTokens >= 24_000 ? { timeoutMs: 600_000 } : {}) });
       return { text: r.text ?? _antText(r), usage: r.usage ?? null, model: r.model ?? null, truncated: !!r.truncated };
     },
     onProgress: p => {
@@ -5175,7 +5180,7 @@ app.get('/api/desk-risk', async (req, res) => {
 // The book broken into dollar, carry, risk-on, commodity and US-rates factors, its VaR/ES and concentration, and
 // scenarios ("Fed +25bp, oil +10%, VIX to 30") mapped through each market's betas. The risk desk and the Head read it
 // on the draft book in the morning run (js/deskRun.js bookRisk); "Ask the desk" reads it on today's book.
-// Data: ~1,900 OANDA daily closes per desk market (41 calls, once per London day), FRED DGS2/DGS10/VIXCLS and the
+// Data: ~1,900 OANDA daily closes per desk market (51 calls since prereg A13, once per London day), FRED DGS2/DGS10/VIXCLS and the
 // policy rates; saved gzipped to KV factor_risk_data so a redeploy does not repeat the OANDA calls. Model in memory.
 import { buildFactorModel as _bkrBuildModel, bookFactorRisk as _bkrBookRisk, modelSummary as _bkrModelSummary } from './js/factorRisk.js';
 import { runScenario as _bksRun, standardScenarios as _bksStandard, bookRiskText as _bksText, parseScenarioQuestion as _bksParse, SCENARIO_DRIVERS as _BKS_DRIVERS, STANDARD_SCENARIOS as _BKS_STANDARD, REPLAYS as _BKS_REPLAYS } from './js/scenarioEngine.js';
@@ -5260,7 +5265,7 @@ async function _bkrDraftRead(cards) {
   return { ok: risk.ok, text, summary: risk.ok ? { sigma: risk.sigma, var95: risk.var.parametric['0.95'].var, effectiveBets: risk.concentration.effectiveBets, enb: risk.concentration.enb, topFactor: risk.concentration.topFactor, flag: risk.concentration.flag,
     factors: risk.factors.map(f => ({ key: f.key, perSigma: f.perSigma, share: f.share })), scenarios: scen.scenarios.map(_bkrScenRow) } : { reason: risk.reason } };
 }
-// For "Ask the desk": today's book, at most 25 s (a cold model means 41 OANDA calls), plus any scenario the question names.
+// For "Ask the desk": today's book, at most 25 s (a cold model means 51 OANDA calls), plus any scenario the question names.
 async function _bkrAskContext(q) {
   try {
     const go = (async () => {
@@ -30516,6 +30521,10 @@ const BRIEF_HMM_KEYS = {
   EURAUD: 'EUR/AUD',  EURCAD: 'EUR/CAD',  EURNZD: 'EUR/NZD',
   GBPAUD: 'GBP/AUD',  GBPCAD: 'GBP/CAD',  AUDCAD: 'AUD/CAD',
   NZDJPY: 'NZD/JPY',  NZDCAD: 'NZD/CAD',  BTCUSD: null,
+  // prereg A13 (2026-11-04): four of the new crosses are in the levels engine's HMM universe; NZDCHF, CADCHF and the
+  // NOK/SEK pairs are not, so they fall back to session-bias-only like NZDCAD.
+  GBPNZD: 'GBP/NZD',  AUDNZD: 'AUD/NZD',  AUDCHF: 'AUD/CHF',  CHFJPY: 'CHF/JPY',
+  NZDCHF: null, CADCHF: null, EURNOK: null, EURSEK: null, USDNOK: null, USDSEK: null,
 };
 
 function _oandaBaseW() {
