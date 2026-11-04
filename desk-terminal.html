@@ -164,6 +164,7 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<link rel="stylesheet" href="js/terminal/terminal-tabs.css">
 </head>
 <body>
 <header class="top">
@@ -184,6 +185,10 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
     <button role="tab" aria-selected="false" data-t="cal">Calendar</button>
     <button role="tab" aria-selected="false" data-t="ana">Analytics</button>
     <button role="tab" aria-selected="false" data-t="charts">Charts</button>
+    <button role="tab" aria-selected="false" data-t="today">Chain</button>
+    <button role="tab" aria-selected="false" data-t="pair">Pair</button>
+    <button role="tab" aria-selected="false" data-t="changed">Changed</button>
+    <button role="tab" aria-selected="false" data-t="research">Research</button>
   </nav>
   <div id="wstrip" aria-live="polite"></div>
   <section id="overview"></section>
@@ -194,6 +199,10 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
   <section id="cal" hidden></section>
   <section id="ana" hidden></section>
   <section id="charts" hidden></section>
+  <section id="today" hidden></section>
+  <section id="pair" hidden></section>
+  <section id="changed" hidden></section>
+  <section id="research" hidden></section>
 </main>
 <button class="fab" id="askbtn">✦ Ask the desk</button>
 <div class="modal" id="modal" hidden></div>
@@ -466,9 +475,10 @@ clocks(); setInterval(clocks, 20_000);
 // ── tabs ──
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
-  ['overview', 'ccy', 'assets', 'macro', 'pos', 'cal', 'ana', 'charts'].forEach(id => $(id).hidden = id !== b.dataset.t);
+  document.querySelectorAll('#tabs button').forEach(x => $(x.dataset.t).hidden = x.dataset.t !== b.dataset.t);
   if (b.dataset.t === 'ana') analytics();
   if (b.dataset.t === 'charts') charts();
+  globalThis.onTerminalTab?.(b.dataset.t);   // the Chain, Pair, Changed and Research tabs (js/terminal/terminalTabs.js)
   try { localStorage.setItem('deskTerminalTab', b.dataset.t); } catch { /* private window */ }
 });
 try { const t = localStorage.getItem('deskTerminalTab'); if (t) document.querySelector(`#tabs [data-t="${t}"]`)?.click(); } catch { /* ignore */ }
@@ -1275,5 +1285,6 @@ $('askbtn').onclick = () => {
 load();
 setInterval(() => { if (!document.hidden) { ANA = null; ASC = null; load(); if (!$('ana').hidden) analytics(); } }, 5 * 60_000);   // the Charts tab's sources change daily at most: drawn once per visit
 </script>
+<script type="module" src="js/terminal/terminalTabs.js"></script>
 </body>
 </html>

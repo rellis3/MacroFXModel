@@ -6981,6 +6981,19 @@ app.get('/api/world-stress', async (_req, res) => {
     res.json({ ok: true, at: new Date().toISOString(), ..._mbStress({ risk, credit, funding, em, liquidity, basis, cycle, termPremium: tp }) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// GET /api/terminal/stress-snap: the Desk Terminal's "what changed" tab (js/terminal/whatChanged.js) needs an earlier
+// day's world-stress colours and /api/world-stress only knows now. The first look of each London day is kept (KV, 14 days).
+const _TS_KEY = 'terminal_stress_snaps_v1';
+app.get('/api/terminal/stress-snap', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const { recordSnap, previousSnap, stressSnapOf } = await import('./js/terminal/whatChanged.js');
+    const date = _dpLondonDate(Date.now()), now = stressSnapOf((await _dpFetchFeed({ path: 'world-stress', timeoutMs: 90_000 })).json);
+    let store = {}; try { store = JSON.parse((await kv.get(_TS_KEY)) ?? '{}') ?? {}; } catch { store = {}; }
+    if (now && !store[date]) { store = recordSnap(store, date, now); await kv.put(_TS_KEY, JSON.stringify(store)).catch(e => console.warn('[terminal] stress snap:', e.message)); }
+    res.json({ ok: true, date, now, today: store[date] ?? null, previous: previousSnap(store, date) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // ── More world data (owner, 2026-11-04): fair value, leading indicators, commodity currencies, carry against vol,
 // session hours, copper/gold. js/globalBoards.js; each cached in _mb like the boards above and read by the Desk Pack. ──
 // a browser-like User-Agent makes the OECD's SDMX service answer 500, so this one names itself plainly
