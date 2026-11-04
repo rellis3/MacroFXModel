@@ -186,6 +186,20 @@ await t('runDesk full mode: analysts, global debate + ruling, currency debate + 
   assert.equal(m.calls.at(-1), 'desk-head', 'the control runs on the deep tier, last');
 });
 
+await t('runDesk full mode: the book factor risk (§9ak) reaches the three risk voices and the Head, on the draft at size 1; a failure costs only the section', async () => {
+  const prompts = [], m = fakeModel(), seen = [];
+  const fn = async a => { prompts.push(a); return m.fn(a); };
+  const bookRisk = async cards => { seen.push(cards); return { ok: true, text: 'FACTOR-RISK-MARKER effective bets 1.4', summary: { effectiveBets: 1.4 } }; };
+  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: fn, parseJson, now: clock, bookRisk });
+  assert.equal(seen.length, 1); assert.ok(Object.values(seen[0]).every(c => c.size === 1));
+  const withMarker = prompts.filter(p => p.prompt.includes('FACTOR-RISK-MARKER'));
+  const ids = withMarker.map(p => roles.find(r => p.system.startsWith(r.body))?.id ?? (p.system.includes('You are the Head of Desk') ? 'head' : '?'));
+  assert.deepEqual(ids.sort(), ['head_of_desk', 'risk_aggressive', 'risk_conservative', 'risk_neutral']);
+  assert.equal(run.debate.bookRisk.summary.effectiveBets, 1.4);
+  const broken = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: fakeModel().fn, parseJson, now: clock, bookRisk: async () => { throw new Error('OANDA down'); } });
+  assert.ok(broken.head.ok); assert.match(broken.debate.bookRisk.text, /failed today: OANDA down/);
+});
+
 await t('runDesk full mode: a failed stage is recorded and the next stage falls back; one round skips rebuttals', async () => {
   const m = fakeModel({ alwaysBad: ['global_manager', 'risk_off'] });
   const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: m.fn, parseJson, now: clock });
@@ -248,6 +262,19 @@ await t('the economist briefs each release ahead from its playbook, one call, af
   assert.ok(run.economist.ok); assert.equal(run.economist.view.briefs.length, 1, 'no more briefs than releases'); assert.equal(run.economist.view.briefs[0].family, 'CPI');
   const m2 = fakeModel(), run2 = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: m2.fn, parseJson, now: clock, retryDelayMs: 1 });
   assert.equal(run2.economist, null); assert.equal(m.calls.length, m2.calls.length + 1);
+});
+
+await t('analyst scorecard (prereg A10): the two managers and the Head read it only when it is passed; no section and no record otherwise', async () => {
+  const seen = fm => { const prompts = []; return { prompts, fn: async a => { prompts.push(a); return fm.fn(a); } }; };
+  const title = '## Analyst track record (scorecard)';
+  const on = seen(fakeModel()), tr = { asOf: '2026-11-03', days: 1, global: 'G-RECORD', currency: 'C-RECORD', head: 'H-RECORD' };
+  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: on.fn, parseJson, now: clock, retryDelayMs: 1, trackRecord: tr });
+  const who = txt => on.prompts.filter(p => p.prompt.includes(txt)).map(p => roles.find(r => p.system.startsWith(r.body))?.id ?? 'head_of_desk');
+  assert.deepEqual(who('G-RECORD'), ['global_manager']); assert.deepEqual(who('C-RECORD'), ['currency_manager']); assert.deepEqual(who('H-RECORD'), ['head_of_desk']);
+  assert.ok(on.prompts.filter(p => p.prompt.includes(title)).length === 3);
+  assert.deepEqual(run.trackRecord, { asOf: '2026-11-03', days: 1, read: ['global_manager', 'currency_manager', 'head_of_desk'] });
+  const off = seen(fakeModel()), run2 = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: off.fn, parseJson, now: clock, retryDelayMs: 1 });
+  assert.equal(off.prompts.filter(p => p.prompt.includes(title)).length, 0); assert.equal('trackRecord' in run2, false);
 });
 
 console.log(`deskRun: ${n} tests passed`);

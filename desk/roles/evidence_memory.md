@@ -25,6 +25,12 @@ Work through:
 6. The week view (feed desk-weekly): the weekly strategist's Sunday view for the week, with its currency ranking,
    themes and scenarios. Say whether today's evidence still fits it or has moved against one of its scenarios. It is
    the desk's own context, not evidence: never pass its biases on as a finding.
+7. The analyst scorecard (feed analyst-scorecard): each analyst's scored mornings, hit rate by conviction,
+   calibration and a weight shrunk towards 1.0. Say which analysts' records stand out and on how many days, with
+   numbers. Under ten days every record is unproven: say so rather than ranking them. It is a record of the desk's own
+   analysts, not evidence about markets: never turn it into an impact.
+8. The book's risk (feed book-risk): the latest saved book's factor exposure, VaR, effective bets and scenarios. Say
+   which factor it leaned on and whether it was one bet in many names. It describes yesterday's book, not today's.
 
 Your headline should be the one thing the rest of the desk most needs to remember today. Put feeds that are down in
 "gaps". Impact only where a validated finding gives a direction.

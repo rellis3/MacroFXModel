@@ -142,6 +142,7 @@ export const DESK_FEEDS = [
   F('rates_cb', 'rates-regime', 4 * D),
   F('rates_cb', 'fed-path', 6 * D),   // the Atlanta Fed tracker publishes ~2 business days late (asOf); the fresh leg is zq (fed funds futures, nightly)
   F('rates_cb', 'fed-speakers', 7 * D),
+  F('rates_cb', 'speech-drift', null),          // build list 4: each bank's speakers against its last statement (js/cbSpeeches.js); dated per speech inside
   ...['fomc', 'ecb', 'boe', 'boj', 'boc', 'rba', 'rbnz', 'snb'].map(b => F('rates_cb', `${b}/latest`, null)),
   F('rates_cb', 'beigebook/latest', null),
   F('rates_cb', 'policy-rates', 4 * D),        // §9aa: every bank's own policy rate with its date (not the 3m interbank rate)
@@ -194,6 +195,8 @@ export const DESK_FEEDS = [
   F('evidence_memory', 'morning-brief', 3 * D),
   F('evidence_memory', 'eod-review', 3 * D),
   F('evidence_memory', 'desk-memory', 5 * D),
+  F('evidence_memory', 'analyst-scorecard?brief=1', 5 * D),   // build list item 1 (prereg A10): each analyst's running hit rate, calibration and shrunk weight
+  F('evidence_memory', 'book-risk', 4 * D, { timeoutMs: 120_000 }),   // §9ak: the latest book's factor exposure, VaR and scenarios (a cold model = 41 OANDA calls)
   F('evidence_memory', 'desk-weekly', 8 * D),   // agent 19: the Sunday week view (context for the week, labelled; never a card)   // Phase 4: the desk's own end-of-day reflections (one-day anecdotes, labelled)
 ];
 

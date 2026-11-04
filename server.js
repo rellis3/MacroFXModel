@@ -220,6 +220,7 @@ import { assembleGlobalReadInput as _grAssemble, GLOBAL_READ_ENDPOINTS as _GR_EN
 import { parseRole as _deskParseRole, buildStagePrompt as _deskStagePrompt } from './js/deskRoles.js';
 import { scoreDay as _dsScoreDay, eligible as _dsEligible, windowFor as _dsWindow, record as _dsRecord, londonMs as _dsLondonMs } from './js/deskScore.js';
 import { reflectionSections as _dsReflectSections, memoryFeed as _dsMemoryFeed, movers as _dsMovers } from './js/deskReflect.js';
+import { scoreRunDay as _ascScoreRunDay, compactDay as _ascCompact, upsertDay as _ascUpsert, scorecard as _ascCard, trackRecordSections as _ascSections, trackRecordText as _ascText } from './js/analystScorecard.js';
 import { validateReflection as _dsValidateReflection, validateNewsletterIssue as _dsValidateIssue, validateSessionUpdate as _duValidate } from './js/deskSchemas.js';
 import { SLOTS as _DU_SLOTS, slotMs as _duSlotMs, marketSince as _duMarketSince, marketText as _duMarketText, liveView as _duLiveView, scoreUpdates as _duScoreUpdates } from './js/deskUpdate.js';
 import { sliceFeed as _deskSliceFeed } from './js/deskSlices.js';
@@ -2230,6 +2231,8 @@ const TG_SENDERS = {
   chiefOfStaff:      'Desk chief of staff: the morning note after the book, the evening note after the score',
   allocation:        'Desk allocation committee: the weekly per-bot keep / cut / pause / raise note (advice; the owner decides)',
   tradeWatch:        'Desk trade watcher: a card reached its entry zone, first target or invalidation (context, not an order)',
+  surpriseReader:    'Live surprise reader: a high-impact print, its surprise against consensus and the release playbook, within a minute (history, not a forecast)',
+  deskAlerts:        'Desk alerts: world stress colour, options-skew extremes, fair value beyond 10%, carry/vol collapse, leading-indicator phase, speaker drift (context, not a signal)',
   // volatility_bot_v2 (the Python bot) checks this directly via ai_alert_cfg
   // (see its own tg_master_on doc) — unlike every other sender above, this
   // one is NOT enforced by server.js's tgOn(), since the bot that actually
@@ -4784,6 +4787,8 @@ async function _deskRun(trigger, job, mode = 'full') {
   } catch (e) { console.warn('[desk-run] releases ahead:', e.message); }
   const run = await _runDesk({
     pack, roles, ledger: DESK_EVIDENCE, now: Date.now, concurrency: 4, mode, checkpoint, releases,
+    trackRecord: await _ascTrackRecord(),   // the analyst scorecard for the rulings: null unless service analystScorecardFeedback is on (prereg A10)
+    bookRisk: _bkrDraftRead,   // §9ak: factor exposure, VaR and scenarios on the draft book, for the risk desk and the Head
     exposureCap: Number(process.env.DESK_EXPOSURE_CAP ?? 4),   // per-currency cap in normal-size units; 0 turns it off
     styleExamples: _deskStyleExamples(await _nlLoad().catch(() => []) ?? []),   // the latest regular issues, so the desk edition matches their voice
     parseJson: (txt, label) => _parseModelJson(txt, label),
@@ -4980,6 +4985,8 @@ async function _dsScore(date, { reflect = true } = {}) {
   try { score.attribution = _atAttribution(run, bars, date, score.S); } catch (e) { console.warn('[desk-score] attribution:', e.message); }
   // Phase 3's day forecast, scored from the same bars (kept apart from the book's score)
   try { await _dfScoreDay(date, bars); } catch (e) { console.warn('[desk-score] day forecast:', e.message); }
+  // The analyst scorecard, from the same bars (descriptive; prereg amendment A10)
+  try { await _ascScoreDate(date, bars); } catch (e) { console.warn('[desk-score] analyst scorecard:', e.message); }
   await kv.put(_DS_SCORE_KEY(date), JSON.stringify(score));
   const { cards, ...row } = score;
   const idx = (await _dsLoadIndex()).filter(r => r.date !== date); idx.push(row); idx.sort((a, b) => a.date.localeCompare(b.date));
@@ -5031,6 +5038,68 @@ app.post('/api/desk-score/run', (req, res) => {
   const job = _dsStart(date, { reflect: req.query.reflect !== '0' });
   if (!job) return res.status(409).json({ ok: false, error: 'a scoring job is already running', job: _dsJob });
   res.status(202).json({ ok: true, job });
+});
+// ── Analyst scorecard (js/analystScorecard.js; owner build list item 1, 2026-11-04; prereg amendment A10) ────────
+// After the evening score, every analyst's calls that morning (the net impact it gave each currency, market and
+// RISK) are scored against the same 08:00-21:00 London moves in u: hit rate by conviction, Brier and calibration,
+// edge and skill, and a weight shrunk towards 1.0 by empirical Bayes. Measurement only; the rulings read it only when
+// service analystScorecardFeedback is on (default OFF). desk_run_analyst_<date> holds the day in full (moves, every
+// call); analyst_scorecard_v1 holds the compact day rows the running scorecard is built from.
+const _ASC_KV = 'analyst_scorecard_v1';
+const _ASC_DAY_KEY = date => `desk_run_analyst_${date}`;
+let _ascJob = null;
+async function _ascLoad() { try { const raw = await kv.get(_ASC_KV); const st = raw ? JSON.parse(raw) : null; return st && Array.isArray(st.days) ? st : { days: [] }; } catch { return { days: [] }; } }
+// Score one day. Bars from the evening score when given; otherwise the moves saved the first time, else fresh M1 bars.
+async function _ascScoreDate(date, bars = null) {
+  const run = await _dsRunFor(date);
+  if (!run?.head?.ok || !run.analysts) return { ok: false, date, error: `no desk run with analysts for ${date}` };
+  let moves = null;
+  if (!bars) { try { const raw = await kv.get(_ASC_DAY_KEY(date)); if (raw) moves = JSON.parse(raw).moves ?? null; } catch { moves = null; } }
+  if (!bars && !moves) bars = await _dsBars(Object.keys(run.head.book.instruments ?? {}), date);
+  const day = _ascScoreRunDay(run, { moves, barsByInst: bars });
+  if (!day.markets) return { ok: false, date, error: 'no market moves for the day (no bars or no forecast levels)' };
+  await kv.put(_ASC_DAY_KEY(date), JSON.stringify({ ...day, savedAt: new Date().toISOString() }));
+  const st = await _ascLoad();
+  await kv.put(_ASC_KV, JSON.stringify({ version: day.version, savedAt: new Date().toISOString(), days: _ascUpsert(st.days, _ascCompact(day)) }));
+  return { ok: true, date, counts: day.counts, why: day.why, analysts: Object.keys(day.analysts).length, markets: day.markets };
+}
+async function _ascTrackRecord() {
+  if (!svcEnabled('analystScorecardFeedback')) return null;
+  try { return _ascSections(_ascCard((await _ascLoad()).days)); } catch (e) { console.warn('[analyst-scorecard] track record:', e.message); return null; }
+}
+// GET /api/analyst-scorecard: the running scorecard (each analyst: days, hit rate by conviction, calibration, edge,
+// skill, shrunk weight, sparkline of the rolling edge). ?brief=1 drops the sparklines (the Desk Pack feed);
+// ?date=YYYY-MM-DD returns that day in full instead (every call, the moves and what was realised).
+app.get('/api/analyst-scorecard', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : null;
+    if (date) { const raw = await kv.get(_ASC_DAY_KEY(date)); return raw ? res.json({ ok: true, day: JSON.parse(raw) }) : res.status(404).json({ ok: false, error: `no analyst scorecard for ${date}` }); }
+    const st = await _ascLoad(), card = _ascCard(st.days);
+    if (req.query.brief === '1') for (const a of Object.values(card.analysts)) delete a.spark;
+    res.json({ ok: true, asOf: card.to, savedAt: st.savedAt ?? null, ...card, feedback: { on: svcEnabled('analystScorecardFeedback'), service: 'analystScorecardFeedback' }, text: _ascText(card, 'head'), job: _ascJob });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/analyst-scorecard/backfill: score every stored desk day whose window has closed (?force=1 re-scores days
+// already done; ?refetch=1 also re-reads the bars). Runs in the background; GET shows the job.
+app.post('/api/analyst-scorecard/backfill', async (req, res) => {
+  if (_ascJob?.status === 'running') return res.status(409).json({ ok: false, error: 'a backfill is already running', job: _ascJob });
+  const job = _ascJob = { status: 'running', startedAt: Date.now(), finishedAt: null, done: [], failed: [], skipped: 0 };
+  res.status(202).json({ ok: true, job });
+  try {
+    const have = new Set((await _ascLoad()).days.map(d => d.date)), now = Date.now();
+    const dates = [...new Set([...(await _dsLoadIndex()).map(r => r.date), ...(await _drLoadIndex()).filter(r => r.headOk).map(r => r.date)])].sort().filter(d => now >= _dsWindow(d).exitMs);
+    for (const d of dates) {
+      if (have.has(d) && req.query.force !== '1') { job.skipped++; continue; }
+      job.date = d;
+      let bars = null;
+      if (req.query.refetch === '1') { const run = await _dsRunFor(d); if (run?.head?.ok) bars = await _dsBars(Object.keys(run.head.book.instruments ?? {}), d); }
+      const r = await _ascScoreDate(d, bars).catch(e => ({ ok: false, date: d, error: e.message }));
+      (r.ok ? job.done : job.failed).push(r.ok ? { date: d, counts: r.counts } : { date: d, error: r.error });
+    }
+    job.status = 'done';
+  } catch (e) { job.status = 'error'; job.error = e.message; console.error('[analyst-scorecard] backfill:', e.message); }
+  finally { job.finishedAt = Date.now(); console.log(`[analyst-scorecard] backfill: ${job.done.length} scored, ${job.failed.length} failed, ${job.skipped} already done`); }
 });
 // ── Desk session updates (js/deskUpdate.js, desk/roles/session_update.md; plans/DESK_ANALYST_PIPELINE.md Phase 5) ──
 // At the London open (08:05) and the New York open (14:35) the desk re-reads what changed since the morning book:
@@ -5101,6 +5170,156 @@ app.get('/api/desk-risk', async (req, res) => {
     _rkCache.set(key, out);
     res.json(out);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── §9ak: factor exposure of the book and the scenario engine (js/factorRisk.js, js/scenarioEngine.js) ──────────────
+// The book broken into dollar, carry, risk-on, commodity and US-rates factors, its VaR/ES and concentration, and
+// scenarios ("Fed +25bp, oil +10%, VIX to 30") mapped through each market's betas. The risk desk and the Head read it
+// on the draft book in the morning run (js/deskRun.js bookRisk); "Ask the desk" reads it on today's book.
+// Data: ~1,900 OANDA daily closes per desk market (41 calls, once per London day), FRED DGS2/DGS10/VIXCLS and the
+// policy rates; saved gzipped to KV factor_risk_data so a redeploy does not repeat the OANDA calls. Model in memory.
+import { buildFactorModel as _bkrBuildModel, bookFactorRisk as _bkrBookRisk, modelSummary as _bkrModelSummary } from './js/factorRisk.js';
+import { runScenario as _bksRun, standardScenarios as _bksStandard, bookRiskText as _bksText, parseScenarioQuestion as _bksParse, SCENARIO_DRIVERS as _BKS_DRIVERS, STANDARD_SCENARIOS as _BKS_STANDARD, REPLAYS as _BKS_REPLAYS } from './js/scenarioEngine.js';
+const _BKR_DATA_KV = 'factor_risk_data', _BKR_BARS = 1900, _BKR_FRED_FROM = '2019-06-01';
+let _bkrData = null, _bkrModel = null, _bkrBuilding = null, _bkrFailedAt = 0;
+const _bkrBrCache = new Map();
+async function _bkrFetchData(date) {
+  const closes = {}, errors = {}, list = VOL_INSTRUMENTS.filter(i => i.oandaInstrument);
+  let next = 0;
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    while (next < list.length) {
+      const i = list[next++];
+      try { closes[i.name] = (await _btFetchD1(i.oandaInstrument, _BKR_BARS)).sort((a, b) => (a.date < b.date ? -1 : 1)).map(b => [b.date, b.close]); }
+      catch (e) { errors[i.name] = e.message; }
+    }
+  }));
+  const fred = {};
+  await Promise.all(['DGS2', 'DGS10', 'VIXCLS'].map(async id => {
+    try { if (!process.env.FRED_KEY) throw new Error('FRED_KEY not set'); fred[id] = [...(await fetchFredObservations(id, _BKR_FRED_FROM, process.env.FRED_KEY))]; }
+    catch (e) { errors[id] = e.message; }
+  }));
+  let policyRates = {};
+  try { const pr = await _policyRatesNow(); policyRates = Object.fromEntries(Object.entries(pr?.rates ?? {}).map(([k, v]) => [k, Number(v?.rate)]).filter(([, v]) => Number.isFinite(v))); }
+  catch (e) { errors.policyRates = e.message; }
+  return { date, fetchedAt: new Date().toISOString(), closes, fred, policyRates, errors };
+}
+// Today's data: memory, then KV, then a fresh fetch (one at a time). A failed fetch keeps the last good data, labelled stale.
+async function _bkrLoadData() {
+  const today = _dpLondonDate(Date.now());
+  if (_bkrData?.date === today) return _bkrData;
+  if (!_bkrData) {
+    try { const raw = await kv.get(_BKR_DATA_KV); if (raw) _bkrData = JSON.parse(zlib.gunzipSync(Buffer.from(raw, 'base64')).toString('utf8')); } catch { /* fetch below */ }
+    if (_bkrData?.date === today) return _bkrData;
+  }
+  if (Date.now() - _bkrFailedAt < 30 * 60_000) {   // a failed refresh is not retried for 30 minutes
+    if (_bkrData) return { ..._bkrData, stale: true };
+    throw new Error('price history unavailable (the last fetch failed; retried after 30 minutes)');
+  }
+  if (!_bkrBuilding) {
+    _bkrBuilding = (async () => {
+      const d = await _bkrFetchData(today);
+      if (Object.keys(d.closes).length < 10) {
+        _bkrFailedAt = Date.now();
+        if (_bkrData) return { ..._bkrData, stale: true, errors: d.errors };
+        throw new Error(`price history unavailable (${Object.values(d.errors)[0] ?? 'no closes'})`);
+      }
+      _bkrData = d;
+      try { await kv.put(_BKR_DATA_KV, zlib.gzipSync(Buffer.from(JSON.stringify(d)), { level: 9 }).toString('base64')); } catch (e) { console.warn('[book-risk] data save failed:', e.message); }
+      return d;
+    })().finally(() => { _bkrBuilding = null; });
+  }
+  return _bkrBuilding;
+}
+async function _bkrGetModel() {
+  const d = await _bkrLoadData();
+  if (_bkrModel?.asOf === d.date && _bkrModel?._fetchedAt === d.fetchedAt) return _bkrModel;
+  const closes = Object.fromEntries(Object.entries(d.closes).map(([n, rows]) => [n, rows.map(([date, close]) => ({ date, close }))]));
+  const fred = Object.fromEntries(Object.entries(d.fred).map(([id, rows]) => [id, rows.map(([date, value]) => ({ date, value }))]));
+  _bkrModel = Object.assign(_bkrBuildModel({ closes, fred, policyRates: d.policyRates, window: 500, asOf: d.date }), { _fetchedAt: d.fetchedAt, _errors: d.errors ?? {}, _stale: !!d.stale });
+  _bkrBrCache.clear();
+  return _bkrModel;
+}
+// The book: the day's Head book after the cap (today's, else the latest saved run).
+async function _bkrBook(date) {
+  let run = date ? await _drLoad(date) : (await _drLoad(_dpLondonDate(Date.now()))) ?? _drLatest;
+  if (!run && !date) { const last = (await _drLoadIndex()).filter(r => r.headOk).at(-1); if (last) run = await _drLoad(last.date); }
+  return run?.head?.ok ? { date: run.date, finishedAt: run.finishedAt, cards: run.head.book.instruments } : null;
+}
+const _bkrScenRow = s => ({ key: s.key, label: s.label, ok: s.ok, pnl: s.book?.pnl ?? null, pnlPct: s.book?.pnlPct ?? null, worst: s.book?.worst?.[0] ?? null, errors: s.errors?.length ? s.errors : undefined });
+function _bkrModelMeta(m) {
+  const s = _bkrModelSummary(m);
+  return { asOf: s.asOf, window: s.window, factors: s.factors, factorDays: s.factorDays, missing: s.missing, carry: s.carry, levels: s.levels, stale: m._stale, dataErrors: Object.keys(m._errors).length ? m._errors : undefined };
+}
+// The full read on a set of cards: risk, the standard scenarios and replays, and the prompt text.
+async function _bkrRead(cards, title) {
+  const m = await _bkrGetModel(), risk = _bkrBookRisk(m, cards), scen = risk.ok ? _bksStandard(m, cards) : null;
+  return { m, risk, scen, text: _bksText(risk, scen, { title }) };
+}
+// For the morning run (js/deskRun.js runDebate): the asset desks' draft book at size 1.
+async function _bkrDraftRead(cards) {
+  const { risk, scen, text } = await _bkrRead(cards, "the asset desks' draft");
+  return { ok: risk.ok, text, summary: risk.ok ? { sigma: risk.sigma, var95: risk.var.parametric['0.95'].var, effectiveBets: risk.concentration.effectiveBets, enb: risk.concentration.enb, topFactor: risk.concentration.topFactor, flag: risk.concentration.flag,
+    factors: risk.factors.map(f => ({ key: f.key, perSigma: f.perSigma, share: f.share })), scenarios: scen.scenarios.map(_bkrScenRow) } : { reason: risk.reason } };
+}
+// For "Ask the desk": today's book, at most 25 s (a cold model means 41 OANDA calls), plus any scenario the question names.
+async function _bkrAskContext(q) {
+  try {
+    const go = (async () => {
+      const book = await _bkrBook(null); if (!book) return '(no desk book to read the factor risk of)';
+      const { m, text } = await _bkrRead(book.cards, `the ${book.date} book`), shocks = _bksParse(q);
+      if (!Object.keys(shocks).length) return text;
+      const sc = _bksRun(m, book.cards, shocks, { label: 'the question\'s scenario' });
+      return `${text}\nThe scenario in the question (${JSON.stringify(shocks)}), conditional on the joint history: ${sc.ok ? `book ${sc.book.pnl} card-σ (${sc.book.pnlPct}%); drivers ${Object.entries(sc.drivers).map(([k, v]) => `${k} ${v.value}${v.given ? '' : ' (implied)'}`).join(', ')}; currencies vs USD % ${JSON.stringify(sc.currencies)}; worst cards ${sc.book.worst.slice(0, 4).map(c => `${c.name} ${c.pnl}`).join(', ')}` : sc.errors.join('; ')}`;
+    })();
+    return await Promise.race([go, new Promise(r => setTimeout(() => r('(book factor risk still loading)'), 25_000))]);
+  } catch (e) { return `(book factor risk not available: ${e.message})`; }
+}
+// GET /api/book-risk?date=&betas=1: the book's factor exposure, VaR/ES, concentration, top contributors and the
+// standard scenarios' P&L. Cached per book and model day. ?betas=1 adds every market's betas, n and R².
+app.get('/api/book-risk', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : null;
+    const book = await _bkrBook(date);
+    if (!book) return res.status(404).json({ ok: false, error: date ? `no desk book for ${date}` : 'no desk book yet' });
+    const m = await _bkrGetModel(), key = `${book.date}|${book.finishedAt}|${m.asOf}|${m._fetchedAt}`;
+    let out = _bkrBrCache.get(key);
+    if (!out) {
+      const { risk, scen, text } = await _bkrRead(book.cards, `the ${book.date} book`);
+      const { allContributions, ...r } = risk;
+      out = { ok: risk.ok, date: book.date, bookFinishedAt: book.finishedAt, model: _bkrModelMeta(m), ...r, contributions: allContributions,
+        scenarios: scen?.scenarios.map(_bkrScenRow) ?? [], replays: scen?.replays.map(x => ({ key: x.key, label: x.label, from: x.from, to: x.to, covered: x.covered, pnl: x.pnl, pnlPct: x.pnlPct, missing: x.missing.length })) ?? [],
+        text, label: 'description of the book on its own history, not a forecast; 1 card-σ = one size-1 card moving one daily σ' };
+      if (_bkrBrCache.size > 20) _bkrBrCache.clear();
+      _bkrBrCache.set(key, out);
+    }
+    res.json(req.query.betas === '1' ? { ...out, betas: _bkrModelSummary(m).betas } : out);
+  } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
+// GET /api/scenarios?date=: the standard set and the historical replays on the day's book, in full.
+app.get('/api/scenarios', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : null;
+    const book = await _bkrBook(date);
+    if (!book) return res.status(404).json({ ok: false, error: date ? `no desk book for ${date}` : 'no desk book yet' });
+    const m = await _bkrGetModel(), sc = _bksStandard(m, book.cards);
+    res.json({ ok: true, date: book.date, bookFinishedAt: book.finishedAt, model: _bkrModelMeta(m), drivers: _BKS_DRIVERS.filter(d => m.joint.includes(d.key)), standard: _BKS_STANDARD, declaredReplays: _BKS_REPLAYS, ...sc,
+      label: 'linear one-day map through each market\'s betas (conditional on the joint history); replays use realised moves. Description, not a forecast.' });
+  } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
+// POST /api/scenario { shocks: { RATES: 25, OIL: 10, VIX: { to: 30 } }, mode?: 'conditional'|'isolated', date?, cards? }:
+// one scenario on the day's book (or on the cards given, { INST: { rating, size } }).
+app.post('/api/scenario', express.json({ limit: '64kb' }), async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const shocks = req.body?.shocks, mode = req.body?.mode === 'isolated' ? 'isolated' : 'conditional';
+    if (!shocks || typeof shocks !== 'object' || Array.isArray(shocks) || Object.keys(shocks).length > 12) return res.status(400).json({ ok: false, error: 'give shocks as { DRIVER: change or { to: level } }', drivers: _BKS_DRIVERS });
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.body?.date ?? '')) ? String(req.body.date) : null;
+    let cards = req.body?.cards && typeof req.body.cards === 'object' && !Array.isArray(req.body.cards) ? req.body.cards : null, bookDate = null;
+    if (!cards) { const book = await _bkrBook(date); if (!book) return res.status(404).json({ ok: false, error: 'no desk book yet: pass cards' }); cards = book.cards; bookDate = book.date; }
+    const m = await _bkrGetModel(), r = _bksRun(m, cards, shocks, { mode, label: String(req.body?.label ?? 'custom').slice(0, 80) });
+    res.status(r.ok ? 200 : 400).json({ ...r, date: bookDate, model: { asOf: m.asOf, factorDays: m.factorDays, levels: m.levels } });
+  } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
 });
 // GET /api/desk-journal?days=28: the journal coach (Phase 8) and the execution analyst (Phase 13), js/deskJournal.js.
 // The bots' closed trades (the three durable logs plus today's closes) against each day's morning book. Private: the
@@ -6762,6 +6981,19 @@ app.get('/api/world-stress', async (_req, res) => {
     res.json({ ok: true, at: new Date().toISOString(), ..._mbStress({ risk, credit, funding, em, liquidity, basis, cycle, termPremium: tp }) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// GET /api/terminal/stress-snap: the Desk Terminal's "what changed" tab (js/terminal/whatChanged.js) needs an earlier
+// day's world-stress colours and /api/world-stress only knows now. The first look of each London day is kept (KV, 14 days).
+const _TS_KEY = 'terminal_stress_snaps_v1';
+app.get('/api/terminal/stress-snap', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const { recordSnap, previousSnap, stressSnapOf } = await import('./js/terminal/whatChanged.js');
+    const date = _dpLondonDate(Date.now()), now = stressSnapOf((await _dpFetchFeed({ path: 'world-stress', timeoutMs: 90_000 })).json);
+    let store = {}; try { store = JSON.parse((await kv.get(_TS_KEY)) ?? '{}') ?? {}; } catch { store = {}; }
+    if (now && !store[date]) { store = recordSnap(store, date, now); await kv.put(_TS_KEY, JSON.stringify(store)).catch(e => console.warn('[terminal] stress snap:', e.message)); }
+    res.json({ ok: true, date, now, today: store[date] ?? null, previous: previousSnap(store, date) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // ── More world data (owner, 2026-11-04): fair value, leading indicators, commodity currencies, carry against vol,
 // session hours, copper/gold. js/globalBoards.js; each cached in _mb like the boards above and read by the Desk Pack. ──
 // a browser-like User-Agent makes the OECD's SDMX service answer 500, so this one names itself plainly
@@ -6926,9 +7158,10 @@ app.post('/api/desk-ask', express.json({ limit: '16kb' }), async (req, res) => {
       const book = run?.head?.ok ? { date: run.date, writtenAt: run.finishedAt, headline: run.head.book.headline, global: run.head.book.global, currencies: run.head.book.currencies, risks: run.head.book.risks,
         cards: Object.fromEntries(Object.entries(run.head.book.instruments).map(([n, c]) => [n, { rating: c.rating, conviction: c.conviction, size: c.size, why: c.why, plan: c.plan, levels: c.levels ? { open: c.levels.open, up: c.levels.up, down: c.levels.down } : null }])) } : null;
       const analysts = run ? Object.fromEntries(Object.entries(run.analysts ?? {}).filter(([, a]) => a.ok).map(([id, a]) => [id, { headline: a.report.headline, points: (a.report.points ?? []).map(p => ({ claim: p.claim, evidence: p.evidence, impact: p.impact })) }])) : {};
-      const system = `You are the desk's analyst on call, answering the owner's question in the Desk Terminal. Use only the material below: today's book, the analysts' reports, the last evening reviews and the Evidence Book. If it does not answer the question, say so plainly and say what data would. Never invent a number. An Evidence Book entry marked null or underpowered was tested and found no reliable edge: never present it as working. This is context, not a trade instruction. Be direct and short: at most 200 words.
+      const riskCtx = await _bkrAskContext(q);   // §9ak: the book's factor exposure, VaR, scenarios, and any scenario the question names
+      const system = `You are the desk's analyst on call, answering the owner's question in the Desk Terminal. Use only the material below: today's book, the book's factor risk and scenarios, the analysts' reports, the last evening reviews and the Evidence Book. For a what-if question, quote the scenario engine's numbers (card-σ and %) and say they are a linear map through historical betas. If it does not answer the question, say so plainly and say what data would. Never invent a number. An Evidence Book entry marked null or underpowered was tested and found no reliable edge: never present it as working. This is context, not a trade instruction. Be direct and short: at most 200 words.
 Reply with JSON only: { "answer": "plain text", "sources": ["analyst ids, card names or ledger tags you used"] }`;
-      const prompt = `Question: ${q}\n\n## Today's book (${today})\n${book ? JSON.stringify(book) : '(no book today)'}\n\n## Analysts' reports\n${JSON.stringify(analysts)}\n\n## Last evening reviews\n${JSON.stringify(refl.filter(Boolean))}\n\n## Evidence Book\n${evidenceBrief(DESK_EVIDENCE)}`;
+      const prompt = `Question: ${q}\n\n## Today's book (${today})\n${book ? JSON.stringify(book) : '(no book today)'}\n\n## The book's factor risk and scenarios (js/factorRisk.js, js/scenarioEngine.js)\n${riskCtx}\n\n## Analysts' reports\n${JSON.stringify(analysts)}\n\n## Last evening reviews\n${JSON.stringify(refl.filter(Boolean))}\n\n## Evidence Book\n${evidenceBrief(DESK_EVIDENCE)}`;
       const r = await callModel({ task: 'desk-analyst', system, prompt, maxTokens: 2_000 });
       const j = _parseModelJson(r.text ?? _antText(r), 'desk:ask');
       const answer = typeof j?.answer === 'string' ? j.answer.slice(0, 4000) : null;
@@ -35593,6 +35826,237 @@ app.get('/api/fed-speakers', async (_req, res) => {
     res.json({ ok: true, at: new Date(c.at).toISOString(), rows: c.rows, note: 'Federal Reserve public calendar: speeches, testimony, FOMC and Beige Book, shown by role. Other central banks are not covered.' });
   } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
 });
+
+// ══ Speeches, live surprises and desk alerts (owner, 2026-11-04, build list items 4, 5 and 6) ══════════════════════════════
+// All three keep their logic in pure, tested modules (js/cbSpeeches.js, js/surpriseReader.js, js/deskAlerts.js); this block
+// is only the I/O. Every network or model step has a timeout and a recorded failure; none of them can throw out of a tick.
+//   speechScores    every 30 min: new speeches from the Fed, ECB, BoE, BoJ, BoC, RBA and SNB feeds, read once each by the model
+//                   (at most SPEECH_MAX_PER_DAY a day, 12 by default) → KV cb_speech_log_v1; GET /api/cb-speeches, /api/speech-drift
+//   surpriseReader  every 60 s, a no-op unless a high-impact release is due: the actual from Nasdaq, the surprise and the release
+//                   playbook → Telegram (tgMaster.surpriseReader), KV release_surprise_log_v1; GET /api/release-surprises
+//   deskAlerts      every DESK_ALERTS_EVERY_MIN (15): world stress, options skew, fair value, carry/vol, leading indicators and
+//                   speaker drift → one Telegram line per state change (tgMaster.deskAlerts), KV desk_alerts_v1; GET /api/desk-alerts
+import * as _cbsp from './js/cbSpeeches.js';
+import * as _lsr from './js/surpriseReader.js';
+import * as _dal from './js/deskAlerts.js';
+import { pageText as _cbspPageText } from './js/cbPageText.js';
+
+const _CBSP_KV = 'cb_speech_log_v1', _CBSP_MAX_DAY = Math.max(0, Number(process.env.SPEECH_MAX_PER_DAY ?? 12));
+const _CBSP_UA = 'Mozilla/5.0 (compatible; MacroFX/1.0; +https://github.com/)';
+let _cbspRunning = false;
+const _cbspTimeout = (p, ms, what) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`${what} timed out after ${ms / 1000}s`)), ms))]);
+async function _cbspLoad() {
+  const raw = await kv.getStrict(_CBSP_KV);   // a failed read must not become an empty log that is then written back
+  const j = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : {};
+  return { log: j.log ?? [], budget: j.budget ?? {}, runs: j.runs ?? [], fails: j.fails ?? {} };
+}
+/** Each bank's last scored statement: { CCY: { score, meetingDate, regime, headline } } (the same keys _loadCbSentiment reads). */
+async function _cbspStatements() {
+  const out = {};
+  await Promise.all(_CB_SENTIMENT.map(async ({ ccy, meetings, prefix }) => {
+    const latest = meetings.filter(m => Date.parse(m.date) <= Date.now()).at(-1); if (!latest) return;
+    try { const raw = await kv.get(`${prefix}${latest.date}`); const a = raw ? JSON.parse(raw).analysis : null; if (a?.hawkishScore != null) out[ccy] = { score: a.hawkishScore, meetingDate: latest.date, regime: a.regime ?? null, headline: a.headline ?? null }; }
+    catch { /* that bank reads as "no statement to compare with" */ }
+  }));
+  return out;
+}
+async function _cbspPdf(buf) {
+  const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
+  return (await _cbspTimeout(pdfParse(buf, { max: 30 }), 60_000, 'pdf-parse')).text ?? '';
+}
+/** The speech's text: the page's article/main region, or its PDF when the page is only a shell around one. */
+async function _cbspText(url) {
+  const r = await fetch(url, { headers: { 'User-Agent': _CBSP_UA }, signal: AbortSignal.timeout(25_000) });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  if (/pdf/i.test(r.headers.get('content-type') ?? '') || /\.pdf($|\?)/i.test(url)) return { text: await _cbspPdf(Buffer.from(await r.arrayBuffer())), from: 'pdf' };
+  const html = await r.text(), text = _cbspPageText(html, /<(article|main)[\s>]/i, /<\/(article|main)>|<footer/i);
+  const pdf = text.length < 2500 ? html.match(/href="([^"]+\.pdf)"/i)?.[1] : null;
+  if (pdf) {
+    try {
+      const p = await fetch(new URL(pdf, url).href, { headers: { 'User-Agent': _CBSP_UA }, signal: AbortSignal.timeout(30_000) });
+      if (p.ok) { const t = await _cbspPdf(Buffer.from(await p.arrayBuffer())); if (t.length > text.length) return { text: t, from: 'pdf' }; }
+    } catch { /* keep the page text */ }
+  }
+  return { text, from: 'html' };
+}
+async function _cbspTick(trigger = 'poll') {
+  if (_cbspRunning) return { ok: false, why: 'already running' };
+  _cbspRunning = true;
+  const t0 = Date.now(), at = new Date(t0).toISOString(), day = _dpLondonDate(t0), errors = {};
+  try {
+    const st = await _cbspLoad();
+    if (st.budget.date !== day) st.budget = { date: day, used: 0 };
+    const seen = new Set(st.log.map(e => e.id)), cands = [];
+    await Promise.all(_cbsp.SPEECH_SOURCES.map(async s => {
+      try {
+        const r = await fetch(s.url, { headers: { 'User-Agent': _CBSP_UA, Accept: 'application/rss+xml, application/xml, text/xml' }, signal: AbortSignal.timeout(20_000) });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        cands.push(..._cbsp.candidates(s.bank, _cbsp.parseFeed(await r.text()), seen, { now: t0 }));
+      } catch (e) { errors[s.bank] = e.message; }
+    }));
+    cands.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    // read the newest few; a speech whose page keeps failing is logged as an error after three tries so it stops being fetched
+    const done = [], ready = [];
+    for (const c of cands.slice(0, 8)) {
+      try {
+        const { text, from } = await _cbspText(c.url);
+        if (text.length < 800) done.push(_cbsp.logEntry(c, { skipped: 'no readable text on the page', chars: text.length, from, at }));
+        else if (_cbsp.policyWords(text) < 4) done.push(_cbsp.logEntry(c, { skipped: 'no monetary-policy content (fewer than 4 policy words): not sent to the model', chars: text.length, from, at }));
+        else ready.push({ ...c, text, from, tierGuess: _cbsp.tierFrom(`${c.title} ${c.speaker ?? ''} ${text.slice(0, 600)}`, c.bank) });
+      } catch (e) {
+        errors[c.id] = e.message; st.fails[c.id] = (st.fails[c.id] ?? 0) + 1;
+        if (st.fails[c.id] >= 3) done.push(_cbsp.logEntry(c, { error: `text not readable after 3 tries: ${e.message}`, at }));
+      }
+    }
+    const statements = await _cbspStatements(), pick = _cbsp.pickToScore(ready, { used: st.budget.used, maxPerDay: _CBSP_MAX_DAY, maxPerRun: 4 });
+    if (pick.length && !_aiAnyKey()) errors.model = 'no model provider configured';
+    else for (const c of pick) {
+      const stmt = statements[c.ccy] ?? null;
+      const { system, prompt } = _cbsp.speechPrompt(c, _cbsp.clipText(c.text), stmt ? { score: stmt.score, regime: stmt.regime, date: stmt.meetingDate, headline: stmt.headline } : null);
+      const v = await _modelJson({ task: 'doc-summary', system, prompt, maxTokens: 4000, timeoutMs: 150_000, label: `speech ${c.bank}`, validate: _cbsp.validateSpeech, tries: 2, onCall: () => { st.budget.used++; } });
+      if (v.ok) done.push(_cbsp.logEntry(c, { score: v.value, statement: stmt ? { score: stmt.score, date: stmt.meetingDate, regime: stmt.regime } : null, chars: c.text.length, from: c.from, model: v.model, at }));
+      else { errors[c.id] = v.errors.join('; '); st.fails[c.id] = (st.fails[c.id] ?? 0) + 1; if (st.fails[c.id] >= 3) done.push(_cbsp.logEntry(c, { error: `model read failed 3 times: ${v.errors.join('; ')}`, at })); }
+    }
+    st.log = _cbsp.mergeLog(st.log, done);
+    const logged = new Set(st.log.map(e => e.id)); st.fails = Object.fromEntries(Object.entries(st.fails).filter(([k]) => !logged.has(k)));
+    const run = { at, trigger, ms: Date.now() - t0, feeds: _cbsp.SPEECH_SOURCES.length, candidates: cands.length, scored: done.filter(e => e.score != null).length, skipped: done.filter(e => e.skipped).length, budget: st.budget, errors };
+    st.runs = [run, ...st.runs].slice(0, 30);
+    await kv.put(_CBSP_KV, JSON.stringify(st));
+    if (run.scored) console.log(`[speeches] scored ${run.scored}: ${done.filter(e => e.score != null).map(e => `${e.bank} ${e.speaker ?? '?'} ${e.score}`).join(', ')}`);
+    return { ok: true, ...run };
+  } catch (e) { console.warn('[speeches]', e.message); return { ok: false, error: e.message, errors }; }
+  finally { _cbspRunning = false; }
+}
+async function _cbspDrift() {
+  const [st, statements] = await Promise.all([_cbspLoad(), _cbspStatements()]);
+  return { st, drift: _cbsp.speakerDrift(st.log, statements, Date.now()) };
+}
+svcInterval('speechScores', () => _cbspTick('poll'), 30 * 60_000);
+svcTimeout('speechScores', () => _cbspTick('boot'), 4 * 60_000);
+// GET /api/cb-speeches?bank=Fed&n=40: the speech log (scored, skipped and failed), newest first, and the last runs
+app.get('/api/cb-speeches', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const st = await _cbspLoad(), bank = String(req.query.bank ?? ''), n = Math.min(400, Math.max(1, parseInt(req.query.n) || 60));
+    res.json({ ok: true, maxPerDay: _CBSP_MAX_DAY, budget: st.budget, runs: st.runs.slice(0, 5), log: st.log.filter(e => !bank || e.bank === bank).slice(0, n) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/cb-speeches/run', async (_req, res) => { try { res.json(await _cbspTick('manual')); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+// GET /api/speech-drift: per bank, how its speakers sound against its last statement, and the scored speeches of the last 14 days
+app.get('/api/speech-drift', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const { st, drift } = await _cbspDrift(), since = Date.now() - 14 * 864e5;
+    const recent = st.log.filter(e => e.score != null && Date.parse(e.date ?? e.at) >= since).slice(0, 40)
+      .map(e => ({ bank: e.bank, ccy: e.ccy, date: e.date, speaker: e.speaker, role: e.role, tier: e.tier, relevance: e.relevance, score: e.score, delta: e.delta, headline: e.headline, currency: e.currency, keyQuotes: e.keyQuotes, topics: e.topics, url: e.url }));
+    res.json({ ok: true, at: new Date().toISOString(), lastRun: st.runs[0] ?? null, ...drift, recent });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Live surprise reader ──
+const _LSR_KV = 'release_surprise_log_v1';
+let _lsr0 = { loaded: false, sent: {}, log: [], lastRun: null, nas: { at: 0, rows: [] }, store: { at: 0, rows: [] } };
+async function _lsrNasdaq() {
+  if (Date.now() - _lsr0.nas.at < 40_000) return _lsr0.nas.rows;
+  const today = new Date().toISOString().slice(0, 10), tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10), rows = [];
+  for (const d of [today, tomorrow]) {   // Nasdaq's list for date D is New York's D-1 (js/calendarFeed.js parseNasdaq)
+    try {
+      const r = await fetch(`https://api.nasdaq.com/api/calendar/economicevents?date=${d}`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(12_000) });
+      if (r.ok) rows.push(..._calParseNasdaq(await r.json(), d)); else _lsr0.lastErr = `nasdaq ${d} HTTP ${r.status}`;
+    } catch (e) { _lsr0.lastErr = `nasdaq ${d}: ${e.message}`; }
+  }
+  _lsr0.nas = { at: Date.now(), rows };
+  return rows;
+}
+async function _lsrStore() {   // read-only use of the surprise store (econ_surprise_v1) for each release's own history
+  if (Date.now() - _lsr0.store.at < 6 * 3600e3) return _lsr0.store.rows;
+  try { const raw = await kv.get(_SURPRISE_KV); const j = raw ? JSON.parse(raw) : null; _lsr0.store = { at: Date.now(), rows: (r => (Array.isArray(r) ? r : []))(j?.data?.rows ?? j?.rows ?? j?.data ?? j) }; }
+  catch (e) { _lsr0.store = { at: Date.now() - 5 * 3600e3, rows: _lsr0.store.rows }; console.warn('[surprise-reader] store:', e.message); }
+  return _lsr0.store.rows;
+}
+async function _lsrSave() { await kv.put(_LSR_KV, JSON.stringify({ sent: _lsr.pruneSent(_lsr0.sent, Date.now()), log: _lsr0.log })); }
+async function _lsrTick() {
+  const now = Date.now();
+  if (!_lsr0.loaded) { const raw = await kv.getStrict(_LSR_KV); const j = raw ? JSON.parse(raw) : {}; _lsr0.sent = j.sent ?? {}; _lsr0.log = j.log ?? []; _lsr0.loaded = true; }
+  const feed = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
+  const due = _lsr.dueReleases(feed.events ?? [], now, _lsr0.sent);
+  if (!due.length) return { ok: true, due: 0 };
+  const nas = due.some(e => e.actual == null) ? await _lsrNasdaq() : [];
+  let studyRows = []; try { studyRows = (await _rlRows()).rows; } catch (e) { console.warn('[surprise-reader] release study:', e.message); }
+  const store = await _lsrStore(), fresh = [];
+  for (const ev of due) {
+    const row = ev.actual != null ? null : _lsr.matchActual(ev, nas);
+    if (ev.actual == null && !row) {
+      if (now > Number(ev.ms) + _lsr.WATCH_AFTER_MS - 90_000) {   // the window is closing: record it once, quietly
+        const rec = { ..._lsr.readRelease(ev, null, { store, studyRows, now }), missed: true };
+        rec.surprise = { ok: false, why: 'no actual on the feeds within 30 minutes' };
+        _lsr0.sent[rec.key] = now; _lsr0.log = _lsr.addToLog(_lsr0.log, rec);
+      }
+      continue;
+    }
+    const rec = _lsr.readRelease(ev, row, { store, studyRows, now });
+    _lsr0.sent[rec.key] = now; _lsr0.log = _lsr.addToLog(_lsr0.log, rec); fresh.push(rec);
+  }
+  await _lsrSave();   // the dedupe is saved BEFORE the send: a crash mid-send can lose a message but never repeat one
+  for (const rec of fresh) {
+    if (!rec.surprise.ok) continue;
+    if (tgOn('surpriseReader') && state.tg?.token && state.tg?.chatId) rec.telegram = await sendTelegram(state.tg.token, state.tg.chatId, _lsr.surpriseMessage(rec));
+    console.log(`[surprise-reader] ${rec.country} ${rec.event}: ${rec.surprise.diffText} (z ${rec.surprise.z ?? '–'}) ${rec.lagSec}s after the print`);
+  }
+  if (fresh.length) await _lsrSave();
+  _lsr0.lastRun = { at: new Date(now).toISOString(), due: due.length, read: fresh.length, error: _lsr0.lastErr ?? null };
+  return { ok: true, due: due.length, read: fresh.length };
+}
+svcInterval('surpriseReader', () => _lsrTick().catch(e => { _lsr0.lastRun = { at: new Date().toISOString(), error: e.message }; console.warn('[surprise-reader]', e.message); }), 60_000);
+// GET /api/release-surprises?n=30: the last high-impact prints read live, with the surprise and the playbook
+app.get('/api/release-surprises', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    if (!_lsr0.loaded) { const raw = await kv.get(_LSR_KV).catch(() => null); if (raw) { const j = JSON.parse(raw); _lsr0.log = j.log ?? []; } }
+    res.json({ ok: true, lastRun: _lsr0.lastRun, muted: !tgOn('surpriseReader'), log: _lsr0.log.slice(0, Math.min(300, parseInt(req.query.n) || 30)),
+      note: 'surprise = actual - consensus in the release\'s own units; z against that release\'s own past surprises (the surprise store); playbook = the release study\'s history for the family, with its count. Not a forecast.' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Desk alerts across the new boards ──
+const _DAL_KV = 'desk_alerts_v1', _DAL_EVERY_MIN = Math.max(5, Number(process.env.DESK_ALERTS_EVERY_MIN ?? 15));
+let _dalRunning = false;
+async function _dalLoad() { const raw = await kv.getStrict(_DAL_KV); const j = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : {}; return { state: j.state ?? {}, carryHist: j.carryHist ?? {}, log: j.log ?? [], lastRun: j.lastRun ?? null }; }
+async function _dalTick(trigger = 'poll') {
+  if (_dalRunning) return { ok: false, why: 'already running' };
+  _dalRunning = true;
+  const now = Date.now(), errors = {};
+  try {
+    const st = await _dalLoad();   // throws on a failed read: better to skip a check than to forget what was already sent
+    const BOARDS = { stress: 'world-stress', skew: 'options-skew', fair: 'fair-value', carry: 'carry-vol', cli: 'leading-indicators', drift: 'speech-drift' }, boards = {};
+    await Promise.all(Object.entries(BOARDS).map(async ([k, path]) => {
+      const r = await _dpFetchFeed({ path, timeoutMs: 120_000 });
+      if (r.json && r.json.ok !== false) boards[k] = r.json; else errors[k] = r.error ?? r.json?.error ?? (r.json ? 'the board answered ok:false (no data yet)' : `HTTP ${r.httpStatus ?? '?'}`);
+    }));
+    st.carryHist = _dal.updateCarryHist(st.carryHist, boards.carry, _dpLondonDate(now));
+    const { state: next, events } = _dal.evaluate(st.state, _dal.readStates(boards, st.carryHist), now);
+    st.state = next; st.log = _dal.appendLog(st.log, events);
+    st.lastRun = { at: new Date(now).toISOString(), trigger, boards: Object.keys(boards), errors, events: events.length, sent: events.filter(e => e.send).length };
+    await kv.put(_DAL_KV, JSON.stringify(st));   // saved before sending, so a restart never resends
+    if (events.some(e => e.send) && tgOn('deskAlerts') && state.tg?.token && state.tg?.chatId) for (const e of events.filter(x => x.send)) await sendTelegram(state.tg.token, state.tg.chatId, _dal.alertMessage(e));
+    if (events.length) console.log(`[desk-alerts] ${events.map(e => `${e.key} ${e.from}->${e.to}${e.send ? '' : ' (held)'}`).join(', ')}`);
+    return { ok: true, ...st.lastRun };
+  } catch (e) { console.warn('[desk-alerts]', e.message); return { ok: false, error: e.message, errors }; }
+  finally { _dalRunning = false; }
+}
+svcInterval('deskAlerts', () => _dalTick('poll'), _DAL_EVERY_MIN * 60_000);
+// GET /api/desk-alerts?n=40: the alert log (sent and held), the states being watched and the last check
+app.get('/api/desk-alerts', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const st = await _dalLoad(), keys = st.state.keys ?? {};
+    res.json({ ok: true, everyMin: _DAL_EVERY_MIN, muted: !tgOn('deskAlerts'), lastRun: st.lastRun, watching: Object.keys(keys).length,
+      alerting: Object.entries(keys).filter(([k, v]) => !['normal', 'inside', 'ok', 'inline', 'calm'].includes(v.state) && !k.startsWith('cli:')).map(([k, v]) => ({ key: k, state: v.state, since: new Date(v.since).toISOString() })),
+      log: st.log.slice(0, Math.min(300, parseInt(req.query.n) || 40)), note: 'one message per state change, deduped (6 h per alert) and rate-limited (6 an hour); context, not a signal' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/desk-alerts/run', async (_req, res) => { try { res.json(await _dalTick('manual')); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+// ══ end of speeches, surprises and desk alerts ══════════════════════════════════════════════════════════════════════════
 
 app.get('/api/calendar-feed', async (_req, res) => {
   try {

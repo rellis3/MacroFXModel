@@ -31,6 +31,7 @@ const TASK = { quick: 'desk-analyst', deep: 'desk-head' };
 // Output caps. They must leave room for the model's thinking, which is billed as output and counts against the cap.
 export const CAPS = { analyst: 16_000, debate: 12_000, manager: 12_000, asset: 16_000, risk: 10_000, head: 32_000, writer: 16_000, control: 32_000, redTeam: 12_000, economist: 16_000 };
 const MAX_CAP = 32_000;
+const BOOK_RISK_TITLE = "Book factor risk and scenarios on the asset desks' draft (every card at size 1; arithmetic on price history, not a forecast)";
 
 // A provider error worth one more try: a dropped connection, a timeout, rate limiting or a server error. A 4xx
 // (bad key, bad request) is not. On 2026-11-03 the evidence clerk was lost to one "fetch failed".
@@ -88,7 +89,7 @@ async function pool(items, limit, fn) {
  * roles: parsed role files (js/deskRoles.js parseRole), analysts plus one with id head_of_desk.
  * Returns the run record that the server saves and the pages read.
  */
-export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, concurrency = 4, onProgress = () => {}, mode = 'full', rounds = 2, retryDelayMs = 4000, exposureCap = 4, styleExamples = [], checkpoint = null, releases = [] }) {
+export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, concurrency = 4, onProgress = () => {}, mode = 'full', rounds = 2, retryDelayMs = 4000, exposureCap = 4, styleExamples = [], checkpoint = null, releases = [], trackRecord = null, bookRisk = null }) {
   if (!pack?.skills) throw new Error('no desk pack to run on');
   const head = roles.find(r => r.id === 'head_of_desk');
   if (!head) throw new Error('role head_of_desk is missing');
@@ -109,7 +110,7 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
   if (good.length < Math.ceil(analysts.length / 2)) {
     headOut = { ok: false, skipped: true, errors: [`only ${good.length} of ${analysts.length} analysts succeeded; the Head of Desk did not run`] };
   } else if (mode === 'full') {
-    debate = await runDebate({ pack, roles, ledger, callModel, parseJson, results, rounds, onProgress, retryDelayMs, askFn: ask });
+    debate = await runDebate({ pack, roles, ledger, callModel, parseJson, results, rounds, onProgress, retryDelayMs, askFn: ask, trackRecord, bookRisk });
     // Phase 7: the red team attacks the draft book (the asset desks' ratings and the risk voices) before the Head
     // writes it; the Head must answer each challenge. One call; a failed red team leaves the Head unchallenged.
     const rtRole = roles.find(r => r.id === 'red_team');
@@ -133,11 +134,14 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
       ['Currency ruling', debate.currency.view ?? '(the currency ruling failed today: read the currency analysts below)'],
       ['Asset desks, by group', Object.fromEntries(Object.entries(debate.assets).map(([g, a]) => [g, a.view ?? { failed: a.errors }]))],
       ['Risk desk', Object.fromEntries(Object.entries(debate.risk).map(([k, v]) => [k, v.view ?? { failed: v.errors }]))],
+      // §9ak: the draft book's factor exposure, VaR and standard scenarios (arithmetic, js/factorRisk.js), read before sizing
+      ...(debate.bookRisk ? [[BOOK_RISK_TITLE, debate.bookRisk.text]] : []),
       ...(debate.global.view ? [] : [['Global analysts', reportsText(results, 'global')]]),
       ...(debate.currency.view ? [] : [['Currency analysts', reportsText(results, 'currency')]]),
       ['Analysts\' headlines', Object.fromEntries(good.map(r => [r.id, r.report.headline]))],
       ['Instruments (with the currency legs each is read from)', universeText()],
       ...(debate.redTeam?.view?.challenges?.length ? [['Red team challenges (answer each one)', debate.redTeam.view]] : []),
+      ['Analyst track record (scorecard)', trackRecord?.head ?? null],   // js/analystScorecard.js; only when service analystScorecardFeedback is on (prereg A10)
     ];
     const missing = [...failed, ...debate.failed];
     const { system, prompt } = buildStagePrompt({ role: head, pack, ledger: [], sections,
@@ -221,7 +225,7 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
     mode,
     analysts: analystsOut,
     failed,
-    debate: debate ? { global: debate.global, currency: debate.currency, assets: debate.assets, risk: debate.risk, redTeam: debate.redTeam ?? null, failed: debate.failed } : null,
+    debate: debate ? { global: debate.global, currency: debate.currency, assets: debate.assets, risk: debate.risk, redTeam: debate.redTeam ?? null, bookRisk: debate.bookRisk ?? null, failed: debate.failed } : null,
     head: headOut,
     newsletter,
     control,
@@ -231,6 +235,8 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
     calls: allAttempts.length,
     usage,
     ...(counter.resumed ? { resumed: { stages: counter.resumed } } : {}),
+    // prereg A10: whether the rulings read the analyst scorecard this morning, and as of which scored day
+    ...(trackRecord ? { trackRecord: { asOf: trackRecord.asOf ?? null, days: trackRecord.days ?? 0, read: ['global_manager', 'currency_manager', 'head_of_desk'].filter((_, i) => [trackRecord.global, trackRecord.currency, trackRecord.head][i]) } } : {}),
   };
 }
 
@@ -240,7 +246,7 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
  * Layers 2 and 3. Every stage reads the stage above it; a stage that fails is recorded and the next stage falls
  * back to the analysts' reports for that area, so one bad reply costs that stage, not the morning.
  */
-export async function runDebate({ pack, roles, ledger, callModel, parseJson, results, rounds = 2, onProgress = () => {}, retryDelayMs = 4000, askFn = askValidated }) {
+export async function runDebate({ pack, roles, ledger, callModel, parseJson, results, rounds = 2, onProgress = () => {}, retryDelayMs = 4000, askFn = askValidated, trackRecord = null, bookRisk = null }) {
   const role = id => { const r = roles.find(x => x.id === id); if (!r) throw new Error(`role ${id} is missing`); return r; };
   const attempts = [];
   const ask = async (r, sections, validate, cap, tail = '') => {
@@ -266,14 +272,14 @@ export async function runDebate({ pack, roles, ledger, callModel, parseJson, res
   // 2a Global
   const gSections = [['Global-layer analyst reports', reportsText(results, 'global')], ['Evidence clerk', reportsText(results, 'evidence')]];
   const gDebate = await argue('risk_on', 'risk_off', ['GLOBAL'], gSections, 'global debate');
-  const gView = await ask(role('global_manager'), [...gSections, ['Risk-On case', gDebate.risk_on.view], ['Risk-Off case', gDebate.risk_off.view]], validateGlobalView, CAPS.manager);
+  const gView = await ask(role('global_manager'), [...gSections, ['Risk-On case', gDebate.risk_on.view], ['Risk-Off case', gDebate.risk_off.view], ['Analyst track record (scorecard)', trackRecord?.global ?? null]], validateGlobalView, CAPS.manager);
   onProgress({ stage: 'global ruling', label: 'global ruling' });
   const globalText = gView.view ?? `(the global ruling failed today)\n${reportsText(results, 'global')}`;
 
   // 2b Currency
   const cSections = [['Global ruling', globalText], ['Currency-layer analyst reports', reportsText(results, 'currency')]];
   const cDebate = await argue('ccy_strengthen', 'ccy_weaken', DESK_CCYS, cSections, 'currency debate');
-  const cView = await ask(role('currency_manager'), [...cSections, ['Strengthen case', cDebate.ccy_strengthen.view], ['Weaken case', cDebate.ccy_weaken.view]], validateCurrencyViews, CAPS.manager);
+  const cView = await ask(role('currency_manager'), [...cSections, ['Strengthen case', cDebate.ccy_strengthen.view], ['Weaken case', cDebate.ccy_weaken.view], ['Analyst track record (scorecard)', trackRecord?.currency ?? null]], validateCurrencyViews, CAPS.manager);
   onProgress({ stage: 'currency ruling', label: 'currency ruling' });
   const currencyText = cView.view ?? `(the currency ruling failed today)\n${reportsText(results, 'currency')}`;
 
@@ -297,6 +303,14 @@ export async function runDebate({ pack, roles, ledger, callModel, parseJson, res
   const book = Object.fromEntries(Object.values(assets).flatMap(a => Object.entries(a.view?.instruments ?? {})).map(([n, c]) => [n, { rating: c.rating, conviction: c.conviction, why: c.why }]));
   const rSections = [['Global ruling', globalText], ['Currency ruling', currencyText], ['The asset desks\' book', book],
     ['Events, credit and volatility analysts', reportsText(results.filter(r => ['events_news', 'credit_funding', 'vol_iv'].includes(r.id)))]];
+  // §9ak: the scenario engine and factor risk on the draft book (every card at size 1), before the risk voices size it.
+  // Arithmetic on price history (the server passes bookRisk); a failure costs the section, never the stage.
+  let riskRead = null;
+  if (bookRisk) {
+    try { riskRead = await bookRisk(Object.fromEntries(Object.entries(book).map(([n, c]) => [n, { rating: c.rating, size: 1 }]))); }
+    catch (e) { riskRead = { ok: false, text: `(book factor risk failed today: ${e.message})` }; }
+    if (riskRead?.text) rSections.push([BOOK_RISK_TITLE, riskRead.text]);
+  }
   const voices = ['risk_aggressive', 'risk_conservative', 'risk_neutral'];
   const riskOut = await Promise.all(voices.map(id => ask(role(id), rSections, o => validateRiskCase(o, allInstruments()), CAPS.risk)));
   onProgress({ stage: 'risk desk', label: 'risk desk' });
@@ -309,7 +323,7 @@ export async function runDebate({ pack, roles, ledger, callModel, parseJson, res
     ...Object.entries(assets).filter(([, v]) => !v.ok).map(([g]) => `asset_desk:${g}`),
     ...Object.entries(risk).filter(([, v]) => !v.ok).map(([k]) => k),
   ];
-  return { global: { debate: gDebate, ...gView }, currency: { debate: cDebate, ...cView }, assets, risk, failed, attempts };
+  return { global: { debate: gDebate, ...gView }, currency: { debate: cDebate, ...cView }, assets, risk, failed, attempts, bookRisk: riskRead?.text ? riskRead : null };
 }
 
 /** A run without prompts' bulk, for lists: per analyst ok/headline, and the Head's ratings. */

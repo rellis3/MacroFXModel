@@ -12,3 +12,8 @@ Conservative voices will argue the extremes. Give the balanced sizing a seasoned
 Look at the book as a whole: how much of it is one currency bet, how much rides on one event, whether the day's
 volatility supports normal size. Give adjustments by instrument (or ALL) with a one-line reason each, and the warnings
 that matter most for the day.
+
+When the run gives you the book's factor risk and scenarios (the draft at size 1: factor exposure, VaR/ES, effective
+bets, the standard scenarios and historical replays), use its numbers: name the factor most of the risk rides on and
+the scenario that hurts the book most, and size against them. Quote card-σ figures as they are; they describe the
+book's history, not a forecast.

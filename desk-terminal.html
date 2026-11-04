@@ -164,6 +164,7 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<link rel="stylesheet" href="js/terminal/terminal-tabs.css">
 </head>
 <body>
 <header class="top">
@@ -184,6 +185,10 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
     <button role="tab" aria-selected="false" data-t="cal">Calendar</button>
     <button role="tab" aria-selected="false" data-t="ana">Analytics</button>
     <button role="tab" aria-selected="false" data-t="charts">Charts</button>
+    <button role="tab" aria-selected="false" data-t="today">Chain</button>
+    <button role="tab" aria-selected="false" data-t="pair">Pair</button>
+    <button role="tab" aria-selected="false" data-t="changed">Changed</button>
+    <button role="tab" aria-selected="false" data-t="research">Research</button>
   </nav>
   <div id="wstrip" aria-live="polite"></div>
   <section id="overview"></section>
@@ -194,6 +199,10 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
   <section id="cal" hidden></section>
   <section id="ana" hidden></section>
   <section id="charts" hidden></section>
+  <section id="today" hidden></section>
+  <section id="pair" hidden></section>
+  <section id="changed" hidden></section>
+  <section id="research" hidden></section>
 </main>
 <button class="fab" id="askbtn">✦ Ask the desk</button>
 <div class="modal" id="modal" hidden></div>
@@ -466,9 +475,10 @@ clocks(); setInterval(clocks, 20_000);
 // ── tabs ──
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
-  ['overview', 'ccy', 'assets', 'macro', 'pos', 'cal', 'ana', 'charts'].forEach(id => $(id).hidden = id !== b.dataset.t);
+  document.querySelectorAll('#tabs button').forEach(x => $(x.dataset.t).hidden = x.dataset.t !== b.dataset.t);
   if (b.dataset.t === 'ana') analytics();
   if (b.dataset.t === 'charts') charts();
+  globalThis.onTerminalTab?.(b.dataset.t);   // the Chain, Pair, Changed and Research tabs (js/terminal/terminalTabs.js)
   try { localStorage.setItem('deskTerminalTab', b.dataset.t); } catch { /* private window */ }
 });
 try { const t = localStorage.getItem('deskTerminalTab'); if (t) document.querySelector(`#tabs [data-t="${t}"]`)?.click(); } catch { /* ignore */ }
@@ -502,7 +512,7 @@ async function load() {
 // through the Desk Pack.
 let E = null;
 // each tab re-renders its whole section; redraw its enrichment slot after it does
-for (const [name, fn] of [['overview', 'enrichOverview'], ['macro', 'enrichMacro'], ['assets', 'enrichAssets'], ['positioning', 'enrichPos']]) {
+for (const [name, fn] of [['overview', 'enrichOverview'], ['macro', 'enrichMacro'], ['assets', 'enrichAssets'], ['positioning', 'enrichPos'], ['calendar', 'enrichCal']]) {
   const orig = globalThis[name];
   if (typeof orig === 'function') globalThis[name] = function (...a) { const r = orig.apply(this, a); if (E) { try { globalThis[fn](); } catch (e) { console.warn(fn, e); } } return r; };
 }
@@ -512,10 +522,10 @@ async function loadEnrich() {
   E = Object.fromEntries(k.map((x, i) => [x.replace(/\?.*$/, ''), r[i]]));
   enrichAll();
   // the newer boards (some build on first call in ~20 s): fetched after the first draw, each merged as it lands
-  for (const x of ['fair-value', 'leading-indicators', 'commodity-fx', 'carry-vol', 'copper-gold', 'session-heat', 'options-skew']) getJson(`/api/${x}`).then(v => { E[x] = v; enrichAll(); });
+  for (const x of ['fair-value', 'leading-indicators', 'commodity-fx', 'carry-vol', 'copper-gold', 'session-heat', 'options-skew', 'speech-drift', 'desk-alerts', 'release-surprises']) getJson(`/api/${x}`).then(v => { E[x] = v; enrichAll(); });
 }
 function slot(sec, id) { const s = $(sec); if (!s) return null; let el = s.querySelector(`#${id}`); if (!el) { el = document.createElement('div'); el.id = id; s.appendChild(el); } return el; }
-function enrichAll() { if (!E) return; try { globalThis.redrawHero?.(); stressStrip(); enrichOverview(); enrichMacro(); enrichAssets(); enrichPos(); } catch (e) { console.warn('enrich', e); } }
+function enrichAll() { if (!E) return; try { globalThis.redrawHero?.(); stressStrip(); enrichOverview(); enrichMacro(); enrichAssets(); enrichPos(); enrichCal(); } catch (e) { console.warn('enrich', e); } }
 const spk = (vals, w = 120, h = 28, col = 'var(--gold)') => { const v = (vals ?? []).filter(Number.isFinite); if (v.length < 2) return ''; const lo = Math.min(...v), hi = Math.max(...v), x = i => (i / (v.length - 1)) * w, y = a => h - 2 - ((a - lo) / ((hi - lo) || 1)) * (h - 4);
   return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><path d="${v.map((a, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(a).toFixed(1)}`).join('')}" fill="none" stroke="${col}" stroke-width="1.5"/></svg>`; };
 const sgn = (x, d = 2) => (x == null || !Number.isFinite(+x) ? '–' : `${x > 0 ? '+' : ''}${(+x).toFixed(d)}`);
@@ -528,7 +538,7 @@ ${rf?.ok ? `<div class="card"><div class="ch"><span class="lbl">Risk state</span
 <div class="drv">${(rf.flags ?? []).map(f => `<span class="chip ${f.on ? 'dn' : ''}" title="${esc(f.detail ?? '')}">${esc(f.label)}${f.value != null ? ` · ${esc(String(f.value))}` : ''}</span>`).join(' ')}</div>${rf.note ? `<p class="muted" style="font-size:12px">${esc(rf.note)}</p>` : ''}</div>` : ''}
 ${em?.ok ? `<div class="card"><div class="ch"><span class="lbl">Emerging markets · read, not traded</span>${em.stress ? `<span class="r"><span class="chip ${EL[em.stress.level] ?? ''}">${esc(em.stress.level)}</span> <span class="muted mono">z ${sgn(em.stress.z)}</span></span>` : ''}</div>
 ${em.stress ? `<p style="margin:2px 0 8px">${esc(em.stress.read)}.</p>` : ''}<table><tbody>${Object.values(em.pairs).filter(p => p.ok).map(p => `<tr title="${esc(p.role)}"><td class="mono"><b>${esc(p.label)}</b></td><td>${spk(p.spark)}</td><td class="n mono ${p.chg5d > 0 ? 'dn' : 'up'}">${sgn(p.chg5d)}% 5d</td><td class="n mono">z ${sgn(p.z5)}</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px">USD/EM up (red) = the EM currency weaker. MXN and ZAR are the carry gauges; CNH leads AUD and NZD.</p></div>` : ''}
-</div>`;
+</div>${alertsHtml()}`;
 }
 const CYC = { hiking: '#e8b85a', 'on hold after hikes': 'rgba(232,184,90,.45)', 'on hold': 'rgba(138,147,184,.35)', 'on hold after cuts': 'rgba(91,157,255,.45)', cutting: '#5b9dff', unknown: 'rgba(138,147,184,.2)' };
 async function worldRatesMap(el) {
@@ -601,18 +611,46 @@ function sessionHeatHtml() {
 // Central-bank speakers in the next seven days, with each bank's stance from its last statement (Macro tab).
 function speakersHtml() {
   const now = Date.now(), cb = D.sc?.cbSentiment ?? {}, BK = { US: ['USD', 'Fed'], EU: ['EUR', 'ECB'], GB: ['GBP', 'BoE'], JP: ['JPY', 'BoJ'], AU: ['AUD', 'RBA'], NZ: ['NZD', 'RBNZ'], CA: ['CAD', 'BoC'], CH: ['CHF', 'SNB'], USD: ['USD', 'Fed'], EUR: ['EUR', 'ECB'], GBP: ['GBP', 'BoE'], JPY: ['JPY', 'BoJ'], AUD: ['AUD', 'RBA'], NZD: ['NZD', 'RBNZ'], CAD: ['CAD', 'BoC'], CHF: ['CHF', 'SNB'] };
-  const rows = (D.ev ?? []).filter(e => /speaks|testifies|press conference|hearing/i.test(e.event ?? e.title ?? '')).map(e => ({ ...e, ms: Number(e.ms ?? Date.parse(e.time)) })).filter(e => e.ms > now - 3600e3 && e.ms < now + 7 * 864e5).sort((a, b) => a.ms - b.ms);
+  const wk = now - ((new Date(now).getUTCDay() + 6) % 7) * 864e5 - now % 864e5;   // Monday 00:00 UTC: this week's past speeches stay, with their score
+  const rows = (D.ev ?? []).filter(e => /speaks|testifies|press conference|hearing/i.test(e.event ?? e.title ?? '')).map(e => ({ ...e, ms: Number(e.ms ?? Date.parse(e.time)) })).filter(e => e.ms > Math.min(wk, now - 3600e3) && e.ms < now + 7 * 864e5).sort((a, b) => a.ms - b.ms);
   if (!rows.length) return '';
-  return `<div class="sec"><h2>Central-bank speakers this week</h2><span class="lbl">every scheduled speech, with the bank's stance from its last statement</span></div><div class="card scroll"><table><tbody>${rows.slice(0, 18).map(e => { const k = BK[e.country] ?? BK[e.currency] ?? null, s = k ? cb[k[0]] : null;
-    return `<tr><td class="mono">${esc(lt(e.ms))}</td><td><b>${esc(k?.[1] ?? e.country ?? '')}</b></td><td>${esc(e.event ?? e.title ?? '')}</td><td>${s?.regime ? `<span class="chip ${/HAWK/.test(s.regime) ? 'gold' : /DOV/.test(s.regime) ? 'pur' : ''}">${esc(String(s.regime).toLowerCase())}${Number.isFinite(s.score) ? ` · ${s.score}` : ''}</span>` : ''}</td><td><span class="chip ${e.impact === 'high' ? 'dn' : e.impact === 'medium' ? 'gold' : ''}">${esc(e.impact ?? '')}</span></td></tr>`; }).join('')}</tbody></table>
-<p class="muted" style="font-size:12px">A speaker who sounds different from the bank's last statement moves its currency; the stance here is the statement's hawkishness score (0 dovish to 1 hawkish).</p></div>`;
+  return `<div class="sec"><h2>Central-bank speakers this week</h2><span class="lbl">every scheduled speech this week, with the bank's stance from its last statement and, once given, the speech's own score</span></div><div class="card scroll"><table><tbody>${rows.slice(0, 24).map(e => { const k = BK[e.country] ?? BK[e.currency] ?? null, s = k ? cb[k[0]] : null, sp = e.ms <= now ? speechFor(e, k?.[1]) : null;
+    return `<tr><td class="mono">${esc(lt(e.ms))}</td><td><b>${esc(k?.[1] ?? e.country ?? '')}</b></td><td>${esc(e.event ?? e.title ?? '')}</td><td>${s?.regime ? `<span class="chip ${/HAWK/.test(s.regime) ? 'gold' : /DOV/.test(s.regime) ? 'pur' : ''}">${esc(String(s.regime).toLowerCase())}${Number.isFinite(s.score) ? ` · ${s.score}` : ''}</span>` : ''}</td><td>${sp ? `<a href="${esc(sp.url)}" target="_blank" rel="noopener" title="${esc(sp.headline ?? '')}"><span class="chip ${sp.score > 0.15 ? 'gold' : sp.score < -0.15 ? 'pur' : ''}">speech ${sgn(sp.score)}${sp.delta != null ? ` · ${sgn(sp.delta)} vs stmt` : ''}</span></a>` : ''}</td><td><span class="chip ${e.impact === 'high' ? 'dn' : e.impact === 'medium' ? 'gold' : ''}">${esc(e.impact ?? '')}</span></td></tr>`; }).join('')}</tbody></table>
+<p class="muted" style="font-size:12px">A speaker who sounds different from the bank's last statement moves its currency. The stance is the statement's hawkishness score (-1 dovish to +1 hawkish); a past speech carries its own score on the same scale and its change against the statement, once read.</p></div>`;
+}
+// Build list 4-6 (js/cbSpeeches.js, js/surpriseReader.js, js/deskAlerts.js): scored speeches, live surprises, desk alerts.
+function speechFor(e, bank) {
+  const sd = E?.['speech-drift']; if (!sd?.ok || !bank) return null; const txt = String(e.event ?? e.title ?? '').toLowerCase();
+  return (sd.recent ?? []).find(x => x.bank === bank && x.date && Math.abs(Date.parse(x.date) - e.ms) < 36 * 3600e3 && String(x.speaker ?? '').split(/\s+/).some(w => w.length > 2 && txt.includes(w.toLowerCase()))) ?? null;
+}
+function speechDriftHtml() {
+  const sd = E?.['speech-drift']; if (!sd?.ok) return '';
+  const banks = Object.values(sd.banks ?? {}), DC = b => (b.drift == null ? '' : b.drift >= 0.1 ? 'gold' : b.drift <= -0.1 ? 'pur' : '');
+  return `<div class="sec"><h2>Speech drift</h2><span class="lbl">each bank's speakers since its last statement, on the statement's scale · ${(sd.recent ?? []).length} speeches read in 14 days${sd.lastRun?.at ? ` · checked ${esc(lt(Date.parse(sd.lastRun.at)))}` : ''}</span></div><div class="card scroll"><table><thead><tr><th>Bank</th><th class="n">Statement</th><th class="n">Speeches</th><th class="n">Speech avg</th><th>Drift</th><th>Latest</th></tr></thead><tbody>${banks.map(b => { const l = b.latest?.[0];
+    return `<tr><td><b>${esc(b.bank)}</b> <span class="muted">${esc(b.ccy)}</span></td><td class="n mono">${b.statement?.score != null ? sgn(b.statement.score) : '–'} <span class="muted" style="font-size:11px">${esc(b.statement?.date ?? '')}</span></td><td class="n mono">${b.speeches}</td><td class="n mono">${sgn(b.speechAvg)}</td><td><span class="chip ${DC(b)}">${esc(b.label)}${b.drift != null ? ` · ${sgn(b.drift)}` : ''}</span></td><td style="font-size:12px">${l ? `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.speaker ?? '?')}</a> ${esc(l.date ?? '')} <span class="mono">${sgn(l.score)}</span> <span class="muted">${esc(String(l.headline ?? '').slice(0, 110))}</span>` : '<span class="muted">none since the statement</span>'}</td></tr>`; }).join('')}</tbody></table>
+<p class="muted" style="font-size:12px">${esc(sd.label ?? '')}</p></div>`;
+}
+function alertsHtml() {
+  const a = E?.['desk-alerts']; if (!a?.ok) return '';
+  const KIND = { stress: 'World stress', skew: 'Skew', skewslope: 'Vol slope', fair: 'Fair value', carry: 'Carry/vol', cli: 'Leading ind.', drift: 'Speech drift' };
+  return `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">Desk alerts</span><span class="r">${a.muted ? '<span class="chip">telegram muted</span> ' : ''}<span class="muted">${a.watching} states watched · every ${a.everyMin} min${a.lastRun?.at ? ` · ${esc(lt(Date.parse(a.lastRun.at)))}` : ''}</span></span></div>
+${(a.alerting ?? []).length ? `<div class="drv">${a.alerting.map(x => `<span class="chip gold" title="since ${esc(x.since)}">${esc(KIND[x.key.split(':')[0]] ?? x.key)} ${esc(x.key.split(':')[1] ?? '')} · ${esc(x.state)}</span>`).join(' ')}</div>` : ''}
+${(a.log ?? []).length ? `<table style="margin-top:6px"><tbody>${a.log.slice(0, 8).map(e => `<tr><td class="mono muted" style="width:96px">${esc(lt(Date.parse(e.at)))}</td><td>${e.text}${e.send ? '' : ` <span class="muted" style="font-size:11px">(${esc(e.held ?? 'not sent')})</span>`}</td></tr>`).join('')}</tbody></table>` : '<p class="muted" style="font-size:12px">No state changes yet: the first check records a baseline silently.</p>'}
+<p class="muted" style="font-size:12px">One Telegram line per state change, deduped and rate-limited. Context, not a signal.</p></div>`;
+}
+function enrichCal() {
+  const el = slot('cal', 'xc'); if (!el || !E) return;
+  const r = E['release-surprises']; if (!r?.ok || !(r.log ?? []).length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="sec"><h2>Live surprises</h2><span class="lbl">high-impact prints read within a minute: actual against consensus, z against the release's own history, and the playbook${r.muted ? ' · telegram muted' : ''}</span></div><div class="card scroll"><table><thead><tr><th>Time</th><th></th><th>Release</th><th class="n">Actual</th><th class="n">Cons.</th><th class="n">Surprise</th><th class="n">z</th><th>Playbook</th></tr></thead><tbody>${r.log.slice(0, 12).map(x => { const s = x.surprise ?? {}, m = x.playbook?.markets?.[0];
+    return `<tr><td class="mono">${esc(lt(x.ms))}</td><td><b>${esc(x.country)}</b></td><td>${esc(x.event)}</td><td class="n mono">${esc(x.actual ?? '–')}</td><td class="n mono muted">${esc(x.estimate ?? '–')}</td><td class="n mono ${s.direction === 'above' ? 'gold' : s.direction === 'below' ? 'pur' : ''}">${s.ok ? esc(s.diffText) : `<span class="muted">${esc(s.why ?? '')}</span>`}</td><td class="n mono">${s.z != null ? sgn(s.z) : '–'}</td><td style="font-size:12px">${m ? `${esc(m.label)} ~${m.abs30}${esc(m.unit)} at 30m, ${m.abs240}${esc(m.unit)} at 4h, ${Math.round((m.kept ?? 0) * 100)}% kept${m.after ? `; after ${esc(x.playbook.side)} prints ${sgn(m.after.m30)}${esc(m.unit)}` : ''} <span class="muted">(n ${x.playbook.n})</span>` : '<span class="muted">no playbook</span>'}</td></tr>`; }).join('')}</tbody></table>
+<p class="muted" style="font-size:12px">${esc(r.note ?? '')}</p></div>`;
 }
 function enrichMacro() {
   const el = slot('macro', 'xm'); if (!el) return;
   const wr = E['world-rates'], fp = E['fed-path'], fr = E['funding-read'], nc = E.nowcast, bc = E['bank-credit'];
   const banks = wr?.ok ? Object.values(wr.banks).filter(b => !b.stale) : [];
   const ST = s => (/stress|gone|selling|record|tight/.test(s) ? 'dn' : /watch|low|large|short/.test(s) ? 'gold' : 'up');
-  el.innerHTML = `${boardsHtml()}${driversHtml()}${speakersHtml()}${wr?.ok ? `<div class="sec"><h2>The world's rate cycle</h2><span class="lbl">${banks.length} central banks · ${wr.summary.hiking} hiking, ${wr.summary.cutting} cutting, ${wr.summary.onHold} on hold · BIS, monthly, to ${esc(wr.asOf)}</span></div>
+  el.innerHTML = `${boardsHtml()}${driversHtml()}${speakersHtml()}${speechDriftHtml()}${wr?.ok ? `<div class="sec"><h2>The world's rate cycle</h2><span class="lbl">${banks.length} central banks · ${wr.summary.hiking} hiking, ${wr.summary.cutting} cutting, ${wr.summary.onHold} on hold · BIS, monthly, to ${esc(wr.asOf)}</span></div>
 <div class="card"><div class="map" id="wrmap" style="min-height:260px"></div><div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--tx2)">${Object.entries(CYC).filter(([k]) => k !== 'unknown').map(([k, c]) => `<span><i style="display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px;background:${c}"></i>${k}</span>`).join('')}<span><i style="display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px;background:#1b2246"></i>no BIS rate</span></div>
 <div class="grid g2" style="margin-top:10px"><div><span class="lbl">Biggest moves over 12 months</span><table><tbody>${banks.filter(b => b.change12m != null).sort((a, b) => Math.abs(b.change12m) - Math.abs(a.change12m)).slice(0, 10).map(b => `<tr><td><b>${esc(b.name)}</b> <span class="muted">${esc(b.ccy)}</span></td><td>${spk(b.spark, 90, 22, b.change12m > 0 ? '#e8b85a' : '#5b9dff')}</td><td class="n mono">${b.rate}%</td><td class="n mono ${b.change12m > 0 ? 'gold' : ''}">${sgn(b.change12m)}pp</td><td class="muted">${esc(b.cycle)}</td></tr>`).join('')}</tbody></table></div>
 <div><span class="lbl">Hiking now</span><p>${wr.summary.hikers.map(a => esc(wr.banks[a].name)).join(', ') || 'none'}</p><span class="lbl">Cutting now</span><p>${wr.summary.cutters.map(a => esc(wr.banks[a].name)).join(', ') || 'none'}</p><p class="muted" style="font-size:12px">Hiking or cutting = a move of 0.2pp or more in the last 3 months. The desk's eight banks use their own daily series elsewhere on this page; this map is the wider cycle.</p></div></div></div>` : ''}
@@ -946,8 +984,52 @@ async function analytics() {
 <div class="card"><div class="ch"><span class="lbl">Which layer earned it</span><span class="r muted">${day?.ok ? esc(day.score.date) : 'latest scored day'} · attribution waterfall</span></div><div id="fall"></div></div></div>
 <div class="sec"><h2>Vol forecast against what happened</h2><span class="lbl">each London day's forecast high-to-low range (p50 to p75 band) and the range the market actually made</span></div><div class="card"><div class="filters" id="vcsel"></div><div id="volc"></div></div>
 <div class="sec"><h2>The desk's days</h2><span class="lbl">each scored day, coloured by its score in u</span></div><div class="card"><div id="cal2"></div></div>
-<div class="sec"><h2>Release reactions</h2><span class="lbl">how markets moved after past releases of each kind coming up · the desk's release history</span></div><div class="grid g2" id="fans"></div>`;
-  corrWeb($('web'), risk); strengthHeat($('heat'), hist); trackChart($('track'), hist); waterfall($('fall'), day); releaseFans($('fans')); volPicker(); scoreCalendar($('cal2'), hist);
+<div class="sec"><h2>Release reactions</h2><span class="lbl">how markets moved after past releases of each kind coming up · the desk's release history</span></div><div class="grid g2" id="fans"></div>
+<div class="sec"><h2>Analyst scorecard</h2><span class="lbl">each analyst's calls scored on 08:00 to 21:00 London · interim · weights shrunk towards 1.0</span></div><div class="card scroll" id="ascard"></div>
+<div class="sec"><h2>Factor risk and scenarios</h2><span class="lbl">the book as dollar, carry, risk-on, commodity and US-rates bets · what a shock does to it · plan §9ak</span></div><div id="bkr"><div class="card muted">Reading the book's factor risk…</div></div>`;
+  bookRiskPanel($('bkr'));
+  corrWeb($('web'), risk); strengthHeat($('heat'), hist); trackChart($('track'), hist); waterfall($('fall'), day); releaseFans($('fans')); volPicker(); scoreCalendar($('cal2'), hist); analystPanel($('ascard'));
+}
+// ── §9ak: factor exposure, VaR/ES, effective bets, the standard scenarios and a custom shock (/api/book-risk, /api/scenarios, POST /api/scenario) ──
+const BKR_SL = { USD: [-5, 5, 0.1], CARRY: [-3, 3, 0.1], RISK: [-8, 8, 0.1], COMMOD: [-10, 10, 0.5], RATES: [-75, 75, 5], OIL: [-25, 25, 1], VIX: [10, 80, 1], US10Y: [-60, 60, 5], GOLD: [-8, 8, 0.5] };
+async function bookRiskPanel(el) {
+  const q = D.run?.date ? `?date=${D.run.date}` : '', [b, s] = await Promise.all([getJson(`/api/book-risk${q}`), getJson(`/api/scenarios${q}`)]);
+  if (!b?.ok) { el.innerHTML = `<div class="card muted">${esc(b?.reason ?? b?.error ?? 'No factor-risk read yet.')}</div>`; return; }
+  const p = b.var.parametric, h = b.var.historical, c = b.concentration, mx = Math.max(0.1, ...b.factors.map(x => Math.abs(x.perSigma)));
+  const kpi = (l, v, sub = '') => `<div style="background:var(--bg3);border-radius:10px;padding:10px 12px"><span class="lbl">${l}</span><b class="mono" style="display:block;font-size:20px;margin:3px 0">${v}</b><i class="muted" style="font-style:normal;font-size:11.5px">${sub}</i></div>`;
+  const fbar = x => { const w = Math.abs(x.perSigma) / mx * 50, col = x.perSigma > 0 ? 'var(--up)' : 'var(--dn)';
+    return `<tr title="${esc(x.cards.map(k => `${k.name} ${f(k.perSigma)}`).join(' · '))}"><td class="n">${esc(x.label)}</td><td style="min-width:150px"><div style="position:relative;height:12px;background:var(--bg3);border-radius:4px"><i style="position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--line2)"></i><i style="position:absolute;top:1px;height:10px;border-radius:3px;${x.perSigma >= 0 ? 'left:50%' : 'right:50%'};width:${w}%;background:${col}"></i></div></td><td class="n ${dirCls(x.perSigma)}">${f(x.perSigma)}</td><td class="n">${Math.round(x.share * 100)}%</td><td class="muted" style="font-size:11.5px">${esc(x.cards.slice(0, 3).map(k => k.name).join(', '))}</td></tr>`; };
+  const scRow = r => `<tr><td>${esc(r.label)}</td><td class="n ${dirCls(r.pnl)}">${r.ok === false || r.covered === false ? '–' : f(r.pnl)}</td><td class="n ${dirCls(r.pnlPct)}">${r.pnlPct != null ? `${f(r.pnlPct)}%` : '–'}</td><td class="muted mono" style="font-size:11.5px">${r.covered === false ? 'before the price history' : r.worst ? `${esc(r.worst.name)} ${f(r.worst.pnl)}` : esc((r.errors ?? []).join('; '))}</td></tr>`;
+  const reps = (s?.replays ?? b.replays ?? []).map(r => ({ ...r, worst: r.worst?.[0] ?? null })), vixNow = b.model?.levels?.VIX?.value;
+  const drivers = (s?.drivers ?? []).filter(d => BKR_SL[d.key]);
+  el.innerHTML = `${c.flag ? `<div class="card" style="margin-bottom:14px;border-color:var(--gold)"><span class="chip gold">one bet</span> ${esc(c.flag)}</div>` : ''}
+<div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:14px">${kpi('Book daily σ', `${f(b.sigma)} <span style="font-size:12px">card-σ</span>`, `${f(b.sigmaPct)}% of gross · ${b.cards} cards, ${b.days} days`)}${kpi('VaR 95 / 99', `${(p['0.95'].var).toFixed(2)} / ${(p['0.99'].var).toFixed(2)}`, `parametric · historical ${h ? `${h['0.95'].var} / ${h['0.99'].var}` : '–'}`)}${kpi('ES 95 / 99', `${(p['0.95'].es).toFixed(2)} / ${(p['0.99'].es).toFixed(2)}`, `worst day held ${f(b.var.worstDay.pnl)} (${esc(b.var.worstDay.date)})`)}${kpi('Effective bets', `${c.effectiveBets} <span style="font-size:12px">of ${b.cards}</span>`, `${c.enb} by principal components`)}${kpi('Top factor', esc(c.topFactor?.label ?? '–'), `${Math.round((c.topFactor?.share ?? 0) * 100)}% of risk · stock-specific ${Math.round(b.idiosyncraticShare * 100)}%`)}</div>
+<div class="grid g2"><div class="card"><div class="ch"><span class="lbl">Factor exposure</span><span class="r muted">card-σ for a one-σ factor move · share of the book's risk</span></div><div class="scroll"><table><tbody>${b.factors.map(fbar).join('')}</tbody></table></div>
+<p class="muted">Ridge betas on ${b.model?.factorDays?.n ?? '–'} days (${esc(b.model?.factorDays?.from ?? '')} to ${esc(b.model?.factorDays?.to ?? '')}). Carry: long ${esc(b.model?.carry?.long?.join(', ') ?? '–')}, short ${esc(b.model?.carry?.short?.join(', ') ?? '–')} (today's policy rates).${b.uncovered?.length ? ` No history: ${esc(b.uncovered.join(', '))}.` : ''}${b.model?.stale ? ' <span class="chip gold">stale data</span>' : ''}</p></div>
+<div class="card"><div class="ch"><span class="lbl">Who carries the risk</span><span class="r muted">each card's share of the book's variance</span></div>${(b.contributors ?? []).map(r => `<div style="display:grid;grid-template-columns:84px 1fr 54px;gap:10px;align-items:center;padding:4px 0"><b class="mono">${esc(r.name)}</b><div class="bar"><i style="width:${Math.max(0, Math.min(100, r.share * 100))}%;background:${r.weight > 0 ? 'var(--up)' : 'var(--dn)'}"></i></div><span class="mono" style="font-size:12px">${Math.round(r.share * 100)}%</span></div>`).join('')}</div></div>
+<div class="grid g2" style="margin-top:14px"><div class="card"><div class="ch"><span class="lbl">Standard scenarios</span><span class="r muted">book P&amp;L · card-σ and % of gross</span></div><div class="scroll"><table><thead><tr><th>Scenario</th><th>card-σ</th><th>%</th><th>Hurts most</th></tr></thead><tbody>${(s?.scenarios ?? b.scenarios ?? []).map(r => scRow({ ...r, pnl: r.book?.pnl ?? r.pnl, pnlPct: r.book?.pnlPct ?? r.pnlPct, worst: r.book?.worst?.[0] ?? r.worst })).join('')}</tbody></table></div>
+<div class="ch" style="margin-top:12px"><span class="lbl">Historical replays</span><span class="r muted">today's book on the realised moves</span></div><div class="scroll"><table><tbody>${reps.map(r => scRow({ ...r, label: `${r.label} (${r.from} → ${r.to})` })).join('')}</tbody></table></div></div>
+<div class="card"><div class="ch"><span class="lbl">Build a scenario</span><span class="r muted">unshocked drivers follow their history with the shocked ones</span></div>
+${drivers.map(d => { const [lo, hi, st] = BKR_SL[d.key], v0 = d.key === 'VIX' ? Math.round(vixNow ?? 20) : 0;
+    return `<div style="display:grid;grid-template-columns:110px 1fr 70px;gap:10px;align-items:center;padding:3px 0"><span class="mono" style="font-size:12px">${esc(d.label)} <span class="muted">${d.key === 'VIX' ? 'to' : esc(d.unit)}</span></span><input type="range" data-k="${d.key}" min="${lo}" max="${hi}" step="${st}" value="${v0}" data-v0="${v0}" style="width:100%;accent-color:var(--pur)"><input type="number" data-n="${d.key}" step="${st}" value="${v0}" style="width:100%;background:var(--bg2);color:var(--tx);border:1px solid var(--line2);border-radius:6px;padding:3px 6px;font:12px var(--mono)"></div>`; }).join('') || '<p class="muted">No drivers loaded.</p>'}
+<div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap"><button class="btn" id="bkrgo">Run</button><button class="btn" id="bkrreset">Reset</button><label class="muted" style="font-size:12px"><input type="checkbox" id="bkriso"> only the factors I move</label><span class="muted" id="bkrst"></span></div><div id="bkrout" style="margin-top:10px"></div></div></div>
+<p class="muted">${esc(b.label ?? '')}. Linear, one-day: big shocks are where betas are least reliable.</p>`;
+  el.querySelectorAll('input[data-k]').forEach(r => { const n = el.querySelector(`input[data-n="${r.dataset.k}"]`); r.oninput = () => { n.value = r.value; }; n.oninput = () => { r.value = n.value; }; });
+  $('bkrreset').onclick = () => { el.querySelectorAll('input[data-k]').forEach(r => { r.value = r.dataset.v0; el.querySelector(`input[data-n="${r.dataset.k}"]`).value = r.dataset.v0; }); $('bkrout').innerHTML = ''; };
+  $('bkrgo').onclick = async () => {
+    const shocks = {};
+    el.querySelectorAll('input[data-k]').forEach(r => { const v = +el.querySelector(`input[data-n="${r.dataset.k}"]`).value; if (!Number.isFinite(v) || v === +r.dataset.v0) return; shocks[r.dataset.k] = r.dataset.k === 'VIX' ? { to: v } : v; });
+    if (!Object.keys(shocks).length) { $('bkrst').textContent = 'move at least one driver'; return; }
+    $('bkrgo').disabled = true; $('bkrst').textContent = 'Running…';
+    const r = await fetch('/api/scenario', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shocks, mode: $('bkriso').checked ? 'isolated' : 'conditional', date: D.run?.date }) }).then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
+    $('bkrgo').disabled = false; $('bkrst').textContent = '';
+    if (!r.ok) { $('bkrout').innerHTML = `<p class="dn">${esc((r.errors ?? [r.error ?? 'failed']).join('; '))}</p>`; return; }
+    const lbl = Object.fromEntries(drivers.map(d => [d.key, d]));
+    $('bkrout').innerHTML = `<div style="display:flex;gap:14px;align-items:baseline;flex-wrap:wrap"><b class="mono ${dirCls(r.book.pnl)}" style="font-size:24px">${f(r.book.pnl)} card-σ</b><span class="mono ${dirCls(r.book.pnlPct)}">${f(r.book.pnlPct)}% of gross</span></div>
+<div class="drv">${Object.entries(r.drivers).map(([k, v]) => `<span class="${dirCls(v.value)}" title="${v.given ? 'your shock' : 'implied by its history with your shocks'}">${esc(lbl[k]?.label ?? k)} ${f(v.value)}${esc(lbl[k]?.unit === '%' ? '%' : ` ${lbl[k]?.unit ?? ''}`)}${v.given ? '' : '*'}</span>`).join('')}</div>
+<div class="drv">${Object.entries(r.currencies).map(([k, v]) => `<span class="${dirCls(v)}">${esc(k)} ${f(v)}%</span>`).join('')}</div>
+<div class="scroll"><table><tbody>${[...r.book.worst, ...r.book.best].map(x => `<tr><td class="n">${esc(x.name)}</td><td class="n ${dirCls(x.move)}">${f(x.move)}%</td><td class="n ${dirCls(x.pnl)}">${f(x.pnl)} card-σ</td></tr>`).join('')}</tbody></table></div><p class="muted">* implied, not shocked. Currencies are against the dollar.${r.book.missing?.length ? ` No history: ${esc(r.book.missing.join(', '))}.` : ''}</p>`;
+  };
 }
 function corrWeb(el, r) {
   const c = r?.corr; if (!r?.ok || !c?.names?.length) { el.innerHTML = `<p class="muted">${esc(r?.reason ?? r?.error ?? 'No portfolio-risk read yet.')}</p>`; return; }
@@ -1004,6 +1086,28 @@ ${steps.map(([l, v], i) => { const prev = i ? steps[i - 1][1] : 0, x = 40 + i * 
     const y0 = i === 0 || final ? Math.min(Y(0), Y(v)) : top, h0 = i === 0 || final ? Math.max(2, Math.abs(Y(0) - Y(v))) : h;
     return `<rect x="${x}" y="${y0}" width="${bw * 0.62}" height="${h0}" rx="4" fill="${final ? '#e8b85a' : up ? '#2fd39a' : '#ff5d78'}" opacity=".85"/>${i < steps.length - 1 ? `<line x1="${x + bw * 0.62}" x2="${x + bw}" y1="${Y(v)}" y2="${Y(v)}" stroke="#6d7599" stroke-dasharray="3 3"/>` : ''}<text x="${x + bw * 0.31}" y="${H - 18}" text-anchor="middle" fill="#a9b0d0" font-family="JetBrains Mono" font-size="10">${l}</text><text x="${x + bw * 0.31}" y="${y0 - 5}" text-anchor="middle" fill="#eef0fb" font-family="JetBrains Mono" font-size="10">${f(v)}</text>`; }).join('')}</svg>
 <div class="muted">Each bar is that stage's book scored on the day (u); green where a stage improved on the one before, red where it gave back; gold is the sized book, the day score.</div>`;
+}
+
+// The analyst scorecard (js/analystScorecard.js, /api/analyst-scorecard): per analyst, scored mornings, hit rate by
+// the call's conviction, calibration, the shrunk weight and a sparkline of the rolling edge (u per day).
+let ASC = null;
+async function analystPanel(el) {
+  if (!ASC) { el.innerHTML = '<p class="muted">Reading the scorecard…</p>'; ASC = await getJson('/api/analyst-scorecard'); }
+  const r = ASC, A = Object.entries(r?.analysts ?? {});
+  if (!r?.ok || !r.days) { el.innerHTML = `<p class="muted">${esc(r?.error ?? 'No analyst has been scored yet: each morning\'s reports are scored after the evening desk score (21:10 London). Every record stays "unproven" until ten scored mornings.')}</p>`; return; }
+  const pc = x => (x == null ? '–' : `${Math.round(x * 100)}%`);
+  const hitCls = x => (x == null ? 'fl' : x > 0.52 ? 'up' : x < 0.48 ? 'dn' : 'fl');
+  const spark = pts => { const v = (pts ?? []).map(p => p.rolling).filter(Number.isFinite); if (v.length < 2) return '<span class="muted">–</span>';
+    const W = 120, H = 28, lo = Math.min(0, ...v), hi = Math.max(0, ...v), X = i => (i / (v.length - 1)) * W, Y = y => H - 3 - ((y - lo) / (hi - lo || 1)) * (H - 6), col = v.at(-1) >= 0 ? '#2fd39a' : '#ff5d78';
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="rolling edge"><line x1="0" x2="${W}" y1="${Y(0)}" y2="${Y(0)}" stroke="#2c3866"/><polyline points="${v.map((y, i) => `${X(i)},${Y(y)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="1.6"/><circle cx="${X(v.length - 1)}" cy="${Y(v.at(-1))}" r="2.5" fill="${col}"/></svg>`; };
+  const wChip = a => `<span class="chip ${a.status === 'earned' ? 'up' : a.status === 'lagging' ? 'dn' : a.weight > 1.02 ? 'gold' : ''}">${a.weight.toFixed(2)} · ${esc(a.status)}</span>`;
+  const bk = b => `<span class="${hitCls(b.rate)}">${pc(b.rate)}</span><span class="muted"> /${b.n}</span>`;
+  A.sort((x, y) => y[1].weight - x[1].weight || y[1].days - x[1].days);
+  el.innerHTML = `<table><thead><tr><th>Analyst</th><th>Days</th><th>Hit</th><th>High</th><th>Medium</th><th>Low</th><th>Brier skill</th><th>Cal. gap</th><th>Edge u/day</th><th>Weight</th><th>Rolling edge</th></tr></thead><tbody>${A.map(([id, a]) => `<tr>
+<td><b class="mono">${esc(SRC[id] ?? id)}</b> <span class="muted">${esc(id)}</span></td><td class="n">${a.days}</td><td class="n"><b class="${hitCls(a.hitRate)}">${pc(a.hitRate)}</b><span class="muted"> /${a.decided}</span></td>
+<td class="n">${bk(a.buckets.high)}</td><td class="n">${bk(a.buckets.medium)}</td><td class="n">${bk(a.buckets.low)}</td>
+<td class="n ${dirCls(a.calibration.brierSkill)}">${f(a.calibration.brierSkill, 3)}</td><td class="n">${a.calibration.gap == null ? '–' : a.calibration.gap.toFixed(3)}</td><td class="n ${dirCls(a.edge.mean)}">${f(a.edge.mean)}</td><td>${wChip(a)}</td><td>${spark(a.spark)}</td></tr>`).join('')}</tbody></table>
+<div class="muted" style="margin-top:8px">${r.days} scored morning${r.days === 1 ? '' : 's'} (${esc(r.from)} to ${esc(r.to)}). A call is the net impact an analyst gave a currency, market or risk; high/medium/low is its conviction (stated chance 70/60/55%). Brier skill above 0 beats a coin flip; a calibration gap of 0 means its conviction comes off as often as it claims. Weight 0.5 to 1.5, shrunk towards 1.0 (no evidence either way). ${r.feedback?.on ? '<span class="chip gold">the rulings read it</span>' : '<span class="chip">measured only: the rulings do not read it (service analystScorecardFeedback off)</span>'}</div>`;
 }
 
 const VC_INSTS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'GOLD', 'NQ', 'SPX500', 'WTI', 'BTCUSD'];
@@ -1179,7 +1283,8 @@ $('askbtn').onclick = () => {
 };
 
 load();
-setInterval(() => { if (!document.hidden) { ANA = null; load(); if (!$('ana').hidden) analytics(); } }, 5 * 60_000);   // the Charts tab's sources change daily at most: drawn once per visit
+setInterval(() => { if (!document.hidden) { ANA = null; ASC = null; load(); if (!$('ana').hidden) analytics(); } }, 5 * 60_000);   // the Charts tab's sources change daily at most: drawn once per visit
 </script>
+<script type="module" src="js/terminal/terminalTabs.js"></script>
 </body>
 </html>

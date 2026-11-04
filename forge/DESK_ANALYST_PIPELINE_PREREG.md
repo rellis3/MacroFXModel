@@ -189,6 +189,34 @@ EM corporate spreads, MOVE) to the global-market analyst; `hedging-summary` (dea
 yields analyst; `credit-board`, `liquidity-board` and `xccy-basis` to the credit and funding analyst; `world-stress` to the
 global-market analyst. Inputs only: the scoring, the arms and the hypotheses are unchanged. No outcome had been computed.
 
+### A10 — 2026-11-04 — measurement added; a feedback switch added OFF
+Written on 2026-11-04 without reading any desk score (the first counted day is scored after 21:10 London that day).
+Owner's build list item 1, the **analyst scorecard** (`js/analystScorecard.js`, plan §9aj). **Measurement, not a
+scored cell:** after each evening score, every analyst's calls that morning (the net impact it gave each currency,
+instrument and RISK, with a conviction) are scored on the same window and unit as §3: hit rate by conviction, Brier
+and calibration, edge and skill, and a weight shrunk towards 1.0. It is descriptive; H1-H5, the gate, the controls and
+the judgement date are unchanged. **Input:** the Desk Pack gains the feed `analyst-scorecard` for the evidence clerk
+(role `evidence_memory.md` item 7, so `rolesHash` changes), as `desk-memory` was added: the desk's own record, read as
+context, never as an impact; the single-prompt control reads the whole pack, so both arms see it. **Feedback,
+switched off:** with service `analystScorecardFeedback` on, the Global Manager, the Currency Manager and the Head read
+each analyst's record and weight before ruling. That would change the book's behaviour in response to its own running
+record, which §7 rules out without an amendment, so it ships **default OFF** (`js/serviceFlags.js`); while off, every
+ruling's prompt is exactly as before. Turning it on is a new amendment written before the next scored day, naming the
+date. Every run records `run.trackRecord` when the rulings read it, the desk is still scored as operated, and the
+verdict reports H1 with and without the feedback as description (like the roles hash), never as a scored cell. The
+control (H2) never reads the scorecard.
+
+### A11 — 2026-11-04 — PRE-RESULTS
+The risk desk and the Head get one new prompt input (plan §9ak). It is the asset desks' draft book at size 1, read
+through `js/factorRisk.js` and `js/scenarioEngine.js`. It gives the factor exposure (dollar, carry, risk-on, commodity,
+US rates), the VaR/ES, the effective bets, the standard scenarios and the historical replays. All of it is arithmetic on
+OANDA and FRED history up to the previous close: no model call, and nothing after the run starts. The role files of the
+three risk voices, the Head and the evidence clerk say how to read it, so `rolesHash` changes. The Desk Pack gains the
+feed `book-risk` (the latest saved book's read), for the evidence clerk. The single-prompt control reads the whole pack,
+so it sees that feed too. It never sees the draft-book section, because it has no draft book, the same as the red team
+(A5). The scored book is still the Head's book as written before 08:00 (§3), and the desk is still scored as operated,
+by role version. Inputs only: the scoring, the arms and the hypotheses are unchanged. No hypothesis test had been run.
+
 ---
 
 ## RESULTS — not run
