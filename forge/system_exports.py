@@ -122,7 +122,7 @@ def write_system_outputs(sys_id, raw, model='', account=100000.0, meta=None, out
     d = out_dir or os.path.join(ROOT, 'analysis', 'output', 'systems', sys_id)
     os.makedirs(d, exist_ok=True)
     files = {
-        'trades.json': json.dumps({'id': sys_id, 'meta': {**(meta or {}), 'model': model, 'skipped': len(errors), 'writer': 'python'}, 'trades': trades}, indent=1),
+        'trades.json': '{"id":' + json.dumps(sys_id) + ',"meta":' + json.dumps({**(meta or {}), 'model': model, 'skipped': len(errors), 'writer': 'python'}) + ',"trades":[\n' + ',\n'.join(json.dumps(t) for t in trades) + '\n]}\n',
         'toolkit_pct.csv': toolkit_csv(trades, 'pct'), 'toolkit_r.csv': toolkit_csv(trades, 'r'),
         'toolkit_cash.csv': toolkit_csv(trades, 'cash', account=account), 'data_terminal.csv': terminal_csv(trades),
     }

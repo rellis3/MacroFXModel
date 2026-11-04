@@ -5215,20 +5215,26 @@ const _SYS_DIR = path.join(__dirname, 'analysis', 'output', 'systems');
 function _sysList() {
   const out = [];
   for (const id of (fs.existsSync(_SYS_DIR) ? fs.readdirSync(_SYS_DIR) : []).filter(d => /^[a-z0-9][a-z0-9-]{1,80}$/.test(d)).sort()) {
-    const f = path.join(_SYS_DIR, id, 'trades.json'); if (!fs.existsSync(f)) continue;
-    let ts = null; try { ts = JSON.parse(fs.readFileSync(path.join(_SYS_DIR, id, 'tearsheet.json'), 'utf8')); } catch { /* the page computes it */ }
-    let meta = {}, n = null; try { const j = JSON.parse(fs.readFileSync(f, 'utf8')); meta = j.meta ?? {}; n = (j.trades ?? []).length; } catch { continue; }
-    out.push({ id, model: meta.model ?? id, trades: n, from: ts?.from ?? null, to: ts?.to ?? null, sharpe: ts?.portfolio?.sharpe ?? null, maxDD: ts?.portfolio?.maxDD ?? null, writer: meta.writer ?? 'node' });
+    if (!_sysTradesFile(id)) continue;
+    let ts = null; try { ts = JSON.parse(fs.readFileSync(path.join(_SYS_DIR, id, 'tearsheet.json'), 'utf8')); } catch { /* no tearsheet yet */ }
+    let meta = ts?.meta ?? null, n = ts?.trades ?? null;
+    if (!meta || n == null) { try { const j = _sysReadTrades(id); meta = j.meta ?? {}; n = (j.trades ?? []).length; } catch { continue; } }
+    out.push({ id, model: meta.model ?? id, trades: n, from: ts?.from ?? null, to: ts?.to ?? null, sharpe: ts?.portfolio?.sharpe ?? null, maxDD: ts?.portfolio?.maxDD ?? null, writer: meta.writer ?? 'node', evidence: meta.evidence ?? null });
   }
   return out;
 }
 const _sysCache = new Map();
+// trades.json, or trades.json.gz for large systems (scripts/systems/writeSystemOutputs.mjs).
+function _sysTradesFile(id) { for (const f of ['trades.json', 'trades.json.gz']) { const p = path.join(_SYS_DIR, id, f); if (fs.existsSync(p)) return p; } return null; }
+function _sysReadTrades(id) { const p = _sysTradesFile(id), b = fs.readFileSync(p); return JSON.parse((p.endsWith('.gz') ? zlib.gunzipSync(b) : b).toString('utf8')); }
 function _sysLoad(id) {
   if (!/^[a-z0-9][a-z0-9-]{1,80}$/.test(String(id))) return null;
-  const f = path.join(_SYS_DIR, id, 'trades.json'); if (!fs.existsSync(f)) return null;
+  const f = _sysTradesFile(id); if (!f) return null;
   const mt = fs.statSync(f).mtimeMs, hit = _sysCache.get(id); if (hit?.mt === mt) return hit.data;
-  const j = JSON.parse(fs.readFileSync(f, 'utf8')), { trades, errors } = _sxNormalise(j.trades ?? j, j.meta ?? {});
-  const data = { id, meta: j.meta ?? {}, trades, skipped: errors.length, tearsheet: _sxTearsheet(trades, j.meta ?? {}) };
+  const j = _sysReadTrades(id), { trades, errors } = _sxNormalise(j.trades ?? j, j.meta ?? {});
+  // the stored tearsheet is used when present (big systems take seconds to recompute); else computed once and cached
+  let ts = null; try { ts = JSON.parse(fs.readFileSync(path.join(_SYS_DIR, id, 'tearsheet.json'), 'utf8')); } catch { /* compute */ }
+  const data = { id, meta: j.meta ?? {}, trades, skipped: errors.length, tearsheet: ts?.ok ? ts : _sxTearsheet(trades, j.meta ?? {}) };
   if (_sysCache.size > 30) _sysCache.clear(); _sysCache.set(id, { mt, data });
   return data;
 }

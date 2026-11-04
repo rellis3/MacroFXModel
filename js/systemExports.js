@@ -151,6 +151,7 @@ export function expectedShape(trades, { windowN = null, paths = 5000, block = 5,
   const last = trades.at(-1).exitMs, yearN = trades.filter(t => t.exitMs > last - 365.25 * 864e5).length;
   const W = realisedTrades ? Math.max(5, realisedTrades.length) : Math.max(10, Math.min(n, windowN ?? yearN));
   const M = { winRate: a => a.filter(x => x > 0).length / a.length, profitFactor: a => Math.min(pf(a), 10), expectancy: a => a.reduce((s, x) => s + x, 0) / a.length, maxDD: ddOf };
+  paths = Math.min(paths, Math.max(500, Math.floor(2e7 / W)));   // big systems: fewer paths, same window
   const rng = mulberry32(seed >>> 0), sims = Object.fromEntries(Object.keys(M).map(k => [k, new Float64Array(paths)]));
   for (let i = 0; i < paths; i++) { const w = blockDraw(r, W, rng, block); for (const k in M) sims[k][i] = M[k](w); }
   const real = realisedTrades ? realisedTrades.map(t => t.returnPct) : r.slice(-W), out = { ok: true, window: W, paths, block, realisedFrom: (realisedTrades ? realisedTrades[0] : trades.at(-W)).exitMs, live: !!realisedTrades, metrics: {} };
@@ -180,6 +181,7 @@ export function drawdownProbabilities(trades, { horizonN = null, thresholds = [5
   const r = trades.map(t => t.returnPct), n = r.length;
   if (n < 30) return { ok: false, error: 'needs >= 30 trades' };
   const years = Math.max(0.25, (trades.at(-1).exitMs - trades[0].exitMs) / (365.25 * 864e5)), H = Math.max(10, horizonN ?? Math.round(n / years));
+  paths = Math.min(paths, Math.max(500, Math.floor(2e7 / H)));
   const rng = mulberry32(seed >>> 0), dds = new Float64Array(paths);
   for (let i = 0; i < paths; i++) dds[i] = ddOf(blockDraw(r, H, rng, block));
   const s = Array.from(dds).sort((a, b) => a - b);
@@ -206,7 +208,8 @@ export function outlierSensitivity(trades, { tops = [1, 5, 10, 20, 50] } = {}) {
 export function systemFiles(id, trades, meta = {}, { account = 100000 } = {}) {
   const ts = tearsheet(trades, meta);
   return {
-    'trades.json': JSON.stringify({ id, meta, trades }, null, 1),
+    // one trade per line: readable diffs, and a fraction of the size of indented JSON
+    'trades.json': `{"id":${JSON.stringify(id)},"meta":${JSON.stringify(meta)},"trades":[\n${trades.map(t => JSON.stringify(t)).join(',\n')}\n]}\n`,
     'tearsheet.json': JSON.stringify({ id, meta, ...ts }, null, 1),
     'toolkit_pct.csv': toolkitCsv(trades, 'pct'),
     'toolkit_r.csv': toolkitCsv(trades, 'r'),
