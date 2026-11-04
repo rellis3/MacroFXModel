@@ -37,4 +37,9 @@ t('titles name the saved PDF: date first, brief in the short one', () => {
   assert.equal(withTitle('<html><head lang="en"><meta></head></html>', 'A & B', H.esc), '<html><head lang="en"><title>A &amp; B</title><meta></head></html>');
   assert.equal(short('First sentence (rates_cb) is long enough. Second.', 200), 'First sentence is long enough');
 });
+t('the big picture comes from the newsletter\'s sections when it has them', () => {
+  const r2 = { ...run, newsletter: { ok: true, issue: { ...run.newsletter.issue, sections: [{ title: 'The currencies', body: 'CAD leads the board on oil and rates. More detail.' }, { title: 'What could break the day', body: 'Payrolls.' }, { title: 'Rates', body: 'The Fed path is priced for one cut.' }] } } };
+  const h = composePicto({ run: r2 }, H).html;
+  assert.ok(h.includes('CAD leads the board on oil and rates') && h.includes('The Fed path is priced for one cut') && !h.includes('Payrolls') && !h.includes('Liquidity gate BLOCKED'));
+});
 console.log(`newsletterPicto: ${n} tests passed`);

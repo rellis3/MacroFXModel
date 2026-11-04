@@ -167,8 +167,9 @@ export function composePicto({ run, base = {}, stress = null, map = null } = {},
   const tiles = stress?.tiles?.length ? stress.tiles.slice(0, 3) : base.riskFlags ? [{ label: 'Risk flags', level: base.riskFlags.active >= 3 ? 'stress' : base.riskFlags.active >= 1 ? 'watch' : 'ok', detail: `${base.riskFlags.active} of ${base.riskFlags.total} on` }] : [];
   const pSig = tiles.length ? `<div class="sig">${tiles.map(t => `<div>${(iconFor(t.label) ?? (() => gauge(t.level)))()}<b>${esc(t.label)}</b><b class="lv ${t.level === 'stress' ? 'dn' : t.level === 'watch' ? '' : 'up'}"${t.level === 'watch' ? ` style="color:${K.amber}"` : ''}>${esc(String(t.level).toUpperCase())}</b><i>${esc(short(t.detail ?? '', 40))}</i></div>`).join('')}</div>` : '';
 
-  // the big picture: the drivers of the ruling, one line each
-  const drivers = (g.drivers ?? []).slice(0, 4).map(x => short(x, 72)).filter(Boolean);
+  // the big picture: the newsletter's own key points (each section's opening line), else the drivers of the ruling
+  const fromIssue = (nl?.sections ?? []).filter(x => !/could not see|break the day/i.test(x.title ?? '')).map(x => short(x.body ?? x.text ?? '', 72)).filter(Boolean);
+  const drivers = (fromIssue.length >= 2 ? fromIssue : (g.drivers ?? []).map(x => short(x, 72)).filter(Boolean)).slice(0, 4);
   const pBig = drivers.length ? `<ul>${drivers.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
 
   // currencies: the ranking with each bias, a pen line where bullish turns bearish
