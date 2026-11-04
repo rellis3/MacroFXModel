@@ -70,6 +70,7 @@ function isAllowedKVKey(key) {
     'xccy_basis_hist',
     'options_skew_v1',
     'options_skew_hist',
+    'terminal_stress_snaps_v1',
     'analyst_scorecard_v1',
     'cb_speech_log_v1',
     'release_surprise_log_v1',

@@ -55,6 +55,7 @@ export const STORES = {
   xccy_basis_hist: R('Cross-currency basis daily history (bp)', 3, { market: false }),
   options_skew_v1: R('Options skew: risk reversals, butterflies, ATM vol (IBKR)', 1),
   options_skew_hist: R('Options skew daily history', 3, { market: false }),
+  terminal_stress_snaps_v1: R('Desk Terminal: first world-stress reading of each London day (Changed tab)', 1, { market: false }),
   analyst_scorecard_v1: L('Desk analyst scorecard: each analyst\'s calls scored per morning (written after the evening score on days with a desk run)', 5),
   cb_speech_log_v1: L('Central-bank speech log: each speech scored on the statement scale (js/cbSpeeches.js)', 7, { market: false }),
   release_surprise_log_v1: L('Live surprise reader: high-impact prints, their surprise and playbook (js/surpriseReader.js)', 7),
