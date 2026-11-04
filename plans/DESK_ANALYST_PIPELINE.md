@@ -1012,6 +1012,77 @@ an architect writes the spec, the portfolio side asks how it fits the fleet. All
   the fleet's Sharpe; historical VaR and expected shortfall; a bootstrap of fleet days for the drawdown it could have
   had; correlation breaks; and drift (the live monitor) per bot. Description, not advice.
 
+## 9ac. Closing the research loop, and the standard outputs every new system produces (2026-11-04)
+
+**The loop** (`js/researchPod.js`; Desk Office Research tab):
+- **Lifecycle per proposal**, read from what exists, never typed in: proposed → shortlisted → chosen → carded →
+  preregistered (a register row under its register id) → tested (a harness output, system outputs or an Evidence Book
+  entry under that id) → passed or failed (the validation gates and the Evidence Book verdict). Paper, live and retired
+  are the owner's to set (`POST /api/research-pod/link { id, registerId?, stage? }`). The register id defaults to the
+  card's name (slugged) and can be set by the owner, so a study claimed under another id still links.
+- **Results fed back**: each session tells each researcher what happened to its earlier proposals (stage, failed
+  gates, the Evidence Book verdict and its "use" line), and the pod's scorecard, so a failure changes the next idea.
+- **A thread per proposal** (`GET/POST /api/research-pod/thread`, KV `research_pod_threads`): the owner writes, the
+  proposal's own researcher answers (one model call, schema `research_reply`) and may revise the proposal; a revision
+  bumps its version and keeps the last five versions.
+- **Scorecard per researcher**: proposed, accepted by the owner, carded, pre-registered, tested, passed, failed, on
+  paper or live, rejected, and the pass rate of the tested ones.
+
+**Standard outputs** (`js/systemExports.js`, `forge/system_exports.py`, `scripts/systems/writeSystemOutputs.mjs`):
+every system built from a proposal writes its trades under its register id to `analysis/output/systems/<id>/`, which
+gives the same outputs as the desk's other backtests:
+- `trades.json` in one standard schema (times, direction, R, MAE and MFE in R, risk %)
+- `tearsheet.json`: js/backtestStats.js (per-trade battery, bootstrap, Monte Carlo) and portfolioStats on the daily
+  series (the honest Sharpe, vol-targeted CAGR/DD, block bootstrap, autocorrelation, probabilistic Sharpe), by
+  instrument, year and direction, streaks, R Monte Carlo and cost stress
+- the Prop Firm Toolkit CSVs in C.OG's three formats (`Date,Return %,MAE %`; `date,R,MAE (R)`;
+  `Trade Date,PnL ($),Risk ($)`) and the Data Terminal CSV (the C.OG import template, as SignalCopier writes it)
+The Node and Python writers are checked byte for byte against `tests/fixtures/system_exports/`. The system then shows
+on **system-backtest.html** (`/api/system-backtests`, `/api/system-backtest?id=`, `/api/system-backtest/csv`) with its
+validation gates and export buttons; any Data Terminal CSV can also be loaded there in the browser.
+The page follows the depth of the level-atlas portfolio pages and C.OG's VIP-channel outputs (2026-11-04): his
+"expected shape" panels (the bootstrap distribution of win rate, profit factor, expectancy per trade and max drawdown
+for a window of the last year's trade count, P10-P90 and P25-P75 bands, the expected median and the realised window as
+a line, with its percentile), his probabilistic drawdown table (P(max drawdown worse than -5/-10/-15/-20/-30%) over
+the next year of trades), a drawdown-from-peak chart, a monthly returns heatmap (click a month to list its trades),
+outlier sensitivity (best 1-50 winners removed), and a trade journal where clicking a trade draws it on real M1
+candles (`/api/vol-backtest/candles`) with entry, stop, target and exit lines and in/out markers. Trades may carry
+`target` and a `pair` candle key; the instrument name is resolved through js/instrumentRegistry.js otherwise. The architect's
+card and prereg draft now require these outputs as the last build step.
+
+## 9ad. The backfill and the post-mortem desk (2026-11-04)
+
+**Backfill** (`scripts/systems/backfill.mjs`, one adapter per study family, tested in `js/systemBackfill.test.mjs`):
+21 stored per-trade backtest outputs are mapped (which file, which column is the instrument, the side, the times, the
+result and its unit, MAE/MFE, prices; for multi-variant files the study's headline variant), with 8 more listed as
+skipped and why. Nothing is re-run: each system is exactly what its study stored, gross or net as recorded. Systems
+that take many trades a day are sized so a median day risks about 1% (the note says so); a sparse system's daily
+series includes its flat weekdays, so its Sharpe is not inflated. Tags that describe how a trade ended are marked
+`exit:` and never used as filters (that would be look-ahead).
+
+**Storage**: nothing generated is committed. `POST /api/systems/rebuild` runs the adapters over the repo's stored study
+outputs on the server, in a worker thread (`scripts/systems/buildWorker.mjs`), and stores each system's gzipped trade
+list and tearsheet in **R2** under `systems/<id>/` and a small record per system in **KV** `system_index`. A study
+uploads new systems the same way (`POST /api/systems/upload`; `writeSystemOutputs.mjs --push`, `push_system` in
+`forge/system_exports.py`). Without R2 credentials the store is memory until restart. `system-backtest.html` with no
+id lists every system with its record (held up / stopped working / never worked), the filters that survived and the
+panel's verdicts, with the build and review buttons.
+
+**Post-mortem desk** (`js/systemReview.js`; `GET /api/system-review`, `POST /api/system-review/run { id | all }`,
+`GET /api/system-overview`; KV `system_reviews`):
+- Measured first, with no model: decay (by year, first half against second), exits from MAE/MFE (losers that were
+  1R up first, winners that nearly stopped, a conservative fixed stop/target grid), every one-variable filter the
+  trades allow (instrument, side, London entry hour, weekday, month, holding time, tags, terciles of numeric
+  features) **chosen on the first half and scored on the second**, Benjamini-Hochberg across all of them against the
+  rest of the second half, the filtered system's second-half result, and a causal equity-curve filter.
+- Then the research panel: each of the three researchers reads those numbers through its own lens (schema
+  `system_postmortem`: verdict dead / revivable / needs-data / working, what went wrong with the numbers, 0-3 revival
+  ideas in the proposal shape), and the validation desk judges which revivals are honest tests and which are fitted to
+  the same trades. Revival ideas enter the research pod's library as proposals (origin "post-mortem of <id>"), so the
+  owner can mark, discuss, card and track them like any other.
+- **Live against the backtest** (`GET /api/system-live?bot=&id=`): a bot's live trades from its trade log against
+  the backtest's expected shape at the same number of trades (C.OG's check), on the system page.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.

@@ -1,0 +1,5 @@
+{ "trades": [
+  { "instrument": "EURUSD", "direction": "Long", "entryMs": 1735822800000, "exitMs": 1735840800000, "entry": 1.035, "stop": 1.031, "exit": 1.0436, "riskPct": 1, "R": 2.15, "maeR": -0.4, "mfeR": 2.5, "model": "Test", "tags": ["a", "b"], "notes": "" },
+  { "instrument": "USDJPY", "direction": "Short", "entryMs": 1751353200000, "exitMs": 1751385600000, "riskPct": 0.5, "R": -1, "maeR": -1.2, "mfeR": 0.3, "model": "Test", "tags": [], "notes": "stop, then \"gap\"" },
+  { "instrument": "GOLD", "direction": "Long", "entryMs": 1751439600000, "exitMs": 1751443200000, "riskPct": 1, "R": 0.5, "model": "Test" }
+] }
