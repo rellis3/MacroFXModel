@@ -59,6 +59,9 @@ t('lifecycle: each stage read from what exists; outcomes fed back; scorecard', (
   fb = setLink(fb, p.id, { stage: 'paper', registerId: 'ppp-gap-v2' }); assert.equal(fb[p.id].status, 'build'); assert.equal(lifecycle(p, { fb, cards }).stage, 'paper'); assert.equal(lifecycle(p, { fb, cards }).registerId, 'ppp-gap-v2');
   assert.throws(() => setLink(fb, p.id, { stage: 'moon' })); assert.throws(() => setLink(fb, p.id, { registerId: 'Bad Id' }));
   assert.equal(lifecycle(p, { fb: applyFeedback({}, p.id, 'reject') }).stage, 'rejected');
+  const fw = lifecycle(p, { fb: applyFeedback({}, p.id, 'build'), shadows: { [p.id]: { bot: 'Vote Atlas', rule: 'skip instrument EURUSD', verdict: 'helping', placeboPercentile: 0.97, kept: 40, filtered: { meanR: 0.2 }, asTraded: { meanR: 0.05 } } } });
+  assert.equal(fw.stage, 'passed'); assert.ok(fw.steps.find(x => x.stage === 'forward-tested').done); assert.match(outcomesBrief([p], { [p.id]: fw }, 'macro'), /forward on Vote Atlas helping/);
+  assert.equal(lifecycle(p, { shadows: { [p.id]: { bot: 'X', rule: 'r', verdict: 'collecting', need: '5 more' } } }).stage, 'proposed');
   const sc = scorecard([p], { [p.id]: failed }); assert.deepEqual([sc.macro.proposed, sc.macro.carded, sc.macro.tested, sc.macro.failed, sc.macro.passRate], [1, 1, 1, 1, 0]); assert.equal(sc.quant.proposed, 0);
 });
 t('thread: reply, revision with history', () => {

@@ -1083,6 +1083,40 @@ panel's verdicts, with the build and review buttons.
 - **Live against the backtest** (`GET /api/system-live?bot=&id=`): a bot's live trades from its trade log against
   the backtest's expected shape at the same number of trades (C.OG's check), on the system page.
 
+## 9ae. The pair selector, the forward shadow tracker and the allocation committee (2026-11-04)
+
+- **Pair selector** (`js/pairSelector.js`, `GET /api/pair-select`, Desk Terminal Overview "Best expression"): after
+  the currency manager's ranking, all 28 pairs of the eight currencies are scored by the conviction-weighted bias gap,
+  the spread as a share of the day's move (measured spread profile against the card's ladder), carry (policy rates)
+  and whether the book's card agrees; at most two picks per currency; an 8x8 gap grid. Describes the book, never
+  changes it.
+- **Forward shadow tracker** (`js/shadowTracker.js`, `/api/shadows`): a post-mortem filter on a bot's new live trades
+  only, against random filters keeping the same number of trades. Verdicts feed the research loop (stage
+  "forward-tested") and each researcher's next session.
+- **Allocation committee** (`desk/roles/allocation_committee.md`, schema `allocation_review`, `/api/allocation`,
+  weekly Sunday 17:00 London, Telegram `allocation`): per bot keep / cut / pause / raise / promote-filter from the
+  fleet, each linked bot's live run against its backtest's expected shape (`/api/bot-system-map`), the shadows and
+  the rules keeper; risk capped at the half-Kelly and 2%. Advice only.
+
+## 9af. The terminal data audit: the world map, EM gauges and the feeds the terminal was missing (2026-11-04)
+
+An audit of every server feed against the Desk Terminal found most of the valuable data already reached the
+analysts but never the terminal, plus three real gaps. Every addition goes both ways: into the Desk Pack for the
+analyst whose job it is (prereg A9) and onto the terminal.
+- **World policy rates** (`js/worldRates.js`, `GET /api/world-rates`): the BIS WS_CBPOL dataset, ~39 central banks
+  monthly (G10, Brazil, Mexico, South Africa, Turkey, India, Korea, China, Poland and more), keyless. Each bank's rate,
+  3- and 12-month change and cycle (hiking / cutting / on hold, after hikes or cuts). It colours the whole world map
+  on the Macro tab (the euro area across its members) and reaches the rates analyst.
+- **EM gauges** (`js/emGauges.js`, `GET /api/em-gauges`): USD/CNH, USD/MXN, USD/ZAR, USD/TRY from OANDA daily closes:
+  1/5/20-day moves, 20-day vol, the z of the 5-day move; EM stress = mean z of MXN and ZAR (calm / watch / stress /
+  risk-on). Read, never traded. Overview panel; global-market analyst.
+- **On the terminal now** (already in the pack unless noted): the risk state (`risk-flags`), the Fed path by meeting
+  (`fed-path`), dollar plumbing (`funding-read`), nowcasts (`nowcast`), BIS bank credit (`bank-credit`), the wider
+  market (`wider-market`), EM dollar and EM corporate spreads (`chain-extra`, newly in the pack), dealer hedging per
+  market (`hedging-summary`, newly in the pack) and speculators across 35 futures (`cot-extremes`, including MXN, the
+  dollar index, Treasuries and equity futures).
+- Not available free and live: BRL, INR and KRW prices (no OANDA feed); EM currencies stay gauges, not desk cards.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.

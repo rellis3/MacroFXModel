@@ -100,3 +100,16 @@ export function fleetReport(trades, { unit = 'R', minDays = 20, recent = 20, see
     fleet: { sharpe: r3(sharpe(fleet)), maxDrawdown: r3(maxDD(fleet)), varEs: varEs(fleet), monteCarlo: tradeMonteCarlo(fleet.filter(x => x !== 0), { seed }) }, drift,
     label: 'description of the bots\' own trades, not a test; weights are what the record implies, not advice' };
 }
+
+const ACTIONS = ['keep', 'cut', 'pause', 'raise', 'promote-filter'];
+/** The allocation committee's reply (desk/roles/allocation_committee.md); bots not in `known` are dropped. */
+export function validateAllocation(obj, known = []) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return { ok: false, errors: ['reply is not a JSON object'] };
+  const str = (v, n) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, n) : '');
+  const bots = (Array.isArray(obj.bots) ? obj.bots : []).map(b => ({ bot: str(b?.bot, 80), action: ACTIONS.includes(b?.action) ? b.action : null,
+    riskPerTrade: Number.isFinite(+b?.riskPerTrade) && b?.riskPerTrade !== null ? Math.min(2, Math.max(0, +b.riskPerTrade)) : null,
+    why: str(b?.why, 600), wouldChangeIf: str(b?.wouldChangeIf, 300), confidence: ['low', 'medium', 'high'].includes(b?.confidence) ? b.confidence : 'low' }))
+    .filter(b => b.bot && b.action && (!known.length || known.includes(b.bot)));
+  if (!str(obj.headline, 300) || !bots.length) return { ok: false, errors: ['headline and at least one bot are required'] };
+  return { ok: true, value: { headline: str(obj.headline, 300), fleet: str(obj.fleet, 600), bots, watch: (Array.isArray(obj.watch) ? obj.watch : []).map(w => str(w, 240)).filter(Boolean).slice(0, 5) } };
+}

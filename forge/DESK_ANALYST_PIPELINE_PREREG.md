@@ -180,6 +180,13 @@ market's range bucket, trend-or-range day and the session that sets its extremes
 is not an arm of H1-H5, and is scored separately and descriptively (against chance and "always the most common
 outcome"). No outcome had been computed.
 
+### A9 — 2026-11-04 — PRE-RESULTS
+New feeds join the Desk Pack before the first counted day was scored: each central bank's own policy rate
+(`policy-rates`) and what short-rate futures price for every bank (`cb-expectations`), both read by the rates and
+central-bank analyst. Further feeds found by the terminal data audit (plan §9af), added the same way: `world-rates`
+(BIS policy rates for ~39 banks) to the rates analyst; `em-gauges` (USD/CNH, MXN, ZAR, TRY) and `chain-extra` (EM dollar,
+EM corporate spreads, MOVE) to the global-market analyst; `hedging-summary` (dealer gamma per market) to the options analyst. Inputs only: the scoring, the arms and the hypotheses are unchanged. No outcome had been computed.
+
 ---
 
 ## RESULTS — not run

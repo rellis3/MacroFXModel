@@ -445,6 +445,13 @@ size: 0 to 1.5 (1 = normal). veto: true only when the trade should not be taken 
   "build": [ { "step": "what to build", "files": ["path"], "effort": "S | M | L" } ],
   "fleet": "how it would sit with the existing bots"
 }`,
+  allocation_review: `{
+  "headline": "the week's allocation in one sentence",
+  "fleet": "what the fleet as a whole is exposed to, and its biggest risk this week",
+  "bots": [ { "bot": "the bot's name as given", "action": "keep | cut | pause | raise | promote-filter", "riskPerTrade": 0.5,   // % of equity per 1R you suggest; null to leave as is
+              "why": "the numbers behind it", "wouldChangeIf": "what would change the call", "confidence": "low | medium | high" } ],
+  "watch": ["what to check during the week"]
+}`,
   system_postmortem: `{
   "verdict": "dead | revivable | needs-data | working",   // dead = nothing in the diagnostics or your lens suggests a fix worth testing
   "headline": "what went wrong, in one sentence",

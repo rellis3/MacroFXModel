@@ -442,11 +442,11 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 
 // ── data ──
 async function load() {
-  const [run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev, tw, wk, news, pr, cbx, dfc] = await Promise.all([
+  const [run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev, tw, wk, news, pr, cbx, dfc, ps] = await Promise.all([
     getJson('/api/desk-run'), getJson('/api/desk-score/record'), getJson('/api/desk-update'), getJson('/api/desk-quality'),
     getJson('/api/macro-scorecard'), getJson('/api/rate-diff'), getJson('/api/real-yield'), getJson('/api/rates'),
-    getJson('/api/cot-state'), getJson('/api/oanda-book/history'), getJson('/api/gpr'), getJson('/api/events'), getJson('/api/trade-watch'), getJson('/api/desk-weekly'), getJson('/api/desk-news?hours=24&tier=2'), getJson('/api/policy-rates'), getJson('/api/cb-expectations'), getJson('/api/desk-dayfc')]);
-  D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, tw, wk, pr, cbx, dfc, news: news?.ok ? news.items : [], ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
+    getJson('/api/cot-state'), getJson('/api/oanda-book/history'), getJson('/api/gpr'), getJson('/api/events'), getJson('/api/trade-watch'), getJson('/api/desk-weekly'), getJson('/api/desk-news?hours=24&tier=2'), getJson('/api/policy-rates'), getJson('/api/cb-expectations'), getJson('/api/desk-dayfc'), getJson('/api/pair-select')]);
+  D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, tw, wk, pr, cbx, dfc, ps, news: news?.ok ? news.items : [], ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
   const ok = run?.ok && run.head?.ok;
   D.cards = ok ? run.head.book.instruments : {};
   D.ccy = ok ? (run.debate?.currency?.view?.currencies ?? Object.fromEntries(Object.entries(run.head.book.currencies ?? {}).map(([k, v]) => [k, { bias: v.bias, why: v.why }]))) : {};
@@ -454,8 +454,87 @@ async function load() {
   // the session updates applied on top of the morning book (the live view), where there are any
   D.live = upd?.live?.instruments ?? null;
   header(); ticker(); overview(); currencies(); assets(); macro(); positioning(); calendar();
+  loadEnrich();
 }
 
+// ── §9af: the enrichment the audit found: the world's rate cycle, EM gauges, risk state, the Fed path, dollar
+// plumbing, nowcasts, BIS bank credit, the wider market, dealer hedging and COT across 35 futures. Fetched once,
+// drawn into a slot at the end of each tab (re-drawn whenever a tab re-renders). The same feeds reach the analysts
+// through the Desk Pack.
+let E = null;
+// each tab re-renders its whole section; redraw its enrichment slot after it does
+for (const [name, fn] of [['overview', 'enrichOverview'], ['macro', 'enrichMacro'], ['assets', 'enrichAssets'], ['positioning', 'enrichPos']]) {
+  const orig = globalThis[name];
+  if (typeof orig === 'function') globalThis[name] = function (...a) { const r = orig.apply(this, a); if (E) { try { globalThis[fn](); } catch (e) { console.warn(fn, e); } } return r; };
+}
+async function loadEnrich() {
+  const k = ['risk-flags', 'em-gauges', 'world-rates', 'fed-path', 'funding-read?spark=0', 'nowcast', 'bank-credit', 'wider-market', 'chain-extra', 'hedging-summary', 'cot-extremes'];
+  const r = await Promise.all(k.map(x => getJson(`/api/${x}`)));
+  E = Object.fromEntries(k.map((x, i) => [x.replace(/\?.*$/, ''), r[i]]));
+  enrichAll();
+}
+function slot(sec, id) { const s = $(sec); if (!s) return null; let el = s.querySelector(`#${id}`); if (!el) { el = document.createElement('div'); el.id = id; s.appendChild(el); } return el; }
+function enrichAll() { if (!E) return; try { enrichOverview(); enrichMacro(); enrichAssets(); enrichPos(); } catch (e) { console.warn('enrich', e); } }
+const spk = (vals, w = 120, h = 28, col = 'var(--gold)') => { const v = (vals ?? []).filter(Number.isFinite); if (v.length < 2) return ''; const lo = Math.min(...v), hi = Math.max(...v), x = i => (i / (v.length - 1)) * w, y = a => h - 2 - ((a - lo) / ((hi - lo) || 1)) * (h - 4);
+  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><path d="${v.map((a, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(a).toFixed(1)}`).join('')}" fill="none" stroke="${col}" stroke-width="1.5"/></svg>`; };
+const sgn = (x, d = 2) => (x == null || !Number.isFinite(+x) ? '–' : `${x > 0 ? '+' : ''}${(+x).toFixed(d)}`);
+function enrichOverview() {
+  const el = $('xo'); if (!el) return;
+  const rf = E['risk-flags'], em = E['em-gauges'];
+  const LV = { CALM: 'up', CAUTION: 'gold', RISK_OFF: 'dn' }, EL = { calm: 'up', 'risk-on': 'up', watch: 'gold', stress: 'dn' };
+  el.innerHTML = `<div class="grid g2" style="margin-top:14px">
+${rf?.ok ? `<div class="card"><div class="ch"><span class="lbl">Risk state</span><span class="r"><span class="chip ${LV[rf.level] ?? ''}">${esc(String(rf.level).replace('_', ' ').toLowerCase())}</span> <span class="muted">${rf.active}/${rf.available} flags on</span></span></div>
+<div class="drv">${(rf.flags ?? []).map(f => `<span class="chip ${f.on ? 'dn' : ''}" title="${esc(f.detail ?? '')}">${esc(f.label)}${f.value != null ? ` · ${esc(String(f.value))}` : ''}</span>`).join(' ')}</div>${rf.note ? `<p class="muted" style="font-size:12px">${esc(rf.note)}</p>` : ''}</div>` : ''}
+${em?.ok ? `<div class="card"><div class="ch"><span class="lbl">Emerging markets · read, not traded</span>${em.stress ? `<span class="r"><span class="chip ${EL[em.stress.level] ?? ''}">${esc(em.stress.level)}</span> <span class="muted mono">z ${sgn(em.stress.z)}</span></span>` : ''}</div>
+${em.stress ? `<p style="margin:2px 0 8px">${esc(em.stress.read)}.</p>` : ''}<table><tbody>${Object.values(em.pairs).filter(p => p.ok).map(p => `<tr title="${esc(p.role)}"><td class="mono"><b>${esc(p.label)}</b></td><td>${spk(p.spark)}</td><td class="n mono ${p.chg5d > 0 ? 'dn' : 'up'}">${sgn(p.chg5d)}% 5d</td><td class="n mono">z ${sgn(p.z5)}</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px">USD/EM up (red) = the EM currency weaker. MXN and ZAR are the carry gauges; CNH leads AUD and NZD.</p></div>` : ''}
+</div>`;
+}
+const CYC = { hiking: '#e8b85a', 'on hold after hikes': 'rgba(232,184,90,.45)', 'on hold': 'rgba(138,147,184,.35)', 'on hold after cuts': 'rgba(91,157,255,.45)', cutting: '#5b9dff', unknown: 'rgba(138,147,184,.2)' };
+async function worldRatesMap(el) {
+  const wr = E['world-rates'], geo = await world(); if (!geo || !wr?.ok) { el.innerHTML = '<p class="muted">Map unavailable.</p>'; return; }
+  const W = 960, H = 470, proj = d3.geoNaturalEarth1().fitSize([W, H], geo), path = d3.geoPath(proj);
+  const svg = d3.create('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Central banks of the world by rate cycle');
+  svg.append('g').selectAll('path').data(geo.features).join('path').attr('d', path).attr('stroke', '#0b0f22').attr('stroke-width', 0.5)
+    .attr('fill', d => { const a = wr.iso?.[d.id], b = a && wr.banks[a]; return b && !b.stale ? CYC[b.cycle] : '#1b2246'; })
+    .on('mousemove', (e, d) => { const a = wr.iso?.[d.id], b = a && wr.banks[a]; if (!b) return tip(e, `<b>${esc(d.properties.name)}</b><br><span class="muted">no BIS policy rate</span>`);
+      tip(e, `<b>${esc(b.name)} · ${esc(b.ccy)}</b><br>${b.rate}% (${esc(b.asOf)})<br>${esc(b.cycle)} · 3m ${sgn(b.change3m)}pp · 12m ${sgn(b.change12m)}pp${b.stale ? '<br><span class="muted">stale</span>' : ''}`); })
+    .on('mouseleave', () => tip(null));
+  el.innerHTML = ''; el.appendChild(svg.node());
+}
+function enrichMacro() {
+  const el = slot('macro', 'xm'); if (!el) return;
+  const wr = E['world-rates'], fp = E['fed-path'], fr = E['funding-read'], nc = E.nowcast, bc = E['bank-credit'];
+  const banks = wr?.ok ? Object.values(wr.banks).filter(b => !b.stale) : [];
+  const ST = s => (/stress|gone|selling|record|tight/.test(s) ? 'dn' : /watch|low|large|short/.test(s) ? 'gold' : 'up');
+  el.innerHTML = `${wr?.ok ? `<div class="sec"><h2>The world's rate cycle</h2><span class="lbl">${banks.length} central banks · ${wr.summary.hiking} hiking, ${wr.summary.cutting} cutting, ${wr.summary.onHold} on hold · BIS, monthly, to ${esc(wr.asOf)}</span></div>
+<div class="card"><div class="map" id="wrmap" style="min-height:260px"></div><div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--tx2)">${Object.entries(CYC).filter(([k]) => k !== 'unknown').map(([k, c]) => `<span><i style="display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px;background:${c}"></i>${k}</span>`).join('')}<span><i style="display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px;background:#1b2246"></i>no BIS rate</span></div>
+<div class="grid g2" style="margin-top:10px"><div><span class="lbl">Biggest moves over 12 months</span><table><tbody>${banks.filter(b => b.change12m != null).sort((a, b) => Math.abs(b.change12m) - Math.abs(a.change12m)).slice(0, 10).map(b => `<tr><td><b>${esc(b.name)}</b> <span class="muted">${esc(b.ccy)}</span></td><td>${spk(b.spark, 90, 22, b.change12m > 0 ? '#e8b85a' : '#5b9dff')}</td><td class="n mono">${b.rate}%</td><td class="n mono ${b.change12m > 0 ? 'gold' : ''}">${sgn(b.change12m)}pp</td><td class="muted">${esc(b.cycle)}</td></tr>`).join('')}</tbody></table></div>
+<div><span class="lbl">Hiking now</span><p>${wr.summary.hikers.map(a => esc(wr.banks[a].name)).join(', ') || 'none'}</p><span class="lbl">Cutting now</span><p>${wr.summary.cutters.map(a => esc(wr.banks[a].name)).join(', ') || 'none'}</p><p class="muted" style="font-size:12px">Hiking or cutting = a move of 0.2pp or more in the last 3 months. The desk's eight banks use their own daily series elsewhere on this page; this map is the wider cycle.</p></div></div></div>` : ''}
+<div class="grid g2" style="margin-top:14px">
+${fp?.ok && fp.zq?.meetings?.length ? `<div class="card"><div class="ch"><span class="lbl">Fed path · fed funds futures</span><span class="r muted">${esc(fp.zq.asOf ?? '')}</span></div><table><thead><tr><th>Meeting</th><th class="n">Rate after</th><th class="n">Move</th><th class="n">Odds</th><th class="n">A week ago</th></tr></thead><tbody>${fp.zq.meetings.slice(0, 8).map(m => { const w = fp.zq.weekAgo?.meetings?.find(x => x.meeting === m.meeting); return `<tr><td class="mono">${esc(m.meeting)}</td><td class="n mono">${m.rAfter?.toFixed?.(2) ?? '–'}%</td><td class="n mono ${m.moveBp < 0 ? 'up' : m.moveBp > 0 ? 'dn' : ''}">${sgn(m.moveBp, 0)}bp</td><td class="n mono">${m.probPct ?? '–'}% ${esc(m.direction ?? '')}</td><td class="n mono muted">${w ? `${sgn(w.moveBp, 0)}bp` : '–'}</td></tr>`; }).join('')}</tbody></table></div>` : ''}
+${fr?.ok ? `<div class="card"><div class="ch"><span class="lbl">Dollar plumbing</span><span class="r muted">${esc(fr.line ?? '')}</span></div><table><tbody>${(fr.items ?? []).map(i => `<tr title="${esc(i.text ?? '')}"><td>${esc(i.label)}<br><span class="muted" style="font-size:11px">${esc(i.group ?? '')}</span></td><td class="n mono">${i.stat?.value != null ? (+i.stat.value).toLocaleString('en-GB', { maximumFractionDigits: 1 }) : '–'} ${esc(i.unit ?? '')}</td><td class="n mono">${sgn(i.stat?.change, 1)}</td><td class="n mono muted">${i.stat?.pctile != null ? `${Math.round(i.stat.pctile)}th pct` : ''}</td><td><span class="chip ${ST(String(i.state ?? ''))}">${esc(i.state ?? '–')}</span></td></tr>`).join('')}</tbody></table></div>` : ''}
+${nc?.ok ? `<div class="card"><div class="ch"><span class="lbl">Nowcasts</span><span class="r muted">Cleveland Fed · Atlanta Fed GDPNow</span></div><div class="grid g4">${[['CPI m/m', nc.cleveland?.cpi], ['Core CPI', nc.cleveland?.core], ['PCE', nc.cleveland?.pce], ['Core PCE', nc.cleveland?.corepce]].map(([l, v]) => `<div><span class="lbl">${l}</span><div class="mono" style="font-size:20px">${v != null ? (+v).toFixed(2) + '%' : '–'}</div></div>`).join('')}</div><p class="muted" style="font-size:12px">For ${esc(nc.cleveland?.month ?? '')}. GDPNow ${nc.gdpnow?.value != null ? `${(+nc.gdpnow.value).toFixed(1)}% (${esc(String(nc.gdpnow.quarter ?? ''))})` : '–'}.</p></div>` : ''}
+${bc?.ok && bc.headline ? `<div class="card"><div class="ch"><span class="lbl">Global bank credit · BIS</span><span class="r"><span class="chip ${bc.headline.regime === 'contracting' ? 'dn' : bc.headline.regime === 'fast' ? 'gold' : 'up'}">${esc(bc.headline.regime)}</span> <span class="muted">${esc(bc.latest)}</span></span></div>
+<div class="grid g4">${[['All cross-border', bc.headline.totalG], ['In dollars', bc.headline.usdG], ['To non-banks', bc.headline.nbfiG], ['Offshore yen', bc.headline.yenOffshoreG]].map(([l, v]) => `<div><span class="lbl">${l}</span><div class="mono" style="font-size:18px">${sgn(v, 1)}%</div></div>`).join('')}</div>
+<table style="margin-top:8px"><tbody>${(bc.usdBorrowers ?? bc.borrowers ?? []).slice(0, 8).map(b => `<tr><td>${esc(b.name ?? b.code)}</td><td class="n mono">$${Math.round(b.stockBn ?? 0).toLocaleString('en-GB')}bn</td><td class="n mono ${b.g > 0 ? 'up' : 'dn'}">${sgn(b.g, 1)}%</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px">4-quarter growth, FX-adjusted. Dollar borrowers by country. <a href="bank-credit.html">Bank credit page</a>.</p></div>` : ''}
+</div>`;
+  const m = $('wrmap'); if (m) worldRatesMap(m);
+}
+function enrichAssets() {
+  const el = slot('assets', 'xa'); if (!el) return;
+  const wm = E['wider-market'], cx = E['chain-extra'], hs = E['hedging-summary'];
+  const T = { concentration: 'Concentration', smallVsBig: 'Small vs big', dispersion: 'Dispersion', bondVol: 'Bond vol (MOVE)', impliedCorr: 'Implied corr', vixTerm: 'VIX term', spx: 'S&P 500', nq: 'Nasdaq', r2k: 'Russell 2000' };
+  el.innerHTML = `${wm?.ok ? `<div class="sec"><h2>The wider market</h2><span class="lbl">${esc(wm.state?.name ?? '')}${wm.state?.line ? ` · ${esc(wm.state.line)}` : ''}</span></div><div class="grid g4">${Object.entries(wm.tiles ?? {}).map(([k, t]) => `<div class="card"><span class="lbl">${esc(T[k] ?? t.label ?? k)}</span><div class="mono" style="font-size:18px">${t.last != null ? (+t.last).toLocaleString('en-GB', { maximumFractionDigits: 2 }) : '–'}</div><span class="mono ${t.change > 0 ? 'up' : t.change < 0 ? 'dn' : ''}">${sgn(t.change)}</span> <span class="muted mono">z ${sgn(t.z, 1)}</span></div>`).join('')}</div>` : ''}
+${cx?.ok ? `<div class="sec"><h2>EM and credit</h2><span class="lbl">EM dollar index, EM corporate spreads, CCC credit, bond vol</span></div><div class="grid g4">${[['emdollar', 'EM dollar index'], ['emoas', 'EM corporate spread (%)'], ['ccc', 'CCC spread'], ['move', 'MOVE']].map(([k, l]) => { const s = cx.series?.[k] ?? []; const v = s.map(x => x.value), a = v.at(-1), b = v.at(-21); return s.length ? `<div class="card"><span class="lbl">${l}</span><div class="mono" style="font-size:18px">${a != null ? (+a).toFixed(2) : '–'}</div>${spk(v.slice(-60), 160, 32)}<span class="muted mono" style="font-size:12px">${b ? `${sgn(a - b)} over 20 obs` : ''}</span></div>` : ''; }).join('')}</div>` : ''}
+${hs?.ok && hs.markets?.length ? `<div class="sec"><h2>Dealer hedging</h2><span class="lbl">options dealers' gamma: "calms" = their hedging dampens moves, "speeds" = it amplifies them</span></div><div class="card scroll"><table><thead><tr><th>Market</th><th>State</th><th class="n">Switch point</th><th class="n">Distance</th><th class="n">Put wall</th><th class="n">Call wall</th><th class="n">Flow per +1%</th></tr></thead><tbody>${hs.markets.filter(m => !m.error).map(m => `<tr><td><b>${esc(m.name ?? m.pair)}</b></td><td><span class="chip ${m.state === 'speeds' ? 'dn' : 'up'}">${esc(m.state ?? '–')}</span></td><td class="n mono">${m.switchPoint ?? '–'}</td><td class="n mono">${m.switchDistPct != null ? sgn(m.switchDistPct, 2) + '%' : '–'}</td><td class="n mono">${m.walls?.put ?? '–'}</td><td class="n mono">${m.walls?.call ?? '–'}</td><td class="n mono">${m.flowUp1pct != null ? `${(+m.flowUp1pct).toLocaleString('en-GB', { maximumFractionDigits: 0 })} ${esc(m.unit ?? '')}` : '–'}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
+}
+function enrichPos() {
+  const el = slot('pos', 'xp'); if (!el) return;
+  const c = E['cot-extremes'], rows = Array.isArray(c) ? c : (c?.rows ?? c?.data ?? c?.instruments ?? []);
+  if (!rows.length) { el.innerHTML = ''; return; }
+  const G = ['fx', 'rates', 'equities', 'metals', 'energy', 'grains', 'softs', 'livestock', 'crypto'], heat = p => (p == null ? 'transparent' : p >= 50 ? `rgba(47,211,154,${((p - 50) / 50 * 0.6).toFixed(2)})` : `rgba(255,93,120,${((50 - p) / 50 * 0.6).toFixed(2)})`);
+  el.innerHTML = `<div class="sec"><h2>Speculators across 35 futures</h2><span class="lbl">CFTC COT: where speculators' net position sits in its own history (0-100th percentile), weekly${rows[0]?.reportDate ? ` · ${esc(rows[0].reportDate)}` : ''}</span></div><div class="card scroll"><table><thead><tr><th>Market</th><th>Group</th><th class="n">Spec percentile</th><th class="n">z</th><th class="n">Share of OI</th><th class="n">4w change</th></tr></thead><tbody>${[...rows].sort((a, b) => G.indexOf(a.group) - G.indexOf(b.group) || Math.abs((b.specPct ?? 50) - 50) - Math.abs((a.specPct ?? 50) - 50)).map(r => `<tr><td><b>${esc(r.label ?? r.sym)}</b></td><td class="muted">${esc(r.group ?? '')}</td><td class="n mono" style="background:${heat(r.specPct)}">${r.specPct != null ? Math.round(r.specPct) : '–'}</td><td class="n mono">${sgn(r.specZ, 1)}</td><td class="n mono">${r.specSharePct != null ? Math.round(r.specSharePct) + '%' : r.specShare != null ? (+r.specShare).toFixed(0) + '%' : '–'}</td><td class="n mono">${sgn(r.specShareChg4w, 1)}pp</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px">Green = speculators longer than usual, red = shorter. Extremes are where crowding reverses; MXN, the dollar index, Treasuries, equity futures and commodities sit beside the G10 currencies.</p></div>`;
+}
 function header() {
   const r = D.run;
   if (!r?.ok || !r.head?.ok) { $('bookchip').className = 'chip dn'; $('bookchip').textContent = 'no book today'; }
@@ -544,6 +623,19 @@ ${v.lastWeek ? `<details><summary>Last week</summary><p class="muted">${esc(v.la
 }
 
 // Phase 3's day forecast: the shape of today for the main markets, and in the evening whether each call held
+// §9ae: how the currency view is best expressed (/api/pair-select): the picks, and the 8×8 grid of bias gaps.
+function bestPairs() {
+  const p = D.ps; if (!p?.ok || !p.picks?.length) return '';
+  const C = ['EUR', 'GBP', 'AUD', 'NZD', 'USD', 'CAD', 'CHF', 'JPY'], mx = Math.max(0.01, ...C.flatMap(a => C.map(b => Math.abs(p.matrix[a]?.[b] ?? 0))));
+  const bg = v => (v == null ? 'transparent' : v > 0 ? `rgba(47,211,154,${(0.1 + 0.6 * v / mx).toFixed(2)})` : v < 0 ? `rgba(255,93,120,${(0.1 + 0.6 * -v / mx).toFixed(2)})` : 'transparent');
+  const sw = p.strongestWeakest;
+  return `<div class="card" style="margin-top:14px"><div class="hhead"><span class="lbl">Best expression · how today's currency view is best traded</span></div>
+${sw ? `<p style="margin:4px 0 10px">Cleanest expression of the view: <b class="mono">${esc(sw.direction === 'Long' ? sw.pair : sw.pair)}</b> ${esc(sw.direction.toLowerCase())} (${esc(p.ranked[0])} strongest, ${esc(p.ranked.at(-1))} weakest)${sw.usdFree ? ' · no dollar leg' : ''}.</p>` : ''}
+<div class="grid g2"><div><table class="tbl"><thead><tr><th>Pair</th><th>Side</th><th class="n">Gap</th><th class="n">Spread / move</th><th class="n">Carry</th><th>Book</th></tr></thead><tbody>${p.picks.map(r => `<tr title="${esc(r.why)}"><td class="mono"><b>${esc(r.pair)}</b>${r.usdFree ? ' <span class="chip gold" style="font-size:10px">cross</span>' : ''}</td><td class="${r.direction === 'Long' ? 'up' : 'dn'}">${esc(r.direction)}</td><td class="n mono">${r.gap > 0 ? '+' : ''}${r.gap}</td><td class="n mono">${r.costShare != null ? Math.round(r.costShare * 100) + '%' : '–'}</td><td class="n mono ${r.carry > 0 ? 'up' : r.carry < 0 ? 'dn' : ''}">${r.carry != null ? (r.carry > 0 ? '+' : '') + r.carry + '%' : '–'}</td><td>${r.card ? `<span class="chip ${r.cardAgrees ? 'up' : r.cardAgrees === false ? 'dn' : ''}">${esc(String(r.card.rating).replace('_', ' ').toLowerCase())}</span>` : '<span class="muted">not traded</span>'}</td></tr>`).join('')}</tbody></table>
+<p class="muted" style="font-size:12px">At most two picks share a currency, so three yen crosses never count as three ideas. Hover a row for the reasoning. ${esc(p.label)}.</p></div>
+<div><table class="tbl" style="font-size:12px"><thead><tr><th></th>${C.map(c => `<th class="n">${c}</th>`).join('')}</tr></thead><tbody>${C.map(a => `<tr><td class="mono"><b>${a}</b></td>${C.map(b => `<td class="n mono" style="background:${bg(p.matrix[a]?.[b])}">${a === b ? '' : p.matrix[a]?.[b] ?? '–'}</td>`).join('')}</tr>`).join('')}</tbody></table>
+<p class="muted" style="font-size:12px">Row minus column: the conviction-weighted bias gap. Green = buy the row currency against the column.</p></div></div></div>`;
+}
 function dayShape() {
   const d = D.dfc; if (!d?.ok) return '';
   const f = d.forecast, res = d.result?.score?.rows ? Object.fromEntries(d.result.score.rows.map(r => [r.inst, r])) : {};
@@ -586,7 +678,7 @@ function overview() {
   $('overview').innerHTML = `<div class="card hero glow" style="margin-bottom:14px"><div class="hhead"><span class="lbl">The desk's world · ${esc(D.run.date)}</span><h2>${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest</h2></div><div class="map" id="heromap" style="min-height:240px"></div><div style="position:absolute;right:16px;top:14px;z-index:3;display:flex;gap:6px" class="filters"><button aria-pressed="true" data-view="globe">Globe</button><button aria-pressed="false" data-view="map">Map</button></div><div class="legend"><span><i style="background:rgba(47,211,154,.6)"></i>bullish</span><span><i style="background:rgba(255,93,120,.6)"></i>bearish</span><span><i style="background:var(--gold)"></i>strongest → weakest</span><span>tap a bank or a country</span></div></div>
 ${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span class="lbl">Today's book</span><div class="thesis" style="font-size:16px">${esc(D.run.head.book.headline)}</div></div>` : ''}
 <div class="grid g2">${regimeCard()}<div class="grid" style="align-content:start">${strengthStrip()}${exposureChart()}${recordCard()}</div></div>
-${weekSection()}${dayShape()}
+${weekSection()}${bestPairs()}<div id="xo"></div>${dayShape()}
 <div class="sec"><h2>Trade watch</h2><span class="lbl">the book against live prices, every 2 minutes</span></div>${watchBoard()}
 <div class="sec"><h2>Playbooks</h2><span class="lbl">the six largest cards · tap for the full analysis</span></div><div class="grid g3">${live.map(([n, c]) => playbookCard(n, c)).join('')}</div>
 <div class="sec"><h2>News, releases and risks</h2></div><div class="grid g2">${wireCard(D.news)}<div class="grid" style="align-content:start">${releasesCard()}<div class="card"><div class="ch"><span class="lbl">Risk desk warnings</span></div><ul style="margin:0;padding-left:18px">${(D.run.head.book.risks ?? []).map(r => `<li style="margin:6px 0">${esc(r)}</li>`).join('') || '<li class="muted">None.</li>'}</ul></div></div></div>`;
