@@ -81,7 +81,7 @@ def closes(ib, c):
     return None, None
 
 
-def strip(ib, sym, exch, ccy, n, now, discover=False, tc=''):
+def strip(ib, sym, exch, ccy, n, now, discover=False, tc='', kind='1m'):
     from ib_insync import Future
     det = ib.reqContractDetails(Future(symbol=sym, exchange=exch, currency=ccy, tradingClass=tc))
     if not det:
@@ -99,7 +99,10 @@ def strip(ib, sym, exch, ccy, n, now, discover=False, tc=''):
             continue
         cs.append((exp, c))
     cs.sort(key=lambda x: x[0])
-    cs = cs[:n]
+    if kind != '1m':
+        # 3-month and bill contracts also list monthly serials; the quarterly ones (expiring Mar/Jun/Sep/Dec) span a year in 5 rungs
+        cs = [x for x in cs if x[0][4:6] in ('03', '06', '09', '12')] or cs
+    cs = cs[:n or (13 if kind == '1m' else 6)]
     if discover:
         return [{'local': c.localSymbol, 'expiry': e, 'month': getattr(c, 'lastTradeDateOrContractMonth', '')[:6]} for e, c in cs], None
     rungs = []
@@ -150,7 +153,7 @@ def main():
     ap.add_argument('--push', action='store_true')
     ap.add_argument('--discover', action='store_true')
     ap.add_argument('--search', action='store_true', help="search IBKR's symbol list for each currency's rate futures (no prices, no push)")
-    ap.add_argument('--rungs', type=int, default=8)
+    ap.add_argument('--rungs', type=int, default=0, help='contracts per bank (default: 13 monthly for 1m kinds, 6 quarterly otherwise, about 15 months)')
     ap.add_argument('--only', default='', help='comma-separated currencies, e.g. GBP,CAD')
     a = ap.parse_args()
     from ib_insync import IB
@@ -173,7 +176,7 @@ def main():
         for sym, exch, cur, label, kind, *tc in cands:
             print(f'{ccy}: {label} ({sym} on {exch})')
             try:
-                rungs, err = strip(ib, sym, exch, cur, a.rungs, now, discover=a.discover, tc=(tc[0] if tc else ''))
+                rungs, err = strip(ib, sym, exch, cur, a.rungs, now, discover=a.discover, tc=(tc[0] if tc else ''), kind=kind)
             except Exception as e:
                 rungs, err = None, f'{type(e).__name__}: {e}'
             if err:
