@@ -1,0 +1,1100 @@
+{
+ "meta": {
+  "count": 3,
+  "db_response_time_ms": 40,
+  "page": 1,
+  "per_page": 3
+ },
+ "results": [
+  {
+   "id": "https://openalex.org/W2113107692",
+   "doi": "https://doi.org/10.1111/j.1540-6261.2012.01728.x",
+   "title": "Carry Trades and Global Foreign Exchange Volatility",
+   "display_name": "Carry Trades and Global Foreign Exchange Volatility",
+   "publication_year": 2012,
+   "publication_date": "2012-03-27",
+   "ids": {
+    "openalex": "https://openalex.org/W2113107692",
+    "doi": "https://doi.org/10.1111/j.1540-6261.2012.01728.x",
+    "mag": "2113107692"
+   },
+   "language": "en",
+   "primary_location": {
+    "id": "doi:10.1111/j.1540-6261.2012.01728.x",
+    "doi": "https://doi.org/10.1111/j.1540-6261.2012.01728.x",
+    "is_oa": false,
+    "landing_page_url": "https://doi.org/10.1111/j.1540-6261.2012.01728.x",
+    "pdf_url": null,
+    "source": {
+     "id": "https://openalex.org/S5353659",
+     "display_name": "The Journal of Finance",
+     "issn_l": "0022-1082",
+     "issn": [
+      "0022-1082",
+      "1540-6261"
+     ],
+     "is_oa": false,
+     "is_in_doaj": false,
+     "is_core": true,
+     "listed_in": [
+      "abdc-a-star",
+      "anvur-class-a",
+      "anvur-scientific",
+      "cwts-core",
+      "erih-plus",
+      "fnege-1-star",
+      "ft50",
+      "jufo-3",
+      "norway-2",
+      "poland-200",
+      "russia-white-list-1",
+      "utd24",
+      "vabb-shw"
+     ],
+     "host_organization": "https://openalex.org/P4310320595",
+     "host_organization_name": "Wiley",
+     "host_organization_lineage": [
+      "https://openalex.org/P4310320595"
+     ],
+     "host_organization_lineage_names": [
+      "Wiley"
+     ],
+     "type": "journal"
+    },
+    "license": null,
+    "license_id": null,
+    "version": "publishedVersion",
+    "is_accepted": true,
+    "is_published": true,
+    "raw_source_name": "The Journal of Finance",
+    "raw_type": "journal-article"
+   },
+   "volume": null,
+   "type": "article",
+   "indexed_in": [
+    "crossref"
+   ],
+   "open_access": {
+    "is_oa": false,
+    "oa_status": "closed",
+    "oa_url": null,
+    "any_repository_has_fulltext": false
+   },
+   "authorships": [
+    {
+     "author_position": "first",
+     "author": {
+      "id": "https://openalex.org/A5015861872",
+      "display_name": "Lukas Menkhoff",
+      "orcid": "https://orcid.org/0000-0001-6735-9534",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-6735-9534"
+      ]
+     },
+     "countries": [
+      "DE"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "LUKAS MENKHOFF",
+     "raw_orcid": null
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5055933334",
+      "display_name": "Lucio Sarno",
+      "orcid": "https://orcid.org/0000-0003-1279-9748",
+      "observed_orcids": [
+       "https://orcid.org/0000-0003-1279-9748"
+      ]
+     },
+     "countries": [
+      "GB"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "LUCIO SARNO",
+     "raw_orcid": null
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5067091072",
+      "display_name": "Maik Schmeling",
+      "orcid": "https://orcid.org/0000-0002-4488-6750",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-4488-6750",
+       "https://orcid.org/0000-0002-4738-0034"
+      ]
+     },
+     "countries": [
+      "DE",
+      "GB"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "MAIK SCHMELING",
+     "raw_orcid": null
+    },
+    {
+     "author_position": "last",
+     "author": {
+      "id": "https://openalex.org/A5102736184",
+      "display_name": "Andreas Schrimpf",
+      "orcid": "https://orcid.org/0000-0003-2471-8386",
+      "observed_orcids": [
+       "https://orcid.org/0000-0003-2471-8386"
+      ]
+     },
+     "countries": [
+      "CH",
+      "GB"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "ANDREAS SCHRIMPF",
+     "raw_orcid": null
+    }
+   ],
+   "countries_distinct_count": 3,
+   "institutions_distinct_count": 7,
+   "corresponding_author_ids": [],
+   "corresponding_institution_ids": [],
+   "fwci": 122.6339,
+   "has_fulltext": false,
+   "cited_by_count": 932,
+   "biblio": {
+    "volume": "67",
+    "issue": "2",
+    "first_page": "681",
+    "last_page": "718"
+   },
+   "is_retracted": false,
+   "is_paratext": false,
+   "is_xpac": false,
+   "primary_topic": {
+    "id": "https://openalex.org/T10047",
+    "display_name": "Financial Markets and Investment Strategies",
+    "score": 0.6029999852180481,
+    "subfield": {
+     "id": "https://openalex.org/subfields/2003",
+     "display_name": "Finance"
+    },
+    "field": {
+     "id": "https://openalex.org/fields/20",
+     "display_name": "Economics, Econometrics and Finance"
+    },
+    "domain": {
+     "id": "https://openalex.org/domains/2",
+     "display_name": "Social Sciences"
+    }
+   },
+   "locations_count": 7,
+   "best_oa_location": null,
+   "study_designs": [],
+   "has_content": {
+    "pdf": false,
+    "grobid_xml": false
+   },
+   "content_urls": null,
+   "referenced_works_count": 94,
+   "abstract_inverted_index": {
+    "ABSTRACT": [
+     0
+    ],
+    "We": [
+     1,
+     40
+    ],
+    "investigate": [
+     2
+    ],
+    "the": [
+     3,
+     13
+    ],
+    "relation": [
+     4
+    ],
+    "between": [
+     5
+    ],
+    "global": [
+     6,
+     53
+    ],
+    "foreign": [
+     7
+    ],
+    "exchange": [
+     8
+    ],
+    "(FX)": [
+     9
+    ],
+    "volatility": [
+     10,
+     83,
+     90
+    ],
+    "risk": [
+     11,
+     84,
+     87,
+     91
+    ],
+    "and": [
+     12,
+     30,
+     56,
+     88
+    ],
+    "cross": [
+     14
+    ],
+    "section": [
+     15
+    ],
+    "of": [
+     16,
+     63,
+     99
+    ],
+    "excess": [
+     17
+    ],
+    "returns": [
+     18,
+     60,
+     98
+    ],
+    "arising": [
+     19
+    ],
+    "from": [
+     20
+    ],
+    "popular": [
+     21
+    ],
+    "strategies": [
+     22
+    ],
+    "that": [
+     23,
+     42,
+     82
+    ],
+    "borrow": [
+     24
+    ],
+    "in": [
+     25,
+     32,
+     52,
+     61
+    ],
+    "low": [
+     26,
+     59,
+     68
+    ],
+    "interest": [
+     27,
+     34,
+     44,
+     69
+    ],
+    "rate": [
+     28,
+     35,
+     45,
+     70
+    ],
+    "currencies": [
+     29,
+     46,
+     71
+    ],
+    "invest": [
+     31
+    ],
+    "high": [
+     33,
+     43,
+     65
+    ],
+    "currencies,": [
+     36
+    ],
+    "so‐called": [
+     37
+    ],
+    "“carry": [
+     38
+    ],
+    "trades.”": [
+     39
+    ],
+    "find": [
+     41
+    ],
+    "are": [
+     47
+    ],
+    "negatively": [
+     48
+    ],
+    "related": [
+     49
+    ],
+    "to": [
+     50
+    ],
+    "innovations": [
+     51
+    ],
+    "FX": [
+     54
+    ],
+    "volatility,": [
+     55,
+     66
+    ],
+    "thus": [
+     57
+    ],
+    "deliver": [
+     58
+    ],
+    "times": [
+     62
+    ],
+    "unexpected": [
+     64
+    ],
+    "when": [
+     67
+    ],
+    "provide": [
+     72
+    ],
+    "a": [
+     73
+    ],
+    "hedge": [
+     74
+    ],
+    "by": [
+     75
+    ],
+    "yielding": [
+     76
+    ],
+    "positive": [
+     77
+    ],
+    "returns.": [
+     78
+    ],
+    "Furthermore,": [
+     79
+    ],
+    "we": [
+     80
+    ],
+    "show": [
+     81
+    ],
+    "dominates": [
+     85
+    ],
+    "liquidity": [
+     86
+    ],
+    "our": [
+     89
+    ],
+    "proxy": [
+     92
+    ],
+    "also": [
+     93
+    ],
+    "performs": [
+     94
+    ],
+    "well": [
+     95
+    ],
+    "for": [
+     96
+    ],
+    "pricing": [
+     97
+    ],
+    "other": [
+     100
+    ],
+    "portfolios.": [
+     101
+    ]
+   },
+   "updated_date": "2026-11-03T10:50:19.383937",
+   "created_date": "2016-06-24T00:00:00"
+  },
+  {
+   "id": "https://openalex.org/W7134904693",
+   "doi": "https://doi.org/10.2139/ssrn.6391601",
+   "title": "Carry Trade and Currency Crash Risk",
+   "display_name": "Carry Trade and Currency Crash Risk",
+   "publication_year": 2026,
+   "publication_date": "2026-01-01",
+   "ids": {
+    "openalex": "https://openalex.org/W7134904693",
+    "doi": "https://doi.org/10.2139/ssrn.6391601"
+   },
+   "language": "en",
+   "primary_location": {
+    "id": "doi:10.2139/ssrn.6391601",
+    "doi": "https://doi.org/10.2139/ssrn.6391601",
+    "is_oa": true,
+    "landing_page_url": "https://doi.org/10.2139/ssrn.6391601",
+    "pdf_url": null,
+    "source": {
+     "id": "https://openalex.org/S4210172589",
+     "display_name": "SSRN Electronic Journal",
+     "issn_l": "1556-5068",
+     "issn": [
+      "1556-5068"
+     ],
+     "is_oa": true,
+     "is_in_doaj": false,
+     "is_core": false,
+     "listed_in": [],
+     "host_organization": "https://openalex.org/I1318003438",
+     "host_organization_name": "RELX Group (Netherlands)",
+     "host_organization_lineage": [
+      "https://openalex.org/I1318003438"
+     ],
+     "host_organization_lineage_names": [],
+     "type": "repository"
+    },
+    "license": null,
+    "license_id": null,
+    "version": "acceptedVersion",
+    "is_accepted": true,
+    "is_published": false,
+    "raw_source_name": null,
+    "raw_type": "posted-content"
+   },
+   "volume": null,
+   "type": "preprint",
+   "indexed_in": [
+    "crossref"
+   ],
+   "open_access": {
+    "is_oa": true,
+    "oa_status": "green",
+    "oa_url": "https://doi.org/10.2139/ssrn.6391601",
+    "any_repository_has_fulltext": true
+   },
+   "authorships": [
+    {
+     "author_position": "first",
+     "author": {
+      "id": "https://openalex.org/A5071749915",
+      "display_name": "Sweder J. G. van Wijnbergen",
+      "orcid": "https://orcid.org/0000-0003-2450-074X",
+      "observed_orcids": [
+       "https://orcid.org/0000-0003-2450-074X"
+      ]
+     },
+     "countries": [
+      "GB",
+      "NL",
+      "US"
+     ],
+     "is_corresponding": true,
+     "raw_author_name": "Sweder van Wijnbergen",
+     "raw_orcid": "https://orcid.org/0000-0003-2450-074X"
+    },
+    {
+     "author_position": "last",
+     "author": {
+      "id": "https://openalex.org/A5027048725",
+      "display_name": "Merve Mavuş Kütük",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "countries": [],
+     "is_corresponding": false,
+     "raw_author_name": "merve Kütük",
+     "raw_orcid": null
+    }
+   ],
+   "countries_distinct_count": 3,
+   "institutions_distinct_count": 4,
+   "corresponding_author_ids": [
+    "https://openalex.org/A5071749915"
+   ],
+   "corresponding_institution_ids": [
+    "https://openalex.org/I1321305853",
+    "https://openalex.org/I198488067",
+    "https://openalex.org/I4210140326",
+    "https://openalex.org/I887064364"
+   ],
+   "fwci": null,
+   "has_fulltext": false,
+   "cited_by_count": 0,
+   "biblio": {
+    "volume": null,
+    "issue": null,
+    "first_page": null,
+    "last_page": null
+   },
+   "is_retracted": false,
+   "is_paratext": false,
+   "is_xpac": false,
+   "primary_topic": {
+    "id": "https://openalex.org/T10047",
+    "display_name": "Financial Markets and Investment Strategies",
+    "score": 0.8490999937057495,
+    "subfield": {
+     "id": "https://openalex.org/subfields/2003",
+     "display_name": "Finance"
+    },
+    "field": {
+     "id": "https://openalex.org/fields/20",
+     "display_name": "Economics, Econometrics and Finance"
+    },
+    "domain": {
+     "id": "https://openalex.org/domains/2",
+     "display_name": "Social Sciences"
+    }
+   },
+   "locations_count": 1,
+   "best_oa_location": {
+    "id": "doi:10.2139/ssrn.6391601",
+    "doi": "https://doi.org/10.2139/ssrn.6391601",
+    "is_oa": true,
+    "landing_page_url": "https://doi.org/10.2139/ssrn.6391601",
+    "pdf_url": null,
+    "source": {
+     "id": "https://openalex.org/S4210172589",
+     "display_name": "SSRN Electronic Journal",
+     "issn_l": "1556-5068",
+     "issn": [
+      "1556-5068"
+     ],
+     "is_oa": true,
+     "is_in_doaj": false,
+     "is_core": false,
+     "listed_in": [],
+     "host_organization": "https://openalex.org/I1318003438",
+     "host_organization_name": "RELX Group (Netherlands)",
+     "host_organization_lineage": [
+      "https://openalex.org/I1318003438"
+     ],
+     "host_organization_lineage_names": [],
+     "type": "repository"
+    },
+    "license": null,
+    "license_id": null,
+    "version": "acceptedVersion",
+    "is_accepted": true,
+    "is_published": false,
+    "raw_source_name": null,
+    "raw_type": "posted-content"
+   },
+   "study_designs": [],
+   "has_content": {
+    "grobid_xml": false,
+    "pdf": false
+   },
+   "content_urls": null,
+   "referenced_works_count": 27,
+   "abstract_inverted_index": null,
+   "updated_date": "2026-10-28T10:33:24.094632",
+   "created_date": "2026-03-12T00:00:00"
+  },
+  {
+   "id": "https://openalex.org/W2160629221",
+   "doi": "https://doi.org/10.3386/w13577",
+   "title": "Foreign Capital and Economic Growth in the First Era of Globalization",
+   "display_name": "Foreign Capital and Economic Growth in the First Era of Globalization",
+   "publication_year": 2007,
+   "publication_date": "2007-11-01",
+   "ids": {
+    "openalex": "https://openalex.org/W2160629221",
+    "doi": "https://doi.org/10.3386/w13577",
+    "mag": "2160629221"
+   },
+   "language": "en",
+   "primary_location": {
+    "id": "doi:10.3386/w13577",
+    "doi": "https://doi.org/10.3386/w13577",
+    "is_oa": true,
+    "landing_page_url": "https://doi.org/10.3386/w13577",
+    "pdf_url": "https://doi.org/10.3386/w13577",
+    "source": {
+     "id": "https://openalex.org/S2809516038",
+     "display_name": "National Bureau of Economic Research",
+     "issn_l": null,
+     "issn": null,
+     "is_oa": false,
+     "is_in_doaj": false,
+     "is_core": false,
+     "listed_in": [],
+     "host_organization": null,
+     "host_organization_name": null,
+     "host_organization_lineage": [
+      "https://openalex.org/P4322614461"
+     ],
+     "host_organization_lineage_names": [
+      "National Bureau of Economic Research"
+     ],
+     "type": "repository"
+    },
+    "license": null,
+    "license_id": null,
+    "version": "publishedVersion",
+    "is_accepted": true,
+    "is_published": true,
+    "raw_source_name": "National Bureau of Economic Research",
+    "raw_type": "report"
+   },
+   "volume": null,
+   "type": "report",
+   "indexed_in": [
+    "crossref"
+   ],
+   "open_access": {
+    "is_oa": true,
+    "oa_status": "green",
+    "oa_url": "https://doi.org/10.3386/w13577",
+    "any_repository_has_fulltext": true
+   },
+   "authorships": [
+    {
+     "author_position": "first",
+     "author": {
+      "id": "https://openalex.org/A5091502988",
+      "display_name": "Michael David Bordo",
+      "orcid": "https://orcid.org/0000-0003-1426-8203",
+      "observed_orcids": [
+       "https://orcid.org/0000-0003-1426-8203"
+      ]
+     },
+     "countries": [
+      "FR",
+      "GB",
+      "IE",
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Michael Bordo",
+     "raw_orcid": null
+    },
+    {
+     "author_position": "last",
+     "author": {
+      "id": "https://openalex.org/A5086276784",
+      "display_name": "Christopher M. Meissner",
+      "orcid": "https://orcid.org/0000-0001-6286-0733",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-6286-0733"
+      ]
+     },
+     "countries": [
+      "FR",
+      "GB",
+      "IE",
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Christopher Meissner",
+     "raw_orcid": null
+    }
+   ],
+   "countries_distinct_count": 4,
+   "institutions_distinct_count": 8,
+   "corresponding_author_ids": [],
+   "corresponding_institution_ids": [],
+   "fwci": null,
+   "has_fulltext": true,
+   "cited_by_count": 50,
+   "biblio": {
+    "volume": null,
+    "issue": null,
+    "first_page": null,
+    "last_page": null
+   },
+   "is_retracted": false,
+   "is_paratext": false,
+   "is_xpac": false,
+   "primary_topic": {
+    "id": "https://openalex.org/T10503",
+    "display_name": "Global Financial Crisis and Policies",
+    "score": 0.7728999853134155,
+    "subfield": {
+     "id": "https://openalex.org/subfields/2003",
+     "display_name": "Finance"
+    },
+    "field": {
+     "id": "https://openalex.org/fields/20",
+     "display_name": "Economics, Econometrics and Finance"
+    },
+    "domain": {
+     "id": "https://openalex.org/domains/2",
+     "display_name": "Social Sciences"
+    }
+   },
+   "locations_count": 5,
+   "best_oa_location": {
+    "id": "doi:10.3386/w13577",
+    "doi": "https://doi.org/10.3386/w13577",
+    "is_oa": true,
+    "landing_page_url": "https://doi.org/10.3386/w13577",
+    "pdf_url": "https://doi.org/10.3386/w13577",
+    "source": {
+     "id": "https://openalex.org/S2809516038",
+     "display_name": "National Bureau of Economic Research",
+     "issn_l": null,
+     "issn": null,
+     "is_oa": false,
+     "is_in_doaj": false,
+     "is_core": false,
+     "listed_in": [],
+     "host_organization": null,
+     "host_organization_name": null,
+     "host_organization_lineage": [
+      "https://openalex.org/P4322614461"
+     ],
+     "host_organization_lineage_names": [
+      "National Bureau of Economic Research"
+     ],
+     "type": "repository"
+    },
+    "license": null,
+    "license_id": null,
+    "version": "publishedVersion",
+    "is_accepted": true,
+    "is_published": true,
+    "raw_source_name": "National Bureau of Economic Research",
+    "raw_type": "report"
+   },
+   "study_designs": [],
+   "has_content": {
+    "pdf": true,
+    "grobid_xml": true
+   },
+   "content_urls": {
+    "pdf": "https://content.openalex.org/works/W2160629221.pdf",
+    "grobid_xml": "https://content.openalex.org/works/W2160629221.grobid-xml"
+   },
+   "referenced_works_count": 98,
+   "abstract_inverted_index": {
+    "1880": [
+     11
+    ],
+    "We": [
+     0
+    ],
+    "explore": [
+     1
+    ],
+    "the": [
+     2,
+     23,
+     87
+    ],
+    "association": [
+     3
+    ],
+    "between": [
+     4,
+     10
+    ],
+    "income": [
+     5,
+     30,
+     40,
+     74
+    ],
+    "and": [
+     6,
+     12
+    ],
+    "international": [
+     7
+    ],
+    "capital": [
+     8,
+     26,
+     93
+    ],
+    "flows": [
+     9,
+     27
+    ],
+    "1913.Capital": [
+     13
+    ],
+    "inflows": [
+     14
+    ],
+    "are": [
+     15
+    ],
+    "associated": [
+     16
+    ],
+    "with": [
+     17
+    ],
+    "higher": [
+     18
+    ],
+    "incomes": [
+     19
+    ],
+    "per": [
+     20,
+     41
+    ],
+    "capita": [
+     21,
+     42
+    ],
+    "in": [
+     22,
+     84
+    ],
+    "long-run,": [
+     24
+    ],
+    "but": [
+     25
+    ],
+    "also": [
+     28,
+     35
+    ],
+    "brought": [
+     29
+    ],
+    "volatility": [
+     31
+    ],
+    "via": [
+     32
+    ],
+    "financial": [
+     33
+    ],
+    "crises.Crises": [
+     34
+    ],
+    "decreased": [
+     36
+    ],
+    "growth": [
+     37
+    ],
+    "rates": [
+     38
+    ],
+    "of": [
+     39,
+     90,
+     108
+    ],
+    "significantly": [
+     43
+    ],
+    "below": [
+     44
+    ],
+    "trend": [
+     45
+    ],
+    "for": [
+     46,
+     62,
+     78
+    ],
+    "at": [
+     47
+    ],
+    "least": [
+     48
+    ],
+    "two": [
+     49
+    ],
+    "years": [
+     50
+    ],
+    "leading": [
+     51
+    ],
+    "to": [
+     52,
+     86,
+     101
+    ],
+    "important": [
+     53
+    ],
+    "short": [
+     54
+    ],
+    "term": [
+     55
+    ],
+    "output": [
+     56
+    ],
+    "losses.Countries": [
+     57
+    ],
+    "just": [
+     58
+    ],
+    "barely": [
+     59
+    ],
+    "made": [
+     60
+    ],
+    "up": [
+     61
+    ],
+    "these": [
+     63
+    ],
+    "losses": [
+     64
+    ],
+    "over": [
+     65,
+     105
+    ],
+    "time,": [
+     66
+    ],
+    "so": [
+     67
+    ],
+    "that": [
+     68,
+     80,
+     96,
+     113
+    ],
+    "there": [
+     69
+    ],
+    "is": [
+     70,
+     83
+    ],
+    "no": [
+     71
+    ],
+    "conditional": [
+     72
+    ],
+    "long-run": [
+     73
+    ],
+    "loss": [
+     75
+    ],
+    "or": [
+     76
+    ],
+    "gain": [
+     77
+    ],
+    "countries": [
+     79,
+     95
+    ],
+    "experienced": [
+     81,
+     97
+    ],
+    "crises.This": [
+     82
+    ],
+    "contrast": [
+     85
+    ],
+    "recent": [
+     88
+    ],
+    "wave": [
+     89
+    ],
+    "globalization": [
+     91
+    ],
+    "when": [
+     92
+    ],
+    "importing": [
+     94
+    ],
+    "a": [
+     98
+    ],
+    "crisis": [
+     99
+    ],
+    "seemed": [
+     100
+    ],
+    "grow": [
+     102
+    ],
+    "relatively": [
+     103
+    ],
+    "faster": [
+     104
+    ],
+    "fixed": [
+     106
+    ],
+    "periods": [
+     107
+    ],
+    "time.We": [
+     109
+    ],
+    "discuss": [
+     110
+    ],
+    "some": [
+     111
+    ],
+    "possibilities": [
+     112
+    ],
+    "can": [
+     114
+    ],
+    "explain": [
+     115
+    ],
+    "this": [
+     116
+    ],
+    "finding.": [
+     117
+    ]
+   },
+   "updated_date": "2026-10-30T12:39:25.321706",
+   "created_date": "2016-06-24T00:00:00"
+  }
+ ]
+}

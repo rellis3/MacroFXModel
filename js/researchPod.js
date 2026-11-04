@@ -78,9 +78,11 @@ const RESULT_WORDS = /\b(has an edge|is profitable|proven|guarantee[sd]?|always 
 /**
  * A researcher's reply: { headline, proposals[], questionsForOwner[] }. Each proposal is a new system, not a test of
  * an old one. Returns { ok, value, notes } with notes for result wording; a proposal with no mechanism, no source, no
- * input list or no test is dropped.
+ * input list or no test is dropped. citations (optional): ids of papers in the literature desk's library
+ * (js/literature.js) the proposal draws on; with `paperIds`, ids not in the library are dropped.
  */
-export function validateProposals(obj, lens) {
+export function validateProposals(obj, lens, { paperIds = null } = {}) {
+  const known = paperIds ? (paperIds instanceof Set ? paperIds : new Set(paperIds)) : null;
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return { ok: false, errors: ['reply is not a JSON object'] };
   const proposals = arr(obj.proposals, 6, p => {
     const t = {
@@ -91,6 +93,7 @@ export function validateProposals(obj, lens) {
       rules: { universe: str(p?.rules?.universe, 200) ?? '', signal: str(p?.rules?.signal, 500) ?? '', entry: str(p?.rules?.entry, 300) ?? '', exit: str(p?.rules?.exit, 300) ?? '', horizon: str(p?.rules?.horizon, 120) ?? '', sizing: str(p?.rules?.sizing, 200) ?? '' },
       test: { variable: str(p?.test?.variable, 400) ?? '', benchmark: str(p?.test?.benchmark, 300) ?? '', placebo: str(p?.test?.placebo, 300) ?? '', horizons: str(p?.test?.horizons, 200) ?? '', power: str(p?.test?.power, 300) ?? '' },
       killIf: str(p?.killIf, 300) ?? '', fleetOverlap: str(p?.fleetOverlap, 300) ?? '',
+      citations: arr(p?.citations, 8, c => { const id = str(c, 160); return id && (!known || known.has(id)) ? id : null; }),
       buildSteps: arr(p?.buildSteps, 8, s => str(s, 240)), effort: one(p?.effort, ['S', 'M', 'L'], 'M'), priority: one(p?.priority, ['high', 'medium', 'low'], 'medium'),
     };
     if (!t.title || !t.mechanism || !t.sources.length || !t.inputs.length || !t.test.benchmark) return null;

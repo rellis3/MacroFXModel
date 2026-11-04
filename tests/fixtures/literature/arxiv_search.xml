@@ -1,0 +1,77 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://arxiv.org/api/mBqeL4wO+r2CHj6j7As5g0qsZyA</id>
+  <title>arXiv Query: search_query=all:"carry trade" AND all:currency&amp;id_list=&amp;start=0&amp;max_results=5</title>
+  <updated>2026-11-04T14:20:39Z</updated>
+  <link href="https://arxiv.org/api/query?search_query=all:%22carry+trade%22+AND+all:currency&amp;start=0&amp;max_results=5&amp;id_list=" type="application/atom+xml"/>
+  <opensearch:itemsPerPage>5</opensearch:itemsPerPage>
+  <opensearch:totalResults>3</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <entry>
+    <id>http://arxiv.org/abs/1303.4314v3</id>
+    <title>Reinvestigating the Uncovered Interest Rate Parity Puzzle via Analysis of Multivariate Tail Dependence in Currency Carry Trades</title>
+    <updated>2014-01-12T13:09:32Z</updated>
+    <link href="https://arxiv.org/abs/1303.4314v3" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/1303.4314v3" rel="related" type="application/pdf" title="pdf"/>
+    <summary>The currency carry trade is the investment strategy that involves selling low interest rate currencies in order to purchase higher interest rate currencies, thus profiting from the interest rate differentials. This is a well known financial puzzle to explain, since assuming foreign exchange risk is uninhibited and the markets have rational risk-neutral investors, then one would not expect profits from such strategies. That is uncovered interest rate parity (UIP), the parity condition in which exposure to foreign exchange risk, with unanticipated changes in exchange rates, should result in an outcome that changes in the exchange rate should offset the potential to profit from such interest rate differentials. The two primary assumptions required for interest rate parity are related to capital mobility and perfect substitutability of domestic and foreign assets. Given foreign exchange market equilibrium, the interest rate parity condition implies that the expected return on domestic assets will equal the exchange rate-adjusted expected return on foreign currency assets.
+  However, it has been shown empirically, that investors can actually earn arbitrage profits by borrowing in a country with a lower interest rate, exchanging for foreign currency, and investing in a foreign country with a higher interest rate, whilst allowing for any losses (or gains) from exchanging back to their domestic currency at maturity. Therefore trading strategies that aim to exploit the interest rate differentials can be profitable on average. The intention of this paper is therefore to reinterpret the currency carry trade puzzle in light of heavy tailed marginal models coupled with multivariate tail dependence features in the analysis of the risk-reward for the currency portfolios with high interest rate differentials and low interest rate differentials.</summary>
+    <category term="q-fin.ST" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="q-fin.PM" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2013-03-18T16:43:05Z</published>
+    <arxiv:primary_category term="q-fin.ST"/>
+    <author>
+      <name>Matthew Ames</name>
+    </author>
+    <author>
+      <name>Guillaume Bagnarosa</name>
+    </author>
+    <author>
+      <name>Gareth W. Peters</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/1406.4322v1</id>
+    <title>Upside and Downside Risk Exposures of Currency Carry Trades via Tail Dependence</title>
+    <updated>2014-06-17T11:22:06Z</updated>
+    <link href="https://arxiv.org/abs/1406.4322v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/1406.4322v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Currency carry trade is the investment strategy that involves selling low interest rate currencies in order to purchase higher interest rate currencies, thus profiting from the interest rate differentials. This is a well known financial puzzle to explain, since assuming foreign exchange risk is uninhibited and the markets have rational risk-neutral investors, then one would not expect profits from such strategies. That is, according to uncovered interest rate parity (UIP), changes in the related exchange rates should offset the potential to profit from such interest rate differentials. However, it has been shown empirically, that investors can earn profits on average by borrowing in a country with a lower interest rate, exchanging for foreign currency, and investing in a foreign country with a higher interest rate, whilst allowing for any losses from exchanging back to their domestic currency at maturity. This paper explores the financial risk that trading strategies seeking to exploit a violation of the UIP condition are exposed to with respect to multivariate tail dependence present in both the funding and investment currency baskets. It will outline in what contexts these portfolio risk exposures will benefit accumulated portfolio returns and under what conditions such tail exposures will reduce portfolio returns.</summary>
+    <category term="q-fin.PM" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="q-fin.RM" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2014-06-17T11:22:06Z</published>
+    <arxiv:comment>arXiv admin note: substantial text overlap with arXiv:1303.4314</arxiv:comment>
+    <arxiv:primary_category term="q-fin.PM"/>
+    <author>
+      <name>Matthew Ames</name>
+    </author>
+    <author>
+      <name>Gareth W. Peters</name>
+    </author>
+    <author>
+      <name>Guillaume Bagnarosa</name>
+    </author>
+    <author>
+      <name>Ioannis Kosmidis</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/1903.06346v1</id>
+    <title>Optimal FX Hedge Tenor with Liquidity Risk</title>
+    <updated>2019-03-15T03:42:12Z</updated>
+    <link href="https://arxiv.org/abs/1903.06346v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/1903.06346v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>We develop an optimal currency hedging strategy for fund managers who own foreign assets to choose the hedge tenors that maximize their FX carry returns within a liquidity risk constraint. The strategy assumes that the offshore assets are fully hedged with FX forwards. The chosen liquidity risk metric is Cash Flow at Risk (CFaR). The strategy involves time-dispersing the total nominal hedge value into future time buckets to maximize (minimize) the expected FX carry benefit (cost), given the constraint that the CFaRs in all the future time buckets do not breach a predetermined liquidity budget. We demonstrate the methodology via an illustrative example where shorter-dated forwards are assumed to deliver higher carry trade returns (motivated by the historical experience where AUD is the domestic currency and USD is the foreign currency). We also introduce a tenor-ranking method which is useful when this assumption fails. We show by Monte Carlo simulation and by backtesting that our hedging strategy successfully operates within the liquidity budget. We provide practical insights on when and why fund managers should choose short-dated or long-dated tenors.</summary>
+    <category term="q-fin.RM" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2019-03-15T03:42:12Z</published>
+    <arxiv:primary_category term="q-fin.RM"/>
+    <author>
+      <name>Rongju Zhang</name>
+    </author>
+    <author>
+      <name>Mark Aarons</name>
+    </author>
+    <author>
+      <name>Gregoire Loeper</name>
+    </author>
+  </entry>
+</feed>
