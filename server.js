@@ -237,6 +237,8 @@ import { normaliseTrades as _sxNormalise, tearsheet as _sxTearsheet, toolkitCsv 
 import { selectPairs as _psSelect } from './js/pairSelector.js';   // §9ae
 import { WORLD_RATES_URL as _WR_URL, parseCbpol as _wrParse, worldRates as _wrBuild, byIsoNumeric as _wrByIso } from './js/worldRates.js';   // §9af
 import { EM_PAIRS as _EM_PAIRS, emGauges as _emBuild } from './js/emGauges.js';
+import { yieldBoard as _mbYields, creditBoard as _mbCredit, CREDIT_SERIES as _MB_CREDIT, liquidityBoard as _mbLiquidity, basisBoard as _mbBasis, termPremium as _mbTermPremium, worldStress as _mbStress } from './js/marketBoards.js';   // §9ag
+import { fetchBund as _yfBund, fetchJgbBoth as _yfJgb, fetchCanada as _yfCanada, fetchAustralia as _yfAustralia } from './js/yieldFeeds.js';
 import { reviewSystem as _svReview, reviewText as _svText, validatePostmortem as _svValidate } from './js/systemReview.js';   // §9ad
 import { CATALOGUE as _SYS_CATALOGUE, coverage as _sysCoverage, catalogueText as _sysCatalogueText } from './js/systemCatalogue.js';
 import { harnessChecklist as _vdChecklist, validateReview as _vdValidateReview } from './js/validationDesk.js';   // Phase 26
@@ -6104,6 +6106,74 @@ app.get('/api/em-gauges', async (_req, res) => {
       _emCache = { at: Date.now(), data: { ok: Object.keys(by).length > 0, fetchedAt: new Date().toISOString(), errors, ..._emBuild(by) } };
     }
     res.json(_emCache.data);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── §9ag: the world-impact boards: global yields, credit, liquidity, cross-currency basis, term premium, World stress ──
+// Each is cached (series refresh slowly) and goes two ways: the Desk Terminal and the Desk Pack.
+const _mb = {};
+async function _mbCached(key, hours, build) {
+  const c = _mb[key]; if (c?.data && Date.now() - c.at < hours * 3600e3) return c.data;
+  try { const data = await build(); _mb[key] = { at: Date.now(), data }; return data; }
+  catch (e) { if (c?.data) return { ...c.data, warning: e.message }; throw e; }
+}
+const _mbFred = async (id, years = 6) => [...(await fetchFredObservations(id, new Date(Date.now() - years * 365.25 * 864e5).toISOString().slice(0, 10), process.env.FRED_KEY))].map(([date, value]) => ({ date, value }));
+const _mbRoute = (path, key, hours, build) => app.get(path, async (_req, res) => { try { res.set('Cache-Control', 'no-store'); res.json(await _mbCached(key, hours, build)); } catch (e) { res.status(502).json({ ok: false, error: e.message }); } });
+async function _mbGlobalYields() {
+  const errors = {}, safe = async (k, f) => { try { return await f(); } catch (e) { errors[k] = e.message; return null; } };
+  const cut = s => (s ?? []).slice(-400);
+  const [us2, us10, de2, de10, gb5, gb10, jp, ca, au] = await Promise.all([
+    safe('US 2y', () => _mbFred('DGS2', 2)), safe('US 10y', () => _mbFred('DGS10', 2)), safe('Bund 2y', () => _yfBund('02')), safe('Bund 10y', () => _yfBund('10')),
+    safe('Gilt 5y', () => _mbFred('BOE_IUDSNPY', 2)), safe('Gilt 10y', () => _mbFred('BOE_IUDMNZC', 2)), safe('JGB', () => _yfJgb()), safe('Canada', () => _yfCanada()), safe('Australia', () => _yfAustralia())]);
+  const fx = {}, FX = { EUR: ['EUR_USD', false], GBP: ['GBP_USD', false], JPY: ['USD_JPY', true], CAD: ['USD_CAD', true], AUD: ['AUD_USD', false] };
+  await Promise.all(Object.entries(FX).map(async ([c, [sym, inv]]) => { try { fx[c] = (await _btFetchD1(sym, 160)).sort((a, b) => (a.date < b.date ? -1 : 1)).map(b => ({ date: b.date, value: inv ? 1 / b.close : b.close })); } catch (e) { errors[`FX ${c}`] = e.message; } }));
+  const board = _mbYields({ USD: { y2: cut(us2), y10: cut(us10) }, EUR: { y2: cut(de2), y10: cut(de10) }, GBP: { y2: cut(gb5), y10: cut(gb10) }, JPY: { y2: cut(jp?.y2), y10: cut(jp?.y10) }, CAD: { y2: cut(ca?.y2), y10: cut(ca?.y10) }, AUD: { y2: cut(au?.y2), y10: cut(au?.y10) } }, fx);
+  return { ok: board.rows.some(r => r.y2 != null), fetchedAt: new Date().toISOString(), errors, ...board };
+}
+_mbRoute('/api/global-yields', 'yields', 4, _mbGlobalYields);
+_mbRoute('/api/credit-board', 'credit', 6, async () => {
+  const series = {}, errors = {};
+  await Promise.all(_MB_CREDIT.map(async c => { try { series[c.id] = await _mbFred(c.id, 6); } catch (e) { errors[c.id] = e.message; } }));
+  const b = _mbCredit(series); return { ok: b.rows.some(r => r.oas != null), fetchedAt: new Date().toISOString(), errors, ...b };
+});
+_mbRoute('/api/liquidity-board', 'liquidity', 6, async () => {
+  const ids = ['WALCL', 'WTREGEN', 'RRPONTSYD', 'WRESBAL'], series = {}, errors = {};
+  await Promise.all(ids.map(async id => { try { series[id] = await _mbFred(id, 6); } catch (e) { errors[id] = e.message; } }));
+  const b = _mbLiquidity(series); return { ok: b.items[0].value != null, fetchedAt: new Date().toISOString(), errors, ...b };
+});
+_mbRoute('/api/term-premium', 'tp', 6, async () => {
+  const [tp, y10] = await Promise.all([_mbFred('THREEFYTP10', 6), _mbFred('DGS10', 6)]);
+  const b = _mbTermPremium(tp, y10); return b ? { ok: true, fetchedAt: new Date().toISOString(), ...b } : { ok: false, error: 'no term premium data' };
+});
+// Cross-currency basis: the laptop's IBKR pull of the front CME FX futures and spot (scripts/rates_line/refresh_xccy_basis.py
+// → KV xccy_basis_v1) against today's overnight rates; one point a day is kept in xccy_basis_hist for the 5-day change.
+async function _mbOvernight() {
+  const pick = async id => { const s = await _mbFred(id, 0.2); return s.at(-1)?.value ?? null; };
+  const out = {}, errors = {};
+  await Promise.all([['USD', 'SOFR'], ['EUR', 'ECBESTRVOLWGTTRMDMNRT'], ['GBP', 'BOE_IUDSOIA']].map(async ([c, id]) => { try { out[c] = await pick(id); } catch (e) { errors[c] = e.message; } }));
+  try { const pr = await _policyRatesNow(); out.JPY = pr.rates?.JPY?.rate ?? null; out.CHF = pr.rates?.CHF?.rate ?? null; } catch (e) { errors.JPY = errors.CHF = e.message; }
+  return { rates: out, errors };
+}
+app.get('/api/xccy-basis', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const pull = await _kvJson('xccy_basis_v1').catch(() => null);
+    if (!pull?.legs) return res.json({ ok: false, error: 'no futures pull yet: run scripts/rates_line/refresh_xccy_basis.py --push on the laptop (IB Gateway open)' });
+    const ov = await _mbCached('overnight', 6, _mbOvernight), hist = await _rpGet('xccy_basis_hist', {});
+    const b = _mbBasis(pull, ov.rates, hist), day = String(pull.asOf ?? '').slice(0, 10);
+    if (day && b.rows.some(r => r.basis != null)) {
+      let changed = false; for (const r of b.rows) if (r.basis != null) { const h = (hist[r.ccy] ??= []); if (h.at(-1)?.date !== day) { h.push({ date: day, value: r.basis }); hist[r.ccy] = h.slice(-260); changed = true; } }
+      if (changed) await kv.put('xccy_basis_hist', JSON.stringify(hist)).catch(() => {});
+    }
+    res.json({ ok: b.rows.some(r => r.basis != null), ageH: pull.asOf ? +((Date.now() - Date.parse(pull.asOf)) / 3600e3).toFixed(1) : null, rates: ov.rates, rateErrors: ov.errors, ...b });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/world-stress: one line across everything above (js/marketBoards.js worldStress).
+app.get('/api/world-stress', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const get = async path => { const r = await _dpFetchFeed({ path, timeoutMs: 60_000 }); return r.json?.ok === false ? null : r.json; };
+    const [risk, credit, funding, em, liquidity, basis, cycle, tp] = await Promise.all(['risk-flags', 'credit-board', 'funding-read?spark=0', 'em-gauges', 'liquidity-board', 'xccy-basis', 'world-rates', 'term-premium'].map(get));
+    res.json({ ok: true, at: new Date().toISOString(), ..._mbStress({ risk, credit, funding, em, liquidity, basis, cycle, termPremium: tp }) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/pair-select?date=: §9ae, how the morning's currency view is best expressed (js/pairSelector.js): every pair

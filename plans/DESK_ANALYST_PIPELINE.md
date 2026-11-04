@@ -1117,6 +1117,30 @@ analyst whose job it is (prereg A9) and onto the terminal.
   dollar index, Treasuries and equity futures).
 - Not available free and live: BRL, INR and KRW prices (no OANDA feed); EM currencies stay gauges, not desk cards.
 
+## 9ag. The world-impact boards: global yields, credit, liquidity, basis, term premium, World stress (2026-11-04)
+
+All in `js/marketBoards.js` (pure, tested), fetched and cached on the server, shown on the Desk Terminal (Macro tab, and
+the strip above every tab) and in the Desk Pack (prereg A9).
+- **Global yields** (`GET /api/global-yields`, `js/yieldFeeds.js`): 2-year and 10-year government yields daily from each
+  issuer: US (FRED), Germany (Bundesbank), UK (BoE; no clean 2-year series, so the 5-year), Japan (MoF), Canada (Bank
+  of Canada), Australia (RBA). Per country the 10y-2y slope, the 20-day changes, the 2y gap to the US and its 20-day
+  change, the currency's 20-day move against the dollar, and how the gap and the currency moved together (60-day
+  correlation of daily changes). Yields analyst.
+- **Credit** (`GET /api/credit-board`): ICE BofA option-adjusted spreads via FRED: US IG, BBB, HY, CCC, euro HY, EM
+  corporate; level, 20-day change, 1y and 5y percentiles; a state from HY (tight / normal / widening / stress).
+- **Fed liquidity** (`GET /api/liquidity-board`): net liquidity = WALCL − TGA − reverse repo, with reserves; 4- and
+  13-week changes; draining / steady / adding.
+- **Term premium** (`GET /api/term-premium`): Kim-Wright 10y term premium (FRED THREEFYTP10) and the expectations part
+  of the 10y.
+- **Cross-currency basis** (`GET /api/xccy-basis`): the laptop pulls the front CME FX futures (6E, 6B, 6J, 6S, at least
+  25 days to delivery) and spot from IBKR (`scripts/rates_line/refresh_xccy_basis.py`, run by `run_cb_expectations.bat`,
+  KV `xccy_basis_v1`); the server computes the basis exactly as `scripts/xccy-basis/build.py` (checked against its stored
+  rows) with today's overnight rates (SOFR, €STR, SONIA, TONA; CHF uses the SNB policy rate as a proxy for SARON), and
+  keeps a daily history (`xccy_basis_hist`).
+- **World stress** (`GET /api/world-stress`): one line across risk flags, credit, dollar funding, the basis, EM carry,
+  Fed liquidity, the term premium and the global rate cycle, each green / amber / red, overall calm / watch / stress.
+  Pinned above the tabs; the global-market analyst reads it.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.

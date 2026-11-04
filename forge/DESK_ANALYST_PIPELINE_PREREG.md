@@ -185,7 +185,9 @@ New feeds join the Desk Pack before the first counted day was scored: each centr
 (`policy-rates`) and what short-rate futures price for every bank (`cb-expectations`), both read by the rates and
 central-bank analyst. Further feeds found by the terminal data audit (plan §9af), added the same way: `world-rates`
 (BIS policy rates for ~39 banks) to the rates analyst; `em-gauges` (USD/CNH, MXN, ZAR, TRY) and `chain-extra` (EM dollar,
-EM corporate spreads, MOVE) to the global-market analyst; `hedging-summary` (dealer gamma per market) to the options analyst. Inputs only: the scoring, the arms and the hypotheses are unchanged. No outcome had been computed.
+EM corporate spreads, MOVE) to the global-market analyst; `hedging-summary` (dealer gamma per market) to the options analyst. Then (§9ag): `global-yields` and `term-premium` to the
+yields analyst; `credit-board`, `liquidity-board` and `xccy-basis` to the credit and funding analyst; `world-stress` to the
+global-market analyst. Inputs only: the scoring, the arms and the hypotheses are unchanged. No outcome had been computed.
 
 ---
 

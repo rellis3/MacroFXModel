@@ -66,6 +66,8 @@ function isAllowedKVKey(key) {
     'oi_conf_bot_config', 'oi_conf_bot_credentials', 'oi_conf_bot_status', 'oi_conf_bot_zones', 'oi_conf_bot_trade_log', 'oi_conf_bot_state',
     'zq_path_v1',
     'cb_rate_futures_v1',
+    'xccy_basis_v1',
+    'xccy_basis_hist',
     'research_pod_sessions',
     'research_pod_library',
     'research_pod_feedback',
@@ -1090,6 +1092,8 @@ export default {
             'zq_path_v1',
             // cb_rate_futures_v1: the laptop's IBKR pull of the other central banks' rate futures (scripts/rates_line/refresh_cb_expectations.py).
             'cb_rate_futures_v1',
+            'xccy_basis_v1',
+            'xccy_basis_hist',
             // research_pod_*: the research pod's sessions, proposals, the owner's marks and the system cards (server writes; the owner's feedback cannot be rebuilt).
             'research_pod_sessions',
             'research_pod_library',

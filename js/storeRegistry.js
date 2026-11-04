@@ -51,6 +51,8 @@ export const STORES = {
   funding_read_v1: L('Funding & leverage daily read record', 5),
   zq_path_v1: R('Fed-funds path (ZQ)', 1),
   cb_rate_futures_v1: R('Central-bank rate futures (IBKR)', 1),
+  xccy_basis_v1: R('Cross-currency basis inputs: CME FX futures + spot (IBKR)', 1),
+  xccy_basis_hist: R('Cross-currency basis daily history (bp)', 3, { market: false }),
   research_pod_sessions: R('Research pod sessions', 8, { market: false }),
   research_pod_library: R('Research pod proposal library', 8, { market: false }),
   research_pod_feedback: R("Research pod: the owner's marks on proposals", 60, { market: false }),

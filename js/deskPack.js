@@ -109,10 +109,14 @@ export const DESK_FEEDS = [
   F('global_market', 'trend-basket', 3 * D),
   F('global_market', 'daily-snapshot?days=2', 3 * D),
   F('global_market', 'market-sense/last', 10 * D),
+  F('global_market', 'world-stress', 1 * D),     // §9ag: one line across risk, credit, funding, basis, EM, liquidity, term premium, rate cycle
   F('global_market', 'em-gauges', 3 * D),       // §9af: USD/CNH, USD/MXN, USD/ZAR, USD/TRY and the carry-stress read (gauges, not trades)
   F('global_market', 'chain-extra', 3 * D),     // §9af: EM dollar index and EM corporate spreads, MOVE, CCC, sector ETFs
   F('credit_funding', 'credit-stress', 4 * D),
   F('credit_funding', 'credit-quality', 4 * D),
+  F('credit_funding', 'credit-board', 4 * D),     // §9ag: IG / BBB / HY / CCC, euro HY, EM corporate spreads with percentiles
+  F('credit_funding', 'liquidity-board', 10 * D), // §9ag: Fed net liquidity, TGA, reverse repo, reserves
+  F('credit_funding', 'xccy-basis', 4 * D),       // §9ag: EUR/GBP/JPY/CHF cross-currency basis (dollar shortage)
   F('credit_funding', 'bank-credit', 120 * D),
   F('credit_funding', 'funding-read?spark=0', 4 * D),
   F('credit_funding', 'liquidity-pulse/data', 10 * D),
@@ -140,6 +144,8 @@ export const DESK_FEEDS = [
   F('rates_cb', 'treasury-auctions', 10 * D, { keep: 'first' }),
   F('yields_curve', 'yield-curve', 4 * D),
   F('yields_curve', 'intl-yields', 4 * D),
+  F('yields_curve', 'global-yields', 4 * D),     // §9ag: 2y/10y for US, DE, UK (5y), JP, CA, AU; 2y gap to the US and its link to each currency
+  F('yields_curve', 'term-premium', 7 * D),      // §9ag: Kim-Wright 10y term premium vs the expectations part of the 10y
   F('yields_curve', 'real-yield', 4 * D),
   F('yields_curve', 'yield-context', 4 * D),
   F('yields_curve', 'yield-coupling', 4 * D),
