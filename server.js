@@ -235,6 +235,8 @@ import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './j
 import { RESEARCHERS as _RP_RESEARCHERS, WEB_SOURCES as _RP_WEB, parseFeed as _rpParseFeed, webDigest as _rpWebDigest, validateProposals as _rpValidate, applyFeedback as _rpApplyFeedback, feedbackBrief as _rpFeedbackBrief, buildList as _rpBuildList, mergeLibrary as _rpMerge, validateCard as _rpValidateCard, cardPrereg as _rpPrereg, slug as _rpSlug, lifecycle as _rpLifecycle, setLink as _rpSetLink, outcomesBrief as _rpOutcomes, scorecard as _rpScorecard, validateReply as _rpValidateReply, applyRevision as _rpApplyRevision, threadText as _rpThreadText } from './js/researchPod.js';   // Phases 23-25
 import { normaliseTrades as _sxNormalise, tearsheet as _sxTearsheet, toolkitCsv as _sxToolkitCsv, terminalCsv as _sxTerminalCsv, liveVsExpected as _sxLiveVsExpected } from './js/systemExports.js';   // §9ac
 import { selectPairs as _psSelect } from './js/pairSelector.js';   // §9ae
+import { WORLD_RATES_URL as _WR_URL, parseCbpol as _wrParse, worldRates as _wrBuild, byIsoNumeric as _wrByIso } from './js/worldRates.js';   // §9af
+import { EM_PAIRS as _EM_PAIRS, emGauges as _emBuild } from './js/emGauges.js';
 import { reviewSystem as _svReview, reviewText as _svText, validatePostmortem as _svValidate } from './js/systemReview.js';   // §9ad
 import { CATALOGUE as _SYS_CATALOGUE, coverage as _sysCoverage, catalogueText as _sysCatalogueText } from './js/systemCatalogue.js';
 import { harnessChecklist as _vdChecklist, validateReview as _vdValidateReview } from './js/validationDesk.js';   // Phase 26
@@ -6076,6 +6078,34 @@ async function _policyRatesNow() {
   if (data.ok) _prCache = { at: Date.now(), data };
   return data;
 }
+// §9af: the world's policy rates (BIS WS_CBPOL, ~39 banks, monthly) for the terminal's map and the rates analyst.
+let _wrCache = { at: 0, data: null };
+app.get('/api/world-rates', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    if (!_wrCache.data || Date.now() - _wrCache.at > 12 * 3600e3) {
+      const d = new Date(); d.setUTCMonth(d.getUTCMonth() - 16);
+      const r = await fetch(_WR_URL(d.toISOString().slice(0, 7)), { headers: { 'User-Agent': 'Mozilla/5.0 MacroFXDashboard' }, signal: AbortSignal.timeout(45_000) });
+      if (!r.ok) throw new Error(`BIS HTTP ${r.status}`);
+      const wr = _wrBuild(_wrParse(await r.text()));
+      _wrCache = { at: Date.now(), data: { ok: true, fetchedAt: new Date().toISOString(), ...wr, iso: Object.fromEntries(Object.entries(_wrByIso(wr)).map(([k, b]) => [k, b.area])) } };
+    }
+    res.json(_wrCache.data);
+  } catch (e) { res.status(_wrCache.data ? 200 : 502).json(_wrCache.data ? { ..._wrCache.data, warning: e.message } : { ok: false, error: e.message }); }
+});
+// §9af: EM gauges (USD/CNH, USD/MXN, USD/ZAR, USD/TRY): read, never traded. OANDA daily closes, cached 2 h.
+let _emCache = { at: 0, data: null };
+app.get('/api/em-gauges', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    if (!_emCache.data || Date.now() - _emCache.at > 2 * 3600e3) {
+      const by = {}, errors = {};
+      await Promise.all(_EM_PAIRS.map(async p => { try { by[p.id] = (await _btFetchD1(p.oanda, 300)).sort((a, b) => (a.date < b.date ? -1 : 1)).map(b => ({ date: b.date, close: b.close })); } catch (e) { errors[p.id] = e.message; } }));
+      _emCache = { at: Date.now(), data: { ok: Object.keys(by).length > 0, fetchedAt: new Date().toISOString(), errors, ..._emBuild(by) } };
+    }
+    res.json(_emCache.data);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // GET /api/pair-select?date=: §9ae, how the morning's currency view is best expressed (js/pairSelector.js): every pair
 // of the eight scored by the bias gap, cost against the day's move, carry and the book's card; at most two picks per currency.
 app.get('/api/pair-select', async (req, res) => {
