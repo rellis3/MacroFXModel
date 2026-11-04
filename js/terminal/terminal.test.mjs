@@ -274,3 +274,29 @@ test('lead-lag view: leads, near misses, grid, pair card; same day is not a lead
   assert.match(LLV.gridHtml({ ...d, leads: [], leadKeys: [] }), /No market reliably leads another/);
   assert.equal(LLV.gridHtml(null), ''); assert.match(LLV.gridHtml({ ok: false, error: 'x' }), /x/);
 });
+
+// ── the Options tab (js/terminal/optionsView.js) ──
+import * as OPV from './optionsView.js';
+test('options view: gauges read against own history, lines carry evidence words, dealers, VIX, path, pair card', () => {
+  const hist = { markets: { 'EUR/USD': Array.from({ length: 60 }, (_, i) => ({ date: `2026-08-${String(i % 28 + 1).padStart(2, '0')}`, pc: 1 + i / 100, calls: 1000 + i, puts: 1500 + 2 * i })) },
+    vix: { vix: Array.from({ length: 30 }, (_, i) => ({ date: `2026-10-${String(i + 1).padStart(2, '0')}`, value: 15 + i / 3 })), vix3m: Array.from({ length: 30 }, (_, i) => ({ date: `2026-10-${String(i + 1).padStart(2, '0')}`, value: 20 })) } };
+  const st = OPV.pcStats(hist.markets['EUR/USD']); assert.equal(st.pct, 100); assert.equal(OPV.pcRead(st).word, 'puts much heavier than usual');
+  assert.equal(OPV.pcRead(OPV.pcStats([{ pc: 1 }])).word, 'short history');
+  const oi = { ok: true, pairs: [{ pair: 'EUR/USD', spot: 1.1234, pcRatio: 1.59, regime: 'BREAKOUT', dte: 2, callWall: 1.1258, putWall: 1.1233, maxPain: 1.1383,
+    levels: [{ price: 1.1383, type: 'max_pain', distPips: 149 }, { price: 1.1258, type: 'call_wall', tier: 'moderate', distPips: 24, touchPct: 41 }, { price: 1.1183, type: 'put_wall', distPips: -51, touchPct: 8 }] }] };
+  const pos = OPV.positioningHtml(oi, hist);
+  assert.match(pos, /data-pair="EURUSD"/); assert.match(pos, /<b class="dn">1<\/b> lean to puts/); assert.match(pos, /UNTESTED/); assert.match(pos, /no natural 50\/50/);
+  assert.match(OPV.gaugeSvg(1), /<line x1="75"/, 'needle drawn'); assert.doesNotMatch(OPV.gaugeSvg(null), /stroke-width="3"/, "no needle without data");
+  const lad = OPV.ladderHtml(oi.pairs[0]);
+  assert.match(lad, /Price now/); assert.match(lad, /Max pain/); assert.match(lad, /41%/); assert.match(lad, /NULL/);
+  assert.ok(lad.indexOf('Call wall') < lad.indexOf('Price now') && lad.indexOf('Put wall') > lad.indexOf('Price now'), 'above the price, then below');
+  const dl = OPV.dealersHtml({ ok: true, markets: [{ pair: 'NAS100_USD', name: 'Nasdaq 100', state: 'speeds', switchPoint: 29222, switchDistPct: 2.64, flowUp1pct: 9797, flowDown1pct: -13481, lines: ['a', 'b', 'c', 'd', 'expect wide moves'] }] });
+  assert.match(dl, /hedging speeds moves/); assert.match(dl, /data-pair="NQ"/); assert.match(dl, /range only/);
+  const vx = OPV.vixHtml(hist); assert.match(vx, /VIX 3-month/); assert.match(vx, /backwardation: fear is NOW/);
+  const sm = { ok: true, instruments: ['GOLD', 'NQ'], series: Array.from({ length: 70 }, (_, i) => [new Date(Date.UTC(2026, 7, 1) + i * 864e5).toISOString().slice(0, 10), 4000 + i]), livePrice: { price: 4070 },
+    expiries: [{ expiry: '2026-11-24', date: '2026-11-24', dte: 21, zones: [{ px: 4200, oi: 12000, call: 9000, put: 3000 }, { px: 3900, oi: 6000, call: 100, put: 5900 }] }],
+    paths: [{ name: 'Bounce first', prob: 0.45, points: [{ date: '2026-10-09', px: 4069 }, { date: '2026-11-19', px: 4275 }] }], pull: { summary: 'leans up' } };
+  const ph = OPV.pathHtml(sm, 'GOLD'); assert.equal((ph.match(/<circle/g) ?? []).length, 2); assert.match(ph, /mostly calls/); assert.match(ph, /Bounce first 45%/); assert.match(ph, /value="GOLD"|<option selected>GOLD/);
+  assert.match(OPV.pairCard('EURUSD', { oi, hist }), /puts per call/); assert.match(OPV.pairCard('NZDUSD', { oi, hist }), /No listed options book/);
+  assert.equal(OPV.idOf('XAU/USD'), 'GOLD'); assert.equal(OPV.idOf('SPX500_USD'), 'SPX500');
+});

@@ -22,6 +22,7 @@ import { reactionsHtml } from './reactionPanel.js';
 import * as FVV from './fairValueView.js';
 import * as ACV from './autocorrView.js';
 import * as LLV from './leadLagView.js';
+import * as OPV from './optionsView.js';
 import { createLevelChart } from '../levelChart.js';
 import { cardDrivers } from './cardExplain.js';
 
@@ -353,6 +354,7 @@ ${c ? `${ladder(c)}<div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b
 <div class="card" id="tt-p-hours">${loading('session hours and seasonality')}</div>
 <div class="card" id="tt-p-ac">${loading('autocorrelation')}</div>
 <div class="card" id="tt-p-ll">${loading('lead-lag')}</div>
+<div class="card" id="tt-p-opt">${loading('options')}</div>
 <div class="card" id="tt-p-prec">${loading('precedent and the chain')}</div>
 <div class="card" id="tt-p-res">${loading('research')}</div></div>`;
   root.querySelector('#tt-sel').onchange = e => openPair(e.target.value);
@@ -367,6 +369,7 @@ ${c ? `${ladder(c)}<div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b
   pairPos(n);
   J('/api/autocorrelation').then(d => { const b = mine() && el('tt-p-ac'); if (b) b.innerHTML = ACV.pairCard(d, n); });
   J('/api/lead-lag').then(d => { const b = mine() && el('tt-p-ll'); if (b) b.innerHTML = LLV.pairCard(d, n); });
+  Promise.all([J('/api/oi-today'), J('/api/options-history'), J('/api/hedging-summary')]).then(([oi, hist, hs]) => { const b = mine() && el('tt-p-opt'); if (!b) return; b.innerHTML = OPV.pairCard(n, { oi, hist, hs }); b.querySelector('[data-goto-options]')?.addEventListener('click', e => { e.preventDefault(); document.querySelector('#tabs [data-t="options"]')?.click(); }); });
   Promise.all([J('/api/carry-vol'), J('/api/options-skew')]).then(([cv, sk]) => mine() && pairCarry(n, cv, sk));
   Promise.all([J('/api/session-heat'), J(`/api/desk-season?inst=${n}`)]).then(([sh, ss]) => mine() && pairHours(n, sh, ss));
   Promise.all([J('/api/macro-regime-fx'), loadChain()]).then(([m]) => mine() && pairPrec(n, m));
@@ -591,7 +594,44 @@ ${d.events?.length ? `<div class="lbl" style="margin-top:12px">Releases the econ
 }
 
 // ═════════════════════════════════════════════ wiring ═════════════════════════════════════════════
-const RENDER = { today: renderToday, pair: renderPair, changed: renderChanged, research: renderResearch };
+// ═════════════════════════════════════════════ OPTIONS TAB ═════════════════════════════════════════════
+// Options as a lens on positioning (js/terminal/optionsView.js): gauges, lines, the path, dealers, skew, VIX.
+async function renderOptions() {
+  const root = el('options'); if (!root) return;
+  if (!root.dataset.built) {
+    root.dataset.built = '1';
+    root.innerHTML = `<div class="card glow"><div class="tt-head"><span class="lbl">Options</span><h2 style="flex-basis:100%">What the options market is positioned for</h2></div>
+<p style="margin:4px 0 0">Price shows two dimensions: up and down. Options add a third, the <b>path</b>: every contract has a strike and an expiry, so the book shows at what price, by what date, the market is protected or speculating. Read it as positioning, one lens among several: every reading below carries what the Evidence Book found when it was tested.</p></div>
+${sec('Calls against puts', 'the put/call open-interest ratio for each market, read against its own history')}<div id="opt-pos">${loading('open interest')}</div>
+${sec('Option lines', 'walls, max pain and gamma lines around the price')}<div class="card" style="padding:8px 12px"><label class="muted" style="font-size:12px">Market <select id="opt-lad-inst" style="background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:3px"></select></label></div><div id="opt-lad">${loading('option lines')}</div>
+${sec('The path', 'open interest by expiry and strike, ahead of the price')}<div class="card" id="opt-path">${loading('the path')}</div>
+${sec('Dealer hedging', 'which way the dealers who sold the options must trade as price moves')}<div id="opt-dl">${loading('dealer hedging')}</div>
+<div id="opt-skew"></div>
+${sec('Fear gauge', 'the VIX and its term structure')}<div id="opt-vix">${loading('the VIX')}</div>`;
+  }
+  const goPair = box => box?.querySelectorAll('[data-pair]').forEach(b => (b.onclick = () => openPair(b.dataset.pair)));
+  const [oi, hist, hs, sk] = await Promise.all([J('/api/oi-today'), J('/api/options-history'), J('/api/hedging-summary'), J('/api/options-skew')]);
+  const pos = el('opt-pos'); if (pos) { pos.innerHTML = OPV.positioningHtml(oi, hist); goPair(pos); }
+  const sel = el('opt-lad-inst'), lad = el('opt-lad'), rows = oi?.pairs ?? [];
+  if (sel && lad) {
+    if (!sel.options.length) sel.innerHTML = rows.map(r => `<option value="${h(r.pair)}">${h(OPV.NAME[OPV.idOf(r.pair)] ?? r.pair)}</option>`).join('');
+    const want = T.optInst && rows.some(r => r.pair === T.optInst) ? T.optInst : rows[0]?.pair; if (want) sel.value = want;
+    const draw = () => { T.optInst = sel.value; lad.innerHTML = OPV.ladderHtml(rows.find(r => r.pair === sel.value)) || '<div class="card muted">No option lines.</div>'; };
+    sel.onchange = draw; draw();
+  }
+  const dl = el('opt-dl'); if (dl) { dl.innerHTML = OPV.dealersHtml(hs) || '<div class="card muted">No dealer hedging read.</div>'; goPair(dl); }
+  const skb = el('opt-skew'); if (skb && typeof E !== 'undefined') { E['options-skew'] ??= sk; skb.innerHTML = globalThis.skewHtml?.() ?? ''; }
+  const vx = el('opt-vix'); if (vx) vx.innerHTML = OPV.vixHtml(hist) || '<div class="card muted">No VIX series.</div>';
+  const drawPath = async inst => {
+    const box = el('opt-path'); if (!box) return;
+    box.innerHTML = loading(`the ${inst} path`);
+    const sm = await J(`/api/swing-map?inst=${encodeURIComponent(inst)}`);
+    box.innerHTML = OPV.pathHtml(sm, inst);
+    const ps = box.querySelector('#opt-path-inst'); if (ps) ps.onchange = () => { T.optPath = ps.value; drawPath(ps.value); };
+  };
+  drawPath(T.optPath ?? 'GOLD');
+}
+const RENDER = { today: renderToday, pair: renderPair, changed: renderChanged, research: renderResearch, options: renderOptions };
 globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'pair' && /pair=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
 globalThis.openPairPage = openPair;
 function fromHash() { const m = location.hash.match(/pair=([A-Za-z0-9]+)/); if (m) openPair(m[1]); }

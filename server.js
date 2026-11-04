@@ -24122,6 +24122,30 @@ app.get('/api/oi-history', async (req, res) => {
     res.json({ ok: true, pair: pk || key, dates, history: recent, deltas, curDate, prevDate });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// GET /api/options-history: the Options tab's history (owner, 2026-11-04): per market the put/call open-interest ratio,
+// total call and put OI and the dealer gamma sign over the last ~120 archived days (weekday rows; a weekend re-save of
+// Friday's book is dropped), plus the VIX and the 3-month VIX for the term structure. Read-only: KV oi_history and FRED.
+app.get('/api/options-history', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const data = await _mbCached('optionshistory', 1, async () => {
+      const raw = await kv.get('oi_history').catch(() => null);
+      const hist = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+      const wk = d => ![0, 6].includes(new Date(`${d}T12:00:00Z`).getUTCDay());
+      const markets = {};
+      for (const [pair, per] of Object.entries(hist)) {
+        const rows = Object.keys(per).sort().filter(wk).slice(-120).map(d => { const r = per[d] ?? {};
+          return { date: d, pc: Number.isFinite(r.pcRatio) ? +r.pcRatio.toFixed(4) : null, calls: r.totalCallOI ?? null, puts: r.totalPutOI ?? null, gex: Number.isFinite(r.gex) ? r.gex : null, regime: r.regime ?? null, dte: r.dayExpiryDTE ?? null }; })
+          .filter(r => r.pc != null);
+        if (rows.length) markets[pair] = rows;
+      }
+      const vix = {}, errors = {};
+      for (const [k, id] of [['vix', 'VIXCLS'], ['vix3m', 'VXVCLS']]) { try { vix[k] = (await _mbFred(id, 2)).filter(p => Number.isFinite(p.value)).slice(-260); } catch (e) { errors[k] = e.message; } }
+      return { ok: Object.keys(markets).length > 0, at: new Date().toISOString(), markets, vix, errors };
+    });
+    res.json(data);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // ── BACKFILL `oi_history` FROM THE PER-DAY RAW ARCHIVES ──────────────────────
 // `oi_history` is a single accumulating key, so one bad read-modify-write replaces the
 // whole archive with today (measured 2026-08-26: ~25 days -> 1, taking gexMedianAbs and
