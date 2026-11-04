@@ -248,8 +248,8 @@ ${c.hours.length ? `<h3 style="font-size:14px;margin:14px 0 6px">Entries by Lond
   renderRules();
 }
 function renderResearch() {
-  $('research').innerHTML = '<div class="panel" id="podpanel"><h2>Research pod</h2><p class="muted">Loading…</p></div><div class="panel" id="buildpanel" hidden></div><div class="panel" id="cardpanel" hidden></div><div class="panel" id="allocpanel"><h2>Allocation committee</h2><p class="muted">Loading…</p></div><div class="panel" id="shadowpanel"><h2>Forward shadows</h2><p class="muted">Loading…</p></div><div class="panel" id="fleetpanel"><h2>Fleet portfolio and risk</h2><p class="muted">Loading…</p></div><div class="panel" id="valpanel"><h2>Validation desk</h2><p class="muted">Loading…</p></div><div class="panel" id="catpanel"></div><div class="panel" id="theorypanel"><h2>Theory desk</h2><p class="muted">Loading…</p></div><div class="panel" id="opspanel"><h2>Research ops</h2><p class="muted">Loading…</p></div><div id="ecopanel"></div>';
-  renderPod(); renderAlloc(); renderShadows(); renderFleet(); renderValidation(); renderTheory(); renderOps();
+  $('research').innerHTML = '<div class="panel" id="podpanel"><h2>Research pod</h2><p class="muted">Loading…</p></div><div class="panel" id="litpanel"><h2>Literature desk</h2><p class="muted">Loading…</p></div><div class="panel" id="buildpanel" hidden></div><div class="panel" id="cardpanel" hidden></div><div class="panel" id="allocpanel"><h2>Allocation committee</h2><p class="muted">Loading…</p></div><div class="panel" id="shadowpanel"><h2>Forward shadows</h2><p class="muted">Loading…</p></div><div class="panel" id="fleetpanel"><h2>Fleet portfolio and risk</h2><p class="muted">Loading…</p></div><div class="panel" id="valpanel"><h2>Validation desk</h2><p class="muted">Loading…</p></div><div class="panel" id="catpanel"></div><div class="panel" id="theorypanel"><h2>Theory desk</h2><p class="muted">Loading…</p></div><div class="panel" id="opspanel"><h2>Research ops</h2><p class="muted">Loading…</p></div><div id="ecopanel"></div>';
+  renderPod(); renderLit(); renderAlloc(); renderShadows(); renderFleet(); renderValidation(); renderTheory(); renderOps();
   // Phases 6 and 15: the economist's briefs and playbooks (also in the newsletter's "The releases ahead" page)
   getJson('/api/desk-run').then(run => {
     const e = run?.ok && run.date === today ? run.economist : null, el = $('ecopanel'); if (!el) return;
@@ -309,6 +309,7 @@ ${lib.length ? lib.map(p => `<div style="border-top:1px solid var(--line);paddin
 <details><summary class="muted">Rules, test, inputs and build steps · ${esc(p.family ?? '')}</summary><table><tbody>${[['Universe', p.rules.universe], ['Signal', p.rules.signal], ['Entry', p.rules.entry], ['Exit', p.rules.exit], ['Horizon', p.rules.horizon], ['Sizing', p.rules.sizing], ['Test', `${p.test.variable} · must beat ${p.test.benchmark} · placebo ${p.test.placebo}${p.test.horizons ? ` · horizons ${p.test.horizons}` : ''}`], ['Power', p.test.power], ['Kill if', p.killIf], ['Like an existing bot?', p.fleetOverlap]].filter(([, v]) => v).map(([k, v]) => `<tr><td class="muted" style="width:120px">${k}</td><td>${esc(v)}</td></tr>`).join('')}</tbody></table>
 ${p.buildSteps?.length ? `<ol>${p.buildSteps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}</details>
 <p style="margin:4px 0">Needs: ${inputs(p)}</p><p class="muted" style="margin:2px 0">Sources: ${src(p)} · first seen ${esc(p.firstSeen ?? '')}${p.version > 1 ? ` · version ${p.version}, revised ${esc(String(p.revisedAt).slice(0, 10))}` : ''}</p>
+${p.citations?.length ? `<p class="muted" style="margin:2px 0">Cites from the paper library: ${p.citations.map(c => paperLink(c, d.papers)).join(' · ')}</p>` : ''}${p.dossier ? `<p class="muted" style="margin:2px 0">From a literature dossier · <a href="#" data-dosl="${esc(p.dossier)}">open it</a></p>` : ''}
 ${stepper(p.lifecycle, d.systems)}
 <details data-thr="${esc(p.id)}"${openThreads.has(p.id) ? ' open' : ''}><summary class="muted">Talk to the ${LENS[p.lens] ?? ''} researcher about this${p.thread ? ` · ${p.thread} message(s)` : ''}${p.threadJob?.status === 'running' ? ' · answering…' : ''}</summary><div data-thrbody="${esc(p.id)}"><p class="muted">Loading…</p></div></details>
 <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${['shortlist', 'build', 'park', 'reject'].map(k => `<button class="btn" data-mark="${esc(p.id)}" data-st="${k}">${k}</button>`).join('')}<input data-note="${esc(p.id)}" placeholder="note for the researchers" value="${esc(p.feedback?.note ?? '')}" style="flex:1;min-width:160px;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:6px">
@@ -324,6 +325,7 @@ ${stepper(p.lifecycle, d.systems)}
   document.querySelectorAll('[data-podf]').forEach(x => x.onclick = () => { podFilter = x.dataset.podf; renderPod(); });
   document.querySelectorAll('[data-mark]').forEach(x => x.onclick = async () => { const id = x.dataset.mark, note = document.querySelector(`[data-note="${CSS.escape(id)}"]`)?.value ?? ''; x.disabled = true; await fetch('/api/research-pod/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: x.dataset.st, note }) }).catch(() => null); renderPod(); });
   document.querySelectorAll('[data-card]').forEach(x => x.onclick = () => showCard(x.dataset.card, true));
+  document.querySelectorAll('[data-dosl]').forEach(x => x.onclick = e => { e.preventDefault(); showDossier(x.dataset.dosl); });
   document.querySelectorAll('[data-thr]').forEach(x => { const id = x.dataset.thr; if (x.open) loadThread(id); x.ontoggle = () => { if (x.open) { openThreads.add(id); loadThread(id); } else openThreads.delete(id); }; });
   const link = async (id, body) => { await fetch('/api/research-pod/link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...body }) }).catch(() => null); renderPod(); };
   document.querySelectorAll('[data-rid]').forEach(x => x.onchange = () => link(x.dataset.rid, { registerId: x.value.trim() }));
@@ -331,6 +333,79 @@ ${stepper(p.lifecycle, d.systems)}
   const sc = d.scorecard;
   if (sc) el.insertAdjacentHTML('beforeend', `<h3 style="font-size:14px;margin:16px 0 6px">Scorecard <i class="muted" style="font-style:normal">how far each researcher's ideas get · the pass rate counts only tested ones</i></h3><table><thead><tr><th>Researcher</th><th class="n">Proposed</th><th class="n">You accepted</th><th class="n">Carded</th><th class="n">Pre-registered</th><th class="n">Tested</th><th class="n">Passed</th><th class="n">Failed</th><th class="n">Paper or live</th><th class="n">Rejected</th><th class="n">Pass rate</th></tr></thead><tbody>${Object.entries(sc).map(([k, v]) => `<tr><td>${LENS[k]}</td><td class="n">${v.proposed}</td><td class="n">${v.accepted}</td><td class="n">${v.carded}</td><td class="n">${v.preregistered}</td><td class="n">${v.tested}</td><td class="n up">${v.passed}</td><td class="n dn">${v.failed}</td><td class="n">${v.paperOrLive}</td><td class="n">${v.rejected}</td><td class="n">${v.passRate == null ? '–' : Math.round(v.passRate * 100) + '%'}</td></tr>`).join('')}</tbody></table>
 <p class="muted">Systems with standard outputs: ${d.systems?.length ? d.systems.map(x => `<a href="system-backtest.html?id=${encodeURIComponent(x.id)}">${esc(x.model)}</a> (${x.trades})`).join(' · ') : 'none yet'} · <a href="system-backtest.html">System Backtest page</a></p>`);
+}
+// §9ah (/api/research-pod/investigate, /paper, /dossiers, /papers): the literature desk. The researchers search arXiv,
+// OpenAlex, Semantic Scholar and Crossref, read the open papers, and write a dossier with cited evidence and proposals.
+const STANCE = { supports: 'ok', contradicts: 'bad', mixed: 'warn', neutral: '' }, VERDICT = { 'worth-testing': 'ok', weak: 'warn', 'already-tested': 'bad' };
+const httpUrl = u => (/^https?:\/\//i.test(String(u ?? '')) ? String(u) : null);
+let litPoll = null, litOpen = null, litFilter = '';
+function paperLink(id, idx) {
+  const p = idx?.[id], u = httpUrl(p?.url);
+  const label = p ? `${String(p.title ?? id).slice(0, 70)}${p.year ? ` (${p.year})` : ''}` : id;
+  return u ? `<a href="${esc(u)}" target="_blank" rel="noopener" title="${esc(id)}">${esc(label)}</a>` : `<span title="${esc(id)}">${esc(label)}</span>`;
+}
+async function renderLit() {
+  const el = $('litpanel'); if (!el) return;
+  const [d, lib] = await Promise.all([getJson('/api/research-pod/dossiers'), getJson('/api/research-pod/papers')]);
+  if (!d?.ok) { el.innerHTML = `<h2>Literature desk</h2><p class="muted">${esc(d?.error ?? 'not available')}</p>`; return; }
+  const j = d.job, running = j?.status === 'running', input = 'background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:8px;font:14px inherit';
+  const ago = ms => `${Math.max(1, Math.round((Date.now() - ms) / 60000))} min`;
+  const papers = lib?.ok ? lib.papers : [], q = litFilter.toLowerCase();
+  const shown = papers.filter(p => !q || `${p.title} ${p.notes?.claim ?? ''} ${(p.authors ?? []).join(' ')}`.toLowerCase().includes(q));
+  const idx = Object.fromEntries(papers.map(p => [p.id, p]));
+  el.innerHTML = `<h2>Literature desk <i>the researchers search arXiv, OpenAlex, Semantic Scholar and Crossref, read the open papers and cite them · ${esc(d.label)}</i></h2>
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin:6px 0 10px">
+<div style="flex:2;min-width:260px"><b>Research an idea</b><textarea id="litidea" rows="3" placeholder="A hypothesis: e.g. carry trade returns are compensation for crash risk, so carry hedged with risk reversals should keep most of its return" style="width:100%;box-sizing:border-box;margin-top:4px;${input}"${running ? ' disabled' : ''}></textarea>
+<button class="btn" id="litgo"${running ? ' disabled' : ''}>Research it</button> <span class="muted">librarian, search, read up to 18 papers (7 in full), then a dossier · up to 14 model calls</span></div>
+<div style="flex:1;min-width:220px"><b>Review this paper</b><input id="litref" placeholder="arXiv id or link, DOI, SSRN or PDF link, a title, or paste the text" style="width:100%;box-sizing:border-box;margin-top:4px;${input}"${running ? ' disabled' : ''}>
+<button class="btn" id="litrev"${running ? ' disabled' : ''}>Review it</button> <span class="muted">notes, how to test it here, proposals</span></div></div>
+${j ? `<p class="${j.status === 'error' ? '' : 'muted'}" id="litjob">${running ? `Working (${esc(j.kind === 'idea' ? 'researching an idea' : 'reviewing a paper')}, ${ago(j.startedAt)}): ${esc(j.stage)} · ${j.calls} model call(s)` : j.status === 'error' ? `<b class="dn">Last job failed:</b> ${esc(j.error)}` : `Last job done: ${esc(j.input.slice(0, 120))} · ${j.calls} model call(s)`}
+${j.errors?.length ? `<details style="display:inline"><summary class="muted">${j.errors.length} source or paper problem(s)</summary><ul>${j.errors.map(e => `<li class="muted">${esc(e)}</li>`).join('')}</ul></details>` : ''}</p>` : ''}
+<h3 style="font-size:14px;margin:12px 0 4px">Dossiers</h3>
+${d.dossiers.length ? `<table><thead><tr><th>When</th><th>What</th><th>Verdict</th><th class="n">Papers</th><th class="n">Proposals</th><th></th></tr></thead><tbody>${d.dossiers.map(x => `<tr><td class="muted">${esc(String(x.at).slice(0, 16).replace('T', ' '))}</td><td><span class="chip">${x.kind === 'paper' ? 'paper' : 'idea'}</span> ${esc(String(x.hypothesis ?? '').slice(0, 140))}</td><td>${x.verdict ? `<span class="chip ${VERDICT[x.verdict] ?? ''}">${esc(x.verdict)}</span>` : `<span class="chip bad">no dossier</span>`}</td><td class="n">${x.papers}</td><td class="n">${x.proposals}</td><td><button class="btn" data-dos="${esc(x.id)}" style="padding:3px 10px">Open</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted">No dossier yet. Give the desk a hypothesis or a paper above.</p>'}
+<div id="dossierview"></div>
+<details id="libdetails"${litFilter ? ' open' : ''}><summary><b>Paper library</b> <span class="muted">${lib?.count ?? 0} papers, ${lib?.read ?? 0} with notes · read weekly by the pod and by every dossier · the researchers cite these ids</span></summary>
+<input id="libfilter" placeholder="filter by title, author or claim" value="${esc(litFilter)}" style="margin:6px 0;width:280px;${input};padding:5px">
+${shown.length ? `<table><thead><tr><th>Paper</th><th>Claim (from the notes)</th><th>Stance</th><th>Read from</th><th>Cited by</th></tr></thead><tbody>${shown.slice(0, 150).map(p => { const n = p.notes ?? {}, c = p.citedBy ?? {};
+  return `<tr><td>${paperLink(p.id, idx)}<br><span class="muted">${esc([(p.authors ?? []).slice(0, 2).join(', '), p.venue, p.citations != null ? `${p.citations} cites` : null].filter(Boolean).join(' · '))}</span></td>
+<td>${esc(n.claim ?? '(not read yet)')}${n.crossRefs?.length ? `<br><span class="muted">${n.crossRefs.map(x => `${esc(x.relation)} ${paperLink(x.paperId, idx)}`).join(' · ')}</span>` : ''}${n.outOfSample ? `<br><span class="muted">out of sample: ${esc(n.outOfSample)} · costs: ${esc(n.costs)}</span>` : ''}</td>
+<td>${n.stance ? `<span class="chip ${STANCE[n.stance] ?? ''}" title="${esc(p.forHypothesis ?? '')}">${esc(n.stance)}</span>` : ''}${(p.lenses ?? []).map(l => ` <span class="chip">${esc(LENS[l] ?? l)}</span>`).join('')}</td>
+<td class="muted">${esc(p.readFrom ?? '')}</td><td class="muted">${(c.proposals ?? []).map(esc).join('<br>')}${c.dossiers?.length ? `${c.proposals?.length ? '<br>' : ''}${c.dossiers.length} dossier(s)` : ''}</td></tr>`; }).join('')}</tbody></table>` : '<p class="muted">Empty.</p>'}</details>`;
+  const start = async (url, body) => { const r = await getJson(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); if (!r?.ok) alert(r?.error ?? 'failed'); renderLit(); };
+  $('litgo').onclick = () => { const h = $('litidea').value.trim(); if (h) start('/api/research-pod/investigate', { hypothesis: h }); };
+  $('litrev').onclick = () => { const r = $('litref').value.trim(); if (r) start('/api/research-pod/paper', { ref: r }); };
+  el.querySelectorAll('[data-dos]').forEach(b => b.onclick = () => showDossier(b.dataset.dos));
+  const lf = $('libfilter'); if (lf) lf.onchange = () => { litFilter = lf.value.trim(); renderLit(); };
+  clearTimeout(litPoll);
+  if (running) litPoll = setTimeout(renderLit, 10_000);
+  else if (j?.status === 'done' && j.result && litOpen !== j.result && Date.now() - (j.finishedAt ?? 0) < 120_000) showDossier(j.result);
+  else if (litOpen) showDossier(litOpen, false);
+}
+async function showDossier(id, scroll = true) {
+  const el = $('dossierview'); if (!el) return; litOpen = id;
+  const r = await getJson(`/api/research-pod/dossier?id=${encodeURIComponent(id)}`);
+  if (!r?.ok) { el.innerHTML = `<p class="muted">${esc(r?.error ?? 'not available')}</p>`; return; }
+  const k = r.dossier, idx = { ...Object.fromEntries((r.papers ?? []).map(p => [p.id, p])), ...r.paperNotes };
+  const ev = list => (list ?? []).map(e => `<li>${esc(e.point)} <span class="muted">· ${e.papers.map(p => paperLink(p, idx)).join(' · ')}</span></li>`).join('');
+  const read = Object.entries(r.paperNotes ?? {});
+  el.innerHTML = `<div style="border:1px solid var(--line2);border-radius:6px;padding:10px 14px;margin:10px 0">
+<h3 style="font-size:15px;margin:0 0 4px">${esc(k?.hypothesis ?? r.hypothesis)} <span class="chip">${r.kind === 'paper' ? 'paper review' : 'idea'}</span>${k ? ` <span class="chip ${VERDICT[k.verdict] ?? ''}">${esc(k.verdict)}</span>` : ''}</h3>
+<p class="muted" style="margin:2px 0">${esc(String(r.at).slice(0, 16).replace('T', ' '))}${r.kind === 'paper' ? ` · you gave: ${esc(String(r.ref ?? '').slice(0, 160))}` : r.hypothesis !== k?.hypothesis ? ` · you asked: “${esc(r.hypothesis)}”` : ''}${r.read ? ` · read ${r.read.full} in full, ${r.read.abstract} from the abstract, ${r.read.library} from the library` : ''} · ${r.calls} model call(s)${r.queries?.length ? ` · searched: ${r.queries.map(esc).join('; ')}` : ''}</p>
+${k ? `<p>${esc(k.summary)}</p><p class="muted">${esc(k.verdictWhy)}</p>
+<div style="display:flex;gap:16px;flex-wrap:wrap"><div style="flex:1;min-width:260px"><b class="up">Evidence for</b><ul>${ev(k.evidenceFor) || '<li class="muted">none</li>'}</ul></div><div style="flex:1;min-width:260px"><b class="dn">Evidence against</b><ul>${ev(k.evidenceAgainst) || '<li class="muted">none</li>'}</ul></div></div>
+${k.unknowns?.length ? `<p><b>What no paper here settles</b></p><ul>${k.unknowns.map(u => `<li>${esc(u)}</li>`).join('')}</ul>` : ''}
+<p><b>How to test it here</b><br>${esc(k.testHere.design)}${k.testHere.data?.length ? `<br>${k.testHere.data.map(x => `<span class="chip">${esc(x)}</span>`).join(' ')}` : ''}${k.testHere.alreadyHere?.length ? `<br><span class="muted">Already here: ${k.testHere.alreadyHere.map(esc).join(' · ')}</span>` : ''}</p>
+${k.proposals?.length ? `<p><b>Proposals</b> <span class="muted">add one to the pod's library to mark it, talk to its researcher and send it to the architect</span></p>${k.proposals.map(p => { const have = (r.inLibrary ?? []).includes(p.id);
+  return `<div style="border-top:1px solid var(--line);padding:6px 0"><b>${esc(p.title)}</b> <span class="chip">${esc(LENS[p.lens] ?? p.lens)}</span> <span class="chip">${esc(p.priority)} · effort ${esc(p.effort)}</span><br>${esc(p.thesis)}<br><span class="muted">Test: ${p.test.variable ? `${esc(p.test.variable)} · ` : ''}must beat ${esc(p.test.benchmark)}${p.test.placebo ? ` · placebo ${esc(p.test.placebo)}` : ''}${p.killIf ? ` · kill if ${esc(p.killIf)}` : ''}</span>
+${p.citations?.length ? `<br><span class="muted">Cites: ${p.citations.map(c => paperLink(c, idx)).join(' · ')}</span>` : ''}<br><button class="btn" data-adopt="${esc(p.id)}" style="padding:3px 10px;margin-top:4px"${have ? ' disabled' : ''}>${have ? 'In the library' : 'Add to the proposal library'}</button></div>`; }).join('')}` : ''}
+${k.questionsForOwner?.length ? `<p class="muted">Asks you: ${k.questionsForOwner.map(esc).join(' · ')}</p>` : ''}` : `<p class="muted">No dossier was written${r.errors?.length ? `: ${esc(r.errors.at(-1))}` : ''}. The papers below were read and are in the library.</p>`}
+<details${k ? '' : ' open'}><summary class="muted">Papers read (${read.length}) and found (${r.papers?.length ?? 0})</summary><table><thead><tr><th>Paper</th><th>Stance</th><th>Claim</th><th>Read from</th></tr></thead><tbody>${read.map(([pid, x]) => `<tr><td>${paperLink(pid, idx)}</td><td><span class="chip ${STANCE[x.notes?.stance] ?? ''}">${esc(x.notes?.stance ?? '')}</span></td><td>${esc(x.notes?.claim ?? '')}${x.notes?.effect ? `<br><span class="muted">effect: ${esc(x.notes.effect)}</span>` : ''}${x.notes?.caveats?.length ? `<br><span class="muted">caveats: ${x.notes.caveats.map(esc).join('; ')}</span>` : ''}</td><td class="muted">${esc(x.readFrom ?? '')}</td></tr>`).join('')}</tbody></table>
+${(r.papers ?? []).filter(p => !r.paperNotes?.[p.id]).length ? `<p class="muted">Found, not read: ${(r.papers ?? []).filter(p => !r.paperNotes?.[p.id]).map(p => paperLink(p.id, idx)).join(' · ')}</p>` : ''}</details>
+${r.errors?.length ? `<details><summary class="muted">${r.errors.length} problem(s) during the job</summary><ul>${r.errors.map(e => `<li class="muted">${esc(e)}</li>`).join('')}</ul></details>` : ''}
+${Object.keys(r.sources ?? {}).length ? `<p class="muted">Results per source: ${Object.entries(r.sources).map(([s, n]) => `${esc(s)} ${n}`).join(' · ')}</p>` : ''}</div>`;
+  el.querySelectorAll('[data-adopt]').forEach(b => b.onclick = async () => { b.disabled = true; const x = await getJson('/api/research-pod/dossier/adopt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, proposalId: b.dataset.adopt }) });
+    b.textContent = x?.ok ? 'In the library' : (x?.error ?? 'failed'); if (x?.ok) renderPod(); });
+  if (scroll) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 // Phases 24 and 26: the architect's system card, the validation desk's review and the prereg draft.
 async function showCard(id, start) {

@@ -431,9 +431,46 @@ size: 0 to 1.5 (1 = normal). veto: true only when the trade should not be taken 
                   "rules": { "universe": "markets", "signal": "how it is computed", "entry": "when", "exit": "when", "horizon": "holding period", "sizing": "how much" },
                   "test": { "variable": "what to construct", "benchmark": "what it must beat", "placebo": "the shuffle or control", "horizons": "the family to sweep", "power": "rough count of events" },
                   "killIf": "the result that would end it", "fleetOverlap": "which existing bot it resembles, and how it differs",
-                  "buildSteps": ["what to build, in order"], "effort": "S | M | L", "priority": "high | medium | low" } ],   // 2 to 4, new systems only
+                  "buildSteps": ["what to build, in order"], "effort": "S | M | L", "priority": "high | medium | low",
+                  "citations": ["paper ids from 'Papers you have read', e.g. arxiv:1406.4322 or doi:10.1111/..."] } ],   // 2 to 4, new systems only
   "questionsForOwner": ["what you need the owner to decide or tell you"]   // 0 to 3
 }`,
+  literature_queries: `{
+  "restated": "the hypothesis restated precisely: the variable, the market, the horizon and the outcome",
+  "queries": [ { "q": "a search query of 3 to 8 words, the words a paper's title or abstract would use", "why": "which part of the hypothesis it covers" } ],   // 4 to 8: the core claim, its mechanism, synonyms, the opposite result, the asset class it is better studied in
+  "names": ["known literature on this: author(s) year and short title, e.g. Lustig Roussanov Verdelhan 2011 common risk factors in currency markets"]   // 0 to 8
+}`,
+  paper_notes: `{
+  "notes": [ { "paperId": "the id in square brackets, exactly",
+               "claim": "the paper's main finding in one or two sentences, with its numbers",
+               "mechanism": "why the authors say it happens",
+               "data": { "market": "assets / universe", "period": "years", "frequency": "tick | daily | monthly ..." },
+               "method": "how they tested it (sorts, regressions, event study, backtest, model) and against what benchmark",
+               "effect": "effect size and significance as reported (t-stat, Sharpe, bp, R2); 'not reported' if absent",
+               "outOfSample": "yes | no | partly | unclear",   // a held-out period, another market, or a later replication
+               "costs": "yes | no | unclear",   // transaction costs / spreads charged
+               "relevance": "how it bears on the hypothesis you were given",
+               "stance": "supports | contradicts | mixed | neutral",   // towards that hypothesis
+               "caveats": ["data snooping, small sample, survivorship, regime, look-ahead, a different market..."],
+               "testHere": "how the finding could be checked on this repo's data (name the feed)",
+               "crossRefs": [ { "paperId": "an id from the library index", "relation": "confirms | contradicts | extends | replicates | uses-same-data", "note": "one line" } ] } ]   // one note per paper you were given
+}
+Report what the paper says, not what you would like it to say. An abstract-only read must say so in caveats.`,
+  research_dossier: `{
+  "hypothesis": "the hypothesis restated precisely and testably",
+  "summary": "the answer in three or four sentences: what the literature says and what we should do",
+  "evidenceFor": [ { "point": "a finding that supports it, with its numbers and setting", "papers": ["paper ids it rests on"] } ],
+  "evidenceAgainst": [ { "point": "a finding that contradicts or limits it", "papers": ["paper ids"] } ],
+  "unknowns": ["what no paper read here settles: other markets, costs, recent years, intraday..."],
+  "testHere": { "design": "how to test it on THIS repo's data: the variable, the condition, the horizons, the benchmark, the placebo",
+                "data": ["feed ids from the data inventory"], "alreadyHere": ["Evidence Book or register ids that already touch it, and what they found"] },
+  "verdict": "worth-testing | weak | already-tested",
+  "verdictWhy": "one or two sentences",
+  "proposals": [ /* 1 to 3, the system_proposals shape, each with "lens": "quant | macro | flow" and "citations": [paper ids] */ ],
+  "questionsForOwner": ["what you need the owner to decide or tell you"]   // 0 to 3
+}
+Every evidence point cites at least one paper id from the notes; a point with no paper is dropped. Never claim the
+hypothesis "works": the literature is a reason to test, not a result.`,
   system_card: `{
   "name": "the system's name", "hypothesis": "one testable sentence", "mechanism": "who pays and why",
   "universe": ["EURUSD", "..."], "horizon": "holding period", "signal": "exact computation from named feeds", "entry": "exact rule", "exit": "exact rule",
