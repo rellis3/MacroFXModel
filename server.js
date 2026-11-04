@@ -232,7 +232,7 @@ import { policyRates as _prRates } from './js/policyRates.js';   // each central
 import { expectations as _cbExpect } from './js/cbExpectations.js';   // what the futures price for each bank
 import { parseFeed as _nwParse, fromFinnhub as _nwFinnhub, mergeWire as _nwMerge, validateRead as _nwValidate, pick as _nwPick, wireText as _nwText } from './js/newsAnalyst.js';   // agent 21
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
-import { RESEARCHERS as _RP_RESEARCHERS, WEB_SOURCES as _RP_WEB, parseFeed as _rpParseFeed, webDigest as _rpWebDigest, validateProposals as _rpValidate, applyFeedback as _rpApplyFeedback, feedbackBrief as _rpFeedbackBrief, buildList as _rpBuildList, mergeLibrary as _rpMerge, validateCard as _rpValidateCard, cardPrereg as _rpPrereg, slug as _rpSlug, lifecycle as _rpLifecycle, setLink as _rpSetLink, outcomesBrief as _rpOutcomes, scorecard as _rpScorecard, validateReply as _rpValidateReply, applyRevision as _rpApplyRevision, threadText as _rpThreadText } from './js/researchPod.js';   // Phases 23-25
+import { RESEARCHERS as _RP_RESEARCHERS, WEB_SOURCES as _RP_WEB, parseFeed as _rpParseFeed, feedItems as _rpFeedItems, webDigest as _rpWebDigest, validateProposals as _rpValidate, applyFeedback as _rpApplyFeedback, feedbackBrief as _rpFeedbackBrief, buildList as _rpBuildList, mergeLibrary as _rpMerge, validateCard as _rpValidateCard, cardPrereg as _rpPrereg, slug as _rpSlug, lifecycle as _rpLifecycle, setLink as _rpSetLink, outcomesBrief as _rpOutcomes, scorecard as _rpScorecard, validateReply as _rpValidateReply, applyRevision as _rpApplyRevision, threadText as _rpThreadText } from './js/researchPod.js';   // Phases 23-25
 import { normaliseTrades as _sxNormalise, tearsheet as _sxTearsheet, toolkitCsv as _sxToolkitCsv, terminalCsv as _sxTerminalCsv, liveVsExpected as _sxLiveVsExpected } from './js/systemExports.js';   // §9ac
 import { selectPairs as _psSelect } from './js/pairSelector.js';   // §9ae
 import { WORLD_RATES_URL as _WR_URL, parseCbpol as _wrParse, worldRates as _wrBuild, byIsoNumeric as _wrByIso } from './js/worldRates.js';   // §9af
@@ -253,7 +253,8 @@ import { watchPlan as _twPlan, check as _twCheck, message as _twMessage } from '
 import { tradeRows as _jcRows, coach as _jcCoach, execution as _jcExec } from './js/deskJournal.js';   // Phases 8 and 13
 import { parseRegister as _tdParseRegister, opsReport as _tdOps, outline as _tdOutline, section as _tdSection, readingList as _tdReadingList, registerText as _tdRegisterText, screen as _tdScreen, validateTheories as _tdValidate } from './js/theoryDesk.js';   // Phases 9 and 12
 import { upcoming as _rpUpcoming, playbookText as _rpPlaybookText } from './js/releasePlaybook.js';
-import { searchUrls as _litSearchUrls, PARSERS as _LIT_PARSERS, LIT_SOURCES as _LIT_SOURCES, apiError as _litApiError, dedupe as _litDedupe, titleMatch as _litTitleMatch, isBlockedPage as _litBlocked, arxivHtml as _litArxivHtml, pageMeta as _litPageMeta, htmlToText as _litHtmlToText, cleanPdfText as _litCleanPdf, identifyRef as _litIdentify, lookupUrls as _litLookup, parseOpenAlex as _litParseOpenAlex, parseCrossref as _litParseCrossref, parseArxiv as _litParseArxiv, urlRecord as _litUrlRecord, textRecord as _litTextRecord, libraryIndex as _litLibIndex, libraryText as _litLibText, paperForReader as _litForReader, excerpt as _litExcerpt, validatePaperNotes as _litValidateNotes, noteLine as _litNoteLine, validateDossier as _litValidateDossier, validateQueries as _litValidateQueries, rankPapers as _litRank, readingPlan as _litPlan, findPaper as _litFind, mergePapers as _litMerge, addCitations as _litCite, relevance as _litRelevance, feedRecords as _litFeedRecords, weeklyTopic as _litWeeklyTopic, LENS_INTERESTS as _litInterests, dossierSummary as _litDossierSummary } from './js/literature.js';   // §9ah the literature desk
+import { searchUrls as _litSearchUrls, PARSERS as _LIT_PARSERS, LIT_SOURCES as _LIT_SOURCES, apiError as _litApiError, dedupe as _litDedupe, titleMatch as _litTitleMatch, isBlockedPage as _litBlocked, arxivHtml as _litArxivHtml, pageMeta as _litPageMeta, htmlToText as _litHtmlToText, cleanPdfText as _litCleanPdf, identifyRef as _litIdentify, lookupUrls as _litLookup, parseOpenAlex as _litParseOpenAlex, parseCrossref as _litParseCrossref, parseArxiv as _litParseArxiv, urlRecord as _litUrlRecord, textRecord as _litTextRecord, libraryIndex as _litLibIndex, libraryText as _litLibText, paperForReader as _litForReader, excerpt as _litExcerpt, validatePaperNotes as _litValidateNotes, noteLine as _litNoteLine, validateDossier as _litValidateDossier, validateQueries as _litValidateQueries, rankPapers as _litRank, readingPlan as _litPlan, findPaper as _litFind, mergePapers as _litMerge, addCitations as _litCite, relevance as _litRelevance, feedRecords as _litFeedRecords, weeklyTopic as _litWeeklyTopic, LENS_INTERESTS as _litInterests, dossierSummary as _litDossierSummary, LIT_API as _LIT_API, hash as _litHash, firstTitleLine as _litTitleLine } from './js/literature.js';
+import { QC as _RL_QC, parseQcTree as _rlParseQcTree, readingListItems as _rlReadingList, manifestItems as _rlManifest, items151 as _rl151Items, record151 as _rlRecord151, qcItems as _rlQcItems, qcRawUrl as _rlQcRaw, qcRecord as _rlQcRecord, matchUpload as _rlMatchUpload, uploadKey as _rlUploadKey, seedQueue as _rlSeedQueue, upsertItem as _rlUpsert, nextItems as _rlNext, markItems as _rlMark, queueSummary as _rlSummary, batchPlan as _rlBatchPlan, searchLocal as _rlSearchLocal, paperFeedRecords as _rlPaperFeedRecords, kindOf as _rlKindOf } from './js/researchLibrary.js';   // §9ai the reading backlog   // §9ah the literature desk
 import { currencyStrength as _evCcy, dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
@@ -5325,7 +5326,7 @@ async function _rpWeb() {
   const reads = {};
   await Promise.all(_RP_WEB.map(async src => {
     try { const r = await fetch(src.url, { headers: UA, redirect: 'follow', signal: AbortSignal.timeout(20_000) }); if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const items = _rpParseFeed(await r.text(), { max: 25 }); reads[src.id] = items.length ? { items } : { items: [], error: 'no items (blocked or not a feed)' }; }
+      const items = _rpFeedItems(src, await r.text(), { max: 25 }); reads[src.id] = items.length ? { items } : { items: [], error: 'no items (blocked or not a feed)' }; }
     catch (e) { reads[src.id] = { items: [], error: e.message.slice(0, 120) }; }
   }));
   _rpWebCache = { at: Date.now(), reads };
@@ -5345,6 +5346,12 @@ async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS) } = {}
   // §9ah: before they write, the researchers read: a few new papers per lens go into the paper library (bounded: 4 calls)
   _rpJob && (_rpJob.stage = 'literature: reading new papers');
   try { out.literature = await _litTimeout(_litScan(web, { brief, lenses }), 12 * 60e3, 'literature scan'); } catch (e) { out.literature = { errors: [e.message] }; }
+  // §9ai: and three calls' worth of the reading backlog (the repo's papers, the 151, QuantConnect, uploads)
+  if (_litJob?.status !== 'running') {
+    const bj = { errors: [], budget: { calls: 0, max: 3 }, stage: '' };
+    try { const b = await _litTimeout(_rlBacklog({ calls: 3 }, bj), 10 * 60e3, 'backlog'); out.backlog = { read: b.read.length, remaining: b.summary.pending, errors: bj.errors.slice(0, 10) }; }
+    catch (e) { out.backlog = { error: e.message, errors: bj.errors.slice(0, 10) }; }
+  }
   const papers = await _rpGet(_LIT.papers, []), paperIds = new Set(papers.map(p => p.id));
   _rpJob && (_rpJob.stage = 'researchers');
   await Promise.all(lenses.filter(l => _RP_RESEARCHERS[l]).map(async lens => {
@@ -5647,8 +5654,9 @@ const _litFeedIds = () => _DATA_FEEDS.map(f => `${f.id} (${f.name})`).join('; ')
 /** Read papers ({ rec, text, from }): one call per full-text paper, abstracts eight to a call; three calls at a time. */
 async function _litReadPapers({ items, hypothesis, lib, role, budget, errors, date, ledger, job = null, fullChars = 25_000 }) {
   const libIds = (lib ?? []).filter(p => p.notes?.claim).map(p => p.id), out = {};
-  const full = items.filter(x => x.text), abs = items.filter(x => !x.text && x.rec.abstract);
-  const batches = [...full.map(x => [x]), ...Array.from({ length: Math.ceil(abs.length / 8) }, (_, i) => abs.slice(i * 8, i * 8 + 8))];
+  const full = items.filter(x => x.text && x.text.length > 8000), short = items.filter(x => x.text && x.text.length <= 8000), abs = items.filter(x => !x.text && x.rec.abstract);
+  const chunk = (a, k) => Array.from({ length: Math.ceil(a.length / k) }, (_, i) => a.slice(i * k, i * k + k));
+  const batches = [...full.map(x => [x]), ...chunk(short, 4), ...chunk(abs, 8)];
   let done = 0;
   const run = async batch => {
     const ids = batch.map(x => x.rec.id);
@@ -5660,12 +5668,12 @@ async function _litReadPapers({ items, hypothesis, lib, role, budget, errors, da
       for (const n of v.value) out[n.paperId] = n;
       for (const id of ids) if (!out[id]) errors.push(`reader: no note for ${id}`); }
     catch (e) { errors.push(`reader ${ids.join(', ').slice(0, 80)}: ${e.message.slice(0, 200)}`); }
-    done += batch.length; if (job) job.stage = `reading: ${done} of ${full.length + abs.length} papers`;
+    done += batch.length; if (job) job.stage = `reading: ${done} of ${full.length + short.length + abs.length} papers`;
   };
   for (let i = 0; i < batches.length; i += 3) await Promise.all(batches.slice(i, i + 3).map(run));
   return out;
 }
-const _litPaperRow = (p, readFrom) => ({ id: p.id, title: p.title, year: p.year, venue: p.venue, url: p.url, pdfUrl: p.pdfUrl, citations: p.citations, authors: (p.authors ?? []).slice(0, 4), sources: p.sources, score: p.score ?? null, read: readFrom ?? null });
+const _litPaperRow = (p, readFrom) => ({ id: p.id, kind: _rlKindOf(p), title: p.title, year: p.year, venue: p.venue, url: p.url, pdfUrl: p.pdfUrl, citations: p.citations, authors: (p.authors ?? []).slice(0, 4), sources: p.sources, score: p.score ?? null, read: readFrom ?? null });
 async function _litSaveDossier(rec) {
   const all = await _rpGet(_LIT.dossiers, []);
   await kv.put(_LIT.dossiers, JSON.stringify([rec, ...all.filter(d => d.id !== rec.id)].slice(0, 30)));
@@ -5697,26 +5705,36 @@ async function _litInvestigate(hypothesis, job) {
   try { const q = await _litModel(budget, { role: role('librarian'), date, ledger: DESK_EVIDENCE, maxTokens: 1500, timeoutMs: 120_000, label: 'lit:librarian', sections: [['The hypothesis', hypothesis]], validate: _litValidateQueries });
     rec.restated = q.value.restated; rec.queries = q.value.queries.map(x => x.q); rec.names = q.value.names; }
   catch (e) { errors.push(e.message); rec.queries = [hypothesis.replace(/\s+/g, ' ').slice(0, 160)]; }
-  // b. search, dedupe, rank
+  // b. the desk's own library first (papers, the 151 strategies, QuantConnect strategies, working papers): entries
+  // already read are reused, up to three unread backlog entries are read now; then the web.
+  job.stage = "searching the desk's own library";
+  const q0 = await _rpGet(_RL.queue, { items: [] }), local = _rlSearchLocal(await _rpGet(_LIT.papers, []), q0, [hypothesis, rec.restated, ...rec.queries].filter(Boolean), { max: 8 });
+  const localItems = [];
+  for (const it of local.unread.slice(0, 3)) { try { localItems.push(await _litTimeout(_rlMaterialise(it, { errors }), 60_000, 'local entry')); } catch (e) { errors.push(`local ${it.id}: ${e.message.slice(0, 100)}`); } }
+  rec.local = { read: local.read.map(p => p.id), unread: localItems.map(x => x.rec.id) };
   const qs = [...rec.queries, ...rec.names.slice(0, 3)];
   job.stage = `searching ${qs.length} queries in arXiv, OpenAlex, Semantic Scholar and Crossref`;
   let found = [];
   try { found = await _litTimeout(_litSearch(qs, { max: 8, errors, log: sources }), 240_000, 'search'); } catch (e) { errors.push(e.message); }
   const ranked = _litRank(found, [hypothesis, rec.restated, ...rec.queries].filter(Boolean)).slice(0, 18);
-  if (!ranked.length) { rec.errors = errors; await _litSaveDossier(rec); throw new Error(`no papers found (${errors.slice(0, 3).join('; ') || 'every source empty'})`); }
+  if (!ranked.length && !local.read.length && !localItems.length) { rec.errors = errors; await _litSaveDossier(rec); throw new Error(`no papers found (${errors.slice(0, 3).join('; ') || 'every source empty'})`); }
   // c. read: full text for the open ones, abstracts for the rest, notes already in the library reused
   const lib = await _rpGet(_LIT.papers, []);
   const plan = _litPlan(ranked, lib, { total: 18, fullText: 7 });
   job.stage = `fetching full text for ${plan.full.length} papers`;
   const fulls = await Promise.all(plan.full.map(async r => { try { return { rec: r, ...(await _litTimeout(_litFullText(r), 120_000, 'full text')) }; } catch (e) { errors.push(`full text ${r.id}: ${e.message.slice(0, 140)}`); return { rec: r, text: null, from: 'abstract' }; } }));
-  const items = [...fulls, ...plan.abstract.map(r => ({ rec: r, text: null, from: 'abstract' }))].filter(x => x.text || x.rec.abstract);
+  const items = [...localItems, ...fulls, ...plan.abstract.map(r => ({ rec: r, text: null, from: 'abstract' }))].filter(x => x.text || x.rec.abstract);
   const notes = await _litReadPapers({ items, hypothesis, lib, role: role('paper_reader'), budget, errors, date, ledger: DESK_EVIDENCE, job });
   const fresh = items.filter(x => notes[x.rec.id]).map(x => ({ ...x.rec, notes: notes[x.rec.id], readFrom: x.from === 'abstract' ? 'abstract' : x.from }));
-  const read = [...fresh, ...plan.reuse.map(r => ({ ...r, readFrom: `library (${r.readFrom ?? 'abstract'})` }))];
+  const reused = [...local.read, ...plan.reuse].filter((p, i, a) => a.findIndex(x => x.id === p.id) === i && !fresh.some(f => f.id === p.id));
+  const read = [...fresh, ...reused.map(r => ({ ...r, readFrom: `library (${r.readFrom ?? 'abstract'})` }))];
+  const localDone = localItems.filter(x => notes[x.rec.id]).map(x => x.rec.id);
+  if (localDone.length) await kv.put(_RL.queue, JSON.stringify(_rlMark(await _rpGet(_RL.queue, { items: [] }), localDone, 'done')));
   const readFrom = Object.fromEntries(read.map(p => [p.id, p.readFrom]));
-  rec.papers = ranked.map(p => _litPaperRow(p, readFrom[p.id] ?? readFrom[(_litFind(read, p) ?? {}).id]));
-  rec.paperNotes = Object.fromEntries(read.map(p => [p.id, { title: p.title, year: p.year, url: p.url, readFrom: p.readFrom, notes: p.notes }]));
-  rec.read = { full: fresh.filter(p => p.readFrom !== 'abstract').length, abstract: fresh.filter(p => p.readFrom === 'abstract').length, library: plan.reuse.length };
+  const localRows = [...localItems.map(x => x.rec), ...local.read].filter(p => readFrom[p.id] && !ranked.some(r => r.id === p.id));
+  rec.papers = [...localRows.map(p => ({ ..._litPaperRow(p, readFrom[p.id]), kind: _rlKindOf(p), local: true })), ...ranked.map(p => _litPaperRow(p, readFrom[p.id] ?? readFrom[(_litFind(read, p) ?? {}).id]))];
+  rec.paperNotes = Object.fromEntries(read.map(p => [p.id, { title: p.title, year: p.year, url: p.url, kind: _rlKindOf(p), readFrom: p.readFrom, notes: p.notes }]));
+  rec.read = { full: fresh.filter(p => p.readFrom !== 'abstract').length, abstract: fresh.filter(p => p.readFrom === 'abstract').length, library: reused.length, local: localRows.length };
   let papers = _litMerge(await _rpGet(_LIT.papers, []), fresh.map(p => ({ ...p, forHypothesis: hypothesis })), { at });
   await kv.put(_LIT.papers, JSON.stringify(papers));
   if (!read.length) { rec.calls = budget.calls; await _litSaveDossier(rec); throw new Error(`no paper could be read (${errors.slice(-3).join('; ')})`); }
@@ -5739,8 +5757,17 @@ async function _litReview(ref, job) {
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
   const date = _dpLondonDate(Date.now()), at = new Date().toISOString(), id = `paper-${date}-${Date.now().toString(36)}`;
   const errors = job.errors, budget = job.budget;
+  // the desk's own library first: a backlog entry (with the owner's uploaded PDF if there is one), or a title already read
+  job.stage = "looking in the desk's own library";
+  const q0 = await _rpGet(_RL.queue, { items: [] }), lib0 = await _rpGet(_LIT.papers, []), idr = _litIdentify(ref);
+  const want = idr?.kind === 'arxiv' ? [`arxiv:${idr.id}`] : idr?.kind === 'doi' || idr?.kind === 'ssrn' ? [`doi:${idr.doi}`] : [];
+  const best = (list, title) => list.map(x => [x, _litTitleMatch(x.title ?? '', title)]).filter(([, m]) => m >= 0.6).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  const localItem = q0.items.find(x => want.includes(x.id)) ?? (idr?.kind === 'title' ? best(q0.items, idr.title) : null);
+  let got = null;
+  if (localItem) { try { got = await _litTimeout(_rlMaterialise(localItem, { errors }), 90_000, 'local entry'); } catch (e) { errors.push(`local ${localItem.id}: ${e.message.slice(0, 100)}`); } }
+  if (!got && idr?.kind === 'title') { const hit = best(lib0.filter(x => x.notes?.claim), idr.title); if (hit) got = { rec: hit }; }
   job.stage = 'finding the paper';
-  const got = await _litTimeout(_litResolve(ref, errors), 120_000, 'finding the paper');
+  got ??= await _litTimeout(_litResolve(ref, errors), 120_000, 'finding the paper');
   let { rec: p, text = null, from = null } = got;
   if (!text) { job.stage = 'fetching the full text'; try { const f = await _litTimeout(_litFullText(p), 120_000, 'full text'); text = f.text; from = f.from; } catch (e) { errors.push(`full text: ${e.message.slice(0, 140)}`); } }
   if (!text && !p.abstract) throw new Error('found the paper but no text or abstract to read; paste the abstract instead');
@@ -5752,10 +5779,11 @@ async function _litReview(ref, job) {
   const readFrom = text ? from : 'abstract';
   let papers = _litMerge(lib, [{ ...p, notes: n, readFrom, forHypothesis: n.claim }], { at });
   await kv.put(_LIT.papers, JSON.stringify(papers));
+  if (localItem) await kv.put(_RL.queue, JSON.stringify(_rlMark(await _rpGet(_RL.queue, { items: [] }), [localItem.id, p.id], 'done')));
   // related papers already in the library may be cited as evidence too
   const related = papers.filter(x => x.id !== p.id && x.notes?.claim).map(x => ({ x, r: _litRelevance(x, `${p.title} ${n.claim}`) })).filter(o => o.r > 0.15).sort((a, b) => b.r - a.r).slice(0, 8).map(o => o.x);
   const read = [{ ...p, notes: n, readFrom }, ...related.map(x => ({ ...x, readFrom: `library (${x.readFrom ?? 'abstract'})` }))];
-  const rec = { id, kind: 'paper', at, date, ref: String(ref).slice(0, 500), hypothesis: n.claim, papers: read.map(x => _litPaperRow(x, x.readFrom)), paperNotes: Object.fromEntries(read.map(x => [x.id, { title: x.title, year: x.year, url: x.url, readFrom: x.readFrom, notes: x.notes }])),
+  const rec = { id, kind: 'paper', at, date, ref: String(ref).slice(0, 500), hypothesis: n.claim, papers: read.map(x => _litPaperRow(x, x.readFrom)), paperNotes: Object.fromEntries(read.map(x => [x.id, { title: x.title, year: x.year, url: x.url, kind: _rlKindOf(x), readFrom: x.readFrom, notes: x.notes }])),
     read: { full: text ? 1 : 0, abstract: text ? 0 : 1, library: related.length }, dossier: null, notes: [], errors, calls: 0, sources: {} };
   job.stage = 'how it could be tested here';
   try { const v = await _litSynthesise({ hypothesis: `${p.title}: ${n.claim}`, read, unread: [], budget, date, kind: 'paper' }); rec.dossier = v.value; rec.notes = v.notes; }
@@ -5776,6 +5804,7 @@ async function _litScan(web, { brief = '', lenses = Object.keys(_RP_RESEARCHERS)
   const roles = _deskLoadRoles(), reader = roles.find(r => r.id === 'paper_reader'); if (!reader) { out.errors.push('no role file paper_reader'); return out; }
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
   const date = _dpLondonDate(Date.now()), budget = { calls: 0, max: 4 }, cache = new Map(), feed = _litFeedRecords(web?.arxiv?.items ?? []);
+  const workingPapers = _rlPaperFeedRecords(web, _RP_WEB);   // Fed FEDS, ECB and BoE working papers (macro lens)
   let lib = await _rpGet(_LIT.papers, []);
   const taken = new Set();
   for (const lens of lenses) {
@@ -5783,7 +5812,7 @@ async function _litScan(web, { brief = '', lenses = Object.keys(_RP_RESEARCHERS)
     out.lenses[lens] = L;
     try {
       if (!cache.has(topic)) cache.set(topic, await _litTimeout(_litSearch([topic], { max: 6, errors: L.errors }), 90_000, 'search'));
-      const pool = _litRank(_litDedupe([...cache.get(topic), ...feed]), [topic, ..._litInterests[lens]]).filter(r => r.relevance >= 0.2 && !taken.has(r.id) && !_litFind(lib, r)?.notes);
+      const pool = _litRank(_litDedupe([...cache.get(topic), ...feed, ...(lens === 'macro' ? workingPapers : [])]), [topic, ..._litInterests[lens]]).filter(r => r.relevance >= 0.2 && !taken.has(r.id) && !_litFind(lib, r)?.notes);
       const pick = pool.slice(0, 2); pick.forEach(r => taken.add(r.id));
       if (!pick.length) continue;
       const items = await Promise.all(pick.map(async r => { if (!(r.arxiv || r.pdfUrl || r.oaUrl)) return { rec: r, text: null, from: 'abstract' }; try { const f = await _litTimeout(_litFullText(r), 90_000, 'full text'); return { rec: r, text: f.text, from: f.from }; } catch (e) { L.errors.push(`full text ${r.id}: ${e.message.slice(0, 100)}`); return { rec: r, text: null, from: 'abstract' }; } }));
@@ -5802,11 +5831,141 @@ async function _litScan(web, { brief = '', lenses = Object.keys(_RP_RESEARCHERS)
   out.calls = budget.calls;
   return out;
 }
+// ── §9ai: the reading backlog. What the repo already holds (the arXiv reading list, the SSRN manifest, the 151
+// Trading Strategies book), the QuantConnect strategy library and the owner's uploaded PDFs, queued in KV and read in
+// bounded batches (uploads one per call, strategies four, abstracts eight; a press reads at most 6 calls, the weekly
+// pod run 3). Uploaded PDFs are stored privately in R2 (research/papers/), never committed or served.
+const _RL = { queue: 'research_pod_queue' };
+const _rlTextMem = new Map();   // uploaded text when R2 is not configured (lost on restart; the reader falls back to the abstract)
+let _rlQcCache = { at: 0, list: null };
+/** The QuantConnect strategy list: GitHub's tree (with GITHUB_TOKEN if set, else keyless 60/h), else jsDelivr's listing. */
+async function _rlQcList() {
+  if (_rlQcCache.list && Date.now() - _rlQcCache.at < 7 * 864e5) return _rlQcCache.list;
+  const tries = [];
+  if (process.env.GITHUB_TOKEN) tries.push(['GitHub (token)', _RL_QC.treeUrl, { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` }]);
+  tries.push(['GitHub', _RL_QC.treeUrl, {}], ['jsDelivr', _RL_QC.flatUrl, {}]);
+  const fails = [];
+  for (const [label, url, headers] of tries) {
+    try { const r = await _litFetch(url, { accept: 'application/json', headers, timeout: 30_000 });
+      if (!r.ok) { fails.push(`${label} HTTP ${r.status}`); continue; }
+      const list = _rlParseQcTree(JSON.parse(r.text())); if (!list.length) { fails.push(`${label}: no strategy folders`); continue; }
+      _rlQcCache = { at: Date.now(), list, via: label };
+      return list; }
+    catch (e) { fails.push(`${label}: ${e.message.slice(0, 80)}`); }
+  }
+  throw new Error(`could not list the strategy library (${fails.join('; ')})`);
+}
+/** Seed (or top up) the queue from the repo's files and the QuantConnect library; files re-read only when they change. */
+async function _rlSeed(errors = [], { qc = true } = {}) {
+  let q = await _rpGet(_RL.queue, { items: [], seeded: {} }), changed = false;
+  const lib = await _rpGet(_LIT.papers, []), at = new Date().toISOString(), proposals = _tdRead('education/151_STRATEGIES_PROPOSALS.md');
+  for (const [k, f, fn] of [['readingList', 'education/papers/open/reading_list.csv', _rlReadingList], ['manifest', 'education/papers/manifest.csv', _rlManifest], ['151', 'education/151 Trading Strategies.md', t => _rl151Items(t, proposals)]]) {
+    const txt = _tdRead(f); if (!txt) { errors.push(`backlog: ${f} not in the deployed repo`); continue; }
+    const h = _litHash(txt); if (q.seeded?.[k]?.hash === h) continue;
+    const r = _rlSeedQueue(q, fn(txt), lib); q = r.queue; q.seeded[k] = { hash: h, at, added: r.added }; changed = true;
+  }
+  const last = q.seeded?.qc;
+  if (qc && (!last?.at || last.error || Date.now() - Date.parse(last.at) > 30 * 864e5)) {
+    try { const list = await _rlQcList(); const r = _rlSeedQueue(q, _rlQcItems(list), lib); q = r.queue; q.seeded.qc = { at, added: r.added, strategies: list.length }; }
+    catch (e) { errors.push(`QuantConnect: ${e.message}`); q.seeded.qc = { at, error: e.message.slice(0, 200) }; }
+    changed = true;
+  }
+  if (changed) await kv.put(_RL.queue, JSON.stringify(q));
+  return q;
+}
+/** One queue item → { rec, text } ready for the reader (text null = abstract only). arxivMeta: id -> record, prefetched. */
+async function _rlMaterialise(it, { arxivMeta = new Map(), errors = [] } = {}) {
+  let rec = null, text = null;
+  if (it.via === '151') { const r = _rlRecord151(_tdRead('education/151 Trading Strategies.md'), _tdRead('education/151_STRATEGIES_PROPOSALS.md'), it.id.slice(4)); if (!r) throw new Error('not in the book file'); ({ rec, text } = r); }
+  else if (it.via === 'qc') {
+    const html = {};
+    await Promise.all((it.sections ?? []).map(async s => { try { const r = await _litFetch(_rlQcRaw(s.path), { accept: 'text/html', timeout: 20_000 }); if (r.ok) html[s.name] = r.text(); } catch { /* one section missing is fine */ } }));
+    if (!Object.keys(html).length) throw new Error('no section could be fetched from raw.githubusercontent.com');
+    const ordered = Object.fromEntries((it.sections ?? []).filter(s => html[s.name]).map(s => [s.name, html[s.name]]));
+    ({ rec, text } = _rlQcRecord({ id: it.id, title: it.title, dir: it.dir }, ordered));
+  } else if (it.via === 'arxiv') {
+    rec = arxivMeta.get(it.id) ?? null;
+    if (!rec) { const r = await _litFetch(_litLookup.arxiv(it.arxiv), { accept: 'application/atom+xml' }); rec = r.ok ? _litParseArxiv(r.text())[0] ?? null : null; }
+    if (!rec) throw new Error('arXiv has no record');
+  } else if (it.via === 'ssrn') {
+    const env = _litEnv();
+    for (const [src, url, parse] of [['crossref', _litLookup.crossrefDoi(it.doi), _litParseCrossref], ['openalex', _litLookup.openalexDoi(it.doi, env), _litParseOpenAlex]]) {
+      try { const r = await _litFetch(url, { accept: 'application/json' }); if (!r.ok) { errors.push(_litApiError(src, r.status, r.text().slice(0, 300))); continue; } const x = parse(JSON.parse(r.text()))[0];
+        if (x) { rec = rec ? { ...rec, abstract: rec.abstract ?? x.abstract, citations: rec.citations ?? x.citations } : x; if (rec.abstract) break; } }
+      catch (e) { errors.push(`${src}: ${e.message.slice(0, 120)}`); }
+    }
+    if (!rec && it.title) rec = { ..._litTextRecord(it.title), id: it.id, keys: [it.id, `ssrn:${it.ssrn}`], title: it.title, doi: it.doi, ssrn: it.ssrn, url: `https://doi.org/${it.doi}`, abstract: null };
+    if (rec) { rec.title = rec.title || it.title; if (it.openUrl) rec.pdfUrl ??= it.openUrl; }
+  } else if (it.via === 'upload') {
+    rec = { ..._litTextRecord(it.title ?? it.upload?.name ?? 'Uploaded paper'), id: it.id, keys: [it.id], title: it.title ?? it.upload?.name ?? 'Uploaded paper', url: null, abstract: null };
+  }
+  if (it.upload) {
+    try { const b = _r2Ok() ? await _r2GetBuffer(_rlUploadKey(it.id, 'txt')) : null; text = b ? b.toString('utf8') : _rlTextMem.get(it.id) ?? null; } catch (e) { errors.push(`upload text ${it.id}: ${e.message.slice(0, 100)}`); }
+    if (rec && !rec.abstract && text) rec.abstract = text.slice(0, 1500);
+  }
+  if (!rec) throw new Error('no record');
+  if (!text && !rec.abstract) throw new Error('no abstract and no text');
+  return { rec: { ...rec, id: it.id, keys: [...new Set([it.id, ...(rec.keys ?? [])])], kind: it.kind ?? rec.kind ?? 'paper', sourceLabel: rec.sourceLabel ?? it.source, ...(it.upload ? { uploaded: it.upload } : {}), ...(it.screen ? { screen: it.screen } : {}) },
+    text, from: it.upload && text ? 'upload (pdf)' : it.via === '151' ? '151 (book text)' : it.via === 'qc' ? 'QuantConnect (tutorial text)' : 'abstract' };
+}
+/** Prefetch arXiv metadata for a batch in one id_list call. */
+async function _rlArxivMeta(items, errors) {
+  const ids = items.filter(x => x.via === 'arxiv').map(x => x.arxiv), out = new Map(); if (!ids.length) return out;
+  try { const r = await _litFetch(`${_LIT_API.arxiv}?id_list=${ids.map(encodeURIComponent).join(',')}&max_results=${ids.length}`, { accept: 'application/atom+xml', timeout: 30_000 });
+    if (r.ok) for (const rec of _litParseArxiv(r.text())) out.set(`arxiv:${rec.arxiv}`, rec); else errors.push(`arXiv id_list HTTP ${r.status}`); }
+  catch (e) { errors.push(`arXiv id_list: ${e.message.slice(0, 100)}`); }
+  return out;
+}
+const _RL_HYP = 'Backlog read: these come from the desk\'s own shelf (the arXiv reading list, the SSRN manifest, the owner\'s uploaded PDFs, the 151 Trading Strategies book or the QuantConnect strategy library). Note each on its own terms; for a strategy, the claim is what it trades and what evidence it cites. Stance is neutral unless it bears directly on trading FX, indices, gold or commodities.';
+/** Read a set of queue items in planned batches; the library and the queue are saved after every batch. */
+async function _rlRead(items, { job, budget, errors, calls = 6 }) {
+  const roles = _deskLoadRoles(), reader = roles.find(r => r.id === 'paper_reader'); if (!reader) throw new Error('no role file paper_reader');
+  const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+  const date = _dpLondonDate(Date.now()), plan = _rlBatchPlan(items, { calls }), arxivMeta = await _rlArxivMeta(plan.flat(), errors), done = [];
+  for (let b = 0; b < plan.length; b++) {
+    if (budget.calls >= budget.max) break;
+    if (job) job.stage = `reading the backlog: batch ${b + 1} of ${plan.length} (${plan[b].length} item${plan[b].length > 1 ? 's' : ''})`;
+    const got = [], failed = [];
+    await Promise.all(plan[b].map(async it => { try { got.push({ it, ...(await _litTimeout(_rlMaterialise(it, { arxivMeta, errors }), 90_000, 'fetch')) }); } catch (e) { failed.push([it.id, e.message]); } }));
+    let lib = await _rpGet(_LIT.papers, []);
+    const head = got.length === 1 && got[0].it.upload ? 30_000 : got.some(g => g.it.kind === 'strategy') ? 5000 : 3000;
+    if (got.length) {
+      try {
+        const ids = got.map(g => g.rec.id), libIds = lib.filter(p => p.notes?.claim).map(p => p.id);
+        const sections = [['What these are and how to read them', _RL_HYP], ['The library index: papers already read (use these ids in crossRefs)', _litLibIndex(lib, { query: got.map(g => g.rec.title).join(' '), max: 40 })], ['The feeds this repo holds (for testHere)', _litFeedIds()],
+          [`The entries to read (${got.length}; one note each)`, got.map(g => _litForReader(g.rec, g.text ? _litExcerpt(g.text, { head, tail: head > 6000 ? 6000 : 1500 }).text : null)).join('\n\n')]];
+        const v = await _litTimeout(_litModel(budget, { role: reader, sections, date, ledger: DESK_EVIDENCE, maxTokens: got.length > 1 ? 7000 : 3500, timeoutMs: 180_000, label: 'lit:backlog', validate: o => _litValidateNotes(o, { ids, library: libIds }) }), 400_000, 'reader');
+        const noted = got.filter(g => v.value.some(n => n.paperId === g.rec.id)).map(g => ({ ...g.rec, notes: v.value.find(n => n.paperId === g.rec.id), readFrom: g.text ? g.from : 'abstract', forHypothesis: 'backlog' }));
+        lib = _litMerge(await _rpGet(_LIT.papers, []), noted, { at: new Date().toISOString() });
+        await kv.put(_LIT.papers, JSON.stringify(lib));
+        done.push(...noted.map(p => ({ id: p.id, title: p.title, kind: p.kind })));
+        for (const g of got) if (!noted.some(p => p.id === g.rec.id)) failed.push([g.it.id, 'the reader wrote no note']);
+      } catch (e) { for (const g of got) failed.push([g.it.id, e.message]); errors.push(`backlog batch ${b + 1}: ${e.message.slice(0, 160)}`); }
+    }
+    let q = await _rpGet(_RL.queue, { items: [], seeded: {} });
+    q = _rlMark(q, done.map(d => d.id), 'done');
+    for (const [id, err] of failed) { q = _rlMark(q, [id], 'failed', { error: err }); errors.push(`backlog ${id}: ${String(err).slice(0, 120)}`); }
+    await kv.put(_RL.queue, JSON.stringify(q));
+  }
+  return done;
+}
+/** POST /api/research-pod/backlog: seed if needed, then read the next items. */
+async function _rlBacklog({ calls = 6, ids = null } = {}, job) {
+  if (!_aiAnyKey()) throw new Error('no model key');
+  const errors = job.errors, budget = job.budget;
+  job.stage = 'seeding the backlog';
+  const q = await _rlSeed(errors);
+  const items = ids ? q.items.filter(x => ids.includes(x.id) && x.status !== 'done') : _rlNext(q, { n: calls * 8 });
+  if (!items.length) return { id: null, read: [], summary: _rlSummary(q) };
+  const read = await _rlRead(items, { job, budget, errors, calls });
+  job.read = read;
+  return { id: read[0]?.id ?? null, read, summary: _rlSummary(await _rpGet(_RL.queue, { items: [] })) };
+}
 let _litJob = null;
-function _litStart(kind, input) {
+function _litStart(kind, input, opts = {}) {
   if (_litJob?.status === 'running') return null;
-  const job = _litJob = { status: 'running', kind, input: String(input).slice(0, 300), stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null, errors: [], budget: { calls: 0, max: kind === 'idea' ? 14 : 5 }, sources: {}, result: null };
-  (kind === 'idea' ? _litInvestigate(input, job) : _litReview(input, job))
+  const job = _litJob = { status: 'running', kind, input: String(input).slice(0, 300), stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null, errors: [], budget: { calls: 0, max: kind === 'idea' ? 15 : kind === 'backlog' ? Math.min(12, Math.max(1, opts.calls ?? 6)) : 5 }, sources: {}, result: null };
+  (kind === 'idea' ? _litInvestigate(input, job) : kind === 'backlog' ? _rlBacklog(opts, job) : _litReview(input, job))
     .then(r => { job.status = 'done'; job.result = r.id; job.stage = 'done'; })
     .catch(e => { job.status = 'error'; job.error = e.message; })
     .finally(() => { job.finishedAt = Date.now(); });
@@ -5855,7 +6014,57 @@ app.post('/api/research-pod/dossier/adopt', async (req, res) => {
 // GET /api/research-pod/papers: the paper library (notes, cross-references, which dossiers and proposals cite each).
 app.get('/api/research-pod/papers', async (_req, res) => {
   try { res.set('Cache-Control', 'no-store'); const lib = await _rpGet(_LIT.papers, []);
-    res.json({ ok: true, count: lib.length, read: lib.filter(p => p.notes?.claim).length, papers: lib.map(({ keys, history, abstract, ...p }) => ({ ...p, abstract: abstract ? abstract.slice(0, 400) : null })) }); }
+    const kinds = {}; for (const p of lib) kinds[_rlKindOf(p)] = (kinds[_rlKindOf(p)] ?? 0) + 1;
+    res.json({ ok: true, count: lib.length, read: lib.filter(p => p.notes?.claim).length, kinds, papers: lib.map(({ keys, history, abstract, ...p }) => ({ ...p, kind: _rlKindOf(p), abstract: abstract ? abstract.slice(0, 400) : null })) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/research-pod/backlog: the reading backlog (seeded from the repo's files on first call), what is next, the job.
+app.get('/api/research-pod/backlog', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const errors = [], q = await _rlSeed(errors, { qc: false });
+    res.json({ ok: true, summary: _rlSummary(q), next: _rlNext(q, { n: 12 }).map(x => ({ id: x.id, title: x.title, source: x.source, kind: x.kind, upload: !!x.upload })),
+      failed: q.items.filter(x => x.status === 'failed').slice(0, 30).map(x => ({ id: x.id, title: x.title, error: x.error })), errors, uploadsStored: _r2Ok() ? 'r2' : 'memory', job: _litJobView() }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/research-pod/backlog { calls? 1-12 }: read the next items (uploads first, abstracts eight to a model call). One job at a time.
+app.post('/api/research-pod/backlog', (req, res) => {
+  const calls = Math.min(12, Math.max(1, Number(req.body?.calls) || 6));
+  const job = _litStart('backlog', `read the backlog (${calls} calls)`, { calls });
+  if (!job) return res.status(409).json({ ok: false, error: 'the literature desk is already working', job: _litJobView() });
+  res.json({ ok: true, job: _litJobView() });
+});
+// POST /api/research-pod/upload: a PDF from the laptop (raw body, Content-Type application/pdf, X-Filename header; or JSON
+// { name, base64, read }). Stored privately in R2 (research/papers/<id>.pdf and .txt), parsed with pdf-parse, matched to
+// its backlog entry by the SSRN or arXiv id in the file name, and queued first; ?read=1 reads it now if the desk is free.
+app.post('/api/research-pod/upload', express.raw({ type: ['application/pdf', 'application/octet-stream'], limit: '32mb' }), async (req, res) => {
+  try {
+    let buf, name, read = req.query.read === '1';
+    if (Buffer.isBuffer(req.body) && req.body.length) { buf = req.body; name = req.get('x-filename') || String(req.query.name ?? 'upload.pdf'); }
+    else { buf = Buffer.from(String(req.body?.base64 ?? ''), 'base64'); name = String(req.body?.name ?? 'upload.pdf'); read = read || req.body?.read === true; }
+    try { name = decodeURIComponent(name); } catch { /* keep as sent */ }
+    name = name.split(/[\\/]/).pop().slice(0, 200);
+    if (!buf.length) return res.status(400).json({ ok: false, error: 'no file' });
+    if (buf.length > 30e6) return res.status(413).json({ ok: false, error: 'over 30 MB' });
+    if (buf.subarray(0, 5).toString('latin1') !== '%PDF-') return res.status(400).json({ ok: false, error: 'not a PDF' });
+    const m = _rlMatchUpload(name);
+    let text; try { text = await _litPdf(buf); } catch (e) { return res.status(422).json({ ok: false, error: `could not read the PDF: ${e.message.slice(0, 120)}` }); }
+    if (text.length < 1000) return res.status(422).json({ ok: false, error: 'no text layer (a scan?); nothing stored' });
+    let stored = 'memory';
+    if (_r2Ok()) { await _r2PutBuffer(_rlUploadKey(m.id), buf, 'application/pdf'); await _r2PutBuffer(_rlUploadKey(m.id, 'txt'), Buffer.from(text.slice(0, 300_000), 'utf8'), 'text/plain; charset=utf-8'); stored = 'r2'; }
+    else _rlTextMem.set(m.id, text.slice(0, 300_000));
+    let q = await _rlSeed([], { qc: false }); const existing = q.items.find(x => x.id === m.id), at = new Date().toISOString();
+    const title = existing?.title || _litTitleLine(text) || name;
+    q = _rlUpsert(q, { id: m.id, via: existing?.via ?? m.via, ...(m.arxiv ? { arxiv: m.arxiv } : {}), ...(m.ssrn ? { ssrn: m.ssrn, doi: m.doi } : {}), kind: existing?.kind ?? 'paper', source: existing?.source ?? 'upload', title,
+      status: 'pending', tries: 0, error: null, upload: { name, bytes: buf.length, chars: text.length, at, stored } });
+    await kv.put(_RL.queue, JSON.stringify(q));
+    const job = read ? _litStart('backlog', `read ${name}`, { calls: 2, ids: [m.id] }) : null;
+    res.json({ ok: true, id: m.id, title, matched: existing ? existing.source : null, chars: text.length, stored, reading: !!job, queued: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/research-pod/upload/have: the ids (and file names) the server already holds, so the laptop script skips them.
+app.get('/api/research-pod/upload/have', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const [q, lib] = await Promise.all([_rpGet(_RL.queue, { items: [] }), _rpGet(_LIT.papers, [])]);
+    const up = [...q.items.filter(x => x.upload), ...lib.filter(p => p.uploaded)];
+    res.json({ ok: true, ids: [...new Set(up.map(x => x.id))], names: [...new Set(up.map(x => (x.upload ?? x.uploaded)?.name).filter(Boolean))], stored: _r2Ok() ? 'r2' : 'memory' }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/validation/harness: the validation desk's automatic gates on every harness output in the deployed repo.

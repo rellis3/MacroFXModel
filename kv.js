@@ -79,6 +79,7 @@ const _CF_EXACT = new Set([
   // the literature desk (plan §9ah): dossiers on the owner's hypotheses and the paper library (notes per paper read).
   'research_pod_dossiers',
   'research_pod_papers',
+  'research_pod_queue',     // the reading backlog (§9ai): the repo's papers, the 151, QuantConnect and uploads, read in batches
   'system_reviews',
   'system_index',
   'shadow_trackers',
