@@ -8568,7 +8568,7 @@ app.post('/api/newsletter/archive', express.json({ limit: '3mb' }), async (req, 
     const b = req.body ?? {}, snap = b.snapshot ?? {};
     if (typeof b.html !== 'string' || b.html.length < 200 || !/^\d{4}-\d{2}-\d{2}$/.test(snap.date ?? '')) return res.status(400).json({ ok: false, error: 'need html and snapshot.date (YYYY-MM-DD)' });
     const issues = await _nlLoad(); if (issues === null) return res.status(503).json({ ok: false, error: 'the archive could not be read, so nothing was written' });
-    const kind = snap.kind === 'weekly' ? 'weekly' : snap.kind === 'desk' ? 'desk' : snap.kind === 'desk-brief' ? 'desk-brief' : snap.kind === 'desk-terminal' ? 'desk-terminal' : 'daily', id = `${kind}-${snap.date}`;   // desk-brief: the short desk format (never scored)   // desk: the desk edition built on Atlas (never scored)
+    const kind = snap.kind === 'weekly' ? 'weekly' : snap.kind === 'desk' ? 'desk' : snap.kind === 'desk-brief' ? 'desk-brief' : snap.kind === 'desk-terminal' ? 'desk-terminal' : snap.kind === 'desk-picto' ? 'desk-picto' : 'daily', id = `${kind}-${snap.date}`;   // desk-brief: the short desk format (never scored)   // desk: the desk edition built on Atlas (never scored)
     const rec = { id, kind, date: snap.date, subject: String(b.subject ?? '').slice(0, 200), savedAt: new Date().toISOString(), snapshot: snap, text: String(b.text ?? '').slice(0, 24000), htmlGz: zlib.gzipSync(Buffer.from(b.html, 'utf8')).toString('base64'), score: null };
     const next = [rec, ...issues.filter(x => x.id !== id)].sort((x, y) => y.date.localeCompare(x.date) || x.kind.localeCompare(y.kind)).slice(0, _NL_KEEP);
     await kv.put(_NL_KEY, JSON.stringify({ issues: next }));
