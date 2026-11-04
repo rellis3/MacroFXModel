@@ -1,6 +1,6 @@
 // Tests for js/fxFairValue.js on synthetic series with a known structure.   node js/fxFairValue.test.mjs
 import assert from 'node:assert/strict';
-import { asOfJoin, buildRows, olsFit, predict, ar1HalfLife, rollingGaps, stability, fairValueNow, convergenceSample, closureBeta, closureAt, FV_PAIRS, SCORED_PAIRS } from './fxFairValue.js';
+import { fairValueBoard, verdictLabel, logRow, appendLog, asOfJoin, buildRows, olsFit, predict, ar1HalfLife, rollingGaps, stability, fairValueNow, convergenceSample, closureBeta, closureAt, FV_PAIRS, SCORED_PAIRS } from './fxFairValue.js';
 import { mulberry32 } from './statsCore.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
@@ -102,5 +102,26 @@ t('the lockbox end cuts both the signal and the outcome', () => {
   const lastSig = rows.findIndex(q => q.date === s.at(-1).date); assert.equal(lastSig + 1 + 5, 500);
 });
 t('closure share from a half-life', () => { assert.ok(Math.abs(closureAt(20, 20) - 0.5) < 1e-12); assert.ok(Math.abs(closureAt(10, 120) - 0.0561) < 1e-3); });
+
+t('board: every pair read or a named reason, the verdict label from the evidence entry, the forward log', () => {
+  const W = world(700), Z = world(700, { b: [-0.02, 0.01, 0.02] });
+  const yields = { USD: { y2: W.y2Quote, y10: W.y10Quote }, EUR: { y2: W.y2Base, y10: W.y10Base }, JPY: { y2: Z.y2Base, y10: Z.y10Base } };
+  const b = fairValueBoard({ fx: { EURUSD: W.fx, USDJPY: Z.fx }, yields, vix: W.vix, evidence: { verdict: 'underpowered' }, pairs: [{ id: 'EURUSD', base: 'EUR', quote: 'USD', pip: 1e-4 }, { id: 'USDJPY', base: 'USD', quote: 'JPY', pip: 0.01 }, { id: 'EURJPY', base: 'EUR', quote: 'JPY', pip: 0.01 }, { id: 'AUDUSD', base: 'AUD', quote: 'USD', pip: 1e-4 }] });
+  assert.equal(b.verdict, 'UNDERPOWERED'); assert.ok(b.descriptionOnly && /DESCRIPTION ONLY/.test(b.label));
+  assert.ok(b.rows[0].ok && b.rows[0].scored && b.rows[1].ok);
+  assert.equal(b.rows[2].ok, false); assert.match(b.rows[2].error, /EURJPY prices/);
+  assert.match(b.rows[3].error, /AUD 2y/);
+  assert.equal(verdictLabel(null).verdict, 'UNTESTED'); assert.equal(verdictLabel({ verdict: 'validated' }).descriptionOnly, false);
+  const lr = logRow(b); assert.deepEqual(Object.keys(lr), ['EURUSD', 'USDJPY']); assert.ok(Number.isFinite(lr.EURUSD.gapPct));
+  let st = appendLog({}, '2026-11-04', lr); st = appendLog(st, '2026-11-04', { EURUSD: { gapPct: 99 } });
+  assert.notEqual(st['2026-11-04'].EURUSD.gapPct, 99, 'the first row of the day is kept');
+  for (let i = 0; i < 5; i++) st = appendLog(st, `2026-12-0${i + 1}`, lr, 3);
+  assert.deepEqual(Object.keys(st).sort(), ['2026-12-03', '2026-12-04', '2026-12-05']);
+});
+t('the banked Evidence Book entry labels the model, and it is not validated', async () => {
+  const { DESK_EVIDENCE } = await import('./deskEvidence.js');
+  const e = DESK_EVIDENCE.find(x => x.id === 'fx-short-term-fair-value');
+  assert.ok(e, 'banked'); assert.ok(verdictLabel(e).descriptionOnly);
+});
 
 console.log(`fxFairValue: ${n} passed`);

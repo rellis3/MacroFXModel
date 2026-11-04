@@ -87,6 +87,8 @@ const _CF_EXACT = new Set([
   'research_pod_dossiers',
   'research_pod_papers',
   'research_pod_queue',     // the reading backlog (§9ai): the repo's papers, the 151, QuantConnect and uploads, read in batches
+  'research_pod_quicktests', // the research lab's quick tests (js/quickTest.js): exploratory X-leads-Y checks, linked to proposals; never banked
+  'fx_fair_value_log_v1',   // the short-term FX fair value's daily forward record (js/fxFairValue.js; description only)
   'system_reviews',
   'system_index',
   'shadow_trackers',

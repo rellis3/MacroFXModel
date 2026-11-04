@@ -237,3 +237,38 @@ export function closureBeta(sample, key = 'gap') {
 
 /** Closure share implied by a half-life of `hl` trading days over h days: 1 − ½^(h/hl). */
 export const closureAt = (h, hl) => 1 - Math.pow(0.5, h / hl);
+
+/** The verdict line every page prints beside the model (from the Evidence Book entry, or 'untested' without one). */
+export function verdictLabel(entry) {
+  const v = String(entry?.verdict ?? 'untested').toUpperCase();
+  return { verdict: v, descriptionOnly: v !== 'VALIDATED', label: v === 'VALIDATED' ? `${v} · research only until |t| ≥ 3 and the forward record agree` : `DESCRIPTION ONLY · ${v}`,
+    note: v === 'VALIDATED' ? 'The gap closed in the walk-forward test; it still does not feed the desk until the owner decides.'
+      : v === 'UNTESTED' ? 'Not yet tested: a description of where rates and risk put the pair, nothing more.'
+        : 'Tested 1999-2026 (five USD pairs, walk-forward): price closed about 1% of the gap in 20 days, no better than chance. Rates and risk describe where the pair has been; the gap has not told us where it goes. The half-life is how fast the GAP fades, and it fades because the model moves to price.' };
+}
+
+/**
+ * Every pair's read for /api/fx-fair-value. fx: { EURUSD: [{ date, close }] } ascending; yields: { USD: { y2, y10 } ... }
+ * ascending [{ date, value }]; vix: ascending [{ date, value }]; evidence: the Evidence Book entry (for the label).
+ */
+export function fairValueBoard({ fx = {}, yields = {}, vix = [], evidence = null, window = 250, pairs = FV_PAIRS } = {}) {
+  const rows = pairs.map(p => {
+    const yb = yields[p.base], yq = yields[p.quote], px = fx[p.id];
+    const missing = [!px?.length && `${p.id} prices`, !yb?.y2?.length && `${p.base} 2y`, !yq?.y2?.length && `${p.quote} 2y`, !vix?.length && 'VIX'].filter(Boolean);
+    const head = { pair: p.id, base: p.base, quote: p.quote, scored: SCORED_PAIRS.includes(p.id), shortLeg: [p.base, p.quote].includes('GBP') ? 'GBP short leg = 5-year gilt' : null };
+    if (missing.length) return { ...head, ok: false, error: `missing ${missing.join(', ')}` };
+    const ten = yb.y10?.length && yq.y10?.length;
+    return { ...head, ...fairValueNow(buildRows({ fx: px, y2Base: yb.y2, y2Quote: yq.y2, y10Base: ten ? yb.y10 : null, y10Quote: ten ? yq.y10 : null, vix }), { window, pip: p.pip }) };
+  });
+  return { ...verdictLabel(evidence), evidenceId: EVIDENCE_ID, window, model: 'ln(price) = a + b1·(2y base − 2y quote) + b2·(10y base − 10y quote) + b3·ln(VIX), OLS on the 250 days before today; gap = today against that fit (out of sample)', rows };
+}
+
+/** One compact row per pair for the daily forward record. */
+export const logRow = board => Object.fromEntries((board?.rows ?? []).filter(x => x.ok).map(x => [x.pair, { date: x.date, price: x.price, fair: x.fair, gapPct: x.gapPct, z: x.z, r2: x.r2 }]));
+/** Append today's row to the forward record (one per London date, the first of the day kept), newest `keep` dates. */
+export function appendLog(store, date, row, keep = 400) {
+  const s = { ...(store ?? {}) };
+  if (!s[date] && row && Object.keys(row).length) s[date] = row;
+  const ds = Object.keys(s).sort(); for (const d of ds.slice(0, Math.max(0, ds.length - keep))) delete s[d];
+  return s;
+}

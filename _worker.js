@@ -83,6 +83,8 @@ function isAllowedKVKey(key) {
     'research_pod_dossiers',
     'research_pod_papers',
     'research_pod_queue',
+    'research_pod_quicktests',
+    'fx_fair_value_log_v1',
     'system_reviews',
     'system_index',
     'shadow_trackers',
@@ -1122,6 +1124,9 @@ export default {
             'research_pod_dossiers',
             'research_pod_papers',
             'research_pod_queue',
+            // research_pod_quicktests: the research lab's exploratory quick tests; fx_fair_value_log_v1: the short-term fair value's forward record.
+            'research_pod_quicktests',
+            'fx_fair_value_log_v1',
             'system_reviews',
             'system_index',
             'shadow_trackers',

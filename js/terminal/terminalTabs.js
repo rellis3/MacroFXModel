@@ -17,6 +17,7 @@
 import * as CB from './chainBoard.js';
 import { whatChanged } from './whatChanged.js';
 import * as PV from './pairView.js';
+import * as FVV from './fairValueView.js';
 import { createLevelChart } from '../levelChart.js';
 
 const el = id => document.getElementById(id);
@@ -337,6 +338,7 @@ ${c ? `${ladder(c)}<div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b
 <div class="card" id="tt-p-gr">${loading('the Global Read for this market')}</div>
 <div class="card" id="tt-p-rates">${loading('rates')}</div>
 <div class="card" id="tt-p-fv">${loading('fair value')}</div>
+<div class="card" id="tt-p-stfv">${loading('short-term fair value')}</div>
 <div class="card" id="tt-p-pos">${loading('positioning')}</div>
 <div class="card" id="tt-p-carry">${loading('carry and options')}</div>
 <div class="card" id="tt-p-hours">${loading('session hours and seasonality')}</div>
@@ -350,6 +352,7 @@ ${c ? `${ladder(c)}<div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b
   J('/api/global-read').then(g => mine() && pairGR(n, g));
   Promise.all([J('/api/global-read')]).then(([g]) => mine() && pairRates(n, g));
   J('/api/fair-value').then(fv => mine() && pairFair(n, fv));
+  if (legs?.[0]) J('/api/fx-fair-value').then(d => { const b = mine() && el('tt-p-stfv'); if (b) b.innerHTML = FVV.stfvPairCard(d, n); }); else el('tt-p-stfv')?.remove();
   pairPos(n);
   Promise.all([J('/api/carry-vol'), J('/api/options-skew')]).then(([cv, sk]) => mine() && pairCarry(n, cv, sk));
   Promise.all([J('/api/session-heat'), J(`/api/desk-season?inst=${n}`)]).then(([sh, ss]) => mine() && pairHours(n, sh, ss));
@@ -374,6 +377,8 @@ async function pairChart(n, c) {
   if (z.length) { lv.push({ price: Math.min(...z), kind: 'zone', label: 'entry' }); if (z.length > 1) lv.push({ price: Math.max(...z), kind: 'zone', label: 'entry' }); }
   const inv = Number(String(c?.plan?.invalidation ?? c?.invalidation ?? '').match(/\d+(?:\.\d+)?/)?.[0]); if (Number.isFinite(inv) && inRange(inv)) lv.push({ price: inv, kind: 'resistance', label: 'invalid' });
   v.setLevels(lv.filter(x => Number.isFinite(x.price))).fit();
+  // the short-term fair value as a line (description only: its label carries the verdict word)
+  if (PV.isFx(n)) J('/api/fx-fair-value').then(d => { const f = FVV.fairLevel(d, n), lastC = b.at(-1)?.close; if (f && T.pairChart === v && lastC && Math.abs(f.price / lastC - 1) < 0.03) v.setLevels([...lv, f].filter(x => Number.isFinite(x.price))); });
 }
 function pairGR(n, g) {
   const box = el('tt-p-gr'); if (!box) return;
@@ -514,3 +519,5 @@ function fromHash() { const m = location.hash.match(/pair=([A-Za-z0-9]+)/); if (
 addEventListener('hashchange', fromHash);
 if (/pair=/.test(location.hash)) fromHash();
 else { const sel = document.querySelector('#tabs [aria-selected="true"]')?.dataset.t; if (RENDER[sel]) globalThis.onTerminalTab(sel); }
+// the Macro tab's short-term fair value table (desk-terminal.html driversHtml, a classic script) reads this
+globalThis.stfvHtml = FVV.stfvTable;
