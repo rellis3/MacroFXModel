@@ -25,6 +25,8 @@ echo  RUN STARTED %date% %time% >> "%LOGFILE%"
 set RC=%ERRORLEVEL%
 REM the cross-currency basis inputs (CME FX futures + spot) ride the same scheduled run (plan §9ag)
 "%PY%" refresh_xccy_basis.py --push >> "%LOGFILE%" 2>&1
+REM the options skew (risk reversals, butterflies, ATM vol) from the futures options, same run (owner, 2026-11-04)
+"%PY%" refresh_options_skew.py --push >> "%LOGFILE%" 2>&1
 echo [%date% %time%] finished with exit code %RC% >> "%LOGFILE%"
 findstr /C:"HTTP" /C:"Could not connect" /C:"not found" /C:"no prices" /C:"wrote" "%LOGFILE%"
 if %RC% NEQ 0 (echo RESULT: NOT UPDATED ^(exit %RC%^)) else (echo RESULT: OK)

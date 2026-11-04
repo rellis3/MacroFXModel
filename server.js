@@ -239,6 +239,7 @@ import { WORLD_RATES_URL as _WR_URL, parseCbpol as _wrParse, worldRates as _wrBu
 import { EM_PAIRS as _EM_PAIRS, emGauges as _emBuild } from './js/emGauges.js';
 import { yieldBoard as _mbYields, creditBoard as _mbCredit, CREDIT_SERIES as _MB_CREDIT, liquidityBoard as _mbLiquidity, basisBoard as _mbBasis, termPremium as _mbTermPremium, worldStress as _mbStress } from './js/marketBoards.js';   // §9ag
 import { fetchBund as _yfBund, fetchJgbBoth as _yfJgb, fetchCanada as _yfCanada, fetchAustralia as _yfAustralia, parseValet as _yfValet } from './js/yieldFeeds.js';
+import { updateHist as _osHist, skewBoard as _osBoard } from './js/optionsSkew.js';
 import { parseEer as _gbEer, fairValue as _gbFair, parseOecdCli as _gbCli, cliBoard as _gbCliBoard, parseRbaI2 as _gbRba, monthly as _gbMonthly, commodityFx as _gbCommodity, carryVol as _gbCarry, sessionHeat as _gbHeat, ratioBoard as _gbRatio, PAIRS as _GB_PAIRS } from './js/globalBoards.js';
 import { reviewSystem as _svReview, reviewText as _svText, validatePostmortem as _svValidate } from './js/systemReview.js';   // §9ad
 import { CATALOGUE as _SYS_CATALOGUE, coverage as _sysCoverage, catalogueText as _sysCatalogueText } from './js/systemCatalogue.js';
@@ -6519,6 +6520,18 @@ app.get('/api/xccy-basis', async (_req, res) => {
       if (changed) await kv.put('xccy_basis_hist', JSON.stringify(hist)).catch(() => {});
     }
     res.json({ ok: b.rows.some(r => r.basis != null), ageH: pull.asOf ? +((Date.now() - Date.parse(pull.asOf)) / 3600e3).toFixed(1) : null, rates: ov.rates, rateErrors: ov.errors, ...b });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/options-skew: risk reversals, butterflies and ATM vol from the laptop's IBKR pull (KV options_skew_v1,
+// scripts/rates_line/refresh_options_skew.py); one point a day is kept in options_skew_hist (js/optionsSkew.js).
+app.get('/api/options-skew', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const pull = await _kvJson('options_skew_v1').catch(() => null);
+    if (!pull?.rows) return res.json({ ok: false, error: 'no options pull yet: run scripts/rates_line/refresh_options_skew.py --push on the laptop (IB Gateway open)' });
+    const prev = await _rpGet('options_skew_hist', {}), { hist, changed } = _osHist(structuredClone(prev), pull);
+    if (changed && JSON.stringify(hist) !== JSON.stringify(prev)) await kv.put('options_skew_hist', JSON.stringify(hist)).catch(() => {});
+    res.json(_osBoard(pull, hist));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/world-stress: one line across everything above (js/marketBoards.js worldStress).
