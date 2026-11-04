@@ -189,6 +189,23 @@ EM corporate spreads, MOVE) to the global-market analyst; `hedging-summary` (dea
 yields analyst; `credit-board`, `liquidity-board` and `xccy-basis` to the credit and funding analyst; `world-stress` to the
 global-market analyst. Inputs only: the scoring, the arms and the hypotheses are unchanged. No outcome had been computed.
 
+### A10 — 2026-11-04 — measurement added; a feedback switch added OFF
+Written on 2026-11-04 without reading any desk score (the first counted day is scored after 21:10 London that day).
+Owner's build list item 1, the **analyst scorecard** (`js/analystScorecard.js`, plan §9aj). **Measurement, not a
+scored cell:** after each evening score, every analyst's calls that morning (the net impact it gave each currency,
+instrument and RISK, with a conviction) are scored on the same window and unit as §3: hit rate by conviction, Brier
+and calibration, edge and skill, and a weight shrunk towards 1.0. It is descriptive; H1-H5, the gate, the controls and
+the judgement date are unchanged. **Input:** the Desk Pack gains the feed `analyst-scorecard` for the evidence clerk
+(role `evidence_memory.md` item 7, so `rolesHash` changes), as `desk-memory` was added: the desk's own record, read as
+context, never as an impact; the single-prompt control reads the whole pack, so both arms see it. **Feedback,
+switched off:** with service `analystScorecardFeedback` on, the Global Manager, the Currency Manager and the Head read
+each analyst's record and weight before ruling. That would change the book's behaviour in response to its own running
+record, which §7 rules out without an amendment, so it ships **default OFF** (`js/serviceFlags.js`); while off, every
+ruling's prompt is exactly as before. Turning it on is a new amendment written before the next scored day, naming the
+date. Every run records `run.trackRecord` when the rulings read it, the desk is still scored as operated, and the
+verdict reports H1 with and without the feedback as description (like the roles hash), never as a scored cell. The
+control (H2) never reads the scorecard.
+
 ---
 
 ## RESULTS — not run

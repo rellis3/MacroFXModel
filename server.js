@@ -220,6 +220,7 @@ import { assembleGlobalReadInput as _grAssemble, GLOBAL_READ_ENDPOINTS as _GR_EN
 import { parseRole as _deskParseRole, buildStagePrompt as _deskStagePrompt } from './js/deskRoles.js';
 import { scoreDay as _dsScoreDay, eligible as _dsEligible, windowFor as _dsWindow, record as _dsRecord, londonMs as _dsLondonMs } from './js/deskScore.js';
 import { reflectionSections as _dsReflectSections, memoryFeed as _dsMemoryFeed, movers as _dsMovers } from './js/deskReflect.js';
+import { scoreRunDay as _ascScoreRunDay, compactDay as _ascCompact, upsertDay as _ascUpsert, scorecard as _ascCard, trackRecordSections as _ascSections, trackRecordText as _ascText } from './js/analystScorecard.js';
 import { validateReflection as _dsValidateReflection, validateNewsletterIssue as _dsValidateIssue, validateSessionUpdate as _duValidate } from './js/deskSchemas.js';
 import { SLOTS as _DU_SLOTS, slotMs as _duSlotMs, marketSince as _duMarketSince, marketText as _duMarketText, liveView as _duLiveView, scoreUpdates as _duScoreUpdates } from './js/deskUpdate.js';
 import { sliceFeed as _deskSliceFeed } from './js/deskSlices.js';
@@ -4784,6 +4785,7 @@ async function _deskRun(trigger, job, mode = 'full') {
   } catch (e) { console.warn('[desk-run] releases ahead:', e.message); }
   const run = await _runDesk({
     pack, roles, ledger: DESK_EVIDENCE, now: Date.now, concurrency: 4, mode, checkpoint, releases,
+    trackRecord: await _ascTrackRecord(),   // the analyst scorecard for the rulings: null unless service analystScorecardFeedback is on (prereg A10)
     exposureCap: Number(process.env.DESK_EXPOSURE_CAP ?? 4),   // per-currency cap in normal-size units; 0 turns it off
     styleExamples: _deskStyleExamples(await _nlLoad().catch(() => []) ?? []),   // the latest regular issues, so the desk edition matches their voice
     parseJson: (txt, label) => _parseModelJson(txt, label),
@@ -4980,6 +4982,8 @@ async function _dsScore(date, { reflect = true } = {}) {
   try { score.attribution = _atAttribution(run, bars, date, score.S); } catch (e) { console.warn('[desk-score] attribution:', e.message); }
   // Phase 3's day forecast, scored from the same bars (kept apart from the book's score)
   try { await _dfScoreDay(date, bars); } catch (e) { console.warn('[desk-score] day forecast:', e.message); }
+  // The analyst scorecard, from the same bars (descriptive; prereg amendment A10)
+  try { await _ascScoreDate(date, bars); } catch (e) { console.warn('[desk-score] analyst scorecard:', e.message); }
   await kv.put(_DS_SCORE_KEY(date), JSON.stringify(score));
   const { cards, ...row } = score;
   const idx = (await _dsLoadIndex()).filter(r => r.date !== date); idx.push(row); idx.sort((a, b) => a.date.localeCompare(b.date));
@@ -5031,6 +5035,68 @@ app.post('/api/desk-score/run', (req, res) => {
   const job = _dsStart(date, { reflect: req.query.reflect !== '0' });
   if (!job) return res.status(409).json({ ok: false, error: 'a scoring job is already running', job: _dsJob });
   res.status(202).json({ ok: true, job });
+});
+// ── Analyst scorecard (js/analystScorecard.js; owner build list item 1, 2026-11-04; prereg amendment A10) ────────
+// After the evening score, every analyst's calls that morning (the net impact it gave each currency, market and
+// RISK) are scored against the same 08:00-21:00 London moves in u: hit rate by conviction, Brier and calibration,
+// edge and skill, and a weight shrunk towards 1.0 by empirical Bayes. Measurement only; the rulings read it only when
+// service analystScorecardFeedback is on (default OFF). desk_run_analyst_<date> holds the day in full (moves, every
+// call); analyst_scorecard_v1 holds the compact day rows the running scorecard is built from.
+const _ASC_KV = 'analyst_scorecard_v1';
+const _ASC_DAY_KEY = date => `desk_run_analyst_${date}`;
+let _ascJob = null;
+async function _ascLoad() { try { const raw = await kv.get(_ASC_KV); const st = raw ? JSON.parse(raw) : null; return st && Array.isArray(st.days) ? st : { days: [] }; } catch { return { days: [] }; } }
+// Score one day. Bars from the evening score when given; otherwise the moves saved the first time, else fresh M1 bars.
+async function _ascScoreDate(date, bars = null) {
+  const run = await _dsRunFor(date);
+  if (!run?.head?.ok || !run.analysts) return { ok: false, date, error: `no desk run with analysts for ${date}` };
+  let moves = null;
+  if (!bars) { try { const raw = await kv.get(_ASC_DAY_KEY(date)); if (raw) moves = JSON.parse(raw).moves ?? null; } catch { moves = null; } }
+  if (!bars && !moves) bars = await _dsBars(Object.keys(run.head.book.instruments ?? {}), date);
+  const day = _ascScoreRunDay(run, { moves, barsByInst: bars });
+  if (!day.markets) return { ok: false, date, error: 'no market moves for the day (no bars or no forecast levels)' };
+  await kv.put(_ASC_DAY_KEY(date), JSON.stringify({ ...day, savedAt: new Date().toISOString() }));
+  const st = await _ascLoad();
+  await kv.put(_ASC_KV, JSON.stringify({ version: day.version, savedAt: new Date().toISOString(), days: _ascUpsert(st.days, _ascCompact(day)) }));
+  return { ok: true, date, counts: day.counts, why: day.why, analysts: Object.keys(day.analysts).length, markets: day.markets };
+}
+async function _ascTrackRecord() {
+  if (!svcEnabled('analystScorecardFeedback')) return null;
+  try { return _ascSections(_ascCard((await _ascLoad()).days)); } catch (e) { console.warn('[analyst-scorecard] track record:', e.message); return null; }
+}
+// GET /api/analyst-scorecard: the running scorecard (each analyst: days, hit rate by conviction, calibration, edge,
+// skill, shrunk weight, sparkline of the rolling edge). ?brief=1 drops the sparklines (the Desk Pack feed);
+// ?date=YYYY-MM-DD returns that day in full instead (every call, the moves and what was realised).
+app.get('/api/analyst-scorecard', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : null;
+    if (date) { const raw = await kv.get(_ASC_DAY_KEY(date)); return raw ? res.json({ ok: true, day: JSON.parse(raw) }) : res.status(404).json({ ok: false, error: `no analyst scorecard for ${date}` }); }
+    const st = await _ascLoad(), card = _ascCard(st.days);
+    if (req.query.brief === '1') for (const a of Object.values(card.analysts)) delete a.spark;
+    res.json({ ok: true, asOf: card.to, savedAt: st.savedAt ?? null, ...card, feedback: { on: svcEnabled('analystScorecardFeedback'), service: 'analystScorecardFeedback' }, text: _ascText(card, 'head'), job: _ascJob });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/analyst-scorecard/backfill: score every stored desk day whose window has closed (?force=1 re-scores days
+// already done; ?refetch=1 also re-reads the bars). Runs in the background; GET shows the job.
+app.post('/api/analyst-scorecard/backfill', async (req, res) => {
+  if (_ascJob?.status === 'running') return res.status(409).json({ ok: false, error: 'a backfill is already running', job: _ascJob });
+  const job = _ascJob = { status: 'running', startedAt: Date.now(), finishedAt: null, done: [], failed: [], skipped: 0 };
+  res.status(202).json({ ok: true, job });
+  try {
+    const have = new Set((await _ascLoad()).days.map(d => d.date)), now = Date.now();
+    const dates = [...new Set([...(await _dsLoadIndex()).map(r => r.date), ...(await _drLoadIndex()).filter(r => r.headOk).map(r => r.date)])].sort().filter(d => now >= _dsWindow(d).exitMs);
+    for (const d of dates) {
+      if (have.has(d) && req.query.force !== '1') { job.skipped++; continue; }
+      job.date = d;
+      let bars = null;
+      if (req.query.refetch === '1') { const run = await _dsRunFor(d); if (run?.head?.ok) bars = await _dsBars(Object.keys(run.head.book.instruments ?? {}), d); }
+      const r = await _ascScoreDate(d, bars).catch(e => ({ ok: false, date: d, error: e.message }));
+      (r.ok ? job.done : job.failed).push(r.ok ? { date: d, counts: r.counts } : { date: d, error: r.error });
+    }
+    job.status = 'done';
+  } catch (e) { job.status = 'error'; job.error = e.message; console.error('[analyst-scorecard] backfill:', e.message); }
+  finally { job.finishedAt = Date.now(); console.log(`[analyst-scorecard] backfill: ${job.done.length} scored, ${job.failed.length} failed, ${job.skipped} already done`); }
 });
 // ── Desk session updates (js/deskUpdate.js, desk/roles/session_update.md; plans/DESK_ANALYST_PIPELINE.md Phase 5) ──
 // At the London open (08:05) and the New York open (14:35) the desk re-reads what changed since the morning book:

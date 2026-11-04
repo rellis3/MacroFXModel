@@ -17,7 +17,7 @@
 import { scoreCard, windowFor, cardDir } from './deskScore.js';
 import { DESK_UNIVERSE, instrumentLegs } from './deskPack.js';
 
-const RISK = ['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100', 'BTCUSD', 'COPPER', 'WTI', 'BRENT', 'AUDJPY', 'NZDJPY', 'AUDUSD', 'NZDUSD'];
+export const RISK = ['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100', 'BTCUSD', 'COPPER', 'WTI', 'BRENT', 'AUDJPY', 'NZDJPY', 'AUDUSD', 'NZDUSD'];
 const INDICES = new Set(DESK_UNIVERSE.indices);
 const FX = new Set([...DESK_UNIVERSE.fx_majors, ...DESK_UNIVERSE.fx_crosses]);
 const r3 = x => (Number.isFinite(x) ? +x.toFixed(3) : null);

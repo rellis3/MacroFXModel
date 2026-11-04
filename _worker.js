@@ -70,6 +70,7 @@ function isAllowedKVKey(key) {
     'xccy_basis_hist',
     'options_skew_v1',
     'options_skew_hist',
+    'analyst_scorecard_v1',
     'research_pod_sessions',
     'research_pod_library',
     'research_pod_feedback',
@@ -1102,6 +1103,8 @@ export default {
             // options_skew_*: the laptop's IBKR options-skew pull and its daily history (scripts/rates_line/refresh_options_skew.py).
             'options_skew_v1',
             'options_skew_hist',
+            // analyst_scorecard_v1: the desk analyst scorecard's day rows (js/analystScorecard.js); a forward record.
+            'analyst_scorecard_v1',
             // research_pod_*: the research pod's sessions, proposals, the owner's marks and the system cards (server writes; the owner's feedback cannot be rebuilt).
             'research_pod_sessions',
             'research_pod_library',

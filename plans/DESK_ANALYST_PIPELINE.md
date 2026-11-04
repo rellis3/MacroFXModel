@@ -1222,6 +1222,52 @@ The paper library now starts from what the desk already holds, and the dossiers 
 - **The page**: the Paper library shows each entry's kind (paper / working paper / strategy), the repo's screen for 151
   strategies, the references of QuantConnect strategies, and filters by kind.
 
+## 9aj. The analyst scorecard: each analyst's record, fed back to the rulings behind a switch (2026-11-04)
+
+The owner approved build list item 1: "An analyst scorecard that feeds back into the desk. Each of the 11 analysts gets
+a running hit rate and calibration score: are its 'high conviction' calls actually right more often? The ruling then
+gives more weight to the analysts who have earned it."
+
+- **What is scored** (`js/analystScorecard.js`, pure, tested in `js/analystScorecard.test.mjs`). An analyst's call on a
+  key (a currency, an instrument or RISK) is the sum of its points' impacts on that key; the sign is the direction.
+  Conviction: |sum| 1 low, 2 medium, 3+ high, moved one step by the report's own confidence (high up, low down).
+  What happened is the desk score's window and unit (08:00 to 21:00 London, u, clipped at 3): an instrument's own move,
+  a currency's signed mean over its FX pairs, RISK the mean of the attribution's risk basket. Moves under 0.05 u are
+  pushes. Only mornings whose run finished before 08:00 London count (any mode); later runs are stored, not counted.
+- **Measures**, per analyst per day and running: hit rate overall and by conviction; Brier with conviction read as a
+  stated chance (low 0.55, medium 0.60, high 0.70) and Brier skill against the coin flip; the calibration gap (how far
+  each bucket's hit rate sits from its stated chance) and the conviction slope (high minus low); edge (mean direction
+  x move, u, against the coin flip) and skill (edge minus a shuffle of its own directions over the same keys, which
+  removes a net tilt); days, calls and decided calls.
+- **The weight.** Each analyst's daily edge is shrunk towards zero by empirical Bayes (prior N(0, tau^2), tau from the
+  spread of the analysts' means beyond noise once three analysts have 10 days, floored at 0.03 u; the day variance is
+  anchored at 0.5 u with 5 pseudo-days). Weight = 1 + 0.5 tanh(z / 3), z = posterior mean / posterior SD: it runs 0.5 to
+  1.5, two perfect mornings move it to about 1.14, and every record is "unproven" until 10 scored mornings. Then
+  "earned" (z >= 2), "lagging" (z <= -2) or "no clear edge".
+- **When it runs.** Inside the evening desk score (service deskScore), from the same M1 bars, after the attribution and
+  the day forecast. `POST /api/analyst-scorecard/backfill` scores every stored day whose window has closed (`?force=1`
+  re-scores, `?refetch=1` re-reads bars; otherwise the moves saved the first time are reused).
+- **Storage.** `desk_run_analyst_<date>` (the day in full: every market's move, what was realised per key, every call
+  and whether it hit) and `analyst_scorecard_v1` (one compact row per scored morning; the running scorecard is
+  computed from it on read). `analyst_scorecard_v1` is in kv.js `_CF_EXACT`, both `_worker.js` lists and
+  `js/storeRegistry.js`; the day keys fall under kv.js's `desk_run_` prefix.
+- **Routes.** `GET /api/analyst-scorecard` (the scorecard with a sparkline of each analyst's rolling 10-day edge;
+  `?brief=1` without sparklines; `?date=` one day in full) and the backfill above. Registered in `js/dataFeeds.js`
+  (`analyst_scorecard`).
+- **Fed back.** (a) The Desk Pack feed `analyst-scorecard?brief=1` goes to the evidence clerk (`evidence_memory.md`
+  item 7: report which records stand out and on how many days; never an impact), always on, like `desk-memory`.
+  (b) With service **`analystScorecardFeedback`** on (default **OFF**, `SVC_ANALYST_SCORECARD_FEEDBACK=1`), the Global
+  Manager (global and evidence analysts), the Currency Manager (global, currency and evidence analysts) and the Head
+  (all) get a section "Analyst track record (scorecard)": each analyst's days, hit rate by conviction, Brier skill,
+  calibration gap, edge and weight, with the instruction to lean towards analysts above 1.0 and discount those below
+  it in proportion, never to drop one on its weight alone. Off, the prompts are exactly as before. Each run records
+  `run.trackRecord` (as of which day, which rulings read it). The single-prompt control never reads it.
+- **Why off by default.** It changes what the rulings read, so the book, while the pre-registered test runs (prereg
+  §7: the pipeline is not tuned to the running score). Amendment A10 documents the measurement and the switch; turning
+  it on is a further amendment, written before the next scored day.
+- **The page.** The Desk Terminal's Analytics tab has an "Analyst scorecard" panel: each analyst's days, hit rate
+  overall and by conviction, Brier skill, calibration gap, edge, weight with its status, and the rolling-edge sparkline.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
