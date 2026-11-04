@@ -7232,6 +7232,19 @@ _mbRoute('/api/copper-gold', 'coppergold', 6, async () => {
     copperGold: _gbRatio(cu, au, { label: 'Copper / gold (growth against fear)' }), brentWti: _gbRatio(brent, wti, { label: 'Brent less WTI (global against US oil)', diff: true }),
     note: 'Copper/gold rising = markets pricing growth over safety (it tends to move with the US 10-year yield and the commodity currencies); falling = fear. Brent over WTI widening = tighter global supply than in the US.' };
 });
+// GET /api/autocorrelation: how much memory each market's daily moves carry (js/autocorr.js; owner, 2026-11-04). Return
+// autocorrelation at 1-10 days with robust errors, variance ratios at 5 and 20 days, volatility clustering, both halves,
+// corrected across markets (BH 10%), in-sample to the lockbox. DESCRIPTION, NOT A SIGNAL: never in the Desk Pack.
+_mbRoute('/api/autocorrelation', 'autocorr', 12, async () => {
+  const AC = await import('./js/autocorr.js'), QT = await import('./js/quickTest.js');
+  const uni = Object.entries(QT.CATALOGUE).filter(([, c]) => c.src === 'oanda').map(([id, c]) => ({ id: id.slice(6), sym: c.ref, label: c.label.replace(' (OANDA daily close)', '') }));
+  const series = {}, errors = {};
+  for (let i = 0; i < uni.length; i += 8) {   // eight at a time: polite to OANDA
+    await Promise.all(uni.slice(i, i + 8).map(async u => { try { series[u.id] = { label: u.label, closes: (await _gbD1(u.sym, 3200)).map(b => ({ date: b.date, value: b.close })) }; } catch (e) { errors[u.id] = e.message; } }));
+  }
+  const b = AC.board(series);
+  return { ok: b.rows.some(r => r.ok), fetchedAt: new Date().toISOString(), source: 'OANDA daily closes (mid), up to 3,200 days', errors, ...b };
+});
 // GET /api/pair-select?date=: §9ae, how the morning's currency view is best expressed (js/pairSelector.js): every pair
 // of the eight scored by the bias gap, cost against the day's move, carry and the book's card; at most two picks per currency.
 app.get('/api/pair-select', async (req, res) => {

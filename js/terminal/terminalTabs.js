@@ -20,6 +20,7 @@ import * as PV from './pairView.js';
 import * as CSV from './chainStatsView.js';
 import { reactionsHtml } from './reactionPanel.js';
 import * as FVV from './fairValueView.js';
+import * as ACV from './autocorrView.js';
 import { createLevelChart } from '../levelChart.js';
 import { cardDrivers } from './cardExplain.js';
 
@@ -349,6 +350,7 @@ ${c ? `${ladder(c)}<div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b
 <div class="card" id="tt-p-pos">${loading('positioning')}</div>
 <div class="card" id="tt-p-carry">${loading('carry and options')}</div>
 <div class="card" id="tt-p-hours">${loading('session hours and seasonality')}</div>
+<div class="card" id="tt-p-ac">${loading('autocorrelation')}</div>
 <div class="card" id="tt-p-prec">${loading('precedent and the chain')}</div>
 <div class="card" id="tt-p-res">${loading('research')}</div></div>`;
   root.querySelector('#tt-sel').onchange = e => openPair(e.target.value);
@@ -361,6 +363,7 @@ ${c ? `${ladder(c)}<div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b
   J('/api/fair-value').then(fv => mine() && pairFair(n, fv));
   if (legs?.[0]) J('/api/fx-fair-value').then(d => { const b = mine() && el('tt-p-stfv'); if (b) b.innerHTML = FVV.stfvPairCard(d, n); }); else el('tt-p-stfv')?.remove();
   pairPos(n);
+  J('/api/autocorrelation').then(d => { const b = mine() && el('tt-p-ac'); if (b) b.innerHTML = ACV.pairCard(d, n); });
   Promise.all([J('/api/carry-vol'), J('/api/options-skew')]).then(([cv, sk]) => mine() && pairCarry(n, cv, sk));
   Promise.all([J('/api/session-heat'), J(`/api/desk-season?inst=${n}`)]).then(([sh, ss]) => mine() && pairHours(n, sh, ss));
   Promise.all([J('/api/macro-regime-fx'), loadChain()]).then(([m]) => mine() && pairPrec(n, m));
@@ -506,11 +509,14 @@ async function renderResearch() {
 <div class="tt-pipe">${['proposed', 'shortlisted', 'carded', 'preregistered', 'tested', 'passed', 'failed', 'paper', 'live'].map(s => `<div class="${cnt[s] ? 'on' : ''}"><b>${cnt[s] ?? 0}</b><span>${s}</span></div>`).join('')}</div>
 <div class="scroll" style="margin-top:12px"><table style="min-width:520px"><thead><tr><th>Researcher</th><th class="n">Proposed</th><th class="n">Accepted</th><th class="n">Carded</th><th class="n">Tested</th><th class="n">Passed</th><th class="n">Failed</th><th class="n">Paper/live</th></tr></thead><tbody>${Object.entries(sc).map(([k, v]) => `<tr><td><b>${h(rp?.researchers?.[k]?.label ?? k)}</b></td>${['proposed', 'accepted', 'carded', 'tested', 'passed', 'failed', 'paperOrLive'].map(f => `<td class="n">${v[f] ?? 0}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
 <p class="tt-note">${h(rp?.label ?? '')}${rp?.job ? ` · a session is running (${h(rp.job.status ?? '')})` : ''}. Stages are read from what exists (the owner's mark, the card, the register row, the harness output, the Evidence Book); paper and live are set by the owner.</p></div>
+<div class="card" id="tt-qt" style="margin-top:14px">${loading('the quick test')}</div>
 <div class="tt-grid2" style="margin-top:14px">
 <div class="card"><div class="ch"><span class="lbl">Shortlisted and building</span><span class="r muted">${active.length}</span></div>${active.map(propRow).join('') || '<div class="muted">Nothing shortlisted or in build yet.</div>'}${fresh.length ? `<details><summary>${fresh.length} new, unmarked</summary>${fresh.map(propRow).join('')}</details>` : ''}</div>
 <div class="card"><div class="ch"><span class="lbl">Latest dossiers</span><span class="r muted">${(ds?.dossiers ?? []).length}</span></div>${(ds?.dossiers ?? []).slice().sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 8).map(d => `<div class="tt-row"><span class="chip ${d.ok ? 'pur' : 'dn'}">${h(d.kind ?? 'dossier')}</span><b style="flex:1;min-width:0">${h(d.hypothesis ?? d.id)}</b><span class="w">${h(String(d.at ?? '').slice(0, 10))} · ${d.papers} papers · ${d.proposals} proposals</span>${d.headline ? `<span class="muted" style="flex-basis:100%">${h(d.headline)}</span>` : ''}${d.verdict ? `<span class="chip gold">${h(d.verdict)}</span>` : ''}</div>`).join('') || `<div class="muted">No dossier yet${ds?.job ? ` (one is being written: ${h(ds.job.status ?? '')})` : ''}. ${h(ds?.label ?? '')}</div>`}</div>
 <div class="card"><div class="ch"><span class="lbl">In paper or live</span></div>${paperLive.map(propRow).join('')}${Object.entries(map).map(([bot, id]) => `<div class="tt-row" data-live="${h(bot)}|${h(id)}"><span class="chip gold">live bot</span><b>${h(bot)}</b><span class="muted">trades ${h(id)}</span><span class="w" data-check>checking live vs backtest…</span></div>`).join('')}${(shd?.shadows ?? []).map(s => `<div class="tt-row"><span class="chip pur">shadow</span><b>${h(s.bot)}</b><span class="muted">${h(s.rule ?? '')}</span><span class="w">${h(s.verdict ?? '')}</span></div>`).join('')}${!paperLive.length && !Object.keys(map).length && !(shd?.shadows ?? []).length ? '<div class="muted">No proposal is in paper or live, no backtested system is linked to a live bot and no forward shadow is running. Link a bot to its system in the Desk Office to get the live-against-backtest check here.</div>' : ''}</div>
 <div class="card"><div class="ch"><span class="lbl">Systems on file</span><span class="r muted">${systems.length}</span></div><div class="scroll"><table style="min-width:520px"><thead><tr><th>System</th><th class="n">Trades</th><th class="n">Sharpe</th><th class="n">Max DD</th><th>Trend</th><th>Review</th></tr></thead><tbody>${systems.slice().sort((a, b) => (b.sharpe ?? -99) - (a.sharpe ?? -99)).map(s => `<tr${liveIds.has(s.id) ? ' style="background:var(--goldbg)"' : ''}><td><a href="system-backtest.html?id=${encodeURIComponent(s.id)}" style="color:var(--tx)">${h(s.model ?? s.id)}</a></td><td class="n">${s.trades ?? '–'}</td><td class="n ${dirCls(s.sharpe)}">${s.sharpe ?? '–'}</td><td class="n">${s.maxDD != null ? `${s.maxDD}%` : '–'}</td><td class="muted" style="font-size:12px">${h(s.trend ?? '')}</td><td>${s.verdicts ? Object.entries(s.verdicts).map(([k, v]) => `<span class="chip ${v === 'dead' ? 'dn' : v === 'alive' || v === 'promising' ? 'up' : ''}" style="font-size:9px">${h(k)} ${h(v)}</span>`).join(' ') : '<span class="muted">–</span>'}${s.validation ? ` <span class="chip ${s.validation === 'pass' ? 'up' : 'gold'}" style="font-size:9px">validation ${h(s.validation)}</span>` : ''}</td></tr>`).join('')}</tbody></table></div><p class="tt-note">Backtests on file (net of costs); highlighted = traded by a live bot. Results, not proposals.</p></div></div>`;
+  // the research lab's quick test (js/quickTestView.js), the same panel as the Desk Office's Research tab
+  import('../quickTestView.js').then(Q => Q.mount(root.querySelector('#tt-qt'), { getJson: (u, o) => fetch(u, { cache: 'no-store', ...(o ?? {}) }).then(r => r.json()).catch(e => ({ ok: false, error: e.message })) })).catch(e => { const b = root.querySelector('#tt-qt'); if (b) b.innerHTML = `<p class="muted">Quick test did not load: ${h(e.message)}</p>`; });
   for (const row of root.querySelectorAll('[data-live]')) {
     const [bot, id] = row.dataset.live.split('|');
     J(`/api/system-live?bot=${encodeURIComponent(bot)}&id=${encodeURIComponent(id)}`).then(r => { const c = row.querySelector('[data-check]'); if (!c) return;
@@ -591,3 +597,4 @@ if (/pair=/.test(location.hash)) fromHash();
 else { const sel = document.querySelector('#tabs [aria-selected="true"]')?.dataset.t; if (RENDER[sel]) globalThis.onTerminalTab(sel); }
 // the Macro tab's short-term fair value table (desk-terminal.html driversHtml, a classic script) reads this
 globalThis.stfvHtml = FVV.stfvTable;
+globalThis.acBoardHtml = ACV.boardHtml;
