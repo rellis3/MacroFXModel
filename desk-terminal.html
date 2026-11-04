@@ -502,7 +502,7 @@ async function load() {
 // through the Desk Pack.
 let E = null;
 // each tab re-renders its whole section; redraw its enrichment slot after it does
-for (const [name, fn] of [['overview', 'enrichOverview'], ['macro', 'enrichMacro'], ['assets', 'enrichAssets'], ['positioning', 'enrichPos']]) {
+for (const [name, fn] of [['overview', 'enrichOverview'], ['macro', 'enrichMacro'], ['assets', 'enrichAssets'], ['positioning', 'enrichPos'], ['calendar', 'enrichCal']]) {
   const orig = globalThis[name];
   if (typeof orig === 'function') globalThis[name] = function (...a) { const r = orig.apply(this, a); if (E) { try { globalThis[fn](); } catch (e) { console.warn(fn, e); } } return r; };
 }
@@ -512,10 +512,10 @@ async function loadEnrich() {
   E = Object.fromEntries(k.map((x, i) => [x.replace(/\?.*$/, ''), r[i]]));
   enrichAll();
   // the newer boards (some build on first call in ~20 s): fetched after the first draw, each merged as it lands
-  for (const x of ['fair-value', 'leading-indicators', 'commodity-fx', 'carry-vol', 'copper-gold', 'session-heat', 'options-skew']) getJson(`/api/${x}`).then(v => { E[x] = v; enrichAll(); });
+  for (const x of ['fair-value', 'leading-indicators', 'commodity-fx', 'carry-vol', 'copper-gold', 'session-heat', 'options-skew', 'speech-drift', 'desk-alerts', 'release-surprises']) getJson(`/api/${x}`).then(v => { E[x] = v; enrichAll(); });
 }
 function slot(sec, id) { const s = $(sec); if (!s) return null; let el = s.querySelector(`#${id}`); if (!el) { el = document.createElement('div'); el.id = id; s.appendChild(el); } return el; }
-function enrichAll() { if (!E) return; try { globalThis.redrawHero?.(); stressStrip(); enrichOverview(); enrichMacro(); enrichAssets(); enrichPos(); } catch (e) { console.warn('enrich', e); } }
+function enrichAll() { if (!E) return; try { globalThis.redrawHero?.(); stressStrip(); enrichOverview(); enrichMacro(); enrichAssets(); enrichPos(); enrichCal(); } catch (e) { console.warn('enrich', e); } }
 const spk = (vals, w = 120, h = 28, col = 'var(--gold)') => { const v = (vals ?? []).filter(Number.isFinite); if (v.length < 2) return ''; const lo = Math.min(...v), hi = Math.max(...v), x = i => (i / (v.length - 1)) * w, y = a => h - 2 - ((a - lo) / ((hi - lo) || 1)) * (h - 4);
   return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><path d="${v.map((a, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(a).toFixed(1)}`).join('')}" fill="none" stroke="${col}" stroke-width="1.5"/></svg>`; };
 const sgn = (x, d = 2) => (x == null || !Number.isFinite(+x) ? '–' : `${x > 0 ? '+' : ''}${(+x).toFixed(d)}`);
@@ -528,7 +528,7 @@ ${rf?.ok ? `<div class="card"><div class="ch"><span class="lbl">Risk state</span
 <div class="drv">${(rf.flags ?? []).map(f => `<span class="chip ${f.on ? 'dn' : ''}" title="${esc(f.detail ?? '')}">${esc(f.label)}${f.value != null ? ` · ${esc(String(f.value))}` : ''}</span>`).join(' ')}</div>${rf.note ? `<p class="muted" style="font-size:12px">${esc(rf.note)}</p>` : ''}</div>` : ''}
 ${em?.ok ? `<div class="card"><div class="ch"><span class="lbl">Emerging markets · read, not traded</span>${em.stress ? `<span class="r"><span class="chip ${EL[em.stress.level] ?? ''}">${esc(em.stress.level)}</span> <span class="muted mono">z ${sgn(em.stress.z)}</span></span>` : ''}</div>
 ${em.stress ? `<p style="margin:2px 0 8px">${esc(em.stress.read)}.</p>` : ''}<table><tbody>${Object.values(em.pairs).filter(p => p.ok).map(p => `<tr title="${esc(p.role)}"><td class="mono"><b>${esc(p.label)}</b></td><td>${spk(p.spark)}</td><td class="n mono ${p.chg5d > 0 ? 'dn' : 'up'}">${sgn(p.chg5d)}% 5d</td><td class="n mono">z ${sgn(p.z5)}</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px">USD/EM up (red) = the EM currency weaker. MXN and ZAR are the carry gauges; CNH leads AUD and NZD.</p></div>` : ''}
-</div>`;
+</div>${alertsHtml()}`;
 }
 const CYC = { hiking: '#e8b85a', 'on hold after hikes': 'rgba(232,184,90,.45)', 'on hold': 'rgba(138,147,184,.35)', 'on hold after cuts': 'rgba(91,157,255,.45)', cutting: '#5b9dff', unknown: 'rgba(138,147,184,.2)' };
 async function worldRatesMap(el) {
@@ -601,18 +601,46 @@ function sessionHeatHtml() {
 // Central-bank speakers in the next seven days, with each bank's stance from its last statement (Macro tab).
 function speakersHtml() {
   const now = Date.now(), cb = D.sc?.cbSentiment ?? {}, BK = { US: ['USD', 'Fed'], EU: ['EUR', 'ECB'], GB: ['GBP', 'BoE'], JP: ['JPY', 'BoJ'], AU: ['AUD', 'RBA'], NZ: ['NZD', 'RBNZ'], CA: ['CAD', 'BoC'], CH: ['CHF', 'SNB'], USD: ['USD', 'Fed'], EUR: ['EUR', 'ECB'], GBP: ['GBP', 'BoE'], JPY: ['JPY', 'BoJ'], AUD: ['AUD', 'RBA'], NZD: ['NZD', 'RBNZ'], CAD: ['CAD', 'BoC'], CHF: ['CHF', 'SNB'] };
-  const rows = (D.ev ?? []).filter(e => /speaks|testifies|press conference|hearing/i.test(e.event ?? e.title ?? '')).map(e => ({ ...e, ms: Number(e.ms ?? Date.parse(e.time)) })).filter(e => e.ms > now - 3600e3 && e.ms < now + 7 * 864e5).sort((a, b) => a.ms - b.ms);
+  const wk = now - ((new Date(now).getUTCDay() + 6) % 7) * 864e5 - now % 864e5;   // Monday 00:00 UTC: this week's past speeches stay, with their score
+  const rows = (D.ev ?? []).filter(e => /speaks|testifies|press conference|hearing/i.test(e.event ?? e.title ?? '')).map(e => ({ ...e, ms: Number(e.ms ?? Date.parse(e.time)) })).filter(e => e.ms > Math.min(wk, now - 3600e3) && e.ms < now + 7 * 864e5).sort((a, b) => a.ms - b.ms);
   if (!rows.length) return '';
-  return `<div class="sec"><h2>Central-bank speakers this week</h2><span class="lbl">every scheduled speech, with the bank's stance from its last statement</span></div><div class="card scroll"><table><tbody>${rows.slice(0, 18).map(e => { const k = BK[e.country] ?? BK[e.currency] ?? null, s = k ? cb[k[0]] : null;
-    return `<tr><td class="mono">${esc(lt(e.ms))}</td><td><b>${esc(k?.[1] ?? e.country ?? '')}</b></td><td>${esc(e.event ?? e.title ?? '')}</td><td>${s?.regime ? `<span class="chip ${/HAWK/.test(s.regime) ? 'gold' : /DOV/.test(s.regime) ? 'pur' : ''}">${esc(String(s.regime).toLowerCase())}${Number.isFinite(s.score) ? ` · ${s.score}` : ''}</span>` : ''}</td><td><span class="chip ${e.impact === 'high' ? 'dn' : e.impact === 'medium' ? 'gold' : ''}">${esc(e.impact ?? '')}</span></td></tr>`; }).join('')}</tbody></table>
-<p class="muted" style="font-size:12px">A speaker who sounds different from the bank's last statement moves its currency; the stance here is the statement's hawkishness score (0 dovish to 1 hawkish).</p></div>`;
+  return `<div class="sec"><h2>Central-bank speakers this week</h2><span class="lbl">every scheduled speech this week, with the bank's stance from its last statement and, once given, the speech's own score</span></div><div class="card scroll"><table><tbody>${rows.slice(0, 24).map(e => { const k = BK[e.country] ?? BK[e.currency] ?? null, s = k ? cb[k[0]] : null, sp = e.ms <= now ? speechFor(e, k?.[1]) : null;
+    return `<tr><td class="mono">${esc(lt(e.ms))}</td><td><b>${esc(k?.[1] ?? e.country ?? '')}</b></td><td>${esc(e.event ?? e.title ?? '')}</td><td>${s?.regime ? `<span class="chip ${/HAWK/.test(s.regime) ? 'gold' : /DOV/.test(s.regime) ? 'pur' : ''}">${esc(String(s.regime).toLowerCase())}${Number.isFinite(s.score) ? ` · ${s.score}` : ''}</span>` : ''}</td><td>${sp ? `<a href="${esc(sp.url)}" target="_blank" rel="noopener" title="${esc(sp.headline ?? '')}"><span class="chip ${sp.score > 0.15 ? 'gold' : sp.score < -0.15 ? 'pur' : ''}">speech ${sgn(sp.score)}${sp.delta != null ? ` · ${sgn(sp.delta)} vs stmt` : ''}</span></a>` : ''}</td><td><span class="chip ${e.impact === 'high' ? 'dn' : e.impact === 'medium' ? 'gold' : ''}">${esc(e.impact ?? '')}</span></td></tr>`; }).join('')}</tbody></table>
+<p class="muted" style="font-size:12px">A speaker who sounds different from the bank's last statement moves its currency. The stance is the statement's hawkishness score (-1 dovish to +1 hawkish); a past speech carries its own score on the same scale and its change against the statement, once read.</p></div>`;
+}
+// Build list 4-6 (js/cbSpeeches.js, js/surpriseReader.js, js/deskAlerts.js): scored speeches, live surprises, desk alerts.
+function speechFor(e, bank) {
+  const sd = E?.['speech-drift']; if (!sd?.ok || !bank) return null; const txt = String(e.event ?? e.title ?? '').toLowerCase();
+  return (sd.recent ?? []).find(x => x.bank === bank && x.date && Math.abs(Date.parse(x.date) - e.ms) < 36 * 3600e3 && String(x.speaker ?? '').split(/\s+/).some(w => w.length > 2 && txt.includes(w.toLowerCase()))) ?? null;
+}
+function speechDriftHtml() {
+  const sd = E?.['speech-drift']; if (!sd?.ok) return '';
+  const banks = Object.values(sd.banks ?? {}), DC = b => (b.drift == null ? '' : b.drift >= 0.1 ? 'gold' : b.drift <= -0.1 ? 'pur' : '');
+  return `<div class="sec"><h2>Speech drift</h2><span class="lbl">each bank's speakers since its last statement, on the statement's scale · ${(sd.recent ?? []).length} speeches read in 14 days${sd.lastRun?.at ? ` · checked ${esc(lt(Date.parse(sd.lastRun.at)))}` : ''}</span></div><div class="card scroll"><table><thead><tr><th>Bank</th><th class="n">Statement</th><th class="n">Speeches</th><th class="n">Speech avg</th><th>Drift</th><th>Latest</th></tr></thead><tbody>${banks.map(b => { const l = b.latest?.[0];
+    return `<tr><td><b>${esc(b.bank)}</b> <span class="muted">${esc(b.ccy)}</span></td><td class="n mono">${b.statement?.score != null ? sgn(b.statement.score) : '–'} <span class="muted" style="font-size:11px">${esc(b.statement?.date ?? '')}</span></td><td class="n mono">${b.speeches}</td><td class="n mono">${sgn(b.speechAvg)}</td><td><span class="chip ${DC(b)}">${esc(b.label)}${b.drift != null ? ` · ${sgn(b.drift)}` : ''}</span></td><td style="font-size:12px">${l ? `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.speaker ?? '?')}</a> ${esc(l.date ?? '')} <span class="mono">${sgn(l.score)}</span> <span class="muted">${esc(String(l.headline ?? '').slice(0, 110))}</span>` : '<span class="muted">none since the statement</span>'}</td></tr>`; }).join('')}</tbody></table>
+<p class="muted" style="font-size:12px">${esc(sd.label ?? '')}</p></div>`;
+}
+function alertsHtml() {
+  const a = E?.['desk-alerts']; if (!a?.ok) return '';
+  const KIND = { stress: 'World stress', skew: 'Skew', skewslope: 'Vol slope', fair: 'Fair value', carry: 'Carry/vol', cli: 'Leading ind.', drift: 'Speech drift' };
+  return `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">Desk alerts</span><span class="r">${a.muted ? '<span class="chip">telegram muted</span> ' : ''}<span class="muted">${a.watching} states watched · every ${a.everyMin} min${a.lastRun?.at ? ` · ${esc(lt(Date.parse(a.lastRun.at)))}` : ''}</span></span></div>
+${(a.alerting ?? []).length ? `<div class="drv">${a.alerting.map(x => `<span class="chip gold" title="since ${esc(x.since)}">${esc(KIND[x.key.split(':')[0]] ?? x.key)} ${esc(x.key.split(':')[1] ?? '')} · ${esc(x.state)}</span>`).join(' ')}</div>` : ''}
+${(a.log ?? []).length ? `<table style="margin-top:6px"><tbody>${a.log.slice(0, 8).map(e => `<tr><td class="mono muted" style="width:96px">${esc(lt(Date.parse(e.at)))}</td><td>${e.text}${e.send ? '' : ` <span class="muted" style="font-size:11px">(${esc(e.held ?? 'not sent')})</span>`}</td></tr>`).join('')}</tbody></table>` : '<p class="muted" style="font-size:12px">No state changes yet: the first check records a baseline silently.</p>'}
+<p class="muted" style="font-size:12px">One Telegram line per state change, deduped and rate-limited. Context, not a signal.</p></div>`;
+}
+function enrichCal() {
+  const el = slot('cal', 'xc'); if (!el || !E) return;
+  const r = E['release-surprises']; if (!r?.ok || !(r.log ?? []).length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="sec"><h2>Live surprises</h2><span class="lbl">high-impact prints read within a minute: actual against consensus, z against the release's own history, and the playbook${r.muted ? ' · telegram muted' : ''}</span></div><div class="card scroll"><table><thead><tr><th>Time</th><th></th><th>Release</th><th class="n">Actual</th><th class="n">Cons.</th><th class="n">Surprise</th><th class="n">z</th><th>Playbook</th></tr></thead><tbody>${r.log.slice(0, 12).map(x => { const s = x.surprise ?? {}, m = x.playbook?.markets?.[0];
+    return `<tr><td class="mono">${esc(lt(x.ms))}</td><td><b>${esc(x.country)}</b></td><td>${esc(x.event)}</td><td class="n mono">${esc(x.actual ?? '–')}</td><td class="n mono muted">${esc(x.estimate ?? '–')}</td><td class="n mono ${s.direction === 'above' ? 'gold' : s.direction === 'below' ? 'pur' : ''}">${s.ok ? esc(s.diffText) : `<span class="muted">${esc(s.why ?? '')}</span>`}</td><td class="n mono">${s.z != null ? sgn(s.z) : '–'}</td><td style="font-size:12px">${m ? `${esc(m.label)} ~${m.abs30}${esc(m.unit)} at 30m, ${m.abs240}${esc(m.unit)} at 4h, ${Math.round((m.kept ?? 0) * 100)}% kept${m.after ? `; after ${esc(x.playbook.side)} prints ${sgn(m.after.m30)}${esc(m.unit)}` : ''} <span class="muted">(n ${x.playbook.n})</span>` : '<span class="muted">no playbook</span>'}</td></tr>`; }).join('')}</tbody></table>
+<p class="muted" style="font-size:12px">${esc(r.note ?? '')}</p></div>`;
 }
 function enrichMacro() {
   const el = slot('macro', 'xm'); if (!el) return;
   const wr = E['world-rates'], fp = E['fed-path'], fr = E['funding-read'], nc = E.nowcast, bc = E['bank-credit'];
   const banks = wr?.ok ? Object.values(wr.banks).filter(b => !b.stale) : [];
   const ST = s => (/stress|gone|selling|record|tight/.test(s) ? 'dn' : /watch|low|large|short/.test(s) ? 'gold' : 'up');
-  el.innerHTML = `${boardsHtml()}${driversHtml()}${speakersHtml()}${wr?.ok ? `<div class="sec"><h2>The world's rate cycle</h2><span class="lbl">${banks.length} central banks · ${wr.summary.hiking} hiking, ${wr.summary.cutting} cutting, ${wr.summary.onHold} on hold · BIS, monthly, to ${esc(wr.asOf)}</span></div>
+  el.innerHTML = `${boardsHtml()}${driversHtml()}${speakersHtml()}${speechDriftHtml()}${wr?.ok ? `<div class="sec"><h2>The world's rate cycle</h2><span class="lbl">${banks.length} central banks · ${wr.summary.hiking} hiking, ${wr.summary.cutting} cutting, ${wr.summary.onHold} on hold · BIS, monthly, to ${esc(wr.asOf)}</span></div>
 <div class="card"><div class="map" id="wrmap" style="min-height:260px"></div><div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--tx2)">${Object.entries(CYC).filter(([k]) => k !== 'unknown').map(([k, c]) => `<span><i style="display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px;background:${c}"></i>${k}</span>`).join('')}<span><i style="display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px;background:#1b2246"></i>no BIS rate</span></div>
 <div class="grid g2" style="margin-top:10px"><div><span class="lbl">Biggest moves over 12 months</span><table><tbody>${banks.filter(b => b.change12m != null).sort((a, b) => Math.abs(b.change12m) - Math.abs(a.change12m)).slice(0, 10).map(b => `<tr><td><b>${esc(b.name)}</b> <span class="muted">${esc(b.ccy)}</span></td><td>${spk(b.spark, 90, 22, b.change12m > 0 ? '#e8b85a' : '#5b9dff')}</td><td class="n mono">${b.rate}%</td><td class="n mono ${b.change12m > 0 ? 'gold' : ''}">${sgn(b.change12m)}pp</td><td class="muted">${esc(b.cycle)}</td></tr>`).join('')}</tbody></table></div>
 <div><span class="lbl">Hiking now</span><p>${wr.summary.hikers.map(a => esc(wr.banks[a].name)).join(', ') || 'none'}</p><span class="lbl">Cutting now</span><p>${wr.summary.cutters.map(a => esc(wr.banks[a].name)).join(', ') || 'none'}</p><p class="muted" style="font-size:12px">Hiking or cutting = a move of 0.2pp or more in the last 3 months. The desk's eight banks use their own daily series elsewhere on this page; this map is the wider cycle.</p></div></div></div>` : ''}
