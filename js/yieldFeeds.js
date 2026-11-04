@@ -41,8 +41,8 @@ export function parseValet(json, ids) {
   for (const i of ids) out[i].sort((a, b) => (a.date < b.date ? -1 : 1));
   return out;
 }
-export async function fetchCanada() {
-  const ids = ['BD.CDN.2YR.DQ.YLD', 'BD.CDN.10YR.DQ.YLD'], j = JSON.parse(await text(`https://www.bankofcanada.ca/valet/observations/${ids.join(',')}/json?recent=600`));
+export async function fetchCanada({ recent = 600 } = {}) {
+  const ids = ['BD.CDN.2YR.DQ.YLD', 'BD.CDN.10YR.DQ.YLD'], j = JSON.parse(await text(`https://www.bankofcanada.ca/valet/observations/${ids.join(',')}/json?recent=${Math.max(1, Math.round(recent))}`));
   const p = parseValet(j, ids); return { y2: p[ids[0]], y10: p[ids[1]] };
 }
 

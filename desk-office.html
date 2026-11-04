@@ -248,8 +248,8 @@ ${c.hours.length ? `<h3 style="font-size:14px;margin:14px 0 6px">Entries by Lond
   renderRules();
 }
 function renderResearch() {
-  $('research').innerHTML = '<div class="panel" id="podpanel"><h2>Research pod</h2><p class="muted">Loading…</p></div><div class="panel" id="litpanel"><h2>Literature desk</h2><p class="muted">Loading…</p></div><div class="panel" id="buildpanel" hidden></div><div class="panel" id="cardpanel" hidden></div><div class="panel" id="allocpanel"><h2>Allocation committee</h2><p class="muted">Loading…</p></div><div class="panel" id="shadowpanel"><h2>Forward shadows</h2><p class="muted">Loading…</p></div><div class="panel" id="fleetpanel"><h2>Fleet portfolio and risk</h2><p class="muted">Loading…</p></div><div class="panel" id="valpanel"><h2>Validation desk</h2><p class="muted">Loading…</p></div><div class="panel" id="catpanel"></div><div class="panel" id="theorypanel"><h2>Theory desk</h2><p class="muted">Loading…</p></div><div class="panel" id="opspanel"><h2>Research ops</h2><p class="muted">Loading…</p></div><div id="ecopanel"></div>';
-  renderPod(); renderLit(); renderAlloc(); renderShadows(); renderFleet(); renderValidation(); renderTheory(); renderOps();
+  $('research').innerHTML = '<div class="panel" id="podpanel"><h2>Research pod</h2><p class="muted">Loading…</p></div><div class="panel" id="qtpanel"><h2>Quick test</h2><p class="muted">Loading…</p></div><div class="panel" id="litpanel"><h2>Literature desk</h2><p class="muted">Loading…</p></div><div class="panel" id="buildpanel" hidden></div><div class="panel" id="cardpanel" hidden></div><div class="panel" id="allocpanel"><h2>Allocation committee</h2><p class="muted">Loading…</p></div><div class="panel" id="shadowpanel"><h2>Forward shadows</h2><p class="muted">Loading…</p></div><div class="panel" id="fleetpanel"><h2>Fleet portfolio and risk</h2><p class="muted">Loading…</p></div><div class="panel" id="valpanel"><h2>Validation desk</h2><p class="muted">Loading…</p></div><div class="panel" id="catpanel"></div><div class="panel" id="theorypanel"><h2>Theory desk</h2><p class="muted">Loading…</p></div><div class="panel" id="opspanel"><h2>Research ops</h2><p class="muted">Loading…</p></div><div id="ecopanel"></div>';
+  renderPod(); renderQuickTest(); renderLit(); renderAlloc(); renderShadows(); renderFleet(); renderValidation(); renderTheory(); renderOps();
   // Phases 6 and 15: the economist's briefs and playbooks (also in the newsletter's "The releases ahead" page)
   getJson('/api/desk-run').then(run => {
     const e = run?.ok && run.date === today ? run.economist : null, el = $('ecopanel'); if (!el) return;
@@ -259,6 +259,10 @@ function renderResearch() {
   });
 }
 
+// Build item 6 (/api/research-pod/quick-test, js/quickTestView.js): the research lab's quick test, exploratory, never banked.
+let QTV = null;
+async function renderQuickTest() { QTV ??= await import('./js/quickTestView.js'); await QTV.mount($('qtpanel'), { getJson, onChange: qtChips }); qtChips(); }
+function qtChips() { if (!QTV) return; document.querySelectorAll('[data-qtchips]').forEach(e => { e.innerHTML = ' ' + QTV.linkedChips(QTV.tests(), e.dataset.qtchips); QTV.wireOpen(e); }); }
 // Phases 23-25 (/api/research-pod): three researchers propose new systems; you mark each one, ask them questions, and send one to the architect.
 const LENS = { quant: 'Quant', macro: 'Macro', flow: 'Flow' }, MARK = { shortlist: 'warn', build: 'ok', park: '', reject: 'bad' };
 let podFilter = 'open';
@@ -313,7 +317,7 @@ ${p.citations?.length ? `<p class="muted" style="margin:2px 0">Cites from the pa
 ${stepper(p.lifecycle, d.systems)}
 <details data-thr="${esc(p.id)}"${openThreads.has(p.id) ? ' open' : ''}><summary class="muted">Talk to the ${LENS[p.lens] ?? ''} researcher about this${p.thread ? ` · ${p.thread} message(s)` : ''}${p.threadJob?.status === 'running' ? ' · answering…' : ''}</summary><div data-thrbody="${esc(p.id)}"><p class="muted">Loading…</p></div></details>
 <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${['shortlist', 'build', 'park', 'reject'].map(k => `<button class="btn" data-mark="${esc(p.id)}" data-st="${k}">${k}</button>`).join('')}<input data-note="${esc(p.id)}" placeholder="note for the researchers" value="${esc(p.feedback?.note ?? '')}" style="flex:1;min-width:160px;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:6px">
-<button class="btn" data-card="${esc(p.id)}">${p.card ? 'View system card' : 'Send to the architect'}</button></div></div>`).join('') : `<p class="muted">Nothing under “${podFilter}”.</p>`}`;
+<button class="btn" data-card="${esc(p.id)}">${p.card ? 'View system card' : 'Send to the architect'}</button><button class="btn" data-qt="${esc(p.id)}" title="a standard exploratory first look: does X lead Y? (never banked)">Quick test</button><span data-qtchips="${esc(p.id)}"></span></div></div>`).join('') : `<p class="muted">Nothing under “${podFilter}”.</p>`}`;
   const bl = $('buildpanel');
   if (bl) { bl.hidden = !d.buildList.length; bl.innerHTML = `<h2>What we need to build <i>every input the live proposals need and we do not have, ranked by how many need it (build counts double)</i></h2><table><thead><tr><th>Input</th><th>Status</th><th>How to get it</th><th>Needed by</th></tr></thead><tbody>${d.buildList.map(b => `<tr><td>${esc(b.what)}</td><td><span class="chip ${b.status === 'partial' ? 'warn' : 'bad'}">${esc(b.status)}</span></td><td class="muted">${esc(b.how ?? '')}</td><td class="n">${b.needs.length} <span class="muted" title="${esc(b.needs.join(', '))}">· score ${b.score}</span></td></tr>`).join('')}</tbody></table>`; }
   const cat = $('catpanel'), cv = d.catalogue.coverage;
@@ -325,6 +329,8 @@ ${stepper(p.lifecycle, d.systems)}
   document.querySelectorAll('[data-podf]').forEach(x => x.onclick = () => { podFilter = x.dataset.podf; renderPod(); });
   document.querySelectorAll('[data-mark]').forEach(x => x.onclick = async () => { const id = x.dataset.mark, note = document.querySelector(`[data-note="${CSS.escape(id)}"]`)?.value ?? ''; x.disabled = true; await fetch('/api/research-pod/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: x.dataset.st, note }) }).catch(() => null); renderPod(); });
   document.querySelectorAll('[data-card]').forEach(x => x.onclick = () => showCard(x.dataset.card, true));
+  document.querySelectorAll('[data-qt]').forEach(x => x.onclick = async () => { QTV ??= await import('./js/quickTestView.js'); const p = d.library.find(q => q.id === x.dataset.qt); if (p) QTV.openFor(p); });
+  qtChips();
   document.querySelectorAll('[data-dosl]').forEach(x => x.onclick = e => { e.preventDefault(); showDossier(x.dataset.dosl); });
   document.querySelectorAll('[data-thr]').forEach(x => { const id = x.dataset.thr; if (x.open) loadThread(id); x.ontoggle = () => { if (x.open) { openThreads.add(id); loadThread(id); } else openThreads.delete(id); }; });
   const link = async (id, body) => { await fetch('/api/research-pod/link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...body }) }).catch(() => null); renderPod(); };
