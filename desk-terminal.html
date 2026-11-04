@@ -253,6 +253,36 @@ const biasFill = b => (b > 0 ? `rgba(47,211,154,${0.22 + 0.22 * Math.min(2, b)})
 const hawkFill = h => d3.interpolateRgb('#3a2f8f', '#e8b85a')(Math.max(0, Math.min(1, h ?? 0.5)));
 // mode 'bias': zones shaded by the desk's currency bias, an arc from the strongest to the weakest currency.
 // mode 'cb': zones shaded by each bank's hawkishness, dots sized by the policy rate.
+// §9af: the rest of the world on the hero map and globe. Layers: 'bias' (the desk's eight zones by bias, every other
+// country dimly by its central bank's rate cycle), 'rates' (every BIS central bank by its cycle) and 'credit' (BIS
+// cross-border bank credit growth by borrower country). The data comes from loadEnrich (E); until it lands the
+// other countries stay plain.
+let HLAYER = (() => { try { return localStorage.getItem('deskTerminalLayer') || 'bias'; } catch { return 'bias'; } })();
+const ISO2N = { US: '840', GB: '826', CN: '156', JP: '392', FR: '250', DE: '276', AE: '784', SA: '682', CH: '756', LU: '442', IE: '372', CA: '124', NL: '528', IT: '380', ES: '724', AU: '036', KR: '410', IN: '356', BR: '076', MX: '484', BE: '056', SE: '752', NO: '578', DK: '208', AT: '040', FI: '246', TR: '792', ZA: '710', BM: '060', PA: '591', SG: '702', HK: '344', KY: '136' };
+const CYCOL = { hiking: 'rgba(232,184,90,.85)', 'on hold after hikes': 'rgba(232,184,90,.45)', 'on hold': 'rgba(138,147,184,.38)', 'on hold after cuts': 'rgba(91,157,255,.45)', cutting: 'rgba(91,157,255,.85)' };
+const creditCol = g => (g == null ? null : g >= 0 ? `rgba(47,211,154,${Math.min(0.85, 0.2 + g / 15).toFixed(2)})` : `rgba(255,93,120,${Math.min(0.85, 0.2 - g / 15).toFixed(2)})`);
+function worldBank(id) { const wr = E?.['world-rates']; const a = wr?.iso?.[id]; return a ? wr.banks[a] : null; }
+function creditOf(id) { const bc = E?.['bank-credit']; if (!bc?.ok) return null; for (const k of ['borrowers', 'usdBorrowers']) { const r = (bc[k] ?? []).find(x => ISO2N[x.code] === id); if (r) return { ...r, list: k }; } return null; }
+function landStyle(d, layer) {
+  const c = ZONE[d.id];
+  if (layer === 'bias') { if (c) return `fill:${biasFill(D.ccy[c]?.bias ?? 0)}`; const b = worldBank(d.id); return b && !b.stale ? `fill:${CYCOL[b.cycle] ?? ''};opacity:.55` : null; }
+  if (layer === 'rates') { const b = worldBank(d.id); return b && !b.stale ? `fill:${CYCOL[b.cycle] ?? ''}` : null; }
+  if (layer === 'credit') { const r = creditOf(d.id); return r ? `fill:${creditCol(r.g)}` : null; }
+  return null;
+}
+function landTip(e, d, layer) {
+  const c = ZONE[d.id], b = worldBank(d.id), r = creditOf(d.id), nm = esc(d.properties.name);
+  const rateLine = b ? `<br>${esc(b.name)} policy rate ${b.rate}% (${esc(b.asOf)}) · ${esc(b.cycle)} · 12m ${b.change12m > 0 ? '+' : ''}${b.change12m ?? '–'}pp` : '';
+  const creditLine = r ? `<br>cross-border bank credit $${Math.round(r.stockBn ?? 0).toLocaleString('en-GB')}bn · ${r.g > 0 ? '+' : ''}${r.g ?? '–'}% over 4 quarters${r.list === 'usdBorrowers' ? ' (in dollars)' : ''}` : '';
+  if (layer === 'bias' && c) { const v = D.ccy[c] ?? {}; return tip(e, `<b>${nm} · ${c}</b><br><span class="${dirCls(v.bias)}">bias ${v.bias ?? 0} · ${ccyScore(v.bias).toFixed(1)}/10</span><br><span class="muted">${esc(firstSentence(v.why).slice(0, 140))}</span>${rateLine}`); }
+  if (!b && !r) return tip(e, `<b>${nm}</b><br><span class="muted">${layer === 'credit' ? 'not in the BIS borrower list' : 'no BIS policy rate'}</span>`);
+  tip(e, `<b>${nm}</b>${layer === 'credit' ? creditLine + rateLine : rateLine + creditLine}`);
+}
+const LAYER_LEGEND = {
+  bias: '<span><i style="background:rgba(47,211,154,.6)"></i>bullish</span><span><i style="background:rgba(255,93,120,.6)"></i>bearish</span><span><i style="background:var(--gold)"></i>strongest → weakest</span><span>other countries: their central bank\'s cycle, dimmed</span>',
+  rates: Object.entries(CYCOL).map(([k, c]) => `<span><i style="background:${c}"></i>${k}</span>`).join('') + '<span>BIS, monthly</span>',
+  credit: '<span><i style="background:rgba(47,211,154,.7)"></i>cross-border bank credit growing</span><span><i style="background:rgba(255,93,120,.7)"></i>shrinking</span><span>4-quarter growth, BIS · the largest borrower countries</span>',
+};
 async function drawMap(el, mode = 'bias') {
   const geo = await world();
   if (!geo) { el.innerHTML = '<p class="muted" style="padding:18px">The map library did not load.</p>'; return; }
@@ -270,8 +300,8 @@ async function drawMap(el, mode = 'bias') {
   svg.append('path').attr('class', 'grat').attr('d', path(d3.geoGraticule10()));
   svg.append('g').selectAll('path').data(geo.features).join('path')
     .attr('d', path).attr('class', d => (ZONE[d.id] ? 'land zone' : 'land'))
-    .attr('style', d => (ZONE[d.id] ? `fill:${fill(ZONE[d.id])}` : null))
-    .on('mousemove', (e, d) => { const c = ZONE[d.id]; if (!c) return tip(e, null); const v = D.ccy[c] ?? {}; tip(e, `<b>${esc(d.properties.name)} · ${c}</b><br><span class="${dirCls(v.bias)}">${mode === 'cb' && cb[c] ? `${esc(cb[c].regime)} · hawkishness ${cb[c].score}` : `bias ${v.bias ?? 0} · ${ccyScore(v.bias).toFixed(1)}/10`}</span><br><span class="muted">${esc(firstSentence(v.why).slice(0, 140))}</span>`); })
+    .attr('style', d => (mode === 'cb' ? (ZONE[d.id] ? `fill:${fill(ZONE[d.id])}` : null) : landStyle(d, mode === 'bias' ? HLAYER : mode)))
+    .on('mousemove', (e, d) => { if (mode !== 'cb') return landTip(e, d, mode === 'bias' ? HLAYER : mode); const c = ZONE[d.id]; if (!c) return tip(e, null); const v = D.ccy[c] ?? {}; tip(e, `<b>${esc(d.properties.name)} · ${c}</b><br><span class="${dirCls(v.bias)}">${mode === 'cb' && cb[c] ? `${esc(cb[c].regime)} · hawkishness ${cb[c].score}` : `bias ${v.bias ?? 0} · ${ccyScore(v.bias).toFixed(1)}/10`}</span><br><span class="muted">${esc(firstSentence(v.why).slice(0, 140))}</span>`); })
     .on('mouseleave', () => tip(null)).on('click', (e, d) => { tip(null); if (ZONE[d.id]) ccyModal(ZONE[d.id]); });
   // the book's main trade: strongest against weakest, along the great circle
   if (mode === 'bias' && D.ranking?.length >= 2) {
@@ -318,8 +348,8 @@ async function drawGlobe(el) {
   svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', R).attr('fill', 'url(#sea)').attr('stroke', 'rgba(139,124,246,.35)');
   const grat = svg.append('path').attr('class', 'grat');
   const land = svg.append('g').selectAll('path').data(geo.features).join('path').attr('class', d => (ZONE[d.id] ? 'land zone' : 'land'))
-    .attr('style', d => (ZONE[d.id] ? `fill:${biasFill(D.ccy[ZONE[d.id]]?.bias ?? 0)}` : null))
-    .on('mousemove', (e, d) => { const c = ZONE[d.id]; if (!c) return tip(e, null); const v = D.ccy[c] ?? {}; tip(e, `<b>${esc(d.properties.name)} · ${c}</b><br><span class="${dirCls(v.bias)}">bias ${v.bias ?? 0} · ${ccyScore(v.bias).toFixed(1)}/10</span>`); })
+    .attr('style', d => landStyle(d, HLAYER))
+    .on('mousemove', (e, d) => { return landTip(e, d, HLAYER); const c = ZONE[d.id]; if (!c) return tip(e, null); const v = D.ccy[c] ?? {}; tip(e, `<b>${esc(d.properties.name)} · ${c}</b><br><span class="${dirCls(v.bias)}">bias ${v.bias ?? 0} · ${ccyScore(v.bias).toFixed(1)}/10</span>`); })
     .on('mouseleave', () => tip(null)).on('click', (e, d) => { tip(null); if (ZONE[d.id]) ccyModal(ZONE[d.id]); });
   const arcEl = svg.append('path').attr('class', 'arc');
   const a = CB_GEO[D.ranking?.[0]], b = CB_GEO[D.ranking?.at(-1)];
@@ -475,7 +505,7 @@ async function loadEnrich() {
   enrichAll();
 }
 function slot(sec, id) { const s = $(sec); if (!s) return null; let el = s.querySelector(`#${id}`); if (!el) { el = document.createElement('div'); el.id = id; s.appendChild(el); } return el; }
-function enrichAll() { if (!E) return; try { stressStrip(); enrichOverview(); enrichMacro(); enrichAssets(); enrichPos(); } catch (e) { console.warn('enrich', e); } }
+function enrichAll() { if (!E) return; try { globalThis.redrawHero?.(); stressStrip(); enrichOverview(); enrichMacro(); enrichAssets(); enrichPos(); } catch (e) { console.warn('enrich', e); } }
 const spk = (vals, w = 120, h = 28, col = 'var(--gold)') => { const v = (vals ?? []).filter(Number.isFinite); if (v.length < 2) return ''; const lo = Math.min(...v), hi = Math.max(...v), x = i => (i / (v.length - 1)) * w, y = a => h - 2 - ((a - lo) / ((hi - lo) || 1)) * (h - 4);
   return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><path d="${v.map((a, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(a).toFixed(1)}`).join('')}" fill="none" stroke="${col}" stroke-width="1.5"/></svg>`; };
 const sgn = (x, d = 2) => (x == null || !Number.isFinite(+x) ? '–' : `${x > 0 ? '+' : ''}${(+x).toFixed(d)}`);
@@ -698,7 +728,7 @@ function wireCard(items, title = 'The wire', limit = 14) {
 function overview() {
   if (!D.run?.ok) { $('overview').innerHTML = `<div class="card"><p>No desk book yet today.</p><p class="muted">${esc(D.run?.error ?? '')} The book is written at 06:55 London when the Desk Run service is on, or from the Desk Run page.</p></div>`; return; }
   const live = Object.entries(D.cards).filter(([, c]) => DIR[c.rating] && c.size > 0).sort((a, b) => b[1].size * (CONV[b[1].conviction] ?? .8) * Math.abs(DIR[b[1].rating]) - a[1].size * (CONV[a[1].conviction] ?? .8) * Math.abs(DIR[a[1].rating])).slice(0, 6);
-  $('overview').innerHTML = `<div class="card hero glow" style="margin-bottom:14px"><div class="hhead"><span class="lbl">The desk's world · ${esc(D.run.date)}</span><h2>${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest</h2></div><div class="map" id="heromap" style="min-height:240px"></div><div style="position:absolute;right:16px;top:14px;z-index:3;display:flex;gap:6px" class="filters"><button aria-pressed="true" data-view="globe">Globe</button><button aria-pressed="false" data-view="map">Map</button></div><div class="legend"><span><i style="background:rgba(47,211,154,.6)"></i>bullish</span><span><i style="background:rgba(255,93,120,.6)"></i>bearish</span><span><i style="background:var(--gold)"></i>strongest → weakest</span><span>tap a bank or a country</span></div></div>
+  $('overview').innerHTML = `<div class="card hero glow" style="margin-bottom:14px"><div class="hhead"><span class="lbl">The desk's world · ${esc(D.run.date)}</span><h2>${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest</h2></div><div class="map" id="heromap" style="min-height:240px"></div><div style="position:absolute;right:16px;top:14px;z-index:3;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end" class="filters"><button aria-pressed="${HLAYER === 'bias'}" data-layer="bias">Desk bias</button><button aria-pressed="${HLAYER === 'rates'}" data-layer="rates">Rate cycle</button><button aria-pressed="${HLAYER === 'credit'}" data-layer="credit">Bank credit</button><span style="width:8px"></span><button aria-pressed="true" data-view="globe">Globe</button><button aria-pressed="false" data-view="map">Map</button></div><div class="legend" id="herolegend">${LAYER_LEGEND[HLAYER]}<span>tap a bank or a country</span></div></div>
 ${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span class="lbl">Today's book</span><div class="thesis" style="font-size:16px">${esc(D.run.head.book.headline)}</div></div>` : ''}
 <div class="grid g2">${regimeCard()}<div class="grid" style="align-content:start">${strengthStrip()}${exposureChart()}${recordCard()}</div></div>
 ${weekSection()}${bestPairs()}<div id="xo"></div>${dayShape()}
@@ -707,6 +737,9 @@ ${weekSection()}${bestPairs()}<div id="xo"></div>${dayShape()}
 <div class="sec"><h2>News, releases and risks</h2></div><div class="grid g2">${wireCard(D.news)}<div class="grid" style="align-content:start">${releasesCard()}<div class="card"><div class="ch"><span class="lbl">Risk desk warnings</span></div><ul style="margin:0;padding-left:18px">${(D.run.head.book.risks ?? []).map(r => `<li style="margin:6px 0">${esc(r)}</li>`).join('') || '<li class="muted">None.</li>'}</ul></div></div></div>`;
   wire($('overview'));
   let view = 'globe'; try { view = localStorage.getItem('deskTerminalHero') || 'globe'; } catch { /* default */ }
+  document.querySelectorAll('[data-layer]').forEach(b => b.onclick = () => { HLAYER = b.dataset.layer; try { localStorage.setItem('deskTerminalLayer', HLAYER); } catch { /* fine */ }
+    document.querySelectorAll('[data-layer]').forEach(x => x.setAttribute('aria-pressed', x.dataset.layer === HLAYER)); const lg = $('herolegend'); if (lg) lg.innerHTML = `${LAYER_LEGEND[HLAYER]}<span>tap a bank or a country</span>`; showHero(view); });
+  globalThis.redrawHero = () => { if ($('heromap')) showHero(view); };
   const showHero = v => { view = v; document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === v)); try { localStorage.setItem('deskTerminalHero', v); } catch { /* fine */ } if (v === 'globe') drawGlobe($('heromap')); else { stopGlobe(); drawMap($('heromap'), 'bias'); } };
   document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => showHero(b.dataset.view));
   showHero(view);
