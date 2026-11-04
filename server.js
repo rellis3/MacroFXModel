@@ -7044,6 +7044,54 @@ app.get('/api/fx-fair-value/log', async (_req, res) => {
   try { res.set('Cache-Control', 'no-store'); const s = await _rpGet(_FXFV_LOG, {}); res.json({ ok: true, key: _FXFV_LOG, days: Object.keys(s).length, log: s }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── Research lab QUICK TEST (owner build item 6, 2026-11-04; js/quickTest.js): "X leads Y over h (when C)" on whitelisted
+// daily series, lockbox held back, walk-forward, block bootstrap, Holm across horizons, one of the four verdict words.
+// EXPLORATORY: stored in KV research_pod_quicktests and linked to the proposal, NEVER written to the Evidence Book.
+// POST /api/research-pod/quick-test { x, y, horizons, xTransform?, condition?: { series, op, pct, transform }, proposalId?, rerun? }
+// GET  /api/research-pod/quick-test            the catalogue of series, the form's options and the stored tests (?proposal= filters)
+// GET  /api/research-pod/quick-test?id=qt-…    one stored result in full
+const _QT_KEY = 'research_pod_quicktests', _qtSeries = new Map();
+let _qtRunning = null;
+async function _qtLoad(id, cat) {
+  const c = cat[id], hit = _qtSeries.get(id); if (hit && Date.now() - hit.at < 6 * 3600e3) return hit.data;
+  const Y = { DE2Y: () => _yfBund('02'), DE10Y: () => _yfBund('10'), GB5Y: () => _mbFred('BOE_IUDSNPY', 30), GB10Y: () => _mbFred('BOE_IUDMNZC', 30), JP2Y: async () => (await _yfJgb()).y2, JP10Y: async () => (await _yfJgb()).y10,
+    CA2Y: async () => (await _yfCanada({ recent: 6000 })).y2, CA10Y: async () => (await _yfCanada({ recent: 6000 })).y10, AU2Y: async () => (await _yfAustralia()).y2, AU10Y: async () => (await _yfAustralia()).y10 };
+  const data = c.src === 'oanda' ? (await _gbD1(c.ref, 5000)).map(b => ({ date: b.date, value: b.close })) : c.src === 'fred' ? await _mbFred(c.ref, 30) : await Y[c.ref]();
+  if (!data?.length) throw new Error(`${id}: no data`);
+  _qtSeries.set(id, { at: Date.now(), data }); return data;
+}
+app.get('/api/research-pod/quick-test', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const QT = await import('./js/quickTest.js'), store = await _rpGet(_QT_KEY, {});
+    if (req.query.id) { const t = store.tests?.[String(req.query.id)]; return t ? res.json({ ok: true, test: t }) : res.status(404).json({ ok: false, error: 'no such quick test' }); }
+    res.json({ ok: true, label: QT.LABEL, lockboxEnd: QT.LOCKBOX_END, running: _qtRunning, horizons: QT.HORIZONS, transforms: QT.X_TRANSFORMS, barD: QT.BAR_D,
+      catalogue: Object.entries(QT.CATALOGUE).map(([id, c]) => ({ id, label: c.label, kind: c.kind })), tests: QT.listOf(store, { proposalId: req.query.proposal ? String(req.query.proposal) : null }) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/research-pod/quick-test', async (req, res) => {
+  let spec;
+  try {
+    const QT = await import('./js/quickTest.js');
+    try { spec = QT.normaliseSpec(req.body ?? {}); } catch (e) { return res.status(400).json({ ok: false, error: e.message }); }
+    const id = QT.specId(spec), proposalId = req.body?.proposalId ? String(req.body.proposalId).slice(0, 120) : null;
+    let store = await _rpGet(_QT_KEY, {});
+    if (store.tests?.[id] && !req.body?.rerun) {   // cached: link the proposal if new, return the stored result
+      if (proposalId && !(store.tests[id].proposalIds ?? []).includes(proposalId)) { store = QT.storeResult(store, id, store.tests[id], { proposalId }); await kv.put(_QT_KEY, JSON.stringify(store)); }
+      return res.json({ ok: true, cached: true, test: store.tests[id] });
+    }
+    if (_qtRunning) return res.status(429).json({ ok: false, error: `a quick test is already running (${_qtRunning.x} → ${_qtRunning.y}); try again in a few seconds` });
+    _qtRunning = { id, x: spec.x, y: spec.y, at: new Date().toISOString() };
+    try {
+      const [x, y, c] = await Promise.all([_qtLoad(spec.x, QT.CATALOGUE), _qtLoad(spec.y, QT.CATALOGUE), spec.condition ? _qtLoad(spec.condition.series, QT.CATALOGUE) : null]);
+      const kinds = { x: QT.CATALOGUE[spec.x].kind, y: QT.CATALOGUE[spec.y].kind, c: spec.condition ? QT.CATALOGUE[spec.condition.series].kind : null };
+      const result = QT.runQuickTest({ spec, x, y, cData: c, kinds, today: _dpLondonDate(Date.now()) });
+      store = QT.storeResult(await _rpGet(_QT_KEY, {}), id, result, { proposalId });
+      await kv.put(_QT_KEY, JSON.stringify(store));
+      res.json({ ok: true, cached: false, test: store.tests[id] });
+    } finally { _qtRunning = null; }
+  } catch (e) { res.status(502).json({ ok: false, error: e.message, spec }); }
+});
 _mbRoute('/api/leading-indicators', 'cli', 24, async () => {
   const start = new Date(Date.now() - 3 * 365.25 * 864e5).toISOString().slice(0, 7);
   const csv = await _gbText(`https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_STES@DF_CLI,4.1/USA+EA20+GBR+JPN+AUS+NZL+CAN+CHE+CHN+DEU+IND+BRA+MEX+KOR.M.LI...AA...H?startPeriod=${start}&dimensionAtObservation=AllDimensions&format=csvfilewithlabels`, 90_000);
