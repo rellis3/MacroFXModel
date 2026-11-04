@@ -232,6 +232,11 @@ import { policyRates as _prRates } from './js/policyRates.js';   // each central
 import { expectations as _cbExpect } from './js/cbExpectations.js';   // what the futures price for each bank
 import { parseFeed as _nwParse, fromFinnhub as _nwFinnhub, mergeWire as _nwMerge, validateRead as _nwValidate, pick as _nwPick, wireText as _nwText } from './js/newsAnalyst.js';   // agent 21
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
+import { RESEARCHERS as _RP_RESEARCHERS, WEB_SOURCES as _RP_WEB, parseFeed as _rpParseFeed, webDigest as _rpWebDigest, validateProposals as _rpValidate, applyFeedback as _rpApplyFeedback, feedbackBrief as _rpFeedbackBrief, buildList as _rpBuildList, mergeLibrary as _rpMerge, validateCard as _rpValidateCard, cardPrereg as _rpPrereg, slug as _rpSlug } from './js/researchPod.js';   // Phases 23-25
+import { CATALOGUE as _SYS_CATALOGUE, coverage as _sysCoverage, catalogueText as _sysCatalogueText } from './js/systemCatalogue.js';
+import { harnessChecklist as _vdChecklist, validateReview as _vdValidateReview } from './js/validationDesk.js';   // Phase 26
+import { fleetReport as _fpReport } from './js/fleetPortfolio.js';   // Phases 27-28
+import { BOT_BASIS as _RK_BASIS } from './js/rulesKeeper.js';
 import { realisedDays as _vcRealised, compare as _vcCompare } from './js/volCheck.js';   // the terminal's vol chart
 import { morningText as _cosMorning, eveningText as _cosEvening } from './js/chiefOfStaff.js';   // agent 22
 import { numberCheck as _ccNumbers, claimsSections as _ccSections, validateClaims as _ccValidate } from './js/claimsCheck.js';   // Phase 16
@@ -5196,6 +5201,172 @@ svcInterval('deskTheory', async () => {
   const raw = await kv.get(_TD_KEY).catch(() => null);
   if (raw && JSON.parse(raw).week === _tdWeek(date)) return;
   _tdStart();
+}, 30 * 60_000);
+// ── Phases 23-28: the research pod, the system architect, the validation desk and the fleet portfolio (plan §9ab) ──
+// Three researchers (quant, macro, flow) propose NEW systems from the catalogue's gaps, the data we hold, the Evidence
+// Book and a fresh read of the web; the owner marks each shortlist/build/park/reject and can put a question to the pod;
+// the architect turns a chosen one into a system card and prereg draft; the validation desk reviews a card or a harness
+// study. Proposals only: nothing is run or banked here.
+const _RP = { sessions: 'research_pod_sessions', library: 'research_pod_library', feedback: 'research_pod_feedback', cards: 'research_pod_cards' };
+const _rpGet = async (k, d) => { try { const raw = await kv.get(k); return raw ? JSON.parse(raw) : d; } catch { return d; } };
+let _rpWebCache = { at: 0, reads: null };
+async function _rpWeb() {
+  if (_rpWebCache.reads && Date.now() - _rpWebCache.at < 6 * 3600e3) return _rpWebCache.reads;
+  const UA = { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX research/1.0)', Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*' };
+  const reads = {};
+  await Promise.all(_RP_WEB.map(async src => {
+    try { const r = await fetch(src.url, { headers: UA, redirect: 'follow', signal: AbortSignal.timeout(20_000) }); if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const items = _rpParseFeed(await r.text(), { max: 25 }); reads[src.id] = items.length ? { items } : { items: [], error: 'no items (blocked or not a feed)' }; }
+    catch (e) { reads[src.id] = { items: [], error: e.message.slice(0, 120) }; }
+  }));
+  _rpWebCache = { at: Date.now(), reads };
+  return reads;
+}
+const _rpInventory = () => _DATA_FEEDS.filter(f => f.purpose).map(f => `- ${f.id} [${f.category}]: ${f.name}. ${String(f.purpose).slice(0, 160)}`).join('\n');
+const _rpFleet = () => _rkParseRegistry(_tdRead('js/botRegistry.js')).map(b => `- ${b.label} (${b.key}, ${b.paper ? 'paper/demo' : 'live'})${_RK_BASIS[b.key]?.idea ? `: ${_RK_BASIS[b.key].idea}` : ''}`).join('\n');
+let _rpJob = null;
+async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS) } = {}) {
+  if (!_aiAnyKey()) return { ok: false, error: 'no model key' };
+  const roles = _deskLoadRoles();
+  const { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js');
+  _tdOpsNow(); const rows = _roCache.rows ?? [];
+  const [web, fb, lib] = await Promise.all([_rpWeb(), _rpGet(_RP.feedback, {}), _rpGet(_RP.library, [])]);
+  const date = _dpLondonDate(Date.now()), out = { ok: true, id: `${date}-${Date.now().toString(36)}`, date, at: new Date().toISOString(), brief: String(brief).slice(0, 1500), researchers: {}, errors: {} };
+  _rpJob && (_rpJob.stage = 'researchers');
+  await Promise.all(lenses.filter(l => _RP_RESEARCHERS[l]).map(async lens => {
+    const role = roles.find(r => r.id === _RP_RESEARCHERS[lens].role); if (!role) { out.errors[lens] = 'no role file'; return; }
+    const { system, prompt } = _deskStagePrompt({ role, pack: { date }, ledger: DESK_EVIDENCE, sections: [
+      ...(brief ? [["The owner's brief for this session (answer it first)", brief]] : []),
+      ['The system catalogue: what exists, what is partial, what is missing', _sysCatalogueText()],
+      ['The data inventory (feeds the server holds)', _rpInventory()],
+      ['The bot fleet and the idea each one trades', _rpFleet()],
+      ['The Evidence Book (every entry: [tag] claim -> use)', evidenceBrief(DESK_EVIDENCE)],
+      ['The research register (id [status] question -> next)', _tdRegisterText(rows)],
+      ["The owner's feedback on earlier proposals", _rpFeedbackBrief(fb, lib)],
+      ['Proposals already on file (do not repeat; build on them if the owner marked build)', lib.slice(0, 40).map(p => `- ${p.id}: ${p.title} [${fb[p.id]?.status ?? 'open'}]`).join('\n') || '(none yet)'],
+      ['The web this week (titles, links, first lines)', _rpWebDigest(web, lens)],
+      ['The SSRN and arXiv reading list', _tdReadingList(_tdRead('education/papers/open/reading_list.csv'))],
+    ] });
+    for (let i = 0; i < 2 && !out.researchers[lens]; i++) {
+      try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 12_000 }); const v = _rpValidate(_parseModelJson(r.text ?? _antText(r), `desk:pod-${lens}`), lens);
+        if (v.ok) out.researchers[lens] = { ...v.value, notes: v.notes, model: r.model ?? null }; else out.errors[lens] = v.errors.join('; '); }
+      catch (e) { out.errors[lens] = e.message; }
+    }
+    if (out.researchers[lens]) delete out.errors[lens];
+  }));
+  const all = Object.values(out.researchers).flatMap(r => r.proposals);
+  if (!all.length) return { ok: false, error: Object.entries(out.errors).map(([k, v]) => `${k}: ${v}`).join('; ') || 'no proposals' };
+  const screened = _tdScreen(all.map(p => ({ ...p, variable: p.test.variable, condition: p.thesis })), rows, DESK_EVIDENCE).map(({ variable, condition, ...p }) => p);
+  for (const r of Object.values(out.researchers)) r.proposals = r.proposals.map(p => screened.find(s => s.id === p.id) ?? p);
+  out.web = Object.fromEntries(Object.entries(web).map(([k, v]) => [k, v.error ? `error: ${v.error}` : `${v.items.length} items`]));
+  const sessions = await _rpGet(_RP.sessions, []);
+  await kv.put(_RP.sessions, JSON.stringify([out, ...sessions].slice(0, 20)));
+  await kv.put(_RP.library, JSON.stringify(_rpMerge(lib, screened, date)));
+  return out;
+}
+function _rpStart(opts) {
+  if (_rpJob?.status === 'running') return null;
+  const job = _rpJob = { status: 'running', kind: 'pod', startedAt: Date.now(), finishedAt: null, error: null, brief: opts?.brief ?? '' };
+  _rpRun(opts).then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; job.session = r.id ?? null; })
+    .catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
+  return job;
+}
+// GET /api/research-pod: the latest sessions, the proposal library with the owner's marks, the build list and the catalogue.
+app.get('/api/research-pod', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const [sessions, lib, fb, cards] = await Promise.all([_rpGet(_RP.sessions, []), _rpGet(_RP.library, []), _rpGet(_RP.feedback, {}), _rpGet(_RP.cards, {})]);
+    res.json({ ok: true, label: 'proposals and designs, not results', job: _rpJob, sessions: sessions.slice(0, 6), library: lib.map(p => ({ ...p, feedback: fb[p.id] ?? null, card: cards[p.id] ? { at: cards[p.id].at, review: cards[p.id].review?.verdict ?? null } : null })),
+      buildList: _rpBuildList(lib, fb).slice(0, 25), catalogue: { coverage: _sysCoverage(), systems: _SYS_CATALOGUE }, researchers: _RP_RESEARCHERS, web: _RP_WEB.map(s => ({ id: s.id, label: s.label, lens: s.lens })) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/research-pod/run { brief?, lenses?: ['quant','macro','flow'] }: a session now. With a brief, it is the owner's question to the pod.
+app.post('/api/research-pod/run', (req, res) => {
+  const lenses = Array.isArray(req.body?.lenses) ? req.body.lenses.filter(l => _RP_RESEARCHERS[l]) : undefined;
+  const job = _rpStart({ brief: typeof req.body?.brief === 'string' ? req.body.brief : '', ...(lenses?.length ? { lenses } : {}) });
+  if (!job) return res.status(409).json({ ok: false, error: 'the research pod is already working', job: _rpJob });
+  res.status(202).json({ ok: true, job });
+});
+// POST /api/research-pod/feedback { id, status: shortlist|build|park|reject, note }
+app.post('/api/research-pod/feedback', async (req, res) => {
+  try { const fb = _rpApplyFeedback(await _rpGet(_RP.feedback, {}), String(req.body?.id ?? ''), req.body?.status, req.body?.note); await kv.put(_RP.feedback, JSON.stringify(fb)); res.json({ ok: true, feedback: fb[req.body.id] }); }
+  catch (e) { res.status(400).json({ ok: false, error: e.message }); }
+});
+// Phase 24/26: the architect writes a proposal's system card and prereg draft; the validation desk reviews it.
+let _rpCardJob = null;
+async function _rpCardRun(id) {
+  const lib = await _rpGet(_RP.library, []), p = lib.find(x => x.id === id);
+  if (!p) return { ok: false, error: `no proposal ${id}` };
+  if (!_aiAnyKey()) return { ok: false, error: 'no model key' };
+  const roles = _deskLoadRoles(), arch = roles.find(r => r.id === 'system_architect'), val = roles.find(r => r.id === 'validation_desk');
+  const { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js');
+  _tdOpsNow(); const rows = _roCache.rows ?? [], fb = await _rpGet(_RP.feedback, {}), date = _dpLondonDate(Date.now());
+  const rules = _tdRead('.claude/skills/data-rules/SKILL.md').slice(0, 9000) || '(data-rules notes not deployed)';
+  const base = [['The chosen proposal', p], ["The owner's note", fb[id]?.note || '(none)'], ['The data inventory', _rpInventory()], ['The bot fleet', _rpFleet()],
+    ['The Evidence Book', evidenceBrief(DESK_EVIDENCE)], ['The research register', _tdRegisterText(rows)], ['The data rules (data-rules skill)', rules]];
+  let card = null, err = [];
+  _rpCardJob && (_rpCardJob.stage = 'architect');
+  { const { system, prompt } = _deskStagePrompt({ role: arch, pack: { date }, ledger: DESK_EVIDENCE, sections: base });
+    for (let i = 0; i < 2 && !card; i++) { try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 12_000 }); const v = _rpValidateCard(_parseModelJson(r.text ?? _antText(r), 'desk:architect')); if (v.ok) card = { ...v.value, notes: v.notes }; else err.push(...v.errors); } catch (e) { err.push(e.message); } } }
+  if (!card) return { ok: false, error: err.join('; ') };
+  let review = null;
+  _rpCardJob && (_rpCardJob.stage = 'validation desk');
+  { const { system, prompt } = _deskStagePrompt({ role: val, pack: { date }, ledger: DESK_EVIDENCE, sections: [['The system card to review (before anything runs)', card], ...base.slice(1)] });
+    for (let i = 0; i < 2 && !review; i++) { try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 8_000 }); const v = _vdValidateReview(_parseModelJson(r.text ?? _antText(r), 'desk:validation')); if (v.ok) review = v.value; else err.push(...v.errors); } catch (e) { err.push(e.message); } } }
+  const rec = { id, at: new Date().toISOString(), card, review, prereg: _rpPrereg(card, { id: _rpSlug(card.name), date, proposal: p }), errors: review ? [] : err };
+  const cards = await _rpGet(_RP.cards, {}); cards[id] = rec;
+  await kv.put(_RP.cards, JSON.stringify(Object.fromEntries(Object.entries(cards).sort((a, b) => String(b[1].at).localeCompare(String(a[1].at))).slice(0, 40))));
+  return { ok: true, ...rec };
+}
+app.post('/api/research-pod/card', (req, res) => {
+  if (_rpCardJob?.status === 'running') return res.status(409).json({ ok: false, error: 'the architect is already writing', job: _rpCardJob });
+  const id = String(req.body?.id ?? ''), job = _rpCardJob = { status: 'running', id, startedAt: Date.now(), finishedAt: null, error: null };
+  _rpCardRun(id).then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; }).catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
+  res.status(202).json({ ok: true, job });
+});
+// GET /api/research-pod/card?id=: the card, its review and the prereg draft (?format=md for the draft alone).
+app.get('/api/research-pod/card', async (req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const c = (await _rpGet(_RP.cards, {}))[String(req.query.id ?? '')];
+    if (!c) return res.status(404).json({ ok: false, error: 'no card for that proposal yet', job: _rpCardJob });
+    if (req.query.format === 'md') return res.type('text/markdown').send(c.prereg);
+    res.json({ ok: true, ...c, job: _rpCardJob }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/validation/harness: the validation desk's automatic gates on every harness output in the deployed repo.
+app.get('/api/validation/harness', (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const dir = path.join(__dirname, 'analysis', 'output', 'harness'), out = [];
+    for (const f of (fs.existsSync(dir) ? fs.readdirSync(dir) : []).filter(f => f.endsWith('.json')).sort()) {
+      try { const c = _vdChecklist(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))); if (c.ok) out.push({ file: `analysis/output/harness/${f}`, ...c }); } catch { /* not a study output */ }
+    }
+    res.json({ ok: true, label: 'promotion gates, not Evidence Book verdicts', studies: out });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/fleet-portfolio?days=90&unit=R|profit: the bots together (Phases 27-28, js/fleetPortfolio.js). Cached 10 min.
+const _FP_LOGS = { 'Range-Line': 'range_line_trade_log', 'OI Gamma': 'oi_bot_trade_log', 'OI-Vol': 'oi_vol_bot_trade_log', 'OI Confluence': 'oi_conf_bot_trade_log', Confluence: 'confluence_trade_log',
+  'Vote Atlas': 'volatility_bot_v2_trade_log', 'Vol Bot V3': 'volatility_bot_v3_trade_log', 'Fib Atlas': 'fib_atlas_bot_trade_log', 'Fib Atlas V2': 'fib_atlas_bot_v2_trade_log' };
+let _fpCache = { key: null, at: 0, data: null };
+app.get('/api/fleet-portfolio', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 90, 14), 365), unit = req.query.unit === 'profit' ? 'profit' : 'R', key = `${days}|${unit}`;
+    if (req.query.refresh !== '1' && _fpCache.key === key && Date.now() - _fpCache.at < 10 * 60_000) return res.json(_fpCache.data);
+    const logs = {}, since = Date.now() - days * 864e5;
+    await Promise.all(Object.entries(_FP_LOGS).map(async ([bot, k]) => { const l = await _kvJson(k).catch(() => null); if (Array.isArray(l) && l.length) logs[bot] = l.map(t => { let pip = null; try { pip = _pipSize(t.key || resolveKey(t.symbol)) || null; } catch { /* no pip */ } return { ...t, pip }; }); }));
+    const trades = _jcRows(logs).filter(t => (t.closeMs ?? t.openMs) >= since);
+    const out = { ..._fpReport(trades, { unit }), ok: true, window: days, generatedAt: Date.now(), logs: Object.keys(logs), trades: trades.length };
+    _fpCache = { key, at: Date.now(), data: out };
+    res.json(out);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// Weekly: the research pod on Sunday from 09:00 London, once per ISO week (the theory desk is Saturday).
+svcInterval('researchPod', async () => {
+  const now = Date.now(), date = _dpLondonDate(now);
+  if (new Date(_dsLondonMs(date, 12)).getUTCDay() !== 0 || now < _dsLondonMs(date, 9) || _rpJob?.status === 'running' || !_aiAnyKey()) return;
+  const s = await _rpGet(_RP.sessions, []);
+  if (s.some(x => !x.brief && _tdWeek(x.date) === _tdWeek(date))) return;
+  _rpStart({});
 }, 30 * 60_000);
 // GET /api/desk-bars?inst=USDJPY&days=5: H1 candles for one desk instrument (Desk Terminal charts and sparklines).
 // The desk's names map to OANDA through the vol-forecast list. Cached 10 minutes per instrument and span.

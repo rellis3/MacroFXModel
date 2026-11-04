@@ -974,6 +974,44 @@ service `newsWire` (every 10 min); `GET /api/desk-news` (`?hours`, `?tier`, `?cc
   rather than its paper broker; the owner confirmed OI Gamma, OI-Vol and Signal Copier (login 26365117) are on MT5 demo accounts (2026-11-04), recorded in `MT5_DEMO`, so they are no longer flagged; a different login flags again.
 - **"Yesterday, reviewed"** in the morning desk issues uses the compact page (as the evening edition).
 
+## 9ab. Phases 23-28: the research pod, the system architect, the validation desk and the fleet portfolio (2026-11-04)
+
+The owner asked for a research team that proposes new systems and works with them on what to build, not only one
+that validates what exists. The institutional shape: lens researchers propose, an independent desk tries to kill,
+an architect writes the spec, the portfolio side asks how it fits the fleet. All in the Desk Office "Research" tab.
+
+- **System catalogue** (`js/systemCatalogue.js`): the owner's institutional list (about 115 systems in seven areas)
+  mapped to this repo: have, partial, missing, or out of scope (HFT, smart order routing, counterparty risk, OMS/EMS:
+  not buildable on MT5 with one retail broker). A map, not a verdict. The researchers aim at its gaps.
+- **Phase 23 · Research pod** (`js/researchPod.js`; roles `researcher_quant`, `researcher_macro`, `researcher_flow`;
+  schema `system_proposals`): three researchers, one lens each (statistical/systematic; fundamental/institutional;
+  retail behaviour and positioning), propose two to four NEW systems each: the story, the mechanism and who is on the
+  other side, the sources (with links), every input marked have/partial/missing with how to get it, the rules, the test
+  (variable, benchmark, placebo, horizons, power), the kill line and the build steps. They read the catalogue, the data
+  inventory (`js/dataFeeds.js`), the bot fleet and its ideas, the Evidence Book, the register, the reading list, the
+  owner's feedback and a fresh read of the web: arXiv q-fin, Quantocracy, Alpha Architect, Robot Wealth, QuantInsti,
+  BIS working papers, Liberty Street Economics and the week's top r/algotrading threads (retail stories read as
+  behaviour, not evidence). Each proposal is screened against the register and the Evidence Book (word overlap).
+  Weekly on Sundays (service `researchPod`), or on demand with a question from the owner (`POST /api/research-pod/run
+  { brief }`). **Working with the owner:** every proposal can be marked shortlist / build / park / reject with a note
+  (`POST /api/research-pod/feedback`); the next session reads the marks; the **build list** ranks every missing input
+  by how many live proposals need it. KV `research_pod_sessions`, `_library`, `_feedback`, `_cards` (permanent).
+- **Phase 24 · System architect** (role `system_architect`, schema `system_card`, `POST /api/research-pod/card`):
+  turns a chosen proposal into a complete spec the harness can run with no judgement left open, and a prereg draft in
+  the research-protocol shape (`GET /api/research-pod/card?id=&format=md`). The owner commits it; nothing runs here.
+- **Phase 25/26 · Validation desk** (`js/validationDesk.js`, role `validation_desk`, schema `validation_review`): it
+  can only reject. The model review checks a card for leakage, look-ahead, survivorship, data faults, multiple
+  testing, costs, power, regime dependence and overfit against the data-rules notes, with the test that settles each.
+  The code adds what the harness does not: White's reality check (stationary bootstrap), cost stress at 1-3x with the
+  break-even multiple, parameter sensitivity (plateau or spike), a trade-order Monte Carlo, live-versus-backtest and a
+  CUSUM drift test; and `GET /api/validation/harness` runs the promotion gates (costs, OOS, FDR, deflated Sharpe ≥ 0.95,
+  PBO < 0.5, walk-forward, OOS trades, years positive, both halves, net of costs) on every harness output.
+- **Phases 27-28 · Fleet portfolio and risk** (`js/fleetPortfolio.js`, `GET /api/fleet-portfolio?days=&unit=`): the
+  bots together from their trade logs: per-bot Sharpe, drawdown and hit rate; correlation and the effective number of
+  independent bots; equal, inverse-vol and risk-parity weights; capped half-Kelly risk per trade; what each bot adds to
+  the fleet's Sharpe; historical VaR and expected shortfall; a bootstrap of fleet days for the drawdown it could have
+  had; correlation breaks; and drift (the live monitor) per bot. Description, not advice.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
@@ -1021,6 +1059,7 @@ Not built yet. The order is the owner's call; each item names what it needs firs
 - **Agent 19 · Weekly strategist.** *Built (§9x).* Sunday's week view and edition, and Monday's starting point.
 - **Agent 20 · Rules keeper.** *Built (§9y).* The live bots' settings against the research verdicts.
 - **Agent 21 · News analyst.** *Built (§9z).* Tags a headline feed by currency and tier (needs the feed).
+- **Phases 23-28 · Research pod, system architect, validation desk, fleet portfolio and risk.** *Built (§9ab).*
 - **Agent 22 · Chief of staff.** *Built (§9w).* One short Telegram each morning and evening summing up the Desk Office.
 - **Phase 16 · Claims checker.** *Built (§9v).* Checks everything published against the data and the Evidence Book.
 

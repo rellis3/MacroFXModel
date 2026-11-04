@@ -421,6 +421,37 @@ size: 0 to 1.5 (1 = normal). veto: true only when the trade should not be taken 
                  "data": "the feeds or files it needs, and the span", "power": "rough count of events and whether that is enough", "source": "the note, paper, ledger entry or scored-history fact it comes from",
                  "whyNew": "why it is not a repeat of a register row or Evidence Book entry", "priority": "high | medium | low" } ]   // 3 to 6
 }`,
+  system_proposals: `{
+  "headline": "the most promising new system this week, in one sentence",
+  "proposals": [ { "title": "short name", "family": "the catalogue system it belongs to, e.g. FX Fair Value Forecasting System",
+                  "thesis": "the idea as a story: what happens in the market and why it repeats", "mechanism": "why the edge should exist",
+                  "counterparty": "who is on the other side and why they keep paying",
+                  "sources": [ { "title": "paper, post or note", "ref": "its URL or the repo file" } ],
+                  "inputs": [ { "what": "a data input or tool the system needs", "status": "have | partial | missing", "how": "the feed id we have, or how to get it" } ],
+                  "rules": { "universe": "markets", "signal": "how it is computed", "entry": "when", "exit": "when", "horizon": "holding period", "sizing": "how much" },
+                  "test": { "variable": "what to construct", "benchmark": "what it must beat", "placebo": "the shuffle or control", "horizons": "the family to sweep", "power": "rough count of events" },
+                  "killIf": "the result that would end it", "fleetOverlap": "which existing bot it resembles, and how it differs",
+                  "buildSteps": ["what to build, in order"], "effort": "S | M | L", "priority": "high | medium | low" } ],   // 2 to 4, new systems only
+  "questionsForOwner": ["what you need the owner to decide or tell you"]   // 0 to 3
+}`,
+  system_card: `{
+  "name": "the system's name", "hypothesis": "one testable sentence", "mechanism": "who pays and why",
+  "universe": ["EURUSD", "..."], "horizon": "holding period", "signal": "exact computation from named feeds", "entry": "exact rule", "exit": "exact rule",
+  "sizing": "exact rule (vol target, cap)", "costs": "which costs are charged",
+  "data": [ { "feed": "feed id or file", "status": "have | partial | missing", "span": "dates", "how": "how to get it if missing" } ],
+  "test": { "primary": "the one metric that decides", "benchmark": "what it must beat", "placebo": "the shuffle", "sample": "in-sample span", "holdout": "untouched span",
+            "cells": ["each variant reported"], "tuned": false, "power": "events and the effect size that count can detect" },
+  "kill": ["result that ends it"], "risks": ["what could make a pass false"],
+  "build": [ { "step": "what to build", "files": ["path"], "effort": "S | M | L" } ],
+  "fleet": "how it would sit with the existing bots"
+}`,
+  validation_review: `{
+  "verdict": "pass | fix | reject",   // reject = the design cannot give a trustworthy answer; fix = change the listed items first
+  "summary": "one sentence for the owner",
+  "issues": [ { "kind": "leakage | look-ahead | survivorship | data-fault | multiple-testing | costs | power | regime | overfit | mechanism | other",
+               "severity": "high | medium | low", "issue": "what is wrong, specifically", "test": "the check or change that settles it" } ],
+  "gates": ["the promotion gates this system must clear before paper trading"]
+}`,
   red_team: `{
   "headline": "the biggest weakness in the draft book, in one sentence",
   "challenges": [ { "target": "ALL | an instrument | a currency", "kind": "crowding | contradiction | tested-null | event | data | stretched | other", "severity": "high | medium | low", "challenge": "what is wrong, with the numbers", "ask": "what the Head should do or answer" } ]   // at most 8, most serious first; [] if the book is sound
