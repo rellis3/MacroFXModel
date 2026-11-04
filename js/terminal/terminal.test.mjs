@@ -259,3 +259,18 @@ test('autocorrelation view: board, pair card, bars, always description not a sig
   assert.match(ACV.pairCard(d, 'GBPUSD'), /not on the autocorrelation board/);
   assert.match(ACV.boardHtml({ ok: false, error: 'boom' }), /boom/); assert.equal(ACV.boardHtml(null), ''); assert.equal(ACV.pairCard(null, 'NQ'), '');
 });
+
+// ── who leads whom (js/terminal/leadLagView.js) ──
+import * as LLV from './leadLagView.js';
+test('lead-lag view: leads, near misses, grid, pair card; same day is not a lead', () => {
+  const x = (lead, follow, o = {}) => ({ lead, follow, k: 1, r: 0.06, z: 4, p: 0.001, n: 3000, sameDay: 0.5, halves: [0.05, 0.07], lags: [0.06, 0, 0, 0, 0], survivedBH: true, halvesAgree: true, isLead: true, ...o });
+  const L = x('AUDUSD', 'NZDUSD'), N = x('GOLD', 'EURUSD', { r: -0.03, p: 0.4, survivedBH: false, isLead: false, halves: [0.01, -0.05] });
+  const d = { ok: true, ids: ['AUDUSD', 'NZDUSD', 'GOLD', 'EURUSD'], labels: {}, tested: 12, lags: 5, from: '2014-07-10', to: '2026-08-21', leads: [L], near: [N], leadKeys: ['AUDUSD>NZDUSD'],
+    matrix: { AUDUSD: { NZDUSD: 0.06, GOLD: 0, EURUSD: 0.01 }, NZDUSD: { AUDUSD: 0.01 }, GOLD: { EURUSD: -0.03 }, EURUSD: {} }, byMarket: { NZDUSD: { ledBy: [L], leads: [] } }, label: 'Description, not a signal.', errors: {} };
+  const g = LLV.gridHtml(d);
+  assert.match(g, /Who leads whom/); assert.match(g, /1 lead<\/b>/); assert.match(g, /data-pair="NZDUSD"/); assert.match(g, /near miss/); assert.match(g, /not a lead/); assert.match(g, /not a signal/);
+  assert.match(LLV.heatGrid(d), /outline:2px solid var\(--gold\)/); assert.equal((LLV.heatGrid(d).match(/<tr>/g) ?? []).length, 5);
+  assert.match(LLV.pairCard(d, 'nzdusd'), /AUDUSD today → NZDUSD 1 day later/); assert.match(LLV.pairCard(d, 'USDJPY'), /not on the lead-lag grid/);
+  assert.match(LLV.gridHtml({ ...d, leads: [], leadKeys: [] }), /No market reliably leads another/);
+  assert.equal(LLV.gridHtml(null), ''); assert.match(LLV.gridHtml({ ok: false, error: 'x' }), /x/);
+});
