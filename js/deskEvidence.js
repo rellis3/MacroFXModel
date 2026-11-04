@@ -2081,6 +2081,27 @@ export const DESK_EVIDENCE = [
     result: 'UNDERPOWERED. OOS rank-IC +0.075 [-0.042, +0.190] on 90 scored months (halves +0.066 / +0.085), net Sharpe +0.34 [-0.68, +1.63], max drawdown 15%, placebo p95 0.50 not beaten. The store starts 2015-11, so in-sample is about two years (IC -0.028); 2025-26 holds few non-US releases and the score is neutral for the last rebalances; the z scaling is not verified point-in-time.',
     use: 'A candidate for the forward ledger, not a signal. The data behind it thins out in 2025-26, so the forward record needs the non-US surprise feed kept alive.',
   },
+  {
+    id: 'expiry-pull-side', domain: 'positioning', verdict: 'null', date: '2026-11-04', doc: 'forge/EXPIRY_TRACKER_PREREG.md', also: ['analysis/output/expiry-tracker/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'NQ', 'SPX500'],
+    claim: 'An option expiry whose book leans above (below) price 20 sessions before it expires settles above (below) that price',
+    result: 'Null. 379 expiries 2020-10 to 2026-08 (Databento CME books per expiry, parity forwards, NY-close prices): mean lean x outcome -0.085 [-0.193, +0.022] in expected moves (sigma*sqrt(20)), Holm p 0.37, side hit 44.3%; beyond the 20-day trailing return -0.068 [-0.179, +0.043]; both halves negative (-0.064 / -0.104); MDE 0.154 vs bar 0.25, so a quarter-move pull is ruled out. At h=10 -0.003 [-0.107, +0.111]. 0 of 19 slices pass BH. The lean follows price (corr -0.43 with the trailing move: OI sits where price has been). The fade mirror did not pass either.',
+    use: 'Do not read an expiry book leaning above or below price as where price will be at that expiry. The Swing Map pull table and arrows are description (tagged NULL); the Monte Carlo pull is off by default.',
+  },
+  {
+    id: 'expiry-pull-build', domain: 'positioning', verdict: 'null', date: '2026-11-04', doc: 'forge/EXPIRY_TRACKER_PREREG.md', also: ['analysis/output/expiry-tracker/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'NQ', 'SPX500'],
+    claim: 'OI building away from price in an expiry, before price moves, marks the side price settles on 10 sessions later',
+    result: 'Null. 344 expiries: -0.029 [-0.130, +0.073] expected moves, Holm p 1.0, hit 48.3%; beyond momentum -0.023 [-0.130, +0.076]; halves -0.095 / +0.027; MDE 0.163 vs bar 0.25.',
+    use: 'Building OI away from price is not a side call into that expiry. Keep it as description of positioning.',
+  },
+  {
+    id: 'expiry-pull-flip', domain: 'positioning', verdict: 'underpowered', date: '2026-11-04', doc: 'forge/EXPIRY_TRACKER_PREREG.md', also: ['analysis/output/expiry-tracker/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'NQ', 'SPX500'],
+    claim: 'When near and far expiries lean opposite ways, price goes to the near side first, then hands over to the far side',
+    result: 'Underpowered: only 29 hand-overs in 2020-26 (MDE 0.505 vs bar 0.25); -0.077 [-0.342, +0.215], hit 37.9%.',
+    use: 'Say nothing about hand-overs beyond description; the live capture adds weeklies, so a re-score needs the forward record.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -2146,6 +2167,9 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'expiry-pull-side':  { n: '379 expiries, ~71 expiry-month clusters (8 instruments)', note: 'MDE 0.154 vs bar 0.25; CI upper +0.022 below the bar -- a real null' },
+  'expiry-pull-build': { n: '344 expiries', note: 'MDE 0.163 vs bar 0.25; CI upper +0.073 below the bar' },
+  'expiry-pull-flip':  { n: '29 hand-overs', note: 'MDE 0.505 vs bar 0.25 (underpowered by design)' },
   'residual-pca-wide10': { n: '2,108 signal days (daily IC series, NW-5)', note: 'MDE 0.027 vs bar 0.03; CI [-0.010, +0.025] excludes the bar -- a real null' },
   'residual-pca-idx6':   { n: '2,540 signal days', note: 'MDE 0.037 vs bar 0.03 (underpowered by design, described)' },
   'residual-pca-news':   { n: '2,280 days, date-block bootstrap (21)', note: 'MDE 0.061 vs bar 0.05 (described); CI upper +0.034 below the bar' },
