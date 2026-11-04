@@ -58,7 +58,10 @@ def pick_expiries(expiries, today=None, targets=TENORS, min_days=3):
     out = {}
     for t, want in targets.items():
         if days:
-            out[t] = min(days, key=lambda x: (abs(x[1] - want), x[1]))
+            best = min(days, key=lambda x: (abs(x[1] - want), x[1]))
+            # only an expiry reasonably near the tenor counts: a 30-day option is not a 3-month reading
+            if abs(best[1] - want) <= want * 0.5 + 3:
+                out[t] = best
     return out
 
 

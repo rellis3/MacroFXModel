@@ -21,6 +21,7 @@ Run it once a day (run_cb_expectations.bat calls it). If TWS is not reachable it
 import argparse
 import asyncio
 import json
+import logging
 import os
 import sys
 import time
@@ -86,13 +87,18 @@ def one(ib, key, now, errors):
         return None
     chains = []   # (expiry, tradingClass, exchange, strikes, future)
     for f in futs:
+        n0 = len(chains)
         for ch in ib.reqSecDefOptParams(f.symbol, f.exchange, 'FUT', f.conId):
             for e in ch.expirations:
                 chains.append((e, ch.tradingClass, ch.exchange, sorted(ch.strikes), f))
+        print(f'  {f.localSymbol}: {len(chains) - n0} option expiries listed')
     if not chains:
         errors[key] = 'no option chains (no options permission for this exchange?)'
         return None
     picks = pick_expiries([c[0] for c in chains], today=now.date())
+    missing = [t for t in ('1w', '1m', '3m') if t not in picks]
+    if missing:
+        errors[f'{key} tenors'] = f'no listed expiry near {", ".join(missing)}'
     prices, row = {}, {'label': label, 'tenors': {}}
     for tenor, (exp, days) in picks.items():
         cand = sorted([c for c in chains if c[0][:8] == exp], key=lambda c: -len(c[3]))[0]
@@ -116,7 +122,7 @@ def one(ib, key, now, errors):
             continue
         row['tenors'][tenor] = {'expiry': exp, 'days': days, 'future': fut.localSymbol, 'F': F, 'tradingClass': tc, **s}
         row['data'] = {1: 'live', 2: 'frozen', 3: 'delayed', 4: 'delayed-frozen'}.get(mdt, str(mdt))
-        print(f'  {key} {tenor} {exp} ({days}d, {tc}) F {F}: atm {s["atm"]} rr25 {s["rr25"]} bf25 {s["bf25"]} from {s["n"]} options')
+        print(f'  {key} {tenor} {exp} ({days}d, {tc}) F {F:.6g}: atm {s["atm"]} rr25 {s["rr25"]} bf25 {s["bf25"]} from {s["n"]} options')
     return row if row['tenors'] else None
 
 
@@ -133,6 +139,10 @@ def main():
         print(f'Could not connect to IB Gateway on port {IB_PORT} ({type(e).__name__}). Open and log in, then run again. Nothing was changed.')
         sys.exit(2)
     ib.reqMarketDataType(3)   # live where subscribed, delayed otherwise (labelled per row)
+    # IBKR reports every delayed-data line (10090) and every listed-but-absent strike (200) as an error; they are
+    # expected here, so they are counted per market instead of printed one by one
+    logging.getLogger('ib_insync.wrapper').setLevel(logging.CRITICAL)
+    logging.getLogger('ib_insync.ib').setLevel(logging.CRITICAL)
     now = datetime.now(timezone.utc)
     only = {x.strip().upper() for x in a.only.split(',') if x.strip()}
     rows, errors = {}, {}
