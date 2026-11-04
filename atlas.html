@@ -795,8 +795,8 @@ async function buildTerminal(run, deskReview) {
     const topo = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json').then(r => r.json());
     map = worldPaths(window.d3, window.topojson, topo); const rk = run.debate?.currency?.view?.ranking; map.arc = rk?.length >= 2 ? map.arc(rk[0], rk.at(-1)) : null;
   } catch (e) { console.warn('[atlas newsletter] terminal map skipped:', e.message); }
-  const [pr, ms, nw] = await Promise.all([J('/api/policy-rates'), J('/api/macro-scorecard'), J('/api/desk-news?hours=16&tier=1')]);
-  return composeTerminal({ run, review: deskReview, rates: Object.fromEntries(Object.entries(pr?.rates ?? {}).map(([k, v]) => [k, v.rate])), cb: ms?.cbSentiment ?? {}, map, news: nw?.ok ? nw.items : [] }, { esc });
+  const [pr, ms, nw, ws] = await Promise.all([J('/api/policy-rates'), J('/api/macro-scorecard'), J('/api/desk-news?hours=16&tier=1'), J('/api/world-stress')]);
+  return composeTerminal({ run, review: deskReview, rates: Object.fromEntries(Object.entries(pr?.rates ?? {}).map(([k, v]) => [k, v.rate])), cb: ms?.cbSentiment ?? {}, map, news: nw?.ok ? nw.items : [], stress: ws?.ok ? ws : null }, { esc });
 }
 // The two desk formats, one button each: open the page, or open it and print to PDF.
 function showDeskButtons(mag, brief, term = null) {
