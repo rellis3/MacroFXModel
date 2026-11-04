@@ -445,6 +445,18 @@ size: 0 to 1.5 (1 = normal). veto: true only when the trade should not be taken 
   "build": [ { "step": "what to build", "files": ["path"], "effort": "S | M | L" } ],
   "fleet": "how it would sit with the existing bots"
 }`,
+  system_postmortem: `{
+  "verdict": "dead | revivable | needs-data | working",   // dead = nothing in the diagnostics or your lens suggests a fix worth testing
+  "headline": "what went wrong, in one sentence",
+  "whatWentWrong": [ { "issue": "specific: the entry, the exit, the market, the regime, costs, the period", "evidence": "the numbers from the diagnostics that show it" } ],   // 1 to 4
+  "revival": [ { "title": "the revived system's name", "family": "catalogue family", "thesis": "what to change and why it should help, as a story", "mechanism": "why the edge would exist after the change",
+                 "sources": [ { "title": "the diagnostic line, paper or note it rests on", "ref": "" } ],
+                 "inputs": [ { "what": "data or tool needed", "status": "have | partial | missing", "how": "" } ],
+                 "rules": { "universe": "", "signal": "", "entry": "", "exit": "", "horizon": "", "sizing": "" },
+                 "test": { "variable": "the filter or change", "benchmark": "the unfiltered system on the same untouched period", "placebo": "a random filter of the same size", "horizons": "", "power": "trades left after the filter" },
+                 "killIf": "", "fleetOverlap": "", "buildSteps": [""], "effort": "S | M | L", "priority": "high | medium | low" } ],   // 0 to 3; [] when dead
+  "questionsForOwner": [""]
+}`,
   research_reply: `{
   "reply": "your answer to the owner, in plain words: what you would change, what you need, what the evidence says",
   "revise": { "thesis": "...", "rules": { "signal": "..." }, "test": { "benchmark": "..." }, "inputs": [ { "what": "...", "status": "have | partial | missing", "how": "..." } ], "buildSteps": ["..."], "killIf": "..." },   // only the fields you change; omit or null if nothing changes

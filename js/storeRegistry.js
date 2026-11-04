@@ -56,6 +56,7 @@ export const STORES = {
   research_pod_feedback: R("Research pod: the owner's marks on proposals", 60, { market: false }),
   research_pod_cards: R('Research pod system cards and reviews', 60, { market: false }),
   research_pod_threads: R('Research pod: the conversation on each proposal', 60, { market: false }),
+  system_reviews: R('Post-mortem panel reviews of each backtested system', 60, { market: false }),
   mpt_store_v1: R('MPT store', 3, { market: false }),
   spread_profile_v1: R('Spread profile', 3, { market: false }),
   vol_hit_rates: R('Vol-forecast hit rates', 1),

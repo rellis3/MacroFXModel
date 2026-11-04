@@ -233,7 +233,8 @@ import { expectations as _cbExpect } from './js/cbExpectations.js';   // what th
 import { parseFeed as _nwParse, fromFinnhub as _nwFinnhub, mergeWire as _nwMerge, validateRead as _nwValidate, pick as _nwPick, wireText as _nwText } from './js/newsAnalyst.js';   // agent 21
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
 import { RESEARCHERS as _RP_RESEARCHERS, WEB_SOURCES as _RP_WEB, parseFeed as _rpParseFeed, webDigest as _rpWebDigest, validateProposals as _rpValidate, applyFeedback as _rpApplyFeedback, feedbackBrief as _rpFeedbackBrief, buildList as _rpBuildList, mergeLibrary as _rpMerge, validateCard as _rpValidateCard, cardPrereg as _rpPrereg, slug as _rpSlug, lifecycle as _rpLifecycle, setLink as _rpSetLink, outcomesBrief as _rpOutcomes, scorecard as _rpScorecard, validateReply as _rpValidateReply, applyRevision as _rpApplyRevision, threadText as _rpThreadText } from './js/researchPod.js';   // Phases 23-25
-import { normaliseTrades as _sxNormalise, tearsheet as _sxTearsheet, toolkitCsv as _sxToolkitCsv, terminalCsv as _sxTerminalCsv } from './js/systemExports.js';   // §9ac
+import { normaliseTrades as _sxNormalise, tearsheet as _sxTearsheet, toolkitCsv as _sxToolkitCsv, terminalCsv as _sxTerminalCsv, liveVsExpected as _sxLiveVsExpected } from './js/systemExports.js';   // §9ac
+import { reviewSystem as _svReview, reviewText as _svText, validatePostmortem as _svValidate } from './js/systemReview.js';   // §9ad
 import { CATALOGUE as _SYS_CATALOGUE, coverage as _sysCoverage, catalogueText as _sysCatalogueText } from './js/systemCatalogue.js';
 import { harnessChecklist as _vdChecklist, validateReview as _vdValidateReview } from './js/validationDesk.js';   // Phase 26
 import { fleetReport as _fpReport } from './js/fleetPortfolio.js';   // Phases 27-28
@@ -5462,6 +5463,87 @@ app.get('/api/fleet-portfolio', async (req, res) => {
     const out = { ..._fpReport(trades, { unit }), ok: true, window: days, generatedAt: Date.now(), logs: Object.keys(logs), trades: trades.length };
     _fpCache = { key, at: Date.now(), data: out };
     res.json(out);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// §9ad: the post-mortem desk. GET /api/system-review?id=: the measured diagnostics (js/systemReview.js) and the panel's
+// last review. POST /api/system-review/run { id } or { all: true }: the three researchers each read the diagnostics
+// through their own lens (what went wrong, what might bring it back), then the validation desk reviews their ideas.
+// Revival ideas go into the research pod's library as proposals, so the loop (cards, threads, lifecycle) applies.
+const _SR_KEY = 'system_reviews';
+const _srDiag = new Map();
+function _srDiagnostics(id) {
+  const d = _sysLoad(id); if (!d) return null;
+  const k = `${id}|${d.trades.length}|${d.trades.at(-1)?.exitMs}`; if (_srDiag.get(id)?.k === k) return _srDiag.get(id).v;
+  const v = { id, meta: d.meta, review: _svReview(d.trades) }; _srDiag.set(id, { k, v }); return v;
+}
+let _srJob = null;
+async function _srRunOne(id) {
+  const dg = _srDiagnostics(id); if (!dg) throw new Error(`no system ${id}`);
+  if (!dg.review.ok) throw new Error(dg.review.error);
+  const roles = _deskLoadRoles(), { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js'), date = _dpLondonDate(Date.now());
+  const text = _svText(id, dg.meta, dg.review), lenses = {}, errors = {};
+  _tdOpsNow();
+  await Promise.all(Object.entries(_RP_RESEARCHERS).map(async ([lens, r]) => {
+    const base = roles.find(x => x.id === r.role); if (!base) { errors[lens] = 'no role'; return; }
+    const { system, prompt } = _deskStagePrompt({ role: { ...base, output: 'system_postmortem' }, pack: { date }, ledger: DESK_EVIDENCE, sections: [
+      ['Your task now', `A post-mortem, not a new idea from scratch: read the measured diagnostics of the backtested system below through your own lens (${r.lens}). Say what went wrong, with the numbers. Then propose 0 to 3 revivals: a filter, an exit change, a different market or regime, or a different data input, each with its mechanism. A filter that only exists in the slice table is in-sample: design the test so it is scored on data that did not choose it (a fresh holdout, or a forward test), with a random filter of the same size as the placebo. If nothing in your lens suggests a fix worth testing, say "dead" and give no revival.`],
+      ['The diagnostics (measured, before any opinion)', text],
+      ['The study behind it', dg.meta?.doc ? `${dg.meta.doc}\n${_tdRead(dg.meta.doc).slice(0, 5000)}` : '(no study file recorded)'],
+      ['The Evidence Book', evidenceBrief(DESK_EVIDENCE)], ['The research register', _tdRegisterText(_roCache.rows ?? [])], ['The data inventory', _rpInventory()],
+    ] });
+    for (let i = 0; i < 2 && !lenses[lens]; i++) { try { const x = await callModel({ task: 'desk-head', system, prompt, maxTokens: 8_000 }); const v = _svValidate(_parseModelJson(x.text ?? _antText(x), `desk:postmortem-${lens}`), lens, _rpValidate); if (v.ok) lenses[lens] = v.value; else errors[lens] = v.errors.join('; '); } catch (e) { errors[lens] = e.message; } }
+    if (lenses[lens]) delete errors[lens];
+  }));
+  if (!Object.keys(lenses).length) throw new Error(Object.values(errors).join('; ') || 'no review');
+  let validation = null; const val = roles.find(x => x.id === 'validation_desk');
+  if (val) { const { system, prompt } = _deskStagePrompt({ role: val, pack: { date }, ledger: DESK_EVIDENCE, sections: [
+      ['What you are reviewing', 'The three researchers\' post-mortem of a backtested system and their revival ideas. Judge the ideas, not the original system: which revivals are honest tests and which are fitted to the same trades that suggested them.'],
+      ['The diagnostics', text], ['The researchers', lenses], ['The data rules', _tdRead('.claude/skills/data-rules/SKILL.md').slice(0, 6000)]] });
+    for (let i = 0; i < 2 && !validation; i++) { try { const x = await callModel({ task: 'desk-head', system, prompt, maxTokens: 6_000 }); const v = _vdValidateReview(_parseModelJson(x.text ?? _antText(x), 'desk:postmortem-validation')); if (v.ok) validation = v.value; } catch { /* the review stands without it */ } } }
+  const now = new Date().toISOString(), rec = { id, at: now, lenses, errors, validation, verdicts: Object.fromEntries(Object.entries(lenses).map(([k, v]) => [k, v.verdict])) };
+  const all = await _rpGet(_SR_KEY, {}); all[id] = rec; await kv.put(_SR_KEY, JSON.stringify(all));
+  const ideas = Object.values(lenses).flatMap(v => v.revival.map(p => ({ ...p, origin: `post-mortem of ${id}`, sources: [{ title: `post-mortem of ${id}`, ref: `system-backtest.html?id=${id}` }, ...p.sources] })));
+  if (ideas.length) { const lib = await _rpGet(_RP.library, []); await kv.put(_RP.library, JSON.stringify(_rpMerge(lib, ideas, _dpLondonDate(Date.now())))); }
+  return rec;
+}
+function _srStart(ids) {
+  if (_srJob?.status === 'running') return null;
+  const job = _srJob = { status: 'running', ids, done: [], failed: {}, current: null, startedAt: Date.now(), finishedAt: null };
+  (async () => { for (const id of ids) { job.current = id; try { await _srRunOne(id); job.done.push(id); } catch (e) { job.failed[id] = e.message; } } })()
+    .finally(() => { job.status = 'done'; job.current = null; job.finishedAt = Date.now(); });
+  return job;
+}
+app.get('/api/system-review', async (req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const id = String(req.query.id ?? ''), dg = _srDiagnostics(id);
+    if (!dg) return res.status(404).json({ ok: false, error: 'no such system' });
+    res.json({ ok: true, ...dg, panel: (await _rpGet(_SR_KEY, {}))[id] ?? null, job: _srJob }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/system-review/run', (req, res) => {
+  if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key' });
+  const ids = req.body?.all ? _sysList().map(x => x.id) : [String(req.body?.id ?? '')].filter(id => _sysLoad(id));
+  if (!ids.length) return res.status(400).json({ ok: false, error: 'no such system' });
+  const job = _srStart(ids); if (!job) return res.status(409).json({ ok: false, error: 'a review is already running', job: _srJob });
+  res.status(202).json({ ok: true, job });
+});
+// GET /api/system-overview: every system with its headline, its decay trend and the panel's verdicts (the backfill at a glance).
+app.get('/api/system-overview', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const reviews = await _rpGet(_SR_KEY, {});
+    res.json({ ok: true, job: _srJob, systems: _sysList().map(x => { const dg = _srDiagnostics(x.id), rv = dg?.review;
+      return { ...x, doc: dg?.meta?.doc ?? null, evidence: dg?.meta?.evidence ?? null, meanR: rv?.overall?.meanR ?? null, trend: rv?.decay?.trend ?? null, survivors: rv?.survivors?.length ?? null, reviewedAt: reviews[x.id]?.at ?? null, verdicts: reviews[x.id]?.verdicts ?? null, validation: reviews[x.id]?.validation?.verdict ?? null }; }) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/system-live?bot=OI Gamma&id=<system>: C.OG's live check: a bot's live trades against the backtest's expected shape.
+app.get('/api/system-live', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const bot = String(req.query.bot ?? ''), key = _FP_LOGS[bot], d = _sysLoad(String(req.query.id ?? ''));
+    if (!key) return res.status(400).json({ ok: false, error: `bot must be one of ${Object.keys(_FP_LOGS).join(', ')}` });
+    if (!d) return res.status(404).json({ ok: false, error: 'no such system' });
+    const log = await _kvJson(key).catch(() => null), rows = _jcRows({ [bot]: Array.isArray(log) ? log : [] });
+    const { trades: live } = _sxNormalise(rows.filter(t => Number.isFinite(t.R)).map(t => ({ instrument: t.inst, direction: t.dir > 0 ? 'Long' : 'Short', entryMs: t.openMs, exitMs: t.closeMs ?? t.openMs, R: t.R, entry: t.entry, exit: t.exit, riskPct: 1 })));
+    if (live.length < 5) return res.json({ ok: false, error: `only ${live.length} live trades with R in ${key}` });
+    res.json({ ok: true, bot, id: d.id, liveTrades: live.length, check: _sxLiveVsExpected(d.trades, live, { paths: 4000 }) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // Weekly: the research pod on Sunday from 09:00 London, once per ISO week (the theory desk is Saturday).

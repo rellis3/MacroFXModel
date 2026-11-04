@@ -53,6 +53,7 @@ export function normaliseTrades(raw, { riskPct = 1, model = '' } = {}) {
       entry: t.entry ?? null, stop: t.stop ?? null, target: t.target ?? t.tp ?? null, exit: t.exit ?? null, pair: t.pair ?? null, riskPct: rp, R,
       maeR: fin(maeR) ? Math.min(0, maeR) : null, mfeR: fin(mfeR) ? Math.max(0, mfeR) : null,
       returnPct: fin(t.returnPct) ? t.returnPct : R * rp, maePct: fin(t.maePct) ? t.maePct : fin(maeR) ? Math.min(0, maeR) * rp : null, mfePct: fin(t.mfePct) ? t.mfePct : fin(mfeR) ? Math.max(0, mfeR) * rp : null,
+      features: t.features && typeof t.features === 'object' ? t.features : null,
       model: t.model ?? model, tags: Array.isArray(t.tags) ? t.tags : t.tags ? String(t.tags).split(/[ ,]+/).filter(Boolean) : [], notes: t.notes ?? '' });
   });
   trades.sort((a, b) => a.exitMs - b.exitMs || a.entryMs - b.entryMs);
@@ -144,15 +145,15 @@ function blockDraw(arr, n, rng, block) { const out = new Array(n), N = arr.lengt
  * profit factor, expectancy (% per trade) and max drawdown (% compounded): the bands P10/P25/P50/P75/P90, a histogram
  * and where the realised window sits (its percentile). Default window: the last 12 months' trade count.
  */
-export function expectedShape(trades, { windowN = null, paths = 5000, block = 5, bins = 40, seed = 0x9e3779b9 } = {}) {
+export function expectedShape(trades, { windowN = null, paths = 5000, block = 5, bins = 40, seed = 0x9e3779b9, realisedTrades = null } = {}) {
   const r = trades.map(t => t.returnPct), n = r.length;
   if (n < 30) return { ok: false, error: 'needs >= 30 trades' };
   const last = trades.at(-1).exitMs, yearN = trades.filter(t => t.exitMs > last - 365.25 * 864e5).length;
-  const W = Math.max(10, Math.min(n, windowN ?? yearN));
+  const W = realisedTrades ? Math.max(5, realisedTrades.length) : Math.max(10, Math.min(n, windowN ?? yearN));
   const M = { winRate: a => a.filter(x => x > 0).length / a.length, profitFactor: a => Math.min(pf(a), 10), expectancy: a => a.reduce((s, x) => s + x, 0) / a.length, maxDD: ddOf };
   const rng = mulberry32(seed >>> 0), sims = Object.fromEntries(Object.keys(M).map(k => [k, new Float64Array(paths)]));
   for (let i = 0; i < paths; i++) { const w = blockDraw(r, W, rng, block); for (const k in M) sims[k][i] = M[k](w); }
-  const real = r.slice(-W), out = { ok: true, window: W, paths, block, realisedFrom: trades.at(-W).exitMs, metrics: {} };
+  const real = realisedTrades ? realisedTrades.map(t => t.returnPct) : r.slice(-W), out = { ok: true, window: W, paths, block, realisedFrom: (realisedTrades ? realisedTrades[0] : trades.at(-W)).exitMs, live: !!realisedTrades, metrics: {} };
   for (const k in M) {
     const s = Array.from(sims[k]).sort((a, b) => a - b), lo = s[0], hi = s.at(-1), step = (hi - lo) / bins || 1, h = new Array(bins).fill(0);
     for (const v of s) h[Math.min(bins - 1, Math.floor((v - lo) / step))]++;
@@ -161,6 +162,17 @@ export function expectedShape(trades, { windowN = null, paths = 5000, block = 5,
       realised: r3(rv), percentile: r3(below / s.length), hist: { lo: r3(lo), step: +step.toPrecision(6), counts: h } };
   }
   return out;
+}
+
+/**
+ * C.OG's live check: the live trades against what the backtest says a run of that many trades should look like.
+ * Both are standard trades; the backtest's per-trade % is rescaled to the live risk per trade so the two compare.
+ */
+export function liveVsExpected(backtest, live, opts = {}) {
+  if (!live?.length) return { ok: false, error: 'no live trades' };
+  const liveRisk = live.reduce((a, t) => a + t.riskPct, 0) / live.length;
+  const bt = backtest.map(t => ({ ...t, returnPct: t.R * liveRisk }));
+  return expectedShape(bt, { ...opts, realisedTrades: live.map(t => ({ ...t, returnPct: t.R * liveRisk })) });
 }
 
 /** P(max drawdown worse than each threshold) over a horizon of `horizonN` trades (default: one year's), block bootstrap. */

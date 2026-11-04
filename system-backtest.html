@@ -33,7 +33,7 @@ svg text{fill:var(--tx3);font:11px var(--mono)}
 <body>
 <div class="wrap">
 <div class="top"><h1>System <span>Backtest</span></h1><span class="sub">Any research system in the standard form: quant tearsheet, gates, Prop Firm Toolkit and Data Terminal CSVs</span>
-<span style="flex:1"></span><a class="btn" href="desk-office.html">Desk Office</a></div>
+<span style="flex:1"></span><a class="btn" href="system-backtest.html">All systems</a> <a class="btn" href="desk-office.html">Desk Office</a></div>
 <div class="panel"><div class="row"><label class="muted" for="sys">System</label><select id="sys"><option value="">loading…</option></select>
 <span class="muted">or</span><label class="btn" for="file">Load a Data Terminal CSV</label><input type="file" id="file" accept=".csv" hidden>
 <span style="flex:1"></span><label class="muted" for="acct">Account</label><input id="acct" type="number" value="100000" step="1000" style="width:110px"><label class="muted" for="risk">Risk % per trade</label><input id="risk" type="number" value="" placeholder="as traded" step="0.1" style="width:90px"></div>
@@ -125,6 +125,48 @@ async function showTrade(t, tr) {
   VIEW.fit();
   meta.innerHTML = `${esc(t.instrument)} · ${esc(t.direction)} · in ${london(t.entryMs).join(' ')} · out ${london(t.exitMs).join(' ')} (London) · <b class="${cls(t.R)}">${f(t.R)}R, ${f(t.returnPct, 3)}%</b> · MAE ${f(t.maeR)}R · MFE ${f(t.mfeR)}R · ${tf}-minute candles${lv.length ? '' : ' · this system did not record entry/stop/target prices, so only the markers show'}${t.notes ? ` · ${esc(t.notes)}` : ''}`;
 }
+// §9ad: the post-mortem. The measured diagnostics first, then the three researchers' reading and the validation desk.
+const LENS = { quant: 'Quant', macro: 'Macro', flow: 'Flow' }, VCH = { working: 'ok', revivable: 'ok', 'needs-data': '', dead: 'bad' };
+async function renderReview(id) {
+  const el = $('review'); if (!el) return;
+  const r = await getJson(`/api/system-review?id=${encodeURIComponent(id)}`); if (!r.ok) { el.innerHTML = `<h2>Post-mortem</h2><p class="muted">${esc(r.error)}</p>`; return; }
+  const v = r.review, p = r.panel, running = r.job?.status === 'running';
+  if (!v.ok) { el.innerHTML = `<h2>Post-mortem</h2><p class="muted">${esc(v.error)}</p>`; return; }
+  const e = v.exits, g = e.grid;
+  el.innerHTML = `<h2>Post-mortem <i>what went wrong and what might bring it back · measured first, then the research panel</i></h2>
+<div class="tiles"><div class="tile"><span>Verdict on the record</span><b>${esc(v.decay.trend)}</b></div><div class="tile"><span>First half (to ${esc(v.decay.split)})</span><b class="${cls(v.decay.first.meanR)}">${f(v.decay.first.meanR)}R</b></div><div class="tile"><span>Second half</span><b class="${cls(v.decay.second.meanR)}">${f(v.decay.second.meanR)}R</b></div><div class="tile"><span>Filters that survived</span><b>${v.survivors.length}</b></div></div>
+${e.grid?.ok ? `<p><b>Exits.</b> ${pct(e.losersThatWereUp1R)} of losers were 1R in profit first (${pct(e.losersThatWereUpHalfR)} were 0.5R up); ${pct(e.winnersNearStop)} of winners came within 0.2R of the stop. Best fixed stop/target in-sample: stop ${g.best.stop}R, target ${g.best.target}R → ${f(g.best.meanR)}R a trade against ${f(g.base.meanR)}R as traded. <span class="muted">${esc(g.caution)}.</span></p>
+<details><summary class="muted">Stop/target grid</summary><table><thead><tr><th>Stop</th>${[...new Set(g.rows.map(x => x.target))].map(t => `<th class="n">target ${t}R</th>`).join('')}</tr></thead><tbody>${[...new Set(g.rows.map(x => x.stop))].map(st => `<tr><td>${st}R</td>${g.rows.filter(x => x.stop === st).map(x => `<td class="n ${cls(x.meanR)}">${f(x.meanR)}</td>`).join('')}</tr>`).join('')}</tbody></table></details>` : `<p class="muted">Exits: ${esc(e.note ?? e.grid?.error)}</p>`}
+<h3 style="font-size:14px;margin:12px 0 6px">Filters <i class="muted" style="font-style:normal">chosen on the first half, scored on the second · ${v.slicesTried} tried · survivors pass Benjamini-Hochberg at 10%</i></h3>
+<table><thead><tr><th>Slice</th><th class="n">First half lift</th><th class="n">Second half lift</th><th class="n">n</th><th>Held?</th></tr></thead><tbody>${v.slices.slice(0, 16).map(x => `<tr><td>${esc(x.slice)}</td><td class="n ${cls(x.liftFirst)}">${f(x.liftFirst)}R</td><td class="n ${cls(x.liftSecond)}">${f(x.liftSecond)}R</td><td class="n">${x.first.n}/${x.second.n}</td><td><span class="chip ${x.survivesFdr ? 'ok' : x.held === 'failed' ? 'bad' : ''}">${x.survivesFdr ? `survives (${x.liftFirst > 0 ? 'keep' : 'drop'})` : esc(x.held)}</span></td></tr>`).join('')}</tbody></table>
+<p>Dropping the slices that lost in the first half (${v.filtered.dropped.map(esc).join(', ') || 'none'}) gives <b class="${cls(v.filtered.secondFiltered.meanR)}">${f(v.filtered.secondFiltered.meanR)}R</b> a trade on the second half (${v.filtered.secondFiltered.n} trades, ${pct(v.filtered.keptShare)} kept) against ${f(v.filtered.secondUnfiltered.meanR)}R unfiltered.
+${v.equityCurve.length ? `Equity-curve filter: ${v.equityCurve.map(x => `last ${x.lookback} trades &gt; 0 → ${f(x.meanR)}R on ${pct(x.share)} of trades (vs ${f(x.baseline.meanR)}R)`).join('; ')}.` : ''}</p>
+<p class="muted">${esc(v.caution)}</p>
+<h3 style="font-size:14px;margin:14px 0 6px">The research panel ${p ? `<i class="muted" style="font-style:normal">reviewed ${esc(p.at.slice(0, 16).replace('T', ' '))}</i>` : ''}</h3>
+${p ? Object.entries(p.lenses).map(([k, x]) => `<div style="border-top:1px solid var(--line);padding:8px 0"><b>${LENS[k]} researcher</b> <span class="chip ${VCH[x.verdict] ?? ''}">${esc(x.verdict)}</span> ${esc(x.headline)}
+<ul>${x.whatWentWrong.map(w => `<li>${esc(w.issue)} <span class="muted">${esc(w.evidence)}</span></li>`).join('')}</ul>
+${x.revival.length ? `<p style="margin:4px 0"><b>Revival ideas</b> (now in the research pod, where you can mark, discuss and card them):</p><ul>${x.revival.map(rv => `<li><b>${esc(rv.title)}</b>: ${esc(rv.thesis)} <span class="muted">Test: ${esc(rv.test.variable)} against ${esc(rv.test.benchmark)}; placebo ${esc(rv.test.placebo)}.</span></li>`).join('')}</ul>` : ''}
+${x.questionsForOwner?.length ? `<p class="muted">Asks you: ${x.questionsForOwner.map(esc).join(' · ')}</p>` : ''}</div>`).join('') + (p.validation ? `<div style="border-top:1px solid var(--line);padding:8px 0"><b>Validation desk on the revival ideas</b> <span class="chip ${p.validation.verdict === 'pass' ? 'ok' : p.validation.verdict === 'fix' ? '' : 'bad'}">${esc(p.validation.verdict)}</span> ${esc(p.validation.summary)}${p.validation.issues.length ? `<ul>${p.validation.issues.map(i => `<li><span class="chip">${esc(i.kind)}</span> ${esc(i.issue)} <span class="muted">${esc(i.test)}</span></li>`).join('')}</ul>` : ''}</div>` : '') : '<p class="muted">Not reviewed yet.</p>'}
+<p><button class="btn" id="revrun"${running ? ' disabled' : ''}>${running ? `Reviewing ${esc(r.job.current ?? '')}…` : p ? 'Review again' : 'Run the research review'}</button> <span class="muted">Three researchers read these numbers through their own lens (four model calls with the validation desk). Their revival ideas join the research pod as proposals.</span></p>`;
+  $('revrun').onclick = async () => { $('revrun').disabled = true; $('revrun').textContent = 'Reviewing…'; await fetch('/api/system-review/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => null); const t = setInterval(async () => { const j = await getJson(`/api/system-review?id=${encodeURIComponent(id)}`); if (j?.job?.status !== 'running') { clearInterval(t); renderReview(id); } }, 15000); };
+  if (running) setTimeout(() => renderReview(id), 15000);
+}
+const BOTS = ['Range-Line', 'OI Gamma', 'OI-Vol', 'OI Confluence', 'Confluence', 'Vote Atlas', 'Vol Bot V3', 'Fib Atlas', 'Fib Atlas V2'];
+async function renderLive(id, bot) {
+  const el = $('livebox'); if (!el || !bot) return; el.innerHTML = '<p class="muted">Loading the bot\'s live trades…</p>';
+  const r = await getJson(`/api/system-live?bot=${encodeURIComponent(bot)}&id=${encodeURIComponent(id)}`);
+  if (!r.ok) { el.innerHTML = `<p class="muted">${esc(r.error)}</p>`; return; }
+  const es = r.check; el.innerHTML = `<p>${r.liveTrades} live trades from ${esc(bot)} against ${es.paths.toLocaleString()} bootstrapped runs of ${es.window} trades from this backtest (rescaled to the live risk per trade).</p><div class="grid2">${Object.keys(SHAPE).map(k => { const m = es.metrics[k]; return `<div><h3 style="font-size:14px;margin:4px 0">${SHAPE[k][0]} <span class="muted" style="font-weight:400">live ${SHAPE[k][1](m.realised)} · ${Math.round(m.percentile * 100)}th percentile of the backtest</span></h3>${shapeSvg(k, m)}</div>`; }).join('')}</div>`;
+}
+async function renderOverview() {
+  const o = await getJson('/api/system-overview'); if (!o.ok) { $('out').innerHTML = `<div class="panel"><p class="muted">${esc(o.error)}</p></div>`; return; }
+  const running = o.job?.status === 'running';
+  $('out').innerHTML = `<div class="panel"><h2>Every backtested system <i>${o.systems.length} with standard outputs · click one for its tearsheet, post-mortem and trades</i></h2>
+<table><thead><tr><th>System</th><th class="n">Trades</th><th>Span</th><th class="n">Mean R</th><th class="n">Sharpe (daily)</th><th>Record</th><th class="n">Filters that survived</th><th>Evidence Book</th><th>Panel</th></tr></thead><tbody>${o.systems.map(x => `<tr><td><a href="?id=${encodeURIComponent(x.id)}">${esc(x.model)}</a><br><span class="muted">${esc(x.id)}</span></td><td class="n">${x.trades}</td><td class="muted">${esc(x.from ?? '')} – ${esc(x.to ?? '')}</td><td class="n ${cls(x.meanR)}">${f(x.meanR)}</td><td class="n">${f(x.sharpe)}</td><td>${esc(x.trend ?? '–')}</td><td class="n">${x.survivors ?? '–'}</td><td>${esc(x.evidence ?? '–')}</td><td>${x.verdicts ? Object.entries(x.verdicts).map(([k, v]) => `<span class="chip ${VCH[v] ?? ''}" title="${LENS[k]}">${LENS[k][0]}: ${esc(v)}</span>`).join(' ') : '<span class="muted">not reviewed</span>'}</td></tr>`).join('')}</tbody></table>
+<p><button class="btn" id="revall"${running ? ' disabled' : ''}>${running ? `Reviewing ${o.job.done.length + 1} of ${o.job.ids.length}: ${esc(o.job.current ?? '')}…` : 'Run the research review on every system'}</button> <span class="muted">${o.systems.length * 4} model calls, one system at a time. Revival ideas join the research pod.</span></p></div>`;
+  $('revall').onclick = async () => { $('revall').disabled = true; await fetch('/api/system-review/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ all: true }) }).catch(() => null); setTimeout(renderOverview, 4000); };
+  if (running) setTimeout(renderOverview, 20000);
+}
 function dl(name, text) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' })); a.download = name; a.click(); }
 function render(d) {
   CUR = d; const ts = d.tearsheet, pt = ts.perTrade, pf = ts.portfolio, g = d.gates;
@@ -151,11 +193,14 @@ ${pf.psr != null ? `<tr><td>Probabilistic Sharpe (true Sharpe &gt; 0)</td><td cl
 <button class="btn" data-x="pct">Toolkit · % returns</button><button class="btn" data-x="r">Toolkit · R-multiples</button><button class="btn" data-x="cash">Toolkit · currency P&amp;L</button><button class="btn" data-x="terminal">Data Terminal CSV</button></div>
 <p class="muted">Prop Firm Toolkit: <code>Date,Return %,MAE %</code>, <code>date,R,MAE (R)</code>, <code>Trade Date,PnL ($),Risk ($)</code>, one row per trade on its exit date (London). Data Terminal: the C.OG import template, times in London. Risk % (top) rescales the currency file only; blank = as traded.</p></div></div>
 <div class="panel"><h2>Breakdowns</h2><div class="grid2"><div>${table('By year', ts.byYear)}</div><div>${table('By instrument', ts.byInstrument)}${table('By direction', ts.byDirection)}</div></div></div>
+${d.id && !d.local ? `<div class="panel" id="review"><h2>Post-mortem</h2><p class="muted">Loading…</p></div>
+<div class="panel"><h2>Live against this backtest <i>C.OG's check: is a bot's live run inside what this backtest expects?</i></h2><div class="row"><label class="muted" for="livebot">Bot</label><select id="livebot"><option value="">choose the bot that trades this system…</option>${BOTS.map(b => `<option>${b}</option>`).join('')}</select></div><div id="livebox"></div></div>` : ''}
 ${ts.outliers?.rows?.length ? `<div class="panel"><h2>Outlier sensitivity <i>is the result carried by a handful of trades?</i></h2><table><thead><tr><th>Best winners removed</th><th class="n">Total %</th><th class="n">Share of the total they made</th><th class="n">Per-trade Sharpe</th></tr></thead><tbody><tr><td>none</td><td class="n">${f(ts.outliers.total)}</td><td class="n">–</td><td class="n">–</td></tr>${ts.outliers.rows.map(r => `<tr><td>${r.removed}</td><td class="n ${cls(r.total)}">${f(r.total)}</td><td class="n">${pct(r.shareOfTotal)}</td><td class="n">${f(r.sharpePerTrade, 3)}</td></tr>`).join('')}</tbody></table></div>` : ''}
 <div class="panel" hidden><h2>Trade on the chart <i>entry, stop, target and exit lines · real M1 candles, grouped to fit the trade</i></h2><div id="tchart"></div><p class="muted" id="tmeta"></p></div>
 <div class="panel"><h2>Trade journal <i>click a trade to see it on the chart</i></h2><div class="row" style="margin-bottom:8px"><select id="jinst"><option value="">all markets</option>${ts.instruments.map(x => `<option>${esc(x)}</option>`).join('')}</select><button class="btn" id="jclear" hidden>clear month</button><span class="muted" id="jmeta"></span><span style="flex:1"></span><button class="btn" id="jprev">‹ newer</button><button class="btn" id="jnext">older ›</button></div>
 <table><thead><tr><th>Entry (London)</th><th>Exit</th><th>Market</th><th>Side</th><th class="n">Entry</th><th class="n">Stop</th><th class="n">Target</th><th class="n">Exit</th><th class="n">R</th><th class="n">%</th><th class="n">MAE R</th><th class="n">MFE R</th><th>Tags</th></tr></thead><tbody id="jbody"></tbody></table></div>`;
   VIEW = null; JFILTER = { inst: '', month: '', page: 0 }; journal(d);
+  if (d.id && !d.local) { renderReview(d.id); $('livebot').onchange = () => renderLive(d.id, $('livebot').value); }
   $('jinst').onchange = () => { JFILTER.inst = $('jinst').value; JFILTER.page = 0; journal(d); };
   $('jprev').onclick = () => { JFILTER.page = Math.max(0, JFILTER.page - 1); journal(d); }; $('jnext').onclick = () => { JFILTER.page++; journal(d); };
   $('jclear').onclick = () => { JFILTER.month = ''; $('jclear').hidden = true; journal(d); };
@@ -175,11 +220,12 @@ $('sys').onchange = () => loadId($('sys').value);
 $('file').onchange = async () => { const file = $('file').files[0]; if (!file) return; const r = parseTerminalCsv(await file.text());
   if (!r.trades.length) { $('out').innerHTML = `<div class="panel"><p class="muted">${esc(r.errors[0] ?? 'no trades')}</p></div>`; return; }
   $('src').textContent = `${file.name} · ${r.trades.length} trades${r.errors.length ? ` · ${r.errors.length} rows skipped` : ''} · read in the browser, nothing uploaded`;
-  render({ id: file.name.replace(/\.csv$/i, ''), meta: { model: file.name }, trades: r.trades, skipped: r.errors.length, tearsheet: tearsheet(r.trades), gates: null }); };
+  render({ id: file.name.replace(/\.csv$/i, ''), local: true, meta: { model: file.name }, trades: r.trades, skipped: r.errors.length, tearsheet: tearsheet(r.trades), gates: null }); };
 const list = await getJson('/api/system-backtests'), want = new URLSearchParams(location.search).get('id');
 $('sys').innerHTML = list.ok && list.systems.length ? `<option value="">choose…</option>${list.systems.map(s => `<option value="${esc(s.id)}"${s.id === want ? ' selected' : ''}>${esc(s.model)} · ${s.trades} trades</option>`).join('')}` : '<option value="">no system outputs yet</option>';
 if (want) loadId(want);
 else if (!list.systems?.length) $('out').innerHTML = '<div class="panel"><p class="muted">No system has written its outputs yet. When a research-pod proposal is built, its backtest writes them here; you can also load any Data Terminal CSV above to see it in this form.</p></div>';
+else renderOverview();
 </script>
 </body>
 </html>

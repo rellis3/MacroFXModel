@@ -67,6 +67,7 @@ def normalise_trades(raw, risk_pct=1.0, model=''):
             'returnPct': t['returnPct'] if _fin(t.get('returnPct')) else R * rp,
             'maePct': t['maePct'] if _fin(t.get('maePct')) else (min(0, mae) * rp if _fin(mae) else None),
             'mfePct': t['mfePct'] if _fin(t.get('mfePct')) else (max(0, mfe) * rp if _fin(mfe) else None),
+            'features': t.get('features') if isinstance(t.get('features'), dict) else None,
             'model': t.get('model') or model, 'tags': tags if isinstance(tags, list) else [x for x in str(tags).replace(',', ' ').split() if x],
             'notes': t.get('notes') or '',
         })

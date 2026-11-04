@@ -74,6 +74,7 @@ const _CF_EXACT = new Set([
   'research_pod_feedback',
   'research_pod_cards',
   'research_pod_threads',
+  'system_reviews',
   'zq_path_v1',            // fed funds futures rungs, pushed nightly from the owner's TWS. Durable because
                              // IBKR cannot be reached from Railway: lose it and there is no re-fetch.
                              // Must also be in _worker.js PERMANENT_KEYS.

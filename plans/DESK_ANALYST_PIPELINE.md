@@ -1050,6 +1050,30 @@ candles (`/api/vol-backtest/candles`) with entry, stop, target and exit lines an
 `target` and a `pair` candle key; the instrument name is resolved through js/instrumentRegistry.js otherwise. The architect's
 card and prereg draft now require these outputs as the last build step.
 
+## 9ad. The backfill and the post-mortem desk (2026-11-04)
+
+**Backfill** (`scripts/systems/backfill.mjs`, `scripts/systems/backfill_manifest.json`): every stored per-trade
+backtest output in the repo is mapped (which file, which column is the instrument, the side, the times, the result
+and its unit, MAE/MFE, prices; for multi-variant files the study's headline variant) and written through the standard
+outputs. Nothing is re-run: each system is exactly what its study stored, gross or net as recorded. `system-backtest.html`
+with no id lists every system with its record (held up / stopped working / never worked), the filters that survived
+and the panel's verdicts.
+
+**Post-mortem desk** (`js/systemReview.js`; `GET /api/system-review`, `POST /api/system-review/run { id | all }`,
+`GET /api/system-overview`; KV `system_reviews`):
+- Measured first, with no model: decay (by year, first half against second), exits from MAE/MFE (losers that were
+  1R up first, winners that nearly stopped, a conservative fixed stop/target grid), every one-variable filter the
+  trades allow (instrument, side, London entry hour, weekday, month, holding time, tags, terciles of numeric
+  features) **chosen on the first half and scored on the second**, Benjamini-Hochberg across all of them against the
+  rest of the second half, the filtered system's second-half result, and a causal equity-curve filter.
+- Then the research panel: each of the three researchers reads those numbers through its own lens (schema
+  `system_postmortem`: verdict dead / revivable / needs-data / working, what went wrong with the numbers, 0-3 revival
+  ideas in the proposal shape), and the validation desk judges which revivals are honest tests and which are fitted to
+  the same trades. Revival ideas enter the research pod's library as proposals (origin "post-mortem of <id>"), so the
+  owner can mark, discuss, card and track them like any other.
+- **Live against the backtest** (`GET /api/system-live?bot=&id=`): a bot's live trades from its trade log against
+  the backtest's expected shape at the same number of trades (C.OG's check), on the system page.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
