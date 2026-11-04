@@ -73,6 +73,17 @@ const tsOf = s => { const v = s?.generatedAt ?? s?.pushed_at ?? s?.timestamp ?? 
  * One bot's read. status: the bot's status object (or null); reg: its registry row; evidence: the Evidence Book;
  * rows: the research register; now: ms; weekday: whether markets are open (silence only matters then).
  */
+/**
+ * Bots the registry lists as paper that send orders through an MT5 account the owner has confirmed is a demo account
+ * (so "live" in their status is not real money and the mode-mismatch flag is not raised). With a login, a different
+ * login reported later raises the flag again.
+ */
+export const MT5_DEMO = {
+  oi_bot_status: { confirmed: '2026-11-04' },
+  oi_vol_bot_status: { confirmed: '2026-11-04' },
+  signal_copier_status: { confirmed: '2026-11-04', login: 26365117 },
+};
+
 export function assessBot(reg, status, { evidence = [], rows = [], now = Date.now(), weekday = true } = {}) {
   if (status && typeof status === 'object' && Object.keys(status).length === 1 && status.error) status = null;   // a status write that only carries an error is no status
   const basis = BOT_BASIS[reg.key] ?? null, E = Object.fromEntries(evidence.map(e => [e.id, e])), R = Object.fromEntries(rows.map(r => [r.id, r]));
@@ -83,9 +94,10 @@ export function assessBot(reg, status, { evidence = [], rows = [], now = Date.no
   const rg = (basis?.register ?? []).map(id => ({ id, status: R[id]?.status ?? 'missing', next: (R[id]?.next ?? '').slice(0, 200) }));
   const flags = [], add = (kind, severity, text) => flags.push({ kind, severity, text });
   if (status) {
-    if (mode && reg.paper && mode === 'live') {
+    const demo = MT5_DEMO[reg.key], demoOk = demo && (!demo.login || !status.account_login || String(status.account_login) === String(demo.login));
+    if (mode && reg.paper && mode === 'live' && !demoOk) {
       const acct = [Number.isFinite(status.balance) ? `balance ${Math.round(status.balance).toLocaleString('en-GB')}` : null, status.account_login ? `MT5 login ${status.account_login}` : null].filter(Boolean).join(', ');
-      add('mode-mismatch', 'medium', `The registry lists it as paper, but it reports "live": it is sending orders through MT5${acct ? ` (${acct})` : ''}, not the built-in paper broker. If that MT5 account is a demo account, nothing is wrong; if it is real money, mark it live in js/botRegistry.js.`);
+      add('mode-mismatch', 'medium', `The registry lists it as paper, but it reports "live": it is sending orders through MT5${acct ? ` (${acct})` : ''}, not the built-in paper broker. If that MT5 account is a demo account, nothing is wrong (record it in MT5_DEMO in js/rulesKeeper.js); if it is real money, mark it live in js/botRegistry.js.${demo ? ` The owner confirmed MT5 login ${demo.login} as demo; this is a different login.` : ''}`);
     }
     if (mode === 'paper' && reg.paper === false) add('mode-mismatch', 'low', 'The registry lists it as live money, but the bot reports paper.');
     const against = ev.filter(e => e.bearing === 'against');

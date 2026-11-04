@@ -42,8 +42,13 @@ t('on paper the same bot is medium/low; a silent bot and an unmapped live bot ar
   assert.deepEqual(u.flags.map(f => [f.kind, f.severity]), [['no-basis', 'medium']]); assert.match(u.flags[0].text, /no study on record.*It runs live/i);
   const x = assessBot({ key: 'unknown_status', label: 'X', paper: true }, { mode: 'paper', generatedAt: now }, { evidence, rows, now });
   assert.deepEqual(x.flags.map(f => [f.kind, f.severity]), [['no-basis', 'low']]);
-  const m = assessBot({ key: 'signal_copier_status', label: 'Signal Copier', paper: true }, { mode: 'live', balance: 102088.28, account_login: 26365117, generatedAt: now }, { evidence, rows, now });
-  assert.match(m.flags.find(f => f.kind === 'mode-mismatch').text, /balance 102,088, MT5 login 26365117.*demo account/);
+  const m = assessBot({ key: 'volatility_bot_v2_status', label: 'Vote Atlas', paper: true }, { mode: 'live', balance: 102088.28, account_login: 555, generatedAt: now }, { evidence, rows, now });
+  assert.match(m.flags.find(f => f.kind === 'mode-mismatch').text, /balance 102,088, MT5 login 555.*demo account/);
+  // confirmed demo accounts: no mismatch; a different login raises it again
+  const sc = (login) => assessBot({ key: 'signal_copier_status', label: 'Signal Copier', paper: true }, { mode: 'live', account_login: login, generatedAt: now }, { evidence, rows, now });
+  assert.ok(!sc(26365117).flags.some(f => f.kind === 'mode-mismatch'));
+  assert.match(sc(999).flags.find(f => f.kind === 'mode-mismatch').text, /confirmed MT5 login 26365117 as demo/);
+  assert.ok(!assessBot({ key: 'oi_bot_status', label: 'OI Gamma', paper: true }, { mode: 'live', balance: 108186, generatedAt: now }, { evidence, rows, now }).flags.some(f => f.kind === 'mode-mismatch'));
   assert.equal(assessBot({ key: 'bot_status', label: 'MacroFX V1', paper: false }, null, { now }).flags.length, 0);
 });
 t('report sorts the worst first and counts', () => {
