@@ -76,6 +76,8 @@ const _CF_EXACT = new Set([
   'cb_speech_log_v1',       // central-bank speeches read once each by the model (js/cbSpeeches.js); the model reads cost money and are not re-run. Also in _worker.js (both lists).
   'release_surprise_log_v1', // the live surprise reader's log and its sent-keys dedupe (js/surpriseReader.js): a restart must not resend. Also in _worker.js (both lists).
   'desk_alerts_v1',         // desk alert state, carry/vol daily history and log (js/deskAlerts.js): a restart must not resend. Also in _worker.js (both lists).
+  'release_reaction_log_v1', // expectations vs reality (js/releaseReaction.js): each live release's actual +30 min / +4 h move and its label; a forward record, not re-derivable once M1 ages out. Also in _worker.js (both lists).
+  'chain_stats_v1',         // chain transmission statistics (js/chainStats.js), rebuilt once a London day; kept so a deploy serves the day's copy. Also in _worker.js (both lists).
   // the research pod (plan §9ab): sessions, the proposal library, the owner's marks on each proposal and the system cards. The owner's feedback cannot be rebuilt.
   'analyst_scorecard_v1',   // the desk analyst scorecard (js/analystScorecard.js): one compact row per scored morning per analyst; the forward record of each analyst's calls, not re-derivable once the runs age out. Also in _worker.js (both lists).
   'research_pod_sessions',

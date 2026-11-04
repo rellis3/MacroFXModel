@@ -261,6 +261,17 @@ cards would push the control past the cap. Both role files therefore ask for FLA
 sentence (at most 20 words, no plan), the same instruction in both arms so H2 stays a fair comparison, and the two
 calls get a 10-minute answer window. The cap itself is unchanged.
 
+### A14 — 2026-11-04 — PRE-RESULTS — release reactions feed for the events analyst
+Written on 2026-11-04 at the owner's request (build list item 2, "expectations vs reality"), without reading any desk
+score. The Desk Pack gains the feed `release-reactions` (`/api/release-reactions?pack=1`, `js/releaseReaction.js`) for the
+events and news analyst: for each high-impact print the live surprise reader logged, the actual move at +30 min and +4 h
+against what earlier releases of the same family did for a surprise of that size (priced in / in line / underreaction /
+overreaction / opposite), and how often each family moved markets as expected, by VIX regime. History with its count,
+never a forecast; the role file `desk/roles/events_news.md` item 3 says so, so `rolesHash` changes. The single-prompt
+control reads the whole pack, so both arms see it. The chain transmission statistics built the same day (`/api/chain-stats`)
+are deliberately NOT a pack feed: they describe what is coupled or broken now and must not reach the desk as an impact.
+Inputs only: the scoring, the arms and the hypotheses are unchanged. No hypothesis test had been run.
+
 ---
 
 ## RESULTS — not run

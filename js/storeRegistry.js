@@ -60,6 +60,8 @@ export const STORES = {
   cb_speech_log_v1: L('Central-bank speech log: each speech scored on the statement scale (js/cbSpeeches.js)', 7, { market: false }),
   release_surprise_log_v1: L('Live surprise reader: high-impact prints, their surprise and playbook (js/surpriseReader.js)', 7),
   desk_alerts_v1: S('Desk alerts: state per watched board, carry/vol history and the alert log (js/deskAlerts.js)', 1, { market: false }),
+  release_reaction_log_v1: L('Release reactions: each live high-impact print\'s actual +30 min / +4 h move against what history expects (js/releaseReaction.js)', 7),
+  chain_stats_v1: R('Chain transmission statistics: correlation, lead/lag, divergence per link (js/chainStats.js); context, not a signal', 1, { market: false }),
   research_pod_sessions: R('Research pod sessions', 8, { market: false }),
   research_pod_library: R('Research pod proposal library', 8, { market: false }),
   research_pod_feedback: R("Research pod: the owner's marks on proposals", 60, { market: false }),

@@ -36037,7 +36037,7 @@ async function _dalTick(trigger = 'poll') {
   const now = Date.now(), errors = {};
   try {
     const st = await _dalLoad();   // throws on a failed read: better to skip a check than to forget what was already sent
-    const BOARDS = { stress: 'world-stress', skew: 'options-skew', fair: 'fair-value', carry: 'carry-vol', cli: 'leading-indicators', drift: 'speech-drift' }, boards = {};
+    const BOARDS = { stress: 'world-stress', skew: 'options-skew', fair: 'fair-value', carry: 'carry-vol', cli: 'leading-indicators', drift: 'speech-drift', chainstats: 'chain-stats' }, boards = {};
     await Promise.all(Object.entries(BOARDS).map(async ([k, path]) => {
       const r = await _dpFetchFeed({ path, timeoutMs: 120_000 });
       if (r.json && r.json.ok !== false) boards[k] = r.json; else errors[k] = r.error ?? r.json?.error ?? (r.json ? 'the board answered ok:false (no data yet)' : `HTTP ${r.httpStatus ?? '?'}`);
@@ -36066,6 +36066,189 @@ app.get('/api/desk-alerts', async (req, res) => {
 });
 app.post('/api/desk-alerts/run', async (_req, res) => { try { res.json(await _dalTick('manual')); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
 // ══ end of speeches, surprises and desk alerts ══════════════════════════════════════════════════════════════════════════
+
+// ══ Expectations vs reality, and transmission statistics on the Chain (owner, 2026-11-04, build list items 2 and 3) ═══════════════
+// Logic in pure, tested modules (js/releaseReaction.js, js/chainStats.js); this block is only the I/O.
+//   releaseReactions  every 2 min: each high-impact release the surprise reader logged gets its ACTUAL move measured at +30 min and
+//                     +4 h (OANDA M1: the US 2y note, the pair(s), gold, the index) and labelled against what history expects for a
+//                     surprise of that sign and size (priced in / in line / underreaction / overreaction / opposite). +30 min goes
+//                     to Telegram under the reader's switch (tgMaster.surpriseReader). KV release_reaction_log_v1; the release
+//                     study's 150 past releases are the backfill (scored point-in-time from the committed summary, not refetched).
+//                     GET /api/release-reactions (?pack=1 is the events_news analyst's Desk Pack feed).
+//   chainStats        once a London day: per chain link, rolling 20/60/120-day correlation of daily changes and their 2-year
+//                     averages, lead/lag at -5..+5 days with a corrected band, a divergence z and the trend word. KV chain_stats_v1;
+//                     GET /api/chain-stats. CONTEXT, NOT A SIGNAL: never in the Desk Pack; the desk alerts read only its divergences.
+import * as _rrx from './js/releaseReaction.js';
+import { playbook as _rrxPlaybook } from './js/releasePlaybook.js';
+import { buildChainStats as _csBuild, CHAIN_STATS_NOTE as _CS_NOTE } from './js/chainStats.js';
+import { CHAIN_LINKS as _CS_LINKS } from './js/macroChain.js';
+import { fundingSpread as _csFunding, gapSeries as _csGap } from './js/terminal/chainBoard.js';
+
+// ── Release reactions ──
+const _RRX_KV = 'release_reaction_log_v1';
+let _rrx0 = { loaded: false, log: [], lastRun: null, study: { at: 0, recs: [], rows: [] }, vix: { at: 0, pts: null } }, _rrxRunning = false;
+async function _rrxLoad(strict = true) {
+  if (_rrx0.loaded) return;
+  const raw = strict ? await kv.getStrict(_RRX_KV) : await kv.get(_RRX_KV).catch(() => null);   // the tick must not overwrite a log it failed to read
+  const j = raw ? JSON.parse(raw) : {};
+  _rrx0.log = j.log ?? []; _rrx0.lastRun = j.lastRun ?? null; if (strict || raw) _rrx0.loaded = true;
+}
+async function _rrxSave() { await kv.put(_RRX_KV, JSON.stringify({ log: _rrx0.log, lastRun: _rrx0.lastRun })); }
+async function _rrxVix() {   // the VIX close before each release: the regime, read point-in-time
+  if (_rrx0.vix.pts && Date.now() - _rrx0.vix.at < 6 * 3600e3) return _rrx0.vix.pts;
+  let pts = null;
+  try { pts = await _deepFredSeries('vix'); } catch { /* fall back below */ }
+  if (!pts?.length) { try { const raw = await kv.get('fredhistory_series_vix'); pts = raw ? JSON.parse(raw) : null; } catch { /* no regime */ } }
+  if (!pts?.length) { try { pts = await _fredCsv('VIXCLS'); } catch { pts = null; } }
+  _rrx0.vix = { at: Date.now(), pts: pts?.length ? pts : _rrx0.vix.pts };
+  return _rrx0.vix.pts;
+}
+async function _rrxStudy() {   // the backfill: the release study's history, scored point-in-time (cheap: ~150 rows)
+  if (Date.now() - _rrx0.study.at < 3600e3 && _rrx0.study.recs.length) return _rrx0.study;
+  const { rows } = await _rlRows();
+  _rrx0.study = { at: Date.now(), recs: _rrx.backfillFromStudy(rows, { vix: await _rrxVix() }), rows };
+  return _rrx0.study;
+}
+async function _rrxBars(inst, fromMs, toMs) {
+  const url = `${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(inst)}/candles?granularity=M1&price=M&from=${encodeURIComponent(new Date(fromMs).toISOString())}&to=${encodeURIComponent(new Date(Math.min(toMs, Date.now())).toISOString())}`;
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
+  if (!r.ok) throw new Error(`OANDA ${inst} M1 HTTP ${r.status}`);
+  return ((await r.json()).candles ?? []).filter(c => c.mid && c.complete !== false).map(c => ({ t: Math.floor(Date.parse(c.time) / 1000), c: +c.mid.c }));
+}
+/** Measure every market of a record at +horizon minutes. Returns { rec, errors }; a market that is shut reads null. */
+async function _rrxMeasure(rec, horizon) {
+  const h = `m${horizon}`, moves = {}, errors = {};
+  const ids = [...new Set([...rec.markets.map(m => m.id).filter(id => id !== 'dx'), ...(rec.markets.some(m => m.id === 'dx') ? _rrx.DX_BASKET.map(([id]) => id) : [])])];
+  for (const id of ids) {
+    const inst = _rrx.REACTION_MARKETS[id]?.inst; if (!inst) continue;
+    try { moves[id] = _rrx.moveFromBars(await _rrxBars(inst, rec.ms - 16 * 60_000, rec.ms + (horizon + 1) * 60_000), rec.ms, horizon); }
+    catch (e) { errors[id] = e.message; }
+    await new Promise(r => setTimeout(r, 80));
+  }
+  moves.dx = _rrx.dxMove(moves);
+  return { rec: { ...rec, markets: rec.markets.map(m => ({ ...m, [h]: moves[m.id] ?? null })) }, errors };
+}
+async function _rrxTick(trigger = 'poll') {
+  if (_rrxRunning) return { ok: false, why: 'already running' };
+  if (!process.env.OANDA_KEY) return { ok: false, why: 'OANDA_KEY not set' };
+  _rrxRunning = true;
+  const now = Date.now(), errors = {}, sent = [];
+  try {
+    await _rrxLoad();
+    let reader = _lsr0.log;
+    if (!_lsr0.loaded) { const raw = await kv.get(_LSR_KV).catch(() => null); reader = raw ? (JSON.parse(raw).log ?? []) : []; }
+    const study = await _rrxStudy(), have = new Set(_rrx0.log.map(r => r.key));
+    const fresh = reader.filter(r => r?.surprise?.ok && !r.missed && !have.has(r.key) && now - r.ms < 72 * 3600e3 && now >= r.ms);
+    let stress = null;
+    if (fresh.length) { try { const w = await _dpFetchFeed({ path: 'world-stress', timeoutMs: 60_000 }); stress = w.json?.overall ?? null; } catch { /* regime from the VIX only */ } }
+    const vix = fresh.length ? await _rrxVix() : null;
+    for (const rr of fresh) {
+      const pb = rr.family ? _rrxPlaybook(study.rows, rr.family) : null;
+      _rrx0.log = _rrx.upsert(_rrx0.log, _rrx.newLiveRecord(rr, { study: study.recs, vix: _rrx.vixBefore(vix, rr.ms), stress: now - rr.ms < 2 * 3600e3 ? stress : null, pb }));
+    }
+    const due = _rrx.dueMeasurements(_rrx0.log, now), toSend = [];
+    for (const [horizon, list] of [[30, due.m30], [240, due.m240]]) {
+      for (const rec of list) {
+        const { rec: measured, errors: errs } = await _rrxMeasure(rec, horizon);
+        const giveUp = now > rec.ms + (horizon + 360) * 60_000;   // a fetch that keeps failing is recorded as such after 6 hours
+        if (Object.keys(errs).length && !giveUp) { errors[rec.key] = errs; continue; }
+        const scored = { ..._rrx.scoreRelease(measured, _rrx.liveHistory(study.recs, _rrx0.log, measured), horizon), [`done${horizon}`]: new Date(now).toISOString(), ...(Object.keys(errs).length ? { [`errors${horizon}`]: errs } : {}) };
+        _rrx0.log = _rrx.upsert(_rrx0.log, scored);
+        if (horizon === 30 && now - rec.ms < 90 * 60_000 && scored.markets.some(m => Number.isFinite(m.m30))) toSend.push(scored);
+      }
+    }
+    _rrx0.lastRun = { at: new Date(now).toISOString(), trigger, added: fresh.length, measured30: due.m30.length, measured240: due.m240.length, errors };
+    await _rrxSave();   // saved BEFORE sending: a crash mid-send can lose a message but never repeat one
+    for (const rec of toSend) {
+      if (tgOn('surpriseReader') && state.tg?.token && state.tg?.chatId) { await sendTelegram(state.tg.token, state.tg.chatId, _rrx.reactionMessage(rec)); sent.push(rec.key); }
+      console.log(`[release-reactions] ${rec.country} ${rec.event}: ${rec.label30 ?? 'unscored'} at 30 min`);
+    }
+    return { ok: true, ..._rrx0.lastRun, sent };
+  } catch (e) { console.warn('[release-reactions]', e.message); return { ok: false, error: e.message, errors }; }
+  finally { _rrxRunning = false; }
+}
+svcInterval('releaseReactions', () => _rrxTick('poll'), 2 * 60_000);
+/** The combined record: live reactions plus the study backfill, a study row winning for the same family and minute. */
+function _rrxCombined(study) {
+  const seen = new Set(study.recs.map(x => `${x.family}|${Math.round(x.ms / 60_000)}`));
+  return [..._rrx0.log.filter(x => !x.family || !seen.has(`${x.family}|${Math.round(x.ms / 60_000)}`)), ...study.recs].sort((a, b) => b.ms - a.ms);
+}
+const _RRX_NOTE = 'Actual move at +30 min and +4 h (% of the price at the release minute; OANDA M1 live, the release study\'s futures for the backfill) against what earlier releases of the family did for a surprise of that sign and size (median move per unit of surprise z; else the median after same-side prints). Labels: priced in / in line / underreaction / overreaction / opposite. Point-in-time: each release is judged only by releases before it. Regime = the VIX close before the release (calm < 16 <= normal < 24 <= stressed). History with its count, not a forecast.';
+// GET /api/release-reactions?n=30[&pack=1]: the live reactions, the study backfill and the summary by family and regime
+app.get('/api/release-reactions', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    await _rrxLoad(false);
+    const study = await _rrxStudy(), all = _rrxCombined(study), summary = _rrx.summarise(all), n = Math.min(300, Math.max(1, parseInt(req.query.n) || 30));
+    if (req.query.pack) {   // the events_news analyst's feed: the summary and the latest live reads, small
+      const slim = r => ({ at: r.at, country: r.country, event: r.event, family: r.family, surprise: r.surprise?.diffText ?? r.surprise?.diff, z: r.surprise?.z ?? null, regime: r.regime?.tone ?? null, label30: r.label30 ?? null, label240: r.label240 ?? null,
+        moves: (r.markets ?? []).slice(0, 4).map(m => ({ m: m.label, m30: m.m30 ?? null, exp30: m.exp30 ?? null, m240: m.m240 ?? null, exp240: m.exp240 ?? null })) });
+      return res.json({ ok: true, asOf: _rrx0.log[0]?.at ?? study.recs.at(-1)?.at ?? null, note: _RRX_NOTE, summaryText: _rrx.summaryText(summary),
+        byFamily: summary.filter(r => r.regime === 'all').slice(0, 10).map(r => ({ family: r.family, n: r.n, live: r.live, m30: { expected: r.m30.expected, pricedIn: r.m30.pricedIn, labels: r.m30.labels }, m240: { expected: r.m240.expected, pricedIn: r.m240.pricedIn } })),
+        byRegime: summary.filter(r => r.family === 'ALL' && r.regime !== 'all').map(r => ({ regime: r.regime, n: r.n, m30: { expected: r.m30.expected, pricedIn: r.m30.pricedIn } })),
+        recent: _rrx0.log.slice(0, 8).map(slim) });
+    }
+    res.json({ ok: true, lastRun: _rrx0.lastRun, muted: !tgOn('surpriseReader'), live: _rrx0.log.slice(0, n), studyN: study.recs.length, recent: all.slice(0, n), summary, summaryText: _rrx.summaryText(summary), note: _RRX_NOTE });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/release-reactions/run', async (_req, res) => { try { res.json(await _rrxTick('manual')); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+
+// ── Chain transmission statistics ──
+const _CS_KV = 'chain_stats_v1';
+let _cs0 = { data: null, building: null };
+const _CS_DRILL = { oil: 'oil', bei: 'bei', us2y: 'us2y', us10y: 'us10y', us30y: 'us30y', real: 'tips', dxy: 'dxy', gold: 'gold', copper: 'copper', audusd: 'audusd', usdcad: 'usdcad', usdjpy: 'usdjpy',
+  vix: 'vix', hy: 'hy', nq: 'nq', spx: 'spx', smh: 'smh', xle: 'xle', xlre: 'xlre', move: 'move', ccc: 'ccc', gbpusd: 'gbpusd', eurusd: 'eurusd', btc: 'btc' };
+/** Daily history of every chain node, ~3.5 years: the drill bundle (FRED, OANDA, Yahoo, already in memory) and FRED / the issuers for the rest. */
+async function _csSeries() {
+  const since = new Date(Date.now() - 3.5 * 365.25 * 864e5).toISOString().slice(0, 10), series = {}, sources = {}, errors = {};
+  if (!_drillBundle.data || Date.now() - _drillBundle.at > 24 * 3600e3) { try { await _refreshDrillBundle(); } catch (e) { errors.drill = e.message; } }
+  const B = _drillBundle.data;
+  for (const [node, k] of Object.entries(_CS_DRILL)) {
+    const col = B?.series?.[k]; if (!col) { errors[node] = 'not in the drill bundle'; continue; }
+    series[node] = B.dates.map((date, i) => ({ date, value: col[i] })).filter(p => p.value != null && p.date >= since); sources[node] = 'drill bundle';
+  }
+  const fred = async id => (await _fredCsv(id)).filter(p => p.date >= since);
+  try { const [sofr, iorb, ioer] = await Promise.all(['SOFR', 'IORB', 'IOER'].map(id => fred(id).catch(() => []))); series.funding = _csFunding({ sofr, iorb, ioer }); sources.funding = 'FRED SOFR - IORB/IOER'; } catch (e) { errors.funding = e.message; }
+  for (const [node, id] of [['emdollar', 'DTWEXEMEGS'], ['emoas', 'BAMLEMCBPIOAS']]) { try { series[node] = await fred(id); sources[node] = `FRED ${id}`; } catch (e) { errors[node] = e.message; } }
+  try { const [wti, gasoline, heatingOil] = await Promise.all(['DCOILWTICO', 'DGASNYH', 'DHOILNYH'].map(fred)); series.crack = _crackHistory({ wti, gasoline, heatingOil }).map(r => ({ date: r.date, value: r.crack })); sources.crack = 'FRED EIA spot'; } catch (e) { errors.crack = e.message; }
+  try {
+    if (!_intlYields.series) await _refreshIntlYields();
+    for (const [node, key] of [['giltgap', 'gb10y'], ['bundgap', 'de10y'], ['jgbgap', 'jp10y']]) { const g = _csGap(_intlYields.series?.[key], series.us10y); if (g.length) { series[node] = g; sources[node] = `${key} (issuer) - DGS10`; } else errors[node] = 'no foreign 10Y'; }
+  } catch (e) { errors.intl = e.message; }
+  return { series, sources, errors };
+}
+async function _csBuildNow(trigger = 'daily') {
+  const t0 = Date.now(), { series, sources, errors } = await _csSeries();
+  const nodes = Object.fromEntries(Object.entries(_CHAIN_NODES).map(([k, n]) => [k, { label: n.label.replace(/ \(.*\)$/, ''), unit: n.unit }]));
+  const b = _csBuild({ series, links: _CS_LINKS, nodes });
+  const data = { ok: true, day: _dpLondonDate(t0), builtAt: new Date(t0).toISOString(), ms: Date.now() - t0, trigger, signal: false, label: 'context, not a signal', note: _CS_NOTE,
+    asOf: Object.values(b.links).map(l => l.asOf).filter(Boolean).sort().at(-1) ?? null, ...b, sources, errors };
+  _cs0.data = data;
+  try { await kv.put(_CS_KV, JSON.stringify(data)); } catch (e) { console.warn('[chain-stats] save:', e.message); }
+  console.log(`[chain-stats] ${Object.values(b.links).filter(l => l.ok).length} links, ${b.breaking.length} weakening/breaking, ${b.divergences.length} diverging (${data.ms} ms)`);
+  return data;
+}
+/** Today's stats: memory, else KV, else built (one build at a time). */
+async function _csGet({ force = false } = {}) {
+  const day = _dpLondonDate(Date.now());
+  if (!force && _cs0.data?.day === day) return _cs0.data;
+  if (!force && !_cs0.data) { try { const raw = await kv.get(_CS_KV); const j = raw ? JSON.parse(raw) : null; if (j?.ok) _cs0.data = j; } catch { /* rebuild */ } if (_cs0.data?.day === day) return _cs0.data; }
+  _cs0.building ??= _csBuildNow(force ? 'manual' : 'daily').finally(() => { _cs0.building = null; });
+  try { return await _cs0.building; } catch (e) { if (_cs0.data) return { ..._cs0.data, stale: true, error: e.message }; throw e; }
+}
+svcInterval('chainStats', () => _csGet().catch(e => console.warn('[chain-stats]', e.message)), 60 * 60_000);
+svcTimeout('chainStats', () => _csGet().catch(e => console.warn('[chain-stats] boot:', e.message)), 9 * 60_000);
+// GET /api/chain-stats[?link=real-gold]: per chain link, correlation, lead/lag, divergence and trend. Context, not a signal.
+app.get('/api/chain-stats', async (req, res) => {
+  try {
+    const d = await _csGet();
+    res.set('Cache-Control', 'public, max-age=900');
+    if (req.query.link) { const l = d.links?.[String(req.query.link)]; return l ? res.json({ ok: true, day: d.day, label: d.label, note: d.note, id: String(req.query.link), ...l }) : res.status(404).json({ ok: false, error: 'unknown link' }); }
+    res.json(d);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/chain-stats/run', async (_req, res) => { try { const d = await _csGet({ force: true }); res.json({ ok: true, day: d.day, builtAt: d.builtAt, ms: d.ms, breaking: d.breaking.length, divergences: d.divergences.length, errors: d.errors }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+// ══ end of expectations vs reality and chain statistics ═════════════════════════════════════════════════════════════════════
 
 app.get('/api/calendar-feed', async (_req, res) => {
   try {

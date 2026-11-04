@@ -183,3 +183,36 @@ test('rowFor / crowdFor / rateGap', () => {
   assert.equal(g.short, -2.03); assert.equal(g.real, -1.38); assert.equal(g.policy, -1.5); assert.equal(g.y10, null);
   assert.equal(rateGap('GOLD', {}), null);
 });
+
+// ── transmission statistics (js/terminal/chainStatsView.js) and expectations vs reality (js/terminal/reactionPanel.js) ──
+import { linkStatsHtml, breakingHtml, lagBars } from './chainStatsView.js';
+import { reactionsHtml } from './reactionPanel.js';
+
+test('chain stats view: the tap-card block, the breaking-down list, always labelled context not signal', () => {
+  const lags = Array.from({ length: 11 }, (_, i) => ({ lag: i - 5, r: i === 5 ? -0.4 : i === 7 ? 0.2 : 0.01, n: 500 }));
+  const s = { ok: true, n: 500, asOf: '2026-11-03', corr: { 20: { now: -0.1, then: -0.5, avg2y: -0.4 }, 60: { now: -0.05, then: -0.4, avg2y: -0.45 }, 120: { now: -0.3, then: -0.4, avg2y: -0.42 } },
+    trend: 'breaking down', trendDelta: -0.35, textbookSign: 'holds on average', leadLag: { lags, band: 0.126, n: 500, text: 'the upstream end leads by 2 days' },
+    divergence: { 20: { win: 20, fromMove: 25, toMove: 1.2, implied: -3, z: 2.3 } }, z: 2.3, line: 'Real yield up 25bp in 20 days, but Gold rose 1.2% where the usual link implies -3.0%: 2.3σ away from the usual link.' };
+  const html = linkStatsHtml(s);
+  assert.match(html, /Transmission statistics/); assert.match(html, /breaking down/); assert.match(html, /context, not a signal/); assert.match(html, /2\.3σ away/); assert.match(html, /not a forecast/);
+  assert.equal((lagBars(lags, 0.126).match(/<rect/g) ?? []).length, 11);
+  assert.match(lagBars(lags, 0.126), /var\(--gold\)/, 'the lag clearing the band is marked');
+  assert.match(linkStatsHtml({ ok: false, why: 'no daily history for Funding' }), /no daily history/);
+  assert.equal(linkStatsHtml(null), '');
+  const b = breakingHtml({ ok: true, day: '2026-11-04', note: 'Context, not a signal.', breaking: [{ id: 'real-gold', short: 'real yields → gold', trend: 'breaking down', corr60: -0.05, then60: -0.4, avg60: -0.45 }], divergences: [{ id: 'real-gold', z: 2.6, win: 20, line: 'x <y>', alert: true }] });
+  assert.match(b, /Links breaking down/); assert.match(b, /data-act="link" data-id="real-gold"/); assert.match(b, /x &lt;y&gt;/); assert.match(b, /Diverging today/);
+  assert.equal(breakingHtml(null), '');
+});
+
+test('reactions panel: live and study rows, labels, the family table and the note', () => {
+  const p = { ok: true, studyN: 150, note: 'History with its count, not a forecast.', recent: [
+    { source: 'live', ms: Date.UTC(2026, 10, 6, 13, 30), country: 'US', event: 'CPI m/m', surprise: { diffText: '+0.1pp', z: 1.2 }, label30: 'overreaction', regime: { tone: 'normal', stress: 'watch' }, markets: [{ id: 'zt', label: 'US 2y note', unit: '%', m30: -0.3, exp30: -0.1 }] },
+    { source: 'study', ms: Date.UTC(2026, 9, 3, 12, 30), family: 'NFP', event: 'Non-farm payrolls', surprise: { diff: -68000 }, label30: 'opposite', label240: 'in line', markets: [{ id: 'zt', label: 'US 2y note', m30: 0.06, m240: -0.1, exp240: -0.11 }] }],
+    summary: [{ family: 'ALL', regime: 'all', n: 151, live: 1, m30: { expected: 0.67, nDirectional: 27, pricedIn: 0.17, nClear: 23, labels: { 'in line': 80, overreaction: 10 } }, m240: { expected: 0.64, pricedIn: 0.26 } },
+      { family: 'ALL', regime: 'calm', n: 60, m30: { expected: 0.7, pricedIn: 0.1 }, m240: {} }] };
+  const html = reactionsHtml(p);
+  assert.match(html, /Expectations vs reality/); assert.match(html, /overreaction/); assert.match(html, /US 2y note <b class="mono">-0\.30%<\/b> <span class="muted mono">vs -0\.10<\/span>/);
+  assert.match(html, />live</); assert.match(html, />study</); assert.match(html, /-68000/); assert.match(html, /All families/); assert.match(html, /<b>calm<\/b> 60 releases/);
+  assert.match(html, /not a forecast/);
+  assert.equal(reactionsHtml({ ok: false }), '');
+});
