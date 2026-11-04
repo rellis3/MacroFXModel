@@ -18,8 +18,10 @@ const CONV = { low: 1, medium: 2, high: 3 };
 export function bookOf(run) {
   if (!run?.head?.ok || !run.head.book) return null;
   const b = run.head.book, cv = run.debate?.currency?.view;
-  const biases = cv?.currencies ? Object.fromEntries(Object.entries(cv.currencies).map(([k, v]) => [k, Number(v?.bias) || 0]))
-    : Object.fromEntries(Object.entries(b.currencies ?? {}).map(([k, v]) => [k, Number(v?.bias) || 0]));
+  // a currency with no bias stays null ("no ruling"), never 0, so a missing ruling is not read as a move to neutral
+  const num = v => (v == null || v === '' ? null : Number.isFinite(Number(v)) ? Number(v) : null);
+  const biases = cv?.currencies ? Object.fromEntries(Object.entries(cv.currencies).map(([k, v]) => [k, num(v?.bias)]))
+    : Object.fromEntries(Object.entries(b.currencies ?? {}).map(([k, v]) => [k, num(v?.bias)]));
   const cards = Object.fromEntries(Object.entries(b.instruments ?? {}).map(([k, c]) => [k, { rating: c.rating ?? 'FLAT', dir: DIRN[c.rating] ?? 0, conviction: c.conviction ?? null, size: Number(c.size) || 0, why: c.why ?? '' }]));
   return { date: run.date ?? null, finishedAt: run.finishedAt ?? null, tone: b.global?.tone ?? null, conviction: run.debate?.global?.view?.conviction ?? null, ranking: cv?.ranking ?? null, biases, cards };
 }
@@ -34,7 +36,12 @@ export function diffBooks(prev, cur) {
   if (prev.tone !== cur.tone && (prev.tone || cur.tone)) out.push({ kind: 'tone', key: 'tone', title: `Global tone ${word(prev.tone)} → ${word(cur.tone)}`, detail: `conviction ${prev.conviction ?? '?'} → ${cur.conviction ?? '?'}`, weight: 6, dir: 0 });
   else if (prev.conviction && cur.conviction && prev.conviction !== cur.conviction) out.push({ kind: 'tone', key: 'conviction', title: `Global conviction ${prev.conviction} → ${cur.conviction}`, detail: `tone still ${word(cur.tone)}`, weight: 2, dir: 0 });
   for (const c of new Set([...Object.keys(prev.biases ?? {}), ...Object.keys(cur.biases ?? {})])) {
-    const a = prev.biases?.[c] ?? 0, b = cur.biases?.[c] ?? 0; if (a === b) continue;
+    const a = prev.biases?.[c] ?? null, b = cur.biases?.[c] ?? null; if (a === b) continue;
+    if (a == null || b == null) {   // one side has no ruling: say so rather than treating it as a move to or from 0
+      const w = v => (v == null ? 'no ruling' : `${v > 0 ? '+' : ''}${v}`);
+      out.push({ kind: 'bias', key: c, title: `${c} bias ${w(a)} → ${w(b)}`, detail: b == null ? 'no bias for it in this book (no data, not neutral)' : 'a bias where the previous book had none', weight: 1, dir: b == null ? 0 : sgn(b) });
+      continue;
+    }
     const flip = sgn(a) !== 0 && sgn(b) !== 0 && sgn(a) !== sgn(b);
     out.push({ kind: 'bias', key: c, title: `${c} bias ${a > 0 ? '+' : ''}${a} → ${b > 0 ? '+' : ''}${b}${flip ? ' (flipped)' : ''}`, detail: flip ? 'the currency changed sides' : Math.abs(b) > Math.abs(a) ? 'stronger view' : 'weaker view', weight: 2 * Math.abs(b - a) + (flip ? 3 : 0), dir: sgn(b - a) });
   }

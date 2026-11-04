@@ -72,9 +72,12 @@ function isAllowedKVKey(key) {
     'options_skew_hist',
     'terminal_stress_snaps_v1',
     'analyst_scorecard_v1',
+    'thesis_reality_v1',
     'cb_speech_log_v1',
     'release_surprise_log_v1',
     'desk_alerts_v1',
+    'release_reaction_log_v1',
+    'chain_stats_v1',
     'research_pod_sessions',
     'research_pod_library',
     'research_pod_feedback',
@@ -83,6 +86,8 @@ function isAllowedKVKey(key) {
     'research_pod_dossiers',
     'research_pod_papers',
     'research_pod_queue',
+    'research_pod_quicktests',
+    'fx_fair_value_log_v1',
     'system_reviews',
     'system_index',
     'shadow_trackers',
@@ -1109,10 +1114,15 @@ export default {
             'options_skew_hist',
             // analyst_scorecard_v1: the desk analyst scorecard's day rows (js/analystScorecard.js); a forward record.
             'analyst_scorecard_v1',
+            // thesis_reality_v1: the morning thesis laid against the evening, one compact row per scored day (js/thesisReality.js); a forward record.
+            'thesis_reality_v1',
             // cb_speech_log_v1 / release_surprise_log_v1 / desk_alerts_v1: speech reads (paid model calls), the surprise reader's and the desk alerts' dedupe state (a reset would resend).
             'cb_speech_log_v1',
             'release_surprise_log_v1',
             'desk_alerts_v1',
+            // release_reaction_log_v1: the live release reactions (a forward record); chain_stats_v1: the day's chain statistics.
+            'release_reaction_log_v1',
+            'chain_stats_v1',
             // research_pod_*: the research pod's sessions, proposals, the owner's marks and the system cards (server writes; the owner's feedback cannot be rebuilt).
             'research_pod_sessions',
             'research_pod_library',
@@ -1122,6 +1132,9 @@ export default {
             'research_pod_dossiers',
             'research_pod_papers',
             'research_pod_queue',
+            // research_pod_quicktests: the research lab's exploratory quick tests; fx_fair_value_log_v1: the short-term fair value's forward record.
+            'research_pod_quicktests',
+            'fx_fair_value_log_v1',
             'system_reviews',
             'system_index',
             'shadow_trackers',

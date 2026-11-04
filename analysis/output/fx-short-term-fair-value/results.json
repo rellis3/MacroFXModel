@@ -1,0 +1,518 @@
+{
+  "id": "fx-short-term-fair-value",
+  "verdict": "underpowered",
+  "mode": "score",
+  "seed": 20261104,
+  "B": 2000,
+  "ranAt": "2026-11-04T20:46:00.668Z",
+  "lockboxEnd": "2026-08-21",
+  "window": 250,
+  "skip": 1,
+  "barHalfLife": 120,
+  "prereg": "forge/FX_SHORT_TERM_FAIR_VALUE_PREREG.md",
+  "coverage": {
+    "EURUSD": {
+      "rows": 6931,
+      "from": "1999-01-04",
+      "to": "2026-08-21",
+      "firstSignal": "1999-12-30"
+    },
+    "GBPUSD": {
+      "rows": 6931,
+      "from": "1999-01-04",
+      "to": "2026-08-21",
+      "firstSignal": "1999-12-30"
+    },
+    "USDJPY": {
+      "rows": 6924,
+      "from": "1999-01-04",
+      "to": "2026-08-21",
+      "firstSignal": "1999-12-30"
+    },
+    "AUDUSD": {
+      "rows": 3241,
+      "from": "2013-09-03",
+      "to": "2026-08-21",
+      "firstSignal": "2014-09-02"
+    },
+    "USDCAD": {
+      "rows": 6427,
+      "from": "2001-01-02",
+      "to": "2026-08-21",
+      "firstSignal": "2002-01-02"
+    }
+  },
+  "cells": [
+    {
+      "name": "pooled h=5",
+      "h": 5,
+      "n": 29174,
+      "dateClusters": 6675,
+      "est": 0.01042,
+      "lo": -0.00565,
+      "hi": 0.0294,
+      "se": 0.00887,
+      "p": 0.2439,
+      "bar": 0.0285,
+      "halves": {
+        "splitAt": "2014-12-08",
+        "first": {
+          "est": 0.00173,
+          "lo": -0.0161,
+          "hi": 0.02277
+        },
+        "second": {
+          "est": 0.02582,
+          "lo": 0.00018,
+          "hi": 0.05629
+        }
+      },
+      "naive": {
+        "est": 0.00128,
+        "lo": -0.00834,
+        "hi": 0.01145
+      },
+      "factorMinusNaive": {
+        "est": 0.00913,
+        "lo": -0.00357,
+        "hi": 0.02273
+      },
+      "mcNull": {
+        "draws": 400,
+        "mean": -0.00002,
+        "sd": 0.00756,
+        "p": 0.1945,
+        "holmPass": false
+      },
+      "holmP": 0.7317,
+      "holmPass": false,
+      "gate": {
+        "holm": false,
+        "atBar": false,
+        "bothHalves": true,
+        "beatsNaive": false
+      },
+      "passes": false,
+      "mdeHolmRealised": 0.0287,
+      "cellVerdict": "underpowered",
+      "mirror": null
+    },
+    {
+      "name": "pooled h=10",
+      "h": 10,
+      "n": 29149,
+      "dateClusters": 6670,
+      "est": 0.01102,
+      "lo": -0.01931,
+      "hi": 0.04522,
+      "se": 0.01688,
+      "p": 0.5097,
+      "bar": 0.0561,
+      "halves": {
+        "splitAt": "2014-12-04",
+        "first": {
+          "est": -0.00446,
+          "lo": -0.03956,
+          "hi": 0.03258
+        },
+        "second": {
+          "est": 0.03837,
+          "lo": -0.01101,
+          "hi": 0.09742
+        }
+      },
+      "naive": {
+        "est": 0.00098,
+        "lo": -0.01761,
+        "hi": 0.02204
+      },
+      "factorMinusNaive": {
+        "est": 0.01004,
+        "lo": -0.01283,
+        "hi": 0.03556
+      },
+      "mcNull": {
+        "draws": 400,
+        "mean": 0.00002,
+        "sd": 0.01468,
+        "p": 0.4439,
+        "holmPass": false
+      },
+      "holmP": 1,
+      "holmPass": false,
+      "gate": {
+        "holm": false,
+        "atBar": false,
+        "bothHalves": false,
+        "beatsNaive": false
+      },
+      "passes": false,
+      "mdeHolmRealised": 0.0546,
+      "cellVerdict": "null",
+      "mirror": null
+    },
+    {
+      "name": "pooled h=20",
+      "h": 20,
+      "n": 29099,
+      "dateClusters": 6660,
+      "est": 0.00641,
+      "lo": -0.04661,
+      "hi": 0.06278,
+      "se": 0.02782,
+      "p": 0.7996,
+      "bar": 0.1091,
+      "halves": {
+        "splitAt": "2014-11-26",
+        "first": {
+          "est": -0.01371,
+          "lo": -0.08344,
+          "hi": 0.05692
+        },
+        "second": {
+          "est": 0.04161,
+          "lo": -0.02661,
+          "hi": 0.11903
+        }
+      },
+      "naive": {
+        "est": 0.00024,
+        "lo": -0.03486,
+        "hi": 0.03705
+      },
+      "factorMinusNaive": {
+        "est": 0.00617,
+        "lo": -0.03247,
+        "hi": 0.04897
+      },
+      "mcNull": {
+        "draws": 400,
+        "mean": 0.00016,
+        "sd": 0.028,
+        "p": 0.8329,
+        "holmPass": false
+      },
+      "holmP": 1,
+      "holmPass": false,
+      "gate": {
+        "holm": false,
+        "atBar": false,
+        "bothHalves": false,
+        "beatsNaive": false
+      },
+      "passes": false,
+      "mdeHolmRealised": 0.0906,
+      "cellVerdict": "null",
+      "mirror": null
+    }
+  ],
+  "perPair": [
+    {
+      "pair": "EURUSD",
+      "h": 5,
+      "n": 6675,
+      "est": -0.00311,
+      "lo": -0.02516,
+      "hi": 0.02507,
+      "p": 0.8366,
+      "bhPass": false
+    },
+    {
+      "pair": "GBPUSD",
+      "h": 5,
+      "n": 6675,
+      "est": 0.01705,
+      "lo": -0.00778,
+      "hi": 0.04987,
+      "p": 0.1979,
+      "bhPass": false
+    },
+    {
+      "pair": "USDJPY",
+      "h": 5,
+      "n": 6668,
+      "est": 0.00868,
+      "lo": -0.01825,
+      "hi": 0.03956,
+      "p": 0.4868,
+      "bhPass": false
+    },
+    {
+      "pair": "AUDUSD",
+      "h": 5,
+      "n": 2985,
+      "est": 0.01083,
+      "lo": -0.02247,
+      "hi": 0.057,
+      "p": 0.4968,
+      "bhPass": false
+    },
+    {
+      "pair": "USDCAD",
+      "h": 5,
+      "n": 6171,
+      "est": 0.03425,
+      "lo": 0.00623,
+      "hi": 0.06705,
+      "p": 0.016,
+      "bhPass": false
+    },
+    {
+      "pair": "EURUSD",
+      "h": 10,
+      "n": 6670,
+      "est": -0.01463,
+      "lo": -0.05667,
+      "hi": 0.03805,
+      "p": 0.5997,
+      "bhPass": false
+    },
+    {
+      "pair": "GBPUSD",
+      "h": 10,
+      "n": 6670,
+      "est": 0.01739,
+      "lo": -0.03599,
+      "hi": 0.07727,
+      "p": 0.5027,
+      "bhPass": false
+    },
+    {
+      "pair": "USDJPY",
+      "h": 10,
+      "n": 6663,
+      "est": 0.0121,
+      "lo": -0.04061,
+      "hi": 0.07445,
+      "p": 0.6287,
+      "bhPass": false
+    },
+    {
+      "pair": "AUDUSD",
+      "h": 10,
+      "n": 2980,
+      "est": 0.00698,
+      "lo": -0.05152,
+      "hi": 0.08941,
+      "p": 0.7566,
+      "bhPass": false
+    },
+    {
+      "pair": "USDCAD",
+      "h": 10,
+      "n": 6166,
+      "est": 0.06372,
+      "lo": 0.01171,
+      "hi": 0.12268,
+      "p": 0.013,
+      "bhPass": false
+    },
+    {
+      "pair": "EURUSD",
+      "h": 20,
+      "n": 6660,
+      "est": -0.03937,
+      "lo": -0.11602,
+      "hi": 0.055,
+      "p": 0.4118,
+      "bhPass": false
+    },
+    {
+      "pair": "GBPUSD",
+      "h": 20,
+      "n": 6660,
+      "est": 0.00568,
+      "lo": -0.08914,
+      "hi": 0.1055,
+      "p": 0.8176,
+      "bhPass": false
+    },
+    {
+      "pair": "USDJPY",
+      "h": 20,
+      "n": 6653,
+      "est": 0.03144,
+      "lo": -0.06214,
+      "hi": 0.14769,
+      "p": 0.5137,
+      "bhPass": false
+    },
+    {
+      "pair": "AUDUSD",
+      "h": 20,
+      "n": 2970,
+      "est": -0.02549,
+      "lo": -0.12091,
+      "hi": 0.09071,
+      "p": 0.7116,
+      "bhPass": false
+    },
+    {
+      "pair": "USDCAD",
+      "h": 20,
+      "n": 6156,
+      "est": 0.09646,
+      "lo": 0.00228,
+      "hi": 0.20217,
+      "p": 0.046,
+      "bhPass": false
+    }
+  ],
+  "controls": {
+    "h5": {
+      "placeboShifts": 100,
+      "placeboMean": 0.0007,
+      "placeboSd": 0.0062,
+      "realPercentile": 95,
+      "extremeZ": {
+        "n": 4495,
+        "beta": 0.0094
+      }
+    },
+    "h10": {
+      "placeboShifts": 100,
+      "placeboMean": 0.0014,
+      "placeboSd": 0.0121,
+      "realPercentile": 75,
+      "extremeZ": {
+        "n": 4495,
+        "beta": 0.0033
+      }
+    },
+    "h20": {
+      "placeboShifts": 100,
+      "placeboMean": 0.0035,
+      "placeboSd": 0.0227,
+      "realPercentile": 57,
+      "extremeZ": {
+        "n": 4495,
+        "beta": -0.0098
+      }
+    }
+  },
+  "descriptive": {
+    "halfLives": {
+      "EURUSD": {
+        "ok": true,
+        "n": 6681,
+        "phi": 0.9524,
+        "phiCi": [
+          0.9452,
+          0.963
+        ],
+        "halfLife": 14.2,
+        "halfLifeCi": [
+          12.3,
+          18.4
+        ],
+        "dfT": -12.82,
+        "noReversionInCi": false
+      },
+      "GBPUSD": {
+        "ok": true,
+        "n": 6681,
+        "phi": 0.9586,
+        "phiCi": [
+          0.9518,
+          0.9686
+        ],
+        "halfLife": 16.4,
+        "halfLifeCi": [
+          14,
+          21.7
+        ],
+        "dfT": -11.88,
+        "noReversionInCi": false
+      },
+      "USDJPY": {
+        "ok": true,
+        "n": 6674,
+        "phi": 0.9581,
+        "phiCi": [
+          0.9512,
+          0.9681
+        ],
+        "halfLife": 16.2,
+        "halfLifeCi": [
+          13.9,
+          21.3
+        ],
+        "dfT": -12,
+        "noReversionInCi": false
+      },
+      "AUDUSD": {
+        "ok": true,
+        "n": 2991,
+        "phi": 0.928,
+        "phiCi": [
+          0.9147,
+          0.9475
+        ],
+        "halfLife": 9.3,
+        "halfLifeCi": [
+          7.8,
+          12.9
+        ],
+        "dfT": -10.55,
+        "noReversionInCi": false
+      },
+      "USDCAD": {
+        "ok": true,
+        "n": 6177,
+        "phi": 0.9384,
+        "phiCi": [
+          0.9298,
+          0.951
+        ],
+        "halfLife": 10.9,
+        "halfLifeCi": [
+          9.5,
+          13.8
+        ],
+        "dfT": -14.02,
+        "noReversionInCi": false
+      }
+    },
+    "r2": {
+      "EURUSD": {
+        "p10": 0.272,
+        "median": 0.687,
+        "p90": 0.873
+      },
+      "GBPUSD": {
+        "p10": 0.254,
+        "median": 0.573,
+        "p90": 0.862
+      },
+      "USDJPY": {
+        "p10": 0.294,
+        "median": 0.654,
+        "p90": 0.901
+      },
+      "AUDUSD": {
+        "p10": 0.263,
+        "median": 0.555,
+        "p90": 0.843
+      },
+      "USDCAD": {
+        "p10": 0.364,
+        "median": 0.711,
+        "p90": 0.913
+      }
+    }
+  },
+  "holm": {
+    "rejected": [
+      false,
+      false,
+      false
+    ],
+    "adjusted": [
+      0.7317,
+      1,
+      1
+    ]
+  },
+  "preregCommit": "a269540",
+  "branch": "worktree-agent-a1c659cb9484c89a4"
+}

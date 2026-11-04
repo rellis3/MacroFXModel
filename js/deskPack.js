@@ -142,6 +142,7 @@ export const DESK_FEEDS = [
   F('events_news', 'release-calls', 4 * D),
   F('events_news', 'news-outcome', 4 * D),
   F('events_news', 'desk-news?pack=1', 1 * D),   // agent 21: the last 18 h of tier-1/2 headlines, tagged and read (context, never a signal)
+  F('events_news', 'release-reactions?pack=1', 14 * D),   // build list 2: how surprises actually moved markets against history (priced in / over / under), by family and regime; history, not a forecast
   F('events_news', 'earnings-ahead', 4 * D, { keep: 'first' }),
   F('events_news', 'fiscal/events', 30 * D, { keep: 'first' }),
   // ── currency ────────────────────────────────────────────────────────────────
@@ -204,6 +205,7 @@ export const DESK_FEEDS = [
   F('evidence_memory', 'eod-review', 3 * D),
   F('evidence_memory', 'desk-memory', 5 * D),
   F('evidence_memory', 'analyst-scorecard?brief=1', 5 * D),   // build list item 1 (prereg A10): each analyst's running hit rate, calibration and shrunk weight
+  F('evidence_memory', 'thesis-reality?brief=1', 5 * D),   // build item 5 (prereg A15): the latest morning's claims against its evening, and the running tally
   F('evidence_memory', 'book-risk', 4 * D, { timeoutMs: 120_000 }),   // §9ak: the latest book's factor exposure, VaR and scenarios (a cold model = 51 OANDA calls)
   F('evidence_memory', 'desk-weekly', 8 * D),   // agent 19: the Sunday week view (context for the week, labelled; never a card)   // Phase 4: the desk's own end-of-day reflections (one-day anecdotes, labelled)
 ];

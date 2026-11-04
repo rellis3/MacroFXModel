@@ -2137,6 +2137,13 @@ export const DESK_EVIDENCE = [
     result: 'Null. 17,909 walk steps per anchor (8 instruments, ~1,510 nights each, expiries 2020-10 to 2026-08, 1-40 sessions ahead, the live zoneWalk/expiryView replayed on the Databento books; 71 expiry-month cluster bootstrap): beta +0.018 [-0.007, +0.044]; skill -6.5; gap ~2% at every horizon, 3.4 expected moves away with 1-2 sessions left.',
     use: 'The OI centre is where price has been (open interest follows price); it is not a target.',
   },
+  {
+    id: 'fx-short-term-fair-value', domain: 'macro', verdict: 'underpowered', date: '2026-11-04', doc: 'forge/FX_SHORT_TERM_FAIR_VALUE_PREREG.md', also: ['analysis/output/fx-short-term-fair-value/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'],
+    claim: 'The out-of-sample gap between an FX pair and its short-term fair value (rolling 250-day OLS of the log price on the 2y and 10y yield differentials and log VIX) is closed by price over the next 5, 10 and 20 trading days, at least as fast as a 120-day half-life',
+    result: 'Underpowered by the registered rule, and no sign of closure. Pooled over 5 USD pairs (29,099-29,174 pair-days, ~6,670 date clusters, 1999-12 to 2026-08-21, skip one day, block-63 date bootstrap B 2000 + 400-draw Monte-Carlo null): share of the gap price closes +0.010 [-0.006, +0.029] at 5 days (bar 0.0285; realised MDE 0.0287, so underpowered by a hair), +0.011 [-0.019, +0.045] at 10 (bar 0.056, null), +0.006 [-0.047, +0.063] at 20 (bar 0.109, null); MC-null p 0.19/0.44/0.83; no horizon beats the naive price anchor; first half (1999-2014) flat or negative. Per pair 0/15 survive BH (USDCAD leans +0.03 to +0.10). The gap itself has a 9-16 day half-life, but that is the fair value moving to price, not price moving to fair value.',
+    use: 'The short-term fair value page (/api/fx-fair-value, Pair and Macro tabs) is description only: rates and risk describe where the pair has been. Never cite the gap, its z-score or its half-life as a reason for a direction or a target, and never feed it to the desk as an impact. Reopen only with a new prereg on post-lockbox data (the live page logs a daily forward record).',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -2202,6 +2209,7 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'fx-short-term-fair-value': { n: '~6,670 date clusters (29,100 pair-days, 5 USD pairs), ~333 independent 20-day windows', note: 'Holm-level MDE 0.025/0.048/0.092 vs bars 0.0285/0.056/0.109 (MC-null SE); realised h5 MDE 0.0287 just above its bar' },
   'swing-walk-gamma-centre': { n: '17,909 walk steps, 71 expiry-month clusters', note: 'count-stage MDE 0.089 was optimistic (row-shuffled control SE 0.026 vs real 0.087); real CI reaches the 0.25 bar' },
   'swing-walk-gamma-strike': { n: '17,909 walk steps, 71 expiry-month clusters', note: 'CI upper +0.11 below the 0.25 bar' },
   'swing-walk-strike':       { n: '17,909 walk steps, 71 expiry-month clusters', note: 'CI upper +0.022 below the 0.25 bar' },
