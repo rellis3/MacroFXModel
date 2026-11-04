@@ -43209,11 +43209,19 @@ async function _swingMapData(inst) {
 app.get('/api/swing-map', async (req, res) => {
   const inst = String(req.query.inst || 'GOLD').toUpperCase();
   if (!SWING_MAP_INSTRUMENTS[inst]) return res.status(400).json({ ok: false, error: `unknown instrument ${inst}`, instruments: Object.keys(SWING_MAP_INSTRUMENTS) });
+  // the live price rides on every response, outside the 30-minute cache: the daily bars end at the last New York close,
+  // so without it the walk starts from a price up to a day old (owner, 2026-11-04: walk from 3,930 with gold at 4,065)
+  const withLive = async d => {
+    if (!d?.ok) return d;
+    const cfg = SWING_MAP_INSTRUMENTS[inst];
+    const price = await tickPrice(cfg.oi?.[0] ?? inst, cfg.oanda).catch(() => null);
+    return { ...d, livePrice: Number.isFinite(price) && price > 0 ? { price, at: new Date().toISOString() } : null };   // not `live`: that is the current swing leg
+  };
   const hit = _swingMapCache.get(inst);
-  if (hit && Date.now() - hit.at < 30 * 60e3 && req.query.fresh !== '1') return res.json(hit.data);
+  if (hit && Date.now() - hit.at < 30 * 60e3 && req.query.fresh !== '1') return res.json(await withLive(hit.data));
   try {
     const data = await _swingMapData(inst);
-    res.status(data.ok ? 200 : 503).json(data);
+    res.status(data.ok ? 200 : 503).json(await withLive(data));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/expiry-track/run', requireAuth, async (req, res) => {
