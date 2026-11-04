@@ -70,12 +70,17 @@ const _CF_EXACT = new Set([
   'cb_rate_futures_v1',     // the other central banks' rate futures, pushed from the owner's TWS by scripts/rates_line/refresh_cb_expectations.py
   'xccy_basis_v1',
   'xccy_basis_hist',
+  'options_skew_v1',        // the laptop's IBKR options-skew pull (scripts/rates_line/refresh_options_skew.py)
+  'options_skew_hist',      // one point a day per market and tenor, written by /api/options-skew
   // the research pod (plan §9ab): sessions, the proposal library, the owner's marks on each proposal and the system cards. The owner's feedback cannot be rebuilt.
   'research_pod_sessions',
   'research_pod_library',
   'research_pod_feedback',
   'research_pod_cards',
   'research_pod_threads',
+  // the literature desk (plan §9ah): dossiers on the owner's hypotheses and the paper library (notes per paper read).
+  'research_pod_dossiers',
+  'research_pod_papers',
   'system_reviews',
   'system_index',
   'shadow_trackers',
