@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import {
   DESK_FEEDS, DESK_SKILLS, expandFeeds, findAsOf, toMs, isEmptyPayload, slimPayload, packEntry, buildDeskPack,
   packForSkill, packSummary, upsertIndex, indexRow, shouldBuild, londonDate, allInstruments, instrumentLegs, groupOf,
-  DESK_SUBSETS, DESK_CCYS, packFresh,
+  DESK_SUBSETS, DESK_CCYS, DESK_EXTRA_CCYS, packFresh,
 } from './deskPack.js';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -30,19 +30,23 @@ t('the universe is every instrument the vol forecast covers, each in exactly one
   const src = fs.readFileSync(path.join(root, 'js/volForecastScheduler.js'), 'utf8');
   const block = src.slice(src.indexOf('export const INSTRUMENTS = ['), src.indexOf('];', src.indexOf('export const INSTRUMENTS = [')));
   const names = [...block.matchAll(/name:\s*'([^']+)'/g)].map(m => m[1]);
-  assert.ok(names.length >= 41, String(names.length));
+  assert.ok(names.length >= 51, String(names.length));
+  for (const x of ['GBPNZD', 'AUDNZD', 'AUDCHF', 'NZDCHF', 'CADCHF', 'CHFJPY', 'EURNOK', 'EURSEK', 'USDNOK', 'USDSEK']) assert.equal(groupOf(x), 'fx_crosses', x);
   assert.deepEqual([...allInstruments()].sort(), [...names].sort(), 'js/deskPack.js DESK_UNIVERSE has drifted from the vol forecast\'s INSTRUMENTS');
   assert.equal(new Set(allInstruments()).size, allInstruments().length);
 });
 
-t('instrumentLegs: FX = base and quote; indices = home currency; commodities and crypto = USD; every leg is one of the 8', () => {
+t('instrumentLegs: FX = base and quote; indices = home currency; commodities and crypto = USD; every leg is one of the 8 or NOK/SEK', () => {
   assert.deepEqual(instrumentLegs('EURJPY'), ['EUR', 'JPY']);
   assert.deepEqual(instrumentLegs('DE30'), ['EUR']);
   assert.deepEqual(instrumentLegs('UK100'), ['GBP']);
   assert.deepEqual(instrumentLegs('WHEAT'), ['USD']);
   assert.deepEqual(instrumentLegs('BTCUSD'), ['USD']);
   assert.equal(instrumentLegs('XYZ'), null);
-  for (const i of allInstruments()) for (const c of instrumentLegs(i)) assert.ok(DESK_CCYS.includes(c), `${i} -> ${c}`);
+  assert.deepEqual(instrumentLegs('EURNOK'), ['EUR', 'NOK']);
+  assert.deepEqual(instrumentLegs('USDSEK'), ['USD', 'SEK']);
+  for (const i of allInstruments()) for (const c of instrumentLegs(i)) assert.ok(DESK_CCYS.includes(c) || DESK_EXTRA_CCYS.includes(c), `${i} -> ${c}`);
+  assert.ok(!DESK_EXTRA_CCYS.some(c => DESK_CCYS.includes(c)), 'NOK/SEK are traded, not debated');
   assert.equal(groupOf('GBPJPY'), 'fx_crosses');
 });
 

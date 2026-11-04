@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseRole, selectEvidence, sliceText, buildAnalystPrompt, buildHeadPrompt, feedBlock, shareBudget } from './deskRoles.js';
+import { parseRole, selectEvidence, sliceText, buildAnalystPrompt, buildHeadPrompt, feedBlock, shareBudget, priceLadder, scandiContext, groupData, SCANDI_DIGITS } from './deskRoles.js';
 import { runDesk, runSummary, CAPS } from './deskRun.js';
 import { DESK_SKILLS, expandFeeds, buildDeskPack, allInstruments, DESK_CCYS, DESK_UNIVERSE } from './deskPack.js';
 import { DESK_EVIDENCE } from './deskEvidence.js';
@@ -275,6 +275,25 @@ await t('analyst scorecard (prereg A10): the two managers and the Head read it o
   assert.deepEqual(run.trackRecord, { asOf: '2026-11-03', days: 1, read: ['global_manager', 'currency_manager', 'head_of_desk'] });
   const off = seen(fakeModel()), run2 = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: off.fn, parseJson, now: clock, retryDelayMs: 1 });
   assert.equal(off.prompts.filter(p => p.prompt.includes(title)).length, 0); assert.equal('trackRecord' in run2, false);
+});
+
+await t('NOK/SEK pairs (prereg A13): levels to 4 places, and the bank / oil context read from the pack', () => {
+  const ladder = { oh: { p50: 0.3, p75: 0.5, p90: 0.8 }, ol: { p50: 0.3, p75: 0.5, p90: 0.8 } };
+  assert.equal(priceLadder(11.71234, ladder).open, 11.712, 'the size rule alone gives 3 places at 11.7');
+  assert.equal(priceLadder(11.71234, ladder, SCANDI_DIGITS).open, 11.7123);
+  const p = { skills: {
+    rates_cb: { feeds: { 'world-rates': { data: { banks: { NO: { rate: 4, asOf: '2026-09', change3m: -0.25, change12m: -0.5, cycle: 'cutting' }, SE: { rate: 1.75, asOf: '2026-09', change3m: 0, change12m: -0.75, cycle: 'on hold after cuts' }, US: { rate: 3.75 }, XM: { rate: 2 } } } } } },
+    global_market: { feeds: { 'commodity-fx': { data: { rows: [{ ccy: 'NOK', ok: true, basket: 'Brent crude', asOf: '2026-10', commodity3m: 5, commodity12m: -10, ccy3m: 1, ccy12m: -2, gap12m: -8, corr36m: 0.4, read: 'r' }] } } } },
+    vol_iv: { feeds: { 'vol-forecast/session': { data: { instruments: { EURNOK: { anchor_open: 11.71234 }, BRENT: { anchor_open: 64.1 } } } }, 'vol-forecast': { data: { instruments: { EURNOK: { ladder } } } } } },
+  } };
+  const no = scandiContext(p, 'EURNOK'), se = scandiContext(p, 'USDSEK');
+  assert.equal(no.bank.name, 'Norges Bank'); assert.equal(no.bank.cycle, 'cutting'); assert.equal(no.oil.gap12m, -8); assert.ok(no.brentToday);
+  assert.match(no.note, /EUR leg/);
+  assert.equal(se.bank.name, 'Riksbank'); assert.equal(se.oil, undefined); assert.match(se.note, /USD leg/);
+  assert.equal(scandiContext({ skills: {} }, 'EURSEK'), null);
+  const gd = groupData(p, ['EURNOK', 'EURUSD']);
+  assert.deepEqual(gd.EURNOK.legs, ['EUR', 'NOK']); assert.equal(gd.EURNOK.levels.open, 11.7123); assert.ok(gd.EURNOK.scandi);
+  assert.equal(gd.EURUSD.scandi, undefined);
 });
 
 console.log(`deskRun: ${n} tests passed`);

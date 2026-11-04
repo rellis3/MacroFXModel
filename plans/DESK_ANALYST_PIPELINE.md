@@ -83,20 +83,20 @@ Record, Bot Audit, Honest Harness …) are **not daily feeds**. Their verdicts r
 Book, via the Evidence Clerk.
 
 Universe (owner, 2026-11-03): **every instrument the vol forecast covers**, 41 names (`DESK_UNIVERSE`, kept equal
-to `js/volForecastScheduler.js` INSTRUMENTS by a test):
+to `js/volForecastScheduler.js` INSTRUMENTS by a test); 51 from 2026-11-04 (§9al, prereg A13):
 
 | Group | Instruments | Read from (legs) |
 |---|---|---|
 | FX majors | EURUSD GBPUSD USDJPY AUDUSD NZDUSD USDCAD USDCHF | base and quote currency views |
-| FX crosses | GBPJPY EURGBP EURJPY EURCHF GBPCHF AUDJPY CADJPY EURAUD EURCAD EURNZD GBPAUD GBPCAD AUDCAD NZDCAD NZDJPY | base and quote currency views |
+| FX crosses | GBPJPY EURGBP EURJPY EURCHF GBPCHF AUDJPY CADJPY EURAUD EURCAD EURNZD GBPAUD GBPCAD AUDCAD NZDCAD NZDJPY GBPNZD AUDNZD AUDCHF NZDCHF CADCHF CHFJPY EURNOK EURSEK USDNOK USDSEK | base and quote currency views; NOK/SEK from the EUR/USD leg, the bank, oil and risk (§9al) |
 | Indices | NQ SPX500 US30 US2000 DE30 UK100 | home currency (USD, EUR for DE30, GBP for UK100) + global view |
 | Metals | GOLD SILVER COPPER PLATINUM PALLADIUM | USD + global view |
 | Energy | WTI BRENT NATGAS | USD + global view |
 | Ags | SOYBEAN WHEAT CORN SUGAR | USD + global view |
 | Crypto | BTCUSD | USD + global view |
 
-Every leg is one of the eight currencies, so the currency layer stays at eight debates however wide the asset layer
-gets. Swing map and trade-decision state exist only for a subset (`DESK_SUBSETS`); the other instruments are read
+Every leg is one of the eight currencies or NOK/SEK (traded, not debated, §9al), so the currency layer stays at eight
+debates however wide the asset layer gets. Swing map and trade-decision state exist only for a subset (`DESK_SUBSETS`); the other instruments are read
 from the vol forecast, levels and the currency views.
 
 ### Layer 2: top-down debate
@@ -1346,6 +1346,31 @@ really one dollar bet' before the cap does." Arithmetic on price history, no mod
   carry ranking is today's. FRED days and OANDA days are joined by date, and a US holiday drops that day. Phase 11's
   `/api/desk-risk` (60 sessions, standardised returns, one-σ factor moves) stays as it is; this is the longer-history,
   factor-based read beside it.
+
+## 9al. Ten more markets: the six missing G8 crosses, and NOK and SEK (2026-11-04)
+Owner: "yes add all 6 crosses and NOK SEK too". Prereg amendment **A13** (PRE-RESULTS): the new markets join the book
+from the first run after deploy, the scoring is unchanged, the desk is scored as operated, and H1 is reported with and
+without them as description.
+- **The universe**: GBPNZD, AUDNZD, AUDCHF, NZDCHF, CADCHF, CHFJPY, EURNOK, EURSEK, USDNOK, USDSEK join `fx_crosses`
+  (41 → 51 markets). No new group: every consumer of DESK_UNIVERSE (asset desks, newsletter, terminal) picks them up.
+- **The vol forecast** (`js/volForecastScheduler.js` INSTRUMENTS): the same path as every FX pair, ~800 OANDA daily bars
+  fetched by the scheduler itself, nothing from R2. GBPNZD, AUDNZD, AUDCHF, CADCHF and CHFJPY already have fitted ladder
+  rows (`js/forecastLadderParams.js`, the 26-pair research universe); NZDCHF and the NOK/SEK pairs use the fitted FX
+  class default. No reverting weekly/monthly ladder for those five (no fitted widths; the field is null). The first
+  run after deploy finds the cached forecast missing instruments and recomputes. The calendar feed has no Norwegian
+  or Swedish releases, so their event tag reads EUR/USD releases only.
+- **NOK and SEK are traded, not debated** (`DESK_EXTRA_CCYS` in `js/deskPack.js`). The asset desk reads a NOK/SEK pair
+  from the EUR or USD leg's ruling, Norges Bank or the Riksbank (`world-rates` NO and SE), NOK against Brent
+  (`commodity-fx`, plus Brent's session) and the risk tone. `groupData` attaches this as `scandi` on each NOK/SEK
+  pair, and its levels go to four decimal places. The universe text the Head and the control read carries the same
+  rule. The rates analyst gives the two banks a point when their cycle moves.
+- **Exposure cap** (`js/deskExposure.js`): NOK and SEK legs are counted and capped like the eight (`EXPOSURE_CCYS`).
+- **Keyed by instrument**: OANDA symbols come from INSTRUMENTS (`_dsOanda`, book risk, desk score bars). Also updated:
+  server `PIP_SIZE` / `PRICE_DIGITS`, the daily brief's HMM keys (four of the crosses), the instrument registry and
+  `pylego/instruments.json` (NZDCHF, CADCHF, the four NOK/SEK pairs), the terminal's pair helpers (`legsOf` knows NOK
+  and SEK), flags and bank names. The scorecard and attribution score in u, so no pip handling was needed. Left as
+  they were: the pair selector and the carry-vol board (the 28 G8 pairs), the factor model's dollar and carry legs
+  (the eight), the attribution's risk basket.
 
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 

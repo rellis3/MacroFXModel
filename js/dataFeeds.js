@@ -270,7 +270,7 @@ const HAND_FEEDS = [
   { id: 'book_risk', name: 'Book factor risk and scenarios', provider: 'OANDA daily closes + FRED + policy rates', category: 'desk',
     purpose: 'The desk book broken into dollar, carry, risk-on, commodity and US-rates factors, its VaR/ES and effective bets, and scenarios ("Fed +25bp, oil +10%, VIX to 30") through each market\'s betas (plan §9ak).',
     details: 'js/factorRisk.js + js/scenarioEngine.js; ~1,900 OANDA daily closes per desk market, FRED DGS2/DGS10/VIXCLS, the policy rates; ridge betas on the last 500 common days; declared historical replays.',
-    refresh: 'Data once per London day on first request (41 OANDA calls), saved to KV so a redeploy does not repeat them; results cached per book.', store: 'KV factor_risk_data; _bkrModel, _bkrBrCache (memory)',
+    refresh: 'Data once per London day on first request (51 OANDA calls since prereg A13), saved to KV so a redeploy does not repeat them; results cached per book.', store: 'KV factor_risk_data; _bkrModel, _bkrBrCache (memory)',
     endpoints: ['/api/book-risk', '/api/scenarios', '/api/scenario'], hosts: [] },
   { id: 'world_stress', name: 'World stress strip', provider: 'the boards above', category: 'desk',
     purpose: 'One line across risk flags, credit, funding, basis, EM carry, liquidity, term premium and the rate cycle, each green/amber/red.', details: 'js/marketBoards.js worldStress.', refresh: 'On request.', store: 'none', endpoints: ['/api/world-stress'], hosts: [] },

@@ -4,7 +4,7 @@
  * WHY. The first Railway pack (2026-11-03, 84 of 107 feeds usable) showed the generic cut wasted most of each
  * analyst's budget on series, history arrays, equity curves and document diff segments: vol-forecast alone was
  * 210 KB, with 70 numbers per instrument of which a dozen matter for a morning read. A slice keeps the fields a
- * desk analyst would read and drops the rest, so the budget goes on substance and all 41 instruments fit.
+ * desk analyst would read and drops the rest, so the budget goes on substance and all 51 instruments fit.
  *
  * Every feed without its own slice goes through `slimDefault`, which drops the known noise keys and shortens
  * arrays and strings. A slice never invents or computes a number: it only selects.
@@ -80,7 +80,7 @@ export const SLICES = {
   'vol-forecast/intelligence': d => ({ computed_at: d.computed_at, ranking: (d.cross_asset_vol_ranking ?? []).slice(0, 12),
     instruments: mapObj(d.instruments, i => pick(i, ['vrp', 'iv_term_structure', 'risk_reversal', 'time_to_touch', 'carry_to_vol'])) }),
   'vol-forecast/weekly': d => ({ week_label: d.week_label, is_preview: d.is_preview, instruments: mapObj(d.instruments, i => slimDefault(i, { maxDepth: 2, maxArray: 3 })) }),
-  'daily-read': d => { const day = Object.keys(d.days ?? {}).sort().at(-1); return { updatedAt: d.updatedAt, day, today: slimDefault(d.days?.[day], { maxArray: 41 }), tally: d.tally, tags: d.tags }; },
+  'daily-read': d => { const day = Object.keys(d.days ?? {}).sort().at(-1); return { updatedAt: d.updatedAt, day, today: slimDefault(d.days?.[day], { maxArray: 51 }), tally: d.tally, tags: d.tags }; },
   // A historical fit (turn sizes in sigma, out-of-sample), not a daily read: the typical and the dominant turn per pair.
   'exhaustion-ladder': d => ({ computedAt: d.computedAt, note: 'turn sizes in daily sigma, out-of-sample fit', perPair: mapObj(d.perPair, p => ({
     all: pick(p.ladder?.all?.oos, ['p50', 'p75', 'p90']), dominant: pick(p.ladder?.dominant?.oos, ['p50', 'p75', 'p90']) })) }),

@@ -82,6 +82,21 @@ export const INSTRUMENTS = [
   { name: 'AUDCAD', oandaInstrument: 'AUD_CAD',     ticker: 'AUDCAD=X', assetClass: 'fx'        },
   { name: 'NZDCAD', oandaInstrument: 'NZD_CAD',     ticker: 'NZDCAD=X', assetClass: 'fx'        },
   { name: 'NZDJPY', oandaInstrument: 'NZD_JPY',     ticker: 'NZDJPY=X', assetClass: 'fx'        },
+  // Added 2026-11-04 (owner: "add all 6 crosses and NOK SEK too"; prereg A13) -- the six G8 crosses the
+  // daily forecast still lacked, and Scandinavia. Same path as every FX pair: ~800 OANDA D bars fetched by
+  // this scheduler itself, no R2 history file needed. Ladder widths: GBPNZD, AUDNZD, AUDCHF, CADCHF and CHFJPY
+  // have fitted rows in js/forecastLadderParams.js already (the 26-pair research universe); NZDCHF and the four
+  // NOK/SEK pairs have none, so paramsFor() falls back to the fitted FX class default (no new constants).
+  { name: 'GBPNZD', oandaInstrument: 'GBP_NZD',     ticker: 'GBPNZD=X', assetClass: 'fx'        },
+  { name: 'AUDNZD', oandaInstrument: 'AUD_NZD',     ticker: 'AUDNZD=X', assetClass: 'fx'        },
+  { name: 'AUDCHF', oandaInstrument: 'AUD_CHF',     ticker: 'AUDCHF=X', assetClass: 'fx'        },
+  { name: 'NZDCHF', oandaInstrument: 'NZD_CHF',     ticker: 'NZDCHF=X', assetClass: 'fx'        },
+  { name: 'CADCHF', oandaInstrument: 'CAD_CHF',     ticker: 'CADCHF=X', assetClass: 'fx'        },
+  { name: 'CHFJPY', oandaInstrument: 'CHF_JPY',     ticker: 'CHFJPY=X', assetClass: 'fx'        },
+  { name: 'EURNOK', oandaInstrument: 'EUR_NOK',     ticker: 'EURNOK=X', assetClass: 'fx'        },
+  { name: 'EURSEK', oandaInstrument: 'EUR_SEK',     ticker: 'EURSEK=X', assetClass: 'fx'        },
+  { name: 'USDNOK', oandaInstrument: 'USD_NOK',     ticker: 'NOK=X',    assetClass: 'fx'        },
+  { name: 'USDSEK', oandaInstrument: 'USD_SEK',     ticker: 'SEK=X',    assetClass: 'fx'        },
   // ── Crypto ───────────────────────────────────────────────────────────────────
   // preferYahoo: OANDA's BTC_USD CFD isn't offered on every division (UK retail
   // accounts can't hold crypto CFDs at all), while Yahoo BTC-USD is 24/7 spot.
