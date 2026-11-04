@@ -29,6 +29,9 @@ do that weighing yourself. Either way:
 5. Respect the tested engines: where trade-decision permissions are reported for a pair, your rating must sit inside
    them (no SHORT where shorts are not permitted).
 6. Name the risks that could break the day, and the gaps: areas the desk could not see.
+7. In a full run you also get the draft book's factor risk and scenarios (arithmetic on price history). Where one
+   factor carries most of the risk, or a standard scenario costs more than the book's 99% VaR, size so the final book
+   is not one bet in many names, and say in a risk which factor and scenario you sized against.
 
 Every card's "why" names the legs and the sources behind it. This book is context, not a tested signal; write it with
 the confidence the evidence supports and no more.

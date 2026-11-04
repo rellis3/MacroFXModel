@@ -29,6 +29,8 @@ Work through:
    calibration and a weight shrunk towards 1.0. Say which analysts' records stand out and on how many days, with
    numbers. Under ten days every record is unproven: say so rather than ranking them. It is a record of the desk's own
    analysts, not evidence about markets: never turn it into an impact.
+8. The book's risk (feed book-risk): the latest saved book's factor exposure, VaR, effective bets and scenarios. Say
+   which factor it leaned on and whether it was one bet in many names. It describes yesterday's book, not today's.
 
 Your headline should be the one thing the rest of the desk most needs to remember today. Put feeds that are down in
 "gaps". Impact only where a validated finding gives a direction.

@@ -1268,6 +1268,85 @@ gives more weight to the analysts who have earned it."
 - **The page.** The Desk Terminal's Analytics tab has an "Analyst scorecard" panel: each analyst's days, hit rate
   overall and by conviction, Brier skill, calibration gap, edge, weight with its status, and the rolling-edge sparkline.
 
+## 9ak. Factor exposure of the book and the scenario engine (owner's build list items 2 and 3, 2026-11-04)
+
+The owner: "A scenario engine: 'What if the Fed hikes 25bp, oil +10%, VIX to 30?' … The risk desk and the Head use it
+before sizing, and you can ask it questions too." And: "Factor exposure of the book … This catches 'nine cards that are
+really one dollar bet' before the cap does." Arithmetic on price history, no model call; description, not a forecast.
+
+- **Factors** (`js/factorRisk.js`, pure, tested in `js/factorRisk.test.mjs`). Daily, on common dates, from OANDA closes
+  (17:00 New York days) and FRED:
+  - USD: the equal-weight dollar against EUR, GBP, JPY, AUD, NZD, CAD and CHF, in %.
+  - CARRY: the top three policy-rate currencies less the bottom three, all eight against USD, in %. It is ranked on
+    today's policy rates (`/api/policy-rates`), so the ranking is not point-in-time; it is labelled so.
+  - RISK: the S&P 500's daily return, in %.
+  - COMMOD: WTI and copper, equal weight, in %.
+  - RATES: the change in the US 2-year yield (DGS2), in bp.
+  - Scenario-only drivers: OIL (WTI %), VIX (points, VIXCLS), US10Y (bp, DGS10) and GOLD (%).
+- **Betas.** Each desk market's daily % return is fitted on the five factors over the last 500 common days (about two
+  years). The fit is ridge (λ = 0.01·n on standardised factors), because USD, CARRY and COMMOD are collinear. Every fit
+  carries its n and R².
+- **Units**, the same as Phase 11 (`js/deskRisk.js`): 1 card-σ is one size-1 card moving one daily σ.
+  - A card's position is x = direction × size ÷ σ.
+  - Book P&L = Σ x·r. As a % of gross notional it is Σ x·r ÷ Σ|x|, when each card holds notional in that proportion.
+  - Factor exposure = Σ x·β, also shown per one-σ factor move.
+- **Book risk** (`bookFactorRisk`):
+  - VaR and ES at 95% and 99%, one day: parametric on the covariance (off-diagonals shrunk 10% toward zero) and
+    historical (the book as held over the common days), plus the worst day.
+  - Each card's marginal and component contribution (the shares sum to 1).
+  - The variance split by factor and the stock-specific share.
+  - Effective bets two ways: (Σ|w|)² ÷ w'Cw, as in Phase 11, and the entropy of the risk across principal components
+    (Meucci 2009).
+  - A flag when one factor carries 50% or more of a book of four or more cards, e.g. "9 cards, but 71% of the book's
+    risk is one dollar bet (long the factor)".
+- **Scenarios** (`js/scenarioEngine.js`, tested in the same file).
+  - A shock is a change, or `{ to: level }` for VIX, RATES and US10Y. "VIX to 30" is 30 less the latest VIXCLS close.
+  - Unshocked drivers are filled by the Gaussian conditional expectation on the joint daily covariance (mode
+    `conditional`). Mode `isolated` moves only the named factors; OIL, VIX, US10Y and GOLD still map onto the factors.
+  - Each market moves by Σ β·factor. The output gives the book P&L, each currency's move against the dollar and the
+    worst and best cards.
+  - The standard set: Fed surprise ±25bp (2y ±25bp), oil +10%, VIX to 30, dollar +2%, carry −1.5%, the owner's combo
+    (Fed +25bp, oil +10%, VIX to 30), and a risk-off day (every driver at its average on the worst 5% of S&P days).
+  - Replays use realised moves over windows declared by event: COVID dash for cash (2020-03-06 to 03-19), the June 2022
+    CPI shock and 75bp hike (06-09 to 06-16), SVB (2023-03-08 to 03-13), the yen carry unwind (2024-07-31 to 08-05) and
+    the April 2025 tariff shock (04-02 to 04-08). Markets whose history does not cover a window are listed. BTC's
+    OANDA history does not reach 2020.
+- **Endpoints** (server.js, block "§9aj"):
+  - `GET /api/book-risk?date=&betas=1`: the day's Head book after the cap (today's, else the latest saved). It returns
+    exposure, VaR/ES, concentration, contributors, the standard scenarios' P&L and the replays, plus the prompt text.
+    `betas=1` adds every market's betas, n and R².
+  - `GET /api/scenarios?date=`: the full standard set and the replays.
+  - `POST /api/scenario { shocks, mode?, date?, cards? }`: one scenario on the day's book or on the cards given.
+- **Data and caching.**
+  - About 1,900 OANDA daily closes per market: 41 calls, four at a time, once per London day on first use. The ~7.5
+    years cover the replays.
+  - FRED DGS2, DGS10 and VIXCLS from 2019-06, and the policy rates.
+  - Saved gzipped to KV `factor_risk_data`, so a redeploy does not repeat the OANDA calls. A failed refresh keeps the
+    last good data, labelled stale, and is not retried for 30 minutes.
+  - The model is held in memory; results are cached per book.
+- **The morning run** (`js/deskRun.js` `bookRisk`). After the asset desks rate the book, the server reads the draft
+  (every card at size 1). The three risk voices and the Head get a section "Book factor risk and scenarios on the asset
+  desks' draft" with the exposure, VaR/ES, concentration, the standard scenarios and the replays. The read is saved in
+  `run.debate.bookRisk`. A failure costs the section, not the stage.
+  - Role files: the risk voices name the factor most of the risk rides on and the scenario that hurts most. The Head
+    sizes so the final book is not one bet in many names. The evidence clerk reads the Desk Pack feed `book-risk`, which
+    describes the latest saved book (yesterday's at 06:40).
+  - Prereg amendment A10 records this.
+- **Ask the desk** (`POST /api/desk-ask`). The prompt gains today's book-risk text. A question that names shocks
+  ("Fed hikes 25bp", "oil +10%", "VIX to 30", "dollar down 2%", "S&P −3%", "10y +15bp", "gold +4%";
+  `parseScenarioQuestion`) also gets that scenario run on the book. The read waits at most 25 s for a cold model.
+- **Desk Terminal**, Analytics tab, "Factor risk and scenarios":
+  - the one-bet flag
+  - book σ, VaR and ES (parametric and historical), effective bets and the top factor
+  - factor exposure bars and who carries the risk
+  - the standard scenarios and the replays
+  - a scenario builder: a slider and a number per driver, conditional or "only the factors I move", calling
+    `POST /api/scenario`
+- **Limits.** Linear one-day betas understate crisis co-movement, and big shocks are where they are least reliable. The
+  carry ranking is today's. FRED days and OANDA days are joined by date, and a US holiday drops that day. Phase 11's
+  `/api/desk-risk` (60 sessions, standardised returns, one-σ factor moves) stays as it is; this is the longer-history,
+  factor-based read beside it.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
