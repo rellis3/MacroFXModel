@@ -222,7 +222,7 @@ def stage_run():
     res = {"id": "swing-walk-track", "prereg": "forge/SWING_WALK_TRACK_PREREG.md", "seed": SEED, "B": B,
            "ranAt": datetime.now(timezone.utc).isoformat(timespec="seconds"), "expiries": [SCORE_FROM, LOCKBOX], "bar": BAR,
            "cells": cells, "convergence": conv, "stability": stab, "slices": sl, "slices_bh_pass": n_slice_pass,
-           "verdict": "validated" if any(c["verdict"] == "VALIDATED" for c in cells) else ("null" if all(c["verdict"] == "NULL" for c in cells) else "mixed: see cells")}
+           "verdicts": {c["anchor"]: c["verdict"].lower() for c in cells}}
     json.dump(res, open(os.path.join(OUT, "results.json"), "w"), indent=1)
 
     L = ["# swing-walk-track: results", "",
@@ -256,4 +256,5 @@ def stage_run():
 
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8")
     {"count": stage_count, "run": stage_run}[sys.argv[1] if len(sys.argv) > 1 else "count"]()
