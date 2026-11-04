@@ -174,7 +174,8 @@ export const DESK_FEEDS = [
   F('vol_iv', 'cvol', 3 * D),
   F('vol_iv', 'forecast-path/summary', 3 * D),
   F('vol_iv', 'forecast-path/iv', 3 * D),
-  F('vol_iv', 'exhaustion-ladder', 8 * D),   // a weekly refit (serviceFlags exhaustionLadder)
+  F('vol_iv', 'exhaustion-ladder', 8 * D),
+  F('vol_iv', 'options-skew', 4 * D),           // risk reversals, butterflies, ATM vol (laptop IBKR pull, js/optionsSkew.js)   // a weekly refit (serviceFlags exhaustionLadder)
   F('vol_iv', 'daily-read', 3 * D),
   F('vol_iv', 'today-reads', 1 * D),
   F('options_oi', 'oi-today', 3 * D),

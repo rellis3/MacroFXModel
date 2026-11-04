@@ -53,6 +53,8 @@ export const STORES = {
   cb_rate_futures_v1: R('Central-bank rate futures (IBKR)', 1),
   xccy_basis_v1: R('Cross-currency basis inputs: CME FX futures + spot (IBKR)', 1),
   xccy_basis_hist: R('Cross-currency basis daily history (bp)', 3, { market: false }),
+  options_skew_v1: R('Options skew: risk reversals, butterflies, ATM vol (IBKR)', 1),
+  options_skew_hist: R('Options skew daily history', 3, { market: false }),
   research_pod_sessions: R('Research pod sessions', 8, { market: false }),
   research_pod_library: R('Research pod proposal library', 8, { market: false }),
   research_pod_feedback: R("Research pod: the owner's marks on proposals", 60, { market: false }),
