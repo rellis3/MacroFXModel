@@ -147,6 +147,16 @@ carry work. Correlation to the live OI bots is expected near zero (different hor
 
 ## Amendments
 
+### A1 — 2026-11-05 — POST-HOC (results seen)
+
+- Build fixes made before any prop cell ran: the close-only MAE was first coded as the sum of losing legs and is now
+  min(0, day return) as §3 defines it; the missing-bar count was counting 2008-15 leg-days outside the window (21 of
+  43,003 in-window leg-days are missing).
+- Added one describe-only cell (`posthoc_full_mean.py`): Book A's rows with the mean reset to the full-history Sharpe
+  0.21, because the 2016-26 window shows 0.56. It demotes the reading: edge +6pp and edge EV +0.4% at 1×.
+- THE GATE reads yes on the letter at 0.5× and 1×, but leg (b) does not discriminate (edge EV at the band's low end
+  is +0.05%). The reading is reported with that caveat, as in overnight-hold-toolkit A1.
+
 ## RESULTS
 
 *In `analysis/output/portfolio-book-prop/RESULTS.md`.*

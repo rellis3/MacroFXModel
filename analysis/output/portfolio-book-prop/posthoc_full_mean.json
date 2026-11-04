@@ -1,0 +1,58 @@
+{
+ "mean_window_pct": 0.023100287368802024,
+ "mean_full_sharpe_pct": 0.008612419720594698,
+ "cells": {
+  "0.5": {
+   "book": {
+    "funded": 0.1296,
+    "median_days": 536.0,
+    "ev": -0.143
+   },
+   "zero": {
+    "funded": 0.071,
+    "median_days": 537.0,
+    "ev": -0.358
+   },
+   "book_close_only": {
+    "funded": 0.1298,
+    "median_days": 528.0,
+    "ev": -0.15
+   },
+   "zero_close_only": {
+    "funded": 0.0736,
+    "median_days": 526.0,
+    "ev": -0.366
+   },
+   "edge_pp": 5.86,
+   "edge_ev": 0.215,
+   "edge_pp_close_only": 5.62,
+   "edge_ev_close_only": 0.216
+  },
+  "1": {
+   "book": {
+    "funded": 0.2128,
+    "median_days": 224.5,
+    "ev": 0.498
+   },
+   "zero": {
+    "funded": 0.1546,
+    "median_days": 232.0,
+    "ev": 0.11
+   },
+   "book_close_only": {
+    "funded": 0.3836,
+    "median_days": 288.0,
+    "ev": 1.711
+   },
+   "zero_close_only": {
+    "funded": 0.2938,
+    "median_days": 294.0,
+    "ev": 0.954
+   },
+   "edge_pp": 5.82,
+   "edge_ev": 0.388,
+   "edge_pp_close_only": 8.98,
+   "edge_ev_close_only": 0.757
+  }
+ }
+}

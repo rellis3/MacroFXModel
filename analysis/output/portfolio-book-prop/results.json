@@ -1,0 +1,858 @@
+{
+ "id": "portfolio-book-prop",
+ "seed": 20261104,
+ "paths": 5000,
+ "fee_pct": 0.54,
+ "program": {
+  "name": "FTMO 2-step",
+  "phases": [
+   0.1,
+   0.05
+  ],
+  "max_loss": 0.1,
+  "daily": 0.05,
+  "min_days": 4,
+  "time_limit": null
+ },
+ "books": {
+  "A": {
+   "days": 2763,
+   "mean_daily_pct": 0.023100287368802024,
+   "ci95": [
+    0.0004007919290626131,
+    0.044223411083966685
+   ],
+   "sd_daily_pct": 0.6510377362057702,
+   "worst_mae_pct": -6.375198,
+   "grid": {
+    "0.5": {
+     "book": {
+      "funded": 0.2994,
+      "median_days": 514.0,
+      "payout12m": 3.852,
+      "ev": 0.613,
+      "phase1_fail": 0.0472,
+      "phase1_timeout": 0.541
+     },
+     "zero": {
+      "funded": 0.075,
+      "median_days": 523.0,
+      "payout12m": 2.349,
+      "ev": -0.364,
+      "phase1_fail": 0.1872,
+      "phase1_timeout": 0.6556
+     },
+     "edge_pp": 22.44,
+     "edge_ev": 0.977,
+     "band_low": {
+      "funded": 0.0698,
+      "median_days": 531.0,
+      "payout12m": 2.624,
+      "ev": -0.357,
+      "phase1_fail": 0.165,
+      "phase1_timeout": 0.6832
+     },
+     "band_high": {
+      "funded": 0.6208,
+      "median_days": 459.0,
+      "payout12m": 5.49,
+      "ev": 2.868,
+      "phase1_fail": 0.0122,
+      "phase1_timeout": 0.299
+     },
+     "edge_ev_low": 0.007,
+     "edge_pp_low": -0.52
+    },
+    "1": {
+     "book": {
+      "funded": 0.3312,
+      "median_days": 205.0,
+      "payout12m": 6.21,
+      "ev": 1.517,
+      "phase1_fail": 0.5034,
+      "phase1_timeout": 0.0178
+     },
+     "zero": {
+      "funded": 0.163,
+      "median_days": 227.0,
+      "payout12m": 4.047,
+      "ev": 0.12,
+      "phase1_fail": 0.6706,
+      "phase1_timeout": 0.032
+     },
+     "edge_pp": 16.82,
+     "edge_ev": 1.397,
+     "band_low": {
+      "funded": 0.164,
+      "median_days": 236.5,
+      "payout12m": 4.334,
+      "ev": 0.171,
+      "phase1_fail": 0.6688,
+      "phase1_timeout": 0.0278
+     },
+     "band_high": {
+      "funded": 0.4954,
+      "median_days": 187.0,
+      "payout12m": 8.689,
+      "ev": 3.765,
+      "phase1_fail": 0.354,
+      "phase1_timeout": 0.0076
+     },
+     "edge_ev_low": 0.051,
+     "edge_pp_low": 0.1
+    },
+    "2": {
+     "book": {
+      "funded": 0.014,
+      "median_days": 32.0,
+      "payout12m": 0.53,
+      "ev": -0.533,
+      "phase1_fail": 0.9452,
+      "phase1_timeout": 0.0
+     },
+     "zero": {
+      "funded": 0.006,
+      "median_days": 25.0,
+      "payout12m": 0.377,
+      "ev": -0.538,
+      "phase1_fail": 0.96,
+      "phase1_timeout": 0.0
+     },
+     "edge_pp": 0.8,
+     "edge_ev": 0.005,
+     "band_low": {
+      "funded": 0.005,
+      "median_days": 31.0,
+      "payout12m": 0.0,
+      "ev": -0.54,
+      "phase1_fail": 0.9632,
+      "phase1_timeout": 0.0
+     },
+     "band_high": {
+      "funded": 0.0126,
+      "median_days": 29.0,
+      "payout12m": 0.675,
+      "ev": -0.531,
+      "phase1_fail": 0.9358,
+      "phase1_timeout": 0.0
+     },
+     "edge_ev_low": -0.002,
+     "edge_pp_low": -0.1
+    },
+    "3": {
+     "book": {
+      "funded": 0.0018,
+      "median_days": 14.0,
+      "payout12m": 0.0,
+      "ev": -0.54,
+      "phase1_fail": 0.9834,
+      "phase1_timeout": 0.0
+     },
+     "zero": {
+      "funded": 0.001,
+      "median_days": 11.0,
+      "payout12m": 0.0,
+      "ev": -0.54,
+      "phase1_fail": 0.9894,
+      "phase1_timeout": 0.0
+     },
+     "edge_pp": 0.08,
+     "edge_ev": 0.0,
+     "band_low": {
+      "funded": 0.0006,
+      "median_days": 14.0,
+      "payout12m": 0.0,
+      "ev": -0.54,
+      "phase1_fail": 0.9898,
+      "phase1_timeout": 0.0
+     },
+     "band_high": {
+      "funded": 0.0016,
+      "median_days": 14.0,
+      "payout12m": 0.0,
+      "ev": -0.54,
+      "phase1_fail": 0.981,
+      "phase1_timeout": 0.0
+     },
+     "edge_ev_low": 0.0,
+     "edge_pp_low": -0.04
+    },
+    "5": {
+     "book": {
+      "funded": 0.0,
+      "median_days": null,
+      "payout12m": 0.0,
+      "ev": -0.54,
+      "phase1_fail": 0.9976,
+      "phase1_timeout": 0.0
+     },
+     "zero": {
+      "funded": 0.0,
+      "median_days": null,
+      "payout12m": 0.0,
+      "ev": -0.54,
+      "phase1_fail": 0.9994,
+      "phase1_timeout": 0.0
+     },
+     "edge_pp": 0.0,
+     "edge_ev": 0.0,
+     "band_low": {
+      "funded": 0.0,
+      "median_days": null,
+      "payout12m": 0.0,
+      "ev": -0.54,
+      "phase1_fail": 0.9992,
+      "phase1_timeout": 0.0
+     },
+     "band_high": {
+      "funded": 0.0,
+      "median_days": null,
+      "payout12m": 0.0,
+      "ev": -0.54,
+      "phase1_fail": 0.9984,
+      "phase1_timeout": 0.0
+     },
+     "edge_ev_low": 0.0,
+     "edge_pp_low": 0.0
+    }
+   },
+   "close_only": {
+    "0.5": {
+     "book": {
+      "funded": 0.2984,
+      "median_days": 494.0,
+      "payout12m": 3.986,
+      "ev": 0.649,
+      "phase1_fail": 0.0332,
+      "phase1_timeout": 0.5622
+     },
+     "zero": {
+      "funded": 0.073,
+      "median_days": 525.0,
+      "payout12m": 2.73,
+      "ev": -0.341,
+      "phase1_fail": 0.1254,
+      "phase1_timeout": 0.7182
+     },
+     "edge_pp": 22.54,
+     "edge_ev": 0.99
+    },
+    "1": {
+     "book": {
+      "funded": 0.5778,
+      "median_days": 271.0,
+      "payout12m": 7.514,
+      "ev": 3.802,
+      "phase1_fail": 0.1994,
+      "phase1_timeout": 0.1056
+     },
+     "zero": {
+      "funded": 0.2772,
+      "median_days": 284.5,
+      "payout12m": 4.769,
+      "ev": 0.782,
+      "phase1_fail": 0.4344,
+      "phase1_timeout": 0.1358
+     },
+     "edge_pp": 30.06,
+     "edge_ev": 3.02
+    },
+    "2": {
+     "book": {
+      "funded": 0.4344,
+      "median_days": 82.0,
+      "payout12m": 10.768,
+      "ev": 4.138,
+      "phase1_fail": 0.4164,
+      "phase1_timeout": 0.0
+     },
+     "zero": {
+      "funded": 0.294,
+      "median_days": 82.0,
+      "payout12m": 7.679,
+      "ev": 1.718,
+      "phase1_fail": 0.5452,
+      "phase1_timeout": 0.0
+     },
+     "edge_pp": 14.04,
+     "edge_ev": 2.42
+    },
+    "3": {
+     "book": {
+      "funded": 0.3004,
+      "median_days": 36.0,
+      "payout12m": 7.736,
+      "ev": 1.784,
+      "phase1_fail": 0.5408,
+      "phase1_timeout": 0.0
+     },
+     "zero": {
+      "funded": 0.226,
+      "median_days": 39.0,
+      "payout12m": 5.492,
+      "ev": 0.701,
+      "phase1_fail": 0.608,
+      "phase1_timeout": 0.0
+     },
+     "edge_pp": 7.44,
+     "edge_ev": 1.083
+    },
+    "5": {
+     "book": {
+      "funded": 0.216,
+      "median_days": 16.0,
+      "payout12m": 3.038,
+      "ev": 0.116,
+      "phase1_fail": 0.5952,
+      "phase1_timeout": 0.0
+     },
+     "zero": {
+      "funded": 0.18,
+      "median_days": 16.0,
+      "payout12m": 2.512,
+      "ev": -0.088,
+      "phase1_fail": 0.6384,
+      "phase1_timeout": 0.0
+     },
+     "edge_pp": 3.6,
+     "edge_ev": 0.204
+    }
+   },
+   "block21": {
+    "0.5": {
+     "book": {
+      "funded": 0.275,
+      "median_days": 520.0,
+      "payout12m": 3.66,
+      "ev": 0.466,
+      "phase1_fail": 0.0312,
+      "phase1_timeout": 0.5862
+     },
+     "zero": {
+      "funded": 0.065,
+      "median_days": 517.0,
+      "payout12m": 1.935,
+      "ev": -0.414,
+      "phase1_fail": 0.1574,
+      "phase1_timeout": 0.6962
+     },
+     "edge_pp": 21.0,
+     "edge_ev": 0.881
+    },
+    "1": {
+     "book": {
+      "funded": 0.2928,
+      "median_days": 236.5,
+      "payout12m": 5.515,
+      "ev": 1.075,
+      "phase1_fail": 0.5214,
+      "phase1_timeout": 0.0284
+     },
+     "zero": {
+      "funded": 0.1346,
+      "median_days": 229.0,
+      "payout12m": 3.837,
+      "ev": -0.024,
+      "phase1_fail": 0.6894,
+      "phase1_timeout": 0.0344
+     },
+     "edge_pp": 15.82,
+     "edge_ev": 1.098
+    },
+    "2": {
+     "book": {
+      "funded": 0.0142,
+      "median_days": 33.0,
+      "payout12m": 0.378,
+      "ev": -0.535,
+      "phase1_fail": 0.937,
+      "phase1_timeout": 0.0
+     },
+     "zero": {
+      "funded": 0.0072,
+      "median_days": 30.5,
+      "payout12m": 0.006,
+      "ev": -0.54,
+      "phase1_fail": 0.9564,
+      "phase1_timeout": 0.0
+     },
+     "edge_pp": 0.7,
+     "edge_ev": 0.005
+    }
+   },
+   "halves": {
+    "2016-2020": {
+     "0.5": {
+      "book": {
+       "funded": 0.1936,
+       "median_days": 504.0,
+       "payout12m": 3.317,
+       "ev": 0.102,
+       "phase1_fail": 0.0972,
+       "phase1_timeout": 0.607
+      },
+      "zero": {
+       "funded": 0.081,
+       "median_days": 510.0,
+       "payout12m": 2.477,
+       "ev": -0.339,
+       "phase1_fail": 0.1868,
+       "phase1_timeout": 0.6398
+      },
+      "edge_pp": 11.26,
+      "edge_ev": 0.442
+     },
+     "1": {
+      "book": {
+       "funded": 0.331,
+       "median_days": 237.0,
+       "payout12m": 5.844,
+       "ev": 1.394,
+       "phase1_fail": 0.4622,
+       "phase1_timeout": 0.044
+      },
+      "zero": {
+       "funded": 0.2154,
+       "median_days": 234.0,
+       "payout12m": 4.64,
+       "ev": 0.459,
+       "phase1_fail": 0.576,
+       "phase1_timeout": 0.0448
+      },
+      "edge_pp": 11.56,
+      "edge_ev": 0.935
+     },
+     "2": {
+      "book": {
+       "funded": 0.0166,
+       "median_days": 30.0,
+       "payout12m": 0.993,
+       "ev": -0.524,
+       "phase1_fail": 0.9308,
+       "phase1_timeout": 0.0
+      },
+      "zero": {
+       "funded": 0.0126,
+       "median_days": 32.0,
+       "payout12m": 0.45,
+       "ev": -0.534,
+       "phase1_fail": 0.9386,
+       "phase1_timeout": 0.0
+      },
+      "edge_pp": 0.4,
+      "edge_ev": 0.011
+     },
+     "3": {
+      "book": {
+       "funded": 0.0004,
+       "median_days": 21.5,
+       "payout12m": 0.0,
+       "ev": -0.54,
+       "phase1_fail": 0.9858,
+       "phase1_timeout": 0.0
+      },
+      "zero": {
+       "funded": 0.0008,
+       "median_days": 10.5,
+       "payout12m": 0.0,
+       "ev": -0.54,
+       "phase1_fail": 0.9856,
+       "phase1_timeout": 0.0
+      },
+      "edge_pp": -0.04,
+      "edge_ev": 0.0
+     },
+     "5": {
+      "book": {
+       "funded": 0.0,
+       "median_days": null,
+       "payout12m": 0.0,
+       "ev": -0.54,
+       "phase1_fail": 0.998,
+       "phase1_timeout": 0.0
+      },
+      "zero": {
+       "funded": 0.0,
+       "median_days": null,
+       "payout12m": 0.0,
+       "ev": -0.54,
+       "phase1_fail": 0.9982,
+       "phase1_timeout": 0.0
+      },
+      "edge_pp": 0.0,
+      "edge_ev": 0.0
+     }
+    },
+    "2021-2026": {
+     "0.5": {
+      "book": {
+       "funded": 0.416,
+       "median_days": 496.0,
+       "payout12m": 4.395,
+       "ev": 1.288,
+       "phase1_fail": 0.0234,
+       "phase1_timeout": 0.469
+      },
+      "zero": {
+       "funded": 0.062,
+       "median_days": 528.5,
+       "payout12m": 2.481,
+       "ev": -0.386,
+       "phase1_fail": 0.1716,
+       "phase1_timeout": 0.6842
+      },
+      "edge_pp": 35.4,
+      "edge_ev": 1.674
+     },
+     "1": {
+      "book": {
+       "funded": 0.3014,
+       "median_days": 196.0,
+       "payout12m": 6.421,
+       "ev": 1.395,
+       "phase1_fail": 0.5278,
+       "phase1_timeout": 0.0096
+      },
+      "zero": {
+       "funded": 0.119,
+       "median_days": 224.0,
+       "payout12m": 3.631,
+       "ev": -0.108,
+       "phase1_fail": 0.7272,
+       "phase1_timeout": 0.0218
+      },
+      "edge_pp": 18.24,
+      "edge_ev": 1.503
+     },
+     "2": {
+      "book": {
+       "funded": 0.0066,
+       "median_days": 25.0,
+       "payout12m": 1.056,
+       "ev": -0.533,
+       "phase1_fail": 0.9552,
+       "phase1_timeout": 0.0
+      },
+      "zero": {
+       "funded": 0.0036,
+       "median_days": 29.0,
+       "payout12m": 0.708,
+       "ev": -0.537,
+       "phase1_fail": 0.971,
+       "phase1_timeout": 0.0
+      },
+      "edge_pp": 0.3,
+      "edge_ev": 0.004
+     },
+     "3": {
+      "book": {
+       "funded": 0.0008,
+       "median_days": 18.0,
+       "payout12m": 0.0,
+       "ev": -0.54,
+       "phase1_fail": 0.9912,
+       "phase1_timeout": 0.0
+      },
+      "zero": {
+       "funded": 0.0002,
+       "median_days": 24.0,
+       "payout12m": 0.0,
+       "ev": -0.54,
+       "phase1_fail": 0.9936,
+       "phase1_timeout": 0.0
+      },
+      "edge_pp": 0.06,
+      "edge_ev": 0.0
+     },
+     "5": {
+      "book": {
+       "funded": 0.0,
+       "median_days": null,
+       "payout12m": 0.0,
+       "ev": -0.54,
+       "phase1_fail": 0.9998,
+       "phase1_timeout": 0.0
+      },
+      "zero": {
+       "funded": 0.0,
+       "median_days": null,
+       "payout12m": 0.0,
+       "ev": -0.54,
+       "phase1_fail": 0.9998,
+       "phase1_timeout": 0.0
+      },
+      "edge_pp": 0.0,
+      "edge_ev": 0.0
+     }
+    }
+   },
+   "mean_scaled_k1": {
+    "2": {
+     "sharpe": 1.13,
+     "edge_pp": 33.68,
+     "edge_ev": 3.593,
+     "funded": 0.487,
+     "zero": 0.1502
+    },
+    "3": {
+     "sharpe": 1.69,
+     "edge_pp": 46.82,
+     "edge_ev": 6.798,
+     "funded": 0.6274,
+     "zero": 0.1592
+    },
+    "4": {
+     "sharpe": 2.25,
+     "edge_pp": 54.78,
+     "edge_ev": 9.839,
+     "funded": 0.7022,
+     "zero": 0.1544
+    },
+    "6": {
+     "sharpe": 3.38,
+     "edge_pp": 63.12,
+     "edge_ev": 16.613,
+     "funded": 0.7858,
+     "zero": 0.1546
+    }
+   }
+  },
+  "B": {
+   "days": 2763,
+   "mean_daily_pct": 0.03601236228736881,
+   "ci95": [
+    0.008103842897213177,
+    0.060853064531306504
+   ],
+   "sd_daily_pct": 0.7432400564149696,
+   "worst_mae_pct": -16.106996,
+   "grid": {
+    "0.5": {
+     "book": {
+      "funded": 0.4474,
+      "median_days": 435.0,
+      "payout12m": 5.139,
+      "ev": 1.759,
+      "phase1_fail": 0.2236,
+      "phase1_timeout": 0.2146
+     },
+     "zero": {
+      "funded": 0.0956,
+      "median_days": 507.5,
+      "payout12m": 2.83,
+      "ev": -0.269,
+      "phase1_fail": 0.353,
+      "phase1_timeout": 0.4504
+     },
+     "edge_pp": 35.18,
+     "edge_ev": 2.029,
+     "band_low": {
+      "funded": 0.148,
+      "median_days": 498.5,
+      "payout12m": 3.397,
+      "ev": -0.037,
+      "phase1_fail": 0.3126,
+      "phase1_timeout": 0.4262
+     },
+     "band_high": {
+      "funded": 0.6984,
+      "median_days": 350.0,
+      "payout12m": 7.024,
+      "ev": 4.365,
+      "phase1_fail": 0.1592,
+      "phase1_timeout": 0.0682
+     },
+     "edge_ev_low": 0.232,
+     "edge_pp_low": 5.24
+    },
+    "1": {
+     "book": {
+      "funded": 0.326,
+      "median_days": 152.0,
+      "payout12m": 7.618,
+      "ev": 1.943,
+      "phase1_fail": 0.5272,
+      "phase1_timeout": 0.001
+     },
+     "zero": {
+      "funded": 0.178,
+      "median_days": 196.0,
+      "payout12m": 4.609,
+      "ev": 0.28,
+      "phase1_fail": 0.6774,
+      "phase1_timeout": 0.0038
+     },
+     "edge_pp": 14.8,
+     "edge_ev": 1.663,
+     "band_low": {
+      "funded": 0.2054,
+      "median_days": 191.0,
+      "payout12m": 5.194,
+      "ev": 0.527,
+      "phase1_fail": 0.6466,
+      "phase1_timeout": 0.0048
+     },
+     "band_high": {
+      "funded": 0.418,
+      "median_days": 129.0,
+      "payout12m": 10.201,
+      "ev": 3.724,
+      "phase1_fail": 0.431,
+      "phase1_timeout": 0.0
+     },
+     "edge_ev_low": 0.246,
+     "edge_pp_low": 2.74
+    },
+    "2": {
+     "book": {
+      "funded": 0.0912,
+      "median_days": 41.0,
+      "payout12m": 2.714,
+      "ev": -0.293,
+      "phase1_fail": 0.7968,
+      "phase1_timeout": 0.0
+     },
+     "zero": {
+      "funded": 0.0512,
+      "median_days": 44.0,
+      "payout12m": 1.995,
+      "ev": -0.438,
+      "phase1_fail": 0.8578,
+      "phase1_timeout": 0.0
+     },
+     "edge_pp": 4.0,
+     "edge_ev": 0.145,
+     "band_low": {
+      "funded": 0.0602,
+      "median_days": 44.0,
+      "payout12m": 2.482,
+      "ev": -0.391,
+      "phase1_fail": 0.8408,
+      "phase1_timeout": 0.0
+     },
+     "band_high": {
+      "funded": 0.1224,
+      "median_days": 38.0,
+      "payout12m": 3.325,
+      "ev": -0.133,
+      "phase1_fail": 0.74,
+      "phase1_timeout": 0.0
+     },
+     "edge_ev_low": 0.047,
+     "edge_pp_low": 0.9
+    },
+    "3": {
+     "book": {
+      "funded": 0.0166,
+      "median_days": 18.0,
+      "payout12m": 0.02,
+      "ev": -0.54,
+      "phase1_fail": 0.9348,
+      "phase1_timeout": 0.0
+     },
+     "zero": {
+      "funded": 0.0072,
+      "median_days": 19.5,
+      "payout12m": 0.315,
+      "ev": -0.538,
+      "phase1_fail": 0.9586,
+      "phase1_timeout": 0.0
+     },
+     "edge_pp": 0.94,
+     "edge_ev": -0.002,
+     "band_low": {
+      "funded": 0.0094,
+      "median_days": 20.0,
+      "payout12m": 0.021,
+      "ev": -0.54,
+      "phase1_fail": 0.9528,
+      "phase1_timeout": 0.0
+     },
+     "band_high": {
+      "funded": 0.0256,
+      "median_days": 19.0,
+      "payout12m": 0.168,
+      "ev": -0.536,
+      "phase1_fail": 0.912,
+      "phase1_timeout": 0.0
+     },
+     "edge_ev_low": -0.002,
+     "edge_pp_low": 0.22
+    },
+    "5": {
+     "book": {
+      "funded": 0.001,
+      "median_days": 11.0,
+      "payout12m": 0.0,
+      "ev": -0.54,
+      "phase1_fail": 0.9802,
+      "phase1_timeout": 0.0
+     },
+     "zero": {
+      "funded": 0.0002,
+      "median_days": 8.0,
+      "payout12m": 0.0,
+      "ev": -0.54,
+      "phase1_fail": 0.9916,
+      "phase1_timeout": 0.0
+     },
+     "edge_pp": 0.08,
+     "edge_ev": 0.0,
+     "band_low": {
+      "funded": 0.0002,
+      "median_days": 11.0,
+      "payout12m": 0.0,
+      "ev": -0.54,
+      "phase1_fail": 0.9912,
+      "phase1_timeout": 0.0
+     },
+     "band_high": {
+      "funded": 0.0032,
+      "median_days": 10.5,
+      "payout12m": 0.0,
+      "ev": -0.54,
+      "phase1_fail": 0.9734,
+      "phase1_timeout": 0.0
+     },
+     "edge_ev_low": 0.0,
+     "edge_pp_low": 0.0
+    }
+   }
+  }
+ },
+ "gate": {
+  "cells": [
+   {
+    "k": 0.5,
+    "a_edge_ge_5pp": true,
+    "b_edge_ev_low_gt_0": true,
+    "c_halves": true
+   },
+   {
+    "k": 1.0,
+    "a_edge_ge_5pp": true,
+    "b_edge_ev_low_gt_0": true,
+    "c_halves": true
+   },
+   {
+    "k": 2.0,
+    "a_edge_ge_5pp": false,
+    "b_edge_ev_low_gt_0": false,
+    "c_halves": true
+   },
+   {
+    "k": 3.0,
+    "a_edge_ge_5pp": false,
+    "b_edge_ev_low_gt_0": false,
+    "c_halves": false
+   },
+   {
+    "k": 5.0,
+    "a_edge_ge_5pp": false,
+    "b_edge_ev_low_gt_0": false,
+    "c_halves": false
+   }
+  ],
+  "reads_yes": true
+ }
+}

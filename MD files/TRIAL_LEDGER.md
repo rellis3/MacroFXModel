@@ -14,7 +14,7 @@ Generated 2026-11-04.
 | validated | 49 |
 | null | 157 |
 | underpowered | 72 |
-| context (base rates, descriptions: not counted as tests) | 45 |
+| context (base rates, descriptions: not counted as tests) | 46 |
 | pre-registrations with no banked verdict (below) | 87 |
 
 **What the count says (Lesson 02 §05).** If none of the 278 claims were real, tests at the usual 5% size would still pass
@@ -350,6 +350,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-04 | swing-walk-max-pain | positioning | null | forge/SWING_WALK_TRACK_PREREG.md |
 | 2026-11-04 | swing-walk-oi-centre | positioning | null | forge/SWING_WALK_TRACK_PREREG.md |
 | 2026-11-04 | swing-walk-strike | positioning | null | forge/SWING_WALK_TRACK_PREREG.md |
+| 2026-11-05 | portfolio-book-prop | price | context | forge/PORTFOLIO_BOOK_PROP_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 

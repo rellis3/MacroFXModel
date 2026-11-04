@@ -1,0 +1,58 @@
+{
+ "id": "portfolio-book-prop",
+ "ranAt": "2026-11-04T23:50:43.538Z",
+ "window": {
+  "from": "2016-01-04",
+  "to": "2026-08-21"
+ },
+ "books": {
+  "A": {
+   "weights": {
+    "S1g": 1,
+    "S2": 1,
+    "S3g": 1
+   },
+   "days": 2763,
+   "reconCorr": 0.9978,
+   "reconPass": true,
+   "legDays": 43003,
+   "missingBar": 21,
+   "window": {
+    "sharpe": 0.563,
+    "cagrPct": 5.43,
+    "volPct": 10.34,
+    "maxDdPct": 11.57
+   },
+   "meanDailyPct": 0.0231,
+   "sdDailyPct": 0.651,
+   "maeMedianPct": -1.4114,
+   "maeWorstPct": -6.375,
+   "retWorstPct": -4.435,
+   "trades": 1303
+  },
+  "B": {
+   "weights": {
+    "S1g": 1,
+    "S2": 1,
+    "S3g": 1,
+    "S5g": 1
+   },
+   "days": 2763,
+   "reconCorr": 0.7891,
+   "reconPass": false,
+   "legDays": 43003,
+   "missingBar": 21,
+   "window": {
+    "sharpe": 0.769,
+    "cagrPct": 8.72,
+    "volPct": 11.8,
+    "maxDdPct": 18.14
+   },
+   "meanDailyPct": 0.03601,
+   "sdDailyPct": 0.7432,
+   "maeMedianPct": -1.0237,
+   "maeWorstPct": -16.107,
+   "retWorstPct": -14.541
+  }
+ }
+}
