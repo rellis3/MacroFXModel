@@ -301,6 +301,7 @@ import * as P from './js/atlasPosition.js';
 import { buildNewsletter, eventNote, flagProximity, familyOf } from './js/newsletter.js';
 import { releaseNewsletterV3 } from './js/newsletterV3.js';
 import { composeTerminal, worldPaths } from './js/newsletterTerminal.js';
+import { composePicto, withTitle } from './js/newsletterPicto.js';
 import { worldEconomies } from './js/worldEconomies.js';
 import { policyWeek } from './js/policyWeek.js';
 import { closeMove, dayWord } from './js/closeBasis.js';
@@ -717,7 +718,7 @@ async function showEvening() {
 }
 async function drawPast() {
   const el = $('nlPast'); if (!el) return; await loadArchive();
-  el.innerHTML = NL_ARCH.length ? NL_ARCH.slice(0, 14).map(i => `<div class="rw"><span><b>${esc(i.kind === 'weekly' ? 'Weekly' : i.kind === 'desk' ? 'Desk magazine' : i.kind === 'desk-brief' ? 'Desk brief' : i.kind === 'desk-evening' ? 'Desk evening' : i.kind === 'desk-terminal' ? 'Terminal edition' : 'Daily')} · ${esc(i.date)}</b><small>${esc(i.subject)}${i.score ? ' · ' + esc(`median day ${i.score.median}x the expected size, ${i.score.pastShare}% past it`) : i.kind === 'daily' ? ' · not scored yet' : ''}</small></span><span style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn" href="/api/newsletter/issue?id=${encodeURIComponent(i.id)}" target="_blank" rel="noopener">Open</a><button class="btn" data-tg="${esc(i.id)}">Send to Telegram</button></span></div>`).join('') : '<p class="note">Nothing saved yet. Build an issue and it is saved here automatically.</p>';
+  el.innerHTML = NL_ARCH.length ? NL_ARCH.slice(0, 14).map(i => `<div class="rw"><span><b>${esc(i.kind === 'weekly' ? 'Weekly' : i.kind === 'desk' ? 'Desk magazine' : i.kind === 'desk-brief' ? 'Desk brief' : i.kind === 'desk-evening' ? 'Desk evening' : i.kind === 'desk-terminal' ? 'Terminal edition' : i.kind === 'desk-picto' ? 'Pictograph' : 'Daily')} · ${esc(i.date)}</b><small>${esc(i.subject)}${i.score ? ' · ' + esc(`median day ${i.score.median}x the expected size, ${i.score.pastShare}% past it`) : i.kind === 'daily' ? ' · not scored yet' : ''}</small></span><span style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn" href="/api/newsletter/issue?id=${encodeURIComponent(i.id)}" target="_blank" rel="noopener">Open</a><button class="btn" data-tg="${esc(i.id)}">Send to Telegram</button></span></div>`).join('') : '<p class="note">Nothing saved yet. Build an issue and it is saved here automatically.</p>';
   el.querySelectorAll('[data-tg]').forEach(b => { b.onclick = async () => { b.disabled = true; const r = await J('/api/newsletter/telegram', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: b.getAttribute('data-tg') }) }); $('nlStatus').textContent = r?.ok ? 'Sent to Telegram.' : (r?.error ?? 'Could not send.'); b.disabled = false; }; });
 }
 // A newsletter never generates a brief. Only the Generate button does (it costs a model call, and the owner decides when). If the stored brief is old, the issue is built from it and says so.
@@ -763,23 +764,28 @@ async function buildIssue(kind) {
     // The desk edition (plans/DESK_ANALYST_PIPELINE.md §9h): this same issue plus the desk's pages and the desk writer's cover, built only when
     // today's desk run exists. It is saved beside the daily as kind "desk" and shown side by side; the daily itself is unchanged.
     // Two desk formats (owner, 2026-11-03): the desk magazine (an issue built around the desk, top-down) and the desk brief (the cover and one read).
-    let outD = null, outB = null, outT = null;
+    let outD = null, outB = null, outT = null, outP = null;
     if (!weekly) { try { const run = await J('/api/desk-run'); if (run?.ok && run.date === today && run.head?.ok) {
       // last night's score and evening review, for the "Yesterday, reviewed" page (never today's: today is not scored until 21:10)
       const [ds, dr] = await Promise.all([J('/api/desk-score').catch(() => null), J('/api/desk-score/record').catch(() => null)]);
       const deskReview = ds?.ok && ds.score?.date < today ? { score: ds.score, reflection: ds.reflection, movers: ds.movers, record: dr?.ok ? dr.record : null } : null;
       outD = releaseNewsletterV3({ ...base, desk: run, deskMode: 'magazine', deskReview }); outB = releaseNewsletterV3({ ...base, desk: run, deskMode: 'brief', deskReview });
-      try { outT = await buildTerminal(run, deskReview); } catch (e) { console.warn('[atlas newsletter] terminal edition failed:', e.message); } } } catch (e) { console.warn('[atlas newsletter] desk edition failed:', e.message); } }
+      try { ({ term: outT, picto: outP } = await buildTerminal(run, deskReview, base)); } catch (e) { console.warn('[atlas newsletter] terminal edition failed:', e.message); } } } catch (e) { console.warn('[atlas newsletter] desk edition failed:', e.message); } }
+    // the page title is the file name a browser offers when saving to PDF (owner, 2026-11-04): the date first, and "brief" on the short one
+    const named = (o, name) => (o ? { ...o, html: withTitle(o.html, `${today} ${name}`, esc) } : o);
+    out = named(out, weekly ? 'The Chain weekly' : 'The Chain daily'); outD = named(outD, 'Desk magazine'); outB = named(outB, 'Desk brief'); outT = named(outT, 'Terminal edition'); outP = named(outP, 'Desk brief pictograph');
+    if (out2 && !outD) out2 = named(out2, 'The Chain daily (previous layout)');
     showNl(out, kind, outD ?? out2, outD ? 'Desk magazine' : 'Previous layout');
-    if (outD) showDeskButtons(outD, outB, outT);
+    if (outD) showDeskButtons(outD, outB, outT, outP);
     st.textContent = `Built: ${out.subject}. Saving…`;
     const sv = await J('/api/newsletter/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject: out.subject, html: out.html, text: out.text, snapshot: snap }) });
     let svD = null;
     if (outD) svD = await J('/api/newsletter/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject: outD.subject, html: outD.html, text: outD.text, snapshot: { ...snap, kind: 'desk' } }) });
     if (outB) await J('/api/newsletter/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject: outB.subject, html: outB.html, text: outB.text, snapshot: { ...snap, kind: 'desk-brief' } }) }).catch(() => null);
     if (outT) await J('/api/newsletter/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject: outT.subject, html: outT.html, text: outT.text, snapshot: { ...snap, kind: 'desk-terminal' } }) }).catch(() => null);
+    if (outP) await J('/api/newsletter/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject: outP.subject, html: outP.html, text: outP.text, snapshot: { ...snap, kind: 'desk-picto' } }) }).catch(() => null);
     st.textContent = (sv?.ok ? `Built and saved: ${out.subject}` : `Built, but not saved to the archive (${sv?.error ?? 'no response'}): ${out.subject}`)
-      + (outD ? (svD?.ok ? ` · desk magazine, desk brief${outT ? ' and terminal edition' : ''} saved beside it` : ` · desk edition built but not saved (${svD?.error ?? 'no response'})`) : ' · no desk run today, so no desk edition (Desk Run → Run now)');
+      + (outD ? (svD?.ok ? ` · desk magazine, desk brief${outT ? ', terminal edition' : ''}${outP ? ' and pictograph' : ''} saved beside it` : ` · desk edition built but not saved (${svD?.error ?? 'no response'})`) : ' · no desk run today, so no desk edition (Desk Run → Run now)');
     drawPast();
   } catch (e) { st.textContent = 'Could not build the newsletter: ' + e.message; console.error('[atlas newsletter]', e); }
   finally { $('nlBuild').disabled = $('nlBuildW').disabled = false; }
@@ -788,7 +794,7 @@ async function buildIssue(kind) {
 // The Terminal edition (owner, 2026-11-03): the same desk run and review in the Desk Terminal's look. The world map's
 // paths are computed here with d3 and the world atlas (loaded on first use), so the saved issue is static SVG.
 const loadScript = src => new Promise((ok, no) => { if ([...document.scripts].some(x => x.src === src)) return ok(); const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = () => no(new Error(`could not load ${src}`)); document.head.append(el); });
-async function buildTerminal(run, deskReview) {
+async function buildTerminal(run, deskReview, base = {}) {
   let map = null;
   try {
     await loadScript('https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js'); await loadScript('https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js');
@@ -796,17 +802,21 @@ async function buildTerminal(run, deskReview) {
     map = worldPaths(window.d3, window.topojson, topo); const rk = run.debate?.currency?.view?.ranking; map.arc = rk?.length >= 2 ? map.arc(rk[0], rk.at(-1)) : null;
   } catch (e) { console.warn('[atlas newsletter] terminal map skipped:', e.message); }
   const [pr, ms, nw, ws] = await Promise.all([J('/api/policy-rates'), J('/api/macro-scorecard'), J('/api/desk-news?hours=16&tier=1'), J('/api/world-stress')]);
-  return composeTerminal({ run, review: deskReview, rates: Object.fromEntries(Object.entries(pr?.rates ?? {}).map(([k, v]) => [k, v.rate])), cb: ms?.cbSentiment ?? {}, map, news: nw?.ok ? nw.items : [], stress: ws?.ok ? ws : null }, { esc });
+  const term = composeTerminal({ run, review: deskReview, rates: Object.fromEntries(Object.entries(pr?.rates ?? {}).map(([k, v]) => [k, v.rate])), cb: ms?.cbSentiment ?? {}, map, news: nw?.ok ? nw.items : [], stress: ws?.ok ? ws : null }, { esc });
+  // the pictograph (owner, 2026-11-04): the desk brief on one hand-drawn landscape page, from the same run, map and stress reading
+  let picto = null; try { picto = composePicto({ run, base, stress: ws?.ok ? ws : null, map }, { esc }); } catch (e) { console.warn('[atlas newsletter] pictograph failed:', e.message); }
+  return { term, picto };
 }
 // The two desk formats, one button each: open the page, or open it and print to PDF.
-function showDeskButtons(mag, brief, term = null) {
+function showDeskButtons(mag, brief, term = null, picto = null) {
   const open = (o, print) => { const u = URL.createObjectURL(new Blob([o.html], { type: 'text/html' })), w = window.open(u, '_blank');
     if (!w) { $('nlStatus').textContent = 'Pop-up blocked: allow pop-ups for this page.'; return; }
     if (print) w.addEventListener('load', () => setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 600)); };
-  $('nlOut').insertAdjacentHTML('afterbegin', `<div class="chips" style="margin:12px 0 4px;align-items:center"><b style="font-size:12px;margin-right:4px">Desk editions</b><button class="btn" id="dkMag">📰 Desk magazine</button><button class="btn" id="dkMagP">PDF</button>${brief ? '<button class="btn" id="dkBr">⚡ Desk brief</button><button class="btn" id="dkBrP">PDF</button>' : ''}${term ? '<button class="btn" id="dkTm">🛰 Terminal edition</button><button class="btn" id="dkTmP">PDF</button>' : ''}</div>`);
+  $('nlOut').insertAdjacentHTML('afterbegin', `<div class="chips" style="margin:12px 0 4px;align-items:center"><b style="font-size:12px;margin-right:4px">Desk editions</b><button class="btn" id="dkMag">📰 Desk magazine</button><button class="btn" id="dkMagP">PDF</button>${brief ? '<button class="btn" id="dkBr">⚡ Desk brief</button><button class="btn" id="dkBrP">PDF</button>' : ''}${term ? '<button class="btn" id="dkTm">🛰 Terminal edition</button><button class="btn" id="dkTmP">PDF</button>' : ''}${picto ? '<button class="btn" id="dkPc">✏️ Pictograph</button><button class="btn" id="dkPcP">PDF</button>' : ''}</div>`);
   $('dkMag').onclick = () => open(mag, false); $('dkMagP').onclick = () => open(mag, true);
   if (brief) { $('dkBr').onclick = () => open(brief, false); $('dkBrP').onclick = () => open(brief, true); }
   if (term) { $('dkTm').onclick = () => open(term, false); $('dkTmP').onclick = () => open(term, true); }
+  if (picto) { $('dkPc').onclick = () => open(picto, false); $('dkPcP').onclick = () => { open(picto, true); $('nlStatus').textContent = 'The pictograph is one landscape A4 page: in the print window choose Save as PDF and turn on Background graphics.'; }; }
   // Phase 16: the claims check of today's desk edition, before it is shared
   fetch('/api/desk-claims', { cache: 'no-store' }).then(r => r.json()).then(c => {
     if (!c?.ok) return;
