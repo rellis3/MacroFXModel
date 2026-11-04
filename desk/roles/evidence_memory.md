@@ -25,6 +25,8 @@ Work through:
 6. The week view (feed desk-weekly): the weekly strategist's Sunday view for the week, with its currency ranking,
    themes and scenarios. Say whether today's evidence still fits it or has moved against one of its scenarios. It is
    the desk's own context, not evidence: never pass its biases on as a finding.
+7. The book's risk (feed book-risk): the latest saved book's factor exposure, VaR, effective bets and scenarios. Say
+   which factor it leaned on and whether it was one bet in many names. It describes yesterday's book, not today's.
 
 Your headline should be the one thing the rest of the desk most needs to remember today. Put feeds that are down in
 "gaps". Impact only where a validated finding gives a direction.

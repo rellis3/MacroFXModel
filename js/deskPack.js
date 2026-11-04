@@ -194,6 +194,7 @@ export const DESK_FEEDS = [
   F('evidence_memory', 'morning-brief', 3 * D),
   F('evidence_memory', 'eod-review', 3 * D),
   F('evidence_memory', 'desk-memory', 5 * D),
+  F('evidence_memory', 'book-risk', 4 * D, { timeoutMs: 120_000 }),   // §9aj: the latest book's factor exposure, VaR and scenarios (a cold model = 41 OANDA calls)
   F('evidence_memory', 'desk-weekly', 8 * D),   // agent 19: the Sunday week view (context for the week, labelled; never a card)   // Phase 4: the desk's own end-of-day reflections (one-day anecdotes, labelled)
 ];
 

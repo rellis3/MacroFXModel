@@ -4784,6 +4784,7 @@ async function _deskRun(trigger, job, mode = 'full') {
   } catch (e) { console.warn('[desk-run] releases ahead:', e.message); }
   const run = await _runDesk({
     pack, roles, ledger: DESK_EVIDENCE, now: Date.now, concurrency: 4, mode, checkpoint, releases,
+    bookRisk: _bkrDraftRead,   // §9aj: factor exposure, VaR and scenarios on the draft book, for the risk desk and the Head
     exposureCap: Number(process.env.DESK_EXPOSURE_CAP ?? 4),   // per-currency cap in normal-size units; 0 turns it off
     styleExamples: _deskStyleExamples(await _nlLoad().catch(() => []) ?? []),   // the latest regular issues, so the desk edition matches their voice
     parseJson: (txt, label) => _parseModelJson(txt, label),
@@ -5101,6 +5102,156 @@ app.get('/api/desk-risk', async (req, res) => {
     _rkCache.set(key, out);
     res.json(out);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── §9aj: factor exposure of the book and the scenario engine (js/factorRisk.js, js/scenarioEngine.js) ──────────────
+// The book broken into dollar, carry, risk-on, commodity and US-rates factors, its VaR/ES and concentration, and
+// scenarios ("Fed +25bp, oil +10%, VIX to 30") mapped through each market's betas. The risk desk and the Head read it
+// on the draft book in the morning run (js/deskRun.js bookRisk); "Ask the desk" reads it on today's book.
+// Data: ~1,900 OANDA daily closes per desk market (41 calls, once per London day), FRED DGS2/DGS10/VIXCLS and the
+// policy rates; saved gzipped to KV factor_risk_data so a redeploy does not repeat the OANDA calls. Model in memory.
+import { buildFactorModel as _bkrBuildModel, bookFactorRisk as _bkrBookRisk, modelSummary as _bkrModelSummary } from './js/factorRisk.js';
+import { runScenario as _bksRun, standardScenarios as _bksStandard, bookRiskText as _bksText, parseScenarioQuestion as _bksParse, SCENARIO_DRIVERS as _BKS_DRIVERS, STANDARD_SCENARIOS as _BKS_STANDARD, REPLAYS as _BKS_REPLAYS } from './js/scenarioEngine.js';
+const _BKR_DATA_KV = 'factor_risk_data', _BKR_BARS = 1900, _BKR_FRED_FROM = '2019-06-01';
+let _bkrData = null, _bkrModel = null, _bkrBuilding = null, _bkrFailedAt = 0;
+const _bkrBrCache = new Map();
+async function _bkrFetchData(date) {
+  const closes = {}, errors = {}, list = VOL_INSTRUMENTS.filter(i => i.oandaInstrument);
+  let next = 0;
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    while (next < list.length) {
+      const i = list[next++];
+      try { closes[i.name] = (await _btFetchD1(i.oandaInstrument, _BKR_BARS)).sort((a, b) => (a.date < b.date ? -1 : 1)).map(b => [b.date, b.close]); }
+      catch (e) { errors[i.name] = e.message; }
+    }
+  }));
+  const fred = {};
+  await Promise.all(['DGS2', 'DGS10', 'VIXCLS'].map(async id => {
+    try { if (!process.env.FRED_KEY) throw new Error('FRED_KEY not set'); fred[id] = [...(await fetchFredObservations(id, _BKR_FRED_FROM, process.env.FRED_KEY))]; }
+    catch (e) { errors[id] = e.message; }
+  }));
+  let policyRates = {};
+  try { const pr = await _policyRatesNow(); policyRates = Object.fromEntries(Object.entries(pr?.rates ?? {}).map(([k, v]) => [k, Number(v?.rate)]).filter(([, v]) => Number.isFinite(v))); }
+  catch (e) { errors.policyRates = e.message; }
+  return { date, fetchedAt: new Date().toISOString(), closes, fred, policyRates, errors };
+}
+// Today's data: memory, then KV, then a fresh fetch (one at a time). A failed fetch keeps the last good data, labelled stale.
+async function _bkrLoadData() {
+  const today = _dpLondonDate(Date.now());
+  if (_bkrData?.date === today) return _bkrData;
+  if (!_bkrData) {
+    try { const raw = await kv.get(_BKR_DATA_KV); if (raw) _bkrData = JSON.parse(zlib.gunzipSync(Buffer.from(raw, 'base64')).toString('utf8')); } catch { /* fetch below */ }
+    if (_bkrData?.date === today) return _bkrData;
+  }
+  if (Date.now() - _bkrFailedAt < 30 * 60_000) {   // a failed refresh is not retried for 30 minutes
+    if (_bkrData) return { ..._bkrData, stale: true };
+    throw new Error('price history unavailable (the last fetch failed; retried after 30 minutes)');
+  }
+  if (!_bkrBuilding) {
+    _bkrBuilding = (async () => {
+      const d = await _bkrFetchData(today);
+      if (Object.keys(d.closes).length < 10) {
+        _bkrFailedAt = Date.now();
+        if (_bkrData) return { ..._bkrData, stale: true, errors: d.errors };
+        throw new Error(`price history unavailable (${Object.values(d.errors)[0] ?? 'no closes'})`);
+      }
+      _bkrData = d;
+      try { await kv.put(_BKR_DATA_KV, zlib.gzipSync(Buffer.from(JSON.stringify(d)), { level: 9 }).toString('base64')); } catch (e) { console.warn('[book-risk] data save failed:', e.message); }
+      return d;
+    })().finally(() => { _bkrBuilding = null; });
+  }
+  return _bkrBuilding;
+}
+async function _bkrGetModel() {
+  const d = await _bkrLoadData();
+  if (_bkrModel?.asOf === d.date && _bkrModel?._fetchedAt === d.fetchedAt) return _bkrModel;
+  const closes = Object.fromEntries(Object.entries(d.closes).map(([n, rows]) => [n, rows.map(([date, close]) => ({ date, close }))]));
+  const fred = Object.fromEntries(Object.entries(d.fred).map(([id, rows]) => [id, rows.map(([date, value]) => ({ date, value }))]));
+  _bkrModel = Object.assign(_bkrBuildModel({ closes, fred, policyRates: d.policyRates, window: 500, asOf: d.date }), { _fetchedAt: d.fetchedAt, _errors: d.errors ?? {}, _stale: !!d.stale });
+  _bkrBrCache.clear();
+  return _bkrModel;
+}
+// The book: the day's Head book after the cap (today's, else the latest saved run).
+async function _bkrBook(date) {
+  let run = date ? await _drLoad(date) : (await _drLoad(_dpLondonDate(Date.now()))) ?? _drLatest;
+  if (!run && !date) { const last = (await _drLoadIndex()).filter(r => r.headOk).at(-1); if (last) run = await _drLoad(last.date); }
+  return run?.head?.ok ? { date: run.date, finishedAt: run.finishedAt, cards: run.head.book.instruments } : null;
+}
+const _bkrScenRow = s => ({ key: s.key, label: s.label, ok: s.ok, pnl: s.book?.pnl ?? null, pnlPct: s.book?.pnlPct ?? null, worst: s.book?.worst?.[0] ?? null, errors: s.errors?.length ? s.errors : undefined });
+function _bkrModelMeta(m) {
+  const s = _bkrModelSummary(m);
+  return { asOf: s.asOf, window: s.window, factors: s.factors, factorDays: s.factorDays, missing: s.missing, carry: s.carry, levels: s.levels, stale: m._stale, dataErrors: Object.keys(m._errors).length ? m._errors : undefined };
+}
+// The full read on a set of cards: risk, the standard scenarios and replays, and the prompt text.
+async function _bkrRead(cards, title) {
+  const m = await _bkrGetModel(), risk = _bkrBookRisk(m, cards), scen = risk.ok ? _bksStandard(m, cards) : null;
+  return { m, risk, scen, text: _bksText(risk, scen, { title }) };
+}
+// For the morning run (js/deskRun.js runDebate): the asset desks' draft book at size 1.
+async function _bkrDraftRead(cards) {
+  const { risk, scen, text } = await _bkrRead(cards, "the asset desks' draft");
+  return { ok: risk.ok, text, summary: risk.ok ? { sigma: risk.sigma, var95: risk.var.parametric['0.95'].var, effectiveBets: risk.concentration.effectiveBets, enb: risk.concentration.enb, topFactor: risk.concentration.topFactor, flag: risk.concentration.flag,
+    factors: risk.factors.map(f => ({ key: f.key, perSigma: f.perSigma, share: f.share })), scenarios: scen.scenarios.map(_bkrScenRow) } : { reason: risk.reason } };
+}
+// For "Ask the desk": today's book, at most 25 s (a cold model means 41 OANDA calls), plus any scenario the question names.
+async function _bkrAskContext(q) {
+  try {
+    const go = (async () => {
+      const book = await _bkrBook(null); if (!book) return '(no desk book to read the factor risk of)';
+      const { m, text } = await _bkrRead(book.cards, `the ${book.date} book`), shocks = _bksParse(q);
+      if (!Object.keys(shocks).length) return text;
+      const sc = _bksRun(m, book.cards, shocks, { label: 'the question\'s scenario' });
+      return `${text}\nThe scenario in the question (${JSON.stringify(shocks)}), conditional on the joint history: ${sc.ok ? `book ${sc.book.pnl} card-σ (${sc.book.pnlPct}%); drivers ${Object.entries(sc.drivers).map(([k, v]) => `${k} ${v.value}${v.given ? '' : ' (implied)'}`).join(', ')}; currencies vs USD % ${JSON.stringify(sc.currencies)}; worst cards ${sc.book.worst.slice(0, 4).map(c => `${c.name} ${c.pnl}`).join(', ')}` : sc.errors.join('; ')}`;
+    })();
+    return await Promise.race([go, new Promise(r => setTimeout(() => r('(book factor risk still loading)'), 25_000))]);
+  } catch (e) { return `(book factor risk not available: ${e.message})`; }
+}
+// GET /api/book-risk?date=&betas=1: the book's factor exposure, VaR/ES, concentration, top contributors and the
+// standard scenarios' P&L. Cached per book and model day. ?betas=1 adds every market's betas, n and R².
+app.get('/api/book-risk', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : null;
+    const book = await _bkrBook(date);
+    if (!book) return res.status(404).json({ ok: false, error: date ? `no desk book for ${date}` : 'no desk book yet' });
+    const m = await _bkrGetModel(), key = `${book.date}|${book.finishedAt}|${m.asOf}|${m._fetchedAt}`;
+    let out = _bkrBrCache.get(key);
+    if (!out) {
+      const { risk, scen, text } = await _bkrRead(book.cards, `the ${book.date} book`);
+      const { allContributions, ...r } = risk;
+      out = { ok: risk.ok, date: book.date, bookFinishedAt: book.finishedAt, model: _bkrModelMeta(m), ...r, contributions: allContributions,
+        scenarios: scen?.scenarios.map(_bkrScenRow) ?? [], replays: scen?.replays.map(x => ({ key: x.key, label: x.label, from: x.from, to: x.to, covered: x.covered, pnl: x.pnl, pnlPct: x.pnlPct, missing: x.missing.length })) ?? [],
+        text, label: 'description of the book on its own history, not a forecast; 1 card-σ = one size-1 card moving one daily σ' };
+      if (_bkrBrCache.size > 20) _bkrBrCache.clear();
+      _bkrBrCache.set(key, out);
+    }
+    res.json(req.query.betas === '1' ? { ...out, betas: _bkrModelSummary(m).betas } : out);
+  } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
+// GET /api/scenarios?date=: the standard set and the historical replays on the day's book, in full.
+app.get('/api/scenarios', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : null;
+    const book = await _bkrBook(date);
+    if (!book) return res.status(404).json({ ok: false, error: date ? `no desk book for ${date}` : 'no desk book yet' });
+    const m = await _bkrGetModel(), sc = _bksStandard(m, book.cards);
+    res.json({ ok: true, date: book.date, bookFinishedAt: book.finishedAt, model: _bkrModelMeta(m), drivers: _BKS_DRIVERS.filter(d => m.joint.includes(d.key)), standard: _BKS_STANDARD, declaredReplays: _BKS_REPLAYS, ...sc,
+      label: 'linear one-day map through each market\'s betas (conditional on the joint history); replays use realised moves. Description, not a forecast.' });
+  } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
+// POST /api/scenario { shocks: { RATES: 25, OIL: 10, VIX: { to: 30 } }, mode?: 'conditional'|'isolated', date?, cards? }:
+// one scenario on the day's book (or on the cards given, { INST: { rating, size } }).
+app.post('/api/scenario', express.json({ limit: '64kb' }), async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const shocks = req.body?.shocks, mode = req.body?.mode === 'isolated' ? 'isolated' : 'conditional';
+    if (!shocks || typeof shocks !== 'object' || Array.isArray(shocks) || Object.keys(shocks).length > 12) return res.status(400).json({ ok: false, error: 'give shocks as { DRIVER: change or { to: level } }', drivers: _BKS_DRIVERS });
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.body?.date ?? '')) ? String(req.body.date) : null;
+    let cards = req.body?.cards && typeof req.body.cards === 'object' && !Array.isArray(req.body.cards) ? req.body.cards : null, bookDate = null;
+    if (!cards) { const book = await _bkrBook(date); if (!book) return res.status(404).json({ ok: false, error: 'no desk book yet: pass cards' }); cards = book.cards; bookDate = book.date; }
+    const m = await _bkrGetModel(), r = _bksRun(m, cards, shocks, { mode, label: String(req.body?.label ?? 'custom').slice(0, 80) });
+    res.status(r.ok ? 200 : 400).json({ ...r, date: bookDate, model: { asOf: m.asOf, factorDays: m.factorDays, levels: m.levels } });
+  } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
 });
 // GET /api/desk-journal?days=28: the journal coach (Phase 8) and the execution analyst (Phase 13), js/deskJournal.js.
 // The bots' closed trades (the three durable logs plus today's closes) against each day's morning book. Private: the
@@ -6926,9 +7077,10 @@ app.post('/api/desk-ask', express.json({ limit: '16kb' }), async (req, res) => {
       const book = run?.head?.ok ? { date: run.date, writtenAt: run.finishedAt, headline: run.head.book.headline, global: run.head.book.global, currencies: run.head.book.currencies, risks: run.head.book.risks,
         cards: Object.fromEntries(Object.entries(run.head.book.instruments).map(([n, c]) => [n, { rating: c.rating, conviction: c.conviction, size: c.size, why: c.why, plan: c.plan, levels: c.levels ? { open: c.levels.open, up: c.levels.up, down: c.levels.down } : null }])) } : null;
       const analysts = run ? Object.fromEntries(Object.entries(run.analysts ?? {}).filter(([, a]) => a.ok).map(([id, a]) => [id, { headline: a.report.headline, points: (a.report.points ?? []).map(p => ({ claim: p.claim, evidence: p.evidence, impact: p.impact })) }])) : {};
-      const system = `You are the desk's analyst on call, answering the owner's question in the Desk Terminal. Use only the material below: today's book, the analysts' reports, the last evening reviews and the Evidence Book. If it does not answer the question, say so plainly and say what data would. Never invent a number. An Evidence Book entry marked null or underpowered was tested and found no reliable edge: never present it as working. This is context, not a trade instruction. Be direct and short: at most 200 words.
+      const riskCtx = await _bkrAskContext(q);   // §9aj: the book's factor exposure, VaR, scenarios, and any scenario the question names
+      const system = `You are the desk's analyst on call, answering the owner's question in the Desk Terminal. Use only the material below: today's book, the book's factor risk and scenarios, the analysts' reports, the last evening reviews and the Evidence Book. For a what-if question, quote the scenario engine's numbers (card-σ and %) and say they are a linear map through historical betas. If it does not answer the question, say so plainly and say what data would. Never invent a number. An Evidence Book entry marked null or underpowered was tested and found no reliable edge: never present it as working. This is context, not a trade instruction. Be direct and short: at most 200 words.
 Reply with JSON only: { "answer": "plain text", "sources": ["analyst ids, card names or ledger tags you used"] }`;
-      const prompt = `Question: ${q}\n\n## Today's book (${today})\n${book ? JSON.stringify(book) : '(no book today)'}\n\n## Analysts' reports\n${JSON.stringify(analysts)}\n\n## Last evening reviews\n${JSON.stringify(refl.filter(Boolean))}\n\n## Evidence Book\n${evidenceBrief(DESK_EVIDENCE)}`;
+      const prompt = `Question: ${q}\n\n## Today's book (${today})\n${book ? JSON.stringify(book) : '(no book today)'}\n\n## The book's factor risk and scenarios (js/factorRisk.js, js/scenarioEngine.js)\n${riskCtx}\n\n## Analysts' reports\n${JSON.stringify(analysts)}\n\n## Last evening reviews\n${JSON.stringify(refl.filter(Boolean))}\n\n## Evidence Book\n${evidenceBrief(DESK_EVIDENCE)}`;
       const r = await callModel({ task: 'desk-analyst', system, prompt, maxTokens: 2_000 });
       const j = _parseModelJson(r.text ?? _antText(r), 'desk:ask');
       const answer = typeof j?.answer === 'string' ? j.answer.slice(0, 4000) : null;

@@ -13,3 +13,8 @@ volatility is rich, or where credit and funding are flashing stress.
 
 Name the ideas that should be cut (size below 1) or vetoed for today, with a one-line reason each. A veto is for
 "do not take this today at all", not for "be careful". Use it sparingly and say why.
+
+When the run gives you the book's factor risk and scenarios (the draft at size 1: factor exposure, VaR/ES, effective
+bets, the standard scenarios and historical replays), use its numbers: name the factor most of the risk rides on and
+the scenario that hurts the book most, and size against them. Quote card-σ figures as they are; they describe the
+book's history, not a forecast.

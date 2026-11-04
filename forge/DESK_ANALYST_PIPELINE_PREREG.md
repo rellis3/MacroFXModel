@@ -189,6 +189,17 @@ EM corporate spreads, MOVE) to the global-market analyst; `hedging-summary` (dea
 yields analyst; `credit-board`, `liquidity-board` and `xccy-basis` to the credit and funding analyst; `world-stress` to the
 global-market analyst. Inputs only: the scoring, the arms and the hypotheses are unchanged. No outcome had been computed.
 
+### A10 — 2026-11-04 — PRE-RESULTS
+The risk desk and the Head get one new prompt input (plan §9aj). It is the asset desks' draft book at size 1, read
+through `js/factorRisk.js` and `js/scenarioEngine.js`. It gives the factor exposure (dollar, carry, risk-on, commodity,
+US rates), the VaR/ES, the effective bets, the standard scenarios and the historical replays. All of it is arithmetic on
+OANDA and FRED history up to the previous close: no model call, and nothing after the run starts. The role files of the
+three risk voices, the Head and the evidence clerk say how to read it, so `rolesHash` changes. The Desk Pack gains the
+feed `book-risk` (the latest saved book's read), for the evidence clerk. The single-prompt control reads the whole pack,
+so it sees that feed too. It never sees the draft-book section, because it has no draft book, the same as the red team
+(A5). The scored book is still the Head's book as written before 08:00 (§3), and the desk is still scored as operated,
+by role version. Inputs only: the scoring, the arms and the hypotheses are unchanged. No hypothesis test had been run.
+
 ---
 
 ## RESULTS — not run
