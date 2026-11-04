@@ -41,6 +41,8 @@ export function bh(ps, q = 0.1) {
   return pass;
 }
 
+// Tags that describe the outcome (how or whether the trade exited) are known only after the trade: never slice on them.
+export const OUTCOME_TAG = /^(exit|outcome|result)[:=]|^(timed-out|stopped|win|loss|ambiguous-bar)$/i;
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const holdBucket = ms => { const h = ms / 3600e3; return h < 1 ? '<1h' : h < 4 ? '1-4h' : h < 24 ? '4-24h' : h < 120 ? '1-5d' : '>5d'; };
 const hourBucket = h => (h < 7 ? '00-07' : h < 12 ? '07-12' : h < 16 ? '12-16' : h < 21 ? '16-21' : '21-24');
@@ -48,7 +50,7 @@ const hourBucket = h => (h < 7 ? '00-07' : h < 12 ? '07-12' : h < 16 ? '12-16' :
 /** The slice keys for one trade: { dimension: value }. Numeric features are bucketed into terciles by `cuts`. */
 function keysOf(t, cuts) {
   const [d, tm] = london(t.entryMs), dt = new Date(`${d}T12:00:00Z`), out = { instrument: t.instrument, direction: t.direction, hour: hourBucket(+tm.slice(0, 2)), weekday: DOW[dt.getUTCDay()], month: d.slice(5, 7), hold: holdBucket(t.exitMs - t.entryMs) };
-  for (const g of t.tags ?? []) out[`tag:${g}`] = 'yes';
+  for (const g of t.tags ?? []) if (!OUTCOME_TAG.test(g)) out[`tag:${g}`] = 'yes';   // a tag that records how the trade ended is not a filter
   for (const [k, c] of Object.entries(cuts)) { const v = t.features?.[k]; if (fin(v)) out[`feature:${k}`] = v <= c[0] ? 'low' : v <= c[1] ? 'mid' : 'high'; }
   return out;
 }

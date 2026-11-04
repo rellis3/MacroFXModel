@@ -11,7 +11,7 @@ const raw = [];
 for (let i = 0; i < 800; i++) {
   const inst = i % 2 ? 'EURUSD' : 'GBPUSD', atr = rng(), edge = (inst === 'GBPUSD' ? 0.35 : -0.35) + (atr > 0.66 ? 0.2 : 0);
   const R = Math.max(-1, Math.min(3, edge + g())), mfe = R < 0 ? (rng() < 0.6 ? 1.2 : 0.3) : R + 0.2, mae = R > 0 ? -0.3 : -1;
-  raw.push({ instrument: inst, direction: i % 3 ? 'Long' : 'Short', entryMs: Date.parse('2020-01-06T09:00:00Z') + i * 864e5 * 2, exitMs: Date.parse('2020-01-06T13:00:00Z') + i * 864e5 * 2, R, maeR: mae, mfeR: mfe, features: { atr }, tags: i % 5 ? [] : ['news'] });
+  raw.push({ instrument: inst, direction: i % 3 ? 'Long' : 'Short', entryMs: Date.parse('2020-01-06T09:00:00Z') + i * 864e5 * 2, exitMs: Date.parse('2020-01-06T13:00:00Z') + i * 864e5 * 2, R, maeR: mae, mfeR: mfe, features: { atr }, tags: [...(i % 5 ? [] : ['news']), `exit:${R > 0 ? 'win' : 'stop'}`] });
 }
 const { trades } = normaliseTrades(raw);
 t('decay, exits and the exit grid', () => {
@@ -26,6 +26,7 @@ t('slices chosen on the first half and scored on the second; the real ones survi
   assert.equal(s['instrument = EURUSD'], 'drop'); assert.equal(s['instrument = GBPUSD'], 'keep');
   assert.ok(rv.slices.some(x => x.slice === 'feature:atr = high'));
   assert.ok(!rv.survivors.some(x => /weekday/.test(x.slice)), 'weekday is noise and should not survive');
+  assert.ok(!rv.slices.some(x => /exit:/.test(x.slice)), 'outcome tags are look-ahead and never sliced');
   assert.ok(rv.filtered.dropped.includes('instrument = EURUSD')); assert.ok(rv.filtered.secondFiltered.meanR > rv.filtered.secondUnfiltered.meanR);
   assert.ok(rv.equityCurve.length === 3); assert.match(reviewText('x', { model: 'X' }, rv), /Survivors after FDR: .*drop instrument = EURUSD/);
   assert.equal(reviewSystem(trades.slice(0, 20)).ok, false);

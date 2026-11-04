@@ -57,6 +57,15 @@ export async function putJSON(key, obj) {
   return true;
 }
 
+// Write raw bytes (e.g. a gzipped file). Returns false if credentials are absent.
+export async function putBuffer(key, buf, contentType = 'application/octet-stream') {
+  const client = makeR2Client();
+  if (!client) return false;
+  noteBytes('r2', key.replace(/\/[^/]+$/, '/*'), buf.byteLength);
+  await client.send(new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, Body: buf, ContentType: contentType }));
+  return true;
+}
+
 // Read + parse a JSON object. Returns null if missing or creds absent.
 export async function getJSON(key) {
   const client = makeR2Client();

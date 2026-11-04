@@ -1052,12 +1052,21 @@ card and prereg draft now require these outputs as the last build step.
 
 ## 9ad. The backfill and the post-mortem desk (2026-11-04)
 
-**Backfill** (`scripts/systems/backfill.mjs`, `scripts/systems/backfill_manifest.json`): every stored per-trade
-backtest output in the repo is mapped (which file, which column is the instrument, the side, the times, the result
-and its unit, MAE/MFE, prices; for multi-variant files the study's headline variant) and written through the standard
-outputs. Nothing is re-run: each system is exactly what its study stored, gross or net as recorded. `system-backtest.html`
-with no id lists every system with its record (held up / stopped working / never worked), the filters that survived
-and the panel's verdicts.
+**Backfill** (`scripts/systems/backfill.mjs`, one adapter per study family, tested in `js/systemBackfill.test.mjs`):
+21 stored per-trade backtest outputs are mapped (which file, which column is the instrument, the side, the times, the
+result and its unit, MAE/MFE, prices; for multi-variant files the study's headline variant), with 8 more listed as
+skipped and why. Nothing is re-run: each system is exactly what its study stored, gross or net as recorded. Systems
+that take many trades a day are sized so a median day risks about 1% (the note says so); a sparse system's daily
+series includes its flat weekdays, so its Sharpe is not inflated. Tags that describe how a trade ended are marked
+`exit:` and never used as filters (that would be look-ahead).
+
+**Storage**: nothing generated is committed. `POST /api/systems/rebuild` runs the adapters over the repo's stored study
+outputs on the server, in a worker thread (`scripts/systems/buildWorker.mjs`), and stores each system's gzipped trade
+list and tearsheet in **R2** under `systems/<id>/` and a small record per system in **KV** `system_index`. A study
+uploads new systems the same way (`POST /api/systems/upload`; `writeSystemOutputs.mjs --push`, `push_system` in
+`forge/system_exports.py`). Without R2 credentials the store is memory until restart. `system-backtest.html` with no
+id lists every system with its record (held up / stopped working / never worked), the filters that survived and the
+panel's verdicts, with the build and review buttons.
 
 **Post-mortem desk** (`js/systemReview.js`; `GET /api/system-review`, `POST /api/system-review/run { id | all }`,
 `GET /api/system-overview`; KV `system_reviews`):

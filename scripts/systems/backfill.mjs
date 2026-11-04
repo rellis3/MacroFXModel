@@ -60,7 +60,7 @@ function voteTrades(list, { stopFromTop = false } = {}) {
       out.push({ instrument: String(t.instrument ?? j.instrument).toUpperCase(), direction: long ? 'Long' : 'Short', entryMs: t.time * 1000, exitMs: (t.resolveTime ?? t.time) * 1000,
         R: t.pnlPct / riskPct, maeR: fin(t.maePips) ? -t.maePips / stopPips : null, mfeR: fin(t.mfePips) ? t.mfePips / stopPips : null,
         entry: t.entry, stop: +(t.entry - sg * stopPips * pip).toPrecision(8), target: fin(t.targetPips) ? +(t.entry + sg * t.targetPips * pip).toPrecision(8) : null,
-        tags: [t.rung && `rung:${t.rung}`, t.session && `session:${t.session}`, t.decision && `decision:${t.decision}`, t.timedOut && 'timed-out'].filter(Boolean),
+        tags: [t.rung && `rung:${t.rung}`, t.session && `session:${t.session}`, t.decision && `decision:${t.decision}`, t.timedOut && 'exit:timed-out'].filter(Boolean),
         features: fin(t.margin) ? { margin: t.margin } : null });
     }
   }
@@ -96,7 +96,7 @@ export const SYSTEMS = [
   { id: 'gamma-regime-trades-fx', name: 'Gamma regime switch (FX)', doc: 'analysis/output/gamma-regime-trades-fx/RESULTS.md', evidence: 'null', costs: '0.01% round trip, net', note: 'date only: placed at 12:00 London',
     trades: () => gammaSwitch(csv('analysis/output/gamma-regime-trades-fx/trades.csv'), r => r.pair) },
   { id: 'short-vx-rule', name: 'Short VX rule', doc: 'analysis/output/short-vx-rule/RESULTS.md', evidence: 'underpowered', costs: '0.10 pt round trip (0.15 on stops), net',
-    trades: () => csv('analysis/output/short-vx-rule/trades.csv').map(r => ({ instrument: 'VX', direction: 'Short', entryMs: londonMs(r.entry, '21:00'), exitMs: londonMs(r.exit, '21:00'), R: num(r.R), tags: [r.stopped === 'True' && 'stopped'].filter(Boolean) })) },
+    trades: () => csv('analysis/output/short-vx-rule/trades.csv').map(r => ({ instrument: 'VX', direction: 'Short', entryMs: londonMs(r.entry, '21:00'), exitMs: londonMs(r.exit, '21:00'), R: num(r.R), tags: [r.stopped === 'True' && 'exit:stopped'].filter(Boolean) })) },
   { id: 'rule-a-pre2020', name: 'Rule A, line break (stop 0.2σ, target 5R, rich)', doc: 'analysis/output/rule-a-pre2020/RESULTS.md', evidence: 'null', costs: '2× spread, net', note: 'entry hour only; exit not stored',
     trades: () => csv('analysis/output/rule-a-pre2020/trades.csv').filter(r => r.rich === 'True' && fin(num(r['0.2|5']))).map(r => { const at = londonMs(r.d, `${String(r.hour).padStart(2, '0')}:00`);
       return { instrument: r.inst, direction: num(r.side) > 0 ? 'Long' : 'Short', entryMs: at, exitMs: at, R: num(r['0.2|5']), tags: [`line:${r.line}`, `arm:${r.arm}`], features: { ratio: num(r.ratio) } }; }) },
@@ -110,7 +110,7 @@ export const SYSTEMS = [
       return { instrument: 'NQ', direction: 'Long', entryMs: at, exitMs: at + num(r.hold_min) * 60e3, returnPct: num(r.net_pct), riskPct: 1, maePct: -num(r.mae_pct), mfePct: num(r.mfe_pct), tags: [`exit:${r.exit}`] }; }) },
   { id: 'nq-continuation-execution', name: 'NQ continuation at the lines (out-of-sample era)', doc: 'analysis/output/day-reconstruction/m4/REPORT.md', evidence: 'null', costs: '1 pt slippage on stop/market, net', note: 'date only (bar index needs the M1 bin file): placed at 12:00 London',
     trades: () => csv('analysis/output/day-reconstruction/m4/trades_real_base.csv').filter(r => r.era === 'oos_pit' && fin(num(r.r))).map(r => { const dir = num(r.dir), fill = num(r.fill), risk = num(r.R);
-      return { instrument: 'NQ', direction: dir > 0 ? 'Long' : 'Short', entryMs: londonMs(r.date), exitMs: londonMs(r.date), R: num(r.r), entry: fill, stop: +(fill - dir * risk).toFixed(2), target: +(fill + dir * risk).toFixed(2), tags: [`rung:${r.rung}`, r.amb === '1' && 'ambiguous-bar'].filter(Boolean) }; }) },
+      return { instrument: 'NQ', direction: dir > 0 ? 'Long' : 'Short', entryMs: londonMs(r.date), exitMs: londonMs(r.date), R: num(r.r), entry: fill, stop: +(fill - dir * risk).toFixed(2), target: +(fill + dir * risk).toFixed(2), tags: [`rung:${r.rung}`, r.amb === '1' && 'exit:ambiguous-bar'].filter(Boolean) }; }) },
   ...['A', 'B'].map(S => ({ id: `cog-setup-${S.toLowerCase()}`, name: `C.OG setup ${S} (his lines, no direction filter)`, doc: 'analysis/output/cog_setups/RESULTS.md', evidence: 'null (cog-setups-direction)', costs: 'round trip EURUSD 0.008%, GOLD 0.02%, NQ 0.008% of price, net', note: 'exit not stored',
     trades: () => csv('analysis/output/cog_setups/trades.csv').filter(r => r.setup === S && fin(num(r.R))).map(r => { const at = londonMs(r.date, '00:00') + num(r.fill_min) * 60e3;
       return { instrument: r.ins, direction: num(r.side) > 0 ? 'Long' : 'Short', entryMs: at, exitMs: at, R: num(r.R), tags: [`exit:${r.outcome}`, `t20:${num(r.t20) === num(r.side) ? 'with' : 'against'}`, `p1:${num(r.p1) === num(r.side) ? 'with' : 'against'}`], features: { sig: num(r.sig) } }; }) })),

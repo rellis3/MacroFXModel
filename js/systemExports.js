@@ -111,12 +111,16 @@ export function tearsheet(trades, meta = {}) {
   if (!trades?.length) return { ok: false, error: 'no trades' };
   const pct = trades.map(t => t.returnPct), dates = trades.map(t => london(t.exitMs)[0]);
   const byDay = {}; trades.forEach((t, i) => { byDay[dates[i]] = (byDay[dates[i]] ?? 0) + t.returnPct; });
-  const days = Object.keys(byDay).sort(), daily = days.map(d => byDay[d]);
+  const days = Object.keys(byDay).sort();
+  // every weekday from the first trade to the last, flat days at 0: a sparse system's Sharpe is not inflated by
+  // counting only the days it traded
+  const daily = [];
+  for (let t = Date.parse(`${days[0]}T12:00:00Z`), end = Date.parse(`${days.at(-1)}T12:00:00Z`); t <= end; t += 864e5) { const dw = new Date(t).getUTCDay(), d = new Date(t).toISOString().slice(0, 10); if (dw !== 0 && dw !== 6 || byDay[d] != null) daily.push(byDay[d] ?? 0); }
   let run = 0, worst = 0, best = 0, cur = 0;
   for (const t of trades) { if (t.R > 0) { cur = cur > 0 ? cur + 1 : 1; } else if (t.R < 0) { cur = cur < 0 ? cur - 1 : -1; } else cur = 0; best = Math.max(best, cur); worst = Math.min(worst, cur); run++; }
   const R = trades.map(t => t.R), mae = trades.map(t => t.maeR).filter(fin), mfe = trades.map(t => t.mfeR).filter(fin);
   return {
-    ok: true, from: dates[0], to: dates.at(-1), trades: trades.length, days: days.length, instruments: [...new Set(trades.map(t => t.instrument))],
+    ok: true, from: dates[0], to: dates.at(-1), trades: trades.length, days: days.length, calendarDays: daily.length, instruments: [...new Set(trades.map(t => t.instrument))],
     perTrade: backtestStats(pct, dates, { seed }), portfolio: portfolioStats(daily, { mc: true }),
     rMultiples: { mean: r3(R.reduce((a, b) => a + b, 0) / R.length), median: r3([...R].sort((a, b) => a - b)[R.length >> 1]), monteCarlo: tradeMonteCarlo(R, { seed }),
       maeMedian: mae.length ? r3([...mae].sort((a, b) => a - b)[mae.length >> 1]) : null, mfeMedian: mfe.length ? r3([...mfe].sort((a, b) => a - b)[mfe.length >> 1]) : null },

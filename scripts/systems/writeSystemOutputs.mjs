@@ -38,10 +38,22 @@ export async function writeSystemOutputs(id, raw, meta = {}, { account = 100000,
   return { dir, trades: trades.length, skipped: errors.length, files: written };
 }
 
+/**
+ * Send a study's trades to the server's system store (R2 + KV): POST <base>/api/systems/upload. The server builds the
+ * tearsheet and the post-mortem diagnostics; large studies should push rather than commit their outputs.
+ */
+export async function pushSystem(base, id, raw, meta = {}) {
+  const { trades, errors } = normaliseTrades(raw, meta);
+  if (!trades.length) throw new Error(`no usable trades: ${errors.slice(0, 3).join('; ')}`);
+  const r = await fetch(`${String(base).replace(/\/$/, '')}/api/systems/upload`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, meta, trades }) });
+  return { status: r.status, ...(await r.json().catch(() => ({}))) };
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  const [id, src] = process.argv.slice(2), ai = process.argv.indexOf('--account');
-  if (!id || !src) { console.log('usage: node scripts/systems/writeSystemOutputs.mjs <id> <trades.json | data_terminal.csv> [--account 100000]'); process.exit(1); }
+  const [id, src] = process.argv.slice(2), ai = process.argv.indexOf('--account'), pi = process.argv.indexOf('--push');
+  if (!id || !src) { console.log('usage: node scripts/systems/writeSystemOutputs.mjs <id> <trades.json | data_terminal.csv> [--account 100000] [--push https://<server>]'); process.exit(1); }
   const text = await readFile(src, 'utf8');
   const raw = src.endsWith('.csv') ? parseTerminalCsv(text).trades : (j => j.trades ?? j)(JSON.parse(text));
-  console.log(await writeSystemOutputs(id, raw, { model: id }, { account: ai > 0 ? +process.argv[ai + 1] : 100000 }));
+  if (pi > 0) console.log(await pushSystem(process.argv[pi + 1], id, raw, { model: id }));
+  else console.log(await writeSystemOutputs(id, raw, { model: id }, { account: ai > 0 ? +process.argv[ai + 1] : 100000 }));
 }

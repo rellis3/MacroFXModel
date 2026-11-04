@@ -37,7 +37,7 @@ svg text{fill:var(--tx3);font:11px var(--mono)}
 <div class="panel"><div class="row"><label class="muted" for="sys">System</label><select id="sys"><option value="">loading…</option></select>
 <span class="muted">or</span><label class="btn" for="file">Load a Data Terminal CSV</label><input type="file" id="file" accept=".csv" hidden>
 <span style="flex:1"></span><label class="muted" for="acct">Account</label><input id="acct" type="number" value="100000" step="1000" style="width:110px"><label class="muted" for="risk">Risk % per trade</label><input id="risk" type="number" value="" placeholder="as traded" step="0.1" style="width:90px"></div>
-<p class="muted" id="src" style="margin:8px 0 0">Systems write their outputs with scripts/systems/writeSystemOutputs.mjs or forge/system_exports.py under analysis/output/systems/&lt;register id&gt;/.</p></div>
+<p class="muted" id="src" style="margin:8px 0 0">Systems are built on the server from the repo's stored study outputs, or uploaded by a study (scripts/systems/writeSystemOutputs.mjs --push, forge/system_exports.py push_system).</p></div>
 <div id="out"></div>
 </div>
 <script type="module">
@@ -160,12 +160,19 @@ async function renderLive(id, bot) {
 }
 async function renderOverview() {
   const o = await getJson('/api/system-overview'); if (!o.ok) { $('out').innerHTML = `<div class="panel"><p class="muted">${esc(o.error)}</p></div>`; return; }
-  const running = o.job?.status === 'running';
-  $('out').innerHTML = `<div class="panel"><h2>Every backtested system <i>${o.systems.length} with standard outputs · click one for its tearsheet, post-mortem and trades</i></h2>
+  const running = o.job?.status === 'running', building = o.build?.status === 'running';
+  const buildBar = `<p><button class="btn" id="sysbuild"${building ? ' disabled' : ''}>${building ? `Building ${o.build.done.length + 1} of ${o.build.ids.length}…` : o.systems.length ? 'Rebuild the systems from the repo' : 'Build the systems from the repo'}</button> <span class="muted">Runs the converters over every stored study output on the server (a minute or two), and stores each system in ${o.store === 'r2' ? 'R2' : 'memory (R2 is not configured: lost on restart)'}.${o.build?.failed && Object.keys(o.build.failed).length ? ` Failed: ${Object.entries(o.build.failed).map(([k, v]) => `${esc(k)} (${esc(v)})`).join(', ')}.` : ''}</span></p>`;
+  if (!o.systems.length) { $('out').innerHTML = `<div class="panel"><h2>Every backtested system</h2><p class="muted">No systems in the store yet.</p>${buildBar}</div>`; wireBuild(building); return; }
+  $('out').innerHTML = `<div class="panel"><h2>Every backtested system <i>${o.systems.length} in the store · click one for its tearsheet, post-mortem and trades</i></h2>
 <table><thead><tr><th>System</th><th class="n">Trades</th><th>Span</th><th class="n">Mean R</th><th class="n">Sharpe (daily)</th><th>Record</th><th class="n">Filters that survived</th><th>Evidence Book</th><th>Panel</th></tr></thead><tbody>${o.systems.map(x => `<tr><td><a href="?id=${encodeURIComponent(x.id)}">${esc(x.model)}</a><br><span class="muted">${esc(x.id)}</span></td><td class="n">${x.trades}</td><td class="muted">${esc(x.from ?? '')} – ${esc(x.to ?? '')}</td><td class="n ${cls(x.meanR)}">${f(x.meanR)}</td><td class="n">${f(x.sharpe)}</td><td>${esc(x.trend ?? '–')}</td><td class="n">${x.survivors ?? '–'}</td><td>${esc(x.evidence ?? '–')}</td><td>${x.verdicts ? Object.entries(x.verdicts).map(([k, v]) => `<span class="chip ${VCH[v] ?? ''}" title="${LENS[k]}">${LENS[k][0]}: ${esc(v)}</span>`).join(' ') : '<span class="muted">not reviewed</span>'}</td></tr>`).join('')}</tbody></table>
-<p><button class="btn" id="revall"${running ? ' disabled' : ''}>${running ? `Reviewing ${o.job.done.length + 1} of ${o.job.ids.length}: ${esc(o.job.current ?? '')}…` : 'Run the research review on every system'}</button> <span class="muted">${o.systems.length * 4} model calls, one system at a time. Revival ideas join the research pod.</span></p></div>`;
+${buildBar}<p><button class="btn" id="revall"${running ? ' disabled' : ''}>${running ? `Reviewing ${o.job.done.length + 1} of ${o.job.ids.length}: ${esc(o.job.current ?? '')}…` : 'Run the research review on every system'}</button> <span class="muted">${o.systems.length * 4} model calls, one system at a time. Revival ideas join the research pod.</span></p></div>`;
   $('revall').onclick = async () => { $('revall').disabled = true; await fetch('/api/system-review/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ all: true }) }).catch(() => null); setTimeout(renderOverview, 4000); };
   if (running) setTimeout(renderOverview, 20000);
+  wireBuild(building);
+}
+function wireBuild(building) {
+  const b = $('sysbuild'); if (b) b.onclick = async () => { b.disabled = true; b.textContent = 'Building…'; await fetch('/api/systems/rebuild', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => null); setTimeout(renderOverview, 5000); };
+  if (building) setTimeout(renderOverview, 8000);
 }
 function dl(name, text) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' })); a.download = name; a.click(); }
 function render(d) {
@@ -214,7 +221,7 @@ async function loadId(id) {
   if (!id) return; $('out').innerHTML = '<div class="panel"><p class="muted">Loading…</p></div>';
   const d = await getJson(`/api/system-backtest?id=${encodeURIComponent(id)}`);
   if (!d.ok) { $('out').innerHTML = `<div class="panel"><p class="muted">${esc(d.error)}</p></div>`; return; }
-  $('src').textContent = `analysis/output/systems/${id}/ · written ${d.meta?.writtenAt ?? '–'} by ${d.meta?.writer ?? 'node'}`; history.replaceState(null, '', `?id=${encodeURIComponent(id)}`); render(d);
+  $('src').textContent = `${d.meta?.model ?? id} · built ${String(d.meta?.writtenAt ?? '–').slice(0, 16).replace('T', ' ')} · ${d.meta?.source ?? 'repo'}${d.meta?.riskNote ? ` · ${d.meta.riskNote}` : ''}${d.meta?.note ? ` · ${d.meta.note}` : ''}`; history.replaceState(null, '', `?id=${encodeURIComponent(id)}`); render(d);
 }
 $('sys').onchange = () => loadId($('sys').value);
 $('file').onchange = async () => { const file = $('file').files[0]; if (!file) return; const r = parseTerminalCsv(await file.text());
@@ -224,7 +231,6 @@ $('file').onchange = async () => { const file = $('file').files[0]; if (!file) r
 const list = await getJson('/api/system-backtests'), want = new URLSearchParams(location.search).get('id');
 $('sys').innerHTML = list.ok && list.systems.length ? `<option value="">choose…</option>${list.systems.map(s => `<option value="${esc(s.id)}"${s.id === want ? ' selected' : ''}>${esc(s.model)} · ${s.trades} trades</option>`).join('')}` : '<option value="">no system outputs yet</option>';
 if (want) loadId(want);
-else if (!list.systems?.length) $('out').innerHTML = '<div class="panel"><p class="muted">No system has written its outputs yet. When a research-pod proposal is built, its backtest writes them here; you can also load any Data Terminal CSV above to see it in this form.</p></div>';
 else renderOverview();
 </script>
 </body>

@@ -72,6 +72,7 @@ function isAllowedKVKey(key) {
     'research_pod_cards',
     'research_pod_threads',
     'system_reviews',
+    'system_index',
     'cog_legs_live_v1',
     'cog_line_live_v1',
     'release_layer1_v1',
@@ -1093,6 +1094,7 @@ export default {
             'research_pod_cards',
             'research_pod_threads',
             'system_reviews',
+            'system_index',
             // cog_line_live_v1: the laptop's pushed IBKR bars for the Rates-page C.OG line; a 48h TTL would drop them between pushes.
             'cog_legs_live_v1',
             // release_layer1_v1: the laptop's pushed Release Reaction record (scripts/release_layer1/live_push.py); a 48h TTL would blank the page between pushes.

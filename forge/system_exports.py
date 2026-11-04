@@ -130,3 +130,16 @@ def write_system_outputs(sys_id, raw, model='', account=100000.0, meta=None, out
         with open(os.path.join(d, f), 'w', newline='') as fh:
             fh.write(body)
     return {'dir': d, 'trades': len(trades), 'skipped': len(errors), 'files': list(files)}
+
+
+def push_system(base, sys_id, raw, model='', meta=None, timeout=120):
+    """Send a study's trades to the server's system store (R2 + KV) instead of committing large outputs:
+    POST <base>/api/systems/upload. The server computes the tearsheet and the post-mortem diagnostics."""
+    import urllib.request
+    trades, errors = normalise_trades(raw, model=model)
+    if not trades:
+        raise ValueError('no usable trades: ' + '; '.join(errors[:3]))
+    body = json.dumps({'id': sys_id, 'meta': {**(meta or {}), 'model': model, 'writer': 'python'}, 'trades': trades}).encode()
+    req = urllib.request.Request(base.rstrip('/') + '/api/systems/upload', data=body, headers={'Content-Type': 'application/json'}, method='POST')
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read() or b'{}')

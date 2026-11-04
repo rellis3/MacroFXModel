@@ -365,7 +365,7 @@ import { evaluateIntradayAllHorizons } from './js/intradayForecastResearch.js';
 import { analyzeCrossPair, portfolioIndependence } from './js/crossPairResearch.js';
 import { scanFeatures } from './js/forecastFeatureScan.js';
 import { bandCalcAB } from './js/bandCalcAB.js';
-import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, getBuffer as _r2GetBuffer, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
+import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, getBuffer as _r2GetBuffer, putBuffer as _r2PutBuffer, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
 import { INSTRUMENTS as _DL_INSTRUMENTS, HORIZONS as _DL_HORIZONS, closesFromCandles as _dlClosesFromCandles, issueRecord as _dlIssue, outcomeRecord as _dlOutcome, summarise as _dlSummarise } from './js/directionLedger.js';
 import { RESEARCH as _DL_RESEARCH, volFlags as _dlVolFlags, FX_CARRY_EUR_OFFSET as _DL_EUR_OFFSET, FX_CARRY_MAX_AGE_DAYS as _DL_RATE_MAX_AGE_DAYS } from './js/directionResearch.js';
 import { scoreTrack as _dlScoreTrack } from './js/directionScore.js';
@@ -5210,34 +5210,87 @@ svcInterval('deskTheory', async () => {
 // the architect turns a chosen one into a system card and prereg draft; the validation desk reviews a card or a harness
 // study. Proposals only: nothing is run or banked here.
 const _RP = { sessions: 'research_pod_sessions', library: 'research_pod_library', feedback: 'research_pod_feedback', cards: 'research_pod_cards', threads: 'research_pod_threads' };
-// §9ac: the system outputs (analysis/output/systems/<id>/, js/systemExports.js) and the loop context every lifecycle reads.
+// §9ac/§9ad: the system store. Each system's trade list (gzipped) and tearsheet live in R2 under systems/<id>/; the
+// index (one small record per system: headline, record, verdict inputs) lives in KV system_index. The server builds
+// them itself (POST /api/systems/rebuild runs the backfill adapters over the repo's stored study outputs in a worker
+// thread; POST /api/systems/upload takes a study's trades). Without R2 the store falls back to memory until restart.
+// A study may also commit small outputs to analysis/output/systems/<id>/; those are read too.
 const _SYS_DIR = path.join(__dirname, 'analysis', 'output', 'systems');
-function _sysList() {
-  const out = [];
-  for (const id of (fs.existsSync(_SYS_DIR) ? fs.readdirSync(_SYS_DIR) : []).filter(d => /^[a-z0-9][a-z0-9-]{1,80}$/.test(d)).sort()) {
-    if (!_sysTradesFile(id)) continue;
-    let ts = null; try { ts = JSON.parse(fs.readFileSync(path.join(_SYS_DIR, id, 'tearsheet.json'), 'utf8')); } catch { /* no tearsheet yet */ }
-    let meta = ts?.meta ?? null, n = ts?.trades ?? null;
-    if (!meta || n == null) { try { const j = _sysReadTrades(id); meta = j.meta ?? {}; n = (j.trades ?? []).length; } catch { continue; } }
-    out.push({ id, model: meta.model ?? id, trades: n, from: ts?.from ?? null, to: ts?.to ?? null, sharpe: ts?.portfolio?.sharpe ?? null, maxDD: ts?.portfolio?.maxDD ?? null, writer: meta.writer ?? 'node', evidence: meta.evidence ?? null });
+const _SYS_INDEX = 'system_index', _SYS_ID = /^[a-z0-9][a-z0-9-]{1,80}$/;
+const _sysMem = new Map();   // id → { gz, tearsheet } when R2 is not configured
+const _sysIndex = () => _rpGet(_SYS_INDEX, {});
+function _sysRepo(id) {
+  for (const f of ['trades.json', 'trades.json.gz']) { const p = path.join(_SYS_DIR, id, f); if (fs.existsSync(p)) return p; }
+  return null;
+}
+async function _sysList() {
+  const idx = await _sysIndex(), out = Object.values(idx);
+  for (const id of (fs.existsSync(_SYS_DIR) ? fs.readdirSync(_SYS_DIR) : []).filter(d => _SYS_ID.test(d) && !idx[d]).sort()) {
+    if (!_sysRepo(id)) continue;
+    let ts = null; try { ts = JSON.parse(fs.readFileSync(path.join(_SYS_DIR, id, 'tearsheet.json'), 'utf8')); } catch { /* summary only */ }
+    out.push({ id, model: ts?.meta?.model ?? id, trades: ts?.trades ?? null, from: ts?.from ?? null, to: ts?.to ?? null, sharpe: ts?.portfolio?.sharpe ?? null, maxDD: ts?.portfolio?.maxDD ?? null, evidence: ts?.meta?.evidence ?? null, store: 'repo' });
   }
-  return out;
+  return out.sort((a, b) => a.id.localeCompare(b.id));
 }
 const _sysCache = new Map();
-// trades.json, or trades.json.gz for large systems (scripts/systems/writeSystemOutputs.mjs).
-function _sysTradesFile(id) { for (const f of ['trades.json', 'trades.json.gz']) { const p = path.join(_SYS_DIR, id, f); if (fs.existsSync(p)) return p; } return null; }
-function _sysReadTrades(id) { const p = _sysTradesFile(id), b = fs.readFileSync(p); return JSON.parse((p.endsWith('.gz') ? zlib.gunzipSync(b) : b).toString('utf8')); }
-function _sysLoad(id) {
-  if (!/^[a-z0-9][a-z0-9-]{1,80}$/.test(String(id))) return null;
-  const f = _sysTradesFile(id); if (!f) return null;
-  const mt = fs.statSync(f).mtimeMs, hit = _sysCache.get(id); if (hit?.mt === mt) return hit.data;
-  const j = _sysReadTrades(id), { trades, errors } = _sxNormalise(j.trades ?? j, j.meta ?? {});
-  // the stored tearsheet is used when present (big systems take seconds to recompute); else computed once and cached
-  let ts = null; try { ts = JSON.parse(fs.readFileSync(path.join(_SYS_DIR, id, 'tearsheet.json'), 'utf8')); } catch { /* compute */ }
-  const data = { id, meta: j.meta ?? {}, trades, skipped: errors.length, tearsheet: ts?.ok ? ts : _sxTearsheet(trades, j.meta ?? {}) };
-  if (_sysCache.size > 30) _sysCache.clear(); _sysCache.set(id, { mt, data });
+async function _sysLoad(id) {
+  id = String(id ?? ''); if (!_SYS_ID.test(id)) return null;
+  const ix = (await _sysIndex())[id], ver = ix?.writtenAt ?? 'repo', hit = _sysCache.get(id);
+  if (hit?.ver === ver) return hit.data;
+  let gz = null, ts = null, raw = null;
+  if (ix?.store === 'r2' && _r2Ok()) { gz = await _r2GetBuffer(`systems/${id}/trades.json.gz`); ts = await _r2GetJSON(`systems/${id}/tearsheet.json`).catch(() => null); }
+  else if (_sysMem.has(id)) ({ gz, tearsheet: ts } = _sysMem.get(id));
+  if (gz) raw = JSON.parse(zlib.gunzipSync(gz).toString('utf8'));
+  else { const f = _sysRepo(id); if (!f) return null; const b = fs.readFileSync(f); raw = JSON.parse((f.endsWith('.gz') ? zlib.gunzipSync(b) : b).toString('utf8')); try { ts = JSON.parse(fs.readFileSync(path.join(_SYS_DIR, id, 'tearsheet.json'), 'utf8')); } catch { /* compute */ } }
+  const { trades, errors } = _sxNormalise(raw.trades ?? raw, raw.meta ?? {});
+  const data = { id, meta: raw.meta ?? {}, trades, skipped: errors.length, tearsheet: ts?.ok ? ts : _sxTearsheet(trades, raw.meta ?? {}) };
+  if (_sysCache.size >= 6) _sysCache.delete(_sysCache.keys().next().value);   // trade lists can be large: keep a few
+  _sysCache.set(id, { ver, data });
   return data;
 }
+// Build jobs in a worker, store each result as it arrives.
+let _sysJob = null;
+function _sysBuild(jobs, kind) {
+  if (_sysJob?.status === 'running') return null;
+  const job = _sysJob = { status: 'running', kind, ids: jobs.map(j => j.id), done: [], failed: {}, startedAt: Date.now(), finishedAt: null, store: _r2Ok() ? 'r2' : 'memory' };
+  const w = new _NodeWorker(new URL('./scripts/systems/buildWorker.mjs', import.meta.url), { workerData: { jobs }, resourceLimits: { maxOldGenerationSizeMb: 2048 } });
+  let chain = Promise.resolve();
+  w.on('message', m => { chain = chain.then(async () => {
+    if (m.done) return;
+    if (!m.ok) { job.failed[m.id] = m.error; return; }
+    try {
+      const gz = Buffer.from(m.gz);
+      if (_r2Ok()) { await _r2PutBuffer(`systems/${m.id}/trades.json.gz`, gz, 'application/gzip'); await _r2PutJSON(`systems/${m.id}/tearsheet.json`, m.tearsheet); }
+      else _sysMem.set(m.id, { gz, tearsheet: m.tearsheet });
+      const idx = await _sysIndex();
+      idx[m.id] = { id: m.id, model: m.meta.model ?? m.id, doc: m.meta.doc ?? null, evidence: m.meta.evidence ?? null, costs: m.meta.costs ?? null, note: m.meta.note ?? null, source: m.meta.source ?? kind, writtenAt: m.meta.writtenAt, store: _r2Ok() ? 'r2' : 'memory', ...m.summary };
+      await kv.put(_SYS_INDEX, JSON.stringify(idx));
+      _sysCache.delete(m.id); _srDiag.delete(m.id);
+      job.done.push(m.id);
+    } catch (e) { job.failed[m.id] = `store: ${e.message}`; }
+  }); });
+  const end = err => chain.then(() => { if (err) job.error = err.message; job.status = 'done'; job.finishedAt = Date.now(); });
+  w.on('error', end); w.on('exit', () => end());
+  return job;
+}
+// POST /api/systems/rebuild { ids? }: rebuild every backfilled system (or these) from the repo's stored study outputs.
+app.post('/api/systems/rebuild', async (req, res) => {
+  try { const { SYSTEMS } = await import('./scripts/systems/backfill.mjs'), want = Array.isArray(req.body?.ids) ? new Set(req.body.ids) : null;
+    const jobs = SYSTEMS.filter(s => !want || want.has(s.id)).map(s => ({ id: s.id, adapter: true }));
+    const job = _sysBuild(jobs, 'backfill'); if (!job) return res.status(409).json({ ok: false, error: 'a build is already running', job: _sysJob });
+    res.status(202).json({ ok: true, job }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/systems/upload { id, meta, trades }: a study's trades (standard schema) into the store
+// (node scripts/systems/writeSystemOutputs.mjs <id> <file> --push <base>, or forge/system_exports.py push_system).
+app.post('/api/systems/upload', (req, res) => {
+  const id = String(req.body?.id ?? ''), trades = req.body?.trades;
+  if (!_SYS_ID.test(id) || !Array.isArray(trades) || !trades.length) return res.status(400).json({ ok: false, error: 'id (a lower-case register id) and trades are required' });
+  const job = _sysBuild([{ id, raw: trades, meta: { ...(req.body.meta ?? {}), source: 'upload' } }], 'upload');
+  if (!job) return res.status(409).json({ ok: false, error: 'a build is already running', job: _sysJob });
+  res.status(202).json({ ok: true, job });
+});
+app.get('/api/systems/job', (_req, res) => { res.set('Cache-Control', 'no-store'); res.json({ ok: true, job: _sysJob, store: _r2Ok() ? 'r2' : 'memory' }); });
 function _vdChecklists() {
   const dir = path.join(__dirname, 'analysis', 'output', 'harness'), out = {};
   for (const f of (fs.existsSync(dir) ? fs.readdirSync(dir) : []).filter(f => f.endsWith('.json'))) {
@@ -5249,7 +5302,7 @@ async function _rpLoop(lib) {
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
   _tdOpsNow();
   const [fb, cards] = await Promise.all([_rpGet(_RP.feedback, {}), _rpGet(_RP.cards, {})]);
-  const ctx = { fb, cards, rows: _roCache.rows ?? [], checklists: _vdChecklists(), systems: Object.fromEntries(_sysList().map(x => [x.id, x])), evidence: DESK_EVIDENCE };
+  const ctx = { fb, cards, rows: _roCache.rows ?? [], checklists: _vdChecklists(), systems: Object.fromEntries((await _sysList()).map(x => [x.id, x])), evidence: DESK_EVIDENCE };
   const cycles = Object.fromEntries((lib ?? []).map(p => [p.id, _rpLifecycle(p, ctx)]));
   return { ctx, cycles, scorecard: _rpScorecard(lib, cycles) };
 }
@@ -5325,7 +5378,7 @@ app.get('/api/research-pod', async (_req, res) => {
     res.set('Cache-Control', 'no-store');
     const [sessions, lib, fb, cards, threads] = await Promise.all([_rpGet(_RP.sessions, []), _rpGet(_RP.library, []), _rpGet(_RP.feedback, {}), _rpGet(_RP.cards, {}), _rpGet(_RP.threads, {})]);
     const loop = await _rpLoop(lib);
-    res.json({ ok: true, label: 'proposals and designs, not results', job: _rpJob, sessions: sessions.slice(0, 6), scorecard: loop.scorecard, systems: _sysList(),
+    res.json({ ok: true, label: 'proposals and designs, not results', job: _rpJob, sessions: sessions.slice(0, 6), scorecard: loop.scorecard, systems: await _sysList(),
       library: lib.map(p => ({ ...p, feedback: fb[p.id] ?? null, lifecycle: loop.cycles[p.id], thread: (threads[p.id] ?? []).length, threadJob: _rpThreadJobs[p.id] ?? null, card: cards[p.id] ? { at: cards[p.id].at, review: cards[p.id].review?.verdict ?? null } : null })),
       buildList: _rpBuildList(lib, fb).slice(0, 25), catalogue: { coverage: _sysCoverage(), systems: _SYS_CATALOGUE }, researchers: _RP_RESEARCHERS, web: _RP_WEB.map(s => ({ id: s.id, label: s.label, lens: s.lens })) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -5389,15 +5442,15 @@ app.post('/api/research-pod/thread', async (req, res) => {
 });
 // §9ac: every system's standard outputs. GET /api/system-backtests: the list. GET /api/system-backtest?id=: trades + the
 // quant tearsheet. GET /api/system-backtest/csv?id=&kind=pct|r|cash|terminal[&account=&risk=]: the toolkit and Data Terminal files.
-app.get('/api/system-backtests', (_req, res) => { try { res.set('Cache-Control', 'no-store'); res.json({ ok: true, dir: 'analysis/output/systems', systems: _sysList() }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
-app.get('/api/system-backtest', (req, res) => {
-  try { res.set('Cache-Control', 'no-store'); const d = _sysLoad(String(req.query.id ?? '')); if (!d) return res.status(404).json({ ok: false, error: 'no system outputs for that id (analysis/output/systems/<id>/trades.json)' });
+app.get('/api/system-backtests', async (_req, res) => { try { res.set('Cache-Control', 'no-store'); res.json({ ok: true, store: _r2Ok() ? 'r2' : 'memory', job: _sysJob, systems: await _sysList() }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+app.get('/api/system-backtest', async (req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const d = await _sysLoad(String(req.query.id ?? '')); if (!d) return res.status(404).json({ ok: false, error: 'no system with that id: rebuild the systems, or upload its trades' });
     const chk = _vdChecklists()[d.id] ?? null; res.json({ ok: true, ...d, gates: chk }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-app.get('/api/system-backtest/csv', (req, res) => {
+app.get('/api/system-backtest/csv', async (req, res) => {
   try {
-    const d = _sysLoad(String(req.query.id ?? '')); if (!d) return res.status(404).send('no such system');
+    const d = await _sysLoad(String(req.query.id ?? '')); if (!d) return res.status(404).send('no such system');
     const kind = String(req.query.kind ?? 'pct'), account = Math.max(1000, +req.query.account || 100000), risk = +req.query.risk > 0 ? +req.query.risk : null;
     const body = kind === 'terminal' ? _sxTerminalCsv(d.trades) : _sxToolkitCsv(d.trades, ['pct', 'r', 'cash'].includes(kind) ? kind : 'pct', { account, riskPct: risk });
     res.set('Content-Disposition', `attachment; filename="${d.id}_${kind === 'terminal' ? 'data_terminal' : `toolkit_${kind}`}.csv"`).type('text/csv').send(body);
@@ -5477,14 +5530,14 @@ app.get('/api/fleet-portfolio', async (req, res) => {
 // Revival ideas go into the research pod's library as proposals, so the loop (cards, threads, lifecycle) applies.
 const _SR_KEY = 'system_reviews';
 const _srDiag = new Map();
-function _srDiagnostics(id) {
-  const d = _sysLoad(id); if (!d) return null;
+async function _srDiagnostics(id) {
+  const d = await _sysLoad(id); if (!d) return null;
   const k = `${id}|${d.trades.length}|${d.trades.at(-1)?.exitMs}`; if (_srDiag.get(id)?.k === k) return _srDiag.get(id).v;
   const v = { id, meta: d.meta, review: _svReview(d.trades) }; _srDiag.set(id, { k, v }); return v;
 }
 let _srJob = null;
 async function _srRunOne(id) {
-  const dg = _srDiagnostics(id); if (!dg) throw new Error(`no system ${id}`);
+  const dg = await _srDiagnostics(id); if (!dg) throw new Error(`no system ${id}`);
   if (!dg.review.ok) throw new Error(dg.review.error);
   const roles = _deskLoadRoles(), { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js'), date = _dpLondonDate(Date.now());
   const text = _svText(id, dg.meta, dg.review), lenses = {}, errors = {};
@@ -5520,14 +5573,14 @@ function _srStart(ids) {
   return job;
 }
 app.get('/api/system-review', async (req, res) => {
-  try { res.set('Cache-Control', 'no-store'); const id = String(req.query.id ?? ''), dg = _srDiagnostics(id);
+  try { res.set('Cache-Control', 'no-store'); const id = String(req.query.id ?? ''), dg = await _srDiagnostics(id);
     if (!dg) return res.status(404).json({ ok: false, error: 'no such system' });
     res.json({ ok: true, ...dg, panel: (await _rpGet(_SR_KEY, {}))[id] ?? null, job: _srJob }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-app.post('/api/system-review/run', (req, res) => {
+app.post('/api/system-review/run', async (req, res) => {
   if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key' });
-  const ids = req.body?.all ? _sysList().map(x => x.id) : [String(req.body?.id ?? '')].filter(id => _sysLoad(id));
+  const list = await _sysList(), ids = req.body?.all ? list.map(x => x.id) : [String(req.body?.id ?? '')].filter(id => list.some(x => x.id === id));
   if (!ids.length) return res.status(400).json({ ok: false, error: 'no such system' });
   const job = _srStart(ids); if (!job) return res.status(409).json({ ok: false, error: 'a review is already running', job: _srJob });
   res.status(202).json({ ok: true, job });
@@ -5535,15 +5588,14 @@ app.post('/api/system-review/run', (req, res) => {
 // GET /api/system-overview: every system with its headline, its decay trend and the panel's verdicts (the backfill at a glance).
 app.get('/api/system-overview', async (_req, res) => {
   try { res.set('Cache-Control', 'no-store'); const reviews = await _rpGet(_SR_KEY, {});
-    res.json({ ok: true, job: _srJob, systems: _sysList().map(x => { const dg = _srDiagnostics(x.id), rv = dg?.review;
-      return { ...x, doc: dg?.meta?.doc ?? null, evidence: dg?.meta?.evidence ?? null, meanR: rv?.overall?.meanR ?? null, trend: rv?.decay?.trend ?? null, survivors: rv?.survivors?.length ?? null, reviewedAt: reviews[x.id]?.at ?? null, verdicts: reviews[x.id]?.verdicts ?? null, validation: reviews[x.id]?.validation?.verdict ?? null }; }) }); }
+    res.json({ ok: true, job: _srJob, build: _sysJob, store: _r2Ok() ? 'r2' : 'memory', systems: (await _sysList()).map(x => ({ ...x, reviewedAt: reviews[x.id]?.at ?? null, verdicts: reviews[x.id]?.verdicts ?? null, validation: reviews[x.id]?.validation?.verdict ?? null })) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/system-live?bot=OI Gamma&id=<system>: C.OG's live check: a bot's live trades against the backtest's expected shape.
 app.get('/api/system-live', async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
-    const bot = String(req.query.bot ?? ''), key = _FP_LOGS[bot], d = _sysLoad(String(req.query.id ?? ''));
+    const bot = String(req.query.bot ?? ''), key = _FP_LOGS[bot], d = await _sysLoad(String(req.query.id ?? ''));
     if (!key) return res.status(400).json({ ok: false, error: `bot must be one of ${Object.keys(_FP_LOGS).join(', ')}` });
     if (!d) return res.status(404).json({ ok: false, error: 'no such system' });
     const log = await _kvJson(key).catch(() => null), rows = _jcRows({ [bot]: Array.isArray(log) ? log : [] });
