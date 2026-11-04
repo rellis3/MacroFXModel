@@ -127,3 +127,12 @@
 .tt-pipe b{display:block;font:700 20px var(--mono)}
 .tt-pipe span{font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--tx3)}
 .tt-pipe .on{border-color:rgba(232,184,90,.55);box-shadow:0 0 14px rgba(232,184,90,.12)}
+
+/* the research lab's quick test inside the terminal's Research tab (js/quickTestView.js, shared with the Desk Office) */
+#tt-qt { min-width: 0; overflow-wrap: anywhere; }
+#tt-qt h2 { font-size: 16px; margin: 0 0 10px; font-style: normal; }
+#tt-qt h2 i { display: block; font-size: 12px; font-weight: 400; color: var(--tx3); font-style: normal; margin-top: 2px; }
+#tt-qt label:has(> select) { display: block; min-width: 0; }
+#tt-qt select { width: 100%; max-width: 100%; box-sizing: border-box; }
+#tt-qt .qt-form { grid-template-columns: minmax(0, 1fr); }
+#tt-qt table { display: block; overflow-x: auto; }

@@ -242,3 +242,20 @@ test('cardDrivers: points on the market, its legs and risk appetite, signed onto
   assert.equal(x.data.linesFor, '2026-11-04'); assert.equal(x.invalidation, 'Close above 1.1234');
   assert.equal(cardDrivers({}, 'EURUSD').analysts.length, 0);
 });
+
+// ── memory in prices (js/terminal/autocorrView.js) ──
+import * as ACV from './autocorrView.js';
+test('autocorrelation view: board, pair card, bars, always description not a signal', () => {
+  const lag = (r, sig = false) => Array.from({ length: 10 }, (_, i) => ({ lag: i + 1, r: i ? 0.01 : r, se: 0.02, sig: !i && sig }));
+  const row = (id, word, r1) => ({ id, ok: true, n: 3290, from: '2014-01-02', to: '2026-08-21', ret: lag(r1, word === 'reverts'), vol: lag(0.2), bandRetZ: 2.81, bandAbs: 0.049, volLags: 10,
+    vr: { 5: { vr: 0.86, z: -1.9, p: 0.06 }, 20: { vr: 0.79, z: -1.4, p: 0.15 } }, halves: [{ acf1: -0.11 }, { acf1: -0.09 }], recent: { acf1: 0.12 }, reading: { word, line: `${id} line <x>` } });
+  const d = { ok: true, label: 'Description, not a signal.', summary: { markets: 2, trends: 0, reverts: 1, unstable: 0, noMemory: 1 }, rows: [row('NQ', 'reverts', -0.097), row('EURUSD', 'no memory', 0.001), { id: 'BAD', ok: false, reading: { word: 'no data', line: 'short' } }], errors: { US30: 'HTTP 500' } };
+  const b = ACV.boardHtml(d);
+  assert.match(b, /Memory in prices/); assert.match(b, /data-pair="NQ"/); assert.doesNotMatch(b, /data-pair="BAD"/); assert.match(b, /not a signal/); assert.match(b, /Not loaded: US30/);
+  assert.match(b, /NQ line &lt;x&gt;/); assert.match(b, /1 revert/);
+  assert.match(ACV.lagBars(d.rows[0], 'ret'), /var\(--gold\)/, 'a lag clearing its band is gold');
+  assert.equal((ACV.lagBars(d.rows[0], 'vol').match(/<rect/g) ?? []).length, 10);
+  assert.match(ACV.pairCard(d, 'nq'), /reverts/); assert.match(ACV.pairCard(d, 'nq'), /quick test/);
+  assert.match(ACV.pairCard(d, 'GBPUSD'), /not on the autocorrelation board/);
+  assert.match(ACV.boardHtml({ ok: false, error: 'boom' }), /boom/); assert.equal(ACV.boardHtml(null), ''); assert.equal(ACV.pairCard(null, 'NQ'), '');
+});
