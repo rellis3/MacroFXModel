@@ -5372,11 +5372,8 @@ async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS) } = {}
       ['The web this week (titles, links, first lines)', _rpWebDigest(web, lens)],
       ['The SSRN and arXiv reading list', _tdReadingList(_tdRead('education/papers/open/reading_list.csv'))],
     ] });
-    for (let i = 0; i < 2 && !out.researchers[lens]; i++) {
-      try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 12_000 }); const v = _rpValidate(_parseModelJson(r.text ?? _antText(r), `desk:pod-${lens}`), lens, { paperIds });
-        if (v.ok) out.researchers[lens] = { ...v.value, notes: v.notes, model: r.model ?? null }; else out.errors[lens] = v.errors.join('; '); }
-      catch (e) { out.errors[lens] = e.message; }
-    }
+    const v = await _modelJson({ system, prompt, maxTokens: 16_000, label: `desk:pod-${lens}`, validate: o => _rpValidate(o, lens, { paperIds }) });
+    if (v.ok) out.researchers[lens] = { ...v.value, notes: v.notes, model: v.model }; else out.errors[lens] = v.errors.join('; ');
     if (out.researchers[lens]) delete out.errors[lens];
   }));
   const all = Object.values(out.researchers).flatMap(r => r.proposals);
@@ -5498,7 +5495,7 @@ async function _rpCardRun(id) {
   let card = null, err = [];
   _rpCardJob && (_rpCardJob.stage = 'architect');
   { const { system, prompt } = _deskStagePrompt({ role: arch, pack: { date }, ledger: DESK_EVIDENCE, sections: base });
-    for (let i = 0; i < 2 && !card; i++) { try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 12_000 }); const v = _rpValidateCard(_parseModelJson(r.text ?? _antText(r), 'desk:architect')); if (v.ok) card = { ...v.value, notes: v.notes }; else err.push(...v.errors); } catch (e) { err.push(e.message); } } }
+    { const v = await _modelJson({ system, prompt, maxTokens: 14_000, label: 'desk:architect', validate: _rpValidateCard }); if (v.ok) card = { ...v.value, notes: v.notes }; else err.push(...v.errors); } }
   if (!card) return { ok: false, error: err.join('; ') };
   let review = null;
   _rpCardJob && (_rpCardJob.stage = 'validation desk');
@@ -5639,17 +5636,30 @@ async function _litResolve(ref, errors) {
   const rec = await _litByTitle(id.title, errors); if (!rec) throw new Error('no paper with that title found in arXiv, OpenAlex, Semantic Scholar or Crossref'); return { rec };
 }
 /** One bounded model call: counted against the budget, retried once on an invalid reply while the budget lasts. */
+// One model call that must return a JSON object, with an honest retry (owner, 2026-11-04: the pod came back with
+// "reply is not a JSON object" from every researcher). A reply cut off at the length cap is retried with more room and
+// an instruction to be brief; an unreadable reply is retried once; the error says which it was and how the reply began.
+async function _modelJson({ task = 'desk-head', system, prompt, maxTokens = 12_000, timeoutMs, label = 'model', validate, tries = 2, onCall = null }) {
+  let err = 'no call made', p = prompt, cap = maxTokens;
+  for (let i = 0; i < tries; i++) {
+    onCall?.();
+    let r;
+    try { r = await callModel({ task, system, prompt: p, maxTokens: cap, ...(timeoutMs ? { timeoutMs } : {}) }); }
+    catch (e) { err = e.message; continue; }
+    const text = r.text ?? _antText(r), cut = r.stop_reason === 'max_tokens' || r.truncated === true, obj = _parseModelJson(text, label);
+    if (obj) { const v = validate(obj); if (v.ok) return { ...v, model: r.model ?? null }; err = v.errors.join('; '); }
+    else err = cut ? `the reply was cut off at the length limit (${cap} tokens)` : `the reply was not JSON (it began: ${JSON.stringify(String(text ?? '').trim().slice(0, 120))})`;
+    if (cut) { cap = Math.min(Math.round(cap * 1.6), 24_000); p = `${prompt}\n\nIMPORTANT: your previous reply was cut off at the length limit. Reply again with the same JSON shape but much shorter: fewer items and one or two sentences per field. Output only the JSON object.`; }
+    else if (!obj) p = `${prompt}\n\nIMPORTANT: your previous reply could not be read as JSON. Output only the JSON object, with no text or code fences around it.`;
+  }
+  return { ok: false, errors: [String(err).slice(0, 300)] };
+}
 async function _litModel(budget, { role, sections, date, ledger, maxTokens, timeoutMs, label, validate }) {
   const { system, prompt } = _deskStagePrompt({ role, pack: { date }, ledger, sections });
-  let err = 'no call made';
-  for (let i = 0; i < 2; i++) {
-    if (budget.calls >= budget.max) { err = `model budget used up (${budget.max} calls)`; break; }
-    budget.calls++;
-    try { const r = await callModel({ task: role.tier === 'quick' ? 'desk-analyst' : 'desk-head', system, prompt, maxTokens, timeoutMs }); const v = validate(_parseModelJson(r.text ?? _antText(r), label));
-      if (v.ok) return v; err = v.errors.join('; '); }
-    catch (e) { err = e.message; }
-  }
-  throw new Error(`${label}: ${String(err).slice(0, 200)}`);
+  if (budget.calls >= budget.max) throw new Error(`${label}: model budget used up (${budget.max} calls)`);
+  const v = await _modelJson({ task: role.tier === 'quick' ? 'desk-analyst' : 'desk-head', system, prompt, maxTokens, timeoutMs, label, validate, tries: Math.min(2, budget.max - budget.calls), onCall: () => { budget.calls++; } });
+  if (v.ok) return v;
+  throw new Error(`${label}: ${v.errors.join('; ')}`);
 }
 const _litFeedIds = () => _DATA_FEEDS.map(f => `${f.id} (${f.name})`).join('; ');
 /** Read papers ({ rec, text, from }): one call per full-text paper, abstracts eight to a call; three calls at a time. */

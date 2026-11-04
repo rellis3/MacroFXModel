@@ -135,9 +135,13 @@ def main():
     ib = IB()
     try:
         ib.connect('127.0.0.1', IB_PORT, clientId=25, timeout=20, readonly=True)
-    except Exception as e:
-        print(f'Could not connect to IB Gateway on port {IB_PORT} ({type(e).__name__}). Open and log in, then run again. Nothing was changed.')
-        sys.exit(2)
+    except Exception:
+        try:   # "client id already in use": an earlier run still holds it; try a fresh one
+            ib.disconnect()
+            ib.connect('127.0.0.1', IB_PORT, clientId=125 + int(time.time()) % 50, timeout=20, readonly=True)
+        except Exception as e:
+            print(f'Could not connect to IB Gateway on port {IB_PORT} ({type(e).__name__}). Open and log in, then run again. Nothing was changed.')
+            sys.exit(2)
     ib.reqMarketDataType(3)   # live where subscribed, delayed otherwise (labelled per row)
     # IBKR reports every delayed-data line (10090) and every listed-but-absent strike (200) as an error; they are
     # expected here, so they are counted per market instead of printed one by one

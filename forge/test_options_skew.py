@@ -60,6 +60,10 @@ def test_pick_expiries_and_strikes():
     assert p['1m'][0] == '20261204' and p['3m'][0] == '20270205'
     ks = strike_window(1.10, [1.0 + i * 0.005 for i in range(41)], 30, 0.08)
     assert min(ks) < 1.10 < max(ks) and len(ks) <= 20
+    # a dense index grid (every 10 points): the chosen strikes reach out towards the window's edge, not just near F
+    F, grid = 25000.0, [20000 + 10 * i for i in range(1001)]
+    nq = strike_window(F, grid, 30, 0.22)
+    assert len(nq) <= 20 and min(nq) < F * 0.9 and max(nq) > F * 1.1
     # only near-dated chains listed: no 3-month reading made up from a 1-month option
     near = pick_expiries(['20261113', '20261204'], today=date(2026, 11, 4))
     assert '3m' not in near and near['1m'][0] == '20261204'

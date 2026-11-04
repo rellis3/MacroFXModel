@@ -35,13 +35,16 @@ OUT = ROOT / 'analysis' / 'output' / 'cb_expectations'
 BASE = 'https://macrofxmodel-production.up.railway.app'
 KV_KEY = 'cb_rate_futures_v1'
 IB_PORT = int(os.environ.get('IB_PORT', 4002))
+CLIENT_ID = int(os.environ.get('IB_CLIENT_ID', 23))
 
 # currency: [(IBKR symbol, exchange, currency, label, kind[, tradingClass]), ...] best first. Symbols checked against the account with --search
 # (4 Nov 2026): ICE SONIA is SONIA.N (class SO3; SOA is the one-month), SARON is SARON on Eurex (FSR3) or SRFXON3 on ICE (SA3), TONA is TONA on
 # OSE (TOA3M) or SGX. IBKR lists no New Zealand rate futures for this account (only the 6N currency future), so NZD is left out here.
 CANDIDATES = {
     'USD': [('ZQ', 'CBOT', 'USD', '30-day fed funds', '1m'), ('SOFR3', 'CME', 'USD', '3M SOFR', '3m')],
-    'EUR': [('ER3', 'ICEEU', 'EUR', '3M €STR', '3m'), ('I', 'ICEEU', 'EUR', '3M Euribor', 'bill')],
+    # Eurex first: the account reads Eurex (SARON works) but has no ICE Futures Europe data (owner's run, 2026-11-04)
+    'EUR': [('ST3', 'EUREX', 'EUR', '3M €STR (Eurex)', '3m', 'FST3'), ('ESTR', 'CME', 'EUR', '€STR (CME)', '3m', 'ESR'), ('ER3', 'ICEEU', 'EUR', '3M €STR (ICE)', '3m'),
+            ('EU3', 'EUREX', 'EUR', '3M Euribor (Eurex)', 'bill', 'FEU3'), ('I', 'ICEEU', 'EUR', '3M Euribor (ICE)', 'bill')],
     'GBP': [('SONIA.N', 'ICEEU', 'GBP', '3M SONIA', '3m', 'SO3')],
     'CHF': [('SARON', 'EUREX', 'CHF', '3M SARON (Eurex)', '3m', 'FSR3'), ('SRFXON3', 'ICEEU', 'CHF', '3M SARON (ICE)', '3m', 'SA3')],
     'CAD': [('CRA', 'CDE', 'CAD', '3M CORRA', '3m'), ('BAX', 'CDE', 'CAD', '3M bankers acceptance', 'bill')],
@@ -160,10 +163,15 @@ def main():
     now = datetime.now(timezone.utc)
     ib = IB()
     try:
-        ib.connect('127.0.0.1', IB_PORT, clientId=23, timeout=20, readonly=True)
-    except Exception as e:
-        print(f'Could not connect to IB Gateway on port {IB_PORT} ({type(e).__name__}). Open and log in, then run again. Nothing was changed.')
-        sys.exit(2)
+        ib.connect('127.0.0.1', IB_PORT, clientId=CLIENT_ID, timeout=20, readonly=True)
+    except Exception:
+        # "client id already in use": an earlier run still holds it (e.g. it was stopped mid-way); try a fresh one
+        try:
+            ib.disconnect()
+            ib.connect('127.0.0.1', IB_PORT, clientId=CLIENT_ID + 100 + int(time.time()) % 50, timeout=20, readonly=True)
+        except Exception as e:
+            print(f'Could not connect to IB Gateway on port {IB_PORT} ({type(e).__name__}). Open and log in, then run again. Nothing was changed.')
+            sys.exit(2)
     only = {x.strip().upper() for x in a.only.split(',') if x.strip()}
     if a.search:
         search(ib, only)
