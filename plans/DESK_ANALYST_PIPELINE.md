@@ -1141,6 +1141,51 @@ the strip above every tab) and in the Desk Pack (prereg A9).
   Fed liquidity, the term premium and the global rate cycle, each green / amber / red, overall calm / watch / stress.
   Pinned above the tabs; the global-market analyst reads it.
 
+## 9ah. The literature desk: the researchers read the papers themselves (2026-11-04)
+
+The owner: "Can the research not go off to the web and pull in white papers, research, analysis which would be used to
+support the theory/hypothesis? ... I wanted the researchers to go off and help me research an idea, or even better
+propose ideas themselves of interesting hypotheses from white papers they have consumed, cross-referenced and read."
+All in the Desk Office "Research" tab (Literature desk panel, under the pod).
+
+- **Sources** (`js/literature.js`, pure, tested against saved replies in `tests/fixtures/literature/`): arXiv API,
+  OpenAlex works, Semantic Scholar graph search and Crossref works, all keyless (OpenAlex and Semantic Scholar share a
+  small free budget per IP and answer 429 when it is spent; the server then skips that source for a while and says so.
+  `OPENALEX_API_KEY`, `S2_API_KEY` and `OPENALEX_MAILTO` are used when set). Records are normalised to one shape (id =
+  arXiv id, else DOI, else SSRN id, else title), deduped across sources on any shared key, and ranked on relevance to
+  the queries (0.6), citations (0.2), recency (0.1), found twice (0.05) and open access (0.05).
+- **Full text**: arXiv HTML (LaTeXML, stripped to the article, bibliography cut, math kept as its TeX), else the PDF
+  through pdf-parse (45 pages max), else an open-access link (a landing page's `citation_pdf_url` is followed once).
+  The reader gets the first 25k characters plus the conclusion section if it falls after the cut; references are
+  never sent. SSRN pages block automated reads, so SSRN links resolve through their DOI (10.2139/ssrn.N).
+- **Research an idea** (`POST /api/research-pod/investigate { hypothesis }`, one job at a time, up to 14 model
+  calls): the **librarian** (role `librarian`, schema `literature_queries`) writes 4-8 queries and names the known
+  literature; every source is searched; the top 18 are kept; up to 7 open ones are read in full (one `paper_reader`
+  call each) and the rest from their abstracts (eight to a call); notes already in the library are reused, not
+  re-read. Notes (schema `paper_notes`): claim with numbers, mechanism, market/period/frequency, method, effect,
+  out of sample, costs, stance towards the hypothesis, caveats, how to check it here, and **cross-references** to
+  papers already in the library (confirms / contradicts / extends / replicates). Then the **dossier** (role
+  `research_synthesist`, schema `research_dossier`; the three lenses in one call, with the Evidence Book, the register
+  and the data inventory): the hypothesis restated, evidence for and against each citing paper ids (a point with no
+  paper read is dropped), what is unknown, how to test it on this repo's data, a verdict (worth-testing / weak /
+  already-tested) and 1-3 proposals in the pod's proposal shape with citations; "Add to the proposal library"
+  (`POST /api/research-pod/dossier/adopt`) puts one into the pod's library for marks, threads and the architect.
+- **Review this paper** (`POST /api/research-pod/paper { ref }`, up to 5 calls): an arXiv id or link, a DOI, an SSRN
+  or PDF link, any page, a title, or pasted text; read, noted, and written up as a dossier of kind `paper` (its claim
+  as the hypothesis, related library papers as further evidence, how to test it here, proposals).
+- **The researchers read on their own**: each pod run (`_rpRun`) first runs a literature scan: per lens one search
+  (its rotating weekly topic from `LENS_INTERESTS`, or the owner's brief) plus the week's arXiv items, the two best
+  papers not yet read go to the reader (one call per lens, at most 4 calls and 6 papers a run). Each researcher's prompt
+  gets "Papers you have read (notes)" from the library, and proposals carry an optional `citations: [paperId]`
+  (validated against the library; backward compatible), shown on the proposal cards. The role files say they must cite.
+- **Store**: KV `research_pod_dossiers` (last 30) and `research_pod_papers` (the paper library: one entry per paper,
+  its notes with the previous claim kept, the lenses that read it, which dossiers and proposals cite it), permanent.
+  `GET /api/research-pod/dossiers`, `GET /api/research-pod/dossier?id=`, `GET /api/research-pod/papers`.
+- **Bounds**: every fetch has a timeout (20-40 s), every stage one more (search 4 min, full text 2 min a paper, each
+  reader call 3 min, the dossier 5 min); model calls are counted against the job's budget; a source or a paper that
+  fails goes into the job's errors and the job carries on. The papers read are saved before the dossier is written,
+  so a failed dossier does not lose the reading. Literature is a reason to test, never a result.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
