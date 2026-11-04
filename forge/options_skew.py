@@ -66,9 +66,17 @@ def pick_expiries(expiries, today=None, targets=TENORS, min_days=3):
 
 
 def strike_window(F, strikes, days, vol_guess, n_side=10, width=2.5):
-    """The listed strikes within about width standard deviations of F for this expiry, at most n_side each side."""
+    """Up to n_side listed strikes each side of F, spread evenly out to about width standard deviations. Indices, gold
+    and oil list strikes so close together that the nearest ten all sit near the money and never reach the 25-delta
+    options; spacing them across the window does (owner's first run, 2026-11-04)."""
     sd = F * vol_guess * (max(days, 1) / 365) ** 0.5
     lo, hi = F - width * sd, F + width * sd
-    below = sorted([k for k in strikes if lo <= k <= F], reverse=True)[:n_side]
-    above = sorted([k for k in strikes if F <= k <= hi])[:n_side]
+
+    def spread(ks):
+        if len(ks) <= n_side:
+            return ks
+        step = (len(ks) - 1) / (n_side - 1)
+        return [ks[round(i * step)] for i in range(n_side)]
+    below = spread(sorted([k for k in strikes if lo <= k <= F], reverse=True))
+    above = spread(sorted([k for k in strikes if F <= k <= hi]))
     return sorted(set(below + above))
