@@ -5,6 +5,7 @@ Laptop: IB Gateway open and logged in, API on port 4002 (paper; override with en
 SARON), Montreal (CORRA) and ASX 24 (AU/NZ) are needed for live prices; without one IBKR returns no bars and the script says which.
 
     python scripts/rates_line/refresh_cb_expectations.py --discover     # which contracts IBKR knows for each candidate symbol (no prices, no push)
+    python scripts/rates_line/refresh_cb_expectations.py --search --only GBP,CHF,NZD,JPY   # search IBKR's symbols for the right ones
     python scripts/rates_line/refresh_cb_expectations.py                # pull the strips and print them
     python scripts/rates_line/refresh_cb_expectations.py --push         # ... and POST them to {base}/api/kv/set
 
@@ -46,6 +47,11 @@ CANDIDATES = {
     'NZD': [('ZO', 'SNFE', 'NZD', '30-day OCR', '1m'), ('BB', 'SNFE', 'NZD', '90-day bank bill', 'bill')],
     'JPY': [('TONA3M', 'OSE.JPN', 'JPY', '3M TONA', '3m')],
 }
+# --search: words to look up in IBKR's symbol search for each currency, to find the right symbol when a candidate is not found
+SEARCH = {
+    'USD': ['SOFR', 'FED FUNDS'], 'EUR': ['ESTR', 'EURIBOR'], 'GBP': ['SONIA'], 'CHF': ['SARON'], 'CAD': ['CORRA'],
+    'AUD': ['CASH RATE', 'BANK BILL'], 'NZD': ['OCR', 'BANK BILL', 'NZD'], 'JPY': ['TONA', 'TONAR', 'EUROYEN', 'TIBOR'],
+}
 last = [0.0]
 
 
@@ -78,6 +84,11 @@ def strip(ib, sym, exch, ccy, n, now, discover=False):
     from ib_insync import Future
     det = ib.reqContractDetails(Future(symbol=sym, exchange=exch, currency=ccy))
     if not det:
+        # the exchange code may differ in IBKR: ask again on any exchange, same symbol and currency
+        det = ib.reqContractDetails(Future(symbol=sym, exchange='', currency=ccy))
+        if det:
+            print(f'    found {sym} on {sorted({d.contract.exchange for d in det})} rather than {exch}')
+    if not det:
         return None, 'not found'
     cs = []
     for d in det:
@@ -101,10 +112,43 @@ def strip(ib, sym, exch, ccy, n, now, discover=False):
     return rungs, (None if rungs else 'no prices')
 
 
+def search(ib, only):
+    """Print every IBKR symbol matching each currency's search words that has futures, with the futures listed under it."""
+    from ib_insync import Future
+    seen = set()
+    for ccy, words in SEARCH.items():
+        if only and ccy not in only:
+            continue
+        print(f'{ccy}:')
+        for w in words:
+            time.sleep(1.1)  # IBKR allows one symbol search per second
+            try:
+                hits = ib.reqMatchingSymbols(w) or []
+            except Exception as e:
+                print(f'  "{w}": {type(e).__name__} {e}')
+                continue
+            for h in hits:
+                c = h.contract
+                if 'FUT' not in (h.derivativeSecTypes or []) or (c.symbol, c.primaryExchange) in seen:
+                    continue
+                seen.add((c.symbol, c.primaryExchange))
+                print(f'  "{w}": {c.symbol} ({c.secType}, {c.primaryExchange or "?"}, {c.currency}) {getattr(c, "description", "")}')
+                try:
+                    det = ib.reqContractDetails(Future(symbol=c.symbol, exchange='', currency=c.currency))
+                except Exception:
+                    det = []
+                fut = sorted({(d.contract.symbol, d.contract.exchange, d.contract.tradingClass, d.longName) for d in det})
+                for sym, exch, tc, name in fut[:6]:
+                    print(f'      future: symbol {sym} exchange {exch} tradingClass {tc}  {name}')
+                if not fut:
+                    print('      (no futures listed for your account)')
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--push', action='store_true')
     ap.add_argument('--discover', action='store_true')
+    ap.add_argument('--search', action='store_true', help="search IBKR's symbol list for each currency's rate futures (no prices, no push)")
     ap.add_argument('--rungs', type=int, default=8)
     ap.add_argument('--only', default='', help='comma-separated currencies, e.g. GBP,CAD')
     a = ap.parse_args()
@@ -117,6 +161,10 @@ def main():
         print(f'Could not connect to IB Gateway on port {IB_PORT} ({type(e).__name__}). Open and log in, then run again. Nothing was changed.')
         sys.exit(2)
     only = {x.strip().upper() for x in a.only.split(',') if x.strip()}
+    if a.search:
+        search(ib, only)
+        ib.disconnect()
+        return
     banks, errors = {}, {}
     for ccy, cands in CANDIDATES.items():
         if only and ccy not in only:
