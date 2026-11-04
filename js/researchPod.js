@@ -38,6 +38,10 @@ export const WEB_SOURCES = [
   { id: 'quantinsti', label: 'QuantInsti blog (retail quant)', lens: 'flow', kind: 'rss', url: 'https://blog.quantinsti.com/rss/' },
   { id: 'bis', label: 'BIS working papers', lens: 'macro', kind: 'rss', url: 'https://www.bis.org/doclist/wppubls.rss' },
   { id: 'libertystreet', label: 'NY Fed Liberty Street Economics', lens: 'macro', kind: 'rss', url: 'https://libertystreeteconomics.newyorkfed.org/feed/' },
+  // central-bank working papers (macro lens; also read by the weekly literature scan). match: keep only these links.
+  { id: 'fed_feds', label: 'Federal Reserve FEDS working papers', lens: 'macro', kind: 'rss', paper: true, url: 'https://www.federalreserve.gov/feeds/feds.xml' },
+  { id: 'ecb_wp', label: 'ECB working papers', lens: 'macro', kind: 'rss', paper: true, url: 'https://www.ecb.europa.eu/rss/wppub.html' },
+  { id: 'boe_wp', label: 'Bank of England staff working papers', lens: 'macro', kind: 'rss', paper: true, match: '/working-paper/', url: 'https://www.bankofengland.co.uk/rss/publications' },
   { id: 'reddit_algotrading', label: 'r/algotrading top of the week (retail stories)', lens: 'flow', kind: 'atom', url: 'https://www.reddit.com/r/algotrading/top/.rss?t=week' },
 ];
 export const WEB_HOSTS = [...new Set(WEB_SOURCES.map(s => new URL(s.url).hostname))];
@@ -59,6 +63,12 @@ export function parseFeed(xml, { max = 15, summaryChars = 320 } = {}) {
     out.push({ title: title.slice(0, 200), link, date, summary });
   }
   return out;
+}
+
+/** A source's items from its feed text: parsed, then filtered by the source's `match` (a regex on link and title). */
+export function feedItems(src, xml, { max = 25 } = {}) {
+  const items = parseFeed(xml, { max: src?.match ? 60 : max });
+  return (src?.match ? items.filter(i => new RegExp(src.match, 'i').test(`${i.link} ${i.title}`)) : items).slice(0, max);
 }
 
 /** The web digest for one researcher: its lens's sources first, then the shared ones, as prompt text. */
