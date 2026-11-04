@@ -1372,6 +1372,53 @@ without them as description.
   they were: the pair selector and the carry-vol board (the 28 G8 pairs), the factor model's dollar and carry legs
   (the eight), the attribution's risk basket.
 
+
+## 9am. Score display, explainability, and the morning thesis against the evening (2026-11-04)
+Owner-approved fixes (item 1) and build item 5. Prereg amendment **A14**: description only, plus one Desk Pack feed for
+the evidence clerk and a staleness flag on the asset desks' per-instrument data.
+- **One score convention** (`js/scoreDisplay.js`, mirrored in `desk-terminal.html` between its SCORE-DISPLAY markers and
+  checked by `js/scoreDisplay.test.mjs`). The 0-10 scale with 5 as "no view" is gone: a strong short at high conviction
+  read "A+" beside "0.0/10". Every currency and asset score is now **signed −5..+5** (asset 2.5 × direction × conviction,
+  currency 2.5 × bias), always shown with an arrow and a word ("▼ −5.0 · strong short", "▲ +2.5 · bullish"): terminal
+  rings, the Assets tiles, the Pair tab, the modals, the playbook cards, the hero map labels and tooltips, the strength
+  strip, the terminal newsletter edition and the pictograph. The grade chip reads "A+ conviction" (it grades how strong
+  and sure the card is, not a hit rate or a direction).
+- **Layers named.** "global ruling conviction" (the regime card, the newsletters), "card conviction" (cards, Pair tab,
+  playbooks), "currency conviction" (the currency modal and rows), "desk conviction" (the asset desk's own rating).
+- **Missing is not neutral.** `ccyScore(undefined)` was 5.0 and `bias ?? 0` drew a missing ruling as neutral. Now a
+  missing bias (NOK and SEK have none; a failed ruling has none) shows "–" / "no data" / "No ruling" on the strength
+  strip, rings, tooltips, the hero map (dimmer fill), the weekly strip, the analytics bias strip and the Changed tab's
+  bias bars; `js/terminal/whatChanged.js` reports "no ruling" instead of a move to 0. A directional card with no
+  conviction has no score ("–"), not a guessed medium. Checked and already right: the macro scorecard engine excludes
+  null and stale components (`js/macroScorecardEngine.js`); the Desk Pack marks stale/empty feeds and every analyst
+  prompt carries `[stale, …h old]` / `GAP:` headers with the instruction to name them (`js/deskRoles.js` feedBlock); the
+  red team gets the gap list. Fixed: the asset desks' per-instrument data (`groupData`) read the vol-forecast, session,
+  implied-vol, swing-map and trade-decision feeds with no status, so a stale forecast reached them as today's lines; each
+  row now carries `dataStatus` naming any of those feeds that is stale or a gap. Left as designed (noted): the
+  attribution's currency layer reads a missing leg's bias as 0, which is how NOK/SEK pairs take the EUR/USD leg's side
+  (A13); the exposure cap counts a card with no size as 1 (conservative for a cap).
+- **What drives this** (`js/terminal/cardExplain.js`, in each card's modal and on the Pair page): the analysts whose
+  points moved the card (an impact on the market, on a currency leg signed + base / − quote, on USD for dollar-priced
+  commodities, on RISK for non-FX risk assets), how much push was for and against it, the Desk Pack and book times, the
+  day of the forecast lines, every stale or empty feed behind those analysts that morning, and the invalidation.
+- **Morning thesis vs evening reality** (`js/thesisReality.js`, pure, tested in `js/thesisReality.test.mjs`). After the
+  evening score (inside `_dsScore`, from the same M1 bars), each claim of the morning book is laid against the day, in
+  the score's own window and unit (08:00-21:00 London, u, ±0.05 u a push): the regime call against the risk basket; the
+  currency ranking against the realised currency moves (strongest right if it finished in the realised top half,
+  weakest if in the bottom half; each bias against its sign; Spearman rank correlation); every sized card (direction,
+  R, size × R, whether the level its invalidation names traded and whether the p50 and p75 lines on its side did, and
+  which came first; the level is the number in the invalidation text nearest the open on the adverse side, "–" when
+  none parses); the vol forecast's London-day range against the realised range (`js/volCheck.js`); and the economist's
+  named releases with the calendar's actual where it has one. Stored in `desk_run_reality_<date>` (the day in full)
+  and `thesis_reality_v1` (compact rows; kv.js `_CF_EXACT`, both `_worker.js` lists, `js/storeRegistry.js`). The
+  morning run is only read. `GET /api/thesis-reality?date=` (the day and the running tally: strongest/weakest right,
+  regime right, card hit rate overall and by grade, invalidation-touched and target shares, range coverage),
+  `?brief=1` (the Desk Pack feed), `POST /api/thesis-reality/backfill` (every day with an evening score; the server
+  also backfills once after boot when the store is empty). Registered in `js/dataFeeds.js` (`thesis_reality`).
+- **Fed to the evidence clerk**: Desk Pack feed `thesis-reality?brief=1` (`evidence_memory.md` item 9: what the desk got
+  wrong yesterday and how often that kind of claim has come off, with the day count; never an impact). The terminal's
+  Changed tab shows the table (regime, strongest/weakest, every currency, every sized card) and the tally.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.

@@ -294,6 +294,19 @@ await t('NOK/SEK pairs (prereg A13): levels to 4 places, and the bank / oil cont
   const gd = groupData(p, ['EURNOK', 'EURUSD']);
   assert.deepEqual(gd.EURNOK.legs, ['EUR', 'NOK']); assert.equal(gd.EURNOK.levels.open, 11.7123); assert.ok(gd.EURNOK.scandi);
   assert.equal(gd.EURUSD.scandi, undefined);
+  assert.equal(gd.EURNOK.dataStatus, undefined, 'no status flags when every feed behind the row is ok (status absent here)');
+});
+
+await t('groupData names a stale or missing feed behind a row (the asset desks never read old lines as today\'s)', () => {
+  const ladder = { oh: { p50: 0.3, p75: 0.5, p90: 0.8 }, ol: { p50: 0.3, p75: 0.5, p90: 0.8 } };
+  const p = { skills: { vol_iv: { feeds: {
+    'vol-forecast': { status: 'stale', ageH: 30, data: { instruments: { EURUSD: { ladder } } } },
+    'vol-forecast/session': { status: 'ok', data: { instruments: { EURUSD: { anchor_open: 1.1 } } } },
+    'vol-forecast/intelligence': { status: 'empty', data: null },
+  } } } };
+  const gd = groupData(p, ['EURUSD']);
+  assert.deepEqual(gd.EURUSD.dataStatus, ['vol-forecast: STALE, 30h old', 'vol-forecast/intelligence: GAP (empty)']);
+  assert.ok(gd.EURUSD.levels, 'stale lines are still given, and flagged');
 });
 
 console.log(`deskRun: ${n} tests passed`);
