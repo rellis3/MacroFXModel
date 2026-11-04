@@ -88,6 +88,30 @@
       Source: <code>analysis/output/overnight-hold-futures/RESULTS.md</code>.</p>
   </div>
 
+  <div class="panel">
+    <h2>Research filters <span class="tag">only filters that have been through a scored test</span></h2>
+    <div class="grid">
+      <div><label>Vol regime</label><select id="volPreset">
+        <option value="">Off (every night)</option>
+        <option value="25-100">Skip the quietest quarter</option>
+        <option value="0-75">Skip the busiest quarter</option>
+        <option value="0-90">Skip extreme vol (top 10%)</option>
+        <option value="75-100">Only the busiest quarter</option>
+        <option value="0-25">Only the quietest quarter</option>
+        <option value="custom">Custom range…</option></select></div>
+      <div><label>Trade when vol percentile ≥</label><input id="volPctMin" type="number" min="0" max="100" step="5" placeholder="0" disabled></div>
+      <div><label>…and ≤</label><input id="volPctMax" type="number" min="0" max="100" step="5" placeholder="100" disabled></div>
+      <div><label>Position sizing</label><select id="sizing">
+        <option value="">Flat (1× every night)</option>
+        <option value="volTarget">Vol target (median σ ÷ today's σ, max 2×)</option></select></div>
+    </div>
+    <p class="note">A filter here is a real rule: skipped nights are never entered, so every table, chart, CSV and journal export below uses the filtered nights. Buy &amp; hold always uses every night.
+      Vol percentile = 20-day realised vol ranked against its own previous year (0 = quietest, 100 = busiest), from daily closes before the 20:00 entry; the first ~3 months have no percentile and are skipped while a filter is on.
+      Same definition as <code>forge/OVERNIGHT_VOL_REGIME_PREREG.md</code> and the engine page (they match night for night). Each market's panel shows the scored verdict and a placebo: the same skip pattern shifted to other dates.
+      The toolkit replica and the since-the-cutoff panel are not filtered.
+      <b>Waiting for their scored tests, so not here yet:</b> previous US-session return, and the night before FOMC. Showing them first would reveal the result before the test.</p>
+  </div>
+
   <div id="out"><p class="note">Loading trades…</p></div>
   <div id="modalRoot"></div>
 
@@ -159,7 +183,7 @@ const LABEL = { nq: 'NAS100', gold: 'Gold (XAUUSD)', combined: 'Combined (half s
 const FIN = { none: 'None (gross)', oanda: 'Our model (OANDA, banked)', A: 'Your account A (measured)', B: 'Your account B (measured)' };
 const SPR = { none: 'None (gross)', oanda: 'OANDA bid/ask per trade (banked)', fills: 'Your fills (bracket)' };
 const VEN = { cfd: 'CFD (your broker)', micro: 'Futures, micro (MNQ / MGC)', full: 'Futures, full size (NQ / GC)' };
-let D = null, POST = null, FUT = null;
+let D = null, POST = null, FUT = null, VOL = null;
 
 // ── cost selection → per-trade net returns ────────────────────────────────────
 // Futures: the same trades priced on CME futures; trades with no futures price are left out (gold: NinjaTrader holes).
@@ -173,18 +197,43 @@ function futRows(key, F, I, gross, venue) {
     if (g == null) return;
     const sc = gross ? 0 : futCost(key, venue, I.price[i]);
     rows.push({ d: I.entry[i], x: I.exit[i], h: I.hold_h[i], r: g - sc, m: F.mae[i] - sc, g, mg: F.mae[i], mf: F.mfe[i], fc: 0, sc,
-                e: I.entry_epoch[i], xe: I.exit_epoch[i], p: I.price[i], xp: I.exit_price[i] });
+                e: I.entry_epoch[i], xe: I.exit_epoch[i], p: I.price[i], xp: I.exit_price[i], i });
   });
   return rows;
 }
+// Research filters (night_vol.json, index-aligned with page_trades.json): the vol-regime
+// range and vol-target sizing, applied as a real rule to every row series uses.
+function ruleSettings() {
+  const vp = $('volPreset').value;
+  const [a, b] = vp === 'custom' ? [$('volPctMin').value, $('volPctMax').value] : vp ? vp.split('-') : ['', ''];
+  const lo = a === '' ? 0 : +a, hi = b === '' ? 100 : +b;
+  const volFilter = vp && Number.isFinite(lo) && Number.isFinite(hi) && lo <= hi && (lo > 0 || hi < 100) ? { lo: lo / 100, hi: hi / 100 } : null;
+  return { volFilter, sizing: $('sizing').value === 'volTarget' };
+}
+function ruleOf(key, i, s = ruleSettings()) {
+  const V = VOL?.instruments[key];
+  if (!V) return { keep: true, w: 1 };
+  const v = V.vol[i];
+  const keep = !s.volFilter || (v != null && v >= s.volFilter.lo && v <= s.volFilter.hi);
+  const w = s.sizing && V.sigma[i] && V.sigmaMed[i] ? Math.min(2, V.sigmaMed[i] / V.sigma[i]) : 1;
+  return { keep, w };
+}
+const scaleRow = (t, w) => w === 1 ? t : { ...t, r: t.r * w, m: t.m * w, g: t.g * w, mg: t.mg * w, mf: t.mf * w, fc: t.fc * w, sc: t.sc * w };
 function series(key, fin, spr, venue = sel(key).venue) {
+  const s = ruleSettings(), all = seriesAll(key, fin, spr, venue);
+  if (!s.volFilter && !s.sizing) return all;
+  const out = [];
+  for (const t of all) { const q = ruleOf(key, t.i, s); if (q.keep) out.push(scaleRow(t, q.w)); }
+  return out.length >= 20 ? out : all;   // a range that keeps almost nothing falls back to every night (the panel says so)
+}
+function seriesAll(key, fin, spr, venue = sel(key).venue) {
   const I = D.instruments[key];
   if (venue !== 'cfd') return futRows(key, FUT.instruments[key], I, fin === 'none' && spr === 'none', venue);
   const f = fin === 'none' ? null : I.fin[fin];
   return I.gross.map((g, i) => {
     const fc = f ? f[i] : 0, sc = spr === 'oanda' ? I.spread[i] : spr === 'fills' ? D.fill_round_trip_pct[key] : 0, cost = fc + sc;
     return { d: I.entry[i], x: I.exit[i], h: I.hold_h[i], r: g - cost, m: I.mae[i] - cost, g, mg: I.mae[i], mf: I.mfe[i], fc, sc,
-             e: I.entry_epoch[i], xe: I.exit_epoch[i], p: I.price[i], xp: I.exit_price[i] };
+             e: I.entry_epoch[i], xe: I.exit_epoch[i], p: I.price[i], xp: I.exit_price[i], i };
   });
 }
 function combined(a, b) {
@@ -322,12 +371,65 @@ function panel(key, rows, grossRows, bh0, cfd, cfdLabel) {
     </div>
     ${missingNote(key, rows)}
     ${table(net, gross, bh, cfd, byDay, cfdLabel)}
+    ${byDay ? '' : researchBlock(key)}
     ${byDay ? '' : `<div class="chart-label">${LABEL[key]}: daily candles, every trade marked on its entry night (green = win, red = loss, at the selected costs). Click a marker to see that trade's M1 path. Scroll to zoom, drag to pan.</div>
     <div class="price-chart" id="pc-${key}"></div>`}
     ${chart(net.eq, bh.eq, dDates, LABEL[key])}
     ${heatmap(rows.map(t => ({ d: t.d, r: t.r })), `${LABEL[key]}, selected costs`)}
     ${weekdays(rows, LABEL[key])}
   </div>`;
+}
+
+// Research filter result for one market at the selected costs: every night counted (flat nights = 0, so
+// the exposure cut is priced in), against a label-shift placebo (keep-mask and weights rotated >= 63 nights,
+// 200 shifts) and the scored verdict. Same method as the engine page (researchFilterReport).
+const EVIDENCE = {
+  vol: 'Scored 2026-11-02 (overnight-vol-regime): UNDERPOWERED, large effect ruled out. Return per unit of risk is flat across vol regimes (NQ slope +0.015 [-0.052, +0.080], gold +0.001 [-0.101, +0.097]); busy nights earn more % only because they risk more. A vol on/off filter has no scored support.',
+  size: 'Vol-target sizing: validated as a risk tool (it cuts the worst drawdowns), not shown to add Sharpe.',
+};
+function researchBlock(key) {
+  const s = ruleSettings();
+  if (!VOL) return '<p class="note">Research filters: night_vol.json did not load, so no filter is applied.</p>';
+  if (!s.volFilter && !s.sizing) return '';
+  const c = sel(key), all = seriesAll(key, c.fin, c.spr), n = all.length;
+  const q = all.map(t => ruleOf(key, t.i, s)), keep = q.map(x => x.keep), w = q.map(x => x.w);
+  const kept = keep.filter(Boolean).length;
+  const ev = [s.volFilter ? EVIDENCE.vol : '', s.sizing ? EVIDENCE.size : ''].filter(Boolean).map(t => `<div class="note"><b>${t}</b></div>`).join('');
+  if (kept < 20) return `<details open><summary>Research filter</summary>${ev}<p class="note neg">This range keeps ${kept} nights, too few to show; every night is shown instead.</p></details>`;
+  const years = yearsOf(all[0].d, all.at(-1).x), perYr = n / years;
+  const stats = (mk, wt) => {
+    const r = all.map((t, i) => mk[i] ? t.r * wt[i] : 0);
+    const m = r.reduce((a, b) => a + b, 0) / n, sd = Math.sqrt(r.reduce((a, b) => a + (b - m) ** 2, 0) / (n - 1));
+    let e = 1, pk = 1, dd = 0; for (const v of r) { e *= 1 + v / 100; pk = Math.max(pk, e); dd = Math.min(dd, e / pk - 1); }
+    return { sharpe: sd > 0 ? m / sd * Math.sqrt(perYr) : null, total: (e - 1) * 100, dd: dd * 100 };
+  };
+  const ones = all.map(() => true), unit = all.map(() => 1);
+  const base = stats(ones, unit), act = stats(keep, w);
+  const rot = (a, k) => a.map((_, i) => a[(i - k + n) % n]);
+  const step = Math.max(1, Math.floor((n - 126) / 200)), pl = [];
+  for (let k = 63; k <= n - 63 && pl.length < 200; k += step) pl.push(stats(rot(keep, k), rot(w, k)));
+  const ord = p => { if (p == null) return '—'; const v = Math.round(p * 100), t = v % 100, u = v % 10; return v + (t > 10 && t < 14 ? 'th' : u === 1 ? 'st' : u === 2 ? 'nd' : u === 3 ? 'rd' : 'th'); };
+  const pct = (vals, v) => vals.filter(x => x != null && x <= v).length / vals.length;
+  const ps = act.sharpe == null ? null : pct(pl.map(p => p.sharpe), act.sharpe), pt = pct(pl.map(p => p.total), act.total);
+  const pMed = pl.map(p => p.sharpe).filter(x => x != null).sort((a, b) => a - b)[pl.length >> 1];
+  const read = ps == null ? '' : ps >= 0.95 ? 'beats 95% of its placebo shifts (still check the scored verdict: one setting picked after looking is not a test)'
+    : ps <= 0.05 ? 'is <b>worse</b> than 95% of its placebo shifts' : 'is inside its placebo range: no better than cutting the same exposure on random dates';
+  const lbl = [s.volFilter ? `vol ${Math.round(s.volFilter.lo * 100)}-${Math.round(s.volFilter.hi * 100)}` : '', s.sizing ? 'vol target' : ''].filter(Boolean).join(', ');
+  const V = VOL.instruments[key], bins = [[0, 0.25, 'Q1 quietest'], [0.25, 0.5, 'Q2'], [0.5, 0.75, 'Q3'], [0.75, 1.01, 'Q4 busiest']];
+  const qRows = bins.map(([lo, hi, l]) => {
+    const g = all.filter(t => V.vol[t.i] != null && V.vol[t.i] >= lo && V.vol[t.i] < hi), avg = f => g.length ? g.reduce((a, t) => a + f(t), 0) / g.length : null;
+    return `<tr><td>${l}</td><td>${g.length}</td><td>${sp(avg(t => t.g), 3)}</td><td>${sp(avg(t => t.r), 3)}</td><td>${fmt(avg(t => V.sigma[t.i] ? t.g / V.sigma[t.i] : 0), 3)}</td></tr>`;
+  }).join('');
+  return `<details open><summary>Research filter: ${lbl} <span class="note">(kept ${kept} of ${n} nights, ${fmt(kept / n * 100, 0)}%)</span></summary>
+    ${ev}
+    <div class="tbl"><table style="margin-top:8px"><thead><tr><th>Selected costs, every night counted (skipped = 0)</th><th>Every night</th><th>With the rule</th><th>Placebo median</th></tr></thead><tbody>
+      <tr><td>Sharpe (ann.)</td><td>${fmt(base.sharpe)}</td><td>${fmt(act.sharpe)}</td><td>${fmt(pMed)}</td></tr>
+      <tr><td>Total return %</td><td>${sp(base.total, 1)}</td><td>${sp(act.total, 1)}</td><td>—</td></tr>
+      <tr><td>Max drawdown %</td><td>${sp(base.dd, 1)}</td><td>${sp(act.dd, 1)}</td><td>—</td></tr>
+    </tbody></table></div>
+    <p class="note">Placebo: the rule's skip pattern and sizes moved by at least 63 nights onto other dates, ${pl.length} times. The rule's Sharpe sits at the <b>${ord(ps)}</b> percentile (total return ${ord(pt)}), so it ${read}.</p>
+    <div class="tbl"><table style="margin-top:8px"><thead><tr><th>Vol at entry (every night)</th><th>Nights</th><th>Mean gross %</th><th>Mean net %</th><th>Mean z (gross ÷ σ)</th></tr></thead><tbody>${qRows}</tbody></table></div>
+  </details>`;
 }
 
 function missingNote(key, rows) {
@@ -383,7 +485,7 @@ function postPanel() {
   const books = ['nq', 'gold'].map(key => {
     const s = sel(key), rows = postRows(key, s.fin, s.spr), P = POST.instruments[key];
     const comp = a => (a.reduce((m, r) => m * (1 + r / 100), 1) - 1) * 100;
-    const bt = series(key, s.fin, s.spr).map(t => t.r), n = rows.length;
+    const bt = seriesAll(key, s.fin, s.spr).map(t => t.r), n = rows.length;   // post-cutoff trades are unfiltered, so compare with every night
     const mu = bt.reduce((a, b) => a + b, 0) / bt.length, sd = Math.sqrt(bt.reduce((a, b) => a + (b - mu) ** 2, 0) / (bt.length - 1));
     const lo = (mu - 1.96 * sd / Math.sqrt(n)) * n, hi = (mu + 1.96 * sd / Math.sqrt(n)) * n;
     const sum = rows.reduce((a, t) => a + t.r, 0);
@@ -546,13 +648,14 @@ function fileFor(book, cfg) {
 }
 const costLine = () => ['nq', 'gold'].map(k => { const c = sel(k);
   return c.venue !== 'cfd' ? `${LABEL[k]}: ${VEN[c.venue]}, 1 tick a side + $${$(k === 'nq' ? 'comNq' : 'comGold').value} commission per round trip`
-    : `${LABEL[k]}: financing ${FIN[c.fin]}, spread ${SPR[c.spr]}`; }).join(' · ');
+    : `${LABEL[k]}: financing ${FIN[c.fin]}, spread ${SPR[c.spr]}`; }).join(' · ') + (() => { const s = ruleSettings();
+  return s.volFilter || s.sizing ? ` · research filter ON: ${[s.volFilter ? `vol ${Math.round(s.volFilter.lo * 100)}-${Math.round(s.volFilter.hi * 100)}` : '', s.sizing ? 'vol-target sizing' : ''].filter(Boolean).join(', ')}` : ''; })();
 function exportsGrid() {
   const go = book => download(...fileFor(book, { nq: sel('nq'), gold: sel('gold') }));
   document.querySelectorAll('[data-x]').forEach(btn => btn.onclick = () => go(btn.dataset.x));
   $('xAll3').onclick = async () => { for (const b of ['nq', 'gold', 'combined']) { go(b); await new Promise(r => setTimeout(r, 350)); } };
   const note = () => { $('xCostNote').textContent = 'Current costs: ' + costLine(); };
-  ['finNq', 'sprNq', 'finGold', 'sprGold', 'venNq', 'venGold', 'comNq', 'comGold'].forEach(id => $(id).addEventListener('change', note));
+  ['finNq', 'sprNq', 'finGold', 'sprGold', 'venNq', 'venGold', 'comNq', 'comGold', 'volPreset', 'volPctMin', 'volPctMax', 'sizing'].forEach(id => $(id).addEventListener('change', note));
   note();
 }
 
@@ -623,6 +726,9 @@ function fill(id, opts, def) { $(id).innerHTML = Object.entries(opts).map(([v, l
 D = await fetch('analysis/output/overnight-hold-toolkit/page_trades.json').then(r => r.json());
 POST = await fetch('analysis/output/overnight-hold-toolkit/post_cutoff.json').then(r => r.ok ? r.json() : null).catch(() => null);
 FUT = await fetch('analysis/output/overnight-hold-futures/futures_trades.json').then(r => r.ok ? r.json() : null).catch(() => null);
+VOL = await fetch('analysis/output/overnight-hold-toolkit/night_vol.json').then(r => r.ok ? r.json() : null).catch(() => null);
+$('volPreset').onchange = () => { const custom = $('volPreset').value === 'custom'; $('volPctMin').disabled = !custom; $('volPctMax').disabled = !custom; render(); };
+['volPctMin', 'volPctMax', 'sizing'].forEach(id => $(id).onchange = render);
 const COMM = { micro: k => FUT.spec[k].micro.comm, full: k => FUT.spec[k].full.comm };
 for (const [k, n] of [['nq', 'Nq'], ['gold', 'Gold']]) {
   fill('ven' + n, FUT ? VEN : { cfd: VEN.cfd }, 'cfd');
