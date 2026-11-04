@@ -4,7 +4,8 @@ REM  CENTRAL-BANK RATE EXPECTATIONS - pull the short-rate futures from IBKR and 
 REM
 REM  Reads SONIA, €STR, SARON, CORRA, the ASX 30-day cash-rate and NZ OCR/bank-bill futures (and ZQ for the
 REM  Fed) from your TWS / IB Gateway and POSTs them to the server (KV cb_rate_futures_v1), so the Desk
-REM  Terminal's Macro tab shows what each market prices for its central bank. Double-click to refresh once.
+REM  Terminal's Macro tab shows what each market prices for its central bank. Also pushes the cross-currency
+REM  basis inputs (6E/6B/6J/6S front futures + spot, refresh_xccy_basis.py, KV xccy_basis_v1). Double-click to refresh once.
 REM
 REM  Task Scheduler: Daily at 07:30 and 17:30 (twice a day is plenty), Start in: this folder,
 REM  "Run whether user is logged on or not": NO (it needs your logged-in TWS / Gateway).
@@ -22,6 +23,8 @@ echo ================================================== >> "%LOGFILE%"
 echo  RUN STARTED %date% %time% >> "%LOGFILE%"
 "%PY%" refresh_cb_expectations.py --push %* >> "%LOGFILE%" 2>&1
 set RC=%ERRORLEVEL%
+REM the cross-currency basis inputs (CME FX futures + spot) ride the same scheduled run (plan §9ag)
+"%PY%" refresh_xccy_basis.py --push >> "%LOGFILE%" 2>&1
 echo [%date% %time%] finished with exit code %RC% >> "%LOGFILE%"
 findstr /C:"HTTP" /C:"Could not connect" /C:"not found" /C:"no prices" /C:"wrote" "%LOGFILE%"
 if %RC% NEQ 0 (echo RESULT: NOT UPDATED ^(exit %RC%^)) else (echo RESULT: OK)

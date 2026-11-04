@@ -68,6 +68,8 @@ const _CF_EXACT = new Set([
   'spread_episodes_v1',     // spread-turn episodes forward record (forge/SPREAD_EPISODES_PREREG.md): every confirmed turn since
                              // 2026-10-20 and its outcome; not re-derivable once the live window moves on. Must also be in _worker.js PERMANENT_KEYS.
   'cb_rate_futures_v1',     // the other central banks' rate futures, pushed from the owner's TWS by scripts/rates_line/refresh_cb_expectations.py
+  'xccy_basis_v1',
+  'xccy_basis_hist',
   // the research pod (plan §9ab): sessions, the proposal library, the owner's marks on each proposal and the system cards. The owner's feedback cannot be rebuilt.
   'research_pod_sessions',
   'research_pod_library',
