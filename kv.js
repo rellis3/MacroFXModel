@@ -73,6 +73,7 @@ const _CF_EXACT = new Set([
   'options_skew_v1',        // the laptop's IBKR options-skew pull (scripts/rates_line/refresh_options_skew.py)
   'options_skew_hist',      // one point a day per market and tenor, written by /api/options-skew
   // the research pod (plan §9ab): sessions, the proposal library, the owner's marks on each proposal and the system cards. The owner's feedback cannot be rebuilt.
+  'analyst_scorecard_v1',   // the desk analyst scorecard (js/analystScorecard.js): one compact row per scored morning per analyst; the forward record of each analyst's calls, not re-derivable once the runs age out. Also in _worker.js (both lists).
   'research_pod_sessions',
   'research_pod_library',
   'research_pod_feedback',

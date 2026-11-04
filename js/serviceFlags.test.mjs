@@ -28,7 +28,8 @@ t('an empty env leaves every service in its documented default state', () => {
 // real behaviour change on the next deploy, so it should fail this test and be
 // changed deliberately, with the reason recorded in the registry's `note`.
 const DEFAULT_OFF = ['hmm5m', 'hmm5mV2', 'hmm1h', 'hmm30m', 'hmm2h',   // owner, 2026-09-16
-  'deskRun'];   // 2026-11-03: paid model calls every morning; on demand until the owner sets SVC_DESKRUN=1
+  'deskRun',    // 2026-11-03: paid model calls every morning; on demand until the owner sets SVC_DESKRUN=1
+  'analystScorecardFeedback'];   // 2026-11-04: changes what the rulings read while the prereg test runs (amendment A10)
 
 t('exactly the documented services default OFF — a new one must be deliberate', () => {
   const off = servicesSnapshot({}).filter(s => !s.enabled).map(s => s.id).sort();

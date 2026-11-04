@@ -946,8 +946,9 @@ async function analytics() {
 <div class="card"><div class="ch"><span class="lbl">Which layer earned it</span><span class="r muted">${day?.ok ? esc(day.score.date) : 'latest scored day'} · attribution waterfall</span></div><div id="fall"></div></div></div>
 <div class="sec"><h2>Vol forecast against what happened</h2><span class="lbl">each London day's forecast high-to-low range (p50 to p75 band) and the range the market actually made</span></div><div class="card"><div class="filters" id="vcsel"></div><div id="volc"></div></div>
 <div class="sec"><h2>The desk's days</h2><span class="lbl">each scored day, coloured by its score in u</span></div><div class="card"><div id="cal2"></div></div>
-<div class="sec"><h2>Release reactions</h2><span class="lbl">how markets moved after past releases of each kind coming up · the desk's release history</span></div><div class="grid g2" id="fans"></div>`;
-  corrWeb($('web'), risk); strengthHeat($('heat'), hist); trackChart($('track'), hist); waterfall($('fall'), day); releaseFans($('fans')); volPicker(); scoreCalendar($('cal2'), hist);
+<div class="sec"><h2>Release reactions</h2><span class="lbl">how markets moved after past releases of each kind coming up · the desk's release history</span></div><div class="grid g2" id="fans"></div>
+<div class="sec"><h2>Analyst scorecard</h2><span class="lbl">each analyst's calls scored on 08:00 to 21:00 London · interim · weights shrunk towards 1.0</span></div><div class="card scroll" id="ascard"></div>`;
+  corrWeb($('web'), risk); strengthHeat($('heat'), hist); trackChart($('track'), hist); waterfall($('fall'), day); releaseFans($('fans')); volPicker(); scoreCalendar($('cal2'), hist); analystPanel($('ascard'));
 }
 function corrWeb(el, r) {
   const c = r?.corr; if (!r?.ok || !c?.names?.length) { el.innerHTML = `<p class="muted">${esc(r?.reason ?? r?.error ?? 'No portfolio-risk read yet.')}</p>`; return; }
@@ -1004,6 +1005,28 @@ ${steps.map(([l, v], i) => { const prev = i ? steps[i - 1][1] : 0, x = 40 + i * 
     const y0 = i === 0 || final ? Math.min(Y(0), Y(v)) : top, h0 = i === 0 || final ? Math.max(2, Math.abs(Y(0) - Y(v))) : h;
     return `<rect x="${x}" y="${y0}" width="${bw * 0.62}" height="${h0}" rx="4" fill="${final ? '#e8b85a' : up ? '#2fd39a' : '#ff5d78'}" opacity=".85"/>${i < steps.length - 1 ? `<line x1="${x + bw * 0.62}" x2="${x + bw}" y1="${Y(v)}" y2="${Y(v)}" stroke="#6d7599" stroke-dasharray="3 3"/>` : ''}<text x="${x + bw * 0.31}" y="${H - 18}" text-anchor="middle" fill="#a9b0d0" font-family="JetBrains Mono" font-size="10">${l}</text><text x="${x + bw * 0.31}" y="${y0 - 5}" text-anchor="middle" fill="#eef0fb" font-family="JetBrains Mono" font-size="10">${f(v)}</text>`; }).join('')}</svg>
 <div class="muted">Each bar is that stage's book scored on the day (u); green where a stage improved on the one before, red where it gave back; gold is the sized book, the day score.</div>`;
+}
+
+// The analyst scorecard (js/analystScorecard.js, /api/analyst-scorecard): per analyst, scored mornings, hit rate by
+// the call's conviction, calibration, the shrunk weight and a sparkline of the rolling edge (u per day).
+let ASC = null;
+async function analystPanel(el) {
+  if (!ASC) { el.innerHTML = '<p class="muted">Reading the scorecard…</p>'; ASC = await getJson('/api/analyst-scorecard'); }
+  const r = ASC, A = Object.entries(r?.analysts ?? {});
+  if (!r?.ok || !r.days) { el.innerHTML = `<p class="muted">${esc(r?.error ?? 'No analyst has been scored yet: each morning\'s reports are scored after the evening desk score (21:10 London). Every record stays "unproven" until ten scored mornings.')}</p>`; return; }
+  const pc = x => (x == null ? '–' : `${Math.round(x * 100)}%`);
+  const hitCls = x => (x == null ? 'fl' : x > 0.52 ? 'up' : x < 0.48 ? 'dn' : 'fl');
+  const spark = pts => { const v = (pts ?? []).map(p => p.rolling).filter(Number.isFinite); if (v.length < 2) return '<span class="muted">–</span>';
+    const W = 120, H = 28, lo = Math.min(0, ...v), hi = Math.max(0, ...v), X = i => (i / (v.length - 1)) * W, Y = y => H - 3 - ((y - lo) / (hi - lo || 1)) * (H - 6), col = v.at(-1) >= 0 ? '#2fd39a' : '#ff5d78';
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="rolling edge"><line x1="0" x2="${W}" y1="${Y(0)}" y2="${Y(0)}" stroke="#2c3866"/><polyline points="${v.map((y, i) => `${X(i)},${Y(y)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="1.6"/><circle cx="${X(v.length - 1)}" cy="${Y(v.at(-1))}" r="2.5" fill="${col}"/></svg>`; };
+  const wChip = a => `<span class="chip ${a.status === 'earned' ? 'up' : a.status === 'lagging' ? 'dn' : a.weight > 1.02 ? 'gold' : ''}">${a.weight.toFixed(2)} · ${esc(a.status)}</span>`;
+  const bk = b => `<span class="${hitCls(b.rate)}">${pc(b.rate)}</span><span class="muted"> /${b.n}</span>`;
+  A.sort((x, y) => y[1].weight - x[1].weight || y[1].days - x[1].days);
+  el.innerHTML = `<table><thead><tr><th>Analyst</th><th>Days</th><th>Hit</th><th>High</th><th>Medium</th><th>Low</th><th>Brier skill</th><th>Cal. gap</th><th>Edge u/day</th><th>Weight</th><th>Rolling edge</th></tr></thead><tbody>${A.map(([id, a]) => `<tr>
+<td><b class="mono">${esc(SRC[id] ?? id)}</b> <span class="muted">${esc(id)}</span></td><td class="n">${a.days}</td><td class="n"><b class="${hitCls(a.hitRate)}">${pc(a.hitRate)}</b><span class="muted"> /${a.decided}</span></td>
+<td class="n">${bk(a.buckets.high)}</td><td class="n">${bk(a.buckets.medium)}</td><td class="n">${bk(a.buckets.low)}</td>
+<td class="n ${dirCls(a.calibration.brierSkill)}">${f(a.calibration.brierSkill, 3)}</td><td class="n">${a.calibration.gap == null ? '–' : a.calibration.gap.toFixed(3)}</td><td class="n ${dirCls(a.edge.mean)}">${f(a.edge.mean)}</td><td>${wChip(a)}</td><td>${spark(a.spark)}</td></tr>`).join('')}</tbody></table>
+<div class="muted" style="margin-top:8px">${r.days} scored morning${r.days === 1 ? '' : 's'} (${esc(r.from)} to ${esc(r.to)}). A call is the net impact an analyst gave a currency, market or risk; high/medium/low is its conviction (stated chance 70/60/55%). Brier skill above 0 beats a coin flip; a calibration gap of 0 means its conviction comes off as often as it claims. Weight 0.5 to 1.5, shrunk towards 1.0 (no evidence either way). ${r.feedback?.on ? '<span class="chip gold">the rulings read it</span>' : '<span class="chip">measured only: the rulings do not read it (service analystScorecardFeedback off)</span>'}</div>`;
 }
 
 const VC_INSTS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'GOLD', 'NQ', 'SPX500', 'WTI', 'BTCUSD'];
@@ -1179,7 +1202,7 @@ $('askbtn').onclick = () => {
 };
 
 load();
-setInterval(() => { if (!document.hidden) { ANA = null; load(); if (!$('ana').hidden) analytics(); } }, 5 * 60_000);   // the Charts tab's sources change daily at most: drawn once per visit
+setInterval(() => { if (!document.hidden) { ANA = null; ASC = null; load(); if (!$('ana').hidden) analytics(); } }, 5 * 60_000);   // the Charts tab's sources change daily at most: drawn once per visit
 </script>
 </body>
 </html>

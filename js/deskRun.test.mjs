@@ -250,4 +250,17 @@ await t('the economist briefs each release ahead from its playbook, one call, af
   assert.equal(run2.economist, null); assert.equal(m.calls.length, m2.calls.length + 1);
 });
 
+await t('analyst scorecard (prereg A10): the two managers and the Head read it only when it is passed; no section and no record otherwise', async () => {
+  const seen = fm => { const prompts = []; return { prompts, fn: async a => { prompts.push(a); return fm.fn(a); } }; };
+  const title = '## Analyst track record (scorecard)';
+  const on = seen(fakeModel()), tr = { asOf: '2026-11-03', days: 1, global: 'G-RECORD', currency: 'C-RECORD', head: 'H-RECORD' };
+  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: on.fn, parseJson, now: clock, retryDelayMs: 1, trackRecord: tr });
+  const who = txt => on.prompts.filter(p => p.prompt.includes(txt)).map(p => roles.find(r => p.system.startsWith(r.body))?.id ?? 'head_of_desk');
+  assert.deepEqual(who('G-RECORD'), ['global_manager']); assert.deepEqual(who('C-RECORD'), ['currency_manager']); assert.deepEqual(who('H-RECORD'), ['head_of_desk']);
+  assert.ok(on.prompts.filter(p => p.prompt.includes(title)).length === 3);
+  assert.deepEqual(run.trackRecord, { asOf: '2026-11-03', days: 1, read: ['global_manager', 'currency_manager', 'head_of_desk'] });
+  const off = seen(fakeModel()), run2 = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: off.fn, parseJson, now: clock, retryDelayMs: 1 });
+  assert.equal(off.prompts.filter(p => p.prompt.includes(title)).length, 0); assert.equal('trackRecord' in run2, false);
+});
+
 console.log(`deskRun: ${n} tests passed`);
