@@ -6257,8 +6257,9 @@ app.get('/api/desk-volcheck', async (req, res) => {
     const idx = JSON.parse((await kv.get('vol_forecast_index').catch(() => null)) ?? '[]');
     const dates = [...new Set(idx.map(e => e.date))].filter(d => d && d >= from && d < today).sort();
     const forecasts = {};
+    // the archived days are read in parallel (one at a time took ~14 s for 90 days and the terminal gave up waiting)
+    await Promise.all(dates.filter(d => !_vcFcCache.has(d)).map(async d => { const raw = await kv.get(`vol_forecast_${d}`).catch(() => null); let fc = null; try { fc = raw ? JSON.parse(raw).instruments ?? null : null; } catch { /* unreadable day */ } _vcFcCache.set(d, fc); }));
     for (const d of dates) {
-      if (!_vcFcCache.has(d)) { const raw = await kv.get(`vol_forecast_${d}`).catch(() => null); let fc = null; try { fc = raw ? JSON.parse(raw).instruments ?? null : null; } catch { /* unreadable day */ } _vcFcCache.set(d, fc); }
       const ins = _vcFcCache.get(d); const k = ins && Object.keys(ins).find(x => x.toUpperCase() === inst);
       if (k && !ins[k].stale) forecasts[d] = { hl_median: ins[k].hl_median, hl_75: ins[k].hl_75 };
     }

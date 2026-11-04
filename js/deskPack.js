@@ -112,8 +112,10 @@ export const DESK_FEEDS = [
   F('global_market', 'world-stress', 1 * D),     // §9ag: one line across risk, credit, funding, basis, EM, liquidity, term premium, rate cycle
   F('global_market', 'em-gauges', 3 * D),       // §9af: USD/CNH, USD/MXN, USD/ZAR, USD/TRY and the carry-stress read (gauges, not trades)
   F('global_market', 'chain-extra', 3 * D),     // §9af: EM dollar index and EM corporate spreads, MOVE, CCC, sector ETFs
-  F('credit_funding', 'credit-stress', 4 * D),
-  F('credit_funding', 'credit-quality', 4 * D),
+  // the credit composite is read two days behind on purpose (point-in-time, js/creditStressEngine.js lagDays) and FRED's
+  // Moody's series land a day or two late, so over a weekend the newest row is ~4-5 days old while the feed is healthy
+  F('credit_funding', 'credit-stress', 6 * D),
+  F('credit_funding', 'credit-quality', 6 * D),
   F('credit_funding', 'credit-board', 4 * D),     // §9ag: IG / BBB / HY / CCC, euro HY, EM corporate spreads with percentiles
   F('credit_funding', 'liquidity-board', 10 * D), // §9ag: Fed net liquidity, TGA, reverse repo, reserves
   F('credit_funding', 'xccy-basis', 4 * D),       // §9ag: EUR/GBP/JPY/CHF cross-currency basis (dollar shortage)
@@ -139,7 +141,7 @@ export const DESK_FEEDS = [
   F('rates_cb', 'beigebook/latest', null),
   F('rates_cb', 'policy-rates', 4 * D),        // §9aa: every bank's own policy rate with its date (not the 3m interbank rate)
   F('rates_cb', 'cb-expectations', 3 * D),     // §9aa: what short-rate futures price for every bank (laptop IBKR pull)
-  F('rates_cb', 'world-rates', 60 * D),        // §9af: the world's policy-rate cycle (BIS, ~39 banks, monthly): who is hiking, who is cutting
+  F('rates_cb', 'world-rates', 100 * D),   // dated by the month's first day and published weeks after the month ends        // §9af: the world's policy-rate cycle (BIS, ~39 banks, monthly): who is hiking, who is cutting
   F('rates_cb', 'rbnz/decisions', 120 * D),   // OCR decisions from RSS headlines: the RBNZ statements are firewalled from the server
   F('rates_cb', 'treasury-auctions', 10 * D, { keep: 'first' }),
   F('yields_curve', 'yield-curve', 4 * D),
@@ -167,7 +169,7 @@ export const DESK_FEEDS = [
   F('vol_iv', 'cvol', 3 * D),
   F('vol_iv', 'forecast-path/summary', 3 * D),
   F('vol_iv', 'forecast-path/iv', 3 * D),
-  F('vol_iv', 'exhaustion-ladder', 3 * D),
+  F('vol_iv', 'exhaustion-ladder', 8 * D),   // a weekly refit (serviceFlags exhaustionLadder)
   F('vol_iv', 'daily-read', 3 * D),
   F('vol_iv', 'today-reads', 1 * D),
   F('options_oi', 'oi-today', 3 * D),
