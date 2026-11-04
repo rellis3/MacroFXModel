@@ -18,8 +18,8 @@
   "NATGAS_USD": {
     "pid": 31,
     "pf": 15,
-    "match": "EXPIRATION: LN",
-    "_why": "QuikStrike heading for this product names no product (\"SELECT PRODUCT | EXPIRATION: LN1V6\", 2026-10-02); LN is the Henry Hub natural gas options code, so the expiry code is the check."
+    "match": "Nat Gas",
+    "_why": "2026-11-04: the header's EXPIRATION code is whichever expiry the tool opens on (LN1V6 on 2026-10-02 but a weekly - HN1X6, IN1X6, JN1X6 - on most nights since), so matching it refused ~15 nights in 18. The product name is on the next line: \"Nat Gas (LN|NG) Open Interest Matrix\"."
   },
   "SOYBN_USD": {
     "pid": 25,

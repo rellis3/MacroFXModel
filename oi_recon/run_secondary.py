@@ -108,6 +108,7 @@ def main() -> None:
         rc, capture = (0 if n_oi else 1), f"{n_oi} product(s) reused from today's capture"
         views = {}
         ok = n_oi > 0
+        some_core = ok
     else:
         cmd = [PY, 'run_sweep.py'] + (['--headless'] if a.headless else []) + (['--chain'] if a.chain else [])
         rc, out = _run(cmd)
@@ -125,20 +126,28 @@ def main() -> None:
                                       for k in ('rawIVTerm', 'rawOI', 'rawChg'))
         vol = views.get('rawVol')
         ok = rc == 0 or core_ok
+        # PUBLISH WHAT IS COMPLETE (2026-11-04). ingest.mjs already skips any product that lacks a
+        # required view and MERGES into oi_store_cmdty, so one product failing its capture must not
+        # hold the other nine back: natural gas alone refused its header on ~15 nights in 18 and the
+        # commodity store went 5 days stale (only the three perfect 40/40 nights ever published).
+        # `ok` stays False for the verdict and exit code, so the shortfall is still reported.
+        some_core = bool(views) and all(views.get(k, (0, 1))[0] >= 1 for k in ('rawIVTerm', 'rawOI', 'rawChg'))
         if ok and vol and vol[0] < vol[1]:
             capture += f'  [{vol[1] - vol[0]} volume grid(s) refused as identical to the change grid - thin product, accepted]'
 
     # PUBLISH - only after a capture whose core views are complete.
     ingest = 'skipped (capture fell short)'
-    if ok and a.no_write:
+    if (ok or some_core) and a.no_write:
         ingest = 'skipped (--no-write)'
-    elif ok:
+    elif ok or some_core:
         irc, iout = _run(['node', 'ingest.mjs', '--dir', str(day_dir), '--write', '--key', CMDTY_KEY])
         print(iout[-3000:])
         m2 = re.search(r'(\d+ complete .*skipped)', iout)
         ingest = (m2.group(1).strip() if m2 else 'no summary line') + ('' if irc == 0 else f'  [ingest exit {irc}]')
         if irc != 0:
             ok = False
+        elif not ok:
+            ingest += '  [PARTIAL: the products above that were captured are published; the rest keep their last book]'
 
     archive = ''
     if a.rates:
