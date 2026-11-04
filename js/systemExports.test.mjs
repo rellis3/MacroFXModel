@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { normaliseTrades, toolkitCsv, terminalCsv, parseTerminalCsv, tearsheet, systemFiles, london, TERMINAL_HEADER } from './systemExports.js';
+import { normaliseTrades, toolkitCsv, terminalCsv, parseTerminalCsv, tearsheet, systemFiles, london, TERMINAL_HEADER, expectedShape, drawdownProbabilities, monthlyGrid, outlierSensitivity } from './systemExports.js';
 import { writeSystemOutputs } from '../scripts/systems/writeSystemOutputs.mjs';
 let n = 0; const t = async (name, fn) => { try { await fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 const FIX = new URL('../tests/fixtures/system_exports/', import.meta.url), fx = f => readFileSync(new URL(f, FIX), 'utf8');
@@ -42,5 +42,21 @@ await t('the writer puts every standard file in the system folder', async () => 
   assert.equal(r.trades, 3); assert.equal(readFileSync(path.join(dir, 'toolkit_r.csv'), 'utf8'), fx('toolkit_r.csv'));
   await assert.rejects(writeSystemOutputs('Bad Id', [], {}, { dir }));
   assert.ok(Object.keys(systemFiles('x', trades)).includes('data_terminal.csv'));
+});
+await t("C.OG-style forward distributions: expected shape, drawdown probabilities, monthly grid, outliers", () => {
+  const raw = []; for (let i = 0; i < 500; i++) raw.push({ instrument: 'EURUSD', direction: 'Long', exitMs: Date.parse('2023-01-02T12:00:00Z') + i * 864e5, R: i % 5 < 2 ? 1.5 : -0.8, target: 1.1, stop: 1.0 });
+  // the last year turns bad: the realised window should sit low in the expected shape
+  for (let i = 400; i < 500; i++) raw[i].R = -0.8;
+  const tr = normaliseTrades(raw).trades; assert.equal(tr[0].target, 1.1);
+  const es = expectedShape(tr, { paths: 1000 }); assert.ok(es.ok); assert.equal(es.window, tr.filter(x => x.exitMs > tr.at(-1).exitMs - 365.25 * 864e5).length);
+  const w = es.metrics.winRate; assert.ok(w.p10 <= w.p25 && w.p25 <= w.p50 && w.p50 <= w.p75 && w.p75 <= w.p90);
+  const last100 = expectedShape(tr, { windowN: 100, paths: 1000 }).metrics.winRate; assert.equal(last100.realised, 0); assert.ok(last100.percentile < 0.01, `percentile ${last100.percentile}`);
+  assert.equal(es.metrics.maxDD.hist.counts.reduce((a, b) => a + b, 0), 1000);
+  const dp = drawdownProbabilities(tr, { paths: 1000 }); assert.deepEqual(dp.rows.map(r => r.threshold), [-5, -10, -15, -20, -30]);
+  for (let i = 1; i < dp.rows.length; i++) assert.ok(dp.rows[i].probability <= dp.rows[i - 1].probability);
+  const mg = monthlyGrid(tr); assert.deepEqual(Object.keys(mg), ['2023', '2024']); assert.equal(mg['2023'].months.length, 12);
+  assert.ok(Math.abs(Object.values(mg).reduce((a, y) => a + y.total, 0) - tr.reduce((a, x) => a + x.returnPct, 0)) < 1e-6);
+  const o = outlierSensitivity(tr); assert.equal(o.rows[0].removed, 1); assert.ok(o.rows[1].total < o.total);
+  assert.equal(expectedShape(tr.slice(0, 10)).ok, false);
 });
 console.log(`systemExports: ${n} tests passed`);

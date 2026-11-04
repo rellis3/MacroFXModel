@@ -19,12 +19,13 @@
  * The Python mirror (forge/system_exports.py) writes byte-identical CSVs from the same trades; both are checked
  * against tests/fixtures/system_exports/. Browser and Node; no I/O here (scripts/systems/writeSystemOutputs.mjs writes).
  *
- * Standard trade: { instrument, direction: 'Long'|'Short', entryMs, exitMs, entry?, stop?, exit?, riskPct (default 1),
+ * Standard trade: { instrument, direction: 'Long'|'Short', entryMs, exitMs, entry?, stop?, target?, exit?, pair? (candle key), riskPct (default 1),
  *   R, maeR?, mfeR?, returnPct?, maePct?, mfePct?, model?, tags?: string[], notes? }
  * R is the result in units of the trade's risk; returnPct = R × riskPct unless given. MAE is negative (against).
  */
 import { backtestStats, portfolioStats } from './backtestStats.js';
 import { tradeMonteCarlo, costStress } from './validationDesk.js';
+import { mulberry32 } from './statsCore.js';
 
 export const TOOLKIT_HEADERS = { pct: 'Date,Return %,MAE %', r: 'date,R,MAE (R)', cash: 'Trade Date,PnL ($),Risk ($)' };
 export const TERMINAL_HEADER = ['Date', 'Time', 'Exit Date', 'Exit Time', 'Instrument', 'Direction', 'Model', 'Risk %', 'Return %', 'MAE %', 'MFE %', 'Tags', 'Notes'];
@@ -49,7 +50,7 @@ export function normaliseTrades(raw, { riskPct = 1, model = '' } = {}) {
     if (!t?.instrument || !dir || !fin(t?.exitMs) || !fin(R)) { errors.push(`trade ${i}: needs instrument, direction, exitMs and R (or returnPct)`); return; }
     const maeR = fin(t.maeR) ? t.maeR : fin(t.maePct) && rp > 0 ? t.maePct / rp : null, mfeR = fin(t.mfeR) ? t.mfeR : fin(t.mfePct) && rp > 0 ? t.mfePct / rp : null;
     trades.push({ instrument: String(t.instrument), direction: dir, entryMs: fin(t.entryMs) ? t.entryMs : t.exitMs, exitMs: t.exitMs,
-      entry: t.entry ?? null, stop: t.stop ?? null, exit: t.exit ?? null, riskPct: rp, R,
+      entry: t.entry ?? null, stop: t.stop ?? null, target: t.target ?? t.tp ?? null, exit: t.exit ?? null, pair: t.pair ?? null, riskPct: rp, R,
       maeR: fin(maeR) ? Math.min(0, maeR) : null, mfeR: fin(mfeR) ? Math.max(0, mfeR) : null,
       returnPct: fin(t.returnPct) ? t.returnPct : R * rp, maePct: fin(t.maePct) ? t.maePct : fin(maeR) ? Math.min(0, maeR) * rp : null, mfePct: fin(t.mfePct) ? t.mfePct : fin(mfeR) ? Math.max(0, mfeR) * rp : null,
       model: t.model ?? model, tags: Array.isArray(t.tags) ? t.tags : t.tags ? String(t.tags).split(/[ ,]+/).filter(Boolean) : [], notes: t.notes ?? '' });
@@ -104,7 +105,8 @@ const brief = ts => { const r = ts.map(t => t.returnPct), w = r.filter(x => x > 
  * The quant tearsheet for a system's trades. costR: optional per-trade cost in R (spread + commission) for the cost
  * stress; trialSharpes: other variants tried, for the deflated Sharpe in portfolioStats' caller.
  */
-export function tearsheet(trades, { costR = null, seed = 0x9e3779b9 } = {}) {
+export function tearsheet(trades, meta = {}) {
+  const { costR = null, seed = 0x9e3779b9 } = meta;
   if (!trades?.length) return { ok: false, error: 'no trades' };
   const pct = trades.map(t => t.returnPct), dates = trades.map(t => london(t.exitMs)[0]);
   const byDay = {}; trades.forEach((t, i) => { byDay[dates[i]] = (byDay[dates[i]] ?? 0) + t.returnPct; });
@@ -122,8 +124,70 @@ export function tearsheet(trades, { costR = null, seed = 0x9e3779b9 } = {}) {
     byYear: Object.fromEntries(Object.entries(group(trades, t => london(t.exitMs)[0].slice(0, 4))).sort().map(([k, v]) => [k, brief(v)])),
     byDirection: Object.fromEntries(Object.entries(group(trades, t => t.direction)).map(([k, v]) => [k, brief(v)])),
     costs: fin(costR) ? costStress(R.map(r => r + costR), R.map(() => costR), { periodsPerYear: Math.max(1, Math.round(trades.length / Math.max(0.25, days.length / 252))) }) : null,
+    expectedShape: expectedShape(trades, { seed }), drawdownProbabilities: drawdownProbabilities(trades, { seed }), monthly: monthlyGrid(trades), outliers: outlierSensitivity(trades),
+    costModel: meta.costs ?? (fin(costR) ? `${costR}R per trade` : 'not stated'),
     label: 'backtest description; the validation desk gates decide whether it goes to paper',
   };
+}
+
+
+// ── C.OG-style forward distributions (his "expected shape" and "probabilistic drawdown" panels) ─────────────────
+
+const pf = a => { let w = 0, l = 0; for (const x of a) { if (x > 0) w += x; else l -= x; } return l > 0 ? w / l : w > 0 ? Infinity : 0; };
+const ddOf = a => { let eq = 1, pk = 1, dd = 0; for (const x of a) { eq *= 1 + x / 100; if (eq > pk) pk = eq; dd = Math.min(dd, eq / pk - 1); } return dd * 100; };
+const qs = (sorted, p) => sorted[Math.min(sorted.length - 1, Math.max(0, Math.floor(p * sorted.length)))];
+function blockDraw(arr, n, rng, block) { const out = new Array(n), N = arr.length, p = 1 / Math.max(1, block); let i = (rng() * N) | 0; for (let k = 0; k < n; k++) { out[k] = arr[i]; i = rng() < p ? (rng() * N) | 0 : (i + 1) % N; } return out; }
+
+/**
+ * What a window of `windowN` trades should look like if the system behaves as in the whole record, against what the
+ * last `windowN` trades actually did. Block bootstrap of the record (streaks kept), `paths` windows. For win rate,
+ * profit factor, expectancy (% per trade) and max drawdown (% compounded): the bands P10/P25/P50/P75/P90, a histogram
+ * and where the realised window sits (its percentile). Default window: the last 12 months' trade count.
+ */
+export function expectedShape(trades, { windowN = null, paths = 5000, block = 5, bins = 40, seed = 0x9e3779b9 } = {}) {
+  const r = trades.map(t => t.returnPct), n = r.length;
+  if (n < 30) return { ok: false, error: 'needs >= 30 trades' };
+  const last = trades.at(-1).exitMs, yearN = trades.filter(t => t.exitMs > last - 365.25 * 864e5).length;
+  const W = Math.max(10, Math.min(n, windowN ?? yearN));
+  const M = { winRate: a => a.filter(x => x > 0).length / a.length, profitFactor: a => Math.min(pf(a), 10), expectancy: a => a.reduce((s, x) => s + x, 0) / a.length, maxDD: ddOf };
+  const rng = mulberry32(seed >>> 0), sims = Object.fromEntries(Object.keys(M).map(k => [k, new Float64Array(paths)]));
+  for (let i = 0; i < paths; i++) { const w = blockDraw(r, W, rng, block); for (const k in M) sims[k][i] = M[k](w); }
+  const real = r.slice(-W), out = { ok: true, window: W, paths, block, realisedFrom: trades.at(-W).exitMs, metrics: {} };
+  for (const k in M) {
+    const s = Array.from(sims[k]).sort((a, b) => a - b), lo = s[0], hi = s.at(-1), step = (hi - lo) / bins || 1, h = new Array(bins).fill(0);
+    for (const v of s) h[Math.min(bins - 1, Math.floor((v - lo) / step))]++;
+    const rv = M[k](real), below = s.filter(v => v <= rv).length;
+    out.metrics[k] = { p10: r3(qs(s, 0.1)), p25: r3(qs(s, 0.25)), p50: r3(qs(s, 0.5)), p75: r3(qs(s, 0.75)), p90: r3(qs(s, 0.9)), mean: r3(s.reduce((a, b) => a + b, 0) / s.length),
+      realised: r3(rv), percentile: r3(below / s.length), hist: { lo: r3(lo), step: +step.toPrecision(6), counts: h } };
+  }
+  return out;
+}
+
+/** P(max drawdown worse than each threshold) over a horizon of `horizonN` trades (default: one year's), block bootstrap. */
+export function drawdownProbabilities(trades, { horizonN = null, thresholds = [5, 10, 15, 20, 30], paths = 5000, block = 5, seed = 0x9e3779b9 } = {}) {
+  const r = trades.map(t => t.returnPct), n = r.length;
+  if (n < 30) return { ok: false, error: 'needs >= 30 trades' };
+  const years = Math.max(0.25, (trades.at(-1).exitMs - trades[0].exitMs) / (365.25 * 864e5)), H = Math.max(10, horizonN ?? Math.round(n / years));
+  const rng = mulberry32(seed >>> 0), dds = new Float64Array(paths);
+  for (let i = 0; i < paths; i++) dds[i] = ddOf(blockDraw(r, H, rng, block));
+  const s = Array.from(dds).sort((a, b) => a - b);
+  return { ok: true, horizonTrades: H, paths, rows: thresholds.map(th => ({ threshold: -th, probability: r3(s.filter(v => v < -th).length / paths) })), median: r3(qs(s, 0.5)), p05: r3(qs(s, 0.05)) };
+}
+
+/** Monthly returns (% summed at the traded risk) as a year × month grid, with each year's total. */
+export function monthlyGrid(trades) {
+  const m = {};
+  for (const t of trades) { const d = london(t.exitMs)[0], y = d.slice(0, 4), mo = +d.slice(5, 7); ((m[y] ??= { months: Array(12).fill(null), total: 0, trades: 0 }).months[mo - 1] = ((m[y].months[mo - 1] ?? 0) + t.returnPct)); m[y].total += t.returnPct; m[y].trades++; }
+  for (const y in m) { m[y].months = m[y].months.map(v => (v == null ? null : r3(v))); m[y].total = r3(m[y].total); }
+  return m;
+}
+
+/** Is the result carried by a few trades? Total and per-trade Sharpe with the best 1, 5, 10, 20 and 50 winners removed. */
+export function outlierSensitivity(trades, { tops = [1, 5, 10, 20, 50] } = {}) {
+  const r = trades.map(t => t.returnPct), order = r.map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]), total = r.reduce((a, b) => a + b, 0);
+  const sh = a => { const m = a.reduce((x, y) => x + y, 0) / a.length, v = a.reduce((x, y) => x + (y - m) ** 2, 0) / (a.length - 1); return v > 0 ? m / Math.sqrt(v) : 0; };
+  return { total: r3(total), rows: tops.filter(k => k < r.length / 2).map(k => { const drop = new Set(order.slice(0, k).map(x => x[1])), rest = r.filter((_, i) => !drop.has(i)), tot = rest.reduce((a, b) => a + b, 0);
+    return { removed: k, total: r3(tot), shareOfTotal: total ? r3((total - tot) / total) : null, sharpePerTrade: r3(sh(rest)) }; }) };
 }
 
 /** Every standard output as { filename: content } (the writer and the page both use this). */

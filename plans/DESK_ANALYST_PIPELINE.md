@@ -1039,7 +1039,15 @@ gives the same outputs as the desk's other backtests:
   `Trade Date,PnL ($),Risk ($)`) and the Data Terminal CSV (the C.OG import template, as SignalCopier writes it)
 The Node and Python writers are checked byte for byte against `tests/fixtures/system_exports/`. The system then shows
 on **system-backtest.html** (`/api/system-backtests`, `/api/system-backtest?id=`, `/api/system-backtest/csv`) with its
-validation gates and export buttons; any Data Terminal CSV can also be loaded there in the browser. The architect's
+validation gates and export buttons; any Data Terminal CSV can also be loaded there in the browser.
+The page follows the depth of the level-atlas portfolio pages and C.OG's VIP-channel outputs (2026-11-04): his
+"expected shape" panels (the bootstrap distribution of win rate, profit factor, expectancy per trade and max drawdown
+for a window of the last year's trade count, P10-P90 and P25-P75 bands, the expected median and the realised window as
+a line, with its percentile), his probabilistic drawdown table (P(max drawdown worse than -5/-10/-15/-20/-30%) over
+the next year of trades), a drawdown-from-peak chart, a monthly returns heatmap (click a month to list its trades),
+outlier sensitivity (best 1-50 winners removed), and a trade journal where clicking a trade draws it on real M1
+candles (`/api/vol-backtest/candles`) with entry, stop, target and exit lines and in/out markers. Trades may carry
+`target` and a `pair` candle key; the instrument name is resolved through js/instrumentRegistry.js otherwise. The architect's
 card and prereg draft now require these outputs as the last build step.
 
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")

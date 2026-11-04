@@ -62,7 +62,7 @@ def normalise_trades(raw, risk_pct=1.0, model=''):
         tags = t.get('tags') or []
         out.append({
             'instrument': str(t['instrument']), 'direction': d, 'entryMs': t['entryMs'] if _fin(t.get('entryMs')) else t['exitMs'], 'exitMs': t['exitMs'],
-            'entry': t.get('entry'), 'stop': t.get('stop'), 'exit': t.get('exit'), 'riskPct': rp, 'R': R,
+            'entry': t.get('entry'), 'stop': t.get('stop'), 'target': t.get('target', t.get('tp')), 'exit': t.get('exit'), 'pair': t.get('pair'), 'riskPct': rp, 'R': R,
             'maeR': min(0, mae) if _fin(mae) else None, 'mfeR': max(0, mfe) if _fin(mfe) else None,
             'returnPct': t['returnPct'] if _fin(t.get('returnPct')) else R * rp,
             'maePct': t['maePct'] if _fin(t.get('maePct')) else (min(0, mae) * rp if _fin(mae) else None),
