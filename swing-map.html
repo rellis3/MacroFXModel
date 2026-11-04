@@ -27,6 +27,7 @@
   .tag { display:inline-block; font-size:10px; font-weight:700; letter-spacing:.06em; padding:1px 6px; border-radius:3px; margin-left:6px; vertical-align:1px; }
   .t-VALIDATED { background:#12351f; color:#56d364; } .t-EXPLORATORY { background:#3a2c0a; color:#e3b341; }
   .t-CONTEXT { background:#1c2a3f; color:#79c0ff; } .t-UNTESTED { background:#2d1f3d; color:#d2a8ff; }
+  .t-NULL { background:#3d1d20; color:#ff7b72; }
   svg { width:100%; height:auto; display:block; }
   .lv { display:grid; grid-template-columns:auto 1fr; gap:2px 10px; margin-bottom:9px; }
   .lv b { font-variant-numeric:tabular-nums; } .lv span { color:var(--text3); font-size:12px; }
@@ -65,7 +66,7 @@
         <label title="Off (default) = the zone walk alone; on = also the strongest zones, level lines, option lines and expected moves"><input type="checkbox" id="walkOther"> other lines</label>
         <label title="Only step to a strike price could plausibly reach by that expiry: inside the 90% range of a random walk at today's volatility, from the previous step and from today. Off = the raw biggest strike, however far."><input type="checkbox" id="walkReach"> within reach</label></span>
       <span class="mcopt" id="mcOpts">horizon <select id="mcH" aria-label="Horizon in sessions"><option>10</option><option selected>20</option><option>40</option><option>60</option></select>
-        pull <select id="mcK" aria-label="Pull strength"><option value="0">off</option><option value="0.25">weak</option><option value="0.5" selected>medium</option><option value="1">strong</option></select></span>
+        pull <select id="mcK" aria-label="Pull strength"><option value="0" selected>off (a tested null)</option><option value="0.25">weak</option><option value="0.5">medium</option><option value="1">strong</option></select></span>
       <span class="seg" role="group" aria-label="Lines"><button id="sZones" data-s="zones">Strongest zones</button><button id="sLevels" data-s="levels">Level lines</button><button id="sOi" data-s="oi">Option lines</button></span>
       <label class="note">history <select id="histR" aria-label="History shown"><option value="auto" selected>short</option><option value="ytd">this year</option><option value="365">1 year</option><option value="550">18 months</option></select></label>
       <button id="pineBtn" title="A Pine script that draws this map on a TradingView chart">TradingView script</button></div>
@@ -102,7 +103,7 @@
 
   <section class="card"><h2>Strongest option zones by days to expiry <span class="tag t-UNTESTED">UNTESTED</span></h2><div id="zones"></div></section>
 
-  <section class="card"><h2>Option pull by expiry date <span class="tag t-UNTESTED">UNTESTED</span></h2><div id="pull"></div></section>
+  <section class="card"><h2>Option pull by expiry date <span class="tag t-NULL">NULL</span></h2><div id="pull"></div></section>
 
   <div class="two">
     <section class="card"><h2>The current leg <span class="tag t-CONTEXT">CONTEXT</span></h2><div id="leg"></div></section>
@@ -429,7 +430,7 @@ function drawChart(m) {
   $('walkTable').innerHTML = '';
   $('chartNote').innerHTML = MODE === 'paths'
     ? `Dashed paths: the two orders the next move can come in. Each waypoint is a measured number: the look-back's barrier at its median timing ${tag('EXPLORATORY')}, then the monthly reverting p75 ${tag('VALIDATED')} (faint blue lines). Dates are sessions ahead, not forecasts. `
-      + `Violet columns: each CME expiry in the next ~100 days, ▲/▼ = most of its open interest sits above/below price ${tag('UNTESTED')}.`
+      + `Violet columns: each CME expiry in the next ~100 days, ▲/▼ = most of its open interest sits above/below price ${tag('NULL')} (price settles no more often on that side: expiry-pull-side).`
       + (m.expiries.length ? '' : ' <span class="warn">No expiry-tracker data for this instrument yet.</span>')
     : `Amber fan: weekly reverting range (5 sessions). Blue fan: monthly (20 sessions). Both are p50/p75/p90 of how far the high and low travel, anchored on the latest close ${tag('VALIDATED')}. `
     + `Dashed green/red: the look-back's bounce/flush barriers at today's σ, out to 20 sessions ${tag('EXPLORATORY')}. `
@@ -688,7 +689,7 @@ function mcNote(m) {
   const mb = m.bands[1], ts = lv => `${Math.round(touchShare(S.pull, lv) * 100)}% with pull, ${Math.round(touchShare(S.flat, lv) * 100)}% without`;
   const dir0 = S.pull.drift[0]?.d ?? 0;
   $('chartNote').innerHTML = `${MODE === 'mc' ? `${S.pull.n.toLocaleString()} simulated paths over ${S.H} sessions (150 drawn), shaded 10-90% and 25-75%, white = median.` : `Violet = the most-touched path: for each session, where the most simulated paths sit. Grey dashed = the same with no pull (a plain random walk stays flat).`} `
-    + `σ = ${(S.sigma * 100).toFixed(2)}% a session from ${S.sigmaSrc}. Pull strength ${S.k === 0 ? 'off' : S.k} ${tag('UNTESTED')}: each expiry still alive draws price toward its OI centre, the nearest one weighing most, handing over as it rolls off. ${S.used.length} expir${S.used.length === 1 ? 'y' : 'ies'} used.<br>`
+    + `σ = ${(S.sigma * 100).toFixed(2)}% a session from ${S.sigmaSrc}. Pull strength ${S.k === 0 ? 'off' : S.k} ${tag('NULL')} (off by default: the side a book leans did not mark where price settled, expiry-pull-side): each expiry still alive draws price toward its OI centre, the nearest one weighing most, handing over as it rolls off. ${S.used.length} expir${S.used.length === 1 ? 'y' : 'ies'} used.<br>`
     + (S.used.length ? `The pull, day by day: <b>${driftSegments(S.pull.drift).text}</b>. ` : '<span class="warn">No expiry-tracker data, so the pull run equals the random walk.</span> ')
     + `End of horizon: median ${px(endP.p50)} with pull vs ${px(endF.p50)} without; most-touched ${px(mp.px)} vs ${px(mf.px)}. `
     + (mb ? `Touch the monthly expected move up ${px(mb.p50.up)}: ${ts(mb.p50.up)}; down ${px(mb.p50.down)}: ${ts(mb.p50.down)}.` : '')
@@ -751,7 +752,7 @@ function pullCard(m) {
     + `<div class="tbl"><table><tr><th>Expiry</th><th>Days left</th><th>Open interest (share of all)</th><th>OI above price</th><th>Centre vs price</th><th>Built last night above / below</th><th>Share above, night by night</th><th>This expiry's gamma</th><th>Charm: 1 day passes</th><th>Vanna: IV −2 pts</th></tr>${rows}</table></div>`
     + `<p class="note">Each expiry is pinned to its date and re-read every night as it counts down, so the same contract moves from the far buckets into the near ones. "Above price" is in spot terms (inverted CME pairs are flipped). `
     + `Open interest opens near the money and follows price, so a lean that builds before price moves is the part worth watching. Charm and vanna are the dealer hedge each expiry forces, in contracts of the underlying with the money value beside it (BUY = dealers buy the pair as quoted): when one day passes, and if implied vol falls 2 points. Compare the money value with the market's daily turnover: a few million dollars of hedging is small next to a futures market that trades hundreds of billions a day; \"flips\" is where that flow changes side by strike. Same convention as the OI Lab hedging map, flat vol, treated as context there too. Gamma is this expiry alone at today's realised vol (PIN = dealers long gamma, damping; BREAKOUT = short, amplifying); the range effect of gamma is validated on ES only and says nothing about direction. `
-    + `Earlier tests: OI walls behaved like ordinary levels, max pain does not pin, the hedge-flow side was underpowered. Whether a lean marks where price is at expiry gets its own pre-registered score.</p>`;
+    + `Earlier tests: OI walls behaved like ordinary levels, max pain does not pin, the hedge-flow side was underpowered. Tested (expiry-pull-side, 2026-11-04): over 2020-26 on 6 FX majors, NQ and ES, price did not settle on the side an expiry's book leaned 20 sessions earlier (-0.085 [-0.19, +0.02] of an expected move, 379 expiries; building before the move -0.03 [-0.13, +0.07]). The lean is description, not a pull.</p>`;
 }
 
 let _rsz = null;

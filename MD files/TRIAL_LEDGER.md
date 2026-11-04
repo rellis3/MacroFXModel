@@ -4,21 +4,21 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-03.
+Generated 2026-11-04.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **269** |
+| claims tested (validated + null + underpowered) | **272** |
 | validated | 49 |
-| null | 151 |
-| underpowered | 69 |
+| null | 153 |
+| underpowered | 70 |
 | context (base rates, descriptions: not counted as tests) | 45 |
 | pre-registrations with no banked verdict (below) | 87 |
 
-**What the count says (Lesson 02 §05).** If none of the 269 claims were real, tests at the usual 5% size would still pass
-about **13.5** of them by luck. 49 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 272 claims were real, tests at the usual 5% size would still pass
+about **13.6** of them by luck. 49 passed, so most passes are unlikely to be luck alone, but
 **roughly 14 of the 49 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -341,6 +341,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-02 | vwap-stretch-line-touch | price | underpowered | forge/VWAP_STRETCH_LINE_TOUCH_PREREG.md |
 | 2026-11-03 | gex-range-iv | positioning | underpowered | oi_research_book/GEX_RANGE_IV_PREREG.md |
 | 2026-11-03 | gex-split-book | positioning | null | oi_research_book/GEX_SPLIT_BOOK_PREREG.md |
+| 2026-11-04 | expiry-pull-build | positioning | null | forge/EXPIRY_TRACKER_PREREG.md |
+| 2026-11-04 | expiry-pull-flip | positioning | underpowered | forge/EXPIRY_TRACKER_PREREG.md |
+| 2026-11-04 | expiry-pull-side | positioning | null | forge/EXPIRY_TRACKER_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -375,6 +378,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/CROSSPAIR_RANGE_BOOK_PREREG.md`: Cross-pair Range Book — pre-registration
 - `forge/DE2Y_NQ_15M_LEAD_PREREG.md`: DE2Y-NQ-15M-LEAD: does a German 2-year yield move lead Nasdaq by one 15-minute bar? (one confirmation test)
 - `forge/DECISION_LAB_FILTERS_PREREG.md`: Decision Lab: filters on rule A (DRAFT, not registered; needs the owner's approval before any test runs)
+- `forge/DESK_ANALYST_PIPELINE_PREREG.md`: desk-analyst-pipeline — Does the desk's morning book call the day's direction better than chance, a single pro
 - `forge/DIRECTION_SCORE_PILOT_PREREG.md`: direction-score-pilot — what 1-to-10 score does the tested direction evidence give each market, and does it ea
 - `forge/DISTRIBUTION_FORECAST_PREREG.md`: Conditional distribution forecast for today's range, and for each remaining hour
 - `forge/DIVERGENCE_REACTION_PREREG.md`: WaveTrend divergence, the reaction after the touch, and the all-features ceiling — pre-registration
@@ -382,7 +386,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/EURUSD_MODEL_PREREG.md`: EURUSD model step — pre-registration
 - `forge/EXHAUSTION_PLAYBOOK_EURUSD_PREREG.md`: The exhaustion playbook on EURUSD — pre-registration
 - `forge/EXITS_PREREG.md`: Study 1 — Exits driven by the range book (pre-registration)
-- `forge/EXPIRY_TRACKER_PREREG.md`: expiry-tracker — does an option expiry's book lean mark which side of today's price that expiry settles on?
 - `forge/FAILED_AUCTION_VOLUME_PREREG.md`: failed-auction-volume — Does real CME volume turn a failed auction at a range edge into a tradeable futures se
 - `forge/FED_PATH_LEAD_PREREG.md`: FED-PATH-LEAD: does the Fed-path slope lead EURUSD / AUD / silver / DAX? (one confirmation test)
 - `forge/FLOW_COLUMNS_PREREG.md`: Flow and positioning columns at the vol lines — pre-registration
