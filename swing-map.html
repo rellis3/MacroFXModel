@@ -27,7 +27,7 @@
   .tag { display:inline-block; font-size:10px; font-weight:700; letter-spacing:.06em; padding:1px 6px; border-radius:3px; margin-left:6px; vertical-align:1px; }
   .t-VALIDATED { background:#12351f; color:#56d364; } .t-EXPLORATORY { background:#3a2c0a; color:#e3b341; }
   .t-CONTEXT { background:#1c2a3f; color:#79c0ff; } .t-UNTESTED { background:#2d1f3d; color:#d2a8ff; }
-  .t-NULL { background:#3d1d20; color:#ff7b72; }
+  .t-NULL { background:#3d1d20; color:#ff7b72; } .t-UNDERPOWERED { background:#2b2b2b; color:#c9d1d9; }
   svg { width:100%; height:auto; display:block; }
   .lv { display:grid; grid-template-columns:auto 1fr; gap:2px 10px; margin-bottom:9px; }
   .lv b { font-variant-numeric:tabular-nums; } .lv span { color:var(--text3); font-size:12px; }
@@ -99,6 +99,8 @@
     <aside class="card"><h2>The level map</h2><div id="levels"></div></aside>
   </div>
 
+  <section class="card" id="trackSec"><h2>Does the walk track? <span id="trackTag"></span></h2><div id="walkTrack"></div></section>
+
   <section class="card" id="pathSec"><h2>The two paths <span class="tag t-EXPLORATORY">EXPLORATORY</span> waypoints from <span class="tag t-VALIDATED">VALIDATED</span> ranges</h2><div id="paths"></div></section>
 
   <section class="card"><h2>Strongest option zones by days to expiry <span class="tag t-UNTESTED">UNTESTED</span></h2><div id="zones"></div></section>
@@ -164,6 +166,7 @@ async function load(fresh) {
     if (!$('inst').options.length) { $('inst').innerHTML = m.instruments.map(i => `<option${i === m.inst ? ' selected' : ''}>${i}</option>`).join(''); }
     history.replaceState(null, '', `?inst=${m.inst}`);
     render(m);
+    loadTrack(m.inst);
   } catch (e) { $('stats').innerHTML = `<span class="err">Could not load: ${esc(e.message)}</span>`; }
 }
 
@@ -539,7 +542,8 @@ document.querySelectorAll('.seg button[data-s]').forEach(b => {
 });
 $('mcH').addEventListener('change', () => { SIMS = null; if (LAST) drawChart(LAST); });
 $('mcK').addEventListener('change', () => { SIMS = null; if (LAST) drawChart(LAST); });
-$('walkA').addEventListener('change', () => { if (LAST) drawChart(LAST); });
+$('walkA').addEventListener('change', () => { if (LAST) drawChart(LAST); trackCard(); });
+$('walkThin').addEventListener('change', () => trackCard());
 $('walkThin').addEventListener('change', () => { if (LAST) drawChart(LAST); });
 $('walkReach').addEventListener('change', () => { if (LAST) drawChart(LAST); });
 $('walkOther').addEventListener('change', () => { if (LAST) drawChart(LAST); });
@@ -645,6 +649,72 @@ function walkOpts(m) {
   return { close: m.state.close, anchor: $('walkA').value, includeThin: $('walkThin').checked, vol: walkSigma(m), date: m.state.date, ...(reach ? { sigma: walkSigma(m) } : {}) };
 }
 // the walk as a ladder: one row per expiry, the level it steps to, and how far that is from today and from the step before
+// ── Does the walk track? The history test (register row swing-walk-track) and the live forward record ──
+// WALK_HISTORY = the scored history (analysis/output/swing-walk-track/results.json, trimmed); the forward record comes
+// from /api/swing-walk-track (every saved nightly walk scored against the closes since). Gap and miss are in expected
+// moves to the expiry (σ√sessions left), so a dot stuck 4% away climbs on the chart as the date nears.
+const WALK_HISTORY = {"from":"2020-10","to":"2026-08","instruments":"6 FX majors, NQ and ES","note":"Steps = one night's dot for one expiry. Miss columns: root-mean-square miss at the expiry-date close in expected moves (σ√sessions left); no-move = the miss of \"price stays where it is\". Gamma centre: UNDERPOWERED (its interval still reaches a quarter-gap pull); the other four: NULL. Max pain and the strongest strike stay ~1-3% from price at every horizon, so with a day or two left they sit 2-4.5 expected moves away: the dot does not come down, and price does not go to it.","cells":[{"anchor":"gammaCentre","n":17909,"beta":0.102,"lo":-0.065,"hi":0.277,"skill":-0.101,"verdict":"UNDERPOWERED"},{"anchor":"gamma","n":17909,"beta":0.037,"lo":-0.035,"hi":0.113,"skill":-0.311,"verdict":"NULL"},{"anchor":"strike","n":17909,"beta":0.008,"lo":-0.006,"hi":0.022,"skill":-16.913,"verdict":"NULL"},{"anchor":"maxPain","n":17908,"beta":0.036,"lo":-0.011,"hi":0.081,"skill":-2.418,"verdict":"NULL"},{"anchor":"centre","n":17909,"beta":0.018,"lo":-0.007,"hi":0.044,"skill":-6.526,"verdict":"NULL"}],"conv":[{"anchor":"gammaCentre","bucket":"1-2","rms_miss":1.2,"rms_nomove":1.188},{"anchor":"gammaCentre","bucket":"3-5","rms_miss":1.116,"rms_nomove":1.089},{"anchor":"gammaCentre","bucket":"6-10","rms_miss":1.023,"rms_nomove":1.004},{"anchor":"gammaCentre","bucket":"11-20","rms_miss":0.988,"rms_nomove":0.929},{"anchor":"gammaCentre","bucket":"21-40","rms_miss":1.045,"rms_nomove":0.984},{"anchor":"gammaCentre","bucket":"41+","rms_miss":1.026,"rms_nomove":0.973},{"anchor":"gamma","bucket":"1-2","rms_miss":1.321,"rms_nomove":1.188},{"anchor":"gamma","bucket":"3-5","rms_miss":1.231,"rms_nomove":1.089},{"anchor":"gamma","bucket":"6-10","rms_miss":1.133,"rms_nomove":1.004},{"anchor":"gamma","bucket":"11-20","rms_miss":1.069,"rms_nomove":0.929},{"anchor":"gamma","bucket":"21-40","rms_miss":1.136,"rms_nomove":0.984},{"anchor":"gamma","bucket":"41+","rms_miss":1.119,"rms_nomove":0.973},{"anchor":"strike","bucket":"1-2","rms_miss":10.519,"rms_nomove":1.188},{"anchor":"strike","bucket":"3-5","rms_miss":6.104,"rms_nomove":1.089},{"anchor":"strike","bucket":"6-10","rms_miss":4.418,"rms_nomove":1.004},{"anchor":"strike","bucket":"11-20","rms_miss":3.319,"rms_nomove":0.929},{"anchor":"strike","bucket":"21-40","rms_miss":2.797,"rms_nomove":0.984},{"anchor":"strike","bucket":"41+","rms_miss":2.466,"rms_nomove":0.973},{"anchor":"maxPain","bucket":"1-2","rms_miss":3.42,"rms_nomove":1.188},{"anchor":"maxPain","bucket":"3-5","rms_miss":2.515,"rms_nomove":1.089},{"anchor":"maxPain","bucket":"6-10","rms_miss":2.08,"rms_nomove":1.004},{"anchor":"maxPain","bucket":"11-20","rms_miss":1.62,"rms_nomove":0.929},{"anchor":"maxPain","bucket":"21-40","rms_miss":1.476,"rms_nomove":0.984},{"anchor":"maxPain","bucket":"41+","rms_miss":1.313,"rms_nomove":0.973},{"anchor":"centre","bucket":"1-2","rms_miss":6.277,"rms_nomove":1.188},{"anchor":"centre","bucket":"3-5","rms_miss":3.903,"rms_nomove":1.089},{"anchor":"centre","bucket":"6-10","rms_miss":2.969,"rms_nomove":1.004},{"anchor":"centre","bucket":"11-20","rms_miss":2.246,"rms_nomove":0.929},{"anchor":"centre","bucket":"21-40","rms_miss":1.93,"rms_nomove":0.984},{"anchor":"centre","bucket":"41+","rms_miss":1.746,"rms_nomove":0.973}],"stab":[{"anchor":"gammaCentre","median_abs_dot_move":0.487,"median_abs_price_move":0.619,"corr_dot_price":0.401},{"anchor":"gamma","median_abs_dot_move":0.227,"median_abs_price_move":0.619,"corr_dot_price":0.263},{"anchor":"strike","median_abs_dot_move":0.168,"median_abs_price_move":0.619,"corr_dot_price":0.022},{"anchor":"maxPain","median_abs_dot_move":0.183,"median_abs_price_move":0.619,"corr_dot_price":0.02},{"anchor":"centre","median_abs_dot_move":0.202,"median_abs_price_move":0.619,"corr_dot_price":0.022}]};
+const walkVerdict = a => WALK_HISTORY?.cells.find(c => c.anchor === a)?.verdict ?? 'UNTESTED';
+const WALK_NAMES = { gammaCentre: 'Gamma centre', gamma: 'Gamma best strike', strike: 'Strongest strike', maxPain: 'Max pain', centre: 'OI centre' };
+let TRACK = null;
+async function loadTrack(inst) {
+  TRACK = null;
+  try { const r = await fetch(`/api/swing-walk-track?inst=${encodeURIComponent(inst)}`); const t = await r.json(); if (t.ok) TRACK = t; } catch { /* no forward record */ }
+  trackCard();
+}
+function trackCard() {
+  const el = $('walkTrack'); if (!el) return;
+  const a = $('walkA').value, key = `${a}${$('walkThin').checked ? '+thin' : ''}`, H = WALK_HISTORY;
+  const f2 = x => (x == null || !isFinite(x) ? '–' : (x >= 0 ? '+' : '') + x.toFixed(2));
+  let h = '';
+  if (H) {
+    $('trackTag').innerHTML = `${tag(walkVerdict(a))} <span class="note">(${WALK_NAMES[a]})</span>`;
+    h += `<p><b>History test</b> (${H.from} to ${H.to}, ${H.instruments}; the walk rebuilt every night with the live code, small books left out). `
+      + `β = how much of the gap from price to the dot price had travelled by the expiry-date close: 1 = the dot is where price goes, 0 = it says nothing. `
+      + `Skill = how much of the miss of "price stays where it is" the dot removes; below zero the dot does worse than doing nothing.</p>`
+      + `<div class="tbl"><table><tr><th>Anchor</th><th>Steps</th><th>β [95% CI]</th><th>Skill</th><th>Miss, 1-2 sessions left: dot / no-move</th><th>Miss, 11-20 left</th><th>Dot vs price, night to night</th><th>Verdict</th></tr>`
+      + H.cells.map(c => {
+        const near = H.conv.find(x => x.anchor === c.anchor && x.bucket === '1-2'), far = H.conv.find(x => x.anchor === c.anchor && x.bucket === '11-20');
+        const st = H.stab.find(x => x.anchor === c.anchor);
+        return `<tr${c.anchor === a ? ' style="background:var(--hl,rgba(121,192,255,.08))"' : ''}><td><b>${WALK_NAMES[c.anchor]}</b></td><td>${c.n.toLocaleString()}</td><td>${f2(c.beta)} [${f2(c.lo)}, ${f2(c.hi)}]</td><td>${f2(c.skill)}</td>`
+          + `<td>${near ? `${near.rms_miss.toFixed(2)} / ${near.rms_nomove.toFixed(2)}` : '–'}</td><td>${far ? `${far.rms_miss.toFixed(2)} / ${far.rms_nomove.toFixed(2)}` : '–'}</td>`
+          + `<td>${st ? `moves ${st.median_abs_dot_move.toFixed(2)}σ (price ${st.median_abs_price_move.toFixed(2)}σ), corr ${f2(st.corr_dot_price)}` : '–'}</td><td>${tag(c.verdict)}</td></tr>`;
+      }).join('') + `</table></div><p class="note">${esc(H.note)}</p>`;
+  } else {
+    $('trackTag').innerHTML = tag('UNTESTED');
+    h += `<p class="note">History test registered (forge/SWING_WALK_TRACK_PREREG.md); results not in yet.</p>`;
+  }
+  const T = TRACK?.anchors || {};
+  h += `<p><b>Forward record</b> (the walks saved each night${TRACK?.from ? ` since ${fmtDay(TRACK.from)}` : ''}, scored as each expiry settles; ${$('walkThin').checked ? 'with' : 'without'} small books, as the chart): `
+    + (Object.values(T).some(x => x.all.n) ? '' : 'no expiry has settled since the record began, so nothing is scored yet; the chart below shows the live gaps.') + `</p>`;
+  const rowsF = Object.keys(WALK_NAMES).map(k => [k, T[`${k}${$('walkThin').checked ? '+thin' : ''}`]]).filter(([, x]) => x?.all?.n);
+  if (rowsF.length) h += `<div class="tbl"><table><tr><th>Anchor</th><th>Steps (expiries)</th><th>β</th><th>Miss: dot / no-move</th><th>Median gap (expected moves)</th></tr>`
+    + rowsF.map(([k, x]) => `<tr><td>${WALK_NAMES[k]}</td><td>${x.all.n} (${x.all.expiries})</td><td>${f2(x.all.beta)}</td><td>${x.all.rmsMiss.toFixed(2)} / ${x.all.rmsNoMove.toFixed(2)}</td><td>${x.all.medianGap.toFixed(2)}</td></tr>`).join('')
+    + `</table></div><p class="note">Forward numbers are description: a handful of expiries cannot confirm or overturn the history test.</p>`;
+  h += trackChart(T[key]?.paths || {}, WALK_NAMES[a]);
+  el.innerHTML = h;
+}
+function trackChart(paths, name) {
+  const ex = Object.entries(paths).filter(([, p]) => p.length);
+  if (!ex.length) return '';
+  const W = Math.max(320, Math.round($('walkTrack').clientWidth || 720)), Hh = 230, L = 44, R = 12, Tp = 14, Bt = 30;
+  const hMax = Math.min(60, Math.max(10, ...ex.flatMap(([, p]) => p.map(q => q[1]))));
+  const X = hh => L + (W - L - R) * (1 - Math.min(hh, hMax) / hMax), Y = g => Tp + (Hh - Tp - Bt) * (1 - (Math.max(-4, Math.min(4, g)) + 4) / 8);
+  const o = [`<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Each expiry's dot, in expected moves from price, as its date nears">`];
+  o.push(`<rect x="${L}" y="${Y(1)}" width="${W - L - R}" height="${Y(-1) - Y(1)}" fill="var(--text2)" opacity="0.08"/>`);
+  for (const g of [-4, -2, -1, 0, 1, 2, 4]) o.push(`<line x1="${L}" x2="${W - R}" y1="${Y(g)}" y2="${Y(g)}" stroke="var(--text2)" stroke-opacity="${g === 0 ? 0.5 : 0.15}"/><text x="${L - 6}" y="${Y(g) + 3}" text-anchor="end" font-size="10" fill="var(--text2)">${g > 0 ? '+' : ''}${g}</text>`);
+  for (const hh of [hMax, 40, 20, 10, 5, 1].filter((v, i, s) => v <= hMax && s.indexOf(v) === i)) o.push(`<text x="${X(hh)}" y="${Hh - 12}" text-anchor="middle" font-size="10" fill="var(--text2)">${hh}</text>`);
+  o.push(`<text x="${L}" y="${Tp - 3}" font-size="10" fill="var(--text2)">gap from price, in expected moves</text>`);
+  o.push(`<text x="${(L + W - R) / 2}" y="${Hh - 1}" text-anchor="middle" font-size="10" fill="var(--text2)">sessions left to the expiry →</text>`);
+  ex.forEach(([e, p], i) => {
+    const col = `hsl(${(i * 67) % 360} 60% 62%)`;
+    o.push(`<polyline fill="none" stroke="${col}" stroke-width="1.5" points="${p.map(q => `${X(q[1]).toFixed(1)},${Y(q[2]).toFixed(1)}`).join(' ')}"><title>${fmtDay(e)} expiry: ${p.map(q => `${fmtDay(q[0])} ${q[2] > 0 ? '+' : ''}${q[2]}`).join(', ')}</title></polyline>`);
+    const q = p.at(-1); o.push(`<circle cx="${X(q[1]).toFixed(1)}" cy="${Y(q[2]).toFixed(1)}" r="2.5" fill="${col}"/>`);
+  });
+  o.push('</svg>');
+  return `<p><b>${name}: each expiry's dot, night by night</b>, as a gap from that night's price in expected moves to the date (shaded = within one expected move). `
+    + `A dot that means something drifts toward 0 as the date nears; a dot stuck at the same % climbs away from 0, because the expected move shrinks under it.</p>` + o.join('');
+}
 function walkTable(m, w) {
   const close = m.state.close;
   const rows = w.points.map((p, i) => ({ ...p, n: i + 1 })).concat((w.skipped || []).map(k => ({ ...k, skip: true })))
@@ -664,9 +734,9 @@ function walkNote(m, w) {
   const what = { gammaCentre: 'gamma centre (where the hedging weight sits on balance, seen from the step before)', gamma: 'gamma best strike (the one strike dealers must hedge hardest, seen from the step before)', strike: 'strongest strike', maxPain: 'max pain', centre: 'OI centre' }[$('walkA').value];
   if (!w.points.length) { $('chartNote').innerHTML = '<span class="warn">No readable expiries for this instrument, so there is no walk.</span>'; return; }
   const runs = w.runs.map(r => `<span class="${r.dir === 'up' ? 'good' : r.dir === 'down' ? 'bad' : ''}">${r.dir === 'up' ? '▲' : r.dir === 'down' ? '▼' : '◆'} ${px(r.px)} by ${fmtDay(r.expiry)} (${r.to}d)</span>`).join(' → ');
-  $('chartNote').innerHTML = `Zone walk ${tag('UNTESTED')}: from today's close, a straight step to each readable expiry's <b>${what}</b>, in date order (${w.points.length} expiries${$('walkThin').checked ? `; ${w.points.filter(p => p.thin).length} small books, under 10% of live OI, drawn hollow and dashed` : '; small books under 10% of live OI left out'}). `
+  $('chartNote').innerHTML = `Zone walk ${tag(walkVerdict($('walkA').value))}: from today's close, a straight step to each readable expiry's <b>${what}</b>, in date order (${w.points.length} expiries${$('walkThin').checked ? `; ${w.points.filter(p => p.thin).length} small books, under 10% of live OI, drawn hollow and dashed` : '; small books under 10% of live OI left out'}). `
     + `Dot size = how much of all live open interest the strike it steps to holds.<br>The turns: <b>${runs}</b>.<br>`
-    + (/^gamma/.test($('walkA').value) ? `<b>${$('walkA').value === 'gammaCentre' ? 'Gamma centre' : 'Gamma best strike'}</b> ${tag('UNTESTED')}: every strike in the book is scored by its open interest times how much dealers must hedge it (gamma) with price at the step before, over the time left to that expiry, at ${(walkSigma(m) * 100).toFixed(2)}% a session. `
+    + (/^gamma/.test($('walkA').value) ? `<b>${$('walkA').value === 'gammaCentre' ? 'Gamma centre' : 'Gamma best strike'}</b> ${tag(walkVerdict($('walkA').value))}: every strike in the book is scored by its open interest times how much dealers must hedge it (gamma) with price at the step before, over the time left to that expiry, at ${(walkSigma(m) * 100).toFixed(2)}% a session. `
       + ($('walkA').value === 'gammaCentre' ? `The step goes to the score-weighted average price, so it leans north or south with where the hedging weight sits even when no one strike stands out. ` : `The step goes to the single best-scoring strike, which on a spread-out book is usually the round strike next to price. `)
       + `<b>Building counts:</b> a strike whose OI has grown since the expiry was first seen and again last night counts up to 2x; one being closed or rolled counts down to 0.5x. Gamma also rises as an expiry nears, so a building strike close to its date pulls hardest. `
       + `Puts far below price and calls far above (beyond one expected move) count half: mostly bought protection and sold calls, not hedging that moves price. The 2x, 0.5x and half are chosen, not fitted.<br>`

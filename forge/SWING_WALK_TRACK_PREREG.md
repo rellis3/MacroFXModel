@@ -161,6 +161,8 @@ step a night; the live capture adds weeklies. No outcome had been computed.
 
 ---
 
-## RESULTS — run <YYYY-MM-DD>
+## RESULTS — run 2026-11-04
+
+`analysis/output/swing-walk-track/RESULTS.md`. Gamma centre UNDERPOWERED; gamma best strike, strongest strike, max pain, OI centre NULL. Banked as `swing-walk-gamma-centre`, `swing-walk-gamma-strike`, `swing-walk-strike`, `swing-walk-max-pain`, `swing-walk-oi-centre`.
 
 *Written to `analysis/output/swing-walk-track/RESULTS.md`. Nothing above changes after the run except amendments.*

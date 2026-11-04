@@ -443,6 +443,7 @@ import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataA
 import { createExpiryTrackStore } from './js/expiryTrackStore.js';
 import { buildSwingMap as _buildSwingMap, sigmaSeries as _swingSigma } from './js/swingMap.js';
 import { zoneWalk as _swingZoneWalk } from './js/swingPaths.js';
+import { scoreWalkRecords as _swingScoreWalks } from './js/swingWalkTrack.js';
 import { oiContractSize as _oiContractSizeSM } from './js/oi.js';
 import { COT_MARKETS as _COT_MARKETS, fetchCotFull as _fetchCotFull } from './js/cotArchive.js';
 import { createHistorySources as _createHistorySources } from './js/stateHistorySources.js';
@@ -41681,6 +41682,23 @@ async function _swingWalkHistory(inst, n = 6) {
   const keys = (await _r2ListKeys(`swing_walk/${inst}/`).catch(() => [])).filter(k => k.endsWith('.json')).sort().slice(-n);
   return (await Promise.all(keys.map(k => _r2GetJSON(k).catch(() => null)))).filter(Boolean);
 }
+// Forward record of the walk (register row swing-walk-track): every saved night scored against the closes since,
+// the same units as the history test (forge/SWING_WALK_TRACK_PREREG.md). Descriptive; never changes the verdict.
+const _swingTrackCache = new Map();
+app.get('/api/swing-walk-track', async (req, res) => {
+  const inst = String(req.query.inst || 'GOLD').toUpperCase();
+  const cfg = SWING_MAP_INSTRUMENTS[inst];
+  if (!cfg) return res.status(400).json({ ok: false, error: `unknown instrument ${inst}` });
+  const hit = _swingTrackCache.get(inst);
+  if (hit && Date.now() - hit.at < 30 * 60e3 && req.query.fresh !== '1') return res.json(hit.data);
+  try {
+    const records = await _swingWalkHistory(inst, 400);
+    const bars = (await _btFetchD1Aligned(cfg.oanda, 600)).map(b => ({ date: new Date(Date.parse(`${b.date}T12:00:00Z`) + 864e5).toISOString().slice(0, 10), close: b.close }));
+    const data = { ok: true, inst, from: records[0]?.captureDate ?? null, ..._swingScoreWalks(records, bars), generatedAt: new Date().toISOString() };
+    _swingTrackCache.set(inst, { at: Date.now(), data });
+    res.json(data);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 async function _swingMapData(inst) {
   const cfg = SWING_MAP_INSTRUMENTS[inst];
   {
