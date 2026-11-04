@@ -227,6 +227,9 @@ import { assess as _dqAssess, afterRun as _dqAfterRun } from './js/deskDataQuali
 import { attribution as _atAttribution, attributionRecord as _atRecord } from './js/deskAttribution.js';
 import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
 import { isoWeek as _wkIso, weekBooks as _wkBooks, weekCalendar as _wkCalendar, validateWeekly as _wkValidate, weeklyNote as _wkNote } from './js/weeklyDesk.js';   // agent 19
+import { DAY_MARKETS as _DF_MARKETS, realisedShape as _dfRealised, validateDayForecast as _dfValidate, scoreDayForecast as _dfScore, dayForecastRecord as _dfRecord } from './js/dayForecast.js';   // Phase 3's day-forecast writer
+import { policyRates as _prRates } from './js/policyRates.js';   // each central bank's policy rate, from its own series
+import { expectations as _cbExpect } from './js/cbExpectations.js';   // what the futures price for each bank
 import { parseFeed as _nwParse, fromFinnhub as _nwFinnhub, mergeWire as _nwMerge, validateRead as _nwValidate, pick as _nwPick, wireText as _nwText } from './js/newsAnalyst.js';   // agent 21
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
 import { realisedDays as _vcRealised, compare as _vcCompare } from './js/volCheck.js';   // the terminal's vol chart
@@ -4807,6 +4810,7 @@ async function _deskRun(trigger, job, mode = 'full') {
     await checkpoint.clear();   // the run is saved whole: the next Run now starts fresh
   } catch (e) { console.warn('[desk-run] save failed:', e.message); }
   if (run.newsletter?.ok) { job.stage = 'claims check'; await _ccRun(run.date).catch(e => console.warn('[desk-claims]', e.message)); }   // Phase 16, after the save
+  if (run.mode === 'full' && run.head?.ok) { job.stage = 'day forecast'; await _dfRun(run.date).catch(e => console.warn('[desk-dayfc]', e.message)); }   // Phase 3's day-forecast writer, after the save
   console.log(`[desk-run] ${run.date} (${run.mode}): ${Object.values(run.analysts).filter(a => a.ok).length}/${Object.keys(run.analysts).length} analysts, debate failures ${run.debate?.failed?.length ?? '-'}, head ${run.head?.ok ? 'ok' : 'FAILED'}, ${run.calls} calls, tokens in ${run.usage.in} out ${run.usage.out}`);
   return run;
 }
@@ -4955,6 +4959,8 @@ async function _dsScore(date, { reflect = true } = {}) {
   if (Object.keys(updates.slots ?? {}).length) score.updates = _duScoreUpdates(run, updates, bars, date);
   // Phase 10: which layer earned or lost the day (descriptive; prereg amendment A4)
   try { score.attribution = _atAttribution(run, bars, date, score.S); } catch (e) { console.warn('[desk-score] attribution:', e.message); }
+  // Phase 3's day forecast, scored from the same bars (kept apart from the book's score)
+  try { await _dfScoreDay(date, bars); } catch (e) { console.warn('[desk-score] day forecast:', e.message); }
   await kv.put(_DS_SCORE_KEY(date), JSON.stringify(score));
   const { cards, ...row } = score;
   const idx = (await _dsLoadIndex()).filter(r => r.date !== date); idx.push(row); idx.sort((a, b) => a.date.localeCompare(b.date));
@@ -5446,6 +5452,59 @@ app.post('/api/desk-cos/send', async (req, res) => {
   try { const which = req.query.which === 'evening' ? 'evening' : 'morning'; res.json(await _cosTick({ force: which })); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── Phase 3's day-forecast writer (js/dayForecast.js, desk/roles/day_forecaster.md, plan §9aa) ──
+// After each full morning run: the shape of the day (range bucket against the ladder, trend or range, which session
+// sets the extremes) for the main markets, one model call. Scored in the evening from the same bars as the book
+// (descriptive, against chance and the most common outcome; never part of the pre-registered test).
+const _DF_KEY = d => `desk_dayfc_${d}`, _DF_SCORE_KEY = d => `desk_dayfc_score_${d}`, _DF_INDEX = 'desk_dayfc_index';
+async function _dfRun(date) {
+  const run = await _drLoad(date);
+  if (!run?.head?.ok) return { ok: false, error: `no desk book for ${date}` };
+  const role = _deskLoadRoles().find(r => r.id === 'day_forecaster');
+  if (!role || !_aiAnyKey()) return { ok: false, error: 'no day_forecaster role or model key' };
+  const cards = run.head.book.instruments, mk = _DF_MARKETS.filter(n => cards[n]?.levels?.up?.p75);
+  if (mk.length < 4) return { ok: false, error: 'too few markets with a ladder today' };
+  const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+  const { system, prompt } = _deskStagePrompt({ role, pack: { date }, ledger: DESK_EVIDENCE, sections: [
+    ["Today's ladders and the book's view (open; down p75, down p50, up p50, up p75)", Object.fromEntries(mk.map(n => { const L = cards[n].levels; return [n, { open: L.open, down: [L.down.p75, L.down.p50], up: [L.up.p50, L.up.p75], view: cards[n].rating }]; }))],
+    ["The morning's global ruling", run.debate?.global?.view ? { tone: run.debate.global.view.tone, conviction: run.debate.global.view.conviction } : run.head.book.global],
+    ["Today's releases and the risk desk's warnings", { releases: (run.economist?.releases ?? []).map(r => `${r.event} ${r.at}`), risks: run.head.book.risks ?? [] }],
+  ], tail: `Call all ${mk.length} markets: ${mk.join(', ')}.` });
+  let value = null, err = null;
+  for (let i = 0; i < 2 && !value; i++) {
+    try { const r = await callModel({ task: 'desk-analyst', system, prompt, maxTokens: 6_000 }); const v = _dfValidate(_parseModelJson(r.text ?? _antText(r), 'desk:dayfc'), mk); if (v.ok) value = { ...v.value, model: r.model ?? null }; else err = v.errors.join('; '); }
+    catch (e) { err = e.message; }
+  }
+  if (!value) return { ok: false, error: err ?? 'no valid reply' };
+  const rec = { ok: true, date, writtenAt: new Date().toISOString(), runFinishedAt: run.finishedAt, label: 'a forecast of the day\'s shape, scored in the evening; not part of the test', ...value,
+    levels: Object.fromEntries(mk.map(n => [n, cards[n].levels])) };
+  await kv.put(_DF_KEY(date), JSON.stringify(rec));
+  return rec;
+}
+async function _dfScoreDay(date, bars) {
+  const raw = await kv.get(_DF_KEY(date)).catch(() => null); if (!raw) return null;
+  const fc = JSON.parse(raw), realised = {};
+  for (const n of Object.keys(fc.markets ?? {})) { const r = _dfRealised(bars?.[n], fc.levels?.[n], date); if (r) realised[n] = r; }
+  const score = _dfScore(fc, realised), out = { date, scoredAt: new Date().toISOString(), score, realised };
+  await kv.put(_DF_SCORE_KEY(date), JSON.stringify(out));
+  const idx = JSON.parse((await kv.get(_DF_INDEX).catch(() => null)) ?? '[]').filter(r => r.date !== date);
+  idx.push({ date, score: { hits: score.hits }, realised }); idx.sort((a, b) => a.date.localeCompare(b.date));
+  await kv.put(_DF_INDEX, JSON.stringify(idx.slice(-400)));
+  return out;
+}
+// GET /api/desk-dayfc?date=: the day's forecast and, once scored, how it did, with the running record
+app.get('/api/desk-dayfc', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : _dpLondonDate(Date.now());
+    const [fc, sc, ix] = await Promise.all([kv.get(_DF_KEY(date)), kv.get(_DF_SCORE_KEY(date)), kv.get(_DF_INDEX)].map(p => p.catch(() => null)));
+    const { levels, ...forecast } = fc ? JSON.parse(fc) : {};
+    res.json({ ok: !!fc, date, forecast: fc ? forecast : null, result: sc ? JSON.parse(sc) : null, record: _dfRecord(JSON.parse(ix ?? '[]')), ...(fc ? {} : { error: 'no day forecast for this date: it is written after the full morning run' }) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/desk-dayfc/run', async (req, res) => {
+  try { const date = _dpLondonDate(Date.now()); res.json(await _dfRun(date)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // ── Agent 18: the trade watcher (js/tradeWatch.js, plan §9u) ──
 // Every 2 minutes on weekdays 07:00-21:00 London: today's book (with any session-update change applied; a card whose
 // update flipped or flattened it is dropped, since its plan no longer fits) against OANDA mids, one batch call. Each
@@ -5490,6 +5549,34 @@ app.get('/api/trade-watch', async (_req, res) => {
     const date = _dpLondonDate(Date.now());
     if (_tw.date !== date) { const raw = await kv.get(_TW_KEY(date)).catch(() => null); const j = raw ? JSON.parse(raw) : {}; return res.json({ ok: true, date, live: false, events: j.events ?? [], fired: j.fired ?? {}, plan: {} }); }
     res.json({ ok: true, date, live: true, events: _tw.events, fired: _tw.state.fired, last: _tw.state.last, plan: _tw.plan });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/policy-rates: each central bank's policy rate from its own published series (js/policyRates.js), with its as-of
+// date and source. Cached 6 hours. (The rate-diff engine's latestRate is a 3-month interbank rate, not the policy rate.)
+let _prCache = { at: 0, data: null };
+async function _policyRatesNow() {
+  if (_prCache.data && Date.now() - _prCache.at < 6 * 3600e3) return _prCache.data;
+  const UA = { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX/1.0)' };
+  const r = await _prRates({
+    fred: id => fetchFredObservations(id, new Date(Date.now() - 120 * 864e5).toISOString().slice(0, 10), process.env.FRED_KEY),
+    getText: u => fetch(u, { headers: UA, signal: AbortSignal.timeout(20_000) }).then(x => { if (!x.ok) throw new Error(`HTTP ${x.status}`); return x.text(); }),
+    getJson: u => fetch(u, { headers: UA, signal: AbortSignal.timeout(20_000) }).then(x => { if (!x.ok) throw new Error(`HTTP ${x.status}`); return x.json(); }),
+    rbnz: () => _dpFetchFeed({ id: 'rbnz-decisions', path: 'rbnz/decisions', timeoutMs: 30_000 }).then(f => f.json),
+  });
+  const data = { ok: Object.keys(r.rates).length > 0, fetchedAt: new Date().toISOString(), ...r };
+  if (data.ok) _prCache = { at: Date.now(), data };
+  return data;
+}
+app.get('/api/policy-rates', async (_req, res) => { try { res.set('Cache-Control', 'no-store'); res.json(await _policyRatesNow()); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+// GET /api/cb-expectations: what the short-rate futures price for each bank, against its policy rate (js/cbExpectations.js), from the laptop's IBKR
+// pull (scripts/rates_line/refresh_cb_expectations.py → KV cb_rate_futures_v1).
+app.get('/api/cb-expectations', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const raw = await kv.get('cb_rate_futures_v1').catch(() => null), p = raw ? JSON.parse(raw) : null, payload = p?.data ?? p;
+    const pr = await _policyRatesNow().catch(() => ({ rates: {} }));
+    if (!payload?.banks) return res.json({ ok: false, error: 'no futures pull yet: run scripts/rates_line/run_cb_expectations.bat on the laptop (IB Gateway open)', policy: pr.rates ?? {} });
+    res.json({ ok: true, policy: pr.rates ?? {}, ..._cbExpect(payload, Object.fromEntries(Object.entries(pr.rates ?? {}).map(([k, v]) => [k, v.rate]))) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/desk-cot-history?weeks=156: speculators' net share of open interest by week, per market, from the COT

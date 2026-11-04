@@ -173,6 +173,13 @@ model). The events analyst reads it as facts to weigh, never as a signal; the se
 the headlines since the book. The single-prompt control reads the whole pack, so both arms see it. No outcome had
 been computed.
 
+### A8 — 2026-11-04 — PRE-RESULTS
+Before the first counted day was scored, Phase 3's day-forecast writer is added (`desk/roles/day_forecaster.md`,
+`js/dayForecast.js`). It runs after the morning book is saved, reads the book and the ladders, and calls each main
+market's range bucket, trend-or-range day and the session that sets its extremes. It never changes the scored book,
+is not an arm of H1-H5, and is scored separately and descriptively (against chance and "always the most common
+outcome"). No outcome had been computed.
+
 ---
 
 ## RESULTS — not run
