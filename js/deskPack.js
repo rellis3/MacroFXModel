@@ -131,6 +131,8 @@ export const DESK_FEEDS = [
   F('rates_cb', 'fed-speakers', 7 * D),
   ...['fomc', 'ecb', 'boe', 'boj', 'boc', 'rba', 'rbnz', 'snb'].map(b => F('rates_cb', `${b}/latest`, null)),
   F('rates_cb', 'beigebook/latest', null),
+  F('rates_cb', 'policy-rates', 4 * D),        // §9aa: every bank's own policy rate with its date (not the 3m interbank rate)
+  F('rates_cb', 'cb-expectations', 3 * D),     // §9aa: what short-rate futures price for every bank (laptop IBKR pull)
   F('rates_cb', 'rbnz/decisions', 120 * D),   // OCR decisions from RSS headlines: the RBNZ statements are firewalled from the server
   F('rates_cb', 'treasury-auctions', 10 * D, { keep: 'first' }),
   F('yields_curve', 'yield-curve', 4 * D),
