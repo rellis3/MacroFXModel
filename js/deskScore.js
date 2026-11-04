@@ -125,7 +125,7 @@ export function scoreDay(run, barsByInst, { B = 2000, seed = 20261103 } = {}) {
     race: { resolved: resolved.length, leanFirst: resolved.filter(s => s.race > 0).length },
     placebo: plc ? { mean: +mean(plc).toFixed(4), sd: +Math.sqrt(mean(plc.map(x => (x - mean(plc)) ** 2))).toFixed(4), p95: +quantile(plc, 0.95).toFixed(4) } : null,
     control,
-    cards: Object.fromEntries(Object.entries(rows).map(([n, s]) => [n, s.missing ? { dir: s.dir, missing: s.missing } : { dir: s.dir, R: s.R, race: s.race, size: s.size, strong: s.strong }])),
+    cards: Object.fromEntries(Object.entries(rows).map(([n, s]) => [n, s.missing ? { dir: s.dir, missing: s.missing } : { dir: s.dir, R: s.R, race: s.race, size: s.size, strong: s.strong, entry: s.entry, exit: s.exit, u: s.u }])),
   };
 }
 const dayNum = d => Math.round(Date.parse(d + 'T00:00:00Z') / 864e5);

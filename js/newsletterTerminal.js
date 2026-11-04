@@ -11,7 +11,7 @@
  * Pure. Tested in js/newsletterTerminal.test.mjs.
  */
 import { DISCLAIMER } from './newsletter.js';
-import { instName, prose } from './newsletterDesk.js';
+import { instName, prose, cardMove } from './newsletterDesk.js';
 import { DESK_UNIVERSE } from './deskPack.js';
 
 const CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
@@ -157,7 +157,7 @@ ${c.plan?.zone ? `<div class="pb en"><b>ENTRY</b><span>${esc(c.plan.zone)}</span
 
   // 6 · yesterday, reviewed (compact)
   const sc = review?.score;
-  const p6 = sc?.S != null ? (() => { const cs = Object.entries(sc.cards ?? {}).filter(([, c]) => !c.missing && c.size > 0).map(([n, c]) => ({ label: instName(n), v: +(c.size * c.R).toFixed(2), note: `${c.dir > 0 ? 'long' : 'short'} ${c.R > 0 ? '+' : ''}${c.R.toFixed(2)}u` })).sort((a, c) => Math.abs(c.v) - Math.abs(a.v)).slice(0, 10).sort((a, c) => c.v - a.v);
+  const p6 = sc?.S != null ? (() => { const cs = Object.entries(sc.cards ?? {}).filter(([, c]) => !c.missing && c.size > 0).map(([n, c]) => ({ label: instName(n), v: +(c.size * c.R).toFixed(2), note: `${c.dir > 0 ? 'long' : 'short'} ${c.R > 0 ? '+' : ''}${c.R.toFixed(2)}u${cardMove(n, c) ? ` · mkt ${cardMove(n, c)}` : ''}` })).sort((a, c) => Math.abs(c.v) - Math.abs(a.v)).slice(0, 10).sort((a, c) => c.v - a.v);
     const inside = sc.placebo?.p95 != null ? (sc.S > sc.placebo.p95 ? 'better than 95% of random books' : 'inside the range a random book scores') : '';
     return `<div class="pg">${mh('Yesterday')}<div class="lbl">Yesterday, reviewed · ${esc(sc.date)}</div><h2>The book ${sc.S >= 0 ? 'made' : 'lost'} ${Math.abs(sc.S).toFixed(2)} u${inside ? `: ${inside}` : ''}</h2>
 <div class="tiles"><div class="tile"><span class="lbl">Day score</span><b style="color:${sgnCol(sc.S)}">${sc.S > 0 ? '+' : ''}${sc.S.toFixed(2)} u</b><i>${sc.eligible ? 'counts in the test' : 'not counted in the test'}</i></div><div class="tile"><span class="lbl">Cards scored</span><b>${sc.scored}/${sc.live}</b><i>08:00-21:00 London</i></div><div class="tile"><span class="lbl">Lean side first</span><b>${sc.race?.resolved ? `${sc.race.leanFirst}/${sc.race.resolved}` : '–'}</b><i>reached the p50 line first</i></div></div>

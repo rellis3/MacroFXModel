@@ -38,12 +38,16 @@ t('on paper the same bot is medium/low; a silent bot and an unmapped live bot ar
   const p = assessBot({ key: 'volatility_bot_v2_status', label: 'Vote Atlas', paper: true }, { mode: 'paper', generatedAt: '2026-11-03T06:00:00Z' }, { evidence, rows, now });
   const k = Object.fromEntries(p.flags.map(f => [f.kind, f.severity]));
   assert.equal(k['tested-against'], 'medium'); assert.equal(k['before-verdict'], 'low'); assert.equal(k.silent, 'medium');
-  const u = assessBot({ key: 'bot_status', label: 'MacroFX V1', paper: false }, { pushed_at: now - 60_000 }, { evidence, rows, now });
-  assert.deepEqual(u.flags.map(f => [f.kind, f.severity]), [['no-basis', 'medium']]);
+  const u = assessBot({ key: 'regime_bot_status', label: 'Regime V1', paper: false }, { pushed_at: now - 60_000 }, { evidence, rows, now });
+  assert.deepEqual(u.flags.map(f => [f.kind, f.severity]), [['no-basis', 'medium']]); assert.match(u.flags[0].text, /no study on record.*It runs live/i);
+  const x = assessBot({ key: 'unknown_status', label: 'X', paper: true }, { mode: 'paper', generatedAt: now }, { evidence, rows, now });
+  assert.deepEqual(x.flags.map(f => [f.kind, f.severity]), [['no-basis', 'low']]);
+  const m = assessBot({ key: 'signal_copier_status', label: 'Signal Copier', paper: true }, { mode: 'live', balance: 102088.28, account_login: 26365117, generatedAt: now }, { evidence, rows, now });
+  assert.match(m.flags.find(f => f.kind === 'mode-mismatch').text, /balance 102,088, MT5 login 26365117.*demo account/);
   assert.equal(assessBot({ key: 'bot_status', label: 'MacroFX V1', paper: false }, null, { now }).flags.length, 0);
 });
 t('report sorts the worst first and counts', () => {
-  const r = rulesReport([{ key: 'bot_status', label: 'MacroFX V1', paper: false }, { key: 'volatility_bot_v2_status', label: 'Vote Atlas', paper: true }], { bot_status: { pushed_at: now }, volatility_bot_v2_status: { mode: 'live', generatedAt: now } }, { evidence, rows, now });
+  const r = rulesReport([{ key: 'regime_bot_status', label: 'Regime V1', paper: false }, { key: 'volatility_bot_v2_status', label: 'Vote Atlas', paper: true }], { regime_bot_status: { pushed_at: now }, volatility_bot_v2_status: { mode: 'live', generatedAt: now } }, { evidence, rows, now });
   assert.equal(r.bots[0].label, 'Vote Atlas'); assert.equal(r.counts.high, 2); assert.equal(r.reporting, 2);
 });
 console.log(`rulesKeeper: ${n} tests passed`);

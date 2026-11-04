@@ -65,6 +65,7 @@ function isAllowedKVKey(key) {
     'oi_ripple_log', 'oi_vol_bot_config', 'oi_vol_bot_credentials', 'oi_vol_bot_status', 'oi_vol_bot_zones', 'oi_vol_bot_trade_log', 'oi_vol_bot_state',
     'oi_conf_bot_config', 'oi_conf_bot_credentials', 'oi_conf_bot_status', 'oi_conf_bot_zones', 'oi_conf_bot_trade_log', 'oi_conf_bot_state',
     'zq_path_v1',
+    'cb_rate_futures_v1',
     'cog_legs_live_v1',
     'cog_line_live_v1',
     'release_layer1_v1',
@@ -1077,6 +1078,8 @@ export default {
             // zq_path_v1 is pushed from a machine Railway cannot call back to.
             // A 48h TTL would silently empty the feed between runs.
             'zq_path_v1',
+            // cb_rate_futures_v1: the laptop's IBKR pull of the other central banks' rate futures (scripts/rates_line/refresh_cb_expectations.py).
+            'cb_rate_futures_v1',
             // cog_line_live_v1: the laptop's pushed IBKR bars for the Rates-page C.OG line; a 48h TTL would drop them between pushes.
             'cog_legs_live_v1',
             // release_layer1_v1: the laptop's pushed Release Reaction record (scripts/release_layer1/live_push.py); a 48h TTL would blank the page between pushes.

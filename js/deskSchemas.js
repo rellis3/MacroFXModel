@@ -391,6 +391,10 @@ size: 0 to 1.5 (1 = normal). veto: true only when the trade should not be taken 
   "briefs": [ { "event": "the release", "priced": "consensus vs previous, and what that means", "sizeAndSpeed": "typical move by market at 30 min and 4 h, peak time, how much is kept, with counts",
                "ifHot": "what history shows after hot prints, with counts", "ifCold": "after cold prints, with counts", "bookAtRisk": "the desk's cards exposed, view and size", "watch": "one thing to watch" } ]   // one per release, in the order given
 }`,
+  day_forecast: `{
+  "headline": "the day in one sentence",
+  "markets": { "EURUSD": { "range": "narrow | normal | wide", "type": "trend | range", "extremes": "london | ny | split", "confidence": "low | medium | high", "why": "one short line" }, ... every market listed }
+}`,
   news_read: `{
   "items": [ { "i": 0, "tier": 1, "impact": { "USD": -1, "GOLD": 1 }, "why": "one line", "book": "the card it bears on and how, or null" } ]   // one per headline, by its number
 }`,

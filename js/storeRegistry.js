@@ -50,6 +50,7 @@ export const STORES = {
   newsletter_archive_v1: L('Newsletter archive (issues + range-calibration score)', 3, { market: false }),
   funding_read_v1: L('Funding & leverage daily read record', 5),
   zq_path_v1: R('Fed-funds path (ZQ)', 1),
+  cb_rate_futures_v1: R('Central-bank rate futures (IBKR)', 1),
   mpt_store_v1: R('MPT store', 3, { market: false }),
   spread_profile_v1: R('Spread profile', 3, { market: false }),
   vol_hit_rates: R('Vol-forecast hit rates', 1),

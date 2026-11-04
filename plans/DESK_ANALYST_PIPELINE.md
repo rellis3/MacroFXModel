@@ -717,7 +717,7 @@ Ours is a design of its own in that spirit, not a copy.
 | Currency strength, with the parts behind each score | currency manager, macro scorecard, strength | have |
 | Central-bank divergence heatmap | the central bank feeds (stance, hawkishness) | have, needs the heatmap |
 | Rate differential matrix (2y, 10y, real) | rate-diff, intl-yields, real-yield | have, needs the matrix |
-| Rate expectations and repricing, in bp since the last meeting | Fed: ZQ futures; ECB: Euribor (IBKR pulls) | **partial: needs SONIA, CORRA, BAX, ASX and NZ futures, or OIS** |
+| Rate expectations and repricing | every bank's short-rate futures via the laptop IBKR pull (§9aa) | have (needs the laptop pull scheduled) |
 | COT with the WILLCO index | cot-state, cot-extremes | have; compute WILLCO |
 | Retail sentiment | oanda-book | have; Myfxbook optional (`MYFXBOOK_SESSION` exists) |
 | Seasonality | daily bars (R2 history) | compute |
@@ -949,6 +949,31 @@ service `newsWire` (every 10 min); `GET /api/desk-news` (`?hours`, `?tier`, `?cc
   Telegram for a tier-1 headline that bears on the book (at most 10 a day); and the Desk Pack feed `desk-news` for the
   events analyst (prereg amendment A7).
 
+## 9aa. Phase 3's day-forecast writer, and the remaining build items (2026-11-04)
+
+- **Day forecast** (`js/dayForecast.js`, `desk/roles/day_forecaster.md`, schema `day_forecast`; `GET /api/desk-dayfc`,
+  `POST /api/desk-dayfc/run`): after each full morning run, one model call calls the shape of today for twelve main
+  markets: range against that morning's ladder (narrow inside the p50 span, wide beyond the p75 span), trend or range
+  day (closes at least half its range from the open), and whether London (08-13), New York (13-21) or both set the
+  extremes. Scored in the evening from the same M1 bars as the book; a running record against chance and "always the
+  most common outcome". On the Desk Terminal's Overview ("The day's shape") and in the Desk Office. Prereg A8: outside
+  the test.
+- **Policy rates** (`js/policyRates.js`, `GET /api/policy-rates`): each bank's own series with its date (FRED DFEDTARU
+  and ECBDFR, BoE IUDBEDR, Bank of Canada Valet, RBA F1, SNB data portal, BoJ data API, RBNZ decisions). The terminal had
+  been showing the rate-diff engine's 3-month interbank rate as "policy"; it now shows both, labelled. (FRED's OECD
+  central-bank series stopped in 2023 for AUD/CAD/JPY/CHF and are not used; Valet lists newest first, which the parser
+  handles.)
+- **Rate expectations for every bank** (`scripts/rates_line/refresh_cb_expectations.py` + `run_cb_expectations.bat` on the
+  laptop → KV `cb_rate_futures_v1`; `js/cbExpectations.js`; `GET /api/cb-expectations`): ZQ/SOFR, €STR/Euribor, SONIA,
+  SARON, CORRA/BAX, ASX 30-day cash rate and 90-day bills, NZ OCR and bank bills, TONA. The script discovers each
+  candidate's listed expiries from IBKR and reports any symbol IBKR does not know. Change priced vs the policy rate by
+  ~3, 6 and 12 months (bank bills read against their front contract). A panel on the terminal's Macro tab.
+- **Rules keeper map** extended to every bot (§9y): MacroFX V1, Gold, Gold V2, DynAnchor, Backtest, Signal Copier and
+  MacroEquity to their tests; Regime V1/V2/V7, HedgeBot and PosHedge recorded as "no study on record" with what the docs
+  say. The mode-mismatch flag now shows the MT5 balance and login: "live" means the bot sends orders through MT5
+  rather than its paper broker; whether that MT5 account is demo or real money is the owner's to confirm.
+- **"Yesterday, reviewed"** in the morning desk issues uses the compact page (as the evening edition).
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
@@ -1002,8 +1027,7 @@ Not built yet. The order is the owner's call; each item names what it needs firs
 **Build items**
 - **Daily schedule.** The owner sets `SVC_DESKRUN=1` for the 06:55 run once a fresh-pack run has been read. Without
   it, only books written before 08:00 count in the test.
-- **Day-forecast writer** (Phase 3's remaining writer): the day as a range bucket, a trend or range day, and the
-  session shape, beside the newsletter.
+- **Day-forecast writer** (Phase 3's remaining writer). *Built (§9aa).*
 - **Prompt caching** on the shared pack slices, which could cut the cost of a run by roughly a third.
 - **Slow feeds:** asia-today, daily-open-fib, weekmap, forecast-path and three swing maps time out in the pack build.
   Each needs a cache or a cheaper route.

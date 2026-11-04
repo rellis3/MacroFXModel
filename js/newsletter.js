@@ -619,7 +619,7 @@ export function buildNewsletter(n) {
       deskGroups: n.desk && n.deskMode === 'magazine' ? groupPages(n.desk, Hh) : null,
       deskBrief: n.desk && n.deskMode === 'brief' ? deskBrief(n.desk, Hh, { flag: c => flagSvg(c, 16, 11) }) : null,
       // last night's score and evening review (n.deskReview: /api/desk-score + /record), in both desk formats
-      deskReview: n.desk && n.deskMode && n.deskReview ? reviewPage(n.deskReview, Hh) : null,
+      deskReview: n.desk && n.deskMode && n.deskReview ? reviewPage(n.deskReview, Hh, { compact: true }) : null,
       deskEconomist: n.desk && n.deskMode ? economistPage(n.desk, Hh) : null,   // Phases 6 and 15, for readers
       mapText: n.desk && n.deskMode === 'magazine' ? (n.deskReview ? 'Yesterday, reviewed · then top down: ' : 'Top down: ') + 'the global ruling · the backdrop · the currencies, ranked · each asset group, market by market · the book · the risk desk · releases to come' : n.desk && n.deskMode === 'brief' ? 'The desk brief: the global ruling, the currencies, the clearest ideas and what could break the day' : null,
       today: v2Today, feature, glance: { broken: String(_bk), testable: String(_tl.length), stress: n.riskFlags ? `${n.riskFlags.active}/${n.riskFlags.total}` : 'n/a', next: _evTop ? `${_evTop.event}, ${ukTime(_evTop.ms)}` : '' }, alarms,

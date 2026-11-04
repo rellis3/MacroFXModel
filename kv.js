@@ -67,6 +67,7 @@ const _CF_EXACT = new Set([
                              // pushed by scripts/release_layer1/live_push.py (IBKR cannot be reached from Railway). Must also be in _worker.js isAllowedKVKey + PERMANENT_KEYS.
   'spread_episodes_v1',     // spread-turn episodes forward record (forge/SPREAD_EPISODES_PREREG.md): every confirmed turn since
                              // 2026-10-20 and its outcome; not re-derivable once the live window moves on. Must also be in _worker.js PERMANENT_KEYS.
+  'cb_rate_futures_v1',     // the other central banks' rate futures, pushed from the owner's TWS by scripts/rates_line/refresh_cb_expectations.py
   'zq_path_v1',            // fed funds futures rungs, pushed nightly from the owner's TWS. Durable because
                              // IBKR cannot be reached from Railway: lose it and there is no re-fetch.
                              // Must also be in _worker.js PERMANENT_KEYS.
