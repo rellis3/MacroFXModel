@@ -193,7 +193,7 @@ export function cardPrereg(card, { id, date, proposal } = {}) {
 // ── Closing the loop (§9ac): the lifecycle of each proposal, results fed back, a thread per proposal, a scorecard ──
 
 /** Stages a proposal moves through. paper, live and retired are set by the owner; the rest are read from the repo. */
-export const STAGES = ['proposed', 'shortlisted', 'chosen', 'carded', 'preregistered', 'tested', 'passed', 'failed', 'paper', 'live', 'retired', 'parked', 'rejected'];
+export const STAGES = ['proposed', 'shortlisted', 'chosen', 'carded', 'preregistered', 'tested', 'forward-tested', 'passed', 'failed', 'paper', 'live', 'retired', 'parked', 'rejected'];
 const OPEN_ROW = new Set(['CLAIMED', 'REGISTERED', 'RUNNING', 'RE-RUN', 'PREREG', 'DRAFT', 'BLOCKED']);
 
 /** The register id a proposal is tracked under: set by the owner, else the card's name, else the proposal's title. */
@@ -205,7 +205,7 @@ export const registerIdOf = (p, fb = {}, card = null) => fb[p.id]?.registerId ||
  * the Evidence Book entry. ctx: { fb, cards, rows, checklists: { id: harnessChecklist }, systems: { id: tearsheet
  * summary }, evidence: [{ id, verdict, use }] }.
  */
-export function lifecycle(p, { fb = {}, cards = {}, rows = [], checklists = {}, systems = {}, evidence = [] } = {}) {
+export function lifecycle(p, { fb = {}, cards = {}, rows = [], checklists = {}, systems = {}, evidence = [], shadows = {} } = {}) {
   const f = fb[p.id] ?? {}, card = cards[p.id] ?? null, rid = registerIdOf(p, fb, card);
   const row = rows.find(r => r.id === rid) ?? null, chk = checklists[rid] ?? null, sys = systems[rid] ?? null, ev = evidence.find(e => e.id === rid) ?? null;
   const steps = [
@@ -215,15 +215,20 @@ export function lifecycle(p, { fb = {}, cards = {}, rows = [], checklists = {}, 
     { stage: 'preregistered', done: !!row, detail: row ? `${row.id} [${row.status}]` : `no register row ${rid}` },
     { stage: 'tested', done: !!(chk || sys || ev || (row && !OPEN_ROW.has(row.status))), detail: [chk ? 'harness output' : '', sys ? `${sys.trades} trades in system outputs` : '', ev ? `Evidence Book: ${ev.verdict}` : ''].filter(Boolean).join(' · ') },
   ];
+  // a forward shadow on a live bot (js/shadowTracker.js): the out-of-sample test of a filter
+  const sh = shadows[p.id] ?? null;
+  if (sh) steps.push({ stage: 'forward-tested', done: sh.verdict !== 'collecting', detail: `${sh.bot}: ${sh.rule} · ${sh.verdict}${sh.placeboPercentile != null ? ` (${Math.round(sh.placeboPercentile * 100)}th percentile of random filters)` : ` · ${sh.need ?? ''}`}` });
   let outcome = null;
   if (chk || ev) {
     const failed = chk?.verdict === 'fail' || (ev && ['null', 'underpowered'].includes(ev.verdict));
     outcome = { result: failed ? 'failed' : chk?.verdict === 'pass' || ev?.verdict === 'validated' ? 'passed' : null, failedGates: chk?.failed ?? [], verdict: ev?.verdict ?? null, use: ev?.use ?? null,
       headline: sys ? { trades: sys.trades, sharpe: sys.sharpe ?? null, maxDD: sys.maxDD ?? null } : null };
   } else if (sys) outcome = { result: null, failedGates: [], verdict: null, use: null, headline: { trades: sys.trades, sharpe: sys.sharpe ?? null, maxDD: sys.maxDD ?? null } };
+  if (sh) outcome = { ...(outcome ?? { result: null, failedGates: [], verdict: null, use: null, headline: null }), forward: { bot: sh.bot, verdict: sh.verdict, kept: sh.kept, filteredMeanR: sh.filtered?.meanR ?? null, asTradedMeanR: sh.asTraded?.meanR ?? null } };
   let stage = 'proposed';
   for (const s of steps) if (s.done) stage = s.stage;
   if (outcome?.result) stage = outcome.result;
+  if (sh && !outcome?.result && sh.verdict !== 'collecting') stage = sh.verdict === 'helping' ? 'passed' : sh.verdict === 'hurting' ? 'failed' : 'forward-tested';
   if (['paper', 'live', 'retired'].includes(f.stage)) stage = f.stage;
   if (f.status === 'reject') stage = 'rejected'; else if (f.status === 'park' && !card) stage = 'parked';
   return { id: p.id, lens: p.lens, stage, registerId: rid, steps, outcome };
@@ -242,7 +247,7 @@ export function outcomesBrief(lib, cycles, lens) {
   const L = (lib ?? []).filter(p => p.lens === lens).map(p => ({ p, c: cycles[p.id] })).filter(x => x.c && x.c.stage !== 'proposed');
   if (!L.length) return '(none of your proposals has moved yet)';
   return L.map(({ p, c }) => { const o = c.outcome;
-    return `- ${p.title} [${c.stage}]${o?.failedGates?.length ? `: failed ${o.failedGates.join(', ')}` : ''}${o?.verdict ? `; Evidence Book ${o.verdict}${o.use ? ` ("${o.use.slice(0, 160)}")` : ''}` : ''}${o?.headline ? `; ${o.headline.trades} trades, Sharpe ${o.headline.sharpe ?? '?'}` : ''}`; }).join('\n');
+    return `- ${p.title} [${c.stage}]${o?.forward ? `: forward on ${o.forward.bot} ${o.forward.verdict} (${o.forward.kept} kept, ${o.forward.filteredMeanR}R vs ${o.forward.asTradedMeanR}R as traded)` : ''}${o?.failedGates?.length ? `: failed ${o.failedGates.join(', ')}` : ''}${o?.verdict ? `; Evidence Book ${o.verdict}${o.use ? ` ("${o.use.slice(0, 160)}")` : ''}` : ''}${o?.headline ? `; ${o.headline.trades} trades, Sharpe ${o.headline.sharpe ?? '?'}` : ''}`; }).join('\n');
 }
 
 /** Per researcher: how many proposals reached each point, and the pass rate of those tested. */

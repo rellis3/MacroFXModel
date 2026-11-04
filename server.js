@@ -238,7 +238,8 @@ import { selectPairs as _psSelect } from './js/pairSelector.js';   // §9ae
 import { reviewSystem as _svReview, reviewText as _svText, validatePostmortem as _svValidate } from './js/systemReview.js';   // §9ad
 import { CATALOGUE as _SYS_CATALOGUE, coverage as _sysCoverage, catalogueText as _sysCatalogueText } from './js/systemCatalogue.js';
 import { harnessChecklist as _vdChecklist, validateReview as _vdValidateReview } from './js/validationDesk.js';   // Phase 26
-import { fleetReport as _fpReport } from './js/fleetPortfolio.js';   // Phases 27-28
+import { fleetReport as _fpReport, validateAllocation as _alValidate } from './js/fleetPortfolio.js';   // Phases 27-28
+import { ruleFromSlice as _shRuleFromSlice, validateRule as _shValidateRule, evaluate as _shEvaluate, describe as _shDescribe } from './js/shadowTracker.js';   // §9ae
 import { BOT_BASIS as _RK_BASIS } from './js/rulesKeeper.js';
 import { realisedDays as _vcRealised, compare as _vcCompare } from './js/volCheck.js';   // the terminal's vol chart
 import { morningText as _cosMorning, eveningText as _cosEvening } from './js/chiefOfStaff.js';   // agent 22
@@ -2218,6 +2219,7 @@ const TG_SENDERS = {
   newsWire:          'Desk news analyst: a tier-1 headline that bears on the book (at most 10 a day; context, not a signal)',
   deskWeekly:        'Desk weekly strategist: the Sunday week-ahead note',
   chiefOfStaff:      'Desk chief of staff: the morning note after the book, the evening note after the score',
+  allocation:        'Desk allocation committee: the weekly per-bot keep / cut / pause / raise note (advice; the owner decides)',
   tradeWatch:        'Desk trade watcher: a card reached its entry zone, first target or invalidation (context, not an order)',
   // volatility_bot_v2 (the Python bot) checks this directly via ai_alert_cfg
   // (see its own tg_master_on doc) — unlike every other sender above, this
@@ -5303,7 +5305,8 @@ async function _rpLoop(lib) {
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
   _tdOpsNow();
   const [fb, cards] = await Promise.all([_rpGet(_RP.feedback, {}), _rpGet(_RP.cards, {})]);
-  const ctx = { fb, cards, rows: _roCache.rows ?? [], checklists: _vdChecklists(), systems: Object.fromEntries((await _sysList()).map(x => [x.id, x])), evidence: DESK_EVIDENCE };
+  let shadows = {}; try { shadows = Object.fromEntries((await _shadowsNow()).filter(x => x.proposalId).map(x => [x.proposalId, x])); } catch { /* none */ }
+  const ctx = { fb, cards, rows: _roCache.rows ?? [], checklists: _vdChecklists(), systems: Object.fromEntries((await _sysList()).map(x => [x.id, x])), evidence: DESK_EVIDENCE, shadows };
   const cycles = Object.fromEntries((lib ?? []).map(p => [p.id, _rpLifecycle(p, ctx)]));
   return { ctx, cycles, scorecard: _rpScorecard(lib, cycles) };
 }
@@ -5605,6 +5608,96 @@ app.get('/api/system-live', async (req, res) => {
     res.json({ ok: true, bot, id: d.id, liveTrades: live.length, check: _sxLiveVsExpected(d.trades, live, { paths: 4000 }) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── §9ae: forward shadows, the bot ↔ system links and the allocation committee ──
+const _SH_KEY = 'shadow_trackers', _BSM_KEY = 'bot_system_map', _AL_KEY = 'allocation_latest';
+/** A bot's closed live trades with R (the fleet's trade logs). */
+async function _botTrades(bot) {
+  const key = _FP_LOGS[bot]; if (!key) throw new Error(`unknown bot ${bot}`);
+  const log = await _kvJson(key).catch(() => null);
+  return _jcRows({ [bot]: Array.isArray(log) ? log : [] }).filter(t => Number.isFinite(t.R));
+}
+async function _shadowsNow() {
+  const all = await _rpGet(_SH_KEY, {}), out = [], cache = {};
+  for (const sh of Object.values(all)) {
+    try { const tr = cache[sh.bot] ??= await _botTrades(sh.bot); out.push({ ...sh, ..._shEvaluate(sh, tr) }); }
+    catch (e) { out.push({ ...sh, verdict: 'error', error: e.message }); }
+  }
+  return out.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+app.get('/api/shadows', async (_req, res) => { try { res.set('Cache-Control', 'no-store'); res.json({ ok: true, bots: Object.keys(_FP_LOGS), shadows: await _shadowsNow(), label: 'forward-only: scored on trades closed after each shadow started' }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+// POST /api/shadows { bot, slice + op | rule, systemId?, proposalId?, note? }: start a shadow (scored from now on).
+app.post('/api/shadows', async (req, res) => {
+  try {
+    const b = req.body ?? {}; if (!_FP_LOGS[b.bot]) return res.status(400).json({ ok: false, error: `bot must be one of ${Object.keys(_FP_LOGS).join(', ')}` });
+    const rule = b.rule ? _shValidateRule(b.rule) : _shRuleFromSlice(b.slice, b.op);
+    const all = await _rpGet(_SH_KEY, {}), id = `${_rpSlug(b.bot)}-${_rpSlug(_shDescribe(rule))}`.slice(0, 90);
+    if (all[id]) return res.status(409).json({ ok: false, error: 'that shadow already runs', shadow: all[id] });
+    all[id] = { id, bot: b.bot, rule, systemId: b.systemId ?? null, proposalId: b.proposalId ?? null, note: String(b.note ?? '').slice(0, 300), startedAt: Date.now(), createdAt: new Date().toISOString() };
+    await kv.put(_SH_KEY, JSON.stringify(all)); res.json({ ok: true, shadow: all[id] });
+  } catch (e) { res.status(400).json({ ok: false, error: e.message }); }
+});
+app.post('/api/shadows/stop', async (req, res) => {
+  try { const all = await _rpGet(_SH_KEY, {}), id = String(req.body?.id ?? ''); if (!all[id]) return res.status(404).json({ ok: false, error: 'no such shadow' });
+    delete all[id]; await kv.put(_SH_KEY, JSON.stringify(all)); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET/POST /api/bot-system-map: which backtested system each bot trades (for the live check and the committee).
+app.get('/api/bot-system-map', async (_req, res) => { try { res.set('Cache-Control', 'no-store'); res.json({ ok: true, map: await _rpGet(_BSM_KEY, {}), bots: Object.keys(_FP_LOGS) }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+app.post('/api/bot-system-map', async (req, res) => {
+  try { const bot = String(req.body?.bot ?? ''), id = String(req.body?.id ?? ''); if (!_FP_LOGS[bot]) return res.status(400).json({ ok: false, error: 'unknown bot' });
+    const m = await _rpGet(_BSM_KEY, {}); if (id) m[bot] = id; else delete m[bot]; await kv.put(_BSM_KEY, JSON.stringify(m)); res.json({ ok: true, map: m }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// The allocation committee (desk/roles/allocation_committee.md): weekly, Sunday from 17:00 London, or on demand.
+let _alJob = null;
+async function _alRun() {
+  const role = _deskLoadRoles().find(r => r.id === 'allocation_committee'); if (!role) return { ok: false, error: 'no role' };
+  if (!_aiAnyKey()) return { ok: false, error: 'no model key' };
+  const logs = {}, since = Date.now() - 90 * 864e5;
+  await Promise.all(Object.entries(_FP_LOGS).map(async ([bot, k]) => { const l = await _kvJson(k).catch(() => null); if (Array.isArray(l) && l.length) logs[bot] = l; }));
+  const trades = _jcRows(logs).filter(t => (t.closeMs ?? t.openMs) >= since), fleet = _fpReport(trades);
+  const map = await _rpGet(_BSM_KEY, {}), live = {};
+  for (const [bot, id] of Object.entries(map)) {
+    try { const d = await _sysLoad(id); if (!d || !logs[bot]) continue;
+      const lt = _sxNormalise(_jcRows({ [bot]: logs[bot] }).filter(t => Number.isFinite(t.R)).map(t => ({ instrument: t.inst, direction: t.dir > 0 ? 'Long' : 'Short', entryMs: t.openMs, exitMs: t.closeMs ?? t.openMs, R: t.R }))).trades;
+      if (lt.length < 5) continue; const c = _sxLiveVsExpected(d.trades, lt, { paths: 2000 });
+      live[bot] = { system: id, liveTrades: lt.length, percentiles: Object.fromEntries(Object.entries(c.metrics ?? {}).map(([k, m]) => [k, { live: m.realised, expectedMedian: m.p50, p10: m.p10, p90: m.p90, percentile: m.percentile }])) };
+    } catch { /* one bad link does not stop the review */ }
+  }
+  const shadows = (await _shadowsNow()).map(s => ({ bot: s.bot, rule: s.rule, verdict: s.verdict, kept: s.kept, filteredMeanR: s.filtered?.meanR, asTradedMeanR: s.asTraded?.meanR, placeboPercentile: s.placeboPercentile ?? null }));
+  let rules = null; try { const r = await _rulesKeeperNow(); rules = (r.bots ?? []).filter(b => b.flags?.length).map(b => ({ bot: b.label, flags: b.flags.map(f => `${f.severity} ${f.kind}`) })); } catch { /* optional */ }
+  const date = _dpLondonDate(Date.now()), { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+  const { system, prompt } = _deskStagePrompt({ role, pack: { date }, ledger: DESK_EVIDENCE, sections: [
+    ['The fleet over the last 90 days (js/fleetPortfolio.js)', { ...fleet, correlations: fleet.correlations.filter(c => Math.abs(c.full ?? 0) >= 0.3) }],
+    ['Each linked bot against its backtest (percentile of the live value in the backtest\'s expected shape at the same trade count)', Object.keys(live).length ? live : '(no bot is linked to a backtested system yet)'],
+    ['Forward shadows (filters on new live trades, against random filters)', shadows.length ? shadows : '(none running)'],
+    ['The rules keeper\'s flags', rules ?? '(not available)'],
+  ] });
+  let out = null, err = '';
+  for (let i = 0; i < 2 && !out; i++) { try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 8_000 }); const v = _alValidate(_parseModelJson(r.text ?? _antText(r), 'desk:allocation'), fleet.bots.map(b => b.bot)); if (v.ok) out = v.value; else err = v.errors.join('; '); } catch (e) { err = e.message; } }
+  if (!out) return { ok: false, error: err || 'no valid reply' };
+  const rec = { ok: true, date, week: _tdWeek(date), writtenAt: new Date().toISOString(), ...out, inputs: { trades: trades.length, bots: fleet.bots.length, linked: Object.keys(live).length, shadows: shadows.length }, label: 'advice; the owner decides; no bot is changed' };
+  await kv.put(_AL_KEY, JSON.stringify(rec));
+  if (tgOn('allocation') && state.tg?.token && state.tg?.chatId) {
+    const ICON = { keep: '⏸', cut: '🔻', pause: '⛔', raise: '🔺', 'promote-filter': '🧪' };
+    sendTelegram(state.tg.token, state.tg.chatId, `📊 Allocation committee · ${date}\n${out.headline}\n\n${out.bots.map(b => `${ICON[b.action] ?? '•'} ${b.bot}: ${b.action}${b.riskPerTrade != null ? ` (${b.riskPerTrade}% a trade)` : ''}. ${b.why}`).join('\n')}\n\nAdvice only. Desk Office → Performance.`).catch(() => {});
+  }
+  return rec;
+}
+app.get('/api/allocation', async (_req, res) => { try { res.set('Cache-Control', 'no-store'); const r = await _rpGet(_AL_KEY, null); res.json(r ? { ...r, job: _alJob } : { ok: false, error: 'no review yet: the committee meets on Sunday evenings, or run it now', job: _alJob }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+app.post('/api/allocation/run', (_req, res) => {
+  if (_alJob?.status === 'running') return res.status(409).json({ ok: false, error: 'already running', job: _alJob });
+  const job = _alJob = { status: 'running', startedAt: Date.now() };
+  _alRun().then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; }).catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
+  res.status(202).json({ ok: true, job });
+});
+svcInterval('allocationCommittee', async () => {
+  const now = Date.now(), date = _dpLondonDate(now);
+  if (new Date(_dsLondonMs(date, 12)).getUTCDay() !== 0 || now < _dsLondonMs(date, 17) || _alJob?.status === 'running' || !_aiAnyKey()) return;
+  const r = await _rpGet(_AL_KEY, null); if (r?.week === _tdWeek(date)) return;
+  const job = _alJob = { status: 'running', startedAt: now };
+  _alRun().then(x => { job.status = x.ok ? 'done' : 'error'; job.error = x.ok ? null : x.error; }).catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
+}, 30 * 60_000);
 // Weekly: the research pod on Sunday from 09:00 London, once per ISO week (the theory desk is Saturday).
 svcInterval('researchPod', async () => {
   const now = Date.now(), date = _dpLondonDate(now);

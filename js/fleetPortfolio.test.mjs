@@ -1,7 +1,7 @@
 // Tests for js/fleetPortfolio.js.   node js/fleetPortfolio.test.mjs
 import assert from 'node:assert/strict';
 import { mulberry32 } from './statsCore.js';
-import { dailySeries, riskParity, halfKelly, varEs, fleetReport } from './fleetPortfolio.js';
+import { dailySeries, riskParity, halfKelly, varEs, fleetReport, validateAllocation } from './fleetPortfolio.js';
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 const rng = mulberry32(11), gauss = () => { let u = 0, v = 0; while (!u) u = rng(); while (!v) v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
 const day0 = Date.parse('2026-06-01T12:00:00Z');
@@ -33,5 +33,10 @@ t('fleet report: weights, correlation, drift on the bot that broke', () => {
   assert.equal(r.drift.find(d => d.bot === 'C').alarm, true); assert.equal(r.drift.find(d => d.bot === 'A').alarm, false);
   assert.ok(r.fleet.varEs['0.95'].var > 0); assert.ok(r.fleet.monteCarlo.ok);
   assert.equal(r.adds.length, 3);
+});
+t('allocation replies: actions, risk capped, unknown bots dropped', () => {
+  assert.equal(validateAllocation({ headline: 'h', bots: [] }).ok, false);
+  const v = validateAllocation({ headline: 'h', bots: [{ bot: 'A', action: 'cut', riskPerTrade: 5, why: 'drift' }, { bot: 'Z', action: 'keep' }, { bot: 'B', action: 'sell' }] }, ['A', 'B']);
+  assert.ok(v.ok); assert.equal(v.value.bots.length, 1); assert.equal(v.value.bots[0].riskPerTrade, 2);
 });
 console.log(`fleetPortfolio: ${n} tests passed`);
