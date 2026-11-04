@@ -4796,7 +4796,9 @@ async function _deskRun(trigger, job, mode = 'full') {
     styleExamples: _deskStyleExamples(await _nlLoad().catch(() => []) ?? []),   // the latest regular issues, so the desk edition matches their voice
     parseJson: (txt, label) => _parseModelJson(txt, label),
     callModel: async ({ task, system, prompt, maxTokens }) => {
-      const r = await callModel({ task, system, prompt, maxTokens });
+      // the Head and the single-prompt control write a card for every market (51 since prereg A13): up to ~30k tokens
+      // of output, which can run past the default 5-minute wait
+      const r = await callModel({ task, system, prompt, maxTokens, ...(maxTokens >= 24_000 ? { timeoutMs: 600_000 } : {}) });
       return { text: r.text ?? _antText(r), usage: r.usage ?? null, model: r.model ?? null, truncated: !!r.truncated };
     },
     onProgress: p => {

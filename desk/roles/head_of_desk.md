@@ -25,6 +25,8 @@ do that weighing yourself. Either way:
    desk's rating and plan and change them only for a reason you state.
    NOK and SEK pairs have no currency view of their own: read them from the EUR or USD view, Norges Bank or the
    Riksbank, oil for NOK, and the risk tone, as the asset desk does (prereg A13).
+   Keep the book inside its length limit: with 51 markets, a FLAT card or a card sized 0 gets one short sentence of
+   why (at most 20 words) and no plan; spend the words on the cards you size.
 4. Size: weigh the three risk voices and set a size from 0 (stand aside today) to 1.5 (normal is 1). A veto from the
    conservative voice for a top-tier event inside the window should usually stand. Give the plan (zone, invalidation,
    timing) where the asset desk gave one.

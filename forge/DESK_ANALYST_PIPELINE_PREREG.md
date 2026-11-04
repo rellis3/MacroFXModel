@@ -256,6 +256,10 @@ event tag reads no Norwegian or Swedish releases (the calendar feed carries the 
 Norges Bank or Riksbank day is priced as an ordinary day for its pairs; the analyst scorecard's realised move for a
 currency (A10) is the mean over its FX pairs, so EUR and USD now average over more pairs. The attribution's risk
 basket (A4) is unchanged.
+Length: on 2026-11-04 the Head wrote 22.8k tokens for 41 cards and the single-prompt control 28.8k (cap 32k), so 51
+cards would push the control past the cap. Both role files therefore ask for FLAT or size-0 cards in one short
+sentence (at most 20 words, no plan), the same instruction in both arms so H2 stays a fair comparison, and the two
+calls get a 10-minute answer window. The cap itself is unchanged.
 
 ---
 
