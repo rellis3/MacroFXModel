@@ -1,0 +1,67 @@
+{
+ "stage": "count",
+ "seed": 20261104,
+ "at": "2026-11-04T10:39:21+00:00",
+ "power": {
+  "gammaCentre": {
+   "plant_0.5_recovered": 0.468,
+   "units": 17909,
+   "months": 71,
+   "instruments": 8,
+   "sum_g2": 2239.445217121899,
+   "median_abs_g": 0.18506557208565308,
+   "control_se": 0.02604915056421082,
+   "mde": 0.08902166959566227,
+   "bar": 0.25,
+   "power": "POWERED"
+  },
+  "gamma": {
+   "plant_0.5_recovered": 0.475,
+   "units": 17909,
+   "months": 71,
+   "instruments": 8,
+   "sum_g2": 5938.992049260726,
+   "median_abs_g": 0.3877998398063257,
+   "control_se": 0.015092284369934537,
+   "mde": 0.051577127220032784,
+   "bar": 0.25,
+   "power": "POWERED"
+  },
+  "strike": {
+   "plant_0.5_recovered": 0.5,
+   "units": 17909,
+   "months": 71,
+   "instruments": 8,
+   "sum_g2": 303256.6891170623,
+   "median_abs_g": 1.4789178088492776,
+   "control_se": 0.00381115976408722,
+   "mde": 0.01302444793577987,
+   "bar": 0.25,
+   "power": "POWERED"
+  },
+  "maxPain": {
+   "plant_0.5_recovered": 0.493,
+   "units": 17908,
+   "months": 71,
+   "instruments": 8,
+   "sum_g2": 46027.44055287074,
+   "median_abs_g": 0.6896134554316398,
+   "control_se": 0.00826610530129054,
+   "mde": 0.02824900156189536,
+   "bar": 0.25,
+   "power": "POWERED"
+  },
+  "centre": {
+   "plant_0.5_recovered": 0.496,
+   "units": 17909,
+   "months": 71,
+   "instruments": 8,
+   "sum_g2": 119379.61052269192,
+   "median_abs_g": 1.0002018621034838,
+   "control_se": 0.008391800367799953,
+   "mde": 0.028678558166937953,
+   "bar": 0.25,
+   "power": "POWERED"
+  }
+ }
+}

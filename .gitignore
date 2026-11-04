@@ -737,3 +737,5 @@ education/papers/**/*.pdf
 /analysis/output/stir_1m_deep/
 /analysis/output/stir_1m_older/
 /analysis/output/cog_chart/
+
+analysis/output/swing-walk-track/_books/

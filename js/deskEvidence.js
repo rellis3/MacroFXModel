@@ -2102,6 +2102,41 @@ export const DESK_EVIDENCE = [
     result: 'Underpowered: only 29 hand-overs in 2020-26 (MDE 0.505 vs bar 0.25); -0.077 [-0.342, +0.215], hit 37.9%.',
     use: 'Say nothing about hand-overs beyond description; the live capture adds weeklies, so a re-score needs the forward record.',
   },
+  {
+    id: 'swing-walk-gamma-centre', domain: 'positioning', verdict: 'underpowered', date: '2026-11-04', doc: 'forge/SWING_WALK_TRACK_PREREG.md', also: ['analysis/output/swing-walk-track/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'NQ', 'SPX500'],
+    claim: 'On each expiry date, price is closer to the Swing Map walk gamma-centre dot than to where it started (price travels part of the gap to the dot)',
+    result: 'Underpowered. 17,909 walk steps per anchor (8 instruments, ~1,510 nights each, expiries 2020-10 to 2026-08, 1-40 sessions ahead, the live zoneWalk/expiryView replayed on the Databento books; 71 expiry-month cluster bootstrap): share of the gap travelled beta +0.10 [-0.07, +0.28] (bar 0.25 inside the CI), beyond the trailing move +0.13 [-0.03, +0.29], halves +0.02 / +0.15; skill -0.10 (slightly worse than "price stays where it is"). 1-10 sessions left +0.3, none past BH. The dot hugs price (median gap 0.1-0.8%, never two expected moves away) and moves with it night to night (corr +0.40).',
+    use: 'Draw it as context. It is where the hedging weight sits, close to price, not a target: do not say price is heading to it. The live forward record (swing_walk/) carries it.',
+  },
+  {
+    id: 'swing-walk-gamma-strike', domain: 'positioning', verdict: 'null', date: '2026-11-04', doc: 'forge/SWING_WALK_TRACK_PREREG.md', also: ['analysis/output/swing-walk-track/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'NQ', 'SPX500'],
+    claim: 'On each expiry date, price travels toward the walk gamma best-strike dot',
+    result: 'Null. 17,909 walk steps per anchor (8 instruments, ~1,510 nights each, expiries 2020-10 to 2026-08, 1-40 sessions ahead, the live zoneWalk/expiryView replayed on the Databento books; 71 expiry-month cluster bootstrap): beta +0.04 [-0.04, +0.11]; skill -0.31 (worse than no move); 0 of 11 slices past BH.',
+    use: 'The best gamma strike is the round strike next to price; it is not where price ends up.',
+  },
+  {
+    id: 'swing-walk-strike', domain: 'positioning', verdict: 'null', date: '2026-11-04', doc: 'forge/SWING_WALK_TRACK_PREREG.md', also: ['analysis/output/swing-walk-track/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'NQ', 'SPX500'],
+    claim: 'On each expiry date, price travels toward the walk strongest-strike dot (the biggest OI strike)',
+    result: 'Null. 17,909 walk steps per anchor (8 instruments, ~1,510 nights each, expiries 2020-10 to 2026-08, 1-40 sessions ahead, the live zoneWalk/expiryView replayed on the Databento books; 71 expiry-month cluster bootstrap): beta +0.008 [-0.006, +0.022]; skill -16.9 (RMS miss 4.2 expected moves vs 0.99 for no move). The dot sits ~2.7% from price at every horizon and does not come down as the date nears: with 1-2 sessions left the median dot is 4.5 expected moves away, 72% are beyond two.',
+    use: 'The biggest strike is where positions were opened, not where price is going. Never quote a distance to it as a move to expect by the expiry.',
+  },
+  {
+    id: 'swing-walk-max-pain', domain: 'positioning', verdict: 'null', date: '2026-11-04', doc: 'forge/SWING_WALK_TRACK_PREREG.md', also: ['analysis/output/swing-walk-track/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'NQ', 'SPX500'],
+    claim: 'On each expiry date, price travels toward that expiry max pain (walk anchor)',
+    result: 'Null, with numbers (oi-max-pain had none). 17,909 walk steps per anchor (8 instruments, ~1,510 nights each, expiries 2020-10 to 2026-08, 1-40 sessions ahead, the live zoneWalk/expiryView replayed on the Databento books; 71 expiry-month cluster bootstrap): beta +0.036 [-0.011, +0.081], beyond the trailing move +0.049 [+0.007, +0.094] (a fifth of the bar); skill -2.4. Gap ~1.3% flat; two expected moves away with 1-2 sessions left.',
+    use: 'Max pain does not pin and is not a target, on 6 FX majors, NQ and ES. Keep it as a level to know about.',
+  },
+  {
+    id: 'swing-walk-oi-centre', domain: 'positioning', verdict: 'null', date: '2026-11-04', doc: 'forge/SWING_WALK_TRACK_PREREG.md', also: ['analysis/output/swing-walk-track/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'NQ', 'SPX500'],
+    claim: 'On each expiry date, price travels toward that expiry OI-weighted centre (walk anchor)',
+    result: 'Null. 17,909 walk steps per anchor (8 instruments, ~1,510 nights each, expiries 2020-10 to 2026-08, 1-40 sessions ahead, the live zoneWalk/expiryView replayed on the Databento books; 71 expiry-month cluster bootstrap): beta +0.018 [-0.007, +0.044]; skill -6.5; gap ~2% at every horizon, 3.4 expected moves away with 1-2 sessions left.',
+    use: 'The OI centre is where price has been (open interest follows price); it is not a target.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -2167,6 +2202,11 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'swing-walk-gamma-centre': { n: '17,909 walk steps, 71 expiry-month clusters', note: 'count-stage MDE 0.089 was optimistic (row-shuffled control SE 0.026 vs real 0.087); real CI reaches the 0.25 bar' },
+  'swing-walk-gamma-strike': { n: '17,909 walk steps, 71 expiry-month clusters', note: 'CI upper +0.11 below the 0.25 bar' },
+  'swing-walk-strike':       { n: '17,909 walk steps, 71 expiry-month clusters', note: 'CI upper +0.022 below the 0.25 bar' },
+  'swing-walk-max-pain':     { n: '17,908 walk steps, 71 expiry-month clusters', note: 'CI upper +0.081 below the 0.25 bar' },
+  'swing-walk-oi-centre':    { n: '17,909 walk steps, 71 expiry-month clusters', note: 'CI upper +0.044 below the 0.25 bar' },
   'expiry-pull-side':  { n: '379 expiries, ~71 expiry-month clusters (8 instruments)', note: 'MDE 0.154 vs bar 0.25; CI upper +0.022 below the bar -- a real null' },
   'expiry-pull-build': { n: '344 expiries', note: 'MDE 0.163 vs bar 0.25; CI upper +0.073 below the bar' },
   'expiry-pull-flip':  { n: '29 hand-overs', note: 'MDE 0.505 vs bar 0.25 (underpowered by design)' },
