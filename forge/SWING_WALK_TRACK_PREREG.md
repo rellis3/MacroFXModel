@@ -141,7 +141,23 @@ descriptively. Expected: thousands of units per anchor and ~70 expiry-month clus
 
 ## Amendments
 
-(none yet)
+### A1 — 2026-11-04 — PRE-RESULTS
+**Power table from the count stage** (`score.py count`: the dots shuffled within instrument x horizon bucket, the
+cluster-bootstrap SE of beta on that control, MDE = (2.576 + 0.842) x SE for Holm's first step at alpha 0.01; no real
+dot x outcome product computed). Replay: 8 instruments, ~1,510 nights each, 305,835 walk steps over all anchors and both
+walks; scored (page-default walk, h 1-40, expiries 2020-10-01 to 2026-08-21) 17,909 steps per anchor over 71 expiry
+months. Code check on the same control: a planted pull of 0.5 comes back 0.47-0.50 on every anchor.
+
+| Anchor | Scored steps | Months | Median gap (expected moves) | Control SE | **MDE** | Bar | Power |
+|---|---|---|---|---|---|---|---|
+| gamma centre | 17,909 | 71 | 0.19 | 0.026 | 0.089 | 0.25 | POWERED |
+| gamma best strike | 17,909 | 71 | 0.39 | 0.015 | 0.052 | 0.25 | POWERED |
+| strongest strike | 17,909 | 71 | 1.48 | 0.004 | 0.013 | 0.25 | POWERED |
+| max pain | 17,908 | 71 | 0.69 | 0.008 | 0.028 | 0.25 | POWERED |
+| OI centre | 17,909 | 71 | 1.00 | 0.008 | 0.029 | 0.25 | POWERED |
+
+Note, not a change: the Databento books hold the standard (monthly/quarterly) expiries only, so NQ and ES have ~1 main
+step a night; the live capture adds weeklies. No outcome had been computed.
 
 ---
 
