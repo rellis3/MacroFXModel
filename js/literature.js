@@ -346,9 +346,11 @@ export function textRecord(text) {
   return r;
 }
 /** A PDF or page fetched by URL with no metadata → a record (title from the text's first long line). */
+const BOILER = /working paper|paper series|discussion paper|electronic copy|available at|arxiv:|ssrn|issn|doi\b|https?:|©|copyright|preprint|draft|this version|university|department|^\d/i;
+/** The first line of a paper's text that looks like its title (not a series banner, a URL or an affiliation). */
+export const firstTitleLine = text => String(text ?? '').split('\n').map(x => x.trim()).slice(0, 60).find(x => x.length > 12 && x.length < 220 && x.split(/\s+/).length >= 3 && !BOILER.test(x)) ?? null;
 export function urlRecord(url, text, meta = {}) {
-  const BOILER = /working paper|paper series|discussion paper|electronic copy|available at|arxiv:|ssrn|issn|doi\b|https?:|©|copyright|preprint|draft|this version|university|department|^\d/i;
-  const first = String(text ?? '').split('\n').map(x => x.trim()).slice(0, 60).find(x => x.length > 12 && x.length < 220 && x.split(/\s+/).length >= 3 && !BOILER.test(x));
+  const first = firstTitleLine(text);
   const r = record({ source: 'url', title: meta.title ?? first ?? url, authors: meta.authors ?? [], year: meta.year, venue: meta.venue, abstract: meta.abstract ?? String(text ?? '').slice(0, 1500),
     doi: meta.doi, url, pdfUrl: meta.pdfUrl ?? (/\.pdf(?:$|[?#])/i.test(url) ? url : null) });
   if (!r.doi && !r.arxiv) { r.id = `url:${hash(url)}`; r.keys = [r.id, ...r.keys]; }
@@ -435,9 +437,10 @@ export const findPaper = (lib, r) => (lib ?? []).find(p => p.id === r.id || (p.k
 /**
  * Merge records (and their notes) into the library. A paper already held keeps its id and first-seen date; new
  * metadata fills gaps; new notes replace old ones (the previous claim is kept in history). citedBy is unioned.
- * Each item: a record, optionally with { notes, readFrom, forHypothesis, lens }. Capped at `max`, newest first.
+ * Each item: a record, optionally with { notes, readFrom, forHypothesis, lens }; extra fields (kind, sourceLabel,
+ * screen, references, cites, uploaded) are kept. Capped at `max`, newest first.
  */
-export function mergePapers(lib, items, { at = new Date().toISOString(), max = 300 } = {}) {
+export function mergePapers(lib, items, { at = new Date().toISOString(), max = 1000 } = {}) {
   const out = [...(lib ?? [])];
   for (const it of items ?? []) {
     if (!it?.id) continue;
@@ -445,7 +448,7 @@ export function mergePapers(lib, items, { at = new Date().toISOString(), max = 3
     const { notes, readFrom, forHypothesis, lens, text, relevance, score, hits, queries, ...meta } = it;
     const base = i >= 0 ? out[i] : { id: it.id, keys: [], firstSeen: at, citedBy: { dossiers: [], proposals: [] }, lenses: [], history: [] };
     const merged = i >= 0 ? mergeRecords({ ...base, sources: base.sources ?? [] }, { ...meta, sources: meta.sources ?? [] }) : { ...base, ...meta };
-    const e = { ...base, ...merged, id: base.id, firstSeen: base.firstSeen, lastSeen: at, keys: [...new Set([...(base.keys ?? []), ...(meta.keys ?? [])])], citedBy: base.citedBy ?? { dossiers: [], proposals: [] }, lenses: [...new Set([...(base.lenses ?? []), ...(lens ? [lens] : [])])], history: base.history ?? [] };
+    const e = { ...base, ...meta, ...merged, id: base.id, firstSeen: base.firstSeen, lastSeen: at, keys: [...new Set([...(base.keys ?? []), ...(meta.keys ?? [])])], citedBy: base.citedBy ?? { dossiers: [], proposals: [] }, lenses: [...new Set([...(base.lenses ?? []), ...(lens ? [lens] : [])])], history: base.history ?? [] };
     delete e.hits; delete e.queries; delete e.relevance; delete e.score;
     if (e.abstract) e.abstract = e.abstract.slice(0, 1500);
     if (notes) {
@@ -478,7 +481,7 @@ export function readingPlan(ranked, lib, { total = 16, fullText = 7 } = {}) {
 /** One paper's notes as a prompt line block. */
 export function noteLine(p) {
   const n = p.notes ?? {};
-  const head = `- [${p.id}] ${p.title}${p.authors?.length ? ` (${p.authors.slice(0, 3).join(', ')}${p.authors.length > 3 ? ' et al.' : ''}` : ' ('}${p.year ? `, ${p.year}` : ''}${p.venue ? `, ${p.venue}` : ''}${p.citations != null ? `, ${p.citations} cites` : ''}) read from ${p.readFrom ?? 'abstract'}`;
+  const head = `- [${p.id}]${p.kind && p.kind !== 'paper' ? ` (${p.kind})` : ''} ${p.title}${p.authors?.length ? ` (${p.authors.slice(0, 3).join(', ')}${p.authors.length > 3 ? ' et al.' : ''}` : ' ('}${p.year ? `, ${p.year}` : ''}${p.venue ? `, ${p.venue}` : ''}${p.citations != null ? `, ${p.citations} cites` : ''}) read from ${p.readFrom ?? 'abstract'}`;
   if (!n.claim) return `${head}\n  abstract: ${String(p.abstract ?? '').slice(0, 400)}`;
   const xr = (n.crossRefs ?? []).map(c => `${c.relation} ${c.paperId}`).join(', ');
   return `${head}\n  claim: ${n.claim}${n.mechanism ? `\n  mechanism: ${n.mechanism}` : ''}\n  data: ${[n.data?.market, n.data?.period, n.data?.frequency].filter(Boolean).join('; ') || '?'} · method: ${n.method || '?'}\n  effect: ${n.effect || '?'} · out of sample: ${n.outOfSample} · costs: ${n.costs}${n.stance && n.stance !== 'neutral' ? ` · ${n.stance}${p.forHypothesis ? ` "${String(p.forHypothesis).slice(0, 80)}"` : ''}` : ''}${n.caveats?.length ? `\n  caveats: ${n.caveats.join('; ')}` : ''}${xr ? `\n  cross-refs: ${xr}` : ''}`;

@@ -1186,6 +1186,42 @@ All in the Desk Office "Research" tab (Literature desk panel, under the pod).
   fails goes into the job's errors and the job carries on. The papers read are saved before the dossier is written,
   so a failed dossier does not lose the reading. Literature is a reason to test, never a result.
 
+## 9ai. The reading backlog: the desk's own shelf, uploads, QuantConnect and working papers (2026-11-04)
+
+The owner: "What about QuantConnect, the white papers we downloaded already? Other research and system shares?"
+The paper library now starts from what the desk already holds, and the dossiers search it before the web.
+
+- **The backlog** (`js/researchLibrary.js`, pure, tested in `js/researchLibrary.test.mjs`; KV `research_pod_queue`,
+  permanent): one queue of entries to read, seeded from the repo's own files (re-read only when a file changes):
+  `education/papers/open/reading_list.csv` (90 arXiv papers; abstracts fetched in one arXiv `id_list` call a batch),
+  `education/papers/manifest.csv` (126 SSRN papers; abstracts through Crossref, then OpenAlex, DOI 10.2139/ssrn.<id>),
+  `education/151 Trading Strategies.md` (Kakushadze & Serur 2018, split into its ~180 numbered strategies, each of kind
+  `strategy`, citing the book's SSRN DOI and carrying the repo's own screen from `education/151_STRATEGIES_PROPOSALS.md`:
+  PROPOSE / NEEDS INSIGHT / NO / BUILT), and the **QuantConnect strategy library** (github QuantConnect/Tutorials,
+  "04 Strategy Library", ~80 strategies: listed from GitHub's tree API, keyless 60/h or `GITHUB_TOKEN`, falling back to
+  jsDelivr's keyless listing; sections fetched from raw.githubusercontent.com; the code sections skipped; references
+  parsed and linked to the papers behind them by DOI, arXiv or SSRN id). Entries already read are skipped.
+- **Reading it** (`POST /api/research-pod/backlog { calls }`, the "Read the backlog" button; `GET` shows the counts per
+  source, what is next and what failed): uploads first (one per model call, full text), then papers eight abstracts a
+  call, strategies four a call, at most 6 calls a press (12 max); the Sunday pod run reads 3 more calls' worth. An entry
+  with no abstract or text is tried twice, then listed as failed. The library and the queue are saved after every batch.
+- **Uploads** (`POST /api/research-pod/upload`, raw PDF with `X-Filename` or JSON `{ name, base64 }`, 30 MB cap;
+  `GET /api/research-pod/upload/have`): the owner's downloaded PDFs are gitignored and never committed (copyrighted, the
+  repo is public). The server checks it is a PDF, extracts the text with pdf-parse (no text layer = refused), stores the
+  PDF and its text privately in R2 (`research/papers/<id>.pdf|.txt`; in memory if R2 is not configured), and matches it to
+  its backlog entry by the id in the file name (`<ssrn id>_….pdf`, `<arXiv id>_….pdf`); unmatched files become new
+  entries. `?read=1` (a single upload from the page) reads it at once. `scripts/research/push_papers.py` (stdlib) walks
+  `education/papers/**/*.pdf`, asks the server what it has, and uploads the rest; the Research tab has an upload control.
+- **Working-paper feeds** (macro lens, `WEB_SOURCES`): Fed FEDS, ECB working papers, Bank of England staff working papers
+  (the publications feed kept to `/working-paper/` links). They feed the researchers' web digest and the weekly
+  literature scan as entries of kind `working paper`. NBER's RSS timed out from the build machine and is not included.
+- **The library is searched first**: "Research an idea" searches the paper library (every kind) and the unread backlog by
+  keyword overlap before the web; entries already read are cited from their notes, up to three unread ones are read in
+  the same job (short texts four to a call). "Review this paper" looks for the entry in the backlog first (so an uploaded
+  PDF is read in full, and a title such as a QuantConnect strategy's resolves locally) and cites related library entries.
+- **The page**: the Paper library shows each entry's kind (paper / working paper / strategy), the repo's screen for 151
+  strategies, the references of QuantConnect strategies, and filters by kind.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
