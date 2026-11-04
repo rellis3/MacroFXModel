@@ -36,3 +36,12 @@ test('lead/lag svg degrades and chips escape', () => {
   assert.equal(leadLagSvg(null), ''); assert.match(leadLagSvg(R.leadLag), /<rect/);
   assert.match(verdictChip('<x>'), /&lt;x&gt;/);
 });
+
+test('own past: the Y list offers it, the result says so', () => {
+  const meta = { catalogue: [{ id: 'oanda:EURSEK', label: 'EUR/SEK' }], transforms: { chg5: '5-day change' }, horizons: [1, 5] };
+  assert.match(formHtml(meta), /value="__own__"[^>]*>X's own later move/);
+  assert.match(formHtml(meta, { x: 'oanda:EURSEK', y: 'oanda:EURSEK' }), /value="__own__" selected/);
+  const t = { spec: { x: 'oanda:EURSEK', y: 'oanda:EURSEK', xTransform: 'chg5' }, ownPast: true, verdict: 'NULL', why: 'Own past ...', leadLag: { lags: [{ k: 1, r: -0.05 }], band: 0.03, peak: { k: 1, r: -0.05 }, sameDay: { r: 1 } }, horizons: [] };
+  const h = resultHtml(t, meta.catalogue);
+  assert.match(h, /its own later move/); assert.match(h, /read k ≥ 1 only/);
+});

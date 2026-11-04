@@ -21,6 +21,7 @@ import * as CSV from './chainStatsView.js';
 import { reactionsHtml } from './reactionPanel.js';
 import * as FVV from './fairValueView.js';
 import * as ACV from './autocorrView.js';
+import * as LLV from './leadLagView.js';
 import { createLevelChart } from '../levelChart.js';
 import { cardDrivers } from './cardExplain.js';
 
@@ -351,6 +352,7 @@ ${c ? `${ladder(c)}<div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b
 <div class="card" id="tt-p-carry">${loading('carry and options')}</div>
 <div class="card" id="tt-p-hours">${loading('session hours and seasonality')}</div>
 <div class="card" id="tt-p-ac">${loading('autocorrelation')}</div>
+<div class="card" id="tt-p-ll">${loading('lead-lag')}</div>
 <div class="card" id="tt-p-prec">${loading('precedent and the chain')}</div>
 <div class="card" id="tt-p-res">${loading('research')}</div></div>`;
   root.querySelector('#tt-sel').onchange = e => openPair(e.target.value);
@@ -364,6 +366,7 @@ ${c ? `${ladder(c)}<div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b
   if (legs?.[0]) J('/api/fx-fair-value').then(d => { const b = mine() && el('tt-p-stfv'); if (b) b.innerHTML = FVV.stfvPairCard(d, n); }); else el('tt-p-stfv')?.remove();
   pairPos(n);
   J('/api/autocorrelation').then(d => { const b = mine() && el('tt-p-ac'); if (b) b.innerHTML = ACV.pairCard(d, n); });
+  J('/api/lead-lag').then(d => { const b = mine() && el('tt-p-ll'); if (b) b.innerHTML = LLV.pairCard(d, n); });
   Promise.all([J('/api/carry-vol'), J('/api/options-skew')]).then(([cv, sk]) => mine() && pairCarry(n, cv, sk));
   Promise.all([J('/api/session-heat'), J(`/api/desk-season?inst=${n}`)]).then(([sh, ss]) => mine() && pairHours(n, sh, ss));
   Promise.all([J('/api/macro-regime-fx'), loadChain()]).then(([m]) => mine() && pairPrec(n, m));
@@ -598,3 +601,4 @@ else { const sel = document.querySelector('#tabs [aria-selected="true"]')?.datas
 // the Macro tab's short-term fair value table (desk-terminal.html driversHtml, a classic script) reads this
 globalThis.stfvHtml = FVV.stfvTable;
 globalThis.acBoardHtml = ACV.boardHtml;
+globalThis.llGridHtml = LLV.gridHtml;
