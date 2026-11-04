@@ -234,6 +234,7 @@ import { parseFeed as _nwParse, fromFinnhub as _nwFinnhub, mergeWire as _nwMerge
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
 import { RESEARCHERS as _RP_RESEARCHERS, WEB_SOURCES as _RP_WEB, parseFeed as _rpParseFeed, webDigest as _rpWebDigest, validateProposals as _rpValidate, applyFeedback as _rpApplyFeedback, feedbackBrief as _rpFeedbackBrief, buildList as _rpBuildList, mergeLibrary as _rpMerge, validateCard as _rpValidateCard, cardPrereg as _rpPrereg, slug as _rpSlug, lifecycle as _rpLifecycle, setLink as _rpSetLink, outcomesBrief as _rpOutcomes, scorecard as _rpScorecard, validateReply as _rpValidateReply, applyRevision as _rpApplyRevision, threadText as _rpThreadText } from './js/researchPod.js';   // Phases 23-25
 import { normaliseTrades as _sxNormalise, tearsheet as _sxTearsheet, toolkitCsv as _sxToolkitCsv, terminalCsv as _sxTerminalCsv, liveVsExpected as _sxLiveVsExpected } from './js/systemExports.js';   // §9ac
+import { selectPairs as _psSelect } from './js/pairSelector.js';   // §9ae
 import { reviewSystem as _svReview, reviewText as _svText, validatePostmortem as _svValidate } from './js/systemReview.js';   // §9ad
 import { CATALOGUE as _SYS_CATALOGUE, coverage as _sysCoverage, catalogueText as _sysCatalogueText } from './js/systemCatalogue.js';
 import { harnessChecklist as _vdChecklist, validateReview as _vdValidateReview } from './js/validationDesk.js';   // Phase 26
@@ -5982,6 +5983,19 @@ async function _policyRatesNow() {
   if (data.ok) _prCache = { at: Date.now(), data };
   return data;
 }
+// GET /api/pair-select?date=: §9ae, how the morning's currency view is best expressed (js/pairSelector.js): every pair
+// of the eight scored by the bias gap, cost against the day's move, carry and the book's card; at most two picks per currency.
+app.get('/api/pair-select', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : _dpLondonDate(Date.now());
+    const run = await _drLoad(date); if (!run?.head?.ok) return res.status(404).json({ ok: false, error: `no desk book for ${date}` });
+    const view = run.debate?.currency?.view, currencies = view?.currencies ?? Object.fromEntries(Object.entries(run.head.book.currencies ?? {}).map(([k, v]) => [k, { bias: v.bias, conviction: v.conviction ?? 'medium' }]));
+    const sp = spreadProfileReport(_SPREAD_TABLE), spreads = Object.fromEntries(Object.values(sp.pairs ?? {}).map(r => [r.pair, r.entryHoursMean ?? r.allHoursMean ?? r.table ?? null]).filter(([, v]) => Number.isFinite(v)));
+    const pr = await _policyRatesNow().catch(() => ({ rates: {} }));
+    res.json({ ok: true, date, bookFinishedAt: run.finishedAt, spreadsFrom: sp.since ?? null, ..._psSelect({ currencies, cards: run.head.book.instruments ?? {}, spreads, rates: pr.rates ?? {} }) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.get('/api/policy-rates', async (_req, res) => { try { res.set('Cache-Control', 'no-store'); res.json(await _policyRatesNow()); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
 // GET /api/cb-expectations: what the short-rate futures price for each bank, against its policy rate (js/cbExpectations.js), from the laptop's IBKR
 // pull (scripts/rates_line/refresh_cb_expectations.py → KV cb_rate_futures_v1).

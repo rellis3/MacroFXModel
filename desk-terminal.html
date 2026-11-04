@@ -442,11 +442,11 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 
 // ── data ──
 async function load() {
-  const [run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev, tw, wk, news, pr, cbx, dfc] = await Promise.all([
+  const [run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev, tw, wk, news, pr, cbx, dfc, ps] = await Promise.all([
     getJson('/api/desk-run'), getJson('/api/desk-score/record'), getJson('/api/desk-update'), getJson('/api/desk-quality'),
     getJson('/api/macro-scorecard'), getJson('/api/rate-diff'), getJson('/api/real-yield'), getJson('/api/rates'),
-    getJson('/api/cot-state'), getJson('/api/oanda-book/history'), getJson('/api/gpr'), getJson('/api/events'), getJson('/api/trade-watch'), getJson('/api/desk-weekly'), getJson('/api/desk-news?hours=24&tier=2'), getJson('/api/policy-rates'), getJson('/api/cb-expectations'), getJson('/api/desk-dayfc')]);
-  D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, tw, wk, pr, cbx, dfc, news: news?.ok ? news.items : [], ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
+    getJson('/api/cot-state'), getJson('/api/oanda-book/history'), getJson('/api/gpr'), getJson('/api/events'), getJson('/api/trade-watch'), getJson('/api/desk-weekly'), getJson('/api/desk-news?hours=24&tier=2'), getJson('/api/policy-rates'), getJson('/api/cb-expectations'), getJson('/api/desk-dayfc'), getJson('/api/pair-select')]);
+  D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, tw, wk, pr, cbx, dfc, ps, news: news?.ok ? news.items : [], ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
   const ok = run?.ok && run.head?.ok;
   D.cards = ok ? run.head.book.instruments : {};
   D.ccy = ok ? (run.debate?.currency?.view?.currencies ?? Object.fromEntries(Object.entries(run.head.book.currencies ?? {}).map(([k, v]) => [k, { bias: v.bias, why: v.why }]))) : {};
@@ -544,6 +544,19 @@ ${v.lastWeek ? `<details><summary>Last week</summary><p class="muted">${esc(v.la
 }
 
 // Phase 3's day forecast: the shape of today for the main markets, and in the evening whether each call held
+// §9ae: how the currency view is best expressed (/api/pair-select): the picks, and the 8×8 grid of bias gaps.
+function bestPairs() {
+  const p = D.ps; if (!p?.ok || !p.picks?.length) return '';
+  const C = ['EUR', 'GBP', 'AUD', 'NZD', 'USD', 'CAD', 'CHF', 'JPY'], mx = Math.max(0.01, ...C.flatMap(a => C.map(b => Math.abs(p.matrix[a]?.[b] ?? 0))));
+  const bg = v => (v == null ? 'transparent' : v > 0 ? `rgba(47,211,154,${(0.1 + 0.6 * v / mx).toFixed(2)})` : v < 0 ? `rgba(255,93,120,${(0.1 + 0.6 * -v / mx).toFixed(2)})` : 'transparent');
+  const sw = p.strongestWeakest;
+  return `<div class="card" style="margin-top:14px"><div class="hhead"><span class="lbl">Best expression · how today's currency view is best traded</span></div>
+${sw ? `<p style="margin:4px 0 10px">Cleanest expression of the view: <b class="mono">${esc(sw.direction === 'Long' ? sw.pair : sw.pair)}</b> ${esc(sw.direction.toLowerCase())} (${esc(p.ranked[0])} strongest, ${esc(p.ranked.at(-1))} weakest)${sw.usdFree ? ' · no dollar leg' : ''}.</p>` : ''}
+<div class="grid g2"><div><table class="tbl"><thead><tr><th>Pair</th><th>Side</th><th class="n">Gap</th><th class="n">Spread / move</th><th class="n">Carry</th><th>Book</th></tr></thead><tbody>${p.picks.map(r => `<tr title="${esc(r.why)}"><td class="mono"><b>${esc(r.pair)}</b>${r.usdFree ? ' <span class="chip gold" style="font-size:10px">cross</span>' : ''}</td><td class="${r.direction === 'Long' ? 'up' : 'dn'}">${esc(r.direction)}</td><td class="n mono">${r.gap > 0 ? '+' : ''}${r.gap}</td><td class="n mono">${r.costShare != null ? Math.round(r.costShare * 100) + '%' : '–'}</td><td class="n mono ${r.carry > 0 ? 'up' : r.carry < 0 ? 'dn' : ''}">${r.carry != null ? (r.carry > 0 ? '+' : '') + r.carry + '%' : '–'}</td><td>${r.card ? `<span class="chip ${r.cardAgrees ? 'up' : r.cardAgrees === false ? 'dn' : ''}">${esc(String(r.card.rating).replace('_', ' ').toLowerCase())}</span>` : '<span class="muted">not traded</span>'}</td></tr>`).join('')}</tbody></table>
+<p class="muted" style="font-size:12px">At most two picks share a currency, so three yen crosses never count as three ideas. Hover a row for the reasoning. ${esc(p.label)}.</p></div>
+<div><table class="tbl" style="font-size:12px"><thead><tr><th></th>${C.map(c => `<th class="n">${c}</th>`).join('')}</tr></thead><tbody>${C.map(a => `<tr><td class="mono"><b>${a}</b></td>${C.map(b => `<td class="n mono" style="background:${bg(p.matrix[a]?.[b])}">${a === b ? '' : p.matrix[a]?.[b] ?? '–'}</td>`).join('')}</tr>`).join('')}</tbody></table>
+<p class="muted" style="font-size:12px">Row minus column: the conviction-weighted bias gap. Green = buy the row currency against the column.</p></div></div></div>`;
+}
 function dayShape() {
   const d = D.dfc; if (!d?.ok) return '';
   const f = d.forecast, res = d.result?.score?.rows ? Object.fromEntries(d.result.score.rows.map(r => [r.inst, r])) : {};
@@ -586,7 +599,7 @@ function overview() {
   $('overview').innerHTML = `<div class="card hero glow" style="margin-bottom:14px"><div class="hhead"><span class="lbl">The desk's world · ${esc(D.run.date)}</span><h2>${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest</h2></div><div class="map" id="heromap" style="min-height:240px"></div><div style="position:absolute;right:16px;top:14px;z-index:3;display:flex;gap:6px" class="filters"><button aria-pressed="true" data-view="globe">Globe</button><button aria-pressed="false" data-view="map">Map</button></div><div class="legend"><span><i style="background:rgba(47,211,154,.6)"></i>bullish</span><span><i style="background:rgba(255,93,120,.6)"></i>bearish</span><span><i style="background:var(--gold)"></i>strongest → weakest</span><span>tap a bank or a country</span></div></div>
 ${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span class="lbl">Today's book</span><div class="thesis" style="font-size:16px">${esc(D.run.head.book.headline)}</div></div>` : ''}
 <div class="grid g2">${regimeCard()}<div class="grid" style="align-content:start">${strengthStrip()}${exposureChart()}${recordCard()}</div></div>
-${weekSection()}${dayShape()}
+${weekSection()}${bestPairs()}${dayShape()}
 <div class="sec"><h2>Trade watch</h2><span class="lbl">the book against live prices, every 2 minutes</span></div>${watchBoard()}
 <div class="sec"><h2>Playbooks</h2><span class="lbl">the six largest cards · tap for the full analysis</span></div><div class="grid g3">${live.map(([n, c]) => playbookCard(n, c)).join('')}</div>
 <div class="sec"><h2>News, releases and risks</h2></div><div class="grid g2">${wireCard(D.news)}<div class="grid" style="align-content:start">${releasesCard()}<div class="card"><div class="ch"><span class="lbl">Risk desk warnings</span></div><ul style="margin:0;padding-left:18px">${(D.run.head.book.risks ?? []).map(r => `<li style="margin:6px 0">${esc(r)}</li>`).join('') || '<li class="muted">None.</li>'}</ul></div></div></div>`;
