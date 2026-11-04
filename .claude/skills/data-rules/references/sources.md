@@ -80,6 +80,11 @@ the user if it doesn't rather than silently switching source.
   (`CANSLRTCR03GPSAM` is car registrations, not retail sales).
 - Units: RRPONTSYD is in **billions**; WALCL/TGA are in **millions**.
 - Publication lags used so far: WALCL 8d, TGA 2d, RRP 1d, HY OAS 1d.
+- **Keyless from a cloud session (2026-11-04)**: `https://fred.stlouisfed.org/graph/fredgraph.csv?id=<ID>` answers without
+  `FRED_KEY` (latest vintage only, not point-in-time). With OANDA 403 here, the H.10 noon New York rates (DEXUSEU,
+  DEXUSUK, DEXJPUS, DEXUSAL, DEXCAUS, 1971/1999 →) are the daily FX history to use, at a noon clock, not 17:00 NY. The
+  issuer yield feeds in `js/yieldFeeds.js` (Bundesbank, MoF, BoC Valet with `start_date`, RBA F2 from 2013) and BoE
+  IADB are keyless and reachable too. Example: `scripts/fx-short-term-fair-value/fetch.mjs`.
 
 ## Index σ source (live)
 

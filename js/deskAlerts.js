@@ -13,6 +13,9 @@
  *                            has fallen by half or more in 5 days
  *   cli:<area>               OECD leading-indicator phase change (expansion / slowdown / contraction / recovery)
  *   drift:<bank>             speaker drift (js/cbSpeeches.js) newly "big": |drift| >= 0.25 against the last statement
+ *   chainz:<link>            a chain link newly diverging (js/chainStats.js, /api/chain-stats): the downstream end's move is
+ *                            |z| >= 2.5 residual SDs from what the upstream move and the rolling beta imply. Describes a
+ *                            link that is unusual today; it is not a forecast and never an impact.
  * A key seen for the first time is recorded silently (a deploy must not flood the channel). Returning to normal is
  * recorded and logged but not sent, except for world stress, whose every colour change is news.
  *
@@ -23,12 +26,12 @@
  *
  * Pure: no fetch, no KV, no clock (pass `now`). Tested in js/deskAlerts.test.mjs.
  */
-export const ALERT_DEFAULTS = { minGapH: 6, maxPerHour: 6, skewLo: 5, skewHi: 95, skewMinHistory: 20, fairBand: 10, carryTop: 5, carryMinRatio: 0.3, carryDropFrac: 0.5, carryDays: 5, keepLog: 300 };
+export const ALERT_DEFAULTS = { minGapH: 6, maxPerHour: 6, skewLo: 5, skewHi: 95, skewMinHistory: 20, fairBand: 10, carryTop: 5, carryMinRatio: 0.3, carryDropFrac: 0.5, carryDays: 5, chainZ: 2.5, keepLog: 300 };
 
 const r2 = x => (Number.isFinite(x) ? +x.toFixed(2) : null);
 
 /** Board payloads → { key: { state, alert (bool: is this an alerting state), text, data } }. Missing boards contribute nothing. */
-export function readStates({ stress, skew, fair, carry, cli, drift } = {}, carryHist = {}, o = ALERT_DEFAULTS) {
+export function readStates({ stress, skew, fair, carry, cli, drift, chainstats } = {}, carryHist = {}, o = ALERT_DEFAULTS) {
   const out = {};
   if (stress?.overall) {
     const reds = (stress.tiles ?? []).filter(t => t.level !== 'ok').map(t => `${t.label} ${t.level}`).join(', ');
@@ -70,6 +73,12 @@ export function readStates({ stress, skew, fair, carry, cli, drift } = {}, carry
     const st = b.big ? (b.drift > 0 ? 'hawkish' : 'dovish') : 'inline';
     out[`drift:${b.bank}`] = { state: st, alert: st !== 'inline', data: { drift: b.drift, speeches: b.speeches },
       text: `${b.bank} speakers sound <b>${b.label}</b> than its last statement: drift ${b.drift > 0 ? '+' : ''}${b.drift} over ${b.speeches} speech${b.speeches === 1 ? '' : 'es'} (statement ${b.statement?.score ?? '?'} on ${b.statement?.date ?? '?'})${b.latest?.[0] ? `; latest ${b.latest[0].speaker ?? '?'} ${b.latest[0].score}` : ''}` };
+  }
+  for (const [id, l] of Object.entries(chainstats?.links ?? {})) {
+    if (!l?.ok || !Number.isFinite(l.z)) continue;
+    const st = Math.abs(l.z) >= (o.chainZ ?? 2.5) ? (l.z > 0 ? 'above' : 'below') : 'normal';
+    out[`chainz:${id}`] = { state: st, alert: st !== 'normal', data: { z: l.z, win: l.zWin, corr60: l.corr?.[60]?.now ?? null },
+      text: `Chain link <b>${l.short ?? id}</b> diverging: ${l.line ?? `z ${l.z} over ${l.zWin} days`}` };
   }
   return out;
 }
@@ -113,7 +122,7 @@ export function evaluate(prev = {}, states = {}, now, o = ALERT_DEFAULTS) {
 
 /** Telegram HTML for one event. */
 export function alertMessage(ev) {
-  const kind = ev.key.split(':')[0], icon = { stress: '🌐', skew: '🎯', skewslope: '📅', fair: '⚖️', carry: '💱', cli: '🧭', drift: '🎙' }[kind] ?? '🔔';
+  const kind = ev.key.split(':')[0], icon = { stress: '🌐', skew: '🎯', skewslope: '📅', fair: '⚖️', carry: '💱', cli: '🧭', drift: '🎙', chainz: '⛓' }[kind] ?? '🔔';
   return `${icon} <b>Desk alert</b> · ${ev.text}.\n<i>was ${ev.from}, now ${ev.to}. Context, not a signal.</i>`;
 }
 

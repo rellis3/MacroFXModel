@@ -31,6 +31,12 @@ Work through:
    analysts, not evidence about markets: never turn it into an impact.
 8. The book's risk (feed book-risk): the latest saved book's factor exposure, VaR, effective bets and scenarios. Say
    which factor it leaned on and whether it was one bet in many names. It describes yesterday's book, not today's.
+9. Thesis against reality (feed thesis-reality): the last scored morning laid claim by claim against its day (the
+   regime call against the risk basket, the strongest and weakest currency against their realised rank, each sized
+   card's direction, invalidation and targets, the range forecast against the realised range) and the running tally
+   (how often the strongest/weakest call was right, the card hit rate by grade). Pass on what the desk got wrong
+   yesterday and how often that kind of claim has come off, with the day count. It is a description of the desk's own
+   record, not evidence about markets: never turn it into an impact, and a single day is an anecdote.
 
 Your headline should be the one thing the rest of the desk most needs to remember today. Put feeds that are down in
 "gaps". Impact only where a validated finding gives a direction.

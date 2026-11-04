@@ -68,6 +68,17 @@ t('a board that fails to load leaves its stored state alone', () => {
   r = evaluate(r.state, {}, T0 + H);
   assert.equal(r.state.keys['fair:CH'].state, 'inside');
 });
+t('chain divergence watcher: |z| >= 2.5 alerts once, first sight is silent, links with no stats are skipped', () => {
+  const cs = z => ({ links: { 'real-gold': { ok: true, z, zWin: 20, short: 'real yields → gold', line: 'US real yields up 25bp in 20 days, but gold rose 1.2%: 2.9σ away from the usual link.', corr: { 60: { now: -0.2 } } }, 'oil-bei': { ok: false } } });
+  let st = readStates({ chainstats: cs(1.1) });
+  assert.deepEqual(Object.keys(st), ['chainz:real-gold']); assert.equal(st['chainz:real-gold'].state, 'normal');
+  let r = evaluate({}, st, T0); assert.equal(r.events.length, 0);
+  st = readStates({ chainstats: cs(2.9) }); assert.equal(st['chainz:real-gold'].state, 'above'); assert.equal(st['chainz:real-gold'].alert, true);
+  r = evaluate(r.state, st, T0 + H); assert.equal(r.events.length, 1); assert.equal(r.events[0].send, true);
+  assert.match(alertMessage(r.events[0]), /⛓ <b>Desk alert<\/b> · Chain link <b>real yields → gold<\/b> diverging: US real yields up 25bp/); assert.match(alertMessage(r.events[0]), /not a signal/);
+  assert.equal(readStates({ chainstats: cs(-2.6) })['chainz:real-gold'].state, 'below');
+  assert.equal(evaluate(r.state, readStates({ chainstats: cs(3.4) }), T0 + 2 * H).events.length, 0, 'still diverged: no new message');
+});
 t('message and log', () => {
   const ev = { key: 'fair:CH', from: 'inside', to: 'over', text: 'Switzerland is dear' };
   assert.match(alertMessage(ev), /⚖️ <b>Desk alert<\/b> · Switzerland is dear\./); assert.match(alertMessage(ev), /not a signal/);

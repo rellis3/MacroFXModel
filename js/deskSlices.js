@@ -56,6 +56,8 @@ export const SLICES = {
   // ── events ──
   'calendar-ahead': d => ({ at: d.at, rows: slimDefault(d.rows, { maxArray: 40, keep: 'first' }) }),
   'events': d => slimDefault(Array.isArray(d) ? d : [], { maxArray: 40, keep: 'first' }),
+  // build list 2: the route already sends a compact summary (?pack=1); keep all of it (the default cut would drop the ALL row and the label counts)
+  'release-reactions': d => ({ asOf: d.asOf, note: d.note, summaryText: d.summaryText, byFamily: (d.byFamily ?? []).slice(0, 10), byRegime: d.byRegime ?? [], recent: (d.recent ?? []).slice(0, 8) }),
   'release-calls': d => slimDefault(pick(d, ['calls', 'summary']), { maxArray: 10 }),
   'fiscal/events': d => slimDefault(pick(d, ['events']), { maxArray: 5, keep: 'first' }),
   // ── rates and central banks ──

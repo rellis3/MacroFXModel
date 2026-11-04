@@ -223,6 +223,10 @@ export function groupData(pack, names) {
     if (intel.instruments?.[n]) row.implied = intel.instruments[n];
     const sm = feed(`swing-map:${n}`); if (sm?.data) row.swing = sliceFeed(`swing-map:${n}`, sm.data);
     const td = feed(`trade-decision/state:${n}`); if (td?.data) row.tradeDecision = sliceFeed(`trade-decision/state:${n}`, td.data);
+    // a stale or missing feed behind this row is named, so the asset desk never reads old lines (or no lines) as today's
+    const flags = ['vol-forecast', 'vol-forecast/session', 'vol-forecast/intelligence', `swing-map:${n}`, `trade-decision/state:${n}`]
+      .map(id => { const f = feed(id); return f && f.status && f.status !== 'ok' ? `${id}: ${f.status === 'stale' ? `STALE${f.ageH != null ? `, ${f.ageH}h old` : ''}` : `GAP (${f.status})`}` : null; }).filter(Boolean);
+    if (flags.length) row.dataStatus = flags;
     out[n] = row;
   }
   return out;

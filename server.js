@@ -4996,6 +4996,8 @@ async function _dsScore(date, { reflect = true } = {}) {
   const { cards, ...row } = score;
   const idx = (await _dsLoadIndex()).filter(r => r.date !== date); idx.push(row); idx.sort((a, b) => a.date.localeCompare(b.date));
   await kv.put(_DS_INDEX_KV, JSON.stringify(idx.slice(-800)));
+  // the morning thesis laid against the day, from the same bars (descriptive; prereg amendment A15)
+  try { await _trBuildDay(date, bars); } catch (e) { console.warn('[desk-score] thesis vs reality:', e.message); }
   let reflection = null, evening = null;
   if (reflect) { reflection = await _dsReflect(run, score); if (reflection) await kv.put(_DS_REFLECT_KEY(date), JSON.stringify({ date, savedAt: new Date().toISOString(), ...reflection })); }
   if (reflect) evening = await _dsEvening(run, score, reflection, bars, idx).catch(e => { console.warn('[desk-score] evening edition:', e.message); return null; });
@@ -5106,6 +5108,107 @@ app.post('/api/analyst-scorecard/backfill', async (req, res) => {
   } catch (e) { job.status = 'error'; job.error = e.message; console.error('[analyst-scorecard] backfill:', e.message); }
   finally { job.finishedAt = Date.now(); console.log(`[analyst-scorecard] backfill: ${job.done.length} scored, ${job.failed.length} failed, ${job.skipped} already done`); }
 });
+// ── Morning thesis vs evening reality (js/thesisReality.js; owner build item 5, 2026-11-04; plan §9am, prereg A15) ──
+// After the evening score, the morning book is laid claim by claim against the day (08:00-21:00 London, in u): the
+// regime call against the risk basket, the currency ranking against the realised currency moves, each sized card
+// (direction, size x move, invalidation touched, p50/p75 reached), the vol forecast's range against the realised
+// London-day range, and the releases the economist named. Description, never a scored cell; the morning run is only
+// read. desk_run_reality_<date> holds the day in full; thesis_reality_v1 holds the compact rows the tally is built from.
+const _TR_KV = 'thesis_reality_v1';
+const _TR_DAY_KEY = date => `desk_run_reality_${date}`;
+let _trJob = null;
+async function _trLoad() { try { const raw = await kv.get(_TR_KV); const st = raw ? JSON.parse(raw) : null; return st && Array.isArray(st.days) ? st : { days: [] }; } catch { return { days: [] }; } }
+// the day's vol forecast (London-day high-to-low p50/p75, % of the open) and the realised range from H1 bars (js/volCheck.js)
+async function _trVol(date, insts) {
+  let fc = null;
+  try { const raw = await kv.get(`vol_forecast_${date}`); fc = raw ? JSON.parse(raw).instruments ?? null : null; } catch { fc = null; }
+  if (!fc) return null;
+  const { realisedDays } = await import('./js/volCheck.js');
+  const from = new Date(Date.parse(`${date}T00:00:00Z`) - 864e5).toISOString().slice(0, 10) + 'T00:00:00Z';
+  const to = new Date(Math.min(Date.now(), Date.parse(`${date}T00:00:00Z`) + 2 * 864e5)).toISOString().slice(0, 19) + 'Z';
+  const list = insts.filter(n => _dsOanda[n]), out = {};
+  let next = 0;
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    while (next < list.length) {
+      const n = list[next++], k = Object.keys(fc).find(x => x.toUpperCase() === n), f = k ? fc[k] : null;
+      if (!f || f.stale || !Number.isFinite(f.hl_median) || !Number.isFinite(f.hl_75)) continue;
+      try {
+        const bars = (await fetchOandaCandleRange(_dsOanda[n], 'H1', from, to)).map(v => ({ time: v.t, open: +v.open, high: +v.high, low: +v.low, close: +v.close }));
+        const r = realisedDays(bars, [date])[date]; if (r) out[n] = { p50: f.hl_median, p75: f.hl_75, hl: r.hl };
+      } catch (e) { console.warn(`[thesis-reality] ${n} range: ${e.message}`); }
+    }
+  }));
+  return out;
+}
+// the tier-1 releases the economist named that morning, with the actual where this week's calendar has one
+async function _trEvents(run) {
+  const rel = run?.economist?.releases ?? []; if (!rel.length) return null;
+  const norm = s => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  let cal = [];
+  try { const r = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY }); cal = r?.ok ? r.events ?? [] : []; } catch { cal = []; }
+  return rel.map(e => { const at = Date.parse(e.at), m = cal.find(x => x.country === e.country && norm(x.event) === norm(e.event) && Math.abs(Number(x.ms) - at) < 2 * 3600e3);
+    return { event: e.event, country: e.country, at: e.at, estimate: e.estimate ?? m?.estimate ?? null, actual: m?.actual ?? null }; });
+}
+async function _trBuildDay(date, bars = null) {
+  const run = await _dsRunFor(date);
+  if (!run?.head?.ok) return { ok: false, date, error: `no desk book for ${date}` };
+  const rawScore = await kv.get(_DS_SCORE_KEY(date)).catch(() => null);
+  if (!rawScore) return { ok: false, date, error: `${date} has no evening score yet` };
+  const score = JSON.parse(rawScore), TR = await import('./js/thesisReality.js'), { dayMovesU } = await import('./js/deskAttribution.js');
+  const cards = run.head.book.instruments ?? {};
+  const sized = Object.keys(cards).filter(n => /LONG|SHORT/.test(cards[n].rating ?? '') && cards[n].size > 0);
+  let moves = null;
+  if (!bars) { try { const raw = await kv.get(_ASC_DAY_KEY(date)); if (raw) moves = JSON.parse(raw).moves ?? null; } catch { moves = null; } }
+  if (!bars) bars = await _dsBars(moves ? sized : Object.keys(cards), date);
+  if (!moves) moves = dayMovesU(cards, bars, date);
+  const win = _dsWindow(date), paths = {};
+  for (const n of sized) { const p = TR.cardPath(cards[n], bars?.[n], win); if (p) paths[n] = p; }
+  const [vol, events] = await Promise.all([_trVol(date, Object.keys(cards)).catch(() => null), _trEvents(run).catch(() => null)]);
+  const day = { ...TR.thesisReality({ run, moves, score, paths, vol, events }), savedAt: new Date().toISOString() };
+  await kv.put(_TR_DAY_KEY(date), JSON.stringify(day));
+  const st = await _trLoad();
+  await kv.put(_TR_KV, JSON.stringify({ version: TR.TR_VERSION, savedAt: day.savedAt, days: TR.upsertDay(st.days, TR.compactDay(day)) }));
+  return { ok: true, date, cards: day.cardSummary.n, regime: day.regime.verdict, range: day.range?.n ?? 0 };
+}
+// GET /api/thesis-reality: a day's morning thesis against its evening (?date=, default the latest) and the running
+// tally. ?brief=1 is the Desk Pack feed for the evidence clerk (the latest day, small, and the tally).
+app.get('/api/thesis-reality', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const TR = await import('./js/thesisReality.js'), st = await _trLoad(), t = TR.tally(st.days);
+    let date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : st.days.at(-1)?.date ?? null;
+    const raw = date ? await kv.get(_TR_DAY_KEY(date)).catch(() => null) : null, day = raw ? JSON.parse(raw) : null;
+    if (req.query.brief === '1') return res.json(TR.briefFeed(day, t));
+    if (!day) return res.status(date && req.query.date ? 404 : 200).json({ ok: false, error: date ? `no thesis-vs-reality record for ${date}` : 'no morning has been laid against its evening yet: the first is built after the evening score (21:10 London)', tally: t, dates: st.days.map(d => d.date), job: _trJob });
+    res.json({ ok: true, day, tally: t, dates: st.days.map(d => d.date), job: _trJob });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/thesis-reality/backfill: build every stored day that has an evening score (?force=1 rebuilds days already
+// done; ?date= one day). Runs in the background; GET /api/thesis-reality shows the job.
+app.post('/api/thesis-reality/backfill', async (req, res) => {
+  if (_trJob?.status === 'running') return res.status(409).json({ ok: false, error: 'a backfill is already running', job: _trJob });
+  const job = _trJob = { status: 'running', startedAt: Date.now(), finishedAt: null, done: [], failed: [], skipped: 0 };
+  res.status(202).json({ ok: true, job });
+  try {
+    const have = new Set((await _trLoad()).days.map(d => d.date)), one = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : null;
+    const dates = one ? [one] : (await _dsLoadIndex()).map(r => r.date).sort();
+    for (const d of dates) {
+      if (!one && have.has(d) && req.query.force !== '1') { job.skipped++; continue; }
+      job.date = d;
+      const r = await _trBuildDay(d).catch(e => ({ ok: false, date: d, error: e.message }));
+      (r.ok ? job.done : job.failed).push(r.ok ? { date: d, cards: r.cards, regime: r.regime, range: r.range } : { date: d, error: r.error });
+    }
+    job.status = 'done';
+  } catch (e) { job.status = 'error'; job.error = e.message; console.error('[thesis-reality] backfill:', e.message); }
+  finally { job.finishedAt = Date.now(); console.log(`[thesis-reality] backfill: ${job.done.length} built, ${job.failed.length} failed, ${job.skipped} already done`); }
+});
+// Backfill once after boot when the store is empty: every stored day with an evening score is laid against its day.
+setTimeout(async () => {
+  try {
+    if ((await _trLoad()).days.length || _trJob) return;
+    for (const r of await _dsLoadIndex()) { const x = await _trBuildDay(r.date).catch(e => ({ ok: false, error: e.message })); console.log(`[thesis-reality] boot backfill ${r.date}: ${x.ok ? 'built' : x.error}`); }
+  } catch (e) { console.warn('[thesis-reality] boot backfill:', e.message); }
+}, 5 * 60_000).unref?.();
 // ── Desk session updates (js/deskUpdate.js, desk/roles/session_update.md; plans/DESK_ANALYST_PIPELINE.md Phase 5) ──
 // At the London open (08:05) and the New York open (14:35) the desk re-reads what changed since the morning book:
 // every market in u with the lines it has touched, and the events, risk and liquidity feeds fetched fresh. One model
@@ -7007,6 +7110,90 @@ const _gbD1 = async (sym, n) => (await _btFetchD1(sym, n)).sort((a, b) => (a.dat
 _mbRoute('/api/fair-value', 'fairvalue', 24, async () => {
   const csv = await _gbText('https://stats.bis.org/api/v2/data/dataflow/BIS/WS_EER/1.0/M.R.B.US+XM+GB+JP+AU+NZ+CA+CH+CN+NO+SE+MX+ZA+BR+IN+KR?startPeriod=2000-01&format=csv', 90_000);
   const b = _gbFair(_gbEer(csv)); return { ok: b.rows.length > 0, fetchedAt: new Date().toISOString(), source: 'BIS WS_EER (real, broad, monthly)', ...b };
+});
+// ── Short-term FX fair value (owner build item 4, 2026-11-04; js/fxFairValue.js). DESCRIPTION ONLY: tested walk-forward
+// as fx-short-term-fair-value (forge/FX_SHORT_TERM_FAIR_VALUE_PREREG.md, Evidence Book) and labelled with that verdict on
+// every page; nothing here feeds the desk, the briefs or the analysts as an impact.
+// GET /api/fx-fair-value: per pair, today's out-of-sample fair value (OLS of ln price on the 2y and 10y gaps and ln VIX,
+// fitted on the 250 days before today) with its 95% band, the gap in pips and %, z, R², stability, the gap's half-life.
+// GET /api/fx-fair-value/log: the daily forward record (KV fx_fair_value_log_v1, one row per London weekday, service
+// fxFairValueLog), so the model can be judged on data it has never seen.
+async function _fxfvBuild() {
+  const FV = await import('./js/fxFairValue.js');
+  const errors = {}, safe = async (k, f) => { try { return await f(); } catch (e) { errors[k] = e.message; return null; } };
+  const [us2, us10, de2, de10, gb2, gb10, jp, ca, au, vix] = await Promise.all([
+    safe('US 2y', () => _mbFred('DGS2', 4)), safe('US 10y', () => _mbFred('DGS10', 4)), safe('Bund 2y', () => _yfBund('02')), safe('Bund 10y', () => _yfBund('10')),
+    safe('Gilt 5y', () => _mbFred('BOE_IUDSNPY', 4)), safe('Gilt 10y', () => _mbFred('BOE_IUDMNZC', 4)), safe('JGB', () => _yfJgb()), safe('Canada', () => _yfCanada({ recent: 1000 })),
+    safe('Australia', () => _yfAustralia()), safe('VIX', () => _mbFred('VIXCLS', 4))]);
+  const fx = {};
+  await Promise.all(FV.FV_PAIRS.map(async p => { try { fx[p.id] = await _gbD1(`${p.base}_${p.quote}`, 1000); } catch (e) { errors[p.id] = e.message; } }));
+  const ev = _DESK_EVIDENCE.find(e => e.id === FV.EVIDENCE_ID) ?? null;
+  const b = FV.fairValueBoard({ fx, yields: { USD: { y2: us2, y10: us10 }, EUR: { y2: de2, y10: de10 }, GBP: { y2: gb2, y10: gb10 }, JPY: jp ?? {}, CAD: ca ?? {}, AUD: au ?? {} }, vix, evidence: ev });
+  return { ok: b.rows.some(r => r.ok), fetchedAt: new Date().toISOString(), errors, evidence: ev ? { id: ev.id, verdict: ev.verdict, date: ev.date, use: ev.use, doc: ev.doc } : null,
+    source: 'OANDA daily closes (17:00 NY); 2y/10y: FRED (US), Bundesbank (DE), BoE 5y par / 10y (UK), MoF (JP), Bank of Canada, RBA; risk: FRED VIXCLS', ...b };
+}
+_mbRoute('/api/fx-fair-value', 'fxfairvalue', 6, _fxfvBuild);
+const _FXFV_LOG = 'fx_fair_value_log_v1';
+async function _fxfvLogTick() {
+  const date = _dpLondonDate(Date.now()), dow = new Date(`${date}T12:00:00Z`).getUTCDay(); if (dow === 0 || dow === 6) return { skipped: 'weekend' };
+  const store = await _rpGet(_FXFV_LOG, {}); if (store[date]) return { skipped: 'logged' };
+  const { appendLog, logRow } = await import('./js/fxFairValue.js'), row = logRow(await _mbCached('fxfairvalue', 6, _fxfvBuild));
+  if (!Object.keys(row).length) return { skipped: 'no rows' };
+  await kv.put(_FXFV_LOG, JSON.stringify(appendLog(store, date, row))); return { logged: date, pairs: Object.keys(row).length };
+}
+svcInterval('fxFairValueLog', () => _fxfvLogTick().catch(e => console.warn('[fx-fair-value] log:', e.message)), 3 * 3600e3);
+svcTimeout('fxFairValueLog', () => _fxfvLogTick().catch(e => console.warn('[fx-fair-value] log:', e.message)), 6 * 60_000);
+app.get('/api/fx-fair-value/log', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const s = await _rpGet(_FXFV_LOG, {}); res.json({ ok: true, key: _FXFV_LOG, days: Object.keys(s).length, log: s }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── Research lab QUICK TEST (owner build item 6, 2026-11-04; js/quickTest.js): "X leads Y over h (when C)" on whitelisted
+// daily series, lockbox held back, walk-forward, block bootstrap, Holm across horizons, one of the four verdict words.
+// EXPLORATORY: stored in KV research_pod_quicktests and linked to the proposal, NEVER written to the Evidence Book.
+// POST /api/research-pod/quick-test { x, y, horizons, xTransform?, condition?: { series, op, pct, transform }, proposalId?, rerun? }
+// GET  /api/research-pod/quick-test            the catalogue of series, the form's options and the stored tests (?proposal= filters)
+// GET  /api/research-pod/quick-test?id=qt-…    one stored result in full
+const _QT_KEY = 'research_pod_quicktests', _qtSeries = new Map();
+let _qtRunning = null;
+async function _qtLoad(id, cat) {
+  const c = cat[id], hit = _qtSeries.get(id); if (hit && Date.now() - hit.at < 6 * 3600e3) return hit.data;
+  const Y = { DE2Y: () => _yfBund('02'), DE10Y: () => _yfBund('10'), GB5Y: () => _mbFred('BOE_IUDSNPY', 30), GB10Y: () => _mbFred('BOE_IUDMNZC', 30), JP2Y: async () => (await _yfJgb()).y2, JP10Y: async () => (await _yfJgb()).y10,
+    CA2Y: async () => (await _yfCanada({ recent: 6000 })).y2, CA10Y: async () => (await _yfCanada({ recent: 6000 })).y10, AU2Y: async () => (await _yfAustralia()).y2, AU10Y: async () => (await _yfAustralia()).y10 };
+  const data = c.src === 'oanda' ? (await _gbD1(c.ref, 5000)).map(b => ({ date: b.date, value: b.close })) : c.src === 'fred' ? await _mbFred(c.ref, 30) : await Y[c.ref]();
+  if (!data?.length) throw new Error(`${id}: no data`);
+  _qtSeries.set(id, { at: Date.now(), data }); return data;
+}
+app.get('/api/research-pod/quick-test', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const QT = await import('./js/quickTest.js'), store = await _rpGet(_QT_KEY, {});
+    if (req.query.id) { const t = store.tests?.[String(req.query.id)]; return t ? res.json({ ok: true, test: t }) : res.status(404).json({ ok: false, error: 'no such quick test' }); }
+    res.json({ ok: true, label: QT.LABEL, lockboxEnd: QT.LOCKBOX_END, running: _qtRunning, horizons: QT.HORIZONS, transforms: QT.X_TRANSFORMS, barD: QT.BAR_D,
+      catalogue: Object.entries(QT.CATALOGUE).map(([id, c]) => ({ id, label: c.label, kind: c.kind })), tests: QT.listOf(store, { proposalId: req.query.proposal ? String(req.query.proposal) : null }) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/research-pod/quick-test', async (req, res) => {
+  let spec;
+  try {
+    const QT = await import('./js/quickTest.js');
+    try { spec = QT.normaliseSpec(req.body ?? {}); } catch (e) { return res.status(400).json({ ok: false, error: e.message }); }
+    const id = QT.specId(spec), proposalId = req.body?.proposalId ? String(req.body.proposalId).slice(0, 120) : null;
+    let store = await _rpGet(_QT_KEY, {});
+    if (store.tests?.[id] && !req.body?.rerun) {   // cached: link the proposal if new, return the stored result
+      if (proposalId && !(store.tests[id].proposalIds ?? []).includes(proposalId)) { store = QT.storeResult(store, id, store.tests[id], { proposalId }); await kv.put(_QT_KEY, JSON.stringify(store)); }
+      return res.json({ ok: true, cached: true, test: store.tests[id] });
+    }
+    if (_qtRunning) return res.status(429).json({ ok: false, error: `a quick test is already running (${_qtRunning.x} → ${_qtRunning.y}); try again in a few seconds` });
+    _qtRunning = { id, x: spec.x, y: spec.y, at: new Date().toISOString() };
+    try {
+      const [x, y, c] = await Promise.all([_qtLoad(spec.x, QT.CATALOGUE), _qtLoad(spec.y, QT.CATALOGUE), spec.condition ? _qtLoad(spec.condition.series, QT.CATALOGUE) : null]);
+      const kinds = { x: QT.CATALOGUE[spec.x].kind, y: QT.CATALOGUE[spec.y].kind, c: spec.condition ? QT.CATALOGUE[spec.condition.series].kind : null };
+      const result = QT.runQuickTest({ spec, x, y, cData: c, kinds, today: _dpLondonDate(Date.now()) });
+      store = QT.storeResult(await _rpGet(_QT_KEY, {}), id, result, { proposalId });
+      await kv.put(_QT_KEY, JSON.stringify(store));
+      res.json({ ok: true, cached: false, test: store.tests[id] });
+    } finally { _qtRunning = null; }
+  } catch (e) { res.status(502).json({ ok: false, error: e.message, spec }); }
 });
 _mbRoute('/api/leading-indicators', 'cli', 24, async () => {
   const start = new Date(Date.now() - 3 * 365.25 * 864e5).toISOString().slice(0, 7);
@@ -36037,7 +36224,7 @@ async function _dalTick(trigger = 'poll') {
   const now = Date.now(), errors = {};
   try {
     const st = await _dalLoad();   // throws on a failed read: better to skip a check than to forget what was already sent
-    const BOARDS = { stress: 'world-stress', skew: 'options-skew', fair: 'fair-value', carry: 'carry-vol', cli: 'leading-indicators', drift: 'speech-drift' }, boards = {};
+    const BOARDS = { stress: 'world-stress', skew: 'options-skew', fair: 'fair-value', carry: 'carry-vol', cli: 'leading-indicators', drift: 'speech-drift', chainstats: 'chain-stats' }, boards = {};
     await Promise.all(Object.entries(BOARDS).map(async ([k, path]) => {
       const r = await _dpFetchFeed({ path, timeoutMs: 120_000 });
       if (r.json && r.json.ok !== false) boards[k] = r.json; else errors[k] = r.error ?? r.json?.error ?? (r.json ? 'the board answered ok:false (no data yet)' : `HTTP ${r.httpStatus ?? '?'}`);
@@ -36066,6 +36253,189 @@ app.get('/api/desk-alerts', async (req, res) => {
 });
 app.post('/api/desk-alerts/run', async (_req, res) => { try { res.json(await _dalTick('manual')); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
 // ══ end of speeches, surprises and desk alerts ══════════════════════════════════════════════════════════════════════════
+
+// ══ Expectations vs reality, and transmission statistics on the Chain (owner, 2026-11-04, build list items 2 and 3) ═══════════════
+// Logic in pure, tested modules (js/releaseReaction.js, js/chainStats.js); this block is only the I/O.
+//   releaseReactions  every 2 min: each high-impact release the surprise reader logged gets its ACTUAL move measured at +30 min and
+//                     +4 h (OANDA M1: the US 2y note, the pair(s), gold, the index) and labelled against what history expects for a
+//                     surprise of that sign and size (priced in / in line / underreaction / overreaction / opposite). +30 min goes
+//                     to Telegram under the reader's switch (tgMaster.surpriseReader). KV release_reaction_log_v1; the release
+//                     study's 150 past releases are the backfill (scored point-in-time from the committed summary, not refetched).
+//                     GET /api/release-reactions (?pack=1 is the events_news analyst's Desk Pack feed).
+//   chainStats        once a London day: per chain link, rolling 20/60/120-day correlation of daily changes and their 2-year
+//                     averages, lead/lag at -5..+5 days with a corrected band, a divergence z and the trend word. KV chain_stats_v1;
+//                     GET /api/chain-stats. CONTEXT, NOT A SIGNAL: never in the Desk Pack; the desk alerts read only its divergences.
+import * as _rrx from './js/releaseReaction.js';
+import { playbook as _rrxPlaybook } from './js/releasePlaybook.js';
+import { buildChainStats as _csBuild, CHAIN_STATS_NOTE as _CS_NOTE } from './js/chainStats.js';
+import { CHAIN_LINKS as _CS_LINKS } from './js/macroChain.js';
+import { fundingSpread as _csFunding, gapSeries as _csGap } from './js/terminal/chainBoard.js';
+
+// ── Release reactions ──
+const _RRX_KV = 'release_reaction_log_v1';
+let _rrx0 = { loaded: false, log: [], lastRun: null, study: { at: 0, recs: [], rows: [] }, vix: { at: 0, pts: null } }, _rrxRunning = false;
+async function _rrxLoad(strict = true) {
+  if (_rrx0.loaded) return;
+  const raw = strict ? await kv.getStrict(_RRX_KV) : await kv.get(_RRX_KV).catch(() => null);   // the tick must not overwrite a log it failed to read
+  const j = raw ? JSON.parse(raw) : {};
+  _rrx0.log = j.log ?? []; _rrx0.lastRun = j.lastRun ?? null; if (strict || raw) _rrx0.loaded = true;
+}
+async function _rrxSave() { await kv.put(_RRX_KV, JSON.stringify({ log: _rrx0.log, lastRun: _rrx0.lastRun })); }
+async function _rrxVix() {   // the VIX close before each release: the regime, read point-in-time
+  if (_rrx0.vix.pts && Date.now() - _rrx0.vix.at < 6 * 3600e3) return _rrx0.vix.pts;
+  let pts = null;
+  try { pts = await _deepFredSeries('vix'); } catch { /* fall back below */ }
+  if (!pts?.length) { try { const raw = await kv.get('fredhistory_series_vix'); pts = raw ? JSON.parse(raw) : null; } catch { /* no regime */ } }
+  if (!pts?.length) { try { pts = await _fredCsv('VIXCLS'); } catch { pts = null; } }
+  _rrx0.vix = { at: Date.now(), pts: pts?.length ? pts : _rrx0.vix.pts };
+  return _rrx0.vix.pts;
+}
+async function _rrxStudy() {   // the backfill: the release study's history, scored point-in-time (cheap: ~150 rows)
+  if (Date.now() - _rrx0.study.at < 3600e3 && _rrx0.study.recs.length) return _rrx0.study;
+  const { rows } = await _rlRows();
+  _rrx0.study = { at: Date.now(), recs: _rrx.backfillFromStudy(rows, { vix: await _rrxVix() }), rows };
+  return _rrx0.study;
+}
+async function _rrxBars(inst, fromMs, toMs) {
+  const url = `${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(inst)}/candles?granularity=M1&price=M&from=${encodeURIComponent(new Date(fromMs).toISOString())}&to=${encodeURIComponent(new Date(Math.min(toMs, Date.now())).toISOString())}`;
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
+  if (!r.ok) throw new Error(`OANDA ${inst} M1 HTTP ${r.status}`);
+  return ((await r.json()).candles ?? []).filter(c => c.mid && c.complete !== false).map(c => ({ t: Math.floor(Date.parse(c.time) / 1000), c: +c.mid.c }));
+}
+/** Measure every market of a record at +horizon minutes. Returns { rec, errors }; a market that is shut reads null. */
+async function _rrxMeasure(rec, horizon) {
+  const h = `m${horizon}`, moves = {}, errors = {};
+  const ids = [...new Set([...rec.markets.map(m => m.id).filter(id => id !== 'dx'), ...(rec.markets.some(m => m.id === 'dx') ? _rrx.DX_BASKET.map(([id]) => id) : [])])];
+  for (const id of ids) {
+    const inst = _rrx.REACTION_MARKETS[id]?.inst; if (!inst) continue;
+    try { moves[id] = _rrx.moveFromBars(await _rrxBars(inst, rec.ms - 16 * 60_000, rec.ms + (horizon + 1) * 60_000), rec.ms, horizon); }
+    catch (e) { errors[id] = e.message; }
+    await new Promise(r => setTimeout(r, 80));
+  }
+  moves.dx = _rrx.dxMove(moves);
+  return { rec: { ...rec, markets: rec.markets.map(m => ({ ...m, [h]: moves[m.id] ?? null })) }, errors };
+}
+async function _rrxTick(trigger = 'poll') {
+  if (_rrxRunning) return { ok: false, why: 'already running' };
+  if (!process.env.OANDA_KEY) return { ok: false, why: 'OANDA_KEY not set' };
+  _rrxRunning = true;
+  const now = Date.now(), errors = {}, sent = [];
+  try {
+    await _rrxLoad();
+    let reader = _lsr0.log;
+    if (!_lsr0.loaded) { const raw = await kv.get(_LSR_KV).catch(() => null); reader = raw ? (JSON.parse(raw).log ?? []) : []; }
+    const study = await _rrxStudy(), have = new Set(_rrx0.log.map(r => r.key));
+    const fresh = reader.filter(r => r?.surprise?.ok && !r.missed && !have.has(r.key) && now - r.ms < 72 * 3600e3 && now >= r.ms);
+    let stress = null;
+    if (fresh.length) { try { const w = await _dpFetchFeed({ path: 'world-stress', timeoutMs: 60_000 }); stress = w.json?.overall ?? null; } catch { /* regime from the VIX only */ } }
+    const vix = fresh.length ? await _rrxVix() : null;
+    for (const rr of fresh) {
+      const pb = rr.family ? _rrxPlaybook(study.rows, rr.family) : null;
+      _rrx0.log = _rrx.upsert(_rrx0.log, _rrx.newLiveRecord(rr, { study: study.recs, vix: _rrx.vixBefore(vix, rr.ms), stress: now - rr.ms < 2 * 3600e3 ? stress : null, pb }));
+    }
+    const due = _rrx.dueMeasurements(_rrx0.log, now), toSend = [];
+    for (const [horizon, list] of [[30, due.m30], [240, due.m240]]) {
+      for (const rec of list) {
+        const { rec: measured, errors: errs } = await _rrxMeasure(rec, horizon);
+        const giveUp = now > rec.ms + (horizon + 360) * 60_000;   // a fetch that keeps failing is recorded as such after 6 hours
+        if (Object.keys(errs).length && !giveUp) { errors[rec.key] = errs; continue; }
+        const scored = { ..._rrx.scoreRelease(measured, _rrx.liveHistory(study.recs, _rrx0.log, measured), horizon), [`done${horizon}`]: new Date(now).toISOString(), ...(Object.keys(errs).length ? { [`errors${horizon}`]: errs } : {}) };
+        _rrx0.log = _rrx.upsert(_rrx0.log, scored);
+        if (horizon === 30 && now - rec.ms < 90 * 60_000 && scored.markets.some(m => Number.isFinite(m.m30))) toSend.push(scored);
+      }
+    }
+    _rrx0.lastRun = { at: new Date(now).toISOString(), trigger, added: fresh.length, measured30: due.m30.length, measured240: due.m240.length, errors };
+    await _rrxSave();   // saved BEFORE sending: a crash mid-send can lose a message but never repeat one
+    for (const rec of toSend) {
+      if (tgOn('surpriseReader') && state.tg?.token && state.tg?.chatId) { await sendTelegram(state.tg.token, state.tg.chatId, _rrx.reactionMessage(rec)); sent.push(rec.key); }
+      console.log(`[release-reactions] ${rec.country} ${rec.event}: ${rec.label30 ?? 'unscored'} at 30 min`);
+    }
+    return { ok: true, ..._rrx0.lastRun, sent };
+  } catch (e) { console.warn('[release-reactions]', e.message); return { ok: false, error: e.message, errors }; }
+  finally { _rrxRunning = false; }
+}
+svcInterval('releaseReactions', () => _rrxTick('poll'), 2 * 60_000);
+/** The combined record: live reactions plus the study backfill, a study row winning for the same family and minute. */
+function _rrxCombined(study) {
+  const seen = new Set(study.recs.map(x => `${x.family}|${Math.round(x.ms / 60_000)}`));
+  return [..._rrx0.log.filter(x => !x.family || !seen.has(`${x.family}|${Math.round(x.ms / 60_000)}`)), ...study.recs].sort((a, b) => b.ms - a.ms);
+}
+const _RRX_NOTE = 'Actual move at +30 min and +4 h (% of the price at the release minute; OANDA M1 live, the release study\'s futures for the backfill) against what earlier releases of the family did for a surprise of that sign and size (median move per unit of surprise z; else the median after same-side prints). Labels: priced in / in line / underreaction / overreaction / opposite. Point-in-time: each release is judged only by releases before it. Regime = the VIX close before the release (calm < 16 <= normal < 24 <= stressed). History with its count, not a forecast.';
+// GET /api/release-reactions?n=30[&pack=1]: the live reactions, the study backfill and the summary by family and regime
+app.get('/api/release-reactions', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    await _rrxLoad(false);
+    const study = await _rrxStudy(), all = _rrxCombined(study), summary = _rrx.summarise(all), n = Math.min(300, Math.max(1, parseInt(req.query.n) || 30));
+    if (req.query.pack) {   // the events_news analyst's feed: the summary and the latest live reads, small
+      const slim = r => ({ at: r.at, country: r.country, event: r.event, family: r.family, surprise: r.surprise?.diffText ?? r.surprise?.diff, z: r.surprise?.z ?? null, regime: r.regime?.tone ?? null, label30: r.label30 ?? null, label240: r.label240 ?? null,
+        moves: (r.markets ?? []).slice(0, 4).map(m => ({ m: m.label, m30: m.m30 ?? null, exp30: m.exp30 ?? null, m240: m.m240 ?? null, exp240: m.exp240 ?? null })) });
+      return res.json({ ok: true, asOf: _rrx0.log[0]?.at ?? study.recs.at(-1)?.at ?? null, note: _RRX_NOTE, summaryText: _rrx.summaryText(summary),
+        byFamily: summary.filter(r => r.regime === 'all').slice(0, 10).map(r => ({ family: r.family, n: r.n, live: r.live, m30: { expected: r.m30.expected, pricedIn: r.m30.pricedIn, labels: r.m30.labels }, m240: { expected: r.m240.expected, pricedIn: r.m240.pricedIn } })),
+        byRegime: summary.filter(r => r.family === 'ALL' && r.regime !== 'all').map(r => ({ regime: r.regime, n: r.n, m30: { expected: r.m30.expected, pricedIn: r.m30.pricedIn } })),
+        recent: _rrx0.log.slice(0, 8).map(slim) });
+    }
+    res.json({ ok: true, lastRun: _rrx0.lastRun, muted: !tgOn('surpriseReader'), live: _rrx0.log.slice(0, n), studyN: study.recs.length, recent: all.slice(0, n), summary, summaryText: _rrx.summaryText(summary), note: _RRX_NOTE });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/release-reactions/run', async (_req, res) => { try { res.json(await _rrxTick('manual')); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+
+// ── Chain transmission statistics ──
+const _CS_KV = 'chain_stats_v1';
+let _cs0 = { data: null, building: null };
+const _CS_DRILL = { oil: 'oil', bei: 'bei', us2y: 'us2y', us10y: 'us10y', us30y: 'us30y', real: 'tips', dxy: 'dxy', gold: 'gold', copper: 'copper', audusd: 'audusd', usdcad: 'usdcad', usdjpy: 'usdjpy',
+  vix: 'vix', hy: 'hy', nq: 'nq', spx: 'spx', smh: 'smh', xle: 'xle', xlre: 'xlre', move: 'move', ccc: 'ccc', gbpusd: 'gbpusd', eurusd: 'eurusd', btc: 'btc' };
+/** Daily history of every chain node, ~3.5 years: the drill bundle (FRED, OANDA, Yahoo, already in memory) and FRED / the issuers for the rest. */
+async function _csSeries() {
+  const since = new Date(Date.now() - 3.5 * 365.25 * 864e5).toISOString().slice(0, 10), series = {}, sources = {}, errors = {};
+  if (!_drillBundle.data || Date.now() - _drillBundle.at > 24 * 3600e3) { try { await _refreshDrillBundle(); } catch (e) { errors.drill = e.message; } }
+  const B = _drillBundle.data;
+  for (const [node, k] of Object.entries(_CS_DRILL)) {
+    const col = B?.series?.[k]; if (!col) { errors[node] = 'not in the drill bundle'; continue; }
+    series[node] = B.dates.map((date, i) => ({ date, value: col[i] })).filter(p => p.value != null && p.date >= since); sources[node] = 'drill bundle';
+  }
+  const fred = async id => (await _fredCsv(id)).filter(p => p.date >= since);
+  try { const [sofr, iorb, ioer] = await Promise.all(['SOFR', 'IORB', 'IOER'].map(id => fred(id).catch(() => []))); series.funding = _csFunding({ sofr, iorb, ioer }); sources.funding = 'FRED SOFR - IORB/IOER'; } catch (e) { errors.funding = e.message; }
+  for (const [node, id] of [['emdollar', 'DTWEXEMEGS'], ['emoas', 'BAMLEMCBPIOAS']]) { try { series[node] = await fred(id); sources[node] = `FRED ${id}`; } catch (e) { errors[node] = e.message; } }
+  try { const [wti, gasoline, heatingOil] = await Promise.all(['DCOILWTICO', 'DGASNYH', 'DHOILNYH'].map(fred)); series.crack = _crackHistory({ wti, gasoline, heatingOil }).map(r => ({ date: r.date, value: r.crack })); sources.crack = 'FRED EIA spot'; } catch (e) { errors.crack = e.message; }
+  try {
+    if (!_intlYields.series) await _refreshIntlYields();
+    for (const [node, key] of [['giltgap', 'gb10y'], ['bundgap', 'de10y'], ['jgbgap', 'jp10y']]) { const g = _csGap(_intlYields.series?.[key], series.us10y); if (g.length) { series[node] = g; sources[node] = `${key} (issuer) - DGS10`; } else errors[node] = 'no foreign 10Y'; }
+  } catch (e) { errors.intl = e.message; }
+  return { series, sources, errors };
+}
+async function _csBuildNow(trigger = 'daily') {
+  const t0 = Date.now(), { series, sources, errors } = await _csSeries();
+  const nodes = Object.fromEntries(Object.entries(_CHAIN_NODES).map(([k, n]) => [k, { label: n.label.replace(/ \(.*\)$/, ''), unit: n.unit }]));
+  const b = _csBuild({ series, links: _CS_LINKS, nodes });
+  const data = { ok: true, day: _dpLondonDate(t0), builtAt: new Date(t0).toISOString(), ms: Date.now() - t0, trigger, signal: false, label: 'context, not a signal', note: _CS_NOTE,
+    asOf: Object.values(b.links).map(l => l.asOf).filter(Boolean).sort().at(-1) ?? null, ...b, sources, errors };
+  _cs0.data = data;
+  try { await kv.put(_CS_KV, JSON.stringify(data)); } catch (e) { console.warn('[chain-stats] save:', e.message); }
+  console.log(`[chain-stats] ${Object.values(b.links).filter(l => l.ok).length} links, ${b.breaking.length} weakening/breaking, ${b.divergences.length} diverging (${data.ms} ms)`);
+  return data;
+}
+/** Today's stats: memory, else KV, else built (one build at a time). */
+async function _csGet({ force = false } = {}) {
+  const day = _dpLondonDate(Date.now());
+  if (!force && _cs0.data?.day === day) return _cs0.data;
+  if (!force && !_cs0.data) { try { const raw = await kv.get(_CS_KV); const j = raw ? JSON.parse(raw) : null; if (j?.ok) _cs0.data = j; } catch { /* rebuild */ } if (_cs0.data?.day === day) return _cs0.data; }
+  _cs0.building ??= _csBuildNow(force ? 'manual' : 'daily').finally(() => { _cs0.building = null; });
+  try { return await _cs0.building; } catch (e) { if (_cs0.data) return { ..._cs0.data, stale: true, error: e.message }; throw e; }
+}
+svcInterval('chainStats', () => _csGet().catch(e => console.warn('[chain-stats]', e.message)), 60 * 60_000);
+svcTimeout('chainStats', () => _csGet().catch(e => console.warn('[chain-stats] boot:', e.message)), 9 * 60_000);
+// GET /api/chain-stats[?link=real-gold]: per chain link, correlation, lead/lag, divergence and trend. Context, not a signal.
+app.get('/api/chain-stats', async (req, res) => {
+  try {
+    const d = await _csGet();
+    res.set('Cache-Control', 'public, max-age=900');
+    if (req.query.link) { const l = d.links?.[String(req.query.link)]; return l ? res.json({ ok: true, day: d.day, label: d.label, note: d.note, id: String(req.query.link), ...l }) : res.status(404).json({ ok: false, error: 'unknown link' }); }
+    res.json(d);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/chain-stats/run', async (_req, res) => { try { const d = await _csGet({ force: true }); res.json({ ok: true, day: d.day, builtAt: d.builtAt, ms: d.ms, breaking: d.breaking.length, divergences: d.divergences.length, errors: d.errors }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+// ══ end of expectations vs reality and chain statistics ═════════════════════════════════════════════════════════════════════
 
 app.get('/api/calendar-feed', async (_req, res) => {
   try {
