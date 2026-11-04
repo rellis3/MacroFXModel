@@ -33,5 +33,11 @@
     "verdict": "UNDERPOWERED"
    }
   }
+ },
+ "controls": {
+  "rows_hash": "5da99f3f6f43c80d",
+  "passed": true,
+  "plant_recovered": true,
+  "null_clean": true
  }
 }
