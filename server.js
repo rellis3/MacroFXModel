@@ -4996,6 +4996,8 @@ async function _dsScore(date, { reflect = true } = {}) {
   const { cards, ...row } = score;
   const idx = (await _dsLoadIndex()).filter(r => r.date !== date); idx.push(row); idx.sort((a, b) => a.date.localeCompare(b.date));
   await kv.put(_DS_INDEX_KV, JSON.stringify(idx.slice(-800)));
+  // the morning thesis laid against the day, from the same bars (descriptive; prereg amendment A15)
+  try { await _trBuildDay(date, bars); } catch (e) { console.warn('[desk-score] thesis vs reality:', e.message); }
   let reflection = null, evening = null;
   if (reflect) { reflection = await _dsReflect(run, score); if (reflection) await kv.put(_DS_REFLECT_KEY(date), JSON.stringify({ date, savedAt: new Date().toISOString(), ...reflection })); }
   if (reflect) evening = await _dsEvening(run, score, reflection, bars, idx).catch(e => { console.warn('[desk-score] evening edition:', e.message); return null; });
@@ -5106,6 +5108,107 @@ app.post('/api/analyst-scorecard/backfill', async (req, res) => {
   } catch (e) { job.status = 'error'; job.error = e.message; console.error('[analyst-scorecard] backfill:', e.message); }
   finally { job.finishedAt = Date.now(); console.log(`[analyst-scorecard] backfill: ${job.done.length} scored, ${job.failed.length} failed, ${job.skipped} already done`); }
 });
+// ── Morning thesis vs evening reality (js/thesisReality.js; owner build item 5, 2026-11-04; plan §9am, prereg A15) ──
+// After the evening score, the morning book is laid claim by claim against the day (08:00-21:00 London, in u): the
+// regime call against the risk basket, the currency ranking against the realised currency moves, each sized card
+// (direction, size x move, invalidation touched, p50/p75 reached), the vol forecast's range against the realised
+// London-day range, and the releases the economist named. Description, never a scored cell; the morning run is only
+// read. desk_run_reality_<date> holds the day in full; thesis_reality_v1 holds the compact rows the tally is built from.
+const _TR_KV = 'thesis_reality_v1';
+const _TR_DAY_KEY = date => `desk_run_reality_${date}`;
+let _trJob = null;
+async function _trLoad() { try { const raw = await kv.get(_TR_KV); const st = raw ? JSON.parse(raw) : null; return st && Array.isArray(st.days) ? st : { days: [] }; } catch { return { days: [] }; } }
+// the day's vol forecast (London-day high-to-low p50/p75, % of the open) and the realised range from H1 bars (js/volCheck.js)
+async function _trVol(date, insts) {
+  let fc = null;
+  try { const raw = await kv.get(`vol_forecast_${date}`); fc = raw ? JSON.parse(raw).instruments ?? null : null; } catch { fc = null; }
+  if (!fc) return null;
+  const { realisedDays } = await import('./js/volCheck.js');
+  const from = new Date(Date.parse(`${date}T00:00:00Z`) - 864e5).toISOString().slice(0, 10) + 'T00:00:00Z';
+  const to = new Date(Math.min(Date.now(), Date.parse(`${date}T00:00:00Z`) + 2 * 864e5)).toISOString().slice(0, 19) + 'Z';
+  const list = insts.filter(n => _dsOanda[n]), out = {};
+  let next = 0;
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    while (next < list.length) {
+      const n = list[next++], k = Object.keys(fc).find(x => x.toUpperCase() === n), f = k ? fc[k] : null;
+      if (!f || f.stale || !Number.isFinite(f.hl_median) || !Number.isFinite(f.hl_75)) continue;
+      try {
+        const bars = (await fetchOandaCandleRange(_dsOanda[n], 'H1', from, to)).map(v => ({ time: v.t, open: +v.open, high: +v.high, low: +v.low, close: +v.close }));
+        const r = realisedDays(bars, [date])[date]; if (r) out[n] = { p50: f.hl_median, p75: f.hl_75, hl: r.hl };
+      } catch (e) { console.warn(`[thesis-reality] ${n} range: ${e.message}`); }
+    }
+  }));
+  return out;
+}
+// the tier-1 releases the economist named that morning, with the actual where this week's calendar has one
+async function _trEvents(run) {
+  const rel = run?.economist?.releases ?? []; if (!rel.length) return null;
+  const norm = s => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  let cal = [];
+  try { const r = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY }); cal = r?.ok ? r.events ?? [] : []; } catch { cal = []; }
+  return rel.map(e => { const at = Date.parse(e.at), m = cal.find(x => x.country === e.country && norm(x.event) === norm(e.event) && Math.abs(Number(x.ms) - at) < 2 * 3600e3);
+    return { event: e.event, country: e.country, at: e.at, estimate: e.estimate ?? m?.estimate ?? null, actual: m?.actual ?? null }; });
+}
+async function _trBuildDay(date, bars = null) {
+  const run = await _dsRunFor(date);
+  if (!run?.head?.ok) return { ok: false, date, error: `no desk book for ${date}` };
+  const rawScore = await kv.get(_DS_SCORE_KEY(date)).catch(() => null);
+  if (!rawScore) return { ok: false, date, error: `${date} has no evening score yet` };
+  const score = JSON.parse(rawScore), TR = await import('./js/thesisReality.js'), { dayMovesU } = await import('./js/deskAttribution.js');
+  const cards = run.head.book.instruments ?? {};
+  const sized = Object.keys(cards).filter(n => /LONG|SHORT/.test(cards[n].rating ?? '') && cards[n].size > 0);
+  let moves = null;
+  if (!bars) { try { const raw = await kv.get(_ASC_DAY_KEY(date)); if (raw) moves = JSON.parse(raw).moves ?? null; } catch { moves = null; } }
+  if (!bars) bars = await _dsBars(moves ? sized : Object.keys(cards), date);
+  if (!moves) moves = dayMovesU(cards, bars, date);
+  const win = _dsWindow(date), paths = {};
+  for (const n of sized) { const p = TR.cardPath(cards[n], bars?.[n], win); if (p) paths[n] = p; }
+  const [vol, events] = await Promise.all([_trVol(date, Object.keys(cards)).catch(() => null), _trEvents(run).catch(() => null)]);
+  const day = { ...TR.thesisReality({ run, moves, score, paths, vol, events }), savedAt: new Date().toISOString() };
+  await kv.put(_TR_DAY_KEY(date), JSON.stringify(day));
+  const st = await _trLoad();
+  await kv.put(_TR_KV, JSON.stringify({ version: TR.TR_VERSION, savedAt: day.savedAt, days: TR.upsertDay(st.days, TR.compactDay(day)) }));
+  return { ok: true, date, cards: day.cardSummary.n, regime: day.regime.verdict, range: day.range?.n ?? 0 };
+}
+// GET /api/thesis-reality: a day's morning thesis against its evening (?date=, default the latest) and the running
+// tally. ?brief=1 is the Desk Pack feed for the evidence clerk (the latest day, small, and the tally).
+app.get('/api/thesis-reality', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const TR = await import('./js/thesisReality.js'), st = await _trLoad(), t = TR.tally(st.days);
+    let date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : st.days.at(-1)?.date ?? null;
+    const raw = date ? await kv.get(_TR_DAY_KEY(date)).catch(() => null) : null, day = raw ? JSON.parse(raw) : null;
+    if (req.query.brief === '1') return res.json(TR.briefFeed(day, t));
+    if (!day) return res.status(date && req.query.date ? 404 : 200).json({ ok: false, error: date ? `no thesis-vs-reality record for ${date}` : 'no morning has been laid against its evening yet: the first is built after the evening score (21:10 London)', tally: t, dates: st.days.map(d => d.date), job: _trJob });
+    res.json({ ok: true, day, tally: t, dates: st.days.map(d => d.date), job: _trJob });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/thesis-reality/backfill: build every stored day that has an evening score (?force=1 rebuilds days already
+// done; ?date= one day). Runs in the background; GET /api/thesis-reality shows the job.
+app.post('/api/thesis-reality/backfill', async (req, res) => {
+  if (_trJob?.status === 'running') return res.status(409).json({ ok: false, error: 'a backfill is already running', job: _trJob });
+  const job = _trJob = { status: 'running', startedAt: Date.now(), finishedAt: null, done: [], failed: [], skipped: 0 };
+  res.status(202).json({ ok: true, job });
+  try {
+    const have = new Set((await _trLoad()).days.map(d => d.date)), one = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : null;
+    const dates = one ? [one] : (await _dsLoadIndex()).map(r => r.date).sort();
+    for (const d of dates) {
+      if (!one && have.has(d) && req.query.force !== '1') { job.skipped++; continue; }
+      job.date = d;
+      const r = await _trBuildDay(d).catch(e => ({ ok: false, date: d, error: e.message }));
+      (r.ok ? job.done : job.failed).push(r.ok ? { date: d, cards: r.cards, regime: r.regime, range: r.range } : { date: d, error: r.error });
+    }
+    job.status = 'done';
+  } catch (e) { job.status = 'error'; job.error = e.message; console.error('[thesis-reality] backfill:', e.message); }
+  finally { job.finishedAt = Date.now(); console.log(`[thesis-reality] backfill: ${job.done.length} built, ${job.failed.length} failed, ${job.skipped} already done`); }
+});
+// Backfill once after boot when the store is empty: every stored day with an evening score is laid against its day.
+setTimeout(async () => {
+  try {
+    if ((await _trLoad()).days.length || _trJob) return;
+    for (const r of await _dsLoadIndex()) { const x = await _trBuildDay(r.date).catch(e => ({ ok: false, error: e.message })); console.log(`[thesis-reality] boot backfill ${r.date}: ${x.ok ? 'built' : x.error}`); }
+  } catch (e) { console.warn('[thesis-reality] boot backfill:', e.message); }
+}, 5 * 60_000).unref?.();
 // ── Desk session updates (js/deskUpdate.js, desk/roles/session_update.md; plans/DESK_ANALYST_PIPELINE.md Phase 5) ──
 // At the London open (08:05) and the New York open (14:35) the desk re-reads what changed since the morning book:
 // every market in u with the lines it has touched, and the events, risk and liquidity feeds fetched fresh. One model

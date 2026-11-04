@@ -272,6 +272,21 @@ control reads the whole pack, so both arms see it. The chain transmission statis
 are deliberately NOT a pack feed: they describe what is coupled or broken now and must not reach the desk as an impact.
 Inputs only: the scoring, the arms and the hypotheses are unchanged. No hypothesis test had been run.
 
+### A15 — 2026-11-04 — PRE-RESULTS — thesis against reality (description) and two input changes
+Written on 2026-11-04 without reading any desk score beyond the one already shown on the terminal (2026-11-03, not a
+counted day). Owner-approved items 1 and 5 (plan §9am). **Description, not a scored cell:** after each evening score,
+`js/thesisReality.js` lays the morning book claim by claim against the day on §3's window and unit (the regime call
+against the risk basket, the currency ranking against the realised currency moves, each sized card's direction,
+invalidation and p50/p75 lines, the range forecast against the realised range). It never changes a card, never
+rewrites the run, and H1-H5, the gate, the controls, the scoring and the judgement date are unchanged; the verdict may
+quote its tally as description, never as a test. **Inputs:** (1) the Desk Pack gains the feed `thesis-reality` for
+the evidence clerk (role `evidence_memory.md` item 9, so `rolesHash` changes), read as the desk's own record, never as
+an impact, like `desk-memory` (A10's pattern); the single-prompt control reads the whole pack, so both arms see it.
+(2) The asset desks' per-instrument data (`js/deskRoles.js` groupData) now names any stale or missing feed behind a row
+(`dataStatus`), so stale forecast lines are no longer read as today's; the control's levels come from the same data and
+are unchanged. Display-only changes (the signed −5..+5 score, labelled convictions, "no data" for missing values, the
+"What drives this" explainer) change nothing the desk reads. The desk is scored as operated, by role version.
+
 ---
 
 ## RESULTS — not run

@@ -72,6 +72,7 @@ function isAllowedKVKey(key) {
     'options_skew_hist',
     'terminal_stress_snaps_v1',
     'analyst_scorecard_v1',
+    'thesis_reality_v1',
     'cb_speech_log_v1',
     'release_surprise_log_v1',
     'desk_alerts_v1',
@@ -1113,6 +1114,8 @@ export default {
             'options_skew_hist',
             // analyst_scorecard_v1: the desk analyst scorecard's day rows (js/analystScorecard.js); a forward record.
             'analyst_scorecard_v1',
+            // thesis_reality_v1: the morning thesis laid against the evening, one compact row per scored day (js/thesisReality.js); a forward record.
+            'thesis_reality_v1',
             // cb_speech_log_v1 / release_surprise_log_v1 / desk_alerts_v1: speech reads (paid model calls), the surprise reader's and the desk alerts' dedupe state (a reset would resend).
             'cb_speech_log_v1',
             'release_surprise_log_v1',

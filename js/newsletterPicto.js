@@ -161,7 +161,7 @@ export function composePicto({ run, base = {}, stress = null, map = null } = {},
 
   // the hero: the ruling, as weather, on a signboard with the headline
   const headline = short(nl?.subject ?? b.headline ?? '', 100);
-  const pHero = `<div class="bx plain"><div class="hero">${weather(tone, 118)}<div class="word ${/off/i.test(tone) ? 'dn' : /on/i.test(tone) ? 'up' : ''}">${esc(tone.toUpperCase())}</div>${g.conviction ? `<div class="mut">${esc(g.conviction)} conviction</div>` : ''}${headline ? `<div class="sign">${esc(headline)}</div>` : ''}</div></div>`;
+  const pHero = `<div class="bx plain"><div class="hero">${weather(tone, 118)}<div class="word ${/off/i.test(tone) ? 'dn' : /on/i.test(tone) ? 'up' : ''}">${esc(tone.toUpperCase())}</div>${g.conviction ? `<div class="mut">global ruling: ${esc(g.conviction)} conviction</div>` : ''}${headline ? `<div class="sign">${esc(headline)}</div>` : ''}</div></div>`;
 
   // key signals: the world-stress readings, each with its own drawing, else the risk flags
   const tiles = stress?.tiles?.length ? stress.tiles.slice(0, 3) : base.riskFlags ? [{ label: 'Risk flags', level: base.riskFlags.active >= 3 ? 'stress' : base.riskFlags.active >= 1 ? 'watch' : 'ok', detail: `${base.riskFlags.active} of ${base.riskFlags.total} on` }] : [];
@@ -186,7 +186,7 @@ export function composePicto({ run, base = {}, stress = null, map = null } = {},
   // the desk's view: the largest live cards
   const live = Object.entries(b.instruments ?? {}).filter(([, c]) => DIR[c.rating] && c.size > 0), wt = c => c.size * (CONV[c.conviction] ?? 0.8) * Math.abs(DIR[c.rating]);
   const top = live.sort((x, y) => wt(y[1]) - wt(x[1])).slice(0, 4);
-  const pView = top.length ? `<ul class="ck vw">${top.map(([n, c]) => { const d = DIR[c.rating] > 0, gr = grade(c), inv = c.plan?.invalidation ?? c.invalidation; return `<li>${tick}<span><b class="${d ? 'up' : 'dn'}">${d ? 'Long' : 'Short'} ${esc(instName(n))}</b>${gr ? ` (${gr})` : ''}${inv ? ` <span class="mut">· wrong ${esc(short(String(inv).replace(/^\s*(?:a\s+)?(?:daily\s+|hourly\s+)?close\s+/i, ''), 22))}</span>` : ''}</span></li>`; }).join('')}</ul>` : '';
+  const pView = top.length ? `<ul class="ck vw">${top.map(([n, c]) => { const d = DIR[c.rating] > 0, gr = grade(c), inv = c.plan?.invalidation ?? c.invalidation; return `<li>${tick}<span><b class="${d ? 'up' : 'dn'}">${d ? 'Long' : 'Short'} ${esc(instName(n))}</b>${gr ? ` (${gr} conviction)` : ''}${inv ? ` <span class="mut">· wrong ${esc(short(String(inv).replace(/^\s*(?:a\s+)?(?:daily\s+|hourly\s+)?close\s+/i, ''), 22))}</span>` : ''}</span></li>`; }).join('')}</ul>` : '';
 
   // the bottom line: the opening's first sentence, else the ruling's summary
   const bottom = short(nl?.standfirst ?? g.summary ?? '', 170);

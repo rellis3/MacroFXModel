@@ -57,6 +57,7 @@ export const STORES = {
   options_skew_hist: R('Options skew daily history', 3, { market: false }),
   terminal_stress_snaps_v1: R('Desk Terminal: first world-stress reading of each London day (Changed tab)', 1, { market: false }),
   analyst_scorecard_v1: L('Desk analyst scorecard: each analyst\'s calls scored per morning (written after the evening score on days with a desk run)', 5),
+  thesis_reality_v1: L('Morning thesis vs evening reality: the book\'s claims laid against the day (written after the evening score on days with a desk run)', 5),
   cb_speech_log_v1: L('Central-bank speech log: each speech scored on the statement scale (js/cbSpeeches.js)', 7, { market: false }),
   release_surprise_log_v1: L('Live surprise reader: high-impact prints, their surprise and playbook (js/surpriseReader.js)', 7),
   desk_alerts_v1: S('Desk alerts: state per watched board, carry/vol history and the alert log (js/deskAlerts.js)', 1, { market: false }),

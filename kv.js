@@ -80,6 +80,7 @@ const _CF_EXACT = new Set([
   'chain_stats_v1',         // chain transmission statistics (js/chainStats.js), rebuilt once a London day; kept so a deploy serves the day's copy. Also in _worker.js (both lists).
   // the research pod (plan §9ab): sessions, the proposal library, the owner's marks on each proposal and the system cards. The owner's feedback cannot be rebuilt.
   'analyst_scorecard_v1',   // the desk analyst scorecard (js/analystScorecard.js): one compact row per scored morning per analyst; the forward record of each analyst's calls, not re-derivable once the runs age out. Also in _worker.js (both lists).
+  'thesis_reality_v1',      // morning thesis vs evening reality (js/thesisReality.js): one compact row per scored morning, claim by claim; the forward record the tally is built from. Also in _worker.js (both lists).
   'research_pod_sessions',
   'research_pod_library',
   'research_pod_feedback',

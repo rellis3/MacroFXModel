@@ -10,9 +10,11 @@ const run = { date: '2026-11-03', head: { ok: true, book: { headline: 'Yen stren
   debate: { global: { view: { tone: 'risk_off', conviction: 'medium', summary: 'Credit stress (credit_funding).', drivers: ['Liquidity gate BLOCKED'] } }, currency: { view: { ranking: ['JPY', 'USD', 'CHF', 'CAD', 'GBP', 'NZD', 'EUR', 'AUD'], currencies: { JPY: { bias: 2, why: 'BoJ hiked.' }, AUD: { bias: -2, why: 'RBA.' } } } } } };
 
 t('scores, grades, graphics', () => {
-  assert.equal(assetScore({ rating: 'STRONG_SHORT', conviction: 'high' }), 0); assert.equal(assetScore({ rating: 'FLAT' }), 5); assert.equal(ccyScore(2), 10);
+  // signed −5..+5 (js/scoreDisplay.js): a strong short at high conviction is −5, not "0/10"; no view is 0; no data is null
+  assert.equal(assetScore({ rating: 'STRONG_SHORT', conviction: 'high' }), -5); assert.equal(assetScore({ rating: 'FLAT' }), 0); assert.equal(ccyScore(2), 5);
+  assert.equal(ccyScore(undefined), null, 'a missing bias is no data, never neutral');
   assert.equal(grade({ rating: 'STRONG_SHORT', conviction: 'high', size: 0.5 }), 'A+'); assert.equal(grade({ rating: 'FLAT', size: 0 }), null);
-  assert.match(ring(7.5), /7\.5/); assert.match(dial('risk_off', 'high'), /RISK-OFF/);
+  assert.match(ring(2.5), /\+2\.5/); assert.match(ring(-5), /−5\.0/); assert.match(ring(null), />–</); assert.match(dial('risk_off', 'high'), /RISK-OFF/);
   assert.equal(clean('JPY (rates_cb, macro_economy) is strong, yields_curve.'), 'JPY is strong.');
 });
 t('the issue: every page, escaped, no internal ids, self-contained, a text version', () => {
@@ -23,6 +25,9 @@ t('the issue: every page, escaped, no internal ids, self-contained, a text versi
   assert.ok(!/rates_cb|credit_funding|events_news/.test(out.html), 'no analyst ids');
   assert.ok(!/<script|https?:\/\/(?!www\.w3)/.test(out.html.replace(/xmlns="[^"]+"/g, '')), 'no scripts or external fetches');
   assert.match(out.text, /PLAYBOOKS/); assert.match(out.subject, /^Terminal: /);
+  assert.ok(out.html.includes('A conviction') && !/\d\.\d\/10\b|on \/10/.test(out.html), 'the grade says what it grades, and no score is on /10');
+  assert.ok(out.html.includes('global ruling conviction') && out.html.includes('card conviction'), 'each conviction names its layer');
+  assert.ok(out.html.includes('▲ +5.0 · strongly bullish') && out.html.includes('▼ −5.0 · strongly bearish'), 'strongest and weakest carry the direction');
   assert.equal(composeTerminal({ run: {} }, H), null);
 });
 t('the map page appears only with map paths', () => {

@@ -216,3 +216,29 @@ test('reactions panel: live and study rows, labels, the family table and the not
   assert.match(html, /not a forecast/);
   assert.equal(reactionsHtml({ ok: false }), '');
 });
+
+// ── what drives a card (the modal's explainer) ──
+import { channels, cardDrivers } from './cardExplain.js';
+test('cardDrivers: points on the market, its legs and risk appetite, signed onto the market; stale feeds named', () => {
+  assert.deepEqual(channels('EURUSD').map(c => `${c.key}${c.sign > 0 ? '+' : '-'}`), ['EURUSD+', 'EUR+', 'USD-']);
+  assert.deepEqual(channels('GOLD').map(c => c.key), ['GOLD', 'USD']);
+  assert.deepEqual(channels('NQ').map(c => c.key), ['NQ', 'RISK']);
+  const run = { date: '2026-11-04', packBuiltAt: '2026-11-04T06:42:00Z', finishedAt: '2026-11-04T07:13:00Z',
+    head: { book: { instruments: { EURUSD: { rating: 'SHORT', conviction: 'low', levels: { open: 1.1 }, plan: { invalidation: 'Close above 1.1234' } } } } },
+    dataQuality: { gaps: [{ id: 'credit-stress', skill: 'credit_funding', status: 'stale', ageH: 102.7 }, { id: 'world-rates', skill: 'rates_cb', status: 'stale', ageH: 1542 }] },
+    analysts: {
+      rates_cb: { ok: true, layer: 'currency', report: { confidence: 'high', points: [{ claim: 'Fed hawkish', evidence: 'fomc-latest', impact: { USD: 2 } }, { claim: 'ECB on hold', evidence: 'world-rates', impact: { EUR: 1 } }] } },
+      credit_funding: { ok: true, layer: 'global', report: { points: [{ claim: 'Funding stress', evidence: 'credit-stress', impact: { RISK: -1 } }] } },
+      cot_positioning: { ok: true, report: { points: [{ claim: 'EUR shorts crowded', evidence: 'cot-state', impact: { EUR: -1, GBP: 1 } }] } },
+      failed: { ok: false },
+    } };
+  const x = cardDrivers(run, 'EURUSD');
+  assert.equal(x.dir, -1); assert.deepEqual(x.analysts.map(a => a.id), ['rates_cb', 'cot_positioning'], 'RISK does not move an FX pair; failed analysts are skipped');
+  const rc = x.analysts[0];
+  assert.equal(rc.net, -1, 'USD +2 pushes EURUSD down 2, EUR +1 up 1'); assert.equal(rc.forN, 1); assert.equal(rc.againstN, 1);
+  assert.deepEqual(rc.points.find(p => p.evidence === 'world-rates').staleFeeds, ['world-rates (stale, 1542h)']);
+  assert.equal(x.forPush, 3); assert.equal(x.againstPush, 1);
+  assert.deepEqual(x.data.gaps.map(g => g.id), ['world-rates'], 'only the gaps of the analysts that moved it');
+  assert.equal(x.data.linesFor, '2026-11-04'); assert.equal(x.invalidation, 'Close above 1.1234');
+  assert.equal(cardDrivers({}, 'EURUSD').analysts.length, 0);
+});
