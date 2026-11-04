@@ -62,6 +62,9 @@ export const SLICES = {
   'rates': d => slimDefault(pick(d, ['now', 'change20d', 'pct5y', 'pct10y', 'plumbing', 'at'])),
   'fed-path': d => slimDefault(pick(d, ['asOf', 'ageDays', 'currentRange', 'note', 'windows', 'zq', 'source'])),
   ...Object.fromEntries(['fomc', 'ecb', 'boe', 'boj', 'boc', 'rba', 'rbnz', 'snb'].map(b => [`${b}/latest`, CB])),
+  // the speakers since each bank's last statement: drift per bank and the scored speeches (no full texts)
+  'speech-drift': d => ({ label: d.label, banks: mapObj(d.banks, b => pick(b, ['statement', 'speeches', 'speechAvg', 'drift', 'label', 'big', 'latest'])),
+    recent: (d.recent ?? []).slice(0, 14).map(e => ({ ...pick(e, ['bank', 'date', 'speaker', 'role', 'tier', 'relevance', 'score', 'delta', 'headline', 'currency']), quote: e.keyQuotes?.[0]?.quote ?? null })) }),
   'beigebook/latest': d => ({ meetingDate: d.meetingDate, generatedAt: d.generatedAt, analysis: slimDefault(d.analysis, { maxArray: 6, maxString: 500 }) }),
   // ── yields ──
   'yield-coupling': d => slimDefault(pick(d, ['fxInstrument', 'spreads', 'ceiling', 'note'])),
