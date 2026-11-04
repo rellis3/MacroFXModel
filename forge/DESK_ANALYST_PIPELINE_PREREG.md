@@ -217,6 +217,20 @@ so it sees that feed too. It never sees the draft-book section, because it has n
 (A5). The scored book is still the Head's book as written before 08:00 (§3), and the desk is still scored as operated,
 by role version. Inputs only: the scoring, the arms and the hypotheses are unchanged. No hypothesis test had been run.
 
+### A12 — 2026-11-04 — the analyst-scorecard feedback switched ON from the 2026-11-05 run
+Written on 2026-11-04, before the next scored day, by the owner's decision ("I will set SVC_ANALYST_SCORECARD_FEEDBACK").
+From the desk run of **2026-11-05** onward, service `analystScorecardFeedback` is on (`SVC_ANALYST_SCORECARD_FEEDBACK=1`
+on the server): the Global Manager, the Currency Manager and the Head read the section "Analyst track record
+(scorecard)" described in A10 before ruling. What was known when this was written: no counted day had been scored (the
+one scored day, 2026-11-03, does not count in the test), and the scorecard held no analyst with ten scored mornings, so
+every weight was 1.0 and every record "unproven"; the switch was not chosen in response to any result. The weights move
+slowly (0.5 to 1.5, shrunk towards 1.0) and every record stays "unproven" for its first ten mornings, so the rulings
+see little difference at first. Nothing else changes: H1-H5, the gate, the controls, the scoring and the judgement date
+are as before; the single-prompt control (H2) never reads the scorecard. The desk is scored as operated; each run records
+`run.trackRecord` (on or off, as of which scored day), and the verdict reports H1 for the days before and after
+2026-11-05 separately, as description, never as a scored cell. If the switch is turned off again, that is a further
+amendment naming the date.
+
 ---
 
 ## RESULTS — not run
