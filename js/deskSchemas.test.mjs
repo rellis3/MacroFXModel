@@ -62,7 +62,7 @@ t('head book: a missing or unreadable instrument is REVIEW and noted, a slash pa
   assert.equal(v.value.instruments.GOLD.rating, RATING_REVIEW); assert.ok(v.value.instruments.GOLD.missing);
   assert.equal(v.value.instruments.NQ.rating, RATING_REVIEW);
   assert.equal(v.value.instruments.EURUSD.rating, 'FLAT');
-  assert.ok(v.notes.some(x => /2 of 41 instruments are REVIEW/.test(x)));
+  assert.ok(v.notes.some(x => new RegExp(`2 of ${allInstruments().length} instruments are REVIEW`).test(x)));
 });
 
 t('head book: fails when most instruments are unreadable, or there are none', () => {

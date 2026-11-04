@@ -15,7 +15,11 @@
  *
  * Pure. Tested in js/deskExposure.test.mjs.
  */
-import { DESK_CCYS, groupOf, instrumentLegs } from './deskPack.js';
+import { DESK_CCYS, DESK_EXTRA_CCYS, groupOf, instrumentLegs } from './deskPack.js';
+
+// Every currency a card can put exposure on: the eight the desk debates plus NOK and SEK (prereg A13), so a book of
+// five EURNOK/USDNOK shorts is capped on NOK like any other currency.
+export const EXPOSURE_CCYS = [...DESK_CCYS, ...DESK_EXTRA_CCYS];
 
 const DIR = { STRONG_LONG: 1.5, LONG: 1, FLAT: 0, SHORT: -1, STRONG_SHORT: -1.5, REVIEW: 0 };
 
@@ -31,14 +35,14 @@ const signedSize = c => (DIR[c?.rating] ?? 0) * (Number.isFinite(c?.size) ? c.si
 
 /** Net exposure per currency, and which cards build it. */
 export function netExposure(cards) {
-  const net = Object.fromEntries(DESK_CCYS.map(c => [c, 0]));
-  const by = Object.fromEntries(DESK_CCYS.map(c => [c, []]));
+  const net = Object.fromEntries(EXPOSURE_CCYS.map(c => [c, 0]));
+  const by = Object.fromEntries(EXPOSURE_CCYS.map(c => [c, []]));
   for (const [name, card] of Object.entries(cards)) {
     const s = signedSize(card);
     if (!s) continue;
     for (const [ccy, sign] of exposureLegs(name)) { net[ccy] += s * sign; by[ccy].push({ name, contrib: s * sign }); }
   }
-  for (const c of DESK_CCYS) net[c] = Math.round(net[c] * 100) / 100;
+  for (const c of EXPOSURE_CCYS) net[c] = Math.round(net[c] * 100) / 100;
   return { net, by };
 }
 
@@ -53,7 +57,7 @@ export function capExposure(cards, { cap = 4 } = {}) {
   const cuts = [];
   for (let pass = 0; pass < 4; pass++) {
     const { net, by } = netExposure(out);
-    const worst = DESK_CCYS.filter(c => Math.abs(net[c]) > cap + 1e-9).sort((a, b) => Math.abs(net[b]) - Math.abs(net[a]))[0];
+    const worst = EXPOSURE_CCYS.filter(c => Math.abs(net[c]) > cap + 1e-9).sort((a, b) => Math.abs(net[b]) - Math.abs(net[a]))[0];
     if (!worst) break;
     const sameSide = by[worst].filter(x => Math.sign(x.contrib) === Math.sign(net[worst]));
     const gross = sameSide.reduce((a, x) => a + Math.abs(x.contrib), 0);

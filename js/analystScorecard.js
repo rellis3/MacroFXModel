@@ -3,7 +3,7 @@
  * rate and a calibration score, and the rulings can give more weight to the analysts who have earned it.
  *
  * WHAT AN ANALYST CALLS. Every analyst report (js/deskSchemas.js validateAnalystReport) is a list of points, each
- * with an impact map {KEY: -2..+2}, where KEY is one of the eight currencies, one of the 41 instruments, or RISK
+ * with an impact map {KEY: -2..+2}, where KEY is one of the eight currencies, one of the 51 instruments, or RISK
  * (global risk appetite). The analyst's call on a key is the SUM of its points' impacts on that key:
  *   direction   the sign of the sum (a zero sum is no call);
  *   conviction  low / medium / high: |sum| 1 is low, 2 medium, 3+ high, then moved one step by the report's own

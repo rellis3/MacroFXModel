@@ -147,6 +147,8 @@ test('legsOf / isFx / labels', () => {
   assert.deepEqual(legsOf('EURUSD'), ['EUR', 'USD']);
   assert.deepEqual(legsOf('GOLD'), [null, 'USD']);
   assert.equal(legsOf('FOO'), null);
+  assert.deepEqual(legsOf('EURNOK'), ['EUR', 'NOK']); assert.deepEqual(legsOf('USDSEK'), ['USD', 'SEK']); assert.equal(oandaOf('USDNOK'), 'USD_NOK');   // prereg A13
+  assert.equal(mentions('the krone and the euro', 'EURNOK', { loose: true }), true);
   assert.equal(isFx('USDJPY'), true); assert.equal(isFx('NQ'), false);
   assert.equal(pairLabel('GBPJPY'), 'GBP/JPY'); assert.equal(oandaOf('EURUSD'), 'EUR_USD'); assert.equal(oandaOf('GOLD'), 'XAU_USD'); assert.equal(oandaOf('NQ'), null);
 });

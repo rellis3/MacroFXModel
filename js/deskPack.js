@@ -34,12 +34,14 @@ export const DESK_PACK_VERSION = 1;
 
 /**
  * The instruments the asset layer covers: every instrument the vol forecast covers (js/volForecastScheduler.js
- * INSTRUMENTS, 41 names, owner's choice 2026-11-03), grouped the way the asset layer batches them. A test keeps
- * this list equal to the scheduler's, so adding an instrument there without adding it here fails the build.
+ * INSTRUMENTS, 41 names, owner's choice 2026-11-03; 51 from 2026-11-04, prereg A13: the six missing G8 crosses and
+ * EURNOK, EURSEK, USDNOK, USDSEK), grouped the way the asset layer batches them. A test keeps this list equal to the
+ * scheduler's, so adding an instrument there without adding it here fails the build.
  */
 export const DESK_UNIVERSE = {
   fx_majors: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'],
-  fx_crosses: ['GBPJPY', 'EURGBP', 'EURJPY', 'EURCHF', 'GBPCHF', 'AUDJPY', 'CADJPY', 'EURAUD', 'EURCAD', 'EURNZD', 'GBPAUD', 'GBPCAD', 'AUDCAD', 'NZDCAD', 'NZDJPY'],
+  fx_crosses: ['GBPJPY', 'EURGBP', 'EURJPY', 'EURCHF', 'GBPCHF', 'AUDJPY', 'CADJPY', 'EURAUD', 'EURCAD', 'EURNZD', 'GBPAUD', 'GBPCAD', 'AUDCAD', 'NZDCAD', 'NZDJPY',
+    'GBPNZD', 'AUDNZD', 'AUDCHF', 'NZDCHF', 'CADCHF', 'CHFJPY', 'EURNOK', 'EURSEK', 'USDNOK', 'USDSEK'],
   indices: ['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
   metals: ['GOLD', 'SILVER', 'COPPER', 'PLATINUM', 'PALLADIUM'],
   energy: ['WTI', 'BRENT', 'NATGAS'],
@@ -52,6 +54,12 @@ export const DESK_SUBSETS = {
   tde: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GBPJPY'],
 };
 export const DESK_CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
+/**
+ * Currencies the desk trades but does not debate (prereg A13): the currency debate and the Head's currency views stay
+ * the eight above; a NOK or SEK pair is read from its EUR/USD leg's ruling plus Norges Bank / the Riksbank, NOK's oil
+ * link and the risk tone (desk/roles/asset_desk.md). They still count in the per-currency exposure cap.
+ */
+export const DESK_EXTRA_CCYS = ['NOK', 'SEK'];
 export const allInstruments = (u = DESK_UNIVERSE) => Object.values(u).flat();
 export const groupOf = name => Object.keys(DESK_UNIVERSE).find(g => DESK_UNIVERSE[g].includes(name)) ?? null;
 
@@ -196,7 +204,7 @@ export const DESK_FEEDS = [
   F('evidence_memory', 'eod-review', 3 * D),
   F('evidence_memory', 'desk-memory', 5 * D),
   F('evidence_memory', 'analyst-scorecard?brief=1', 5 * D),   // build list item 1 (prereg A10): each analyst's running hit rate, calibration and shrunk weight
-  F('evidence_memory', 'book-risk', 4 * D, { timeoutMs: 120_000 }),   // §9ak: the latest book's factor exposure, VaR and scenarios (a cold model = 41 OANDA calls)
+  F('evidence_memory', 'book-risk', 4 * D, { timeoutMs: 120_000 }),   // §9ak: the latest book's factor exposure, VaR and scenarios (a cold model = 51 OANDA calls)
   F('evidence_memory', 'desk-weekly', 8 * D),   // agent 19: the Sunday week view (context for the week, labelled; never a card)   // Phase 4: the desk's own end-of-day reflections (one-day anecdotes, labelled)
 ];
 
