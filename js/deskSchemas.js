@@ -445,6 +445,11 @@ size: 0 to 1.5 (1 = normal). veto: true only when the trade should not be taken 
   "build": [ { "step": "what to build", "files": ["path"], "effort": "S | M | L" } ],
   "fleet": "how it would sit with the existing bots"
 }`,
+  research_reply: `{
+  "reply": "your answer to the owner, in plain words: what you would change, what you need, what the evidence says",
+  "revise": { "thesis": "...", "rules": { "signal": "..." }, "test": { "benchmark": "..." }, "inputs": [ { "what": "...", "status": "have | partial | missing", "how": "..." } ], "buildSteps": ["..."], "killIf": "..." },   // only the fields you change; omit or null if nothing changes
+  "questions": ["what you need the owner to tell you"]   // 0 to 3
+}`,
   validation_review: `{
   "verdict": "pass | fix | reject",   // reject = the design cannot give a trustworthy answer; fix = change the listed items first
   "summary": "one sentence for the owner",

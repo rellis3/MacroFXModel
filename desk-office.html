@@ -262,6 +262,32 @@ function renderResearch() {
 // Phases 23-25 (/api/research-pod): three researchers propose new systems; you mark each one, ask them questions, and send one to the architect.
 const LENS = { quant: 'Quant', macro: 'Macro', flow: 'Flow' }, MARK = { shortlist: 'warn', build: 'ok', park: '', reject: 'bad' };
 let podFilter = 'open';
+const openThreads = new Set();
+const STEPS = ['proposed', 'shortlisted', 'chosen', 'carded', 'preregistered', 'tested'];
+function stepper(c, systems) {
+  if (!c) return '';
+  const done = new Set(['proposed', ...c.steps.filter(s => s.done).map(s => s.stage)]), o = c.outcome, sys = (systems ?? []).find(x => x.id === c.registerId);
+  const end = ['passed', 'failed', 'paper', 'live', 'retired', 'rejected', 'parked'].includes(c.stage) ? `<span class="chip ${c.stage === 'passed' || c.stage === 'paper' || c.stage === 'live' ? 'ok' : c.stage === 'failed' || c.stage === 'rejected' ? 'bad' : ''}">${esc(c.stage)}</span>` : '';
+  return `<div style="margin:6px 0;display:flex;gap:4px;flex-wrap:wrap;align-items:center">${STEPS.map(s => { const st = c.steps.find(x => x.stage === s); return `<span class="chip ${done.has(s) ? 'ok' : ''}" title="${esc(st?.detail ?? '')}" style="${done.has(s) ? '' : 'opacity:.45'}">${s}</span>`; }).join('<span class="muted">›</span>')} ${end}
+<span class="muted" style="margin-left:6px">register id <input data-rid="${esc(c.id)}" value="${esc(c.registerId)}" style="width:170px;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:4px;padding:2px 6px;font:12px var(--mono)"></span>
+<select data-stage="${esc(c.id)}" style="background:var(--bg3);color:var(--tx2);border:1px solid var(--line2);border-radius:4px;font:12px var(--mono)">${['', 'paper', 'live', 'retired'].map(v => `<option value="${v}"${(c.stage === v && v) ? ' selected' : ''}>${v || 'move to…'}</option>`).join('')}</select>
+${sys ? `<a class="btn" href="system-backtest.html?id=${encodeURIComponent(sys.id)}" style="padding:3px 10px">Backtest · ${sys.trades} trades</a>` : ''}</div>
+${o ? `<p class="muted" style="margin:2px 0">Result: ${o.result ? `<b class="${o.result === 'passed' ? 'up' : 'dn'}">${esc(o.result)}</b>` : 'tested, no verdict yet'}${o.failedGates?.length ? ` · failed ${o.failedGates.map(esc).join(', ')}` : ''}${o.verdict ? ` · Evidence Book ${esc(o.verdict)}` : ''}. The researcher sees this next session.</p>` : ''}`;
+}
+async function loadThread(id) {
+  const el = document.querySelector(`[data-thrbody="${CSS.escape(id)}"]`); if (!el) return;
+  const t = await getJson(`/api/research-pod/thread?id=${encodeURIComponent(id)}`), run = t?.job?.status === 'running';
+  el.innerHTML = `${(t.messages ?? []).map(m => `<div style="margin:6px 0;padding:6px 10px;border-left:2px solid ${m.who === 'owner' ? 'var(--acc)' : 'var(--line2)'}"><span class="muted">${m.who === 'owner' ? 'You' : (LENS[m.who] ?? m.who) + ' researcher'} · ${esc(String(m.at).slice(0, 16).replace('T', ' '))}${m.revised ? ' · <b>revised the proposal</b>' : ''}</span><br>${esc(m.text)}${m.questions?.length ? `<br><span class="muted">Asks: ${m.questions.map(esc).join(' · ')}</span>` : ''}</div>`).join('') || '<p class="muted">No messages yet. Ask why, push back, or tell it what to change; it can revise the proposal.</p>'}
+${t?.job?.status === 'error' ? `<p class="muted">Last reply failed: ${esc(t.job.error)}</p>` : ''}
+<div style="display:flex;gap:6px;margin-top:6px"><input data-thrin="${esc(id)}" placeholder="${run ? 'The researcher is answering…' : 'Write to the researcher'}" style="flex:1;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:7px"${run ? ' disabled' : ''}><button class="btn" data-thrsend="${esc(id)}"${run ? ' disabled' : ''}>Send</button></div>`;
+  const send = el.querySelector('[data-thrsend]'), input = el.querySelector('[data-thrin]');
+  const go = async () => { const text = input.value.trim(); if (!text) return; send.disabled = true; input.disabled = true;
+    const r = await fetch('/api/research-pod/thread', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, text }) }).then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
+    if (!r.ok && r.error) { input.disabled = false; send.disabled = false; input.value = text; input.placeholder = r.error; }
+    loadThread(id); const poll = setInterval(async () => { const j = await getJson(`/api/research-pod/thread?id=${encodeURIComponent(id)}`); if (j?.job?.status !== 'running') { clearInterval(poll); loadThread(id); if (j.messages?.at(-1)?.revised) renderPod(); } }, 8000); };
+  if (send) send.onclick = go; if (input) input.onkeydown = e => { if (e.key === 'Enter') go(); };
+  if (run) setTimeout(() => loadThread(id), 8000);
+}
 async function renderPod() {
   const d = await getJson('/api/research-pod'), el = $('podpanel'); if (!el) return;
   if (!d?.ok) { el.innerHTML = `<h2>Research pod</h2><p class="muted">${esc(d?.error ?? 'not available')}</p>`; return; }
@@ -282,7 +308,9 @@ ${lib.length ? lib.map(p => `<div style="border-top:1px solid var(--line);paddin
 <p style="margin:2px 0">${esc(p.thesis)}</p><p class="muted" style="margin:2px 0">Why it should exist: ${esc(p.mechanism)}${p.counterparty ? ` · other side: ${esc(p.counterparty)}` : ''}</p>
 <details><summary class="muted">Rules, test, inputs and build steps · ${esc(p.family ?? '')}</summary><table><tbody>${[['Universe', p.rules.universe], ['Signal', p.rules.signal], ['Entry', p.rules.entry], ['Exit', p.rules.exit], ['Horizon', p.rules.horizon], ['Sizing', p.rules.sizing], ['Test', `${p.test.variable} · must beat ${p.test.benchmark} · placebo ${p.test.placebo}${p.test.horizons ? ` · horizons ${p.test.horizons}` : ''}`], ['Power', p.test.power], ['Kill if', p.killIf], ['Like an existing bot?', p.fleetOverlap]].filter(([, v]) => v).map(([k, v]) => `<tr><td class="muted" style="width:120px">${k}</td><td>${esc(v)}</td></tr>`).join('')}</tbody></table>
 ${p.buildSteps?.length ? `<ol>${p.buildSteps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}</details>
-<p style="margin:4px 0">Needs: ${inputs(p)}</p><p class="muted" style="margin:2px 0">Sources: ${src(p)} · first seen ${esc(p.firstSeen ?? '')}</p>
+<p style="margin:4px 0">Needs: ${inputs(p)}</p><p class="muted" style="margin:2px 0">Sources: ${src(p)} · first seen ${esc(p.firstSeen ?? '')}${p.version > 1 ? ` · version ${p.version}, revised ${esc(String(p.revisedAt).slice(0, 10))}` : ''}</p>
+${stepper(p.lifecycle, d.systems)}
+<details data-thr="${esc(p.id)}"${openThreads.has(p.id) ? ' open' : ''}><summary class="muted">Talk to the ${LENS[p.lens] ?? ''} researcher about this${p.thread ? ` · ${p.thread} message(s)` : ''}${p.threadJob?.status === 'running' ? ' · answering…' : ''}</summary><div data-thrbody="${esc(p.id)}"><p class="muted">Loading…</p></div></details>
 <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${['shortlist', 'build', 'park', 'reject'].map(k => `<button class="btn" data-mark="${esc(p.id)}" data-st="${k}">${k}</button>`).join('')}<input data-note="${esc(p.id)}" placeholder="note for the researchers" value="${esc(p.feedback?.note ?? '')}" style="flex:1;min-width:160px;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:6px">
 <button class="btn" data-card="${esc(p.id)}">${p.card ? 'View system card' : 'Send to the architect'}</button></div></div>`).join('') : `<p class="muted">Nothing under “${podFilter}”.</p>`}`;
   const bl = $('buildpanel');
@@ -296,6 +324,13 @@ ${p.buildSteps?.length ? `<ol>${p.buildSteps.map(x => `<li>${esc(x)}</li>`).join
   document.querySelectorAll('[data-podf]').forEach(x => x.onclick = () => { podFilter = x.dataset.podf; renderPod(); });
   document.querySelectorAll('[data-mark]').forEach(x => x.onclick = async () => { const id = x.dataset.mark, note = document.querySelector(`[data-note="${CSS.escape(id)}"]`)?.value ?? ''; x.disabled = true; await fetch('/api/research-pod/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: x.dataset.st, note }) }).catch(() => null); renderPod(); });
   document.querySelectorAll('[data-card]').forEach(x => x.onclick = () => showCard(x.dataset.card, true));
+  document.querySelectorAll('[data-thr]').forEach(x => { const id = x.dataset.thr; if (x.open) loadThread(id); x.ontoggle = () => { if (x.open) { openThreads.add(id); loadThread(id); } else openThreads.delete(id); }; });
+  const link = async (id, body) => { await fetch('/api/research-pod/link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...body }) }).catch(() => null); renderPod(); };
+  document.querySelectorAll('[data-rid]').forEach(x => x.onchange = () => link(x.dataset.rid, { registerId: x.value.trim() }));
+  document.querySelectorAll('[data-stage]').forEach(x => x.onchange = () => link(x.dataset.stage, { stage: x.value }));
+  const sc = d.scorecard;
+  if (sc) el.insertAdjacentHTML('beforeend', `<h3 style="font-size:14px;margin:16px 0 6px">Scorecard <i class="muted" style="font-style:normal">how far each researcher's ideas get · the pass rate counts only tested ones</i></h3><table><thead><tr><th>Researcher</th><th class="n">Proposed</th><th class="n">You accepted</th><th class="n">Carded</th><th class="n">Pre-registered</th><th class="n">Tested</th><th class="n">Passed</th><th class="n">Failed</th><th class="n">Paper or live</th><th class="n">Rejected</th><th class="n">Pass rate</th></tr></thead><tbody>${Object.entries(sc).map(([k, v]) => `<tr><td>${LENS[k]}</td><td class="n">${v.proposed}</td><td class="n">${v.accepted}</td><td class="n">${v.carded}</td><td class="n">${v.preregistered}</td><td class="n">${v.tested}</td><td class="n up">${v.passed}</td><td class="n dn">${v.failed}</td><td class="n">${v.paperOrLive}</td><td class="n">${v.rejected}</td><td class="n">${v.passRate == null ? '–' : Math.round(v.passRate * 100) + '%'}</td></tr>`).join('')}</tbody></table>
+<p class="muted">Systems with standard outputs: ${d.systems?.length ? d.systems.map(x => `<a href="system-backtest.html?id=${encodeURIComponent(x.id)}">${esc(x.model)}</a> (${x.trades})`).join(' · ') : 'none yet'} · <a href="system-backtest.html">System Backtest page</a></p>`);
 }
 // Phases 24 and 26: the architect's system card, the validation desk's review and the prereg draft.
 async function showCard(id, start) {

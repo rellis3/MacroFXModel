@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>System Backtest</title>
+<meta name="description" content="Any research system's backtest in the desk's standard form: the quant tearsheet, the validation gates, and the Prop Firm Toolkit and Data Terminal CSVs.">
+<style>
+:root{--bg:#0b0d10;--bg2:#12161c;--bg3:#181d24;--line:#262c35;--line2:#333b46;--tx:#eef1f5;--tx2:#a8b1bd;--tx3:#71798a;--acc:#e0a339;--up:#3fb27f;--dn:#e5534b;--mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px 60px}
+a{color:var(--acc)}
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:20px 0 14px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.top h1{font:700 20px var(--mono);margin:0}.top h1 span{color:var(--acc)}
+.sub{color:var(--tx2);font-size:13px}
+.btn{background:var(--bg3);border:1px solid var(--line2);color:var(--tx2);padding:8px 14px;border-radius:5px;font-size:13px;font-family:var(--mono);cursor:pointer;text-decoration:none;display:inline-block}
+.btn:hover{border-color:var(--acc);color:var(--tx)}
+select,input{background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:7px 9px;font:13px var(--mono)}
+.panel{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin:0 0 14px;overflow-x:auto}
+.panel h2{font:700 13px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--tx2);margin:0 0 10px}.panel h2 i{font-style:normal;font-weight:400;text-transform:none;letter-spacing:0;color:var(--tx3);margin-left:6px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:4px 0 10px}
+.tile{background:var(--bg3);border:1px solid var(--line);border-radius:6px;padding:9px 12px}.tile span{display:block;color:var(--tx3);font-size:12px}.tile b{font:700 18px var(--mono)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}th{color:var(--tx3);font-weight:600;font-size:12px}
+.n{font-family:var(--mono);text-align:right}.up{color:var(--up)}.dn{color:var(--dn)}.muted{color:var(--tx3)}
+.chip{display:inline-block;border:1px solid var(--line2);border-radius:999px;padding:1px 8px;font:12px var(--mono);color:var(--tx2)}.chip.ok{border-color:var(--up);color:var(--up)}.chip.bad{border-color:var(--dn);color:var(--dn)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+svg text{fill:var(--tx3);font:11px var(--mono)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="top"><h1>System <span>Backtest</span></h1><span class="sub">Any research system in the standard form: quant tearsheet, gates, Prop Firm Toolkit and Data Terminal CSVs</span>
+<span style="flex:1"></span><a class="btn" href="desk-office.html">Desk Office</a></div>
+<div class="panel"><div class="row"><label class="muted" for="sys">System</label><select id="sys"><option value="">loading…</option></select>
+<span class="muted">or</span><label class="btn" for="file">Load a Data Terminal CSV</label><input type="file" id="file" accept=".csv" hidden>
+<span style="flex:1"></span><label class="muted" for="acct">Account</label><input id="acct" type="number" value="100000" step="1000" style="width:110px"><label class="muted" for="risk">Risk % per trade</label><input id="risk" type="number" value="" placeholder="as traded" step="0.1" style="width:90px"></div>
+<p class="muted" id="src" style="margin:8px 0 0">Systems write their outputs with scripts/systems/writeSystemOutputs.mjs or forge/system_exports.py under analysis/output/systems/&lt;register id&gt;/.</p></div>
+<div id="out"></div>
+</div>
+<script type="module">
+import { normaliseTrades, parseTerminalCsv, tearsheet, toolkitCsv, terminalCsv, london } from './js/systemExports.js';
+const $ = id => document.getElementById(id), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const f = (x, d = 2) => (x == null || !Number.isFinite(+x) ? '–' : (+x).toFixed(d)), cls = x => (x > 0 ? 'up' : x < 0 ? 'dn' : ''), pct = x => (x == null ? '–' : Math.round(x * 100) + '%');
+let CUR = null;
+async function getJson(u) { try { return await (await fetch(u)).json(); } catch (e) { return { ok: false, error: e.message }; } }
+function curve(trades) {
+  const W = 1100, H = 220, P = 34; let eq = 0, peak = 0; const pts = [], dd = [];
+  for (const t of trades) { eq += t.returnPct; peak = Math.max(peak, eq); pts.push(eq); dd.push(eq - peak); }
+  const lo = Math.min(0, ...pts, ...dd), hi = Math.max(0, ...pts), x = i => P + i * (W - 2 * P) / Math.max(1, pts.length - 1), y = v => H - P - (v - lo) * (H - 2 * P) / Math.max(1e-9, hi - lo);
+  const path = a => a.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  const [d0] = london(trades[0].exitMs), [d1] = london(trades.at(-1).exitMs);
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Equity and drawdown in % of equity, summed per trade">
+<line x1="${P}" x2="${W - P}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line2)"/><path d="${path(dd)}" fill="none" stroke="var(--dn)" stroke-width="1" opacity=".7"/><path d="${path(pts)}" fill="none" stroke="var(--acc)" stroke-width="1.6"/>
+<text x="${P}" y="${H - 8}">${d0}</text><text x="${W - P}" y="${H - 8}" text-anchor="end">${d1}</text><text x="4" y="${y(hi) + 4}">${f(hi, 1)}%</text><text x="4" y="${y(lo) + 4}">${f(lo, 1)}%</text></svg>`;
+}
+const table = (title, obj) => `<h3 style="font-size:14px;margin:12px 0 6px">${title}</h3><table><thead><tr><th></th><th class="n">Trades</th><th class="n">Win</th><th class="n">Total %</th><th class="n">Per trade %</th><th class="n">Mean R</th><th class="n">PF</th></tr></thead><tbody>${Object.entries(obj).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${v.trades}</td><td class="n">${pct(v.winRate)}</td><td class="n ${cls(v.totalPct)}">${f(v.totalPct)}</td><td class="n ${cls(v.expectancyPct)}">${f(v.expectancyPct, 3)}</td><td class="n ${cls(v.meanR)}">${f(v.meanR)}</td><td class="n">${f(v.profitFactor)}</td></tr>`).join('')}</tbody></table>`;
+function dl(name, text) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' })); a.download = name; a.click(); }
+function render(d) {
+  CUR = d; const ts = d.tearsheet, pt = ts.perTrade, pf = ts.portfolio, g = d.gates;
+  if (!ts?.ok) { $('out').innerHTML = `<div class="panel"><p class="muted">${esc(ts?.error ?? 'no tearsheet')}</p></div>`; return; }
+  $('out').innerHTML = `<div class="panel"><h2>${esc(d.meta?.model || d.id)} <i>${ts.trades} trades · ${ts.days} days · ${esc(ts.from)} to ${esc(ts.to)} · ${ts.instruments.map(esc).join(', ')}${d.skipped ? ` · ${d.skipped} rows skipped` : ''}</i></h2>
+<div class="tiles"><div class="tile"><span>Sharpe (daily, portfolio)</span><b>${f(pf.sharpe)}</b></div><div class="tile"><span>Sharpe (per trade)</span><b>${f(pt.sharpe)}</b></div><div class="tile"><span>CAGR (1×)</span><b class="${cls(pf.cagr)}">${f(pf.cagr)}%</b></div><div class="tile"><span>Max drawdown</span><b class="dn">${f(pf.maxDD)}%</b></div>
+<div class="tile"><span>Win rate</span><b>${pct(pt.winRate)}</b></div><div class="tile"><span>Profit factor</span><b>${f(pt.profitFactor)}</b></div><div class="tile"><span>Expectancy</span><b class="${cls(pt.expectancy)}">${f(pt.expectancy, 3)}%</b></div><div class="tile"><span>Payoff</span><b>${f(pt.payoff)}</b></div>
+<div class="tile"><span>Sortino</span><b>${f(pt.sortino)}</b></div><div class="tile"><span>Calmar</span><b>${f(pt.calmar)}</b></div><div class="tile"><span>P(profitable), bootstrap</span><b>${pct(pt.bootstrap?.pPositive)}</b></div><div class="tile"><span>Trades a year</span><b>${pt.tradesPerYr}</b></div></div>
+${curve(d.trades)}<p class="muted">Equity (gold) and drawdown from peak (red), in % of equity at the risk each trade was taken at, summed per trade.</p></div>
+<div class="grid2"><div class="panel"><h2>Uncertainty <i>resampling, seeded</i></h2><table><tbody>
+<tr><td>Total return, bootstrap 5 / 50 / 95</td><td class="n">${f(pt.bootstrap.total.p5)} / ${f(pt.bootstrap.total.p50)} / ${f(pt.bootstrap.total.p95)}%</td></tr>
+<tr><td>Sharpe, bootstrap 5 / 50 / 95</td><td class="n">${f(pt.bootstrap.sharpe.p5)} / ${f(pt.bootstrap.sharpe.p50)} / ${f(pt.bootstrap.sharpe.p95)}</td></tr>
+<tr><td>Max drawdown, trade order shuffled 50 / 95 / 99</td><td class="n">${f(pt.montecarlo.maxDD.p50)} / ${f(pt.montecarlo.maxDD.p95)} / ${f(pt.montecarlo.maxDD.p99)}%</td></tr>
+${pf.mcMaxDDBlock ? `<tr><td>Max drawdown, daily block bootstrap 50 / 95 / 99 (vol-targeted)</td><td class="n">${f(pf.mcMaxDDBlock.p50)} / ${f(pf.mcMaxDDBlock.p95)} / ${f(pf.mcMaxDDBlock.p99)}%</td></tr>` : ''}
+${ts.rMultiples.monteCarlo?.ok ? `<tr><td>Drawdown in R, 50 / 95 / 99</td><td class="n">${f(ts.rMultiples.monteCarlo.drawdown.p50)} / ${f(ts.rMultiples.monteCarlo.drawdown.p95)} / ${f(ts.rMultiples.monteCarlo.drawdown.p99)} R</td></tr><tr><td>P(loss over the same number of trades)</td><td class="n">${pct(ts.rMultiples.monteCarlo.pLoss)}</td></tr>` : ''}
+<tr><td>Longest winning / losing run</td><td class="n">${ts.streaks.longestWin} / ${ts.streaks.longestLoss}</td></tr>
+<tr><td>Median MAE / MFE</td><td class="n">${f(ts.rMultiples.maeMedian)} / ${f(ts.rMultiples.mfeMedian)} R</td></tr>
+${pf.acf1 != null ? `<tr><td>Lag-1 autocorrelation of daily results</td><td class="n">${f(pf.acf1, 3)}</td></tr>` : ''}
+${pf.psr != null ? `<tr><td>Probabilistic Sharpe (true Sharpe &gt; 0)</td><td class="n">${f(pf.psr, 3)}</td></tr>` : ''}
+</tbody></table>${ts.costs?.ok ? `<h3 style="font-size:14px;margin:12px 0 6px">Cost stress <i class="muted" style="font-style:normal">break-even at ${f(ts.costs.breakEven, 1)}× costs</i></h3><table><tbody>${ts.costs.rows.map(r => `<tr><td>${r.multiple}× costs</td><td class="n ${cls(r.mean)}">${f(r.mean, 3)} R/trade</td><td class="n">Sharpe ${f(r.sharpe)}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">No cost per trade recorded (meta.costR): cost stress not run.</p>'}</div>
+<div class="panel"><h2>Validation gates <i>the desk's promotion gates</i></h2>${g ? `<p><span class="chip ${g.verdict === 'pass' ? 'ok' : 'bad'}">${esc(g.verdict)}</span> ${g.failed.length ? `failed: ${g.failed.map(esc).join(', ')}` : 'every gate passed'}</p><table><tbody>${g.gates.map(x => `<tr><td><span class="chip ${x.status === 'pass' ? 'ok' : x.status === 'fail' ? 'bad' : ''}">${esc(x.status)}</span></td><td>${esc(x.gate)}</td><td class="muted">${esc(String(x.value ?? '–'))} (${esc(x.need)})</td></tr>`).join('')}</tbody></table>` : '<p class="muted">No harness output under this id yet: run the study through js/harness/runStudy.mjs so FDR, the deflated Sharpe and PBO are on record. These trades alone cannot pass the gates.</p>'}
+<h2 style="margin-top:16px">Exports <i>exact formats</i></h2><div class="row">
+<button class="btn" data-x="pct">Toolkit · % returns</button><button class="btn" data-x="r">Toolkit · R-multiples</button><button class="btn" data-x="cash">Toolkit · currency P&amp;L</button><button class="btn" data-x="terminal">Data Terminal CSV</button></div>
+<p class="muted">Prop Firm Toolkit: <code>Date,Return %,MAE %</code>, <code>date,R,MAE (R)</code>, <code>Trade Date,PnL ($),Risk ($)</code>, one row per trade on its exit date (London). Data Terminal: the C.OG import template, times in London. Risk % (top) rescales the currency file only; blank = as traded.</p></div></div>
+<div class="panel"><h2>Breakdowns</h2><div class="grid2"><div>${table('By year', ts.byYear)}</div><div>${table('By instrument', ts.byInstrument)}${table('By direction', ts.byDirection)}</div></div></div>
+<div class="panel"><h2>Trades <i>latest 50</i></h2><table><thead><tr><th>Entry (London)</th><th>Exit</th><th>Market</th><th>Side</th><th class="n">R</th><th class="n">%</th><th class="n">MAE R</th><th class="n">MFE R</th><th>Tags</th></tr></thead><tbody>${d.trades.slice(-50).reverse().map(t => `<tr><td class="n">${london(t.entryMs).join(' ')}</td><td class="n">${london(t.exitMs).join(' ')}</td><td>${esc(t.instrument)}</td><td>${esc(t.direction)}</td><td class="n ${cls(t.R)}">${f(t.R)}</td><td class="n ${cls(t.returnPct)}">${f(t.returnPct, 3)}</td><td class="n">${f(t.maeR)}</td><td class="n">${f(t.mfeR)}</td><td class="muted">${esc(t.tags.join(' '))}</td></tr>`).join('')}</tbody></table></div>`;
+  document.querySelectorAll('[data-x]').forEach(b => b.onclick = () => {
+    const k = b.dataset.x, account = +$('acct').value || 100000, risk = +$('risk').value > 0 ? +$('risk').value : null, base = CUR.id || 'system';
+    dl(`${base}_${k === 'terminal' ? 'data_terminal' : `toolkit_${k}`}.csv`, k === 'terminal' ? terminalCsv(CUR.trades) : toolkitCsv(CUR.trades, k, { account, riskPct: risk }));
+  });
+}
+async function loadId(id) {
+  if (!id) return; $('out').innerHTML = '<div class="panel"><p class="muted">Loading…</p></div>';
+  const d = await getJson(`/api/system-backtest?id=${encodeURIComponent(id)}`);
+  if (!d.ok) { $('out').innerHTML = `<div class="panel"><p class="muted">${esc(d.error)}</p></div>`; return; }
+  $('src').textContent = `analysis/output/systems/${id}/ · written ${d.meta?.writtenAt ?? '–'} by ${d.meta?.writer ?? 'node'}`; history.replaceState(null, '', `?id=${encodeURIComponent(id)}`); render(d);
+}
+$('sys').onchange = () => loadId($('sys').value);
+$('file').onchange = async () => { const file = $('file').files[0]; if (!file) return; const r = parseTerminalCsv(await file.text());
+  if (!r.trades.length) { $('out').innerHTML = `<div class="panel"><p class="muted">${esc(r.errors[0] ?? 'no trades')}</p></div>`; return; }
+  $('src').textContent = `${file.name} · ${r.trades.length} trades${r.errors.length ? ` · ${r.errors.length} rows skipped` : ''} · read in the browser, nothing uploaded`;
+  render({ id: file.name.replace(/\.csv$/i, ''), meta: { model: file.name }, trades: r.trades, skipped: r.errors.length, tearsheet: tearsheet(r.trades), gates: null }); };
+const list = await getJson('/api/system-backtests'), want = new URLSearchParams(location.search).get('id');
+$('sys').innerHTML = list.ok && list.systems.length ? `<option value="">choose…</option>${list.systems.map(s => `<option value="${esc(s.id)}"${s.id === want ? ' selected' : ''}>${esc(s.model)} · ${s.trades} trades</option>`).join('')}` : '<option value="">no system outputs yet</option>';
+if (want) loadId(want);
+else if (!list.systems?.length) $('out').innerHTML = '<div class="panel"><p class="muted">No system has written its outputs yet. When a research-pod proposal is built, its backtest writes them here; you can also load any Data Terminal CSV above to see it in this form.</p></div>';
+</script>
+</body>
+</html>

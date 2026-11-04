@@ -1,6 +1,6 @@
 // Tests for js/researchPod.js.   node js/researchPod.test.mjs
 import assert from 'node:assert/strict';
-import { WEB_SOURCES, WEB_HOSTS, parseFeed, webDigest, validateProposals, applyFeedback, feedbackBrief, buildList, mergeLibrary, validateCard, cardPrereg } from './researchPod.js';
+import { WEB_SOURCES, WEB_HOSTS, parseFeed, webDigest, validateProposals, applyFeedback, feedbackBrief, buildList, mergeLibrary, validateCard, cardPrereg, lifecycle, setLink, outcomesBrief, scorecard, validateReply, applyRevision, threadText, registerIdOf } from './researchPod.js';
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 
 const rss = `<?xml version="1.0"?><rss><channel><title>X</title><item><title><![CDATA[Carry &amp; momentum in G10]]></title><link>https://ex.com/a</link><pubDate>Mon, 02 Nov 2026 14:37:21 +0000</pubDate><description>&lt;p&gt;Long high &#8220;yielders&#8221;&lt;/p&gt;</description></item><item><title>Second</title><link>https://ex.com/b</link></item></channel></rss>`;
@@ -41,5 +41,33 @@ t('system card: required fields and the prereg draft', () => {
   assert.match(validateCard({ ...card, test: { primary: 'IC' }, kill: [] }).errors[0], /test.benchmark.*kill/);
   const md = cardPrereg(v.value, { id: 'ppp-gap', date: '2026-11-04', proposal: validateProposals(good, 'macro').value.proposals[0] });
   assert.match(md, /^# PPP gap: pre-registration \(DRAFT/); assert.match(md, /Holdout \(untouched until the end\): 2024-2026/); assert.match(md, /Macro researcher/); assert.match(md, /1\. pull CPI \[S\] \(scripts\/x.py\)/);
+});
+t('lifecycle: each stage read from what exists; outcomes fed back; scorecard', () => {
+  const [p] = validateProposals(good, 'macro').value.proposals;
+  assert.equal(lifecycle(p).stage, 'proposed'); assert.equal(registerIdOf(p), 'g10-fair-value-reversion');
+  let fb = applyFeedback({}, p.id, 'build', 'go');
+  const cards = { [p.id]: { card: { name: 'PPP gap' }, review: { verdict: 'fix' } } };
+  assert.equal(lifecycle(p, { fb }).stage, 'chosen');
+  assert.equal(lifecycle(p, { fb, cards }).stage, 'carded');
+  const rows = [{ id: 'ppp-gap', status: 'REGISTERED' }];
+  const c1 = lifecycle(p, { fb, cards, rows }); assert.equal(c1.stage, 'preregistered'); assert.equal(c1.registerId, 'ppp-gap');
+  const tested = lifecycle(p, { fb, cards, rows, systems: { 'ppp-gap': { trades: 120, sharpe: 0.4 } } }); assert.equal(tested.stage, 'tested'); assert.equal(tested.outcome.headline.trades, 120);
+  const failed = lifecycle(p, { fb, cards, rows, checklists: { 'ppp-gap': { verdict: 'fail', failed: ['deflated Sharpe'] } }, evidence: [{ id: 'ppp-gap', verdict: 'null', use: 'Do not trade it.' }] });
+  assert.equal(failed.stage, 'failed');
+  assert.match(outcomesBrief([p], { [p.id]: failed }, 'macro'), /\[failed\]: failed deflated Sharpe; Evidence Book null \("Do not trade it."\)/);
+  assert.equal(outcomesBrief([p], { [p.id]: failed }, 'quant'), '(none of your proposals has moved yet)');
+  fb = setLink(fb, p.id, { stage: 'paper', registerId: 'ppp-gap-v2' }); assert.equal(fb[p.id].status, 'build'); assert.equal(lifecycle(p, { fb, cards }).stage, 'paper'); assert.equal(lifecycle(p, { fb, cards }).registerId, 'ppp-gap-v2');
+  assert.throws(() => setLink(fb, p.id, { stage: 'moon' })); assert.throws(() => setLink(fb, p.id, { registerId: 'Bad Id' }));
+  assert.equal(lifecycle(p, { fb: applyFeedback({}, p.id, 'reject') }).stage, 'rejected');
+  const sc = scorecard([p], { [p.id]: failed }); assert.deepEqual([sc.macro.proposed, sc.macro.carded, sc.macro.tested, sc.macro.failed, sc.macro.passRate], [1, 1, 1, 1, 0]); assert.equal(sc.quant.proposed, 0);
+});
+t('thread: reply, revision with history', () => {
+  const [p] = validateProposals(good, 'macro').value.proposals;
+  assert.equal(validateReply({}).ok, false);
+  const v = validateReply({ reply: 'Monthly works; I would add carry as a control.', revise: { test: { benchmark: 'carry and momentum' }, rules: { horizon: '3m' }, junk: 1 }, questions: ['Which pairs?'] });
+  assert.ok(v.ok); assert.deepEqual(Object.keys(v.value.revise).sort(), ['rules', 'test']);
+  const q = applyRevision(p, v.value.revise, '2026-11-05'); assert.equal(q.version, 2); assert.equal(q.test.benchmark, 'carry and momentum'); assert.equal(q.test.placebo, 'shuffled gaps'); assert.equal(q.rules.horizon, '3m'); assert.equal(q.history[0].test.benchmark, 'carry');
+  assert.equal(applyRevision(p, null), p);
+  assert.match(threadText([{ who: 'owner', text: 'why monthly?', at: '2026-11-05T10:00' }, { who: 'macro', text: 'costs', at: '2026-11-05T10:01' }]), /Owner .*why monthly\?\nMacro researcher/);
 });
 console.log(`researchPod: ${n} tests passed`);

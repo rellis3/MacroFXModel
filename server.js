@@ -232,7 +232,8 @@ import { policyRates as _prRates } from './js/policyRates.js';   // each central
 import { expectations as _cbExpect } from './js/cbExpectations.js';   // what the futures price for each bank
 import { parseFeed as _nwParse, fromFinnhub as _nwFinnhub, mergeWire as _nwMerge, validateRead as _nwValidate, pick as _nwPick, wireText as _nwText } from './js/newsAnalyst.js';   // agent 21
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
-import { RESEARCHERS as _RP_RESEARCHERS, WEB_SOURCES as _RP_WEB, parseFeed as _rpParseFeed, webDigest as _rpWebDigest, validateProposals as _rpValidate, applyFeedback as _rpApplyFeedback, feedbackBrief as _rpFeedbackBrief, buildList as _rpBuildList, mergeLibrary as _rpMerge, validateCard as _rpValidateCard, cardPrereg as _rpPrereg, slug as _rpSlug } from './js/researchPod.js';   // Phases 23-25
+import { RESEARCHERS as _RP_RESEARCHERS, WEB_SOURCES as _RP_WEB, parseFeed as _rpParseFeed, webDigest as _rpWebDigest, validateProposals as _rpValidate, applyFeedback as _rpApplyFeedback, feedbackBrief as _rpFeedbackBrief, buildList as _rpBuildList, mergeLibrary as _rpMerge, validateCard as _rpValidateCard, cardPrereg as _rpPrereg, slug as _rpSlug, lifecycle as _rpLifecycle, setLink as _rpSetLink, outcomesBrief as _rpOutcomes, scorecard as _rpScorecard, validateReply as _rpValidateReply, applyRevision as _rpApplyRevision, threadText as _rpThreadText } from './js/researchPod.js';   // Phases 23-25
+import { normaliseTrades as _sxNormalise, tearsheet as _sxTearsheet, toolkitCsv as _sxToolkitCsv, terminalCsv as _sxTerminalCsv } from './js/systemExports.js';   // §9ac
 import { CATALOGUE as _SYS_CATALOGUE, coverage as _sysCoverage, catalogueText as _sysCatalogueText } from './js/systemCatalogue.js';
 import { harnessChecklist as _vdChecklist, validateReview as _vdValidateReview } from './js/validationDesk.js';   // Phase 26
 import { fleetReport as _fpReport } from './js/fleetPortfolio.js';   // Phases 27-28
@@ -5207,7 +5208,44 @@ svcInterval('deskTheory', async () => {
 // Book and a fresh read of the web; the owner marks each shortlist/build/park/reject and can put a question to the pod;
 // the architect turns a chosen one into a system card and prereg draft; the validation desk reviews a card or a harness
 // study. Proposals only: nothing is run or banked here.
-const _RP = { sessions: 'research_pod_sessions', library: 'research_pod_library', feedback: 'research_pod_feedback', cards: 'research_pod_cards' };
+const _RP = { sessions: 'research_pod_sessions', library: 'research_pod_library', feedback: 'research_pod_feedback', cards: 'research_pod_cards', threads: 'research_pod_threads' };
+// §9ac: the system outputs (analysis/output/systems/<id>/, js/systemExports.js) and the loop context every lifecycle reads.
+const _SYS_DIR = path.join(__dirname, 'analysis', 'output', 'systems');
+function _sysList() {
+  const out = [];
+  for (const id of (fs.existsSync(_SYS_DIR) ? fs.readdirSync(_SYS_DIR) : []).filter(d => /^[a-z0-9][a-z0-9-]{1,80}$/.test(d)).sort()) {
+    const f = path.join(_SYS_DIR, id, 'trades.json'); if (!fs.existsSync(f)) continue;
+    let ts = null; try { ts = JSON.parse(fs.readFileSync(path.join(_SYS_DIR, id, 'tearsheet.json'), 'utf8')); } catch { /* the page computes it */ }
+    let meta = {}, n = null; try { const j = JSON.parse(fs.readFileSync(f, 'utf8')); meta = j.meta ?? {}; n = (j.trades ?? []).length; } catch { continue; }
+    out.push({ id, model: meta.model ?? id, trades: n, from: ts?.from ?? null, to: ts?.to ?? null, sharpe: ts?.portfolio?.sharpe ?? null, maxDD: ts?.portfolio?.maxDD ?? null, writer: meta.writer ?? 'node' });
+  }
+  return out;
+}
+const _sysCache = new Map();
+function _sysLoad(id) {
+  if (!/^[a-z0-9][a-z0-9-]{1,80}$/.test(String(id))) return null;
+  const f = path.join(_SYS_DIR, id, 'trades.json'); if (!fs.existsSync(f)) return null;
+  const mt = fs.statSync(f).mtimeMs, hit = _sysCache.get(id); if (hit?.mt === mt) return hit.data;
+  const j = JSON.parse(fs.readFileSync(f, 'utf8')), { trades, errors } = _sxNormalise(j.trades ?? j, j.meta ?? {});
+  const data = { id, meta: j.meta ?? {}, trades, skipped: errors.length, tearsheet: _sxTearsheet(trades, j.meta ?? {}) };
+  if (_sysCache.size > 30) _sysCache.clear(); _sysCache.set(id, { mt, data });
+  return data;
+}
+function _vdChecklists() {
+  const dir = path.join(__dirname, 'analysis', 'output', 'harness'), out = {};
+  for (const f of (fs.existsSync(dir) ? fs.readdirSync(dir) : []).filter(f => f.endsWith('.json'))) {
+    try { const h = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')), c = _vdChecklist(h); if (c.ok) { out[f.replace(/\.json$/, '')] = c; if (h.id) out[h.id] = c; } } catch { /* not a study output */ }
+  }
+  return out;
+}
+async function _rpLoop(lib) {
+  const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+  _tdOpsNow();
+  const [fb, cards] = await Promise.all([_rpGet(_RP.feedback, {}), _rpGet(_RP.cards, {})]);
+  const ctx = { fb, cards, rows: _roCache.rows ?? [], checklists: _vdChecklists(), systems: Object.fromEntries(_sysList().map(x => [x.id, x])), evidence: DESK_EVIDENCE };
+  const cycles = Object.fromEntries((lib ?? []).map(p => [p.id, _rpLifecycle(p, ctx)]));
+  return { ctx, cycles, scorecard: _rpScorecard(lib, cycles) };
+}
 const _rpGet = async (k, d) => { try { const raw = await kv.get(k); return raw ? JSON.parse(raw) : d; } catch { return d; } };
 let _rpWebCache = { at: 0, reads: null };
 async function _rpWeb() {
@@ -5231,6 +5269,7 @@ async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS) } = {}
   const { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js');
   _tdOpsNow(); const rows = _roCache.rows ?? [];
   const [web, fb, lib] = await Promise.all([_rpWeb(), _rpGet(_RP.feedback, {}), _rpGet(_RP.library, [])]);
+  const loop = await _rpLoop(lib);
   const date = _dpLondonDate(Date.now()), out = { ok: true, id: `${date}-${Date.now().toString(36)}`, date, at: new Date().toISOString(), brief: String(brief).slice(0, 1500), researchers: {}, errors: {} };
   _rpJob && (_rpJob.stage = 'researchers');
   await Promise.all(lenses.filter(l => _RP_RESEARCHERS[l]).map(async lens => {
@@ -5243,6 +5282,8 @@ async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS) } = {}
       ['The Evidence Book (every entry: [tag] claim -> use)', evidenceBrief(DESK_EVIDENCE)],
       ['The research register (id [status] question -> next)', _tdRegisterText(rows)],
       ["The owner's feedback on earlier proposals", _rpFeedbackBrief(fb, lib)],
+      ['What happened to your earlier proposals (stage, failed gates, Evidence Book verdict): learn from it', _rpOutcomes(lib, loop.cycles, lens)],
+      ["The pod's scorecard (proposals that reached each stage, by researcher)", loop.scorecard],
       ['Proposals already on file (do not repeat; build on them if the owner marked build)', lib.slice(0, 40).map(p => `- ${p.id}: ${p.title} [${fb[p.id]?.status ?? 'open'}]`).join('\n') || '(none yet)'],
       ['The web this week (titles, links, first lines)', _rpWebDigest(web, lens)],
       ['The SSRN and arXiv reading list', _tdReadingList(_tdRead('education/papers/open/reading_list.csv'))],
@@ -5275,8 +5316,10 @@ function _rpStart(opts) {
 app.get('/api/research-pod', async (_req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
-    const [sessions, lib, fb, cards] = await Promise.all([_rpGet(_RP.sessions, []), _rpGet(_RP.library, []), _rpGet(_RP.feedback, {}), _rpGet(_RP.cards, {})]);
-    res.json({ ok: true, label: 'proposals and designs, not results', job: _rpJob, sessions: sessions.slice(0, 6), library: lib.map(p => ({ ...p, feedback: fb[p.id] ?? null, card: cards[p.id] ? { at: cards[p.id].at, review: cards[p.id].review?.verdict ?? null } : null })),
+    const [sessions, lib, fb, cards, threads] = await Promise.all([_rpGet(_RP.sessions, []), _rpGet(_RP.library, []), _rpGet(_RP.feedback, {}), _rpGet(_RP.cards, {}), _rpGet(_RP.threads, {})]);
+    const loop = await _rpLoop(lib);
+    res.json({ ok: true, label: 'proposals and designs, not results', job: _rpJob, sessions: sessions.slice(0, 6), scorecard: loop.scorecard, systems: _sysList(),
+      library: lib.map(p => ({ ...p, feedback: fb[p.id] ?? null, lifecycle: loop.cycles[p.id], thread: (threads[p.id] ?? []).length, threadJob: _rpThreadJobs[p.id] ?? null, card: cards[p.id] ? { at: cards[p.id].at, review: cards[p.id].review?.verdict ?? null } : null })),
       buildList: _rpBuildList(lib, fb).slice(0, 25), catalogue: { coverage: _sysCoverage(), systems: _SYS_CATALOGUE }, researchers: _RP_RESEARCHERS, web: _RP_WEB.map(s => ({ id: s.id, label: s.label, lens: s.lens })) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -5291,6 +5334,67 @@ app.post('/api/research-pod/run', (req, res) => {
 app.post('/api/research-pod/feedback', async (req, res) => {
   try { const fb = _rpApplyFeedback(await _rpGet(_RP.feedback, {}), String(req.body?.id ?? ''), req.body?.status, req.body?.note); await kv.put(_RP.feedback, JSON.stringify(fb)); res.json({ ok: true, feedback: fb[req.body.id] }); }
   catch (e) { res.status(400).json({ ok: false, error: e.message }); }
+});
+// POST /api/research-pod/link { id, registerId?, stage?: paper|live|retired|'' }: tie a proposal to its register row, or move it to paper/live.
+app.post('/api/research-pod/link', async (req, res) => {
+  try { const fb = _rpSetLink(await _rpGet(_RP.feedback, {}), String(req.body?.id ?? ''), { registerId: req.body?.registerId, stage: req.body?.stage }); await kv.put(_RP.feedback, JSON.stringify(fb)); res.json({ ok: true, feedback: fb[req.body.id] }); }
+  catch (e) { res.status(400).json({ ok: false, error: e.message }); }
+});
+// A thread per proposal: the owner writes, the proposal's researcher answers (one model call) and may revise it.
+const _rpThreadJobs = {};
+async function _rpThreadReply(id) {
+  const [lib, threads, fb] = await Promise.all([_rpGet(_RP.library, []), _rpGet(_RP.threads, {}), _rpGet(_RP.feedback, {})]);
+  const p = lib.find(x => x.id === id); if (!p) throw new Error(`no proposal ${id}`);
+  const base = _deskLoadRoles().find(r => r.id === _RP_RESEARCHERS[p.lens]?.role); if (!base) throw new Error('no role file');
+  const role = { ...base, output: 'research_reply' }, loop = await _rpLoop(lib), { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js');
+  const { system, prompt } = _deskStagePrompt({ role, pack: { date: _dpLondonDate(Date.now()) }, ledger: DESK_EVIDENCE, sections: [
+    ['Your proposal (current version)', p], ['Where it is now', loop.cycles[id]], ["The owner's mark", fb[id] ?? '(none)'],
+    ['The conversation so far (answer the last message from the owner)', _rpThreadText(threads[id])],
+    ['The data inventory', _rpInventory()], ['The Evidence Book', evidenceBrief(DESK_EVIDENCE)],
+    ['How to answer', 'Answer this proposal only, in plain words. If the owner asks for a change, or a result says the design must change, put only the changed fields in "revise". Never claim a result.'],
+  ] });
+  let v = null, err = '';
+  for (let i = 0; i < 2 && !v; i++) { try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 6_000 }); const x = _rpValidateReply(_parseModelJson(r.text ?? _antText(r), `desk:thread-${p.lens}`)); if (x.ok) v = x.value; else err = x.errors.join('; '); } catch (e) { err = e.message; } }
+  if (!v) throw new Error(err || 'no valid reply');
+  const now = new Date().toISOString(), t2 = await _rpGet(_RP.threads, {});
+  t2[id] = [...(t2[id] ?? []), { who: p.lens, text: v.reply, questions: v.questions, revised: !!v.revise, at: now }].slice(-60);
+  await kv.put(_RP.threads, JSON.stringify(t2));
+  if (v.revise) { const l2 = await _rpGet(_RP.library, []); await kv.put(_RP.library, JSON.stringify(l2.map(x => (x.id === id ? _rpApplyRevision(x, v.revise, now) : x)))); }
+  return v;
+}
+app.get('/api/research-pod/thread', async (req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const id = String(req.query.id ?? ''); res.json({ ok: true, id, messages: (await _rpGet(_RP.threads, {}))[id] ?? [], job: _rpThreadJobs[id] ?? null }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/research-pod/thread', async (req, res) => {
+  try {
+    const id = String(req.body?.id ?? ''), text = String(req.body?.text ?? '').trim().slice(0, 3000);
+    if (!id || !text) return res.status(400).json({ ok: false, error: 'id and text are required' });
+    if (_rpThreadJobs[id]?.status === 'running') return res.status(409).json({ ok: false, error: 'the researcher is still answering' });
+    if (!(await _rpGet(_RP.library, [])).some(p => p.id === id)) return res.status(404).json({ ok: false, error: 'no such proposal' });
+    const threads = await _rpGet(_RP.threads, {}); threads[id] = [...(threads[id] ?? []), { who: 'owner', text, at: new Date().toISOString() }].slice(-60);
+    await kv.put(_RP.threads, JSON.stringify(threads));
+    if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'saved, but no model key to answer' });
+    const job = _rpThreadJobs[id] = { status: 'running', startedAt: Date.now(), error: null };
+    _rpThreadReply(id).then(() => { job.status = 'done'; }).catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
+    res.status(202).json({ ok: true, job });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// §9ac: every system's standard outputs. GET /api/system-backtests: the list. GET /api/system-backtest?id=: trades + the
+// quant tearsheet. GET /api/system-backtest/csv?id=&kind=pct|r|cash|terminal[&account=&risk=]: the toolkit and Data Terminal files.
+app.get('/api/system-backtests', (_req, res) => { try { res.set('Cache-Control', 'no-store'); res.json({ ok: true, dir: 'analysis/output/systems', systems: _sysList() }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+app.get('/api/system-backtest', (req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const d = _sysLoad(String(req.query.id ?? '')); if (!d) return res.status(404).json({ ok: false, error: 'no system outputs for that id (analysis/output/systems/<id>/trades.json)' });
+    const chk = _vdChecklists()[d.id] ?? null; res.json({ ok: true, ...d, gates: chk }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/system-backtest/csv', (req, res) => {
+  try {
+    const d = _sysLoad(String(req.query.id ?? '')); if (!d) return res.status(404).send('no such system');
+    const kind = String(req.query.kind ?? 'pct'), account = Math.max(1000, +req.query.account || 100000), risk = +req.query.risk > 0 ? +req.query.risk : null;
+    const body = kind === 'terminal' ? _sxTerminalCsv(d.trades) : _sxToolkitCsv(d.trades, ['pct', 'r', 'cash'].includes(kind) ? kind : 'pct', { account, riskPct: risk });
+    res.set('Content-Disposition', `attachment; filename="${d.id}_${kind === 'terminal' ? 'data_terminal' : `toolkit_${kind}`}.csv"`).type('text/csv').send(body);
+  } catch (e) { res.status(500).send(e.message); }
 });
 // Phase 24/26: the architect writes a proposal's system card and prereg draft; the validation desk reviews it.
 let _rpCardJob = null;

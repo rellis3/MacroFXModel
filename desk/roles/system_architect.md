@@ -22,4 +22,9 @@ Rules:
 - A build plan in order, with the files to create (a data pull under scripts/, a study under analysis/ or forge/,
   an engine under js/), each S, M or L. Missing data first.
 - Say how it sits with the existing bots: what it would add, and which bot it might duplicate.
+- Every system ends with the desk's standard outputs, so it is judged like every other backtest: the backtest writes
+  its trades in the standard schema with `scripts/systems/writeSystemOutputs.mjs` (Node) or
+  `forge/system_exports.py` (Python) under the register id. That produces the quant tearsheet, the Prop Firm Toolkit
+  CSVs (% returns, R-multiples, currency) and the Data Terminal CSV, and shows the system on system-backtest.html.
+  Make that the last build step, and record MAE and MFE per trade (in R) so the toolkit and the terminal can use them.
 - Never state or imply a result.

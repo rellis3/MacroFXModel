@@ -184,5 +184,102 @@ export function cardPrereg(card, { id, date, proposal } = {}) {
     `- Cells reported: ${c.test.cells.join(', ') || 'one'}${c.test.tuned ? ' (tuned: PBO by CSCV applies)' : ''}`, `- Power: ${c.test.power}`, '- Scoring: the harness (js/harness/runStudy.mjs): vol targeting, measured costs, date-cluster bootstrap, BH-FDR, deflated Sharpe; then the validation desk (js/validationDesk.js).', '');
   L.push('## Kill criteria', ...c.kill.map(k => `- ${k}`), '', '## Known risks', ...c.risks.map(k => `- ${k}`), '');
   L.push('## Fit with the fleet', c.fleet || '(not stated)', '', '## Build plan', ...c.build.map((b, i) => `${i + 1}. ${b.step} [${b.effort}]${b.files.length ? ` (${b.files.join(', ')})` : ''}`), '');
+  L.push('## Standard outputs (required before the validation desk reads it)', `Trades in the standard schema written under the register id \`${id}\` with scripts/systems/writeSystemOutputs.mjs or forge/system_exports.py, giving analysis/output/systems/${id}/:`,
+    '- trades.json (entry and exit times, direction, R, MAE and MFE in R, risk %)', '- tearsheet.json (the quant battery: per-trade and daily-portfolio statistics, bootstrap and Monte Carlo, by instrument, year and direction, cost stress)',
+    '- toolkit_pct.csv, toolkit_r.csv, toolkit_cash.csv (Prop Firm Toolkit formats)', '- data_terminal.csv (Data Terminal import template)', `The system then shows on system-backtest.html?id=${id}.`, '');
   return L.join('\n');
 }
+
+// ── Closing the loop (§9ac): the lifecycle of each proposal, results fed back, a thread per proposal, a scorecard ──
+
+/** Stages a proposal moves through. paper, live and retired are set by the owner; the rest are read from the repo. */
+export const STAGES = ['proposed', 'shortlisted', 'chosen', 'carded', 'preregistered', 'tested', 'passed', 'failed', 'paper', 'live', 'retired', 'parked', 'rejected'];
+const OPEN_ROW = new Set(['CLAIMED', 'REGISTERED', 'RUNNING', 'RE-RUN', 'PREREG', 'DRAFT', 'BLOCKED']);
+
+/** The register id a proposal is tracked under: set by the owner, else the card's name, else the proposal's title. */
+export const registerIdOf = (p, fb = {}, card = null) => fb[p.id]?.registerId || (card?.card?.name ? slug(card.card.name) : null) || slug(p.title);
+
+/**
+ * Where a proposal is now, read from what exists: the owner's mark, the card, the register row, the harness output
+ * (analysis/output/harness/<id>.json via its gate checklist), the system outputs (analysis/output/systems/<id>/) and
+ * the Evidence Book entry. ctx: { fb, cards, rows, checklists: { id: harnessChecklist }, systems: { id: tearsheet
+ * summary }, evidence: [{ id, verdict, use }] }.
+ */
+export function lifecycle(p, { fb = {}, cards = {}, rows = [], checklists = {}, systems = {}, evidence = [] } = {}) {
+  const f = fb[p.id] ?? {}, card = cards[p.id] ?? null, rid = registerIdOf(p, fb, card);
+  const row = rows.find(r => r.id === rid) ?? null, chk = checklists[rid] ?? null, sys = systems[rid] ?? null, ev = evidence.find(e => e.id === rid) ?? null;
+  const steps = [
+    { stage: 'shortlisted', done: ['shortlist', 'build'].includes(f.status) || !!card, detail: f.status ? `marked ${f.status}` : '' },
+    { stage: 'chosen', done: f.status === 'build' || !!card, detail: f.note ?? '' },
+    { stage: 'carded', done: !!card, detail: card ? `review: ${card.review?.verdict ?? 'none'}` : '' },
+    { stage: 'preregistered', done: !!row, detail: row ? `${row.id} [${row.status}]` : `no register row ${rid}` },
+    { stage: 'tested', done: !!(chk || sys || ev || (row && !OPEN_ROW.has(row.status))), detail: [chk ? 'harness output' : '', sys ? `${sys.trades} trades in system outputs` : '', ev ? `Evidence Book: ${ev.verdict}` : ''].filter(Boolean).join(' · ') },
+  ];
+  let outcome = null;
+  if (chk || ev) {
+    const failed = chk?.verdict === 'fail' || (ev && ['null', 'underpowered'].includes(ev.verdict));
+    outcome = { result: failed ? 'failed' : chk?.verdict === 'pass' || ev?.verdict === 'validated' ? 'passed' : null, failedGates: chk?.failed ?? [], verdict: ev?.verdict ?? null, use: ev?.use ?? null,
+      headline: sys ? { trades: sys.trades, sharpe: sys.sharpe ?? null, maxDD: sys.maxDD ?? null } : null };
+  } else if (sys) outcome = { result: null, failedGates: [], verdict: null, use: null, headline: { trades: sys.trades, sharpe: sys.sharpe ?? null, maxDD: sys.maxDD ?? null } };
+  let stage = 'proposed';
+  for (const s of steps) if (s.done) stage = s.stage;
+  if (outcome?.result) stage = outcome.result;
+  if (['paper', 'live', 'retired'].includes(f.stage)) stage = f.stage;
+  if (f.status === 'reject') stage = 'rejected'; else if (f.status === 'park' && !card) stage = 'parked';
+  return { id: p.id, lens: p.lens, stage, registerId: rid, steps, outcome };
+}
+
+/** Owner links and stage overrides: { registerId?, stage?: paper|live|retired|'' } on top of the mark. */
+export function setLink(fb, id, { registerId, stage } = {}) {
+  const cur = { ...(fb?.[id] ?? { status: 'build', note: '', at: new Date().toISOString() }) };
+  if (registerId !== undefined) { if (registerId && !/^[a-z0-9][a-z0-9-]{1,80}$/.test(registerId)) throw new Error('registerId must be a register row id'); cur.registerId = registerId || undefined; }
+  if (stage !== undefined) { if (stage && !['paper', 'live', 'retired'].includes(stage)) throw new Error('stage must be paper, live or retired'); cur.stage = stage || undefined; }
+  return { ...(fb ?? {}), [id]: cur };
+}
+
+/** What happened to a researcher's earlier proposals, for its next session's prompt. */
+export function outcomesBrief(lib, cycles, lens) {
+  const L = (lib ?? []).filter(p => p.lens === lens).map(p => ({ p, c: cycles[p.id] })).filter(x => x.c && x.c.stage !== 'proposed');
+  if (!L.length) return '(none of your proposals has moved yet)';
+  return L.map(({ p, c }) => { const o = c.outcome;
+    return `- ${p.title} [${c.stage}]${o?.failedGates?.length ? `: failed ${o.failedGates.join(', ')}` : ''}${o?.verdict ? `; Evidence Book ${o.verdict}${o.use ? ` ("${o.use.slice(0, 160)}")` : ''}` : ''}${o?.headline ? `; ${o.headline.trades} trades, Sharpe ${o.headline.sharpe ?? '?'}` : ''}`; }).join('\n');
+}
+
+/** Per researcher: how many proposals reached each point, and the pass rate of those tested. */
+export function scorecard(lib, cycles) {
+  const out = {};
+  for (const lens of Object.keys(RESEARCHERS)) {
+    const c = (lib ?? []).filter(p => p.lens === lens).map(p => cycles[p.id]).filter(Boolean);
+    const at = s => c.filter(x => x.steps.find(y => y.stage === s)?.done).length;
+    const passed = c.filter(x => x.outcome?.result === 'passed').length, failed = c.filter(x => x.outcome?.result === 'failed').length;
+    out[lens] = { proposed: c.length, accepted: at('shortlisted'), carded: at('carded'), preregistered: at('preregistered'), tested: at('tested'), passed, failed,
+      paperOrLive: c.filter(x => ['paper', 'live'].includes(x.stage)).length, rejected: c.filter(x => x.stage === 'rejected').length,
+      passRate: passed + failed ? +(passed / (passed + failed)).toFixed(2) : null };
+  }
+  return out;
+}
+
+/** A researcher's reply in a proposal's thread: { reply, revise?, questions[] }. revise holds only changed fields. */
+export function validateReply(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return { ok: false, errors: ['reply is not a JSON object'] };
+  const reply = str(obj.reply, 2500); if (!reply) return { ok: false, errors: ['reply missing'] };
+  const r = obj.revise && typeof obj.revise === 'object' ? obj.revise : null, revise = {};
+  if (r) {
+    for (const k of ['title', 'thesis', 'mechanism', 'counterparty', 'killIf', 'fleetOverlap']) if (str(r[k], 900)) revise[k] = str(r[k], 900);
+    if (r.rules && typeof r.rules === 'object') revise.rules = Object.fromEntries(['universe', 'signal', 'entry', 'exit', 'horizon', 'sizing'].filter(k => str(r.rules[k], 500)).map(k => [k, str(r.rules[k], 500)]));
+    if (r.test && typeof r.test === 'object') revise.test = Object.fromEntries(['variable', 'benchmark', 'placebo', 'horizons', 'power'].filter(k => str(r.test[k], 400)).map(k => [k, str(r.test[k], 400)]));
+    if (Array.isArray(r.inputs)) revise.inputs = arr(r.inputs, 10, i => (str(i?.what, 200) ? { what: str(i.what, 200), status: one(i?.status, ['have', 'partial', 'missing'], 'missing'), how: str(i?.how, 300) ?? '' } : null));
+    if (Array.isArray(r.buildSteps)) revise.buildSteps = arr(r.buildSteps, 8, s => str(s, 240));
+  }
+  return { ok: true, value: { reply, revise: Object.keys(revise).length ? revise : null, questions: arr(obj.questions, 3, q => str(q, 300)) } };
+}
+
+/** Apply a revision to a proposal: changed fields merged, version bumped, the previous text kept (last 5). */
+export function applyRevision(p, revise, at = new Date().toISOString()) {
+  if (!revise) return p;
+  const prev = { version: p.version ?? 1, at: p.revisedAt ?? p.lastSeen ?? null, thesis: p.thesis, rules: p.rules, test: p.test };
+  return { ...p, ...revise, rules: { ...p.rules, ...(revise.rules ?? {}) }, test: { ...p.test, ...(revise.test ?? {}) }, version: (p.version ?? 1) + 1, revisedAt: at, history: [prev, ...(p.history ?? [])].slice(0, 5) };
+}
+
+/** A thread as prompt text, oldest first. */
+export const threadText = (msgs, lens) => (msgs ?? []).map(m => `${m.who === 'owner' ? 'Owner' : RESEARCHERS[m.who]?.label ?? m.who} (${String(m.at).slice(0, 16)}): ${m.text}`).join('\n') || '(no messages yet)';

@@ -1012,6 +1012,36 @@ an architect writes the spec, the portfolio side asks how it fits the fleet. All
   the fleet's Sharpe; historical VaR and expected shortfall; a bootstrap of fleet days for the drawdown it could have
   had; correlation breaks; and drift (the live monitor) per bot. Description, not advice.
 
+## 9ac. Closing the research loop, and the standard outputs every new system produces (2026-11-04)
+
+**The loop** (`js/researchPod.js`; Desk Office Research tab):
+- **Lifecycle per proposal**, read from what exists, never typed in: proposed → shortlisted → chosen → carded →
+  preregistered (a register row under its register id) → tested (a harness output, system outputs or an Evidence Book
+  entry under that id) → passed or failed (the validation gates and the Evidence Book verdict). Paper, live and retired
+  are the owner's to set (`POST /api/research-pod/link { id, registerId?, stage? }`). The register id defaults to the
+  card's name (slugged) and can be set by the owner, so a study claimed under another id still links.
+- **Results fed back**: each session tells each researcher what happened to its earlier proposals (stage, failed
+  gates, the Evidence Book verdict and its "use" line), and the pod's scorecard, so a failure changes the next idea.
+- **A thread per proposal** (`GET/POST /api/research-pod/thread`, KV `research_pod_threads`): the owner writes, the
+  proposal's own researcher answers (one model call, schema `research_reply`) and may revise the proposal; a revision
+  bumps its version and keeps the last five versions.
+- **Scorecard per researcher**: proposed, accepted by the owner, carded, pre-registered, tested, passed, failed, on
+  paper or live, rejected, and the pass rate of the tested ones.
+
+**Standard outputs** (`js/systemExports.js`, `forge/system_exports.py`, `scripts/systems/writeSystemOutputs.mjs`):
+every system built from a proposal writes its trades under its register id to `analysis/output/systems/<id>/`, which
+gives the same outputs as the desk's other backtests:
+- `trades.json` in one standard schema (times, direction, R, MAE and MFE in R, risk %)
+- `tearsheet.json`: js/backtestStats.js (per-trade battery, bootstrap, Monte Carlo) and portfolioStats on the daily
+  series (the honest Sharpe, vol-targeted CAGR/DD, block bootstrap, autocorrelation, probabilistic Sharpe), by
+  instrument, year and direction, streaks, R Monte Carlo and cost stress
+- the Prop Firm Toolkit CSVs in C.OG's three formats (`Date,Return %,MAE %`; `date,R,MAE (R)`;
+  `Trade Date,PnL ($),Risk ($)`) and the Data Terminal CSV (the C.OG import template, as SignalCopier writes it)
+The Node and Python writers are checked byte for byte against `tests/fixtures/system_exports/`. The system then shows
+on **system-backtest.html** (`/api/system-backtests`, `/api/system-backtest?id=`, `/api/system-backtest/csv`) with its
+validation gates and export buttons; any Data Terminal CSV can also be loaded there in the browser. The architect's
+card and prereg draft now require these outputs as the last build step.
+
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
