@@ -65,7 +65,8 @@ test('transforms: log changes for prices, differences for rates, z-score', () =>
 });
 test('spec: whitelist, bounded horizons, stable id', () => {
   assert.throws(() => normaliseSpec({ x: 'fred:NOPE', y: 'oanda:EURUSD' }), /unknown series/);
-  assert.throws(() => normaliseSpec({ x: 'oanda:EURUSD', y: 'oanda:EURUSD' }), /same series/);
+  assert.equal(normaliseSpec({ x: 'oanda:EURUSD', y: 'oanda:EURUSD' }).ownPast, true, 'own past is allowed');
+  assert.equal(normaliseSpec({ x: 'fred:DGS2', y: 'oanda:EURUSD' }).ownPast, undefined);
   const s = normaliseSpec({ x: 'fred:DGS2', y: 'oanda:USDJPY', horizons: [60, 1, 1, 7, 5, 2, 10] });
   assert.deepEqual(s.horizons, [1, 2, 5, 10]); assert.equal(s.xTransform, 'chg5');
   assert.equal(specId(s), specId(normaliseSpec({ x: 'fred:DGS2', y: 'oanda:USDJPY', horizons: [10, 5, 2, 1] })));
@@ -84,4 +85,17 @@ test('suggest: Y from the universe, X from the signal words, horizons from the h
   const g = suggestSpec({ rules: { universe: ['USD/JPY'], signal: 'a 2-year yield spike when the VIX is calm', horizon: '5 days to 2 weeks' } });
   assert.equal(g.y, 'oanda:USDJPY'); assert.equal(g.x, 'fred:VIXCLS'); assert.deepEqual(g.horizons, [5, 10]);
   assert.deepEqual(suggestSpec({}).horizons, [1, 5, 20]);
+});
+
+test('own past: planted mean reversion is found with a negative effect and never reads CONTEXT; a random walk does not', () => {
+  // weekly reversal: each day gives back 40% of the past five days' move
+  const D = days(6000), rng = mulberry32(21), g = () => { const u = Math.max(1e-12, rng()), v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  const rets = []; for (let i = 0; i < D.length; i++) { const past = rets.slice(-5).reduce((a, b) => a + b, 0); rets.push(0.006 * g() - 0.08 * past); }
+  let p = 100; const s = D.map((date, i) => { p *= Math.exp(rets[i]); return { date, value: p }; });
+  const sp = normaliseSpec({ x: 'oanda:EURSEK', y: 'oanda:EURSEK', horizons: [1, 5], xTransform: 'chg5' });
+  const r = runQuickTest({ spec: sp, x: s, y: s, kinds: { x: 'price', y: 'price' } });
+  assert.equal(r.ownPast, true); assert.notEqual(r.verdict, 'CONTEXT'); assert.equal(r.verdict, 'VALIDATED', r.why);
+  assert.ok(r.horizons.find(c => c.pass).oos.d < 0, 'reversal = negative effect'); assert.match(r.why, /Own past/);
+  const W = world(6000, 22), rw = runQuickTest({ spec: sp, x: W.y, y: W.y, kinds: { x: 'price', y: 'price' } });
+  assert.notEqual(rw.verdict, 'CONTEXT'); assert.notEqual(rw.verdict, 'VALIDATED', rw.why);
 });

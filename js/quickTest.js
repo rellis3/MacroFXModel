@@ -76,7 +76,7 @@ export function normaliseSpec(spec = {}, { catalogue = CATALOGUE } = {}) {
   const x = String(spec.x ?? ''), y = String(spec.y ?? '');
   if (!catalogue[x]) throw new Error(`x: unknown series "${x}" (choose from the catalogue)`);
   if (!catalogue[y]) throw new Error(`y: unknown series "${y}" (choose from the catalogue)`);
-  if (x === y) throw new Error('x and y are the same series');
+  const ownPast = x === y;   // own past: does a market's move predict its own later move (momentum / mean reversion)
   const horizons = [...new Set((Array.isArray(spec.horizons) ? spec.horizons : [1, 5, 20]).map(Number))].filter(h => HORIZONS.includes(h)).sort((a, b) => a - b).slice(0, 4);
   if (!horizons.length) throw new Error(`horizons: choose up to four of ${HORIZONS.join(', ')}`);
   const xTransform = X_TRANSFORMS[spec.xTransform] ? spec.xTransform : 'chg5';
@@ -87,7 +87,7 @@ export function normaliseSpec(spec = {}, { catalogue = CATALOGUE } = {}) {
     const op = c.op === 'below' ? 'below' : 'above', pct = Math.min(95, Math.max(5, Math.round(Number(c.pct ?? 50))));
     condition = { series: c.series, transform: X_TRANSFORMS[c.transform] ? c.transform : 'level', op, pct };
   }
-  return { x, y, horizons, xTransform, condition };
+  return ownPast ? { x, y, horizons, xTransform, condition, ownPast: true } : { x, y, horizons, xTransform, condition };
 }
 /** A stable id for a spec (the cache key). */
 export function specId(s) {
@@ -171,7 +171,9 @@ export function runQuickTest({ spec, x, y, cData = null, kinds = {}, today = nul
   }
   const nLL = lags.find(l => l.k === 0)?.n ?? 0, band = r4(1.96 / Math.sqrt(Math.max(1, nLL)));
   const peak = lags.reduce((m, l) => (fin(l.r) && Math.abs(l.r) > Math.abs(m.r ?? 0) ? l : m), { k: null, r: 0 });
-  const r0 = lags.find(l => l.k === 0)?.r ?? 0, sameDay = Math.abs(r0) > 2.58 / Math.sqrt(Math.max(1, nLL)) && Math.abs(r0) >= 0.10;
+  // own past: X and Y are one series, so the same-day correlation is X with itself, not co-movement; never CONTEXT
+  const ownPast = !!spec.ownPast || spec.x === spec.y;
+  const r0 = lags.find(l => l.k === 0)?.r ?? 0, sameDay = !ownPast && Math.abs(r0) > 2.58 / Math.sqrt(Math.max(1, nLL)) && Math.abs(r0) >= 0.10;
 
   // buckets (walk-forward quintiles) and the condition (walk-forward percentile)
   const [q20, q80] = walkQuantiles(xs, [0.2, 0.8]);
@@ -209,11 +211,12 @@ export function runQuickTest({ spec, x, y, cData = null, kinds = {}, today = nul
   }
   const any = cells.find(c => c.pass);
   const verdict = any ? 'VALIDATED' : sameDay ? 'CONTEXT' : cells.every(c => c.powered) ? 'NULL' : 'UNDERPOWERED';
-  const why = any ? `h=${any.h}: OOS effect ${any.oos.d} [${any.oos.lo}, ${any.oos.hi}], Holm p ${any.holmP}, same sign in-sample (p ${any.is.p}). Exploratory: a candidate for a prereg on fresh data, not a result.`
+  const op = ownPast ? `Own past (negative effect = moves reverse, positive = they continue). ` : '';
+  const why = op + (any ? `h=${any.h}: OOS effect ${any.oos.d} [${any.oos.lo}, ${any.oos.hi}], Holm p ${any.holmP}, same sign in-sample (p ${any.is.p}). Exploratory: a candidate for a prereg on fresh data, not a result.`
     : verdict === 'CONTEXT' ? `X and Y move together the same day (r ${r0}, n ${nLL}) but X does not lead Y at any horizon tried: attribution, not a forecast.`
       : verdict === 'NULL' ? `No horizon passes and every one could have found an effect of ${BAR_D} SD (MDE ${cells.map(c => c.oos.mde).join(' / ')}).`
-        : `No horizon passes, and ${cells.filter(c => !c.powered).map(c => `h=${c.h}`).join(', ')} could not have found an effect of ${BAR_D} SD (MDE ${cells.map(c => c.oos?.mde ?? '–').join(' / ')}): an empty answer, not a no.`;
-  return { ...base, quality: qualityOut, leadLag: { lags, band, peak: { k: peak.k, r: peak.r }, sameDay: { r: r0, significant: sameDay } }, horizons: cells, verdict, why };
+        : `No horizon passes, and ${cells.filter(c => !c.powered).map(c => `h=${c.h}`).join(', ')} could not have found an effect of ${BAR_D} SD (MDE ${cells.map(c => c.oos?.mde ?? '–').join(' / ')}): an empty answer, not a no.`);
+  return { ...base, ownPast, quality: qualityOut, leadLag: { lags, band, peak: { k: peak.k, r: peak.r }, sameDay: { r: r0, significant: sameDay } }, horizons: cells, verdict, why };
 }
 
 /** A short summary row for lists. */
