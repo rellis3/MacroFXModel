@@ -252,6 +252,7 @@ import { watchPlan as _twPlan, check as _twCheck, message as _twMessage } from '
 import { tradeRows as _jcRows, coach as _jcCoach, execution as _jcExec } from './js/deskJournal.js';   // Phases 8 and 13
 import { parseRegister as _tdParseRegister, opsReport as _tdOps, outline as _tdOutline, section as _tdSection, readingList as _tdReadingList, registerText as _tdRegisterText, screen as _tdScreen, validateTheories as _tdValidate } from './js/theoryDesk.js';   // Phases 9 and 12
 import { upcoming as _rpUpcoming, playbookText as _rpPlaybookText } from './js/releasePlaybook.js';
+import { searchUrls as _litSearchUrls, PARSERS as _LIT_PARSERS, LIT_SOURCES as _LIT_SOURCES, apiError as _litApiError, dedupe as _litDedupe, titleMatch as _litTitleMatch, isBlockedPage as _litBlocked, arxivHtml as _litArxivHtml, pageMeta as _litPageMeta, htmlToText as _litHtmlToText, cleanPdfText as _litCleanPdf, identifyRef as _litIdentify, lookupUrls as _litLookup, parseOpenAlex as _litParseOpenAlex, parseCrossref as _litParseCrossref, parseArxiv as _litParseArxiv, urlRecord as _litUrlRecord, textRecord as _litTextRecord, libraryIndex as _litLibIndex, libraryText as _litLibText, paperForReader as _litForReader, excerpt as _litExcerpt, validatePaperNotes as _litValidateNotes, noteLine as _litNoteLine, validateDossier as _litValidateDossier, validateQueries as _litValidateQueries, rankPapers as _litRank, readingPlan as _litPlan, findPaper as _litFind, mergePapers as _litMerge, addCitations as _litCite, relevance as _litRelevance, feedRecords as _litFeedRecords, weeklyTopic as _litWeeklyTopic, LENS_INTERESTS as _litInterests, dossierSummary as _litDossierSummary } from './js/literature.js';   // §9ah the literature desk
 import { currencyStrength as _evCcy, dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
@@ -5340,6 +5341,10 @@ async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS) } = {}
   const [web, fb, lib] = await Promise.all([_rpWeb(), _rpGet(_RP.feedback, {}), _rpGet(_RP.library, [])]);
   const loop = await _rpLoop(lib);
   const date = _dpLondonDate(Date.now()), out = { ok: true, id: `${date}-${Date.now().toString(36)}`, date, at: new Date().toISOString(), brief: String(brief).slice(0, 1500), researchers: {}, errors: {} };
+  // §9ah: before they write, the researchers read: a few new papers per lens go into the paper library (bounded: 4 calls)
+  _rpJob && (_rpJob.stage = 'literature: reading new papers');
+  try { out.literature = await _litTimeout(_litScan(web, { brief, lenses }), 12 * 60e3, 'literature scan'); } catch (e) { out.literature = { errors: [e.message] }; }
+  const papers = await _rpGet(_LIT.papers, []), paperIds = new Set(papers.map(p => p.id));
   _rpJob && (_rpJob.stage = 'researchers');
   await Promise.all(lenses.filter(l => _RP_RESEARCHERS[l]).map(async lens => {
     const role = roles.find(r => r.id === _RP_RESEARCHERS[lens].role); if (!role) { out.errors[lens] = 'no role file'; return; }
@@ -5354,11 +5359,12 @@ async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS) } = {}
       ['What happened to your earlier proposals (stage, failed gates, Evidence Book verdict): learn from it', _rpOutcomes(lib, loop.cycles, lens)],
       ["The pod's scorecard (proposals that reached each stage, by researcher)", loop.scorecard],
       ['Proposals already on file (do not repeat; build on them if the owner marked build)', lib.slice(0, 40).map(p => `- ${p.id}: ${p.title} [${fb[p.id]?.status ?? 'open'}]`).join('\n') || '(none yet)'],
+      ['Papers you have read (notes from the paper library; cite their ids in "citations")', _litLibText(papers, { lens, query: brief, max: 20 })],
       ['The web this week (titles, links, first lines)', _rpWebDigest(web, lens)],
       ['The SSRN and arXiv reading list', _tdReadingList(_tdRead('education/papers/open/reading_list.csv'))],
     ] });
     for (let i = 0; i < 2 && !out.researchers[lens]; i++) {
-      try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 12_000 }); const v = _rpValidate(_parseModelJson(r.text ?? _antText(r), `desk:pod-${lens}`), lens);
+      try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 12_000 }); const v = _rpValidate(_parseModelJson(r.text ?? _antText(r), `desk:pod-${lens}`), lens, { paperIds });
         if (v.ok) out.researchers[lens] = { ...v.value, notes: v.notes, model: r.model ?? null }; else out.errors[lens] = v.errors.join('; '); }
       catch (e) { out.errors[lens] = e.message; }
     }
@@ -5372,6 +5378,8 @@ async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS) } = {}
   const sessions = await _rpGet(_RP.sessions, []);
   await kv.put(_RP.sessions, JSON.stringify([out, ...sessions].slice(0, 20)));
   await kv.put(_RP.library, JSON.stringify(_rpMerge(lib, screened, date)));
+  const cites = screened.filter(p => p.citations?.length);
+  if (cites.length) { let pl = await _rpGet(_LIT.papers, []); for (const p of cites) pl = _litCite(pl, p.citations, { proposals: [p.id] }); await kv.put(_LIT.papers, JSON.stringify(pl)); }
   return out;
 }
 function _rpStart(opts) {
@@ -5385,11 +5393,12 @@ function _rpStart(opts) {
 app.get('/api/research-pod', async (_req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
-    const [sessions, lib, fb, cards, threads] = await Promise.all([_rpGet(_RP.sessions, []), _rpGet(_RP.library, []), _rpGet(_RP.feedback, {}), _rpGet(_RP.cards, {}), _rpGet(_RP.threads, {})]);
+    const [sessions, lib, fb, cards, threads, plib] = await Promise.all([_rpGet(_RP.sessions, []), _rpGet(_RP.library, []), _rpGet(_RP.feedback, {}), _rpGet(_RP.cards, {}), _rpGet(_RP.threads, {}), _rpGet(_LIT.papers, [])]);
+    const cited = new Set(lib.flatMap(p => p.citations ?? [])), papers = Object.fromEntries(plib.filter(p => cited.has(p.id)).map(p => [p.id, { title: p.title, year: p.year, url: p.url, claim: p.notes?.claim ?? null }]));
     const loop = await _rpLoop(lib);
     res.json({ ok: true, label: 'proposals and designs, not results', job: _rpJob, sessions: sessions.slice(0, 6), scorecard: loop.scorecard, systems: await _sysList(),
       library: lib.map(p => ({ ...p, feedback: fb[p.id] ?? null, lifecycle: loop.cycles[p.id], thread: (threads[p.id] ?? []).length, threadJob: _rpThreadJobs[p.id] ?? null, card: cards[p.id] ? { at: cards[p.id].at, review: cards[p.id].review?.verdict ?? null } : null })),
-      buildList: _rpBuildList(lib, fb).slice(0, 25), catalogue: { coverage: _sysCoverage(), systems: _SYS_CATALOGUE }, researchers: _RP_RESEARCHERS, web: _RP_WEB.map(s => ({ id: s.id, label: s.label, lens: s.lens })) });
+      papers, buildList: _rpBuildList(lib, fb).slice(0, 25), catalogue: { coverage: _sysCoverage(), systems: _SYS_CATALOGUE }, researchers: _RP_RESEARCHERS, web: _RP_WEB.map(s => ({ id: s.id, label: s.label, lens: s.lens })) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // POST /api/research-pod/run { brief?, lenses?: ['quant','macro','flow'] }: a session now. With a brief, it is the owner's question to the pod.
@@ -5503,6 +5512,349 @@ app.get('/api/research-pod/card', async (req, res) => {
     if (!c) return res.status(404).json({ ok: false, error: 'no card for that proposal yet', job: _rpCardJob });
     if (req.query.format === 'md') return res.type('text/markdown').send(c.prereg);
     res.json({ ok: true, ...c, job: _rpCardJob }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── §9ah: the literature desk. The researchers go to the scholarly web themselves: search arXiv, OpenAlex, Semantic
+// Scholar and Crossref (keyless; OPENALEX_API_KEY / S2_API_KEY / OPENALEX_MAILTO used when set), read the open papers
+// (arXiv HTML, else the PDF via pdf-parse), write structured notes per paper into a paper library, and write a dossier
+// on a hypothesis with testable proposals. Every stage is bounded (model calls counted against a budget, papers capped,
+// a timeout per fetch and per stage); a source or a paper that fails is recorded in the job's errors, not fatal.
+const _LIT = { dossiers: 'research_pod_dossiers', papers: 'research_pod_papers' };
+const _LIT_UA = { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX research/1.0; literature desk)' };
+const _litEnv = () => ({ mailto: process.env.OPENALEX_MAILTO || '', openalexKey: process.env.OPENALEX_API_KEY || '' });
+const _litCool = {};   // source -> time until which it is skipped after a 429 (the keyless budgets are shared per IP)
+const _litSleep = ms => new Promise(r => setTimeout(r, ms));
+function _litTimeout(p, ms, label) {
+  let t; return Promise.race([p, new Promise((_, rej) => { t = setTimeout(() => rej(new Error(`${label}: timed out after ${Math.round(ms / 1000)}s`)), ms); })]).finally(() => clearTimeout(t));
+}
+async function _litFetch(url, { timeout = 20_000, accept = '*/*', headers = {}, maxBytes = 30e6 } = {}) {
+  const r = await fetch(url, { headers: { ..._LIT_UA, Accept: accept, ...headers }, redirect: 'follow', signal: AbortSignal.timeout(timeout) });
+  if (Number(r.headers.get('content-length') ?? 0) > maxBytes) throw new Error(`too large (${r.headers.get('content-length')} bytes)`);
+  const buf = Buffer.from(await r.arrayBuffer());
+  return { ok: r.ok, status: r.status, type: r.headers.get('content-type') ?? '', buf, url: r.url || url, text: () => buf.toString('utf8') };
+}
+const _litIsPdf = x => /pdf/i.test(x.type) || x.buf.subarray(0, 5).toString('latin1') === '%PDF-';
+async function _litPdf(buf) {
+  const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
+  const parsed = await _litTimeout(pdfParse(buf, { max: 45 }), 60_000, 'pdf-parse');
+  return _litCleanPdf(parsed.text);
+}
+async function _litSearchOne(src, q, max) {
+  if ((_litCool[src] ?? 0) > Date.now()) throw new Error(`${src}: skipped, rate limited until ${new Date(_litCool[src]).toISOString().slice(11, 16)} UTC`);
+  const url = _litSearchUrls(q, { max, ..._litEnv() })[src]; if (!url) return [];
+  const headers = src === 's2' && process.env.S2_API_KEY ? { 'x-api-key': process.env.S2_API_KEY } : {};
+  const r = await _litFetch(url, { accept: src === 'arxiv' ? 'application/atom+xml' : 'application/json', headers });
+  if (!r.ok) { if (r.status === 429) _litCool[src] = Date.now() + (src === 'openalex' ? 3600e3 : 10 * 60e3); throw new Error(_litApiError(src, r.status, r.text().slice(0, 1000))); }
+  const body = r.text();
+  return _LIT_PARSERS[src](src === 'arxiv' ? body : JSON.parse(body)).map(x => ({ ...x, queries: [q] }));
+}
+/** Every query against every source; queries one after another (arXiv asks for a pause), sources in parallel. */
+async function _litSearch(queries, { max = 8, errors = [], log = {} } = {}) {
+  const all = [], seenErr = new Set();
+  for (const q of queries) {
+    await Promise.all(_LIT_SOURCES.map(async s => {
+      try { const r = await _litSearchOne(s.id, q, max); all.push(...r); log[s.id] = (log[s.id] ?? 0) + r.length; }
+      catch (e) { log[s.id] ??= 0; const m = e.message.slice(0, 160); if (!seenErr.has(s.id)) { seenErr.add(s.id); errors.push(`search ${m.startsWith(`${s.id}:`) ? m : `${s.id}: ${m}`}`); } }
+    }));
+    if (queries.length > 1) await _litSleep(1500);
+  }
+  return _litDedupe(all);
+}
+async function _litByTitle(title, errors) {
+  const found = await _litSearch([String(title).slice(0, 200)], { max: 5, errors });
+  const best = found.map(r => [r, _litTitleMatch(r.title, title)]).sort((a, b) => b[1] - a[1])[0];
+  return best && best[1] >= 0.6 ? best[0] : null;
+}
+/** The text of a fetched page or PDF: { text, from } or throws. depth: follow a landing page's citation_pdf_url once. */
+async function _litBodyText(x, kind, depth = 0) {
+  if (_litIsPdf(x)) return { text: await _litPdf(x.buf), from: 'pdf', url: x.url };
+  const html = x.text();
+  if (_litBlocked(html)) throw new Error('blocked for automated reads');
+  if (kind === 'arxiv-html') { const h = _litArxivHtml(html); if (h.text.length < 3000) throw new Error('arXiv HTML too short (no HTML version)'); return { text: h.text, from: 'arxiv-html', url: x.url }; }
+  const meta = _litPageMeta(html);
+  if (meta.pdfUrl && depth < 1) { const p = await _litFetch(new URL(meta.pdfUrl, x.url).href, { timeout: 40_000, accept: 'application/pdf' }); if (p.ok) return _litBodyText(p, 'pdf', depth + 1); }
+  const text = _litHtmlToText(html); if (text.length < 4000) throw new Error('only a landing page (no full text)');
+  return { text, from: 'html', url: x.url };
+}
+/** Full text for a record: arXiv HTML, then the arXiv PDF, then any open-access link. */
+async function _litFullText(r) {
+  const tries = [];
+  if (r.arxiv) tries.push(['arxiv-html', `https://arxiv.org/html/${r.arxiv}`], ['pdf', `https://arxiv.org/pdf/${r.arxiv}`]);
+  for (const u of [r.pdfUrl, r.oaUrl]) if (u && /^https?:/.test(u) && !tries.some(t => t[1] === u)) tries.push(['oa', u]);
+  let last = 'no open copy';
+  for (const [kind, url] of tries) {
+    try { const x = await _litFetch(url, { timeout: 40_000, accept: kind === 'arxiv-html' ? 'text/html' : 'application/pdf, text/html;q=0.8' });
+      if (!x.ok) { last = `${kind} HTTP ${x.status}`; continue; }
+      const b = await _litBodyText(x, kind); if (b.text.length > 2000) return b; last = `${kind}: too little text`; }
+    catch (e) { last = `${kind}: ${e.message.slice(0, 120)}`; }
+  }
+  throw new Error(last);
+}
+/** What the owner pasted -> { rec, text?, from? }. */
+async function _litResolve(ref, errors) {
+  const id = _litIdentify(ref); if (!id) throw new Error('nothing to look up');
+  const env = _litEnv();
+  const viaDoi = async doi => {
+    for (const [src, url, parse] of [['openalex', _litLookup.openalexDoi(doi, env), _litParseOpenAlex], ['crossref', _litLookup.crossrefDoi(doi), _litParseCrossref]]) {
+      try { const r = await _litFetch(url, { accept: 'application/json' }); if (!r.ok) { errors.push(_litApiError(src, r.status, r.text().slice(0, 500))); continue; } const rec = parse(JSON.parse(r.text()))[0]; if (rec) return rec; }
+      catch (e) { errors.push(`${src}: ${e.message.slice(0, 160)}`); }
+    }
+    return null;
+  };
+  if (id.kind === 'arxiv') { const r = await _litFetch(_litLookup.arxiv(id.id), { accept: 'application/atom+xml' }); const rec = r.ok ? _litParseArxiv(r.text())[0] : null; if (!rec) throw new Error(`arXiv has no paper ${id.id}`); return { rec }; }
+  if (id.kind === 'doi') { const rec = await viaDoi(id.doi); if (!rec) throw new Error(`no record for DOI ${id.doi}`); return { rec }; }
+  if (id.kind === 'ssrn') {
+    let meta = null;
+    try { const p = await _litFetch(id.url, { accept: 'text/html' }); const h = p.text(); if (p.ok && !_litBlocked(h)) meta = _litPageMeta(h); else errors.push(_litApiError('ssrn', p.status, h.slice(0, 3000))); }
+    catch (e) { errors.push(`ssrn: ${e.message.slice(0, 120)}`); }
+    let rec = await viaDoi(id.doi);
+    if (!rec && meta?.title) rec = await _litByTitle(meta.title, errors);
+    if (!rec && meta?.title) rec = _litUrlRecord(id.url, '', { ...meta, doi: id.doi });
+    if (!rec) throw new Error(`SSRN ${id.id}: the page is blocked and no index has the paper; paste its title or abstract`);
+    if (meta?.pdfUrl) rec.pdfUrl ??= meta.pdfUrl;
+    return { rec };
+  }
+  if (id.kind === 'pdf' || id.kind === 'url') {
+    const x = await _litFetch(id.url, { timeout: 40_000, accept: 'application/pdf, text/html;q=0.9' }); if (!x.ok) throw new Error(`HTTP ${x.status} from ${id.url}`);
+    if (_litIsPdf(x)) { const text = await _litPdf(x.buf); let rec = _litUrlRecord(id.url, text); const better = await _litByTitle(rec.title, errors).catch(() => null); if (better) rec = { ...better, pdfUrl: better.pdfUrl ?? id.url }; return { rec, text, from: 'pdf' }; }
+    const html = x.text(); if (_litBlocked(html)) throw new Error('the page is blocked for automated reads; paste the abstract, the DOI or a PDF link instead');
+    const meta = _litPageMeta(html);
+    let rec = meta.doi ? await viaDoi(meta.doi) : null;
+    if (!rec && meta.title) rec = await _litByTitle(meta.title, errors).catch(() => null);
+    const pageText = _litHtmlToText(html);
+    rec ??= _litUrlRecord(id.url, pageText, meta);
+    if (meta.pdfUrl) rec.pdfUrl ??= new URL(meta.pdfUrl, x.url).href;
+    return { rec, text: pageText.length > 4000 && !meta.pdfUrl ? pageText : null, from: 'html' };
+  }
+  if (id.kind === 'text') return { rec: _litTextRecord(id.text), text: id.text, from: 'pasted' };
+  const rec = await _litByTitle(id.title, errors); if (!rec) throw new Error('no paper with that title found in arXiv, OpenAlex, Semantic Scholar or Crossref'); return { rec };
+}
+/** One bounded model call: counted against the budget, retried once on an invalid reply while the budget lasts. */
+async function _litModel(budget, { role, sections, date, ledger, maxTokens, timeoutMs, label, validate }) {
+  const { system, prompt } = _deskStagePrompt({ role, pack: { date }, ledger, sections });
+  let err = 'no call made';
+  for (let i = 0; i < 2; i++) {
+    if (budget.calls >= budget.max) { err = `model budget used up (${budget.max} calls)`; break; }
+    budget.calls++;
+    try { const r = await callModel({ task: role.tier === 'quick' ? 'desk-analyst' : 'desk-head', system, prompt, maxTokens, timeoutMs }); const v = validate(_parseModelJson(r.text ?? _antText(r), label));
+      if (v.ok) return v; err = v.errors.join('; '); }
+    catch (e) { err = e.message; }
+  }
+  throw new Error(`${label}: ${String(err).slice(0, 200)}`);
+}
+const _litFeedIds = () => _DATA_FEEDS.map(f => `${f.id} (${f.name})`).join('; ');
+/** Read papers ({ rec, text, from }): one call per full-text paper, abstracts eight to a call; three calls at a time. */
+async function _litReadPapers({ items, hypothesis, lib, role, budget, errors, date, ledger, job = null, fullChars = 25_000 }) {
+  const libIds = (lib ?? []).filter(p => p.notes?.claim).map(p => p.id), out = {};
+  const full = items.filter(x => x.text), abs = items.filter(x => !x.text && x.rec.abstract);
+  const batches = [...full.map(x => [x]), ...Array.from({ length: Math.ceil(abs.length / 8) }, (_, i) => abs.slice(i * 8, i * 8 + 8))];
+  let done = 0;
+  const run = async batch => {
+    const ids = batch.map(x => x.rec.id);
+    const sections = [['The hypothesis these papers were found for', hypothesis],
+      ['The library index: papers already read (use these ids in crossRefs)', _litLibIndex(lib, { query: hypothesis, max: 40 })],
+      ['The feeds this repo holds (for testHere)', _litFeedIds()],
+      [`The paper${batch.length > 1 ? 's' : ''} to read (${batch.length}; one note each)`, batch.map(x => _litForReader(x.rec, x.text ? _litExcerpt(x.text, { head: fullChars, tail: 6000 }).text : null)).join('\n\n')]];
+    try { const v = await _litTimeout(_litModel(budget, { role, sections, date, ledger, maxTokens: batch.length > 1 ? 7000 : 3500, timeoutMs: 180_000, label: `lit:reader ${ids[0]}`, validate: o => _litValidateNotes(o, { ids, library: libIds }) }), 400_000, 'reader');
+      for (const n of v.value) out[n.paperId] = n;
+      for (const id of ids) if (!out[id]) errors.push(`reader: no note for ${id}`); }
+    catch (e) { errors.push(`reader ${ids.join(', ').slice(0, 80)}: ${e.message.slice(0, 200)}`); }
+    done += batch.length; if (job) job.stage = `reading: ${done} of ${full.length + abs.length} papers`;
+  };
+  for (let i = 0; i < batches.length; i += 3) await Promise.all(batches.slice(i, i + 3).map(run));
+  return out;
+}
+const _litPaperRow = (p, readFrom) => ({ id: p.id, title: p.title, year: p.year, venue: p.venue, url: p.url, pdfUrl: p.pdfUrl, citations: p.citations, authors: (p.authors ?? []).slice(0, 4), sources: p.sources, score: p.score ?? null, read: readFrom ?? null });
+async function _litSaveDossier(rec) {
+  const all = await _rpGet(_LIT.dossiers, []);
+  await kv.put(_LIT.dossiers, JSON.stringify([rec, ...all.filter(d => d.id !== rec.id)].slice(0, 30)));
+}
+/** The dossier stage: the three lenses in one call, over the notes, the Evidence Book, the register and the data inventory. */
+async function _litSynthesise({ hypothesis, read, unread, budget, date, kind, extra = [] }) {
+  const roles = _deskLoadRoles(), role = roles.find(r => r.id === 'research_synthesist'); if (!role) throw new Error('no role file research_synthesist');
+  const { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js');
+  _tdOpsNow(); const lib = await _rpGet(_RP.library, []);
+  const sections = [[kind === 'paper' ? 'The paper under review (its main claim is the hypothesis)' : "The owner's hypothesis", hypothesis], ...extra,
+    ['Notes on every paper read (cite these ids)', read.map(p => _litNoteLine(p)).join('\n')],
+    ['Found but not read (titles only; do not cite)', (unread ?? []).slice(0, 12).map(p => `- ${p.title} (${p.year ?? '?'})`).join('\n') || '(none)'],
+    ['The Evidence Book (every entry: [tag] claim -> use)', evidenceBrief(DESK_EVIDENCE)],
+    ['The research register (id [status] question -> next)', _tdRegisterText(_roCache.rows ?? [])],
+    ['The data inventory (feeds the server holds)', _rpInventory()],
+    ['Proposals already on file (do not repeat)', lib.slice(0, 40).map(p => `- ${p.id}: ${p.title}`).join('\n') || '(none yet)']];
+  return _litTimeout(_litModel(budget, { role, sections, date, ledger: DESK_EVIDENCE, maxTokens: 12_000, timeoutMs: 300_000, label: 'lit:dossier', validate: o => _litValidateDossier(o, { paperIds: read.map(p => p.id) }) }), 620_000, 'dossier');
+}
+/** POST /api/research-pod/investigate: research an idea end to end. */
+async function _litInvestigate(hypothesis, job) {
+  if (!_aiAnyKey()) throw new Error('no model key');
+  const roles = _deskLoadRoles(), role = id => { const r = roles.find(x => x.id === id); if (!r) throw new Error(`no role file ${id}`); return r; };
+  const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+  const date = _dpLondonDate(Date.now()), at = new Date().toISOString(), id = `idea-${date}-${Date.now().toString(36)}`;
+  const errors = job.errors, budget = job.budget, sources = job.sources;
+  const rec = { id, kind: 'idea', at, date, hypothesis, restated: '', queries: [], names: [], papers: [], paperNotes: {}, read: null, dossier: null, notes: [], errors, calls: 0, sources };
+  // a. the librarian: queries and known literature
+  job.stage = 'librarian: writing the search queries';
+  try { const q = await _litModel(budget, { role: role('librarian'), date, ledger: DESK_EVIDENCE, maxTokens: 1500, timeoutMs: 120_000, label: 'lit:librarian', sections: [['The hypothesis', hypothesis]], validate: _litValidateQueries });
+    rec.restated = q.value.restated; rec.queries = q.value.queries.map(x => x.q); rec.names = q.value.names; }
+  catch (e) { errors.push(e.message); rec.queries = [hypothesis.replace(/\s+/g, ' ').slice(0, 160)]; }
+  // b. search, dedupe, rank
+  const qs = [...rec.queries, ...rec.names.slice(0, 3)];
+  job.stage = `searching ${qs.length} queries in arXiv, OpenAlex, Semantic Scholar and Crossref`;
+  let found = [];
+  try { found = await _litTimeout(_litSearch(qs, { max: 8, errors, log: sources }), 240_000, 'search'); } catch (e) { errors.push(e.message); }
+  const ranked = _litRank(found, [hypothesis, rec.restated, ...rec.queries].filter(Boolean)).slice(0, 18);
+  if (!ranked.length) { rec.errors = errors; await _litSaveDossier(rec); throw new Error(`no papers found (${errors.slice(0, 3).join('; ') || 'every source empty'})`); }
+  // c. read: full text for the open ones, abstracts for the rest, notes already in the library reused
+  const lib = await _rpGet(_LIT.papers, []);
+  const plan = _litPlan(ranked, lib, { total: 18, fullText: 7 });
+  job.stage = `fetching full text for ${plan.full.length} papers`;
+  const fulls = await Promise.all(plan.full.map(async r => { try { return { rec: r, ...(await _litTimeout(_litFullText(r), 120_000, 'full text')) }; } catch (e) { errors.push(`full text ${r.id}: ${e.message.slice(0, 140)}`); return { rec: r, text: null, from: 'abstract' }; } }));
+  const items = [...fulls, ...plan.abstract.map(r => ({ rec: r, text: null, from: 'abstract' }))].filter(x => x.text || x.rec.abstract);
+  const notes = await _litReadPapers({ items, hypothesis, lib, role: role('paper_reader'), budget, errors, date, ledger: DESK_EVIDENCE, job });
+  const fresh = items.filter(x => notes[x.rec.id]).map(x => ({ ...x.rec, notes: notes[x.rec.id], readFrom: x.from === 'abstract' ? 'abstract' : x.from }));
+  const read = [...fresh, ...plan.reuse.map(r => ({ ...r, readFrom: `library (${r.readFrom ?? 'abstract'})` }))];
+  const readFrom = Object.fromEntries(read.map(p => [p.id, p.readFrom]));
+  rec.papers = ranked.map(p => _litPaperRow(p, readFrom[p.id] ?? readFrom[(_litFind(read, p) ?? {}).id]));
+  rec.paperNotes = Object.fromEntries(read.map(p => [p.id, { title: p.title, year: p.year, url: p.url, readFrom: p.readFrom, notes: p.notes }]));
+  rec.read = { full: fresh.filter(p => p.readFrom !== 'abstract').length, abstract: fresh.filter(p => p.readFrom === 'abstract').length, library: plan.reuse.length };
+  let papers = _litMerge(await _rpGet(_LIT.papers, []), fresh.map(p => ({ ...p, forHypothesis: hypothesis })), { at });
+  await kv.put(_LIT.papers, JSON.stringify(papers));
+  if (!read.length) { rec.calls = budget.calls; await _litSaveDossier(rec); throw new Error(`no paper could be read (${errors.slice(-3).join('; ')})`); }
+  // d. the dossier
+  job.stage = `writing the dossier from ${read.length} papers`;
+  try { const v = await _litSynthesise({ hypothesis, read, unread: ranked.filter(p => !readFrom[p.id]), budget, date, kind: 'idea', extra: rec.restated ? [['The librarian restated it as', rec.restated]] : [] });
+    rec.dossier = v.value; rec.notes = v.notes; }
+  catch (e) { errors.push(e.message); }
+  rec.calls = budget.calls;
+  if (rec.dossier) { const cited = [...new Set([...rec.dossier.evidenceFor, ...rec.dossier.evidenceAgainst].flatMap(x => x.papers).concat(rec.dossier.proposals.flatMap(p => p.citations ?? [])))];
+    papers = _litCite(await _rpGet(_LIT.papers, []), cited, { dossier: id }); await kv.put(_LIT.papers, JSON.stringify(papers)); }
+  await _litSaveDossier(rec);
+  if (!rec.dossier) throw new Error(`papers read and saved, but the dossier failed: ${errors.at(-1)}`);
+  return rec;
+}
+/** POST /api/research-pod/paper: review one paper the owner names. */
+async function _litReview(ref, job) {
+  if (!_aiAnyKey()) throw new Error('no model key');
+  const roles = _deskLoadRoles(), reader = roles.find(r => r.id === 'paper_reader'); if (!reader) throw new Error('no role file paper_reader');
+  const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+  const date = _dpLondonDate(Date.now()), at = new Date().toISOString(), id = `paper-${date}-${Date.now().toString(36)}`;
+  const errors = job.errors, budget = job.budget;
+  job.stage = 'finding the paper';
+  const got = await _litTimeout(_litResolve(ref, errors), 120_000, 'finding the paper');
+  let { rec: p, text = null, from = null } = got;
+  if (!text) { job.stage = 'fetching the full text'; try { const f = await _litTimeout(_litFullText(p), 120_000, 'full text'); text = f.text; from = f.from; } catch (e) { errors.push(`full text: ${e.message.slice(0, 140)}`); } }
+  if (!text && !p.abstract) throw new Error('found the paper but no text or abstract to read; paste the abstract instead');
+  const lib = await _rpGet(_LIT.papers, []), held = _litFind(lib, p); if (held) p = { ...p, id: held.id };
+  job.stage = `reading ${from ?? 'the abstract'}`;
+  const hyp = `Review this paper on its own terms: what it claims, how strong the evidence is, and whether it could be tested on this repo's data.${ref && String(ref).length < 300 ? ` (The owner pasted: ${ref})` : ''}`;
+  const notes = await _litReadPapers({ items: [{ rec: p, text, from: from ?? 'abstract' }], hypothesis: hyp, lib, role: reader, budget, errors, date, ledger: DESK_EVIDENCE, job, fullChars: 40_000 });
+  const n = notes[p.id]; if (!n) throw new Error(`the reader could not write notes: ${errors.at(-1) ?? ''}`);
+  const readFrom = text ? from : 'abstract';
+  let papers = _litMerge(lib, [{ ...p, notes: n, readFrom, forHypothesis: n.claim }], { at });
+  await kv.put(_LIT.papers, JSON.stringify(papers));
+  // related papers already in the library may be cited as evidence too
+  const related = papers.filter(x => x.id !== p.id && x.notes?.claim).map(x => ({ x, r: _litRelevance(x, `${p.title} ${n.claim}`) })).filter(o => o.r > 0.15).sort((a, b) => b.r - a.r).slice(0, 8).map(o => o.x);
+  const read = [{ ...p, notes: n, readFrom }, ...related.map(x => ({ ...x, readFrom: `library (${x.readFrom ?? 'abstract'})` }))];
+  const rec = { id, kind: 'paper', at, date, ref: String(ref).slice(0, 500), hypothesis: n.claim, papers: read.map(x => _litPaperRow(x, x.readFrom)), paperNotes: Object.fromEntries(read.map(x => [x.id, { title: x.title, year: x.year, url: x.url, readFrom: x.readFrom, notes: x.notes }])),
+    read: { full: text ? 1 : 0, abstract: text ? 0 : 1, library: related.length }, dossier: null, notes: [], errors, calls: 0, sources: {} };
+  job.stage = 'how it could be tested here';
+  try { const v = await _litSynthesise({ hypothesis: `${p.title}: ${n.claim}`, read, unread: [], budget, date, kind: 'paper' }); rec.dossier = v.value; rec.notes = v.notes; }
+  catch (e) { errors.push(e.message); }
+  rec.calls = budget.calls;
+  if (rec.dossier) { papers = _litCite(await _rpGet(_LIT.papers, []), [p.id], { dossier: id }); await kv.put(_LIT.papers, JSON.stringify(papers)); }
+  await _litSaveDossier(rec);
+  return rec;
+}
+/**
+ * The weekly read (inside _rpRun): per lens, one search (its rotating topic, or the owner's brief) plus the week's
+ * arXiv items, ranked against the lens's interests; the two best papers not yet in the library are read (full text
+ * where open), one reader call per lens. At most 3 reader calls and 6 papers a run.
+ */
+async function _litScan(web, { brief = '', lenses = Object.keys(_RP_RESEARCHERS) } = {}) {
+  const out = { at: new Date().toISOString(), lenses: {}, errors: [] };
+  if (!_aiAnyKey()) { out.errors.push('no model key'); return out; }
+  const roles = _deskLoadRoles(), reader = roles.find(r => r.id === 'paper_reader'); if (!reader) { out.errors.push('no role file paper_reader'); return out; }
+  const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+  const date = _dpLondonDate(Date.now()), budget = { calls: 0, max: 4 }, cache = new Map(), feed = _litFeedRecords(web?.arxiv?.items ?? []);
+  let lib = await _rpGet(_LIT.papers, []);
+  const taken = new Set();
+  for (const lens of lenses) {
+    const topic = brief ? brief.replace(/\s+/g, ' ').slice(0, 160) : _litWeeklyTopic(lens), L = { topic, read: [], errors: [] };
+    out.lenses[lens] = L;
+    try {
+      if (!cache.has(topic)) cache.set(topic, await _litTimeout(_litSearch([topic], { max: 6, errors: L.errors }), 90_000, 'search'));
+      const pool = _litRank(_litDedupe([...cache.get(topic), ...feed]), [topic, ..._litInterests[lens]]).filter(r => r.relevance >= 0.2 && !taken.has(r.id) && !_litFind(lib, r)?.notes);
+      const pick = pool.slice(0, 2); pick.forEach(r => taken.add(r.id));
+      if (!pick.length) continue;
+      const items = await Promise.all(pick.map(async r => { if (!(r.arxiv || r.pdfUrl || r.oaUrl)) return { rec: r, text: null, from: 'abstract' }; try { const f = await _litTimeout(_litFullText(r), 90_000, 'full text'); return { rec: r, text: f.text, from: f.from }; } catch (e) { L.errors.push(`full text ${r.id}: ${e.message.slice(0, 100)}`); return { rec: r, text: null, from: 'abstract' }; } }));
+      // one call per lens: both papers together, full texts cut shorter
+      const hyp = brief ? `The owner's question to the pod: ${brief}` : `The ${_RP_RESEARCHERS[lens].label}'s field this week: ${topic} (${_RP_RESEARCHERS[lens].lens} ideas for FX, indices and commodities)`;
+      const libIds = lib.filter(p => p.notes?.claim).map(p => p.id), ids = items.map(x => x.rec.id);
+      const sections = [['What these papers were found for', hyp], ['The library index: papers already read (use these ids in crossRefs)', _litLibIndex(lib, { query: topic, max: 30 })], ['The feeds this repo holds (for testHere)', _litFeedIds()],
+        [`The papers to read (${items.length}; one note each)`, items.map(x => _litForReader(x.rec, x.text ? _litExcerpt(x.text, { head: 12_000, tail: 4000 }).text : null)).join('\n\n')]];
+      const v = await _litTimeout(_litModel(budget, { role: reader, sections, date, ledger: DESK_EVIDENCE, maxTokens: 6000, timeoutMs: 180_000, label: `lit:scan-${lens}`, validate: o => _litValidateNotes(o, { ids, library: libIds }) }), 400_000, 'reader');
+      const got = items.filter(x => v.value.some(n => n.paperId === x.rec.id)).map(x => ({ ...x.rec, notes: v.value.find(n => n.paperId === x.rec.id), readFrom: x.text ? x.from : 'abstract', forHypothesis: hyp, lens }));
+      lib = _litMerge(lib, got, { at: out.at });
+      L.read = got.map(p => ({ id: p.id, title: p.title, readFrom: p.readFrom }));
+    } catch (e) { L.errors.push(e.message.slice(0, 200)); }
+  }
+  await kv.put(_LIT.papers, JSON.stringify(lib));
+  out.calls = budget.calls;
+  return out;
+}
+let _litJob = null;
+function _litStart(kind, input) {
+  if (_litJob?.status === 'running') return null;
+  const job = _litJob = { status: 'running', kind, input: String(input).slice(0, 300), stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null, errors: [], budget: { calls: 0, max: kind === 'idea' ? 14 : 5 }, sources: {}, result: null };
+  (kind === 'idea' ? _litInvestigate(input, job) : _litReview(input, job))
+    .then(r => { job.status = 'done'; job.result = r.id; job.stage = 'done'; })
+    .catch(e => { job.status = 'error'; job.error = e.message; })
+    .finally(() => { job.finishedAt = Date.now(); });
+  return job;
+}
+const _litJobView = () => (_litJob ? { ..._litJob, calls: _litJob.budget?.calls ?? 0 } : null);
+// POST /api/research-pod/investigate { hypothesis }: research an idea (librarian, search, read, dossier). One job at a time.
+app.post('/api/research-pod/investigate', (req, res) => {
+  const h = String(req.body?.hypothesis ?? '').trim();
+  if (h.length < 12) return res.status(400).json({ ok: false, error: 'write the hypothesis in a sentence or two' });
+  const job = _litStart('idea', h.slice(0, 2000));
+  if (!job) return res.status(409).json({ ok: false, error: 'the literature desk is already working', job: _litJobView() });
+  res.json({ ok: true, job: _litJobView() });
+});
+// POST /api/research-pod/paper { ref }: review one paper (arXiv id or URL, DOI, SSRN link, PDF or page URL, a title, or pasted text).
+app.post('/api/research-pod/paper', (req, res) => {
+  const ref = String(req.body?.ref ?? '').trim();
+  if (!_litIdentify(ref)) return res.status(400).json({ ok: false, error: 'paste a link, an arXiv id, a DOI, a title or the text' });
+  const job = _litStart('paper', ref.slice(0, 120_000));
+  if (!job) return res.status(409).json({ ok: false, error: 'the literature desk is already working', job: _litJobView() });
+  res.json({ ok: true, job: _litJobView() });
+});
+// GET /api/research-pod/dossiers: every dossier (newest first, summaries) and the job.
+app.get('/api/research-pod/dossiers', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const all = await _rpGet(_LIT.dossiers, []);
+    res.json({ ok: true, label: 'literature reviews and proposals, not results', job: _litJobView(), sources: _LIT_SOURCES, dossiers: all.map(_litDossierSummary) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/research-pod/dossier?id=: one dossier in full.
+app.get('/api/research-pod/dossier', async (req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const d = (await _rpGet(_LIT.dossiers, [])).find(x => x.id === String(req.query.id ?? ''));
+    if (!d) return res.status(404).json({ ok: false, error: 'no such dossier' });
+    const lib = await _rpGet(_RP.library, []); res.json({ ok: true, ...d, inLibrary: (d.dossier?.proposals ?? []).filter(p => lib.some(x => x.id === p.id)).map(p => p.id) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/research-pod/dossier/adopt { id, proposalId }: put a dossier's proposal into the pod's library (marks, threads, cards).
+app.post('/api/research-pod/dossier/adopt', async (req, res) => {
+  try { const d = (await _rpGet(_LIT.dossiers, [])).find(x => x.id === String(req.body?.id ?? '')), p = d?.dossier?.proposals?.find(x => x.id === String(req.body?.proposalId ?? ''));
+    if (!p) return res.status(404).json({ ok: false, error: 'no such proposal in that dossier' });
+    const lib = await _rpGet(_RP.library, []), date = _dpLondonDate(Date.now());
+    await kv.put(_RP.library, JSON.stringify(_rpMerge(lib, [{ ...p, dossier: d.id }], date)));
+    if (p.citations?.length) await kv.put(_LIT.papers, JSON.stringify(_litCite(await _rpGet(_LIT.papers, []), p.citations, { proposals: [p.id] })));
+    res.json({ ok: true, id: p.id }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/research-pod/papers: the paper library (notes, cross-references, which dossiers and proposals cite each).
+app.get('/api/research-pod/papers', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const lib = await _rpGet(_LIT.papers, []);
+    res.json({ ok: true, count: lib.length, read: lib.filter(p => p.notes?.claim).length, papers: lib.map(({ keys, history, abstract, ...p }) => ({ ...p, abstract: abstract ? abstract.slice(0, 400) : null })) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/validation/harness: the validation desk's automatic gates on every harness output in the deployed repo.

@@ -58,6 +58,8 @@ export const STORES = {
   research_pod_feedback: R("Research pod: the owner's marks on proposals", 60, { market: false }),
   research_pod_cards: R('Research pod system cards and reviews', 60, { market: false }),
   research_pod_threads: R('Research pod: the conversation on each proposal', 60, { market: false }),
+  research_pod_dossiers: L("Literature desk: dossiers on the owner's hypotheses and paper reviews", 60, { market: false }),
+  research_pod_papers: R('Literature desk: the paper library (notes per paper, read weekly by the pod)', 8, { market: false }),
   system_reviews: R('Post-mortem panel reviews of each backtested system', 60, { market: false }),
   system_index: R('System store index (trade lists and tearsheets in R2 under systems/<id>/)', 60, { market: false }),
   shadow_trackers: R('Forward shadows: post-mortem filters scored on new live trades', 60, { market: false }),
