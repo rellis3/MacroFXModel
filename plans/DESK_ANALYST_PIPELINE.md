@@ -971,7 +971,7 @@ service `newsWire` (every 10 min); `GET /api/desk-news` (`?hours`, `?tier`, `?cc
 - **Rules keeper map** extended to every bot (§9y): MacroFX V1, Gold, Gold V2, DynAnchor, Backtest, Signal Copier and
   MacroEquity to their tests; Regime V1/V2/V7, HedgeBot and PosHedge recorded as "no study on record" with what the docs
   say. The mode-mismatch flag now shows the MT5 balance and login: "live" means the bot sends orders through MT5
-  rather than its paper broker; whether that MT5 account is demo or real money is the owner's to confirm.
+  rather than its paper broker; the owner confirmed OI Gamma, OI-Vol and Signal Copier (login 26365117) are on MT5 demo accounts (2026-11-04), recorded in `MT5_DEMO`, so they are no longer flagged; a different login flags again.
 - **"Yesterday, reviewed"** in the morning desk issues uses the compact page (as the evening edition).
 
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
