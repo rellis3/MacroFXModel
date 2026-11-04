@@ -238,7 +238,8 @@ import { selectPairs as _psSelect } from './js/pairSelector.js';   // §9ae
 import { WORLD_RATES_URL as _WR_URL, parseCbpol as _wrParse, worldRates as _wrBuild, byIsoNumeric as _wrByIso } from './js/worldRates.js';   // §9af
 import { EM_PAIRS as _EM_PAIRS, emGauges as _emBuild } from './js/emGauges.js';
 import { yieldBoard as _mbYields, creditBoard as _mbCredit, CREDIT_SERIES as _MB_CREDIT, liquidityBoard as _mbLiquidity, basisBoard as _mbBasis, termPremium as _mbTermPremium, worldStress as _mbStress } from './js/marketBoards.js';   // §9ag
-import { fetchBund as _yfBund, fetchJgbBoth as _yfJgb, fetchCanada as _yfCanada, fetchAustralia as _yfAustralia } from './js/yieldFeeds.js';
+import { fetchBund as _yfBund, fetchJgbBoth as _yfJgb, fetchCanada as _yfCanada, fetchAustralia as _yfAustralia, parseValet as _yfValet } from './js/yieldFeeds.js';
+import { parseEer as _gbEer, fairValue as _gbFair, parseOecdCli as _gbCli, cliBoard as _gbCliBoard, parseRbaI2 as _gbRba, monthly as _gbMonthly, commodityFx as _gbCommodity, carryVol as _gbCarry, sessionHeat as _gbHeat, ratioBoard as _gbRatio, PAIRS as _GB_PAIRS } from './js/globalBoards.js';
 import { reviewSystem as _svReview, reviewText as _svText, validatePostmortem as _svValidate } from './js/systemReview.js';   // §9ad
 import { CATALOGUE as _SYS_CATALOGUE, coverage as _sysCoverage, catalogueText as _sysCatalogueText } from './js/systemCatalogue.js';
 import { harnessChecklist as _vdChecklist, validateReview as _vdValidateReview } from './js/validationDesk.js';   // Phase 26
@@ -6176,6 +6177,52 @@ app.get('/api/world-stress', async (_req, res) => {
     const [risk, credit, funding, em, liquidity, basis, cycle, tp] = await Promise.all(['risk-flags', 'credit-board', 'funding-read?spark=0', 'em-gauges', 'liquidity-board', 'xccy-basis', 'world-rates', 'term-premium'].map(get));
     res.json({ ok: true, at: new Date().toISOString(), ..._mbStress({ risk, credit, funding, em, liquidity, basis, cycle, termPremium: tp }) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── More world data (owner, 2026-11-04): fair value, leading indicators, commodity currencies, carry against vol,
+// session hours, copper/gold. js/globalBoards.js; each cached in _mb like the boards above and read by the Desk Pack. ──
+// a browser-like User-Agent makes the OECD's SDMX service answer 500, so this one names itself plainly
+const _gbText = async (url, ms = 60_000) => { const r = await fetch(url, { headers: { 'User-Agent': 'MacroFXDashboard/1.0' }, signal: AbortSignal.timeout(ms) }); if (!r.ok) throw new Error(`${new URL(url).host} HTTP ${r.status}`); return r.text(); };
+const _gbD1 = async (sym, n) => (await _btFetchD1(sym, n)).sort((a, b) => (a.date < b.date ? -1 : 1)).map(b => ({ date: b.date, close: b.close }));
+_mbRoute('/api/fair-value', 'fairvalue', 24, async () => {
+  const csv = await _gbText('https://stats.bis.org/api/v2/data/dataflow/BIS/WS_EER/1.0/M.R.B.US+XM+GB+JP+AU+NZ+CA+CH+CN+NO+SE+MX+ZA+BR+IN+KR?startPeriod=2000-01&format=csv', 90_000);
+  const b = _gbFair(_gbEer(csv)); return { ok: b.rows.length > 0, fetchedAt: new Date().toISOString(), source: 'BIS WS_EER (real, broad, monthly)', ...b };
+});
+_mbRoute('/api/leading-indicators', 'cli', 24, async () => {
+  const start = new Date(Date.now() - 3 * 365.25 * 864e5).toISOString().slice(0, 7);
+  const csv = await _gbText(`https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_STES@DF_CLI,4.1/USA+EA20+GBR+JPN+AUS+NZL+CAN+CHE+CHN+DEU+IND+BRA+MEX+KOR.M.LI...AA...H?startPeriod=${start}&dimensionAtObservation=AllDimensions&format=csvfilewithlabels`, 90_000);
+  const b = _gbCliBoard(_gbCli(csv)); return { ok: b.rows.length > 0, fetchedAt: new Date().toISOString(), source: 'OECD composite leading indicators', ...b };
+});
+_mbRoute('/api/commodity-fx', 'commodityfx', 12, async () => {
+  const errors = {}, safe = async (k, f) => { try { return await f(); } catch (e) { errors[k] = e.message; return null; } };
+  const [rba, bcpi, brent, aud, cad, nok] = await Promise.all([
+    safe('RBA I2', async () => _gbRba(await _gbText('https://www.rba.gov.au/statistics/tables/csv/i2-data.csv'))),
+    safe('BoC BCPI', async () => _yfValet(JSON.parse(await _gbText('https://www.bankofcanada.ca/valet/observations/M.BCPI/json?recent=72')), ['M.BCPI'])['M.BCPI'].map(x => ({ date: x.date.slice(0, 7), value: x.value }))),
+    safe('Brent', async () => _gbMonthly(await _gbD1('BCO_USD', 1500))),
+    safe('AUD/USD', async () => _gbMonthly(await _gbD1('AUD_USD', 1500))), safe('USD/CAD', async () => _gbMonthly(await _gbD1('USD_CAD', 1500))), safe('USD/NOK', async () => _gbMonthly(await _gbD1('USD_NOK', 1500)))]);
+  const rows = [
+    rba && aud ? _gbCommodity({ ccy: 'AUD', basket: 'RBA index of commodity prices (US$)', commodity: rba, fx: aud }) : null,
+    bcpi && cad ? _gbCommodity({ ccy: 'CAD', basket: 'Bank of Canada commodity price index', commodity: bcpi, fx: cad, fxInverted: true }) : null,
+    brent && nok ? _gbCommodity({ ccy: 'NOK', basket: 'Brent crude', commodity: brent, fx: nok, fxInverted: true }) : null,
+  ].filter(Boolean);
+  return { ok: rows.some(r => r.ok), fetchedAt: new Date().toISOString(), errors, rows, missing: 'NZD: no free dairy price series (Global Dairy Trade is not keyless)',
+    label: 'each commodity currency against the basket it exports, monthly: a currency far behind its basket is cheap against its exports, far ahead is rich. corr = how closely the two moved month to month over three years.' };
+});
+_mbRoute('/api/carry-vol', 'carryvol', 4, async () => {
+  const pr = await _policyRatesNow(), rates = Object.fromEntries(Object.entries(pr?.rates ?? {}).map(([k, v]) => [k, Number(v?.rate)]).filter(([, v]) => Number.isFinite(v))), closes = {}, errors = {};
+  await Promise.all(_GB_PAIRS.map(async p => { try { closes[p.id] = (await _gbD1(p.oanda, 40)).map(x => x.close); } catch (e) { errors[p.id] = e.message; } }));
+  const b = _gbCarry(rates, closes); return { ok: b.rows.length > 0, fetchedAt: new Date().toISOString(), rates, errors, ...b };
+});
+const _GB_HEAT = { EURUSD: 'EUR_USD', GBPUSD: 'GBP_USD', USDJPY: 'USD_JPY', AUDUSD: 'AUD_USD', USDCAD: 'USD_CAD', GOLD: 'XAU_USD', NQ: 'NAS100_USD', WTI: 'WTICO_USD' };
+_mbRoute('/api/session-heat', 'sessionheat', 24, async () => {
+  const from = new Date(Date.now() - 42 * 864e5).toISOString().slice(0, 19) + 'Z', to = new Date().toISOString().slice(0, 19) + 'Z', bars = {}, errors = {};
+  await Promise.all(Object.entries(_GB_HEAT).map(async ([k, sym]) => { try { bars[k] = (await fetchOandaCandleRange(sym, 'H1', from, to)).map(v => ({ time: v.t, open: +v.open, high: +v.high, low: +v.low })); } catch (e) { errors[k] = e.message; } }));
+  const b = _gbHeat(bars); return { ok: b.rows.length > 0, fetchedAt: new Date().toISOString(), window: '42 days', errors, ...b };
+});
+_mbRoute('/api/copper-gold', 'coppergold', 6, async () => {
+  const [cu, au, brent, wti] = await Promise.all(['XCU_USD', 'XAU_USD', 'BCO_USD', 'WTICO_USD'].map(s => _gbD1(s, 400).catch(() => [])));
+  return { ok: true, fetchedAt: new Date().toISOString(),
+    copperGold: _gbRatio(cu, au, { label: 'Copper / gold (growth against fear)' }), brentWti: _gbRatio(brent, wti, { label: 'Brent less WTI (global against US oil)', diff: true }),
+    note: 'Copper/gold rising = markets pricing growth over safety (it tends to move with the US 10-year yield and the commodity currencies); falling = fear. Brent over WTI widening = tighter global supply than in the US.' };
 });
 // GET /api/pair-select?date=: §9ae, how the morning's currency view is best expressed (js/pairSelector.js): every pair
 // of the eight scored by the bias gap, cost against the day's move, carry and the book's card; at most two picks per currency.

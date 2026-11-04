@@ -110,7 +110,12 @@ export const DESK_FEEDS = [
   F('global_market', 'daily-snapshot?days=2', 3 * D),
   F('global_market', 'market-sense/last', 10 * D),
   F('global_market', 'world-stress', 1 * D),     // §9ag: one line across risk, credit, funding, basis, EM, liquidity, term premium, rate cycle
-  F('global_market', 'em-gauges', 3 * D),       // §9af: USD/CNH, USD/MXN, USD/ZAR, USD/TRY and the carry-stress read (gauges, not trades)
+  F('global_market', 'em-gauges', 3 * D),
+  F('global_market', 'copper-gold', 4 * D),     // growth against fear and Brent less WTI (js/globalBoards.js)
+  F('global_market', 'commodity-fx', 100 * D),  // AUD, CAD, NOK against the commodity baskets they export (monthly)
+  F('macro_economy', 'leading-indicators', 100 * D),   // OECD leading indicators by cycle phase (monthly, ~6-week lag)
+  F('macro_economy', 'fair-value', 100 * D),    // BIS real effective rates against their 20-year average (monthly)
+  F('rates_cb', 'carry-vol', 1 * D),            // carry against realised vol for all 28 pairs       // §9af: USD/CNH, USD/MXN, USD/ZAR, USD/TRY and the carry-stress read (gauges, not trades)
   F('global_market', 'chain-extra', 3 * D),     // §9af: EM dollar index and EM corporate spreads, MOVE, CCC, sector ETFs
   // the credit composite is read two days behind on purpose (point-in-time, js/creditStressEngine.js lagDays) and FRED's
   // Moody's series land a day or two late, so over a weekend the newest row is ~4-5 days old while the feed is healthy
