@@ -195,7 +195,7 @@ function showRunning(j) {
   const mins = Math.floor((Date.now() - j.startedAt) / 60000), secs = Math.floor((Date.now() - j.startedAt) / 1000) % 60;
   $('status').textContent = '';
   $('out').innerHTML = `<div class="panel running"><div class="big">Desk run in progress</div>
-    <div>${esc(STAGE_TEXT(j.stage ?? ''))}</div>${j.resumes ? `<div class="muted">The server restarted during this run (a deploy), so it picked up where it stopped${j.resumedStages ? `: ${j.resumedStages} finished stages kept, only the rest are being run` : ''}.</div>` : ''}<div class="muted">${mins}m ${String(secs).padStart(2, '0')}s so far · a full run takes about 10-15 minutes, a quick run 6-10 · this page updates by itself</div>
+    <div>${esc(STAGE_TEXT(j.stage ?? ''))}</div>${j.resumes ? `<div class="muted">The server restarted during this run (a deploy), so it picked up where it stopped${j.resumedStages ? `: ${j.resumedStages} finished stages kept, only the rest are being run` : ''}.</div>` : ''}<div class="muted">${mins}m ${String(secs).padStart(2, '0')}s so far · a full run takes about 20-35 minutes (51 markets; the Head and the control each write a card for every one), a quick run about 10-15 · this page updates by itself</div>
     <div class="bar"><i></i></div></div>`;
 }
 let pollTimer = null;
