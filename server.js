@@ -233,6 +233,8 @@ import { DAY_MARKETS as _DF_MARKETS, realisedShape as _dfRealised, validateDayFo
 import { policyRates as _prRates } from './js/policyRates.js';   // each central bank's policy rate, from its own series
 import { expectations as _cbExpect } from './js/cbExpectations.js';   // what the futures price for each bank
 import { parseFeed as _nwParse, fromFinnhub as _nwFinnhub, mergeWire as _nwMerge, validateRead as _nwValidate, pick as _nwPick, wireText as _nwText } from './js/newsAnalyst.js';   // agent 21
+import { pairImpacts as _nwPairs, reactionMarkets as _nwReactMarkets, reactionStart as _nwReactStart, scoreMarket as _nwScoreMarket, headlineReaction as _nwHeadReact, recordRow as _nwRecordRow, appendRecord as _nwAppendRecord, aggregateRecord as _nwAggregate } from './js/newsImpact.js';
+import { NEWS_SOURCES as _NW_SOURCES, POLL_MIN as _NW_POLL_MIN, backoff as _nwBackoff, dueSources as _nwDue, allowAlert as _nwAllowAlert, breakingCandidates as _nwBreaking, breakingMessage as _nwBreakingMsg } from './js/newsOps.js';
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
 import { RESEARCHERS as _RP_RESEARCHERS, WEB_SOURCES as _RP_WEB, parseFeed as _rpParseFeed, feedItems as _rpFeedItems, webDigest as _rpWebDigest, validateProposals as _rpValidate, applyFeedback as _rpApplyFeedback, feedbackBrief as _rpFeedbackBrief, buildList as _rpBuildList, mergeLibrary as _rpMerge, validateCard as _rpValidateCard, cardPrereg as _rpPrereg, slug as _rpSlug, lifecycle as _rpLifecycle, setLink as _rpSetLink, outcomesBrief as _rpOutcomes, scorecard as _rpScorecard, validateReply as _rpValidateReply, applyRevision as _rpApplyRevision, threadText as _rpThreadText } from './js/researchPod.js';   // Phases 23-25
 import { normaliseTrades as _sxNormalise, tearsheet as _sxTearsheet, toolkitCsv as _sxToolkitCsv, terminalCsv as _sxTerminalCsv, liveVsExpected as _sxLiveVsExpected } from './js/systemExports.js';   // §9ac
@@ -2230,7 +2232,8 @@ const TG_SENDERS = {
   ratesRegime:       'Rates vs Nasdaq regime change / rate shock (context, not a signal)',
   spreadEpisodes:    'Spread-turn episodes: confirmed turn (Case 1 full sequence / Case 2 every turn), context only',
   bankCredit:        'BIS cross-border bank credit: new quarter released (regime context, not a signal)',
-  newsWire:          'Desk news analyst: a tier-1 headline that bears on the book (at most 10 a day; context, not a signal)',
+  newsWire:          'Desk news wire: mute for all of its Telegram notes (the breaking note below is the one it sends)',
+  newsBreaking:      'Desk news wire: a breaking tier-1 headline, its currency read and the book cards it supports or goes against (once per headline, at most 6 an hour; context, not a signal)',
   deskWeekly:        'Desk weekly strategist: the Sunday week-ahead note',
   chiefOfStaff:      'Desk chief of staff: the morning note after the book, the evening note after the score',
   allocation:        'Desk allocation committee: the weekly per-bot keep / cut / pause / raise note (advice; the owner decides)',
@@ -6842,65 +6845,132 @@ svcInterval('deskWeekly', async () => {
   if (raw && JSON.parse(raw).week === _wkIso(_dpLondonDate(now + 864e5))) return;
   _wkStart();
 }, 30 * 60_000);
-// ── Agent 21: the news analyst (js/newsAnalyst.js, desk/roles/news_analyst.md, plan §9z) ──
-// Every 10 min: the central banks' own feeds, Finnhub forex and general news (FINNHUB_KEY), market RSS. Tagged by rule,
-// then one model call reads the new tier-1/2 headlines (direction per currency, why, whether it bears on the book).
-// Stored 72 h in desk_news_wire. Feeds the terminal, the session updates, the chief of staff and the Desk Pack.
-const _NW_KEY = 'desk_news_wire';
-const _NW_SOURCES = [
-  ['Fed', 'https://www.federalreserve.gov/feeds/press_all.xml'], ['ECB', 'https://www.ecb.europa.eu/rss/press.html'], ['BoE', 'https://www.bankofengland.co.uk/rss/news'],
-  ['MarketWatch', 'https://feeds.content.dowjones.io/public/rss/mw_topstories'], ['Investing.com', 'https://www.investing.com/rss/news_1.rss'],
-  ['Yahoo', `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent('EURUSD=X,GBPUSD=X,JPY=X,GC=F,CL=F,^GSPC,DX-Y.NYB,^TNX')}&region=US&lang=en-US`],
-];
-let _nwState = { at: 0, health: {}, sentToday: { date: null, n: 0 }, running: false };
+// ── Agent 21: the news analyst (js/newsAnalyst.js, js/newsImpact.js, js/newsOps.js, desk/roles/news_analyst.md, plan §9z) ──
+// Every 2 min: the central banks' own feeds, BEA, ForexLive, FXStreet, market RSS and Finnhub forex/general news
+// (FINNHUB_KEY), each on its own back-off so a slow or failing feed costs the others nothing. Tagged by rule and
+// de-duplicated across feeds (one item, every feed kept in `sources`); then at most one model call (task desk-news,
+// DeepSeek by default) reads up to 20 new tier-1/2 headlines: impact -2..+2 per currency, why, whether it bears on
+// the book. The desk's markets each read touches, and the book card it supports or goes against, are worked out in
+// js/newsImpact.js (no model). A light pass then prices each read headline's markets at +5 and +30 min against
+// their typical move (OANDA M1) and labels the reaction; final ones go to the record (desk_news_record_v1). A tier-1
+// read goes to Telegram once (tgMaster.newsBreaking, at most 6 an hour). Stored 72 h in desk_news_wire. Feeds the
+// terminal, the session updates, the chief of staff and the Desk Pack. Context, never a signal.
+const _NW_KEY = 'desk_news_wire', _NW_REC_KEY = 'desk_news_record_v1';
+let _nwState = { at: 0, health: {}, src: {}, running: false, recAt: 0, recDirty: false };
+let _nwRec = null, _nwBookCache = { at: 0, date: null, book: {}, sized: {} };
 async function _nwLoad() { try { const raw = await kv.get(_NW_KEY); return raw ? JSON.parse(raw) : { wire: [] }; } catch { return { wire: [] }; } }
+async function _nwRecLoad() {
+  if (!_nwRec) { try { const raw = await kv.get(_NW_REC_KEY); _nwRec = raw ? JSON.parse(raw) : null; } catch { /* starts empty */ } }
+  _nwRec ??= { rows: [], alerts: { sent: {}, times: [] } };
+  _nwRec.rows ??= []; _nwRec.alerts ??= { sent: {}, times: [] };
+  return _nwRec;
+}
+async function _nwRecSave() {
+  if (!_nwRec) return;
+  _nwRec.updatedAt = new Date().toISOString();
+  await kv.put(_NW_REC_KEY, JSON.stringify(_nwRec)).then(() => { _nwState.recAt = Date.now(); _nwState.recDirty = false; }).catch(e => console.warn('[news] record save:', e.message));
+}
+// today's live cards (size > 0, LONG or SHORT), cached 2 min: { INST: rating } and, for the prompt, rating with size
+async function _nwBook() {
+  const date = _dpLondonDate(Date.now());
+  if (_nwBookCache.date === date && Date.now() - _nwBookCache.at < 2 * 60_000) return _nwBookCache;
+  const run = await _drLoad(date).catch(() => null), live = run?.head?.ok ? Object.entries(run.head.book.instruments ?? {}).filter(([, c]) => /LONG|SHORT/.test(c.rating) && c.size > 0) : [];
+  _nwBookCache = { at: Date.now(), date, book: Object.fromEntries(live.map(([n, c]) => [n, c.rating])), sized: Object.fromEntries(live.map(([n, c]) => [n, `${c.rating} ${c.size}`])) };
+  return _nwBookCache;
+}
+async function _nwFetchSource(src, url, incoming, health) {
+  let ok = false, err = null;
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX/1.0)' }, signal: AbortSignal.timeout(15_000) });
+    if (!r.ok) err = `HTTP ${r.status}`;
+    else { const x = src.startsWith('Finnhub') ? _nwFinnhub(await r.json(), 'Finnhub') : _nwParse(await r.text(), src); incoming.push(...x); health[src] = x.length; ok = true; }
+  } catch (e) { err = e.message; }
+  if (!ok) health[src] = err;
+  _nwState.src[src] = _nwBackoff(_nwState.src[src], ok, Date.now(), { error: err });
+}
+// The +5 / +30 min reaction of each read tier-1/2 headline's markets (js/newsImpact.js has the method). At most 24
+// OANDA M1 fetches a pass; a headline is final at +31 min (or after 6 h untried), and final ones go to the record.
+async function _nwReactPass(wire, now) {
+  const final = []; let fetches = 0;
+  for (const h of wire) {
+    if (!h.pairs?.length || (h.read?.tier ?? h.tier) > 2 || h.react?.done) continue;
+    const st = _nwReactStart(h); if (!st) continue;
+    const age = now - st.t0;
+    if (age > 6 * 3600e3) { h.react = { ...(h.react ?? { markets: [], m5: null, m30: null }), t0: st.t0, basis: st.basis, done: true }; if (h.react.m5 || h.react.m30) final.push(h); continue; }
+    const need5 = !h.react && age >= 6 * 60e3, need30 = age >= 31 * 60e3;   // +5 is tried once (at +6 min or later); +30 settles it
+    if (!need5 && !need30) continue;
+    const insts = _nwReactMarkets(h.pairs).filter(n => _dsOanda[n]);
+    if (!insts.length) { h.react = { t0: st.t0, basis: st.basis, markets: [], m5: null, m30: null, done: true }; continue; }
+    if (fetches + insts.length > 24) break;
+    fetches += insts.length;
+    const markets = await Promise.all(insts.map(async inst => {
+      const dir = h.pairs.find(p => p.inst === inst)?.dir ?? 0;
+      let bars = [];
+      try { bars = (await _btFetchM1Range(_dsOanda[inst], Math.floor((st.t0 - 6 * 3600e3) / 1000), Math.floor(Math.min(now, st.t0 + 31 * 60e3) / 1000))).map(b => ({ t: b.time * 1000, c: b.close })); }
+      catch (e) { console.warn(`[news] react ${inst}: ${e.message}`); }
+      const m = _nwScoreMarket(inst, dir, bars, st.t0);
+      return { inst, dir, p0: m.p0, p5: m.p5, p30: need30 ? m.p30 : null, typ5: m.typ5, typ30: m.typ30, m5: m.m5, m30: need30 ? m.m30 : null };
+    }));
+    h.react = { t0: st.t0, basis: st.basis, markets, m5: _nwHeadReact(markets, 'm5') ?? h.react?.m5 ?? null, m30: need30 ? _nwHeadReact(markets, 'm30') : null, checkedAt: now, done: need30 };
+    if (need30 && (h.react.m5 || h.react.m30)) final.push(h);
+  }
+  return { final, fetches };
+}
 async function _nwTick() {
   if (_nwState.running) return { ok: false, why: 'already running' };
   _nwState.running = true;
   try {
-    const health = {}, incoming = [];
-    await Promise.all(_NW_SOURCES.map(async ([src, url]) => {
-      try { const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX/1.0)' }, signal: AbortSignal.timeout(15_000) }); if (!r.ok) { health[src] = `HTTP ${r.status}`; return; } const x = _nwParse(await r.text(), src); incoming.push(...x); health[src] = x.length; }
-      catch (e) { health[src] = e.message; }
-    }));
-    if (process.env.FINNHUB_KEY) await Promise.all(['forex', 'general'].map(async cat => {
-      try { const r = await fetch(`https://finnhub.io/api/v1/news?category=${cat}&token=${process.env.FINNHUB_KEY}`, { signal: AbortSignal.timeout(15_000) }); if (!r.ok) { health[`Finnhub ${cat}`] = `HTTP ${r.status}`; return; } const x = _nwFinnhub(await r.json(), 'Finnhub'); incoming.push(...x); health[`Finnhub ${cat}`] = x.length; }
-      catch (e) { health[`Finnhub ${cat}`] = e.message; }
-    }));
+    const now = Date.now(), store = await _nwLoad(), health = { ...(store.health ?? {}) }, incoming = [];
+    const sources = [..._NW_SOURCES, ...(process.env.FINNHUB_KEY ? ['forex', 'general'].map(cat => [`Finnhub ${cat}`, `https://finnhub.io/api/v1/news?category=${cat}&token=${process.env.FINNHUB_KEY}`]) : [])];
+    const due = _nwDue(sources, _nwState.src, now);
+    await Promise.all(due.map(([src, url]) => _nwFetchSource(src, url, incoming, health)));
     for (const h of incoming) h.title = _redactFedChairName(h.title);   // the desk never names an official
-    const store = await _nwLoad(), { wire, added } = _nwMerge(store.wire, incoming);
-    // the model reads the new tier-1/2 headlines (and anything the rules could not place)
-    const toRead = added.filter(h => h.tier <= 2).slice(0, 25), role = _deskLoadRoles().find(r => r.id === 'news_analyst');
+    const { wire, added } = _nwMerge(store.wire, incoming, { now });
+    const { book, sized } = await _nwBook();
+    // one model call at most: new tier-1/2 headlines not yet read (tier 1 first, newest first), up to 20; none → no call
+    const toRead = wire.filter(h => h.tier <= 2 && !h.read && (h.readTries ?? 0) < 2 && now - (h.firstSeen ?? h.ms) < 3 * 3600e3)
+      .sort((a, b) => a.tier - b.tier || b.ms - a.ms).slice(0, 20);
+    const role = _deskLoadRoles().find(r => r.id === 'news_analyst');
+    let readModel = null;
     if (toRead.length && role && _aiAnyKey()) {
+      for (const h of toRead) h.readTries = (h.readTries ?? 0) + 1;
       try {
-        const run = await _drLoad(_dpLondonDate(Date.now()));
-        const book = run?.head?.ok ? Object.fromEntries(Object.entries(run.head.book.instruments).filter(([, c]) => /LONG|SHORT/.test(c.rating) && c.size > 0).map(([n, c]) => [n, `${c.rating} ${c.size}`])) : null;
-        const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
-        const { system, prompt } = _deskStagePrompt({ role, pack: { date: _dpLondonDate(Date.now()) }, ledger: DESK_EVIDENCE, sections: [
-          ['The headlines (numbered)', toRead.map((h, i) => `${i}. [${h.source}, ${new Date(h.ms).toISOString().slice(0, 16)}] ${h.title}${h.summary ? ` — ${h.summary}` : ''} (script: touches ${h.touches.join(', ') || 'none'}, ${h.topic})`).join('\n')],
-          ["Today's book (live cards)", book ?? '(no book today)'],
+        const { system, prompt } = _deskStagePrompt({ role, pack: { date: _dpLondonDate(now) }, ledger: [], sections: [
+          ['The headlines (numbered)', toRead.map((h, i) => `${i}. [${h.sources.join(', ')} ${new Date(h.ms).toISOString().slice(11, 16)}Z] ${h.title}${h.summary ? ` — ${h.summary.slice(0, 160)}` : ''} (touches ${h.touches.join(' ') || 'none'}; ${h.topic})`).join('\n')],
+          ["Today's live cards", Object.keys(sized).length ? Object.entries(sized).map(([n, c]) => `${n} ${c}`).join(', ') : '(no book today)'],
         ] });
-        const r = await callModel({ task: 'desk-analyst', system, prompt, maxTokens: 4_000 });
+        const r = await callModel({ task: 'desk-news', system, prompt, maxTokens: 3_000, timeoutMs: 120_000 });
+        readModel = `${r.provider}/${r.model}`;
         const v = _nwValidate(_parseModelJson(r.text ?? _antText(r), 'desk:news'), toRead);
-        if (v.ok) for (const h of wire) if (v.value[h.id]) h.read = v.value[h.id];
+        if (v.ok) for (const h of toRead) if (v.value[h.id]) h.read = { ...v.value[h.id], by: readModel, at: now };
       } catch (e) { console.warn('[news] read:', e.message); }
     }
-    await kv.put(_NW_KEY, JSON.stringify({ wire, updatedAt: new Date().toISOString(), health }));
-    _nwState = { ..._nwState, at: Date.now(), health };
-    // Telegram: a tier-1 headline the model says bears on the book, at most 10 a day
-    const today = _dpLondonDate(Date.now()); if (_nwState.sentToday.date !== today) _nwState.sentToday = { date: today, n: 0 };
-    const alerts = added.filter(h => (h.read?.tier ?? h.tier) === 1 && h.read?.book);
-    if (alerts.length && tgOn('newsWire') && state.tg?.token && state.tg?.chatId) for (const h of alerts) {
-      if (_nwState.sentToday.n >= 10) break;
-      const esc = x => String(x ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      await sendTelegram(state.tg.token, state.tg.chatId, `📰 <b>${esc(h.title)}</b>\n${esc(h.read.why)}${Object.keys(h.read.impact ?? {}).length ? `\n${Object.entries(h.read.impact).map(([k, v]) => `${k} ${v > 0 ? '▲' : '▼'}`).join(' · ')}` : ''}\nThe book: ${esc(h.read.book)}\n<i>${esc(h.source)} · context, not a signal</i>`);
-      _nwState.sentToday.n++;
+    // the desk's markets each read touches, against today's book (pure JS, no model)
+    for (const h of wire) if (h.read && !h.pairs && Object.keys(h.read.impact ?? {}).length) h.pairs = _nwPairs(h.read.impact, { book });
+    // did the market react? (+5 / +30 min) and the record
+    let react = { final: [], fetches: 0 };
+    if (process.env.OANDA_KEY) { try { react = await _nwReactPass(wire, now); } catch (e) { console.warn('[news] react:', e.message); } }
+    const rec = await _nwRecLoad();
+    if (react.final.length) { rec.rows = _nwAppendRecord(rec.rows, react.final.map(_nwRecordRow).filter(Boolean), { now }); _nwState.recDirty = true; }
+    // Telegram: a tier-1 read, once per headline, at most 6 an hour (tgMaster.newsBreaking; tgMaster.newsWire mutes it too)
+    let sent = 0;
+    if (tgOn('newsBreaking') && tgOn('newsWire') && state.tg?.token && state.tg?.chatId) {
+      for (const h of _nwBreaking(wire, now, { sent: rec.alerts.sent })) {
+        const a = _nwAllowAlert(rec.alerts, h.id, Date.now());
+        if (!a.ok) { if (a.why === 'already sent') continue; break; }
+        if (await sendTelegram(state.tg.token, state.tg.chatId, _nwBreakingMsg(h, h.pairs))) { rec.alerts = a.state; h.alerted = new Date().toISOString(); sent++; }
+      }
     }
-    return { ok: true, fetched: incoming.length, added: added.length, read: toRead.length, health };
+    if (sent || (_nwState.recDirty && now - _nwState.recAt >= 10 * 60_000)) await _nwRecSave();
+    const backoff = Object.fromEntries(Object.entries(_nwState.src).filter(([, s]) => s.fails).map(([k, s]) => [k, { fails: s.fails, retryAt: new Date(s.nextAt).toISOString(), error: s.lastError }]));
+    await kv.put(_NW_KEY, JSON.stringify({ wire, updatedAt: new Date().toISOString(), health, backoff }));
+    _nwState = { ..._nwState, at: Date.now(), health };
+    return { ok: true, polled: due.map(([s]) => s), fetched: incoming.length, added: added.length, read: toRead.length, readModel, reactFetches: react.fetches, scored: react.final.length, sent, health, backoff };
   } finally { _nwState.running = false; }
 }
-svcInterval('newsWire', () => _nwTick().catch(e => console.warn('[news]', e.message)), 10 * 60_000);
+svcInterval('newsWire', () => _nwTick().catch(e => console.warn('[news]', e.message)), _NW_POLL_MIN * 60_000);
 // GET /api/desk-news?hours=24&tier=2&ccy=USD: the wire. ?pack=1 is the Desk Pack feed (last 18 h, tiers 1-2, compact).
+// Each read item carries `pairs` (the desk's markets it touches, against today's book) and, once known, `react`.
 app.get('/api/desk-news', async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
@@ -6908,7 +6978,21 @@ app.get('/api/desk-news', async (req, res) => {
     if (req.query.pack === '1') { const hs = _nwPick(store.wire, { sinceMs: Date.now() - 18 * 3600e3, tier: 2, limit: 30 }); return res.json({ ok: true, asOf: store.updatedAt ?? null, label: 'headlines: context, never a signal', text: _nwText(hs), items: hs.map(h => ({ t: new Date(h.ms).toISOString(), source: h.source, title: h.title, tier: h.read?.tier ?? h.tier, impact: h.read?.impact ?? null, why: h.read?.why ?? null })) }); }
     const hours = Math.min(Math.max(parseFloat(req.query.hours) || 24, 1), 72), tier = Math.min(3, Math.max(1, parseInt(req.query.tier, 10) || 3));
     const ccy = req.query.ccy ? String(req.query.ccy).toUpperCase() : null;
-    res.json({ ok: true, updatedAt: store.updatedAt ?? null, health: store.health ?? _nwState.health, items: _nwPick(store.wire, { sinceMs: Date.now() - hours * 3600e3, tier, ccy, limit: 200 }) });
+    const { book } = await _nwBook().catch(() => ({ book: {} }));
+    const items = _nwPick(store.wire, { sinceMs: Date.now() - hours * 3600e3, tier, ccy, limit: 200 })
+      .map(h => (Object.keys(h.read?.impact ?? {}).length ? { ...h, pairs: _nwPairs(h.read.impact, { book }) } : h));
+    res.json({ ok: true, updatedAt: store.updatedAt ?? null, health: store.health ?? _nwState.health, backoff: store.backoff ?? {}, label: 'headlines and their read: context, never a signal', items });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/desk-news/record: how often tier-1/2 headlines were followed by a move the way the read implied, by source
+// and by topic, at +5 and +30 min (js/newsImpact.js). Description, not a signal.
+app.get('/api/desk-news/record', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const rec = await _nwRecLoad();
+    res.json({ ok: true, updatedAt: rec.updatedAt ?? null, ..._nwAggregate(rec.rows),
+      method: 'Each impacted market (up to six a headline) is priced at the headline time and +5 / +30 min (OANDA M1 mid closes) and the move is divided by its typical move over the same span (the median absolute change, every 5 min through the 6 h before). "with" = the mean signed move is at least half a typical move the way the read implied; "against" = half a typical move the other way; "none" = less. A headline on several feeds counts under each.',
+      recent: rec.rows.slice(0, 40) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/desk-news/run', async (_req, res) => { try { res.json(await _nwTick()); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
