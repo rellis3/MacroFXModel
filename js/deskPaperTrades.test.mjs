@@ -106,4 +106,12 @@ t('a card flipped by a session update is traded until the update, then closed (n
   assert.equal(simulateCard('EURUSD', { ...cards.EURUSD, stopMs: null }, b, { date, spread: 0 }).reason, 'target');
 });
 
+t('fix 1: a target already behind the entry is not traded (the AUDCAD case)', () => {
+  // short; zone 1.0940-1.1010 reaches the down p50 1.0950; price trades in at 1.0945, already past the target
+  const short = { rating: 'SHORT', size: 1, levels: L, plan: { zone: 'sell 1.0940-1.1010', invalidation: 'above 1.1030' } };
+  const r = sim(short, bars(date, 8, 0, [[1.0945, 1.0947, 1.0942, 1.0944], [1.0944, 1.0946, 1.0930, 1.0935]]));
+  assert.equal(r.reason, 'no-entry'); assert.equal(r.targetBehind, true); assert.match(r.note, /behind/);
+  const s = summarise([r]); assert.equal(s.targetBehind, 1); assert.equal(s.trades, 0);
+});
+
 console.log(`deskPaperTrades: ${n} tests passed`);

@@ -24,6 +24,7 @@ import { capExposure, netExposure } from './deskExposure.js';
 import { newsletterSections } from './deskNewsletter.js';
 import { validateNewsletterIssue, validateRedTeam, validateEconomist } from './deskSchemas.js';
 import { playbookText } from './releasePlaybook.js';
+import { checkBook } from './planCheck.js';
 import { createHash } from 'node:crypto';
 
 export const DESK_RUN_VERSION = 1;
@@ -170,6 +171,7 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
   if (headOut.ok) {
     const gd = groupData(pack, allInstruments());
     for (const [n, c] of Object.entries(headOut.book.instruments)) if (gd[n]?.levels) c.levels = gd[n].levels;
+    checkBook(headOut.book.instruments);   // the plan's shape against the lines (js/planCheck.js, prereg A18): described, never changes a card
   }
   if (headOut.ok && exposureCap > 0) {
     const capped = capExposure(headOut.book.instruments, { cap: exposureCap });
@@ -216,7 +218,7 @@ export async function runDesk({ pack, roles, ledger, callModel, parseJson, now, 
     const r = await ask({ callModel, parseJson, retryDelayMs, task: TASK[ctl.tier], system, prompt, maxTokens: CAPS.control, label: 'desk:control',
       validate: o => validateHeadBook(o, allInstruments()) });
     control = { ok: r.ok, book: r.value ?? null, errors: r.errors ?? [], attempts: r.attempts };
-    if (control.ok) { const gd = groupData(pack, allInstruments()); for (const [n, c] of Object.entries(control.book.instruments)) if (gd[n]?.levels) c.levels = gd[n].levels; }
+    if (control.ok) { const gd = groupData(pack, allInstruments()); for (const [n, c] of Object.entries(control.book.instruments)) if (gd[n]?.levels) c.levels = gd[n].levels; checkBook(control.book.instruments); }
   }
   onProgress({ stage: 'head', ok: headOut.ok, label: 'head of desk done' });
   const usage = { in: 0, out: 0 };

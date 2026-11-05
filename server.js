@@ -5289,7 +5289,7 @@ app.get('/api/desk-paper', async (req, res) => {
     res.set('Cache-Control', 'no-store');
     const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : _dpLondonDate(Date.now());
     const raw = await kv.get(_DPP_KEY(date)).catch(() => null);
-    if (raw) return res.json({ stored: true, ...JSON.parse(raw) });
+    if (raw) { const j = JSON.parse(raw); if (j.version === _DPP_VERSION) return res.json({ stored: true, ...j }); }   // an older rule set is rebuilt below
     if (!_dppComplete(date) && _dppLive.date === date && Date.now() - _dppLive.at < 5 * 60_000) return res.json({ stored: false, ..._dppLive.result });
     // one build per date at a time: a stored day fetches up to 51 M1 ranges
     if (!_dppInflight.has(date)) _dppInflight.set(date, _dppBuildDay(date).finally(() => _dppInflight.delete(date)));
@@ -7124,7 +7124,7 @@ async function _twTick() {
   const now = Date.now(), date = _dpLondonDate(now), dow = new Date(_dsLondonMs(date, 12)).getUTCDay();
   if (dow === 0 || dow === 6 || now < _dsLondonMs(date, 7) || now > _dsLondonMs(date, 21)) return { ok: false, why: 'outside the watch hours' };
   if (_tw.date !== date) _tw = { date, runAt: null, upd: null, plan: {}, cards: {}, state: { fired: {}, last: {} }, events: [], loaded: false };
-  if (!_tw.loaded) { const raw = await kv.get(_TW_KEY(date)).catch(() => null); if (raw) { const j = JSON.parse(raw); _tw.state.fired = j.fired ?? {}; _tw.events = j.events ?? []; } _tw.loaded = true; }
+  if (!_tw.loaded) { const raw = await kv.get(_TW_KEY(date)).catch(() => null); if (raw) { const j = JSON.parse(raw); _tw.state.fired = j.fired ?? {}; _tw.state.entry = j.entry ?? {}; _tw.events = j.events ?? []; } _tw.loaded = true; }
   const run = await _drLoad(date);
   if (!run?.head?.ok) return { ok: false, why: 'no book today' };
   const updates = await _duLoad(date), updKey = JSON.stringify(Object.keys(updates.slots ?? {}));
@@ -7143,7 +7143,7 @@ async function _twTick() {
   if (evs.length) {
     const at = new Date().toISOString();
     _tw.events.push(...evs.map(e => ({ ...e, at })));
-    await kv.put(_TW_KEY(date), JSON.stringify({ date, fired: _tw.state.fired, events: _tw.events }), { expirationTtl: 40 * 86400 }).catch(e => console.warn('[trade-watch] save:', e.message));
+    await kv.put(_TW_KEY(date), JSON.stringify({ date, fired: _tw.state.fired, entry: _tw.state.entry ?? {}, events: _tw.events }), { expirationTtl: 40 * 86400 }).catch(e => console.warn('[trade-watch] save:', e.message));
     if (tgOn('tradeWatch') && state.tg?.token && state.tg?.chatId) for (const e of evs) await sendTelegram(state.tg.token, state.tg.chatId, _twMessage(e, _tw.cards[e.inst], { date }));
     console.log(`[trade-watch] ${evs.map(e => `${e.inst} ${e.kind}`).join(', ')}`);
   }

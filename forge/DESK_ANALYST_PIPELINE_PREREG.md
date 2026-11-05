@@ -311,6 +311,25 @@ Owner decision, 2026-11-05. No hypothesis test had been run, and no desk score w
 - The trade watcher's zones, targets and invalidations, and the paper-trade record, follow the cards automatically.
 
 **Effective** from the first run after deploy. Earlier days keep the lines they were written with. The verdict reports H1 for days before and after this amendment as description (like the roles hash), never as a separate scored cell.
+
+### A18 — 2026-11-05 — PRE-RESULTS — plan shape: a rule for the asset desks and the Head, and a check on every card
+Owner decision, 2026-11-05. No hypothesis test had been run; one eligible day exists (2026-11-04).
+
+**Why.** The paper-trade record (description only) found that on 2026-11-03 nine of eighteen "first target" hits made nothing. Each card's entry zone reached, or sat past, its own first target (the p50 line on its side). For example, the AUDCAD short had a zone of 0.97531–0.9808 around a down p50 of 0.97688. The zones were also often several p50 moves wide.
+
+**Changes.**
+1. **Role files** `asset_desk.md` (item 3), `head_of_desk.md` (item 4) and `control_single.md` (item 4) gain the plan's shape:
+   - for a long: invalidation < zone < up p50;
+   - for a short: invalidation > zone > down p50;
+   - the zone is two close prices, at most one p50 move wide;
+   - no zone once price has passed the p50 line on its side.
+
+   `rolesHash` changes.
+2. **`js/planCheck.js`** attaches `planCheck: { ok, issues }` to every sized card of the Head's book and of the control. The issues it can raise: no zone, a zone that reaches the first target, an invalidation inside the zone, a zone wider than one u, no invalidation.
+
+   It describes only. It never changes a rating, a size or the direction H1 scores.
+
+**What is unchanged.** H1–H5, the gate, the arms, the scoring unit (A17) and the judgement date. The control's own role file (`control_single.md`, item 4) gets the same shape rule, so both arms read the same instruction and H2 stays a fair comparison. The trade watcher and the paper trades already require the first target to be ahead of the entry; they are description and are not covered by this prereg. The desk is scored as operated, by role version.
 ---
 
 ## RESULTS — not run

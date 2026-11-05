@@ -18,7 +18,8 @@ import { cardPlan } from './tradeWatch.js';
 import { unitOf, londonMs, windowFor } from './deskScore.js';
 import { SLOTS, slotMs } from './deskUpdate.js';
 
-export const PAPER_VERSION = 1;
+export const PAPER_VERSION = 2;   // 2: no trade when the first target is already behind the entry (2026-11-05)
+export const MIN_AHEAD_U = 0.1;
 export const PAPER_LABEL = "Description of trading the watcher's alerts, not the pre-registered test; few days so far.";
 const DIR = { STRONG_LONG: 1, LONG: 1, SHORT: -1, STRONG_SHORT: -1 };
 const r4 = x => (Number.isFinite(x) ? +x.toFixed(4) : null);
@@ -107,6 +108,12 @@ export function simulateCard(inst, card, bars, { date, spread = null } = {}) {
     }
     if (i0 < 0) return { ...base, reason: 'no-entry', note: 'price never traded in the zone' };
   }
+  // the first target must still be ahead of the entry (by MIN_AHEAD_U of the day's unit); a zone that reaches the
+  // target, or an 08:00 entry after price already passed it, is a plan with nothing to gain: not traded (owner, fix 1)
+  if (tgt != null && dir * (tgt - entry) < MIN_AHEAD_U * u) {
+    return { ...base, reason: 'no-entry', targetBehind: true, entryAt: new Date(win[i0].time * 1000).toISOString(), entry: r6(entry),
+      note: `target ${tgt} already ${dir * (tgt - entry) <= 0 ? 'behind' : 'within ' + MIN_AHEAD_U + ' u of'} the entry ${r6(entry)}: no trade` };
+  }
   let exit = null, exitAt = null, reason = 'close';
   for (let i = i0; i < win.length; i++) {
     const b = win[i], first = i === i0, iv = hitInv(b), tg = hitTgt(b) && (!first || fullBar);
@@ -126,7 +133,7 @@ const r6 = x => (Number.isFinite(x) ? +x.toFixed(6) : null);
 export function summarise(trades) {
   const done = trades.filter(t => t.reason !== 'no-entry'), sum = k => done.reduce((s, t) => s + (t[k] ?? 0), 0);
   const wins = done.filter(t => t.R > 0).length;
-  return { cards: trades.length, trades: done.length, noEntry: trades.length - done.length, wins, hitRate: done.length ? r4(wins / done.length) : null,
+  return { cards: trades.length, trades: done.length, noEntry: trades.length - done.length, targetBehind: trades.filter(t => t.targetBehind).length, wins, hitRate: done.length ? r4(wins / done.length) : null,
     byReason: Object.fromEntries(['target', 'invalid', 'close', 'update'].map(k => [k, done.filter(t => t.reason === k).length])),
     meanR: done.length ? r4(sum('R') / done.length) : null, meanGrossR: done.length ? r4(sum('grossR') / done.length) : null,
     sumSizeR: r4(sum('sizeR')), sumGrossSizeR: r4(sum('grossSizeR')), costSizeR: r4(sum('grossSizeR') - sum('sizeR')) };

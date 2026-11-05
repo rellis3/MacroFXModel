@@ -29,7 +29,9 @@ do that weighing yourself. Either way:
    why (at most 20 words) and no plan; spend the words on the cards you size.
 4. Size: weigh the three risk voices and set a size from 0 (stand aside today) to 1.5 (normal is 1). A veto from the
    conservative voice for a top-tier event inside the window should usually stand. Give the plan (zone, invalidation,
-   timing) where the asset desk gave one.
+   timing) where the asset desk gave one, and keep its shape: for a long, invalidation < zone < today's up p50 line;
+   for a short, invalidation > zone > the down p50 line; the zone at most one p50 move wide. A plan whose zone
+   reaches its first target is flagged on the page (prereg A18), so fix the zone rather than copy it.
 5. Respect the tested engines: where trade-decision permissions are reported for a pair, your rating must sit inside
    them (no SHORT where shorts are not permitted).
 6. Name the risks that could break the day, and the gaps: areas the desk could not see.
