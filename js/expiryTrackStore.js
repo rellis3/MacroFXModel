@@ -18,6 +18,7 @@ export const ET_PREFIX = 'archive/expiry_track/';
 const safe = s => String(s).replace(/[^A-Za-z0-9._-]/g, '_');
 export const seriesKey = (pair, expiry) => `${ET_PREFIX}${safe(pair)}/${safe(expiry)}.json`;
 const INDEX_KEY = `${ET_PREFIX}_index.json`;
+export const FOLD_VERSION = 2;
 
 /**
  * deps: { getJSON(key), putJSON(key, obj), kvKeys(prefix) -> [keys], kvGet(key) -> string|null,
@@ -44,7 +45,11 @@ export function createExpiryTrackStore(deps) {
 
   /** Fold every capture day not yet folded (plus the last two). maxDays caps one run's work. */
   async function fold({ maxDays = 400, rebuild = false } = {}) {
-    const index = (!rebuild && await getJSON(INDEX_KEY).catch(() => null)) || { v: 1, foldedDates: [], series: {} };
+    let index = (!rebuild && await getJSON(INDEX_KEY).catch(() => null)) || null;
+    // An index folded by an older rule set is rebuilt once from the raw captures (v2: re-served copies of another
+    // expiry's book no longer start phantom series). The old series files stay in R2 unlisted; nothing is deleted.
+    if (index && (index.v ?? 1) < FOLD_VERSION) { rebuild = true; index = null; }
+    index ??= { v: FOLD_VERSION, foldedDates: [], series: {} };
     const done = new Set(index.foldedDates || []);
     const all = await knownDates();
     const recent = new Set(all.slice(-2));

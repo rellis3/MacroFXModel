@@ -96,6 +96,18 @@ export function matchExpiryKey(existingKeys, { expiry, code }, codeOf = () => nu
 
 const ladderSig = ladder => (ladder || []).map(r => r.join(':')).join('|');
 
+const COPY_LOOKBACK = 4;   // days back a re-served book is looked for (covers a weekend plus a holiday)
+/** Two ladders are the same book when at least 95% of their open interest sits at strikes with identical call and
+ *  put counts (the copies differ only in a few far-tail rows). Both empty -> false. */
+export function sameBook(a, b, min = 0.95) {
+  if (!a?.length || !b?.length) return false;
+  const m = new Map(a.map(r => [r[0], r]));
+  let same = 0, tot = 0;
+  for (const r of a) tot += r[1] + r[2];
+  for (const r of b) { tot += r[1] + r[2]; const x = m.get(r[0]); if (x && x[1] === r[1] && x[2] === r[2]) same += 2 * (r[1] + r[2]); }
+  return tot > 0 && same / tot >= min;
+}
+
 /**
  * Add (or replace) one capture day's snapshot in an expiry series. Idempotent: replaying the same day is a no-op.
  * A snapshot whose ladder is byte-identical to the previous capture day is marked `stale` (the feed re-served an old
@@ -134,12 +146,23 @@ export function foldCaptureDays(seriesMap, dayEntries, { invertedPairs = new Set
       const inverted = invertedPairs.has(pair);
       const keysForPair = [...seriesMap.keys()].filter(k => k.startsWith(`${pair}|`)).map(k => k.slice(pair.length + 1));
       const codeOf = e => seriesMap.get(`${pair}|${e}`)?.code ?? null;
-      for (const { expiry, code, snap } of expirySnapshotsFromRaw(raw, { date, inverted, minOI })) {
+      // The capture can carry a second, uncoded copy of a contract: the previous day's book with the previous day's
+      // DTE, so capture date + DTE lands one or two days late (gold, Nov 2026: a Sunday "8 Nov" that was the 6 Nov
+      // weekly, a "26 Nov" that was the 24 Nov monthly). Such a column is another expiry's earlier book: it is
+      // never filed, and coded columns go first so the real contract claims a book before any copy of it.
+      const books = [];   // [key, ladder]: each series' latest book before today, then each book filed today
+      for (const k of keysForPair) {
+        const d = seriesMap.get(`${pair}|${k}`)?.days?.filter(x => x.date < date && dayDiff(date, x.date) <= COPY_LOOKBACK).at(-1);
+        if (d) books.push([k, d.ladder]);
+      }
+      const cols = expirySnapshotsFromRaw(raw, { date, inverted, minOI }).sort((a, b) => (b.code ? 1 : 0) - (a.code ? 1 : 0));
+      for (const { expiry, code, snap } of cols) {
         const key = matchExpiryKey(keysForPair, { expiry, code }, codeOf);
-        // A weekend capture re-serves Friday's book and has carried a second, uncoded copy of each contract whose DTE
-        // counts from Friday, so capture date + DTE lands two days late and would start a phantom series. On a weekend
-        // a column may join a series that already exists but never starts one.
+        // A weekend capture re-serves Friday's book: on a weekend a column may join a series that already exists but
+        // never starts one.
         if (isWeekendDate(date) && !keysForPair.includes(key)) continue;
+        if (books.some(([k, l]) => k !== key && sameBook(l, snap.ladder))) continue;
+        books.push([key, snap.ladder]);
         const mapKey = `${pair}|${key}`;
         const { series, changed } = mergeExpirySnapshot(seriesMap.get(mapKey), { pair, expiry: key, code, inverted }, snap);
         seriesMap.set(mapKey, series);
