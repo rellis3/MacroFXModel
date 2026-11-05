@@ -224,7 +224,7 @@ import { scoreRunDay as _ascScoreRunDay, compactDay as _ascCompact, upsertDay as
 import { validateReflection as _dsValidateReflection, validateNewsletterIssue as _dsValidateIssue, validateSessionUpdate as _duValidate } from './js/deskSchemas.js';
 import { SLOTS as _DU_SLOTS, slotMs as _duSlotMs, marketSince as _duMarketSince, marketText as _duMarketText, liveView as _duLiveView, scoreUpdates as _duScoreUpdates } from './js/deskUpdate.js';
 import { sliceFeed as _deskSliceFeed } from './js/deskSlices.js';
-import { paperDay as _dppDay, watchedCards as _dppWatched, runningTotal as _dppTotal, dayComplete as _dppComplete, pipOf as _dppPipOf, PAPER_VERSION as _DPP_VERSION, PAPER_LABEL as _DPP_LABEL } from './js/deskPaperTrades.js';
+import { paperDay as _dppDay, cardsAsTheDayWent as _dppAsTheDayWent, runningTotal as _dppTotal, dayComplete as _dppComplete, pipOf as _dppPipOf, PAPER_VERSION as _DPP_VERSION, PAPER_LABEL as _DPP_LABEL } from './js/deskPaperTrades.js';
 import { assess as _dqAssess, afterRun as _dqAfterRun } from './js/deskDataQuality.js';
 import { attribution as _atAttribution, attributionRecord as _atRecord } from './js/deskAttribution.js';
 import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
@@ -5262,7 +5262,7 @@ function _dppSpreads(insts) {
 async function _dppBuildDay(date, bars = null, { save = true } = {}) {
   const run = await _drLoad(date);
   if (!run?.head?.ok) return { ok: false, date, error: `no desk book for ${date}` };
-  const updates = await _duLoad(date), cards = _dppWatched(run.head.book, _duLiveView(run.head.book, updates));
+  const updates = await _duLoad(date), cards = _dppAsTheDayWent(run.head.book, updates, date);   // flipped cards close at the update, no look-ahead
   const insts = Object.keys(cards), complete = _dppComplete(date);
   const win = _dsWindow(date), range = complete ? null : { entryMs: win.entryMs, exitMs: Math.min(Date.now(), win.exitMs) };
   const have = bars ?? {}, need = insts.filter(n => !(have[n]?.length));

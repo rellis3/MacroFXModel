@@ -1,6 +1,6 @@
 // Tests for js/deskPaperTrades.js.   node js/deskPaperTrades.test.mjs
 import assert from 'node:assert/strict';
-import { simulateCard, paperDay, watchedCards, summarise, runningTotal, defaultSpread, dayComplete, PAPER_LABEL } from './deskPaperTrades.js';
+import { simulateCard, paperDay, watchedCards, cardsAsTheDayWent, summarise, runningTotal, defaultSpread, dayComplete, PAPER_LABEL } from './deskPaperTrades.js';
 import { londonMs } from './deskScore.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
@@ -94,4 +94,16 @@ t('summary and running total', () => {
   const rt = runningTotal([{ date: '2026-11-05', summary: s }, { date: '2026-11-04', summary: { ...s, sumSizeR: -1 } }]);
   assert.equal(rt.days, 2); assert.equal(rt.trades, 4); assert.equal(rt.sumSizeR, 0.5); assert.equal(rt.from, '2026-11-04'); assert.deepEqual(rt.curve.map(c => c.cum), [-1, 0.5]);
 });
+t('a card flipped by a session update is traded until the update, then closed (no look-ahead)', () => {
+  const book = { instruments: { EURUSD: long, GBPUSD: { ...long }, USDJPY: { ...long, rating: 'FLAT', size: 0 } } };
+  const updates = { slots: { london: { at: new Date(londonMs(date, 8, 5)).toISOString(), changes: [] }, ny: { at: new Date(londonMs(date, 14, 35)).toISOString(), changes: [{ instrument: 'EURUSD', to: 'SHORT' }, { instrument: 'GBPUSD', to: 'STRONG_LONG' }] } } };
+  const cards = cardsAsTheDayWent(book, updates, date);
+  assert.equal(cards.EURUSD.stopMs, londonMs(date, 14, 35)); assert.equal(cards.GBPUSD.stopMs, null, 'same direction: kept all day'); assert.ok(!cards.USDJPY, 'FLAT is not traded');
+  // in the zone at 09:00, still open at the 14:35 flip: closed there with reason update, even though the target trades at 15:00
+  const b = [...bars(date, 9, 0, [[1.0995, 1.0996, 1.0985, 1.0988]]), ...bars(date, 14, 30, [[1.1000, 1.1005, 1.0998, 1.1002], [1.1002, 1.1003, 1.1000, 1.1001]]), ...bars(date, 15, 0, [[1.1001, 1.1060, 1.1000, 1.1055]])];
+  const r = simulateCard('EURUSD', cards.EURUSD, b, { date, spread: 0 });
+  assert.equal(r.reason, 'update'); assert.equal(r.exit, 1.1002, 'the last bar before the update');
+  assert.equal(simulateCard('EURUSD', { ...cards.EURUSD, stopMs: null }, b, { date, spread: 0 }).reason, 'target');
+});
+
 console.log(`deskPaperTrades: ${n} tests passed`);

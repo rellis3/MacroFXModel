@@ -16,6 +16,7 @@
  */
 import { cardPlan } from './tradeWatch.js';
 import { unitOf, londonMs, windowFor } from './deskScore.js';
+import { SLOTS, slotMs } from './deskUpdate.js';
 
 export const PAPER_VERSION = 1;
 export const PAPER_LABEL = "Description of trading the watcher's alerts, not the pre-registered test; few days so far.";
@@ -26,6 +27,27 @@ const r4 = x => (Number.isFinite(x) ? +x.toFixed(4) : null);
  * The cards the watcher watches: the book with each session update applied, and any card the updates flipped or
  * flattened dropped (as server.js _twTick does). view: js/deskUpdate.js liveView(book, updates).
  */
+/**
+ * The cards as the day went, with no look-ahead: each sized directional card from the morning book, carrying `stopMs`,
+ * the time of the first session update that flipped it or made it FLAT (null if none). A card is traded until then and
+ * closed at that moment if still open, rather than dropped for the whole day (which would use what the update knew later).
+ * Same-direction size changes keep the morning size: the paper record follows the morning plan.
+ */
+export function cardsAsTheDayWent(book, updates, date) {
+  const out = {};
+  for (const [n, c] of Object.entries(book?.instruments ?? {})) {
+    const d0 = DIR[c.rating] ?? 0; if (!d0) continue;
+    let stopMs = null;
+    for (const slot of Object.keys(SLOTS)) {
+      const up = updates?.slots?.[slot], ch = (up?.changes ?? []).find(x => x.instrument === n);
+      if (ch && (DIR[ch.to] ?? 0) !== d0) { stopMs = Date.parse(up.at ?? '') || slotMs(date, slot); break; }
+    }
+    out[n] = { ...c, stopMs };
+  }
+  return out;
+}
+
+/** Superseded by cardsAsTheDayWent (kept for callers that only have the final view). */
 export function watchedCards(book, view) {
   const out = {};
   for (const [n, c] of Object.entries(book?.instruments ?? {})) {
@@ -59,8 +81,9 @@ export function simulateCard(inst, card, bars, { date, spread = null } = {}) {
   const size = Number(card.size), dir = plan.dir, u = unitOf(card.levels);
   const base = { inst, dir, rating: card.rating, size, zone: plan.zone, invalid: plan.invalid, target: plan.target, u: u ?? null };
   if (!u) return { ...base, reason: 'no-entry', note: 'no forecast levels (no unit u)' };
-  const { entryMs, exitMs } = windowFor(date);
+  const { entryMs } = windowFor(date), stopMs = Number.isFinite(card.stopMs) ? card.stopMs : null, exitMs = Math.min(windowFor(date).exitMs, stopMs ?? Infinity);
   const win = (bars ?? []).filter(b => b.time * 1000 >= entryMs && b.time * 1000 < exitMs);
+  if (!win.length && stopMs != null && stopMs <= entryMs) return { ...base, reason: 'no-entry', note: 'flipped or flattened by a session update before 08:00' };
   if (!win.length) return { ...base, reason: 'no-entry', note: 'no bars between 08:00 and 21:00 London' };
   const tgt = plan.target, inv = plan.invalid;
   const hitInv = b => inv != null && (dir > 0 ? b.low <= inv : b.high >= inv);
@@ -90,7 +113,7 @@ export function simulateCard(inst, card, bars, { date, spread = null } = {}) {
     if (iv) { exit = fillInv(b); exitAt = b.time; reason = 'invalid'; break; }
     if (tg) { exit = fillTgt(b); exitAt = b.time; reason = 'target'; break; }
   }
-  if (exit == null) { const last = win.at(-1); exit = last.close; exitAt = last.time; }
+  if (exit == null) { const last = win.at(-1); exit = last.close; exitAt = last.time; if (stopMs != null && stopMs < windowFor(date).exitMs) reason = 'update'; }
   const sp = Number.isFinite(spread) ? spread : defaultSpread(inst, entry);
   const grossR = dir * (exit - entry) / u, costR = sp / u, netR = grossR - costR;
   return { ...base, entryMode, entryAt: new Date(win[i0].time * 1000).toISOString(), entry: r6(entry), exitAt: new Date(exitAt * 1000).toISOString(), exit: r6(exit), reason,
@@ -104,7 +127,7 @@ export function summarise(trades) {
   const done = trades.filter(t => t.reason !== 'no-entry'), sum = k => done.reduce((s, t) => s + (t[k] ?? 0), 0);
   const wins = done.filter(t => t.R > 0).length;
   return { cards: trades.length, trades: done.length, noEntry: trades.length - done.length, wins, hitRate: done.length ? r4(wins / done.length) : null,
-    byReason: Object.fromEntries(['target', 'invalid', 'close'].map(k => [k, done.filter(t => t.reason === k).length])),
+    byReason: Object.fromEntries(['target', 'invalid', 'close', 'update'].map(k => [k, done.filter(t => t.reason === k).length])),
     meanR: done.length ? r4(sum('R') / done.length) : null, meanGrossR: done.length ? r4(sum('grossR') / done.length) : null,
     sumSizeR: r4(sum('sizeR')), sumGrossSizeR: r4(sum('grossSizeR')), costSizeR: r4(sum('grossSizeR') - sum('sizeR')) };
 }
