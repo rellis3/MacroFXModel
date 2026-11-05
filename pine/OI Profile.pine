@@ -3,6 +3,7 @@
 // OI PROFILE — the options book as a picture: reaction levels + zones on the chart, and a five-column profile in the empty space RIGHT of the last bar
 //   GEX PROFILE  per-strike dealer gamma of the STRONGEST-DTE book (green = long gamma/pins, red = short gamma/amplifies)
 //   VANNA        per-strike vanna (cyan +, magenta −)           VOLUME   today's traded options volume by strike
+//   VEGA         gross vega by strike, whole book (purple): where the book is most sensitive to a vol move
 //   IV SMILE     implied vol by strike — the stored points only, nothing invented for the wings
 //   GAMMA HELIX  the dealer-hedging map twisted into two strands: blue = dealer gamma if price were here (IV −2/0/+2/+4 points), white = the
 //                futures dealers must buy/sell to stay flat (mirrored). Where the strands cross is zero gamma.
@@ -39,6 +40,7 @@ showGex    = input.bool(true, "GEX profile", group=G2)
 showVanna  = input.bool(true, "Vanna", group=G2)
 showVol    = input.bool(true, "Volume", group=G2)
 showChg    = input.bool(true, "OI change", group=G2, tooltip="The day's net change in open interest by strike: green = contracts added (positioning building), red = contracts closed (unwinding). Updated once a day with the OI snapshot.")
+showVega   = input.bool(true, "Vega", group=G2, tooltip="Gross vega by strike, the whole book (all expiries, calls plus puts): where the options book is most sensitive to a move in implied vol. A picture of the book, not a signal; dealers hedge vega with options, not the underlying.")
 showSmile  = input.bool(true, "IV smile", group=G2)
 showHelix  = input.bool(true, "Gamma helix", group=G2)
 G3 = "3 · Layout"
@@ -60,6 +62,7 @@ cCharm = input.color(#ff9f43, "Charm flip", group=G4)
 cVol   = input.color(#4aa8ff, "Volume", group=G4)
 cEM    = input.color(#f0b04a, "Expected move", group=G4)
 cSmile = input.color(#ffd166, "IV smile", group=G4)
+cVega  = input.color(#c084fc, "Vega", group=G4)
 cPeak  = input.color(#e2e8f0, "Gamma peak", group=G4)
 
 tblPosition = tblPos == "top right" ? position.top_right : tblPos == "bottom left" ? position.bottom_left : tblPos == "bottom right" ? position.bottom_right : position.top_left
@@ -81,6 +84,7 @@ var float mEmLo = na
 var float mEmPct = na
 var float mIv = na
 var float mRr = na
+var float mVegaPk = na
 var float mRef = na
 var float mBinw = na
 var float mUp1 = na
@@ -101,6 +105,8 @@ var array<float> oP = array.new_float()
 var array<float> oV = array.new_float()
 var array<float> cP = array.new_float()
 var array<float> cV = array.new_float()
+var array<float> wP = array.new_float()
+var array<float> wV = array.new_float()
 var array<float> sP = array.new_float()
 var array<float> sI = array.new_float()
 var array<float> xP = array.new_float()
@@ -264,6 +270,8 @@ if barstate.isfirst
                                     mRef := str.tonumber(val)
                                 else if key == "binw"
                                     mBinw := str.tonumber(val)
+                                else if key == "vegapk"
+                                    mVegaPk := str.tonumber(val)
                                 else if key == "terms"
                                     mTerms := val
                                 else if key == "saved"
@@ -292,6 +300,9 @@ if barstate.isfirst
                         else if tag == "C"
                             array.push(cP, f_num(p, 1))
                             array.push(cV, f_num(p, 2))
+                        else if tag == "W"
+                            array.push(wP, f_num(p, 1))
+                            array.push(wV, f_num(p, 2))
                         else if tag == "S"
                             array.push(sP, f_num(p, 1))
                             array.push(sI, f_num(p, 2))
@@ -381,7 +392,8 @@ if barstate.islast
         int c1 = c0 + colW + colGap                  // vanna centre
         int c2 = c1 + colW + colGap                  // volume centre
         int c3 = showChg ? c2 + colW + colGap : c2    // OI-change centre (the column only takes room when shown)
-        int s3 = c3 + hw + colGap                    // smile left edge
+        int c3w = showVega ? c3 + colW + colGap : c3  // vega centre (the column only takes room when shown; one-sided bars start at c3w - hw)
+        int s3 = c3w + hw + colGap                   // smile left edge
         int c4 = s3 + colW + colGap + hw             // helix centre
         int xEnd = c4 + hw
         float ref = na(mRef) ? math.max(syminfo.mintick * 50, (nz(f_arrMax(gP), close) - nz(f_arrMin(gP), close)) / 6.4) : mRef
@@ -475,6 +487,9 @@ if barstate.islast
         if showChg
             array.push(dLbl, label.new(x=c3, y=yT, text="OI CHG", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_center, textcolor=color.new(#8b95a3, 0), size=size.tiny))
             array.push(dLine, line.new(x1=c3, y1=pBot, x2=c3, y2=pTop, xloc=xloc.bar_index, color=color.new(#2a3340, 0), width=1))
+        if showVega
+            array.push(dLbl, label.new(x=c3w, y=yT, text="VEGA", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_center, textcolor=color.new(#8b95a3, 0), size=size.tiny))
+            array.push(dLine, line.new(x1=c3w - hw, y1=pBot, x2=c3w - hw, y2=pTop, xloc=xloc.bar_index, color=color.new(#2a3340, 0), width=1))
         if showSmile
             array.push(dLbl, label.new(x=s3 + hw, y=yT, text="IV SMILE", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_center, textcolor=color.new(#8b95a3, 0), size=size.tiny))
         if showHelix
@@ -527,6 +542,17 @@ if barstate.islast
                         float py = array.get(cP, i)
                         array.push(dBox, box.new(left=v > 0 ? c3 : c3 - len, top=py + halfBin * 0.5, right=v > 0 ? c3 + len : c3, bottom=py - halfBin * 0.5, border_color=color(na), bgcolor=color.new(v > 0 ? cPut : cCall, 30)))
 
+        // ── vega bars: gross, one-sided from the column's left edge; the biggest strike is brightest ──
+        if showVega and array.size(wP) > 0
+            float wmax = f_absMax(wV)
+            if wmax > 0
+                for i = 0 to array.size(wP) - 1
+                    float v = array.get(wV, i)
+                    int len = int(math.round(v / wmax * colW))
+                    if len >= 1
+                        float py = array.get(wP, i)
+                        array.push(dBox, box.new(left=c3w - hw, top=py + halfBin * 0.5, right=c3w - hw + len, bottom=py - halfBin * 0.5, border_color=color(na), bgcolor=color.new(cVega, 70 - int(v / wmax * 45))))
+
         // ── IV smile (stored points only) ──
         if showSmile and array.size(sP) > 1
             float imin = array.min(sI)
@@ -570,7 +596,7 @@ if barstate.islast
 
         // ── summary table ──
         if showTable
-            tbl := table.new(tblPosition, 2, 10, bgcolor=color.new(#0d1117, 6), frame_color=color.new(#2a3340, 0), frame_width=1, border_width=0)
+            tbl := table.new(tblPosition, 2, 11, bgcolor=color.new(#0d1117, 6), frame_color=color.new(#2a3340, 0), frame_width=1, border_width=0)
             color rc = mRegime == "BREAKOUT" ? cCall : cPut
             table.cell(tbl, 0, 0, "OI PROFILE · " + mName + (mTerms == "futures" ? " · futures prices" : " · spot/CFD prices"), text_color=color.new(#e6e9ef, 0), text_size=tblTextSize, text_halign=text.align_left)
             table.cell(tbl, 1, 0, mGen == "" ? "" : str.substring(mGen, 0, math.min(16, str.length(mGen))), text_color=color.new(#8b95a3, 0), text_size=size.tiny, text_halign=text.align_right)
@@ -597,5 +623,7 @@ if barstate.islast
             table.cell(tbl, 1, 7, na(ageH) ? "—" : str.tostring(ageH, "#.#") + " h ago" + (ageH > 30 ? " — re-paste" : ""), text_color=ageCol, text_size=tblTextSize, text_halign=text.align_right)
             table.cell(tbl, 0, 8, "SHELF LIFE", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
             table.cell(tbl, 1, 8, shelf, text_color=color.new(#cbd5e1, 0), text_size=tblTextSize, text_halign=text.align_right)
-            table.cell(tbl, 0, 9, "a picture of the book — not a signal", text_color=color.new(#5b6678, 0), text_size=size.tiny, text_halign=text.align_left)
-            table.merge_cells(tbl, 0, 9, 1, 9)
+            table.cell(tbl, 0, 9, "VEGA PEAK", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
+            table.cell(tbl, 1, 9, na(mVegaPk) ? "—" : str.tostring(mVegaPk, format.mintick) + "  (" + (mVegaPk >= close ? "+" : "") + str.tostring(mVegaPk - close, format.mintick) + ")", text_color=cVega, text_size=tblTextSize, text_halign=text.align_right)
+            table.cell(tbl, 0, 10, "a picture of the book — not a signal", text_color=color.new(#5b6678, 0), text_size=size.tiny, text_halign=text.align_left)
+            table.merge_cells(tbl, 0, 10, 1, 10)

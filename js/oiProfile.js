@@ -16,6 +16,7 @@ import { oiBookLegs, oiParseVolume, parseOIMatrix, futuresIsInverted, oiCalcMaxP
 import { gexLadder } from './gexLadder.js';
 import { levelExpectation } from './levelExpectation.js';
 import { RIPPLE_BUCKETS } from './rippleBook.js';
+import { bsVega } from './greekLayers.js';
 
 const LABEL = { call_wall: 'CALL WALL', put_wall: 'PUT WALL', gamma_peak: 'GAMMA PEAK', zero_gamma: 'ZERO GAMMA', gex_flip: 'GEX FLIP', max_pain: 'MAX PAIN',
   vanna_flip: 'VANNA FLIP', charm_flip: 'CHARM FLIP', oi_volume: 'VOLUME', exp_hi: 'EXP MOVE ↑', exp_lo: 'EXP MOVE ↓', short_gamma_node: 'SHORT-GAMMA NODE', long_gamma_node: 'LONG-GAMMA NODE' };
@@ -196,6 +197,16 @@ export function buildOiProfile(inst, opts = {}) {
   const vanna = rows(b => (gV[b] ? { price: mid(b), v: gV[b] } : null));
   const volume = rows(b => (vol[b] ? { price: mid(b), v: vol[b] } : null));
   const oiChg = rows(b => (chg[b] ? { price: mid(b), v: chg[b] } : null));
+  // VEGA by strike (2026-11-05): GROSS vega, the whole book (calls + puts, every expiry), per vol point. Gross, not net: "vega-heavy" asks where the book is most sensitive to a vol
+  // move, and that does not need the (assumed) dealer sign. Every expiry is in because vega lives in the longer-dated options the gamma bucket leaves out. A profit-and-loss exposure
+  // that dealers hedge with options, not the underlying; descriptive, and no link to any outcome has been tested.
+  const vg = mk();
+  for (const l of legs) {
+    const T = Math.max(Number.isFinite(l.dte) ? l.dte : 1, 0.25) / 365, sg = l.sigma > 0 ? l.sigma : flat;
+    l.strikes.forEach((K, i) => { const b = binOf(K); if (b >= 0 && b < nBins && K > 0) vg[b] += ((l.calls[i] || 0) + (l.puts[i] || 0)) * mult * bsVega(spot, K, T, sg) / 100; });
+  }
+  const vega = rows(b => (vg[b] > 0 ? { price: mid(b), v: vg[b] } : null));
+  const vegaPeak = vega.reduce((m, r) => (r.v > (m?.v ?? 0) ? r : m), null);
 
   // ── 4. IV smile: real points only (best-covered smile on the record) ─────────────────────────────────────────────
   const smiles = [inst?.ivSmile, ...(Array.isArray(inst?.ivSmiles) ? inst.ivSmiles.map(s => s?.smile ?? s) : [])].filter(s => s?.strikes?.length && s?.iv?.length);
@@ -220,7 +231,7 @@ export function buildOiProfile(inst, opts = {}) {
     em: (em && Number.isFinite(em.dte) && em.dte <= 2) ? { hi: em.upper, lo: em.lower, pct: em.pct, dte: em.dte, source: 'options' }
       : (opts.dayMove > 0 ? { hi: spot + opts.dayMove, lo: spot - opts.dayMove, pct: +(opts.dayMove / spot * 100).toFixed(3), dte: 1, source: 'forecast' } : null),
     iv: { atm: inst?.ivDynamics?.atmIV ?? null, rr: inst?.riskReversal?.rr ?? null, tilt: inst?.riskReversal?.tilt ?? null },
-    levels, gex, vanna, volume, oiChg, smile, helix, binWidth: bw,
+    levels, gex, vanna, volume, oiChg, vega, vegaPeak: vegaPeak?.price ?? null, smile, helix, binWidth: bw,
     hedgeRead: opts.hedge?.atSpot ? { up1: opts.hedge.atSpot.hedgeUp1pct, dn1: opts.hedge.atSpot.hedgeDown1pct } : null,
   };
 }
@@ -232,7 +243,7 @@ export function shiftProfilePrices(p, fn, label = 'futures') {
   const f = v => (Number.isFinite(v) ? fn(v) : v);
   const mapRows = rows => (rows || []).map(r => ({ ...r, price: f(r.price) }));
   return { ...p, terms: label, spot: f(p.spot), zeroGamma: f(p.zeroGamma), flip: f(p.flip), em: p.em ? { ...p.em, hi: f(p.em.hi), lo: f(p.em.lo) } : null,
-    levels: mapRows(p.levels), gex: mapRows(p.gex), vanna: mapRows(p.vanna), volume: mapRows(p.volume), oiChg: mapRows(p.oiChg ?? []), smile: mapRows(p.smile), helix: p.helix ? mapRows(p.helix) : null };
+    levels: mapRows(p.levels), gex: mapRows(p.gex), vanna: mapRows(p.vanna), volume: mapRows(p.volume), oiChg: mapRows(p.oiChg ?? []), vega: mapRows(p.vega ?? []), vegaPeak: f(p.vegaPeak ?? NaN), smile: mapRows(p.smile), helix: p.helix ? mapRows(p.helix) : null };
 }
 
 /** Pipe-delimited block for the Pine indicator. One instrument per block; first line after the title names it.
@@ -248,7 +259,7 @@ export function buildProfileText(p, { name, generated = '', digits = 2, savedAtM
   const keep = (rows, val, m) => rows.filter(r => Math.abs(val(r)) / m >= 0.02);
   const out = ['──── OI PROFILE ' + '─'.repeat(30), `Generated: ${generated}`, '', name || p.sym];
   out.push(`M|spot|${f(p.spot)}|regime|${p.regime}|netgex|${Number.isFinite(p.netGex) ? Math.round(p.netGex / 1000) : '-'}|book|${p.book.label.replace(/\s+/g, '')}|bookpct|${p.book.share}|zg|${f(p.zeroGamma)}|flip|${f(p.flip)}`
-    + `|em_hi|${f(p.em?.hi)}|em_lo|${f(p.em?.lo)}|empct|${plain(p.em?.pct, 2)}|iv|${plain(p.iv.atm, 1)}|rr|${plain(p.iv.rr, 1)}|refmove|${f(p.refMove)}|binw|${f(p.binWidth)}|terms|${p.terms || 'spot'}` + (Number.isFinite(savedAtMs) ? `|saved|${new Date(savedAtMs).toISOString().slice(0, 16).replace('T', ' ')}` : ''));
+    + `|em_hi|${f(p.em?.hi)}|em_lo|${f(p.em?.lo)}|empct|${plain(p.em?.pct, 2)}|iv|${plain(p.iv.atm, 1)}|rr|${plain(p.iv.rr, 1)}|refmove|${f(p.refMove)}|binw|${f(p.binWidth)}|vegapk|${f(p.vegaPeak)}|terms|${p.terms || 'spot'}` + (Number.isFinite(savedAtMs) ? `|saved|${new Date(savedAtMs).toISOString().slice(0, 16).replace('T', ' ')}` : ''));
   if (p.hedgeRead) out.push(`H0|up1|${Math.round(p.hedgeRead.up1)}|dn1|${Math.round(p.hedgeRead.dn1)}`);
   for (const l of p.levels) out.push(`L|${l.type}|${f(l.price)}|${l.label}|${(+l.strength).toFixed(1)}|${l.touchPct ?? '-'}|${l.etaMin ?? '-'}|${l.expect || '-'}|${Number.isFinite(l.chgPct) ? l.chgPct : '-'}`);
   const gm = mxAbs(p.gex.map(r => r.net)); for (const r of keep(p.gex, r => r.net, gm)) out.push(`G|${f(r.price)}|${sc(r.net, gm)}`);
@@ -257,6 +268,9 @@ export function buildProfileText(p, { name, generated = '', digits = 2, savedAtM
   // OI change is sparse and spiky: only the biggest movers (at least 5% of the peak, 14 at most) so the paste stays inside Pine's string cap
   const cm = mxAbs((p.oiChg ?? []).map(r => r.v));
   for (const r of (p.oiChg ?? []).filter(r => Math.abs(r.v) / cm >= 0.05).sort((x, y) => Math.abs(y.v) - Math.abs(x.v)).slice(0, 14).sort((x, y) => x.price - y.price)) out.push(`C|${f(r.price)}|${sc(r.v, cm)}`);
+  // VEGA: gross, so one-sided bars (0..1000). Only strikes at least 5% of the peak, 24 at most, so the paste stays inside Pine's string cap.
+  const wm = mxAbs((p.vega ?? []).map(r => r.v));
+  for (const r of (p.vega ?? []).filter(r => r.v / wm >= 0.05).sort((x, y) => y.v - x.v).slice(0, 24).sort((x, y) => x.price - y.price)) out.push(`W|${f(r.price)}|${sc(r.v, wm)}`);
   const sm = p.smile.length > 24 ? p.smile.filter((_, i) => i % Math.ceil(p.smile.length / 24) === 0 || i === p.smile.length - 1) : p.smile;   // ≤24 points: a smooth curve needs no more
   for (const r of sm) out.push(`S|${f(r.price)}|${(+r.iv).toFixed(1)}`);
   if (p.helix) {
