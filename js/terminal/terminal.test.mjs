@@ -296,7 +296,13 @@ test('options view: gauges read against own history, lines carry evidence words,
   const sm = { ok: true, instruments: ['GOLD', 'NQ'], series: Array.from({ length: 70 }, (_, i) => [new Date(Date.UTC(2026, 7, 1) + i * 864e5).toISOString().slice(0, 10), 4000 + i]), livePrice: { price: 4070 },
     expiries: [{ expiry: '2026-11-24', date: '2026-11-24', dte: 21, zones: [{ px: 4200, oi: 12000, call: 9000, put: 3000 }, { px: 3900, oi: 6000, call: 100, put: 5900 }] }],
     paths: [{ name: 'Bounce first', prob: 0.45, points: [{ date: '2026-10-09', px: 4069 }, { date: '2026-11-19', px: 4275 }] }], pull: { summary: 'leans up' } };
-  const ph = OPV.pathHtml(sm, 'GOLD'); assert.equal((ph.match(/<circle/g) ?? []).length, 2); assert.match(ph, /mostly calls/); assert.match(ph, /Bounce first 45%/); assert.match(ph, /value="GOLD"|<option selected>GOLD/);
+  sm.state = { date: '2026-10-08', close: 4069, sigmaDailyPct: 1.5 }; sm.expiries.push({ expiry: '2026-12-29', dte: 56, totalOI: 3000, zones: [{ px: 3950, oi: 3000, call: 100, put: 2900 }] }); sm.expiries[0].totalOI = 18000;
+  const walk = OPV.zoneWalk(sm.expiries, { close: 4070, anchor: 'strike', includeThin: true, vol: OPV.walkVol(sm), date: '2026-10-08' });
+  assert.equal(walk.points.length, 2); assert.equal(walk.points[0].px, 4200); assert.equal(walk.points[1].dir, 'down');
+  const ph = OPV.pathHtml(sm, 'GOLD', { walk, anchor: 'strike' });
+  assert.match(ph, /opt-walk-spark/, 'the spark runs along the walk'); assert.match(ph, />21d</); assert.match(ph, />56d</); assert.match(ph, /24 Nov/);
+  assert.match(ph, /strongest strike/); assert.match(ph, /NULL/); assert.match(ph, /<option selected>GOLD/); assert.match(ph, /▲ 4,200/); assert.match(ph, /▼ 3,950/);
+  assert.match(OPV.pathHtml(sm, 'GOLD', { walk, anchor: 'gammaCentre' }), /UNDERPOWERED/);
   assert.match(OPV.pairCard('EURUSD', { oi, hist }), /puts per call/); assert.match(OPV.pairCard('NZDUSD', { oi, hist }), /No listed options book/);
   assert.equal(OPV.idOf('XAU/USD'), 'GOLD'); assert.equal(OPV.idOf('SPX500_USD'), 'SPX500');
 });

@@ -37,7 +37,8 @@ const T = {
   pair: null, pairChart: null,
 };
 /** one promise per URL for the life of the page (the boards change daily at most; the chain-live feed is fetched fresh) */
-const J = url => (T.cache[url] ??= getJson(url));
+// a failed fetch (e.g. while the server restarts) is not kept: the next draw asks again
+const J = url => (T.cache[url] ??= getJson(url).then(r => { if (!r || r.error || r.status === 'error') delete T.cache[url]; return r; }));
 const ok = r => r && r.ok !== false && !r.error;
 const ready = () => new Promise(res => { const t0 = Date.now(); const go = () => ((typeof D !== 'undefined' && D.run) || Date.now() - t0 > 30_000 ? res() : setTimeout(go, 150)); go(); });
 const pctTxt = v => (v == null || !Number.isFinite(+v) ? '–' : `${Math.round(+v * 100)}%`);
@@ -622,14 +623,19 @@ ${sec('Fear gauge', 'the VIX and its term structure')}<div id="opt-vix">${loadin
   const dl = el('opt-dl'); if (dl) { dl.innerHTML = OPV.dealersHtml(hs) || '<div class="card muted">No dealer hedging read.</div>'; goPair(dl); }
   const skb = el('opt-skew'); if (skb && typeof E !== 'undefined') { E['options-skew'] ??= sk; skb.innerHTML = globalThis.skewHtml?.() ?? ''; }
   const vx = el('opt-vix'); if (vx) vx.innerHTML = OPV.vixHtml(hist) || '<div class="card muted">No VIX series.</div>';
-  const drawPath = async inst => {
+  const drawPath = async (inst, anchor = T.optAnchor ?? 'gammaCentre') => {
     const box = el('opt-path'); if (!box) return;
     box.innerHTML = loading(`the ${inst} path`);
     const sm = await J(`/api/swing-map?inst=${encodeURIComponent(inst)}`);
-    box.innerHTML = OPV.pathHtml(sm, inst);
+    let walk = null;
+    try { const A = OPV.walkAnchor(sm); if (sm?.ok) walk = OPV.zoneWalk(sm.expiries ?? [], { close: A.px, anchor, includeThin: true, vol: OPV.walkVol(sm), date: A.date }); } catch (e) { console.warn('options walk', e); }
+    // drawn at the card's own width, so a phone gets full-size text rather than a shrunken chart
+    box.innerHTML = OPV.pathHtml(sm, inst, { walk, anchor, width: Math.max(300, (box.clientWidth || 460) - 26) });
     const ps = box.querySelector('#opt-path-inst'); if (ps) ps.onchange = () => { T.optPath = ps.value; drawPath(ps.value); };
+    const pa = box.querySelector('#opt-path-anchor'); if (pa) pa.onchange = () => { T.optAnchor = pa.value; drawPath(T.optPath ?? inst, pa.value); };
   };
   drawPath(T.optPath ?? 'GOLD');
+  if (!T.optResize) { let last = window.innerWidth; T.optResize = true; window.addEventListener('resize', () => { if (Math.abs(window.innerWidth - last) > 60 && el('options') && !el('options').hidden) { last = window.innerWidth; drawPath(T.optPath ?? 'GOLD'); } }); }
 }
 const RENDER = { today: renderToday, pair: renderPair, changed: renderChanged, research: renderResearch, options: renderOptions };
 globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'pair' && /pair=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
