@@ -1,6 +1,6 @@
 // Expiry tracker: capture days re-cut into one series per expiry.
 //   node js/expiryTracker.test.mjs
-import { expiryHedgeGreeks, expirySnapshotsFromRaw, mergeExpirySnapshot, foldCaptureDays, expiryView, matchExpiryKey, toSpot, addDays, seriesIndexEntry } from './expiryTracker.js';
+import { sameBook, expiryHedgeGreeks, expirySnapshotsFromRaw, mergeExpirySnapshot, foldCaptureDays, expiryView, matchExpiryKey, toSpot, addDays, seriesIndexEntry } from './expiryTracker.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  → ' + e : ''}`); if (!c) fails++; };
@@ -119,6 +119,21 @@ console.log('[weekend captures: join an existing series, never start a phantom o
   ok('the real Sunday column still joins its series', m.get('GOLD|2026-11-24').n === 2);
   const phantom = { v: 1, pair: 'GOLD', expiry: '2026-11-26', days: [{ date: '2026-10-25', dte: 32, futures: 4000, ladder: [[4000, 5, 5]] }, { date: '2026-11-01', dte: 25, futures: 4000, ladder: [[4000, 6, 5]] }] };
   ok('a stored weekend-only series reads as nothing', expiryView(phantom) === null);
+}
+
+console.log('[weekday re-served copies: yesterday\'s book with yesterday\'s DTE never starts a series]');
+{
+  const m = new Map();
+  const rows = (a, b) => [[3900, [10, a], [0, 0]], [4100, [b, 10], [0, 0]], [4000, [0, 0], [5, 5]]];
+  // Wed 4 Nov: the real 6 Nov weekly (coded, DTE 2) and the 24 Nov monthly in the far column
+  const wed = { date: '2026-11-04', pairs: { GOLD: raw(4000, [2, 20], [[3900, [10, 500], [0, 900]], [4100, [800, 10], [1200, 0]], [4000, [0, 0], [5, 5]]]) } };
+  // Thu 5 Nov: the real columns (DTE 1, 19) plus the uncoded copies of Wednesday's books with Wednesday's DTE (2, 21)
+  const thuRaw = raw(4010, [1, 2, 19, 21], [[3900, [10, 520], [10, 500], [0, 950], [0, 900]], [4100, [810, 10], [800, 10], [1300, 0], [1200, 0]], [4000, [0, 0], [0, 0], [5, 5], [5, 5]]]);
+  foldCaptureDays(m, [wed, { date: '2026-11-05', pairs: { GOLD: thuRaw } }]);
+  ok('no phantom 7 Nov or 26 Nov series', [...m.keys()].sort().join() === 'GOLD|2026-11-06,GOLD|2026-11-24', [...m.keys()].join(' '));
+  ok('the real columns still add Thursday', m.get('GOLD|2026-11-06').n === 2 && m.get('GOLD|2026-11-24').n === 2);
+  ok('sameBook: identical but for a far-tail row', sameBook([[1, 100, 100], [2, 50, 50], [9, 1, 0]], [[1, 100, 100], [2, 50, 50], [8, 2, 0]]));
+  ok('sameBook: a real change is a different book', !sameBook([[1, 100, 100], [2, 50, 50]], [[1, 140, 100], [2, 50, 90]]));
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

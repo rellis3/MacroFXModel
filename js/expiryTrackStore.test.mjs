@@ -1,6 +1,6 @@
 // Expiry tracker store against an in-memory R2/KV.
 //   node js/expiryTrackStore.test.mjs
-import { createExpiryTrackStore, seriesKey } from './expiryTrackStore.js';
+import { createExpiryTrackStore, seriesKey, FOLD_VERSION } from './expiryTrackStore.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  → ' + e : ''}`); if (!c) fails++; };
@@ -54,6 +54,16 @@ console.log('[a new night appends]');
     v && String(v.days[3].zones.find(z => z.k === 1.17)?.buildStreak));
   const l = await store.list('EUR/USD');
   ok('list shows both expiries with DTE now', l.series.length === 2 && l.series[0].dteNow === 20, JSON.stringify(l.series[0]));
+}
+
+console.log('[an index from an older fold version is rebuilt once]');
+{
+  const idx = r2.get('archive/expiry_track/_index.json');
+  r2.set('archive/expiry_track/_index.json', { ...idx, v: 1, series: { ...idx.series, 'EUR/USD|2026-11-26': { expiry: '2026-11-26', n: 1 } } });
+  const r = await store.fold();
+  const after = r2.get('archive/expiry_track/_index.json');
+  ok('rebuilt from every capture day, the stale entry gone', r.folded === (await store.knownDates()).length && after.v === FOLD_VERSION && !after.series['EUR/USD|2026-11-26'], JSON.stringify(r));
+  ok('the next fold is incremental again', (await store.fold()).folded === 2);
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
