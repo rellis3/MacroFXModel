@@ -116,6 +116,10 @@ const _CF_EXACT = new Set([
                              // the live calibration record of the IV-vs-sigma call. Must also be in _worker.js PERMANENT_KEYS.
   'forecast_scorecard_v1',   // forward scorecard of the forecast lines (plain vs IV-adjusted daily, sqrt-h vs reverting
                              // weekly, Live Range bands): a forward record, not re-derivable. Must also be in _worker.js PERMANENT_KEYS.
+  'forecast_audit_v1',       // Forecast auditor: per-day regime/event tags of the scorecard rows, the latest audit, the drift-alarm
+                             // log and the Telegram opt-in. The tags are point-in-time. Must also be in _worker.js PERMANENT_KEYS.
+  'forecast_audit_bt_v1',    // Forecast auditor: the last 6 history backtests (exploratory; re-derivable, but each run takes
+                             // minutes of OANDA fetches). Must also be in _worker.js PERMANENT_KEYS.
   'signal_journal_v1',       // Signal Journal: line touches + odds + outcomes, yield-spread alert positions
                              // (forge/SIGNAL_JOURNAL_PREREG.md): a forward record. Must also be in _worker.js PERMANENT_KEYS.
   'paper_record_v1',         // rich-vol break paper record (paper-record.html): every flag and hypothetical trade since

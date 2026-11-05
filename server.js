@@ -65,6 +65,8 @@ import { buildIvLadderExportText }                                    from './js
 import { buildIvAdjExportText, buildIvAdjInstruments }                from './js/forecastLadderIvAdj.js';
 import { buildPersistExportText, buildPersistInstruments }            from './js/forecastLadderPersist.js';
 import { scoreSession, scoreWeek, summarise as summariseScorecard, verdicts as scorecardVerdicts } from './js/forecastScorecard.js';
+import { buildAudit as faBuildAudit, newAlarms as faNewAlarms, alarmMessage as faAlarmMessage, untaggedDates as faUntagged, regimeOf as faRegimeOf, LOCKBOX_END as FA_LOCKBOX_END, AUDIT_SEED as FA_SEED, LINE_SETS as FA_SETS } from './js/forecastAudit.js';
+import { historyRows as faHistoryRows, summariseHistory as faSummariseHistory, clampWindow as faClampWindow, parseCalendar as faParseCalendar, eventTagger as faEventTagger, ivSourceFor as faIvSourceFor, IV_FRED as FA_IV_FRED, HISTORY_SETS as FA_HISTORY_SETS, HISTORY_LABEL as FA_HISTORY_LABEL } from './js/forecastAuditHistory.js';
 import { londonParts as _lrLondonParts }                              from './js/intradayRange.js';
 import { sessionState as _sjSession }                                 from './js/intradayRange.js';
 import { detectTouches as sjDetect, scoreTouch as sjScore, yieldEvents as sjYieldEvents, formatDigest as sjDigest, formatYield as sjYieldText, MAIN as SJ_MAIN } from './js/signalJournal.js';
@@ -2235,6 +2237,7 @@ const TG_SENDERS = {
   allocation:        'Desk allocation committee: the weekly per-bot keep / cut / pause / raise note (advice; the owner decides)',
   tradeWatch:        'Desk trade watcher: a card reached its entry zone, first target or invalidation (context, not an order)',
   surpriseReader:    'Live surprise reader: a high-impact print, its surprise against consensus and the release playbook, within a minute (history, not a forecast)',
+  forecastDrift:     'Forecast auditor: a forecast line set drifted out of its calibration band (only after opting in on the Forecast auditor card; a prompt to look, nothing is changed)',
   deskAlerts:        'Desk alerts: world stress colour, options-skew extremes, fair value beyond 10%, carry/vol collapse, leading-indicator phase, speaker drift (context, not a signal)',
   // volatility_bot_v2 (the Python bot) checks this directly via ai_alert_cfg
   // (see its own tg_master_on doc) — unlike every other sender above, this
@@ -29314,6 +29317,215 @@ app.get('/api/forecast-scorecard', async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// ── Forecast Auditor (js/forecastAudit.js, js/forecastAuditHistory.js) ────────────────────────────────────────────
+// Monitoring only: it never changes a forecast, a ladder or a desk score, and never banks a verdict.
+//   forward  every 30 min, once the scorecard (above) has a new session: tag each scored instrument-day with its
+//            regime (σ vs its usual level, from NY-close bars before the session) and its event tag (the archived
+//            forecast's), rebuild the audit from the scorecard's rows, diff the drift alarms, and Telegram the NEW
+//            ones only when the owner opted in on the card AND the forecastDrift switch is not muted.
+//   history  POST /api/forecast-audit/backtest runs the production ladder builders over 2020-10 → 2026-08-21 as a
+//            job (status polled); results cached in KV by their parameters. Exploratory, never banked.
+// KV forecast_audit_v1 (tags, latest audit, alarm log, per-day history, the Telegram opt-in) and forecast_audit_bt_v1
+// (the last few backtest results).
+const _FA_KEY = 'forecast_audit_v1', _FA_BT_KEY = 'forecast_audit_bt_v1';
+const _faLondonDate = () => _lrLondonParts(Date.now() / 1000).date;
+async function _faLoad() {
+  let A = null;
+  try { A = JSON.parse(await kv.get(_FA_KEY) || 'null'); } catch { /* corrupt -> start again */ }
+  A ??= {};
+  A.tags ??= {}; A.cfg ??= { telegram: false }; A.log ??= []; A.history ??= [];
+  return A;
+}
+async function _faTag(sc, A) {
+  const todo = faUntagged(sc, A.tags);
+  if (!todo.length || !process.env.OANDA_KEY) return false;
+  const byName = Object.fromEntries(VOL_INSTRUMENTS.map(c => [c.name, c]));
+  const bars = {};
+  for (const date of todo) {
+    let fc = null;
+    try { fc = JSON.parse(await kv.get(`vol_forecast_${date}`) || 'null'); } catch { /* no archive -> event unknown */ }
+    const T = (A.tags[date] ??= {});
+    for (const inst of Object.keys(sc.days[date] ?? {})) {
+      if (T[inst]) continue;
+      const cfg = byName[inst];
+      let regime = null;
+      if (cfg) {
+        try {
+          bars[inst] ??= await _btFetchD1(_liqGateOandaSym(cfg.oandaInstrument), 900);   // trading-day labels: date < D closed before D
+          const est = _ipsParamsFor(inst, cfg.assetClass).estimator ?? 'yz_30';
+          regime = faRegimeOf(bars[inst].filter(b => b.date < date).slice(-800), est)?.regime ?? null;
+        } catch { bars[inst] = []; }
+      }
+      const ev = fc?.instruments?.[inst]?.ladder?.event_tag;
+      T[inst] = { regime, event: ev === undefined ? null : ev };
+    }
+  }
+  return true;
+}
+async function _faTick({ force = false } = {}) {
+  let sc = null;
+  try { sc = JSON.parse(await kv.get(_FCARD_KEY) || 'null'); } catch { /* none */ }
+  if (!sc?.days || !Object.keys(sc.days).length) return null;
+  const A = await _faLoad();
+  const days = Object.keys(sc.days).sort(), last = days.at(-1), nWeeks = Object.keys(sc.weeks ?? {}).length;
+  if (!force && A.audit?.last === last && A.audit?.weeks === nWeeks && !faUntagged(sc, A.tags).length) return A;
+  await _faTag(sc, A);
+  A.tags = Object.fromEntries(Object.entries(A.tags).filter(([d]) => sc.days[d]));
+  const asOf = _faLondonDate();
+  const audit = faBuildAudit({ store: sc, tags: A.tags, asOf, seed: FA_SEED, harSessions: days.filter(d => d > FA_LOCKBOX_END).length });
+  const fresh = faNewAlarms(A.audit?.alarms, audit.alarms);
+  if (fresh.length) {
+    A.log.push(...fresh.map(a => ({ ...a, at: asOf })));
+    A.log = A.log.slice(-200);
+    if (A.cfg.telegram === true && tgOn('forecastDrift') && state.tg?.token && state.tg?.chatId && state.cfg?.serverEnabled !== false) {
+      await sendTelegram(state.tg.token, state.tg.chatId, faAlarmMessage(fresh, last)).catch(() => false);
+    }
+  }
+  const snap = { date: last, alarms: audit.alarms.length,
+    sets: Object.fromEntries(Object.entries(audit.sets).filter(([, s]) => s.windows?.r60).map(([k, s]) => [k, {
+      hl: s.windows.r60.hl.map(c => c?.rate ?? null), ratio: s.windows.r60.ratio, sessions: s.windows.r60.sessions }])) };
+  A.history = [...A.history.filter(h => h.date !== last), snap].sort((a, b) => (a.date < b.date ? -1 : 1)).slice(-400);
+  A.audit = audit;
+  await kv.put(_FA_KEY, JSON.stringify(A));
+  return A;
+}
+svcInterval('forecastAudit', () => _faTick().catch(e => console.error('[forecast-audit]', e.message)), 30 * 60_000);
+svcTimeout('forecastAudit', () => _faTick().catch(e => console.error('[forecast-audit]', e.message)), 6 * 60_000);
+
+const _faPublic = A => ({ ok: true, label: 'Monitoring, not a verdict. No forecast is changed automatically.',
+  lockboxEnd: FA_LOCKBOX_END, telegram: { optIn: A.cfg?.telegram === true, muted: !tgOn('forecastDrift') }, audit: A.audit ?? null });
+// GET /api/forecast-audit → the latest audit (built on first call if the tick has not run yet)
+app.get('/api/forecast-audit', async (_req, res) => {
+  try {
+    const A = await _faLoad();
+    if (!A.audit) {                                   // first call: an untagged audit now, the tagged one from the tick
+      _faTick({ force: true }).catch(e => console.error('[forecast-audit]', e.message));
+      const sc = JSON.parse(await kv.get(_FCARD_KEY) || 'null');
+      if (sc?.days) A.audit = faBuildAudit({ store: sc, tags: A.tags, asOf: _faLondonDate(), seed: FA_SEED,
+        harSessions: Object.keys(sc.days).filter(d => d > FA_LOCKBOX_END).length });
+    }
+    res.json(_faPublic(A));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/forecast-audit/history → one rolling-60 snapshot per audited session + the alarm log
+app.get('/api/forecast-audit/history', async (_req, res) => {
+  try {
+    const A = await _faLoad();
+    res.json({ ok: true, history: A.history, log: A.log.slice(-100).reverse() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/forecast-audit/telegram { on } → the opt-in for drift messages (default off; the forecastDrift switch can still mute)
+app.post('/api/forecast-audit/telegram', express.json({ limit: '1kb' }), async (req, res) => {
+  try {
+    const A = await _faLoad();
+    A.cfg.telegram = req.body?.on === true;
+    await kv.put(_FA_KEY, JSON.stringify(A));
+    res.json({ ok: true, telegram: { optIn: A.cfg.telegram, muted: !tgOn('forecastDrift') } });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// History backtest: one run at a time (it pulls ~6 years of hourly bars per instrument from OANDA).
+const _faBtJobs = new Map();
+let _faCal = null;
+function _faCalendars() {
+  if (_faCal) return _faCal;
+  const read = (f, enc) => { const p = path.join(__dirname, f); return fs.existsSync(p) ? faParseCalendar(fs.readFileSync(p, enc)) : null; };
+  _faCal = [read('calendar_events.csv', 'latin1'), read('calendar_events_nasdaq.csv', 'utf8')].filter(Boolean);
+  return _faCal;
+}
+async function _faBtStore() { try { return JSON.parse(await kv.get(_FA_BT_KEY) || 'null') ?? { runs: {} }; } catch { return { runs: {} }; } }
+function _faBtParams(b = {}) {
+  const sets = ['plain', ...new Set((Array.isArray(b.sets) ? b.sets : [b.set]).filter(s => FA_HISTORY_SETS.includes(s) && s !== 'plain'))];
+  const all = VOL_INSTRUMENTS.map(c => c.name);
+  let insts = (Array.isArray(b.instruments) ? b.instruments : String(b.instruments ?? 'all').split(',')).map(s => String(s).trim().toUpperCase()).filter(Boolean);
+  if (!insts.length || insts.includes('ALL')) insts = VOL_INSTRUMENTS.filter(c => _ipsParamsFor(c.name, c.assetClass).source === 'fitted').map(c => c.name);
+  else if (insts.includes('IV13')) insts = all.filter(n => ['VIX', 'VXN', 'GVZ', 'CME_ATM30'].includes(faIvSourceFor('persist', n)));
+  insts = [...new Set(insts.filter(n => all.includes(n)))].sort();
+  const W = faClampWindow({ from: b.from, to: b.to });
+  return { sets, instruments: insts, from: W.from, to: W.to, clamped: W.clamped };
+}
+const _faBtId = p => `fab_${crypto.createHash('sha1').update(JSON.stringify([p.sets, p.instruments, p.from, p.to])).digest('hex').slice(0, 12)}`;
+async function _faBtRun(id, p) {
+  const job = _faBtJobs.get(id);
+  const notes = [FA_HISTORY_LABEL,
+    'The production widths were fitted on part of this history, so calibration here is partly in-sample.',
+    `Never past ${FA_LOCKBOX_END} (the lockbox date) for any line set.`,
+    'Implied vol history: VIX / VXN / GVZ closes (FRED). The USD majors have none here, so the chosen forecast runs its persistence form there and the IV-adjusted set covers indices + gold (IV-only form, no VIX-curve extras).',
+    'Event tags from calendar_events.csv + the Nasdaq continuation (not the ForexFactory feed the multipliers were fitted on); uncovered dates are unknown (×1.0).',
+    'Weekly lines are not replayed: their record is the forward audit.'];
+  try {
+    const tagFor = faEventTagger(_faCalendars());
+    const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
+    const iv = {}, need = new Set(p.instruments.flatMap(n => [faIvSourceFor('persist', n), faIvSourceFor('ivadj', n)]).filter(s => FA_IV_FRED[s]));
+    for (const s of need) {
+      if (!fredKey) { notes.push(`No FRED key: ${s} not loaded, its instruments use the no-IV form.`); continue; }
+      try { iv[s] = [...(await fetchFredSeries(FA_IV_FRED[s], '2016-01-01', fredKey)).entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)); }
+      catch (e) { notes.push(`${s}: ${e.message}`); }
+    }
+    const byName = Object.fromEntries(VOL_INSTRUMENTS.map(c => [c.name, c]));
+    const rows = [], coverage = {};
+    const h1From = new Date(Date.parse(`${p.from}T00:00:00Z`) - 3 * 86400_000).toISOString();
+    for (const [i, name] of p.instruments.entries()) {
+      job.progress = `${name} (${i + 1}/${p.instruments.length})`;
+      const cfg = byName[name], sym = _liqGateOandaSym(cfg.oandaInstrument);
+      try {
+        const nyBars = await _btFetchD1(sym, 5000);
+        const h1 = (await fetchOandaCandleRange(sym, 'H1', h1From, `${p.to}T23:59:59Z`)).map(b => ({ t: b.t, open: +b.open, high: +b.high, low: +b.low, close: +b.close }));
+        const r = faHistoryRows({ instrument: name, assetClass: cfg.assetClass, nyBars, h1, from: p.from, to: p.to, sets: p.sets, iv, tagFor });
+        rows.push(...r.rows);
+        coverage[name] = { sessions: r.rows.length, ...r.counts, forms: r.forms };
+      } catch (e) { coverage[name] = { error: e.message }; }
+    }
+    if (!rows.length) throw new Error('no sessions replayed (OANDA unreachable?)');
+    job.progress = 'bootstrap';
+    const result = { ok: true, id, params: p, label: FA_HISTORY_LABEL, notes, coverage, ranAt: new Date().toISOString(),
+      seed: FA_SEED, nBoot: 2000, meanBlock: 20, summary: faSummariseHistory(rows, p.sets, { seed: FA_SEED, nBoot: 2000, meanBlock: 20 }) };
+    const S = await _faBtStore();
+    S.runs[id] = result;
+    const keep = Object.values(S.runs).sort((a, b) => String(b.ranAt).localeCompare(String(a.ranAt))).slice(0, 6).map(x => x.id);
+    S.runs = Object.fromEntries(keep.map(k => [k, S.runs[k]]));
+    await kv.put(_FA_BT_KEY, JSON.stringify(S));
+    _faBtJobs.set(id, { status: 'done', startedAt: job.startedAt, params: p });
+  } catch (e) {
+    console.error('[forecast-audit/backtest]', e.message);
+    _faBtJobs.set(id, { status: 'error', error: e.message, startedAt: job.startedAt, params: p });
+  }
+}
+// POST /api/forecast-audit/backtest { sets: ['persist'], instruments: ['EURUSD'] | 'all' | 'IV13', from, to } → { id, status }
+app.post('/api/forecast-audit/backtest', express.json({ limit: '8kb' }), async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set: no price history to replay' });
+  try {
+    const p = _faBtParams(req.body ?? {});
+    if (!p.instruments.length) return res.status(400).json({ ok: false, error: 'no known instrument chosen' });
+    const id = _faBtId(p);
+    if ((await _faBtStore()).runs[id]) return res.json({ ok: true, id, status: 'done', cached: true });
+    const running = [..._faBtJobs.entries()].find(([, j]) => j.status === 'running');
+    if (running) return res.status(running[0] === id ? 200 : 409).json({ ok: running[0] === id, id: running[0], status: 'running', error: running[0] === id ? undefined : 'another backtest is running; try again when it finishes' });
+    _faBtJobs.set(id, { status: 'running', startedAt: Date.now(), params: p, progress: 'starting' });
+    _faBtRun(id, p);
+    res.json({ ok: true, id, status: 'running', params: p });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/forecast-audit/backtest?id= → status / the result;  without id → the stored runs (headline only)
+app.get('/api/forecast-audit/backtest', async (req, res) => {
+  try {
+    const id = String(req.query.id ?? '');
+    const S = await _faBtStore();
+    if (!id) {
+      return res.json({ ok: true, label: FA_HISTORY_LABEL, sets: Object.fromEntries(FA_HISTORY_SETS.map(s => [s, FA_SETS[s].label])),
+        instruments: VOL_INSTRUMENTS.filter(c => _ipsParamsFor(c.name, c.assetClass).source === 'fitted').map(c => c.name),
+        running: [..._faBtJobs.entries()].filter(([, j]) => j.status === 'running').map(([k, j]) => ({ id: k, params: j.params, progress: j.progress, elapsed: Math.round((Date.now() - j.startedAt) / 1000) })),
+        runs: Object.values(S.runs).sort((a, b) => String(b.ranAt).localeCompare(String(a.ranAt))).map(r => ({ id: r.id, params: r.params, ranAt: r.ranAt,
+          ratio: Object.fromEntries(Object.entries(r.summary ?? {}).map(([k, v]) => [k, v.pooled?.ratio ?? null])) })) });
+    }
+    if (S.runs[id]) return res.json({ ok: true, status: 'done', result: S.runs[id] });
+    const job = _faBtJobs.get(id);
+    if (!job) return res.status(404).json({ ok: false, error: 'not found (results are kept for the last 6 runs)' });
+    if (job.status === 'running') return res.json({ ok: true, status: 'running', progress: job.progress, elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+    res.status(job.status === 'error' ? 500 : 200).json({ ok: job.status !== 'error', status: job.status, error: job.error });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // GET /api/level-atlas/vote-ladder/export
