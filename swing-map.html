@@ -774,18 +774,26 @@ function walkTable(m, w) {
   const rows = w.points.map((p, i) => ({ ...p, n: i + 1 })).concat((w.skipped || []).map(k => ({ ...k, skip: true })))
     .sort((a, b) => (a.expiry < b.expiry ? -1 : 1));
   if (!rows.length) { $('walkTable').innerHTML = ''; return; }
+  // calls / puts per expiry from its whole book (spot terms, so an inverted pair's futures calls already count as puts),
+  // and the capture each book comes from: an expiry missing from the latest capture keeps its last book, flagged here
+  const exOf = new Map((m.expiries || []).map(e => [e.expiry, e])), capNow = (m.expiries || []).reduce((a, e) => (e.date > a ? e.date : a), '');
+  const cp = ex => { const l = exOf.get(ex)?.ladder; if (!l?.length) return null; let c = 0, q = 0; for (const r of l) { c += r[1] || 0; q += r[2] || 0; } return { c, p: q, r: q > 0 ? c / q : null }; };
+  const cpCell = ex => { const v = cp(ex); if (!v || v.r == null) return '<td></td>';
+    const cls = v.r >= 1.5 ? 'good' : v.r <= 0.67 ? 'bad' : '';
+    return `<td title="${fmt(v.c, 0)} calls / ${fmt(v.p, 0)} puts. Context only: untested here, and a put can be protection rather than a bet on a fall"><span class="${cls}">${v.r.toFixed(2)}</span></td>`; };
+  const bookAge = ex => { const d = exOf.get(ex)?.date; return d && capNow && d < capNow ? `book from the ${fmtDay(d)} capture (not in the latest)` : ''; };
   const what = { gammaCentre: 'Gamma centre', gamma: 'Gamma best strike', strike: 'Strongest strike', maxPain: 'Max pain', centre: 'OI centre' }[$('walkA').value];
   const PH = isPhone();
   // on a phone the note leaves the row (it made the table wider than the screen) and sits on a line of its own under it
   const noteCell = (txt, cls) => PH ? `</tr><tr class="wnote ${cls}"><td colspan="7">${txt}</td>` : `<td style="text-align:left">${txt}</td>`;
-  $('walkTable').innerHTML = `<div class="tbl"><table class="ladder${PH ? ' ph' : ''}"><tr><th>#</th><th>Expiry</th><th>Days</th><th>${PH ? what.replace('Gamma ', '').replace(/^c/, 'C') : what}</th><th>${PH ? 'vs now' : 'From today'}</th><th>Step</th><th>Book</th>${PH ? '' : '<th style="text-align:left">Note</th>'}</tr>`
+  $('walkTable').innerHTML = `<div class="tbl"><table class="ladder${PH ? ' ph' : ''}"><tr><th>#</th><th>Expiry</th><th>Days</th><th>${PH ? what.replace('Gamma ', '').replace(/^c/, 'C') : what}</th><th>${PH ? 'vs now' : 'From today'}</th>${PH ? '' : '<th>Step</th>'}<th>Book</th><th title="calls ÷ puts across the expiry's whole book">C/P</th>${PH ? '' : '<th style="text-align:left">Note</th>'}</tr>`
     + rows.map(r => r.skip
-      ? `<tr class="thin"><td>–</td><td>${fmtDay(r.expiry)}</td><td>${r.dte}</td><td>${px(r.px)}</td><td>${pct((r.px / close - 1) * 100, 1)}</td><td>–</td><td></td>${noteCell(`out of reach (the range allowed ±${r.capPct.toFixed(1)}%), left out`, 'thin')}</tr>`
+      ? `<tr class="thin"><td>–</td><td>${fmtDay(r.expiry)}</td><td>${r.dte}</td><td>${px(r.px)}</td><td>${pct((r.px / close - 1) * 100, 1)}</td>${PH ? '' : '<td>–</td>'}<td></td>${cpCell(r.expiry)}${noteCell(`out of reach (the range allowed ±${r.capPct.toFixed(1)}%), left out`, 'thin')}</tr>`
       : `<tr class="${r.thin ? 'thin' : ''}"><td><b>${r.n}</b></td><td>${fmtDay(r.expiry)}</td><td>${r.dte}</td><td><b class="${r.dir === 'up' ? 'good' : r.dir === 'down' ? 'bad' : ''}">${r.dir === 'up' ? '▲' : r.dir === 'down' ? '▼' : '◆'} ${px(r.px)}</b></td>`
-        + `<td>${pct((r.px / close - 1) * 100, 1)}</td><td>${pct(r.movePct, 1)}</td><td>${r.strength != null ? fmt(r.strength * 100, 1) + '%' : ''}</td>`
-        + `${noteCell([r.thin ? 'small book' : '', r.biggest ? `◇ biggest strike ${px(r.biggest.px)} (${fmt((r.biggest.strength ?? 0) * 100, 1)}% of OI, ${pct((r.biggest.px / close - 1) * 100, 1)} from today)` : r.notBiggest ? '◇ biggest strike in reach' : '', r.pullShare != null ? `${Math.round(r.pullShare * 100)}% of this book's pull${$('walkA').value === 'gammaCentre' ? ' within a day\'s move of it' : ''}` : '', r.building ? 'building' : '',
+        + `<td>${pct((r.px / close - 1) * 100, 1)}</td>${PH ? '' : `<td>${pct(r.movePct, 1)}</td>`}<td>${r.strength != null ? fmt(r.strength * 100, 1) + '%' : ''}</td>${cpCell(r.expiry)}`
+        + `${noteCell([bookAge(r.expiry), r.thin ? 'small book' : '', r.biggest ? `◇ biggest strike ${px(r.biggest.px)} (${fmt((r.biggest.strength ?? 0) * 100, 1)}% of OI, ${pct((r.biggest.px / close - 1) * 100, 1)} from today)` : r.notBiggest ? '◇ biggest strike in reach' : '', r.pullShare != null ? `${Math.round(r.pullShare * 100)}% of this book's pull${$('walkA').value === 'gammaCentre' ? ' within a day\'s move of it' : ''}` : '', r.building ? 'building' : '',
           r.charm ? `charm: a day passing makes dealers ${r.charm > 0 ? 'buy' : 'sell'} ${fmt(Math.abs(r.charm), 0)} contracts${r.charmNotional ? ` (${money(Math.abs(r.charmNotional))})` : ''}` : ''].filter(Boolean).join(' · '), r.thin ? 'thin' : '')}</tr>`).join('')
-    + `</table></div><p class="note">Book = that strike's share of all live open interest (gamma centre: the whole expiry's share, since the centre is not one strike). From today = distance from ${A.live ? `the live price (${px(close)} at ${A.at.slice(11, 16)} UTC)` : `the last close (${px(close)})`}. Step = the move from the row before.</p>`;
+    + `</table></div><p class="note">Book = that strike's share of all live open interest (gamma centre: the whole expiry's share, since the centre is not one strike). From today = distance from ${A.live ? `the live price (${px(close)} at ${A.at.slice(11, 16)} UTC)` : `the last close (${px(close)})`}. Step = the move from the row before. C/P = calls ÷ puts in that expiry's whole book (green 1.5+, red 0.67 or less): context only, not tested here, and a put can be protection rather than a bet on a fall.</p>`;
 }
 function walkNote(m, w) {
   const what = { gammaCentre: 'gamma centre (where the hedging weight sits on balance, seen from the step before)', gamma: 'gamma best strike (the one strike dealers must hedge hardest, seen from the step before)', strike: 'strongest strike', maxPain: 'max pain', centre: 'OI centre' }[$('walkA').value];
