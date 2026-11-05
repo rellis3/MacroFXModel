@@ -4,21 +4,21 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-04.
+Generated 2026-11-05.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **278** |
+| claims tested (validated + null + underpowered) | **283** |
 | validated | 49 |
-| null | 157 |
+| null | 162 |
 | underpowered | 72 |
 | context (base rates, descriptions: not counted as tests) | 46 |
-| pre-registrations with no banked verdict (below) | 87 |
+| pre-registrations with no banked verdict (below) | 88 |
 
-**What the count says (Lesson 02 §05).** If none of the 278 claims were real, tests at the usual 5% size would still pass
-about **13.9** of them by luck. 49 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 283 claims were real, tests at the usual 5% size would still pass
+about **14.2** of them by luck. 49 passed, so most passes are unlikely to be luck alone, but
 **roughly 14 of the 49 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -350,6 +350,11 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-04 | swing-walk-max-pain | positioning | null | forge/SWING_WALK_TRACK_PREREG.md |
 | 2026-11-04 | swing-walk-oi-centre | positioning | null | forge/SWING_WALK_TRACK_PREREG.md |
 | 2026-11-04 | swing-walk-strike | positioning | null | forge/SWING_WALK_TRACK_PREREG.md |
+| 2026-11-05 | gr-dollar-tape-direction | price | null | forge/GLOBAL_READ_UNTESTED_DIRECTION_PREREG.md |
+| 2026-11-05 | gr-hmm-trend-direction | price | null | forge/GLOBAL_READ_UNTESTED_DIRECTION_PREREG.md |
+| 2026-11-05 | gr-risk-tone-direction | price | null | forge/GLOBAL_READ_UNTESTED_DIRECTION_PREREG.md |
+| 2026-11-05 | gr-today-tape-direction | price | null | forge/GLOBAL_READ_UNTESTED_DIRECTION_PREREG.md |
+| 2026-11-05 | gr-us-yields-direction | price | null | forge/GLOBAL_READ_UNTESTED_DIRECTION_PREREG.md |
 | 2026-11-05 | portfolio-book-prop | price | context | forge/PORTFOLIO_BOOK_PROP_PREREG.md |
 
 ## Pre-registered, but no banked verdict
@@ -424,6 +429,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/SEQUENCE_BOOK_EURUSD_PREREG.md`: EURUSD Sequence Book — pre-registration (passes, pullbacks, timing)
 - `forge/SIGNAL_JOURNAL_PREREG.md`: Signal Journal — live alerts with stated odds, tracked forward (Lesson 01 card 10, Lesson 16)
 - `forge/SLOW_MR_BOOK_PREREG.md`: Slow mean-reversion book — pre-registration
+- `forge/SPX_USDCHF_NEXT_DAY_PREREG.md`: spx-usdchf-next-day — after a strong US stock day, does USD/CHF fall the next day?
 - `forge/STABILITY_AND_HOLDOUT_PREREG.md`: STEP D — Parameter stability + the sealed holdout (Lesson 01 cards 07 and 03)
 - `forge/STACK_RICHIV_TREND_PREREG.md`: Stacking the H1 trend state and spread conditions on the rich-IV break rule — pre-registration
 - `forge/STOP_RISK_PREREG.md`: Layer 7 — STOP RISK MAP: how often does a stop fill worse than its price, and by how much?

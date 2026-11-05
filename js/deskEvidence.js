@@ -2144,6 +2144,36 @@ export const DESK_EVIDENCE = [
     use: 'The OI centre is where price has been (open interest follows price); it is not a target.',
   },
   {
+    id: 'gr-hmm-trend-direction', domain: 'price', verdict: 'null', date: '2026-11-05', doc: 'forge/GLOBAL_READ_UNTESTED_DIRECTION_PREREG.md', also: ['analysis/output/global-read-untested-direction/RESULTS.md'],
+    claim: "HMM trend direction (fitHMM on 200 daily returns: TREND regime with |t| >= 1 on the last 10 returns, +1 BULL / -1 BEAR, else 0) calls the next day",
+    result: "Null, pre-registered. 7 dollar pairs, 2016-01-04 to 2026-08-21, 2,772 London-day sessions (19,404 pair-days), mean per-pair IC, 21-session date-block bootstrap B 2000, Holm over 5 cells, bar IC >= 0.05 with both halves positive. IC -0.011 [-0.030, +0.008], t -1.09, Holm p 1.00; halves -0.011 / -0.013; MDE 0.027 below the bar; 2,022 non-zero reads; 2-day shift -0.017. No pair survives BH (49 cells).",
+    use: "The HMM trend label describes the last fortnight; it is not a next-day call. Weight 0 in the Global Read direction arm.",
+  },
+  {
+    id: 'gr-us-yields-direction', domain: 'price', verdict: 'null', date: '2026-11-05', doc: 'forge/GLOBAL_READ_UNTESTED_DIRECTION_PREREG.md', also: ['analysis/output/global-read-untested-direction/RESULTS.md'],
+    claim: "A 20-day rise in the US 10-year yield (DGS10, point-in-time) lifts the dollar side of each pair the next day",
+    result: "Null, pre-registered. 7 dollar pairs, 2016-01-04 to 2026-08-21, 2,772 London-day sessions (19,404 pair-days), mean per-pair IC, 21-session date-block bootstrap B 2000, Holm over 5 cells, bar IC >= 0.05 with both halves positive. IC +0.017 [-0.012, +0.045], t 1.14, Holm p 1.00; halves +0.011 / +0.020; MDE 0.041 below the bar; 2-day shift +0.011.",
+    use: "US yields and the dollar move together on the day; the 20-day yield trend does not call the next day. Weight 0 in the Global Read direction arm.",
+  },
+  {
+    id: 'gr-dollar-tape-direction', domain: 'price', verdict: 'null', date: '2026-11-05', doc: 'forge/GLOBAL_READ_UNTESTED_DIRECTION_PREREG.md', also: ['analysis/output/global-read-untested-direction/RESULTS.md'],
+    claim: "The broad dollar's 20-day move (DTWEXBGS, lagged 7 days for its weekly release) continues the next day on each pair",
+    result: "Null, pre-registered. 7 dollar pairs, 2016-01-04 to 2026-08-21, 2,772 London-day sessions (19,404 pair-days), mean per-pair IC, 21-session date-block bootstrap B 2000, Holm over 5 cells, bar IC >= 0.05 with both halves positive. IC +0.006 [-0.019, +0.032], t 0.49, Holm p 1.00; halves +0.011 / -0.000; MDE 0.037 below the bar.",
+    use: "No day-ahead dollar momentum from the 20-day trend. Weight 0 in the Global Read direction arm.",
+  },
+  {
+    id: 'gr-risk-tone-direction', domain: 'price', verdict: 'null', date: '2026-11-05', doc: 'forge/GLOBAL_READ_UNTESTED_DIRECTION_PREREG.md', also: ['analysis/output/global-read-untested-direction/RESULTS.md'],
+    claim: "Tightening corporate credit (20-day change in BAA10Y, the long-history stand-in for HY OAS per amendment A1) moves the risk-on side of each pair up the next day",
+    result: "Null, pre-registered. 7 dollar pairs, 2016-01-04 to 2026-08-21, 2,772 London-day sessions (19,404 pair-days), mean per-pair IC, 21-session date-block bootstrap B 2000, Holm over 5 cells, bar IC >= 0.05 with both halves positive. IC -0.013 [-0.032, +0.010], t -1.21, Holm p 1.00; halves +0.007 / -0.037; MDE 0.029 below the bar. Descriptive, the live HY OAS input on its 2023-11 to 2026-08 window: IC -0.031 [-0.070, +0.004], the wrong sign.",
+    use: "Credit tone is a state read (stress or calm), not a next-day direction call for the currencies. Weight 0 in the Global Read direction arm.",
+  },
+  {
+    id: 'gr-today-tape-direction', domain: 'price', verdict: 'null', date: '2026-11-05', doc: 'forge/GLOBAL_READ_UNTESTED_DIRECTION_PREREG.md', also: ['analysis/output/global-read-untested-direction/RESULTS.md'],
+    claim: "The London session's move from 00:00 to 13:00 (scaled by 0.6745 sigma) continues from 13:00 to 21:00",
+    result: "Null, pre-registered. 7 dollar pairs, 2016-01-04 to 2026-08-21, 2,758 sessions (19,303 pair-days), mean per-pair IC, 21-session date-block bootstrap B 2000, Holm over 5 cells, bar IC >= 0.05 with both halves positive. IC +0.002 [-0.022, +0.026], t 0.17, Holm p 1.00; halves +0.013 / -0.008; MDE 0.034 below the bar. Descriptive checkpoints: 10:00 +0.010, 16:00 -0.021 (a faint fade late in the day, not significant).",
+    use: "The morning's move says nothing about the afternoon's direction. Show it as where the day stands, not as a lean. Weight 0 in the Global Read direction arm.",
+  },
+  {
     id: 'fx-short-term-fair-value', domain: 'macro', verdict: 'underpowered', date: '2026-11-04', doc: 'forge/FX_SHORT_TERM_FAIR_VALUE_PREREG.md', also: ['analysis/output/fx-short-term-fair-value/RESULTS.md'],
     instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'],
     claim: 'The out-of-sample gap between an FX pair and its short-term fair value (rolling 250-day OLS of the log price on the 2y and 10y yield differentials and log VIX) is closed by price over the next 5, 10 and 20 trading days, at least as fast as a 120-day half-life',
@@ -2215,6 +2245,11 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'gr-hmm-trend-direction': { n: '2,772 sessions (~5,080 effective across 7 pairs), 21-session block clusters', note: 'MDE 0.027 below the 0.05 bar; CI excludes it' },
+  'gr-us-yields-direction': { n: '2,772 sessions (~5,080 effective across 7 pairs), 21-session block clusters', note: 'MDE 0.041 below the 0.05 bar; CI excludes it' },
+  'gr-dollar-tape-direction': { n: '2,772 sessions (~5,080 effective across 7 pairs), 21-session block clusters', note: 'MDE 0.037 below the 0.05 bar; CI excludes it' },
+  'gr-risk-tone-direction': { n: '2,772 sessions (~5,080 effective across 7 pairs), 21-session block clusters', note: 'MDE 0.029 below the 0.05 bar; CI excludes it' },
+  'gr-today-tape-direction': { n: '2,772 sessions (~5,080 effective across 7 pairs), 21-session block clusters', note: 'MDE 0.034 below the 0.05 bar; CI excludes it' },
   'fx-short-term-fair-value': { n: '~6,670 date clusters (29,100 pair-days, 5 USD pairs), ~333 independent 20-day windows', note: 'Holm-level MDE 0.025/0.048/0.092 vs bars 0.0285/0.056/0.109 (MC-null SE); realised h5 MDE 0.0287 just above its bar' },
   'swing-walk-gamma-centre': { n: '17,909 walk steps, 71 expiry-month clusters', note: 'count-stage MDE 0.089 was optimistic (row-shuffled control SE 0.026 vs real 0.087); real CI reaches the 0.25 bar' },
   'swing-walk-gamma-strike': { n: '17,909 walk steps, 71 expiry-month clusters', note: 'CI upper +0.11 below the 0.25 bar' },
