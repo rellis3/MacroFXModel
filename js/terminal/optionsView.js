@@ -14,6 +14,8 @@
  *
  * Pure HTML/SVG-string builders, no fetch. Tested in js/terminal/terminal.test.mjs.
  */
+import { zoneWalk } from '../swingPaths.js';
+export { zoneWalk };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fin = v => v != null && Number.isFinite(+v);
 const sg = (v, dp = 2) => (fin(v) ? `${+v > 0 ? '+' : ''}${(+v).toFixed(dp)}` : '–');
@@ -135,35 +137,86 @@ export function vixHtml(h) {
 <p class="tt-note">The VIX is built from S&amp;P 500 options: the market's price for the next 30 days' swings. Comparing it with the 3-month VIX shows whether the worry is immediate or further out.</p></div>`;
 }
 
-/** The path picture: price so far, then open interest by expiry and strike ahead of it (Swing Map data). */
-export function pathSvg(sm, { w = 420, h = 300, back = 60 } = {}) {
-  if (!sm?.ok) return '';
-  const ser = (sm.series ?? []).slice(-back), px0 = sm.livePrice?.price ?? ser.at(-1)?.[1]; if (ser.length < 5 || !fin(px0)) return '';
-  const day = d => Date.parse(`${d}T00:00:00Z`) / 864e5, t0 = day(ser[0][0]), tNow = day(ser.at(-1)[0]);
-  const exps = (sm.expiries ?? []).filter(e => !e.stale && e.dte >= 1 && e.dte <= 100 && (e.zones ?? []).length).slice(0, 8);
-  const zones = exps.flatMap(e => (e.zones ?? []).filter(z => fin(z.px) && Math.abs(z.px / px0 - 1) < 0.08).sort((a, b) => b.oi - a.oi).slice(0, 4).map(z => ({ ...z, t: day(e.expiry), expiry: e.expiry })));
-  const paths = (sm.paths ?? []).slice(0, 2);
-  const tMax = Math.max(tNow + (tNow - t0) * 0.7, ...zones.map(z => z.t), ...paths.flatMap(p => p.points.map(q => day(q.date))));
-  const ys = [...ser.map(s => s[1]), ...zones.map(z => z.px), ...paths.flatMap(p => p.points.map(q => q.px))], lo = Math.min(...ys), hi = Math.max(...ys), pad = (hi - lo) * 0.06 || 1;
-  const X = t => 34 + (t - t0) / (tMax - t0) * (w - 44), Y = v => 8 + (hi + pad - v) / (hi - lo + 2 * pad) * (h - 30);
-  const maxOi = Math.max(1, ...zones.map(z => z.oi));
-  const line = `<path d="${ser.map((s, i) => `${i ? 'L' : 'M'}${X(day(s[0])).toFixed(1)},${Y(s[1]).toFixed(1)}`).join('')}" fill="none" stroke="var(--pur2,#9b8cff)" stroke-width="2"/>`;
-  const now = `<line x1="${X(tNow).toFixed(1)}" x2="${X(tNow).toFixed(1)}" y1="6" y2="${h - 22}" stroke="var(--line2)" stroke-dasharray="3 3"/><text x="${(X(tNow) - 3).toFixed(1)}" y="${h - 12}" font-size="9" text-anchor="end" fill="var(--tx3)">now</text>`;
-  let lastLbl = -1e9;   // label an expiry only when it clears the last label and the "now" mark
-  const exLines = exps.map(e => { const x = X(day(e.expiry)), lbl = x - lastLbl >= 30 && x - X(tNow) >= 18; if (lbl) lastLbl = x; return `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="6" y2="${h - 22}" stroke="var(--gold,#e8b85a)" stroke-opacity=".35"><title>expiry ${esc(e.expiry)}</title></line>${lbl ? `<text x="${x.toFixed(1)}" y="${h - 12}" font-size="8" text-anchor="middle" fill="var(--gold,#e8b85a)">${esc(String(e.expiry).slice(5))}</text>` : ''}`; }).join('');
-  const bub = zones.map(z => { const callish = (z.call ?? 0) >= (z.put ?? 0); return `<circle cx="${X(z.t).toFixed(1)}" cy="${Y(z.px).toFixed(1)}" r="${(3 + 11 * Math.sqrt(z.oi / maxOi)).toFixed(1)}" fill="${callish ? 'var(--up,#2fd39a)' : 'var(--dn,#ff5d78)'}" fill-opacity=".45" stroke="${callish ? 'var(--up,#2fd39a)' : 'var(--dn,#ff5d78)'}"><title>${esc(z.expiry)}: ${(+z.px).toFixed(2)}, ${big(z.oi)} contracts (${callish ? 'mostly calls' : 'mostly puts'})</title></circle>`; }).join('');
-  const pth = paths.map((p, i) => `<path d="${p.points.map((q, j) => `${j ? 'L' : 'M'}${X(day(q.date)).toFixed(1)},${Y(q.px).toFixed(1)}`).join('')}" fill="none" stroke="${i ? 'var(--dn,#ff5d78)' : 'var(--up,#2fd39a)'}" stroke-width="1.5" stroke-dasharray="5 4"><title>${esc(p.name)}: ${Math.round((p.prob ?? 0) * 100)}%</title></path>`).join('');
-  const yl = [lo, (lo + hi) / 2, hi].map(v => `<text x="2" y="${(Y(v) + 3).toFixed(1)}" font-size="9" fill="var(--tx3)">${v >= 100 ? Math.round(v) : (+v).toFixed(3)}</text>`).join('');
-  return `<svg viewBox="0 0 ${w} ${h}" width="100%" style="max-width:${w}px" role="img" aria-label="price and open interest by expiry">${yl}${exLines}${now}${line}${pth}${bub}</svg>`;
+/** The path, drawn like the chain (owner, 2026-11-05): the price so far, then a hashed line at every expiry (its days
+ *  to expiry and date), and a line that walks from the price to each expiry's level, the same zone walk the Swing Map
+ *  draws (js/swingPaths.js zoneWalk: by default the gamma centre, where dealers' hedging weight sits on balance), with a
+ *  spark running along it. The cone is one and two expected moves (σ√days) from today. */
+export const WALK_ANCHORS = { gammaCentre: 'gamma centre', strike: 'strongest strike', maxPain: 'max pain', centre: 'OI centre' };
+const WALK_VERDICT = { gammaCentre: 'UNDERPOWERED', gamma: 'NULL', strike: 'NULL', maxPain: 'NULL', centre: 'NULL' };
+const WALK_HOW = {
+  gammaCentre: 'each expiry\'s strikes scored by open interest × how hard dealers must hedge them (gamma) from the step before, over the time left; the dot is the score-weighted average price',
+  strike: 'the strike with the most open interest in that expiry',
+  maxPain: 'the price at which that expiry\'s option holders lose the most',
+  centre: 'the open-interest-weighted average strike of that expiry',
+};
+const dayN = d => Date.parse(`${d}T00:00:00Z`) / 864e5;
+export function walkVol(sm) { const mb = sm?.bands?.[1]; return mb?.sigmaUsedPct ? mb.sigmaUsedPct / 100 / Math.sqrt(20) : (sm?.state?.sigmaDailyPct ?? 1) / 100; }
+export function walkAnchor(sm) {
+  const lp = sm?.livePrice, st = sm?.state ?? {};
+  if (lp?.price > 0 && lp.at) { let d = lp.at.slice(0, 10); const w = new Date(`${d}T12:00:00Z`).getUTCDay(); if (w === 6 || w === 0) d = new Date(Date.parse(`${d}T12:00:00Z`) + (w === 6 ? 2 : 1) * 864e5).toISOString().slice(0, 10); if (d > (st.date ?? '')) return { px: lp.price, date: d, live: true }; }
+  return { px: st.close ?? sm?.series?.at(-1)?.[1], date: st.date ?? sm?.series?.at(-1)?.[0], live: false };
 }
-export function pathHtml(sm, inst) {
+const pxs = v => (!fin(v) ? '–' : Math.abs(v) >= 1000 ? Math.round(v).toLocaleString('en-GB') : Math.abs(v) >= 20 ? (+v).toFixed(2) : (+v).toFixed(4));
+const dm = d => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+/** walk = zoneWalk(...) result; returns the SVG */
+export function walkSvg(sm, walk, { w = 460, h = null, back = null } = {}) {
+  // drawn at the box's real width (no scaling), so the text stays readable on a phone; narrow = taller, less history
+  w = Math.max(300, Math.min(760, Math.round(w))); const narrow = w < 520; h ??= narrow ? 430 : 380; back ??= narrow ? 22 : 40;
+  const ser = (sm?.series ?? []).slice(-back), A = walkAnchor(sm); if (ser.length < 5 || !fin(A.px)) return '';
+  const pts = (walk?.points ?? []).filter(p => fin(p.px)); const vol = walkVol(sm);
+  const tNow = dayN(A.date), t0 = dayN(ser[0][0]), tEnd = Math.max(tNow + 14, ...pts.map(p => dayN(p.expiry)));
+  const L = narrow ? 44 : 50, R = w - (narrow ? 54 : 56), top = 62, bot = h - 34, xNow = L + (R - L) * (narrow ? 0.24 : 0.3);
+  const X = t => (t <= tNow ? L + (t - t0) / Math.max(1, tNow - t0) * (xNow - L) : xNow + (t - tNow) / Math.max(1, tEnd - tNow) * (R - xNow));
+  const cone = k => [...Array(13)].map((_, i) => { const t = tNow + (tEnd - tNow) * i / 12, n = Math.max(0, (t - tNow) * 5 / 7); return [t, A.px * Math.exp(k * vol * Math.sqrt(n))]; });
+  // the scale follows the price and the walk; the cone is clipped to the plot, so a wide cone never flattens the walk
+  const ys = [...ser.map(s => s[1]), ...pts.map(p => p.px), A.px], lo = Math.min(...ys), hi = Math.max(...ys), pad = (hi - lo) * 0.12 || A.px * 0.01;
+  const Y = v => top + (hi + pad - v) / (hi - lo + 2 * pad) * (bot - top);
+  const poly = (arr, k2) => arr.map(([t, v], i) => `${i ? 'L' : 'M'}${X(t).toFixed(1)},${Y(v).toFixed(1)}`).join('') + (k2 ? k2.slice().reverse().map(([t, v]) => `L${X(t).toFixed(1)},${Y(v).toFixed(1)}`).join('') + 'Z' : '');
+  const band = (k, op) => `<path d="${poly(cone(k), cone(-k))}" fill="var(--pur2,#9b8cff)" fill-opacity="${op}" stroke="none" clip-path="url(#optWalkClip)"/>`;
+  const clip = `<defs><clipPath id="optWalkClip"><rect x="${L}" y="${top}" width="${R - L}" height="${bot - top}"/></clipPath></defs>`;
+  // y grid
+  const grid = [0, 0.25, 0.5, 0.75, 1].map(f => lo + (hi - lo) * f).map(v => `<line x1="${L}" x2="${R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="var(--line2)" stroke-opacity=".35"/><text x="${L - 6}" y="${(Y(v) + 3).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--tx3)">${pxs(v)}</text>`).join('');
+  // history
+  const hist = `<path d="${ser.map((s, i) => `${i ? 'L' : 'M'}${X(dayN(s[0])).toFixed(1)},${Y(s[1]).toFixed(1)}`).join('')}" fill="none" stroke="var(--pur2,#9b8cff)" stroke-width="2"/>`;
+  const now = `<line x1="${xNow}" x2="${xNow}" y1="${top - 10}" y2="${bot}" stroke="var(--tx3)" stroke-dasharray="2 3"/><text x="${xNow}" y="${top - 14}" font-size="10" text-anchor="middle" fill="var(--tx2,#bbb)">now</text>
+<circle cx="${xNow}" cy="${Y(A.px).toFixed(1)}" r="5" fill="var(--tx)"/><text x="${xNow - 8}" y="${(Y(A.px) - 9).toFixed(1)}" font-size="11" text-anchor="end" fill="var(--tx)" font-weight="700">${pxs(A.px)}</text>`;
+  // expiry hash lines with DTE / date labels, de-cluttered
+  let lastLbl = -1e9;
+  const exp = pts.map(p => { const x = X(dayN(p.expiry)), show = x - lastLbl >= 30 && x - xNow >= 16; if (show) lastLbl = x;
+    return `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${top - 4}" y2="${bot}" stroke="var(--gold,#e8b85a)" stroke-opacity="${p.thin ? 0.25 : 0.55}" stroke-dasharray="3 4"/>${show ? `<text x="${x.toFixed(1)}" y="${top - 18}" font-size="10" text-anchor="middle" fill="var(--gold,#e8b85a)" font-weight="700">${p.dte}d</text><text x="${x.toFixed(1)}" y="${bot + 14}" font-size="9" text-anchor="middle" fill="var(--gold,#e8b85a)">${esc(dm(p.expiry))}</text>` : ''}`; }).join('');
+  // the walk: segments from now through every dot, then the spark along it
+  const path = [[tNow, A.px], ...pts.map(p => [dayN(p.expiry), p.px])];
+  const d = path.map(([t, v], i) => `${i ? 'L' : 'M'}${X(t).toFixed(1)},${Y(v).toFixed(1)}`).join('');
+  const segs = pts.map((p, i) => { const [t0s, v0] = path[i]; return `<line x1="${X(t0s).toFixed(1)}" y1="${Y(v0).toFixed(1)}" x2="${X(dayN(p.expiry)).toFixed(1)}" y2="${Y(p.px).toFixed(1)}" stroke="${p.dir === 'down' ? 'var(--dn,#ff5d78)' : p.dir === 'up' ? 'var(--up,#2fd39a)' : 'var(--tx3)'}" stroke-width="${p.thin ? 1.5 : 2.5}" ${p.thin ? 'stroke-dasharray="5 4"' : ''} stroke-linecap="round"/>`; }).join('');
+  const spark = `<path class="opt-walk-spark" d="${d}" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>`;
+  const maxS = Math.max(0.01, ...pts.map(p => p.strength ?? 0));
+  let flip = 1, lx = -1e9, ly = -1e9;
+  const dots = pts.map(p => { const x = X(dayN(p.expiry)), y = Y(p.px), r = 4 + 7 * Math.sqrt((p.strength ?? 0) / maxS), col = p.dir === 'down' ? 'var(--dn,#ff5d78)' : p.dir === 'up' ? 'var(--up,#2fd39a)' : 'var(--tx2,#bbb)'; flip = -flip;
+    const lbl = (x - lx >= 30 || Math.abs(y - ly) >= 16) && x - xNow >= 14; if (lbl) { lx = x; ly = y; }
+    return `<circle class="opt-walk-glow" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(r + 4).toFixed(1)}" fill="${col}" fill-opacity=".18"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="${p.thin ? 'var(--bg2,#111)' : col}" stroke="${col}" stroke-width="2"><title>${p.dte} days · ${esc(dm(p.expiry))}: ${pxs(p.px)} (${sg(p.movePct, 2)}% from the step before)</title></circle>${lbl ? `<text x="${(x + r + 3).toFixed(1)}" y="${(y + (flip > 0 ? -6 : 13)).toFixed(1)}" font-size="11" fill="${col}" font-weight="700">${pxs(p.px)}</text>` : ''}`; }).join('');
+  const legend = `<text x="6" y="12" font-size="10" fill="var(--tx3)"><tspan fill="var(--pur2,#9b8cff)">━</tspan> price  <tspan fill="var(--gold,#e8b85a)">┆</tspan> expiry (days left)  <tspan fill="var(--up,#2fd39a)">●</tspan><tspan fill="var(--dn,#ff5d78)">●</tspan> walk up / down</text><text x="6" y="25" font-size="10" fill="var(--tx3)">hollow = small book · shading = 1 and 2 expected moves from now</text>`;
+  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="display:block;margin:0 auto" role="img" aria-label="price and the option walk by expiry">${clip}${legend}${grid}${band(2, 0.06)}${band(1, 0.10)}${exp}${hist}${segs}${spark}${dots}${now}</svg>`;
+}
+
+/** The table under the walk: one row per expiry, how it was worked out. */
+export function walkTable(sm, walk, anchor = 'gammaCentre') {
+  const A = walkAnchor(sm), pts = walk?.points ?? []; if (!pts.length) return '<p class="muted">No expiry has a readable book.</p>';
+  const note = p => [p.thin ? 'small book' : '', p.biggest ? `biggest strike ${pxs(p.biggest.px)} (${((p.biggest.strength ?? 0) * 100).toFixed(1)}% of OI)` : '', p.building ? 'building' : '', fin(p.pullShare) ? `${Math.round(p.pullShare * 100)}% of the pull near it` : ''].filter(Boolean).join(' · ');
+  return `<table class="opt-walk-t" style="width:100%;font-size:13px"><thead><tr><th class="n">Days</th><th>Expiry</th><th class="n">${esc(WALK_ANCHORS[anchor] ?? anchor)}</th><th class="n">From now</th><th class="n">Step</th><th class="n" title="${anchor === 'gammaCentre' ? 'the whole expiry\'s share of all live open interest' : 'that strike\'s share of all live open interest'}">Book</th></tr></thead><tbody>${pts.map(p => { const n = note(p);
+    return `<tr${p.thin ? ' class="muted"' : ''} style="${n ? 'border-bottom:0' : ''}"><td class="n mono"><b>${p.dte}</b></td><td style="white-space:nowrap">${esc(dm(p.expiry))}</td><td class="n mono ${p.dir === 'up' ? 'up' : p.dir === 'down' ? 'dn' : ''}" style="white-space:nowrap">${p.dir === 'up' ? '▲' : p.dir === 'down' ? '▼' : '·'} ${pxs(p.px)}</td><td class="n mono">${sg((p.px / A.px - 1) * 100, 2)}%</td><td class="n mono">${sg(p.movePct, 2)}%</td><td class="n mono">${fin(p.strength) ? `${(p.strength * 100).toFixed(1)}%` : '–'}</td></tr>${n ? `<tr class="muted"><td></td><td colspan="5" style="font-size:11px;padding-top:0">${esc(n)}</td></tr>` : ''}`; }).join('')}</tbody></table>`;
+}
+
+export function pathHtml(sm, inst, { walk = null, anchor = 'gammaCentre', width = 460 } = {}) {
   if (!sm) return '';
   if (!sm.ok) return `<div class="muted">${esc(sm.error ?? 'No path data for this market.')}</div>`;
-  const insts = sm.instruments ?? [];
-  return `<div class="ch"><span class="lbl">The path · open interest by expiry and strike</span><span class="r"><select id="opt-path-inst" aria-label="market" style="background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:3px">${insts.map(i => `<option${i === inst ? ' selected' : ''}>${esc(i)}</option>`).join('')}</select></span></div>
-${pathSvg(sm)}
-<p style="margin:6px 0 0;font-size:13px">${esc(sm.pull?.summary ?? '')}</p>
-<p class="tt-note">Purple: the price over the last 60 sessions. Gold lines: option expiries. Bubbles: the biggest strikes in each expiry, sized by open interest, <span class="up">green</span> mostly calls, <span class="dn">red</span> mostly puts. Dashed: the two paths the Swing Map weighs (${(sm.paths ?? []).slice(0, 2).map(p => `${esc(p.name)} ${Math.round((p.prob ?? 0) * 100)}%`).join(', ')}). ${evChip('zones')} ${esc(EVIDENCE.zones.line)} <a href="swing-map.html">Full Swing Map →</a></p>`;
+  const insts = sm.instruments ?? [], A = walkAnchor(sm), sel = 'background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:3px';
+  const word = WALK_VERDICT[anchor] ?? 'UNTESTED';
+  return `<div class="ch"><span class="lbl">The path · ${esc(inst)}</span><span class="r" style="display:flex;gap:6px;flex-wrap:wrap"><select id="opt-path-inst" aria-label="market" style="${sel}">${insts.map(i => `<option${i === inst ? ' selected' : ''}>${esc(i)}</option>`).join('')}</select><select id="opt-path-anchor" aria-label="what each step goes to" style="${sel}">${Object.entries(WALK_ANCHORS).map(([k, l]) => `<option value="${k}"${k === anchor ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></span></div>
+<p style="margin:2px 0 8px;font-size:13px">${A.live ? 'Live' : 'Last close'} <b>${pxs(A.px)}</b>. ${walk?.text ? `The walk: ${esc(walk.text.replace(/\b(\d{4}-\d{2}-\d{2})\b/g, m => dm(m)).replace(/(\d+\.\d{4,})/g, m => pxs(+m)))}.` : ''}</p>
+<div class="opt-walk scroll" style="border-radius:8px;background:var(--bg2,rgba(0,0,0,.15));padding:4px 0">${walkSvg(sm, walk, { w: width })}</div>
+${walkTable(sm, walk, anchor)}
+<p class="tt-note"><b>How each dot is worked out (${esc(WALK_ANCHORS[anchor])}):</b> ${esc(WALK_HOW[anchor] ?? '')}. The line starts at ${A.live ? 'the live price' : 'the last close'} and steps to each expiry in date order; a small book (under 10% of live open interest) is hollow and dashed. <span class="chip ${word === 'UNDERPOWERED' ? 'gold' : 'dn'}" style="font-size:9px">${esc(word)}</span> Tested on 6 FX majors, NQ and ES, 2020-10 to 2026-08: ${word === 'UNDERPOWERED' ? 'the gamma centre\'s pull on price is too uncertain to call (UNDERPOWERED)' : 'price did not walk to these levels (NULL)'}. Read it as where the book leans, not where price must go. <a href="swing-map.html?inst=${encodeURIComponent(inst)}">Full Swing Map →</a></p>`;
 }
 
 /** The Pair tab's options card for one market. */

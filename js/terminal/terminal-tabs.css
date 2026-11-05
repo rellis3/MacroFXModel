@@ -136,3 +136,10 @@
 #tt-qt select { width: 100%; max-width: 100%; box-sizing: border-box; }
 #tt-qt .qt-form { grid-template-columns: minmax(0, 1fr); }
 #tt-qt table { display: block; overflow-x: auto; }
+
+/* the Options tab's path walk: a spark runs along the walk line, the dots breathe (owner, 2026-11-05) */
+.opt-walk-spark { stroke-dasharray: 3 220; animation: optSpark 3.2s linear infinite; filter: drop-shadow(0 0 3px #fff); opacity: .9; }
+@keyframes optSpark { from { stroke-dashoffset: 223; } to { stroke-dashoffset: -1600; } }
+.opt-walk-glow { animation: optGlow 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes optGlow { 0%, 100% { opacity: .35; transform: scale(.9); } 50% { opacity: 1; transform: scale(1.15); } }
+@media (prefers-reduced-motion: reduce) { .opt-walk-spark { animation: none; stroke-dasharray: none; opacity: .25; } .opt-walk-glow { animation: none; } }
