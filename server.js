@@ -4836,7 +4836,9 @@ async function _deskRun(trigger, job, mode = 'full') {
     // The first eligible run of each day is kept apart, so a later manual run cannot replace the book the
     // pre-registered test scores (forge/DESK_ANALYST_PIPELINE_PREREG.md §3: the earliest eligible run counts).
     if (_dsEligible(run).ok && !(await kv.get(_DS_ELIG_KEY(run.date)))) await kv.put(_DS_ELIG_KEY(run.date), gz);
-    await checkpoint.clear();   // the run is saved whole: the next Run now starts fresh
+    // the run is saved whole, so the next Run now starts fresh; but when the Head failed, the finished stages are kept
+    // (6 hours) so a re-run redoes only what failed (2026-11-05: the Head was cut off at the cap after ~40 good calls)
+    if (run.head?.ok) await checkpoint.clear();
   } catch (e) { console.warn('[desk-run] save failed:', e.message); }
   if (run.newsletter?.ok) { job.stage = 'claims check'; await _ccRun(run.date).catch(e => console.warn('[desk-claims]', e.message)); }   // Phase 16, after the save
   if (run.mode === 'full' && run.head?.ok) { job.stage = 'day forecast'; await _dfRun(run.date).catch(e => console.warn('[desk-dayfc]', e.message)); }   // Phase 3's day-forecast writer, after the save

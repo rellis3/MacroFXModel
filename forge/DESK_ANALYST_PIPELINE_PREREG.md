@@ -287,6 +287,13 @@ an impact, like `desk-memory` (A10's pattern); the single-prompt control reads t
 are unchanged. Display-only changes (the signed −5..+5 score, labelled convictions, "no data" for missing values, the
 "What drives this" explainer) change nothing the desk reads. The desk is scored as operated, by role version.
 
+
+### A16 — 2026-11-05 — PRE-RESULTS — a reply cut off at the output ceiling is retried shorter
+Written on 2026-11-05 after that morning's Head of Desk reply was cut off at the 32,000-token cap twice. The cap counts the model's thinking, and the book had 51 cards. The run therefore had no book; it is not an eligible day (§3), and no score was read. Until now, a reply cut off at a cap below 32k was retried with twice the room, but at the 32k ceiling the same prompt was simply sent again and failed the same way.
+
+**Change.** At the ceiling, the retry now appends one fixed instruction (`SHORTER` in `js/deskRun.js`): the same JSON shape and the same calls, written much shorter, with brief thinking, a few words for a FLAT or size-0 card and no plan. The words are identical for every role and both arms, so H2 stays a fair comparison. The cap, the scoring, the arms, the hypotheses and the judgement date are unchanged. The desk is scored as operated, by role version.
+
+**Operational change.** When the Head fails, the finished stages' checkpoint is kept for 6 hours, so a re-run redoes only what failed. No hypothesis test had been run.
 ---
 
 ## RESULTS — not run

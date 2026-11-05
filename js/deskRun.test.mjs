@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseRole, selectEvidence, sliceText, buildAnalystPrompt, buildHeadPrompt, feedBlock, shareBudget, priceLadder, scandiContext, groupData, SCANDI_DIGITS } from './deskRoles.js';
-import { runDesk, runSummary, CAPS } from './deskRun.js';
+import { SHORTER, runDesk, runSummary, CAPS } from './deskRun.js';
 import { DESK_SKILLS, expandFeeds, buildDeskPack, allInstruments, DESK_CCYS, DESK_UNIVERSE } from './deskPack.js';
 import { DESK_EVIDENCE } from './deskEvidence.js';
 
@@ -160,6 +160,21 @@ await t('runDesk: a reply cut off at the token cap is retried with twice the cap
   const stuck = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, now: clock, parseJson, mode: 'quick',
     callModel: async ({ task }) => task === 'desk-head' ? fakeModel().fn({ task, system: 'You are the Head of Desk' }) : { text: '{"head', truncated: true, usage: {} } });
   assert.match(Object.values(stuck.analysts)[0].errors[0], /cut off at the 32000-token cap/);
+});
+
+await t('runDesk: a reply cut off at the 32k ceiling is retried with the "much shorter" instruction (the 2026-11-05 Head failure)', async () => {
+  const seen = [];
+  const m = fakeModel();
+  const fn = async args => {
+    if (args.task === 'desk-head' && /Head of Desk|head of desk/i.test(args.system) && !seen.length) { seen.push(args); return { text: '{"book": {"instruments": {"EURUSD"', truncated: true, usage: { in: 1, out: CAPS.head } }; }
+    if (args.task === 'desk-head' && seen.length === 1 && /cut off at the length limit/.test(args.prompt)) seen.push(args);
+    return m.fn(args);
+  };
+  const run = await runDesk({ pack, roles, ledger: DESK_EVIDENCE, callModel: fn, parseJson, now: clock, mode: 'quick' });
+  assert.equal(seen.length, 2, 'the retry carried the shorter instruction');
+  assert.equal(seen[1].maxTokens, CAPS.head, 'same cap at the ceiling');
+  assert.ok(seen[1].prompt.endsWith(SHORTER));
+  assert.ok(run.head.ok, 'the shorter retry is used');
 });
 
 await t('runDesk full mode: analysts, global debate + ruling, currency debate + ruling, 7 asset desks, 3 risk voices, then the Head', async () => {
