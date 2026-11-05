@@ -147,11 +147,12 @@ export function buildList(proposals, fb = {}) {
   return [...m.values()].sort((a, b) => b.score - a.score || b.needs.length - a.needs.length);
 }
 
-/** Merge new proposals into the pod's library (latest wins per id, keeps first-seen date). */
+/** Merge new proposals into the pod's library (latest wins per id, keeps first-seen date and its case tags; the 200 newest). */
 export function mergeLibrary(lib, proposals, date) {
   const out = Object.fromEntries((lib ?? []).map(p => [p.id, p]));
-  for (const p of proposals) out[p.id] = { ...p, firstSeen: out[p.id]?.firstSeen ?? date, lastSeen: date };
-  return Object.values(out).sort((a, b) => String(b.lastSeen).localeCompare(String(a.lastSeen))).slice(0, 120);
+  // a research case's tags (js/researchCase.js) survive a re-proposal: caseIds lists every case that touched it
+  for (const p of proposals) out[p.id] = { ...(out[p.id]?.caseIds ? { caseIds: out[p.id].caseIds, caseId: out[p.id].caseId } : {}), ...p, firstSeen: out[p.id]?.firstSeen ?? date, lastSeen: date };
+  return Object.values(out).sort((a, b) => String(b.lastSeen).localeCompare(String(a.lastSeen))).slice(0, 200);
 }
 
 // ── Phase 24: the system card ───────────────────────────────────────────────────────────────────────────────────

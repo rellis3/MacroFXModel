@@ -432,7 +432,7 @@ size: 0 to 1.5 (1 = normal). veto: true only when the trade should not be taken 
                   "test": { "variable": "what to construct", "benchmark": "what it must beat", "placebo": "the shuffle or control", "horizons": "the family to sweep", "power": "rough count of events" },
                   "killIf": "the result that would end it", "fleetOverlap": "which existing bot it resembles, and how it differs",
                   "buildSteps": ["what to build, in order"], "effort": "S | M | L", "priority": "high | medium | low",
-                  "citations": ["paper ids from 'Papers you have read', e.g. arxiv:1406.4322 or doi:10.1111/..."] } ],   // 2 to 4, new systems only
+                  "citations": ["paper ids from 'Papers you have read', e.g. arxiv:1406.4322 or doi:10.1111/..."] } ],   // 1 to 3, new systems only; one or two sentences per field
   "questionsForOwner": ["what you need the owner to decide or tell you"]   // 0 to 3
 }`,
   literature_queries: `{
@@ -501,6 +501,28 @@ hypothesis "works": the literature is a reason to test, not a result.`,
                  "killIf": "", "fleetOverlap": "", "buildSteps": [""], "effort": "S | M | L", "priority": "high | medium | low" } ],   // 0 to 3; [] when dead
   "questionsForOwner": [""]
 }`,
+  // a research case (js/researchCase.js), round 2 on: each researcher answers the owner, the others and the Head
+  case_answer: `{
+  "headline": "your position now, in one sentence",
+  "reply": "your answer to the owner's message, then where you agree or disagree with the other researchers and the Head's review, and why (under 250 words)",
+  "revise": [ { "id": "one of YOUR proposal ids in this case", "thesis": "...", "rules": { "signal": "..." }, "test": { "benchmark": "..." }, "inputs": [ { "what": "...", "status": "have | partial | missing", "how": "..." } ], "buildSteps": ["..."], "killIf": "..." } ],   // only the fields that change; [] if none
+  "proposals": [ /* 0 to 2 NEW proposals in the system_proposals shape, only if the conversation calls for one */ ],
+  "questionsForOwner": ["what you need the owner to decide or tell you"]   // 0 to 3
+}`,
+  // the Head of Research's peer review of a research case (desk/roles/head_of_research.md)
+  head_review: `{
+  "headline": "the case in one sentence: what the three are converging on, or where they split",
+  "agree": ["a point all three agree on"],   // 0 to 6
+  "disagree": [ { "issue": "what they disagree about", "positions": { "quant": "its view", "macro": "its view", "flow": "its view" }, "side": "quant | macro | flow | none", "why": "which side you take and why, with the evidence" } ],   // 0 to 4
+  "peerReview": { "quant": { "summary": "one or two sentences", "errors": ["a factual or numeric error, with the right figure and its source"], "overclaims": ["a claim stronger than its evidence"], "contradictions": ["where it contradicts the Evidence Book or the register: the id and what it says"] }, "macro": { ... }, "flow": { ... } },   // every researcher who answered
+  "plan": { "title": "short name", "variable": "the one variable to construct, exactly", "condition": "the regime or extreme to condition on", "universe": "markets", "horizons": "the family of horizons to sweep", "benchmark": "what it must beat", "placebo": "the shuffle or control", "feeds": ["feed ids from the data inventory"], "killIf": "the result that ends it", "builds": ["the proposal ids it combines"] },
+  "alreadyKnown": [ { "ref": "an Evidence Book or register id", "says": "what it found and how it bears on this case" } ],   // 0 to 6
+  "questionsForOwner": ["what the owner must decide or tell the pod"],   // 0 to 3
+  "nextStep": "quick-test | architect | preregister | park | drop",
+  "nextStepWhy": "one or two sentences",
+  "quickTest": { "x": "a series id from the quick-test catalogue (the leader)", "y": "a series id (the follower)", "horizons": [1, 5, 20], "xTransform": "level | chg1 | chg5 | chg20 | z60", "why": "what the first look would show" }   // or null when no quick test fits
+}
+Proposals and reviews, not results: never say an idea works, is profitable or has an edge.`,
   research_reply: `{
   "reply": "your answer to the owner, in plain words: what you would change, what you need, what the evidence says",
   "revise": { "thesis": "...", "rules": { "signal": "..." }, "test": { "benchmark": "..." }, "inputs": [ { "what": "...", "status": "have | partial | missing", "how": "..." } ], "buildSteps": ["..."], "killIf": "..." },   // only the fields you change; omit or null if nothing changes

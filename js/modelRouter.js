@@ -114,11 +114,24 @@ export const TASK_CLASS = {
   // DeepSeek by default whatever the global default is (owner 2026-11-05: "all model reads for news on DeepSeek for
   // cost"). `defaultProvider` sits under a per-task choice (ai_routing_v1 / AI_TASK_DESK_NEWS) and over the global one.
   'desk-news':    { ledger: null,    label: 'Desk news wire: headline reads', defaultProvider: 'deepseek', cheapSafe: true },
+  // the research pod (owner 2026-11-05): the three researchers (quant, macro, flow) and their per-proposal threads run on
+  // DeepSeek by default (cheaper; their prompts carry a SLICE of the Evidence Book chosen for the question and fit its
+  // 64k context and 8,192-token output); the Head of Research, who peer-reviews their work against the whole book,
+  // runs on Anthropic and only when the owner presses the button. Both sit under a per-task choice like desk-news.
+  'research-pod':  { ledger: 'brief', label: 'Research pod: the three researchers', defaultProvider: 'deepseek' },
+  'research-head': { ledger: 'full',  label: 'Research pod: Head of Research review', defaultProvider: 'anthropic', effort: { anthropic: 'high' } },
   // summarising supplied text — the cheap jobs
   'headlines':    { ledger: null,    label: 'Headline summary',  cheapSafe: true },
   'doc-summary':  { ledger: null,    label: 'Document summary',  cheapSafe: true },
   'misc':         { ledger: null,    label: 'Other',             cheapSafe: true },
 };
+
+/**
+ * The output cap for a retry after a reply was cut off at `sent` tokens: more room, but never past the provider's
+ * own ceiling (`maxOutput`; DeepSeek 8,192) or `hard`. At the ceiling the retry gets the same room and has to be
+ * shorter (the caller says so in the prompt); asking a provider for more than it can give only truncates again.
+ */
+export const retryCap = (sent, maxOutput = null, hard = 24_000) => Math.max(1, Math.min(Math.round(sent * 1.6), hard, maxOutput ?? Infinity));
 
 /** Rough token count. Only ever used for budgeting and reporting, never for billing. */
 export const estimateTokens = s => Math.ceil(String(s ?? '').length / 4);

@@ -120,9 +120,9 @@ function wire() {
 export function wireOpen(root) { root?.querySelectorAll?.('[data-qtopen]').forEach(a => (a.onclick = e => { e.preventDefault(); S.el?.scrollIntoView?.({ behavior: 'smooth' }); show(a.dataset.qtopen); })); }
 /** Mount the panel into `el`. */
 export async function mount(el, { getJson, onChange } = {}) { S.el = el; S.getJson = getJson; S.onChange = onChange; await refresh(); return S.meta; }
-/** Open the form prefilled for a research-pod proposal. */
+/** Open the form prefilled for a research-pod proposal (or a research case's plan: its `quickTest`, when given, is used as it is). */
 export async function openFor(p) {
-  const g = suggestSpec(p); await refresh({ ...g, proposalId: p.id, proposalTitle: p.title }); S.el?.scrollIntoView?.({ behavior: 'smooth' });
+  const g = { ...suggestSpec(p), ...(p.quickTest?.x && p.quickTest?.y ? p.quickTest : {}) }; await refresh({ ...g, proposalId: p.id, proposalTitle: p.title }); S.el?.scrollIntoView?.({ behavior: 'smooth' });
 }
 /** The stored tests (after mount). */
 export const tests = () => S.meta?.tests ?? [];

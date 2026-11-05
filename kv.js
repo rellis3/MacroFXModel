@@ -89,6 +89,7 @@ const _CF_EXACT = new Set([
   'research_pod_feedback',
   'research_pod_cards',
   'research_pod_threads',
+  'research_cases',         // research cases (js/researchCase.js): one per question to the pod, its rounds and the Head of Research's reviews; the owner's messages cannot be rebuilt. Also in _worker.js (both lists).
   // the literature desk (plan §9ah): dossiers on the owner's hypotheses and the paper library (notes per paper read).
   'research_pod_dossiers',
   'research_pod_papers',
