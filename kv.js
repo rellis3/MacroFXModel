@@ -80,6 +80,7 @@ const _CF_EXACT = new Set([
   'chain_stats_v1',         // chain transmission statistics (js/chainStats.js), rebuilt once a London day; kept so a deploy serves the day's copy. Also in _worker.js (both lists).
   // the research pod (plan §9ab): sessions, the proposal library, the owner's marks on each proposal and the system cards. The owner's feedback cannot be rebuilt.
   'analyst_scorecard_v1',   // the desk analyst scorecard (js/analystScorecard.js): one compact row per scored morning per analyst; the forward record of each analyst's calls, not re-derivable once the runs age out. Also in _worker.js (both lists).
+  'desk_paper_record_v1',   // paper trades on the trade watcher's own rules (js/deskPaperTrades.js): one summary row per finished day; description, not the scored test. Also in _worker.js (both lists).
   'thesis_reality_v1',      // morning thesis vs evening reality (js/thesisReality.js): one compact row per scored morning, claim by claim; the forward record the tally is built from. Also in _worker.js (both lists).
   'research_pod_sessions',
   'research_pod_library',
@@ -474,6 +475,9 @@ function isCfKey(key) {
   // desk_run_<date> and desk_run_index: what the analyst skills and the Head of Desk said each morning (js/deskRun.js),
   // paid for and graded later; not re-derivable.
   if (key.startsWith('desk_run_')) return true;
+  // desk_paper_<date>: the day's paper trades on the trade watcher's own rules (js/deskPaperTrades.js), stored once the
+  // 21:00 London window has closed. Re-derivable from OANDA M1 while the book exists, kept so the history needs no refetch.
+  if (key.startsWith('desk_paper_')) return true;
   // vol_reference_* are user-pasted reference exports — cannot be auto-rebuilt
   if (key.startsWith('vol_reference_')) return true;
   // vmlog_* are the VuManChu forward-validation log (one key per UTC day) — the

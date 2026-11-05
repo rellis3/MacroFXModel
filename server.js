@@ -224,6 +224,7 @@ import { scoreRunDay as _ascScoreRunDay, compactDay as _ascCompact, upsertDay as
 import { validateReflection as _dsValidateReflection, validateNewsletterIssue as _dsValidateIssue, validateSessionUpdate as _duValidate } from './js/deskSchemas.js';
 import { SLOTS as _DU_SLOTS, slotMs as _duSlotMs, marketSince as _duMarketSince, marketText as _duMarketText, liveView as _duLiveView, scoreUpdates as _duScoreUpdates } from './js/deskUpdate.js';
 import { sliceFeed as _deskSliceFeed } from './js/deskSlices.js';
+import { paperDay as _dppDay, watchedCards as _dppWatched, runningTotal as _dppTotal, dayComplete as _dppComplete, pipOf as _dppPipOf, PAPER_VERSION as _DPP_VERSION, PAPER_LABEL as _DPP_LABEL } from './js/deskPaperTrades.js';
 import { assess as _dqAssess, afterRun as _dqAfterRun } from './js/deskDataQuality.js';
 import { attribution as _atAttribution, attributionRecord as _atRecord } from './js/deskAttribution.js';
 import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
@@ -5019,6 +5020,8 @@ async function _dsScore(date, { reflect = true } = {}) {
   await kv.put(_DS_INDEX_KV, JSON.stringify(idx.slice(-800)));
   // the morning thesis laid against the day, from the same bars (descriptive; prereg amendment A15)
   try { await _trBuildDay(date, bars); } catch (e) { console.warn('[desk-score] thesis vs reality:', e.message); }
+  // paper trades on the watcher's own rules, from the same bars (description, not the scored test; prereg H1)
+  try { await _dppBuildDay(date, bars); } catch (e) { console.warn('[desk-score] paper trades:', e.message); }
   let reflection = null, evening = null;
   if (reflect) { reflection = await _dsReflect(run, score); if (reflection) await kv.put(_DS_REFLECT_KEY(date), JSON.stringify({ date, savedAt: new Date().toISOString(), ...reflection })); }
   if (reflect) evening = await _dsEvening(run, score, reflection, bars, idx).catch(e => { console.warn('[desk-score] evening edition:', e.message); return null; });
@@ -5230,6 +5233,89 @@ setTimeout(async () => {
     for (const r of await _dsLoadIndex()) { const x = await _trBuildDay(r.date).catch(e => ({ ok: false, error: e.message })); console.log(`[thesis-reality] boot backfill ${r.date}: ${x.ok ? 'built' : x.error}`); }
   } catch (e) { console.warn('[thesis-reality] boot backfill:', e.message); }
 }, 5 * 60_000).unref?.();
+// ── Paper trades on the trade watcher's own rules (js/deskPaperTrades.js; owner request 2026-11-05) ──────────────
+// Each sized card the watcher watched (session-update flips dropped, as _twTick does) is "traded" on its alerts:
+// in at the entry zone (or 08:00 London when the card names none), out at the first target, the invalidation or
+// 21:00 London, one spread per round trip. The same OANDA M1 bars and clock as the evening score (_dsBars).
+// DESCRIPTION of trading the watcher's alerts, not the pre-registered test (prereg H1): it is never read by the
+// Desk Pack or any analyst prompt (forge/DESK_ANALYST_PIPELINE_PREREG.md §7). A day is stored once its 21:00 London
+// window has closed: desk_paper_<date> (the trades) and desk_paper_record_v1 (one summary row per day).
+const _DPP_KEY = date => `desk_paper_${date}`;
+const _DPP_RECORD = 'desk_paper_record_v1';
+let _dppJob = null, _dppLive = { date: null, at: 0, result: null };
+const _dppInflight = new Map();
+async function _dppLoadRecord() { try { const raw = await kv.get(_DPP_RECORD); const st = raw ? JSON.parse(raw) : null; return st && Array.isArray(st.days) ? st : { days: [] }; } catch { return { days: [] }; } }
+// round-trip spreads in price units: the measured FX spread profile (pips) where there is one, else the estimate
+// table, else (markets in neither) the module's conservative default
+function _dppSpreads(insts) {
+  const out = {};
+  try {
+    const sp = spreadProfileReport(_SPREAD_TABLE);
+    for (const r of Object.values(sp.pairs ?? {})) {
+      const n = String(r.pair ?? '').toUpperCase(), pips = r.entryHoursMean ?? r.allHoursMean ?? _SPREAD_TABLE[r.pair];
+      if (insts.includes(n) && Number.isFinite(pips)) out[n] = +(pips * _dppPipOf(n)).toFixed(6);
+    }
+  } catch (e) { console.warn('[desk-paper] spreads:', e.message); }
+  for (const n of insts) if (out[n] == null && Number.isFinite(_SPREAD_TABLE[n.toLowerCase()])) out[n] = +(_SPREAD_TABLE[n.toLowerCase()] * _dppPipOf(n)).toFixed(6);
+  return out;
+}
+async function _dppBuildDay(date, bars = null, { save = true } = {}) {
+  const run = await _drLoad(date);
+  if (!run?.head?.ok) return { ok: false, date, error: `no desk book for ${date}` };
+  const updates = await _duLoad(date), cards = _dppWatched(run.head.book, _duLiveView(run.head.book, updates));
+  const insts = Object.keys(cards), complete = _dppComplete(date);
+  const win = _dsWindow(date), range = complete ? null : { entryMs: win.entryMs, exitMs: Math.min(Date.now(), win.exitMs) };
+  const have = bars ?? {}, need = insts.filter(n => !(have[n]?.length));
+  const fetched = need.length && Date.now() > win.entryMs ? await _dsBars(need, date, range) : {};
+  const day = { ok: true, ..._dppDay(cards, { ...have, ...fetched }, { date, spreads: _dppSpreads(insts) }), bookFinishedAt: run.finishedAt ?? null, updates: Object.keys(updates.slots ?? {}),
+    complete, savedAt: new Date().toISOString(), costs: 'one spread per round trip: the measured FX spread profile where the repo has one, else its estimate table, else 3 pips for FX and a few basis points of price for the rest' };
+  if (save && complete) {
+    await kv.put(_DPP_KEY(date), JSON.stringify(day));
+    const st = await _dppLoadRecord(), days = st.days.filter(d => d.date !== date);
+    days.push({ date, summary: day.summary, savedAt: day.savedAt }); days.sort((a, b) => a.date.localeCompare(b.date));
+    await kv.put(_DPP_RECORD, JSON.stringify({ version: _DPP_VERSION, label: _DPP_LABEL, days: days.slice(-800) }));
+  }
+  return day;
+}
+// GET /api/desk-paper?date=: the day's paper trades (stored once the day is over; before that, live and cached 5 min)
+app.get('/api/desk-paper', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : _dpLondonDate(Date.now());
+    const raw = await kv.get(_DPP_KEY(date)).catch(() => null);
+    if (raw) return res.json({ stored: true, ...JSON.parse(raw) });
+    if (!_dppComplete(date) && _dppLive.date === date && Date.now() - _dppLive.at < 5 * 60_000) return res.json({ stored: false, ..._dppLive.result });
+    // one build per date at a time: a stored day fetches up to 51 M1 ranges
+    if (!_dppInflight.has(date)) _dppInflight.set(date, _dppBuildDay(date).finally(() => _dppInflight.delete(date)));
+    const day = await _dppInflight.get(date);
+    if (!day.ok) return res.status(404).json({ ...day, label: _DPP_LABEL });
+    if (!day.complete) _dppLive = { date, at: Date.now(), result: day };
+    res.json({ stored: day.complete, ...day });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/desk-paper/history: one summary per stored day and the running total
+app.get('/api/desk-paper/history', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const st = await _dppLoadRecord(); res.json({ ok: true, label: _DPP_LABEL, days: st.days, total: _dppTotal(st.days), job: _dppJob }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/desk-paper/backfill: every past day with a book (?force=1 rebuilds stored days; ?date= one day). In the background.
+app.post('/api/desk-paper/backfill', async (req, res) => {
+  if (_dppJob?.status === 'running') return res.status(409).json({ ok: false, error: 'a backfill is already running', job: _dppJob });
+  const job = _dppJob = { status: 'running', startedAt: Date.now(), finishedAt: null, done: [], failed: [], skipped: 0 };
+  res.status(202).json({ ok: true, job });
+  try {
+    const have = new Set((await _dppLoadRecord()).days.map(d => d.date)), one = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : null;
+    const dates = one ? [one] : [...new Set((await _drLoadIndex()).filter(d => d.headOk !== false).map(d => d.date))].sort();
+    for (const d of dates) {
+      if (!_dppComplete(d) || (!one && have.has(d) && req.query.force !== '1')) { job.skipped++; continue; }
+      job.date = d;
+      const r = await _dppBuildDay(d).catch(e => ({ ok: false, date: d, error: e.message }));
+      (r.ok ? job.done : job.failed).push(r.ok ? { date: d, trades: r.summary.trades, sumSizeR: r.summary.sumSizeR } : { date: d, error: r.error });
+    }
+    job.status = 'done';
+  } catch (e) { job.status = 'error'; job.error = e.message; console.error('[desk-paper] backfill:', e.message); }
+  finally { job.finishedAt = Date.now(); console.log(`[desk-paper] backfill: ${job.done.length} built, ${job.failed.length} failed, ${job.skipped} skipped`); }
+});
 // ── Desk session updates (js/deskUpdate.js, desk/roles/session_update.md; plans/DESK_ANALYST_PIPELINE.md Phase 5) ──
 // At the London open (08:05) and the New York open (14:35) the desk re-reads what changed since the morning book:
 // every market in u with the lines it has touched, and the events, risk and liquidity feeds fetched fresh. One model
