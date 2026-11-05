@@ -227,3 +227,19 @@ test('a task can set its effort (Anthropic only); the request carries it; env ov
   assert.ok(!('output_config' in buildRequest({ provider: 'anthropic', model: 'm', prompt: 'p' }).body), 'no effort, no field: other tasks byte-identical');
   assert.ok(!('output_config' in buildRequest({ provider: 'deepseek', model: 'm', prompt: 'p', effort: 'medium' }).body));
 });
+
+test('desk-news runs on DeepSeek by default, whatever the global default; a per-task choice still wins; no key falls back', () => {
+  const both = { anthropic: true, deepseek: true };
+  assert.equal(TASK_CLASS['desk-news'].label, 'Desk news wire: headline reads');
+  assert.equal(resolveTask('desk-news', { keys: both }).provider, 'deepseek');
+  assert.equal(resolveTask('desk-news', { keys: both, provider: 'anthropic' }).provider, 'deepseek');
+  assert.equal(resolveTask('desk-news', { keys: both }).model, DEFAULT_MODELS.deepseek.id);
+  assert.equal(resolveTask('desk-news', { keys: both }).effort, null);
+  assert.equal(resolveTask('desk-news', { keys: both, tasks: { 'desk-news': 'anthropic' } }).provider, 'anthropic');
+  // no DeepSeek key: the same fallback as any task (the global default, then anthropic), flagged
+  const r = resolveTask('desk-news', { keys: { anthropic: true }, provider: 'anthropic' });
+  assert.equal(r.provider, 'anthropic'); assert.equal(r.fellBack, true); assert.match(r.why, /deepseek has no key/);
+  // env routing reaches it too, and other tasks keep the global default
+  assert.equal(configFromEnv({ AI_TASK_DESK_NEWS: 'anthropic' }).tasks['desk-news'], 'anthropic');
+  assert.equal(resolveTask('desk-analyst', { keys: both }).provider, 'anthropic');
+});

@@ -78,6 +78,7 @@ function isAllowedKVKey(key) {
     'release_surprise_log_v1',
     'desk_alerts_v1',
     'release_reaction_log_v1',
+    'desk_news_record_v1',
     'chain_stats_v1',
     'research_pod_sessions',
     'research_pod_library',
@@ -1125,6 +1126,8 @@ export default {
             'desk_alerts_v1',
             // release_reaction_log_v1: the live release reactions (a forward record); chain_stats_v1: the day's chain statistics.
             'release_reaction_log_v1',
+            // desk_news_record_v1: the news wire's reaction record and breaking-alert dedupe (js/newsImpact.js); a forward record.
+            'desk_news_record_v1',
             'chain_stats_v1',
             // research_pod_*: the research pod's sessions, proposals, the owner's marks and the system cards (server writes; the owner's feedback cannot be rebuilt).
             'research_pod_sessions',

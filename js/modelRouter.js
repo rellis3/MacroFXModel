@@ -110,6 +110,10 @@ export const TASK_CLASS = {
   // returned no JSON. Medium for the analysts, debaters and desks; high for the managers and the Head.
   'desk-analyst': { ledger: 'brief', label: 'Desk pipeline: analysts',     models: { anthropic: 'claude-sonnet-5' }, effort: { anthropic: 'medium' } },
   'desk-head':    { ledger: 'brief', label: 'Desk pipeline: Head of Desk', models: { anthropic: 'claude-sonnet-5' }, effort: { anthropic: 'high' } },
+  // the news wire's headline reads (agent 21): a batch of up to 20 headlines every 2 minutes at most, so it runs on
+  // DeepSeek by default whatever the global default is (owner 2026-11-05: "all model reads for news on DeepSeek for
+  // cost"). `defaultProvider` sits under a per-task choice (ai_routing_v1 / AI_TASK_DESK_NEWS) and over the global one.
+  'desk-news':    { ledger: null,    label: 'Desk news wire: headline reads', defaultProvider: 'deepseek', cheapSafe: true },
   // summarising supplied text — the cheap jobs
   'headlines':    { ledger: null,    label: 'Headline summary',  cheapSafe: true },
   'doc-summary':  { ledger: null,    label: 'Document summary',  cheapSafe: true },
@@ -122,14 +126,15 @@ export const estimateTokens = s => Math.ceil(String(s ?? '').length / 4);
 /**
  * Which provider and model should run this task?
  *
- * `cfg.tasks[task]` wins, then `cfg.provider` (the global default), then anthropic. A
+ * `cfg.tasks[task]` wins, then the task's own `defaultProvider` (TASK_CLASS), then `cfg.provider` (the global
+ * default), then anthropic. A
  * task whose provider has no key configured falls back to the default provider rather
  * than failing — a missing DeepSeek key should make the page slower and dearer, not
  * broken.
  */
 export function resolveTask(task, cfg = {}) {
   const haveKey = p => !!(cfg.keys ?? {})[p];
-  const wanted = (cfg.tasks ?? {})[task] ?? cfg.provider ?? 'anthropic';
+  const wanted = (cfg.tasks ?? {})[task] ?? TASK_CLASS[task]?.defaultProvider ?? cfg.provider ?? 'anthropic';
   const provider = (PROVIDERS[wanted] && haveKey(wanted)) ? wanted
     : (PROVIDERS[cfg.provider] && haveKey(cfg.provider)) ? cfg.provider
     : 'anthropic';

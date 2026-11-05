@@ -78,6 +78,13 @@ button{font:inherit}
 .muted{color:var(--tx3);font-size:12.5px}
 .drv{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
 .drv span{font:11px var(--mono);padding:3px 8px;border-radius:6px;background:var(--bg3);border:1px solid var(--line);color:var(--tx2)}
+.nwi{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.nwp{display:flex;flex-wrap:wrap;gap:4px;margin:5px 0 0}
+.nwp span{font:10.5px var(--mono);padding:2px 6px;border-radius:5px;border:1px solid var(--line);color:var(--tx2);white-space:nowrap}
+.nwp span.sup{border-color:rgba(232,184,90,.55);color:var(--gold)}
+.nwp span.ag{border-color:rgba(255,93,120,.55);color:var(--dn)}
+.nwp b{font-weight:600}
+.nwr{display:flex;flex-wrap:wrap;gap:4px;margin:5px 0 0;font-size:12px}
 .score{display:flex;align-items:center;gap:10px}
 .score b{font:700 22px var(--mono);white-space:nowrap}
 .score small{color:var(--tx3);font:12px var(--mono)}
@@ -828,14 +835,35 @@ ${(t.events ?? []).length ? `<div class="drv">${t.events.slice(-8).reverse().map
 <p class="muted">Telegram sends each event once (⚙ Alerts → "Desk trade watcher" to mute). Context, never an order.</p></div>`;
 }
 
-// the news analyst's read of a headline as arrows per currency
-const impactTxt = h => { const im = h.read?.impact ?? {}; const k = Object.keys(im); return k.length ? ` <b>${k.map(c => `${c}${im[c] > 0 ? '▲' : '▼'}`).join(' ')}</b>` : ''; };
-const impactChips = h => { const im = h.read?.impact ?? {}; return Object.keys(im).length ? Object.entries(im).map(([c, v]) => `<span class="chip ${v > 0 ? 'up' : 'dn'}">${esc(c)} ${v > 0 ? '▲' : '▼'}</span>`).join(' ') : (h.touches ?? []).map(c => `<span class="chip">${esc(c)}</span>`).join(' '); };
+// the news analyst's read of a headline as arrows per currency (two arrows = a strong push, impact ±2)
+const arw = v => (v > 0 ? '▲' : '▼').repeat(Math.min(2, Math.abs(v)) || 1);
+const impactTxt = h => { const im = h.read?.impact ?? {}; const k = Object.keys(im); return k.length ? ` <b>${k.map(c => `${c}${arw(im[c])}`).join(' ')}</b>` : ''; };
+const impactChips = h => { const im = h.read?.impact ?? {}; return Object.keys(im).length ? Object.entries(im).map(([c, v]) => `<span class="chip ${v > 0 ? 'up' : 'dn'}">${esc(c)} ${arw(v)}</span>`).join(' ') : (h.touches ?? []).map(c => `<span class="chip">${esc(c)}</span>`).join(' '); };
+// the desk's markets the read implies (base minus quote), cards first: gold = it supports the card, red ring = against
+const pairChips = (h, max = 6) => { const ps = (h.pairs ?? []).slice().sort((a, b) => (b.stance ? 1 : 0) - (a.stance ? 1 : 0)).slice(0, max); if (!ps.length) return '';
+  return `<div class="nwp">${ps.map(p => `<span class="${p.stance === 'supports' ? 'sup' : p.stance === 'against' ? 'ag' : ''}" title="${esc(p.inst)}: implied ${p.dir > 0 ? 'up' : 'down'}${p.card ? `; the ${esc(p.card)} card: ${esc(p.stance)}` : ''}">${esc(p.inst)} ${p.dir > 0 ? '▲' : '▼'}${p.stance ? ` <b>${p.stance === 'supports' ? 'for card' : 'vs card'}</b>` : ''}</span>`).join('')}${(h.pairs.length > max) ? `<span class="muted">+${h.pairs.length - max}</span>` : ''}</div>`; };
+// did the market move the way the read implied? (+5 / +30 min, in typical moves)
+const RX = { with: ['up', 'moved with'], against: ['dn', 'moved against'], none: ['', 'no clear move'] };
+const reactTxt = h => { const r = h.react; if (!r) return (h.pairs ?? []).length && (h.read?.tier ?? h.tier) <= 2 ? '<span class="nwr muted">reaction: checking</span>' : '';
+  const one = (k, lab) => r[k] ? `<span class="chip ${RX[r[k].label]?.[0] ?? ''}" title="mean move ${r[k].units > 0 ? '+' : ''}${r[k].units} typical ${lab} moves, the way of the read, over ${r[k].n} market${r[k].n === 1 ? '' : 's'}">${lab} ${RX[r[k].label]?.[1] ?? '–'}</span>` : '';
+  const t = one('m5', '5m') + one('m30', '30m'); return t ? `<span class="nwr">${t}</span>` : (r.done ? '<span class="nwr muted">reaction: no prices (market shut)</span>' : '<span class="nwr muted">reaction: checking</span>'); };
 function wireCard(items, title = 'The wire', limit = 14) {
-  if (!items.length) return `<div class="card"><div class="ch"><span class="lbl">${title}</span></div><p class="muted">No important headlines in the last 24 hours (the news analyst runs every 10 minutes).</p></div>`;
-  return `<div class="card"><div class="ch"><span class="lbl">${title}</span><span class="r muted">the news analyst · tier 1 and 2 · last 24 h</span></div>${items.slice(0, limit).map(h => { const t = h.read?.tier ?? h.tier;
-    return `<div style="display:grid;grid-template-columns:52px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)"><div><span class="mono muted" style="font-size:11px">${new Date(h.ms).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</span><br><span class="chip ${t === 1 ? 'gold' : ''}" style="margin-top:4px">T${t}</span></div>
-<div><a href="${esc(h.link ?? '#')}" target="_blank" rel="noopener" style="color:var(--tx);text-decoration:none;font-weight:600">${esc(h.title)}</a><div class="drv" style="margin:5px 0 0">${impactChips(h)}<span>${esc(h.source)}</span></div>${h.read?.why ? `<div class="muted">${esc(h.read.why)}</div>` : ''}${h.read?.book ? `<div style="color:var(--gold);font-size:12.5px">The book: ${esc(h.read.book)}</div>` : ''}</div></div>`; }).join('')}<p class="muted">Arrows are the first reaction the headline implies, read by the news analyst: context, never a signal.</p></div>`;
+  const head = `<div class="ch"><span class="lbl">${title}</span><span class="r"><span class="muted">tier 1-2 · last 24 h</span><button class="btn" data-newsrec style="padding:3px 8px">Track record</button></span></div>`;
+  if (!items.length) return `<div class="card">${head}<p class="muted">No important headlines in the last 24 hours (the wire is polled every 2 minutes).</p></div>`;
+  return `<div class="card">${head}${items.slice(0, limit).map(h => { const t = h.read?.tier ?? h.tier, src = (h.sources?.length ? h.sources : [h.source]);
+    return `<div class="nwi"><div><span class="mono muted" style="font-size:11px">${new Date(h.ms).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</span><br><span class="chip ${t === 1 ? 'gold' : ''}" style="margin-top:4px">T${t}</span></div>
+<div style="min-width:0"><a href="${esc(h.link ?? '#')}" target="_blank" rel="noopener" style="color:var(--tx);text-decoration:none;font-weight:600;overflow-wrap:anywhere">${esc(h.title)}</a><div class="drv" style="margin:5px 0 0">${impactChips(h)}<span>${esc(src.slice(0, 3).join(', '))}${src.length > 3 ? ` +${src.length - 3}` : ''}</span></div>${h.read?.why ? `<div class="muted">${esc(h.read.why)}</div>` : ''}${pairChips(h)}${reactTxt(h)}${h.read?.book ? `<div style="color:var(--gold);font-size:12.5px">The book: ${esc(h.read.book)}</div>` : ''}</div></div>`; }).join('')}<p class="muted">Arrows are the first reaction the headline implies, read by the news analyst; markets show base minus quote, and whether that is for or against today's card. The reaction is the move after 5 and 30 minutes in typical moves. Context, never a signal.</p></div>`;
+}
+// the reaction record: how often a read headline was followed by a move its way, by source and topic
+async function newsRecord() {
+  openModal(`<div class="ch"><span class="lbl">News wire: track record</span><button class="x" aria-label="Close">✕</button></div><div id="nwrec" class="muted">Loading…</div>`);
+  const r = await getJson('/api/desk-news/record'), el = $('nwrec'); if (!el) return;
+  if (!r?.ok) { el.textContent = 'The record is not available right now.'; return; }
+  const pc = c => (c.n ? `${Math.round(c.with / c.n * 100)}%` : '–');
+  const row = x => `<tr><td>${esc(x.key)}</td><td class="n">${x.m5.n}</td><td class="n">${pc(x.m5)}</td><td class="n">${x.m30.n}</td><td class="n">${pc(x.m30)}</td><td class="n">${x.m30.n ? `${x.m30.against}/${x.m30.none}` : '–'}</td></tr>`;
+  const tbl = (title, xs) => `<div class="sec" style="margin-top:12px"><h2 style="font-size:14px">${title}</h2></div><div class="scroll"><table><thead><tr><th></th><th class="n">n 5m</th><th class="n">with 5m</th><th class="n">n 30m</th><th class="n">with 30m</th><th class="n">vs / none 30m</th></tr></thead><tbody>${xs.length ? xs.slice(0, 20).map(row).join('') : '<tr><td colspan="6" class="muted">Nothing scored yet.</td></tr>'}</tbody></table></div>`;
+  el.className = '';
+  el.innerHTML = `<p><span class="chip pur">${esc(r.label)}</span></p><p class="muted">How often a tier-1/2 headline was followed by a move the way its read implied. ${esc(r.method)}</p>${tbl('All headlines', [r.overall])}${tbl('By source', r.bySource ?? [])}${tbl('By topic', r.byTopic ?? [])}<p class="muted">Small counts mean little; many headlines land on a market already moving.</p>`;
 }
 function overview() {
   if (!D.run?.ok) { $('overview').innerHTML = `<div class="card"><p>No desk book yet today.</p><p class="muted">${esc(D.run?.error ?? '')} The book is written at 06:55 London when the Desk Run service is on, or from the Desk Run page.</p></div>`; return; }
@@ -1285,6 +1313,7 @@ async function seasonHeat(el) {
 function wire(root) {
   root.querySelectorAll('[data-ccy]').forEach(el => { const go = () => ccyModal(el.dataset.ccy); el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
   root.querySelectorAll('[data-inst]').forEach(el => { const go = () => { const c = D.cards[el.dataset.inst]; if (c) { openModal(assetCard(el.dataset.inst, c, true)); assetChart($('achart'), el.dataset.inst, c); } }; el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
+  root.querySelectorAll('[data-newsrec]').forEach(el => { el.onclick = newsRecord; });
 }
 
 // ── Ask the desk ──

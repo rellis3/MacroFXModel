@@ -53,7 +53,7 @@ const BIG = /\b(surprise|unexpected(ly)?|shock|emergency|cuts? rates?|hikes? rat
 const OFFICIAL = /^(Fed|ECB|BoE|BoJ|RBA|RBNZ|BoC|SNB)\b/;
 // From a central bank's own feed, only monetary policy is tier 1 (not supervision notices, speeches on payments, etc.)
 const POLICY = /\b(monetary policy|policy rate|interest rates?|rate decision|bank rate|deposit facility|fomc)\b/i;
-const SOURCE_CCY = { Fed: 'USD', ECB: 'EUR', BoE: 'GBP', BoJ: 'JPY', RBA: 'AUD', RBNZ: 'NZD', BoC: 'CAD', SNB: 'CHF' };
+const SOURCE_CCY = { Fed: 'USD', ECB: 'EUR', BoE: 'GBP', BoJ: 'JPY', RBA: 'AUD', RBNZ: 'NZD', BoC: 'CAD', SNB: 'CHF', BEA: 'USD' };
 
 /** The rule tags for one headline: { ccys, topic, tier }. Tier 1 = market-moving, 2 = macro-relevant, 3 = background. */
 export function tagHeadline(h) {
@@ -69,17 +69,22 @@ export function tagHeadline(h) {
 
 const norm = t => String(t).toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 const words = t => new Set(norm(t).split(' ').filter(w => w.length > 3));
-/** Merge new headlines into the stored wire: drop near-duplicates (same story from two feeds), keep `hours`, newest first. */
+const idOf = h => `${h.ms}-${norm(h.title).slice(0, 40)}`;
+/**
+ * Merge new headlines into the stored wire, newest first, `hours` kept. The same story from several feeds is one item:
+ * a near-duplicate (70% of the shorter title's words shared) adds its feed to the item's `sources` instead of a new
+ * item. `firstSeen` is when the wire first had it (the reaction check starts there when a feed's stamp is far older).
+ */
 export function mergeWire(stored, incoming, { now = Date.now(), hours = 72, max = 500 } = {}) {
-  const keep = (stored ?? []).filter(h => h.ms && now - h.ms < hours * 3600e3);
-  const seen = keep.map(h => words(h.title)), added = [];
+  const keep = (stored ?? []).filter(h => h.ms && now - h.ms < hours * 3600e3).map(h => ({ ...h, sources: h.sources?.length ? [...h.sources] : [h.source] }));
+  const byId = new Map(keep.map(h => [h.id, h])), seen = keep.map(h => [words(h.title), h]), added = [];
   for (const h of incoming ?? []) {
     if (!h.ms || now - h.ms > hours * 3600e3 || h.ms > now + 10 * 60_000) continue;
     const w = words(h.title);
-    const dup = seen.some(s => { let k = 0; for (const x of w) if (s.has(x)) k++; return w.size && k / Math.min(w.size, s.size || 1) >= 0.7; });
-    if (dup) continue;
-    const t = { id: `${h.ms}-${norm(h.title).slice(0, 40)}`, ...h, ...tagHeadline(h) };
-    keep.push(t); added.push(t); seen.push(w);
+    const same = byId.get(idOf(h)) ?? seen.find(([s]) => { let k = 0; for (const x of w) if (s.has(x)) k++; return w.size && k / Math.min(w.size, s.size || 1) >= 0.7; })?.[1];
+    if (same) { if (h.source && !same.sources.includes(h.source)) same.sources.push(h.source); continue; }
+    const t = { id: idOf(h), ...h, sources: [h.source], firstSeen: now, ...tagHeadline(h) };
+    keep.push(t); added.push(t); seen.push([w, t]); byId.set(t.id, t);
   }
   keep.sort((a, b) => b.ms - a.ms);
   return { wire: keep.slice(0, max), added };
@@ -87,13 +92,17 @@ export function mergeWire(stored, incoming, { now = Date.now(), hours = 72, max 
 
 const str = (v, n) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, n) : null);
 const CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF', 'GOLD', 'OIL', 'EQUITIES', 'CRYPTO'];
-/** The model's read of a batch: { items: [{ i, tier, impact: { USD: +1|-1 }, why, book }] } keyed back onto the batch. */
+/**
+ * The model's read of a batch: { items: [{ i, tier, impact: { USD: -2..+2 }, why, book }] } keyed back onto the batch.
+ * Impact is an integer from -2 to +2 (2 = a strong push); 0 and anything unreadable are dropped, a fraction rounds
+ * away from zero to at least 1. Readers that only look at the sign (v > 0) read it as before.
+ */
 export function validateRead(obj, batch) {
   if (!obj || typeof obj !== 'object' || !Array.isArray(obj.items)) return { ok: false, errors: ['no items'] };
   const out = {};
   for (const x of obj.items) {
     const i = Number(x?.i); if (!Number.isInteger(i) || i < 0 || i >= batch.length) continue;
-    const impact = {}; for (const [k, v] of Object.entries(x?.impact ?? {})) if (CCYS.includes(k) && [-1, 1].includes(Math.sign(Number(v)))) impact[k] = Math.sign(Number(v));
+    const impact = {}; for (const [k, v] of Object.entries(x?.impact ?? {})) { const q = Number(v); if (CCYS.includes(k) && Number.isFinite(q) && q !== 0) impact[k] = Math.sign(q) * Math.min(2, Math.max(1, Math.round(Math.abs(q)))); }
     out[batch[i].id] = { tier: [1, 2, 3].includes(Number(x?.tier)) ? Number(x.tier) : batch[i].tier, impact, why: str(x?.why, 240) ?? '', book: str(x?.book, 200) ?? null };
   }
   return Object.keys(out).length ? { ok: true, value: out } : { ok: false, errors: ['no usable item'] };
@@ -104,4 +113,4 @@ export function pick(wire, { sinceMs = 0, tier = 2, ccy = null, limit = 40 } = {
   return (wire ?? []).filter(h => h.ms >= sinceMs && (h.read?.tier ?? h.tier) <= tier && (!ccy || h.touches.includes(ccy) || h.read?.impact?.[ccy])).slice(0, limit);
 }
 /** One line per headline for a prompt. */
-export const wireText = hs => hs.map(h => `- ${new Date(h.ms).toISOString().slice(0, 16).replace('T', ' ')} [${h.source}] ${h.title}${h.read?.why ? ` — ${h.read.why}` : ''}${Object.keys(h.read?.impact ?? {}).length ? ` (${Object.entries(h.read.impact).map(([k, v]) => `${k}${v > 0 ? '+' : '−'}`).join(' ')})` : ''}`).join('\n');
+export const wireText = hs => hs.map(h => `- ${new Date(h.ms).toISOString().slice(0, 16).replace('T', ' ')} [${h.source}] ${h.title}${h.read?.why ? ` — ${h.read.why}` : ''}${Object.keys(h.read?.impact ?? {}).length ? ` (${Object.entries(h.read.impact).map(([k, v]) => `${k}${(v > 0 ? '+' : '−').repeat(Math.min(2, Math.abs(v)) || 1)}`).join(' ')})` : ''}`).join('\n');
