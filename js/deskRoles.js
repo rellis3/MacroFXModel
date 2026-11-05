@@ -213,12 +213,17 @@ export function groupData(pack, names) {
   const vf = sliceFeed('vol-forecast', feed('vol-forecast')?.data ?? {}), ses = sliceFeed('vol-forecast/session', feed('vol-forecast/session')?.data ?? {});
   const intel = sliceFeed('vol-forecast/intelligence', feed('vol-forecast/intelligence')?.data ?? {});
   const rawVf = feed('vol-forecast')?.data?.instruments ?? {}, rawSes = feed('vol-forecast/session')?.data?.instruments ?? {};
+  const chosenFeed = feed('vol-forecast/persist-ladder/json'), chosen = chosenFeed?.data?.instruments ?? null;
+  const chosenOk = !!chosen && (!chosenFeed.status || chosenFeed.status === 'ok');
   for (const n of names) {
     const row = { legs: instrumentLegs(n) };
     if (vf.instruments?.[n]) row.lines = vf.instruments[n];
     if (ses.instruments?.[n]) row.session = ses.instruments[n];
-    const lv = priceLadder(Number(rawSes[n]?.anchor_open), rawVf[n]?.ladder, isScandi(n) ? SCANDI_DIGITS : null);
-    if (lv) row.levels = lv;
+    // the price lines: the validated pick, "Forecast · chosen ★" (persistence + IV; Evidence Book forecast-pick, prereg A17)
+    // where it covers the market and its feed is fresh, else the plain production ladder; the source travels with the lines
+    const ch = chosenOk ? chosen?.[n] : null, useChosen = !!(ch?.oh && ch?.ol);
+    const lv = priceLadder(Number(rawSes[n]?.anchor_open), useChosen ? ch : rawVf[n]?.ladder, isScandi(n) ? SCANDI_DIGITS : null);
+    if (lv) row.levels = { ...lv, source: useChosen ? 'chosen' : 'plain' };
     if (isScandi(n)) { const sc = scandiContext(pack, n); if (sc) row.scandi = sc; }
     if (intel.instruments?.[n]) row.implied = intel.instruments[n];
     const sm = feed(`swing-map:${n}`); if (sm?.data) row.swing = sliceFeed(`swing-map:${n}`, sm.data);

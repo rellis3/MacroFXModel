@@ -179,6 +179,7 @@ export const DESK_FEEDS = [
   // ── asset ───────────────────────────────────────────────────────────────────
   F('vol_iv', 'vol-forecast', 1 * D, { maxBytes: 400_000 }),   // the core vol feed: every instrument's lines; ~200 KB raw
   F('vol_iv', 'vol-forecast/session', 1 * D),
+  F('vol_iv', 'vol-forecast/persist-ladder/json', 1 * D),   // "Forecast · chosen ★" (forecast-pick, validated): the card price lines where it covers the market (prereg A17)
   F('vol_iv', 'vol-forecast/weekly', 7 * D),
   F('vol_iv', 'vol-forecast/intelligence', 1 * D),
   F('vol_iv', 'cvol', 3 * D),
