@@ -43,7 +43,7 @@ ${s.line ? `<div style="margin-top:6px"><b>${esc(s.line)}</b></div>` : ''}
 export function breakingHtml(p, esc = escD) {
   if (!p?.ok) return p?.error ? `<div class="tt-note">Transmission statistics: ${esc(p.error)}</div>` : '';
   const br = p.breaking ?? [], dv = p.divergences ?? [];
-  const item = (id, html) => `<div class="tt-link"><span class="ends"><a href="#" data-act="link" data-id="${esc(id)}" style="color:var(--tx);text-decoration:none">${html}</a></span></div>`;
+  const item = (id, html) => `<div class="tt-link"><span class="ends" style="grid-column:1/-1"><a href="#" data-act="link" data-id="${esc(id)}" style="color:var(--tx);text-decoration:none">${html}</a></span></div>`;
   return `<div style="margin-top:14px"><div class="ch" style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><span class="lbl">Links breaking down</span><span class="chip">context, not a signal</span><span class="muted" style="font-size:11px">60-day correlation of daily changes against 20 days ago and its 2-year average · built ${esc(p.day ?? '')}</span></div>
 ${br.length ? br.map(b => item(b.id, `<span class="chip ${TREND_CLS[b.trend] ?? ''}">${esc(b.trend)}</span> <b>${esc(b.short)}</b> <span class="mono">${sg(b.then60)} → ${sg(b.corr60)}</span> <span class="muted">(2y avg ${sg(b.avg60)})</span>`)).join('') : '<div class="muted">No link is weakening or breaking down on the 60-day correlation.</div>'}
 ${dv.length ? `<div class="lbl" style="margin-top:8px">Diverging today (|z| ≥ 2)</div>${dv.map(d => item(d.id, `<span class="chip ${d.alert ? 'gold' : ''}">${sg(d.z, 1)}σ · ${d.win}d</span> ${esc(d.line ?? d.short)}`)).join('')}` : ''}
