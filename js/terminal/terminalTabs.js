@@ -23,6 +23,7 @@ import * as FVV from './fairValueView.js';
 import * as ACV from './autocorrView.js';
 import * as LLV from './leadLagView.js';
 import * as OPV from './optionsView.js';
+import * as NV from './newsView.js';
 import { createLevelChart } from '../levelChart.js';
 import { cardDrivers } from './cardExplain.js';
 import { pineForCard, oandaOf } from '../deskBookPine.js';
@@ -357,6 +358,7 @@ ${c ? `${ladder(c)}<div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b
 <div class="card" id="tt-p-ac">${loading('autocorrelation')}</div>
 <div class="card" id="tt-p-ll">${loading('lead-lag')}</div>
 <div class="card" id="tt-p-opt">${loading('options')}</div>
+<div class="card" id="tt-p-news">${loading('the news')}</div>
 <div class="card" id="tt-p-prec">${loading('precedent and the chain')}</div>
 <div class="card" id="tt-p-res">${loading('research')}</div></div>`;
   root.querySelector('#tt-sel').onchange = e => openPair(e.target.value);
@@ -380,6 +382,7 @@ ${c ? `${ladder(c)}<div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b
   J('/api/autocorrelation').then(d => { const b = mine() && el('tt-p-ac'); if (b) b.innerHTML = ACV.pairCard(d, n); });
   J('/api/lead-lag').then(d => { const b = mine() && el('tt-p-ll'); if (b) b.innerHTML = LLV.pairCard(d, n); });
   Promise.all([J('/api/oi-today'), J('/api/options-history'), J('/api/hedging-summary')]).then(([oi, hist, hs]) => { const b = mine() && el('tt-p-opt'); if (!b) return; b.innerHTML = OPV.pairCard(n, { oi, hist, hs }); b.querySelector('[data-goto-options]')?.addEventListener('click', e => { e.preventDefault(); document.querySelector('#tabs [data-t="options"]')?.click(); }); });
+  newsFeed().then(() => { const b = mine() && el('tt-p-news'); if (!b) return; drawPairNews(b, n, c); });
   Promise.all([J('/api/carry-vol'), J('/api/options-skew')]).then(([cv, sk]) => mine() && pairCarry(n, cv, sk));
   Promise.all([J('/api/session-heat'), J(`/api/desk-season?inst=${n}`)]).then(([sh, ss]) => mine() && pairHours(n, sh, ss));
   Promise.all([J('/api/macro-regime-fx'), loadChain()]).then(([m]) => mine() && pairPrec(n, m));
@@ -661,9 +664,77 @@ ${sec('Fear gauge', 'the VIX and its term structure')}<div id="opt-vix">${loadin
   drawPath(T.optPath ?? 'GOLD');
   if (!T.optResize) { let last = window.innerWidth; T.optResize = true; window.addEventListener('resize', () => { if (Math.abs(window.innerWidth - last) > 60 && el('options') && !el('options').hidden) { last = window.innerWidth; drawPath(T.optPath ?? 'GOLD'); } }); }
 }
-const RENDER = { today: renderToday, pair: renderPair, changed: renderChanged, research: renderResearch, options: renderOptions };
-globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'pair' && /pair=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
+// ═════════════════════════════════════════════ NEWS TAB ═════════════════════════════════════════════
+// The wire as a scannable list (js/terminal/newsView.js): top stories, filters, newest first; refreshed every 2 min
+// while the tab is open. The Pair tab's "Latest news" card and the Assets cards' "latest:" line read the same feed.
+const NS = { tier: 2, keys: [], market: null, onlyBook: false, q: '', items: null, at: 0, updatedAt: null, err: null, timer: null, loading: null };
+const NEWS_EVERY_MS = 120_000;
+function newsFeed(force = false) {
+  if (!force && NS.items && Date.now() - NS.at < NEWS_EVERY_MS - 5_000) return Promise.resolve(NS.items);
+  return (NS.loading ??= getJson('/api/desk-news?hours=72&tier=3').then(r => {
+    if (r?.ok) { NS.items = r.items ?? []; NS.at = Date.now(); NS.updatedAt = r.updatedAt ?? null; NS.err = null; } else NS.err = r?.error ?? 'not available';
+    return NS.items ?? [];
+  }).finally(() => { NS.loading = null; }));
+}
+const liveBook = () => Object.fromEntries(Object.entries(D?.cards ?? {}).filter(([, x]) => (DIR[x.rating] ?? 0) !== 0 && x.size > 0).map(([k, x]) => [k, x.rating]));
+function drawPairNews(box, n, c) {
+  const live = c && (DIR[c.rating] ?? 0) !== 0 && c.size > 0 ? c.rating : null;
+  box.innerHTML = NS.items ? NV.pairCard(NS.items, n, { rating: live, now: Date.now(), name: nice(n) }) : `<div class="ch"><span class="lbl">Latest news for ${h(nice(n))}</span></div><p class="muted">The news wire is not available right now${NS.err ? ` (${h(NS.err)})` : ''}.</p>`;
+  box.querySelector('[data-news-more]')?.addEventListener('click', e => { e.preventDefault(); openNews({ market: n }); });
+}
+function openNews({ market = null } = {}) {
+  if (market) { NS.market = market; NS.keys = NV.newsKeysFor(market); NS.tier = Math.max(NS.tier, 2); }
+  const b = document.querySelector('#tabs [data-t="news"]');
+  if (b && b.getAttribute('aria-selected') !== 'true') b.click(); else renderNews();
+  window.scrollTo?.({ top: 0 });
+}
+async function renderNews() {
+  const root = el('news'); if (!root) return;
+  if (!root.dataset.built) {
+    root.dataset.built = '1';
+    root.innerHTML = `<div class="card glow"><div class="tt-head"><span class="lbl">News</span><h2 style="flex-basis:100%">The wire</h2><span class="r"><span class="muted" id="nt-upd"></span><button class="btn" data-newsrec style="padding:3px 8px">Track record</button></span></div>
+<div id="nt-top"></div><div id="nt-f"></div><div id="nt-n" class="muted" style="margin-bottom:4px"></div><div id="nt-list">${loading('the wire')}</div>
+<p class="tt-note">Headlines from the last 72 hours, read by the news analyst. Arrows are the first move a headline implies (two arrows: a strong push); markets show base minus quote and whether that supports or goes against today's card. The reaction is the move 5 and 30 minutes later, once known. Context, never a signal.</p></div>`;
+    root.querySelector('[data-newsrec]').onclick = () => globalThis.newsRecord?.();
+    const f = el('nt-f');
+    f.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.ntTier) NS.tier = +b.dataset.ntTier;
+      else if (b.dataset.ntKey !== undefined) { const k = b.dataset.ntKey; NS.market = null; NS.keys = !k || (NS.keys.length === 1 && NS.keys[0] === k) ? [] : [k]; }
+      else if (b.dataset.ntClear !== undefined) { NS.market = null; NS.keys = []; }
+      else return;
+      drawNews(true);
+    });
+    f.addEventListener('change', e => { if (e.target.matches('[data-nt-book]')) { NS.onlyBook = e.target.checked; drawNews(); } });
+    f.addEventListener('input', e => { if (e.target.matches('[data-nt-q]')) { NS.q = e.target.value; drawNews(); } });
+  }
+  drawNews(true);
+  if (!NS.items) el('nt-list').innerHTML = loading('the wire');
+  await newsFeed();
+  drawNews(true);
+  clearInterval(NS.timer);
+  NS.timer = setInterval(async () => { if (T.tab !== 'news' || document.hidden) return; await newsFeed(true); drawNews(); }, NEWS_EVERY_MS);
+}
+function drawNews(filters = false) {
+  if (!el('nt-list')) return;
+  const now = Date.now();
+  if (filters) el('nt-f').innerHTML = NV.filtersHtml(NS);
+  if (!NS.items) { if (NS.err) el('nt-list').innerHTML = `<p class="muted">The news wire is not available right now (${h(NS.err)}).</p>`; return; }
+  const xs = NV.filterNews(NS.items, { tier: NS.tier, keys: NS.keys, onlyBook: NS.onlyBook, book: liveBook(), q: NS.q });
+  el('nt-top').innerHTML = NV.topStripHtml(NS.items, now);
+  el('nt-list').innerHTML = NV.listHtml(xs, { now });
+  el('nt-n').textContent = `${xs.length} headline${xs.length === 1 ? '' : 's'}`;
+  el('nt-upd').textContent = NS.updatedAt ? `wire ${new Date(NS.updatedAt).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' })} London · refreshes every 2 min` : '';
+}
+
+// the Assets cards were drawn before this module loaded: draw them again once so each gets its "latest:" line
+const assetsNews = () => { if (typeof assets === 'function' && D?.cards && D.news?.length && !document.querySelector('#assets .nt-latest')) assets(); };
+const RENDER = { today: renderToday, pair: renderPair, changed: renderChanged, research: renderResearch, options: renderOptions, news: renderNews, assets: assetsNews };
+globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'news') { clearInterval(NS.timer); NS.timer = null; } if (t !== 'pair' && /pair=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
 globalThis.openPairPage = openPair;
+globalThis.openNewsTab = openNews;
+// the Assets cards' one-line latest headline (desk-terminal.html assetCard reads it; D.news is tier 1-2, 24 h)
+globalThis.newsLatestLine = (items, inst) => NV.latestLine(items, inst);
 function fromHash() { const m = location.hash.match(/pair=([A-Za-z0-9]+)/); if (m) openPair(m[1]); }
 addEventListener('hashchange', fromHash);
 if (/pair=/.test(location.hash)) fromHash();

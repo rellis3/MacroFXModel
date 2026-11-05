@@ -166,7 +166,7 @@ export const STORES = {
   cot_url: C('COT report URL'), caps: C('Proximity caps'), daily_watchlist: C('Daily watchlist'),
   regime_bot_config: C('Regime bot config'), regime_bot_v2_config: C('Regime bot v2 config'), regime_bot_v7_config: C('Regime bot v7 config'),
   bot_config: C('Bot config'), backtestsystem_live_config: C('Backtest system config'), gold_bot_config: C('Gold bot config'),
-  gold_v2_config: C('Gold v2 config'), confluence_bot_config: C('Confluence bot config'), tg_v2_alert_cfg: C('Telegram v2 alert config'),
+  gold_v2_config: C('Gold v2 config'), confluence_bot_config: C('Confluence bot config'), tg_v2_alert_cfg: C('Telegram v2 alert config'), tg_master_all: C('Telegram master switch: all messages on/off (js/telegramGuard.js)'),
   tg_v2_config: C('Telegram v2 config'), tg_vollevel_config: C('Vol-level Telegram config'), vol_level_alert_cfg: C('Vol-level alert config'),
   dyn_anchor_config: C('Dynamic anchor config'), macro_equity_config: C('Macro equity config'), volatility_bot_config: C('Volatility bot config'),
   yield_spread_config: C('Yield-spread config'), range_line_bot_config: C('Range-line bot config'), oi_bot_config: C('OI bot config'),
