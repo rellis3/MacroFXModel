@@ -94,7 +94,15 @@ Every cell is banked whatever its verdict.
 
 ## Amendments
 
-*(none)*
+### A1 — 2026-11-05 — PRE-RESULTS
+**Credit cell (H4): the scored series changes to Moody's BAA corporate spread over the 10-year Treasury (FRED `BAA10Y`).** The registered `BAMLH0A0HYM2` (ICE HY OAS) is served by FRED only for the latest three years because of the ICE licence (2023-11-06 onwards), and every copy in this repo or its archive has the same three-year depth. That gives ~700 days, well under the ~2,772 the power table assumed.
+
+Nothing else in the cell changes:
+- **Formula:** `RISK_BETA[pair] · clip(−Δ20 / 25)` on `BAA10Y`, in bp. The divisor halves from 50 to 25 because BAA spreads move about half as much as HY.
+- **Lag:** the same 1-business-day lag.
+- **Pass bar:** unchanged.
+
+The exact live input (HY OAS, /50) is reported on its own 2023-11 → 2026-08-21 window as a **descriptive** cell, with no pass/fail weight. No outcome had been computed when this amendment was written; only the series lengths were checked.
 
 ---
 
