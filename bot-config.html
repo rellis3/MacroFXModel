@@ -8336,7 +8336,7 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
             ? '<span style="color:#e0a93b;font-weight:700" title="This job hands the model the evidence ledger and asks it to respect every finding. A cheaper model degrades here silently.">yes, ' + esc(t.ledger) + '</span>'
             : '<span class="muted">no</span>') + '</td>'
         + '<td><select data-ai-task="' + esc(t.id) + '" style="width:140px">'
-        + '<option value="">default (' + esc(d.defaultProvider) + ')</option>' + opts(t.chosen) + '</select></td>'
+        + '<option value="">default (' + esc(t.taskDefault || d.defaultProvider) + ')</option>' + opts(t.chosen) + '</select></td>'
         + '<td class="muted">' + esc(t.model) + '</td>'
         + '<td style="color:var(--bad);font-size:11px">' + (t.fellBack ? esc(t.why) : '') + '</td></tr>').join('')
       + '</table>';

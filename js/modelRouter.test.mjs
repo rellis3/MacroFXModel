@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   PROVIDERS, DEFAULT_MODELS, TASK_CLASS, buildRequest, authHeaders, readResponse,
-  resolveTask, costOf, configFromEnv, estimateTokens, carriesLedger,
+  resolveTask, costOf, configFromEnv, estimateTokens, carriesLedger, retryCap,
 } from './modelRouter.js';
 
 test('an Anthropic request with no standing content is shaped exactly as before', () => {
@@ -242,4 +242,31 @@ test('desk-news runs on DeepSeek by default, whatever the global default; a per-
   // env routing reaches it too, and other tasks keep the global default
   assert.equal(configFromEnv({ AI_TASK_DESK_NEWS: 'anthropic' }).tasks['desk-news'], 'anthropic');
   assert.equal(resolveTask('desk-analyst', { keys: both }).provider, 'anthropic');
+});
+
+test('the research pod runs on DeepSeek, the Head of Research on Anthropic, by default; a stored map without them falls back to each default', () => {
+  const both = { anthropic: true, deepseek: true };
+  assert.equal(TASK_CLASS['research-pod'].label, 'Research pod: the three researchers');
+  assert.equal(TASK_CLASS['research-head'].label, 'Research pod: Head of Research review');
+  assert.equal(resolveTask('research-pod', { keys: both, provider: 'anthropic' }).provider, 'deepseek');
+  assert.equal(resolveTask('research-pod', { keys: both }).maxOutput, 8192);
+  assert.equal(resolveTask('research-head', { keys: both, provider: 'deepseek' }).provider, 'anthropic', 'the Head stays on Anthropic whatever the global default');
+  assert.equal(resolveTask('research-head', { keys: both }).effort, 'high');
+  // POST /api/ai-config replaces the whole tasks map: a map saved before these tasks existed leaves them on their own default
+  const stored = { keys: both, provider: 'anthropic', tasks: { 'desk-head': 'anthropic', 'desk-news': 'deepseek' } };
+  assert.equal(resolveTask('research-pod', stored).provider, 'deepseek'); assert.equal(resolveTask('research-head', stored).provider, 'anthropic');
+  assert.equal(resolveTask('research-pod', { ...stored, tasks: { 'research-pod': 'anthropic' } }).provider, 'anthropic', 'a per-task choice still wins');
+  assert.equal(resolveTask('research-pod', { keys: { anthropic: true }, provider: 'anthropic' }).fellBack, true, 'no DeepSeek key: Anthropic, flagged');
+  assert.equal(configFromEnv({ AI_TASK_RESEARCH_POD: 'moonshot' }).tasks['research-pod'], 'moonshot');
+  assert.ok(carriesLedger('research-pod') && carriesLedger('research-head'));
+});
+
+test('retryCap: a cut-off reply gets more room, never past the provider ceiling', () => {
+  assert.equal(retryCap(6000), 9600);
+  assert.equal(retryCap(6000, 8192), 8192, 'DeepSeek: capped at 8,192');
+  assert.equal(retryCap(8192, 8192), 8192, 'already at the ceiling: same room, the prompt asks for shorter');
+  assert.equal(retryCap(20000, 32000), 24000);
+  // and buildRequest clamps whatever is asked to the provider cap
+  const r = buildRequest({ provider: 'deepseek', model: 'deepseek-chat', prompt: 'p', maxTokens: 16000 });
+  assert.equal(r.body.max_tokens, 8192); assert.equal(r.clamped, true);
 });

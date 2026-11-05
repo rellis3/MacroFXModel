@@ -266,16 +266,24 @@ async function renderForecastAudit() { try { await (await import('./js/forecastA
 async function renderQuickTest() { QTV ??= await import('./js/quickTestView.js'); await QTV.mount($('qtpanel'), { getJson, onChange: qtChips }); qtChips(); }
 function qtChips() { if (!QTV) return; document.querySelectorAll('[data-qtchips]').forEach(e => { e.innerHTML = ' ' + QTV.linkedChips(QTV.tests(), e.dataset.qtchips); QTV.wireOpen(e); }); }
 // Phases 23-25 (/api/research-pod): three researchers propose new systems; you mark each one, ask them questions, and send one to the architect.
+// Research cases (/api/research-pod/case*, js/researchCase.js): one case per question, in a loop: the three answer, the Head of
+// Research reviews when you ask, you reply, all three answer again. The library keeps every proposal, each tied to its case.
 const LENS = { quant: 'Quant', macro: 'Macro', flow: 'Flow' }, MARK = { shortlist: 'warn', build: 'ok', park: '', reject: 'bad' };
-let podFilter = 'open';
+let podFilter = 'open', podView = 'cases', podCase = null, podCaseFilter = '', caseFilter = 'open', casePoll = null;
+try { podView = localStorage.getItem('podView') || 'cases'; podCase = localStorage.getItem('podCase') || null; } catch {}
+const podSave = () => { try { localStorage.setItem('podView', podView); podCase ? localStorage.setItem('podCase', podCase) : localStorage.removeItem('podCase'); } catch {} };
 const openThreads = new Set();
 const STEPS = ['proposed', 'shortlisted', 'chosen', 'carded', 'preregistered', 'tested'];
+const safeUrl = u => (/^https?:\/\//i.test(String(u ?? '')) ? String(u) : null);
+const when = t => { const d = new Date(t); return Number.isFinite(+d) ? d.toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'medium', timeStyle: 'short' }) : esc(t ?? ''); };
+const post = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
+const INP = 'background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:7px;font:14px inherit';
 function stepper(c, systems) {
   if (!c) return '';
   const done = new Set(['proposed', ...c.steps.filter(s => s.done).map(s => s.stage)]), o = c.outcome, sys = (systems ?? []).find(x => x.id === c.registerId);
   const end = ['passed', 'failed', 'paper', 'live', 'retired', 'rejected', 'parked'].includes(c.stage) ? `<span class="chip ${c.stage === 'passed' || c.stage === 'paper' || c.stage === 'live' ? 'ok' : c.stage === 'failed' || c.stage === 'rejected' ? 'bad' : ''}">${esc(c.stage)}</span>` : '';
   return `<div style="margin:6px 0;display:flex;gap:4px;flex-wrap:wrap;align-items:center">${STEPS.map(s => { const st = c.steps.find(x => x.stage === s); return `<span class="chip ${done.has(s) ? 'ok' : ''}" title="${esc(st?.detail ?? '')}" style="${done.has(s) ? '' : 'opacity:.45'}">${s}</span>`; }).join('<span class="muted">›</span>')} ${end}
-<span class="muted" style="margin-left:6px">register id <input data-rid="${esc(c.id)}" value="${esc(c.registerId)}" style="width:170px;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:4px;padding:2px 6px;font:12px var(--mono)"></span>
+<span class="muted" style="margin-left:6px">register id <input data-rid="${esc(c.id)}" value="${esc(c.registerId)}" style="width:170px;max-width:100%;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:4px;padding:2px 6px;font:12px var(--mono)"></span>
 <select data-stage="${esc(c.id)}" style="background:var(--bg3);color:var(--tx2);border:1px solid var(--line2);border-radius:4px;font:12px var(--mono)">${['', 'paper', 'live', 'retired'].map(v => `<option value="${v}"${(c.stage === v && v) ? ' selected' : ''}>${v || 'move to…'}</option>`).join('')}</select>
 ${sys ? `<a class="btn" href="system-backtest.html?id=${encodeURIComponent(sys.id)}" style="padding:3px 10px">Backtest · ${sys.trades} trades</a>` : ''}</div>
 ${o ? `<p class="muted" style="margin:2px 0">Result: ${o.result ? `<b class="${o.result === 'passed' ? 'up' : 'dn'}">${esc(o.result)}</b>` : 'tested, no verdict yet'}${o.failedGates?.length ? ` · failed ${o.failedGates.map(esc).join(', ')}` : ''}${o.verdict ? ` · Evidence Book ${esc(o.verdict)}` : ''}. The researcher sees this next session.</p>` : ''}`;
@@ -283,63 +291,164 @@ ${o ? `<p class="muted" style="margin:2px 0">Result: ${o.result ? `<b class="${o
 async function loadThread(id) {
   const el = document.querySelector(`[data-thrbody="${CSS.escape(id)}"]`); if (!el) return;
   const t = await getJson(`/api/research-pod/thread?id=${encodeURIComponent(id)}`), run = t?.job?.status === 'running';
-  el.innerHTML = `${(t.messages ?? []).map(m => `<div style="margin:6px 0;padding:6px 10px;border-left:2px solid ${m.who === 'owner' ? 'var(--acc)' : 'var(--line2)'}"><span class="muted">${m.who === 'owner' ? 'You' : (LENS[m.who] ?? m.who) + ' researcher'} · ${esc(String(m.at).slice(0, 16).replace('T', ' '))}${m.revised ? ' · <b>revised the proposal</b>' : ''}</span><br>${esc(m.text)}${m.questions?.length ? `<br><span class="muted">Asks: ${m.questions.map(esc).join(' · ')}</span>` : ''}</div>`).join('') || '<p class="muted">No messages yet. Ask why, push back, or tell it what to change; it can revise the proposal.</p>'}
+  el.innerHTML = `${(t.messages ?? []).map(m => `<div style="margin:6px 0;padding:6px 10px;border-left:2px solid ${m.who === 'owner' ? 'var(--acc)' : 'var(--line2)'}"><span class="muted">${m.who === 'owner' ? 'You' : esc(LENS[m.who] ?? m.who) + ' researcher'} · ${esc(String(m.at).slice(0, 16).replace('T', ' '))}${m.revised ? ' · <b>revised the proposal</b>' : ''}</span><br>${esc(m.text)}${m.questions?.length ? `<br><span class="muted">Asks: ${m.questions.map(esc).join(' · ')}</span>` : ''}</div>`).join('') || '<p class="muted">No messages yet. Ask why, push back, or tell it what to change; it can revise the proposal. To ask all three about the question, reply on the case.</p>'}
 ${t?.job?.status === 'error' ? `<p class="muted">Last reply failed: ${esc(t.job.error)}</p>` : ''}
-<div style="display:flex;gap:6px;margin-top:6px"><input data-thrin="${esc(id)}" placeholder="${run ? 'The researcher is answering…' : 'Write to the researcher'}" style="flex:1;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:7px"${run ? ' disabled' : ''}><button class="btn" data-thrsend="${esc(id)}"${run ? ' disabled' : ''}>Send</button></div>`;
+<div style="display:flex;gap:6px;margin-top:6px"><input data-thrin="${esc(id)}" placeholder="${run ? 'The researcher is answering…' : 'Write to the researcher'}" style="flex:1;min-width:0;${INP}"${run ? ' disabled' : ''}><button class="btn" data-thrsend="${esc(id)}"${run ? ' disabled' : ''}>Send</button></div>`;
   const send = el.querySelector('[data-thrsend]'), input = el.querySelector('[data-thrin]');
   const go = async () => { const text = input.value.trim(); if (!text) return; send.disabled = true; input.disabled = true;
-    const r = await fetch('/api/research-pod/thread', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, text }) }).then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
+    const r = await post('/api/research-pod/thread', { id, text });
     if (!r.ok && r.error) { input.disabled = false; send.disabled = false; input.value = text; input.placeholder = r.error; }
     loadThread(id); const poll = setInterval(async () => { const j = await getJson(`/api/research-pod/thread?id=${encodeURIComponent(id)}`); if (j?.job?.status !== 'running') { clearInterval(poll); loadThread(id); if (j.messages?.at(-1)?.revised) renderPod(); } }, 8000); };
   if (send) send.onclick = go; if (input) input.onkeydown = e => { if (e.key === 'Enter') go(); };
   if (run) setTimeout(() => loadThread(id), 8000);
 }
+// One proposal card: the same in a case and in the library (marks, note, architect, quick test, lifecycle, its thread).
+function propHtml(p, d, { caseQ = null } = {}) {
+  const src = s => (safeUrl(s.ref) ? `<a href="${esc(safeUrl(s.ref))}" target="_blank" rel="noopener">${esc(s.title)}</a>` : esc(s.title));
+  const inputs = (p.inputs ?? []).map(i => `<span class="chip ${i.status === 'have' ? 'ok' : i.status === 'partial' ? 'warn' : 'bad'}" title="${esc(i.how)}">${esc(i.what)}</span>`).join(' ');
+  const rules = p.rules ?? {}, test = p.test ?? {};
+  return `<div id="prop-${esc(p.id)}" style="border-top:1px solid var(--line);padding:10px 0;overflow-wrap:anywhere"><h3 style="font-size:15px;margin:0 0 4px">${esc(p.title)} <span class="chip">${esc(LENS[p.lens] ?? p.lens)}</span> <span class="chip ${p.priority === 'high' ? 'ok' : p.priority === 'low' ? '' : 'warn'}">${esc(p.priority)} · effort ${esc(p.effort)}</span>${p.feedback ? ` <span class="chip ${MARK[p.feedback.status] ?? ''}">${esc(p.feedback.status)}</span>` : ''}${p.near?.length ? ` <span class="chip bad" title="${esc(p.near.map(n => `${n.kind} ${n.id} (${n.status})`).join('; '))}">close to ${esc(p.near[0].id)}</span>` : ''}${p.card ? ` <span class="chip ok">card${p.card.review ? ` · review: ${esc(p.card.review)}` : ''}</span>` : ''}</h3>
+${caseQ ? `<p class="muted" style="margin:2px 0">Case: <a href="#" data-opencase="${esc(p.caseId)}">${esc(caseQ)}</a></p>` : ''}
+<p style="margin:2px 0">${esc(p.thesis)}</p><p class="muted" style="margin:2px 0">Why it should exist: ${esc(p.mechanism)}${p.counterparty ? ` · other side: ${esc(p.counterparty)}` : ''}</p>
+<details><summary class="muted">Rules, test, inputs and build steps · ${esc(p.family ?? '')}</summary><table><tbody>${[['Universe', rules.universe], ['Signal', rules.signal], ['Entry', rules.entry], ['Exit', rules.exit], ['Horizon', rules.horizon], ['Sizing', rules.sizing], ['Test', `${test.variable ?? ''} · must beat ${test.benchmark ?? ''} · placebo ${test.placebo ?? ''}${test.horizons ? ` · horizons ${test.horizons}` : ''}`], ['Power', test.power], ['Kill if', p.killIf], ['Like an existing bot?', p.fleetOverlap]].filter(([, v]) => v).map(([k, v]) => `<tr><td class="muted" style="width:120px">${k}</td><td>${esc(v)}</td></tr>`).join('')}</tbody></table>
+${p.buildSteps?.length ? `<ol>${p.buildSteps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}</details>
+<p style="margin:4px 0">Needs: ${inputs}</p><p class="muted" style="margin:2px 0">Sources: ${(p.sources ?? []).map(src).join(' · ')} · first seen ${esc(p.firstSeen ?? '')}${p.version > 1 ? ` · version ${esc(p.version)}, revised ${esc(String(p.revisedAt).slice(0, 10))}` : ''}</p>
+${p.citations?.length ? `<p class="muted" style="margin:2px 0">Cites from the paper library: ${p.citations.map(c => paperLink(c, d.papers)).join(' · ')}</p>` : ''}${p.dossier ? `<p class="muted" style="margin:2px 0">From a literature dossier · <a href="#" data-dosl="${esc(p.dossier)}">open it</a></p>` : ''}
+${stepper(p.lifecycle, d.systems)}
+<details data-thr="${esc(p.id)}"${openThreads.has(p.id) ? ' open' : ''}><summary class="muted">Talk to the ${esc(LENS[p.lens] ?? '')} researcher about this one proposal${p.thread ? ` · ${p.thread} message(s)` : ''}${p.threadJob?.status === 'running' ? ' · answering…' : ''}</summary><div data-thrbody="${esc(p.id)}"><p class="muted">Loading…</p></div></details>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${['shortlist', 'build', 'park', 'reject'].map(k => `<button class="btn" data-mark="${esc(p.id)}" data-st="${k}">${k}</button>`).join('')}<input data-note="${esc(p.id)}" placeholder="note for the researchers" value="${esc(p.feedback?.note ?? '')}" style="flex:1;min-width:160px;max-width:100%;${INP};padding:6px">
+<button class="btn" data-card="${esc(p.id)}">${p.card ? 'View system card' : 'Send to the architect'}</button><button class="btn" data-qt="${esc(p.id)}" title="a standard exploratory first look: does X lead Y? (never banked)">Quick test</button><span data-qtchips="${esc(p.id)}"></span></div></div>`;
+}
+const caseChip = s => `<span class="chip ${s.status === 'open' ? 'ok' : s.status === 'closed' ? '' : 'warn'}">${esc(s.status)}</span>`;
+const headChip = s => (s.reviewed ? `<span class="chip ${s.reviewCurrent ? 'ok' : 'warn'}" title="${s.reviewCurrent ? 'reviewed after the latest round' : 'a round came after the last review'}">Head ${s.reviewCurrent ? 'reviewed' : 'reviewed earlier'}${s.nextStep ? ` · ${esc(s.nextStep)}` : ''}</span>` : '<span class="chip" style="opacity:.6">no Head review</span>');
+const jobChip = j => (j?.status === 'running' ? `<span class="chip warn">${j.kind === 'review' ? 'Head of Research working…' : 'working…'}</span>` : j?.status === 'error' ? `<span class="chip bad" title="${esc(j.error)}">last job failed</span>` : '');
+function caseListHtml(cases) {
+  const list = cases.filter(c => caseFilter === 'all' || c.status === caseFilter);
+  return `<div class="tabs" style="margin:6px 0 8px">${['open', 'parked', 'closed', 'all'].map(k => `<button data-casef="${k}" aria-selected="${caseFilter === k}">${k} · ${k === 'all' ? cases.length : cases.filter(c => c.status === k).length}</button>`).join('')}</div>
+${list.length ? list.map(c => `<div style="border-top:1px solid var(--line);padding:9px 0;overflow-wrap:anywhere"><a href="#" data-opencase="${esc(c.id)}" style="font-weight:600;text-decoration:none">${esc(c.title)}</a>
+<div class="muted" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:3px">${esc(c.date)} · ${c.rounds} round${c.rounds === 1 ? '' : 's'} · ${c.proposals} proposal${c.proposals === 1 ? '' : 's'} ${headChip(c)} ${caseChip(c)} ${c.origin === 'weekly' ? '<span class="chip">weekly</span>' : ''} ${jobChip(c.job)}</div></div>`).join('') : `<p class="muted">No ${caseFilter === 'all' ? '' : caseFilter + ' '}cases. Ask the pod a question above.</p>`}`;
+}
+const LIST = (title, xs, cls = '') => (xs?.length ? `<p style="margin:6px 0 2px"><b>${title}</b></p><ul>${xs.map(x => `<li${cls ? ` class="${cls}"` : ''}>${esc(x)}</li>`).join('')}</ul>` : '');
+function reviewHtml(rv, label) {
+  const pr = Object.entries(rv.peerReview ?? {}), plan = rv.plan ?? {}, qt = rv.quickTest;
+  return `<div style="border:1px solid #5a4520;border-radius:8px;padding:10px 12px;margin:12px 0;background:var(--bg3);overflow-wrap:anywhere">
+<p style="margin:0 0 4px"><b style="color:var(--acc)">Head of Research · review ${esc(rv.n)}</b> <span class="muted">after round ${esc(rv.afterRound)} · ${when(rv.at)}${rv.model ? ` · ${esc(rv.model)}` : ''}</span> <span class="chip">${esc(label)}</span></p>
+<p style="margin:4px 0">${esc(rv.headline)}</p>
+<p style="margin:4px 0">Next step: <span class="chip ${rv.nextStep === 'drop' ? 'bad' : rv.nextStep === 'park' ? '' : 'ok'}">${esc(rv.nextStep)}</span> ${esc(rv.nextStepWhy)}</p>
+${LIST('Where the three agree', rv.agree)}
+${rv.disagree?.length ? `<p style="margin:6px 0 2px"><b>Where they disagree</b></p>${rv.disagree.map(x => `<div style="margin:4px 0 8px;padding-left:10px;border-left:2px solid var(--line2)"><p style="margin:0">${esc(x.issue)}</p>${Object.entries(x.positions ?? {}).map(([k, v]) => `<p class="muted" style="margin:2px 0"><span class="chip">${esc(LENS[k] ?? k)}</span> ${esc(v)}</p>`).join('')}<p style="margin:2px 0">The Head sides with <b>${esc(x.side === 'none' ? 'neither' : LENS[x.side] ?? x.side)}</b>: ${esc(x.why)}</p></div>`).join('')}` : ''}
+${pr.length ? `<p style="margin:6px 0 2px"><b>Peer review</b></p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:8px">${pr.map(([k, r]) => `<div style="border:1px solid var(--line);border-radius:6px;padding:8px"><span class="chip">${esc(LENS[k] ?? k)}</span> <span class="muted">${esc(r.summary)}</span>${LIST('Errors', r.errors, 'dn')}${LIST('Overclaiming', r.overclaims)}${LIST('Against the Evidence Book or register', r.contradictions, 'dn')}${!r.errors?.length && !r.overclaims?.length && !r.contradictions?.length ? '<p class="muted" style="margin:4px 0">No errors found.</p>' : ''}</div>`).join('')}</div>` : ''}
+<p style="margin:10px 0 2px"><b>The combined plan${plan.title ? `: ${esc(plan.title)}` : ''}</b></p><table><tbody>${[['Variable', plan.variable], ['Condition', plan.condition], ['Universe', plan.universe], ['Horizons', plan.horizons], ['Benchmark', plan.benchmark], ['Placebo', plan.placebo], ['Data feeds', (plan.feeds ?? []).join(', ')], ['Kill if', plan.killIf], ['Builds on', (plan.builds ?? []).join(', ')]].filter(([, v]) => v).map(([k, v]) => `<tr><td class="muted" style="width:110px">${k}</td><td>${esc(v)}</td></tr>`).join('')}</tbody></table>
+${rv.alreadyKnown?.length ? `<p style="margin:6px 0 2px"><b>What the Evidence Book and register already say</b></p><ul>${rv.alreadyKnown.map(k => `<li><span class="chip">${esc(k.ref)}</span> ${esc(k.says)}</li>`).join('')}</ul>` : ''}
+${LIST('Questions for you', rv.questionsForOwner)}
+${qt ? `<p class="muted" style="margin:4px 0">Quick test it suggests: ${esc(qt.x)} → ${esc(qt.y)} · ${esc((qt.horizons ?? []).join(', '))} days${qt.why ? ` · ${esc(qt.why)}` : ''}</p>` : ''}
+${rv.notes?.length ? `<p class="muted" style="margin:4px 0">Flagged: ${rv.notes.map(esc).join(' · ')}</p>` : ''}</div>`;
+}
+function answerHtml(lens, a, byId) {
+  return `<div style="border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0;overflow-wrap:anywhere"><p style="margin:0 0 4px"><span class="chip">${esc(LENS[lens] ?? lens)}</span>${a.model ? ` <span class="muted" style="font-size:11px">${esc(a.model)}</span>` : ''}</p>
+<p style="margin:2px 0"><b>${esc(a.headline)}</b></p>${a.reply ? `<p style="margin:4px 0;white-space:pre-wrap">${esc(a.reply)}</p>` : ''}
+${a.questions?.length ? `<p class="muted" style="margin:4px 0">Asks you: ${a.questions.map(esc).join(' · ')}</p>` : ''}
+${a.proposals?.length || a.revised?.length ? `<p class="muted" style="margin:4px 0">${a.proposals?.length ? `Proposed: ${a.proposals.map(id => `<a href="#prop-${esc(id)}" data-goprop="${esc(id)}">${esc(byId[id]?.title ?? id)}</a>`).join(' · ')}` : ''}${a.revised?.length ? `${a.proposals?.length ? '<br>' : ''}Revised: ${a.revised.map(id => `<a href="#prop-${esc(id)}" data-goprop="${esc(id)}">${esc(byId[id]?.title ?? id)}</a>`).join(' · ')}` : ''}</p>` : ''}
+${a.notes?.length ? `<p class="muted" style="margin:4px 0">Flagged: ${a.notes.map(esc).join(' · ')}</p>` : ''}</div>`;
+}
+function caseHtml(r, d) {
+  const c = r.case, s = r.summary, job = r.job, run = job?.status === 'running', byId = Object.fromEntries(d.library.map(p => [p.id, p]));
+  const you = (text, at, extra = '') => `<div style="margin:12px 0;padding:8px 12px;border-left:3px solid var(--acc);background:var(--bg3);border-radius:4px;overflow-wrap:anywhere"><span class="muted">You · ${when(at)}${extra}</span><br><span style="white-space:pre-wrap">${esc(text)}</span></div>`;
+  const parts = [`<p style="margin:0 0 8px"><a href="#" data-closecase>← All cases</a></p>
+<h3 style="font-size:17px;margin:0 0 4px;overflow-wrap:anywhere">${esc(c.title)}</h3>
+<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px" class="muted">${esc(c.date)} · ${s.rounds} round${s.rounds === 1 ? '' : 's'} ${headChip(s)} ${caseChip(s)} ${jobChip(job)}
+<select data-casestatus="${esc(c.id)}" style="background:var(--bg3);color:var(--tx2);border:1px solid var(--line2);border-radius:4px;font:12px var(--mono)">${['open', 'parked', 'closed'].map(v => `<option value="${v}"${c.status === v ? ' selected' : ''}>${v}</option>`).join('')}</select></div>`];
+  parts.push(c.question ? you(c.question, c.createdAt, ' · the question') : `<p class="muted">The weekly session: no question, the researchers chose from the catalogue's gaps.</p>`);
+  for (const rd of c.rounds) {
+    if (rd.n > 1 && rd.owner) parts.push(you(rd.owner, rd.at));
+    const ans = Object.entries(rd.answers ?? {});
+    parts.push(`<p style="margin:12px 0 6px"><b>Round ${rd.n}</b> <span class="muted">${when(rd.at)} · ${ans.length} of 3 answered</span></p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:8px">${ans.map(([k, a]) => answerHtml(k, a, byId)).join('')}</div>
+${Object.keys(rd.errors ?? {}).length ? `<p class="muted">Did not answer: ${Object.entries(rd.errors).map(([k, v]) => `${esc(LENS[k] ?? k)} (${esc(String(v).slice(0, 100))})`).join(', ')}</p>` : ''}`);
+    for (const rv of c.reviews.filter(x => x.afterRound === rd.n)) parts.push(reviewHtml(rv, r.label));
+  }
+  if (c.pending) parts.push(you(c.pending.owner, c.pending.at, run ? ' · all three are answering…' : c.lastError ? ' · <b class="dn">not answered</b>' : ''));
+  if (!run && c.lastError) parts.push(`<p class="muted">Last attempt failed (${when(c.lastError.at)}): ${esc(c.lastError.error)}${c.pending ? ' Send it again below.' : ''}</p>`);
+  if (run) parts.push(`<p class="muted"><span class="chip warn">${job.kind === 'review' ? 'The Head of Research is reviewing the case' : 'The researchers are working'}…</span> ${esc(job.stage ?? '')}. This page checks every few seconds.</p>`);
+  // the controls: reply to all three, the Head of Research (expensive, never automatic), the quick test
+  const ids = r.proposalIds ?? [], props = ids.map(id => byId[id]).filter(Boolean);
+  parts.push(`<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px">
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start"><textarea id="casereply" rows="2" placeholder="${run ? 'Working…' : 'Reply to all three: push back, ask for a change, answer their questions'}" style="flex:1;min-width:min(100%,240px);${INP}"${run ? ' disabled' : ''}>${!run && c.pending && c.lastError ? esc(c.pending.owner) : ''}</textarea>
+<button class="btn" id="caseask"${run ? ' disabled' : ''}>Ask all three</button></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><button class="btn" id="casehead"${run || !c.rounds.length ? ' disabled' : ''} style="border-color:#5a4520">${run && job.kind === 'review' ? 'The Head of Research is working…' : 'Send to the Head of Research'}</button>
+<span class="muted">the expensive step: one large Anthropic call over the whole case, only when you press it</span></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">${r.plan ? `<button class="btn" id="caseqt" title="exploratory, never banked">Quick test the Head's plan</button>` : props.length ? `<select id="caseqtp" style="max-width:100%;background:var(--bg3);color:var(--tx2);border:1px solid var(--line2);border-radius:4px;font:12px var(--mono);padding:4px">${props.map(p => `<option value="${esc(p.id)}">${esc(LENS[p.lens] ?? p.lens)}: ${esc(p.title)}</option>`).join('')}</select><button class="btn" id="caseqt" title="exploratory, never banked">Quick test this proposal</button>` : ''}<span data-qtchips="${esc(c.id)}"></span><span id="casemsg" class="muted"></span></div></div>`);
+  parts.push(`<h3 style="font-size:14px;margin:16px 0 4px">Proposals in this case · ${props.length}${ids.length > props.length ? ` <span class="muted">(${ids.length - props.length} no longer in the library)</span>` : ''}</h3>${props.map(p => propHtml(p, d)).join('') || '<p class="muted">None yet.</p>'}`);
+  return parts.join('\n');
+}
+function wireProps(d) {
+  document.querySelectorAll('#podpanel [data-mark]').forEach(x => x.onclick = async () => { const id = x.dataset.mark, note = document.querySelector(`[data-note="${CSS.escape(id)}"]`)?.value ?? ''; x.disabled = true; await post('/api/research-pod/feedback', { id, status: x.dataset.st, note }); renderPod(); });
+  document.querySelectorAll('#podpanel [data-card]').forEach(x => x.onclick = () => showCard(x.dataset.card, true));
+  document.querySelectorAll('#podpanel [data-qt]').forEach(x => x.onclick = async () => { QTV ??= await import('./js/quickTestView.js'); const p = d.library.find(q => q.id === x.dataset.qt); if (p) QTV.openFor(p); });
+  qtChips();
+  document.querySelectorAll('#podpanel [data-dosl]').forEach(x => x.onclick = e => { e.preventDefault(); showDossier(x.dataset.dosl); });
+  document.querySelectorAll('#podpanel [data-thr]').forEach(x => { const id = x.dataset.thr; if (x.open) loadThread(id); x.ontoggle = () => { if (x.open) { openThreads.add(id); loadThread(id); } else openThreads.delete(id); }; });
+  const link = async (id, body) => { await post('/api/research-pod/link', { id, ...body }); renderPod(); };
+  document.querySelectorAll('#podpanel [data-rid]').forEach(x => x.onchange = () => link(x.dataset.rid, { registerId: x.value.trim() }));
+  document.querySelectorAll('#podpanel [data-stage]').forEach(x => x.onchange = () => link(x.dataset.stage, { stage: x.value }));
+  document.querySelectorAll('#podpanel [data-opencase]').forEach(x => x.onclick = e => { e.preventDefault(); podCase = x.dataset.opencase; podView = 'cases'; podSave(); renderPod(); $('podpanel')?.scrollIntoView?.({ behavior: 'smooth' }); });
+  document.querySelectorAll('#podpanel [data-goprop]').forEach(x => x.onclick = e => { e.preventDefault(); document.getElementById(`prop-${x.dataset.goprop}`)?.scrollIntoView?.({ behavior: 'smooth' }); });
+}
+async function renderCase(d) {
+  const el = $('casebody'); if (!el || !podCase) return;
+  const r = await getJson(`/api/research-pod/case?id=${encodeURIComponent(podCase)}`);
+  if (!r?.ok) { el.innerHTML = `<p class="muted">${esc(r?.error ?? 'not available')} · <a href="#" data-closecase>all cases</a></p>`; }
+  else el.innerHTML = caseHtml(r, d);
+  el.querySelectorAll('[data-closecase]').forEach(x => x.onclick = e => { e.preventDefault(); podCase = null; podSave(); renderPod(); });
+  if (!r?.ok) return;
+  wireProps(d);
+  const id = r.case.id, msg = $('casemsg'), run = r.job?.status === 'running';
+  clearInterval(casePoll); casePoll = null;
+  if (run) casePoll = setInterval(async () => { const j = await getJson(`/api/research-pod/case?id=${encodeURIComponent(id)}`); if (j?.job?.status !== 'running' || podCase !== id) { clearInterval(casePoll); casePoll = null; if (podCase === id) renderPod(); } }, 8000);
+  const start = async (url, body, btn, busy) => { btn.disabled = true; btn.textContent = busy; const x = await post(url, body); if (!x.ok) { btn.disabled = false; msg.textContent = x.error ?? 'failed'; return; } renderCase(d); };
+  const ask = $('caseask'); if (ask) ask.onclick = () => { const text = $('casereply').value.trim(); if (!text) { msg.textContent = 'Write a message first.'; return; } start('/api/research-pod/case/reply', { id, text }, ask, 'Working…'); };
+  const head = $('casehead'); if (head) head.onclick = () => start('/api/research-pod/case/review', { id }, head, 'working…');
+  const qt = $('caseqt'); if (qt) qt.onclick = async () => { QTV ??= await import('./js/quickTestView.js'); const p = r.plan ?? d.library.find(q => q.id === $('caseqtp')?.value); if (p) QTV.openFor(p); };
+  const st = document.querySelector('[data-casestatus]'); if (st) st.onchange = async () => { await post('/api/research-pod/case/status', { id, status: st.value }); renderPod(); };
+}
 async function renderPod() {
   const d = await getJson('/api/research-pod'), el = $('podpanel'); if (!el) return;
   if (!d?.ok) { el.innerHTML = `<h2>Research pod</h2><p class="muted">${esc(d?.error ?? 'not available')}</p>`; return; }
-  const running = d.job?.status === 'running', last = d.sessions?.[0];
-  const lib = d.library.filter(p => podFilter === 'all' ? true : podFilter === 'open' ? !p.feedback || ['shortlist', 'build'].includes(p.feedback.status) : p.feedback?.status === podFilter);
-  const src = p => p.sources.map(s => s.ref && /^https?:/.test(s.ref) ? `<a href="${esc(s.ref)}" target="_blank" rel="noopener">${esc(s.title)}</a>` : esc(s.title)).join(' · ');
-  const inputs = p => p.inputs.map(i => `<span class="chip ${i.status === 'have' ? 'ok' : i.status === 'partial' ? 'warn' : 'bad'}" title="${esc(i.how)}">${esc(i.what)}</span>`).join(' ');
-  el.innerHTML = `<h2>Research pod <i>three researchers propose new systems · ${esc(d.label)} · weekly on Sundays, or ask now</i></h2>
-<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;margin:6px 0 12px"><textarea id="podbrief" rows="2" placeholder="Ask the pod: e.g. what would it take to build an FX fair-value system? what retail behaviour could we fade on gold?" style="flex:1;min-width:240px;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:8px;font:14px inherit"></textarea>
+  const running = d.job?.status === 'running', cases = d.cases ?? [], caseQ = Object.fromEntries(cases.map(c => [c.id, c.title]));
+  if (podCase && !cases.some(c => c.id === podCase)) { podCase = null; podSave(); }
+  const lib = d.library.filter(p => (podFilter === 'all' ? true : podFilter === 'open' ? !p.feedback || ['shortlist', 'build'].includes(p.feedback.status) : p.feedback?.status === podFilter))
+    .filter(p => !podCaseFilter || (podCaseFilter === '_none' ? !p.caseId : (p.caseIds ?? [p.caseId]).includes(podCaseFilter)));
+  el.innerHTML = `<h2>Research pod <i>three researchers, a Head of Research when you ask · ${esc(d.caseLabel ?? d.label)} · weekly on Sundays, or ask now</i></h2>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;margin:6px 0 12px"><textarea id="podbrief" rows="2" placeholder="Ask the pod: e.g. what would it take to build an FX fair-value system? what retail behaviour could we fade on gold?" style="flex:1;min-width:min(100%,240px);${INP}"></textarea>
 <button class="btn" id="podrun"${running ? ' disabled' : ''}>${running ? 'The pod is working…' : 'Ask the pod'}</button></div>
+${running ? `<p class="muted">Working on: “${esc(String(d.job.brief || 'the weekly session').slice(0, 160))}” · ${esc(d.job.stage ?? '')}</p>` : ''}
 ${d.job?.status === 'error' ? `<p class="muted">Last attempt failed: ${esc(d.job.error)}</p>` : ''}
-${last ? `<p><b>Latest session</b> <span class="muted">${esc(new Date(last.at).toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'medium', timeStyle: 'short' }))}${last.brief ? ` · your question: “${esc(last.brief.slice(0, 160))}”` : ' · weekly'}</span></p>
-${Object.entries(last.researchers).map(([k, r]) => `<p><span class="chip">${LENS[k]}</span> ${esc(r.headline)}${r.questionsForOwner?.length ? `<br><span class="muted">Asks you: ${r.questionsForOwner.map(esc).join(' · ')}</span>` : ''}</p>`).join('')}
-${Object.keys(last.errors ?? {}).length ? `<p class="muted">Not answered: ${Object.entries(last.errors).map(([k, v]) => `${LENS[k] ?? k} (${esc(String(v).slice(0, 80))})`).join(', ')}</p>` : ''}
-<p class="muted">Web read: ${Object.entries(last.web ?? {}).map(([k, v]) => `${esc(k)} ${esc(v)}`).join(' · ')}</p>` : '<p class="muted">No session yet. Ask a question or wait for Sunday.</p>'}
-<div class="tabs" style="margin:10px 0">${['open', 'build', 'shortlist', 'park', 'reject', 'all'].map(k => `<button data-podf="${k}" aria-selected="${podFilter === k}">${k}</button>`).join('')}</div>
-${lib.length ? lib.map(p => `<div style="border-top:1px solid var(--line);padding:10px 0"><h3 style="font-size:15px;margin:0 0 4px">${esc(p.title)} <span class="chip">${LENS[p.lens] ?? p.lens}</span> <span class="chip ${p.priority === 'high' ? 'ok' : p.priority === 'low' ? '' : 'warn'}">${esc(p.priority)} · effort ${esc(p.effort)}</span>${p.feedback ? ` <span class="chip ${MARK[p.feedback.status]}">${esc(p.feedback.status)}</span>` : ''}${p.near?.length ? ` <span class="chip bad" title="${esc(p.near.map(n => `${n.kind} ${n.id} (${n.status})`).join('; '))}">close to ${esc(p.near[0].id)}</span>` : ''}${p.card ? ` <span class="chip ok">card${p.card.review ? ` · review: ${esc(p.card.review)}` : ''}</span>` : ''}</h3>
-<p style="margin:2px 0">${esc(p.thesis)}</p><p class="muted" style="margin:2px 0">Why it should exist: ${esc(p.mechanism)}${p.counterparty ? ` · other side: ${esc(p.counterparty)}` : ''}</p>
-<details><summary class="muted">Rules, test, inputs and build steps · ${esc(p.family ?? '')}</summary><table><tbody>${[['Universe', p.rules.universe], ['Signal', p.rules.signal], ['Entry', p.rules.entry], ['Exit', p.rules.exit], ['Horizon', p.rules.horizon], ['Sizing', p.rules.sizing], ['Test', `${p.test.variable} · must beat ${p.test.benchmark} · placebo ${p.test.placebo}${p.test.horizons ? ` · horizons ${p.test.horizons}` : ''}`], ['Power', p.test.power], ['Kill if', p.killIf], ['Like an existing bot?', p.fleetOverlap]].filter(([, v]) => v).map(([k, v]) => `<tr><td class="muted" style="width:120px">${k}</td><td>${esc(v)}</td></tr>`).join('')}</tbody></table>
-${p.buildSteps?.length ? `<ol>${p.buildSteps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}</details>
-<p style="margin:4px 0">Needs: ${inputs(p)}</p><p class="muted" style="margin:2px 0">Sources: ${src(p)} · first seen ${esc(p.firstSeen ?? '')}${p.version > 1 ? ` · version ${p.version}, revised ${esc(String(p.revisedAt).slice(0, 10))}` : ''}</p>
-${p.citations?.length ? `<p class="muted" style="margin:2px 0">Cites from the paper library: ${p.citations.map(c => paperLink(c, d.papers)).join(' · ')}</p>` : ''}${p.dossier ? `<p class="muted" style="margin:2px 0">From a literature dossier · <a href="#" data-dosl="${esc(p.dossier)}">open it</a></p>` : ''}
-${stepper(p.lifecycle, d.systems)}
-<details data-thr="${esc(p.id)}"${openThreads.has(p.id) ? ' open' : ''}><summary class="muted">Talk to the ${LENS[p.lens] ?? ''} researcher about this${p.thread ? ` · ${p.thread} message(s)` : ''}${p.threadJob?.status === 'running' ? ' · answering…' : ''}</summary><div data-thrbody="${esc(p.id)}"><p class="muted">Loading…</p></div></details>
-<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${['shortlist', 'build', 'park', 'reject'].map(k => `<button class="btn" data-mark="${esc(p.id)}" data-st="${k}">${k}</button>`).join('')}<input data-note="${esc(p.id)}" placeholder="note for the researchers" value="${esc(p.feedback?.note ?? '')}" style="flex:1;min-width:160px;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:6px">
-<button class="btn" data-card="${esc(p.id)}">${p.card ? 'View system card' : 'Send to the architect'}</button><button class="btn" data-qt="${esc(p.id)}" title="a standard exploratory first look: does X lead Y? (never banked)">Quick test</button><span data-qtchips="${esc(p.id)}"></span></div></div>`).join('') : `<p class="muted">Nothing under “${podFilter}”.</p>`}`;
+<div class="tabs" style="margin:10px 0" role="tablist"><button data-podv="cases" aria-selected="${podView === 'cases'}">Cases · ${cases.length}</button><button data-podv="library" aria-selected="${podView === 'library'}">Library · ${d.library.length}</button></div>
+<div id="podbody"></div>`;
+  const body = $('podbody');
+  if (podView === 'library') {
+    body.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 8px"><div class="tabs" style="margin:0">${['open', 'build', 'shortlist', 'park', 'reject', 'all'].map(k => `<button data-podf="${k}" aria-selected="${podFilter === k}">${k}</button>`).join('')}</div>
+<select id="podcasef" style="max-width:100%;background:var(--bg3);color:var(--tx2);border:1px solid var(--line2);border-radius:4px;font:12px var(--mono);padding:5px"><option value="">every case</option><option value="_none"${podCaseFilter === '_none' ? ' selected' : ''}>no case</option>${cases.map(c => `<option value="${esc(c.id)}"${podCaseFilter === c.id ? ' selected' : ''}>${esc(c.date)} · ${esc(c.title.slice(0, 70))}</option>`).join('')}</select></div>
+${lib.length ? lib.map(p => propHtml(p, d, { caseQ: p.caseId ? (caseQ[p.caseId] ?? p.caseId) : null })).join('') : `<p class="muted">Nothing under “${esc(podFilter)}”${podCaseFilter ? ' in this case' : ''}.</p>`}`;
+    document.querySelectorAll('[data-podf]').forEach(x => x.onclick = () => { podFilter = x.dataset.podf; renderPod(); });
+    $('podcasef').onchange = e => { podCaseFilter = e.target.value; renderPod(); };
+    wireProps(d);
+  } else if (podCase) { body.innerHTML = '<div id="casebody"><p class="muted">Loading the case…</p></div>'; renderCase(d); }
+  else {
+    body.innerHTML = caseListHtml(cases);
+    document.querySelectorAll('[data-casef]').forEach(x => x.onclick = () => { caseFilter = x.dataset.casef; renderPod(); });
+    wireProps(d);
+  }
+  document.querySelectorAll('[data-podv]').forEach(x => x.onclick = () => { podView = x.dataset.podv; podSave(); renderPod(); });
   const bl = $('buildpanel');
   if (bl) { bl.hidden = !d.buildList.length; bl.innerHTML = `<h2>What we need to build <i>every input the live proposals need and we do not have, ranked by how many need it (build counts double)</i></h2><table><thead><tr><th>Input</th><th>Status</th><th>How to get it</th><th>Needed by</th></tr></thead><tbody>${d.buildList.map(b => `<tr><td>${esc(b.what)}</td><td><span class="chip ${b.status === 'partial' ? 'warn' : 'bad'}">${esc(b.status)}</span></td><td class="muted">${esc(b.how ?? '')}</td><td class="n">${b.needs.length} <span class="muted" title="${esc(b.needs.join(', '))}">· score ${b.score}</span></td></tr>`).join('')}</tbody></table>`; }
   const cat = $('catpanel'), cv = d.catalogue.coverage;
   if (cat) cat.innerHTML = `<h2>System catalogue <i>the institutional list against what this repo has · a map, not a verdict</i></h2><table><thead><tr><th>Area</th><th>Have</th><th>Partial</th><th>Missing</th><th>Out of scope</th></tr></thead><tbody>${Object.entries(cv).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${v.have}</td><td class="n">${v.partial}</td><td class="n">${v.missing}</td><td class="n">${v.out}</td></tr>`).join('')}</tbody></table>
 <details><summary class="muted">Every system</summary><table><tbody>${d.catalogue.systems.map(r => `<tr><td>${esc(r.name)}</td><td><span class="chip ${r.status === 'have' ? 'ok' : r.status === 'partial' ? 'warn' : r.status === 'missing' ? 'bad' : ''}">${esc(r.status)}</span></td><td class="muted">${esc(r.where)}${r.note ? ` · ${esc(r.note)}` : ''}</td></tr>`).join('')}</tbody></table></details>`;
   const poll = () => { const t = setInterval(async () => { const j = await getJson('/api/research-pod'); if (j?.job?.status !== 'running') { clearInterval(t); renderPod(); } }, 15_000); };
-  const b = $('podrun'); if (b) b.onclick = async () => { b.disabled = true; b.textContent = 'The pod is working…'; await fetch('/api/research-pod/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ brief: $('podbrief').value.trim() }) }).catch(() => null); poll(); };
+  const b = $('podrun'); if (b) b.onclick = async () => { const brief = $('podbrief').value.trim(); b.disabled = true; b.textContent = 'The pod is working…'; const r = await post('/api/research-pod/run', { brief }); if (r?.job?.caseId) { podCase = r.job.caseId; podView = 'cases'; podSave(); } renderPod(); poll(); };
   if (running) poll();
-  document.querySelectorAll('[data-podf]').forEach(x => x.onclick = () => { podFilter = x.dataset.podf; renderPod(); });
-  document.querySelectorAll('[data-mark]').forEach(x => x.onclick = async () => { const id = x.dataset.mark, note = document.querySelector(`[data-note="${CSS.escape(id)}"]`)?.value ?? ''; x.disabled = true; await fetch('/api/research-pod/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: x.dataset.st, note }) }).catch(() => null); renderPod(); });
-  document.querySelectorAll('[data-card]').forEach(x => x.onclick = () => showCard(x.dataset.card, true));
-  document.querySelectorAll('[data-qt]').forEach(x => x.onclick = async () => { QTV ??= await import('./js/quickTestView.js'); const p = d.library.find(q => q.id === x.dataset.qt); if (p) QTV.openFor(p); });
-  qtChips();
-  document.querySelectorAll('[data-dosl]').forEach(x => x.onclick = e => { e.preventDefault(); showDossier(x.dataset.dosl); });
-  document.querySelectorAll('[data-thr]').forEach(x => { const id = x.dataset.thr; if (x.open) loadThread(id); x.ontoggle = () => { if (x.open) { openThreads.add(id); loadThread(id); } else openThreads.delete(id); }; });
-  const link = async (id, body) => { await fetch('/api/research-pod/link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...body }) }).catch(() => null); renderPod(); };
-  document.querySelectorAll('[data-rid]').forEach(x => x.onchange = () => link(x.dataset.rid, { registerId: x.value.trim() }));
-  document.querySelectorAll('[data-stage]').forEach(x => x.onchange = () => link(x.dataset.stage, { stage: x.value }));
   const sc = d.scorecard;
-  if (sc) el.insertAdjacentHTML('beforeend', `<h3 style="font-size:14px;margin:16px 0 6px">Scorecard <i class="muted" style="font-style:normal">how far each researcher's ideas get · the pass rate counts only tested ones</i></h3><table><thead><tr><th>Researcher</th><th class="n">Proposed</th><th class="n">You accepted</th><th class="n">Carded</th><th class="n">Pre-registered</th><th class="n">Tested</th><th class="n">Passed</th><th class="n">Failed</th><th class="n">Paper or live</th><th class="n">Rejected</th><th class="n">Pass rate</th></tr></thead><tbody>${Object.entries(sc).map(([k, v]) => `<tr><td>${LENS[k]}</td><td class="n">${v.proposed}</td><td class="n">${v.accepted}</td><td class="n">${v.carded}</td><td class="n">${v.preregistered}</td><td class="n">${v.tested}</td><td class="n up">${v.passed}</td><td class="n dn">${v.failed}</td><td class="n">${v.paperOrLive}</td><td class="n">${v.rejected}</td><td class="n">${v.passRate == null ? '–' : Math.round(v.passRate * 100) + '%'}</td></tr>`).join('')}</tbody></table>
+  if (sc) el.insertAdjacentHTML('beforeend', `<h3 style="font-size:14px;margin:16px 0 6px">Scorecard <i class="muted" style="font-style:normal">how far each researcher's ideas get · the pass rate counts only tested ones</i></h3><div style="overflow-x:auto"><table><thead><tr><th>Researcher</th><th class="n">Proposed</th><th class="n">You accepted</th><th class="n">Carded</th><th class="n">Pre-registered</th><th class="n">Tested</th><th class="n">Passed</th><th class="n">Failed</th><th class="n">Paper or live</th><th class="n">Rejected</th><th class="n">Pass rate</th></tr></thead><tbody>${Object.entries(sc).map(([k, v]) => `<tr><td>${esc(LENS[k] ?? k)}</td><td class="n">${v.proposed}</td><td class="n">${v.accepted}</td><td class="n">${v.carded}</td><td class="n">${v.preregistered}</td><td class="n">${v.tested}</td><td class="n up">${v.passed}</td><td class="n dn">${v.failed}</td><td class="n">${v.paperOrLive}</td><td class="n">${v.rejected}</td><td class="n">${v.passRate == null ? '–' : Math.round(v.passRate * 100) + '%'}</td></tr>`).join('')}</tbody></table></div>
 <p class="muted">Systems with standard outputs: ${d.systems?.length ? d.systems.map(x => `<a href="system-backtest.html?id=${encodeURIComponent(x.id)}">${esc(x.model)}</a> (${x.trades})`).join(' · ') : 'none yet'} · <a href="system-backtest.html">System Backtest page</a></p>`);
 }
 // §9ah (/api/research-pod/investigate, /paper, /dossiers, /papers): the literature desk. The researchers search arXiv,

@@ -24,7 +24,7 @@ import worker, { COT_KV } from './_worker.js';
 import { rankIC, blockBootstrapIC, spearman } from './js/statsCore.js';
 import { PROVIDERS as AI_PROVIDERS, buildRequest as aiBuildRequest, authHeaders as aiAuthHeaders,
          readResponse as aiReadResponse, resolveTask as aiResolveTask, configFromEnv as aiConfigFromEnv,
-         costOf as aiCostOf, TASK_CLASS as AI_TASKS } from './js/modelRouter.js';
+         costOf as aiCostOf, TASK_CLASS as AI_TASKS, retryCap as aiRetryCap } from './js/modelRouter.js';
 import { cotFactorSeries, qualifies, COT_FACTOR_UNIVERSE, COT_DATASETS, COT_WINDOW_WEEKS, MIN_WEEKS_QUALIFY } from './js/cotFactorCore.js';
 import { refreshAllPairs } from './levels.js';
 import { fitHMM, hmmSignalScore } from './hmm.js';
@@ -239,6 +239,7 @@ import { pairImpacts as _nwPairs, reactionMarkets as _nwReactMarkets, reactionSt
 import { NEWS_SOURCES as _NW_SOURCES, POLL_MIN as _NW_POLL_MIN, backoff as _nwBackoff, dueSources as _nwDue, allowAlert as _nwAllowAlert, breakingCandidates as _nwBreaking, breakingMessage as _nwBreakingMsg } from './js/newsOps.js';
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
 import { RESEARCHERS as _RP_RESEARCHERS, WEB_SOURCES as _RP_WEB, parseFeed as _rpParseFeed, feedItems as _rpFeedItems, webDigest as _rpWebDigest, validateProposals as _rpValidate, applyFeedback as _rpApplyFeedback, feedbackBrief as _rpFeedbackBrief, buildList as _rpBuildList, mergeLibrary as _rpMerge, validateCard as _rpValidateCard, cardPrereg as _rpPrereg, slug as _rpSlug, lifecycle as _rpLifecycle, setLink as _rpSetLink, outcomesBrief as _rpOutcomes, scorecard as _rpScorecard, validateReply as _rpValidateReply, applyRevision as _rpApplyRevision, threadText as _rpThreadText } from './js/researchPod.js';   // Phases 23-25
+import * as _RCS from './js/researchCase.js';   // research cases: one per question to the pod, in a loop with the Head of Research
 import { normaliseTrades as _sxNormalise, tearsheet as _sxTearsheet, toolkitCsv as _sxToolkitCsv, terminalCsv as _sxTerminalCsv, liveVsExpected as _sxLiveVsExpected } from './js/systemExports.js';   // §9ac
 import { selectPairs as _psSelect } from './js/pairSelector.js';   // §9ae
 import { WORLD_RATES_URL as _WR_URL, parseCbpol as _wrParse, worldRates as _wrBuild, byIsoNumeric as _wrByIso } from './js/worldRates.js';   // §9af
@@ -3880,6 +3881,7 @@ async function callModel({ task = 'misc', system = '', standing = '', prompt = '
                       provider: r.provider, model: r.model, text: out.text, usage: out.usage };
   return {
     ...out, provider: r.provider, model: r.model, label: P.label, clamped: req.clamped,
+    sentMaxTokens: req.body.max_tokens, maxOutput: r.maxOutput,   // what was asked for after the provider's clamp, and its ceiling
     // COMPATIBILITY SHIM, and it earns its keep. Several call sites read the raw reply
     // downstream -- `_antText(j)` again, or `j.stop_reason === 'max_tokens'` to decide
     // whether to retry. Rather than rewrite that logic at each one (and risk changing a
@@ -3910,7 +3912,7 @@ app.get('/api/ai-config', async (_req, res) => {
     const tasks = Object.entries(AI_TASKS).map(([id, t]) => {
       const r = aiResolveTask(id, cfg);
       return {
-        id, label: t.label, ledger: t.ledger ?? null, cheapSafe: !!t.cheapSafe,
+        id, label: t.label, ledger: t.ledger ?? null, cheapSafe: !!t.cheapSafe, taskDefault: t.defaultProvider ?? null,
         provider: r.provider, model: r.model, maxOutput: r.maxOutput,
         fellBack: r.fellBack, why: r.why,
         chosen: _aiOverride.tasks[id] ?? cfg.tasks[id] ?? null,
@@ -5824,14 +5826,20 @@ async function _rpWeb() {
 const _rpInventory = () => _DATA_FEEDS.filter(f => f.purpose).map(f => `- ${f.id} [${f.category}]: ${f.name}. ${String(f.purpose).slice(0, 160)}`).join('\n');
 const _rpFleet = () => _rkParseRegistry(_tdRead('js/botRegistry.js')).map(b => `- ${b.label} (${b.key}, ${b.paper ? 'paper/demo' : 'live'})${_RK_BASIS[b.key]?.idea ? `: ${_RK_BASIS[b.key].idea}` : ''}`).join('\n');
 let _rpJob = null;
-async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS) } = {}) {
+// The prompt budget for the researchers (task research-pod, DeepSeek by default: 64k-token context, 8,192 out). The
+// whole Evidence Book (~42k tokens) and register (~10k) will not fit beside everything else, so each researcher reads
+// the entries most related to the question; the Head of Research (research-head) reads them all and checks.
+const _RC_PROMPT_CHARS = 130_000, _RC_EVIDENCE = 60, _RC_REGISTER = 40;
+const _rcEvidence = (ledger, query, max = _RC_EVIDENCE) => _RCS.pickRelevant(ledger, query, e => `${e.id} ${e.claim} ${e.use}`, { max });
+const _rcRegister = (rows, query, max = _RC_REGISTER) => _RCS.pickRelevant(rows, query, r => `${r.id} ${r.question}`, { max });
+async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS), caseId = null } = {}) {
   if (!_aiAnyKey()) return { ok: false, error: 'no model key' };
   const roles = _deskLoadRoles();
   const { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js');
   _tdOpsNow(); const rows = _roCache.rows ?? [];
   const [web, fb, lib] = await Promise.all([_rpWeb(), _rpGet(_RP.feedback, {}), _rpGet(_RP.library, [])]);
   const loop = await _rpLoop(lib);
-  const date = _dpLondonDate(Date.now()), out = { ok: true, id: `${date}-${Date.now().toString(36)}`, date, at: new Date().toISOString(), brief: String(brief).slice(0, 1500), researchers: {}, errors: {} };
+  const date = _dpLondonDate(Date.now()), out = { ok: true, id: `${date}-${Date.now().toString(36)}`, date, at: new Date().toISOString(), brief: String(brief).slice(0, 1500), caseId, researchers: {}, errors: {} };
   // §9ah: before they write, the researchers read: a few new papers per lens go into the paper library (bounded: 4 calls)
   _rpJob && (_rpJob.stage = 'literature: reading new papers');
   try { out.literature = await _litTimeout(_litScan(web, { brief, lenses }), 12 * 60e3, 'literature scan'); } catch (e) { out.literature = { errors: [e.message] }; }
@@ -5845,22 +5853,24 @@ async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS) } = {}
   _rpJob && (_rpJob.stage = 'researchers');
   await Promise.all(lenses.filter(l => _RP_RESEARCHERS[l]).map(async lens => {
     const role = roles.find(r => r.id === _RP_RESEARCHERS[lens].role); if (!role) { out.errors[lens] = 'no role file'; return; }
-    const { system, prompt } = _deskStagePrompt({ role, pack: { date }, ledger: DESK_EVIDENCE, sections: [
+    const query = `${brief} ${_RP_RESEARCHERS[lens].lens} ${role.body.slice(0, 600)}`;
+    const ev = _rcEvidence(DESK_EVIDENCE, query), reg = _rcRegister(rows, query);
+    const { system, prompt } = _deskStagePrompt({ role, pack: { date }, ledger: DESK_EVIDENCE, sections: _RCS.fitSections([
       ...(brief ? [["The owner's brief for this session (answer it first)", brief]] : []),
       ['The system catalogue: what exists, what is partial, what is missing', _sysCatalogueText()],
       ['The data inventory (feeds the server holds)', _rpInventory()],
       ['The bot fleet and the idea each one trades', _rpFleet()],
-      ['The Evidence Book (every entry: [tag] claim -> use)', evidenceBrief(DESK_EVIDENCE)],
-      ['The research register (id [status] question -> next)', _tdRegisterText(rows)],
+      [`The Evidence Book: the ${ev.length} of ${DESK_EVIDENCE.length} entries most related to this session ([tag] claim -> use; the Head of Research checks against the whole book)`, evidenceBrief(ev)],
+      [`The research register: the ${reg.length} of ${rows.length} rows most related (id [status] question -> next)`, _tdRegisterText(reg)],
       ["The owner's feedback on earlier proposals", _rpFeedbackBrief(fb, lib)],
       ['What happened to your earlier proposals (stage, failed gates, Evidence Book verdict): learn from it', _rpOutcomes(lib, loop.cycles, lens)],
       ["The pod's scorecard (proposals that reached each stage, by researcher)", loop.scorecard],
       ['Proposals already on file (do not repeat; build on them if the owner marked build)', lib.slice(0, 40).map(p => `- ${p.id}: ${p.title} [${fb[p.id]?.status ?? 'open'}]`).join('\n') || '(none yet)'],
-      ['Papers you have read (notes from the paper library; cite their ids in "citations")', _litLibText(papers, { lens, query: brief, max: 20 })],
-      ['The web this week (titles, links, first lines)', _rpWebDigest(web, lens)],
-      ['The SSRN and arXiv reading list', _tdReadingList(_tdRead('education/papers/open/reading_list.csv'))],
-    ] });
-    const v = await _modelJson({ system, prompt, maxTokens: 16_000, label: `desk:pod-${lens}`, validate: o => _rpValidate(o, lens, { paperIds }) });
+      ['Papers you have read (notes from the paper library; cite their ids in "citations")', _litLibText(papers, { lens, query: brief, max: 12 })],
+      ['The web this week (titles, links, first lines)', _rpWebDigest(web, lens, { perSource: 6 })],
+      ['The SSRN and arXiv reading list', _RCS.clip(_tdReadingList(_tdRead('education/papers/open/reading_list.csv')), 6000)],
+    ], _RC_PROMPT_CHARS) });
+    const v = await _modelJson({ task: 'research-pod', system, prompt, maxTokens: 8000, label: `desk:pod-${lens}`, validate: o => _rpValidate(o, lens, { paperIds }) });
     if (v.ok) out.researchers[lens] = { ...v.value, notes: v.notes, model: v.model }; else out.errors[lens] = v.errors.join('; ');
     if (out.researchers[lens]) delete out.errors[lens];
   }));
@@ -5869,36 +5879,191 @@ async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS) } = {}
   const screened = _tdScreen(all.map(p => ({ ...p, variable: p.test.variable, condition: p.thesis })), rows, DESK_EVIDENCE).map(({ variable, condition, ...p }) => p);
   for (const r of Object.values(out.researchers)) r.proposals = r.proposals.map(p => screened.find(s => s.id === p.id) ?? p);
   out.web = Object.fromEntries(Object.entries(web).map(([k, v]) => [k, v.error ? `error: ${v.error}` : `${v.items.length} items`]));
-  const sessions = await _rpGet(_RP.sessions, []);
-  await kv.put(_RP.sessions, JSON.stringify([out, ...sessions].slice(0, 20)));
-  await kv.put(_RP.library, JSON.stringify(_rpMerge(lib, screened, date)));
+  await _rcLock(async () => {
+    const sessions = await _rpGet(_RP.sessions, []);
+    await kv.put(_RP.sessions, JSON.stringify([out, ...sessions].slice(0, 20)));
+    let l2 = _rpMerge(await _rcStrict(_RP.library, []), screened, date);
+    if (caseId) l2 = _RCS.tagLibrary(l2, screened.map(p => p.id), caseId);
+    await kv.put(_RP.library, JSON.stringify(l2));
+    // round 1 of the case: each researcher's headline, questions and proposal ids; the question started it
+    const c = caseId ? (await _rcRead()).cases.find(x => x.id === caseId) : null;
+    if (c) await _rcPut({ ..._RCS.appendRound(c, { owner: c.question || null, answers: Object.fromEntries(Object.entries(out.researchers).map(([k, r]) => [k, _RCS.answerOf(r)])), errors: out.errors, at: out.at, web: out.web }), pending: null, lastError: null });
+  });
   const cites = screened.filter(p => p.citations?.length);
   if (cites.length) { let pl = await _rpGet(_LIT.papers, []); for (const p of cites) pl = _litCite(pl, p.citations, { proposals: [p.id] }); await kv.put(_LIT.papers, JSON.stringify(pl)); }
   return out;
 }
-function _rpStart(opts) {
+/**
+ * "Ask the pod" and the weekly run: a case first (the question, or "Weekly session <date>"), then round 1. With
+ * `caseId` (a case whose round 1 failed), round 1 runs again on that case.
+ */
+function _rpStart(opts = {}) {
   if (_rpJob?.status === 'running') return null;
-  const job = _rpJob = { status: 'running', kind: 'pod', startedAt: Date.now(), finishedAt: null, error: null, brief: opts?.brief ?? '' };
-  _rpRun(opts).then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; job.session = r.id ?? null; })
-    .catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
+  const caseId = opts.caseId ?? `case-${_dpLondonDate(Date.now())}-${Date.now().toString(36)}`;
+  if (_rcJobs[caseId]?.status === 'running') return null;
+  const job = _rpJob = _rcJobs[caseId] = { status: 'running', kind: 'pod', caseId, stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null, brief: opts.brief ?? '' };
+  const made = opts.caseId ? Promise.resolve() : _rcEnsure().then(() => _rcLock(async () => _rcPut(_RCS.newCase({ id: caseId, question: opts.brief ?? '', date: _dpLondonDate(Date.now()) }))));
+  made.then(() => _rpRun({ ...opts, caseId })).then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; job.session = r.id ?? null; })
+    .catch(e => { job.status = 'error'; job.error = e.message; })
+    .finally(() => { job.finishedAt = Date.now(); if (job.status === 'error') _rcFail(caseId, job.error); });
   return job;
 }
-// GET /api/research-pod: the latest sessions, the proposal library with the owner's marks, the build list and the catalogue.
+// ── Research cases (js/researchCase.js): one per question, its rounds and the Head of Research's reviews ──────────
+// KV research_cases. Every write is serialised (_rcLock) because a round, a review and "Ask the pod" can run at once on
+// different cases and each rewrites the whole store (and the library). One job per case at a time (_rcJobs, 409).
+const _RC_KEY = 'research_cases', _rcJobs = {};
+let _rcChain = Promise.resolve(), _rcMigrated = false;
+const _rcLock = fn => { const p = _rcChain.then(fn); _rcChain = p.catch(() => {}); return p; };
+// Read-modify-write reads are strict: a backend failure (or a corrupt value) throws instead of reading as empty, so a
+// write never replaces the store or the library with a near-empty copy (kv.getStrict; see kv.js).
+const _rcStrict = async (k, d) => { const raw = await kv.getStrict(k); return raw ? JSON.parse(raw) : d; };
+const _rcRead = async () => _RCS.readStore(await _rcStrict(_RC_KEY, null));
+const _rcPut = async c => kv.put(_RC_KEY, JSON.stringify(_RCS.putCase(await _rcRead(), c)));
+/** On first read in this process: turn the stored sessions into cases (idempotent; the store lists what it migrated). */
+async function _rcEnsure() {
+  if (_rcMigrated) return;
+  await _rcLock(async () => {
+    if (_rcMigrated) return;
+    const [raw, sessions, lib] = await Promise.all([_rcStrict(_RC_KEY, null), _rcStrict(_RP.sessions, []), _rcStrict(_RP.library, [])]);
+    const m = _RCS.migrate(raw, sessions, lib);
+    if (m.changed) await kv.put(_RC_KEY, JSON.stringify(m.store));
+    if (m.tags.length || m.restore.length) await kv.put(_RP.library, JSON.stringify(_RCS.migrateLibrary(lib, m)));
+    _rcMigrated = true;
+  });
+}
+const _rcStore = async () => { await _rcEnsure(); return _rcRead(); };
+const _rcFail = (id, error) => _rcLock(async () => { const c = (await _rcRead()).cases.find(x => x.id === id); if (c) await _rcPut({ ...c, lastError: { at: new Date().toISOString(), error: String(error ?? '').slice(0, 400) } }); }).catch(() => {});
+/** Round 2 on: all three answer the owner's message, each seeing the case, the others' latest answers and the Head's review. */
+async function _rcRound(id, text, job) {
+  const roles = _deskLoadRoles(), { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js');
+  _tdOpsNow(); const rows = _roCache.rows ?? [], date = _dpLondonDate(Date.now());
+  const [store, lib, papers] = await Promise.all([_rcRead(), _rpGet(_RP.library, []), _rpGet(_LIT.papers, [])]);
+  const c = store.cases.find(x => x.id === id); if (!c) throw new Error(`no case ${id}`);
+  const paperIds = new Set(papers.map(p => p.id)), answers = {}, errors = {};
+  job.stage = 'the three researchers';
+  await Promise.all(_RCS.LENSES.map(async lens => {
+    const base = roles.find(r => r.id === _RP_RESEARCHERS[lens].role); if (!base) { errors[lens] = 'no role file'; return; }
+    const own = _RCS.lensIds(c, lens), query = `${c.question} ${text} ${own.map(x => lib.find(p => p.id === x)?.title ?? '').join(' ')}`;
+    const ev = _rcEvidence(DESK_EVIDENCE, query, 40), reg = _rcRegister(rows, query, 30), rs = _RCS.roundSections(c, lens, { lib, ownerMessage: text });
+    const { system, prompt } = _deskStagePrompt({ role: { ...base, output: 'case_answer' }, pack: { date }, ledger: DESK_EVIDENCE, sections: _RCS.fitSections([
+      ...rs.slice(0, -1),
+      ['The data inventory (feeds the server holds)', _rpInventory()],
+      [`The Evidence Book: the ${ev.length} entries most related to this case ([tag] claim -> use)`, evidenceBrief(ev)],
+      [`The research register: the ${reg.length} rows most related`, _tdRegisterText(reg)],
+      ['Papers you have read (cite their ids in a new proposal\'s "citations")', _litLibText(papers, { lens, query, max: 8 })],
+      ['How to answer', _RCS.ROUND_RULES],
+      rs.at(-1),
+    ], _RC_PROMPT_CHARS) });
+    const v = await _modelJson({ task: 'research-pod', system, prompt, maxTokens: 6000, label: `desk:case-${lens}`, validate: o => _RCS.validateRoundAnswer(o, lens, { ownIds: own, paperIds }) });
+    if (v.ok) answers[lens] = { ...v.value, notes: v.notes, model: v.model }; else errors[lens] = v.errors.join('; ');
+  }));
+  if (!Object.keys(answers).length) throw new Error(Object.entries(errors).map(([k, v]) => `${k}: ${v}`).join('; ') || 'no researcher answered');
+  job.stage = 'saving';
+  await _rcLock(async () => {
+    const now = new Date().toISOString(); let l2 = await _rcStrict(_RP.library, []); const recs = {}, fresh = [], touched = [];
+    for (const [lens, a] of Object.entries(answers)) {
+      const np = _RCS.uniqueIds(a.proposals, l2, id);
+      l2 = _RCS.applyRevisions(l2, a.revise, now);
+      fresh.push(...np); touched.push(...np.map(p => p.id), ...a.revise.map(r => r.id));
+      recs[lens] = _RCS.answerOf(a, { newIds: np.map(p => p.id), revised: a.revise.map(r => r.id) });
+    }
+    if (fresh.length) { const { DESK_EVIDENCE: L } = await import('./js/deskEvidence.js'); l2 = _rpMerge(l2, _tdScreen(fresh.map(p => ({ ...p, variable: p.test.variable, condition: p.thesis })), rows, L).map(({ variable, condition, ...p }) => p), date); }
+    await kv.put(_RP.library, JSON.stringify(_RCS.tagLibrary(l2, touched, id)));
+    const c2 = (await _rcRead()).cases.find(x => x.id === id);
+    await _rcPut({ ..._RCS.appendRound(c2, { owner: text, answers: recs, errors, at: now }), pending: null, lastError: null });
+  });
+}
+/** The Head of Research (research-head, Anthropic by default): peer-reviews the whole case. Only when the owner asks. */
+async function _rcReview(id, job) {
+  const role = _deskLoadRoles().find(r => r.id === 'head_of_research'); if (!role) throw new Error('no role file head_of_research.md');
+  const { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js'), QT = await import('./js/quickTest.js');
+  _tdOpsNow(); const rows = _roCache.rows ?? [];
+  const [store, lib, fb, qts] = await Promise.all([_rcRead(), _rpGet(_RP.library, []), _rpGet(_RP.feedback, {}), _rpGet(_QT_KEY, {})]);
+  const c = store.cases.find(x => x.id === id); if (!c) throw new Error(`no case ${id}`);
+  if (!c.rounds.length) throw new Error('the researchers have not answered yet');
+  const ids = _RCS.proposalIds(c), linked = new Set([id, ...ids]);
+  const quickTests = Object.values(qts.tests ?? {}).filter(t => (t.proposalIds ?? []).some(x => linked.has(x))).map(t => ({ id: t.id, x: t.spec?.x, y: t.spec?.y, verdict: t.verdict, summary: t.why }));
+  const { system, prompt } = _deskStagePrompt({ role, pack: { date: _dpLondonDate(Date.now()) }, ledger: DESK_EVIDENCE, sections: [
+    ..._RCS.headSections(c, { lib, fb, quickTests, catalogue: Object.keys(QT.CATALOGUE) }),
+    ['The data inventory (feeds the server holds; name feed ids in the plan)', _rpInventory()],
+    ['The Evidence Book (every entry: [tag] claim -> use)', evidenceBrief(DESK_EVIDENCE)],
+    ['The research register (id [status] question -> next)', _tdRegisterText(rows)],
+  ] });
+  job.stage = 'the Head of Research is reading the case';
+  const lenses = [...new Set(c.rounds.flatMap(r => Object.keys(r.answers ?? {})))];
+  const v = await _modelJson({ task: 'research-head', system, prompt, maxTokens: 16_000, label: 'desk:head-of-research', validate: o => _RCS.validateHeadReview(o, { lenses, proposalIds: ids }) });
+  if (!v.ok) throw new Error(v.errors.join('; '));
+  await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); await _rcPut({ ..._RCS.appendReview(c2, v.value, { model: v.model, notes: v.notes ?? [] }), lastError: null }); });
+}
+function _rcStartJob(id, kind, run) {
+  const job = _rcJobs[id] = { status: 'running', kind, caseId: id, stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null };
+  run(job).then(() => { job.status = 'done'; }).catch(e => { job.status = 'error'; job.error = e.message; _rcFail(id, `${kind}: ${e.message}`); }).finally(() => { job.finishedAt = Date.now(); });
+  return job;
+}
+// GET /api/research-pod/cases: every case (summary rows, newest first) and the running jobs.
+app.get('/api/research-pod/cases', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const st = await _rcStore(); res.json({ ok: true, label: _RCS.LABEL, cases: st.cases.map(c => _RCS.summary(c, _rcJobs[c.id])) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/research-pod/case?id=: one case in full, its job, and the Head's plan as a quick-test proposal.
+app.get('/api/research-pod/case', async (req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const id = String(req.query.id ?? ''), c = (await _rcStore()).cases.find(x => x.id === id);
+    if (!c) return res.status(404).json({ ok: false, error: 'no such case' });
+    res.json({ ok: true, label: _RCS.LABEL, case: c, summary: _RCS.summary(c, _rcJobs[id]), job: _rcJobs[id] ?? null, plan: _RCS.planProposal(c), proposalIds: _RCS.proposalIds(c) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/research-pod/case/reply { id, text }: the owner's message starts the next round; all three answer (background).
+app.post('/api/research-pod/case/reply', async (req, res) => {
+  try {
+    const id = String(req.body?.id ?? ''), text = String(req.body?.text ?? '').trim().slice(0, 3000);
+    if (!id || !text) return res.status(400).json({ ok: false, error: 'id and text are required' });
+    const c = (await _rcStore()).cases.find(x => x.id === id); if (!c) return res.status(404).json({ ok: false, error: 'no such case' });
+    if (_rcJobs[id]?.status === 'running') return res.status(409).json({ ok: false, error: 'this case is already working', job: _rcJobs[id] });
+    if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key' });
+    await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); await _rcPut({ ...c2, pending: { owner: text, at: new Date().toISOString() }, updatedAt: new Date().toISOString() }); });
+    // a case whose round 1 failed runs round 1 again (the full session), with the message added to the question
+    if (!c.rounds.length) { const job = _rpStart({ brief: [c.question, text].filter(Boolean).join('\n\n'), caseId: id }); if (!job) return res.status(409).json({ ok: false, error: 'the research pod is already working on another question', job: _rpJob }); return res.status(202).json({ ok: true, job }); }
+    res.status(202).json({ ok: true, job: _rcStartJob(id, 'round', job => _rcRound(id, text, job)) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/research-pod/case/review { id }: send the case to the Head of Research (research-head; the expensive step, never automatic).
+app.post('/api/research-pod/case/review', async (req, res) => {
+  try {
+    const id = String(req.body?.id ?? ''), c = (await _rcStore()).cases.find(x => x.id === id);
+    if (!c) return res.status(404).json({ ok: false, error: 'no such case' });
+    if (_rcJobs[id]?.status === 'running') return res.status(409).json({ ok: false, error: 'this case is already working', job: _rcJobs[id] });
+    if (!c.rounds.length) return res.status(400).json({ ok: false, error: 'the researchers have not answered yet' });
+    if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key' });
+    res.status(202).json({ ok: true, job: _rcStartJob(id, 'review', job => _rcReview(id, job)) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/research-pod/case/status { id, status: open|parked|closed }
+app.post('/api/research-pod/case/status', async (req, res) => {
+  try { const id = String(req.body?.id ?? ''), status = String(req.body?.status ?? '');
+    if (!_RCS.STATUSES.includes(status)) return res.status(400).json({ ok: false, error: `status must be one of ${_RCS.STATUSES.join(', ')}` });
+    await _rcEnsure();
+    const out = await _rcLock(async () => { const c = (await _rcRead()).cases.find(x => x.id === id); if (!c) return null; const c2 = _RCS.setStatus(c, status); await _rcPut(c2); return c2; });
+    if (!out) return res.status(404).json({ ok: false, error: 'no such case' });
+    res.json({ ok: true, summary: _RCS.summary(out, _rcJobs[id]) }); }
+  catch (e) { res.status(400).json({ ok: false, error: e.message }); }
+});
+// GET /api/research-pod: the cases, the latest sessions, the proposal library with the owner's marks, the build list and the catalogue.
 app.get('/api/research-pod', async (_req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
+    const store = await _rcStore();   // first: on first read it migrates the sessions and tags the library
     const [sessions, lib, fb, cards, threads, plib] = await Promise.all([_rpGet(_RP.sessions, []), _rpGet(_RP.library, []), _rpGet(_RP.feedback, {}), _rpGet(_RP.cards, {}), _rpGet(_RP.threads, {}), _rpGet(_LIT.papers, [])]);
     const cited = new Set(lib.flatMap(p => p.citations ?? [])), papers = Object.fromEntries(plib.filter(p => cited.has(p.id)).map(p => [p.id, { title: p.title, year: p.year, url: p.url, claim: p.notes?.claim ?? null }]));
     const loop = await _rpLoop(lib);
-    res.json({ ok: true, label: 'proposals and designs, not results', job: _rpJob, sessions: sessions.slice(0, 6), scorecard: loop.scorecard, systems: await _sysList(),
+    res.json({ ok: true, label: 'proposals and designs, not results', caseLabel: _RCS.LABEL, job: _rpJob, cases: store.cases.map(c => _RCS.summary(c, _rcJobs[c.id])), sessions: sessions.slice(0, 6), scorecard: loop.scorecard, systems: await _sysList(),
       library: lib.map(p => ({ ...p, feedback: fb[p.id] ?? null, lifecycle: loop.cycles[p.id], thread: (threads[p.id] ?? []).length, threadJob: _rpThreadJobs[p.id] ?? null, card: cards[p.id] ? { at: cards[p.id].at, review: cards[p.id].review?.verdict ?? null } : null })),
       papers, buildList: _rpBuildList(lib, fb).slice(0, 25), catalogue: { coverage: _sysCoverage(), systems: _SYS_CATALOGUE }, researchers: _RP_RESEARCHERS, web: _RP_WEB.map(s => ({ id: s.id, label: s.label, lens: s.lens })) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-// POST /api/research-pod/run { brief?, lenses?: ['quant','macro','flow'] }: a session now. With a brief, it is the owner's question to the pod.
+// POST /api/research-pod/run { brief?, lenses?: ['quant','macro','flow'] }: a new case now, and its round 1. With a brief, it is the owner's question to the pod.
 app.post('/api/research-pod/run', (req, res) => {
   const lenses = Array.isArray(req.body?.lenses) ? req.body.lenses.filter(l => _RP_RESEARCHERS[l]) : undefined;
-  const job = _rpStart({ brief: typeof req.body?.brief === 'string' ? req.body.brief : '', ...(lenses?.length ? { lenses } : {}) });
+  const job = _rpStart({ brief: typeof req.body?.brief === 'string' ? req.body.brief.slice(0, 1500) : '', ...(lenses?.length ? { lenses } : {}) });
   if (!job) return res.status(409).json({ ok: false, error: 'the research pod is already working', job: _rpJob });
   res.status(202).json({ ok: true, job });
 });
@@ -5922,16 +6087,16 @@ async function _rpThreadReply(id) {
   const { system, prompt } = _deskStagePrompt({ role, pack: { date: _dpLondonDate(Date.now()) }, ledger: DESK_EVIDENCE, sections: [
     ['Your proposal (current version)', p], ['Where it is now', loop.cycles[id]], ["The owner's mark", fb[id] ?? '(none)'],
     ['The conversation so far (answer the last message from the owner)', _rpThreadText(threads[id])],
-    ['The data inventory', _rpInventory()], ['The Evidence Book', evidenceBrief(DESK_EVIDENCE)],
+    ['The data inventory', _rpInventory()], ['The Evidence Book: the entries most related to this proposal', evidenceBrief(_rcEvidence(DESK_EVIDENCE, `${p.title} ${p.thesis} ${p.test?.variable ?? ''} ${(threads[id] ?? []).at(-1)?.text ?? ''}`))],
     ['How to answer', 'Answer this proposal only, in plain words. If the owner asks for a change, or a result says the design must change, put only the changed fields in "revise". Never claim a result.'],
   ] });
   let v = null, err = '';
-  for (let i = 0; i < 2 && !v; i++) { try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 6_000 }); const x = _rpValidateReply(_parseModelJson(r.text ?? _antText(r), `desk:thread-${p.lens}`)); if (x.ok) v = x.value; else err = x.errors.join('; '); } catch (e) { err = e.message; } }
+  for (let i = 0; i < 2 && !v; i++) { try { const r = await callModel({ task: 'research-pod', system, prompt, maxTokens: 6_000 }); const x = _rpValidateReply(_parseModelJson(r.text ?? _antText(r), `desk:thread-${p.lens}`)); if (x.ok) v = x.value; else err = x.errors.join('; '); } catch (e) { err = e.message; } }
   if (!v) throw new Error(err || 'no valid reply');
   const now = new Date().toISOString(), t2 = await _rpGet(_RP.threads, {});
   t2[id] = [...(t2[id] ?? []), { who: p.lens, text: v.reply, questions: v.questions, revised: !!v.revise, at: now }].slice(-60);
   await kv.put(_RP.threads, JSON.stringify(t2));
-  if (v.revise) { const l2 = await _rpGet(_RP.library, []); await kv.put(_RP.library, JSON.stringify(l2.map(x => (x.id === id ? _rpApplyRevision(x, v.revise, now) : x)))); }
+  if (v.revise) await _rcLock(async () => { const l2 = await _rcStrict(_RP.library, []); await kv.put(_RP.library, JSON.stringify(l2.map(x => (x.id === id ? _rpApplyRevision(x, v.revise, now) : x)))); });
   return v;
 }
 app.get('/api/research-pod/thread', async (req, res) => {
@@ -6136,8 +6301,10 @@ async function _modelJson({ task = 'desk-head', system, prompt, maxTokens = 12_0
     catch (e) { err = e.message; continue; }
     const text = r.text ?? _antText(r), cut = r.stop_reason === 'max_tokens' || r.truncated === true, obj = _parseModelJson(text, label);
     if (obj) { const v = validate(obj); if (v.ok) return { ...v, model: r.model ?? null }; err = v.errors.join('; '); }
-    else err = cut ? `the reply was cut off at the length limit (${cap} tokens)` : `the reply was not JSON (it began: ${JSON.stringify(String(text ?? '').trim().slice(0, 120))})`;
-    if (cut) { cap = Math.min(Math.round(cap * 1.6), 24_000); p = `${prompt}\n\nIMPORTANT: your previous reply was cut off at the length limit. Reply again with the same JSON shape but much shorter: fewer items and one or two sentences per field. Output only the JSON object.`; }
+    // a cut reply is retried with more room, but never past the provider's ceiling (DeepSeek 8,192): there, only shorter helps
+    const sent = r.sentMaxTokens ?? cap;
+    if (!obj) err = cut ? `the reply was cut off at the length limit (${sent} tokens${r.clamped || sent >= (r.maxOutput ?? Infinity) ? `, ${r.label ?? 'the provider'}'s output cap` : ''})` : `the reply was not JSON (it began: ${JSON.stringify(String(text ?? '').trim().slice(0, 120))})`;
+    if (cut) { cap = aiRetryCap(sent, r.maxOutput); p = `${prompt}\n\nIMPORTANT: your previous reply was cut off at the length limit. Reply again with the same JSON shape but much shorter: fewer items and one or two sentences per field. Output only the JSON object.`; }
     else if (!obj) p = `${prompt}\n\nIMPORTANT: your previous reply could not be read as JSON. Output only the JSON object, with no text or code fences around it.`;
   }
   return { ok: false, errors: [String(err).slice(0, 300)] };
@@ -6764,7 +6931,8 @@ svcInterval('allocationCommittee', async () => {
   const job = _alJob = { status: 'running', startedAt: now };
   _alRun().then(x => { job.status = x.ok ? 'done' : 'error'; job.error = x.ok ? null : x.error; }).catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
 }, 30 * 60_000);
-// Weekly: the research pod on Sunday from 09:00 London, once per ISO week (the theory desk is Saturday).
+// Weekly: the research pod on Sunday from 09:00 London, once per ISO week (the theory desk is Saturday). It opens a
+// research case, "Weekly session <date>", like a question from the owner.
 svcInterval('researchPod', async () => {
   const now = Date.now(), date = _dpLondonDate(now);
   if (new Date(_dsLondonMs(date, 12)).getUTCDay() !== 0 || now < _dsLondonMs(date, 9) || _rpJob?.status === 'running' || !_aiAnyKey()) return;
