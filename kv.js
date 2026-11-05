@@ -51,6 +51,7 @@ const KV_FILE   = path.join(DATA_DIR, 'kv.json');
 // how the 🗄 Data Map learns when each store was last written.
 const _CF_EXACT = new Set([
   'tg_config', 'ai_alert_cfg',
+  'tg_master_all',          // the master kill switch for every Telegram message (js/telegramGuard.js; ⚙ Alerts). Owner-set: a reset would un-mute. Also in _worker.js (both lists).
   'kv_write_times_v1',      // the write-time ledger the Data Map reads (js/storeRegistry.js); see _noteWrite above. Also in _worker.js PERMANENT_KEYS.
   'cog_legs_live_v1',      // chart page legs: the laptop's latest IBKR 5-minute bars per futures contract, pushed by scripts/rates_line/refresh_leg_bars.py
   'cog_line_live_v1',       // C.OG rate-spread line: the laptop's latest IBKR bars, pushed by scripts/rates_line/refresh_cog_line.py (IBKR cannot be reached

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { ohlcAscending, fundingSpread, gapSeries, chainVals, chainLinks, chainSvg, chainSnapshot, termPremiumSplit, summariseChain, CHAIN_LAYOUT } from './chainBoard.js';
 import { bookOf, diffBooks, stressChanges, chainFlips, whatChanged, recordSnap, previousSnap, stressSnapOf } from './whatChanged.js';
 import { legsOf, isFx, pairLabel, oandaOf, mentions, researchFor, rowFor, crowdFor, rateGap } from './pairView.js';
+import * as NV from './newsView.js';
 
 // ── chain ──
 const days = n => Array.from({ length: n }, (_, i) => new Date(Date.UTC(2026, 8, 1) + i * 864e5).toISOString().slice(0, 10));
@@ -305,4 +306,77 @@ test('options view: gauges read against own history, lines carry evidence words,
   assert.match(OPV.pathHtml(sm, 'GOLD', { walk, anchor: 'gammaCentre' }), /UNDERPOWERED/);
   assert.match(OPV.pairCard('EURUSD', { oi, hist }), /puts per call/); assert.match(OPV.pairCard('NZDUSD', { oi, hist }), /No listed options book/);
   assert.equal(OPV.idOf('XAU/USD'), 'GOLD'); assert.equal(OPV.idOf('SPX500_USD'), 'SPX500');
+});
+
+// ── news (js/terminal/newsView.js) ──
+const NOW = Date.UTC(2026, 10, 5, 13, 0);
+const NEWS = [
+  { id: 'a', title: 'BoE hikes to 4% <b>', link: 'https://www.fxstreet.com/news/boe', ms: NOW - 30 * 60e3, source: 'FXStreet', sources: ['FXStreet', 'Reuters'], touches: ['GBP'], topic: 'central bank', tier: 2,
+    read: { tier: 1, impact: { GBP: 2 }, why: 'GBP strength' }, pairs: [{ inst: 'GBPUSD', dir: 2, card: 'SHORT', stance: 'against' }, { inst: 'GBPAUD', dir: 2, card: 'LONG', stance: 'supports' }, { inst: 'EURGBP', dir: -2, card: null, stance: null }],
+    react: { m5: { label: 'with', units: 0.9, n: 3 }, m30: { label: 'against', units: -0.7, n: 3 } } },
+  { id: 'b', title: 'Gold miners rally', link: 'javascript:alert(1)', ms: NOW - 2 * 3600e3, source: 'Yahoo', touches: ['GOLD'], topic: 'other', tier: 3 },
+  { id: 'c', title: 'US payrolls beat', link: 'https://example.com/nfp?a=1&b=2', ms: NOW - 8 * 3600e3, source: 'ForexLive', touches: ['USD'], tier: 1, read: { tier: 1, impact: { USD: 1, EQUITIES: -1 } } },
+  { id: 'd', title: 'Oil slips on supply', link: 'https://e.com/oil', ms: NOW - 26 * 3600e3, source: 'MarketWatch', touches: ['OIL'], tier: 2, read: { tier: 2, impact: { OIL: -1 } } },
+  { id: 'a', title: 'duplicate of a', ms: NOW - 31 * 60e3, tier: 1 },
+];
+
+test('newsView.filterNews: tier, keys, book, search; newest first, de-duplicated', () => {
+  assert.deepEqual(NV.filterNews(NEWS).map(h => h.id), ['a', 'b', 'c', 'd']);
+  assert.deepEqual(NV.filterNews(NEWS, { tier: 1 }).map(h => h.id), ['a', 'c'], 'the read tier wins over the feed tier');
+  assert.deepEqual(NV.filterNews(NEWS, { tier: 2 }).map(h => h.id), ['a', 'c', 'd']);
+  assert.deepEqual(NV.filterNews(NEWS, { keys: ['USD'] }).map(h => h.id), ['c']);
+  assert.deepEqual(NV.filterNews(NEWS, { keys: ['EQUITIES'] }).map(h => h.id), ['c'], 'an impact key counts like a touch');
+  assert.deepEqual(NV.filterNews(NEWS, { keys: ['GOLD', 'OIL'] }).map(h => h.id), ['b', 'd']);
+  assert.deepEqual(NV.filterNews(NEWS, { onlyBook: true }).map(h => h.id), ['a']);
+  assert.deepEqual(NV.filterNews(NEWS, { q: 'reuters boe' }).map(h => h.id), ['a'], 'every word, across title and sources');
+  assert.deepEqual(NV.filterNews(NEWS, { q: 'GBP strength' }).map(h => h.id), ['a'], 'the read is searched too');
+  assert.deepEqual(NV.filterNews([], {}), []); assert.deepEqual(NV.filterNews(null), []);
+});
+
+test('newsView.topStories: tier 1 in the last 6 hours only', () => {
+  assert.deepEqual(NV.topStories(NEWS, NOW).map(h => h.id), ['a']);
+  assert.deepEqual(NV.topStories(NEWS, NOW, { hours: 9 }).map(h => h.id), ['a', 'c']);
+  assert.match(NV.topStripHtml([], NOW), /No tier-1 headlines/);
+});
+
+test('newsView.marketNews: pairs[] first, else base/quote from the read; indices, gold and oil by asset key', () => {
+  const g = NV.marketNews(NEWS, 'GBPUSD');
+  assert.deepEqual(g.map(x => [x.h.id, x.dir, x.stance]), [['a', 2, 'against'], ['c', -1, null]], 'a USD headline bears on GBPUSD through its quote');
+  const eu = NV.marketNews(NEWS, 'EURUSD', { rating: 'LONG' });
+  assert.deepEqual(eu.map(x => [x.h.id, x.dir, x.stance]), [['c', -1, 'against']], 'USD up = EURUSD down, against a long card');
+  assert.deepEqual(NV.marketNews(NEWS, 'NQ', { rating: 'SHORT' }).map(x => [x.h.id, x.dir, x.stance]), [['c', -1, 'supports']]);
+  assert.deepEqual(NV.marketNews(NEWS, 'WTI').map(x => x.h.id), ['d']);
+  assert.deepEqual(NV.marketNews(NEWS, 'GOLD').map(x => x.h.id), [], 'tier-3 gold chatter is left out of the card');
+  assert.deepEqual(NV.marketNews(NEWS, 'GOLD', { tier: 3 }).map(x => [x.h.id, x.dir]), [['b', 0]]);
+  assert.equal(NV.marketNews(NEWS, 'GBPJPY', { n: 5 }).length, 1);
+  assert.deepEqual(NV.newsKeysFor('EURUSD'), ['EUR', 'USD']); assert.deepEqual(NV.newsKeysFor('SPX500'), ['EQUITIES']); assert.deepEqual(NV.newsKeysFor('COPPER'), []);
+});
+
+test('newsView HTML: escaped, links only http(s) with target=_blank rel=noopener, arrows, stances, reaction', () => {
+  const html = NV.listHtml(NV.filterNews(NEWS), { now: NOW });
+  assert.match(html, /BoE hikes to 4% &lt;b&gt;/); assert.doesNotMatch(html, /4% <b>/);
+  assert.doesNotMatch(html, /javascript:/i, 'a non-http link is never rendered');
+  assert.match(html, /href="https:\/\/example\.com\/nfp\?a=1&amp;b=2" target="_blank" rel="noopener"/);
+  const links = html.match(/<a [^>]*>/g); assert.ok(links.length >= 3); for (const a of links) assert.match(a, /target="_blank" rel="noopener"/);
+  assert.match(html, /GBP ↑↑/); assert.match(html, /USD ↑</); assert.match(html, /Equities ↓/);
+  assert.match(html, /GBPUSD ↑↑ <b>against your card<\/b>/); assert.match(html, /GBPAUD ↑↑ <b>supports your card<\/b>/);
+  assert.match(html, /5m: moved with the read/); assert.match(html, /30m: moved against the read/);
+  assert.match(html, />12:30</, 'London time'); assert.match(html, />Wed 11:00</, 'an earlier day carries its weekday');
+  assert.match(html, /FXStreet, Reuters/);
+  assert.match(NV.listHtml([], {}), /No headlines match/);
+  assert.equal(NV.safeHref(' https://a.b/c '), 'https://a.b/c'); assert.equal(NV.safeHref('data:text/html,x'), null); assert.equal(NV.safeHref('//evil.com'), null); assert.equal(NV.safeHref('https://a.b/"onmouseover=x'), null);
+});
+
+test('newsView.pairCard / latestLine / filtersHtml', () => {
+  const c = NV.pairCard(NEWS, 'GBPUSD', { rating: 'SHORT', now: NOW, name: 'GBP/USD' });
+  assert.match(c, /Latest news for GBP\/USD/); assert.match(c, /GBPUSD ↑↑/); assert.match(c, /against your card/); assert.match(c, /data-news-more="GBPUSD"/);
+  assert.match(c, /href="https:\/\/www\.fxstreet\.com\/news\/boe" target="_blank" rel="noopener"/);
+  assert.match(NV.pairCard(NEWS, 'COPPER', { now: NOW }), /no read key/);
+  assert.match(NV.pairCard([], 'EURUSD', { now: NOW }), /No tier-1\/2 headlines/);
+  assert.match(NV.latestLine(NEWS, 'GBPAUD'), /latest:<\/span> BoE hikes to 4% &lt;b&gt;/);
+  assert.equal(NV.latestLine(NEWS, 'COPPER'), '');
+  const f = NV.filtersHtml({ tier: 1, keys: ['EUR', 'USD'], market: 'EURUSD', onlyBook: true, q: '"x"' });
+  assert.match(f, /data-nt-tier="1" aria-pressed="true"/); assert.match(f, /data-nt-key="EUR" aria-pressed="true"/); assert.match(f, /data-nt-key="GBP" aria-pressed="false"/);
+  assert.match(f, /data-nt-book checked/); assert.match(f, /value="&quot;x&quot;"/); assert.match(f, /EURUSD/);
+  for (const k of ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF', 'EQUITIES', 'GOLD', 'OIL']) assert.match(f, new RegExp(`data-nt-key="${k}"`));
 });

@@ -18,6 +18,7 @@ import { detectSession, computeSessionOpens, computeDailyOpens } from './session
 import { loadEventData } from './events.js';
 import { computeDollarRegime, computeUSDStrength } from './macro.js';
 import { exportWatchlistCSV } from './watchlist.js';
+import { loadTgAll, setTgAll } from './alerts.js';
 import { checkAndSendAlerts, invalidateAlertCache, openAlertModal, closeAlertModal, saveAlertModal, saveTelegramCreds, sendTestAlert, sendTestServerAlert, loadAlertCfg, forceKVSync, checkGoldMacroAlerts, checkFXMacroAlerts, checkFXDailyToneAlerts, syncGoldModelNow, sendAllMacroSnapshotsNow } from './alerts.js';
 import { runParticleFilter } from './particleFilter.js';
 
@@ -82,6 +83,8 @@ window.saveAlertModal         = saveAlertModal;
 window.saveTelegramCreds      = saveTelegramCreds;
 window.sendTestAlert          = sendTestAlert;
 window.sendTestServerAlert    = sendTestServerAlert;
+window.setTgAll               = setTgAll;
+loadTgAll();   // the header's "Telegram muted" badge
 window._forceKVSync           = async function() {
   const btn = document.getElementById('alertPushBtn');
   const lbl = document.getElementById('alertPushStatus');

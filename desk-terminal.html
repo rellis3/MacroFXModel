@@ -197,6 +197,7 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
     <button role="tab" aria-selected="false" data-t="pair">Pair</button>
     <button role="tab" aria-selected="false" data-t="changed">Changed</button>
     <button role="tab" aria-selected="false" data-t="options">Options</button>
+    <button role="tab" aria-selected="false" data-t="news">News</button>
     <button role="tab" aria-selected="false" data-t="research">Research</button>
   </nav>
   <div id="wstrip" aria-live="polite"></div>
@@ -212,6 +213,7 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
   <section id="pair" hidden></section>
   <section id="changed" hidden></section>
   <section id="options" hidden></section>
+  <section id="news" hidden></section>
   <section id="research" hidden></section>
 </main>
 <button class="fab" id="askbtn">✦ Ask the desk</button>
@@ -947,7 +949,7 @@ function assetCard(n, c, full = false) {
 <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${rateChip(c.rating)}${scoreBar(s, '220px', assetWord(c))}${live && live.rating !== c.rating ? `<span class="chip gold" title="${esc(live.why ?? '')}">updated → ${esc(live.rating)}</span>` : ''}</div>
 <div class="thesis">“${esc(firstSentence(c.why))}”</div>
 <div class="drv">${sources(c.why).map(t => `<span>${t}</span>`).join('')}<span title="The card's own conviction (the Head's), not the global ruling's or a currency's">card conviction ${esc(c.conviction ?? '–')}</span><span>size ${c.size ?? '–'}${c.sizeBeforeCap && c.sizeBeforeCap !== c.size ? ` (from ${c.sizeBeforeCap})` : ''}</span></div>
-${full ? `<div class="achart" id="achart"></div>` : ladder(c)}
+${full ? `<div class="achart" id="achart"></div>` : ladder(c) + (globalThis.newsLatestLine?.(D.news, n) ?? '')}
 ${full ? `<p>${esc(c.why)}</p><div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${esc(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Target</b><span class="mono">${Math.sign(DIR[c.rating] ?? 0) >= 0 ? `up p50 ${c.levels.up.p50} · p75 ${c.levels.up.p75} · p90 ${c.levels.up.p90}` : `down p50 ${c.levels.down.p50} · p75 ${c.levels.down.p75} · p90 ${c.levels.down.p90}`}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${esc(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${esc(c.plan.timing)}</span></div>` : ''}</div>
 ${deskView(n)}${globalThis.whatDrivesHtml?.(n) ?? ''}<p class="muted">The ladder is today's forecast range (p50, p75, p90 each side of the open); the purple band is the entry zone where the plan names one. ${SCALE_NOTE} The grade is the card's conviction, not a hit rate.</p>` : `<div class="muted" style="margin-top:6px">Read full analysis →</div>`}</div>`;
 }
