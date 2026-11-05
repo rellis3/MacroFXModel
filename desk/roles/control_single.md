@@ -27,6 +27,8 @@ Work top down, the way the desk does:
    Keep the book inside its length limit: with 51 markets, a FLAT card or a card sized 0 gets one short sentence of
    why (at most 20 words) and no plan; spend the words on the cards you size.
 4. Size: from 0 (stand aside) to 1.5 (normal is 1) for each card, by how much the evidence supports it.
+   Where you give a sized card a plan (zone, invalidation), keep its shape (prereg A18): for a long, invalidation <
+   zone < today's up p50 line; for a short, invalidation > zone > the down p50 line; the zone at most one p50 move wide.
 5. Name the risks that could break the day, and the gaps in the data.
 
 Use only the data given. A feed marked GAP or STALE is not evidence. An Evidence Book idea marked null means it was

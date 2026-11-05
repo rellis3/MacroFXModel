@@ -113,10 +113,11 @@ function render(run, universe) {
       if (!names.length) return '';
       return `<tr class="grp"><td colspan="4">${label}</td></tr>` + names.map(n => { const c = b.instruments[n] ?? { rating: 'REVIEW' };
         const plan = c.plan && (c.plan.zone || c.plan.timing) ? `<div class="plan">Plan: ${esc(c.plan.zone)}${c.plan.timing ? ` · ${esc(c.plan.timing)}` : ''}${c.plan.invalidation ? ` · wrong if ${esc(c.plan.invalidation)}` : ''}</div>` : '';
-        return `<tr><td class="n">${n}</td><td><span class="r ${c.rating}">${c.rating.replace('_', ' ')}</span><div class="muted">${esc(c.conviction)}</div>${c.size != null ? `<div class="size">size ${c.size}${c.sizeBeforeCap != null ? ` <span class="muted">(was ${c.sizeBeforeCap}, ${esc((c.cappedBy ?? []).join('/'))} cap)</span>` : ''}</div>` : ''}</td><td>${esc(c.why) || '<span class="muted">no card</span>'}${plan}</td><td class="muted">${esc(c.invalidation)}</td></tr>`; }).join('');
+        const pc = c.planCheck && !c.planCheck.ok ? `<div class="muted" style="color:var(--gold,#e8b85a)">⚠ Plan check: ${c.planCheck.issues.map(esc).join('; ')}</div>` : '';
+        return `<tr><td class="n">${n}</td><td><span class="r ${c.rating}">${c.rating.replace('_', ' ')}</span><div class="muted">${esc(c.conviction)}</div>${c.size != null ? `<div class="size">size ${c.size}${c.sizeBeforeCap != null ? ` <span class="muted">(was ${c.sizeBeforeCap}, ${esc((c.cappedBy ?? []).join('/'))} cap)</span>` : ''}</div>` : ''}</td><td>${esc(c.why) || '<span class="muted">no card</span>'}${plan}${pc}</td><td class="muted">${esc(c.invalidation)}</td></tr>`; }).join('');
     }).join('');
     parts.push(`<div class="panel"><h2>Instruments · five-step scale</h2><table><thead><tr><th>Instrument</th><th>Rating</th><th>Why</th><th>Wrong if</th></tr></thead><tbody>${rows}</tbody></table>
-      ${h.notes?.length ? `<p class="muted">Repairs: ${h.notes.map(esc).join(' · ')}</p>` : ''}</div>`);
+      ${h.notes?.length ? `<p class="muted">Repairs: ${h.notes.map(esc).join(' · ')}</p>` : ''}${(() => { const pcs = Object.values(b.instruments).map(c => c.planCheck).filter(Boolean); return pcs.length ? `<p class="muted">Plan check (prereg A18, description): ${pcs.filter(p => p.ok).length} of ${pcs.length} sized plans have the right shape (invalidation, zone, first target in order; zone at most one p50 move wide).</p>` : ''; })()}</div>`);
     parts.push(exportPanel(b));
     parts.push(`<div class="panel" id="paper"><h2>Paper trades (the alerts' own rules)<span class="desc">description</span></h2><div class="muted">Loading…</div></div>`);
   } else {

@@ -35,4 +35,17 @@ t('message names the level and says it is not an order', () => {
   assert.match(m, /entry zone/); assert.match(m, /158\.27–158\.55/); assert.match(m, /not an order/);
 });
 
+t('fix 2: no "first target" before the zone is reached, and none when the zone sits past the target', () => {
+  const plan = watchPlan({ USDJPY: short }), st = {};
+  check(plan, { USDJPY: 158.1 }, st);
+  assert.deepEqual(check(plan, { USDJPY: 157.5 }, st), [], 'target reached without ever entering the zone: no alert');
+  // a zone that reaches the target: zone alert carries the warning, and no target alert follows
+  // short, down p50 157.57; the zone 157.50-158.40 reaches it; price trades in at 157.55, already past the target
+  const far = { ...short, plan: { ...short.plan, zone: 'sell 157.50-158.40' } }, p2 = watchPlan({ USDJPY: far }), s2 = {};
+  check(p2, { USDJPY: 157.4 }, s2);
+  const z = check(p2, { USDJPY: 157.55 }, s2);
+  assert.equal(z[0].kind, 'zone'); assert.equal(z[0].targetBehind, 157.57); assert.match(message(z[0], far, {}), /already at or behind/);
+  assert.deepEqual(check(p2, { USDJPY: 157.0 }, s2), [], 'no target alert follows');
+});
+
 console.log(`tradeWatch: ${n} tests passed`);

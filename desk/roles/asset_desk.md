@@ -20,6 +20,10 @@ For each instrument:
 3. Rate it on the five-step scale and give a plan: the zone where the view would be taken (from the levels and
    forecast lines in the reports), the level or event that would prove it wrong, and the session or window it belongs
    to. Where trade-decision permissions are reported for a pair, stay inside them.
+   The plan's shape (prereg A18): for a long, invalidation below the zone and the zone below today's up p50 line (the
+   first target); for a short, invalidation above the zone and the zone above the down p50 line. Give the zone as two
+   close prices, at most one p50 move wide (the distance from the open to the p50 line). If price has already passed
+   the p50 line on your side, give no zone and say so: chasing is not a plan.
 
 Use FLAT when the legs cancel or the asset evidence argues against the leg read.
 
