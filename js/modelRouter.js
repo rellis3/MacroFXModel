@@ -119,7 +119,7 @@ export const TASK_CLASS = {
   // 64k context and 8,192-token output); the Head of Research, who peer-reviews their work against the whole book,
   // runs on Anthropic and only when the owner presses the button. Both sit under a per-task choice like desk-news.
   'research-pod':  { ledger: 'brief', label: 'Research pod: the three researchers', defaultProvider: 'deepseek' },
-  'research-head': { ledger: 'full',  label: 'Research pod: Head of Research review', defaultProvider: 'anthropic', effort: { anthropic: 'high' } },
+  'research-head': { ledger: 'full',  label: 'Research pod: Head of Research review', defaultProvider: 'anthropic', models: { anthropic: 'claude-sonnet-5' }, effort: { anthropic: 'high' } },
   // summarising supplied text — the cheap jobs
   'headlines':    { ledger: null,    label: 'Headline summary',  cheapSafe: true },
   'doc-summary':  { ledger: null,    label: 'Document summary',  cheapSafe: true },
