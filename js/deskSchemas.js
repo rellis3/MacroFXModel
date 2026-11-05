@@ -396,7 +396,7 @@ size: 0 to 1.5 (1 = normal). veto: true only when the trade should not be taken 
   "markets": { "EURUSD": { "range": "narrow | normal | wide", "type": "trend | range", "extremes": "london | ny | split", "confidence": "low | medium | high", "why": "one short line" }, ... every market listed }
 }`,
   news_read: `{
-  "items": [ { "i": 0, "tier": 1, "impact": { "USD": -1, "GOLD": 1 }, "why": "one line", "book": "the card it bears on and how, or null" } ]   // one per headline, by its number
+  "items": [ { "i": 0, "tier": 1, "impact": { "USD": -2, "GOLD": 1 }, "why": "one line", "book": "the card it bears on and how, or null" }, { "i": 1, "tier": 3 } ]   // one per headline, by its number; impact -2..+2
 }`,
   weekly_view: `{
   "headline": "the week's view in one sentence",

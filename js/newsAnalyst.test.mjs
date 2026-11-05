@@ -24,11 +24,22 @@ t('merge: near-duplicates across feeds dropped, old ones aged out, newest first'
   const { wire, added } = mergeWire([{ id: 'old', title: 'Old story', ms: now - 100 * 3600e3, touches: [], tier: 3 }],
     [{ title: 'Dollar slips ahead of US midterm elections', ms: now - 3600e3, source: 'A' }, { title: 'Dollar slips ahead of the US midterm elections, euro gains', ms: now - 3000e3, source: 'B' }, { title: 'Gold rises', ms: now - 60e3, source: 'C' }], { now });
   assert.equal(wire.length, 2); assert.equal(wire[0].title, 'Gold rises'); assert.equal(added.length, 2);
+  assert.deepEqual(wire[1].sources, ['A', 'B']); assert.equal(wire[0].firstSeen, now);
+  // the same feed polled again adds nothing and does not repeat its name; a third outlet joins the sources
+  const again = mergeWire(wire, [{ title: 'Gold rises', ms: now - 60e3, source: 'C' }, { title: 'Gold rises', ms: now - 50e3, source: 'D' }], { now: now + 120e3 });
+  assert.equal(again.added.length, 0); assert.deepEqual(again.wire[0].sources, ['C', 'D']); assert.equal(again.wire[0].firstSeen, now);
+  assert.deepEqual(wire[0].sources, ['C'], 'the stored wire is not mutated');
+});
+t('tags: the new official feeds', () => {
+  assert.equal(tagHeadline({ title: 'Bank of Canada raises the policy rate by 25 basis points to 2½%', source: 'BoC' }).tier, 1);
+  assert.deepEqual(tagHeadline({ title: 'Statement on Monetary Policy', source: 'BoJ' }), { touches: ['JPY'], topic: 'central bank', tier: 1 });
+  const bea = tagHeadline({ title: 'GDP (Advance Estimate), 3rd Quarter 2026', source: 'BEA' });
+  assert.deepEqual([bea.touches, bea.topic, bea.tier], [['USD'], 'data', 2]);
 });
 t('model read: indices back to ids, impacts signed, tiers kept in range', () => {
   const batch = [{ id: 'a', tier: 2 }, { id: 'b', tier: 1 }];
-  const v = validateRead({ items: [{ i: 0, tier: 1, impact: { USD: -0.5, XYZ: 1, GOLD: 2 }, why: 'w' }, { i: 7 }] }, batch);
-  assert.deepEqual(v.value.a, { tier: 1, impact: { USD: -1, GOLD: 1 }, why: 'w', book: null });
+  const v = validateRead({ items: [{ i: 0, tier: 1, impact: { USD: -0.5, XYZ: 1, GOLD: 2, EUR: 0, JPY: 'x', OIL: -3.4 }, why: 'w' }, { i: 7 }] }, batch);
+  assert.deepEqual(v.value.a, { tier: 1, impact: { USD: -1, GOLD: 2, OIL: -2 }, why: 'w', book: null });
   assert.equal(validateRead({ items: [] }, batch).ok, false);
 });
 t('pick and text', () => {
@@ -36,5 +47,6 @@ t('pick and text', () => {
   assert.deepEqual(pick(wire, { sinceMs: 5 }).map(h => h.title), ['A', 'B']);
   assert.deepEqual(pick(wire, { ccy: 'EUR' }).map(h => h.title), ['B']);
   assert.match(wireText([wire[1]]), /B — y \(EUR\+\)/);
+  assert.match(wireText([{ ...wire[1], read: { impact: { USD: -2, EUR: 1 }, why: 'y' } }]), /\(USD−− EUR\+\)/);
 });
 console.log(`newsAnalyst: ${n} tests passed`);
