@@ -294,6 +294,23 @@ Written on 2026-11-05 after that morning's Head of Desk reply was cut off at the
 **Change.** At the ceiling, the retry now appends one fixed instruction (`SHORTER` in `js/deskRun.js`): the same JSON shape and the same calls, written much shorter, with brief thinking, a few words for a FLAT or size-0 card and no plan. The words are identical for every role and both arms, so H2 stays a fair comparison. The cap, the scoring, the arms, the hypotheses and the judgement date are unchanged. The desk is scored as operated, by role version.
 
 **Operational change.** When the Head fails, the finished stages' checkpoint is kept for 6 hours, so a re-run redoes only what failed. No hypothesis test had been run.
+
+### A17 — 2026-11-05 — PRE-RESULTS — the cards' price lines come from the validated forecast pick
+Owner decision, 2026-11-05. No hypothesis test had been run, and no desk score was read to make this change: one eligible day exists so far (2026-11-04).
+
+**Change.** Each card's `levels` (the open and the up/down p50/p75/p90 prices) are attached after the Head writes, in `js/deskRoles.js` `groupData`.
+- **Was:** the plain production ladder (`/api/vol-forecast`).
+- **Now:** "Forecast · chosen ★" (`/api/vol-forecast/persist-ladder/json`, persistence + implied vol; Evidence Book `forecast-pick`, VALIDATED, `forge/FORECAST_PICK_PREREG.md`), wherever it covers the market (34 of the 51) and its Desk Pack feed is fresh.
+- **Elsewhere:** metals other than gold, energy, grains, NOK/SEK and crypto keep the plain ladder. Each card records which source it used (`levels.source`).
+
+**Why.** The desk's lines should be the one set the repo has validated as best. The plain ladder runs tight after calm spells and wide after busy ones; the pick fixes that, at 0.968–0.980 of plain's pinball loss, walk-forward 2020–2026.
+
+**What it changes in the test.**
+- The scoring unit u (the day's p50 half-range, §3) now comes from these lines. A day is scored in the unit of the lines it actually carried.
+- The control's cards get the same lines, so H2 stays a fair comparison.
+- The trade watcher's zones, targets and invalidations, and the paper-trade record, follow the cards automatically.
+
+**Effective** from the first run after deploy. Earlier days keep the lines they were written with. The verdict reports H1 for days before and after this amendment as description (like the roles hash), never as a separate scored cell.
 ---
 
 ## RESULTS — not run

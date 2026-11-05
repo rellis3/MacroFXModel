@@ -25,6 +25,7 @@ import * as LLV from './leadLagView.js';
 import * as OPV from './optionsView.js';
 import { createLevelChart } from '../levelChart.js';
 import { cardDrivers } from './cardExplain.js';
+import { pineForCard, oandaOf } from '../deskBookPine.js';
 
 const el = id => document.getElementById(id);
 const h = CB.esc;
@@ -338,8 +339,8 @@ async function renderPair() {
   const top = Object.entries(D.cards ?? {}).filter(([, x]) => (DIR[x.rating] ?? 0) !== 0 && x.size > 0).sort((a, b) => b[1].size - a[1].size).slice(0, 8);
   T.pairChart?.destroy?.(); T.pairChart = null;
   root.innerHTML = `<div class="tt-pick"><label class="lbl" for="tt-sel">Market</label><select id="tt-sel">${Object.entries(GROUPS).map(([g, gl]) => { const xs = list.filter(x => groupOf(x) === g); return xs.length ? `<optgroup label="${h(gl)}">${xs.map(x => `<option value="${x}"${x === n ? ' selected' : ''}>${h(nice(x))}</option>`).join('')}</optgroup>` : ''; }).join('')}</select>${top.map(([x, cx]) => `<button class="chip ${(DIR[cx.rating] ?? 0) > 0 ? 'up' : 'dn'}" data-p="${x}" style="cursor:pointer">${h(x)}</button>`).join('')}<span class="muted" style="margin-left:auto">link: <span class="mono">desk-terminal.html#pair=${h(n)}</span></span></div>
-<div class="card glow"><div class="ch"><span class="chip">${h(GROUPS[groupOf(n)] ?? '')}</span><span class="chip">${h(n)}</span>${legs?.[0] ? `<span class="chip pur" data-ccy="${legs[0]}" style="cursor:pointer">${FLAG[legs[0]] ?? ''} ${legs[0]}</span><span class="chip pur" data-ccy="${legs[1]}" style="cursor:pointer">${FLAG[legs[1]] ?? ''} ${legs[1]}</span>` : ''}<span class="r">${c ? gradeChip(c) : ''}</span></div>
-<h2 style="margin:0 0 8px;font:700 24px var(--sans)">${h(nice(n))}</h2>
+<div class="card glow"><div class="ch"><span class="chip">${h(GROUPS[groupOf(n)] ?? '')}</span><span class="chip">${h(n)}</span>${legs?.[0] ? `<span class="chip pur" data-ccy="${legs[0]}" style="cursor:pointer">${FLAG[legs[0]] ?? ''} ${legs[0]}</span><span class="chip pur" data-ccy="${legs[1]}" style="cursor:pointer">${FLAG[legs[1]] ?? ''} ${legs[1]}</span>` : ''}<span class="r">${c ? gradeChip(c) : ''}${c ? `<button type="button" class="chip" id="tt-p-tv" style="cursor:pointer;margin-left:6px" title="Copy a TradingView (Pine) script that draws this card's lines, entry zone, invalidation and first target for today">TradingView</button>` : ''}</span></div>
+<h2 style="margin:0 0 8px;font:700 24px var(--sans)">${h(nice(n))}</h2><div id="tt-p-tvmsg" class="muted" style="font-size:12px"></div>
 ${c ? `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${rateChip(c.rating)}${scoreBar(assetScore(c), '240px', assetWord(c))}${D.live?.[n] && D.live[n].rating !== c.rating ? `<span class="chip gold" title="${h(D.live[n].why ?? '')}">updated → ${h(D.live[n].rating)}</span>` : ''}</div>
 <div class="thesis">“${h(firstSentence(c.why))}”</div><div class="drv">${sources(c.why).map(t => `<span>${t}</span>`).join('')}<span title="the card's own conviction, not the global ruling's or a currency's">card conviction ${h(c.conviction ?? '–')}</span><span>size ${c.size ?? '–'}${c.sizeBeforeCap && c.sizeBeforeCap !== c.size ? ` (from ${c.sizeBeforeCap}, capped by ${h((c.cappedBy ?? []).join(', '))})` : ''}</span></div>` : '<div class="muted">The desk has no card for this market today.</div>'}
 <div class="tt-chart" id="tt-lc"></div>
@@ -360,6 +361,14 @@ ${c ? `${ladder(c)}<div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b
 <div class="card" id="tt-p-res">${loading('research')}</div></div>`;
   root.querySelector('#tt-sel').onchange = e => openPair(e.target.value);
   root.querySelectorAll('[data-p]').forEach(b => (b.onclick = () => openPair(b.dataset.p)));
+  const tv = el('tt-p-tv');
+  if (tv) tv.onclick = async () => {
+    // the morning card as written (desk-run.html exports the whole book); description, not the scored test (prereg H1)
+    const txt = pineForCard(n, c, { date: D.run?.date ?? '' }), o = oandaOf(n), msg = el('tt-p-tvmsg');
+    let ok = false; try { await navigator.clipboard.writeText(txt); ok = true; } catch { /* clipboard blocked: download the file instead */ }
+    if (!ok) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' })); a.download = `desk-${n}-${D.run?.date ?? 'today'}.pine`; document.body.appendChild(a); a.click(); a.remove(); }
+    if (msg) msg.innerHTML = `${ok ? 'Pine script copied.' : 'The clipboard is blocked here, so the script was downloaded as a .pine file.'} In TradingView: Pine Editor → new indicator → paste → Save → Add to chart${o ? `, on OANDA:${h(o.replace('_', ''))}` : ''}. Today only; description, not the scored test.`;
+  };
   wire(root);
   pairChart(n, c);
   const mine = () => T.pair === n;
@@ -492,10 +501,22 @@ ${r.items.length ? (() => { const one = x => `<div class="tt-chg${x.kind === 'ca
 <p class="tt-note">Ranked by how much it matters to the book: a flipped or new card weighs by its size, a currency bias by how far it moved (more if it changed sides), then world-stress tiles that changed colour${prevStress ? '' : ' (the first comparison appears once a snapshot from an earlier day exists: the server keeps the first look of each day)'}, then chain links that broke or came back in the desk watch since the previous book (more when they end on something the book holds). A reading order, not a model.</p></div>
 <div class="tt-grid2" style="margin-top:14px"><div class="card"><div class="ch"><span class="lbl">Currency bias · previous → now</span></div><div class="tt-bias">${biasRows}</div><div class="muted" style="margin-top:6px">left: ${h(r.prevDate ?? '–')} · right: ${h(r.curDate ?? '–')} · −2 … +2</div></div>
 <div class="card"><div class="ch"><span class="lbl">World stress now</span>${curStress ? `<span class="r chip ${curStress.overall === 'stress' ? 'dn' : curStress.overall === 'watch' ? 'gold' : 'up'}">${h(curStress.overall)}</span>` : ''}</div>${(curStress?.tiles ?? []).map(t => { const p = prevStress?.tiles?.find(x => x.id === t.id); return `<div class="tt-row"><span class="chip ${t.level === 'stress' ? 'dn' : t.level === 'watch' ? 'gold' : 'up'}">${h(t.level)}</span><b>${h(t.label)}</b>${p && p.level !== t.level ? `<span class="chip pur">was ${h(p.level)}</span>` : ''}<span class="w">${h(t.detail)}</span></div>`; }).join('') || '<div class="muted">No world-stress board.</div>'}</div></div>`;
-  root.insertAdjacentHTML('beforeend', `${sec('Morning thesis vs evening reality', 'the book\'s claims laid against the day after the evening score · description, not a scored cell')}<div class="card" id="tt-tr">${loading('the thesis against reality')}</div>`);
+  root.insertAdjacentHTML('beforeend', `${sec('Morning thesis vs evening reality', 'the book\'s claims laid against the day after the evening score · description, not a scored cell')}<div class="card" id="tt-tr">${loading('the thesis against reality')}</div><div class="card" id="tt-pp" style="margin-top:10px">${loading('the paper trades')}</div>`);
   wire(root);
   root.querySelectorAll('[data-pair]').forEach(x => { x.onclick = () => openPair(x.dataset.pair); x.onkeydown = e => { if (e.key === 'Enter') openPair(x.dataset.pair); }; });
   drawThesisReality(el('tt-tr'));
+  drawPaperLine(el('tt-pp'));
+}
+
+// the paper-trade running total (GET /api/desk-paper/history): one line beside the thesis-vs-reality panel
+async function drawPaperLine(box) {
+  if (!box) return;
+  const r = await getJson('/api/desk-paper/history').catch(() => null), t = r?.total;
+  const note = "Description of trading the watcher's alerts, not the pre-registered test; few days so far.";
+  box.innerHTML = `<div class="ch"><span class="lbl">Paper trades · the alerts' own rules</span></div>${t?.days
+    ? `<div class="mono" style="font-size:13px">${t.trades} trades over ${t.days} day${t.days === 1 ? '' : 's'} · ${t.wins} won${t.hitRate != null ? ` (${Math.round(t.hitRate * 100)}%)` : ''} · mean ${sg(t.meanR)} u · size × R <b class="${t.sumSizeR > 0 ? 'up' : t.sumSizeR < 0 ? 'dn' : ''}">${sg(t.sumSizeR)}</b> after costs</div>`
+    : `<div class="muted">${h(r?.ok === false ? r.error ?? 'Could not load.' : 'No finished day yet: the first is saved after the evening score (21:10 London).')}</div>`}
+<div class="muted" style="font-size:12px;margin-top:4px">${h(note)} In at the entry zone, out at the first target, the invalidation or 21:00 London, one spread per trade. Each day: <a href="desk-run.html">Desk Run</a>.</div>`;
 }
 
 // ═════════════════════════════════════════════ RESEARCH TAB ═════════════════════════════════════════════

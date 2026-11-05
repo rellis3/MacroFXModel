@@ -73,6 +73,7 @@ function isAllowedKVKey(key) {
     'terminal_stress_snaps_v1',
     'analyst_scorecard_v1',
     'thesis_reality_v1',
+    'desk_paper_record_v1',
     'cb_speech_log_v1',
     'release_surprise_log_v1',
     'desk_alerts_v1',
@@ -123,7 +124,7 @@ function isAllowedKVKey(key) {
     'pattern_bot_state', 'pattern_bot_status', 'pattern_bot_config',
     'level_engine_bot_state', 'level_engine_bot_status', 'level_engine_fwd_log',
     'bot_allocations', 'paper_record_v1', 'daily_read_v1', 'surface_lab_v1', 'forecast_scorecard_v1', 'signal_journal_v1']);
-  const PREFIXES = ['expect_', 'ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'event_windows_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'rgv4_', 'rgv7_', 'trade_hist_', 'confluence_', 'vmlog_', 'oi_raw_', 'cboe_raw_', 'bot_daily_recon_', 'sched_lastrun_'];
+  const PREFIXES = ['expect_', 'ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'event_windows_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'rgv4_', 'rgv7_', 'trade_hist_', 'confluence_', 'vmlog_', 'oi_raw_', 'cboe_raw_', 'bot_daily_recon_', 'sched_lastrun_', 'desk_paper_'];
   if (EXACT.has(key)) return true;
   return PREFIXES.some(p => key.startsWith(p));
 }
@@ -1116,6 +1117,8 @@ export default {
             'analyst_scorecard_v1',
             // thesis_reality_v1: the morning thesis laid against the evening, one compact row per scored day (js/thesisReality.js); a forward record.
             'thesis_reality_v1',
+            // desk_paper_record_v1: paper trades on the trade watcher's own rules, one summary row per day (js/deskPaperTrades.js).
+            'desk_paper_record_v1',
             // cb_speech_log_v1 / release_surprise_log_v1 / desk_alerts_v1: speech reads (paid model calls), the surprise reader's and the desk alerts' dedupe state (a reset would resend).
             'cb_speech_log_v1',
             'release_surprise_log_v1',
@@ -1293,7 +1296,7 @@ export default {
           // equity_ / expect_: point-in-time records that cannot be rebuilt (see
           // kv.js isCfKey for the reasoning). Missing this line = a 48h TTL and
           // the equity curve deletes itself as it is written.
-          const PERMANENT_PREFIXES = ['vmlog_', 'oi_raw_', 'cboe_raw_', 'equity_', 'expect_'];
+          const PERMANENT_PREFIXES = ['vmlog_', 'oi_raw_', 'cboe_raw_', 'equity_', 'expect_', 'desk_paper_'];
           const isPermanent = PERMANENT_KEYS.has(key)
             || PERMANENT_PREFIXES.some(p => key.startsWith(p));
           const kvOpts = isPermanent ? {} : { expirationTtl: 172800 }; // 48h

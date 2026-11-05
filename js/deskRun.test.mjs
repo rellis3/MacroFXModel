@@ -324,4 +324,17 @@ await t('groupData names a stale or missing feed behind a row (the asset desks n
   assert.ok(gd.EURUSD.levels, 'stale lines are still given, and flagged');
 });
 
+await t('groupData: the card lines come from "Forecast · chosen ★" where it covers the market and is fresh, else the plain ladder (prereg A17)', () => {
+  const plain = { oh: { p50: 0.3, p75: 0.5, p90: 0.8 }, ol: { p50: 0.3, p75: 0.5, p90: 0.8 } }, pick = { oh: { p50: 0.2, p75: 0.4, p90: 0.6 }, ol: { p50: 0.25, p75: 0.45, p90: 0.65 } };
+  const pack = st => ({ skills: { vol_iv: { feeds: {
+    'vol-forecast': { data: { instruments: { EURUSD: { ladder: plain }, WTI: { ladder: plain } } } },
+    'vol-forecast/session': { data: { instruments: { EURUSD: { anchor_open: 1.1 }, WTI: { anchor_open: 60 } } } },
+    'vol-forecast/persist-ladder/json': { status: st, data: { instruments: { EURUSD: pick } } },
+  } } } });
+  const gd = groupData(pack('ok'), ['EURUSD', 'WTI']);
+  assert.equal(gd.EURUSD.levels.source, 'chosen'); assert.equal(gd.EURUSD.levels.up.p50, 1.1022); assert.equal(gd.EURUSD.levels.down.p50, 1.09725);
+  assert.equal(gd.WTI.levels.source, 'plain', 'not covered by the pick: the plain ladder');
+  assert.equal(groupData(pack('stale'), ['EURUSD']).EURUSD.levels.source, 'plain', 'a stale pick falls back to plain');
+});
+
 console.log(`deskRun: ${n} tests passed`);
