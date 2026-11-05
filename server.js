@@ -6021,8 +6021,9 @@ app.post('/api/research-pod/case/reply', async (req, res) => {
     if (_rcJobs[id]?.status === 'running') return res.status(409).json({ ok: false, error: 'this case is already working', job: _rcJobs[id] });
     if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key' });
     await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); await _rcPut({ ...c2, pending: { owner: text, at: new Date().toISOString() }, updatedAt: new Date().toISOString() }); });
-    // a case whose round 1 failed runs round 1 again (the full session), with the message added to the question
-    if (!c.rounds.length) { const job = _rpStart({ brief: [c.question, text].filter(Boolean).join('\n\n'), caseId: id }); if (!job) return res.status(409).json({ ok: false, error: 'the research pod is already working on another question', job: _rpJob }); return res.status(202).json({ ok: true, job }); }
+    // a case whose round 1 failed runs round 1 again (the full session), with the message added to the question; a case
+    // opened from a dossier has the dossier as its context instead, so its first round is an ordinary round over it
+    if (!c.rounds.length && !c.dossier) { const job = _rpStart({ brief: [c.question, text].filter(Boolean).join('\n\n'), caseId: id }); if (!job) return res.status(409).json({ ok: false, error: 'the research pod is already working on another question', job: _rpJob }); return res.status(202).json({ ok: true, job }); }
     res.status(202).json({ ok: true, job: _rcStartJob(id, 'round', job => _rcRound(id, text, job)) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -6035,6 +6036,30 @@ app.post('/api/research-pod/case/review', async (req, res) => {
     if (!c.rounds.length) return res.status(400).json({ ok: false, error: 'the researchers have not answered yet' });
     if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key' });
     res.status(202).json({ ok: true, job: _rcStartJob(id, 'review', job => _rcReview(id, job)) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/research-pod/case/from-dossier { id }: open a literature dossier (an idea or a paper review) as a case, once
+// per dossier (the same call again returns the same case). The dossier's hypothesis is the question and the dossier the
+// case's context; its proposals go into the library tagged with the case. No model runs: the owner replies to start round 1.
+app.post('/api/research-pod/case/from-dossier', async (req, res) => {
+  try {
+    const did = String(req.body?.id ?? ''), rec = (await _rpGet(_LIT.dossiers, [])).find(x => x.id === did);
+    if (!rec) return res.status(404).json({ ok: false, error: 'no such dossier' });
+    if (!rec.dossier) return res.status(400).json({ ok: false, error: 'this job wrote no dossier, so there is nothing to discuss' });
+    await _rcEnsure();
+    const out = await _rcLock(async () => {
+      const have = _RCS.caseForDossier(await _rcRead(), did); if (have) return { c: have, created: false };
+      const c = _RCS.caseFromDossier(rec, { date: _dpLondonDate(Date.now()) });
+      // the dossier's proposals into the library (a proposal already there keeps its revisions and marks), tagged with the case
+      const lib = await _rcStrict(_RP.library, []), fresh = (rec.dossier.proposals ?? []).filter(p => !lib.some(x => x.id === p.id)).map(p => ({ ...p, dossier: did }));
+      const l2 = _RCS.tagLibrary(fresh.length ? _rpMerge(lib, fresh, c.date) : lib, (rec.dossier.proposals ?? []).map(p => p.id), c.id);
+      await kv.put(_RP.library, JSON.stringify(l2));
+      await _rcPut(c);
+      return { c, created: true, fresh };
+    });
+    const cites = (out.fresh ?? []).filter(p => p.citations?.length);
+    for (const p of cites) await kv.put(_LIT.papers, JSON.stringify(_litCite(await _rpGet(_LIT.papers, []), p.citations, { proposals: [p.id] })));
+    res.status(out.created ? 201 : 200).json({ ok: true, created: out.created, id: out.c.id, summary: _RCS.summary(out.c, _rcJobs[out.c.id]) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // POST /api/research-pod/case/status { id, status: open|parked|closed }
@@ -6657,14 +6682,16 @@ app.post('/api/research-pod/paper', (req, res) => {
 // GET /api/research-pod/dossiers: every dossier (newest first, summaries) and the job.
 app.get('/api/research-pod/dossiers', async (_req, res) => {
   try { res.set('Cache-Control', 'no-store'); const all = await _rpGet(_LIT.dossiers, []);
-    res.json({ ok: true, label: 'literature reviews and proposals, not results', job: _litJobView(), sources: _LIT_SOURCES, dossiers: all.map(_litDossierSummary) }); }
+    const byDossier = Object.fromEntries((await _rcStore().catch(() => _RCS.emptyStore())).cases.filter(c => c.dossierId).map(c => [c.dossierId, c.id]));
+    res.json({ ok: true, label: 'literature reviews and proposals, not results', job: _litJobView(), sources: _LIT_SOURCES, dossiers: all.map(d => ({ ..._litDossierSummary(d), caseId: byDossier[d.id] ?? null })) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/research-pod/dossier?id=: one dossier in full.
 app.get('/api/research-pod/dossier', async (req, res) => {
   try { res.set('Cache-Control', 'no-store'); const d = (await _rpGet(_LIT.dossiers, [])).find(x => x.id === String(req.query.id ?? ''));
     if (!d) return res.status(404).json({ ok: false, error: 'no such dossier' });
-    const lib = await _rpGet(_RP.library, []); res.json({ ok: true, ...d, inLibrary: (d.dossier?.proposals ?? []).filter(p => lib.some(x => x.id === p.id)).map(p => p.id) }); }
+    const lib = await _rpGet(_RP.library, []), c = _RCS.caseForDossier(await _rcStore().catch(() => _RCS.emptyStore()), d.id);
+    res.json({ ok: true, ...d, inLibrary: (d.dossier?.proposals ?? []).filter(p => lib.some(x => x.id === p.id)).map(p => p.id), caseId: c?.id ?? null }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // POST /api/research-pod/dossier/adopt { id, proposalId }: put a dossier's proposal into the pod's library (marks, threads, cards).
