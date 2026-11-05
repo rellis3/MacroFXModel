@@ -29,6 +29,8 @@ export const STORES = {
   global_read_v1: R('Global Read forward record', 1),
   daily_read_v1: R('Daily Read (tags + scored days)', 1),
   forecast_scorecard_v1: R('Forecast scorecard', 1),
+  forecast_audit_v1: R('Forecast auditor (tags, audit, drift log)', 2),
+  forecast_audit_bt_v1: L('Forecast auditor history backtests', 365, { market: false }),
   signal_journal_v1: R('Signal journal (forward test)', 1),
   pair_ledger_v1: R('Pair ledger (lean record)', 1),
   chain_read_v1: R('Chain read (AI narrative)', 3, { market: false }),

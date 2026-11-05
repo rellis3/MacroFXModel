@@ -248,8 +248,8 @@ ${c.hours.length ? `<h3 style="font-size:14px;margin:14px 0 6px">Entries by Lond
   renderRules();
 }
 function renderResearch() {
-  $('research').innerHTML = '<div class="panel" id="podpanel"><h2>Research pod</h2><p class="muted">Loading…</p></div><div class="panel" id="qtpanel"><h2>Quick test</h2><p class="muted">Loading…</p></div><div class="panel" id="litpanel"><h2>Literature desk</h2><p class="muted">Loading…</p></div><div class="panel" id="buildpanel" hidden></div><div class="panel" id="cardpanel" hidden></div><div class="panel" id="allocpanel"><h2>Allocation committee</h2><p class="muted">Loading…</p></div><div class="panel" id="shadowpanel"><h2>Forward shadows</h2><p class="muted">Loading…</p></div><div class="panel" id="fleetpanel"><h2>Fleet portfolio and risk</h2><p class="muted">Loading…</p></div><div class="panel" id="valpanel"><h2>Validation desk</h2><p class="muted">Loading…</p></div><div class="panel" id="catpanel"></div><div class="panel" id="theorypanel"><h2>Theory desk</h2><p class="muted">Loading…</p></div><div class="panel" id="opspanel"><h2>Research ops</h2><p class="muted">Loading…</p></div><div id="ecopanel"></div>';
-  renderPod(); renderQuickTest(); renderLit(); renderAlloc(); renderShadows(); renderFleet(); renderValidation(); renderTheory(); renderOps();
+  $('research').innerHTML = '<div class="panel" id="podpanel"><h2>Research pod</h2><p class="muted">Loading…</p></div><div class="panel" id="qtpanel"><h2>Quick test</h2><p class="muted">Loading…</p></div><div class="panel" id="fapanel"><h2>Forecast auditor</h2><p class="muted">Loading…</p></div><div class="panel" id="litpanel"><h2>Literature desk</h2><p class="muted">Loading…</p></div><div class="panel" id="buildpanel" hidden></div><div class="panel" id="cardpanel" hidden></div><div class="panel" id="allocpanel"><h2>Allocation committee</h2><p class="muted">Loading…</p></div><div class="panel" id="shadowpanel"><h2>Forward shadows</h2><p class="muted">Loading…</p></div><div class="panel" id="fleetpanel"><h2>Fleet portfolio and risk</h2><p class="muted">Loading…</p></div><div class="panel" id="valpanel"><h2>Validation desk</h2><p class="muted">Loading…</p></div><div class="panel" id="catpanel"></div><div class="panel" id="theorypanel"><h2>Theory desk</h2><p class="muted">Loading…</p></div><div class="panel" id="opspanel"><h2>Research ops</h2><p class="muted">Loading…</p></div><div id="ecopanel"></div>';
+  renderPod(); renderQuickTest(); renderForecastAudit(); renderLit(); renderAlloc(); renderShadows(); renderFleet(); renderValidation(); renderTheory(); renderOps();
   // Phases 6 and 15: the economist's briefs and playbooks (also in the newsletter's "The releases ahead" page)
   getJson('/api/desk-run').then(run => {
     const e = run?.ok && run.date === today ? run.economist : null, el = $('ecopanel'); if (!el) return;
@@ -261,6 +261,8 @@ function renderResearch() {
 
 // Build item 6 (/api/research-pod/quick-test, js/quickTestView.js): the research lab's quick test, exploratory, never banked.
 let QTV = null;
+// The forecast auditor (js/forecastAuditView.js): the forecast lines' calibration, drift alarms, history re-test (exploratory).
+async function renderForecastAudit() { try { await (await import('./js/forecastAuditView.js')).mount($('fapanel'), { getJson }); } catch (e) { $('fapanel').innerHTML = `<h2>Forecast auditor</h2><p class="muted">Did not load: ${e.message}</p>`; } }
 async function renderQuickTest() { QTV ??= await import('./js/quickTestView.js'); await QTV.mount($('qtpanel'), { getJson, onChange: qtChips }); qtChips(); }
 function qtChips() { if (!QTV) return; document.querySelectorAll('[data-qtchips]').forEach(e => { e.innerHTML = ' ' + QTV.linkedChips(QTV.tests(), e.dataset.qtchips); QTV.wireOpen(e); }); }
 // Phases 23-25 (/api/research-pod): three researchers propose new systems; you mark each one, ask them questions, and send one to the architect.
