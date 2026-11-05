@@ -593,11 +593,46 @@ export function openAlertModal() {
   // Telegram master switches — one row per SENDER, built from the server's
   // registry so a newly added sender appears here without a client change.
   renderTgMasterRows(cfg.tgMaster ?? {});
+  loadTgAll();
 
   // Load saved bot status
   loadBotStatus();
 
   overlay.classList.add('open');
+}
+
+// ── The master kill switch: ALL Telegram messages (server KV tg_master_all, js/telegramGuard.js) ──
+// Saved on click, not with the modal's Save button: it is the one switch that must take effect at once.
+let _tgAllOn = null;
+function drawTgAll(on, note = '') {
+  _tgAllOn = on;
+  const cb = document.getElementById('tgAllToggle'), st = document.getElementById('tgAllState'), box = document.getElementById('tgAllBox');
+  if (cb) { cb.checked = on !== false; cb.disabled = on == null; }
+  if (st) st.textContent = on == null ? (note || 'checking…') : on ? 'ON' : 'OFF: nothing is sent';
+  if (st) st.style.color = on === false ? 'var(--red)' : on ? 'var(--green)' : 'var(--text3)';
+  if (box) box.style.borderColor = on === false ? 'var(--red)' : 'var(--border)';
+  const badge = document.getElementById('tgMutedBadge');
+  if (badge) badge.style.display = on === false ? '' : 'none';
+}
+export async function loadTgAll() {
+  try {
+    const j = await (await fetch('/api/telegram/master', { cache: 'no-store' })).json();
+    if (!j?.ok) throw new Error(j?.error || 'no answer');
+    drawTgAll(j.on !== false);
+  } catch (e) { drawTgAll(null, `could not read (${e.message})`); }
+  return _tgAllOn;
+}
+export async function setTgAll(on) {
+  const st = document.getElementById('tgAllState');
+  if (st) st.textContent = 'saving…';
+  try {
+    const j = await (await fetch('/api/telegram/master', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on: !!on }) })).json();
+    if (!j?.ok) throw new Error(j?.error || 'save failed');
+    drawTgAll(j.on !== false);
+  } catch (e) {
+    drawTgAll(_tgAllOn);   // put the box back to what the server holds
+    if (st) { st.textContent = `not saved (${e.message})`; st.style.color = 'var(--red)'; }
+  }
 }
 
 // Build the per-sender switch rows. Fetch failure leaves whatever is already in

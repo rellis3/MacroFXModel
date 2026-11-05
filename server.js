@@ -332,6 +332,7 @@ import { buildOIZones, explainNoZones, oiSizeCalibrationStats as _oiSizeCalibrat
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
+import { TG_ALL_KEY as _TG_ALL_KEY, parseMaster as _tgParseMaster, masterRecord as _tgMasterRecord, masterOn as _tgMasterOn, shouldSend as _tgShouldSend, isTelegramUrl as _isTelegramUrl, isWorkerTgRoute as _isWorkerTgRoute, MUTED_TEXT as _TG_MUTED_TEXT } from './js/telegramGuard.js';   // the master kill switch for every Telegram message (⚙ Alerts)
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache, LEARN_BOUNDARY_UTC as _LV2_BOUNDARY } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
 import { DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
@@ -1270,6 +1271,9 @@ async function reloadConfig() {
   for (const k of Object.keys(state.cooldowns)) {
     if (state.cooldowns[k] < cutoff) delete state.cooldowns[k];
   }
+
+  // The master kill switch (js/telegramGuard.js). A failed read keeps the last known value, never flips it.
+  try { state.tgAll = _tgParseMaster(await kv.get(_TG_ALL_KEY)); } catch (e) { console.warn('[TG] master read failed, keeping', state.tgAll?.on !== false ? 'on' : 'off', e.message); }
 
   state.cfgLoadedAt = Date.now();
 }
@@ -2261,12 +2265,33 @@ const TG_SENDERS = {
 };
 
 function tgOn(sender) {
-  return state.cfg?.tgMaster?.[sender] !== false;
+  return _tgShouldSend({ master: state.tgAll, tgMaster: state.cfg?.tgMaster, sender });
+}
+
+// ── The master kill switch: ALL Telegram messages ────────────────────────────
+// One flag above every sender (KV tg_master_all, js/telegramGuard.js; ⚙ Alerts → "All Telegram messages"). Off =
+// nothing reaches Telegram from this process: tgOn() answers false for every sender, sendTelegram /
+// sendTelegramPhoto refuse, and, as a backstop for every other path (levelsV2Engine.js, the newsletter, the
+// in-process _worker.js test routes), any fetch to api.telegram.org is answered locally without leaving the box.
+// Default ON. The Python bots and the Cloudflare cron worker send directly and are not covered.
+function tgAllOn() { return _tgMasterOn(state.tgAll); }
+let _tgMutedLogAt = 0;
+function _tgMutedNote(where) { if (Date.now() - _tgMutedLogAt > 600_000) { _tgMutedLogAt = Date.now(); console.log(`[TG] muted by the master switch (${where}); nothing sent`); } }
+{
+  const _rawFetch = globalThis.fetch;
+  globalThis.fetch = function guardedFetch(input, init) {
+    if (!tgAllOn() && _isTelegramUrl(input)) {
+      _tgMutedNote('fetch');
+      return Promise.resolve(new Response(JSON.stringify({ ok: false, error_code: 423, description: _TG_MUTED_TEXT }), { status: 423, headers: { 'Content-Type': 'application/json' } }));
+    }
+    return _rawFetch(input, init);
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function sendTelegram(token, chatId, text) {
+  if (!tgAllOn()) { _tgMutedNote('sendTelegram'); return false; }
   try {
     const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method:  'POST',
@@ -2285,6 +2310,7 @@ async function sendTelegram(token, chatId, text) {
 // than folding the message into a caption — `formatAlert` output routinely
 // exceeds 1024 once the plain-English decoder block is appended.
 async function sendTelegramPhoto(token, chatId, png, caption = '') {
+  if (!tgAllOn()) { _tgMutedNote('sendTelegramPhoto'); return false; }
   try {
     const fd = new FormData();
     fd.append('chat_id', String(chatId));
@@ -3587,11 +3613,32 @@ app.get('/api/levels', (_req, res) => {
 app.get('/api/telegram/senders', (_req, res) => {
   res.json({
     ok: true,
+    master: { on: tgAllOn(), at: state.tgAll?.at ?? null },
     senders: Object.entries(TG_SENDERS).map(([key, label]) => ({
       key, label, on: tgOn(key),
     })),
   });
 });
+
+// GET /api/telegram/master → { ok, on, at }: the master kill switch for every Telegram message (default on).
+// POST /api/telegram/master { on: true|false } → stores it in KV tg_master_all and takes effect at once.
+app.get('/api/telegram/master', async (_req, res) => {
+  try { state.tgAll = _tgParseMaster(await kv.get(_TG_ALL_KEY)); } catch { /* keep the last known value */ }
+  res.set('Cache-Control', 'no-store');
+  res.json({ ok: true, on: tgAllOn(), at: state.tgAll?.at ?? null });
+});
+app.post('/api/telegram/master', async (req, res) => {
+  if (typeof req.body?.on !== 'boolean') return res.status(400).json({ ok: false, error: 'send { "on": true } or { "on": false }' });
+  try {
+    const rec = _tgMasterRecord(req.body.on);
+    await kv.put(_TG_ALL_KEY, JSON.stringify(rec));
+    state.tgAll = rec;
+    console.log(`[TG] master switch ${rec.on ? 'ON' : 'OFF'} (all Telegram messages)`);
+    res.json({ ok: true, on: rec.on, at: rec.at });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// The worker routes that send a Telegram message (browser alerts, the regime-bot test pings): answered here when muted.
+app.use((req, res, next) => (!tgAllOn() && _isWorkerTgRoute(req.method, req.path) ? res.status(423).json({ ok: false, muted: true, error: _TG_MUTED_TEXT, reason: _TG_MUTED_TEXT }) : next()));
 
 app.post('/api/telegram/test-server', async (_req, res) => {
   if (!state.tg?.token || !state.tg?.chatId) {
@@ -3600,6 +3647,7 @@ app.post('/api/telegram/test-server', async (_req, res) => {
   if (state.cfg?.serverEnabled === false) {
     return res.json({ ok: false, error: 'Server alerts are disabled' });
   }
+  if (!tgAllOn()) return res.json({ ok: false, error: _TG_MUTED_TEXT });
   const sent = await sendTelegram(
     state.tg.token, state.tg.chatId,
     '✅ <b>MacroFX Server (Railway)</b> — server-side alerts connected!',
@@ -9883,6 +9931,7 @@ app.get('/api/newsletter/issue', async (req, res) => {
 app.post('/api/newsletter/telegram', express.json({ limit: '4kb' }), async (req, res) => {
   const tok = process.env.NEWSLETTER_TG_TOKEN, chat = process.env.NEWSLETTER_TG_CHAT_ID;
   if (!tok || !chat) return res.status(503).json({ ok: false, error: 'Telegram delivery is off: set NEWSLETTER_TG_TOKEN and NEWSLETTER_TG_CHAT_ID on Railway.' });
+  if (!tgAllOn()) return res.status(423).json({ ok: false, error: _TG_MUTED_TEXT });
   try {
     const issues = await _nlLoad(), i = (issues ?? []).find(x => x.id === String(req.body?.id ?? ''));
     if (!i) return res.status(404).json({ ok: false, error: 'that issue is not in the archive; build it first' });
