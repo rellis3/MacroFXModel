@@ -3764,6 +3764,23 @@ function modelCallStats() {
  * it here rather than gluing it into `prompt`: it becomes the cached prefix, and that is
  * where the saving comes from.
  */
+// A POST that may wait longer than five minutes for its first byte. Node's built-in fetch (undici) gives up when the
+// response headers have not arrived within 300 s (headersTimeout), whatever AbortSignal says, and a non-streaming model
+// reply sends its headers only when the whole answer is written. On 2026-11-05 the single-prompt control (~29k tokens
+// of output) failed twice with a bare "fetch failed" this way. node:https has no such limit; the wait is bounded here.
+async function _longPost(url, headers, body, timeoutMs) {
+  const { request } = await import(url.startsWith('https:') ? 'node:https' : 'node:http');
+  return new Promise((resolve, reject) => {
+    const req = request(url, { method: 'POST', headers: { ...headers, 'content-length': Buffer.byteLength(body) } }, res => {
+      const chunks = []; res.on('data', c => chunks.push(c)); res.on('error', reject);
+      res.on('end', () => { const text = Buffer.concat(chunks).toString('utf8');
+        resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, text: async () => text, json: async () => JSON.parse(text) }); });
+    });
+    const timer = setTimeout(() => { const e = new Error('timed out'); e.name = 'TimeoutError'; req.destroy(e); }, timeoutMs);
+    req.on('error', e => { clearTimeout(timer); reject(e); }); req.on('close', () => clearTimeout(timer));
+    req.end(body);
+  });
+}
 async function callModel({ task = 'misc', system = '', standing = '', prompt = '', maxTokens = 4000, temperature = null, timeoutMs = 300_000 } = {}) {
   const cfg = _aiConfig();
   const r = aiResolveTask(task, cfg);
@@ -3779,10 +3796,12 @@ async function callModel({ task = 'misc', system = '', standing = '', prompt = '
   // A provider that never answers must not hold the single brief slot forever (every retry gets a 409 until it ends), so the call is bounded.
   let httpRes;
   try {
-    httpRes = await fetch(req.url, { method: 'POST', headers: aiAuthHeaders(req, key), body: JSON.stringify(req.body), signal: AbortSignal.timeout(timeoutMs) });
+    httpRes = timeoutMs > 300_000
+      ? await _longPost(req.url, aiAuthHeaders(req, key), JSON.stringify(req.body), timeoutMs)   // past fetch's 300 s header limit
+      : await fetch(req.url, { method: 'POST', headers: aiAuthHeaders(req, key), body: JSON.stringify(req.body), signal: AbortSignal.timeout(timeoutMs) });
   } catch (err) {
     _recordModelCall({ task, provider: r.provider, model: r.model, ok: false, httpStatus: 0, ms: Date.now() - started });
-    const e = new Error(err?.name === 'TimeoutError' ? `${P.label} did not answer within ${Math.round(timeoutMs / 60000)} minutes` : `${P.label} request failed: ${err?.message ?? err}`);
+    const e = new Error(err?.name === 'TimeoutError' ? `${P.label} did not answer within ${Math.round(timeoutMs / 60000)} minutes` : `${P.label} request failed: ${err?.message ?? err}${err?.cause?.code ? ` (${err.cause.code})` : ''}`);
     e.status = 504; e.provider = r.provider; throw e;
   }
   if (!httpRes.ok) {
