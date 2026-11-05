@@ -56,6 +56,16 @@ h3{margin:14px 0 6px;font-size:14px}
 .running .bar i{display:block;height:100%;width:30%;background:var(--acc);animation:slide 1.4s ease-in-out infinite}
 @keyframes slide{0%{margin-left:-30%}100%{margin-left:100%}}
 .up{color:#19d3a0}.dn{color:#ff5d73}
+.tvx{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tvx select.btn{max-width:100%}
+#tvTxt{width:100%;height:200px;margin-top:10px;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:6px;font:12px var(--mono)}
+.desc{display:inline-block;font:11px var(--mono);color:var(--tx2);border:1px solid var(--line2);border-radius:4px;padding:1px 6px;margin-left:8px;vertical-align:middle}
+.pp-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:8px 0}
+.pp-tiles div{background:var(--bg3);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+.pp-tiles b{display:block;font:600 16px var(--mono)}
+.pp-tiles span{color:var(--tx3);font-size:11.5px}
+table.pp{min-width:620px;font-size:12.5px}
+table.pp td{font-family:var(--mono);white-space:nowrap;padding:6px}
 </style>
 </head>
 <body>
@@ -107,6 +117,8 @@ function render(run, universe) {
     }).join('');
     parts.push(`<div class="panel"><h2>Instruments · five-step scale</h2><table><thead><tr><th>Instrument</th><th>Rating</th><th>Why</th><th>Wrong if</th></tr></thead><tbody>${rows}</tbody></table>
       ${h.notes?.length ? `<p class="muted">Repairs: ${h.notes.map(esc).join(' · ')}</p>` : ''}</div>`);
+    parts.push(exportPanel(b));
+    parts.push(`<div class="panel" id="paper"><h2>Paper trades (the alerts' own rules)<span class="desc">description</span></h2><div class="muted">Loading…</div></div>`);
   } else {
     parts.push(`<div class="panel fail">The Head of Desk did not produce a book: ${esc((h?.errors ?? []).join('; '))}</div>`);
   }
@@ -119,8 +131,64 @@ function render(run, universe) {
     : `<details><summary class="fail">${esc(a.id)} failed</summary><div class="pt muted">${esc(a.errors.join('; '))}</div></details>`).join('')}</div>`);
   parts.push(`<p class="muted">Tokens: in ${run.usage?.in ?? '?'} · out ${run.usage?.out ?? '?'} · finished ${esc(run.finishedAt)} · ${esc(run.trigger ?? '')}${run.resumed ? ` · resumed after a server restart (${run.resumed.stages} finished stages kept, not paid for twice)` : ''}. This book is context from the analyst pipeline (plans/DESK_ANALYST_PIPELINE.md). It is not a tested signal: it is scored each evening under forge/DESK_ANALYST_PIPELINE_PREREG.md and judged only at the end of that test.</p>`);
   $('out').innerHTML = parts.join('');
+  CUR = run;
+  if (h?.ok) { wireExport(run); loadPaper(run.date); }
   const cmp = document.getElementById('nlCmp');
   if (cmp) cmp.onclick = () => { const box = document.getElementById('nlCmpBox'); const show = box.style.display === 'none'; box.style.display = show ? 'grid' : 'none'; if (show) box.querySelectorAll('iframe').forEach(f => { if (f.src === 'about:blank') f.src = f.dataset.src; }); };
+}
+
+// ── Export to TradingView (js/deskBookPine.js): the day's lines, zone, invalidation and first target as a Pine script ──
+let CUR = null, PINE = null;
+const pineMod = () => (PINE ??= import('./js/deskBookPine.js'));
+const PAPER_NOTE = "Description of trading the watcher's alerts, not the pre-registered test; few days so far.";
+function exportPanel(b) {
+  const names = Object.keys(b.instruments ?? {}).sort(), live = names.filter(n => /LONG|SHORT/.test(b.instruments[n].rating) && b.instruments[n].size > 0);
+  const opt = n => `<option value="${esc(n)}">${esc(n)} · ${esc(String(b.instruments[n].rating).replace('_', ' ').toLowerCase())}</option>`;
+  return `<div class="panel"><h2>Export to TradingView<span class="desc">description, not the scored test (prereg H1)</span></h2>
+    <div class="tvx"><select id="tvInst" class="btn" aria-label="Market"><option value="__all">All markets · one script</option>
+      ${live.length ? `<optgroup label="Cards with a position">${live.map(opt).join('')}</optgroup>` : ''}<optgroup label="Every market">${names.map(opt).join('')}</optgroup></select>
+      <button class="btn" type="button" id="tvCopy">Copy Pine</button><button class="btn" type="button" id="tvDl">Download .pine</button><button class="btn" type="button" id="tvCsv">Download CSV</button></div>
+    <p class="muted" id="tvHow">Draws this day only, on any timeframe: the open and the up and down p50 / p75 / p90 lines, the entry zone as a box from 08:00 to 21:00 London, the invalidation in red and the first target (the p50 line on the card's side) heavier, with a label giving the rating, size, conviction and why. "All markets" draws whichever card matches the chart's symbol; pick one by hand in the indicator's settings if it does not match.</p>
+    <textarea id="tvTxt" readonly spellcheck="false" style="display:none" aria-label="Pine script"></textarea></div>`;
+}
+function saveFile(name, text, type) {
+  const a = document.createElement('a'), url = URL.createObjectURL(new Blob([text], { type }));
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+async function pineNow(run) {
+  const m = await pineMod(), b = run.head.book, inst = $('tvInst').value;
+  return { inst, text: inst === '__all' ? m.pineForBook(b, { date: run.date }) : m.pineForCard(inst, b.instruments[inst], { date: run.date }), oanda: inst === '__all' ? null : m.oandaOf(inst) };
+}
+function wireExport(run) {
+  const show = (p, copied) => {
+    $('tvTxt').value = p.text; $('tvTxt').style.display = '';
+    $('tvHow').innerHTML = `${copied ? 'Copied. ' : 'Select all in the box and copy. '}In TradingView: Pine Editor → new indicator → paste over everything → Save → Add to chart${p.oanda ? `, on the <b>OANDA:${esc(p.oanda.replace('_', ''))}</b> chart` : ''}. The prices are OANDA's; a futures chart trades at a small basis to them. It is a snapshot of ${esc(run.date)}: make a fresh copy each morning.`;
+  };
+  $('tvCopy').onclick = async () => { const p = await pineNow(run); let ok = false; try { await navigator.clipboard.writeText(p.text); ok = true; } catch {} show(p, ok); };
+  $('tvDl').onclick = async () => { const p = await pineNow(run); saveFile(`desk-${p.inst === '__all' ? 'book' : p.inst}-${run.date}.pine`, p.text, 'text/plain'); show(p, false); };
+  $('tvCsv').onclick = async () => { const m = await pineMod(); saveFile(`desk-book-${run.date}.csv`, m.csvForBook(run.head.book, { date: run.date }), 'text/csv'); };
+}
+
+// ── Paper trades on the watcher's own rules (GET /api/desk-paper, js/deskPaperTrades.js) ──
+const fx = (v, dp = 2) => (v == null || !Number.isFinite(+v) ? '–' : `${+v > 0 ? '+' : ''}${(+v).toFixed(dp)}`);
+const lt = iso => (iso ? new Date(iso).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }) : '–');
+async function loadPaper(date) {
+  const box = $('paper'); if (!box) return;
+  const [d, hist] = await Promise.all([getJson(`/api/desk-paper?date=${date}`).catch(e => ({ ok: false, error: e.message })), getJson('/api/desk-paper/history').catch(() => null)]);
+  if (CUR?.date !== date || !document.body.contains(box)) return;
+  const head = `<h2>Paper trades (the alerts' own rules)<span class="desc">description</span></h2><p class="muted"><b>${esc(PAPER_NOTE)}</b></p>`;
+  const tot = hist?.total, totHtml = tot?.days ? `<p class="muted">Running total over ${tot.days} day${tot.days === 1 ? '' : 's'} (${esc(tot.from)} to ${esc(tot.to)}): ${tot.trades} trades, ${tot.wins} won${tot.hitRate != null ? ` (${Math.round(tot.hitRate * 100)}%)` : ''}, mean ${fx(tot.meanR)} u a trade, size × R ${fx(tot.sumSizeR)} after costs (${fx(tot.sumGrossSizeR)} before).</p>` : '<p class="muted">No finished day is stored yet: the first is saved after the evening score (21:10 London).</p>';
+  if (!d?.ok) { box.innerHTML = `${head}<p class="muted">${esc(d?.error ?? 'Could not load the paper trades.')}</p>${totHtml}`; return; }
+  const s = d.summary, why = { target: 'first target', invalid: 'invalidation', close: '21:00 close', 'no-entry': 'not entered' };
+  const rows = d.trades.slice().sort((a, b) => (a.reason === 'no-entry') - (b.reason === 'no-entry') || a.inst.localeCompare(b.inst)).map(t => t.reason === 'no-entry'
+    ? `<tr><td>${esc(t.inst)}</td><td class="${t.dir > 0 ? 'up' : 'dn'}">${t.dir > 0 ? 'long' : 'short'}</td><td>${t.size}</td><td colspan="6" class="muted">not entered: ${esc(t.note ?? '')}</td></tr>`
+    : `<tr><td>${esc(t.inst)}</td><td class="${t.dir > 0 ? 'up' : 'dn'}">${t.dir > 0 ? 'long' : 'short'}</td><td>${t.size}</td><td>${lt(t.entryAt)} ${t.entry}${t.entryMode === 'open-08:00' ? ' <span class="muted">(08:00, no zone)</span>' : ''}</td><td>${lt(t.exitAt)} ${t.exit}</td><td>${why[t.reason]}</td><td class="${t.R > 0 ? 'pos' : t.R < 0 ? 'neg' : ''}">${fx(t.R)}</td><td>${fx(t.pct, 3)}%</td><td>${fx(t.sizeR)}</td></tr>`).join('');
+  box.innerHTML = `${head}<div class="muted">${esc(d.date)} · ${d.complete ? 'the day is over' : 'live so far (the day ends 21:00 London)'} · in at the entry zone (or the 08:00 London open when the card names no zone), out at the first target, the invalidation or 21:00 London; a bar touching both counts as the invalidation. Cards that a session update flipped or flattened are left out, as the watcher drops them. Costs: one spread per trade.</div>
+    <div class="pp-tiles"><div><b>${s.trades}</b><span>trades (${s.noEntry} not entered)</span></div><div><b>${s.wins}</b><span>won${s.hitRate != null ? ` · ${Math.round(s.hitRate * 100)}%` : ''}</span></div>
+      <div><b>${fx(s.meanR)}</b><span>mean R (u) after costs</span></div><div><b>${fx(s.sumSizeR)}</b><span>size × R after costs</span></div><div><b>${fx(s.sumGrossSizeR)}</b><span>size × R before costs</span></div>
+      <div><b>${s.byReason.target}/${s.byReason.invalid}/${s.byReason.close}</b><span>target / invalid / 21:00</span></div></div>
+    ${d.trades.length ? `<div style="overflow-x:auto"><table class="pp"><thead><tr><th>Market</th><th>Side</th><th>Size</th><th>In (London)</th><th>Out</th><th>Why out</th><th>R (u)</th><th>% of price</th><th>Size × R</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="muted">The watcher had no sized card to trade on this day.</p>'}
+    <p class="muted">R is the move in the day's unit u (the average distance from the open to the two p50 lines), after costs; % of price is the same move as a percentage of the entry.</p>${totHtml}`;
 }
 
 // The desk edition of The Chain, beside today's regular issue (owner, 2026-11-03: compare before anything is replaced).
