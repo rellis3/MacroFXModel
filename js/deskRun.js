@@ -31,6 +31,8 @@ const TASK = { quick: 'desk-analyst', deep: 'desk-head' };
 // Output caps. They must leave room for the model's thinking, which is billed as output and counts against the cap.
 export const CAPS = { analyst: 16_000, debate: 12_000, manager: 12_000, asset: 16_000, risk: 10_000, head: 32_000, writer: 16_000, control: 32_000, redTeam: 12_000, economist: 16_000 };
 const MAX_CAP = 32_000;
+// The retry instruction for a reply cut off at the ceiling. The same words for every role and both arms (prereg A16).
+export const SHORTER = 'IMPORTANT: your previous reply was cut off at the length limit before the JSON was complete, so none of it could be used. Reply again with the same JSON shape and the same calls, but much shorter: think briefly; a FLAT or size-0 card gets a few words of why and no plan; every other field one or two short sentences. Output only the JSON object.';
 const BOOK_RISK_TITLE = "Book factor risk and scenarios on the asset desks' draft (every card at size 1; arithmetic on price history, not a forecast)";
 
 // A provider error worth one more try: a dropped connection, a timeout, rate limiting or a server error. A 4xx
@@ -54,7 +56,13 @@ async function askValidated({ callModel, parseJson, task, system, prompt, maxTok
     const v = parsed ? validate(parsed) : { ok: false, errors: [reply.truncated ? `reply was cut off at the ${cap}-token cap before the JSON was complete` : 'reply was not parseable JSON'] };
     attempts.push({ ok: v.ok, errors: v.ok ? undefined : v.errors, usage: reply.usage ?? null, model: reply.model ?? null, truncated: !!reply.truncated });
     if (v.ok) return { ok: true, value: v.value, notes: v.notes, attempts };
-    if (reply.truncated) { cap = Math.min(cap * 2, MAX_CAP); continue; }       // same prompt, more room
+    if (reply.truncated) {
+      // more room if there is any; at the ceiling (the Head and the control, 32k with thinking) the same prompt would
+      // only be cut off again (2026-11-05: the Head hit 32,000 twice at 51 cards), so the retry asks for a shorter reply
+      if (cap < MAX_CAP) { cap = Math.min(cap * 2, MAX_CAP); continue; }
+      userPrompt = `${prompt}\n\n${SHORTER}`;
+      continue;
+    }
     userPrompt = `${prompt}\n\nYour previous reply could not be used: ${v.errors.join('; ')}. Reply again with JSON only, in the exact shape given.`;
   }
   return { ok: false, attempts, errors: attempts.at(-1)?.errors ?? [attempts.at(-1)?.error ?? 'failed'] };
