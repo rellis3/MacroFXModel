@@ -1,6 +1,7 @@
 // Tests for js/newsletter.js.   node js/newsletter.test.mjs
 import { buildNewsletterV2 } from './newsletterV2.js';
 import { chainSvg, buildNewsletter, eventNote, familyOf, BANNER_SVG, sparkSvg, DISCLAIMER } from './newsletter.js';
+import { ASSETS, NOW as TAPE_NOW } from './morningTape.fixture.mjs';
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
 const NOW = Date.parse('2026-10-22T10:00:00Z');
@@ -286,5 +287,10 @@ ok('the question sits in a designed box with a topic icon', /class="qod"/.test(d
   ok('a Fed day adds the market pricing with its source and date, what is known about each release, and the numbers strip', /Futures put the chance of a hike by the 16 December meeting at 87% and of a cut at 5% \(Atlanta Fed tracker, 26 October\)\./.test(rich.html) && /Expected 4\.25%\. Its last statement read hawkish\./.test(rich.html) && /<small>VIX<\/small><b>19\.0<\/b><em>\+2\.4 on the day<\/em>/.test(rich.html) && /<small>US 10-year<\/small><b>4\.96%<\/b><em>−17bp on the day<\/em>/.test(rich.html));
   const old = buildNewsletterV2({ ...inp, fedPath: { asOf: '2026-10-10', ref: '2026-12-16', hike: 86.9, cut: 4.5 } });
   ok('stale Fed pricing is left out rather than shown as current', !/Futures put the chance/.test(old.html)); }
+console.log('the morning tape in the data desk (5-6 Nov 2026)');
+{ const o = buildNewsletterV2({ date: 'Friday 6 November 2026', isoDate: '2026-11-06', assets: ASSETS, events: [], nowMs: TAPE_NOW, regimeWord: 'MIXED' });
+  ok('the tape carries the full day and the overnight with multiples, crash day first', /class="tape"><span>Nasdaq <b>26883\.3<\/b> <i class="dn">Thu ▼ 7\.03% 4\.1×<\/i> <i class="up" title="since the close">· now ▲ 1\.33% 0\.8×<\/i><\/span><span>AUD\/USD/.test(o.html), (o.html.match(/class="tape">[^]*?<\/div>/) ?? [''])[0].slice(0, 400));
+  ok('each market block shows both moves', /Thu <b class="dn">−7\.03%<\/b> \(4\.1×\) · since close <b class="up">\+1\.33%<\/b> \(0\.8×\)/.test(o.html));
+  ok('the text version lists the moves biggest first', /MOVES \(Thu close to close · since that close; × a normal day\)\n- Nasdaq: Thu −7\.03% \(4\.1×\)/.test(o.text)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);
