@@ -8,7 +8,7 @@
  * Pure. Tested in js/newsletterToday.test.mjs.
  */
 import { dollarBasket } from './dataChecks.js';
-import { yesterdayLine } from './morningTape.js';
+import { yesterdayLine, tapeRows, dayName } from './morningTape.js';
 
 const TZ = 'Europe/London', MINUS = '−';
 const BANK = { USD: 'the Fed', EUR: 'the ECB', GBP: 'the Bank of England', JPY: 'the Bank of Japan', AUD: 'the RBA', NZD: 'the RBNZ', CAD: 'the Bank of Canada', CHF: 'the SNB' };
@@ -110,6 +110,22 @@ const verb = (down, mult, plural) => VB[down ? 'fall' : 'rise'][mult >= 2 ? 3 : 
  * the 10-year yield by 6bp, junk spreads by 8bp, VIX by 2 points; only scores of 0.75 or more count. A wild Asia session (the range at least twice the desk's own
  * wide-tercile mark) leads when there is one, with the net move since the Asia open. Observed figures only, never a direction call, and null on a quiet tape.
  */
+/** Yesterday's big day as the headline, or null: markets whose last full day was at least BIG_DAY normal days, biggest first. */
+export const BIG_DAY = 2;
+export function bigDayHeadline(assets) {
+  const rows = tapeRows(assets).filter(r => r.day && Number.isFinite(r.day.mult) && r.day.mult >= BIG_DAY).sort((a, b) => b.day.mult - a.day.mult).slice(0, 2);
+  if (!rows.length) return null;
+  const W = dayName(rows[0].day.date, true) || 'Yesterday', p1 = v => Math.abs(v).toFixed(1);
+  const noun = r => (r.day.pct < 0 ? (r.day.mult >= 3 ? 'plunge' : 'drop') : r.day.mult >= 3 ? 'surge' : 'jump');
+  const one = r => `${p1(r.day.pct)}% ${r.label} ${noun(r)}`;
+  const lead = rows[0], n = lead.night;
+  const night = n && Number.isFinite(n.pct) && Math.abs(n.pct) >= 0.1 && (!Number.isFinite(n.mult) || n.mult >= 0.3)
+    ? (Math.sign(n.pct) === Math.sign(lead.day.pct) ? `; ${lead.label} ${n.pct < 0 ? 'falls' : 'rises'} another ${p1(n.pct)}% overnight` : `; ${lead.label} ${n.pct > 0 ? 'bounces' : 'gives back'} ${p1(n.pct)}% overnight`)
+    : '';
+  const head = `${W}'s ${rows.map(one).join(' and ')}`;
+  return { rows, headline: tail => `${head}${night || tail}` };
+}
+
 function dayTake({ assets, changes, hi, now, asia }) {
   const hu = humanTake({ assets, changes, asia, hi, now });
   const c = k => (changes ?? []).find(x => x.key === k && !x.stale && Number.isFinite(x.d1)), cand = [];
@@ -129,7 +145,8 @@ function dayTake({ assets, changes, hi, now, asia }) {
   const puzzle = y && y.d1 <= -6 && bad.length ? { dollarUp: bk.n >= 4 && bk.avg >= 0.25, bad } : null;
   // a wild Asia: at least twice the desk's own wide-tercile mark, the two biggest at most
   const wild = (assets ?? []).map(r => ({ r, s: r?.key ? asia?.[r.key] : null })).filter(x => x.r?.label && x.s && x.s.band === 'wide' && Number.isFinite(x.s.atr) && x.s.cutHigh > 0 && x.s.atr / x.s.cutHigh >= 2).sort((a, b) => b.s.atr / b.s.cutHigh - a.s.atr / a.s.cutHigh).slice(0, 2);
-  if (!top.length && !wild.length && !hu.headClause && !puzzle) return null;
+  const big = bigDayHeadline(assets);
+  if (!top.length && !wild.length && !hu.headClause && !puzzle && !big) return null;
   const lead = hi.filter(isDecision).sort((a, b) => decisionRank(a) - decisionRank(b))[0] ?? hi[0];
   const tail = hu.tail ? `, ${hu.tail}` : !lead ? '' : lead.ms > now ? (isDecision(lead) ? ` as the ${BANK[lead.ccy].replace(/^the /, '')} decision looms` : ` with ${nameOf(lead)} due at ${hhmm(lead.ms)}`) : ` after ${isDecision(lead) ? `the ${BANK[lead.ccy].replace(/^the /, '')} decision` : nameOf(lead)}`;
   let headline, leadFacts = '', asiaNote = '', used = null;
@@ -143,7 +160,10 @@ function dayTake({ assets, changes, hi, now, asia }) {
   } else if (puzzle) {
     headline = `Yields fell ${r1(y.d1)}bp${puzzle.dollarUp ? `, ${list(puzzle.bad.map(b => b.say))}. And yet the dollar strengthened` : `, but ${list(puzzle.bad.map(b => b.say))}`}${tail}`;
     leadFacts = `The numbers do not fit the usual story. Falling yields normally ease financial conditions, but ${list(puzzle.bad.map(b => b.det))}${puzzle.dollarUp ? `, and the dollar rose ${bk.avg.toFixed(2)}% on average against 7 majors although borrowing costs fell` : ''}. Rates and risk are telling different stories today, and one day of moves cannot say which is right.`;
-  } else headline = hu.headClause ? `${hu.headClause}${tail}` : `${top[0].head}${top[1] && top[1].score >= 1 ? ` and ${top[1].mid}` : ''}${tail}`;
+  } else if (hu.headClause || top.length) headline = hu.headClause ? `${hu.headClause}${tail}` : `${top[0].head}${top[1] && top[1].score >= 1 ? ` and ${top[1].mid}` : ''}${tail}`;
+  // Owner, 2026-11-06: a big full day yesterday leads the headline (the morning showed "Nasdaq lurches higher in a wild
+  // Asian session" the day after its -7% day). Big = at least 2x a normal day, close to close; the overnight move rides after it.
+  if (big) headline = big.headline(tail);
   const rest = (wild.length || puzzle ? top : top.slice(0, 3)).slice(0, 3);
   return { headline, means: puzzle && !wild.length ? hu.means.filter(m => !/^(Credit |Borrowing costs|The VIX)/.test(m)) : hu.means, lead: leadFacts, asiaNote, close: rest.length ? `Since yesterday's close: ${rest.map(x => x.fact).join('; ')}.` : '' };
 }

@@ -107,5 +107,13 @@ console.log('yesterday in one line (5-6 Nov 2026)');
   const e = todayOpening({ events: [], nowMs: NOW, assets: ASSETS, evening: EVENING });
   ok("last night's evening edition supplies the line when it covers that day", e.yesterday.source === 'evening' && /The Nasdaq's worst day in years/.test(e.yesterday.text));
   ok('the weekly has no yesterday line', todayOpening({ events: [], nowMs: NOW, assets: ASSETS, weekly: true }).yesterday === null); }
+// Owner, 2026-11-06: yesterday's big day leads the headline, the overnight move after it
+{
+  const o = todayOpening({ events: [], nowMs: NOW, assets: ASSETS, evening: EVENING, since: { first: true } });
+  ok('a big full day leads the headline, the overnight move after it', o.headline === "Thursday's 7.0% Nasdaq plunge and 4.9% S&P 500 plunge; Nasdaq bounces 1.3% overnight", o.headline);
+  const quiet = ASSETS.map(a => ({ ...a, spark: [a.lastClose, a.lastClose], prevClose: a.prevClose == null ? null : a.lastClose, d1: a.d1Basis === 'bars' ? 0.1 : a.d1 }));
+  ok('no big day: the headline is not about yesterday', !/Thursday's/.test(todayOpening({ events: [], nowMs: NOW, assets: quiet, since: { first: true } }).headline));
+}
+
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);
