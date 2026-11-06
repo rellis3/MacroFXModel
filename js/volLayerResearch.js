@@ -61,6 +61,7 @@ export const LAYERS = [
       'Open question for this layer, not a bug: VolRangeForecaster uses fixed GARCH parameters, not fitted per instrument. It is the incumbent the candidates are scored against.',
     ],
     findings: [
+      { date: '2026-11-06', title: 'Literature pass (no repo access)', text: 'Spec: plans/vol-layer/L1_LITERATURE_SPEC.md. Main points: GARCH(1,1) is a hard benchmark in FX (Hansen-Lunde 2005); intraday-data gains come from better inputs more than model complexity; 5-min RV is the target to beat as the realised measure; QLIKE + Diebold-Mariano + Model Confidence Set to compare. Δσ and σ-vs-long-run are mostly transforms of the σ forecast (one degree of freedom, not two). Thin evidence: HARQ / realized GARCH mostly equity-tested, regime-switching gains for FX not established, nothing head-to-head for gold. Proposed test order: realised target, σ shootout, coverage + error feedback, Δσ, regime, long-run level, IV.' },
       { date: '2026-11-06', title: 'Step 0 check', text: 'The review claim that hmm.js leaks future data into live state was overstated. The live label is filtered and causal. The risk is only in backtests that reuse the Viterbi path, so it is recorded as a rule above.' },
     ],
   },
