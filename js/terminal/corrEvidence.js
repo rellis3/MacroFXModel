@@ -2,8 +2,10 @@
  * What the Evidence Book (js/deskEvidence.js) says next to each view of the Correlations & hedges tab.
  *
  * Every chip is the entry's own verdict, quoted through citable(), so an entry the code audit left unverified says
- * so. Where nothing in the book tests the thing on screen, the chip says UNTESTED: in particular no entry tests that
- * the ranked hedges below cut a book's losses, so they are never shown as working.
+ * so. Where nothing in the book tests the thing on screen, the chip says UNTESTED. The Book hedge (the top row held
+ * against the book's biggest net currency exposure) is tested by hedge-finder-book (2026-11-06): the daily 5% tail
+ * fell (hedge-finder-book-es, VALIDATED), drawdowns and Sharpe were not shown (hedge-finder-book, UNDERPOWERED). The
+ * per-market finder (hedging one instrument) is still untested.
  */
 import { DESK_EVIDENCE, citable } from '../deskEvidence.js';
 
@@ -25,8 +27,12 @@ export const VIEW_EVIDENCE = {
       ['fx-dollar-funding-exposure-hit', 'Which currencies get hit in risk-off weeks: the dollar-funding ranking tested null.']],
   },
   hedges: {
-    untested: ['Ranked hedges: no entry tests that holding these cuts a book\'s losses out of sample. Past co-movement only.'],
-    ids: [['rule-a-portfolio-budget', 'The one tested use of correlation for risk: cluster budgets, underpowered.']],
+    untested: ['Per-market hedges: no entry tests that hedging one market with these rows cuts its losses out of sample. Past co-movement only.'],
+    ids: [['rule-a-portfolio-budget', 'A tested use of correlation for risk: cluster budgets, underpowered. The Book hedge card carries its own test (hedge-finder-book).']],
+  },
+  bookHedge: {
+    ids: [['hedge-finder-book-es', 'Daily 5% tail -9.2% [-11.4, -7.0] on a 26-year proxy book; nothing for USD or JPY exposures; the currency\'s own USD pair cut 16.6%.'],
+      ['hedge-finder-book', 'Drawdowns and Sharpe not shown: max drawdown +0.5% [-18, +32], Sharpe -0.06 [-0.14, +0.03] after spreads.']],
   },
   // `signals` (the hedge-signal generator's card) was removed on 2026-11-06 with the signals themselves: retired, untested.
   regimes: {

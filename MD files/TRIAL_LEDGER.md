@@ -4,22 +4,22 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-05.
+Generated 2026-11-06.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **283** |
-| validated | 49 |
+| claims tested (validated + null + underpowered) | **285** |
+| validated | 50 |
 | null | 162 |
-| underpowered | 72 |
+| underpowered | 73 |
 | context (base rates, descriptions: not counted as tests) | 46 |
 | pre-registrations with no banked verdict (below) | 88 |
 
-**What the count says (Lesson 02 §05).** If none of the 283 claims were real, tests at the usual 5% size would still pass
-about **14.2** of them by luck. 49 passed, so most passes are unlikely to be luck alone, but
-**roughly 14 of the 49 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 285 claims were real, tests at the usual 5% size would still pass
+about **14.3** of them by luck. 50 passed, so most passes are unlikely to be luck alone, but
+**roughly 14 of the 50 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -356,6 +356,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-05 | gr-today-tape-direction | price | null | forge/GLOBAL_READ_UNTESTED_DIRECTION_PREREG.md |
 | 2026-11-05 | gr-us-yields-direction | price | null | forge/GLOBAL_READ_UNTESTED_DIRECTION_PREREG.md |
 | 2026-11-05 | portfolio-book-prop | price | context | forge/PORTFOLIO_BOOK_PROP_PREREG.md |
+| 2026-11-06 | hedge-finder-book | execution | underpowered | forge/HEDGE_FINDER_BOOK_PREREG.md |
+| 2026-11-06 | hedge-finder-book-es | execution | validated | forge/HEDGE_FINDER_BOOK_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
