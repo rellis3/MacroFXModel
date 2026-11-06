@@ -10,15 +10,15 @@ Generated 2026-11-06.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **285** |
+| claims tested (validated + null + underpowered) | **288** |
 | validated | 50 |
-| null | 162 |
-| underpowered | 73 |
+| null | 164 |
+| underpowered | 74 |
 | context (base rates, descriptions: not counted as tests) | 46 |
-| pre-registrations with no banked verdict (below) | 88 |
+| pre-registrations with no banked verdict (below) | 89 |
 
-**What the count says (Lesson 02 §05).** If none of the 285 claims were real, tests at the usual 5% size would still pass
-about **14.3** of them by luck. 50 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 288 claims were real, tests at the usual 5% size would still pass
+about **14.4** of them by luck. 50 passed, so most passes are unlikely to be luck alone, but
 **roughly 14 of the 50 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -358,6 +358,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-05 | portfolio-book-prop | price | context | forge/PORTFOLIO_BOOK_PROP_PREREG.md |
 | 2026-11-06 | hedge-finder-book | execution | underpowered | forge/HEDGE_FINDER_BOOK_PREREG.md |
 | 2026-11-06 | hedge-finder-book-es | execution | validated | forge/HEDGE_FINDER_BOOK_PREREG.md |
+| 2026-11-06 | hedge-residual-carry | macro | underpowered | forge/HEDGE_RESIDUAL_SYSTEM_PREREG.md |
+| 2026-11-06 | hedge-residual-mom | price | null | forge/HEDGE_RESIDUAL_SYSTEM_PREREG.md |
+| 2026-11-06 | hedge-residual-mr | price | null | forge/HEDGE_RESIDUAL_SYSTEM_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -448,6 +451,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
 - `forge/VRP_FORECAST_PREREG.md`: Your vol forecast vs the market's — variance risk premium (pre-registration)
 - `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?
+- `oi_research_book/GEX_RANGE_GOLD_PREREG.md`: gex-range-gold — does the G2 gamma-range effect appear on gold, once the timing and the bars are honest?
 - `oi_research_book/LEVEL_TYPES_PLACEBO_PREREG.md`: Pre-registration: do the OTHER level types beat placebo, and how long does a level last?
 - `oi_research_book/RIPPLE_BOOK_PREREG.md`: Pre-registration — does the gamma-weighted full book (the "ripple") read the tape better than the book the bot
 - `oi_research_book/WALL_DTE_STYLE_PREREG.md`: wall-dte-style — does the right trade at a strong wall (fade or follow) depend on the wall's own expiry, the g
