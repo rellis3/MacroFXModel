@@ -19,7 +19,7 @@ export const SOURCE_NOTE = 'C.OG, Market Movers, 28 Sep 2026: "the vol forecaste
 export const LAYERS = [
   {
     id: 'state', n: 1, short: 'Vol state', title: 'Vol forecast as a shared state variable',
-    status: 'not started',
+    status: 'deep dive',
     cog: [
       'If you make volatility a shared states variable where you have current conditional volatility, expected change in volatility, volatility relative to its longrun level, probability of being in different volatility regimes, forecast error.',
       'So having the forecaster is very useful as a layer.',
@@ -57,10 +57,12 @@ export const LAYERS = [
     ],
     test: 'Each field alone. σ: QLIKE loss vs a session realised-variance proxy, Diebold-Mariano + Model Confidence Set vs the incumbent. Δσ: slope and R² of realised change on predicted change. P(regime): Brier score of next-session state; does it lower QLIKE when added. Forecast error: coverage of the bands with and without it.',
     defects: [
-      'hmm.js decodes with smoothed / Viterbi states, which use future data; only filtered probabilities may feed live state.',
-      'VolRangeForecaster uses fixed GARCH parameters, not fitted per instrument.',
+      'RULE (checked 2026-11-06, not a live bug): hmm.js labels live regimes from the filtered probability (since 2026-10-16) and the vol state uses js/hmmHourly.js filtered readings. In a backtest, never reuse the historical Viterbi path or parameters fitted on the whole sample.',
+      'Open question for this layer, not a bug: VolRangeForecaster uses fixed GARCH parameters, not fitted per instrument. It is the incumbent the candidates are scored against.',
     ],
-    findings: [],
+    findings: [
+      { date: '2026-11-06', title: 'Step 0 check', text: 'The review claim that hmm.js leaks future data into live state was overstated. The live label is filtered and causal. The risk is only in backtests that reuse the Viterbi path, so it is recorded as a rule above.' },
+    ],
   },
   {
     id: 'jumps', n: 2, short: 'Jumps', title: 'Jump intensity and jump diffusion',
@@ -99,8 +101,9 @@ export const LAYERS = [
     ],
     test: 'Target: next-session stop-through, P(price moves more than d·σ against a position, d = 0.25/0.5/1), and the loss past the stop in σ. Benchmarks: (a) σ alone, (b) σ + calendar + Monday gap flag. A jump variable earns its place only by beating (b). Brier / log-loss skill, date-block bootstrap.',
     defects: [
-      'scripts/forecast_history/jump_flags_seasonal.py forward-fills stale prices into zero returns, which inflates jump flags.',
-      'Its time-of-day factor is near zero in quiet slots, so it over-flags Asian hours. Needs a floor.',
+      'RULE for the new detector: scripts/forecast_history/jump_flags_seasonal.py forward-fills stale 5-min prices into zero returns. Zeros pull bipower variation down, so its BNS test over-flags jump days. Drop stale returns instead.',
+      'RULE: its time-of-day factor sets zero-median slots to "no test", but slots with a tiny positive median can still over-flag. Floor the factor.',
+      'That script is a pre-registered study (forge/JUMPS_PREREG.md) and is left unchanged so its numbers reproduce; the jump layer builds its own detector.',
     ],
     findings: [],
   },
@@ -203,8 +206,9 @@ export const LAYERS = [
     ],
     test: 'Per fold: precision lift vs taking every trade, Brier skill vs the base rate the barriers imply (SL / (TP+SL)), log-loss, reliability curve, AUC. Deflated Sharpe and PBO with the true trial count.',
     defects: [
-      'scripts/meta_proper labels ret > 0, not "take-profit before stop".',
-      'It reweights classes and never calibrates, but sizes from the probabilities as if calibrated.',
+      'RULE for the new model: scripts/meta_proper labels ret > 0, not "take-profit before stop". Use the triple-barrier first touch.',
+      'RULE: meta_proper reweights classes and does not calibrate, yet sizes from the probabilities. Calibrate (isotonic / Platt) before any probability-based sizing, and do not rebalance classes.',
+      'meta_proper is a pre-registered study and is left unchanged; its tooling (weights, purge, embargo) is reused.',
     ],
     findings: [],
   },
@@ -274,7 +278,7 @@ export const LAYERS = [
     ],
     test: 'Start with a dumb directional view so only the vol layers are tested. Realised fill rate vs model fill probability; P(TP first) by (stop, target) bin vs the first-passage formula; MAE/MFE; net expectancy after costs on the real M1 path.',
     defects: [
-      'pylego/barrier_race.py gives same-bar ties to the target by default (pessimistic_ties=False).',
+      'FIXED 2026-11-06: pylego/barrier_race.race_grid and race_trades_variable had no way to score a same-bar TP/SL touch as a stop; they now take pessimistic_ties. The default stays False so past studies reproduce. Every vol-layer test passes pessimistic_ties=True.',
     ],
     findings: [],
   },
@@ -311,7 +315,7 @@ export const LAYERS = [
 
 // The order the layers are researched and then stacked. Each step must pass its own test before the next goes on top.
 export const BUILD_ORDER = [
-  { step: 0, what: 'Fix the defects listed on each tab', why: 'they bias every test downstream' },
+  { step: 0, what: 'Fix the defects listed on each tab (done 2026-11-06: one code fix, the rest are rules for new code)', why: 'they bias every test downstream' },
   { step: 1, what: 'Vol state (σ first, then the other four fields)', why: 'every other layer reads it' },
   { step: 2, what: 'Jumps', why: 'decides when σ-based stops can be trusted' },
   { step: 3, what: 'Stop orders with a dumb view', why: 'isolates what the vol layers alone do for entries and stops' },

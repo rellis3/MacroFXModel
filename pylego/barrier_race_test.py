@@ -500,3 +500,23 @@ def test_mfe_from_path_capped_at_target_and_floored_at_zero():
     mfe_r, _ = mfe_from_path(down, idx=0, exit_idx=1, direction=1,
                              entry_price=100.0, sl_price=10.0, tp_dist=15.0)
     assert mfe_r == 0.0
+
+
+def test_race_grid_same_bar_tie_default_and_pessimistic():
+    # One wide bar touches BOTH the TP (105) and the SL (95) of a long from 100:
+    # default keeps the historical target-wins reading, pessimistic_ties=True
+    # scores it as a stop.
+    bars = _bars(opens=[100, 100], highs=[100, 106], lows=[100, 94], closes=[100, 100])
+    entries = [Entry(idx=0, direction=1)]
+    kw = dict(sl_grid=[5.0], tp_r_grid=[1.0], max_bars_ahead=10, min_bars_ahead=1)
+    assert race_grid(bars, entries, **kw)[0].win_rate == 1.0
+    r = race_grid(bars, entries, pessimistic_ties=True, **kw)[0]
+    assert r.win_rate == 0.0 and r.sl_rate == 1.0 and r.avg_r == -1.0
+
+
+def test_race_trades_variable_pessimistic_ties():
+    bars = _bars(opens=[100, 100], highs=[100, 106], lows=[100, 94], closes=[100, 100])
+    e = [VariableEntry(idx=0, direction=1, sl=5.0, tp_dist=5.0)]
+    assert race_trades_variable(bars, e, max_bars_ahead=10, min_bars_ahead=1)[0]['outcome'] == 'tp'
+    assert race_trades_variable(bars, e, max_bars_ahead=10, min_bars_ahead=1,
+                                pessimistic_ties=True)[0]['outcome'] == 'sl'
