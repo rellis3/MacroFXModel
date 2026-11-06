@@ -28,7 +28,9 @@ export const VIEW_EVIDENCE = {
   },
   hedges: {
     untested: ['Per-market hedges: no entry tests that hedging one market with these rows cuts its losses out of sample. Past co-movement only.'],
-    ids: [['rule-a-portfolio-budget', 'A tested use of correlation for risk: cluster budgets, underpowered. The Book hedge card carries its own test (hedge-finder-book).']],
+    ids: [['rule-a-portfolio-budget', 'A tested use of correlation for risk: cluster budgets, underpowered. The Book hedge card carries its own test (hedge-finder-book).'],
+      ['hedge-residual-mr', 'Trading a row as a spread (long the market, short the top row at its ratio), fading the residual hourly: net Sharpe -1.19 [-1.76, -0.60] on 2017-2026, about 0.9bp gross per trade against 3.3bp of spreads.'],
+      ['hedge-residual-mom', 'The same spread, following the residual: net Sharpe -1.78 [-2.45, -1.08]. Carry of the spread underpowered (hedge-residual-carry).']],
   },
   bookHedge: {
     ids: [['hedge-finder-book-es', 'Daily 5% tail -9.2% [-11.4, -7.0] on a 26-year proxy book; nothing for USD or JPY exposures; the currency\'s own USD pair cut 16.6%.'],
