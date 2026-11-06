@@ -26,6 +26,15 @@ t('one page with every panel, from the data only', () => {
   assert.match(out.subject, /^2026-11-04 Desk brief pictograph/); assert.match(out.text, /Bottom line: Risk-off holds/);
   assert.equal(composePicto({ run: {} }, H), null);
 });
+t('live moves say since which close, and show the full day before (the Nasdaq -7% day, 2026-11-06)', () => {
+  const b = { assets: [{ label: 'Nasdaq', d1: 1.42, d1Basis: 'live', d1AsOf: '2026-11-05', spark: [28309.2, 28537.8, 26531] }, { label: 'Gold', d1: -0.8, d1Basis: 'live', d1AsOf: '2026-11-05', spark: [4060.355, 4088.225] }, { label: 'DAX', d1: -1.11, d1Basis: 'live', d1AsOf: '2026-11-05', spark: [26636.8, 26201.4] }, { label: 'AUD/USD', d1: -0.81, d1Basis: 'live', d1AsOf: '2026-11-05', spark: [0.7006, 0.693] }, { label: 'EUR/USD', d1: 0.9, d1Basis: 'live', d1AsOf: '2026-11-05', spark: [1.1, 1.1] }] };
+  const out = composePicto({ run, base: b }, H), h = out.html;
+  assert.ok(h.includes('Moves since Thu&#39;s close') || h.includes("Moves since Thu's close"), 'the box says since which close');
+  assert.ok(/Thu <span class="dn">−7.03%/.test(h), 'the full day shows under the live move');
+  const line = out.text.split('\n').find(l => l.startsWith('Moves since'));
+  assert.ok(line.indexOf('Nasdaq') < line.indexOf('DAX') && !line.includes('Gold'), 'ranked by the larger of the live move and the full day (gold, 0.8 and 0.7, drops out)');
+  assert.match(out.text, /Moves since Thu's close: .*Nasdaq \+1\.42% \(Thu −7\.03%\)/);
+});
 t('missing data leaves panels out instead of placeholders; the map only with paths', () => {
   const h = composePicto({ run }, H).html;
   assert.ok(!h.includes('Market moves') && !h.includes('Key signals') && !h.includes('Upcoming events'));
