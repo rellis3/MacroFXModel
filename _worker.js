@@ -87,6 +87,7 @@ function isAllowedKVKey(key) {
     'research_pod_cards',
     'research_pod_threads',
     'research_cases',
+    'research_images',
     'research_pod_dossiers',
     'research_pod_papers',
     'research_pod_queue',
@@ -1141,6 +1142,8 @@ export default {
             'research_pod_threads',
             // research_cases: one case per question to the pod, its rounds and the Head of Research's reviews (the owner's messages cannot be rebuilt).
             'research_cases',
+            // research_images: the vision reading of each picture attached to a research question (js/researchImages.js); bytes in R2.
+            'research_images',
             'research_pod_dossiers',
             'research_pod_papers',
             'research_pod_queue',

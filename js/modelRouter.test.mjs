@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   PROVIDERS, DEFAULT_MODELS, TASK_CLASS, buildRequest, authHeaders, readResponse,
-  resolveTask, costOf, configFromEnv, estimateTokens, carriesLedger, retryCap,
+  resolveTask, costOf, configFromEnv, estimateTokens, carriesLedger, retryCap, supportsImages,
 } from './modelRouter.js';
 
 test('an Anthropic request with no standing content is shaped exactly as before', () => {
@@ -269,4 +269,34 @@ test('retryCap: a cut-off reply gets more room, never past the provider ceiling'
   // and buildRequest clamps whatever is asked to the provider cap
   const r = buildRequest({ provider: 'deepseek', model: 'deepseek-chat', prompt: 'p', maxTokens: 16000 });
   assert.equal(r.body.max_tokens, 8192); assert.equal(r.clamped, true);
+});
+
+test('research-vision: Sonnet on Anthropic, never a provider that cannot read images', () => {
+  const both = { anthropic: true, deepseek: true };
+  const r = resolveTask('research-vision', { keys: both, provider: 'deepseek' });
+  assert.equal(r.provider, 'anthropic'); assert.equal(r.model, 'claude-sonnet-5'); assert.equal(r.effort, 'low');
+  assert.equal(carriesLedger('research-vision'), false);
+  // routed at DeepSeek (KV map or env): back on anthropic, and it says why
+  const routed = resolveTask('research-vision', { keys: both, tasks: { 'research-vision': 'deepseek' } });
+  assert.equal(routed.provider, 'anthropic'); assert.equal(routed.fellBack, true); assert.match(routed.why, /cannot read images/);
+  assert.equal(routed.model, 'claude-sonnet-5');
+  // no Anthropic key at all: still anthropic (the call then fails with a clear "ANT_KEY not configured")
+  assert.equal(resolveTask('research-vision', { keys: { deepseek: true }, provider: 'deepseek' }).provider, 'anthropic');
+  assert.equal(configFromEnv({ AI_TASK_RESEARCH_VISION: 'deepseek' }).tasks['research-vision'], 'deepseek');
+  assert.ok(supportsImages('anthropic')); assert.ok(!supportsImages('deepseek')); assert.ok(!supportsImages('moonshot'));
+});
+
+test('buildRequest: image blocks on anthropic, before the text; refused on every other provider', () => {
+  const images = [{ mediaType: 'image/jpeg', data: 'AAAA' }, { mediaType: 'image/png', data: 'BBBB' }];
+  const r = buildRequest({ provider: 'anthropic', model: 'claude-sonnet-5', prompt: 'read these', images });
+  const c = r.body.messages[0].content;
+  assert.ok(Array.isArray(c)); assert.equal(c.length, 3);
+  assert.deepEqual(c[0], { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: 'AAAA' } });
+  assert.equal(c[1].source.media_type, 'image/png');
+  assert.deepEqual(c[2], { type: 'text', text: 'read these' });
+  // no images: the plain string, byte-identical to before
+  assert.equal(buildRequest({ provider: 'anthropic', model: 'm', prompt: 'p', images: [] }).body.messages[0].content, 'p');
+  assert.throws(() => buildRequest({ provider: 'deepseek', model: 'deepseek-chat', prompt: 'p', images }), /cannot read images/);
+  assert.throws(() => buildRequest({ provider: 'moonshot', model: 'k', prompt: 'p', images }), /cannot read images/);
+  assert.throws(() => buildRequest({ provider: 'anthropic', model: 'm', prompt: 'p', images: [{ mediaType: 'application/pdf', data: 'x' }] }), /mediaType/);
 });

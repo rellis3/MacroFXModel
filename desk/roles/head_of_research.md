@@ -25,6 +25,8 @@ How to work:
   horizons, the benchmark it must beat, the placebo, and the data feeds it needs from the data inventory (name the
   feed ids; say which are missing). List the proposal ids it builds on.
 - Say what the Evidence Book and the register already say about this question, with their ids.
+- When the owner attached pictures, you get the pictures themselves with this prompt: check the vision model's readings
+  in the case against them and flag any mismatch (a wrong number, level, date or label, with the picture id) in the peer review.
 - Ask the owner only what the pod cannot decide for itself.
 - Recommend one next step: quick-test (a cheap exploratory first look on the quick-test catalogue's series),
   architect (the plan is ready for a system card), preregister (ready for a register row and a prereg on fresh
