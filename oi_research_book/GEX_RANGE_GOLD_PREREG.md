@@ -152,7 +152,29 @@ outcome computed. It makes the text above match the script exactly; no rule is l
 4. **Placebo gate** is as in §3: the real vol-matched ΔDR above the 95th percentile of the all-shift distribution
    (shifts 60 … n−60, step 5, circular). The ES single +125 shift is still reported, with no weight.
 5. **Gold inputs.** `XAU_USD` added to `pair_config.py` (contract multiplier 100, not inverted, price file `xauusd`).
-6. **Measured n** (row counts only) will be added as A2 once `XAU_USD.csv` is assembled.
+6. **Measured n** is in A2 below.
+
+### A2 — 2026-11-06 — PRE-RESULTS
+
+Written after `XAU_USD.csv` was assembled and the daily masters were built, and before `34_gex_range_gold.py` was run.
+Only row counts and the gamma-sign split of the setup were looked at; no range, DR or any outcome was computed.
+
+1. **Window ends 2026-04-15, not 2026-08-21.** Databento returned repeated 504 gateway timeouts on every
+   statistics request from 2026-04-16 onward (half-month, 5-day and 1-day pieces, on two API keys; the dataset
+   condition endpoint lists those days as available). The pieces through 2026-04-15 are complete; nothing from
+   2026-04-16 on is in the file. The cut is for a technical reason and was fixed before any outcome was seen.
+   OI dates therefore run **2022-11-04 → 2026-04-15**, with targets up to two sessions later; the lockbox (after
+   2026-08-21) is untouched.
+2. **Measured n.** 866 OI trade dates in both the `near` (DTE ≤ 45) and `all` surfaces. Net-GEX sign split (setup only):
+   `near` 156 short-gamma / 710 long-gamma; `all` 62 / 804. Both arms of the primary cell are above the 60-session
+   floor in §4; the `all` surface's short arm (62) is only just above it. Before target alignment and the 60-bar
+   session filter drop a few rows. The planned 600–950 in §5 holds.
+3. **Power, restated with measured n.** SE of raw ΔDR scales as 1/√n from the NQ run (0.050 at 793): about **0.048**
+   at 866, so MDE ≈ **0.13** (×2.8). Unchanged conclusion: an NQ- or ES-sized effect is detectable; one near +0.05 is
+   not and would read UNDERPOWERED. The short arm is 18% of days (NQ near was about 24%), which widens the SE a little.
+4. **The missing tail is a held-out add-on, not a second look at this result.** If Databento later serves
+   2026-04-16 → 2026-08-21, the same script runs once on those dates only, as a separate confirmation labelled as
+   such; it does not change the Q1 verdict under this prereg.
 
 ---
 
