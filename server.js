@@ -6295,10 +6295,24 @@ async function _litFetch(url, { timeout = 20_000, accept = '*/*', headers = {}, 
   return { ok: r.ok, status: r.status, type: r.headers.get('content-type') ?? '', buf, url: r.url || url, text: () => buf.toString('utf8') };
 }
 const _litIsPdf = x => /pdf/i.test(x.type) || x.buf.subarray(0, 5).toString('latin1') === '%PDF-';
+// PDF text in a worker thread (scripts/pdf/pdfWorker.mjs), two at a time, killed at the timeout: pdf-parse is CPU-bound
+// and on the main loop it stalled every request while the research pod read papers.
+const _pdfQ = { running: 0, wait: [] };
+async function _pdfText(buf, { max = 0, timeoutMs = 60_000 } = {}) {
+  if (_pdfQ.running >= 2) await new Promise(r => _pdfQ.wait.push(r));
+  _pdfQ.running++;
+  try {
+    return await new Promise((resolve, reject) => {
+      const w = new _NodeWorker(new URL('./scripts/pdf/pdfWorker.mjs', import.meta.url), { workerData: { buf, max }, resourceLimits: { maxOldGenerationSizeMb: 512 } });
+      const t = setTimeout(() => { w.terminate(); reject(new Error(`pdf-parse timed out after ${Math.round(timeoutMs / 1000)}s`)); }, timeoutMs);
+      w.once('message', m => { clearTimeout(t); w.terminate(); m.ok ? resolve(m.text) : reject(new Error(`pdf-parse: ${m.error}`)); });
+      w.once('error', e => { clearTimeout(t); reject(e); });
+      w.once('exit', code => { clearTimeout(t); if (code) reject(new Error(`pdf-parse worker exited (${code})`)); });
+    });
+  } finally { _pdfQ.running--; _pdfQ.wait.shift()?.(); }
+}
 async function _litPdf(buf) {
-  const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
-  const parsed = await _litTimeout(pdfParse(buf, { max: 45 }), 60_000, 'pdf-parse');
-  return _litCleanPdf(parsed.text);
+  return _litCleanPdf(await _pdfText(buf, { max: 45, timeoutMs: 60_000 }));
 }
 async function _litSearchOne(src, q, max) {
   if ((_litCool[src] ?? 0) > Date.now()) throw new Error(`${src}: skipped, rate limited until ${new Date(_litCool[src]).toISOString().slice(11, 16)} UTC`);
@@ -12438,9 +12452,8 @@ async function _fiscalFetchDoc(ev, doc) {
     const att = fiscalAttachment(pub); if (!att) return null;
     if (att.type === 'html') { const h = await _fiscalGovuk(att.path); if (!h?.details?.body) return null; return { text: fiscalHtmlToText(h.details.body), url: `https://www.gov.uk${att.path}`, publishedOn: h.first_published_at ?? pub.first_published_at ?? null }; }
     const r = await fetch(att.url, { headers: { 'User-Agent': _FISCAL_UA }, signal: AbortSignal.timeout(60_000) }); if (!r.ok) return null;
-    const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
-    const parsed = await pdfParse(Buffer.from(await r.arrayBuffer()));
-    return { text: parsed.text, url: att.url, publishedOn: pub.first_published_at ?? null };
+    const text = await _pdfText(Buffer.from(await r.arrayBuffer()), { timeoutMs: 120_000 });
+    return { text, url: att.url, publishedOn: pub.first_published_at ?? null };
   }
   if (doc.kind === 'obr') {
     let page = await _fiscalGet(`https://obr.uk/efo/${doc.obr}/`);
@@ -36839,8 +36852,7 @@ async function _cbspStatements() {
   return out;
 }
 async function _cbspPdf(buf) {
-  const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
-  return (await _cbspTimeout(pdfParse(buf, { max: 30 }), 60_000, 'pdf-parse')).text ?? '';
+  return _pdfText(buf, { max: 30, timeoutMs: 60_000 });
 }
 /** The speech's text: the page's article/main region, or its PDF when the page is only a shell around one. */
 async function _cbspText(url) {
