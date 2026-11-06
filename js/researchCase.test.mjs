@@ -1,6 +1,6 @@
 // Tests for js/researchCase.js.   node js/researchCase.test.mjs
 import assert from 'node:assert/strict';
-import { LABEL, NEXT_STEPS, caseTitle, newCase, answerOf, appendRound, appendReview, latestReview, proposalIds, lensIds, summary, putCase, setStatus, tagLibrary, uniqueIds,
+import { citedPapers, citedPapersText, LABEL, NEXT_STEPS, caseTitle, newCase, answerOf, appendRound, appendReview, latestReview, proposalIds, lensIds, summary, putCase, setStatus, tagLibrary, uniqueIds,
   validateRoundAnswer, applyRevisions, pickRelevant, clip, fitSections, caseText, roundSections, headSections, validateHeadReview, planProposal, migrate, migrateLibrary, readStore, emptyStore, MAX_CASES, ROUND_RULES,
   dossierCaseId, caseForDossier, dossierContext, caseFromDossier, dossierText, jobMarker, staleJobs, resumedMarker, finishJob, failJob, LOST_TWICE, RESUME_MAX_ATTEMPTS, RESUME_MAX_AGE_MS } from './researchCase.js';
 import { validateProposals, mergeLibrary } from './researchPod.js';
@@ -232,5 +232,14 @@ t('jobs that survive a restart: the marker, which markers are stale, attempt cou
   assert.equal(failJob({ ...base, inProgress: m }, 'round: boom', { at }).lastError.lostToRestart, undefined);
   assert.equal(RESUME_MAX_ATTEMPTS, 2); assert.equal(RESUME_MAX_AGE_MS, 6 * 3600_000);
   assert.equal(summary(base, { status: 'running', kind: 'round', resumedAfterRestart: true, attempts: 2 }).job.resumedAfterRestart, true);
+});
+t('the Head sees the library papers the case cites (2026-11-06: three real papers were called "not in the reading list")', () => {
+  const papers = [{ id: 'arxiv:2611.04223', arxiv: '2611.04223', title: 'Stress-state undercoverage', notes: { claim: 'intervals undercover in stress', stance: 'for' } },
+    { id: 'doi:10.1002/fut.22208', doi: '10.1002/fut.22208', title: 'Who leads in gold price discovery' }, { id: 'arxiv:9999.00001', arxiv: '9999.00001', title: 'not cited' }];
+  const got = citedPapers('quant cites arxiv:2611.04223 and macro doi:10.1002/fut.22208', papers).map(p => p.id);
+  assert.deepEqual(got, ['arxiv:2611.04223', 'doi:10.1002/fut.22208']);
+  const txt = citedPapersText(citedPapers('arxiv:2611.04223 10.1002/fut.22208', papers));
+  assert.match(txt, /intervals undercover in stress/); assert.match(txt, /not read yet/);
+  assert.match(citedPapersText([]), /none of the ids/);
 });
 console.log(`researchCase: ${n} tests passed`);

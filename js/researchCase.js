@@ -308,12 +308,27 @@ export const ROUND_RULES = [
 ].map(s => `- ${s}`).join('\n');
 
 /** The Head of Research's sections: the whole case with every proposal in full, the owner's marks, the quick tests run. */
-export function headSections(c, { lib = [], fb = {}, quickTests = [], catalogue = [] } = {}) {
-  const ids = proposalIds(c);
+/**
+ * The papers a case cites, from the desk's paper library: every library entry whose id, DOI, arXiv or SSRN id appears in
+ * the case text. The Head must see these: on 2026-11-06 its first review called three real, already-read library papers
+ * "not in the reading list", because it was given only the dossier's list.
+ */
+export function citedPapers(text, papers = []) {
+  const t = String(text ?? '').toLowerCase(), keys = p => [p.id, p.doi, p.arxiv, p.ssrn].filter(Boolean).map(k => String(k).toLowerCase().replace(/^(doi|arxiv|ssrn):/, ''));
+  return (papers ?? []).filter(p => keys(p).some(k => k.length >= 6 && t.includes(k)));
+}
+export function citedPapersText(list) {
+  return list.length ? list.map(p => `- ${p.id}: ${p.title ?? ''}${p.year ? ` (${p.year})` : ''}${p.notes?.claim ? ` | claim: ${String(p.notes.claim).slice(0, 300)}` : ''}${p.notes?.stance ? ` | stance: ${p.notes.stance}` : ''}${p.notes ? '' : ' | (in the library, not read yet)'}`).join('\n')
+    : '(none of the ids the researchers cite are in the paper library)';
+}
+
+export function headSections(c, { lib = [], fb = {}, quickTests = [], catalogue = [], papers = [] } = {}) {
+  const ids = proposalIds(c), whole = caseText(c, lib, { proposals: 'full', replyChars: 3000 });
   return [
     ['The question this case is about', c.question || c.title],
     ...(c.dossier ? [[DOSSIER_SECTION, dossierText(c.dossier)]] : []),
-    ['The whole case, oldest first, with every proposal in full (current versions)', caseText(c, lib, { proposals: 'full', replyChars: 3000 })],
+    ['The whole case, oldest first, with every proposal in full (current versions)', whole],
+    ["The papers the researchers cite, from the desk's paper library (read by the literature desk; a citation listed here is a real, read paper, not an invention; judge whether it supports the claim made of it)", citedPapersText(citedPapers(`${whole}\n${c.dossier ? dossierText(c.dossier) : ''}`, papers))],
     ["The owner's marks on these proposals", ids.filter(id => fb[id]).map(id => `- ${id}: ${fb[id].status}${fb[id].note ? ` (${fb[id].note})` : ''}`).join('\n') || '(none)'],
     ['Quick tests already run for this case or its proposals (exploratory, never banked)', quickTests.length ? quickTests.map(t => `- ${t.id}: ${t.x} → ${t.y}, verdict ${t.verdict ?? '–'}${t.summary ? `: ${t.summary}` : ''}`).join('\n') : '(none)'],
     ['The quick-test catalogue (series ids for "quickTest"; horizons from 1, 2, 5, 10, 20, 60 days)', catalogue.join(', ')],

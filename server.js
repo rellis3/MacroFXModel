@@ -5623,7 +5623,7 @@ async function _rcReview(id, job) {
   const role = _deskLoadRoles().find(r => r.id === 'head_of_research'); if (!role) throw new Error('no role file head_of_research.md');
   const { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js'), QT = await import('./js/quickTest.js');
   _tdOpsNow(); const rows = _roCache.rows ?? [];
-  const [store, lib, fb, qts] = await Promise.all([_rcRead(), _rpGet(_RP.library, []), _rpGet(_RP.feedback, {}), _rpGet(_QT_KEY, {})]);
+  const [store, lib, fb, qts, papers] = await Promise.all([_rcRead(), _rpGet(_RP.library, []), _rpGet(_RP.feedback, {}), _rpGet(_QT_KEY, {}), _rpGet(_LIT.papers, [])]);
   const c = store.cases.find(x => x.id === id); if (!c) throw new Error(`no case ${id}`);
   if (!c.rounds.length) throw new Error('the researchers have not answered yet');
   const ids = _RCS.proposalIds(c), linked = new Set([id, ...ids]);
@@ -5636,7 +5636,7 @@ async function _rcReview(id, job) {
     ? `${sent.length} picture${sent.length > 1 ? 's are' : ' is'} sent with this prompt as images, in this order: ${sent.map((x, i) => `image ${i + 1} = ${x}`).join('; ')}. Each one's vision reading is in the case above under the owner's message it came with. Check every reading against its picture and flag any mismatch (a wrong number, level, date or label) in peerReview, naming the picture id.${sent.length < pics.length ? ` Not available to send: ${pics.filter(a => !sent.includes(a.id)).map(a => a.id).join(', ')} (read their transcriptions only).` : ''}`
     : `The pictures could not be sent with this prompt (${AI_PROVIDERS[headProv]?.vision ? 'their files are no longer stored' : `${AI_PROVIDERS[headProv]?.label ?? headProv} cannot read images`}); work from the vision model's transcriptions in the case and treat their numbers as unverified.`]];
   const { system, prompt } = _deskStagePrompt({ role, pack: { date: _dpLondonDate(Date.now()) }, ledger: DESK_EVIDENCE, sections: [
-    ..._RCS.headSections(c, { lib, fb, quickTests, catalogue: Object.keys(QT.CATALOGUE) }),
+    ..._RCS.headSections(c, { lib, fb, quickTests, catalogue: Object.keys(QT.CATALOGUE), papers }),
     ...picSection,
     ['The data inventory (feeds the server holds; name feed ids in the plan)', _rpInventory()],
     ['The Evidence Book (every entry: [tag] claim -> use)', evidenceBrief(DESK_EVIDENCE)],
