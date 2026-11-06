@@ -655,9 +655,11 @@ ${sec('Fear gauge', 'the VIX and its term structure')}<div id="opt-vix">${loadin
     box.innerHTML = loading(`the ${inst} path`);
     const sm = await J(`/api/swing-map?inst=${encodeURIComponent(inst)}`);
     let walk = null;
-    try { const A = OPV.walkAnchor(sm); if (sm?.ok) walk = OPV.zoneWalk(sm.expiries ?? [], { close: A.px, anchor, includeThin: true, vol: OPV.walkVol(sm), date: A.date }); } catch (e) { console.warn('options walk', e); }
+    const o = (T.optWalk ??= { ...OPV.WALK_OPTS_DEFAULT });   // the walk options (Swing Map's), kept for the session
+    try { if (sm?.ok) walk = OPV.zoneWalk(sm.expiries ?? [], OPV.walkOptsFor(sm, anchor, o)); } catch (e) { console.warn('options walk', e); }
     // drawn at the card's own width, so a phone gets full-size text rather than a shrunken chart
-    box.innerHTML = OPV.pathHtml(sm, inst, { walk, anchor, width: Math.max(300, (box.clientWidth || 460) - 26) });
+    box.innerHTML = OPV.pathHtml(sm, inst, { walk, anchor, width: Math.max(300, (box.clientWidth || 460) - 26), o });
+    box.querySelectorAll('[data-wopt]').forEach(c => (c.onchange = () => { o[c.dataset.wopt] = c.checked; drawPath(T.optPath ?? inst, T.optAnchor ?? anchor); }));
     const ps = box.querySelector('#opt-path-inst'); if (ps) ps.onchange = () => { T.optPath = ps.value; drawPath(ps.value); };
     const pa = box.querySelector('#opt-path-anchor'); if (pa) pa.onchange = () => { T.optAnchor = pa.value; drawPath(T.optPath ?? inst, pa.value); };
   };
