@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Primary Signal</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+#lApp { padding: 0 24px 48px; width: 100%; box-sizing: border-box; max-width: 1100px; margin: 0 auto; }
+.l-h { padding: 16px 0 10px; border-bottom: 1.5px solid var(--border); }
+.l-title { font-size: 17px; font-weight: 700; color: var(--text); } .l-sub { font-size: 10.5px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.note { margin: 12px 0; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--s1); font-size: 12.5px; color: var(--text2); line-height: 1.65; }
+.note b { color: var(--text); }
+.key { border-color: color-mix(in srgb, var(--blue) 55%, transparent); }
+.card { background: var(--s1); border: 1.5px solid var(--border); border-radius: 14px; padding: 12px 14px; margin-top: 12px; min-width: 0; }
+.card h3 { margin: 0 0 6px; font-size: 13.5px; color: var(--text); font-weight: 700; }
+.card p, .card li { font-size: 12.5px; color: var(--text2); line-height: 1.65; }
+.card ul { margin: 4px 0 0; padding-left: 18px; }
+.cap { font-size: 11px; color: var(--text3); line-height: 1.5; margin: 6px 0 0; }
+.tw { overflow-x: auto; }
+table.t { width: 100%; border-collapse: collapse; font-size: 12px; }
+table.t th, table.t td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; color: var(--text2); vertical-align: top; line-height: 1.5; }
+table.t th { color: var(--text3); font-weight: 500; font-size: 10.5px; font-family: 'DM Mono', monospace; text-transform: uppercase; }
+.tag { display: inline-block; font-family: 'DM Mono', monospace; font-size: 10px; padding: 1px 6px; border-radius: 6px; border: 1px solid var(--border); white-space: nowrap; }
+.ok { color: var(--green); border-color: color-mix(in srgb, var(--green) 50%, transparent); }
+.no { color: var(--red); border-color: color-mix(in srgb, var(--red) 50%, transparent); }
+.mid { color: var(--amber, #e0a32e); border-color: color-mix(in srgb, var(--amber, #e0a32e) 50%, transparent); }
+svg text { font-family: 'DM Sans', sans-serif; font-size: 11px; fill: var(--text2); }
+svg .b { fill: var(--s2, var(--s1)); stroke: var(--border); stroke-width: 1.5; }
+svg .bp { stroke: var(--blue); } svg .bv { stroke: var(--green); }
+svg .h { font-weight: 700; fill: var(--text); font-size: 12px; }
+svg .a { stroke: var(--text3); stroke-width: 1.4; fill: none; marker-end: url(#ar); }
+svg .fb { stroke: var(--amber, #e0a32e); stroke-dasharray: 4 3; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid .card { margin-top: 12px; }
+@media (max-width: 860px) { .grid { grid-template-columns: 1fr; } #lApp { padding: 0 16px 48px; } }
+a { color: var(--blue); }
+</style>
+</head>
+<body class="dark">
+<div id="lApp">
+  <div class="l-h">
+    <div class="l-title">The primary signal: what decides direction, and what the vol forecast is for</div>
+    <div class="l-sub">explainer · 2026-11-06 · built from the Evidence Book, the direction bar and C.OG's "forecaster is one layer of six" (Discord, 2026-09-28)</div>
+  </div>
+
+  <div class="note key"><b>In one line.</b> The primary signal answers <b>"which way, and why must someone move price that way?"</b>.
+  The vol forecast answers <b>"how far, how fast, how much to risk"</b>. They are separate questions with separate evidence.
+  Every attempt here to get the first answer out of the second has failed, which is exactly what C.OG said would happen:
+  <i>"it's not quite possible to match what I'm doing by using purely a vol forecaster"</i>.</div>
+
+  <div class="card">
+    <h3>1. The layers, and where each question is answered</h3>
+    <div class="tw"><svg viewBox="0 0 980 250" width="100%" role="img" aria-label="Layer diagram: primary direction, filter, vol layer, execution, forward record with a feedback loop">
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--text3)"/></marker></defs>
+      <rect class="b bp" x="10" y="20" width="170" height="120" rx="10"/>
+      <text class="h" x="22" y="42">1 · Primary signal</text>
+      <text x="22" y="62">which way + why</text><text x="22" y="80">a mechanism: who</text><text x="22" y="96">must buy or sell</text><text x="22" y="118">speaks rarely</text>
+      <rect class="b" x="210" y="20" width="170" height="120" rx="10"/>
+      <text class="h" x="222" y="42">2 · Filter</text>
+      <text x="222" y="62">when to trust it</text><text x="222" y="80">vol state, macro</text><text x="222" y="96">context, events</text><text x="222" y="118">(meta-labelling)</text>
+      <rect class="b bv" x="410" y="20" width="170" height="120" rx="10"/>
+      <text class="h" x="422" y="42">3 · Vol layer</text>
+      <text x="422" y="62">how far / how much</text><text x="422" y="80">stop, target, size</text><text x="422" y="96">from σ and the lines</text><text x="422" y="118">(the forecaster)</text>
+      <rect class="b" x="610" y="20" width="170" height="120" rx="10"/>
+      <text class="h" x="622" y="42">4 · Execution</text>
+      <text x="622" y="62">when inside the</text><text x="622" y="80">window: entry order,</text><text x="622" y="96">cost, spread gate</text>
+      <rect class="b" x="810" y="20" width="160" height="120" rx="10"/>
+      <text class="h" x="822" y="42">5 · Forward record</text>
+      <text x="822" y="62">every call written</text><text x="822" y="80">once, scored vs its</text><text x="822" y="96">own base rate</text>
+      <path class="a" d="M180,80 L208,80"/><path class="a" d="M380,80 L408,80"/><path class="a" d="M580,80 L608,80"/><path class="a" d="M780,80 L808,80"/>
+      <path class="a fb" d="M890,140 L890,200 L495,200 L495,142"/>
+      <text x="520" y="222">forecast error feeds back: lines widen when the forecast has been missing (stress / drawdown shadows)</text>
+      <path class="a fb" d="M870,140 L870,185 L95,185 L95,142"/>
+      <text x="100" y="242">record decides whether a primary signal keeps its weight</text>
+    </svg></div>
+    <p class="cap">C.OG: "having the forecaster is very useful as a layer … the way to really develop this is by having conditional views and then other layers supporting it." The stop orders Jordan wanted to copy come from layers 1, 3 and 4 together; that is why they can't be reverse-engineered from the lines.</p>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>2. What a primary signal has to be</h3>
+      <ul>
+        <li><b>A reason someone must trade.</b> Carry (paid to hold), forced hedging, index or month-end rebalancing, a central bank repricing the path, a crowded position unwinding. "Price touched a line" is not a reason; nobody is forced to act there.</li>
+        <li><b>Sparse.</b> Real edges here are rare conditions that move the odds a lot, not a daily call. Most days the honest answer is "no view".</li>
+        <li><b>Scored against its own base rate.</b> NQ closed up on 55% of days and 65% of 20-day windows. "Long NQ" looks clever against 50% and has no skill against drift.</li>
+        <li><b>A horizon that matches its mechanism.</b> Carry plays out over months, post-FOMC drift over five sessions. A slow reason can't be traded on an intraday stop.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>3. Why the vol forecast can't be it</h3>
+      <ul>
+        <li><b>σ has no sign.</b> The lines are symmetric widths around the open; they say how big, never which way.</li>
+        <li><b>Touches are generic.</b> Lines of the same size built from plain ATR give the same results at every rung (fade, follow, VWAP stretch, targets).</li>
+        <li><b>Six NQ tests this week</b>: open-long to p75/p90, fade/follow at the lines, v3 lines, p50 follow on 2017–20 (did not replicate), VWAP stretch. All drift or noise. Day reconstruction M1–M7 found the same on the production ladder.</li>
+        <li><b>What it does well</b>: it measures size well (v3 cuts range error ~12%), reach odds, how much range is left, and stop distance (price overshoots a line by a median 0.3–0.5σ).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>4. Where a primary signal can come from, and where ours stand</h3>
+    <div class="tw"><table class="t">
+      <tr><th>Family</th><th>Why someone must trade</th><th>Horizon</th><th>Our record</th></tr>
+      <tr><td><b>Risk premia</b><br>carry, trend, long equity beta</td><td>Paid for bearing crash risk / slow information spread</td><td>weeks–months</td><td><span class="tag mid">UNDERPOWERED</span> FX carry net Sharpe +0.36 (103 months, CI ±1.1), in the forward ledger. Multi-asset trend ~0.3 OOS, barely above buy-and-hold. Portfolio Book 0.74 after all haircuts</td></tr>
+      <tr><td><b>Event drift</b><br>post-FOMC USD, data-surprise fade</td><td>The market reprices a policy path over days, not minutes</td><td>1–5 days</td><td><span class="tag mid">FRAGILE</span> post-FOMC drift 65% positive on 81 meetings (re-run pending); the <b>only</b> input currently weighted in the direction score. Pooling six central banks is the planned way to get power</td></tr>
+      <tr><td><b>Forced flows / positioning</b><br>COT crowding, positioning into a release, dealer hedging</td><td>Someone has to unwind or hedge whatever price does</td><td>days–weeks</td><td><span class="tag mid">FORWARD</span> COT state D validated on history, now in the forward ledger. Hedge-flow size: null. Positioning into releases tells you who must act, not which way</td></tr>
+      <tr><td><b>Vol-surface stress</b><br>VIX beta change, VVIX/VXN 2nd derivative</td><td>Vol sellers and hedgers forced to rebalance</td><td>days</td><td><span class="tag mid">FORWARD</span> both in the forward ledger, judged at 20 events</td></tr>
+      <tr><td><b>Macro state</b><br>scorecard, regime, yields, dollar, risk tone, CB tone</td><td>Coincident or lagging: describes conditions</td><td>days–weeks</td><td><span class="tag no">NULL</span> every macro direction input in Global Read has weight 0 (macro score, HMM trend, US yields, dollar tape, risk tone, CB tone, COT net). Useful for <i>context and size</i>, not side</td></tr>
+      <tr><td><b>Intraday price at levels</b><br>forecast lines, OI walls, VWAP bands, fibs</td><td>None identified</td><td>minutes–session</td><td><span class="tag no">NULL</span> M1–M7, line-touch wide scan (+0.19R gross, fails net), OI walls, VuManChu, order flow. Closed</td></tr>
+    </table></div>
+    <p class="cap">Sources: <code>js/deskEvidence.js</code>, <code>js/globalReadCore.js</code> REGISTRY, <code>js/directionResearch.js</code>, <code>analysis/output/fx-factor-stack/RESULTS.md</code>, <code>analysis/output/direction-bar/</code>.</p>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>5. How the pieces combine (already built)</h3>
+      <p>The desk's macro analysis already feeds one combiner: <b>Global Read</b>. Each input carries a weight from its evidence (tier × measured IC). Inputs that tested null get weight 0, so they show as context but cannot move the call. The result is turned into P(up) and then into a <b>1-to-10 direction score</b>, measured in units of what the data can detect.</p>
+      <ul>
+        <li>P(up) = base rate + the shift from tested inputs</li>
+        <li>8–10 = long, 1–3 = short, 4–7 = <b>no direction</b> (most days)</li>
+        <li>Every score is written to the forward direction ledger and scored against the base rate</li>
+      </ul>
+      <p class="cap">Adding more null inputs would only add noise. The old conviction vote (every input counted equally) was <b>anti-predictive</b>: the bot lost about £38k on it.</p>
+    </div>
+    <div class="card">
+      <h3>6. How you'd know a primary signal works</h3>
+      <p>The direction bar (31 Oct) measured how much a signal must move the odds of an up close before the record can see it. For one market, with the signal firing on 10% of days:</p>
+      <div class="tw"><table class="t"><tr><th>Horizon</th><th>Needed shift in P(up)</th></tr>
+        <tr><td>1 day</td><td>6 points</td></tr><tr><td>5 days</td><td>15 points</td></tr><tr><td>20 days</td><td>29 points</td></tr></table></div>
+      <p class="cap">So: pool across markets or events, prefer sparse large-effect conditions, and let the forward record run. No backtest alone can prove a small edge here. Meta-labelling only helps once a primary signal has an edge. Our four meta-label tests were null because the primary they filtered had none.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>7. How to use it day to day</h3>
+    <ul>
+      <li><b>Direction:</b> read the direction score. If it's 4–7 there is no tested reason to pick a side. A trade then is a discretionary view, not a system call, and should be sized like one.</li>
+      <li><b>Stop, target, size:</b> from the vol layer. Put the stop beyond the line plus the overshoot (about 0.35σ). The target is a line with a known reach probability. Size so 1R equals the stop distance. Size down when the forecast has been missing (the stress shadow lines are wider).</li>
+      <li><b>Don't chase</b> beyond p75/p90 in the move's direction; only about 0.3σ of travel is typically left.</li>
+      <li><b>Trade plan page</b> (<a href="trade-plan.html">trade-plan.html</a>): joins the direction score and the vol layer into one card per market and keeps a forward record. <b>Vol state</b> (<code>/api/vol-state</code>): C.OG's shared state variables in one place.</li>
+    </ul>
+  </div>
+
+  <div class="note"><b>What would change this page.</b> A direction cell passing its forward judgement in the ledger (post-FOMC drift pooled across central banks is the nearest). FX carry reaching power as months accumulate. A new mechanism with a clear "who must trade". Not more combinations of inputs already tested null.</div>
+</div>
+</body>
+</html>
