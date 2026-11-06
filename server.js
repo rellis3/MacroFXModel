@@ -8364,6 +8364,38 @@ app.get('/api/release-layer1/paths', async (req, res) => {
     res.set('Cache-Control', live?.paths?.[id] ? 'no-store' : 'public, max-age=3600'); res.json({ ok: true, id, paths: P });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// Volume footprint (footprint.html; scripts/footprint/build_footprint.py, maths in js/footprintCore.js). Committed days live in
+// analysis/output/footprint/site/fp_<SYM>_<day>.json; the laptop's --watch --push loop puts the day it is building in KV footprint_live_v1,
+// which wins for that day. Descriptive order flow only (orderflow-lead null).
+const _FP_DIR = path.join(__dirname, 'analysis', 'output', 'footprint', 'site'), _FP_KV = 'footprint_live_v1';
+let _fpLive = { at: 0, v: null };
+async function _fpLivePush() {
+  if (Date.now() - _fpLive.at > 10_000) {
+    try { const raw = await kv.get(_FP_KV); const p = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null; _fpLive = { v: p?.data ?? p ?? null, at: Date.now() }; }
+    catch { _fpLive = { ..._fpLive, at: Date.now() }; }
+  }
+  return _fpLive.v?.bars ? _fpLive.v : null;
+}
+app.get('/api/footprint/days', async (_req, res) => {
+  try {
+    let days = []; try { days = JSON.parse(fs.readFileSync(path.join(_FP_DIR, 'fp_index.json'), 'utf8')); } catch { /* none committed yet */ }
+    const live = await _fpLivePush();
+    if (live && !days.some(d => d.sym === live.sym && d.day === live.day)) days.push({ sym: live.sym, day: live.day });
+    days.sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : a.sym.localeCompare(b.sym)));
+    res.set('Cache-Control', 'no-store'); res.json({ ok: true, days, live: live ? { sym: live.sym, day: live.day, built: live.built, last_trade: live.last_trade } : null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/footprint/day', async (req, res) => {
+  try {
+    const sym = String(req.query.sym || 'NQ').toUpperCase(), day = String(req.query.day || '');
+    if (!/^[A-Z0-9]{1,5}$/.test(sym) || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return res.status(400).json({ ok: false, error: 'sym and day=YYYY-MM-DD required' });
+    const live = await _fpLivePush();
+    if (live && live.sym === sym && live.day === day) { res.set('Cache-Control', 'no-store'); return res.json({ ok: true, live: true, ...live }); }
+    const f = path.join(_FP_DIR, `fp_${sym}_${day}.json`);
+    if (!fs.existsSync(f)) return res.status(404).json({ ok: false, error: `no footprint for ${sym} ${day}` });
+    res.set('Cache-Control', 'no-store'); res.json({ ok: true, live: false, ...JSON.parse(fs.readFileSync(f, 'utf8')) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // Layer 2 (release-why.html; scripts/release_layer2/): the going-in factor sheet and the 77-item register. Kept apart from Layer 1 on purpose: it never carries outcomes, the page joins them by release id.
 // The laptop pushes it to KV release_layer2_v1 (build_factors.py --push); the committed analysis/output/release_layer2/factors.json is the fallback.
 const _RW_DIR = path.join(__dirname, 'analysis', 'output', 'release_layer2'), _RW_KV = 'release_layer2_v1';
