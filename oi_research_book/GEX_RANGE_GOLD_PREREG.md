@@ -135,7 +135,24 @@ gold file is assembled, from row counts only.
 
 ## Amendments
 
-*(none yet)*
+### A1 — 2026-11-06 — PRE-RESULTS
+
+Written after the script `34_gex_range_gold.py` was built and before any gold OI file was assembled or any gold
+outcome computed. It makes the text above match the script exactly; no rule is loosened.
+
+1. **Injection check** is the ES script's: add +0.15 to DR on short-gamma sessions of a copy; the vol-matched estimator
+   must recover +0.15 within ±0.01 (the text in §3 said ×1.15 within ±0.03; the additive, tighter form is what the
+   shared code does and is stricter).
+2. **Q2 window and tolerance.** NQ runs on the window `gex-range-es` used (the later of ES's and NQ's first OI dates),
+   so it is directly comparable with the banked `gex-range-es` NQ number. The pipeline check is: the point estimate of
+   the NQ vol-matched ΔDR must equal the banked value to within **±0.005** (same code, same data, same window), which
+   replaces the looser "+0.29 ± 0.05" in §4. A failed check means Q1 cannot be VALIDATED.
+3. **Q1 scoring** uses the unadjusted bootstrap p (one scored cell). The ES script's Holm step across two
+   instruments is removed.
+4. **Placebo gate** is as in §3: the real vol-matched ΔDR above the 95th percentile of the all-shift distribution
+   (shifts 60 … n−60, step 5, circular). The ES single +125 shift is still reported, with no weight.
+5. **Gold inputs.** `XAU_USD` added to `pair_config.py` (contract multiplier 100, not inverted, price file `xauusd`).
+6. **Measured n** (row counts only) will be added as A2 once `XAU_USD.csv` is assembled.
 
 ---
 

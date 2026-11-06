@@ -25,6 +25,8 @@ PAIR_CONFIG = {
     "NAS100_USD": {"label": "NAS100_USD", "contract_mult": 20,      "inverted": False, "pip_size": 1.0,    "price_file": "nas100"},
     # ES options: $50 x index (CME E-mini S&P 500). Added 2026-10-20 for gex-range-es.
     "SPX500_USD": {"label": "SPX500_USD", "contract_mult": 50,      "inverted": False, "pip_size": 1.0,    "price_file": "spx500"},
+    # Gold options (CME OG on GC): 100 troy oz x price. Added 2026-11-06 for gex-range-gold. pip_size 1.0 = the canonical gold pip (data-rules; the 0.1 in the header above is the old dashboard value).
+    "XAU_USD":    {"label": "XAU_USD",    "contract_mult": 100,     "inverted": False, "pip_size": 1.0,    "price_file": "xauusd"},
 }
 
 
