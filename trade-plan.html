@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trade Plan Shadow</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+#lApp { padding: 0 24px 48px; width: 100%; box-sizing: border-box; max-width: 1280px; margin: 0 auto; }
+.l-h { display: flex; align-items: center; gap: 14px; padding: 16px 0 10px; border-bottom: 1.5px solid var(--border); flex-wrap: wrap; }
+.l-title { font-size: 17px; font-weight: 700; color: var(--text); } .l-sub { font-size: 10.5px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.note { margin: 10px 0; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--s1); font-size: 12px; color: var(--text2); line-height: 1.6; }
+.note b { color: var(--text); }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+@media (max-width: 1100px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .grid { grid-template-columns: 1fr; } #lApp { padding: 0 12px 48px; } }
+.card { background: var(--s1); border: 1.5px solid var(--border); border-radius: 14px; padding: 12px 14px; min-width: 0; margin-top: 12px; }
+.grid .card { margin-top: 0; }
+.card h3 { margin: 0 0 6px; font-size: 13px; color: var(--text); font-weight: 700; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.card .cap { font-size: 11px; color: var(--text3); margin: 0 0 8px; line-height: 1.5; }
+.chip { font-family: 'DM Mono', monospace; font-size: 10.5px; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--text2); white-space: nowrap; }
+.chip.long { color: var(--green); border-color: color-mix(in srgb, var(--green) 50%, transparent); }
+.chip.short { color: var(--red); border-color: color-mix(in srgb, var(--red) 50%, transparent); }
+.dec { font-size: 15px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); margin: 2px 0 6px; }
+.pos { color: var(--green) !important; } .neg { color: var(--red) !important; } .muted { color: var(--text3); }
+.tw { overflow-x: auto; }
+table.t { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+table.t th, table.t td { padding: 4px 6px; border-bottom: 1px solid var(--border); text-align: right; font-family: 'DM Mono', monospace; color: var(--text2); white-space: nowrap; }
+table.t th { color: var(--text3); font-weight: 500; font-size: 10.5px; } table.t td:first-child, table.t th:first-child { text-align: left; }
+td.wrap { white-space: normal !important; font-family: 'DM Sans', sans-serif !important; font-size: 11px; color: var(--text3) !important; min-width: 220px; }
+.ref { opacity: 0.6; }
+.sec { margin-top: 22px; font-size: 13px; font-weight: 700; color: var(--text); }
+</style>
+</head>
+<body class="dark">
+<div id="lApp">
+  <div class="l-h">
+    <div><div class="l-title">Trade plan shadow: which way (direction score) × how far (vol forecast)</div>
+      <div class="l-sub">trade-plan-shadow · pre-registered 2026-11-06 · display only, not a signal, no bot reads this · results in R, never money</div></div>
+  </div>
+  <div class="note"><b>How this is built.</b> Two layers, kept apart.
+    <b>Which way</b> comes only from the tested direction evidence: the 1-to-10 direction score as of the last New York close (8–10 long, 1–3 short, 4–7 no trade).
+    That evidence mostly says <i>no direction</i>, so most days show NO TRADE, which is the correct answer, not a fault.
+    <b>How far</b> comes from the vol forecast: the stop sits 0.35σ beyond the opposite-side p90 line (price overshoots a line by a median 0.3–0.5σ on NQ),
+    the target is the same-side p75 line, and 1R is the stop distance, so size = risk budget ÷ stop distance.
+    <b>Forecast error widens the lines:</b> when the stress-shadow factor (the validated forecast-miss feedback) exists for a market, the stop uses those wider lines.
+    On no-trade days both sides are shown greyed as a reference ("if you had a view"). Each session is written once to a forward record and scored on 1-minute bars
+    against the same plan with a coin-flip side and, for NQ/S&amp;P/gold, buy-and-hold.</div>
+  <div id="today"><div class="note">Loading…</div></div>
+  <div class="sec">Vol state vector (descriptive, per market)</div>
+  <div id="vol"><div class="note">Loading…</div></div>
+  <div class="sec">Forward record</div>
+  <div id="hist"><div class="note">Loading…</div></div>
+</div>
+<script type="module">
+const el = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const dp = v => !Number.isFinite(v) ? 2 : v >= 1000 ? 1 : v >= 50 ? 2 : v >= 5 ? 3 : 5;
+const px = (v, ref) => Number.isFinite(v) ? v.toFixed(dp(ref ?? v)) : '–';
+const f = (v, d = 2) => Number.isFinite(v) ? v.toFixed(d) : '–';
+const sg = (v, d = 3) => Number.isFinite(v) ? (v > 0 ? '+' : '') + v.toFixed(d) : '–';
+const cls = v => v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+const NAMES = { NQ: 'Nasdaq 100', SPX500: 'S&P 500', GOLD: 'Gold', EURUSD: 'EUR/USD', GBPUSD: 'GBP/USD', USDJPY: 'USD/JPY' };
+
+function sideTable(r, live) {
+  const row = (s) => { const p = r[s]; if (!p) return ''; const on = live === s, grey = live && !on ? 'ref' : (!live ? 'ref' : '');
+    return `<tr class="${grey}"><td>${s === 'LONG' ? '<span class="pos">Long</span>' : '<span class="neg">Short</span>'}${on ? ' ◀' : ''}</td>
+      <td>${px(p.stop, r.open)}</td><td>${f(p.stopSigma)}σ</td><td>${px(p.target, r.open)}</td><td>${f(p.targetSigma)}σ</td><td>${f(p.rr)}</td></tr>`; };
+  return `<div class="tw"><table class="t"><tr><th>side</th><th>stop</th><th>stop dist</th><th>target</th><th>target dist</th><th>R:R</th></tr>${row('LONG')}${row('SHORT')}</table></div>`;
+}
+
+function marketCard(r) {
+  const dec = r.decision, live = dec === 'LONG' || dec === 'SHORT' ? dec : null;
+  const band = r.score == null ? 'no score' : `${r.score} · ${esc(r.band ?? '')}${r.strength ? ' (' + esc(r.strength) + ')' : ''}`;
+  const chipCls = live === 'LONG' ? 'long' : live === 'SHORT' ? 'short' : '';
+  if (r.skipped) return `<div class="card"><h3>${NAMES[r.sym] ?? r.sym}<span class="chip">${band}</span></h3><div class="cap">No plan: ${esc(r.skipped)}</div></div>`;
+  return `<div class="card"><h3>${NAMES[r.sym] ?? r.sym}<span class="chip ${chipCls}">score ${band}</span></h3>
+    <div class="dec ${live === 'LONG' ? 'pos' : live === 'SHORT' ? 'neg' : 'muted'}">${dec}</div>
+    <div class="cap">Entry = London open ${px(r.open)} (${esc((r.open_time ?? '').slice(11, 16))} UTC) · σ ${f(r.sigmaPct, 3)}% of open (the lines' daily σ) ·
+      lines: <b>${esc(r.lines)}</b>${Number.isFinite(r.stressFactor) ? ` (stress factor ×${f(r.stressFactor, 3)} on the stop line)` : ''}${r.forecast_stale ? ' · <span class="neg">forecast carried forward</span>' : ''}</div>
+    ${sideTable(r, live)}
+    <div class="cap" style="margin-top:6px">${live ? `Risk 1R = ${f(r[live].stopPct, 3)}% of price; units = risk budget ÷ ${px(Math.abs(r.open - r[live].stop), r.open)}.` : 'No trade: both sides shown greyed as reference only ("if you had a view").'}
+      Direction source: ${esc(r.direction_source ?? r.direction_reason ?? '–')}${r.previewOnly ? ' <span class="neg">(preview only)</span>' : ''}.</div></div>`;
+}
+
+function fieldCell(x, fmt) {
+  if (!x) return '<td>–</td>';
+  if (x.value == null) return `<td class="muted" title="${esc(x.reason)}">null</td>`;
+  return `<td title="${esc(x.source ?? '')}">${fmt(x)}</td>`;
+}
+function volTable(vs) {
+  const rows = Object.entries(vs.vectors ?? {}).map(([sym, v]) => {
+    if (!v) return `<tr><td>${sym}</td><td colspan="7" class="muted">not in the vol forecast</td></tr>`;
+    const fe = v.forecast_error, sh = fe?.shadows ?? {};
+    return `<tr><td>${NAMES[sym] ?? sym}</td>
+      ${fieldCell(v.sigma_now, x => f(x.value, 3) + '%')}
+      ${fieldCell(v.sigma_expected_change, x => sg(x.value, 0) + ' pts' + (x.label ? ' · ' + esc(x.label) : ''))}
+      ${fieldCell(v.sigma_vs_longrun, x => f(x.value, 2) + '× · p' + f(x.percentile, 0))}
+      ${fieldCell(v.regime, x => f(x.value * 100, 0) + '% active')}
+      ${fieldCell(fe, x => sg(x.value, 3) + ` (n ${x.n})`)}
+      <td>${sh.stress?.factor != null ? '×' + f(sh.stress.factor, 3) : '<span class="muted" title="' + esc(sh.stress?.reason) + '">–</span>'} / ${sh.drawdown?.factor != null ? '×' + f(sh.drawdown.factor, 3) : '<span class="muted" title="' + esc(sh.drawdown?.reason) + '">–</span>'}</td>
+      ${fieldCell(v.jump_intensity, x => f(x.value, 3))}</tr>`;
+  }).join('');
+  const any = Object.values(vs.vectors ?? {}).find(Boolean) ?? {};
+  const src = k => esc(any[k]?.source ?? any[k]?.reason ?? '');
+  return `<div class="card"><div class="cap">Session ${esc(vs.sessionDate)} · built ${esc((vs.builtAt ?? '').slice(0, 16))} UTC · hover a cell for its source; "null" cells show why on hover. Descriptive only: none of these enters the plan except σ (stop and target) and the stress factor (stop line).</div>
+    <div class="tw"><table class="t"><tr><th>market</th><th>σ now (daily, % of open)</th><th>σ change (proxy)</th><th>σ ÷ 252-session median · pctile</th><th>HMM P(high-vol), filtered</th><th>forecast error, mean log(real ÷ p50 H→L), 20 sessions</th><th>stress / drawdown shadow factor</th><th>jump intensity</th></tr>${rows}</table></div>
+    <table class="t" style="margin-top:8px"><tr><th>field</th><th style="text-align:left">source</th></tr>
+      ${['sigma_now', 'sigma_expected_change', 'sigma_vs_longrun', 'regime', 'forecast_error', 'jump_intensity'].map(k => `<tr><td>${k}</td><td class="wrap">${src(k)}</td></tr>`).join('')}</table></div>`;
+}
+
+function stat(name, m, note = '') {
+  if (!m || !m.n) return `<tr><td>${name}</td><td>0</td><td>–</td><td>–</td><td class="wrap">${note}</td></tr>`;
+  return `<tr><td>${name}</td><td>${m.n} (${m.sessions} sessions)</td><td class="${cls(m.mean)}">${sg(m.mean)}</td><td>${m.ci ? `[${sg(m.ci[0])}, ${sg(m.ci[1])}]` : 'n < 10 sessions'}</td><td class="wrap">${note}</td></tr>`;
+}
+function histView(h) {
+  if (typeof h === 'string') return `<div class="note">${esc(h)}</div>`;
+  const S = h.summary;
+  const recent = (h.recent ?? []).slice(0, 60).map(r => { const d = r.decision, o = r.out;
+    const R = s => o?.[s] ? `<span class="${cls(o[s].netR)}">${sg(o[s].netR, 2)}</span> <span class="muted">${o[s].how}</span>` : '–';
+    return `<tr><td>${r.date}</td><td>${r.sym}</td><td>${r.score ?? '–'}</td><td>${d}</td><td>${r.skipped ? '<span class="muted">' + esc(r.skipped) + '</span>' : esc(r.lines ?? '')}</td><td>${R('LONG')}</td><td>${R('SHORT')}</td><td>${r.coin}</td></tr>`; }).join('');
+  return `<div class="card"><div class="cap">${h.sessions} sessions recorded${h.first ? ` (${h.first} → ${h.last})` : ''} · ${S.tradeRows} trade rows, ${S.noTradeRows} no-trade rows scored ·
+      exits on trade rows: ${S.exits.target} target, ${S.exits.stop} stop, ${S.exits.close} close · judged at ${S.judge.atTrades} trade rows or ${S.judge.atDate}, whichever later ·
+      verdict now: <b>${esc(S.judge.verdict)}</b>. Net R after the round-trip cost model; 95% intervals resample whole sessions.</div>
+    <div class="tw"><table class="t"><tr><th>arm</th><th>rows</th><th>mean net R</th><th>95% interval</th><th style="text-align:left">what it is</th></tr>
+      ${stat('Plan (score side)', S.decision, 'trade rows only: the side the direction score picked')}
+      ${stat('Coin flip, same rows', S.coinOnTradeRows, 'same plan, side from a fixed-seed coin (20261106)')}
+      ${stat('Plan − coin flip', S.pairedVsCoin, 'the gate: needs the interval above 0 (and plan above 0)')}
+      ${stat('B0 long, same rows', S.b0OnTradeRows, 'NQ / S&P / gold trade rows: always long')}
+      ${stat('Plan − B0', S.pairedVsB0, 'descriptive')}
+      ${stat('Mirror (reversed side)', S.mirror, 'should be about minus the plan, less cost')}
+      ${stat('No-trade rows: long plan', S.noTradeLong, 'reference: does the vol plan alone drift?')}
+      ${stat('No-trade rows: short plan', S.noTradeShort, 'reference')}</table></div>
+    <div class="tw" style="margin-top:10px"><table class="t"><tr><th>date</th><th>market</th><th>score</th><th>decision</th><th>lines</th><th>long R</th><th>short R</th><th>coin</th></tr>${recent || '<tr><td colspan="8" class="muted">no rows yet</td></tr>'}</table></div></div>`;
+}
+
+async function load() {
+  try {
+    const D = await (await fetch('/api/trade-plan?history=1')).json();
+    if (D.error) throw new Error(D.error);
+    const T = D.today;
+    el('today').innerHTML = !T ? `<div class="note">No London session today (${esc(D.londonDate)}).</div>`
+      : `<div class="note">${T.inRecord ? `<b>Session ${esc(T.session)}</b>, from the forward record (written ${esc((T.written_at ?? '').slice(0, 16))} UTC).` : `<b>Session ${esc(T.session)} · preview.</b> ${esc(T.note ?? '')}${T.missing ? ' ' + esc(T.missing) : ''}`}</div>
+         <div class="grid">${(T.rows ?? []).map(marketCard).join('')}</div>`;
+    el('vol').innerHTML = D.volState?.vectors ? volTable(D.volState) : `<div class="note">Vol state unavailable${D.volState?.error ? ': ' + esc(D.volState.error) : ''}.</div>`;
+    el('hist').innerHTML = histView(D.history);
+  } catch (e) { el('today').innerHTML = `<div class="note neg">Could not load /api/trade-plan: ${esc(e.message)}</div>`; }
+}
+load(); setInterval(load, 5 * 60_000);
+</script>
+</body>
+</html>

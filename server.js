@@ -106,6 +106,8 @@ import { createDailyRead } from './js/dailyReadRoutes.js';
 import { createHarShadow } from './js/harShadowRoutes.js';
 import { createDrawdownShadow } from './js/drawdownShadowRoutes.js';   // drawdown shadow band, read-only (drawdown-forecast-error A1)
 import { createStressShadow } from './js/stressShadowRoutes.js';       // stress-count shadow band, read-only (forecast-miss-scan A1)
+import { createVolState } from './js/volStateRoutes.js';             // vol state vector, descriptive (GET /api/vol-state)
+import { createTradePlan } from './js/tradePlanRoutes.js';           // trade-plan shadow forward record, display only (forge/TRADE_PLAN_SHADOW_PREREG.md)
 import { createStateRoutes } from './js/stateRoutes.js';                // Market State Engine: GET /api/state (plans/MARKET_STATE_ENGINE_PLAN.md)
 import { createSurfaceLab } from './js/surfaceLabRoutes.js';
 import { createVixCapture } from './js/vixCaptureRoutes.js';
@@ -34298,6 +34300,14 @@ dailyRead.mount(app);
 createHarShadow({ kv }).mount(app);
 createDrawdownShadow({ kv }).mount(app);
 createStressShadow({ kv }).mount(app);
+// Vol state vector + trade-plan shadow (display only; never a bot input). Direction = the tested 1-to-10 score; vol layer = the live
+// ladder (stress-shadow lines for the stop). Write-once R2 forward/trade_plan/. Rule: js/tradePlanCore.js; prereg forge/TRADE_PLAN_SHADOW_PREREG.md.
+const _tpFetchLocal = async p => { const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { signal: AbortSignal.timeout(90_000) }); return r.ok ? r.json() : null; };
+const _volState = createVolState({ kv, getHmmStore: () => _loadHmmHourly(), hmmKeys: BRIEF_HMM_KEYS, fetchLocal: _tpFetchLocal });
+_volState.mount(app);
+const _tradePlan = createTradePlan({ store: { getJSON: _r2GetJSON, putJSON: _r2PutJSON, listKeys: _r2ListKeys, ok: _r2Ok }, kv, volState: _volState, getGr: () => _grLatest, fetchLocal: _tpFetchLocal });
+_tradePlan.mount(app);
+svcInterval('tradePlan', () => _tradePlan.tick('scheduled').catch(e => console.error('[trade-plan]', e.message)), 10 * 60_000);
 // Liquidity & banking layer. Uses the server's own feeds first: the keyed FRED fetcher (fetchFredSeries, the same
 // one the liquidity gate and pulse use) when FRED_KEY is set, the BIS bank-credit store (KV bank_credit_v1, built by
 // _bcTick) and the Daily Treasury Statement TGA. FRED's public CSV is only the no-key fallback. Cached 6 h.
