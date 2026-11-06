@@ -8,6 +8,7 @@
  * Pure. Tested in js/newsletterToday.test.mjs.
  */
 import { dollarBasket } from './dataChecks.js';
+import { yesterdayLine } from './morningTape.js';
 
 const TZ = 'Europe/London', MINUS = '−';
 const BANK = { USD: 'the Fed', EUR: 'the ECB', GBP: 'the Bank of England', JPY: 'the Bank of Japan', AUD: 'the RBA', NZD: 'the RBNZ', CAD: 'the Bank of Canada', CHF: 'the SNB' };
@@ -278,9 +279,10 @@ export function weekStory(changes) {
 /**
  * The opening for one issue: { kicker, headline, regime, changed, watch }.
  * Inputs: events (ms, ccy, event, impact, estimate, note), nowMs, since, regimeWord, riskFlags, assets (label, d1, used), weekly, fedPath, cb, board.
- * Also returns lede (the day in three or four sentences), sheet (the releases, timed) and board (the few numbers that frame the day).
+ * Also returns lede (the day in three or four sentences), sheet (the releases, timed) and board (the few numbers that frame the day), and
+ * yesterday (js/morningTape.js yesterdayLine: last night's evening edition headline for the last full day, else its biggest moves in normal-day units).
  */
-export function todayOpening({ events, nowMs, since, regimeWord, riskFlags, assets, weekly = false, fedPath, cb, board, changes, asia, eventDay } = {}) {
+export function todayOpening({ events, nowMs, since, regimeWord, riskFlags, assets, weekly = false, fedPath, cb, board, changes, asia, eventDay, evening = null } = {}) {
   const now = Number.isFinite(nowMs) ? nowMs : Date.now(), hi = windowEvents(events, now, weekly);
   const nextHigh = hi.length ? null : (events ?? []).filter(e => e?.impact === 'high' && e.ms > now).sort((a, b) => a.ms - b.ms)[0] ?? null;
   const day = new Date(now).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ });
@@ -289,5 +291,5 @@ export function todayOpening({ events, nowMs, since, regimeWord, riskFlags, asse
   const take = weekly ? null : dayTake({ assets, changes, hi, now, asia });
   const regime = regimeLine(regimeWord, riskFlags), changed = changedLine(since, assets);
   const lede = (take?.means?.length || take?.lead ? [take.lead, take.asiaNote, ...take.means, fedLine(fedPath, hi, now), regime] : [take?.lead, take?.asiaNote, loadLine(hi, done, weekly, now), fedLine(fedPath, hi, now), take ? take.close : changed, regime]).filter(Boolean).join(' ');
-  return { story: weekly ? 'The week in one line' : 'The month in one line', lede, sheet: sheetOf(hi, cb, weekly, eventDay), board: (board ?? []).filter(b => b?.label && b.value).slice(0, 6), kicker: weekly ? `This week · from ${day}` : `${known ? dayType(hi) : 'Today'} · ${day}`, headline: take?.headline || (known ? headlineOf(hi, nextHigh, weekly, now) : 'Where the markets stand this morning'), regime, changed, watch: watchLine(weekly ? hi : hi.filter(e => e.ms > now), nextHigh, weekly), count: hi.length };
+  return { story: weekly ? 'The week in one line' : 'The month in one line', lede, sheet: sheetOf(hi, cb, weekly, eventDay), yesterday: weekly ? null : yesterdayLine({ assets, evening }), board: (board ?? []).filter(b => b?.label && b.value).slice(0, 6), kicker: weekly ? `This week · from ${day}` : `${known ? dayType(hi) : 'Today'} · ${day}`, headline: take?.headline || (known ? headlineOf(hi, nextHigh, weekly, now) : 'Where the markets stand this morning'), regime, changed, watch: watchLine(weekly ? hi : hi.filter(e => e.ms > now), nextHigh, weekly), count: hi.length };
 }

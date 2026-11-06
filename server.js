@@ -5894,7 +5894,7 @@ async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS), caseI
     await kv.put(_RP.library, JSON.stringify(l2));
     // round 1 of the case: each researcher's headline, questions and proposal ids; the question started it
     const c = caseId ? (await _rcRead()).cases.find(x => x.id === caseId) : null;
-    if (c) await _rcPut({ ..._RCS.appendRound(c, { owner: c.question || null, answers: Object.fromEntries(Object.entries(out.researchers).map(([k, r]) => [k, _RCS.answerOf(r)])), errors: out.errors, at: out.at, web: out.web }), pending: null, lastError: null });
+    if (c) await _rcPut({ ..._RCS.finishJob(_RCS.appendRound(c, { owner: c.question || null, answers: Object.fromEntries(Object.entries(out.researchers).map(([k, r]) => [k, _RCS.answerOf(r)])), errors: out.errors, at: out.at, web: out.web })), pending: null, lastError: null });
   });
   const cites = screened.filter(p => p.citations?.length);
   if (cites.length) { let pl = await _rpGet(_LIT.papers, []); for (const p of cites) pl = _litCite(pl, p.citations, { proposals: [p.id] }); await kv.put(_LIT.papers, JSON.stringify(pl)); }
@@ -5908,9 +5908,11 @@ function _rpStart(opts = {}) {
   if (_rpJob?.status === 'running') return null;
   const caseId = opts.caseId ?? `case-${_dpLondonDate(Date.now())}-${Date.now().toString(36)}`;
   if (_rcJobs[caseId]?.status === 'running') return null;
-  const job = _rpJob = _rcJobs[caseId] = { status: 'running', kind: 'pod', caseId, stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null, brief: opts.brief ?? '' };
-  const made = opts.caseId ? Promise.resolve() : _rcEnsure().then(() => _rcLock(async () => _rcPut(_RCS.newCase({ id: caseId, question: opts.brief ?? '', date: _dpLondonDate(Date.now()), images: opts.images ?? [] }))));
-  made.then(() => _rpRun({ ...opts, caseId })).then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; job.session = r.id ?? null; })
+  const marker = opts.marker ?? _RCS.jobMarker({ kind: 'pod', brief: opts.brief || null, images: opts.images ?? [], lenses: opts.lenses ?? null }), resumed = marker.attempts > 1;
+  const job = _rpJob = _rcJobs[caseId] = { status: 'running', kind: 'pod', caseId, stage: resumed ? 'resuming after a server restart' : 'starting', startedAt: Date.now(), finishedAt: null, error: null, brief: opts.brief ?? '', ...(resumed ? { resumedAfterRestart: true, attempts: marker.attempts } : {}) };
+  const { marker: _m, ...runOpts } = opts;
+  const made = opts.caseId ? _rcEnsure().then(() => _rcMark(caseId, marker)) : _rcEnsure().then(() => _rcLock(async () => _rcPut({ ..._RCS.newCase({ id: caseId, question: opts.brief ?? '', date: _dpLondonDate(Date.now()), images: opts.images ?? [] }), inProgress: marker })));
+  made.then(() => _rpRun({ ...runOpts, caseId })).then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; job.session = r.id ?? null; })
     .catch(e => { job.status = 'error'; job.error = e.message; })
     .finally(() => { job.finishedAt = Date.now(); if (job.status === 'error') _rcFail(caseId, job.error); });
   return job;
@@ -5939,7 +5941,9 @@ async function _rcEnsure() {
   });
 }
 const _rcStore = async () => { await _rcEnsure(); return _rcRead(); };
-const _rcFail = (id, error) => _rcLock(async () => { const c = (await _rcRead()).cases.find(x => x.id === id); if (c) await _rcPut({ ...c, lastError: { at: new Date().toISOString(), error: String(error ?? '').slice(0, 400) } }); }).catch(() => {});
+const _rcFail = (id, error, opts = {}) => _rcLock(async () => { const c = (await _rcRead()).cases.find(x => x.id === id); if (c) await _rcPut(_RCS.failJob(c, error, opts)); }).catch(() => {});
+/** The in-progress marker goes on the case before the job's first model call (js/researchCase.js jobMarker), so a restart can find it. */
+const _rcMark = (id, marker) => _rcLock(async () => { const c = (await _rcRead()).cases.find(x => x.id === id); if (c) await _rcPut({ ...c, inProgress: marker }); });
 /** Round 2 on: all three answer the owner's message, each seeing the case, the others' latest answers and the Head's review. */
 async function _rcRound(id, text, job, images = []) {
   const roles = _deskLoadRoles(), { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js');
@@ -5977,7 +5981,7 @@ async function _rcRound(id, text, job, images = []) {
     if (fresh.length) { const { DESK_EVIDENCE: L } = await import('./js/deskEvidence.js'); l2 = _rpMerge(l2, _tdScreen(fresh.map(p => ({ ...p, variable: p.test.variable, condition: p.thesis })), rows, L).map(({ variable, condition, ...p }) => p), date); }
     await kv.put(_RP.library, JSON.stringify(_RCS.tagLibrary(l2, touched, id)));
     const c2 = (await _rcRead()).cases.find(x => x.id === id);
-    await _rcPut({ ..._RCS.appendRound(c2, { owner: text, answers: recs, errors, at: now, images }), pending: null, lastError: null });
+    await _rcPut({ ..._RCS.finishJob(_RCS.appendRound(c2, { owner: text, answers: recs, errors, at: now, images })), pending: null, lastError: null });
   });
 }
 /** The Head of Research (research-head, Anthropic by default): peer-reviews the whole case. Only when the owner asks. */
@@ -6008,13 +6012,45 @@ async function _rcReview(id, job) {
   const lenses = [...new Set(c.rounds.flatMap(r => Object.keys(r.answers ?? {})))];
   const v = await _modelJson({ task: 'research-head', system, prompt, maxTokens: 16_000, label: 'desk:head-of-research', images, validate: o => _RCS.validateHeadReview(o, { lenses, proposalIds: ids }) });
   if (!v.ok) throw new Error(v.errors.join('; '));
-  await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); await _rcPut({ ..._RCS.appendReview(c2, { ...v.value, ...(pics.length ? { pictures: { sent, attached: pics.map(a => a.id) } } : {}) }, { model: v.model, notes: v.notes ?? [] }), lastError: null }); });
+  await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); await _rcPut({ ..._RCS.finishJob(_RCS.appendReview(c2, { ...v.value, ...(pics.length ? { pictures: { sent, attached: pics.map(a => a.id) } } : {}) }, { model: v.model, notes: v.notes ?? [] })), lastError: null }); });
 }
-function _rcStartJob(id, kind, run) {
-  const job = _rcJobs[id] = { status: 'running', kind, caseId: id, stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null };
-  run(job).then(() => { job.status = 'done'; }).catch(e => { job.status = 'error'; job.error = e.message; _rcFail(id, `${kind}: ${e.message}`); }).finally(() => { job.finishedAt = Date.now(); });
+function _rcStartJob(id, kind, run, marker = null) {
+  marker ??= _RCS.jobMarker({ kind });
+  const resumed = marker.attempts > 1;
+  const job = _rcJobs[id] = { status: 'running', kind, caseId: id, stage: resumed ? 'resuming after a server restart' : 'starting', startedAt: Date.now(), finishedAt: null, error: null, ...(resumed ? { resumedAfterRestart: true, attempts: marker.attempts } : {}) };
+  _rcMark(id, marker).then(() => run(job)).then(() => { job.status = 'done'; }).catch(e => { job.status = 'error'; job.error = e.message; _rcFail(id, `${kind}: ${e.message}`); }).finally(() => { job.finishedAt = Date.now(); });
   return job;
 }
+// On boot: a case job (round 1, a later round, a Head review) that was running when the server stopped is started again,
+// once (js/researchCase.js staleJobs). A job lost a second time, or started more than six hours ago, is given up with an
+// error the case page shows. The per-case lock (_rcJobs, 409) still holds: a case already working here is skipped, and
+// round 1s wait for the pod's single slot (_rpJob) in turn.
+async function _rcResumeAfterRestart() {
+  if (!_aiAnyKey()) return;
+  await _rcEnsure();
+  const list = _RCS.staleJobs(await _rcRead(), { nowMs: Date.now(), running: _rcJobs }).sort((a, b) => (a.marker.kind === 'pod') - (b.marker.kind === 'pod'));   // round 1s last: they may wait for the pod's slot
+  for (const s of list) {
+    if (s.action !== 'resume') { console.warn(`[research-case] ${s.id}: not resuming the ${s.marker.kind} job (${s.action === 'give-up' ? 'lost twice' : 'older than 6 hours'})`); await _rcFail(s.id, s.action === 'give-up' ? _RCS.LOST_TWICE : _RCS.LOST_OLD, { lostToRestart: true }); continue; }
+    const c = (await _rcRead()).cases.find(x => x.id === s.id); if (!c || _rcJobs[s.id]?.status === 'running') continue;
+    const m = _RCS.resumedMarker(s.marker);
+    try {
+      if (s.marker.kind === 'pod') {
+        for (let i = 0; _rpJob?.status === 'running' && i < 240; i++) await new Promise(r => setTimeout(r, 15_000));   // one round 1 at a time (the pod's slot), up to an hour
+        if (_rcJobs[s.id]?.status === 'running') continue;
+        const job = _rpStart({ caseId: s.id, brief: s.marker.brief ?? c.question ?? '', images: c.images ?? [], ...(s.marker.lenses?.length ? { lenses: s.marker.lenses } : {}), marker: m });
+        if (!job) { console.warn(`[research-case] ${s.id}: the pod is busy, round 1 not resumed`); continue; }
+      } else if (s.marker.kind === 'round') {
+        const text = s.marker.owner ?? c.pending?.owner; if (!text) { await _rcFail(s.id, 'lost to a server restart and its message was not kept; write it again', { lostToRestart: true }); continue; }
+        const images = c.pending?.images?.length ? c.pending.images : await _rimAttach(s.marker.images ?? []).catch(() => []);
+        _rcStartJob(s.id, 'round', job => _rcRound(s.id, text, job, images), m);
+      } else {
+        _rcStartJob(s.id, 'review', job => _rcReview(s.id, job), m);
+      }
+      console.log(`[research-case] ${s.id}: resuming the ${s.marker.kind} job after a server restart (attempt ${m.attempts})`);
+    } catch (e) { console.warn(`[research-case] ${s.id}: resume failed:`, e.message); }
+  }
+}
+setTimeout(() => { _rcResumeAfterRestart().catch(e => console.warn('[research-case] resume check failed:', e.message)); }, Number(process.env.RC_RESUME_DELAY_MS) || 15_000);
 // ── Pictures attached to research questions (js/researchImages.js) ──────────────────────────────────────────────────
 // Each is read ONCE on upload by a vision model (task research-vision, Sonnet on Anthropic) into a written reading; the
 // researchers (DeepSeek, which cannot see images) and the Head read that text. Bytes in R2 research/images/<id>.<ext>,
@@ -6095,7 +6131,7 @@ app.post('/api/research-pod/case/reply', async (req, res) => {
     const rerun = !c.rounds.length && !c.dossier, qImages = rerun ? [...(c.images ?? []), ...images.filter(a => !(c.images ?? []).some(x => x.id === a.id))].slice(-_RIM.MAX_PER_MESSAGE * 2) : null;
     await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); await _rcPut({ ...c2, ...(rerun && qImages.length ? { images: qImages } : {}), pending: { owner: text, at: new Date().toISOString(), ...(images.length ? { images } : {}) }, updatedAt: new Date().toISOString() }); });
     if (rerun) { const job = _rpStart({ brief: [c.question, text].filter(Boolean).join('\n\n'), caseId: id, images: qImages }); if (!job) return res.status(409).json({ ok: false, error: 'the research pod is already working on another question', job: _rpJob }); return res.status(202).json({ ok: true, job }); }
-    res.status(202).json({ ok: true, job: _rcStartJob(id, 'round', job => _rcRound(id, text, job, images)) });
+    res.status(202).json({ ok: true, job: _rcStartJob(id, 'round', job => _rcRound(id, text, job, images), _RCS.jobMarker({ kind: 'round', owner: text, images })) });
   } catch (e) { res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
 });
 // POST /api/research-pod/case/review { id }: send the case to the Head of Research (research-head; the expensive step, never automatic).
@@ -6106,7 +6142,7 @@ app.post('/api/research-pod/case/review', async (req, res) => {
     if (_rcJobs[id]?.status === 'running') return res.status(409).json({ ok: false, error: 'this case is already working', job: _rcJobs[id] });
     if (!c.rounds.length) return res.status(400).json({ ok: false, error: 'the researchers have not answered yet' });
     if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key' });
-    res.status(202).json({ ok: true, job: _rcStartJob(id, 'review', job => _rcReview(id, job)) });
+    res.status(202).json({ ok: true, job: _rcStartJob(id, 'review', job => _rcReview(id, job), _RCS.jobMarker({ kind: 'review' })) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // POST /api/research-pod/case/from-dossier { id }: open a literature dossier (an idea or a paper review) as a case, once
@@ -32034,6 +32070,19 @@ async function _briefSessionOpen(sym, sessionDate) {
   return open;
 }
 
+// The last complete daily candle (17:00 New York, the same close the daily market bundle uses) for each instrument: its high
+// and low let the morning issue say where the price sits in yesterday's range (js/morningTape.js). One D x 3 call per
+// instrument, cached for an hour within a session date, so a batch of dashboard polls costs nothing extra.
+const _briefPrevDayCache = new Map();
+async function _briefPrevDay(sym, sessionDate) {
+  const hit = _briefPrevDayCache.get(sym);
+  if (hit && hit.date === sessionDate && Date.now() - hit.at < 3600_000) return hit.v;
+  let v = null;
+  try { const bars = await _btFetchD1(sym, 3); const b = bars?.at(-1); if (b && Number.isFinite(b.high) && Number.isFinite(b.low)) v = { date: b.date, high: b.high, low: b.low, close: b.close }; } catch {}
+  _briefPrevDayCache.set(sym, { date: sessionDate, at: v ? Date.now() : Date.now() - 3000_000, v });   // a miss is retried after 10 minutes, not on every poll
+  return v;
+}
+
 // Build the daily-brief payload — precise per-level prices, hit rates, regime,
 // live price and the London-midnight session open. Extracted from the route so
 // the level-proximity Telegram alert loop (checkVolLevelAlertsNow) reads the
@@ -32085,6 +32134,10 @@ async function computeDailyBrief() {
     await Promise.all(HR_INSTRUMENTS.map(async ({ sym }) => {
       sessionOpens[sym] = await _briefSessionOpen(sym, forecast.session_date);
     }));
+  }
+  const prevDays = {};
+  if (process.env.OANDA_KEY) {
+    await Promise.all(HR_INSTRUMENTS.map(async ({ sym }) => { prevDays[sym] = await _briefPrevDay(sym, forecast.session_date); }));
   }
 
   const instruments = {};
@@ -32165,6 +32218,7 @@ async function computeDailyBrief() {
       stale:         fc.stale ?? false,
       carried_from:  fc.carried_from ?? null,
       session_open:  anchorOpen != null ? fmt(anchorOpen) : null,   // London-midnight anchor for the levels
+      prev_day:      prevDays[sym] ?? null,   // the last complete 17:00 New York daily candle { date, high, low, close }
       news_mult:     fc.news_mult  ?? 1,
       news_flag:     (fc.news_mult ?? 1) > 1 ? (forecast.meta?.news_flag ?? 'Event') : null,
       vol_annual:    fc.vol_annual,

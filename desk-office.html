@@ -527,13 +527,13 @@ function caseHtml(r, d) {
   for (const rd of c.rounds) {
     if (rd.n > 1 && rd.owner) parts.push(you(rd.owner, rd.at, '', rd.images));
     const ans = Object.entries(rd.answers ?? {});
-    parts.push(`<p style="margin:12px 0 6px"><b>Round ${rd.n}</b> <span class="muted">${when(rd.at)} · ${ans.length} of 3 answered</span></p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:8px">${ans.map(([k, a]) => answerHtml(k, a, byId)).join('')}</div>
+    parts.push(`<p style="margin:12px 0 6px"><b>Round ${rd.n}</b> <span class="muted">${when(rd.at)} · ${ans.length} of 3 answered${rd.resumedAfterRestart ? ' · resumed after a server restart' : ''}</span></p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:8px">${ans.map(([k, a]) => answerHtml(k, a, byId)).join('')}</div>
 ${Object.keys(rd.errors ?? {}).length ? `<p class="muted">Did not answer: ${Object.entries(rd.errors).map(([k, v]) => `${esc(LENS[k] ?? k)} (${esc(String(v).slice(0, 100))})`).join(', ')}</p>` : ''}`);
-    for (const rv of c.reviews.filter(x => x.afterRound === rd.n)) parts.push(reviewHtml(rv, r.label));
+    for (const rv of c.reviews.filter(x => x.afterRound === rd.n)) parts.push(reviewHtml(rv, r.label) + (rv.resumedAfterRestart ? '<p class="muted" style="margin:2px 0 0;font-size:12px">This review was resumed after a server restart.</p>' : ''));
   }
   if (c.pending) parts.push(you(c.pending.owner, c.pending.at, run ? ' · all three are answering…' : c.lastError ? ' · <b class="dn">not answered</b>' : '', c.pending.images));
   if (!run && c.lastError) parts.push(`<p class="muted">Last attempt failed (${when(c.lastError.at)}): ${esc(c.lastError.error)}${c.pending ? ' Send it again below.' : ''}</p>`);
-  if (run) parts.push(`<p class="muted"><span class="chip warn">${job.kind === 'review' ? 'The Head of Research is reviewing the case' : 'The researchers are working'}…</span> ${esc(job.stage ?? '')}. This page checks every few seconds.</p>`);
+  if (run) parts.push(`<p class="muted"><span class="chip warn">${job.kind === 'review' ? 'The Head of Research is reviewing the case' : 'The researchers are working'}…</span> ${esc(job.stage ?? '')}${job.resumedAfterRestart && job.stage !== 'resuming after a server restart' ? ' (resumed after a server restart)' : ''}. This page checks every few seconds.</p>`);
   // the controls: reply to all three, the Head of Research (expensive, never automatic), the quick test
   const ids = r.proposalIds ?? [], props = ids.map(id => byId[id]).filter(Boolean);
   parts.push(`<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px">

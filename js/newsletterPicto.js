@@ -17,6 +17,7 @@
 import { instName, prose } from './newsletterDesk.js';
 import { clean, grade } from './newsletterTerminal.js';
 import { KALAM_700, PATRICK_HAND } from './pictoFonts.js';
+import { tapeRows, yesterdayLine, rowText, dayName, fmtMult } from './morningTape.js';
 
 const CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
 const SYM = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', AUD: 'A$', NZD: 'NZ$', CAD: 'C$', CHF: '₣' };
@@ -121,6 +122,8 @@ ul{margin:0;padding-left:20px}li{margin:3px 0;font-size:18px;line-height:1.18}
 .mv{display:flex;gap:6px;height:100%;align-items:center}.mv .col{flex:1;display:flex;align-items:center;gap:4px}.mv .col+.col{border-left:2px solid rgba(27,37,80,.35);padding-left:8px}
 .mv .ls{display:flex;flex-direction:column;gap:6px}.mv .it{white-space:nowrap;line-height:1.1}.mv .it b{font:700 17px ${HEAD}}.mv .it .n{font:700 22px ${HEAD};margin-left:6px}.mv .it .p{display:block;font-size:13px;color:${K.ink2};margin-top:-3px}
 .mv{justify-content:space-evenly}.mv .col{flex:0 1 auto}.mv.two .it .n{display:block;margin:-4px 0 0}.mv.two .ls{gap:2px}
+.mv .it .x{font:700 14px ${HEAD};margin-left:5px;color:${K.ink2}}
+.mvw{display:flex;flex-direction:column;height:100%}.mvw .mv{flex:1;min-height:0;height:auto}.mvw .yd{font-size:13px;line-height:1.15;margin-top:2px;white-space:normal}.mv.dense .ls{gap:0}.mv.dense .it b{font-size:15px}.mv.dense .it .n,.mv.two.dense .it .n{display:inline;font-size:18px;margin:0 0 0 5px}.mv.dense .col>svg{display:none}.mv.dense .it .p{font-size:11.5px;margin-top:-2px}.mvw .yd b{font:700 14px ${HEAD}}.mvw .yk{font-size:10.5px;color:${K.ink2};line-height:1.1}
 .hero{text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;height:100%}
 .hero .word{font:700 30px/1 ${HEAD};letter-spacing:.06em;margin-top:-8px}
 .hero .sign{position:relative;margin:5px 0 4px;padding:4px 14px;font:700 17px/1.18 ${HEAD};max-width:96%;z-index:0}
@@ -153,17 +156,18 @@ export function composePicto({ run, base = {}, stress = null, map = null } = {},
   const nl = run.newsletter?.ok ? run.newsletter.issue : null, tone = String(g.tone ?? 'mixed').replace('_', '-');
   const box = (label, body, cls = '', extra = '') => (body ? `<div class="bx ${cls}"><span class="tp">${esc(label)}</span>${extra}<div class="in">${body}</div></div>` : '');
 
-  // market moves: the four largest one-day moves Atlas has a close for, fallers beside risers (the big arrows)
-  // A 'live' d1 runs from the live price to the last daily close (overnight, before that session), so the last full day
-  // (the last two closes in the spark) is shown under it and counts in the ranking: on 2026-11-06 the box showed Nasdaq
-  // +1.42% (the overnight bounce) and nothing of the -7% day before it.
-  const lastDay = a => { const sp = (a.spark ?? []).filter(Number.isFinite); return a.d1Basis === 'live' && sp.length >= 2 && sp.at(-2) ? (sp.at(-1) / sp.at(-2) - 1) * 100 : null; };
-  const dayName = d => (d ? new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' }) : '');
-  const moves = (base.assets ?? []).filter(a => Number.isFinite(a.d1)).map(a => ({ ...a, day: lastDay(a) })).sort((x, y) => Math.max(Math.abs(y.d1), Math.abs(y.day ?? 0)) - Math.max(Math.abs(x.d1), Math.abs(x.day ?? 0))).slice(0, 4);
-  const liveFrom = moves.find(m => m.d1Basis === 'live')?.d1AsOf ?? null;
-  const item = m => `<div class="it"><b>${esc(m.label)}</b><span class="n ${m.d1 > 0 ? 'up' : m.d1 < 0 ? 'dn' : ''}">${fmtPct(m.d1)}</span>${m.day != null ? `<span class="p">${esc(dayName(m.d1AsOf))} <span class="${m.day > 0 ? 'up' : m.day < 0 ? 'dn' : ''}">${fmtPct(m.day)}</span></span>` : m.price && moves.length <= 2 ? `<span class="p">at ${esc(m.price)}</span>` : ''}</div>`;
-  const falls = moves.filter(m => m.d1 < 0), rises = moves.filter(m => m.d1 >= 0);
-  const pMoves = moves.length ? `<div class="mv${falls.length && rises.length ? ' two' : ''}">${falls.length ? `<div class="col">${zigDown(rises.length ? 50 : 66)}<div class="ls">${falls.map(item).join('')}</div></div>` : ''}${rises.length ? `<div class="col">${arrowUp(falls.length ? 50 : 66)}<div class="ls">${rises.map(item).join('')}</div></div>` : ''}</div>` : '';
+  // market moves: the four biggest on the morning tape (js/morningTape.js, the same helper as the daily and the magazine, so the
+  // figures match exactly), fallers beside risers (the big arrows). A 'live' move runs from the live price to the last daily
+  // close (overnight), so the last full day sits under it; each carries its multiple of a normal day, and the ranking takes
+  // the larger of the two: on 2026-11-06 the box showed Nasdaq +1.42% (the overnight bounce) and nothing of the -7% day.
+  const moves = tapeRows(base.assets).slice(0, 4).map(r => ({ ...r, main: r.night ?? r.day }));
+  const liveFrom = moves.find(m => m.night)?.night.date ?? null;
+  const ud = v => (v > 0 ? 'up' : v < 0 ? 'dn' : '');
+  const item = m => `<div class="it"><b>${esc(m.label)}</b><span class="n ${ud(m.main.pct)}">${fmtPct(m.main.pct)}${Number.isFinite(m.main.mult) ? `<span class="x">${fmtMult(m.main.mult)}</span>` : ''}</span>${m.night && m.day ? `<span class="p">${esc(dayName(m.day.date))} <span class="${ud(m.day.pct)}">${fmtPct(m.day.pct)}</span>${Number.isFinite(m.day.mult) ? ` ${fmtMult(m.day.mult)}` : ''}</span>` : !m.night && m.day ? `<span class="p">${esc(dayName(m.day.date))}, full day</span>` : ''}</div>`;
+  const falls = moves.filter(m => m.main.pct < 0), rises = moves.filter(m => m.main.pct >= 0);
+  const yLine = yesterdayLine({ assets: base.assets, evening: base.evening });
+  const pMv = moves.length ? `<div class="mv${falls.length && rises.length ? ' two' : ''}${Math.max(falls.length, rises.length) >= 3 ? ' dense' : ''}">${falls.length ? `<div class="col">${zigDown(rises.length ? 46 : 60)}<div class="ls">${falls.map(item).join('')}</div></div>` : ''}${rises.length ? `<div class="col">${arrowUp(falls.length ? 46 : 60)}<div class="ls">${rises.map(item).join('')}</div></div>` : ''}</div>` : '';
+  const pMoves = pMv ? `<div class="mvw">${pMv}${yLine ? `<div class="yd"><b>Yesterday:</b> ${esc(short(yLine.source === 'evening' ? yLine.text.replace(/^\w+, from last night's evening edition: /, '') : yLine.text.replace(/^\w+'s full day: /, `${dayName(yLine.date)}: `), 120))}</div>` : ''}${moves.some(m => Number.isFinite(m.score)) ? '<div class="yk">× = the move ÷ the forecast median day range (high to low)</div>' : ''}</div>` : '';
 
   // the hero: the ruling, as weather, on a signboard with the headline
   const headline = short(nl?.subject ?? b.headline ?? '', 100);
@@ -202,7 +206,7 @@ export function composePicto({ run, base = {}, stress = null, map = null } = {},
   const foot = `<div class="foot">Not financial advice: a private research summary; trading leveraged products can lose more than you deposit · The Chain · desk brief pictograph · ${esc(date)} · every figure from the desk run and Atlas data, none drawn by a model</div>`;
   const subject = `${date} Desk brief pictograph: ${short(b.headline ?? 'the desk book', 80)}`;
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body>${FILTERS}<div class="sheet"><div class="ttl"><h1>THE CHAIN – DESK BRIEF</h1><div class="dt"><i></i><span>${esc(long)}</span><i></i></div></div><div class="grid">${cells.join('')}</div>${foot}</div></body></html>`;
-  const text = [`THE CHAIN – DESK BRIEF · ${long}`, `${tone.toUpperCase()}${headline ? ': ' + headline : ''}`, moves.length ? `${liveFrom ? `Moves since ${dayName(liveFrom)}'s close` : 'Moves'}: ` + moves.map(m => `${m.label} ${fmtPct(m.d1)}${m.day != null ? ` (${dayName(m.d1AsOf)} ${fmtPct(m.day)})` : ''}`).join(', ') : '', drivers.length ? 'Big picture: ' + drivers.join('; ') : '', rows.length ? 'Currencies: ' + rows.map(c => `${c} ${ccy[c].bias > 0 ? '+' : ''}${ccy[c].bias}`).join(', ') : '', top.length ? 'Desk view: ' + top.map(([n, c]) => `${DIR[c.rating] > 0 ? 'long' : 'short'} ${instName(n)}`).join(', ') : '', bottom ? 'Bottom line: ' + bottom : ''].filter(Boolean).join('\n');
+  const text = [`THE CHAIN – DESK BRIEF · ${long}`, `${tone.toUpperCase()}${headline ? ': ' + headline : ''}`, yLine ? `Yesterday: ${yLine.text}${yLine.source === 'evening' && yLine.numbers ? ` (${yLine.numbers})` : ''}` : '', moves.length ? `${liveFrom ? `Moves since ${dayName(liveFrom)}'s close` : 'Moves'} (× a normal day): ` + moves.map(m => { const x = rowText(m); return `${m.label} ${m.night ? `${x.night.replace(/ since .*$/, '')}${x.day ? `, ${x.day}` : ''}` : x.day}`; }).join('; ') : '', drivers.length ? 'Big picture: ' + drivers.join('; ') : '', rows.length ? 'Currencies: ' + rows.map(c => `${c} ${ccy[c].bias > 0 ? '+' : ''}${ccy[c].bias}`).join(', ') : '', top.length ? 'Desk view: ' + top.map(([n, c]) => `${DIR[c.rating] > 0 ? 'long' : 'short'} ${instName(n)}`).join(', ') : '', bottom ? 'Bottom line: ' + bottom : ''].filter(Boolean).join('\n');
   return { subject, html, text };
 }
 

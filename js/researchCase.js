@@ -82,7 +82,9 @@ export function summary(c, job = null) {
   const rv = latestReview(c);
   return { id: c.id, title: c.title, question: c.question, origin: c.origin, dossierId: c.dossierId ?? null, verdict: c.dossier?.verdict ?? null, date: c.date, createdAt: c.createdAt, updatedAt: c.updatedAt, status: c.status,
     rounds: c.rounds.length, reviews: c.reviews.length, reviewed: !!rv, reviewCurrent: !!rv && rv.afterRound === c.rounds.length && c.rounds.length > 0,
-    nextStep: rv?.nextStep ?? null, proposals: proposalIds(c).length, job: job ? { status: job.status, kind: job.kind, stage: job.stage ?? null, error: job.error ?? null } : null };
+    nextStep: rv?.nextStep ?? null, proposals: proposalIds(c).length, job: job ? { status: job.status, kind: job.kind, stage: job.stage ?? null, error: job.error ?? null, ...(job.resumedAfterRestart ? { resumedAfterRestart: true, attempts: job.attempts ?? null } : {}) } : null,
+    // the newest round or review was written by a job restarted after a server restart; or the last job was lost to one
+    resumedAfterRestart: !!(job?.resumedAfterRestart || [c.rounds?.at(-1), rv].some(x => x?.resumedAfterRestart)), lostToRestart: !!c.lastError?.lostToRestart };
 }
 
 /** Put a case into the store (replace by id), newest first, capped. */
@@ -405,3 +407,56 @@ export function migrateLibrary(lib, { tags = [], restore = [] } = {}) {
 }
 
 export { slug };
+
+// ── Jobs that survive a restart (2026-11-06) ─────────────────────────────────────────────────────────────────────────
+// Rounds and reviews run in memory, so a redeploy killed them: twice on 2026-11-06 a round was lost and the case was left
+// with no round and no job. While a job runs, the case carries a small marker (`inProgress`): the kind, the owner's
+// message, the picture ids, when it started and how many times it has been started. The job clears it when it finishes
+// or fails. On boot the server finds the markers a dead process left behind and starts each job again, once: a job lost
+// a second time is given up with an error the page shows, and a marker older than six hours is dropped the same way.
+export const RESUME_MAX_AGE_MS = 6 * 3600_000;
+export const RESUME_MAX_ATTEMPTS = 2;
+export const LOST_TWICE = 'lost to a restart twice; press resend';
+export const LOST_OLD = 'lost to a server restart more than 6 hours ago; press resend';
+export const JOB_KINDS = ['pod', 'round', 'review'];
+
+/** The in-progress marker for a job: kind (pod = round 1, round, review), the owner's message, picture ids, the pod's brief and lenses. */
+export function jobMarker({ kind, owner = null, images = [], brief = null, lenses = null, at = new Date().toISOString(), attempts = 1, firstStartedAt = null } = {}) {
+  if (!JOB_KINDS.includes(kind)) throw new Error(`unknown job kind ${kind}`);
+  const ids = uniq((images ?? []).map(a => (typeof a === 'string' ? a : a?.id)));
+  return { kind, startedAt: at, firstStartedAt: firstStartedAt ?? at, attempts, ...(attempts > 1 ? { resumedAfterRestart: true } : {}),
+    ...(owner ? { owner: String(owner).slice(0, 3000) } : {}), ...(ids.length ? { images: ids } : {}), ...(brief ? { brief: String(brief).slice(0, 3000) } : {}), ...(lenses?.length ? { lenses } : {}) };
+}
+
+/**
+ * The markers a dead process left behind: [{ id, marker, action, attempts }]. action: 'resume' (start it again, as attempt
+ * `attempts`), 'give-up' (already restarted once and lost again) or 'expire' (started more than six hours ago).
+ * A case whose job is running in this process (`running[id].status === 'running'`) is left alone.
+ */
+export function staleJobs(store, { nowMs = Date.now(), running = {}, maxAgeMs = RESUME_MAX_AGE_MS, maxAttempts = RESUME_MAX_ATTEMPTS } = {}) {
+  return readStore(store).cases.filter(c => c?.inProgress && running[c.id]?.status !== 'running').map(c => {
+    const m = c.inProgress, age = nowMs - Date.parse(m.firstStartedAt ?? m.startedAt), n = Number.isFinite(m.attempts) ? m.attempts : 1;
+    const action = !JOB_KINDS.includes(m.kind) || !Number.isFinite(age) || age >= maxAgeMs ? 'expire' : n >= maxAttempts ? 'give-up' : 'resume';
+    return { id: c.id, marker: m, action, attempts: action === 'resume' ? n + 1 : n };
+  }).sort((a, b) => String(a.marker.startedAt).localeCompare(String(b.marker.startedAt)));
+}
+
+/** The marker for a restarted job: one more attempt, flagged as resumed. */
+export const resumedMarker = (m, at = new Date().toISOString()) => jobMarker({ ...m, at, attempts: (m.attempts ?? 1) + 1, firstStartedAt: m.firstStartedAt ?? m.startedAt });
+
+/** A finished job: the marker comes off, and a resumed job tags what it wrote (the newest round, or review) with resumedAfterRestart. */
+export function finishJob(c) {
+  if (!c?.inProgress) return c;
+  const { inProgress: m, ...rest } = c;
+  if (!m.resumedAfterRestart) return rest;
+  const tag = x => ({ ...x, resumedAfterRestart: true, attempts: m.attempts });
+  if (m.kind === 'review' && rest.reviews?.length) return { ...rest, reviews: [...rest.reviews.slice(0, -1), tag(rest.reviews.at(-1))] };
+  if (m.kind !== 'review' && rest.rounds?.length) return { ...rest, rounds: [...rest.rounds.slice(0, -1), tag(rest.rounds.at(-1))] };
+  return rest;
+}
+
+/** A failed or abandoned job: the marker comes off and the error is recorded where the page shows it. */
+export function failJob(c, error, { at = new Date().toISOString(), lostToRestart = false } = {}) {
+  const { inProgress: m, ...rest } = c ?? {};
+  return { ...rest, lastError: { at, error: String(error ?? '').slice(0, 400), ...(lostToRestart ? { lostToRestart: true, kind: m?.kind ?? null, attempts: m?.attempts ?? null } : {}) } };
+}
