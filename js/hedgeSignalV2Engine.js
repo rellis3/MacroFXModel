@@ -1,4 +1,6 @@
 // Hedge Signal v2 — cointegration-gated pairs mean-reversion
+// The live v1 and v2 hedge signals were RETIRED on 2026-11-06 (untested; see MD files/HEDGING_VS_SPREAD.md):
+// server.js no longer imports this file. It stays because js/goldMinerArbEngine.js uses its primitives.
 // ────────────────────────────────────────────────────────────────────────────
 // v1 (`server.js computeHedgeSignals`) selects pairs for LOW correlation
 // (`_hedgeScore = -corr*0.7 + betaSpread*0.3`) and then trades their plain

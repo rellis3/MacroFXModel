@@ -412,7 +412,7 @@ const HAND_FEEDS = [
     purpose: 'Rolling correlations and betas between every instrument — hedge alerts and the concentration warning.',
     details: 'Correlation history and beta estimates computed from daily closes.',
     refresh: '60–90 s after boot, then every 6h. KV persists.', store: 'KV hedge_alerts_cache, beta_estimates',
-    endpoints: ['/api/hedge-alerts', '/api/corr-history', '/api/hedge-signals'], health: ['corr'] },
+    endpoints: ['/api/hedge-alerts', '/api/corr-history'], health: ['corr'] },
   { id: 'yield_shape', name: '10-year intraday (yield shape)', provider: 'Yahoo Finance', category: 'crossasset',
     purpose: 'Intraday ^TNX bars for the yield-shape regime read.',
     details: '^TNX 15-minute bars.', refresh: 'Every 5 min. KV persists.', store: 'KV yield_shape_regime_v1',

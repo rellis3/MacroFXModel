@@ -7,7 +7,9 @@
  *                  (r²), and the carry of the hedge leg where the policy-rate gap is known (/api/carry-vol).
  *   Book hedge     the desk book's biggest net currency exposure (/api/desk-run, as the terminal already loads it) and
  *                  the instruments that have moved against it. Read-only and descriptive.
- *   Hedge signals  a summary of hedge-signals.html (/api/hedge-signals) with links to it and to hedge-backtest.html.
+ *
+ * The "Hedge signals" summary card (hedge-signals.html, /api/hedge-signals) was removed on 2026-11-06 when those signals
+ * were retired: they were a spread mean-reversion system, not hedges, and were never tested (MD files/HEDGING_VS_SPREAD.md).
  *
  * Nothing here is tested as a hedge in the Evidence Book: every list carries the UNTESTED chip (corrEvidence.js).
  */
@@ -20,7 +22,7 @@ const sg = (v, dp = 2) => (fin(v) ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.a
 const name = id => esc(M.labelOf(id));
 const DIR = { STRONG_LONG: 1, LONG: 1, SHORT: -1, STRONG_SHORT: -1 };
 
-const H = { target: null, side: 1, inv: false, carry: null, sig: null };
+const H = { target: null, side: 1, inv: false, carry: null };
 
 /** Today's live book cards (rated long or short) as [{ id, side, size }], biggest first. */
 export function bookCards(D) {
@@ -77,8 +79,7 @@ export function html(S, { win = 60, book: D = {}, winPills = () => '' } = {}) {
 <div id="ct-hlist">${listHtml(rows.slice(0, 12), { cv: H.carry, w: win })}</div>
 <p class="tt-note">Bar: today's ${esc(win)}-day correlation (purple = moves with it, gold = moves against it); the shaded band is where that correlation sat 80% of the time over the last year. "held" = share of those windows with today's sign. "ratio" = the min-variance hedge size, "cuts" = the variance it would have removed in-window. Past co-movement only.</p>${chipsFor('hedges')}</div>
 <div class="card"><div class="ch"><span class="lbl">Book hedge</span><span class="r"><span class="chip">descriptive · read-only</span></span></div>${bookHedgeHtml(bh, exp, win)}</div>
-</div>
-<div class="card" style="margin-top:14px" id="ct-sig"><div class="ch"><span class="lbl">Hedge signals</span><span class="r"><a class="btn" href="hedge-signals.html">Signals page</a><a class="btn" href="hedge-backtest.html">Backtest</a></span></div><div class="tt-load">Loading…</div></div>`;
+</div>`;
 }
 
 export function bookHedgeHtml(bh, exp, win) {
@@ -90,20 +91,10 @@ export function bookHedgeHtml(bh, exp, win) {
 ${listHtml(bh.rows.slice(0, 8), { cv: H.carry, w: win })}<p class="tt-note">What has offset this exposure, not a trade the desk has made or tested. The book itself is on Overview.</p>`;
 }
 
-export function signalsHtml(r) {
-  if (!r || r.error || !Array.isArray(r.signals)) return `<p class="muted">The hedge-signal feed is not available${r?.error ? ` (${esc(r.error)})` : ''}.</p>${chipsFor('signals')}`;
-  const act = r.signals.filter(s => s.status === 'ACTIVE').sort((a, b) => Math.abs(b.z_score ?? 0) - Math.abs(a.z_score ?? 0));
-  const nm = s => M.labelOf(M.idOf(s));
-  return `<p class="tt-sum"><b>${act.length}</b> active of ${r.signals.length} · last scan ${esc(r.last_run ? new Date(r.last_run).toLocaleString('en-GB', { timeZone: 'Europe/London', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '–')} London</p>
-${act.slice(0, 5).map(s => `<div class="tt-row"><span class="mono">${esc(nm(s.pair_a))} <span class="muted">${esc(String(s.direction_a ?? '').toLowerCase())}</span> · ${esc(nm(s.pair_b))} <span class="muted">${esc(String(s.direction_b ?? '').toLowerCase())}</span></span><span class="w">z ${sg(s.z_score)} · corr ${sg(s.corr_current)} vs mean ${sg(s.corr_mean)}</span></div>`).join('')}
-<p class="tt-note">The generator flags pairs whose 10-day correlation has moved more than 2 standard deviations from its 5-year mean, and expects it to return. Shown as a summary; settings, Telegram and history stay on the signals page.</p>${chipsFor('signals')}`;
-}
-
-/** After the HTML is in: fetch the carry rates and the signal feed once, then fill in. */
+/** After the HTML is in: fetch the carry rates once, then redraw. */
 export function after(box, S, { getJson, redraw } = {}) {
   if (!box) return;
   if (!H.carry && !H.carryAsked) { H.carryAsked = true; getJson('/api/carry-vol').then(cv => { if (cv?.ok) { H.carry = cv; if (box.isConnected) redraw?.(); } }); }
-  (H.sig ??= getJson('/api/hedge-signals')).then(r => { const el = box.querySelector('#ct-sig'); if (el) el.querySelector('.tt-load, .ct-sigb')?.replaceWith(Object.assign(document.createElement('div'), { className: 'ct-sigb', innerHTML: signalsHtml(r) })); });
 }
 export function onClick(_e, t, redraw) {
   const ds = t.dataset;

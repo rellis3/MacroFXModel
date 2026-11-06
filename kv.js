@@ -37,7 +37,7 @@ const KV_FILE   = path.join(DATA_DIR, 'kv.json');
 //    oi_store                             — user-pasted CME OI data (cannot auto-rebuild)
 //    oi_history                           — 60-day OI summary archive (only re-accumulable by waiting)
 //    range_line_oi                        — dated OI levels for the forward test (cannot be back-filled)
-//    hedge_signal_tg                      — hedge-signal Telegram credentials (user-entered)
+//    hedge_signal_tg                      — hedge-signal Telegram credentials (user-entered; sender retired 2026-11-06, key kept so stored values are not lost)
 //    cot_data, cot_urls, cot_url          — CFTC COT data + user-set report URLs
 //    caps                                 — user-configured proximity caps
 //

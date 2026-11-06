@@ -178,7 +178,7 @@ export const STORES = {
   signal_copier_config: C('Signal Copier config'),
   motif_bot_config: C('Motif bot config'), nq_qmr_config: C('NQ QMR config'), nav_layout: C('Navigation layout'), scratchpad_notes: C('Scratchpad notes'),
   // ── credentials (never read) ──────────────────────────────────────────────
-  tg_config: X('Telegram credentials'), hedge_signal_tg: X('Hedge-signal Telegram credentials'), regime_bot_credentials: X('Regime bot credentials'),
+  tg_config: X('Telegram credentials'), hedge_signal_tg: X('Hedge-signal Telegram credentials (sender retired 2026-11-06)'), regime_bot_credentials: X('Regime bot credentials'),
   regime_bot_v2_credentials: X('Regime bot v2 credentials'), regime_bot_v7_credentials: X('Regime bot v7 credentials'),
   bot_credentials: X('Bot credentials'), backtestsystem_credentials: X('Backtest system credentials'), gold_v2_credentials: X('Gold v2 credentials'),
   confluence_bot_credentials: X('Confluence bot credentials'), dyn_anchor_credentials: X('Dynamic anchor credentials'),
