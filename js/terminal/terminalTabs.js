@@ -648,12 +648,14 @@ ${sec('Fear gauge', 'the VIX and its term structure')}<div id="opt-vix">${loadin
     sel.onchange = draw; draw();
   }
   const dl = el('opt-dl'); if (dl) { dl.innerHTML = OPV.dealersHtml(hs) || '<div class="card muted">No dealer hedging read.</div>'; goPair(dl); }
-  const skb = el('opt-skew'); if (skb && typeof E !== 'undefined') { E['options-skew'] ??= sk; skb.innerHTML = globalThis.skewHtml?.() ?? ''; }
+  const skb = el('opt-skew'); if (skb && typeof E !== 'undefined' && E) { E['options-skew'] ??= sk; skb.innerHTML = globalThis.skewHtml?.() ?? ''; }
   const vx = el('opt-vix'); if (vx) vx.innerHTML = OPV.vixHtml(hist) || '<div class="card muted">No VIX series.</div>';
   const drawPath = async (inst, anchor = T.optAnchor ?? 'gammaCentre') => {
     const box = el('opt-path'); if (!box) return;
     box.innerHTML = loading(`the ${inst} path`);
-    const sm = await J(`/api/swing-map?inst=${encodeURIComponent(inst)}`);
+    // the source (CME, the Cboe chain, or both) is kept for the session; a market without a Cboe book reads CME
+    const src = OPV.pathSourceFor(inst, T.optSrc);
+    const sm = await J(`/api/swing-map?inst=${encodeURIComponent(inst)}${src !== 'cme' ? `&source=${src}` : ''}`);
     let walk = null;
     const o = (T.optWalk ??= { ...OPV.WALK_OPTS_DEFAULT });   // the walk options (Swing Map's), kept for the session
     try { if (sm?.ok) walk = OPV.zoneWalk(sm.expiries ?? [], OPV.walkOptsFor(sm, anchor, o)); } catch (e) { console.warn('options walk', e); }
@@ -661,6 +663,7 @@ ${sec('Fear gauge', 'the VIX and its term structure')}<div id="opt-vix">${loadin
     box.innerHTML = OPV.pathHtml(sm, inst, { walk, anchor, width: Math.max(300, (box.clientWidth || 460) - 26), o });
     box.querySelectorAll('[data-wopt]').forEach(c => (c.onchange = () => { o[c.dataset.wopt] = c.checked; drawPath(T.optPath ?? inst, T.optAnchor ?? anchor); }));
     const ps = box.querySelector('#opt-path-inst'); if (ps) ps.onchange = () => { T.optPath = ps.value; drawPath(ps.value); };
+    const pq = box.querySelector('#opt-path-src'); if (pq) pq.onchange = () => { T.optSrc = pq.value; drawPath(T.optPath ?? inst, T.optAnchor ?? anchor); };
     const pa = box.querySelector('#opt-path-anchor'); if (pa) pa.onchange = () => { T.optAnchor = pa.value; drawPath(T.optPath ?? inst, pa.value); };
   };
   drawPath(T.optPath ?? 'GOLD');

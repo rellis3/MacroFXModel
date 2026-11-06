@@ -525,7 +525,7 @@ function drawExpiryPull(e, cone, t0, H, live) {
   const m = _swing.data;
   if (!m) return 'loading…';
   if (!m.ok) return `<span class="warn">${m.error || 'not available'} (Swing Map covers FX majors, GBPJPY, gold, NQ, SPX500)</span>`;
-  const used = (m.expiries || []).filter(x => !x.thin && x.centrePx > 0 && x.totalOI > 0)
+  const used = (m.expiries || []).filter(x => !x.beyondCore && !x.thin && x.centrePx > 0 && x.totalOI > 0)   // beyondCore: past the ~100-day window this page was built on
     .map(x => ({ expiry: x.expiry, s: _sessBetween(m.state.date, x.expiry), target: x.centrePx, oi: x.totalOI, lean: x.shareAbove })).filter(x => x.s >= 1);
   if (!used.length) return '<span class="warn">no readable expiries for this instrument (the tracker has no books, or all are thin)</span>';
   const mb = (m.bands || [])[1];
