@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vol-Layer System</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+#vApp { padding: 0 24px 48px; width: 100%; box-sizing: border-box; max-width: 1300px; margin: 0 auto; }
+.v-h { display: flex; align-items: baseline; gap: 14px; padding: 16px 0 10px; flex-wrap: wrap; }
+.v-title { font-size: 18px; font-weight: 700; color: var(--text); }
+.v-sub { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1.5px solid var(--border); padding-bottom: 8px; position: sticky; top: 0; background: var(--bg, #0b0f17); z-index: 5; padding-top: 6px; }
+.tab { background: none; border: 1.5px solid var(--border); border-radius: 20px; padding: 4px 12px; cursor: pointer; font-size: 12px; color: var(--text2); font-family: 'DM Sans', sans-serif; display: inline-flex; gap: 6px; align-items: center; }
+.tab:hover { border-color: var(--blue); color: var(--blue); }
+.tab.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+.tab .n { font-family: 'DM Mono', monospace; font-size: 10px; opacity: .8; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); display: inline-block; }
+.dot.deep { background: #e0a32e; } .dot.spec { background: #60a5fa; } .dot.test { background: #a78bfa; } .dot.done { background: var(--green); }
+.note { margin: 12px 0; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--s1); font-size: 12px; color: var(--text2); line-height: 1.6; }
+.note b { color: var(--text); }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } #vApp { padding: 0 12px 48px; } }
+.card { background: var(--s1); border: 1.5px solid var(--border); border-radius: 14px; padding: 12px 14px; min-width: 0; }
+.card h3 { margin: 0 0 8px; font-size: 13px; color: var(--text); font-weight: 700; }
+.card p, .card li { font-size: 12px; color: var(--text2); line-height: 1.6; }
+.card ul, .card ol { margin: 0; padding-left: 18px; }
+.quote { border-left: 3px solid #14b8a6; padding: 4px 10px; margin: 6px 0; font-size: 12.5px; color: var(--text); font-style: italic; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--border); border-radius: 10px; padding: 5px 9px; font-size: 11.5px; color: var(--text2); }
+.chip b { color: var(--text); display: block; font-size: 12px; }
+table.t { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+table.t th, table.t td { padding: 5px 6px; border-bottom: 1px solid var(--border); text-align: left; color: var(--text2); vertical-align: top; }
+table.t th { color: var(--text3); font-weight: 500; font-size: 10.5px; font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .05em; }
+table.t td.num { font-family: 'DM Mono', monospace; text-align: right; white-space: nowrap; }
+table.t th.num { text-align: right; }
+.pill { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 10px; font-family: 'DM Mono', monospace; border: 1px solid var(--border); white-space: nowrap; }
+.src-repo { color: #60a5fa; border-color: #60a5fa66; } .src-literature { color: #a78bfa; border-color: #a78bfa66; }
+.src-C\.OG { color: #14b8a6; border-color: #14b8a666; } .src-both { color: #e0a32e; border-color: #e0a32e66; } .src-design { color: var(--text3); }
+.muted { color: var(--text3); }
+.warn { border-color: #e0a32e88; }
+.stack { display: flex; flex-direction: column; gap: 6px; }
+.lyr { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; border: 1.5px solid var(--border); border-radius: 10px; padding: 8px 10px; cursor: pointer; background: var(--s1); }
+.lyr:hover { border-color: var(--blue); }
+.lyr .num { font-family: 'DM Mono', monospace; font-size: 16px; color: var(--text3); text-align: center; }
+.lyr .nm { font-size: 13px; color: var(--text); font-weight: 600; } .lyr .ds { font-size: 11px; color: var(--text3); }
+.lyr.fb { border-style: dashed; }
+.scroll { overflow-x: auto; }
+.empty { font-size: 12px; color: var(--text3); font-style: italic; }
+</style>
+</head>
+<body class="dark">
+<div id="vApp">
+  <div class="v-h">
+    <span class="v-title">🧱 Vol-Layer System</span>
+    <span class="v-sub">the vol forecaster as one layer of a multi-layer system · research plan, nothing here is a verdict</span>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div id="body"></div>
+</div>
+
+<script type="module">
+import { LAYERS, BUILD_ORDER, DEEP_DIVE, SOURCE_NOTE } from './js/volLayerResearch.js';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const dotCls = s => ({ 'deep dive': 'deep', specified: 'spec', testing: 'test', done: 'done' }[s] ?? '');
+const fin = Number.isFinite;
+
+let VS = null, vsErr = null;
+async function loadVolState() {
+  try { const r = await fetch('/api/vol-state'); if (!r.ok) throw new Error(`HTTP ${r.status}`); VS = await r.json(); }
+  catch (e) { vsErr = e.message; }
+}
+
+function tabsHtml(cur) {
+  const t = [`<button class="tab ${cur === 'system' ? 'on' : ''}" data-t="system">⬡ System (combined)</button>`];
+  for (const L of LAYERS) t.push(`<button class="tab ${cur === L.id ? 'on' : ''}" data-t="${L.id}"><span class="dot ${dotCls(L.status)}"></span><span class="n">${L.n}</span>${esc(L.short)}</button>`);
+  return t.join('');
+}
+
+function liveTable(cols) {
+  if (vsErr) return `<p class="empty">Live vol state not available here (${esc(vsErr)}). It comes from GET /api/vol-state on the server.</p>`;
+  if (!VS) return `<p class="empty">Loading live vol state…</p>`;
+  const rows = Object.entries(VS.vectors ?? {}).sort((a, b) => a[0].localeCompare(b[0]));
+  const cell = (f, d = 2) => fin(f?.value) ? f.value.toFixed(d) : `<span class="muted" title="${esc(f?.reason)}">–</span>`;
+  const C = {
+    sigma: ['σ now (% daily)', v => cell(v.sigma_now, 3)],
+    dsig: ['Δσ proxy', v => cell(v.sigma_expected_change, 1)],
+    rel: ['σ ÷ long-run', v => cell(v.sigma_vs_longrun, 2)],
+    reg: ['P(active regime)', v => cell(v.regime, 2)],
+    err: ['fc error (log)', v => cell(v.forecast_error, 3)],
+    jump: ['jump λ', v => cell(v.jump_intensity, 2)],
+  };
+  const use = cols.map(c => C[c]);
+  return `<div class="muted" style="font-size:11px;margin-bottom:6px">session ${esc(VS.sessionDate)} · ${rows.length} instruments · built ${esc(VS.builtAt?.slice(0, 16).replace('T', ' '))} UTC · descriptive only</div>
+  <div class="scroll"><table class="t"><thead><tr><th>Instrument</th>${use.map(([h]) => `<th class="num">${h}</th>`).join('')}</tr></thead>
+  <tbody>${rows.map(([s, v]) => `<tr><td>${esc(s)}</td>${use.map(([, f]) => `<td class="num">${f(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+
+function systemHtml() {
+  const stack = LAYERS.map(L => `<div class="lyr ${L.id === 'feedback' ? 'fb' : ''}" data-go="${L.id}"><div class="num">${L.n}</div>
+    <div><div class="nm">${esc(L.title)}</div><div class="ds">${esc(L.question.slice(0, 140))}${L.question.length > 140 ? '…' : ''}</div></div>
+    <span class="pill"><span class="dot ${dotCls(L.status)}"></span> ${esc(L.status)}</span></div>`).join('');
+  return `
+  <div class="note"><b>What this page is.</b> ${esc(SOURCE_NOTE)} He says it is roughly six layers, with the forecaster only one of them, and that
+  "every single position is different" because every position is the product of all the layers. This page researches each layer on its own tab,
+  then brings them together here and tests them combined. <b>No layer is assumed in or out</b>: every candidate stays open until our own
+  pre-registered test decides it.</div>
+  <div class="grid">
+    <div class="card"><h3>The stack</h3><div class="stack">${stack}</div>
+      <p class="muted" style="margin-top:8px">Layer 1 publishes the shared state; 2–7 read it; 8 (dashed) feeds errors back into all of them.</p></div>
+    <div class="card"><h3>Build order</h3><table class="t"><thead><tr><th>#</th><th>Layer</th><th>Why here</th></tr></thead><tbody>
+      ${BUILD_ORDER.map(b => `<tr><td class="num">${b.step}</td><td>${esc(b.what)}</td><td>${esc(b.why)}</td></tr>`).join('')}</tbody></table>
+      <h3 style="margin-top:14px">How each layer is researched</h3><ol>${DEEP_DIVE.map(d => `<li>${esc(d)}</li>`).join('')}</ol></div>
+  </div>
+  <div class="card" style="margin-top:12px"><h3>Combined test (once layers pass on their own)</h3>
+    <p>Layers are added one at a time to the same walk-forward, same costs, same M1 fills, same lockbox. Each addition is kept only if it
+    improves on the stack below it. The table below fills in as layers are tested.</p>
+    <div class="scroll"><table class="t"><thead><tr><th>Stack</th><th class="num">Trades</th><th class="num">Net exp. (R)</th><th class="num">Sharpe</th><th class="num">Max DD</th><th>vs stack below</th></tr></thead>
+    <tbody>${['1 state + 7 stops (dumb view)', '+ 2 jumps', '+ 4 views', '+ 5 meta-labelling', '+ 3 / 6 corr, sizing', '+ 8 feedback'].map(s =>
+      `<tr><td>${s}</td><td class="num muted">–</td><td class="num muted">–</td><td class="num muted">–</td><td class="num muted">–</td><td class="muted">not run</td></tr>`).join('')}</tbody></table></div></div>
+  <div class="card" style="margin-top:12px"><h3>Live shared state, today</h3>${liveTable(['sigma', 'dsig', 'rel', 'reg', 'err', 'jump'])}</div>`;
+}
+
+function layerHtml(L) {
+  const cands = L.candidates.map(c => `<tr><td>${esc(c.name)}</td><td><span class="pill src-${esc(c.src)}">${esc(c.src)}</span></td>
+    <td><span class="pill">${esc(c.state)}</span></td><td class="muted">${esc(c.note)}</td></tr>`).join('');
+  const findings = L.findings.length
+    ? L.findings.map(f => `<div class="note"><b>${esc(f.date)} · ${esc(f.title)}</b><br>${esc(f.text)}</div>`).join('')
+    : `<p class="empty">No deep dive yet.</p>`;
+  return `
+  <div class="v-h" style="padding-top:12px"><span class="v-title">${L.n}. ${esc(L.title)}</span><span class="pill"><span class="dot ${dotCls(L.status)}"></span> ${esc(L.status)}</span></div>
+  <div class="grid">
+    <div class="card"><h3>What C.OG said</h3>${L.cog.map(q => `<div class="quote">${esc(q)}</div>`).join('')}
+      <h3 style="margin-top:12px">The research question</h3><p>${esc(L.question)}</p></div>
+    <div class="card"><h3>What this layer outputs</h3><div class="chips">${L.fields.map(f => `<div class="chip"><b>${esc(f.k)}</b>${esc(f.d)}</div>`).join('')}</div>
+      <h3 style="margin-top:12px">How it is tested on its own</h3><p>${esc(L.test)}</p></div>
+  </div>
+  <div class="card" style="margin-top:12px"><h3>Candidates (all open)</h3>
+    <div class="scroll"><table class="t"><thead><tr><th>Method</th><th>From</th><th>State</th><th>Note</th></tr></thead><tbody>${cands}</tbody></table></div></div>
+  <div class="grid">
+    <div class="card"><h3>Starting points in the repo</h3><ul>${L.repo.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>
+    <div class="card ${L.defects.length ? 'warn' : ''}"><h3>Defects to fix before testing</h3>
+      ${L.defects.length ? `<ul>${L.defects.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : '<p class="empty">None found yet.</p>'}</div>
+  </div>
+  ${L.id === 'state' || L.id === 'jumps' ? `<div class="card" style="margin-top:12px"><h3>Live, today</h3>${liveTable(L.id === 'state' ? ['sigma', 'dsig', 'rel', 'reg', 'err'] : ['sigma', 'jump'])}</div>` : ''}
+  <div class="card" style="margin-top:12px"><h3>Deep-dive findings</h3>${findings}</div>`;
+}
+
+function render() {
+  const cur = (location.hash || '#system').slice(1);
+  const L = LAYERS.find(x => x.id === cur);
+  $('tabs').innerHTML = tabsHtml(L ? cur : 'system');
+  $('body').innerHTML = L ? layerHtml(L) : systemHtml();
+  for (const b of document.querySelectorAll('[data-t]')) b.onclick = () => { location.hash = b.dataset.t; };
+  for (const b of document.querySelectorAll('[data-go]')) b.onclick = () => { location.hash = b.dataset.go; };
+}
+window.addEventListener('hashchange', render);
+render();
+loadVolState().then(render);
+</script>
+</body>
+</html>
