@@ -2031,6 +2031,13 @@ export const DESK_EVIDENCE = [
     instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD'],
   },
   {
+    id: 'jump-next-day-miss', domain: 'volatility', verdict: 'context', date: '2026-11-06', doc: 'forge/JUMP_NEXT_DAY_MISS_PREREG.md', also: ['analysis/output/jump-next-day-miss/RESULTS.md'],
+    claim: 'After a BNS jump day on an instrument, the next London session’s realised H->L exceeds its point-in-time forecast p50 by more than sigma allows, beyond the previous day’s own miss, sigma tercile and the validated stress conditions (C.OG: forecast error as feedback, jump intensity)',
+    result: 'Wrong sign. OOS 2020-08 to 2026-08, 34 instruments, all controls, moving-block bootstrap (21, B 2000), Holm over 4 classes: FX majors -2.5% [-5.4, +0.6] (NULL, powered, MDE 4.3%); FX crosses -3.2% [-5.1, -1.5] (Holm p 0.002, placebo 0.0 pctile, both halves -3%); indices -3.8% [-6.6, -0.8] (Holm p 0.045, placebo 0.3); gold -0.7% [-7.3, +6.9] (underpowered). Raw jump-vs-other next-day difference -0.5 to -3.3% (the forecast already covers it); the jump coefficient turns negative once the previous day’s miss is controlled: a jump-driven big day carries less into tomorrow than a diffusive one. p75/p90 exceedance after controls 0 to -3pp; each extra jump day in the last 5 sessions -1 to -2%. Significant mirror below the +5% bar, so CONTEXT.',
+    use: 'Do not widen the lines or say expect a wider day after a jump. The forecast’s persistence slightly over-reacts to jump days (~3-4%); a jump-discounted persistence term (HAR-RV-CJ style) is a candidate for its own pinball-loss prereg, not a live input.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
+  },
+  {
     id: 'daily-open-fib-retest', domain: 'misc', verdict: 'null', date: '2026-10-28', doc: 'forge/DAILY_OPEN_FIB_RETEST_PREREG.md',
     also: ['analysis/output/daily-open-fib-retest/RESULTS.md'],
     claim: 'Retail "daily open" playbook (YouTube @Jay-ColezTrades; not C.OG): after an impulse off the 18:00 New York gold open, a limit at the fib 1 (the opening high/low wick), stop at the 1.2, target the impulse extreme (the 0, 5R), break-even at 1R, earns net R beyond a random walk and the same rule at shifted opens',
@@ -2445,6 +2452,7 @@ const POWER = {
   'forecast-miss-shock-idx': { n: '~780 confirmation sessions x 6 indices', note: 'confirm CIs exclude 0 (+13%)' },
   'forecast-miss-shock-fx': { n: '~780 confirmation sessions x 29 pairs', note: '5 cells confirmed, CIs exclude 0' },
   'forecast-miss-month-end-fx': { n: '~780 confirmation sessions x 29 pairs', note: '+11.6% [+6.2, +16.8]; event-free +6.3/+6.6%' },
+  'jump-next-day-miss': { n: '~1,500 target dates (date-block bootstrap) x 34 instruments; 6,729 jump-day pairs', note: 'MDE 4.3% majors, 2.9% crosses, 5.2% indices, 11.9% gold vs +5% bar; Holm over 4 classes' },
   'rates-vol-gap-move':        { n: '2,480 sessions (block bootstrap, 21-session blocks)', note: 'MDE partial corr 0.105 vs 0.10 bar; CI [+0.007, +0.108]; without 2020 [-0.058, +0.047]' },
   'rates-vol-gap-state':       { n: '203 state vs 799 equity-cheap days', note: 'MDE 0.29 log vs 0.15 bar; CI [-0.197, +0.069]' },
   'daily-open-fib-retest':     { n: '1,252 bid/ask trades (2,516 sessions, 20-session block bootstrap); mid file 1,796 trades', note: 'MDE 0.10R vs a +0.15R bar; CI [-0.82, -0.63] excludes the bar -> null' },
