@@ -138,7 +138,7 @@ test('regimes: point-in-time vol terciles, runs, conditional correlation', () =>
   assert.equal(tbl.length, 2); assert.ok(tbl[0].spread >= tbl[1].spread);
 });
 
-test('evidence chips: real entries, verdict words, UNTESTED for the hedges', () => {
+test('evidence chips: real entries, verdict words, UNTESTED for the per-market hedges, the book hedge tested', () => {
   for (const v of Object.values(VIEW_EVIDENCE)) for (const [id] of v.ids ?? []) assert.ok(DESK_EVIDENCE.some(e => e.id === id), `${id} is in the Evidence Book`);
   assert.match(chipsFor('hedges'), /UNTESTED/);
   assert.match(chipsFor('signals'), /UNTESTED/);
@@ -146,6 +146,10 @@ test('evidence chips: real entries, verdict words, UNTESTED for the hedges', () 
   assert.match(chipFor('rule-a-portfolio-budget'), /UNDERPOWERED/);
   assert.equal(chipFor('no-such-entry'), '');
   assert.doesNotMatch(chipsFor('hedges'), /VALIDATED/);
+  // the Book hedge: tested by hedge-finder-book (2026-11-06): daily tail cut, drawdowns not shown
+  assert.match(chipsFor('bookHedge'), /VALIDATED · hedge-finder-book-es/);
+  assert.match(chipsFor('bookHedge'), /UNDERPOWERED · hedge-finder-book</);
+  assert.doesNotMatch(chipsFor('bookHedge'), /UNTESTED/);
 });
 
 test('views: escaped, no raw input reaches the HTML', () => {

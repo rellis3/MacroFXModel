@@ -9,7 +9,9 @@
  *                  the instruments that have moved against it. Read-only and descriptive.
  *   Hedge signals  a summary of hedge-signals.html (/api/hedge-signals) with links to it and to hedge-backtest.html.
  *
- * Nothing here is tested as a hedge in the Evidence Book: every list carries the UNTESTED chip (corrEvidence.js).
+ * Evidence (corrEvidence.js): the Book hedge is tested by hedge-finder-book (2026-11-06): its top row cut a proxy
+ * book's daily 5% tail (VALIDATED, hedge-finder-book-es) but drawdowns and Sharpe were not shown (UNDERPOWERED), and the
+ * currency's own USD pair cut the tail more. The per-market finder keeps its UNTESTED chip.
  */
 import * as M from './corrMath.js';
 import { chipsFor } from './corrEvidence.js';
@@ -82,12 +84,12 @@ export function html(S, { win = 60, book: D = {}, winPills = () => '' } = {}) {
 }
 
 export function bookHedgeHtml(bh, exp, win) {
-  if (!exp) return '<p class="muted">No desk book loaded today, so there is no exposure to offset.</p>';
-  if (!bh) return '<p class="muted">The book has no net currency exposure among the eight currencies.</p>';
+  if (!exp) return `<p class="muted">No desk book loaded today, so there is no exposure to offset.</p>${chipsFor('bookHedge')}`;
+  if (!bh) return `<p class="muted">The book has no net currency exposure among the eight currencies.</p>${chipsFor('bookHedge')}`;
   const capped = exp.before && fin(exp.before[bh.ccy]) && exp.before[bh.ccy] !== bh.net ? ` (${sg(exp.before[bh.ccy], 1)} before the ±${esc(exp.cap)} cap)` : '';
   return `<p class="tt-sum">Biggest net exposure: <b>${bh.net > 0 ? 'long' : 'short'} ${esc(bh.ccy)} ${sg(bh.net, 1)}</b>${esc(capped)}.</p>
 <p class="muted">Read as the ${esc(bh.ccy)} basket (against the other seven), ${bh.net > 0 ? 'long' : 'short'}. These are the markets that have moved against that over the last ${esc(win)} days. Pairs that contain ${esc(bh.ccy)} are left out: trading those cuts the exposure rather than hedging it.</p>
-${listHtml(bh.rows.slice(0, 8), { cv: H.carry, w: win })}<p class="tt-note">What has offset this exposure, not a trade the desk has made or tested. The book itself is on Overview.</p>`;
+${listHtml(bh.rows.slice(0, 8), { cv: H.carry, w: win })}<p class="tt-note">What has offset this exposure, not a trade the desk has made. Tested on a 26-year proxy book: holding the top row daily cut the daily 5% tail by about 9% but not the drawdowns, cost about 0.06 Sharpe in spreads, did nothing for USD or JPY exposures, and the currency's own USD pair cut the tail more. The book itself is on Overview.</p>${chipsFor('bookHedge')}`;
 }
 
 export function signalsHtml(r) {
