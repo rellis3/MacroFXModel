@@ -751,6 +751,13 @@ export const DESK_EVIDENCE = [
     use: 'Say "options already price the wider short-gamma days": about two-thirds to three-quarters of the gamma-range effect is implied vol, and what is left is too small for 770 sessions to see. With gex-split-book (null), the CME gamma sign reads as a proxy for a state IV and recent returns already capture; no case for a gamma multiplier on the range lines from the CME book. A small remainder and the full Cboe book are not ruled out.',
   },
   {
+    id: 'gex-range-gold', domain: 'positioning', verdict: 'underpowered', date: '2026-11-06',
+    doc: 'oi_research_book/GEX_RANGE_GOLD_PREREG.md', also: ['oi_research_book/GEX_RANGE_GOLD_RESULTS.md'], instruments: ['GOLD'],
+    claim: 'Gold sessions after short-gamma days (CME OG monthly book, near surface, OI(D) to session D+2) are wider than long-gamma sessions at the same trailing vol, as on NQ and ES',
+    result: 'UNDERPOWERED. 866 OI dates 2022-11-04 to 2026-04-15 (Databento statistics 504s from 2026-04-16), 156 short / 710 long. Vol-matched dDR -0.031 [-0.209, +0.148], p 0.75; 0 of 4 spec cells positive; DR short 1.000, long 1.015 (long gamma not quieter). All-shift placebo gate failed (95th percentile +0.176, real at the 26th); injection and no-lookahead pass; the NQ reference reproduces the banked +0.288 exactly. Realised MDE ~0.25 (bootstrap SE 0.091, not the 0.048 projected). An NQ/ES-sized +0.29 to +0.38 is outside the interval; the +0.10 operational bar is not excluded.',
+    use: 'Say "gold shows no sign of the NQ/ES gamma-range pattern in the CME monthly book, and an effect that large is ruled out; a smaller one (up to about +0.15) is not". Do not put a gamma range multiplier on gold or call the OI Profile gold gamma column a range read. Weekly and Friday gold options and the 2026-04-16 to 2026-08-21 tail are not in the file.',
+  },
+  {
     id: 'dax-ifo-lookahead', domain: 'macro', verdict: 'null', date: '2026-10-25', doc: 'forge/DAX_IFO_LOOKAHEAD_PREREG.md', also: ['analysis/output/dax-ifo-lookahead/RESULTS.md'],
     claim: 'Long the DAX when the IFO business climate rises month on month, short when it falls (Dax Base IFO System: claimed 9.4% CAGR, -27% max DD, 0.32 Sharpe vs buy & hold 7.6% / -52% / 0.21)',
     result: 'NULL: the claim is lookahead. The scripts give month M the IFO reading for M, published ~24th-25th of M, and credit it with the whole month-end-to-month-end DAX return; that same-month version reproduces exactly (+9.42% CAGR, -27.4% DD, 0.32). Trading only a published reading, 2005-2026: signal -> next month -0.31%/month [-0.84, +0.21], -5.25% CAGR, -70% DD, t -0.95; from the ~25th release to the next release -0.44% [-1.09, +0.22], -6.96% CAGR, -82% DD; Holm p 0.39 each; negative in all four halves and at release days 22 and 27. Long/flat earns +1-2% a year vs buy & hold +7.5%. The original had no costs, a flat 3.8% risk-free rate, and robustness checks (OLS, Monte Carlo) that reused the same same-month alignment.',
@@ -2378,6 +2385,7 @@ const POWER = {
   'gex-range':               { n: '770 NQ sessions',           note: 're-run 2026-10-21: vm +0.288 [+0.176, +0.400], MDE ~0.15; registered single-shift placebo failed (+0.125), all-shift placebo passes' },
   'gex-range-es':            { n: '770 ES sessions',           note: 'vm +0.377 [+0.237, +0.516], MDE ~0.15 vs +0.05 gate; return-controlled +0.147, t 2.05' },
   'gex-range-iv':            { n: '770 sessions each (ES, NQ)', note: 'MDE ~0.22 ES / ~0.15 NQ vs +0.05 gate; b_IV +0.054 / +0.044; IV absorbs 64% / 73% (paired CI > 0)' },
+  'gex-range-gold':          { n: '866 gold OI dates (156 short / 710 long)', note: 'realised MDE ~0.25 (bootstrap SE 0.091) vs +0.05 gate; vm -0.031 [-0.209, +0.148] does not exclude the +0.10 bar' },
   'gex-split-book':          { n: '135 disagreement days (83/52) vs 635 agreement', note: 'MDE ~0.09-0.10 (control sd 0.281, deff 1.5); beta +0.027 [-0.024, +0.078] below the +0.10 bar; weak-book days only' },
   'dax-ifo-lookahead':       { n: '246 months',                note: 'MDE ~1.0%/month; CI upper +0.21 below the +0.5% bar' },
   'overnight-hold-nq':       { n: '1,949 nights (block 20)',   note: 'MDE ~0.08%/trade vs observed +0.034; a 5-10%/yr edge cannot be confirmed in 10 yrs' },
