@@ -54,6 +54,22 @@ li{margin:3px 0}
 .discuss{margin:8px 0;padding:8px 10px;border:1px solid var(--acc);border-radius:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .discuss .btn{border-color:var(--acc);color:var(--acc);font-weight:600}
 .dosbox{border:1px solid var(--line2);border-radius:8px;padding:10px 12px;margin:8px 0 10px;background:var(--bg3);overflow-wrap:anywhere}
+/* pictures attached to research questions: the attach control, the pending list and the thumbnails in the case timeline */
+.attbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 0}
+.attbtn{position:relative;overflow:hidden;display:inline-block;padding:6px 12px}
+.attbtn input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.attbtn[aria-disabled="true"]{opacity:.6}
+.attlist{display:flex;flex-direction:column;gap:8px;margin:6px 0}
+.attlist:empty{display:none}
+.att{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:6px;padding:6px;background:var(--bg3);min-width:0;max-width:100%}
+.att>a{flex:none}
+.att img,.attph{width:72px;height:72px;object-fit:cover;border-radius:4px;display:block;background:var(--bg2)}
+.attbody{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px}
+.attbody textarea{display:block;width:100%;box-sizing:border-box;margin:6px 0 2px;background:var(--bg2);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:6px;font:13px/1.5 var(--mono)}
+.attacts{margin-top:2px}
+.attread{white-space:pre-wrap;font-size:12.5px;margin-top:4px}
+.attmsg{margin:2px 0}
+.lnk{background:none;border:0;color:var(--acc);cursor:pointer;padding:2px 10px 2px 0;font:12px var(--mono)}
 </style>
 </head>
 <body>
@@ -330,6 +346,88 @@ const safeUrl = u => (/^https?:\/\//i.test(String(u ?? '')) ? String(u) : null);
 const when = t => { const d = new Date(t); return Number.isFinite(+d) ? d.toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'medium', timeStyle: 'short' }) : esc(t ?? ''); };
 const post = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
 const INP = 'background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:7px;font:14px inherit';
+// ── Pictures (POST /api/research-pod/image, js/researchImages.js): attach to "Ask the pod", the case reply and "Research an
+// idea". Each picture is shrunk here (1600 px long side, JPEG 0.85), uploaded straight away and read once by Sonnet into
+// text; the researchers (DeepSeek, no vision) read that text. The owner can correct the reading before sending: the
+// corrected text is what is stored. State lives here, not in the DOM, because the panels re-render.
+const ATT_MAX = 6, ATT_EDGE = 1600, ATT_Q = 0.85;
+const atts = { pod: [], case: [], lit: [] };
+let attSeq = 0, attCaseFor = null;
+const picUrl = id => `/api/research-pod/image?id=${encodeURIComponent(id)}`;
+function attListHtml(box) {
+  return atts[box].map(a => `<div class="att" data-attk="${a.k}">
+<a${a.id ? ` href="${esc(picUrl(a.id))}" target="_blank" rel="noopener" title="open the full picture"` : ''}>${a.thumb ? `<img src="${esc(a.thumb)}" alt="attached picture">` : '<span class="attph"></span>'}</a>
+<div class="attbody">${a.status === 'reading' ? `<span class="chip warn">${a.id ? 'reading…' : a.stage ?? 'reading…'}</span>` : a.status === 'error' ? `<span class="chip bad">not read</span> <span class="muted">${esc(a.error)}</span>` : `<span>${esc(a.description)}</span>${a.text !== a.auto ? ' <span class="chip">corrected</span>' : ''}`}
+<div class="attacts">${a.status === 'ready' ? `<button type="button" class="lnk" data-attedit="${a.k}">${a.editing ? 'done editing' : 'edit reading'}</button>` : ''}<button type="button" class="lnk" data-attrm="${a.k}">remove</button></div>
+${a.status === 'ready' && a.editing ? `<textarea data-atttext="${a.k}" rows="8" aria-label="the reading of this picture">${esc(a.text)}</textarea><span class="muted">What the researchers will read. Correct any misread number; this text is what is stored.</span>` : ''}</div></div>`).join('');
+}
+function attControlHtml(box, disabled = false) {
+  return `<div class="attbar"><label class="btn attbtn"${disabled ? ' aria-disabled="true"' : ''}>Attach pictures<input type="file" accept="image/*" multiple data-attfile="${box}"${disabled ? ' disabled' : ''}></label><span class="muted">each picture is read once by Sonnet, a few cents · you can also paste a screenshot into the box · up to ${ATT_MAX}</span></div>
+<div class="attlist" id="att-${box}">${attListHtml(box)}</div>`;
+}
+const attRefresh = box => { const el = $(`att-${box}`); if (el) el.innerHTML = attListHtml(box); };
+const attMsg = (box, text) => { const el = $(`att-${box}`); if (el && text) el.insertAdjacentHTML('beforeend', `<p class="muted attmsg">${esc(text)}</p>`); };
+/** Downscale to at most ATT_EDGE px on the long side, as JPEG. */
+async function attShrink(file) {
+  let src, w, h, url = null;
+  try { src = await createImageBitmap(file); w = src.width; h = src.height; }
+  catch { url = URL.createObjectURL(file); src = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => no(new Error('this file could not be opened as a picture')); im.src = url; }); w = src.naturalWidth; h = src.naturalHeight; }
+  const s = Math.min(1, ATT_EDGE / Math.max(w, h, 1)), cv = document.createElement('canvas');
+  cv.width = Math.max(1, Math.round(w * s)); cv.height = Math.max(1, Math.round(h * s));
+  const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(src, 0, 0, cv.width, cv.height);
+  if (url) URL.revokeObjectURL(url); src.close?.();
+  const blob = await new Promise(ok => cv.toBlob(ok, 'image/jpeg', ATT_Q));
+  if (!blob) throw new Error('could not shrink the picture');
+  return blob;
+}
+async function attAdd(box, files, context = '') {
+  const imgs = [...files].filter(f => /^image\//.test(f.type) || /\.(png|jpe?g|webp|heic|heif|gif)$/i.test(f.name ?? ''));
+  const room = ATT_MAX - atts[box].length;
+  if (!imgs.length) { attMsg(box, 'Only pictures can be attached.'); return; }
+  if (room <= 0) { attMsg(box, `At most ${ATT_MAX} pictures per message.`); return; }
+  for (const f of imgs.slice(0, room)) {
+    const a = { k: `a${++attSeq}`, status: 'reading', stage: 'shrinking…', thumb: '', id: null, text: '', auto: '', description: '', editing: false };
+    atts[box].push(a); attRefresh(box);
+    (async () => {
+      try {
+        const blob = await attShrink(f); a.thumb = URL.createObjectURL(blob); a.stage = 'reading…'; attRefresh(box);
+        const r = await fetch(`/api/research-pod/image?context=${encodeURIComponent(String(context).slice(0, 600))}`, { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: blob }).then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
+        if (!r?.ok) throw new Error(r?.error ?? 'upload failed');
+        Object.assign(a, { status: 'ready', id: r.id, description: r.description ?? '', text: r.text ?? '', auto: r.text ?? '' });
+      } catch (e) { a.status = 'error'; a.error = e.message; }
+      if (atts[box].includes(a)) attRefresh(box);
+    })();
+  }
+  if (imgs.length > room) attMsg(box, `Only ${ATT_MAX} pictures per message: ${imgs.length - room} left out.`);
+}
+/** Wire the file input, paste into the textarea, edit and remove. Call after each render. */
+function attWire(box, textarea, context = () => '') {
+  const inp = document.querySelector(`[data-attfile="${box}"]`);
+  if (inp) inp.onchange = () => { attAdd(box, inp.files, context()); inp.value = ''; };
+  if (textarea) textarea.addEventListener('paste', e => {
+    const files = [...(e.clipboardData?.items ?? [])].filter(i => i.kind === 'file' && /^image\//.test(i.type)).map(i => i.getAsFile()).filter(Boolean);
+    if (!files.length) return;
+    if (!e.clipboardData.getData('text/plain')) e.preventDefault();
+    attAdd(box, files, context());
+  });
+  const list = $(`att-${box}`); if (!list) return;
+  list.onclick = e => {
+    const ed = e.target.closest('[data-attedit]'), rm = e.target.closest('[data-attrm]');
+    if (ed) { const a = atts[box].find(x => x.k === ed.dataset.attedit); if (a) { a.editing = !a.editing; attRefresh(box); if (a.editing) list.querySelector(`[data-atttext="${a.k}"]`)?.focus(); } }
+    if (rm) { const i = atts[box].findIndex(x => x.k === rm.dataset.attrm); if (i >= 0) { const [a] = atts[box].splice(i, 1); if (a.thumb) URL.revokeObjectURL(a.thumb); attRefresh(box); } }
+  };
+  list.oninput = e => { const t = e.target.closest('[data-atttext]'); if (!t) return; const a = atts[box].find(x => x.k === t.dataset.atttext); if (a) a.text = t.value.trim() || a.auto; };
+}
+/** What to send: ids, or { id, text } for a corrected reading. { error } while a picture is still being read. */
+function attPayload(box) {
+  if (atts[box].some(a => a.status === 'reading')) return { error: 'Wait a moment: a picture is still being read.' };
+  return { images: atts[box].filter(a => a.status === 'ready' && a.id).map(a => (a.text !== a.auto ? { id: a.id, text: a.text } : a.id)) };
+}
+const attClear = box => { for (const a of atts[box]) if (a.thumb) URL.revokeObjectURL(a.thumb); atts[box] = []; };
+/** The pictures stored with a message in the case: thumbnails (click: the full picture) and what the vision model read. */
+const picsHtml = imgs => (imgs?.length ? `<div class="attlist">${imgs.map(a => `<div class="att"><a href="${esc(picUrl(a.id))}" target="_blank" rel="noopener" title="open the full picture"><img src="${esc(picUrl(a.id))}" loading="lazy" alt="attached picture"></a>
+<div class="attbody"><span>${esc(a.reading?.description ?? '')}</span>${a.edited ? ' <span class="chip">reading corrected by you</span>' : ''}
+<details><summary class="muted">What the vision model read</summary><div class="attread">${esc(a.text)}</div>${a.edited && a.reading ? `<p class="muted" style="margin:6px 0 2px">The model's own reading, before your correction:</p><div class="attread muted">${esc([a.reading.description, ...(a.reading.extracted ?? []).map(x => `- ${x}`)].join('\n'))}</div>` : ''}${a.model ? `<p class="muted" style="margin:4px 0 0">${esc(a.model)}</p>` : ''}</details></div></div>`).join('')}</div>` : '');
 function stepper(c, systems) {
   if (!c) return '';
   const done = new Set(['proposed', ...c.steps.filter(s => s.done).map(s => s.stage)]), o = c.outcome, sys = (systems ?? []).find(x => x.id === c.registerId);
@@ -394,7 +492,8 @@ ${pr.length ? `<p style="margin:6px 0 2px"><b>Peer review</b></p><div style="dis
 ${rv.alreadyKnown?.length ? `<p style="margin:6px 0 2px"><b>What the Evidence Book and register already say</b></p><ul>${rv.alreadyKnown.map(k => `<li><span class="chip">${esc(k.ref)}</span> ${esc(k.says)}</li>`).join('')}</ul>` : ''}
 ${LIST('Questions for you', rv.questionsForOwner)}
 ${qt ? `<p class="muted" style="margin:4px 0">Quick test it suggests: ${esc(qt.x)} → ${esc(qt.y)} · ${esc((qt.horizons ?? []).join(', '))} days${qt.why ? ` · ${esc(qt.why)}` : ''}</p>` : ''}
-${rv.notes?.length ? `<p class="muted" style="margin:4px 0">Flagged: ${rv.notes.map(esc).join(' · ')}</p>` : ''}</div>`;
+${rv.notes?.length ? `<p class="muted" style="margin:4px 0">Flagged: ${rv.notes.map(esc).join(' · ')}</p>` : ''}
+${rv.pictures ? `<p class="muted" style="margin:4px 0">Pictures: ${rv.pictures.sent?.length ? `the Head saw ${rv.pictures.sent.length} of the ${rv.pictures.attached?.length ?? rv.pictures.sent.length} attached and checked their readings` : 'not sent (it read the transcriptions only)'}</p>` : ''}</div>`;
 }
 function answerHtml(lens, a, byId) {
   return `<div style="border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0;overflow-wrap:anywhere"><p style="margin:0 0 4px"><span class="chip">${esc(LENS[lens] ?? lens)}</span>${a.model ? ` <span class="muted" style="font-size:11px">${esc(a.model)}</span>` : ''}</p>
@@ -417,22 +516,22 @@ ${k.proposals?.length ? `<p class="muted" style="margin:4px 0">Its proposals (be
 }
 function caseHtml(r, d) {
   const c = r.case, s = r.summary, job = r.job, run = job?.status === 'running', byId = Object.fromEntries(d.library.map(p => [p.id, p]));
-  const you = (text, at, extra = '') => `<div style="margin:12px 0;padding:8px 12px;border-left:3px solid var(--acc);background:var(--bg3);border-radius:4px;overflow-wrap:anywhere"><span class="muted">You · ${when(at)}${extra}</span><br><span style="white-space:pre-wrap">${esc(text)}</span></div>`;
+  const you = (text, at, extra = '', imgs = null) => `<div style="margin:12px 0;padding:8px 12px;border-left:3px solid var(--acc);background:var(--bg3);border-radius:4px;overflow-wrap:anywhere;min-width:0"><span class="muted">You · ${when(at)}${extra}${imgs?.length ? ` · ${imgs.length} picture${imgs.length > 1 ? 's' : ''}` : ''}</span><br><span style="white-space:pre-wrap">${esc(text)}</span>${picsHtml(imgs)}</div>`;
   const parts = [`<p style="margin:0 0 8px"><a href="#" data-closecase>← All cases</a></p>
 <h3 style="font-size:17px;margin:0 0 4px;overflow-wrap:anywhere">${esc(c.title)}</h3>
 <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px" class="muted">${esc(c.date)} · ${s.rounds} round${s.rounds === 1 ? '' : 's'} ${headChip(s)} ${caseChip(s)} ${jobChip(job)}
 <select data-casestatus="${esc(c.id)}" style="background:var(--bg3);color:var(--tx2);border:1px solid var(--line2);border-radius:4px;font:12px var(--mono)">${['open', 'parked', 'closed'].map(v => `<option value="${v}"${c.status === v ? ' selected' : ''}>${v}</option>`).join('')}</select></div>`];
   if (c.dossier) parts.push(dossierBlock(c.dossier, !c.rounds.length));
-  parts.push(c.question ? you(c.question, c.createdAt, c.dossier ? ' · the question, from the dossier' : ' · the question') : `<p class="muted">The weekly session: no question, the researchers chose from the catalogue's gaps.</p>`);
+  parts.push(c.question ? you(c.question, c.createdAt, c.dossier ? ' · the question, from the dossier' : ' · the question', c.images) : `<p class="muted">The weekly session: no question, the researchers chose from the catalogue's gaps.</p>`);
   if (c.dossier && !c.rounds.length && !c.pending) parts.push('<p class="muted">Nothing has run yet. Write to the three researchers below to start round 1: they read the whole dossier first.</p>');
   for (const rd of c.rounds) {
-    if (rd.n > 1 && rd.owner) parts.push(you(rd.owner, rd.at));
+    if (rd.n > 1 && rd.owner) parts.push(you(rd.owner, rd.at, '', rd.images));
     const ans = Object.entries(rd.answers ?? {});
     parts.push(`<p style="margin:12px 0 6px"><b>Round ${rd.n}</b> <span class="muted">${when(rd.at)} · ${ans.length} of 3 answered</span></p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:8px">${ans.map(([k, a]) => answerHtml(k, a, byId)).join('')}</div>
 ${Object.keys(rd.errors ?? {}).length ? `<p class="muted">Did not answer: ${Object.entries(rd.errors).map(([k, v]) => `${esc(LENS[k] ?? k)} (${esc(String(v).slice(0, 100))})`).join(', ')}</p>` : ''}`);
     for (const rv of c.reviews.filter(x => x.afterRound === rd.n)) parts.push(reviewHtml(rv, r.label));
   }
-  if (c.pending) parts.push(you(c.pending.owner, c.pending.at, run ? ' · all three are answering…' : c.lastError ? ' · <b class="dn">not answered</b>' : ''));
+  if (c.pending) parts.push(you(c.pending.owner, c.pending.at, run ? ' · all three are answering…' : c.lastError ? ' · <b class="dn">not answered</b>' : '', c.pending.images));
   if (!run && c.lastError) parts.push(`<p class="muted">Last attempt failed (${when(c.lastError.at)}): ${esc(c.lastError.error)}${c.pending ? ' Send it again below.' : ''}</p>`);
   if (run) parts.push(`<p class="muted"><span class="chip warn">${job.kind === 'review' ? 'The Head of Research is reviewing the case' : 'The researchers are working'}…</span> ${esc(job.stage ?? '')}. This page checks every few seconds.</p>`);
   // the controls: reply to all three, the Head of Research (expensive, never automatic), the quick test
@@ -440,6 +539,7 @@ ${Object.keys(rd.errors ?? {}).length ? `<p class="muted">Did not answer: ${Obje
   parts.push(`<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px">
 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start"><textarea id="casereply" rows="2" placeholder="${run ? 'Working…' : 'Reply to all three: push back, ask for a change, answer their questions'}" style="flex:1;min-width:min(100%,240px);${INP}"${run ? ' disabled' : ''}>${!run && c.pending && c.lastError ? esc(c.pending.owner) : ''}</textarea>
 <button class="btn" id="caseask"${run ? ' disabled' : ''}>Ask all three</button></div>
+${attControlHtml('case', run)}
 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><button class="btn" id="casehead"${run || !c.rounds.length ? ' disabled' : ''} style="border-color:#5a4520">${run && job.kind === 'review' ? 'The Head of Research is working…' : 'Send to the Head of Research'}</button>
 <span class="muted">the expensive step: one large Anthropic call over the whole case, only when you press it</span></div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">${r.plan ? `<button class="btn" id="caseqt" title="exploratory, never banked">Quick test the Head's plan</button>` : props.length ? `<select id="caseqtp" style="max-width:100%;background:var(--bg3);color:var(--tx2);border:1px solid var(--line2);border-radius:4px;font:12px var(--mono);padding:4px">${props.map(p => `<option value="${esc(p.id)}">${esc(LENS[p.lens] ?? p.lens)}: ${esc(p.title)}</option>`).join('')}</select><button class="btn" id="caseqt" title="exploratory, never banked">Quick test this proposal</button>` : ''}<span data-qtchips="${esc(c.id)}"></span><span id="casemsg" class="muted"></span></div></div>`);
@@ -462,6 +562,7 @@ function wireProps(d) {
 }
 async function renderCase(d) {
   const el = $('casebody'); if (!el || !podCase) return;
+  if (attCaseFor !== podCase) { attClear('case'); attCaseFor = podCase; }
   const r = await getJson(`/api/research-pod/case?id=${encodeURIComponent(podCase)}`);
   if (!r?.ok) { el.innerHTML = `<p class="muted">${esc(r?.error ?? 'not available')} · <a href="#" data-closecase>all cases</a></p>`; }
   else el.innerHTML = caseHtml(r, d);
@@ -472,7 +573,12 @@ async function renderCase(d) {
   clearInterval(casePoll); casePoll = null;
   if (run) casePoll = setInterval(async () => { const j = await getJson(`/api/research-pod/case?id=${encodeURIComponent(id)}`); if (j?.job?.status !== 'running' || podCase !== id) { clearInterval(casePoll); casePoll = null; if (podCase === id) renderPod(); } }, 8000);
   const start = async (url, body, btn, busy) => { btn.disabled = true; btn.textContent = busy; const x = await post(url, body); if (!x.ok) { btn.disabled = false; msg.textContent = x.error ?? 'failed'; return; } renderCase(d); };
-  const ask = $('caseask'); if (ask) ask.onclick = () => { const text = $('casereply').value.trim(); if (!text) { msg.textContent = 'Write a message first.'; return; } start('/api/research-pod/case/reply', { id, text }, ask, 'Working…'); };
+  attWire('case', $('casereply'), () => $('casereply')?.value ?? '');
+  const ask = $('caseask'); if (ask) ask.onclick = async () => { const text = $('casereply').value.trim(); if (!text) { msg.textContent = 'Write a message first.'; return; }
+    const pl = attPayload('case'); if (pl.error) { msg.textContent = pl.error; return; }
+    ask.disabled = true; ask.textContent = 'Working…'; const x = await post('/api/research-pod/case/reply', { id, text, ...(pl.images.length ? { images: pl.images } : {}) });
+    if (!x.ok) { ask.disabled = false; ask.textContent = 'Ask all three'; msg.textContent = x.error ?? 'failed'; return; }
+    attClear('case'); renderCase(d); };
   const head = $('casehead'); if (head) head.onclick = () => start('/api/research-pod/case/review', { id }, head, 'working…');
   const qt = $('caseqt'); if (qt) qt.onclick = () => { const p = r.plan ?? d.library.find(q => q.id === $('caseqtp')?.value); if (p) qtOpen(p); };
   const st = document.querySelector('[data-casestatus]'); if (st) st.onchange = async () => { await post('/api/research-pod/case/status', { id, status: st.value }); renderPod(); };
@@ -487,6 +593,7 @@ async function renderPod() {
   el.innerHTML = `<h2>Research pod <i>three researchers, a Head of Research when you ask · ${esc(d.caseLabel ?? d.label)} · weekly on Sundays, or ask now</i></h2>
 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;margin:6px 0 12px"><textarea id="podbrief" rows="2" placeholder="Ask the pod: e.g. what would it take to build an FX fair-value system? what retail behaviour could we fade on gold?" style="flex:1;min-width:min(100%,240px);${INP}"></textarea>
 <button class="btn" id="podrun"${running ? ' disabled' : ''}>${running ? 'The pod is working…' : 'Ask the pod'}</button></div>
+${attControlHtml('pod', running)}<p class="muted" id="podmsg" style="margin:2px 0"></p>
 ${running ? `<p class="muted">Working on: “${esc(String(d.job.brief || 'the weekly session').slice(0, 160))}” · ${esc(d.job.stage ?? '')}</p>` : ''}
 ${d.job?.status === 'error' ? `<p class="muted">Last attempt failed: ${esc(d.job.error)}</p>` : ''}
 <div class="tabs" style="margin:10px 0" role="tablist"><button data-podv="cases" aria-selected="${podView === 'cases'}">Cases · ${cases.length}</button><button data-podv="library" aria-selected="${podView === 'library'}">Library · ${d.library.length}</button></div>
@@ -512,7 +619,13 @@ ${lib.length ? lib.map(p => propHtml(p, d, { caseQ: p.caseId ? (caseQ[p.caseId] 
   if (cat) cat.innerHTML = `<h2>System catalogue <i>the institutional list against what this repo has · a map, not a verdict</i></h2><table><thead><tr><th>Area</th><th>Have</th><th>Partial</th><th>Missing</th><th>Out of scope</th></tr></thead><tbody>${Object.entries(cv).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${v.have}</td><td class="n">${v.partial}</td><td class="n">${v.missing}</td><td class="n">${v.out}</td></tr>`).join('')}</tbody></table>
 <details><summary class="muted">Every system</summary><table><tbody>${d.catalogue.systems.map(r => `<tr><td>${esc(r.name)}</td><td><span class="chip ${r.status === 'have' ? 'ok' : r.status === 'partial' ? 'warn' : r.status === 'missing' ? 'bad' : ''}">${esc(r.status)}</span></td><td class="muted">${esc(r.where)}${r.note ? ` · ${esc(r.note)}` : ''}</td></tr>`).join('')}</tbody></table></details>`;
   const poll = () => { const t = setInterval(async () => { const j = await getJson('/api/research-pod'); if (j?.job?.status !== 'running') { clearInterval(t); renderPod(); } }, 15_000); };
-  const b = $('podrun'); if (b) b.onclick = async () => { const brief = $('podbrief').value.trim(); b.disabled = true; b.textContent = 'The pod is working…'; const r = await post('/api/research-pod/run', { brief }); if (r?.job?.caseId) { podCase = r.job.caseId; podView = 'cases'; podSave(); } renderPod(); poll(); };
+  attWire('pod', $('podbrief'), () => $('podbrief')?.value ?? '');
+  const b = $('podrun'); if (b) b.onclick = async () => { const brief = $('podbrief').value.trim(), pl = attPayload('pod'), pm = $('podmsg');
+    if (pl.error) { pm.textContent = pl.error; return; }
+    if (pl.images.length && !brief) { pm.textContent = 'Write the question that goes with the pictures.'; return; }
+    b.disabled = true; b.textContent = 'The pod is working…'; const r = await post('/api/research-pod/run', { brief, ...(pl.images.length ? { images: pl.images } : {}) });
+    if (!r?.ok) { b.disabled = false; b.textContent = 'Ask the pod'; pm.textContent = r?.error ?? 'failed'; return; }
+    attClear('pod'); if (r?.job?.caseId) { podCase = r.job.caseId; podView = 'cases'; podSave(); } renderPod(); poll(); };
   if (running) poll();
   const sc = d.scorecard;
   if (sc) el.insertAdjacentHTML('beforeend', `<h3 style="font-size:14px;margin:16px 0 6px">Scorecard <i class="muted" style="font-style:normal">how far each researcher's ideas get · the pass rate counts only tested ones</i></h3><div style="overflow-x:auto"><table><thead><tr><th>Researcher</th><th class="n">Proposed</th><th class="n">You accepted</th><th class="n">Carded</th><th class="n">Pre-registered</th><th class="n">Tested</th><th class="n">Passed</th><th class="n">Failed</th><th class="n">Paper or live</th><th class="n">Rejected</th><th class="n">Pass rate</th></tr></thead><tbody>${Object.entries(sc).map(([k, v]) => `<tr><td>${esc(LENS[k] ?? k)}</td><td class="n">${v.proposed}</td><td class="n">${v.accepted}</td><td class="n">${v.carded}</td><td class="n">${v.preregistered}</td><td class="n">${v.tested}</td><td class="n up">${v.passed}</td><td class="n dn">${v.failed}</td><td class="n">${v.paperOrLive}</td><td class="n">${v.rejected}</td><td class="n">${v.passRate == null ? '–' : Math.round(v.passRate * 100) + '%'}</td></tr>`).join('')}</tbody></table></div>
@@ -543,7 +656,8 @@ async function renderLit() {
   el.innerHTML = `<h2>Literature desk <i>the researchers search arXiv, OpenAlex, Semantic Scholar and Crossref, read the open papers and cite them · ${esc(d.label)}</i></h2>
 <div style="display:flex;gap:12px;flex-wrap:wrap;margin:6px 0 10px">
 <div style="flex:2;min-width:260px"><b>Research an idea</b><textarea id="litidea" rows="3" placeholder="A hypothesis: e.g. carry trade returns are compensation for crash risk, so carry hedged with risk reversals should keep most of its return" style="width:100%;box-sizing:border-box;margin-top:4px;${input}"${running ? ' disabled' : ''}></textarea>
-<button class="btn" id="litgo"${running ? ' disabled' : ''}>Research it</button> <span class="muted">librarian, search, read up to 18 papers (7 in full), then a dossier · the desk's own library first · up to 15 model calls</span></div>
+<button class="btn" id="litgo"${running ? ' disabled' : ''}>Research it</button> <span class="muted">librarian, search, read up to 18 papers (7 in full), then a dossier · the desk's own library first · up to 15 model calls</span>
+${attControlHtml('lit', running)}</div>
 <div style="flex:1;min-width:220px"><b>Review this paper</b><input id="litref" placeholder="arXiv id or link, DOI, SSRN or PDF link, a title, or paste the text" style="width:100%;box-sizing:border-box;margin-top:4px;${input}"${running ? ' disabled' : ''}>
 <button class="btn" id="litrev"${running ? ' disabled' : ''}>Review it</button> <span class="muted">notes, how to test it here, proposals · the desk's own library is searched first</span></div></div>
 <div style="display:flex;gap:12px;flex-wrap:wrap;margin:0 0 10px;align-items:flex-start">
@@ -570,7 +684,10 @@ ${shown.length ? `<table><thead><tr><th>Entry</th><th>Claim (from the notes)</th
 <td>${n.stance ? `<span class="chip ${STANCE[n.stance] ?? ''}" title="${esc(p.forHypothesis ?? '')}">${esc(n.stance)}</span>` : ''}${(p.lenses ?? []).map(l => ` <span class="chip">${esc(LENS[l] ?? l)}</span>`).join('')}</td>
 <td class="muted">${esc(p.readFrom ?? '')}</td><td class="muted">${(c.proposals ?? []).map(esc).join('<br>')}${c.dossiers?.length ? `${c.proposals?.length ? '<br>' : ''}${c.dossiers.length} dossier(s)` : ''}</td></tr>`; }).join('')}</tbody></table>` : '<p class="muted">Empty.</p>'}</details>`;
   const start = async (url, body) => { const r = await getJson(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); if (!r?.ok) alert(r?.error ?? 'failed'); renderLit(); };
-  $('litgo').onclick = () => { const h = $('litidea').value.trim(); if (h) start('/api/research-pod/investigate', { hypothesis: h }); };
+  attWire('lit', $('litidea'), () => $('litidea')?.value ?? '');
+  $('litgo').onclick = async () => { const h = $('litidea').value.trim(); if (!h) return; const pl = attPayload('lit'); if (pl.error) { alert(pl.error); return; }
+    const r = await post('/api/research-pod/investigate', { hypothesis: h, ...(pl.images.length ? { images: pl.images } : {}) }); if (!r?.ok) { alert(r?.error ?? 'failed'); return; }
+    attClear('lit'); renderLit(); };
   $('litrev').onclick = () => { const r = $('litref').value.trim(); if (r) start('/api/research-pod/paper', { ref: r }); };
   el.querySelectorAll('[data-dos]').forEach(b => b.onclick = e => { e.preventDefault(); showDossier(b.dataset.dos); });
   wireDiscuss(el);

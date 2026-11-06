@@ -24,6 +24,7 @@
  */
 import { RESEARCHERS, validateProposals, validateReply, applyRevision, slug } from './researchPod.js';
 import { normaliseSpec } from './quickTest.js';
+import { picturesText } from './researchImages.js';
 
 export const LABEL = 'proposals and reviews, not results';
 export const LENSES = Object.keys(RESEARCHERS);
@@ -43,9 +44,10 @@ export const readStore = raw => (raw && typeof raw === 'object' && Array.isArray
 export const caseTitle = (question, date) => { const q = String(question ?? '').trim().split(/\n/)[0]; return q ? (q.length > 140 ? `${q.slice(0, 137)}…` : q) : `Weekly session ${date}`; };
 
 /** A new, empty case. */
-export function newCase({ id, question = '', date, at = new Date().toISOString(), origin = question ? 'owner' : 'weekly', sessionId = null }) {
+export function newCase({ id, question = '', date, at = new Date().toISOString(), origin = question ? 'owner' : 'weekly', sessionId = null, images = [] }) {
   const q = String(question ?? '').trim().slice(0, 1500);
-  return { id, title: caseTitle(q, date), question: q, origin, date, createdAt: at, updatedAt: at, status: 'open', sessionId, rounds: [], reviews: [] };
+  // `images`: the pictures attached to the question (js/researchImages.js attachment(): id, url, the reading and its text)
+  return { id, title: caseTitle(q, date), question: q, origin, date, createdAt: at, updatedAt: at, status: 'open', sessionId, rounds: [], reviews: [], ...(images?.length ? { images } : {}) };
 }
 
 /**
@@ -58,8 +60,8 @@ export function answerOf(r, { revised = [], newIds = null } = {}) {
 }
 
 /** Append a round: { owner: the message that started it (round 1: the question), answers: { lens: answer }, errors }. */
-export function appendRound(c, { owner = null, answers = {}, errors = {}, at = new Date().toISOString(), web = undefined }) {
-  const round = { n: c.rounds.length + 1, at, owner: owner ? String(owner).slice(0, 3000) : null, answers, errors: Object.keys(errors).length ? errors : undefined, ...(web ? { web } : {}) };
+export function appendRound(c, { owner = null, answers = {}, errors = {}, at = new Date().toISOString(), web = undefined, images = [] }) {
+  const round = { n: c.rounds.length + 1, at, owner: owner ? String(owner).slice(0, 3000) : null, answers, errors: Object.keys(errors).length ? errors : undefined, ...(web ? { web } : {}), ...(images?.length ? { images } : {}) };
   return { ...c, rounds: [...c.rounds, round], updatedAt: at };
 }
 
@@ -255,10 +257,11 @@ const reviewText = (rv, { full = false } = {}) => {
 /** The case so far as text, oldest first: the question, each round (owner's message, each researcher's answer), the reviews in between. */
 export function caseText(c, lib = [], { proposals = 'line', replyChars = 1500 } = {}) {
   const byId = Object.fromEntries((lib ?? []).map(p => [p.id, p])), out = [`Question (${c.date}): ${c.question || c.title}`];
+  if (c.images?.length) out.push(picturesText(c.images));
   const dp = (c.dossier?.proposals ?? []).map(p => p.id);
   if (dp.length) out.push(`\n### Before round 1: the literature dossier ${c.dossier.id} (verdict ${c.dossier.verdict ?? '–'})\n${proposals === 'full' ? dp.map(id => byId[id] ? `  ${proposalFull(byId[id])}` : `  - ${id} (no longer in the library)`).join('\n') : `  Proposals: ${dp.join(', ')}`}`);
   for (const r of c.rounds) {
-    out.push(`\n### Round ${r.n} (${String(r.at).slice(0, 16)})${r.n > 1 && r.owner ? `\nThe owner: ${r.owner}` : ''}`);
+    out.push(`\n### Round ${r.n} (${String(r.at).slice(0, 16)})${r.n > 1 && r.owner ? `\nThe owner: ${r.owner}` : ''}${r.n > 1 && r.images?.length ? `\n${picturesText(r.images)}` : ''}`);
     for (const [lens, a] of Object.entries(r.answers ?? {})) {
       out.push(`${label(lens)}: ${a.headline}${a.reply ? `\n  Reply: ${String(a.reply).slice(0, replyChars)}` : ''}${a.questions?.length ? `\n  Asked the owner: ${a.questions.join(' | ')}` : ''}`);
       const ids = uniq([...(a.proposals ?? []), ...(a.revised ?? [])]);
@@ -275,7 +278,7 @@ export function caseText(c, lib = [], { proposals = 'line', replyChars = 1500 } 
  * answers, the Head's latest review, its own proposals in full, the owner's message last). Context the server adds
  * (the data inventory, a slice of the Evidence Book and register) goes after these.
  */
-export function roundSections(c, lens, { lib = [], ownerMessage = '' } = {}) {
+export function roundSections(c, lens, { lib = [], ownerMessage = '', images = [] } = {}) {
   const byId = Object.fromEntries((lib ?? []).map(p => [p.id, p])), last = c.rounds.at(-1), rv = latestReview(c);
   const others = LENSES.filter(l => l !== lens).map(l => {
     const r = [...c.rounds].reverse().find(x => x.answers?.[l]), a = r?.answers?.[l]; if (!a) return `${label(l)}: (has not answered yet)`;
@@ -289,7 +292,7 @@ export function roundSections(c, lens, { lib = [], ownerMessage = '' } = {}) {
     ["The other researchers' latest answers", others],
     ['The Head of Research\'s latest review (peer review of all three: take its corrections seriously)', rv ? clip(reviewText(rv, { full: true }), 9000) : '(no review yet: the owner has not sent this case to the Head of Research)'],
     ['Your proposals in this case (current versions; revise them by id)', own.length ? own.map(id => byId[id] ? proposalFull(byId[id]) : `${id} (no longer in the library)`).join('\n') : '(none yet)'],
-    [`The owner's message that starts round ${(last?.n ?? 0) + 1} (answer it)`, ownerMessage || '(no message)'],
+    [`The owner's message that starts round ${(last?.n ?? 0) + 1} (answer it)`, [ownerMessage || '(no message)', picturesText(images)].filter(Boolean).join('\n\n')],
   ];
 }
 

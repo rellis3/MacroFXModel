@@ -240,6 +240,7 @@ import { NEWS_SOURCES as _NW_SOURCES, POLL_MIN as _NW_POLL_MIN, backoff as _nwBa
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
 import { RESEARCHERS as _RP_RESEARCHERS, WEB_SOURCES as _RP_WEB, parseFeed as _rpParseFeed, feedItems as _rpFeedItems, webDigest as _rpWebDigest, validateProposals as _rpValidate, applyFeedback as _rpApplyFeedback, feedbackBrief as _rpFeedbackBrief, buildList as _rpBuildList, mergeLibrary as _rpMerge, validateCard as _rpValidateCard, cardPrereg as _rpPrereg, slug as _rpSlug, lifecycle as _rpLifecycle, setLink as _rpSetLink, outcomesBrief as _rpOutcomes, scorecard as _rpScorecard, validateReply as _rpValidateReply, applyRevision as _rpApplyRevision, threadText as _rpThreadText } from './js/researchPod.js';   // Phases 23-25
 import * as _RCS from './js/researchCase.js';   // research cases: one per question to the pod, in a loop with the Head of Research
+import * as _RIM from './js/researchImages.js';   // pictures attached to research questions: read once by a vision model, then text
 import { normaliseTrades as _sxNormalise, tearsheet as _sxTearsheet, toolkitCsv as _sxToolkitCsv, terminalCsv as _sxTerminalCsv, liveVsExpected as _sxLiveVsExpected } from './js/systemExports.js';   // §9ac
 import { selectPairs as _psSelect } from './js/pairSelector.js';   // §9ae
 import { WORLD_RATES_URL as _WR_URL, parseCbpol as _wrParse, worldRates as _wrBuild, byIsoNumeric as _wrByIso } from './js/worldRates.js';   // §9af
@@ -3837,16 +3838,19 @@ async function _longPost(url, headers, body, timeoutMs) {
     req.end(body);
   });
 }
-async function callModel({ task = 'misc', system = '', standing = '', prompt = '', maxTokens = 4000, temperature = null, timeoutMs = 300_000 } = {}) {
+// `images` ([{ mediaType, data: base64 }]): pictures sent with the prompt, on a provider that reads them (anthropic). A
+// task routed to one that cannot (DeepSeek, Kimi) is refused here with a clear error, never sent (modelRouter refuses too).
+async function callModel({ task = 'misc', system = '', standing = '', prompt = '', maxTokens = 4000, temperature = null, timeoutMs = 300_000, images = [] } = {}) {
   const cfg = _aiConfig();
   const r = aiResolveTask(task, cfg);
   const P = AI_PROVIDERS[r.provider];
+  if (images?.length && !P.vision) { const e = new Error(`${P.label} cannot read images (task ${task} is routed to it); route it to Anthropic`); e.status = 400; throw e; }
   const key = process.env[P.keyEnv];
   if (!key) { const e = new Error(`${P.keyEnv} not configured`); e.status = 503; throw e; }
   const req = aiBuildRequest({
     provider: r.provider, model: r.model, system, standing, prompt,
     maxTokens, maxOutput: r.maxOutput, cache: cfg.cache, temperature,
-    effort: r.provider === 'anthropic' ? r.effort : null,
+    effort: r.provider === 'anthropic' ? r.effort : null, images,
   });
   const started = Date.now();
   // A provider that never answers must not hold the single brief slot forever (every retry gets a 409 until it ends), so the call is bounded.
@@ -3877,7 +3881,7 @@ async function callModel({ task = 'misc', system = '', standing = '', prompt = '
   // that hands the model 34k tokens of ledger and a strict JSON contract. Replaying the
   // actual last prompt costs one cheap call and compares against an answer already paid
   // for. In memory only -- it holds the full prompt and has no business in KV.
-  _lastCall[task] = { system, standing, prompt, maxTokens, at: Date.now(),
+  _lastCall[task] = { system, standing, prompt, maxTokens, at: Date.now(), ...(images?.length ? { images: images.length } : {}),   // the count only: no image bytes held here
                       provider: r.provider, model: r.model, text: out.text, usage: out.usage };
   return {
     ...out, provider: r.provider, model: r.model, label: P.label, clamped: req.clamped,
@@ -3912,7 +3916,7 @@ app.get('/api/ai-config', async (_req, res) => {
     const tasks = Object.entries(AI_TASKS).map(([id, t]) => {
       const r = aiResolveTask(id, cfg);
       return {
-        id, label: t.label, ledger: t.ledger ?? null, cheapSafe: !!t.cheapSafe, taskDefault: t.defaultProvider ?? null,
+        id, label: t.label, ledger: t.ledger ?? null, cheapSafe: !!t.cheapSafe, taskDefault: t.defaultProvider ?? null, vision: !!t.vision,
         provider: r.provider, model: r.model, maxOutput: r.maxOutput,
         fellBack: r.fellBack, why: r.why,
         chosen: _aiOverride.tasks[id] ?? cfg.tasks[id] ?? null,
@@ -3922,7 +3926,7 @@ app.get('/api/ai-config', async (_req, res) => {
       ok: true,
       providers: Object.entries(AI_PROVIDERS).map(([id, P]) => ({
         id, label: P.label, keyEnv: P.keyEnv, configured: !!cfg.keys[id],
-        explicitCache: !!P.explicitCache,
+        explicitCache: !!P.explicitCache, vision: !!P.vision,
         model: (cfg.models?.[id]?.id) ?? null,
         priced: !!cfg.prices?.[id],
       })),
@@ -4006,6 +4010,8 @@ app.post('/api/ai-ab', async (req, res) => {
         how: `Run the ${AI_TASKS[task].label} once, then come back — the comparison replays the real prompt, not a stand-in.`,
       });
     }
+    // the last call carried pictures, which are not kept: a replay without them would compare against a different job
+    if (base.images) return res.status(409).json({ error: `the last ${task} call carried ${base.images} picture(s), which are not kept for a replay` });
     const cfg = _aiConfig();
     const r = aiResolveTask(task, { ...cfg, tasks: { ...cfg.tasks, [task]: provider }, provider });
     const P = AI_PROVIDERS[r.provider];
@@ -5832,7 +5838,7 @@ let _rpJob = null;
 const _RC_PROMPT_CHARS = 130_000, _RC_EVIDENCE = 60, _RC_REGISTER = 40;
 const _rcEvidence = (ledger, query, max = _RC_EVIDENCE) => _RCS.pickRelevant(ledger, query, e => `${e.id} ${e.claim} ${e.use}`, { max });
 const _rcRegister = (rows, query, max = _RC_REGISTER) => _RCS.pickRelevant(rows, query, r => `${r.id} ${r.question}`, { max });
-async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS), caseId = null } = {}) {
+async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS), caseId = null, images = [] } = {}) {
   if (!_aiAnyKey()) return { ok: false, error: 'no model key' };
   const roles = _deskLoadRoles();
   const { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js');
@@ -5857,6 +5863,7 @@ async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS), caseI
     const ev = _rcEvidence(DESK_EVIDENCE, query), reg = _rcRegister(rows, query);
     const { system, prompt } = _deskStagePrompt({ role, pack: { date }, ledger: DESK_EVIDENCE, sections: _RCS.fitSections([
       ...(brief ? [["The owner's brief for this session (answer it first)", brief]] : []),
+      ...(images?.length ? [[_RIM.PICTURES_HEADER, _RIM.picturesText(images, { header: false })]] : []),
       ['The system catalogue: what exists, what is partial, what is missing', _sysCatalogueText()],
       ['The data inventory (feeds the server holds)', _rpInventory()],
       ['The bot fleet and the idea each one trades', _rpFleet()],
@@ -5902,7 +5909,7 @@ function _rpStart(opts = {}) {
   const caseId = opts.caseId ?? `case-${_dpLondonDate(Date.now())}-${Date.now().toString(36)}`;
   if (_rcJobs[caseId]?.status === 'running') return null;
   const job = _rpJob = _rcJobs[caseId] = { status: 'running', kind: 'pod', caseId, stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null, brief: opts.brief ?? '' };
-  const made = opts.caseId ? Promise.resolve() : _rcEnsure().then(() => _rcLock(async () => _rcPut(_RCS.newCase({ id: caseId, question: opts.brief ?? '', date: _dpLondonDate(Date.now()) }))));
+  const made = opts.caseId ? Promise.resolve() : _rcEnsure().then(() => _rcLock(async () => _rcPut(_RCS.newCase({ id: caseId, question: opts.brief ?? '', date: _dpLondonDate(Date.now()), images: opts.images ?? [] }))));
   made.then(() => _rpRun({ ...opts, caseId })).then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; job.session = r.id ?? null; })
     .catch(e => { job.status = 'error'; job.error = e.message; })
     .finally(() => { job.finishedAt = Date.now(); if (job.status === 'error') _rcFail(caseId, job.error); });
@@ -5934,7 +5941,7 @@ async function _rcEnsure() {
 const _rcStore = async () => { await _rcEnsure(); return _rcRead(); };
 const _rcFail = (id, error) => _rcLock(async () => { const c = (await _rcRead()).cases.find(x => x.id === id); if (c) await _rcPut({ ...c, lastError: { at: new Date().toISOString(), error: String(error ?? '').slice(0, 400) } }); }).catch(() => {});
 /** Round 2 on: all three answer the owner's message, each seeing the case, the others' latest answers and the Head's review. */
-async function _rcRound(id, text, job) {
+async function _rcRound(id, text, job, images = []) {
   const roles = _deskLoadRoles(), { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js');
   _tdOpsNow(); const rows = _roCache.rows ?? [], date = _dpLondonDate(Date.now());
   const [store, lib, papers] = await Promise.all([_rcRead(), _rpGet(_RP.library, []), _rpGet(_LIT.papers, [])]);
@@ -5944,7 +5951,7 @@ async function _rcRound(id, text, job) {
   await Promise.all(_RCS.LENSES.map(async lens => {
     const base = roles.find(r => r.id === _RP_RESEARCHERS[lens].role); if (!base) { errors[lens] = 'no role file'; return; }
     const own = _RCS.lensIds(c, lens), query = `${c.question} ${text} ${own.map(x => lib.find(p => p.id === x)?.title ?? '').join(' ')}`;
-    const ev = _rcEvidence(DESK_EVIDENCE, query, 40), reg = _rcRegister(rows, query, 30), rs = _RCS.roundSections(c, lens, { lib, ownerMessage: text });
+    const ev = _rcEvidence(DESK_EVIDENCE, query, 40), reg = _rcRegister(rows, query, 30), rs = _RCS.roundSections(c, lens, { lib, ownerMessage: text, images });
     const { system, prompt } = _deskStagePrompt({ role: { ...base, output: 'case_answer' }, pack: { date }, ledger: DESK_EVIDENCE, sections: _RCS.fitSections([
       ...rs.slice(0, -1),
       ['The data inventory (feeds the server holds)', _rpInventory()],
@@ -5970,7 +5977,7 @@ async function _rcRound(id, text, job) {
     if (fresh.length) { const { DESK_EVIDENCE: L } = await import('./js/deskEvidence.js'); l2 = _rpMerge(l2, _tdScreen(fresh.map(p => ({ ...p, variable: p.test.variable, condition: p.thesis })), rows, L).map(({ variable, condition, ...p }) => p), date); }
     await kv.put(_RP.library, JSON.stringify(_RCS.tagLibrary(l2, touched, id)));
     const c2 = (await _rcRead()).cases.find(x => x.id === id);
-    await _rcPut({ ..._RCS.appendRound(c2, { owner: text, answers: recs, errors, at: now }), pending: null, lastError: null });
+    await _rcPut({ ..._RCS.appendRound(c2, { owner: text, answers: recs, errors, at: now, images }), pending: null, lastError: null });
   });
 }
 /** The Head of Research (research-head, Anthropic by default): peer-reviews the whole case. Only when the owner asks. */
@@ -5983,23 +5990,84 @@ async function _rcReview(id, job) {
   if (!c.rounds.length) throw new Error('the researchers have not answered yet');
   const ids = _RCS.proposalIds(c), linked = new Set([id, ...ids]);
   const quickTests = Object.values(qts.tests ?? {}).filter(t => (t.proposalIds ?? []).some(x => linked.has(x))).map(t => ({ id: t.id, x: t.spec?.x, y: t.spec?.y, verdict: t.verdict, summary: t.why }));
+  // the pictures themselves (up to 6, the most recent first), when the Head's provider reads images, so it can check the
+  // vision model's transcriptions against them; on any other provider it reads the transcriptions only, and is told so
+  const pics = _RIM.caseImages(c, _RIM.MAX_PER_MESSAGE), headProv = aiResolveTask('research-head', _aiConfig()).provider, images = [], sent = [];
+  if (pics.length && AI_PROVIDERS[headProv]?.vision) for (const a of pics) { const got = await _rimBytes(a.id).catch(() => null); if (got) { images.push({ mediaType: got.mime, data: got.buf.toString('base64') }); sent.push(a.id); } }
+  const picSection = !pics.length ? [] : [[`The pictures attached to this case (${pics.length})`, sent.length
+    ? `${sent.length} picture${sent.length > 1 ? 's are' : ' is'} sent with this prompt as images, in this order: ${sent.map((x, i) => `image ${i + 1} = ${x}`).join('; ')}. Each one's vision reading is in the case above under the owner's message it came with. Check every reading against its picture and flag any mismatch (a wrong number, level, date or label) in peerReview, naming the picture id.${sent.length < pics.length ? ` Not available to send: ${pics.filter(a => !sent.includes(a.id)).map(a => a.id).join(', ')} (read their transcriptions only).` : ''}`
+    : `The pictures could not be sent with this prompt (${AI_PROVIDERS[headProv]?.vision ? 'their files are no longer stored' : `${AI_PROVIDERS[headProv]?.label ?? headProv} cannot read images`}); work from the vision model's transcriptions in the case and treat their numbers as unverified.`]];
   const { system, prompt } = _deskStagePrompt({ role, pack: { date: _dpLondonDate(Date.now()) }, ledger: DESK_EVIDENCE, sections: [
     ..._RCS.headSections(c, { lib, fb, quickTests, catalogue: Object.keys(QT.CATALOGUE) }),
+    ...picSection,
     ['The data inventory (feeds the server holds; name feed ids in the plan)', _rpInventory()],
     ['The Evidence Book (every entry: [tag] claim -> use)', evidenceBrief(DESK_EVIDENCE)],
     ['The research register (id [status] question -> next)', _tdRegisterText(rows)],
   ] });
   job.stage = 'the Head of Research is reading the case';
   const lenses = [...new Set(c.rounds.flatMap(r => Object.keys(r.answers ?? {})))];
-  const v = await _modelJson({ task: 'research-head', system, prompt, maxTokens: 16_000, label: 'desk:head-of-research', validate: o => _RCS.validateHeadReview(o, { lenses, proposalIds: ids }) });
+  const v = await _modelJson({ task: 'research-head', system, prompt, maxTokens: 16_000, label: 'desk:head-of-research', images, validate: o => _RCS.validateHeadReview(o, { lenses, proposalIds: ids }) });
   if (!v.ok) throw new Error(v.errors.join('; '));
-  await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); await _rcPut({ ..._RCS.appendReview(c2, v.value, { model: v.model, notes: v.notes ?? [] }), lastError: null }); });
+  await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); await _rcPut({ ..._RCS.appendReview(c2, { ...v.value, ...(pics.length ? { pictures: { sent, attached: pics.map(a => a.id) } } : {}) }, { model: v.model, notes: v.notes ?? [] }), lastError: null }); });
 }
 function _rcStartJob(id, kind, run) {
   const job = _rcJobs[id] = { status: 'running', kind, caseId: id, stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null };
   run(job).then(() => { job.status = 'done'; }).catch(e => { job.status = 'error'; job.error = e.message; _rcFail(id, `${kind}: ${e.message}`); }).finally(() => { job.finishedAt = Date.now(); });
   return job;
 }
+// ── Pictures attached to research questions (js/researchImages.js) ──────────────────────────────────────────────────
+// Each is read ONCE on upload by a vision model (task research-vision, Sonnet on Anthropic) into a written reading; the
+// researchers (DeepSeek, which cannot see images) and the Head read that text. Bytes in R2 research/images/<id>.<ext>,
+// or a bounded in-memory map when R2 is not configured (lost on restart: the readings in the case survive, the Head
+// then reads the transcriptions only). Readings in KV research_images, so an attach by id finds them.
+const _rimMem = new Map(), _RIM_MEM_MAX = 40;
+async function _rimStore(id, ext, mime, buf) {
+  if (_r2Ok()) { await _r2PutBuffer(_RIM.r2Key(id, ext), buf, mime); return 'r2'; }
+  _rimMem.set(id, { buf, mime }); while (_rimMem.size > _RIM_MEM_MAX) _rimMem.delete(_rimMem.keys().next().value);
+  return 'memory';
+}
+/** The bytes of a stored picture: { buf, mime } or null. */
+async function _rimBytes(id, rec = null) {
+  rec ??= _RIM.findImage(await _rpGet(_RIM.INDEX_KEY, null), id); if (!rec) return null;
+  if (rec.stored === 'r2' && _r2Ok()) { const buf = await _r2GetBuffer(_RIM.r2Key(rec.id, rec.ext)); return buf ? { buf, mime: rec.mime } : null; }
+  return _rimMem.get(rec.id) ?? null;
+}
+/** A request's `images` (ids, or { id, text } with the owner's corrected reading) resolved to attachments; throws a 400. */
+async function _rimAttach(list) {
+  if (list == null || (Array.isArray(list) && !list.length)) return [];
+  const r = _RIM.resolveAttach(await _rpGet(_RIM.INDEX_KEY, null), list);
+  if (!r.ok) { const e = new Error(r.error); e.status = 400; throw e; }
+  return r.attachments;
+}
+// POST /api/research-pod/image (raw body; Content-Type image/png, image/jpeg or image/webp; at most 6 MB; ?context= the
+// question it goes with): read once by research-vision, stored. -> { id, url, description, extracted, observations, uncertain, text, model }
+app.post('/api/research-pod/image', express.raw({ type: () => true, limit: '7mb' }), async (req, res) => {
+  try {
+    const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+    const v = _RIM.validateUpload({ contentType: req.get('content-type'), buf });
+    if (!v.ok) return res.status(v.status).json({ ok: false, error: v.error });
+    const rt = aiResolveTask('research-vision', _aiConfig()), P = AI_PROVIDERS[rt.provider];
+    if (!P?.vision) return res.status(400).json({ ok: false, error: `${P?.label ?? rt.provider} cannot read images; route research-vision to Anthropic` });
+    if (!process.env[P.keyEnv]) return res.status(503).json({ ok: false, error: `pictures are read by ${P.label} (task research-vision) and ${P.keyEnv} is not set` });
+    const id = _RIM.newImageId(_dpLondonDate(Date.now()));
+    const r = await _modelJson({ task: 'research-vision', system: _RIM.VISION_SYSTEM, prompt: _RIM.visionPrompt({ context: String(req.query.context ?? '').slice(0, 1500) }),
+      maxTokens: 6000, timeoutMs: 120_000, label: 'research:vision', images: [{ mediaType: v.mime, data: buf.toString('base64') }], validate: _RIM.validateReading });
+    if (!r.ok) return res.status(502).json({ ok: false, error: `the vision model could not read it: ${r.errors.join('; ')}` });
+    const stored = await _rimStore(id, v.ext, v.mime, buf);
+    const rec = _RIM.imageRecord({ id, ext: v.ext, mime: v.mime, bytes: buf.length, stored, reading: r.value, model: r.model });
+    await _rcLock(async () => kv.put(_RIM.INDEX_KEY, JSON.stringify(_RIM.putImage(await _rcStrict(_RIM.INDEX_KEY, null), rec))));
+    res.json({ ok: true, id, url: _RIM.imageUrl(id), ...r.value, text: rec.text, model: r.model, stored });
+  } catch (e) { res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
+});
+// GET /api/research-pod/image?id=: the picture itself (for the page's thumbnails and the full view).
+app.get('/api/research-pod/image', async (req, res) => {
+  try {
+    const id = String(req.query.id ?? ''); if (!_RIM.isImageId(id)) return res.status(400).json({ ok: false, error: 'bad image id' });
+    const got = await _rimBytes(id); if (!got) return res.status(404).json({ ok: false, error: 'no such picture (or it was held in memory and the server restarted)' });
+    res.set({ 'Content-Type': got.mime, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, max-age=86400', 'Content-Disposition': 'inline' });
+    res.send(got.buf);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // GET /api/research-pod/cases: every case (summary rows, newest first) and the running jobs.
 app.get('/api/research-pod/cases', async (_req, res) => {
   try { res.set('Cache-Control', 'no-store'); const st = await _rcStore(); res.json({ ok: true, label: _RCS.LABEL, cases: st.cases.map(c => _RCS.summary(c, _rcJobs[c.id])) }); }
@@ -6017,15 +6085,18 @@ app.post('/api/research-pod/case/reply', async (req, res) => {
   try {
     const id = String(req.body?.id ?? ''), text = String(req.body?.text ?? '').trim().slice(0, 3000);
     if (!id || !text) return res.status(400).json({ ok: false, error: 'id and text are required' });
+    const images = await _rimAttach(req.body?.images);   // up to 6 pictures with the message, each with its (possibly corrected) reading
     const c = (await _rcStore()).cases.find(x => x.id === id); if (!c) return res.status(404).json({ ok: false, error: 'no such case' });
     if (_rcJobs[id]?.status === 'running') return res.status(409).json({ ok: false, error: 'this case is already working', job: _rcJobs[id] });
     if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key' });
-    await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); await _rcPut({ ...c2, pending: { owner: text, at: new Date().toISOString() }, updatedAt: new Date().toISOString() }); });
-    // a case whose round 1 failed runs round 1 again (the full session), with the message added to the question; a case
-    // opened from a dossier has the dossier as its context instead, so its first round is an ordinary round over it
-    if (!c.rounds.length && !c.dossier) { const job = _rpStart({ brief: [c.question, text].filter(Boolean).join('\n\n'), caseId: id }); if (!job) return res.status(409).json({ ok: false, error: 'the research pod is already working on another question', job: _rpJob }); return res.status(202).json({ ok: true, job }); }
-    res.status(202).json({ ok: true, job: _rcStartJob(id, 'round', job => _rcRound(id, text, job)) });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    // a case whose round 1 failed runs round 1 again (the full session), with the message added to the question (and its
+    // pictures to the question's); a case opened from a dossier has the dossier as its context instead, so its first
+    // round is an ordinary round over it
+    const rerun = !c.rounds.length && !c.dossier, qImages = rerun ? [...(c.images ?? []), ...images.filter(a => !(c.images ?? []).some(x => x.id === a.id))].slice(-_RIM.MAX_PER_MESSAGE * 2) : null;
+    await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); await _rcPut({ ...c2, ...(rerun && qImages.length ? { images: qImages } : {}), pending: { owner: text, at: new Date().toISOString(), ...(images.length ? { images } : {}) }, updatedAt: new Date().toISOString() }); });
+    if (rerun) { const job = _rpStart({ brief: [c.question, text].filter(Boolean).join('\n\n'), caseId: id, images: qImages }); if (!job) return res.status(409).json({ ok: false, error: 'the research pod is already working on another question', job: _rpJob }); return res.status(202).json({ ok: true, job }); }
+    res.status(202).json({ ok: true, job: _rcStartJob(id, 'round', job => _rcRound(id, text, job, images)) });
+  } catch (e) { res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
 });
 // POST /api/research-pod/case/review { id }: send the case to the Head of Research (research-head; the expensive step, never automatic).
 app.post('/api/research-pod/case/review', async (req, res) => {
@@ -6086,11 +6157,17 @@ app.get('/api/research-pod', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // POST /api/research-pod/run { brief?, lenses?: ['quant','macro','flow'] }: a new case now, and its round 1. With a brief, it is the owner's question to the pod.
-app.post('/api/research-pod/run', (req, res) => {
-  const lenses = Array.isArray(req.body?.lenses) ? req.body.lenses.filter(l => _RP_RESEARCHERS[l]) : undefined;
-  const job = _rpStart({ brief: typeof req.body?.brief === 'string' ? req.body.brief.slice(0, 1500) : '', ...(lenses?.length ? { lenses } : {}) });
-  if (!job) return res.status(409).json({ ok: false, error: 'the research pod is already working', job: _rpJob });
-  res.status(202).json({ ok: true, job });
+// images?: up to 6 picture ids (or { id, text } with a corrected reading) from POST /api/research-pod/image.
+app.post('/api/research-pod/run', async (req, res) => {
+  try {
+    const lenses = Array.isArray(req.body?.lenses) ? req.body.lenses.filter(l => _RP_RESEARCHERS[l]) : undefined;
+    const brief = typeof req.body?.brief === 'string' ? req.body.brief.slice(0, 1500) : '';
+    const images = await _rimAttach(req.body?.images);
+    if (images.length && !brief.trim()) return res.status(400).json({ ok: false, error: 'write the question that goes with the pictures' });
+    const job = _rpStart({ brief, ...(lenses?.length ? { lenses } : {}), ...(images.length ? { images } : {}) });
+    if (!job) return res.status(409).json({ ok: false, error: 'the research pod is already working', job: _rpJob });
+    res.status(202).json({ ok: true, job });
+  } catch (e) { res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
 });
 // POST /api/research-pod/feedback { id, status: shortlist|build|park|reject, note }
 app.post('/api/research-pod/feedback', async (req, res) => {
@@ -6218,10 +6295,24 @@ async function _litFetch(url, { timeout = 20_000, accept = '*/*', headers = {}, 
   return { ok: r.ok, status: r.status, type: r.headers.get('content-type') ?? '', buf, url: r.url || url, text: () => buf.toString('utf8') };
 }
 const _litIsPdf = x => /pdf/i.test(x.type) || x.buf.subarray(0, 5).toString('latin1') === '%PDF-';
+// PDF text in a worker thread (scripts/pdf/pdfWorker.mjs), two at a time, killed at the timeout: pdf-parse is CPU-bound
+// and on the main loop it stalled every request while the research pod read papers.
+const _pdfQ = { running: 0, wait: [] };
+async function _pdfText(buf, { max = 0, timeoutMs = 60_000 } = {}) {
+  if (_pdfQ.running >= 2) await new Promise(r => _pdfQ.wait.push(r));
+  _pdfQ.running++;
+  try {
+    return await new Promise((resolve, reject) => {
+      const w = new _NodeWorker(new URL('./scripts/pdf/pdfWorker.mjs', import.meta.url), { workerData: { buf, max }, resourceLimits: { maxOldGenerationSizeMb: 512 } });
+      const t = setTimeout(() => { w.terminate(); reject(new Error(`pdf-parse timed out after ${Math.round(timeoutMs / 1000)}s`)); }, timeoutMs);
+      w.once('message', m => { clearTimeout(t); w.terminate(); m.ok ? resolve(m.text) : reject(new Error(`pdf-parse: ${m.error}`)); });
+      w.once('error', e => { clearTimeout(t); reject(e); });
+      w.once('exit', code => { clearTimeout(t); if (code) reject(new Error(`pdf-parse worker exited (${code})`)); });
+    });
+  } finally { _pdfQ.running--; _pdfQ.wait.shift()?.(); }
+}
 async function _litPdf(buf) {
-  const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
-  const parsed = await _litTimeout(pdfParse(buf, { max: 45 }), 60_000, 'pdf-parse');
-  return _litCleanPdf(parsed.text);
+  return _litCleanPdf(await _pdfText(buf, { max: 45, timeoutMs: 60_000 }));
 }
 async function _litSearchOne(src, q, max) {
   if ((_litCool[src] ?? 0) > Date.now()) throw new Error(`${src}: skipped, rate limited until ${new Date(_litCool[src]).toISOString().slice(11, 16)} UTC`);
@@ -6317,12 +6408,12 @@ async function _litResolve(ref, errors) {
 // One model call that must return a JSON object, with an honest retry (owner, 2026-11-04: the pod came back with
 // "reply is not a JSON object" from every researcher). A reply cut off at the length cap is retried with more room and
 // an instruction to be brief; an unreadable reply is retried once; the error says which it was and how the reply began.
-async function _modelJson({ task = 'desk-head', system, prompt, maxTokens = 12_000, timeoutMs, label = 'model', validate, tries = 2, onCall = null }) {
+async function _modelJson({ task = 'desk-head', system, prompt, maxTokens = 12_000, timeoutMs, label = 'model', validate, tries = 2, onCall = null, images = [] }) {
   let err = 'no call made', p = prompt, cap = maxTokens;
   for (let i = 0; i < tries; i++) {
     onCall?.();
     let r;
-    try { r = await callModel({ task, system, prompt: p, maxTokens: cap, ...(timeoutMs ? { timeoutMs } : {}) }); }
+    try { r = await callModel({ task, system, prompt: p, maxTokens: cap, ...(timeoutMs ? { timeoutMs } : {}), ...(images?.length ? { images } : {}) }); }
     catch (e) { err = e.message; continue; }
     const text = r.text ?? _antText(r), cut = r.stop_reason === 'max_tokens' || r.truncated === true, obj = _parseModelJson(text, label);
     if (obj) { const v = validate(obj); if (v.ok) return { ...v, model: r.model ?? null }; err = v.errors.join('; '); }
@@ -6384,16 +6475,18 @@ async function _litSynthesise({ hypothesis, read, unread, budget, date, kind, ex
   return _litTimeout(_litModel(budget, { role, sections, date, ledger: DESK_EVIDENCE, maxTokens: 12_000, timeoutMs: 300_000, label: 'lit:dossier', validate: o => _litValidateDossier(o, { paperIds: read.map(p => p.id) }) }), 620_000, 'dossier');
 }
 /** POST /api/research-pod/investigate: research an idea end to end. */
-async function _litInvestigate(hypothesis, job) {
+async function _litInvestigate(hypothesis, job, { images = [] } = {}) {
   if (!_aiAnyKey()) throw new Error('no model key');
   const roles = _deskLoadRoles(), role = id => { const r = roles.find(x => x.id === id); if (!r) throw new Error(`no role file ${id}`); return r; };
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
   const date = _dpLondonDate(Date.now()), at = new Date().toISOString(), id = `idea-${date}-${Date.now().toString(36)}`;
   const errors = job.errors, budget = job.budget, sources = job.sources;
-  const rec = { id, kind: 'idea', at, date, hypothesis, restated: '', queries: [], names: [], papers: [], paperNotes: {}, read: null, dossier: null, notes: [], errors, calls: 0, sources };
+  const rec = { id, kind: 'idea', at, date, hypothesis, restated: '', queries: [], names: [], papers: [], paperNotes: {}, read: null, dossier: null, notes: [], errors, calls: 0, sources, ...(images.length ? { images } : {}) };
+  // pictures the owner attached: their (possibly corrected) vision readings go with the hypothesis to the librarian and the dossier
+  const picSec = images.length ? [[_RIM.PICTURES_HEADER, _RIM.picturesText(images, { header: false })]] : [];
   // a. the librarian: queries and known literature
   job.stage = 'librarian: writing the search queries';
-  try { const q = await _litModel(budget, { role: role('librarian'), date, ledger: DESK_EVIDENCE, maxTokens: 1500, timeoutMs: 120_000, label: 'lit:librarian', sections: [['The hypothesis', hypothesis]], validate: _litValidateQueries });
+  try { const q = await _litModel(budget, { role: role('librarian'), date, ledger: DESK_EVIDENCE, maxTokens: 1500, timeoutMs: 120_000, label: 'lit:librarian', sections: [['The hypothesis', hypothesis], ...picSec], validate: _litValidateQueries });
     rec.restated = q.value.restated; rec.queries = q.value.queries.map(x => x.q); rec.names = q.value.names; }
   catch (e) { errors.push(e.message); rec.queries = [hypothesis.replace(/\s+/g, ' ').slice(0, 160)]; }
   // b. the desk's own library first (papers, the 151 strategies, QuantConnect strategies, working papers): entries
@@ -6431,7 +6524,7 @@ async function _litInvestigate(hypothesis, job) {
   if (!read.length) { rec.calls = budget.calls; await _litSaveDossier(rec); throw new Error(`no paper could be read (${errors.slice(-3).join('; ')})`); }
   // d. the dossier
   job.stage = `writing the dossier from ${read.length} papers`;
-  try { const v = await _litSynthesise({ hypothesis, read, unread: ranked.filter(p => !readFrom[p.id]), budget, date, kind: 'idea', extra: rec.restated ? [['The librarian restated it as', rec.restated]] : [] });
+  try { const v = await _litSynthesise({ hypothesis, read, unread: ranked.filter(p => !readFrom[p.id]), budget, date, kind: 'idea', extra: [...(rec.restated ? [['The librarian restated it as', rec.restated]] : []), ...picSec] });
     rec.dossier = v.value; rec.notes = v.notes; }
   catch (e) { errors.push(e.message); }
   rec.calls = budget.calls;
@@ -6656,7 +6749,7 @@ let _litJob = null;
 function _litStart(kind, input, opts = {}) {
   if (_litJob?.status === 'running') return null;
   const job = _litJob = { status: 'running', kind, input: String(input).slice(0, 300), stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null, errors: [], budget: { calls: 0, max: kind === 'idea' ? 15 : kind === 'backlog' ? Math.min(12, Math.max(1, opts.calls ?? 6)) : 5 }, sources: {}, result: null };
-  (kind === 'idea' ? _litInvestigate(input, job) : kind === 'backlog' ? _rlBacklog(opts, job) : _litReview(input, job))
+  (kind === 'idea' ? _litInvestigate(input, job, opts) : kind === 'backlog' ? _rlBacklog(opts, job) : _litReview(input, job))
     .then(r => { job.status = 'done'; job.result = r.id; job.stage = 'done'; })
     .catch(e => { job.status = 'error'; job.error = e.message; })
     .finally(() => { job.finishedAt = Date.now(); });
@@ -6664,12 +6757,16 @@ function _litStart(kind, input, opts = {}) {
 }
 const _litJobView = () => (_litJob ? { ..._litJob, calls: _litJob.budget?.calls ?? 0 } : null);
 // POST /api/research-pod/investigate { hypothesis }: research an idea (librarian, search, read, dossier). One job at a time.
-app.post('/api/research-pod/investigate', (req, res) => {
-  const h = String(req.body?.hypothesis ?? '').trim();
-  if (h.length < 12) return res.status(400).json({ ok: false, error: 'write the hypothesis in a sentence or two' });
-  const job = _litStart('idea', h.slice(0, 2000));
-  if (!job) return res.status(409).json({ ok: false, error: 'the literature desk is already working', job: _litJobView() });
-  res.json({ ok: true, job: _litJobView() });
+// images?: up to 6 picture ids (or { id, text }): their readings go with the hypothesis to the librarian and the dossier.
+app.post('/api/research-pod/investigate', async (req, res) => {
+  try {
+    const h = String(req.body?.hypothesis ?? '').trim();
+    if (h.length < 12) return res.status(400).json({ ok: false, error: 'write the hypothesis in a sentence or two' });
+    const images = await _rimAttach(req.body?.images);
+    const job = _litStart('idea', h.slice(0, 2000), images.length ? { images } : {});
+    if (!job) return res.status(409).json({ ok: false, error: 'the literature desk is already working', job: _litJobView() });
+    res.json({ ok: true, job: _litJobView() });
+  } catch (e) { res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
 });
 // POST /api/research-pod/paper { ref }: review one paper (arXiv id or URL, DOI, SSRN link, PDF or page URL, a title, or pasted text).
 app.post('/api/research-pod/paper', (req, res) => {
@@ -12355,9 +12452,8 @@ async function _fiscalFetchDoc(ev, doc) {
     const att = fiscalAttachment(pub); if (!att) return null;
     if (att.type === 'html') { const h = await _fiscalGovuk(att.path); if (!h?.details?.body) return null; return { text: fiscalHtmlToText(h.details.body), url: `https://www.gov.uk${att.path}`, publishedOn: h.first_published_at ?? pub.first_published_at ?? null }; }
     const r = await fetch(att.url, { headers: { 'User-Agent': _FISCAL_UA }, signal: AbortSignal.timeout(60_000) }); if (!r.ok) return null;
-    const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
-    const parsed = await pdfParse(Buffer.from(await r.arrayBuffer()));
-    return { text: parsed.text, url: att.url, publishedOn: pub.first_published_at ?? null };
+    const text = await _pdfText(Buffer.from(await r.arrayBuffer()), { timeoutMs: 120_000 });
+    return { text, url: att.url, publishedOn: pub.first_published_at ?? null };
   }
   if (doc.kind === 'obr') {
     let page = await _fiscalGet(`https://obr.uk/efo/${doc.obr}/`);
@@ -36756,8 +36852,7 @@ async function _cbspStatements() {
   return out;
 }
 async function _cbspPdf(buf) {
-  const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
-  return (await _cbspTimeout(pdfParse(buf, { max: 30 }), 60_000, 'pdf-parse')).text ?? '';
+  return _pdfText(buf, { max: 30, timeoutMs: 60_000 });
 }
 /** The speech's text: the page's article/main region, or its PDF when the page is only a shell around one. */
 async function _cbspText(url) {
