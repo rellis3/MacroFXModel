@@ -154,8 +154,14 @@ export function composePicto({ run, base = {}, stress = null, map = null } = {},
   const box = (label, body, cls = '', extra = '') => (body ? `<div class="bx ${cls}"><span class="tp">${esc(label)}</span>${extra}<div class="in">${body}</div></div>` : '');
 
   // market moves: the four largest one-day moves Atlas has a close for, fallers beside risers (the big arrows)
-  const moves = (base.assets ?? []).filter(a => Number.isFinite(a.d1)).sort((x, y) => Math.abs(y.d1) - Math.abs(x.d1)).slice(0, 4);
-  const item = m => `<div class="it"><b>${esc(m.label)}</b><span class="n ${m.d1 > 0 ? 'up' : m.d1 < 0 ? 'dn' : ''}">${fmtPct(m.d1)}</span>${m.price && moves.length <= 2 ? `<span class="p">at ${esc(m.price)}</span>` : ''}</div>`;
+  // A 'live' d1 runs from the live price to the last daily close (overnight, before that session), so the last full day
+  // (the last two closes in the spark) is shown under it and counts in the ranking: on 2026-11-06 the box showed Nasdaq
+  // +1.42% (the overnight bounce) and nothing of the -7% day before it.
+  const lastDay = a => { const sp = (a.spark ?? []).filter(Number.isFinite); return a.d1Basis === 'live' && sp.length >= 2 && sp.at(-2) ? (sp.at(-1) / sp.at(-2) - 1) * 100 : null; };
+  const dayName = d => (d ? new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' }) : '');
+  const moves = (base.assets ?? []).filter(a => Number.isFinite(a.d1)).map(a => ({ ...a, day: lastDay(a) })).sort((x, y) => Math.max(Math.abs(y.d1), Math.abs(y.day ?? 0)) - Math.max(Math.abs(x.d1), Math.abs(x.day ?? 0))).slice(0, 4);
+  const liveFrom = moves.find(m => m.d1Basis === 'live')?.d1AsOf ?? null;
+  const item = m => `<div class="it"><b>${esc(m.label)}</b><span class="n ${m.d1 > 0 ? 'up' : m.d1 < 0 ? 'dn' : ''}">${fmtPct(m.d1)}</span>${m.day != null ? `<span class="p">${esc(dayName(m.d1AsOf))} <span class="${m.day > 0 ? 'up' : m.day < 0 ? 'dn' : ''}">${fmtPct(m.day)}</span></span>` : m.price && moves.length <= 2 ? `<span class="p">at ${esc(m.price)}</span>` : ''}</div>`;
   const falls = moves.filter(m => m.d1 < 0), rises = moves.filter(m => m.d1 >= 0);
   const pMoves = moves.length ? `<div class="mv${falls.length && rises.length ? ' two' : ''}">${falls.length ? `<div class="col">${zigDown(rises.length ? 50 : 66)}<div class="ls">${falls.map(item).join('')}</div></div>` : ''}${rises.length ? `<div class="col">${arrowUp(falls.length ? 50 : 66)}<div class="ls">${rises.map(item).join('')}</div></div>` : ''}</div>` : '';
 
@@ -192,11 +198,11 @@ export function composePicto({ run, base = {}, stress = null, map = null } = {},
   const bottom = short(nl?.standfirst ?? g.summary ?? '', 170);
   const pBot = bottom ? `<div class="bl"><span>${esc(bottom)}</span>${svg('0 0 200 14', '62%', `<path d="M4 9 Q50 2 100 8 T196 6" fill="none" stroke="${K.ink}" stroke-width="3.2" stroke-linecap="round" filter="url(#pen)"/>`)}</div>` : '';
 
-  const cells = [box('Market moves', pMoves), pHero, box('Key signals', pSig), box('The big picture', pBig), box('Currencies', pCcy), pMap || box('The desk\'s ruling', g.summary ? `<p style="font-size:18px;margin:0">${esc(short(g.summary, 200))}</p>` : ''), box('Upcoming events', pEv), box('The desk\'s view', pView), box('Bottom line', pBot, 'note', '<i class="tapebit"></i>')].filter(Boolean);
+  const cells = [box(liveFrom ? `Moves since ${dayName(liveFrom)}'s close` : 'Market moves', pMoves), pHero, box('Key signals', pSig), box('The big picture', pBig), box('Currencies', pCcy), pMap || box('The desk\'s ruling', g.summary ? `<p style="font-size:18px;margin:0">${esc(short(g.summary, 200))}</p>` : ''), box('Upcoming events', pEv), box('The desk\'s view', pView), box('Bottom line', pBot, 'note', '<i class="tapebit"></i>')].filter(Boolean);
   const foot = `<div class="foot">Not financial advice: a private research summary; trading leveraged products can lose more than you deposit · The Chain · desk brief pictograph · ${esc(date)} · every figure from the desk run and Atlas data, none drawn by a model</div>`;
   const subject = `${date} Desk brief pictograph: ${short(b.headline ?? 'the desk book', 80)}`;
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body>${FILTERS}<div class="sheet"><div class="ttl"><h1>THE CHAIN – DESK BRIEF</h1><div class="dt"><i></i><span>${esc(long)}</span><i></i></div></div><div class="grid">${cells.join('')}</div>${foot}</div></body></html>`;
-  const text = [`THE CHAIN – DESK BRIEF · ${long}`, `${tone.toUpperCase()}${headline ? ': ' + headline : ''}`, moves.length ? 'Moves: ' + moves.map(m => `${m.label} ${fmtPct(m.d1)}`).join(', ') : '', drivers.length ? 'Big picture: ' + drivers.join('; ') : '', rows.length ? 'Currencies: ' + rows.map(c => `${c} ${ccy[c].bias > 0 ? '+' : ''}${ccy[c].bias}`).join(', ') : '', top.length ? 'Desk view: ' + top.map(([n, c]) => `${DIR[c.rating] > 0 ? 'long' : 'short'} ${instName(n)}`).join(', ') : '', bottom ? 'Bottom line: ' + bottom : ''].filter(Boolean).join('\n');
+  const text = [`THE CHAIN – DESK BRIEF · ${long}`, `${tone.toUpperCase()}${headline ? ': ' + headline : ''}`, moves.length ? `${liveFrom ? `Moves since ${dayName(liveFrom)}'s close` : 'Moves'}: ` + moves.map(m => `${m.label} ${fmtPct(m.d1)}${m.day != null ? ` (${dayName(m.d1AsOf)} ${fmtPct(m.day)})` : ''}`).join(', ') : '', drivers.length ? 'Big picture: ' + drivers.join('; ') : '', rows.length ? 'Currencies: ' + rows.map(c => `${c} ${ccy[c].bias > 0 ? '+' : ''}${ccy[c].bias}`).join(', ') : '', top.length ? 'Desk view: ' + top.map(([n, c]) => `${DIR[c.rating] > 0 ? 'long' : 'short'} ${instName(n)}`).join(', ') : '', bottom ? 'Bottom line: ' + bottom : ''].filter(Boolean).join('\n');
   return { subject, html, text };
 }
 
