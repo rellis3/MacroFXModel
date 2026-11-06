@@ -27,6 +27,10 @@ How to work:
 - Say what the Evidence Book and the register already say about this question, with their ids.
 - When the owner attached pictures, you get the pictures themselves with this prompt: check the vision model's readings
   in the case against them and flag any mismatch (a wrong number, level, date or label, with the picture id) in the peer review.
+- Citations: the section "The papers the researchers cite" lists every cited paper that is in the desk's paper library,
+  with its notes. A paper listed there is real and was read: never call it an invention or "not in the reading list";
+  judge instead whether it supports the claim made of it. Only a cited id that is in neither that list nor the dossier
+  is unverified, and say exactly that ("not in the desk's library"), not that it is false.
 - Ask the owner only what the pod cannot decide for itself.
 - Recommend one next step: quick-test (a cheap exploratory first look on the quick-test catalogue's series),
   architect (the plan is ready for a system card), preregister (ready for a register row and a prereg on fresh
