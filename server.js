@@ -5579,8 +5579,9 @@ app.get('/api/scenarios', async (req, res) => {
     const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : null;
     const book = await _bkrBook(date);
     if (!book) return res.status(404).json({ ok: false, error: date ? `no desk book for ${date}` : 'no desk book yet' });
-    const m = await _bkrGetModel(), sc = _bksStandard(m, book.cards);
-    res.json({ ok: true, date: book.date, bookFinishedAt: book.finishedAt, model: _bkrModelMeta(m), drivers: _BKS_DRIVERS.filter(d => m.joint.includes(d.key)), standard: _BKS_STANDARD, declaredReplays: _BKS_REPLAYS, ...sc,
+    // ?full=1: every card's P&L in every row (the Desk Terminal's scenario map), from the same runScenario / replay
+    const full = req.query.full === '1', m = await _bkrGetModel(), sc = _bksStandard(m, book.cards, full ? { top: 999, replayTop: 999 } : {});
+    res.json({ ok: true, full, date: book.date, bookFinishedAt: book.finishedAt, model: _bkrModelMeta(m), drivers: _BKS_DRIVERS.filter(d => m.joint.includes(d.key)), standard: _BKS_STANDARD, declaredReplays: _BKS_REPLAYS, ...sc,
       label: 'linear one-day map through each market\'s betas (conditional on the joint history); replays use realised moves. Description, not a forecast.' });
   } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
 });

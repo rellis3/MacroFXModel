@@ -173,6 +173,7 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <link rel="stylesheet" href="js/terminal/terminal-tabs.css">
+<link rel="stylesheet" href="js/terminal/book-panels.css">
 </head>
 <body>
 <header class="top">
@@ -871,13 +872,14 @@ function overview() {
   if (!D.run?.ok) { $('overview').innerHTML = `<div class="card"><p>No desk book yet today.</p><p class="muted">${esc(D.run?.error ?? '')} The book is written at 06:55 London when the Desk Run service is on, or from the Desk Run page.</p></div>`; return; }
   const live = Object.entries(D.cards).filter(([, c]) => DIR[c.rating] && c.size > 0).sort((a, b) => b[1].size * (CONV[b[1].conviction] ?? .8) * Math.abs(DIR[b[1].rating]) - a[1].size * (CONV[a[1].conviction] ?? .8) * Math.abs(DIR[a[1].rating])).slice(0, 6);
   $('overview').innerHTML = `<div class="card hero glow" style="margin-bottom:14px"><div class="hhead"><span class="lbl">The desk's world · ${esc(D.run.date)}</span><h2>${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest</h2></div><div class="map" id="heromap" style="min-height:240px"></div><div style="position:absolute;right:16px;top:14px;z-index:3;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end" class="filters"><button aria-pressed="${HLAYER === 'bias'}" data-layer="bias">Desk bias</button><button aria-pressed="${HLAYER === 'rates'}" data-layer="rates">Rate cycle</button><button aria-pressed="${HLAYER === 'credit'}" data-layer="credit">Bank credit</button><button aria-pressed="${HLAYER === 'value'}" data-layer="value">Fair value</button><span style="width:8px"></span><button aria-pressed="true" data-view="globe">Globe</button><button aria-pressed="false" data-view="map">Map</button></div><div class="legend" id="herolegend">${LAYER_LEGEND[HLAYER]}<span>tap a bank or a country</span></div></div>
-${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span class="lbl">Today's book</span><div class="thesis" style="font-size:16px">${esc(D.run.head.book.headline)}</div></div>` : ''}
+${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span class="lbl">Today's book</span><div class="thesis" style="font-size:16px">${esc(D.run.head.book.headline)}</div></div>` : ''}<div id="bkintel" style="margin-bottom:14px"></div>
 <div class="grid g2">${regimeCard()}<div class="grid" style="align-content:start">${strengthStrip()}${exposureChart()}${recordCard()}</div></div>
 ${weekSection()}${bestPairs()}<div id="xo"></div>${dayShape()}
 <div class="sec"><h2>Trade watch</h2><span class="lbl">the book against live prices, every 2 minutes</span></div>${watchBoard()}
 <div class="sec"><h2>Playbooks</h2><span class="lbl">the six largest cards · tap for the full analysis</span></div><div class="grid g3">${live.map(([n, c]) => playbookCard(n, c)).join('')}</div>
 <div class="sec"><h2>News, releases and risks</h2></div><div class="grid g2">${wireCard(D.news)}<div class="grid" style="align-content:start">${releasesCard()}<div class="card"><div class="ch"><span class="lbl">Risk desk warnings</span></div><ul style="margin:0;padding-left:18px">${(D.run.head.book.risks ?? []).map(r => `<li style="margin:6px 0">${esc(r)}</li>`).join('') || '<li class="muted">None.</li>'}</ul></div></div></div>`;
   wire($('overview'));
+  globalThis.drawBookIntel?.($('bkintel'));   // js/terminal/bookPanels.js
   let view = 'globe'; try { view = localStorage.getItem('deskTerminalHero') || 'globe'; } catch { /* default */ }
   document.querySelectorAll('[data-layer]').forEach(b => b.onclick = () => { HLAYER = b.dataset.layer; try { localStorage.setItem('deskTerminalLayer', HLAYER); } catch { /* fine */ }
     document.querySelectorAll('[data-layer]').forEach(x => x.setAttribute('aria-pressed', x.dataset.layer === HLAYER)); const lg = $('herolegend'); if (lg) lg.innerHTML = `${LAYER_LEGEND[HLAYER]}<span>tap a bank or a country</span>`; showHero(view); });
@@ -1037,8 +1039,9 @@ async function analytics() {
 <div class="sec"><h2>The desk's days</h2><span class="lbl">each scored day, coloured by its score in u</span></div><div class="card"><div id="cal2"></div></div>
 <div class="sec"><h2>Release reactions</h2><span class="lbl">how markets moved after past releases of each kind coming up · the desk's release history</span></div><div class="grid g2" id="fans"></div>
 <div class="sec"><h2>Analyst scorecard</h2><span class="lbl">each analyst's calls scored on 08:00 to 21:00 London · interim · weights shrunk towards 1.0</span></div><div class="card scroll" id="ascard"></div>
-<div class="sec"><h2>Factor risk and scenarios</h2><span class="lbl">the book as dollar, carry, risk-on, commodity and US-rates bets · what a shock does to it · plan §9ak</span></div><div id="bkr"><div class="card muted">Reading the book's factor risk…</div></div>`;
-  bookRiskPanel($('bkr'));
+<div class="sec"><h2>Factor risk and scenarios</h2><span class="lbl">the book as dollar, carry, risk-on, commodity and US-rates bets · what a shock does to it · plan §9ak</span></div><div id="bkr"><div class="card muted">Reading the book's factor risk…</div></div>
+<div class="sec"><h2>Scenario map</h2><span class="lbl">every standard scenario and historical replay against every card · hypothetical, not a forecast</span></div><div id="scmap"></div>`;
+  bookRiskPanel($('bkr')); globalThis.drawScenarioMap?.($('scmap'));
   corrWeb($('web'), risk); strengthHeat($('heat'), hist); trackChart($('track'), hist); waterfall($('fall'), day); releaseFans($('fans')); volPicker(); scoreCalendar($('cal2'), hist); analystPanel($('ascard'));
 }
 // ── §9ak: factor exposure, VaR/ES, effective bets, the standard scenarios and a custom shock (/api/book-risk, /api/scenarios, POST /api/scenario) ──
@@ -1223,38 +1226,13 @@ async function charts() {
     const [reg, sur, cot] = await Promise.all([getJson('/api/regime'), getJson('/api/econ-surprise'), getJson('/api/desk-cot-history?weeks=156')]);
     CH = { reg, sur, cot, season: {} };
   }
-  $('charts').innerHTML = `<div class="card glow"><div class="ch"><span class="lbl">How today's book was built</span><span class="r muted">the global ruling → each currency's net exposure → the cards · ribbon width = size</span></div><div id="flow"></div></div>
+  $('charts').innerHTML = `<div class="card glow"><div class="ch"><span class="lbl">How today's book was built</span><span class="r muted">the global ruling → the currencies → every card · tap a currency or a card</span></div><div id="flow"></div></div>
+<div class="sec"><h2>Currency ranking vs realised</h2><span class="lbl">the Currency Manager's morning order against how the currencies finished · descriptive, n shown</span></div><div id="rankreal"></div>
 <div class="grid g2" style="margin-top:14px"><div class="card"><div class="ch"><span class="lbl">Macro regime</span><span class="r muted">growth against inflation, the last 24 months</span></div><div id="quad"></div></div>
 <div class="card"><div class="ch"><span class="lbl">Data surprises</span><span class="r muted">each release against consensus (z), last 120 days, by currency</span></div><div id="surp"></div></div></div>
 <div class="sec"><h2>Positioning history</h2><span class="lbl">speculators' net share of open interest, 3 years · shaded = the top and bottom 10% · dot = latest week</span></div><div class="grid g4" id="cotgrid"></div>
 <div class="sec"><h2>Seasonality</h2><span class="lbl">mean return by calendar month over the history · this month outlined · tap a market for its weekdays</span></div><div class="card"><div id="season"><p class="muted">Reading up to 20 years of daily bars for ${SEASON_INSTS.length} markets…</p></div><div id="wkday"></div></div>`;
-  bookFlow($('flow')); regimeQuad($('quad'), CH.reg); surprises($('surp'), CH.sur); cotGrid($('cotgrid'), CH.cot); seasonHeat($('season'));
-}
-// a three-column flow: tone → currencies → cards, ribbons sized by the cards' size
-function bookFlow(el) {
-  const b = D.run?.head?.book; if (!b) { el.innerHTML = '<p class="muted">No book today.</p>'; return; }
-  const live = Object.entries(b.instruments).filter(([, c]) => DIR[c.rating] && c.size > 0).sort((a, b2) => b2[1].size - a[1].size).slice(0, 16);
-  const W = 1100, H = 520, top = 30, colX = [40, 470, 900], bw = 14;
-  // middle column: the currencies the shown cards use, sized by the shown cards' size through them
-  const legs = n => (n.length === 6 && CCYS.includes(n.slice(0, 3)) ? [n.slice(0, 3), n.slice(3)] : [{ NQ: 'USD', SPX500: 'USD', US30: 'USD', US2000: 'USD', DE30: 'EUR', UK100: 'GBP' }[n] ?? 'USD']);
-  const ccyW = {}; for (const [n, c] of live) for (const l of legs(n)) if (CCYS.includes(l)) ccyW[l] = (ccyW[l] ?? 0) + c.size / legs(n).length;
-  const ccys = CCYS.filter(c => ccyW[c]).sort((a, b2) => (D.ranking.indexOf(a) - D.ranking.indexOf(b2)));
-  const total = Object.values(ccyW).reduce((x, y) => x + y, 0), avail = H - top - 20, gap = 8;
-  const scale = (avail - gap * (Math.max(ccys.length, live.length) - 1)) / total;
-  let y = top; const cy = {}; for (const c of ccys) { const h = ccyW[c] * scale; cy[c] = { y, h, used: 0 }; y += h + gap; }
-  y = top; const ky = {}; for (const [n, c] of live) { const h = c.size * scale; ky[n] = { y, h, used: 0 }; y += h + gap; }
-  const tone = b.global?.tone ?? '', toneCol = /off/.test(tone) ? '#ff5d78' : /on/.test(tone) ? '#2fd39a' : '#8a93b8', tH = total * scale, tY = top;
-  let tUsed = 0;
-  const ribbon = (x1, y1, h1, x2, y2, h2, col, op, title) => `<path d="M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2} L${x2},${y2 + h2} C${(x1 + x2) / 2},${y2 + h2} ${(x1 + x2) / 2},${y1 + h1} ${x1},${y1 + h1} Z" fill="${col}" opacity="${op}"><title>${esc(title)}</title></path>`;
-  const left = ccys.map(c => { const h = cy[c].h, r = ribbon(colX[0] + bw, tY + tUsed, h, colX[1], cy[c].y, h, toneCol, 0.18, `${tone} → ${c}`); tUsed += h; return r; }).join('');
-  const right = live.map(([n, c]) => { const ls = legs(n).filter(l => cy[l]), d = Math.sign(DIR[c.rating]); return ls.map((l, i) => { const h = c.size * scale / ls.length, side = n.startsWith(l) ? d : -d, src = cy[l], r = ribbon(colX[1] + bw, src.y + src.used, h, colX[2], ky[n].y + ky[n].used, h, side > 0 ? '#2fd39a' : '#ff5d78', 0.32, `${l} ${side > 0 ? 'long' : 'short'} via ${n}`); src.used += h; ky[n].used += h; return r; }).join(''); }).join('');
-  const bias = c => D.ccy[c]?.bias ?? 0;
-  el.innerHTML = `<div class="scroll"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:640px" role="img" aria-label="how the book was built">${left}${right}
-<rect x="${colX[0]}" y="${tY}" width="${bw}" height="${tH}" rx="4" fill="${toneCol}" style="filter:drop-shadow(0 0 8px ${toneCol})"/><text x="${colX[0]}" y="${tY - 10}" fill="#eef0fb" font-family="JetBrains Mono" font-size="12" font-weight="700">${esc(tone.replace('_', '-').toUpperCase())}</text>
-${ccys.map(c => `<g data-ccy="${c}" style="cursor:pointer"><rect x="${colX[1]}" y="${cy[c].y}" width="${bw}" height="${cy[c].h}" rx="3" fill="${bias(c) > 0 ? '#2fd39a' : bias(c) < 0 ? '#ff5d78' : '#8a93b8'}"/><text x="${colX[1] - 8}" y="${cy[c].y + cy[c].h / 2 + 4}" text-anchor="end" fill="#eef0fb" font-family="JetBrains Mono" font-size="12">${FLAG[c] ?? ''} ${c} ${bias(c) > 0 ? '+' : ''}${bias(c)}</text></g>`).join('')}
-${live.map(([n, c]) => `<g data-inst="${esc(n)}" style="cursor:pointer"><rect x="${colX[2]}" y="${ky[n].y}" width="${bw}" height="${Math.max(2, ky[n].h)}" rx="3" fill="${DIR[c.rating] > 0 ? '#2fd39a' : '#ff5d78'}"/><text x="${colX[2] + bw + 8}" y="${ky[n].y + Math.max(2, ky[n].h) / 2 + 4}" fill="#eef0fb" font-family="JetBrains Mono" font-size="11">${esc(n)} <tspan fill="#6d7599">${c.size}</tspan></text></g>`).join('')}
-</svg></div><div class="muted">The sixteen largest cards. Each card's size is split across its two currency legs; a ribbon is green where the card is long that currency, red where it is short it.</div>`;
-  wire(el);
+  globalThis.drawBookFlow?.($('flow')); globalThis.drawRankReality?.($('rankreal')); regimeQuad($('quad'), CH.reg); surprises($('surp'), CH.sur); cotGrid($('cotgrid'), CH.cot); seasonHeat($('season'));
 }
 const REG_COL = { goldilocks: '#2fd39a', reflation: '#e8b85a', stagflation: '#ff5d78', deflation: '#4fb3ff' };
 function regimeQuad(el, r) {
@@ -1338,5 +1316,6 @@ load();
 setInterval(() => { if (!document.hidden) { ANA = null; ASC = null; load(); if (!$('ana').hidden) analytics(); } }, 5 * 60_000);   // the Charts tab's sources change daily at most: drawn once per visit
 </script>
 <script type="module" src="js/terminal/terminalTabs.js"></script>
+<script type="module" src="js/terminal/bookPanels.js"></script>
 </body>
 </html>

@@ -118,7 +118,7 @@ export function riskOffShock(model, { q = 0.05 } = {}) {
 }
 
 /** A declared window replayed with realised moves (sum of daily log returns after `from` up to `to`). */
-export function replay(model, cards, rep) {
+export function replay(model, cards, rep, { top = 4 } = {}) {
   const R = model._returns, moves = {}, notCovered = [];
   for (const [n, m] of Object.entries(R)) {
     const ds = [...m.keys()];
@@ -130,20 +130,20 @@ export function replay(model, cards, rep) {
   for (const k of model.joint) { const m = D[k]; if (!m) continue; const ds = [...m.keys()]; if (!ds.length || ds[0] > rep.from) continue; let s = 0; for (const d of ds) if (d > rep.from && d <= rep.to) s += m.get(d); drv[k] = rnd(s, 2); }
   const book = bookPnl(model, cards, moves);
   const liveMissing = book.missing;
-  return { key: rep.key, label: rep.label, from: rep.from, to: rep.to, covered: Object.keys(moves).length > 0, pnl: book.pnl, pnlPct: book.pnlPct, worst: book.cards.slice(0, 4), missing: liveMissing, drivers: drv, notCovered: notCovered.length };
+  return { key: rep.key, label: rep.label, from: rep.from, to: rep.to, covered: Object.keys(moves).length > 0, pnl: book.pnl, pnlPct: book.pnlPct, worst: book.cards.slice(0, top), missing: liveMissing, drivers: drv, notCovered: notCovered.length };
 }
 
-/** The standard set and the replays on a book. */
-export function standardScenarios(model, cards) {
+/** The standard set and the replays on a book. { top, replayTop } list more cards per row (the Desk Terminal's scenario map asks for every card). */
+export function standardScenarios(model, cards, { top = 6, replayTop = 4 } = {}) {
   const rows = STANDARD_SCENARIOS.map(sc => {
     if (sc.special === 'riskOffDay') {
       const ro = riskOffShock(model);
       if (!ro) return { key: sc.key, label: sc.label, ok: false, errors: ['not enough joint history'] };
-      return { key: sc.key, ...runScenario(model, cards, ro.shocks, { label: sc.label }), basis: `${ro.n} worst S&P days, ${ro.from} to ${ro.to}` };
+      return { key: sc.key, ...runScenario(model, cards, ro.shocks, { label: sc.label, top }), basis: `${ro.n} worst S&P days, ${ro.from} to ${ro.to}` };
     }
-    return { key: sc.key, note: sc.note, ...runScenario(model, cards, sc.shocks, { label: sc.label }) };
+    return { key: sc.key, note: sc.note, ...runScenario(model, cards, sc.shocks, { label: sc.label, top }) };
   });
-  return { scenarios: rows.map(({ moves, ...r }) => r), replays: REPLAYS.map(r => replay(model, cards, r)) };
+  return { scenarios: rows.map(({ moves, ...r }) => r), replays: REPLAYS.map(r => replay(model, cards, r, { top: replayTop })) };
 }
 
 /** Compact text for a prompt (risk desk, Head, Ask the desk): exposure, VaR, concentration, scenarios. */
