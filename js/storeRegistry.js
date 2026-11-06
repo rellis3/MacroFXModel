@@ -73,6 +73,7 @@ export const STORES = {
   research_pod_cards: R('Research pod system cards and reviews', 60, { market: false }),
   research_pod_threads: R('Research pod: the conversation on each proposal', 60, { market: false }),
   research_cases: R('Research cases: one per question to the pod, its rounds and the Head of Research reviews (js/researchCase.js)', 8, { market: false }),
+  research_images: R('Research pictures: the vision reading of each picture attached to a research question (js/researchImages.js; bytes in R2 research/images/)', 60, { market: false }),
   research_pod_dossiers: L("Literature desk: dossiers on the owner's hypotheses and paper reviews", 60, { market: false }),
   research_pod_queue: L('Literature desk: the reading backlog (reading list, SSRN manifest, 151, QuantConnect, uploads)', 30, { market: false }),
   research_pod_papers: R('Literature desk: the paper library (notes per paper, read weekly by the pod)', 8, { market: false }),
