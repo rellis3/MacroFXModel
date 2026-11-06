@@ -25,7 +25,7 @@ export function mountPathChart(box, { sm, walk, anchor = 'gammaCentre', o, width
   const m = walkModel(sm, walk, { w: width, o }); if (!m) return null;
   const win = globalThis.window ?? globalThis, d3 = globalThis.d3;
   const phone = (win.innerWidth ?? 1000) < PHONE_W, coarse = !!win.matchMedia?.('(pointer: coarse)')?.matches;
-  state.hideSmall ??= phone;
+  state.hideSmall ??= false;   // owner default: off everywhere (2026-11-06: 26 of GOLD's 28 combined expiries are small books, so hiding them emptied the phone view)
   const defaultTr = () => PZ.presetTransform(m.base, phone ? '1M' : 'All', m.lim);
   let tr = state.inst === inst && state.win ? PZ.windowTransform(m.base, state.win[0], state.win[1], m.lim) : defaultTr();
   let cur = null, tip = null, raf = 0, xh = null;   // tip: { p, pinned }; xh: crosshair position or null
