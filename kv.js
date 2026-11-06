@@ -392,6 +392,7 @@ const _CF_EXACT = new Set([
   'morning_brief_v1',       // Daily Brief top-down macro read (AI, ~1 gen/day) — must survive redeploys or the front page goes blank until regenerated
   'hedge_audit_log',        // forward-test log for advisory hedge suggestions — must survive redeploys
   'hedge_alerts_cache',     // summary of corr_history.json pushed by /api/hedge-alerts — survives redeploys
+  'corr_terminal_v1',       // Desk Terminal Correlations & hedges panel (~150 KB of daily closes), written by the 6-hourly corr build; the 12 MB file dies with each deploy, this does not
   'vol_hit_rates',          // historical price-level hit rates — expensive to recompute (~10 min full, ~1 min incremental)
   'event_vol_impact',       // Finnhub event expansion ratios — must survive redeploys
   'session_stats',          // intraday hourly vol profile — 5y H1 pull, ~5 min to recompute

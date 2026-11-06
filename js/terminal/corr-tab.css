@@ -1,0 +1,38 @@
+/* Desk Terminal: the Correlations & hedges tab (js/terminal/corrView.js, hedgeView.js). Loaded by corrView.js when the
+   tab first opens. Page tokens only: purple = moves together / what you can press, gold = moves against / attention. */
+#corr .ct-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px}
+#corr .ct-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));align-items:start}
+#corr .ct-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+#corr .ct-heat{display:block}
+#corr .ct-ax{font:10px var(--mono);fill:var(--tx2)}
+#corr .ct-v{font:600 10px var(--mono);pointer-events:none}
+#corr .ct-click{cursor:pointer}
+#corr .ct-cell.ct-click:hover rect,#corr .ct-cell.ct-click:focus-visible rect{stroke:var(--pur2);stroke-width:2}
+#corr .ct-cell:focus-visible{outline:none}
+#corr .ct-chg{display:grid;gap:2px}
+#corr .ct-chgrow{display:grid;grid-template-columns:minmax(0,1.3fr) auto auto auto;gap:10px;align-items:center;padding:7px 6px;border-bottom:1px solid var(--line);font-size:12.5px;border-radius:6px}
+#corr .ct-chgrow:hover,#corr .ct-chgrow:focus-visible,#corr .ct-rt tr.ct-click:hover,#corr .ct-rt tr.ct-click:focus-visible{background:rgba(139,124,246,.07);outline:none}
+#corr .ct-chgrow b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:560px){#corr .ct-chgrow{grid-template-columns:1fr auto;row-gap:4px}#corr .ct-chgrow svg{grid-column:1}}
+#corr .ct-sel{display:inline-flex;gap:6px;align-items:center;font:600 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)}
+#corr .ct-sel select{background:var(--bg1);color:var(--tx);border:1px solid var(--line2);border-radius:8px;padding:5px 8px;font:12px var(--mono);max-width:46vw}
+#corr .ct-roll{display:block;margin-top:6px}
+#corr .ct-ftiles{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr))}
+#corr .ct-ftile{background:var(--bg3);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
+#corr .ct-share{margin:2px 0 8px;height:8px}
+#corr .ct-frow{display:grid;grid-template-columns:40px 46px 58px 1fr;white-space:nowrap;gap:6px;align-items:center;font-size:12px;padding:2px 0}
+#corr .ct-frow span:first-child{font:600 10px var(--mono);letter-spacing:.08em}
+#corr .ct-frow svg{justify-self:end;max-width:100%}
+#corr .ct-hlist{display:grid;gap:2px}
+#corr .ct-hrow{display:grid;grid-template-columns:172px auto minmax(0,1fr);gap:6px 12px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+#corr .ct-hms{display:flex;flex-wrap:wrap;gap:2px 10px;min-width:0}
+#corr .ct-hb{display:inline-flex;gap:6px;align-items:center}
+#corr .ct-hm{color:var(--tx2);white-space:nowrap;font-size:11.5px}
+#corr .ct-earn{color:var(--tx2)}#corr .ct-pay{color:var(--gold)}
+@media (max-width:700px){#corr .ct-hrow{grid-template-columns:1fr auto;row-gap:3px}#corr .ct-hms{grid-column:1/-1}#corr .ct-hm{font-size:11px}}
+#corr .ct-evrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
+#corr .ct-ev{font-size:9.5px;cursor:help;white-space:normal}
+#corr .ct-rt td,#corr .ct-rt th{white-space:nowrap}
+@media (max-width:600px){#corr .ct-rt td,#corr .ct-rt th{padding:6px 5px;font-size:11.5px}}
+#corr .ct-admin{margin-top:16px}
+#corr .ct-admin p{margin:6px 0}
