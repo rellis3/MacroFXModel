@@ -1261,6 +1261,11 @@ domino one. Proposed, not built.
   further drains hit bank reserves directly"* (`funding-read`, 2026-11-06). With RRP at zero
   a TGA rebuild drains reserves one for one; in 2023 it drained money funds instead. Same
   TGA move, different liquidity. The clip is a 2019 model of the plumbing.
+  The daily version of his TGA dial is also already scored: `liquidity-pulse.html` tracks
+  the Daily Treasury Statement flow (TGA **$923bn on 11-05, down $117bn from 10-29** — the
+  daily series moves faster than the weekly H.4.1 print) against the Nasdaq's next session
+  on **2,029 sessions: correlation −0.003, hit rate 49.5%**, settlement days 52%. The flow
+  the clip says to watch has no next-day read on the index.
 - **(c) the MOVE.** The series is wired (owner decision 2026-10-19, after this log's
   2026-10-02 entry found the desk abstaining for want of it; the Market View tile and the
   COG risk gate's 0.6-weight factor now read it). Tested: `rates-vol-gap-move` (**NULL**,
