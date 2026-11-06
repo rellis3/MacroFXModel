@@ -205,6 +205,11 @@ What follows, written now:
 
 ---
 
-## RESULTS — run <YYYY-MM-DD>
+## RESULTS — run 2026-11-06
 
-*Written to `analysis/output/hedge-residual-system/RESULTS.md`.*
+*Written to `analysis/output/hedge-residual-system/RESULTS.md`.* 2017-03-31 → 2026-08-20, 2,436 sessions, 14.9 spreads on
+average. **MR NULL**: net Sharpe −1.19 [−1.76, −0.60], 9,353 trades, halves −1.17 / −1.21, placebo 0th percentile.
+**MOM NULL**: −1.78 [−2.45, −1.08], 18,791 trades, halves −2.42 / −1.14, placebo 3.5th. **CARRY UNDERPOWERED**: +0.08
+[−0.55, +0.70], 1,869 trades, halves −0.03 / +0.18, placebo 11th. Buy-and-hold of the spread −0.53 [−1.13, +0.05].
+Gross of costs every cell's CI includes 0 (MR +0.16, MOM +0.11, CARRY +0.44, mostly accrual); the MR trade earns ~0.9 bp
+gross against ~3.3 bp of two-leg spread.
