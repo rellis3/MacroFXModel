@@ -172,6 +172,9 @@ async function load(fresh) {
     const r = await fetch(`/api/swing-map?inst=${encodeURIComponent(inst)}${fresh ? '&fresh=1' : ''}`);
     const m = await r.json();
     if (!m.ok) throw new Error(m.error || `HTTP ${r.status}`);
+    // this page keeps its ~100-day window: the expiries past it (beyondCore, added for the Desk Terminal's longer path)
+    // are left out, so its walk, columns and Pine export read exactly as before
+    m.expiries = (m.expiries || []).filter(e => !e.beyondCore);
     if (!$('inst').options.length) { $('inst').innerHTML = m.instruments.map(i => `<option${i === m.inst ? ' selected' : ''}>${i}</option>`).join(''); }
     history.replaceState(null, '', `?inst=${m.inst}`);
     render(m);

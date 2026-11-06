@@ -205,7 +205,10 @@ export function zoneWalk(expiries, { close, anchor = 'strike', maxDte = 100, thi
     if (anchor === 'strike' && capped) top = byOI.find(z => z.px > 0 && ok(z.px));
     if (gam) {
       const n = date || prevDate ? Math.max(1, _weekdays(prevDate || date, e.expiry)) : Math.max(1, e.dte * 252 / 365);
-      const sc = gammaPullScores(book.map(z => [z.px, z.call, z.put, z.c1, z.cf]), prev, n / 252, (vol || sigma || 0.01) * Math.sqrt(252));
+      // e.gammaVolDaily (optional, the Cboe path sources): this expiry's own at-the-money implied vol per session from the
+      // latest delayed pull, so spot AND IV move its gamma weighting intraday; CME expiries carry none and use `vol`
+      const vE = e.gammaVolDaily > 0 ? e.gammaVolDaily : (vol || sigma || 0.01);
+      const sc = gammaPullScores(book.map(z => [z.px, z.call, z.put, z.c1, z.cf]), prev, n / 252, vE * Math.sqrt(252));
       const tot = sc.reduce((a, z) => a + z.score, 0);
       if (anchor === 'gamma') {
         const best = sc.filter(z => ok(z.px)).sort((a, b) => b.score - a.score)[0];
@@ -216,7 +219,7 @@ export function zoneWalk(expiries, { close, anchor = 'strike', maxDte = 100, thi
         // leans even when no one strike stands out; `top` is the book's strike nearest to it, for the dot's OI
         gCentre = Math.exp(sc.reduce((a, z) => a + z.score * Math.log(z.px), 0) / tot);
         top = book.reduce((b, z) => (!b || Math.abs(z.px - gCentre) < Math.abs(b.px - gCentre) ? z : b), null);
-        pullShare = sc.filter(z => Math.abs(Math.log(z.px / gCentre)) <= (vol || sigma || 0.01) * Math.sqrt(n)).reduce((a, z) => a + z.score, 0) / tot;
+        pullShare = sc.filter(z => Math.abs(Math.log(z.px / gCentre)) <= vE * Math.sqrt(n)).reduce((a, z) => a + z.score, 0) / tot;
       }
     }
     const px = anchor === 'maxPain' ? e.maxPain : anchor === 'centre' ? e.centrePx : anchor === 'gammaCentre' ? gCentre : top?.px;
@@ -228,7 +231,7 @@ export function zoneWalk(expiries, { close, anchor = 'strike', maxDte = 100, thi
     }
     const movePct = (px / prev - 1) * 100;
     const dir = Math.abs(movePct) < flatPct ? 'flat' : movePct > 0 ? 'up' : 'down';
-    points.push({ expiry: e.expiry, dte: e.dte, px, from: prev, dir, movePct, thin: isThin(e),
+    points.push({ expiry: e.expiry, dte: e.dte, px, from: prev, dir, movePct, thin: isThin(e), source: e.source ?? 'cme', sourceLabel: e.sourceLabel ?? 'CME',
       // the gamma centre is not one strike: its strength is the whole expiry's share of all live OI
       strength: anchor === 'gammaCentre' ? (all > 0 ? (e.totalOI || 0) / all : null) : all > 0 && top ? (top.oi || 0) / all : null, oi: top?.oi ?? null,
       building: !!top && ((top.buildStreak ?? 0) >= 2 || (top.chgSinceFirst ?? 0) > 0),

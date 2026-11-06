@@ -304,6 +304,20 @@ test('options view: gauges read against own history, lines carry evidence words,
   assert.match(ph, /opt-walk-spark/, 'the spark runs along the walk'); assert.match(ph, />21d</); assert.match(ph, />56d</); assert.match(ph, /24 Nov/);
   assert.match(ph, /strongest strike/); assert.match(ph, /NULL/); assert.match(ph, /<option selected>GOLD/); assert.match(ph, /▲ 4,200/); assert.match(ph, /▼ 3,950/);
   assert.match(OPV.pathHtml(sm, 'GOLD', { walk, anchor: 'gammaCentre' }), /UNDERPOWERED/);
+  // sources (owner 2026-11-06): a selector for gold, every row and dot labelled, the as-of lines and the honesty line
+  assert.match(ph, /id="opt-path-src"/); assert.match(ph, /GLD \(Cboe\)/); assert.match(ph, /opt-walk-src[^>]*>CME</);
+  assert.match(ph, /More expiries fill the picture; they do not make the pull a tested signal\./);
+  assert.doesNotMatch(ph, /data-wopt="volOv"/, 'no volume overlay on the CME source');
+  assert.doesNotMatch(OPV.pathHtml({ ...sm, instruments: ['EURUSD'] }, 'EURUSD', { walk, anchor: 'strike' }), /opt-path-src/, 'FX has no Cboe book');
+  const smc = { ...sm, expiries: sm.expiries.map((e, i) => ({ ...e, source: i ? 'cme' : 'cboe', sourceLabel: i ? 'CME' : 'GLD', volCentre: { px: 4150, volume: 900 } })),
+    pathSource: { selected: 'combined', cboe: { label: 'GLD', ratio: 10.92, xauSpot: 4073, spot: 373, ozPerContract: 9.16, xauAt: 'OANDA at the quote time' },
+      asOf: [{ label: 'CME', oi: 'OI as of 2026-11-06 (nightly CME capture)' }, { label: 'GLD', oi: 'OI as of 2026-11-05 (prior day, OCC)', greeks: 'greeks as of 19:04 UTC (15-min delayed)' }] } };
+  const wc = OPV.zoneWalk(smc.expiries, OPV.walkOptsFor(smc, 'strike', { ...OPV.WALK_OPTS_DEFAULT, volOv: true }));
+  const pc = OPV.pathHtml(smc, 'GOLD', { walk: wc, anchor: 'strike', o: { ...OPV.WALK_OPTS_DEFAULT, volOv: true } });
+  assert.match(pc, /<option value="combined" selected>/); assert.match(pc, /OI as of 2026-11-05 \(prior day, OCC\)/); assert.match(pc, /greeks as of 19:04 UTC \(15-min delayed\)/);
+  assert.match(pc, /src-cboe/, 'Cboe dot drawn as a diamond'); assert.match(pc, /opt-walk-src[^>]*>GLD</); assert.match(pc, /data-wopt="volOv" checked/);
+  assert.match(pc, /opt-walk-vol/); assert.match(pc, /descriptive, untested/); assert.match(pc, /strikes × 10\.920/);
+  assert.equal(OPV.walkOptsFor(sm, 'strike').maxDte, 200, 'the path reads out to the 200-day horizon');
   assert.match(OPV.pairCard('EURUSD', { oi, hist }), /puts per call/); assert.match(OPV.pairCard('NZDUSD', { oi, hist }), /No listed options book/);
   assert.equal(OPV.idOf('XAU/USD'), 'GOLD'); assert.equal(OPV.idOf('SPX500_USD'), 'SPX500');
 });

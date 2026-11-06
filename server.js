@@ -456,8 +456,9 @@ import { Worker as _NodeWorker } from 'node:worker_threads';   // fx-factor-v2 /
 import { pearson as corrPearson } from './js/corrHistoryCompute.js';   // the corr-history maths (built in js/corrHistoryWorker.js)
 import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataArchive.js';
 import { createExpiryTrackStore } from './js/expiryTrackStore.js';
-import { buildSwingMap as _buildSwingMap, sigmaSeries as _swingSigma } from './js/swingMap.js';
+import { buildSwingMap as _buildSwingMap, sigmaSeries as _swingSigma, THIN_FLOOR as _SWING_THIN_FLOOR } from './js/swingMap.js';
 import { zoneWalk as _swingZoneWalk } from './js/swingPaths.js';
+import { PATH_HORIZON_DAYS as _PATH_HORIZON_DAYS, PATH_CORE_DAYS as _PATH_CORE_DAYS, PATH_SOURCES as _PATH_SOURCES, normaliseSource as _pathNormSource, sourceChoices as _pathSourceChoices, gldXauMap as _gldXauMap, indexCfdMap as _indexCfdMap, cboeExpiryRows as _cboeExpiryRows, mergeSources as _pathMergeSources, swingExpiryRow as _swingExpiryRow, beyondCoreRows as _pathBeyondCore, occOiDate as _occOiDate, sourceAsOf as _pathSourceAsOf, addDaysIso as _pathAddDays } from './js/pathSources.js';   // the path's Cboe sources (GLD for gold, SPX/NDX), horizon
 import { scoreWalkRecords as _swingScoreWalks } from './js/swingWalkTrack.js';
 import { oiContractSize as _oiContractSizeSM } from './js/oi.js';
 import { COT_MARKETS as _COT_MARKETS, fetchCotFull as _fetchCotFull } from './js/cotArchive.js';
@@ -27684,7 +27685,7 @@ app.get('/api/oi-store', async (req, res) => {
 // down cannot fail a deploy. 5-minute cache, one in-flight fetch per symbol, and a
 // failed fetch serves the last good copy marked stale rather than an error.
 const _CBOE_TTL_MS = 5 * 60_000;
-const _cboeCache = new Map();      // sym -> { at, built, err }
+const _cboeCache = new Map();      // sym -> { at, built, parsed, err }
 const _cboeInflight = new Map();   // sym -> Promise
 async function _cboeBuilt(pair, { force = false, ttlMs = _CBOE_TTL_MS } = {}) {
   const cfg = _CBOE_PAIRS[pair];
@@ -27697,13 +27698,16 @@ async function _cboeBuilt(pair, { force = false, ttlMs = _CBOE_TTL_MS } = {}) {
       const r = await fetch(_cboeUrl(cfg.sym), { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' },
         redirect: 'follow', signal: AbortSignal.timeout(25_000) });
       if (!r.ok) throw new Error(`Cboe ${r.status}`);
-      const raw = _cboeLadder(_parseCboeChain(await r.json()), { scale: cfg.scale });
+      const parsed = _parseCboeChain(await r.json());
+      const raw = _cboeLadder(parsed, { scale: cfg.scale });
       if (!raw) throw new Error('Cboe chain empty or unparseable');
       // Put the cash-index levels onto the CFD: measure CFD − cash at Cboe's own quote time
       // (OANDA M1 for that minute) and shift every price by it. No OANDA key / no candle /
       // implausible gap → left uncorrected and flagged (cfdOffset null).
       const built = _cboeShift(raw, await _cboeCfdOffset(pair, raw.asOfMs, raw.spot));
-      const row = { at: Date.now(), built, err: null };
+      // `parsed` (every contract, raw index terms) rides along for the Options → Path view's per-expiry books, so the
+      // path reads the same 15-minute pull instead of fetching again; /api/cboe-chain still returns only `built`.
+      const row = { at: Date.now(), built, parsed, err: null };
       _cboeCache.set(cfg.sym, row);
       return { ...row, stale: false };
     } catch (e) {
@@ -43454,7 +43458,8 @@ app.get('/api/expiry-track', async (req, res) => {
 });
 // Swing Map (swing-map.html): the gold-chart picture for one instrument from measured parts only — legs and the live
 // leg (js/swingMap.js, parity with scripts/swing-leg-baserates), the validated weekly/monthly reverting range lines from
-// the live forecast, and the option zones of every expiry in the next ~100 days from the expiry tracker. 30-min cache.
+// the live forecast, and the option zones of every expiry in the next PATH_HORIZON_DAYS (200) from the expiry tracker
+// (the pull, signals and zones read the first PATH_CORE_DAYS only). 30-min cache. ?source=cboe|combined: see the route.
 const SWING_MAP_INSTRUMENTS = {
   EURUSD: { oanda: 'EUR_USD', oi: ['EUR/USD'] }, GBPUSD: { oanda: 'GBP_USD', oi: ['GBP/USD'] }, USDJPY: { oanda: 'USD_JPY', oi: ['USD/JPY'] },
   AUDUSD: { oanda: 'AUD_USD', oi: ['AUD/USD'] }, NZDUSD: { oanda: 'NZD_USD', oi: ['NZD/USD'] }, USDCAD: { oanda: 'USD_CAD', oi: ['USD/CAD'] },
@@ -43475,7 +43480,7 @@ function _swingGreeksNotional(pair, d) {
 async function _swingMapExpiries(names, sigmaAnnual = null) {
   if (!_archive.enabled) return [];
   const today = new Date().toISOString().slice(0, 10);
-  const horizon = new Date(Date.now() + 100 * 864e5).toISOString().slice(0, 10);
+  const horizon = _pathAddDays(today, _PATH_HORIZON_DAYS);   // js/pathSources.js: the one horizon constant (200 days)
   for (const pair of names) {
     const l = await _expiryTrack().list(pair).catch(() => null);
     const live = (l?.series || []).filter(e => e.expiry >= today && e.expiry <= horizon);
@@ -43483,17 +43488,9 @@ async function _swingMapExpiries(names, sigmaAnnual = null) {
     const out = [];
     for (const e of live) {
       const v = await _expiryTrack().view(pair, e.expiry, { topN: 6, sigmaAnnual, withLadder: true }).catch(() => null);
-      const d = v?.days?.at(-1);
-      if (!d) continue;
-      const firstDay = v.days[0];
-      out.push({ pair, expiry: e.expiry, code: v.code, dte: d.dte, date: d.date, stale: d.stale, totalOI: d.totalOI,
-        totalOIFirst: firstDay?.totalOI ?? null, firstSeen: firstDay?.date ?? null, nights: v.n,
-        centrePx: d.centrePx, centrePxFirst: firstDay?.centrePx ?? null, maxPain: d.maxPain,
-        chgNearSpot: d.chgNearSpot, chgAwayFromSpot: d.chgAwayFromSpot, zones: d.zones, ladder: d.ladder ?? null,
-        oiAbove: d.oiAbove, oiBelow: d.oiBelow, shareAbove: d.shareAbove, pullPct: d.pullPct,
-        buildAbove: d.buildAbove, buildBelow: d.buildBelow, gamma: d.gamma ?? null, greeks: _swingGreeksNotional(pair, d),
-        // the conveyor belt: how this expiry's lean has moved night by night as it counted down
-        history: v.days.map(x => [x.date, x.dte, x.pullPct, x.shareAbove, x.buildAbove, x.buildBelow, x.totalOI, x.stale ? 1 : 0]) });
+      // every field, the conveyor-belt history included: js/pathSources.js swingExpiryRow, shared with the Cboe rows
+      const row = _swingExpiryRow(pair, v, { greeks: d => _swingGreeksNotional(pair, d) });
+      if (row) out.push(row);
     }
     return out;
   }
@@ -43512,8 +43509,10 @@ async function _swingWalkRecord(inst, m) {
   const key = `swing_walk/${inst}/${captureDate}.json`;
   if (await _r2GetJSON(key).catch(() => null)) return null;
   const vol = _swingWalkVol(m), walks = {};
+  // the record keeps its registered window: the expiries past PATH_CORE_DAYS (added for the longer path) stay out
+  const core = m.expiries.filter(e => !e.beyondCore);
   for (const anchor of _SWING_WALK_ANCHORS) for (const includeThin of [false, true]) {
-    const w = _swingZoneWalk(m.expiries, { close: m.state.close, anchor, includeThin, vol, date: m.state.date });
+    const w = _swingZoneWalk(core, { close: m.state.close, anchor, includeThin, vol, date: m.state.date, maxDte: _PATH_CORE_DAYS });
     walks[`${anchor}${includeThin ? '+thin' : ''}`] = w.points.map(p => [p.expiry, p.dte, Number(p.px.toPrecision(8)), p.pullShare != null ? +p.pullShare.toFixed(3) : null]);
   }
   const rec = { v: 1, inst, captureDate, closeDate: m.state.date, close: m.state.close, vol, savedAt: new Date().toISOString(), walks };
@@ -43550,8 +43549,13 @@ async function _swingMapData(inst) {
     const bars = (await _btFetchD1Aligned(cfg.oanda, 2600)).map(b => ({ ...b, date: new Date(Date.parse(`${b.date}T12:00:00Z`) + 864e5).toISOString().slice(0, 10) }));
     const fc = forecastState.latest?.instruments?.[inst] ?? null;
     const _sg = _swingSigma(bars.map(b => b.close)).at(-1);
-    const expiries = await _swingMapExpiries(cfg.oi, _sg > 0 ? _sg * Math.sqrt(252) : null).catch(() => []);
+    const expAll = await _swingMapExpiries(cfg.oi, _sg > 0 ? _sg * Math.sqrt(252) : null).catch(() => []);
+    // The pull, signals, zones, thin floor and the walk record read the pre-registered window only (PATH_CORE_DAYS), so
+    // the desk's swing-map slice and the scored walk record do not move; the expiries past it are appended for the path.
+    const coreEnd = _pathAddDays(new Date().toISOString().slice(0, 10), _PATH_CORE_DAYS);
+    const expiries = expAll.filter(e => e.expiry <= coreEnd), beyond = expAll.filter(e => e.expiry > coreEnd);
     const m = _buildSwingMap(bars, { ladderDaily: fc?.ladder ?? null, ladderWeeklyRev: fc?.ladder_weekly_rev ?? null, ladderMonthlyRev: fc?.ladder_monthly_rev ?? null, expiries });
+    if (m.ok && beyond.length) m.expiries = [...m.expiries, ..._pathBeyondCore(beyond, { coreOI: expiries.reduce((a, e) => a + (e.totalOI || 0), 0), thinFloor: _SWING_THIN_FLOOR })];
     // The option key lines (call/put walls, gamma flip, max pain) from the latest capture, as the OI dashboard shows them.
     // Context: the wall placebo test found walls behave like ordinary levels.
     if (m.ok) {
@@ -43590,13 +43594,102 @@ app.get('/api/swing-map', async (req, res) => {
     const price = await tickPrice(cfg.oi?.[0] ?? inst, cfg.oanda).catch(() => null);
     return { ...d, livePrice: Number.isFinite(price) && price > 0 ? { price, at: new Date().toISOString() } : null };   // not `live`: that is the current swing leg
   };
+  // ?source= (Options → Path, owner 2026-11-06): 'cboe' (GLD for gold, SPX / NDX for the indices) or 'combined'. Absent or
+  // 'cme' = the response exactly as before. Only `expiries` changes (plus a `pathSource` block); the Cboe books are
+  // rebuilt on every request from the cached delayed pull, outside the 30-minute cache, so spot and IV move them.
+  const source = _pathNormSource(inst, req.query.source);
+  const finish = async d => { const x = await withLive(d); return source === 'cme' || !x?.ok ? x : _swingPathSource(inst, x, source); };
   const hit = _swingMapCache.get(inst);
-  if (hit && Date.now() - hit.at < 30 * 60e3 && req.query.fresh !== '1') return res.json(await withLive(hit.data));
+  if (hit && Date.now() - hit.at < 30 * 60e3 && req.query.fresh !== '1') return res.json(await finish(hit.data));
   try {
     const data = await _swingMapData(inst);
-    res.status(data.ok ? 200 : 503).json(await withLive(data));
+    res.status(data.ok ? 200 : 503).json(await finish(data));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── The path's Cboe sources ──
+// GLD has no index pair in _CBOE_PAIRS (no CFD offset, not in the snapshot or shadow jobs), so it is pulled here on
+// demand only: one in-flight fetch, the index chains' TTL in the cash session (an hour outside it, when Cboe serves the
+// close). The SPX / NDX books come from _cboeBuilt's cache, which the 15-minute Cboe job keeps warm. No new poller.
+const _cboePathCache = new Map(), _cboePathInflight = new Map();
+async function _cboePathChain(sym) {
+  const ttl = _usCashSessionNow() ? _CBOE_TTL_MS : 60 * 60_000, hit = _cboePathCache.get(sym);
+  if (hit?.parsed && Date.now() - hit.at < ttl) return { ...hit, stale: false };
+  if (_cboePathInflight.has(sym)) return _cboePathInflight.get(sym);
+  const p = (async () => {
+    try {
+      const r = await fetch(_cboeUrl(sym), { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, redirect: 'follow', signal: AbortSignal.timeout(25_000) });
+      if (!r.ok) throw new Error(`Cboe ${r.status}`);
+      const parsed = _parseCboeChain(await r.json());
+      if (!parsed) throw new Error('Cboe chain empty or unparseable');
+      const row = { at: Date.now(), parsed, err: null };
+      _cboePathCache.set(sym, row);
+      return { ...row, stale: false };
+    } catch (e) {
+      if (hit?.parsed) { hit.err = e.message; return { ...hit, stale: true }; }
+      throw e;
+    } finally { _cboePathInflight.delete(sym); }
+  })();
+  _cboePathInflight.set(sym, p);
+  return p;
+}
+// OANDA mid at a moment (the M1 candle holding it, interpolated), so the GLD → XAU ratio pairs two prices from the same
+// minute: Cboe's quote is 15 minutes old and, outside the US session, is the 16:00 New York close. Cached per minute.
+const _oandaAtCache = new Map();
+async function _oandaMidAt(inst, ms) {
+  if (!process.env.OANDA_KEY || !Number.isFinite(ms)) return null;
+  const k = `${inst}@${Math.floor(ms / 60e3)}`;
+  if (_oandaAtCache.has(k)) return _oandaAtCache.get(k);
+  let px = null;
+  try {
+    const from = new Date(Math.floor(ms / 60e3) * 60e3 - 60e3).toISOString();
+    const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(inst)}/candles?granularity=M1&price=M&count=3&from=${encodeURIComponent(from)}`,
+      { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(8_000) });
+    if (r.ok) {
+      const bars = ((await r.json()).candles || []).filter(c => c.mid).map(c => ({ t: Date.parse(c.time), o: +c.mid.o, c: +c.mid.c }));
+      const b = bars.find(x => ms >= x.t && ms < x.t + 60e3);
+      if (b) px = b.o + (b.c - b.o) * Math.min(1, Math.max(0, (ms - b.t) / 60e3));
+    }
+  } catch { px = null; }
+  if (_oandaAtCache.size > 200) _oandaAtCache.clear();
+  _oandaAtCache.set(k, px);
+  return px;
+}
+// The swing-map response with its expiries taken from the chosen source (js/pathSources.js does the mapping and merging).
+async function _swingPathSource(inst, d, source) {
+  const cfg = _PATH_SOURCES[inst], cb = cfg.cboe, today = new Date().toISOString().slice(0, 10);
+  const cmeRows = d.expiries ?? [], capture = cmeRows.reduce((a, e) => (e.date > a ? e.date : a), '') || null;
+  const meta = { id: 'cboe', label: cb.label, sym: cb.sym.replace(/^_/, ''), asOfMs: null, oiDate: null, stale: false, error: null, n: 0 };
+  let rows = [];
+  try {
+    const r = cb.kind === 'etf' ? await _cboePathChain(cb.sym) : await _cboeBuilt(cb.pair);
+    const parsed = r?.parsed; if (!parsed) throw new Error('no Cboe chain');
+    Object.assign(meta, { asOfMs: parsed.asOfMs, oiDate: _occOiDate(parsed.asOfMs), stale: !!r.stale, error: r.err || null, spot: parsed.spot });
+    let mapPx, oiUnit = 1;
+    if (cb.kind === 'etf') {
+      // XAU at Cboe's own quote time (the cash close outside the session), else the live price: XAU / GLD is the ratio
+      const refMs = _cashRefTime(parsed.asOfMs) === parsed.asOfMs ? parsed.asOfMs : _cashRefTime(parsed.asOfMs) - 1000;
+      const xauAt = await _oandaMidAt(SWING_MAP_INSTRUMENTS[inst].oanda, refMs);
+      const xau = xauAt > 0 ? xauAt : d.livePrice?.price ?? d.state?.close;
+      const map = _gldXauMap({ xauSpot: xau, gldSpot: parsed.spot });
+      if (!map) throw new Error(`GLD → XAU ratio not usable (XAU ${xau}, GLD ${parsed.spot})`);
+      Object.assign(meta, { xauSpot: +(+xau).toFixed(2), xauAt: xauAt > 0 ? 'OANDA at the quote time' : 'live price (no candle at the quote time)',
+        ratio: map.ratio, ozPerShare: map.ozPerShare, ozPerContract: map.ozPerContract });
+      mapPx = map.toXau; oiUnit = map.ozPerContract;
+    } else {
+      const off = r.built?.cfdOffset;
+      meta.cfdOffset = Number.isFinite(off) ? off : null;
+      mapPx = _indexCfdMap({ scale: _CBOE_PAIRS[cb.pair]?.scale ?? 1, cfdOffset: off });
+    }
+    rows = _cboeExpiryRows(parsed, { pair: cmeRows[0]?.pair ?? cb.pair ?? inst, label: cb.label, mapPx, oiUnit, unit: cb.unit, unitName: cb.unitName, today });
+    meta.n = rows.length;
+  } catch (e) { meta.error = e.message; }
+  const cmeMeta = { id: 'cme', label: 'CME', captureDate: capture, n: cmeRows.length };
+  const expiries = source === 'cboe' ? rows
+    : _pathMergeSources({ cme: cmeRows, cboe: rows, cmeUnit: cfg.cme.unit, cboeUnit: cb.unit, cboeLabel: cb.label, ref: d.livePrice?.price ?? d.state?.close, today, pair: cmeRows[0]?.pair ?? null });
+  const asOf = (source === 'cboe' ? [meta] : [cmeMeta, meta]).map(_pathSourceAsOf);
+  return { ...d, expiries, pathSource: { selected: source, choices: _pathSourceChoices(inst), horizonDays: _PATH_HORIZON_DAYS, cme: cmeMeta, cboe: meta, asOf,
+    note: 'Only the expiries follow the chosen source; the pull, signals and zones on this response stay the CME capture.' } };
+}
 app.post('/api/expiry-track/run', requireAuth, async (req, res) => {
   try { res.json(await _expiryTrack().fold({ rebuild: String(req.query.rebuild || '') === '1' })); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
