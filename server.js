@@ -451,7 +451,8 @@ import { MODEL_V0 as TDE_MODEL } from './Trade_Decision_Engine/modelV0.js';
 import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
 import { appendDecision as tdeAppendDecision, readRecent as tdeReadRecent } from './Trade_Decision_Engine/decisionLog.js';
 import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport, readEvents as tdeReadEvents, macroBucketReport as tdeMacroBucketReport, fitLogistic as tdeFitLogistic, resetBackfillStore as tdeResetBackfillStore, TDE_BACKFILL_PAIRS } from './Trade_Decision_Engine/backfill.js';
-import { Worker as _NodeWorker } from 'node:worker_threads';   // fx-factor-v2 / ou-pairs research runs (off the main loop)
+import { Worker as _NodeWorker } from 'node:worker_threads';   // fx-factor-v2 / ou-pairs research runs, the corr-history build (off the main loop)
+import { pearson as corrPearson } from './js/corrHistoryCompute.js';   // the corr-history maths (built in js/corrHistoryWorker.js)
 import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataArchive.js';
 import { createExpiryTrackStore } from './js/expiryTrackStore.js';
 import { buildSwingMap as _buildSwingMap, sigmaSeries as _swingSigma } from './js/swingMap.js';
@@ -1452,7 +1453,8 @@ async function fetchHMMBars(sym, count = 300) {
 // ── Correlation History Builder ───────────────────────────────────────────────
 // Fetches multi-year H4 bars from OANDA, computes rolling Pearson correlations
 // + OLS factor betas, and saves bot/data/corr_history.json.
-// Runs on startup (if file is missing or >7 days old) and weekly.
+// Runs a minute after startup, then rebuilds whenever the file is ~6 hours old (checked every 30 min). The CPU
+// part runs in a worker thread (js/corrHistoryWorker.js).
 // No external scripts needed — all pure JS maths.
 
 const CORR_PAIRS = [
@@ -1476,6 +1478,17 @@ const CORR_HISTORY_PATH  = path.join(path.dirname(fileURLToPath(import.meta.url)
 const HEDGE_SIGNALS_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'bot', 'data', 'hedge_signals.json');
 const HEDGE_SIGNAL_CFG_KEY = 'hedge_signal_cfg';
 const CORR_STALE_MS  = 6 * 60 * 60 * 1000;  // rebuild if older than 6 hours
+// The refresh is checked every CORR_CHECK_MS and rebuilds once the file is CORR_STALE_MS old less a margin. (Before
+// 2026-11-06 the check ran every 6 h against a 6 h staleness test: the file, written ~3 min after the previous check
+// began, was always a few minutes short of 6 h old, so every other check skipped and the data refreshed every 12 h.)
+const CORR_CHECK_MS  = 30 * 60 * 1000;
+const CORR_STALE_MARGIN_MS = 20 * 60 * 1000;
+// The Desk Terminal's Correlations & hedges tab: aligned daily closes, ~3 years (js/corrHistoryCompute.js buildPanel).
+// Written by the build to disk and KV (it survives a redeploy; the 12 MB corr_history.json does not).
+const CORR_PANEL_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'bot', 'data', 'corr_terminal.json');
+const CORR_PANEL_KV   = 'corr_terminal_v1';
+const CORR_PANEL_DAYS = 780;
+let   _corrPanelMem   = null;   // { body, generated, src } — the on-read cache for /api/corr-terminal
 const CORR_WINDOW    = 60;   // H4 bars per rolling window (10 trading days)
 const CORR_STEP      = 6;    // snapshot every 6 bars ≈ 1 per day
 const CORR_YEARS     = 5;
@@ -1535,38 +1548,8 @@ async function fetchH4Bars(sym, years = CORR_YEARS) {
   return closes.length >= CORR_WINDOW + 1 ? { closes, timestamps } : null;
 }
 
-function _logRets(arr) {
-  const out = [];
-  for (let i = 1; i < arr.length; i++) out.push(Math.log(Math.max(arr[i],1e-10)/Math.max(arr[i-1],1e-10)));
-  return out;
-}
-function _pearson(xs, ys) {
-  const n = xs.length; if (n < 4) return null;
-  let mx=0, my=0; for (let i=0;i<n;i++){mx+=xs[i];my+=ys[i];} mx/=n; my/=n;
-  let num=0,da=0,db=0; for (let i=0;i<n;i++){const a=xs[i]-mx,b=ys[i]-my;num+=a*b;da+=a*a;db+=b*b;}
-  const d=Math.sqrt(da*db); return d<1e-12?0:Math.max(-1,Math.min(1,num/d));
-}
-function _ols(y, x) {
-  const n=y.length; if (n<3) return [0,0];
-  let mx=0,my=0; for (let i=0;i<n;i++){mx+=x[i];my+=y[i];} mx/=n;my/=n;
-  let cov=0,vx=0; for (let i=0;i<n;i++){cov+=(x[i]-mx)*(y[i]-my);vx+=(x[i]-mx)**2;}
-  if (vx<1e-12) return [0,0];
-  const b=cov/vx, a=my-b*mx;
-  let ss=0,st=0; for (let i=0;i<n;i++){ss+=(y[i]-a-b*x[i])**2;st+=(y[i]-my)**2;}
-  return [+b.toFixed(4), st<1e-12?0:+Math.max(0,Math.min(1,1-ss/st)).toFixed(4)];
-}
-function _ema(arr, p) {
-  const r=[...arr], k=2/(p+1); for (let i=1;i<r.length;i++) r[i]=arr[i]*k+r[i-1]*(1-k); return r;
-}
-function _regime(closes) {
-  const n=closes.length; if (n<25) return 'RANGE';
-  const fast=_ema(closes,20), slow=_ema(closes,Math.min(50,n));
-  const ref=Math.max(Math.abs(closes[n-1]),1e-10);
-  const spread=(fast[n-1]-slow[n-1])/ref, slope=n>=6?(fast[n-1]-fast[n-6])/ref:0;
-  if (spread>0.0025&&slope>0.00015) return 'BULL';
-  if (spread<-0.0025&&slope<-0.00015) return 'BEAR';
-  return 'RANGE';
-}
+// Pearson for the COT block below; the rolling-correlation maths lives in js/corrHistoryCompute.js (run in a worker).
+const _pearson = corrPearson;
 
 // ── COT positioning correlation (currency vs currency) ──────────────────────
 // A DIFFERENT relationship from the price-return correlation above: not "do
@@ -1642,139 +1625,42 @@ async function buildCorrHistoryJS() {
       console.log('[CORR] No pairs — abort. Check OANDA_KEY and that your account has access to all instruments.');
       return;
     }
-    corrProgress = { pct: 62, msg: `Computing rolling correlations for ${availPairs.length} pairs…`, step: 'compute', error: null };
 
-    // Align all return series to the reference pair's timestamps
-    const refPair = availPairs.find(p => ['EURUSD','GBPUSD','USDJPY'].includes(p)) || availPairs[0];
-    const refTs   = barData[refPair].timestamps;
-    const n       = refTs.length - 1;
-
-    const retSeries = {};
-    for (const sym of availPairs) {
-      const { closes, timestamps } = barData[sym];
-      const rmap = new Map();
-      const rets = _logRets(closes);
-      for (let i = 0; i < rets.length; i++) rmap.set(timestamps[i+1].getTime(), rets[i]);
-      retSeries[sym] = refTs.slice(1).map(ts => rmap.get(ts.getTime()) ?? null);
-    }
-
-    // Factor return series (proxy * sign)
-    const factorRets = {};
-    for (const [fname, { sym, sign }] of Object.entries(CORR_FACTOR_PROXIES))
-      if (retSeries[sym]) factorRets[fname] = retSeries[sym].map(v => v !== null ? v * sign : null);
-
-    const refCloses = barData[refPair].closes;
-    const records   = [];
-
-    for (let end = CORR_WINDOW; end <= n; end += CORR_STEP) {
-      const s      = end - CORR_WINDOW;
-      const ts     = refTs[end];
-      const regime = _regime(refCloses.slice(Math.max(0, end - 59), end + 1));
-      const corr   = {}, beta = {};
-
-      for (let i = 0; i < availPairs.length; i++) {
-        const pa = availPairs[i];
-        beta[pa] = {};
-
-        // OLS factor betas
-        for (const [fname, frets] of Object.entries(factorRets)) {
-          const yr=[], fr=[];
-          for (let k=s;k<end;k++) if (retSeries[pa][k]!==null&&frets[k]!==null){yr.push(retSeries[pa][k]);fr.push(frets[k]);}
-          if (yr.length>=10) { const [b]=_ols(yr,fr); beta[pa][fname]=b; }
-        }
-
-        // Pair-pair Pearson correlations (lower triangle)
-        for (let j = i+1; j < availPairs.length; j++) {
-          const pb=availPairs[j], xa=[], xb=[];
-          for (let k=s;k<end;k++) if (retSeries[pa][k]!==null&&retSeries[pb][k]!==null){xa.push(retSeries[pa][k]);xb.push(retSeries[pb][k]);}
-          if (xa.length>=10) { const c=_pearson(xa,xb); if (c!==null) corr[`${pa}_${pb}`]=+c.toFixed(4); }
-        }
-      }
-      records.push({ ts: ts.getTime(), ts_str: ts.toISOString().slice(0,16).replace('T',' '), regime, corr, beta });
-    }
-
-    // ── Summary statistics ──────────────────────────────────────────────────
-    const avgSums={}, avgCnts={}, rgCorrData={}, rgStatData={};
-    for (const rec of records) {
-      const rg = rec.regime;
-      if (!rgCorrData[rg]) rgCorrData[rg]={};
-      if (!rgStatData[rg]) rgStatData[rg]={};
-      for (const [k,v] of Object.entries(rec.corr)) {
-        avgSums[k]=(avgSums[k]||0)+v; avgCnts[k]=(avgCnts[k]||0)+1;
-        if (!rgCorrData[rg][k]) rgCorrData[rg][k]=[];
-        rgCorrData[rg][k].push(v);
-      }
-      for (const [pair,betas] of Object.entries(rec.beta)) {
-        if (!rgStatData[rg][pair]) rgStatData[rg][pair]={dxy:[],rates:[],vix:[]};
-        for (const f of ['dxy','rates','vix']) if (betas[f]!==undefined) rgStatData[rg][pair][f].push(betas[f]);
-      }
-    }
-
-    const avgCorr={};
-    for (const k of Object.keys(avgSums)) avgCorr[k]=+(avgSums[k]/avgCnts[k]).toFixed(4);
-
-    const regimeCorr={};
-    for (const [rg,corrs] of Object.entries(rgCorrData)) {
-      regimeCorr[rg]={};
-      for (const [k,vals] of Object.entries(corrs))
-        regimeCorr[rg][k]=+(vals.reduce((s,v)=>s+v,0)/vals.length).toFixed(4);
-    }
-
-    const regimeStats={};
-    for (const [rg,pairData] of Object.entries(rgStatData)) {
-      for (const [pair,vals] of Object.entries(pairData)) {
-        if (!regimeStats[pair]) regimeStats[pair]={};
-        const mean=a=>a.length?+(a.reduce((s,v)=>s+v,0)/a.length).toFixed(4):null;
-        regimeStats[pair][rg]={ dxy_mean:mean(vals.dxy), rates_mean:mean(vals.rates), vix_mean:mean(vals.vix), n:vals.vix.length };
-      }
-    }
-
-    corrProgress = { pct: 90, msg: 'Correlating COT positioning…', step: 'cot', error: null };
+    corrProgress = { pct: 60, msg: 'Correlating COT positioning…', step: 'cot', error: null };
     const cotCorr = await computeCotCorrelations().catch(e => { console.warn('[CORR] COT correlation skipped:', e.message); return null; });
 
-    const output = { generated:new Date().toISOString(), years:CORR_YEARS,
-      window_bars:CORR_WINDOW, step_bars:CORR_STEP, pairs:availPairs,
-      records, regime_stats:regimeStats, avg_corr:avgCorr, regime_corr:regimeCorr,
-      cot_corr: cotCorr?.corr ?? {}, cot_corr_generated: cotCorr?.generated ?? null };
+    // The rolling correlations (~30M multiply-adds), the 12 MB stringify and the file writes run in a worker thread
+    // (js/corrHistoryWorker.js), not on the event loop the live bots share. Same maths as before
+    // (js/corrHistoryCompute.js computeCorrHistory); the worker also writes the Desk Terminal's daily panel.
+    corrProgress = { pct: 65, msg: `Computing rolling correlations for ${availPairs.length} pairs (worker thread)…`, step: 'compute', error: null };
+    const forWorker = Object.fromEntries(Object.entries(barData).map(([k, v]) => [k, { closes: v.closes, timestamps: v.timestamps.map(t => t.getTime()) }]));
+    const res = await new Promise((resolve, reject) => {
+      const w = new _NodeWorker(new URL('./js/corrHistoryWorker.js', import.meta.url), {
+        workerData: { barData: forWorker, opts: { pairs: CORR_PAIRS, factorProxies: CORR_FACTOR_PROXIES, window: CORR_WINDOW, step: CORR_STEP, years: CORR_YEARS },
+          cot: cotCorr, historyPath: CORR_HISTORY_PATH, panelPath: CORR_PANEL_PATH, panelDays: CORR_PANEL_DAYS },
+        resourceLimits: { maxOldGenerationSizeMb: 1024 } });
+      let settled = false;
+      w.once('message', m => { settled = true; m.ok ? resolve(m) : reject(new Error(m.error)); });
+      w.once('error', e => { if (!settled) { settled = true; reject(e); } });
+      w.once('exit', code => { if (!settled) reject(new Error(`corr worker exited ${code}`)); });
+    });
+    const kb = res.kb;
+    console.log(`[CORR] Done — ${res.nRecords} snapshots, ${res.pairs.length} pairs, ${kb} KB, ${Date.now()-t0}ms`);
 
-    corrProgress = { pct: 95, msg: 'Saving history file…', step: 'save', error: null };
-    fs.mkdirSync(path.dirname(CORR_HISTORY_PATH), { recursive: true });
-    fs.writeFileSync(CORR_HISTORY_PATH, JSON.stringify(output));
-    const kb = Math.round(fs.statSync(CORR_HISTORY_PATH).size / 1024);
-    console.log(`[CORR] Done — ${records.length} snapshots, ${availPairs.length} pairs, ${kb} KB, ${Date.now()-t0}ms`);
-
-    // Push compact hedge-alerts summary to KV so CF Pages can read it without
-    // hitting /api/hedge-alerts directly (which is Railway-only).
+    // Push compact hedge-alerts summary to KV so CF Pages can read it without hitting /api/hedge-alerts directly
+    // (Railway-only), and the terminal's daily panel so the Correlations & hedges tab has data straight after a deploy
+    // wipes bot/data (the 5-year rebuild takes ~3 min).
     try {
-      const sums2b = {}, sums2c = {}, cnts2 = {}, lastCorr2 = {};
-      for (const r of records) {
-        for (const [k, v] of Object.entries(r.corr || {})) {
-          if (!sums2b[k]) { sums2b[k] = 0; sums2c[k] = 0; cnts2[k] = 0; }
-          sums2b[k] += v; sums2c[k] += v * v; cnts2[k]++;
-          lastCorr2[k] = v;
-        }
-      }
-      const corr_std2 = {};
-      for (const k of Object.keys(sums2b)) {
-        const n = cnts2[k], mu = sums2b[k] / n;
-        corr_std2[k] = n > 1 ? +(Math.sqrt(Math.max(0, sums2c[k] / n - mu * mu))).toFixed(5) : 0;
-      }
-      // last_betas was missing: the pair drawer needs it and would have shown
-      // correlations with no beta whenever it read this cache rather than the file
-      // `.beta`, NOT `.betas` -- the record field is singular, as /api/hedge-alerts
-      // itself reads it at lastRec.beta. The plural spelling resolves to undefined and
-      // would have written an empty object with nothing to say it had.
-      const lastBetas2 = records.length ? (records[records.length - 1].beta ?? {}) : {};
-      const alertsCache = { generated: output.generated, pairs: availPairs,
-        avg_corr: avgCorr, corr_std: corr_std2, last_corr: lastCorr2, last_betas: lastBetas2,
-        last_cot_corr: output.cot_corr, cot_corr_generated: output.cot_corr_generated };
-      await kv.put('hedge_alerts_cache', JSON.stringify(alertsCache), { expirationTtl: 86400 * 7 });
+      await kv.put('hedge_alerts_cache', JSON.stringify(res.alerts), { expirationTtl: 86400 * 7 });
       console.log('[CORR] hedge_alerts_cache written to KV');
     } catch (kvErr) {
       console.warn('[CORR] hedge_alerts_cache KV write failed:', kvErr.message);
     }
-
-    corrProgress = { pct: 100, msg: `Done — ${records.length} snapshots · ${availPairs.length} pairs · ${kb} KB`, step: 'done', error: null };
+    if (res.panel) {
+      _corrPanelMem = { body: JSON.stringify(res.panel), generated: res.panel.generated, src: 'build' };
+      try { await kv.put(CORR_PANEL_KV, _corrPanelMem.body); } catch (kvErr) { console.warn('[CORR] corr panel KV write failed:', kvErr.message); }
+    }
+    corrProgress = { pct: 100, msg: `Done — ${res.nRecords} snapshots · ${res.pairs.length} pairs · ${kb} KB`, step: 'done', error: null };
 
   } catch (e) {
     console.error('[CORR] Build error:', e.message, e.stack?.split('\n')[1]);
@@ -1788,7 +1674,8 @@ async function runCorrHistoryRefresh() {
   if (corrRunning || !process.env.OANDA_KEY) return;
   try {
     const stat = fs.statSync(CORR_HISTORY_PATH);
-    if (Date.now() - stat.mtimeMs < CORR_STALE_MS) return; // file is fresh
+    // fresh, and the terminal's panel is on disk too (a server that predates the panel builds it once)
+    if (Date.now() - stat.mtimeMs < CORR_STALE_MS - CORR_STALE_MARGIN_MS && fs.existsSync(CORR_PANEL_PATH)) return;
   } catch { /* file missing — build it */ }
   buildCorrHistoryJS().catch(e => console.error('[CORR]', e.message));
 }
@@ -42129,6 +42016,38 @@ app.get('/api/corr-history', (req, res) => {
   }
 });
 
+// The Desk Terminal's Correlations & hedges tab (js/terminal/corrView.js): aligned daily closes for every instrument
+// in the correlation build, ~3 years, plus the old page's EUR/USD trend regime per day. Built by the 6-hourly
+// correlation refresh (worker thread) and kept on disk, in memory and in KV, so it is there straight after a deploy.
+// Never built on request: a missing panel only nudges the scheduled refresh. ~150 KB before compression.
+async function _corrPanelBody() {
+  try {
+    const st = fs.statSync(CORR_PANEL_PATH);
+    if (!_corrPanelMem || _corrPanelMem.src !== 'disk' || _corrPanelMem.mtime !== st.mtimeMs) {
+      const body = fs.readFileSync(CORR_PANEL_PATH, 'utf8');
+      _corrPanelMem = { body, generated: JSON.parse(body).generated, src: 'disk', mtime: st.mtimeMs };
+    }
+    return _corrPanelMem;
+  } catch { /* not on disk (deploy wiped bot/data) */ }
+  if (_corrPanelMem) return _corrPanelMem;
+  try {
+    const raw = await kv.get(CORR_PANEL_KV);
+    if (raw) { _corrPanelMem = { body: raw, generated: JSON.parse(raw).generated, src: 'kv' }; return _corrPanelMem; }
+  } catch (e) { console.warn('[corr-terminal] kv', e.message); }
+  return null;
+}
+app.get('/api/corr-terminal', async (_req, res) => {
+  const p = await _corrPanelBody();
+  if (!p) {
+    runCorrHistoryRefresh().catch(() => {});
+    return res.json({ ok: false, building: corrRunning, refreshEveryH: CORR_STALE_MS / 3600_000, oandaKey: !!process.env.OANDA_KEY,
+      error: corrRunning ? 'The correlation build is running now (about 3 minutes).' : 'No correlation panel yet: the scheduled build has not run on this server.' });
+  }
+  const ageH = (Date.now() - Date.parse(p.generated)) / 3600_000;
+  res.setHeader('Content-Type', 'application/json');
+  res.send(`{"ok":true,"refreshEveryH":${CORR_STALE_MS / 3600_000},"ageH":${Number.isFinite(ageH) ? +ageH.toFixed(2) : null},"stale":${ageH > CORR_STALE_MS / 3600_000 * 2},"building":${corrRunning},"src":"${p.src}","panel":${p.body}}`);
+});
+
 // Hedge alerts — compact summary for the dashboard beta panel.
 // Returns avg_corr, corr_std (computed from records), last rolling corr, and last betas.
 // Much smaller than the full corr-history response.
@@ -45099,7 +45018,7 @@ setTimeout(() => {
 // ~3 min to build, ~500-900 KB output. Stored at bot/data/corr_history.json.
 // 6-hour cadence keeps z-scores fresh: each H4 bar advances the rolling window by one step.
 svcTimeout('corrHistory', () => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), 60_000);
-svcInterval('corrHistory', () => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), 6 * 60 * 60 * 1000);
+svcInterval('corrHistory', () => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), CORR_CHECK_MS);   // rebuilds when ~6 h old
 
 // Beta estimation — runs every 2 hours; first run 90s after startup (after corr fetch begins)
 svcTimeout('betaEstimates', () => buildBetaEstimates().catch(e => console.error('[BETA]', e.message)), 90_000);

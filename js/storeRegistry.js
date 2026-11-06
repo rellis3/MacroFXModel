@@ -102,6 +102,7 @@ export const STORES = {
   gold_ml_params: R('Gold ML params', 30, { market: false }),
   egress_audit: R('Egress audit', 7, { market: false }),
   hedge_alerts_cache: R('Hedge alerts cache', 2, { market: false }),
+  corr_terminal_v1: R('Correlations & hedges panel (terminal)', 2, { market: false }),
   // ── options / positioning archives ────────────────────────────────────────
   oi_store: R('OI store (FX + indices)', 1),
   oi_store_cmdty: R('OI store (commodities)', 1),
