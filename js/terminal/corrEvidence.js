@@ -28,10 +28,7 @@ export const VIEW_EVIDENCE = {
     untested: ['Ranked hedges: no entry tests that holding these cuts a book\'s losses out of sample. Past co-movement only.'],
     ids: [['rule-a-portfolio-budget', 'The one tested use of correlation for risk: cluster budgets, underpowered.']],
   },
-  signals: {
-    untested: ['The hedge-signal generator (correlation z-score divergences): no banked verdict. Its backtest page is not a pre-registered test.'],
-    ids: [['ou-bands-fx-crosses', 'Mean-reversion bands on correlated crosses: too few trades to test.']],
-  },
+  // `signals` (the hedge-signal generator's card) was removed on 2026-11-06 with the signals themselves: retired, untested.
   regimes: {
     ids: [['stock-bond-flip', 'Regime-dependent correlation as a base rate only.']],
   },
