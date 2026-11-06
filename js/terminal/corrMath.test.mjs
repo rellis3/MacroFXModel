@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import * as M from './corrMath.js';
 import { chipFor, chipsFor, VIEW_EVIDENCE } from './corrEvidence.js';
 import { heatmapSvg, changesHtml, corrColor, asOfHtml, regimeTableHtml } from './corrView.js';
-import { rowHtml, bookCards, carryOf, bookHedgeHtml, signalsHtml } from './hedgeView.js';
+import { rowHtml, bookCards, carryOf, bookHedgeHtml, html as hedgeHtml } from './hedgeView.js';
 import { DESK_EVIDENCE } from '../deskEvidence.js';
 
 // a seeded generator so the synthetic markets are the same every run
@@ -141,7 +141,7 @@ test('regimes: point-in-time vol terciles, runs, conditional correlation', () =>
 test('evidence chips: real entries, verdict words, UNTESTED for the hedges', () => {
   for (const v of Object.values(VIEW_EVIDENCE)) for (const [id] of v.ids ?? []) assert.ok(DESK_EVIDENCE.some(e => e.id === id), `${id} is in the Evidence Book`);
   assert.match(chipsFor('hedges'), /UNTESTED/);
-  assert.match(chipsFor('signals'), /UNTESTED/);
+  assert.equal(chipsFor('signals'), '');   // the hedge-signals card was retired on 2026-11-06
   assert.match(chipFor('fx-dollar-funding-exposure-hit'), /TESTED: NULL/);
   assert.match(chipFor('rule-a-portfolio-budget'), /UNDERPOWERED/);
   assert.equal(chipFor('no-such-entry'), '');
@@ -155,9 +155,11 @@ test('views: escaped, no raw input reaches the HTML', () => {
   assert.doesNotMatch(svg, /<img/); assert.match(svg, /&lt;img/); assert.match(svg, /⇄/);
   assert.doesNotMatch(changesHtml([{ a: bad, b: 'GOLD', now: 0.5, base: -0.4, label: bad }], 20), /<img/);
   assert.doesNotMatch(rowHtml({ id: bad, rho: -0.5, side: 'long', share: 0.8, p10: -0.7, p90: -0.2, ratio: 1.2, varCut: 0.25 }), /<img/);
-  assert.doesNotMatch(signalsHtml({ signals: [{ status: 'ACTIVE', pair_a: bad, pair_b: 'EURUSD', direction_a: bad, z_score: 2 }], last_run: null }), /<img/);
   assert.doesNotMatch(asOfHtml({ ok: true, refreshEveryH: bad, panel: { generated: bad, to: bad, syms: [], dates: [] } }), /<img/);
   assert.doesNotMatch(regimeTableHtml([{ a: bad, b: 'X', c: { LOW: { r: 0.1, n: 3 } }, spread: 0.1 }], { labels: ['LOW'] }, { LOW: 3 }), /<img/);
+  const hv = hedgeHtml(S, { win: 60 });   // the hedges sub-view keeps the finder and the book hedge, not the retired signals card
+  assert.match(hv, /Hedge finder/); assert.match(hv, /Book hedge/);
+  assert.doesNotMatch(hv, /hedge-signals|hedge-backtest|ct-sig/);
   assert.match(corrColor(0.9), /^rgb\(/); assert.equal(corrColor(null), '#111833');
 });
 

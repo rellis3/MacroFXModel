@@ -443,7 +443,6 @@ import { computeG1 as computeCogG1, computeG2 as computeCogG2, computeG3 as comp
 import { bothSidesWalk, groupBarsByDate, entryBarFor, walkTrade } from './js/qmrCore.js';
 import { runPivotSpike } from './js/pivotSpikeEngine.js';
 import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
-import { liveSignal as hedgeV2Live, runComparison as hedgeV2Comparison, V2_DEFAULTS as HEDGE_V2_DEFAULTS } from './js/hedgeSignalV2Engine.js';
 import { runGoldMinerArbSuite, GMA_DEFAULTS } from './js/goldMinerArbEngine.js';
 import { runVRPSuite, VRP_INSTRUMENTS } from './js/fxVolCarryEngine.js';
 import { decide as tdeDecide } from './Trade_Decision_Engine/decisionCore.js';
@@ -1476,7 +1475,6 @@ const CORR_FACTOR_PROXIES = {
 };
 const CORR_HISTORY_PATH  = path.join(path.dirname(fileURLToPath(import.meta.url)), 'bot', 'data', 'corr_history.json');
 const HEDGE_SIGNALS_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'bot', 'data', 'hedge_signals.json');
-const HEDGE_SIGNAL_CFG_KEY = 'hedge_signal_cfg';
 const CORR_STALE_MS  = 6 * 60 * 60 * 1000;  // rebuild if older than 6 hours
 // The refresh is checked every CORR_CHECK_MS and rebuilds once the file is CORR_STALE_MS old less a margin. (Before
 // 2026-11-06 the check ran every 6 h against a 6 h staleness test: the file, written ~3 min after the previous check
@@ -1495,14 +1493,6 @@ const CORR_YEARS     = 5;
 const CORR_CHUNK     = 4500; // max bars per OANDA request (limit 5000)
 let   corrRunning    = false;
 let   corrProgress   = { pct: 0, msg: 'Idle', step: '', error: null };
-
-// Convert CORR_PAIRS format (EURUSD) to state.prices key format (EUR/USD)
-function _pairToSlash(sym) {
-  if (sym.includes('/') || sym.includes('_')) return sym;
-  if (sym === 'XAUUSD') return 'XAU/USD';
-  if (sym.length === 6) return `${sym.slice(0,3)}/${sym.slice(3)}`;
-  return sym;
-}
 
 function _h4OandaSym(sym) {
   const ov = { XAUUSD:'XAU_USD', XAGUSD:'XAG_USD', NAS100:'NAS100_USD', SPX500:'SPX500_USD', 'DE30_USD':'DE30_EUR' };
@@ -1680,254 +1670,9 @@ async function runCorrHistoryRefresh() {
   buildCorrHistoryJS().catch(e => console.error('[CORR]', e.message));
 }
 
-// ── Hedge Signal Generator ───────────────────────────────────────────────────
-// Scans corr_history for rolling-correlation z-score divergences and fires
-// Telegram alerts. Output JSON is designed to be consumed by a Python trading bot.
-
-const DEFAULT_HEDGE_CFG = {
-  enabled: true,
-  entry_z: 2.0,
-  exit_z: 0.5,
-  stop_z: 3.5,
-  min_score: 0.1,
-  min_corr: 0.3,
-  allowed_regimes: ['BEAR', 'RANGE', 'BULL'],
-  check_interval_min: 15,
-};
-let _hedgeSigRunning = false;
-
-function _hedgeScore(corr, betaA, betaB) {
-  const corrPart  = -corr * 0.7;
-  const betaSpread = Math.abs((betaA ?? 0) - (betaB ?? 0));
-  const betaPart  = Math.min(betaSpread / 2, 1) * 0.3;
-  return +(corrPart + betaPart).toFixed(4);
-}
-
-// Welford online state per pair-pair key — accumulates since server start (resets on restart).
-// Mirrors the backtest's Welford spread z-score: no lookahead, converges to true long-run mean.
-const _spreadWelford = {};
-
-// Update Welford state for the log-spread and return { z, dev } where:
-//   z   = (spread − running_mean) / running_std  — PRIMARY entry/exit/stop signal
-//   dev = spread − running_mean                  — sign determines direction
-// Returns null until ≥10 observations have accumulated.
-function _spreadZ(pa, pb, pxA, pxB) {
-  const k = `${pa}__${pb}`;
-  if (!_spreadWelford[k]) _spreadWelford[k] = { mu: 0, M2: 0, n: 0 };
-  const st = _spreadWelford[k];
-  const s = Math.log(pxA) - Math.log(pxB);
-  st.n++;
-  const d1 = s - st.mu;
-  st.mu += d1 / st.n;
-  st.M2 += d1 * (s - st.mu);
-  if (st.n < 10) return null;
-  const std = Math.sqrt(st.M2 / (st.n - 1));
-  if (std < 1e-8) return null;
-  const dev = s - st.mu;
-  return { z: dev / std, dev };
-}
-
-// Capture exit prices from live state and compute equal-weight P&L for a closing signal.
-function _attachExitPnl(sig, pa, pb) {
-  const keyA = _pairToSlash(pa);
-  const keyB = _pairToSlash(pb);
-  const xA = state.prices[keyA]?.price;
-  const xB = state.prices[keyB]?.price;
-  sig.exit_price_a = xA != null ? +xA.toFixed(PRICE_DIGITS[keyA] ?? 5) : null;
-  sig.exit_price_b = xB != null ? +xB.toFixed(PRICE_DIGITS[keyB] ?? 5) : null;
-  const pA = (sig.entry_price_a != null && sig.exit_price_a != null)
-    ? (sig.exit_price_a - sig.entry_price_a) / sig.entry_price_a * 100 * (sig.direction_a === 'LONG' ? 1 : -1) : null;
-  const pB = (sig.entry_price_b != null && sig.exit_price_b != null)
-    ? (sig.exit_price_b - sig.entry_price_b) / sig.entry_price_b * 100 * (sig.direction_b === 'LONG' ? 1 : -1) : null;
-  if (pA != null) sig.pnl_a_pct = +pA.toFixed(4);
-  if (pB != null) sig.pnl_b_pct = +pB.toFixed(4);
-  if (pA != null && pB != null) sig.pnl_c_pct = +((pA + pB) / 2).toFixed(4);
-}
-
-// force=true bypasses the enabled flag and regime gate (used by the manual Check Now button).
-async function computeHedgeSignals(force = false) {
-  if (_hedgeSigRunning) return { status: 'busy' };
-  _hedgeSigRunning = true;
-  try {
-    if (!fs.existsSync(CORR_HISTORY_PATH)) return { status: 'no_data', error: 'corr_history.json not found — run a correlation history build first' };
-    const data    = JSON.parse(fs.readFileSync(CORR_HISTORY_PATH, 'utf8'));
-    const records = data.records || [];
-    if (records.length < 20) return { status: 'no_data', error: `Only ${records.length} corr records — need ≥20` };
-
-    const cfgRaw = await kv.get(HEDGE_SIGNAL_CFG_KEY);
-    const cfg    = cfgRaw ? { ...DEFAULT_HEDGE_CFG, ...JSON.parse(cfgRaw) } : { ...DEFAULT_HEDGE_CFG };
-    if (!cfg.enabled && !force) return { status: 'disabled' };
-
-    // Ensure live prices exist for ALL corr pairs, not just bot-monitored pairs.
-    // fetchAllPrices normally runs only for the bot's pair list — corr pairs like
-    // EURGBP, EURJPY, AUDJPY, SPX500_USD etc. may be missing without this call.
-    const corrPricePairs = (data.pairs || []).map(_pairToSlash);
-    await fetchAllPrices(corrPricePairs).catch(() => {});
-
-    // Build rolling stats per pair-pair key
-    const sums = {}, sums2 = {}, cnts = {}, lastCorr = {}, lastBeta = {};
-    for (const rec of records) {
-      for (const [k, v] of Object.entries(rec.corr || {})) {
-        if (!sums[k]) { sums[k] = 0; sums2[k] = 0; cnts[k] = 0; }
-        sums[k] += v; sums2[k] += v * v; cnts[k]++;
-        lastCorr[k] = v;
-      }
-      Object.assign(lastBeta, rec.beta || {});
-    }
-
-    const regime  = (records[records.length - 1]?.regime) || 'UNKNOWN';
-    if (!cfg.allowed_regimes.includes(regime) && !force) {
-      console.log(`[HEDGE-SIG] Regime ${regime} not in allowed list — skip`);
-      return { status: 'regime_blocked', regime };
-    }
-
-    let sigData = { signals: [], last_run: null };
-    if (fs.existsSync(HEDGE_SIGNALS_PATH)) {
-      try { sigData = JSON.parse(fs.readFileSync(HEDGE_SIGNALS_PATH, 'utf8')); } catch {}
-    }
-
-    // Master switch mutes the Telegram push only — signals are still computed,
-    // scored and written to HEDGE_SIGNALS_PATH so the page stays live.
-    const tgRaw = tgOn('hedgeSignals') ? await kv.get('hedge_signal_tg') : null;
-    const tgCfg = tgRaw ? JSON.parse(tgRaw) : null;
-    const now   = new Date().toISOString();
-    sigData.last_run = now;
-    const newSigs = [];
-
-    for (const [key, curCorr] of Object.entries(lastCorr)) {
-      const n = cnts[key];
-      if (n < 20) continue;
-      const mu  = sums[key] / n;
-      const std = Math.sqrt(Math.max(0, sums2[key] / n - mu * mu));
-      if (std < 0.01) continue;
-      const z = (curCorr - mu) / std;
-
-      // Resolve pair names from key (keys built as `${pa}_${pb}` in corr build)
-      let pa = null, pb = null;
-      for (const p of (data.pairs || [])) {
-        if (key.startsWith(p + '_')) { pa = p; pb = key.slice(p.length + 1); break; }
-      }
-      if (!pa || !pb || !(data.pairs || []).includes(pb)) continue;
-
-      const betaA = lastBeta[pa]?.vix ?? null;
-      const betaB = lastBeta[pb]?.vix ?? null;
-      const score = _hedgeScore(curCorr, betaA, betaB);
-
-      // Correlation quality gate — skip pairs with weak co-movement
-      if (Math.abs(curCorr) < (cfg.min_corr ?? 0.3)) continue;
-
-      // Compute spread z-score from live prices — this is the primary signal for all decisions
-      const pxA = state.prices[_pairToSlash(pa)]?.price;
-      const pxB = state.prices[_pairToSlash(pb)]?.price;
-      const spreadResult = (pxA && pxB) ? _spreadZ(pa, pb, pxA, pxB) : null;
-      // spreadResult = { z, dev } or null (history still building)
-
-      // ── Always manage ACTIVE signals first ─────────────────────────────────
-      const existing = sigData.signals.find(s => s.pair_a === pa && s.pair_b === pb && s.status === 'ACTIVE');
-      if (existing) {
-        // Use spread_z for exit/stop; fall back to corrZ only while history builds
-        const exitZ = spreadResult !== null ? spreadResult.z : z;
-        existing.z_score      = +exitZ.toFixed(3);
-        existing.corr_current = +curCorr.toFixed(4);
-        existing.hedge_score  = score;
-        existing.last_updated = now;
-        if (spreadResult !== null) {
-          existing.spread_dev = +spreadResult.dev.toFixed(6);
-        }
-        if (Math.abs(exitZ) < cfg.exit_z) {
-          existing.status    = 'EXITED';
-          existing.exit_time = now;
-          existing.exit_z    = +exitZ.toFixed(3);
-          _attachExitPnl(existing, pa, pb);
-          if (tgCfg?.token && tgCfg?.chatId) {
-            const pnlStr = existing.pnl_c_pct != null ? `  |  P&L: <b>${existing.pnl_c_pct >= 0 ? '+' : ''}${existing.pnl_c_pct.toFixed(3)}%</b>` : '';
-            const msg = `✅ <b>Hedge Exit — ${pa} / ${pb}</b>\n`
-              + `Spread Z reverted to <b>${existing.z_score}</b> (target &lt; ${cfg.exit_z})${pnlStr}\n`
-              + `Close: <b>${pa}</b> ${existing.direction_a}  ·  <b>${pb}</b> ${existing.direction_b}\n`
-              + `Regime: ${regime}`;
-            sendTelegram(tgCfg.token, tgCfg.chatId, msg).catch(() => {});
-          }
-        } else if (Math.abs(exitZ) > cfg.stop_z) {
-          existing.status    = 'STOPPED';
-          existing.exit_time = now;
-          existing.exit_z    = +exitZ.toFixed(3);
-          _attachExitPnl(existing, pa, pb);
-          if (tgCfg?.token && tgCfg?.chatId) {
-            const pnlStr = existing.pnl_c_pct != null ? `  |  P&L: <b>${existing.pnl_c_pct >= 0 ? '+' : ''}${existing.pnl_c_pct.toFixed(3)}%</b>` : '';
-            const msg = `🛑 <b>Hedge Stop — ${pa} / ${pb}</b>\n`
-              + `Spread Z extended to <b>${existing.z_score}</b> (stop &gt; ${cfg.stop_z})${pnlStr}\n`
-              + `Close: <b>${pa}</b> ${existing.direction_a}  ·  <b>${pb}</b> ${existing.direction_b}\n`
-              + `Regime: ${regime}`;
-            sendTelegram(tgCfg.token, tgCfg.chatId, msg).catch(() => {});
-          }
-        }
-        continue; // active signal managed — skip new-entry check
-      }
-
-      // ── New entry: use spread_z if warmed up, fall back to corr_z ────────────
-      // Mirrors the exit logic: spreadResult is null until _spreadWelford has ≥10
-      // observations (resets on restart). Corr_z from full history is always available
-      // and is equivalent — once spread Welford warms up it takes over automatically.
-      const entryZ = spreadResult !== null ? spreadResult.z : z;
-      if (Math.abs(entryZ) < cfg.entry_z) continue;
-      if (score < cfg.min_score) continue;
-
-      // Direction: spread_dev sign if available, else corr_z sign (negative = pairs
-      // have diverged below mean → expect reversion up → LONG A, SHORT B)
-      const devPositive = spreadResult !== null ? spreadResult.dev >= 0 : z > 0;
-      const dirA = devPositive ? 'SHORT' : 'LONG';
-      const dirB = devPositive ? 'LONG'  : 'SHORT';
-
-      const sig = {
-        id: `${pa}-${pb}-${Date.now()}`,
-        schema_version: 2,
-        pair_a: pa, pair_b: pb,
-        direction_a: dirA, direction_b: dirB,
-        z_score: +entryZ.toFixed(3),
-        hedge_score: score,
-        corr_current: +curCorr.toFixed(4),
-        corr_mean: +mu.toFixed(4),
-        corr_std: +std.toFixed(4),
-        beta_vix_a: betaA !== null ? +betaA.toFixed(4) : null,
-        beta_vix_b: betaB !== null ? +betaB.toFixed(4) : null,
-        z_source: spreadResult !== null ? 'spread' : 'corr',
-        regime,
-        status: 'ACTIVE',
-        entry_time: now,
-        entry_z: +entryZ.toFixed(3),
-        exit_z_target: cfg.exit_z,
-        stop_z: cfg.stop_z,
-        last_updated: now,
-        entry_price_a: (() => { const p = state.prices[_pairToSlash(pa)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pa)] ?? 5) : null; })(),
-        entry_price_b: (() => { const p = state.prices[_pairToSlash(pb)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pb)] ?? 5) : null; })(),
-        spread_dev: spreadResult !== null ? +spreadResult.dev.toFixed(6) : null,
-      };
-      newSigs.push(sig);
-      sigData.signals.push(sig);
-
-      if (tgCfg?.token && tgCfg?.chatId) {
-        const bullet = (spreadResult !== null ? spreadResult.dev : z) > 0 ? '📈' : '📉';
-        const msg = `${bullet} <b>Hedge Signal — ${pa} / ${pb}</b>\n`
-          + `Spread Z: <b>${sig.z_score}</b>  |  Score: <b>${score}</b>\n`
-          + `<b>${pa}</b>: ${dirA}  (β_vix = ${sig.beta_vix_a ?? 'n/a'})\n`
-          + `<b>${pb}</b>: ${dirB}  (β_vix = ${sig.beta_vix_b ?? 'n/a'})\n`
-          + `Regime: ${regime}  |  Corr: ${sig.corr_current} (μ=${sig.corr_mean} σ=${sig.corr_std})\n`
-          + `<i>Spread entry z &gt; ${cfg.entry_z} | exit z &lt; ${cfg.exit_z} | stop z &gt; ${cfg.stop_z}</i>`;
-        sendTelegram(tgCfg.token, tgCfg.chatId, msg).catch(() => {});
-      }
-    }
-
-    fs.mkdirSync(path.dirname(HEDGE_SIGNALS_PATH), { recursive: true });
-    fs.writeFileSync(HEDGE_SIGNALS_PATH, JSON.stringify(sigData, null, 2));
-    if (newSigs.length) console.log(`[HEDGE-SIG] ${newSigs.length} new:`, newSigs.map(s => `${s.pair_a}/${s.pair_b} z=${s.z_score}`).join(', '));
-    return { status: 'ok', newSignals: newSigs.length, totalSignals: sigData.signals?.length ?? 0 };
-  } catch (e) {
-    console.error('[HEDGE-SIG]', e.message);
-    return { status: 'error', error: e.message };
-  } finally {
-    _hedgeSigRunning = false;
-  }
-}
+// ── Hedge Signal Generator — retired 2026-11-06 ──────────────────────────────
+// computeHedgeSignals and its helpers (_spreadWelford, _spreadZ, _hedgeScore, _attachExitPnl, DEFAULT_HEDGE_CFG)
+// were removed with the hedge signals; see the retired /api/hedge-signals routes.
 
 // ── Beta Estimation (Kalman OLS) ─────────────────────────────────────────────
 // Mirrors bot/modules/beta_estimator.py — runs server-side via OANDA H4 bars.
@@ -2105,7 +1850,7 @@ async function buildBetaEstimates() {
 //
 // This is an override that sits ON TOP of each sender's own config, never under
 // it: senders that own an `enabled` flag elsewhere (levels-v2, vol-levels,
-// surprise, hedge) still honour it — a master switch can only SILENCE, never
+// surprise) still honour it — a master switch can only SILENCE, never
 // turn something on. It exists because "turn this off" was spread across eight
 // separate KV keys with three different spellings of the gate, so muting one
 // thing meant knowing which page happened to own it.
@@ -2123,7 +1868,6 @@ const TG_SENDERS = {
   levelsV2:          'Telegram-v2 zone alerts',
   volLevels:         'Vol-forecast level proximity (superseded, off by default)',
   surprise:          'Forecast-path surprise pings',
-  hedgeSignals:      'Hedge pair signals',
   ratesRegime:       'Rates vs Nasdaq regime change / rate shock (context, not a signal)',
   spreadEpisodes:    'Spread-turn episodes: confirmed turn (Case 1 full sequence / Case 2 every turn), context only',
   bankCredit:        'BIS cross-border bank credit: new quarter released (regime context, not a signal)',
@@ -29108,7 +28852,6 @@ app.get('/api/kv-health', async (_req, res) => {
       // 2026-07-28, so it is checked here to make a regression visible immediately
       // rather than showing up as permanently-null day-over-day reads.
       'oi_store', 'oi_history', 'range_line_oi',
-      'hedge_signal_tg',
     ];
     const probe = await kv.probe(CHECK);
     res.json({ ok: true, ...kv.health(), ...probe });
@@ -42106,33 +41849,11 @@ app.get('/api/hedge-alerts', async (req, res) => {
   }
 });
 
-// ── Hedge Signal API ─────────────────────────────────────────────────────────
-
-app.get('/api/hedge-signals', (_req, res) => {
-  if (!fs.existsSync(HEDGE_SIGNALS_PATH)) return res.json({ signals: [], last_run: null });
-  try { res.json(JSON.parse(fs.readFileSync(HEDGE_SIGNALS_PATH, 'utf8'))); }
-  catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/hedge-signals/config', async (_req, res) => {
-  const raw = await kv.get(HEDGE_SIGNAL_CFG_KEY).catch(() => null);
-  res.json(raw ? { ...DEFAULT_HEDGE_CFG, ...JSON.parse(raw) } : { ...DEFAULT_HEDGE_CFG });
-});
-
-app.put('/api/hedge-signals/config', async (req, res) => {
-  const cfg = { ...DEFAULT_HEDGE_CFG, ...(req.body || {}) };
-  await kv.put(HEDGE_SIGNAL_CFG_KEY, JSON.stringify(cfg));
-  res.json({ ok: true, config: cfg });
-});
-
-app.post('/api/hedge-signals/check', async (_req, res) => {
-  const result = await computeHedgeSignals(true).catch(e => ({ status: 'error', error: e.message }));
-  res.json({ ok: true, ...result });
-});
-
 // ── Hedge Audit Log ──────────────────────────────────────────────────────────
 // Advisory hedge suggestions logged when new positions open — used for forward-testing
-// signal quality before building Option C (automated execution).
+// signal quality before building Option C (automated execution). Independent of the retired
+// hedge signals: bot-config.html and bot/position_hedge_bot.py pick the hedge from the
+// hedge_alerts_cache correlations. Kept on 2026-11-06 when the signals were retired.
 
 app.get('/api/hedge-audit', async (_req, res) => {
   try {
@@ -42217,41 +41938,8 @@ app.get('/api/r2/list', async (req, res) => {
   }
 });
 
-app.post('/api/hedge-signals/ack', (req, res) => {
-  if (!fs.existsSync(HEDGE_SIGNALS_PATH)) return res.json({ ok: false, error: 'No signals file' });
-  try {
-    const { id, status = 'DISMISSED' } = req.body || {};
-    const data = JSON.parse(fs.readFileSync(HEDGE_SIGNALS_PATH, 'utf8'));
-    const sig  = data.signals.find(s => s.id === id);
-    if (!sig) return res.json({ ok: false, error: 'Signal not found' });
-    sig.status   = status;
-    sig.ack_time = new Date().toISOString();
-    fs.writeFileSync(HEDGE_SIGNALS_PATH, JSON.stringify(data, null, 2));
-    res.json({ ok: true });
-  } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
-});
-
-app.get('/api/hedge-signals/tg-config', async (_req, res) => {
-  const raw = await kv.get('hedge_signal_tg').catch(() => null);
-  res.json(raw ? JSON.parse(raw) : { token: '', chatId: '' });
-});
-
-app.put('/api/hedge-signals/tg-config', async (req, res) => {
-  const { token = '', chatId = '' } = req.body || {};
-  await kv.put('hedge_signal_tg', JSON.stringify({ token, chatId }));
-  res.json({ ok: true });
-});
-
-app.post('/api/hedge-signals/tg-test', async (_req, res) => {
-  const raw = await kv.get('hedge_signal_tg').catch(() => null);
-  const cfg = raw ? JSON.parse(raw) : null;
-  if (!cfg?.token || !cfg?.chatId) return res.json({ ok: false, error: 'Telegram not configured for hedge signals' });
-  const ok = await sendTelegram(cfg.token, cfg.chatId,
-    '✅ <b>MacroFX Hedge Signals</b> — bot connected!\n<i>You will receive alerts when hedge pair correlations diverge.</i>');
-  res.json({ ok, error: ok ? null : 'Telegram API returned error' });
-});
-
-// Live prices + vol forecast ATR estimates for hedge signal SL display
+// Live prices + vol forecast ATR estimates. Named for the retired hedge signals but kept: it is a generic price feed
+// (terminal.html live monitor, today.html proximity watch, bot-config.html hedge sizing).
 app.get('/api/hedge-signals/prices', (_req, res) => {
   const prices = {};
   for (const [sym, v] of Object.entries(state.prices)) {
@@ -42273,151 +41961,53 @@ app.get('/api/hedge-signals/prices', (_req, res) => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════
-// Hedge Signals v2 — cointegration-gated pairs mean-reversion
+// Hedge signals v1 + v2 — RETIRED 2026-11-06 (owner)
 // ────────────────────────────────────────────────────────────────────────────
-// v1 (computeHedgeSignals) picks pairs for LOW correlation and trades a plain
-// log(A)−log(B) spread against an all-history mean. v2 selects pairs by
-// COINTEGRATION (Engle-Granger half-life + t-stat), trades the static residual
-// z-scored on a rolling window, money-matches the legs (β) and adds a half-life
-// time-stop. All math lives in js/hedgeSignalV2Engine.js (unit-tested, no copy).
-// OANDA H4 bars are reachable in Railway, not the sandbox (403 ⇒ no_data, not a bug).
-
-const HEDGE_SIGNAL_V2_CFG_KEY  = 'hedge_signal_v2_cfg';
-const HEDGE_V2_SIGNALS_PATH    = path.join(__dirname, 'bot', 'data', 'hedge_signals_v2.json');
-const HEDGE_V2_BARS_TTL        = 60 * 60 * 1000;   // reuse fetched bars for 1h
-// Server-level defaults — enabled flag lives here, not in the engine (which is pure math).
-const HEDGE_V2_SERVER_DEFAULTS = { ...HEDGE_V2_DEFAULTS, enabled: true };
-
-// Candidate pairs likely to cointegrate — the gate filters which actually do.
-// Equity indices co-move strongly (the colleague's DAX/SP, DOW/NAS live here),
-// then metals, energy and a few FX crosses. Same OANDA symbols as CORR/BETA lists.
-const HEDGE_V2_PAIRS = [
-  ['NAS100_USD','SPX500_USD'], ['US30_USD','SPX500_USD'], ['US30_USD','NAS100_USD'],
-  ['US2000_USD','SPX500_USD'], ['DE30_USD','SPX500_USD'], ['DE30_USD','NAS100_USD'],
-  ['UK100_GBP','DE30_USD'],
-  ['XAUUSD','XAGUSD'], ['XAUUSD','XPTUSD'],
-  ['WTICO_USD','BCO_USD'],
-  ['EURUSD','GBPUSD'], ['AUDUSD','NZDUSD'], ['USDCAD','USDCHF'],
-];
-
-let _hedgeV2Running   = false;
-let _hedgeV2BarsCache = { at: 0, years: 0, closes: {} };
-const hedgeV2BtJobs   = new Map();
-
-async function _hedgeV2Bars(years = 2, force = false) {
-  if (!force && _hedgeV2BarsCache.at && _hedgeV2BarsCache.years >= years
-      && Date.now() - _hedgeV2BarsCache.at < HEDGE_V2_BARS_TTL) {
-    return _hedgeV2BarsCache.closes;
-  }
-  const syms = [...new Set(HEDGE_V2_PAIRS.flat())];
-  const closes = {};
-  for (const sym of syms) {
-    const r = await fetchH4Bars(sym, years).catch(() => null);
-    if (r?.closes?.length) closes[sym] = r.closes;
-  }
-  _hedgeV2BarsCache = { at: Date.now(), years, closes };
-  return closes;
+// They were not hedges: a pairs-trading / spread mean-reversion system (two
+// correlated pairs, a 1:1 log-price spread, enter at spread z > 2, exit 0.5,
+// stop 3.5). v1 kept its spread mean/std in memory (reset on every restart) and
+// measured its correlation z against a full-history mean; only 2 signals ever
+// closed with a P&L (+0.035% in total) and nothing in the Evidence Book tested
+// either version. The scanners (computeHedgeSignals, computeHedgeSignalsV2), their
+// schedules and every Telegram send (entry / exit / stop, the hedge_signal_tg
+// sender) are removed. Recorded as retired, untested in MD files/HEDGING_VS_SPREAD.md and MD files/SITE_MAP.md.
+//
+// The GET routes still answer so old pages, links and the local HedgeBot get a
+// clean `retired` body instead of a 404/500 (HedgeBot sees no signals, so it opens
+// nothing and closes any legs it still holds as DISMISSED). Writes answer 410.
+// Kept, because they are independent of the signals:
+//   /api/hedge-signals/prices  a generic live-price feed (terminal.html, today.html, bot-config.html)
+//   /api/hedge-alerts + hedge_alerts_cache  the correlation summary from runCorrHistoryRefresh
+//   /api/hedge-audit           advisory hedge suggestions logged when positions open (bot-config.html,
+//                              position_hedge_bot.py), chosen from hedge_alerts_cache correlations
+// js/hedgeSignalV2Engine.js stays: js/goldMinerArbEngine.js imports its OU half-life primitive.
+// Where hedging lives now: Desk Terminal → Correlations & hedges → Hedge finder.
+const HEDGE_SIGNALS_RETIRED = {
+  retired: true,
+  retired_on: '2026-11-06',
+  reason: 'Retired: these were a spread mean-reversion (pairs-trading) system, not hedges. The spread mean and std reset '
+    + 'on every restart, the correlation z used a full-history mean, only 2 signals ever closed with a P&L (+0.035% in '
+    + 'total) and nothing in the Evidence Book tested them. Hedging now lives in Desk Terminal → Correlations & hedges → '
+    + 'Hedge finder (descriptive, untested).',
+  signals: [],
+};
+function _retiredSignalsBody(file) {
+  let last_run = null;
+  try { if (fs.existsSync(file)) last_run = JSON.parse(fs.readFileSync(file, 'utf8')).last_run ?? null; } catch {}
+  return { ...HEDGE_SIGNALS_RETIRED, last_run };
 }
-
-async function computeHedgeSignalsV2(force = false) {
-  if (_hedgeV2Running) return { status: 'busy' };
-  _hedgeV2Running = true;
-  try {
-    if (!process.env.OANDA_KEY) return { status: 'no_data', error: 'OANDA_KEY not set' };
-    // Load config first so we skip the OANDA fetch entirely when disabled.
-    const cfgRaw = await kv.get(HEDGE_SIGNAL_V2_CFG_KEY).catch(() => null);
-    const cfg    = cfgRaw ? { ...HEDGE_V2_SERVER_DEFAULTS, ...JSON.parse(cfgRaw) } : { ...HEDGE_V2_SERVER_DEFAULTS };
-    if (!cfg.enabled && !force) return { status: 'disabled' };
-
-    const closes = await _hedgeV2Bars(2, force);
-    if (!Object.keys(closes).length)
-      return { status: 'no_data', error: 'No OANDA bars (expected in sandbox; works in Railway)' };
-
-    const now    = new Date().toISOString();
-    const signals = [];
-    for (const [a, b] of HEDGE_V2_PAIRS) {
-      if (!closes[a] || !closes[b]) continue;
-      const m = Math.min(closes[a].length, closes[b].length);
-      const sig = hedgeV2Live(closes[a].slice(-m), closes[b].slice(-m), cfg);
-      if (sig) signals.push({ pair_a: a, pair_b: b, ...sig, updated: now });
-    }
-    const out = { last_run: now, signals };
-    await fs.promises.mkdir(path.dirname(HEDGE_V2_SIGNALS_PATH), { recursive: true });
-    await fs.promises.writeFile(HEDGE_V2_SIGNALS_PATH, JSON.stringify(out, null, 2));
-    return { status: 'ok', total: signals.length, active: signals.filter(s => s.isEntry).length };
-  } catch (e) {
-    console.error('[HEDGE-SIG-V2]', e.message);
-    return { status: 'error', error: e.message };
-  } finally {
-    _hedgeV2Running = false;
-  }
+const HEDGE_V2_SIGNALS_PATH = path.join(__dirname, 'bot', 'data', 'hedge_signals_v2.json');
+for (const p of ['/api/hedge-signals', '/api/hedge-signals/config', '/api/hedge-signals/tg-config',
+  '/api/hedge-signals-v2', '/api/hedge-signals-v2/config', '/api/hedge-signals-v2/backtest/status/:jobId']) {
+  app.get(p, (_req, res) => res.json(_retiredSignalsBody(p.startsWith('/api/hedge-signals-v2') ? HEDGE_V2_SIGNALS_PATH : HEDGE_SIGNALS_PATH)));
 }
-
-app.get('/api/hedge-signals-v2', (_req, res) => {
-  if (!fs.existsSync(HEDGE_V2_SIGNALS_PATH)) return res.json({ signals: [], last_run: null });
-  try { res.json(JSON.parse(fs.readFileSync(HEDGE_V2_SIGNALS_PATH, 'utf8'))); }
-  catch { res.json({ signals: [], last_run: null }); }
-});
-
-app.post('/api/hedge-signals-v2/check', async (_req, res) => {
-  const result = await computeHedgeSignalsV2(true).catch(e => ({ status: 'error', error: e.message }));
-  res.json(result);
-});
-
-app.get('/api/hedge-signals-v2/config', async (_req, res) => {
-  const raw = await kv.get(HEDGE_SIGNAL_V2_CFG_KEY).catch(() => null);
-  res.json(raw ? { ...HEDGE_V2_SERVER_DEFAULTS, ...JSON.parse(raw) } : { ...HEDGE_V2_SERVER_DEFAULTS });
-});
-
-app.put('/api/hedge-signals-v2/config', express.json({ limit: '64kb' }), async (req, res) => {
-  const cfg = { ...HEDGE_V2_SERVER_DEFAULTS, ...(req.body || {}) };
-  await kv.put(HEDGE_SIGNAL_V2_CFG_KEY, JSON.stringify(cfg)).catch(() => {});
-  res.json({ ok: true, cfg });
-});
-
-// Async IS/OOS A/B backtest: v2 (cointegration + rolling z + half-life stop) vs
-// the v1-style baseline (plain spread, all-history mean, z-only exit).
-app.post('/api/hedge-signals-v2/backtest/run', express.json({ limit: '64kb' }), (req, res) => {
-  if (!process.env.OANDA_KEY) return res.status(400).json({ ok: false, error: 'OANDA_KEY not set' });
-  const jobId     = `hsv2_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const startedAt = Date.now();
-  const years     = Math.min(Math.max(parseFloat(req.body?.years) || 3, 1), 5);
-  const cfg       = { ...HEDGE_V2_DEFAULTS, ...(req.body?.cfg || {}) };
-
-  // Drop jobs older than 10 min.
-  for (const [id, j] of hedgeV2BtJobs) if (Date.now() - j.startedAt > 600_000) hedgeV2BtJobs.delete(id);
-  hedgeV2BtJobs.set(jobId, { status: 'running', startedAt, phase: 'Fetching OANDA H4 bars…' });
-
-  (async () => {
-    try {
-      const closes = await _hedgeV2Bars(years, false);
-      if (!Object.keys(closes).length) throw new Error('No OANDA bars returned (works in Railway, 403 in sandbox)');
-      hedgeV2BtJobs.get(jobId).phase = 'Running cointegration + IS/OOS A/B…';
-      const data = hedgeV2Comparison(closes, HEDGE_V2_PAIRS, cfg);
-      hedgeV2BtJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, data, runAt: new Date().toISOString() } });
-      console.log(`[hedge-sig-v2-bt] job ${jobId} done (${Math.round((Date.now() - startedAt) / 1000)}s)`);
-    } catch (e) {
-      hedgeV2BtJobs.set(jobId, { status: 'error', startedAt, error: e?.message || String(e) });
-    }
-  })();
-
-  res.json({ ok: true, jobId });
-});
-
-app.get('/api/hedge-signals-v2/backtest/status/:jobId', (req, res) => {
-  const job = hedgeV2BtJobs.get(req.params.jobId);
-  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
-  if (job.status === 'running')
-    return res.json({ ok: true, status: 'running', phase: job.phase, elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
-  if (job.status === 'error') return res.json({ ok: false, status: 'error', error: job.error });
-  res.json({ ok: true, status: 'done', ...job.result });
-});
-
-// Recompute live v2 signals on the same cadence as v1 (5 min after boot, then 15-min).
-// H4 bars only change every 4 hours — hourly cadence gives the same signal without
-// burning OANDA quota or CPU on 14 redundant identical runs per hour.
-svcTimeout('hedgeSignalsV2', () => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 6 * 60_000);
-svcInterval('hedgeSignalsV2', () => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 60 * 60_000);
+for (const p of ['/api/hedge-signals/config', '/api/hedge-signals/tg-config', '/api/hedge-signals-v2/config']) {
+  app.put(p, (_req, res) => res.status(410).json({ ok: false, ...HEDGE_SIGNALS_RETIRED }));
+}
+for (const p of ['/api/hedge-signals/check', '/api/hedge-signals/ack', '/api/hedge-signals/tg-test',
+  '/api/hedge-signals-v2/check', '/api/hedge-signals-v2/backtest/run']) {
+  app.post(p, (_req, res) => res.status(410).json({ ok: false, ...HEDGE_SIGNALS_RETIRED }));
+}
 
 // ── Regime history — automatic recorder ─────────────────────────────────────
 // The log-parse backfill below (_parseRegimeLog / /api/regime-backfill-trigger)
@@ -45025,10 +44615,8 @@ svcInterval('corrHistory', () => runCorrHistoryRefresh().catch(e => console.erro
 svcTimeout('betaEstimates', () => buildBetaEstimates().catch(e => console.error('[BETA]', e.message)), 90_000);
 svcInterval('betaEstimates', () => buildBetaEstimates().catch(e => console.error('[BETA]', e.message)), BETA_INTERVAL_MS);
 
-// Hedge signal scanner — first run 5 min after startup (corr history must exist), then every 15 min.
-// Reduced from 30 min: exits now fire within 15 min of z-score reverting, not up to 30 min.
-svcTimeout('hedgeSignals', () => computeHedgeSignals().catch(e => console.error('[HEDGE-SIG]', e.message)), 5 * 60_000);
-svcInterval('hedgeSignals', () => computeHedgeSignals().catch(e => console.error('[HEDGE-SIG]', e.message)), 15 * 60_000);
+// The hedge-signal scanner (v1, computeHedgeSignals) was retired on 2026-11-06 and is no longer scheduled: see the
+// retired /api/hedge-signals routes (search HEDGE_SIGNALS_RETIRED).
 
 // Vol & Range Forecast scheduler — runs daily at 22:00 UTC, computes on startup if stale
 if (svcEnabled('volForecastScheduler')) svcRun('volForecastScheduler', () => startVolForecastScheduler().catch(e => console.error('[VOL-FORECAST] Scheduler init failed:', e.message)));
