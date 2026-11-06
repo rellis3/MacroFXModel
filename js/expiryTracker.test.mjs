@@ -1,6 +1,6 @@
 // Expiry tracker: capture days re-cut into one series per expiry.
 //   node js/expiryTracker.test.mjs
-import { sameBook, expiryHedgeGreeks, expirySnapshotsFromRaw, mergeExpirySnapshot, foldCaptureDays, expiryView, matchExpiryKey, toSpot, addDays, seriesIndexEntry } from './expiryTracker.js';
+import { weekdayExpiry, sameBook, expiryHedgeGreeks, expirySnapshotsFromRaw, mergeExpirySnapshot, foldCaptureDays, expiryView, matchExpiryKey, toSpot, addDays, seriesIndexEntry } from './expiryTracker.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  → ' + e : ''}`); if (!c) fails++; };
@@ -132,8 +132,17 @@ console.log('[weekday re-served copies: yesterday\'s book with yesterday\'s DTE 
   foldCaptureDays(m, [wed, { date: '2026-11-05', pairs: { GOLD: thuRaw } }]);
   ok('no phantom 7 Nov or 26 Nov series', [...m.keys()].sort().join() === 'GOLD|2026-11-06,GOLD|2026-11-24', [...m.keys()].join(' '));
   ok('the real columns still add Thursday', m.get('GOLD|2026-11-06').n === 2 && m.get('GOLD|2026-11-24').n === 2);
+  ok('and Thursday keeps the real book, not the copy', m.get('GOLD|2026-11-06').days[1].ladder.find(r => r[0] === 3900)[2] === 520 && m.get('GOLD|2026-11-24').days[1].ladder.find(r => r[0] === 3900)[2] === 950);
   ok('sameBook: identical but for a far-tail row', sameBook([[1, 100, 100], [2, 50, 50], [9, 1, 0]], [[1, 100, 100], [2, 50, 50], [8, 2, 0]]));
   ok('sameBook: a real change is a different book', !sameBook([[1, 100, 100], [2, 50, 50]], [[1, 140, 100], [2, 50, 90]]));
+}
+
+console.log('[a weekend expiry date goes back to the Friday]');
+{
+  ok('Saturday -> Friday, Sunday -> Friday, weekday kept', weekdayExpiry('2026-11-07') === '2026-11-06' && weekdayExpiry('2026-11-08') === '2026-11-06' && weekdayExpiry('2026-11-24') === '2026-11-24');
+  const m = new Map();
+  foldCaptureDays(m, [{ date: '2026-11-03', pairs: { GOLD: raw(4000, [4, 21], [[3900, [10, 500], [0, 900]], [4100, [800, 10], [1200, 0]], [4000, [0, 0], [5, 5]]]) } }]);
+  ok('a DTE that lands on Saturday files under the Friday', m.has('GOLD|2026-11-06') && !m.has('GOLD|2026-11-07'), [...m.keys()].join(' '));
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

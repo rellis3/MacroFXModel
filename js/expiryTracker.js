@@ -39,6 +39,10 @@ export function addDays(date, n) {
 }
 /** Saturday or Sunday (UTC calendar date). */
 export const isWeekendDate = d => [0, 6].includes(new Date(`${d}T12:00:00Z`).getUTCDay());
+/** No CME option expires on a weekend. The capture's DTE can count from the settlement (the session before the capture),
+ *  so capture date + DTE can land a day late, and a Friday expiry comes out as Saturday (gold OG1X6 on 3 Nov 2026: DTE 4
+ *  from a Tuesday capture = Saturday 7 Nov for the 6 Nov weekly). A weekend date goes back to the Friday. */
+export const weekdayExpiry = d => { const w = new Date(`${d}T12:00:00Z`).getUTCDay(); return w === 6 ? addDays(d, -1) : w === 0 ? addDays(d, -2) : d; };
 
 const dayDiff = (a, b) => Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / DAY);
 
@@ -72,7 +76,7 @@ export function expirySnapshotsFromRaw(rawEntry, { date, inverted = false, minOI
     }
     if (ladder.length < 2) continue;
     out.push({
-      expiry: addDays(date, l.dte), code: l.code ?? null,
+      expiry: weekdayExpiry(addDays(date, l.dte)), code: l.code ?? null,
       snap: {
         date, dte: l.dte,
         futures, spot: Number.isFinite(rawEntry.spot) ? rawEntry.spot : null,
@@ -155,6 +159,7 @@ export function foldCaptureDays(seriesMap, dayEntries, { invertedPairs = new Set
         const d = seriesMap.get(`${pair}|${k}`)?.days?.filter(x => x.date < date && dayDiff(date, x.date) <= COPY_LOOKBACK).at(-1);
         if (d) books.push([k, d.ladder]);
       }
+      const filedToday = new Set();
       const cols = expirySnapshotsFromRaw(raw, { date, inverted, minOI }).sort((a, b) => (b.code ? 1 : 0) - (a.code ? 1 : 0));
       for (const { expiry, code, snap } of cols) {
         const key = matchExpiryKey(keysForPair, { expiry, code }, codeOf);
@@ -162,6 +167,10 @@ export function foldCaptureDays(seriesMap, dayEntries, { invertedPairs = new Set
         // never starts one.
         if (isWeekendDate(date) && !keysForPair.includes(key)) continue;
         if (books.some(([k, l]) => k !== key && sameBook(l, snap.ladder))) continue;
+        // one book per expiry per capture: the first column filed wins (coded columns go first), so a late copy that lands
+        // on the same date can never replace the day's real book
+        if (filedToday.has(key)) continue;
+        filedToday.add(key);
         books.push([key, snap.ladder]);
         const mapKey = `${pair}|${key}`;
         const { series, changed } = mergeExpirySnapshot(seriesMap.get(mapKey), { pair, expiry: key, code, inverted }, snap);

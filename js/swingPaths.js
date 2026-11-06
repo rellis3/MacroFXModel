@@ -183,7 +183,7 @@ export function gammaPullScores(ladder, S, T, sigmaAnnual) {
 }
 const _weekdays = (a, b) => { let t = Date.parse(`${a}T00:00:00Z`), e = Date.parse(`${b}T00:00:00Z`), k = 0; while (t < e) { t += 864e5; const w = new Date(t).getUTCDay(); if (w && w !== 6) k++; } return k; };
 
-export function zoneWalk(expiries, { close, anchor = 'strike', maxDte = 100, thin = 0.10, includeThin = false, flatPct = 0.1, sigma = null, date = null, zcap = 1.645, vol = null } = {}) {
+export function zoneWalk(expiries, { close, anchor = 'strike', maxDte = 100, thin = 0.10, includeThin = false, flatPct = 0.1, sigma = null, date = null, zcap = 1.645, vol = null, sigmaFor = null } = {}) {
   if (!(close > 0)) return { points: [], runs: [], text: '' };
   const all = (expiries || []).reduce((a, e) => a + (e.totalOI || 0), 0);
   const isThin = e => !!e.thin || (all > 0 && (e.totalOI || 0) / all < thin);
@@ -197,7 +197,9 @@ export function zoneWalk(expiries, { close, anchor = 'strike', maxDte = 100, thi
       : (e.zones || []).map(z => ({ px: z.px, oi: z.oi, call: z.call ?? z.oi, put: z.put ?? 0, c1: z.chg1d ?? null, cf: z.chgSinceFirst ?? null }));
     const gam = anchor === 'gamma' || anchor === 'gammaCentre';
     const byOI = (gam ? book : (e.zones || [])).slice().sort((a, b) => (b.oi || 0) - (a.oi || 0));
-    const capFrom = (from, fromDate) => zcap * sigma * Math.sqrt(Math.max(1, _weekdays(fromDate, e.expiry)));
+    // sigmaFor(e) (optional): a per-session sigma for this expiry, e.g. its implied vol off the term structure; else `sigma`
+    const sgE = (typeof sigmaFor === 'function' && sigmaFor(e) > 0) ? sigmaFor(e) : sigma;
+    const capFrom = (from, fromDate) => zcap * sgE * Math.sqrt(Math.max(1, _weekdays(fromDate, e.expiry)));
     const ok = px => !capped || (Math.abs(Math.log(px / prev)) <= capFrom(prev, prevDate) && Math.abs(Math.log(px / close)) <= capFrom(close, date));
     let top = byOI[0], pullShare = null, gCentre = null;
     if (anchor === 'strike' && capped) top = byOI.find(z => z.px > 0 && ok(z.px));

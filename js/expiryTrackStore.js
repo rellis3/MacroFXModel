@@ -18,7 +18,7 @@ export const ET_PREFIX = 'archive/expiry_track/';
 const safe = s => String(s).replace(/[^A-Za-z0-9._-]/g, '_');
 export const seriesKey = (pair, expiry) => `${ET_PREFIX}${safe(pair)}/${safe(expiry)}.json`;
 const INDEX_KEY = `${ET_PREFIX}_index.json`;
-export const FOLD_VERSION = 2;
+export const FOLD_VERSION = 3;   // v2: re-served copies dropped; v3: weekend expiry dates moved to the Friday
 
 /**
  * deps: { getJSON(key), putJSON(key, obj), kvKeys(prefix) -> [keys], kvGet(key) -> string|null,

@@ -43893,6 +43893,11 @@ async function _swingMapData(inst) {
         const sm = key ? _oiHistorySummary(store[key]) : null;
         if (sm) m.oiLines = { pair: key, asOf: sm.asOf ?? null, spot: sm.spot ?? null, maxPain: sm.maxPain ?? null, gammaFlip: sm.gammaFlip ?? null,
           regime: sm.regime ?? null, callWalls: (sm.callWalls || []).slice(0, 3), putWalls: (sm.putWalls || []).slice(0, 3) };
+        // implied vol by days to expiry, from the same nightly capture (the IV boxes): the walk's optional implied-move
+        // reach limit and the per-expiry vega read use it. Implied-vol ranges are a VALIDATED input here (iv-ladder).
+        const ts = key ? store[key]?.ivTermStructure : null;
+        const pts = (ts?.points || []).filter(p => p && p.iv > 0 && Number.isFinite(p.dte)).map(p => [p.dte, p.iv]);
+        if (pts.length) m.ivTerm = { pair: key, savedAt: store[key]?.savedAt ?? null, points: pts };
       } catch { /* the page simply shows no option lines */ }
     }
     const data = { ...m, inst, oanda: cfg.oanda, instruments: Object.keys(SWING_MAP_INSTRUMENTS),

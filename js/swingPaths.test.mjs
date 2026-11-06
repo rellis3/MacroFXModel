@@ -80,6 +80,8 @@ console.log('[zone walk: the reach limit]');
   ok('a book with nothing in reach is skipped and listed (30,378 is +8.5% in 2 days)', w.skipped.some(s => s.expiry === '2026-11-05') && !w.points.some(p => p.expiry === '2026-11-05'), JSON.stringify(w.skipped));
   ok('a far expiry with more time can still take a bigger step', w.points.some(p => p.expiry === '2026-11-21' && p.px === 29878));
   ok('every step within its range', w.points.every(p => Math.abs(p.movePct) <= p.capPct + 1e-9));
+  const iv = zoneWalk(ex, { close: 28110, sigma: 0.014, date: '2026-11-02', sigmaFor: e => (e.expiry === '2026-11-05' ? 0.04 : null) });
+  ok('sigmaFor: a higher implied vol for one expiry brings its zone into reach', iv.points.some(p => p.expiry === '2026-11-05') && !w.points.some(p => p.expiry === '2026-11-05'));
   ok('max pain out of range is skipped too', zoneWalk(ex, { close: 28110, sigma: 0.014, date: '2026-11-02', anchor: 'maxPain' }).skipped.some(s => s.expiry === '2026-11-05'));
 }
 
