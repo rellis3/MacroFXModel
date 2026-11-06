@@ -23,6 +23,7 @@ import * as FVV from './fairValueView.js';
 import * as ACV from './autocorrView.js';
 import * as LLV from './leadLagView.js';
 import * as OPV from './optionsView.js';
+import { mountPathChart } from './pathChart.js';
 import * as NV from './newsView.js';
 import { createLevelChart } from '../levelChart.js';
 import { cardDrivers } from './cardExplain.js';
@@ -660,7 +661,10 @@ ${sec('Fear gauge', 'the VIX and its term structure')}<div id="opt-vix">${loadin
     const o = (T.optWalk ??= { ...OPV.WALK_OPTS_DEFAULT });   // the walk options (Swing Map's), kept for the session
     try { if (sm?.ok) walk = OPV.zoneWalk(sm.expiries ?? [], OPV.walkOptsFor(sm, anchor, o)); } catch (e) { console.warn('options walk', e); }
     // drawn at the card's own width, so a phone gets full-size text rather than a shrunken chart
-    box.innerHTML = OPV.pathHtml(sm, inst, { walk, anchor, width: Math.max(300, (box.clientWidth || 460) - 26), o });
+    const width = Math.max(300, (box.clientWidth || 460) - 26), view = (T.optPathView ??= {});   // zoom, range and "hide small books", kept for the session
+    view.hideSmall ??= window.innerWidth < 600;
+    box.innerHTML = OPV.pathHtml(sm, inst, { walk, anchor, width, o, hideSmall: view.hideSmall });
+    try { mountPathChart(box, { sm, walk, anchor, o, width, inst, state: view }); } catch (e) { console.warn('path chart zoom', e); }
     box.querySelectorAll('[data-wopt]').forEach(c => (c.onchange = () => { o[c.dataset.wopt] = c.checked; drawPath(T.optPath ?? inst, T.optAnchor ?? anchor); }));
     const ps = box.querySelector('#opt-path-inst'); if (ps) ps.onchange = () => { T.optPath = ps.value; drawPath(ps.value); };
     const pq = box.querySelector('#opt-path-src'); if (pq) pq.onchange = () => { T.optSrc = pq.value; drawPath(T.optPath ?? inst, T.optAnchor ?? anchor); };
