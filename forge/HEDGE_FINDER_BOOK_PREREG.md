@@ -198,10 +198,19 @@ In every case the hedges view's "untested" line in `js/terminal/corrEvidence.js`
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-06 — POST-HOC (results seen)
+Describe only. `run.mjs` was re-run once, unchanged except that it also writes the daily arms (`arms.json`); every number
+in `results.json` came out identical (seed-determined). `scripts/hedge-finder-book/concentration.mjs` was added after the
+run for the routine concentration read (ES5 change by calendar year, last 3 years, without the book's worst 1% of days);
+it carries no pass/fail weight. P1's "own word" (header, §8) is read as: CI lower > −5% → null; P1 passes and P4 passes →
+validated; P1 passes and P4 fails → context; otherwise underpowered (the same rules as the joint verdict, restricted to P1
+and its placebo).
 
 ---
 
-## RESULTS — run <YYYY-MM-DD>
+## RESULTS — run 2026-11-06
 
-*Written to `analysis/output/hedge-finder-book/RESULTS.md`.*
+*Written to `analysis/output/hedge-finder-book/RESULTS.md`.* Joint question **UNDERPOWERED** (rule 6): ES5 −9.2%
+[−11.4%, −7.0%] (pass), max drawdown +0.5% [−18.1%, +31.7%] (underpowered by design), Sharpe −0.056 [−0.141, +0.034]
+(non-inferiority not shown), placebo 0th percentile (pass). P1 alone: **VALIDATED** (`hedge-finder-book-es`). The naive
+own-USD-leg hedge cut ES5 by 16.6%, more than the finder.
