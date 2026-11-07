@@ -1,0 +1,37 @@
+{
+ "rv_adds_all34": {
+  "effect": 0.011600000000000055,
+  "lo": 0.009000000000000008,
+  "hi": 0.014399999999999968,
+  "min_effect": 0.005,
+  "diagnostics": {
+   "ok": true,
+   "note": "Fit per class per fold; regime miss 1.6 vs 2.4pp; every instrument at or below 1.000"
+  },
+  "planted_large": {
+   "injected": 0.05,
+   "shift": 0.12869999999999993,
+   "how": "fed today's own realised vol in as a feature"
+  },
+  "planted_min": {
+   "injected": 0.005,
+   "shift": 0.013699999999999934,
+   "how": "mixed 15% of today's realised vol into the feature"
+  },
+  "shuffle": {
+   "lo": -9.999999999998899e-05,
+   "hi": 0.0,
+   "how": "shuffled the RV feature within each instrument"
+  },
+  "rows": {
+   "used": 52486,
+   "dropped": 0,
+   "note": "same rows as forecast-pick"
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.0116 reaches the minimum +0.005"
+  ],
+  "power": 0.9764115902450738
+ }
+}

@@ -350,6 +350,7 @@ def stage_analyse(shuffles=20):
     arms = {"M0": [], "M1": M1, "ALL": M1 + NEW, "ALONE": NEW}
     arms.update({k: M1 + v for k, v in FAM.items()})
     T = fit_arms(line, all_dates, arms, "line", logit=("ALL",))
+    T[["inst", "date", "fold", "klass", "outcome", "pnl", "cost_K", "p_ALL", "hi_ALL", "lo_ALL"]].to_parquet(OUT / "test_line.parquet", index=False)
     res = {"encounters_line": int(len(line)), "encounters_neighbours": int(len(nb)), "seed": SEED, "missing": line[NEW].isna().mean().round(4).to_dict()}
 
     fxmask = T.inst.isin(USD_PAIRS).to_numpy()

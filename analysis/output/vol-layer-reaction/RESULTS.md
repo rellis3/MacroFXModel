@@ -99,3 +99,7 @@ A1 and A2, before any outcome was computed. A2 redefined family D and restricted
 ## What this changes
 
 Nothing live. Under the prereg's CONTEXT rule the state may be drawn beside the lines as a description of reaction odds, with no trade.
+
+## Proof checks (forge/verdict_gate.py, `checks.json`)
+
+Passed, after two faults in my first checks: the plant was on a feature the old model already carried, and its size was a guess. On a separate feature, with the possible gain computed, the model recovered 3.8% of 4.6% and 0.8% of 0.9%.

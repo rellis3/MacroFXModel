@@ -49,3 +49,22 @@ def test_write_checks_roundtrip(tmp_path):
     G.write_checks("demo", {"q": _ok()}, root=tmp_path)
     r = json.loads((tmp_path / "demo" / "checks.json").read_text())
     assert r["q"]["verdict"] == "NULL"
+
+
+PROVEN = {"vol-layer-rv5-increment": "vol-layer-rv5-increment", "vol-layer-reaction": "vol-layer-reaction",
+          "vol-layer-round-numbers": "vol-layer-round-numbers", "round-break-follow": "round-break-follow"}
+
+
+def test_banked_vol_layer_studies_have_passing_proofs():
+    import json
+    import re
+    from pathlib import Path
+    ev = Path("js/deskEvidence.js").read_text(encoding="utf-8")
+    ids = re.findall(r"id: '((?:vol-layer|round-break|jump-after)[^']*)'", ev)
+    assert ids
+    for i in ids:
+        slug = PROVEN.get(i, "jump-after" if i.startswith("jump-after") else i)
+        p = Path("analysis/output") / slug / "checks.json"
+        assert p.exists(), f"{i}: no checks.json"
+        c = json.loads(p.read_text(encoding="utf-8"))
+        assert all(v["verdict"] not in ("INVALID", "INCOMPLETE") for v in c.values()), i

@@ -1,0 +1,320 @@
+{
+ "state_adds": {
+  "effect": 0.0,
+  "lo": -0.00039999999999995595,
+  "hi": 0.0004999999999999449,
+  "min_effect": 0.01,
+  "diagnostics": {
+   "ok": true,
+   "note": "All families have values; dollar features exist only on the 7 USD pairs",
+   "missing_share": {
+    "dsig": 0.0,
+    "sig_rel_har": 0.0,
+    "p_hi": 0.0,
+    "p_res": 0.0,
+    "err_ewm": 0.0,
+    "err_abs": 0.0,
+    "js20": 0.0,
+    "lam_un": 0.0,
+    "lam_sch": 0.0,
+    "rv_so_far": 0.0003,
+    "jump_today": 0.0002,
+    "err_today": 0.0,
+    "common60": 0.7897,
+    "resid60": 0.7897,
+    "cvar60": 0.7897
+   }
+  },
+  "planted_large": {
+   "injected": 0.045943004377372865,
+   "shift": 0.03766808650129949,
+   "how": "flipped 60% of breaks to rejects where expected change in vol was high; injected is the gain a perfect model could find"
+  },
+  "planted_min": {
+   "injected": 0.008994802716527972,
+   "shift": 0.007260901289989574,
+   "how": "flipped 30% of breaks to rejects where expected change in vol was high, about the 1% bar"
+  },
+  "shuffle": {
+   "real_beats_all": true,
+   "how": "20 shifts of the new features",
+   "real": 0.9991801563765962,
+   "best_shuffle": 0.9994552048925001
+  },
+  "rows": {
+   "used": 84715,
+   "dropped": 0,
+   "note": "timeouts and ambiguous kept in trades, dropped from reject rates"
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.01, so that size is ruled out"
+  ],
+  "power": 1.0
+ },
+ "jumps_adds": {
+  "effect": 9.999999999998899e-05,
+  "lo": -0.00019999999999997797,
+  "hi": 0.0004999999999999449,
+  "min_effect": 0.01,
+  "diagnostics": {
+   "ok": true,
+   "note": "All families have values; dollar features exist only on the 7 USD pairs",
+   "missing_share": {
+    "dsig": 0.0,
+    "sig_rel_har": 0.0,
+    "p_hi": 0.0,
+    "p_res": 0.0,
+    "err_ewm": 0.0,
+    "err_abs": 0.0,
+    "js20": 0.0,
+    "lam_un": 0.0,
+    "lam_sch": 0.0,
+    "rv_so_far": 0.0003,
+    "jump_today": 0.0002,
+    "err_today": 0.0,
+    "common60": 0.7897,
+    "resid60": 0.7897,
+    "cvar60": 0.7897
+   }
+  },
+  "planted_large": {
+   "injected": 0.045943004377372865,
+   "shift": 0.03766808650129949,
+   "how": "flipped 60% of breaks to rejects where expected change in vol was high; injected is the gain a perfect model could find"
+  },
+  "planted_min": {
+   "injected": 0.008994802716527972,
+   "shift": 0.007260901289989574,
+   "how": "flipped 30% of breaks to rejects where expected change in vol was high, about the 1% bar"
+  },
+  "shuffle": {
+   "real_beats_all": true,
+   "how": "20 shifts of the new features",
+   "real": 0.9991801563765962,
+   "best_shuffle": 0.9994552048925001
+  },
+  "rows": {
+   "used": 84715,
+   "dropped": 0,
+   "note": "timeouts and ambiguous kept in trades, dropped from reject rates"
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.01, so that size is ruled out"
+  ],
+  "power": 1.0
+ },
+ "feedback_adds": {
+  "effect": 0.0010000000000000009,
+  "lo": 0.00029999999999996696,
+  "hi": 0.0017000000000000348,
+  "min_effect": 0.01,
+  "diagnostics": {
+   "ok": true,
+   "note": "All families have values; dollar features exist only on the 7 USD pairs",
+   "missing_share": {
+    "dsig": 0.0,
+    "sig_rel_har": 0.0,
+    "p_hi": 0.0,
+    "p_res": 0.0,
+    "err_ewm": 0.0,
+    "err_abs": 0.0,
+    "js20": 0.0,
+    "lam_un": 0.0,
+    "lam_sch": 0.0,
+    "rv_so_far": 0.0003,
+    "jump_today": 0.0002,
+    "err_today": 0.0,
+    "common60": 0.7897,
+    "resid60": 0.7897,
+    "cvar60": 0.7897
+   }
+  },
+  "planted_large": {
+   "injected": 0.045943004377372865,
+   "shift": 0.03766808650129949,
+   "how": "flipped 60% of breaks to rejects where expected change in vol was high; injected is the gain a perfect model could find"
+  },
+  "planted_min": {
+   "injected": 0.008994802716527972,
+   "shift": 0.007260901289989574,
+   "how": "flipped 30% of breaks to rejects where expected change in vol was high, about the 1% bar"
+  },
+  "shuffle": {
+   "real_beats_all": true,
+   "how": "20 shifts of the new features",
+   "real": 0.9991801563765962,
+   "best_shuffle": 0.9994552048925001
+  },
+  "rows": {
+   "used": 84715,
+   "dropped": 0,
+   "note": "timeouts and ambiguous kept in trades, dropped from reject rates"
+  },
+  "verdict": "CONTEXT",
+  "reasons": [
+   "interval above 0, but +0.001 is below the minimum +0.01"
+  ],
+  "power": 1.0
+ },
+ "dollar_adds": {
+  "effect": 0.0006000000000000449,
+  "lo": -0.00039999999999995595,
+  "hi": 0.0016000000000000458,
+  "min_effect": 0.01,
+  "diagnostics": {
+   "ok": true,
+   "note": "All families have values; dollar features exist only on the 7 USD pairs",
+   "missing_share": {
+    "dsig": 0.0,
+    "sig_rel_har": 0.0,
+    "p_hi": 0.0,
+    "p_res": 0.0,
+    "err_ewm": 0.0,
+    "err_abs": 0.0,
+    "js20": 0.0,
+    "lam_un": 0.0,
+    "lam_sch": 0.0,
+    "rv_so_far": 0.0003,
+    "jump_today": 0.0002,
+    "err_today": 0.0,
+    "common60": 0.7897,
+    "resid60": 0.7897,
+    "cvar60": 0.7897
+   }
+  },
+  "planted_large": {
+   "injected": 0.045943004377372865,
+   "shift": 0.03766808650129949,
+   "how": "flipped 60% of breaks to rejects where expected change in vol was high; injected is the gain a perfect model could find"
+  },
+  "planted_min": {
+   "injected": 0.008994802716527972,
+   "shift": 0.007260901289989574,
+   "how": "flipped 30% of breaks to rejects where expected change in vol was high, about the 1% bar"
+  },
+  "shuffle": {
+   "real_beats_all": true,
+   "how": "20 shifts of the new features",
+   "real": 0.9991801563765962,
+   "best_shuffle": 0.9994552048925001
+  },
+  "rows": {
+   "used": 84715,
+   "dropped": 0,
+   "note": "timeouts and ambiguous kept in trades, dropped from reject rates"
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.01, so that size is ruled out"
+  ],
+  "power": 1.0
+ },
+ "follow_bottom_net": {
+  "effect": -0.1125,
+  "lo": -0.1325,
+  "hi": -0.0914,
+  "min_effect": 0.03,
+  "diagnostics": {
+   "ok": true,
+   "note": "All families have values; dollar features exist only on the 7 USD pairs",
+   "missing_share": {
+    "dsig": 0.0,
+    "sig_rel_har": 0.0,
+    "p_hi": 0.0,
+    "p_res": 0.0,
+    "err_ewm": 0.0,
+    "err_abs": 0.0,
+    "js20": 0.0,
+    "lam_un": 0.0,
+    "lam_sch": 0.0,
+    "rv_so_far": 0.0003,
+    "jump_today": 0.0002,
+    "err_today": 0.0,
+    "common60": 0.7897,
+    "resid60": 0.7897,
+    "cvar60": 0.7897
+   }
+  },
+  "planted_large": {
+   "injected": 0.045943004377372865,
+   "shift": 0.03766808650129949,
+   "how": "flipped 60% of breaks to rejects where expected change in vol was high; injected is the gain a perfect model could find"
+  },
+  "planted_min": {
+   "injected": 0.008994802716527972,
+   "shift": 0.007260901289989574,
+   "how": "flipped 30% of breaks to rejects where expected change in vol was high, about the 1% bar"
+  },
+  "shuffle": {
+   "real_beats_all": true,
+   "how": "20 shifts of the new features",
+   "real": 0.9991801563765962,
+   "best_shuffle": 0.9994552048925001
+  },
+  "rows": {
+   "used": 84715,
+   "dropped": 0,
+   "note": "timeouts and ambiguous kept in trades, dropped from reject rates"
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.03, so that size is ruled out"
+  ],
+  "power": 0.8880851714127026
+ },
+ "fade_top_net": {
+  "effect": -0.176,
+  "lo": -0.1967,
+  "hi": -0.1564,
+  "min_effect": 0.03,
+  "diagnostics": {
+   "ok": true,
+   "note": "All families have values; dollar features exist only on the 7 USD pairs",
+   "missing_share": {
+    "dsig": 0.0,
+    "sig_rel_har": 0.0,
+    "p_hi": 0.0,
+    "p_res": 0.0,
+    "err_ewm": 0.0,
+    "err_abs": 0.0,
+    "js20": 0.0,
+    "lam_un": 0.0,
+    "lam_sch": 0.0,
+    "rv_so_far": 0.0003,
+    "jump_today": 0.0002,
+    "err_today": 0.0,
+    "common60": 0.7897,
+    "resid60": 0.7897,
+    "cvar60": 0.7897
+   }
+  },
+  "planted_large": {
+   "injected": 0.045943004377372865,
+   "shift": 0.03766808650129949,
+   "how": "flipped 60% of breaks to rejects where expected change in vol was high; injected is the gain a perfect model could find"
+  },
+  "planted_min": {
+   "injected": 0.008994802716527972,
+   "shift": 0.007260901289989574,
+   "how": "flipped 30% of breaks to rejects where expected change in vol was high, about the 1% bar"
+  },
+  "shuffle": {
+   "real_beats_all": true,
+   "how": "20 shifts of the new features",
+   "real": 0.9991801563765962,
+   "best_shuffle": 0.9994552048925001
+  },
+  "rows": {
+   "used": 84715,
+   "dropped": 0,
+   "note": "timeouts and ambiguous kept in trades, dropped from reject rates"
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.03, so that size is ruled out"
+  ],
+  "power": 0.8985276869880862
+ }
+}

@@ -20,3 +20,7 @@ By instrument (all 34): AUDCAD 0.995, AUDCHF 0.989, AUDJPY 0.983, AUDNZD 1.000, 
 ## What this changes
 
 Nothing live. It reopens the forecaster comparison (`vol-layer-l1-sigma`) under its own prereg. The gain is about 1.2%, so it is a small accuracy gain and says nothing about whether price reacts at a line. Largest on indices (2.4%).
+
+## Proof checks (forge/verdict_gate.py, `checks.json`)
+
+Passed. Planted edges recovered; a shuffled feature adds nothing.

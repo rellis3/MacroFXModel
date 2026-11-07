@@ -1,0 +1,3 @@
+*.parquet
+run.log
+results_*.json

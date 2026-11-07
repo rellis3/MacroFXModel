@@ -8,6 +8,7 @@ Same rows, folds, widths and pinball as scripts/forecast_history/forecast_pick.p
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -32,6 +33,15 @@ def main():
     X["_rv"] = np.log(sd / X.live_sig_daily)
     X["rv1"] = X.groupby("inst")["_rv"].shift(1)
     X["rv5m"] = X.groupby("inst")["rv1"].transform(lambda s: s.rolling(5, min_periods=3).mean())
+    MODE = os.environ.get("RV_MODE", "")                       # proof checks, scripts/vol-layer/proof.py
+    if MODE == "leak":
+        X["rv1"] = X["_rv"]                                    # today's own realised vol: a deliberate leak
+    elif MODE == "weak":
+        X["rv1"] = X["rv1"] + 0.15 * X["_rv"]
+    elif MODE == "shuffle":
+        rng = np.random.default_rng(20261107)
+        for c in ("rv1", "rv5m"):
+            X[c] = X.groupby("inst")[c].transform(lambda v: rng.permutation(v.to_numpy()))
     X = X.sort_values(["date", "inst"]).reset_index(drop=True)
 
     rows = []
@@ -95,6 +105,9 @@ def main():
     hw = max((v["ci"][1] - v["ci"][0]) / 2 for v in res.values())
     res["verdict"] = "VALIDATED" if p else ("UNDERPOWERED" if hw > 0.005 and all(v["ratio"] < 1 for v in res.values()) else "NULL")
     OUT.mkdir(parents=True, exist_ok=True)
+    if MODE:
+        (OUT / f"results_{MODE}.json").write_text(json.dumps(res, indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o)))
+        return
     (OUT / "results.json").write_text(json.dumps(res, indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o)))
     md = ["# vol-layer-rv5-increment: results", "", "Prereg: `forge/VOL_LAYER_RV5_INCREMENT_PREREG.md`. Pinball over 12 rungs ÷ plain σ, walk-forward 2020-08 → 2026-08, date-block 95%.", "",
           f"**Verdict: {res['verdict']}**", "", "| board | rows | ratio [95%] | HL p75 regime miss new / old | worst class | gate |", "|---|---|---|---|---|---|"]

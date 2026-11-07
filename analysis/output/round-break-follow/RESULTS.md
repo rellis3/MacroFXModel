@@ -31,3 +31,7 @@ The fade mirror was not run as a real fill. Its stated purpose is covered by C1,
 ## What this changes
 
 Nothing live. Round numbers in FX majors are a real location: first touches break more often than at arbitrary prices, in two separate windows. It is a conditioner for a stop-order layer, not a trade. The prereg allows marking it on the chart as "breaks run further here".
+
+## Proof checks (forge/verdict_gate.py, `checks.json`)
+
+Passed. Prices moved in the raw tape were recovered through the real fills: +0.03σ gave +0.030 R and +0.20σ gave +0.201 R. The placebo grid centres on zero. Same-session rejection gap -3.17pp [-4.94, -1.40].

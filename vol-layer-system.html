@@ -47,6 +47,7 @@ table.t th.num { text-align: right; }
 .lyr .nm { font-size: 13px; color: var(--text); font-weight: 600; } .lyr .ds { font-size: 11px; color: var(--text3); }
 .lyr.fb { border-style: dashed; }
 .scroll { overflow-x: auto; }
+.v-bad { color: var(--red); border-color: var(--red); }
 .v-ok { color: var(--green); border-color: var(--green); } .v-ctx { color: #e0a32e; border-color: #e0a32e88; } .v-null { color: var(--text3); }
 .st-tested { color: var(--green); border-color: var(--green); } .st-input-only { color: #e0a32e; border-color: #e0a32e88; } .st-literature-only { color: #a78bfa; border-color: #a78bfa66; } .st-not-started { color: var(--text3); }
 .empty { font-size: 12px; color: var(--text3); font-style: italic; }
@@ -63,7 +64,10 @@ table.t th.num { text-align: right; }
 </div>
 
 <script type="module">
-import { LAYERS, BUILD_ORDER, DEEP_DIVE, SOURCE_NOTE, COMBINED, TESTS, NAMED } from './js/volLayerResearch.js';
+import { LAYERS, BUILD_ORDER, DEEP_DIVE, SOURCE_NOTE, COMBINED, TESTS, NAMED, PROOF } from './js/volLayerResearch.js';
+import { PROOF_CSS, proofListHtml, proofHtml, cogReviewHtml } from './js/volLayerProof.js';
+
+document.head.insertAdjacentHTML('beforeend', `<style>${PROOF_CSS}</style>`);
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -77,7 +81,7 @@ async function loadVolState() {
 }
 
 function tabsHtml(cur) {
-  const t = [`<button class="tab ${cur === 'system' ? 'on' : ''}" data-t="system">⬡ System (combined)</button>`];
+  const t = [`<button class="tab ${cur === 'system' ? 'on' : ''}" data-t="system">⬡ System (combined)</button>`, `<button class="tab ${cur.startsWith('proof') ? 'on' : ''}" data-t="proof">🔎 Proof packs</button>`, `<button class="tab ${cur === 'cog-review' ? 'on' : ''}" data-t="cog-review">🧐 C.OG review</button>`];
   for (const L of LAYERS) t.push(`<button class="tab ${cur === L.id ? 'on' : ''}" data-t="${L.id}"><span class="dot ${dotCls(L.status)}"></span><span class="n">${L.n}</span>${esc(L.short)}</button>`);
   return t.join('');
 }
@@ -104,7 +108,7 @@ function liveTable(cols) {
 function trackerHtml(filter) {
   const verdictCls = v => ({ VALIDATED: 'v-ok', CONTEXT: 'v-ctx', NULL: 'v-null', UNDERPOWERED: 'v-ctx' }[v] ?? '');
   const tests = TESTS.filter(t => !filter || t.layer.includes(filter));
-  const rows = tests.map(t => `<tr><td class="num">${esc(t.date)}</td><td>${esc(t.what)}<div class="muted" style="font-size:10.5px">${esc(t.id)}</div></td><td>${esc(t.why)}</td><td>${esc(t.output)}<div class="muted" style="font-size:10.5px">${esc(t.doc)}</div></td><td><span class="pill ${verdictCls(t.verdict)}">${esc(t.verdict)}</span></td></tr>`).join('');
+  const rows = tests.map(t => `<tr><td class="num">${esc(t.date)}</td><td>${esc(t.what)}<div style="font-size:10.5px"><a href="#proof-${esc(t.id)}">Open proof pack</a></div></td><td>${esc(t.why)}</td><td>${esc(t.output)}<div class="muted" style="font-size:10.5px">${esc(t.doc)}</div></td><td><span class="pill ${verdictCls(t.verdict)}">${esc(t.verdict)}</span></td></tr>`).join('');
   return `<div class="scroll"><table class="t"><thead><tr><th>Date</th><th>What we tested</th><th>Why</th><th>Output</th><th>Verdict</th></tr></thead><tbody>${rows || '<tr><td colspan="5" class="muted">Nothing tested on its own yet.</td></tr>'}</tbody></table></div>`;
 }
 
@@ -169,11 +173,22 @@ function layerHtml(L) {
   <div class="card" style="margin-top:12px"><h3>Deep-dive findings</h3>${findings}</div>`;
 }
 
+const proofData = {};
+async function loadProof(id) {
+  if (proofData[id] !== undefined) return;
+  proofData[id] = null;
+  try { const r = await fetch(`./backtest-data/vol-layer/${id}.json`); if (r.ok) { proofData[id] = await r.json(); render(); } } catch { /* the pack still shows its words */ }
+}
+
 function render() {
   const cur = (location.hash || '#system').slice(1);
   const L = LAYERS.find(x => x.id === cur);
-  $('tabs').innerHTML = tabsHtml(L ? cur : 'system');
-  $('body').innerHTML = L ? layerHtml(L) : systemHtml();
+  const pid = cur.startsWith('proof-') ? cur.slice(6) : null;
+  $('tabs').innerHTML = tabsHtml(L || cur.startsWith('proof') || cur === 'cog-review' ? cur : 'system');
+  if (pid && PROOF[pid]) { loadProof(pid); $('body').innerHTML = proofHtml(pid, PROOF[pid], proofData[pid]); }
+  else if (cur === 'proof') $('body').innerHTML = proofListHtml(PROOF, TESTS);
+  else if (cur === 'cog-review') { loadProof('cog-review'); $('body').innerHTML = cogReviewHtml(proofData['cog-review']); }
+  else $('body').innerHTML = L ? layerHtml(L) : systemHtml();
   for (const b of document.querySelectorAll('[data-t]')) b.onclick = () => { location.hash = b.dataset.t; };
   for (const b of document.querySelectorAll('[data-go]')) b.onclick = () => { location.hash = b.dataset.go; };
 }

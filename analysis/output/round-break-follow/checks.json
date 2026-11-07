@@ -1,0 +1,143 @@
+{
+ "location_breaks_more": {
+  "effect": 0.025,
+  "lo": 0.0111,
+  "hi": 0.0386,
+  "min_effect": 0.01,
+  "diagnostics": {
+   "ok": true,
+   "same_session_reject_diff": [
+    -0.0317,
+    -0.0494,
+    -0.014
+   ],
+   "note": "Same-session rejection gap -3.17pp [-4.94, -1.40] on 4,097 sessions. 8,234 round and 16,805 arbitrary trades; median spread 0.032 R"
+  },
+  "planted_large": {
+   "injected": 0.2,
+   "shift": 0.20062315799345973,
+   "how": "moved EURUSD and USDJPY prices 0.20\u03c3 the trade's way after each fill, then re-ran real fills"
+  },
+  "planted_min": {
+   "injected": 0.03,
+   "shift": 0.030094753489593368,
+   "how": "moved prices 0.03\u03c3 the trade's way after each fill"
+  },
+  "shuffle": {
+   "lo": -0.014025,
+   "hi": 0.014225,
+   "effect": 0.0001249999999999999,
+   "each": [
+    -0.0079,
+    -0.0059,
+    0.019,
+    -0.0047
+   ],
+   "how": "called one arbitrary grid round and compared it with the other three, averaged over four grids"
+  },
+  "rows": {
+   "used": 8234,
+   "dropped": 0,
+   "note": "unresolved trades exit at the time limit and stay in"
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.025 reaches the minimum +0.01"
+  ],
+  "power": 0.4131593961146561
+ },
+ "beats_arbitrary_net": {
+  "effect": 0.0191,
+  "lo": 0.0095,
+  "hi": 0.0285,
+  "min_effect": 0.01,
+  "diagnostics": {
+   "ok": true,
+   "same_session_reject_diff": [
+    -0.0317,
+    -0.0494,
+    -0.014
+   ],
+   "note": "Same-session rejection gap -3.17pp [-4.94, -1.40] on 4,097 sessions. 8,234 round and 16,805 arbitrary trades; median spread 0.032 R"
+  },
+  "planted_large": {
+   "injected": 0.2,
+   "shift": 0.20062315799345973,
+   "how": "moved EURUSD and USDJPY prices 0.20\u03c3 the trade's way after each fill, then re-ran real fills"
+  },
+  "planted_min": {
+   "injected": 0.03,
+   "shift": 0.030094753489593368,
+   "how": "moved prices 0.03\u03c3 the trade's way after each fill"
+  },
+  "shuffle": {
+   "lo": -0.014025,
+   "hi": 0.014225,
+   "effect": 0.0001249999999999999,
+   "each": [
+    -0.0079,
+    -0.0059,
+    0.019,
+    -0.0047
+   ],
+   "how": "called one arbitrary grid round and compared it with the other three, averaged over four grids"
+  },
+  "rows": {
+   "used": 8234,
+   "dropped": 0,
+   "note": "unresolved trades exit at the time limit and stay in"
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.0191 reaches the minimum +0.01"
+  ],
+  "power": 0.662123813665049
+ },
+ "trade_makes_money": {
+  "effect": -0.031,
+  "lo": -0.0447,
+  "hi": -0.0178,
+  "min_effect": 0.03,
+  "diagnostics": {
+   "ok": true,
+   "same_session_reject_diff": [
+    -0.0317,
+    -0.0494,
+    -0.014
+   ],
+   "note": "Same-session rejection gap -3.17pp [-4.94, -1.40] on 4,097 sessions. 8,234 round and 16,805 arbitrary trades; median spread 0.032 R"
+  },
+  "planted_large": {
+   "injected": 0.2,
+   "shift": 0.20062315799345973,
+   "how": "moved EURUSD and USDJPY prices 0.20\u03c3 the trade's way after each fill, then re-ran real fills"
+  },
+  "planted_min": {
+   "injected": 0.03,
+   "shift": 0.030094753489593368,
+   "how": "moved prices 0.03\u03c3 the trade's way after each fill"
+  },
+  "shuffle": {
+   "lo": -0.014025,
+   "hi": 0.014225,
+   "effect": 0.0001249999999999999,
+   "each": [
+    -0.0079,
+    -0.0059,
+    0.019,
+    -0.0047
+   ],
+   "how": "called one arbitrary grid round and compared it with the other three, averaged over four grids"
+  },
+  "rows": {
+   "used": 8234,
+   "dropped": 0,
+   "note": "unresolved trades exit at the time limit and stay in"
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.03, so that size is ruled out"
+  ],
+  "power": 0.996802539322388
+ }
+}

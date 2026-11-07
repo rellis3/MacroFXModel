@@ -74,3 +74,7 @@ Replay check: 100.0000% match with LINE-REACTION on 7,355 encounters.
 ## What this changes
 
 Reversal at round numbers is not there, and our lines gain nothing by sitting on one. Post-hoc, describes only: the gap runs the other way, and it is concentrated in FX majors (-4.7pp at `00` G1, all seven pairs below arbitrary). See `EXPLORATORY.md`. It has its own prereg, `forge/ROUND_BREAK_FOLLOW_PREREG.md`, on untouched 2016-2020 data.
+
+## Proof checks (forge/verdict_gate.py, `checks.json`)
+
+Passed, after my first shuffle failed. Swapping labels within a session only touches sessions with a round touch, which are wider-range days. A placebo grid (one arbitrary grid called round) centres on zero. That same work showed the 00 gap is -0.72pp [-1.45, +0.03] within the same session, against -1.28pp pooled.
