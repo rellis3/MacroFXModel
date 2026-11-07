@@ -205,7 +205,9 @@ def stage_run():
             same = (x["ret20"] > 0) == x["up"]
             s1 = balanced_boot(x[same & x["ret20"].notna()], col, mon, rng, 200)[0]
             s2 = balanced_boot(x[~same & x["ret20"].notna()], col, mon, rng, 200)[0]
-            fl = balanced_boot(flip(x, col, rng), col, mon, rng, 500)
+            # A2: 200 whole-expiry flips; the proof is that 0 sits inside their spread (one draw fails 5% of the time by chance)
+            fls = np.array([balanced_boot(flip(x, col, rng), col, mon, rng, 1)[0] for _ in range(200)])
+            fl = (float(fls.mean()), float(fls.mean() - Z95 * fls.std()), float(fls.mean() + Z95 * fls.std()))
             pl_big = balanced_boot(plant(x, q, col, 3 * MIN[q], rng), col, mon, rng, 1)[0] - est
             pl_min = balanced_boot(plant(x, q, col, MIN[q], rng), col, mon, rng, 1)[0] - est
             c = {"effect": est, "lo": lo, "hi": hi, "min_effect": MIN[q], "rows": int(len(x)),
@@ -215,7 +217,7 @@ def stage_run():
             g = decide(c)
             cells.append({"anchor": a, "name": NAMES[a], "q": q, "n": int(len(x)), "months": nm, "effect": est, "lo": lo, "hi": hi, "p": p, "half1": h1, "half2": h2,
                           "above": above, "below": below, "with_trail": s1, "against_trail": s2, "gate": g["verdict"], "gate_why": g["reasons"], "power": g["power"],
-                          "mde": power[f"{a}/{q}"]["mde"], "touch_dot": float(x["td"].mean()), "touch_mirror": float(x["tm"].mean()),
+                          "mde": power[f"{a}/{q}"]["mde"], "flip_pct": float((fls < est).mean() * 100), "touch_dot": float(x["td"].mean()), "touch_mirror": float(x["tm"].mean()),
                           "close_dot": float(x["close_dot"].mean()), "close_mirror": float(x["close_mirror"].mean()), "median_gap": float(x["g"].abs().median())})
             checks[f"{a}/{q}"] = {**c, **g}
     padj = holm([c["p"] for c in cells])

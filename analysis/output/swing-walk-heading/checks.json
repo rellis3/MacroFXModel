@@ -1,0 +1,282 @@
+{
+ "gammaCentre/touch": {
+  "effect": 0.006687519684548985,
+  "lo": -0.026972643440784098,
+  "hi": 0.04127198190511291,
+  "min_effect": 0.05,
+  "rows": 12741,
+  "diagnostics": {
+   "ok": true,
+   "why": "session closes or month count"
+  },
+  "planted_large": {
+   "injected": 0.15000000000000002,
+   "shift": 0.15006669762812677
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.04999456543336851
+  },
+  "shuffle": {
+   "lo": -0.03113383866288937,
+   "hi": 0.03079510467683565
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.05, so that size is ruled out"
+  ],
+  "power": 0.8901102513989176
+ },
+ "gammaCentre/next": {
+  "effect": 0.005578596688074937,
+  "lo": -0.020844269696784223,
+  "hi": 0.031221139092301713,
+  "min_effect": 0.05,
+  "rows": 12741,
+  "diagnostics": {
+   "ok": true,
+   "why": "session closes or month count"
+  },
+  "planted_large": {
+   "injected": 0.15000000000000002,
+   "shift": 0.15
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.05000000000000003
+  },
+  "shuffle": {
+   "lo": -0.016993723739215774,
+   "hi": 0.014968163473327632
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.05, so that size is ruled out"
+  ],
+  "power": 0.9829789552037755
+ },
+ "gamma/touch": {
+  "effect": -0.006143569496988818,
+  "lo": -0.03992883091719161,
+  "hi": 0.02461172093956303,
+  "min_effect": 0.05,
+  "rows": 15418,
+  "diagnostics": {
+   "ok": true,
+   "why": "session closes or month count"
+  },
+  "planted_large": {
+   "injected": 0.15000000000000002,
+   "shift": 0.1500189209409035
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.050005397926687754
+  },
+  "shuffle": {
+   "lo": -0.026799774521566122,
+   "hi": 0.026272951807109778
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.05, so that size is ruled out"
+  ],
+  "power": 0.9180298649463368
+ },
+ "gamma/next": {
+  "effect": 0.0004039373937491835,
+  "lo": -0.017750627717260336,
+  "hi": 0.01967536196790209,
+  "min_effect": 0.05,
+  "rows": 15418,
+  "diagnostics": {
+   "ok": true,
+   "why": "session closes or month count"
+  },
+  "planted_large": {
+   "injected": 0.15000000000000002,
+   "shift": 0.15
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.049999999999999996
+  },
+  "shuffle": {
+   "lo": -0.01552264994482454,
+   "hi": 0.015456977865539548
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.05, so that size is ruled out"
+  ],
+  "power": 0.9998359582237064
+ },
+ "strike/touch": {
+  "effect": -0.015172569343128047,
+  "lo": -0.039810490630284516,
+  "hi": 0.014711868308615459,
+  "min_effect": 0.05,
+  "rows": 17215,
+  "diagnostics": {
+   "ok": true,
+   "why": "session closes or month count"
+  },
+  "planted_large": {
+   "injected": 0.15000000000000002,
+   "shift": 0.15004373759637235
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.05001312168440257
+  },
+  "shuffle": {
+   "lo": -0.02347640599231405,
+   "hi": 0.022959058396426667
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.05, so that size is ruled out"
+  ],
+  "power": 0.9744081148643411
+ },
+ "strike/next": {
+  "effect": 0.007724859093277611,
+  "lo": -0.010946250801703111,
+  "hi": 0.02591993527301813,
+  "min_effect": 0.05,
+  "rows": 17215,
+  "diagnostics": {
+   "ok": true,
+   "why": "session closes or month count"
+  },
+  "planted_large": {
+   "injected": 0.15000000000000002,
+   "shift": 0.15
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.05000000000000005
+  },
+  "shuffle": {
+   "lo": -0.01494040980545607,
+   "hi": 0.015139651632686565
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.05, so that size is ruled out"
+  ],
+  "power": 0.9998794692416062
+ },
+ "maxPain/touch": {
+  "effect": -0.0291578672679838,
+  "lo": -0.07221007501519476,
+  "hi": 0.011762880492411023,
+  "min_effect": 0.05,
+  "rows": 16495,
+  "diagnostics": {
+   "ok": true,
+   "why": "session closes or month count"
+  },
+  "planted_large": {
+   "injected": 0.15000000000000002,
+   "shift": 0.14998054850017845
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.04995225745603558
+  },
+  "shuffle": {
+   "lo": -0.030286806016436425,
+   "hi": 0.029896538367094775
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.05, so that size is ruled out"
+  ],
+  "power": 0.7546476148704921
+ },
+ "maxPain/next": {
+  "effect": 0.008438263697512945,
+  "lo": -0.018177218929669642,
+  "hi": 0.034182744093286775,
+  "min_effect": 0.05,
+  "rows": 16495,
+  "diagnostics": {
+   "ok": true,
+   "why": "session closes or month count"
+  },
+  "planted_large": {
+   "injected": 0.15000000000000002,
+   "shift": 0.14999999999999997
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.05000000000000001
+  },
+  "shuffle": {
+   "lo": -0.014515957575164325,
+   "hi": 0.014877662099878099
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.05, so that size is ruled out"
+  ],
+  "power": 0.9820649006674036
+ },
+ "centre/touch": {
+  "effect": -0.013530889903839787,
+  "lo": -0.05213878475003049,
+  "hi": 0.025152833919540724,
+  "min_effect": 0.05,
+  "rows": 16937,
+  "diagnostics": {
+   "ok": true,
+   "why": "session closes or month count"
+  },
+  "planted_large": {
+   "injected": 0.15000000000000002,
+   "shift": 0.15002235009027615
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.04995005228311975
+  },
+  "shuffle": {
+   "lo": -0.03000456071438805,
+   "hi": 0.03285638124812269
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.05, so that size is ruled out"
+  ],
+  "power": 0.8135221173486802
+ },
+ "centre/next": {
+  "effect": 0.009450146816951192,
+  "lo": -0.015724382514474396,
+  "hi": 0.03419832938537886,
+  "min_effect": 0.05,
+  "rows": 16937,
+  "diagnostics": {
+   "ok": true,
+   "why": "session closes or month count"
+  },
+  "planted_large": {
+   "injected": 0.15000000000000002,
+   "shift": 0.15000000000000002
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.05
+  },
+  "shuffle": {
+   "lo": -0.0160639219261082,
+   "hi": 0.014513497910174037
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.05, so that size is ruled out"
+  ],
+  "power": 0.988730007689435
+ }
+}
