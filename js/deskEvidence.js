@@ -1256,6 +1256,13 @@ export const DESK_EVIDENCE = [
     use: 'Do not build a separate morning trust score: fix the forecast instead (done for persistence/weekday; IV arm next). The meta-label belongs at the line touch (3b).',
   },
   {
+    id: 'round-break-follow', domain: 'execution', verdict: 'context', date: '2026-11-07', doc: 'forge/ROUND_BREAK_FOLLOW_PREREG.md',
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF'],
+    claim: 'A stop order through a round number (00 or 50) in FX majors makes money on real bid/ask fills. Setup selected on 2020-2026, scored on untouched 2016-2020',
+    result: 'The location replicates and the trade does not pay. Confirmation, 8,234 round-number touches vs 16,805 arbitrary: P(reject) -2.50pp [-3.86, -1.11]; net R vs arbitrary +0.019 [+0.009, +0.029]. Net at round numbers -0.031 R [-0.045, -0.018], 0 of 4 years positive. On discovery all 24 stop, target and exit variants lose net, best -0.021 R. The edge is about 0.012-0.019 sigma at every stop size; costs at a 1 sigma stop are about 0.04-0.05 sigma.',
+    use: 'Round numbers in FX majors are a real location where first touches break more than at arbitrary prices, in two separate windows. Do not trade it alone. Use it as a conditioner: do not fade there. It needs a second independent input to clear costs.',
+  },
+  {
     id: 'vol-layer-round-numbers', domain: 'price', verdict: 'null', date: '2026-11-07', doc: 'forge/VOL_LAYER_ROUND_NUMBERS_PREREG.md',
     instruments: ['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'CADCHF', 'CADJPY', 'CHFJPY', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD', 'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'NZDCAD', 'NZDJPY', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
     claim: 'Price rejects more at round numbers (00 and 50) than at arbitrary prices, as in Osler, and the chosen lines inherit it when they sit on one',
@@ -2335,6 +2342,7 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'round-break-follow': { n: '8,234 round-number touches, 2016-10 to 2020-08, 20-session date blocks', note: 'C1 half-width 0.014, C2 half-width 0.010, C3 half-width 0.013 against an MDE of about 0.03' },
   'vol-layer-round-numbers': { n: '26,000-31,000 resolved touches per cell, 20-session date blocks; 7,596 lines near a round number', note: 'interval half-width about 0.006-0.007 against a design MDE of 0.015; line cell half-width 0.013 against 0.03' },
   'vol-layer-reaction': { n: '70,965 test touches at the line, 20-session date blocks', note: 'log-loss MDE about 0.002 against a 0.01 gate; selected-trade MDE about 0.027 K; USD-pair cell MDE about 0.004' },
   'vol-layer-rv5-increment': { n: '52,486 instrument-sessions on 1,558 dates, 20-session date blocks', note: 'interval half-width 0.0027 against a 0.005 bar' },

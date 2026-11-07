@@ -119,7 +119,7 @@ function systemHtml() {
     <p>Layers are added one at a time to the same walk-forward, same costs, same M1 fills, same lockbox. Each addition is kept only if it
     improves on the stack below it. The table below fills in as layers are tested.</p>
     <div class="scroll"><table class="t"><thead><tr><th>Stack</th><th class="num">Trades</th><th class="num">Gross (R)</th><th class="num">Net (R)</th><th>Net 95%</th><th>vs stack below</th></tr></thead>
-    <tbody>${COMBINED.map(r => `<tr><td>${esc(r.stack)}</td><td class="num">${r.trades.toLocaleString()}</td><td class="num">${r.gross.toFixed(3)}</td><td class="num">${r.net.toFixed(3)}</td><td class="num">[${r.ci[0].toFixed(3)}, ${r.ci[1].toFixed(3)}]</td><td>${esc(r.against)}</td></tr>`).join('')}
+    <tbody>${COMBINED.map(r => `<tr><td>${esc(r.stack)}</td><td class="num">${r.trades.toLocaleString()}</td><td class="num">${r.gross == null ? '–' : r.gross.toFixed(3)}</td><td class="num">${r.net.toFixed(3)}</td><td class="num">[${r.ci[0].toFixed(3)}, ${r.ci[1].toFixed(3)}]</td><td>${esc(r.against)}</td></tr>`).join('')}
     ${['+ 2 jumps', '+ 4 views', '+ 5 meta-labelling', '+ 3 / 6 corr, sizing', '+ 8 feedback'].map(s =>
       `<tr><td>${s}</td><td class="num muted">–</td><td class="num muted">–</td><td class="num muted">–</td><td class="num muted">–</td><td class="muted">not run</td></tr>`).join('')}</tbody></table></div></div>
   <div class="card" style="margin-top:12px"><h3>Live shared state, today</h3>${liveTable(['sigma', 'dsig', 'rel', 'reg', 'err', 'jump'])}</div>`;

@@ -14,8 +14,8 @@ Generated 2026-11-07.
 | validated | 51 |
 | null | 167 |
 | underpowered | 76 |
-| context (base rates, descriptions: not counted as tests) | 48 |
-| pre-registrations with no banked verdict (below) | 89 |
+| context (base rates, descriptions: not counted as tests) | 49 |
+| pre-registrations with no banked verdict (below) | 88 |
 
 **What the count says (Lesson 02 §05).** If none of the 294 claims were real, tests at the usual 5% size would still pass
 about **14.7** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
@@ -366,6 +366,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-07 | failed-auction-volume | price | underpowered | forge/FAILED_AUCTION_VOLUME_PREREG.md |
 | 2026-11-07 | footprint-absorption | price | null | forge/FOOTPRINT_ABSORPTION_PREREG.md |
 | 2026-11-07 | orderflow-lead-aggressor | price | null | forge/ORDERFLOW_LEAD_AGGRESSOR_PREREG.md |
+| 2026-11-07 | round-break-follow | execution | context | forge/ROUND_BREAK_FOLLOW_PREREG.md |
 | 2026-11-07 | vol-layer-reaction | volatility | context | forge/VOL_LAYER_REACTION_PREREG.md |
 | 2026-11-07 | vol-layer-round-numbers | price | null | forge/VOL_LAYER_ROUND_NUMBERS_PREREG.md |
 | 2026-11-07 | vol-layer-rv5-increment | volatility | validated | forge/VOL_LAYER_RV5_INCREMENT_PREREG.md |
@@ -435,7 +436,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/REACTION_TRADES_PREREG.md`: Trading the reaction after the touch — pre-registration
 - `forge/REMAINING_TRAVEL_PREREG.md`: Layer 5 — REMAINING TRAVEL: from here, with the time left, how far can price still go?
 - `forge/RESIDUAL_INTRADAY_PREREG.md`: Study 3 — intraday relative value: does a lagging market catch up? (pre-registration)
-- `forge/ROUND_BREAK_FOLLOW_PREREG.md`: round-break-follow — does a stop order through a round number make money on real bid/ask fills?
 - `forge/RUBBER_BAND_PREREG.md`: Study 2 — the rubber band: stretch from fair value at three speeds (pre-registration)
 - `forge/RULE_A_BOOK_FORWARD_PREREG.md`: rule-a-book-forward: forward record of rule A on the chosen lines, alongside the portfolio book, as one combin
 - `forge/RUSSELL_FED_PATH_LEAD_PREREG.md`: russell-fed-path-lead — does the Russell 2000's relative return lead the fed path, or only move with it?

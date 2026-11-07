@@ -1,1 +1,3 @@
 *.parquet
+run.log
+discover.log

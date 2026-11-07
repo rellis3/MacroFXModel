@@ -76,3 +76,5 @@ Whether stops really sit there: no order data. Other level types. Crosses, indic
 ## Amendments
 
 ## RESULTS
+
+**CONTEXT, 2026-11-07.** C1 -0.0250 [-0.0386, -0.0111]; C2 +0.0191 R [+0.0095, +0.0285]; C3 -0.0310 R [-0.0447, -0.0178], 0 of 4 years positive. Selected variant: stop 1σ, target 2σ, 240 minutes. Details: `analysis/output/round-break-follow/RESULTS.md`.

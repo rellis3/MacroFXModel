@@ -1,0 +1,261 @@
+{
+ "id": "round-break-follow",
+ "seed": 20261107,
+ "B": 2000,
+ "selected": {
+  "variant": "S1.0_T2.0_X240",
+  "stop": 1.0,
+  "ratio": 2.0,
+  "exit": 240,
+  "n": 13743,
+  "net": -0.0208,
+  "lo": -0.0317,
+  "hi": -0.0105,
+  "arb": -0.0362,
+  "vs_arb": 0.0154,
+  "vs_lo": 0.0092,
+  "vs_hi": 0.0216
+ },
+ "n_round": 8234,
+ "n_arb": 16805,
+ "cells": {
+  "C1_reject_round_minus_arb": {
+   "round": 0.5195,
+   "arb": 0.5445,
+   "diff": -0.025,
+   "lo": -0.0386,
+   "hi": -0.0111,
+   "p": 0.0005,
+   "p_holm": 0.001
+  },
+  "C2_net_round_minus_arb": {
+   "round": -0.031,
+   "arb": -0.0501,
+   "diff": 0.0191,
+   "lo": 0.0095,
+   "hi": 0.0285,
+   "p": 0.0,
+   "p_holm": 0.0
+  },
+  "C3_net_round": {
+   "net": -0.031,
+   "lo": -0.0447,
+   "hi": -0.0178,
+   "p": 1.0,
+   "by_year": {
+    "2016": 0.0321,
+    "2017": -0.023,
+    "2018": -0.0496,
+    "2019": -0.0383,
+    "2020": -0.0262
+   },
+   "positive_2017_2020": 0,
+   "p_holm": 1.0
+  }
+ },
+ "verdict": "CONTEXT",
+ "sensitivity_extra_half_spread": [
+  -0.0478,
+  -0.0618,
+  -0.0341
+ ],
+ "by_instrument": {
+  "AUDUSD": {
+   "n": 894,
+   "net": -0.0414
+  },
+  "EURUSD": {
+   "n": 1206,
+   "net": -0.03
+  },
+  "GBPUSD": {
+   "n": 1755,
+   "net": -0.0194
+  },
+  "NZDUSD": {
+   "n": 881,
+   "net": -0.054
+  },
+  "USDCAD": {
+   "n": 1379,
+   "net": -0.0371
+  },
+  "USDCHF": {
+   "n": 1031,
+   "net": -0.0562
+  },
+  "USDJPY": {
+   "n": 1088,
+   "net": 0.0077
+  }
+ },
+ "fade_mirror_note": "the follow's negative, before a second spread: not a real fill",
+ "all_instruments_selected_variant": {
+  "AUDJPY": {
+   "round": -0.0659,
+   "arb": -0.0487,
+   "n": 1131
+  },
+  "AUDUSD": {
+   "round": -0.0414,
+   "arb": -0.0538,
+   "n": 894
+  },
+  "CADJPY": {
+   "round": -0.0435,
+   "arb": -0.0625,
+   "n": 1110
+  },
+  "EURAUD": {
+   "round": -0.0347,
+   "arb": -0.0465,
+   "n": 1804
+  },
+  "EURCHF": {
+   "round": -0.0874,
+   "arb": -0.1058,
+   "n": 815
+  },
+  "EURGBP": {
+   "round": -0.0466,
+   "arb": -0.0549,
+   "n": 1044
+  },
+  "EURJPY": {
+   "round": -0.0448,
+   "arb": -0.0516,
+   "n": 1380
+  },
+  "EURUSD": {
+   "round": -0.03,
+   "arb": -0.048,
+   "n": 1206
+  },
+  "GBPAUD": {
+   "round": -0.056,
+   "arb": -0.053,
+   "n": 2490
+  },
+  "GBPJPY": {
+   "round": -0.0398,
+   "arb": -0.0285,
+   "n": 2139
+  },
+  "GBPUSD": {
+   "round": -0.0194,
+   "arb": -0.0408,
+   "n": 1755
+  },
+  "GOLD": {
+   "round": -0.0071,
+   "arb": -0.0717,
+   "n": 510
+  },
+  "NZDUSD": {
+   "round": -0.054,
+   "arb": -0.0714,
+   "n": 881
+  },
+  "USDCAD": {
+   "round": -0.0371,
+   "arb": -0.0577,
+   "n": 1379
+  },
+  "USDCHF": {
+   "round": -0.0562,
+   "arb": -0.0574,
+   "n": 1031
+  },
+  "USDJPY": {
+   "round": 0.0077,
+   "arb": -0.0307,
+   "n": 1088
+  }
+ },
+ "discovery_all_instruments": {
+  "AUDJPY": {
+   "round": -0.024,
+   "arb": -0.042,
+   "n": 2159
+  },
+  "AUDUSD": {
+   "round": -0.0151,
+   "arb": -0.0488,
+   "n": 1593
+  },
+  "CADJPY": {
+   "round": -0.0341,
+   "arb": -0.03,
+   "n": 2142
+  },
+  "EURAUD": {
+   "round": -0.0529,
+   "arb": -0.053,
+   "n": 2924
+  },
+  "EURCHF": {
+   "round": -0.0668,
+   "arb": -0.0803,
+   "n": 1249
+  },
+  "EURGBP": {
+   "round": -0.0943,
+   "arb": -0.0718,
+   "n": 1194
+  },
+  "EURJPY": {
+   "round": -0.0248,
+   "arb": -0.0308,
+   "n": 2769
+  },
+  "EURUSD": {
+   "round": -0.0203,
+   "arb": -0.0413,
+   "n": 1888
+  },
+  "GBPAUD": {
+   "round": -0.0471,
+   "arb": -0.0456,
+   "n": 3267
+  },
+  "GBPJPY": {
+   "round": -0.0252,
+   "arb": -0.0226,
+   "n": 3649
+  },
+  "GBPUSD": {
+   "round": -0.0291,
+   "arb": -0.0404,
+   "n": 2560
+  },
+  "GOLD": {
+   "round": -0.0078,
+   "arb": -0.0045,
+   "n": 2055
+  },
+  "NZDUSD": {
+   "round": -0.048,
+   "arb": -0.0535,
+   "n": 1502
+  },
+  "USDCAD": {
+   "round": -0.0303,
+   "arb": -0.0465,
+   "n": 1958
+  },
+  "USDCHF": {
+   "round": -0.024,
+   "arb": -0.0249,
+   "n": 1648
+  },
+  "USDJPY": {
+   "round": 0.0085,
+   "arb": -0.0137,
+   "n": 2594
+  }
+ },
+ "ranAt": "2026-11-07T16:00:00Z",
+ "prereg": "forge/ROUND_BREAK_FOLLOW_PREREG.md",
+ "preregCommit": "261789ff",
+ "branch": "main"
+}
