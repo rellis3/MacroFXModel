@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   PROVIDERS, DEFAULT_MODELS, TASK_CLASS, buildRequest, authHeaders, readResponse,
-  resolveTask, costOf, configFromEnv, estimateTokens, carriesLedger, retryCap, supportsImages,
+  resolveTask, costOf, configFromEnv, estimateTokens, carriesLedger, retryCap, supportsImages, CACHE_MARK, splitCacheMark,
 } from './modelRouter.js';
 
 test('an Anthropic request with no standing content is shaped exactly as before', () => {
@@ -299,4 +299,34 @@ test('buildRequest: image blocks on anthropic, before the text; refused on every
   assert.throws(() => buildRequest({ provider: 'deepseek', model: 'deepseek-chat', prompt: 'p', images }), /cannot read images/);
   assert.throws(() => buildRequest({ provider: 'moonshot', model: 'k', prompt: 'p', images }), /cannot read images/);
   assert.throws(() => buildRequest({ provider: 'anthropic', model: 'm', prompt: 'p', images: [{ mediaType: 'application/pdf', data: 'x' }] }), /mediaType/);
+});
+
+test('cache mark: on Anthropic the stable lead is its own block with a breakpoint, and the mark is gone', () => {
+  const r = buildRequest({ provider: 'anthropic', model: 'claude-sonnet-5', system: 'short', prompt: `stable part${CACHE_MARK}today only`, maxTokens: 100 });
+  const c = r.body.messages[0].content;
+  assert.deepEqual(c, [{ type: 'text', text: 'stable part', cache_control: { type: 'ephemeral' } }, { type: 'text', text: 'today only' }]);
+  assert.equal(r.body.system, 'short');                 // a short system stays a plain string
+  assert.ok(!JSON.stringify(r.body).includes(CACHE_MARK));
+});
+
+test('cache mark: other providers get the same text without the mark', () => {
+  const r = buildRequest({ provider: 'deepseek', model: 'deepseek-chat', system: 's', prompt: `a${CACHE_MARK}b`, maxTokens: 100 });
+  assert.equal(r.body.messages.at(-1).content, 'ab');
+});
+
+test('cache mark: off when caching is off; a long system gets its own breakpoint; images still lead', () => {
+  const long = 'x'.repeat(5000);
+  const off = buildRequest({ provider: 'anthropic', model: 'm', system: long, prompt: `a${CACHE_MARK}b`, cache: false });
+  assert.equal(off.body.system, long);
+  assert.ok(!JSON.stringify(off.body).includes('cache_control'));
+  const on = buildRequest({ provider: 'anthropic', model: 'm', system: long, prompt: `a${CACHE_MARK}b`,
+    images: [{ mediaType: 'image/png', data: 'AAAA' }] });
+  assert.deepEqual(on.body.system, [{ type: 'text', text: long, cache_control: { type: 'ephemeral' } }]);
+  assert.deepEqual(on.body.messages[0].content.map(b => b.type), ['image', 'text', 'text']);
+  assert.equal(on.body.messages[0].content[1].cache_control?.type, 'ephemeral');
+});
+
+test('splitCacheMark: no mark means no lead; extra marks are dropped', () => {
+  assert.deepEqual(splitCacheMark('plain'), { lead: '', rest: 'plain' });
+  assert.deepEqual(splitCacheMark(`a${CACHE_MARK}b${CACHE_MARK}c`), { lead: 'a', rest: 'bc' });
 });

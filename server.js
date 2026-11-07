@@ -5785,12 +5785,15 @@ async function _rcReview(id, job) {
   const picSection = !pics.length ? [] : [[`The pictures attached to this case (${pics.length})`, sent.length
     ? `${sent.length} picture${sent.length > 1 ? 's are' : ' is'} sent with this prompt as images, in this order: ${sent.map((x, i) => `image ${i + 1} = ${x}`).join('; ')}. Each one's vision reading is in the case above under the owner's message it came with. Check every reading against its picture and flag any mismatch (a wrong number, level, date or label) in peerReview, naming the picture id.${sent.length < pics.length ? ` Not available to send: ${pics.filter(a => !sent.includes(a.id)).map(a => a.id).join(', ')} (read their transcriptions only).` : ''}`
     : `The pictures could not be sent with this prompt (${AI_PROVIDERS[headProv]?.vision ? 'their files are no longer stored' : `${AI_PROVIDERS[headProv]?.label ?? headProv} cannot read images`}); work from the vision model's transcriptions in the case and treat their numbers as unverified.`]];
-  const { system, prompt } = _deskStagePrompt({ role, pack: { date: _dpLondonDate(Date.now()) }, ledger: DESK_EVIDENCE, sections: [
-    ..._RCS.headSections(c, { lib, fb, quickTests, catalogue: Object.keys(QT.CATALOGUE), papers }),
-    ...picSection,
+  // The three sections that are the same for every review (about 50k tokens, most of it the whole Evidence Book) come
+  // first and are marked stable, so a second review within 5 minutes reads them from Anthropic's cache at a tenth of
+  // the price. Until 2026-11-07 they came after the case and were paid for in full on every review.
+  const { system, prompt } = _deskStagePrompt({ role, pack: { date: _dpLondonDate(Date.now()) }, ledger: DESK_EVIDENCE, stableSections: 3, sections: [
     ['The data inventory (feeds the server holds; name feed ids in the plan)', _rpInventory()],
     ['The Evidence Book (every entry: [tag] claim -> use)', evidenceBrief(DESK_EVIDENCE)],
     ['The research register (id [status] question -> next)', _tdRegisterText(rows)],
+    ..._RCS.headSections(c, { lib, fb, quickTests, catalogue: Object.keys(QT.CATALOGUE), papers }),
+    ...picSection,
   ] });
   job.stage = 'the Head of Research is reading the case';
   const lenses = [...new Set(c.rounds.flatMap(r => Object.keys(r.answers ?? {})))];
