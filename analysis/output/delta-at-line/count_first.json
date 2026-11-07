@@ -1,0 +1,60 @@
+{
+ "touches": {
+  "EURUSD": 1356,
+  "USDJPY": 1194
+ },
+ "nq_touches": 316,
+ "sd_net_K": 0.9124079244638427,
+ "mean_cost_K": {
+  "EURUSD": 0.06853828137105215,
+  "USDJPY": 0.07767950377678046
+ },
+ "F1": {
+  "signals": 98,
+  "comparison": 1887,
+  "by_inst": {
+   "EURUSD": 31,
+   "USDJPY": 67
+  },
+  "mde_contrast": 0.1849351602954763,
+  "mde_net": 0.32903661360433045,
+  "nq_signals": 1,
+  "nq_comparison": 106
+ },
+ "F2": {
+  "signals": 487,
+  "comparison": 1349,
+  "by_inst": {
+   "EURUSD": 232,
+   "USDJPY": 255
+  },
+  "mde_contrast": 0.09436351361845358,
+  "mde_net": 0.14760218416437723,
+  "nq_signals": 1,
+  "nq_comparison": 38
+ },
+ "F3": {
+  "signals": 324,
+  "comparison": 969,
+  "by_inst": {
+   "EURUSD": 160,
+   "USDJPY": 164
+  },
+  "mde_contrast": 0.11455210898326848,
+  "mde_net": 0.18096090501866213,
+  "nq_signals": 5,
+  "nq_comparison": 29
+ },
+ "F4": {
+  "signals": 492,
+  "comparison": 1493,
+  "by_inst": {
+   "EURUSD": 307,
+   "USDJPY": 185
+  },
+  "mde_contrast": 0.09279103539311394,
+  "mde_net": 0.14685025780553848,
+  "nq_signals": 68,
+  "nq_comparison": 39
+ }
+}
