@@ -8147,6 +8147,13 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
     </div>
 
     <div class="card">
+      <h3>Scheduled AI jobs <span style="font-weight:400;font-size:12px;color:var(--text3)">(what calls a model on its own, and when)</span></h3>
+      <div style="font-size:12.5px;color:var(--text2);margin-bottom:8px">Untick a job to pause its scheduled runs. It takes effect within a minute, with no redeploy. Its own run button on its page still works. The Railway variable shown still decides whether the job is scheduled at all.</div>
+      <div id="aiJobs">Loading&hellip;</div>
+      <div id="aiJobsMsg" style="font-size:12px;margin-top:6px"></div>
+    </div>
+
+    <div class="card">
       <h3>Daily spend, last 14 days <span id="aiDailySrc" style="font-weight:400;font-size:12px;color:var(--text3)"></span></h3>
       <div id="aiDailyHead" style="font-size:12.5px;margin-bottom:8px"></div>
       <div id="aiDaily" style="position:relative">Loading&hellip;</div>
@@ -8223,7 +8230,7 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
       const d = await fetch('/api/ai-config').then(r => r.json());
       if (!d.ok) throw new Error(d.error || 'failed');
       CFG = d;
-      renderProviders(d); renderModelPick(d); renderAllRow(d); renderTasks(d); renderStats(d.stats); fillAb(d); aiLoadSpend(); aiLoadDaily();
+      renderProviders(d); renderModelPick(d); renderAllRow(d); renderTasks(d); renderStats(d.stats); fillAb(d); aiLoadSpend(); aiLoadDaily(); aiLoadJobs();
     } catch (e) {
       $('aiProviders').innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>';
     }
@@ -8561,6 +8568,36 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
     } catch (e) { host.innerHTML = '<span style="color:var(--red)">' + esc(e.message) + '</span>'; }
   }
   window.aiLoadDaily = aiLoadDaily;
+
+  // Scheduled AI jobs (/api/ai-jobs): one row each, a tick box to pause or resume its scheduled runs.
+  async function aiLoadJobs() {
+    try {
+      const d = await fetch('/api/ai-jobs').then(r => r.json());
+      if (!d.ok) throw new Error(d.error || 'failed');
+      const ago = t => { if (!t) return '<span class="muted">not since this restart</span>'; const m = Math.round((Date.now() - Date.parse(t)) / 60000); return m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; };
+      // stacked rows, not a table: readable at phone width (a table pushed "when" and "last ran" off the edge)
+      const name = l => String(l).split(':')[0].replace(/\s*\(.*$/, '').trim();
+      $('aiJobs').innerHTML = d.jobs.map(j => '<label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--s3);cursor:' + (j.railwayOn ? 'pointer' : 'default') + '">'
+          + '<input type="checkbox" style="margin-top:2px;flex:none" data-ai-job="' + esc(j.id) + '"' + (j.pageOn ? ' checked' : '') + (j.railwayOn ? '' : ' disabled') + '>'
+          + '<span style="min-width:0"><b style="font-size:13px">' + esc(name(j.label)) + '</b>'
+          + '<span style="display:block;font-size:12px;color:var(--text2)">' + esc(j.when) + '</span>'
+          + '<span style="display:block;font-size:11.5px;color:var(--text3)">Model job <code>' + esc(j.task) + '</code> · last ran ' + ago(j.lastRunAt) + '</span>'
+          + (j.railwayOn ? '' : '<span style="display:block;color:var(--amber);font-size:11.5px">Off in Railway (' + esc(j.env || '') + '=0), so it isn\'t scheduled and this box can\'t turn it on</span>')
+          + (j.railwayOn && !j.pageOn ? '<span style="display:block;color:var(--amber);font-size:11.5px">Paused here: scheduled runs are skipped</span>' : '')
+          + '</span></label>').join('');
+      $('aiJobs').querySelectorAll('[data-ai-job]').forEach(cb => cb.addEventListener('change', async () => {
+        const id = cb.getAttribute('data-ai-job'), on = cb.checked;
+        cb.disabled = true;
+        try {
+          const r = await fetch('/api/ai-jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, on }) }).then(r => r.json());
+          if (!r.ok) throw new Error(r.error || 'failed');
+          $('aiJobsMsg').innerHTML = '<span style="color:var(--good)">' + esc(id) + (on ? ' resumed' : ' paused: its scheduled runs are skipped from now on') + '</span>';
+        } catch (e) { cb.checked = !on; $('aiJobsMsg').innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
+        finally { cb.disabled = false; }
+      }));
+    } catch (e) { $('aiJobs').innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
+  }
+  window.aiLoadJobs = aiLoadJobs;
 
   function fillAb(d) {
     $('aiAbTask').innerHTML = d.tasks.map(t =>

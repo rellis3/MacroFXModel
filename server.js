@@ -543,6 +543,39 @@ function _svcStat(id) {
  * killing the process. `js/serviceFlags.test.mjs` still fails the commit that
  * forgets the row, which is where that mistake should surface.
  */
+// ── Scheduled jobs that call a model, switchable from the AI models page ─────────────────────────────────────
+// `var` because svcRun (below) can run before this part of the module would have initialised a `const` on a fast
+// timer; the map is filled from KV at boot and re-read every minute. Missing = on: nothing changes until the owner
+// turns a job off on the page. Manual run buttons (the POST routes) are never blocked by this.
+var _AI_JOBS = {
+  morningBrief:        { when: 'weekdays, at the configured London hour', task: 'brief' },
+  cbSentiment:         { when: 'central-bank meeting days, every 30 min', task: 'doc-summary' },
+  newsWire:            { when: 'every 2 min, when new tier-1/2 headlines arrive', task: 'desk-news' },
+  speechScores:        { when: 'every 30 min, up to 12 speeches a day', task: 'doc-summary' },
+  fiscalEvents:        { when: 'around UK Budget / US refunding releases', task: 'doc-summary' },
+  deskRun:             { when: 'weekdays from 06:55 London (the morning desk run)', task: 'desk-analyst + desk-head' },
+  deskUpdate:          { when: 'weekdays, intraday update slots', task: 'desk-head' },
+  deskScore:           { when: 'weekdays after 21:10 London: reflection and evening edition', task: 'desk-analyst + desk-head' },
+  deskTheory:          { when: 'Saturdays from 09:00 London, once a week', task: 'desk-head' },
+  researchPod:         { when: 'Sundays from 09:00 London, once a week', task: 'research-pod' },
+  deskWeekly:          { when: 'Sundays from 16:00 London, once a week', task: 'desk-head' },
+  allocationCommittee: { when: 'Sundays from 17:00 London, once a week', task: 'desk-head' },
+};
+var _aiJobsOff = {};
+var _aiJobsAt = Date.now();
+var _aiJobSkipLogged = {};
+function _aiJobSkipNote(id) {
+  const day = new Date().toISOString().slice(0, 10);
+  if (_aiJobSkipLogged[id] === day) return;
+  _aiJobSkipLogged[id] = day;
+  console.log(`[ai-jobs] ${id} is paused on the AI models page: scheduled runs skipped (manual runs still work)`);
+}
+async function _aiJobsLoad() {
+  try { const raw = await kv.get('ai_jobs_off_v1'); const d = raw ? JSON.parse(raw) : {}; _aiJobsOff = d && typeof d.off === 'object' ? d.off : {}; }
+  catch { /* keep what we had */ }
+}
+_aiJobsLoad();   // at boot, before the first scheduled run (the earliest is minutes away)
+
 const _svcUnknown = new Set();
 function svcEnabled(id) {
   const st = _svcStat(id);
@@ -567,6 +600,12 @@ function svcEnabled(id) {
  * each job's existing `.catch(...)` keeps behaving exactly as it did.
  */
 function svcRun(id, fn) {
+  // Scheduled jobs that call a model can be paused from Bot Config > AI models (KV ai_jobs_off_v1), no redeploy.
+  // The Railway SVC_<ID> variable still decides whether the job is scheduled at all; this only skips its runs.
+  if (_AI_JOBS[id]) {
+    if (Date.now() - _aiJobsAt > 60_000) { _aiJobsAt = Date.now(); _aiJobsLoad(); }   // refreshed as jobs tick, no timer of its own
+    if (_aiJobsOff[id]) { _aiJobSkipNote(id); return Promise.resolve(null); }
+  }
   const st = _svcStat(id);
   st.started = true;   // a one-shot svcRun (e.g. volForecastScheduler's boot call) counts as started
   const t0 = Date.now();
@@ -3681,6 +3720,37 @@ app.get('/api/ai-config', async (_req, res) => {
 // to individual accounts: the account must first be set up as an organization in the Claude Console. Without the key
 // this answers { configured: false } and the page says what is needed. Cached 5 minutes (Anthropic allows one call a
 // minute; its figures land about 5 minutes after a call). Each day carries a flag against the median of the others.
+// ── /api/ai-jobs ─ the scheduled jobs that call a model, and a page switch for each (KV ai_jobs_off_v1) ─────────
+// GET: each job with when it runs, its model task, whether Railway schedules it (SVC_<ID>), whether the page has it
+// paused, and when it last ran in this process. POST { id, on }: pause or resume one. Pausing skips scheduled runs
+// only; a job's own run button still works.
+app.get('/api/ai-jobs', async (_req, res) => {
+  try {
+    await _aiJobsLoad(); _aiJobsAt = Date.now();
+    const snap = Object.fromEntries(servicesSnapshot().map(s => [s.id, s]));
+    const jobs = Object.entries(_AI_JOBS).map(([id, j]) => {
+      const s = snap[id] ?? {}, st = _svcStats.get(id) ?? {};
+      let railwayOn = true; try { railwayOn = serviceEnabled(id); } catch { /* unregistered: runs ungated */ }
+      return { id, label: s.label ?? id, when: j.when, task: j.task, env: s.env ?? null, railwayOn,
+        pageOn: !_aiJobsOff[id], running: railwayOn && !_aiJobsOff[id], lastRunAt: st.lastAt ?? null };
+    });
+    res.json({ ok: true, jobs });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/ai-jobs', async (req, res) => {
+  try {
+    const { id, on } = req.body ?? {};
+    if (!_AI_JOBS[id]) return res.status(400).json({ ok: false, error: `not a switchable AI job: ${id}` });
+    if (typeof on !== 'boolean') return res.status(400).json({ ok: false, error: 'on must be true or false' });
+    await _aiJobsLoad();
+    const off = { ..._aiJobsOff }; if (on) delete off[id]; else off[id] = true;
+    await kv.put('ai_jobs_off_v1', JSON.stringify({ off, at: new Date().toISOString() }));
+    _aiJobsOff = off; _aiJobsAt = Date.now();
+    console.log(`[ai-jobs] ${id} ${on ? 'resumed' : 'paused'} from the AI models page`);
+    res.json({ ok: true, id, on });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 let _antCostCache = { at: 0, days: null, key: '' };
 app.get('/api/ai-spend/anthropic', async (req, res) => {
   const key = process.env.ANTHROPIC_ADMIN_KEY;
