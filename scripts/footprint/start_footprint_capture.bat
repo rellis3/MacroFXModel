@@ -1,11 +1,11 @@
 @echo off
 REM ============================================================================
-REM  Footprint capture: records the front NQ, ES, GC, CL, 6E and 6J contracts from NinjaTrader and feeds footprint.html.
+REM  Footprint capture: records the front NQ, ES, YM, RTY, FDAX, GC, CL, 6E, 6B, 6J, 6A, 6C, 6S and 6N contracts from NinjaTrader and feeds footprint.html.
 REM  Double-click it and leave the window open. It waits for NT8, restarts the recorder if NT8 restarts, and rolls contracts itself.
 REM  Read-only market data: this does NOT start any trading bot (that is start_live_all.bat).
 REM
 REM  To start it at login: Win+R, shell:startup, and put a shortcut to this file there.
-REM  Other markets: start_footprint_capture.bat --roots NQ ES YM RTY GC CL 6E 6J
+REM  Other markets: start_footprint_capture.bat --roots NQ ES GC SI ZN
 REM ============================================================================
 setlocal
 cd /d "%~dp0"

@@ -23,11 +23,12 @@ from pathlib import Path
 
 BASE_URL = os.environ.get("MACROFX_BASE", "https://macrofxmodel-production.up.railway.app")
 LIVE_DIR = Path(os.environ.get("FOOTPRINT_LIVE_DIR") or (Path(os.environ.get("LOCALAPPDATA", Path.home())) / "MacroFXModel" / "nt8_live"))
-DEFAULT_ROOTS = ["NQ", "ES", "GC", "CL", "6E", "6J"]
+# The futures that match the owner's markets: indices, gold, crude and the FX majors. SI, ZN and ZB can be added with --roots.
+DEFAULT_ROOTS = ["NQ", "ES", "YM", "RTY", "FDAX", "GC", "CL", "6E", "6B", "6J", "6A", "6C", "6S", "6N"]
 TICK = {"NQ": 0.25, "MNQ": 0.25, "ES": 0.25, "MES": 0.25, "YM": 1.0, "MYM": 1.0, "RTY": 0.1, "M2K": 0.1, "GC": 0.1, "MGC": 0.1,
         "CL": 0.01, "MCL": 0.01, "ZN": 0.015625, "ZB": 0.03125, "ZF": 0.0078125,
-        "6E": 0.00005, "6J": 0.0000005, "6B": 0.0001, "6A": 0.00005, "6C": 0.00005, "6S": 0.00005}
-QUARTERLY = {"NQ", "MNQ", "ES", "MES", "YM", "MYM", "RTY", "M2K", "ZN", "ZB", "ZF", "6E", "6J", "6B", "6A", "6C", "6S"}
+        "6E": 0.00005, "6J": 0.0000005, "6B": 0.0001, "6A": 0.00005, "6C": 0.00005, "6S": 0.00005, "6N": 0.00005, "FDAX": 0.5, "SI": 0.005}
+QUARTERLY = {"NQ", "MNQ", "ES", "MES", "YM", "MYM", "RTY", "M2K", "ZN", "ZB", "ZF", "6E", "6J", "6B", "6A", "6C", "6S", "6N"}
 GOLD_MONTHS = (2, 4, 6, 8, 12)    # October trades but is not the volume leader
 LIVE_MAX = 900_000                # bytes; a bigger live push goes as 5-minute bars (the browser downloads this every refresh)
 FINAL_MAX = 8_000_000
@@ -48,6 +49,11 @@ def front_contract(root, d):
     """NT8 name of the volume-leading contract on UTC date d. Dates measured from analysis/output/nt8/continuous/*_rolls.csv
     (2025-26): index, rates and FX switch about 4 days before the third Friday, gold around the 26th before delivery, crude around
     the 18th. A calendar rule, so it can be a day or two out around a roll; forge/footprint_capture_test.py holds it to the measured dates."""
+    if root == "FDAX":                         # Eurex: volume stays on the old contract until expiry week ends
+        q = next(m for m in (3, 6, 9, 12) if m >= d.month)
+        if d >= third_friday(d.year, q):
+            q += 3
+        return _label(root, d.year, q)
     if root in QUARTERLY:
         q = next(m for m in (3, 6, 9, 12) if m >= d.month)
         if d >= third_friday(d.year, q) - timedelta(days=5):
