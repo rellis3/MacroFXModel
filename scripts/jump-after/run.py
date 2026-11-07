@@ -54,8 +54,16 @@ def build_one(sym, ccy, rel_by_day, cal_end):
     D = J.detect(C)
     F = pd.DataFrame(C).ffill(axis=1).to_numpy()              # exits only: the last known close at the horizon
     sig = d.live_sig_used.to_numpy() / 100
-    crit = D["crit"]
-    first = J.first_flags(D["flag"])
+    # A1: on real returns the Gumbel value flags about half of sessions, so the limit comes from each instrument's own
+    # past: the 88th percentile of its session max |L| over the previous 500 sessions. Uses flag rates only, no outcomes.
+    absL = np.abs(D["L"])
+    has = np.isfinite(absL).any(axis=1)
+    mx = np.full(len(d), np.nan)
+    mx[has] = np.nanmax(absL[has], axis=1)
+    crit_i = pd.Series(mx).rolling(500, min_periods=250).quantile(0.88).shift(1).to_numpy()
+    with np.errstate(invalid="ignore"):
+        flag = absL > crit_i[:, None]
+    first = J.first_flags(flag)
     rows = []
 
     def rec(i, s, kind):
@@ -86,14 +94,16 @@ def build_one(sym, ccy, rel_by_day, cal_end):
             rows[-1]["sched"] = fl_sched[i]
         L = np.abs(D["L"][i])
         lim = s if s >= 0 else J.N_SLOT
-        cand = np.flatnonzero((L[:lim] >= 3) & (L[:lim] < crit))
+        if not np.isfinite(crit_i[i]):
+            continue
+        cand = np.flatnonzero((L[:lim] >= 3) & (L[:lim] < crit_i[i]))
         if cand.size:
             rows.append(rec(i, int(cand[0]), "control"))
             rows[-1]["sched"] = np.nan
     ev = pd.DataFrame(rows)
     # session frame: outcomes for Q2/Q3 and pre-open features
     flag_today = (first >= 0).astype(float)
-    flag_today[~np.isfinite(D["L"]).any(axis=1)] = np.nan
+    flag_today[~np.isfinite(crit_i)] = np.nan
     un = np.where(fl_sched == 0, 1.0, 0.0)
     sc = np.where(fl_sched == 1, 1.0, 0.0)
     un[np.isnan(flag_today)] = np.nan
@@ -130,7 +140,7 @@ def stage_build():
     fl = E[E.kind == "flag"].assign(klass=lambda d: d.inst.map(klass))
     audit = {"flags": int(len(fl)), "instruments": len(syms), "covered": cov, "flags_covered": int(fl.inst.isin(cov).sum()),
              "sched_share_covered": float(fl[fl.inst.isin(cov)].sched.mean()), "by_class": fl.groupby("klass").size().to_dict(),
-             "by_hour": fl.groupby("hour").size().to_dict(), "flags_per_instrument_year": float(X.groupby("inst").flag.mean().mean() * 252), "crit": J.threshold()}
+             "by_hour": fl.groupby("hour").size().to_dict(), "flags_per_instrument_year": float(X.groupby("inst").flag.mean().mean() * 252), "gumbel_crit": J.threshold()}
     (OUT / "audit.json").write_text(json.dumps(audit, indent=1, default=str))
     print(json.dumps(audit, indent=1, default=str))
 
@@ -276,7 +286,7 @@ def write_md(r):
     a = r["audit"]
     md = ["# jump-after: results", "", f"Prereg: `forge/JUMP_AFTER_PREREG.md`. Run 2026-11-07, seed {r['seed']}, B = {r['B']}.", "",
           "## Verdicts", ""] + [f"- `{k}`: **{v}**" for k, v in r["verdicts"].items()] + ["",
-          f"Detector: {a['flags']:,} first flags on {a['instruments']} instruments, {a['flags_per_instrument_year']:.1f} per instrument-year; {a['flags_covered']:,} on covered instruments, {a['sched_share_covered']:.0%} scheduled. Critical value {a['crit']:.3f}.", "",
+          f"Detector: {a['flags']:,} first flags on {a['instruments']} instruments, {a['flags_per_instrument_year']:.1f} per instrument-year; {a['flags_covered']:,} on covered instruments, {a['sched_share_covered']:.0%} scheduled. The Gumbel value of {a['gumbel_crit']:.3f} flagged about half of sessions, so each instrument uses its own trailing 88th percentile (A1).", "",
           "## After-jump path, signed 60-minute return, daily σ", "", "| cell | n | mean [95%] | control | vs control [95%] | half A / B | Holm p | follow net | fade net | cost |", "|---|---|---|---|---|---|---|---|---|---|"]
     for k, c in r["path"].items():
         md.append(f"| {k} | {c['n']:,} | {c['mean']:+.4f} [{c['lo']:+.4f}, {c['hi']:+.4f}] | {c['control']:+.4f} | {c['vs_control']:+.4f} [{c['vs_lo']:+.4f}, {c['vs_hi']:+.4f}] | {c['half_A']:+.4f} / {c['half_B']:+.4f} | {c['p_holm']:.3f} | {_ci(c['follow_net'])} | {_ci(c['fade_net'])} | {c['mean_cost']:.3f} |")

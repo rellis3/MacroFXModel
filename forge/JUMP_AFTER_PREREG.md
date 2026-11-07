@@ -99,4 +99,12 @@ Tick-level jumps: these are 5-minute bursts. Line touches on a burst (`live-rang
 
 ## Amendments
 
+### A1 — 2026-11-07 — PRE-RESULTS
+The detector audit, flag counts only, showed about 120 flagged sessions per instrument-year: nearly half of all sessions, against a design of about 1%. The Gumbel limit assumes Gaussian returns, and real 5-minute returns have much fatter tails. No outcome had been read. The build was stopped before writing its results.
+- **New limit:** a session flags when |L| exceeds that instrument's 88th percentile of session max |L| over the previous 500 sessions. The 12% rate matches the day-level BNS rate in `jump-structure` (about 32 days a year). It uses only flag rates and past data.
+- **Meaning:** a flag now means an unusually large burst for that instrument, not a statistically proven jump. The name in results is "burst".
+- **Sample:** flags start after about 250 + 120 sessions of history. Flags fall to about 8,000 overall, as the power table assumed.
+- **Control:** 3 ≤ |L| < that session's limit.
+- **Proof checks:** this study also runs through `forge/verdict_gate.py`: planted edges, shuffle, power from the realised interval. The minimum effects are 0.03σ for the path, and a 0.5% Brier gain for stop-through and intensity.
+
 ## RESULTS
