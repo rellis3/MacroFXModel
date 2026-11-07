@@ -727,13 +727,16 @@ for (const [sig, code] of [['SIGTERM', 143], ['SIGINT', 130]]) {
       console.log(`[service-stats] ${sig} — flushing before exit`);
       const bail = setTimeout(() => process.exit(code), 4_000);
       // also the KV write-time ledger the Data Map reads: with redeploys every few minutes its 30-min timer never fires
-      Promise.allSettled([svcStatsFlush(sig), kv.flushWriteTimes(), _spendFlush()]).finally(() => { clearTimeout(bail); process.exit(code); });
+      Promise.allSettled([svcStatsFlush(sig), kv.flushWriteTimes(), _spendFlush(), typeof _egressFlush === 'function' ? _egressFlush() : null]).finally(() => { clearTimeout(bail); process.exit(code); });
     };
     // A brief being written by a slow model (minutes, and paid for) must not be thrown away by someone else's push. Wait for it, up to 9 minutes. This only helps
     // if the host leaves the old process alive that long: on Railway that is the deployment draining time (RAILWAY_DEPLOYMENT_DRAINING_SECONDS).
-    if (typeof _morningBriefRunning !== 'undefined' && _morningBriefRunning) {
-      console.log(`[brief] ${sig} while a brief is being written: waiting up to 9 minutes for it before exiting`);
-      const t0 = Date.now(), iv = setInterval(() => { if (!_morningBriefRunning || Date.now() - t0 > 540_000) { clearInterval(iv); finish(); } }, 1000);
+    // 2026-11-07: the same wait covers ANY model call still in flight (a desk run stage, a research round, the Head), whose
+    // answer is already being paid for. Exiting under it threw the answer away and the restarted job paid for it again.
+    const busy = () => (typeof _morningBriefRunning !== 'undefined' && _morningBriefRunning) || (typeof _aiInFlight !== 'undefined' && _aiInFlight > 0);
+    if (busy()) {
+      console.log(`[shutdown] ${sig} while ${_aiInFlight} model call(s) are in flight${typeof _morningBriefRunning !== 'undefined' && _morningBriefRunning ? ' (a brief is being written)' : ''}: waiting up to 9 minutes for them before exiting`);
+      const t0 = Date.now(), iv = setInterval(() => { if (!busy() || Date.now() - t0 > 540_000) { clearInterval(iv); finish(); } }, 1000);
     } else finish();
   });
 }
@@ -3194,7 +3197,8 @@ app.use(express.json({ limit: '25mb' }));
 // Where the outbound bytes go, ranked, since boot -- see js/egressMeter.js.
 app.get('/api/egress-audit', (req, res) => res.json(egressSnapshot(Number(req.query.limit) || 40)));
 // Ledger survives redeploys via KV (egress_audit): load now, flush every 5 min + on SIGTERM.
-egressPersist({ get: k => kv.get(k), put: (k, v) => kv.put(k, v) }).catch(e => console.warn('[egress] persist init failed:', e.message));
+// exitOnSignal false: the shutdown handler near the top flushes it and decides when to exit (it may wait for model calls).
+egressPersist({ get: k => kv.get(k), put: (k, v) => kv.put(k, v) }, { exitOnSignal: false }).then(f => { _egressFlush = f; }).catch(e => console.warn('[egress] persist init failed:', e.message));
 
 // Real-time monitoring + level-refresh status
 app.get('/api/monitor/status', (_req, res) => {
@@ -3427,7 +3431,7 @@ function _recordModelCall(row) {
 }
 // ── The spend ledger (js/aiSpend.js): every paid call by UTC day, job and caller, kept in KV so a deploy cannot
 // wipe it. Written 2026-11-07 after $56.82 of Sonnet on 2026-11-04 could not be traced: the ring buffer above resets
-// on every deploy and a task name ('desk-head') is shared by fifteen different jobs. Saved ten minutes after a call and on
+// on every deploy and a task name ('desk-head') is shared by fifteen different jobs. Saved a minute after a call and on
 // SIGTERM. The daily cap on Anthropic spend is enforced in callModel.
 const _SPEND_KV = d => `ai_spend_v1:${d}`;
 const _SPEND_CAP_KV = 'ai_spend_cap_v1';
@@ -3440,9 +3444,9 @@ function _spendRecord(row) {
     _spAdd(day, { at: Date.now(), ...row }, _aiConfig().prices);
     _spend.dirty.add(d);
     _spendAlertCheck(d, day);
-    // one save ten minutes after the first unsaved call (a debounce, not a background timer: nothing runs while idle). ai_*
-    // keys go to Cloudflare KV (kv.js isCfKey), whose free plan allows 1,000 writes a day: at most ~144 from here, plus SIGTERM
-    if (!_spend.flushTimer) { _spend.flushTimer = setTimeout(() => { _spend.flushTimer = null; _spendFlush().catch(() => {}); }, 600_000); _spend.flushTimer.unref?.(); }
+    // one save a minute after the first unsaved call (a debounce, not a background timer: nothing runs while idle). ai_*
+    // keys go to Cloudflare KV (kv.js isCfKey; the account is on a paid plan): at most ~1,440 writes a day from here
+    if (!_spend.flushTimer) { _spend.flushTimer = setTimeout(() => { _spend.flushTimer = null; _spendFlush().catch(() => {}); }, 60_000); _spend.flushTimer.unref?.(); }
   } catch (e) { console.warn('[ai-spend] record failed:', e.message); }
 }
 /** Make sure what KV holds for this day is merged in (once per day per process). */
@@ -3556,6 +3560,10 @@ async function _longPost(url, headers, body, timeoutMs) {
     req.end(body);
   });
 }
+// Model calls waiting on a provider right now. `var`, not `let`: the SIGTERM handler near the top reads it and must not
+// hit the temporal dead zone if a signal arrives while the module is still loading.
+var _aiInFlight = 0;
+var _egressFlush = null;   // set once egressPersist has loaded; called by the SIGTERM handler
 // `images` ([{ mediaType, data: base64 }]): pictures sent with the prompt, on a provider that reads them (anthropic). A
 // task routed to one that cannot (DeepSeek, Kimi) is refused here with a clear error, never sent (modelRouter refuses too).
 async function callModel({ task = 'misc', system = '', standing = '', prompt = '', maxTokens = 4000, temperature = null, timeoutMs = 300_000, images = [], label = null } = {}) {
@@ -3585,6 +3593,7 @@ async function callModel({ task = 'misc', system = '', standing = '', prompt = '
   const started = Date.now();
   // A provider that never answers must not hold the single brief slot forever (every retry gets a 409 until it ends), so the call is bounded.
   let httpRes;
+  _aiInFlight++;   // the SIGTERM handler waits for these before exiting (see the shutdown block near the top)
   try {
     httpRes = timeoutMs > 300_000
       ? await _longPost(req.url, aiAuthHeaders(req, key), JSON.stringify(req.body), timeoutMs)   // past fetch's 300 s header limit
@@ -3593,7 +3602,7 @@ async function callModel({ task = 'misc', system = '', standing = '', prompt = '
     _recordModelCall({ task, label, provider: r.provider, model: r.model, ok: false, httpStatus: 0, ms: Date.now() - started });
     const e = new Error(err?.name === 'TimeoutError' ? `${P.label} did not answer within ${Math.round(timeoutMs / 60000)} minutes` : `${P.label} request failed: ${err?.message ?? err}${err?.cause?.code ? ` (${err.cause.code})` : ''}`);
     e.status = 504; e.provider = r.provider; throw e;
-  }
+  } finally { _aiInFlight--; }
   if (!httpRes.ok) {
     const body = (await httpRes.text().catch(() => '')).slice(0, 300);
     const e = new Error(`${P.label} ${httpRes.status}${body ? ': ' + body : ''}`);
@@ -5178,6 +5187,11 @@ async function _duRun(slot, date) {
     ['Events, risk and liquidity, read now', fresh.join('\n\n')],
     ['Headlines since the book (the news analyst; context, never a signal on its own)', await _nwLoad().then(st => _nwText(_nwPick(st.wire, { sinceMs: Date.parse(run.finishedAt), tier: 2, limit: 25 })) || '(none at tier 1-2)').catch(() => '(the wire was unavailable)')],
   ] });
+  // The attempt is written down before anything is paid for, so the 5-minute schedule tries a slot once (two calls at
+  // most) and a restart does not try it again. Before 2026-11-07 a failed slot was retried every tick for 90 minutes:
+  // up to 36 Sonnet calls for one slot. The page's run button still runs it on demand.
+  updates.tries = { ...(updates.tries ?? {}), [slot]: (updates.tries?.[slot] ?? 0) + 1 };
+  await kv.put(_DU_KEY(date), JSON.stringify(updates)).catch(() => {});
   let value = null, model = null;
   for (let i = 0; i < 2 && !value; i++) {
     try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 16_000 }); model = r.model ?? null; const v = _duValidate(_parseModelJson(r.text ?? _antText(r), 'desk:update'), view); if (v.ok) value = v.value; }
@@ -7787,7 +7801,8 @@ svcInterval('deskUpdate', async () => {
   for (const slot of Object.keys(_DU_SLOTS)) {
     const t = _duSlotMs(date, slot);
     if (now < t || now > t + 90 * 60_000) continue;
-    if ((await _duLoad(date)).slots?.[slot]) continue;
+    const u = await _duLoad(date);
+    if (u.slots?.[slot] || (u.tries?.[slot] ?? 0) >= 1) continue;   // done, or already tried once (see _duRun)
     const run = await _dsRunFor(date);
     if (!run?.head?.ok || !(Date.parse(run.finishedAt) < t)) continue;
     _duStart(slot, date); return;
@@ -12365,7 +12380,10 @@ async function _fiscalCheck(reason, { force = false, only = null } = {}) {
     const rd = fiscalReadiness(ev, have);
     const newSinceRead = have.some(k => !(st?.analysedKinds ?? []).includes(k));
     // a manual check re-fetches, but only new documents (or a failed read) cost another model call
-    if (rd.ready && (newSinceRead || st?.error)) {
+    // a failed read is retried at most every 6 hours (it used to be retried at every 5-minute poll and every boot while a
+    // document was still awaited); new documents, or a manual check, still read straight away
+    const errorRetry = !!st?.error && (force || Date.now() - (Date.parse(st.generatedAt) || 0) > 6 * 3600_000);
+    if (rd.ready && (newSinceRead || errorRetry)) {
       const out = await _fiscalAnalyse(ev, docs); row.analysed = true; row.analysisError = out.error;
       if (state.tg?.token && state.tg?.chatId && svcEnabled('fiscalEvents') && out.analysis?.headline && !st?.analysis && Date.now() - ev.ms < 2 * 86400_000) {
         const nums = out.rows.slice(0, 4).map(r => `${r.label}: <b>${r.value}</b>${r.change ? ` (${r.change})` : ''}`).join('\n');

@@ -82,7 +82,7 @@ function _restore(saved) {
 // server.js calls this once with its kv module. Loads the ledger, then flushes
 // on a timer and on shutdown. Never throws -- a KV hiccup just means this
 // deploy's numbers start from the last flush.
-export async function egressPersist(kvApi) {
+export async function egressPersist(kvApi, { exitOnSignal = true } = {}) {
   _kv = kvApi;
   try {
     const raw = await _kv.get(KV_KEY);
@@ -97,7 +97,9 @@ export async function egressPersist(kvApi) {
   };
   const timer = setInterval(flush, FLUSH_MS);
   timer.unref?.();
-  for (const sig of ['SIGTERM', 'SIGINT']) process.once(sig, () => { flush().finally(() => process.exit(0)); });
+  // exitOnSignal: false when the host has its own shutdown handler (server.js) that calls the returned flush and decides
+  // when to exit. Exiting here cut that handler short: the wait for an in-flight model call never happened.
+  if (exitOnSignal) for (const sig of ['SIGTERM', 'SIGINT']) process.once(sig, () => { flush().finally(() => process.exit(0)); });
   return flush;
 }
 
