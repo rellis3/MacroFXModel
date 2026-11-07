@@ -10,15 +10,15 @@ Generated 2026-11-07.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **292** |
+| claims tested (validated + null + underpowered) | **293** |
 | validated | 51 |
-| null | 165 |
+| null | 166 |
 | underpowered | 76 |
 | context (base rates, descriptions: not counted as tests) | 48 |
-| pre-registrations with no banked verdict (below) | 89 |
+| pre-registrations with no banked verdict (below) | 90 |
 
-**What the count says (Lesson 02 §05).** If none of the 292 claims were real, tests at the usual 5% size would still pass
-about **14.6** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 293 claims were real, tests at the usual 5% size would still pass
+about **14.7** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
 **roughly 15 of the 51 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -366,6 +366,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-07 | failed-auction-volume | price | underpowered | forge/FAILED_AUCTION_VOLUME_PREREG.md |
 | 2026-11-07 | orderflow-lead-aggressor | price | null | forge/ORDERFLOW_LEAD_AGGRESSOR_PREREG.md |
 | 2026-11-07 | vol-layer-reaction | volatility | context | forge/VOL_LAYER_REACTION_PREREG.md |
+| 2026-11-07 | vol-layer-round-numbers | price | null | forge/VOL_LAYER_ROUND_NUMBERS_PREREG.md |
 | 2026-11-07 | vol-layer-rv5-increment | volatility | validated | forge/VOL_LAYER_RV5_INCREMENT_PREREG.md |
 
 ## Pre-registered, but no banked verdict
@@ -411,6 +412,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/EXITS_PREREG.md`: Study 1 — Exits driven by the range book (pre-registration)
 - `forge/FED_PATH_LEAD_PREREG.md`: FED-PATH-LEAD: does the Fed-path slope lead EURUSD / AUD / silver / DAX? (one confirmation test)
 - `forge/FLOW_COLUMNS_PREREG.md`: Flow and positioning columns at the vol lines — pre-registration
+- `forge/FOOTPRINT_ABSORPTION_PREREG.md`: footprint-absorption — when aggressors put in heavy volume and price does not follow, does the bar's direction
 - `forge/FUTURES_COST_RESCORE_PREREG.md`: Futures-cost re-score of the line-touch fade (registered 2026-10-11, before the re-score is computed)
 - `forge/FUTURES_VOL_PREREG.md`: Futures volatility forecast — does intraday futures data beat the incumbent HAR? (shadow study)
 - `forge/HARNESS_REGISTRY_PREREG.md`: Unified study harness, and deflating the registry it will re-score
@@ -433,6 +435,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/REACTION_TRADES_PREREG.md`: Trading the reaction after the touch — pre-registration
 - `forge/REMAINING_TRAVEL_PREREG.md`: Layer 5 — REMAINING TRAVEL: from here, with the time left, how far can price still go?
 - `forge/RESIDUAL_INTRADAY_PREREG.md`: Study 3 — intraday relative value: does a lagging market catch up? (pre-registration)
+- `forge/ROUND_BREAK_FOLLOW_PREREG.md`: round-break-follow — does a stop order through a round number make money on real bid/ask fills?
 - `forge/RUBBER_BAND_PREREG.md`: Study 2 — the rubber band: stretch from fair value at three speeds (pre-registration)
 - `forge/RULE_A_BOOK_FORWARD_PREREG.md`: rule-a-book-forward: forward record of rule A on the chosen lines, alongside the portfolio book, as one combin
 - `forge/RUSSELL_FED_PATH_LEAD_PREREG.md`: russell-fed-path-lead — does the Russell 2000's relative return lead the fed path, or only move with it?
@@ -454,7 +457,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VIX_DIVERGENCE_PREREG.md`: VIX vs Nasdaq divergence at the vol lines (hourly) — pre-registration
 - `forge/VIX_SIGNALS_FORWARD_PREREG.md`: vix-signals-forward: forward record of the four VIX/Nasdaq signals banked 2026-10-23
 - `forge/VMC_DIVERGENCE_INDICES_PREREG.md`: VuManChu Cipher B divergence at the vol lines (NQ first) — pre-registration
-- `forge/VOL_LAYER_ROUND_NUMBERS_PREREG.md`: vol-layer-round-numbers — does price react at round numbers more than at arbitrary prices, and at our lines wh
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
 - `forge/VRP_FORECAST_PREREG.md`: Your vol forecast vs the market's — variance risk premium (pre-registration)
 - `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?

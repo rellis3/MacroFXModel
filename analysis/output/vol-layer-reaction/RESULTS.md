@@ -1,6 +1,6 @@
 # vol-layer-reaction: results
 
-Prereg: `forge/VOL_LAYER_REACTION_PREREG.md` (committed in `445b581b`, amended pre-results in `a59aaa70` and `7b88bd7a`), 2026-11-07. Run 2026-11-07, seed 20261107, B = 2000. Ledger id `vol-layer-reaction`. Chosen lines, 34 instruments, 2020-08 → 2026-08, walk-forward folds 1-5, K = 0.25σ, 120 minutes, date-block 95%.
+Prereg: `forge/VOL_LAYER_REACTION_PREREG.md` (committed in `445b581b`, amended pre-results in `a59aaa70` and `7b88bd7a`, A3 post-hoc), 2026-11-07. Re-run 2026-11-07 after A3, seed 20261107, B = 2000. Ledger id `vol-layer-reaction`. Chosen lines, 34 instruments, 2020-08 → 2026-08, walk-forward folds 1-5, K = 0.25σ, 120 minutes, date-block 95%.
 
 **Verdict: CONTEXT**  Gate (follow_bottom_net): all_vs_M0_ci_below_0.99 NO, net_ci_above_0 NO, positive_4_of_5 NO, below_all_shuffles yes
 
@@ -29,12 +29,12 @@ Shuffle placebo: real 0.99918, shuffles min 0.99946, below all True.
 | fade_all_net | 70,965 | -0.192 [-0.205, -0.179] | 0/5 |
 | fade_top_gross | 11,339 | -0.007 [-0.024, +0.011] | 2/5 |
 | fade_top_net | 11,339 | -0.176 [-0.197, -0.156] | 0/5 |
-| follow_bottom_gross | 15,755 | +0.064 [+0.045, +0.081] | 5/5 |
-| follow_bottom_net | 15,755 | -0.107 [-0.127, -0.086] | 0/5 |
+| follow_bottom_gross | 15,755 | +0.058 [+0.040, +0.076] | 5/5 |
+| follow_bottom_net | 15,755 | -0.113 [-0.133, -0.091] | 0/5 |
 | old features only: fade_top_net | 15,077 | -0.172 [-0.191, -0.156] | 0/5 |
-| old features only: follow_bottom_net | 13,336 | -0.107 [-0.130, -0.085] | 0/5 |
+| old features only: follow_bottom_net | 13,336 | -0.112 [-0.135, -0.090] | 0/5 |
 | neighbours: fade_top_net | 63,551 | -0.172 [-0.186, -0.157] | 0/5 |
-| neighbours: follow_bottom_net | 60,877 | -0.093 [-0.113, -0.073] | 0/5 |
+| neighbours: follow_bottom_net | 60,877 | -0.097 [-0.117, -0.077] | 0/5 |
 
 Neighbours model: all vs M0 1.0021 [1.0000, 1.0045], all vs M1 1.0004 [0.9997, 1.0013].
 
@@ -43,18 +43,18 @@ Neighbours model: all vs M0 1.0021 [1.0000, 1.0045], all vs M1 1.0004 [0.9997, 1
 | class | trade | n | mean [95%] | folds + |
 |---|---|---|---|---|
 | fx_crosses | fade_top_net | 7,661 | -0.193 [-0.217, -0.169] | 0/5 |
-| fx_crosses | follow_bottom_net | 7,595 | -0.167 [-0.196, -0.134] | 0/5 |
+| fx_crosses | follow_bottom_net | 7,595 | -0.174 [-0.204, -0.141] | 0/5 |
 | fx_majors | fade_top_net | 2,541 | -0.122 [-0.156, -0.088] | 0/5 |
-| fx_majors | follow_bottom_net | 3,615 | -0.022 [-0.051, +0.008] | 0/5 |
+| fx_majors | follow_bottom_net | 3,615 | -0.026 [-0.055, +0.005] | 0/5 |
 | gold | fade_top_net | 236 | -0.198 [-0.285, -0.104] | 0/5 |
-| gold | follow_bottom_net | 442 | -0.150 [-0.224, -0.065] | 0/5 |
+| gold | follow_bottom_net | 442 | -0.155 [-0.228, -0.067] | 0/5 |
 | indices | fade_top_net | 901 | -0.174 [-0.257, -0.099] | 0/5 |
-| indices | follow_bottom_net | 4,103 | -0.068 [-0.102, -0.034] | 0/5 |
+| indices | follow_bottom_net | 4,103 | -0.070 [-0.104, -0.036] | 0/5 |
 
 ## Selected trades by year and concentration
 
 - fade_top_net: mean cost 0.1693 K; without the top 1% of days -0.1616; by year {'2021': -0.1944, '2022': -0.1672, '2023': -0.2058, '2024': -0.1678, '2025': -0.1618, '2026': -0.1732}
-- follow_bottom_net: mean cost 0.1708 K; without the top 1% of days -0.1065; by year {'2021': -0.1596, '2022': -0.0934, '2023': -0.0885, '2024': -0.1206, '2025': -0.1143, '2026': -0.0845}
+- follow_bottom_net: mean cost 0.1708 K; without the top 1% of days -0.1116; by year {'2021': -0.1643, '2022': -0.0957, '2023': -0.0927, '2024': -0.1256, '2025': -0.1151, '2026': -0.1008}
 
 ## Feature quintiles at the line (descriptive; BH q ≤ 0.10 are candidates only)
 
@@ -90,12 +90,12 @@ Neighbours model: all vs M0 1.0021 [1.0000, 1.0045], all vs M1 1.0004 [0.9997, 1
 
 The gate needed a log-loss ratio below 0.99; the best is 0.9994. C feedback (realised vol and range used so far today) is real after Holm and beats all 20 shuffles, but 0.9990 is 0.1%. Quintile spreads at the line are 2-5pp and mostly the same size at the neighbours, so they are about distance and state, not about the line.
 
-Spread is the wall. K = 0.25σ, and one measured round trip costs 0.17 K on average, about 0.04σ. Follow has a real gross effect: +0.064 K [+0.045, +0.081], positive in 5 of 5 folds. It nets to -0.107 K. FX majors come closest at -0.022 K [-0.051, +0.008].
+Spread is the wall. K = 0.25σ, and one measured round trip costs 0.17 K on average, about 0.04σ. Follow has a real gross effect: +0.058 K [+0.040, +0.076], positive in 5 of 5 folds. It nets to -0.113 K. FX majors come closest at -0.026 K [-0.055, +0.005].
 
 ## Deviations from the prereg
 
-A1 and A2, both before any outcome was computed. A2 redefined family D and restricted it to the 7 USD pairs after a feature check showed triangular arbitrage had made the first version the pair's own move.
+A1 and A2, before any outcome was computed. A2 redefined family D and restricted it to the 7 USD pairs after a feature check showed triangular arbitrage had made the first version the pair's own move. A3, after results: follow trades had counted same-bar ambiguous outcomes as wins, against the prereg. Fixed and re-run; gross follow moved from +0.064 to +0.058 K and the verdict did not change.
 
 ## What this changes
 
-Nothing live. Under the prereg's CONTEXT rule the state may be drawn beside the lines as a description of reaction odds, with no trade. Next: a follow-through test at wider geometry on the instruments where spread is small against σ, and our lines against round numbers, as separate preregs.
+Nothing live. Under the prereg's CONTEXT rule the state may be drawn beside the lines as a description of reaction odds, with no trade.

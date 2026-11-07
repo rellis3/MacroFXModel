@@ -93,3 +93,5 @@ Whether stops sit "just beyond" a level at a specific offset. Order books. Round
 ## Amendments
 
 ## RESULTS
+
+**NULL on the registered side, 2026-11-07.** Round numbers do not reject more than arbitrary prices: `00` G1 -1.28pp [-1.87, -0.68], `00` G2 -0.83pp, `50` G1 -0.86pp, `50` G2 -0.46pp. Lines near a round number +0.13pp [-1.15, +1.43]. The sign is opposite to Osler's reversal, which this prereg did not score. Details: `analysis/output/vol-layer-round-numbers/RESULTS.md`; audit, exploratory: `EXPLORATORY.md`. The opposite-sign effect goes to `forge/ROUND_BREAK_FOLLOW_PREREG.md`.

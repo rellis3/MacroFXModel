@@ -324,9 +324,12 @@ def trades(T, sel, sign, bs, net=True):
     d = T[sel]
     if not len(d):
         return {"n": 0}
-    x = sign * d.pnl.to_numpy() - (d.cost_K.to_numpy() if net else 0)
+    raw = sign * d.pnl.to_numpy()
+    if sign < 0:                                              # same-bar ambiguity is a loss for either side (prereg, A3)
+        raw = np.where(d.outcome == "ambiguous", -1.0, raw)
+    x = raw - (d.cost_K.to_numpy() if net else 0)
     ci = bs.mean(d.date, x)[0]
-    by = {int(f): LR._r(float((sign * g.pnl.to_numpy() - (g.cost_K.to_numpy() if net else 0)).mean())) for f, g in d.groupby("fold")}
+    by = {int(f): LR._r(float(x[d.fold.to_numpy() == f].mean())) for f in sorted(d.fold.unique())}
     daily = pd.Series(x).groupby(d.date.to_numpy()).sum()
     drop = daily.abs().nlargest(max(1, len(daily) // 100)).index
     keep = ~d.date.isin(drop).to_numpy()

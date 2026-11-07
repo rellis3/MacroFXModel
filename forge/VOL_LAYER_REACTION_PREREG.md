@@ -138,6 +138,9 @@ The feature table was checked before any outcome was computed, and family D was 
 - **D's scored cell is now the 7 USD pairs**, roughly 18,000 resolved rows at the line; SE about 0.0011, MDE about 0.004 at α 0.0125, against a pass bar of below 1 after Holm. Crosses have no clean dollar factor and are not scored here.
 - **Infinite values** of `rv_so_far` and `jump_today` (a zero clock share or zero bipower early in a session) are treated as missing.
 
+### A3 — 2026-11-07 — POST-HOC (results seen)
+My code counted same-bar ambiguous outcomes as wins on follow trades (it took the fade's −1 and flipped the sign). The prereg says they are losses. Fixed and re-run. Selected follow gross moves from +0.064 to +0.058 K; net from −0.107 to −0.113 K. It can only lower the follow result, and the verdict does not change. LINE-REACTION's reported follow side has the same sign flip (fade results and its pass rule are unaffected).
+
 ## RESULTS
 
-**CONTEXT, 2026-11-07.** Old + new features vs rung/side/class 0.9994 [0.9986, 1.0001], against a 0.99 gate. C feedback vs old 0.9990 [0.9983, 0.9997], Holm p 0.002; A, B and D do not clear Holm. Real below all 20 shuffles. Selected follow +0.064 K gross [+0.045, +0.081], -0.107 K net [-0.127, -0.086]; selected fade -0.176 K net. Details: `analysis/output/vol-layer-reaction/RESULTS.md`.
+**CONTEXT, 2026-11-07.** Old + new features vs rung/side/class 0.9994 [0.9986, 1.0001], against a 0.99 gate. C feedback vs old 0.9990 [0.9983, 0.9997], Holm p 0.002; A, B and D do not clear Holm. Real below all 20 shuffles. Selected follow +0.058 K gross [+0.040, +0.076], -0.113 K net [-0.133, -0.091], corrected by A3; selected fade -0.176 K net. Details: `analysis/output/vol-layer-reaction/RESULTS.md`.

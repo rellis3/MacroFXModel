@@ -1256,10 +1256,17 @@ export const DESK_EVIDENCE = [
     use: 'Do not build a separate morning trust score: fix the forecast instead (done for persistence/weekday; IV arm next). The meta-label belongs at the line touch (3b).',
   },
   {
+    id: 'vol-layer-round-numbers', domain: 'price', verdict: 'null', date: '2026-11-07', doc: 'forge/VOL_LAYER_ROUND_NUMBERS_PREREG.md',
+    instruments: ['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'CADCHF', 'CADJPY', 'CHFJPY', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD', 'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'NZDCAD', 'NZDJPY', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
+    claim: 'Price rejects more at round numbers (00 and 50) than at arbitrary prices, as in Osler, and the chosen lines inherit it when they sit on one',
+    result: 'No. About 34,000 first touches on each round grid against 139,612 arbitrary, 2020-2026. P(reject) 00 at 0.25 sigma -1.28pp [-1.87, -0.68], at 0.10 sigma -0.83pp [-1.54, -0.19]; 50 -0.86pp and -0.46pp. Fades lose: -0.20 K net at 0.25 sigma. Lines within 0.05 sigma of a round number +0.13pp [-1.15, +1.43] against lines near an arbitrary level. The sign is opposite to the claim. Post-hoc: in FX majors round numbers reject about 4-5pp less, on all seven pairs.',
+    use: 'Do not fade round numbers and do not mark lines as stronger for sitting on one. The opposite-sign break effect is a post-hoc lead with its own prereg (round-break-follow).',
+  },
+  {
     id: 'vol-layer-reaction', domain: 'volatility', verdict: 'context', date: '2026-11-07', doc: 'forge/VOL_LAYER_REACTION_PREREG.md',
     instruments: ['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'CADCHF', 'CADJPY', 'CHFJPY', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD', 'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'NZDCAD', 'NZDJPY', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
     claim: 'The shared vol state (expected change, filtered regime, forecast error, jump intensity, realised vol so far, dollar vs own move) says when price rejects or breaks at the chosen lines, beyond the 31 LINE-REACTION features, and pays net of measured spread',
-    result: 'Describes, does not pay. 70,965 walk-forward touches, 2021-2026. Log-loss old + new vs rung/side/class 0.9994 [0.9986, 1.0001] against a 0.99 gate. Realised vol and range so far today add 0.9990 [0.9983, 0.9997], Holm p 0.002, below all 20 shuffles; state, jumps and dollar share do not clear Holm. Selected follow +0.064 K gross [+0.045, +0.081] in 5 of 5 folds, -0.107 K net [-0.127, -0.086], because one spread is 0.17 K at K = 0.25 sigma. Selected fade -0.176 K net. Quintile spreads are 2-5pp and mostly match the neighbouring levels.',
+    result: 'Describes, does not pay. 70,965 walk-forward touches, 2021-2026. Log-loss old + new vs rung/side/class 0.9994 [0.9986, 1.0001] against a 0.99 gate. Realised vol and range so far today add 0.9990 [0.9983, 0.9997], Holm p 0.002, below all 20 shuffles; state, jumps and dollar share do not clear Holm. Selected follow +0.058 K gross [+0.040, +0.076] in 5 of 5 folds, -0.113 K net [-0.133, -0.091], because one spread is 0.17 K at K = 0.25 sigma. Selected fade -0.176 K net. Quintile spreads are 2-5pp and mostly match the neighbouring levels.',
     use: 'Do not trade a touch on the vol state at this geometry. The state may sit beside the lines as a description of reaction odds. The open lead is the gross follow-through, which needs wider geometry on instruments where spread is small against sigma: its own prereg.',
   },
   {
@@ -2321,6 +2328,7 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'vol-layer-round-numbers': { n: '26,000-31,000 resolved touches per cell, 20-session date blocks; 7,596 lines near a round number', note: 'interval half-width about 0.006-0.007 against a design MDE of 0.015; line cell half-width 0.013 against 0.03' },
   'vol-layer-reaction': { n: '70,965 test touches at the line, 20-session date blocks', note: 'log-loss MDE about 0.002 against a 0.01 gate; selected-trade MDE about 0.027 K; USD-pair cell MDE about 0.004' },
   'vol-layer-rv5-increment': { n: '52,486 instrument-sessions on 1,558 dates, 20-session date blocks', note: 'interval half-width 0.0027 against a 0.005 bar' },
   'gr-hmm-trend-direction': { n: '2,772 sessions (~5,080 effective across 7 pairs), 21-session block clusters', note: 'MDE 0.027 below the 0.05 bar; CI excludes it' },
