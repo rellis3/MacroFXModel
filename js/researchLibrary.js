@@ -164,7 +164,8 @@ export const qcItems = strategies => strategies.map(s => item({ id: s.id, via: '
 export function matchUpload(name) {
   const base = String(name ?? '').split(/[\\/]/).pop().replace(/\.pdf$/i, '');
   const a = arxivIdOf(base.split('_')[0]); if (a && /^\d{4}\.\d{4,5}/.test(base)) return { id: `arxiv:${a}`, arxiv: a, via: 'arxiv' };
-  const s = base.match(/^(\d{5,9})(?:[_\- ]|$)/); if (s) return { id: `doi:10.2139/ssrn.${s[1]}`, ssrn: s[1], doi: `10.2139/ssrn.${s[1]}`, via: 'ssrn' };
+  // SSRN's own download names too ("SSRN-id2293684.pdf", "ssrn-2293684.pdf"), so a phone upload needs no renaming
+  const s = base.match(/^(\d{5,9})(?:[_\- ]|$)/) ?? base.match(/^ssrn[-_ ]?(?:id)?(\d{5,9})(?:\D|$)/i); if (s) return { id: `doi:10.2139/ssrn.${s[1]}`, ssrn: s[1], doi: `10.2139/ssrn.${s[1]}`, via: 'ssrn' };
   return { id: `upload:${hash(base.toLowerCase())}`, via: 'upload', name: base };
 }
 /** The R2 key an uploaded PDF (and its extracted text) is stored under: private, never served. */

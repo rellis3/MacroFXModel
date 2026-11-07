@@ -91,6 +91,7 @@ t('QuantConnect: a strategy record from its real sections, references linked to 
 t('uploads: matched to the backlog by the SSRN or arXiv id in the file name', () => {
   assert.deepEqual(R.matchUpload('C:\\papers\\2293684_out-of-sample.pdf'), { id: 'doi:10.2139/ssrn.2293684', ssrn: '2293684', doi: '10.2139/ssrn.2293684', via: 'ssrn' });
   assert.deepEqual(R.matchUpload('1803.07152v1_exploring-the-predictability.pdf'), { id: 'arxiv:1803.07152', arxiv: '1803.07152', via: 'arxiv' });
+  for (const n of ['SSRN-id2293684.pdf', 'ssrn-2293684.pdf', 'SSRN_id2293684 (1).pdf']) assert.equal(R.matchUpload(n).id, 'doi:10.2139/ssrn.2293684', n);   // SSRN's own download names
   const u = R.matchUpload('Menkhoff carry.pdf'); assert.equal(u.via, 'upload'); assert.match(u.id, /^upload:/);
   assert.equal(R.matchUpload('menkhoff carry.PDF').id, u.id);
   assert.equal(R.uploadKey('doi:10.2139/ssrn.2293684'), 'research/papers/doi_10.2139_ssrn.2293684.pdf');
