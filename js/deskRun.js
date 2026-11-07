@@ -45,7 +45,7 @@ async function askValidated({ callModel, parseJson, task, system, prompt, maxTok
   let userPrompt = prompt, cap = maxTokens;
   for (let i = 0; i < 2; i++) {
     let reply;
-    try { reply = await callModel({ task, system, prompt: userPrompt, maxTokens: cap }); }
+    try { reply = await callModel({ task, system, prompt: userPrompt, maxTokens: cap, label }); }
     catch (e) {
       attempts.push({ error: e.message });
       if (i === 0 && transient(e)) { await new Promise(r => setTimeout(r, retryDelayMs)); continue; }   // one more try after a short wait
