@@ -1,0 +1,83 @@
+{
+ "passes": {
+  "NQ": {
+   "sessions": 1694,
+   "impulse": 1205,
+   "balance": 213,
+   "fired": 117,
+   "traded": 117,
+   "skipped_contract": 0
+  },
+  "ES": {
+   "sessions": 1687,
+   "impulse": 1099,
+   "balance": 184,
+   "fired": 98,
+   "traded": 98,
+   "skipped_contract": 0
+  },
+  "YM": {
+   "sessions": 1680,
+   "impulse": 1154,
+   "balance": 244,
+   "fired": 133,
+   "traded": 133,
+   "skipped_contract": 0
+  },
+  "RTY": {
+   "sessions": 1678,
+   "impulse": 1274,
+   "balance": 247,
+   "fired": 132,
+   "traded": 132,
+   "skipped_contract": 0
+  },
+  "GC": {
+   "sessions": 1413,
+   "impulse": 950,
+   "balance": 155,
+   "fired": 55,
+   "traded": 55,
+   "skipped_contract": 0
+  },
+  "CL": {
+   "sessions": 1942,
+   "impulse": 1310,
+   "balance": 187,
+   "fired": 86,
+   "traded": 86,
+   "skipped_contract": 0
+  }
+ },
+ "by_root_group": {
+  "CL": {
+   "high": 69,
+   "low": 17
+  },
+  "ES": {
+   "high": 79,
+   "low": 19
+  },
+  "GC": {
+   "high": 42,
+   "low": 13
+  },
+  "NQ": {
+   "high": 99,
+   "low": 18
+  },
+  "RTY": {
+   "high": 96,
+   "low": 36
+  },
+  "YM": {
+   "high": 112,
+   "low": 21
+  }
+ },
+ "n_low": 124,
+ "n_high": 497,
+ "sd_R_pooled": 2.319442542574458,
+ "mde_S1": 0.7857223774238375,
+ "mde_S2": 1.1111792424128228
+}
