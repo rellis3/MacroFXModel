@@ -36,14 +36,14 @@ The trade table counts every touch with the signal, including those that timed o
 | Signal | At the line | 0.2 sigma away | 0.3 sigma away |
 |---|---|---|---|
 | F1 | +7.8 | +0.4 [-7.2, +7.9] | +1.2 [-5.7, +7.9] |
-| F2 | -1.2 | +8.0 [+2.4, +12.3] | +4.3 [-0.3, +9.1] |
-| F3 | -1.1 | +2.5 [-2.1, +6.8] | -0.8 [-6.2, +4.4] |
-| F4 | -2.2 | +0.6 [-3.1, +3.6] | +0.4 [-4.1, +3.8] |
+| F2 | -1.2 | +8.0 [+2.5, +12.4] | +4.3 [-0.6, +8.5] |
+| F3 | -1.1 | +2.5 [-1.9, +7.0] | -0.8 [-6.9, +3.7] |
+| F4 | -2.2 | +0.6 [-3.0, +3.8] | +0.4 [-4.1, +4.0] |
 
 - F1 is near zero at the neighbours, so if its +7.8 is real it belongs to the line. That rests on 98 signals.
 - F2 at 0.2 sigma is +8.0 and F2 at the line is -1.2. This is a slice of a slice with no reason behind it, so read it as noise until shown otherwise.
 - By rung, F1 at p75 is +23.9 pp [+9.6, +37.4] on 39 signals. It is one of many slices and is not a result.
-- Side, session and variants: nothing consistent. Delta against at the stricter 10th percentile +12.3 pp [-3.0, +25.3] on 35; over 15 minutes +1.2, over 60 minutes +4.4. Delta with varied between 0.2 and 1.8 pp on any setting.
+- Side, session and variants: nothing consistent. Delta against at the stricter 10th percentile +12.3 pp [-2.1, +25.6] on 35; over 15 minutes +1.2, over 60 minutes +4.4. Delta with varied between 0.2 and 1.8 pp on any setting.
 - NQ alone: unreadable (F1 1, F2 1, F3 5, F4 68). Two reasons. Flow is cash hours only, so few touches have the 120-minute lookback. And the tick rule follows price so closely on NQ (+0.91 with the true flag) that it rarely disagrees with price, which is why F1 fired once. Testing divergence on NQ needs the exchange's flag.
 
 ## Deviations from the prereg
@@ -53,6 +53,6 @@ A1 only. After scoring, a label error in the by-side descriptive slice was fixed
 ## What this changes
 
 - Do not treat regular delta divergence or strong delta with the move as a fade or continue call at a chosen line, on EURUSD or USDJPY. Do not fade regular divergence at a line.
-- Delta against at the line stays open and is the only thing here worth following. It needs about 4 times as many signals. It fires about 30 times a year on these two markets, so a forward record alone would take years; older 6E and 6J months or more markets with the true flag are the route, and both cost money.
+- Delta against at the line stays open and is the only thing here worth following. It needs about 3 to 4 times as many signals. It fires about 30 times a year on these two markets, so a forward record alone would take years; older 6E and 6J months or more markets with the true flag are the route, and both cost money.
 - The history is on `delta-at-line.html`, with every touch in `events.csv`.
 - Not tested: discretion, other levels, order-book depth.

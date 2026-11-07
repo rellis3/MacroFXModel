@@ -1381,7 +1381,7 @@ export const DESK_EVIDENCE = [
     also: ['analysis/output/delta-at-line/RESULTS.md'],
     claim: 'At the first touch of a chosen forecast line on EURUSD and USDJPY, delta against the move raises the chance of a rejection, and hidden delta divergence lowers it, by at least 10 points, using the exchange aggressor flag on 6E and 6J',
     result: 'Neither could reach its bar. Delta against +7.8 pp [-3.1, +18.1], 98 signals, MDE 18.5, about +0.4 at 0.2 sigma from the line, net 0.00 K. Hidden divergence -1.1 pp [-7.3, +5.4], 324 signals, MDE 11.5.',
-    use: 'Delta against the move at a line is open, not shown. It has the direction traders claim and stays within noise, so no page or bot may call it an edge. It needs about 4 times as many signals. Described on delta-at-line.html.',
+    use: 'Delta against the move at a line is open, not shown. It has the direction traders claim and stays within noise, so no page or bot may call it an edge. It needs about 3 to 4 times as many signals. Described on delta-at-line.html.',
   },
   {
     id: 'footprint-absorption', domain: 'price', verdict: 'null', date: '2026-11-07', doc: 'forge/FOOTPRINT_ABSORPTION_PREREG.md',

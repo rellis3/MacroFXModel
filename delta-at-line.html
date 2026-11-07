@@ -105,7 +105,7 @@ async function main() {
   const d = await (await fetch('analysis/output/delta-at-line/scored.json', { cache: 'no-store' })).json();
   const C = d.cells;
   $('verdict').innerHTML = `<h2>No signal passed. Two are ruled out, two can't be judged yet.</h2>
-    <p>Across ${d.base.touches.toLocaleString()} touches on EURUSD and USDJPY, price rejected ${(100 * d.base.p_reject).toFixed(1)}% of the time once resolved. <b>Regular divergence and delta with the move didn't change that by the 10 points needed</b>, and regular divergence lost ${k(C.N_F2.est)} K a trade as a fade.</p>
+    <p>Across ${d.base.touches.toLocaleString()} touches on EURUSD and USDJPY, price rejected ${(100 * d.base.p_reject).toFixed(1)}% of the time once resolved. <b>Regular divergence and delta with the move didn't change that by the 10 points needed</b>, and regular divergence lost ${Math.abs(C.N_F2.est).toFixed(2)} K a trade as a fade.</p>
     <p><b>Delta against the move is the one open result:</b> ${pp(C.C_F1.est)} points towards a fade, the way the videos say, but on only ${C.C_F1.n} signals, with a range from ${pp(C.C_F1.lo)} to ${pp(C.C_F1.hi)}. It broke even after costs. It could be real or it could be nothing.</p>`;
   forest(C);
   $('cells').innerHTML = `<tr><th>Signal</th><th>Predicts</th><th>Signals</th><th>Change, points</th><th>95% range</th><th>Smallest detectable</th><th>Net per trade, K</th><th>Verdict</th></tr>` + Object.keys(NAMES).map(f => {
