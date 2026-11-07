@@ -85,5 +85,18 @@ console.log('[firewall page recognised]');
   eq('missing change filled from the previous level', d[2].changeBp, 25);
 }
 
+// ── the scorecard actual from the headline (2026-11-07) ──
+{
+  const { ocrActualFor, nzLocalDate } = await import('./rbnzFetch.js');
+  const dec = [{ date: '2026-10-28', title: 'OCR held at 2.75%', action: 'hold', rate: 2.75, changeBp: 0 }, { date: '2026-09-02', title: 'OCR increased by 25 basis points to 2.75%', action: 'hike', rate: 2.75, changeBp: 25 }];
+  const rel = Date.parse('2026-10-28T01:00:00Z');   // 2pm NZDT
+  ok('NZ-local date of a 2pm NZDT decision is the same calendar day', nzLocalDate(rel) === '2026-10-28');
+  ok('a UTC evening release lands on the NZ next day', nzLocalDate(Date.parse('2026-09-01T12:30:00Z')) === '2026-09-02');
+  ok('actual is the level, in the calendar consensus shape', ocrActualFor(dec, rel)?.actual === '2.75%');
+  ok('the headline source is carried', ocrActualFor(dec, rel)?.title === 'OCR held at 2.75%');
+  ok('before the headline is out: null, not a stale decision', ocrActualFor(dec.slice(1), rel) === null);
+  ok('empty or missing feed: null', ocrActualFor([], rel) === null && ocrActualFor(null, rel) === null);
+}
+
 if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }
 console.log('\nAll rbnzFetch tests passed.');

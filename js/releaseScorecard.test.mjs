@@ -64,4 +64,12 @@ t('a budget is an announcement, and a fiscal event links its read', () => {
   const cpi = formatScorecard({ country: 'GB', ms: T0, prints: [{ event: 'CPI y/y', estimate: '3.1%', prev: '3.0%', actual: null }], reactions: [] });
   assert.match(cpi, /not on the feed yet \(3\.1% expected\)/); assert.doesNotMatch(cpi, /fiscal-events/);
 });
+t('an OCR print filled from the RBNZ headline scores against the consensus', () => {
+  const same = formatScorecard({ country: 'NZ', ms: T0, prints: [{ event: 'Official Cash Rate', estimate: '2.75%', prev: '2.75%', actual: '2.75%' }], reactions: [] });
+  assert.match(same, /Official Cash Rate: 2\.75%, as expected/);
+  const hike = formatScorecard({ country: 'NZ', ms: T0, prints: [{ event: 'Official Cash Rate', estimate: '2.50%', prev: '2.25%', actual: '2.75%' }], reactions: [] });
+  assert.match(hike, /2\.75%, higher than the 2\.50% expected/);
+  const wait = formatScorecard({ country: 'NZ', ms: T0, prints: [{ event: 'Official Cash Rate', estimate: '2.75%', prev: '2.75%', actual: null }], reactions: [] });
+  assert.match(wait, /not on the feed yet \(2\.75% expected\)/);
+});
 console.log(`releaseScorecard: ${n} groups, all passed`);
