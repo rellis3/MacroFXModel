@@ -168,6 +168,25 @@ export function matchUpload(name) {
   const s = base.match(/^(\d{5,9})(?:[_\- ]|$)/) ?? base.match(/^ssrn[-_ ]?(?:id)?(\d{5,9})(?:\D|$)/i); if (s) return { id: `doi:10.2139/ssrn.${s[1]}`, ssrn: s[1], doi: `10.2139/ssrn.${s[1]}`, via: 'ssrn' };
   return { id: `upload:${hash(base.toLowerCase())}`, via: 'upload', name: base };
 }
+/**
+ * Is an upload already held in full text? Owner, 2026-11-07: a bulk upload skips what the library already has and moves on.
+ * Held = the same backlog id was already uploaded, the same file bytes (sha256) were uploaded under any name, or the paper
+ * library has that id read from full text (a PDF or arXiv HTML). A paper read only from its abstract is NOT held: the
+ * upload is how it gets its full text. Returns the reason in words, or null.
+ */
+export const FULL_TEXT_FROM = new Set(['pdf', 'arxiv-html', 'html', 'upload', 'full']);
+export function alreadyHeld({ id, sha = null } = {}, queueItems = [], papers = []) {
+  for (const x of queueItems ?? []) {
+    if (!x?.upload) continue;
+    if (sha && x.upload.sha === sha) return `the same file was uploaded before${x.upload.name ? ` (${x.upload.name})` : ''}`;
+    if (id && x.id === id) return `already uploaded${x.upload.name ? ` as ${x.upload.name}` : ''}`;
+  }
+  for (const p of papers ?? []) {
+    if (sha && p.uploaded?.sha === sha) return 'the same file is already in the library';
+    if (id && p.id === id && (p.uploaded || FULL_TEXT_FROM.has(p.readFrom))) return `already in the library, read from ${p.uploaded ? 'an upload' : p.readFrom}`;
+  }
+  return null;
+}
 /** The R2 key an uploaded PDF (and its extracted text) is stored under: private, never served. */
 export const uploadKey = (id, ext = 'pdf') => `research/papers/${String(id).replace(/[^a-z0-9.:_-]+/gi, '_').replace(/:/g, '_')}.${ext}`;
 

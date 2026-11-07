@@ -92,6 +92,16 @@ t('uploads: matched to the backlog by the SSRN or arXiv id in the file name', ()
   assert.deepEqual(R.matchUpload('C:\\papers\\2293684_out-of-sample.pdf'), { id: 'doi:10.2139/ssrn.2293684', ssrn: '2293684', doi: '10.2139/ssrn.2293684', via: 'ssrn' });
   assert.deepEqual(R.matchUpload('1803.07152v1_exploring-the-predictability.pdf'), { id: 'arxiv:1803.07152', arxiv: '1803.07152', via: 'arxiv' });
   for (const n of ['SSRN-id2293684.pdf', 'ssrn-2293684.pdf', 'SSRN_id2293684 (1).pdf']) assert.equal(R.matchUpload(n).id, 'doi:10.2139/ssrn.2293684', n);   // SSRN's own download names
+  { // a bulk upload skips what is already held in full text, never one read only from its abstract (owner, 2026-11-07)
+    const q = [{ id: 'doi:10.2139/ssrn.1', upload: { name: 'SSRN-id1.pdf', sha: 'aa' } }, { id: 'doi:10.2139/ssrn.2' }];
+    const lib = [{ id: 'arxiv:1803.07152', readFrom: 'arxiv-html' }, { id: 'doi:10.2139/ssrn.3', readFrom: 'abstract' }, { id: 'doi:10.2139/ssrn.4', readFrom: 'pdf' }];
+    assert.match(R.alreadyHeld({ id: 'doi:10.2139/ssrn.1' }, q, lib), /already uploaded as SSRN-id1\.pdf/);
+    assert.match(R.alreadyHeld({ id: 'upload:x', sha: 'aa' }, q, lib), /same file was uploaded before/);
+    assert.match(R.alreadyHeld({ id: 'arxiv:1803.07152' }, q, lib), /read from arxiv-html/);
+    assert.match(R.alreadyHeld({ id: 'doi:10.2139/ssrn.4' }, q, lib), /read from pdf/);
+    assert.equal(R.alreadyHeld({ id: 'doi:10.2139/ssrn.3' }, q, lib), null, 'abstract only: the upload brings the full text');
+    assert.equal(R.alreadyHeld({ id: 'doi:10.2139/ssrn.2' }, q, lib), null, 'queued but never uploaded');
+  }
   const u = R.matchUpload('Menkhoff carry.pdf'); assert.equal(u.via, 'upload'); assert.match(u.id, /^upload:/);
   assert.equal(R.matchUpload('menkhoff carry.PDF').id, u.id);
   assert.equal(R.uploadKey('doi:10.2139/ssrn.2293684'), 'research/papers/doi_10.2139_ssrn.2293684.pdf');
