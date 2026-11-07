@@ -123,4 +123,13 @@ From LINE-REACTION on the same rows: log-loss ratio interval ±0.001 and top-qui
 
 ## Amendments
 
+### A1 — 2026-11-07 — PRE-RESULTS
+Choices made writing the code; no reaction outcome or feature table had been computed.
+- `err_today` divides by the Step 0 plain point-in-time `pit_hl_p50`, because the chosen lines file holds no HL rung.
+- `rv_so_far` uses `live_sig_used` as σ, because the chosen σ only exists from 2020-08 and its trailing medians need earlier sessions.
+- `jump_today` and `rv_so_far` read the last slot complete before the touch minute.
+- The shuffle rolls the new features by a random 60–500 rows within instrument × rung × side, not exact sessions. Same purpose, keeps coverage.
+- Offsets ±0.1 are not studied: neighbours are |offset| ≥ 0.2, as LINE-REACTION.
+- Spread fallback: instruments absent from `spread_profile` and unknown to `pylego.costs` are charged 2 pips.
+
 ## RESULTS
