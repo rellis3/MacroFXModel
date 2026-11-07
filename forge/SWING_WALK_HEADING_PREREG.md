@@ -92,7 +92,22 @@ minimum effect makes that cell UNDERPOWERED by design.
 
 ## Amendments
 
-(none yet)
+### A1 — 2026-11-07 — PRE-RESULTS
+**Power table from the count stage** (`score.py count`, whole-expiry flips; no real dot side used). Session closes match
+`daily_m15` on all 8 instruments (median difference 0.0σ); no step lacked a session on its expiry. 78,806 scored steps
+after the |g| ≥ 0.1 filter, which removes gamma centre 5,168, gamma best strike 2,491, strongest strike 694, max pain
+1,413 and OI centre 972 of about 17,909 each.
+
+| Anchor | H1 steps | H1 MDE (bar 5pp) | H1 power | H2 MDE (bar 0.05σ) | H2 power |
+|---|---|---|---|---|---|
+| gamma centre | 12,741 | 5.8pp | UNDERPOWERED | 0.028 | POWERED |
+| gamma best strike | 15,418 | 5.3pp | UNDERPOWERED | 0.027 | POWERED |
+| strongest strike | 17,215 | 4.4pp | POWERED | 0.027 | POWERED |
+| max pain | 16,495 | 6.7pp | UNDERPOWERED | 0.024 | POWERED |
+| OI centre | 16,937 | 4.9pp | POWERED | 0.034 | POWERED |
+
+Applying §5: an H1 cell marked UNDERPOWERED here cannot bank as NULL even if its interval falls short of 5pp. The script
+enforces this. No real dot x outcome had been computed.
 
 ---
 

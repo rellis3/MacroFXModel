@@ -1,0 +1,86 @@
+{
+ "at": "2026-11-07T20:16:30+00:00",
+ "seed": 20261107,
+ "power": {
+  "gammaCentre/touch": {
+   "rows": 12741,
+   "months": 71,
+   "control_se": 0.01598377991719361,
+   "mde": 0.05831929851376805,
+   "min_effect": 0.05,
+   "power": "UNDERPOWERED"
+  },
+  "gammaCentre/next": {
+   "rows": 12741,
+   "months": 72,
+   "control_se": 0.007617402130111654,
+   "mde": 0.027793272369042533,
+   "min_effect": 0.05,
+   "power": "POWERED"
+  },
+  "gamma/touch": {
+   "rows": 15418,
+   "months": 71,
+   "control_se": 0.014519959771844606,
+   "mde": 0.05297832382133968,
+   "min_effect": 0.05,
+   "power": "UNDERPOWERED"
+  },
+  "gamma/next": {
+   "rows": 15418,
+   "months": 72,
+   "control_se": 0.007461145388976876,
+   "mde": 0.02722314542921742,
+   "min_effect": 0.05,
+   "power": "POWERED"
+  },
+  "strike/touch": {
+   "rows": 17215,
+   "months": 71,
+   "control_se": 0.012143336765245595,
+   "mde": 0.044306846405197164,
+   "min_effect": 0.05,
+   "power": "POWERED"
+  },
+  "strike/next": {
+   "rows": 17215,
+   "months": 72,
+   "control_se": 0.007529812753359973,
+   "mde": 0.02747368895161063,
+   "min_effect": 0.05,
+   "power": "POWERED"
+  },
+  "maxPain/touch": {
+   "rows": 16495,
+   "months": 71,
+   "control_se": 0.018324262237733095,
+   "mde": 0.06685891103501604,
+   "min_effect": 0.05,
+   "power": "UNDERPOWERED"
+  },
+  "maxPain/next": {
+   "rows": 16495,
+   "months": 72,
+   "control_se": 0.006574785030607719,
+   "mde": 0.023989122275852006,
+   "min_effect": 0.05,
+   "power": "POWERED"
+  },
+  "centre/touch": {
+   "rows": 16937,
+   "months": 71,
+   "control_se": 0.01345438487955043,
+   "mde": 0.049090408662696074,
+   "min_effect": 0.05,
+   "power": "POWERED"
+  },
+  "centre/next": {
+   "rows": 16937,
+   "months": 72,
+   "control_se": 0.009188538689775186,
+   "mde": 0.03352580763314168,
+   "min_effect": 0.05,
+   "power": "POWERED"
+  }
+ }
+}
