@@ -92,4 +92,4 @@ Rough plan, checked by count-first. About 250,000 bars. About 1.3% meet an event
 
 ## Amendments
 
-*(none yet)*
+**A1 (2026-11-07, PRE-RESULTS; count-first output only: counts and pooled SDs, with no split by event or control).** Event A: 1,268 events and 18,308 controls (6E 694 / 9,477, 6J 574 / 8,831). Event B: 2,081 events and 14,992 controls (6E 1,219 / 7,472, 6J 862 / 7,520). Measured SD: O15 1.40, O60 1.39, R 1.42. Recomputed MDE: A15 0.141, A60 0.140, AR 0.138, B15 0.114, B60 0.113, BR 0.108, against bars of 0.15. All six are POWERED, A only just. NQ came to 51 purchased sessions, 49 usable after 2 thin ones, so about 29 after the 20-session history: descriptive only, as registered. The bought NQ window is 2026-06-12 to 2026-08-21. Scoring goes ahead as written.
