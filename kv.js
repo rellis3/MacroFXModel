@@ -37,7 +37,7 @@ const KV_FILE   = path.join(DATA_DIR, 'kv.json');
 //    oi_store                             — user-pasted CME OI data (cannot auto-rebuild)
 //    oi_history                           — 60-day OI summary archive (only re-accumulable by waiting)
 //    range_line_oi                        — dated OI levels for the forward test (cannot be back-filled)
-//    hedge_signal_tg                      — hedge-signal Telegram credentials (user-entered)
+//    hedge_signal_tg                      — hedge-signal Telegram credentials (user-entered; sender retired 2026-11-06, key kept so stored values are not lost)
 //    cot_data, cot_urls, cot_url          — CFTC COT data + user-set report URLs
 //    caps                                 — user-configured proximity caps
 //
@@ -90,6 +90,7 @@ const _CF_EXACT = new Set([
   'research_pod_cards',
   'research_pod_threads',
   'research_cases',         // research cases (js/researchCase.js): one per question to the pod, its rounds and the Head of Research's reviews; the owner's messages cannot be rebuilt. Also in _worker.js (both lists).
+  'research_images',        // pictures attached to research questions (js/researchImages.js): each one's vision reading (the bytes are in R2 research/images/); re-reading costs a model call. Also in _worker.js (both lists).
   // the literature desk (plan §9ah): dossiers on the owner's hypotheses and the paper library (notes per paper read).
   'research_pod_dossiers',
   'research_pod_papers',
@@ -391,6 +392,7 @@ const _CF_EXACT = new Set([
   'morning_brief_v1',       // Daily Brief top-down macro read (AI, ~1 gen/day) — must survive redeploys or the front page goes blank until regenerated
   'hedge_audit_log',        // forward-test log for advisory hedge suggestions — must survive redeploys
   'hedge_alerts_cache',     // summary of corr_history.json pushed by /api/hedge-alerts — survives redeploys
+  'corr_terminal_v1',       // Desk Terminal Correlations & hedges panel (~150 KB of daily closes), written by the 6-hourly corr build; the 12 MB file dies with each deploy, this does not
   'vol_hit_rates',          // historical price-level hit rates — expensive to recompute (~10 min full, ~1 min incremental)
   'event_vol_impact',       // Finnhub event expansion ratios — must survive redeploys
   'session_stats',          // intraday hourly vol profile — 5y H1 pull, ~5 min to recompute

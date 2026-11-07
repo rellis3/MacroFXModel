@@ -1,7 +1,8 @@
 // Tests for js/researchCase.js.   node js/researchCase.test.mjs
 import assert from 'node:assert/strict';
-import { LABEL, NEXT_STEPS, caseTitle, newCase, answerOf, appendRound, appendReview, latestReview, proposalIds, lensIds, summary, putCase, setStatus, tagLibrary, uniqueIds,
-  validateRoundAnswer, applyRevisions, pickRelevant, clip, fitSections, caseText, roundSections, headSections, validateHeadReview, planProposal, migrate, migrateLibrary, readStore, emptyStore, MAX_CASES, ROUND_RULES } from './researchCase.js';
+import { citedPapers, citedPapersText, LABEL, NEXT_STEPS, caseTitle, newCase, answerOf, appendRound, appendReview, latestReview, proposalIds, lensIds, summary, putCase, setStatus, tagLibrary, uniqueIds,
+  validateRoundAnswer, applyRevisions, pickRelevant, clip, fitSections, caseText, roundSections, headSections, validateHeadReview, planProposal, migrate, migrateLibrary, readStore, emptyStore, MAX_CASES, ROUND_RULES,
+  dossierCaseId, caseForDossier, dossierContext, caseFromDossier, dossierText, jobMarker, staleJobs, resumedMarker, finishJob, failJob, LOST_TWICE, RESUME_MAX_ATTEMPTS, RESUME_MAX_AGE_MS } from './researchCase.js';
 import { validateProposals, mergeLibrary } from './researchPod.js';
 import { suggestSpec } from './quickTest.js';
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
@@ -159,4 +160,86 @@ t('fitSections: the longest section is cut first, the short ones never', () => {
   const tight = fitSections([['a', 'x'.repeat(5000)], ['b', 'y'.repeat(5000)]], 100); assert.ok(tight.every(([, v]) => v.length >= 2000), 'never below the floor');
 });
 
+// ── a case from a literature dossier ──
+const dossierRec = (extra = {}) => ({ id: 'idea-2026-11-04-abc', kind: 'idea', at: '2026-11-04T09:00:00Z', hypothesis: 'gold vol exhaustion <b>marks</b> a turn',
+  paperNotes: { 'arxiv:1': { title: 'Vol spikes and reversals', year: 2019 }, 'doi:2': { title: 'Gold options', year: 2021 } },
+  dossier: { hypothesis: 'After a gold implied-vol spike exhausts, gold mean-reverts over 5-20 days', summary: 'Mixed.', verdict: 'already-tested', verdictWhy: 'REG-GOLD-VOL covered it: NULL.',
+    evidenceFor: [{ point: 'Vol spikes precede reversals in equities', papers: ['arxiv:1'] }], evidenceAgainst: [{ point: 'Not in gold', papers: ['doi:2'] }],
+    unknowns: ['whether GVZ leads'], testHere: { design: 'GVZ z > 2 then gold 5/10/20d returns vs unconditional', data: ['cboe:GVZ', 'oanda:XAUUSD'], alreadyHere: ['REG-GOLD-VOL'] },
+    proposals: validateProposals({ proposals: [prop('Gold vol fade', { citations: ['arxiv:1'] })] }, 'flow').value.proposals, questionsForOwner: ['which horizon?'] }, ...extra });
+t('a dossier becomes a case: the hypothesis is the question, the dossier its context, no round, one case per dossier', () => {
+  const rec = dossierRec(), c = caseFromDossier(rec, { date: '2026-11-05', at: '2026-11-05T10:00:00Z' });
+  assert.equal(c.id, dossierCaseId(rec.id)); assert.equal(c.id, 'case-dossier-idea-2026-11-04-abc');
+  assert.equal(c.question, rec.dossier.hypothesis); assert.equal(c.dossierId, rec.id); assert.equal(c.origin, 'dossier'); assert.deepEqual(c.rounds, []);
+  assert.equal(c.dossier.verdict, 'already-tested'); assert.equal(c.dossier.asked, rec.hypothesis); assert.equal(c.dossier.papers['arxiv:1'], 'Vol spikes and reversals (2019)');
+  assert.deepEqual(proposalIds(c), ['flow-gold-vol-fade']); assert.deepEqual(lensIds(c, 'flow'), ['flow-gold-vol-fade']); assert.deepEqual(lensIds(c, 'quant'), []);
+  const s = summary(c); assert.equal(s.dossierId, rec.id); assert.equal(s.verdict, 'already-tested'); assert.equal(s.proposals, 1); assert.equal(s.rounds, 0);
+  const store = putCase(emptyStore(), c); assert.equal(caseForDossier(store, rec.id).id, c.id); assert.equal(caseForDossier(store, 'other'), null);
+  assert.equal(putCase(store, caseFromDossier(rec)).cases.length, 1, 'the same id: still one case');
+  assert.throws(() => dossierContext({ id: 'x', dossier: null }), /no dossier/);
+  assert.equal(dossierCaseId('a b/c'), 'case-dossier-a-b-c');
+});
+t('a paper review dossier: the question names the paper', () => {
+  const rec = dossierRec({ id: 'paper-2026-11-04-x', kind: 'paper', ref: 'arxiv 1', hypothesis: 'the claim' });
+  const c = caseFromDossier(rec, { date: '2026-11-05' });
+  assert.equal(c.dossier.kind, 'paper'); assert.equal(c.dossier.paper.title, 'Vol spikes and reversals'); assert.match(c.question, /^Vol spikes and reversals: After a gold/);
+  assert.match(dossierText(c.dossier), /a paper review/); assert.match(dossierText(c.dossier), /the owner gave: arxiv 1/);
+});
+t('every prompt in a dossier case reads the dossier block', () => {
+  const rec = dossierRec(), c = caseFromDossier(rec, { date: '2026-11-05' }), lib = rec.dossier.proposals.map(p => ({ ...p, caseId: c.id }));
+  const txt = dossierText(c.dossier);
+  for (const re of [/Hypothesis: After a gold/, /Verdict: already-tested\. Why: REG-GOLD-VOL covered it/, /Vol spikes precede reversals in equities \[papers: arxiv:1 "Vol spikes and reversals \(2019\)"\]/,
+    /Evidence against:\n- Not in gold \[papers: doi:2/, /whether GVZ leads/, /How to test it here: GVZ z > 2/, /Data: cboe:GVZ, oanda:XAUUSD/, /flow-gold-vol-fade \(Flow researcher\): Gold vol fade/, /The owner asked: gold vol exhaustion/])
+    assert.match(txt, re);
+  const rs = roundSections(c, 'flow', { lib, ownerMessage: 'It says already tested: what would be new?' });
+  assert.equal(rs[1][0].startsWith('The literature dossier'), true); assert.equal(rs[1][1], txt);
+  assert.match(Object.fromEntries(rs)['Your proposals in this case (current versions; revise them by id)'], /"id":"flow-gold-vol-fade"/);
+  assert.equal(rs.at(-1)[0], "The owner's message that starts round 1 (answer it)");
+  const hs = headSections(c, { lib }); assert.equal(hs[1][1], txt); assert.match(hs[2][1], /Before round 1: the literature dossier idea-2026-11-04-abc[\s\S]*"id":"flow-gold-vol-fade"/);
+  assert.match(caseText(c, lib), /Proposals: flow-gold-vol-fade/);
+  // an ordinary case has no dossier section
+  assert.equal(roundSections(newCase({ id: 'k', question: 'q', date: 'd' }), 'quant').some(([k]) => /dossier/.test(k)), false);
+});
+
+t('jobs that survive a restart: the marker, which markers are stale, attempt counting, finishing and giving up', () => {
+  const at = '2026-11-06T09:00:00.000Z', now = Date.parse(at);
+  const m = jobMarker({ kind: 'round', owner: 'Test it on 2026 only', images: [{ id: 'img-2026-11-06-a', text: 'long reading' }, 'img-2026-11-06-b'], at });
+  assert.deepEqual(m, { kind: 'round', startedAt: at, firstStartedAt: at, attempts: 1, owner: 'Test it on 2026 only', images: ['img-2026-11-06-a', 'img-2026-11-06-b'] }, 'small: picture ids only, no readings');
+  assert.throws(() => jobMarker({ kind: 'lit' }));
+  const base = newCase({ id: 'case-a', question: 'q', date: '2026-11-06', at });
+  const store = { cases: [{ ...base, inProgress: m }, { ...base, id: 'case-b' }, { ...base, id: 'case-c', inProgress: jobMarker({ kind: 'review', at: '2026-11-06T02:00:00.000Z' }) }, { ...base, id: 'case-d', inProgress: resumedMarker(jobMarker({ kind: 'pod', brief: 'q', at }), '2026-11-06T09:30:00.000Z') }] };
+  const st = staleJobs(store, { nowMs: now + 30 * 60_000 });
+  assert.deepEqual(st.map(x => [x.id, x.action, x.attempts]), [['case-c', 'expire', 1], ['case-a', 'resume', 2], ['case-d', 'give-up', 2]], 'older than six hours expires; a second loss gives up; a first loss resumes as attempt 2; no marker, no entry');
+  assert.equal(staleJobs(store, { nowMs: now, running: { 'case-a': { status: 'running' } } }).some(x => x.id === 'case-a'), false, 'a job running here is left alone (the per-case lock)');
+  assert.equal(staleJobs(store, { nowMs: now, running: { 'case-a': { status: 'done' } } }).some(x => x.id === 'case-a'), true);
+  // the six hours run from the first start, not the restart
+  const old = resumedMarker(jobMarker({ kind: 'round', owner: 'x', at: '2026-11-06T01:00:00.000Z' }), at);
+  assert.equal(old.attempts, 2); assert.equal(old.resumedAfterRestart, true); assert.equal(old.firstStartedAt, '2026-11-06T01:00:00.000Z'); assert.equal(old.startedAt, at);
+  assert.equal(staleJobs({ cases: [{ ...base, inProgress: { ...old, attempts: 1 } }] }, { nowMs: Date.parse('2026-11-06T07:30:00.000Z') })[0].action, 'expire');
+  // finishing: the marker comes off; a resumed job tags what it wrote
+  const plain = finishJob(appendRound({ ...base, inProgress: m }, { owner: 'Test it on 2026 only', answers: {} }));
+  assert.equal(plain.inProgress, undefined); assert.equal(plain.rounds.at(-1).resumedAfterRestart, undefined);
+  const res = finishJob(appendRound({ ...base, inProgress: resumedMarker(m) }, { owner: 'Test it on 2026 only', answers: {} }));
+  assert.equal(res.inProgress, undefined); assert.equal(res.rounds.at(-1).resumedAfterRestart, true); assert.equal(res.rounds.at(-1).attempts, 2);
+  assert.equal(summary(res).resumedAfterRestart, true); assert.equal(summary(plain).resumedAfterRestart, false);
+  const rv = finishJob(appendReview({ ...res, inProgress: resumedMarker(jobMarker({ kind: 'review', at })) }, { verdict: 'x' }));
+  assert.equal(rv.reviews.at(-1).resumedAfterRestart, true); assert.equal(rv.rounds.at(-1).attempts, 2);
+  assert.equal(finishJob(base), base, 'no marker, unchanged');
+  // giving up: the marker comes off and the page shows why
+  const gu = failJob({ ...base, inProgress: resumedMarker(m) }, LOST_TWICE, { at, lostToRestart: true });
+  assert.equal(gu.inProgress, undefined); assert.deepEqual(gu.lastError, { at, error: 'lost to a restart twice; press resend', lostToRestart: true, kind: 'round', attempts: 2 });
+  assert.equal(summary(gu).lostToRestart, true);
+  assert.equal(failJob({ ...base, inProgress: m }, 'round: boom', { at }).lastError.lostToRestart, undefined);
+  assert.equal(RESUME_MAX_ATTEMPTS, 2); assert.equal(RESUME_MAX_AGE_MS, 6 * 3600_000);
+  assert.equal(summary(base, { status: 'running', kind: 'round', resumedAfterRestart: true, attempts: 2 }).job.resumedAfterRestart, true);
+});
+t('the Head sees the library papers the case cites (2026-11-06: three real papers were called "not in the reading list")', () => {
+  const papers = [{ id: 'arxiv:2611.04223', arxiv: '2611.04223', title: 'Stress-state undercoverage', notes: { claim: 'intervals undercover in stress', stance: 'for' } },
+    { id: 'doi:10.1002/fut.22208', doi: '10.1002/fut.22208', title: 'Who leads in gold price discovery' }, { id: 'arxiv:9999.00001', arxiv: '9999.00001', title: 'not cited' }];
+  const got = citedPapers('quant cites arxiv:2611.04223 and macro doi:10.1002/fut.22208', papers).map(p => p.id);
+  assert.deepEqual(got, ['arxiv:2611.04223', 'doi:10.1002/fut.22208']);
+  const txt = citedPapersText(citedPapers('arxiv:2611.04223 10.1002/fut.22208', papers));
+  assert.match(txt, /intervals undercover in stress/); assert.match(txt, /not read yet/);
+  assert.match(citedPapersText([]), /none of the ids/);
+});
 console.log(`researchCase: ${n} tests passed`);

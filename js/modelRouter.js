@@ -12,7 +12,8 @@
  * WHAT IS AND IS NOT HARD ABOUT MULTI-PROVIDER. The wire format is the easy part, and
  * it is nearly all of what people expect to be difficult. DeepSeek and Moonshot (Kimi)
  * both speak the OpenAI chat-completions shape, so there are TWO adapters here, not one
- * per vendor. No call in this codebase uses tools, vision or streaming, so the whole
+ * per vendor. No call in this codebase uses tools or streaming, and only the research pod sends pictures
+ * (anthropic only: see `vision` below), so nearly the whole
  * surface is text in, text out.
  *
  * The hard part is obedience. These prompts carry the desk's evidence ledger — 155
@@ -46,6 +47,8 @@ export const PROVIDERS = {
     wire: 'anthropic',
     // Explicit cache breakpoints, billed at a large discount on a hit.
     explicitCache: true,
+    // Reads pictures: base64 image blocks in the user message (research-vision, and the Head of Research's check).
+    vision: true,
   },
   deepseek: {
     label: 'DeepSeek',
@@ -55,6 +58,8 @@ export const PROVIDERS = {
     wire: 'openai',
     // DeepSeek caches context automatically; there is no breakpoint to send.
     explicitCache: false,
+    // Cannot read images: never send it one (buildRequest refuses).
+    vision: false,
   },
   moonshot: {
     label: 'Moonshot (Kimi)',
@@ -63,8 +68,12 @@ export const PROVIDERS = {
     modelsUrl: 'https://api.moonshot.ai/v1/models',
     wire: 'openai',
     explicitCache: false,
+    vision: false,
   },
 };
+
+/** True when this provider can take image blocks with a prompt. */
+export const supportsImages = provider => !!PROVIDERS[provider]?.vision;
 
 /**
  * Default model per provider, and the output ceiling to clamp to.
@@ -119,7 +128,11 @@ export const TASK_CLASS = {
   // 64k context and 8,192-token output); the Head of Research, who peer-reviews their work against the whole book,
   // runs on Anthropic and only when the owner presses the button. Both sit under a per-task choice like desk-news.
   'research-pod':  { ledger: 'brief', label: 'Research pod: the three researchers', defaultProvider: 'deepseek' },
-  'research-head': { ledger: 'full',  label: 'Research pod: Head of Research review', defaultProvider: 'anthropic', effort: { anthropic: 'high' } },
+  'research-head': { ledger: 'full',  label: 'Research pod: Head of Research review', defaultProvider: 'anthropic', models: { anthropic: 'claude-sonnet-5' }, effort: { anthropic: 'high' } },
+  // pictures the owner attaches to a research question (owner 2026-11-06): each is read ONCE by a vision model into a
+  // written description that the researchers (DeepSeek, which cannot see images) and the Head then read as text.
+  // `vision: true`: routing it to a provider that cannot read images falls back to anthropic (resolveTask).
+  'research-vision': { ledger: null, label: 'Research pod: read an attached picture', defaultProvider: 'anthropic', models: { anthropic: 'claude-sonnet-5' }, effort: { anthropic: 'low' }, vision: true },
   // summarising supplied text — the cheap jobs
   'headlines':    { ledger: null,    label: 'Headline summary',  cheapSafe: true },
   'doc-summary':  { ledger: null,    label: 'Document summary',  cheapSafe: true },
@@ -148,9 +161,13 @@ export const estimateTokens = s => Math.ceil(String(s ?? '').length / 4);
 export function resolveTask(task, cfg = {}) {
   const haveKey = p => !!(cfg.keys ?? {})[p];
   const wanted = (cfg.tasks ?? {})[task] ?? TASK_CLASS[task]?.defaultProvider ?? cfg.provider ?? 'anthropic';
-  const provider = (PROVIDERS[wanted] && haveKey(wanted)) ? wanted
+  let provider = (PROVIDERS[wanted] && haveKey(wanted)) ? wanted
     : (PROVIDERS[cfg.provider] && haveKey(cfg.provider)) ? cfg.provider
     : 'anthropic';
+  // a task that sends pictures never lands on a provider that cannot read them (DeepSeek, Kimi): anthropic, whose
+  // missing key is then a clear error at call time rather than an image sent where it cannot be read
+  const visionFix = !!TASK_CLASS[task]?.vision && !PROVIDERS[provider]?.vision;
+  if (visionFix) provider = 'anthropic';
   const fellBack = provider !== wanted;
   const d = DEFAULT_MODELS[provider] ?? DEFAULT_MODELS.anthropic;
   const o = (cfg.models ?? {})[provider] ?? {};
@@ -166,7 +183,7 @@ export function resolveTask(task, cfg = {}) {
     maxOutput: o.maxOutput ?? d.maxOutput,
     context: o.context ?? d.context,
     fellBack,
-    why: fellBack ? `${wanted} has no key configured; used ${provider}` : null,
+    why: !fellBack ? null : visionFix ? `${wanted} cannot read images; used ${provider}` : `${wanted} has no key configured; used ${provider}`,
   };
 }
 
@@ -183,10 +200,15 @@ export function resolveTask(task, cfg = {}) {
  */
 export function buildRequest({
   provider = 'anthropic', model, system = '', standing = '', prompt = '',
-  maxTokens = 4000, maxOutput = null, cache = true, temperature = null, effort = null,
+  maxTokens = 4000, maxOutput = null, cache = true, temperature = null, effort = null, images = [],
 } = {}) {
   const P = PROVIDERS[provider];
   if (!P) throw new Error(`unknown provider: ${provider}`);
+  // `images`: [{ mediaType, data (base64) }]. Only a vision provider takes them; anything else is refused here, so an
+  // image can never be sent to DeepSeek by a routing mistake further up.
+  const imgs = Array.isArray(images) ? images : [];
+  if (imgs.length && !P.vision) throw new Error(`${P.label} cannot read images`);
+  for (const im of imgs) if (!/^image\/(png|jpeg|webp|gif)$/.test(im?.mediaType ?? '') || typeof im?.data !== 'string' || !im.data) throw new Error('an image needs a mediaType (image/png, jpeg, webp or gif) and base64 data');
   const cap = maxOutput ?? DEFAULT_MODELS[provider]?.maxOutput ?? maxTokens;
   const max_tokens = Math.min(maxTokens, cap);
   const clamped = max_tokens < maxTokens;
@@ -209,7 +231,10 @@ export function buildRequest({
         model, max_tokens, system: sys,
         ...(temperature == null ? {} : { temperature }),
         ...(effort ? { output_config: { effort } } : {}),
-        messages: [{ role: 'user', content: prompt }],
+        // with pictures the content is an array: the image blocks first, then the prompt (Anthropic's advice: images before the text)
+        messages: [{ role: 'user', content: imgs.length
+          ? [...imgs.map(im => ({ type: 'image', source: { type: 'base64', media_type: im.mediaType, data: im.data } })), { type: 'text', text: prompt }]
+          : prompt }],
       },
     };
   }

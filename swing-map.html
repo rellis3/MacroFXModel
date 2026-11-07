@@ -40,11 +40,14 @@
   .big { font-size:15px; } .good { color:var(--up); } .bad { color:var(--down); } .warn { color:var(--amber); }
   .err { color:var(--down); }
   table.ladder td, table.ladder th { padding:4px 8px; font-size:12.5px; } #walkTable { margin-top:8px; }
+  table.ladder.ph td, table.ladder.ph th { padding:4px 5px; font-size:12px; } table.ladder.ph tr:not(.wnote) td { border-bottom:none; }
+  tr.wnote td { white-space:normal; text-align:left; font-size:11px; color:var(--text3); padding:0 5px 6px 22px; }
   details.howto { margin-top:8px; color:var(--text2); font-size:12.5px; } details.howto summary { cursor:pointer; color:var(--blue); } details.howto li { margin:4px 0; }
   tr.thin td { opacity:0.45; }
   .seg { display:inline-flex; } .seg button { border-radius:0; } .seg button:first-child { border-radius:5px 0 0 5px; } .seg button:last-child { border-radius:0 5px 5px 0; border-left:0; }
   .seg button.on { background:#30363d; color:#fff; }
-  .mcopt { color:var(--text3); font-size:12px; display:none; gap:6px; align-items:center; } .mcopt.show { display:inline-flex; }
+  .mcopt { color:var(--text3); font-size:12px; display:none; gap:6px 10px; align-items:center; flex-wrap:wrap; } .mcopt.show { display:inline-flex; } .mcopt label { white-space:nowrap; }
+  @media (max-width:700px) { .mcopt.show { display:flex; width:100%; } }
   .paths { display:grid; grid-template-columns:1fr 1fr; gap:14px; } @media (max-width:900px) { .paths { grid-template-columns:1fr; } }
   .pcard { border:1px solid var(--border); border-radius:8px; padding:12px 14px; background:var(--card2); }
   .pcard h3 { margin:0 0 6px; font-size:15px; } .pcard.A h3 { color:var(--pa); } .pcard.B h3 { color:var(--pb); }
@@ -64,7 +67,12 @@
       <span class="mcopt" id="walkOpts">follow <select id="walkA" aria-label="What each expiry's step goes to"><option value="gammaCentre" selected>gamma centre</option><option value="gamma">gamma: best strike</option><option value="strike">strongest strike</option><option value="maxPain">max pain</option><option value="centre">OI centre</option></select>
         <label title="Weekly and daily books are small next to the quarterlies; on = show their steps, faint"><input type="checkbox" id="walkThin" checked> small books</label>
         <label title="Off (default) = the zone walk alone; on = also the strongest zones, level lines, option lines and expected moves"><input type="checkbox" id="walkOther"> other lines</label>
-        <label title="Only step to a strike price could plausibly reach by that expiry: inside the 90% range of a random walk at today's volatility, from the previous step and from today. Off = the raw biggest strike, however far."><input type="checkbox" id="walkReach"> within reach</label></span>
+        <label title="Only step to a strike price could plausibly reach by that expiry: inside the 90% range of a random walk at today's volatility, from the previous step and from today. Off = the raw biggest strike, however far."><input type="checkbox" id="walkReach"> within reach</label>
+        <select id="walkReachSrc" aria-label="Which volatility sets the reach" title="Realised = the desk's validated forecast sigma, one number for every expiry. Implied = each expiry's own implied vol from last night's CME capture (implied-vol ranges are VALIDATED here, iv-ladder), so a quiet week and a stormy month get different ranges."><option value="realised" selected>reach: realised vol</option><option value="implied">reach: implied vol</option></select>
+        <label title="A flat line from the start price: where price sits with no view at all. Any walk has to beat this to be worth reading (carry ignored: under 0.5% a month here)."><input type="checkbox" id="walkNoView"> no-view line</label>
+        <label title="Each expiry's zero-gamma price: dealers' hedging calms moves on one side and adds to them on the other. A boundary, not a target. Context: gamma has a VALIDATED link to range size on ES, none to direction."><input type="checkbox" id="walkGFlip"> gamma flips</label>
+        <label title="Each expiry's charm/vanna flip: the price where the daily time-decay and vol hedging flows change from buying to selling. Untested; context only."><input type="checkbox" id="walkCFlip"> charm/vanna flips</label>
+        <label title="Where each expiry's sensitivity to implied vol sits: its share of all vega and its peak-vega strike. Dealers hedge vega with options, not the underlying, so it is not a target; it says where flow comes from if implied vol moves (through vanna). Untested; context only."><input type="checkbox" id="walkVega"> vega</label></span>
       <span class="mcopt" id="mcOpts">horizon <select id="mcH" aria-label="Horizon in sessions"><option>10</option><option selected>20</option><option>40</option><option>60</option></select>
         pull <select id="mcK" aria-label="Pull strength"><option value="0" selected>off (a tested null)</option><option value="0.25">weak</option><option value="0.5">medium</option><option value="1">strong</option></select></span>
       <span class="seg" role="group" aria-label="Lines"><button id="sZones" data-s="zones">Strongest zones</button><button id="sLevels" data-s="levels">Level lines</button><button id="sOi" data-s="oi">Option lines</button></span>
@@ -123,6 +131,7 @@
 </div>
 <script type="module">
 import { simulatePaths, touchShare, driftSegments, zoneWalk } from './js/swingPaths.js';
+import { bsVega } from './js/greekLayers.js';
 const $ = id => document.getElementById(id);
 const fmt = (x, dp) => (x == null || !isFinite(x) ? '–' : Number(x).toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp }));
 const pct = (x, dp = 1) => (x == null || !isFinite(x) ? '–' : `${x > 0 ? '+' : ''}${x.toFixed(dp)}%`);
@@ -163,6 +172,9 @@ async function load(fresh) {
     const r = await fetch(`/api/swing-map?inst=${encodeURIComponent(inst)}${fresh ? '&fresh=1' : ''}`);
     const m = await r.json();
     if (!m.ok) throw new Error(m.error || `HTTP ${r.status}`);
+    // this page keeps its ~100-day window: the expiries past it (beyondCore, added for the Desk Terminal's longer path)
+    // are left out, so its walk, columns and Pine export read exactly as before
+    m.expiries = (m.expiries || []).filter(e => !e.beyondCore);
     if (!$('inst').options.length) { $('inst').innerHTML = m.instruments.map(i => `<option${i === m.inst ? ' selected' : ''}>${i}</option>`).join(''); }
     history.replaceState(null, '', `?inst=${m.inst}`);
     render(m);
@@ -181,22 +193,26 @@ function render(m) {
   LAST = m; drawChart(m); pathCards(m); zonesCard(m); pullCard(m); levelMap(m); legCard(m); ratesCard(m); expiryTable(m); legBars(m);
 }
 
+// A phone draws the chart at its own width (1 svg px = 1 screen px, so text stays readable) instead of shrinking a
+// 640px-wide drawing: less history, a narrow right margin, and step labels cut down to number and price.
+const isPhone = () => ($('chart').clientWidth || 980) < 700;
 function drawChart(m) {
-  const cw = Math.max(640, Math.round($('chart').clientWidth || 980));
-  const W = cw, H = Math.round(Math.min(720, Math.max(460, cw * 0.46))), L = 64, R = 170, T = 30, B = 46;
+  const PH = isPhone(), cw = PH ? Math.max(300, Math.round($('chart').clientWidth)) : Math.max(640, Math.round($('chart').clientWidth || 980));
+  const W = cw, H = PH ? Math.round(Math.min(640, Math.max(420, cw * 1.3))) : Math.round(Math.min(720, Math.max(460, cw * 0.46)));
+  const L = PH ? 42 : 64, R = PH ? 74 : 170, T = 30, B = 46;
   const s = m.state, today = s.date;
   const sim = MODE === 'mc' || MODE === 'modal', walkMode = MODE === 'walk';
   // zone walk is read best on its own: the other lines (zones, levels, option lines, expected moves) only when asked
   const quiet = walkMode && !$('walkOther')?.checked;
   const hr = $('histR').value;
-  const histStart = hr === 'ytd' ? `${today.slice(0, 4)}-01-01` : hr !== 'auto' ? addDays(today, -hr) : addDays(today, sim ? -90 : walkMode ? -100 : MODE === 'paths' ? -120 : -160);
+  const histStart = hr === 'ytd' ? `${today.slice(0, 4)}-01-01` : hr !== 'auto' ? addDays(today, -hr) : addDays(today, (PH ? 0.45 : 1) * (sim ? -90 : walkMode ? -100 : MODE === 'paths' ? -120 : -160));
   const histDays = (Date.parse(today) - Date.parse(histStart)) / 864e5;
   const series = m.series.filter(p => p[0] >= histStart);
   const futEnd = sim ? addDays(tradingDaysAhead(today, +$('mcH').value), 12) : addDays(today, 105);
   // time axis in two parts: history squeezed into the left ~30%, the future on a square-root scale so the next few
   // days get as much room as the following weeks (day 1 sits ~10% of the way along a 100-day future, not 1%)
   const t0 = Date.parse(series[0][0]), tT = Date.parse(today), t1 = Date.parse(futEnd);
-  const plotW = W - L - R, histW = plotW * (histDays > 200 ? 0.5 : histDays > 130 ? 0.4 : MODE === 'cone' ? 0.38 : 0.3);
+  const plotW = W - L - R, histW = plotW * (PH ? 0.24 : histDays > 200 ? 0.5 : histDays > 130 ? 0.4 : MODE === 'cone' ? 0.38 : 0.3);
   const X = d => { const t = Date.parse(d); return t <= tT ? L + (t - t0) / Math.max(1, tT - t0) * histW : L + histW + Math.sqrt((t - tT) / (t1 - tT)) * (plotW - histW); };
   const walk = walkMode ? zoneWalk(m.expiries.filter(e => e.expiry <= futEnd), walkOpts(m)) : null;
   const vals = series.map(p => p[1]);
@@ -230,8 +246,11 @@ function drawChart(m) {
   o.push(`<line x1="${X(today)}" x2="${X(today)}" y1="${T}" y2="${H - B}" stroke="var(--text3)" stroke-dasharray="3 3"/><text x="${X(today) + 4}" y="${T + 11}" fill="var(--text3)" font-size="11">last close ${fmtDay(today)}</text>`);
   // which book the option parts come from: CME publishes open interest once a day, after the settlement, so the morning
   // capture holds positions as of the previous session's close; anything traded since (Asia, today's 0DTE) is not in it
-  { const cap = (m.expiries || []).reduce((a, e) => (e.date > a ? e.date : a), ''), asOf = m.oiLines?.asOf;
-    if (cap) o.push(`<text x="${X(today) + 4}" y="${T + 24}" fill="var(--text3)" font-size="10">OI: ${asOf ? `settlement ${fmtDay(String(asOf).slice(0, 10))}, ` : ''}captured ${fmtDay(cap)}<title>Open interest is published once a day after the settlement; this book holds positions as of that close. Same-day (0DTE) positions opened and closed intraday never appear in open interest.</title></text>`); }
+  // (the session before the capture date; the option-lines feed's own asOf can lag the expiry captures, so it is not used)
+  { const cap = (m.expiries || []).reduce((a, e) => (e.date > a ? e.date : a), '');
+    let st = cap ? addDays(cap, -1) : '';
+    while (st && [0, 6].includes(new Date(st + 'T12:00:00Z').getUTCDay())) st = addDays(st, -1);
+    if (cap) o.push(`<text x="${X(today) + 4}" y="${T + 24}" fill="var(--text3)" font-size="10">OI: ${fmtDay(st)} settlement${PH ? '' : `, captured ${fmtDay(cap)}`}<title>Open interest is published once a day after the settlement; this book holds positions as of that close. Same-day (0DTE) positions opened and closed intraday never appear in open interest.</title></text>`); }
   // expiries: vertical line + zone bars (width = share of that expiry's OI), violet = building, grey = not
   let lastLabelX = -1e9, labelRow = 0;
   const allOI = m.zones?.allOI || m.expiries.reduce((a, e) => a + (e.totalOI || 0), 0);
@@ -258,6 +277,7 @@ function drawChart(m) {
   // dot labels are placed last as callouts: each tries a few distances above/below its dot and takes the first clear
   // spot, joined back to the dot by a thin leader line (no squeezing labels on top of each other)
   const dots = [], callouts = [], taken = [];
+  taken.push({ x0: X(today), x1: X(today) + (PH ? 150 : 230), y0: T, y1: T + 28 });   // 'last close' and the OI stamp
   // range fans from today: weekly and monthly, p50/p75/p90
   const fan = (b, color) => {
     const x2 = X(tradingDaysAhead(today, b.sessions));
@@ -298,8 +318,9 @@ function drawChart(m) {
     if (walk.capped) {
       const sg = walkSigma(m), pts = [];
       const A0 = walkAnchor(m);
-      for (let k = 0; k <= 24; k++) { const d = addDays(A0.date, Math.round((Date.parse(futEnd) - Date.parse(A0.date)) / 864e5 * k / 24)); const n = Math.max(1, sessionsBetween(A0.date, d)); pts.push([X(d), A0.px * Math.exp(walk.zcap * sg * Math.sqrt(n)), A0.px * Math.exp(-walk.zcap * sg * Math.sqrt(n))]); }
-      o.push(`<polygon points="${pts.map(q => `${q[0].toFixed(1)},${Y(Math.min(q[1], hi)).toFixed(1)}`).join(' ')} ${pts.slice().reverse().map(q => `${q[0].toFixed(1)},${Y(Math.max(q[2], lo)).toFixed(1)}`).join(' ')}" fill="#8b949e" opacity="0.07"><title>within reach: the 90% range of a random walk at ${(sg * 100).toFixed(2)}% a session</title></polygon>`);
+      const imp = reachImplied(m);
+      for (let k = 0; k <= 24; k++) { const d = addDays(A0.date, Math.round((Date.parse(futEnd) - Date.parse(A0.date)) / 864e5 * k / 24)); const n = Math.max(1, sessionsBetween(A0.date, d)); const sgD = imp ? (ivDaily(m, Math.round((Date.parse(d) - Date.parse(today)) / 864e5)) ?? sg) : sg; pts.push([X(d), A0.px * Math.exp(walk.zcap * sgD * Math.sqrt(n)), A0.px * Math.exp(-walk.zcap * sgD * Math.sqrt(n))]); }
+      o.push(`<polygon points="${pts.map(q => `${q[0].toFixed(1)},${Y(Math.min(q[1], hi)).toFixed(1)}`).join(' ')} ${pts.slice().reverse().map(q => `${q[0].toFixed(1)},${Y(Math.max(q[2], lo)).toFixed(1)}`).join(' ')}" fill="#8b949e" opacity="0.07"><title>within reach: the 90% range of a random walk at ${imp ? 'each date\'s implied vol (last night\'s CME term structure)' : `${(sg * 100).toFixed(2)}% a session (realised)`}</title></polygon>`);
     }
     // the last three nights' walks (saved each night on the server), faint and dashed behind tonight's, so each expiry's
     // target can be watched moving as it counts down
@@ -317,10 +338,10 @@ function drawChart(m) {
         const newest = i === past.length - 1;
         pts.slice(1).forEach((q, j) => {
           o.push(`<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="2" fill="#8b949e" fill-opacity="${op}"><title>${fmtDay(r.captureDate)} walk: ${px(steps[j][2])} by ${fmtDay(steps[j][0])}</title></circle>`);
-          if (newest) o.push(`<text x="${q[0].toFixed(1)}" y="${(q[1] + 12).toFixed(1)}" fill="#8b949e" fill-opacity="0.9" font-size="9" text-anchor="middle">${px(steps[j][2])}</text>`);
+          if (newest && !PH) o.push(`<text x="${q[0].toFixed(1)}" y="${(q[1] + 12).toFixed(1)}" fill="#8b949e" fill-opacity="0.9" font-size="9" text-anchor="middle">${px(steps[j][2])}</text>`);
         });
         const end = pts.at(-1);
-        if (end) o.push(`<text x="${(end[0] + 5).toFixed(1)}" y="${(end[1] - 4).toFixed(1)}" fill="#8b949e" fill-opacity="${Math.min(1, +op + 0.3).toFixed(2)}" font-size="9">saved ${fmtDay(r.captureDate)}</text>`);
+        if (end && (!PH || i === past.length - 1)) o.push(`<text x="${(end[0] + 5).toFixed(1)}" y="${(end[1] - 4).toFixed(1)}" fill="#8b949e" fill-opacity="${Math.min(1, +op + 0.3).toFixed(2)}" font-size="9">saved ${fmtDay(r.captureDate)}</text>`);
       });
       walk.pastN = past.length; walk.pastFrom = past[0]?.captureDate ?? null;
     }
@@ -331,6 +352,23 @@ function drawChart(m) {
       o.push(`<path d="M${x} ${y - 6} L${x + 6} ${y} L${x} ${y + 6} L${x - 6} ${y} Z" fill="none" stroke="${k.movePct >= 0 ? 'var(--up)' : 'var(--down)'}" stroke-width="1.3" stroke-dasharray="2 2"><title>${fmtDay(k.expiry)}: zone ${px(k.px)}, ${k.movePct >= 0 ? '+' : ''}${k.movePct.toFixed(1)}% away, beyond the ±${k.capPct.toFixed(1)}% the reach limit allows, so the walk skips it</title></path>`
         + `<text x="${x + 8}" y="${y + 3}" fill="var(--text3)" font-size="9">${px(k.px)} out of reach</text>`);
     }
+    // ── optional context per expiry: no-view line, gamma flips, charm/vanna flips, peak-vega strikes. None of these is a
+    // walk step; each is drawn at its expiry's date so it reads against the step there.
+    { const A1 = walkAnchor(m), inc = $('walkThin').checked, exs = (m.expiries || []).filter(e => e.expiry <= futEnd && e.expiry > A1.date && (inc || !e.thin));
+      if ($('walkNoView').checked) o.push(`<line x1="${X(A1.date)}" x2="${W - R}" y1="${Y(A1.px)}" y2="${Y(A1.px)}" stroke="var(--text2)" stroke-width="1.2" stroke-dasharray="8 5" opacity="0.7"><title>no view: price stays at ${px(A1.px)}. A walk is only worth reading if it beats this</title></line>`
+        + `<text x="${W - R - 4}" y="${Y(A1.px) - 4}" fill="var(--text2)" font-size="10" text-anchor="end">no view ${px(A1.px)}</text>`);
+      const tick = (x, v, color, shape, tip) => { if (!(v > lo && v < hi)) return; const y = Y(v);
+        o.push(shape === 'bar' ? `<line x1="${x - 9}" x2="${x + 9}" y1="${y}" y2="${y}" stroke="${color}" stroke-width="2.5" stroke-linecap="round"><title>${tip}</title></line>`
+          : shape === 'diamond' ? `<path d="M${x} ${y - 5} L${x + 5} ${y} L${x} ${y + 5} L${x - 5} ${y} Z" fill="${color}" opacity="0.85"><title>${tip}</title></path>`
+          : `<circle cx="${x}" cy="${y}" r="5" fill="none" stroke="${color}" stroke-width="1.6"><title>${tip}</title></circle>`);
+        taken.push({ x0: x - 9, x1: x + 9, y0: y - 5, y1: y + 5 }); };
+      const vg = $('walkVega').checked ? vegaByExpiry(m) : null;
+      for (const e of exs) {
+        const x = X(e.expiry);
+        if ($('walkGFlip').checked && e.gamma?.flipPx > 0) tick(x, e.gamma.flipPx, 'var(--amber)', 'bar', `${fmtDay(e.expiry)} gamma flip ${px(e.gamma.flipPx)}: dealers' hedging calms moves on one side of this price and adds to them on the other (book reads ${e.gamma.regime === 'PIN' ? 'long gamma, calming' : e.gamma.regime === 'BREAKOUT' ? 'short gamma, amplifying' : 'neutral'} at price). A boundary, not a target`);
+        if ($('walkCFlip').checked && e.greeks?.charmFlipPx > 0) tick(x, e.greeks.charmFlipPx, 'var(--blue)', 'diamond', `${fmtDay(e.expiry)} charm/vanna flip ${px(e.greeks.charmFlipPx)}: the price where the daily time-decay and vol hedging flows change sign. Untested`);
+        const v = vg?.get(e.expiry); if (v?.peakPx > 0) tick(x, v.peakPx, 'var(--violet)', 'ring', `${fmtDay(e.expiry)} peak vega ${px(v.peakPx)}; this expiry holds ${fmt((v.share ?? 0) * 100, 0)}% of all vega. If implied vol moves, the hedging flow (vanna) comes from here. Not a target`);
+      } }
     // the start: the live price when there is one (a dotted link from the last close shows the move since), else the close
     const A = walkAnchor(m);
     if (A.live) {
@@ -354,7 +392,7 @@ function drawChart(m) {
           + `<title>Charm, ${fmtDay(p.expiry)}: as one day passes, with price and IV still, dealers must ${up ? 'buy' : 'sell'} ${fmt(Math.abs(p.charm), 0)} contracts${p.charmNotional ? ` (${money(Math.abs(p.charmNotional))})` : ''}. Assumes dealers are long calls and short puts.</title></path>`);
         dots.push({ x: cx, y, r: sz });
       }
-      callouts.push({ x, y, r, text: `${stepN} · ${p.notBiggest ? '◇' : ''}${px(p.px)} · ${fmtDay(p.expiry)}`, color: c, prefer: p.dir === 'down' ? 1 : -1, op: p.thin ? 0.75 : 1 });
+      callouts.push({ x, y, r, text: PH ? `${stepN} · ${px(p.px)}` : `${stepN} · ${p.notBiggest ? '◇' : ''}${px(p.px)} · ${fmtDay(p.expiry)}`, color: c, prefer: p.dir === 'down' ? 1 : -1, op: p.thin ? 0.75 : 1 });
       // where the money really sits: a dotted pointer to the book's biggest strike when it holds 1.5x+ the pulled one's OI
       const b = p.biggest;
       // (gamma centre: when the biggest strike is more than a day's move from the centre the walk stepped to)
@@ -365,7 +403,7 @@ function drawChart(m) {
           + `<path d="M${x - 3.5},${y2 + (dn ? -5 : 5)} L${x},${y2} L${x + 3.5},${y2 + (dn ? -5 : 5)}" fill="none" stroke="var(--text3)" stroke-width="1"/>`
           + `<title>${fmtDay(p.expiry)}: this book's biggest strike is ${px(b.px)} (${fmt((b.strength ?? 0) * 100, 1)}% of all live OI), but at that distance dealers hedge it far less than ${px(p.px)}</title>`);
         dots.push({ x, y: y2, r: 3 });
-        callouts.push({ x, y: y2, r: 3, text: `${off ? (dn ? '↓ ' : '↑ ') : ''}biggest ${px(b.px)}`, color: '#8b949e', prefer: dn ? 1 : -1, op: 0.85 });
+        callouts.push({ x, y: y2, r: 3, text: `${off ? (dn ? '↓ ' : '↑ ') : ''}${PH ? '' : 'biggest '}${px(b.px)}`, color: '#8b949e', prefer: dn ? 1 : -1, op: 0.85 });
       }
       x0 = x; y0 = y;
     }
@@ -380,7 +418,7 @@ function drawChart(m) {
         const [x, y] = pts[i + 1];
         o.push(`<circle cx="${x}" cy="${y}" r="4.5" fill="${c}"><title>${esc(q.label)}: ${px(q.px)} by ${q.date}</title></circle>`);
         dots.push({ x, y, r: 4.5 });
-        callouts.push({ x, y, r: 4.5, text: `${px(q.px)} · ${fmtDay(q.date)}`, color: c, prefer: q.px >= s.close ? -1 : 1, op: 1 });
+        callouts.push({ x, y, r: 4.5, text: PH ? px(q.px) : `${px(q.px)} · ${fmtDay(q.date)}`, color: c, prefer: q.px >= s.close ? -1 : 1, op: 1 });
       });
     }
   }
@@ -441,7 +479,7 @@ function drawChart(m) {
   for (let k = 1; k < tags.length; k++) if (tags[k].y - tags[k - 1].y < 12) tags[k].y = tags[k - 1].y + 12;
   for (const t of tags) {
     if (Math.abs(t.y - t.y0) > 2) o.push(`<polyline fill="none" stroke="${t.color}" stroke-opacity="0.6" stroke-width="0.8" points="${W - R},${t.y0} ${W - R + 3},${t.y0} ${W - R + 8},${t.y}"/>`);
-    o.push(`<text x="${W - R + 10}" y="${t.y + 3.5}" fill="${t.color}" font-size="10.5">${esc(t.text)}</text>`);
+    o.push(`<text x="${W - R + 10}" y="${t.y + 3.5}" fill="${t.color}" font-size="${PH ? 9.5 : 10.5}">${esc(PH ? `${t.text.split(' ')[0].slice(0, 5)} ${t.text.split(' ').find(w => /^[\d,.]+$/.test(w) && /\d{2}/.test(w)) ?? ''}`.trim() : t.text)}<title>${esc(t.text)}</title></text>`);
   }
   placeCallouts();
 
@@ -451,7 +489,7 @@ function drawChart(m) {
   for (const pv of (m.pivots || []).filter(p => p.date >= histStart)) {
     const hiP = pv.type === 'high', c = hiP ? '#e6edf3' : 'var(--down)', yy = Y(pv.px);
     o.push(`<circle cx="${X(pv.date)}" cy="${yy}" r="${pv.major ? 3.8 : 2.6}" fill="${c}"><title>${pv.date} swing ${pv.type} ${px(pv.px)}${pv.major ? ' (6σ leg end)' : ''}</title></circle>`
-      + `<text x="${X(pv.date)}" y="${yy + (hiP ? -8 : 15)}" fill="${c}" font-size="${pv.major ? 11 : 9.5}" font-weight="${pv.major ? 700 : 500}" opacity="${pv.major ? 1 : 0.8}" text-anchor="middle">${px(pv.px)}</text>`);
+      + (PH && !pv.major ? '' : `<text x="${X(pv.date)}" y="${yy + (hiP ? -8 : 15)}" fill="${c}" font-size="${pv.major ? 11 : 9.5}" font-weight="${pv.major ? 700 : 500}" opacity="${pv.major ? 1 : 0.8}" text-anchor="middle">${px(pv.px)}</text>`));
   }
   o.push(`<circle cx="${X(today)}" cy="${Y(s.close)}" r="4" fill="var(--price)"/>`);
   o.push(callOut.join(''));
@@ -576,6 +614,7 @@ $('walkThin').addEventListener('change', () => trackCard());
 $('walkThin').addEventListener('change', () => { if (LAST) drawChart(LAST); });
 $('walkReach').addEventListener('change', () => { if (LAST) drawChart(LAST); });
 $('walkOther').addEventListener('change', () => { if (LAST) drawChart(LAST); });
+for (const id of ['walkReachSrc', 'walkNoView', 'walkGFlip', 'walkCFlip', 'walkVega']) $(id).addEventListener('change', () => { if (LAST) drawChart(LAST); });
 $('histR').addEventListener('change', () => { try { localStorage.setItem('swingMapHist', $('histR').value); } catch {} if (LAST) drawChart(LAST); });
 try { const h = localStorage.getItem('swingMapHist'); if (h && [...$('histR').options].some(o => o.value === h)) $('histR').value = h; } catch {}
 $('pineBtn').addEventListener('click', async () => {
@@ -687,10 +726,34 @@ function walkAnchor(m) {
   }
   return { px: s.close, date: s.date, live: false };
 }
+// Implied vol for an expiry: the nearest point on last night's CME term structure (annual %, by days to expiry), as a
+// per-session fraction. null when the capture carried no IV boxes.
+function ivDaily(m, dte) {
+  const pts = m.ivTerm?.points; if (!pts?.length || !Number.isFinite(dte)) return null;
+  const p = pts.reduce((b, q) => (!b || Math.abs(q[0] - dte) < Math.abs(b[0] - dte) ? q : b), null);
+  return p?.[1] > 0 ? p[1] / 100 / Math.sqrt(252) : null;
+}
+const reachImplied = m => $('walkReachSrc')?.value === 'implied' && !!m.ivTerm?.points?.length;
 function walkOpts(m) {
   const reach = !!$('walkReach')?.checked;
   const a = walkAnchor(m);
-  return { close: a.px, anchor: $('walkA').value, includeThin: $('walkThin').checked, vol: walkSigma(m), date: a.date, ...(reach ? { sigma: walkSigma(m) } : {}) };
+  return { close: a.px, anchor: $('walkA').value, includeThin: $('walkThin').checked, vol: walkSigma(m), date: a.date,
+    ...(reach ? { sigma: walkSigma(m), ...(reachImplied(m) ? { sigmaFor: e => ivDaily(m, e.dte) } : {}) } : {}) };
+}
+// Vega per expiry (the "vega" option): each strike's open interest x Black-Scholes vega at the expiry's implied vol (realised
+// when the capture has none), from the walk's start price. share = the expiry's part of all expiries' vega; peak = its
+// strike with the most vega. Vega is hedged with options, not the underlying: where flow comes from if IV moves, not a target.
+function vegaByExpiry(m) {
+  const A = walkAnchor(m), out = new Map(); let all = 0;
+  for (const e of m.expiries || []) {
+    if (!e.ladder?.length) continue;
+    const T = Math.max(1, e.dte) / 365, sg = (ivDaily(m, e.dte) ?? walkSigma(m)) * Math.sqrt(252);
+    let tot = 0, peak = null;
+    for (const r of e.ladder) { const v = ((r[1] || 0) + (r[2] || 0)) * bsVega(A.px, r[0], T, sg); tot += v; if (!peak || v > peak.v) peak = { px: r[0], v }; }
+    out.set(e.expiry, { vega: tot, peakPx: peak?.px ?? null }); all += tot;
+  }
+  for (const v of out.values()) v.share = all > 0 ? v.vega / all : null;
+  return out;
 }
 // the walk as a ladder: one row per expiry, the level it steps to, and how far that is from today and from the step before
 // ── Does the walk track? The history test (register row swing-walk-track) and the live forward record ──
@@ -764,15 +827,34 @@ function walkTable(m, w) {
   const rows = w.points.map((p, i) => ({ ...p, n: i + 1 })).concat((w.skipped || []).map(k => ({ ...k, skip: true })))
     .sort((a, b) => (a.expiry < b.expiry ? -1 : 1));
   if (!rows.length) { $('walkTable').innerHTML = ''; return; }
+  // calls / puts per expiry from its whole book (spot terms, so an inverted pair's futures calls already count as puts),
+  // and the capture each book comes from: an expiry missing from the latest capture keeps its last book, flagged here
+  const exOf = new Map((m.expiries || []).map(e => [e.expiry, e])), capNow = (m.expiries || []).reduce((a, e) => (e.date > a ? e.date : a), '');
+  const cp = ex => { const l = exOf.get(ex)?.ladder; if (!l?.length) return null; let c = 0, q = 0; for (const r of l) { c += r[1] || 0; q += r[2] || 0; } return { c, p: q, r: q > 0 ? c / q : null }; };
+  const cpCell = ex => { const v = cp(ex); if (!v || v.r == null) return '<td></td>';
+    const cls = v.r >= 1.5 ? 'good' : v.r <= 0.67 ? 'bad' : '';
+    return `<td title="${fmt(v.c, 0)} calls / ${fmt(v.p, 0)} puts. Context only: untested here, and a put can be protection rather than a bet on a fall"><span class="${cls}">${v.r.toFixed(2)}</span></td>`; };
+  const bookAge = ex => { const d = exOf.get(ex)?.date; return d && capNow && d < capNow ? `book from the ${fmtDay(d)} capture (not in the latest)` : ''; };
   const what = { gammaCentre: 'Gamma centre', gamma: 'Gamma best strike', strike: 'Strongest strike', maxPain: 'Max pain', centre: 'OI centre' }[$('walkA').value];
-  $('walkTable').innerHTML = `<div class="tbl"><table class="ladder"><tr><th>#</th><th>Expiry</th><th>Days</th><th>${what}</th><th>From today</th><th>Step</th><th>Book</th><th style="text-align:left">Note</th></tr>`
+  const PH = isPhone();
+  // the optional context columns and notes (vega share, flips, implied move), each only when its box is ticked
+  const vg = $('walkVega').checked ? vegaByExpiry(m) : null, imp = $('walkReach').checked && reachImplied(m);
+  const vegaCell = ex => (vg ? `<td title="this expiry's share of all expiries' vega (open interest x vega at its implied vol); peak-vega strike in the note">${vg.get(ex)?.share != null ? fmt(vg.get(ex).share * 100, 0) + '%' : ''}</td>` : '');
+  const ctx = (ex, dte) => { const e = exOf.get(ex); return [
+    imp && ivDaily(m, dte) ? `implied move to here ±${fmt((Math.exp(1.645 * ivDaily(m, dte) * Math.sqrt(Math.max(1, sessionsBetween(A.date, ex)))) - 1) * 100, 1)}% (90%)` : '',
+    $('walkGFlip').checked && e?.gamma?.flipPx > 0 ? `gamma flip ${px(e.gamma.flipPx)} (${e.gamma.regime === 'PIN' ? 'calming at price' : e.gamma.regime === 'BREAKOUT' ? 'amplifying at price' : 'neutral'})` : '',
+    $('walkCFlip').checked && e?.greeks?.charmFlipPx > 0 ? `charm/vanna flip ${px(e.greeks.charmFlipPx)}` : '',
+    vg?.get(ex)?.peakPx > 0 ? `peak vega ${px(vg.get(ex).peakPx)}` : ''].filter(Boolean); };
+  // on a phone the note leaves the row (it made the table wider than the screen) and sits on a line of its own under it
+  const noteCell = (txt, cls) => PH ? `</tr><tr class="wnote ${cls}"><td colspan="${vg ? 8 : 7}">${txt}</td>` : `<td style="text-align:left">${txt}</td>`;
+  $('walkTable').innerHTML = `<div class="tbl"><table class="ladder${PH ? ' ph' : ''}"><tr><th>#</th><th>Expiry</th><th>Days</th><th>${PH ? what.replace('Gamma ', '').replace(/^c/, 'C') : what}</th><th>${PH ? 'vs now' : 'From today'}</th>${PH ? '' : '<th>Step</th>'}<th>Book</th><th title="calls ÷ puts across the expiry's whole book">C/P</th>${vg ? '<th>Vega</th>' : ''}${PH ? '' : '<th style="text-align:left">Note</th>'}</tr>`
     + rows.map(r => r.skip
-      ? `<tr class="thin"><td>–</td><td>${fmtDay(r.expiry)}</td><td>${r.dte}</td><td>${px(r.px)}</td><td>${pct((r.px / close - 1) * 100, 1)}</td><td>–</td><td></td><td style="text-align:left">out of reach (the range allowed ±${r.capPct.toFixed(1)}%), left out</td></tr>`
+      ? `<tr class="thin"><td>–</td><td>${fmtDay(r.expiry)}</td><td>${r.dte}</td><td>${px(r.px)}</td><td>${pct((r.px / close - 1) * 100, 1)}</td>${PH ? '' : '<td>–</td>'}<td></td>${cpCell(r.expiry)}${vegaCell(r.expiry)}${noteCell([`out of reach (the range allowed ±${r.capPct.toFixed(1)}%), left out`, ...ctx(r.expiry, r.dte)].join(' · '), 'thin')}</tr>`
       : `<tr class="${r.thin ? 'thin' : ''}"><td><b>${r.n}</b></td><td>${fmtDay(r.expiry)}</td><td>${r.dte}</td><td><b class="${r.dir === 'up' ? 'good' : r.dir === 'down' ? 'bad' : ''}">${r.dir === 'up' ? '▲' : r.dir === 'down' ? '▼' : '◆'} ${px(r.px)}</b></td>`
-        + `<td>${pct((r.px / close - 1) * 100, 1)}</td><td>${pct(r.movePct, 1)}</td><td>${r.strength != null ? fmt(r.strength * 100, 1) + '%' : ''}</td>`
-        + `<td style="text-align:left">${[r.thin ? 'small book' : '', r.biggest ? `◇ biggest strike ${px(r.biggest.px)} (${fmt((r.biggest.strength ?? 0) * 100, 1)}% of OI, ${pct((r.biggest.px / close - 1) * 100, 1)} from today)` : r.notBiggest ? '◇ biggest strike in reach' : '', r.pullShare != null ? `${Math.round(r.pullShare * 100)}% of this book's pull${$('walkA').value === 'gammaCentre' ? ' within a day\'s move of it' : ''}` : '', r.building ? 'building' : '',
-          r.charm ? `charm: a day passing makes dealers ${r.charm > 0 ? 'buy' : 'sell'} ${fmt(Math.abs(r.charm), 0)} contracts${r.charmNotional ? ` (${money(Math.abs(r.charmNotional))})` : ''}` : ''].filter(Boolean).join(' · ')}</td></tr>`).join('')
-    + `</table></div><p class="note">Book = that strike's share of all live open interest (gamma centre: the whole expiry's share, since the centre is not one strike). From today = distance from ${A.live ? `the live price (${px(close)} at ${A.at.slice(11, 16)} UTC)` : `the last close (${px(close)})`}. Step = the move from the row before.</p>`;
+        + `<td>${pct((r.px / close - 1) * 100, 1)}</td>${PH ? '' : `<td>${pct(r.movePct, 1)}</td>`}<td>${r.strength != null ? fmt(r.strength * 100, 1) + '%' : ''}</td>${cpCell(r.expiry)}${vegaCell(r.expiry)}`
+        + `${noteCell([bookAge(r.expiry), ...ctx(r.expiry, r.dte), r.thin ? 'small book' : '', r.biggest ? `◇ biggest strike ${px(r.biggest.px)} (${fmt((r.biggest.strength ?? 0) * 100, 1)}% of OI, ${pct((r.biggest.px / close - 1) * 100, 1)} from today)` : r.notBiggest ? '◇ biggest strike in reach' : '', r.pullShare != null ? `${Math.round(r.pullShare * 100)}% of this book's pull${$('walkA').value === 'gammaCentre' ? ' within a day\'s move of it' : ''}` : '', r.building ? 'building' : '',
+          r.charm ? `charm: a day passing makes dealers ${r.charm > 0 ? 'buy' : 'sell'} ${fmt(Math.abs(r.charm), 0)} contracts${r.charmNotional ? ` (${money(Math.abs(r.charmNotional))})` : ''}` : ''].filter(Boolean).join(' · '), r.thin ? 'thin' : '')}</tr>`).join('')
+    + `</table></div><p class="note">Book = that strike's share of all live open interest (gamma centre: the whole expiry's share, since the centre is not one strike). From today = distance from ${A.live ? `the live price (${px(close)} at ${A.at.slice(11, 16)} UTC)` : `the last close (${px(close)})`}. Step = the move from the row before. C/P = calls ÷ puts in that expiry's whole book (green 1.5+, red 0.67 or less): context only, not tested here, and a put can be protection rather than a bet on a fall.${[$('walkNoView').checked ? '<b>dashed grey line</b> = no view (price stays put)' : '', $('walkGFlip').checked ? '<b style="color:var(--amber)">▬</b> = gamma flip' : '', $('walkCFlip').checked ? '<b style="color:var(--blue)">◆</b> = charm/vanna flip' : '', vg ? '<b style="color:var(--violet)">○</b> = peak-vega strike' : ''].filter(Boolean).map((t, i, a) => (i ? '' : ' On the chart: ') + t + (i === a.length - 1 ? '.' : ' · ')).join('')}${vg ? ' Vega = the expiry\'s share of all vega: where the book is exposed to an implied-vol move; dealers hedge it with options, so it is not a target.' : ''}${imp ? ` Reach uses each expiry's implied vol (CME capture${m.ivTerm?.savedAt ? ` ${esc(String(m.ivTerm.savedAt))}` : ''}).` : $('walkReach').checked && $('walkReachSrc').value === 'implied' ? ' <span class="warn">No implied vol in the last capture: reach falls back to realised vol.</span>' : ''}</p>`;
 }
 function walkNote(m, w) {
   const what = { gammaCentre: 'gamma centre (where the hedging weight sits on balance, seen from the step before)', gamma: 'gamma best strike (the one strike dealers must hedge hardest, seen from the step before)', strike: 'strongest strike', maxPain: 'max pain', centre: 'OI centre' }[$('walkA').value];

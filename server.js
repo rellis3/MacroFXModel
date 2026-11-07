@@ -106,6 +106,8 @@ import { createDailyRead } from './js/dailyReadRoutes.js';
 import { createHarShadow } from './js/harShadowRoutes.js';
 import { createDrawdownShadow } from './js/drawdownShadowRoutes.js';   // drawdown shadow band, read-only (drawdown-forecast-error A1)
 import { createStressShadow } from './js/stressShadowRoutes.js';       // stress-count shadow band, read-only (forecast-miss-scan A1)
+import { createVolState } from './js/volStateRoutes.js';             // vol state vector, descriptive (GET /api/vol-state)
+import { createTradePlan } from './js/tradePlanRoutes.js';           // trade-plan shadow forward record, display only (forge/TRADE_PLAN_SHADOW_PREREG.md)
 import { createStateRoutes } from './js/stateRoutes.js';                // Market State Engine: GET /api/state (plans/MARKET_STATE_ENGINE_PLAN.md)
 import { createSurfaceLab } from './js/surfaceLabRoutes.js';
 import { createVixCapture } from './js/vixCaptureRoutes.js';
@@ -240,6 +242,7 @@ import { NEWS_SOURCES as _NW_SOURCES, POLL_MIN as _NW_POLL_MIN, backoff as _nwBa
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
 import { RESEARCHERS as _RP_RESEARCHERS, WEB_SOURCES as _RP_WEB, parseFeed as _rpParseFeed, feedItems as _rpFeedItems, webDigest as _rpWebDigest, validateProposals as _rpValidate, applyFeedback as _rpApplyFeedback, feedbackBrief as _rpFeedbackBrief, buildList as _rpBuildList, mergeLibrary as _rpMerge, validateCard as _rpValidateCard, cardPrereg as _rpPrereg, slug as _rpSlug, lifecycle as _rpLifecycle, setLink as _rpSetLink, outcomesBrief as _rpOutcomes, scorecard as _rpScorecard, validateReply as _rpValidateReply, applyRevision as _rpApplyRevision, threadText as _rpThreadText } from './js/researchPod.js';   // Phases 23-25
 import * as _RCS from './js/researchCase.js';   // research cases: one per question to the pod, in a loop with the Head of Research
+import * as _RIM from './js/researchImages.js';   // pictures attached to research questions: read once by a vision model, then text
 import { normaliseTrades as _sxNormalise, tearsheet as _sxTearsheet, toolkitCsv as _sxToolkitCsv, terminalCsv as _sxTerminalCsv, liveVsExpected as _sxLiveVsExpected } from './js/systemExports.js';   // §9ac
 import { selectPairs as _psSelect } from './js/pairSelector.js';   // §9ae
 import { WORLD_RATES_URL as _WR_URL, parseCbpol as _wrParse, worldRates as _wrBuild, byIsoNumeric as _wrByIso } from './js/worldRates.js';   // §9af
@@ -442,7 +445,6 @@ import { computeG1 as computeCogG1, computeG2 as computeCogG2, computeG3 as comp
 import { bothSidesWalk, groupBarsByDate, entryBarFor, walkTrade } from './js/qmrCore.js';
 import { runPivotSpike } from './js/pivotSpikeEngine.js';
 import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
-import { liveSignal as hedgeV2Live, runComparison as hedgeV2Comparison, V2_DEFAULTS as HEDGE_V2_DEFAULTS } from './js/hedgeSignalV2Engine.js';
 import { runGoldMinerArbSuite, GMA_DEFAULTS } from './js/goldMinerArbEngine.js';
 import { runVRPSuite, VRP_INSTRUMENTS } from './js/fxVolCarryEngine.js';
 import { decide as tdeDecide } from './Trade_Decision_Engine/decisionCore.js';
@@ -450,11 +452,13 @@ import { MODEL_V0 as TDE_MODEL } from './Trade_Decision_Engine/modelV0.js';
 import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
 import { appendDecision as tdeAppendDecision, readRecent as tdeReadRecent } from './Trade_Decision_Engine/decisionLog.js';
 import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport, readEvents as tdeReadEvents, macroBucketReport as tdeMacroBucketReport, fitLogistic as tdeFitLogistic, resetBackfillStore as tdeResetBackfillStore, TDE_BACKFILL_PAIRS } from './Trade_Decision_Engine/backfill.js';
-import { Worker as _NodeWorker } from 'node:worker_threads';   // fx-factor-v2 / ou-pairs research runs (off the main loop)
+import { Worker as _NodeWorker } from 'node:worker_threads';   // fx-factor-v2 / ou-pairs research runs, the corr-history build (off the main loop)
+import { pearson as corrPearson } from './js/corrHistoryCompute.js';   // the corr-history maths (built in js/corrHistoryWorker.js)
 import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataArchive.js';
 import { createExpiryTrackStore } from './js/expiryTrackStore.js';
-import { buildSwingMap as _buildSwingMap, sigmaSeries as _swingSigma } from './js/swingMap.js';
+import { buildSwingMap as _buildSwingMap, sigmaSeries as _swingSigma, THIN_FLOOR as _SWING_THIN_FLOOR } from './js/swingMap.js';
 import { zoneWalk as _swingZoneWalk } from './js/swingPaths.js';
+import { PATH_HORIZON_DAYS as _PATH_HORIZON_DAYS, PATH_CORE_DAYS as _PATH_CORE_DAYS, PATH_SOURCES as _PATH_SOURCES, normaliseSource as _pathNormSource, sourceChoices as _pathSourceChoices, gldXauMap as _gldXauMap, indexCfdMap as _indexCfdMap, cboeExpiryRows as _cboeExpiryRows, mergeSources as _pathMergeSources, swingExpiryRow as _swingExpiryRow, beyondCoreRows as _pathBeyondCore, occOiDate as _occOiDate, sourceAsOf as _pathSourceAsOf, addDaysIso as _pathAddDays } from './js/pathSources.js';   // the path's Cboe sources (GLD for gold, SPX/NDX), horizon
 import { scoreWalkRecords as _swingScoreWalks } from './js/swingWalkTrack.js';
 import { oiContractSize as _oiContractSizeSM } from './js/oi.js';
 import { COT_MARKETS as _COT_MARKETS, fetchCotFull as _fetchCotFull } from './js/cotArchive.js';
@@ -1451,7 +1455,8 @@ async function fetchHMMBars(sym, count = 300) {
 // ── Correlation History Builder ───────────────────────────────────────────────
 // Fetches multi-year H4 bars from OANDA, computes rolling Pearson correlations
 // + OLS factor betas, and saves bot/data/corr_history.json.
-// Runs on startup (if file is missing or >7 days old) and weekly.
+// Runs a minute after startup, then rebuilds whenever the file is ~6 hours old (checked every 30 min). The CPU
+// part runs in a worker thread (js/corrHistoryWorker.js).
 // No external scripts needed — all pure JS maths.
 
 const CORR_PAIRS = [
@@ -1473,22 +1478,24 @@ const CORR_FACTOR_PROXIES = {
 };
 const CORR_HISTORY_PATH  = path.join(path.dirname(fileURLToPath(import.meta.url)), 'bot', 'data', 'corr_history.json');
 const HEDGE_SIGNALS_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'bot', 'data', 'hedge_signals.json');
-const HEDGE_SIGNAL_CFG_KEY = 'hedge_signal_cfg';
 const CORR_STALE_MS  = 6 * 60 * 60 * 1000;  // rebuild if older than 6 hours
+// The refresh is checked every CORR_CHECK_MS and rebuilds once the file is CORR_STALE_MS old less a margin. (Before
+// 2026-11-06 the check ran every 6 h against a 6 h staleness test: the file, written ~3 min after the previous check
+// began, was always a few minutes short of 6 h old, so every other check skipped and the data refreshed every 12 h.)
+const CORR_CHECK_MS  = 30 * 60 * 1000;
+const CORR_STALE_MARGIN_MS = 20 * 60 * 1000;
+// The Desk Terminal's Correlations & hedges tab: aligned daily closes, ~3 years (js/corrHistoryCompute.js buildPanel).
+// Written by the build to disk and KV (it survives a redeploy; the 12 MB corr_history.json does not).
+const CORR_PANEL_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'bot', 'data', 'corr_terminal.json');
+const CORR_PANEL_KV   = 'corr_terminal_v1';
+const CORR_PANEL_DAYS = 780;
+let   _corrPanelMem   = null;   // { body, generated, src } — the on-read cache for /api/corr-terminal
 const CORR_WINDOW    = 60;   // H4 bars per rolling window (10 trading days)
 const CORR_STEP      = 6;    // snapshot every 6 bars ≈ 1 per day
 const CORR_YEARS     = 5;
 const CORR_CHUNK     = 4500; // max bars per OANDA request (limit 5000)
 let   corrRunning    = false;
 let   corrProgress   = { pct: 0, msg: 'Idle', step: '', error: null };
-
-// Convert CORR_PAIRS format (EURUSD) to state.prices key format (EUR/USD)
-function _pairToSlash(sym) {
-  if (sym.includes('/') || sym.includes('_')) return sym;
-  if (sym === 'XAUUSD') return 'XAU/USD';
-  if (sym.length === 6) return `${sym.slice(0,3)}/${sym.slice(3)}`;
-  return sym;
-}
 
 function _h4OandaSym(sym) {
   const ov = { XAUUSD:'XAU_USD', XAGUSD:'XAG_USD', NAS100:'NAS100_USD', SPX500:'SPX500_USD', 'DE30_USD':'DE30_EUR' };
@@ -1534,38 +1541,8 @@ async function fetchH4Bars(sym, years = CORR_YEARS) {
   return closes.length >= CORR_WINDOW + 1 ? { closes, timestamps } : null;
 }
 
-function _logRets(arr) {
-  const out = [];
-  for (let i = 1; i < arr.length; i++) out.push(Math.log(Math.max(arr[i],1e-10)/Math.max(arr[i-1],1e-10)));
-  return out;
-}
-function _pearson(xs, ys) {
-  const n = xs.length; if (n < 4) return null;
-  let mx=0, my=0; for (let i=0;i<n;i++){mx+=xs[i];my+=ys[i];} mx/=n; my/=n;
-  let num=0,da=0,db=0; for (let i=0;i<n;i++){const a=xs[i]-mx,b=ys[i]-my;num+=a*b;da+=a*a;db+=b*b;}
-  const d=Math.sqrt(da*db); return d<1e-12?0:Math.max(-1,Math.min(1,num/d));
-}
-function _ols(y, x) {
-  const n=y.length; if (n<3) return [0,0];
-  let mx=0,my=0; for (let i=0;i<n;i++){mx+=x[i];my+=y[i];} mx/=n;my/=n;
-  let cov=0,vx=0; for (let i=0;i<n;i++){cov+=(x[i]-mx)*(y[i]-my);vx+=(x[i]-mx)**2;}
-  if (vx<1e-12) return [0,0];
-  const b=cov/vx, a=my-b*mx;
-  let ss=0,st=0; for (let i=0;i<n;i++){ss+=(y[i]-a-b*x[i])**2;st+=(y[i]-my)**2;}
-  return [+b.toFixed(4), st<1e-12?0:+Math.max(0,Math.min(1,1-ss/st)).toFixed(4)];
-}
-function _ema(arr, p) {
-  const r=[...arr], k=2/(p+1); for (let i=1;i<r.length;i++) r[i]=arr[i]*k+r[i-1]*(1-k); return r;
-}
-function _regime(closes) {
-  const n=closes.length; if (n<25) return 'RANGE';
-  const fast=_ema(closes,20), slow=_ema(closes,Math.min(50,n));
-  const ref=Math.max(Math.abs(closes[n-1]),1e-10);
-  const spread=(fast[n-1]-slow[n-1])/ref, slope=n>=6?(fast[n-1]-fast[n-6])/ref:0;
-  if (spread>0.0025&&slope>0.00015) return 'BULL';
-  if (spread<-0.0025&&slope<-0.00015) return 'BEAR';
-  return 'RANGE';
-}
+// Pearson for the COT block below; the rolling-correlation maths lives in js/corrHistoryCompute.js (run in a worker).
+const _pearson = corrPearson;
 
 // ── COT positioning correlation (currency vs currency) ──────────────────────
 // A DIFFERENT relationship from the price-return correlation above: not "do
@@ -1641,139 +1618,42 @@ async function buildCorrHistoryJS() {
       console.log('[CORR] No pairs — abort. Check OANDA_KEY and that your account has access to all instruments.');
       return;
     }
-    corrProgress = { pct: 62, msg: `Computing rolling correlations for ${availPairs.length} pairs…`, step: 'compute', error: null };
 
-    // Align all return series to the reference pair's timestamps
-    const refPair = availPairs.find(p => ['EURUSD','GBPUSD','USDJPY'].includes(p)) || availPairs[0];
-    const refTs   = barData[refPair].timestamps;
-    const n       = refTs.length - 1;
-
-    const retSeries = {};
-    for (const sym of availPairs) {
-      const { closes, timestamps } = barData[sym];
-      const rmap = new Map();
-      const rets = _logRets(closes);
-      for (let i = 0; i < rets.length; i++) rmap.set(timestamps[i+1].getTime(), rets[i]);
-      retSeries[sym] = refTs.slice(1).map(ts => rmap.get(ts.getTime()) ?? null);
-    }
-
-    // Factor return series (proxy * sign)
-    const factorRets = {};
-    for (const [fname, { sym, sign }] of Object.entries(CORR_FACTOR_PROXIES))
-      if (retSeries[sym]) factorRets[fname] = retSeries[sym].map(v => v !== null ? v * sign : null);
-
-    const refCloses = barData[refPair].closes;
-    const records   = [];
-
-    for (let end = CORR_WINDOW; end <= n; end += CORR_STEP) {
-      const s      = end - CORR_WINDOW;
-      const ts     = refTs[end];
-      const regime = _regime(refCloses.slice(Math.max(0, end - 59), end + 1));
-      const corr   = {}, beta = {};
-
-      for (let i = 0; i < availPairs.length; i++) {
-        const pa = availPairs[i];
-        beta[pa] = {};
-
-        // OLS factor betas
-        for (const [fname, frets] of Object.entries(factorRets)) {
-          const yr=[], fr=[];
-          for (let k=s;k<end;k++) if (retSeries[pa][k]!==null&&frets[k]!==null){yr.push(retSeries[pa][k]);fr.push(frets[k]);}
-          if (yr.length>=10) { const [b]=_ols(yr,fr); beta[pa][fname]=b; }
-        }
-
-        // Pair-pair Pearson correlations (lower triangle)
-        for (let j = i+1; j < availPairs.length; j++) {
-          const pb=availPairs[j], xa=[], xb=[];
-          for (let k=s;k<end;k++) if (retSeries[pa][k]!==null&&retSeries[pb][k]!==null){xa.push(retSeries[pa][k]);xb.push(retSeries[pb][k]);}
-          if (xa.length>=10) { const c=_pearson(xa,xb); if (c!==null) corr[`${pa}_${pb}`]=+c.toFixed(4); }
-        }
-      }
-      records.push({ ts: ts.getTime(), ts_str: ts.toISOString().slice(0,16).replace('T',' '), regime, corr, beta });
-    }
-
-    // ── Summary statistics ──────────────────────────────────────────────────
-    const avgSums={}, avgCnts={}, rgCorrData={}, rgStatData={};
-    for (const rec of records) {
-      const rg = rec.regime;
-      if (!rgCorrData[rg]) rgCorrData[rg]={};
-      if (!rgStatData[rg]) rgStatData[rg]={};
-      for (const [k,v] of Object.entries(rec.corr)) {
-        avgSums[k]=(avgSums[k]||0)+v; avgCnts[k]=(avgCnts[k]||0)+1;
-        if (!rgCorrData[rg][k]) rgCorrData[rg][k]=[];
-        rgCorrData[rg][k].push(v);
-      }
-      for (const [pair,betas] of Object.entries(rec.beta)) {
-        if (!rgStatData[rg][pair]) rgStatData[rg][pair]={dxy:[],rates:[],vix:[]};
-        for (const f of ['dxy','rates','vix']) if (betas[f]!==undefined) rgStatData[rg][pair][f].push(betas[f]);
-      }
-    }
-
-    const avgCorr={};
-    for (const k of Object.keys(avgSums)) avgCorr[k]=+(avgSums[k]/avgCnts[k]).toFixed(4);
-
-    const regimeCorr={};
-    for (const [rg,corrs] of Object.entries(rgCorrData)) {
-      regimeCorr[rg]={};
-      for (const [k,vals] of Object.entries(corrs))
-        regimeCorr[rg][k]=+(vals.reduce((s,v)=>s+v,0)/vals.length).toFixed(4);
-    }
-
-    const regimeStats={};
-    for (const [rg,pairData] of Object.entries(rgStatData)) {
-      for (const [pair,vals] of Object.entries(pairData)) {
-        if (!regimeStats[pair]) regimeStats[pair]={};
-        const mean=a=>a.length?+(a.reduce((s,v)=>s+v,0)/a.length).toFixed(4):null;
-        regimeStats[pair][rg]={ dxy_mean:mean(vals.dxy), rates_mean:mean(vals.rates), vix_mean:mean(vals.vix), n:vals.vix.length };
-      }
-    }
-
-    corrProgress = { pct: 90, msg: 'Correlating COT positioning…', step: 'cot', error: null };
+    corrProgress = { pct: 60, msg: 'Correlating COT positioning…', step: 'cot', error: null };
     const cotCorr = await computeCotCorrelations().catch(e => { console.warn('[CORR] COT correlation skipped:', e.message); return null; });
 
-    const output = { generated:new Date().toISOString(), years:CORR_YEARS,
-      window_bars:CORR_WINDOW, step_bars:CORR_STEP, pairs:availPairs,
-      records, regime_stats:regimeStats, avg_corr:avgCorr, regime_corr:regimeCorr,
-      cot_corr: cotCorr?.corr ?? {}, cot_corr_generated: cotCorr?.generated ?? null };
+    // The rolling correlations (~30M multiply-adds), the 12 MB stringify and the file writes run in a worker thread
+    // (js/corrHistoryWorker.js), not on the event loop the live bots share. Same maths as before
+    // (js/corrHistoryCompute.js computeCorrHistory); the worker also writes the Desk Terminal's daily panel.
+    corrProgress = { pct: 65, msg: `Computing rolling correlations for ${availPairs.length} pairs (worker thread)…`, step: 'compute', error: null };
+    const forWorker = Object.fromEntries(Object.entries(barData).map(([k, v]) => [k, { closes: v.closes, timestamps: v.timestamps.map(t => t.getTime()) }]));
+    const res = await new Promise((resolve, reject) => {
+      const w = new _NodeWorker(new URL('./js/corrHistoryWorker.js', import.meta.url), {
+        workerData: { barData: forWorker, opts: { pairs: CORR_PAIRS, factorProxies: CORR_FACTOR_PROXIES, window: CORR_WINDOW, step: CORR_STEP, years: CORR_YEARS },
+          cot: cotCorr, historyPath: CORR_HISTORY_PATH, panelPath: CORR_PANEL_PATH, panelDays: CORR_PANEL_DAYS },
+        resourceLimits: { maxOldGenerationSizeMb: 1024 } });
+      let settled = false;
+      w.once('message', m => { settled = true; m.ok ? resolve(m) : reject(new Error(m.error)); });
+      w.once('error', e => { if (!settled) { settled = true; reject(e); } });
+      w.once('exit', code => { if (!settled) reject(new Error(`corr worker exited ${code}`)); });
+    });
+    const kb = res.kb;
+    console.log(`[CORR] Done — ${res.nRecords} snapshots, ${res.pairs.length} pairs, ${kb} KB, ${Date.now()-t0}ms`);
 
-    corrProgress = { pct: 95, msg: 'Saving history file…', step: 'save', error: null };
-    fs.mkdirSync(path.dirname(CORR_HISTORY_PATH), { recursive: true });
-    fs.writeFileSync(CORR_HISTORY_PATH, JSON.stringify(output));
-    const kb = Math.round(fs.statSync(CORR_HISTORY_PATH).size / 1024);
-    console.log(`[CORR] Done — ${records.length} snapshots, ${availPairs.length} pairs, ${kb} KB, ${Date.now()-t0}ms`);
-
-    // Push compact hedge-alerts summary to KV so CF Pages can read it without
-    // hitting /api/hedge-alerts directly (which is Railway-only).
+    // Push compact hedge-alerts summary to KV so CF Pages can read it without hitting /api/hedge-alerts directly
+    // (Railway-only), and the terminal's daily panel so the Correlations & hedges tab has data straight after a deploy
+    // wipes bot/data (the 5-year rebuild takes ~3 min).
     try {
-      const sums2b = {}, sums2c = {}, cnts2 = {}, lastCorr2 = {};
-      for (const r of records) {
-        for (const [k, v] of Object.entries(r.corr || {})) {
-          if (!sums2b[k]) { sums2b[k] = 0; sums2c[k] = 0; cnts2[k] = 0; }
-          sums2b[k] += v; sums2c[k] += v * v; cnts2[k]++;
-          lastCorr2[k] = v;
-        }
-      }
-      const corr_std2 = {};
-      for (const k of Object.keys(sums2b)) {
-        const n = cnts2[k], mu = sums2b[k] / n;
-        corr_std2[k] = n > 1 ? +(Math.sqrt(Math.max(0, sums2c[k] / n - mu * mu))).toFixed(5) : 0;
-      }
-      // last_betas was missing: the pair drawer needs it and would have shown
-      // correlations with no beta whenever it read this cache rather than the file
-      // `.beta`, NOT `.betas` -- the record field is singular, as /api/hedge-alerts
-      // itself reads it at lastRec.beta. The plural spelling resolves to undefined and
-      // would have written an empty object with nothing to say it had.
-      const lastBetas2 = records.length ? (records[records.length - 1].beta ?? {}) : {};
-      const alertsCache = { generated: output.generated, pairs: availPairs,
-        avg_corr: avgCorr, corr_std: corr_std2, last_corr: lastCorr2, last_betas: lastBetas2,
-        last_cot_corr: output.cot_corr, cot_corr_generated: output.cot_corr_generated };
-      await kv.put('hedge_alerts_cache', JSON.stringify(alertsCache), { expirationTtl: 86400 * 7 });
+      await kv.put('hedge_alerts_cache', JSON.stringify(res.alerts), { expirationTtl: 86400 * 7 });
       console.log('[CORR] hedge_alerts_cache written to KV');
     } catch (kvErr) {
       console.warn('[CORR] hedge_alerts_cache KV write failed:', kvErr.message);
     }
-
-    corrProgress = { pct: 100, msg: `Done — ${records.length} snapshots · ${availPairs.length} pairs · ${kb} KB`, step: 'done', error: null };
+    if (res.panel) {
+      _corrPanelMem = { body: JSON.stringify(res.panel), generated: res.panel.generated, src: 'build' };
+      try { await kv.put(CORR_PANEL_KV, _corrPanelMem.body); } catch (kvErr) { console.warn('[CORR] corr panel KV write failed:', kvErr.message); }
+    }
+    corrProgress = { pct: 100, msg: `Done — ${res.nRecords} snapshots · ${res.pairs.length} pairs · ${kb} KB`, step: 'done', error: null };
 
   } catch (e) {
     console.error('[CORR] Build error:', e.message, e.stack?.split('\n')[1]);
@@ -1787,259 +1667,15 @@ async function runCorrHistoryRefresh() {
   if (corrRunning || !process.env.OANDA_KEY) return;
   try {
     const stat = fs.statSync(CORR_HISTORY_PATH);
-    if (Date.now() - stat.mtimeMs < CORR_STALE_MS) return; // file is fresh
+    // fresh, and the terminal's panel is on disk too (a server that predates the panel builds it once)
+    if (Date.now() - stat.mtimeMs < CORR_STALE_MS - CORR_STALE_MARGIN_MS && fs.existsSync(CORR_PANEL_PATH)) return;
   } catch { /* file missing — build it */ }
   buildCorrHistoryJS().catch(e => console.error('[CORR]', e.message));
 }
 
-// ── Hedge Signal Generator ───────────────────────────────────────────────────
-// Scans corr_history for rolling-correlation z-score divergences and fires
-// Telegram alerts. Output JSON is designed to be consumed by a Python trading bot.
-
-const DEFAULT_HEDGE_CFG = {
-  enabled: true,
-  entry_z: 2.0,
-  exit_z: 0.5,
-  stop_z: 3.5,
-  min_score: 0.1,
-  min_corr: 0.3,
-  allowed_regimes: ['BEAR', 'RANGE', 'BULL'],
-  check_interval_min: 15,
-};
-let _hedgeSigRunning = false;
-
-function _hedgeScore(corr, betaA, betaB) {
-  const corrPart  = -corr * 0.7;
-  const betaSpread = Math.abs((betaA ?? 0) - (betaB ?? 0));
-  const betaPart  = Math.min(betaSpread / 2, 1) * 0.3;
-  return +(corrPart + betaPart).toFixed(4);
-}
-
-// Welford online state per pair-pair key — accumulates since server start (resets on restart).
-// Mirrors the backtest's Welford spread z-score: no lookahead, converges to true long-run mean.
-const _spreadWelford = {};
-
-// Update Welford state for the log-spread and return { z, dev } where:
-//   z   = (spread − running_mean) / running_std  — PRIMARY entry/exit/stop signal
-//   dev = spread − running_mean                  — sign determines direction
-// Returns null until ≥10 observations have accumulated.
-function _spreadZ(pa, pb, pxA, pxB) {
-  const k = `${pa}__${pb}`;
-  if (!_spreadWelford[k]) _spreadWelford[k] = { mu: 0, M2: 0, n: 0 };
-  const st = _spreadWelford[k];
-  const s = Math.log(pxA) - Math.log(pxB);
-  st.n++;
-  const d1 = s - st.mu;
-  st.mu += d1 / st.n;
-  st.M2 += d1 * (s - st.mu);
-  if (st.n < 10) return null;
-  const std = Math.sqrt(st.M2 / (st.n - 1));
-  if (std < 1e-8) return null;
-  const dev = s - st.mu;
-  return { z: dev / std, dev };
-}
-
-// Capture exit prices from live state and compute equal-weight P&L for a closing signal.
-function _attachExitPnl(sig, pa, pb) {
-  const keyA = _pairToSlash(pa);
-  const keyB = _pairToSlash(pb);
-  const xA = state.prices[keyA]?.price;
-  const xB = state.prices[keyB]?.price;
-  sig.exit_price_a = xA != null ? +xA.toFixed(PRICE_DIGITS[keyA] ?? 5) : null;
-  sig.exit_price_b = xB != null ? +xB.toFixed(PRICE_DIGITS[keyB] ?? 5) : null;
-  const pA = (sig.entry_price_a != null && sig.exit_price_a != null)
-    ? (sig.exit_price_a - sig.entry_price_a) / sig.entry_price_a * 100 * (sig.direction_a === 'LONG' ? 1 : -1) : null;
-  const pB = (sig.entry_price_b != null && sig.exit_price_b != null)
-    ? (sig.exit_price_b - sig.entry_price_b) / sig.entry_price_b * 100 * (sig.direction_b === 'LONG' ? 1 : -1) : null;
-  if (pA != null) sig.pnl_a_pct = +pA.toFixed(4);
-  if (pB != null) sig.pnl_b_pct = +pB.toFixed(4);
-  if (pA != null && pB != null) sig.pnl_c_pct = +((pA + pB) / 2).toFixed(4);
-}
-
-// force=true bypasses the enabled flag and regime gate (used by the manual Check Now button).
-async function computeHedgeSignals(force = false) {
-  if (_hedgeSigRunning) return { status: 'busy' };
-  _hedgeSigRunning = true;
-  try {
-    if (!fs.existsSync(CORR_HISTORY_PATH)) return { status: 'no_data', error: 'corr_history.json not found — run a correlation history build first' };
-    const data    = JSON.parse(fs.readFileSync(CORR_HISTORY_PATH, 'utf8'));
-    const records = data.records || [];
-    if (records.length < 20) return { status: 'no_data', error: `Only ${records.length} corr records — need ≥20` };
-
-    const cfgRaw = await kv.get(HEDGE_SIGNAL_CFG_KEY);
-    const cfg    = cfgRaw ? { ...DEFAULT_HEDGE_CFG, ...JSON.parse(cfgRaw) } : { ...DEFAULT_HEDGE_CFG };
-    if (!cfg.enabled && !force) return { status: 'disabled' };
-
-    // Ensure live prices exist for ALL corr pairs, not just bot-monitored pairs.
-    // fetchAllPrices normally runs only for the bot's pair list — corr pairs like
-    // EURGBP, EURJPY, AUDJPY, SPX500_USD etc. may be missing without this call.
-    const corrPricePairs = (data.pairs || []).map(_pairToSlash);
-    await fetchAllPrices(corrPricePairs).catch(() => {});
-
-    // Build rolling stats per pair-pair key
-    const sums = {}, sums2 = {}, cnts = {}, lastCorr = {}, lastBeta = {};
-    for (const rec of records) {
-      for (const [k, v] of Object.entries(rec.corr || {})) {
-        if (!sums[k]) { sums[k] = 0; sums2[k] = 0; cnts[k] = 0; }
-        sums[k] += v; sums2[k] += v * v; cnts[k]++;
-        lastCorr[k] = v;
-      }
-      Object.assign(lastBeta, rec.beta || {});
-    }
-
-    const regime  = (records[records.length - 1]?.regime) || 'UNKNOWN';
-    if (!cfg.allowed_regimes.includes(regime) && !force) {
-      console.log(`[HEDGE-SIG] Regime ${regime} not in allowed list — skip`);
-      return { status: 'regime_blocked', regime };
-    }
-
-    let sigData = { signals: [], last_run: null };
-    if (fs.existsSync(HEDGE_SIGNALS_PATH)) {
-      try { sigData = JSON.parse(fs.readFileSync(HEDGE_SIGNALS_PATH, 'utf8')); } catch {}
-    }
-
-    // Master switch mutes the Telegram push only — signals are still computed,
-    // scored and written to HEDGE_SIGNALS_PATH so the page stays live.
-    const tgRaw = tgOn('hedgeSignals') ? await kv.get('hedge_signal_tg') : null;
-    const tgCfg = tgRaw ? JSON.parse(tgRaw) : null;
-    const now   = new Date().toISOString();
-    sigData.last_run = now;
-    const newSigs = [];
-
-    for (const [key, curCorr] of Object.entries(lastCorr)) {
-      const n = cnts[key];
-      if (n < 20) continue;
-      const mu  = sums[key] / n;
-      const std = Math.sqrt(Math.max(0, sums2[key] / n - mu * mu));
-      if (std < 0.01) continue;
-      const z = (curCorr - mu) / std;
-
-      // Resolve pair names from key (keys built as `${pa}_${pb}` in corr build)
-      let pa = null, pb = null;
-      for (const p of (data.pairs || [])) {
-        if (key.startsWith(p + '_')) { pa = p; pb = key.slice(p.length + 1); break; }
-      }
-      if (!pa || !pb || !(data.pairs || []).includes(pb)) continue;
-
-      const betaA = lastBeta[pa]?.vix ?? null;
-      const betaB = lastBeta[pb]?.vix ?? null;
-      const score = _hedgeScore(curCorr, betaA, betaB);
-
-      // Correlation quality gate — skip pairs with weak co-movement
-      if (Math.abs(curCorr) < (cfg.min_corr ?? 0.3)) continue;
-
-      // Compute spread z-score from live prices — this is the primary signal for all decisions
-      const pxA = state.prices[_pairToSlash(pa)]?.price;
-      const pxB = state.prices[_pairToSlash(pb)]?.price;
-      const spreadResult = (pxA && pxB) ? _spreadZ(pa, pb, pxA, pxB) : null;
-      // spreadResult = { z, dev } or null (history still building)
-
-      // ── Always manage ACTIVE signals first ─────────────────────────────────
-      const existing = sigData.signals.find(s => s.pair_a === pa && s.pair_b === pb && s.status === 'ACTIVE');
-      if (existing) {
-        // Use spread_z for exit/stop; fall back to corrZ only while history builds
-        const exitZ = spreadResult !== null ? spreadResult.z : z;
-        existing.z_score      = +exitZ.toFixed(3);
-        existing.corr_current = +curCorr.toFixed(4);
-        existing.hedge_score  = score;
-        existing.last_updated = now;
-        if (spreadResult !== null) {
-          existing.spread_dev = +spreadResult.dev.toFixed(6);
-        }
-        if (Math.abs(exitZ) < cfg.exit_z) {
-          existing.status    = 'EXITED';
-          existing.exit_time = now;
-          existing.exit_z    = +exitZ.toFixed(3);
-          _attachExitPnl(existing, pa, pb);
-          if (tgCfg?.token && tgCfg?.chatId) {
-            const pnlStr = existing.pnl_c_pct != null ? `  |  P&L: <b>${existing.pnl_c_pct >= 0 ? '+' : ''}${existing.pnl_c_pct.toFixed(3)}%</b>` : '';
-            const msg = `✅ <b>Hedge Exit — ${pa} / ${pb}</b>\n`
-              + `Spread Z reverted to <b>${existing.z_score}</b> (target &lt; ${cfg.exit_z})${pnlStr}\n`
-              + `Close: <b>${pa}</b> ${existing.direction_a}  ·  <b>${pb}</b> ${existing.direction_b}\n`
-              + `Regime: ${regime}`;
-            sendTelegram(tgCfg.token, tgCfg.chatId, msg).catch(() => {});
-          }
-        } else if (Math.abs(exitZ) > cfg.stop_z) {
-          existing.status    = 'STOPPED';
-          existing.exit_time = now;
-          existing.exit_z    = +exitZ.toFixed(3);
-          _attachExitPnl(existing, pa, pb);
-          if (tgCfg?.token && tgCfg?.chatId) {
-            const pnlStr = existing.pnl_c_pct != null ? `  |  P&L: <b>${existing.pnl_c_pct >= 0 ? '+' : ''}${existing.pnl_c_pct.toFixed(3)}%</b>` : '';
-            const msg = `🛑 <b>Hedge Stop — ${pa} / ${pb}</b>\n`
-              + `Spread Z extended to <b>${existing.z_score}</b> (stop &gt; ${cfg.stop_z})${pnlStr}\n`
-              + `Close: <b>${pa}</b> ${existing.direction_a}  ·  <b>${pb}</b> ${existing.direction_b}\n`
-              + `Regime: ${regime}`;
-            sendTelegram(tgCfg.token, tgCfg.chatId, msg).catch(() => {});
-          }
-        }
-        continue; // active signal managed — skip new-entry check
-      }
-
-      // ── New entry: use spread_z if warmed up, fall back to corr_z ────────────
-      // Mirrors the exit logic: spreadResult is null until _spreadWelford has ≥10
-      // observations (resets on restart). Corr_z from full history is always available
-      // and is equivalent — once spread Welford warms up it takes over automatically.
-      const entryZ = spreadResult !== null ? spreadResult.z : z;
-      if (Math.abs(entryZ) < cfg.entry_z) continue;
-      if (score < cfg.min_score) continue;
-
-      // Direction: spread_dev sign if available, else corr_z sign (negative = pairs
-      // have diverged below mean → expect reversion up → LONG A, SHORT B)
-      const devPositive = spreadResult !== null ? spreadResult.dev >= 0 : z > 0;
-      const dirA = devPositive ? 'SHORT' : 'LONG';
-      const dirB = devPositive ? 'LONG'  : 'SHORT';
-
-      const sig = {
-        id: `${pa}-${pb}-${Date.now()}`,
-        schema_version: 2,
-        pair_a: pa, pair_b: pb,
-        direction_a: dirA, direction_b: dirB,
-        z_score: +entryZ.toFixed(3),
-        hedge_score: score,
-        corr_current: +curCorr.toFixed(4),
-        corr_mean: +mu.toFixed(4),
-        corr_std: +std.toFixed(4),
-        beta_vix_a: betaA !== null ? +betaA.toFixed(4) : null,
-        beta_vix_b: betaB !== null ? +betaB.toFixed(4) : null,
-        z_source: spreadResult !== null ? 'spread' : 'corr',
-        regime,
-        status: 'ACTIVE',
-        entry_time: now,
-        entry_z: +entryZ.toFixed(3),
-        exit_z_target: cfg.exit_z,
-        stop_z: cfg.stop_z,
-        last_updated: now,
-        entry_price_a: (() => { const p = state.prices[_pairToSlash(pa)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pa)] ?? 5) : null; })(),
-        entry_price_b: (() => { const p = state.prices[_pairToSlash(pb)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pb)] ?? 5) : null; })(),
-        spread_dev: spreadResult !== null ? +spreadResult.dev.toFixed(6) : null,
-      };
-      newSigs.push(sig);
-      sigData.signals.push(sig);
-
-      if (tgCfg?.token && tgCfg?.chatId) {
-        const bullet = (spreadResult !== null ? spreadResult.dev : z) > 0 ? '📈' : '📉';
-        const msg = `${bullet} <b>Hedge Signal — ${pa} / ${pb}</b>\n`
-          + `Spread Z: <b>${sig.z_score}</b>  |  Score: <b>${score}</b>\n`
-          + `<b>${pa}</b>: ${dirA}  (β_vix = ${sig.beta_vix_a ?? 'n/a'})\n`
-          + `<b>${pb}</b>: ${dirB}  (β_vix = ${sig.beta_vix_b ?? 'n/a'})\n`
-          + `Regime: ${regime}  |  Corr: ${sig.corr_current} (μ=${sig.corr_mean} σ=${sig.corr_std})\n`
-          + `<i>Spread entry z &gt; ${cfg.entry_z} | exit z &lt; ${cfg.exit_z} | stop z &gt; ${cfg.stop_z}</i>`;
-        sendTelegram(tgCfg.token, tgCfg.chatId, msg).catch(() => {});
-      }
-    }
-
-    fs.mkdirSync(path.dirname(HEDGE_SIGNALS_PATH), { recursive: true });
-    fs.writeFileSync(HEDGE_SIGNALS_PATH, JSON.stringify(sigData, null, 2));
-    if (newSigs.length) console.log(`[HEDGE-SIG] ${newSigs.length} new:`, newSigs.map(s => `${s.pair_a}/${s.pair_b} z=${s.z_score}`).join(', '));
-    return { status: 'ok', newSignals: newSigs.length, totalSignals: sigData.signals?.length ?? 0 };
-  } catch (e) {
-    console.error('[HEDGE-SIG]', e.message);
-    return { status: 'error', error: e.message };
-  } finally {
-    _hedgeSigRunning = false;
-  }
-}
+// ── Hedge Signal Generator — retired 2026-11-06 ──────────────────────────────
+// computeHedgeSignals and its helpers (_spreadWelford, _spreadZ, _hedgeScore, _attachExitPnl, DEFAULT_HEDGE_CFG)
+// were removed with the hedge signals; see the retired /api/hedge-signals routes.
 
 // ── Beta Estimation (Kalman OLS) ─────────────────────────────────────────────
 // Mirrors bot/modules/beta_estimator.py — runs server-side via OANDA H4 bars.
@@ -2217,7 +1853,7 @@ async function buildBetaEstimates() {
 //
 // This is an override that sits ON TOP of each sender's own config, never under
 // it: senders that own an `enabled` flag elsewhere (levels-v2, vol-levels,
-// surprise, hedge) still honour it — a master switch can only SILENCE, never
+// surprise) still honour it — a master switch can only SILENCE, never
 // turn something on. It exists because "turn this off" was spread across eight
 // separate KV keys with three different spellings of the gate, so muting one
 // thing meant knowing which page happened to own it.
@@ -2235,7 +1871,6 @@ const TG_SENDERS = {
   levelsV2:          'Telegram-v2 zone alerts',
   volLevels:         'Vol-forecast level proximity (superseded, off by default)',
   surprise:          'Forecast-path surprise pings',
-  hedgeSignals:      'Hedge pair signals',
   ratesRegime:       'Rates vs Nasdaq regime change / rate shock (context, not a signal)',
   spreadEpisodes:    'Spread-turn episodes: confirmed turn (Case 1 full sequence / Case 2 every turn), context only',
   bankCredit:        'BIS cross-border bank credit: new quarter released (regime context, not a signal)',
@@ -3837,16 +3472,19 @@ async function _longPost(url, headers, body, timeoutMs) {
     req.end(body);
   });
 }
-async function callModel({ task = 'misc', system = '', standing = '', prompt = '', maxTokens = 4000, temperature = null, timeoutMs = 300_000 } = {}) {
+// `images` ([{ mediaType, data: base64 }]): pictures sent with the prompt, on a provider that reads them (anthropic). A
+// task routed to one that cannot (DeepSeek, Kimi) is refused here with a clear error, never sent (modelRouter refuses too).
+async function callModel({ task = 'misc', system = '', standing = '', prompt = '', maxTokens = 4000, temperature = null, timeoutMs = 300_000, images = [] } = {}) {
   const cfg = _aiConfig();
   const r = aiResolveTask(task, cfg);
   const P = AI_PROVIDERS[r.provider];
+  if (images?.length && !P.vision) { const e = new Error(`${P.label} cannot read images (task ${task} is routed to it); route it to Anthropic`); e.status = 400; throw e; }
   const key = process.env[P.keyEnv];
   if (!key) { const e = new Error(`${P.keyEnv} not configured`); e.status = 503; throw e; }
   const req = aiBuildRequest({
     provider: r.provider, model: r.model, system, standing, prompt,
     maxTokens, maxOutput: r.maxOutput, cache: cfg.cache, temperature,
-    effort: r.provider === 'anthropic' ? r.effort : null,
+    effort: r.provider === 'anthropic' ? r.effort : null, images,
   });
   const started = Date.now();
   // A provider that never answers must not hold the single brief slot forever (every retry gets a 409 until it ends), so the call is bounded.
@@ -3877,7 +3515,7 @@ async function callModel({ task = 'misc', system = '', standing = '', prompt = '
   // that hands the model 34k tokens of ledger and a strict JSON contract. Replaying the
   // actual last prompt costs one cheap call and compares against an answer already paid
   // for. In memory only -- it holds the full prompt and has no business in KV.
-  _lastCall[task] = { system, standing, prompt, maxTokens, at: Date.now(),
+  _lastCall[task] = { system, standing, prompt, maxTokens, at: Date.now(), ...(images?.length ? { images: images.length } : {}),   // the count only: no image bytes held here
                       provider: r.provider, model: r.model, text: out.text, usage: out.usage };
   return {
     ...out, provider: r.provider, model: r.model, label: P.label, clamped: req.clamped,
@@ -3912,7 +3550,7 @@ app.get('/api/ai-config', async (_req, res) => {
     const tasks = Object.entries(AI_TASKS).map(([id, t]) => {
       const r = aiResolveTask(id, cfg);
       return {
-        id, label: t.label, ledger: t.ledger ?? null, cheapSafe: !!t.cheapSafe, taskDefault: t.defaultProvider ?? null,
+        id, label: t.label, ledger: t.ledger ?? null, cheapSafe: !!t.cheapSafe, taskDefault: t.defaultProvider ?? null, vision: !!t.vision,
         provider: r.provider, model: r.model, maxOutput: r.maxOutput,
         fellBack: r.fellBack, why: r.why,
         chosen: _aiOverride.tasks[id] ?? cfg.tasks[id] ?? null,
@@ -3922,7 +3560,7 @@ app.get('/api/ai-config', async (_req, res) => {
       ok: true,
       providers: Object.entries(AI_PROVIDERS).map(([id, P]) => ({
         id, label: P.label, keyEnv: P.keyEnv, configured: !!cfg.keys[id],
-        explicitCache: !!P.explicitCache,
+        explicitCache: !!P.explicitCache, vision: !!P.vision,
         model: (cfg.models?.[id]?.id) ?? null,
         priced: !!cfg.prices?.[id],
       })),
@@ -4006,6 +3644,8 @@ app.post('/api/ai-ab', async (req, res) => {
         how: `Run the ${AI_TASKS[task].label} once, then come back — the comparison replays the real prompt, not a stand-in.`,
       });
     }
+    // the last call carried pictures, which are not kept: a replay without them would compare against a different job
+    if (base.images) return res.status(409).json({ error: `the last ${task} call carried ${base.images} picture(s), which are not kept for a replay` });
     const cfg = _aiConfig();
     const r = aiResolveTask(task, { ...cfg, tasks: { ...cfg.tasks, [task]: provider }, provider });
     const P = AI_PROVIDERS[r.provider];
@@ -5573,8 +5213,9 @@ app.get('/api/scenarios', async (req, res) => {
     const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : null;
     const book = await _bkrBook(date);
     if (!book) return res.status(404).json({ ok: false, error: date ? `no desk book for ${date}` : 'no desk book yet' });
-    const m = await _bkrGetModel(), sc = _bksStandard(m, book.cards);
-    res.json({ ok: true, date: book.date, bookFinishedAt: book.finishedAt, model: _bkrModelMeta(m), drivers: _BKS_DRIVERS.filter(d => m.joint.includes(d.key)), standard: _BKS_STANDARD, declaredReplays: _BKS_REPLAYS, ...sc,
+    // ?full=1: every card's P&L in every row (the Desk Terminal's scenario map), from the same runScenario / replay
+    const full = req.query.full === '1', m = await _bkrGetModel(), sc = _bksStandard(m, book.cards, full ? { top: 999, replayTop: 999 } : {});
+    res.json({ ok: true, full, date: book.date, bookFinishedAt: book.finishedAt, model: _bkrModelMeta(m), drivers: _BKS_DRIVERS.filter(d => m.joint.includes(d.key)), standard: _BKS_STANDARD, declaredReplays: _BKS_REPLAYS, ...sc,
       label: 'linear one-day map through each market\'s betas (conditional on the joint history); replays use realised moves. Description, not a forecast.' });
   } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
 });
@@ -5832,7 +5473,7 @@ let _rpJob = null;
 const _RC_PROMPT_CHARS = 130_000, _RC_EVIDENCE = 60, _RC_REGISTER = 40;
 const _rcEvidence = (ledger, query, max = _RC_EVIDENCE) => _RCS.pickRelevant(ledger, query, e => `${e.id} ${e.claim} ${e.use}`, { max });
 const _rcRegister = (rows, query, max = _RC_REGISTER) => _RCS.pickRelevant(rows, query, r => `${r.id} ${r.question}`, { max });
-async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS), caseId = null } = {}) {
+async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS), caseId = null, images = [] } = {}) {
   if (!_aiAnyKey()) return { ok: false, error: 'no model key' };
   const roles = _deskLoadRoles();
   const { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js');
@@ -5857,6 +5498,7 @@ async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS), caseI
     const ev = _rcEvidence(DESK_EVIDENCE, query), reg = _rcRegister(rows, query);
     const { system, prompt } = _deskStagePrompt({ role, pack: { date }, ledger: DESK_EVIDENCE, sections: _RCS.fitSections([
       ...(brief ? [["The owner's brief for this session (answer it first)", brief]] : []),
+      ...(images?.length ? [[_RIM.PICTURES_HEADER, _RIM.picturesText(images, { header: false })]] : []),
       ['The system catalogue: what exists, what is partial, what is missing', _sysCatalogueText()],
       ['The data inventory (feeds the server holds)', _rpInventory()],
       ['The bot fleet and the idea each one trades', _rpFleet()],
@@ -5887,7 +5529,7 @@ async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS), caseI
     await kv.put(_RP.library, JSON.stringify(l2));
     // round 1 of the case: each researcher's headline, questions and proposal ids; the question started it
     const c = caseId ? (await _rcRead()).cases.find(x => x.id === caseId) : null;
-    if (c) await _rcPut({ ..._RCS.appendRound(c, { owner: c.question || null, answers: Object.fromEntries(Object.entries(out.researchers).map(([k, r]) => [k, _RCS.answerOf(r)])), errors: out.errors, at: out.at, web: out.web }), pending: null, lastError: null });
+    if (c) await _rcPut({ ..._RCS.finishJob(_RCS.appendRound(c, { owner: c.question || null, answers: Object.fromEntries(Object.entries(out.researchers).map(([k, r]) => [k, _RCS.answerOf(r)])), errors: out.errors, at: out.at, web: out.web })), pending: null, lastError: null });
   });
   const cites = screened.filter(p => p.citations?.length);
   if (cites.length) { let pl = await _rpGet(_LIT.papers, []); for (const p of cites) pl = _litCite(pl, p.citations, { proposals: [p.id] }); await kv.put(_LIT.papers, JSON.stringify(pl)); }
@@ -5901,9 +5543,11 @@ function _rpStart(opts = {}) {
   if (_rpJob?.status === 'running') return null;
   const caseId = opts.caseId ?? `case-${_dpLondonDate(Date.now())}-${Date.now().toString(36)}`;
   if (_rcJobs[caseId]?.status === 'running') return null;
-  const job = _rpJob = _rcJobs[caseId] = { status: 'running', kind: 'pod', caseId, stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null, brief: opts.brief ?? '' };
-  const made = opts.caseId ? Promise.resolve() : _rcEnsure().then(() => _rcLock(async () => _rcPut(_RCS.newCase({ id: caseId, question: opts.brief ?? '', date: _dpLondonDate(Date.now()) }))));
-  made.then(() => _rpRun({ ...opts, caseId })).then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; job.session = r.id ?? null; })
+  const marker = opts.marker ?? _RCS.jobMarker({ kind: 'pod', brief: opts.brief || null, images: opts.images ?? [], lenses: opts.lenses ?? null }), resumed = marker.attempts > 1;
+  const job = _rpJob = _rcJobs[caseId] = { status: 'running', kind: 'pod', caseId, stage: resumed ? 'resuming after a server restart' : 'starting', startedAt: Date.now(), finishedAt: null, error: null, brief: opts.brief ?? '', ...(resumed ? { resumedAfterRestart: true, attempts: marker.attempts } : {}) };
+  const { marker: _m, ...runOpts } = opts;
+  const made = opts.caseId ? _rcEnsure().then(() => _rcMark(caseId, marker)) : _rcEnsure().then(() => _rcLock(async () => _rcPut({ ..._RCS.newCase({ id: caseId, question: opts.brief ?? '', date: _dpLondonDate(Date.now()), images: opts.images ?? [] }), inProgress: marker })));
+  made.then(() => _rpRun({ ...runOpts, caseId })).then(r => { job.status = r.ok ? 'done' : 'error'; job.error = r.ok ? null : r.error; job.session = r.id ?? null; })
     .catch(e => { job.status = 'error'; job.error = e.message; })
     .finally(() => { job.finishedAt = Date.now(); if (job.status === 'error') _rcFail(caseId, job.error); });
   return job;
@@ -5932,9 +5576,11 @@ async function _rcEnsure() {
   });
 }
 const _rcStore = async () => { await _rcEnsure(); return _rcRead(); };
-const _rcFail = (id, error) => _rcLock(async () => { const c = (await _rcRead()).cases.find(x => x.id === id); if (c) await _rcPut({ ...c, lastError: { at: new Date().toISOString(), error: String(error ?? '').slice(0, 400) } }); }).catch(() => {});
+const _rcFail = (id, error, opts = {}) => _rcLock(async () => { const c = (await _rcRead()).cases.find(x => x.id === id); if (c) await _rcPut(_RCS.failJob(c, error, opts)); }).catch(() => {});
+/** The in-progress marker goes on the case before the job's first model call (js/researchCase.js jobMarker), so a restart can find it. */
+const _rcMark = (id, marker) => _rcLock(async () => { const c = (await _rcRead()).cases.find(x => x.id === id); if (c) await _rcPut({ ...c, inProgress: marker }); });
 /** Round 2 on: all three answer the owner's message, each seeing the case, the others' latest answers and the Head's review. */
-async function _rcRound(id, text, job) {
+async function _rcRound(id, text, job, images = []) {
   const roles = _deskLoadRoles(), { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js');
   _tdOpsNow(); const rows = _roCache.rows ?? [], date = _dpLondonDate(Date.now());
   const [store, lib, papers] = await Promise.all([_rcRead(), _rpGet(_RP.library, []), _rpGet(_LIT.papers, [])]);
@@ -5944,7 +5590,7 @@ async function _rcRound(id, text, job) {
   await Promise.all(_RCS.LENSES.map(async lens => {
     const base = roles.find(r => r.id === _RP_RESEARCHERS[lens].role); if (!base) { errors[lens] = 'no role file'; return; }
     const own = _RCS.lensIds(c, lens), query = `${c.question} ${text} ${own.map(x => lib.find(p => p.id === x)?.title ?? '').join(' ')}`;
-    const ev = _rcEvidence(DESK_EVIDENCE, query, 40), reg = _rcRegister(rows, query, 30), rs = _RCS.roundSections(c, lens, { lib, ownerMessage: text });
+    const ev = _rcEvidence(DESK_EVIDENCE, query, 40), reg = _rcRegister(rows, query, 30), rs = _RCS.roundSections(c, lens, { lib, ownerMessage: text, images });
     const { system, prompt } = _deskStagePrompt({ role: { ...base, output: 'case_answer' }, pack: { date }, ledger: DESK_EVIDENCE, sections: _RCS.fitSections([
       ...rs.slice(0, -1),
       ['The data inventory (feeds the server holds)', _rpInventory()],
@@ -5970,7 +5616,7 @@ async function _rcRound(id, text, job) {
     if (fresh.length) { const { DESK_EVIDENCE: L } = await import('./js/deskEvidence.js'); l2 = _rpMerge(l2, _tdScreen(fresh.map(p => ({ ...p, variable: p.test.variable, condition: p.thesis })), rows, L).map(({ variable, condition, ...p }) => p), date); }
     await kv.put(_RP.library, JSON.stringify(_RCS.tagLibrary(l2, touched, id)));
     const c2 = (await _rcRead()).cases.find(x => x.id === id);
-    await _rcPut({ ..._RCS.appendRound(c2, { owner: text, answers: recs, errors, at: now }), pending: null, lastError: null });
+    await _rcPut({ ..._RCS.finishJob(_RCS.appendRound(c2, { owner: text, answers: recs, errors, at: now, images })), pending: null, lastError: null });
   });
 }
 /** The Head of Research (research-head, Anthropic by default): peer-reviews the whole case. Only when the owner asks. */
@@ -5978,28 +5624,121 @@ async function _rcReview(id, job) {
   const role = _deskLoadRoles().find(r => r.id === 'head_of_research'); if (!role) throw new Error('no role file head_of_research.md');
   const { DESK_EVIDENCE, evidenceBrief } = await import('./js/deskEvidence.js'), QT = await import('./js/quickTest.js');
   _tdOpsNow(); const rows = _roCache.rows ?? [];
-  const [store, lib, fb, qts] = await Promise.all([_rcRead(), _rpGet(_RP.library, []), _rpGet(_RP.feedback, {}), _rpGet(_QT_KEY, {})]);
+  const [store, lib, fb, qts, papers] = await Promise.all([_rcRead(), _rpGet(_RP.library, []), _rpGet(_RP.feedback, {}), _rpGet(_QT_KEY, {}), _rpGet(_LIT.papers, [])]);
   const c = store.cases.find(x => x.id === id); if (!c) throw new Error(`no case ${id}`);
   if (!c.rounds.length) throw new Error('the researchers have not answered yet');
   const ids = _RCS.proposalIds(c), linked = new Set([id, ...ids]);
   const quickTests = Object.values(qts.tests ?? {}).filter(t => (t.proposalIds ?? []).some(x => linked.has(x))).map(t => ({ id: t.id, x: t.spec?.x, y: t.spec?.y, verdict: t.verdict, summary: t.why }));
+  // the pictures themselves (up to 6, the most recent first), when the Head's provider reads images, so it can check the
+  // vision model's transcriptions against them; on any other provider it reads the transcriptions only, and is told so
+  const pics = _RIM.caseImages(c, _RIM.MAX_PER_MESSAGE), headProv = aiResolveTask('research-head', _aiConfig()).provider, images = [], sent = [];
+  if (pics.length && AI_PROVIDERS[headProv]?.vision) for (const a of pics) { const got = await _rimBytes(a.id).catch(() => null); if (got) { images.push({ mediaType: got.mime, data: got.buf.toString('base64') }); sent.push(a.id); } }
+  const picSection = !pics.length ? [] : [[`The pictures attached to this case (${pics.length})`, sent.length
+    ? `${sent.length} picture${sent.length > 1 ? 's are' : ' is'} sent with this prompt as images, in this order: ${sent.map((x, i) => `image ${i + 1} = ${x}`).join('; ')}. Each one's vision reading is in the case above under the owner's message it came with. Check every reading against its picture and flag any mismatch (a wrong number, level, date or label) in peerReview, naming the picture id.${sent.length < pics.length ? ` Not available to send: ${pics.filter(a => !sent.includes(a.id)).map(a => a.id).join(', ')} (read their transcriptions only).` : ''}`
+    : `The pictures could not be sent with this prompt (${AI_PROVIDERS[headProv]?.vision ? 'their files are no longer stored' : `${AI_PROVIDERS[headProv]?.label ?? headProv} cannot read images`}); work from the vision model's transcriptions in the case and treat their numbers as unverified.`]];
   const { system, prompt } = _deskStagePrompt({ role, pack: { date: _dpLondonDate(Date.now()) }, ledger: DESK_EVIDENCE, sections: [
-    ..._RCS.headSections(c, { lib, fb, quickTests, catalogue: Object.keys(QT.CATALOGUE) }),
+    ..._RCS.headSections(c, { lib, fb, quickTests, catalogue: Object.keys(QT.CATALOGUE), papers }),
+    ...picSection,
     ['The data inventory (feeds the server holds; name feed ids in the plan)', _rpInventory()],
     ['The Evidence Book (every entry: [tag] claim -> use)', evidenceBrief(DESK_EVIDENCE)],
     ['The research register (id [status] question -> next)', _tdRegisterText(rows)],
   ] });
   job.stage = 'the Head of Research is reading the case';
   const lenses = [...new Set(c.rounds.flatMap(r => Object.keys(r.answers ?? {})))];
-  const v = await _modelJson({ task: 'research-head', system, prompt, maxTokens: 16_000, label: 'desk:head-of-research', validate: o => _RCS.validateHeadReview(o, { lenses, proposalIds: ids }) });
+  const v = await _modelJson({ task: 'research-head', system, prompt, maxTokens: 16_000, label: 'desk:head-of-research', images, validate: o => _RCS.validateHeadReview(o, { lenses, proposalIds: ids }) });
   if (!v.ok) throw new Error(v.errors.join('; '));
-  await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); await _rcPut({ ..._RCS.appendReview(c2, v.value, { model: v.model, notes: v.notes ?? [] }), lastError: null }); });
+  await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); await _rcPut({ ..._RCS.finishJob(_RCS.appendReview(c2, { ...v.value, ...(pics.length ? { pictures: { sent, attached: pics.map(a => a.id) } } : {}) }, { model: v.model, notes: v.notes ?? [] })), lastError: null }); });
 }
-function _rcStartJob(id, kind, run) {
-  const job = _rcJobs[id] = { status: 'running', kind, caseId: id, stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null };
-  run(job).then(() => { job.status = 'done'; }).catch(e => { job.status = 'error'; job.error = e.message; _rcFail(id, `${kind}: ${e.message}`); }).finally(() => { job.finishedAt = Date.now(); });
+function _rcStartJob(id, kind, run, marker = null) {
+  marker ??= _RCS.jobMarker({ kind });
+  const resumed = marker.attempts > 1;
+  const job = _rcJobs[id] = { status: 'running', kind, caseId: id, stage: resumed ? 'resuming after a server restart' : 'starting', startedAt: Date.now(), finishedAt: null, error: null, ...(resumed ? { resumedAfterRestart: true, attempts: marker.attempts } : {}) };
+  _rcMark(id, marker).then(() => run(job)).then(() => { job.status = 'done'; }).catch(e => { job.status = 'error'; job.error = e.message; _rcFail(id, `${kind}: ${e.message}`); }).finally(() => { job.finishedAt = Date.now(); });
   return job;
 }
+// On boot: a case job (round 1, a later round, a Head review) that was running when the server stopped is started again,
+// once (js/researchCase.js staleJobs). A job lost a second time, or started more than six hours ago, is given up with an
+// error the case page shows. The per-case lock (_rcJobs, 409) still holds: a case already working here is skipped, and
+// round 1s wait for the pod's single slot (_rpJob) in turn.
+async function _rcResumeAfterRestart() {
+  if (!_aiAnyKey()) return;
+  await _rcEnsure();
+  const list = _RCS.staleJobs(await _rcRead(), { nowMs: Date.now(), running: _rcJobs }).sort((a, b) => (a.marker.kind === 'pod') - (b.marker.kind === 'pod'));   // round 1s last: they may wait for the pod's slot
+  for (const s of list) {
+    if (s.action !== 'resume') { console.warn(`[research-case] ${s.id}: not resuming the ${s.marker.kind} job (${s.action === 'give-up' ? 'lost twice' : 'older than 6 hours'})`); await _rcFail(s.id, s.action === 'give-up' ? _RCS.LOST_TWICE : _RCS.LOST_OLD, { lostToRestart: true }); continue; }
+    const c = (await _rcRead()).cases.find(x => x.id === s.id); if (!c || _rcJobs[s.id]?.status === 'running') continue;
+    const m = _RCS.resumedMarker(s.marker);
+    try {
+      if (s.marker.kind === 'pod') {
+        for (let i = 0; _rpJob?.status === 'running' && i < 240; i++) await new Promise(r => setTimeout(r, 15_000));   // one round 1 at a time (the pod's slot), up to an hour
+        if (_rcJobs[s.id]?.status === 'running') continue;
+        const job = _rpStart({ caseId: s.id, brief: s.marker.brief ?? c.question ?? '', images: c.images ?? [], ...(s.marker.lenses?.length ? { lenses: s.marker.lenses } : {}), marker: m });
+        if (!job) { console.warn(`[research-case] ${s.id}: the pod is busy, round 1 not resumed`); continue; }
+      } else if (s.marker.kind === 'round') {
+        const text = s.marker.owner ?? c.pending?.owner; if (!text) { await _rcFail(s.id, 'lost to a server restart and its message was not kept; write it again', { lostToRestart: true }); continue; }
+        const images = c.pending?.images?.length ? c.pending.images : await _rimAttach(s.marker.images ?? []).catch(() => []);
+        _rcStartJob(s.id, 'round', job => _rcRound(s.id, text, job, images), m);
+      } else {
+        _rcStartJob(s.id, 'review', job => _rcReview(s.id, job), m);
+      }
+      console.log(`[research-case] ${s.id}: resuming the ${s.marker.kind} job after a server restart (attempt ${m.attempts})`);
+    } catch (e) { console.warn(`[research-case] ${s.id}: resume failed:`, e.message); }
+  }
+}
+setTimeout(() => { _rcResumeAfterRestart().catch(e => console.warn('[research-case] resume check failed:', e.message)); }, Number(process.env.RC_RESUME_DELAY_MS) || 15_000);
+// ── Pictures attached to research questions (js/researchImages.js) ──────────────────────────────────────────────────
+// Each is read ONCE on upload by a vision model (task research-vision, Sonnet on Anthropic) into a written reading; the
+// researchers (DeepSeek, which cannot see images) and the Head read that text. Bytes in R2 research/images/<id>.<ext>,
+// or a bounded in-memory map when R2 is not configured (lost on restart: the readings in the case survive, the Head
+// then reads the transcriptions only). Readings in KV research_images, so an attach by id finds them.
+const _rimMem = new Map(), _RIM_MEM_MAX = 40;
+async function _rimStore(id, ext, mime, buf) {
+  if (_r2Ok()) { await _r2PutBuffer(_RIM.r2Key(id, ext), buf, mime); return 'r2'; }
+  _rimMem.set(id, { buf, mime }); while (_rimMem.size > _RIM_MEM_MAX) _rimMem.delete(_rimMem.keys().next().value);
+  return 'memory';
+}
+/** The bytes of a stored picture: { buf, mime } or null. */
+async function _rimBytes(id, rec = null) {
+  rec ??= _RIM.findImage(await _rpGet(_RIM.INDEX_KEY, null), id); if (!rec) return null;
+  if (rec.stored === 'r2' && _r2Ok()) { const buf = await _r2GetBuffer(_RIM.r2Key(rec.id, rec.ext)); return buf ? { buf, mime: rec.mime } : null; }
+  return _rimMem.get(rec.id) ?? null;
+}
+/** A request's `images` (ids, or { id, text } with the owner's corrected reading) resolved to attachments; throws a 400. */
+async function _rimAttach(list) {
+  if (list == null || (Array.isArray(list) && !list.length)) return [];
+  const r = _RIM.resolveAttach(await _rpGet(_RIM.INDEX_KEY, null), list);
+  if (!r.ok) { const e = new Error(r.error); e.status = 400; throw e; }
+  return r.attachments;
+}
+// POST /api/research-pod/image (raw body; Content-Type image/png, image/jpeg or image/webp; at most 6 MB; ?context= the
+// question it goes with): read once by research-vision, stored. -> { id, url, description, extracted, observations, uncertain, text, model }
+app.post('/api/research-pod/image', express.raw({ type: () => true, limit: '7mb' }), async (req, res) => {
+  try {
+    const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+    const v = _RIM.validateUpload({ contentType: req.get('content-type'), buf });
+    if (!v.ok) return res.status(v.status).json({ ok: false, error: v.error });
+    const rt = aiResolveTask('research-vision', _aiConfig()), P = AI_PROVIDERS[rt.provider];
+    if (!P?.vision) return res.status(400).json({ ok: false, error: `${P?.label ?? rt.provider} cannot read images; route research-vision to Anthropic` });
+    if (!process.env[P.keyEnv]) return res.status(503).json({ ok: false, error: `pictures are read by ${P.label} (task research-vision) and ${P.keyEnv} is not set` });
+    const id = _RIM.newImageId(_dpLondonDate(Date.now()));
+    const r = await _modelJson({ task: 'research-vision', system: _RIM.VISION_SYSTEM, prompt: _RIM.visionPrompt({ context: String(req.query.context ?? '').slice(0, 1500) }),
+      maxTokens: 6000, timeoutMs: 120_000, label: 'research:vision', images: [{ mediaType: v.mime, data: buf.toString('base64') }], validate: _RIM.validateReading });
+    if (!r.ok) return res.status(502).json({ ok: false, error: `the vision model could not read it: ${r.errors.join('; ')}` });
+    const stored = await _rimStore(id, v.ext, v.mime, buf);
+    const rec = _RIM.imageRecord({ id, ext: v.ext, mime: v.mime, bytes: buf.length, stored, reading: r.value, model: r.model });
+    await _rcLock(async () => kv.put(_RIM.INDEX_KEY, JSON.stringify(_RIM.putImage(await _rcStrict(_RIM.INDEX_KEY, null), rec))));
+    res.json({ ok: true, id, url: _RIM.imageUrl(id), ...r.value, text: rec.text, model: r.model, stored });
+  } catch (e) { res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
+});
+// GET /api/research-pod/image?id=: the picture itself (for the page's thumbnails and the full view).
+app.get('/api/research-pod/image', async (req, res) => {
+  try {
+    const id = String(req.query.id ?? ''); if (!_RIM.isImageId(id)) return res.status(400).json({ ok: false, error: 'bad image id' });
+    const got = await _rimBytes(id); if (!got) return res.status(404).json({ ok: false, error: 'no such picture (or it was held in memory and the server restarted)' });
+    res.set({ 'Content-Type': got.mime, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, max-age=86400', 'Content-Disposition': 'inline' });
+    res.send(got.buf);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // GET /api/research-pod/cases: every case (summary rows, newest first) and the running jobs.
 app.get('/api/research-pod/cases', async (_req, res) => {
   try { res.set('Cache-Control', 'no-store'); const st = await _rcStore(); res.json({ ok: true, label: _RCS.LABEL, cases: st.cases.map(c => _RCS.summary(c, _rcJobs[c.id])) }); }
@@ -6017,14 +5756,18 @@ app.post('/api/research-pod/case/reply', async (req, res) => {
   try {
     const id = String(req.body?.id ?? ''), text = String(req.body?.text ?? '').trim().slice(0, 3000);
     if (!id || !text) return res.status(400).json({ ok: false, error: 'id and text are required' });
+    const images = await _rimAttach(req.body?.images);   // up to 6 pictures with the message, each with its (possibly corrected) reading
     const c = (await _rcStore()).cases.find(x => x.id === id); if (!c) return res.status(404).json({ ok: false, error: 'no such case' });
     if (_rcJobs[id]?.status === 'running') return res.status(409).json({ ok: false, error: 'this case is already working', job: _rcJobs[id] });
     if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key' });
-    await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); await _rcPut({ ...c2, pending: { owner: text, at: new Date().toISOString() }, updatedAt: new Date().toISOString() }); });
-    // a case whose round 1 failed runs round 1 again (the full session), with the message added to the question
-    if (!c.rounds.length) { const job = _rpStart({ brief: [c.question, text].filter(Boolean).join('\n\n'), caseId: id }); if (!job) return res.status(409).json({ ok: false, error: 'the research pod is already working on another question', job: _rpJob }); return res.status(202).json({ ok: true, job }); }
-    res.status(202).json({ ok: true, job: _rcStartJob(id, 'round', job => _rcRound(id, text, job)) });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    // a case whose round 1 failed runs round 1 again (the full session), with the message added to the question (and its
+    // pictures to the question's); a case opened from a dossier has the dossier as its context instead, so its first
+    // round is an ordinary round over it
+    const rerun = !c.rounds.length && !c.dossier, qImages = rerun ? [...(c.images ?? []), ...images.filter(a => !(c.images ?? []).some(x => x.id === a.id))].slice(-_RIM.MAX_PER_MESSAGE * 2) : null;
+    await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); await _rcPut({ ...c2, ...(rerun && qImages.length ? { images: qImages } : {}), pending: { owner: text, at: new Date().toISOString(), ...(images.length ? { images } : {}) }, updatedAt: new Date().toISOString() }); });
+    if (rerun) { const job = _rpStart({ brief: [c.question, text].filter(Boolean).join('\n\n'), caseId: id, images: qImages }); if (!job) return res.status(409).json({ ok: false, error: 'the research pod is already working on another question', job: _rpJob }); return res.status(202).json({ ok: true, job }); }
+    res.status(202).json({ ok: true, job: _rcStartJob(id, 'round', job => _rcRound(id, text, job, images), _RCS.jobMarker({ kind: 'round', owner: text, images })) });
+  } catch (e) { res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
 });
 // POST /api/research-pod/case/review { id }: send the case to the Head of Research (research-head; the expensive step, never automatic).
 app.post('/api/research-pod/case/review', async (req, res) => {
@@ -6034,7 +5777,31 @@ app.post('/api/research-pod/case/review', async (req, res) => {
     if (_rcJobs[id]?.status === 'running') return res.status(409).json({ ok: false, error: 'this case is already working', job: _rcJobs[id] });
     if (!c.rounds.length) return res.status(400).json({ ok: false, error: 'the researchers have not answered yet' });
     if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key' });
-    res.status(202).json({ ok: true, job: _rcStartJob(id, 'review', job => _rcReview(id, job)) });
+    res.status(202).json({ ok: true, job: _rcStartJob(id, 'review', job => _rcReview(id, job), _RCS.jobMarker({ kind: 'review' })) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/research-pod/case/from-dossier { id }: open a literature dossier (an idea or a paper review) as a case, once
+// per dossier (the same call again returns the same case). The dossier's hypothesis is the question and the dossier the
+// case's context; its proposals go into the library tagged with the case. No model runs: the owner replies to start round 1.
+app.post('/api/research-pod/case/from-dossier', async (req, res) => {
+  try {
+    const did = String(req.body?.id ?? ''), rec = (await _rpGet(_LIT.dossiers, [])).find(x => x.id === did);
+    if (!rec) return res.status(404).json({ ok: false, error: 'no such dossier' });
+    if (!rec.dossier) return res.status(400).json({ ok: false, error: 'this job wrote no dossier, so there is nothing to discuss' });
+    await _rcEnsure();
+    const out = await _rcLock(async () => {
+      const have = _RCS.caseForDossier(await _rcRead(), did); if (have) return { c: have, created: false };
+      const c = _RCS.caseFromDossier(rec, { date: _dpLondonDate(Date.now()) });
+      // the dossier's proposals into the library (a proposal already there keeps its revisions and marks), tagged with the case
+      const lib = await _rcStrict(_RP.library, []), fresh = (rec.dossier.proposals ?? []).filter(p => !lib.some(x => x.id === p.id)).map(p => ({ ...p, dossier: did }));
+      const l2 = _RCS.tagLibrary(fresh.length ? _rpMerge(lib, fresh, c.date) : lib, (rec.dossier.proposals ?? []).map(p => p.id), c.id);
+      await kv.put(_RP.library, JSON.stringify(l2));
+      await _rcPut(c);
+      return { c, created: true, fresh };
+    });
+    const cites = (out.fresh ?? []).filter(p => p.citations?.length);
+    for (const p of cites) await kv.put(_LIT.papers, JSON.stringify(_litCite(await _rpGet(_LIT.papers, []), p.citations, { proposals: [p.id] })));
+    res.status(out.created ? 201 : 200).json({ ok: true, created: out.created, id: out.c.id, summary: _RCS.summary(out.c, _rcJobs[out.c.id]) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // POST /api/research-pod/case/status { id, status: open|parked|closed }
@@ -6061,11 +5828,17 @@ app.get('/api/research-pod', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // POST /api/research-pod/run { brief?, lenses?: ['quant','macro','flow'] }: a new case now, and its round 1. With a brief, it is the owner's question to the pod.
-app.post('/api/research-pod/run', (req, res) => {
-  const lenses = Array.isArray(req.body?.lenses) ? req.body.lenses.filter(l => _RP_RESEARCHERS[l]) : undefined;
-  const job = _rpStart({ brief: typeof req.body?.brief === 'string' ? req.body.brief.slice(0, 1500) : '', ...(lenses?.length ? { lenses } : {}) });
-  if (!job) return res.status(409).json({ ok: false, error: 'the research pod is already working', job: _rpJob });
-  res.status(202).json({ ok: true, job });
+// images?: up to 6 picture ids (or { id, text } with a corrected reading) from POST /api/research-pod/image.
+app.post('/api/research-pod/run', async (req, res) => {
+  try {
+    const lenses = Array.isArray(req.body?.lenses) ? req.body.lenses.filter(l => _RP_RESEARCHERS[l]) : undefined;
+    const brief = typeof req.body?.brief === 'string' ? req.body.brief.slice(0, 1500) : '';
+    const images = await _rimAttach(req.body?.images);
+    if (images.length && !brief.trim()) return res.status(400).json({ ok: false, error: 'write the question that goes with the pictures' });
+    const job = _rpStart({ brief, ...(lenses?.length ? { lenses } : {}), ...(images.length ? { images } : {}) });
+    if (!job) return res.status(409).json({ ok: false, error: 'the research pod is already working', job: _rpJob });
+    res.status(202).json({ ok: true, job });
+  } catch (e) { res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
 });
 // POST /api/research-pod/feedback { id, status: shortlist|build|park|reject, note }
 app.post('/api/research-pod/feedback', async (req, res) => {
@@ -6193,10 +5966,24 @@ async function _litFetch(url, { timeout = 20_000, accept = '*/*', headers = {}, 
   return { ok: r.ok, status: r.status, type: r.headers.get('content-type') ?? '', buf, url: r.url || url, text: () => buf.toString('utf8') };
 }
 const _litIsPdf = x => /pdf/i.test(x.type) || x.buf.subarray(0, 5).toString('latin1') === '%PDF-';
+// PDF text in a worker thread (scripts/pdf/pdfWorker.mjs), two at a time, killed at the timeout: pdf-parse is CPU-bound
+// and on the main loop it stalled every request while the research pod read papers.
+const _pdfQ = { running: 0, wait: [] };
+async function _pdfText(buf, { max = 0, timeoutMs = 60_000 } = {}) {
+  if (_pdfQ.running >= 2) await new Promise(r => _pdfQ.wait.push(r));
+  _pdfQ.running++;
+  try {
+    return await new Promise((resolve, reject) => {
+      const w = new _NodeWorker(new URL('./scripts/pdf/pdfWorker.mjs', import.meta.url), { workerData: { buf, max }, resourceLimits: { maxOldGenerationSizeMb: 512 } });
+      const t = setTimeout(() => { w.terminate(); reject(new Error(`pdf-parse timed out after ${Math.round(timeoutMs / 1000)}s`)); }, timeoutMs);
+      w.once('message', m => { clearTimeout(t); w.terminate(); m.ok ? resolve(m.text) : reject(new Error(`pdf-parse: ${m.error}`)); });
+      w.once('error', e => { clearTimeout(t); reject(e); });
+      w.once('exit', code => { clearTimeout(t); if (code) reject(new Error(`pdf-parse worker exited (${code})`)); });
+    });
+  } finally { _pdfQ.running--; _pdfQ.wait.shift()?.(); }
+}
 async function _litPdf(buf) {
-  const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
-  const parsed = await _litTimeout(pdfParse(buf, { max: 45 }), 60_000, 'pdf-parse');
-  return _litCleanPdf(parsed.text);
+  return _litCleanPdf(await _pdfText(buf, { max: 45, timeoutMs: 60_000 }));
 }
 async function _litSearchOne(src, q, max) {
   if ((_litCool[src] ?? 0) > Date.now()) throw new Error(`${src}: skipped, rate limited until ${new Date(_litCool[src]).toISOString().slice(11, 16)} UTC`);
@@ -6292,12 +6079,12 @@ async function _litResolve(ref, errors) {
 // One model call that must return a JSON object, with an honest retry (owner, 2026-11-04: the pod came back with
 // "reply is not a JSON object" from every researcher). A reply cut off at the length cap is retried with more room and
 // an instruction to be brief; an unreadable reply is retried once; the error says which it was and how the reply began.
-async function _modelJson({ task = 'desk-head', system, prompt, maxTokens = 12_000, timeoutMs, label = 'model', validate, tries = 2, onCall = null }) {
+async function _modelJson({ task = 'desk-head', system, prompt, maxTokens = 12_000, timeoutMs, label = 'model', validate, tries = 2, onCall = null, images = [] }) {
   let err = 'no call made', p = prompt, cap = maxTokens;
   for (let i = 0; i < tries; i++) {
     onCall?.();
     let r;
-    try { r = await callModel({ task, system, prompt: p, maxTokens: cap, ...(timeoutMs ? { timeoutMs } : {}) }); }
+    try { r = await callModel({ task, system, prompt: p, maxTokens: cap, ...(timeoutMs ? { timeoutMs } : {}), ...(images?.length ? { images } : {}) }); }
     catch (e) { err = e.message; continue; }
     const text = r.text ?? _antText(r), cut = r.stop_reason === 'max_tokens' || r.truncated === true, obj = _parseModelJson(text, label);
     if (obj) { const v = validate(obj); if (v.ok) return { ...v, model: r.model ?? null }; err = v.errors.join('; '); }
@@ -6359,16 +6146,18 @@ async function _litSynthesise({ hypothesis, read, unread, budget, date, kind, ex
   return _litTimeout(_litModel(budget, { role, sections, date, ledger: DESK_EVIDENCE, maxTokens: 12_000, timeoutMs: 300_000, label: 'lit:dossier', validate: o => _litValidateDossier(o, { paperIds: read.map(p => p.id) }) }), 620_000, 'dossier');
 }
 /** POST /api/research-pod/investigate: research an idea end to end. */
-async function _litInvestigate(hypothesis, job) {
+async function _litInvestigate(hypothesis, job, { images = [] } = {}) {
   if (!_aiAnyKey()) throw new Error('no model key');
   const roles = _deskLoadRoles(), role = id => { const r = roles.find(x => x.id === id); if (!r) throw new Error(`no role file ${id}`); return r; };
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
   const date = _dpLondonDate(Date.now()), at = new Date().toISOString(), id = `idea-${date}-${Date.now().toString(36)}`;
   const errors = job.errors, budget = job.budget, sources = job.sources;
-  const rec = { id, kind: 'idea', at, date, hypothesis, restated: '', queries: [], names: [], papers: [], paperNotes: {}, read: null, dossier: null, notes: [], errors, calls: 0, sources };
+  const rec = { id, kind: 'idea', at, date, hypothesis, restated: '', queries: [], names: [], papers: [], paperNotes: {}, read: null, dossier: null, notes: [], errors, calls: 0, sources, ...(images.length ? { images } : {}) };
+  // pictures the owner attached: their (possibly corrected) vision readings go with the hypothesis to the librarian and the dossier
+  const picSec = images.length ? [[_RIM.PICTURES_HEADER, _RIM.picturesText(images, { header: false })]] : [];
   // a. the librarian: queries and known literature
   job.stage = 'librarian: writing the search queries';
-  try { const q = await _litModel(budget, { role: role('librarian'), date, ledger: DESK_EVIDENCE, maxTokens: 1500, timeoutMs: 120_000, label: 'lit:librarian', sections: [['The hypothesis', hypothesis]], validate: _litValidateQueries });
+  try { const q = await _litModel(budget, { role: role('librarian'), date, ledger: DESK_EVIDENCE, maxTokens: 1500, timeoutMs: 120_000, label: 'lit:librarian', sections: [['The hypothesis', hypothesis], ...picSec], validate: _litValidateQueries });
     rec.restated = q.value.restated; rec.queries = q.value.queries.map(x => x.q); rec.names = q.value.names; }
   catch (e) { errors.push(e.message); rec.queries = [hypothesis.replace(/\s+/g, ' ').slice(0, 160)]; }
   // b. the desk's own library first (papers, the 151 strategies, QuantConnect strategies, working papers): entries
@@ -6406,7 +6195,7 @@ async function _litInvestigate(hypothesis, job) {
   if (!read.length) { rec.calls = budget.calls; await _litSaveDossier(rec); throw new Error(`no paper could be read (${errors.slice(-3).join('; ')})`); }
   // d. the dossier
   job.stage = `writing the dossier from ${read.length} papers`;
-  try { const v = await _litSynthesise({ hypothesis, read, unread: ranked.filter(p => !readFrom[p.id]), budget, date, kind: 'idea', extra: rec.restated ? [['The librarian restated it as', rec.restated]] : [] });
+  try { const v = await _litSynthesise({ hypothesis, read, unread: ranked.filter(p => !readFrom[p.id]), budget, date, kind: 'idea', extra: [...(rec.restated ? [['The librarian restated it as', rec.restated]] : []), ...picSec] });
     rec.dossier = v.value; rec.notes = v.notes; }
   catch (e) { errors.push(e.message); }
   rec.calls = budget.calls;
@@ -6631,7 +6420,7 @@ let _litJob = null;
 function _litStart(kind, input, opts = {}) {
   if (_litJob?.status === 'running') return null;
   const job = _litJob = { status: 'running', kind, input: String(input).slice(0, 300), stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null, errors: [], budget: { calls: 0, max: kind === 'idea' ? 15 : kind === 'backlog' ? Math.min(12, Math.max(1, opts.calls ?? 6)) : 5 }, sources: {}, result: null };
-  (kind === 'idea' ? _litInvestigate(input, job) : kind === 'backlog' ? _rlBacklog(opts, job) : _litReview(input, job))
+  (kind === 'idea' ? _litInvestigate(input, job, opts) : kind === 'backlog' ? _rlBacklog(opts, job) : _litReview(input, job))
     .then(r => { job.status = 'done'; job.result = r.id; job.stage = 'done'; })
     .catch(e => { job.status = 'error'; job.error = e.message; })
     .finally(() => { job.finishedAt = Date.now(); });
@@ -6639,12 +6428,16 @@ function _litStart(kind, input, opts = {}) {
 }
 const _litJobView = () => (_litJob ? { ..._litJob, calls: _litJob.budget?.calls ?? 0 } : null);
 // POST /api/research-pod/investigate { hypothesis }: research an idea (librarian, search, read, dossier). One job at a time.
-app.post('/api/research-pod/investigate', (req, res) => {
-  const h = String(req.body?.hypothesis ?? '').trim();
-  if (h.length < 12) return res.status(400).json({ ok: false, error: 'write the hypothesis in a sentence or two' });
-  const job = _litStart('idea', h.slice(0, 2000));
-  if (!job) return res.status(409).json({ ok: false, error: 'the literature desk is already working', job: _litJobView() });
-  res.json({ ok: true, job: _litJobView() });
+// images?: up to 6 picture ids (or { id, text }): their readings go with the hypothesis to the librarian and the dossier.
+app.post('/api/research-pod/investigate', async (req, res) => {
+  try {
+    const h = String(req.body?.hypothesis ?? '').trim();
+    if (h.length < 12) return res.status(400).json({ ok: false, error: 'write the hypothesis in a sentence or two' });
+    const images = await _rimAttach(req.body?.images);
+    const job = _litStart('idea', h.slice(0, 2000), images.length ? { images } : {});
+    if (!job) return res.status(409).json({ ok: false, error: 'the literature desk is already working', job: _litJobView() });
+    res.json({ ok: true, job: _litJobView() });
+  } catch (e) { res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
 });
 // POST /api/research-pod/paper { ref }: review one paper (arXiv id or URL, DOI, SSRN link, PDF or page URL, a title, or pasted text).
 app.post('/api/research-pod/paper', (req, res) => {
@@ -6657,14 +6450,16 @@ app.post('/api/research-pod/paper', (req, res) => {
 // GET /api/research-pod/dossiers: every dossier (newest first, summaries) and the job.
 app.get('/api/research-pod/dossiers', async (_req, res) => {
   try { res.set('Cache-Control', 'no-store'); const all = await _rpGet(_LIT.dossiers, []);
-    res.json({ ok: true, label: 'literature reviews and proposals, not results', job: _litJobView(), sources: _LIT_SOURCES, dossiers: all.map(_litDossierSummary) }); }
+    const byDossier = Object.fromEntries((await _rcStore().catch(() => _RCS.emptyStore())).cases.filter(c => c.dossierId).map(c => [c.dossierId, c.id]));
+    res.json({ ok: true, label: 'literature reviews and proposals, not results', job: _litJobView(), sources: _LIT_SOURCES, dossiers: all.map(d => ({ ..._litDossierSummary(d), caseId: byDossier[d.id] ?? null })) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/research-pod/dossier?id=: one dossier in full.
 app.get('/api/research-pod/dossier', async (req, res) => {
   try { res.set('Cache-Control', 'no-store'); const d = (await _rpGet(_LIT.dossiers, [])).find(x => x.id === String(req.query.id ?? ''));
     if (!d) return res.status(404).json({ ok: false, error: 'no such dossier' });
-    const lib = await _rpGet(_RP.library, []); res.json({ ok: true, ...d, inLibrary: (d.dossier?.proposals ?? []).filter(p => lib.some(x => x.id === p.id)).map(p => p.id) }); }
+    const lib = await _rpGet(_RP.library, []), c = _RCS.caseForDossier(await _rcStore().catch(() => _RCS.emptyStore()), d.id);
+    res.json({ ok: true, ...d, inLibrary: (d.dossier?.proposals ?? []).filter(p => lib.some(x => x.id === p.id)).map(p => p.id), caseId: c?.id ?? null }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // POST /api/research-pod/dossier/adopt { id, proposalId }: put a dossier's proposal into the pod's library (marks, threads, cards).
@@ -8567,6 +8362,38 @@ app.get('/api/release-layer1/paths', async (req, res) => {
     const P = live?.paths?.[id] ?? _cogJson(path.join(_RL_DIR, 'paths.json'))[id];
     if (!P) return res.status(404).json({ ok: false, error: 'unknown release' });
     res.set('Cache-Control', live?.paths?.[id] ? 'no-store' : 'public, max-age=3600'); res.json({ ok: true, id, paths: P });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// Volume footprint (footprint.html; scripts/footprint/build_footprint.py, maths in js/footprintCore.js). Committed days live in
+// analysis/output/footprint/site/fp_<SYM>_<day>.json; the laptop's --watch --push loop puts the day it is building in KV footprint_live_v1,
+// which wins for that day. Descriptive order flow only (orderflow-lead null).
+const _FP_DIR = path.join(__dirname, 'analysis', 'output', 'footprint', 'site'), _FP_KV = 'footprint_live_v1';
+let _fpLive = { at: 0, v: null };
+async function _fpLivePush() {
+  if (Date.now() - _fpLive.at > 10_000) {
+    try { const raw = await kv.get(_FP_KV); const p = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null; _fpLive = { v: p?.data ?? p ?? null, at: Date.now() }; }
+    catch { _fpLive = { ..._fpLive, at: Date.now() }; }
+  }
+  return _fpLive.v?.bars ? _fpLive.v : null;
+}
+app.get('/api/footprint/days', async (_req, res) => {
+  try {
+    let days = []; try { days = JSON.parse(fs.readFileSync(path.join(_FP_DIR, 'fp_index.json'), 'utf8')); } catch { /* none committed yet */ }
+    const live = await _fpLivePush();
+    if (live && !days.some(d => d.sym === live.sym && d.day === live.day)) days.push({ sym: live.sym, day: live.day });
+    days.sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : a.sym.localeCompare(b.sym)));
+    res.set('Cache-Control', 'no-store'); res.json({ ok: true, days, live: live ? { sym: live.sym, day: live.day, built: live.built, last_trade: live.last_trade } : null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/footprint/day', async (req, res) => {
+  try {
+    const sym = String(req.query.sym || 'NQ').toUpperCase(), day = String(req.query.day || '');
+    if (!/^[A-Z0-9]{1,5}$/.test(sym) || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return res.status(400).json({ ok: false, error: 'sym and day=YYYY-MM-DD required' });
+    const live = await _fpLivePush();
+    if (live && live.sym === sym && live.day === day) { res.set('Cache-Control', 'no-store'); return res.json({ ok: true, live: true, ...live }); }
+    const f = path.join(_FP_DIR, `fp_${sym}_${day}.json`);
+    if (!fs.existsSync(f)) return res.status(404).json({ ok: false, error: `no footprint for ${sym} ${day}` });
+    res.set('Cache-Control', 'no-store'); res.json({ ok: true, live: false, ...JSON.parse(fs.readFileSync(f, 'utf8')) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // Layer 2 (release-why.html; scripts/release_layer2/): the going-in factor sheet and the 77-item register. Kept apart from Layer 1 on purpose: it never carries outcomes, the page joins them by release id.
@@ -12328,9 +12155,8 @@ async function _fiscalFetchDoc(ev, doc) {
     const att = fiscalAttachment(pub); if (!att) return null;
     if (att.type === 'html') { const h = await _fiscalGovuk(att.path); if (!h?.details?.body) return null; return { text: fiscalHtmlToText(h.details.body), url: `https://www.gov.uk${att.path}`, publishedOn: h.first_published_at ?? pub.first_published_at ?? null }; }
     const r = await fetch(att.url, { headers: { 'User-Agent': _FISCAL_UA }, signal: AbortSignal.timeout(60_000) }); if (!r.ok) return null;
-    const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
-    const parsed = await pdfParse(Buffer.from(await r.arrayBuffer()));
-    return { text: parsed.text, url: att.url, publishedOn: pub.first_published_at ?? null };
+    const text = await _pdfText(Buffer.from(await r.arrayBuffer()), { timeoutMs: 120_000 });
+    return { text, url: att.url, publishedOn: pub.first_published_at ?? null };
   }
   if (doc.kind === 'obr') {
     let page = await _fiscalGet(`https://obr.uk/efo/${doc.obr}/`);
@@ -27891,7 +27717,7 @@ app.get('/api/oi-store', async (req, res) => {
 // down cannot fail a deploy. 5-minute cache, one in-flight fetch per symbol, and a
 // failed fetch serves the last good copy marked stale rather than an error.
 const _CBOE_TTL_MS = 5 * 60_000;
-const _cboeCache = new Map();      // sym -> { at, built, err }
+const _cboeCache = new Map();      // sym -> { at, built, parsed, err }
 const _cboeInflight = new Map();   // sym -> Promise
 async function _cboeBuilt(pair, { force = false, ttlMs = _CBOE_TTL_MS } = {}) {
   const cfg = _CBOE_PAIRS[pair];
@@ -27904,13 +27730,16 @@ async function _cboeBuilt(pair, { force = false, ttlMs = _CBOE_TTL_MS } = {}) {
       const r = await fetch(_cboeUrl(cfg.sym), { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' },
         redirect: 'follow', signal: AbortSignal.timeout(25_000) });
       if (!r.ok) throw new Error(`Cboe ${r.status}`);
-      const raw = _cboeLadder(_parseCboeChain(await r.json()), { scale: cfg.scale });
+      const parsed = _parseCboeChain(await r.json());
+      const raw = _cboeLadder(parsed, { scale: cfg.scale });
       if (!raw) throw new Error('Cboe chain empty or unparseable');
       // Put the cash-index levels onto the CFD: measure CFD − cash at Cboe's own quote time
       // (OANDA M1 for that minute) and shift every price by it. No OANDA key / no candle /
       // implausible gap → left uncorrected and flagged (cfdOffset null).
       const built = _cboeShift(raw, await _cboeCfdOffset(pair, raw.asOfMs, raw.spot));
-      const row = { at: Date.now(), built, err: null };
+      // `parsed` (every contract, raw index terms) rides along for the Options → Path view's per-expiry books, so the
+      // path reads the same 15-minute pull instead of fetching again; /api/cboe-chain still returns only `built`.
+      const row = { at: Date.now(), built, parsed, err: null };
       _cboeCache.set(cfg.sym, row);
       return { ...row, stale: false };
     } catch (e) {
@@ -29061,7 +28890,6 @@ app.get('/api/kv-health', async (_req, res) => {
       // 2026-07-28, so it is checked here to make a regression visible immediately
       // rather than showing up as permanently-null day-over-day reads.
       'oi_store', 'oi_history', 'range_line_oi',
-      'hedge_signal_tg',
     ];
     const probe = await kv.probe(CHECK);
     res.json({ ok: true, ...kv.health(), ...probe });
@@ -31911,6 +31739,19 @@ async function _briefSessionOpen(sym, sessionDate) {
   return open;
 }
 
+// The last complete daily candle (17:00 New York, the same close the daily market bundle uses) for each instrument: its high
+// and low let the morning issue say where the price sits in yesterday's range (js/morningTape.js). One D x 3 call per
+// instrument, cached for an hour within a session date, so a batch of dashboard polls costs nothing extra.
+const _briefPrevDayCache = new Map();
+async function _briefPrevDay(sym, sessionDate) {
+  const hit = _briefPrevDayCache.get(sym);
+  if (hit && hit.date === sessionDate && Date.now() - hit.at < 3600_000) return hit.v;
+  let v = null;
+  try { const bars = await _btFetchD1(sym, 3); const b = bars?.at(-1); if (b && Number.isFinite(b.high) && Number.isFinite(b.low)) v = { date: b.date, high: b.high, low: b.low, close: b.close }; } catch {}
+  _briefPrevDayCache.set(sym, { date: sessionDate, at: v ? Date.now() : Date.now() - 3000_000, v });   // a miss is retried after 10 minutes, not on every poll
+  return v;
+}
+
 // Build the daily-brief payload — precise per-level prices, hit rates, regime,
 // live price and the London-midnight session open. Extracted from the route so
 // the level-proximity Telegram alert loop (checkVolLevelAlertsNow) reads the
@@ -31962,6 +31803,10 @@ async function computeDailyBrief() {
     await Promise.all(HR_INSTRUMENTS.map(async ({ sym }) => {
       sessionOpens[sym] = await _briefSessionOpen(sym, forecast.session_date);
     }));
+  }
+  const prevDays = {};
+  if (process.env.OANDA_KEY) {
+    await Promise.all(HR_INSTRUMENTS.map(async ({ sym }) => { prevDays[sym] = await _briefPrevDay(sym, forecast.session_date); }));
   }
 
   const instruments = {};
@@ -32042,6 +31887,7 @@ async function computeDailyBrief() {
       stale:         fc.stale ?? false,
       carried_from:  fc.carried_from ?? null,
       session_open:  anchorOpen != null ? fmt(anchorOpen) : null,   // London-midnight anchor for the levels
+      prev_day:      prevDays[sym] ?? null,   // the last complete 17:00 New York daily candle { date, high, low, close }
       news_mult:     fc.news_mult  ?? 1,
       news_flag:     (fc.news_mult ?? 1) > 1 ? (forecast.meta?.news_flag ?? 'Event') : null,
       vol_annual:    fc.vol_annual,
@@ -34490,6 +34336,14 @@ dailyRead.mount(app);
 createHarShadow({ kv }).mount(app);
 createDrawdownShadow({ kv }).mount(app);
 createStressShadow({ kv }).mount(app);
+// Vol state vector + trade-plan shadow (display only; never a bot input). Direction = the tested 1-to-10 score; vol layer = the live
+// ladder (stress-shadow lines for the stop). Write-once R2 forward/trade_plan/. Rule: js/tradePlanCore.js; prereg forge/TRADE_PLAN_SHADOW_PREREG.md.
+const _tpFetchLocal = async p => { const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { signal: AbortSignal.timeout(90_000) }); return r.ok ? r.json() : null; };
+const _volState = createVolState({ kv, getHmmStore: () => _loadHmmHourly(), hmmKeys: BRIEF_HMM_KEYS, fetchLocal: _tpFetchLocal });
+_volState.mount(app);
+const _tradePlan = createTradePlan({ store: { getJSON: _r2GetJSON, putJSON: _r2PutJSON, listKeys: _r2ListKeys, ok: _r2Ok }, kv, volState: _volState, getGr: () => _grLatest, fetchLocal: _tpFetchLocal });
+_tradePlan.mount(app);
+svcInterval('tradePlan', () => _tradePlan.tick('scheduled').catch(e => console.error('[trade-plan]', e.message)), 10 * 60_000);
 // Liquidity & banking layer. Uses the server's own feeds first: the keyed FRED fetcher (fetchFredSeries, the same
 // one the liquidity gate and pulse use) when FRED_KEY is set, the BIS bank-credit store (KV bank_credit_v1, built by
 // _bcTick) and the Daily Treasury Statement TGA. FRED's public CSV is only the no-key fallback. Cached 6 h.
@@ -36729,8 +36583,7 @@ async function _cbspStatements() {
   return out;
 }
 async function _cbspPdf(buf) {
-  const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
-  return (await _cbspTimeout(pdfParse(buf, { max: 30 }), 60_000, 'pdf-parse')).text ?? '';
+  return _pdfText(buf, { max: 30, timeoutMs: 60_000 });
 }
 /** The speech's text: the page's article/main region, or its PDF when the page is only a shell around one. */
 async function _cbspText(url) {
@@ -41953,6 +41806,38 @@ app.get('/api/corr-history', (req, res) => {
   }
 });
 
+// The Desk Terminal's Correlations & hedges tab (js/terminal/corrView.js): aligned daily closes for every instrument
+// in the correlation build, ~3 years, plus the old page's EUR/USD trend regime per day. Built by the 6-hourly
+// correlation refresh (worker thread) and kept on disk, in memory and in KV, so it is there straight after a deploy.
+// Never built on request: a missing panel only nudges the scheduled refresh. ~150 KB before compression.
+async function _corrPanelBody() {
+  try {
+    const st = fs.statSync(CORR_PANEL_PATH);
+    if (!_corrPanelMem || _corrPanelMem.src !== 'disk' || _corrPanelMem.mtime !== st.mtimeMs) {
+      const body = fs.readFileSync(CORR_PANEL_PATH, 'utf8');
+      _corrPanelMem = { body, generated: JSON.parse(body).generated, src: 'disk', mtime: st.mtimeMs };
+    }
+    return _corrPanelMem;
+  } catch { /* not on disk (deploy wiped bot/data) */ }
+  if (_corrPanelMem) return _corrPanelMem;
+  try {
+    const raw = await kv.get(CORR_PANEL_KV);
+    if (raw) { _corrPanelMem = { body: raw, generated: JSON.parse(raw).generated, src: 'kv' }; return _corrPanelMem; }
+  } catch (e) { console.warn('[corr-terminal] kv', e.message); }
+  return null;
+}
+app.get('/api/corr-terminal', async (_req, res) => {
+  const p = await _corrPanelBody();
+  if (!p) {
+    runCorrHistoryRefresh().catch(() => {});
+    return res.json({ ok: false, building: corrRunning, refreshEveryH: CORR_STALE_MS / 3600_000, oandaKey: !!process.env.OANDA_KEY,
+      error: corrRunning ? 'The correlation build is running now (about 3 minutes).' : 'No correlation panel yet: the scheduled build has not run on this server.' });
+  }
+  const ageH = (Date.now() - Date.parse(p.generated)) / 3600_000;
+  res.setHeader('Content-Type', 'application/json');
+  res.send(`{"ok":true,"refreshEveryH":${CORR_STALE_MS / 3600_000},"ageH":${Number.isFinite(ageH) ? +ageH.toFixed(2) : null},"stale":${ageH > CORR_STALE_MS / 3600_000 * 2},"building":${corrRunning},"src":"${p.src}","panel":${p.body}}`);
+});
+
 // Hedge alerts — compact summary for the dashboard beta panel.
 // Returns avg_corr, corr_std (computed from records), last rolling corr, and last betas.
 // Much smaller than the full corr-history response.
@@ -42010,33 +41895,11 @@ app.get('/api/hedge-alerts', async (req, res) => {
   }
 });
 
-// ── Hedge Signal API ─────────────────────────────────────────────────────────
-
-app.get('/api/hedge-signals', (_req, res) => {
-  if (!fs.existsSync(HEDGE_SIGNALS_PATH)) return res.json({ signals: [], last_run: null });
-  try { res.json(JSON.parse(fs.readFileSync(HEDGE_SIGNALS_PATH, 'utf8'))); }
-  catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/hedge-signals/config', async (_req, res) => {
-  const raw = await kv.get(HEDGE_SIGNAL_CFG_KEY).catch(() => null);
-  res.json(raw ? { ...DEFAULT_HEDGE_CFG, ...JSON.parse(raw) } : { ...DEFAULT_HEDGE_CFG });
-});
-
-app.put('/api/hedge-signals/config', async (req, res) => {
-  const cfg = { ...DEFAULT_HEDGE_CFG, ...(req.body || {}) };
-  await kv.put(HEDGE_SIGNAL_CFG_KEY, JSON.stringify(cfg));
-  res.json({ ok: true, config: cfg });
-});
-
-app.post('/api/hedge-signals/check', async (_req, res) => {
-  const result = await computeHedgeSignals(true).catch(e => ({ status: 'error', error: e.message }));
-  res.json({ ok: true, ...result });
-});
-
 // ── Hedge Audit Log ──────────────────────────────────────────────────────────
 // Advisory hedge suggestions logged when new positions open — used for forward-testing
-// signal quality before building Option C (automated execution).
+// signal quality before building Option C (automated execution). Independent of the retired
+// hedge signals: bot-config.html and bot/position_hedge_bot.py pick the hedge from the
+// hedge_alerts_cache correlations. Kept on 2026-11-06 when the signals were retired.
 
 app.get('/api/hedge-audit', async (_req, res) => {
   try {
@@ -42121,41 +41984,8 @@ app.get('/api/r2/list', async (req, res) => {
   }
 });
 
-app.post('/api/hedge-signals/ack', (req, res) => {
-  if (!fs.existsSync(HEDGE_SIGNALS_PATH)) return res.json({ ok: false, error: 'No signals file' });
-  try {
-    const { id, status = 'DISMISSED' } = req.body || {};
-    const data = JSON.parse(fs.readFileSync(HEDGE_SIGNALS_PATH, 'utf8'));
-    const sig  = data.signals.find(s => s.id === id);
-    if (!sig) return res.json({ ok: false, error: 'Signal not found' });
-    sig.status   = status;
-    sig.ack_time = new Date().toISOString();
-    fs.writeFileSync(HEDGE_SIGNALS_PATH, JSON.stringify(data, null, 2));
-    res.json({ ok: true });
-  } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
-});
-
-app.get('/api/hedge-signals/tg-config', async (_req, res) => {
-  const raw = await kv.get('hedge_signal_tg').catch(() => null);
-  res.json(raw ? JSON.parse(raw) : { token: '', chatId: '' });
-});
-
-app.put('/api/hedge-signals/tg-config', async (req, res) => {
-  const { token = '', chatId = '' } = req.body || {};
-  await kv.put('hedge_signal_tg', JSON.stringify({ token, chatId }));
-  res.json({ ok: true });
-});
-
-app.post('/api/hedge-signals/tg-test', async (_req, res) => {
-  const raw = await kv.get('hedge_signal_tg').catch(() => null);
-  const cfg = raw ? JSON.parse(raw) : null;
-  if (!cfg?.token || !cfg?.chatId) return res.json({ ok: false, error: 'Telegram not configured for hedge signals' });
-  const ok = await sendTelegram(cfg.token, cfg.chatId,
-    '✅ <b>MacroFX Hedge Signals</b> — bot connected!\n<i>You will receive alerts when hedge pair correlations diverge.</i>');
-  res.json({ ok, error: ok ? null : 'Telegram API returned error' });
-});
-
-// Live prices + vol forecast ATR estimates for hedge signal SL display
+// Live prices + vol forecast ATR estimates. Named for the retired hedge signals but kept: it is a generic price feed
+// (terminal.html live monitor, today.html proximity watch, bot-config.html hedge sizing).
 app.get('/api/hedge-signals/prices', (_req, res) => {
   const prices = {};
   for (const [sym, v] of Object.entries(state.prices)) {
@@ -42177,151 +42007,53 @@ app.get('/api/hedge-signals/prices', (_req, res) => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════
-// Hedge Signals v2 — cointegration-gated pairs mean-reversion
+// Hedge signals v1 + v2 — RETIRED 2026-11-06 (owner)
 // ────────────────────────────────────────────────────────────────────────────
-// v1 (computeHedgeSignals) picks pairs for LOW correlation and trades a plain
-// log(A)−log(B) spread against an all-history mean. v2 selects pairs by
-// COINTEGRATION (Engle-Granger half-life + t-stat), trades the static residual
-// z-scored on a rolling window, money-matches the legs (β) and adds a half-life
-// time-stop. All math lives in js/hedgeSignalV2Engine.js (unit-tested, no copy).
-// OANDA H4 bars are reachable in Railway, not the sandbox (403 ⇒ no_data, not a bug).
-
-const HEDGE_SIGNAL_V2_CFG_KEY  = 'hedge_signal_v2_cfg';
-const HEDGE_V2_SIGNALS_PATH    = path.join(__dirname, 'bot', 'data', 'hedge_signals_v2.json');
-const HEDGE_V2_BARS_TTL        = 60 * 60 * 1000;   // reuse fetched bars for 1h
-// Server-level defaults — enabled flag lives here, not in the engine (which is pure math).
-const HEDGE_V2_SERVER_DEFAULTS = { ...HEDGE_V2_DEFAULTS, enabled: true };
-
-// Candidate pairs likely to cointegrate — the gate filters which actually do.
-// Equity indices co-move strongly (the colleague's DAX/SP, DOW/NAS live here),
-// then metals, energy and a few FX crosses. Same OANDA symbols as CORR/BETA lists.
-const HEDGE_V2_PAIRS = [
-  ['NAS100_USD','SPX500_USD'], ['US30_USD','SPX500_USD'], ['US30_USD','NAS100_USD'],
-  ['US2000_USD','SPX500_USD'], ['DE30_USD','SPX500_USD'], ['DE30_USD','NAS100_USD'],
-  ['UK100_GBP','DE30_USD'],
-  ['XAUUSD','XAGUSD'], ['XAUUSD','XPTUSD'],
-  ['WTICO_USD','BCO_USD'],
-  ['EURUSD','GBPUSD'], ['AUDUSD','NZDUSD'], ['USDCAD','USDCHF'],
-];
-
-let _hedgeV2Running   = false;
-let _hedgeV2BarsCache = { at: 0, years: 0, closes: {} };
-const hedgeV2BtJobs   = new Map();
-
-async function _hedgeV2Bars(years = 2, force = false) {
-  if (!force && _hedgeV2BarsCache.at && _hedgeV2BarsCache.years >= years
-      && Date.now() - _hedgeV2BarsCache.at < HEDGE_V2_BARS_TTL) {
-    return _hedgeV2BarsCache.closes;
-  }
-  const syms = [...new Set(HEDGE_V2_PAIRS.flat())];
-  const closes = {};
-  for (const sym of syms) {
-    const r = await fetchH4Bars(sym, years).catch(() => null);
-    if (r?.closes?.length) closes[sym] = r.closes;
-  }
-  _hedgeV2BarsCache = { at: Date.now(), years, closes };
-  return closes;
+// They were not hedges: a pairs-trading / spread mean-reversion system (two
+// correlated pairs, a 1:1 log-price spread, enter at spread z > 2, exit 0.5,
+// stop 3.5). v1 kept its spread mean/std in memory (reset on every restart) and
+// measured its correlation z against a full-history mean; only 2 signals ever
+// closed with a P&L (+0.035% in total) and nothing in the Evidence Book tested
+// either version. The scanners (computeHedgeSignals, computeHedgeSignalsV2), their
+// schedules and every Telegram send (entry / exit / stop, the hedge_signal_tg
+// sender) are removed. Recorded as retired, untested in MD files/HEDGING_VS_SPREAD.md and MD files/SITE_MAP.md.
+//
+// The GET routes still answer so old pages, links and the local HedgeBot get a
+// clean `retired` body instead of a 404/500 (HedgeBot sees no signals, so it opens
+// nothing and closes any legs it still holds as DISMISSED). Writes answer 410.
+// Kept, because they are independent of the signals:
+//   /api/hedge-signals/prices  a generic live-price feed (terminal.html, today.html, bot-config.html)
+//   /api/hedge-alerts + hedge_alerts_cache  the correlation summary from runCorrHistoryRefresh
+//   /api/hedge-audit           advisory hedge suggestions logged when positions open (bot-config.html,
+//                              position_hedge_bot.py), chosen from hedge_alerts_cache correlations
+// js/hedgeSignalV2Engine.js stays: js/goldMinerArbEngine.js imports its OU half-life primitive.
+// Where hedging lives now: Desk Terminal → Correlations & hedges → Hedge finder.
+const HEDGE_SIGNALS_RETIRED = {
+  retired: true,
+  retired_on: '2026-11-06',
+  reason: 'Retired: these were a spread mean-reversion (pairs-trading) system, not hedges. The spread mean and std reset '
+    + 'on every restart, the correlation z used a full-history mean, only 2 signals ever closed with a P&L (+0.035% in '
+    + 'total) and nothing in the Evidence Book tested them. Hedging now lives in Desk Terminal → Correlations & hedges → '
+    + 'Hedge finder (descriptive, untested).',
+  signals: [],
+};
+function _retiredSignalsBody(file) {
+  let last_run = null;
+  try { if (fs.existsSync(file)) last_run = JSON.parse(fs.readFileSync(file, 'utf8')).last_run ?? null; } catch {}
+  return { ...HEDGE_SIGNALS_RETIRED, last_run };
 }
-
-async function computeHedgeSignalsV2(force = false) {
-  if (_hedgeV2Running) return { status: 'busy' };
-  _hedgeV2Running = true;
-  try {
-    if (!process.env.OANDA_KEY) return { status: 'no_data', error: 'OANDA_KEY not set' };
-    // Load config first so we skip the OANDA fetch entirely when disabled.
-    const cfgRaw = await kv.get(HEDGE_SIGNAL_V2_CFG_KEY).catch(() => null);
-    const cfg    = cfgRaw ? { ...HEDGE_V2_SERVER_DEFAULTS, ...JSON.parse(cfgRaw) } : { ...HEDGE_V2_SERVER_DEFAULTS };
-    if (!cfg.enabled && !force) return { status: 'disabled' };
-
-    const closes = await _hedgeV2Bars(2, force);
-    if (!Object.keys(closes).length)
-      return { status: 'no_data', error: 'No OANDA bars (expected in sandbox; works in Railway)' };
-
-    const now    = new Date().toISOString();
-    const signals = [];
-    for (const [a, b] of HEDGE_V2_PAIRS) {
-      if (!closes[a] || !closes[b]) continue;
-      const m = Math.min(closes[a].length, closes[b].length);
-      const sig = hedgeV2Live(closes[a].slice(-m), closes[b].slice(-m), cfg);
-      if (sig) signals.push({ pair_a: a, pair_b: b, ...sig, updated: now });
-    }
-    const out = { last_run: now, signals };
-    await fs.promises.mkdir(path.dirname(HEDGE_V2_SIGNALS_PATH), { recursive: true });
-    await fs.promises.writeFile(HEDGE_V2_SIGNALS_PATH, JSON.stringify(out, null, 2));
-    return { status: 'ok', total: signals.length, active: signals.filter(s => s.isEntry).length };
-  } catch (e) {
-    console.error('[HEDGE-SIG-V2]', e.message);
-    return { status: 'error', error: e.message };
-  } finally {
-    _hedgeV2Running = false;
-  }
+const HEDGE_V2_SIGNALS_PATH = path.join(__dirname, 'bot', 'data', 'hedge_signals_v2.json');
+for (const p of ['/api/hedge-signals', '/api/hedge-signals/config', '/api/hedge-signals/tg-config',
+  '/api/hedge-signals-v2', '/api/hedge-signals-v2/config', '/api/hedge-signals-v2/backtest/status/:jobId']) {
+  app.get(p, (_req, res) => res.json(_retiredSignalsBody(p.startsWith('/api/hedge-signals-v2') ? HEDGE_V2_SIGNALS_PATH : HEDGE_SIGNALS_PATH)));
 }
-
-app.get('/api/hedge-signals-v2', (_req, res) => {
-  if (!fs.existsSync(HEDGE_V2_SIGNALS_PATH)) return res.json({ signals: [], last_run: null });
-  try { res.json(JSON.parse(fs.readFileSync(HEDGE_V2_SIGNALS_PATH, 'utf8'))); }
-  catch { res.json({ signals: [], last_run: null }); }
-});
-
-app.post('/api/hedge-signals-v2/check', async (_req, res) => {
-  const result = await computeHedgeSignalsV2(true).catch(e => ({ status: 'error', error: e.message }));
-  res.json(result);
-});
-
-app.get('/api/hedge-signals-v2/config', async (_req, res) => {
-  const raw = await kv.get(HEDGE_SIGNAL_V2_CFG_KEY).catch(() => null);
-  res.json(raw ? { ...HEDGE_V2_SERVER_DEFAULTS, ...JSON.parse(raw) } : { ...HEDGE_V2_SERVER_DEFAULTS });
-});
-
-app.put('/api/hedge-signals-v2/config', express.json({ limit: '64kb' }), async (req, res) => {
-  const cfg = { ...HEDGE_V2_SERVER_DEFAULTS, ...(req.body || {}) };
-  await kv.put(HEDGE_SIGNAL_V2_CFG_KEY, JSON.stringify(cfg)).catch(() => {});
-  res.json({ ok: true, cfg });
-});
-
-// Async IS/OOS A/B backtest: v2 (cointegration + rolling z + half-life stop) vs
-// the v1-style baseline (plain spread, all-history mean, z-only exit).
-app.post('/api/hedge-signals-v2/backtest/run', express.json({ limit: '64kb' }), (req, res) => {
-  if (!process.env.OANDA_KEY) return res.status(400).json({ ok: false, error: 'OANDA_KEY not set' });
-  const jobId     = `hsv2_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const startedAt = Date.now();
-  const years     = Math.min(Math.max(parseFloat(req.body?.years) || 3, 1), 5);
-  const cfg       = { ...HEDGE_V2_DEFAULTS, ...(req.body?.cfg || {}) };
-
-  // Drop jobs older than 10 min.
-  for (const [id, j] of hedgeV2BtJobs) if (Date.now() - j.startedAt > 600_000) hedgeV2BtJobs.delete(id);
-  hedgeV2BtJobs.set(jobId, { status: 'running', startedAt, phase: 'Fetching OANDA H4 bars…' });
-
-  (async () => {
-    try {
-      const closes = await _hedgeV2Bars(years, false);
-      if (!Object.keys(closes).length) throw new Error('No OANDA bars returned (works in Railway, 403 in sandbox)');
-      hedgeV2BtJobs.get(jobId).phase = 'Running cointegration + IS/OOS A/B…';
-      const data = hedgeV2Comparison(closes, HEDGE_V2_PAIRS, cfg);
-      hedgeV2BtJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, data, runAt: new Date().toISOString() } });
-      console.log(`[hedge-sig-v2-bt] job ${jobId} done (${Math.round((Date.now() - startedAt) / 1000)}s)`);
-    } catch (e) {
-      hedgeV2BtJobs.set(jobId, { status: 'error', startedAt, error: e?.message || String(e) });
-    }
-  })();
-
-  res.json({ ok: true, jobId });
-});
-
-app.get('/api/hedge-signals-v2/backtest/status/:jobId', (req, res) => {
-  const job = hedgeV2BtJobs.get(req.params.jobId);
-  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
-  if (job.status === 'running')
-    return res.json({ ok: true, status: 'running', phase: job.phase, elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
-  if (job.status === 'error') return res.json({ ok: false, status: 'error', error: job.error });
-  res.json({ ok: true, status: 'done', ...job.result });
-});
-
-// Recompute live v2 signals on the same cadence as v1 (5 min after boot, then 15-min).
-// H4 bars only change every 4 hours — hourly cadence gives the same signal without
-// burning OANDA quota or CPU on 14 redundant identical runs per hour.
-svcTimeout('hedgeSignalsV2', () => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 6 * 60_000);
-svcInterval('hedgeSignalsV2', () => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 60 * 60_000);
+for (const p of ['/api/hedge-signals/config', '/api/hedge-signals/tg-config', '/api/hedge-signals-v2/config']) {
+  app.put(p, (_req, res) => res.status(410).json({ ok: false, ...HEDGE_SIGNALS_RETIRED }));
+}
+for (const p of ['/api/hedge-signals/check', '/api/hedge-signals/ack', '/api/hedge-signals/tg-test',
+  '/api/hedge-signals-v2/check', '/api/hedge-signals-v2/backtest/run']) {
+  app.post(p, (_req, res) => res.status(410).json({ ok: false, ...HEDGE_SIGNALS_RETIRED }));
+}
 
 // ── Regime history — automatic recorder ─────────────────────────────────────
 // The log-parse backfill below (_parseRegimeLog / /api/regime-backfill-trigger)
@@ -43758,7 +43490,8 @@ app.get('/api/expiry-track', async (req, res) => {
 });
 // Swing Map (swing-map.html): the gold-chart picture for one instrument from measured parts only — legs and the live
 // leg (js/swingMap.js, parity with scripts/swing-leg-baserates), the validated weekly/monthly reverting range lines from
-// the live forecast, and the option zones of every expiry in the next ~100 days from the expiry tracker. 30-min cache.
+// the live forecast, and the option zones of every expiry in the next PATH_HORIZON_DAYS (200) from the expiry tracker
+// (the pull, signals and zones read the first PATH_CORE_DAYS only). 30-min cache. ?source=cboe|combined: see the route.
 const SWING_MAP_INSTRUMENTS = {
   EURUSD: { oanda: 'EUR_USD', oi: ['EUR/USD'] }, GBPUSD: { oanda: 'GBP_USD', oi: ['GBP/USD'] }, USDJPY: { oanda: 'USD_JPY', oi: ['USD/JPY'] },
   AUDUSD: { oanda: 'AUD_USD', oi: ['AUD/USD'] }, NZDUSD: { oanda: 'NZD_USD', oi: ['NZD/USD'] }, USDCAD: { oanda: 'USD_CAD', oi: ['USD/CAD'] },
@@ -43779,7 +43512,7 @@ function _swingGreeksNotional(pair, d) {
 async function _swingMapExpiries(names, sigmaAnnual = null) {
   if (!_archive.enabled) return [];
   const today = new Date().toISOString().slice(0, 10);
-  const horizon = new Date(Date.now() + 100 * 864e5).toISOString().slice(0, 10);
+  const horizon = _pathAddDays(today, _PATH_HORIZON_DAYS);   // js/pathSources.js: the one horizon constant (200 days)
   for (const pair of names) {
     const l = await _expiryTrack().list(pair).catch(() => null);
     const live = (l?.series || []).filter(e => e.expiry >= today && e.expiry <= horizon);
@@ -43787,17 +43520,9 @@ async function _swingMapExpiries(names, sigmaAnnual = null) {
     const out = [];
     for (const e of live) {
       const v = await _expiryTrack().view(pair, e.expiry, { topN: 6, sigmaAnnual, withLadder: true }).catch(() => null);
-      const d = v?.days?.at(-1);
-      if (!d) continue;
-      const firstDay = v.days[0];
-      out.push({ pair, expiry: e.expiry, code: v.code, dte: d.dte, date: d.date, stale: d.stale, totalOI: d.totalOI,
-        totalOIFirst: firstDay?.totalOI ?? null, firstSeen: firstDay?.date ?? null, nights: v.n,
-        centrePx: d.centrePx, centrePxFirst: firstDay?.centrePx ?? null, maxPain: d.maxPain,
-        chgNearSpot: d.chgNearSpot, chgAwayFromSpot: d.chgAwayFromSpot, zones: d.zones, ladder: d.ladder ?? null,
-        oiAbove: d.oiAbove, oiBelow: d.oiBelow, shareAbove: d.shareAbove, pullPct: d.pullPct,
-        buildAbove: d.buildAbove, buildBelow: d.buildBelow, gamma: d.gamma ?? null, greeks: _swingGreeksNotional(pair, d),
-        // the conveyor belt: how this expiry's lean has moved night by night as it counted down
-        history: v.days.map(x => [x.date, x.dte, x.pullPct, x.shareAbove, x.buildAbove, x.buildBelow, x.totalOI, x.stale ? 1 : 0]) });
+      // every field, the conveyor-belt history included: js/pathSources.js swingExpiryRow, shared with the Cboe rows
+      const row = _swingExpiryRow(pair, v, { greeks: d => _swingGreeksNotional(pair, d) });
+      if (row) out.push(row);
     }
     return out;
   }
@@ -43816,8 +43541,10 @@ async function _swingWalkRecord(inst, m) {
   const key = `swing_walk/${inst}/${captureDate}.json`;
   if (await _r2GetJSON(key).catch(() => null)) return null;
   const vol = _swingWalkVol(m), walks = {};
+  // the record keeps its registered window: the expiries past PATH_CORE_DAYS (added for the longer path) stay out
+  const core = m.expiries.filter(e => !e.beyondCore);
   for (const anchor of _SWING_WALK_ANCHORS) for (const includeThin of [false, true]) {
-    const w = _swingZoneWalk(m.expiries, { close: m.state.close, anchor, includeThin, vol, date: m.state.date });
+    const w = _swingZoneWalk(core, { close: m.state.close, anchor, includeThin, vol, date: m.state.date, maxDte: _PATH_CORE_DAYS });
     walks[`${anchor}${includeThin ? '+thin' : ''}`] = w.points.map(p => [p.expiry, p.dte, Number(p.px.toPrecision(8)), p.pullShare != null ? +p.pullShare.toFixed(3) : null]);
   }
   const rec = { v: 1, inst, captureDate, closeDate: m.state.date, close: m.state.close, vol, savedAt: new Date().toISOString(), walks };
@@ -43854,8 +43581,13 @@ async function _swingMapData(inst) {
     const bars = (await _btFetchD1Aligned(cfg.oanda, 2600)).map(b => ({ ...b, date: new Date(Date.parse(`${b.date}T12:00:00Z`) + 864e5).toISOString().slice(0, 10) }));
     const fc = forecastState.latest?.instruments?.[inst] ?? null;
     const _sg = _swingSigma(bars.map(b => b.close)).at(-1);
-    const expiries = await _swingMapExpiries(cfg.oi, _sg > 0 ? _sg * Math.sqrt(252) : null).catch(() => []);
+    const expAll = await _swingMapExpiries(cfg.oi, _sg > 0 ? _sg * Math.sqrt(252) : null).catch(() => []);
+    // The pull, signals, zones, thin floor and the walk record read the pre-registered window only (PATH_CORE_DAYS), so
+    // the desk's swing-map slice and the scored walk record do not move; the expiries past it are appended for the path.
+    const coreEnd = _pathAddDays(new Date().toISOString().slice(0, 10), _PATH_CORE_DAYS);
+    const expiries = expAll.filter(e => e.expiry <= coreEnd), beyond = expAll.filter(e => e.expiry > coreEnd);
     const m = _buildSwingMap(bars, { ladderDaily: fc?.ladder ?? null, ladderWeeklyRev: fc?.ladder_weekly_rev ?? null, ladderMonthlyRev: fc?.ladder_monthly_rev ?? null, expiries });
+    if (m.ok && beyond.length) m.expiries = [...m.expiries, ..._pathBeyondCore(beyond, { coreOI: expiries.reduce((a, e) => a + (e.totalOI || 0), 0), thinFloor: _SWING_THIN_FLOOR })];
     // The option key lines (call/put walls, gamma flip, max pain) from the latest capture, as the OI dashboard shows them.
     // Context: the wall placebo test found walls behave like ordinary levels.
     if (m.ok) {
@@ -43866,6 +43598,11 @@ async function _swingMapData(inst) {
         const sm = key ? _oiHistorySummary(store[key]) : null;
         if (sm) m.oiLines = { pair: key, asOf: sm.asOf ?? null, spot: sm.spot ?? null, maxPain: sm.maxPain ?? null, gammaFlip: sm.gammaFlip ?? null,
           regime: sm.regime ?? null, callWalls: (sm.callWalls || []).slice(0, 3), putWalls: (sm.putWalls || []).slice(0, 3) };
+        // implied vol by days to expiry, from the same nightly capture (the IV boxes): the walk's optional implied-move
+        // reach limit and the per-expiry vega read use it. Implied-vol ranges are a VALIDATED input here (iv-ladder).
+        const ts = key ? store[key]?.ivTermStructure : null;
+        const pts = (ts?.points || []).filter(p => p && p.iv > 0 && Number.isFinite(p.dte)).map(p => [p.dte, p.iv]);
+        if (pts.length) m.ivTerm = { pair: key, savedAt: store[key]?.savedAt ?? null, points: pts };
       } catch { /* the page simply shows no option lines */ }
     }
     const data = { ...m, inst, oanda: cfg.oanda, instruments: Object.keys(SWING_MAP_INSTRUMENTS),
@@ -43889,13 +43626,102 @@ app.get('/api/swing-map', async (req, res) => {
     const price = await tickPrice(cfg.oi?.[0] ?? inst, cfg.oanda).catch(() => null);
     return { ...d, livePrice: Number.isFinite(price) && price > 0 ? { price, at: new Date().toISOString() } : null };   // not `live`: that is the current swing leg
   };
+  // ?source= (Options → Path, owner 2026-11-06): 'cboe' (GLD for gold, SPX / NDX for the indices) or 'combined'. Absent or
+  // 'cme' = the response exactly as before. Only `expiries` changes (plus a `pathSource` block); the Cboe books are
+  // rebuilt on every request from the cached delayed pull, outside the 30-minute cache, so spot and IV move them.
+  const source = _pathNormSource(inst, req.query.source);
+  const finish = async d => { const x = await withLive(d); return source === 'cme' || !x?.ok ? x : _swingPathSource(inst, x, source); };
   const hit = _swingMapCache.get(inst);
-  if (hit && Date.now() - hit.at < 30 * 60e3 && req.query.fresh !== '1') return res.json(await withLive(hit.data));
+  if (hit && Date.now() - hit.at < 30 * 60e3 && req.query.fresh !== '1') return res.json(await finish(hit.data));
   try {
     const data = await _swingMapData(inst);
-    res.status(data.ok ? 200 : 503).json(await withLive(data));
+    res.status(data.ok ? 200 : 503).json(await finish(data));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── The path's Cboe sources ──
+// GLD has no index pair in _CBOE_PAIRS (no CFD offset, not in the snapshot or shadow jobs), so it is pulled here on
+// demand only: one in-flight fetch, the index chains' TTL in the cash session (an hour outside it, when Cboe serves the
+// close). The SPX / NDX books come from _cboeBuilt's cache, which the 15-minute Cboe job keeps warm. No new poller.
+const _cboePathCache = new Map(), _cboePathInflight = new Map();
+async function _cboePathChain(sym) {
+  const ttl = _usCashSessionNow() ? _CBOE_TTL_MS : 60 * 60_000, hit = _cboePathCache.get(sym);
+  if (hit?.parsed && Date.now() - hit.at < ttl) return { ...hit, stale: false };
+  if (_cboePathInflight.has(sym)) return _cboePathInflight.get(sym);
+  const p = (async () => {
+    try {
+      const r = await fetch(_cboeUrl(sym), { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, redirect: 'follow', signal: AbortSignal.timeout(25_000) });
+      if (!r.ok) throw new Error(`Cboe ${r.status}`);
+      const parsed = _parseCboeChain(await r.json());
+      if (!parsed) throw new Error('Cboe chain empty or unparseable');
+      const row = { at: Date.now(), parsed, err: null };
+      _cboePathCache.set(sym, row);
+      return { ...row, stale: false };
+    } catch (e) {
+      if (hit?.parsed) { hit.err = e.message; return { ...hit, stale: true }; }
+      throw e;
+    } finally { _cboePathInflight.delete(sym); }
+  })();
+  _cboePathInflight.set(sym, p);
+  return p;
+}
+// OANDA mid at a moment (the M1 candle holding it, interpolated), so the GLD → XAU ratio pairs two prices from the same
+// minute: Cboe's quote is 15 minutes old and, outside the US session, is the 16:00 New York close. Cached per minute.
+const _oandaAtCache = new Map();
+async function _oandaMidAt(inst, ms) {
+  if (!process.env.OANDA_KEY || !Number.isFinite(ms)) return null;
+  const k = `${inst}@${Math.floor(ms / 60e3)}`;
+  if (_oandaAtCache.has(k)) return _oandaAtCache.get(k);
+  let px = null;
+  try {
+    const from = new Date(Math.floor(ms / 60e3) * 60e3 - 60e3).toISOString();
+    const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(inst)}/candles?granularity=M1&price=M&count=3&from=${encodeURIComponent(from)}`,
+      { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(8_000) });
+    if (r.ok) {
+      const bars = ((await r.json()).candles || []).filter(c => c.mid).map(c => ({ t: Date.parse(c.time), o: +c.mid.o, c: +c.mid.c }));
+      const b = bars.find(x => ms >= x.t && ms < x.t + 60e3);
+      if (b) px = b.o + (b.c - b.o) * Math.min(1, Math.max(0, (ms - b.t) / 60e3));
+    }
+  } catch { px = null; }
+  if (_oandaAtCache.size > 200) _oandaAtCache.clear();
+  _oandaAtCache.set(k, px);
+  return px;
+}
+// The swing-map response with its expiries taken from the chosen source (js/pathSources.js does the mapping and merging).
+async function _swingPathSource(inst, d, source) {
+  const cfg = _PATH_SOURCES[inst], cb = cfg.cboe, today = new Date().toISOString().slice(0, 10);
+  const cmeRows = d.expiries ?? [], capture = cmeRows.reduce((a, e) => (e.date > a ? e.date : a), '') || null;
+  const meta = { id: 'cboe', label: cb.label, sym: cb.sym.replace(/^_/, ''), asOfMs: null, oiDate: null, stale: false, error: null, n: 0 };
+  let rows = [];
+  try {
+    const r = cb.kind === 'etf' ? await _cboePathChain(cb.sym) : await _cboeBuilt(cb.pair);
+    const parsed = r?.parsed; if (!parsed) throw new Error('no Cboe chain');
+    Object.assign(meta, { asOfMs: parsed.asOfMs, oiDate: _occOiDate(parsed.asOfMs), stale: !!r.stale, error: r.err || null, spot: parsed.spot });
+    let mapPx, oiUnit = 1;
+    if (cb.kind === 'etf') {
+      // XAU at Cboe's own quote time (the cash close outside the session), else the live price: XAU / GLD is the ratio
+      const refMs = _cashRefTime(parsed.asOfMs) === parsed.asOfMs ? parsed.asOfMs : _cashRefTime(parsed.asOfMs) - 1000;
+      const xauAt = await _oandaMidAt(SWING_MAP_INSTRUMENTS[inst].oanda, refMs);
+      const xau = xauAt > 0 ? xauAt : d.livePrice?.price ?? d.state?.close;
+      const map = _gldXauMap({ xauSpot: xau, gldSpot: parsed.spot });
+      if (!map) throw new Error(`GLD → XAU ratio not usable (XAU ${xau}, GLD ${parsed.spot})`);
+      Object.assign(meta, { xauSpot: +(+xau).toFixed(2), xauAt: xauAt > 0 ? 'OANDA at the quote time' : 'live price (no candle at the quote time)',
+        ratio: map.ratio, ozPerShare: map.ozPerShare, ozPerContract: map.ozPerContract });
+      mapPx = map.toXau; oiUnit = map.ozPerContract;
+    } else {
+      const off = r.built?.cfdOffset;
+      meta.cfdOffset = Number.isFinite(off) ? off : null;
+      mapPx = _indexCfdMap({ scale: _CBOE_PAIRS[cb.pair]?.scale ?? 1, cfdOffset: off });
+    }
+    rows = _cboeExpiryRows(parsed, { pair: cmeRows[0]?.pair ?? cb.pair ?? inst, label: cb.label, mapPx, oiUnit, unit: cb.unit, unitName: cb.unitName, today });
+    meta.n = rows.length;
+  } catch (e) { meta.error = e.message; }
+  const cmeMeta = { id: 'cme', label: 'CME', captureDate: capture, n: cmeRows.length };
+  const expiries = source === 'cboe' ? rows
+    : _pathMergeSources({ cme: cmeRows, cboe: rows, cmeUnit: cfg.cme.unit, cboeUnit: cb.unit, cboeLabel: cb.label, ref: d.livePrice?.price ?? d.state?.close, today, pair: cmeRows[0]?.pair ?? null });
+  const asOf = (source === 'cboe' ? [meta] : [cmeMeta, meta]).map(_pathSourceAsOf);
+  return { ...d, expiries, pathSource: { selected: source, choices: _pathSourceChoices(inst), horizonDays: _PATH_HORIZON_DAYS, cme: cmeMeta, cboe: meta, asOf,
+    note: 'Only the expiries follow the chosen source; the pull, signals and zones on this response stay the CME capture.' } };
+}
 app.post('/api/expiry-track/run', requireAuth, async (req, res) => {
   try { res.json(await _expiryTrack().fold({ rebuild: String(req.query.rebuild || '') === '1' })); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -44918,16 +44744,14 @@ setTimeout(() => {
 // ~3 min to build, ~500-900 KB output. Stored at bot/data/corr_history.json.
 // 6-hour cadence keeps z-scores fresh: each H4 bar advances the rolling window by one step.
 svcTimeout('corrHistory', () => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), 60_000);
-svcInterval('corrHistory', () => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), 6 * 60 * 60 * 1000);
+svcInterval('corrHistory', () => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), CORR_CHECK_MS);   // rebuilds when ~6 h old
 
 // Beta estimation — runs every 2 hours; first run 90s after startup (after corr fetch begins)
 svcTimeout('betaEstimates', () => buildBetaEstimates().catch(e => console.error('[BETA]', e.message)), 90_000);
 svcInterval('betaEstimates', () => buildBetaEstimates().catch(e => console.error('[BETA]', e.message)), BETA_INTERVAL_MS);
 
-// Hedge signal scanner — first run 5 min after startup (corr history must exist), then every 15 min.
-// Reduced from 30 min: exits now fire within 15 min of z-score reverting, not up to 30 min.
-svcTimeout('hedgeSignals', () => computeHedgeSignals().catch(e => console.error('[HEDGE-SIG]', e.message)), 5 * 60_000);
-svcInterval('hedgeSignals', () => computeHedgeSignals().catch(e => console.error('[HEDGE-SIG]', e.message)), 15 * 60_000);
+// The hedge-signal scanner (v1, computeHedgeSignals) was retired on 2026-11-06 and is no longer scheduled: see the
+// retired /api/hedge-signals routes (search HEDGE_SIGNALS_RETIRED).
 
 // Vol & Range Forecast scheduler — runs daily at 22:00 UTC, computes on startup if stale
 if (svcEnabled('volForecastScheduler')) svcRun('volForecastScheduler', () => startVolForecastScheduler().catch(e => console.error('[VOL-FORECAST] Scheduler init failed:', e.message)));

@@ -1,6 +1,7 @@
 // Tests for js/newsletterPicto.js.   node js/newsletterPicto.test.mjs
 import assert from 'node:assert/strict';
 import { composePicto, withTitle, short } from './newsletterPicto.js';
+import { ASSETS, EVENING } from './morningTape.fixture.mjs';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 const H = { esc: s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') };
@@ -26,6 +27,15 @@ t('one page with every panel, from the data only', () => {
   assert.match(out.subject, /^2026-11-04 Desk brief pictograph/); assert.match(out.text, /Bottom line: Risk-off holds/);
   assert.equal(composePicto({ run: {} }, H), null);
 });
+t('live moves say since which close, and show the full day before (the Nasdaq -7% day, 2026-11-06)', () => {
+  const b = { assets: [{ label: 'Nasdaq', d1: 1.42, d1Basis: 'live', d1AsOf: '2026-11-05', spark: [28309.2, 28537.8, 26531] }, { label: 'Gold', d1: -0.8, d1Basis: 'live', d1AsOf: '2026-11-05', spark: [4060.355, 4088.225] }, { label: 'DAX', d1: -1.11, d1Basis: 'live', d1AsOf: '2026-11-05', spark: [26636.8, 26201.4] }, { label: 'AUD/USD', d1: -0.81, d1Basis: 'live', d1AsOf: '2026-11-05', spark: [0.7006, 0.693] }, { label: 'EUR/USD', d1: 0.9, d1Basis: 'live', d1AsOf: '2026-11-05', spark: [1.1, 1.1] }] };
+  const out = composePicto({ run, base: b }, H), h = out.html;
+  assert.ok(h.includes('Moves since Thu&#39;s close') || h.includes("Moves since Thu's close"), 'the box says since which close');
+  assert.ok(/Thu <span class="dn">−7.03%/.test(h), 'the full day shows under the live move');
+  const line = out.text.split('\n').find(l => l.startsWith('Moves since'));
+  assert.ok(line.indexOf('Nasdaq') < line.indexOf('DAX') && !line.includes('Gold'), 'ranked by the larger of the live move and the full day (gold, 0.8 and 0.7, drops out)');
+  assert.match(out.text, /Moves since Thu's close \(× a normal day\): .*Nasdaq \+1\.42%, Thu −7\.03%/);
+});
 t('missing data leaves panels out instead of placeholders; the map only with paths', () => {
   const h = composePicto({ run }, H).html;
   assert.ok(!h.includes('Market moves') && !h.includes('Key signals') && !h.includes('Upcoming events'));
@@ -41,5 +51,17 @@ t('the big picture comes from the newsletter\'s sections when it has them', () =
   const r2 = { ...run, newsletter: { ok: true, issue: { ...run.newsletter.issue, sections: [{ title: 'The currencies', body: 'CAD leads the board on oil and rates. More detail.' }, { title: 'What could break the day', body: 'Payrolls.' }, { title: 'Rates', body: 'The Fed path is priced for one cut.' }] } } };
   const h = composePicto({ run: r2 }, H).html;
   assert.ok(h.includes('CAD leads the board on oil and rates') && h.includes('The Fed path is priced for one cut') && !h.includes('Payrolls') && !h.includes('Liquidity gate BLOCKED'));
+});
+t('the morning tape: the same multiples as the daily, and a Yesterday line (5-6 Nov 2026)', () => {
+  const out = composePicto({ run, base: { assets: ASSETS } }, H), h = out.html.replace(/&#39;/g, "'");
+  assert.ok(h.includes("Moves since Thu's close"));
+  assert.ok(/<b>Nasdaq<\/b><span class="n up">\+1\.33%<span class="x">0\.8×<\/span><\/span><span class="p">Thu <span class="dn">−7\.03%<\/span> 4\.1×<\/span>/.test(h), 'overnight and full day, each with its multiple');
+  assert.ok(/<b>S&amp;P 500<\/b><span class="n dn">−4\.90%<span class="x">3\.6×<\/span><\/span><span class="p">Thu, full day<\/span>/.test(h), 'no live price: the full day is the move');
+  assert.ok(/<div class="yd"><b>Yesterday:<\/b> Thu: Nasdaq −7\.0% \(4\.1× a normal day\)/.test(h), 'the recap line');
+  assert.ok(!h.includes('<b>Gold</b>'), 'four biggest by the larger multiple: gold (0.5×) drops out');
+  assert.match(out.text, /^Yesterday: Thursday's full day: Nasdaq −7\.0% \(4\.1× a normal day\)/m);
+  assert.match(out.text, /Moves since Thu's close \(× a normal day\): Nasdaq \+1\.33% \(0\.8×\), Thu −7\.03% \(4\.1×\); S&P 500 Thu −4\.90% \(3\.6×\)/);
+  const ev = composePicto({ run, base: { assets: ASSETS, evening: EVENING } }, H).html.replace(/&#39;/g, "'");
+  assert.ok(ev.includes("<b>Yesterday:</b> The Nasdaq's worst day in years"), 'the evening headline when stored');
 });
 console.log(`newsletterPicto: ${n} tests passed`);

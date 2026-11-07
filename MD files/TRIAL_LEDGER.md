@@ -4,22 +4,22 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-05.
+Generated 2026-11-06.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **283** |
-| validated | 49 |
-| null | 162 |
-| underpowered | 72 |
-| context (base rates, descriptions: not counted as tests) | 46 |
-| pre-registrations with no banked verdict (below) | 88 |
+| claims tested (validated + null + underpowered) | **289** |
+| validated | 50 |
+| null | 164 |
+| underpowered | 75 |
+| context (base rates, descriptions: not counted as tests) | 47 |
+| pre-registrations with no banked verdict (below) | 89 |
 
-**What the count says (Lesson 02 §05).** If none of the 283 claims were real, tests at the usual 5% size would still pass
-about **14.2** of them by luck. 49 passed, so most passes are unlikely to be luck alone, but
-**roughly 14 of the 49 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 289 claims were real, tests at the usual 5% size would still pass
+about **14.5** of them by luck. 50 passed, so most passes are unlikely to be luck alone, but
+**roughly 15 of the 50 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -356,6 +356,13 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-05 | gr-today-tape-direction | price | null | forge/GLOBAL_READ_UNTESTED_DIRECTION_PREREG.md |
 | 2026-11-05 | gr-us-yields-direction | price | null | forge/GLOBAL_READ_UNTESTED_DIRECTION_PREREG.md |
 | 2026-11-05 | portfolio-book-prop | price | context | forge/PORTFOLIO_BOOK_PROP_PREREG.md |
+| 2026-11-06 | gex-range-gold | positioning | underpowered | oi_research_book/GEX_RANGE_GOLD_PREREG.md |
+| 2026-11-06 | hedge-finder-book | execution | underpowered | forge/HEDGE_FINDER_BOOK_PREREG.md |
+| 2026-11-06 | hedge-finder-book-es | execution | validated | forge/HEDGE_FINDER_BOOK_PREREG.md |
+| 2026-11-06 | hedge-residual-carry | macro | underpowered | forge/HEDGE_RESIDUAL_SYSTEM_PREREG.md |
+| 2026-11-06 | hedge-residual-mom | price | null | forge/HEDGE_RESIDUAL_SYSTEM_PREREG.md |
+| 2026-11-06 | hedge-residual-mr | price | null | forge/HEDGE_RESIDUAL_SYSTEM_PREREG.md |
+| 2026-11-06 | jump-next-day-miss | volatility | context | forge/JUMP_NEXT_DAY_MISS_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -437,6 +444,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/THEORY_FEATURES_LEVELS_PREREG.md`: Theory-lab features at the levels — pre-registration (EURUSD)
 - `forge/THREE_FADE_SETUPS_PREREG.md`: Three fade setups from an outside framework — pre-registration
 - `forge/TOUCH_BOOK_EURUSD_PREREG.md`: EURUSD Touch Book — pre-registration (continue vs fade at the lines, with excursions)
+- `forge/TRADE_PLAN_SHADOW_PREREG.md`: trade-plan-shadow — does joining the tested direction score (which way) to the vol forecast (stop, target, siz
 - `forge/TRENDDAY_RETEST_PREREG.md`: Trend-day filter and acceptance-retest entry for the rich-IV break rule — pre-registration
 - `forge/VF3_SHADOW_P1_PREREG.md`: VF3 shadow S1: time-aware intraday probabilities, prospective evaluation (registered 2026-10-10)
 - `forge/VF3_STAGE_C_PREREG.md`: Vol Forecast V3, Stage C: registered experiments (2026-10-10, before any Stage C outcome is computed)

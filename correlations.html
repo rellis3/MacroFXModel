@@ -246,6 +246,7 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
 <body>
 <script src="js/feedChrome.js" data-complex="cross" data-label="Correlation lab"></script>
 
+<div class="cl-moved" style="flex-shrink:0;padding:7px 18px;background:rgba(139,124,246,.12);border-bottom:1px solid var(--border);font-size:12px;color:var(--text2)">Now in the Desk Terminal → <a href="desk-terminal.html" onclick="try{localStorage.setItem('deskTerminalTab','corr')}catch(e){}" style="color:var(--purple);font-weight:600">Correlations &amp; hedges</a>: the matrix, rolling correlations, factor betas, hedges and regimes, refreshed every 6 hours. This page still works.</div>
 <div class="cl-topbar">
   <div class="cl-logo">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M3 12h3M18 12h3M12 3v3M12 18v3M6.3 6.3l2.1 2.1M15.6 15.6l2.1 2.1M6.3 17.7l2.1-2.1M15.6 8.4l2.1-2.1"/></svg>
@@ -258,8 +259,6 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
   <button class="dark-btn" onclick="toggleTheme()">◑ Theme</button>
   <a href="./cot-extremes.html" class="nav-link" style="color:#e11d48">COT Extremes</a>
   <a href="./analysis.html" class="nav-link">Pattern Lab</a>
-  <a href="./hedge-signals.html" class="nav-link" style="color:#f59e0b;border-color:rgba(245,158,11,.3)">⚡ Signals</a>
-  <a href="./hedge-backtest.html" class="nav-link" style="color:#06b6d4;border-color:rgba(6,182,212,.3)">📊 Hedge BT</a>
   <a href="./index.html"    class="nav-link">Dashboard</a>
 </div>
 

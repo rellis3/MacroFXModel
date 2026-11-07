@@ -14,12 +14,17 @@
  * Store (KV research_cases): { v: 1, migrated: [session ids], cases: [case] }. The old sessions
  * (research_pod_sessions) are turned into cases on first read, once (`migrate`).
  *
+ * A literature dossier (Research an idea, Review this paper) can be opened as a case too (`caseFromDossier`, one per
+ * dossier): the dossier is its context, every prompt in the case reads it (`dossierText`), and nothing runs until the
+ * owner replies.
+ *
  * Proposals and reviews, not results: nothing here runs a test or banks a verdict.
  *
  * Pure. Tested in js/researchCase.test.mjs.
  */
 import { RESEARCHERS, validateProposals, validateReply, applyRevision, slug } from './researchPod.js';
 import { normaliseSpec } from './quickTest.js';
+import { picturesText } from './researchImages.js';
 
 export const LABEL = 'proposals and reviews, not results';
 export const LENSES = Object.keys(RESEARCHERS);
@@ -39,9 +44,10 @@ export const readStore = raw => (raw && typeof raw === 'object' && Array.isArray
 export const caseTitle = (question, date) => { const q = String(question ?? '').trim().split(/\n/)[0]; return q ? (q.length > 140 ? `${q.slice(0, 137)}…` : q) : `Weekly session ${date}`; };
 
 /** A new, empty case. */
-export function newCase({ id, question = '', date, at = new Date().toISOString(), origin = question ? 'owner' : 'weekly', sessionId = null }) {
+export function newCase({ id, question = '', date, at = new Date().toISOString(), origin = question ? 'owner' : 'weekly', sessionId = null, images = [] }) {
   const q = String(question ?? '').trim().slice(0, 1500);
-  return { id, title: caseTitle(q, date), question: q, origin, date, createdAt: at, updatedAt: at, status: 'open', sessionId, rounds: [], reviews: [] };
+  // `images`: the pictures attached to the question (js/researchImages.js attachment(): id, url, the reading and its text)
+  return { id, title: caseTitle(q, date), question: q, origin, date, createdAt: at, updatedAt: at, status: 'open', sessionId, rounds: [], reviews: [], ...(images?.length ? { images } : {}) };
 }
 
 /**
@@ -54,8 +60,8 @@ export function answerOf(r, { revised = [], newIds = null } = {}) {
 }
 
 /** Append a round: { owner: the message that started it (round 1: the question), answers: { lens: answer }, errors }. */
-export function appendRound(c, { owner = null, answers = {}, errors = {}, at = new Date().toISOString(), web = undefined }) {
-  const round = { n: c.rounds.length + 1, at, owner: owner ? String(owner).slice(0, 3000) : null, answers, errors: Object.keys(errors).length ? errors : undefined, ...(web ? { web } : {}) };
+export function appendRound(c, { owner = null, answers = {}, errors = {}, at = new Date().toISOString(), web = undefined, images = [] }) {
+  const round = { n: c.rounds.length + 1, at, owner: owner ? String(owner).slice(0, 3000) : null, answers, errors: Object.keys(errors).length ? errors : undefined, ...(web ? { web } : {}), ...(images?.length ? { images } : {}) };
   return { ...c, rounds: [...c.rounds, round], updatedAt: at };
 }
 
@@ -66,17 +72,19 @@ export function appendReview(c, review, { at = new Date().toISOString(), model =
 }
 
 export const latestReview = c => c?.reviews?.at(-1) ?? null;
-/** Every proposal id the case has produced, in order, once. */
-export const proposalIds = c => uniq((c?.rounds ?? []).flatMap(r => Object.values(r.answers ?? {}).flatMap(a => [...(a.proposals ?? []), ...(a.revised ?? [])])));
-/** One lens's proposal ids in the case. */
-export const lensIds = (c, lens) => uniq((c?.rounds ?? []).flatMap(r => [...(r.answers?.[lens]?.proposals ?? []), ...(r.answers?.[lens]?.revised ?? [])]));
+/** Every proposal id the case has produced, in order, once (a dossier case starts with the dossier's proposals). */
+export const proposalIds = c => uniq([...(c?.dossier?.proposals ?? []).map(p => p.id), ...(c?.rounds ?? []).flatMap(r => Object.values(r.answers ?? {}).flatMap(a => [...(a.proposals ?? []), ...(a.revised ?? [])]))]);
+/** One lens's proposal ids in the case (a dossier's proposal belongs to the researcher of its lens, who may revise it). */
+export const lensIds = (c, lens) => uniq([...(c?.dossier?.proposals ?? []).filter(p => p.lens === lens).map(p => p.id), ...(c?.rounds ?? []).flatMap(r => [...(r.answers?.[lens]?.proposals ?? []), ...(r.answers?.[lens]?.revised ?? [])])]);
 
 /** The case list row. */
 export function summary(c, job = null) {
   const rv = latestReview(c);
-  return { id: c.id, title: c.title, question: c.question, origin: c.origin, date: c.date, createdAt: c.createdAt, updatedAt: c.updatedAt, status: c.status,
+  return { id: c.id, title: c.title, question: c.question, origin: c.origin, dossierId: c.dossierId ?? null, verdict: c.dossier?.verdict ?? null, date: c.date, createdAt: c.createdAt, updatedAt: c.updatedAt, status: c.status,
     rounds: c.rounds.length, reviews: c.reviews.length, reviewed: !!rv, reviewCurrent: !!rv && rv.afterRound === c.rounds.length && c.rounds.length > 0,
-    nextStep: rv?.nextStep ?? null, proposals: proposalIds(c).length, job: job ? { status: job.status, kind: job.kind, stage: job.stage ?? null, error: job.error ?? null } : null };
+    nextStep: rv?.nextStep ?? null, proposals: proposalIds(c).length, job: job ? { status: job.status, kind: job.kind, stage: job.stage ?? null, error: job.error ?? null, ...(job.resumedAfterRestart ? { resumedAfterRestart: true, attempts: job.attempts ?? null } : {}) } : null,
+    // the newest round or review was written by a job restarted after a server restart; or the last job was lost to one
+    resumedAfterRestart: !!(job?.resumedAfterRestart || [c.rounds?.at(-1), rv].some(x => x?.resumedAfterRestart)), lostToRestart: !!c.lastError?.lostToRestart };
 }
 
 /** Put a case into the store (replace by id), newest first, capped. */
@@ -110,6 +118,73 @@ export function uniqueIds(proposals, lib, caseId) {
   }
   return out;
 }
+
+// ── a case from a literature dossier ────────────────────────────────────────────────────────────────────────────
+//
+// "Research an idea" and "Review this paper" (the literature desk, js/literature.js) end in a dossier: a verdict, cited
+// evidence for and against, what no paper settles, how to test it here, and up to three proposals. A dossier was
+// read-only; now it can be opened as a case (one per dossier), so the owner can reply to the three researchers and send
+// it to the Head of Research like any other case. The dossier is the case's context, not a round: nothing runs until
+// the owner writes, so nothing is spent. Every prompt in the case reads the dossier block (`dossierText`).
+
+/** The case id for a dossier (deterministic, so opening a dossier twice opens the same case). */
+export const dossierCaseId = dossierId => `case-dossier-${String(dossierId ?? '').replace(/[^A-Za-z0-9_-]+/g, '-').slice(0, 120)}`;
+/** The case already opened for this dossier, or null. */
+export const caseForDossier = (store, dossierId) => readStore(store).cases.find(c => c.dossierId === dossierId) ?? null;
+
+/**
+ * The dossier block a case keeps: { id, kind, at, asked, ref, paper, hypothesis, verdict, verdictWhy, summary,
+ * evidenceFor/Against [{ point, papers }], unknowns, testHere { design, data, alreadyHere }, proposals (short form),
+ * questionsForOwner, papers { id: 'title (year)' } for the ids it cites }. `rec` is the stored record (GET
+ * /api/research-pod/dossier): { id, kind, at, hypothesis, ref, paperNotes, dossier }. Throws when no dossier was written.
+ */
+export function dossierContext(rec) {
+  const k = rec?.dossier; if (!rec?.id || !k) throw new Error('this record has no dossier (the job failed before writing one)');
+  const ev = xs => (xs ?? []).slice(0, 10).map(e => ({ point: String(e.point ?? '').slice(0, 700), papers: (e.papers ?? []).slice(0, 6) }));
+  const cited = uniq([...(k.evidenceFor ?? []), ...(k.evidenceAgainst ?? [])].flatMap(e => e.papers ?? []).concat((k.proposals ?? []).flatMap(p => p.citations ?? [])));
+  const notes = rec.paperNotes ?? {}, first = rec.kind === 'paper' ? Object.entries(notes)[0] : null;
+  return {
+    id: rec.id, kind: rec.kind === 'paper' ? 'paper' : 'idea', at: rec.at ?? null,
+    asked: rec.kind === 'paper' ? null : str(rec.hypothesis, 2000), ref: rec.kind === 'paper' ? str(rec.ref, 500) : null,
+    paper: first ? { id: first[0], title: str(first[1]?.title, 300) ?? first[0], year: first[1]?.year ?? null } : null,
+    hypothesis: str(k.hypothesis, 800) ?? str(rec.hypothesis, 800) ?? '', verdict: k.verdict ?? null, verdictWhy: str(k.verdictWhy, 800) ?? '', summary: str(k.summary, 1200) ?? '',
+    evidenceFor: ev(k.evidenceFor), evidenceAgainst: ev(k.evidenceAgainst), unknowns: (k.unknowns ?? []).slice(0, 8).map(u => String(u).slice(0, 400)),
+    testHere: { design: str(k.testHere?.design, 1200) ?? '', data: (k.testHere?.data ?? []).slice(0, 10), alreadyHere: (k.testHere?.alreadyHere ?? []).slice(0, 8) },
+    proposals: (k.proposals ?? []).slice(0, 3).map(p => ({ id: p.id, title: p.title, lens: p.lens, thesis: String(p.thesis ?? '').slice(0, 400),
+      test: { variable: p.test?.variable ?? '', benchmark: p.test?.benchmark ?? '', placebo: p.test?.placebo ?? '' }, citations: (p.citations ?? []).slice(0, 6) })),
+    questionsForOwner: (k.questionsForOwner ?? []).slice(0, 4),
+    papers: Object.fromEntries(cited.map(id => [id, notes[id] ? `${String(notes[id].title ?? id).slice(0, 140)}${notes[id].year ? ` (${notes[id].year})` : ''}` : id])),
+  };
+}
+
+/** A new case from a dossier: the question is the dossier's hypothesis, the dossier its context. No round yet. */
+export function caseFromDossier(rec, { date, at = new Date().toISOString() } = {}) {
+  const d = dossierContext(rec);
+  const question = d.kind === 'paper' && d.paper ? `${d.paper.title}: ${d.hypothesis}` : d.hypothesis;
+  return { ...newCase({ id: dossierCaseId(d.id), question, date: date ?? String(at).slice(0, 10), at, origin: 'dossier' }), dossierId: d.id, dossier: d };
+}
+
+/** The dossier block as prompt text: hypothesis, verdict and why, evidence with paper ids, unknowns, testHere, proposals. */
+export function dossierText(d) {
+  if (!d) return '';
+  const paper = id => (d.papers?.[id] && d.papers[id] !== id ? `${id} "${d.papers[id]}"` : id);
+  const ev = xs => (xs?.length ? xs.map(e => `- ${e.point} [papers: ${e.papers.map(paper).join('; ')}]`).join('\n') : '- (none)');
+  return [
+    `Dossier ${d.id} (${d.kind === 'paper' ? 'a paper review' : 'research on an idea'}, ${String(d.at ?? '').slice(0, 10)})`,
+    d.paper ? `The paper: ${d.paper.title}${d.paper.year ? ` (${d.paper.year})` : ''} [${d.paper.id}]${d.ref ? `; the owner gave: ${d.ref}` : ''}` : null,
+    d.asked && d.asked !== d.hypothesis ? `The owner asked: ${d.asked}` : null,
+    `Hypothesis: ${d.hypothesis}`,
+    `Verdict: ${d.verdict ?? '–'}. Why: ${d.verdictWhy || '–'}`,
+    d.summary ? `Summary: ${d.summary}` : null,
+    `Evidence for:\n${ev(d.evidenceFor)}`,
+    `Evidence against:\n${ev(d.evidenceAgainst)}`,
+    `What no paper settles:\n${d.unknowns?.length ? d.unknowns.map(u => `- ${u}`).join('\n') : '- (none listed)'}`,
+    `How to test it here: ${d.testHere?.design || '–'}${d.testHere?.data?.length ? `\n  Data: ${d.testHere.data.join(', ')}` : ''}${d.testHere?.alreadyHere?.length ? `\n  Already here: ${d.testHere.alreadyHere.join('; ')}` : ''}`,
+    `The dossier's proposals (in the library, tagged to this case):\n${d.proposals?.length ? d.proposals.map(p => `- ${p.id} (${label(p.lens)}): ${p.title}. ${p.thesis} Test: ${p.test.variable}; must beat ${p.test.benchmark}${p.test.placebo ? `; placebo ${p.test.placebo}` : ''}.${p.citations?.length ? ` Cites ${p.citations.join(', ')}.` : ''}`).join('\n') : '- (none)'}`,
+    d.questionsForOwner?.length ? `The dossier asked the owner: ${d.questionsForOwner.join(' | ')}` : null,
+  ].filter(Boolean).join('\n');
+}
+const DOSSIER_SECTION = 'The literature dossier this case started from (the desk read the papers; build on it, challenge it, do not repeat it)';
 
 // ── the researchers' answer in round 2 on ───────────────────────────────────────────────────────────────────────
 
@@ -184,8 +259,11 @@ const reviewText = (rv, { full = false } = {}) => {
 /** The case so far as text, oldest first: the question, each round (owner's message, each researcher's answer), the reviews in between. */
 export function caseText(c, lib = [], { proposals = 'line', replyChars = 1500 } = {}) {
   const byId = Object.fromEntries((lib ?? []).map(p => [p.id, p])), out = [`Question (${c.date}): ${c.question || c.title}`];
+  if (c.images?.length) out.push(picturesText(c.images));
+  const dp = (c.dossier?.proposals ?? []).map(p => p.id);
+  if (dp.length) out.push(`\n### Before round 1: the literature dossier ${c.dossier.id} (verdict ${c.dossier.verdict ?? '–'})\n${proposals === 'full' ? dp.map(id => byId[id] ? `  ${proposalFull(byId[id])}` : `  - ${id} (no longer in the library)`).join('\n') : `  Proposals: ${dp.join(', ')}`}`);
   for (const r of c.rounds) {
-    out.push(`\n### Round ${r.n} (${String(r.at).slice(0, 16)})${r.n > 1 && r.owner ? `\nThe owner: ${r.owner}` : ''}`);
+    out.push(`\n### Round ${r.n} (${String(r.at).slice(0, 16)})${r.n > 1 && r.owner ? `\nThe owner: ${r.owner}` : ''}${r.n > 1 && r.images?.length ? `\n${picturesText(r.images)}` : ''}`);
     for (const [lens, a] of Object.entries(r.answers ?? {})) {
       out.push(`${label(lens)}: ${a.headline}${a.reply ? `\n  Reply: ${String(a.reply).slice(0, replyChars)}` : ''}${a.questions?.length ? `\n  Asked the owner: ${a.questions.join(' | ')}` : ''}`);
       const ids = uniq([...(a.proposals ?? []), ...(a.revised ?? [])]);
@@ -202,7 +280,7 @@ export function caseText(c, lib = [], { proposals = 'line', replyChars = 1500 } 
  * answers, the Head's latest review, its own proposals in full, the owner's message last). Context the server adds
  * (the data inventory, a slice of the Evidence Book and register) goes after these.
  */
-export function roundSections(c, lens, { lib = [], ownerMessage = '' } = {}) {
+export function roundSections(c, lens, { lib = [], ownerMessage = '', images = [] } = {}) {
   const byId = Object.fromEntries((lib ?? []).map(p => [p.id, p])), last = c.rounds.at(-1), rv = latestReview(c);
   const others = LENSES.filter(l => l !== lens).map(l => {
     const r = [...c.rounds].reverse().find(x => x.answers?.[l]), a = r?.answers?.[l]; if (!a) return `${label(l)}: (has not answered yet)`;
@@ -211,11 +289,12 @@ export function roundSections(c, lens, { lib = [], ownerMessage = '' } = {}) {
   const own = lensIds(c, lens);
   return [
     ['The question this case is about', c.question || c.title],
+    ...(c.dossier ? [[DOSSIER_SECTION, dossierText(c.dossier)]] : []),
     ['The case so far (oldest first)', clip(caseText(c, lib, { replyChars: 600 }), 14_000)],
     ["The other researchers' latest answers", others],
     ['The Head of Research\'s latest review (peer review of all three: take its corrections seriously)', rv ? clip(reviewText(rv, { full: true }), 9000) : '(no review yet: the owner has not sent this case to the Head of Research)'],
     ['Your proposals in this case (current versions; revise them by id)', own.length ? own.map(id => byId[id] ? proposalFull(byId[id]) : `${id} (no longer in the library)`).join('\n') : '(none yet)'],
-    [`The owner's message that starts round ${(last?.n ?? 0) + 1} (answer it)`, ownerMessage || '(no message)'],
+    [`The owner's message that starts round ${(last?.n ?? 0) + 1} (answer it)`, [ownerMessage || '(no message)', picturesText(images)].filter(Boolean).join('\n\n')],
   ];
 }
 
@@ -229,11 +308,27 @@ export const ROUND_RULES = [
 ].map(s => `- ${s}`).join('\n');
 
 /** The Head of Research's sections: the whole case with every proposal in full, the owner's marks, the quick tests run. */
-export function headSections(c, { lib = [], fb = {}, quickTests = [], catalogue = [] } = {}) {
-  const ids = proposalIds(c);
+/**
+ * The papers a case cites, from the desk's paper library: every library entry whose id, DOI, arXiv or SSRN id appears in
+ * the case text. The Head must see these: on 2026-11-06 its first review called three real, already-read library papers
+ * "not in the reading list", because it was given only the dossier's list.
+ */
+export function citedPapers(text, papers = []) {
+  const t = String(text ?? '').toLowerCase(), keys = p => [p.id, p.doi, p.arxiv, p.ssrn].filter(Boolean).map(k => String(k).toLowerCase().replace(/^(doi|arxiv|ssrn):/, ''));
+  return (papers ?? []).filter(p => keys(p).some(k => k.length >= 6 && t.includes(k)));
+}
+export function citedPapersText(list) {
+  return list.length ? list.map(p => `- ${p.id}: ${p.title ?? ''}${p.year ? ` (${p.year})` : ''}${p.notes?.claim ? ` | claim: ${String(p.notes.claim).slice(0, 300)}` : ''}${p.notes?.stance ? ` | stance: ${p.notes.stance}` : ''}${p.notes ? '' : ' | (in the library, not read yet)'}`).join('\n')
+    : '(none of the ids the researchers cite are in the paper library)';
+}
+
+export function headSections(c, { lib = [], fb = {}, quickTests = [], catalogue = [], papers = [] } = {}) {
+  const ids = proposalIds(c), whole = caseText(c, lib, { proposals: 'full', replyChars: 3000 });
   return [
     ['The question this case is about', c.question || c.title],
-    ['The whole case, oldest first, with every proposal in full (current versions)', caseText(c, lib, { proposals: 'full', replyChars: 3000 })],
+    ...(c.dossier ? [[DOSSIER_SECTION, dossierText(c.dossier)]] : []),
+    ['The whole case, oldest first, with every proposal in full (current versions)', whole],
+    ["The papers the researchers cite, from the desk's paper library (read by the literature desk; a citation listed here is a real, read paper, not an invention; judge whether it supports the claim made of it)", citedPapersText(citedPapers(`${whole}\n${c.dossier ? dossierText(c.dossier) : ''}`, papers))],
     ["The owner's marks on these proposals", ids.filter(id => fb[id]).map(id => `- ${id}: ${fb[id].status}${fb[id].note ? ` (${fb[id].note})` : ''}`).join('\n') || '(none)'],
     ['Quick tests already run for this case or its proposals (exploratory, never banked)', quickTests.length ? quickTests.map(t => `- ${t.id}: ${t.x} → ${t.y}, verdict ${t.verdict ?? '–'}${t.summary ? `: ${t.summary}` : ''}`).join('\n') : '(none)'],
     ['The quick-test catalogue (series ids for "quickTest"; horizons from 1, 2, 5, 10, 20, 60 days)', catalogue.join(', ')],
@@ -327,3 +422,56 @@ export function migrateLibrary(lib, { tags = [], restore = [] } = {}) {
 }
 
 export { slug };
+
+// ── Jobs that survive a restart (2026-11-06) ─────────────────────────────────────────────────────────────────────────
+// Rounds and reviews run in memory, so a redeploy killed them: twice on 2026-11-06 a round was lost and the case was left
+// with no round and no job. While a job runs, the case carries a small marker (`inProgress`): the kind, the owner's
+// message, the picture ids, when it started and how many times it has been started. The job clears it when it finishes
+// or fails. On boot the server finds the markers a dead process left behind and starts each job again, once: a job lost
+// a second time is given up with an error the page shows, and a marker older than six hours is dropped the same way.
+export const RESUME_MAX_AGE_MS = 6 * 3600_000;
+export const RESUME_MAX_ATTEMPTS = 2;
+export const LOST_TWICE = 'lost to a restart twice; press resend';
+export const LOST_OLD = 'lost to a server restart more than 6 hours ago; press resend';
+export const JOB_KINDS = ['pod', 'round', 'review'];
+
+/** The in-progress marker for a job: kind (pod = round 1, round, review), the owner's message, picture ids, the pod's brief and lenses. */
+export function jobMarker({ kind, owner = null, images = [], brief = null, lenses = null, at = new Date().toISOString(), attempts = 1, firstStartedAt = null } = {}) {
+  if (!JOB_KINDS.includes(kind)) throw new Error(`unknown job kind ${kind}`);
+  const ids = uniq((images ?? []).map(a => (typeof a === 'string' ? a : a?.id)));
+  return { kind, startedAt: at, firstStartedAt: firstStartedAt ?? at, attempts, ...(attempts > 1 ? { resumedAfterRestart: true } : {}),
+    ...(owner ? { owner: String(owner).slice(0, 3000) } : {}), ...(ids.length ? { images: ids } : {}), ...(brief ? { brief: String(brief).slice(0, 3000) } : {}), ...(lenses?.length ? { lenses } : {}) };
+}
+
+/**
+ * The markers a dead process left behind: [{ id, marker, action, attempts }]. action: 'resume' (start it again, as attempt
+ * `attempts`), 'give-up' (already restarted once and lost again) or 'expire' (started more than six hours ago).
+ * A case whose job is running in this process (`running[id].status === 'running'`) is left alone.
+ */
+export function staleJobs(store, { nowMs = Date.now(), running = {}, maxAgeMs = RESUME_MAX_AGE_MS, maxAttempts = RESUME_MAX_ATTEMPTS } = {}) {
+  return readStore(store).cases.filter(c => c?.inProgress && running[c.id]?.status !== 'running').map(c => {
+    const m = c.inProgress, age = nowMs - Date.parse(m.firstStartedAt ?? m.startedAt), n = Number.isFinite(m.attempts) ? m.attempts : 1;
+    const action = !JOB_KINDS.includes(m.kind) || !Number.isFinite(age) || age >= maxAgeMs ? 'expire' : n >= maxAttempts ? 'give-up' : 'resume';
+    return { id: c.id, marker: m, action, attempts: action === 'resume' ? n + 1 : n };
+  }).sort((a, b) => String(a.marker.startedAt).localeCompare(String(b.marker.startedAt)));
+}
+
+/** The marker for a restarted job: one more attempt, flagged as resumed. */
+export const resumedMarker = (m, at = new Date().toISOString()) => jobMarker({ ...m, at, attempts: (m.attempts ?? 1) + 1, firstStartedAt: m.firstStartedAt ?? m.startedAt });
+
+/** A finished job: the marker comes off, and a resumed job tags what it wrote (the newest round, or review) with resumedAfterRestart. */
+export function finishJob(c) {
+  if (!c?.inProgress) return c;
+  const { inProgress: m, ...rest } = c;
+  if (!m.resumedAfterRestart) return rest;
+  const tag = x => ({ ...x, resumedAfterRestart: true, attempts: m.attempts });
+  if (m.kind === 'review' && rest.reviews?.length) return { ...rest, reviews: [...rest.reviews.slice(0, -1), tag(rest.reviews.at(-1))] };
+  if (m.kind !== 'review' && rest.rounds?.length) return { ...rest, rounds: [...rest.rounds.slice(0, -1), tag(rest.rounds.at(-1))] };
+  return rest;
+}
+
+/** A failed or abandoned job: the marker comes off and the error is recorded where the page shows it. */
+export function failJob(c, error, { at = new Date().toISOString(), lostToRestart = false } = {}) {
+  const { inProgress: m, ...rest } = c ?? {};
+  return { ...rest, lastError: { at, error: String(error ?? '').slice(0, 400), ...(lostToRestart ? { lostToRestart: true, kind: m?.kind ?? null, attempts: m?.attempts ?? null } : {}) } };
+}

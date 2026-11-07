@@ -1,0 +1,76 @@
+/* Desk Terminal: book intelligence, the book flow views, the scenario map and ranking vs realised (js/terminal/bookPanels.js).
+   The page's own tokens: purple = what you can press, gold = attention, green / red = direction only. */
+/* book intelligence */
+.bi-tiles{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));margin:6px 0 10px}
+.bi-tile{background:var(--bg3);border:1px solid var(--line);border-radius:10px;padding:8px 11px;min-width:0}
+.bi-tile .v{font:700 17px var(--mono);margin:2px 0;overflow-wrap:anywhere}
+.bi-tile .v.gold{color:var(--gold)}
+.bi-tile .s{font-size:11.5px;color:var(--tx3);overflow-wrap:anywhere}
+.bi-list{margin:0;padding-left:18px;font-size:13.5px;line-height:1.5}
+.bi-list li{margin:3px 0}
+/* the book flow */
+.bf-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.bf-sub{font-size:12px;flex:1 1 220px;min-width:0}
+.bf-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+.bf-svg{display:block;min-width:600px}
+@media (min-width:900px){.bf-svg{min-width:0}}
+@media (max-width:600px){.bf-svg{min-width:0}}
+.bf-rb{transition:opacity .15s}
+.bf-rb.bf-dim{opacity:.05}
+.bf-node.bf-dim,.bf-card.bf-dim{opacity:.3}
+.bf-node.bf-sel rect:nth-child(2){stroke:var(--pur2);stroke-width:2}
+.bf-node:focus-visible,.bf-card:focus-visible{outline:none}
+.bf-node:focus-visible text,.bf-card:focus-visible text{text-decoration:underline}
+.bf-flags{display:grid;gap:6px;margin-bottom:10px}
+.bf-flag{font-size:13px;padding:6px 10px;border-radius:8px;background:var(--goldbg);border:1px solid rgba(232,184,90,.3);cursor:pointer;overflow-wrap:anywhere}
+.bf-flag:hover,.bf-flag:focus-visible{border-color:var(--gold);outline:none}
+.bf-foot{font-size:12px;margin-top:8px}
+.bf-net{display:grid;gap:4px}
+.bf-nrow{display:grid;grid-template-columns:62px 28px minmax(0,1fr) 52px;gap:8px;align-items:center;padding:4px 6px;border-radius:8px;cursor:pointer}
+.bf-nrow:hover,.bf-nrow:focus-visible{background:rgba(139,124,246,.08);outline:none}
+.bf-nrow.bf-sel{background:var(--purbg);box-shadow:inset 0 0 0 1px rgba(139,124,246,.45)}
+.bf-nrow.bf-dim{opacity:.35}
+.bf-nrow .bf-g{grid-column:3/5;font-size:10.5px;margin-top:-3px}
+.bf-bias{font-size:11px}
+.bf-v{text-align:right;font-weight:700}
+.bf-track{position:relative;height:16px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.bf-zero{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line2)}
+.bf-cap{position:absolute;top:0;bottom:0;width:0;border-left:1px dashed var(--gold);opacity:.7}
+.bf-seg{position:absolute;top:3px;height:10px;box-shadow:inset -1px 0 0 rgba(7,10,23,.8)}
+.bf-seg.up{background:rgba(47,211,154,.7)}
+.bf-seg.dn{background:rgba(255,93,120,.7)}
+.bf-mark{position:absolute;top:2px;width:10px;height:12px;border-radius:2px;transform:rotate(45deg) scale(.8);background:var(--tx);box-shadow:0 0 0 2px var(--bg)}
+.bf-panel{margin-top:12px;padding:12px;border-radius:10px;background:var(--bg2);border:1px solid var(--line2)}
+.bf-panel .ch{flex-wrap:wrap}
+.bf-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.bf-tbl th,.bf-tbl td{padding:4px 6px;border-bottom:1px solid var(--line);text-align:left}
+.bf-tbl .n{text-align:right}
+/* the scenario map */
+.sm-label{font-size:12.5px;color:var(--gold);margin:0 0 8px}
+.sm-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;border:1px solid var(--line);border-radius:10px}
+.sm-wrap:focus-visible{outline:2px solid var(--pur)}
+.sm{border-collapse:separate;border-spacing:0;font:11.5px var(--mono);min-width:100%}
+.sm th,.sm td{padding:5px 7px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right}
+.sm thead th{position:sticky;top:0;background:var(--bg2);color:var(--tx3);font-weight:600;z-index:1}
+.sm .sm-c{cursor:pointer}
+.sm .sm-c:hover,.sm .sm-c:focus-visible{color:var(--pur2);outline:none}
+.sm .sm-first{position:sticky;left:0;z-index:2;background:var(--bg1);text-align:left;white-space:normal;min-width:150px;max-width:190px;font:600 12px var(--sans);letter-spacing:0;text-transform:none;color:var(--tx);box-shadow:1px 0 0 var(--line2)}
+.sm thead .sm-first{z-index:3;background:var(--bg2)}
+.sm .sm-first small{display:block;font:10px var(--mono);letter-spacing:0;text-transform:none;color:var(--tx3);font-weight:400;margin-top:2px}
+.sm .sm-first small.gold{color:var(--gold)}
+.sm .sm-book{position:sticky;right:0;z-index:2;background:var(--bg1);font-weight:700;box-shadow:-1px 0 0 var(--line2)}
+.sm thead .sm-book{z-index:3;background:var(--bg2)}
+.sm .sm-book small{display:block;font-size:10px;font-weight:400;color:var(--tx3)}
+.sm .sm-book.up{color:var(--up)}.sm .sm-book.dn{color:var(--dn)}
+.sm tr.sm-hit .sm-first{box-shadow:inset 3px 0 0 var(--gold),1px 0 0 var(--line2)}
+.sm .sm-flag{color:var(--gold)}
+.sm td.sm-in{outline:1px solid rgba(232,184,90,.75);outline-offset:-2px}
+.sm tr.sm-off td{text-align:left}
+@media (max-width:600px){.sm .sm-first{min-width:104px;max-width:112px;font-size:11px}.sm th,.sm td{padding:4px 5px}}
+.sm-notes{margin:8px 0 0;padding-left:18px;font-size:12px;color:var(--tx2)}
+.sm-notes li{margin:3px 0}
+.sm-notes b{color:var(--gold);font-weight:600}
+/* ranking vs realised */
+.rr-heat td.rr-m{font-weight:700;color:var(--tx)}
+.rr-heat td.rr-c{color:var(--tx3)}
+.rr-heat td.rr-m{color:#fff}

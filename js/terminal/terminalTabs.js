@@ -23,6 +23,7 @@ import * as FVV from './fairValueView.js';
 import * as ACV from './autocorrView.js';
 import * as LLV from './leadLagView.js';
 import * as OPV from './optionsView.js';
+import { mountPathChart } from './pathChart.js';
 import * as NV from './newsView.js';
 import { createLevelChart } from '../levelChart.js';
 import { cardDrivers } from './cardExplain.js';
@@ -648,17 +649,25 @@ ${sec('Fear gauge', 'the VIX and its term structure')}<div id="opt-vix">${loadin
     sel.onchange = draw; draw();
   }
   const dl = el('opt-dl'); if (dl) { dl.innerHTML = OPV.dealersHtml(hs) || '<div class="card muted">No dealer hedging read.</div>'; goPair(dl); }
-  const skb = el('opt-skew'); if (skb && typeof E !== 'undefined') { E['options-skew'] ??= sk; skb.innerHTML = globalThis.skewHtml?.() ?? ''; }
+  const skb = el('opt-skew'); if (skb && typeof E !== 'undefined' && E) { E['options-skew'] ??= sk; skb.innerHTML = globalThis.skewHtml?.() ?? ''; }
   const vx = el('opt-vix'); if (vx) vx.innerHTML = OPV.vixHtml(hist) || '<div class="card muted">No VIX series.</div>';
   const drawPath = async (inst, anchor = T.optAnchor ?? 'gammaCentre') => {
     const box = el('opt-path'); if (!box) return;
     box.innerHTML = loading(`the ${inst} path`);
-    const sm = await J(`/api/swing-map?inst=${encodeURIComponent(inst)}`);
+    // the source (CME, the Cboe chain, or both) is kept for the session; a market without a Cboe book reads CME
+    const src = OPV.pathSourceFor(inst, T.optSrc);
+    const sm = await J(`/api/swing-map?inst=${encodeURIComponent(inst)}${src !== 'cme' ? `&source=${src}` : ''}`);
     let walk = null;
-    try { const A = OPV.walkAnchor(sm); if (sm?.ok) walk = OPV.zoneWalk(sm.expiries ?? [], { close: A.px, anchor, includeThin: true, vol: OPV.walkVol(sm), date: A.date }); } catch (e) { console.warn('options walk', e); }
+    const o = (T.optWalk ??= { ...OPV.WALK_OPTS_DEFAULT });   // the walk options (Swing Map's), kept for the session
+    try { if (sm?.ok) walk = OPV.zoneWalk(sm.expiries ?? [], OPV.walkOptsFor(sm, anchor, o)); } catch (e) { console.warn('options walk', e); }
     // drawn at the card's own width, so a phone gets full-size text rather than a shrunken chart
-    box.innerHTML = OPV.pathHtml(sm, inst, { walk, anchor, width: Math.max(300, (box.clientWidth || 460) - 26) });
+    const width = Math.max(300, (box.clientWidth || 460) - 26), view = (T.optPathView ??= {});   // zoom, range and "hide small books", kept for the session
+    view.hideSmall ??= window.innerWidth < 600;
+    box.innerHTML = OPV.pathHtml(sm, inst, { walk, anchor, width, o, hideSmall: view.hideSmall });
+    try { mountPathChart(box, { sm, walk, anchor, o, width, inst, state: view }); } catch (e) { console.warn('path chart zoom', e); }
+    box.querySelectorAll('[data-wopt]').forEach(c => (c.onchange = () => { o[c.dataset.wopt] = c.checked; drawPath(T.optPath ?? inst, T.optAnchor ?? anchor); }));
     const ps = box.querySelector('#opt-path-inst'); if (ps) ps.onchange = () => { T.optPath = ps.value; drawPath(ps.value); };
+    const pq = box.querySelector('#opt-path-src'); if (pq) pq.onchange = () => { T.optSrc = pq.value; drawPath(T.optPath ?? inst, T.optAnchor ?? anchor); };
     const pa = box.querySelector('#opt-path-anchor'); if (pa) pa.onchange = () => { T.optAnchor = pa.value; drawPath(T.optPath ?? inst, pa.value); };
   };
   drawPath(T.optPath ?? 'GOLD');
@@ -729,7 +738,8 @@ function drawNews(filters = false) {
 
 // the Assets cards were drawn before this module loaded: draw them again once so each gets its "latest:" line
 const assetsNews = () => { if (typeof assets === 'function' && D?.cards && D.news?.length && !document.querySelector('#assets .nt-latest')) assets(); };
-const RENDER = { today: renderToday, pair: renderPair, changed: renderChanged, research: renderResearch, options: renderOptions, news: renderNews, assets: assetsNews };
+const RENDER = { today: renderToday, pair: renderPair, changed: renderChanged, research: renderResearch, options: renderOptions, news: renderNews, assets: assetsNews,
+  corr: () => import('./corrView.js').then(V => V.render(el('corr'), { getJson, book: () => D })).catch(e => { el('corr').innerHTML = `<div class="card"><p class="muted">Correlations &amp; hedges did not load: ${h(e.message)}</p></div>`; }) };
 globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'news') { clearInterval(NS.timer); NS.timer = null; } if (t !== 'pair' && /pair=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
 globalThis.openPairPage = openPair;
 globalThis.openNewsTab = openNews;

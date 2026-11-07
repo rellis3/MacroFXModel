@@ -1,6 +1,10 @@
 """
 Hedge Bot — Pairs trading bot that consumes hedge signals from the MacroFX server.
 
+RETIRED 2026-11-06: the server no longer computes hedge signals. /api/hedge-signals answers
+{retired: true, signals: []}, so this bot opens nothing and closes any legs it still holds as
+DISMISSED (a signal missing from the feed). See MD files/HEDGING_VS_SPREAD.md.
+
 Strategy:
   Poll /api/hedge-signals every N seconds.
   When a new ACTIVE signal appears, open both legs simultaneously via MT5.

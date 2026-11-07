@@ -1,5 +1,6 @@
 // Tests for js/newsletterToday.js.   node js/newsletterToday.test.mjs
 import { todayOpening, weekStory } from './newsletterToday.js';
+import { ASSETS, EVENING, NOW } from './morningTape.fixture.mjs';
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
 
@@ -100,5 +101,19 @@ console.log('late in the day');
 { const b = Date.UTC(2026, 9, 29), tt = (h, m) => b + (h * 60 + m) * 6e4;
   const o = todayOpening({ events: [{ ms: tt(13, 15), ccy: 'EUR', event: 'Main Refinancing Rate', impact: 'high' }, { ms: tt(13, 15), ccy: 'EUR', event: 'ECB Monetary Policy Statement', impact: 'high' }, { ms: tt(13, 45), ccy: 'EUR', event: 'Deposit Facility Rate', impact: 'high' }], nowMs: tt(18, 0), assets: [], changes: [] });
   ok('a bank that listed its decision more than once is named once as having decided', !/ECB and the ECB/.test(o.lede) && /The ECB has already decided/.test(o.lede), o.lede); }
+console.log('yesterday in one line (5-6 Nov 2026)');
+{ const o = todayOpening({ events: [], nowMs: NOW, assets: ASSETS });
+  ok("the opening carries Thursday's full day in normal-day units", o.yesterday?.source === 'data' && o.yesterday.text === "Thursday's full day: Nasdaq −7.0% (4.1× a normal day), S&P 500 −4.9% (3.6×), AUD/USD −1.1% (1.7×)", o.yesterday?.text);
+  const e = todayOpening({ events: [], nowMs: NOW, assets: ASSETS, evening: EVENING });
+  ok("last night's evening edition supplies the line when it covers that day", e.yesterday.source === 'evening' && /The Nasdaq's worst day in years/.test(e.yesterday.text));
+  ok('the weekly has no yesterday line', todayOpening({ events: [], nowMs: NOW, assets: ASSETS, weekly: true }).yesterday === null); }
+// Owner, 2026-11-06: yesterday's big day leads the headline, the overnight move after it
+{
+  const o = todayOpening({ events: [], nowMs: NOW, assets: ASSETS, evening: EVENING, since: { first: true } });
+  ok('a big full day leads the headline, the overnight move after it', o.headline === "Thursday's 7.0% Nasdaq plunge and 4.9% S&P 500 plunge; Nasdaq bounces 1.3% overnight", o.headline);
+  const quiet = ASSETS.map(a => ({ ...a, spark: [a.lastClose, a.lastClose], prevClose: a.prevClose == null ? null : a.lastClose, d1: a.d1Basis === 'bars' ? 0.1 : a.d1 }));
+  ok('no big day: the headline is not about yesterday', !/Thursday's/.test(todayOpening({ events: [], nowMs: NOW, assets: quiet, since: { first: true } }).headline));
+}
+
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

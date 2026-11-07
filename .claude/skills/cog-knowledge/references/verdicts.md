@@ -86,3 +86,4 @@ Plain-English cards of every row below (and the wider rates tests) are on the ch
 |---|---|---|---|
 | Where the NQ and ES CME books disagree, does the range spread lean toward the short book (C.OG's "pinning vs acceleration" from OI, 18/08 DM)? | **NULL** | β +0.027 [−0.024, +0.078]; both markets widen together; weak-book days only | `oi_research_book/GEX_SPLIT_BOOK_RESULTS.md`, ledger `gex-split-book` |
 | Is any short-gamma widening left once implied vol is in the baseline? | **UNDERPOWERED; IV absorbs most** | remainder ES +0.054 / NQ +0.044; absorbed 64% / 73% | `oi_research_book/GEX_RANGE_IV_RESULTS.md`, ledger `gex-range-iv` |
+| Does G2 (gamma sign → range) appear on gold (CME OG monthlies)? | **UNDERPOWERED; no sign of it** | vm -0.031 [-0.209, +0.148], 0/4 cells, n 866 to 2026-04-15; NQ-sized effect ruled out, +0.10 not; ledger `gex-range-gold` |

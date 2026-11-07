@@ -10,6 +10,7 @@
  * Pure: strings in, string out. Helpers (escaping, colours, small SVG builders) come from the caller so this file has no import cycle with newsletter.js.
  * Tested in js/newsletter.test.mjs and by rendering the pages (see plans/NEWSLETTER_MAGAZINE.md).
  */
+import { TAPE_UNIT_NOTE } from './morningTape.js';
 
 export const MAG_CSS = `
 .mgw{max-width:860px;padding:0 0 40px}
@@ -124,6 +125,7 @@ export const MAG_CSS = `
 .pg .mh b{display:flex;align-items:center;gap:9px;font-family:var(--sans);font-weight:800;font-size:15px;letter-spacing:.14em;color:#fff;text-transform:uppercase}
 .pg .mh .logo{display:block}
 .pg .tape{display:flex;flex-wrap:wrap;gap:3px 20px;background:var(--navy2);color:#cfe0f5;border-bottom:3px solid var(--up);margin:0 -28px 18px;padding:8px 18px;font-family:var(--mono);font-size:10.5px;line-height:1.35;white-space:nowrap;-webkit-print-color-adjust:exact}
+.pg .yd{margin:0 0 10px;padding:6px 0 8px;border-bottom:1px solid #dbe3ee}.pg .yd small{display:block;color:#5b6b82;font-size:11px;margin-top:2px}
 .pg .tape b{color:#fff;font-weight:700}.pg .tape i{font-style:normal;font-weight:700}.pg .tape i.up{color:var(--up)}.pg .tape i.dn{color:var(--dn)}
 .pg .deskhd .tape{margin:-18px -28px 14px;background:#0f1a2e}
 .pg .kick{font-family:var(--mono);color:var(--amb);letter-spacing:.14em;display:flex;align-items:center;gap:8px;margin-top:16px}
@@ -167,7 +169,7 @@ export const MAG_CSS = `
 .pg .dgh{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-weight:700;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--navy);border-bottom:2px solid var(--navy);margin:20px 0 10px;padding-bottom:6px;break-after:avoid}.pg .dgh b{background:var(--navy);color:var(--up);width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;-webkit-print-color-adjust:exact}.pg .dgh:first-child{margin-top:0}
 .pg.desk section h2{font-family:var(--sans)}
 @page{@bottom-right{content:counter(page);font:9px Consolas,monospace;color:#8aa0bd}}
-@media (max-width:560px){.pg .mh{margin:-18px -15px 0;padding:10px 12px}.pg .tape{margin:0 -15px 14px;flex-wrap:nowrap;overflow-x:auto;padding:8px 12px}.pg .deskhd .tape{margin:-14px -15px 12px}.pg h1.hd{font-size:33px}.pg h2.sh{font-size:25px}}
+@media (max-width:560px){.pg .t3{font-size:11px}.pg .t3 td,.pg .t3 th{padding-right:5px}.pg .t3 th{letter-spacing:.04em}.pg .t3 .m{white-space:normal;min-width:64px}.pg .t3 .u{white-space:normal}.pg .t3 .bar3{width:36px}.pg .t3 .w{font-size:10.5px}.pg .mh{margin:-18px -15px 0;padding:10px 12px}.pg .tape{margin:0 -15px 14px;flex-wrap:nowrap;overflow-x:auto;padding:8px 12px}.pg .deskhd .tape{margin:-14px -15px 12px}.pg h1.hd{font-size:33px}.pg h2.sh{font-size:25px}}
 @media print{.pg .mh{margin:0}.pg .tape{margin:0 0 14px}.pg .deskhd .tape{margin:0 0 12px}}
 
 
@@ -431,12 +433,18 @@ export function composeMagazine(c, H) {
   const { esc } = H, M = c.meta;
   const candles = '<svg class="logo" viewBox="0 0 28 22" width="26" height="20" aria-hidden="true"><g stroke-width="1.6" stroke-linecap="round"><line x1="5" y1="2" x2="5" y2="20" stroke="#19d3a0"/><rect x="2.5" y="7" width="5" height="9" rx="1" fill="#19d3a0" stroke="none"/><line x1="14" y1="1" x2="14" y2="17" stroke="#ff5d73"/><rect x="11.5" y="4" width="5" height="9" rx="1" fill="#ff5d73" stroke="none"/><line x1="23" y1="4" x2="23" y2="21" stroke="#ffb020"/><rect x="20.5" y="8" width="5" height="9" rx="1" fill="#ffb020" stroke="none"/></g></svg>';
   const mh = (sec) => `<div class="mh"><b>${candles}The Chain</b><span>${esc(sec)}</span><span>${esc(M.edition)}${M.tag ? ' · ' + esc(M.tag) : ''} · ${esc(M.date)}</span></div>`;
-  const tape = (c.ticker ?? []).length ? `<div class="tape">${c.ticker.map(t => `<span>${esc(t.label)} <b>${esc(t.price)}</b> <i class="${t.chg >= 0 ? 'up' : 'dn'}">${t.chg >= 0 ? '▲' : '▼'} ${Math.abs(t.chg).toFixed(2)}%</i></span>`).join('')}</div>` : '';
+  // the tape: the last full day (close to close) and, when the price is live, the move since that close, each with its multiple of a
+  // normal day (js/morningTape.js). An older ticker row with neither keeps its single move.
+  const arw = (v, d = 2) => `${v >= 0 ? '▲' : '▼'} ${Math.abs(v).toFixed(d)}%`, ud = v => (v >= 0 ? 'up' : 'dn'), mx = m => (Number.isFinite(m) ? ` ${m.toFixed(1)}×` : '');
+  const tick = t => (t.day || t.night ? `${t.day ? ` <i class="${ud(t.day.pct)}">${esc(t.day.word ?? '')} ${arw(t.day.pct)}${mx(t.day.mult)}</i>` : ''}${t.night ? ` <i class="${ud(t.night.pct)}" title="since the close">· now ${arw(t.night.pct)}${mx(t.night.mult)}</i>` : ''}` : ` <i class="${ud(t.chg)}">${arw(t.chg)}</i>`);
+  const tape = (c.ticker ?? []).length ? `<div class="tape">${c.ticker.map(t => `<span>${esc(t.label)} <b>${esc(t.price)}</b>${tick(t)}</span>`).join('')}</div>` : '';
+  const yy = c.today?.yesterday;
+  const yd = yy ? `<p class="mo yd"><span class="sfl">Yesterday in one line${yy.source === 'evening' ? ", from last night's evening edition" : ', the last full day'}</span><b>${esc(yy.text)}</b>${yy.source === 'evening' && yy.numbers ? ` ${esc(yy.numbers)}.` : ''} <small>${esc(TAPE_UNIT_NOTE)}</small></p>` : '';
   const paras = (arr, lead = true) => (arr ?? []).filter(Boolean).map((p, i) => `<p${i === 0 && lead ? ' class="lead"' : ''}>${p.head ? `<b>${esc(p.head)}</b> ` : ''}${esc(typeof p === 'string' ? p : p.text)}</p>`).join('');
   const feature = c.feature;
   // page 1: the situation in plain terms, before any analysis
   const p1 = `<div class="pg p1">${mh('The story')}${tape}
-${c.today ? `<div class="kick">${esc(c.today.kicker)} · ${esc(M.regime)} regime</div><h1 class="hd">${esc(c.today.headline)}</h1>
+${c.today ? `${yd}<div class="kick">${esc(c.today.kicker)} · ${esc(M.regime)} regime</div><h1 class="hd">${esc(c.today.headline)}</h1>
 ${c.today.lede ? `<p class="ld">${esc(c.today.lede)}</p>` : ''}${c.today.note ? `<p class="small3">${esc(c.today.note)}</p>` : ''}${c.today.sheet?.length ? `<div class="dsh"><div class="dh">On the clock · UK time</div>${c.today.sheet.map(r => `<div class="dr"><span class="dsw">${esc(r.when)}</span><span class="dsn"><b>${esc(r.name)}</b>${r.detail ? ` <i>${esc(r.detail)}</i>` : ''}</span></div>`).join('')}</div>` : ''}${c.today.board?.length ? `<div class="brd">${c.today.board.map(b => `<div><small>${esc(b.label)}</small><b>${esc(b.value)}</b><em>${esc(b.move)}</em></div>`).join('')}</div>` : ''}
 <p class="mo"><span class="sfl">${esc(c.today.story ?? 'The month in one line')}</span><b>${esc(feature.headline)}</b>${feature.standfirst ? ' ' + esc(feature.standfirst) : ''}</p>` : `<div class="kick">${esc(M.regime)} regime · the investigation</div><h1 class="hd">${esc(feature.headline)}</h1>${feature.standfirst ? `<p class="sf"><span class="sfl">The desk's reading</span>${esc(feature.standfirst)}</p>` : ''}`}
 <p class="by">By The Chain research desk · ${esc(M.date)}</p>

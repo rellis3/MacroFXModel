@@ -2,6 +2,7 @@
 import { buildNewsletterV3, releaseNewsletterV3 } from './newsletterV3.js';
 import { buildNewsletterV2 } from './newsletterV2.js';
 import { todayTables } from './newsletterTables.js';
+import { ASSETS, EVENING, NOW } from './morningTape.fixture.mjs';
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
 const t = (h, m) => Date.UTC(2026, 9, 29, h, m), nowMs = t(7, 0), esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -38,5 +39,17 @@ console.log('the opening written with the brief');
   ok('the clock and the board stay rule-built', /On the clock/.test(w.html) && /JUNK SPREAD|Junk spread/i.test(w.html));
   const old = mk({ brief: { opening: op }, generatedAt: new Date(t(8, 12) - 864e5).toISOString() });
   ok('a brief from yesterday is ignored and the rule-built opening stands', !/Borrowing costs slip/.test(old.html) && !/written with this morning/.test(old.html)); }
+console.log('the morning tape, 5-6 Nov 2026 (yesterday and overnight, in normal days)');
+{ const Tt = todayTables({ assets: ASSETS, events: [], nowMs: NOW, isoDate: '2026-11-06' }, esc).pairsHtml;
+  ok("the Nasdaq cell carries Thursday's full day with its multiple, then the overnight, then where it sits in Thursday's range", /Nasdaq<small>26883\.3<\/small><\/td><td class="m"><b class="dn3">Thu −7\.03%<\/b> <small>\(4\.1×\)<\/small><br><small>since close <span class="up3">\+1\.33%<\/span> \(0\.8×\)<\/small><br><small>21% of Thu's range, bottom third<\/small><\/td>/.test(Tt), (Tt.match(/Nasdaq<small>[^]*?<\/td><td class="m">[^]*?<\/td>/) ?? [''])[0]);
+  ok('the S&P with no live price shows the full day alone and where it closed', /S&amp;P 500<small><\/small><\/td><td class="m"><b class="dn3">Thu −4\.90%<\/b> <small>\(3\.6×\)<\/small><br><small>closed at 6% of Thu's range, bottom third<\/small><\/td>/.test(Tt));
+  ok('AUD/USD says it is below Thursday\'s low', /AUD\/USD[^]*?below Thu's low/.test(Tt));
+  ok('the footnote says what × means, the stress caveat and what each line is', /× = the move divided by the market's forecast median day range \(high to low\)/.test(Tt) && /runs narrow in stress/.test(Tt) && /Thu: that market's last full day, close to close/.test(Tt) && /Since the close: the live price against that close/.test(Tt));
+  const iss = releaseNewsletterV3({ date: 'Friday 6 November 2026', isoDate: '2026-11-06', assets: ASSETS, events: [], nowMs: NOW, regimeWord: 'MIXED' });
+  ok('the issue opens with yesterday in one line, labelled as the full day', /Yesterday in one line, the last full day<\/span><b>Thursday's full day: Nasdaq −7\.0% \(4\.1× a normal day\), S&amp;P 500 −4\.9% \(3\.6×\), AUD\/USD −1\.1% \(1\.7×\)<\/b>/.test(iss.html) && iss.html.indexOf('Yesterday in one line') < iss.html.indexOf('class="hd"'));
+  ok('the plain text carries the yesterday line and every move as a pair with multiples', /YESTERDAY: Thursday's full day: Nasdaq −7\.0% \(4\.1× a normal day\)/.test(iss.text) && /- Nasdaq: Thu −7\.03% \(4\.1×\) · \+1\.33% \(0\.8×\) since Thu's close · 21% of Thu's range, bottom third/.test(iss.text) && iss.text.indexOf('- Nasdaq:') < iss.text.indexOf('- S&P 500:'), (iss.text.match(/MOVES[^]*?\n\n/) ?? [''])[0]);
+  ok('the preview line leads with yesterday', /^Thursday's full day: Nasdaq −7\.0%/.test(iss.preheader), iss.preheader);
+  const ev = releaseNewsletterV3({ date: 'Friday 6 November 2026', isoDate: '2026-11-06', assets: ASSETS, evening: EVENING, events: [], nowMs: NOW, regimeWord: 'MIXED' });
+  ok("with last night's evening edition stored, its headline is the line and the sizes follow", /Yesterday in one line, from last night's evening edition<\/span><b>Thursday, from last night's evening edition: The Nasdaq's worst day in years, and the dollar bid<\/b> Thursday's full day: Nasdaq −7\.0%/.test(ev.html.replace(/&#39;/g, "'")), (ev.html.match(/class="mo yd"[^]*?<\/p>/) ?? [''])[0]); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 if (failures) process.exit(1);

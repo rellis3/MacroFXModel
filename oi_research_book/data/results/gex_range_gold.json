@@ -1,0 +1,331 @@
+{
+  "seed": 20261106,
+  "prereg": "oi_research_book/GEX_RANGE_GOLD_PREREG.md",
+  "banked_nq_dDR_vm": 0.28799,
+  "lockbox_end": "2026-08-21",
+  "instruments": {
+    "GOLD": {
+      "window_start": "2022-11-04",
+      "counts": {
+        "near": {
+          "raw_rows": 866,
+          "oi_date_not_a_session": 0,
+          "target_past_end": 0,
+          "dropped_nonfinite": 0,
+          "used": 866
+        },
+        "all": {
+          "raw_rows": 866,
+          "oi_date_not_a_session": 0,
+          "target_past_end": 0,
+          "dropped_nonfinite": 0,
+          "used": 866
+        }
+      },
+      "cells": {
+        "near/rv20": {
+          "n": 866,
+          "n_short": 156,
+          "n_long": 710,
+          "dDR_raw": -0.01473,
+          "DR_short": 1.00041,
+          "DR_long": 1.01514,
+          "dDR_vm": -0.03052,
+          "p_vm": 0.7526,
+          "se_vm": 0.09084,
+          "ci95_vm": [
+            -0.20856,
+            0.14751
+          ],
+          "DR_long_vs1_p": 0.6621
+        },
+        "near/atr14": {
+          "n": 866,
+          "n_short": 156,
+          "n_long": 710,
+          "dDR_raw": -0.05825,
+          "DR_short": 0.98199,
+          "DR_long": 1.04025,
+          "dDR_vm": -0.04306
+        },
+        "all/rv20": {
+          "n": 866,
+          "n_short": 62,
+          "n_long": 804,
+          "dDR_raw": 0.08155,
+          "DR_short": 1.0882,
+          "DR_long": 1.00665,
+          "dDR_vm": -0.0364
+        },
+        "all/atr14": {
+          "n": 866,
+          "n_short": 62,
+          "n_long": 804,
+          "dDR_raw": -0.03646,
+          "DR_short": 0.99591,
+          "DR_long": 1.03236,
+          "dDR_vm": -0.02867
+        }
+      },
+      "ladder": {
+        "a": {
+          "n": 866,
+          "n_short": 166,
+          "n_long": 700,
+          "dDR_raw": 0.05767,
+          "DR_short": 1.00909,
+          "DR_long": 0.95143,
+          "dDR_vm": 0.01897,
+          "counts": {
+            "raw_rows": 866,
+            "dropped_nonfinite": 0,
+            "used": 866
+          }
+        },
+        "b": {
+          "n": 866,
+          "n_short": 156,
+          "n_long": 710,
+          "dDR_raw": 0.02417,
+          "DR_short": 1.03203,
+          "DR_long": 1.00787,
+          "dDR_vm": 0.01523,
+          "counts": {
+            "raw_rows": 866,
+            "oi_date_not_a_session": 0,
+            "target_past_end": 0,
+            "dropped_nonfinite": 0,
+            "used": 866
+          }
+        },
+        "c": {
+          "n": 866,
+          "n_short": 156,
+          "n_long": 710,
+          "dDR_raw": -0.01473,
+          "DR_short": 1.00041,
+          "DR_long": 1.01514,
+          "dDR_vm": -0.03052,
+          "counts": {
+            "raw_rows": 866,
+            "oi_date_not_a_session": 0,
+            "target_past_end": 0,
+            "dropped_nonfinite": 0,
+            "used": 866
+          }
+        }
+      },
+      "halves": {
+        "first": {
+          "n": 433,
+          "n_short": 121,
+          "n_long": 312,
+          "dDR_raw": -0.01559,
+          "DR_short": 0.98194,
+          "DR_long": 0.99753,
+          "dDR_vm": -0.20207
+        },
+        "second": {
+          "n": 433,
+          "n_short": 35,
+          "n_long": 398,
+          "dDR_raw": 0.03532,
+          "DR_short": 1.06427,
+          "DR_long": 1.02895,
+          "dDR_vm": 0.25592
+        },
+        "split_date": "2024-07-30"
+      },
+      "harness": {
+        "placebo_shift125_dDR_vm": 0.13602,
+        "placebo_pass": false,
+        "placebo_95th_pctile_vm": 0.17553,
+        "placebo_shift125_dDR_raw": 0.07663,
+        "injection_0.15_recovered": 0.15,
+        "injection_pass": true,
+        "descriptive_all_shifts": {
+          "n_shifts": 150,
+          "vm_mean": 0.01817,
+          "vm_sd": 0.07885,
+          "vm_real_pctile": 0.26,
+          "raw_mean": 0.00163,
+          "raw_sd": 0.07593,
+          "raw_real_pctile": 0.48667,
+          "vm_minus_placebo_mean": -0.04869,
+          "raw_minus_placebo_mean": -0.01636
+        },
+        "no_lookahead_pass": true
+      },
+      "verdict": "UNDERPOWERED",
+      "gate_parts": {
+        "dDR_vm>=0.05": false,
+        "p<0.05": false,
+        "4/4_signs": false,
+        "harness_believed": false,
+        "powered": true
+      }
+    },
+    "NQ": {
+      "window_start": "2020-11-03",
+      "counts": {
+        "near": {
+          "raw_rows": 772,
+          "oi_date_not_a_session": 0,
+          "target_past_end": 2,
+          "dropped_nonfinite": 0,
+          "used": 770
+        },
+        "all": {
+          "raw_rows": 1464,
+          "oi_date_not_a_session": 0,
+          "target_past_end": 2,
+          "dropped_nonfinite": 0,
+          "used": 1462
+        }
+      },
+      "cells": {
+        "near/rv20": {
+          "n": 770,
+          "n_short": 230,
+          "n_long": 540,
+          "dDR_raw": 0.18503,
+          "DR_short": 1.07774,
+          "DR_long": 0.89271,
+          "dDR_vm": 0.28799,
+          "p_vm": 0.0,
+          "se_vm": 0.05723,
+          "ci95_vm": [
+            0.17582,
+            0.40015
+          ],
+          "DR_long_vs1_p": 0.0001
+        },
+        "near/atr14": {
+          "n": 770,
+          "n_short": 230,
+          "n_long": 540,
+          "dDR_raw": 0.08955,
+          "DR_short": 1.0693,
+          "DR_long": 0.97976,
+          "dDR_vm": 0.14642
+        },
+        "all/rv20": {
+          "n": 1462,
+          "n_short": 504,
+          "n_long": 958,
+          "dDR_raw": 0.09669,
+          "DR_short": 1.04752,
+          "DR_long": 0.95083,
+          "dDR_vm": 0.21727
+        },
+        "all/atr14": {
+          "n": 1462,
+          "n_short": 504,
+          "n_long": 958,
+          "dDR_raw": 0.0544,
+          "DR_short": 1.05956,
+          "DR_long": 1.00516,
+          "dDR_vm": 0.12933
+        }
+      },
+      "ladder": {
+        "a": {
+          "n": 772,
+          "n_short": 232,
+          "n_long": 540,
+          "dDR_raw": 0.18796,
+          "DR_short": 1.03496,
+          "DR_long": 0.847,
+          "dDR_vm": 0.32089,
+          "counts": {
+            "raw_rows": 783,
+            "dropped_nonfinite": 0,
+            "used": 772
+          }
+        },
+        "b": {
+          "n": 771,
+          "n_short": 230,
+          "n_long": 541,
+          "dDR_raw": 0.21638,
+          "DR_short": 1.11064,
+          "DR_long": 0.89426,
+          "dDR_vm": 0.36054,
+          "counts": {
+            "raw_rows": 772,
+            "oi_date_not_a_session": 0,
+            "target_past_end": 1,
+            "dropped_nonfinite": 0,
+            "used": 771
+          }
+        },
+        "c": {
+          "n": 770,
+          "n_short": 230,
+          "n_long": 540,
+          "dDR_raw": 0.18503,
+          "DR_short": 1.07774,
+          "DR_long": 0.89271,
+          "dDR_vm": 0.28799,
+          "counts": {
+            "raw_rows": 772,
+            "oi_date_not_a_session": 0,
+            "target_past_end": 2,
+            "dropped_nonfinite": 0,
+            "used": 770
+          }
+        }
+      },
+      "halves": {
+        "first": {
+          "n": 385,
+          "n_short": 170,
+          "n_long": 215,
+          "dDR_raw": 0.11678,
+          "DR_short": 1.03312,
+          "DR_long": 0.91634,
+          "dDR_vm": 0.22104
+        },
+        "second": {
+          "n": 385,
+          "n_short": 60,
+          "n_long": 325,
+          "dDR_raw": 0.3271,
+          "DR_short": 1.20418,
+          "DR_long": 0.87708,
+          "dDR_vm": 0.41868
+        },
+        "split_date": "2023-08-31"
+      },
+      "harness": {
+        "placebo_shift125_dDR_vm": 0.12514,
+        "placebo_pass": true,
+        "placebo_95th_pctile_vm": 0.0989,
+        "placebo_shift125_dDR_raw": 0.07119,
+        "injection_0.15_recovered": 0.15,
+        "injection_pass": true,
+        "descriptive_all_shifts": {
+          "n_shifts": 130,
+          "vm_mean": -0.01282,
+          "vm_sd": 0.06177,
+          "vm_real_pctile": 1.0,
+          "raw_mean": -0.0052,
+          "raw_sd": 0.05899,
+          "raw_real_pctile": 1.0,
+          "vm_minus_placebo_mean": 0.3008,
+          "raw_minus_placebo_mean": 0.19023
+        },
+        "no_lookahead_pass": true
+      },
+      "role": "reference (prereg Q2): pipeline check only, never scored",
+      "pipeline_check": {
+        "banked_vm": 0.28799,
+        "got_vm": 0.28799,
+        "tolerance": 0.005,
+        "pass": true
+      },
+      "verdict": "REFERENCE (not scored)"
+    }
+  },
+  "generated": "2026-11-06T16:35:21.803750+00:00"
+}

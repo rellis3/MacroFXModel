@@ -1,5 +1,22 @@
 # Hedging vs. Spread Trading — why our hedges bled and the journal's pairs don't
 
+> **2026-11-06: the hedge signals (v1 and v2) are RETIRED, untested.** They were a pairs-trading / spread
+> mean-reversion system, not hedges: two correlated pairs, a 1:1 log-price spread, enter at spread z > 2, exit at
+> 0.5, stop at 3.5. v1 kept the spread mean and std in memory (reset on every restart) and measured its correlation
+> z against a full-history mean; only 2 signals ever closed with a P&L (+0.035% in total). Nothing in the Evidence
+> Book tests either version, so no verdict is recorded: the "null" wording below is this note's prose, not a
+> banked result. The scanners, schedules and Telegram sends were removed from server.js; the pages are retirement
+> notices. Hedging now lives in Desk Terminal → Correlations & hedges → Hedge finder (descriptive, untested); a
+> study of book hedging is under way. The hedge audit log (`/api/hedge-audit`) and `hedge_alerts_cache` are kept:
+> they come from the correlation build, not from these signals.
+
+> **2026-11-06: tested as a standalone spread system** (`forge/HEDGE_RESIDUAL_SYSTEM_PREREG.md`, Evidence Book
+> `hedge-residual-mr` NULL, `hedge-residual-mom` NULL, `hedge-residual-carry` UNDERPOWERED). The Hedge finder's top
+> partner for each of 21 G10 pairs, min-variance spread, hourly, both legs costed, 2017-2026: fading the residual netted
+> Sharpe -1.19 [-1.76, -0.60], following it -1.78 [-2.45, -1.08]; gross of costs neither differs from zero. Carry of the
+> spread +0.08 [-0.55, +0.70]. The FX pairs version of "trade the spread itself" does not pay here; gold and index spreads
+> (the journal's DAX/S&P) were not in the data.
+
 A note prompted by a simple observation: the **beta-hedge signal**, the
 **hedge monitor**, and the **position-hedge bot** all lost money and never really
 reduced the risk of a trade — while the colleague's **Trade Journal** pairs

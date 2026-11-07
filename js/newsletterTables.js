@@ -12,6 +12,7 @@ import { basisNote } from './closeBasis.js';
 import { dollarBasket } from './dataChecks.js';
 import { worldEconomiesHtml } from './worldEconomies.js';
 import { directionCell, directionNote, rangeCell } from './directionRead.js';
+import { tapeRow, tapeRows, tapeNote, rowText, dayName, fmtPct as tPct, fmtMult } from './morningTape.js';
 
 const TZ = 'Europe/London', MINUS = '−';
 const sg = (v, d = 0, u = '') => (Number.isFinite(v) ? `${v > 0 ? '+' : v < 0 ? MINUS : ''}${Math.abs(v).toFixed(d)}${u}` : '·');
@@ -92,11 +93,24 @@ export function todayTables({ reads, world, intl, changes, creditSpreads, fedPat
   const countryHtml = rows.length ? `<table class="t3"><tr><th>Currency</th><th>Score</th><th>10-year yield, today</th><th>Gap to the US</th><th>Central bank, data</th><th>Due today</th></tr>${rows.join('')}</table><p class="small3">The score is the desk's scorecard (growth, inflation, rates, trade, confidence) against the other seven. It moves slowly and has no saved yesterday, so it shows the state, not the day's change. The gap is the 10-year yield minus the US one, shown only when both are from the same day.${noFeed.length ? ` There is no daily yield feed for ${noFeed.join(', ')}.` : ''}</p>` : '';
 
   const rd = r => (reads?.rows ?? []).find(x => x.sym === r.key) ?? null;
+  // the move cell (js/morningTape.js): the last full day, close to close, with the overnight since that close and where the price sits in that
+  // day's range under it, each scaled to the market's normal day. A row with no basis (an older input) keeps the single move it had.
+  const cls = v => (v >= 0 ? 'up3' : 'dn3');
+  const moveCell = r => {
+    const t = tapeRow(r);
+    if (!r.d1Basis || (!t.day && !t.night)) return Number.isFinite(r.d1) ? `<b class="${cls(r.d1)}">${sg(r.d1, 2, '%')}</b>${r.d1Label ? ` <small>${esc(r.d1Label)}</small>` : ''}` : '<small>no print</small>';
+    if (!t.day) return `<b class="${cls(t.night.pct)}">${tPct(t.night.pct)}</b>${r.d1Label ? ` <small>${esc(r.d1Label)}</small>` : ''}${Number.isFinite(t.night.mult) ? ` <small>(${fmtMult(t.night.mult)})</small>` : ''}`;
+    const d = t.day ? `<b class="${cls(t.day.pct)}">${esc(dayName(t.day.date))} ${tPct(t.day.pct)}</b>${Number.isFinite(t.day.mult) ? ` <small>(${fmtMult(t.day.mult)})</small>` : ''}` : '';
+    const nt = t.night ? `<small>since close <span class="${cls(t.night.pct)}">${tPct(t.night.pct)}</span>${Number.isFinite(t.night.mult) ? ` (${fmtMult(t.night.mult)})` : ''}</small>` : '';
+    const ps = t.pos ? `<small>${esc(rowText(t).pos)}</small>` : '';
+    return [d, nt, ps].filter(Boolean).join('<br>');
+  };
   const pr = (assets ?? []).filter(r => r?.key && (Number.isFinite(r.d1) || r.d1Basis === 'none')).map(r => {
     const used = Number.isFinite(r.used) ? r.used : (Number.isFinite(r.d1) && Number.isFinite(r.hlMed) && r.hlMed > 0 ? Math.abs(r.d1) / r.hlMed : null), w = waitingOn(r.key, events, now), a = asiaPhrase(asia?.[r.key]), q = rd(r);
-    return `<tr><td class="n">${esc(r.label)}<small>${esc(r.price ?? '')}</small></td><td class="m">${Number.isFinite(r.d1) ? `<b class="${r.d1 >= 0 ? 'up3' : 'dn3'}">${sg(r.d1, 2, '%')}</b>${r.d1Label ? ` <small>${esc(r.d1Label)}</small>` : ''}` : '<small>no print</small>'}</td><td class="u">${used === null ? '·' : `<span class="bar3"><i style="width:${Math.min(100, Math.round(used * 100))}%"></i></span> ${Math.round(used * 100)}%`}</td>${reads ? `<td class="m">${q ? rangeCell(q) || '·' : '·'}</td><td class="m">${q ? directionCell(q) : '·'}</td>` : ''}<td class="m">${esc(a)}</td><td class="w">${esc(w)}</td></tr>`;
+    return `<tr><td class="n">${esc(r.label)}<small>${esc(r.price ?? '')}</small></td><td class="m">${moveCell(r)}</td><td class="u">${used === null ? '·' : `<span class="bar3"><i style="width:${Math.min(100, Math.round(used * 100))}%"></i></span> ${Math.round(used * 100)}%`}</td>${reads ? `<td class="m">${q ? rangeCell(q) || '·' : '·'}</td><td class="m">${q ? directionCell(q) : '·'}</td>` : ''}<td class="m">${esc(a)}</td><td class="w">${esc(w)}</td></tr>`;
   });
-  const pairsHtml = pr.length ? `<table class="t3"><tr><th>Market</th><th>Move</th><th>Share of a normal day's range used</th>${reads ? '<th>Typical day, 1 in 4 days past</th><th>Direction, tested inputs</th>' : ''}<th>Asia</th><th>Waiting on</th></tr>${pr.join('')}</table><p class="small3">${esc((assets ?? []).some(r => r?.d1Basis) ? basisNote(assets.filter(r => r?.key)) : "Today is since yesterday's close.")} A full bar means a normal day's range is used up. Asia is 00:00 to 06:00 London against that market's own history.${reads ? ` ${esc(directionNote(reads))}` : ''}</p>` : '';
+  const tape = tapeRows(assets);
+  const pairsHtml = pr.length ? `<table class="t3"><tr><th>Market</th><th>Move</th><th>Share of a normal day's range used</th>${reads ? '<th>Typical day, 1 in 4 days past</th><th>Direction, tested inputs</th>' : ''}<th>Asia</th><th>Waiting on</th></tr>${pr.join('')}</table><p class="small3">${esc((assets ?? []).some(r => r?.d1Basis) ? basisNote(assets.filter(r => r?.key), now) : "Today is since yesterday's close.")}${tape.length ? ` ${esc(tapeNote(tape))}` : ''} A full bar means a normal day's range is used up. Asia is 00:00 to 06:00 London against that market's own history.${reads ? ` ${esc(directionNote(reads))}` : ''}</p>` : '';
   const worldHtml = world ? worldEconomiesHtml(world, esc, isoDate) : '';
   return { globalHtml, countryHtml, pairsHtml, worldHtml };
 }

@@ -73,6 +73,7 @@ export const STORES = {
   research_pod_cards: R('Research pod system cards and reviews', 60, { market: false }),
   research_pod_threads: R('Research pod: the conversation on each proposal', 60, { market: false }),
   research_cases: R('Research cases: one per question to the pod, its rounds and the Head of Research reviews (js/researchCase.js)', 8, { market: false }),
+  research_images: R('Research pictures: the vision reading of each picture attached to a research question (js/researchImages.js; bytes in R2 research/images/)', 60, { market: false }),
   research_pod_dossiers: L("Literature desk: dossiers on the owner's hypotheses and paper reviews", 60, { market: false }),
   research_pod_queue: L('Literature desk: the reading backlog (reading list, SSRN manifest, 151, QuantConnect, uploads)', 30, { market: false }),
   research_pod_papers: R('Literature desk: the paper library (notes per paper, read weekly by the pod)', 8, { market: false }),
@@ -101,6 +102,7 @@ export const STORES = {
   gold_ml_params: R('Gold ML params', 30, { market: false }),
   egress_audit: R('Egress audit', 7, { market: false }),
   hedge_alerts_cache: R('Hedge alerts cache', 2, { market: false }),
+  corr_terminal_v1: R('Correlations & hedges panel (terminal)', 2, { market: false }),
   // ── options / positioning archives ────────────────────────────────────────
   oi_store: R('OI store (FX + indices)', 1),
   oi_store_cmdty: R('OI store (commodities)', 1),
@@ -176,7 +178,7 @@ export const STORES = {
   signal_copier_config: C('Signal Copier config'),
   motif_bot_config: C('Motif bot config'), nq_qmr_config: C('NQ QMR config'), nav_layout: C('Navigation layout'), scratchpad_notes: C('Scratchpad notes'),
   // ── credentials (never read) ──────────────────────────────────────────────
-  tg_config: X('Telegram credentials'), hedge_signal_tg: X('Hedge-signal Telegram credentials'), regime_bot_credentials: X('Regime bot credentials'),
+  tg_config: X('Telegram credentials'), hedge_signal_tg: X('Hedge-signal Telegram credentials (sender retired 2026-11-06)'), regime_bot_credentials: X('Regime bot credentials'),
   regime_bot_v2_credentials: X('Regime bot v2 credentials'), regime_bot_v7_credentials: X('Regime bot v7 credentials'),
   bot_credentials: X('Bot credentials'), backtestsystem_credentials: X('Backtest system credentials'), gold_v2_credentials: X('Gold v2 credentials'),
   confluence_bot_credentials: X('Confluence bot credentials'), dyn_anchor_credentials: X('Dynamic anchor credentials'),

@@ -15,6 +15,9 @@
  * Pure HTML/SVG-string builders, no fetch. Tested in js/terminal/terminal.test.mjs.
  */
 import { zoneWalk } from '../swingPaths.js';
+import { bsVega } from '../greekLayers.js';
+import { PATH_HORIZON_DAYS, sourceChoices, sourceAsOf, normaliseSource } from '../pathSourceMeta.js';
+import * as PZ from './pathZoom.js';
 export { zoneWalk };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fin = v => v != null && Number.isFinite(+v);
@@ -156,67 +159,222 @@ export function walkAnchor(sm) {
   if (lp?.price > 0 && lp.at) { let d = lp.at.slice(0, 10); const w = new Date(`${d}T12:00:00Z`).getUTCDay(); if (w === 6 || w === 0) d = new Date(Date.parse(`${d}T12:00:00Z`) + (w === 6 ? 2 : 1) * 864e5).toISOString().slice(0, 10); if (d > (st.date ?? '')) return { px: lp.price, date: d, live: true }; }
   return { px: st.close ?? sm?.series?.at(-1)?.[1], date: st.date ?? sm?.series?.at(-1)?.[0], live: false };
 }
+// ── Walk options (the Swing Map's, owner 2026-11-06): all off by default, all context; none of them is a walk step.
+//   o = { reach, implied, noView, gFlip, cFlip, vega }
+//   volOv: today's volume centre per Cboe expiry (faint; descriptive, untested). Only the Cboe sources have intraday volume.
+export const WALK_OPTS_DEFAULT = { reach: false, implied: false, noView: false, gFlip: false, cFlip: false, vega: false, volOv: false };
+// ── Sources (owner 2026-11-06): CME, the Cboe chain (GLD for gold, SPX / NDX) or both. Each dot is drawn by its source:
+//    ● CME   ◆ Cboe   ◎ the two books merged on one date.
+const srcOf = p => p?.source ?? 'cme';
+const srcLbl = p => p?.sourceLabel ?? 'CME';
+function srcMark(p, x, y, r, col, fill) {
+  const s = srcOf(p), X = x.toFixed(1), Y = y.toFixed(1);
+  if (s === 'cboe') { const a = r * 1.25; return `<path class="opt-walk-dot src-cboe" d="M${X} ${(y - a).toFixed(1)} L${(x + a).toFixed(1)} ${Y} L${X} ${(y + a).toFixed(1)} L${(x - a).toFixed(1)} ${Y} Z" fill="${fill}" stroke="${col}" stroke-width="2">`; }
+  const ring = s === 'combined' ? `<circle cx="${X}" cy="${Y}" r="${(r + 3).toFixed(1)}" fill="none" stroke="${col}" stroke-width="1.2" stroke-dasharray="2 2"/>` : '';
+  return `${ring}<circle class="opt-walk-dot src-${s}" cx="${X}" cy="${Y}" r="${r.toFixed(1)}" fill="${fill}" stroke="${col}" stroke-width="2">`;
+}
+/** The session's chosen source for a market: 'cme' | 'cboe' | 'combined' (CME where the market has no Cboe book). */
+export const pathSourceFor = (inst, want) => normaliseSource(inst, want);
+const srcClose = p => (srcOf(p) === 'cboe' ? '</path>' : '</circle>');
+/** Implied vol for an expiry: nearest point on last night's CME term structure (sm.ivTerm), as a per-session fraction. */
+export function ivDaily(sm, dte) {
+  const pts = sm?.ivTerm?.points; if (!pts?.length || !fin(dte)) return null;
+  const p = pts.reduce((b, q) => (!b || Math.abs(q[0] - dte) < Math.abs(b[0] - dte) ? q : b), null);
+  return p?.[1] > 0 ? p[1] / 100 / Math.sqrt(252) : null;
+}
+const useImplied = (sm, o) => !!o?.implied && !!sm?.ivTerm?.points?.length;
+/** zoneWalk options for the terminal walk, with the reach limit (realised or each expiry's implied vol) when asked. */
+export function walkOptsFor(sm, anchor, o = WALK_OPTS_DEFAULT) {
+  const A = walkAnchor(sm), vol = walkVol(sm);
+  return { close: A.px, anchor, includeThin: true, vol, date: A.date, maxDte: PATH_HORIZON_DAYS,
+    ...(o?.reach ? { sigma: vol, ...(useImplied(sm, o) ? { sigmaFor: e => ivDaily(sm, e.dte) } : {}) } : {}) };
+}
+/** Each expiry's share of all vega (OI x Black-Scholes vega at its implied vol, realised when none) and its peak-vega strike. */
+export function vegaByExpiry(sm) {
+  const A = walkAnchor(sm), out = new Map(); let all = 0;
+  for (const e of sm?.expiries ?? []) {
+    if (!e.ladder?.length || !fin(A.px)) continue;
+    const T = Math.max(1, e.dte) / 365, s = (ivDaily(sm, e.dte) ?? walkVol(sm)) * Math.sqrt(252);
+    let tot = 0, peak = null;
+    for (const r of e.ladder) { const v = ((r[1] || 0) + (r[2] || 0)) * bsVega(A.px, r[0], T, s); tot += v; if (!peak || v > peak.v) peak = { px: r[0], v }; }
+    out.set(e.expiry, { vega: tot, peakPx: peak?.px ?? null }); all += tot;
+  }
+  for (const v of out.values()) v.share = all > 0 ? v.vega / all : null;
+  return out;
+}
 const pxs = v => (!fin(v) ? '–' : Math.abs(v) >= 1000 ? Math.round(v).toLocaleString('en-GB') : Math.abs(v) >= 20 ? (+v).toFixed(2) : (+v).toFixed(4));
 const dm = d => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+/** The chart's price and date formats, shared with the zoom controller (js/terminal/pathChart.js). */
+export { pxs as fmtPx, dm as fmtDay };
 
-/** walk = zoneWalk(...) result; returns the SVG */
-export function walkSvg(sm, walk, { w = 460, h = null, back = null } = {}) {
-  // drawn at the box's real width (no scaling), so the text stays readable on a phone; narrow = taller, less history
-  w = Math.max(300, Math.min(760, Math.round(w))); const narrow = w < 520; h ??= narrow ? 430 : 380; back ??= narrow ? 22 : 40;
-  const ser = (sm?.series ?? []).slice(-back), A = walkAnchor(sm); if (ser.length < 5 || !fin(A.px)) return '';
+/** Everything about the chart that does not change with the zoom: the plot box, the base time scale, the points.
+ *  Drawn at the box's real width (no scaling), so the text stays readable on a phone; narrow = taller, less history. */
+export function walkModel(sm, walk, { w = 460, h = null, back = null, o = WALK_OPTS_DEFAULT } = {}) {
+  w = Math.max(300, Math.min(1000, Math.round(w))); const narrow = w < 520; h ??= narrow ? 400 : 380; back ??= narrow ? 22 : 40;
+  const ser = (sm?.series ?? []).slice(-back), A = walkAnchor(sm); if (ser.length < 5 || !fin(A.px)) return null;
   const pts = (walk?.points ?? []).filter(p => fin(p.px)); const vol = walkVol(sm);
+  const mixed = pts.some(p => srcOf(p) !== 'cme');   // a Cboe source is on: the dot labels carry their source, one more legend line
   const tNow = dayN(A.date), t0 = dayN(ser[0][0]), tEnd = Math.max(tNow + 14, ...pts.map(p => dayN(p.expiry)));
-  const L = narrow ? 44 : 50, R = w - (narrow ? 54 : 56), top = 62, bot = h - 34, xNow = L + (R - L) * (narrow ? 0.24 : 0.3);
-  const X = t => (t <= tNow ? L + (t - t0) / Math.max(1, tNow - t0) * (xNow - L) : xNow + (t - tNow) / Math.max(1, tEnd - tNow) * (R - xNow));
-  const cone = k => [...Array(13)].map((_, i) => { const t = tNow + (tEnd - tNow) * i / 12, n = Math.max(0, (t - tNow) * 5 / 7); return [t, A.px * Math.exp(k * vol * Math.sqrt(n))]; });
-  // the scale follows the price and the walk; the cone is clipped to the plot, so a wide cone never flattens the walk
-  const ys = [...ser.map(s => s[1]), ...pts.map(p => p.px), A.px], lo = Math.min(...ys), hi = Math.max(...ys), pad = (hi - lo) * 0.12 || A.px * 0.01;
-  const Y = v => top + (hi + pad - v) / (hi - lo + 2 * pad) * (bot - top);
-  const poly = (arr, k2) => arr.map(([t, v], i) => `${i ? 'L' : 'M'}${X(t).toFixed(1)},${Y(v).toFixed(1)}`).join('') + (k2 ? k2.slice().reverse().map(([t, v]) => `L${X(t).toFixed(1)},${Y(v).toFixed(1)}`).join('') + 'Z' : '');
-  const band = (k, op) => `<path d="${poly(cone(k), cone(-k))}" fill="var(--pur2,#9b8cff)" fill-opacity="${op}" stroke="none" clip-path="url(#optWalkClip)"/>`;
-  const clip = `<defs><clipPath id="optWalkClip"><rect x="${L}" y="${top}" width="${R - L}" height="${bot - top}"/></clipPath></defs>`;
-  // y grid
-  const grid = [0, 0.25, 0.5, 0.75, 1].map(f => lo + (hi - lo) * f).map(v => `<line x1="${L}" x2="${R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="var(--line2)" stroke-opacity=".35"/><text x="${L - 6}" y="${(Y(v) + 3).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--tx3)">${pxs(v)}</text>`).join('');
-  // history
-  const hist = `<path d="${ser.map((s, i) => `${i ? 'L' : 'M'}${X(dayN(s[0])).toFixed(1)},${Y(s[1]).toFixed(1)}`).join('')}" fill="none" stroke="var(--pur2,#9b8cff)" stroke-width="2"/>`;
-  const now = `<line x1="${xNow}" x2="${xNow}" y1="${top - 10}" y2="${bot}" stroke="var(--tx3)" stroke-dasharray="2 3"/><text x="${xNow}" y="${top - 14}" font-size="10" text-anchor="middle" fill="var(--tx2,#bbb)">now</text>
-<circle cx="${xNow}" cy="${Y(A.px).toFixed(1)}" r="5" fill="var(--tx)"/><text x="${xNow - 8}" y="${(Y(A.px) - 9).toFixed(1)}" font-size="11" text-anchor="end" fill="var(--tx)" font-weight="700">${pxs(A.px)}</text>`;
-  // expiry hash lines with DTE / date labels, de-cluttered
-  let lastLbl = -1e9;
-  const exp = pts.map(p => { const x = X(dayN(p.expiry)), show = x - lastLbl >= 30 && x - xNow >= 16; if (show) lastLbl = x;
-    return `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${top - 4}" y2="${bot}" stroke="var(--gold,#e8b85a)" stroke-opacity="${p.thin ? 0.25 : 0.55}" stroke-dasharray="3 4"/>${show ? `<text x="${x.toFixed(1)}" y="${top - 18}" font-size="10" text-anchor="middle" fill="var(--gold,#e8b85a)" font-weight="700">${p.dte}d</text><text x="${x.toFixed(1)}" y="${bot + 14}" font-size="9" text-anchor="middle" fill="var(--gold,#e8b85a)">${esc(dm(p.expiry))}</text>` : ''}`; }).join('');
-  // the walk: segments from now through every dot, then the spark along it
-  const path = [[tNow, A.px], ...pts.map(p => [dayN(p.expiry), p.px])];
-  const d = path.map(([t, v], i) => `${i ? 'L' : 'M'}${X(t).toFixed(1)},${Y(v).toFixed(1)}`).join('');
-  const segs = pts.map((p, i) => { const [t0s, v0] = path[i]; return `<line x1="${X(t0s).toFixed(1)}" y1="${Y(v0).toFixed(1)}" x2="${X(dayN(p.expiry)).toFixed(1)}" y2="${Y(p.px).toFixed(1)}" stroke="${p.dir === 'down' ? 'var(--dn,#ff5d78)' : p.dir === 'up' ? 'var(--up,#2fd39a)' : 'var(--tx3)'}" stroke-width="${p.thin ? 1.5 : 2.5}" ${p.thin ? 'stroke-dasharray="5 4"' : ''} stroke-linecap="round"/>`; }).join('');
-  const spark = `<path class="opt-walk-spark" d="${d}" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>`;
+  const L = narrow ? 44 : 52, R = w - (narrow ? 14 : 18), top = mixed ? 76 : 62, bot = h - 30, xNow = L + (R - L) * (narrow ? 0.18 : 0.22);
+  const base = PZ.baseScale({ t0, tNow, tEnd, L, xNow, R });
+  const imp = useImplied(sm, o);   // the shading follows each date's implied vol when the implied reach is chosen
+  const sigAt = t => { const n = Math.max(0, (t - tNow) * 5 / 7), v = imp ? (ivDaily(sm, Math.round(t - tNow)) ?? vol) : vol; return v * Math.sqrt(n); };
+  const exs = (sm?.expiries ?? []).filter(e => dayN(e.expiry) > tNow && dayN(e.expiry) <= tEnd), vg = o?.vega ? vegaByExpiry(sm) : null;
   const maxS = Math.max(0.01, ...pts.map(p => p.strength ?? 0));
-  let flip = 1, lx = -1e9, ly = -1e9;
-  const dots = pts.map(p => { const x = X(dayN(p.expiry)), y = Y(p.px), r = 4 + 7 * Math.sqrt((p.strength ?? 0) / maxS), col = p.dir === 'down' ? 'var(--dn,#ff5d78)' : p.dir === 'up' ? 'var(--up,#2fd39a)' : 'var(--tx2,#bbb)'; flip = -flip;
-    const lbl = (x - lx >= 30 || Math.abs(y - ly) >= 16) && x - xNow >= 14; if (lbl) { lx = x; ly = y; }
-    return `<circle class="opt-walk-glow" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(r + 4).toFixed(1)}" fill="${col}" fill-opacity=".18"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="${p.thin ? 'var(--bg2,#111)' : col}" stroke="${col}" stroke-width="2"><title>${p.dte} days · ${esc(dm(p.expiry))}: ${pxs(p.px)} (${sg(p.movePct, 2)}% from the step before)</title></circle>${lbl ? `<text x="${(x + r + 3).toFixed(1)}" y="${(y + (flip > 0 ? -6 : 13)).toFixed(1)}" font-size="11" fill="${col}" font-weight="700">${pxs(p.px)}</text>` : ''}`; }).join('');
-  const legend = `<text x="6" y="12" font-size="10" fill="var(--tx3)"><tspan fill="var(--pur2,#9b8cff)">━</tspan> price  <tspan fill="var(--gold,#e8b85a)">┆</tspan> expiry (days left)  <tspan fill="var(--up,#2fd39a)">●</tspan><tspan fill="var(--dn,#ff5d78)">●</tspan> walk up / down</text><text x="6" y="25" font-size="10" fill="var(--tx3)">hollow = small book · shading = 1 and 2 expected moves from now</text>`;
-  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="display:block;margin:0 auto" role="img" aria-label="price and the option walk by expiry">${clip}${legend}${grid}${band(2, 0.06)}${band(1, 0.10)}${exp}${hist}${segs}${spark}${dots}${now}</svg>`;
+  return { w, h, narrow, ser, serT: ser.map(s => dayN(s[0])), A, pts, mixed, tNow, t0, tEnd, L, R, top, bot, xNow, base, imp, sigAt, exs, vg, maxS, o,
+    lim: { kMin: 1, kMax: PZ.maxZoom(base, 5) } };
+}
+const interpAt = (arr, t) => { for (let i = 1; i < arr.length; i++) if (arr[i][0] >= t && arr[i - 1][0] <= t) { const [t0, v0] = arr[i - 1], [t1, v1] = arr[i]; return t1 > t0 ? v0 + (v1 - v0) * (t - t0) / (t1 - t0) : v1; } return null; };
+const dotCol = p => (p.dir === 'down' ? 'var(--dn,#ff5d78)' : p.dir === 'up' ? 'var(--up,#2fd39a)' : 'var(--tx2,#bbb)');
+
+/** The chart through a zoom transform { k, x }: returns { svg, dots: [{ x, y, r, p }], ta, tb, lo, hi, X, Xinv, Y, Yinv }.
+ *  hideSmall: small books lose their dot, label and expiry line (the walk line still runs through them, faint);
+ *  hl: an expiry to highlight. */
+export function renderWalk(m, tr = PZ.IDENTITY, { hideSmall = false, hl = null } = {}) {
+  const { w, h, narrow, ser, serT, A, pts, mixed, tNow, tEnd, L, R, top, bot, imp, sigAt, exs, vg, maxS, o } = m;
+  const z = PZ.zoomScale(m.base, tr), X = z.f, ta = z.inv(L), tb = z.inv(R), inT = t => t >= ta - 1e-6 && t <= tb + 1e-6;
+  const shown = pts.filter(p => !(hideSmall && p.thin)), vis = shown.filter(p => inT(dayN(p.expiry)));
+  const nHid = hideSmall ? pts.filter(p => p.thin && inT(dayN(p.expiry))).length : 0;   // said on the chart, so an empty stretch is not mistaken for no book
+  // the y axis follows what is in view: the price history, the walk, the dots, the start price, and the shading
+  const [i0, i1] = PZ.visibleRange(serT, ta, tb), sv = i0 <= i1 ? ser.slice(i0, i1 + 1) : [];
+  const path = [[tNow, A.px], ...pts.map(p => [dayN(p.expiry), p.px])];
+  const histPts = ser.map((s, i) => [serT[i], s[1]]);
+  const vals = [...ser.filter((s, i) => inT(serT[i])).map(s => s[1]), ...vis.map(p => p.px), inT(tNow) ? A.px : null,
+    interpAt(histPts, ta), interpAt(histPts, tb), interpAt(path, ta), interpAt(path, tb)].filter(fin);
+  if (!vals.length) vals.push(A.px);
+  const te = Math.min(tb, tEnd), sh = tb > tNow ? [1, 2].flatMap(k => [A.px * Math.exp(k * sigAt(te)), A.px * Math.exp(-k * sigAt(te))]) : [];
+  const [lo, hi] = PZ.yDomain(vals, sh);
+  const Y = v => top + (hi - v) / (hi - lo) * (bot - top), Yinv = y => hi - (y - top) / (bot - top) * (hi - lo), f1 = v => v.toFixed(1);
+  // the 1σ / 2σ shading from now, sampled across what is in view
+  const c0 = Math.max(tNow, ta), c1 = Math.min(tEnd, tb);
+  const cone = k => [...Array(25)].map((_, i) => { const t = c0 + (c1 - c0) * i / 24; return [t, A.px * Math.exp(k * sigAt(t))]; });
+  const poly = (a, b) => a.map(([t, v], i) => `${i ? 'L' : 'M'}${f1(X(t))},${f1(Y(v))}`).join('') + b.slice().reverse().map(([t, v]) => `L${f1(X(t))},${f1(Y(v))}`).join('') + 'Z';
+  const band = (k, op) => (c1 > c0 ? `<path d="${poly(cone(k), cone(-k))}" fill="var(--pur2,#9b8cff)" fill-opacity="${op}" stroke="none"/>` : '');
+  const clip = `<defs><clipPath id="optWalkClip"><rect x="${L}" y="${top - 12}" width="${R - L}" height="${bot - top + 12}"/></clipPath></defs>`;
+  // y grid on round prices
+  const grid = PZ.niceTicks(lo, hi, narrow ? 4 : 5).map(v => `<line x1="${L}" x2="${R}" y1="${f1(Y(v))}" y2="${f1(Y(v))}" stroke="var(--line2)" stroke-opacity=".35"/><text x="${L - 6}" y="${f1(Y(v) + 3)}" font-size="10" text-anchor="end" fill="var(--tx3)">${pxs(v)}</text>`).join('');
+  const hist = sv.length > 1 ? `<path d="${sv.map((s, i) => `${i ? 'L' : 'M'}${f1(X(dayN(s[0])))},${f1(Y(s[1]))}`).join('')}" fill="none" stroke="var(--pur2,#9b8cff)" stroke-width="2"/>` : '';
+  const nowIn = inT(tNow), xN = X(tNow), yN = Y(A.px);
+  const nowLine = nowIn ? `<line x1="${f1(xN)}" x2="${f1(xN)}" y1="${top - 10}" y2="${bot}" stroke="var(--tx3)" stroke-dasharray="2 3"/><circle cx="${f1(xN)}" cy="${f1(yN)}" r="5" fill="var(--tx)"/>` : '';
+  // expiry lines; their "Nd" labels thinned for the visible range, bigger books first
+  const exp = shown.filter(p => inT(dayN(p.expiry))).map(p => { const x = f1(X(dayN(p.expiry))), on = p.expiry === hl;
+    return `<line x1="${x}" x2="${x}" y1="${top - 4}" y2="${bot}" stroke="var(--gold,#e8b85a)" stroke-opacity="${on ? 0.95 : p.thin ? 0.2 : 0.5}" ${on ? 'stroke-width="1.5"' : 'stroke-dasharray="3 4"'}/>`; }).join('');
+  const dte = PZ.thinTicks([...(nowIn ? [{ x: xN, w: PZ.textW('now', 10), pri: Infinity }] : []), ...vis.map(p => ({ x: X(dayN(p.expiry)), w: PZ.textW(`${p.dte}d`, 10, true), pri: (p.strength ?? 0) + (p.expiry === hl ? 10 : 0), p }))], { gap: 5, x0: L - 30, x1: w - 2 }).filter(q => q.p)
+    .map(({ x, p }) => `<text x="${f1(x)}" y="${top - 18}" font-size="10" text-anchor="middle" fill="var(--gold,#e8b85a)" font-weight="700"${p.thin ? ' opacity=".6"' : ''}>${p.dte}d</text>`).join('');
+  // the date axis: calendar ticks for the visible range, thinned so no two collide
+  const tt = PZ.thinTicks(PZ.timeTicks(ta, tb, R - L, { minPx: narrow ? 64 : 70 }).map(t => ({ x: X(t), t, w: PZ.textW(dm(PZ.isoOfDay(t)), 9) })), { gap: 8, x0: L - 10, x1: w - 2 });
+  const axis = `<line x1="${L}" x2="${R}" y1="${bot}" y2="${bot}" stroke="var(--line2)" stroke-opacity=".6"/>` + tt.map(({ x, t }) => `<line x1="${f1(x)}" x2="${f1(x)}" y1="${bot}" y2="${bot + 4}" stroke="var(--tx3)"/><text x="${f1(x)}" y="${bot + 15}" font-size="9" text-anchor="middle" fill="var(--tx3)">${esc(dm(PZ.isoOfDay(t)))}</text>`).join('');
+  // the walk: segments from now through every dot, then the spark along it
+  const d = path.map(([t, v], i) => `${i ? 'L' : 'M'}${f1(X(t))},${f1(Y(v))}`).join('');
+  const segs = pts.map((p, i) => { const [ts, v0] = path[i], t1 = dayN(p.expiry); if (t1 < ta || ts > tb) return '';
+    return `<line x1="${f1(X(ts))}" y1="${f1(Y(v0))}" x2="${f1(X(t1))}" y2="${f1(Y(p.px))}" stroke="${p.dir === 'down' ? 'var(--dn,#ff5d78)' : p.dir === 'up' ? 'var(--up,#2fd39a)' : 'var(--tx3)'}" stroke-width="${p.thin ? 1.5 : 2.5}" ${p.thin ? 'stroke-dasharray="5 4" stroke-opacity=".7"' : ''} stroke-linecap="round"/>`; }).join('');
+  const spark = `<path class="opt-walk-spark" d="${d}" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>`;
+  // dots: a small book is drawn smaller and fainter
+  const dg = vis.map(p => { const s = Math.sqrt((p.strength ?? 0) / maxS); return { p, x: X(dayN(p.expiry)), y: Y(p.px), r: p.thin ? 3 + 2.5 * s : 4.5 + 6.5 * s, col: dotCol(p) }; });
+  const dots = dg.map(({ p, x, y, r, col }) => `<g class="opt-walk-pt${p.thin ? ' thin' : ''}" data-exp="${esc(p.expiry)}"${p.thin ? ' opacity=".6"' : ''}>${p.thin ? '' : `<circle class="opt-walk-glow" cx="${f1(x)}" cy="${f1(y)}" r="${f1(r + 4)}" fill="${col}" fill-opacity=".18"/>`}${p.expiry === hl ? `<circle cx="${f1(x)}" cy="${f1(y)}" r="${f1(r + 5)}" fill="none" stroke="var(--tx)" stroke-width="1.5"/>` : ''}${srcMark(p, x, y, r, col, p.thin ? 'var(--bg2,#111)' : col)}<title>${esc(srcLbl(p))} · ${p.dte} days · ${esc(dm(p.expiry))}: ${pxs(p.px)} (${sg(p.movePct, 2)}% from the step before)</title>${srcClose(p)}</g>`).join('');
+  // the price labels: drawn only where they collide with nothing already drawn, biggest books first; the rest on tap
+  const nowLbl = pxs(A.px), nlW = PZ.textW(nowLbl, 11, true), nlLeft = xN - 8 - nlW >= 2;
+  const nowBox = { x0: nlLeft ? xN - 8 - nlW : xN + 8, x1: nlLeft ? xN - 8 : xN + 8 + nlW, y0: yN - 21, y1: yN - 6 };
+  const obstacles = [...dg.map(q => ({ id: q.p.expiry, x0: q.x - q.r, x1: q.x + q.r, y0: q.y - q.r, y1: q.y + q.r })), ...(nowIn ? [nowBox, { x0: xN - 6, x1: xN + 6, y0: yN - 6, y1: yN + 6 }] : [])];
+  const placed = PZ.placeLabels(dg.map(q => ({ id: q.p.expiry, x: q.x, y: q.y, r: q.r, w: PZ.textW(pxs(q.p.px), q.p.thin ? 9 : 11, true) + (mixed ? PZ.textW(` ${srcLbl(q.p)}`, 9) : 0), h: q.p.thin ? 10 : 12, pri: (q.p.strength ?? 0) + (q.p.expiry === hl ? 10 : 0) })),
+    { bounds: { x0: L, x1: w - 2, y0: top - 2, y1: bot }, obstacles });
+  const labels = dg.filter(q => placed.has(q.p.expiry)).map(({ p, col }) => { const pl = placed.get(p.expiry);
+    return `<text x="${f1(pl.x)}" y="${f1(pl.y)}" text-anchor="${pl.anchor}" font-size="${p.thin ? 9 : 11}" fill="${col}" font-weight="700" class="opt-walk-lbl"${p.thin ? ' opacity=".7"' : ''}>${pxs(p.px)}${mixed ? `<tspan font-size="9" font-weight="400" fill="var(--tx3)"> ${esc(srcLbl(p))}</tspan>` : ''}</text>`; }).join('');
+  const nowText = nowIn ? `<text x="${f1(xN)}" y="${top - 14}" font-size="10" text-anchor="middle" fill="var(--tx2,#bbb)">now</text><text x="${f1(nlLeft ? xN - 8 : xN + 8)}" y="${f1(yN - 9)}" font-size="11" text-anchor="${nlLeft ? 'end' : 'start'}" fill="var(--tx)" font-weight="700" class="opt-walk-lbl">${nowLbl}</text>` : '';
+  // optional context marks at each expiry's date: no-view line, gamma flip (bar), charm/vanna flip (diamond), peak vega (ring)
+  const inY = v => fin(v) && v >= lo && v <= hi;
+  let ctx = o?.noView ? `<line x1="${f1(Math.max(L, xN))}" x2="${R}" y1="${f1(yN)}" y2="${f1(yN)}" stroke="var(--tx2,#bbb)" stroke-width="1.2" stroke-dasharray="8 5" opacity=".7"><title>no view: price stays at ${pxs(A.px)}. A walk is only worth reading if it beats this</title></line><text x="${R - 2}" y="${f1(yN - 4)}" font-size="10" text-anchor="end" fill="var(--tx2,#bbb)">no view</text>` : '';
+  for (const e of exs) {
+    if (!inT(dayN(e.expiry))) continue;
+    const x = X(dayN(e.expiry));
+    if (o?.gFlip && inY(e.gamma?.flipPx)) { const y = Y(e.gamma.flipPx); ctx += `<line x1="${f1(x - 9)}" x2="${f1(x + 9)}" y1="${f1(y)}" y2="${f1(y)}" stroke="var(--gold,#e8b85a)" stroke-width="2.5" stroke-linecap="round"><title>${esc(dm(e.expiry))} gamma flip ${pxs(e.gamma.flipPx)}: hedging calms moves on one side and adds to them on the other. A boundary, not a target</title></line>`; }
+    if (o?.cFlip && inY(e.greeks?.charmFlipPx)) { const y = Y(e.greeks.charmFlipPx); ctx += `<path d="M${f1(x)} ${f1(y - 5)} L${f1(x + 5)} ${f1(y)} L${f1(x)} ${f1(y + 5)} L${f1(x - 5)} ${f1(y)} Z" fill="var(--blue,#5aa9ff)" opacity=".85"><title>${esc(dm(e.expiry))} charm/vanna flip ${pxs(e.greeks.charmFlipPx)}: where the daily time-decay and vol hedging flows change sign. Untested</title></path>`; }
+    if (o?.volOv && inY(e.volCentre?.px)) { const y = Y(e.volCentre.px); ctx += `<g class="opt-walk-vol" opacity=".45"><line x1="${f1(x - 8)}" x2="${f1(x + 8)}" y1="${f1(y)}" y2="${f1(y)}" stroke="var(--tx2,#bbb)" stroke-width="1.5" stroke-dasharray="2 2"/><text x="${f1(x - 10)}" y="${f1(y + 3)}" font-size="8" text-anchor="end" fill="var(--tx2,#bbb)">v</text><title>${esc(e.sourceLabel ?? '')} ${esc(dm(e.expiry))}: today's volume centre ${pxs(e.volCentre.px)} (${big(e.volCentre.volume)} contracts traded). Descriptive, untested</title></g>`; }
+    const v = vg?.get(e.expiry); if (inY(v?.peakPx)) ctx += `<circle cx="${f1(x)}" cy="${f1(Y(v.peakPx))}" r="5" fill="none" stroke="var(--pur2,#9b8cff)" stroke-width="1.6"><title>${esc(dm(e.expiry))} peak vega ${pxs(v.peakPx)}; ${Math.round((v.share ?? 0) * 100)}% of all vega. Where hedging flow comes from if implied vol moves. Not a target</title></circle>`;
+  }
+  const legend = `<text x="6" y="12" font-size="10" fill="var(--tx3)"><tspan fill="var(--pur2,#9b8cff)">━</tspan> price  <tspan fill="var(--gold,#e8b85a)">┆</tspan> expiry (days left)  <tspan fill="var(--up,#2fd39a)">●</tspan><tspan fill="var(--dn,#ff5d78)">●</tspan> walk up / down</text><text x="6" y="25" font-size="10" fill="var(--tx3)">small, faint = small book · shading = 1 and 2 expected moves${imp ? ' (implied vol)' : ''}</text>${mixed ? `<text x="6" y="38" font-size="10" fill="var(--tx3)">● CME  ◆ ${esc([...new Set(pts.filter(p => srcOf(p) === 'cboe').map(srcLbl))].join('/') || 'Cboe')} (Cboe)  ◎ both books, same date${o?.volOv ? '  ┄v today\'s volume centre (descriptive, untested)' : ''}</text>` : ''}`;
+  const svg = `<svg class="opt-walk-svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="display:block;margin:0 auto" role="img" aria-label="price and the option walk by expiry">${clip}${legend}${grid}${axis}<g clip-path="url(#optWalkClip)">${band(2, 0.06)}${band(1, 0.10)}${exp}${hist}${ctx}${segs}${spark}${dots}${nowLine}</g>${labels}${dte}${nowText}${nHid ? `<text class="opt-walk-lbl opt-walk-hid" x="${R - 4}" y="${bot - 6}" font-size="10" text-anchor="end" fill="var(--tx3)">${nHid} small book${nHid > 1 ? "s" : ""} hidden here${vis.length ? "" : ": untick \"hide small books\""}</text>` : ""}</svg>`;
+  return { svg, dots: dg.map(({ p, x, y, r }) => ({ p, x, y, r })), ta, tb, lo, hi, X, Xinv: z.inv, Y, Yinv };
+}
+
+/** walk = zoneWalk(...) result; returns the SVG (view: a zoom transform { k, x }, the full view by default). */
+export function walkSvg(sm, walk, { w = 460, h = null, back = null, o = WALK_OPTS_DEFAULT, view = null, hideSmall = false, hl = null } = {}) {
+  const m = walkModel(sm, walk, { w, h, back, o }); if (!m) return '';
+  return renderWalk(m, view ? PZ.clampTransform(view, m.base, m.lim) : PZ.IDENTITY, { hideSmall, hl }).svg;
+}
+
+/** Calls ÷ puts across an expiry's whole book: { c, p, r } or null. */
+export function cpOfExpiry(sm, ex) {
+  const l = (sm?.expiries ?? []).find(e => e.expiry === ex)?.ladder; if (!l?.length) return null;
+  let c = 0, q = 0; for (const r of l) { c += r[1] || 0; q += r[2] || 0; } return q > 0 ? { c, p: q, r: c / q } : null;
+}
+/** The tap / hover card for one walk point. */
+export function walkTip(sm, p, anchor = 'gammaCentre') {
+  if (!p) return '';
+  const A = walkAnchor(sm), cp = cpOfExpiry(sm, p.expiry), col = p.dir === 'up' ? 'up' : p.dir === 'down' ? 'dn' : '';
+  const row = (k, v, cls = '') => `<div class="opt-tip-r"><span>${esc(k)}</span><b class="mono ${cls}">${v}</b></div>`;
+  return `<div class="opt-tip-h"><b>${esc(dm(p.expiry))}</b> <span class="muted">${esc(srcLbl(p))} · ${p.dte} days${p.thin ? ' · small book' : ''}</span></div>`
+    + row(WALK_ANCHORS[anchor] ?? anchor, `${p.dir === 'up' ? '▲' : p.dir === 'down' ? '▼' : '·'} ${pxs(p.px)}`, col)
+    + row('from now', `${sg((p.px / A.px - 1) * 100, 2)}%`) + row('step', `${sg(p.movePct, 2)}%`)
+    + row('book', fin(p.strength) ? `${(p.strength * 100).toFixed(1)}%` : '–')
+    + row('C/P', cp ? cp.r.toFixed(2) : '–', cp ? (cp.r >= 1.5 ? 'up' : cp.r <= 0.67 ? 'dn' : '') : '')
+    + row('biggest strike', p.biggest ? `${pxs(p.biggest.px)} <span class="muted" style="font-weight:400">(${((p.biggest.strength ?? 0) * 100).toFixed(1)}%)</span>` : '–');
 }
 
 /** The table under the walk: one row per expiry, how it was worked out. */
-export function walkTable(sm, walk, anchor = 'gammaCentre') {
+export function walkTable(sm, walk, anchor = 'gammaCentre', o = WALK_OPTS_DEFAULT) {
   const A = walkAnchor(sm), pts = walk?.points ?? []; if (!pts.length) return '<p class="muted">No expiry has a readable book.</p>';
-  const note = p => [p.thin ? 'small book' : '', p.biggest ? `biggest strike ${pxs(p.biggest.px)} (${((p.biggest.strength ?? 0) * 100).toFixed(1)}% of OI)` : '', p.building ? 'building' : '', fin(p.pullShare) ? `${Math.round(p.pullShare * 100)}% of the pull near it` : ''].filter(Boolean).join(' · ');
-  return `<table class="opt-walk-t" style="width:100%;font-size:13px"><thead><tr><th class="n">Days</th><th>Expiry</th><th class="n">${esc(WALK_ANCHORS[anchor] ?? anchor)}</th><th class="n">From now</th><th class="n">Step</th><th class="n" title="${anchor === 'gammaCentre' ? 'the whole expiry\'s share of all live open interest' : 'that strike\'s share of all live open interest'}">Book</th></tr></thead><tbody>${pts.map(p => { const n = note(p);
-    return `<tr${p.thin ? ' class="muted"' : ''} style="${n ? 'border-bottom:0' : ''}"><td class="n mono"><b>${p.dte}</b></td><td style="white-space:nowrap">${esc(dm(p.expiry))}</td><td class="n mono ${p.dir === 'up' ? 'up' : p.dir === 'down' ? 'dn' : ''}" style="white-space:nowrap">${p.dir === 'up' ? '▲' : p.dir === 'down' ? '▼' : '·'} ${pxs(p.px)}</td><td class="n mono">${sg((p.px / A.px - 1) * 100, 2)}%</td><td class="n mono">${sg(p.movePct, 2)}%</td><td class="n mono">${fin(p.strength) ? `${(p.strength * 100).toFixed(1)}%` : '–'}</td></tr>${n ? `<tr class="muted"><td></td><td colspan="5" style="font-size:11px;padding-top:0">${esc(n)}</td></tr>` : ''}`; }).join('')}</tbody></table>`;
+  // calls / puts per expiry from its whole book (spot terms: an inverted pair's futures calls already count as puts), and
+  // which capture a book comes from when that expiry was missing from the latest one (the walk keeps its last book)
+  const exOf = new Map((sm?.expiries ?? []).map(e => [e.expiry, e])), capNow = (sm?.expiries ?? []).reduce((a, e) => (e.date > a ? e.date : a), '');
+  const cpOf = ex => cpOfExpiry(sm, ex);
+  const age = ex => { const d = exOf.get(ex)?.date; return d && capNow && d < capNow ? `book from the ${dm(d)} capture` : ''; };
+  const vg = o?.vega ? vegaByExpiry(sm) : null, imp = !!o?.reach && useImplied(sm, o);
+  const extra = p => { const e = exOf.get(p.expiry); return [
+    imp && ivDaily(sm, p.dte) ? `implied move to here ±${((Math.exp(1.645 * ivDaily(sm, p.dte) * Math.sqrt(Math.max(1, Math.round((dayN(p.expiry) - dayN(A.date)) * 5 / 7)))) - 1) * 100).toFixed(1)}% (90%)` : '',
+    o?.gFlip && fin(e?.gamma?.flipPx) ? `gamma flip ${pxs(e.gamma.flipPx)} (${e.gamma.regime === 'PIN' ? 'calming at price' : e.gamma.regime === 'BREAKOUT' ? 'amplifying at price' : 'neutral'})` : '',
+    o?.cFlip && fin(e?.greeks?.charmFlipPx) ? `charm/vanna flip ${pxs(e.greeks.charmFlipPx)}` : '',
+    o?.volOv && fin(e?.volCentre?.px) ? `today's volume centre ${pxs(e.volCentre.px)} (${big(e.volCentre.volume)} traded; descriptive, untested)` : '',
+    e?.source === 'combined' && e.parts ? `merged: ${e.parts.cme.code ?? 'CME'} + ${e.parts.cboe.code ?? 'Cboe'}, ${Math.round(100 * e.parts.cboe.notional / Math.max(1, e.parts.cme.notional + e.parts.cboe.notional))}% of the notional from Cboe` : '',
+    fin(vg?.get(p.expiry)?.peakPx) ? `peak vega ${pxs(vg.get(p.expiry).peakPx)}` : ''].filter(Boolean); };
+  const note = p => [age(p.expiry), ...extra(p), p.thin ? 'small book' : '', p.biggest ? `biggest strike ${pxs(p.biggest.px)} (${((p.biggest.strength ?? 0) * 100).toFixed(1)}% of OI)` : '', p.building ? 'building' : '', fin(p.pullShare) ? `${Math.round(p.pullShare * 100)}% of the pull near it` : ''].filter(Boolean).join(' · ');
+  return `<div class="opt-walk-tw" style="overflow-x:auto;max-width:100%"><table class="opt-walk-t" style="width:100%;font-size:13px"><thead><tr><th class="n">Days</th><th title="the expiry date, and under it where the book comes from: the CME capture, the Cboe chain, or both merged on that date">Expiry</th><th class="n">${esc(WALK_ANCHORS[anchor] ?? anchor)}</th><th class="n">From now</th><th class="n">Step</th><th class="n" title="${anchor === 'gammaCentre' ? 'the whole expiry\'s share of all live open interest' : 'that strike\'s share of all live open interest'}">Book</th><th class="n" title="calls ÷ puts across the expiry's whole book. Context only: untested, and a put can be protection rather than a bet on a fall">C/P</th>${vg ? '<th class="n" title="this expiry\'s share of all expiries\' vega">Vega</th>' : ''}</tr></thead><tbody>${pts.map(p => { const n = note(p);
+    return `<tr class="opt-walk-row${p.thin ? ' muted' : ''}" data-exp="${esc(p.expiry)}" tabindex="0" title="show on the chart" style="cursor:pointer;${n ? 'border-bottom:0' : ''}"><td class="n mono"><b>${p.dte}</b></td><td style="white-space:nowrap">${esc(dm(p.expiry))}<br><span class="opt-walk-src" style="font-size:10px;color:var(--tx3)">${esc(srcLbl(p))}</span></td><td class="n mono ${p.dir === 'up' ? 'up' : p.dir === 'down' ? 'dn' : ''}" style="white-space:nowrap">${p.dir === 'up' ? '▲' : p.dir === 'down' ? '▼' : '·'} ${pxs(p.px)}</td><td class="n mono">${sg((p.px / A.px - 1) * 100, 2)}%</td><td class="n mono">${sg(p.movePct, 2)}%</td><td class="n mono">${fin(p.strength) ? `${(p.strength * 100).toFixed(1)}%` : '–'}</td>${(() => { const v = cpOf(p.expiry); return v ? `<td class="n mono ${v.r >= 1.5 ? 'up' : v.r <= 0.67 ? 'dn' : ''}" title="${Math.round(v.c).toLocaleString('en-GB')} calls / ${Math.round(v.p).toLocaleString('en-GB')} puts">${v.r.toFixed(2)}</td>` : '<td class="n mono">–</td>'; })()}${vg ? `<td class="n mono">${fin(vg.get(p.expiry)?.share) ? Math.round(vg.get(p.expiry).share * 100) + '%' : '–'}</td>` : ''}</tr>${n ? `<tr class="muted opt-walk-note" data-exp="${esc(p.expiry)}"><td></td><td colspan="${vg ? 7 : 6}" style="font-size:11px;padding-top:0">${esc(n)}</td></tr>` : ''}`; }).join('')}</tbody></table></div>`
+    + (w2 => (w2?.skipped?.length ? `<p class="tt-note">Out of reach, left out: ${w2.skipped.map(k => `${esc(dm(k.expiry))} ${pxs(k.px)} (${sg(k.movePct, 1)}%, range ±${(k.capPct ?? 0).toFixed(1)}%)`).join(' · ')}.</p>` : ''))(walk);
 }
 
-export function pathHtml(sm, inst, { walk = null, anchor = 'gammaCentre', width = 460 } = {}) {
+/** The chart's toolbar: range chips, Reset, and the small-book toggle (wired by js/terminal/pathChart.js). */
+export function walkBar(hideSmall = false) {
+  return `<div class="opt-walk-bar"><span class="opt-walk-chips" role="group" aria-label="time range">${['2W', '1M', '3M', 'All'].map(p => `<button type="button" class="opt-chip" data-wview="${p}" aria-pressed="false">${p}</button>`).join('')}</span><button type="button" class="opt-chip" data-wreset title="back to the starting view">Reset</button><label class="opt-walk-small" title="Expiries under 10% of live open interest: hide their dots, labels and expiry lines (the walk line still runs through them)"><input type="checkbox" data-wsmall${hideSmall ? ' checked' : ''}> hide small books</label><span class="opt-walk-hint">pinch or scroll to zoom · drag to move · tap a dot</span></div>`;
+}
+export function pathHtml(sm, inst, { walk = null, anchor = 'gammaCentre', width = 460, o = WALK_OPTS_DEFAULT, hideSmall = false, view = null } = {}) {
   if (!sm) return '';
   if (!sm.ok) return `<div class="muted">${esc(sm.error ?? 'No path data for this market.')}</div>`;
   const insts = sm.instruments ?? [], A = walkAnchor(sm), sel = 'background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:3px';
   const word = WALK_VERDICT[anchor] ?? 'UNTESTED';
-  return `<div class="ch"><span class="lbl">The path · ${esc(inst)}</span><span class="r" style="display:flex;gap:6px;flex-wrap:wrap"><select id="opt-path-inst" aria-label="market" style="${sel}">${insts.map(i => `<option${i === inst ? ' selected' : ''}>${esc(i)}</option>`).join('')}</select><select id="opt-path-anchor" aria-label="what each step goes to" style="${sel}">${Object.entries(WALK_ANCHORS).map(([k, l]) => `<option value="${k}"${k === anchor ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></span></div>
-<p style="margin:2px 0 8px;font-size:13px">${A.live ? 'Live' : 'Last close'} <b>${pxs(A.px)}</b>. ${walk?.text ? `The walk: ${esc(walk.text.replace(/\b(\d{4}-\d{2}-\d{2})\b/g, m => dm(m)).replace(/(\d+\.\d{4,})/g, m => pxs(+m)))}.` : ''}</p>
-<div class="opt-walk scroll" style="border-radius:8px;background:var(--bg2,rgba(0,0,0,.15));padding:4px 0">${walkSvg(sm, walk, { w: width })}</div>
-${walkTable(sm, walk, anchor)}
-<p class="tt-note"><b>How each dot is worked out (${esc(WALK_ANCHORS[anchor])}):</b> ${esc(WALK_HOW[anchor] ?? '')}. The line starts at ${A.live ? 'the live price' : 'the last close'} and steps to each expiry in date order; a small book (under 10% of live open interest) is hollow and dashed. <span class="chip ${word === 'UNDERPOWERED' ? 'gold' : 'dn'}" style="font-size:9px">${esc(word)}</span> Tested on 6 FX majors, NQ and ES, 2020-10 to 2026-08: ${word === 'UNDERPOWERED' ? 'the gamma centre\'s pull on price is too uncertain to call (UNDERPOWERED)' : 'price did not walk to these levels (NULL)'}. Read it as where the book leans, not where price must go. <a href="swing-map.html?inst=${encodeURIComponent(inst)}">Full Swing Map →</a></p>`;
+  const ps = sm.pathSource ?? null, choices = sourceChoices(inst), src = ps?.selected ?? 'cme';
+  const srcSel = choices.length > 1 ? `<select id="opt-path-src" aria-label="where the open interest comes from" style="${sel}">${choices.map(c => `<option value="${c.id}"${c.id === src ? ' selected' : ''}>${esc(c.label)}</option>`).join('')}</select>` : '';
+  const cap = (sm.expiries ?? []).reduce((a, e) => (e.source && e.source !== 'cme' ? a : e.date > a ? e.date : a), '');
+  const asOf = (ps?.asOf ?? [sourceAsOf({ id: 'cme', captureDate: cap || null })]).filter(Boolean);
+  const cb = ps?.cboe;
+  const how = !cb ? '' : cb.error ? `${esc(cb.label)} (Cboe) not available: ${esc(cb.error)}.`
+    : fin(cb.ratio) ? `${esc(cb.label)} strikes × ${(+cb.ratio).toFixed(3)} (XAU ${pxs(cb.xauSpot)} ÷ GLD ${(+cb.spot).toFixed(2)}, ${esc(cb.xauAt ?? '')}) = XAU/USD; one contract = 100 shares = ${(+cb.ozPerContract).toFixed(2)} oz. Calls and puts are in ounces${src === 'combined' ? '; CME is weighed at 100 oz a contract' : ''}.`
+    : `${esc(cb.label)} cash strikes ${fin(cb.cfdOffset) ? `${cb.cfdOffset >= 0 ? '+' : ''}${(+cb.cfdOffset).toFixed(2)} (the measured CFD − cash gap)` : 'with no CFD − cash offset measured (levels = the cash index)'}.${src === 'combined' ? ' Weighed by notional: Cboe $100 a point a contract, CME at its own contract size.' : ''}`;
+  const asOfHtml = `<p class="opt-path-asof" style="margin:0 0 6px;font-size:11px;color:var(--tx3)">${asOf.map(a => `<b>${esc(a.label)}</b>: ${[a.oi, a.greeks].filter(Boolean).map(esc).join(' · ') || 'no as-of'}`).join(' &nbsp;|&nbsp; ')}${cb?.stale ? ' · <span class="dn">stale copy</span>' : ''}${how ? `<br>${how}` : ''}</p>`;
+  return `<div class="ch"><span class="lbl">The path · ${esc(inst)}</span><span class="r" style="display:flex;gap:6px;flex-wrap:wrap"><select id="opt-path-inst" aria-label="market" style="${sel}">${insts.map(i => `<option${i === inst ? ' selected' : ''}>${esc(i)}</option>`).join('')}</select>${srcSel}<select id="opt-path-anchor" aria-label="what each step goes to" style="${sel}">${Object.entries(WALK_ANCHORS).map(([k, l]) => `<option value="${k}"${k === anchor ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></span></div>
+<div class="opt-walk-opts" style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--tx3);margin:2px 0 6px">${[
+    ['reach', 'within reach', 'Only step to a level price could plausibly reach by that expiry: inside the 90% range of a random walk'],
+    ['implied', 'reach from implied vol', `Use each expiry's own implied vol from last night's CME capture for the range and the shading (implied-vol ranges are VALIDATED here)${sm.ivTerm?.points?.length ? '' : '. No implied vol in the last capture: realised is used'}`],
+    ['noView', 'no-view line', 'A flat line from the start price: the baseline a walk has to beat'],
+    ['gFlip', 'gamma flips', 'Each expiry\'s zero-gamma price: a boundary between calmer and wilder moves, not a target'],
+    ['cFlip', 'charm/vanna flips', 'Where each expiry\'s daily hedging flows change sign. Untested'],
+    ['vega', 'vega', 'Each expiry\'s share of all vega and its peak-vega strike: where flow comes from if implied vol moves. Not a target'],
+    ...(src !== 'cme' ? [['volOv', 'today\'s volume', 'Cboe sources only: per expiry, where today\'s traded volume concentrates (the volume-weighted strike), drawn faintly. Descriptive, untested']] : [])]
+    .map(([k, l, t]) => `<label title="${esc(t)}" style="white-space:nowrap;cursor:pointer"><input type="checkbox" data-wopt="${k}"${o?.[k] ? ' checked' : ''}> ${esc(l)}</label>`).join('')}</div>
+${asOfHtml}<p style="margin:2px 0 8px;font-size:13px">${A.live ? 'Live' : 'Last close'} <b>${pxs(A.px)}</b>. ${walk?.text ? `The walk: ${esc(walk.text.replace(/\b(\d{4}-\d{2}-\d{2})\b/g, m => dm(m)).replace(/(\d+\.\d{4,})/g, m => pxs(+m)))}.` : ''}</p>
+${walkBar(hideSmall)}<div class="opt-walk" style="border-radius:8px;background:var(--bg2,rgba(0,0,0,.15));padding:4px 0;overflow:hidden"><div class="opt-walk-plot" style="position:relative;width:${Math.max(300, Math.min(1000, Math.round(width)))}px;max-width:100%;margin:0 auto;touch-action:pan-y">${walkSvg(sm, walk, { w: width, o, hideSmall, view })}</div></div>
+${walkTable(sm, walk, anchor, o)}
+<p class="tt-note"><b>How each dot is worked out (${esc(WALK_ANCHORS[anchor])}):</b> ${esc(WALK_HOW[anchor] ?? '')}. The line starts at ${A.live ? 'the live price' : 'the last close'} and steps to each expiry in date order; a small book (under 10% of live open interest) is hollow and dashed. <span class="chip ${word === 'UNDERPOWERED' ? 'gold' : 'dn'}" style="font-size:9px">${esc(word)}</span> Tested on 6 FX majors, NQ and ES, 2020-10 to 2026-08: ${word === 'UNDERPOWERED' ? 'the gamma centre\'s pull on price is too uncertain to call (UNDERPOWERED)' : 'price did not walk to these levels (NULL)'}. Read it as where the book leans, not where price must go. More expiries fill the picture; they do not make the pull a tested signal.${o?.volOv && src !== 'cme' ? ' Faint ┄v marks: today\'s volume centre per Cboe expiry (descriptive, untested).' : ''}${o?.gFlip || o?.cFlip || o?.vega || o?.noView ? ` On the chart: ${[o.noView ? 'dashed line = no view' : '', o.gFlip ? 'gold bar = gamma flip' : '', o.cFlip ? 'blue diamond = charm/vanna flip' : '', o.vega ? 'violet ring = peak-vega strike' : ''].filter(Boolean).join(' · ')}; context only, untested as targets.` : ''} <a href="swing-map.html?inst=${encodeURIComponent(inst)}">Full Swing Map →</a></p>`;
 }
 
 /** The Pair tab's options card for one market. */
