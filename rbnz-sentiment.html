@@ -199,6 +199,7 @@ function renderDims(dims) {
 
 async function loadCalendar() {
   calendar = await jget('/api/rbnz/calendar');
+  await loadBlockInfo();
   const past = calendar.meetings.filter(m => Date.parse(m.date) <= Date.now());
   const sel = $('meetingSel');
   sel.innerHTML = past.slice().reverse().map(m => `<option value="${m.date}">${m.date}${m.mps ? ' (MPS)' : ''}</option>`).join('');
@@ -220,7 +221,25 @@ function renderReleaseChecklist() {
     const src = rel?.sourceUrl ? `<a class="src" href="${esc(rel.sourceUrl)}" target="_blank" rel="noopener">source ↗</a>` : '';
     return `<div class="relrow"><span class="k">${label}</span><span class="stat ${cls}">${stat}</span>${src}</div>`;
   }).join('');
-  $('releasesBody').innerHTML = `<div style="font-size:11.5px;color:var(--text3);margin-bottom:2px">${esc(curMeeting)}</div>` + rows;
+  $('releasesBody').innerHTML = `<div style="font-size:11.5px;color:var(--text3);margin-bottom:2px">${esc(curMeeting)}</div>` + rows + blockNoteHtml();
+}
+
+// The RBNZ's firewall returns 403 to this server for the statement pages (only the news RSS answers), so a missing statement is
+// not "not out yet". Say what is known: the block (from the fetch log, when it shows one) and the decision headline from the RSS.
+// The statement fetchers are untouched: if the RBNZ allowlists the server the full record lands here with no further change.
+let blockInfo = { blocked: false, decisions: [] };
+async function loadBlockInfo() {
+  const [st, dec] = await Promise.all([jget('/api/rbnz/fetch-status').catch(() => null), jget('/api/rbnz/decisions').catch(() => null)]);
+  blockInfo = { blocked: /403|restricted|firewall/i.test((st?.last?.log ?? []).join(' · ')), decisions: dec?.ok ? (dec.decisions ?? []) : [] };
+}
+function blockNoteHtml() {
+  if (!curMeeting || meetingData[curMeeting]?.releases?.statement) return '';
+  if (calendar?.pending?.some(r => r.meetingDate === curMeeting && !blockInfo.blocked)) return '';   // due and not blocked: the ordinary "awaiting fetch" state says it
+  const d = blockInfo.decisions.find(x => x.date === curMeeting);
+  const day = d ? new Date(d.date + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : '';
+  const head = d ? ` Decision headline only: <b>${esc(d.title)}</b> on ${esc(day)} (RBNZ news feed).` : ' No decision headline found in the RBNZ news feed.';
+  const why = blockInfo.blocked ? 'Statement and record blocked by the RBNZ firewall (403).' : 'Statement and record not captured.';
+  return `<div class="note" style="margin-top:8px">${why}${head}${blockInfo.blocked ? ' If the RBNZ allowlists this server the full read will fill in on its own.' : ''}</div>`;
 }
 
 async function selectMeeting(date) {

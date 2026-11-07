@@ -174,7 +174,7 @@ import { FETCHERS as BOE_FETCHERS, extractVote as boeExtractVote } from './js/bo
 import { BOJ_MEETINGS, pendingAsOf as bojPendingAsOf } from './js/bojCalendar.js';
 import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl as bojStatementUrl, outlookViewUrl as bojOutlookViewUrl, outlookFullUrl as bojOutlookFullUrl, opinionsUrl as bojOpinionsUrl, minutesPdfUrl as bojMinutesPdfUrl } from './js/bojFetch.js';
 import { RBNZ_MEETINGS, pendingAsOf as rbnzPendingAsOf, allReleases as rbnzAllReleases } from './js/rbnzCalendar.js';
-import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote, fetchOcrDecisions as rbnzFetchOcrDecisions } from './js/rbnzFetch.js';
+import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote, fetchOcrDecisions as rbnzFetchOcrDecisions, ocrActualFor as rbnzOcrActualFor } from './js/rbnzFetch.js';
 import { RBA_MEETINGS, pendingAsOf as rbaPendingAsOf, allReleases as rbaAllReleases } from './js/rbaCalendar.js';
 import { FETCHERS as RBA_FETCHERS, extractVote as rbaExtractVote } from './js/rbaFetch.js';
 import { BOC_MEETINGS, pendingAsOf as bocPendingAsOf, allReleases as bocAllReleases } from './js/bocCalendar.js';
@@ -21836,6 +21836,15 @@ async function _fetchIntlSeries(spec) {
   }
   throw new Error(`unknown intl source ${spec.source}`);
 }
+// RBNZ OCR headlines for the actuals fill: one RSS read per 10 minutes at most (the scorecard ticks every 5, the surprise store hourly);
+// a failed read keeps the last good copy, and with none the print stays "not on the feed yet".
+let _rbnzOcrCache = { at: 0, decisions: [] };
+async function _rbnzOcrDecisionsCached() {
+  if (Date.now() - _rbnzOcrCache.at < 10 * 60_000) return _rbnzOcrCache.decisions;
+  _rbnzOcrCache.at = Date.now();   // stamp first: a failing feed is not hammered either
+  try { const r = await rbnzFetchOcrDecisions(); if (r.ok) _rbnzOcrCache = { at: Date.now(), decisions: r.decisions }; } catch { /* keep the last copy */ }
+  return _rbnzOcrCache.decisions;
+}
 let _fredFillWarned = false;
 async function _fillActualsFromFred(events, stored) {
   const key = process.env.FRED_KEY;
@@ -21857,6 +21866,14 @@ async function _fillActualsFromFred(events, stored) {
         ev.actual = a.actual; ev.src = `${spec.source}:${spec.id}`; filled++;
         notes.push(`${ev.country} ${ev.event} ${new Date(ev.ms).toISOString().slice(0, 10)} = ${a.actual} (cons ${ev.estimate ?? '?'}; prior ${a.prior ?? '-'} vs FF ${ev.prev ?? '?'})`);
         await new Promise(r => setTimeout(r, 300)); continue;
+      }
+      if (spec.source === 'rbnz') {
+        // headline-only: the RSS title carries the OCR level (the statement pages are 403 from here; js/rbnzFetch.js keeps that fetcher)
+        const a = rbnzOcrActualFor(await _rbnzOcrDecisionsCached(), ev.ms, spec.dp);
+        if (!a?.actual) continue;   // headline not out yet; the next pass asks again
+        ev.actual = a.actual; ev.src = 'rbnz-rss'; filled++;
+        notes.push(`${ev.country} ${ev.event} ${new Date(ev.ms).toISOString().slice(0, 10)} = ${a.actual} (cons ${ev.estimate ?? '?'}; "${a.title}")`);
+        continue;
       }
       if (spec.source && spec.source !== 'fred') {
         const obs = await _fetchPolicySeries(spec.source, spec.id, new Date(ev.ms - 10 * 864e5).toISOString().slice(0, 10));
