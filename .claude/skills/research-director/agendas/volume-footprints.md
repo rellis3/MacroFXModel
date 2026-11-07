@@ -83,7 +83,7 @@ All cards below re-use one window per instrument, so they count as one family fo
 | If no → | "Absorption" stops being a reason to take a trade |
 | Falsifier | No gap against the control, or a gap smaller than costs |
 
-Registered 2026-11-07 as `footprint-absorption`, using the definitions in the two videos the owner shared.
+**BANKED 2026-11-07: `footprint-absorption`, NULL.** Both readings under the +0.15 bar; trades -0.29R and -0.32R net, gross about 0, and the same candle on normal flow lost the same. **Reusable candidate:** delta divergence at 60 minutes, +0.092 [+0.028, +0.163], in both halves and both instruments; needs fresh data and an exit that does not pay 0.3R. Finding for later work: tick-rule imbalance correlates +0.91 with the true flag on NQ, so free NQ tick history is usable there.
 
 ### Q4. Stacked imbalances as support or resistance — score 9/15
 
@@ -133,4 +133,5 @@ Registered 2026-11-07 as `footprint-absorption`, using the definitions in the tw
 
 ## Owner calls
 
+- 2026-11-07: Databento pull stopped at $102.88 at the owner's request and 51 NQ cash-hours sessions bought for $16.97, so the older months planned as a holdout were not bought. About $4 of credit left.
 - 2026-11-07: owner said "would like to investigate volume footprints in a trade strategy maybe", then "go for it" on Claude's recommended order: Q5, then Q1.

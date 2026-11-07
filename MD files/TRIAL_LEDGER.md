@@ -10,14 +10,14 @@ Generated 2026-11-07.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **293** |
+| claims tested (validated + null + underpowered) | **294** |
 | validated | 51 |
-| null | 166 |
+| null | 167 |
 | underpowered | 76 |
 | context (base rates, descriptions: not counted as tests) | 48 |
-| pre-registrations with no banked verdict (below) | 90 |
+| pre-registrations with no banked verdict (below) | 89 |
 
-**What the count says (Lesson 02 §05).** If none of the 293 claims were real, tests at the usual 5% size would still pass
+**What the count says (Lesson 02 §05).** If none of the 294 claims were real, tests at the usual 5% size would still pass
 about **14.7** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
 **roughly 15 of the 51 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
@@ -364,6 +364,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-06 | hedge-residual-mr | price | null | forge/HEDGE_RESIDUAL_SYSTEM_PREREG.md |
 | 2026-11-06 | jump-next-day-miss | volatility | context | forge/JUMP_NEXT_DAY_MISS_PREREG.md |
 | 2026-11-07 | failed-auction-volume | price | underpowered | forge/FAILED_AUCTION_VOLUME_PREREG.md |
+| 2026-11-07 | footprint-absorption | price | null | forge/FOOTPRINT_ABSORPTION_PREREG.md |
 | 2026-11-07 | orderflow-lead-aggressor | price | null | forge/ORDERFLOW_LEAD_AGGRESSOR_PREREG.md |
 | 2026-11-07 | vol-layer-reaction | volatility | context | forge/VOL_LAYER_REACTION_PREREG.md |
 | 2026-11-07 | vol-layer-round-numbers | price | null | forge/VOL_LAYER_ROUND_NUMBERS_PREREG.md |
@@ -412,7 +413,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/EXITS_PREREG.md`: Study 1 — Exits driven by the range book (pre-registration)
 - `forge/FED_PATH_LEAD_PREREG.md`: FED-PATH-LEAD: does the Fed-path slope lead EURUSD / AUD / silver / DAX? (one confirmation test)
 - `forge/FLOW_COLUMNS_PREREG.md`: Flow and positioning columns at the vol lines — pre-registration
-- `forge/FOOTPRINT_ABSORPTION_PREREG.md`: footprint-absorption — when aggressors put in heavy volume and price does not follow, does the bar's direction
 - `forge/FUTURES_COST_RESCORE_PREREG.md`: Futures-cost re-score of the line-touch fade (registered 2026-10-11, before the re-score is computed)
 - `forge/FUTURES_VOL_PREREG.md`: Futures volatility forecast — does intraday futures data beat the incumbent HAR? (shadow study)
 - `forge/HARNESS_REGISTRY_PREREG.md`: Unified study harness, and deflating the registry it will re-score

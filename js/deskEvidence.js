@@ -1363,11 +1363,18 @@ export const DESK_EVIDENCE = [
     use: 'Do not call this failed-auction rule an edge: it lost money and its bracket resolved like a random walk. Do not say volume at the probe has been shown not to matter, because this test could not see that. Nothing on a page or bot uses it. Reopen only with far more setups and a new mechanism.',
   },
   {
+    id: 'footprint-absorption', domain: 'price', verdict: 'null', date: '2026-11-07', doc: 'forge/FOOTPRINT_ABSORPTION_PREREG.md',
+    also: ['analysis/output/footprint-absorption/RESULTS.md'],
+    claim: 'On 6E and 6J futures with the exchange aggressor flag, a bar with heavy aggressor volume against its own close (delta divergence, or flow concentrated at the rejected extreme) is followed by more movement in the bar direction than the same candle on normal flow, and a trade on it earns net R',
+    result: 'Gate failed on all six cells, all powered. Delta divergence, 1,255 events: h 15 +0.044 [-0.009, +0.117], h 60 +0.092 [+0.028, +0.163] (bar +0.15), net -0.29R [-0.37, -0.21]. Flow at the extreme, 2,066 events: h 15 +0.003, h 60 +0.051, net -0.32R [-0.37, -0.26]. Gross R about 0, and the same candle on normal flow lost the same. Delta divergence at 60 minutes held in both halves and instruments but below the bar: a candidate, not a result. NQ (49 sessions) too thin to read, but tick-rule and true imbalance correlate +0.91 there, against about 0.5 on 6E and 6J.',
+    use: 'Do not present delta divergence or volume at the rejected extreme as an edge on 6E or 6J: both trades lost about 0.3R and the flow condition added nothing to them. Amber markers on the footprint page stay descriptive. Says nothing about discretion, context filters, the order book, stacked imbalances or low-volume nodes.',
+  },
+  {
     id: 'orderflow-lead-aggressor', domain: 'price', verdict: 'null', date: '2026-11-07', doc: 'forge/ORDERFLOW_LEAD_AGGRESSOR_PREREG.md',
     also: ['analysis/output/orderflow-lead-aggressor/RESULTS.md'],
     claim: 'On 6E and 6J futures, buy/sell imbalance in a 5-minute bar, signed by the exchange aggressor flag rather than the tick rule, predicts the next 5 and 15 minutes beyond the move already in the bar',
     result: 'Null on all four cells, all powered. 6E 866 sessions, 2023-04 to 2026-08: h 5 -0.001 [-0.006, +0.005], h 15 -0.002 [-0.007, +0.004]. 6J 780 sessions, 2023-08 to 2026-08: h 5 -0.003 [-0.008, +0.003], h 15 -0.005 [-0.011, +0.001]. Bar 0.05; slopes standardised, same-bar and previous-bar returns controlled. Flag audit: imbalance correlates +0.39 and +0.35 with the same bar return. No hour slice survives BH.',
-    use: 'Footprint delta on 6E and 6J stays a description: no lead claim over these horizons, by the tick rule or the exchange flag. Says nothing about NQ or ES, about footprint structure such as absorption at extremes, or about range. The tick rule is a weak stand-in for true flow here (bar correlation about 0.5).',
+    use: 'Footprint delta on 6E and 6J stays a description: no lead claim over these horizons, by the tick rule or the exchange flag. Says nothing about NQ or ES, about footprint structure such as absorption at extremes, or about range. On 6E and 6J the tick rule is a weak stand-in for true flow (bar correlation about 0.5); on NQ it is a good one (+0.91, footprint-absorption).',
   },
   {
     id: 'orderflow-lead', domain: 'price', verdict: 'null', date: '2026-11-01', doc: 'forge/ORDERFLOW_LEAD_PREREG.md',
@@ -2364,6 +2371,7 @@ const POWER = {
   'rule-a-portfolio-budget': { n: '1,165 weekdays 2022-01 to 2026-08, 11 legs, walk-forward (4-week block bootstrap)', note: 'MDE about 0.6 Sharpe on the paired difference; +0.28 found, interval crosses 0' },
   'rule-a-portfolio-second-book': { n: '1,559 common weekdays 2020-08 to 2026-08 (4-week block bootstrap)', note: 'SE of a near-zero correlation about 0.035; the 0.20 bar is about 6 SE away' },
   'failed-auction-volume': { n: '621 setups, 124 V-low and 497 V-high, 6 instruments, 2019-01 to 2026-08 (20-session block bootstrap clustered by date)', note: 'Needed 1,071 and 1,205. MDE 0.79R (S1) and 1.11R (S2) vs bars 0.15R and 0.20R: underpowered by design at the count-first step, before scoring.' },
+  'footprint-absorption': { n: '1,255 and 2,066 de-clustered events with 18,308 and 14,992 controls, 6E and 6J, 2023-04 to 2026-08 (20-session block bootstrap clustered by date)', note: 'MDE 0.11 to 0.14 vs bars of 0.15. Delta divergence at 60 minutes, +0.092 [+0.028, +0.163], is under its bar and its interval still includes it.' },
   'orderflow-lead-aggressor': { n: '866 and 780 sessions, 133,290 and 119,996 five-minute bars, 6E and 6J (5-session block bootstrap)', note: 'Interval half-widths about 0.005 to 0.006 vs bar 0.05: a real null, the bar is ruled out on all four cells.' },
   'orderflow-lead': { n: '189 sessions, 14,302 five-minute bars, NQ, 2025-11 to 2026-08 (5-session block bootstrap)', note: 'MDE 0.037 (h5) and 0.042 (h15) vs bar 0.05; intervals [-0.027, +0.020] and [-0.025, +0.029] exclude it -- a real null' },
   'rule-a-late-entry':       { n: '823 trades, 11 instruments, 2020-08 to 2026-08 (4-week block bootstrap)', note: 'MDE about 0.16R; interval [-0.26, +0.06] excludes it -- a real null' },

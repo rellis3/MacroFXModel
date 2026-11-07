@@ -113,7 +113,7 @@ dialog code{font:12px var(--mono);color:var(--text)}
 
 <dialog id="help">
   <h2>How to read this</h2>
-  <p><b>Descriptive only, not a signal.</b> Bar-level buy/sell imbalance did not predict the next 5 or 15 minutes on NQ with the tick rule (<code>orderflow-lead</code>, 189 sessions) or on 6E and 6J with the exchange’s own aggressor flag (<code>orderflow-lead-aggressor</code>, 866 and 780 sessions). Both are powered nulls. Absorption and stacked imbalances have not been tested. An amber dot is a description, not a trade.</p>
+  <p><b>Descriptive only, not a signal.</b> Bar-level buy/sell imbalance did not predict the next 5 or 15 minutes on NQ with the tick rule (<code>orderflow-lead</code>, 189 sessions) or on 6E and 6J with the exchange’s own aggressor flag (<code>orderflow-lead-aggressor</code>, 866 and 780 sessions). Both are powered nulls. Two mechanical absorption readings on 6E and 6J (<code>footprint-absorption</code>) failed their gate and lost about 0.3R a trade after costs, so an amber dot is a description, not a trade. Stacked imbalances have not been tested.</p>
   <h3>On the chart</h3>
   <ul>
     <li><b>Footprint cells:</b> contracts sold into the bid on the left, bought at the ask on the right. Stronger shading is more size.</li>
@@ -130,7 +130,7 @@ dialog code{font:12px var(--mono);color:var(--text)}
     <li><b>Keys:</b> ← → pan, + − zoom, F fit, L latest, C candles, P footprint.</li>
   </ul>
   <h3>The data</h3>
-  <p>From NinjaTrader. Recorded days sign each trade against the bid and ask stored with it; the readout shows the share, and the rest fall back to the tick rule. Days built from tick history use the tick rule, a rough stand-in: on 6E and 6J its bar imbalance correlated only about 0.5 with the exchange’s flag. Times are UTC, from the exchange stamp, and the Lucid feed arrives about 10 minutes late. Feed: <code>scripts/footprint/start_footprint_capture.bat</code>.</p>
+  <p>From NinjaTrader. Recorded days sign each trade against the bid and ask stored with it; the readout shows the share, and the rest fall back to the tick rule. Days built from tick history use the tick rule. Its bar imbalance correlated +0.91 with the exchange’s flag on NQ, but only about 0.5 on 6E and 6J, so read tick-rule delta with care on those. Times are UTC, from the exchange stamp, and the Lucid feed arrives about 10 minutes late. Feed: <code>scripts/footprint/start_footprint_capture.bat</code>.</p>
   <div class="rowend"><button class="btn" data-close>Close</button></div>
 </dialog>
 
@@ -448,7 +448,7 @@ function readout(l, r, step) {
     }
   }
   const b = S.bars[i], dis = b.delta && b.c !== b.o && (b.delta > 0) !== (b.c > b.o);
-  const c = S.doc.counts, sign = S.doc.rule === 'quote' && c ? `bid/ask ${Math.round(100 * c.quote / Math.max(1, c.quote + c.tick_fallback))}%` : 'tick rule, rough';
+  const c = S.doc.counts, sign = S.doc.rule === 'quote' && c ? `bid/ask ${Math.round(100 * c.quote / Math.max(1, c.quote + c.tick_fallback))}%` : 'tick rule';
   const narrow = S.W < 700, cvdVal = sgnFull(b.cvd), sess = `vol ${fmtK(P0.vol)} · Δ ${sgn(buy - sell)} · POC ${P0.poc != null ? px(P0.poc) : '—'}`;
   el.innerHTML = narrow
     ? `<div><b>${hhmm(b.m)}</b> C <b>${px(b.c)}</b> · vol <b>${fmtK(b.vol)}</b> · Δ <b>${sgn(b.delta)}</b> · CVD <b>${sgn(b.cvd)}</b>${cell ? '' : dis ? ' · against candle' : ''}</div>` +
