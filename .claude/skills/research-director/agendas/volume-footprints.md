@@ -119,6 +119,20 @@ All cards below re-use one window per instrument, so they count as one family fo
 
 **BANKED 2026-11-07: `failed-auction-volume`, UNDERPOWERED.** 621 setups, so the volume question could not be answered. All setups -0.35R [-0.49, -0.17] net, and the bracket resolved like a random walk, with or without the impulse. Follow-up it raises: a rule with a stop just past the probe pays about 0.21R a trade in costs, so any footprint trigger in Q3 or Q4 needs wider stops or a large gross edge.
 
+## System uses (2026-11-07, proposals, none tested)
+
+Asked how this data layer could serve an auto-trading system, after reading the library's microstructure papers (abstracts and conclusions only), the plans and the ledger. The common thread: use flow to decide **whether, how big and how to execute**, not which way. Integration point: `Trade_Decision_Engine` `/decide`, which already returns go or skip and a size. All run as shadows first.
+
+| Rank | Use | Test | Data | Works on the late feed? |
+|---|---|---|---|---|
+| S1 | Flow state as a size or stand-aside input (this is Q2). Must beat plain volume and realised vol, because Andersen-Bondarenko found VPIN adds nothing beyond realised vol | Rest-of-session range against the chosen lines | Have it: 6E, 6J, NQ tick | Yes |
+| S2 | Impact per contract as a liquidity gate: price move per signed contract, trailing, as Cont-Kukanov-Stoikov's slope falls as depth rises | Does thin liquidity predict adverse excursion and stop-outs beyond realised vol? | Have it | Yes |
+| S3 | Fill filter on the line-touch edge: gross +0.19R to +0.24R, net negative, limit fills adversely selected (`line-touch-limit-unseen`). Does flow just before a touch separate fills that run against you? | Net R by flow state at the touch; needs a large gain to clear costs | NQ tick about 190 sessions (tick rule +0.91 there), 6E, 6J | Research yes, live no |
+| S4 | Execution audit: compare live bot entries with the recorder's flow, spread and depth; costs by hour for the cost table | Descriptive first; trade results stay out of this public repo | Recorder, from 2026-11-09 | Yes |
+| S5 | Release windows: does flow agreeing with the surprise carry on for hours? Evans-Lyons says much of the news effect runs through order flow | Conditional on the release record | 6E, 6J now | Partly |
+
+Not worth building: tick or second-scale direction from flow or the book (lagged cross-impact decays fast, Cont et al; speed decides it, Baron et al; forecast power is not tradeable, Briola et al), VPIN as a signal, more bar-delta direction rules.
+
 ## Parked
 
 - **Buying NQ or ES aggressor history** (about $126 and $155 a year). Decide after Q1 and Q3. If they fail on FX, the case needs an index-specific mechanism first.
