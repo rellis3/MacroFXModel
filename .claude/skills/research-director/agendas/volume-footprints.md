@@ -123,6 +123,10 @@ All cards below re-use one window per instrument, so they count as one family fo
 
 The owner's question, delta at the forecast lines: regular divergence and delta with the move NULL; delta against and hidden divergence UNDERPOWERED. Open lead: delta against +7.8 pp [-3.1, +18.1] on 98 signals, near zero at neighbouring prices. It fires about 30 times a year on these two markets, so it needs older 6E and 6J months or more markets with the true flag, and both cost money. On NQ the tick rule tracks price too closely to disagree with it (one signal), so divergence on NQ needs the exchange's flag. S3 (fill filter at the touch) is partly answered: the flags do not separate rejects from breaks.
 
+## Banked 2026-11-07: `flow-range-flow`, `flow-range-impact` (S1 and S2, Q2)
+
+CONTEXT, gate failed. Flow gains about 0.2% on next-hour range and impact about 0.5% at best, against a 1% bar that is ruled out. Neither goes into a size rule. Of the system uses, S3 is partly answered by `delta-at-line`, and S4 (execution audit) is what remains, once the recorder has data. Real book depth is untested.
+
 ## System uses (2026-11-07, proposals, none tested)
 
 Asked how this data layer could serve an auto-trading system, after reading the library's microstructure papers (abstracts and conclusions only), the plans and the ledger. The common thread: use flow to decide **whether, how big and how to execute**, not which way. Integration point: `Trade_Decision_Engine` `/decide`, which already returns go or skip and a size. All run as shadows first.
@@ -151,5 +155,6 @@ Not worth building: tick or second-scale direction from flow or the book (lagged
 
 ## Owner calls
 
+- 2026-11-07: owner: stop buying data, record all traded markets through NinjaTrader (14 roots), run S1 and S2.
 - 2026-11-07: Databento pull stopped at $102.88 at the owner's request and 51 NQ cash-hours sessions bought for $16.97, so the older months planned as a holdout were not bought. About $4 of credit left.
 - 2026-11-07: owner said "would like to investigate volume footprints in a trade strategy maybe", then "go for it" on Claude's recommended order: Q5, then Q1.

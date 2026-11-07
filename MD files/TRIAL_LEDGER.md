@@ -14,7 +14,7 @@ Generated 2026-11-07.
 | validated | 51 |
 | null | 168 |
 | underpowered | 77 |
-| context (base rates, descriptions: not counted as tests) | 49 |
+| context (base rates, descriptions: not counted as tests) | 51 |
 | pre-registrations with no banked verdict (below) | 88 |
 
 **What the count says (Lesson 02 §05).** If none of the 296 claims were real, tests at the usual 5% size would still pass
@@ -366,6 +366,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-07 | delta-at-line-against-hidden | price | underpowered | forge/DELTA_AT_LINE_PREREG.md |
 | 2026-11-07 | delta-at-line-regular-with | price | null | forge/DELTA_AT_LINE_PREREG.md |
 | 2026-11-07 | failed-auction-volume | price | underpowered | forge/FAILED_AUCTION_VOLUME_PREREG.md |
+| 2026-11-07 | flow-range-flow | volatility | context | forge/FLOW_RANGE_LIQUIDITY_PREREG.md |
+| 2026-11-07 | flow-range-impact | volatility | context | forge/FLOW_RANGE_LIQUIDITY_PREREG.md |
 | 2026-11-07 | footprint-absorption | price | null | forge/FOOTPRINT_ABSORPTION_PREREG.md |
 | 2026-11-07 | orderflow-lead-aggressor | price | null | forge/ORDERFLOW_LEAD_AGGRESSOR_PREREG.md |
 | 2026-11-07 | round-break-follow | execution | context | forge/ROUND_BREAK_FOLLOW_PREREG.md |
