@@ -1358,7 +1358,6 @@ export const DESK_EVIDENCE = [
   {
     id: 'orderflow-lead-aggressor', domain: 'price', verdict: 'null', date: '2026-11-07', doc: 'forge/ORDERFLOW_LEAD_AGGRESSOR_PREREG.md',
     also: ['analysis/output/orderflow-lead-aggressor/RESULTS.md'],
-    instruments: ['EURUSD', 'USDJPY'],
     claim: 'On 6E and 6J futures, buy/sell imbalance in a 5-minute bar, signed by the exchange aggressor flag rather than the tick rule, predicts the next 5 and 15 minutes beyond the move already in the bar',
     result: 'Null on all four cells, all powered. 6E 866 sessions, 2023-04 to 2026-08: h 5 -0.001 [-0.006, +0.005], h 15 -0.002 [-0.007, +0.004]. 6J 780 sessions, 2023-08 to 2026-08: h 5 -0.003 [-0.008, +0.003], h 15 -0.005 [-0.011, +0.001]. Bar 0.05; slopes standardised, same-bar and previous-bar returns controlled. Flag audit: imbalance correlates +0.39 and +0.35 with the same bar return. No hour slice survives BH.',
     use: 'Footprint delta on 6E and 6J stays a description: no lead claim over these horizons, by the tick rule or the exchange flag. Says nothing about NQ or ES, about footprint structure such as absorption at extremes, or about range. The tick rule is a weak stand-in for true flow here (bar correlation about 0.5).',
