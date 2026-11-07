@@ -8364,36 +8364,70 @@ app.get('/api/release-layer1/paths', async (req, res) => {
     res.set('Cache-Control', live?.paths?.[id] ? 'no-store' : 'public, max-age=3600'); res.json({ ok: true, id, paths: P });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-// Volume footprint (footprint.html; scripts/footprint/build_footprint.py, maths in js/footprintCore.js). Committed days live in
-// analysis/output/footprint/site/fp_<SYM>_<day>.json; the laptop's --watch --push loop puts the day it is building in KV footprint_live_v1,
-// which wins for that day. Descriptive order flow only (orderflow-lead null).
-const _FP_DIR = path.join(__dirname, 'analysis', 'output', 'footprint', 'site'), _FP_KV = 'footprint_live_v1';
-let _fpLive = { at: 0, v: null };
-async function _fpLivePush() {
-  if (Date.now() - _fpLive.at > 10_000) {
-    try { const raw = await kv.get(_FP_KV); const p = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null; _fpLive = { v: p?.data ?? p ?? null, at: Date.now() }; }
-    catch { _fpLive = { ..._fpLive, at: Date.now() }; }
-  }
-  return _fpLive.v?.bars ? _fpLive.v : null;
+// Volume footprint (footprint.html; scripts/footprint/footprint_capture.py on the NT8 laptop, maths in js/footprintCore.js). Descriptive order flow.
+// Live: one slot per market, held in memory and a file under DATA_DIR, not KV (a 1 MB value every 30 s would rewrite kv.json each time, or burn the Cloudflare write quota).
+// Finished days: the laptop sends final:true and the server stores them in R2 footprint/days/<SYM>/<day>.json.gz, so the laptop needs no R2 keys. A few older days are committed under analysis/output/footprint/site/.
+// Auth follows the platform's convention (see /api/oanda-book/history/import): KV_WRITE_SECRET is enforced when set, and the write is bounded by what it may touch.
+const _FP_DIR = path.join(__dirname, 'analysis', 'output', 'footprint', 'site'), _FP_LIVE_DIR = path.join(process.env.DATA_DIR || path.join(__dirname, 'data'), 'footprint_live');
+const _fpLive = new Map(), _fpDayCache = new Map();
+let _fpR2 = { at: 0, days: [] };
+try { for (const f of fs.readdirSync(_FP_LIVE_DIR)) if (/^[A-Z0-9]{1,5}\.json$/.test(f)) { const d = JSON.parse(fs.readFileSync(path.join(_FP_LIVE_DIR, f), 'utf8')); _fpLive.set(d.sym, d); } } catch { /* nothing pushed yet */ }
+const _fpValid = d => d && /^[A-Z0-9]{1,5}$/.test(d.sym) && /^\d{4}-\d{2}-\d{2}$/.test(d.day) && Array.isArray(d.bars) && d.bars.length <= 1440 && d.tick > 0 && (d.rule === 'quote' || d.rule === 'tick') && d.bars.every(b => Array.isArray(b) && b.length === 6 && Array.isArray(b[5]));
+async function _fpR2Days() {
+  if (Date.now() - _fpR2.at < 5 * 60_000) return _fpR2.days;
+  try { const days = []; for (const k of await _r2ListKeys('footprint/days/')) { const m = k.match(/^footprint\/days\/([A-Z0-9]{1,5})\/(\d{4}-\d{2}-\d{2})\.json\.gz$/); if (m) days.push({ sym: m[1], day: m[2] }); } _fpR2 = { at: Date.now(), days }; }
+  catch (e) { console.error('[footprint]', e.message); _fpR2 = { ..._fpR2, at: Date.now() }; }
+  return _fpR2.days;
 }
+app.post('/api/footprint/push', async (req, res) => {
+  const secret = process.env.KV_WRITE_SECRET || '';
+  if (secret && req.get('X-Auth-Token') !== secret) return res.status(401).json({ ok: false, error: 'X-Auth-Token required' });
+  try {
+    const doc = req.body?.doc, final = req.body?.final === true;
+    if (!_fpValid(doc)) return res.status(400).json({ ok: false, error: 'bad footprint doc' });
+    if (final) {
+      if (!_r2Ok()) return res.status(503).json({ ok: false, error: 'R2 not configured' });
+      const { live: _l, ok: _o, ...clean } = doc;
+      await _r2PutBuffer(`footprint/days/${doc.sym}/${doc.day}.json.gz`, zlib.gzipSync(JSON.stringify(clean)), 'application/gzip');
+      _fpDayCache.delete(`${doc.sym}|${doc.day}`); _fpR2.at = 0;
+      if (_fpLive.get(doc.sym)?.day === doc.day) { _fpLive.delete(doc.sym); fs.promises.rm(path.join(_FP_LIVE_DIR, `${doc.sym}.json`), { force: true }).catch(() => {}); }
+      return res.json({ ok: true, stored: true });
+    }
+    const cur = _fpLive.get(doc.sym);
+    if (cur && cur.day > doc.day) return res.json({ ok: true, ignored: 'older than the day held' });
+    _fpLive.set(doc.sym, doc);
+    fs.promises.mkdir(_FP_LIVE_DIR, { recursive: true }).then(() => fs.promises.writeFile(path.join(_FP_LIVE_DIR, `${doc.sym}.json`), JSON.stringify(doc))).catch(() => {});
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.get('/api/footprint/days', async (_req, res) => {
   try {
-    let days = []; try { days = JSON.parse(fs.readFileSync(path.join(_FP_DIR, 'fp_index.json'), 'utf8')); } catch { /* none committed yet */ }
-    const live = await _fpLivePush();
-    if (live && !days.some(d => d.sym === live.sym && d.day === live.day)) days.push({ sym: live.sym, day: live.day });
-    days.sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : a.sym.localeCompare(b.sym)));
-    res.set('Cache-Control', 'no-store'); res.json({ ok: true, days, live: live ? { sym: live.sym, day: live.day, built: live.built, last_trade: live.last_trade } : null });
+    const seen = new Map();
+    try { for (const d of JSON.parse(fs.readFileSync(path.join(_FP_DIR, 'fp_index.json'), 'utf8'))) seen.set(`${d.sym}|${d.day}`, d); } catch { /* none committed */ }
+    for (const d of await _fpR2Days()) seen.set(`${d.sym}|${d.day}`, d);
+    const live = [..._fpLive.values()].map(d => ({ sym: d.sym, day: d.day, built: d.built, last_trade: d.last_trade }));
+    for (const d of live) seen.set(`${d.sym}|${d.day}`, { sym: d.sym, day: d.day });
+    const days = [...seen.values()].sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : a.sym.localeCompare(b.sym)));
+    res.set('Cache-Control', 'no-store'); res.json({ ok: true, days, live });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.get('/api/footprint/day', async (req, res) => {
   try {
     const sym = String(req.query.sym || 'NQ').toUpperCase(), day = String(req.query.day || '');
     if (!/^[A-Z0-9]{1,5}$/.test(sym) || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return res.status(400).json({ ok: false, error: 'sym and day=YYYY-MM-DD required' });
-    const live = await _fpLivePush();
-    if (live && live.sym === sym && live.day === day) { res.set('Cache-Control', 'no-store'); return res.json({ ok: true, live: true, ...live }); }
-    const f = path.join(_FP_DIR, `fp_${sym}_${day}.json`);
-    if (!fs.existsSync(f)) return res.status(404).json({ ok: false, error: `no footprint for ${sym} ${day}` });
-    res.set('Cache-Control', 'no-store'); res.json({ ok: true, live: false, ...JSON.parse(fs.readFileSync(f, 'utf8')) });
+    res.set('Cache-Control', 'no-store');
+    const live = _fpLive.get(sym);
+    if (live?.day === day) return res.json({ ok: true, live: true, ...live });
+    const key = `${sym}|${day}`;
+    let doc = _fpDayCache.get(key);
+    if (!doc) {
+      const f = path.join(_FP_DIR, `fp_${sym}_${day}.json`);
+      if (fs.existsSync(f)) doc = JSON.parse(fs.readFileSync(f, 'utf8'));
+      else { const gz = _r2Ok() ? await _r2GetBuffer(`footprint/days/${sym}/${day}.json.gz`) : null; if (gz) doc = JSON.parse(zlib.gunzipSync(gz).toString('utf8')); }
+      if (!doc) return res.status(404).json({ ok: false, error: `no footprint for ${sym} ${day}` });
+      _fpDayCache.set(key, doc); if (_fpDayCache.size > 8) _fpDayCache.delete(_fpDayCache.keys().next().value);
+    }
+    res.json({ ok: true, live: false, ...doc });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // Layer 2 (release-why.html; scripts/release_layer2/): the going-in factor sheet and the 77-item register. Kept apart from Layer 1 on purpose: it never carries outcomes, the page joins them by release id.

@@ -727,6 +727,8 @@ analysis/output/vmc-nq-vol-increment/data/
 
 # raw footprint tick dumps (tens of MB each; the derived json is committed)
 /analysis/output/footprint/*.pkl
+# footprint days built by hand (finished days live in R2 footprint/days/)
+/analysis/output/footprint/days/
 
 # Downloaded research papers (copyrighted; the repo is public). manifest.csv and MISSING.md stay tracked.
 education/papers/*.pdf

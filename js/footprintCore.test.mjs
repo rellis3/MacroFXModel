@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { decode, aggregate, imbalances, profile, hhmm } from './footprintCore.js';
+import { decode, aggregate, imbalances, profile, hhmm, decimals } from './footprintCore.js';
 
 const file = { tick: 0.25, bars: [
   [810, 100, 100.5, 100, 100.25, [[0, 5, 1], [1, 2, 30], [2, 0, 12]]],
@@ -31,4 +31,14 @@ const pr = profile(a);
 assert.equal(pr.poc, 100.25);
 assert.ok(pr.val <= pr.poc && pr.vah >= pr.poc);
 assert.equal(hhmm(810), '13:30');
+// 6J: a 0.0000005 tick must keep neighbouring prices apart.
+const yen = decode({ tick: 0.0000005, bars: [[810, 0.0065, 0.006501, 0.0065, 0.0065005, [[0, 4, 1], [1, 2, 8], [2, 0, 3]]]] });
+assert.equal(yen[0].cells.size, 3);
+assert.deepEqual(yen[0].cells.get(0.0065005), { s: 2, b: 8 });
+const yenA = aggregate(yen, { minutes: 5, rowTicks: 1, tick: 0.0000005 });
+assert.equal(yenA[0].cells.size, 3);
+assert.equal(yenA[0].vol, 18);
+assert.equal(aggregate(yen, { minutes: 5, rowTicks: 2, tick: 0.0000005 })[0].cells.size, 2);
+assert.equal(imbalances(yen[0].cells, { ratio: 2, minVol: 8, rowStep: 0.0000005, stack: 2 }).mark.get(0.0065005), 'buy');
+assert.equal(decimals(0.25), 2); assert.equal(decimals(0.1), 1); assert.equal(decimals(1), 0); assert.equal(decimals(0.00005), 5); assert.equal(decimals(0.0000005), 7);
 console.log('footprintCore ok');

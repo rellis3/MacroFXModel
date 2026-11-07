@@ -26,6 +26,7 @@ select,.btn{background:rgba(255,255,255,.03);border:1px solid var(--line2);color
 .btn.on{border-color:var(--acc);color:var(--acc)}
 .live{font:12px var(--mono);padding:4px 10px;border-radius:999px;border:1px solid var(--line2);color:var(--tx3)}
 .live.on{color:rgb(var(--long));border-color:rgba(var(--long),.5)}
+.live.stale{color:var(--acc);border-color:rgba(240,176,74,.5)}
 .live.on::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:rgb(var(--long));margin-right:6px;animation:p 1.6s infinite}
 @keyframes p{50%{opacity:.25}}
 .stats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
@@ -51,6 +52,7 @@ canvas.drag{cursor:grabbing}
 </header>
 
 <div class="ctl">
+  <label>Market <select id="sym"></select></label>
   <label>Day <select id="day"></select></label>
   <label>Bar <select id="bar">
     <option value="1">1m</option><option value="5" selected>5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option>
@@ -86,53 +88,69 @@ canvas.drag{cursor:grabbing}
   (ask at a price vs bid one row below, at least the chosen ratio and 10 lots); a bar beside three or more in a row marks a stacked imbalance. Amber box = the bar's POC.
   The right panel is the session volume profile with the 70% value area. Footer rows: volume, delta (buy − sell), and cumulative delta from the session start.
   Drag to pan, wheel to scroll price, shift+wheel to scroll time.
-  <br><b>Feed.</b> <code>scripts/footprint/build_footprint.py --source live --watch 20 --push</code> on the NT8 laptop reads the recorder (<code>nt8_record.py start</code>), signs each trade
-  against the bid/ask stored with it (quote rule; tick rule only when no quote), and pushes the day here; this page refreshes every 15 s while that day is live.
-  Days built from NT8 tick history use the tick rule, which gets the direction right but understates size. Times are UTC, read from the exchange stamp (the Lucid feed is about 10 minutes delayed).
+  <br><b>Feed.</b> <code>scripts/footprint/start_footprint_capture.bat</code> on the NT8 laptop records the front contract of each market, signs each trade
+  against the bid/ask stored with it (the Sign rule tile shows the share; the rest fall back to the tick rule) and sends the day here. Finished days are kept. This page refreshes every 30 s while a day is live and the tab is open.
+  Days built from NT8 tick history use the tick rule, which gets the direction right but understates size. Times are UTC, read from the exchange stamp, and the Lucid feed arrives about 10 minutes late.
   <br><b>Not a signal.</b> Bar-level buy/sell imbalance did not predict the next 5 or 15 minutes over 189 sessions (<code>orderflow-lead</code>, a powered null). Use this to read what happened, not to forecast.
 </div>
 </div>
 
 <script type="module">
-import { decode, aggregate, imbalances, profile, hhmm } from '/js/footprintCore.js';
+import { decode, aggregate, imbalances, profile, hhmm, decimals, r9 } from '/js/footprintCore.js';
 
 const $ = id => document.getElementById(id);
 const cv = $('cv'), ctx = cv.getContext('2d'), tip = $('tip');
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const G = 'rgb(70,184,122)', R = 'rgb(232,97,95)', AMB = '#f0b04a';
 const S = { days: [], doc: null, raw: [], bars: [], prof: null, colW: 96, rowH: 15, x0: 0, y0: 0, follow: true, live: null, timer: null };
-const AXIS = 64, FOOT = 54, HEAD = 22;
+const AXIS = 76, FOOT = 54, HEAD = 22;
+const px = p => Number(p).toFixed(S.dec ?? 2);
 let PROF = 120;
 
 // ── data ──
 async function j(u) { const r = await fetch(u, { cache: 'no-store' }); if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status); return r.json(); }
 async function loadDays() {
-  try { const d = await j('/api/footprint/days'); S.days = d.days; S.live = d.live; }
-  catch { try { S.days = await j('/analysis/output/footprint/site/fp_index.json'); } catch { S.days = []; } }
-  const sel = $('day'), keep = sel.value;
-  sel.innerHTML = S.days.map(d => `<option value="${d.sym}|${d.day}">${d.sym} ${d.day}${S.live && S.live.day === d.day && S.live.sym === d.sym ? ' • live' : ''}</option>`).join('');
-  if (keep && [...sel.options].some(o => o.value === keep)) sel.value = keep;
-  if (!S.days.length) { $('empty').textContent = 'No footprint days yet. Run scripts/footprint/build_footprint.py on the NT8 laptop.'; return false; }
+  try { const d = await j('/api/footprint/days'); S.days = d.days; S.liveList = d.live || []; }
+  catch { try { S.days = await j('/analysis/output/footprint/site/fp_index.json'); } catch { S.days = []; } S.liveList = []; }
+  const sy = $('sym'), keep = sy.value, syms = [...new Set(S.days.map(d => d.sym))].sort();
+  sy.innerHTML = syms.map(m => `<option value="${m}">${m}${S.liveList.some(l => l.sym === m) ? ' • live' : ''}</option>`).join('');
+  if (syms.includes(keep)) sy.value = keep; else if (syms.includes('NQ')) sy.value = 'NQ';
+  fillDays();
+  if (!S.days.length) { $('empty').textContent = 'No footprint days yet. Run scripts/footprint/start_footprint_capture.bat on the NT8 laptop.'; return false; }
   return true;
 }
+function fillDays() {
+  const sel = $('day'), keep = sel.value, m = $('sym').value, ds = S.days.filter(d => d.sym === m);
+  sel.innerHTML = ds.map(d => `<option value="${d.day}">${d.day}${S.liveList.some(l => l.sym === m && l.day === d.day) ? ' • live' : ''}</option>`).join('');
+  if (ds.some(d => d.day === keep)) sel.value = keep;
+}
+function pill() {
+  const lv = $('live'), doc = S.doc; if (!doc) return;
+  if (!doc.live) { lv.className = 'live'; lv.textContent = doc.rule === 'quote' ? 'recorded · bid/ask matched' : 'history · tick rule'; return; }
+  const age = Math.round((Date.now() - Date.parse(doc.built)) / 1000), last = doc.last_trade ? doc.last_trade.slice(11, 19) + 'Z' : '—';
+  // Silence must not look live: the laptop or NT8 may have stopped.
+  if (age > 300) { lv.className = 'live stale'; lv.textContent = `feed stopped? last update ${Math.round(age / 60)} min ago`; }
+  else { lv.className = 'live on'; lv.textContent = `live · last trade ${last} · updated ${age}s ago`; }
+}
 async function loadDay() {
-  const [sym, day] = $('day').value.split('|');
+  const sym = $('sym').value, day = $('day').value;
   let doc;
   try { doc = await j(`/api/footprint/day?sym=${sym}&day=${day}`); }
   catch { doc = await j(`/analysis/output/footprint/site/fp_${sym}_${day}.json`); }
-  S.doc = doc; S.raw = decode(doc);
+  S.doc = doc; S.raw = decode(doc); S.dec = decimals(doc.tick);
   [...$('bar').options].forEach(o => { o.disabled = +o.value < doc.base; });
   if (+$('bar').value < doc.base) $('bar').value = String(doc.base);
-  const lv = $('live');
-  if (doc.live) { lv.className = 'live on'; lv.textContent = `live · built ${doc.built?.slice(11, 19)}Z`; }
-  else { lv.className = 'live'; lv.textContent = doc.rule === 'quote' ? 'recorded · quote rule' : 'history · tick rule'; }
+  pill();
   clearInterval(S.timer);
-  if (doc.live) S.timer = setInterval(refresh, 15_000);
+  if (doc.live) S.timer = setInterval(refresh, 30_000);
   rebuild();
 }
 async function refresh() {
+  if (document.hidden) return;   // a day's file is up to 1 MB and Railway bills egress: only a tab being looked at refreshes
   const keepFollow = S.follow; await loadDays(); await loadDay(); if (keepFollow) toEnd();
 }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.doc?.live) refresh(); });
+setInterval(pill, 10_000);
 
 // New York 09:30-16:00 for this day in UTC minutes (DST-aware), London 07:00-16:00 local, Asia 23:00 prior-1 -> 07:00 UTC.
 function nyOffsetMin(day) {
@@ -174,7 +192,7 @@ function rebuild() {
   S.maxCell = Math.max(1, ...S.bars.map(x => x.maxCell));
   S.maxVol = Math.max(1, ...S.bars.map(x => x.vol));
   S.maxProf = Math.max(1, ...S.prof.rows.map(r => r.s + r.b));
-  S.hi = Math.max(...S.bars.map(x => x.h)); S.lo = Math.min(...S.bars.map(x => x.l));
+  S.hi = r9(Math.floor(r9(Math.max(...S.bars.map(x => x.h)) / S.step)) * S.step); S.lo = Math.min(...S.bars.map(x => x.l));   // the top row, on the same grid as the cells
   $('empty').style.display = S.bars.length ? 'none' : 'flex';
   if (!S.bars.length) $('empty').textContent = 'No trades in this session for this day. Try 24h.';
   stats();
@@ -186,12 +204,12 @@ function stats() {
   const last = S.bars.at(-1), f = n => n == null ? '—' : n.toLocaleString('en-US');
   const c = S.doc.counts, q = c ? Math.round(100 * c.quote / Math.max(1, c.quote + c.tick_fallback)) : 0;
   const tiles = [
-    ['Last', last ? last.c.toFixed(2) : '—'], ['Volume', f(vol)],
+    ['Last', last ? px(last.c) : '—'], ['Volume', f(vol)],
     ['Delta', `<span style="color:${buy - sell >= 0 ? G : R}">${buy - sell >= 0 ? '+' : ''}${f(buy - sell)}</span>`],
     ['Buy share', vol ? (100 * buy / (buy + sell)).toFixed(1) + '%' : '—'],
-    ['POC', P.poc?.toFixed(2) ?? '—'], ['Value area', P.val != null ? `${P.val.toFixed(2)} – ${(P.vah + S.step - S.doc.tick).toFixed(2)}` : '—'],
-    ['Row', `${S.rowTicks} tick${S.rowTicks > 1 ? 's' : ''} · ${S.step}`],
-    ['Sign rule', S.doc.rule === 'quote' ? `quote ${q}%` : 'tick rule'],
+    ['POC', P.poc != null ? px(P.poc) : '—'], ['Value area', P.val != null ? `${px(P.val)} – ${px(P.vah + S.step - S.doc.tick)}` : '—'],
+    ['Row', `${S.rowTicks} tick${S.rowTicks > 1 ? 's' : ''} · ${px(S.step)}`],
+    ['Sign rule', S.doc.rule === 'quote' ? `bid/ask ${q}%` : 'tick rule'],
   ];
   $('stats').innerHTML = tiles.map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
 }
@@ -311,25 +329,25 @@ function draw() {
   const ax = pw; ctx.fillStyle = '#0d1117'; ctx.fillRect(ax, 0, AXIS, H);
   ctx.save(); ctx.beginPath(); ctx.rect(ax, HEAD, AXIS, ph); ctx.clip();
   ctx.textAlign = 'left'; ctx.fillStyle = css('--tx3'); ctx.font = '11px ui-monospace,Menlo,Consolas,monospace';
-  for (let p = S.hi, k = 0; p >= S.lo - step; p -= step, k++) if (k % gridEvery === 0) ctx.fillText(p.toFixed(2), ax + 6, yOf(p) + rh / 2);
-  ctx.fillStyle = AMB; ctx.fillRect(ax + 1, ly - 8, AXIS - 2, 16); ctx.fillStyle = '#111'; ctx.fillText(last.c.toFixed(2), ax + 6, ly);
+  for (let p = S.hi, k = 0; p >= S.lo - step; p -= step, k++) if (k % gridEvery === 0) ctx.fillText(px(p), ax + 6, yOf(p) + rh / 2);
+  ctx.fillStyle = AMB; ctx.fillRect(ax + 1, ly - 8, AXIS - 2, 16); ctx.fillStyle = '#111'; ctx.fillText(px(last.c), ax + 6, ly);
   ctx.restore();
   ctx.font = '10px ui-monospace,Menlo,Consolas,monospace'; ctx.fillStyle = css('--tx3'); ctx.textAlign = 'left';
   rows.forEach(([n], k) => ctx.fillText(n, ax + 6, fy + 10 + k * 17));
 
   // session profile
-  const px = ax + AXIS; ctx.fillStyle = '#0a0d12'; ctx.fillRect(px, 0, PROF, H);
-  ctx.save(); ctx.beginPath(); ctx.rect(px, HEAD, PROF, ph); ctx.clip();
+  const pfx = ax + AXIS; ctx.fillStyle = '#0a0d12'; ctx.fillRect(pfx, 0, PROF, H);
+  ctx.save(); ctx.beginPath(); ctx.rect(pfx, HEAD, PROF, ph); ctx.clip();
   for (const r of P.rows) {
     const y = yOf(r.p), t = r.s + r.b, w = (PROF - 10) * t / S.maxProf, inVA = r.p >= P.val && r.p <= P.vah;
     const ws = w * r.s / Math.max(1, t);
-    ctx.fillStyle = inVA ? 'rgba(232,97,95,.55)' : 'rgba(232,97,95,.25)'; ctx.fillRect(px + 4, y + .5, ws, rh - 1);
-    ctx.fillStyle = inVA ? 'rgba(70,184,122,.55)' : 'rgba(70,184,122,.25)'; ctx.fillRect(px + 4 + ws, y + .5, w - ws, rh - 1);
+    ctx.fillStyle = inVA ? 'rgba(232,97,95,.55)' : 'rgba(232,97,95,.25)'; ctx.fillRect(pfx + 4, y + .5, ws, rh - 1);
+    ctx.fillStyle = inVA ? 'rgba(70,184,122,.55)' : 'rgba(70,184,122,.25)'; ctx.fillRect(pfx + 4 + ws, y + .5, w - ws, rh - 1);
   }
-  if (P.poc != null) { ctx.strokeStyle = AMB; ctx.lineWidth = 1.5; ctx.strokeRect(px + 3, yOf(P.poc) + .5, PROF - 7, rh - 1); }
+  if (P.poc != null) { ctx.strokeStyle = AMB; ctx.lineWidth = 1.5; ctx.strokeRect(pfx + 3, yOf(P.poc) + .5, PROF - 7, rh - 1); }
   ctx.restore();
   ctx.fillStyle = css('--tx3'); ctx.font = '10px ui-monospace,Menlo,Consolas,monospace'; ctx.textAlign = 'center';
-  ctx.fillText('SESSION PROFILE', px + PROF / 2, HEAD / 2);
+  ctx.fillText('SESSION PROFILE', pfx + PROF / 2, HEAD / 2);
 }
 
 // ── interaction ──
@@ -355,10 +373,10 @@ function hover(e) {
   const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
   if (mx > plotW() || my < HEAD || my > HEAD + plotH() || !S.bars.length) { tip.style.display = 'none'; return; }
   const i = Math.floor((mx + S.x0) / S.colW), b = S.bars[i]; if (!b) { tip.style.display = 'none'; return; }
-  const p = Math.round((S.hi - Math.floor((my - HEAD + S.y0) / S.rowH) * S.step) * 1e6) / 1e6, v = b.cells.get(p);
+  const p = r9(S.hi - Math.floor((my - HEAD + S.y0) / S.rowH) * S.step), v = b.cells.get(p);
   const im = b.imb.mark.get(p);
-  tip.innerHTML = `<b>${hhmm(b.m)}</b> · O ${b.o} H ${b.h} L ${b.l} C ${b.c}<br>vol ${b.vol.toLocaleString()} · Δ ${b.delta > 0 ? '+' : ''}${b.delta.toLocaleString()} · cvd ${b.cvd.toLocaleString()}<br>` +
-    (v ? `<b>${p.toFixed(2)}</b>${S.rowTicks > 1 ? '–' + (p + S.step - S.doc.tick).toFixed(2) : ''}: sell <span style="color:${R}">${v.s}</span> × buy <span style="color:${G}">${v.b}</span>${im ? ` · <b>${im} imbalance</b>` : ''}${p === b.poc ? ' · POC' : ''}` : `${p.toFixed(2)}: no trades`);
+  tip.innerHTML = `<b>${hhmm(b.m)}</b> · O ${px(b.o)} H ${px(b.h)} L ${px(b.l)} C ${px(b.c)}<br>vol ${b.vol.toLocaleString()} · Δ ${b.delta > 0 ? '+' : ''}${b.delta.toLocaleString()} · cvd ${b.cvd.toLocaleString()}<br>` +
+    (v ? `<b>${px(p)}</b>${S.rowTicks > 1 ? '–' + px(p + S.step - S.doc.tick) : ''}: sell <span style="color:${R}">${v.s}</span> × buy <span style="color:${G}">${v.b}</span>${im ? ` · <b>${im} imbalance</b>` : ''}${p === b.poc ? ' · POC' : ''}` : `${px(p)}: no trades`);
   tip.style.display = 'block';
   const tw = tip.offsetWidth; tip.style.left = Math.min(mx + 14, r.width - tw - 6) + 'px'; tip.style.top = (my + 14) + 'px';
 }
@@ -366,6 +384,7 @@ $('zin').onclick = () => { const c = (S.x0 + plotW() / 2) / S.colW; S.colW = Mat
 $('zout').onclick = () => { const c = (S.x0 + plotW() / 2) / S.colW; S.colW = Math.max(14, S.colW / 1.25); S.x0 = Math.max(0, c * S.colW - plotW() / 2); draw(); };
 $('end').onclick = () => { S.follow = true; toEnd(); };
 $('day').onchange = () => { S.follow = true; loadDay(); };
+$('sym').onchange = () => { S.follow = true; fillDays(); loadDay(); };
 for (const id of ['bar', 'row', 'sess']) $(id).onchange = () => { S.follow = true; rebuild(); };
 for (const id of ['view', 'ratio']) $(id).onchange = () => rebuild();
 addEventListener('resize', () => { size(); draw(); });

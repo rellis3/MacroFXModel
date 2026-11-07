@@ -1,25 +1,19 @@
-"""Volume footprint feed: NT8 trade ticks -> per-minute bid/ask volume at every price -> footprint.html.
+"""One day's footprint from NT8 data, by hand. For the every-day feed use footprint_capture.py (start_footprint_capture.bat).
 
-    # live: read today's NT8 recorder file, rebuild every 20 s and push to the site (footprint.html updates itself)
-    python nt8_bridge/nt8_record.py start --instrument "NQ 12-26"
-    python scripts/footprint/build_footprint.py --source live --instrument "NQ 12-26" --watch 20 --push
-
-    # a past day from the recorder (quote-matched) or from NT8 tick history (tick rule)
-    python scripts/footprint/build_footprint.py --source live --instrument "NQ 12-26" --day 2026-11-05
-    python scripts/footprint/build_footprint.py --source hist --instrument "NQ 12-26" --day 2026-10-30
+    # a past day from the recorder (bid/ask matched) or from NT8 tick history (tick rule); --push --final stores it on the site
+    python scripts/footprint/build_footprint.py --source live --instrument "NQ 12-26" --day 2026-11-09 --push --final
+    python scripts/footprint/build_footprint.py --source hist --instrument "NQ 12-26" --day 2026-10-30 --push --final
 
     # convert an older nt8_footprint.py output (5-minute rows) without the raw ticks
     python scripts/footprint/build_footprint.py --from-json analysis/output/footprint/NQ_12-26_2026-10-30_nt8_tickrule.json
 
 Which side a trade hit:
-  live  (analysis/output/nt8_live/<INST>/<day>_ticks_v2.csv): the recorder stores the bid and ask with every trade, so a
-        trade at or above the ask is a buy and at or below the bid is a sell (quote rule). A trade inside the spread, or
-        with no quote on the row, falls back to the tick rule. The counts of each are written to the file.
-  hist  (analysis/output/nt8/<INST>_tick.csv from nt8_pull.py --bar-type tick): no quotes, tick rule only (a print
-        above the previous different price is a buy). Agrees with quote matching on minute direction but understates size.
-Times are the exchange's own (exch_time), UTC. Output: analysis/output/footprint/site/fp_<SYM>_<day>.json plus
-fp_index.json. With --push the day also goes to KV footprint_live_v1 so the hosted page sees it before any commit.
-Descriptive order flow, not a signal (orderflow-lead: bar imbalance did not predict the next 5 or 15 minutes).
+  live  (recorder files <instrument>/<day>_ticks_v2.csv): a trade at or above the stored ask is a buy, at or below the bid a sell.
+        Inside the spread or with no quote, the tick rule decides. The counts of each go in the file.
+  hist  (analysis/output/nt8/<INST>_tick.csv from nt8_pull.py --bar-type tick): no quotes, tick rule only. Agrees with quote
+        matching on minute direction but understates size.
+Times are the exchange's own, UTC. Output: analysis/output/footprint/days/fp_<SYM>_<day>.json (gitignored).
+Descriptive order flow, not a signal.
 """
 import argparse, json, os, sys, time, urllib.request
 from datetime import datetime, timezone, timedelta
@@ -29,12 +23,12 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
-SITE = ROOT / "analysis/output/footprint/site"
+SITE = ROOT / "analysis/output/footprint/days"
+LIVE_DIRS = [Path(os.environ.get("FOOTPRINT_LIVE_DIR") or (Path(os.environ.get("LOCALAPPDATA", Path.home())) / "MacroFXModel" / "nt8_live")), ROOT / "analysis/output/nt8_live"]
 BASE = os.environ.get("MACROFX_BASE", "https://macrofxmodel-production.up.railway.app")
-KV_KEY = "footprint_live_v1"
 TICK = {"NQ": 0.25, "MNQ": 0.25, "ES": 0.25, "MES": 0.25, "YM": 1.0, "MYM": 1.0, "RTY": 0.1, "M2K": 0.1,
         "GC": 0.1, "MGC": 0.1, "CL": 0.01, "MCL": 0.01, "6E": 0.00005, "6J": 0.0000005, "6B": 0.0001}
-MAX_PUSH = 900_000   # bytes; above this the push is rebinned to 5-minute bars so it fits a KV value
+MAX_PUSH = 900_000   # bytes; above this the push is rebinned to 5-minute bars so it fits a live push
 
 
 def sym_of(inst):
@@ -48,7 +42,8 @@ def tick_rule(price):
 
 def load_live(inst, day):
     """Recorder rows for `day` by exchange time. Files roll on arrival time, so the next day's file is read too."""
-    d = ROOT / "analysis/output/nt8_live" / inst.replace(" ", "_")
+    name = inst.replace(" ", "_")
+    d = next((x / name for x in LIVE_DIRS if (x / name / f"{day}_ticks_v2.csv").exists()), LIVE_DIRS[0] / name)
     nxt = (datetime.fromisoformat(day) + timedelta(days=1)).strftime("%Y-%m-%d")
     parts = [pd.read_csv(f) for f in (d / f"{day}_ticks_v2.csv", d / f"{nxt}_ticks_v2.csv") if f.exists()]
     if not parts:
@@ -136,20 +131,18 @@ def save(doc):
     SITE.mkdir(parents=True, exist_ok=True)
     f = SITE / f"fp_{doc['sym']}_{doc['day']}.json"
     f.write_text(json.dumps(doc, separators=(",", ":")))
-    idx = sorted({(x.stem.split("_")[1], x.stem.split("_")[2]) for x in SITE.glob("fp_*_*.json")})
-    (SITE / "fp_index.json").write_text(json.dumps([dict(sym=s, day=d) for s, d in idx]))
     return f
 
 
-def push(doc):
+def push(doc, final=False):
     body = doc
-    if len(json.dumps(doc, separators=(",", ":"))) > MAX_PUSH and doc["base"] < 5:
+    if not final and len(json.dumps(doc, separators=(",", ":"))) > MAX_PUSH and doc["base"] < 5:
         body = {**doc, "base": 5, "bars": rebin(doc["bars"], doc["tick"], 5), "note": "rebinned to 5 minutes to fit the live push"}
-    payload = json.dumps({"key": KV_KEY, "data": body, "timestamp": int(time.time() * 1000)}, separators=(",", ":")).encode()
+    payload = json.dumps(dict(doc=body, final=final), separators=(",", ":")).encode()
     hdr = {"Content-Type": "application/json"}
     if os.environ.get("KV_WRITE_SECRET"):
         hdr["X-Auth-Token"] = os.environ["KV_WRITE_SECRET"]
-    req = urllib.request.Request(f"{BASE}/api/kv/set", data=payload, headers=hdr, method="POST")
+    req = urllib.request.Request(f"{BASE}/api/footprint/push", data=payload, headers=hdr, method="POST")
     with urllib.request.urlopen(req, timeout=60) as r:
         return r.getcode(), len(payload)
 
@@ -165,7 +158,7 @@ def run_once(a, day):
     msg = f"{day} {sym} {rule}: {len(t)} trades, volume {vol}, {len(doc['bars'])} bars, classified {counts} -> {f.name}"
     if a.push:
         try:
-            code, n = push(doc); msg += f" | push HTTP {code} ({n // 1024} KB)"
+            code, n = push(doc, a.final); msg += f" | push HTTP {code} ({n // 1024} KB)"
         except Exception as e:  # noqa: BLE001 — a failed push must not stop the watch loop
             msg += f" | push FAILED {e}"
     print(msg, flush=True)
@@ -179,12 +172,13 @@ def main():
     ap.add_argument("--base", type=int, default=1, help="minutes per stored bar (the page can only merge upward)")
     ap.add_argument("--tick", type=float, help="tick size if the symbol is not in the table")
     ap.add_argument("--watch", type=int, help="rebuild every N seconds (today's file, live source)")
-    ap.add_argument("--push", action="store_true", help=f"POST to {BASE}/api/kv/set as {KV_KEY}")
+    ap.add_argument("--push", action="store_true", help=f"POST to {BASE}/api/footprint/push")
+    ap.add_argument("--final", action="store_true", help="with --push: a finished day, stored on the site for good")
     ap.add_argument("--from-json", help="convert an nt8_footprint.py output file instead")
     a = ap.parse_args()
     if a.from_json:
         doc = from_json(a.from_json); print("saved", save(doc), len(doc["bars"]), "bars")
-        if a.push: print("push", push(doc))
+        if a.push: print("push", push(doc, a.final))
         return
     if not a.watch:
         return run_once(a, a.day or datetime.now(timezone.utc).strftime("%Y-%m-%d"))

@@ -1,19 +1,20 @@
 // Footprint maths shared by footprint.html and its test (js/footprintCore.test.mjs). Pure functions, no DOM.
 //
-// Site file (scripts/footprint/build_footprint.py -> analysis/output/footprint/site/fp_<SYM>_<day>.json, or the live
-// KV push footprint_live_v1):
-//   { v:1, sym, day, rule:'quote'|'tick', tick, base (minutes per stored bar), built,
+// Day file (scripts/footprint/footprint_capture.py -> POST /api/footprint/push; finished days are in R2 footprint/days/<SYM>/<day>.json.gz):
+//   { v:1, sym, day, rule:'quote'|'tick', tick, base (minutes per stored bar), built, counts, last_trade,
 //     bars: [[minuteOfDayUTC, o, h, l, c, [[offTicksFromLow, sell, buy], ...]], ...] }
 // sell = volume traded at the bid (aggressive sellers), buy = volume traded at the ask (aggressive buyers).
 // Descriptive order flow only. The orderflow-lead study found bar imbalance does not predict the next 5/15 minutes.
 
-const r6 = x => Math.round(x * 1e6) / 1e6;
+// 9 decimals: 6J ticks are 0.0000005, so a coarser round merges neighbouring prices.
+export const r9 = x => Math.round(x * 1e9) / 1e9;
+export const decimals = tick => { const t = String(Number(tick).toFixed(9)).replace(/0+$/, ''); return Math.max(0, t.length - t.indexOf('.') - 1); };
 
 export function decode(file) {
   const tick = file.tick || 0.25;
   return (file.bars || []).map(([m, o, h, l, c, rows]) => {
     const cells = new Map();
-    for (const [off, s, b] of rows) cells.set(r6(l + off * tick), { s, b });
+    for (const [off, s, b] of rows) cells.set(r9(l + off * tick), { s, b });
     return { m, o, h, l, c, cells };
   });
 }
@@ -27,7 +28,7 @@ export function aggregate(bars, { minutes = 5, rowTicks = 1, tick = 0.25 } = {})
     if (!a) out.set(k, a = { m: k, o: b.o, h: b.h, l: b.l, c: b.c, cells: new Map() });
     a.h = Math.max(a.h, b.h); a.l = Math.min(a.l, b.l); a.c = b.c;
     for (const [p, v] of b.cells) {
-      const q = r6(Math.floor(r6(p / step)) * step);
+      const q = r9(Math.floor(r9(p / step)) * step);
       const x = a.cells.get(q) || { s: 0, b: 0 };
       x.s += v.s; x.b += v.b; a.cells.set(q, x);
     }
@@ -50,7 +51,7 @@ export function stats(cells) {
 // Returns Map price -> 'buy' | 'sell' | 'both', plus runs of `stack` or more same-side rows in a row.
 export function imbalances(cells, { ratio = 3, minVol = 10, rowStep = 0.25, stack = 3 } = {}) {
   const prices = [...cells.keys()].sort((a, b) => a - b), mark = new Map();
-  const get = p => cells.get(r6(p)) || { s: 0, b: 0 };
+  const get = p => cells.get(r9(p)) || { s: 0, b: 0 };
   for (const p of prices) {
     const v = cells.get(p);
     const below = get(p - rowStep).s, above = get(p + rowStep).b;
@@ -65,7 +66,7 @@ export function imbalances(cells, { ratio = 3, minVol = 10, rowStep = 0.25, stac
     for (const p of prices) {
       const k = mark.get(p);
       if (k === side || k === 'both') {
-        if (run.length && r6(p - run.at(-1)) !== r6(rowStep)) flush();
+        if (run.length && r9(p - run.at(-1)) !== r9(rowStep)) flush();
         run.push(p);
       } else flush();
     }
