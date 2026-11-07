@@ -22,6 +22,7 @@
  * Pure: the server reads the files and passes their text in. Tested in js/deskRoles.test.mjs.
  */
 import { citable } from './deskEvidence.js';
+import { CACHE_MARK } from './modelRouter.js';
 import { sliceFeed } from './deskSlices.js';
 import { SCHEMA_PROMPTS } from './deskSchemas.js';
 import { DESK_UNIVERSE, instrumentLegs, allInstruments } from './deskPack.js';
@@ -113,7 +114,7 @@ export function buildAnalystPrompt({ role, pack, ledger, maxChars }) {
   const slice = sliceText(pack, role.reads, { maxChars });
   const ev = selectEvidence(ledger, role.evidence);
   const system = `${role.body}\n\n${RULES}\n${SCHEMA_PROMPTS[role.output]}`;
-  const prompt = `Desk date: ${pack.date} (pack built ${pack.builtAt}).\n\n## Evidence Book entries for your area\n${evidenceBlock(ev)}\n\n## Today's data\n${slice.text}`;
+  const prompt = `Desk date: ${pack.date} (pack built ${pack.builtAt}).\n\n## Evidence Book entries for your area\n${evidenceBlock(ev)}\n\n${CACHE_MARK}## Today's data\n${slice.text}`;
   return { system, prompt, meta: { feeds: slice.feeds, usable: slice.usable, evidence: ev.map(e => e.id) } };
 }
 
@@ -152,12 +153,22 @@ export function reportsText(results, layer) {
   return rs.length ? rs.map(r => `### ${r.id} (confidence ${r.report.confidence})\n${JSON.stringify(r.report)}`).join('\n\n') : '(no analyst reports for this layer today)';
 }
 
-/** One pipeline stage's prompts: the role, its evidence, then named sections in order. */
-export function buildStagePrompt({ role, pack, ledger, sections, tail = '' }) {
+/**
+ * One pipeline stage's prompts: the role, its evidence, then named sections in order.
+ *
+ * The cache mark (js/modelRouter.js CACHE_MARK, removed before the model sees the text) goes after the part that
+ * repeats from call to call: the desk date and the role's Evidence Book entries, plus the first `stableSections`
+ * sections when a caller puts its unchanging sections first (the Head of Research's whole Evidence Book).
+ */
+export function buildStagePrompt({ role, pack, ledger, sections, tail = '', stableSections = 0 }) {
   const ev = selectEvidence(ledger ?? [], role.evidence, { max: 15 });
   const system = `${role.body}\n\n${STAGE_RULES}\n${SCHEMA_PROMPTS[role.output]}`;
-  const body = sections.filter(([, text]) => text != null && text !== '').map(([title, text]) => `## ${title}\n${typeof text === 'string' ? text : JSON.stringify(text)}`).join('\n\n');
-  const prompt = `Desk date: ${pack.date}.\n\n${ev.length ? `## Evidence Book entries for your area\n${evidenceBlock(ev)}\n\n` : ''}${body}${tail ? `\n\n${tail}` : ''}`;
+  const kept = sections.filter(([, text]) => text != null && text !== '');
+  const nStable = Math.min(stableSections, sections.slice(0, stableSections).filter(([, text]) => text != null && text !== '').length);
+  const fmt = ([title, text]) => `## ${title}\n${typeof text === 'string' ? text : JSON.stringify(text)}`;
+  const stable = kept.slice(0, nStable).map(fmt), restSecs = kept.slice(nStable).map(fmt);
+  const head = `Desk date: ${pack.date}.\n\n${ev.length ? `## Evidence Book entries for your area\n${evidenceBlock(ev)}\n\n` : ''}${stable.length ? `${stable.join('\n\n')}\n\n` : ''}`;
+  const prompt = `${head}${CACHE_MARK}${restSecs.join('\n\n')}${tail ? `\n\n${tail}` : ''}`;
   return { system, prompt, meta: { evidence: ev.map(e => e.id) } };
 }
 

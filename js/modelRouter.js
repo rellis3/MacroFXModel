@@ -198,6 +198,25 @@ export function resolveTask(task, cfg = {}) {
  * cache breakpoint; on OpenAI-shaped providers it is simply the front of the system
  * message, which is where their automatic caching wants it anyway.
  */
+/**
+ * Where the stable front of a prompt ends. A prompt builder puts it after the part that repeats from call to call (the
+ * desk date and a role's Evidence Book entries, the Head of Research's whole Evidence Book): on Anthropic everything
+ * before it is sent as its own block with a cache breakpoint, so a repeat within 5 minutes is read at a tenth of the
+ * input price; on other providers it is removed and the text is unchanged. The model never sees it. Invisible
+ * characters, so a stray copy in a log or a replay does no harm.
+ */
+export const CACHE_MARK = '⁣⁣cache⁣⁣';
+/** The prompt split at the first mark: { lead, rest } (lead '' when there is no mark); any further marks are dropped. */
+export function splitCacheMark(prompt = '') {
+  const s = String(prompt ?? '');
+  const i = s.indexOf(CACHE_MARK);
+  if (i < 0) return { lead: '', rest: s };
+  return { lead: s.slice(0, i), rest: s.slice(i + CACHE_MARK.length).split(CACHE_MARK).join('') };
+}
+// A system prompt this long (about 1,000 tokens) gets its own cache breakpoint on Anthropic: the same role's system
+// text repeats across calls (the asset desks, the paper readers). Shorter ones fall under the model's minimum anyway.
+const SYSTEM_CACHE_MIN_CHARS = 4000;
+
 export function buildRequest({
   provider = 'anthropic', model, system = '', standing = '', prompt = '',
   maxTokens = 4000, maxOutput = null, cache = true, temperature = null, effort = null, images = [],
@@ -213,16 +232,24 @@ export function buildRequest({
   const max_tokens = Math.min(maxTokens, cap);
   const clamped = max_tokens < maxTokens;
 
+  const { lead, rest } = splitCacheMark(prompt);
   if (P.wire === 'anthropic') {
-    // An array system is only used when there is standing content worth caching;
-    // otherwise keep the plain string the existing calls send, so a request with no
-    // ledger is byte-identical to what this codebase sent before the router existed.
+    const cc = cache && P.explicitCache ? { cache_control: { type: 'ephemeral' } } : {};
+    // A long system prompt carries its own breakpoint (it repeats for every call of the same role). With standing
+    // content the system is an array as before: the standing block cached, then the system text. A short system with
+    // no standing content stays the plain string it always was.
+    const sysCache = cache && P.explicitCache && String(system ?? '').length >= SYSTEM_CACHE_MIN_CHARS;
     const sys = standing
       ? [
-          { type: 'text', text: standing, ...(cache && P.explicitCache ? { cache_control: { type: 'ephemeral' } } : {}) },
-          ...(system ? [{ type: 'text', text: system }] : []),
+          { type: 'text', text: standing, ...cc },
+          ...(system ? [{ type: 'text', text: system, ...(sysCache ? cc : {}) }] : []),
         ]
-      : system;
+      : sysCache ? [{ type: 'text', text: system, ...cc }] : system;
+    // The user turn: pictures first (Anthropic's advice), then the stable lead with its breakpoint, then the rest.
+    const textBlocks = lead ? [{ type: 'text', text: lead, ...cc }, ...(rest ? [{ type: 'text', text: rest }] : [])] : [{ type: 'text', text: rest }];
+    const content = imgs.length || lead
+      ? [...imgs.map(im => ({ type: 'image', source: { type: 'base64', media_type: im.mediaType, data: im.data } })), ...textBlocks]
+      : rest;
     return {
       url: P.url, clamped,
       headers: { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' },
@@ -231,10 +258,7 @@ export function buildRequest({
         model, max_tokens, system: sys,
         ...(temperature == null ? {} : { temperature }),
         ...(effort ? { output_config: { effort } } : {}),
-        // with pictures the content is an array: the image blocks first, then the prompt (Anthropic's advice: images before the text)
-        messages: [{ role: 'user', content: imgs.length
-          ? [...imgs.map(im => ({ type: 'image', source: { type: 'base64', media_type: im.mediaType, data: im.data } })), { type: 'text', text: prompt }]
-          : prompt }],
+        messages: [{ role: 'user', content }],
       },
     };
   }
@@ -251,7 +275,7 @@ export function buildRequest({
       ...(temperature == null ? {} : { temperature }),
       messages: [
         ...(sysText ? [{ role: 'system', content: sysText }] : []),
-        { role: 'user', content: prompt },
+        { role: 'user', content: lead + rest },   // the cache mark removed; the vendor's automatic caching reads the same prefix
       ],
     },
   };
