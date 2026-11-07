@@ -83,6 +83,8 @@ All cards below re-use one window per instrument, so they count as one family fo
 | If no → | "Absorption" stops being a reason to take a trade |
 | Falsifier | No gap against the control, or a gap smaller than costs |
 
+Registered 2026-11-07 as `footprint-absorption`, using the definitions in the two videos the owner shared.
+
 ### Q4. Stacked imbalances as support or resistance — score 9/15
 
 > When three or more rows in a bar are one-sided, does price respect that zone when it comes back? Read the revisit outcomes against comparable zones in the same bars with no stack.
