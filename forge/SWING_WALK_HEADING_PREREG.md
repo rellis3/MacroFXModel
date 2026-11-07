@@ -112,7 +112,7 @@ enforces this. No real dot x outcome had been computed.
 ### A2 — 2026-11-07 — POST-HOC (results seen)
 **The flip proof changes from one draw to 200, on every cell.** The first run marked both gamma centre cells INVALID:
 their single random flip had an interval clear of zero. Re-drawing 40 flips per cell with other seeds, 0 to 4 of 40
-exclude zero, on all five anchors alike, with mean flip effects within 0.25pp and 0.13σ/100 of zero. That is the 5% false
+exclude zero, on all five anchors alike, with mean flip effects within 0.25pp and 0.0013σ of zero. That is the 5% false
 alarm of a one-draw check, not a fault in the pipeline. The proof is now: zero sits inside the spread of 200 whole-expiry
 flips. The real effect's percentile among them is also reported. Post-hoc, so it can only demote or describe: no
 cell can reach VALIDATED through it (both gamma centre intervals include zero). The random stream shifts, so CIs move in the
@@ -120,6 +120,6 @@ third decimal. First-run numbers for the record: gamma centre H1 +0.7pp [-2.7, +
 
 ---
 
-## RESULTS — run <YYYY-MM-DD>
+## RESULTS — run 2026-11-07
 
-*Written to `analysis/output/swing-walk-heading/RESULTS.md`.*
+`analysis/output/swing-walk-heading/RESULTS.md`. H2 NULL on all five. H1 NULL for strongest strike and OI centre; UNDERPOWERED by design for gamma centre, gamma best strike and max pain (none clear of zero). The mixed H1 is split into `swing-walk-heading-touch-oi` and `swing-walk-heading-touch-near`; H2 is `swing-walk-heading-nextday`.

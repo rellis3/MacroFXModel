@@ -10,6 +10,9 @@
  *   z0 = ln(close at expiry / close) / u   how far it went
  * beta = sum(g z0) / sum(g^2): the share of the gap price travelled (1 = the dot is the expected price, 0 = nothing).
  * rmsMiss vs rmsNoMove: the dot's miss against "price stays where it is".
+ * reachDot vs reachMirror (register row swing-walk-heading): on settled steps with |g| >= 0.1 and bars carrying high/low,
+ * how often price traded through the dot in the sessions after the record up to the expiry, against a level the same log
+ * distance on the other side of the record's close.
  * Steps still live (expiry after the last close) feed `paths`: each expiry's gap night by night as it counts down, so
  * a dot that stays 4% away while the expected move shrinks shows as a line climbing away from zero.
  *
@@ -20,12 +23,15 @@ export const WALK_BUCKETS = [[1, 2, '1-2'], [3, 5, '3-5'], [6, 10, '6-10'], [11,
 const bucketOf = h => WALK_BUCKETS.find(([lo, hi]) => h >= lo && h <= hi)?.[2] ?? null;
 
 function summarise(steps) {
-  if (!steps.length) return { n: 0, beta: null, rmsMiss: null, rmsNoMove: null, medianGap: null };
+  if (!steps.length) return { n: 0, beta: null, rmsMiss: null, rmsNoMove: null, medianGap: null, reachN: 0, reachDot: null, reachMirror: null };
   let gz = 0, gg = 0, mm = 0, zz = 0;
   for (const s of steps) { gz += s.g * s.z0; gg += s.g * s.g; mm += (s.z0 - s.g) ** 2; zz += s.z0 * s.z0; }
   const gaps = steps.map(s => Math.abs(s.g)).sort((a, b) => a - b);
+  const rs = steps.filter(s => s.td != null);
+  const share = k => (rs.length ? rs.filter(s => s[k]).length / rs.length : null);
   return { n: steps.length, expiries: new Set(steps.map(s => s.expiry)).size, beta: gg > 0 ? gz / gg : null,
-    rmsMiss: Math.sqrt(mm / steps.length), rmsNoMove: Math.sqrt(zz / steps.length), medianGap: gaps[gaps.length >> 1] };
+    rmsMiss: Math.sqrt(mm / steps.length), rmsNoMove: Math.sqrt(zz / steps.length), medianGap: gaps[gaps.length >> 1],
+    reachN: rs.length, reachDot: share('td'), reachMirror: share('tm') };
 }
 
 /**
@@ -52,7 +58,14 @@ export function scoreWalkRecords(records, bars, { keys = null } = {}) {
         const u = r.vol * Math.sqrt(h), g = Math.log(px / r.close) / u;
         (A.paths[expiry] ??= []).push([r.closeDate, h, +g.toFixed(3), dte]);
         if (live || !closeOn.has(expiry)) continue;
-        A.steps.push({ expiry, h, g, z0: Math.log(closeOn.get(expiry) / r.close) / u });
+        const step = { expiry, h, g, z0: Math.log(closeOn.get(expiry) / r.close) / u, td: null, tm: null };
+        const path = (bars || []).slice(i0, idxAfter(expiry));
+        if (Math.abs(g) >= 0.1 && path.length && path.every(b => b.high > 0 && b.low > 0)) {
+          const hi = Math.max(...path.map(b => b.high)), lo = Math.min(...path.map(b => b.low)), mirror = r.close * r.close / px;
+          step.td = px > r.close ? hi >= px : lo <= px;
+          step.tm = px > r.close ? lo <= mirror : hi >= mirror;
+        }
+        A.steps.push(step);
       }
     }
   }

@@ -43858,7 +43858,7 @@ app.get('/api/swing-walk-track', async (req, res) => {
   if (hit && Date.now() - hit.at < 30 * 60e3 && req.query.fresh !== '1') return res.json(hit.data);
   try {
     const records = await _swingWalkHistory(inst, 400);
-    const bars = (await _btFetchD1Aligned(cfg.oanda, 600)).map(b => ({ date: new Date(Date.parse(`${b.date}T12:00:00Z`) + 864e5).toISOString().slice(0, 10), close: b.close }));
+    const bars = (await _btFetchD1Aligned(cfg.oanda, 600)).map(b => ({ date: new Date(Date.parse(`${b.date}T12:00:00Z`) + 864e5).toISOString().slice(0, 10), high: b.high, low: b.low, close: b.close }));
     const data = { ok: true, inst, from: records[0]?.captureDate ?? null, ..._swingScoreWalks(records, bars), generatedAt: new Date().toISOString() };
     _swingTrackCache.set(inst, { at: Date.now(), data });
     res.json(data);
