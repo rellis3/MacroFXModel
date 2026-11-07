@@ -253,9 +253,14 @@ def mfe_from_path(bars: pd.DataFrame, idx: int, exit_idx: int, direction: int,
 
 def race_grid(bars: pd.DataFrame, entries: list[Entry], sl_grid: list[float],
               tp_r_grid: list[float], max_bars_ahead: int,
-              cost_price: float = 0.0, min_bars_ahead: int = 10) -> list[BarrierResult]:
+              cost_price: float = 0.0, min_bars_ahead: int = 10,
+              pessimistic_ties: bool = False) -> list[BarrierResult]:
     """Walk the real forward M1 path for every entry, for every (sl, tp_r) in
     the grid, and report which barrier got touched first.
+
+    `pessimistic_ties` is passed to `_first_touch` (see there): True resolves a
+    same-bar TP/SL touch as a stop. Default False keeps every existing study's
+    numbers unchanged; new studies should pass True.
 
     `cost_price` is a round-trip cost in the SAME price units as `bars` (e.g.
     one full spread) subtracted from every outcome as `cost_price / sl` R —
@@ -307,7 +312,8 @@ def race_grid(bars: pd.DataFrame, entries: list[Entry], sl_grid: list[float],
             tp_hits = sl_hits = timeouts = 0
             for entry_price, direction, cmax, cmin, last_close in paths:
                 outcome, _off, _px, r = _first_touch(entry_price, direction, sl, tp_dist,
-                                                     cmax, cmin, last_close, tp_r)
+                                                     cmax, cmin, last_close, tp_r,
+                                                     pessimistic_ties)
                 if outcome == 'tp':
                     tp_hits += 1
                 elif outcome == 'sl':
@@ -343,7 +349,8 @@ class VariableEntry:
 
 
 def race_trades_variable(bars: pd.DataFrame, entries: list[VariableEntry], max_bars_ahead: int,
-                         cost_price: float = 0.0, min_bars_ahead: int = 10) -> list[dict]:
+                         cost_price: float = 0.0, min_bars_ahead: int = 10,
+                         pessimistic_ties: bool = False) -> list[dict]:
     """Per-trade race where EACH entry supplies its own (sl, tp_dist),
     instead of every entry sharing one (sl, tp_r) grid cell like
     `race_trades`/`race_grid`. Same `_first_touch` walker, same return shape
@@ -368,7 +375,7 @@ def race_trades_variable(bars: pd.DataFrame, entries: list[VariableEntry], max_b
         entry_price = e.entry_price if e.entry_price is not None else float(opens[idx])
         tp_r = e.tp_dist / e.sl
         outcome, off, exit_price, r = _first_touch(entry_price, e.direction, e.sl, e.tp_dist,
-                                                    cmax, cmin, last_close, tp_r)
+                                                    cmax, cmin, last_close, tp_r, pessimistic_ties)
         out.append({
             'idx': idx, 'direction': e.direction, 'entry_price': entry_price,
             'exit_idx': idx + off, 'exit_price': float(exit_price), 'outcome': outcome,
