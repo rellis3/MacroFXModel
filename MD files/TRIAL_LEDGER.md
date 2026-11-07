@@ -4,22 +4,22 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-06.
+Generated 2026-11-07.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **289** |
-| validated | 50 |
+| claims tested (validated + null + underpowered) | **290** |
+| validated | 51 |
 | null | 164 |
 | underpowered | 75 |
 | context (base rates, descriptions: not counted as tests) | 47 |
-| pre-registrations with no banked verdict (below) | 89 |
+| pre-registrations with no banked verdict (below) | 90 |
 
-**What the count says (Lesson 02 §05).** If none of the 289 claims were real, tests at the usual 5% size would still pass
-about **14.5** of them by luck. 50 passed, so most passes are unlikely to be luck alone, but
-**roughly 15 of the 50 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 290 claims were real, tests at the usual 5% size would still pass
+about **14.5** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
+**roughly 15 of the 51 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -363,6 +363,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-06 | hedge-residual-mom | price | null | forge/HEDGE_RESIDUAL_SYSTEM_PREREG.md |
 | 2026-11-06 | hedge-residual-mr | price | null | forge/HEDGE_RESIDUAL_SYSTEM_PREREG.md |
 | 2026-11-06 | jump-next-day-miss | volatility | context | forge/JUMP_NEXT_DAY_MISS_PREREG.md |
+| 2026-11-07 | vol-layer-rv5-increment | volatility | validated | forge/VOL_LAYER_RV5_INCREMENT_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -451,6 +452,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VIX_DIVERGENCE_PREREG.md`: VIX vs Nasdaq divergence at the vol lines (hourly) — pre-registration
 - `forge/VIX_SIGNALS_FORWARD_PREREG.md`: vix-signals-forward: forward record of the four VIX/Nasdaq signals banked 2026-10-23
 - `forge/VMC_DIVERGENCE_INDICES_PREREG.md`: VuManChu Cipher B divergence at the vol lines (NQ first) — pre-registration
+- `forge/VOL_LAYER_REACTION_PREREG.md`: vol-layer-reaction — does the shared vol state tell us when price reacts at the chosen forecast's lines?
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
 - `forge/VRP_FORECAST_PREREG.md`: Your vol forecast vs the market's — variance risk premium (pre-registration)
 - `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?

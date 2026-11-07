@@ -33,7 +33,8 @@ export const LAYERS = [
       { k: 'forecast error', d: 'how wrong the forecaster has recently been, signed' },
     ],
     candidates: [
-      { name: 'σ: current forecaster (GARCH / RS-EWMA / log-HAR)', src: 'repo', state: 'open', note: 'the incumbent and the benchmark everything else must beat' },
+      { name: 'σ: the chosen forecast (persistence + IV)', src: 'repo', state: 'tested', note: 'the lines; won forecast-pick on range accuracy, and is the benchmark' },
+      { name: 'σ: chosen form + M1 realised-vol terms', src: 'both', state: 'tested', note: 'VALIDATED: about 1.2% better on all 34' },
       { name: 'σ: log-HARQ on 5-min M1 realised variance', src: 'literature', state: 'open', note: 'Bollerslev-Patton-Quaedvlieg 2016; down-weights noisy days' },
       { name: 'σ: realized GARCH', src: 'literature', state: 'open', note: 'Hansen-Huang-Shek 2012; needs MLE' },
       { name: 'σ: time-of-day profile to turn daily σ into session σ', src: 'literature', state: 'open', note: 'Andersen-Bollerslev 1997' },
@@ -61,6 +62,9 @@ export const LAYERS = [
       'Open question for this layer, not a bug: VolRangeForecaster uses fixed GARCH parameters, not fitted per instrument. It is the incumbent the candidates are scored against.',
     ],
     findings: [
+      { date: '2026-11-07', title: 'Forecast check, your question: keep the chosen forecast', text: 'The chosen forecast (persistence + IV) already beat plain, IV-adjusted, HAR-800 and persistence head to head (forecast-pick), so it stays as the lines and no forecaster is rebuilt as the base. That test scored range accuracy only. It did not ask whether price reacts at a line, and that is the question this programme now tests (vol-layer-reaction).' },
+      { date: '2026-11-07', title: 'Tested: does M1 realised vol add? VALIDATED, small', text: 'Added yesterday and last-week 5-minute realised vol to the chosen form. All 34 instruments: pinball 0.9884 [0.9856, 0.9910] of the chosen form, all six folds better, regime miss 1.6 vs 2.4 pp. IV-13: 0.9901 [0.9869, 0.9931]. Biggest on indices (2.4%), about 1% on FX and gold. Nothing live changes. This reopens the fitted-GARCH / HARQ / panel HAR comparison, queued after the reaction test.' },
+      { date: '2026-11-07', title: 'Bias check, read for the first time', text: 'LINE-REACTION: P(reject) about 0.485 at every rung and no different from ±0.3σ away; 31 lead-up features added nothing. exhaustion-schedule: distance from the open adds almost nothing beyond the clock. line-touch-wide-scan: a gross fade edge that fails net of costs. None of these held expected change, filtered regime on realised vol, forecast error state, unscheduled jump intensity, realised vol so far, or common vs own move, so those are what vol-layer-reaction adds.' },
       { date: '2026-11-07', title: 'Repo pass (code only) + first build', text: 'Map: plans/vol-layer/L1_REPO_PASS.md. The chosen σ (vol-forecast-v3 "persistence + IV") is a daily-bar estimator per instrument (Yang-Zhang 10/20 or EWMA 0.94/0.90 on NY-close bars) nudged for regime, recent misses, weekday and implied vol. Nothing in the repo built a 5-min realised-variance target from M1 for London sessions without forward-filling, and there was no Python NY-close builder, so forge/rv.py now does both, point-in-time with the lockbox cut, proven by 9 tests including prefix invariance. Still to build: fitted GARCH(1,1), HAR / HARQ / panel HAR on RV5, Model Confidence Set. Risks found: the estimator was picked on London bars but runs on NY bars; several HAR helpers use full-sample scales.' },
       { date: '2026-11-06', title: 'Literature pass (no repo access)', text: 'Spec: plans/vol-layer/L1_LITERATURE_SPEC.md. Main points: GARCH(1,1) is a hard benchmark in FX (Hansen-Lunde 2005); intraday-data gains come from better inputs more than model complexity; 5-min RV is the target to beat as the realised measure; QLIKE + Diebold-Mariano + Model Confidence Set to compare. Δσ and σ-vs-long-run are mostly transforms of the σ forecast (one degree of freedom, not two). Thin evidence: HARQ / realized GARCH mostly equity-tested, regime-switching gains for FX not established, nothing head-to-head for gold. Proposed test order: realised target, σ shootout, coverage + error feedback, Δσ, regime, long-run level, IV.' },
       { date: '2026-11-06', title: 'Step 0 check', text: 'The review claim that hmm.js leaks future data into live state was overstated. The live label is filtered and causal. The risk is only in backtests that reuse the Viterbi path, so it is recorded as a rule above.' },
@@ -68,7 +72,7 @@ export const LAYERS = [
   },
   {
     id: 'jumps', n: 2, short: 'Jumps', title: 'Jump intensity and jump diffusion',
-    status: 'not started',
+    status: 'deep dive',
     cog: [
       'And research a lot into jump intensity and jump diffusion.',
       '(Merton) That\'s part of it. Then it\'s a jump added on top.',
@@ -107,11 +111,13 @@ export const LAYERS = [
       'RULE: its time-of-day factor sets zero-median slots to "no test", but slots with a tiny positive median can still over-flag. Floor the factor.',
       'That script is a pre-registered study (forge/JUMPS_PREREG.md) and is left unchanged so its numbers reproduce; the jump layer builds its own detector.',
     ],
-    findings: [],
+    findings: [
+      { date: '2026-11-07', title: 'Literature pass', text: 'Post-jump direction depends on context: in US equity ETFs, no-news and scheduled-news jumps reverse, unscheduled-news jumps continue, negative jumps reverse hardest. FX evidence is thin and no gold study was found. No published test of jump intensity predicting a break at a vol-scaled level. Seasonality gave most of the accuracy for EURUSD jumps, and Hawkes did not beat logistic. 1-minute jump flags are bursts, not true jumps. Literature only: no repo files read, though the agents had the memory index of past results in context. Spec: plans/vol-layer/L2_LITERATURE_SPEC.md' },
+    ],
   },
   {
     id: 'features', n: 3, short: 'Corr ÷ variance', title: 'Engineering features: splitting correlation from variance',
-    status: 'not started',
+    status: 'deep dive',
     cog: [
       'An example of a layer is an engineering feature such as splitting correlation from variance.',
     ],
@@ -143,11 +149,13 @@ export const LAYERS = [
     ],
     test: 'Forecast next-day covariance for random books of pairs. QLIKE loss on book variance and out-of-sample minimum-variance portfolio variance. Model Confidence Set over {sample, EWMA, EWMA+shrink, DCC}. Factor model: out-of-sample R² of factor-implied covariance.',
     defects: [],
-    findings: [],
+    findings: [
+      { date: '2026-11-07', title: 'Literature pass', text: 'Equities show residual reversal and industry continuation. In FX, dollar and carry factors are autocorrelated and idiosyncratic returns show little momentum, which is not reversal; the dollar does reverse around fixes. No short-horizon FX residual-reversal test was found, so three hypotheses stay open. Crosses make a 34-instrument covariance near-singular: estimate in currency legs. Quote bounce and stale pairs create fake residual reversal. Literature only: no repo files read, though the agents had the memory index of past results in context. Spec: plans/vol-layer/L3_LITERATURE_SPEC.md' },
+    ],
   },
   {
     id: 'views', n: 4, short: 'Conditional views', title: 'Conditional views',
-    status: 'not started',
+    status: 'deep dive',
     cog: [
       'The way to really develop this is by having conditional views and then other layers supporting it.',
     ],
@@ -176,11 +184,13 @@ export const LAYERS = [
     ],
     test: 'Out-of-sample information coefficient and hit rate of each view, overall and by vol-state tercile, purged walk-forward. Conditioned model vs unconditioned view. Deflated Sharpe with the true number of variants tried.',
     defects: [],
-    findings: [],
+    findings: [
+      { date: '2026-11-07', title: 'Literature pass', text: 'A Sharpe 0.5 view shifts P(up first) by only about 1.6pp at one daily σ (derived, not run), so views condition trades rather than stand alone. Nearly all evidence is monthly; no paper links a view to an intraday level reaction. Carry and momentum vol-state results do not transfer directly to a vol-level filter on FX. Equal-weight combination is hard to beat. Literature only: no repo files read, though the agents had the memory index of past results in context. Spec: plans/vol-layer/L4_LITERATURE_SPEC.md' },
+    ],
   },
   {
     id: 'meta', n: 5, short: 'Meta-labelling', title: 'Meta-labelling: filtering the trades',
-    status: 'not started',
+    status: 'deep dive',
     cog: [
       'Have you ever looked into meta labelling?',
     ],
@@ -212,11 +222,13 @@ export const LAYERS = [
       'RULE: meta_proper reweights classes and does not calibrate, yet sizes from the probabilities. Calibrate (isotonic / Platt) before any probability-based sizing, and do not rebalance classes.',
       'meta_proper is a pre-registered study and is left unchanged; its tooling (weights, purge, embargo) is reused.',
     ],
-    findings: [],
+    findings: [
+      { date: '2026-11-07', title: 'Literature pass', text: 'Barriers fix the base rate at b/(a+b). The model must beat a geometry-only benchmark, because time-limited or asymmetric barriers give AUC above 0.5 on a random walk (reasoned, no paper). Detecting 50 to 53% needs about 2,200 retained trades, about 5,200 after 100 trials. Calibration helped fixed sizing only. Platt beat isotonic below about 2,000 cases. No independent replication or peer-reviewed FX or gold test found. Literature only: no repo files read, though the agents had the memory index of past results in context. Spec: plans/vol-layer/L5_LITERATURE_SPEC.md' },
+    ],
   },
   {
     id: 'sizing', n: 6, short: 'Black-Litterman & sizing', title: 'Black-Litterman, position sizing and the book',
-    status: 'not started',
+    status: 'deep dive',
     cog: [
       'Stuff about Black Litterman will be an interesting read as well.',
       'The vol forecaster can drive so many things: position sizing, regime states.',
@@ -245,11 +257,13 @@ export const LAYERS = [
     ],
     test: 'Realised vs target book vol (ratio and dispersion), max drawdown, turnover and net Sharpe for each sizing rule vs plain per-trade risk. One vol scaler only: a kσ stop plus a vol-cut budget scales size by σ².',
     defects: [],
-    findings: [],
+    findings: [
+      { date: '2026-11-07', title: 'Literature pass', text: 'Black-Litterman with a zero prior reduces to signal/σ (derived), so it only differs through correlations and a state-varying Ω; test those steps one at a time. It needs a mean view, and a range forecast gives size not sign, so forecast error is not a valid Ω for a direction view. Vol targeting evidence is split: Moreira-Muir vs Cederburg (53 of 103 higher Sharpe); currencies show negligible Sharpe gain but thinner tails. Freeze the trade list and compare at equal ex-post vol. Literature only: no repo files read, though the agents had the memory index of past results in context. Spec: plans/vol-layer/L6_LITERATURE_SPEC.md' },
+    ],
   },
   {
     id: 'execution', n: 7, short: 'Stop orders', title: 'Execution: entries and stop orders',
-    status: 'not started',
+    status: 'deep dive',
     cog: [
       'The way how I\'m able to have the stop orders you\'ve said about is because I\'m using a vol forecaster as a single layer in a multi layer system.',
       'Every single position is different.',
@@ -282,11 +296,13 @@ export const LAYERS = [
     defects: [
       'FIXED 2026-11-06: pylego/barrier_race.race_grid and race_trades_variable had no way to score a same-bar TP/SL touch as a stop; they now take pessimistic_ties. The default stays False so past studies reproduce. Every vol-layer test passes pessimistic_ties=True.',
     ],
-    findings: [],
+    findings: [
+      { date: '2026-11-07', title: 'Literature pass', text: 'On a martingale no entry type or placement gives positive gross R, so a stop-order claim needs a source of drift. Osler: FX reversal 59-60% at round numbers vs 55-57% at arbitrary levels, fading in about 30 minutes; crossing adds about 0.7bp; neither net of cost. No evidence of order clustering at vol-scaled levels, which is the central gap for your exhaustion question. Breakouts look positive in equities, with no independent replication found, and have decayed in major FX. Stops help only with momentum (Kaminski-Lo). Literature only: no repo files read, though the agents had the memory index of past results in context. Spec: plans/vol-layer/L7_LITERATURE_SPEC.md' },
+    ],
   },
   {
     id: 'feedback', n: 8, short: 'Feedback loop', title: 'Forecast error as a feedback loop',
-    status: 'not started',
+    status: 'deep dive',
     cog: [
       'But you can also use its errors as a feedback loop.',
     ],
@@ -311,7 +327,9 @@ export const LAYERS = [
     ],
     test: 'Rolling 60-day coverage error and band width vs static bands, per regime. Drift: detection delay on injected shifts vs false-alarm rate. Kill switch: expected run length under good and bad edge, by simulation.',
     defects: [],
-    findings: [],
+    findings: [
+      { date: '2026-11-07', title: 'Literature pass', text: 'Three separate uses: correct the forecast, signal, governance. No direct test of realised-minus-forecast predicting reversal in FX, gold or index futures. Adjacent work conflicts: surprise vol with continuation on S&P futures, VIX level with reversal, so any test must separate level from surprise. The adaptive conformal coverage guarantee holds regardless of forecaster, so judge width and conditional coverage. No peer-reviewed live kill-switch study found. Literature only: no repo files read, though the agents had the memory index of past results in context. Spec: plans/vol-layer/L8_LITERATURE_SPEC.md' },
+    ],
   },
 ];
 

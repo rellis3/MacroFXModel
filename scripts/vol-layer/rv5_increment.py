@@ -84,10 +84,11 @@ def main():
         mn, mo = miss(new, m), miss(old, m)
         ci = [float(x) for x in np.percentile(reps, [2.5, 97.5])]
         gate = {"ci_below_1": ci[1] < 1, "gain_gt_0.5pct": 1 - ratio > 0.005, "regime_miss_no_worse": mn[1] <= mo[1], "no_class_worse_0.5pct": max(cls.values()) <= 1.005}
+        byfold = {int(f): round(float(L[new][m & (T.fold == f).to_numpy()].sum() / L[old][m & (T.fold == f).to_numpy()].sum()), 4) for f in sorted(T.fold.unique())}
         byinst = {i: round(float(L[new][m & (T.inst == i).to_numpy()].sum() / L[old][m & (T.inst == i).to_numpy()].sum()), 4) for i in sorted(T.inst[m].unique())}
         return {"rows": int(m.sum()), "ratio": round(float(ratio), 4), "ci": [round(x, 4) for x in ci], "p_one_sided": float((reps >= 1).mean()),
                 "by_class": {k: round(v, 4) for k, v in cls.items()}, "regime_new": mn[0], "regime_old": mo[0], "miss_new": mn[1], "miss_old": mo[1],
-                "gate": gate, "pass": all(gate.values()), "by_inst": byinst}
+                "gate": gate, "pass": all(gate.values()), "by_inst": byinst, "by_fold": byfold}
 
     res = {"all34": board("SR", "S", "all34"), "iv13": board("SIR", "SI", "iv13")}
     p = any(v["pass"] for v in res.values())
@@ -99,6 +100,8 @@ def main():
           f"**Verdict: {res['verdict']}**", "", "| board | rows | ratio [95%] | HL p75 regime miss new / old | worst class | gate |", "|---|---|---|---|---|---|"]
     for k, v in (("All 34: S+RV vs S", res["all34"]), ("IV-13: SI+RV vs SI", res["iv13"])):
         md.append(f"| {k} | {v['rows']:,} | {v['ratio']:.4f} [{v['ci'][0]:.4f}, {v['ci'][1]:.4f}] | {v['miss_new'] * 100:.1f} / {v['miss_old'] * 100:.1f} pp | {max(v['by_class'].values()):.4f} | {'PASS' if v['pass'] else 'fail: ' + ', '.join(g for g, ok in v['gate'].items() if not ok)} |")
+    md += ["", "By fold (all 34): " + ", ".join(f"{k}: {v:.4f}" for k, v in res["all34"]["by_fold"].items()),
+           "", "By fold (IV-13): " + ", ".join(f"{k}: {v:.4f}" for k, v in res["iv13"]["by_fold"].items())]
     md += ["", "By class (all 34): " + ", ".join(f"{k} {v:.4f}" for k, v in res["all34"]["by_class"].items()),
            "", "By instrument (all 34): " + ", ".join(f"{k} {v:.3f}" for k, v in res["all34"]["by_inst"].items())]
     (OUT / "RESULTS.md").write_text("\n".join(md) + "\n", encoding="utf-8")

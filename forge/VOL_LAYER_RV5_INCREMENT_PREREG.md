@@ -67,3 +67,5 @@ Whether lines react. Whether a fitted GARCH, HARQ or panel HAR would do better t
 ## Amendments
 
 ## RESULTS
+
+**VALIDATED, 2026-11-07.** All 34: S+RV 0.9884 [0.9856, 0.9910] of S; HL p75 regime miss 1.6 vs 2.4 pp; every fold below 1. IV-13: SI+RV 0.9901 [0.9869, 0.9931] of SI. Details: `analysis/output/vol-layer-rv5-increment/RESULTS.md`.

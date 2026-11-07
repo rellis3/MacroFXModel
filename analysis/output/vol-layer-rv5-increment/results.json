@@ -1,0 +1,137 @@
+{
+ "all34": {
+  "rows": 52486,
+  "ratio": 0.9884,
+  "ci": [
+   0.9856,
+   0.991
+  ],
+  "p_one_sided": 0.0,
+  "by_class": {
+   "fx_crosses": 0.9908,
+   "fx_majors": 0.9918,
+   "gold": 0.9898,
+   "indices": 0.9758
+  },
+  "regime_new": {
+   "quiet": 0.2449865211387994,
+   "normal": 0.23401235598597428,
+   "busy": 0.24427595525861423
+  },
+  "regime_old": {
+   "quiet": 0.23874021960681174,
+   "normal": 0.22574720320587743,
+   "busy": 0.23781998348472336
+  },
+  "miss_new": 0.01598764401402572,
+  "miss_old": 0.024252796794122566,
+  "gate": {
+   "ci_below_1": true,
+   "gain_gt_0.5pct": true,
+   "regime_miss_no_worse": true,
+   "no_class_worse_0.5pct": true
+  },
+  "pass": true,
+  "by_inst": {
+   "AUDCAD": 0.9946,
+   "AUDCHF": 0.9886,
+   "AUDJPY": 0.9826,
+   "AUDNZD": 1.0004,
+   "AUDUSD": 0.9916,
+   "CADCHF": 0.9957,
+   "CADJPY": 0.9878,
+   "CHFJPY": 0.9901,
+   "DE30": 0.9855,
+   "DOW": 0.9724,
+   "EURAUD": 0.9888,
+   "EURCAD": 0.9921,
+   "EURCHF": 0.9937,
+   "EURGBP": 0.986,
+   "EURJPY": 0.987,
+   "EURNZD": 0.9897,
+   "EURUSD": 0.9933,
+   "GBPAUD": 0.9979,
+   "GBPCAD": 0.9898,
+   "GBPCHF": 0.9888,
+   "GBPJPY": 0.9864,
+   "GBPNZD": 0.9926,
+   "GBPUSD": 0.9866,
+   "GOLD": 0.9898,
+   "NQ": 0.9693,
+   "NZDCAD": 0.9999,
+   "NZDJPY": 0.9876,
+   "NZDUSD": 0.9988,
+   "SPX500": 0.9675,
+   "UK100": 0.9864,
+   "US2000": 0.9746,
+   "USDCAD": 0.9916,
+   "USDCHF": 0.9949,
+   "USDJPY": 0.9867
+  },
+  "by_fold": {
+   "0": 0.9877,
+   "1": 0.9862,
+   "2": 0.9858,
+   "3": 0.991,
+   "4": 0.9885,
+   "5": 0.9912
+  }
+ },
+ "iv13": {
+  "rows": 18283,
+  "ratio": 0.9901,
+  "ci": [
+   0.9869,
+   0.9931
+  ],
+  "p_one_sided": 0.0,
+  "by_class": {
+   "fx_majors": 0.9953,
+   "gold": 0.9935,
+   "indices": 0.985
+  },
+  "regime_new": {
+   "quiet": 0.2465417615128699,
+   "normal": 0.23317239420619143,
+   "busy": 0.2654611211573237
+  },
+  "regime_old": {
+   "quiet": 0.23761162668534408,
+   "normal": 0.2309003124112468,
+   "busy": 0.26166365280289333
+  },
+  "miss_new": 0.01682760579380857,
+  "miss_old": 0.01909968758875319,
+  "gate": {
+   "ci_below_1": true,
+   "gain_gt_0.5pct": true,
+   "regime_miss_no_worse": true,
+   "no_class_worse_0.5pct": true
+  },
+  "pass": true,
+  "by_inst": {
+   "AUDUSD": 0.9972,
+   "DE30": 0.991,
+   "DOW": 0.9891,
+   "EURUSD": 0.9961,
+   "GBPUSD": 0.9945,
+   "GOLD": 0.9935,
+   "NQ": 0.98,
+   "SPX500": 0.9793,
+   "UK100": 0.9864,
+   "US2000": 0.9838,
+   "USDCAD": 0.9944,
+   "USDCHF": 0.9991,
+   "USDJPY": 0.9906
+  },
+  "by_fold": {
+   "0": 0.9841,
+   "1": 0.9848,
+   "2": 0.9919,
+   "3": 0.9919,
+   "4": 0.9894,
+   "5": 0.9956
+  }
+ },
+ "verdict": "VALIDATED"
+}
