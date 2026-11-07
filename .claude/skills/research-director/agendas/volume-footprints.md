@@ -115,7 +115,7 @@ Note: the tracker already lists a "first delta test" after this pull. Check it i
 | If no → | Closes the volume half of the Discord method on these definitions |
 | Falsifier | As in the prereg |
 
-Scored low only because the mechanism is a story so far, but it costs almost nothing and needs no new build. **It could reasonably run first.**
+**BANKED 2026-11-07: `failed-auction-volume`, UNDERPOWERED.** 621 setups, so the volume question could not be answered. All setups -0.35R [-0.49, -0.17] net, and the bracket resolved like a random walk, with or without the impulse. Follow-up it raises: a rule with a stop just past the probe pays about 0.21R a trade in costs, so any footprint trigger in Q3 or Q4 needs wider stops or a large gross edge.
 
 ## Parked
 
@@ -131,4 +131,4 @@ Scored low only because the mechanism is a story so far, but it costs almost not
 
 ## Owner calls
 
-- 2026-11-07: owner said "would like to investigate volume footprints in a trade strategy maybe". No picks yet.
+- 2026-11-07: owner said "would like to investigate volume footprints in a trade strategy maybe", then "go for it" on Claude's recommended order: Q5, then Q1.

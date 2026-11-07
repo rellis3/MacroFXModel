@@ -1348,6 +1348,14 @@ export const DESK_EVIDENCE = [
     use: 'Nothing built. Which side the range extends to has no support from the hedge-flow schedule; rerun only with more days and per-expiry books.',
   },
   {
+    id: 'failed-auction-volume', domain: 'price', verdict: 'underpowered', date: '2026-11-07', doc: 'forge/FAILED_AUCTION_VOLUME_PREREG.md',
+    also: ['analysis/output/failed-auction-volume/RESULTS.md'],
+    instruments: ['NQ', 'SPX500', 'US30', 'US2000', 'GOLD'],
+    claim: 'After an impulse and a balance on CME futures, a failed probe of the balance edge against the impulse, entered on the reclaim and targeting the other edge, earns positive net R, and does better when the probe drew below-normal volume than above-normal volume',
+    result: 'Neither cell could reach its bar: 621 setups 2019-01 to 2026-08 (NQ ES YM RTY GC CL) against about 3,400 expected, SD of R 2.32. S1 V-low -0.31R [-0.59, -0.02], n 124, MDE 0.79 vs bar +0.15. S2 V-low minus V-high +0.06R [-0.39, +0.64], MDE 1.11 vs bar +0.20; positive in 2 of 6 instruments, inside the shuffle placebo. All setups -0.35R [-0.49, -0.17] net, -0.14R [-0.28, +0.05] gross. Target reached -1.5 pp [-3.7, +1.2] against the random-walk bracket rate; the same rules with no impulse -0.38R; the mirror -0.35R.',
+    use: 'Do not call this failed-auction rule an edge: it lost money and its bracket resolved like a random walk. Do not say volume at the probe has been shown not to matter, because this test could not see that. Nothing on a page or bot uses it. Reopen only with far more setups and a new mechanism.',
+  },
+  {
     id: 'orderflow-lead', domain: 'price', verdict: 'null', date: '2026-11-01', doc: 'forge/ORDERFLOW_LEAD_PREREG.md',
     also: ['analysis/output/orderflow-lead/RESULTS.md'],
     instruments: ['NQ'],
@@ -2340,6 +2348,7 @@ const POWER = {
   'rule-a-pre2020':          { n: '1,386 trades, 11 instruments, 2016-09 to 2020-08 (4-week block bootstrap)', note: 'MDE about 0.2R; upper bound +0.094 excludes the +0.162 backtest effect -- a real null' },
   'rule-a-portfolio-budget': { n: '1,165 weekdays 2022-01 to 2026-08, 11 legs, walk-forward (4-week block bootstrap)', note: 'MDE about 0.6 Sharpe on the paired difference; +0.28 found, interval crosses 0' },
   'rule-a-portfolio-second-book': { n: '1,559 common weekdays 2020-08 to 2026-08 (4-week block bootstrap)', note: 'SE of a near-zero correlation about 0.035; the 0.20 bar is about 6 SE away' },
+  'failed-auction-volume': { n: '621 setups, 124 V-low and 497 V-high, 6 instruments, 2019-01 to 2026-08 (20-session block bootstrap clustered by date)', note: 'Needed 1,071 and 1,205. MDE 0.79R (S1) and 1.11R (S2) vs bars 0.15R and 0.20R: underpowered by design at the count-first step, before scoring.' },
   'orderflow-lead': { n: '189 sessions, 14,302 five-minute bars, NQ, 2025-11 to 2026-08 (5-session block bootstrap)', note: 'MDE 0.037 (h5) and 0.042 (h15) vs bar 0.05; intervals [-0.027, +0.020] and [-0.025, +0.029] exclude it -- a real null' },
   'rule-a-late-entry':       { n: '823 trades, 11 instruments, 2020-08 to 2026-08 (4-week block bootstrap)', note: 'MDE about 0.16R; interval [-0.26, +0.06] excludes it -- a real null' },
   'range-ladder-placebo':    { n: '2,745 session dates (21-session block bootstrap), 19 instruments', note: 'P1 MDE 0.14 pp vs a 2.0 pp bar; unjudgeable because the registered placebo control failed (-0.09 pp [-0.16, -0.02])' },
