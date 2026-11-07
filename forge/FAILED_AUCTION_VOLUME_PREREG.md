@@ -148,7 +148,15 @@ its needed n at the measured SD, that cell is **UNDERPOWERED by design**: it is 
 
 ## Amendments
 
-*(none yet)*
+**A1 (2026-11-07, PRE-RESULTS; no setup outcome computed).** Written while building the first script.
+1. **Bar stamps.** NT8 stamps a 1-minute bar at its END: median volume over 2026-03 to 2026-08 spikes on the 09:31 label (NQ 1,098 at 09:30, 5,430 at 09:31) and on 16:00 (NQ 1,744 at 15:59, 8,106 at 16:00), and GC and CL show the same. Each stamp is moved back one minute, so a session's first bar is the minute starting at its open and its last bar is the minute ending at its close.
+2. **Impulse start.** The prereg says "from 15 minutes after the open", but close(t-30) must lie inside the session because bars before the open are ignored. The first possible t is therefore 30 minutes after the first bar. An impulse with too few minutes left for a 60-minute balance gives no setup.
+3. **One probe.** "The first minute whose low < L - 1 tick starts the probe" is read literally: if that probe voids or fails to reclaim within 15 minutes, the session has no setup.
+4. **Missing minutes.** A minute with no trade keeps the previous close and has no high, low or volume. An entry at such a minute moves to the next minute that traded.
+5. **Volume reference.** Setups start 2019-01-02, and sessions before that may supply the 20-session history for sigma-30 and median volume.
+6. **Roll skip.** A setup is skipped if its session holds more than one contract. Switches fall outside the day sessions, so this should be rare; the count is reported.
+7. **Components, added under the owner's rule of 2026-10-27 that a null gets decomposed.** Descriptive, no pass weight: (a) gross R before costs; (b) target-before-stop rate minus the random-walk rate stop / (stop + target), on trades that resolved at a bracket, with target above entry; (c) a no-impulse market placebo: the same probe, reclaim and trade rules, same clock time and direction, in up to 3 random sessions within 250 sessions, with no impulse or balance-width condition. Under BH q = 0.10, a part that beats both nulls in both halves is listed as a candidate, never a result.
+8. **Descriptive cells not run.** D1 needs tick history covering 500 or more setups; NT8 ticks start about 2025-11, against a setup rate that will not reach that. It is reported as not run. D2 (gamma split) is left out of the first pass and reported as not run.
 
 ---
 
