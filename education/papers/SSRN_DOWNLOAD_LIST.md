@@ -53,3 +53,101 @@ Built 2026-11-07 from `education/papers/manifest.csv` (the 93 SSRN papers with n
 | 45 | Pairs Trading with Copulas · Wenjun Xie et al. | 2014 | 20 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2383185) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2383185) |  |
 | 46 | Pairs Trading on International ETFs · Panagiotis Schizas et al. | 2011 | 9 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1958546) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1958546) |  |
 | 47 | The Limits to Dividend Arbitrage: Implications for Cross Border Investment · Susan E. Christoffersen et al. | 2003 | 3 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=413867) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=413867) | [open copy](http://finance.wharton.upenn.edu/~musto/papers/cgmr.pdf) |
+
+## Part 2: the wider quant canon (not in our manifest yet)
+
+Found 2026-11-07 by searching SSRN-registered papers (Crossref, prefix 10.2139) on the topics the desk, the Theory Lab and the C.OG material use: FX and carry, volatility, options and dealers, trend and reversal, rates and FOMC, gold, risk and portfolio construction, research method (overfitting, Sharpe, meta-labelling), microstructure. Well-known papers were also looked up by exact title. Nothing here is already in the manifest or the paper library. ★ = a well-known paper found by exact title. Citation counts are Crossref's, which undercount SSRN papers.
+
+
+### FX & carry
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| ★ Carry · Ralph S. J. Koijen, Tobias J. Moskowitz | 2015 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2632697) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2632697) |
+| ★ Currency Momentum Strategies · Lukas Menkhoff, Lucio Sarno | 2011 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1773543) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1773543) |
+| ★ Common Risk Factors in Currency Markets · Hanno N. Lustig, Nikolai L. Roussanov | 2009 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1364313) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1364313) |
+| ★ Order Flow and Exchange Rate Dynamics · Richard K. Lyons, Martin D.D. Evans | 1999 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=174888) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=174888) |
+| ★ Crash Risk in Currency Markets · Emmanuel Farhi, Samuel P. Fraiberger | 2009 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1343987) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1343987) |
+| Capital Constraints, Counterparty Risk, and Deviations from Covered Interest Rate Parity · Niall Coffey, Warren B. Hrung | 2009 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1473377) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1473377) |
+| Customer Order Flow and Exchange Rate Movements: Is There Really Information Content? · Ian William Marsh, Ceire O'Rourke | 2005 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=704944) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=704944) |
+| Segmented Money Markets and Covered Interest Parity Arbitrage · Dagfinn Rime, Andreas Schrimpf | 2017 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=3057973) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3057973) |
+
+### Volatility
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| ★ Expected Stock Returns and Variance Risk Premia · Tim Bollerslev, Hao Zhou | 2009 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1315328) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1315328) |
+| ★ The Pricing of Volatility Risk Across Asset Classes and the Fama and French Three Factor Model · Zhi Da, Ernst Schaumburg | 2009 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1364764) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1364764) |
+| ★ Forecasting Realized Volatility of Daily Returns · Bruno Gmuer, Semyon Malamud | 2013 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2361628) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2361628) |
+| ★ Volatility-Managed Portfolios · Alan Moreira, Tyler Muir | 2015 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2659431) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2659431) |
+| A Simple Long Memory Model of Realized Volatility · Fulvio Corsi | 2004 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=626064) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=626064) |
+| Jump-Diffusion Processes: Volatility Smile Fitting and Numerical Methods for Pricing · Leif B.G. Andersen, Jesper Andreasen | 1999 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=171438) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=171438) |
+| A General Asymptotic Implied Volatility for Stochastic Volatility Models · Pierre Henry-Labordere | 2005 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=698601) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=698601) |
+| Volatility Forecast Comparison Using Imperfect Volatility Proxies · Andrew J. Patton | 2010 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=932890) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=932890) |
+| Linear-Quadratic Jump-Diffusion Modelling with Application to Stochastic Volatility · Peng Cheng, Olivier Scaillet | 2003 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=381820) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=381820) |
+| Volatility Skew, Earnings Announcements, and the Predictability of Crashes · Andrew Van Buskirk | 2011 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1740513) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1740513) |
+
+### Options & dealers
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| ★ Hedging Demand and Market Intraday Momentum · Guido Baltussen, Zhi Da | 2021 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=3760365) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3760365) |
+| The Probability Density Function of Interest Rates Implied in the Price of Options · Fabio Fornari, Roberto Violi | 2006 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=899976) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=899976) |
+
+### Trend, momentum, reversal
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| ★ A Century of Evidence on Trend-Following Investing · Brian Hurst, Yao Hua Ooi | 2017 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2993026) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2993026) |
+| ★ Time Series Momentum · Tobias Moskowitz, Yao Hua Ooi | 2011 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2089463) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2089463) |
+| ★ Value and Momentum Everywhere · Cliff S. Asness, Tobias J. Moskowitz | 2012 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2174501) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2174501) |
+| ★ Market Intraday Momentum · Lei Gao, Yufeng Han | 2014 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2440866) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2440866) |
+| Momentum Strategies in Futures Markets and Trend-following Funds · Nick Baltas, Robert Kosowski | 2011 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1968996) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1968996) |
+
+### Rates & macro
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| ★ Stock Returns Over the FOMC Cycle · Anna Cieslak, Adair Morse | 2015 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2687614) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2687614) |
+| ★ The Pre-FOMC Announcement Drift · Emanuel Moench, David O. Lucca | 2012 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2024459) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2024459) |
+| Term Structure Anomalies: Term Premium or Peso Problem? · Caroline Jardet | 2010 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1699598) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1699598) |
+| Does Central Bank Tone Move Asset Prices? · Maik Schmeling, Christian Wagner | 2015 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2629978) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2629978) |
+
+### Gold & commodities
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| ★ The Golden Dilemma · Claude B. Erb, Campbell R. Harvey | 2012 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2078535) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2078535) |
+| Commodity Index Investing and Commodity Futures Prices · Hans R. Stoll, Robert Whaley | 2009 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1478195) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1478195) |
+| Is Gold a Hedge or a Safe-Haven Asset in the COVID–19 Crisis? · Md Akhtaruzzaman, Sabri Boubaker | 2020 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=3621358) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3621358) |
+| Is Gold a Hedge or a Safe Haven? an Analysis of Stocks, Bonds and Gold · Dirk G. Baur, Brian M. Lucey | 2009 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=952289) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=952289) |
+
+### Risk & portfolio
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| ★ Betting Against Beta · Andrea Frazzini, Lasse Heje Pedersen | 2012 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2049939) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2049939) |
+| ★ Building Diversified Portfolios that Outperform Out-of-Sample · Marcos López de Prado | 2019 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2708678) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2708678) |
+| The Intuition Behind Black-Litterman Model Portfolios · Guangliang He, Robert Litterman | 2002 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=334304) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=334304) |
+| An Algorithm for Computing Risk Parity Weights · Florin Spinu | 2013 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2297383) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2297383) |
+| The Black-Litterman Approach: Original Model and Extensions · Attilio Meucci | 2008 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1117574) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1117574) |
+| The Black-Litterman Model in Detail · Jay Walters | 2011 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1314585) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1314585) |
+| Beyond Black-Litterman: Views on Non-Normal Markets · Attilio Meucci | 2005 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=848407) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=848407) |
+| Portfolio Optimization with Drawdown Constraints · Alexei Chekhlov, Stanislav P. Uryasev | 2000 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=223323) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=223323) |
+| Risk Parity and Beyond - From Asset Allocation to Risk Allocation Decisions · Romain Deguest, Lionel Martellini | 2013 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2355778) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2355778) |
+
+### Method (quant toolbox)
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| ★ …and the Cross-Section of Expected Returns · Campbell R. Harvey, Yan Liu | 2013 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2249314) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2249314) |
+| ★ The Probability of Backtest Overfitting · David H. Bailey, Jonathan Borwein | 2013 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2326253) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2326253) |
+| Testing for Multiple Bubbles · Peter C. B. Phillips, Shuping Shi | 2012 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1981976) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1981976) |
+| Is the Sharpe Ratio Useful in Asset Allocation? · Steve Christie | 2005 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=720801) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=720801) |
+
+### Microstructure & flow
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| The Price Impact of Order Book Events · Rama Cont, Arseniy Kukanov | 2010 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1712822) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1712822) |
+| Speculators, Commodities and Cross-Market Linkages · Bahattin Buyuksahin, Michel A. Robe | 2010 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1707103) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1707103) |
