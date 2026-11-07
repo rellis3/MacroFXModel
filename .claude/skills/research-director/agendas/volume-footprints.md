@@ -39,7 +39,7 @@ All cards below re-use one window per instrument, so they count as one family fo
 | If no → | Stop saying delta leads, on any sign method, on FX futures. Q3 and Q4 stay open because they ask about structure, not a bar total |
 | Falsifier | Slope inside the placebo range, or opposite signs in the halves |
 
-Note: the tracker already lists a "first delta test" after this pull. Check it is not claimed elsewhere before registering.
+**BANKED 2026-11-07: `orderflow-lead-aggressor`, NULL.** All four cells about ten times inside the 0.05 bar. Follow-ups it raises: the tick rule correlates only about 0.5 with the true flag at bar level, so tick-rule work on NQ is a weak proxy; and a linear bar total says nothing about extremes, which is Q3. Nearby and only descriptive: 6J at 60 minutes -0.012, a quarter of the bar.
 
 ### Q2. Does footprint activity say how much, rather than which way? — score 11/15
 

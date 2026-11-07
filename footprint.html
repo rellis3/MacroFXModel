@@ -90,8 +90,8 @@ canvas.drag{cursor:grabbing}
   Drag to pan, wheel to scroll price, shift+wheel to scroll time.
   <br><b>Feed.</b> <code>scripts/footprint/start_footprint_capture.bat</code> on the NT8 laptop records the front contract of each market, signs each trade
   against the bid/ask stored with it (the Sign rule tile shows the share; the rest fall back to the tick rule) and sends the day here. Finished days are kept. This page refreshes every 30 s while a day is live and the tab is open.
-  Days built from NT8 tick history use the tick rule, which gets the direction right but understates size. Times are UTC, read from the exchange stamp, and the Lucid feed arrives about 10 minutes late.
-  <br><b>Not a signal.</b> Bar-level buy/sell imbalance did not predict the next 5 or 15 minutes over 189 sessions (<code>orderflow-lead</code>, a powered null). Use this to read what happened, not to forecast.
+  Days built from NT8 tick history use the tick rule, a rough stand-in: on 6E and 6J its bar imbalance correlated only about 0.5 with the exchange’s own aggressor flag. Times are UTC, read from the exchange stamp, and the Lucid feed arrives about 10 minutes late.
+  <br><b>Not a signal.</b> Bar-level buy/sell imbalance did not predict the next 5 or 15 minutes on NQ with the tick rule (<code>orderflow-lead</code>, 189 sessions) or on 6E and 6J with the exchange’s own aggressor flag (<code>orderflow-lead-aggressor</code>, 866 and 780 sessions). Both are powered nulls. Patterns such as absorption and stacked imbalances have not been tested. Use this to read what happened, not to forecast.
 </div>
 </div>
 

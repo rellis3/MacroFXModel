@@ -1356,6 +1356,14 @@ export const DESK_EVIDENCE = [
     use: 'Do not call this failed-auction rule an edge: it lost money and its bracket resolved like a random walk. Do not say volume at the probe has been shown not to matter, because this test could not see that. Nothing on a page or bot uses it. Reopen only with far more setups and a new mechanism.',
   },
   {
+    id: 'orderflow-lead-aggressor', domain: 'price', verdict: 'null', date: '2026-11-07', doc: 'forge/ORDERFLOW_LEAD_AGGRESSOR_PREREG.md',
+    also: ['analysis/output/orderflow-lead-aggressor/RESULTS.md'],
+    instruments: ['EURUSD', 'USDJPY'],
+    claim: 'On 6E and 6J futures, buy/sell imbalance in a 5-minute bar, signed by the exchange aggressor flag rather than the tick rule, predicts the next 5 and 15 minutes beyond the move already in the bar',
+    result: 'Null on all four cells, all powered. 6E 866 sessions, 2023-04 to 2026-08: h 5 -0.001 [-0.006, +0.005], h 15 -0.002 [-0.007, +0.004]. 6J 780 sessions, 2023-08 to 2026-08: h 5 -0.003 [-0.008, +0.003], h 15 -0.005 [-0.011, +0.001]. Bar 0.05; slopes standardised, same-bar and previous-bar returns controlled. Flag audit: imbalance correlates +0.39 and +0.35 with the same bar return. No hour slice survives BH.',
+    use: 'Footprint delta on 6E and 6J stays a description: no lead claim over these horizons, by the tick rule or the exchange flag. Says nothing about NQ or ES, about footprint structure such as absorption at extremes, or about range. The tick rule is a weak stand-in for true flow here (bar correlation about 0.5).',
+  },
+  {
     id: 'orderflow-lead', domain: 'price', verdict: 'null', date: '2026-11-01', doc: 'forge/ORDERFLOW_LEAD_PREREG.md',
     also: ['analysis/output/orderflow-lead/RESULTS.md'],
     instruments: ['NQ'],
@@ -2349,6 +2357,7 @@ const POWER = {
   'rule-a-portfolio-budget': { n: '1,165 weekdays 2022-01 to 2026-08, 11 legs, walk-forward (4-week block bootstrap)', note: 'MDE about 0.6 Sharpe on the paired difference; +0.28 found, interval crosses 0' },
   'rule-a-portfolio-second-book': { n: '1,559 common weekdays 2020-08 to 2026-08 (4-week block bootstrap)', note: 'SE of a near-zero correlation about 0.035; the 0.20 bar is about 6 SE away' },
   'failed-auction-volume': { n: '621 setups, 124 V-low and 497 V-high, 6 instruments, 2019-01 to 2026-08 (20-session block bootstrap clustered by date)', note: 'Needed 1,071 and 1,205. MDE 0.79R (S1) and 1.11R (S2) vs bars 0.15R and 0.20R: underpowered by design at the count-first step, before scoring.' },
+  'orderflow-lead-aggressor': { n: '866 and 780 sessions, 133,290 and 119,996 five-minute bars, 6E and 6J (5-session block bootstrap)', note: 'Interval half-widths about 0.005 to 0.006 vs bar 0.05: a real null, the bar is ruled out on all four cells.' },
   'orderflow-lead': { n: '189 sessions, 14,302 five-minute bars, NQ, 2025-11 to 2026-08 (5-session block bootstrap)', note: 'MDE 0.037 (h5) and 0.042 (h15) vs bar 0.05; intervals [-0.027, +0.020] and [-0.025, +0.029] exclude it -- a real null' },
   'rule-a-late-entry':       { n: '823 trades, 11 instruments, 2020-08 to 2026-08 (4-week block bootstrap)', note: 'MDE about 0.16R; interval [-0.26, +0.06] excludes it -- a real null' },
   'range-ladder-placebo':    { n: '2,745 session dates (21-session block bootstrap), 19 instruments', note: 'P1 MDE 0.14 pp vs a 2.0 pp bar; unjudgeable because the registered placebo control failed (-0.09 pp [-0.16, -0.02])' },
