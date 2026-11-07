@@ -30,6 +30,12 @@ Usage:
     python databento_orderbook_cost_estimate.py --only NQ             # just Nasdaq futures
     python databento_orderbook_cost_estimate.py --schema mbp-10       # only the cheaper of the two depth schemas
     python databento_orderbook_cost_estimate.py --schema trades,tbbo  # Tier 1 pricing for comparison (much cheaper than mbo/mbp-10)
+
+CONTINUOUS FRONT MONTH BY VOLUME + EXPLICIT WINDOWS (2026-11-06, order-flow dataset):
+    python databento_orderbook_cost_estimate.py --cont 6E,6J --schema trades,mbp-1,mbp-10 --days 5
+    python databento_orderbook_cost_estimate.py --cont 6E,6J --schema trades,mbp-1 --start 2020-01-01      # end = yesterday (publish lag)
+  --cont ROOTS prices <ROOT>.v.0 (highest-volume contract, stype continuous) instead of the parent .FUT symbols.
+  Quotes are free, so a 5xx gateway error on a QUOTE is retried (never on a paid download -- that is another script).
 """
 import argparse
 import sys
@@ -90,6 +96,10 @@ def main():
     ap.add_argument("--schema", type=str, default="mbo,mbp-10",
                      help="comma-separated Databento schemas to price (default: the Tier-2 pair mbo,mbp-10; "
                           "pass trades,tbbo for Tier-1 pricing instead)")
+    ap.add_argument("--cont", type=str, default=None,
+                     help="comma-separated futures roots priced as continuous front month by volume, e.g. 6E,6J -> 6E.v.0, 6J.v.0")
+    ap.add_argument("--start", type=str, default=None, help="explicit window start YYYY-MM-DD (end = yesterday unless --end)")
+    ap.add_argument("--end", type=str, default=None, help="explicit window end YYYY-MM-DD")
     args = ap.parse_args()
 
     key = load_key()
@@ -102,10 +112,16 @@ def main():
     # matter for a cost estimate, so back off rather than guess the exact minimum.
     end = datetime.now(timezone.utc) - timedelta(hours=24)
     start = end - timedelta(days=args.days)
+    if args.end:
+        end = datetime.fromisoformat(args.end).replace(tzinfo=timezone.utc)
+    if args.start:
+        start = datetime.fromisoformat(args.start).replace(tzinfo=timezone.utc)
     schemas = [s.strip() for s in args.schema.split(",") if s.strip()]
 
     roots = ALL_ROOTS
-    if args.only:
+    if args.cont:
+        roots = {f"{r.strip()} (cont)": f"{r.strip()}.v.0" for r in args.cont.split(",") if r.strip()}
+    elif args.only:
         wanted = {s.strip() for s in args.only.split(",")}
         roots = {sym: fut for sym, fut in ALL_ROOTS.items() if sym in wanted}
         missing = wanted - set(roots)
@@ -113,25 +129,34 @@ def main():
             sys.exit(f"Unknown symbol(s) in --only: {missing}. Known: {sorted(ALL_ROOTS)}")
 
     print(f"Databento COST ESTIMATE ONLY -- no data pulled, no credit spent.")
-    print(f"Dataset: {DATASET}   Window: {args.days}d ({start.date()} -> {end.date()})")
-    print(f"Symbols: {', '.join(f'{sym} ({fut}.FUT)' for sym, fut in roots.items())}")
+    print(f"Dataset: {DATASET}   Window: {(end - start).days}d ({start.date()} -> {end.date()})")
+    print(f"Symbols: {', '.join(f'{sym} ({fut if args.cont else fut + '.FUT'})' for sym, fut in roots.items())}")
     print(f"Schemas: {', '.join(schemas)}\n")
 
     rows = []
     total = 0.0
     for schema in schemas:
         for sym, fut in roots.items():
-            try:
-                cost = client.metadata.get_cost(
-                    dataset=DATASET,
-                    symbols=[f"{fut}.FUT"],  # parent symbology REQUIRES the class suffix -- bare "NQ" 400s
-                    stype_in="parent",       # ".FUT" pulls ALL expiries' front months under that root
-                    schema=schema,
-                    start=start,
-                    end=end,
-                )
-            except Exception as e:
-                rows.append((schema, sym, fut, None, str(e)))
+            cost, err = None, None
+            for attempt in range(4):         # quotes are FREE: retry a gateway 5xx (never done for a paid download)
+                try:
+                    cost = client.metadata.get_cost(
+                        dataset=DATASET,
+                        symbols=[fut] if args.cont else [f"{fut}.FUT"],  # parent symbology REQUIRES the class suffix -- bare "NQ" 400s
+                        stype_in="continuous" if args.cont else "parent",  # ".FUT" pulls ALL expiries' front months under that root
+                        schema=schema,
+                        start=start,
+                        end=end,
+                    )
+                    err = None
+                    break
+                except Exception as e:
+                    err = str(e)
+                    if "50" not in err[:12] and "timed out" not in err:
+                        break
+                    import time as _t; _t.sleep(5 * (attempt + 1))
+            if err:
+                rows.append((schema, sym, fut, None, err[:140]))
                 continue
             rows.append((schema, sym, fut, cost, None))
             total += cost or 0.0
