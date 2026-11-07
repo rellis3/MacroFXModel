@@ -268,6 +268,7 @@ import { searchUrls as _litSearchUrls, PARSERS as _LIT_PARSERS, LIT_SOURCES as _
 import { QC as _RL_QC, parseQcTree as _rlParseQcTree, readingListItems as _rlReadingList, manifestItems as _rlManifest, items151 as _rl151Items, record151 as _rlRecord151, qcItems as _rlQcItems, qcRawUrl as _rlQcRaw, qcRecord as _rlQcRecord, matchUpload as _rlMatchUpload, uploadKey as _rlUploadKey, seedQueue as _rlSeedQueue, upsertItem as _rlUpsert, nextItems as _rlNext, markItems as _rlMark, queueSummary as _rlSummary, batchPlan as _rlBatchPlan, searchLocal as _rlSearchLocal, paperFeedRecords as _rlPaperFeedRecords, kindOf as _rlKindOf } from './js/researchLibrary.js';   // §9ai the reading backlog   // §9ah the literature desk
 import { currencyStrength as _evCcy, dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
+import { alertStep as _spAlertStep, alertText as _spAlertText, addCall as _spAdd, emptyDay as _spEmpty, mergeDays as _spMerge, daySummary as _spSummary, capCheck as _spCap, callerFromStack as _spCaller, utcDay as _spDay, LIST_PRICES as _SP_PRICES } from './js/aiSpend.js';   // the model-spend ledger (KV, by day and caller)
 import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
 import { expandFeeds as _dpExpandFeeds, buildDeskPack as _dpBuild, packForSkill as _dpForSkill, packSummary as _dpSummary, indexRow as _dpIndexRow, upsertIndex as _dpUpsertIndex, shouldBuild as _dpShouldBuild, londonDate as _dpLondonDate, DESK_SKILLS as _DP_SKILLS, DESK_UNIVERSE as _DP_UNIVERSE, DESK_SUBSETS as _DP_SUBSETS, packFresh as _dpFresh } from './js/deskPack.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
@@ -726,13 +727,16 @@ for (const [sig, code] of [['SIGTERM', 143], ['SIGINT', 130]]) {
       console.log(`[service-stats] ${sig} — flushing before exit`);
       const bail = setTimeout(() => process.exit(code), 4_000);
       // also the KV write-time ledger the Data Map reads: with redeploys every few minutes its 30-min timer never fires
-      Promise.allSettled([svcStatsFlush(sig), kv.flushWriteTimes()]).finally(() => { clearTimeout(bail); process.exit(code); });
+      Promise.allSettled([svcStatsFlush(sig), kv.flushWriteTimes(), _spendFlush(), typeof _egressFlush === 'function' ? _egressFlush() : null]).finally(() => { clearTimeout(bail); process.exit(code); });
     };
     // A brief being written by a slow model (minutes, and paid for) must not be thrown away by someone else's push. Wait for it, up to 9 minutes. This only helps
     // if the host leaves the old process alive that long: on Railway that is the deployment draining time (RAILWAY_DEPLOYMENT_DRAINING_SECONDS).
-    if (typeof _morningBriefRunning !== 'undefined' && _morningBriefRunning) {
-      console.log(`[brief] ${sig} while a brief is being written: waiting up to 9 minutes for it before exiting`);
-      const t0 = Date.now(), iv = setInterval(() => { if (!_morningBriefRunning || Date.now() - t0 > 540_000) { clearInterval(iv); finish(); } }, 1000);
+    // 2026-11-07: the same wait covers ANY model call still in flight (a desk run stage, a research round, the Head), whose
+    // answer is already being paid for. Exiting under it threw the answer away and the restarted job paid for it again.
+    const busy = () => (typeof _morningBriefRunning !== 'undefined' && _morningBriefRunning) || (typeof _aiInFlight !== 'undefined' && _aiInFlight > 0);
+    if (busy()) {
+      console.log(`[shutdown] ${sig} while ${_aiInFlight} model call(s) are in flight${typeof _morningBriefRunning !== 'undefined' && _morningBriefRunning ? ' (a brief is being written)' : ''}: waiting up to 9 minutes for them before exiting`);
+      const t0 = Date.now(), iv = setInterval(() => { if (!busy() || Date.now() - t0 > 540_000) { clearInterval(iv); finish(); } }, 1000);
     } else finish();
   });
 }
@@ -1882,6 +1886,7 @@ const TG_SENDERS = {
   tradeWatch:        'Desk trade watcher: a card reached its entry zone, first target or invalidation (context, not an order)',
   surpriseReader:    'Live surprise reader: a high-impact print, its surprise against consensus and the release playbook, within a minute (history, not a forecast)',
   forecastDrift:     'Forecast auditor: a forecast line set drifted out of its calibration band (only after opting in on the Forecast auditor card; a prompt to look, nothing is changed)',
+  aiSpend:           'Model spend: a note at every £5 (or the step set on Bot Config → AI models) spent on model calls in a UTC day, with the dearest jobs and the last call',
   deskAlerts:        'Desk alerts: world stress colour, options-skew extremes, fair value beyond 10%, carry/vol collapse, leading-indicator phase, speaker drift (context, not a signal)',
   // volatility_bot_v2 (the Python bot) checks this directly via ai_alert_cfg
   // (see its own tg_master_on doc) — unlike every other sender above, this
@@ -3192,7 +3197,8 @@ app.use(express.json({ limit: '25mb' }));
 // Where the outbound bytes go, ranked, since boot -- see js/egressMeter.js.
 app.get('/api/egress-audit', (req, res) => res.json(egressSnapshot(Number(req.query.limit) || 40)));
 // Ledger survives redeploys via KV (egress_audit): load now, flush every 5 min + on SIGTERM.
-egressPersist({ get: k => kv.get(k), put: (k, v) => kv.put(k, v) }).catch(e => console.warn('[egress] persist init failed:', e.message));
+// exitOnSignal false: the shutdown handler near the top flushes it and decides when to exit (it may wait for model calls).
+egressPersist({ get: k => kv.get(k), put: (k, v) => kv.put(k, v) }, { exitOnSignal: false }).then(f => { _egressFlush = f; }).catch(e => console.warn('[egress] persist init failed:', e.message));
 
 // Real-time monitoring + level-refresh status
 app.get('/api/monitor/status', (_req, res) => {
@@ -3420,8 +3426,90 @@ const _MODEL_CALL_KEEP = 300;
 const _lastCall = {};
 function _recordModelCall(row) {
   _modelCalls.push({ at: Date.now(), ...row });
+  _spendRecord(row);
   if (_modelCalls.length > _MODEL_CALL_KEEP) _modelCalls.splice(0, _modelCalls.length - _MODEL_CALL_KEEP);
 }
+// ── The spend ledger (js/aiSpend.js): every paid call by UTC day, job and caller, kept in KV so a deploy cannot
+// wipe it. Written 2026-11-07 after $56.82 of Sonnet on 2026-11-04 could not be traced: the ring buffer above resets
+// on every deploy and a task name ('desk-head') is shared by fifteen different jobs. Saved a minute after a call and on
+// SIGTERM. The daily cap on Anthropic spend is enforced in callModel.
+const _SPEND_KV = d => `ai_spend_v1:${d}`;
+const _SPEND_CAP_KV = 'ai_spend_cap_v1';
+const _SPEND_CAP_DEFAULT = 20;   // USD a UTC day on Anthropic; AI_DAILY_CAP_USD or the Bot Config page change it, 0 = off
+const _spend = { days: {}, loaded: {}, dirty: new Set(), cap: null, capAt: 0, warned: {}, flushTimer: null };
+function _spendRecord(row) {
+  try {
+    const d = _spDay(Date.now());
+    const day = _spend.days[d] ??= _spEmpty(d);
+    _spAdd(day, { at: Date.now(), ...row }, _aiConfig().prices);
+    _spend.dirty.add(d);
+    _spendAlertCheck(d, day);
+    // one save a minute after the first unsaved call (a debounce, not a background timer: nothing runs while idle). ai_*
+    // keys go to Cloudflare KV (kv.js isCfKey; the account is on a paid plan): at most ~1,440 writes a day from here
+    if (!_spend.flushTimer) { _spend.flushTimer = setTimeout(() => { _spend.flushTimer = null; _spendFlush().catch(() => {}); }, 60_000); _spend.flushTimer.unref?.(); }
+  } catch (e) { console.warn('[ai-spend] record failed:', e.message); }
+}
+/** Make sure what KV holds for this day is merged in (once per day per process). */
+async function _spendLoad(d) {
+  if (_spend.loaded[d]) return _spend.loaded[d];
+  return (_spend.loaded[d] = (async () => {
+    try {
+      const raw = await kv.get(_SPEND_KV(d));
+      const stored = raw ? JSON.parse(raw) : null;
+      if (stored) { _spend.days[d] = _spMerge(stored, _spend.days[d] ?? _spEmpty(d)); _spend.dirty.add(d); }
+    } catch (e) { console.warn('[ai-spend] load failed:', e.message); _spend.loaded[d] = null; }
+  })());
+}
+async function _spendFlush() {
+  for (const d of [..._spend.dirty]) {
+    try { await _spendLoad(d); await kv.put(_SPEND_KV(d), JSON.stringify(_spend.days[d])); _spend.dirty.delete(d); }
+    catch (e) { console.warn('[ai-spend] flush failed:', e.message); }
+  }
+}
+async function _spendCap() {
+  if (_spend.cap != null && Date.now() - _spend.capAt < 60_000) return _spend.cap;
+  let cap = Number(process.env.AI_DAILY_CAP_USD ?? _SPEND_CAP_DEFAULT);
+  try { const raw = await kv.get(_SPEND_CAP_KV); const v = raw ? JSON.parse(raw)?.usd : null; if (v != null && Number.isFinite(+v)) cap = +v; } catch { /* env/default */ }
+  _spend.cap = Number.isFinite(cap) ? cap : _SPEND_CAP_DEFAULT; _spend.capAt = Date.now();
+  return _spend.cap;
+}
+/** Today's Anthropic spend so far (UTC), with KV merged in. */
+async function _spendToday() {
+  const d = _spDay(Date.now());
+  await _spendLoad(d);
+  return _spend.days[d]?.anthropicUsd ?? 0;
+}
+function _aiCallerLabel() { return _spCaller(new Error().stack); }
+
+// Telegram at every £N of model spend in a UTC day (tgMaster.aiSpend mutes it). The step is in pounds: KV
+// ai_spend_alert_v1 { gbp } from the Bot Config page, else AI_SPEND_ALERT_GBP, else £5; 0 = no alerts. Dollars are
+// turned into pounds at the live GBP/USD price, or AI_SPEND_GBPUSD (default 1.30) when no price has been fetched.
+// The step already sent is kept on the day in KV, so a restart does not resend it.
+const _SPEND_ALERT_KV = 'ai_spend_alert_v1';
+const _spendAlertCfg = { gbp: Number(process.env.AI_SPEND_ALERT_GBP ?? 5), at: 0, source: process.env.AI_SPEND_ALERT_GBP != null ? 'env' : 'default' };
+async function _spendAlertLoad() {
+  if (Date.now() - _spendAlertCfg.at < 60_000) return _spendAlertCfg;
+  _spendAlertCfg.at = Date.now();
+  try { const raw = await kv.get(_SPEND_ALERT_KV); const v = raw ? JSON.parse(raw)?.gbp : null; if (v != null && Number.isFinite(+v)) { _spendAlertCfg.gbp = +v; _spendAlertCfg.source = 'page'; } } catch { /* keep */ }
+  return _spendAlertCfg;
+}
+_spendAlertLoad().catch(() => {});
+function _spendFx() {
+  const live = Number(state.prices?.['GBP/USD']?.price);
+  return live > 0.5 && live < 3 ? { fx: live, live: true } : { fx: Number(process.env.AI_SPEND_GBPUSD ?? 1.30) || 1.30, live: false };
+}
+function _spendAlertCheck(d, day) {
+  _spendAlertLoad().catch(() => {});
+  const { fx } = _spendFx();
+  const a = _spAlertStep({ usd: day.usd, step: _spendAlertCfg.gbp, fx, alerted: day.alerted ?? 0 });
+  if (!a.fire) return;
+  day.alerted = a.step;
+  const s = _spSummary(day);
+  const text = _spAlertText({ day: d, summary: s, threshold: +(a.step * _spendAlertCfg.gbp).toFixed(2), fx, last: s.log[0] ?? null });
+  if (!tgOn('aiSpend') || !state.tg?.token || !state.tg?.chatId) { console.log(`[ai-spend] alert not sent (Telegram off or muted): ${text.replace(/<[^>]+>/g, '')}`); return; }
+  sendTelegram(state.tg.token, state.tg.chatId, text).catch(() => {});
+}
+
 function modelCallStats() {
   const cfg = _aiConfig();
   const byTask = {}, byProvider = {};
@@ -3472,12 +3560,28 @@ async function _longPost(url, headers, body, timeoutMs) {
     req.end(body);
   });
 }
+// Model calls waiting on a provider right now. `var`, not `let`: the SIGTERM handler near the top reads it and must not
+// hit the temporal dead zone if a signal arrives while the module is still loading.
+var _aiInFlight = 0;
+var _egressFlush = null;   // set once egressPersist has loaded; called by the SIGTERM handler
 // `images` ([{ mediaType, data: base64 }]): pictures sent with the prompt, on a provider that reads them (anthropic). A
 // task routed to one that cannot (DeepSeek, Kimi) is refused here with a clear error, never sent (modelRouter refuses too).
-async function callModel({ task = 'misc', system = '', standing = '', prompt = '', maxTokens = 4000, temperature = null, timeoutMs = 300_000, images = [] } = {}) {
+async function callModel({ task = 'misc', system = '', standing = '', prompt = '', maxTokens = 4000, temperature = null, timeoutMs = 300_000, images = [], label = null } = {}) {
   const cfg = _aiConfig();
   const r = aiResolveTask(task, cfg);
   const P = AI_PROVIDERS[r.provider];
+  label = label ?? _aiCallerLabel() ?? task;   // who asked: the spend ledger's row (a task name alone is shared by many jobs)
+  // The daily cap on Anthropic spend (js/aiSpend.js capCheck). Refused before anything is sent, so nothing is billed.
+  if (r.provider === 'anthropic') {
+    const [spent, cap] = await Promise.all([_spendToday(), _spendCap()]);
+    const c = _spCap({ provider: r.provider, spentUsd: spent, cap });
+    if (!c.ok) {
+      _recordModelCall({ task, label, provider: r.provider, model: r.model, blocked: true });
+      const day = _spDay(Date.now());
+      if (!_spend.warned[day]) { _spend.warned[day] = true; console.warn(`[ai-spend] ${c.reason}`); }
+      const e = new Error(c.reason); e.status = 429; e.provider = r.provider; throw e;
+    }
+  }
   if (images?.length && !P.vision) { const e = new Error(`${P.label} cannot read images (task ${task} is routed to it); route it to Anthropic`); e.status = 400; throw e; }
   const key = process.env[P.keyEnv];
   if (!key) { const e = new Error(`${P.keyEnv} not configured`); e.status = 503; throw e; }
@@ -3489,25 +3593,26 @@ async function callModel({ task = 'misc', system = '', standing = '', prompt = '
   const started = Date.now();
   // A provider that never answers must not hold the single brief slot forever (every retry gets a 409 until it ends), so the call is bounded.
   let httpRes;
+  _aiInFlight++;   // the SIGTERM handler waits for these before exiting (see the shutdown block near the top)
   try {
     httpRes = timeoutMs > 300_000
       ? await _longPost(req.url, aiAuthHeaders(req, key), JSON.stringify(req.body), timeoutMs)   // past fetch's 300 s header limit
       : await fetch(req.url, { method: 'POST', headers: aiAuthHeaders(req, key), body: JSON.stringify(req.body), signal: AbortSignal.timeout(timeoutMs) });
   } catch (err) {
-    _recordModelCall({ task, provider: r.provider, model: r.model, ok: false, httpStatus: 0, ms: Date.now() - started });
+    _recordModelCall({ task, label, provider: r.provider, model: r.model, ok: false, httpStatus: 0, ms: Date.now() - started });
     const e = new Error(err?.name === 'TimeoutError' ? `${P.label} did not answer within ${Math.round(timeoutMs / 60000)} minutes` : `${P.label} request failed: ${err?.message ?? err}${err?.cause?.code ? ` (${err.cause.code})` : ''}`);
     e.status = 504; e.provider = r.provider; throw e;
-  }
+  } finally { _aiInFlight--; }
   if (!httpRes.ok) {
     const body = (await httpRes.text().catch(() => '')).slice(0, 300);
     const e = new Error(`${P.label} ${httpRes.status}${body ? ': ' + body : ''}`);
     e.status = 502; e.provider = r.provider;
-    _recordModelCall({ task, provider: r.provider, model: r.model, ok: false, httpStatus: httpRes.status, ms: Date.now() - started });
+    _recordModelCall({ task, label, provider: r.provider, model: r.model, ok: false, httpStatus: httpRes.status, ms: Date.now() - started });
     throw e;
   }
   const out = aiReadResponse(r.provider, await httpRes.json());
   _recordModelCall({
-    task, provider: r.provider, model: r.model, ok: true, usage: out.usage,
+    task, label, provider: r.provider, model: r.model, ok: true, usage: out.usage,
     truncated: out.truncated, clamped: req.clamped, ms: Date.now() - started,
   });
   // Keep the last REAL call of each task, prompt and answer both. This is what makes the
@@ -3570,6 +3675,45 @@ app.get('/api/ai-config', async (_req, res) => {
     });
   } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
+// ── /api/ai-spend ─ what the model calls cost, by UTC day and by the job that made them ──────────────
+// GET ?days=14: one summary per day, dearest rows first (js/aiSpend.js daySummary), plus the cap and today's spend.
+// POST { usd }: the daily Anthropic cap (0 = off), stored in KV so it changes without a deploy.
+app.get('/api/ai-spend', async (req, res) => {
+  try {
+    const n = Math.max(1, Math.min(62, Number(req.query.days) || 14));
+    const days = [];
+    for (let i = 0; i < n; i++) {
+      const d = _spDay(Date.now() - i * 86_400_000);
+      await _spendLoad(d);
+      if (_spend.days[d]) days.push(_spSummary(_spend.days[d]));
+    }
+    const cap = await _spendCap();
+    res.json({ ok: true, cap, capSource: (await kv.get(_SPEND_CAP_KV).catch(() => null)) ? 'page' : (process.env.AI_DAILY_CAP_USD != null ? 'env' : 'default'),
+      todayAnthropicUsd: +(await _spendToday()).toFixed(4), days, listPrices: _SP_PRICES,
+      alert: { gbp: (await _spendAlertLoad()).gbp, source: _spendAlertCfg.source, muted: !tgOn('aiSpend'), telegram: !!(state.tg?.token && state.tg?.chatId) }, fx: _spendFx(),
+      note: 'USD at Anthropic list prices (PRICE_* env vars override). Recorded since 2026-11-07; earlier days are not in this ledger. Calls with no reply may still have been billed.' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/ai-spend/cap', async (req, res) => {
+  try {
+    const usd = Number(req.body?.usd);
+    if (!Number.isFinite(usd) || usd < 0 || usd > 10_000) return res.status(400).json({ error: 'usd must be a number from 0 (off) to 10000' });
+    await kv.put(_SPEND_CAP_KV, JSON.stringify({ usd, at: new Date().toISOString() }));
+    _spend.cap = null;
+    res.json({ ok: true, cap: usd });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// POST { gbp }: the Telegram alert step in pounds (0 = no alerts).
+app.post('/api/ai-spend/alert', async (req, res) => {
+  try {
+    const gbp = Number(req.body?.gbp);
+    if (!Number.isFinite(gbp) || gbp < 0 || gbp > 10_000) return res.status(400).json({ error: 'gbp must be a number from 0 (off) to 10000' });
+    await kv.put(_SPEND_ALERT_KV, JSON.stringify({ gbp, at: new Date().toISOString() }));
+    Object.assign(_spendAlertCfg, { gbp, source: 'page', at: Date.now() });
+    res.json({ ok: true, gbp });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── /api/ai-ab ─ is the cheap model actually good enough on THIS job? ─────────
 //
 // Replays the last REAL prompt for a task through a second provider and compares the two
@@ -3663,7 +3807,7 @@ app.post('/api/ai-ab', async (req, res) => {
     }
     const outB = aiReadResponse(r.provider, await httpRes.json());
     const ms = Date.now() - t0;
-    _recordModelCall({ task, provider: r.provider, model: r.model, ok: true, usage: outB.usage,
+    _recordModelCall({ task, label: 'ai-ab comparison', provider: r.provider, model: r.model, ok: true, usage: outB.usage,
                        truncated: outB.truncated, clamped: reqB.clamped, ms, ab: true });
 
     const { compareOutputs, structuralCheck } = await import('./js/modelAudit.js');
@@ -4511,10 +4655,10 @@ async function _deskRun(trigger, job, mode = 'full') {
     exposureCap: Number(process.env.DESK_EXPOSURE_CAP ?? 4),   // per-currency cap in normal-size units; 0 turns it off
     styleExamples: _deskStyleExamples(await _nlLoad().catch(() => []) ?? []),   // the latest regular issues, so the desk edition matches their voice
     parseJson: (txt, label) => _parseModelJson(txt, label),
-    callModel: async ({ task, system, prompt, maxTokens }) => {
+    callModel: async ({ task, system, prompt, maxTokens, label }) => {
       // the Head and the single-prompt control write a card for every market (51 since prereg A13): up to ~30k tokens
       // of output, which can run past the default 5-minute wait
-      const r = await callModel({ task, system, prompt, maxTokens, ...(maxTokens >= 24_000 ? { timeoutMs: 600_000 } : {}) });
+      const r = await callModel({ task, system, prompt, maxTokens, label, ...(maxTokens >= 24_000 ? { timeoutMs: 600_000 } : {}) });
       return { text: r.text ?? _antText(r), usage: r.usage ?? null, model: r.model ?? null, truncated: !!r.truncated };
     },
     onProgress: p => {
@@ -5043,6 +5187,11 @@ async function _duRun(slot, date) {
     ['Events, risk and liquidity, read now', fresh.join('\n\n')],
     ['Headlines since the book (the news analyst; context, never a signal on its own)', await _nwLoad().then(st => _nwText(_nwPick(st.wire, { sinceMs: Date.parse(run.finishedAt), tier: 2, limit: 25 })) || '(none at tier 1-2)').catch(() => '(the wire was unavailable)')],
   ] });
+  // The attempt is written down before anything is paid for, so the 5-minute schedule tries a slot once (two calls at
+  // most) and a restart does not try it again. Before 2026-11-07 a failed slot was retried every tick for 90 minutes:
+  // up to 36 Sonnet calls for one slot. The page's run button still runs it on demand.
+  updates.tries = { ...(updates.tries ?? {}), [slot]: (updates.tries?.[slot] ?? 0) + 1 };
+  await kv.put(_DU_KEY(date), JSON.stringify(updates)).catch(() => {});
   let value = null, model = null;
   for (let i = 0; i < 2 && !value; i++) {
     try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 16_000 }); model = r.model ?? null; const v = _duValidate(_parseModelJson(r.text ?? _antText(r), 'desk:update'), view); if (v.ok) value = v.value; }
@@ -5636,12 +5785,15 @@ async function _rcReview(id, job) {
   const picSection = !pics.length ? [] : [[`The pictures attached to this case (${pics.length})`, sent.length
     ? `${sent.length} picture${sent.length > 1 ? 's are' : ' is'} sent with this prompt as images, in this order: ${sent.map((x, i) => `image ${i + 1} = ${x}`).join('; ')}. Each one's vision reading is in the case above under the owner's message it came with. Check every reading against its picture and flag any mismatch (a wrong number, level, date or label) in peerReview, naming the picture id.${sent.length < pics.length ? ` Not available to send: ${pics.filter(a => !sent.includes(a.id)).map(a => a.id).join(', ')} (read their transcriptions only).` : ''}`
     : `The pictures could not be sent with this prompt (${AI_PROVIDERS[headProv]?.vision ? 'their files are no longer stored' : `${AI_PROVIDERS[headProv]?.label ?? headProv} cannot read images`}); work from the vision model's transcriptions in the case and treat their numbers as unverified.`]];
-  const { system, prompt } = _deskStagePrompt({ role, pack: { date: _dpLondonDate(Date.now()) }, ledger: DESK_EVIDENCE, sections: [
-    ..._RCS.headSections(c, { lib, fb, quickTests, catalogue: Object.keys(QT.CATALOGUE), papers }),
-    ...picSection,
+  // The three sections that are the same for every review (about 50k tokens, most of it the whole Evidence Book) come
+  // first and are marked stable, so a second review within 5 minutes reads them from Anthropic's cache at a tenth of
+  // the price. Until 2026-11-07 they came after the case and were paid for in full on every review.
+  const { system, prompt } = _deskStagePrompt({ role, pack: { date: _dpLondonDate(Date.now()) }, ledger: DESK_EVIDENCE, stableSections: 3, sections: [
     ['The data inventory (feeds the server holds; name feed ids in the plan)', _rpInventory()],
     ['The Evidence Book (every entry: [tag] claim -> use)', evidenceBrief(DESK_EVIDENCE)],
     ['The research register (id [status] question -> next)', _tdRegisterText(rows)],
+    ..._RCS.headSections(c, { lib, fb, quickTests, catalogue: Object.keys(QT.CATALOGUE), papers }),
+    ...picSection,
   ] });
   job.stage = 'the Head of Research is reading the case';
   const lenses = [...new Set(c.rounds.flatMap(r => Object.keys(r.answers ?? {})))];
@@ -6084,7 +6236,7 @@ async function _modelJson({ task = 'desk-head', system, prompt, maxTokens = 12_0
   for (let i = 0; i < tries; i++) {
     onCall?.();
     let r;
-    try { r = await callModel({ task, system, prompt: p, maxTokens: cap, ...(timeoutMs ? { timeoutMs } : {}), ...(images?.length ? { images } : {}) }); }
+    try { r = await callModel({ task, system, prompt: p, maxTokens: cap, label, ...(timeoutMs ? { timeoutMs } : {}), ...(images?.length ? { images } : {}) }); }
     catch (e) { err = e.message; continue; }
     const text = r.text ?? _antText(r), cut = r.stop_reason === 'max_tokens' || r.truncated === true, obj = _parseModelJson(text, label);
     if (obj) { const v = validate(obj); if (v.ok) return { ...v, model: r.model ?? null }; err = v.errors.join('; '); }
@@ -7652,7 +7804,8 @@ svcInterval('deskUpdate', async () => {
   for (const slot of Object.keys(_DU_SLOTS)) {
     const t = _duSlotMs(date, slot);
     if (now < t || now > t + 90 * 60_000) continue;
-    if ((await _duLoad(date)).slots?.[slot]) continue;
+    const u = await _duLoad(date);
+    if (u.slots?.[slot] || (u.tries?.[slot] ?? 0) >= 1) continue;   // done, or already tried once (see _duRun)
     const run = await _dsRunFor(date);
     if (!run?.head?.ok || !(Date.parse(run.finishedAt) < t)) continue;
     _duStart(slot, date); return;
@@ -12264,7 +12417,10 @@ async function _fiscalCheck(reason, { force = false, only = null } = {}) {
     const rd = fiscalReadiness(ev, have);
     const newSinceRead = have.some(k => !(st?.analysedKinds ?? []).includes(k));
     // a manual check re-fetches, but only new documents (or a failed read) cost another model call
-    if (rd.ready && (newSinceRead || st?.error)) {
+    // a failed read is retried at most every 6 hours (it used to be retried at every 5-minute poll and every boot while a
+    // document was still awaited); new documents, or a manual check, still read straight away
+    const errorRetry = !!st?.error && (force || Date.now() - (Date.parse(st.generatedAt) || 0) > 6 * 3600_000);
+    if (rd.ready && (newSinceRead || errorRetry)) {
       const out = await _fiscalAnalyse(ev, docs); row.analysed = true; row.analysisError = out.error;
       if (state.tg?.token && state.tg?.chatId && svcEnabled('fiscalEvents') && out.analysis?.headline && !st?.analysis && Date.now() - ev.ms < 2 * 86400_000) {
         const nums = out.rows.slice(0, 4).map(r => `${r.label}: <b>${r.value}</b>${r.change ? ` (${r.change})` : ''}`).join('\n');
