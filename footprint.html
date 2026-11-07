@@ -2,449 +2,584 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Volume Footprint</title>
 <style>
 :root{
-  --bg:#07090c; --bg2:#0d1117; --line:#1c232c; --line2:#2a323d;
-  --tx:#eef1f5; --tx2:#a8b1bd; --tx3:#6b7585;
-  --long:70,184,122; --short:232,97,95; --acc:#f0b04a; --cy:#5cc8ff;
+  --bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--grid:rgba(255,255,255,.05);
+  --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+  --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--cy:#5cc8ff;
   --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
-*{box-sizing:border-box}
-body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#121a26 0%,var(--bg) 60%);color:var(--tx);
-  font:14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
-.wrap{max-width:1800px;margin:0 auto;padding:16px 16px 50px}
-header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:10px}
-h1{margin:0;font-size:20px;letter-spacing:.16em;text-transform:uppercase;font-weight:700}
-h1 b{color:var(--acc)} h1 small{color:var(--tx3);font-size:11px;letter-spacing:.14em;margin-left:8px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font:13px/1.4 -apple-system,'Segoe UI',Roboto,sans-serif;display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+a{color:var(--blue);text-decoration:none}
+.hdr,.bar{display:flex;align-items:center;gap:8px;padding:6px 12px;flex:none;overflow-x:auto;scrollbar-width:none}
+.hdr::-webkit-scrollbar,.bar::-webkit-scrollbar{display:none}
+.hdr{border-bottom:1px solid var(--border)}
+.bar{border-bottom:1px solid var(--border);background:var(--card)}
+h1{font-size:15px;font-weight:700;white-space:nowrap}
 .sp{flex:1}
-.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
-.ctl label{font:11px var(--mono);color:var(--tx3);letter-spacing:.08em;text-transform:uppercase;display:flex;gap:6px;align-items:center}
-select,.btn{background:rgba(255,255,255,.03);border:1px solid var(--line2);color:var(--tx2);padding:6px 10px;border-radius:8px;font:12.5px var(--mono);cursor:pointer}
-.btn:hover,select:hover{border-color:var(--acc);color:var(--tx)}
-.btn.on{border-color:var(--acc);color:var(--acc)}
-.live{font:12px var(--mono);padding:4px 10px;border-radius:999px;border:1px solid var(--line2);color:var(--tx3)}
-.live.on{color:rgb(var(--long));border-color:rgba(var(--long),.5)}
-.live.stale{color:var(--acc);border-color:rgba(240,176,74,.5)}
-.live.on::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:rgb(var(--long));margin-right:6px;animation:p 1.6s infinite}
-@keyframes p{50%{opacity:.25}}
-.stats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
-.stat{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01));border:1px solid var(--line);border-radius:10px;padding:7px 13px;min-width:120px}
-.stat .k{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3)}
-.stat .v{font:600 17px var(--mono)}
-.chart{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg2);height:calc(100vh - 190px);min-height:620px}
-canvas{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
+select{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 6px;font:12px inherit;font-family:inherit;min-height:30px}
+.btn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:0 10px;font:600 12px inherit;font-family:inherit;cursor:pointer;min-height:30px;white-space:nowrap}
+.btn:hover{color:var(--text);border-color:#4d5560}
+.btn.on,.btn[aria-pressed=true]{background:#22304d;color:#fff;border-color:var(--blue)}
+.btn:disabled{opacity:.35;cursor:default}
+.seg{display:flex;flex:none}
+.seg .btn{border-radius:0;margin-left:-1px}
+.seg .btn:first-child{border-radius:6px 0 0 6px;margin-left:0}
+.seg .btn:last-child{border-radius:0 6px 6px 0}
+.chip{font-size:11px;padding:3px 9px;border-radius:999px;border:1px solid var(--border);color:var(--text2);white-space:nowrap;flex:none}
+.chip.on{color:var(--bull);border-color:var(--bull)}
+.chip.stale{color:var(--amber);border-color:var(--amber)}
+#readout{flex:none;font:12px/1.5 var(--mono);color:var(--text2);padding:5px 12px;border-bottom:1px solid var(--border);min-height:47px;font-variant-numeric:tabular-nums}
+#readout b{color:var(--text);font-weight:600}
+#readout .l2{color:var(--text3)}
+#chart{flex:1;min-height:0;position:relative;touch-action:none}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
 canvas.drag{cursor:grabbing}
-.tip{position:absolute;pointer-events:none;background:#0b0f15f0;border:1px solid var(--line2);border-radius:8px;padding:7px 10px;font:12px/1.45 var(--mono);color:var(--tx2);display:none;white-space:nowrap;z-index:2}
-.tip b{color:var(--tx)}
-.note{color:var(--tx3);font-size:12.5px;margin-top:10px;max-width:1100px}
-.note code{font:12px var(--mono);color:var(--tx2)}
-.empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--tx3);font:13px var(--mono);text-align:center;padding:20px}
+canvas.ns{cursor:ns-resize}
+#empty{position:absolute;inset:0;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;color:var(--text2);text-align:center;padding:20px}
+#empty[hidden]{display:none}
+#auto{position:absolute;top:6px;z-index:2}
+#auto[hidden]{display:none}
+dialog{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:16px 18px;max-width:640px;width:calc(100% - 24px);margin:auto}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+dialog h2{font-size:14px;margin-bottom:8px}
+dialog h3{font-size:12px;margin:12px 0 3px;color:var(--text)}
+dialog p,dialog li{font-size:12.5px;color:var(--text2);line-height:1.55}
+dialog ul{margin-left:16px}
+dialog code{font:12px var(--mono);color:var(--text)}
+.opt{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center;font-size:12.5px;color:var(--text2)}
+.opt input{width:18px;height:18px}
+.rowend{display:flex;justify-content:flex-end;margin-top:12px}
+.short{display:none}
+@media (max-width:700px){
+  .hdr,.bar{padding:5px 8px;gap:6px}
+  h1,#dayPrev,#dayNext,.long{display:none}
+  .short{display:inline}
+  .btn{padding:0 8px}
+  #readout{font-size:11px;padding:4px 8px;min-height:39px}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-<header>
-  <h1>Volume <b>Footprint</b><small>bid × ask at every price</small></h1>
+<header class="hdr">
+  <a href="today.html" aria-label="Back to Today">&larr;</a>
+  <h1>Footprint</h1>
+  <select id="sym" aria-label="Market"></select>
+  <button class="btn" id="dayPrev" aria-label="Earlier day">&lsaquo;</button>
+  <select id="day" aria-label="Day"></select>
+  <button class="btn" id="dayNext" aria-label="Later day">&rsaquo;</button>
   <span class="sp"></span>
-  <span id="live" class="live">offline</span>
+  <span id="live" class="chip">—</span>
+  <button class="btn" id="helpBtn" aria-label="How to read"><span class="long">How to read</span><span class="short">?</span></button>
 </header>
-
-<div class="ctl">
-  <label>Market <select id="sym"></select></label>
-  <label>Day <select id="day"></select></label>
-  <label>Bar <select id="bar">
-    <option value="1">1m</option><option value="5" selected>5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option>
-  </select></label>
-  <label>Row <select id="row">
-    <option value="0" selected>auto</option><option value="1">1 tick</option><option value="2">2</option><option value="4">4</option><option value="8">8</option><option value="16">16</option><option value="40">40</option>
-  </select></label>
-  <label>Session <select id="sess">
-    <option value="rth" selected>US cash</option><option value="all">24h</option><option value="eu">London</option><option value="asia">Asia</option>
-  </select></label>
-  <label>View <select id="view">
-    <option value="candle">candles</option><option value="ba" selected>bid × ask</option><option value="delta">delta</option><option value="vol">volume</option>
-  </select></label>
-  <label>Imbalance <select id="ratio">
-    <option value="2">2×</option><option value="3" selected>3×</option><option value="4">4×</option><option value="0">off</option>
-  </select></label>
-  <button class="btn" id="zin" title="Wider columns">+</button>
-  <button class="btn" id="zout" title="Narrower columns">−</button>
-  <button class="btn" id="end">Latest ⟶</button>
+<div class="bar">
+  <div class="seg" id="views" role="group" aria-label="Chart type">
+    <button class="btn" data-v="candle">Candles</button><button class="btn" data-v="fp">Footprint</button>
+  </div>
+  <div class="seg" id="tfs" role="group" aria-label="Bar size"></div>
+  <select id="sess" aria-label="Session">
+    <option value="rth">US cash</option><option value="all">24h</option><option value="eu">London</option><option value="asia">Asia</option>
+  </select>
+  <button class="btn" id="fit" title="Show the whole session (F)">Fit</button>
+  <button class="btn" id="end" title="Go to the latest bar (L)">Latest</button>
+  <button class="btn" id="optBtn">Display</button>
+</div>
+<div id="readout" aria-live="off"></div>
+<div id="chart">
+  <canvas id="cv" role="img" aria-label="Price, delta and cumulative volume delta for the chosen day. The figures are in the readout above the chart."></canvas>
+  <button class="btn" id="auto" hidden title="Fit prices to the bars on screen again">Auto scale</button>
+  <div id="empty">loading…</div>
 </div>
 
-<div class="stats" id="stats"></div>
+<dialog id="opt">
+  <h2>Display</h2>
+  <div class="opt">
+    <label for="cells">Footprint cells</label>
+    <select id="cells"><option value="ba">Sell × buy</option><option value="delta">Delta</option><option value="vol">Volume</option></select>
+    <label for="row">Row size</label>
+    <select id="row"><option value="0">Auto, follows zoom</option><option value="1">1 tick</option><option value="2">2 ticks</option><option value="4">4 ticks</option><option value="8">8 ticks</option><option value="16">16 ticks</option><option value="40">40 ticks</option></select>
+    <label for="ratio">Imbalance</label>
+    <select id="ratio"><option value="2">2×</option><option value="3">3×</option><option value="4">4×</option><option value="0">Off</option></select>
+    <label for="pDelta">Delta pane</label><input type="checkbox" id="pDelta">
+    <label for="pCvd">CVD pane</label><input type="checkbox" id="pCvd">
+    <label for="pProf">Session profile</label><input type="checkbox" id="pProf">
+  </div>
+  <div class="rowend"><button class="btn" data-close>Close</button></div>
+</dialog>
 
-<div class="chart" id="wrapC">
-  <canvas id="cv"></canvas>
-  <div class="tip" id="tip"></div>
-  <div class="empty" id="empty">loading…</div>
-</div>
-
-<div class="note">
-  <b>Reading it.</b> Each column is one bar. Left number = contracts sold into the bid (aggressive sellers), right = bought at the ask (aggressive buyers).
-  Shading is size. <span style="color:rgb(70,184,122)">Green</span> / <span style="color:rgb(232,97,95)">red</span> bold numbers are diagonal imbalances
-  (ask at a price vs bid one row below, at least the chosen ratio and 10 lots); a bar beside three or more in a row marks a stacked imbalance. Amber box = the bar's POC.
-  The right panel is the session volume profile with the 70% value area. Under the chart: delta bars (buy − sell per bar, same scale all session) and the CVD line (the running total of delta from the start of the chosen session; change the session and it restarts). An amber dot marks a bar whose delta disagrees with its candle. Choose <b>candles</b> under View for the plain chart with volume along the bottom and each bar’s busiest price in amber.
-  Drag to pan, wheel to scroll price, shift+wheel to scroll time.
-  <br><b>Feed.</b> <code>scripts/footprint/start_footprint_capture.bat</code> on the NT8 laptop records the front contract of each market, signs each trade
-  against the bid/ask stored with it (the Sign rule tile shows the share; the rest fall back to the tick rule) and sends the day here. Finished days are kept. This page refreshes every 30 s while a day is live and the tab is open.
-  Days built from NT8 tick history use the tick rule, a rough stand-in: on 6E and 6J its bar imbalance correlated only about 0.5 with the exchange’s own aggressor flag. Times are UTC, read from the exchange stamp, and the Lucid feed arrives about 10 minutes late.
-  <br><b>Not a signal.</b> Bar-level buy/sell imbalance did not predict the next 5 or 15 minutes on NQ with the tick rule (<code>orderflow-lead</code>, 189 sessions) or on 6E and 6J with the exchange’s own aggressor flag (<code>orderflow-lead-aggressor</code>, 866 and 780 sessions). Both are powered nulls. Patterns such as absorption and stacked imbalances have not been tested, and an amber dot is a description, not a trade signal. Use this to read what happened, not to forecast.
-</div>
-</div>
+<dialog id="help">
+  <h2>How to read this</h2>
+  <p><b>Descriptive only, not a signal.</b> Bar-level buy/sell imbalance did not predict the next 5 or 15 minutes on NQ with the tick rule (<code>orderflow-lead</code>, 189 sessions) or on 6E and 6J with the exchange’s own aggressor flag (<code>orderflow-lead-aggressor</code>, 866 and 780 sessions). Both are powered nulls. Absorption and stacked imbalances have not been tested. An amber dot is a description, not a trade.</p>
+  <h3>On the chart</h3>
+  <ul>
+    <li><b>Footprint cells:</b> contracts sold into the bid on the left, bought at the ask on the right. Stronger shading is more size.</li>
+    <li><b>Strong cells with white figures:</b> diagonal imbalances, buyers at a price against sellers one row below (or the reverse), at the chosen ratio and at least 10 lots. A bar at the edge of a column marks three or more in a row.</li>
+    <li><b>Amber:</b> the bar’s busiest price (POC). The dashed amber line is the last price.</li>
+    <li><b>Delta:</b> buy minus sell per bar, on one scale for the session. An amber dot means delta disagrees with the candle.</li>
+    <li><b>CVD:</b> the running total of delta from the start of the chosen session. Change the session and it restarts.</li>
+    <li><b>Session profile:</b> volume at each price, with the 70% value area shaded on the chart.</li>
+  </ul>
+  <h3>Moving around</h3>
+  <ul>
+    <li><b>Mouse:</b> wheel zooms time, drag pans, shift + wheel pans, double-click fits the session. Drag the price axis to stretch prices.</li>
+    <li><b>Touch:</b> drag pans, pinch zooms, tap shows the crosshair and figures. Drag the price axis to stretch prices.</li>
+    <li><b>Keys:</b> ← → pan, + − zoom, F fit, L latest, C candles, P footprint.</li>
+  </ul>
+  <h3>The data</h3>
+  <p>From NinjaTrader. Recorded days sign each trade against the bid and ask stored with it; the readout shows the share, and the rest fall back to the tick rule. Days built from tick history use the tick rule, a rough stand-in: on 6E and 6J its bar imbalance correlated only about 0.5 with the exchange’s flag. Times are UTC, from the exchange stamp, and the Lucid feed arrives about 10 minutes late. Feed: <code>scripts/footprint/start_footprint_capture.bat</code>.</p>
+  <div class="rowend"><button class="btn" data-close>Close</button></div>
+</dialog>
 
 <script type="module">
 import { decode, aggregate, imbalances, profile, hhmm, decimals, r9 } from '/js/footprintCore.js';
 
 const $ = id => document.getElementById(id);
-const cv = $('cv'), ctx = cv.getContext('2d'), tip = $('tip');
-const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const G = 'rgb(70,184,122)', R = 'rgb(232,97,95)', AMB = '#f0b04a';
-const S = { days: [], doc: null, raw: [], bars: [], prof: null, colW: 96, rowH: 15, x0: 0, y0: 0, follow: true, live: null, timer: null };
-const AXIS = 76, FOOT = 54, HEAD = 22;
-const px = p => Number(p).toFixed(S.dec ?? 2);
-let PROF = 120;
+const cv = $('cv'), ctx = cv.getContext('2d'), wrap = $('chart');
+const token = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const C = { bull: token('--bull'), bear: token('--bear'), amber: token('--amber'), cy: token('--cy'), text: token('--text'), text2: token('--text2'), text3: token('--text3'), border: token('--border'), grid: token('--grid'), bg: token('--bg') };
+const BULL = '16,185,129', BEAR = '249,115,22', MONO = 'ui-monospace,Menlo,Consolas,monospace';
+const TFS = [1, 5, 15, 30, 60], ROWS = [1, 2, 4, 5, 8, 10, 16, 20, 40, 80, 100, 200, 400, 800];
+const TIME_H = 22;
+
+// Remembered per browser only; the page works the same if storage is blocked.
+const PREF_KEY = 'footprint_prefs_v2';
+const P = { sym: null, tf: 5, view: 'candle', sess: 'rth', cells: 'ba', row: 0, ratio: 3, delta: true, cvd: true, profile: innerWidth >= 700 };
+try { Object.assign(P, JSON.parse(localStorage.getItem(PREF_KEY) || '{}')); } catch { /* defaults */ }
+const savePrefs = () => { try { localStorage.setItem(PREF_KEY, JSON.stringify(P)); } catch { /* not kept */ } };
+
+const S = { days: [], liveList: [], doc: null, raw: [], memo: new Map(), bars: [], rt: 1, step: .25, dec: 2, colW: 12, x0: 0, anchor: 'fit', man: null, cross: null, timer: null, W: 0, H: 0, dirty: false, ticket: 0 };
+const px = p => Number(p).toFixed(S.dec);
+const fmtK = n => { const a = Math.abs(n); return a >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : a >= 10000 ? (n / 1000).toFixed(0) + 'k' : a >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); };
+const sgn = n => (n > 0 ? '+' : '') + fmtK(n);
+const sgnFull = n => (n > 0 ? '+' : '') + n.toLocaleString('en-US');
 
 // ── data ──
 async function j(u) { const r = await fetch(u, { cache: 'no-store' }); if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status); return r.json(); }
 async function loadDays() {
   try { const d = await j('/api/footprint/days'); S.days = d.days; S.liveList = d.live || []; }
   catch { try { S.days = await j('/analysis/output/footprint/site/fp_index.json'); } catch { S.days = []; } S.liveList = []; }
-  const sy = $('sym'), keep = sy.value, syms = [...new Set(S.days.map(d => d.sym))].sort();
+  const sy = $('sym'), keep = sy.value || P.sym, syms = [...new Set(S.days.map(d => d.sym))].sort();
   sy.innerHTML = syms.map(m => `<option value="${m}">${m}${S.liveList.some(l => l.sym === m) ? ' • live' : ''}</option>`).join('');
   if (syms.includes(keep)) sy.value = keep; else if (syms.includes('NQ')) sy.value = 'NQ';
   fillDays();
-  if (!S.days.length) { $('empty').textContent = 'No footprint days yet. Run scripts/footprint/start_footprint_capture.bat on the NT8 laptop.'; return false; }
+  if (!S.days.length) { showEmpty('No footprint days yet. They appear once scripts/footprint/start_footprint_capture.bat has recorded a session.'); return false; }
   return true;
 }
 function fillDays() {
   const sel = $('day'), keep = sel.value, m = $('sym').value, ds = S.days.filter(d => d.sym === m);
   sel.innerHTML = ds.map(d => `<option value="${d.day}">${d.day}${S.liveList.some(l => l.sym === m && l.day === d.day) ? ' • live' : ''}</option>`).join('');
   if (ds.some(d => d.day === keep)) sel.value = keep;
+  dayButtons();
 }
-function pill() {
+function dayButtons() { const s = $('day'); $('dayPrev').disabled = s.selectedIndex >= s.options.length - 1; $('dayNext').disabled = s.selectedIndex <= 0; }
+function showEmpty(msg, action) {
+  const e = $('empty'); e.hidden = false; e.textContent = msg;
+  if (action) { const b = document.createElement('button'); b.className = 'btn'; b.textContent = action.label; b.onclick = action.run; e.append(b); }
+}
+function chip() {
   const lv = $('live'), doc = S.doc; if (!doc) return;
-  if (!doc.live) { lv.className = 'live'; lv.textContent = doc.rule === 'quote' ? 'recorded · bid/ask matched' : 'history · tick rule'; return; }
-  const age = Math.round((Date.now() - Date.parse(doc.built)) / 1000), last = doc.last_trade ? doc.last_trade.slice(11, 19) + 'Z' : '—';
+  if (!doc.live) { lv.className = 'chip'; lv.textContent = doc.rule === 'quote' ? 'recorded' : 'history · tick rule'; return; }
+  const age = Math.round((Date.now() - Date.parse(doc.built)) / 1000);
   // Silence must not look live: the laptop or NT8 may have stopped.
-  if (age > 300) { lv.className = 'live stale'; lv.textContent = `feed stopped? last update ${Math.round(age / 60)} min ago`; }
-  else { lv.className = 'live on'; lv.textContent = `live · last trade ${last} · updated ${age}s ago`; }
+  if (age > 300) { lv.className = 'chip stale'; lv.textContent = `feed stopped? ${Math.round(age / 60)} min ago`; }
+  else { lv.className = 'chip on'; lv.textContent = `live · ${age}s ago`; }
 }
 async function loadDay() {
   const sym = $('sym').value, day = $('day').value;
+  P.sym = sym; savePrefs(); dayButtons();
+  const ticket = ++S.ticket;
   let doc;
   try { doc = await j(`/api/footprint/day?sym=${sym}&day=${day}`); }
   catch { doc = await j(`/analysis/output/footprint/site/fp_${sym}_${day}.json`); }
-  S.doc = doc; S.raw = decode(doc); S.dec = decimals(doc.tick);
-  [...$('bar').options].forEach(o => { o.disabled = +o.value < doc.base; });
-  if (+$('bar').value < doc.base) $('bar').value = String(doc.base);
-  pill();
+  if (ticket !== S.ticket) return;
+  S.doc = doc; S.raw = decode(doc); S.dec = decimals(doc.tick); S.memo.clear();
+  chip(); drawTfs();
   clearInterval(S.timer);
   if (doc.live) S.timer = setInterval(refresh, 30_000);
   rebuild();
 }
 async function refresh() {
   if (document.hidden) return;   // a day's file is up to 1 MB and Railway bills egress: only a tab being looked at refreshes
-  const keepFollow = S.follow; await loadDays(); await loadDay(); if (keepFollow) toEnd();
+  await loadDays(); await loadDay();
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && S.doc?.live) refresh(); });
-setInterval(pill, 10_000);
+setInterval(chip, 10_000);
 
-// New York 09:30-16:00 for this day in UTC minutes (DST-aware), London 07:00-16:00 local, Asia 23:00 prior-1 -> 07:00 UTC.
-function nyOffsetMin(day) {
-  const d = new Date(day + 'T12:00:00Z');
-  const ny = new Date(d.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-  const utc = new Date(d.toLocaleString('en-US', { timeZone: 'UTC' }));
-  return Math.round((ny - utc) / 60000);
-}
-function lonOffsetMin(day) {
-  const d = new Date(day + 'T12:00:00Z');
-  return Math.round((new Date(d.toLocaleString('en-US', { timeZone: 'Europe/London' })) - new Date(d.toLocaleString('en-US', { timeZone: 'UTC' }))) / 60000);
-}
+// New York 09:30-16:00 in UTC minutes (DST-aware), London 07:00-16:30 local, Asia 00:00-07:00 UTC.
+const zoneOffset = (day, zone) => { const d = new Date(day + 'T12:00:00Z'); return Math.round((new Date(d.toLocaleString('en-US', { timeZone: zone })) - new Date(d.toLocaleString('en-US', { timeZone: 'UTC' }))) / 60000); };
 function sessionRange() {
-  const day = S.doc.day, v = $('sess').value;
-  if (v === 'rth') { const o = nyOffsetMin(day); return [570 - o, 960 - o]; }
-  if (v === 'eu') { const o = lonOffsetMin(day); return [420 - o, 990 - o]; }
+  const day = S.doc.day, v = P.sess;
+  if (v === 'rth') { const o = zoneOffset(day, 'America/New_York'); return [570 - o, 960 - o]; }
+  if (v === 'eu') { const o = zoneOffset(day, 'Europe/London'); return [420 - o, 990 - o]; }
   if (v === 'asia') return [0, 420];
   return [0, 1440];
 }
-
+function barsFor(rt) {
+  if (S.memo.has(rt)) return S.memo.get(rt);
+  const [a, b] = sessionRange(), step = S.doc.tick * rt;
+  const bars = aggregate(S.raw.filter(x => x.m >= a && x.m < b), { minutes: Math.max(P.tf, S.doc.base), rowTicks: rt, tick: S.doc.tick });
+  let cvd = 0; const stacks = P.ratio > 0;
+  for (const x of bars) { cvd += x.delta; x.cvd = cvd; x.imb = stacks ? imbalances(x.cells, { ratio: P.ratio, minVol: 10, rowStep: step, stack: 3 }) : { mark: new Map(), stacks: [] }; }
+  const set = { bars, prof: profile(bars), maxCell: Math.max(1, ...bars.map(x => x.maxCell)), maxVol: Math.max(1, ...bars.map(x => x.vol)), maxD: Math.max(1, ...bars.map(x => Math.abs(x.delta))) };
+  set.maxProf = Math.max(1, ...set.prof.rows.map(r => r.s + r.b));
+  S.memo.set(rt, set);
+  return set;
+}
 function rebuild() {
-  const tick = S.doc.tick, [a, b] = sessionRange();
-  const raw = S.raw.filter(x => x.m >= a && x.m < b);
-  const minutes = +$('bar').value;
-  let rowTicks = +$('row').value;
-  if (!rowTicks) {   // auto: about 10 rows across the median bar's range at the chosen bar size
-    const rng = new Map();
-    for (const x of raw) { const k = Math.floor(x.m / minutes); const r = rng.get(k) || [x.h, x.l]; rng.set(k, [Math.max(r[0], x.h), Math.min(r[1], x.l)]); }
-    const rs = [...rng.values()].map(([h, l]) => h - l).sort((p, q) => p - q);
-    const want = (rs[Math.floor(rs.length / 2)] || 0) / tick / 10;
-    rowTicks = [1, 2, 4, 8, 16, 40, 80].find(r => r >= want) || 80;
+  S.memo.clear(); S.man = null; S.cross = null;
+  S.rt = P.row || 8;
+  const set = barsFor(S.rt); S.bars = set.bars;
+  $('auto').hidden = true;
+  if (!S.bars.length) {
+    const other = P.sess !== 'all' && S.raw.length;
+    showEmpty(`No trades in this session on ${S.doc.day}.`, other ? { label: 'Show 24h', run: () => { P.sess = 'all'; $('sess').value = 'all'; savePrefs(); rebuild(); } } : null);
+    ctx.clearRect(0, 0, S.W, S.H); readout(); return;
   }
-  S.rowTicks = rowTicks; S.step = tick * rowTicks;
-  S.bars = aggregate(raw, { minutes, rowTicks, tick });
-  let cvd = 0; for (const x of S.bars) { cvd += x.delta; x.cvd = cvd; }
-  const ratio = +$('ratio').value;
-  for (const x of S.bars) x.imb = ratio ? imbalances(x.cells, { ratio, minVol: 10, rowStep: S.step, stack: 3 }) : { mark: new Map(), stacks: [] };
-  S.prof = profile(S.bars);
-  S.maxCell = Math.max(1, ...S.bars.map(x => x.maxCell));
-  S.maxVol = Math.max(1, ...S.bars.map(x => x.vol));
-  S.maxProf = Math.max(1, ...S.prof.rows.map(r => r.s + r.b));
-  S.hi = r9(Math.floor(r9(Math.max(...S.bars.map(x => x.h)) / S.step)) * S.step); S.lo = Math.min(...S.bars.map(x => x.l));   // the top row, on the same grid as the cells
-  $('empty').style.display = S.bars.length ? 'none' : 'flex';
-  if (!S.bars.length) $('empty').textContent = 'No trades in this session for this day. Try 24h.';
-  stats();
-  fitCandles();
-  if (S.follow) toEnd(); else draw();
+  $('empty').hidden = true;
+  if (S.anchor === 'latest') latest(); else if (S.anchor === 'fit') fit();
+  sync(); request();
 }
 
-function stats() {
-  const P = S.prof, vol = P.vol, buy = S.bars.reduce((a, x) => a + x.buy, 0), sell = S.bars.reduce((a, x) => a + x.sell, 0);
-  const last = S.bars.at(-1), f = n => n == null ? '—' : n.toLocaleString('en-US');
-  const c = S.doc.counts, q = c ? Math.round(100 * c.quote / Math.max(1, c.quote + c.tick_fallback)) : 0;
-  const tiles = [
-    ['Last', last ? px(last.c) : '—'], ['Volume', f(vol)],
-    ['Delta', `<span style="color:${buy - sell >= 0 ? G : R}">${buy - sell >= 0 ? '+' : ''}${f(buy - sell)}</span>`],
-    ['Buy share', vol ? (100 * buy / (buy + sell)).toFixed(1) + '%' : '—'],
-    ['POC', P.poc != null ? px(P.poc) : '—'], ['Value area', P.val != null ? `${px(P.val)} – ${px(P.vah + S.step - S.doc.tick)}` : '—'],
-    ['Row', `${S.rowTicks} tick${S.rowTicks > 1 ? 's' : ''} · ${px(S.step)}`],
-    ['Sign rule', S.doc.rule === 'quote' ? `bid/ask ${q}%` : 'tick rule'],
-  ];
-  $('stats').innerHTML = tiles.map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+// ── layout ──
+function size() {
+  const r = wrap.getBoundingClientRect(), d = devicePixelRatio || 1;
+  cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); ctx.setTransform(d, 0, 0, d, 0, 0);
+  S.W = r.width; S.H = r.height;
 }
+function L() {
+  const axis = 18 + 7 * (px(S.bars[0]?.c ?? 0).length), prof = P.profile ? (S.W < 700 ? 64 : 110) : 0;
+  const pane = Math.round(Math.max(36, Math.min(84, S.H * .12)));
+  const dH = P.delta ? pane : 0, cH = P.cvd ? pane : 0;
+  const pw = S.W - axis - prof, ph = S.H - TIME_H - dH - cH;
+  return { axis, prof, pw, ph, dH, cH, dy: ph, cy: ph + dH, ty: ph + dH + cH };
+}
+const clampX = (l, x) => { const n = S.bars.length * S.colW; return Math.max(-(l.pw - S.colW * 3), Math.min(n - S.colW * 2, x)); };
+function fit() { const l = L(), n = Math.max(1, S.bars.length); S.colW = Math.max(3, Math.min(P.view === 'fp' ? 120 : 28, (l.pw - 8) / (n + 1))); S.x0 = clampX(l, 0); S.anchor = 'fit'; }
+const fpWidth = () => (S.W < 700 ? 84 : 96);
+function latest() { const l = L(); if (P.view === 'fp' && S.colW < 40) S.colW = fpWidth(); S.x0 = clampX(l, S.bars.length * S.colW - l.pw + S.colW * .6); S.anchor = 'latest'; }
+const visible = l => [Math.max(0, Math.floor(S.x0 / S.colW)), Math.min(S.bars.length - 1, Math.ceil((S.x0 + l.pw) / S.colW) - 1)];
+function priceRange(l) {
+  if (S.man) return S.man;
+  const [a, b] = visible(l); let hi = -Infinity, lo = Infinity;
+  for (let i = a; i <= b; i++) { const x = S.bars[i]; if (x.h > hi) hi = x.h; if (x.l < lo) lo = x.l; }
+  if (!isFinite(hi)) { hi = S.bars.at(-1).h; lo = S.bars.at(-1).l; }
+  const pad = Math.max((hi - lo) * .06, S.doc.tick * 2);
+  return { hi: hi + pad, lo: lo - pad * (P.view === 'candle' ? 2.6 : 1) };     // extra room under candles for the volume bars
+}
+// Rows follow the zoom: the finest grid that still leaves each row readable.
+function chooseRows(l, r) {
+  if (P.row) return P.row;
+  const want = P.view === 'fp' ? 15 : 5, perPx = (r.hi - r.lo) / Math.max(1, l.ph) / S.doc.tick;
+  return ROWS.find(n => n / perPx >= want) || ROWS.at(-1);
+}
+function niceStep(span, n) { const raw = span / Math.max(1, n), m = 10 ** Math.floor(Math.log10(raw)); return [1, 2, 2.5, 5, 10].map(k => k * m).find(k => k >= raw); }
 
 // ── drawing ──
-function size() {
-  const r = cv.getBoundingClientRect(), d = devicePixelRatio || 1;
-  cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); ctx.setTransform(d, 0, 0, d, 0, 0);
-  S.W = r.width; S.H = r.height; PROF = S.W < 700 ? 70 : 120;
-}
-const isCandle = () => $('view').value === 'candle';
-const footH = () => (isCandle() ? 0 : FOOT);
-const paneH = () => (S.H < 640 ? 52 : 78);                                      // the delta bars and the CVD line, one pane each
-const plotW = () => S.W - AXIS - PROF, plotH = () => S.H - footH() - HEAD - 2 * paneH();
-function fitCandles() {                                                         // candles: the whole session fits; the wheel and drag still pan
-  if (!isCandle() || !S.bars.length) return;
-  S.rowH = plotH() * .92 / ((S.hi - S.lo) / S.step + 1); S.y0 = -plotH() * .04;
-  if (S.follow) S.colW = Math.max(4, Math.min(26, (plotW() - 12) / (S.bars.length + 1)));
-}
-const yOf = p => HEAD + (S.hi - p) / S.step * S.rowH - S.y0;                    // top edge of the row holding price p
-const xOf = i => i * S.colW - S.x0;
-function toEnd() {
-  S.x0 = Math.max(0, S.bars.length * S.colW - plotW() + 10);
-  const last = S.bars.at(-1); if (last && !isCandle()) S.y0 = (S.hi - last.c) / S.step * S.rowH - plotH() / 2;
-  draw();
-}
-function fmtK(n) { const a = Math.abs(n); return a >= 10000 ? (n / 1000).toFixed(0) + 'k' : a >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
-
+function request() { if (!S.dirty) { S.dirty = true; requestAnimationFrame(() => { S.dirty = false; draw(); }); } }
 function draw() {
   if (!S.W) size();
-  const W = S.W, H = S.H, pw = plotW(), ph = plotH(), rh = S.rowH;
-  ctx.clearRect(0, 0, W, H);
   if (!S.bars.length) return;
-  const view = $('view').value, mc = S.maxCell, step = S.step;
-  const fontPx = Math.min(12, rh - 3);
-  ctx.save(); ctx.beginPath(); ctx.rect(0, HEAD, pw, ph); ctx.clip();
-  // value area band
-  const P = S.prof;
-  if (P.val != null) { ctx.fillStyle = 'rgba(92,200,255,.045)'; ctx.fillRect(0, yOf(P.vah), pw, yOf(P.val) - yOf(P.vah) + rh); }
-  // price grid
-  ctx.strokeStyle = 'rgba(255,255,255,.035)'; ctx.lineWidth = 1;
-  const gridEvery = Math.max(1, Math.ceil(18 / rh) * 2);
-  for (let p = S.hi, k = 0; p >= S.lo - step; p -= step, k++) if (k % gridEvery === 0) { const y = Math.round(yOf(p)) + .5; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(pw, y); ctx.stroke(); }
-  const i0 = Math.max(0, Math.floor(S.x0 / S.colW)), i1 = Math.min(S.bars.length - 1, Math.ceil((S.x0 + pw) / S.colW));
-  const candleW = Math.max(3, Math.min(8, S.colW * .08)), cellX = candleW + 4, cellW = S.colW - cellX - 4, half = cellW / 2;
-  ctx.textBaseline = 'middle'; ctx.font = `${fontPx}px ui-monospace,Menlo,Consolas,monospace`;
-  const showText = rh >= 11 && cellW >= 44;
-  const candles = isCandle();
-  if (candles) {
-    // volume along the bottom of the price pane
-    for (let i = i0; i <= i1; i++) { const b = S.bars[i], h = ph * .16 * b.vol / S.maxVol; ctx.fillStyle = 'rgba(92,200,255,.16)'; ctx.fillRect(xOf(i) + S.colW * .15, HEAD + ph - h, Math.max(1, S.colW * .7), h); }
+  const l = L(), r0 = priceRange(l), rt = chooseRows(l, r0);
+  if (rt !== S.rt) { S.rt = rt; S.bars = barsFor(rt).bars; }
+  const set = barsFor(S.rt), { pw, ph, axis, prof } = l, W = S.W, H = S.H, step = S.doc.tick * S.rt;
+  S.step = step;
+  const r = r0, Y = p => (r.hi - p) / (r.hi - r.lo) * ph, rh = step / (r.hi - r.lo) * ph, X = i => i * S.colW - S.x0;
+  const [i0, i1] = visible(l), fp = P.view === 'fp';
+  ctx.clearRect(0, 0, W, H);
+  ctx.font = `11px ${MONO}`; ctx.textBaseline = 'middle';
+
+  // price pane
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, pw, ph); ctx.clip();
+  const P0 = set.prof;
+  if (P0.val != null) { ctx.fillStyle = 'rgba(92,200,255,.04)'; ctx.fillRect(0, Y(P0.vah + step), pw, Y(P0.val) - Y(P0.vah + step)); }
+  const gs = niceStep(r.hi - r.lo, Math.max(3, ph / 54)), ticks = [];
+  ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+  for (let p = Math.ceil(r.lo / gs) * gs; p <= r.hi; p += gs) { const y = Math.round(Y(p)) + .5; ticks.push([p, y]); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(pw, y); ctx.stroke(); }
+  // volume along the bottom
+  const volH = ph * (fp ? .08 : .14), bw = Math.max(1, S.colW * .72), bo = (S.colW - bw) / 2;
+  ctx.fillStyle = 'rgba(92,200,255,.16)';
+  for (let i = i0; i <= i1; i++) { const h = volH * S.bars[i].vol / set.maxVol; ctx.fillRect(X(i) + bo, ph - h, bw, h); }
+  if (fp) drawCells(set, i0, i1, X, Y, rh, ph, step);
+  else for (let i = i0; i <= i1; i++) {
+    const b = S.bars[i], x = X(i), up = b.c >= b.o, cx = Math.round(x + S.colW / 2) + .5;
+    ctx.strokeStyle = ctx.fillStyle = up ? C.bull : C.bear;
+    ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx, Y(b.h)); ctx.lineTo(cx, Y(b.l)); ctx.stroke();
+    const t = Y(Math.max(b.o, b.c)); ctx.fillRect(x + bo, t, bw, Math.max(1, Y(Math.min(b.o, b.c)) - t));
+    if (b.poc != null && S.colW >= 7) { ctx.fillStyle = C.amber; ctx.fillRect(x + bo, Y(b.poc + step / 2) - .5, bw, 1.5); }
+  }
+  const last = S.bars.at(-1), ly = Y(last.c);
+  ctx.setLineDash([3, 4]); ctx.strokeStyle = C.amber; ctx.globalAlpha = .6; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, ly); ctx.lineTo(pw, ly); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // delta pane
+  if (l.dH) {
+    const top = l.dy, mid = top + l.dH / 2, dh = l.dH / 2 - 6;
+    ctx.save(); ctx.beginPath(); ctx.rect(0, top, pw, l.dH); ctx.clip();
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, Math.round(mid) + .5); ctx.lineTo(pw, Math.round(mid) + .5); ctx.stroke();
+    ctx.textAlign = 'center'; ctx.font = `10px ${MONO}`;
     for (let i = i0; i <= i1; i++) {
-      const b = S.bars[i], x = xOf(i), up = b.c >= b.o, cx = Math.round(x + S.colW / 2) + .5;
-      ctx.strokeStyle = up ? G : R; ctx.fillStyle = up ? G : R; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(cx, yOf(b.h)); ctx.lineTo(cx, yOf(b.l)); ctx.stroke();
-      const top = yOf(Math.max(b.o, b.c)), w = Math.max(1, S.colW * .7);
-      ctx.fillRect(x + S.colW * .15, top, w, Math.max(1, yOf(Math.min(b.o, b.c)) - top));
-      if (b.poc != null && S.colW >= 6) { ctx.fillStyle = AMB; ctx.fillRect(x + S.colW * .15, yOf(b.poc + S.step / 2) - .5, w, 1.5); }   // the bar's busiest price
+      const b = S.bars[i], x = X(i), h = dh * Math.abs(b.delta) / set.maxD;
+      ctx.fillStyle = b.delta >= 0 ? C.bull : C.bear; ctx.fillRect(x + bo, b.delta >= 0 ? mid - h : mid, bw, Math.max(1, h));
+      if (S.colW >= 44) { ctx.fillStyle = C.text2; ctx.fillText(sgn(b.delta), x + S.colW / 2, b.delta >= 0 ? Math.min(mid + 8, top + l.dH - 7) : Math.max(mid - 8, top + 7)); }
+      if (b.delta && b.c !== b.o && (b.delta > 0) !== (b.c > b.o)) { ctx.fillStyle = C.amber; ctx.beginPath(); ctx.arc(x + S.colW / 2, b.delta > 0 ? Math.max(top + 3, mid - h - 3.5) : Math.min(top + l.dH - 3, mid + h + 3.5), Math.max(1.2, Math.min(2.5, S.colW * .2)), 0, 7); ctx.fill(); }
     }
-  } else for (let i = i0; i <= i1; i++) {
-    const b = S.bars[i], x = xOf(i);
-    // candle
-    const up = b.c >= b.o, cx = x + 2 + candleW / 2;
-    ctx.strokeStyle = up ? G : R; ctx.fillStyle = up ? G : R; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(cx, yOf(b.h)); ctx.lineTo(cx, yOf(b.l) + rh); ctx.stroke();
-    const yo = yOf(Math.floor(b.o / step) * step), yc = yOf(Math.floor(b.c / step) * step);
-    ctx.fillRect(x + 2, Math.min(yo, yc), candleW, Math.abs(yo - yc) + rh);
-    // cells
+    ctx.restore();
+  }
+  // CVD pane: scaled to the bars on screen, always including zero
+  if (l.cH && i1 >= i0) {
+    const top = l.cy; let a = 0, z = 0;
+    for (let i = i0; i <= i1; i++) { a = Math.min(a, S.bars[i].cvd); z = Math.max(z, S.bars[i].cvd); }
+    const span = Math.max(1, z - a), cY = v => top + 5 + (l.cH - 10) * (z - v) / span, xm = i => X(i) + S.colW / 2;
+    ctx.save(); ctx.beginPath(); ctx.rect(0, top, pw, l.cH); ctx.clip();
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, Math.round(cY(0)) + .5); ctx.lineTo(pw, Math.round(cY(0)) + .5); ctx.stroke();
+    ctx.beginPath(); for (let i = i0; i <= i1; i++) { if (i === i0) ctx.moveTo(xm(i), cY(S.bars[i].cvd)); else ctx.lineTo(xm(i), cY(S.bars[i].cvd)); }
+    ctx.strokeStyle = C.cy; ctx.lineWidth = 2; ctx.stroke();
+    ctx.lineTo(xm(i1), cY(0)); ctx.lineTo(xm(i0), cY(0)); ctx.closePath(); ctx.fillStyle = 'rgba(92,200,255,.10)'; ctx.fill();
+    ctx.restore();
+  }
+
+  // profile, its own column beside the price axis
+  const pfx = pw + axis;
+  if (prof) {
+    ctx.save(); ctx.beginPath(); ctx.rect(pfx, 0, prof, ph); ctx.clip();
+    const full = prof - 8;
+    for (const row of P0.rows) {
+      const y = Y(row.p + step), t = row.s + row.b, w = full * t / set.maxProf, ws = w * row.s / Math.max(1, t), va = row.p >= P0.val && row.p <= P0.vah, hh = Math.max(.8, rh - (rh > 3 ? 1 : 0));
+      ctx.fillStyle = `rgba(${BEAR},${va ? .6 : .28})`; ctx.fillRect(pfx + 4, y, ws, hh);
+      ctx.fillStyle = `rgba(${BULL},${va ? .6 : .28})`; ctx.fillRect(pfx + 4 + ws, y, w - ws, hh);
+    }
+    if (P0.poc != null) { ctx.strokeStyle = C.amber; ctx.lineWidth = 1.5; ctx.strokeRect(pfx + 2.5, Y(P0.poc + step), prof - 5, Math.max(2, rh)); }
+    ctx.restore();
+    ctx.strokeStyle = C.border; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pfx + .5, 0); ctx.lineTo(pfx + .5, ph); ctx.stroke();
+  }
+
+  // price axis and pane labels
+  ctx.strokeStyle = C.border; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pw + .5, 0); ctx.lineTo(pw + .5, l.ty); ctx.stroke();
+  for (const y of [l.dy, l.cy, l.ty]) { ctx.beginPath(); ctx.moveTo(0, y + .5); ctx.lineTo(pw + axis, y + .5); ctx.stroke(); }
+  ctx.textAlign = 'left'; ctx.font = `11px ${MONO}`; ctx.fillStyle = C.text3;
+  for (const [p, y] of ticks) if (y > 8 && y < ph - 8 && Math.abs(y - ly) > 14) ctx.fillText(px(p), pw + 7, y);
+  if (l.dH) { ctx.font = `10px ${MONO}`; ctx.fillStyle = C.text3; ctx.fillText('DELTA', pw + 7, l.dy + 10); ctx.fillStyle = C.text2; ctx.fillText(sgn(last.delta), pw + 7, l.dy + 24); }
+  if (l.cH) { ctx.font = `10px ${MONO}`; ctx.fillStyle = C.text3; ctx.fillText('CVD', pw + 7, l.cy + 10); ctx.fillStyle = C.text2; ctx.fillText(sgn(last.cvd), pw + 7, l.cy + 24); }
+  if (ly >= 0 && ly <= ph) tag(pw, ly, axis, px(last.c), C.amber, '#111');
+
+  // time axis
+  ctx.textAlign = 'center'; ctx.font = `11px ${MONO}`; ctx.fillStyle = C.text3;
+  const every = Math.max(1, Math.ceil(58 / S.colW)), mins = S.bars[1] ? S.bars[1].m - S.bars[0].m : 5, nice = [1, 2, 3, 4, 6, 12, 24, 48, 96].find(k => k >= every) || every;
+  ctx.save(); ctx.beginPath(); ctx.rect(0, l.ty, pw, TIME_H); ctx.clip();
+  for (let i = i0; i <= i1; i++) if (Math.round(S.bars[i].m / mins) % nice === 0) ctx.fillText(hhmm(S.bars[i].m), X(i) + S.colW / 2, l.ty + TIME_H / 2);
+  ctx.restore();
+
+  // crosshair
+  if (S.cross) {
+    const { x, y } = S.cross, i = Math.floor((x + S.x0) / S.colW);
+    if (i >= 0 && i < S.bars.length && x <= pw) {
+      const cx = Math.round(X(i) + S.colW / 2) + .5;
+      ctx.setLineDash([3, 3]); ctx.strokeStyle = C.text3; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, l.ty); ctx.stroke();
+      if (y <= ph) { ctx.beginPath(); ctx.moveTo(0, Math.round(y) + .5); ctx.lineTo(pw, Math.round(y) + .5); ctx.stroke(); }
+      ctx.setLineDash([]);
+      if (y <= ph) tag(pw, y, axis, px(r.hi - y / ph * (r.hi - r.lo)), C.text2, '#111');
+      ctx.fillStyle = C.text2; const tw = 44, tx = Math.max(tw / 2, Math.min(pw - tw / 2, cx));
+      ctx.fillRect(tx - tw / 2, l.ty + 2, tw, TIME_H - 4); ctx.fillStyle = '#111'; ctx.textAlign = 'center'; ctx.font = `11px ${MONO}`; ctx.fillText(hhmm(S.bars[i].m), tx, l.ty + TIME_H / 2);
+    }
+  }
+  $('auto').style.left = Math.max(6, pw - 96) + 'px';
+  readout(l, r, step);
+}
+function tag(pw, y, axis, text, bg, fg) {
+  ctx.fillStyle = bg; ctx.fillRect(pw + 1, y - 8, axis - 2, 16);
+  ctx.fillStyle = fg; ctx.textAlign = 'left'; ctx.font = `11px ${MONO}`; ctx.fillText(text, pw + 7, y);
+}
+function drawCells(set, i0, i1, X, Y, rh, ph, step) {
+  const cw = Math.max(2, Math.min(6, S.colW * .07)), cellX = cw + 4, cellW = S.colW - cellX - 3, half = cellW / 2, mc = set.maxCell;
+  const showText = rh >= 11 && cellW >= 56, font = Math.min(12, rh - 2, Math.floor(half / 2.9)), view = P.cells, hh = Math.max(.8, rh - (rh > 3 ? 1 : 0));
+  ctx.textBaseline = 'middle';
+  for (let i = i0; i <= i1; i++) {
+    const b = S.bars[i], x = X(i), up = b.c >= b.o;
+    ctx.strokeStyle = ctx.fillStyle = up ? C.bull : C.bear; ctx.lineWidth = 1;
+    const cx = Math.round(x + 2 + cw / 2) + .5;
+    ctx.beginPath(); ctx.moveTo(cx, Y(b.h)); ctx.lineTo(cx, Y(b.l)); ctx.stroke();
+    const t = Y(Math.max(b.o, b.c)); ctx.fillRect(x + 2, t, cw, Math.max(1, Y(Math.min(b.o, b.c)) - t));
     for (const [p, v] of b.cells) {
-      const y = yOf(p); if (y + rh < HEAD || y > HEAD + ph) continue;
-      const t = v.s + v.b, d = v.b - v.s;
+      const y = Y(p + step); if (y + rh < 0 || y > ph) continue;
+      const tot = v.s + v.b, d = v.b - v.s, im = b.imb.mark.get(p), hs = im === 'sell' || im === 'both', hb = im === 'buy' || im === 'both';
       if (view === 'ba') {
-        ctx.fillStyle = `rgba(232,97,95,${.08 + .62 * Math.sqrt(v.s / mc)})`; ctx.fillRect(x + cellX, y + .5, half - .5, rh - 1);
-        ctx.fillStyle = `rgba(70,184,122,${.08 + .62 * Math.sqrt(v.b / mc)})`; ctx.fillRect(x + cellX + half, y + .5, half - .5, rh - 1);
+        ctx.fillStyle = `rgba(${BEAR},${hs ? .55 : .04 + .22 * Math.sqrt(v.s / mc)})`; ctx.fillRect(x + cellX, y, half - .5, hh);
+        ctx.fillStyle = `rgba(${BULL},${hb ? .5 : .04 + .22 * Math.sqrt(v.b / mc)})`; ctx.fillRect(x + cellX + half, y, half - .5, hh);
       } else if (view === 'delta') {
-        const a = Math.min(1, Math.abs(d) / (mc * .6));
-        ctx.fillStyle = d >= 0 ? `rgba(70,184,122,${.08 + .7 * Math.sqrt(a)})` : `rgba(232,97,95,${.08 + .7 * Math.sqrt(a)})`;
-        ctx.fillRect(x + cellX, y + .5, cellW, rh - 1);
+        ctx.fillStyle = `rgba(${d >= 0 ? BULL : BEAR},${.06 + .55 * Math.sqrt(Math.min(1, Math.abs(d) / (mc * .6)))})`; ctx.fillRect(x + cellX, y, cellW, hh);
       } else {
-        const w = cellW * t / (mc * 2);
-        ctx.fillStyle = 'rgba(92,200,255,.18)'; ctx.fillRect(x + cellX, y + .5, cellW, rh - 1);
-        ctx.fillStyle = 'rgba(92,200,255,.65)'; ctx.fillRect(x + cellX, y + .5, Math.max(1, w), rh - 1);
+        ctx.fillStyle = 'rgba(92,200,255,.10)'; ctx.fillRect(x + cellX, y, cellW, hh);
+        ctx.fillStyle = 'rgba(92,200,255,.55)'; ctx.fillRect(x + cellX, y, Math.max(1, cellW * tot / (mc * 2)), hh);
       }
       if (showText) {
-        const im = b.imb.mark.get(p);
+        const mid = y + hh / 2;
         if (view === 'ba') {
-          ctx.textAlign = 'right';
-          ctx.font = `${im === 'sell' || im === 'both' ? '700 ' : ''}${fontPx}px ui-monospace,Menlo,Consolas,monospace`;
-          ctx.fillStyle = im === 'sell' || im === 'both' ? '#ff8a87' : '#e6e9ee'; ctx.fillText(fmtK(v.s), x + cellX + half - 4, y + rh / 2);
-          ctx.textAlign = 'left';
-          ctx.font = `${im === 'buy' || im === 'both' ? '700 ' : ''}${fontPx}px ui-monospace,Menlo,Consolas,monospace`;
-          ctx.fillStyle = im === 'buy' || im === 'both' ? '#7ee0a6' : '#e6e9ee'; ctx.fillText(fmtK(v.b), x + cellX + half + 4, y + rh / 2);
+          ctx.textAlign = 'right'; ctx.font = `${hs ? '700 ' : ''}${font}px ${MONO}`; ctx.fillStyle = hs ? '#fff' : C.text2; ctx.fillText(fmtK(v.s), x + cellX + half - 4, mid);
+          ctx.textAlign = 'left'; ctx.font = `${hb ? '700 ' : ''}${font}px ${MONO}`; ctx.fillStyle = hb ? '#fff' : C.text2; ctx.fillText(fmtK(v.b), x + cellX + half + 4, mid);
         } else {
-          ctx.textAlign = 'center'; ctx.font = `${fontPx}px ui-monospace,Menlo,Consolas,monospace`; ctx.fillStyle = '#e6e9ee';
-          ctx.fillText(view === 'delta' ? (d > 0 ? '+' : '') + fmtK(d) : fmtK(t), x + cellX + half, y + rh / 2);
+          ctx.textAlign = 'center'; ctx.font = `${font}px ${MONO}`; ctx.fillStyle = C.text2;
+          ctx.fillText(view === 'delta' ? (d > 0 ? '+' : '') + fmtK(d) : fmtK(tot), x + cellX + half, mid);
         }
-      } else if (b.imb.mark.has(p)) {
-        const im = b.imb.mark.get(p); ctx.fillStyle = im === 'sell' ? R : G; ctx.fillRect(x + S.colW - 6, y + 1, 3, rh - 2);
       }
     }
-    // POC
-    if (b.poc != null) { ctx.strokeStyle = AMB; ctx.lineWidth = 1.2; ctx.strokeRect(x + cellX + .5, yOf(b.poc) + .5, cellW - 1, rh - 1); }
-    // stacked imbalances
-    for (const s of b.imb.stacks) {
-      ctx.fillStyle = s.side === 'buy' ? G : R;
-      ctx.fillRect(x + S.colW - 3, yOf(s.hi), 2.5, yOf(s.lo) - yOf(s.hi) + rh);
-    }
-    ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.beginPath(); ctx.moveTo(x + S.colW + .5, HEAD); ctx.lineTo(x + S.colW + .5, HEAD + ph); ctx.stroke();
+    if (b.poc != null) { ctx.strokeStyle = C.amber; ctx.lineWidth = 1.2; ctx.strokeRect(x + cellX + .5, Y(b.poc + step) + .5, cellW - 1, Math.max(1, hh - 1)); }
+    for (const s of b.imb.stacks) { ctx.fillStyle = s.side === 'buy' ? C.bull : C.bear; ctx.fillRect(x + S.colW - 2.5, Y(s.hi + step), 2, Y(s.lo) - Y(s.hi + step)); }
   }
-  // last price line
-  const last = S.bars.at(-1), ly = candles ? yOf(last.c) : yOf(Math.floor(last.c / step) * step) + rh / 2;
-  ctx.setLineDash([3, 4]); ctx.strokeStyle = 'rgba(240,176,74,.55)'; ctx.beginPath(); ctx.moveTo(0, ly); ctx.lineTo(pw, ly); ctx.stroke(); ctx.setLineDash([]);
-  ctx.restore();
-
-  // header: times
-  ctx.fillStyle = '#0d1117'; ctx.fillRect(0, 0, W, HEAD);
-  ctx.font = '11px ui-monospace,Menlo,Consolas,monospace'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; ctx.fillStyle = css('--tx3');
-  const lblEvery = Math.max(1, Math.ceil(52 / S.colW));
-  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, pw, H); ctx.clip();
-  for (let i = i0; i <= i1; i++) if (i % lblEvery === 0) ctx.fillText(hhmm(S.bars[i].m), xOf(i) + S.colW / 2, HEAD / 2);
-  // footer numbers (footprint views): volume, delta, cvd
-  const fy = HEAD + ph, foot = footH(), pane = paneH(), dy = fy + foot, cy = dy + pane;
-  const rows = [['vol', x => fmtK(x.vol)], ['Δ', x => (x.delta > 0 ? '+' : '') + fmtK(x.delta)], ['cvd', x => (x.cvd > 0 ? '+' : '') + fmtK(x.cvd)]];
-  if (foot) {
-    ctx.fillStyle = '#0a0d12'; ctx.fillRect(0, fy, pw, foot);
-    for (let i = i0; i <= i1; i++) {
-      const b = S.bars[i], x = xOf(i);
-      ctx.fillStyle = 'rgba(92,200,255,.16)'; const vw = (S.colW - 6) * b.vol / S.maxVol; ctx.fillRect(x + 3, fy + 2, vw, 15);
-      rows.forEach(([, f], k) => {
-        const val = k === 0 ? 0 : k === 1 ? b.delta : b.cvd;
-        ctx.fillStyle = k === 0 ? css('--tx2') : val >= 0 ? G : R;
-        if (S.colW >= 34) ctx.fillText(f(b), x + S.colW / 2, fy + 10 + k * 17);
-      });
-    }
-  }
-  // delta bars: buy minus sell per bar, on a scale fixed across the session. An amber dot marks delta disagreeing with the candle.
-  ctx.fillStyle = '#080b10'; ctx.fillRect(0, dy, pw, 2 * pane);
-  const maxD = Math.max(1, ...S.bars.map(x => Math.abs(x.delta))), mid = dy + pane / 2, dh = pane / 2 - 7, bw = Math.max(1, S.colW * .7);
-  ctx.strokeStyle = 'rgba(255,255,255,.14)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, mid + .5); ctx.lineTo(pw, mid + .5); ctx.stroke();
-  for (let i = i0; i <= i1; i++) {
-    const b = S.bars[i], x = xOf(i) + S.colW * .15, h = dh * Math.abs(b.delta) / maxD;
-    ctx.fillStyle = b.delta >= 0 ? G : R;
-    ctx.fillRect(x, b.delta >= 0 ? mid - h : mid, bw, Math.max(1, h));
-    if (b.delta && b.c !== b.o && (b.delta > 0) !== (b.c > b.o)) { ctx.fillStyle = AMB; ctx.beginPath(); ctx.arc(xOf(i) + S.colW / 2, b.delta > 0 ? mid - h - 4 : mid + h + 4, Math.min(2.5, Math.max(1, S.colW * .2)), 0, 7); ctx.fill(); }
-  }
-  // cumulative volume delta: a running total from the start of the chosen session, scaled to the whole session and always including zero
-  const cv0 = Math.min(0, ...S.bars.map(x => x.cvd)), cv1 = Math.max(0, ...S.bars.map(x => x.cvd)), cspan = Math.max(1, cv1 - cv0);
-  const cvY = v => cy + 6 + (pane - 12) * (cv1 - v) / cspan;
-  ctx.strokeStyle = 'rgba(255,255,255,.14)'; ctx.beginPath(); ctx.moveTo(0, Math.round(cvY(0)) + .5); ctx.lineTo(pw, Math.round(cvY(0)) + .5); ctx.stroke();
-  ctx.save(); ctx.beginPath(); ctx.rect(0, cy, pw, pane); ctx.clip();
-  ctx.beginPath(); for (let i = i0; i <= i1; i++) { const X = xOf(i) + S.colW / 2, Y = cvY(S.bars[i].cvd); if (i === i0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y); }
-  ctx.strokeStyle = css('--cy'); ctx.lineWidth = 1.6; ctx.stroke();
-  ctx.lineTo(xOf(i1) + S.colW / 2, cvY(0)); ctx.lineTo(xOf(i0) + S.colW / 2, cvY(0)); ctx.closePath(); ctx.fillStyle = 'rgba(92,200,255,.10)'; ctx.fill();
-  ctx.restore();
-  ctx.restore();
-  ctx.strokeStyle = css('--line2'); ctx.lineWidth = 1;
-  for (const y of [fy, dy, cy]) { ctx.beginPath(); ctx.moveTo(0, y + .5); ctx.lineTo(pw, y + .5); ctx.stroke(); }
-
-  // price axis
-  const ax = pw; ctx.fillStyle = '#0d1117'; ctx.fillRect(ax, 0, AXIS, H);
-  ctx.save(); ctx.beginPath(); ctx.rect(ax, HEAD, AXIS, ph); ctx.clip();
-  ctx.textAlign = 'left'; ctx.fillStyle = css('--tx3'); ctx.font = '11px ui-monospace,Menlo,Consolas,monospace';
-  for (let p = S.hi, k = 0; p >= S.lo - step; p -= step, k++) if (k % gridEvery === 0) ctx.fillText(px(p), ax + 6, yOf(p) + rh / 2);
-  ctx.fillStyle = AMB; ctx.fillRect(ax + 1, ly - 8, AXIS - 2, 16); ctx.fillStyle = '#111'; ctx.fillText(px(last.c), ax + 6, ly);
-  ctx.restore();
-  ctx.font = '10px ui-monospace,Menlo,Consolas,monospace'; ctx.fillStyle = css('--tx3'); ctx.textAlign = 'left';
-  if (foot) rows.forEach(([n], k) => ctx.fillText(n, ax + 6, fy + 10 + k * 17));
-  const sign = n => (n > 0 ? '+' : '') + fmtK(n);
-  ctx.fillText('DELTA', ax + 6, dy + 10); ctx.fillStyle = last.delta >= 0 ? G : R; ctx.font = '11px ui-monospace,Menlo,Consolas,monospace'; ctx.fillText(sign(last.delta), ax + 6, dy + 25);
-  ctx.fillStyle = css('--tx3'); ctx.font = '10px ui-monospace,Menlo,Consolas,monospace'; ctx.fillText(`max ${fmtK(maxD)}`, ax + 6, dy + pane - 10);
-  ctx.fillText('CVD', ax + 6, cy + 10); ctx.fillStyle = last.cvd >= 0 ? G : R; ctx.font = '11px ui-monospace,Menlo,Consolas,monospace'; ctx.fillText(sign(last.cvd), ax + 6, cy + 25);
-
-  // session profile
-  const pfx = ax + AXIS; ctx.fillStyle = '#0a0d12'; ctx.fillRect(pfx, 0, PROF, H);
-  ctx.save(); ctx.beginPath(); ctx.rect(pfx, HEAD, PROF, ph); ctx.clip();
-  for (const r of P.rows) {
-    const y = yOf(r.p), t = r.s + r.b, w = (PROF - 10) * t / S.maxProf, inVA = r.p >= P.val && r.p <= P.vah;
-    const ws = w * r.s / Math.max(1, t);
-    ctx.fillStyle = inVA ? 'rgba(232,97,95,.55)' : 'rgba(232,97,95,.25)'; ctx.fillRect(pfx + 4, y + .5, ws, Math.max(.6, rh - 1));
-    ctx.fillStyle = inVA ? 'rgba(70,184,122,.55)' : 'rgba(70,184,122,.25)'; ctx.fillRect(pfx + 4 + ws, y + .5, w - ws, Math.max(.6, rh - 1));
-  }
-  if (P.poc != null) { ctx.strokeStyle = AMB; ctx.lineWidth = 1.5; ctx.strokeRect(pfx + 3, yOf(P.poc) + .5, PROF - 7, Math.max(1, rh - 1)); }
-  ctx.restore();
-  ctx.fillStyle = css('--tx3'); ctx.font = '10px ui-monospace,Menlo,Consolas,monospace'; ctx.textAlign = 'center';
-  ctx.fillText('SESSION PROFILE', pfx + PROF / 2, HEAD / 2);
 }
 
-// ── interaction ──
-let drag = null;
-cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, x0: S.x0, y0: S.y0 }; cv.setPointerCapture(e.pointerId); cv.classList.add('drag'); tip.style.display = 'none'; });
-cv.addEventListener('pointerup', () => { drag = null; cv.classList.remove('drag'); });
-cv.addEventListener('pointermove', e => {
-  if (drag) {
-    S.x0 = Math.max(0, drag.x0 - (e.clientX - drag.x)); S.y0 = drag.y0 - (e.clientY - drag.y);
-    S.follow = S.x0 >= S.bars.length * S.colW - plotW() - 5; draw(); return;
+// One place for the numbers, so nothing sits on top of the chart.
+function readout(l, r, step) {
+  const el = $('readout');
+  if (!S.bars.length) { el.textContent = ''; return; }
+  const set = barsFor(S.rt), P0 = set.prof, buy = S.bars.reduce((a, x) => a + x.buy, 0), sell = S.bars.reduce((a, x) => a + x.sell, 0);
+  let i = S.bars.length - 1, cell = '';
+  if (S.cross && l) {
+    const k = Math.floor((S.cross.x + S.x0) / S.colW);
+    if (k >= 0 && k < S.bars.length) i = k;
+    if (S.cross.y <= l.ph && k >= 0 && k < S.bars.length) {
+      const price = r.hi - S.cross.y / l.ph * (r.hi - r.lo), p = r9(Math.floor(r9(price / step)) * step), v = S.bars[i].cells.get(p), im = S.bars[i].imb.mark.get(p);
+      cell = v ? ` · <b>${px(p)}</b> sell <b>${v.s}</b> × buy <b>${v.b}</b>${im ? ` · ${im} imbalance` : ''}${p === S.bars[i].poc ? ' · POC' : ''}` : '';
+    }
   }
-  hover(e);
+  const b = S.bars[i], dis = b.delta && b.c !== b.o && (b.delta > 0) !== (b.c > b.o);
+  const c = S.doc.counts, sign = S.doc.rule === 'quote' && c ? `bid/ask ${Math.round(100 * c.quote / Math.max(1, c.quote + c.tick_fallback))}%` : 'tick rule, rough';
+  const narrow = S.W < 700, cvdVal = sgnFull(b.cvd), sess = `vol ${fmtK(P0.vol)} · Δ ${sgn(buy - sell)} · POC ${P0.poc != null ? px(P0.poc) : '—'}`;
+  el.innerHTML = narrow
+    ? `<div><b>${hhmm(b.m)}</b> C <b>${px(b.c)}</b> · vol <b>${fmtK(b.vol)}</b> · Δ <b>${sgn(b.delta)}</b> · CVD <b>${sgn(b.cvd)}</b>${cell ? '' : dis ? ' · against candle' : ''}</div>` +
+      (cell ? `<div>${cell.replace(/^ · /, '')}</div>` : `<div class="l2">Day: ${sess} · ${sign} · descriptive</div>`)
+    : `<div><b>${hhmm(b.m)}</b> O <b>${px(b.o)}</b> H <b>${px(b.h)}</b> L <b>${px(b.l)}</b> C <b>${px(b.c)}</b> · vol <b>${b.vol.toLocaleString('en-US')}</b> · Δ <b>${sgnFull(b.delta)}</b> · CVD <b>${cvdVal}</b>${dis ? ' · delta against candle' : ''}${cell}</div>` +
+      `<div class="l2">${S.doc.sym} session: ${sess} · buy ${(100 * buy / Math.max(1, buy + sell)).toFixed(1)}% · VA ${P0.val != null ? px(P0.val) + '–' + px(P0.vah + S.step - S.doc.tick) : '—'} · row ${px(S.step)} · ${sign} · descriptive, not a signal</div>`;
+}
+
+// ── controls ──
+function drawTfs() {
+  const base = S.doc?.base ?? 1;
+  if (P.tf < base) P.tf = base;
+  $('tfs').innerHTML = TFS.map(t => `<button class="btn" data-tf="${t}" aria-pressed="${P.tf === t}" ${t < base ? 'disabled title="This day is stored at ' + base + '-minute bars"' : ''}>${t < 60 ? t + 'm' : '1h'}</button>`).join('');
+}
+function sync() {
+  document.querySelectorAll('#views .btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === P.view));
+  $('sess').value = P.sess; $('cells').value = P.cells; $('row').value = String(P.row); $('ratio').value = String(P.ratio);
+  $('pDelta').checked = P.delta; $('pCvd').checked = P.cvd; $('pProf').checked = P.profile;
+}
+function setView(v) {
+  if (v === P.view) return;
+  const l = L();
+  // keep the bar under the crosshair, or the middle of the screen, in the middle
+  const centre = S.cross ? (S.cross.x + S.x0) / S.colW : (l.pw / 2 + S.x0) / S.colW;
+  P.view = v; savePrefs();
+  if (v === 'candle') { fit(); }
+  else {
+    S.colW = fpWidth();
+    if (S.anchor === 'fit' && !S.cross) latest(); else { S.x0 = clampX(l, centre * S.colW - l.pw / 2); S.anchor = 'free'; }
+  }
+  S.man = null; $('auto').hidden = true; sync(); request();
+}
+$('views').onclick = e => { const v = e.target.dataset?.v; if (v) setView(v); };
+$('tfs').onclick = e => { const t = +e.target.dataset?.tf; if (t && !e.target.disabled) { P.tf = t; savePrefs(); drawTfs(); S.anchor = P.view === 'fp' ? 'latest' : 'fit'; rebuild(); } };
+$('sess').onchange = () => { P.sess = $('sess').value; savePrefs(); S.anchor = P.view === 'fp' ? 'latest' : 'fit'; rebuild(); };
+$('sym').onchange = () => { fillDays(); S.anchor = P.view === 'fp' ? 'latest' : 'fit'; loadDay(); };
+$('day').onchange = () => { S.anchor = P.view === 'fp' ? 'latest' : 'fit'; loadDay(); };
+$('dayPrev').onclick = () => { const s = $('day'); if (s.selectedIndex < s.options.length - 1) { s.selectedIndex++; s.onchange(); } };
+$('dayNext').onclick = () => { const s = $('day'); if (s.selectedIndex > 0) { s.selectedIndex--; s.onchange(); } };
+$('fit').onclick = () => { S.man = null; $('auto').hidden = true; fit(); request(); };
+$('end').onclick = () => { latest(); request(); };
+$('auto').onclick = () => { S.man = null; $('auto').hidden = true; request(); };
+$('optBtn').onclick = () => $('opt').showModal();
+$('helpBtn').onclick = () => $('help').showModal();
+document.querySelectorAll('[data-close]').forEach(b => { b.onclick = () => b.closest('dialog').close(); });
+document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
+$('cells').onchange = () => { P.cells = $('cells').value; savePrefs(); request(); };
+$('row').onchange = () => { P.row = +$('row').value; savePrefs(); rebuildKeepView(); };
+$('ratio').onchange = () => { P.ratio = +$('ratio').value; savePrefs(); rebuildKeepView(); };
+for (const [id, k] of [['pDelta', 'delta'], ['pCvd', 'cvd'], ['pProf', 'profile']]) $(id).onchange = () => { P[k] = $(id).checked; savePrefs(); if (S.anchor === 'fit') fit(); else if (S.anchor === 'latest') latest(); request(); };
+function rebuildKeepView() { S.memo.clear(); S.rt = P.row || S.rt; S.bars = barsFor(S.rt).bars; request(); }
+
+// ── moving around ──
+const pts = new Map();
+let drag = null, pinch = null, tapAt = null;
+function zoomAt(cx, f) {
+  const l = L(), bar = (cx + S.x0) / S.colW;
+  S.colW = Math.max(3, Math.min(240, S.colW * f));
+  S.x0 = clampX(l, bar * S.colW - cx);
+  afterMove(l); request();
+}
+function afterMove(l) { S.anchor = S.x0 + l.pw >= S.bars.length * S.colW ? 'latest' : 'free'; }
+function pos(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+function stretch(l, dy) {
+  const c = S.man || priceRange(l), mid = (c.hi + c.lo) / 2, half = (c.hi - c.lo) / 2 * Math.exp(dy * .006);
+  S.man = { hi: mid + half, lo: mid - half }; $('auto').hidden = false;
+}
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId);
+  const p = pos(e); pts.set(e.pointerId, p);
+  const l = L();
+  if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.abs(a.x - b.x) || 1, cx: (a.x + b.x) / 2, colW: S.colW }; drag = null; tapAt = null; return; }
+  tapAt = { ...p, t: Date.now() };
+  const onAxis = p.x > l.pw && p.x <= l.pw + l.axis && p.y <= l.ph;
+  drag = { x: p.x, y: p.y, x0: S.x0, onAxis, man: S.man && { ...S.man }, range: priceRange(l), moved: false };
 });
-cv.addEventListener('pointerleave', () => { tip.style.display = 'none'; });
+cv.addEventListener('pointermove', e => {
+  const p = pos(e), l = L();
+  if (pts.has(e.pointerId)) pts.set(e.pointerId, p);
+  if (pinch && pts.size >= 2) {
+    const [a, b] = [...pts.values()], d = Math.abs(a.x - b.x) || 1;
+    zoomAt(pinch.cx, (pinch.colW * d / pinch.d) / S.colW); return;
+  }
+  if (drag) {
+    const dx = p.x - drag.x, dy = p.y - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 5) { drag.moved = true; tapAt = null; cv.classList.add('drag'); }
+    if (!drag.moved) return;
+    if (drag.onAxis) { stretch(l, dy - (drag.lastDy ?? 0)); drag.lastDy = dy; request(); return; }
+    S.x0 = clampX(l, drag.x0 - dx);
+    if (S.man) { const per = (drag.range.hi - drag.range.lo) / l.ph; S.man = { hi: drag.range.hi + dy * per, lo: drag.range.lo + dy * per }; }
+    afterMove(l); if (e.pointerType === 'mouse') S.cross = null; request(); return;
+  }
+  cv.classList.toggle('ns', p.x > l.pw && p.x <= l.pw + l.axis && p.y <= l.ph);
+  if (e.pointerType === 'mouse') { S.cross = p.x <= l.pw && p.y < l.ty ? p : null; request(); }
+});
+function endPointer(e) {
+  pts.delete(e.pointerId);
+  if (pts.size < 2) pinch = null;
+  if (tapAt && e.pointerType !== 'mouse') {
+    const l = L(), p = pos(e);
+    if (p.x <= l.pw && p.y < l.ty) { S.cross = p; request(); }
+  }
+  tapAt = null; drag = null; cv.classList.remove('drag');
+}
+cv.addEventListener('pointerup', endPointer);
+cv.addEventListener('pointercancel', endPointer);
+cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !drag) { S.cross = null; request(); } });
+cv.addEventListener('dblclick', () => { S.man = null; $('auto').hidden = true; fit(); request(); });
 cv.addEventListener('wheel', e => {
   e.preventDefault();
-  if (e.ctrlKey) { S.rowH = Math.max(6, Math.min(30, S.rowH - Math.sign(e.deltaY))); draw(); return; }
-  if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) { S.x0 = Math.max(0, S.x0 + (e.deltaX || e.deltaY)); S.follow = false; }
-  else S.y0 += e.deltaY;
-  draw();
+  const p = pos(e), l = L();
+  if (p.x > l.pw && p.x <= l.pw + l.axis && p.y <= l.ph) { stretch(l, e.deltaY * .4); request(); return; }
+  if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) { S.x0 = clampX(l, S.x0 + (e.deltaX || e.deltaY)); afterMove(l); request(); return; }
+  zoomAt(p.x, Math.exp(-e.deltaY * .0016));
 }, { passive: false });
-function hover(e) {
-  const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
-  if (mx > plotW() || my < HEAD || !S.bars.length) { tip.style.display = 'none'; return; }
-  const i = Math.floor((mx + S.x0) / S.colW), b = S.bars[i]; if (!b) { tip.style.display = 'none'; return; }
-  const inPrice = my <= HEAD + plotH(), p = r9(S.hi - Math.floor((my - HEAD + S.y0) / S.rowH) * S.step), v = b.cells.get(p);
-  const im = b.imb.mark.get(p);
-  tip.innerHTML = `<b>${hhmm(b.m)}</b> · O ${px(b.o)} H ${px(b.h)} L ${px(b.l)} C ${px(b.c)}<br>vol ${b.vol.toLocaleString()} · Δ ${b.delta > 0 ? '+' : ''}${b.delta.toLocaleString()} · cvd ${b.cvd.toLocaleString()}${b.delta && b.c !== b.o && (b.delta > 0) !== (b.c > b.o) ? '<br><b>delta disagrees with the candle</b>' : ''}` +
-    (!inPrice ? '' : '<br>') + (!inPrice ? '' : v ? `<b>${px(p)}</b>${S.rowTicks > 1 ? '–' + px(p + S.step - S.doc.tick) : ''}: sell <span style="color:${R}">${v.s}</span> × buy <span style="color:${G}">${v.b}</span>${im ? ` · <b>${im} imbalance</b>` : ''}${p === b.poc ? ' · POC' : ''}` : `${px(p)}: no trades`);
-  tip.style.display = 'block';
-  const tw = tip.offsetWidth; tip.style.left = Math.min(mx + 14, r.width - tw - 6) + 'px'; tip.style.top = Math.min(my + 14, r.height - tip.offsetHeight - 6) + 'px';
-}
-$('zin').onclick = () => { const c = (S.x0 + plotW() / 2) / S.colW; S.colW = Math.min(220, S.colW * 1.25); S.x0 = Math.max(0, c * S.colW - plotW() / 2); draw(); };
-$('zout').onclick = () => { const c = (S.x0 + plotW() / 2) / S.colW; S.colW = Math.max(isCandle() ? 3 : 14, S.colW / 1.25); S.x0 = Math.max(0, c * S.colW - plotW() / 2); draw(); };
-$('end').onclick = () => { S.follow = true; toEnd(); };
-$('day').onchange = () => { S.follow = true; loadDay(); };
-$('sym').onchange = () => { S.follow = true; fillDays(); loadDay(); };
-for (const id of ['bar', 'row', 'sess']) $(id).onchange = () => { S.follow = true; rebuild(); };
-$('ratio').onchange = () => rebuild();
-$('view').onchange = () => {
-  const now = isCandle() ? 'candle' : 'fp';
-  if (now !== S.mode) { if (now === 'candle') S.fp = { colW: S.colW, rowH: S.rowH }; else if (S.fp) Object.assign(S, S.fp); S.mode = now; S.follow = true; }
-  rebuild();
-};
-addEventListener('resize', () => { size(); fitCandles(); draw(); });
+addEventListener('keydown', e => {
+  if (/SELECT|INPUT/.test(e.target.tagName) || document.querySelector('dialog[open]') || !S.bars.length) return;
+  const l = L(), k = e.key;
+  if (k === 'ArrowLeft' || k === 'ArrowRight') { S.x0 = clampX(l, S.x0 + (k === 'ArrowLeft' ? -1 : 1) * Math.max(S.colW, 40)); afterMove(l); request(); }
+  else if (k === '+' || k === '=') zoomAt(l.pw / 2, 1.25);
+  else if (k === '-') zoomAt(l.pw / 2, .8);
+  else if (k === 'f' || k === 'F') $('fit').click();
+  else if (k === 'l' || k === 'L') $('end').click();
+  else if (k === 'c' || k === 'C') setView('candle');
+  else if (k === 'p' || k === 'P') setView('fp');
+});
+new ResizeObserver(() => { size(); if (S.bars.length) { if (S.anchor === 'fit') fit(); else if (S.anchor === 'latest') latest(); request(); } }).observe(wrap);
 
 (async () => {
-  try { size(); if (await loadDays()) await loadDay(); }
-  catch (e) { $('empty').style.display = 'flex'; $('empty').textContent = 'Could not load the footprint: ' + e.message; }
+  try { size(); sync(); S.anchor = P.view === 'fp' ? 'latest' : 'fit'; if (await loadDays()) await loadDay(); }
+  catch (e) { showEmpty('Could not load the footprint: ' + e.message); }
 })();
 </script>
 </body>
