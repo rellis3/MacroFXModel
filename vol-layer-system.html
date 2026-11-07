@@ -139,7 +139,7 @@ function layerHtml(L) {
     <div class="card"><h3>What this layer outputs</h3><div class="chips">${L.fields.map(f => `<div class="chip"><b>${esc(f.k)}</b>${esc(f.d)}</div>`).join('')}</div>
       <h3 style="margin-top:12px">How it is tested on its own</h3><p>${esc(L.test)}</p></div>
   </div>
-  <div class="card" style="margin-top:12px"><h3>Candidates (all open)</h3>
+  <div class="card" style="margin-top:12px"><h3>Candidates</h3>
     <div class="scroll"><table class="t"><thead><tr><th>Method</th><th>From</th><th>State</th><th>Note</th></tr></thead><tbody>${cands}</tbody></table></div></div>
   <div class="grid">
     <div class="card"><h3>Starting points in the repo</h3><ul>${L.repo.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>
