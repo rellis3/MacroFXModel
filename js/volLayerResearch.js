@@ -368,3 +368,32 @@ export const COMBINED = [
   { stack: 'Stop order through a round number, FX majors, 1σ stop, 2σ target, real fills, 2016-2020', trades: 8234, gross: null, net: -0.031, ci: [-0.0447, -0.0178], against: 'beats arbitrary prices by +0.019 R; still loses' },
   { stack: '1 state + 7 stops (dumb view), 0.25σ stop: fade', trades: 11339, gross: -0.007, net: -0.176, ci: [-0.197, -0.156], against: 'no gross edge' },
 ];
+
+// What has been tested, why, and what came out. Add a row in the same change that banks a result.
+// verdict: the four banked words, or 'running' / 'registered'.
+export const TESTS = [
+  { date: '2026-11-07', id: 'vol-layer-rv5-increment', layer: 'state', what: 'Added yesterday and last-week 1-minute realised vol to the chosen forecast', why: 'The literature says most gains come from intraday data, and the chosen forecast reads daily bars only. The cheapest check before rebuilding any forecaster.', output: 'Lines 1.2% more accurate on 34 instruments, 0.9884 [0.9856, 0.9910], every fold better. Biggest on indices.', verdict: 'VALIDATED', doc: 'analysis/output/vol-layer-rv5-increment/RESULTS.md' },
+  { date: '2026-11-07', id: 'vol-layer-reaction', layer: 'state, jumps, corr, stops, feedback', what: 'Shared vol state against reject or break at the chosen lines, then fade or follow net of spread', why: 'Your question: for exhaustion, does price react at the line, not is it touched. Earlier tests never held these fields.', output: 'Only realised vol and range so far today adds, by 0.1% against a 1% gate. Follow +0.058 R gross, -0.113 R net. Fade -0.176 R net. Spread is 0.17 R at a 0.25σ stop.', verdict: 'CONTEXT', doc: 'analysis/output/vol-layer-reaction/RESULTS.md' },
+  { date: '2026-11-07', id: 'vol-layer-round-numbers', layer: 'stops', what: 'First touches of round numbers against arbitrary prices, and lines that sit on a round number', why: 'The literature found no order clustering at vol-scaled levels. Osler finds reversal where orders rest, so this checks if a level reacts anywhere.', output: 'Round numbers reject less, not more: -1.28pp [-1.87, -0.68] at 00. Lines gain nothing on one: +0.13pp [-1.15, +1.43].', verdict: 'NULL', doc: 'analysis/output/vol-layer-round-numbers/RESULTS.md' },
+  { date: '2026-11-07', id: 'round-break-follow', layer: 'stops', what: 'Real stop orders through round numbers in FX majors on bid/ask fills. Setup chosen on 2020-2026, scored on untouched 2016-2020', why: 'The round-number test showed breaks in majors after the fact. This confirms it on separate data and prices it with real fills.', output: 'The location replicates: -2.5pp rejection, +0.019 R vs arbitrary. The trade loses: -0.031 R, no positive year 2017-2020. All 24 setups lose on discovery.', verdict: 'CONTEXT', doc: 'analysis/output/round-break-follow/RESULTS.md' },
+];
+
+// Everything C.OG or the chat named, and how far each has really gone.
+// status: 'tested' (own test on our data) · 'input only' (fed into another test) · 'literature only' · 'not started'
+export const NAMED = [
+  { item: 'Current conditional vol', by: 'C.OG', layer: 'state', status: 'tested', note: 'Chosen forecast kept. 1-minute vol adds 1.2%.', next: 'HARQ and a single HAR across instruments, as nudges' },
+  { item: 'Expected change in vol', by: 'C.OG', layer: 'state', status: 'input only', note: 'Added nothing to reaction at the lines.', next: 'Own test: does it forecast realised change? The live field is still a proxy' },
+  { item: 'Vol relative to its long-run level', by: 'C.OG', layer: 'state', status: 'input only', note: 'Added nothing to reaction at the lines.', next: 'Own test: which long-run level, and does it add' },
+  { item: 'Probability of vol regimes', by: 'C.OG', layer: 'state', status: 'input only', note: 'Added nothing to reaction at the lines.', next: 'Calibration of the probabilities' },
+  { item: 'Forecast error as a feedback loop', by: 'C.OG', layer: 'feedback', status: 'input only', note: 'Range and realised vol so far today add 0.1%.', next: 'Band widths from errors, drift alarm, kill switch' },
+  { item: 'Jump intensity and jump diffusion', by: 'C.OG', layer: 'jumps', status: 'input only', note: 'Rough features added nothing. Five earlier studies are banked.', next: 'Deep dive running: clean detector, after-jump behaviour, stop-through, Merton first-passage' },
+  { item: 'Splitting correlation from variance', by: 'C.OG', layer: 'features', status: 'input only', note: 'Only a dollar-share feature on reaction, which did not clear Holm.', next: 'Build and test the covariance model itself' },
+  { item: 'Conditional views', by: 'C.OG', layer: 'views', status: 'literature only', note: 'Nothing run on our data.', next: 'Stack a direction view on round-number breaks' },
+  { item: 'Meta-labelling', by: 'C.OG', layer: 'meta', status: 'literature only', note: 'The reaction model is close but uncalibrated and had no primary signal.', next: 'Run on the stack, with calibration' },
+  { item: 'Black-Litterman', by: 'C.OG', layer: 'sizing', status: 'literature only', note: 'Nothing run on our data.', next: 'After something pays' },
+  { item: 'Position sizing from vol', by: 'C.OG', layer: 'sizing', status: 'not started', note: '', next: 'After something pays' },
+  { item: 'Stop orders; every position is different', by: 'C.OG, Jordan', layer: 'execution', status: 'input only', note: 'Only fixed stop sizes tested.', next: 'Noise-threshold stops from each system\'s MAE/MFE' },
+  { item: 'HMM splitting range and trend regimes', by: 'Stephen', layer: 'state', status: 'not started', note: 'My regime fields measure quiet vs busy, not range vs trend.', next: 'Own test after noise-threshold stops' },
+  { item: 'Technicals alone have no edge after spread', by: 'Husky', layer: 'execution', status: 'input only', note: 'Results so far agree, but not tested as his claim.', next: 'Keep as a check' },
+  { item: 'C.OG\'s old forecaster logic', by: 'C.OG', layer: 'state', status: 'not started', note: 'He said he would post it.', next: 'Check education/cog_inbox/ for it' },
+];

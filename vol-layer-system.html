@@ -47,6 +47,8 @@ table.t th.num { text-align: right; }
 .lyr .nm { font-size: 13px; color: var(--text); font-weight: 600; } .lyr .ds { font-size: 11px; color: var(--text3); }
 .lyr.fb { border-style: dashed; }
 .scroll { overflow-x: auto; }
+.v-ok { color: var(--green); border-color: var(--green); } .v-ctx { color: #e0a32e; border-color: #e0a32e88; } .v-null { color: var(--text3); }
+.st-tested { color: var(--green); border-color: var(--green); } .st-input-only { color: #e0a32e; border-color: #e0a32e88; } .st-literature-only { color: #a78bfa; border-color: #a78bfa66; } .st-not-started { color: var(--text3); }
 .empty { font-size: 12px; color: var(--text3); font-style: italic; }
 </style>
 </head>
@@ -61,7 +63,7 @@ table.t th.num { text-align: right; }
 </div>
 
 <script type="module">
-import { LAYERS, BUILD_ORDER, DEEP_DIVE, SOURCE_NOTE, COMBINED } from './js/volLayerResearch.js';
+import { LAYERS, BUILD_ORDER, DEEP_DIVE, SOURCE_NOTE, COMBINED, TESTS, NAMED } from './js/volLayerResearch.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -99,6 +101,20 @@ function liveTable(cols) {
   <tbody>${rows.map(([s, v]) => `<tr><td>${esc(s)}</td>${use.map(([, f]) => `<td class="num">${f(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 
+function trackerHtml(filter) {
+  const verdictCls = v => ({ VALIDATED: 'v-ok', CONTEXT: 'v-ctx', NULL: 'v-null', UNDERPOWERED: 'v-ctx' }[v] ?? '');
+  const tests = TESTS.filter(t => !filter || t.layer.includes(filter));
+  const rows = tests.map(t => `<tr><td class="num">${esc(t.date)}</td><td>${esc(t.what)}<div class="muted" style="font-size:10.5px">${esc(t.id)}</div></td><td>${esc(t.why)}</td><td>${esc(t.output)}<div class="muted" style="font-size:10.5px">${esc(t.doc)}</div></td><td><span class="pill ${verdictCls(t.verdict)}">${esc(t.verdict)}</span></td></tr>`).join('');
+  return `<div class="scroll"><table class="t"><thead><tr><th>Date</th><th>What we tested</th><th>Why</th><th>Output</th><th>Verdict</th></tr></thead><tbody>${rows || '<tr><td colspan="5" class="muted">Nothing tested on its own yet.</td></tr>'}</tbody></table></div>`;
+}
+
+function namedHtml() {
+  const order = ['tested', 'input only', 'literature only', 'not started'];
+  const counts = order.map(o => `${NAMED.filter(n => n.status === o).length} ${o}`).join(' · ');
+  const rows = NAMED.map(n => `<tr><td>${esc(n.item)}</td><td class="muted">${esc(n.by)}</td><td><span class="pill st-${n.status.replace(' ', '-')}">${esc(n.status)}</span></td><td>${esc(n.note)}</td><td>${esc(n.next)}</td></tr>`).join('');
+  return `<p class="muted" style="margin:0 0 6px">${counts}</p><div class="scroll"><table class="t"><thead><tr><th>Item</th><th>Named by</th><th>Status</th><th>So far</th><th>Next</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
 function systemHtml() {
   const stack = LAYERS.map(L => `<div class="lyr ${L.id === 'feedback' ? 'fb' : ''}" data-go="${L.id}"><div class="num">${L.n}</div>
     <div><div class="nm">${esc(L.title)}</div><div class="ds">${esc(L.question.slice(0, 140))}${L.question.length > 140 ? '…' : ''}</div></div>
@@ -108,6 +124,8 @@ function systemHtml() {
   "every single position is different" because every position is the product of all the layers. This page researches each layer on its own tab,
   then brings them together here and tests them combined. <b>No layer is assumed in or out</b>: every candidate stays open until our own
   pre-registered test decides it.</div>
+  <div class="card" style="margin-top:12px"><h3>Everything named, and how far it has gone</h3>${namedHtml()}</div>
+  <div class="card" style="margin-top:12px"><h3>What we have tested, why, and the output</h3>${trackerHtml()}</div>
   <div class="grid">
     <div class="card"><h3>The stack</h3><div class="stack">${stack}</div>
       <p class="muted" style="margin-top:8px">Layer 1 publishes the shared state; 2–7 read it; 8 (dashed) feeds errors back into all of them.</p></div>
@@ -147,6 +165,7 @@ function layerHtml(L) {
       ${L.defects.length ? `<ul>${L.defects.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : '<p class="empty">None found yet.</p>'}</div>
   </div>
   ${L.id === 'state' || L.id === 'jumps' ? `<div class="card" style="margin-top:12px"><h3>Live, today</h3>${liveTable(L.id === 'state' ? ['sigma', 'dsig', 'rel', 'reg', 'err'] : ['sigma', 'jump'])}</div>` : ''}
+  <div class="card" style="margin-top:12px"><h3>Tests touching this layer</h3>${trackerHtml(L.id === 'features' ? 'corr' : L.id === 'execution' ? 'stops' : L.id)}</div>
   <div class="card" style="margin-top:12px"><h3>Deep-dive findings</h3>${findings}</div>`;
 }
 
