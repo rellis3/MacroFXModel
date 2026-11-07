@@ -103,6 +103,12 @@ t('non-US policy rates: mapped by country, joined on the day after the decision'
   assert.equal(policyActualFrom(spec, rel, obs.slice(0, 2)), null);   // nothing dated after the decision yet
   assert.equal(pendingRows([{ country: 'GB', event: 'Official Bank Rate', ms: rel, actual: null }], rel + 3 * 3600e3).length, 1);
 });
+t('NZ official cash rate: mapped to the RBNZ headline source, and pending until filled', () => {
+  const spec = fredSpecFor('NZ', 'Official Cash Rate'); const rel = ms('2026-10-28T01:00:00Z');
+  assert.equal(spec.source, 'rbnz'); assert.equal(spec.dp, 2);
+  assert.equal(pendingRows([{ country: 'NZ', event: 'Official Cash Rate', ms: rel, actual: null }], rel + 3 * 3600e3).length, 1);
+  assert.equal(pendingRows([{ country: 'NZ', event: 'Official Cash Rate', ms: rel, actual: '2.75%' }], rel + 3 * 3600e3).length, 0);
+});
 t('international: ONS/StatCan stamps join like FRED; Eurostat needs the exact period', () => {
   const gb = fredSpecFor('GB', 'CPI y/y'); const rel = ms('2026-09-16T06:00:00Z');
   const ons = onsSeries({ months: [{ year: '2026', month: 'July', value: '2.9', updateDate: '2026-08-18T23:00:00.000Z' }, { year: '2026', month: 'August', value: '3.1', updateDate: '2026-09-15T23:00:00.000Z' }] });

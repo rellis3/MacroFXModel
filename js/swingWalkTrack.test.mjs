@@ -27,5 +27,20 @@ console.log('[swing walk forward score]');
   ok('bad records are skipped', scoreWalkRecords([{ closeDate: '2026-11-02' }, null], bars).records === 2);
 }
 
+console.log('[reach: dot vs mirror]');
+{
+  const days = ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05'];
+  const b = [[100, 100, 100], [102, 99.5, 101], [103.5, 100, 103], [103, 101, 102]].map(([high, low, close], i) => ({ date: days[i], high, low, close }));
+  const rec = walks => ({ closeDate: days[0], close: 100, vol: 0.01, walks });
+  const up = scoreWalkRecords([rec({ strike: [[days[3], 3, 103, null]] })], b).anchors.strike.all;
+  ok('a dot above that trades: reached; its mirror below does not', up.reachN === 1 && up.reachDot === 1 && up.reachMirror === 0);
+  const down = scoreWalkRecords([rec({ strike: [[days[3], 3, 97, null]] })], b).anchors.strike.all;
+  ok('a dot below that never trades: missed; its mirror above reached', down.reachDot === 0 && down.reachMirror === 1);
+  const near = scoreWalkRecords([rec({ strike: [[days[3], 3, 100.001, null]] })], b).anchors.strike.all;
+  ok('a dot on top of price is left out of reach', near.n === 1 && near.reachN === 0);
+  const noHL = scoreWalkRecords([rec({ strike: [[days[3], 3, 103, null]] })], b.map(({ date, close }) => ({ date, close }))).anchors.strike.all;
+  ok('bars without high/low: no reach, scoring still works', noHL.n === 1 && noHL.reachN === 0);
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 if (fails) process.exit(1);

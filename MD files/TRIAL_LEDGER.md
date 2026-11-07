@@ -10,15 +10,15 @@ Generated 2026-11-07.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **296** |
+| claims tested (validated + null + underpowered) | **299** |
 | validated | 51 |
-| null | 168 |
-| underpowered | 77 |
+| null | 170 |
+| underpowered | 78 |
 | context (base rates, descriptions: not counted as tests) | 51 |
-| pre-registrations with no banked verdict (below) | 88 |
+| pre-registrations with no banked verdict (below) | 89 |
 
-**What the count says (Lesson 02 §05).** If none of the 296 claims were real, tests at the usual 5% size would still pass
-about **14.8** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 299 claims were real, tests at the usual 5% size would still pass
+about **15** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
 **roughly 15 of the 51 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -371,6 +371,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-07 | footprint-absorption | price | null | forge/FOOTPRINT_ABSORPTION_PREREG.md |
 | 2026-11-07 | orderflow-lead-aggressor | price | null | forge/ORDERFLOW_LEAD_AGGRESSOR_PREREG.md |
 | 2026-11-07 | round-break-follow | execution | context | forge/ROUND_BREAK_FOLLOW_PREREG.md |
+| 2026-11-07 | swing-walk-heading-nextday | positioning | null | forge/SWING_WALK_HEADING_PREREG.md |
+| 2026-11-07 | swing-walk-heading-touch-near | positioning | underpowered | forge/SWING_WALK_HEADING_PREREG.md |
+| 2026-11-07 | swing-walk-heading-touch-oi | positioning | null | forge/SWING_WALK_HEADING_PREREG.md |
 | 2026-11-07 | vol-layer-reaction | volatility | context | forge/VOL_LAYER_REACTION_PREREG.md |
 | 2026-11-07 | vol-layer-round-numbers | price | null | forge/VOL_LAYER_ROUND_NUMBERS_PREREG.md |
 | 2026-11-07 | vol-layer-rv5-increment | volatility | validated | forge/VOL_LAYER_RV5_INCREMENT_PREREG.md |
@@ -426,6 +429,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/IEP_TIME_PREREG.md`: IEP-TIME: time of day, trading session and day of week in band attainment, first touch and consolidation
 - `forge/INTRADAY_EXTREME_PATHS_PREREG.md`: INTRADAY-EXTREME-PATHS: after a dynamic intraday extreme, what is the probability of continuation, meaningful 
 - `forge/IVRV_COT_PREREG.md`: IV ÷ RV in the book, the rich-IV break rule on the indices, and COT positioning at the lines — pre-registratio
+- `forge/JUMP_AFTER_PREREG.md`: jump-after — what does price do after a jump, and does jump risk predict stop-through beyond σ and the calenda
 - `forge/LEVEL_P2_PREREG.md`: Level engine, Phase 2: reach, which-first, time-to-reach (registered 2026-10-10, before any Phase 2 outcome is
 - `forge/LEVEL_SCENARIO_SHADOW_PREREG.md`: S3 shadow: level scenarios, live reach / which-first / time (registered 2026-10-11, before any live session is
 - `forge/LINE_CLUSTER_MFE_PREREG.md`: Clusters of the forecast lines, and fade MFE / MAE at every touch — pre-registration

@@ -741,3 +741,5 @@ education/papers/**/*.pdf
 /analysis/output/cog_chart/
 
 analysis/output/swing-walk-track/_books/
+
+analysis/output/swing-walk-heading/_rows.parquet

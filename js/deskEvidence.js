@@ -2305,6 +2305,27 @@ export const DESK_EVIDENCE = [
     result: 'Underpowered by the registered rule, and no sign of closure. Pooled over 5 USD pairs (29,099-29,174 pair-days, ~6,670 date clusters, 1999-12 to 2026-08-21, skip one day, block-63 date bootstrap B 2000 + 400-draw Monte-Carlo null): share of the gap price closes +0.010 [-0.006, +0.029] at 5 days (bar 0.0285; realised MDE 0.0287, so underpowered by a hair), +0.011 [-0.019, +0.045] at 10 (bar 0.056, null), +0.006 [-0.047, +0.063] at 20 (bar 0.109, null); MC-null p 0.19/0.44/0.83; no horizon beats the naive price anchor; first half (1999-2014) flat or negative. Per pair 0/15 survive BH (USDCAD leans +0.03 to +0.10). The gap itself has a 9-16 day half-life, but that is the fair value moving to price, not price moving to fair value.',
     use: 'The short-term fair value page (/api/fx-fair-value, Pair and Macro tabs) is description only: rates and risk describe where the pair has been. Never cite the gap, its z-score or its half-life as a reason for a direction or a target, and never feed it to the desk as an impact. Reopen only with a new prereg on post-lockbox data (the live page logs a daily forward record).',
   },
+  {
+    id: 'swing-walk-heading-nextday', domain: 'positioning', verdict: 'null', date: '2026-11-07', doc: 'forge/SWING_WALK_HEADING_PREREG.md', also: ['analysis/output/swing-walk-heading/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'NQ', 'SPX500'],
+    claim: 'Each night, the next day leans toward the Swing Map walk dot for each live expiry, by at least 0.05 sigma',
+    result: 'Null on all five anchors. Balanced above/below so drift cancels, 12,741-17,215 steps per anchor, 72 origin months: gamma centre +0.006 [-0.021, +0.031], gamma best strike +0.000 [-0.018, +0.020], strongest strike +0.008 [-0.011, +0.026], max pain +0.008 [-0.018, +0.034], OI centre +0.009 [-0.016, +0.034] sigma. MDE 0.024-0.034 vs bar 0.05. 0 of 186 slices past BH across both questions.',
+    use: 'Do not say price is heading to a walk dot day to day. Any lean is under a hundredth of a day\'s move.',
+  },
+  {
+    id: 'swing-walk-heading-touch-oi', domain: 'positioning', verdict: 'null', date: '2026-11-07', doc: 'forge/SWING_WALK_HEADING_PREREG.md', also: ['analysis/output/swing-walk-heading/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'NQ', 'SPX500'],
+    claim: 'Price reaches the strongest-strike or OI-centre dot before that expiry at least 5pp more often than a level the same distance on the other side',
+    result: 'Null. Strongest strike reached 23.3% vs mirror 24.8%, balanced -1.5pp [-4.0, +1.5], 17,215 steps, MDE 4.4pp. OI centre 32.1% vs 33.4%, -1.4pp [-5.2, +2.5], 16,937 steps, MDE 4.9pp. Closest approach identical to the mirror (48%/48%, 57%/57% of the gap). Whole-expiry flip percentile 10.5 and 18.5.',
+    use: 'A big strike or OI centre does not draw price in the days before its expiry: it gets reached as often as any level that far away. Fine to show how far away it is, not that price is going there.',
+  },
+  {
+    id: 'swing-walk-heading-touch-near', domain: 'positioning', verdict: 'underpowered', date: '2026-11-07', doc: 'forge/SWING_WALK_HEADING_PREREG.md', also: ['analysis/output/swing-walk-heading/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'NQ', 'SPX500'],
+    claim: 'Price reaches the gamma-centre, gamma-best-strike or max-pain dot before that expiry at least 5pp more often than a level the same distance on the other side',
+    result: 'Underpowered by design (MDE 5.8, 5.3, 6.7pp vs bar 5pp), none clear of zero. Gamma centre 76.0% vs 75.4%, +0.7pp [-2.7, +4.1], 12,741 steps. Gamma best strike 61.6% vs 62.2%, -0.6pp [-4.0, +2.5], 15,418. Max pain 41.3% vs 44.2%, -2.9pp [-7.2, +1.2], 16,495. Described only: with 1-5 sessions left dots lead mirrors by a few points (gamma centre 1-2 sessions +7.2pp [+1.2, +13.5]), and 11-20 sessions reverses (-5.1pp); 0 of 186 slices past BH. One first-run gamma centre INVALID was a one-draw flip false alarm (prereg A2).',
+    use: 'No sign any of these draws price; a small effect is not ruled out. High reach for the gamma centre means only that it sits near price. The last-few-sessions pattern is a pointer for the forward record, not a result.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -2370,6 +2391,9 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'swing-walk-heading-nextday':  { n: '12,741-17,215 steps per anchor, 72 origin-month clusters', note: 'MDE 0.024-0.034 sigma vs bar 0.05; every CI upper below the bar' },
+  'swing-walk-heading-touch-oi': { n: '16,937-17,215 steps per anchor, 71 expiry-month clusters', note: 'MDE 4.4-4.9pp vs bar 5pp; CI upper +1.5 and +2.5pp' },
+  'swing-walk-heading-touch-near': { n: '12,741-16,495 steps per anchor, 71 expiry-month clusters', note: 'MDE 5.3-6.7pp above the 5pp bar, whole-expiry flips (underpowered by design)' },
   'round-break-follow': { n: '8,234 round-number touches, 2016-10 to 2020-08, 20-session date blocks', note: 'C1 half-width 0.014, C2 half-width 0.010, C3 half-width 0.013 against an MDE of about 0.03' },
   'vol-layer-round-numbers': { n: '26,000-31,000 resolved touches per cell, 20-session date blocks; 7,596 lines near a round number', note: 'interval half-width about 0.006-0.007 against a design MDE of 0.015; line cell half-width 0.013 against 0.03' },
   'vol-layer-reaction': { n: '70,965 test touches at the line, 20-session date blocks', note: 'log-loss MDE about 0.002 against a 0.01 gate; selected-trade MDE about 0.027 K; USD-pair cell MDE about 0.004' },

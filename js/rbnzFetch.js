@@ -182,3 +182,17 @@ export async function fetchOcrDecisions() {
   if (!feed.ok) return { ok: false, error: feed.error || `HTTP ${feed.status}` };
   return { ok: true, decisions: ocrDecisionsFromItems(parseRssItems(feed.raw)) };
 }
+
+// The scorecard / surprise-store actual for an OCR decision, from the RSS headline alone (2026-11-07). The statement pages are
+// firewalled, so this carries the LEVEL only ("2.75%", the same string shape the calendar's consensus uses, so the surprise
+// word compares like with like). The RSS item is dated by the NZ-local announcement day, so the release instant is converted
+// to Pacific/Auckland before matching -- never compared as a UTC date. Null while the headline is not out yet.
+export function nzLocalDate(ms) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(ms)).map(x => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}`;
+}
+export function ocrActualFor(decisions, releaseMs, dp = 2) {
+  const day = nzLocalDate(releaseMs);
+  const d = (Array.isArray(decisions) ? decisions : []).find(x => x && x.date === day && Number.isFinite(x.rate));
+  return d ? { actual: `${d.rate.toFixed(dp)}%`, title: d.title ?? null, publishedOn: d.date } : null;
+}

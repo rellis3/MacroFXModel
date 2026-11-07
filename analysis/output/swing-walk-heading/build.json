@@ -1,0 +1,62 @@
+{
+ "close_check": {
+  "AUDUSD": {
+   "sessions": 2275,
+   "median_abs_close_diff_sigma": 0.0
+  },
+  "EURUSD": {
+   "sessions": 2275,
+   "median_abs_close_diff_sigma": 0.0
+  },
+  "GBPUSD": {
+   "sessions": 2275,
+   "median_abs_close_diff_sigma": 0.0
+  },
+  "NAS100": {
+   "sessions": 2266,
+   "median_abs_close_diff_sigma": 0.0
+  },
+  "SPX500": {
+   "sessions": 2266,
+   "median_abs_close_diff_sigma": 0.0
+  },
+  "USDCAD": {
+   "sessions": 2275,
+   "median_abs_close_diff_sigma": 0.0
+  },
+  "USDCHF": {
+   "sessions": 2275,
+   "median_abs_close_diff_sigma": 0.0
+  },
+  "USDJPY": {
+   "sessions": 2275,
+   "median_abs_close_diff_sigma": 0.0
+  }
+ },
+ "close_check_ok": true,
+ "gap_under_0.1": {
+  "gammaCentre": 5168,
+  "gamma": 2491,
+  "strike": 694,
+  "maxPain": 1413,
+  "centre": 972
+ },
+ "steps_before_filter": {
+  "gammaCentre": 17909,
+  "gamma": 17909,
+  "strike": 17909,
+  "maxPain": 17908,
+  "centre": 17909
+ },
+ "no_session_on_expiry": {
+  "AUDUSD": 0,
+  "EURUSD": 0,
+  "GBPUSD": 0,
+  "NAS100": 0,
+  "SPX500": 0,
+  "USDCAD": 0,
+  "USDCHF": 0,
+  "USDJPY": 0
+ },
+ "rows": 78806
+}

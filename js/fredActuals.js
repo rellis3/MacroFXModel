@@ -87,6 +87,8 @@ export const POLICY_RATES = {
   'GB|Official Bank Rate':    { id: 'IUDBEDR',  source: 'boe',  kind: 'level_pct', ref: 'day', dp: 2 },
   'CA|Overnight Rate':        { id: 'V39079',   source: 'boc',  kind: 'level_pct', ref: 'day', dp: 2 },
   'AU|Cash Rate':             { id: 'FIRMMCRTD', source: 'rba', kind: 'level_pct', ref: 'day', dp: 2 },
+  // the RBNZ's statement pages are firewalled from the server, so the level comes from the news RSS headline (js/rbnzFetch.js ocrActualFor); same-day, no lag
+  'NZ|Official Cash Rate':    { id: 'ocr',       source: 'rbnz', kind: 'level_pct', ref: 'day', dp: 2 },
 };
 // Non-US data releases from the statistics offices' own open endpoints.
 // Validated 2026-09-19 against the ForexFactory archive (latest vintage, so
