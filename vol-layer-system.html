@@ -54,14 +54,14 @@ table.t th.num { text-align: right; }
 <div id="vApp">
   <div class="v-h">
     <span class="v-title">🧱 Vol-Layer System</span>
-    <span class="v-sub">the vol forecaster as one layer of a multi-layer system · research plan, nothing here is a verdict</span>
+    <span class="v-sub">the vol forecaster as one layer of a multi-layer system · research log: what was done and found, per layer</span>
   </div>
   <div class="tabs" id="tabs"></div>
   <div id="body"></div>
 </div>
 
 <script type="module">
-import { LAYERS, BUILD_ORDER, DEEP_DIVE, SOURCE_NOTE } from './js/volLayerResearch.js';
+import { LAYERS, BUILD_ORDER, DEEP_DIVE, SOURCE_NOTE, COMBINED } from './js/volLayerResearch.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -118,8 +118,9 @@ function systemHtml() {
   <div class="card" style="margin-top:12px"><h3>Combined test (once layers pass on their own)</h3>
     <p>Layers are added one at a time to the same walk-forward, same costs, same M1 fills, same lockbox. Each addition is kept only if it
     improves on the stack below it. The table below fills in as layers are tested.</p>
-    <div class="scroll"><table class="t"><thead><tr><th>Stack</th><th class="num">Trades</th><th class="num">Net exp. (R)</th><th class="num">Sharpe</th><th class="num">Max DD</th><th>vs stack below</th></tr></thead>
-    <tbody>${['1 state + 7 stops (dumb view)', '+ 2 jumps', '+ 4 views', '+ 5 meta-labelling', '+ 3 / 6 corr, sizing', '+ 8 feedback'].map(s =>
+    <div class="scroll"><table class="t"><thead><tr><th>Stack</th><th class="num">Trades</th><th class="num">Gross (R)</th><th class="num">Net (R)</th><th>Net 95%</th><th>vs stack below</th></tr></thead>
+    <tbody>${COMBINED.map(r => `<tr><td>${esc(r.stack)}</td><td class="num">${r.trades.toLocaleString()}</td><td class="num">${r.gross.toFixed(3)}</td><td class="num">${r.net.toFixed(3)}</td><td class="num">[${r.ci[0].toFixed(3)}, ${r.ci[1].toFixed(3)}]</td><td>${esc(r.against)}</td></tr>`).join('')}
+    ${['+ 2 jumps', '+ 4 views', '+ 5 meta-labelling', '+ 3 / 6 corr, sizing', '+ 8 feedback'].map(s =>
       `<tr><td>${s}</td><td class="num muted">–</td><td class="num muted">–</td><td class="num muted">–</td><td class="num muted">–</td><td class="muted">not run</td></tr>`).join('')}</tbody></table></div></div>
   <div class="card" style="margin-top:12px"><h3>Live shared state, today</h3>${liveTable(['sigma', 'dsig', 'rel', 'reg', 'err', 'jump'])}</div>`;
 }

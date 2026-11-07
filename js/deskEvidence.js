@@ -1256,6 +1256,13 @@ export const DESK_EVIDENCE = [
     use: 'Do not build a separate morning trust score: fix the forecast instead (done for persistence/weekday; IV arm next). The meta-label belongs at the line touch (3b).',
   },
   {
+    id: 'vol-layer-reaction', domain: 'volatility', verdict: 'context', date: '2026-11-07', doc: 'forge/VOL_LAYER_REACTION_PREREG.md',
+    instruments: ['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'CADCHF', 'CADJPY', 'CHFJPY', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD', 'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'NZDCAD', 'NZDJPY', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
+    claim: 'The shared vol state (expected change, filtered regime, forecast error, jump intensity, realised vol so far, dollar vs own move) says when price rejects or breaks at the chosen lines, beyond the 31 LINE-REACTION features, and pays net of measured spread',
+    result: 'Describes, does not pay. 70,965 walk-forward touches, 2021-2026. Log-loss old + new vs rung/side/class 0.9994 [0.9986, 1.0001] against a 0.99 gate. Realised vol and range so far today add 0.9990 [0.9983, 0.9997], Holm p 0.002, below all 20 shuffles; state, jumps and dollar share do not clear Holm. Selected follow +0.064 K gross [+0.045, +0.081] in 5 of 5 folds, -0.107 K net [-0.127, -0.086], because one spread is 0.17 K at K = 0.25 sigma. Selected fade -0.176 K net. Quintile spreads are 2-5pp and mostly match the neighbouring levels.',
+    use: 'Do not trade a touch on the vol state at this geometry. The state may sit beside the lines as a description of reaction odds. The open lead is the gross follow-through, which needs wider geometry on instruments where spread is small against sigma: its own prereg.',
+  },
+  {
     id: 'vol-layer-rv5-increment', domain: 'volatility', verdict: 'validated', date: '2026-11-07', doc: 'forge/VOL_LAYER_RV5_INCREMENT_PREREG.md',
     instruments: ['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'CADCHF', 'CADJPY', 'CHFJPY', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD', 'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'NZDCAD', 'NZDJPY', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
     claim: 'Adding yesterday and last-5-session M1 realised vol to the chosen forecast makes its range lines more accurate, on the forecast-pick yardstick, walk-forward 2020-2026',
@@ -2299,6 +2306,7 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'vol-layer-reaction': { n: '70,965 test touches at the line, 20-session date blocks', note: 'log-loss MDE about 0.002 against a 0.01 gate; selected-trade MDE about 0.027 K; USD-pair cell MDE about 0.004' },
   'vol-layer-rv5-increment': { n: '52,486 instrument-sessions on 1,558 dates, 20-session date blocks', note: 'interval half-width 0.0027 against a 0.005 bar' },
   'gr-hmm-trend-direction': { n: '2,772 sessions (~5,080 effective across 7 pairs), 21-session block clusters', note: 'MDE 0.027 below the 0.05 bar; CI excludes it' },
   'gr-us-yields-direction': { n: '2,772 sessions (~5,080 effective across 7 pairs), 21-session block clusters', note: 'MDE 0.041 below the 0.05 bar; CI excludes it' },

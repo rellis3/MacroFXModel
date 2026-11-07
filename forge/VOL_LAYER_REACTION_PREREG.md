@@ -139,3 +139,5 @@ The feature table was checked before any outcome was computed, and family D was 
 - **Infinite values** of `rv_so_far` and `jump_today` (a zero clock share or zero bipower early in a session) are treated as missing.
 
 ## RESULTS
+
+**CONTEXT, 2026-11-07.** Old + new features vs rung/side/class 0.9994 [0.9986, 1.0001], against a 0.99 gate. C feedback vs old 0.9990 [0.9983, 0.9997], Holm p 0.002; A, B and D do not clear Holm. Real below all 20 shuffles. Selected follow +0.064 K gross [+0.045, +0.081], -0.107 K net [-0.127, -0.086]; selected fade -0.176 K net. Details: `analysis/output/vol-layer-reaction/RESULTS.md`.

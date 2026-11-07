@@ -14,8 +14,8 @@ Generated 2026-11-07.
 | validated | 51 |
 | null | 164 |
 | underpowered | 75 |
-| context (base rates, descriptions: not counted as tests) | 47 |
-| pre-registrations with no banked verdict (below) | 90 |
+| context (base rates, descriptions: not counted as tests) | 48 |
+| pre-registrations with no banked verdict (below) | 89 |
 
 **What the count says (Lesson 02 §05).** If none of the 290 claims were real, tests at the usual 5% size would still pass
 about **14.5** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
@@ -363,6 +363,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-06 | hedge-residual-mom | price | null | forge/HEDGE_RESIDUAL_SYSTEM_PREREG.md |
 | 2026-11-06 | hedge-residual-mr | price | null | forge/HEDGE_RESIDUAL_SYSTEM_PREREG.md |
 | 2026-11-06 | jump-next-day-miss | volatility | context | forge/JUMP_NEXT_DAY_MISS_PREREG.md |
+| 2026-11-07 | vol-layer-reaction | volatility | context | forge/VOL_LAYER_REACTION_PREREG.md |
 | 2026-11-07 | vol-layer-rv5-increment | volatility | validated | forge/VOL_LAYER_RV5_INCREMENT_PREREG.md |
 
 ## Pre-registered, but no banked verdict
@@ -452,7 +453,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VIX_DIVERGENCE_PREREG.md`: VIX vs Nasdaq divergence at the vol lines (hourly) — pre-registration
 - `forge/VIX_SIGNALS_FORWARD_PREREG.md`: vix-signals-forward: forward record of the four VIX/Nasdaq signals banked 2026-10-23
 - `forge/VMC_DIVERGENCE_INDICES_PREREG.md`: VuManChu Cipher B divergence at the vol lines (NQ first) — pre-registration
-- `forge/VOL_LAYER_REACTION_PREREG.md`: vol-layer-reaction — does the shared vol state tell us when price reacts at the chosen forecast's lines?
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
 - `forge/VRP_FORECAST_PREREG.md`: Your vol forecast vs the market's — variance risk premium (pre-registration)
 - `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?
