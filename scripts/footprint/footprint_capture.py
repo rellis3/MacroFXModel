@@ -14,7 +14,7 @@ the spread or with no quote the tick rule decides. The counts of each are in the
 stamp (UTC), so the ~10 minute Lucid delay moves when a bar appears, not which minute it belongs to.
 
 Recorder files live in %LOCALAPPDATA%\\MacroFXModel\\nt8_live (override FOOTPRINT_LIVE_DIR), outside OneDrive, which locks files
-it is syncing. Under --min-free-gb of disk it stops recording and says so rather than filling the disk.
+it is syncing. Under --min-free-gb of disk it stops recording and says so rather than filling the disk (order-book data then needs an NT8 restart).
 Descriptive order flow; no strategy built on this has been tested yet.
 """
 import argparse, gzip, json, os, shutil, socket, sys, threading, time, urllib.error, urllib.request
@@ -232,7 +232,7 @@ def gzip_file(f):
 
 class Capture:
     def __init__(self, a):
-        self.a, self.tapes, self.owned, self.halted, self.bridge_up = a, {}, False, False, None
+        self.a, self.tapes, self.halted, self.bridge_up = a, {}, False, None
         self.pushed, self.gzipping = {}, None
         self.state_file = LIVE_DIR / "capture_state.json"
         try:
@@ -250,7 +250,7 @@ class Capture:
         if st is None:
             if self.bridge_up is not False:
                 self.log("NinjaTrader bridge not answering; waiting for NT8")
-            self.bridge_up, self.owned = False, False
+            self.bridge_up = False
             return None
         if self.bridge_up is not True:
             self.log("NinjaTrader bridge up")
@@ -258,19 +258,22 @@ class Capture:
         if self.halted:
             return st
         want = [front_contract(r, today) for r in self.a.roots]
-        # First contact: stop whatever is recording, because it may be writing to another folder.
-        if st and (not self.owned or set(st) - set(want)):
-            self.log(f"recorder: stopping {sorted(st)}")
-            bridge(dict(op="record_stop"))
-            st = {}
-        if set(want) - set(st):
+        # Never record_stop to tidy up: NT8 refuses a new order-book subscription on that contract until NT8 restarts (seen 2026-11-07,
+        # "There already is a market depth handler subscribed"). So after a roll the old contract just carries on until the next NT8
+        # restart. Start one at a time, so a problem on one market cannot block the rest.
+        missing = [x for x in want if x not in st]
+        if missing:
             LIVE_DIR.mkdir(parents=True, exist_ok=True)
-            r = bridge(dict(op="record_start", instruments=want, out_dir=str(LIVE_DIR), levels=self.a.levels))
-            self.log(f"recorder: start {want} -> {r}")
-            if r and "error" in r:
-                return st
-        self.owned = True
-        return bridge(dict(op="record_status")) or {}
+            for inst in missing:
+                r = bridge(dict(op="record_start", instruments=[inst], out_dir=str(LIVE_DIR), levels=self.a.levels))
+                note = r.get("error") if r else "no answer"
+                self.log(f"recorder: start {inst} -> {note or 'ok'}")
+            st = bridge(dict(op="record_status")) or {}
+            # The depth error comes after the trade subscription, so trades still record. Footprints need only those.
+            for inst in missing:
+                if inst not in st:
+                    self.log(f"recorder: {inst} IS NOT RECORDING")
+        return st
 
     def _done(self, root, day):
         return f"{root}|{day}" in self.done

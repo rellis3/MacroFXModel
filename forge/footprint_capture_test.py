@@ -114,3 +114,41 @@ def test_rebin_keeps_every_contract():
     tot = lambda x: sum(s + b for bar in x["bars"] for _, s, b in bar[5])
     assert tot(r) == tot(d) == sum(range(1, 10)) and [b[0] for b in r["bars"]] == [780, 785] and r["base"] == 5
     assert json.dumps(r)
+
+
+def test_recorder_never_stops_and_one_bad_market_cannot_block_the_rest():
+    import types
+    today = date(2026, 12, 14)                                                   # NQ has rolled to 03-27; the old contract is still recording
+    rec = {"NQ 12-26": {}}
+    calls = []
+
+    def fake(req, **_):
+        calls.append(req["op"])
+        if req["op"] == "record_status":
+            return dict(rec)
+        assert req["op"] == "record_start", req
+        inst = req["instruments"][0]
+        if inst == "ES 03-27":
+            return {"error": "unknown instrument"}
+        if inst == "GC 02-27":
+            rec[inst] = {}                                                       # the order-book error: refused, but trades are recording
+            return {"error": "There already is a market depth handler subscribed."}
+        rec[inst] = {}
+        return {"started": inst}
+
+    real, fc.bridge = fc.bridge, fake
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            old, fc.LIVE_DIR = fc.LIVE_DIR, pathlib.Path(td)
+            try:
+                c = fc.Capture(types.SimpleNamespace(roots=["NQ", "ES", "GC"], levels=10))
+                seen = []
+                c.log = seen.append
+                st = c.recorder(today)
+            finally:
+                fc.LIVE_DIR = old
+    finally:
+        fc.bridge = real
+    assert "record_stop" not in calls
+    assert set(st) == {"NQ 12-26", "NQ 03-27", "GC 02-27"}
+    assert any("ES 03-27 IS NOT RECORDING" in x for x in seen) and not any("GC 02-27 IS NOT" in x for x in seen)

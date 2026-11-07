@@ -8421,9 +8421,9 @@ app.get('/api/footprint/day', async (req, res) => {
     const key = `${sym}|${day}`;
     let doc = _fpDayCache.get(key);
     if (!doc) {
-      const f = path.join(_FP_DIR, `fp_${sym}_${day}.json`);
-      if (fs.existsSync(f)) doc = JSON.parse(fs.readFileSync(f, 'utf8'));
-      else { const gz = _r2Ok() ? await _r2GetBuffer(`footprint/days/${sym}/${day}.json.gz`) : null; if (gz) doc = JSON.parse(zlib.gunzipSync(gz).toString('utf8')); }
+      const gz = _r2Ok() ? await _r2GetBuffer(`footprint/days/${sym}/${day}.json.gz`) : null;   // R2 first: a day re-sent from the ticks has finer bars than an old committed file
+      if (gz) doc = JSON.parse(zlib.gunzipSync(gz).toString('utf8'));
+      else { const f = path.join(_FP_DIR, `fp_${sym}_${day}.json`); if (fs.existsSync(f)) doc = JSON.parse(fs.readFileSync(f, 'utf8')); }
       if (!doc) return res.status(404).json({ ok: false, error: `no footprint for ${sym} ${day}` });
       _fpDayCache.set(key, doc); if (_fpDayCache.size > 8) _fpDayCache.delete(_fpDayCache.keys().next().value);
     }
