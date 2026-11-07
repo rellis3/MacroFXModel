@@ -151,3 +151,132 @@ Found 2026-11-07 by searching SSRN-registered papers (Crossref, prefix 10.2139) 
 |---|---|---|
 | The Price Impact of Order Book Events · Rama Cont, Arseniy Kukanov | 2010 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1712822) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1712822) |
 | Speculators, Commodities and Cross-Market Linkages · Bahattin Buyuksahin, Michel A. Robe | 2010 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1707103) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1707103) |
+
+## Part 4: recent papers, 2023 to 2026
+
+Found 2026-11-07: SSRN-registered papers (Crossref, prefix 10.2139) issued from 2023, on the same desk topics, filtered to titles about our markets and methods (crypto, housing, single-country equity and similar noise left out). At most ten per topic (the ones the most searches found), newest first. Recent SSRN papers are mostly unrefereed working papers: treat them as ideas to test, not findings.
+
+
+### FX & carry
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| Does Positioning Data Predict Currency Returns? A Multi-methodology Test of COT-based and Carry-based Signals The Deflated Alpha Series · Shepherd Mahadzva | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7434900) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7434900) |
+| Dominant Currency Pricing and Currency Risk Premia · Husnu Dalgic, Galip Kemal Ozhan | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7237377) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7237377) |
+| Order Flow Imbalance and Short-Horizon FX Returns: A Multiple-Testing-Corrected Double Machine Learning Analysis · Charles Glah | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7326538) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7326538) |
+| Flow Tomography: Pseudoinverse Decomposition of Currency Flows from Pair-Level Returns with Application to Cross-Currency Contagion and Carry Trade Dissolution · Marijan anon | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6619501) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6619501) |
+| Carry Trade and Currency Crash Risk · Sweder van Wijnbergen, merve Kütük | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6391601) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6391601) |
+| Do Carry Trade Returns Follow A Random Walk? · Larissa Adamiec, Deborah Cernauskas | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6844481) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6844481) |
+| Scaling Laws and Yield Curve Dynamics: A Fractal Framework for Improving Currency Carry Trade Return Distributions · Morgan Weinel | 2025 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=5678343) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5678343) |
+| Predictability of Exchange Rates with a Discount Factor Below Unity · Bas Berend Bakker | 2025 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=5144996) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5144996) |
+| Composite Liquidity Imbalance: Integrating Order Flow and Order Book Data for Foreign Exchange · Ryuichi Yamamoto, Almuqrin Fawaz | 2025 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=5355126) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5355126) |
+| Sovereign Momentum Currency Returns · Giovanni Calice, Ming-Tsung Lin | 2023 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=4432214) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4432214) |
+
+### Volatility
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| Forecasting Realized Volatility Using Options-Implied Information · Azfar Bashar | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7627178) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7627178) |
+| A Signature Based Approach To Realized Volatility Forecasting · Ryan Gu | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6741239) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6741239) |
+| Forecasting Realized Volatility Using Har Models and Wavelet Decomposition: A Volatility-Timing Perspective · Adam Clements, Puneet Vatsa | 2025 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=5391928) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5391928) |
+| Coherent Forecasting of Realized Volatility · Karsten Schweikert, Marius Puke | 2025 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=5233349) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5233349) |
+| Forecasting Realized Volatility with Implied Volatility Surface: An Image-Based Approach · Yang Jinting, Wenjing Xia | 2025 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=5170265) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5170265) |
+| On Options-Driven Realized Volatility Forecasting: Information Gains via Rough Volatility Model · Zheqi Fan, Meng (Melody) Wang | 2025 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=5974814) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5974814) |
+| Forecasting Stock Market Volatility with Realized Volatility, Volatility Components and Jump Dynamics · Xuebao Yin, Xinyu Wu | 2023 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=4578463) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4578463) |
+| NHITS for Forecasting Stock Realized Volatility · Hugo Gobato Souto | 2023 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=4650761) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4650761) |
+| Implied Volatility in Stochastic Volatility Models With Jump to Default · Frido Rolloos | 2023 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=4319391) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4319391) |
+
+### Options & dealers
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| 0DTE Options and the Price of Tail Protection · James O'Donovan | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6836498) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6836498) |
+| Stock Price Movement and Its Relationship with Options Delta and Gamma on Expiration Dates Dealer Hedging, Expiration-Day Liquidity, and Intraday Price Dynamics in U.S. Equity Markets /· Vishal Chopra | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7222220) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7222220) |
+| The Structural Upward Bias in Equity Markets: A First-Principles Examination of Options Dealer Hedging, Gamma Convexity, and the Volatility Risk Premium Paradox /· Robert Balan | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6682358) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6682358) |
+| The Sign of Dealer Gamma A Reproducible, Auditable Framework for Computing S&amp;P 500 Gamma Exposure (GEX) · Aren Chilingarian | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7131778) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7131778) |
+| Dealer Gamma Exposure and Overnight Gap Risk: Incremental Information in Low-Volatility Regimes · Maceo Maurer | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6650858) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6650858) |
+| Do Gamma-Exposure Walls Exhibit Strike-Local Effects? A Pre-Registered, Control-Matched Test of Strike-Local Dealer-Gamma Effects in SPY · Rees Popovici | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7082418) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7082418) |
+| Gamma Exposure (GEX) without the Paywall: A Fully Disclosed Dealer-gamma Engine for Gold and S&amp;P 500 Futures at US$42.80 a Month · Naresh Sen | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7098358) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7098358) |
+| Transparency and Dealer Behavior - The Case of MiFID II and the Bund Market · Konrad Lucke | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6634683) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6634683) |
+| A Nonlinear Framework for Dynamic Tail-Risk Hedging Using Conditional VaR, Variance Swaps, and Regime Probabilities · Amaanullah Bhatti | 2025 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=5222992) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5222992) |
+| Option Market Maker Hedging and Stock Market Liquidity · James O'Donovan, Gloria Yang Yu | 2023 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=4567604) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4567604) |
+
+### Trend, momentum, reversal
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| Evaluating Interpretable Meta-Labeling for Intraday Futures Trend Following: Open-Interest Features and Contract-Dependent Outcomes · Bing Zhang, Zhiwen Chang | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7356724) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7356724) |
+| Alpha on Trend-Following Beta: a case study of the SocGen Trend Index · Giulio Bertoli | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7437299) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7437299) |
+| Diversification and Convexity in Trend Following · Dennis Jung | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7598021) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7598021) |
+| Rethinking Trend Following: Optimal Regime-Dependent Allocation · Valeriy Zakamulin | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6376479) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6376479) |
+| Echoing Messages: Narrative Trend-Following and Transient Capital · Elham Tabatabaei | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6698078) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6698078) |
+| Exploratory Trend Following under a Hidden Regime Model · Duy Nguyen | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7672920) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7672920) |
+| Short-Term Reversal Persists Globally-If Properly Measured · Jan Stosik, Adam Zaremba | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6630998) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6630998) |
+| Momentum and Reversal on the Short-Term Horizon: Evidence from Commodity Markets · Shen Zhao, Yiyi Ding | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6425598) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6425598) |
+| Estimating Term Premium with Long and Short Memory Term Structure Models · Salman Huseynov | 2023 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=4436976) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4436976) |
+
+### Rates & macro
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| Not All JGB Yield Shocks are Carry Shocks: Curve Location and the Global Transmission of Japan's Rate Normalization · Fuli Yang | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7363659) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7363659) |
+| The Carry-unwind Shortcut: JGB Curve Location, Volatility States, and Global FX Repricing · Fuli Yang | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7385740) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7385740) |
+| Financial Conditions in the Real Yield Curve · Andres Schneider | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6750439) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6750439) |
+| Forecastability of the US Yield Curve · Emrah Ahi, Levent Guntay | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6507110) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6507110) |
+| Break-Even Yield in Fixed-Income Portfolios: A Unifying Framework for Carry and Risk-Based Allocation · Mario Bajo Traver | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6480378) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6480378) |
+| Election Probabilities and the Treasury Yield Curve · Emrehan Aktug, Orhan Torul | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6972078) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6972078) |
+| The Position and Slope of the Yield Curve · Francis E. Warnock | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6064638) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6064638) |
+| Beyond the Announcement Window: What Monthly FOMC Regressions Measure · Saurabh Ahluwalia | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7674953) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7674953) |
+| When the Chair Speaks: Communication and the FOMC Announcement Premium · Daniil Gerchik | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6614558) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6614558) |
+| What Survives an FOMC Surprise? Confounding and the Persistence of Announcement Effects in Asset Prices · Arka Prava Bandyopadhyay | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7533561) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7533561) |
+
+### Gold & commodities
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| Decoding the Gold Rally: An Analysis of Safe-Haven Dynamics and Price Determinants in a Volatile Global Economy · S. Anthony Rahul Golden | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6148848) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6148848) |
+| Gold Standards for Price Discovery · Delphine Lautier, Julien Ling | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6152966) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6152966) |
+| Cross-Asset Price-Based Regimes for Gold ⋆ · Radovan Vojtko, Cyril Dujava | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6042135) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6042135) |
+| Spot-Based Basis and Basis Momentum in Commodity Futures Markets · Zudong Luo, Shan Xue | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6546878) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6546878) |
+| Deep Learning from Commodity Futures Term-Structure Surfaces: Empirical Evidence and a Convolutional Theory of Carry · Yuecheng Jia, Betty J. Simkins | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7600983) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7600983) |
+| Breaking the Link: Risk, Carry, and Commodity Currencies · Robert Lindahl, David Stenvall | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6392120) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6392120) |
+| What Drives Volatility Transmission in Commodity Futures Markets? · Fenglin Wu | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7324099) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7324099) |
+| Weak Factors for Commodity Futures Portfolios · Ryuta Sakemoto, Kei Nakagawa | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7619025) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7619025) |
+| Entropy-Based Identification of Safe-Haven Regime Shifts in Gold and Silver Markets · Nam Anh Quach | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6357498) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6357498) |
+
+### Risk & portfolio
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| Hierarchical Risk Parity versus Mean-Variance and Equal Risk Contribution Portfolios: A Monte Carlo Simulation Study · Aadarsh jha | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7036740) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7036740) |
+| Portfolio Risk Parity with different Risk Aversion Degrees · Valentina Piantoni, Sergio Ortobelli Lozza | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6790890) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6790890) |
+| The risk parity zoo: Which risk contributions should multi-asset investors equalize? · Jarno Bergmeier | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6536678) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6536678) |
+| High-Dimensional Monte Carlo Risk Attribution in Mean-Variance and Risk Parity Portfolios · Rahul Panse | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6298738) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6298738) |
+| Concentration Risk Rebalancing with Narrative-Informed Black-Litterman Model · Tian Qin | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7588478) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7588478) |
+| Adapting the Black-Litterman Framework to Fixed-Income Portfolios · Yogesh Tandle | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6931578) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6931578) |
+| Volume-Weighted Golden Ratio Estimator (vGRE) for Drawdown and Tail-Risk Control for Wealth Portfolios · Lanz CWJ Chan, Wing-Keung Wong | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6626218) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6626218) |
+| Tail Risk Hedging in Equity Portfolios: Evaluating the Cost-Effectiveness of Out-of-the-Money Put Options versus Dynamic Tail-Risk Mitigation Strategies During High-Volatility Regimes · Henry Mayambu | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7541959) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7541959) |
+
+### Method (quant toolbox)
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| An Empirical Evaluation of Cross-Sectional Equity Signals Under Backtest Overfitting Diagnostics · Sourish Mudumby Venugopal | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6078546) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6078546) |
+| What a Backtest Overfitting Diagnostic Measures, and What Readers Take It to Mean · Sofiane Boutgajouft | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7346738) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7346738) |
+| Adversarial Backtest Verification: Catching Overfitting, Beta, Collinearity, and Look-Ahead in a Live Trading-Research Program · Alexandr Dashyan | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7338919) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7338919) |
+| Quantifying Backtest Overfitting from Information Leakage: A Walk-Forward and Embargo-Based Diagnostic Framework Applied to Deep Learning Return Forecasts · Zulfiqar Ali Mir, Dipesh Shrestha | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7029819) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7029819) |
+| Measuring the Reliability of Backtest Validation · Lucas Inglese | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7210219) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7210219) |
+| Dollar-Correct, Time-Wrong: Twelve Backtest Bugs That Survive Reconciliation · Hanxiong Yan | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7325338) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7325338) |
+| Who Counts the Trials? A Committed Trial Ledger for Enforcing the Deflated Sharpe Ratio in Zero-Knowledge · Mohammad Muavia | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7187319) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7187319) |
+| The Deflated Sharpe Ratio: A Unified Framework for Search-Adjusted Performance Inference br · Marcos López de Prado, Emilio Porcu | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7198158) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7198158) |
+
+### Microstructure & flow
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| Predictive Order Flow Imbalance: Cross-Asset Microstructure Alpha · Kethan S E | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7053198) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7053198) |
+| Decomposing High-Frequency Order Flow: Commonality and Idiosyncratic Trade Imbalance · Wenhao Cui, Haibin Zhu | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6535019) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6535019) |
+| Volatility Psychophysics in Gold Futures: Weber-Fechner Perception Laws, COT Positioning and HMM Regime Detection in COMEX Gold (2006-2026) · Elena Hysa | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6990838) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6990838) |
+| From Aggregate Hedger Positioning to Firm-Level Tradable Alpha: A Pre-Registered Cross-Sectional COT Shock Strategy on Commodity Producer Equity · Hyun Ahn | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6730238) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6730238) |
+| Risk Mitigation of Momentum Strategy Using Stop-Loss Rules · Mohsin Sadaqat, Hilal Anwar Butt | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7511970) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7511970) |
+| Clarifying the Impact of Speculators and Financial Investors on Commodity Futures Markets · Hilary Till | 2025 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=5277088) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5277088) |
