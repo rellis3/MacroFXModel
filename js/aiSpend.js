@@ -52,8 +52,11 @@ const rowKey = c => [c.provider, c.model, c.task, c.label].map(x => String(x ?? 
 const emptyRow = c => ({ provider: c.provider ?? null, model: c.model ?? null, task: c.task ?? null, label: c.label ?? null,
   calls: 0, in: 0, out: 0, cacheRead: 0, cacheWrite: 0, usd: 0, priced: false, errors: 0, noReply: 0, truncated: 0, blocked: 0 });
 
-/** A fresh day. */
-export const emptyDay = day => ({ day, rows: {}, usd: 0, anthropicUsd: 0, calls: 0 });
+/** Successful calls kept one by one per day (the newest), for "what did each call cost". */
+export const LOG_KEEP = 400;
+
+/** A fresh day. `alerted`: the highest spend step already sent to Telegram (so a restart does not resend). */
+export const emptyDay = day => ({ day, rows: {}, usd: 0, anthropicUsd: 0, calls: 0, log: [], alerted: 0 });
 
 /**
  * Add one call to a day (mutates and returns it). `call`: { provider, model, task, label, usage?, ok, httpStatus?,
@@ -69,6 +72,10 @@ export function addCall(day, call, envPrices = {}) {
   for (const f of ['in', 'out', 'cacheRead', 'cacheWrite']) r[f] += Number(u[f] ?? 0) || 0;
   if (call.truncated) r.truncated++;
   const usd = usdOf(u, priceFor(call.provider, call.model, envPrices));
+  (day.log ??= []).push({ at: call.at ?? null, label: call.label ?? null, task: call.task ?? null, model: call.model ?? null,
+    in: Number(u.in ?? 0) || 0, out: Number(u.out ?? 0) || 0, cacheRead: Number(u.cacheRead ?? 0) || 0, cacheWrite: Number(u.cacheWrite ?? 0) || 0,
+    usd: usd == null ? null : +usd.toFixed(5), ms: call.ms ?? null, truncated: !!call.truncated });
+  if (day.log.length > LOG_KEEP) day.log.splice(0, day.log.length - LOG_KEEP);
   if (usd != null) {
     r.priced = true; r.usd = +(r.usd + usd).toFixed(6); day.usd = +(day.usd + usd).toFixed(6);
     if (call.provider === 'anthropic') day.anthropicUsd = +(day.anthropicUsd + usd).toFixed(6);
@@ -79,6 +86,8 @@ export function addCall(day, call, envPrices = {}) {
 /** Merge day b into day a (same date; e.g. what KV held plus what this process recorded before it loaded). */
 export function mergeDays(a, b) {
   const out = emptyDay(a?.day ?? b?.day);
+  out.log = [...(a?.log ?? []), ...(b?.log ?? [])].slice(-LOG_KEEP);
+  out.alerted = Math.max(a?.alerted ?? 0, b?.alerted ?? 0);
   for (const d of [a, b]) {
     if (!d) continue;
     out.usd = +(out.usd + (d.usd ?? 0)).toFixed(6);
@@ -105,6 +114,7 @@ export function daySummary(d) {
     day: d?.day ?? null, usd: +(d?.usd ?? 0).toFixed(4), anthropicUsd: +(d?.anthropicUsd ?? 0).toFixed(4), calls: d?.calls ?? 0,
     noReply: rows.reduce((a, r) => a + r.noReply, 0), blocked: rows.reduce((a, r) => a + r.blocked, 0),
     byTask: Object.values(byTask).sort((a, b) => b.usd - a.usd), rows,
+    log: [...(d?.log ?? [])].reverse(),   // newest first
   };
 }
 
@@ -134,4 +144,24 @@ export function callerFromStack(stack, skip = ['callModel', '_modelJson', '_litM
     return `${String(file).split('/').pop()}:${ln}`;
   }
   return null;
+}
+
+/**
+ * Has today's spend passed a new alert step? Steps are in the alert currency (GBP by default): with a £5 step, the
+ * first alert goes at £5, the next at £10, and so on. Returns the step reached (0 = none) and whether it is new.
+ * One message per call even when a single dear call jumps two steps.
+ */
+export function alertStep({ usd, step, fx = 1, alerted = 0 }) {
+  if (!(step > 0) || !(fx > 0)) return { step: alerted, fire: false };
+  const n = Math.floor(((usd ?? 0) / fx) / step + 1e-9);
+  return { step: Math.max(n, alerted), fire: n > alerted };
+}
+
+/** The Telegram text for a spend alert: amounts in the alert currency with dollars alongside. */
+export function alertText({ day, summary, threshold, fx = 1, sym = '£', last = null }) {
+  const m = usd => `${sym}${(usd / fx).toFixed(2)}`;
+  const top = (summary.rows ?? []).filter(r => r.usd > 0).slice(0, 4)
+    .map(r => `• ${r.label ?? r.task} (${r.task}, ${String(r.model ?? '').replace(/^claude-/, '')}): ${m(r.usd)} over ${r.calls} call${r.calls === 1 ? '' : 's'}`).join('\n');
+  const lastLine = last ? `\nLast call: ${last.label ?? last.task} on ${last.model}, ${(last.in + last.cacheRead + last.cacheWrite).toLocaleString()} in / ${last.out.toLocaleString()} out = ${last.usd == null ? 'unpriced' : m(last.usd)}` : '';
+  return `💷 <b>Model spend ${day} (UTC)</b> passed ${sym}${threshold}: now ${m(summary.usd)} ($${summary.usd.toFixed(2)}) over ${summary.calls} calls.\n${top ? 'Dearest:\n' + top : ''}${lastLine}`;
 }

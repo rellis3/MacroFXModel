@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { priceFor, usdOf, addCall, emptyDay, mergeDays, daySummary, capCheck, callerFromStack, utcDay } from './aiSpend.js';
+import { alertStep, alertText, LOG_KEEP, priceFor, usdOf, addCall, emptyDay, mergeDays, daySummary, capCheck, callerFromStack, utcDay } from './aiSpend.js';
 
 test('list price for Sonnet 5; env override wins; unknown model has none', () => {
   assert.equal(priceFor('anthropic', 'claude-sonnet-5').in, 2);
@@ -53,3 +53,25 @@ test('callerFromStack skips the plumbing', () => {
 });
 
 test('utcDay', () => assert.equal(utcDay(Date.UTC(2026, 10, 4, 23, 59)), '2026-11-04'));
+
+test('alertStep fires once per £5 step, never repeats, and is off at 0', () => {
+  const fx = 1.25;   // $1.25 = £1
+  assert.deepEqual(alertStep({ usd: 6, step: 5, fx, alerted: 0 }), { step: 0, fire: false });       // £4.80
+  assert.deepEqual(alertStep({ usd: 6.25, step: 5, fx, alerted: 0 }), { step: 1, fire: true });     // £5.00
+  assert.deepEqual(alertStep({ usd: 7, step: 5, fx, alerted: 1 }), { step: 1, fire: false });
+  assert.deepEqual(alertStep({ usd: 20, step: 5, fx, alerted: 1 }), { step: 3, fire: true });       // £16 jumps two steps, one message
+  assert.equal(alertStep({ usd: 99, step: 0, fx, alerted: 0 }).fire, false);
+});
+
+test('each priced call is logged with its usage and cost, capped at LOG_KEEP', () => {
+  const d = emptyDay('d');
+  for (let i = 0; i < LOG_KEEP + 5; i++) addCall(d, { provider: 'anthropic', model: 'claude-sonnet-5', task: 't', label: 'x', ok: true, usage: { in: 1000, out: 100 }, at: i });
+  assert.equal(d.log.length, LOG_KEEP);
+  assert.equal(d.log.at(-1).at, LOG_KEEP + 4);
+  assert.equal(d.log[0].usd, 0.003);
+  const s = daySummary(d);
+  assert.equal(s.log[0].at, LOG_KEEP + 4);   // newest first
+  const txt = alertText({ day: 'd', summary: s, threshold: 5, fx: 1.25, last: s.log[0] });
+  assert.match(txt, /passed £5/);
+  assert.match(txt, /Last call: x on claude-sonnet-5/);
+});

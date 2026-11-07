@@ -268,7 +268,7 @@ import { searchUrls as _litSearchUrls, PARSERS as _LIT_PARSERS, LIT_SOURCES as _
 import { QC as _RL_QC, parseQcTree as _rlParseQcTree, readingListItems as _rlReadingList, manifestItems as _rlManifest, items151 as _rl151Items, record151 as _rlRecord151, qcItems as _rlQcItems, qcRawUrl as _rlQcRaw, qcRecord as _rlQcRecord, matchUpload as _rlMatchUpload, uploadKey as _rlUploadKey, seedQueue as _rlSeedQueue, upsertItem as _rlUpsert, nextItems as _rlNext, markItems as _rlMark, queueSummary as _rlSummary, batchPlan as _rlBatchPlan, searchLocal as _rlSearchLocal, paperFeedRecords as _rlPaperFeedRecords, kindOf as _rlKindOf } from './js/researchLibrary.js';   // §9ai the reading backlog   // §9ah the literature desk
 import { currencyStrength as _evCcy, dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
-import { addCall as _spAdd, emptyDay as _spEmpty, mergeDays as _spMerge, daySummary as _spSummary, capCheck as _spCap, callerFromStack as _spCaller, utcDay as _spDay, LIST_PRICES as _SP_PRICES } from './js/aiSpend.js';   // the model-spend ledger (KV, by day and caller)
+import { alertStep as _spAlertStep, alertText as _spAlertText, addCall as _spAdd, emptyDay as _spEmpty, mergeDays as _spMerge, daySummary as _spSummary, capCheck as _spCap, callerFromStack as _spCaller, utcDay as _spDay, LIST_PRICES as _SP_PRICES } from './js/aiSpend.js';   // the model-spend ledger (KV, by day and caller)
 import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
 import { expandFeeds as _dpExpandFeeds, buildDeskPack as _dpBuild, packForSkill as _dpForSkill, packSummary as _dpSummary, indexRow as _dpIndexRow, upsertIndex as _dpUpsertIndex, shouldBuild as _dpShouldBuild, londonDate as _dpLondonDate, DESK_SKILLS as _DP_SKILLS, DESK_UNIVERSE as _DP_UNIVERSE, DESK_SUBSETS as _DP_SUBSETS, packFresh as _dpFresh } from './js/deskPack.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
@@ -1883,6 +1883,7 @@ const TG_SENDERS = {
   tradeWatch:        'Desk trade watcher: a card reached its entry zone, first target or invalidation (context, not an order)',
   surpriseReader:    'Live surprise reader: a high-impact print, its surprise against consensus and the release playbook, within a minute (history, not a forecast)',
   forecastDrift:     'Forecast auditor: a forecast line set drifted out of its calibration band (only after opting in on the Forecast auditor card; a prompt to look, nothing is changed)',
+  aiSpend:           'Model spend: a note at every £5 (or the step set on Bot Config → AI models) spent on model calls in a UTC day, with the dearest jobs and the last call',
   deskAlerts:        'Desk alerts: world stress colour, options-skew extremes, fair value beyond 10%, carry/vol collapse, leading-indicator phase, speaker drift (context, not a signal)',
   // volatility_bot_v2 (the Python bot) checks this directly via ai_alert_cfg
   // (see its own tg_master_on doc) — unlike every other sender above, this
@@ -3426,7 +3427,7 @@ function _recordModelCall(row) {
 }
 // ── The spend ledger (js/aiSpend.js): every paid call by UTC day, job and caller, kept in KV so a deploy cannot
 // wipe it. Written 2026-11-07 after $56.82 of Sonnet on 2026-11-04 could not be traced: the ring buffer above resets
-// on every deploy and a task name ('desk-head') is shared by fifteen different jobs. Saved a minute after a call and on
+// on every deploy and a task name ('desk-head') is shared by fifteen different jobs. Saved ten minutes after a call and on
 // SIGTERM. The daily cap on Anthropic spend is enforced in callModel.
 const _SPEND_KV = d => `ai_spend_v1:${d}`;
 const _SPEND_CAP_KV = 'ai_spend_cap_v1';
@@ -3435,10 +3436,13 @@ const _spend = { days: {}, loaded: {}, dirty: new Set(), cap: null, capAt: 0, wa
 function _spendRecord(row) {
   try {
     const d = _spDay(Date.now());
-    _spAdd(_spend.days[d] ??= _spEmpty(d), row, _aiConfig().prices);
+    const day = _spend.days[d] ??= _spEmpty(d);
+    _spAdd(day, { at: Date.now(), ...row }, _aiConfig().prices);
     _spend.dirty.add(d);
-    // one save a minute after the first unsaved call (a debounce, not a background timer: nothing runs while idle)
-    if (!_spend.flushTimer) { _spend.flushTimer = setTimeout(() => { _spend.flushTimer = null; _spendFlush().catch(() => {}); }, 60_000); _spend.flushTimer.unref?.(); }
+    _spendAlertCheck(d, day);
+    // one save ten minutes after the first unsaved call (a debounce, not a background timer: nothing runs while idle). ai_*
+    // keys go to Cloudflare KV (kv.js isCfKey), whose free plan allows 1,000 writes a day: at most ~144 from here, plus SIGTERM
+    if (!_spend.flushTimer) { _spend.flushTimer = setTimeout(() => { _spend.flushTimer = null; _spendFlush().catch(() => {}); }, 600_000); _spend.flushTimer.unref?.(); }
   } catch (e) { console.warn('[ai-spend] record failed:', e.message); }
 }
 /** Make sure what KV holds for this day is merged in (once per day per process). */
@@ -3472,6 +3476,35 @@ async function _spendToday() {
   return _spend.days[d]?.anthropicUsd ?? 0;
 }
 function _aiCallerLabel() { return _spCaller(new Error().stack); }
+
+// Telegram at every £N of model spend in a UTC day (tgMaster.aiSpend mutes it). The step is in pounds: KV
+// ai_spend_alert_v1 { gbp } from the Bot Config page, else AI_SPEND_ALERT_GBP, else £5; 0 = no alerts. Dollars are
+// turned into pounds at the live GBP/USD price, or AI_SPEND_GBPUSD (default 1.30) when no price has been fetched.
+// The step already sent is kept on the day in KV, so a restart does not resend it.
+const _SPEND_ALERT_KV = 'ai_spend_alert_v1';
+const _spendAlertCfg = { gbp: Number(process.env.AI_SPEND_ALERT_GBP ?? 5), at: 0, source: process.env.AI_SPEND_ALERT_GBP != null ? 'env' : 'default' };
+async function _spendAlertLoad() {
+  if (Date.now() - _spendAlertCfg.at < 60_000) return _spendAlertCfg;
+  _spendAlertCfg.at = Date.now();
+  try { const raw = await kv.get(_SPEND_ALERT_KV); const v = raw ? JSON.parse(raw)?.gbp : null; if (v != null && Number.isFinite(+v)) { _spendAlertCfg.gbp = +v; _spendAlertCfg.source = 'page'; } } catch { /* keep */ }
+  return _spendAlertCfg;
+}
+_spendAlertLoad().catch(() => {});
+function _spendFx() {
+  const live = Number(state.prices?.['GBP/USD']?.price);
+  return live > 0.5 && live < 3 ? { fx: live, live: true } : { fx: Number(process.env.AI_SPEND_GBPUSD ?? 1.30) || 1.30, live: false };
+}
+function _spendAlertCheck(d, day) {
+  _spendAlertLoad().catch(() => {});
+  const { fx } = _spendFx();
+  const a = _spAlertStep({ usd: day.usd, step: _spendAlertCfg.gbp, fx, alerted: day.alerted ?? 0 });
+  if (!a.fire) return;
+  day.alerted = a.step;
+  const s = _spSummary(day);
+  const text = _spAlertText({ day: d, summary: s, threshold: +(a.step * _spendAlertCfg.gbp).toFixed(2), fx, last: s.log[0] ?? null });
+  if (!tgOn('aiSpend') || !state.tg?.token || !state.tg?.chatId) { console.log(`[ai-spend] alert not sent (Telegram off or muted): ${text.replace(/<[^>]+>/g, '')}`); return; }
+  sendTelegram(state.tg.token, state.tg.chatId, text).catch(() => {});
+}
 
 function modelCallStats() {
   const cfg = _aiConfig();
@@ -3648,6 +3681,7 @@ app.get('/api/ai-spend', async (req, res) => {
     const cap = await _spendCap();
     res.json({ ok: true, cap, capSource: (await kv.get(_SPEND_CAP_KV).catch(() => null)) ? 'page' : (process.env.AI_DAILY_CAP_USD != null ? 'env' : 'default'),
       todayAnthropicUsd: +(await _spendToday()).toFixed(4), days, listPrices: _SP_PRICES,
+      alert: { gbp: (await _spendAlertLoad()).gbp, source: _spendAlertCfg.source, muted: !tgOn('aiSpend'), telegram: !!(state.tg?.token && state.tg?.chatId) }, fx: _spendFx(),
       note: 'USD at Anthropic list prices (PRICE_* env vars override). Recorded since 2026-11-07; earlier days are not in this ledger. Calls with no reply may still have been billed.' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -3658,6 +3692,16 @@ app.post('/api/ai-spend/cap', async (req, res) => {
     await kv.put(_SPEND_CAP_KV, JSON.stringify({ usd, at: new Date().toISOString() }));
     _spend.cap = null;
     res.json({ ok: true, cap: usd });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// POST { gbp }: the Telegram alert step in pounds (0 = no alerts).
+app.post('/api/ai-spend/alert', async (req, res) => {
+  try {
+    const gbp = Number(req.body?.gbp);
+    if (!Number.isFinite(gbp) || gbp < 0 || gbp > 10_000) return res.status(400).json({ error: 'gbp must be a number from 0 (off) to 10000' });
+    await kv.put(_SPEND_ALERT_KV, JSON.stringify({ gbp, at: new Date().toISOString() }));
+    Object.assign(_spendAlertCfg, { gbp, source: 'page', at: Date.now() });
+    res.json({ ok: true, gbp });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
