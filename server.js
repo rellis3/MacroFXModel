@@ -3426,17 +3426,19 @@ function _recordModelCall(row) {
 }
 // ── The spend ledger (js/aiSpend.js): every paid call by UTC day, job and caller, kept in KV so a deploy cannot
 // wipe it. Written 2026-11-07 after $56.82 of Sonnet on 2026-11-04 could not be traced: the ring buffer above resets
-// on every deploy and a task name ('desk-head') is shared by fifteen different jobs. Flushed every minute and on
+// on every deploy and a task name ('desk-head') is shared by fifteen different jobs. Saved a minute after a call and on
 // SIGTERM. The daily cap on Anthropic spend is enforced in callModel.
 const _SPEND_KV = d => `ai_spend_v1:${d}`;
 const _SPEND_CAP_KV = 'ai_spend_cap_v1';
 const _SPEND_CAP_DEFAULT = 20;   // USD a UTC day on Anthropic; AI_DAILY_CAP_USD or the Bot Config page change it, 0 = off
-const _spend = { days: {}, loaded: {}, dirty: new Set(), cap: null, capAt: 0, warned: {} };
+const _spend = { days: {}, loaded: {}, dirty: new Set(), cap: null, capAt: 0, warned: {}, flushTimer: null };
 function _spendRecord(row) {
   try {
     const d = _spDay(Date.now());
     _spAdd(_spend.days[d] ??= _spEmpty(d), row, _aiConfig().prices);
     _spend.dirty.add(d);
+    // one save a minute after the first unsaved call (a debounce, not a background timer: nothing runs while idle)
+    if (!_spend.flushTimer) { _spend.flushTimer = setTimeout(() => { _spend.flushTimer = null; _spendFlush().catch(() => {}); }, 60_000); _spend.flushTimer.unref?.(); }
   } catch (e) { console.warn('[ai-spend] record failed:', e.message); }
 }
 /** Make sure what KV holds for this day is merged in (once per day per process). */
@@ -3456,7 +3458,6 @@ async function _spendFlush() {
     catch (e) { console.warn('[ai-spend] flush failed:', e.message); }
   }
 }
-setInterval(() => { _spendFlush().catch(() => {}); }, 60_000).unref?.();
 async function _spendCap() {
   if (_spend.cap != null && Date.now() - _spend.capAt < 60_000) return _spend.cap;
   let cap = Number(process.env.AI_DAILY_CAP_USD ?? _SPEND_CAP_DEFAULT);
