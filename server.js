@@ -265,7 +265,7 @@ import { tradeRows as _jcRows, coach as _jcCoach, execution as _jcExec } from '.
 import { parseRegister as _tdParseRegister, opsReport as _tdOps, outline as _tdOutline, section as _tdSection, readingList as _tdReadingList, registerText as _tdRegisterText, screen as _tdScreen, validateTheories as _tdValidate } from './js/theoryDesk.js';   // Phases 9 and 12
 import { upcoming as _rpUpcoming, playbookText as _rpPlaybookText } from './js/releasePlaybook.js';
 import { searchUrls as _litSearchUrls, PARSERS as _LIT_PARSERS, LIT_SOURCES as _LIT_SOURCES, apiError as _litApiError, dedupe as _litDedupe, titleMatch as _litTitleMatch, isBlockedPage as _litBlocked, arxivHtml as _litArxivHtml, pageMeta as _litPageMeta, htmlToText as _litHtmlToText, cleanPdfText as _litCleanPdf, identifyRef as _litIdentify, lookupUrls as _litLookup, parseOpenAlex as _litParseOpenAlex, parseCrossref as _litParseCrossref, parseArxiv as _litParseArxiv, urlRecord as _litUrlRecord, textRecord as _litTextRecord, libraryIndex as _litLibIndex, libraryText as _litLibText, paperForReader as _litForReader, excerpt as _litExcerpt, validatePaperNotes as _litValidateNotes, noteLine as _litNoteLine, validateDossier as _litValidateDossier, validateQueries as _litValidateQueries, rankPapers as _litRank, readingPlan as _litPlan, findPaper as _litFind, mergePapers as _litMerge, addCitations as _litCite, relevance as _litRelevance, feedRecords as _litFeedRecords, weeklyTopic as _litWeeklyTopic, LENS_INTERESTS as _litInterests, dossierSummary as _litDossierSummary, LIT_API as _LIT_API, hash as _litHash, firstTitleLine as _litTitleLine } from './js/literature.js';
-import { QC as _RL_QC, parseQcTree as _rlParseQcTree, readingListItems as _rlReadingList, manifestItems as _rlManifest, items151 as _rl151Items, record151 as _rlRecord151, qcItems as _rlQcItems, qcRawUrl as _rlQcRaw, qcRecord as _rlQcRecord, matchUpload as _rlMatchUpload, alreadyHeld as _rlAlreadyHeld, uploadKey as _rlUploadKey, seedQueue as _rlSeedQueue, upsertItem as _rlUpsert, nextItems as _rlNext, markItems as _rlMark, queueSummary as _rlSummary, batchPlan as _rlBatchPlan, searchLocal as _rlSearchLocal, paperFeedRecords as _rlPaperFeedRecords, kindOf as _rlKindOf } from './js/researchLibrary.js';   // §9ai the reading backlog   // §9ah the literature desk
+import { QC as _RL_QC, parseQcTree as _rlParseQcTree, readingListItems as _rlReadingList, manifestItems as _rlManifest, items151 as _rl151Items, record151 as _rlRecord151, qcItems as _rlQcItems, qcRawUrl as _rlQcRaw, qcRecord as _rlQcRecord, matchUpload as _rlMatchUpload, alreadyHeld as _rlAlreadyHeld, dedupeUploads as _rlDedupeUploads, uploadKey as _rlUploadKey, seedQueue as _rlSeedQueue, upsertItem as _rlUpsert, nextItems as _rlNext, markItems as _rlMark, queueSummary as _rlSummary, batchPlan as _rlBatchPlan, searchLocal as _rlSearchLocal, paperFeedRecords as _rlPaperFeedRecords, kindOf as _rlKindOf } from './js/researchLibrary.js';   // §9ai the reading backlog   // §9ah the literature desk
 import { currencyStrength as _evCcy, dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { COST_REPORT_URL as _AC_URL, costReportQuery as _acQuery, parseCostReport as _acParse, dayFlag as _acFlag } from './js/anthropicCost.js';   // Anthropic's own daily cost figures (Admin API)
@@ -6740,6 +6740,17 @@ app.get('/api/research-pod/backlog', async (_req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // POST /api/research-pod/backlog { calls? 1-12 }: read the next items (uploads first, abstracts eight to a model call). One job at a time.
+// POST /api/research-pod/upload/dedupe: drop unread "upload:<hash>" queue items that duplicate a matched upload (same name
+// or bytes), so they are not read twice. ?dry=1 lists without removing.
+app.post('/api/research-pod/upload/dedupe', async (req, res) => {
+  try {
+    const q = await _rpGet(_RL.queue, { items: [] }), { queue, removed } = _rlDedupeUploads(q);
+    if (req.query.dry === '1' || !removed.length) return res.json({ ok: true, dry: req.query.dry === '1', removed });
+    await kv.put(_RL.queue, JSON.stringify(queue));
+    for (const id of removed) _rlTextMem.delete(id);   // the R2 copies stay (r2Store has no delete); nothing references them
+    res.json({ ok: true, removed });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.post('/api/research-pod/backlog', (req, res) => {
   const calls = Math.min(12, Math.max(1, Number(req.body?.calls) || 6));
   const job = _litStart('backlog', `read the backlog (${calls} calls)`, { calls });

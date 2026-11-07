@@ -187,6 +187,18 @@ export function alreadyHeld({ id, sha = null } = {}, queueItems = [], papers = [
   }
   return null;
 }
+/**
+ * Duplicate uploads: unmatched "upload:<hash>" queue items whose file is also held under a matched id (same file name,
+ * or the same sha256). They arose when SSRN's own names ("ssrn-2089463.pdf") did not match yet (2026-11-07) and the
+ * owner uploaded the batch again after the fix. Returns { queue, removed: [ids] }; only unread duplicates are removed.
+ */
+export function dedupeUploads(queue) {
+  const items = queue?.items ?? [], matched = items.filter(x => x.upload && !String(x.id).startsWith('upload:'));
+  const names = new Set(matched.map(x => String(x.upload.name ?? '').toLowerCase()).filter(Boolean)), shas = new Set(matched.map(x => x.upload.sha).filter(Boolean));
+  const dup = x => x.upload && String(x.id).startsWith('upload:') && x.status !== 'done' && (names.has(String(x.upload.name ?? '').toLowerCase()) || (x.upload.sha && shas.has(x.upload.sha)) || names.has(String(matchUpload(x.upload.name ?? '').via === 'upload' ? '' : x.upload.name ?? '').toLowerCase()));
+  const removed = items.filter(dup).map(x => x.id);
+  return { queue: { ...queue, items: items.filter(x => !dup(x)) }, removed };
+}
 /** The R2 key an uploaded PDF (and its extracted text) is stored under: private, never served. */
 export const uploadKey = (id, ext = 'pdf') => `research/papers/${String(id).replace(/[^a-z0-9.:_-]+/gi, '_').replace(/:/g, '_')}.${ext}`;
 
