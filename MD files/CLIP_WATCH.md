@@ -1206,3 +1206,105 @@ domino one. Proposed, not built.
   LIVE, `nq-down-week` ON, `oil-without-breakevens` ON, three real-yield links BROKEN, VIX
   back under its 3-month by Monday's tick (17.2 vs 19.4). A wider week is the tested
   expectation; which way is not.
+
+
+---
+
+## 2026-11-06 — "Three charts for net liquidity" (speaker not named; dollar, TGA, MOVE)
+
+> *"Liquidity moves every market, and you can't just pull up a liquidity chart because
+> there isn't one. Money is created and drained at the same time, so liquidity is the net
+> of those flows... When net liquidity is expanding there's more money chasing risk assets;
+> when it's contracting, risk off. Three charts: the dollar — when it falls, dollar debt
+> gets cheaper and global liquidity eases; the TGA — when it's falling the Treasury is
+> spending cash back into the economy; the MOVE index — Treasuries are the collateral the
+> whole world borrows against, so when bond vol spikes, funding tightens. Dollar down, TGA
+> down, MOVE calm: the tide is coming in."*
+
+**1. The claims, stated plainly.**
+- **(a) Net liquidity is a net of flows with no single ticker.** True, and the desk's
+  definition is written down.
+- **(b) Expanding net liquidity → risk on; contracting → risk off.** A direction claim on
+  a 4-week-ish horizon.
+- **(c) Three proxies.** Dollar down = easing (the dollar-debt channel); TGA down = easing
+  (Treasury spending); MOVE up = tightening (collateral volatility). Each is a mechanism
+  with a testable forward half.
+- **(d) The composite.** All three easing = "the tide is coming in". A regime read.
+
+**2. What's already on this desk — this is a system here, not an idea.**
+- **(a) is `js/netLiquidity.js`**: one definition, Fed balance sheet − TGA − overnight RRP,
+  in the units FRED actually ships (the 2026-10-17 fix found the formula computed at least
+  13 times in mixed units across the repo). The COG Gate 1A version adds the ECB and BOJ
+  balance sheets. The liquidity gate on `liquidity-pulse.html` is that series as a rolling
+  z-score with the publication lag applied, and `funding-read` carries the plumbing lines
+  underneath it. So the clip's first point is the house's own starting point.
+- **(b) was tested forward, point-in-time, and is UNDERPOWERED.** `net-liquidity-tailwind-
+  spx` / `-nq` (2026-10-21): 786 Fridays 2011–2026 on first-published ALFRED vintages, the
+  4-week change rising vs falling → the next four weeks of SPX500 **+1.09% vs +0.67%,
+  difference +0.42 pp [−0.47, +1.32]**, inside the shift placebo; NAS100 +0.39 pp [−0.61,
+  +1.55]. Right sign, both halves, and it cannot be told from noise on fifteen years (MDE 2.0
+  pp against a 1.0 pp bar). The ledger's `use` line: *net liquidity is context on today.html,
+  never a forecast; do not write that rising liquidity means stocks will rise.* The clip
+  writes exactly that.
+- **(c) the dollar.** The mechanism is on the chain as context: `funding-dxy` (funding
+  stress bids the dollar) and `dxy-emdollar` (a strong dollar means weak EM currencies
+  because their debts are in dollars). Tested as a forward or ranking claim it is null or
+  thin: `fx-dollar-funding-exposure-hit` / `-follow` (**NULL**, 20 currencies, 1,177 weeks —
+  the USD share of a country's borrowing does not rank which currencies get hit in risk-off,
+  nor what follows), `bank-credit-dollar-dxy` (UNDERPOWERED, r −0.10), and
+  `bank-credit-dollar-nasdaq` (CONTEXT, the sign **opposite** to the claim: faster dollar
+  credit growth preceded the 2000 and 2008 busts, not booms). The dollar-debt channel reads
+  well and has not survived a test as a lead.
+- **(c) the TGA.** It is a term in the formula, so it is inside (b). The clip's three-dial
+  model has a hole the desk's funding read names: **the RRP**, the third term and the swing
+  variable of 2022–2024, is **$0.1bn** today — *"the money-fund cash buffer is used up, so
+  further drains hit bank reserves directly"* (`funding-read`, 2026-11-06). With RRP at zero
+  a TGA rebuild drains reserves one for one; in 2023 it drained money funds instead. Same
+  TGA move, different liquidity. The clip is a 2019 model of the plumbing.
+  The daily version of his TGA dial is also already scored: `liquidity-pulse.html` tracks
+  the Daily Treasury Statement flow (TGA **$923bn on 11-05, down $117bn from 10-29** — the
+  daily series moves faster than the weekly H.4.1 print) against the Nasdaq's next session
+  on **2,029 sessions: correlation −0.003, hit rate 49.5%**, settlement days 52%. The flow
+  the clip says to watch has no next-day read on the index.
+- **(c) the MOVE.** The series is wired (owner decision 2026-10-19, after this log's
+  2026-10-02 entry found the desk abstaining for want of it; the Market View tile and the
+  COG risk gate's 0.6-weight factor now read it). Tested: `rates-vol-gap-move` (**NULL**,
+  2,480 sessions — MOVE adds nothing to next-session Nasdaq vol beyond equity implied vol and
+  the calendar), `rates-vol-gap-state` (UNDERPOWERED, wrong sign: "rates vol rich, equity vol
+  cheap" did not run busier), `tff-basis-rates-vol-level` / `-build` and `nbfi-rates-vol`
+  (UNDERPOWERED — leverage size does not forecast Treasury vol), `funding-stress` (**NULL** —
+  SOFR over the floor is calendar plumbing, not stress). "Collateral volatility tightens
+  funding" is a mechanism this desk has looked for from four angles and not found at a
+  tradeable horizon. The one lead in that family is the *mirror* on the register: an equity-
+  vol spike **unconfirmed** by MOVE over-priced the next week (−0.27 log), a candidate under
+  its own prereg.
+- **(d) the composite** is the liquidity gate's z-score, and the desk already shows it. His
+  three dials, today: the dollar at the **99th percentile of its year** (tightening, by his
+  rule); the TGA **$957bn, down $43bn in a week** (easing); MOVE **92.8, down 8% over 20
+  sessions** (calm, by his rule, though still the 84th percentile of a year); RRP exhausted
+  (not on his dashboard). Net liquidity rose about **$45bn** on the week. Meanwhile the S&P
+  is −5.6% over 20 sessions and the VIX is 25.6, +73%. Two of three dials say "tide in" and
+  the tape is risk-off. One week is not a test of anything; it is a reminder that the dials
+  disagree with each other and with the tape often, which is what the underpowered result
+  looks like from the inside.
+
+**3. Trading or macro-understanding.** (a) and (c)'s mechanisms are macro-understanding
+and the chain and the funding read already carry them with their verdicts. (b) and (d) are
+trading claims, tested and underpowered on fifteen years; the register's next step for them
+is a 13-week horizon or a forward record, not a re-run.
+
+**4. Display nugget.** The funding read already carries the TGA, RRP, reserves, SOFR and
+swap lines with a state word each; the pulse page carries the gate. What neither says is
+*the clip's sentence*: that with the RRP at zero the TGA is the only swing left and lands on
+reserves directly. That is one line of context on the funding read, already true in its
+data. Proposed, not built.
+
+**5. Verdict and action.**
+- **Nothing to run.** The forward claim is banked underpowered on point-in-time data;
+  re-running it on a clip's say-so is the failure this log exists to prevent. The dollar
+  and MOVE legs are null or thin from four studies.
+- **What to keep.** The three dials are a fair short list of what moves the net, with one
+  term missing (the RRP) that happens to be the one that has changed regime. The honest
+  wording for all of it is the ledger's: context, never a forecast.
+- **Closes an open item in this thread.** The MOVE feed decision from the 2026-10-02 entry
+  was taken on 2026-10-19 (wired); the dormant 0.6-weight risk-gate factor is live.
