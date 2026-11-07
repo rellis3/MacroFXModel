@@ -10,15 +10,15 @@ Generated 2026-11-07.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **294** |
+| claims tested (validated + null + underpowered) | **296** |
 | validated | 51 |
-| null | 167 |
-| underpowered | 76 |
+| null | 168 |
+| underpowered | 77 |
 | context (base rates, descriptions: not counted as tests) | 49 |
 | pre-registrations with no banked verdict (below) | 88 |
 
-**What the count says (Lesson 02 §05).** If none of the 294 claims were real, tests at the usual 5% size would still pass
-about **14.7** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 296 claims were real, tests at the usual 5% size would still pass
+about **14.8** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
 **roughly 15 of the 51 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -363,6 +363,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-06 | hedge-residual-mom | price | null | forge/HEDGE_RESIDUAL_SYSTEM_PREREG.md |
 | 2026-11-06 | hedge-residual-mr | price | null | forge/HEDGE_RESIDUAL_SYSTEM_PREREG.md |
 | 2026-11-06 | jump-next-day-miss | volatility | context | forge/JUMP_NEXT_DAY_MISS_PREREG.md |
+| 2026-11-07 | delta-at-line-against-hidden | price | underpowered | forge/DELTA_AT_LINE_PREREG.md |
+| 2026-11-07 | delta-at-line-regular-with | price | null | forge/DELTA_AT_LINE_PREREG.md |
 | 2026-11-07 | failed-auction-volume | price | underpowered | forge/FAILED_AUCTION_VOLUME_PREREG.md |
 | 2026-11-07 | footprint-absorption | price | null | forge/FOOTPRINT_ABSORPTION_PREREG.md |
 | 2026-11-07 | orderflow-lead-aggressor | price | null | forge/ORDERFLOW_LEAD_AGGRESSOR_PREREG.md |

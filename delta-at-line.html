@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Delta at the Lines</title>
+<style>
+:root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;--bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:13.5px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+a{color:var(--blue);text-decoration:none}
+.hdr{display:flex;gap:10px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(13,17,23,.96);z-index:5}
+h1{font-size:15px}
+.wrap{max-width:1000px;margin:0 auto;padding:14px}
+.box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+h2{font-size:13px;margin-bottom:6px}
+p{color:var(--text2);margin-bottom:6px;max-width:92ch}
+p b{color:var(--text)}
+.verdict{border-left:3px solid var(--amber)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:12.5px}
+th{text-align:left;color:var(--text3);font-weight:600;font-size:11px;padding:4px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:4px 8px;border-bottom:1px solid #222a35;white-space:nowrap}
+.tag{font-size:10.5px;padding:1px 7px;border-radius:999px;border:1px solid currentColor}
+.null{color:var(--text2)}.under{color:var(--amber)}
+select{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 6px;font:12px inherit;min-height:30px}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;color:var(--text3);font-size:12px}
+svg text{font:11.5px var(--mono);fill:var(--text2)}
+.note{font-size:12px;color:var(--text3)}
+#tip{position:fixed;display:none;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:6px 9px;font:12px var(--mono);pointer-events:none;z-index:9}
+</style>
+</head>
+<body>
+<div class="hdr"><a href="footprint.html">&larr; Footprint</a><h1>Delta at the lines</h1></div>
+<div class="wrap">
+  <div class="box verdict" id="verdict">Loading…</div>
+
+  <div class="box">
+    <h2>Does delta change the odds at a line?</h2>
+    <p class="note">Change in the chance of a rejection, with the signal against without it, in percentage points. Dots to the right mean more rejections, to the left more breaks. Bars are 95% ranges. A signal needed to reach its dashed line, ±10 points, to pay.</p>
+    <div class="scroll"><svg id="forest" width="100%" viewBox="0 0 760 210" role="img" aria-label="Contrast for each of the four delta signals with its 95 percent range, all inside the ten point bars. The figures are in the table below."></svg></div>
+    <div class="scroll"><table id="cells"></table></div>
+  </div>
+
+  <div class="box">
+    <h2>Is it about the line, or about flow anywhere?</h2>
+    <p class="note">The same comparison at prices 0.2 and 0.3 sigma away from the line.</p>
+    <div class="scroll"><table id="near"></table></div>
+  </div>
+
+  <div class="box">
+    <h2>The history of every line touch</h2>
+    <div class="ctl">
+      <label>Market <select id="fInst"></select></label>
+      <label>Signal <select id="fSig"><option value="F1">Delta against</option><option value="F2">Regular divergence</option><option value="F3">Hidden divergence</option><option value="F4">Delta with</option><option value="">All touches</option></select></label>
+      <label>Line <select id="fRung"><option value="">All</option><option>p50</option><option>p75</option><option>p90</option></select></label>
+      <span id="fCount"></span>
+    </div>
+    <p class="note" id="yearNote"></p>
+    <div class="scroll"><table id="years"></table></div>
+    <div class="scroll" style="margin-top:10px;max-height:380px;overflow:auto"><table id="rows"></table></div>
+    <p class="note" style="margin-top:6px">Most recent 200 shown, up to 2026-08-21 (later sessions are sealed). All touches: <a href="analysis/output/delta-at-line/events.csv">events.csv</a>. Times are London. Delta over 30 minutes is positive when aggressors were pushing into the line.</p>
+  </div>
+
+  <div class="box">
+    <h2>How to read this</h2>
+    <p><b>Touches:</b> the first touch of each chosen forecast line per session, from the frozen table used by the earlier line research. <b>Reject or break:</b> price moves 0.25 sigma back or beyond within 120 minutes. <b>Flow:</b> the exchange's aggressor flag on 6E for EURUSD and 6J for USDJPY, sign flipped for USDJPY. All flow is from before the touch minute.</p>
+    <p><b>Signals:</b> delta against: price moved into the line over 30 minutes with delta in its weakest fifth. Regular divergence: price beyond its last swing high with cumulative delta below that high. Hidden divergence: a higher swing low on lower cumulative delta. Delta with: price into the line with delta in its strongest fifth.</p>
+    <p>This is a description of past touches, not a signal, and nothing trades on it. Prereg: <code>forge/DELTA_AT_LINE_PREREG.md</code>.</p>
+  </div>
+</div>
+<div id="tip"></div>
+<script>
+const $ = id => document.getElementById(id);
+const NAMES = { F1: 'Delta against', F2: 'Regular divergence', F3: 'Hidden divergence', F4: 'Delta with' };
+const WANT = { F1: 'Fade', F2: 'Fade', F3: 'Continue', F4: 'Continue' };
+const VERD = { F1: 'UNDERPOWERED', F2: 'NULL', F3: 'UNDERPOWERED', F4: 'NULL' };
+const pp = x => x == null ? '—' : (x > 0 ? '+' : '') + (100 * x).toFixed(1);
+const k = x => x == null ? '—' : (x > 0 ? '+' : '') + x.toFixed(2);
+const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+function forest(cells) {
+  const W = 760, left = 170, right = 730, top = 26, row = 40, x = v => left + (v + .25) / .5 * (right - left);
+  let s = '';
+  for (const v of [-.2, -.1, 0, .1, .2]) {
+    const X = x(v), bar = Math.abs(v) === .1, zero = v === 0;
+    s += `<line x1="${X}" x2="${X}" y1="${top - 6}" y2="${top + row * 4}" stroke="${zero ? '#6e7681' : bar ? '#d29922' : '#30363d'}" ${bar ? 'stroke-dasharray="4 4"' : ''}/>`;
+    s += `<text x="${X}" y="${top + row * 4 + 16}" text-anchor="middle">${(v > 0 ? '+' : '') + v * 100}</text>`;
+  }
+  s += `<text x="${x(-.12)}" y="14" text-anchor="end">more breaks</text><text x="${x(.12)}" y="14">more rejections</text>`;
+  Object.keys(NAMES).forEach((f, i) => {
+    const c = cells['C_' + f], y = top + row * i + row / 2;
+    s += `<text x="${left - 12}" y="${y + 4}" text-anchor="end">${NAMES[f]}</text>`;
+    s += `<line x1="${x(c.lo)}" x2="${x(c.hi)}" y1="${y}" y2="${y}" stroke="#9da7b3" stroke-width="2"/>`;
+    s += `<circle cx="${x(c.est)}" cy="${y}" r="5.5" fill="#4f7df0" stroke="#161b22" stroke-width="2" data-t="${NAMES[f]}: ${pp(c.est)} points, range ${pp(c.lo)} to ${pp(c.hi)}, ${c.n} signals"/>`;
+  });
+  $('forest').innerHTML = s;
+  $('forest').querySelectorAll('circle').forEach(n => {
+    n.addEventListener('pointerenter', e => { const t = $('tip'); t.textContent = n.dataset.t; t.style.display = 'block'; t.style.left = Math.min(e.clientX + 12, innerWidth - 300) + 'px'; t.style.top = e.clientY + 12 + 'px'; });
+    n.addEventListener('pointerleave', () => { $('tip').style.display = 'none'; });
+  });
+}
+
+async function main() {
+  const d = await (await fetch('analysis/output/delta-at-line/scored.json', { cache: 'no-store' })).json();
+  const C = d.cells;
+  $('verdict').innerHTML = `<h2>No signal passed. Two are ruled out, two can't be judged yet.</h2>
+    <p>Across ${d.base.touches.toLocaleString()} touches on EURUSD and USDJPY, price rejected ${(100 * d.base.p_reject).toFixed(1)}% of the time once resolved. <b>Regular divergence and delta with the move didn't change that by the 10 points needed</b>, and regular divergence lost ${k(C.N_F2.est)} K a trade as a fade.</p>
+    <p><b>Delta against the move is the one open result:</b> ${pp(C.C_F1.est)} points towards a fade, the way the videos say, but on only ${C.C_F1.n} signals, with a range from ${pp(C.C_F1.lo)} to ${pp(C.C_F1.hi)}. It broke even after costs. It could be real or it could be nothing.</p>`;
+  forest(C);
+  $('cells').innerHTML = `<tr><th>Signal</th><th>Predicts</th><th>Signals</th><th>Change, points</th><th>95% range</th><th>Smallest detectable</th><th>Net per trade, K</th><th>Verdict</th></tr>` + Object.keys(NAMES).map(f => {
+    const c = C['C_' + f], n = C['N_' + f], m = 3.57 * .5 * Math.sqrt(1 / c.n + 1 / c.m);
+    return `<tr><td>${NAMES[f]}</td><td>${WANT[f]}</td><td>${c.n}</td><td>${pp(c.est)}</td><td>${pp(c.lo)} to ${pp(c.hi)}</td><td>${(100 * m).toFixed(1)}</td><td>${k(n.est)}</td><td><span class="tag ${VERD[f] === 'NULL' ? 'null' : 'under'}">${VERD[f]}</span></td></tr>`;
+  }).join('');
+  $('near').innerHTML = `<tr><th>Signal</th><th>At the line</th><th>0.2 sigma away</th><th>0.3 sigma away</th></tr>` + Object.keys(NAMES).map(f => {
+    const D = d.descriptive[f], cell = c => `${pp(c.est)} <span class="note">(${pp(c.lo)} to ${pp(c.hi)})</span>`;
+    return `<tr><td>${NAMES[f]}</td><td>${cell(C['C_' + f])}</td><td>${cell(D['neighbour_0.2'])}</td><td>${cell(D['neighbour_0.3'])}</td></tr>`;
+  }).join('');
+
+  const txt = await (await fetch('analysis/output/delta-at-line/events.csv', { cache: 'no-store' })).text();
+  const lines = txt.trim().split(/\r?\n/), head = lines[0].split(',');
+  const E = lines.slice(1).map(l => { const v = l.split(','), o = {}; head.forEach((h, i) => { o[h] = v[i]; }); return o; });
+  const insts = [...new Set(E.map(e => e.inst))];
+  $('fInst').innerHTML = '<option value="FX">EURUSD and USDJPY</option>' + insts.map(i => `<option>${i}</option>`).join('');
+  const isOn = v => v === 'True' || v === 'true' || v === '1' || v === '1.0';
+  function render() {
+    const mk = $('fInst').value, sig = $('fSig').value, rung = $('fRung').value;
+    const S = E.filter(e => (mk === 'FX' ? e.inst !== 'NQ' : e.inst === mk) && (!rung || e.rung === rung) && (!sig || isOn(e[sig])));
+    const res = S.filter(e => e.outcome === 'reject' || e.outcome === 'break');
+    $('fCount').textContent = `${S.length} touches, ${res.length} resolved`;
+    const yrs = [...new Set(S.map(e => e.date.slice(0, 4)))].sort();
+    $('yearNote').textContent = yrs.length ? 'Rejection rate by year for this selection. Small counts move a lot, so read the counts too.' : 'None in this selection.';
+    $('years').innerHTML = yrs.length ? `<tr><th>Year</th><th>Touches</th><th>Rejected</th><th>Broke</th><th>Rejection rate</th></tr>` + yrs.map(y => {
+      const a = S.filter(e => e.date.startsWith(y)), r = a.filter(e => e.outcome === 'reject').length, b = a.filter(e => e.outcome === 'break').length;
+      return `<tr><td>${y}</td><td>${a.length}</td><td>${r}</td><td>${b}</td><td>${r + b ? (100 * r / (r + b)).toFixed(0) + '%' : '—'}</td></tr>`;
+    }).join('') : '';
+    const recent = S.slice().sort((p, q) => (p.date + String(p.minute).padStart(4, '0') < q.date + String(q.minute).padStart(4, '0') ? 1 : -1)).slice(0, 200);
+    $('rows').innerHTML = `<tr><th>Date</th><th>Time</th><th>Market</th><th>Line</th><th>Side</th><th>Delta 30m</th><th>Signals</th><th>Outcome</th></tr>` + recent.map(e => {
+      const sg = Object.keys(NAMES).filter(f => isOn(e[f])).map(f => NAMES[f]).join(', ') || '—', m = +e.minute;
+      return `<tr><td>${esc(e.date)}</td><td>${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}</td><td>${esc(e.inst)}</td><td>${esc(e.rung)}</td><td>${e.side === 'up' ? 'above' : 'below'}</td><td>${e.od30 ? (+e.od30 > 0 ? '+' : '') + (+e.od30).toFixed(2) : '—'}</td><td>${esc(sg)}</td><td>${esc(e.outcome)}</td></tr>`;
+    }).join('');
+  }
+  for (const id of ['fInst', 'fSig', 'fRung']) $(id).onchange = render;
+  render();
+}
+main().catch(e => { $('verdict').textContent = 'Could not load the results: ' + e.message; });
+</script>
+</body>
+</html>

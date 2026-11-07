@@ -119,6 +119,10 @@ All cards below re-use one window per instrument, so they count as one family fo
 
 **BANKED 2026-11-07: `failed-auction-volume`, UNDERPOWERED.** 621 setups, so the volume question could not be answered. All setups -0.35R [-0.49, -0.17] net, and the bracket resolved like a random walk, with or without the impulse. Follow-up it raises: a rule with a stop just past the probe pays about 0.21R a trade in costs, so any footprint trigger in Q3 or Q4 needs wider stops or a large gross edge.
 
+## Banked 2026-11-07: `delta-at-line`
+
+The owner's question, delta at the forecast lines: regular divergence and delta with the move NULL; delta against and hidden divergence UNDERPOWERED. Open lead: delta against +7.8 pp [-3.1, +18.1] on 98 signals, near zero at neighbouring prices. It fires about 30 times a year on these two markets, so it needs older 6E and 6J months or more markets with the true flag, and both cost money. On NQ the tick rule tracks price too closely to disagree with it (one signal), so divergence on NQ needs the exchange's flag. S3 (fill filter at the touch) is partly answered: the flags do not separate rejects from breaks.
+
 ## System uses (2026-11-07, proposals, none tested)
 
 Asked how this data layer could serve an auto-trading system, after reading the library's microstructure papers (abstracts and conclusions only), the plans and the ledger. The common thread: use flow to decide **whether, how big and how to execute**, not which way. Integration point: `Trade_Decision_Engine` `/decide`, which already returns go or skip and a size. All run as shadows first.

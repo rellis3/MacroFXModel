@@ -371,7 +371,7 @@ def score():
             D[f"neighbour_{off}"] = contrast(E[E.inst.isin(["EURUSD", "USDJPY"]) & (E.offset.abs().round(1) == off)], f, rng, B_=400)
         for r in ("p50", "p75", "p90"):
             D[r] = contrast(S[S.rung == r], f, rng, B_=400)
-        for sd in ("up", "down"):
+        for sd in sorted(S.side.unique()):
             D[sd] = contrast(S[S.side == sd], f, rng, B_=400)
         D["london"] = contrast(S[S.minute < 780], f, rng, B_=400)
         D["us"] = contrast(S[S.minute >= 780], f, rng, B_=400)
