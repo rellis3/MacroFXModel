@@ -18,8 +18,11 @@
   --blue:#1d4ed8;  --blue-bg:#eff6ff;  --blue-bd:#bfdbfe;
   --purple:#7c3aed; --purple-bg:#f5f3ff; --purple-bd:#ddd6fe;
   --rl:10px; --rxl:14px;
+  --sp-1:#2a78d6; --sp-2:#eb6834; --sp-3:#1baf7a;   /* daily spend chart: Sonnet, Opus, other (dataviz reference slots 1-3) */
+  --t3:var(--text3); --good:var(--green); --bad:var(--red);   /* names the AI models tab uses; they were never defined here */
 }
 body.dark {
+  --sp-1:#3987e5; --sp-2:#d95926; --sp-3:#199e70;
   --bg:#0f1117; --s1:#1a1d27; --s2:#22263a; --s3:#2a2f45;
   --border:#2e3347; --border2:#3d4460;
   --text:#e8eaf2; --text2:#9ba3bf; --text3:#5a6380;
@@ -8144,6 +8147,20 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
     </div>
 
     <div class="card">
+      <h3>Scheduled AI jobs <span style="font-weight:400;font-size:12px;color:var(--text3)">(what calls a model on its own, and when)</span></h3>
+      <div style="font-size:12.5px;color:var(--text2);margin-bottom:8px">Untick a job to pause its scheduled runs. It takes effect within a minute, with no redeploy. Its own run button on its page still works. The Railway variable shown still decides whether the job is scheduled at all.</div>
+      <div id="aiJobs">Loading&hellip;</div>
+      <div id="aiJobsMsg" style="font-size:12px;margin-top:6px"></div>
+    </div>
+
+    <div class="card">
+      <h3>Daily spend, last 14 days <span id="aiDailySrc" style="font-weight:400;font-size:12px;color:var(--text3)"></span></h3>
+      <div id="aiDailyHead" style="font-size:12.5px;margin-bottom:8px"></div>
+      <div id="aiDaily" style="position:relative">Loading&hellip;</div>
+      <div id="aiDailyNote" style="font-size:11.5px;color:var(--text3);margin-top:8px"></div>
+    </div>
+
+    <div class="card">
       <h3>Spend by day and job <span style="font-weight:400;font-size:12px;color:var(--t3)">(kept across deploys; UTC days, like the Anthropic console)</span></h3>
       <div class="form-row" style="margin-bottom:10px">
         <span class="form-lbl">Daily Anthropic cap $</span>
@@ -8213,7 +8230,7 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
       const d = await fetch('/api/ai-config').then(r => r.json());
       if (!d.ok) throw new Error(d.error || 'failed');
       CFG = d;
-      renderProviders(d); renderModelPick(d); renderAllRow(d); renderTasks(d); renderStats(d.stats); fillAb(d); aiLoadSpend();
+      renderProviders(d); renderModelPick(d); renderAllRow(d); renderTasks(d); renderStats(d.stats); fillAb(d); aiLoadSpend(); aiLoadDaily(); aiLoadJobs();
     } catch (e) {
       $('aiProviders').innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>';
     }
@@ -8445,6 +8462,142 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
     } catch (e) { $('aiAlertMsg').innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
   }
   window.aiSaveAlert = aiSaveAlert;
+
+  // Daily spend chart: Anthropic's own figures (/api/ai-spend/anthropic) when an Admin key is set, else the app's own
+  // ledger (/api/ai-spend). Bars stacked by model, a hover tooltip per day, and a "high" badge (text + icon, not colour)
+  // on a day at 2x or more the median of the others. The table under it gives the same numbers as text.
+  async function aiLoadDaily() {
+    const host = $('aiDaily');
+    try {
+      const [ant, own] = await Promise.all([
+        fetch('/api/ai-spend/anthropic?days=14').then(r => r.json()).catch(e => ({ ok: false, error: e.message })),
+        fetch('/api/ai-spend?days=14').then(r => r.json()).catch(() => null),
+      ]);
+      const fx = own && own.fx && own.fx.fx > 0 ? own.fx.fx : 1.3;
+      const ownByDay = {};
+      for (const d of (own && own.days) || []) {
+        const byModel = {};
+        for (const r of d.rows || []) if (r.usd > 0) byModel[r.model || 'other'] = (byModel[r.model || 'other'] || 0) + r.usd;
+        ownByDay[d.day] = { usd: d.usd, byModel };
+      }
+      const useAnt = ant && ant.ok && ant.configured;
+      const antByDay = {}; for (const d of (useAnt ? ant.days : [])) antByDay[d.day] = d;
+      const days = [];
+      for (let i = 13; i >= 0; i--) {
+        const day = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
+        const src = useAnt ? antByDay[day] : ownByDay[day];
+        days.push({ day, usd: src ? src.usd : 0, byModel: src ? src.byModel : {}, own: ownByDay[day] ? ownByDay[day].usd : null, flag: useAnt && src ? src.flag : null });
+      }
+      if (!useAnt) {   // the same rule as the server's dayFlag, on the ledger's days
+        for (const d of days) {
+          const xs = days.filter(x => x !== d && x.usd > 0).map(x => x.usd).sort((a, b) => a - b);
+          if (xs.length < 3) continue;
+          const med = xs.length % 2 ? xs[(xs.length - 1) / 2] : (xs[xs.length / 2 - 1] + xs[xs.length / 2]) / 2;
+          const t = d.usd / med; d.flag = { median: med, times: t, level: t >= 4 && d.usd >= 5 ? 'very high' : t >= 2 ? 'high' : 'normal' };
+        }
+      }
+      const series = m => /sonnet/i.test(m) ? 0 : /opus/i.test(m) ? 1 : 2;
+      const SER = [{ name: 'Sonnet', c: 'var(--sp-1)' }, { name: 'Opus', c: 'var(--sp-2)' }, { name: 'Other', c: 'var(--sp-3)' }];
+      for (const d of days) { d.seg = [0, 0, 0]; for (const [m, v] of Object.entries(d.byModel || {})) d.seg[series(m)] += v; }
+      const present = SER.map((s, i) => days.some(d => d.seg[i] > 0));
+      const max = Math.max(1, ...days.map(d => d.usd));
+      const top = Math.ceil(max / 10) * 10;   // a multiple of $10, so the middle gridline is a whole number
+      const gbp = v => '£' + (v / fx).toFixed(2), usd = v => '$' + v.toFixed(2);
+      const today = days[days.length - 1];
+
+      $('aiDailySrc').textContent = useAnt ? "(Anthropic's own figures, USD)" : "(the app's own count of its calls)";
+      const tf = today.flag && today.flag.level !== 'normal' ? today.flag : null;
+      $('aiDailyHead').innerHTML = 'Today so far: <b>' + usd(today.usd) + '</b> (' + gbp(today.usd) + ')'
+        + (tf ? ' &nbsp;<span style="color:var(--red);font-weight:600">⚠ ' + esc(tf.level) + ': ' + tf.times.toFixed(1) + '× a normal day</span>' : '');
+
+      const H = 160;
+      const bars = days.map((d, i) => {
+        let segs = '';
+        const last = d.seg.reduce((a, v, k) => (v > 0 ? k : a), -1);
+        d.seg.forEach((v, k) => {
+          if (!(v > 0)) return;
+          const h = Math.max(2, (v / top) * H);
+          segs = '<div style="height:' + h.toFixed(1) + 'px;background:' + SER[k].c + ';margin-top:2px;border-radius:' + (k === last ? '4px 4px 0 0' : '0') + '"></div>' + segs;
+        });
+        const hi = d.flag && d.flag.level !== 'normal';
+        const lbl = (hi || i === days.length - 1) && d.usd > 0 ? '<div style="font-size:10.5px;color:var(--text2);text-align:center;margin-bottom:2px">' + (hi ? '⚠ ' : '') + usd(d.usd) + '</div>' : '';
+        // the whole column is the hover target, not just the bar, so an empty or tiny day can be hovered too
+        return '<div class="aid-col" data-i="' + i + '" style="flex:1;align-self:stretch;display:flex;flex-direction:column;justify-content:flex-end;min-width:0;padding:0 2px;cursor:default">'
+          + lbl + '<div style="display:flex;flex-direction:column-reverse">' + segs + '</div></div>';
+      }).join('');
+      // zero-height gridlines (a line with text inside sat a text-height above where the bars start)
+      const ticks = [0, top / 2, top].map(v => '<div style="position:absolute;left:0;right:0;height:0;bottom:' + ((v / top) * H + 18).toFixed(1) + 'px;border-top:1px solid var(--s3)"><span style="position:absolute;left:0;bottom:2px;font-size:10px;color:var(--text3)">$' + v.toFixed(0) + '</span></div>').join('');
+      const xlab = days.map((d, i) => '<div style="flex:1;text-align:center;font-size:10px;color:var(--text3);min-width:0;overflow:hidden">' + (i % 2 === (days.length - 1) % 2 ? d.day.slice(8) : '') + '</div>').join('');
+      const legend = SER.filter((_, i) => present[i]).map(s => '<span style="margin-right:12px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + s.c + ';margin-right:5px;vertical-align:-1px"></span>' + s.name + '</span>').join('');
+      host.innerHTML = '<div style="position:relative;height:' + (H + 40) + 'px;padding-left:28px">' + ticks
+        + '<div style="position:absolute;left:28px;right:0;bottom:18px;height:' + (H + 20) + 'px;display:flex;align-items:flex-end">' + bars + '</div>'
+        + '<div style="position:absolute;left:28px;right:0;bottom:0;display:flex">' + xlab + '</div></div>'
+        + '<div style="margin-top:6px">' + (present.filter(Boolean).length > 1 ? legend : '') + '</div>'
+        + '<div id="aiDailyTip" style="position:absolute;display:none;pointer-events:none;background:var(--s1);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);box-shadow:0 4px 14px rgba(0,0,0,.18);z-index:5;min-width:170px"></div>'
+        + '<details style="margin-top:8px"><summary style="cursor:pointer;font-size:12px;color:var(--text3)">As a table</summary><table style="width:100%;font-size:12px;border-collapse:collapse;margin-top:4px">'
+        + '<tr style="color:var(--text3);text-align:left"><th>Day (UTC)</th><th>' + (useAnt ? 'Anthropic' : 'Spend') + '</th>' + (useAnt ? '<th>App\'s own count</th>' : '') + '<th>vs a normal day</th></tr>'
+        + days.slice().reverse().map(d => '<tr style="border-top:1px solid var(--s3)"><td style="padding:3px 0">' + d.day + '</td><td>' + usd(d.usd) + ' (' + gbp(d.usd) + ')</td>'
+          + (useAnt ? '<td>' + (d.own == null ? '—' : usd(d.own)) + '</td>' : '')
+          + '<td>' + (d.flag ? (d.flag.level !== 'normal' ? '⚠ ' : '') + d.flag.times.toFixed(1) + '× (' + d.flag.level + ')' : '—') + '</td></tr>').join('')
+        + '</table></details>';
+
+      const tip = $('aiDailyTip');
+      host.querySelectorAll('.aid-col').forEach(col => {
+        col.addEventListener('mouseenter', () => {
+          const d = days[+col.dataset.i];
+          const rows = SER.map((s, k) => d.seg[k] > 0 ? '<div><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:' + s.c + ';margin-right:5px"></span>' + usd(d.seg[k]) + ' ' + s.name + '</div>' : '').join('');
+          tip.innerHTML = '<div style="color:var(--text2);margin-bottom:4px">' + d.day + ' (UTC)</div>' + (rows || '<div style="color:var(--text3)">no spend</div>')
+            + '<div style="border-top:1px solid var(--s3);margin-top:5px;padding-top:4px"><b>' + usd(d.usd) + '</b> (' + gbp(d.usd) + ')</div>'
+            + (useAnt && d.own != null ? '<div style="color:var(--text3)">app\'s own count ' + usd(d.own) + '</div>' : '')
+            + (d.flag && d.flag.level !== 'normal' ? '<div style="color:var(--red);font-weight:600">⚠ ' + d.flag.times.toFixed(1) + '× a normal day</div>' : '');
+          tip.style.display = 'block';
+          const hr = host.getBoundingClientRect(), cr = col.getBoundingClientRect();
+          // beside the column (right of it, or left when there is no room), so it never covers the bar being read
+          const x = cr.left - hr.left;
+          const left = x + cr.width + 8 + tip.offsetWidth <= hr.width ? x + cr.width + 8 : Math.max(0, x - tip.offsetWidth - 8);
+          tip.style.left = left + 'px'; tip.style.top = '0px';
+        });
+        col.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+      });
+
+      $('aiDailyNote').innerHTML = useAnt
+        ? esc(ant.note) + ' Fetched ' + esc(String(ant.fetchedAt || '').slice(11, 16)) + ' UTC.'
+        : (ant && ant.ok === false ? '<span style="color:var(--red)">Anthropic figures failed: ' + esc(ant.error || '') + '</span> ' : '')
+          + "These are the app's own records, kept since this tracking went live; days before that show nothing. "
+          + esc((ant && ant.note) || '');
+    } catch (e) { host.innerHTML = '<span style="color:var(--red)">' + esc(e.message) + '</span>'; }
+  }
+  window.aiLoadDaily = aiLoadDaily;
+
+  // Scheduled AI jobs (/api/ai-jobs): one row each, a tick box to pause or resume its scheduled runs.
+  async function aiLoadJobs() {
+    try {
+      const d = await fetch('/api/ai-jobs').then(r => r.json());
+      if (!d.ok) throw new Error(d.error || 'failed');
+      const ago = t => { if (!t) return '<span class="muted">not since this restart</span>'; const m = Math.round((Date.now() - Date.parse(t)) / 60000); return m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; };
+      // stacked rows, not a table: readable at phone width (a table pushed "when" and "last ran" off the edge)
+      const name = l => String(l).split(':')[0].replace(/\s*\(.*$/, '').trim();
+      $('aiJobs').innerHTML = d.jobs.map(j => '<label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--s3);cursor:' + (j.railwayOn ? 'pointer' : 'default') + '">'
+          + '<input type="checkbox" style="margin-top:2px;flex:none" data-ai-job="' + esc(j.id) + '"' + (j.pageOn ? ' checked' : '') + (j.railwayOn ? '' : ' disabled') + '>'
+          + '<span style="min-width:0"><b style="font-size:13px">' + esc(name(j.label)) + '</b>'
+          + '<span style="display:block;font-size:12px;color:var(--text2)">' + esc(j.when) + '</span>'
+          + '<span style="display:block;font-size:11.5px;color:var(--text3)">Model job <code>' + esc(j.task) + '</code> · last ran ' + ago(j.lastRunAt) + '</span>'
+          + (j.railwayOn ? '' : '<span style="display:block;color:var(--amber);font-size:11.5px">Off in Railway (' + esc(j.env || '') + '=0), so it isn\'t scheduled and this box can\'t turn it on</span>')
+          + (j.railwayOn && !j.pageOn ? '<span style="display:block;color:var(--amber);font-size:11.5px">Paused here: scheduled runs are skipped</span>' : '')
+          + '</span></label>').join('');
+      $('aiJobs').querySelectorAll('[data-ai-job]').forEach(cb => cb.addEventListener('change', async () => {
+        const id = cb.getAttribute('data-ai-job'), on = cb.checked;
+        cb.disabled = true;
+        try {
+          const r = await fetch('/api/ai-jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, on }) }).then(r => r.json());
+          if (!r.ok) throw new Error(r.error || 'failed');
+          $('aiJobsMsg').innerHTML = '<span style="color:var(--good)">' + esc(id) + (on ? ' resumed' : ' paused: its scheduled runs are skipped from now on') + '</span>';
+        } catch (e) { cb.checked = !on; $('aiJobsMsg').innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
+        finally { cb.disabled = false; }
+      }));
+    } catch (e) { $('aiJobs').innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
+  }
+  window.aiLoadJobs = aiLoadJobs;
 
   function fillAb(d) {
     $('aiAbTask').innerHTML = d.tasks.map(t =>
