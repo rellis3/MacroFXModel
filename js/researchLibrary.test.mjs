@@ -102,6 +102,12 @@ t('uploads: matched to the backlog by the SSRN or arXiv id in the file name', ()
     assert.equal(R.alreadyHeld({ id: 'doi:10.2139/ssrn.3' }, q, lib), null, 'abstract only: the upload brings the full text');
     assert.equal(R.alreadyHeld({ id: 'doi:10.2139/ssrn.2' }, q, lib), null, 'queued but never uploaded');
   }
+  { // the pre-fix batch: the same files held under upload:<hash> and under their SSRN ids (owner, 2026-11-07)
+    const q = { items: [{ id: 'upload:aa', status: 'pending', upload: { name: 'ssrn-2089463.pdf' } }, { id: 'doi:10.2139/ssrn.2089463', status: 'pending', upload: { name: 'ssrn-2089463.pdf' } },
+      { id: 'upload:bb', status: 'pending', upload: { name: 'Menkhoff carry.pdf' } }, { id: 'upload:cc', status: 'done', upload: { name: 'ssrn-2089463.pdf' } }, { id: 'doi:10.2139/ssrn.9', status: 'pending' }] };
+    const { queue, removed } = R.dedupeUploads(q);
+    assert.deepEqual(removed, ['upload:aa']); assert.deepEqual(queue.items.map(x => x.id), ['doi:10.2139/ssrn.2089463', 'upload:bb', 'upload:cc', 'doi:10.2139/ssrn.9']);
+  }
   const u = R.matchUpload('Menkhoff carry.pdf'); assert.equal(u.via, 'upload'); assert.match(u.id, /^upload:/);
   assert.equal(R.matchUpload('menkhoff carry.PDF').id, u.id);
   assert.equal(R.uploadKey('doi:10.2139/ssrn.2293684'), 'research/papers/doi_10.2139_ssrn.2293684.pdf');
