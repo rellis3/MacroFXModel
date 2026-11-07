@@ -268,6 +268,7 @@ import { searchUrls as _litSearchUrls, PARSERS as _LIT_PARSERS, LIT_SOURCES as _
 import { QC as _RL_QC, parseQcTree as _rlParseQcTree, readingListItems as _rlReadingList, manifestItems as _rlManifest, items151 as _rl151Items, record151 as _rlRecord151, qcItems as _rlQcItems, qcRawUrl as _rlQcRaw, qcRecord as _rlQcRecord, matchUpload as _rlMatchUpload, uploadKey as _rlUploadKey, seedQueue as _rlSeedQueue, upsertItem as _rlUpsert, nextItems as _rlNext, markItems as _rlMark, queueSummary as _rlSummary, batchPlan as _rlBatchPlan, searchLocal as _rlSearchLocal, paperFeedRecords as _rlPaperFeedRecords, kindOf as _rlKindOf } from './js/researchLibrary.js';   // §9ai the reading backlog   // §9ah the literature desk
 import { currencyStrength as _evCcy, dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
+import { COST_REPORT_URL as _AC_URL, costReportQuery as _acQuery, parseCostReport as _acParse, dayFlag as _acFlag } from './js/anthropicCost.js';   // Anthropic's own daily cost figures (Admin API)
 import { alertStep as _spAlertStep, alertText as _spAlertText, addCall as _spAdd, emptyDay as _spEmpty, mergeDays as _spMerge, daySummary as _spSummary, capCheck as _spCap, callerFromStack as _spCaller, utcDay as _spDay, LIST_PRICES as _SP_PRICES } from './js/aiSpend.js';   // the model-spend ledger (KV, by day and caller)
 import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDeskNewsletter } from './js/deskNewsletter.js';
 import { expandFeeds as _dpExpandFeeds, buildDeskPack as _dpBuild, packForSkill as _dpForSkill, packSummary as _dpSummary, indexRow as _dpIndexRow, upsertIndex as _dpUpsertIndex, shouldBuild as _dpShouldBuild, londonDate as _dpLondonDate, DESK_SKILLS as _DP_SKILLS, DESK_UNIVERSE as _DP_UNIVERSE, DESK_SUBSETS as _DP_SUBSETS, packFresh as _dpFresh } from './js/deskPack.js';
@@ -3675,6 +3676,36 @@ app.get('/api/ai-config', async (_req, res) => {
     });
   } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
+// ── /api/ai-spend/anthropic ─ Anthropic's own daily cost figures (the Console's Cost page) ───────────────────────
+// js/anthropicCost.js. Needs ANTHROPIC_ADMIN_KEY (an Admin API key, sk-ant-admin...), which Anthropic does not issue
+// to individual accounts: the account must first be set up as an organization in the Claude Console. Without the key
+// this answers { configured: false } and the page says what is needed. Cached 5 minutes (Anthropic allows one call a
+// minute; its figures land about 5 minutes after a call). Each day carries a flag against the median of the others.
+let _antCostCache = { at: 0, days: null, key: '' };
+app.get('/api/ai-spend/anthropic', async (req, res) => {
+  const key = process.env.ANTHROPIC_ADMIN_KEY;
+  if (!key) return res.json({ ok: true, configured: false,
+    note: "Anthropic's own figures need an Admin API key in ANTHROPIC_ADMIN_KEY on Railway. Anthropic does not issue them to individual accounts: set the account up as an organization in the Claude Console (Settings > Organization), then create an Admin key there." });
+  try {
+    const n = Math.max(2, Math.min(31, Number(req.query.days) || 14));
+    const cacheKey = `${n}|${_spDay(Date.now())}`;
+    if (!(_antCostCache.days && _antCostCache.key === cacheKey && Date.now() - _antCostCache.at < 300_000)) {
+      const pages = []; let page = null;
+      for (let i = 0; i < 5; i++) {
+        const url = `${_AC_URL}?${_acQuery(Date.now(), n)}${page ? `&page=${encodeURIComponent(page)}` : ''}`;
+        const r = await fetch(url, { headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'User-Agent': 'MacroFX/1.0' }, signal: AbortSignal.timeout(20_000) });
+        if (!r.ok) { const body = (await r.text().catch(() => '')).slice(0, 300); throw Object.assign(new Error(`Anthropic cost report ${r.status}${body ? ': ' + body : ''}`), { status: 502 }); }
+        const j = await r.json(); pages.push(j);
+        if (!j.has_more || !j.next_page) break; page = j.next_page;
+      }
+      _antCostCache = { at: Date.now(), days: _acParse(pages), key: cacheKey };
+    }
+    const days = _antCostCache.days.map((d, i, all) => ({ ...d, flag: _acFlag(d.usd, all.filter((_, j) => j !== i).map(x => x.usd)) }));
+    res.json({ ok: true, configured: true, fetchedAt: new Date(_antCostCache.at).toISOString(), days,
+      note: "Anthropic's own figures, in USD, from its cost report. A call shows here about 5 minutes after it is made; today is still filling in." });
+  } catch (e) { res.status(e.status ?? 500).json({ ok: false, configured: true, error: e.message }); }
+});
+
 // ── /api/ai-spend ─ what the model calls cost, by UTC day and by the job that made them ──────────────
 // GET ?days=14: one summary per day, dearest rows first (js/aiSpend.js daySummary), plus the cap and today's spend.
 // POST { usd }: the daily Anthropic cap (0 = off), stored in KV so it changes without a deploy.
