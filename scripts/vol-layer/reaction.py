@@ -120,6 +120,78 @@ def feedback_grids(C, H, L, d):
     return {"rv_so_far": rv_so_far, "jump_today": jt, "hi": hi, "lo": lo}
 
 
+USD_PAIRS = ("EURUSD", "GBPUSD", "AUDUSD", "NZDUSD", "USDJPY", "USDCAD", "USDCHF")
+
+
+def usd_leg(sym, table):
+    """The dollar's move against currencies OTHER than this pair's, signed as this pair's return. Those pairs don't hold
+    this pair's other leg, so there is no triangular identity: EURUSD's common part comes from USD vs JPY, GBP, AUD, NZD,
+    CAD and CHF, and what is left is the euro's own story."""
+    me = 1.0 if sym[:3] == "USD" else -1.0                   # + = pair rises when USD rises
+    parts_ = []
+    for o, T in table.items():
+        if o != sym and o in USD_PAIRS:
+            parts_.append(T if o[:3] == "USD" else -T)
+    return me * np.nanmean(np.stack(parts_), axis=0)
+
+
+def usd_leg_features(sym, E, s, sg, gpos, ret60, dret):
+    n = len(E)
+    if sym not in USD_PAIRS:
+        return {c: np.full(n, np.nan) for c in FAM["D_corr"]}
+    sign = np.where(E.side == "up", 1.0, -1.0)
+    gi = gpos[E.date].to_numpy()
+    common = sign * usd_leg(sym, ret60)[gi, s] / sg
+    own, c = dret[sym], usd_leg(sym, dret)
+    v_own = pd.Series(own).rolling(60, min_periods=40).var().shift(1).to_numpy()
+    v_err = pd.Series(own - c).rolling(60, min_periods=40).var().shift(1).to_numpy()
+    return {"common60": common, "resid60": E.spd60.to_numpy() - common, "cvar60": (1 - v_err / v_own)[gi]}
+
+
+def stage_d_only():
+    """Rebuild family D in features.parquet (amendment A2) without redoing the HMM fits."""
+    X = pd.read_parquet(OUT / "features.parquet")
+    lines = pd.read_csv(ROOT / "analysis/output/line_reaction/chosen_lines.csv", usecols=["inst", "date", "open", "sig"])
+    syms = sorted(p.stem for p in EV.glob("*.parquet"))
+    all_dates = sorted({x for s in syms for x in pd.read_csv(HIST / f"{s}.csv", usecols=["date"]).date})
+    gpos = pd.Series(np.arange(len(all_dates)), index=all_dates)
+    ret60, dret = {}, {}
+    for sym in USD_PAIRS:
+        d = pd.read_csv(HIST / f"{sym}.csv", usecols=["date"]).sort_values("date")
+        C, _, _ = slot_panel(sym, d.date.tolist())
+        G = np.full((len(all_dates), N_SLOT), np.nan)
+        G[gpos[d.date].to_numpy()] = C
+        ret60[sym], dret[sym] = _returns(G)
+    for c in FAM["D_corr"]:
+        X[c] = np.nan
+    for sym in USD_PAIRS:
+        E = pd.read_parquet(EV / f"{sym}.parquet", columns=["inst", "date", "side", "rung", "offset", "minute", "spd60"])
+        E = E[(E.offset == 0) | (E.offset.abs() >= 0.2 - 1e-9)].copy()
+        s = np.clip((E.minute.to_numpy() // 5) - 1, 0, N_SLOT - 1)
+        L0 = lines[lines.inst == sym].set_index("date")
+        sg = L0.sig.reindex(E.date).to_numpy() / 100
+        D = usd_leg_features(sym, E, s, sg, gpos, ret60, dret)
+        F = pd.DataFrame({"inst": E.inst.to_numpy(), "date": E.date.to_numpy(), "side": E.side.to_numpy(), "rung": E.rung.to_numpy(), "offset": E.offset.to_numpy(), **D})
+        K_ = ["inst", "date", "side", "rung", "offset"]
+        idx = X.reset_index().merge(F[K_], on=K_, validate="one_to_one")["index"].to_numpy()
+        F2 = X.loc[idx, K_].merge(F, on=K_, validate="one_to_one")
+        for c in FAM["D_corr"]:
+            X.loc[idx, c] = F2[c].to_numpy()
+    X.to_parquet(OUT / "features.parquet", index=False)
+    print(X[FAM["D_corr"]].describe().T[["count", "mean", "std", "min", "max"]].round(3).to_string())
+    print(X.groupby("inst")["cvar60"].mean().dropna().round(3).to_string())
+
+
+def _returns(G):
+    F = pd.DataFrame(G).ffill(axis=1).to_numpy()             # within the session, for the common-move read only
+    R = np.full_like(F, np.nan)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        R[:, 12:] = np.log(F[:, 12:] / F[:, :-12])
+        R[:, :12] = np.log(F[:, :12] / F[:, [0]])
+        last = F[:, -1]
+        return R, np.log(last / pd.Series(last).shift(1).to_numpy())
+
+
 def stage_features():
     OUT.mkdir(parents=True, exist_ok=True)
     syms = sorted(p.stem for p in EV.glob("*.parquet"))
@@ -138,32 +210,9 @@ def stage_features():
             closes[sym] = G
         pre[sym] = (st, d, g)
         print(f"{sym}: state and grids done", flush=True)
-    # legs from the OTHER pairs only: x_ccy[i, s] = mean signed 60-minute return across other pairs holding that currency
     ret60, dret = {}, {}
     for s, G in closes.items():
-        F = pd.DataFrame(G).ffill(axis=1).to_numpy()         # within the session, for the common-move read only
-        R = np.full_like(F, np.nan)
-        R[:, 12:] = np.log(F[:, 12:] / F[:, :-12])
-        R[:, :12] = np.log(F[:, :12] / F[:, [0]])
-        ret60[s] = R
-        last = F[:, -1]
-        prev = pd.Series(last).shift(1).to_numpy()
-        dret[s] = np.log(last / prev)
-
-    def legs(sym, table):
-        A, B = sym[:3], sym[3:]
-
-        def x(c):
-            parts_ = []
-            for o, T in table.items():
-                if o == sym:
-                    continue
-                if o[:3] == c:
-                    parts_.append(T)
-                elif o[3:] == c:
-                    parts_.append(-T)
-            return np.nanmean(np.stack(parts_), axis=0)
-        return x(A) - x(B)
+        ret60[s], dret[s] = _returns(G)
 
     for sym in syms:
         st, d, g = pre[sym]
@@ -183,20 +232,9 @@ def stage_features():
         sg = L0.sig.reindex(E.date).to_numpy() / 100
         rng_pct = (g["hi"][i, s] - g["lo"][i, s]) / op * 100
         out["err_today"] = rng_pct / d.pit_hl_p50.to_numpy()[i]
-        if sym in fx:
-            sign = np.where(E.side == "up", 1.0, -1.0)
-            pred = legs(sym, ret60)
-            gi = gpos[E.date].to_numpy()
-            out["common60"] = sign * pred[gi, s] / sg
-            out["resid60"] = E.spd60.to_numpy() - out["common60"].to_numpy()
-            pd_ = legs(sym, dret)
-            own = dret[sym]
-            err = own - pd_
-            v_own = pd.Series(own).rolling(60, min_periods=40).var().shift(1).to_numpy()
-            v_err = pd.Series(err).rolling(60, min_periods=40).var().shift(1).to_numpy()
-            out["cvar60"] = (1 - v_err / v_own)[gi]
-        else:
-            out["common60"] = out["resid60"] = out["cvar60"] = np.nan
+        D = usd_leg_features(sym, E, s, sg, gpos, ret60, dret)
+        for c in FAM["D_corr"]:
+            out[c] = D[c]
         parts.append(out)
         print(f"{sym}: {len(out):,} encounters", flush=True)
     X = pd.concat(parts, ignore_index=True)
@@ -227,6 +265,7 @@ def load():
     E = pd.concat([pd.read_parquet(p, columns=EV_COLS) for p in sorted(EV.glob("*.parquet"))], ignore_index=True)
     E = E[(E.offset == 0) | (E.offset.abs() >= 0.2 - 1e-9)]
     X = pd.read_parquet(OUT / "features.parquet")
+    X[NEW] = X[NEW].replace([np.inf, -np.inf], np.nan)         # a zero clock share or zero bipower early in the day (A2)
     E = E.merge(X, on=["inst", "date", "side", "rung", "offset"], how="left", validate="one_to_one")
     L = pd.read_csv(ROOT / "analysis/output/line_reaction/chosen_lines.csv", usecols=["inst", "date", "open", "sig"])
     E = E.merge(L, on=["inst", "date"], how="left")
@@ -310,7 +349,7 @@ def stage_analyse(shuffles=20):
     T = fit_arms(line, all_dates, arms, "line", logit=("ALL",))
     res = {"encounters_line": int(len(line)), "encounters_neighbours": int(len(nb)), "seed": SEED, "missing": line[NEW].isna().mean().round(4).to_dict()}
 
-    fxmask = T.inst.map(is_fx).to_numpy()
+    fxmask = T.inst.isin(USD_PAIRS).to_numpy()
     cells = {}
     for fam in FAM:
         sub = T[fxmask] if fam == "D_corr" else T
@@ -457,7 +496,7 @@ def write_md(r, Q):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--stage", choices=["features", "analyse"], required=True)
+    ap.add_argument("--stage", choices=["features", "d_only", "analyse"], required=True)
     ap.add_argument("--shuffles", type=int, default=20)
     a = ap.parse_args()
-    stage_features() if a.stage == "features" else stage_analyse(a.shuffles)
+    {"features": stage_features, "d_only": stage_d_only}[a.stage]() if a.stage != "analyse" else stage_analyse(a.shuffles)

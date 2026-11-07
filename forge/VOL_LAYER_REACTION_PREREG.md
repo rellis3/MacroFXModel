@@ -132,4 +132,10 @@ Choices made writing the code; no reaction outcome or feature table had been com
 - Offsets ±0.1 are not studied: neighbours are |offset| ≥ 0.2, as LINE-REACTION.
 - Spread fallback: instruments absent from `spread_profile` and unknown to `pylego.costs` are charged 2 pips.
 
+### A2 — 2026-11-07 — PRE-RESULTS
+The feature table was checked before any outcome was computed, and family D was wrong by construction. `cvar60` averaged 0.987 because legs built from the other pairs reproduce the pair by triangular arbitrage: EURJPY − USDJPY is EURUSD. So `common60` was the pair's own move again.
+- **Family D is redefined and restricted to the 7 USD pairs.** `common60` = the dollar's move over the last 60 minutes against currencies other than this pair's, signed as this pair's return and toward the level, in σ. Those pairs don't hold the other leg, so no identity applies. `resid60` = `spd60` − `common60`, the non-dollar part. `cvar60` = share of the pair's 60-session daily variance explained by that dollar move.
+- **D's scored cell is now the 7 USD pairs**, roughly 18,000 resolved rows at the line; SE about 0.0011, MDE about 0.004 at α 0.0125, against a pass bar of below 1 after Holm. Crosses have no clean dollar factor and are not scored here.
+- **Infinite values** of `rv_so_far` and `jump_today` (a zero clock share or zero bipower early in a session) are treated as missing.
+
 ## RESULTS
