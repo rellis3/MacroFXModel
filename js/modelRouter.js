@@ -132,6 +132,9 @@ export const TASK_CLASS = {
   // paper, about 20-25k tokens in and 3.5k out, so about 1 cent a paper on DeepSeek against about 10 cents on Sonnet. A task of
   // its own so the daily desk analysts ('desk-analyst') stay on Anthropic. Deep-tier literature work still uses 'desk-head'.
   'research-reader': { ledger: 'brief', label: 'Literature desk: the paper reader', defaultProvider: 'deepseek' },
+  // the paper library's equations (owner 2026-11-08, spend approved and capped): text only, about 25 equations per call as compact JSON in, LaTeX out;
+  // hard cap of 1500 calls in KV (library_math_v1). DeepSeek, on the cheap 'brief' ledger, like the paper reader.
+  'library-math': { ledger: 'brief', label: 'Paper library: equations to LaTeX', defaultProvider: 'deepseek' },
   'research-head': { ledger: 'full',  label: 'Research pod: Head of Research review', defaultProvider: 'anthropic', models: { anthropic: 'claude-sonnet-5' }, effort: { anthropic: 'high' } },
   // pictures the owner attaches to a research question (owner 2026-11-06): each is read ONCE by a vision model into a
   // written description that the researchers (DeepSeek, which cannot see images) and the Head then read as text.

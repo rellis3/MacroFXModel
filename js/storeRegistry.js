@@ -77,6 +77,7 @@ export const STORES = {
   research_pod_dossiers: L("Literature desk: dossiers on the owner's hypotheses and paper reviews", 60, { market: false }),
   research_pod_queue: L('Literature desk: the reading backlog (reading list, SSRN manifest, 151, QuantConnect, uploads)', 30, { market: false }),
   library_state_v1: L('Paper Library: reading progress (Theory Lab merge rules), manual tags, MP3 briefing job state (js/libraryApi.js)', 60, { market: false }),
+  library_math_v1: L('Paper Library equations: model calls used against the hard cap and the papers done (js/libraryMath.js; the LaTeX per paper is in R2)', 60, { market: false }),
   research_pod_papers: R('Literature desk: the paper library (notes per paper, read weekly by the pod)', 8, { market: false }),
   research_pod_quicktests: L('Research lab quick tests: exploratory X-leads-Y checks run from the Desk Office (never banked)', 90, { market: false }),
   fx_fair_value_log_v1: R('Short-term FX fair value forward record (description only)', 2),

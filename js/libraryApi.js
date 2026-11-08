@@ -15,6 +15,10 @@
  *   extractPages(buf)                                   positioned pages (js/paperPages.js, worker thread)
  *   tts:{ getProvider(), makeMp3(chunks, provider, opts) }   js/paperTts.js (mock it in tests)
  *   readFreeSources()                                   (optional) parsed education/papers/free_sources.json; missing or broken = no manifest
+ *   mathModel({ system, prompt, maxTokens })            (optional) the capped model call of the equations job (task 'library-math'); absent = the job says no key
+ *   modelReady()                                        (optional) false when no model key is set
+ *   fetchArxiv(id)                                      (optional) arXiv HTML equations (default js/arxivMath.js, polite); tests inject a fake
+ *   validateLatex(latex)                                (optional) KaTeX check (default js/libraryMath.js)
  *   readTodoMd()                                        text of education/papers/SSRN_DOWNLOAD_LIST.md
  *   lessonFiles()                                       file names in theory-lab/lessons
  *   cases:{ read() -> { cases }, put(case) }            research cases (server: _rcStore / locked _rcPut)
@@ -25,6 +29,7 @@ import { buildBlocks, plainText, conclusion, abstractOf } from './paperText.js';
 import { cleanBlocks } from './paperStamps.js';
 import { cardLine } from './library/summary.js';
 import { flatTextToPages } from './paperPages.js';
+import { createMath, resolveLatex, mergeLatexIntoBlocks, validateLatex } from './libraryMath.js';
 import { speechSentences, briefingScript, chunkForTts, estimateSecs, toSentences } from './paperAudio.js';
 import {
   joinCatalog, topicCounts, sourceCounts, yearCounts, freeLookup, TOPIC_KEYS, TOPICS, buildIndex, addDoc, search as indexSearch, setDocTags,
@@ -164,6 +169,16 @@ export function createLibraryApi(deps) {
   };
   const theoryOf = p => theoryLinks(p.tags, lessonFiles?.() ?? null);
 
+  // ── equations as maths (js/libraryMath.js): validation is memoised, the arXiv record of a paper comes from what the catalog knows ──
+  const valMemo = new Map(), validateRaw = deps.validateLatex ?? validateLatex;
+  const validateCached = async s => { if (valMemo.has(s)) return valMemo.get(s); const v = await validateRaw(s); valMemo.set(s, v); if (valMemo.size > 4000) valMemo.delete(valMemo.keys().next().value); return v; };
+  const arxivRecOf = (p, cat) => ({ arxiv: p.arxiv, doi: p.doi, url: p.url, uploadName: cat?.queueItems?.find(q => q.id === p.id)?.upload?.name });
+  const math = createMath({
+    kv, r2, uploadKey, now, log, validate: validateCached, mathModel: deps.mathModel, modelReady: deps.modelReady, fetchArxiv: deps.fetchArxiv,
+    papers: async () => { const cat = await catalog(); return cat.list.map(p => ({ id: p.id, hasPdf: p.hasPdf, hasText: p.hasText, read: !!(p.notes && (p.notes.claim || p.notes.mechanism || p.notes.method)), arxivRec: arxivRecOf(p, cat) })); },
+    getBlocks: id => getBlocks(id, true),
+  });
+
   // ── blocks: R2 cache, built in the worker thread on first open ──
   async function getBlocks(id, paperHasPdf) {
     if (blocksMem.has(id)) return blocksMem.get(id);
@@ -171,7 +186,7 @@ export function createLibraryApi(deps) {
     const job = (async () => {
       if (r2.ok()) {
         const c = await r2.getBuffer(blocksKey(id)).catch(() => null);
-        if (c) { try { const j = JSON.parse(c.toString('utf8')); if (j?.v === 2 && Array.isArray(j.blocks)) return j; } catch { /* rebuild */ } }
+        if (c) { try { const j = JSON.parse(c.toString('utf8')); if (j?.v === 3 && Array.isArray(j.blocks)) return j; /* v3: equation blocks carry their positioned items (src) for the LaTeX layers */ } catch { /* rebuild */ } }
       }
       let pages = null, source = 'flat';
       if (r2.ok() && paperHasPdf !== false) {
@@ -180,7 +195,7 @@ export function createLibraryApi(deps) {
       }
       if (!pages) { const t = await textOf(id); if (!t) return null; pages = flatTextToPages(t).pages; }
       const built = buildBlocks(pages);
-      const doc = { v: 2, source, pages: pages.length, pageSize: built.pageSize, blocks: built.blocks };
+      const doc = { v: 3, source, pages: pages.length, pageSize: built.pageSize, blocks: built.blocks };
       if (r2.ok() && built.blocks.length) await r2.putBuffer(blocksKey(id), Buffer.from(JSON.stringify(doc)), 'application/json').catch(e => log.warn?.(`[library] cache blocks ${id}: ${e.message}`));
       return doc;
     })();
@@ -229,7 +244,15 @@ export function createLibraryApi(deps) {
     const id = String(query?.id ?? ''); const cat = await catalog(); const p = cat.byId.get(id);
     if (!p) return bad(404, 'unknown paper');
     let doc = null; try { doc = p.hasText || p.hasPdf ? await getBlocks(id, p.hasPdf) : null; } catch (e) { log.warn?.(`[library] blocks ${id}: ${e.message}`); }
-    return reply(200, { ok: true, paper: { ...p, pages: doc?.pages ?? p.pages, theory: theoryOf(p) }, blocks: doc?.blocks ?? null, pageSize: doc?.pageSize ?? {}, pages: doc?.pages ?? p.pages ?? null });
+    let blocks = doc?.blocks ?? null;
+    if (blocks?.some(b => b.type === 'eq')) {   // equations as maths: arXiv's LaTeX, the model's, or the rule-based one, best first; the crop always stays
+      try {
+        const file = await math.fileOf(id);
+        blocks = mergeLatexIntoBlocks(blocks, await resolveLatex(blocks, file, { validate: validateCached }));
+        if (!file.arxiv) math.syncArxiv(id, arxivRecOf(p, cat), doc.blocks).catch(() => {});   // free, one polite request per paper, in the background: the next open has it
+      } catch (e) { log.warn?.(`[library] math ${id}: ${e.message}`); blocks = blocks.map(({ src, ...b }) => b); }
+    }
+    return reply(200, { ok: true, paper: { ...p, pages: doc?.pages ?? p.pages, theory: theoryOf(p) }, blocks, pageSize: doc?.pageSize ?? {}, pages: doc?.pages ?? p.pages ?? null });
   };
 
   H.search = async ({ query }) => {
@@ -362,6 +385,7 @@ export function createLibraryApi(deps) {
   /** A job that was 'working' when the server restarted will never finish: report it as an error instead of spinning forever. */
   H.reapStaleAudio = () => mutate(async s => { for (const [id, a] of Object.entries(s.audio)) if (a.briefing?.status === 'working' && !jobs.has(id) && now() - (a.briefing.at ?? 0) > 60_000) a.briefing = { ...a.briefing, status: 'error', error: 'interrupted by a restart; try again' }; });
 
+  H.math = math;   // GET/POST /api/research-pod/math (server.js mounts it like the reading backlog)
   H._test = { catalog, getBlocks, readState, dropCatalog, jobsActive: () => [...jobs.keys()] };
   return H;
 }
