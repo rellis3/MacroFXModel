@@ -72,3 +72,28 @@ A test must check every linked lesson file exists.
 
 ## Out of scope (needs paid model calls; not built now)
 "Ask this paper", model-written walkthrough scripts, model-cleaned text, model auto-tagging, paid TTS voices.
+
+## Built so far (pure modules, merged locally 2026-11-08)
+`js/paperText.js` + `js/paperPages.js` + `scripts/pdf/pagesWorker.mjs` (positioned text → blocks with equation/table boxes),
+`js/paperAudio.js` (`speechSentences` → `[{ text, block }]` ≤110 chars; `briefingScript`; `chunkForTts`), `js/paperTts.js`
+(free `edge` voice via msedge-tts; `makeMp3`), `js/paperCatalog.js` (tags, search index, desk/theory links, to-get list, read-next,
+`caseFromPaper`). Read their headers and tests for the exact signatures.
+
+## Listening rules (from Theory Lab, `theory-lab/assets/tts.js`: read it, do not edit it)
+The Theory Lab already fixed browser-voice stopping. Follow it exactly:
+- utterances ≤110 characters (already produced by `speechSentences`);
+- queue ALL remaining utterances synchronously inside the click/skip/rate-change handler (the engine's own queue plays them); never
+  chain `speak()` from `onend`/`onerror` (iOS Safari and Android drop async-chained calls);
+- NO `pause()`/`resume()` keep-alive (it killed playback on Android);
+- a generation token so stale callbacks from a superseded batch are no-ops; `cancel()` on `pagehide` and `beforeunload`;
+- progress/highlight from each utterance's `onstart`; speed and voice remembered in `localStorage`; prev/next paragraph, play/pause.
+The MP3 (`<audio>`) uses the Media Session API (lock-screen title, play/pause, seek) and remembers its position.
+
+## Styling and zones
+The page looks like the Theory Lab: its dark tokens (`--bg:#0f1117; --s1:#1a1d27; --s2:#22263a; --border:#2a2f45; --text:#e8eaf2;
+--blue:#4f7df0; --green:#10b981; --amber:#fbbf24; --purple:#a78bfa`, DM Sans/DM Mono), its cards (`.tl-card`), filter chips (like the
+level filter on `theory-lab/hub.html`), status badges, kicker/title/meta lines, progress rings, the sticky listen bar. BUT
+`/theory-lab/*` is the separate **education** login zone (`authZoneForPath`, `AUTH_EDU_PREFIXES`): a main-zone page must not
+load its files or the owner is bounced to a second login. So `library.html` is a main-zone page with its own `css/library.css`
+(copy the tokens and component styles you need; do not link into /theory-lab/). Links to Theory Lab lessons open in a new tab.
+Phone first (430px, no page-level horizontal scroll).
