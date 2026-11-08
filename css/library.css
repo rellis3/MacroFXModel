@@ -107,9 +107,9 @@ a.lib-pcard,.lib-pcard{display:block;text-decoration:none;color:inherit;position
 .lib-modes{display:flex;gap:6px;margin:6px 0 14px;flex-wrap:wrap}
 .lib-mode{background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:8px 14px;min-height:40px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer}
 .lib-mode.active{background:var(--blue-bg);border-color:var(--blue-bd);color:var(--blue)}
-.lib-blocks{max-width:68ch}
-.lib-blocks h2.b1{font-size:20px;margin:26px 0 10px}
-.lib-blocks h3.b2{font-size:16px;margin:20px 0 8px}
+.lib-blocks{max-width:68ch;font-size:calc(15px * var(--lib-fs, 1))}
+.lib-blocks h2.b1{font-size:1.34em;margin:26px 0 10px}
+.lib-blocks h3.b2{font-size:1.07em;margin:20px 0 8px}
 .lib-blocks p.bp{color:var(--text2);margin-bottom:14px;overflow-wrap:anywhere}
 .lib-blocks .refs{font-size:12.5px;color:var(--text3);margin-bottom:10px}
 .lib-blocks details.lib-refs summary{cursor:pointer;color:var(--text3);font-size:13px;min-height:36px}
@@ -217,3 +217,7 @@ body.lib-listen-open{--listen-h:96px}
 }
 
 .lib-eqswitch .incl{font-size:11.5px;color:var(--text3);margin:0 8px 0 6px;display:inline-flex;align-items:center;gap:4px;cursor:pointer}
+
+.lib-fs{margin-left:auto;display:inline-flex;gap:6px;align-items:center}
+.lib-fs button{background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:var(--r);min-width:44px;min-height:44px;font:600 14px 'DM Sans',system-ui,sans-serif;cursor:pointer}
+.lib-fs button:disabled{opacity:.4;cursor:default}
