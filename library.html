@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Library — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/library.css">
+</head>
+<body>
+<div id="page">
+  <div class="lib-crumb"><a href="/">MacroFX</a> · Library</div>
+
+  <!-- list view -->
+  <section id="listView">
+    <div class="lib-kicker">Research</div>
+    <h1 class="lib-title">Paper Library</h1>
+    <p class="lib-dek">Every paper the desk holds. Search the full text, filter by area, read it here or listen to it. Private to you: nothing here calls a paid model.</p>
+
+    <div id="readNext" class="lib-readnext" hidden></div>
+
+    <div class="lib-tabs" role="tablist">
+      <button type="button" role="tab" class="lib-tab active" data-tab="papers" aria-selected="true">Papers <span id="cntPapers" class="lib-tabcount"></span></button>
+      <button type="button" role="tab" class="lib-tab" data-tab="todo" aria-selected="false">To get <span id="cntTodo" class="lib-tabcount"></span></button>
+    </div>
+
+    <div id="papersTab">
+      <div class="lib-search">
+        <input id="q" type="search" placeholder="Search the full text of every paper" autocomplete="off" aria-label="Search papers">
+        <button type="button" id="qClear" class="lib-iconbtn" aria-label="Clear search" hidden>×</button>
+      </div>
+      <div id="chips" class="lib-chips" role="group" aria-label="Filter by topic"></div>
+      <div id="resultInfo" class="lib-info" role="status"></div>
+      <div id="cards" class="lib-grid"></div>
+    </div>
+
+    <div id="todoTab" hidden>
+      <p class="lib-info">Papers on the desk's download list that are not held yet. Open the SSRN page and save the PDF, then upload it to the research pod.</p>
+      <div id="todoList" class="lib-todo"></div>
+    </div>
+  </section>
+
+  <!-- reader view -->
+  <section id="readerView" hidden>
+    <button type="button" id="backBtn" class="lib-back">← All papers</button>
+    <div id="readerHead"></div>
+    <div class="lib-modes" role="tablist" aria-label="View">
+      <button type="button" class="lib-mode active" data-view="read">Reader</button>
+      <button type="button" class="lib-mode" data-view="pdf">Original PDF</button>
+      <button type="button" class="lib-mode" data-view="notes">Desk notes</button>
+    </div>
+    <div id="viewRead"><div id="blocks" class="lib-blocks"></div></div>
+    <div id="viewPdf" hidden></div>
+    <div id="viewNotes" hidden></div>
+    <div id="audioBox" class="lib-card lib-audio"></div>
+  </section>
+</div>
+
+<!-- listen bar (fixed) -->
+<div id="listenBar" class="lib-listen" hidden>
+  <div class="lib-listen-inner">
+    <button type="button" class="lib-lbtn" data-act="prev" aria-label="Previous paragraph">⏮</button>
+    <button type="button" class="lib-lbtn lib-lplay" data-act="play" aria-label="Play">▶</button>
+    <button type="button" class="lib-lbtn" data-act="next" aria-label="Next paragraph">⏭</button>
+    <div class="lib-lprog"><span id="lLabel" class="lib-llabel">Ready</span><div class="lib-ltrack"><div id="lFill" class="lib-lfill"></div></div></div>
+    <select id="lMode" class="lib-lsel" aria-label="Listen mode"><option value="briefing">Briefing</option><option value="full">Full</option></select>
+    <select id="lRate" class="lib-lsel" aria-label="Playback speed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="1.75">1.75×</option><option value="2">2×</option></select>
+    <select id="lVoice" class="lib-lsel lib-lvoice" aria-label="Voice"></select>
+    <button type="button" class="lib-lclose" data-act="close" aria-label="Close listen bar">×</button>
+  </div>
+</div>
+<div id="toast" class="lib-toast" role="status" hidden></div>
+<script type="module" src="js/library/app.js"></script>
+</body>
+</html>
