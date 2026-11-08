@@ -437,4 +437,44 @@ await t('figure: a caption of several lines (with a range like 1–52 and a far 
   assert.ok(f.bbox[3] >= 660 && f.bbox[1] <= 350, JSON.stringify(f.bbox));
 });
 
+// ---- cells and in-figure text kept on the blocks for the figure notes (js/libraryFigs.js), out of paragraphs / search / listening ----
+await t('table block keeps its cell rows (cells), capped; the caption stays the text and paragraphs do not hold the numbers', () => {
+  const tb = by('table')[0];
+  assert.ok(Array.isArray(tb.cells) && tb.cells.length >= 4, JSON.stringify(tb.cells));
+  assert.ok(tb.cells.includes('Estimator|R2|MAE|Bias'), JSON.stringify(tb.cells));
+  assert.ok(tb.cells.includes('Parkinson|0.34|0.029|0.001'), JSON.stringify(tb.cells));
+  assert.ok(tb.cells.length <= 40 && tb.cells.every(r => r.split('|').length <= 12));
+  assert.match(tb.text, /^Table 1: Out-of-sample R2/, 'the block text is still the caption');
+  assert.ok(!plainText(blocks).includes('0.034'), 'cells are not search text');
+  assert.ok(!speechSentencesNoNumbers(blocks), 'no number soup in listening');
+});
+function speechSentencesNoNumbers(bl) { return bl.some(b => b.type === 'p' && /Parkinson|0\.029/.test(b.text)); }
+
+await t('table cells are capped at 40 rows and 12 columns', () => {
+  const rows = []; const xs = Array.from({ length: 14 }, (_, c) => SX + 10 + c * 32);
+  for (let k = 0; k < 50; k++) xs.forEach((x, c) => rows.push(it(x, 700 - k * 11, c === 0 ? `Row${k}` : String(k + c) + '.5', { h: 9, w: 14 })));
+  const r = buildBlocks([page(1, [it(SX, 730, 'Table 2: A very wide synthetic table.', { h: 9, w: 200 }), ...rows, ...para1(100, 3)])]);
+  const tb = r.blocks.find(b => b.type === 'table'); assert.ok(tb, 'table found');
+  assert.equal(tb.cells?.length, 40, String(tb.cells?.length));
+  assert.ok(tb.cells.every(row => row.split('|').length === 12), tb.cells[0]);
+});
+
+await t('figure block keeps the text inside its graphic (axis titles, legend, ticks collapsed), capped at 300, and it stays out of paragraphs', () => {
+  const lab = (x, y, str, w) => it(x, y, str, { h: 8, w: w ?? str.length * 3.6 });
+  const items = [...para1(720, 5), it(SX, 405, 'Figure 3: Synthetic cumulative results by horizon.', { w: 300 }),
+    lab(200, 430, 'Cumulative return', 70), lab(120, 445, '0', 4), lab(120, 520, '50', 8), lab(120, 600, '100', 10), lab(260, 640, 'Carry', 22), lab(330, 640, 'Benchmark', 36), lab(300, 410, 'Year', 16), ...para1(380, 4)];
+  const r = buildBlocks([page(1, items, [[100, 440, 500, 650, 'i', 1]])]);
+  const [f] = figs(r); assert.ok(f && f.gfx, 'graphic found');
+  assert.equal(typeof f.inText, 'string'); assert.ok(f.inText.length <= 300);
+  for (const w of ['Cumulative return', 'Carry', 'Benchmark']) assert.ok(f.inText.includes(w), `${w} in ${f.inText}`);
+  assert.match(f.inText, /ticks 0 to 100/);
+  assert.ok(!r.blocks.some(b => b.type === 'p' && /Benchmark|Cumulative return/.test(b.text)), 'axis text is not a paragraph');
+  assert.ok(!plainText(r.blocks).includes('Benchmark'));
+});
+
+await t('a figure with no graphic region has no inText; a table without cells has none', () => {
+  const r = buildBlocks([page(1, [...para1(720, 3), it(SX, 405, 'Figure 4: Caption only.', { w: 200 }), ...para1(380, 4)])]);
+  const [f] = figs(r); assert.ok(f && !('inText' in f));
+});
+
 console.log(`paperText: ${n} tests passed`);

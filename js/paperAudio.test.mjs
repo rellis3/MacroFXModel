@@ -258,3 +258,47 @@ test('footnote bodies (foot blocks) are not read aloud; figure captions and tabl
   assert.ok(!out.some((x) => /footnote|Figure 3/.test(x)));
   assert.equal(out.filter((x) => x === 'A table appears here.').length, 1);
 });
+
+// ── figure and table notes (js/libraryFigs.js) ──
+const T1 = { i: 1, type: 'table', label: 'Table 1', text: 'Table 1: Sharpe ratio by horizon', note: 'It lists the Sharpe ratio for four holding periods, from 0.42 at 1M to 0.59 at 12M, and it rises with the horizon.', noteConfident: true, noteRefs: 5, page: 2 };
+const F2 = { i: 2, type: 'fig', label: 'Figure 2', text: 'Figure 2: Cumulative returns', note: 'Cumulative returns of the carry rule.', noteConfident: true, noteRefs: 1, page: 2 };
+const T3 = { i: 3, type: 'table', label: 'Table 3', text: 'Table 3: Robustness', note: 'Robustness checks by sample.', noteConfident: false, noteRefs: 9, page: 3 };
+const T4 = { i: 4, type: 'table', label: 'Table 4', text: 'Table 4: Plain', page: 3 };
+
+test('Full mode: a table or figure with a note says "Table 1. <note>" (once a line about the source), not the raw numbers; no note keeps the old line', () => {
+  const out = txt(speechSentences([P('Intro sentence here.'), T1, F2, T4, { i: 5, type: 'fig', label: 'Figure 9', text: 'Figure 9: none' }]));
+  const j = out.join(' ');
+  assert.ok(out.includes("Notes on figures and tables come from the paper's text, not from the pictures."));
+  assert.equal(out.filter((x) => /come from the paper's text/.test(x)).length, 1, 'the source line once');
+  assert.ok(out.includes('Table 1.')); assert.match(j, /Table 1\. It lists the Sharpe ratio/); assert.match(j, /Figure 2\. Cumulative returns of the carry rule\./);
+  assert.equal(out.filter((x) => x === 'A table appears here.').length, 1, 'only the table without a note');
+  assert.ok(!/Figure 9/.test(j), 'a figure without a note is still skipped');
+  assert.ok(out.every((x) => x.length <= MAX_SENTENCE), out.filter((x) => x.length > MAX_SENTENCE).join(' / '));
+  assert.ok(!/[σ≈×≤≥∑=%]|\d\.\d/.test(j), 'no raw math glyphs or decimals: ' + j);
+  const tight = speechSentences([T1], { maxChars: 60 }); assert.ok(tight.every((x) => x.text.length <= 60));
+});
+
+test('Full mode: the highlight block of a note is the figure/table block', () => {
+  const r = speechSentences([T1]); assert.ok(r.every((x) => x.block === 1));
+});
+
+test('Briefing: a "Charts and tables" section of up to 4 confident notes, the most referred-to first; none when nothing is confident', () => {
+  const many = Array.from({ length: 6 }, (_, k) => ({ i: 10 + k, type: k % 2 ? 'fig' : 'table', label: `${k % 2 ? 'Figure' : 'Table'} ${k + 10}`, text: 'c', note: `Note number ${k} about the data.`, noteConfident: true, noteRefs: k }));
+  const b = briefingScript({ title: 'T', year: 2020, abstract: 'An abstract sentence here.' }, [T1, F2, T3, T4, ...many], []);
+  const s = b.sentences, at = s.indexOf('Charts and tables.');
+  assert.ok(at > 0, 'the section is there'); assert.equal(s[at + 1], "Notes on figures and tables come from the paper's text, not from the pictures.");
+  const section = s.slice(at + 2, s.indexOf('That is the briefing.'));
+  const labels = section.filter((x) => /^(?:Table|Figure) \d+\.$/.test(x));
+  assert.deepEqual(labels, ['Table 1.', 'Figure 15.', 'Table 14.', 'Figure 13.'], 'four notes, most referred-to first (5 refs, then 5/4/3 of the generated ones)');
+  assert.ok(!section.join(' ').includes('Robustness checks'), 'a not-confident note is not read, however often it is referred to');
+  assert.ok(s.every((x) => x.length <= MAX_SENTENCE));
+  const none = briefingScript({ title: 'T', abstract: 'Abstract here.' }, [T3, T4], []).sentences; assert.ok(!none.includes('Charts and tables.'));
+  assert.ok(!briefingScript({ title: 'T', abstract: 'Abstract here.' }, null, []).sentences.includes('Charts and tables.'));
+});
+
+test('Briefing: the section shrinks with the length budget instead of pushing the briefing past five minutes', () => {
+  const long = 'This is a fairly long abstract sentence about volatility and risk premia in many markets. '.repeat(14);
+  const notes = Array.from({ length: 6 }, (_, k) => ({ i: k, type: 'table', label: `Table ${k + 1}`, text: 'c', note: 'A note that says what the table reports about the sample. '.repeat(3).trim(), noteConfident: true, noteRefs: 6 - k }));
+  const b = briefingScript({ title: 'T', abstract: long, notes: { claim: long, mechanism: long, method: long, caveats: long } }, notes, [long, long]);
+  assert.ok(b.secs <= 5 * 60 + 5, String(b.secs));
+});

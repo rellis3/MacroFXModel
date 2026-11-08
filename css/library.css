@@ -132,6 +132,14 @@ html.lib-zoomed,html.lib-zoomed body{overflow:hidden}
 .lib-zoom .zbody.full .zc{width:auto;max-width:none;height:auto;margin:0}
 .lib-zoom .zbody .lib-loading{color:#cfd6e4}
 .lib-fig .cap{font-size:11.5px;color:var(--text3);margin-top:6px;font-family:'DM Mono',monospace;text-align:left}
+.lib-fig .fignote{text-align:left;margin-top:10px;background:var(--blue-bg);border:1px solid var(--blue-bd);border-left:3px solid var(--blue);border-radius:var(--r);padding:9px 12px;font-family:'DM Sans',-apple-system,sans-serif}
+.lib-fig .fignote.unsure{background:var(--amber-bg);border-color:var(--amber-bd);border-left-color:var(--amber)}
+.lib-fig .fignote .fnh{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin-bottom:3px}
+.lib-fig .fignote .fnh b{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--blue)}
+.lib-fig .fignote.unsure .fnh b{color:var(--amber)}
+.lib-fig .fignote .fntag{font-size:10.5px;color:var(--text3);border:1px solid var(--border2);border-radius:10px;padding:0 7px;cursor:help}
+.lib-fig .fignote p{font-size:14px;line-height:1.5;color:var(--text);overflow-wrap:anywhere;margin:0}
+.lib-fig .fignote small{display:block;margin-top:4px;font-size:11px;color:var(--text3)}
 .lib-fig.ph{text-align:left;border-style:dashed;color:var(--text2);font-size:13px}
 .lib-fig.ph b{color:var(--amber)}
 .lib-loading{color:var(--text3);font-size:12.5px}

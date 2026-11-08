@@ -202,7 +202,7 @@ const mathBlocks = () => [
 ];
 function mathHarness({ math } = {}) {
   const h = harness(); const { blobs, api } = h;
-  blobs.set(uploadKey('up1', 'blocks.json'), Buffer.from(JSON.stringify({ v: 4, source: 'pdf', pages: 1, pageSize: { 1: [612, 792] }, blocks: mathBlocks() })));
+  blobs.set(uploadKey('up1', 'blocks.json'), Buffer.from(JSON.stringify({ v: 5, source: 'pdf', pages: 1, pageSize: { 1: [612, 792] }, blocks: mathBlocks() })));
   if (math) blobs.set(uploadKey('up1', 'math.json'), Buffer.from(JSON.stringify(math)));
   return { ...h, get: async () => (await api.paper({ query: { id: 'up1' } })).json };
 }
@@ -222,11 +222,65 @@ test('paper: without a math file the rule-based layer still gives the clean equa
   assert.ok(r.blocks[1].latex && r.blocks[1].latexSource === 'rule'); assert.ok(!('latex' in r.blocks[2]) && !('latex' in r.blocks[3]));
 });
 
-test('blocks cache: a v3 cache (before figures kept their graphic) is rebuilt, a v4 one is used as is', async () => {
-  const { api, blobs, calls } = harness();
-  blobs.set(uploadKey('up1', 'blocks.json'), Buffer.from(JSON.stringify({ v: 3, source: 'pdf', pages: 1, pageSize: {}, blocks: [{ i: 0, type: 'p', text: 'old', page: 1, bbox: null }] })));
-  const r = (await api.paper({ query: { id: 'up1' } })).json; assert.equal(calls.extract, 1, 'rebuilt'); assert.ok(r.blocks.length > 2);
-  assert.equal(JSON.parse(blobs.get(uploadKey('up1', 'blocks.json')).toString()).v, 4);
+test('blocks cache: a v3 or v4 cache (before tables kept their cells and figures their in-graphic text) is rebuilt as v5', async () => {
+  for (const v of [3, 4]) {
+    const { api, blobs, calls } = harness();
+    blobs.set(uploadKey('up1', 'blocks.json'), Buffer.from(JSON.stringify({ v, source: 'pdf', pages: 1, pageSize: {}, blocks: [{ i: 0, type: 'p', text: 'old', page: 1, bbox: null }] })));
+    const r = (await api.paper({ query: { id: 'up1' } })).json; assert.equal(calls.extract, 1, `v${v} rebuilt`); assert.ok(r.blocks.length > 2);
+    assert.equal(JSON.parse(blobs.get(uploadKey('up1', 'blocks.json')).toString()).v, 5);
+  }
+});
+
+// ── figure and table notes ──
+const figBlocks = () => [
+  { i: 0, type: 'p', text: 'Table 1 reports the Sharpe ratio by horizon. It rises from 0.42 to 0.59.', page: 1, bbox: null },
+  { i: 1, type: 'table', text: 'Table 1: Sharpe ratio by horizon', label: 'Table 1', page: 1, bbox: [50, 400, 300, 500], cells: ['1M|12M', 'Sharpe|0.42|0.59'] },
+  { i: 2, type: 'p', text: 'Figure 2 plots cumulative returns over time.', page: 1, bbox: null },
+  { i: 3, type: 'fig', text: 'Figure 2: Cumulative returns', label: 'Figure 2', page: 1, bbox: [50, 200, 300, 380], gfx: true, inText: 'Return | Year' },
+  { i: 4, type: 'table', text: 'Table 9: No note here', label: 'Table 9', page: 1, bbox: [50, 100, 300, 180] },
+];
+function figsHarness({ file } = {}) {
+  const h = harness();
+  h.blobs.set(uploadKey('up1', 'blocks.json'), Buffer.from(JSON.stringify({ v: 5, source: 'pdf', pages: 1, pageSize: { 1: [612, 792] }, blocks: figBlocks() })));
+  if (file) h.blobs.set(uploadKey('up1', 'figs.json'), typeof file === 'string' ? Buffer.from(file) : Buffer.from(JSON.stringify(file)));
+  return h;
+}
+const FILE = { v: 1, notes: { 'Table 1': { text: 'It lists the Sharpe ratio from 0.42 to 0.59.', confident: true, at: 1 }, 'Figure 2': { text: 'It plots cumulative returns against the year.', confident: false, at: 1 } }, tried: {} };
+
+test('paper: figure and table blocks with a note carry note and noteConfident; the others are untouched; no file means no notes', async () => {
+  const { api } = figsHarness({ file: FILE }); const r = (await api.paper({ query: { id: 'up1' } })).json;
+  const [, t1, , f2, t9] = r.blocks;
+  assert.deepEqual([t1.note, t1.noteConfident], ['It lists the Sharpe ratio from 0.42 to 0.59.', true]); assert.deepEqual([f2.note, f2.noteConfident], ['It plots cumulative returns against the year.', false]);
+  assert.ok(!('note' in t9)); assert.deepEqual(t1.cells, ['1M|12M', 'Sharpe|0.42|0.59'], 'the cells stay on the block');
+  const none = (await figsHarness().api.paper({ query: { id: 'up1' } })).json; assert.ok(none.blocks.every(b => !('note' in b)));
+  const broken = (await figsHarness({ file: '{not json' }).api.paper({ query: { id: 'up1' } })).json; assert.equal(broken.ok, true); assert.ok(broken.blocks.every(b => !('note' in b)));
+});
+
+test('listen: Full says the note instead of "A table appears here"; the briefing gets Charts and tables from confident notes only; a missing file is fine', async () => {
+  const { api } = figsHarness({ file: FILE });
+  const full = (await api.listen({ query: { id: 'up1', mode: 'full' } })).json.sentences.join(' ');
+  assert.match(full, /Table 1\. It lists the Sharpe ratio/); assert.match(full, /Figure 2\. It plots cumulative returns/);
+  assert.equal((full.match(/A table appears here/g) ?? []).length, 1, 'Table 9 has no note');
+  const br = (await api.listen({ query: { id: 'up1', mode: 'briefing' } })).json.sentences;
+  assert.ok(br.includes('Charts and tables.')); const bj = br.join(' '); assert.match(bj, /Table 1\./); assert.doesNotMatch(bj, /Figure 2\./, 'a not-confident note is not in the briefing');
+  assert.ok(br.every(x => x.length <= 110));
+  const bare = figsHarness(); const fb = (await bare.api.listen({ query: { id: 'up1', mode: 'briefing' } })).json.sentences; assert.ok(!fb.includes('Charts and tables.'));
+  const fullBare = (await bare.api.listen({ query: { id: 'up1', mode: 'full' } })).json.sentences.join(' '); assert.match(fullBare, /A table appears here/);
+});
+
+test('the MP3 job builds its script with the notes', async () => {
+  const { api, blobs } = figsHarness({ file: FILE });
+  await api.audioPost({ body: { id: 'up1' } }); for (let k = 0; k < 200 && api._test.jobsActive().length; k++) await new Promise(r => setTimeout(r, 10));
+  const audio = [...blobs.entries()].find(([k]) => k.includes('briefing.mp3')); assert.ok(audio, 'the mp3 was stored');
+  assert.match(audio[1].toString(), /Charts and tables/); assert.match(audio[1].toString(), /Sharpe ratio/);
+});
+
+test('the figure-notes job is mounted at /api/research-pod/figs (GET status, POST capped), task library-figs, key registered everywhere', () => {
+  const rd = f => fs.readFileSync(new URL(f, import.meta.url), 'utf8'), src = rd('../server.js');
+  assert.match(src, /app\.get\('\/api\/research-pod\/figs'/); assert.match(src, /app\.post\('\/api\/research-pod\/figs'/);
+  assert.match(src, /task: 'library-figs'/); assert.match(src, /_libApi\.figs\.start\(/); assert.match(src, /_libApi\.figs\.status\(/); assert.match(src, /figsModel:/);
+  for (const [f, n] of [['../kv.js', 1], ['../_worker.js', 2], ['./storeRegistry.js', 1]]) assert.ok(rd(f).split('library_figs_v1').length - 1 >= n, `${f} lists library_figs_v1`);
+  assert.match(rd('./modelRouter.js'), /'library-figs': \{ ledger: 'brief'/);
 });
 
 test('the equations job is mounted at /api/research-pod/math (GET status, POST capped), task library-math, key registered everywhere', () => {

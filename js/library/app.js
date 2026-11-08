@@ -186,6 +186,11 @@ function eqHtml(b, a) {
     `<button type="button" class="lib-btn sm eqtoggle" aria-pressed="false" title="Show the equation as it is printed in the PDF">Original</button>` +
     (src ? `<span class="eqsrc" title="${esc(MA.sourceTitle(b.latexSource))}">${esc(src)}</span>` : '') + `</div></figure>`;
 }
+// "What this shows": a note the model wrote from the paper's text (caption, mentions, table cells, text inside the figure); never a reading of the picture
+function noteHtml(b) {
+  if (b.type === 'eq' || typeof b.note !== 'string' || !b.note.trim()) return '';
+  return `<aside class="fignote${b.noteConfident ? '' : ' unsure'}" aria-label="What this shows"><div class="fnh"><b>What this shows</b><span class="fntag" title="Written by the AI from the caption, the paragraphs that mention it and the numbers in the table; it has not seen the picture">from the paper's text</span></div><p>${esc(b.note)}</p>${b.noteConfident ? '' : '<small>Low confidence: check it against the picture.</small>'}</aside>`;
+}
 function blocksHtml(blocks) {
   const refs = [];
   let h = '';
@@ -197,7 +202,7 @@ function blocksHtml(blocks) {
     else if (MA.hasMath(b)) h += eqHtml(b, a);
     else if (b.type === 'eq' || b.type === 'table' || b.type === 'fig') {
       const what = b.type === 'eq' ? 'Equation' : b.type === 'table' ? 'Table' : 'Figure';
-      h += `<figure class="lib-fig ph" ${a} data-lazy="1" data-page="${b.page}"><div class="slot"><span class="lib-loading">${what}, page ${b.page}…</span></div><div class="cap">${b.label && b.label.toLowerCase().startsWith(what.toLowerCase()) ? esc(b.label) : what + (b.label ? ' ' + esc(b.label) : '')} · page ${b.page} · <a href="${api.pdfUrl(st.cur.paper.id)}#page=${b.page}" target="_blank" rel="noopener">open PDF</a></div></figure>`;
+      h += `<figure class="lib-fig ph" ${a} data-lazy="1" data-page="${b.page}"><div class="slot"><span class="lib-loading">${what}, page ${b.page}…</span></div><div class="cap">${b.label && b.label.toLowerCase().startsWith(what.toLowerCase()) ? esc(b.label) : what + (b.label ? ' ' + esc(b.label) : '')} · page ${b.page} · <a href="${api.pdfUrl(st.cur.paper.id)}#page=${b.page}" target="_blank" rel="noopener">open PDF</a></div>${noteHtml(b)}</figure>`;
     } else if (b.type === 'refs') refs.push(b);
   }
   if (refs.length) h += `<details class="lib-refs"><summary>References (${refs.length} block${refs.length > 1 ? 's' : ''})</summary>${refs.map(b => `<p class="refs" data-i="${b.i}">${esc(b.text)}</p>`).join('')}</details>`;
