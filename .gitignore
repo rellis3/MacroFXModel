@@ -743,3 +743,6 @@ education/papers/**/*.pdf
 analysis/output/swing-walk-track/_books/
 
 analysis/output/swing-walk-heading/_rows.parquet
+
+# ROE scanner output (immutable run directories; never commit)
+roe_out/
