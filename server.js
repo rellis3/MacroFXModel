@@ -101,6 +101,9 @@ import { mountSessionHandoffRoutes, startRunJob as _startSessionHandoffRunJob } 
 import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob, asiaLivePlanZones, asiaAllLines, liveCache as _faAsiaLiveCache, liveWarming as _faAsiaLiveWarming, saveAllLiveSnapshots as _faAsiaSaveAllLiveSnapshots } from './js/asiaFibAtlasRoutes.js';
 import { mountBotAuditRoutes } from './js/botAuditRoutes.js';
 import { createPaperRecord } from './js/paperRecordRoutes.js';
+import { createLibraryApi as _createLibraryApi } from './js/libraryApi.js';   // Paper Library API (plans/PAPER_LIBRARY.md)
+import { extractPages as _extractPages } from './js/paperPages.js';
+import { getProvider as _ttsGetProvider, makeMp3 as _ttsMakeMp3 } from './js/paperTts.js';
 import { createYieldShapeRegime } from './js/yieldShapeRegimeRoutes.js';
 import { createDailyRead } from './js/dailyReadRoutes.js';
 import { createHarShadow } from './js/harShadowRoutes.js';
@@ -6798,6 +6801,45 @@ app.get('/api/research-pod/upload/have', async (_req, res) => {
     res.json({ ok: true, ids: [...new Set(up.map(x => x.id))], names: [...new Set(up.map(x => (x.upload ?? x.uploaded)?.name).filter(Boolean))], stored: _r2Ok() ? 'r2' : 'memory' }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── Paper Library (plans/PAPER_LIBRARY.md): /api/library/*. Logic in js/libraryApi.js; this is only the mount.
+// EVERY route sits behind _libGate (main-zone login cookie, same check as requireAuth) and answers 401 JSON, never content.
+// Registered before the global app.use(requireAuth), so the gate is explicit. No model call, no paid TTS (PAPER_TTS_PROVIDER=none disables MP3).
+const _libGate = (req, res, next) => {
+  if (!AUTH_ENABLED) return next();
+  if (authVerifyCookie(authParseCookies(req)[`${AUTH_COOKIE_NAME}_main`], 'main')) return next();
+  res.set('Cache-Control', 'no-store').status(401).json({ ok: false, error: 'login required' });
+};
+app.use('/api/library', _libGate);
+const _libApi = _createLibraryApi({
+  kv, r2: { ok: _r2Ok, getBuffer: _r2GetBuffer, putBuffer: _r2PutBuffer }, keys: { queue: _RL.queue, papers: _LIT.papers }, uploadKey: _rlUploadKey,
+  extractPages: _extractPages, tts: { getProvider: _ttsGetProvider, makeMp3: _ttsMakeMp3 },
+  readTodoMd: async () => fs.promises.readFile(path.join(__dirname, 'education', 'papers', 'SSRN_DOWNLOAD_LIST.md'), 'utf8'),
+  lessonFiles: () => { try { return fs.readdirSync(path.join(__dirname, 'theory-lab', 'lessons')); } catch { return []; } },
+  cases: { read: _rcStore, put: async c => { await _rcEnsure(); await _rcLock(() => _rcPut(c)); } },
+  textFallback: id => _rlTextMem.get(id) ?? null,
+});
+_libApi.reapStaleAudio().catch(() => {});
+const _libRoute = (method, p, fn) => app[method](`/api/library/${p}`, async (req, res) => {
+  try {
+    const out = await fn({ query: req.query, body: req.body, headers: req.headers });
+    res.status(out.status);
+    if (out.headers) res.set(out.headers); else res.set('Cache-Control', 'no-store');
+    if (out.body !== undefined) res.end(out.body); else res.json(out.json);
+  } catch (e) { console.error(`[library] ${p}:`, e.message); res.status(500).json({ ok: false, error: 'library error' }); }
+});
+_libRoute('get', 'papers', _libApi.papers);
+_libRoute('get', 'paper', _libApi.paper);
+_libRoute('get', 'search', _libApi.search);
+_libRoute('get', 'pdf', _libApi.pdf);
+_libRoute('get', 'progress', _libApi.progressGet);
+_libRoute('post', 'progress', _libApi.progressPost);
+_libRoute('post', 'tags', _libApi.tagsPost);
+_libRoute('post', 'case', _libApi.casePost);
+_libRoute('get', 'todo', _libApi.todo);
+_libRoute('get', 'read-next', _libApi.readNext);
+_libRoute('get', 'listen', _libApi.listen);
+_libRoute('post', 'audio', _libApi.audioPost);
+_libRoute('get', 'audio', _libApi.audioGet);
 // GET /api/validation/harness: the validation desk's automatic gates on every harness output in the deployed repo.
 app.get('/api/validation/harness', (_req, res) => {
   try {
