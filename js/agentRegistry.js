@@ -85,12 +85,13 @@ export const AGENTS = [
   // ── Data: the Research Opportunity Engine (ROE), PLANNED, plans/RESEARCH_OPPORTUNITY_ENGINE.md. Nothing here is built. ──────────────────────
   A('opportunity-scanner', 'Opportunity scanner', 'Data', {
     purpose: 'Planned: after the daily run, freezes the day\'s inputs as an immutable snapshot with a run ID and freshness flags, then runs fixed statistics over everything the owner holds (percentiles, z-scores, extremes, divergences, lead-lag screens, regime shifts, breakdowns). It tags each flag with a discovery episode ID and a hypothesis family ID and logs how many items it scanned. Plain Python on the owner\'s laptop; no model call.',
-    trigger: 'Built (phase P1) as the laptop Python package roe/: scanner and triggers, writes roe_out/ locally, no push yet. It runs only when you start it, see How to start it below. Planned: once a day on the laptop after the daily run; it pushes the snapshot reference and the questions to the server, and a repeated push of the same run ID changes nothing.', planned: true, kind: 'service',
+    trigger: 'Built (phases P1 and P2) as the laptop Python package roe/: scanner and triggers, writes roe_out/ locally, and with --push sends the run to the server. It runs only when you start it, see How to start it below. Planned: once a day on the laptop after the daily run; it pushes the snapshot reference and the questions to the server, and a repeated push of the same run ID changes nothing.', planned: true, kind: 'service',
     howTo: [
       'Open a terminal on the laptop in the MacroFXModel folder (needs Python 3.12 or newer).',
       'Try it with no network first: python -m roe --fixtures --asof 2026-11-06',
       'Real run, read only, from the live site: python -m roe',
       'Better: point it at your fresher local files (COT, Cboe csv, T10Y3M). Copy roe/sources.default.json to roe_sources.laptop.json, edit the paths, then python -m roe --sources roe_sources.laptop.json',
+      'To send the run to the server add --push (once: set the same secret, 24+ characters, as the Railway variable ROE_PUSH_TOKEN and as the laptop environment variable ROE_PUSH_TOKEN). A repeat of the same run changes nothing. If a push failed: python -m roe --push-only roe_out/<run id>',
       'Read the result in roe_out/<run id>/summary.md. Exit code 0 is ok, 2 is degraded (some inputs stale), 3 is failed.',
       'To run it daily after the daily run: Windows schtasks line or the cron line in roe/README.md under Schedule it after the daily run.',
     ],
