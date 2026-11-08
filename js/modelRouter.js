@@ -128,6 +128,10 @@ export const TASK_CLASS = {
   // 64k context and 8,192-token output); the Head of Research, who peer-reviews their work against the whole book,
   // runs on Anthropic and only when the owner presses the button. Both sit under a per-task choice like desk-news.
   'research-pod':  { ledger: 'brief', label: 'Research pod: the three researchers', defaultProvider: 'deepseek' },
+  // the literature desk's quick-tier reads (the paper reader, 2026-11-08, owner: "switch to DeepSeek and run"): one call per
+  // paper, about 20-25k tokens in and 3.5k out, so about 1 cent a paper on DeepSeek against about 10 cents on Sonnet. A task of
+  // its own so the daily desk analysts ('desk-analyst') stay on Anthropic. Deep-tier literature work still uses 'desk-head'.
+  'research-reader': { ledger: 'brief', label: 'Literature desk: the paper reader', defaultProvider: 'deepseek' },
   'research-head': { ledger: 'full',  label: 'Research pod: Head of Research review', defaultProvider: 'anthropic', models: { anthropic: 'claude-sonnet-5' }, effort: { anthropic: 'high' } },
   // pictures the owner attaches to a research question (owner 2026-11-06): each is read ONCE by a vision model into a
   // written description that the researchers (DeepSeek, which cannot see images) and the Head then read as text.
