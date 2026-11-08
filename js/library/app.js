@@ -175,7 +175,8 @@ function headHtml(p) {
 function eqSwitchHtml() {
   const m = MA.eqMode(ls);
   return `<div class="lib-eqswitch" role="group" aria-label="Equations"><span class="lbl">Equations</span>` +
-    `<button type="button" data-eqmode="rendered" aria-pressed="${m === 'rendered'}">Rendered</button><button type="button" data-eqmode="original" aria-pressed="${m === 'original'}">Original</button></div>`;
+    `<button type="button" data-eqmode="rendered" aria-pressed="${m === 'rendered'}">Rendered</button><button type="button" data-eqmode="original" aria-pressed="${m === 'original'}">Original</button>` +
+    `<label class="incl" title="Also draw the equations that were only read automatically from the PDF (not checked against arXiv or the AI)"><input type="checkbox" id="eqIncl"${MA.includeUnchecked(ls) ? ' checked' : ''}> include unchecked</label></div>`;
 }
 function eqHtml(b, a) {
   const cap = b.label && b.label.toLowerCase().startsWith('equation') ? esc(b.label) : 'Equation' + (b.label ? ' ' + esc(b.label) : '');
@@ -217,7 +218,7 @@ function setEqView(el, view, b, pageSize) {
   const m = el.querySelector('.eqmath'), s = el.querySelector('.slot'), t = el.querySelector('.eqtoggle');
   const go = v => {
     el.dataset.view = v; m.hidden = v !== 'math'; s.hidden = v !== 'crop';
-    t.textContent = v === 'math' ? 'Original' : 'Rendered'; t.setAttribute('aria-pressed', v === 'crop' ? 'true' : 'false');
+    t.textContent = MA.toggleLabel(b, v); t.setAttribute('aria-pressed', v === 'crop' ? 'true' : 'false');
     t.title = v === 'math' ? 'Show the equation as it is printed in the PDF' : 'Show the rendered equation again';
     if (v === 'crop') ensureCrop(el, b, pageSize);
   };
@@ -238,7 +239,7 @@ function lazyMath(blocks, pageSize) {
       if (!en.isIntersecting) continue;
       io.unobserve(en.target);
       const el = en.target, b = byI.get(+el.dataset.i);
-      setEqView(el, MA.eqMode(ls) === 'original' ? 'crop' : 'math', b, pageSize);
+      setEqView(el, MA.defaultView(b, MA.eqMode(ls), MA.includeUnchecked(ls)), b, pageSize);
     }
   }, { rootMargin: '600px 0px' });
   $('blocks').querySelectorAll('[data-math]').forEach(el => {
@@ -247,11 +248,11 @@ function lazyMath(blocks, pageSize) {
   });
   return io;
 }
-function setAllEq(mode, blocks, pageSize) {
-  MA.setEqMode(ls, mode);
+function setAllEq(mode, blocks, pageSize, incl) {
+  MA.setEqMode(ls, mode); if (incl !== undefined) MA.setIncludeUnchecked(ls, incl); incl = MA.includeUnchecked(ls);
   document.querySelectorAll('.lib-eqswitch [data-eqmode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.eqmode === mode)));
   const byI = new Map(blocks.map(b => [b.i, b]));
-  $('blocks').querySelectorAll('[data-math]').forEach(el => { if (el._mathBad) return; setEqView(el, mode === 'original' ? 'crop' : 'math', byI.get(+el.dataset.i), pageSize); });
+  $('blocks').querySelectorAll('[data-math]').forEach(el => { if (el._mathBad) return; const b = byI.get(+el.dataset.i); setEqView(el, MA.defaultView(b, mode, incl), b, pageSize); });
 }
 function lazyCrops(blocks, pageSize) {
   const byI = new Map(blocks.map(b => [b.i, b]));
@@ -446,7 +447,10 @@ async function openPaper(id) {
     lazyCrops(d.blocks, d.pageSize || {});
     lazyMath(d.blocks, d.pageSize || {});
     const sw = document.querySelector('.lib-eqswitch');
-    if (sw) sw.addEventListener('click', e => { const x = e.target.closest('[data-eqmode]'); if (x) setAllEq(x.dataset.eqmode, d.blocks, d.pageSize || {}); });
+    if (sw) {
+      sw.addEventListener('click', e => { const x = e.target.closest('[data-eqmode]'); if (x) setAllEq(x.dataset.eqmode, d.blocks, d.pageSize || {}); });
+      sw.querySelector('#eqIncl').addEventListener('change', e => setAllEq(MA.eqMode(ls), d.blocks, d.pageSize || {}, e.target.checked));
+    }
   } else {
     $('blocks').innerHTML = `<div class="lib-card"><p>${p.hasText ? 'The text of this paper could not be shown.' : 'Only the abstract and the desk\'s notes are held for this paper.'}</p><p class="lib-info">Switch to “Desk notes”${p.hasPdf ? ' or “Original PDF”' : ''}.</p></div>`;
   }

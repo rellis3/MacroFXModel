@@ -9,6 +9,13 @@ export const EQ_MODE_KEY = 'lib-eq-mode';
 export function eqMode(storage) { try { return storage.getItem(EQ_MODE_KEY) === 'original' ? 'original' : 'rendered'; } catch { return 'rendered'; } }
 export function setEqMode(storage, mode) { try { storage.setItem(EQ_MODE_KEY, mode === 'original' ? 'original' : 'rendered'); } catch { /* not remembered */ } }
 
+export const INCL_KEY = 'lib-eq-unchecked';
+/** Whether the automatic (rule-based, unchecked) readings are shown rendered too; off by default. */
+export function includeUnchecked(storage) { try { return storage.getItem(INCL_KEY) === '1'; } catch { return false; } }
+export function setIncludeUnchecked(storage, on) { try { storage.setItem(INCL_KEY, on ? '1' : '0'); } catch { /* not remembered */ } }
+/** 'math' or 'crop' for one equation: arXiv and model LaTeX follow the header switch; rule-based LaTeX is an explicit opt-in. */
+export function defaultView(b, mode, incl) { return mode === 'original' || (b && b.latexSource === 'rule' && !incl) ? 'crop' : 'math'; }
+export const toggleLabel = (b, view) => (view === 'math' ? 'Original' : b && b.latexSource === 'rule' ? 'Rendered (auto, unchecked)' : 'Rendered');
 /** A block with LaTeX the reader can draw. */
 export const hasMath = b => !!b && b.type === 'eq' && typeof b.latex === 'string' && b.latex.trim().length > 0;
 export const anyMath = blocks => Array.isArray(blocks) && blocks.some(hasMath);

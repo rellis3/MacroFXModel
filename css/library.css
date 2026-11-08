@@ -215,3 +215,5 @@ body.lib-listen-open{--listen-h:96px}
   .lib-yrtoggle .car{display:inline}
   #yrChips[hidden]{display:none}
 }
+
+.lib-eqswitch .incl{font-size:11.5px;color:var(--text3);margin:0 8px 0 6px;display:inline-flex;align-items:center;gap:4px;cursor:pointer}

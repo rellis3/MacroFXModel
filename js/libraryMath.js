@@ -72,6 +72,7 @@ export const MATH_SYSTEM = [
   'Each item has an id, "t" (the equation as positioned text: _{...} is a subscript, ^{...} a superscript, {a}/{b} a stacked fraction, sqrt[...] a square root, overline[...] a bar, cases{...} piecewise rows, ; separates lines of a system, <hex> an unreadable glyph), an optional "tag" (equation number), and "pre"/"post" (the sentence before and after the equation, for what the symbols mean).',
   'Reply with ONE JSON object and nothing else: {"results":[{"id":<id>,"latex":"...","confident":true|false}]}. One result per item, same ids.',
   'The LaTeX must parse in KaTeX with no custom macros, no \\tag, no \\label, no text outside the maths, and no $ delimiters; use \\begin{aligned}...\\end{aligned} with & before the relation sign for a system. Use \\mathbb{E}, \\mathcal{N}, \\mathbf for what the context shows is meant.',
+  'An item may carry "candidate": an automatic reading of the same equation, unchecked and sometimes wrong. Correct or confirm it against "t" and the context; do not trust it.',
   'Do not invent terms. If the text is too garbled to give the equation, set "confident": false and give your best reading anyway (or an empty string).',
 ].join('\n');
 const clip = (s, n) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n - 1)}…` : t; };
@@ -89,6 +90,7 @@ export function promptItem(blocks, k) {
   for (let j = k + 1; j < blocks.length && j <= k + 3; j++) if (blocks[j].type === 'p') { post = firstSentence(blocks[j].text); break; }
   const o = { id: b.i, t: clip(text, 600) };
   if (b.label) o.tag = String(b.label);
+  if (b.src) { const r = toLatex(b.src, { label: b.label }); const c = r.latex.replace(/\\tag\{[^}]*\}/g, ''); if (c && r.conf >= 0.5 && c.length <= 600) o.candidate = c; }
   if (pre) o.pre = pre; if (post) o.post = post;
   return o;
 }
@@ -165,14 +167,13 @@ export function createMath(deps) {
     finally { arxivBusy.delete(id); }
   }
 
-  /** Eq blocks the other layers could not read, not yet tried twice by the model. */
+  /** Every eq block arXiv has not solved (rule-based ones too: they are unchecked) and the model has not answered, not yet tried twice. */
   function candidates(blocks, f) {
     const out = [];
     for (const b of blocks ?? []) {
       if (b.type !== 'eq') continue;
       const st = f.eq[b.i]; if (st && (st.source === 'arxiv' || st.source === 'model')) continue;
       if ((f.model?.tried?.[b.i] ?? 0) >= 2) continue;
-      if (b.src && toLatex(b.src, { label: b.label }).conf >= SHOW_CONF) continue;
       out.push(b.i);
     }
     return out;

@@ -1,7 +1,7 @@
 // js/library/math.js pure helpers (the KaTeX loader itself needs a browser: see scripts/libraryDev + the Playwright run in the PR notes).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { eqMode, setEqMode, hasMath, anyMath, sourceLabel, sourceTitle, EQ_MODE_KEY, KATEX_VER, KATEX_BASE } from './math.js';
+import { eqMode, setEqMode, hasMath, anyMath, sourceLabel, sourceTitle, includeUnchecked, setIncludeUnchecked, defaultView, toggleLabel, EQ_MODE_KEY, KATEX_VER, KATEX_BASE } from './math.js';
 
 const store = (init = {}) => { const m = new Map(Object.entries(init)); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), _m: m }; };
 
@@ -27,4 +27,14 @@ test('source captions: arXiv source, read from the PDF, tidied by AI; unknown so
 
 test('KaTeX is pinned to an exact version on cdnjs', () => {
   assert.match(KATEX_VER, /^\d+\.\d+\.\d+$/); assert.equal(KATEX_BASE, `https://cdnjs.cloudflare.com/ajax/libs/KaTeX/${KATEX_VER}/`);
+});
+
+test('rule-based LaTeX is an opt-in: it defaults to the crop; arXiv and model LaTeX follow the header switch', () => {
+  const rule = { type: 'eq', latex: 'x', latexSource: 'rule' }, ax = { type: 'eq', latex: 'x', latexSource: 'arxiv' }, ml = { type: 'eq', latex: 'x', latexSource: 'model' };
+  assert.deepEqual([rule, ax, ml].map(b => defaultView(b, 'rendered', false)), ['crop', 'math', 'math']);
+  assert.deepEqual([rule, ax, ml].map(b => defaultView(b, 'rendered', true)), ['math', 'math', 'math']);
+  assert.deepEqual([rule, ax, ml].map(b => defaultView(b, 'original', true)), ['crop', 'crop', 'crop']);
+  assert.equal(toggleLabel(rule, 'crop'), 'Rendered (auto, unchecked)'); assert.equal(toggleLabel(ax, 'crop'), 'Rendered'); assert.equal(toggleLabel(rule, 'math'), 'Original');
+  const s = store(); assert.equal(includeUnchecked(s), false); setIncludeUnchecked(s, true); assert.equal(includeUnchecked(s), true);
+  assert.equal(includeUnchecked({ getItem() { throw new Error('x'); } }), false);
 });

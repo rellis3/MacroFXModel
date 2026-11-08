@@ -75,7 +75,7 @@ test('the job is idempotent: a second press asks for nothing that is already don
   const blocks = [eq(0, BAD(0), '1'), eq(1, BAD(1), '2'), eq(2, GOOD)];
   const r = rig({ papers: [{ id: 'p', hasPdf: true }], blocksById: { p: blocks }, model: o => answerAll(idsOf(o)) });
   await r.math.start({ calls: 3 }); await r.wait();
-  assert.equal(r.calls.model, 1); assert.deepEqual(Object.keys(r.file('p').eq).sort(), ['0', '1']);
+  assert.equal(r.calls.model, 1); assert.deepEqual(Object.keys(r.file('p').eq).sort(), ['0', '1', '2'], 'the clean rule-based one is asked too (it is unchecked)');
   const again = await r.math.start({ calls: 3 }); assert.equal(again.ok, true); await r.wait();
   assert.equal(r.calls.model, 1, 'nothing left to ask'); assert.equal(r.state().used, 1);
 });
@@ -145,5 +145,23 @@ test('no model key: the job does not start, nothing is spent; status still answe
 test('papers without equations or without blocks are skipped and never cost a call', async () => {
   const r = rig({ papers: [{ id: 'text', hasPdf: true }, { id: 'none', hasPdf: true }, { id: 'abs', hasPdf: false, hasText: false }], blocksById: { text: [para(0, 'only prose'), eq(1, GOOD)], none: [] }, model: o => answerAll(idsOf(o)) });
   await r.math.start({ calls: 12 }); await r.wait();
-  assert.equal(r.calls.model, 0); assert.equal(r.state().papers.text.done, true);
+  assert.equal(r.calls.model, 1, 'the only equation is rule-based, so unchecked: one call'); assert.equal(r.state().papers.text.done, true);
+});
+
+test('rule-based readings go to the model as a candidate to correct; a valid answer replaces them (source model), an invalid one leaves them', async () => {
+  const blocks = [para(0, 'Before.'), eq(1, GOOD, '1'), eq(2, GOOD, '2'), eq(3, BAD(3))];
+  const r = rig({ papers: [{ id: 'p', hasPdf: true }], blocksById: { p: blocks }, model: () => ({ results: [{ id: 1, latex: 'x=a+b+c', confident: true }, { id: 2, latex: '\\frac{', confident: true }] }) });
+  await r.math.start({ calls: 1 }); await r.wait();
+  const sent = JSON.parse(r.calls.prompts[0].prompt.slice(r.calls.prompts[0].prompt.indexOf('[')));
+  assert.match(sent.find(x => x.id === 1).candidate, /^x=a\+b$/); assert.ok(!('candidate' in sent.find(x => x.id === 3)), 'an unreadable one has no candidate');
+  assert.match(MATH_SYSTEM, /candidate/);
+  const f = r.file('p'); assert.equal(f.eq[1].source, 'model'); assert.ok(!f.eq[2], 'invalid answer is dropped');
+  const shown = await resolveLatex(blocks, f); assert.equal(shown.get(1).source, 'model'); assert.equal(shown.get(2).source, 'rule', 'the unchecked rule reading still shows (as unchecked) when the model fails');
+});
+
+test('when the cap is used up or there is no key, papers still read: the stored layers and the rules are served', async () => {
+  const blocks = [eq(1, GOOD, '1')];
+  const capped = rig({ papers: [{ id: 'p', hasPdf: true }], blocksById: { p: blocks }, model: o => answerAll(idsOf(o)), kvUsed: MATH_CAP });
+  assert.equal((await capped.math.start({ calls: 3 })).status, 409);
+  assert.equal((await resolveLatex(blocks, await capped.math.fileOf('p'))).get(1).source, 'rule');
 });
