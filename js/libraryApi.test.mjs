@@ -67,6 +67,12 @@ test('search: lazily built, ranked, tag filter, snippets', async () => {
   assert.deepEqual((await api.search({ query: { q: '' } })).json.hits, []);
 });
 
+test('ids with a slash (doi:10.2139/ssrn.N) pass id validation on pdf and audio (404 no PDF, not 400 bad id)', async () => {
+  const { api } = harness();
+  assert.equal((await api.pdf({ query: { id: 'doi:10.2139/ssrn.2778647' }, headers: {} })).status, 404);
+  assert.equal((await api.pdf({ query: { id: '../etc/passwd' }, headers: {} })).status, 400);
+});
+
 test('pdf: Accept-Ranges, 200 / 206 / 416, 404 without a PDF', async () => {
   const { api } = harness(); const full = await api.pdf({ query: { id: 'up1' }, headers: {} });
   assert.equal(full.status, 200); assert.equal(full.headers['Accept-Ranges'], 'bytes');

@@ -537,4 +537,18 @@ async function init() {
   api.todo().then(d => { st.todo = d; renderTodo(); }).catch(() => {});
   route();
 }
+// Reader text size (A-/A+): a scale applied to the paper text only, remembered in this browser.
+{
+  const STEPS = [0.85, 1, 1.15, 1.3, 1.5, 1.75]; let k = 1;
+  try { const v = parseInt(localStorage.getItem('lib.fs.v1'), 10); if (v >= 0 && v < STEPS.length) k = v; } catch { /* storage may be blocked */ }
+  const down = document.getElementById('fsDown'), up = document.getElementById('fsUp');
+  const apply = () => {
+    document.documentElement.style.setProperty('--lib-fs', String(STEPS[k]));
+    if (down) down.disabled = k === 0; if (up) up.disabled = k === STEPS.length - 1;
+    try { localStorage.setItem('lib.fs.v1', String(k)); } catch { /* ignore */ }
+  };
+  if (down) down.addEventListener('click', () => { if (k > 0) { k--; apply(); } });
+  if (up) up.addEventListener('click', () => { if (k < STEPS.length - 1) { k++; apply(); } });
+  apply();
+}
 init();
