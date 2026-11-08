@@ -156,3 +156,14 @@ Researchers (flag **off** by default): `LIBRARY_CONTEXT=1` in the server environ
 (round 1 and later rounds) and to the Head of Research's review; the injected ids are saved on the round / review as `libraryIds` and are accepted as `citations` in
 addition to the held-paper ids (the existing `paperIds` check is unchanged). Off, the prompts are byte-identical. `GET|POST /api/research-pod/case/library-preview?id=&text=`
 returns the text that would be injected, without any model call.
+
+## Agents tab: the switch replaces the environment variable (owner request 2026-11-08)
+Bot Config > **Agents** (`bot-config.html#tab-agents`, linked from the command bar next to Bot Config) shows every agent, how they hand work to each other (six flow charts drawn
+from `js/agentRegistry.js`, one of them the Librarian on its own) and the on/off switches and caps. The library context is now a **switch**, not only an environment variable:
+- KV `agent_settings_v1` = `{ v:1, toggles:{ libraryContext, libraryLibrarian }, at }` (`js/agentSettings.js`). `readToggle(id)` in server.js caches 30 s per instance. Precedence:
+  **saved setting > env var `LIBRARY_CONTEXT` > default** (`libraryContext` default off; `libraryLibrarian` default on). A deploy that already has `LIBRARY_CONTEXT=1` and nothing saved behaves
+  exactly as before; the first press of the switch overrides the variable from then on, so turning it off needs no redeploy. The variable stays as the fallback and can be deleted once the switch is set.
+- `libraryLibrarian` off: with the library on, the free rule-based top 6 is used instead of the librarian (no model call). Both switches say they spend money when on.
+- `GET /api/agents` (registry, switches with their source, caps used from `library_math_v1` / `library_figs_v1` / `library_librarian_v1`, resolved models, call stats) and
+  `POST /api/agents/toggle { id, value }`; both need the main-zone login cookie (401 JSON otherwise), the POST also refuses a cross-origin request and a non-boolean value.
+  Flag off, the researchers' prompts are byte-identical to before (`js/libraryIndexWiring.test.mjs`).
