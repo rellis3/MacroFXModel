@@ -106,8 +106,13 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 // ---------------------------------------------------------------- state
 // Default = what C.OG said he used: the raw indicator, no smoothing or adjustment, on its own chart. Here the line is drawn in its own units on a separate left axis (Mapping "axis");
 // choose Mapping "overlay on price" to draw it on the candle scale the way the Pine overlay does.
-const cogDefault = (id = 1) => ({ id, kind: 'spread', eur: DEFAULTS.eur, usd: DEFAULTS.usd, leg: 'SR3U6', dataTf: 'chart', src: 'close', asRate: true, invert: true, inBps: true, smooth: 1, carry: true,
-  mapMode: 'axis', scale: 0.1, offset: 1.445, fitLen: 250, shift: 0, color: COLORS[0], visible: true, label: 'C.OG line (SOFR Sep26 - Euribor Mar27)' });
+// The legs follow his indicator: EUR = I2! (our rolling I2 line, which IS IH7 until the Dec26 Euribor expires on 14 Dec 2026 and then moves to IM7 by itself), USD = his pinned
+// SOFR Sep26 until it stops trading on 15 Dec 2026, then SR32! (rolling 2nd quarterly: never inside its own fixing window). Sep26 has been fixing since 16 Sep, so it barely moves.
+const SR3U6_LAST = Date.UTC(2026, 11, 15);
+const cogUsd = () => (Date.now() < SR3U6_LAST ? DEFAULTS.usd : 'SR32');
+const cogLabel = (usd, eur) => `C.OG line (${usd === 'SR3U6' ? 'SOFR Sep26' : usd === 'SR32' ? 'SR32!' : usd} - ${eur === 'I2' ? 'I2!' : eur === 'IH7' ? 'Euribor Mar27' : eur})`;
+const cogDefault = (id = 1) => ({ id, kind: 'spread', eur: 'I2', usd: cogUsd(), leg: 'SR3U6', dataTf: 'chart', src: 'close', asRate: true, invert: true, inBps: true, smooth: 1, carry: true,
+  mapMode: 'axis', scale: 0.1, offset: 1.445, fitLen: 250, shift: 0, color: COLORS[0], visible: true, label: cogLabel(cogUsd(), 'I2') });
 let state = { asset: 'NAS100', tf: '15m', bars: 1500, live: true, active: 1, nextId: 2, series: [cogDefault(1)] };
 function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} }
 function load() {
@@ -115,6 +120,10 @@ function load() {
     const h = location.hash.startsWith('#s=') ? decodeURIComponent(escape(atob(location.hash.slice(3)))) : null;
     const raw = h || localStorage.getItem(KEY);
     if (raw) { const s = JSON.parse(raw); if (s && Array.isArray(s.series)) state = { ...state, ...s }; }
+    // a saved, untouched C.OG default (pinned SR3U6 / IH7) moves onto the rolling legs; anything the viewer changed or named is left alone
+    state.series.forEach(d => {
+      if (d.kind === 'spread' && d.label === 'C.OG line (SOFR Sep26 - Euribor Mar27)' && d.usd === 'SR3U6' && d.eur === 'IH7') { d.eur = 'I2'; d.usd = cogUsd(); d.label = cogLabel(d.usd, d.eur); }
+    });
   } catch {}
 }
 load();
@@ -227,7 +236,7 @@ function status() {
   chipL.className = 'chip ' + (!names.length ? '' : (Date.now() - old < 6 * 36e5 ? 'ok' : Date.now() - old < 3 * 864e5 ? 'warn' : 'bad'));
   $('notes').innerHTML = `<b>How to read it.</b> Legs are the IBKR 1-minute <b>midpoints</b> of each futures contract, drawn at bar-open time like TradingView, so a line can differ a little from a TradingView trade-price chart. ` +
     `Candles are OANDA, live. Times are UTC. The legs only move when the laptop pushes (run <b>scripts/rates_line/run_cog_line.bat</b> or <b>refresh_leg_bars.py --push</b> on a schedule); a red chip means they are stale. ` +
-    `Default = C.OG's raw line: (SOFR Sep26 rate - Euribor Mar27 rate) in bp, x 0.1 + 1.445, no smoothing, no shift. ` +
+    `Default = C.OG's raw line: (SOFR Sep26 rate - Euribor I2! rate) in bp, x 0.1 + 1.445, no smoothing, no shift; I2! rolls to Jun27 on 14 Dec and the SOFR leg becomes SR32! (Mar27) on 15 Dec, when Sep26 stops trading. ` +
     `<b>raw</b> in the readout is the number any statistic would use; <b>drawn</b> adds scale / offset / auto-fit, and the shift only moves where it is drawn.`;
 }
 
@@ -295,7 +304,7 @@ $('cards').addEventListener('change', async e => {
   const id = +el.closest('.card').dataset.id, d = state.series.find(x => x.id === id);
   d[k] = el.type === 'checkbox' ? el.checked : el.type === 'number' ? (k === 'smooth' ? Math.max(1, +el.value | 0) : (k === 'shift' || k === 'fitLen' ? (+el.value | 0) : +el.value)) : el.value;
   if (k === 'mapMode' || k === 'color' || k === 'visible') { /* series scale changes need a rebuild */ }
-  if (['eur', 'usd', 'leg'].includes(k)) { if ([d.eur, d.usd, d.leg].some(n => n && ['price', 'yield'].includes(LEGKIND(n)))) d.asRate = false; d.label = d.kind === 'spread' ? `${d.usd === 'SR3U6' && d.eur === 'IH7' ? 'C.OG line' : 'Spread'} (${d.usd} - ${d.eur})` : d.leg; await Promise.all(neededLegs().map(n => legCache[n] ? 0 : ensureLeg(n))); }
+  if (['eur', 'usd', 'leg'].includes(k)) { if ([d.eur, d.usd, d.leg].some(n => n && ['price', 'yield'].includes(LEGKIND(n)))) d.asRate = false; d.label = d.kind === 'spread' ? `${['SR3U6', 'SR32'].includes(d.usd) && ['IH7', 'I2'].includes(d.eur) ? 'C.OG line' : 'Spread'} (${d.usd} - ${d.eur})` : d.leg; await Promise.all(neededLegs().map(n => legCache[n] ? 0 : ensureLeg(n))); }
   state.active = id; if (k === 'mapMode') rebuildLines(); renderCardsSoon(); redraw(); rescale(); save();
 });
 function addSeries(kind) {
@@ -318,7 +327,8 @@ const PRESETS = {
   'C.OG default': () => ({ series: [cogDefault(1)], nextId: 2, active: 1 }),
   'Both legs, own axes': () => { const a = { ...cogDefault(1), kind: 'leg', leg: 'SR3U6', invert: false, inBps: false, scale: 1, offset: 0, label: 'SR3U6', color: COLORS[0] }; const b = { ...a, id: 2, leg: 'IH7', label: 'IH7', color: COLORS[1] }; return { series: [a, b], nextId: 3, active: 1 }; },
   'C.OG line over price': () => { const d = cogDefault(1); d.mapMode = 'auto'; return { series: [d], nextId: 2, active: 1 }; },
-  'C.OG line, rolling I2!': () => { const d = { ...cogDefault(1), eur: 'I2', label: 'C.OG line (SOFR Sep26 - rolling I2!)' }; return { series: [d], nextId: 2, active: 1 }; },
+  'C.OG line, pinned (Sep26 - Mar27)': () => { const d = { ...cogDefault(1), usd: 'SR3U6', eur: 'IH7', label: 'C.OG line pinned (SR3U6 - IH7, the tested pair)' }; return { series: [d], nextId: 2, active: 1 }; },
+  'Both rolling (SR32! - I2!)': () => { const d = { ...cogDefault(1), usd: 'SR32', eur: 'I2', label: cogLabel('SR32', 'I2') }; return { series: [d], nextId: 2, active: 1 }; },
   'SOFR Dec26 - ESTR Dec26': () => { const d = { ...cogDefault(1), eur: 'ER3Z6', usd: 'SR3Z6', label: 'Spread (SR3Z6 - ER3Z6)' }; return { series: [d], nextId: 2, active: 1 }; },
   // government bond YIELDS (js/yieldLegs.js), in bp on their own axis. The spread is EUR leg - USD leg, so US - DE needs invert on.
   'US - DE 2y yield (bp)': () => ({ series: [yieldSpread(1, 'Y_DE2', 'Y_US2', true, 'US - DE 2y yield (bp)')], nextId: 2, active: 1 }),
@@ -357,6 +367,7 @@ const GUIDE = {
   'German bond futures (price, not a rate)': 'Eurex Schatz (2y), Bobl (5y), Bund (10y), Buxl (30y). PRICES, not rates. The Schatz is the euro 2-year proxy.',
 };
 const NOTE = {
+  SR32: 'Rolling 2nd quarterly SOFR (TradingView CME:SR32!): today the Dec26, from 15 Dec the Mar27. Never inside its own fixing window, so it keeps moving; the C.OG default uses it once Sep26 stops trading on 15 Dec.',
   I2: 'TradingView\'s ICEEU:I2!: the 2nd quarterly Euribor, rolled when the front expires, not back-adjusted. Use it to match C.OG\'s chart exactly; use the pinned IH7 for long tests (no roll steps).',
   SR3U6: 'C.OG\'s USD leg (the pinned SOFR Sep26). Since 16 Sep 2026 it is inside its own 3-month window: part of its rate is already fixed by published SOFR, so it moves less each day until it expires on 15 Dec 2026.',
   IH7: 'C.OG\'s EUR leg: what TradingView\'s I2! was in the video week (Sep 2026), and I2! since the Sep26 contract expired on 14 Sep 2026.',
@@ -405,7 +416,8 @@ function renderCoverage() {
   let h = `<div class="keybox"><b>C.OG's original line (SOFR Sep26 - Euribor I2!): the data we have</b><br>` +
     `&bull; <b>SOFR Sep26 (SR3U6)</b>: IBKR 1-minute midpoints ${fmtD(u?.first)} to ${fmtD(u?.asOf)}, ${u?.days ?? '?'} trading days (missing weekdays: ${(u?.missingDates || []).join(', ') || 'none'}), about ${u?.barsPerDay ?? '?'} one-minute bars a day. Also 15-minute trade prices ${arch('SR3U6') || 'n/a'}.<br>` +
     `&bull; <b>Euribor Mar27 (IH7)</b>, what I2! showed in the video week: 1-minute midpoints ${fmtD(e?.first)} to ${fmtD(e?.asOf)}, ${e?.days ?? '?'} trading days; the ${e?.missing ?? '?'} missing weekdays are ICE holidays (Christmas, New Year, Easter, 1 May).<br>` +
-    `&bull; <b>The rolling I2!</b> is on the chart as <b>I2</b> (preset "C.OG line, rolling I2!"): always the 2nd quarterly Euribor, like TradingView, from <b>${fmtD(by('I2')?.first)}</b>. ${i2Txt(by('I2'))} The pinned SR3U6 - IH7 pair is the longer version (back to ${fmtD(u?.first)}).<br>` +
+    `&bull; <b>The rolling I2!</b> is on the chart as <b>I2</b> and is the C.OG default's euro leg: always the 2nd quarterly Euribor, like TradingView, from <b>${fmtD(by('I2')?.first)}</b>. ${i2Txt(by('I2'))} The pinned SR3U6 - IH7 pair is the longer version (back to ${fmtD(u?.first)}).<br>` +
+    `&bull; <b>Roll calendar.</b> <b>14 Dec 2026</b>: Euribor Dec26 expires, I2! moves from Mar27 (IH7) to Jun27 (IM7); the line steps by the gap between them (about 1 unit at early-November prices). <b>15 Dec</b>: SOFR Sep26 stops trading, so C.OG's pinned SR3U2026 shows no data; the default here moves to <b>SR32</b> (Mar27). SOFR Sep26 has been inside its own 3-month fixing window since 16 Sep and barely moves: about 0.3 bp a day since mid-October against 2.1 bp in the summer, so until then the line is mostly the euro leg. Roll steps are real price gaps, not moves: read changes, not jumps.<br>` +
     `&bull; Nothing before ${fmtD(u?.first)} yet: that is where our pulls stopped, not where IBKR's data ends. <b>scripts/rates_line/run_deep_history.bat</b> (laptop, IB Gateway open) extends every live contract back towards its listing; expired contracts cannot be fetched.<br>` +
     `&bull; <b>The tested study</b> (spread-episodes Case 1) used SR3U6 - IH7 vs NAS100 on 15-min bars, 15 Apr 2024 to 20 Aug 2026 (614 weekdays, 47,166 bars); after 20 Aug is the held-back final test.<br>` +
     `&bull; <b>On this chart</b>: 1h and 4h draw the whole history (pick 4h and 5000 bars and scroll left); 15m draws the last 180 days, 5m the last 30. The OANDA candles set how far back the chart goes (5000 bars at most).</div>`;

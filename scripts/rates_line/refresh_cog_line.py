@@ -24,7 +24,7 @@ sys.path.insert(0, str(ROOT / 'scripts' / 'rates_line'))
 from build_cog_line import LEGS
 BASE = 'https://macrofxmodel-production.up.railway.app'; KV_KEY = 'cog_line_live_v1'
 # IBKR lookup per file: (symbol, exchange, currency, contract-month parameter)
-IB_SPEC = {'CME_SR3U6': ('SOFR3', 'CME', 'USD', '202609'), 'CME_SR3Z6': ('SOFR3', 'CME', 'USD', '202612'),
+IB_SPEC = {'CME_SR3U6': ('SOFR3', 'CME', 'USD', '202609'), 'CME_SR3Z6': ('SOFR3', 'CME', 'USD', '202612'), 'CME_SR3H7': ('SOFR3', 'CME', 'USD', '202703'),
            'ICEEU_IH7': ('I', 'ICEEU', 'EUR', '202703'), 'ICEEU_IM7': ('I', 'ICEEU', 'EUR', '202706')}
 last = [0.0]
 def pace():
