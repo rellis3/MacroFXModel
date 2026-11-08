@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { yearKey, yearCounts } from '../../js/paperCatalog.js';
 import { cardLine } from '../../js/library/summary.js';
 import * as LIX from '../../js/libraryIndex.js';
+import * as LBR from '../../js/libraryLibrarian.js';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const TOPICS = [['volatility', 'Volatility'], ['jump', 'Jump / diffusion'], ['brownian', 'Brownian motion & stochastic processes'], ['carry', 'FX & carry'], ['cot', 'COT & positioning'], ['ml', 'Machine learning'], ['regimes', 'Regimes & HMM']];
@@ -96,9 +97,21 @@ const send = (res, obj, code = 200) => { res.writeHead(code, { 'content-type': '
 const body = req => new Promise(r => { let s = ''; req.on('data', c => { s += c; }); req.on('end', () => { try { r(JSON.parse(s || '{}')); } catch { r({}); } }); });
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.mjs': 'text/javascript' };
 
+// the librarian route runs the REAL js/libraryLibrarian.js with a fake model that picks the first two candidates (no network, no key)
+const lbKv = new Map(), lbBudget = LBR.createBudget({ kv: { getStrict: async k => lbKv.get(k) ?? null, put: async (k, v) => { lbKv.set(k, v); } } });
+const lbModel = async ({ prompt }) => ({ picks: [...prompt.matchAll(/^\d+\. \[([^\]]+)\]/gm)].slice(0, 2).map(m => ({ id: m[1], why: 'Synthetic reason: it covers the same market and method as the question.' })) });
+
 export function startServer(port = 0) {
   const srv = http.createServer(async (req, res) => {
     const u = new URL(req.url, 'http://x'), p = u.pathname, q = u.searchParams;
+    if (p === '/api/research-pod/librarian' && req.method === 'POST') {
+      const b = await body(req), question = String(b.q || '').trim(); if (!question) return send(res, { ok: false, error: 'ask a question' }, 400);
+      const lib = await LBR.runLibrarian({ question, ix: LIX.buildIndex(state.papers), papers: state.papers, model: lbModel, budget: lbBudget, maxPicks: Number(b.n) || 6 });
+      const cap = await lbBudget.status();
+      if (!lib.ok) return send(res, { ok: false, error: `the librarian could not run: ${lib.reason}`, cap }, 503);
+      const by = new Map(lib.candidates.map(c => [c.id, c]));
+      return send(res, { ok: true, q: question, queries: lib.queries, candidates: lib.candidates.map(c => ({ id: c.id, title: c.title })), picks: lib.picks.map(x => ({ ...x, title: by.get(x.id)?.title, year: by.get(x.id)?.year })), none: lib.none, text: lib.text, calls: lib.calls, cap });
+    }
     if (p.startsWith('/api/library/')) {
       const ep = p.slice('/api/library/'.length);
       const paper = state.papers.find(x => x.id === q.get('id'));

@@ -15,7 +15,7 @@
   <section id="listView">
     <div class="lib-kicker">Research</div>
     <h1 class="lib-title">Paper Library</h1>
-    <p class="lib-dek">Every paper the desk holds. Search the full text, filter by area, read it here or listen to it. Private to you: nothing here calls a paid model.</p>
+    <p class="lib-dek">Every paper the desk holds. Search the full text, filter by area, read it here or listen to it. Private to you: nothing here calls a paid model except the Ask the librarian box on the Index tab (one small AI call each time).</p>
 
     <div id="readNext" class="lib-readnext" hidden></div>
 
@@ -50,6 +50,15 @@
 
     <div id="indexTab" hidden>
       <p class="lib-info">Every paper as one compact row, so you can scan them. Type a question to rank them (rule-based, no model): the best matches come first, with the words that matched.</p>
+      <section class="lib-lb" aria-labelledby="lbHead">
+        <h3 id="lbHead">Ask the librarian</h3>
+        <p class="lib-info">Describe what you are working on. The librarian scans the index with a few keyword searches, then <strong>one small AI call</strong> (DeepSeek) picks the papers worth reading and says why. Everything else on this page is rule-based.</p>
+        <div class="lib-lb-form">
+          <input id="lbBox" type="search" placeholder="e.g. does COT positioning predict EURUSD" autocomplete="off" maxlength="600" aria-label="Question for the librarian">
+          <button type="button" id="lbGo" class="lib-btn">Ask (1 AI call)</button>
+        </div>
+        <div id="lbOut" role="status" aria-live="polite"></div>
+      </section>
       <div class="lib-search">
         <input id="ixBox" type="search" placeholder="Filter by a question, e.g. does COT positioning predict EURUSD" autocomplete="off" aria-label="Filter the index">
       </div>

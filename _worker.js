@@ -93,6 +93,7 @@ function isAllowedKVKey(key) {
     'research_pod_queue',
     'library_state_v1',  // Paper Library (js/libraryApi.js): reading progress, manual tags, MP3 job state
     'library_math_v1',   // Paper Library equations (js/libraryMath.js): model calls used against the cap, papers done
+    'library_librarian_v1',   // Paper Library librarian (js/libraryLibrarian.js): model calls used against the 400 cap
     'library_figs_v1',   // Paper Library figure/table notes (js/libraryFigs.js): model calls used against the 600 cap, papers done
     'research_pod_quicktests',
     'fx_fair_value_log_v1',
@@ -1152,6 +1153,7 @@ export default {
             'research_pod_queue',
             'library_state_v1',  // Paper Library (js/libraryApi.js): reading progress, manual tags, MP3 job state
             'library_math_v1',   // Paper Library equations (js/libraryMath.js): model calls used against the cap, papers done
+            'library_librarian_v1',   // Paper Library librarian (js/libraryLibrarian.js): model calls used against the 400 cap
             'library_figs_v1',   // Paper Library figure/table notes (js/libraryFigs.js): model calls used against the 600 cap, papers done
             // research_pod_quicktests: the research lab's exploratory quick tests; fx_fair_value_log_v1: the short-term fair value's forward record.
             'research_pod_quicktests',

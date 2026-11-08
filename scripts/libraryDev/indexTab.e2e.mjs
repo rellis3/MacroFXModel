@@ -20,6 +20,16 @@ try {
   assert.ok((await page.textContent('#ixInfo')).includes('15 of 15'));
   const noScroll = async () => assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'no sideways page scroll');
   await noScroll();
+  // Ask the librarian (mock route runs the real js/libraryLibrarian.js with a fake model): marked as one AI call, picks with why and links, no sideways scroll
+  assert.ok((await page.textContent('#lbGo')).includes('1 AI call') && /one small AI call/.test(await page.textContent('.lib-lb')));
+  await page.fill('#lbBox', 'does volatility clustering predict jumps'); await page.click('#lbGo');
+  await page.waitForSelector('.lib-lb-pick');
+  assert.equal(await page.locator('.lib-lb-pick').count(), 2); assert.match(await page.locator('.lib-lb-why').first().textContent(), /Synthetic reason/);
+  assert.match(await page.textContent('#lbOut'), /1 small AI call used/);
+  assert.ok((await page.locator('.lib-lb-q').count()) >= 3, 'the queries are shown');
+  const box = await page.locator('.lib-lb').boundingBox(); assert.ok(box.x >= 0 && box.x + box.width <= 431, 'the box fits the phone width');
+  await noScroll();
+  if (shot) await page.screenshot({ path: shot.replace(/\.png$/, '-librarian.png'), fullPage: false });
   await page.fill('#ixBox', 'jump volatility clustering');
   await page.waitForFunction(() => /best match/.test(document.getElementById('ixInfo').textContent));
   const first = await page.locator('.lib-ix-row .lib-ix-t').first().textContent(); assert.match(first, /Volatility Clustering|Jump/);

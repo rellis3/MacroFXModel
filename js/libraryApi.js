@@ -17,6 +17,7 @@
  *   readFreeSources()                                   (optional) parsed education/papers/free_sources.json; missing or broken = no manifest
  *   mathModel({ system, prompt, maxTokens })            (optional) the capped model call of the equations job (task 'library-math'); absent = the job says no key
  *   figsModel({ system, prompt, maxTokens })            (optional) the capped model call of the figure/table notes job (task 'library-figs'); absent = the job says no key
+ *   librarianModel({ system, prompt, maxTokens })       (optional) the capped model call of the librarian (task 'library-librarian'); absent = the librarian falls back to the rule-based context
  *   modelReady()                                        (optional) false when no model key is set
  *   fetchArxiv(id)                                      (optional) arXiv HTML equations (default js/arxivMath.js, polite); tests inject a fake
  *   validateLatex(latex)                                (optional) KaTeX check (default js/libraryMath.js)
@@ -33,6 +34,7 @@ import { flatTextToPages } from './paperPages.js';
 import { createMath, resolveLatex, mergeLatexIntoBlocks, validateLatex } from './libraryMath.js';
 import { createFigs, mergeNotesIntoBlocks } from './libraryFigs.js';
 import * as LIX from './libraryIndex.js';
+import * as LBR from './libraryLibrarian.js';
 import { speechSentences, briefingScript, chunkForTts, estimateSecs, toSentences } from './paperAudio.js';
 import {
   joinCatalog, topicCounts, sourceCounts, yearCounts, freeLookup, TOPIC_KEYS, TOPICS, buildIndex, addDoc, search as indexSearch, setDocTags,
@@ -437,6 +439,27 @@ export function createLibraryApi(deps) {
     const rows = LIX.search(ix, query, { n: opts.n ?? 6, topics: opts.topics, sources: opts.sources, years: opts.years, requireNotes: opts.requireNotes, minScore: opts.minScore ?? 0.6 });
     const figNotes = await figNotesFor(rows.map(r => r.id));
     return { ...LIX.buildContext(query, ix, cat.byId, { ...opts, rows, figNotes }), query: String(query ?? '').slice(0, 300) };
+  };
+
+  // ── the librarian (js/libraryLibrarian.js): scan the index with keyword queries, ONE small model call picks, then the picked digests. Hard cap in KV library_librarian_v1. ──
+  const librarianBudget = LBR.createBudget({ kv, now });
+  /** Runs the librarian on a question: the LBR.runLibrarian result (ok:false + reason when it cannot run). Counts toward the cap when it calls the model. */
+  H.librarian = async (question, opts = {}) => {
+    const ix = await libIndex(), cat = await catalog();
+    return LBR.runLibrarian({ question, ix, papers: cat.byId, figNotesFor: figNotesFor, model: deps.librarianModel, budget: librarianBudget, modelReady: deps.modelReady ?? (() => true), maxPicks: opts.maxPicks });
+  };
+  H.librarianStatus = () => librarianBudget.status();
+  /**
+   * The context for a research round when LIBRARY_CONTEXT=1: the librarian's picks, or, when it cannot run (no key, bad JSON, timeout, cap),
+   * the rule-based contextFor. { text, ids, rows, title?, librarian:{queries, picked, none, calls, fallback?} } or null. Never throws.
+   */
+  H.roundContext = async query => {
+    if (!String(query ?? '').trim()) return null;
+    let lib; try { lib = await H.librarian(query); } catch (e) { lib = { ok: false, reason: `librarian error: ${e.message}`, queries: [], calls: 0 }; }
+    if (lib.ok) return { text: lib.text, ids: lib.ids, rows: lib.rows, title: lib.title, query: String(query).slice(0, 300), librarian: LBR.librarianRecord(lib) };
+    log.warn?.(`[library] librarian fell back to the rule-based context: ${lib.reason}`);
+    const c = await H.contextFor(query);
+    return c?.text ? { ...c, librarian: LBR.librarianRecord(lib, lib.reason) } : null;
   };
 
   H.index = async () => {
