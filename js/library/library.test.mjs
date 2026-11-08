@@ -26,6 +26,28 @@ t('tag filter is multi-select (any)', () => {
   assert.deepEqual(M.filterPapers(ps, [], new Set(['b'])).map(p => p.id), ['b']);
   assert.deepEqual(M.toggleTag(['a'], 'b'), ['a', 'b']); assert.deepEqual(M.toggleTag(['a', 'b'], 'a'), ['b']);
 });
+t('filter: OR within topics, OR within sources, AND between the groups, search hits narrow further', () => {
+  const ps = [
+    { id: 'a', source: { key: 'ssrn' }, tags: [{ key: 'vol' }] }, { id: 'b', source: { key: 'nber' }, tags: [{ key: 'vol' }, { key: 'cot' }] },
+    { id: 'c', source: { key: 'ssrn' }, tags: [{ key: 'cot' }] }, { id: 'd', tags: [{ key: 'vol' }] }, { id: 'e', source: { key: 'arxiv' }, tags: [] }];
+  const ids = (...a) => M.filterPapers(ps, ...a).map(p => p.id);
+  assert.deepEqual(ids([], null, []), ['a', 'b', 'c', 'd', 'e']);
+  assert.deepEqual(ids([], null, ['ssrn']), ['a', 'c']);
+  assert.deepEqual(ids([], null, ['ssrn', 'arxiv']), ['a', 'c', 'e']);
+  assert.deepEqual(ids(['vol'], null, ['ssrn']), ['a']);
+  assert.deepEqual(ids(['vol', 'cot'], null, ['ssrn', 'nber']), ['a', 'b', 'c']);
+  assert.deepEqual(ids(['vol'], null, ['arxiv']), []);
+  assert.deepEqual(ids(['vol'], new Set(['b', 'd']), []), ['b', 'd']);
+  assert.deepEqual(ids([], new Set(['b', 'c']), ['ssrn']), ['c']);
+  assert.deepEqual(ids(['vol'], null, ['nope']), []);   // a paper with no source never passes a source filter
+});
+t('source chips follow the papers in scope; selection restore drops vanished keys', () => {
+  const srcs = [{ key: 'ssrn', label: 'SSRN', count: 9 }, { key: 'nber', label: 'NBER', count: 9 }];
+  assert.deepEqual(M.sourceChips(srcs, [{ source: { key: 'ssrn' } }, { source: { key: 'ssrn' } }, {}]).map(c => c.count), [2, 0]);
+  assert.deepEqual(M.sourceChips(srcs, [], ['gone']).map(c => [c.key, c.count]), [['ssrn', 0], ['nber', 0], ['gone', 0]]);
+  assert.deepEqual(M.restoreSelection('["ssrn","gone"]', ['ssrn', 'nber']), ['ssrn']);
+  assert.deepEqual(M.restoreSelection('garbage', ['ssrn']), []); assert.deepEqual(M.restoreSelection(null, ['ssrn']), []); assert.deepEqual(M.restoreSelection('{"a":1}', ['a']), []);
+});
 t('order by search rank, else year desc', () => {
   const ps = [{ id: 'a', year: 2001, title: 'A' }, { id: 'b', year: 2020, title: 'B' }];
   assert.deepEqual(M.orderPapers(ps, null).map(p => p.id), ['b', 'a']);

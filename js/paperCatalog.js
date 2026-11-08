@@ -141,6 +141,75 @@ export function topicCounts(papers) {
   return TOPICS.map(t => ({ key: t.key, label: t.label, count: (papers ?? []).filter(p => (p.tags ?? []).some(x => x.key === t.key)).length }));
 }
 
+// ── source of a paper (rule-based, from fields we already hold) ──────────────────────────────────────────────
+
+export const SOURCES = [
+  { key: 'ssrn', label: 'SSRN' }, { key: 'arxiv', label: 'arXiv' }, { key: 'nber', label: 'NBER' },
+  { key: 'fed', label: 'Federal Reserve / NY Fed' }, { key: 'ecb', label: 'ECB' }, { key: 'boe', label: 'Bank of England' },
+  { key: 'bis', label: 'BIS' }, { key: 'imf', label: 'IMF' },
+  { key: 'k151', label: '151 Trading Strategies (Kakushadze & Serur)' }, { key: 'quantconnect', label: 'QuantConnect strategy library' },
+  { key: 'reading', label: 'Reading list' }, { key: 'upload', label: 'Other upload' }, { key: 'other', label: 'Other' },
+];
+const SOURCE_BY_KEY = Object.fromEntries(SOURCES.map(s => [s.key, s]));
+const src = key => ({ key, label: SOURCE_BY_KEY[key].label });
+const HOSTS = [ // host suffix -> key
+  ['arxiv.org', 'arxiv'], ['ssrn.com', 'ssrn'], ['nber.org', 'nber'], ['federalreserve.gov', 'fed'], ['newyorkfed.org', 'fed'], ['frbsf.org', 'fed'],
+  ['stlouisfed.org', 'fed'], ['chicagofed.org', 'fed'], ['philadelphiafed.org', 'fed'], ['bostonfed.org', 'fed'], ['clevelandfed.org', 'fed'], ['kansascityfed.org', 'fed'],
+  ['dallasfed.org', 'fed'], ['richmondfed.org', 'fed'], ['minneapolisfed.org', 'fed'], ['atlantafed.org', 'fed'], ['ecb.europa.eu', 'ecb'],
+  ['bankofengland.co.uk', 'boe'], ['bis.org', 'bis'], ['imf.org', 'imf'], ['quantconnect.com', 'quantconnect'],
+];
+const VENUES = [ // venue text -> key
+  [/\bssrn\b/i, 'ssrn'], [/\barxiv\b/i, 'arxiv'], [/\bnber\b|national bureau of economic research/i, 'nber'],
+  [/federal reserve|\bfrb[a-z]*\b|\bfed(?:eral)? (?:board|funds)\b|\bfeds\b|new york fed|finance and economics discussion|staff report/i, 'fed'],
+  [/european central bank|\becb\b/i, 'ecb'], [/bank of england|\bboe\b/i, 'boe'], [/bank for international settlements|\bbis\b/i, 'bis'], [/international monetary fund|\bimf\b/i, 'imf'],
+];
+const hostKey = url => {
+  let h; try { h = new URL(String(url)).hostname.toLowerCase(); } catch { return null; }
+  const hit = HOSTS.find(([d]) => h === d || h.endsWith('.' + d));
+  return hit ? hit[1] : null;
+};
+const doiKey = doi => { const d = String(doi ?? '').toLowerCase(); return /10\.2139\/ssrn/.test(d) ? 'ssrn' : /10\.48550\/arxiv/.test(d) ? 'arxiv' : /10\.3386\//.test(d) ? 'nber' : null; };
+const nameKey = name => { // SSRN-style or arXiv-style upload file names
+  const n = String(name ?? '');
+  if (/ssrn[-_ ]?(?:id)?[-_ ]?\d{4,8}/i.test(n)) return 'ssrn';
+  if (/arxiv|^\s*(?:\d{4}\.\d{4,5}|[a-z-]+(?:\.[a-z]{2})?[_-]?\d{7})(?:v\d+)?(?:\D|$)/i.test(n)) return 'arxiv';
+  return null;
+};
+
+/**
+ * The source of a paper as { key, label }, from data we already hold. No model, no network. First rule that fires wins:
+ *   1. a curated collection named by the queue item's `source` ('151 Trading Strategies ...', 'QuantConnect ...')
+ *   2. the identifiers: ssrn id, arxiv id, then the DOI prefix (10.2139/ssrn, 10.48550/arxiv, 10.3386 = NBER)
+ *   3. the paper url host (arxiv.org, nber.org, federalreserve.gov, newyorkfed.org, ecb.europa.eu, bankofengland.co.uk, bis.org, ...)
+ *   4. the venue text (NBER Working Paper, Federal Reserve Bank ..., ECB Working Paper Series, ...)
+ *   5. the rest of the queue `source`: 'SSRN manifest' -> SSRN; 'reading list' -> Reading list
+ *   6. an upload: the file name (SSRN-style or arXiv-style) else 'Other upload' (queue source 'upload' or an upload name present)
+ *   7. otherwise 'Other'
+ * record: { source?, queueSource?, ssrn?, arxiv?, doi?, url?, venue?, uploadName?, readFrom? }
+ */
+export function sourceOf(record = {}) {
+  const r = record ?? {}, q = String(r.queueSource ?? (typeof r.source === 'string' ? r.source : '') ?? '').toLowerCase();
+  if (/151 trading|kakushadze/.test(q)) return src('k151');
+  if (/quantconnect/.test(q)) return src('quantconnect');
+  if (r.ssrn) return src('ssrn');
+  if (r.arxiv) return src('arxiv');
+  const d = doiKey(r.doi); if (d) return src(d);
+  const h = hostKey(r.url); if (h) return src(h);
+  const v = VENUES.find(([re]) => re.test(String(r.venue ?? ''))); if (v) return src(v[1]);
+  if (/ssrn/.test(q)) return src('ssrn');
+  if (/reading/.test(q)) return src('reading');
+  const isUpload = /^upload/.test(q) || !!r.uploadName || /^upload/.test(String(r.readFrom ?? ''));
+  if (isUpload) return src(nameKey(r.uploadName) ?? 'upload');
+  return src('other');
+}
+
+/** [{ key, label, count }] of the sources present, in SOURCES order (zero counts left out). */
+export function sourceCounts(papers) {
+  const n = new Map();
+  for (const p of papers ?? []) { const k = p?.source?.key; if (k) n.set(k, (n.get(k) ?? 0) + 1); }
+  return SOURCES.filter(s => n.has(s.key)).map(s => ({ ...s, count: n.get(s.key) }));
+}
+
 // ── joining read papers, uploads and queue items ───────────────────────────────────────────────────────────────
 
 const FULL_TEXT = new Set(['pdf', 'arxiv-html', 'html', 'upload', 'full']);
@@ -168,8 +237,8 @@ export function joinCatalog({ papers = [], queueItems = [], uploads = {}, tagOve
 
   const finish = base => {
     const o = ov[base.id] ?? {}, tags = applyOverrides(base._auto, o);
-    const { _auto, _tagInput, ...p } = base;
-    const paper = { ...p, tags, progress: prog[p.id] ? { pct: prog[p.id].pct ?? 0, pos: prog[p.id].pos ?? 0, at: prog[p.id].at ?? null, done: !!prog[p.id].done } : null,
+    const { _auto, _tagInput, _src, ...p } = base;
+    const paper = { ...p, source: sourceOf(_src), tags, progress: prog[p.id] ? { pct: prog[p.id].pct ?? 0, pos: prog[p.id].pos ?? 0, at: prog[p.id].at ?? null, done: !!prog[p.id].done } : null,
       audio: { ...NO_AUDIO(), ...(aud[p.id] ?? {}), briefing: { ...NO_AUDIO().briefing, ...(aud[p.id]?.briefing ?? {}) } } };
     paper.desk = deskLinks({ ...paper, abstract: p.abstract }, evidence);
     out.push(paper);
@@ -185,6 +254,7 @@ export function joinCatalog({ papers = [], queueItems = [], uploads = {}, tagOve
       id: r.id, title: r.title ?? r.id, authors: r.authors ?? [], year: r.year ?? null, venue: r.venue ?? null, url: r.url ?? null, ssrn: r.ssrn ?? null, arxiv: r.arxiv ?? null, doi: r.doi ?? null,
       kind: r.kind ?? 'paper', readFrom: r.readFrom ?? null, hasText, hasPdf: !!(u.hasPdf ?? (upl && upl.stored)), chars: chars ?? (text.length || null), pages: u.pages ?? null,
       uploadedAt: upl?.at ?? null, abstract: String(r.abstract ?? '').slice(0, 2500), notes: pickNotes(r.notes),
+      _src: { queueSource: q?.source ?? r.source, ssrn: r.ssrn, arxiv: r.arxiv, doi: r.doi, url: r.url, venue: r.venue, uploadName: upl?.name, readFrom: r.readFrom },
       _auto: autoTags({ title: r.title, abstract: r.abstract, notes: r.notes, text }),
     });
   }
@@ -199,6 +269,7 @@ export function joinCatalog({ papers = [], queueItems = [], uploads = {}, tagOve
     finish({
       id: it.id, title, authors: [], year: null, venue: null, url: null, ssrn: ssrnFromName(it.upload.name), arxiv: null, doi: null, kind: it.kind ?? 'paper', readFrom: 'upload (unread)',
       hasText: (chars ?? 0) > 0 || text.length > 0, hasPdf: !!(u.hasPdf ?? it.upload.stored), chars, pages: u.pages ?? null, uploadedAt: it.upload.at ?? null, abstract: '', notes: null,
+      _src: { queueSource: it.source, ssrn: ssrnFromName(it.upload.name), uploadName: it.upload.name, readFrom: 'upload' },
       _auto: autoTags({ title, text }),
     });
   }

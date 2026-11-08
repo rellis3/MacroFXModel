@@ -5,7 +5,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { TOPICS, TOPIC_KEYS, stem, autoTags, scoreTopics, applyOverrides, topicCounts, joinCatalog, buildIndex, addDoc, removeDoc, setDocTags, indexSize, parseQuery, search,
-  deskLinks, THEORY_BY_TOPIC, theoryLinks, parseTodoList, heldSsrnIds, readNext, paperCaseId, caseForPaper, caseFromPaper } from './paperCatalog.js';
+  deskLinks, THEORY_BY_TOPIC, theoryLinks, parseTodoList, heldSsrnIds, readNext, paperCaseId, caseForPaper, caseFromPaper, sourceOf, sourceCounts, SOURCES } from './paperCatalog.js';
 import { DESK_EVIDENCE } from './deskEvidence.js';
 import { putCase, summary, roundSections, headSections, emptyStore } from './researchCase.js';
 
@@ -298,6 +298,48 @@ t('no network, no model: the module imports nothing but pure data modules', () =
   const src = readFileSync(join(here, 'paperCatalog.js'), 'utf8');
   assert.deepEqual([...src.matchAll(/^import .* from '(.*)';/gm)].map(m => m[1]).sort(), ['./deskEvidence.js', './literature.js', './researchCase.js']);
   assert.ok(!/\bfetch\(|XMLHttpRequest|process\.env|node:/.test(src));
+});
+
+// ── source ──
+t('sourceOf: each production queue source value, and the precedence', () => {
+  const k = r => sourceOf(r).key;
+  assert.equal(k({ queueSource: '151 Trading Strategies (Kakushadze & Serur 2018)' }), 'k151');
+  assert.equal(k({ queueSource: 'QuantConnect strategy library', url: 'https://www.quantconnect.com/learning/x' }), 'quantconnect');
+  assert.equal(k({ queueSource: '151 Trading Strategies (Kakushadze & Serur 2018)', ssrn: '3167017' }), 'k151'); // curated collection beats the id
+  assert.equal(k({ queueSource: 'SSRN manifest' }), 'ssrn');
+  assert.equal(k({ queueSource: 'SSRN manifest', url: 'https://www.nber.org/papers/w1' }), 'nber'); // a host is more specific than the manifest
+  assert.equal(k({ queueSource: 'reading list' }), 'reading');
+  assert.equal(k({ queueSource: 'reading list', arxiv: '2001.00001' }), 'arxiv');
+  assert.equal(k({ queueSource: 'upload', readFrom: 'upload (unread)' }), 'upload');
+  assert.equal(k({ queueSource: 'upload', uploadName: 'SSRN-id3167017.pdf' }), 'ssrn');
+  assert.equal(k({ queueSource: 'upload', uploadName: '2001.00001v2.pdf' }), 'arxiv');
+  assert.equal(k({ queueSource: 'upload', uploadName: 'My notes on carry.pdf' }), 'upload');
+  assert.equal(k({}), 'other'); assert.equal(k(null), 'other'); assert.equal(k({ queueSource: 'something new' }), 'other');
+  assert.deepEqual(sourceOf({ queueSource: 'upload' }), { key: 'upload', label: 'Other upload' });
+});
+t('sourceOf: ids, DOI prefix, url host and venue', () => {
+  const k = r => sourceOf(r).key;
+  assert.equal(k({ ssrn: '123456' }), 'ssrn'); assert.equal(k({ arxiv: '1706.03762' }), 'arxiv');
+  assert.equal(k({ doi: '10.2139/ssrn.3167017' }), 'ssrn'); assert.equal(k({ doi: '10.48550/arXiv.2001.00001' }), 'arxiv'); assert.equal(k({ doi: '10.3386/w12345' }), 'nber');
+  assert.equal(k({ doi: '10.1111/jofi.12345' }), 'other');
+  for (const [url, want] of [['https://arxiv.org/abs/1', 'arxiv'], ['https://www.nber.org/papers/w1', 'nber'], ['https://www.federalreserve.gov/econres/feds/x.htm', 'fed'],
+    ['https://www.newyorkfed.org/research/staff_reports/sr1', 'fed'], ['https://www.ecb.europa.eu/pub/pdf/scpwps/ecb.wp1.pdf', 'ecb'],
+    ['https://www.bankofengland.co.uk/working-paper/2020/x', 'boe'], ['https://www.bis.org/publ/work1.htm', 'bis'], ['https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1', 'ssrn'],
+    ['https://notarxiv.org/x', 'other'], ['not a url', 'other']]) assert.equal(k({ url }), want, url);
+  assert.equal(k({ venue: 'NBER Working Paper 12345' }), 'nber'); assert.equal(k({ venue: 'Federal Reserve Bank of New York Staff Reports' }), 'fed');
+  assert.equal(k({ venue: 'ECB Working Paper Series' }), 'ecb'); assert.equal(k({ venue: 'Bank of England Staff Working Paper' }), 'boe');
+  assert.equal(k({ venue: 'Journal of Finance' }), 'other'); assert.equal(k({ venue: 'Synthetic Journal' }), 'other');
+  assert.ok(SOURCES.every(s => s.key && s.label) && new Set(SOURCES.map(s => s.key)).size === SOURCES.length);
+});
+t('joinCatalog puts a source on every paper and sourceCounts counts them', () => {
+  const cat = joinCatalog({
+    papers: [{ id: 'a', title: 'A', url: 'https://www.ecb.europa.eu/x.pdf' }, { id: 'b', title: 'B' }, { id: 'c', title: 'C', ssrn: '1' }],
+    queueItems: [{ id: 'b', source: '151 Trading Strategies (Kakushadze & Serur 2018)' }, { id: 'u1', source: 'upload', upload: { name: 'SSRN-id3167017.pdf', sha: 'x1', chars: 10 } }, { id: 'u2', source: 'upload', upload: { name: 'notes.pdf', sha: 'x2', chars: 10 } }],
+  });
+  const by = Object.fromEntries(cat.map(p => [p.id, p.source.key]));
+  assert.deepEqual(by, { a: 'ecb', b: 'k151', c: 'ssrn', u1: 'ssrn', u2: 'upload' });
+  assert.deepEqual(sourceCounts(cat).map(s => [s.key, s.count]), [['ssrn', 2], ['ecb', 1], ['k151', 1], ['upload', 1]]);
+  assert.deepEqual(sourceCounts(null), []);
 });
 
 console.log(`paperCatalog: ${n} tests passed`);

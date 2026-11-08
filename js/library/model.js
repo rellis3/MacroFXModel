@@ -24,10 +24,14 @@ export function toggleTag(sel, key) {
   return sel.includes(key) ? sel.filter(k => k !== key) : sel.concat(key);
 }
 
-/** Papers matching any selected tag (none selected = all); hitIds narrows to search hits. */
-export function filterPapers(papers, selected, hitIds) {
+/**
+ * Papers matching the filters. Topics and sources are two groups: OR within a group, AND between the groups; an empty group
+ * passes everything. hitIds narrows to search hits. (Old call shape filterPapers(papers, topics, hitIds) still works.)
+ */
+export function filterPapers(papers, selected, hitIds, sources = []) {
   return papers.filter(p => {
     if (hitIds && !hitIds.has(p.id)) return false;
+    if (sources.length && !sources.includes(p.source && p.source.key)) return false;
     if (!selected.length) return true;
     const keys = new Set((p.tags || []).map(t => t.key));
     return selected.some(k => keys.has(k));
@@ -47,6 +51,25 @@ export function chipCounts(topics, papers) {
   const n = new Map();
   for (const p of papers) for (const t of p.tags || []) n.set(t.key, (n.get(t.key) || 0) + 1);
   return topics.map(t => ({ key: t.key, label: t.label, count: n.get(t.key) || 0 }));
+}
+
+/**
+ * Source chips: counts follow the papers in scope (search hits AND the selected topics), so a chip never promises papers that are
+ * not there. Chips for sources the library has stay visible at zero; a selected source with no papers is kept so it can be cleared.
+ */
+export function sourceChips(sources, papers, selected = []) {
+  const n = new Map();
+  for (const p of papers) if (p.source) n.set(p.source.key, (n.get(p.source.key) || 0) + 1);
+  const out = (sources || []).map(s => ({ key: s.key, label: s.label, count: n.get(s.key) || 0 }));
+  for (const k of selected) if (!out.some(s => s.key === k)) out.push({ key: k, label: k, count: 0 });
+  return out;
+}
+
+/** Restore a saved selection, keeping only keys that still exist (a chip that vanished must not filter silently). */
+export function restoreSelection(raw, validKeys) {
+  let a; try { a = JSON.parse(raw); } catch { return []; }
+  const ok = new Set(validKeys);
+  return Array.isArray(a) ? a.filter(k => ok.has(k)) : [];
 }
 
 export function readNextPapers(papers, rn) {

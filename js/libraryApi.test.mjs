@@ -144,3 +144,14 @@ test('KV key library_state_v1 is registered in kv.js, both lists in _worker.js a
   assert.ok(rd('../_worker.js').split(`'${KV_KEY}'`).length - 1 >= 2);
   assert.ok(rd('./storeRegistry.js').includes(KV_KEY));
 });
+
+test('sources: every paper has one, the list carries counts, and search can filter by source', async () => {
+  const { api } = harness(); const r = (await api.papers()).json;
+  const by = Object.fromEntries(r.papers.map(p => [p.id, p.source.key]));
+  assert.deepEqual(by, { 'p-read': 'ssrn', 'p-abs': 'other', up1: 'upload' });
+  assert.deepEqual(r.sources.map(s => [s.key, s.count]), [['ssrn', 1], ['upload', 1], ['other', 1]]);
+  assert.ok(r.papers.every(p => p.source.label));
+  const s = (await api.search({ query: { q: 'volatility', sources: 'ssrn' } })).json; assert.deepEqual(s.hits.map(h => h.id), ['p-read']);
+  const u = (await api.search({ query: { q: 'volatility', sources: 'upload,bogus' } })).json; assert.deepEqual(u.hits.map(h => h.id), ['up1']);
+  const n = (await api.search({ query: { q: 'volatility', sources: 'bogus' } })).json; assert.ok(n.hits.length >= 2);   // unknown keys are ignored
+});

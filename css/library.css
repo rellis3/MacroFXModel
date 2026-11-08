@@ -44,6 +44,8 @@ button,input,select{font:inherit;color:inherit}
 .lib-chip .n{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)}
 .lib-chip[aria-pressed="true"] .n{color:var(--blue)}
 .lib-chip.zero{opacity:.45}
+.lib-chiplabel{font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin:2px 0 6px}
+.lib-src{display:inline-block;max-width:100%;font-size:11px;line-height:1.4;padding:2px 8px;border-radius:6px;border:1px solid var(--border);color:var(--text2);background:var(--s2);overflow-wrap:anywhere}
 .lib-info{font-size:12.5px;color:var(--text3);margin:2px 0 12px}
 
 /* card grid */

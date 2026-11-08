@@ -11,7 +11,7 @@ const $ = id => document.getElementById(id);
 const esc = M.escapeHtml;
 const ls = (() => { try { localStorage.getItem('x'); return localStorage; } catch { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k) }; } })();
 
-const st = { papers: [], topics: [], totals: null, selected: [], q: '', hits: null, tab: 'papers', todo: null, readNext: null, cur: null };
+const st = { papers: [], topics: [], sources: [], totals: null, selected: [], selSources: [], q: '', hits: null, tab: 'papers', todo: null, readNext: null, cur: null };
 
 function toast(msg, ms = 3500) {
   const el = $('toast'); el.textContent = msg; el.hidden = false;
@@ -34,6 +34,9 @@ function mark(text, q) {
   const words = q.split(/\s+/).filter(w => w.length > 2).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   return words.length ? s.replace(new RegExp('(' + words.join('|') + ')', 'ig'), '<mark>$1</mark>') : s;
 }
+const SEL_KEY = 'lib.sel.topics.v1', SRC_KEY = 'lib.sel.sources.v1';
+function saveSel() { try { ls.setItem(SEL_KEY, JSON.stringify(st.selected)); ls.setItem(SRC_KEY, JSON.stringify(st.selSources)); } catch { /* storage blocked: selection just is not remembered */ } }
+const srcTag = p => (p.source ? `<span class="lib-src" title="Source">${esc(p.source.label)}</span>` : '');
 function cardHtml(p, hit) {
   const s = M.statusOf(p), pct = pctOf(p);
   const tags = (p.tags || []).slice(0, 4).map(t => `<span class="lib-tag${t.source === 'manual' ? ' manual' : ''}">${esc(t.label)}</span>`).join('');
@@ -41,22 +44,24 @@ function cardHtml(p, hit) {
   return `<a class="lib-card lib-pcard" href="#/paper/${encodeURIComponent(p.id)}" data-id="${esc(p.id)}">
     <div class="lib-pcard-top"><div class="lib-pcard-main"><h3>${esc(p.title)}</h3>
     <div class="meta">${esc(M.authorsLine(p))}${p.year ? ' · ' + esc(p.year) : ''}${p.venue ? ' · ' + esc(p.venue) : ''}</div></div>${ringHtml(pct)}</div>
-    ${(l => `<p class="lib-pcard-short${l.muted ? ' muted' : ''}"><b>In short</b> ${esc(l.text)}</p>`)(SUM.cardLine(p))}${snips}<div class="lib-pcard-foot"><span class="lib-badge ${s.key}">${s.label}</span>${tags}</div></a>`;
+    ${(l => `<p class="lib-pcard-short${l.muted ? ' muted' : ''}"><b>In short</b> ${esc(l.text)}</p>`)(SUM.cardLine(p))}${snips}<div class="lib-pcard-foot"><span class="lib-badge ${s.key}">${s.label}</span>${srcTag(p)}${tags}</div></a>`;
 }
-function inScope() {
-  return M.filterPapers(st.papers, [], st.hits ? new Set(st.hits.map(h => h.id)) : null);
-}
+const hitSet = () => (st.hits ? new Set(st.hits.map(h => h.id)) : null);
 function renderChips() {
-  const counts = M.chipCounts(st.topics, inScope());
-  $('chips').innerHTML = counts.map(c => `<button type="button" class="lib-chip${c.count ? '' : ' zero'}" data-key="${esc(c.key)}" aria-pressed="${st.selected.includes(c.key)}">${esc(c.label)} <span class="n">${c.count}</span></button>`).join('');
+  // each group's counts honour the other group's selection (and the search), so the numbers add up to what a click would show
+  const forTopics = M.filterPapers(st.papers, [], hitSet(), st.selSources), forSources = M.filterPapers(st.papers, st.selected, hitSet());
+  const chip = (c, on, attr) => `<button type="button" class="lib-chip${c.count ? '' : ' zero'}" ${attr}="${esc(c.key)}" aria-pressed="${on.includes(c.key)}">${esc(c.label)} <span class="n">${c.count}</span></button>`;
+  $('chips').innerHTML = M.chipCounts(st.topics, forTopics).map(c => chip(c, st.selected, 'data-key')).join('');
+  $('srcChips').innerHTML = M.sourceChips(st.sources, forSources, st.selSources).map(c => chip(c, st.selSources, 'data-src')).join('');
+  $('srcRow').hidden = !st.sources.length;
 }
 function renderCards() {
-  const list = M.orderPapers(M.filterPapers(st.papers, st.selected, st.hits ? new Set(st.hits.map(h => h.id)) : null), st.hits);
+  const list = M.orderPapers(M.filterPapers(st.papers, st.selected, hitSet(), st.selSources), st.hits);
   const hitBy = new Map((st.hits || []).map(h => [h.id, h]));
-  $('cards').innerHTML = list.length ? list.map(p => cardHtml(p, hitBy.get(p.id))).join('') : `<div class="lib-empty">${st.q ? 'No paper matches that search.' : 'No papers in this topic yet.'}</div>`;
+  $('cards').innerHTML = list.length ? list.map(p => cardHtml(p, hitBy.get(p.id))).join('') : `<div class="lib-empty">${st.q ? 'No paper matches that search.' : (st.selected.length || st.selSources.length ? 'No papers match these filters.' : 'No papers yet.')}</div>`;
   const t = st.totals;
   $('resultInfo').textContent = st.q
-    ? `${list.length} paper${list.length === 1 ? '' : 's'} match “${st.q}”${st.selected.length ? ' in the selected topics' : ''}`
+    ? `${list.length} paper${list.length === 1 ? '' : 's'} match “${st.q}”${st.selected.length || st.selSources.length ? ' with the selected filters' : ''}`
     : (t ? `${list.length} of ${t.all} papers · ${t.fullText} with full text · ${t.abstractOnly} abstract only` : '');
   $('cntPapers').textContent = st.papers.length || '';
   renderChips();
@@ -84,7 +89,7 @@ function setTab(tab) {
 const runSearch = M.debounce(async () => {
   const q = st.q.trim();
   if (!q) { st.hits = null; renderCards(); return; }
-  try { const d = await api.search(q, st.selected); if (q === st.q.trim()) { st.hits = d.hits || []; renderCards(); } } catch (e) { fail(e); }
+  try { const d = await api.search(q, st.selected, st.selSources); if (q === st.q.trim()) { st.hits = d.hits || []; renderCards(); } } catch (e) { fail(e); }
 }, 250);
 
 function bindList() {
@@ -92,7 +97,12 @@ function bindList() {
   $('qClear').addEventListener('click', () => { $('q').value = ''; st.q = ''; $('qClear').hidden = true; runSearch.cancel(); st.hits = null; renderCards(); $('q').focus(); });
   $('chips').addEventListener('click', e => {
     const b = e.target.closest('.lib-chip'); if (!b) return;
-    st.selected = M.toggleTag(st.selected, b.dataset.key);
+    st.selected = M.toggleTag(st.selected, b.dataset.key); saveSel();
+    renderCards(); if (st.q.trim()) runSearch();
+  });
+  $('srcChips').addEventListener('click', e => {
+    const b = e.target.closest('.lib-chip'); if (!b) return;
+    st.selSources = M.toggleTag(st.selSources, b.dataset.src); saveSel();
     renderCards(); if (st.q.trim()) runSearch();
   });
   document.querySelector('.lib-tabs').addEventListener('click', e => { const b = e.target.closest('.lib-tab'); if (b) setTab(b.dataset.tab); });
@@ -131,7 +141,7 @@ function headHtml(p) {
   if (p.doi) ext.push(`<a href="https://doi.org/${esc(p.doi)}" target="_blank" rel="noopener noreferrer">DOI ↗</a>`);
   return `<div class="lib-rh"><h1>${esc(p.title)}</h1>
     <div class="meta">${esc(M.authorsLine(p, 6))}${p.year ? ' · ' + esc(p.year) : ''}${p.venue ? ' · ' + esc(p.venue) : ''}${p.pages ? ' · ' + p.pages + ' pages' : ''} ${ext.join(' · ')}</div>
-    <div class="row"><span class="lib-badge ${s.key}">${s.label}</span><span id="pctBadge" class="lib-badge pdf"></span></div>
+    <div class="row"><span class="lib-badge ${s.key}">${s.label}</span><span id="pctBadge" class="lib-badge pdf"></span>${srcTag(p)}</div>
     <div class="row" id="tagRow">${tagsHtml(p)}</div>
     <div class="actions"><button type="button" class="lib-btn primary" id="listenBtn">🔊 Listen</button>
     ${p.hasPdf ? `<a class="lib-btn" href="${api.pdfUrl(p.id)}" target="_blank" rel="noopener">Open PDF ↗</a>` : ''}</div></div>`;
@@ -417,7 +427,9 @@ async function init() {
   $('cards').innerHTML = '<div class="lib-loading">Loading papers…</div>';
   try {
     const d = await api.papers();
-    st.papers = d.papers || []; st.topics = d.topics || []; st.totals = d.totals || null;
+    st.papers = d.papers || []; st.topics = d.topics || []; st.sources = d.sources || []; st.totals = d.totals || null;
+    st.selected = M.restoreSelection(ls.getItem(SEL_KEY), st.topics.map(t => t.key));
+    st.selSources = M.restoreSelection(ls.getItem(SRC_KEY), st.sources.map(t => t.key));
     sync.pullFromPapers(st.papers);
   } catch (e) { $('cards').innerHTML = `<div class="lib-empty">${esc(e.message || 'Could not load the library.')}</div>`; fail(e); return; }
   renderChips(); renderCards();

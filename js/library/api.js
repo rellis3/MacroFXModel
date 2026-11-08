@@ -11,7 +11,7 @@ const q = o => Object.entries(o).filter(([, v]) => v != null && v !== '').map(([
 export const api = {
   papers: () => j('/api/library/papers'),
   paper: id => j('/api/library/paper?' + q({ id })),
-  search: (text, tags, limit = 40) => j('/api/library/search?' + q({ q: text, tags: (tags || []).join(','), limit })),
+  search: (text, tags, sources, limit = 40) => j('/api/library/search?' + q({ q: text, tags: (tags || []).join(','), sources: (sources || []).join(','), limit })),
   todo: () => j('/api/library/todo'),
   readNext: () => j('/api/library/read-next'),
   listen: (id, mode) => j('/api/library/listen?' + q({ id, mode })),

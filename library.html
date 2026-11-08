@@ -29,7 +29,12 @@
         <input id="q" type="search" placeholder="Search the full text of every paper" autocomplete="off" aria-label="Search papers">
         <button type="button" id="qClear" class="lib-iconbtn" aria-label="Clear search" hidden>×</button>
       </div>
+      <div class="lib-chiplabel">Topic</div>
       <div id="chips" class="lib-chips" role="group" aria-label="Filter by topic"></div>
+      <div id="srcRow" class="lib-chiprow" hidden>
+        <div class="lib-chiplabel">Source</div>
+        <div id="srcChips" class="lib-chips" role="group" aria-label="Filter by source"></div>
+      </div>
       <div id="resultInfo" class="lib-info" role="status"></div>
       <div id="cards" class="lib-grid"></div>
     </div>

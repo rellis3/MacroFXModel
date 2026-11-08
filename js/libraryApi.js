@@ -24,7 +24,7 @@ import { buildBlocks, plainText, conclusion, abstractOf } from './paperText.js';
 import { flatTextToPages } from './paperPages.js';
 import { speechSentences, briefingScript, chunkForTts, estimateSecs, toSentences } from './paperAudio.js';
 import {
-  joinCatalog, topicCounts, TOPIC_KEYS, TOPICS, buildIndex, addDoc, search as indexSearch, setDocTags,
+  joinCatalog, topicCounts, sourceCounts, SOURCES, TOPIC_KEYS, TOPICS, buildIndex, addDoc, search as indexSearch, setDocTags,
   theoryLinks, parseTodoList, heldSsrnIds, readNext, caseFromPaper, caseForPaper,
 } from './paperCatalog.js';
 
@@ -199,7 +199,7 @@ export function createLibraryApi(deps) {
     const cat = await catalog({ fresh: true });
     const papers = cat.list.map(p => ({ ...p, theory: theoryOf(p) }));
     const fullText = papers.filter(p => p.hasText).length;
-    return reply(200, { ok: true, papers, topics: topicCounts(papers), totals: { all: papers.length, fullText, abstractOnly: papers.length - fullText } });
+    return reply(200, { ok: true, papers, topics: topicCounts(papers), sources: sourceCounts(papers), totals: { all: papers.length, fullText, abstractOnly: papers.length - fullText } });
   };
 
   H.paper = async ({ query }) => {
@@ -212,12 +212,14 @@ export function createLibraryApi(deps) {
   H.search = async ({ query }) => {
     const q = String(query?.q ?? '').trim().slice(0, 200); if (!q) return reply(200, { ok: true, hits: [], total: 0 });
     const tags = String(query?.tags ?? '').split(',').map(s => s.trim()).filter(k => TOPIC_KEYS.includes(k));
+    const sources = String(query?.sources ?? '').split(',').map(s => s.trim()).filter(k => SOURCES.some(x => x.key === k));
     const limit = Math.min(100, Math.max(1, Number(query?.limit) || 40));
     const ix = await ensureIndex(); const cat = await catalog();
     for (const p of cat.list) setDocTags(ix, p.id, p.tags);   // manual tag changes apply without re-indexing
-    const r = indexSearch(ix, q, { tags, limit });
+    const r = indexSearch(ix, q, { tags, limit: sources.length ? 100 : limit });   // a source filter applies after ranking, so rank deeper first
     const hits = [];
     for (const h of r.hits) {
+      if (sources.length && (!sources.includes(cat.byId.get(h.id)?.source?.key) || hits.length >= limit)) continue;
       const doc = blocksMem.get(h.id) ?? null;   // only cached blocks resolve a snippet to a block (never builds one here)
       const locate = text => { if (!doc) return null; const probe = String(text).replace(/\s+/g, ' ').slice(0, 40); const b = doc.blocks.find(x => x.text && x.text.replace(/\s+/g, ' ').includes(probe)); return b ? b.i : null; };
       hits.push({ id: h.id, score: h.score, title: h.title, snippets: h.snippets.map(s => ({ block: locate(s.text), text: s.text, marks: s.marks })) });
