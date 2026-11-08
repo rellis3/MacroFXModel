@@ -280,3 +280,13 @@ Found 2026-11-07: SSRN-registered papers (Crossref, prefix 10.2139) issued from 
 | From Aggregate Hedger Positioning to Firm-Level Tradable Alpha: A Pre-Registered Cross-Sectional COT Shock Strategy on Commodity Producer Equity · Hyun Ahn | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6730238) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6730238) |
 | Risk Mitigation of Momentum Strategy Using Stop-Loss Rules · Mohsin Sadaqat, Hilal Anwar Butt | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7511970) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7511970) |
 | Clarifying the Impact of Speculators and Financial Investors on Commodity Futures Markets · Hilary Till | 2025 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=5277088) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5277088) |
+
+## Part 3: retry of the missed classics (2026-11-08)
+
+Retried 16 exact titles through Crossref (prefix 10.2139) and OpenAlex after the rate limits reset. One new SSRN paper was found:
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| The 10 Reasons Most Machine Learning Funds Fail · Marcos Lopez de Prado | 2018 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=3104816) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3104816) |
+
+No exact SSRN-registered title match (they may be journal-only, book chapters, or filed under a different title; search them by hand on SSRN): The Deflated Sharpe Ratio; Meta-Labeling; Pseudo-Mathematics and Financial Charlatanism; The Variance Risk Premium; Gamma Positioning and Market Volatility; A Tug of War: Overnight Versus Intraday Expected Returns; Trading Volume and Overnight Returns; Leverage Aversion and Risk Parity; Option-Implied Volatility Skew; Dollar Risk Premia and Asset Prices; The Dollar, Bank Leverage and the Deviation from Covered Interest Parity; Carry Trades and Global Foreign Exchange Volatility; Intraday Momentum: The First Half-Hour Return Predicts the Last Half-Hour Return; Pairs Trading: Performance of a Relative-Value Arbitrage Rule. "Tail Risk Hedging" only matched a different paper (Tail Risk Hedging and Regime Switching, 1945303), so it is not listed.
