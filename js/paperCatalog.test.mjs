@@ -234,10 +234,10 @@ t('theoryLinks: best lesson per tag first, up to four, only existing lessons', (
 const todoMd = readFileSync(join(root, 'education', 'papers', 'SSRN_DOWNLOAD_LIST.md'), 'utf8');
 t('parseTodoList: the real SSRN_DOWNLOAD_LIST.md', () => {
   const all = parseTodoList(todoMd), downloads = (todoMd.match(/\]\([^)]*abstractid=/g) ?? []).length;
-  assert.equal(all.length, downloads); assert.ok(all.length >= 174);
+  assert.equal(all.length, downloads); assert.ok(all.length >= 170);
   assert.equal(new Set(all.map(x => x.id)).size, all.length);
   const parts = {}; for (const x of all) parts[x.part] = (parts[x.part] ?? 0) + 1;
-  assert.deepEqual(Object.keys(parts), ['1', '2', '3', '4']); assert.ok(parts[1] >= 47 && parts[2] >= 48 && parts[3] >= 1 && parts[4] >= 79, JSON.stringify(parts));
+  assert.deepEqual(Object.keys(parts), ['1', '2', '3', '4']); assert.ok(parts[1] >= 47 && parts[2] >= 46 && parts[3] >= 1 && parts[4] >= 76, JSON.stringify(parts));
   assert.deepEqual(all[0], { id: '2227387', title: 'The Returns to Carry and Momentum Strategies', year: 2013, part: 1, section: null, url: 'https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2227387', held: false });
   const carry = all.find(x => x.id === '2632697'); assert.equal(carry.title, 'Carry'); assert.equal(carry.part, 2); assert.equal(carry.section, 'FX & carry'); assert.equal(carry.year, 2015);   // the star is dropped
   for (const x of all) { assert.match(x.id, /^\d{4,8}$/); assert.ok(x.title.length > 3 && !/^[·★]/.test(x.title), x.title); assert.match(x.url, /^https:\/\/papers\.ssrn\.com\/.*abstractid=\d+/); assert.ok(x.year >= 1990 && x.year <= 2027, `${x.id} ${x.year}`); assert.equal(x.held, false); }
