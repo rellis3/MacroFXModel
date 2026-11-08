@@ -268,3 +268,105 @@ Not reachable by us: Quant StackExchange tag pages and Wilmott returned 403 to s
 - **Institution marketing**: AQR, Man, Two Sigma, Robeco, Research Affiliates and Dimensional publication pages are JavaScript-driven, and most useful pieces sit behind forms or are not direct PDFs, so only the few that returned a real PDF are in the table. IMF working-paper pages returned 403 to scripted requests, so no IMF items are included. CEPR discussion papers and Bank of England pages (except one staff working paper) were also not retrievable in this pass.
 - **Data/COT**: no free working paper with a direct PDF was found for CFTC positioning beyond the NY Fed piece above; the CFTC's own COT data is free but is data, not research.
 - Some 2025-2026 arXiv items are recent and uncited; they are included for method value, treat as unrefereed.
+
+## Part 2: found by browsing (JS-driven sites)
+
+Built 2026-11-08 by loading each site in a normal headless Chromium (Playwright defaults, no logins, no stealth, one page at a time, at least 2 s between navigations and 10 s on Two Sigma per its robots.txt). Where a site returned 403, a captcha, a region/role gate or an empty page, browsing stopped and the site is marked **blocked: owner browses by hand**. A row is listed only if its page opened; "PDF direct" means the link is a public PDF that needs no form or login. Downloaded PDFs (header `%PDF`, over 30 KB) sit in the session scratchpad `.../scratchpad/free2/` with `manifest.json`, **never in git**. Authors marked "see page" were not on the listing and were not guessed.
+
+**Totals:** 40 papers listed, 26 PDFs downloaded. Per site: AQR 14; Man Institute 0; Two Sigma 4; Robeco 0; Research Affiliates (now Syzygy Asset Management) 8; Dimensional 6; IMF working papers 0; CEPR discussion papers 0; BIS working papers 8; Bank of England staff working papers 0.
+
+### AQR
+
+**Status:** reachable (HTTP 200 via headless Chromium, no gate; category pages show only the newest 10-11 items each, so this is a sample, not the full catalogue).
+
+| Title | Authors | Year | Link | Why it matters for us | PDF direct | Downloaded |
+|---|---|---|---|---|---|---|
+| Can Machines Time Markets? The Virtue of Complexity in Return Prediction | AQR Portfolio Solutions Group | 2024 | [PDF](https://www.aqr.com/-/media/AQR/Documents/Alternative-Thinking/AQR-Alternative-Thinking--2Q24-Can-Machines-Time-Markets.pdf?sc_lang=en) · [page](https://www.aqr.com/Insights/Research/Alternative-Thinking/Can-Machines-Time-Markets-The-Virtue-of-Complexity-in-Return-Prediction) | ML market timing and the overfitting question: a counterweight when we judge complex signal stacks (Research validation) | yes | yes |
+| Hold the Dip | AQR Portfolio Solutions Group | 2025 | [PDF](https://www.aqr.com/-/media/AQR/Documents/Alternative-Thinking/AQR-Alternative-Thinking---Hold-the-Dip.pdf?sc_lang=en) · [page](https://www.aqr.com/Insights/Research/Alternative-Thinking/Hold-the-Dip) | Buy-the-dip vs buy-and-hold vs trend: tests dip entries against momentum (Trend / momentum) | yes | yes |
+| Bond Market Focus: Yield Curves and Mean Reverting Rate Expectations (Understanding Return Expectations, Part 9) | AQR Portfolio Solutions Group | 2025 | [PDF](https://www.aqr.com/-/media/AQR/Documents/White-Papers/Bond-Market-Focus-Yield-Curves-and-Mean-Reverting-Rate-Expectations.pdf?sc_lang=en) · [page](https://www.aqr.com/Insights/Research/White-Papers/Bond-Market-Focus-Yield-Curves-and-Mean-Reverting-Rate-Expectations) | Rate expectations vs term premia in curve shape: input for the FOMC/rates view (Rates / FOMC) | yes | yes |
+| Bond Market Focus: Understanding Treasury Yields with Survey Data (Part 8) | AQR Portfolio Solutions Group | 2025 | [PDF](https://www.aqr.com/-/media/AQR/Documents/White-Papers/Bond-Market-Focus-Understanding-Treasury-Yields-with-Survey-Data.pdf?sc_lang=en) · [page](https://www.aqr.com/Insights/Research/White-Papers/Bond-Market-Focus-Understanding-Treasury-Yields-with-Survey-Data) | Splits the Treasury yield into inflation expectations, real rate and term premium using surveys (Rates / FOMC) | yes | yes |
+| Inflation Redux? Real Solutions for Real Returns | AQR Portfolio Solutions Group | 2026 | [PDF](https://www.aqr.com/-/media/AQR/Documents/Alternative-Thinking/AQR-Alternative-Thinking-Q3-2026---Inflation-Redux.pdf?sc_lang=en) · [page](https://www.aqr.com/Insights/Research/Alternative-Thinking/Inflation-Redux) | Commodities and trend following as inflation-shock hedges: gold and macro regime context (Gold / macro regimes) | yes | yes |
+| Diversifiers Forever | Thomas Maloney, Josh Stone | 2025 | [PDF](https://www.aqr.com/-/media/AQR/Documents/Insights/White-Papers/Diversifiers-Forever.pdf?sc_lang=en) · [page](https://www.aqr.com/Insights/Research/White-Papers/Diversifiers-Forever) | Why diversifying strategies (trend, macro) earn their keep: portfolio-level framing (Risk / portfolio) | yes | yes |
+| Diversifying Alternatives and the Rearview Mirror (Understanding Return Expectations, Part 10) | AQR Portfolio Solutions Group | 2025 | [PDF](https://www.aqr.com/-/media/AQR/Documents/White-Papers/Diversifying-Alternatives-and-the-Rearview-Mirror.pdf?sc_lang=en) · [page](https://www.aqr.com/Insights/Research/White-Papers/Diversifying-Alternatives-and-the-Rearview-Mirror) | Behavioural reason diversifiers get dropped after long equity rallies; sizing discipline (Risk / portfolio) | yes | yes |
+| The Hidden Value of Streaky Returns in Stock Portfolios | AQR Portfolio Solutions Group | 2025 | [PDF](https://www.aqr.com/-/media/AQR/Documents/Insights/Alternative-Thinking/Alternative-Thinking-The-Hidden-Value-of-Streaky-Returns-in-Stock-Portfolios.pdf?sc_lang=en) · [page](https://www.aqr.com/Insights/Research/Alternative-Thinking/The-Hidden-Value-of-Streaky-Returns-in-Stock-Portfolios) | Streaky vs smooth factor returns: how to judge a signal that goes cold for years (Research validation) | yes | yes |
+| Broad Strategic Asset Allocation | AQR Portfolio Solutions Group | 2024 | [PDF](https://www.aqr.com/-/media/AQR/Documents/Alternative-Thinking/AQR-Alternative-Thinking---Broad-Strategic-Asset-Allocation.pdf?sc_lang=en) · [page](https://www.aqr.com/Insights/Research/Alternative-Thinking/Broad-Strategic-Asset-Allocation) | Sizing liquid alternatives (carry/trend/value styles) next to traditional assets (Risk / portfolio) | yes | yes |
+| 2026 Capital Market Assumptions for Major Asset Classes | AQR Portfolio Solutions Group | 2026 | [PDF](https://www.aqr.com/-/media/AQR/Documents/Alternative-Thinking/AQR-Alternative-Thinking---2026-Capital-Market-Assumptions.pdf?sc_lang=en) · [page](https://www.aqr.com/Insights/Research/Alternative-Thinking/2026-Capital-Market-Assumptions-for-Major-Asset-Classes) | Includes a section on currency risk and hedging in expected returns: FX and carry context (FX / carry) | yes | yes |
+| Exploring Capital Efficiency | AQR Portfolio Solutions Group | 2025 | [PDF](https://www.aqr.com/-/media/AQR/Documents/Alternative-Thinking/AQR-Alternative-Thinking---Exploring-Capital-Efficiency.pdf?sc_lang=en) · [page](https://www.aqr.com/Insights/Research/Alternative-Thinking/Exploring-Capital-Efficiency) | Leverage, funding and diversification maths behind overlay-style portfolios (Risk / portfolio) | yes | yes |
+| Credit Implied Volatility | see page | n/a | [page](https://www.aqr.com/Insights/Research/Journal-Article/Credit-Implied-Volatility) | Implied-vol measure outside equities; page lists the paper but showed no open PDF (Volatility) | no | no |
+| How Global is Predictability? | see page | n/a | [page](https://www.aqr.com/Insights/Research/Working-Paper/How-Global-is-Predictability) | Out-of-sample return predictability across countries; validation angle (no open PDF on the page) (Research validation) | no | no |
+| Understanding The Virtue of Complexity | see page | n/a | [page](https://www.aqr.com/Insights/Research/Working-Paper/Understanding-The-Virtue-of-Complexity) | Companion to the market-timing piece above; overparameterised forecasting (no open PDF on the page) (Research validation) | no | no |
+
+### Man Institute
+
+**Status:** blocked: owner browses by hand. The page loads (200) but shows a region and investor-role confirmation gate ("Confirm your region / Select your role") before any content; filling it would be form-filling, so nothing was recorded.
+
+### Two Sigma
+
+**Status:** reachable (200). robots.txt asks for a 10 s crawl delay, which was honoured. The /insights page is mostly culture and engineering posts; only 2 PDF papers are relevant, plus 2 page-only factor pieces.
+
+| Title | Authors | Year | Link | Why it matters for us | PDF direct | Downloaded |
+|---|---|---|---|---|---|---|
+| A Machine Learning Approach to Regime Modeling | Alex Botte, Doris Bao | 2021 | [PDF](https://www.twosigma.com/wp-content/uploads/2021/10/Machine-Learning-Approach-to-Regime-Modeling_.pdf) · [page](https://www.twosigma.com/articles/a-machine-learning-approach-to-regime-modeling/) | Gaussian-mixture regimes on a factor lens; a cheap alternative to HMM for our regime tag (Regimes) | yes | yes |
+| Forecasting Factor Returns | Geoff Duncombe, Mike Nigro, Bradley Kay | 2019 | [PDF](https://www.twosigma.com/wp-content/uploads/Forecasting-Factor-Returns.FINAL_-2.pdf) · [page](https://www.twosigma.com/articles/thematic-research-forecasting-factor-returns/) | Long-horizon factor-premium forecasting method; valuation + momentum inputs (Risk / portfolio) | yes | yes |
+| Thematic Research: Introducing the Two Sigma Factor Lens | Two Sigma Thematic Research | n/a | [page](https://www.twosigma.com/articles/thematic-research-introducing-the-two-sigma-factor-lens/) | The factor set the regime paper builds on (page linked from the two PDFs; not opened or downloaded) (Risk / portfolio) | no | no |
+| Thematic Research: Risk Factors Are Not Generic | Two Sigma Thematic Research | n/a | [page](https://www.twosigma.com/articles/thematic-research-risk-factors-are-not-generic/) | Why factor definitions matter for risk attribution (page only, not opened) (Risk / portfolio) | no | no |
+
+### Robeco
+
+**Status:** blocked: owner browses by hand (HTTP 403 "Service unavailable" on /en-int/insights).
+
+### Research Affiliates (now Syzygy Asset Management)
+
+**Status:** reachable. researchaffiliates.com/publications now shows a "choose your destination" page (Research Affiliates advisory business is now Syzygy Asset Management; the index business went to RAFI.com/VettaFi). The publications moved to syzygyassetmanagement.com/insights, which is open (200, no gate).
+
+| Title | Authors | Year | Link | Why it matters for us | PDF direct | Downloaded |
+|---|---|---|---|---|---|---|
+| Should Trend Follow Carry: Lessons from Bonds, Gold, and 2022 | Jim Masturzo et al. | 2026 | [PDF](https://media.syzygyassetmanagement.com/1107_should_trend_follow_carry_lessons_from_bonds_gold_and_2022_1c4eaed38c.pdf) · [page](https://www.syzygyassetmanagement.com/insights/publications/articles/1107-should-trend-follow-carry-lessons-from-bonds-gold-and-2022) | Carry-filtered trend, with gold and 2022: directly our carry x trend x gold question (Trend / carry / gold) | yes | yes |
+| Stop the Losses! The Risks of Systematic Strategies | Research Affiliates authors (see PDF) | 2025 | [PDF](https://media.syzygyassetmanagement.com/1099_stop_the_losses_e389db6127.pdf) · [page](https://www.syzygyassetmanagement.com/insights/publications/articles/1099-stop-the-losses) | Stop-losses and risk-model failure in alternative risk premia: sizing and drawdown rules (Risk / portfolio) | yes | yes |
+| Walking the Tightrope: Trend Following's Tricky Tradeoffs | Research Affiliates authors (see PDF) | 2025 | [PDF](https://media.syzygyassetmanagement.com/1077_trend_followings_tricky_tradeoffs_sharpe_ratio_vs_skew_366bc84649.pdf) · [page](https://www.syzygyassetmanagement.com/insights/publications/articles/1077-trend-followings-tricky-tradeoffs-sharpe-ratio-vs-skew) | Sharpe vs skew in trend rules; lookback and speed choices (Trend / momentum) | yes | yes |
+| Gold $5,000? | Research Affiliates authors (see PDF) | 2025 | [PDF](https://media.syzygyassetmanagement.com/1079_gold_5000_f9c082a8d9.pdf) · [page](https://www.syzygyassetmanagement.com/insights/publications/articles/1079-gold-5000) | Gold drivers (financialisation, central-bank buying): gold desk context (Gold) | yes | yes |
+| The Developed Market Inflation Vigilante | Research Affiliates authors (see PDF) | 2026 | [PDF](https://media.syzygyassetmanagement.com/1125_capital_market_insights_the_developed_market_inflation_vigilante_037c5675a7.pdf) · [page](https://www.syzygyassetmanagement.com/insights/publications/articles/1125-capital-market-insights-the-developed-market-inflation-vigilante) | Why DM sovereign yields are rising (inflation, not just term premium): rates / FX read-across (Rates / FOMC) | yes | yes |
+| A Tail of Five Skews (journal paper; only an Internet Appendix PDF is open) | see page | 2026 | [page](https://www.syzygyassetmanagement.com/insights/journal-papers/1094-a-tail-of-five-skews) · [appendix PDF](https://media.syzygyassetmanagement.com/A_Tail_of_Five_Skews_Internet_Appendix_78226daadd.pdf) | Skewness risk premium across futures, forwards and options: vol/skew trading context; appendix only, main paper not open (Volatility / options) | no | no |
+| Adaptive Macro Regimes for Dynamic Equity Allocation (journal paper) | see page | 2026 | [page](https://www.syzygyassetmanagement.com/insights/journal-papers/1108-adaptive-macro-regimes-for-dynamic-equity-allocation) | Macro-regime signal for allocation: regime / HMM conditioning comparison (Regimes) | no | no |
+| Inter or Intra? An Analysis of Pairs Trading in Futures Contracts (journal paper) | see page | 2025 | [page](https://www.syzygyassetmanagement.com/insights/journal-papers/1071-inter-or-intra-an-analysis-of-pairs-trading) | Pairs trading evidence in futures: stat-arb reference (Stat arb) | no | no |
+
+### Dimensional
+
+**Status:** reachable (200) but the insights are retail/advisor marketing pages with no PDFs; only 6 loosely relevant items listed.
+
+| Title | Authors | Year | Link | Why it matters for us | PDF direct | Downloaded |
+|---|---|---|---|---|---|---|
+| These ETFs Promise to Magnify Returns, but Look Out Below | Dimensional (see page) | n/a | [page](https://www.dimensional.com/us-en/insights/these-etfs-promise-to-magnify-returns-but-look-out-below) | Leveraged-ETF decay: a readable vol-drag explainer (marketing-style page, no PDF) (Volatility) | no | no |
+| Portfolio Rebalancing: All at Once or Little by Little? | Dimensional (see page) | n/a | [page](https://www.dimensional.com/us-en/insights/portfolio-rebalancing-all-at-once-or-little-by-little) | Spreading rebalancing trades to cut cost: execution / implementation reference (Microstructure) | no | no |
+| Trading US Corporate Bonds: It Pays to Be Flexible | Dimensional (see page) | n/a | [page](https://www.dimensional.com/us-en/insights/trading-us-corporate-bonds-it-pays-to-be-flexible) | Trade-cost evidence from flexible execution (tagged RESEARCH on the site) (Microstructure) | no | no |
+| It's Not Just the US with High Interest Rates | Dimensional (see page) | n/a | [page](https://www.dimensional.com/us-en/insights/its-not-just-the-us-with-high-interest-rates) | Cross-country rate levels: carry background (Rates / FX) | no | no |
+| The Market's Fed Watch in Action | Dimensional (see page) | n/a | [page](https://www.dimensional.com/us-en/insights/the-markets-fed-watch-in-action) | How prices absorb Fed expectations: FOMC-event reading (Rates / FOMC) | no | no |
+| Are Higher Rates Cause to Add More Fixed Income? | Dimensional (see page) | n/a | [page](https://www.dimensional.com/us-en/insights/are-higher-rates-cause-to-add-more-fixed-income) | Rate-level vs expected-return argument (opinion piece) (Rates / FOMC) | no | no |
+
+### IMF working papers
+
+**Status:** unreachable, nothing recorded: www.imf.org/en/Publications/WP returned 404 "Blob not found" to the headless browser (and robots.txt returned the same). Not a captcha, but no content either; owner browses by hand.
+
+### CEPR discussion papers
+
+**Status:** blocked: owner browses by hand (HTTP 403 Cloudflare "Attention Required!" on /publications/discussion-papers).
+
+### BIS working papers
+
+**Status:** reachable (200). The old index URL now 404s; BIS moved to bis.org/publications/working-paper and per-paper URLs ending in .pdf are direct public PDFs.
+
+| Title | Authors | Year | Link | Why it matters for us | PDF direct | Downloaded |
+|---|---|---|---|---|---|---|
+| Gaining (and losing) currency: a global database of currencies, 1850-2026 | Iñaki Aldasoro, Jon Frost, Rudraksh Kansal, Catherine R Schenk | 2026 | [PDF](https://www.bis.org/publications/working-paper-1392-gaining-and-losing-currency-global-database-currencies-1850-2026.pdf) · [page](https://www.bis.org/publications/working-paper-1392-gaining-and-losing-currency-global-database-currencies-1850-2026) | Long-run currency data set: regime and base-rate reference for FX (FX / carry) | yes | yes |
+| Offshore forwards and exchange rate transmission in emerging markets | Gerardo Ferrara, Andreas Schrimpf, Ganesh Viswanath-Natraj, Zijie Wang | 2026 | [PDF](https://www.bis.org/publications/working-paper-1383-offshore-forwards-and-exchange-rate-transmission-emerging-markets.pdf) · [page](https://www.bis.org/publications/working-paper-1383-offshore-forwards-and-exchange-rate-transmission-emerging-markets) | NDF/offshore forward pricing and spot transmission: EM FX microstructure and carry (FX / carry) | yes | yes |
+| Chasing El Dorado: gold under shifting geopolitical and financial conditions | Rafael Guerra, Gabriel Zelpo | 2026 | [PDF](https://www.bis.org/publications/working-paper-1380-chasing-el-dorado-gold-under-shifting-geopolitical-and-financial-condition.pdf) · [page](https://www.bis.org/publications/working-paper-1380-chasing-el-dorado-gold-under-shifting-geopolitical-and-financial-condition) | Gold drivers under changing geopolitical / real-rate conditions: gold desk (Gold) | yes | yes |
+| Inflation after the Iran war | Ricardo Reis | 2026 | [PDF](https://www.bis.org/publications/working-paper-1384-inflation-after-iran-war.pdf) · [page](https://www.bis.org/publications/working-paper-1384-inflation-after-iran-war) | Energy-shock inflation pass-through: macro regime and policy-reaction framing (Rates / FOMC) | yes | yes |
+| News shocks and inflation: theory and evidence from large oil discoveries | Bohou Cai, Liugang Sheng, Hongyan Zhao | 2026 | [PDF](https://www.bis.org/publications/working-paper-1389-news-shocks-and-inflation-theory-and-evidence-large-oil-discoveries.pdf) · [page](https://www.bis.org/publications/working-paper-1389-news-shocks-and-inflation-theory-and-evidence-from-large-oil-discoveries) | Anticipation effects of commodity news on inflation and the exchange rate (commodity-FX link) (FX / commodities) | yes | yes |
+| Maritime chokepoints and the global economy: evidence from the Strait of Hormuz | Enisse Kharroubi | 2026 | [PDF](https://www.bis.org/publications/working-paper-1378-maritime-chokepoints-and-global-economy-evidence-strait-hormuz.pdf) · [page](https://www.bis.org/publications/working-paper-1378-maritime-chokepoints-and-the-global-economy-evidence-strait-hormuz) | Chokepoint shocks to oil, trade and risk: event-study template for geopolitical risk-off (Regimes / risk) | yes | yes |
+| Hard to shift, easy to reshape: central bank reserve demand and frictions | Mathias Drehmann, Xuewen Fu | 2026 | [PDF](https://www.bis.org/publications/working-paper-1372-hard-shift-easy-reshape-central-bank-reserve-demand-and-frictions.pdf) · [page](https://www.bis.org/publications/working-paper-1372-hard-shift-easy-reshape-central-bank-reserve-demand-and-frictions) | Reserve demand and money-market frictions: funding-rate / balance-sheet background (Rates / FOMC) | yes | yes |
+| Geoeconomic pressure | Chris Clayton, Antonio Coppola, Vanessa Hu, Matteo Maggiori, Jesse Schreger, Serdil Tinda | 2026 | [PDF](https://www.bis.org/publications/working-paper-1386-geoeconomic-pressure.pdf) · [page](https://www.bis.org/publications/working-paper-1386-geoeconomic-pressure) | Maggiori et al. on sanctions / currency-weaponisation and safe-haven demand: USD and gold angle (FX / carry) | yes | yes |
+
+### Bank of England staff working papers
+
+**Status:** blocked: owner browses by hand (HTTP 403 "Access Denied" on /working-paper/staff-working-papers).
+
