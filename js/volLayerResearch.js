@@ -355,12 +355,19 @@ export const BUILD_ORDER = [
 
 // How each deep dive runs (agents), so every layer is treated the same way.
 export const DEEP_DIVE = [
-  'Literature pass: published research and C.OG\'s words only, no repo access. Output: a spec with candidates and formulas.',
-  'Repo pass: map the spec onto existing code, lessons and C.OG education. Reads code, not verdict comments or results files.',
-  'Bias check: only now read past repo results for this layer, and record where they disagree with the spec.',
-  'Prereg: register row (plans/RESEARCH_REGISTER.md), pre-registered test, lockbox respected.',
-  'Run the isolated test, bank the verdict, update this tab.',
+  '1. Understand: read the key papers in full, write a short plain explanation with a worked example, link the Theory Lab. You read it and ask questions.',
+  '2. Build and look: build the variable, then look at it together with charts and real examples, before any outcome is read. Be critical: is it measuring what we think?',
+  '3. Go wide: many versions and horizons, every one logged, reading the whole distribution of outcomes, not one average.',
+  '4. Confirm: one pre-registered test on separate data, through the verdict gate (planted edges, placebo, power).',
+  '5. Review: you and other students go through the proof pack. Anything challenged goes back into the queue.',
+  '6. Only then the next item.',
 ];
+
+// Where each deep dive is in the six stages. A stage is done only when you have seen it.
+export const STAGES = {
+  jumps: { at: 2, note: 'Stage 2 look done, nothing scored. Five problems found in what the detector flags (below). Waiting on your decisions before any outcome is read.', done: ['2026-11-07: literature pass (abstracts only, so stage 1 is not done)', '2026-11-07: detector built, tested, recalibrated when it flagged half of all sessions', '2026-11-08: looked at all bursts and 30 charts, before-burst prices only. Problems: (1) 70-85% of bursts hit 3 or more instruments in the same 5 minutes, so these are mostly market-wide moves, not separate jumps; (2) the calendar holds only USD, EUR and GBP releases, so "no release" in Asia hours means unknown, not unscheduled; (3) the detector is relative to the hour, so Asia bursts are small in absolute terms, median 0.4σ against 0.77σ at US data; (4) the 21:00-01:00 window includes the futures close and the daily rollover; (5) my own summary said 47.6 a year from a wrong denominator, corrected to about 31'] },
+  execution: { at: 0, note: 'Noise-threshold stops wait until jumps is signed off.', done: [] },
+};
 
 // The combined test, filled as stacks are run. Units: R, where 1 R = the stop distance.
 export const COMBINED = [

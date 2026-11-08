@@ -155,3 +155,22 @@ export function proofHtml(id, p, data) {
   <div class="card" style="margin-top:12px"><h3>Could this test have found an edge?</h3>${checksTable(data?.checks)}</div>
   ${(data?.charts ?? []).map(chartHtml).join('') || '<p class="empty" style="margin-top:12px">Charts are not built yet.</p>'}`;
 }
+
+function shotSvg(t) {
+  const w = 200, h = 96, ys = t.path.map(p => p[1]).concat(0), xs = t.path.map(p => p[0]);
+  const y0 = Math.min(...ys), y1 = Math.max(...ys), x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const X = v => 4 + ((v - x0) / ((x1 - x0) || 1)) * (w - 8), Y = v => 4 + (1 - (v - y0) / ((y1 - y0) || 1)) * (h - 22);
+  const d = t.path.map((p, i) => `${i ? 'L' : 'M'}${X(p[0]).toFixed(1)} ${Y(p[1]).toFixed(1)}`).join('');
+  const sm = Math.max(...t.spread.map(p => p[1])) || 1;
+  const sp = t.spread.map(p => `<rect x="${X(p[0]) - 1}" y="${h - 4 - (p[1] / sm) * 14}" width="2" height="${(p[1] / sm) * 14}" fill="var(--series-2)"><title>spread ${p[1]}σ</title></rect>`).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(t.inst)} ${esc(t.date)}"><rect x="${X(-5)}" y="2" width="${w - 4 - X(-5)}" height="${h - 22}" fill="rgba(255,255,255,.06)"/><path d="${d}" fill="none" stroke="var(--series-1)" stroke-width="1.5"/>${sp}</svg>`;
+}
+
+export function jumpLookHtml(d) {
+  if (!d) return '<p class="empty">Loading the bursts…</p>';
+  const rows = d.blocks.map(b => `<tr><td>${esc(b.block)}</td><td class="num">${b.n.toLocaleString()}</td><td class="num">${(b.share * 100).toFixed(0)}%</td><td class="num">${b.spread_x_median}×</td><td class="num">${(b.spread_x_over3 * 100).toFixed(0)}%</td><td class="num">${(b.cojump_share * 100).toFixed(0)}%</td><td class="num">${b.size_median}σ</td><td class="num">${b.sched == null ? '–' : (b.sched * 100).toFixed(0) + '%'}</td></tr>`).join('');
+  const shots = d.shots.map(t => `<div class="tr-card"><b>${esc(t.inst)}</b> ${esc(t.date)} ${esc(t.time)}<br>${esc(t.block)} · |L| ${Math.abs(t.L)} · ${t.size}σ<br>spread ${t.spread_x ?? '–'}× normal · ${t.cojump} instruments together${t.sched == null ? '' : t.sched ? ' · scheduled' : ' · no release'}${shotSvg(t)}</div>`).join('');
+  return `<p class="muted">${d.n.toLocaleString()} bursts, ${d.per_inst_year} per instrument per year (${(d.share_of_sessions * 100).toFixed(0)}% of sessions). They fall in only ${d.events?.toLocaleString() ?? '–'} distinct 5-minute moments, because most hit several instruments at once. Nothing below reads a price after the burst bar, so the scored test stays blind.</p>
+  <div class="scroll"><table class="t"><thead><tr><th>London time</th><th class="num">Bursts</th><th class="num">Share</th><th class="num">Spread vs normal</th><th class="num">Spread over 3×</th><th class="num">3+ instruments together</th><th class="num">Median size</th><th class="num">On a release</th></tr></thead><tbody>${rows}</tbody></table></div>
+  <h3 style="margin-top:12px">30 bursts by a fixed seed, six per time block</h3><p class="sub muted">Blue: price over the hour before. The shaded part is the burst bar. Orange bars: the bid/ask spread each minute.</p><div class="tr-grid viz">${shots}</div>`;
+}

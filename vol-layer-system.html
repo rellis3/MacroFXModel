@@ -64,8 +64,8 @@ table.t th.num { text-align: right; }
 </div>
 
 <script type="module">
-import { LAYERS, BUILD_ORDER, DEEP_DIVE, SOURCE_NOTE, COMBINED, TESTS, NAMED, PROOF } from './js/volLayerResearch.js';
-import { PROOF_CSS, proofListHtml, proofHtml, cogReviewHtml } from './js/volLayerProof.js';
+import { LAYERS, BUILD_ORDER, DEEP_DIVE, SOURCE_NOTE, COMBINED, TESTS, NAMED, PROOF, STAGES } from './js/volLayerResearch.js';
+import { PROOF_CSS, proofListHtml, proofHtml, cogReviewHtml, jumpLookHtml } from './js/volLayerProof.js';
 
 document.head.insertAdjacentHTML('beforeend', `<style>${PROOF_CSS}</style>`);
 
@@ -135,7 +135,7 @@ function systemHtml() {
       <p class="muted" style="margin-top:8px">Layer 1 publishes the shared state; 2–7 read it; 8 (dashed) feeds errors back into all of them.</p></div>
     <div class="card"><h3>Build order</h3><table class="t"><thead><tr><th>#</th><th>Layer</th><th>Why here</th></tr></thead><tbody>
       ${BUILD_ORDER.map(b => `<tr><td class="num">${b.step}</td><td>${esc(b.what)}</td><td>${esc(b.why)}</td></tr>`).join('')}</tbody></table>
-      <h3 style="margin-top:14px">How each layer is researched</h3><ol>${DEEP_DIVE.map(d => `<li>${esc(d)}</li>`).join('')}</ol></div>
+      <h3 style="margin-top:14px">How each deep dive runs (six stages, agreed 2026-11-08)</h3><ol>${DEEP_DIVE.map(d => `<li>${esc(d)}</li>`).join('')}</ol></div>
   </div>
   <div class="card" style="margin-top:12px"><h3>Combined test (once layers pass on their own)</h3>
     <p>Layers are added one at a time to the same walk-forward, same costs, same M1 fills, same lockbox. Each addition is kept only if it
@@ -145,6 +145,14 @@ function systemHtml() {
     ${['+ 2 jumps', '+ 4 views', '+ 5 meta-labelling', '+ 3 / 6 corr, sizing', '+ 8 feedback'].map(s =>
       `<tr><td>${s}</td><td class="num muted">–</td><td class="num muted">–</td><td class="num muted">–</td><td class="num muted">–</td><td class="muted">not run</td></tr>`).join('')}</tbody></table></div></div>
   <div class="card" style="margin-top:12px"><h3>Live shared state, today</h3>${liveTable(['sigma', 'dsig', 'rel', 'reg', 'err', 'jump'])}</div>`;
+}
+
+function stageHtml(id) {
+  const st = STAGES[id];
+  if (!st) return '';
+  const names = ['Understand', 'Build and look', 'Go wide', 'Confirm', 'Review', 'Next item'];
+  const steps = names.map((n, i) => `<span class="pill" style="${i + 1 < st.at ? 'color:var(--green);border-color:var(--green)' : i + 1 === st.at ? 'color:#e0a32e;border-color:#e0a32e' : ''}">${i + 1}. ${n}</span>`).join(' ');
+  return `<div class="card" style="margin-top:12px"><h3>Where this deep dive is</h3><div class="chips">${steps}</div><p style="margin-top:8px">${esc(st.note)}</p>${st.done.length ? `<ul>${st.done.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : ''}</div>`;
 }
 
 function layerHtml(L) {
@@ -169,6 +177,8 @@ function layerHtml(L) {
       ${L.defects.length ? `<ul>${L.defects.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : '<p class="empty">None found yet.</p>'}</div>
   </div>
   ${L.id === 'state' || L.id === 'jumps' ? `<div class="card" style="margin-top:12px"><h3>Live, today</h3>${liveTable(L.id === 'state' ? ['sigma', 'dsig', 'rel', 'reg', 'err'] : ['sigma', 'jump'])}</div>` : ''}
+  ${stageHtml(L.id)}
+  ${L.id === 'jumps' ? (loadProof('jump-look'), `<div class="card" style="margin-top:12px"><h3>Stage 2: what the detector flags, before any outcome is read</h3>${jumpLookHtml(proofData['jump-look'])}</div>`) : ''}
   <div class="card" style="margin-top:12px"><h3>Tests touching this layer</h3>${trackerHtml(L.id === 'features' ? 'corr' : L.id === 'execution' ? 'stops' : L.id)}</div>
   <div class="card" style="margin-top:12px"><h3>Deep-dive findings</h3>${findings}</div>`;
 }
