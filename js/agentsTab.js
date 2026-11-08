@@ -161,6 +161,29 @@ export function init(doc = document, fetchFn = (...a) => fetch(...a)) {
   root.addEventListener('keydown', ev => { const node = ev.target.closest?.('[data-node]'); if (node && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); node.dispatchEvent(new MouseEvent('click', { bubbles: true })); } });
   root.addEventListener('toggle', ev => { const c = ev.target; if (c?.matches?.('details.ag-card')) { c.open ? open.add(c.dataset.agent) : open.delete(c.dataset.agent); } }, true);
   $('agReload')?.addEventListener('click', () => load());
+  // Download the chart now shown as a JPEG: clone the SVG, copy the computed styles onto the clone (the page's CSS styles the boxes and lines, a standalone
+  // SVG would lose them), paint it on a canvas at 2x over the card background and save it.
+  $('agDownload')?.addEventListener('click', async () => {
+    const svg = $('agChart')?.querySelector('svg'); if (!svg) return;
+    const btn = $('agDownload'), label = btn.textContent; btn.disabled = true; btn.textContent = 'Preparing…';
+    try {
+      const view = doc.defaultView, clone = svg.cloneNode(true);
+      const src = [svg, ...svg.querySelectorAll('*')], dst = [clone, ...clone.querySelectorAll('*')];
+      src.forEach((el, i) => { const cs = view.getComputedStyle(el); let css = ''; for (let k = 0; k < cs.length; k++) css += `${cs[k]}:${cs.getPropertyValue(cs[k])};`; dst[i].setAttribute('style', css); });
+      const w = Number(svg.getAttribute('width')) || svg.getBoundingClientRect().width, h = Number(svg.getAttribute('height')) || svg.getBoundingClientRect().height;
+      const bg = view.getComputedStyle($('agChart')).backgroundColor, bgc = bg && bg !== 'rgba(0, 0, 0, 0)' ? bg : '#ffffff';
+      const xml = new view.XMLSerializer().serializeToString(clone);
+      const url = view.URL.createObjectURL(new view.Blob([xml], { type: 'image/svg+xml;charset=utf-8' }));
+      const img = new view.Image(); await new Promise((ok, no) => { img.onload = ok; img.onerror = () => no(new Error('could not draw the chart')); img.src = url; });
+      const scale = Math.min(2, 16000 / Math.max(w, h)), c = doc.createElement('canvas'); c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+      const g = c.getContext('2d'); g.fillStyle = bgc; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height); view.URL.revokeObjectURL(url);
+      const blob = await new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.92)); if (!blob) throw new Error('could not make the image');
+      const a = doc.createElement('a'), name = (D?.flows.find(f => f.id === flowId)?.name || 'flow').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      a.href = view.URL.createObjectURL(blob); a.download = `agents-${name}.jpg`; doc.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => view.URL.revokeObjectURL(a.href), 4000);
+    } catch (e) { const st = $('agStatus'); if (st) st.textContent = `Download failed: ${e.message}`; }
+    finally { btn.disabled = false; btn.textContent = label; }
+  });
   return { load, get data() { return D; } };
 }
 
