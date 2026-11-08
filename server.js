@@ -5754,7 +5754,7 @@ async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS), caseI
   }
   const papers = await _rpGet(_LIT.papers, []), heldIds = new Set(papers.map(p => p.id));
   const libCase = _LIX.libraryContextOn() && caseId ? (await _rcRead()).cases.find(x => x.id === caseId) : null;
-  const libCtx = await _libCtx(brief || libCase?.question ? _LIX.caseQuery(libCase ?? {}, brief) : '');   // LIBRARY_CONTEXT=1 only
+  const libCtx = await _libRoundCtx(brief || libCase?.question ? _LIX.caseQuery(libCase ?? {}, brief) : '');   // LIBRARY_CONTEXT=1 only: the librarian, else the rule-based context; once for all the researchers
   const paperIds = _LIX.citeableIds(heldIds, libCtx?.ids);   // the held papers (unchanged) plus the ids injected into the prompts
   _rpJob && (_rpJob.stage = 'researchers');
   await Promise.all(lenses.filter(l => _RP_RESEARCHERS[l]).map(async lens => {
@@ -5794,7 +5794,7 @@ async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS), caseI
     await kv.put(_RP.library, JSON.stringify(l2));
     // round 1 of the case: each researcher's headline, questions and proposal ids; the question started it
     const c = caseId ? (await _rcRead()).cases.find(x => x.id === caseId) : null;
-    if (c) await _rcPut({ ..._RCS.finishJob(_RCS.appendRound(c, { owner: c.question || null, answers: Object.fromEntries(Object.entries(out.researchers).map(([k, r]) => [k, _RCS.answerOf(r)])), errors: out.errors, at: out.at, web: out.web, libraryIds: libCtx?.ids })), pending: null, lastError: null });
+    if (c) await _rcPut({ ..._RCS.finishJob(_RCS.appendRound(c, { owner: c.question || null, answers: Object.fromEntries(Object.entries(out.researchers).map(([k, r]) => [k, _RCS.answerOf(r)])), errors: out.errors, at: out.at, web: out.web, libraryIds: libCtx?.ids, librarian: libCtx?.librarian })), pending: null, lastError: null });
   });
   const cites = screened.filter(p => p.citations?.length);
   if (cites.length) { let pl = await _rpGet(_LIT.papers, []); for (const p of cites) pl = _litCite(pl, p.citations, { proposals: [p.id] }); await kv.put(_LIT.papers, JSON.stringify(pl)); }
@@ -5838,6 +5838,17 @@ async function _libCtx(query, { force = false } = {}) {
   try { const c = await _libApi.contextFor(query); return c?.text ? c : null; }
   catch (e) { console.warn('[library-context]', e.message); return null; }
 }
+/**
+ * LIBRARY_CONTEXT=1 only: the librarian's context for a research round (js/libraryLibrarian.js: scan the index, one small model call picks, the picked
+ * papers' digests), or, when the librarian cannot run (no key, bad JSON, timeout, cap), the rule-based _libCtx. Called ONCE per round / review and
+ * shared by the researchers. null when the flag is off (the librarian never runs then) or nothing was found. Never throws.
+ */
+async function _libRoundCtx(query) {
+  if (!_LIX.libraryContextOn()) return null;
+  if (!String(query ?? '').trim()) return null;
+  try { return await _libApi.roundContext(query); }
+  catch (e) { console.warn('[library-librarian]', e.message); return _libCtx(query); }
+}
 /** On first read in this process: turn the stored sessions into cases (idempotent; the store lists what it migrated). */
 async function _rcEnsure() {
   if (_rcMigrated) return;
@@ -5861,7 +5872,7 @@ async function _rcRound(id, text, job, images = []) {
   const [store, lib, papers] = await Promise.all([_rcRead(), _rpGet(_RP.library, []), _rpGet(_LIT.papers, [])]);
   const c = store.cases.find(x => x.id === id); if (!c) throw new Error(`no case ${id}`);
   const heldIds = new Set(papers.map(p => p.id)), answers = {}, errors = {};
-  const libCtx = await _libCtx(_LIX.caseQuery(c, text)), paperIds = _LIX.citeableIds(heldIds, libCtx?.ids);   // LIBRARY_CONTEXT=1 only
+  const libCtx = await _libRoundCtx(_LIX.caseQuery(c, text)), paperIds = _LIX.citeableIds(heldIds, libCtx?.ids);   // LIBRARY_CONTEXT=1 only
   job.stage = 'the three researchers';
   await Promise.all(_RCS.LENSES.map(async lens => {
     const base = roles.find(r => r.id === _RP_RESEARCHERS[lens].role); if (!base) { errors[lens] = 'no role file'; return; }
@@ -5892,7 +5903,7 @@ async function _rcRound(id, text, job, images = []) {
     if (fresh.length) { const { DESK_EVIDENCE: L } = await import('./js/deskEvidence.js'); l2 = _rpMerge(l2, _tdScreen(fresh.map(p => ({ ...p, variable: p.test.variable, condition: p.thesis })), rows, L).map(({ variable, condition, ...p }) => p), date); }
     await kv.put(_RP.library, JSON.stringify(_RCS.tagLibrary(l2, touched, id)));
     const c2 = (await _rcRead()).cases.find(x => x.id === id);
-    await _rcPut({ ..._RCS.finishJob(_RCS.appendRound(c2, { owner: text, answers: recs, errors, at: now, images, libraryIds: libCtx?.ids })), pending: null, lastError: null });
+    await _rcPut({ ..._RCS.finishJob(_RCS.appendRound(c2, { owner: text, answers: recs, errors, at: now, images, libraryIds: libCtx?.ids, librarian: libCtx?.librarian })), pending: null, lastError: null });
   });
 }
 /** The Head of Research (research-head, Anthropic by default): peer-reviews the whole case. Only when the owner asks. */
@@ -5915,7 +5926,7 @@ async function _rcReview(id, job) {
   // The three sections that are the same for every review (about 50k tokens, most of it the whole Evidence Book) come
   // first and are marked stable, so a second review within 5 minutes reads them from Anthropic's cache at a tenth of
   // the price. Until 2026-11-07 they came after the case and were paid for in full on every review.
-  const libCtx = await _libCtx(_LIX.caseQuery(c));
+  const libCtx = await _libRoundCtx(_LIX.caseQuery(c));
   const { system, prompt } = _deskStagePrompt({ role, pack: { date: _dpLondonDate(Date.now()) }, ledger: DESK_EVIDENCE, stableSections: 3, sections: [
     ['The data inventory (feeds the server holds; name feed ids in the plan)', _rpInventory()],
     ['The Evidence Book (every entry: [tag] claim -> use)', evidenceBrief(DESK_EVIDENCE)],
@@ -5928,7 +5939,7 @@ async function _rcReview(id, job) {
   const lenses = [...new Set(c.rounds.flatMap(r => Object.keys(r.answers ?? {})))];
   const v = await _modelJson({ task: 'research-head', system, prompt, maxTokens: 16_000, label: 'desk:head-of-research', images, validate: o => _RCS.validateHeadReview(o, { lenses, proposalIds: ids }) });
   if (!v.ok) throw new Error(v.errors.join('; '));
-  await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); await _rcPut({ ..._RCS.finishJob(_RCS.appendReview(c2, { ...v.value, ...(pics.length ? { pictures: { sent, attached: pics.map(a => a.id) } } : {}), ...(libCtx ? { libraryIds: libCtx.ids } : {}) }, { model: v.model, notes: v.notes ?? [] })), lastError: null }); });
+  await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); await _rcPut({ ..._RCS.finishJob(_RCS.appendReview(c2, { ...v.value, ...(pics.length ? { pictures: { sent, attached: pics.map(a => a.id) } } : {}), ...(libCtx ? { libraryIds: libCtx.ids, ...(libCtx.librarian ? { librarian: libCtx.librarian } : {}) } : {}) }, { model: v.model, notes: v.notes ?? [] })), lastError: null }); });
 }
 function _rcStartJob(id, kind, run, marker = null) {
   marker ??= _RCS.jobMarker({ kind });
@@ -6032,19 +6043,46 @@ app.get('/api/research-pod/case', async (req, res) => {
     res.json({ ok: true, label: _RCS.LABEL, case: c, summary: _RCS.summary(c, _rcJobs[id]), job: _rcJobs[id] ?? null, plan: _RCS.planProposal(c), proposalIds: _RCS.proposalIds(c) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-// GET|POST /api/research-pod/case/library-preview?id=&text=: the library context that WOULD be put in the researchers' prompts for this case
+/** The librarian's result as JSON for the owner's routes: { top:{queries, candidates, picks (+title, year), none, calls, text}, librarian:{ran, ok, reason} }. */
+function _libShape(lib) {
+  const byId = new Map((lib.candidates ?? []).map(c => [c.id, c]));
+  return { librarian: { ran: lib.calls > 0, ok: !!lib.ok, ...(lib.ok ? {} : { reason: lib.reason }) },
+    top: { queries: lib.queries ?? [], candidates: (lib.candidates ?? []).map(c => ({ id: c.id, title: c.title })), picks: (lib.picks ?? []).map(p => ({ ...p, title: byId.get(p.id)?.title ?? null, year: byId.get(p.id)?.year ?? null })), none: !!lib.none, text: lib.ok ? lib.text : '' } };
+}
+// GET|POST /api/research-pod/case/library-preview?id=&text=&librarian=1: the library context that WOULD be put in the researchers' prompts for this case
 // (js/libraryIndex.js buildContext), so the owner can read it first. No model call, no spend; works with LIBRARY_CONTEXT off (it says so).
 const _rcLibraryPreview = async (req, res) => {
   try { res.set('Cache-Control', 'no-store'); const src = { ...(req.query ?? {}), ...(req.body && typeof req.body === 'object' ? req.body : {}) };
     const id = String(src.id ?? ''), c = (await _rcStore()).cases.find(x => x.id === id);
     if (!c) return res.status(404).json({ ok: false, error: 'no such case' });
-    const query = _LIX.caseQuery(c, String(src.text ?? '').slice(0, 600)), ctx = await _libCtx(query, { force: true });
+    const query = _LIX.caseQuery(c, String(src.text ?? '').slice(0, 600));
+    // librarian=1 RUNS the librarian (1-2 small DeepSeek calls, counted against the 400 cap in `calls`); without it nothing is spent
+    const wantLib = /^(1|true|yes|on)$/i.test(String(src.librarian ?? '')), lib = wantLib ? await _libApi.librarian(query).catch(e => ({ ok: false, reason: e.message, queries: [], calls: 0 })) : null;
+    const ctx = lib?.ok ? lib : await _libCtx(query, { force: true });
     res.json({ ok: true, enabled: _LIX.libraryContextOn(), flag: 'LIBRARY_CONTEXT=1', caseId: id, query, ids: ctx?.ids ?? [], chars: ctx?.text.length ?? 0,
-      papers: (ctx?.rows ?? []).map(r => ({ id: r.id, title: r.t, year: r.y, score: r.score, why: r.why })), text: ctx?.text ?? '' }); }
+      papers: (ctx?.rows ?? []).map(r => ({ id: r.id, title: r.t, year: r.y, score: r.score, why: r.why })), text: ctx?.text ?? '',
+      ...(lib ? { librarian: _libShape(lib).librarian, ..._libShape(lib).top, calls: lib.calls, ...(lib.ok ? {} : { fallback: lib.reason, note: 'the librarian could not run; the text is the rule-based context' }) } : {}) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 };
 app.get('/api/research-pod/case/library-preview', _rcLibraryPreview);
 app.post('/api/research-pod/case/library-preview', _rcLibraryPreview);
+// POST /api/research-pod/librarian { q, n }: run just the librarian on a free-text question (owner / dev tool, no researcher run). It makes 1-2 small DeepSeek
+// calls (task library-librarian), counted in `calls` and against the hard cap of 400 in KV library_librarian_v1; it runs whatever LIBRARY_CONTEXT says.
+// Same open style as the other research-pod routes. n = most papers to pick (1-6). GET returns the cap status.
+app.get('/api/research-pod/librarian', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); res.json({ ok: true, enabled: _LIX.libraryContextOn(), flag: 'LIBRARY_CONTEXT=1', ...(await _libApi.librarianStatus()) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/research-pod/librarian', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const q = String(req.body?.q ?? '').replace(/\s+/g, ' ').trim().slice(0, 600), n = Math.min(6, Math.max(1, Math.round(Number(req.body?.n)) || 6));
+    if (!q) return res.status(400).json({ ok: false, error: 'ask a question' });
+    const lib = await _libApi.librarian(q, { maxPicks: n }), shaped = _libShape(lib), st = await _libApi.librarianStatus().catch(() => null);
+    if (!lib.ok) return res.status(/cap reached/.test(lib.reason) ? 429 : 503).json({ ok: false, error: `the librarian could not run: ${lib.reason}`, q, calls: lib.calls, queries: lib.queries, cap: st });
+    res.json({ ok: true, q, ...shaped.top, calls: lib.calls, cap: st, note: `used ${lib.calls} small AI call${lib.calls === 1 ? '' : 's'}` });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // POST /api/research-pod/case/reply { id, text }: the owner's message starts the next round; all three answer (background).
 app.post('/api/research-pod/case/reply', async (req, res) => {
   try {
@@ -6873,6 +6911,13 @@ const _libApi = _createLibraryApi({
   figsModel: async ({ system, prompt, maxTokens }) => {
     const v = await _modelJson({ task: 'library-figs', system, prompt, maxTokens, timeoutMs: 150_000, label: 'library:figs', tries: 1,
       validate: o => (o && (Array.isArray(o.notes) || Array.isArray(o)) ? { ok: true, value: o } : { ok: false, errors: ['the reply has no notes array'] }) });
+    if (!v.ok) throw new Error(v.errors.join('; '));
+    return v.value;
+  },
+  // the librarian (js/libraryLibrarian.js): DeepSeek, task 'library-librarian', ONE small call that picks papers from a candidate list; capped in KV (library_librarian_v1)
+  librarianModel: async ({ system, prompt, maxTokens }) => {
+    const v = await _modelJson({ task: 'library-librarian', system, prompt, maxTokens, timeoutMs: 60_000, label: 'library:librarian', tries: 1,
+      validate: o => (o && typeof o === 'object' ? { ok: true, value: o } : { ok: false, errors: ['the reply is not a JSON object'] }) });
     if (!v.ok) throw new Error(v.errors.join('; '));
     return v.value;
   },

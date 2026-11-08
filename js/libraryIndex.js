@@ -283,7 +283,7 @@ export function buildContext(query, ix, papers, { n = 6, maxChars = 5500, figNot
 /** LIBRARY_CONTEXT=1 (or true / on / yes) switches the library context on. Default off. */
 export const libraryContextOn = (env = (typeof process !== 'undefined' ? process.env : {})) => /^(1|true|on|yes)$/i.test(String(env?.LIBRARY_CONTEXT ?? '').trim());
 /** The prompt section for a context ([title, text]); the title starts with 'LIBRARY:'. */
-export const librarySection = ctx => ['LIBRARY: held papers most related to this question (cite by id)', ctx.text];
+export const librarySection = ctx => [ctx.title || 'LIBRARY: held papers most related to this question (cite by id)', ctx.text];
 /**
  * Add the library section to a section list. With no context (flag off, or nothing built) the SAME array is returned, untouched, so the
  * prompt is byte-identical to before. `beforeLast` keeps a final section (the owner's message) last.

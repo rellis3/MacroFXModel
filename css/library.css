@@ -267,3 +267,19 @@ body.lib-listen-open{--listen-h:96px}
   .lib-ix-row{grid-template-columns:minmax(0,3fr) minmax(0,1.2fr) minmax(0,1.3fr) minmax(0,3fr) minmax(0,1.2fr);align-items:start;gap:4px 12px}
   .lib-ix-why{grid-column:1/-1}
 }
+
+/* ask the librarian (index tab): one small AI call; stacked on a phone, input and button side by side from 520px */
+.lib-lb{background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:12px 14px;margin:0 0 14px;min-width:0}
+.lib-lb h3{margin:0 0 4px;font-size:15px}
+.lib-lb-form{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+.lib-lb-form input{width:100%;min-width:0;background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;min-height:46px;font-size:16px;color:var(--text)}
+.lib-lb-form input:focus{outline:2px solid var(--blue-bd);border-color:var(--blue)}
+.lib-lb-form .lib-btn:disabled{opacity:.5;cursor:default}
+.lib-lb-qs{display:flex;flex-wrap:wrap;gap:4px;margin:10px 0 6px}
+.lib-lb-q{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:2px 8px;overflow-wrap:anywhere;max-width:100%}
+.lib-lb-picks{display:flex;flex-direction:column;gap:6px}
+.lib-lb-pick{display:flex;flex-direction:column;gap:2px;background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:9px 12px;text-decoration:none;color:var(--text);min-width:0;overflow-wrap:anywhere}
+.lib-lb-pick:hover{border-color:var(--blue-bd)}
+.lib-lb-t{font-weight:600;font-size:14px;line-height:1.35}
+.lib-lb-why{font-size:13px;color:var(--text2);line-height:1.45}
+@media (min-width:520px){.lib-lb-form{grid-template-columns:minmax(0,1fr) auto}}

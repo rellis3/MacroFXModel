@@ -137,6 +137,8 @@ export const TASK_CLASS = {
   'library-math': { ledger: 'brief', label: 'Paper library: equations to LaTeX', defaultProvider: 'deepseek' },
   // Figure and table notes from the paper's text only (js/libraryFigs.js): same shape as library-math, hard cap of 600 calls in KV (library_figs_v1).
   'library-figs': { ledger: 'brief', label: 'Paper library: figure and table notes', defaultProvider: 'deepseek' },
+  // The librarian (js/libraryLibrarian.js, LIBRARY_CONTEXT=1): ONE small call that picks the papers worth reading from a scanned candidate list (at most 2 per run, hard cap of 400 in KV library_librarian_v1).
+  'library-librarian': { ledger: 'brief', label: 'Paper library: the librarian picks papers', defaultProvider: 'deepseek' },
   'research-head': { ledger: 'full',  label: 'Research pod: Head of Research review', defaultProvider: 'anthropic', models: { anthropic: 'claude-sonnet-5' }, effort: { anthropic: 'high' } },
   // pictures the owner attaches to a research question (owner 2026-11-06): each is read ONCE by a vision model into a
   // written description that the researchers (DeepSeek, which cannot see images) and the Head then read as text.
