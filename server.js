@@ -103,6 +103,7 @@ import { mountBotAuditRoutes } from './js/botAuditRoutes.js';
 import { createPaperRecord } from './js/paperRecordRoutes.js';
 import { createToggleStore as _agCreateToggles, validateToggleBody as _agValidateToggle, TOGGLES as _AG_TOGGLES } from './js/agentSettings.js';   // Bot Config > Agents switches (KV agent_settings_v1); the env var is the fallback
 import * as _AGR from './js/agentRegistry.js';
+import * as _ROE from './js/roeStore.js';   // Research Opportunity Engine P2: records the laptop scanner's runs (KV roe_registry_v1, R2 forward/roe/snapshots/); no model call
 import { buildAgentsPayload } from './js/agentsApi.js';   // every agent, flow and edge, for GET /api/agents
 import * as _LIX from './js/libraryIndex.js';   // Paper Library index + retrieval (LIBRARY_CONTEXT=1 puts the best papers' notes in the researchers' prompts)
 import { createLibraryApi as _createLibraryApi } from './js/libraryApi.js';   // Paper Library API (plans/PAPER_LIBRARY.md)
@@ -4010,6 +4011,29 @@ const _agentsSameOrigin = (req, res, next) => {
   if (o) { let h = null; try { h = new URL(o).host; } catch { /* unparseable */ } if (h !== req.get('host')) return res.status(403).json({ ok: false, error: 'cross-origin request refused' }); }
   next();
 };
+// ── Research Opportunity Engine P2 (js/roeStore.js, plans/RESEARCH_OPPORTUNITY_ENGINE.md section 10) ─────────────────────────────────────────────────────
+// POST /api/roe/push: the laptop scanner (python -m roe --push) sends one run. Auth is a bearer token (env ROE_PUSH_TOKEN, 24+ characters), NOT the browser
+// login, because the laptop has no cookie; with the variable unset the route refuses everything (fails closed). Idempotent by runId: a repeat changes nothing.
+// GET /api/roe/status and /api/roe/runs: the login-gated board header ("discovery not completed for <date>; last completed run <date>") and the run list.
+// Recording only: nothing is scored, labelled or suppressed, and nothing here touches the desk terminal or the newsletter.
+const _roeDeps = () => ({ kv, r2: { configured: _r2Ok, putJSON: _r2PutJSON, getJSON: _r2GetJSON } });
+app.post('/api/roe/push', express.json({ limit: '12mb' }), async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  if (!_ROE.tokenOk(req.get('authorization'), process.env.ROE_PUSH_TOKEN)) return res.status(401).json({ ok: false, error: 'push token missing, wrong, or not configured on the server' });
+  try {
+    const r = await _ROE.recordRun(req.body, _roeDeps());
+    const code = { recorded: 201, already_recorded: 200, invalid: 400, conflict: 409, unavailable: 503 }[r.status] ?? 500;
+    res.status(code).json({ ok: code < 300, ...r });
+  } catch (e) { res.status(500).json({ ok: false, error: `could not record the run: ${e.message}` }); }
+});
+app.get('/api/roe/status', _agentsGate, async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store').json({ ok: true, ..._ROE.boardStatus(await _ROE.readRegistry(kv)) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/roe/runs', _agentsGate, async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store').json({ ok: true, runs: _ROE.listRuns(await _ROE.readRegistry(kv)) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.get('/api/agents', _agentsGate, async (_req, res) => {
   try {
     res.set('Cache-Control', 'no-store');

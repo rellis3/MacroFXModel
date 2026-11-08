@@ -80,6 +80,7 @@ export const STORES = {
   library_librarian_v1: L('Paper Library librarian: model calls used against the hard cap of 400 (js/libraryLibrarian.js; one small DeepSeek call picks the papers for a question)', 60, { market: false }),
   library_figs_v1: L('Paper Library figure and table notes: model calls used against the hard cap and the papers done (js/libraryFigs.js; the notes per paper are in R2)', 60, { market: false }),
   library_math_v1: L('Paper Library equations: model calls used against the hard cap and the papers done (js/libraryMath.js; the LaTeX per paper is in R2)', 60, { market: false }),
+  roe_registry_v1: L('Research Opportunity Engine: one summary per laptop scan run, keyed by run ID (js/roeStore.js; the run files are in R2 forward/roe/snapshots/)', 60, { market: false }),
   agent_settings_v1: L('Bot Config > Agents: the on/off switches for agent features (js/agentSettings.js), e.g. give the researchers the paper library', 60, { market: false }),
   research_pod_papers: R('Literature desk: the paper library (notes per paper, read weekly by the pod)', 8, { market: false }),
   research_pod_quicktests: L('Research lab quick tests: exploratory X-leads-Y checks run from the Desk Office (never banked)', 90, { market: false }),

@@ -124,8 +124,8 @@ asserts nothing changes.
 
 ## Not built (later phases)
 
-Server routes and KV keys, R2 writes, the push client, the question writer (P3), hypothesis families (`familyId` is always null),
-the evaluator, Research QA, the board, the forward tracker (P2-P7), the remaining watch items of the 72 (P8), Cboe-chain gamma
+The question writer (P3), hypothesis families (`familyId` is always null),
+the evaluator, Research QA, the board, the forward tracker (P3-P7), the remaining watch items of the 72 (P8), Cboe-chain gamma
 percentiles (no history yet), FX skew, the feature store, IBKR files and M1 realised ranges. Exchange holidays are not modelled
 (sessions are weekdays).
 
@@ -135,3 +135,14 @@ percentiles (no history yet), FX skew, the feature store, IBKR files and M1 real
 `forecastLadder.js` are in the layer-3 file list of `forge/lockbox_manifest.json`; counting exceedances over the post-2026-08-21 sessions is close
 to scoring that layer. ROE v2 rule 8.4 says no ROE watch item may be an output of the frozen layers before the one lockbox evaluation has run.
 To enable it later (after the evaluation, or if the owner decides otherwise): set `enabled: true`, bump `watchVersion`, run `python -m roe.pin_config`.
+
+
+## Sending a run to the server (phase P2)
+
+`python -m roe --push` scans, then POSTs the finished run to `/api/roe/push`. The server records it once, keyed by run ID (a repeat answers `already_recorded` and writes nothing; the same run ID with different inputs is refused with 409).
+
+One-time setup: choose a secret of 24 or more characters, set it as the Railway variable `ROE_PUSH_TOKEN` and as the environment variable `ROE_PUSH_TOKEN` on the laptop. With the variable unset the server refuses every push. The token is never read from a file in the repo.
+
+If the push fails (network, server restart) the scan is still saved locally: `python -m roe --push-only roe_out/<run id>`. Exit codes: 0 ok, 2 scan failed, 3 run-ID conflict, 4 push failed.
+
+The board header reads `GET /api/roe/status` (needs the site login): it says "discovery not completed for <date>; last completed run <date>" when the laptop has not pushed today's run, and never shows an older run as today's.
