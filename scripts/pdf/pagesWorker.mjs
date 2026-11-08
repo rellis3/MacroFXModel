@@ -1,24 +1,29 @@
 // Positioned text extraction off the main thread (js/paperPages.js extractPages). Like pdfWorker.mjs, but pdf-parse's
 // custom `pagerender` keeps, per page, every pdf.js text item with its position:
-//   { n, w, h, items:[{ str, x, y, w, h, font }] }   x,y = item.transform[4],[5] (PDF units, origin bottom-left)
+//   { n, w, h, items:[{ str, x, y, w, h, font }], rules?, gfx? }   x,y = item.transform[4],[5] (PDF units, origin bottom-left)
+// Per page it also keeps `rules` (drawn horizontal rules) and `gfx` (picture regions, js/pdfGraphics.js: embedded images and clusters of vector paths).
 // pdf-parse 1.1.1 bundles pdf.js 1.10.100; pagerender(pageData) must return a string, so each page goes back as JSON text.
 import { parentPort, workerData } from 'node:worker_threads';
 import { createRequire } from 'node:module';
+import { graphicsRegions } from '../../js/pdfGraphics.js';
 const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
 let OPS = null;   // getOperatorList() needs font faces off (no DOM in a worker thread), else pdf.js throws from a message handler
 try { const lib = createRequire(import.meta.url)('pdf-parse/lib/pdf.js/v1.10.100/build/pdf.js'); lib.PDFJS.disableFontFace = true; OPS = lib.OPS; } catch { /* no rules */ }
-{ const log = console.log.bind(console); console.log = (...a) => { if (!/^Warning: (?:Unable to decode image|TT: undefined function)/.test(String(a[0]))) log(...a); }; }   // pdf.js chatter about images it cannot decode here (no DOM); the text and rules do not need them
+// pdf.js 1.10 builds a DOM Image for every JPEG on a page while it assembles the operator list; there is no DOM in a worker thread, so a
+// page with a JPEG made the whole extraction fail with "Image is not defined" (and the paper fell back to flat text). A stub whose
+// load always fails lets pdf.js carry on: the paintJpegXObject op is still in the list, which is all the graphics regions need.
+if (typeof globalThis.Image === 'undefined') globalThis.Image = class { set src(_v) { queueMicrotask(() => { try { this.onerror?.(new Error('no DOM')); } catch { /* ignore */ } }); } };
+{ const log = console.log.bind(console); console.log = (...a) => { if (!/^Warning: (?:Unable to decode image|TT: undefined function|Error during JPEG image loading)/.test(String(a[0]))) log(...a); }; }   // pdf.js chatter about images it cannot decode here (no DOM); the text and rules do not need them
 let pageNo = 0;
 const r2 = v => Math.round(v * 100) / 100;
 // Horizontal rules drawn on the page (fraction bars, radical overbars): [x0, x1, y, thickness] in PDF units. Text extraction never
 // sees them, so the operator list is walked with a small CTM stack. Cheap, bounded, and a failure just means no rules.
 function mul(a, b) { return [a[0] * b[0] + a[1] * b[2], a[0] * b[1] + a[1] * b[3], a[2] * b[0] + a[3] * b[2], a[2] * b[1] + a[3] * b[3], a[4] * b[0] + a[5] * b[2] + b[4], a[4] * b[1] + a[5] * b[3] + b[5]]; }
 const ap = (m, x, y) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
-async function pageRules(pageData) {
-  if (!OPS) return [];
+async function pageRules(ol) {
+  if (!OPS || !ol) return [];
   const out = [];
   try {
-    const ol = await pageData.getOperatorList();
     let ctm = [1, 0, 0, 1, 0, 0], lw = 1; const stack = []; let segs = [];
     const flush = (stroke, fill) => {
       for (const s of segs) {
@@ -36,6 +41,8 @@ async function pageRules(pageData) {
     for (let i = 0; i < ol.fnArray.length && out.length < 4000; i++) {
       const fn = ol.fnArray[i], a = ol.argsArray[i];
       if (fn === OPS.save) stack.push(ctm); else if (fn === OPS.restore) ctm = stack.pop() ?? ctm;
+      else if (fn === OPS.paintFormXObjectBegin) { stack.push(ctm); if (Array.isArray(a?.[0])) ctm = mul(a[0], ctm); }
+      else if (fn === OPS.paintFormXObjectEnd) ctm = stack.pop() ?? ctm;
       else if (fn === OPS.transform) ctm = mul(a, ctm);
       else if (fn === OPS.setLineWidth) lw = a[0];
       else if (fn === OPS.constructPath) {
@@ -71,8 +78,11 @@ async function pagerender(pageData) {
     if (Math.abs(t[0] ?? 1) < Math.abs(t[1] ?? 0)) o.r = 1;   // rotated text (arXiv margin stamp, rotated tables): the block builder ignores it
     items.push(o);
   }
-  const rules = await pageRules(pageData);
-  return JSON.stringify({ n, w: r2(w), h: r2(h), items, ...(rules.length ? { rules } : {}) });
+  let ol = null;
+  if (OPS) { try { ol = await pageData.getOperatorList(); } catch { /* no rules, no graphics */ } }
+  const rules = await pageRules(ol);
+  const gfx = ol ? graphicsRegions(ol.fnArray, ol.argsArray, OPS, w, h) : [];   // pictures: embedded images and clusters of vector paths
+  return JSON.stringify({ n, w: r2(w), h: r2(h), items, ...(rules.length ? { rules } : {}), ...(gfx.length ? { gfx } : {}) });
 }
 try {
   const opts = { pagerender, ...(workerData.max ? { max: workerData.max } : {}) };

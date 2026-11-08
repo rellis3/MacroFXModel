@@ -4,7 +4,7 @@ import * as M from './model.js';
 import * as S from './speech.js';
 import * as A from './audio.js';
 import * as P from './progress.js';
-import { cropBlock } from './pdfcrop.js';
+import { cropBlock, cropBlockHi } from './pdfcrop.js';
 import * as MA from './math.js';
 import * as SUM from './summary.js';
 
@@ -193,7 +193,7 @@ function blocksHtml(blocks) {
     const a = `data-i="${b.i}"`;
     if (b.type === 'h1') h += `<h2 class="b1" ${a}>${esc(b.text)}</h2>`;
     else if (b.type === 'h2') h += `<h3 class="b2" ${a}>${esc(b.text)}</h3>`;
-    else if (b.type === 'p') h += `<p class="bp" ${a}>${esc(b.text)}</p>`;
+    else if (b.type === 'p') h += `<p class="bp${b.foot ? ' foot' : ''}" ${a}>${esc(b.text)}</p>`;
     else if (MA.hasMath(b)) h += eqHtml(b, a);
     else if (b.type === 'eq' || b.type === 'table' || b.type === 'fig') {
       const what = b.type === 'eq' ? 'Equation' : b.type === 'table' ? 'Table' : 'Figure';
@@ -254,6 +254,27 @@ function setAllEq(mode, blocks, pageSize, incl) {
   const byI = new Map(blocks.map(b => [b.i, b]));
   $('blocks').querySelectorAll('[data-math]').forEach(el => { if (el._mathBad) return; const b = byI.get(+el.dataset.i); setEqView(el, MA.defaultView(b, mode, incl), b, pageSize); });
 }
+// Tap a figure or table crop: the same box re-rendered sharper, in a full-screen overlay (fit to width; "Full size" scrolls inside it,
+// never the page); Esc, the close button or a tap on the backdrop closes it.
+function openZoom(id, b, pageSize, small) {
+  closeZoom();
+  const o = document.createElement('div'); o.className = 'lib-zoom'; o.id = 'libZoom'; o.setAttribute('role', 'dialog'); o.setAttribute('aria-modal', 'true'); o.setAttribute('aria-label', (b.label || (b.type === 'table' ? 'Table' : 'Figure')) + ', page ' + b.page);
+  o.innerHTML = `<div class="zbar"><span class="zt">${esc(b.label || (b.type === 'table' ? 'Table' : 'Figure'))} · page ${b.page}</span><button type="button" class="lib-btn sm" data-z="fit" aria-pressed="true">Fit</button><button type="button" class="lib-btn sm" data-z="full" aria-pressed="false">Full size</button><a class="lib-btn sm" href="${api.pdfUrl(id)}#page=${b.page}" target="_blank" rel="noopener">Open PDF</a><button type="button" class="lib-btn sm zx" data-z="close" aria-label="Close">Close</button></div><div class="zbody"><span class="lib-loading">Sharpening…</span></div>`;
+  document.body.appendChild(o); document.documentElement.classList.add('lib-zoomed');
+  const body = o.querySelector('.zbody');
+  const show = c => { c.className = 'zc'; c.removeAttribute('role'); body.replaceChildren(c); };
+  const copy = document.createElement('canvas'); copy.width = small.width; copy.height = small.height; copy.getContext('2d').drawImage(small, 0, 0); show(copy);   // instant: the crop already on screen
+  cropBlockHi(id, b, pageSize).then(c => { if (c && o.isConnected) show(c); });
+  const mode = m => { body.classList.toggle('full', m === 'full'); o.querySelectorAll('[data-z=fit],[data-z=full]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.z === m))); };
+  o.addEventListener('click', e => { const z = e.target.closest && e.target.closest('[data-z]'); if (z) { if (z.dataset.z === 'close') closeZoom(); else mode(z.dataset.z); } else if (e.target === o || e.target === body) closeZoom(); });
+  o._key = e => { if (e.key === 'Escape') closeZoom(); };
+  document.addEventListener('keydown', o._key);
+  o.querySelector('[data-z=close]').focus();
+}
+function closeZoom() {
+  const o = $('libZoom'); if (!o) return;
+  document.removeEventListener('keydown', o._key); o.remove(); document.documentElement.classList.remove('lib-zoomed');
+}
 function lazyCrops(blocks, pageSize) {
   const byI = new Map(blocks.map(b => [b.i, b]));
   const id = st.cur.paper.id;
@@ -264,7 +285,13 @@ function lazyCrops(blocks, pageSize) {
       const el = en.target, b = byI.get(+el.dataset.i);
       cropBlock(id, b, pageSize).then(canvas => {
         if (!el.isConnected) return;
-        if (canvas) { el.classList.remove('ph'); el.querySelector('.slot').replaceChildren(canvas); canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', (b.type === 'eq' ? 'Equation' : b.type) + ' from page ' + b.page); }
+        if (canvas) {
+          el.classList.remove('ph'); el.querySelector('.slot').replaceChildren(canvas);
+          const what = b.type === 'eq' ? 'Equation' : b.type === 'table' ? 'Table' : 'Figure';
+          canvas.setAttribute('aria-label', what + ' from page ' + b.page);
+          if (b.type !== 'eq') { canvas.setAttribute('role', 'button'); canvas.tabIndex = 0; canvas.title = 'Tap to enlarge'; canvas.classList.add('zoomable'); const open = () => openZoom(id, b, pageSize, canvas); canvas.addEventListener('click', open); canvas.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } }); }
+          else canvas.setAttribute('role', 'img');
+        }
         else el.querySelector('.slot').innerHTML = `<b>${b.type === 'eq' ? 'Equation' : b.type === 'table' ? 'Table' : 'Figure'} on page ${b.page}</b>: could not be drawn here. <a href="${api.pdfUrl(id)}#page=${b.page}" target="_blank" rel="noopener">Page ${b.page}, open PDF</a>`;
       });
     }

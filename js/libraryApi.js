@@ -186,7 +186,7 @@ export function createLibraryApi(deps) {
     const job = (async () => {
       if (r2.ok()) {
         const c = await r2.getBuffer(blocksKey(id)).catch(() => null);
-        if (c) { try { const j = JSON.parse(c.toString('utf8')); if (j?.v === 3 && Array.isArray(j.blocks)) return j; /* v3: equation blocks carry their positioned items (src) for the LaTeX layers */ } catch { /* rebuild */ } }
+        if (c) { try { const j = JSON.parse(c.toString('utf8')); if (j?.v === 4 && Array.isArray(j.blocks)) return j; /* v3: equation blocks carry their positioned items (src) for the LaTeX layers; v4: figure blocks include their graphic (gfx), tables detected by numeric columns, footnote markers cut out (foot blocks) */ } catch { /* rebuild */ } }
       }
       let pages = null, source = 'flat';
       if (r2.ok() && paperHasPdf !== false) {
@@ -195,7 +195,7 @@ export function createLibraryApi(deps) {
       }
       if (!pages) { const t = await textOf(id); if (!t) return null; pages = flatTextToPages(t).pages; }
       const built = buildBlocks(pages);
-      const doc = { v: 3, source, pages: pages.length, pageSize: built.pageSize, blocks: built.blocks };
+      const doc = { v: 4, source, pages: pages.length, pageSize: built.pageSize, blocks: built.blocks };
       if (r2.ok() && built.blocks.length) await r2.putBuffer(blocksKey(id), Buffer.from(JSON.stringify(doc)), 'application/json').catch(e => log.warn?.(`[library] cache blocks ${id}: ${e.message}`));
       return doc;
     })();

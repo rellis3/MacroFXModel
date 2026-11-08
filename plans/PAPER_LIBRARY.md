@@ -124,3 +124,23 @@ equation, and a header switch `Equations: Rendered | Original`, remembered in lo
    reserved before each call). `GET /api/research-pod/math` is the status. Papers with notes first.
 Storage: R2 `research/papers/<id>.math.json`. `GET /api/library/paper` adds `latex`, `latexSource` ('arxiv'|'model'|'rule') and `latexConf` to eq blocks.
 Tests use synthetic position fixtures only; the real-PDF evaluation is a local script and no paper text is committed. Listening still skips equations.
+
+## Figures, tables and footnotes (owner request 2026-11-08: charts and tables must look like charts and tables)
+A 'Figure N' block used to crop only its caption line, and small tables of numbers read as paragraphs of number soup. Blocks cache is now **v4**
+(`blocks.json` of an older version is rebuilt on the next open).
+- **Graphics regions** (`js/pdfGraphics.js`, run per page by `scripts/pdf/pagesWorker.mjs`, kept as `pages[].gfx = [[x0,y0,x1,y1,'i'|'v',n]]`): the operator list is
+  walked with a CTM / clip / form-XObject stack; every painted image (`i`) and path (`v`) becomes a box; boxes within 6 units merge. Dropped: thin full-width
+  rules, page frames and full-page backgrounds, white fills, glyph-sized stencils, regions under ~22 x 22 units.
+- **Matching** (`attachFigureGraphics` in `js/paperText.js`): per caption, candidate regions above and below it in its column(s), no body text between, scored by
+  gap with the document's usual side winning ties; one region per caption, then the other panels of a multi-panel figure; tick labels, legends and axis titles
+  inside the region are absorbed (not read as text). The fig block's box = caption + graphic + 3.5 units, and the block has `gfx:true`. No region: caption only.
+- **Tables**: cells packed into one pdf.js item are split (`4.81%    5.19%`, glued labels, back-to-back negatives); a "Table N" caption with no strict rows is
+  anchored (aligned numeric rows under or over it, or the lines between the rules under it). The block box includes the framing rules; the reader shows an
+  image crop, the text is the caption only; listening says "A table appears here." and the numbers are no longer in the search text.
+- **Footnotes**: a raised superscript-sized number glued to a word is cut from the paragraph when the same number starts a footnote line lower on the page; that
+  footnote body is a `p` block with `foot:true` (small in the reader, skipped when listening).
+- **Reader**: figure and table crops fit the container width (`max-width:100%`); a tap opens an overlay with the same box re-rendered sharper
+  (`zoomView` in `js/library/crop.js`, ~1800 px wide, bounded pixels), Fit / Full size (scrolls inside the overlay, never the page), Open PDF, Esc to close.
+- Also fixed on the way: a table's wide cell gap on a short column is no longer taken for the page gutter; text heights that are several times the real glyph
+  size (old Word/Acrobat output) are rescaled; figures and tables set after the References heading are kept; a page with a JPEG no longer makes the whole
+  extraction fail ("Image is not defined" in the worker).

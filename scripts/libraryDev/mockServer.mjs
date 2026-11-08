@@ -22,7 +22,7 @@ export function syntheticPdf() {
   add('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 5 0 R /Resources << /Font << /F1 7 0 R >> >> >>');
   add('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 6 0 R /Resources << /Font << /F1 7 0 R >> >> >>');
   const c1 = 'BT /F1 18 Tf 72 700 Td (Synthetic page one) Tj ET BT /F1 22 Tf 200 610 Td (r = mu dt + sigma dW   (1)) Tj ET 0.8 0.2 0.2 rg 150 600 300 40 re S';
-  const c2 = 'BT /F1 14 Tf 72 700 Td (Synthetic page two) Tj ET BT /F1 12 Tf 100 500 Td (Table 1: a 1.0 b 2.0 c 3.0) Tj ET 100 490 300 30 re S';
+  const c2 = 'BT /F1 14 Tf 72 700 Td (Synthetic page two) Tj ET BT /F1 12 Tf 100 500 Td (Table 1: a 1.0 b 2.0 c 3.0) Tj ET 100 490 300 30 re S 0.1 0.3 0.7 RG 2 w 100 100 400 350 re S 100 120 m 200 300 l 300 200 l 400 420 l 500 380 l S BT /F1 11 Tf 100 80 Td (Figure 1: a synthetic chart, tall box) Tj ET';
   add(`<< /Length ${c1.length} >>\nstream\n${c1}\nendstream`);
   add(`<< /Length ${c2.length} >>\nstream\n${c2}\nendstream`);
   add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
@@ -49,6 +49,8 @@ B('eq', 'a very wide synthetic sum', { page: 1, bbox: [150, 600, 450, 640], labe
 B('eq', 'formula the renderer will refuse', { page: 1, bbox: [150, 600, 450, 640], label: '4', latex: '\\frac{a}{', latexSource: 'model', latexConf: 0.85 });
 B('p', para(3));
 B('table', 'Table 1', { page: 2, bbox: [100, 490, 400, 520], label: 'Table 1' });
+B('fig', 'Figure 1: a synthetic chart, tall box', { page: 2, bbox: [96, 72, 504, 456], label: 'Figure 1', gfx: true });   // caption + graphic, a tall crop
+B('p', '1 A synthetic footnote body, set small and skipped when listening.', { page: 2, foot: true });
 B('eq', 'broken box on purpose', { page: 9, bbox: [10, 10, 100, 40], label: '(2)' });
 for (let k = 4; k < 22; k++) { if (k % 6 === 0) B('h2', 'Section ' + k); B('p', para(k)); }
 B('refs', 'Invented, A. (2000). A made-up reference list entry.');
@@ -111,7 +113,7 @@ export function startServer(port = 0) {
       if (ep === 'read-next') return send(res, { ok: true, ids: ['p3', 'p5'], why: { p3: 'matches open case "Positioning extremes"', p5: 'matches open case "Regime filter"' } });
       if (ep === 'listen') {
         const full = q.get('mode') === 'full';
-        const s = (full ? blocks.filter(b => b.type === 'p').map(b => b.text) : ['Briefing for the synthetic study.', 'The claim is that clustering predicts jumps.', 'The desk caveat is that this is invented.']).flatMap(t => t.split(/(?<=\.)\s+/));
+        const s = (full ? blocks.filter(b => b.type === 'p' && !b.foot).map(b => b.text) : ['Briefing for the synthetic study.', 'The claim is that clustering predicts jumps.', 'The desk caveat is that this is invented.']).flatMap(t => t.split(/(?<=\.)\s+/));
         return send(res, { ok: true, sentences: s, title: paper ? paper.title : '', secs: s.length * 4 });
       }
       if (ep === 'pdf') { const pdf = syntheticPdf(); res.writeHead(200, { 'content-type': 'application/pdf', 'accept-ranges': 'bytes', 'content-length': pdf.length }); return res.end(pdf); }

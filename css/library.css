@@ -111,12 +111,26 @@ a.lib-pcard,.lib-pcard{display:block;text-decoration:none;color:inherit;position
 .lib-blocks h2.b1{font-size:1.34em;margin:26px 0 10px}
 .lib-blocks h3.b2{font-size:1.07em;margin:20px 0 8px}
 .lib-blocks p.bp{color:var(--text2);margin-bottom:14px;overflow-wrap:anywhere}
+.lib-blocks p.bp.foot{font-size:.8em;color:var(--text3);margin-bottom:8px;padding-left:10px;border-left:2px solid var(--border)}
 .lib-blocks .refs{font-size:12.5px;color:var(--text3);margin-bottom:10px}
 .lib-blocks details.lib-refs summary{cursor:pointer;color:var(--text3);font-size:13px;min-height:36px}
 .lib-blocks [data-i]{scroll-margin-top:12px}
 .lib-speaking{background:var(--blue-bg);border-radius:4px;box-shadow:0 0 0 6px var(--blue-bg);transition:background .2s}
 .lib-fig{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:10px;margin:14px 0;overflow-x:auto;text-align:center}
 .lib-fig canvas{max-width:100%;height:auto;background:#fff;border-radius:4px}
+.lib-fig canvas.zoomable{cursor:zoom-in;display:block;margin:0 auto}
+.lib-fig canvas.zoomable:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+/* tap-to-enlarge overlay for figure and table crops: fits the screen width; "Full size" scrolls inside, not the page */
+html.lib-zoomed,html.lib-zoomed body{overflow:hidden}
+.lib-zoom{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;background:rgba(8,10,14,.92)}
+.lib-zoom .zbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 12px;background:var(--s1);border-bottom:1px solid var(--border)}
+.lib-zoom .zbar .zt{flex:1 1 100%;font-size:12.5px;color:var(--text2);overflow-wrap:anywhere}
+.lib-zoom .zbar [aria-pressed="true"]{background:var(--blue-bg);border-color:var(--blue-bd);color:var(--blue)}
+.lib-zoom .zbar .zx{margin-left:auto}
+.lib-zoom .zbody{flex:1;min-height:0;overflow:auto;padding:10px;touch-action:pan-x pan-y pinch-zoom;-webkit-overflow-scrolling:touch;text-align:center}
+.lib-zoom .zbody .zc{display:block;margin:0 auto;width:100%;height:auto;max-width:100%;background:#fff;border-radius:4px}
+.lib-zoom .zbody.full .zc{width:auto;max-width:none;height:auto;margin:0}
+.lib-zoom .zbody .lib-loading{color:#cfd6e4}
 .lib-fig .cap{font-size:11.5px;color:var(--text3);margin-top:6px;font-family:'DM Mono',monospace;text-align:left}
 .lib-fig.ph{text-align:left;border-style:dashed;color:var(--text2);font-size:13px}
 .lib-fig.ph b{color:var(--amber)}

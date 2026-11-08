@@ -1,6 +1,6 @@
 // Lazy pdf.js (cdnjs, pinned) used only to cut equation/table crops out of the original page.
 // Loaded the first time an eq/table block is shown; any failure resolves to null so the caller shows a placeholder.
-import { cropRect, renderScale } from './crop.js';
+import { cropRect, renderScale, zoomView } from './crop.js';
 import { api } from './api.js';
 
 const VER = '3.11.174';
@@ -60,4 +60,20 @@ export async function cropBlock(id, block, pageSizes) {
   out.width = r.sw; out.height = r.sh;
   out.getContext('2d').drawImage(src, r.sx, r.sy, r.sw, r.sh, 0, 0, r.sw, r.sh);
   return out;
+}
+/** The same crop rendered at a higher scale for the zoom overlay (not cached: one at a time). Null on any failure. */
+export async function cropBlockHi(id, block, pageSizes) {
+  const size = pageSizes && pageSizes[block.page];
+  const v = block.bbox && size ? zoomView(block.bbox, size) : null;
+  if (!v) return null;
+  const doc = await getDoc(id); if (!doc) return null;
+  try {
+    const page = await doc.getPage(block.page);
+    const canvas = document.createElement('canvas');
+    canvas.width = v.width; canvas.height = v.height;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, v.width, v.height);
+    await page.render({ canvasContext: ctx, viewport: page.getViewport({ scale: v.scale, offsetX: v.offsetX, offsetY: v.offsetY }) }).promise;
+    return canvas;
+  } catch { return null; }
 }
