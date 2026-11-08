@@ -3426,19 +3426,25 @@ const _AI_ROUTING_KV = 'ai_routing_v1';
 let _aiOverride = { at: 0, tasks: {}, models: {}, provider: null, cache: null };
 async function _loadAiOverride() {
   try {
-    const raw = await kv.get(_AI_ROUTING_KV);
+    // getStrict: a failed read throws (and keeps the last good routing) instead of reading as "no routing saved"
+    const raw = await kv.getStrict(_AI_ROUTING_KV);
     const d = raw ? (JSON.parse(raw)?.data ?? JSON.parse(raw)) : null;
     _aiOverride = {
-      at: Date.now(),
+      // nothing saved yet on the first read (the local store may still be loading at boot): look again in 5 s, not 60
+      at: !d && !_aiOverride.at ? Date.now() - 55_000 : Date.now(),
       tasks: (d && typeof d.tasks === 'object') ? d.tasks : {},
       models: (d && typeof d.models === 'object') ? d.models : {},
       provider: d?.provider ?? null,
       cache: typeof d?.cache === 'boolean' ? d.cache : null,
     };
-  } catch { _aiOverride = { at: Date.now(), tasks: {}, models: {}, provider: null, cache: null }; }
+  } catch { _aiOverride = { ..._aiOverride, at: Date.now() }; }   // a failed read keeps the last good routing (an empty one sends every job to the Anthropic default)
   _aiCfgCache = { at: 0, cfg: null };
   return _aiOverride;
 }
+// 2026-11-08: the routing above was read only when the Bot Config page was opened or saved, so after every deploy
+// each job set to DeepSeek on the page ran on the Anthropic default (Opus 5) until someone opened the page. It is
+// now read at boot, and callModel re-reads it when it is more than a minute old.
+_loadAiOverride().catch(() => {});
 function _aiConfig() {
   if (!_aiCfgCache.cfg || Date.now() - _aiCfgCache.at > 60_000) {
     const base = aiConfigFromEnv(process.env);
@@ -3610,6 +3616,7 @@ var _egressFlush = null;   // set once egressPersist has loaded; called by the S
 // `images` ([{ mediaType, data: base64 }]): pictures sent with the prompt, on a provider that reads them (anthropic). A
 // task routed to one that cannot (DeepSeek, Kimi) is refused here with a clear error, never sent (modelRouter refuses too).
 async function callModel({ task = 'misc', system = '', standing = '', prompt = '', maxTokens = 4000, temperature = null, timeoutMs = 300_000, images = [], label = null } = {}) {
+  if (Date.now() - _aiOverride.at > 60_000) await _loadAiOverride();   // the owner's routing from the AI models page, never older than a minute
   const cfg = _aiConfig();
   const r = aiResolveTask(task, cfg);
   const P = AI_PROVIDERS[r.provider];
