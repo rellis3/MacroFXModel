@@ -14,7 +14,7 @@ const D = JSON.parse(readFileSync(`${OUT}/page_trades.json`, 'utf8'));
 const out = { built: new Date().toISOString().slice(0, 10), source: 'js/overnightHoldEngine.js nightVolFeatures on local M1', instruments: {} };
 const r4 = v => (v == null ? null : +v.toFixed(4));
 
-for (const key of ['nq', 'gold']) {
+for (const key of ['nq', 'gold', 'gbpusd', 'usdjpy']) {
   const packed = await loadM1ForPairLocal(key);
   if (!packed) throw new Error(`no local M1 for ${key}`);
   const I = D.instruments[key];

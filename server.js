@@ -15818,8 +15818,8 @@ app.get('/api/overnight-hold-v1/status/:jobId', (req, res) => {
 // request so a typo in from/to can't try to serialize the whole 10-year file.
 app.get('/api/overnight-hold-v1/m1/:instrument', async (req, res) => {
   const key = req.params.instrument;
-  if (key !== 'gold' && key !== 'nq') {
-    return res.status(400).json({ ok: false, error: 'instrument must be "gold" or "nq"' });
+  if (!['gold', 'nq', 'gbpusd', 'usdjpy'].includes(key)) {   // FX: overnight-hold-fx legs on the real-costs page
+    return res.status(400).json({ ok: false, error: 'instrument must be gold, nq, gbpusd or usdjpy' });
   }
   const from = parseInt(req.query.from, 10);
   const to = parseInt(req.query.to, 10);
