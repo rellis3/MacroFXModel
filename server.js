@@ -101,6 +101,9 @@ import { mountSessionHandoffRoutes, startRunJob as _startSessionHandoffRunJob } 
 import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob, asiaLivePlanZones, asiaAllLines, liveCache as _faAsiaLiveCache, liveWarming as _faAsiaLiveWarming, saveAllLiveSnapshots as _faAsiaSaveAllLiveSnapshots } from './js/asiaFibAtlasRoutes.js';
 import { mountBotAuditRoutes } from './js/botAuditRoutes.js';
 import { createPaperRecord } from './js/paperRecordRoutes.js';
+import { createToggleStore as _agCreateToggles, validateToggleBody as _agValidateToggle, TOGGLES as _AG_TOGGLES } from './js/agentSettings.js';   // Bot Config > Agents switches (KV agent_settings_v1); the env var is the fallback
+import * as _AGR from './js/agentRegistry.js';
+import { buildAgentsPayload } from './js/agentsApi.js';   // every agent, flow and edge, for GET /api/agents
 import * as _LIX from './js/libraryIndex.js';   // Paper Library index + retrieval (LIBRARY_CONTEXT=1 puts the best papers' notes in the researchers' prompts)
 import { createLibraryApi as _createLibraryApi } from './js/libraryApi.js';   // Paper Library API (plans/PAPER_LIBRARY.md)
 import { extractPages as _extractPages } from './js/paperPages.js';
@@ -3988,6 +3991,53 @@ app.post('/api/ai-config', async (req, res) => {
   } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
 
+// ── /api/agents ─ every agent, how they hand work on, and the on/off switches (Bot Config > Agents; js/agentRegistry.js, js/agentSettings.js) ──────────
+// GET: the registry (agents, edges, flows), each switch's value and where it came from ('setting' | 'env' | 'default'), the hard caps used so far (read from the
+// existing KV counters), the model each agent's task resolves to (the same resolution as /api/ai-config), and the model-call stats /api/ai-config already shows.
+// No key, prompt or paper text. POST /api/agents/toggle { id, value }: set one switch (KV agent_settings_v1, effective within 30 s on every instance).
+// GATE: /api/ai-config is registered before the global requireAuth and has no check of its own (anyone who can reach the host can POST it), so "the same as
+// ai-config" would be open. These two are STRICTER: _agentsGate needs the main-zone login cookie (the check requireAuth makes), 401 JSON otherwise, and
+// the POST additionally needs a same-origin request (Origin/Referer host = Host when the browser sends one) and a real boolean for `value`.
+const _agentsGate = (req, res, next) => {
+  if (!AUTH_ENABLED) return next();
+  if (authVerifyCookie(authParseCookies(req)[`${AUTH_COOKIE_NAME}_main`], 'main')) return next();
+  res.set('Cache-Control', 'no-store').status(401).json({ ok: false, error: 'login required' });
+};
+const _agentsSameOrigin = (req, res, next) => {
+  const o = req.get('origin') || req.get('referer');
+  if (o) { let h = null; try { h = new URL(o).host; } catch { /* unparseable */ } if (h !== req.get('host')) return res.status(403).json({ ok: false, error: 'cross-origin request refused' }); }
+  next();
+};
+app.get('/api/agents', _agentsGate, async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    if (Date.now() - _aiOverride.at > 60_000) await _loadAiOverride();
+    await _aiJobsLoad();
+    const cfg = _aiConfig(), models = {};
+    for (const id of new Set(_AGR.AGENTS.map(a => a.modelTask).filter(Boolean))) { if (!AI_TASKS[id]) continue; const r = aiResolveTask(id, cfg); models[id] = { provider: r.provider, model: r.model }; }
+    const capsRaw = {};
+    await Promise.all([...new Set(_AGR.AGENTS.map(a => a.cap?.key).filter(Boolean))].map(async k => { capsRaw[k] = await kv.get(k).catch(() => null); }));
+    const jobs = {};
+    for (const id of new Set(_AGR.AGENTS.map(a => a.job).filter(Boolean))) {
+      if (!_AI_JOBS[id]) continue;
+      let railwayOn = true; try { railwayOn = serviceEnabled(id); } catch { /* unregistered: runs ungated */ }
+      jobs[id] = { pageOn: !_aiJobsOff[id], railwayOn, lastRunAt: _svcStats.get(id)?.lastAt ?? null };
+    }
+    const spendTodayUsd = await _spendToday().then(v => +v.toFixed(4)).catch(() => null);
+    res.json(buildAgentsPayload({ toggles: await _agentToggles.all(), capsRaw, models, jobs, stats: modelCallStats(), spendTodayUsd }));
+  } catch (e) { res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/agents/toggle', _agentsGate, _agentsSameOrigin, async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const v = _agValidateToggle(req.body);
+    if (!v.ok) return res.status(400).json({ ok: false, error: v.error });
+    const r = await _agentToggles.set(v.id, v.value);
+    console.log(`[agents] ${v.id} set to ${v.value} from the Agents tab`);
+    res.json({ ok: true, id: v.id, value: r.value, source: 'setting', at: r.at, toggles: await _agentToggles.all() });
+  } catch (e) { res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
+});
+
 function _antText(data) {
   const blocks = Array.isArray(data?.content) ? data.content : [];
   for (const b of blocks) if (b?.type === 'text' && typeof b.text === 'string') return b.text;
@@ -5753,7 +5803,7 @@ async function _rpRun({ brief = '', lenses = Object.keys(_RP_RESEARCHERS), caseI
     catch (e) { out.backlog = { error: e.message, errors: bj.errors.slice(0, 10) }; }
   }
   const papers = await _rpGet(_LIT.papers, []), heldIds = new Set(papers.map(p => p.id));
-  const libCase = _LIX.libraryContextOn() && caseId ? (await _rcRead()).cases.find(x => x.id === caseId) : null;
+  const libCase = (await readToggle('libraryContext')) && caseId ? (await _rcRead()).cases.find(x => x.id === caseId) : null;
   const libCtx = await _libRoundCtx(brief || libCase?.question ? _LIX.caseQuery(libCase ?? {}, brief) : '');   // LIBRARY_CONTEXT=1 only: the librarian, else the rule-based context; once for all the researchers
   const paperIds = _LIX.citeableIds(heldIds, libCtx?.ids);   // the held papers (unchanged) plus the ids injected into the prompts
   _rpJob && (_rpJob.stage = 'researchers');
@@ -5828,12 +5878,15 @@ const _rcLock = fn => { const p = _rcChain.then(fn); _rcChain = p.catch(() => {}
 const _rcStrict = async (k, d) => { const raw = await kv.getStrict(k); return raw ? JSON.parse(raw) : d; };
 const _rcRead = async () => _RCS.readStore(await _rcStrict(_RC_KEY, null));
 const _rcPut = async c => kv.put(_RC_KEY, JSON.stringify(_RCS.putCase(await _rcRead(), c)));
+/** Agent switches (js/agentSettings.js): the saved setting (KV agent_settings_v1) wins, then the old env var, then the default. 30 s cache. */
+const _agentToggles = _agCreateToggles({ kv });
+const readToggle = id => _agentToggles.read(id);
 /**
  * The library context for a case question (js/libraryIndex.js): the best few held papers' notes as a numbered list, rule-based, NO model call.
- * OFF unless LIBRARY_CONTEXT=1 (null then, and every prompt below is unchanged). `force` builds it anyway (the preview route). Never throws.
+ * OFF unless the libraryContext switch is on (Bot Config > Agents; env LIBRARY_CONTEXT=1 is the fallback) (null then, and every prompt below is unchanged). `force` builds it anyway (the preview route). Never throws.
  */
 async function _libCtx(query, { force = false } = {}) {
-  if (!force && !_LIX.libraryContextOn()) return null;
+  if (!force && !(await readToggle('libraryContext'))) return null;
   if (!String(query ?? '').trim()) return null;
   try { const c = await _libApi.contextFor(query); return c?.text ? c : null; }
   catch (e) { console.warn('[library-context]', e.message); return null; }
@@ -5844,8 +5897,9 @@ async function _libCtx(query, { force = false } = {}) {
  * shared by the researchers. null when the flag is off (the librarian never runs then) or nothing was found. Never throws.
  */
 async function _libRoundCtx(query) {
-  if (!_LIX.libraryContextOn()) return null;
+  if (!(await readToggle('libraryContext'))) return null;
   if (!String(query ?? '').trim()) return null;
+  if (!(await readToggle('libraryLibrarian'))) return _libCtx(query);   // the Agents tab switch: the free rule-based top 6 instead of the librarian
   try { return await _libApi.roundContext(query); }
   catch (e) { console.warn('[library-librarian]', e.message); return _libCtx(query); }
 }
@@ -6059,7 +6113,7 @@ const _rcLibraryPreview = async (req, res) => {
     // librarian=1 RUNS the librarian (1-2 small DeepSeek calls, counted against the 400 cap in `calls`); without it nothing is spent
     const wantLib = /^(1|true|yes|on)$/i.test(String(src.librarian ?? '')), lib = wantLib ? await _libApi.librarian(query).catch(e => ({ ok: false, reason: e.message, queries: [], calls: 0 })) : null;
     const ctx = lib?.ok ? lib : await _libCtx(query, { force: true });
-    res.json({ ok: true, enabled: _LIX.libraryContextOn(), flag: 'LIBRARY_CONTEXT=1', caseId: id, query, ids: ctx?.ids ?? [], chars: ctx?.text.length ?? 0,
+    res.json({ ok: true, enabled: await readToggle('libraryContext'), flag: 'Bot Config > Agents > libraryContext (env LIBRARY_CONTEXT=1 is the fallback)', caseId: id, query, ids: ctx?.ids ?? [], chars: ctx?.text.length ?? 0,
       papers: (ctx?.rows ?? []).map(r => ({ id: r.id, title: r.t, year: r.y, score: r.score, why: r.why })), text: ctx?.text ?? '',
       ...(lib ? { librarian: _libShape(lib).librarian, ..._libShape(lib).top, calls: lib.calls, ...(lib.ok ? {} : { fallback: lib.reason, note: 'the librarian could not run; the text is the rule-based context' }) } : {}) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -6070,7 +6124,7 @@ app.post('/api/research-pod/case/library-preview', _rcLibraryPreview);
 // calls (task library-librarian), counted in `calls` and against the hard cap of 400 in KV library_librarian_v1; it runs whatever LIBRARY_CONTEXT says.
 // Same open style as the other research-pod routes. n = most papers to pick (1-6). GET returns the cap status.
 app.get('/api/research-pod/librarian', async (_req, res) => {
-  try { res.set('Cache-Control', 'no-store'); res.json({ ok: true, enabled: _LIX.libraryContextOn(), flag: 'LIBRARY_CONTEXT=1', ...(await _libApi.librarianStatus()) }); }
+  try { res.set('Cache-Control', 'no-store'); res.json({ ok: true, enabled: await readToggle('libraryContext'), flag: 'Bot Config > Agents > libraryContext (env LIBRARY_CONTEXT=1 is the fallback)', ...(await _libApi.librarianStatus()) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/research-pod/librarian', async (req, res) => {

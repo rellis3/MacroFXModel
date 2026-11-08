@@ -99,6 +99,7 @@ const _CF_EXACT = new Set([
   'library_librarian_v1',   // Paper Library librarian (js/libraryLibrarian.js): model calls used against the 400 cap. Also in _worker.js (both lists) and js/storeRegistry.js.
   'library_figs_v1',   // Paper Library figure/table notes (js/libraryFigs.js): model calls used against the 600 cap and which papers are done; the notes per paper are in R2. Also in _worker.js (both lists) and js/storeRegistry.js.
   'library_math_v1',   // Paper Library equations (js/libraryMath.js): model calls used against the 1500 cap and which papers are done; the per-paper LaTeX is in R2. Also in _worker.js (both lists) and js/storeRegistry.js.
+  'agent_settings_v1',   // Bot Config > Agents switches (js/agentSettings.js): { v:1, toggles:{ id:boolean }, at }; replaces the LIBRARY_CONTEXT env var (which stays as the fallback). Also in _worker.js (both lists) and js/storeRegistry.js.
   'research_pod_quicktests', // the research lab's quick tests (js/quickTest.js): exploratory X-leads-Y checks, linked to proposals; never banked
   'fx_fair_value_log_v1',   // the short-term FX fair value's daily forward record (js/fxFairValue.js; description only)
   'system_reviews',

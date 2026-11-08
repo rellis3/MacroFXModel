@@ -52,9 +52,9 @@ test('case rounds record libraryIds only when a library context was used', () =>
   assert.deepEqual(appendRound(c, { owner: 'Q?', answers: {}, at, libraryIds: ['cot1', 'gold1'] }).rounds[0].libraryIds, ['cot1', 'gold1']);
 });
 
-test('server.js wiring: the switch is the LIBRARY_CONTEXT env var, off by default, and the new calls make no model request', () => {
+test('server.js wiring: the switch is the Agents-tab setting (env LIBRARY_CONTEXT is the fallback), off by default, and the new calls make no model request', () => {
   const src = fs.readFileSync(new URL('../server.js', import.meta.url), 'utf8');
-  assert.ok(src.includes('async function _libCtx(query') && src.includes('if (!force && !_LIX.libraryContextOn()) return null;'));
+  assert.ok(src.includes('async function _libCtx(query') && src.includes("if (!force && !(await readToggle('libraryContext'))) return null;"));
   assert.equal((src.match(/_LIX\.withLibrary\(/g) ?? []).length, 2, 'round 1 and later rounds');
   assert.ok(src.includes('_LIX.librarySection(libCtx)'), 'the Head of Research review');
   assert.ok(src.includes('_LIX.citeableIds(heldIds, libCtx?.ids)'));

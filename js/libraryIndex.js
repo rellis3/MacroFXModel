@@ -280,8 +280,12 @@ export function buildContext(query, ix, papers, { n = 6, maxChars = 5500, figNot
 
 // ── researcher wiring helpers (pure; server.js calls them) ──────────────────────────────────────────────────────
 
-/** LIBRARY_CONTEXT=1 (or true / on / yes) switches the library context on. Default off. */
-export const libraryContextOn = (env = (typeof process !== 'undefined' ? process.env : {})) => /^(1|true|on|yes)$/i.test(String(env?.LIBRARY_CONTEXT ?? '').trim());
+/**
+ * Is the library context on? A saved Agents-tab setting (`settings.libraryContext`, a boolean; js/agentSettings.js) wins; with none, the env var
+ * LIBRARY_CONTEXT=1 (or true / on / yes) decides, and it is off by default. server.js reads the resolved switch through readToggle('libraryContext').
+ */
+export const libraryContextOn = (env = (typeof process !== 'undefined' ? process.env : {}), settings = null) =>
+  (typeof settings?.libraryContext === 'boolean' ? settings.libraryContext : /^(1|true|on|yes)$/i.test(String(env?.LIBRARY_CONTEXT ?? '').trim()));
 /** The prompt section for a context ([title, text]); the title starts with 'LIBRARY:'. */
 export const librarySection = ctx => [ctx.title || 'LIBRARY: held papers most related to this question (cite by id)', ctx.text];
 /**

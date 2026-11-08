@@ -452,6 +452,63 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 .bt-pos-level { color:var(--text3); flex:1; }
 .bt-pnl-pos { color:var(--green); font-weight:600; }
 .bt-pnl-neg { color:var(--red);   font-weight:600; }
+
+/* Agents tab (js/agentsTab.js, js/agentFlowSvg.js) */
+#tab-agents { min-width: 0; }
+.ag-status { font-size: 12.5px; color: var(--text3); margin-bottom: 10px; } .ag-status.err { color: var(--red); }
+.ag-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; } .ag-head .ag-sub { flex: 1; min-width: 0; }
+.ag-reload { padding: 4px 10px; background: var(--s2); color: var(--text2); border: 1px solid var(--border2); border-radius: 6px; font-size: 11.5px; cursor: pointer; font-family: inherit; }
+.ag-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.ag-chip { padding: 6px 12px; border: 1px solid var(--border2); background: var(--s2); color: var(--text2); border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.ag-chip.active { background: var(--blue-bg); color: var(--blue); border-color: var(--blue-bd); }
+.ag-blurb { font-size: 12.5px; color: var(--text2); line-height: 1.6; margin: 0 0 10px; }
+.ag-chart { max-width: 100%; overflow-x: auto; overflow-y: hidden; background: var(--s2); border: 1px solid var(--border); border-radius: 8px; padding: 4px 0; -webkit-overflow-scrolling: touch; }
+.ag-svg { display: block; font-family: 'DM Sans', sans-serif; }
+.ag-node { cursor: pointer; outline: none; } .ag-node rect { fill: var(--s1); stroke: var(--border2); stroke-width: 1.5; } .ag-node:hover rect, .ag-node:focus rect { stroke-width: 2.5; }
+.ag-node.ag-sel rect { stroke-width: 3; }
+.ag-g-Research { --gc: var(--blue); } .ag-g-Library { --gc: var(--purple); } .ag-g-Desk { --gc: var(--green); } .ag-g-News { --gc: var(--amber); } .ag-g-Tests { --gc: var(--red); }
+.ag-node[class*="ag-g-"] rect { stroke: var(--gc); }
+.ag-node.ag-point rect { fill: var(--s3); stroke: var(--border2); }
+.ag-node.ag-planned rect { stroke-dasharray: 6 4; fill: var(--s2); } .ag-node.ag-planned text { opacity: .7; }
+.ag-t1 { font-size: 12.5px; font-weight: 600; fill: var(--text); } .ag-t2 { font-size: 10px; fill: var(--text3); font-family: 'DM Mono', monospace; }
+.ag-plan { font-size: 9px; fill: var(--amber); font-weight: 700; }
+.ag-spend circle { fill: var(--amber-bg); stroke: var(--amber); stroke-width: 1.2; } .ag-spend text { font-size: 10px; font-weight: 700; fill: var(--amber); }
+.ag-e { stroke-width: 1.6; opacity: .75; } .ag-e-data { stroke: var(--text3); } .ag-e-control { stroke: var(--blue); }
+.ag-e-opt { stroke-dasharray: 6 4; } .ag-e-planned { stroke-dasharray: 2 4; opacity: .5; } .ag-e-hot { opacity: 1; stroke-width: 2.6; }
+.ag-arrow { fill: var(--text3); } .ag-arrow-c { fill: var(--blue); }
+.ag-elabel rect { fill: var(--s1); opacity: .88; } .ag-elabel text { font-size: 9.5px; fill: var(--text2); } .ag-elabel.ag-e-hot text { fill: var(--text); font-weight: 600; }
+.ag-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 11.5px; color: var(--text3); margin: 8px 0; align-items: center; }
+.ag-legend i.l { display: inline-block; width: 22px; height: 0; border-top: 2px solid var(--text3); vertical-align: middle; margin-right: 5px; }
+.ag-legend i.l.control { border-color: var(--blue); } .ag-legend i.l.opt { border-top-style: dashed; } .ag-legend i.l.plan { border-top-style: dotted; opacity: .6; }
+.ag-dollar { display: inline-block; color: var(--amber); border: 1px solid var(--amber); border-radius: 50%; width: 15px; height: 15px; line-height: 13px; text-align: center; font-size: 10px; margin-right: 4px; }
+.ag-info { font-size: 12.5px; color: var(--text2); line-height: 1.6; min-height: 20px; }
+.ag-gh { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin: 22px 0 8px; display: flex; align-items: center; gap: 8px; }
+.ag-gh .ag-gc { color: var(--text3); font-weight: 400; }
+.ag-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--gc, var(--text3)); flex-shrink: 0; display: inline-block; }
+.ag-card { background: var(--s1); border: 1px solid var(--border); border-left: 3px solid var(--gc, var(--border2)); border-radius: var(--rl); margin-bottom: 8px; }
+.ag-card.ag-planned { border-left-style: dashed; opacity: .85; } .ag-card.ag-flash { box-shadow: 0 0 0 2px var(--blue); }
+.ag-card > summary { list-style: none; cursor: pointer; padding: 11px 14px; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; } .ag-card > summary::-webkit-details-marker { display: none; }
+.ag-card > summary::after { content: '\25B8'; margin-left: auto; color: var(--text3); } .ag-card[open] > summary::after { content: '\25BE'; }
+.ag-name { font-weight: 600; font-size: 13.5px; } .ag-badges { display: flex; flex-wrap: wrap; gap: 5px; }
+.ag-b { font-size: 10.5px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border2); color: var(--text2); background: var(--s2); font-family: 'DM Mono', monospace; }
+.ag-b.spend { color: var(--amber); border-color: var(--amber-bd); background: var(--amber-bg); } .ag-b.plan { color: var(--amber); border-style: dashed; } .ag-b.on { color: var(--green); border-color: var(--green-bd); background: var(--green-bg); } .ag-b.off { color: var(--text3); }
+.ag-body { padding: 0 14px 14px; font-size: 12.5px; line-height: 1.6; color: var(--text2); }
+.ag-purpose { color: var(--text); margin: 0 0 10px; }
+.ag-row { display: flex; gap: 12px; padding: 5px 0; border-top: 1px solid var(--border); align-items: baseline; } .ag-row > :last-child { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.ag-k { flex: 0 0 86px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--text3); }
+.ag-ul { margin: 0; padding-left: 16px; } .ag-lab { color: var(--text3); font-style: normal; font-size: 11.5px; }
+.ag-body a { color: var(--blue); } .ag-body code { font-family: 'DM Mono', monospace; font-size: 11.5px; }
+.ag-cap { flex: 1; min-width: 0; width: 100%; } .ag-bar { height: 8px; background: var(--s3); border-radius: 4px; overflow: hidden; } .ag-bar i { display: block; height: 100%; background: var(--green); } .ag-bar i.hot { background: var(--red); }
+.ag-capn { font-size: 11.5px; color: var(--text3); }
+.ag-switches { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; }
+.ag-sw-row { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; }
+.ag-sw { flex: 0 0 auto; width: 46px; height: 26px; border-radius: 13px; border: 1px solid var(--border2); background: var(--s3); position: relative; cursor: pointer; padding: 0; transition: background .15s; }
+.ag-sw span { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--text3); transition: left .15s, background .15s; }
+.ag-sw.on { background: var(--green-bg); border-color: var(--green); } .ag-sw.on span { left: 22px; background: var(--green); } .ag-sw:disabled { opacity: .55; cursor: wait; }
+.ag-sw-txt { min-width: 0; flex: 1; } .ag-sw-txt b { color: var(--text); } .ag-state { font-family: 'DM Mono', monospace; font-size: 11px; margin-left: 6px; }
+.ag-sub { font-size: 11.5px; color: var(--text3); line-height: 1.5; } .ag-spendnote { font-size: 11.5px; color: var(--amber); margin-top: 3px; } .ag-note { font-size: 11.5px; color: var(--amber); } .ag-note[hidden] { display: none; }
+.ag-msg { font-size: 11.5px; min-height: 16px; } .ag-msg.ok { color: var(--green); } .ag-msg.err { color: var(--red); } .ag-msg.busy { color: var(--text3); }
+@media (max-width: 520px) { .ag-row { flex-direction: column; gap: 2px; } .ag-k { flex-basis: auto; } }
 </style>
 </head>
 <body>
@@ -508,6 +565,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="positions" onclick="switchTab('positions')" style="color:#10b981" id="posTabBtn">📊 Positions</button>
     <button class="tab-btn" data-tab="analogml" onclick="switchTab('analogml')" style="color:#a78bfa" id="amlTabBtn">🔮 AnalogML</button>
     <button class="tab-btn" data-tab="aimodels" onclick="switchTab('aimodels')" style="color:#e879f9" id="aiTabBtn">🧠 AI Models</button>
+    <button class="tab-btn" data-tab="agents" onclick="switchTab('agents')" style="color:#38bdf8" id="agTabBtn">🕸 Agents</button>
   </div>
 
   <!-- ═══════════════════════ TAB: TELEGRAM BOT ═══════════════════════ -->
@@ -8206,6 +8264,32 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
     </div>
   </div><!-- /tab-aimodels -->
 
+  <!-- ═════════════════════ TAB: AGENTS ═════════════════════ -->
+  <div class="tab-pane" id="tab-agents">
+    <div id="agentsRoot">
+      <div class="bot-banner" style="border-left:3px solid #38bdf8">
+        <div>
+          <b>Every agent, how they work together, and their switches</b>
+          <div style="font-size:12px;color:var(--t3);margin-top:6px;line-height:1.6">
+            Pick a flow to see who hands work to whom. Tap a box for its card. Switches are stored in KV and take effect within 30 seconds, with no redeploy;
+            a Railway variable (for example <code>LIBRARY_CONTEXT</code>) is only the fallback until you press the switch. Which model each agent runs is chosen on the
+            <a href="#tab-aimodels" data-goto-tab="aimodels">AI Models tab</a>.
+          </div>
+        </div>
+      </div>
+      <div id="agStatus" class="ag-status" role="status"></div>
+      <div class="card">
+        <div class="ag-head"><h3 style="margin:0">Flows</h3><span id="agSummary" class="ag-sub"></span><button type="button" class="ag-reload" id="agReload">Reload</button></div>
+        <div id="agChips" class="ag-chips"></div>
+        <p id="agBlurb" class="ag-blurb"></p>
+        <div id="agChart" class="ag-chart" tabindex="0" aria-label="Flow chart (scrolls sideways inside this box)"></div>
+        <div id="agLegend"></div>
+        <div id="agInfo" class="ag-info"></div>
+      </div>
+      <div id="agCards"></div>
+    </div>
+  </div><!-- /tab-agents -->
+
 </div><!-- /page -->
 
 <!-- Effective-number-of-bets brick (single source of truth in js/diversificationCore.js,
@@ -8698,6 +8782,7 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
 })();
 </script>
 <script type="module" src="js/bot-config.js?v=3"></script>
+<script type="module" src="js/agentsTab.js?v=1"></script>
 <!-- Classic (not module) and BEFORE the inline script below, which reads
      window.POS_BOTS synchronously. A module here would be deferred and arrive
      too late. Shared with bot-audit.html so the bot list has one home. -->
@@ -8756,6 +8841,7 @@ function switchTab(tab) {
   if (pane) pane.classList.add('active');
   if (btn)  btn.classList.add('active');
   try { localStorage.setItem('botConfigTab', tab); } catch(e) {}
+  try { document.dispatchEvent(new CustomEvent('bc-tab', { detail: tab })); } catch(e) {}
 }
 window.switchTab = switchTab;
 
