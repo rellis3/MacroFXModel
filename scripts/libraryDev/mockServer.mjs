@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { yearKey, yearCounts } from '../../js/paperCatalog.js';
+import { cardLine } from '../../js/library/summary.js';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const TOPICS = [['volatility', 'Volatility'], ['jump', 'Jump / diffusion'], ['brownian', 'Brownian motion & stochastic processes'], ['carry', 'FX & carry'], ['cot', 'COT & positioning'], ['ml', 'Machine learning'], ['regimes', 'Regimes & HMM']];
@@ -79,6 +80,8 @@ const state = {
   ],
   audioStart: {}, caseN: 0, progressPosts: [],
 };
+/** The list shape of the real server: card fields + a one-line `card`; notes / desk / abstract / theory only in GET /paper. */
+const listView = p => { const { notes, abstract, desk, theory, ...light } = p; const l = cardLine(p); return { ...light, card: l.text, cardMuted: !!l.muted, read: !!(notes && (notes.claim || notes.mechanism || notes.method)) }; };
 const years = () => yearCounts(state.papers);
 const sources = () => SOURCES.map(([key, lab]) => ({ key, label: lab, count: state.papers.filter(p => p.source.key === key).length })).filter(x => x.count);
 const topics = () => TOPICS.map(([key, lab]) => ({ key, label: lab, count: state.papers.filter(p => p.tags.some(t => t.key === key)).length }));
@@ -92,7 +95,7 @@ export function startServer(port = 0) {
     if (p.startsWith('/api/library/')) {
       const ep = p.slice('/api/library/'.length);
       const paper = state.papers.find(x => x.id === q.get('id'));
-      if (ep === 'papers') return send(res, { ok: true, papers: state.papers, topics: topics(), sources: sources(), years: years(), totals: { all: state.papers.length, fullText: state.papers.length - 1, abstractOnly: 1 } });
+      if (ep === 'papers') return send(res, { ok: true, papers: state.papers.map(listView), topics: topics(), sources: sources(), years: years(), totals: { all: state.papers.length, fullText: state.papers.length - 1, abstractOnly: 1 } });
       if (ep === 'paper') return paper ? send(res, { ok: true, paper, blocks: paper.hasText ? blocks : null, pages: 2, pageSize: { 1: [612, 792], 2: [612, 792], 9: [612, 792] } }) : send(res, { ok: false, error: 'not found' }, 404);
       if (ep === 'search') {
         const w = (q.get('q') || '').toLowerCase(), tags = (q.get('tags') || '').split(',').filter(Boolean), srcs = (q.get('sources') || '').split(',').filter(Boolean), yrs = (q.get('years') || '').split(',').filter(Boolean);

@@ -90,3 +90,9 @@ test('inShortHtml / helpHtml structure', () => {
   const u = S.inShortHtml(P({ notes: null })); assert.match(u, /Not read by the desk yet/); assert.ok(!u.includes('<ul>'));
   assert.match(S.helpHtml(P({ notes: null })), /id="caseBtn"/);
 });
+
+test('cardLine uses the server-computed card string when the list response carries it', () => {
+  assert.deepEqual(S.cardLine({ id: 'a', card: 'A short line.', cardMuted: false }), { text: 'A short line.', muted: false });
+  assert.deepEqual(S.cardLine({ id: 'a', card: 'Not read yet. Abstract: x.', cardMuted: true }), { text: 'Not read yet. Abstract: x.', muted: true });
+  assert.equal(S.cardLine(P()).text, S.cardLine({ id: 'a', card: S.cardLine(P()).text }).text, 'same text with or without notes');
+});

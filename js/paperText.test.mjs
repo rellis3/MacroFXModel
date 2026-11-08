@@ -130,7 +130,7 @@ await t('the display equation is one eq block with page, label and a tight box',
   // no surrounding prose: the baselines of the prose line above (440) and below (366) are outside the box
   assert.ok(e.bbox[3] < 440 && e.bbox[1] > 366 + 2, JSON.stringify(e.bbox));
   assert.ok(e.bbox[3] - e.bbox[1] < 60);
-  assert.ok(e.bbox[0] >= LX - 1 && e.bbox[2] <= LX + LW + 3, 'stays inside the left column');
+  assert.ok(e.bbox[0] >= LX - 4 && e.bbox[2] <= LX + LW + 5, 'stays inside the left column');
   assert.ok(e.bbox[0] > 0 && e.bbox[1] > 0 && e.bbox[2] <= W && e.bbox[3] <= H);
   assert.ok(e.bbox[1] < e.bbox[3] && e.bbox[0] < e.bbox[2]);
 });
@@ -193,6 +193,53 @@ await t('false-positive guard: centered prose, a lone symbol line and an empty p
   assert.ok(out.blocks.some(b => b.type === 'p' && /one inline x = 3 here/.test(b.text)));
 });
 
+// ---- multi-line equation systems (synthetic positions; geometry modelled on a numbered three-line SDE system) -------------------
+const sysPage = (numRow, extra = []) => {
+  const x0 = 72, w = 468;
+  const prose = (y, a) => col(x0, w, y, a.map(s => s), { endShort: false });
+  const above = prose(690, ['The model is defined as the following system of stochastic differential equations driven by two', 'correlated Brownian motions with a mean reverting variance process and a constant volatility.']);
+  const eqRow = (y, parts, no) => [...parts.map(([dx, s]) => it(190 + dx, y, s, { w: Math.max(4, s.length * 4.6) })), ...(no ? [it(512, y, no, { w: 22 })] : [])];
+  const rows = [
+    eqRow(640, [[0, 'dX(t)  ='], [60, 'ν(t)dW(t) −'], [140, 'dt']], numRow === 0 ? '(2.1)' : null),
+    eqRow(618, [[0, 'dν(t)  ='], [60, 'κ(t)(θ(t) − ν(t))dt + ξ(t)ν(t)dW(t)']], numRow === 1 ? '(2.1)' : null),
+    eqRow(601, [[-20, 'd⟨W1,W2⟩  ='], [60, 'ρ(t)dt']], numRow === 2 ? '(2.1)' : null),
+  ].flat();
+  const below = prose(560, ['where the parameters are positive and the correlation lies between minus one and one in value so that', 'the covariance matrix stays positive definite for every time in the horizon of the model here.']);
+  return [header(), ...above, ...rows, ...extra, ...below];
+};
+const eqOf = items => buildBlocks([{ n: 1, w: W, h: H, items }]).blocks.filter(b => b.type === 'eq');
+for (const numRow of [0, 2]) {
+  await t(`a three-line system numbered on line ${numRow + 1} is ONE equation block, padded, not touching prose`, () => {
+    const eqs = eqOf(sysPage(numRow));
+    assert.equal(eqs.length, 1, JSON.stringify(eqs.map(e => [e.bbox, e.text])));
+    const [x0, y0, x1, y1] = eqs[0].bbox;
+    assert.equal(eqs[0].label, '2.1');
+    assert.ok(y1 >= 640 + 0.8 * B + 2.9 && y0 <= 601 - 0.25 * B - 2.9, `covers all three lines with ~3.5pt padding: ${eqs[0].bbox}`);
+    assert.ok(x0 <= 170 - 3 && x1 >= 534 + 3, `padded on the sides: ${eqs[0].bbox}`);
+    assert.ok(y1 < 690 - 0.25 * B && y0 > 560 + 0.8 * B, 'stays between the surrounding paragraphs');
+  });
+}
+await t('two separately numbered one-line equations stay two blocks and never overlap', () => {
+  const x0 = 72, w = 468;
+  const row = (y, s, no) => [it(230, y, s, { w: 140 }), it(512, y, no, { w: 22 })];
+  const items = [header(), ...col(x0, w, 690, ['The first relation is given below and the second relation follows right after it for the same', 'set of parameters in the model of the paper.'], { endShort: false }),
+    ...row(640, 'σ = α + βσ', '(1)'), ...row(622, 'μ = γ + δμ', '(2)'),
+    ...col(x0, w, 580, ['Both hold for every period in the sample and the estimates use the whole sample of the study here.', 'End.'])];
+  const eqs = eqOf(items);
+  assert.deepEqual(eqs.map(e => e.label), ['1', '2']);
+  assert.ok(eqs[0].bbox[1] >= eqs[1].bbox[3], `boxes do not overlap: ${JSON.stringify(eqs.map(e => e.bbox))}`);
+});
+await t('tall neighbouring equations: overlapping boxes share one edge instead of cropping the same lines twice', () => {
+  const items = [header(), ...col(72, 468, 690, ['Intro prose line that fills the whole width of the column here for the body statistics ok.', 'Second line of it.'], { endShort: false }),
+    it(230, 640, 'σ = α + β', { w: 140 }), it(512, 640, '(1)', { w: 22 }), it(240, 654, 'αβ', { h: 9, w: 10 }),
+    it(230, 626, 'μ = γ + δ', { w: 140 }), it(512, 626, '(2)', { w: 22 }), it(240, 634, 'γδ', { h: 9, w: 10 })];
+  const eqs = eqOf(items);
+  for (let a = 0; a < eqs.length; a++) for (let b = a + 1; b < eqs.length; b++) {
+    const [p, q] = eqs[a].bbox[3] >= eqs[b].bbox[3] ? [eqs[a], eqs[b]] : [eqs[b], eqs[a]];
+    assert.ok(p.bbox[1] >= q.bbox[3] - 0.01, 'no vertical overlap');
+  }
+});
+
 await t('odd input never throws', () => {
   for (const bad of [null, undefined, 0, 'x', [], {}, { pages: null }, { pages: [null, 3, {}] }, [{ items: 'no' }], [{ n: 1, items: [null, { str: 5 }, { str: 'a', x: NaN, y: 1 }, { str: 'b' }, { str: 'ok', x: 1, y: 2, w: 'bad', h: -3 }] }]]) {
     const r = buildBlocks(bad);
@@ -241,6 +288,13 @@ if (existsSync(sample('03-invalid.pdf'))) {
 await t('worker: the timeout rejects', async () => {
   if (!existsSync(sample('01-valid.pdf'))) return;
   await assert.rejects(() => extractPages(readFileSync(sample('01-valid.pdf')), { timeoutMs: 1 }), /timed out/);
+});
+
+await t('an arXiv margin stamp line on page 1 is not a block', () => {
+  const page = [it(54, 770, 'arXiv:1107.1834v1 [q-fin.CP] 10 Jul 2011', { w: 190 }), it(54, 700, 'Introduction', { font: 'f2' }), ...col(54, 243, 680, ['This is a plain paragraph about the data and the method we use for it.', 'It has no stamps at all and it is long enough to be a body paragraph here.', 'The end.'])];
+  const out = buildBlocks([{ n: 1, w: W, h: H, items: page }]);
+  assert.ok(!out.blocks.some(b => /arXiv|1107/.test(b.text)), JSON.stringify(out.blocks.map(b => b.text)));
+  assert.ok(out.blocks.some(b => /plain paragraph/.test(b.text)));
 });
 
 console.log(`paperText: ${n} tests passed`);

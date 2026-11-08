@@ -22,6 +22,8 @@
  *   now(), log }
  */
 import { buildBlocks, plainText, conclusion, abstractOf } from './paperText.js';
+import { cleanBlocks } from './paperStamps.js';
+import { cardLine } from './library/summary.js';
 import { flatTextToPages } from './paperPages.js';
 import { speechSentences, briefingScript, chunkForTts, estimateSecs, toSentences } from './paperAudio.js';
 import {
@@ -123,8 +125,7 @@ export function createLibraryApi(deps) {
     return deps.textFallback?.(id) ?? null;
   }
 
-  async function catalog({ fresh = false } = {}) {
-    if (!fresh && catalogCache && now() - catalogCache.at < 30_000) return catalogCache;
+  async function buildCatalog(gen) {
     const [papers, queueItems, st] = await Promise.all([loadPapers(), loadQueue(), readState()]);
     const have = new Set(papers.map(p => p.id));
     const uploads = {};
@@ -140,10 +141,27 @@ export function createLibraryApi(deps) {
     }
     for (const p of papers) if (p.uploaded) uploads[p.id] = { ...(uploads[p.id] ?? {}), chars: p.uploaded.chars ?? null, hasPdf: p.uploaded.stored === 'r2', sha: p.uploaded.sha };
     const list = joinCatalog({ freeSources: await freeSources(), papers, queueItems, uploads, tagOverrides: st.tags, progress: st.progress, audio: st.audio, now: now() });
-    catalogCache = { at: now(), list, papers, queueItems, state: st, byId: new Map(list.map(p => [p.id, p])) };
-    return catalogCache;
+    const built = { at: now(), list, papers, queueItems, state: st, byId: new Map(list.map(p => [p.id, p])) };
+    if (gen === catalogGen) catalogCache = built;   // a drop while building makes this result one-shot, never cached
+    return built;
   }
-  const dropCatalog = () => { catalogCache = null; };
+  // concurrent first loads share ONE in-flight build (fresh or not); a drop starts a new generation so stale builds are not reused
+  let catalogBuilding = null, catalogGen = 0;
+  async function catalog({ fresh = false } = {}) {
+    if (!fresh && catalogCache && now() - catalogCache.at < 30_000) return catalogCache;
+    if (catalogBuilding) return catalogBuilding;
+    const gen = catalogGen;
+    const job = buildCatalog(gen).finally(() => { if (catalogBuilding === job) catalogBuilding = null; });
+    catalogBuilding = job;
+    return job;
+  }
+  const dropCatalog = () => { catalogCache = null; catalogGen++; catalogBuilding = null; };
+  /** The list view of a paper: card fields plus a one-line `card` text; the heavy notes / desk / abstract / theory stay in the detail. */
+  const listView = p => {
+    const { notes, abstract, desk, theory, ...light } = p;
+    const line = cardLine(p), n = notes && typeof notes === 'object' ? notes : null;
+    return { ...light, card: line.text, cardMuted: !!line.muted, read: !!(n && (n.claim || n.mechanism || n.method)) };
+  };
   const theoryOf = p => theoryLinks(p.tags, lessonFiles?.() ?? null);
 
   // ── blocks: R2 cache, built in the worker thread on first open ──
@@ -153,7 +171,7 @@ export function createLibraryApi(deps) {
     const job = (async () => {
       if (r2.ok()) {
         const c = await r2.getBuffer(blocksKey(id)).catch(() => null);
-        if (c) { try { const j = JSON.parse(c.toString('utf8')); if (j?.v === 1 && Array.isArray(j.blocks)) return j; } catch { /* rebuild */ } }
+        if (c) { try { const j = JSON.parse(c.toString('utf8')); if (j?.v === 2 && Array.isArray(j.blocks)) return j; } catch { /* rebuild */ } }
       }
       let pages = null, source = 'flat';
       if (r2.ok() && paperHasPdf !== false) {
@@ -162,13 +180,14 @@ export function createLibraryApi(deps) {
       }
       if (!pages) { const t = await textOf(id); if (!t) return null; pages = flatTextToPages(t).pages; }
       const built = buildBlocks(pages);
-      const doc = { v: 1, source, pages: pages.length, pageSize: built.pageSize, blocks: built.blocks };
+      const doc = { v: 2, source, pages: pages.length, pageSize: built.pageSize, blocks: built.blocks };
       if (r2.ok() && built.blocks.length) await r2.putBuffer(blocksKey(id), Buffer.from(JSON.stringify(doc)), 'application/json').catch(e => log.warn?.(`[library] cache blocks ${id}: ${e.message}`));
       return doc;
     })();
     inflight.set(id, job);
     try {
       const doc = await job;
+      if (doc) doc.blocks = cleanBlocks(doc.blocks);   // cached blocks built before stamp stripping
       if (doc) { blocksMem.set(id, doc); if (blocksMem.size > BLOCKS_MEM_MAX) blocksMem.delete(blocksMem.keys().next().value); if (index) addToIndex(doc, id); }
       return doc;
     } finally { inflight.delete(id); }
@@ -201,7 +220,7 @@ export function createLibraryApi(deps) {
 
   H.papers = async () => {
     const cat = await catalog({ fresh: true });
-    const papers = cat.list.map(p => ({ ...p, theory: theoryOf(p) }));
+    const papers = cat.list.map(listView);   // card fields only: notes, desk, abstract and theory come with GET /paper?id=
     const fullText = papers.filter(p => p.hasText).length;
     return reply(200, { ok: true, papers, topics: topicCounts(papers), sources: sourceCounts(papers), years: yearCounts(papers, now()), totals: { all: papers.length, fullText, abstractOnly: papers.length - fullText } });
   };

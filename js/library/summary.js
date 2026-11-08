@@ -85,6 +85,7 @@ export function inShort(p) {
 
 /** One line for a paper card: { text, muted }. */
 export function cardLine(p) {
+  if (p && typeof p.card === 'string') return { text: p.card, muted: !!p.cardMuted };   // list responses carry the line, not the notes
   const n = p && p.notes;
   if (hasNotes(n)) {
     const t = firstSentence(n.claim || n.mechanism, 150);
