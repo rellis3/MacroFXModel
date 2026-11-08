@@ -202,7 +202,7 @@ const mathBlocks = () => [
 ];
 function mathHarness({ math } = {}) {
   const h = harness(); const { blobs, api } = h;
-  blobs.set(uploadKey('up1', 'blocks.json'), Buffer.from(JSON.stringify({ v: 3, source: 'pdf', pages: 1, pageSize: { 1: [612, 792] }, blocks: mathBlocks() })));
+  blobs.set(uploadKey('up1', 'blocks.json'), Buffer.from(JSON.stringify({ v: 4, source: 'pdf', pages: 1, pageSize: { 1: [612, 792] }, blocks: mathBlocks() })));
   if (math) blobs.set(uploadKey('up1', 'math.json'), Buffer.from(JSON.stringify(math)));
   return { ...h, get: async () => (await api.paper({ query: { id: 'up1' } })).json };
 }
@@ -222,11 +222,11 @@ test('paper: without a math file the rule-based layer still gives the clean equa
   assert.ok(r.blocks[1].latex && r.blocks[1].latexSource === 'rule'); assert.ok(!('latex' in r.blocks[2]) && !('latex' in r.blocks[3]));
 });
 
-test('blocks cache: a v2 cache (before equations kept their geometry) is rebuilt, a v3 one is used as is', async () => {
+test('blocks cache: a v3 cache (before figures kept their graphic) is rebuilt, a v4 one is used as is', async () => {
   const { api, blobs, calls } = harness();
-  blobs.set(uploadKey('up1', 'blocks.json'), Buffer.from(JSON.stringify({ v: 2, source: 'pdf', pages: 1, pageSize: {}, blocks: [{ i: 0, type: 'p', text: 'old', page: 1, bbox: null }] })));
+  blobs.set(uploadKey('up1', 'blocks.json'), Buffer.from(JSON.stringify({ v: 3, source: 'pdf', pages: 1, pageSize: {}, blocks: [{ i: 0, type: 'p', text: 'old', page: 1, bbox: null }] })));
   const r = (await api.paper({ query: { id: 'up1' } })).json; assert.equal(calls.extract, 1, 'rebuilt'); assert.ok(r.blocks.length > 2);
-  assert.equal(JSON.parse(blobs.get(uploadKey('up1', 'blocks.json')).toString()).v, 3);
+  assert.equal(JSON.parse(blobs.get(uploadKey('up1', 'blocks.json')).toString()).v, 4);
 });
 
 test('the equations job is mounted at /api/research-pod/math (GET status, POST capped), task library-math, key registered everywhere', () => {

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as M from './model.js';
-import { cropRect, renderScale } from './crop.js';
+import { cropRect, renderScale, zoomView } from './crop.js';
 import * as S from './speech.js';
 import * as A from './audio.js';
 import * as P from './progress.js';
@@ -82,6 +82,17 @@ t('crop rect flips y and clamps', () => {
   assert.equal(cropRect(null, [1, 1], 1, 1), null);
   assert.equal(cropRect([1, 1, 1, 1], [612, 792], 612, 792, 0), null);
   assert.ok(renderScale([612, 792]) <= 3 && renderScale([612, 792]) >= 1);
+});
+
+t('zoom view: a tall figure box is rendered at a bounded scale and offset to its top-left corner', () => {
+  const v = zoomView([50, 100, 290, 700], [612, 792], { pad: 0, targetW: 1800, maxScale: 5, maxPixels: 12e6 });
+  assert.ok(v.scale >= 1 && v.scale <= 5);
+  assert.ok(v.width * v.height <= 12e6 * 1.02, 'pixel budget kept');
+  assert.equal(v.width, Math.ceil(240 * v.scale)); assert.equal(v.height, Math.ceil(600 * v.scale));
+  assert.ok(Math.abs(v.offsetX + 50 * v.scale) < 1e-6 && Math.abs(v.offsetY + (792 - 700) * v.scale) < 1e-6, 'viewport offset puts the crop at the canvas origin');
+  const huge = zoomView([0, 0, 612, 792], [612, 792], { pad: 0 }); assert.ok(huge.width * huge.height <= 12e6 * 1.02);
+  assert.equal(zoomView(null, [612, 792]), null); assert.equal(zoomView([5, 5, 5, 5], [612, 792], { pad: 0 }), null);
+  const clamped = zoomView([-10, -10, 700, 900], [612, 792]); assert.equal(clamped.x0, 0); assert.equal(clamped.y1, 792);
 });
 
 // ── speech (fake synth) ──

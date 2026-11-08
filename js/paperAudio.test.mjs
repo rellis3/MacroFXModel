@@ -250,3 +250,11 @@ test('cleanBlocks drops standalone stamp paragraphs, cuts stamps inside text and
   assert.deepEqual(c.map(b => [b.i, b.text]), [[0, 'Title'], [1, 'Intro text.']]);
   assert.equal(cleanBlocks(c), c, 'nothing to clean returns the same array');
 });
+
+test('footnote bodies (foot blocks) are not read aloud; figure captions and table numbers never are', () => {
+  const blocks = [P('The main sentence of the paragraph is long enough to be read out loud. It continues here.'), { ...P('12 A footnote that explains the claim made above, set small at the page bottom.'), i: 1, foot: true }, { i: 2, type: 'fig', text: 'Figure 3: A chart.', page: 1, bbox: [1, 1, 2, 2], gfx: true }, { i: 3, type: 'table', text: 'Table 5', page: 1, bbox: [1, 1, 2, 2], label: 'Table 5' }];
+  const out = txt(speechSentences(blocks));
+  assert.ok(out.some((x) => /main sentence/.test(x)));
+  assert.ok(!out.some((x) => /footnote|Figure 3/.test(x)));
+  assert.equal(out.filter((x) => x === 'A table appears here.').length, 1);
+});

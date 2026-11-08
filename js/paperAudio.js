@@ -272,7 +272,7 @@ export function speechSentences(blocks, opts = {}) {
       if (type === 'table') return add(['A table appears here.']);
       if (type === 'fig' || type === 'refs') return;
       if (type !== 'p' && type !== '') return;
-      if (inRefs) return;
+      if (inRefs || b.foot) return;   // footnote bodies (small print at the page bottom) are not read aloud
       const t = raw.trim();
       if (!t || PAGE_NUM.test(t) || BOILER.test(t) || isStampLine(t)) return;
       const key = t.toLowerCase().replace(/\d+/g, '#').replace(/\s+/g, ' ');

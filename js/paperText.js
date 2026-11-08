@@ -29,14 +29,27 @@
 //    Body-width lines with prose words are never equations, so inline math stays inside its paragraph. The box is the union of
 //    the item boxes, padded, and clamped to the midline of the gap to neighbouring text so a crop does not show prose.
 //  - Tables: rows with >= 3 cells (gaps >= 1.2 x body) of mostly numbers, >= 3 rows, with the "Table N" caption (above or below)
-//    folded in. Figure captions ("Figure N:" ...) are 'fig' blocks (the box is the caption only).
+//    folded in. Items that hold several cells (pdf.js merges tab-spaced runs: "4.81%    5.19%", a glued label "Performance (p. a.)1.14%",
+//    back-to-back negatives) are split first. A "Table N" caption without such rows is anchored: the lines right under (or over) it that
+//    look like rows with numbers lined up in columns, or the lines between the drawn rules under it, until the first normal paragraph
+//    line. The block box is caption + rows + the rules that frame them; the reader shows it as an image crop, never as text.
+//  - Figures: "Figure N:" captions are 'fig' blocks. The page's picture regions (pages[].gfx from js/pdfGraphics.js: embedded images
+//    and clusters of vector paths) are matched to the caption: the region above it or below it (the document's usual side wins
+//    ties), in the caption's column(s), with no body text between; further regions of a multi-panel figure up to the nearest body
+//    text; short labels around the plot (ticks, legend, axis titles) are absorbed and not read as text. The box is caption +
+//    graphic + padding and the block carries gfx:true. No graphic found: the box is the caption only, as before.
+//  - Footnotes: a raised, superscript-sized one or two digit item that directly follows a word or punctuation is dropped from the
+//    paragraph text when the same number starts a footnote line lower on the page; that footnote body (small print at the page bottom)
+//    becomes a 'p' block with foot:true (shown small, skipped when listening). Years, decimals and exponents are never touched.
 //  - References: from a References/Bibliography heading to the end (or an Appendix heading) as one 'refs' block.
 //
 // KNOWN FAILURE MODES
 //  - Scanned PDFs have no text layer: no items, no blocks (the caller falls back to the flat text, then to "original PDF").
 //  - Text inside figures (axis labels, legends) can leak as short paragraphs; runs of >= 6 very short unclaimed lines are dropped,
-//    but a chart can still get through. A figure's graphic area is unknown, so a 'fig' box is the caption only; a table drawn as an
-//    image has no rows and falls back to a 'fig' block with its caption.
+//    but a chart can still get through. A chart drawn with text glyphs (no image, no paths) has no graphic region, so its 'fig' box is
+//    the caption only; so is a table drawn as an image (a 'fig' block with its caption; with a vector frame it gets the graphic).
+//    A picture set far (> 90 units) from its caption is only attached when it is big and nothing lies between; a caption longer than
+//    12 lines is cut. Text tables without numbers (word grids) are found only if drawn rules frame them.
 //  - Font names are opaque ids (no bold flag): headings rely on size, numbering, capitals, a different font and isolation.
 //  - Display equations set flush left with prose-width lines, or typeset with real words ("if", "otherwise" many times), may be read
 //    as prose; an in-line-only equation list can be read as an equation. Wide equations crossing the gutter of a two-column page and
@@ -86,7 +99,8 @@ function normalizePages(input) {
       items.push({ str, x, y, w: w || str.length * (h || 8) * 0.5, h, font: String(it.font ?? ''), r: it.r ? 1 : 0 });
     }
     const rules = Array.isArray(p.rules) ? p.rules.filter(r => Array.isArray(r) && r.length >= 3 && r.every(Number.isFinite)) : [];
-    out.push({ n: num(p.n, idx + 1), w: num(p.w, 612) || 612, h: num(p.h, 792) || 792, items, rules });
+    const gfx = Array.isArray(p.gfx) ? p.gfx.filter(g => Array.isArray(g) && g.length >= 4 && g.slice(0, 4).every(Number.isFinite) && g[2] > g[0] && g[3] > g[1]).map(g => ({ x0: g[0], y0: g[1], x1: g[2], y1: g[3] })) : [];
+    out.push({ n: num(p.n, idx + 1), w: num(p.w, 612) || 612, h: num(p.h, 792) || 792, items, rules, gfx });
   });
   return out;
 }
@@ -102,6 +116,24 @@ function bodyStats(pages) {
   return { B, bodyFont };
 }
 
+/**
+ * Some producers (old Word / Acrobat output) report text heights several times the real glyph size (the text matrix carries the
+ * scale), so a line box would reach far above its baseline. If the body height is much larger than the baseline pitch allows,
+ * all heights are scaled down to a plausible body size (ratios, which every heuristic uses, are unchanged).
+ */
+function fixHeights(pages, B) {
+  const gaps = [];
+  for (const p of pages) {
+    const ys = [...new Set(p.items.filter(it => !it.r && Math.abs(it.h - B) <= 0.1 * B).map(it => Math.round(it.y * 2) / 2))].sort((a, b) => b - a);
+    for (let k = 1; k < ys.length; k++) { const d = ys[k - 1] - ys[k]; if (d >= 4 && d <= 60) gaps.push(d); }
+  }
+  const pitch = median(gaps);
+  if (!(pitch > 0) || B <= 2.2 * pitch || B <= 24) return B;
+  const nb = Math.min(12, pitch), f = nb / B;
+  for (const p of pages) for (const it of p.items) it.h *= f;
+  return nb;
+}
+
 // ---------- lines --------------------------------------------------------------------------------------------------------------
 const isAccent = s => /^[\s√∑∏∫⌈⌉⌊⌋ˆˇ˜¯~^̀-ͯ]+$/.test(s);
 const boxOf = it => ({ x0: it.x, x1: it.x + it.w, y0: it.y - 0.25 * it.h, y1: it.y + 0.8 * it.h });
@@ -110,6 +142,7 @@ function finalizeLine(items, B, page, col) {
   items.sort((a, b) => a.x - b.x || b.y - a.y);
   let s = '', prevEnd = null;
   for (const it of items) {
+    if (it._fn) continue;   // a footnote marker glued to a word: kept in the geometry, left out of the text
     if (prevEnd != null && it.x - prevEnd > CFG.spaceGap * B && !/\s$/.test(s) && !/^\s/.test(it.str)) s += ' ';
     s += it.str; prevEnd = Math.max(prevEnd ?? -1e9, it.x + it.w);
   }
@@ -195,10 +228,17 @@ function detectGutter(lines, B, fb) {
   const cover = [];
   for (let x = from; x <= to; x++) cover.push(ivs.reduce((c, iv) => c + (iv.some(v => v.a <= x && v.b >= x) ? 1 : 0), 0));
   let best = null, start = -1;
+  // the widest low-coverage band, but a band that almost no line crosses beats a wider one that a column of text (or a table's
+  // wide cell gap) runs through
   for (let k = 0; k <= cover.length; k++) {
     const ok = k < cover.length && cover[k] <= CFG.gutterCover * n;
     if (ok && start < 0) start = k;
-    if (!ok && start >= 0) { const run = { a: from + start, b: from + k - 1 }; run.w = run.b - run.a; if (!best || run.w > best.w) best = run; start = -1; }
+    if (!ok && start >= 0) {
+      const run = { a: from + start, b: from + k - 1 }; run.w = run.b - run.a;
+      run.clean = run.w >= 0.7 * B && cover.slice(start, k).reduce((s, c) => s + c, 0) / (k - start) <= 0.08 * n;
+      if (!best || (run.clean && !best.clean) || (run.clean === best.clean && run.w > best.w)) best = run;
+      start = -1;
+    }
   }
   if (!best || best.w < 0.7 * B) return gutterFallback(ls, B, fb);
   const mid = (best.a + best.b) / 2;
@@ -212,8 +252,35 @@ function detectGutter(lines, B, fb) {
   return { mid, a: best.a, b: best.b, lo, hi };
 }
 
+/**
+ * Footnote markers on a page: a superscript-sized one or two digit item (smaller than the body, baseline raised) that directly
+ * follows a word or sentence punctuation, when the same number also starts a footnote line lower on the page (a small digit item
+ * with nothing to its left on its baseline). Conservative: years, decimals, citations and exponents after a single letter or digit
+ * do not qualify; without a matching footnote body nothing is marked. Sets it._fn on the markers.
+ */
+function markNoteMarkers(items, B) {
+  const small = items.filter(it => /^\d{1,2}$/.test(it.str.trim()) && it.h > 0 && it.h < 0.8 * B);
+  if (small.length < 2) return 0;
+  const bodyStart = b => !items.some(o => o !== b && o.x < b.x - 1 && o.x + o.w > b.x - 4 * B && Math.abs(o.y - b.y) < 0.5 * B);
+  let n = 0;
+  for (const c of small) {
+    const num = c.str.trim();
+    if (!small.some(b => b !== c && b.str.trim() === num && b.y < c.y - 3 * B && bodyStart(b))) continue;
+    let prev = null;
+    for (const o of items) {
+      if (o === c || o._fn || o.h < 0.82 * B || !(o.x + o.w <= c.x + 1.5) || c.x - (o.x + o.w) > 0.35 * B || c.y - o.y < 0.2 * B || c.y - o.y > 0.9 * B) continue;
+      if (!prev || o.x + o.w > prev.x + prev.w) prev = o;
+    }
+    if (!prev) continue;
+    const t = prev.str.trimEnd();
+    if (/[A-Za-z\u00c0-\u024f]{2}$/.test(t) || /[.,;:)\u201d\u2019"'\]]$/.test(t) && !/\d[.,]$/.test(t) && !/\b(?:19|20)\d\d$/.test(t.slice(0, -1))) { c._fn = 1; n++; }
+  }
+  return n;
+}
+
 function pageLines(page, B, fb) {
   const items = page.items.filter(it => !it.r);
+  markNoteMarkers(items, B);
   if (!items.length) return { lines: [], gutter: null };
   const raw = buildLines(items, B, page.n, 'F');
   const g = detectGutter(raw, B, fb);
@@ -315,17 +382,121 @@ function dropRunning(pageLinesList, pages) {
   });
 }
 
+const NUMTOK = /(?:(?<![\d])[-\u2212\u2013])?\(?\d[\d,]*(?:\.\d+)?%?\)?\**/g;   // a sign belongs to the number unless a digit comes right before it (a range like 1-52)
+/**
+ * Items sorted by x, with an item that holds several cells split into one piece per cell. pdf.js merges tab-spaced runs into one
+ * item ("4.81%    5.19%    5.51%"), and some producers glue a label to its numbers ("Performance (p. a.)1.14%  1.25%") or print
+ * negative numbers back to back ("-56.53%-59.29%"). A piece's x is estimated from its character position. Prose is never split:
+ * numbers are only separated from each other when nothing but spaces lies between them.
+ */
+function expandCells(items) {
+  const out = [];
+  const tightSplit = str => {   // label + numbers with nothing but spaces between the numbers
+    const ms = [...str.matchAll(NUMTOK)];
+    if (ms.length < 2 || !ms.every((m, k) => k === 0 || !str.slice(ms[k - 1].index + ms[k - 1][0].length, m.index).trim())) return null;
+    const res = [], first = ms[0].index, last = ms[ms.length - 1], head = str.slice(0, first);
+    if (head.trim()) res.push({ t: head.trim(), at: head.length - head.trimStart().length });
+    ms.forEach(m => res.push({ t: m[0], at: m.index }));
+    const tail = str.slice(last.index + last[0].length);
+    if (tail.trim()) res.push({ t: tail.trim(), at: last.index + last[0].length + (tail.length - tail.trimStart().length) });
+    return res;
+  };
+  const gapSplit = str => {
+    const res = []; let pos = 0;
+    for (const part of str.split(/(\s{2,})/)) { if (part.trim()) res.push({ t: part.trim(), at: pos + part.length - part.trimStart().length }); pos += part.length; }
+    return res;
+  };
+  for (const it of [...items].sort((a, b) => a.x - b.x)) {
+    const multi = /\S\s{2,}\S/.test(it.str);
+    if (!multi && (it.str.match(NUMTOK) ?? []).length < 2) { out.push(it); continue; }
+    const tight = tightSplit(it.str), ps = tight ?? (multi ? gapSplit(it.str) : null);
+    if (!ps || ps.length < 2) { out.push(it); continue; }
+    const k = it.w / Math.max(1, it.str.length);
+    ps.forEach((p, q) => out.push({ ...it, str: p.t, x: it.x + Math.max(0, p.at) * k, w: p.t.length * k, ...(tight && q ? { brk: true } : {}) }));   // brk: a number cell of its own, whatever the estimated gap (prose with a double space is left to the gap rule)
+  }
+  return out;
+}
+
+const isNumCell = c => { const letters = (c.s.match(/[A-Za-z]/g) ?? []).length; return (/\d/.test(c.s) && letters <= 3 && !/\b(19|20)\d\d\b\s*[a-z]?\)?\s*$/.test(c.s)) || (c.s.length <= 14 && letters <= 3) || /^[\u2013\u2014\-\u2212]$/.test(c.s.trim()); };
+
+/**
+ * A table the strict row finder missed, anchored on its "Table N" caption: the lines right below the caption that look like table
+ * rows (>= 2 cells with numbers, or short label rows) until the first normal paragraph line, kept only if at least two numeric rows
+ * line up in columns (a cell edge within ~3.5 units of another row's). Returns { a, b } stream indexes or null.
+ */
+function looseTableRows(stream, from, B, P, owned, first = from) {
+  const rowKind = L => {
+    if (owned.has(L) || !L._cells) return 0;
+    const c = L._cells, nc = c.filter(isNumCell).length;
+    if (L.chars > 140 || (endsSentence(L.text) && L.chars > 50 && c.length < 3)) return 0;
+    if (c.length >= 2 && nc >= 1 && nc >= Math.min(2, c.length - 1)) return 2;   // numeric row
+    if (c.length >= 2 && L.chars <= 80) return 1;                                  // header / label row
+    if (c.length === 1 && L.chars <= 40 && !endsSentence(L.text)) return 3;        // row label, panel title (one in a row at most)
+    return 0;
+  };
+  const cap = stream[from];
+  const scan = dir => {   // dir +1: rows below the caption's last line; -1: rows above its first line
+    const start = dir > 0 ? from : first, nb = stream[start + dir];
+    if (!nb || nb.page !== cap.page || nb.col !== cap.col || Math.abs(stream[start].y - nb.y) > 3.2 * P) return null;
+    let end = start, gaps = 0, nNum = 0, nRow = 0;
+    const num = [];
+    for (let j = start + dir; j >= 0 && j < stream.length; j += dir) {
+      const L = stream[j], prev = stream[j - dir];
+      if (L.page !== cap.page || L.col !== cap.col || Math.abs(prev.y - L.y) > 2.4 * P) break;
+      const k = rowKind(L);
+      if (!k) break;
+      if (k === 3) { if (++gaps > 1) break; continue; }
+      gaps = 0; end = j; nRow++;
+      if (k === 2) { nNum++; num.push(L); }
+    }
+    if (nNum < 2 || nRow < 3) return null;
+    const beyond = stream[end + dir];   // rows that run straight into another "Table N" caption belong to that caption
+    if (beyond && beyond.page === cap.page && beyond.col === cap.col && Math.abs(stream[end].y - beyond.y) <= 3.2 * P && CAP_TAB_LOOSE.test(beyond.text)) return null;
+    let aligned = 0;
+    for (const L of num) {
+      const hit = num.some(M => M !== L && L._cells.some(x => isNumCell(x) && M._cells.some(y => isNumCell(y) && (Math.abs(x.x1 - y.x1) <= 3.5 || Math.abs(x.x0 - y.x0) <= 3.5))));
+      if (hit) aligned++;
+    }
+    return aligned >= Math.ceil(0.6 * num.length) ? { a: Math.min(start + dir, end), b: Math.max(start + dir, end), gap: Math.abs(stream[start].y - stream[start + dir].y) } : null;
+  };
+  const down = scan(1), up = scan(-1);
+  const pick = down && up ? (up.gap < down.gap ? up : down) : down ?? up;
+  return pick ? { a: pick.a, b: pick.b } : null;
+}
+
+/** A table framed by drawn rules (top rule just under the caption, further rules below it): the lines between them. Returns { a, b } or null. */
+function ruledTableRows(stream, from, rules, P, owned) {
+  const cap = stream[from]; if (!rules?.length) return null;
+  const colL = cap.colLeft, colR = cap.colRight, capBot = cap.bot;
+  const near = rules.filter(r => r[2] < capBot + 2 && Math.min(r[1], colR + 20) - Math.max(r[0], colL - 20) >= 0.6 * Math.min(colR - colL, r[1] - r[0]) && r[1] - r[0] >= 0.5 * (colR - colL)).sort((p, q) => q[2] - p[2]);
+  if (!near.length || capBot - near[0][2] > 3.2 * P) return null;
+  const upper = rules.filter(r => r[2] > cap.top && r[2] - cap.top <= 3.2 * P && r[1] - r[0] >= 0.5 * (colR - colL)).map(r => r[2] - cap.top);
+  if (upper.length && Math.min(...upper) < 0.6 * (capBot - near[0][2])) return null;   // a rule much closer above: the caption sits under its table
+  const chain = [near[0]];
+  for (const r of near.slice(1)) { const last = chain[chain.length - 1]; if (last[2] - r[2] > 280) break; if (Math.abs(r[0] - chain[0][0]) <= 15 && Math.abs(r[1] - chain[0][1]) <= 15 && last[2] - r[2] > 4) chain.push(r); }
+  if (chain.length < 2) return null;
+  const yBot = chain[chain.length - 1][2] - 2, x0 = chain[0][0] - 4, x1 = chain[0][1] + 4;
+  let a = -1, b = -1;
+  for (let j = from + 1; j < stream.length; j++) {
+    const L = stream[j];
+    if (L.page !== cap.page || L.top < yBot) { if (L.page !== cap.page) break; continue; }
+    if (L.bot > capBot + 1 || owned.has(L) || L.x1 < x0 || L.x0 > x1) continue;
+    if (a < 0) a = j; b = j;
+  }
+  return a >= 0 && b - a + 1 >= 2 ? { a, b } : null;
+}
+
 function markTables(stream, B, P) {
   const cellsOf = L => {
     const cells = []; let cur = null;
-    for (const it of [...L.items].sort((a, b) => a.x - b.x)) {
-      if (cur && it.x - cur.x1 < CFG.cellGap * B) { cur.s += (it.x - cur.x1 > CFG.spaceGap * B ? ' ' : '') + it.str; cur.x1 = Math.max(cur.x1, it.x + it.w); }
+    for (const it of expandCells(L.items)) {
+      if (cur && !it.brk && it.x - cur.x1 < CFG.cellGap * B) { cur.s += (it.x - cur.x1 > CFG.spaceGap * B ? ' ' : '') + it.str; cur.x1 = Math.max(cur.x1, it.x + it.w); }
       else { cur = { s: it.str, x0: it.x, x1: it.x + it.w }; cells.push(cur); }
     }
     return cells;
   };
-  const isNum = c => { const letters = (c.s.match(/[A-Za-z]/g) ?? []).length; return (/\d/.test(c.s) && letters <= 3 && !/\b(19|20)\d\d\b\s*[a-z]?\)?\s*$/.test(c.s)) || (c.s.length <= 14 && letters <= 3) || /^[\u2013\u2014\-\u2212]$/.test(c.s.trim()); };
-  stream.forEach(L => { const c = cellsOf(L); L._cells = c; const sg = (L.text.match(MATH_STRONG_G) ?? []).length, dg = (L.text.match(/\d/g) ?? []).length; if (sg >= 2 && dg < 0.25 * L.chars) { L._tab = 0; return; } L._tab =c.length >= 3 && c.filter(isNum).length >= Math.ceil(c.length / 2) ? 2 : c.length >= 3 && L.chars < 90 && feat(L, B).words <= 8 ? 1 : 0; });
+  const isNum = isNumCell;
+  stream.forEach(L => { const c = cellsOf(L); L._cells = c; const sg = (L.text.match(MATH_STRONG_G) ?? []).length, dg = (L.text.match(/\d/g) ?? []).length; if (sg >= 2 && dg < 0.25 * L.chars) { L._tab = 0; return; } L._tab = c.length >= 3 && c.filter(isNum).length >= Math.ceil(c.length / 2) ? 2 : c.length >= 3 && L.chars < 90 && feat(L, B).words <= 8 ? 1 : c.length === 2 && L.chars < 60 && c.filter(x => /\d/.test(x.s) && isNum(x)).length >= 1 && feat(L, B).words <= 3 ? 1 : 0; });
   const groups = [];
   for (let i = 0; i < stream.length; i++) {
     if (stream[i]._tab !== 2 || stream[i]._claimed) continue;
@@ -343,6 +514,94 @@ function markTables(stream, B, P) {
   return groups;
 }
 
+// ---------- figure graphics -------------------------------------------------------------------------------------------------------
+// The page's picture regions (pages[].gfx from js/pdfGraphics.js) are matched to the "Figure N" captions: the region next to the
+// caption (above it or below it, same column), plus the other regions of a multi-panel figure up to the nearest body text, plus the
+// short labels around the plot (tick labels, legend), which are then not read as text. Pure; mutates the records and `owned`.
+const GFX = { maxGap: 90, farGap: 240, panelGap: 130, margin: 10 };
+function attachFigureGraphics(figs, pages, linesByPage, B, owned) {
+  const pageOf = new Map(pages.map(p => [p.n, p]));
+  const byPage = new Map();
+  for (const f of figs) { const n = f.lines[0].page; if (!byPage.has(n)) byPage.set(n, []); byPage.get(n).push(f); }
+  const free = l => !owned.has(l) || l._junk;
+  const labelLike = l => (l.chars <= 28 || (l.chars <= 90 && /^\(?(?:panel|plot|chart|graph)\s+[A-Za-z0-9]\b|^\([a-z]\)\s/i.test(l.text))) && l.h <= 1.05 * B && !NUM_HEAD.test(l.text);
+  const ovl = (a0, a1, b0, b1) => Math.min(a1, b1) - Math.max(a0, b0);
+  const cands = [];
+  const jobs = [];
+  for (const [pn, fl] of byPage) {
+    const page = pageOf.get(pn); if (!page?.gfx?.length) continue;
+    const lines = linesByPage.get(pn) ?? [];
+    const regs = page.gfx.map(g => {
+      const r = { ...g, labels: [] }, M = GFX.margin;
+      for (const l of lines) {
+        if (!free(l)) continue;
+        if (l.x1 < r.x0 - M || l.x0 > r.x1 + M || l.top < r.y0 - M || l.bot > r.y1 + M) continue;
+        const inside = (l.top + l.bot) / 2 >= r.y0 - 2 && (l.top + l.bot) / 2 <= r.y1 + 2;
+        if (l._junk || (labelLike(l) && (inside || l.chars <= 18))) r.labels.push(l);
+      }
+      r.ex0 = Math.min(r.x0, ...r.labels.map(l => l.x0)); r.ex1 = Math.max(r.x1, ...r.labels.map(l => l.x1));
+      r.ey0 = Math.min(r.y0, ...r.labels.map(l => l.bot)); r.ey1 = Math.max(r.y1, ...r.labels.map(l => l.top));
+      return r;
+    });
+    for (const f of fl) {
+      const cl = f.lines, capTop = Math.max(...cl.map(l => l.top)), capBot = Math.min(...cl.map(l => l.bot));
+      let xr;
+      if (cl[0].col === 'F') xr = [Math.min(...cl.map(l => l.x0)), Math.max(...cl.map(l => l.x1))];
+      else xr = [Math.min(...cl.map(l => l.colLeft)), Math.max(...cl.map(l => l.colRight))];
+      jobs.push({ f, pn, lines, regs, capTop, capBot, xr, cl, allLabels: new Set(regs.flatMap(r => r.labels)) });
+    }
+  }
+  const sameCol = (j, r) => ovl(j.xr[0], j.xr[1], r.ex0, r.ex1) >= 0.4 * Math.min(r.ex1 - r.ex0, j.xr[1] - j.xr[0]);
+  // body text, or another block's lines (a caption, an equation), in the vertical gap (lo, hi) over this figure's columns
+  const blocked = (j, r, lo, hi) => {
+    if (hi - lo <= 1) return false;
+    const x0 = Math.min(j.xr[0], r.ex0), x1 = Math.max(j.xr[1], r.ex1);
+    return j.lines.some(l => !l._junk && !(free(l) && labelLike(l)) && !j.allLabels.has(l) && !j.cl.includes(l) && l.bot >= lo - 0.5 && l.top <= hi + 0.5
+      && ovl(l.x0, l.x1, x0, x1) >= Math.min(40, 0.3 * (l.x1 - l.x0)) && Math.min(l.top, hi) - Math.max(l.bot, lo) >= 0.5 * (l.top - l.bot));
+  };
+  const votes = { above: 0, below: 0 };
+  for (const j of jobs) {
+    const have = new Set();
+    for (const r of j.regs) {
+      if (!sameCol(j, r)) continue;
+      const ga = r.ey0 - j.capTop, gb = j.capBot - r.ey1;
+      const reach = (r.ex1 - r.ex0) * (r.ey1 - r.ey0) >= 15000 ? GFX.farGap : GFX.maxGap;   // a big picture may sit far from its caption when nothing lies between
+      if (ga >= -4 && ga <= reach && (r.ey0 + r.ey1) / 2 > j.capTop && !blocked(j, r, j.capTop, r.ey0)) { cands.push({ j, r, dir: 'above', gap: Math.max(0, ga) }); have.add('above'); }
+      if (gb >= -4 && gb <= reach && (r.ey0 + r.ey1) / 2 < j.capBot && !blocked(j, r, r.ey1, j.capBot)) { cands.push({ j, r, dir: 'below', gap: Math.max(0, gb) }); have.add('below'); }
+    }
+    if (have.size === 1) votes[[...have][0]]++;
+  }
+  const dom = votes.below > votes.above ? 'below' : 'above';   // 'above' = the graphic is above its caption (caption under the figure)
+  for (const c of cands) c.score = c.dir === dom ? c.gap : 1.5 * c.gap + 4;
+  cands.sort((p, q) => p.score - q.score);
+  const taken = new Set(), got = new Map();
+  for (const c of cands) {
+    if (taken.has(c.r) || got.has(c.j)) continue;
+    taken.add(c.r); got.set(c.j, { dir: c.dir, regs: [c.r] });
+  }
+  for (const [j, g] of got) {   // the other panels of the same figure: stacked or side by side, no body text in between
+    const side = r => (g.dir === 'above' ? (r.ey0 + r.ey1) / 2 > j.capTop : (r.ey0 + r.ey1) / 2 < j.capBot);
+    for (let grew = true, guard = 0; grew && guard < 12; guard++) {
+      grew = false;
+      const U = { y0: Math.min(...g.regs.map(r => r.ey0)), y1: Math.max(...g.regs.map(r => r.ey1)) };
+      for (const r of j.regs) {
+        if (taken.has(r) || !sameCol(j, r) || !side(r)) continue;
+        const gap = Math.max(0, r.ey0 - U.y1, U.y0 - r.ey1);
+        if (gap > GFX.panelGap || blocked(j, r, Math.min(U.y1, r.ey1), Math.max(U.y0, r.ey0))) continue;
+        if (g.dir === 'above' && r.ey0 < j.capTop) continue;
+        if (g.dir === 'below' && r.ey1 > j.capBot) continue;
+        taken.add(r); g.regs.push(r); grew = true;
+      }
+    }
+    const rs = g.regs;
+    j.f.gfx = [Math.min(...rs.map(r => r.ex0)), Math.min(...rs.map(r => r.ey0)), Math.max(...rs.map(r => r.ex1)), Math.max(...rs.map(r => r.ey1))];
+    for (const r of rs) for (const l of r.labels) { l._junk = 1; owned.add(l); }
+    // short unclaimed lines inside the figure box (an axis title set apart from the plot) belong to it too
+    const [fx0, fy0, fx1, fy1] = j.f.gfx, capLo = Math.min(j.capBot, fy0), capHi = Math.max(j.capTop, fy1);
+    for (const l of j.lines) if (free(l) && !l._junk && labelLike(l) && l.top <= capHi + 0.5 && l.bot >= capLo - 0.5 && !(l.top > j.capTop && l.bot < j.capBot) && ovl(l.x0, l.x1, fx0, fx1) > 0.5 * (l.x1 - l.x0) && !j.cl.includes(l)) { l._junk = 1; owned.add(l); }
+  }
+}
+
 const PAD = 3.5;   // crop padding in PDF units around equation and table boxes
 const CAP_FIG = /^(figure|fig\.)\s*(\d+|[IVX]+)\s*[:.—–|-]/i;
 const CAP_TAB = /^(table|tab\.)\s*(\d+|[IVX]+)\s*[:.—–|-]/i;
@@ -351,7 +610,7 @@ const CAP_TAB_LOOSE = /^(table|tab\.)\s*(\d+|[IVX]+)\b/i;
 function capLines(stream, i, B, P) {
   // caption continues while lines follow at normal spacing in the same column
   const out = [i];
-  for (let j = i + 1; j < stream.length && out.length < 6; j++) {
+  for (let j = i + 1; j < stream.length && out.length < 12; j++) {
     const a = stream[j - 1], b = stream[j];
     if (b.page !== a.page || b.col !== a.col || a.y - b.y > 1.4 * P || b._claimed || b._tab >= 1 || Math.abs(b.h - a.h) > 0.1 * B) break;
     if (/^(figure|fig\.|table|tab\.)\s*\d+/i.test(b.text) || endsSentence(a.text) && a.x1 < a.colRight - 0.2 * (a.colRight - a.colLeft)) break;
@@ -417,6 +676,19 @@ function paddedBox(lines, pageLinesAll, B, pad, xPad = pad) {
   return [r1(Math.max(0, x0 - xPad)), r1(ny0), r1(x1 + xPad), r1(ny1)];
 }
 
+/** A table box grown to the drawn rules that frame it (top, header and bottom rules, and the full width of the table): rules within ~8 units above/below the box and over at least half of its width. */
+function withRules(box, rules, size) {
+  if (!box || !rules.length) return box;
+  let [x0, y0, x1, y1] = box; const w = x1 - x0, Y0 = y0, Y1 = y1;
+  for (const r of rules) {
+    if (r[2] < Y0 - 8 || r[2] > Y1 + 2 || r[1] - r[0] > 1.6 * w + 20) continue;
+    if (Math.min(r[1], x1) - Math.max(r[0], x0) < 0.5 * Math.min(w, r[1] - r[0])) continue;
+    x0 = Math.min(x0, r[0] - 1.5); x1 = Math.max(x1, r[1] + 1.5);
+    if (r[2] < Y0) y0 = Math.min(y0, r[2] - 1.5); else if (r[2] > Y1) y1 = Math.max(y1, r[2] + 1.5);
+  }
+  return [r1(Math.max(0, x0)), r1(Math.max(0, y0)), r1(Math.min(size?.[0] ?? Infinity, x1)), r1(Math.min(size?.[1] ?? Infinity, y1))];
+}
+
 /**
  * The raw geometry of an equation block, for the LaTeX reconstruction (js/mathLatex.js): every positioned text item of its lines
  * ([str, x, y, w, h, fontIndex], PDF units) plus the drawn horizontal rules next to it ([x0, x1, y, thickness]); fonts are indexed.
@@ -440,7 +712,8 @@ function build(input) {
   const pages = normalizePages(input);
   const empty = { blocks: [], pageSize: {} };
   if (!pages.length) return empty;
-  const { B, bodyFont } = bodyStats(pages);
+  let { B, bodyFont } = bodyStats(pages);
+  B = fixHeights(pages, B);
   const pageSize = {}; for (const p of pages) pageSize[p.n] = [r1(p.w), r1(p.h)];
   const rulesByPage = new Map(pages.map(p => [p.n, p.rules ?? []]));
 
@@ -475,7 +748,8 @@ function build(input) {
   for (const l of stream) {
     if (l.chars < 10) continue;
     const letters = (l.text.match(/[A-Za-z]/g) ?? []).length, sym = (l.text.match(/[<>?@#$%&*!"|^~]/g) ?? []).length, strong = (l.text.match(MATH_STRONG_G) ?? []).length;
-    if (letters / l.chars < 0.4 && sym >= 4 && strong < 2) { l._junk = 1; owned.add(l); }
+    const digits = (l.text.match(/\d/g) ?? []).length;   // a row of percentages is numbers, not font soup
+    if (letters / l.chars < 0.4 && sym >= 4 && strong < 2 && digits < 0.25 * l.chars) { l._junk = 1; owned.add(l); }
   }
   // 1. tables and captions
   const tabGroups = markTables(stream, B, P);
@@ -498,6 +772,13 @@ function build(input) {
           take(all.filter(l => !owned.has(l)), { kind: 'table', caption: joinLines(cap), rows, label });
           continue;
         }
+        const lr = looseTableRows(stream, ci[ci.length - 1], B, P, owned, ci[0]) ?? ruledTableRows(stream, ci[ci.length - 1], rulesByPage.get(L.page) ?? [], P, owned);
+        if (lr && !/^(?:table|tab\.)\s*\d+\.\d+\s+[a-z]/i.test(L.text)) {   // not a sentence that starts with a section-style number ("Table 3.1 shows ...")
+          const rows = stream.slice(lr.a, lr.b + 1).filter(l => !owned.has(l));
+          take([...cap, ...rows], { kind: 'table', caption: joinLines(cap), rows, label });
+          k = Math.max(k, lr.b);
+          continue;
+        }
       }
       take(cap, { kind: 'fig', label, caption: joinLines(cap) });
       k = ci[ci.length - 1];
@@ -508,6 +789,8 @@ function build(input) {
     const rows = stream.slice(g.a, g.b + 1).filter(l => !owned.has(l));
     if (rows.length >= 4 && rows.filter(l => l._tab === 2).length >= 3) take(rows, { kind: 'table', caption: '', rows });
   }
+
+  try { attachFigureGraphics([...new Set([...claims.values()].filter(c => c.kind === 'fig'))], pages, pageLinesMap, B, owned); } catch { /* captions only */ }
 
   // 2. headings (title, sections), then equations
   const heads = new Map();
@@ -613,12 +896,27 @@ function build(input) {
   for (const l of stream) { if (owned.has(l) || l.chars > 14 || l.h < 0.6 * B) { flushJunk(); continue; } junkRun.push(l); }
   flushJunk();
 
+  const emitClaim = (cl, L) => {
+    if (cl.kind === 'eq') { const eb = push('eq', cl.lines.map(l => l.text).join(' '), L.page, paddedBox(cl.lines, pageLinesMap.get(L.page) ?? [], B, PAD, PAD), cl.label); const sr = eqSource(cl.lines, rulesByPage.get(L.page) ?? [], B); if (sr) eb.src = sr; }
+    else if (cl.kind === 'table') push('table', cl.caption || cl.rows.map(l => l._cells.map(c => c.s).join(' | ')).join('\n').slice(0, 600), L.page, withRules(paddedBox(cl.lines, pageLinesMap.get(L.page) ?? [], B, PAD, PAD), rulesByPage.get(L.page) ?? [], pageSize[L.page]), cl.label);
+    else {
+      let bx = unionBox(cl.lines, 1.5), gfx = false;
+      if (cl.gfx && bx) { const sz = pageSize[L.page]; bx = [r1(Math.max(0, Math.min(bx[0], cl.gfx[0] - PAD))), r1(Math.max(0, Math.min(bx[1], cl.gfx[1] - PAD))), r1(Math.min(sz[0], Math.max(bx[2], cl.gfx[2] + PAD))), r1(Math.min(sz[1], Math.max(bx[3], cl.gfx[3] + PAD)))]; gfx = true; }
+      const fb = push('fig', cl.caption, L.page, bx, cl.label); if (gfx) fb.gfx = true;
+    }
+  };
   const noteLines = [];
   for (let k = 0; k < stream.length; k++) {
     const L = stream[k];
     if (refs) {
       const hd = heads.get(L);
-      if (hd && APPX_HEAD.test(joinLines(hd.lines))) { flushRefs(); } else { refs.lines.push(L); continue; }
+      if (hd && APPX_HEAD.test(joinLines(hd.lines))) { flushRefs(); }
+      else {
+        const rc = claims.get(L);
+        if (rc && rc.kind !== 'eq') { if (rc.lines[0] === L) emitClaim(rc, L); continue; }   // figures and tables set after the references (end-of-paper exhibits)
+        if (!L._junk) refs.lines.push(L);
+        continue;
+      }
     }
     const hd = heads.get(L);
     if (hd) {
@@ -633,11 +931,7 @@ function build(input) {
     const cl = claims.get(L);
     if (cl) {
       if (cl.lines[0] !== L) continue;
-      const emit = () => {
-        if (cl.kind === 'eq') { const eb = push('eq', cl.lines.map(l => l.text).join(' '), L.page, paddedBox(cl.lines, pageLinesMap.get(L.page) ?? [], B, PAD, PAD), cl.label); const sr = eqSource(cl.lines, rulesByPage.get(L.page) ?? [], B); if (sr) eb.src = sr; }
-        else if (cl.kind === 'table') push('table', cl.caption || cl.rows.map(l => l._cells.map(c => c.s).join(' | ')).join('\n').slice(0, 600), L.page, paddedBox(cl.lines, pageLinesMap.get(L.page) ?? [], B, PAD, PAD), cl.label);
-        else push('fig', cl.caption, L.page, unionBox(cl.lines, 1.5), cl.label);
-      };
+      const emit = () => emitClaim(cl, L);
       if (cl.kind === 'eq') { flushPara(); emit(); } else if (cur.length) deferred.push(emit); else emit();
       continue;
     }
@@ -647,7 +941,7 @@ function build(input) {
       noteLines.push(L);
       const nxt = stream[k + 1];
       const closing = !(nxt && nxt.h < 0.93 * B && nxt.chars >= 6 && nxt.page === L.page && Math.abs(L.y - nxt.y) <= 1.6 * P && !claims.has(nxt) && !heads.has(nxt));
-      if (closing) { const nl = noteLines.splice(0); const text = joinLines(nl); if (text.length >= 6) { const pg = nl[0].page, bx = unionBox(nl); deferred.push(() => push('p', text, pg, bx)); if (!cur.length) flushDeferred(); } }
+      if (closing) { const nl = noteLines.splice(0); const text = joinLines(nl); if (text.length >= 6) { const pg = nl[0].page, bx = unionBox(nl), foot = /^(?:\d{1,2}|[*\u2020\u2021\u00a7\u00b6])\s*\S/.test(text) && nl[0].y < 0.45 * (pageSize[pg]?.[1] ?? 792); deferred.push(() => { const fb = push('p', text, pg, bx); if (foot) fb.foot = true; }); if (!cur.length) flushDeferred(); } }
       continue;
     }
     // run-in "Abstract. text" / "Abstract— text"

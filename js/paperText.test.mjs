@@ -307,4 +307,134 @@ await t('eq blocks keep their positioned items and the drawn rules next to them 
   assert.ok(!('src' in buildBlocks([{ n: 1, w: W, h: H, items: [header()] }]).blocks[0] ?? {}));
 });
 
+
+// ---- figures with their graphic, tables of numbers, footnote markers ------------------------------------------------------------
+const SX = 72, SW = 468;   // a single-column page
+const para1 = (y, k, last = true) => col(SX, SW, y, Array.from({ length: k }, (_, j) => `Synthetic prose line ${j} about forecasting with plain words so the line is long enough to count`), { endShort: last });
+const page = (n, items, gfx) => ({ n, w: W, h: H, items: [header(), pageNo(n), ...items], ...(gfx ? { gfx } : {}) });
+const figs = r => r.blocks.filter(b => b.type === 'fig');
+const hasText = (r, s) => r.blocks.some(b => (b.type === 'p' || b.type === 'h2') && b.text.includes(s));
+
+await t('figure: the graphic above its caption is part of the block, the paragraph above is not', () => {
+  const items = [...para1(720, 5), it(SX, 405, 'Figure 3: Synthetic cumulative results by horizon.', { w: 300 }), ...para1(380, 4)];
+  const r = buildBlocks([page(1, items, [[100, 440, 500, 650, 'i', 1]])]);
+  const [f] = figs(r); assert.ok(f && f.gfx === true, 'a graphic was found');
+  assert.equal(f.label, 'Figure 3'); assert.match(f.text, /^Figure 3: Synthetic cumulative/);
+  assert.ok(f.bbox[3] >= 650 && f.bbox[3] <= 656 && f.bbox[1] <= 405 && f.bbox[1] >= 395, JSON.stringify(f.bbox));
+  assert.ok(f.bbox[0] <= 100 && f.bbox[2] >= 500);
+  const above = r.blocks.find(b => b.type === 'p' && b.text.includes('line 0'));
+  assert.ok(above.bbox[1] > f.bbox[3] - 8, 'the box stops below the prose above');
+});
+
+await t('figure: caption above the graphic (the document sets captions on top)', () => {
+  const items = [...para1(720, 3), it(SX, 640, 'Figure 1: Synthetic caption set above its chart.', { w: 300 }), ...para1(380, 4), it(SX, 250, 'Figure 2: A second one, also on top.', { w: 220 })];
+  const r = buildBlocks([page(1, items, [[100, 430, 500, 625, 'v', 80], [100, 80, 500, 235, 'i', 1]])]);
+  const f = figs(r); assert.equal(f.length, 2);
+  assert.ok(f[0].gfx && f[0].bbox[1] <= 430 && f[0].bbox[3] >= 640, JSON.stringify(f[0].bbox));
+  assert.ok(f[1].gfx && f[1].bbox[1] <= 80 && f[1].bbox[3] >= 250, JSON.stringify(f[1].bbox));
+});
+
+await t('figure: panels stacked above one caption are all included; body text between stops the search', () => {
+  const items = [...para1(720, 3), it(SX, 300, 'Figure 4: Two panels.', { w: 120 }), it(SX, 200, 'Figure 5: Not attached, text in between.', { w: 220 }), ...col(SX, SW, 560, ['This paragraph sits between the panels and the next caption so nothing can reach across it.', 'It has a second long line that also belongs to the body text of the paper, nothing else.'])];
+  const r = buildBlocks([page(1, items, [[100, 330, 500, 480, 'v', 30], [100, 500, 500, 540, 'v', 12], [100, 20, 500, 150, 'v', 9]])]);
+  const [a, b] = figs(r);
+  assert.ok(a.gfx && a.bbox[3] >= 540, 'both panels above the caption: ' + JSON.stringify(a.bbox));
+  assert.ok(a.bbox[3] < 560, 'not the paragraph');
+  assert.ok(b.gfx && b.bbox[1] <= 20, 'the graphic below it belongs to the second caption: ' + JSON.stringify(b.bbox));
+});
+
+await t('figure: no graphic found falls back to the caption alone (as before)', () => {
+  const items = [...para1(720, 3), it(SX, 405, 'Figure 2: A text-only exhibit.', { w: 200 }), ...para1(380, 3)];
+  const r = buildBlocks([page(1, items)]); const [f] = figs(r);
+  assert.ok(f && !f.gfx && f.bbox[3] - f.bbox[1] < 25);
+});
+
+await t('figure: a graphic far from the caption is not attached; labels inside the graphic do not leak into the text', () => {
+  const items = [...para1(720, 3), it(SX, 100, 'Figure 6: Far away.', { w: 120 }), ...[600, 560, 520].map(y => it(60, y, '0.5', { w: 14 })), it(250, 440, 'Time (years)', { w: 60 }), it(SX, 420, 'Legend entry one', { w: 80 })];
+  const far = buildBlocks([page(1, items, [[100, 450, 500, 650, 'v', 30]])]);
+  assert.ok(!figs(far)[0].gfx, 'about 250 units away: not this figure');
+  const near = buildBlocks([page(1, items.map(i => (i.str.startsWith('Figure 6') ? { ...i, y: 410 } : i)), [[100, 450, 500, 650, 'v', 30]])]);
+  assert.ok(figs(near)[0].gfx);
+  assert.ok(!hasText(near, 'Time (years)') && !hasText(near, 'Legend entry'), 'axis title and legend are part of the picture');
+});
+
+await t('figure on a two-column page: only the caption column (or the full width for a full-width caption)', () => {
+  const left = (y, k) => col(LX, LW, y, Array.from({ length: k }, (_, j) => `Left column synthetic words number ${j} fill the line`));
+  const right = (y, k) => col(RX, RW, y, Array.from({ length: k }, (_, j) => `Right column synthetic words number ${j} fill the line`));
+  const items = [...left(720, 12), ...right(720, 12), it(LX, 400, 'Figure 7: Left column figure.', { w: 150 }), ...left(360, 6), ...right(560, 5), ...right(380, 8)];
+  const r = buildBlocks([page(1, items, [[LX, 430, LX + LW, 580, 'i', 1]])]);
+  const f = figs(r)[0]; assert.ok(f && f.gfx, 'found');
+  assert.ok(f.bbox[2] <= RX - 4, 'stays in the left column: ' + JSON.stringify(f.bbox));
+  const wide = buildBlocks([page(1, [...left(720, 12), ...right(720, 12), it(LX, 400, 'Figure 8: Spanning both columns with a long caption that runs across the page width, set in one wide line.', { w: 480 }), ...left(360, 6), ...right(360, 6)], [[LX, 430, RX + RW, 640, 'v', 40]])]);
+  const g = figs(wide)[0]; assert.ok(g.gfx && g.bbox[0] <= LX && g.bbox[2] >= RX + RW - 1, JSON.stringify(g.bbox));
+  const other = buildBlocks([page(1, [...left(720, 12), ...right(720, 12), it(LX, 400, 'Figure 9: Left caption, graphic in the right column.', { w: 150 }), ...left(360, 6), ...right(360, 6)], [[RX, 430, RX + RW, 580, 'i', 1]])]);
+  assert.ok(!figs(other)[0].gfx, 'a graphic in the other column is not this figure');
+});
+
+await t('tables: merged cells in one item (tab-spaced runs, glued label, back-to-back negatives) become one table block with a crop box; no number soup in the text', () => {
+  const rowsX = 140;
+  const lines = [['Performance (p. a.)', '4.81%    5.19%    5.51%    8.35%'], ['Volatility (p. a.)', '11.32%   10.93%   11.72%   14.08%'], ['Sharpe Ratio', '0.42   0.48   0.47   0.59'], ['Max DrawDown', '-34.22%-37.57%-45.08%-28.35%']];
+  const items = [...para1(720, 3), it(SX, 560, 'Table 5', { w: 36, h: 9 }), ...[0, 1, 2, 3].map(k => it(rowsX + k * 40, 540, ['1M', '3M', '6M', '12M'][k], { w: 14, h: 9 }))];
+  lines.forEach(([lab, nums], k) => { const y = 524 - k * 11; items.push(it(SX, y, lab, { w: lab.length * 4.3, h: 9 }), it(rowsX, y, nums, { w: nums.length * 4.2, h: 9 })); });
+  items.push(...para1(440, 3));
+  const r = buildBlocks([page(1, items)]);
+  const tb = r.blocks.filter(b => b.type === 'table'); assert.equal(tb.length, 1, JSON.stringify(r.blocks.map(b => b.type + ':' + b.text.slice(0, 20))));
+  assert.equal(tb[0].label, 'Table 5');
+  assert.ok(tb[0].bbox[1] <= 488 && tb[0].bbox[3] >= 560, JSON.stringify(tb[0].bbox));
+  assert.ok(!r.blocks.some(b => b.type === 'p' && /4\.81|11\.32|-34\.22/.test(b.text)), 'no numbers left in the paragraphs');
+  assert.ok(!/4\.81/.test(plainText(r.blocks)));
+});
+
+await t('tables: a caption with short rows of numbers but no strict table is found by the aligned-column scan', () => {
+  const items = [...para1(720, 3), it(SX, 600, 'Table 2: Selected statistics.', { w: 150, h: 9 }), it(SX, 586, 'Item', { w: 20, h: 9 }), it(300, 586, 'Mean', { w: 20, h: 9 }), it(380, 586, 'Std', { w: 16, h: 9 }),
+    it(SX, 574, 'Alpha', { w: 24, h: 9 }), it(300, 574, '0.125', { w: 22, h: 9 }), it(380, 574, '0.031', { w: 22, h: 9 }),
+    it(SX, 562, 'Beta', { w: 20, h: 9 }), it(300, 562, '1.040', { w: 22, h: 9 }), it(380, 562, '0.220', { w: 22, h: 9 }), ...para1(520, 3)];
+  const r = buildBlocks([page(1, items)]);
+  const tb = r.blocks.filter(b => b.type === 'table'); assert.equal(tb.length, 1); assert.equal(tb[0].label, 'Table 2');
+  assert.ok(tb[0].bbox[1] <= 562 && tb[0].bbox[3] >= 600, JSON.stringify(tb[0].bbox));
+});
+
+await t('footnote markers: a raised small number after a word is cut from the paragraph when a footnote with that number exists; the footnote is a small foot block', () => {
+  const items = col(SX, SW, 700, ['The forecast beats the benchmark every week and the gain persists in the sample', 'after costs, which we show for the next week;', 'and nothing else in 2020 or in x2 changes.']);
+  const line2 = items.find(i => i.str.startsWith('after costs')), line3 = items.find(i => i.str.startsWith('and nothing'));
+  items.push(it(line2.x + line2.w + 0.5, line2.y + 4, '12', { h: 6.5, w: 7 }));                 // the marker, glued to "week;"
+  items.push(it(line3.x + 140, line3.y + 4, '2', { h: 6.5, w: 3 }));                              // an exponent: no footnote 2 exists
+  items.push(it(SX, 70, '12', { h: 6.5, w: 7 }), it(SX + 9, 70, 'A synthetic footnote that explains the claim made above in plain words.', { h: 7, w: 330 }));
+  const r = buildBlocks([page(1, items)]);
+  const body = r.blocks.find(b => b.type === 'p' && b.text.includes('every week'));
+  assert.ok(body, 'body paragraph');
+  assert.ok(/next week;/.test(body.text) && !/week;\s*12/.test(body.text), body.text);
+  assert.ok(/in 2020 or in x/.test(body.text), 'years and exponents stay: ' + body.text);
+  const foot = r.blocks.find(b => b.foot); assert.ok(foot && /^12 A synthetic footnote/.test(foot.text), JSON.stringify(r.blocks.map(b => [b.type, b.text.slice(0, 30), b.foot])));
+});
+
+await t('footnote markers: with no matching footnote body nothing is removed', () => {
+  const items = col(SX, SW, 700, ['The forecast beats the benchmark every week and the gain persists in the sample', 'after costs, which we show for the next week;']);
+  const line2 = items.find(i => i.str.startsWith('after costs'));
+  items.push(it(line2.x + line2.w + 0.5, line2.y + 4, '12', { h: 6.5, w: 7 }));
+  const r = buildBlocks([page(1, items)]);
+  assert.ok(/week;\s?12/.test(r.blocks.find(b => b.type === 'p' && b.text.includes('every week')).text));
+});
+
+await t('a table\'s wide cell gap on a short column is not mistaken for the gutter', () => {
+  const left = (y, k) => col(LX, LW, y, Array.from({ length: k }, (_, j) => `Left column synthetic words number ${j} fill the line`));
+  const right = (y, k) => col(RX, RW, y, Array.from({ length: k }, (_, j) => `Right column synthetic words number ${j} fill the line`));
+  const rows = [['Metric', '12M', 'cash'], ['Return', '8.35%', '11.38%'], ['Vol', '14.08%', '13.98%'], ['Sharpe', '0.59', '0.81']];
+  const items = [...left(700, 3), it(LX, 620, 'Table 9', { w: 30, h: 9 })];
+  rows.forEach((r, k) => [LX, LX + 120, LX + 200].forEach((x, c) => items.push(it(x, 606 - k * 11, r[c], { h: 9, w: r[c].length * 4.4 }))));
+  items.push(...left(540, 14), ...right(720, 30));
+  const rr = buildBlocks([page(1, items)]);
+  const tb = rr.blocks.filter(b => b.type === 'table'); assert.equal(tb.length, 1);
+  assert.ok(tb[0].bbox[2] >= LX + 200 + 20, 'the last column is inside the box: ' + JSON.stringify(tb[0].bbox));
+});
+
+
+await t('figure: a caption of several lines (with a range like 1–52 and a far picture below it) is one caption; the picture is found', () => {
+  const items = [...para1(720, 2), it(SX, 660, 'Figure 1: Cumulative returns in the subsequent', { w: 440 }), it(SX + 60, 648, '1–52 Weeks, Sorted by the signal', { w: 200 }), it(SX, 636, 'and then the third caption line ends here.', { w: 200 }), ...para1(300, 3)];
+  const r = buildBlocks([page(1, items, [[72, 350, 520, 560, 'i', 1]])]);
+  const [f] = figs(r); assert.ok(f && f.gfx, 'found');
+  assert.match(f.text, /1–52 Weeks/); assert.match(f.text, /third caption line/);
+  assert.ok(f.bbox[3] >= 660 && f.bbox[1] <= 350, JSON.stringify(f.bbox));
+});
+
 console.log(`paperText: ${n} tests passed`);
