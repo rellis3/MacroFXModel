@@ -361,7 +361,7 @@ function bindReader(p) {
     try {
       const r = await api.makeCase(p.id);
       const a = document.createElement('a'); a.className = 'lib-btn primary'; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Open the case ↗';
-      a.href = '/desk-office.html?case=' + encodeURIComponent(r.caseId); b.replaceWith(a);
+      a.href = '/desk-office.html?case=' + encodeURIComponent(r.caseId) + '#research/ideas'; b.replaceWith(a);
       toast('Case created from this paper');
     } catch (err) { b.disabled = false; fail(err); }
   };
