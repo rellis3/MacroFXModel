@@ -4,9 +4,12 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { yearKey, yearCounts } from '../../js/paperCatalog.js';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const TOPICS = [['volatility', 'Volatility'], ['jump', 'Jump / diffusion'], ['brownian', 'Brownian motion & stochastic processes'], ['carry', 'FX & carry'], ['cot', 'COT & positioning'], ['ml', 'Machine learning'], ['regimes', 'Regimes & HMM']];
+const SOURCES = [['ssrn', 'SSRN'], ['arxiv', 'arXiv'], ['nber', 'NBER'], ['fed', 'Federal Reserve / NY Fed'], ['ecb', 'ECB'], ['boe', 'Bank of England'], ['k151', '151 Trading Strategies (Kakushadze & Serur)'], ['quantconnect', 'QuantConnect strategy library'], ['reading', 'Reading list'], ['upload', 'Other upload']];
+const srcOf = k => ({ key: k, label: (SOURCES.find(s => s[0] === k) || [k, k])[1] });
 const label = k => (TOPICS.find(t => t[0] === k) || [k, k])[1];
 
 /** A minimal valid two-page PDF (612x792) containing synthetic text; built in memory, nothing real. */
@@ -46,25 +49,38 @@ for (let k = 4; k < 22; k++) { if (k % 6 === 0) B('h2', 'Section ' + k); B('p', 
 B('refs', 'Invented, A. (2000). A made-up reference list entry.');
 
 const mk = (id, title, year, tags, o = {}) => ({
-  id, title, authors: ['A. Author', 'B. Writer', 'C. Scholar', 'D. Fourth'], year, venue: 'Synthetic Journal', url: null, ssrn: o.ssrn || null, arxiv: null, doi: null,
+  id, title, authors: ['A. Author', 'B. Writer', 'C. Scholar', 'D. Fourth'], year, yearFrom: year ? (o.yearFrom || 'given') : null, yearKey: yearKey(year), venue: 'Synthetic Journal', url: null, ssrn: o.ssrn || null, arxiv: null, doi: null,
   kind: 'paper', readFrom: o.readFrom || 'pdf', hasText: o.hasText !== false, hasPdf: o.hasPdf !== false, chars: 90000, pages: 2, uploadedAt: '2026-11-01T00:00:00Z',
   tags: tags.map((k, i) => ({ key: k, label: label(k), source: i === 1 && o.manual ? 'manual' : 'auto' })),
   abstract: o.abstract === undefined ? 'Invented abstract sentence one about clustering. A second invented sentence that should not show.' : o.abstract,
   theory: o.theory || ['garch-volatility', 'institutional-har-rv'],
   // real server shapes: data is { market, period, frequency }, caveats is an array, outOfSample / costs are yes|no|partly|unclear
   notes: o.notes === null ? null : { claim: 'Invented claim: volatility clustering predicts jumps in the next session. A second long sentence follows to prove trimming works and keeps going for a while with filler words.', mechanism: 'Invented mechanism.', data: { market: 'Synthetic G10 FX', period: '2000-2020', frequency: 'daily' }, method: 'Invented regression of next-day jumps on trailing realised variance', effect: 'Small, invented: 0.3 Sharpe before costs.', outOfSample: o.oos || 'partly', costs: 'no', relevance: 'Invented: could size our intraday ranges after clustered days.', stance: 'supports', caveats: ['Entirely made up, so treat as a layout fixture.', 'Second caveat.'], testHere: 'Invented: split sessions by trailing variance tercile and compare next-day range versus the cog ladder.' },
+  source: srcOf(o.source || 'upload'),
   desk: o.desk || [], progress: o.progress || null, audio: { briefing: { status: 'none' } },
 });
 const state = {
   papers: [
-    mk('p1', 'Volatility Clustering and Jump Risk: A Synthetic Study With a Deliberately Long Title to Test Wrapping on Narrow Phones', 2019, ['volatility', 'jump'], { desk: [{ id: 'ev_001', verdict: 'candidate', claim: 'Invented desk entry' }], progress: { pct: 35, pos: 8, at: Date.now() - 1e5, done: false }, manual: true }),
-    mk('p2', 'Carry Trade Crashes (synthetic)', 2012, ['carry'], { oos: 'no' }),
-    mk('p3', 'Positioning Extremes in Futures', 2021, ['cot', 'regimes'], { notes: null, abstract: 'We describe positioning extremes in synthetic futures. Nothing real.' }),
-    mk('p4', 'An Abstract-Only Note on Brownian Motion', 2005, ['brownian'], { hasPdf: false, hasText: false, notes: null, readFrom: 'abstract', abstract: '', theory: [] }),
-    mk('p5', 'Machine Learning for Regimes', 2023, ['ml', 'regimes'], { oos: 'yes' }),
+    mk('p1', 'Volatility Clustering and Jump Risk: A Synthetic Study With a Deliberately Long Title to Test Wrapping on Narrow Phones', 2019, ['volatility', 'jump'], { source: 'ssrn', desk: [{ id: 'ev_001', verdict: 'candidate', claim: 'Invented desk entry' }], progress: { pct: 35, pos: 8, at: Date.now() - 1e5, done: false }, manual: true }),
+    mk('p2', 'Carry Trade Crashes (synthetic)', 2012, ['carry'], { oos: 'no', source: 'nber' }),
+    mk('p3', 'Positioning Extremes in Futures', 2021, ['cot', 'regimes'], { source: 'fed', notes: null, abstract: 'We describe positioning extremes in synthetic futures. Nothing real.' }),
+    mk('p4', 'An Abstract-Only Note on Brownian Motion', 2005, ['brownian'], { source: 'reading', hasPdf: false, hasText: false, notes: null, readFrom: 'abstract', abstract: '', theory: [] }),
+    mk('p5', 'Machine Learning for Regimes', 2023, ['ml', 'regimes'], { oos: 'yes', source: 'arxiv' }),
+    mk('p6', 'Opening Range Breakout on Index Futures (synthetic)', 2018, ['volatility', 'regimes'], { source: 'quantconnect' }),
+    mk('p7', 'Statistical Arbitrage Pairs (synthetic)', 2018, ['carry', 'ml'], { source: 'k151' }),
+    mk('p8', 'Euro Area Rate Pass-Through (synthetic)', 2020, ['carry'], { source: 'ecb' }),
+    mk('p9', 'My scanned notes on gamma', null, ['volatility'], { notes: null, abstract: '' }),
+    mk('p10', 'Older Note on Option Pricing (synthetic, from file name)', 2014, ['volatility'], { notes: null, abstract: '', yearFrom: 'filename', source: 'upload' }),
+    mk('p11', 'Uploaded Draft on Order Flow (synthetic, year from text)', 2025, ['ml'], { notes: null, abstract: '', yearFrom: 'text', source: 'upload' }),
+    mk('p12', 'Early Study of Exchange Rates (synthetic)', 1993, ['carry'], { source: 'nber' }),
+    mk('p13', 'A 1970s Classic on Random Walks (synthetic)', 1976, ['brownian'], { source: 'reading', notes: null }),
+    mk('p14', 'Jump Detection with Intraday Data (synthetic)', 2026, ['jump'], { source: 'arxiv', yearFrom: 'arxiv', notes: null }),
+    mk('p15', 'Unlabelled Scan Without a Date', null, ['regimes'], { notes: null, abstract: '', source: 'upload' }),
   ],
   audioStart: {}, caseN: 0, progressPosts: [],
 };
+const years = () => yearCounts(state.papers);
+const sources = () => SOURCES.map(([key, lab]) => ({ key, label: lab, count: state.papers.filter(p => p.source.key === key).length })).filter(x => x.count);
 const topics = () => TOPICS.map(([key, lab]) => ({ key, label: lab, count: state.papers.filter(p => p.tags.some(t => t.key === key)).length }));
 const send = (res, obj, code = 200) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); };
 const body = req => new Promise(r => { let s = ''; req.on('data', c => { s += c; }); req.on('end', () => { try { r(JSON.parse(s || '{}')); } catch { r({}); } }); });
@@ -76,11 +92,11 @@ export function startServer(port = 0) {
     if (p.startsWith('/api/library/')) {
       const ep = p.slice('/api/library/'.length);
       const paper = state.papers.find(x => x.id === q.get('id'));
-      if (ep === 'papers') return send(res, { ok: true, papers: state.papers, topics: topics(), totals: { all: state.papers.length, fullText: 4, abstractOnly: 1 } });
+      if (ep === 'papers') return send(res, { ok: true, papers: state.papers, topics: topics(), sources: sources(), years: years(), totals: { all: state.papers.length, fullText: state.papers.length - 1, abstractOnly: 1 } });
       if (ep === 'paper') return paper ? send(res, { ok: true, paper, blocks: paper.hasText ? blocks : null, pages: 2, pageSize: { 1: [612, 792], 2: [612, 792], 9: [612, 792] } }) : send(res, { ok: false, error: 'not found' }, 404);
       if (ep === 'search') {
-        const w = (q.get('q') || '').toLowerCase(), tags = (q.get('tags') || '').split(',').filter(Boolean);
-        const hits = state.papers.filter(x => x.hasText && (x.title + para(1)).toLowerCase().includes(w) && (!tags.length || x.tags.some(t => tags.includes(t.key))))
+        const w = (q.get('q') || '').toLowerCase(), tags = (q.get('tags') || '').split(',').filter(Boolean), srcs = (q.get('sources') || '').split(',').filter(Boolean), yrs = (q.get('years') || '').split(',').filter(Boolean);
+        const hits = state.papers.filter(x => x.hasText && (x.title + para(1)).toLowerCase().includes(w) && (!tags.length || x.tags.some(t => tags.includes(t.key))) && (!srcs.length || srcs.includes(x.source.key)) && (!yrs.length || yrs.includes(x.yearKey)))
           .map((x, i) => ({ id: x.id, score: 10 - i, title: x.title, snippets: [{ block: 1, text: para(1) }] }));
         return send(res, { ok: true, hits });
       }

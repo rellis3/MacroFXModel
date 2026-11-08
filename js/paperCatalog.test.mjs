@@ -5,7 +5,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { TOPICS, TOPIC_KEYS, stem, autoTags, scoreTopics, applyOverrides, topicCounts, joinCatalog, buildIndex, addDoc, removeDoc, setDocTags, indexSize, parseQuery, search,
-  deskLinks, THEORY_BY_TOPIC, theoryLinks, parseTodoList, heldSsrnIds, readNext, paperCaseId, caseForPaper, caseFromPaper } from './paperCatalog.js';
+  deskLinks, THEORY_BY_TOPIC, theoryLinks, parseTodoList, heldSsrnIds, readNext, paperCaseId, caseForPaper, caseFromPaper, sourceOf, sourceCounts, SOURCES, freeLookup, normTitle, sourceOfManifest, yearOf, arxivYear, yearKey, yearCounts } from './paperCatalog.js';
 import { DESK_EVIDENCE } from './deskEvidence.js';
 import { putCase, summary, roundSections, headSections, emptyStore } from './researchCase.js';
 
@@ -298,6 +298,148 @@ t('no network, no model: the module imports nothing but pure data modules', () =
   const src = readFileSync(join(here, 'paperCatalog.js'), 'utf8');
   assert.deepEqual([...src.matchAll(/^import .* from '(.*)';/gm)].map(m => m[1]).sort(), ['./deskEvidence.js', './literature.js', './researchCase.js']);
   assert.ok(!/\bfetch\(|XMLHttpRequest|process\.env|node:/.test(src));
+});
+
+// ── source ──
+t('sourceOf: each production queue source value, and the precedence', () => {
+  const k = r => sourceOf(r).key;
+  assert.equal(k({ queueSource: '151 Trading Strategies (Kakushadze & Serur 2018)' }), 'k151');
+  assert.equal(k({ queueSource: 'QuantConnect strategy library', url: 'https://www.quantconnect.com/learning/x' }), 'quantconnect');
+  assert.equal(k({ queueSource: '151 Trading Strategies (Kakushadze & Serur 2018)', ssrn: '3167017' }), 'k151'); // curated collection beats the id
+  assert.equal(k({ queueSource: 'SSRN manifest' }), 'ssrn');
+  assert.equal(k({ queueSource: 'SSRN manifest', url: 'https://www.nber.org/papers/w1' }), 'nber'); // a host is more specific than the manifest
+  assert.equal(k({ queueSource: 'reading list' }), 'reading');
+  assert.equal(k({ queueSource: 'reading list', arxiv: '2001.00001' }), 'arxiv');
+  assert.equal(k({ queueSource: 'upload', readFrom: 'upload (unread)' }), 'upload');
+  assert.equal(k({ queueSource: 'upload', uploadName: 'SSRN-id3167017.pdf' }), 'ssrn');
+  assert.equal(k({ queueSource: 'upload', uploadName: '2001.00001v2.pdf' }), 'arxiv');
+  assert.equal(k({ queueSource: 'upload', uploadName: 'My notes on carry.pdf' }), 'upload');
+  assert.equal(k({}), 'other'); assert.equal(k(null), 'other'); assert.equal(k({ queueSource: 'something new' }), 'other');
+  assert.deepEqual(sourceOf({ queueSource: 'upload' }), { key: 'upload', label: 'Other upload' });
+});
+t('sourceOf: ids, DOI prefix, url host and venue', () => {
+  const k = r => sourceOf(r).key;
+  assert.equal(k({ ssrn: '123456' }), 'ssrn'); assert.equal(k({ arxiv: '1706.03762' }), 'arxiv');
+  assert.equal(k({ doi: '10.2139/ssrn.3167017' }), 'ssrn'); assert.equal(k({ doi: '10.48550/arXiv.2001.00001' }), 'arxiv'); assert.equal(k({ doi: '10.3386/w12345' }), 'nber');
+  assert.equal(k({ doi: '10.1111/jofi.12345' }), 'other');
+  for (const [url, want] of [['https://arxiv.org/abs/1', 'arxiv'], ['https://www.nber.org/papers/w1', 'nber'], ['https://www.federalreserve.gov/econres/feds/x.htm', 'fed'],
+    ['https://www.newyorkfed.org/research/staff_reports/sr1', 'fed'], ['https://www.ecb.europa.eu/pub/pdf/scpwps/ecb.wp1.pdf', 'ecb'],
+    ['https://www.bankofengland.co.uk/working-paper/2020/x', 'boe'], ['https://www.bis.org/publ/work1.htm', 'bis'], ['https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1', 'ssrn'],
+    ['https://notarxiv.org/x', 'other'], ['not a url', 'other']]) assert.equal(k({ url }), want, url);
+  assert.equal(k({ venue: 'NBER Working Paper 12345' }), 'nber'); assert.equal(k({ venue: 'Federal Reserve Bank of New York Staff Reports' }), 'fed');
+  assert.equal(k({ venue: 'ECB Working Paper Series' }), 'ecb'); assert.equal(k({ venue: 'Bank of England Staff Working Paper' }), 'boe');
+  assert.equal(k({ venue: 'Journal of Finance' }), 'other'); assert.equal(k({ venue: 'Synthetic Journal' }), 'other');
+  assert.ok(SOURCES.every(s => s.key && s.label) && new Set(SOURCES.map(s => s.key)).size === SOURCES.length);
+});
+t('joinCatalog puts a source on every paper and sourceCounts counts them', () => {
+  const cat = joinCatalog({
+    papers: [{ id: 'a', title: 'A', url: 'https://www.ecb.europa.eu/x.pdf' }, { id: 'b', title: 'B' }, { id: 'c', title: 'C', ssrn: '1' }],
+    queueItems: [{ id: 'b', source: '151 Trading Strategies (Kakushadze & Serur 2018)' }, { id: 'u1', source: 'upload', upload: { name: 'SSRN-id3167017.pdf', sha: 'x1', chars: 10 } }, { id: 'u2', source: 'upload', upload: { name: 'notes.pdf', sha: 'x2', chars: 10 } }],
+  });
+  const by = Object.fromEntries(cat.map(p => [p.id, p.source.key]));
+  assert.deepEqual(by, { a: 'ecb', b: 'k151', c: 'ssrn', u1: 'ssrn', u2: 'upload' });
+  assert.deepEqual(sourceCounts(cat).map(s => [s.key, s.count]), [['ssrn', 2], ['ecb', 1], ['k151', 1], ['upload', 1]]);
+  assert.deepEqual(sourceCounts(null), []);
+});
+
+t('free-paper manifest: uploads named "<Title> (<year>).pdf" take the source of the matching entry', () => {
+  assert.equal(normTitle('Bayesian Online Changepoint Detection (2007).pdf'), normTitle('Bayesian online changepoint detection'));
+  const entries = [
+    { title: 'Bayesian Online Changepoint Detection', year: 2007, source: 'arXiv', url: 'https://arxiv.org/pdf/0710.3742', doi: 'arXiv:0710.3742v1' },
+    { title: 'A Synthetic NBER Working Paper On Carry', year: 2010, source: 'NBER', url: 'https://www.nber.org/papers/w123' },
+    { title: 'A Synthetic Fed Note On Liquidity Effects', year: 2012, source: 'NY Fed', url: 'https://www.newyorkfed.org/medialibrary/x.pdf' },
+    { title: 'A Synthetic Bank Of England Paper On Gilts', year: 2015, source: 'Bank of England', url: 'https://www.bankofengland.co.uk/x.pdf' },
+    { title: 'A Synthetic ECB Paper On Euro Money Markets', year: 2016, source: 'ECB', url: 'https://www.ecb.europa.eu/x.pdf' },
+    { title: 'A Synthetic Author Page Paper On Rough Vol', year: 2018, source: 'Author/university repository (math.nyu.edu)', url: 'https://math.nyu.edu/~x/p.pdf' },
+    { title: 'A Synthetic SSRN Paper Hosted By Author Site', year: 2019, source: 'Author/university repository (doi.org)', url: 'https://doi.org/10.2139/ssrn.3000000', doi: 'https://doi.org/10.2139/ssrn.3000000' },
+    { title: 'A Synthetic Working Paper From RePEc Mirror', year: 2020, source: 'MPRA/RePEc', url: 'https://mpra.ub.uni-muenchen.de/1/' },
+    { title: 'A Synthetic Paper With No Source Text At All', year: 2021, url: 'https://example.org/p.pdf' },
+  ];
+  const up = (id, name, extra = {}) => ({ id, source: 'upload', upload: { name, sha: id, chars: 10 }, ...extra });
+  const cat = joinCatalog({ freeSources: entries, queueItems: [
+    up('u1', 'Bayesian Online Changepoint Detection (2007).pdf'), up('u2', 'A Synthetic NBER Working Paper On Carry (2010).pdf'), up('u3', 'a-synthetic-fed-note-on-liquidity-effects.pdf'),
+    up('u4', 'A Synthetic Bank Of England Paper On Gilts (2015).pdf'), up('u5', 'A Synthetic ECB Paper On Euro Money Markets (2016).pdf'),
+    up('u6', 'A Synthetic Author Page Paper On Rough Vol (2018).pdf'), up('u7', 'A Synthetic SSRN Paper Hosted By Author Site (2019).pdf'),
+    up('u8', 'A Synthetic Working Paper From RePEc Mirror (2020).pdf'), up('u9', 'A Synthetic Paper With No Source Text At All (2021).pdf'),
+    up('u10', 'x.pdf', { title: 'Bayesian online changepoint detection' }), up('u11', 'Unlisted Paper (2022).pdf')] });
+  const by = Object.fromEntries(cat.map(p => [p.id, p.source.key]));
+  assert.deepEqual(by, { u1: 'arxiv', u2: 'nber', u3: 'fed', u4: 'boe', u5: 'ecb', u6: 'author', u7: 'ssrn', u8: 'mpra-repec', u9: 'other', u10: 'arxiv', u11: 'upload' });
+  assert.equal(cat.find(p => p.id === 'u8').source.label, 'MPRA/RePEc');
+  assert.ok(sourceCounts(cat).some(s => s.key === 'mpra-repec' && s.count === 1));
+  assert.equal(joinCatalog({ queueItems: [up('z', 'Whatever (2020).pdf')], freeSources: null })[0].source.key, 'upload');
+  assert.equal(freeLookup(null).size, 0); assert.equal(sourceOfManifest(null), null);
+});
+t('the real free_sources.json parses and every entry maps to a non-empty source', () => {
+  const file = join(root, 'education', 'papers', 'free_sources.json');
+  const entries = JSON.parse(readFileSync(file, 'utf8'));
+  assert.ok(entries.length > 100);
+  for (const e of entries) { assert.ok(e.title, 'title'); const s = sourceOfManifest(e); assert.ok(s && s.key && s.label, e.title); }
+  assert.ok(freeLookup(entries).size > entries.length * 0.9);
+});
+
+// ── yearOf, year buckets ──
+const NOW = Date.UTC(2026, 10, 8), yo = (r) => yearOf(r, { now: NOW });
+t('yearOf: an explicit year wins over every other clue', () => {
+  assert.deepEqual(yo({ year: 2015, arxiv: '2001.00001', uploadName: 'x (2010).pdf', text: 'Copyright 2019' }), { year: 2015, from: 'given' });
+  assert.deepEqual(yo({ year: '2015' }), { year: 2015, from: 'given' });
+  assert.deepEqual(yo({ manifestYear: 2011, uploadName: 'x (2010).pdf' }), { year: 2011, from: 'given' });
+});
+t('yearOf: arXiv ids, new style and old style, from the record or the file name', () => {
+  assert.equal(arxivYear('2001.00001'), 2020); assert.equal(arxivYear('arXiv:1805.01234v3'), 2018); assert.equal(arxivYear('0704.0001'), 2007);
+  assert.equal(arxivYear('hep-th/9901001'), 1999); assert.equal(arxivYear('math.PR/0601234'), 2006); assert.equal(arxivYear('q-fin/9105001'), 1991);
+  assert.equal(arxivYear('2013.00001'), null);   // month 13
+  assert.equal(arxivYear('0301.00001'), null);   // the yymm.nnnnn scheme did not exist before 2007
+  assert.deepEqual(yo({ arxiv: '2001.00001', uploadName: 'x (2010).pdf' }), { year: 2020, from: 'arxiv' });
+  assert.deepEqual(yo({ uploadName: '1805.01234v2.pdf' }), { year: 2018, from: 'arxiv' });
+  assert.deepEqual(yo({ uploadName: 'hep-th_9901001.pdf' }), { year: 1999, from: 'arxiv' });
+  assert.equal(yo({ uploadName: 'report 1234.56789 tables.pdf' }).from, null);   // month 34
+  assert.equal(yo({ arxiv: '3001.00001' }).year, null);   // the future is never a release year
+});
+t('yearOf: a trailing (YYYY) in the file name, only when trailing', () => {
+  assert.deepEqual(yo({ uploadName: 'Some Paper Title (2014).pdf' }), { year: 2014, from: 'filename' });
+  assert.deepEqual(yo({ uploadName: 'Some Paper Title ( 1999 )' }), { year: 1999, from: 'filename' });
+  assert.equal(yo({ uploadName: 'Study (2014) final version.pdf' }).year, null);
+  assert.equal(yo({ uploadName: 'Some Paper (1850).pdf' }).year, null);   // out of range
+  assert.deepEqual(yo({ uploadName: 'Some Paper (2014).pdf', text: 'Copyright 2019' }), { year: 2014, from: 'filename' });
+});
+t('yearOf: text rules by preference (copyright, working paper, month dates, bare year)', () => {
+  assert.deepEqual(yo({ text: 'A Title\nSome Author\nCopyright 2019 by the authors\nWorking Paper, May 2021' }), { year: 2019, from: 'text' });
+  assert.equal(yo({ text: 'Title\n© 2017 Elsevier' }).year, 2017);
+  assert.equal(yo({ text: 'NBER WORKING PAPER SERIES\nTITLE\nWorking Paper 24567\nIssued April 2018' }).year, 2018);
+  assert.equal(yo({ text: 'Title\nAuthor\nMarch 12, 2017\nAbstract We study' }).year, 2017);
+  assert.equal(yo({ text: 'Draft 14 June 2021 comments welcome' }).year, 2021);
+  assert.equal(yo({ text: 'First version: Sept 2009; this version: Jan 2012' }).year, 2009);
+  assert.equal(yo({ text: 'Title\nAuthor, University\n2016\nAbstract We study' }).year, 2016);
+});
+t('yearOf: false-positive guards (periods, ranges, citations, references, out of range)', () => {
+  assert.equal(yo({ text: 'Since 1987 the markets have changed.' }).year, null);
+  assert.equal(yo({ text: 'We use data from 1990 to 2010 and from 1985-2005 and between 1995 and 2015.' }).year, null);
+  assert.equal(yo({ text: 'As Fama (1993) and Smith and Jones, 1995 and Lo et al. 1999 show, in 1998 the market fell. See Fama 1993a.' }).year, null);
+  assert.equal(yo({ text: 'Since January 1987 and in March 2020 the pandemic hit, from June 2001 until May 2004.' }).year, null);
+  assert.equal(yo({ text: 'A paper with numbers 1850, 2099, 123456, $1,2019 and 19.2019 only.' }).year, null);
+  assert.equal(yo({ text: 'Title and abstract with no date.\nReferences\nSmith, J. (2012). Published 2012. Copyright 2013' }).year, null);   // after the References heading
+  assert.equal(yo({ text: 'Title\nIntro text since 1987.\n' + 'x'.repeat(3100) + '\nCopyright 2019' }).year, null);   // beyond the first 3000 characters
+  assert.equal(yo({ text: 'Copyright 2031' }).year, null);   // future
+});
+t('yearOf: nothing found -> null, never invented', () => {
+  assert.deepEqual(yo({}), { year: null, from: null }); assert.deepEqual(yo(null), { year: null, from: null });
+  assert.deepEqual(yo({ uploadName: 'notes.pdf', text: 'No dates here at all.', uploadedAt: '2026-01-01' }), { year: null, from: null });
+});
+t('year buckets: keys, labels, order and counts', () => {
+  assert.deepEqual([2026, 2022, 2021, 2020, 2019, 2010, 1995, 1990, 1989, 1950, null].map(y => yearKey(y, NOW)), ['2026', '2022', 'd2020', 'd2020', 'd2010', 'd2010', 'd1990', 'd1990', 'earlier', 'earlier', 'unknown']);
+  const ps = [2026, 2025, 2025, 2021, 2020, 2015, 2012, 1995, 1980, null, null].map(year => ({ year }));
+  assert.deepEqual(yearCounts(ps, NOW).map(b => [b.key, b.label, b.count]),
+    [['2026', '2026', 1], ['2025', '2025', 2], ['d2020', '2020–21', 2], ['d2010', '2010s', 2], ['d1990', '1990s', 1], ['earlier', 'Earlier', 1], ['unknown', 'Unknown year', 2]]);
+  assert.equal(yearCounts(ps, NOW).reduce((a, b) => a + b.count, 0), ps.length);
+  assert.deepEqual(yearCounts([], NOW), []);
+});
+t('joinCatalog: unread uploads and read papers get year, yearFrom and yearKey', () => {
+  const cat = joinCatalog({ now: NOW,
+    papers: [{ id: 'r1', title: 'Read One', year: 2018, readFrom: 'pdf' }, { id: 'r2', title: 'Read Two No Year', readFrom: 'abstract', arxiv: '2105.01234' }],
+    queueItems: [{ id: 'u1', upload: { name: 'A Study (2012).pdf', chars: 10 } }, { id: 'u2', upload: { name: 'b.pdf', chars: 10 } }, { id: 'u3', upload: { name: 'c.pdf', chars: 10 } }],
+    uploads: { u2: { firstText: 'Title\nCopyright 2016 Someone' }, u3: { firstText: 'Title with since 1987 only' } } });
+  const by = Object.fromEntries(cat.map(p => [p.id, [p.year, p.yearFrom, p.yearKey]]));
+  assert.deepEqual(by, { r1: [2018, 'given', 'd2010'], r2: [2021, 'arxiv', 'd2020'], u1: [2012, 'filename', 'd2010'], u2: [2016, 'text', 'd2010'], u3: [null, null, 'unknown'] });
 });
 
 console.log(`paperCatalog: ${n} tests passed`);

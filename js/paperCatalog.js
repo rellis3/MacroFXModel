@@ -141,6 +141,208 @@ export function topicCounts(papers) {
   return TOPICS.map(t => ({ key: t.key, label: t.label, count: (papers ?? []).filter(p => (p.tags ?? []).some(x => x.key === t.key)).length }));
 }
 
+// ── source of a paper (rule-based, from fields we already hold) ──────────────────────────────────────────────
+
+export const SOURCES = [
+  { key: 'ssrn', label: 'SSRN' }, { key: 'arxiv', label: 'arXiv' }, { key: 'nber', label: 'NBER' },
+  { key: 'fed', label: 'Federal Reserve / NY Fed' }, { key: 'ecb', label: 'ECB' }, { key: 'boe', label: 'Bank of England' },
+  { key: 'bis', label: 'BIS' }, { key: 'imf', label: 'IMF' },
+  { key: 'k151', label: '151 Trading Strategies (Kakushadze & Serur)' }, { key: 'quantconnect', label: 'QuantConnect strategy library' },
+  { key: 'reading', label: 'Reading list' }, { key: 'upload', label: 'Other upload' }, { key: 'other', label: 'Other' },
+];
+const SOURCE_BY_KEY = Object.fromEntries(SOURCES.map(s => [s.key, s]));
+const src = key => ({ key, label: SOURCE_BY_KEY[key].label });
+const HOSTS = [ // host suffix -> key
+  ['arxiv.org', 'arxiv'], ['ssrn.com', 'ssrn'], ['nber.org', 'nber'], ['federalreserve.gov', 'fed'], ['newyorkfed.org', 'fed'], ['frbsf.org', 'fed'],
+  ['stlouisfed.org', 'fed'], ['chicagofed.org', 'fed'], ['philadelphiafed.org', 'fed'], ['bostonfed.org', 'fed'], ['clevelandfed.org', 'fed'], ['kansascityfed.org', 'fed'],
+  ['dallasfed.org', 'fed'], ['richmondfed.org', 'fed'], ['minneapolisfed.org', 'fed'], ['atlantafed.org', 'fed'], ['ecb.europa.eu', 'ecb'],
+  ['bankofengland.co.uk', 'boe'], ['bis.org', 'bis'], ['imf.org', 'imf'], ['quantconnect.com', 'quantconnect'],
+];
+const VENUES = [ // venue text -> key
+  [/\bssrn\b/i, 'ssrn'], [/\barxiv\b/i, 'arxiv'], [/\bnber\b|national bureau of economic research/i, 'nber'],
+  [/federal reserve|\bfrb[a-z]*\b|\bfed(?:eral)? (?:board|funds)\b|\bfeds\b|new york fed|finance and economics discussion|staff report/i, 'fed'],
+  [/european central bank|\becb\b/i, 'ecb'], [/bank of england|\bboe\b/i, 'boe'], [/bank for international settlements|\bbis\b/i, 'bis'], [/international monetary fund|\bimf\b/i, 'imf'],
+];
+const hostKey = url => {
+  let h; try { h = new URL(String(url)).hostname.toLowerCase(); } catch { return null; }
+  const hit = HOSTS.find(([d]) => h === d || h.endsWith('.' + d));
+  return hit ? hit[1] : null;
+};
+const doiKey = doi => { const d = String(doi ?? '').toLowerCase(); return /10\.2139\/ssrn/.test(d) ? 'ssrn' : /10\.48550\/arxiv/.test(d) ? 'arxiv' : /10\.3386\//.test(d) ? 'nber' : null; };
+const nameKey = name => { // SSRN-style or arXiv-style upload file names
+  const n = String(name ?? '');
+  if (/ssrn[-_ ]?(?:id)?[-_ ]?\d{4,8}/i.test(n)) return 'ssrn';
+  if (/arxiv|^\s*(?:\d{4}\.\d{4,5}|[a-z-]+(?:\.[a-z]{2})?[_-]?\d{7})(?:v\d+)?(?:\D|$)/i.test(n)) return 'arxiv';
+  return null;
+};
+
+/**
+ * The source of a paper as { key, label }, from data we already hold. No model, no network. First rule that fires wins:
+ *   1. a curated collection named by the queue item's `source` ('151 Trading Strategies ...', 'QuantConnect ...')
+ *   2. the identifiers: ssrn id, arxiv id, then the DOI prefix (10.2139/ssrn, 10.48550/arxiv, 10.3386 = NBER)
+ *   3. the paper url host (arxiv.org, nber.org, federalreserve.gov, newyorkfed.org, ecb.europa.eu, bankofengland.co.uk, bis.org, ...)
+ *   4. the venue text (NBER Working Paper, Federal Reserve Bank ..., ECB Working Paper Series, ...)
+ *   5. the rest of the queue `source`: 'SSRN manifest' -> SSRN; 'reading list' -> Reading list
+ *   6. an upload: the file name (SSRN-style or arXiv-style) else 'Other upload' (queue source 'upload' or an upload name present)
+ *   7. otherwise 'Other'
+ * record: { source?, queueSource?, ssrn?, arxiv?, doi?, url?, venue?, uploadName?, readFrom? }
+ */
+export function sourceOf(record = {}) {
+  const r = record ?? {}, q = String(r.queueSource ?? (typeof r.source === 'string' ? r.source : '') ?? '').toLowerCase();
+  if (/151 trading|kakushadze/.test(q)) return src('k151');
+  if (/quantconnect/.test(q)) return src('quantconnect');
+  if (r.ssrn) return src('ssrn');
+  if (r.arxiv) return src('arxiv');
+  const d = doiKey(r.doi); if (d) return src(d);
+  const h = hostKey(r.url); if (h) return src(h);
+  const v = VENUES.find(([re]) => re.test(String(r.venue ?? ''))); if (v) return src(v[1]);
+  if (/ssrn/.test(q)) return src('ssrn');
+  if (/reading/.test(q)) return src('reading');
+  const isUpload = /^upload/.test(q) || !!r.uploadName || /^upload/.test(String(r.readFrom ?? ''));
+  if (isUpload) {
+    const m = r.manifest ? sourceOfManifest(r.manifest) : null;   // a free-paper manifest entry matched by file name or title
+    return m ?? src(nameKey(r.uploadName) ?? 'upload');
+  }
+  return src('other');
+}
+
+/** Normalised match key: lowercase, no extension, no trailing "(year)", letters and digits only. */
+export const normTitle = s => String(s ?? '').toLowerCase().replace(/\.[a-z0-9]{2,4}$/, '').replace(/\(\s*(?:19|20)\d\d\s*\)\s*$/, '').replace(/[^a-z0-9]+/g, '');
+/** Map of normalised title -> manifest entry ({ title, year, source, url, doi }) from education/papers/free_sources.json. */
+export function freeLookup(entries) {
+  const m = new Map();
+  for (const e of Array.isArray(entries) ? entries : []) { const k = e?.title ? normTitle(e.title) : ''; if (k.length >= 8 && !m.has(k)) m.set(k, e); }
+  return m;
+}
+const slug = s => String(s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+/**
+ * Source of a manifest entry, by the same rules (url host, doi prefix, ids). Author / university pages with an SSRN doi are SSRN;
+ * other author pages are 'Author / university page'; anything else is labelled with the manifest's own source text.
+ */
+export function sourceOfManifest(e) {
+  if (!e) return null;
+  const s = sourceOf({ url: e.url, doi: e.doi, arxiv: /^arxiv:/i.test(String(e.doi ?? '')) ? 'x' : null });
+  if (s.key !== 'other') return s;
+  const text = String(e.source ?? '').trim();
+  if (/^author\b|university|repository/i.test(text)) return { key: 'author', label: 'Author / university page' };
+  return text && slug(text) ? { key: slug(text), label: text } : src('other');
+}
+
+/** [{ key, label, count }] of the sources present, in SOURCES order then any manifest-only ones (zero counts left out). */
+export function sourceCounts(papers) {
+  const n = new Map();
+  for (const p of papers ?? []) { const k = p?.source?.key; if (k) n.set(k, (n.get(k) ?? 0) + 1); }
+  const known = SOURCES.filter(s => n.has(s.key)).map(s => ({ ...s, count: n.get(s.key) }));
+  const extra = [...n.keys()].filter(k => !SOURCE_BY_KEY[k]).map(k => ({ key: k, label: (papers.find(p => p.source?.key === k).source.label), count: n.get(k) }));
+  return known.concat(extra.sort((a, b) => a.label.localeCompare(b.label)));
+}
+
+// ── release year (rule-based, never invented) ───────────────────────────────────────────────────────────────
+
+const MIN_YEAR = 1980;
+const thisYear = now => new Date(now ?? Date.now()).getUTCFullYear();
+const okYear = (y, now) => Number.isInteger(y) && y >= MIN_YEAR && y <= thisYear(now);
+const MONTHS = 'january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sept|sep|oct|nov|dec';
+// a year that follows these is a period or a citation, not the paper's date: "since 1987", "from 1990 to 2010", "in 1998", "(Fama, 1993)"
+const PERIOD_BEFORE = /(?:\b(?:since|from|between|during|until|till|through|thru|to|and|or|in|of|over|after|before|by|at|around|circa|c\.|ca\.|late|early|mid|the year|year|fiscal|fy)|[-–—/])[ \t]*(?:the[ \t]+)?$/i;
+const CITE_BEFORE = /(?:[A-Z][A-Za-z'’-]+(?:\s+(?:and|&)\s+[A-Z][A-Za-z'’-]+)?(?:\s+et\s+al\.?)?,?[ \t]*\(?|\bet\s+al\.?,?[ \t]*\(?|\[|\()$/;
+const RANGE_AFTER = /^\s*(?:[-–—]|to\s)\s*(?:19|20)?\d{2}/i;
+
+/** arXiv id -> year: yymm.nnnnn (2007+) or archive/yymmnnn (old style, 91-99 -> 19yy, 00-06 -> 20yy); month must be 01-12. */
+export function arxivYear(id) {
+  const s = String(id ?? '').trim().replace(/^arxiv:/i, '');
+  let m = s.match(/^(\d{2})(\d{2})\.\d{4,5}(?:v\d+)?$/), yy, mm, modern = true;
+  if (!m) { m = s.match(/^[a-z-]+(?:\.[a-z]{2})?\/(\d{2})(\d{2})\d{3}(?:v\d+)?$/i); modern = false; }
+  if (!m) return null;
+  yy = +m[1]; mm = +m[2]; if (mm < 1 || mm > 12) return null;
+  const y = modern ? (yy >= 7 ? 2000 + yy : null) : (yy >= 91 ? 1900 + yy : 2000 + yy);
+  return y;
+}
+const arxivFromName = name => { // an arXiv id in an upload file name: 2001.00001, 2001.00001v2, hep-th_9901001, hep-th-9901001
+  const n = String(name ?? '').replace(/\.[a-z0-9]{2,4}$/i, '');
+  const a = n.match(/(?:^|[^\d.])(\d{4}\.\d{4,5})(?:v\d+)?(?:$|[^\d])/); if (a) return a[1];
+  const o = n.match(/(?:^|[^a-z])([a-z]+(?:-[a-z]+)?)[_\-/ ](\d{7})(?:v\d+)?(?:$|[^\d])/i); return o ? `${o[1]}/${o[2]}` : null;
+};
+const nameYear = name => { const m = String(name ?? '').replace(/\.[a-z0-9]{2,4}$/i, '').match(/\(\s*((?:19|20)\d\d)\s*\)\s*$/); return m ? +m[1] : null; };
+
+/** Candidate years in the head of a paper, by tier. Returns the year or null. head = the first ~3000 characters. */
+function textYear(text, now) {
+  let head = String(text ?? '').slice(0, 3000);
+  const ref = head.search(/\n\s*(?:references|bibliography)\s*\n/i); if (ref >= 0) head = head.slice(0, ref);
+  const first = (re, { guard = true } = {}) => {
+    for (const m of head.matchAll(re)) {
+      const y = +m[m.length - 1].slice(-4), at = m.index, whole = m[0];
+      if (!okYear(y, now)) continue;
+      if (guard) { const before = head.slice(Math.max(0, at - 40), at), after = head.slice(at + whole.length, at + whole.length + 12);
+        if (PERIOD_BEFORE.test(before) || RANGE_AFTER.test(after)) continue; }
+      return y;
+    }
+    return null;
+  };
+  const Y = '((?:19|20)\\d\\d)(?!\\d)';
+  return first(new RegExp(`(?:copyright|©|\\(c\\))\\s*(?:\\(c\\)\\s*)?(?:by\\s+)?${Y}`, 'ig'), { guard: false })
+    ?? first(new RegExp(`(?:working paper|discussion paper|technical report|preprint|manuscript|draft|this version|first version|revised|submitted|published|accepted|received|updated)[^\\n.]{0,60}?(?:\\b|^)${Y}`, 'ig'))
+    ?? first(new RegExp(`\\b(?:${MONTHS})\\.?,?\\s+(?:\\d{1,2}(?:st|nd|rd|th)?,?\\s+)?${Y}`, 'ig'))
+    ?? first(new RegExp(`\\b\\d{1,2}(?:st|nd|rd|th)?\\s+(?:${MONTHS})\\.?,?\\s+${Y}`, 'ig'))
+    ?? firstBare(head, now);
+}
+function firstBare(head, now) {   // last resort: a bare year that is not a period, a range end or a citation
+  for (const m of head.matchAll(/(?<![\d.$,])((?:19|20)\d\d)(?![\d%]|,\d{3}|\.\d)/g)) {
+    const y = +m[1], at = m.index; if (!okYear(y, now)) continue;
+    const before = head.slice(Math.max(0, at - 40), at), after = head.slice(at + 4, at + 14);
+    if (PERIOD_BEFORE.test(before) || CITE_BEFORE.test(before) || RANGE_AFTER.test(after) || /^[a-z]/.test(after.trimStart()) && !/^\s*[,.;)\n]/.test(after)) continue;
+    if (/^\s*[a-z]\b|^\)/.test(after)) continue;   // 1993a / (Fama 1993)
+    return y;
+  }
+  return null;
+}
+
+/**
+ * The release year of a paper as { year, from } where from is 'given' | 'arxiv' | 'filename' | 'text' | null. Never invented: no
+ * evidence -> { year: null, from: null }. First rule that fires wins:
+ *   1. given     an explicit year on the record (read papers, free-source manifest)
+ *   2. arxiv     the arXiv id (record.arxiv, else one in the upload file name): yymm -> 20yy (old style archive/yymmnnn too)
+ *   3. filename  a trailing "(YYYY)" in the upload file name
+ *   4. text      the first plausible year 1980..now in the head of the text (3000 chars): "Copyright 2019" / "(c)" first, then
+ *                "Working Paper ... 2019" style lines, then month-name dates, then a bare year; years that look like periods
+ *                ("since 1987", "1990-2010", "in 1998"), citations ("Fama (1993)") or sit after a References heading are skipped.
+ * record: { year?, arxiv?, uploadName?, text?, manifestYear? }, opts: { now }
+ */
+export function yearOf(record = {}, { now } = {}) {
+  const r = record ?? {};
+  const g = Number(r.year); if (Number.isInteger(g) && g >= 1800 && g <= thisYear(now) + 1) return { year: g, from: 'given' };
+  const mg = Number(r.manifestYear); if (okYear(mg, now)) return { year: mg, from: 'given' };
+  const ax = arxivYear(r.arxiv) ?? arxivYear(arxivFromName(r.uploadName)); if (okYear(ax, now)) return { year: ax, from: 'arxiv' };
+  const fn = nameYear(r.uploadName); if (okYear(fn, now)) return { year: fn, from: 'filename' };
+  const tx = textYear(r.text, now); if (tx != null) return { year: tx, from: 'text' };
+  return { year: null, from: null };
+}
+
+// ── year buckets ─────────────────────────────────────────────────────────────────────────────────────────────
+
+export const RECENT_YEARS = 5;
+/** Bucket key of a year: '2025' (one of the last 5 years), 'd2010' (a decade, the 1990s at the oldest), 'earlier' (before 1990), 'unknown'. */
+export function yearKey(year, now) {
+  const y = Number(year); if (!Number.isInteger(y) || y < 1000) return 'unknown';
+  const cur = thisYear(now);
+  if (y > cur - RECENT_YEARS) return String(y);   // also catches a year next to "now" (a forthcoming paper)
+  return y < 1990 ? 'earlier' : `d${Math.floor(y / 10) * 10}`;
+}
+function yearLabel(key, now) {
+  if (key === 'unknown') return 'Unknown year';
+  if (key === 'earlier') return 'Earlier';
+  if (/^\d{4}$/.test(key)) return key;
+  const d = +key.slice(1), top = thisYear(now) - RECENT_YEARS;   // the newest decade may stop short of the individual years
+  return top >= d && top < d + 9 ? `${d}–${String(top).slice(2)}` : `${d}s`;
+}
+/** [{ key, label, count }] newest first, then decades, 'Earlier', 'Unknown year' last. Empty buckets are left out. */
+export function yearCounts(papers, now) {
+  const n = new Map();
+  for (const p of papers ?? []) { const k = p?.yearKey ?? yearKey(p?.year, now); n.set(k, (n.get(k) ?? 0) + 1); }
+  const rank = k => (k === 'unknown' ? 1e9 : k === 'earlier' ? 1e8 : /^\d{4}$/.test(k) ? -k : 5000 - +k.slice(1));   // years desc, then decades desc
+  return [...n.keys()].sort((a, b) => rank(a) - rank(b)).map(key => ({ key, label: yearLabel(key, now), count: n.get(key) }));
+}
+
 // ── joining read papers, uploads and queue items ───────────────────────────────────────────────────────────────
 
 const FULL_TEXT = new Set(['pdf', 'arxiv-html', 'html', 'upload', 'full']);
@@ -161,15 +363,18 @@ const pickNotes = n => (n && typeof n === 'object' ? Object.fromEntries(['claim'
  *   audio       { [id]: { briefing:{ status, secs, error } } }      evidence  the Evidence Book (default DESK_EVIDENCE)
  * An `upload:<hash>` queue item whose sha matches a held paper's upload (or another item's) is the same paper and is dropped.
  */
-export function joinCatalog({ papers = [], queueItems = [], uploads = {}, tagOverrides = {}, progress = {}, audio = {}, evidence = DESK_EVIDENCE } = {}) {
+export function joinCatalog({ papers = [], queueItems = [], uploads = {}, tagOverrides = {}, progress = {}, audio = {}, evidence = DESK_EVIDENCE, freeSources = null, now } = {}) {
+  const free = freeSources instanceof Map ? freeSources : freeLookup(freeSources);
+  const manifestFor = (...names) => { for (const n of names) { const e = n && free.get(normTitle(n)); if (e) return e; } return null; };
   const up = asMap(uploads), prog = asMap(progress), aud = asMap(audio), ov = asMap(tagOverrides);
   const out = [], seen = new Set(), shaSeen = new Set(), queueById = new Map();
   for (const it of queueItems ?? []) if (it?.id) queueById.set(it.id, it);
 
   const finish = base => {
     const o = ov[base.id] ?? {}, tags = applyOverrides(base._auto, o);
-    const { _auto, _tagInput, ...p } = base;
-    const paper = { ...p, tags, progress: prog[p.id] ? { pct: prog[p.id].pct ?? 0, pos: prog[p.id].pos ?? 0, at: prog[p.id].at ?? null, done: !!prog[p.id].done } : null,
+    const { _auto, _tagInput, _src, _yr, ...p } = base;
+    const y = yearOf(_yr, { now });
+    const paper = { ...p, year: y.year, yearFrom: y.from, yearKey: yearKey(y.year, now), source: sourceOf(_src), tags, progress: prog[p.id] ? { pct: prog[p.id].pct ?? 0, pos: prog[p.id].pos ?? 0, at: prog[p.id].at ?? null, done: !!prog[p.id].done } : null,
       audio: { ...NO_AUDIO(), ...(aud[p.id] ?? {}), briefing: { ...NO_AUDIO().briefing, ...(aud[p.id]?.briefing ?? {}) } } };
     paper.desk = deskLinks({ ...paper, abstract: p.abstract }, evidence);
     out.push(paper);
@@ -185,7 +390,9 @@ export function joinCatalog({ papers = [], queueItems = [], uploads = {}, tagOve
       id: r.id, title: r.title ?? r.id, authors: r.authors ?? [], year: r.year ?? null, venue: r.venue ?? null, url: r.url ?? null, ssrn: r.ssrn ?? null, arxiv: r.arxiv ?? null, doi: r.doi ?? null,
       kind: r.kind ?? 'paper', readFrom: r.readFrom ?? null, hasText, hasPdf: !!(u.hasPdf ?? (upl && upl.stored)), chars: chars ?? (text.length || null), pages: u.pages ?? null,
       uploadedAt: upl?.at ?? null, abstract: String(r.abstract ?? '').slice(0, 2500), notes: pickNotes(r.notes),
+      _src: { queueSource: q?.source ?? r.source, ssrn: r.ssrn, arxiv: r.arxiv, doi: r.doi, url: r.url, venue: r.venue, uploadName: upl?.name, readFrom: r.readFrom, manifest: upl ? manifestFor(upl.name, r.title) : null },
       _auto: autoTags({ title: r.title, abstract: r.abstract, notes: r.notes, text }),
+      _yr: { year: r.year, arxiv: r.arxiv, uploadName: upl?.name, text: text || u.firstText || '', manifestYear: upl ? manifestFor(upl.name, r.title)?.year : null },
     });
   }
   for (const it of queueItems ?? []) {
@@ -199,7 +406,9 @@ export function joinCatalog({ papers = [], queueItems = [], uploads = {}, tagOve
     finish({
       id: it.id, title, authors: [], year: null, venue: null, url: null, ssrn: ssrnFromName(it.upload.name), arxiv: null, doi: null, kind: it.kind ?? 'paper', readFrom: 'upload (unread)',
       hasText: (chars ?? 0) > 0 || text.length > 0, hasPdf: !!(u.hasPdf ?? it.upload.stored), chars, pages: u.pages ?? null, uploadedAt: it.upload.at ?? null, abstract: '', notes: null,
+      _src: { queueSource: it.source, ssrn: ssrnFromName(it.upload.name), uploadName: it.upload.name, readFrom: 'upload', manifest: manifestFor(it.upload.name, it.title, title) },
       _auto: autoTags({ title, text }),
+      _yr: { uploadName: it.upload.name, text, manifestYear: manifestFor(it.upload.name, it.title, title)?.year },
     });
   }
   return out.sort((a, b) => String(b.uploadedAt ?? '').localeCompare(String(a.uploadedAt ?? '')) || String(a.title).localeCompare(String(b.title)));

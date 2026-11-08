@@ -24,22 +24,64 @@ export function toggleTag(sel, key) {
   return sel.includes(key) ? sel.filter(k => k !== key) : sel.concat(key);
 }
 
-/** Papers matching any selected tag (none selected = all); hitIds narrows to search hits. */
-export function filterPapers(papers, selected, hitIds) {
+/**
+ * Papers matching the filters. Topics, sources and years are three groups: OR within a group, AND between the groups; an empty
+ * group passes everything. hitIds narrows to search hits. A paper's year bucket is p.yearKey ('2025', 'd2010', 'earlier', 'unknown',
+ * set by the server). (Old call shape filterPapers(papers, topics, hitIds) still works.)
+ */
+export function filterPapers(papers, selected, hitIds, sources = [], years = []) {
   return papers.filter(p => {
     if (hitIds && !hitIds.has(p.id)) return false;
+    if (sources.length && !sources.includes(p.source && p.source.key)) return false;
+    if (years.length && !years.includes(p.yearKey || (p.year ? String(p.year) : 'unknown'))) return false;
     if (!selected.length) return true;
     const keys = new Set((p.tags || []).map(t => t.key));
     return selected.some(k => keys.has(k));
   });
 }
 
-export function orderPapers(papers, hits) {
-  if (hits) {
+export const SORTS = [
+  { key: 'newest', label: 'Newest first' }, { key: 'oldest', label: 'Oldest first' }, { key: 'match', label: 'Best match' },
+  { key: 'read', label: 'Most read first' }, { key: 'unread', label: 'Unread first' }, { key: 'title', label: 'Title A-Z' },
+];
+export const DEFAULT_SORT = 'newest';
+export const sortKeyOk = k => SORTS.some(s => s.key === k);
+const byTitle = (a, b) => String(a.title).localeCompare(String(b.title));
+const yr = p => (Number.isInteger(p.year) ? p.year : null);
+/**
+ * Order papers. 'match' keeps the search ranking (hits = [{id}] in rank order); without hits it falls back to newest first.
+ * Date orders put unknown years last in BOTH directions. pct(p) gives the percent read for the read / unread orders.
+ */
+export function sortPapers(papers, mode = DEFAULT_SORT, { hits = null, pct = () => 0 } = {}) {
+  const out = papers.slice();
+  if (mode === 'match' && hits) {
     const rank = new Map(hits.map((h, i) => [h.id, i]));
-    return papers.slice().sort((a, b) => rank.get(a.id) - rank.get(b.id));
+    return out.sort((a, b) => rank.get(a.id) - rank.get(b.id));
   }
-  return papers.slice().sort((a, b) => (b.year || 0) - (a.year || 0) || String(a.title).localeCompare(String(b.title)));
+  const dated = dir => (a, b) => { const x = yr(a), y = yr(b); if (x == null || y == null) return (x == null) - (y == null) || byTitle(a, b); return (x - y) * dir || byTitle(a, b); };
+  if (mode === 'oldest') return out.sort(dated(1));
+  if (mode === 'title') return out.sort(byTitle);
+  if (mode === 'read') return out.sort((a, b) => pct(b) - pct(a) || byTitle(a, b));
+  if (mode === 'unread') return out.sort((a, b) => pct(a) - pct(b) || byTitle(a, b));
+  return out.sort(dated(-1));
+}
+/** Kept for old callers: search ranking when there are hits, else newest first. */
+export function orderPapers(papers, hits) { return sortPapers(papers, hits ? 'match' : 'newest', { hits }); }
+
+/** The year shown on a card: '2019', or '~2019' when it was estimated from a file name or the paper text; '' when unknown. */
+export function yearText(p) {
+  if (!p || !p.year) return '';
+  return p.yearFrom === 'filename' || p.yearFrom === 'text' ? '~' + p.year : String(p.year);
+}
+export const yearTitle = p => (p && p.yearFrom === 'filename' ? 'Estimated from the file name' : p && p.yearFrom === 'text' ? 'Estimated from the first page of the text' : p && p.yearFrom === 'arxiv' ? 'From the arXiv id' : 'Release year');
+
+/** Year chips: the server's buckets, counts re-taken from the papers in scope (other groups + search). Selected keys are kept at zero. */
+export function yearChips(years, papers, selected = []) {
+  const n = new Map();
+  for (const p of papers) { const k = p.yearKey || (p.year ? String(p.year) : 'unknown'); n.set(k, (n.get(k) || 0) + 1); }
+  const out = (years || []).map(y => ({ key: y.key, label: y.label, count: n.get(y.key) || 0 }));
+  for (const k of selected) if (!out.some(y => y.key === k)) out.push({ key: k, label: k, count: 0 });
+  return out;
 }
 
 /** Chip counts follow the papers currently in scope (search hits), so a chip never promises papers that are not there. */
@@ -47,6 +89,25 @@ export function chipCounts(topics, papers) {
   const n = new Map();
   for (const p of papers) for (const t of p.tags || []) n.set(t.key, (n.get(t.key) || 0) + 1);
   return topics.map(t => ({ key: t.key, label: t.label, count: n.get(t.key) || 0 }));
+}
+
+/**
+ * Source chips: counts follow the papers in scope (search hits AND the selected topics), so a chip never promises papers that are
+ * not there. Chips for sources the library has stay visible at zero; a selected source with no papers is kept so it can be cleared.
+ */
+export function sourceChips(sources, papers, selected = []) {
+  const n = new Map();
+  for (const p of papers) if (p.source) n.set(p.source.key, (n.get(p.source.key) || 0) + 1);
+  const out = (sources || []).map(s => ({ key: s.key, label: s.label, count: n.get(s.key) || 0 }));
+  for (const k of selected) if (!out.some(s => s.key === k)) out.push({ key: k, label: k, count: 0 });
+  return out;
+}
+
+/** Restore a saved selection, keeping only keys that still exist (a chip that vanished must not filter silently). */
+export function restoreSelection(raw, validKeys) {
+  let a; try { a = JSON.parse(raw); } catch { return []; }
+  const ok = new Set(validKeys);
+  return Array.isArray(a) ? a.filter(k => ok.has(k)) : [];
 }
 
 export function readNextPapers(papers, rn) {

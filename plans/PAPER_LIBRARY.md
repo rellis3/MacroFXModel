@@ -39,16 +39,16 @@ as mangled text, with "page N · open PDF here". Tables the same. Listening skip
 Cleaned text is never presented as exact: every page offers "original PDF".
 
 ## API contract (all under login; JSON unless stated)
-- `GET /api/library/papers` → `{ ok, papers:[Paper], topics:[{ key, label, count }], totals:{ all, fullText, abstractOnly } }`
+- `GET /api/library/papers` → `{ ok, papers:[Paper], topics:[{ key, label, count }], sources:[{ key, label, count }], totals:{ all, fullText, abstractOnly } }`
   `Paper` = `{ id, title, authors, year, venue, url, ssrn, arxiv, doi, kind, readFrom, hasText, hasPdf, chars, pages, uploadedAt,
-  tags:[{ key, label, source:'auto'|'manual' }], notes:{claim,mechanism,data,method,effect,outOfSample,costs,relevance,stance,
+  source:{ key, label }, tags:[{ key, label, source:'auto'|'manual' }], notes:{claim,mechanism,data,method,effect,outOfSample,costs,relevance,stance,
   caveats,testHere}|null, desk:[{ id, verdict, claim }], progress:{ pct, pos, at, done }|null, audio:{ briefing:{ status:'none'|
   'working'|'ready'|'error', secs, error } } }`
   Includes uploaded-but-unread PDFs (title from the first text line, no notes yet) and abstract-only papers (`hasText:false`).
 - `GET /api/library/paper?id=` → `{ ok, paper:Paper, blocks:[Block]|null, pages:n }`, `Block` = `{ i, type:'h1'|'h2'|'p'|'eq'|'table'|
   'fig'|'refs', text, page, bbox:[x0,y0,x1,y1]|null, label? }` (`bbox` in PDF units, origin bottom-left, with the page's width/height
   in `pageSize:{ [page]:[w,h] }`).
-- `GET /api/library/search?q=&tags=a,b&limit=40` → `{ ok, hits:[{ id, score, title, snippets:[{ block, text }] }] }` (full text, ranked).
+- `GET /api/library/search?q=&tags=a,b&sources=ssrn,nber&limit=40` → `{ ok, hits:[{ id, score, title, snippets:[{ block, text }] }] }` (full text, ranked).
 - `GET /api/library/pdf?id=` → the PDF stream, `Accept-Ranges`, behind login.
 - `POST /api/library/progress { id, pct, pos, done }`; `POST /api/library/tags { id, add:[key], remove:[key] }` (manual overrides, KV).
 - `POST /api/library/case { id }` → creates a research case from the paper (no model call) → `{ ok, caseId }`.
@@ -64,6 +64,17 @@ volatility · jump / diffusion · Brownian motion & stochastic processes · opti
 trend & momentum · mean reversion & pairs · rates & FOMC · gold & commodities · risk & portfolio · backtest & method ·
 microstructure & order flow · machine learning · regimes & HMM. Keyword families with weights over title, abstract, notes and
 full text; a topic needs a minimum score; the owner can add or remove tags by hand.
+
+## Sources (rule-based; one per paper)
+`sourceOf(record)` in `js/paperCatalog.js` gives `{ key, label }` from fields we already hold. First rule that fires wins: (1) a curated
+collection named by the queue item's `source` ('151 Trading Strategies (Kakushadze & Serur 2018)' -> `k151`, 'QuantConnect strategy
+library' -> `quantconnect`); (2) identifiers: `ssrn`, `arxiv`, DOI prefix (10.2139/ssrn, 10.48550/arxiv, 10.3386 = NBER); (3) url host
+(arxiv.org, ssrn.com, nber.org, federalreserve.gov / newyorkfed.org / other Reserve Banks -> `fed`, ecb.europa.eu, bankofengland.co.uk,
+bis.org, imf.org); (4) `venue` text; (5) the rest of the queue `source` ('SSRN manifest' -> `ssrn`, 'reading list' -> `reading`);
+(6) an upload: SSRN-style or arXiv-style file name, else `upload` ("Other upload"); (7) `other`. Keys: ssrn, arxiv, nber, fed, ecb,
+boe, bis, imf, k151, quantconnect, reading, upload, other. The list response's `sources` has only those present, with counts.
+Filtering: topics and sources are two chip groups, OR within a group, AND between them; the selection is remembered in
+localStorage; `search?sources=` applies after ranking (so it ranks the top 100 first); the card and the reader head show the label.
 
 ## Theory Lab links
 Tag → lessons that exist in `theory-lab/lessons/` (e.g. Brownian motion → ito-lemma, fractional-brownian-motion, girsanov-risk-neutral;
