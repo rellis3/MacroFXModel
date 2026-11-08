@@ -184,3 +184,49 @@ test('years: unread upload year from the cached text head, buckets in the list, 
   assert.deepEqual([r2.papers.find(p => p.id === 'up1').year, r2.papers.find(p => p.id === 'up1').yearFrom], [null, null]);
   assert.ok(r2.years.some(y => y.key === 'unknown' && y.count === 1));
 });
+
+// ── equations as maths (js/libraryMath.js, js/mathLatex.js, js/arxivMath.js) ──
+const eqItem = (str, x, y = 500, h = 10) => [str, x, y, str.length * h * 0.5, h, 0];
+const mathBlocks = () => [
+  { i: 0, type: 'p', text: 'Before the equation. The return is defined below.', page: 1, bbox: null },
+  { i: 1, type: 'eq', text: 'x = a + b (1)', page: 1, bbox: [50, 490, 300, 515], label: '1', src: { it: [eqItem('x', 100), eqItem('=', 110), eqItem('a', 120), eqItem('+', 128), eqItem('b', 138)], fonts: ['F'] } },
+  { i: 2, type: 'eq', text: 'y = ? (2)', page: 1, bbox: [50, 450, 300, 475], label: '2', src: { it: [eqItem('y', 100, 460), eqItem('', 110, 460)], fonts: ['F'] } },
+  { i: 3, type: 'eq', text: 'z (3)', page: 1, bbox: [50, 400, 300, 425], label: '3', src: { it: [eqItem('z', 100, 410), eqItem('', 110, 410)], fonts: ['F'] } },
+  { i: 4, type: 'p', text: 'After the equation. More text follows here.', page: 1, bbox: null },
+];
+function mathHarness({ math } = {}) {
+  const h = harness(); const { blobs, api } = h;
+  blobs.set(uploadKey('up1', 'blocks.json'), Buffer.from(JSON.stringify({ v: 3, source: 'pdf', pages: 1, pageSize: { 1: [612, 792] }, blocks: mathBlocks() })));
+  if (math) blobs.set(uploadKey('up1', 'math.json'), Buffer.from(JSON.stringify(math)));
+  return { ...h, get: async () => (await api.paper({ query: { id: 'up1' } })).json };
+}
+
+test('paper: eq blocks get latex from the best layer (arXiv > model > rules), keep their crop box, and never expose the raw geometry', async () => {
+  const { get } = mathHarness({ math: { v: 1, eq: { 2: { latex: 'y=\\mu', source: 'arxiv', conf: 0.95 }, 3: { latex: 'z=1', source: 'model', conf: 0.55 } } } });
+  const r = await get(); const [, a, b, c] = r.blocks;
+  assert.deepEqual([a.latexSource, a.latexConf], ['rule', 1]); assert.match(a.latex, /^x=a\+b\\tag\{1\}$/);
+  assert.deepEqual([b.latex, b.latexSource, b.latexConf], ['y=\\mu', 'arxiv', 0.95]);
+  assert.ok(!('latex' in c), 'a model answer that is not confident stays hidden: the crop shows');
+  for (const e of [a, b, c]) { assert.ok(Array.isArray(e.bbox) && e.page === 1, 'the crop box stays'); assert.ok(!('src' in e), 'the geometry stays on the server'); }
+  assert.ok(!JSON.stringify(r).includes('"src"'));
+});
+
+test('paper: without a math file the rule-based layer still gives the clean equations, the unreadable ones show as before', async () => {
+  const { get } = mathHarness(); const r = await get();
+  assert.ok(r.blocks[1].latex && r.blocks[1].latexSource === 'rule'); assert.ok(!('latex' in r.blocks[2]) && !('latex' in r.blocks[3]));
+});
+
+test('blocks cache: a v2 cache (before equations kept their geometry) is rebuilt, a v3 one is used as is', async () => {
+  const { api, blobs, calls } = harness();
+  blobs.set(uploadKey('up1', 'blocks.json'), Buffer.from(JSON.stringify({ v: 2, source: 'pdf', pages: 1, pageSize: {}, blocks: [{ i: 0, type: 'p', text: 'old', page: 1, bbox: null }] })));
+  const r = (await api.paper({ query: { id: 'up1' } })).json; assert.equal(calls.extract, 1, 'rebuilt'); assert.ok(r.blocks.length > 2);
+  assert.equal(JSON.parse(blobs.get(uploadKey('up1', 'blocks.json')).toString()).v, 3);
+});
+
+test('the equations job is mounted at /api/research-pod/math (GET status, POST capped), task library-math, key registered everywhere', () => {
+  const rd = f => fs.readFileSync(new URL(f, import.meta.url), 'utf8'), src = rd('../server.js');
+  assert.match(src, /app\.get\('\/api\/research-pod\/math'/); assert.match(src, /app\.post\('\/api\/research-pod\/math'/);
+  assert.match(src, /task: 'library-math'/); assert.match(src, /_libApi\.math\.start\(/); assert.match(src, /_libApi\.math\.status\(/);
+  for (const [f, n] of [['../kv.js', 1], ['../_worker.js', 2], ['./storeRegistry.js', 1]]) assert.ok(rd(f).split('library_math_v1').length - 1 >= n, `${f} lists library_math_v1`);
+  assert.match(rd('./modelRouter.js'), /'library-math': \{ ledger: 'brief'/);
+});

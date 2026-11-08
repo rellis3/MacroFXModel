@@ -85,7 +85,8 @@ function normalizePages(input) {
       if (seen.has(key)) continue; seen.add(key);
       items.push({ str, x, y, w: w || str.length * (h || 8) * 0.5, h, font: String(it.font ?? ''), r: it.r ? 1 : 0 });
     }
-    out.push({ n: num(p.n, idx + 1), w: num(p.w, 612) || 612, h: num(p.h, 792) || 792, items });
+    const rules = Array.isArray(p.rules) ? p.rules.filter(r => Array.isArray(r) && r.length >= 3 && r.every(Number.isFinite)) : [];
+    out.push({ n: num(p.n, idx + 1), w: num(p.w, 612) || 612, h: num(p.h, 792) || 792, items, rules });
   });
   return out;
 }
@@ -416,6 +417,24 @@ function paddedBox(lines, pageLinesAll, B, pad, xPad = pad) {
   return [r1(Math.max(0, x0 - xPad)), r1(ny0), r1(x1 + xPad), r1(ny1)];
 }
 
+/**
+ * The raw geometry of an equation block, for the LaTeX reconstruction (js/mathLatex.js): every positioned text item of its lines
+ * ([str, x, y, w, h, fontIndex], PDF units) plus the drawn horizontal rules next to it ([x0, x1, y, thickness]); fonts are indexed.
+ */
+function eqSource(lines, rules, B) {
+  const fonts = [], its = [];
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const l of lines) for (const it of l.items) {
+    if (it.r) continue;
+    let f = fonts.indexOf(it.font); if (f < 0) { f = fonts.length; fonts.push(it.font); }
+    its.push([it.str, r1(it.x), r1(it.y), r1(it.w), r1(it.h), f]);
+    x0 = Math.min(x0, it.x); x1 = Math.max(x1, it.x + it.w); y0 = Math.min(y0, it.y - 0.3 * it.h); y1 = Math.max(y1, it.y + 0.9 * it.h);
+  }
+  if (!its.length || its.length > 400) return null;
+  const rs = rules.filter(r => r[1] >= x0 - B && r[0] <= x1 + B && r[2] >= y0 - 0.5 * B && r[2] <= y1 + 0.5 * B).slice(0, 40).map(r => [r1(r[0]), r1(r[1]), Math.round(r[2] * 100) / 100, Math.round((r[3] ?? 0.5) * 100) / 100]);
+  return { it: its, fonts, ...(rs.length ? { rules: rs } : {}) };
+}
+
 // ---------- main ------------------------------------------------------------------------------------------------------------------
 function build(input) {
   const pages = normalizePages(input);
@@ -423,6 +442,7 @@ function build(input) {
   if (!pages.length) return empty;
   const { B, bodyFont } = bodyStats(pages);
   const pageSize = {}; for (const p of pages) pageSize[p.n] = [r1(p.w), r1(p.h)];
+  const rulesByPage = new Map(pages.map(p => [p.n, p.rules ?? []]));
 
   let perPage = [];
   const first = pages.map(p => { try { return pageLines(p, B); } catch { return { lines: [], gutter: null }; } });
@@ -559,7 +579,7 @@ function build(input) {
 
   // 4. walk the stream and assemble blocks
   const blocks = [], deferred = [];
-  const push = (type, text, page, bbox, label) => { const b = { i: blocks.length, type, text, page, bbox: bbox ?? null }; if (label) b.label = label; blocks.push(b); };
+  const push = (type, text, page, bbox, label) => { const b = { i: blocks.length, type, text, page, bbox: bbox ?? null }; if (label) b.label = label; blocks.push(b); return b; };
   let cur = [];
   const flushDeferred = () => { while (deferred.length) deferred.shift()(); };
   const flushPara = () => {
@@ -614,7 +634,7 @@ function build(input) {
     if (cl) {
       if (cl.lines[0] !== L) continue;
       const emit = () => {
-        if (cl.kind === 'eq') push('eq', cl.lines.map(l => l.text).join(' '), L.page, paddedBox(cl.lines, pageLinesMap.get(L.page) ?? [], B, PAD, PAD), cl.label);
+        if (cl.kind === 'eq') { const eb = push('eq', cl.lines.map(l => l.text).join(' '), L.page, paddedBox(cl.lines, pageLinesMap.get(L.page) ?? [], B, PAD, PAD), cl.label); const sr = eqSource(cl.lines, rulesByPage.get(L.page) ?? [], B); if (sr) eb.src = sr; }
         else if (cl.kind === 'table') push('table', cl.caption || cl.rows.map(l => l._cells.map(c => c.s).join(' | ')).join('\n').slice(0, 600), L.page, paddedBox(cl.lines, pageLinesMap.get(L.page) ?? [], B, PAD, PAD), cl.label);
         else push('fig', cl.caption, L.page, unionBox(cl.lines, 1.5), cl.label);
       };
