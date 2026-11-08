@@ -239,7 +239,7 @@ test('API roundContext: the librarian when it works; the rule-based context (wit
 test('server.js: the librarian never runs when the flag is off, runs once per round, and is wired in the same three call sites as withLibrary', () => {
   const src = rd('../server.js');
   const fn = src.slice(src.indexOf('async function _libRoundCtx'), src.indexOf('/** On first read in this process'));
-  assert.ok(fn.indexOf('if (!_LIX.libraryContextOn()) return null;') > 0 && fn.indexOf('if (!_LIX.libraryContextOn()) return null;') < fn.indexOf('_libApi.roundContext'), 'flag check first');
+  assert.ok(fn.indexOf("if (!(await readToggle('libraryContext'))) return null;") > 0 && fn.indexOf("if (!(await readToggle('libraryContext'))) return null;") < fn.indexOf('_libApi.roundContext'), 'flag check first');
   assert.equal((src.match(/_libApi\.roundContext\(/g) ?? []).length, 1, 'only _libRoundCtx reaches the librarian from a round');
   const uses = src.split('\n').filter(l => l.includes('_libRoundCtx('));
   assert.equal(uses.filter(l => /const libCtx = await _libRoundCtx\(/.test(l)).length, 3, 'round 1, later rounds, the Head review');

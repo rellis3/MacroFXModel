@@ -15,6 +15,7 @@ REM    run_deep_history.bat --all                    (every live contract, not j
 REM    run_deep_history.bat --until 2022-01-01       (stop at 2022)
 REM    run_deep_history.bat --dry-run                (show the plan only)
 REM    run_deep_history.bat --i2-archive             (rolling I2!: fill the roll-week holes, extend to 2024; a few minutes)
+REM    run_deep_history.bat --i2-archive --sr32-archive   (the same for the rolling SOFR SR32! line too)
 REM ============================================================================
 setlocal
 cd /d "%~dp0"

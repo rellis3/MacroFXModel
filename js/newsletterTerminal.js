@@ -13,6 +13,7 @@
 import { DISCLAIMER } from './newsletter.js';
 import { instName, prose, cardMove } from './newsletterDesk.js';
 import { DESK_UNIVERSE } from './deskPack.js';
+import { priceNums } from './tradeWatch.js';
 import { assetScore, ccyScore, grade, gradeLabel, assetWord, ccyWord, fmtScore, signed, ccyText, SCALE_NOTE } from './scoreDisplay.js';
 
 const CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
@@ -56,7 +57,7 @@ export function dial(tone, conviction) {
 function ladder(c) {
   const L = c?.levels; if (!L?.up?.p90 || !L?.down?.p90) return '';
   const lo = L.down.p90, hi = L.up.p90, W = 300, X = v => ((v - lo) / (hi - lo)) * (W - 8) + 4;
-  const nums = (String(c.plan?.zone ?? '').match(/\d+(?:\.\d+)?/g) ?? []).map(Number).filter(v => v > lo * 0.97 && v < hi * 1.03);
+  const nums = priceNums(c.plan?.zone).filter(v => v > lo * 0.97 && v < hi * 1.03);
   const z = nums.length >= 2 ? [Math.min(...nums), Math.max(...nums)] : null;
   const ticks = ['p90', 'p75', 'p50'].flatMap(q => [L.down[q], L.up[q]]).map(v => `<line x1="${X(v).toFixed(1)}" x2="${X(v).toFixed(1)}" y1="9" y2="23" stroke="${C.line}"/>`).join('');
   return `<svg viewBox="0 0 ${W} 40" width="100%" role="img" aria-label="today's forecast ladder"><rect x="4" y="14" width="${W - 8}" height="4" rx="2" fill="${C.bg3}"/>${ticks}${z ? `<rect x="${X(Math.max(lo, z[0])).toFixed(1)}" y="10" width="${Math.max(2, X(Math.min(hi, z[1])) - X(Math.max(lo, z[0]))).toFixed(1)}" height="12" rx="3" fill="rgba(139,124,246,.28)" stroke="${C.pur}"/>` : ''}<line x1="${X(L.open).toFixed(1)}" x2="${X(L.open).toFixed(1)}" y1="6" y2="26" stroke="${C.tx}" stroke-width="2"/><text x="4" y="38" fill="${C.tx3}" font-family="${MONO}" font-size="9">${lo}</text><text x="${(W / 2).toFixed(0)}" y="38" text-anchor="middle" fill="${C.tx3}" font-family="${MONO}" font-size="9">open ${L.open}</text><text x="${W - 4}" y="38" text-anchor="end" fill="${C.tx3}" font-family="${MONO}" font-size="9">${hi}</text></svg>`;
