@@ -8,6 +8,8 @@
 // Blocks are { i, type:'h1'|'h2'|'p'|'eq'|'table'|'fig'|'refs', text, page, bbox } (plans/PAPER_LIBRARY.md).
 // Every function is total: odd input returns less, never throws.
 
+import { stripStamps, isStampLine } from './paperStamps.js';
+
 // Browser-voice utterances are short (Theory Lab caps at 110, see theory-lab/assets/tts.js): long ones stall on iOS/Android.
 export const MAX_SENTENCE = 110;
 const WPM = 150;
@@ -70,8 +72,8 @@ const ABBREV_NOSPLIT = new Set(['dr', 'mr', 'mrs', 'ms', 'prof', 'inc', 'ltd', '
 // ---------- cleaning for speech ----------
 export function normalizeForSpeech(input) {
   try {
-    let t = str(input);
-    if (!t) return '';
+    let t = stripStamps(str(input));
+    if (!t.trim()) return '';
     t = t.replace(/[ﬁﬂﬀﬃﬄ­    ​﻿“”‘’‐‑]/g, (c) => LIGATURES[c] ?? c);
     t = t.replace(/[\r\n\t]+/g, ' ');
     // URLs, DOIs, emails
@@ -272,7 +274,7 @@ export function speechSentences(blocks, opts = {}) {
       if (type !== 'p' && type !== '') return;
       if (inRefs) return;
       const t = raw.trim();
-      if (!t || PAGE_NUM.test(t) || BOILER.test(t)) return;
+      if (!t || PAGE_NUM.test(t) || BOILER.test(t) || isStampLine(t)) return;
       const key = t.toLowerCase().replace(/\d+/g, '#').replace(/\s+/g, ' ');
       if (t.length <= 110 && !/[.!?]["')]*$/.test(t) && headers.has(key)) return;
       add(toSentences(t, max));
@@ -378,7 +380,7 @@ export function briefingScript(paper, blocks, conclusion) {
       : Array.isArray(p.conclusion) ? p.conclusion : [];
     concl = concl.map((c) => str(c).trim()).filter(Boolean);
     const title = normalizeForSpeech(str(p.title)).replace(/[.\s]+$/, '') || 'Untitled paper';
-    const abstractText = str(p.abstract) || findAbstract(blocks);
+    const abstractText = stripStamps(str(p.abstract) || findAbstract(blocks)).trim();
 
     let level = 0;
     let sentences = [];

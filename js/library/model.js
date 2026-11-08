@@ -2,7 +2,7 @@
 
 /** Badge for a paper card: read by the desk / PDF only / abstract only. */
 export function statusOf(p) {
-  if (p && p.notes && (p.notes.claim || p.notes.mechanism || p.notes.method)) return { key: 'desk', label: 'read by desk' };
+  if (p && (p.read || (p.notes && (p.notes.claim || p.notes.mechanism || p.notes.method)))) return { key: 'desk', label: 'read by desk' };
   if (p && (p.hasPdf || p.hasText)) return { key: 'pdf', label: 'PDF only' };
   return { key: 'abstract', label: 'abstract only' };
 }

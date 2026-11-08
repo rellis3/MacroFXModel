@@ -45,6 +45,7 @@
 //    private-use glyphs give garbled equation text; the box still crops the page correctly, which is why the reader shows the image.
 //  - Every function returns fewer blocks instead of throwing on odd input.
 
+import { stripStamps, isStampLine } from './paperStamps.js';
 const LIGATURES = { 'ﬀ': 'ff', 'ﬁ': 'fi', 'ﬂ': 'fl', 'ﬃ': 'ffi', 'ﬄ': 'ffl', 'ﬅ': 'st', 'ﬆ': 'st' };
 const MATH_STRONG = /[\p{Script=Greek}\p{Mn}ˆ˜¯∂∞√∑∫∏∈∉⊂⊆≤≥≈≠≡±×÷−∗⋅·‖∇∀∃→↦∥^_\u{1D400}-\u{1D7FF}]/u;
 const MATH_WEAK = /[=<>+|~]/;
@@ -341,6 +342,7 @@ function markTables(stream, B, P) {
   return groups;
 }
 
+const PAD = 3.5;   // crop padding in PDF units around equation and table boxes
 const CAP_FIG = /^(figure|fig\.)\s*(\d+|[IVX]+)\s*[:.—–|-]/i;
 const CAP_TAB = /^(table|tab\.)\s*(\d+|[IVX]+)\s*[:.—–|-]/i;
 const CAP_TAB_LOOSE = /^(table|tab\.)\s*(\d+|[IVX]+)\b/i;
@@ -380,7 +382,7 @@ function headingLevel(L, ctx) {
 }
 
 const BULLET = /^(?:[\u2022\u25e6\u25aa\u2023\u2219\u25cf]|[-\u2013]\s|\(?\d{1,2}[.)]\s|\([a-z]\)\s)/;
-const cleanText = t => t.replace(/\s+/g, ' ').replace(/ ([\u0300-\u036f])/g, '$1').replace(/([\u0300-\u036f])\u0131/g, '$1i').normalize('NFC').trim();
+const cleanText = t => stripStamps(t).replace(/\s+/g, ' ').replace(/ ([\u0300-\u036f])/g, '$1').replace(/([\u0300-\u036f])\u0131/g, '$1i').normalize('NFC').trim();
 const joinLines = arr => {
   let s = '';
   for (const l of arr) {
@@ -399,7 +401,7 @@ function unionBox(lines, pad = 0) {
 }
 
 /** Box of an equation/table group: union of item boxes, padded, clamped to the midline of the gap to neighbouring prose. */
-function paddedBox(lines, pageLinesAll, B, pad) {
+function paddedBox(lines, pageLinesAll, B, pad, xPad = pad) {
   const u = unionBox(lines); if (!u) return null;
   let [x0, y0, x1, y1] = u;
   const mine = new Set(lines);
@@ -411,7 +413,7 @@ function paddedBox(lines, pageLinesAll, B, pad) {
   }
   const ny1 = nearAbove === Infinity ? y1 + pad : nearAbove > y1 ? Math.min(y1 + pad, (y1 + nearAbove) / 2) : y1;
   const ny0 = nearBelow === -Infinity ? y0 - pad : nearBelow < y0 ? Math.max(y0 - pad, (y0 + nearBelow) / 2) : y0;
-  return [r1(x0 - 2), r1(ny0), r1(x1 + 2), r1(ny1)];
+  return [r1(Math.max(0, x0 - xPad)), r1(ny0), r1(x1 + xPad), r1(ny1)];
 }
 
 // ---------- main ------------------------------------------------------------------------------------------------------------------
@@ -429,6 +431,7 @@ function build(input) {
   pages.forEach((p, k) => { try { perPage.push(first[k].gutter || !docG ? first[k].lines : pageLines(p, B, docG).lines); } catch { perPage.push([]); } });
   const pl = perPage.map(lines => ({ lines }));
   dropRunning(pl, pages);
+  for (const x of pl) x.lines = x.lines.filter(l => !isStampLine(l.text));   // arXiv / SSRN margin stamps, download lines, bare URLs
   perPage = pl.map(x => x.lines);
   const stream = perPage.flat();
   if (!stream.length) return empty;
@@ -522,6 +525,15 @@ function build(input) {
   const near = (a, b, d) => a.page === b.page && Math.abs(a.y - b.y) <= d && (a.col === b.col || a.col === 'F' || b.col === 'F');
   const xOverlap = (g, l) => { const x0 = Math.min(...g.map(q => q.x0)), x1 = Math.max(...g.map(q => feat(q, B).exX1)); return l.x1 >= x0 - 1.5 * B && l.x0 <= x1 + 1.5 * B; };
   const groups = [];
+  // true when the run of tight, unnumbered strong lines starting at k is closed by a numbered strong line (number-on-last-line layout)
+  const numberedBelow = k0 => {
+    for (let j = k0; j < stream.length; j++) {
+      if (!cls[j]) return false;   // prose ends the chain; fraction rows and limits ('weak') are part of it
+      if (j > k0 && !near(stream[j - 1], stream[j], 2.0 * B + 0.4 * P)) return false;
+      if (cls[j] === 'num' || feat(stream[j], B).numItem) return true;
+    }
+    return false;
+  };
   for (let k = 0; k < stream.length; k++) {   // consecutive strong lines form one equation, a numbered line closes it
     if (cls[k] !== 'strong') continue;
     const prev = groups[groups.length - 1], pl = prev && prev[prev.length - 1];
@@ -529,7 +541,9 @@ function build(input) {
     // a denominator or limit sitting right under a numbered line still belongs to it: narrow, unnumbered, inside its extent, one row below
     const tail = pl && feat(pl, B).numItem && !fk.numItem && Math.min(...prev.map(q => q.y)) - cur0.y <= 1.7 * B && near(pl, cur0, 2.0 * B + 0.4 * P)
       && cur0.x0 >= Math.min(...prev.map(q => feat(q, B).exX0)) - B && cur0.x1 <= Math.max(...prev.map(q => feat(q, B).exX1)) + B && (cur0.x1 - cur0.x0) <= 0.7 * (Math.max(...prev.map(q => feat(q, B).exX1)) - Math.min(...prev.map(q => feat(q, B).exX0)));
-    if (pl && ((!feat(pl, B).numItem && near(pl, cur0, 2.0 * B + 0.4 * P) && xOverlap(prev, cur0)) || tail)) prev.push(cur0); else groups.push([cur0]);
+    // a system numbered on its first line, "(2.1)" beside line 1 of 3: the unnumbered lines right below belong to it unless the chain ends in a number of its own
+    const sysTail = pl && feat(pl, B).numItem && !fk.numItem && near(pl, cur0, 2.0 * B + 0.4 * P) && xOverlap(prev, cur0) && !numberedBelow(k);
+    if (pl && ((!feat(pl, B).numItem && near(pl, cur0, 2.0 * B + 0.4 * P) && xOverlap(prev, cur0)) || tail || sysTail)) prev.push(cur0); else groups.push([cur0]);
   }
   for (let k = 0; k < stream.length; k++) {   // fraction rows, limits and detached numbers go to the nearest equation
     if (cls[k] !== 'weak' && cls[k] !== 'num') continue;
@@ -600,8 +614,8 @@ function build(input) {
     if (cl) {
       if (cl.lines[0] !== L) continue;
       const emit = () => {
-        if (cl.kind === 'eq') push('eq', cl.lines.map(l => l.text).join(' '), L.page, paddedBox(cl.lines, pageLinesMap.get(L.page) ?? [], B, 0.25 * B), cl.label);
-        else if (cl.kind === 'table') push('table', cl.caption || cl.rows.map(l => l._cells.map(c => c.s).join(' | ')).join('\n').slice(0, 600), L.page, paddedBox(cl.lines, pageLinesMap.get(L.page) ?? [], B, 0.25 * B), cl.label);
+        if (cl.kind === 'eq') push('eq', cl.lines.map(l => l.text).join(' '), L.page, paddedBox(cl.lines, pageLinesMap.get(L.page) ?? [], B, PAD, PAD), cl.label);
+        else if (cl.kind === 'table') push('table', cl.caption || cl.rows.map(l => l._cells.map(c => c.s).join(' | ')).join('\n').slice(0, 600), L.page, paddedBox(cl.lines, pageLinesMap.get(L.page) ?? [], B, PAD, PAD), cl.label);
         else push('fig', cl.caption, L.page, unionBox(cl.lines, 1.5), cl.label);
       };
       if (cl.kind === 'eq') { flushPara(); emit(); } else if (cur.length) deferred.push(emit); else emit();
@@ -623,6 +637,14 @@ function build(input) {
     cur.push(L);
   }
   flushRefs(); flushPara();
+  // two equation/table crops never cover the same lines: where neighbouring boxes overlap vertically, the shared edge goes to the middle of the overlap
+  const boxed = blocks.filter(b => (b.type === 'eq' || b.type === 'table') && b.bbox);
+  for (let a = 0; a < boxed.length; a++) for (let c = a + 1; c < boxed.length; c++) {
+    const A = boxed[a], C = boxed[c]; if (A.page !== C.page) continue;
+    const [up, dn] = A.bbox[3] >= C.bbox[3] ? [A, C] : [C, A];
+    if (Math.min(up.bbox[2], dn.bbox[2]) <= Math.max(up.bbox[0], dn.bbox[0]) || up.bbox[1] >= dn.bbox[3]) continue;
+    const mid = r1((up.bbox[1] + dn.bbox[3]) / 2); up.bbox[1] = mid; dn.bbox[3] = mid;
+  }
   for (let q = 0; q < blocks.length; q++) blocks[q].i = q;
   return { blocks, pageSize };
 }

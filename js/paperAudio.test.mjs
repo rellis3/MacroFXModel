@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { stripStamps, isStampLine, cleanBlocks } from './paperStamps.js';
 import { speechSentences, briefingScript, estimateSecs, chunkForTts, normalizeForSpeech, splitSentences, MAX_SENTENCE } from './paperAudio.js';
 
 // Synthetic fixtures only: nothing here is paper text.
@@ -223,4 +224,29 @@ test('estimateSecs and chunkForTts', () => {
   for (const c of chunks) assert.ok(/\.$/.test(c), 'ends on a sentence boundary');
   assert.deepEqual(chunkForTts(['a.', '', null, 'b.'], { maxChars: 1000 }), ['a. b.']);
   assert.ok(chunkForTts(['x '.repeat(500)], { maxChars: 100 }).every((c) => c.length <= 100));
+});
+
+test('arXiv and SSRN margin stamps are never spoken', () => {
+  const stamps = ['arXiv:1107.1834v1 [q-fin.CP] 10 Jul 2011', 'arXiv:1107.1834v1 q-fin.C P 10 Jul 2011', 'a r X i v : 1 1 0 7 . 1 8 3 4 v 1 [ q - f i n . C P ] 1 0 J u l 2 0 1 1', 'arXiv:hep-th/9901001v2 5 Feb 1999',
+    'Electronic copy available at: https://ssrn.com/abstract=3012345', 'Electronic copy available at ssrn.com', 'Downloaded from https://example.org/x on 3 May 2020', 'NBER Working Paper No. 12345', 'Working Paper', 'https://doi.org/10.1000/xyz123', 'doi:10.1093/abc/hhx001'];
+  for (const s of stamps) assert.ok(isStampLine(s), s);
+  assert.deepEqual(speechSentences([P(stamps[0]), P(stamps[4]), P(stamps[8])]), []);
+  assert.equal(norm(stamps[0]), '');
+  assert.ok(!/arxiv|1107|ssrn|electronic/i.test(norm(`Abstract text here. ${stamps[0]} More text. ${stamps[4]}`)));
+  const a = briefingScript({ title: 'T', abstract: `${stamps[0]} We test a simple idea on synthetic data. It works.` }, null, []);
+  assert.ok(!/arXiv|1107|q-fin/i.test(a.sentences.join(' ')), a.sentences.join(' | '));
+  assert.ok(/We test a simple idea/.test(a.sentences.join(' ')));
+});
+
+test('prose that merely mentions a working paper or a link is kept', () => {
+  assert.ok(!isStampLine('Working paper evidence on this question is mixed and we show why that is so.'));
+  assert.equal(stripStamps('A normal sentence about volatility.'), 'A normal sentence about volatility.');
+  assert.ok(speechSentences([P('See the website https://example.com/page for the data used in this synthetic example here.')]).length === 1);
+});
+
+test('cleanBlocks drops standalone stamp paragraphs, cuts stamps inside text and renumbers i', () => {
+  const blocks = [{ i: 0, type: 'p', text: 'arXiv:1107.1834v1 [q-fin.CP] 10 Jul 2011', page: 1 }, { i: 1, type: 'h1', text: 'Title', page: 1 }, { i: 2, type: 'p', text: 'Intro arXiv:1107.1834v1 [q-fin.CP] 10 Jul 2011 text.', page: 1 }];
+  const c = cleanBlocks(blocks);
+  assert.deepEqual(c.map(b => [b.i, b.text]), [[0, 'Title'], [1, 'Intro text.']]);
+  assert.equal(cleanBlocks(c), c, 'nothing to clean returns the same array');
 });

@@ -40,6 +40,7 @@ Cleaned text is never presented as exact: every page offers "original PDF".
 
 ## API contract (all under login; JSON unless stated)
 - `GET /api/library/papers` → `{ ok, papers:[Paper], topics:[{ key, label, count }], sources:[{ key, label, count }], totals:{ all, fullText, abstractOnly } }`
+  The list is the card view: no `notes`, `desk`, `abstract` or `theory` (they come with `GET /paper?id=`); instead `card` (one "In short" line), `cardMuted` and `read` (the desk has notes). Concurrent first loads share one catalog build.
   `Paper` = `{ id, title, authors, year, venue, url, ssrn, arxiv, doi, kind, readFrom, hasText, hasPdf, chars, pages, uploadedAt,
   source:{ key, label }, tags:[{ key, label, source:'auto'|'manual' }], notes:{claim,mechanism,data,method,effect,outOfSample,costs,relevance,stance,
   caveats,testHere}|null, desk:[{ id, verdict, claim }], progress:{ pct, pos, at, done }|null, audio:{ briefing:{ status:'none'|

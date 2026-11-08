@@ -32,10 +32,23 @@ function harness({ provider } = {}) {
 test('papers: read, abstract-only and unread uploads, topics and totals', async () => {
   const { api } = harness(); const r = (await api.papers()).json;
   assert.equal(r.ok, true); assert.equal(r.papers.length, 3);
-  const up = r.papers.find(p => p.id === 'up1'); assert.equal(up.hasPdf, true); assert.match(up.title, /Synthetic Study/); assert.equal(up.notes, null);
+  const up = r.papers.find(p => p.id === 'up1'); assert.equal(up.hasPdf, true); assert.match(up.title, /Synthetic Study/); assert.equal(up.read, false);
   assert.equal(r.papers.find(p => p.id === 'p-abs').hasText, false);
   assert.equal(r.totals.all, 3); assert.equal(r.totals.abstractOnly, 1); assert.equal(r.topics.length, 15);
-  assert.ok(r.papers.every(p => Array.isArray(p.theory)));
+  // list payload: card fields + a one-line card; heavy fields live in GET /paper only
+  assert.ok(r.papers.every(p => !('notes' in p) && !('abstract' in p) && !('desk' in p) && !('theory' in p) && typeof p.card === 'string' && p.card.length <= 260));
+  const rd = r.papers.find(p => p.id === 'p-read'); assert.equal(rd.read, true); assert.match(rd.card, /Jumps matter for volatility/); assert.equal(rd.cardMuted, false);
+  assert.equal(r.papers.find(p => p.id === 'p-abs').cardMuted, true);
+  const d = (await api.paper({ query: { id: 'p-read' } })).json.paper; assert.equal(d.notes.claim, 'Jumps matter for volatility.'); assert.ok(Array.isArray(d.theory)); assert.match(d.abstract, /Jumps and volatility/);
+});
+
+test('catalog: simultaneous first loads share one build', async () => {
+  const { api, store } = harness(); let reads = 0; const get = store.get.bind(store);
+  store.get = k => { if (k === 'pp') reads++; return get(k); };
+  const rs = await Promise.all([api.papers(), api.papers(), api.papers()]);
+  assert.equal(reads, 1, 'one catalog build for three concurrent requests');
+  assert.ok(rs.every(r => r.json.papers.length === 3));
+  api._test.dropCatalog(); await api.papers(); assert.equal(reads, 2, 'a drop starts a fresh build');
 });
 
 test('paper: blocks built from the text fallback when the PDF cannot be parsed, then cached in R2', async () => {
