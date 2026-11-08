@@ -4,6 +4,7 @@
 > **not** queued as "context only" (the registry never labels, hides or demotes a question and the question writer never sees prior
 > results); and the hand-off to research is an **Open case button**, never automatic. The lockbox rules, Holm/BH and the 2026-08-21
 > cut-off below stand.
+> **v2 note (2026-11-08):** the Benjamini-Hochberg unit in section 4.3 rule 4 changes from "question" to "hypothesis family" and Holm now spans a family's variants; see `RESEARCH_OPPORTUNITY_ENGINE.md` section 6.6. The lockbox rules and the 2026-08-21 cut-off are untouched (that file's section 8 maps them).
 
 # Data Agent: inventory and design
 

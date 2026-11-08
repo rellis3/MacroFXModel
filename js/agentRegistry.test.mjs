@@ -64,35 +64,49 @@ test('the Research Opportunity Engine is drawn as planned: processing services m
   for (const id of roe) { const a = AGENTS.find(x => x.id === id); assert.ok(a, id); assert.equal(a.planned, true, `${id} planned`); assert.equal(a.kind, 'service', `${id} is a processing service`); assert.equal(a.modelTask, null, `${id}: no model call`); assert.equal(a.spends, false); assert.equal(a.job, null, `${id}: no scheduled job yet`); assert.equal(a.cap, null); assert.deepEqual(a.roles, []); assert.ok(a.links.some(l => l.href === 'plans/RESEARCH_OPPORTUNITY_ENGINE.md')); }
   for (const id of ['opportunity-scanner', 'question-writer', 'historical-evaluator', 'forward-tracker']) assert.equal(AGENTS.find(a => a.id === id).group, 'Data');
   assert.ok(fs.existsSync(new URL('../plans/RESEARCH_OPPORTUNITY_ENGINE.md', import.meta.url)), 'the plan doc exists');
-  for (const id of ['question-queue', 'opportunity-registry', 'ranked-board', 'research-approved', 'design-approved', 'validation-approved']) assert.equal(POINTS[id].planned, true, `${id} planned`);
+  for (const id of ['question-queue', 'opportunity-registry', 'ranked-board', 'research-approved', 'design-approved', 'validation-approved', 'input-snapshot', 'evaluation-store', 'forward-ledger', 'stage-discovery', 'stage-confirmation', 'stage-forward', 'owner-research-decision', 'owner-design-decision']) assert.equal(POINTS[id].planned, true, `${id} planned`);
   assert.ok(/laptop/i.test(AGENTS.find(a => a.id === 'opportunity-scanner').purpose) && /Python/.test(AGENTS.find(a => a.id === 'opportunity-scanner').purpose));
   const r = resolveFlow('research-discovery');
   assert.ok(r.edges.filter(e => e.planned).length >= 10 && r.nodes.some(n => n.id === 'opportunity-registry' && n.planned));
+  assert.ok(!POINTS['lockbox-boundary'].planned, 'the lockbox rule exists today; only its use by the ROE is planned');
   assert.ok(flowSvg(r, { models: {}, agents: Object.fromEntries(AGENTS.map(a => [a.id, a])) }).includes('ag-planned'));
 });
 
-test('ROE anti-bias rules: the registry never reaches the question writer, nothing opens a case by itself, the three approvals have separate owners', () => {
+test('ROE anti-bias rules: the registry never reaches the question writer, nothing opens a case by itself, no model authorises its own work', () => {
   const into = id => EDGES.filter(e => e.to === id), out = id => EDGES.filter(e => e.from === id);
   assert.deepEqual(into('question-writer').map(e => e.from), ['opportunity-scanner'], 'the writer is fed by the scanner only, never by earlier results');
-  assert.deepEqual(out('opportunity-registry').map(e => e.to), ['historical-evaluator'], 'the registry answers the evaluator (trial count, same spec) and nobody else');
+  assert.deepEqual(out('opportunity-registry').map(e => e.to), ['historical-evaluator'], 'the registry answers the evaluator (trial and family count, same spec) and nobody else');
+  assert.deepEqual(into('opportunity-registry').map(e => e.from).sort(), ['historical-evaluator', 'question-queue'], 'observations in, no result ever flows back out to anything but the evaluator');
   assert.ok(!EDGES.some(e => e.from === 'opportunity-registry' && ['question-writer', 'ranked-board', 'question-queue', 'opportunity-scanner'].includes(e.to)), 'no demoting or hiding from the registry');
   assert.deepEqual(into('case-store').filter(e => e.from === 'ranked-board').map(e => e.kind), ['control'], 'a case opens by a button press');
   assert.ok(!EDGES.some(e => e.from === 'historical-evaluator' && e.to === 'case-store') && !EDGES.some(e => e.from === 'question-queue' && e.to === 'case-store'), 'no automatic case');
-  assert.deepEqual(into('research-approved').map(e => e.from), ['head-of-research']);
-  assert.deepEqual(into('design-approved').map(e => e.from), ['system-architect']);
+  assert.deepEqual(into('research-approved').map(e => e.from), ['owner-research-decision'], 'the owner authorises Research approved');
+  assert.deepEqual(into('design-approved').map(e => e.from), ['owner-design-decision'], 'the owner authorises Design approved');
+  assert.deepEqual(into('owner-research-decision').map(e => e.from), ['head-of-research'], 'the Head only recommends');
+  assert.deepEqual(into('owner-design-decision').map(e => e.from), ['system-architect'], 'the architect only recommends');
+  for (const id of ['research-approved', 'design-approved', 'validation-approved']) assert.ok(into(id).every(e => e.kind === 'control'), `${id} is set by a control edge`);
   assert.deepEqual(into('validation-approved').map(e => e.from), ['acceptance-check'], 'only the deterministic check sets Validation approved');
+  assert.ok(!EDGES.some(e => e.to.endsWith('-approved') && AGENTS.some(a => a.id === e.from && a.modelTask)), 'no model-calling agent writes an approval status directly');
   assert.deepEqual(out('research-approved'), [], 'Research approved is not a build instruction');
-  assert.deepEqual(into('research-qa').map(e => e.from).sort(), ['quick-test', 'researcher-flow', 'researcher-macro', 'researcher-quant']);
-  assert.deepEqual(out('research-qa').map(e => e.to), ['head-of-research']);
+  assert.deepEqual(into('research-qa').map(e => e.from).sort(), ['evaluation-store', 'quick-test', 'researcher-flow', 'researcher-macro', 'researcher-quant']);
+  assert.deepEqual(out('research-qa').map(e => e.to).sort(), ['head-of-research', 'ranked-board']);
+  assert.deepEqual(into('forward-ledger').map(e => e.from), ['stage-forward'], 'only Stage 3 writes forward outcomes');
+  assert.deepEqual(into('evaluation-store').map(e => e.from).sort(), ['stage-confirmation', 'stage-discovery'], 'historical results come only from Stages 1 and 2');
+  assert.ok(!EDGES.some(e => e.from === 'evaluation-store' && e.to === 'question-writer'), 'results never reach the writer');
   assert.ok(/never labels a question rejected or dead/.test(POINTS['opportunity-registry'].note));
 });
 
 test('the research case flow shows Research QA before the Head and the three approvals after it', () => {
   const r = resolveFlow('research-case'), has = (a, b) => r.edges.some(e => e.from === a && e.to === b);
   for (const l of ['researcher-quant', 'researcher-macro', 'researcher-flow', 'quick-test']) assert.ok(has(l, 'research-qa'), l);
-  assert.ok(has('research-qa', 'head-of-research') && has('head-of-research', 'research-approved') && has('system-architect', 'design-approved') && has('acceptance-check', 'validation-approved'));
+  assert.ok(has('research-qa', 'head-of-research') && has('head-of-research', 'owner-research-decision') && has('owner-research-decision', 'research-approved') && has('system-architect', 'owner-design-decision') && has('owner-design-decision', 'design-approved') && has('acceptance-check', 'validation-approved'));
+  for (const route of [['owner', 'case-store'], ['ranked-board', 'case-store'], ['dossier', 'case-store'], ['hypothesis', 'literature-librarian'], ['literature-librarian', 'search-engines'], ['research-synthesist', 'dossier']]) assert.ok(has(...route), `three routes into the Case registry: ${route.join('>')}`);
   const d = resolveFlow('research-discovery'), dh = (a, b) => d.edges.some(e => e.from === a && e.to === b);
-  assert.ok(dh('daily-data', 'opportunity-scanner') && dh('opportunity-scanner', 'question-writer') && dh('question-writer', 'question-queue') && dh('question-queue', 'historical-evaluator') && dh('historical-evaluator', 'ranked-board') && dh('ranked-board', 'case-store') && dh('case-store', 'head-of-research') && dh('forward-tracker', 'opportunity-registry'));
+  assert.ok(dh('daily-data', 'input-snapshot') && dh('input-snapshot', 'opportunity-scanner') && dh('opportunity-scanner', 'question-writer') && dh('question-writer', 'question-queue') && dh('question-queue', 'opportunity-registry') && dh('question-queue', 'historical-evaluator') && dh('historical-evaluator', 'stage-discovery') && dh('stage-discovery', 'stage-confirmation') && dh('stage-discovery', 'evaluation-store') && dh('stage-confirmation', 'evaluation-store') && dh('evaluation-store', 'research-qa') && dh('research-qa', 'ranked-board') && dh('ranked-board', 'case-store') && dh('case-store', 'head-of-research') && dh('head-of-research', 'owner-research-decision') && dh('owner-research-decision', 'research-approved'));
+  assert.ok(dh('forward-tracker', 'stage-forward') && dh('stage-forward', 'forward-ledger') && dh('forward-ledger', 'ranked-board'), 'Stage 3 writes the Forward Ledger');
+  for (const st of ['stage-discovery', 'stage-confirmation', 'stage-forward']) assert.ok(dh('lockbox-boundary', st), `the lockbox boundary is drawn against ${st}`);
+  assert.ok(!dh('lockbox-boundary', 'opportunity-scanner'), 'the scanner observes current state; the boundary governs hypothesis selection and evaluation');
+  for (const id of ['opportunity-registry', 'evaluation-store', 'forward-ledger', 'case-store']) assert.ok(d.nodes.some(n => n.id === id), `the registry split shows ${id}`);
 });
 
 test('every cap key is a registered KV key (kv.js, both _worker.js lists, storeRegistry) and its number is the module constant', async () => {
