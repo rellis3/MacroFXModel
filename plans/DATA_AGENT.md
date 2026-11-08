@@ -577,7 +577,7 @@ screen), `js/dataAgentRoutes.js`, tests, `data-agent.html` (queue, state, scorec
 | P2 | Question writer (22 templates), screen against Evidence Book/register/data-ready, queue + page `data-agent.html` | M: 4-5 days | templates are text; screen reuses `evidence_map` logic |
 | P3 | Replay engine: extend the QT catalogue and loader (`cboe:*`, `yahoo:MOVE`, spreads, ratios); range runner on the committed NY-close parquets and `daily_master_all_*` for the CME-based questions; monthly full sweep | L: 8-10 days | the heavy part; Cboe-chain questions stay parked until history exists |
 | P4 | Hand-off routes (to case, to QT), forward-record writer and scorer, scorecard, Agents tab entries (`GROUPS` + entry + edges + flow) | M: 4-5 days | registry tests |
-| P5 | Remaining watch items to 66; weekly COT run; data-health integration | M: 3-4 days | |
+| P5 | Remaining watch items to 72; weekly COT run; data-health integration | M: 3-4 days | |
 | P6 (optional) | Capped DeepSeek wording tidy | S: 2 days | owner call; cap in three places |
 
 Total about 5-6 weeks of one session's work for P0-P5; stage 1 delivers value after P2 (a daily list of fixed-rule
