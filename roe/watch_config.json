@@ -1,0 +1,71 @@
+{
+  "watchVersion": "roe-watch-1.0.1",
+  "note": "FROZEN trigger, watch-item and episode parameters (ROE section 18 P1, DATA_AGENT.md sections 2 and 5). Any change to a number below must bump watchVersion and add its hash to roe/config_pins.json (a test enforces it); a bump starts a new forward record. familyId is never assigned in P1 (question writer, P3).",
+  "windows": { "daily": [252, 756], "weekly": [52, 156] },
+  "minPriorFraction": 0.99,
+  "changeHorizons": { "daily": [1, 5, 20], "weekly": [1, 4, 13] },
+  "triggers": {
+    "extreme": { "upper": 95, "lower": 5, "rule": "percentile above upper (or below lower) on BOTH windows" },
+    "speed": { "robustZ": 2.0, "horizon": { "daily": 5, "weekly": 4 }, "rule": "|robust z of the k-change vs the prior 252 k-changes| >= robustZ" },
+    "flip": { "hold": 3, "rule": "sign of (value - center) differs from the sign before it and has held for `hold` sessions (fires once, on the confirming session)" },
+    "divergence": { "corrWindow": 60, "minCorr": 0.4, "changeHorizon": 20, "fitWindow": 252, "minFit": 200, "residualZ": 2.0,
+                    "rule": "60-session rank (Spearman) correlation of daily changes (ending the session before) >= minCorr, and the 20-session change of A, regressed on that of B over the prior fitWindow, leaves a robust residual z >= residualZ today" },
+    "regime": { "hold": 3, "rule": "a category (state label) change that has held for `hold` sessions; or membership of an unusual state for point-only items" },
+    "stale": { "rule": "an input carries the STALE freshness flag; the observation carries the flag by construction" }
+  },
+  "episode": { "gapSessions": 3, "lookbackSessions": 10, "note": "g = 3 sessions (Q6 default). lookbackSessions: the scan also evaluates the last N sessions as-of each of those dates so episodes can be formed on a first run; those observations are marked backfilled." },
+  "freshness": {
+    "maxAgeDays": { "daily": 4, "weekly": 10, "session": 4 },
+    "perSeries": {},
+    "stalledRunLength": 5,
+    "sessionCompleteLondonHour": 22,
+    "macroKinds": ["macro"]
+  },
+  "required": { "series": ["VIX"], "minItemsMeasured": 5 },
+  "seriesMeta": {
+    "VIX": { "changeKind": "log" }, "VIX9D": { "changeKind": "log" }, "VIX3M": { "changeKind": "log" }, "VIX_TERM": { "changeKind": "log" },
+    "VVIX": { "changeKind": "log" }, "VXN": { "changeKind": "log" }, "RVX": { "changeKind": "log" }, "OVX": { "changeKind": "log" },
+    "GVZ": { "changeKind": "log" }, "VXEEM": { "changeKind": "log" }, "VXTLT": { "changeKind": "log" }, "VXFXI": { "changeKind": "log" },
+    "VXEWZ": { "changeKind": "log" }, "MOVE": { "changeKind": "log" }, "SKEW": { "changeKind": "log" },
+    "SPX": { "changeKind": "log" }, "NQ": { "changeKind": "log" }, "GOLD": { "changeKind": "log" }, "CREDIT_RATIO": { "changeKind": "log" }
+  },
+  "lockbox": {
+    "note": "Section 8 / 8.4 / 8.6. The scanner may observe up to today (H-A included, 8.6). It must not use outputs of the frozen layers 3, 5, 6 (HAR-800 sigma, R3 remaining travel, M2 confidence) or the shadow screens as inputs, and computes no forward outcome or performance statistic.",
+    "forbiddenInputTokens": ["har800", "har_rv_log", "forecastsigma", "forecastladderparamshar800", "r3", "remaining_travel", "remaining-travel", "remainingtravel", "m2_confidence", "m2confidence", "confidence_fit", "shadow", "stop-risk", "path-map", "pathmap"],
+    "allowedProductionLineFields": ["hl_median", "hl_75"],
+    "productionLineNote": "Item hl_p75 reads the PRODUCTION forecast line (hit-rates daily[].fc.hl_75 and hl_median) as a threshold only. It is the live ladder, not the HAR-800 shadow, but js/forecastLadderParams.js and forecastLadder.js are in the layer-3 file list of forge/lockbox_manifest.json: observations from it carry the flag LOCKBOX_ADJACENT and the owner may disable the item (enabled:false)."
+  },
+  "items": [
+    { "id": "vix9d_vix", "top10": 1, "kind": "ratio", "num": "VIX9D", "den": "VIX", "center": 1.0, "triggers": ["extreme", "speed", "flip", "regime"],
+      "regimeCuts": { "values": [0.8858, 0.9669], "labels": ["calm", "mid", "dear"], "source": "fixed by the banked vol-curve-front study" } },
+    { "id": "vix_vix3m", "top10": 1, "kind": "series", "series": "VIX_TERM", "center": 1.0, "triggers": ["extreme", "speed", "flip"] },
+    { "id": "vvix_vxn", "top10": 2, "kind": "ratio", "num": "VVIX", "den": "VXN", "triggers": ["extreme", "speed"] },
+    { "id": "vvix_vxn_drdt", "top10": 2, "kind": "drdt", "num": "VVIX", "den": "VXN", "smooth": 20, "lag": 5, "triggers": ["extreme", "speed"],
+      "definition": "R = VVIX/VXN daily; R20 = 20-session mean of R; dR/dt = R20(t) - R20(t-5). Our reading of DATA_AGENT C05 (the doc says '5-session change of the 20-session ratio')." },
+    { "id": "ivrv_spx", "top10": 3, "kind": "ivrv", "iv": "VIX", "px": "SPX", "rvWindow": 20, "triggers": ["extreme", "speed"] },
+    { "id": "ivrv_nq", "top10": 3, "kind": "ivrv", "iv": "VXN", "px": "NQ", "rvWindow": 20, "triggers": ["extreme", "speed"] },
+    { "id": "ivrv_gold", "top10": 3, "kind": "ivrv", "iv": "GVZ", "px": "GOLD", "rvWindow": 20, "triggers": ["extreme", "speed"] },
+    { "id": "hl_p75", "top10": 4, "kind": "hl_line", "enabled": false, "shareWindows": [5, 20], "minShareHigh": 0.6, "nominalShareHigh": 0.25,
+      "requireAllBelowP50Over": 5, "triggers": ["extreme"] },
+    { "id": "cot_fx", "top10": 5, "kind": "cot", "group": "fx", "symbols": ["EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "NZD", "MXN"], "triggers": ["extreme", "speed"] },
+    { "id": "cot_indices", "top10": 5, "kind": "cot", "group": "indices", "symbols": ["NQ", "ES", "YM", "RTY"], "triggers": ["extreme", "speed"] },
+    { "id": "cot_metals_energy", "top10": 5, "kind": "cot", "group": "metals_energy", "symbols": ["GOLD", "SILVER", "PLAT", "PALL", "COPPER", "WTI", "NATGAS", "RBOB"], "triggers": ["extreme", "speed"] },
+    { "id": "cot_crowd_release", "top10": 6, "kind": "cot_release", "currencies": ["EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "NZD", "USD"],
+      "crowdUpper": 90, "crowdLower": 10, "windowSessions": 3, "impact": "Major", "triggers": ["extreme"] },
+    { "id": "gamma_flip_dist", "top10": 7, "kind": "gamma", "symbols": ["SPX", "NDX", "SPY", "QQQ", "IWM", "TLT", "HYG", "GLD"], "nearFlipPct": 0.5, "triggers": ["regime", "flip"] },
+    { "id": "gamma_breakout_breadth", "top10": 7, "kind": "gamma_breadth", "symbols": ["SPX", "NDX", "SPY", "QQQ", "IWM", "TLT", "HYG", "GLD"], "minBreakout": 7, "triggers": ["regime"] },
+    { "id": "curve_2s10s", "top10": 8, "kind": "series", "series": "T10Y2Y", "center": 0.0, "triggers": ["flip", "extreme", "speed"] },
+    { "id": "curve_3m10y", "top10": 8, "kind": "series", "series": "T10Y3M", "center": 0.0, "triggers": ["flip", "extreme", "speed"] },
+    { "id": "curve_class", "top10": 8, "kind": "curve_class", "y2": "DGS2", "y10": "DGS10", "horizon": 20, "triggers": ["regime"],
+      "labels": "bull/bear steepener/flattener from the signs of the 20-session changes of the 2y and 10y yields; a STATE LABEL only, no direction claim" },
+    { "id": "vol_breadth", "top10": 9, "kind": "vol_breadth", "components": ["VIX", "VXN", "RVX", "OVX", "GVZ", "VXEEM", "VXTLT", "MOVE", "VXFXI", "VXEWZ"],
+      "componentPct": 90, "minCount": 6, "minFreshComponents": 6, "triggers": ["extreme"] },
+    { "id": "vix_state", "top10": 9, "kind": "level_state", "series": "VIX", "cuts": [15, 20, 30], "labels": ["low", "normal", "elevated", "high"], "triggers": ["regime"] },
+    { "id": "feed_health", "top10": 10, "kind": "feed_health", "triggers": ["stale"] },
+    { "id": "desk_pack_quality", "top10": 10, "kind": "desk_quality", "minUsableShare": 0.9, "triggers": ["stale"] },
+    { "id": "divergence", "top10": null, "kind": "divergence_pairs", "triggers": ["divergence"], "pairs": [
+      { "a": "VIX", "b": "MOVE", "relation": 1 }, { "a": "VIX", "b": "VXEEM", "relation": 1 }, { "a": "GVZ", "b": "OVX", "relation": 1 },
+      { "a": "VIX", "b": "VVIX", "relation": 1 }, { "a": "VIX", "b": "CREDIT_RATIO", "relation": -1 } ] },
+    { "id": "input_staleness", "top10": 10, "kind": "input_staleness", "triggers": ["stale"] }
+  ]
+}

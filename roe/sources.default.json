@@ -1,0 +1,13 @@
+{
+  "note": "Default source map: committed repo files (relative to the repo root) plus the state/hit-rates documents the CLI fetches. On the laptop copy this file, point the paths at the FRESHER local files, and pass it with --sources (see roe/README.md).",
+  "cboeDir": "analysis/surfaces/cboe",
+  "fredDir": "analysis/output/cog_yield_dir/fred",
+  "cotCsv": "analysis/output/cot-crowding-programme/cot_weekly.csv",
+  "calendarCsvs": ["calendar_events_nasdaq.csv"],
+  "priceParquets": {
+    "SPX": "oi_research_book/data/gex_range_es/spx500_nyclose_d1.parquet",
+    "NQ": "oi_research_book/data/gex_range_es/nas100_nyclose_d1.parquet",
+    "GOLD": "oi_research_book/data/gex_range_gold/xauusd_nyclose_d1.parquet"
+  },
+  "rangeCsv": null
+}

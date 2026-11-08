@@ -85,7 +85,7 @@ export const AGENTS = [
   // ── Data: the Research Opportunity Engine (ROE), PLANNED, plans/RESEARCH_OPPORTUNITY_ENGINE.md. Nothing here is built. ──────────────────────
   A('opportunity-scanner', 'Opportunity scanner', 'Data', {
     purpose: 'Planned: after the daily run, freezes the day\'s inputs as an immutable snapshot with a run ID and freshness flags, then runs fixed statistics over everything the owner holds (percentiles, z-scores, extremes, divergences, lead-lag screens, regime shifts, breakdowns). It tags each flag with a discovery episode ID and a hypothesis family ID and logs how many items it scanned. Plain Python on the owner\'s laptop; no model call.',
-    trigger: 'Not built. Planned: once a day on the laptop after the daily run; it pushes the snapshot reference and the questions to the server, and a repeated push of the same run ID changes nothing.', planned: true, kind: 'service',
+    trigger: 'Not built as a server job. Phase P1 is being built as the laptop Python package roe/ (scanner and triggers, writes roe_out/ locally, no push yet). Planned: once a day on the laptop after the daily run; it pushes the snapshot reference and the questions to the server, and a repeated push of the same run ID changes nothing.', planned: true, kind: 'service',
     reads: ['local IBKR files, skew, cross-currency basis, feature store and M1 cache', 'GET /api/state (the Market State document)'], writes: ['the day\'s immutable snapshot, run ID, scan count and flags with episode and family IDs (pushed to the server)'], links: [ROE],
   }),
   A('question-writer', 'Question writer', 'Data', {

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Run the Python test functions in forge/ and GlobalLiquidity/ (no pytest needed).
+"""Run the Python test functions in forge/, GlobalLiquidity/ and roe/ (no pytest needed).
 
     python scripts/run_py_tests.py
 
-Each test_* function in forge/*_test.py, forge/test_*.py and GlobalLiquidity/test_*.py runs once. A failure fails the
+Each test_* function in forge/*_test.py, forge/test_*.py, GlobalLiquidity/test_*.py and roe/tests/test_*.py runs once. A failure fails the
 job unless "<module>::<test>" is in tests/KNOWN_FAILING.json with a reason (e.g. it needs M1 data that is not in the
 repo). Known failures still run and are printed every time; one that starts passing is reported so it can be removed.
 Added 2026-10-31: before that, CI ran none of these (REPO_REVIEW_2026-10-31).
@@ -25,7 +25,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 os.chdir(ROOT)
 
-files = sorted(glob.glob("forge/*_test.py") + glob.glob("forge/test_*.py") + glob.glob("GlobalLiquidity/test_*.py"))
+files = sorted(glob.glob("forge/*_test.py") + glob.glob("forge/test_*.py") + glob.glob("GlobalLiquidity/test_*.py")
+               + glob.glob("roe/tests/test_*.py"))
 known = json.load(open("tests/KNOWN_FAILING.json")) if os.path.exists("tests/KNOWN_FAILING.json") else {}
 
 ran = passed = 0
