@@ -250,6 +250,7 @@ test('the research pod runs on DeepSeek, the Head of Research on Anthropic, by d
   assert.equal(TASK_CLASS['research-head'].label, 'Research pod: Head of Research review');
   assert.equal(resolveTask('research-pod', { keys: both, provider: 'anthropic' }).provider, 'deepseek');
   assert.equal(resolveTask('research-pod', { keys: both }).maxOutput, 8192);
+  assert.equal(resolveTask('research-reader', { keys: both, provider: 'anthropic' }).provider, 'deepseek', 'the paper reader is on DeepSeek whatever the global default');
   assert.equal(resolveTask('research-head', { keys: both, provider: 'deepseek' }).provider, 'anthropic', 'the Head stays on Anthropic whatever the global default');
   assert.equal(resolveTask('research-head', { keys: both }).effort, 'high');
   // POST /api/ai-config replaces the whole tasks map: a map saved before these tasks existed leaves them on their own default

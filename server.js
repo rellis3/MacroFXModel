@@ -6352,7 +6352,7 @@ async function _modelJson({ task = 'desk-head', system, prompt, maxTokens = 12_0
 async function _litModel(budget, { role, sections, date, ledger, maxTokens, timeoutMs, label, validate }) {
   const { system, prompt } = _deskStagePrompt({ role, pack: { date }, ledger, sections });
   if (budget.calls >= budget.max) throw new Error(`${label}: model budget used up (${budget.max} calls)`);
-  const v = await _modelJson({ task: role.tier === 'quick' ? 'desk-analyst' : 'desk-head', system, prompt, maxTokens, timeoutMs, label, validate, tries: Math.min(2, budget.max - budget.calls), onCall: () => { budget.calls++; } });
+  const v = await _modelJson({ task: role.tier === 'quick' ? 'research-reader' : 'desk-head', system, prompt, maxTokens, timeoutMs, label, validate, tries: Math.min(2, budget.max - budget.calls), onCall: () => { budget.calls++; } });   // quick tier = the paper reader: DeepSeek (task research-reader), not the desk analysts' Anthropic task
   if (v.ok) return v;
   throw new Error(`${label}: ${v.errors.join('; ')}`);
 }
