@@ -12,6 +12,7 @@ below that is not built is drawn dashed and marked `planned` on the Agents tab (
 |---|---|---|
 | v1 | 2026-11-08 | First design (PR #1702): scanner, writer, queue, evaluator, one registry, board, forward tracker, Research QA, three approvals, no daily cap. |
 | v2 | 2026-11-08 | Second design pass: the nine changes in section 0. Design preserved; no new agent added. New boxes are stores, stage gates, a boundary and two owner-decision boxes (all in the flow charts, all `planned` except the lockbox boundary, which is an existing rule). Two v1 statements corrected (section 21): the trial ledger does not read register rows; "Research approved" was set by the Head in section 9 but by the owner in v1 section 15. The lockbox section (8) is a **release blocker**. |
+| v2.1 | 2026-11-08 | Two owner additions: one trial pool across all three routes (section 22) and the Evidence Pack and audit trail (section 23). Windows agreed by the owner (Q1: practice to 2025-09-04, confirmation 2025-09-05 to 2026-08-20). Docs only. |
 
 ## 0. The nine changes at a glance
 
@@ -735,3 +736,73 @@ Corrections to v1:
    Verified: that script reads `js/deskEvidence.js` and preregs only; it does not read register rows. See section 6.5 and Q5.
 2. v1 section 9 said the Head of Research sets Research approved; v1 section 15 (Q3) said the Head recommends and the owner
    presses. v2 follows the second (section 13).
+
+## 22. One trial pool across all three routes (owner addition, v2.1)
+
+Ideas reach a case by three routes (owner, ROE board, literature dossier, section 14) and every one of them is tested against the
+same practice and confirmation windows. So the false-discovery accounting of section 6 is **not** an ROE-only rule:
+
+1. **One pool.** Every hypothesis from every route is written to the Opportunity Registry with `route: owner | roe | literature`
+   and enters the same families and the same monthly Benjamini-Hochberg set. The route never changes the count, the window or the
+   standard of evidence.
+2. **Looks on the confirmation window are counted and shown.** Each frozen hypothesis gets one look at 2025-09-05 to 2026-08-20.
+   The registry keeps a running `confirmationLooks` count (all routes) and the board and every evidence pack show "look N". A pass
+   on look 40 is read knowing it is look 40; a family's adjusted p already includes its own variants (section 6) and the month's
+   BH runs across all families that were looked at that month, whichever route they came from.
+3. **A paper's idea is a replication, not a search, but not a free pass.** The hypothesis was fixed before it met our data, which is
+   an advantage over an idea the scanner picked from our own history. Published results are also often the best of many tries and
+   frequently fail to replicate, so a literature-derived hypothesis is held to the same test and its paper stays `published_evidence`
+   (section 14). Several variants from one paper (horizons, instruments, specifications) are one family.
+4. **The sealed data (H-A) rule applies to every route equally** (section 8): no route may select or confirm on it.
+5. **Forward tracking is the evidence that cannot be spoiled by reuse** of the confirmation window, for all three routes alike.
+
+What changes: the registry gains `route` and `confirmationLooks`; section 6 text is read as covering all routes. New code: two
+fields and a counter (P1). Existing workflows: none. Existing rules: none (the trial ledger gap of section 6.5 is unchanged).
+
+## 23. Evidence Pack and audit trail (owner addition, v2.1)
+
+**Goal:** for any result or conclusion, anyone (including you in a year) can see what was done, on exactly which data, with exactly
+which code, what came out, **why it came out that way**, and re-run it to check. This is separate from, and does not replace, the
+Evidence Book (which banks verdicts); the pack is the proof behind a verdict.
+
+### 23.1 What an Evidence Pack holds (one per evaluation and per case conclusion)
+
+| Block | Contents | Produced by |
+|---|---|---|
+| 1. Claim | The hypothesis, route, stage, family, and the verdict word (supported / rejected / inconclusive / underpowered) | evaluator, then Head's recommendation |
+| 2. Inputs | Snapshot id; content hash of every dataset used; window boundaries and the stage table of section 8; freshness flags; feature versions | scanner / evaluator |
+| 3. Procedure | Frozen spec and its hash, code commit, seed, package versions, freeze date, the confirmation dataset permitted | evaluator |
+| 4. Raw results | Result tables, outcome distributions, baseline comparisons and deltas, intervals, n and effective n, power and minimum detectable effect, the Research QA outcome with the checks and numbers behind it | evaluator, Research QA |
+| 5. Why (computed, not narrated) | A deterministic breakdown of where the result comes from: by year, regime, instrument and event; leave-one-out (does it survive removing the best month or the biggest event); cost sensitivity; placebo and mirror results; parameter sensitivity; the effect before and after the multiple-testing adjustment | evaluator (new code, P4) |
+| 6. Trial context | Family id, trial index in the family, `confirmationLooks`, the adjustment applied and the adjusted value | registry |
+| 7. Interpretation | The Head's review and any model-written explanation, **with every claim linked to evidence ids** (blocks above, Evidence Book ids, paper ids); a claim without a link is flagged "unsupported" | Head of Research |
+| 8. Literature context | `published_evidence` and `internal_replication_evidence` kept apart | research synthesis |
+| 9. Lineage | The pack's own hash, parent packs, and `supersededBy`; a pack is never edited, a correction is a new version | registry |
+
+Block 5 is the answer to "why were the outcomes what they were": it is arithmetic on the stored results, so it can be checked, and
+it never rests on a model's account alone. It describes where an effect lives; it does not prove causation.
+
+### 23.2 Tamper evidence and replay
+
+- **Append-only, chained.** Packs are written once to R2 and logged with the hash of the previous log entry, so a later edit is
+  detectable. The registry stores the pack hash with the result row.
+- **Replay check.** A "reproduce" job re-runs the frozen spec on the stored snapshot at the stored commit and compares with block 4
+  within stated tolerances; the answer (reproduced / differs, with the differences) is stored on the pack. Banked results are
+  re-run on a sample every month.
+- **Claim check (deterministic).** A script scans a case conclusion or Head review: every number must appear in a linked pack block
+  and every cited id must exist; anything else is listed as unsupported. No model is involved.
+
+### 23.3 What exists, what is new, and when
+
+| Item | Status |
+|---|---|
+| Prereg files, `results.json`, Evidence Book ids, trial ledger, forward ledgers (R2) | Exist and keep being used |
+| Provenance fields (snapshot, feature version, commit, spec hash, seed, freeze date) in the result record | Designed in section 5 and 10; new storage |
+| Evidence Pack layout, blocks 5 and 6, the chain log, replay job, claim check | New code |
+
+Phasing: blocks 1 to 4 and 9 with the evaluator (P4); block 5 (the "why" diagnostics) with the evaluator (P4); Research QA fields in
+block 4 (P5); the claim links and the claim check with the case workflow (P6); the monthly replay sample with the forward tracker
+(P7). None of it is needed for P1 (scanner and triggers), which only needs the snapshot and run id.
+
+What changes: new pack storage and a chain log. New code: yes (P4 to P7). Existing workflows: none until P6 (the Head's review
+prompt would ask for evidence links). Existing research or lockbox rules: none.
