@@ -101,6 +101,9 @@ import { mountSessionHandoffRoutes, startRunJob as _startSessionHandoffRunJob } 
 import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob, asiaLivePlanZones, asiaAllLines, liveCache as _faAsiaLiveCache, liveWarming as _faAsiaLiveWarming, saveAllLiveSnapshots as _faAsiaSaveAllLiveSnapshots } from './js/asiaFibAtlasRoutes.js';
 import { mountBotAuditRoutes } from './js/botAuditRoutes.js';
 import { createPaperRecord } from './js/paperRecordRoutes.js';
+import { createLibraryApi as _createLibraryApi } from './js/libraryApi.js';   // Paper Library API (plans/PAPER_LIBRARY.md)
+import { extractPages as _extractPages } from './js/paperPages.js';
+import { getProvider as _ttsGetProvider, makeMp3 as _ttsMakeMp3 } from './js/paperTts.js';
 import { createYieldShapeRegime } from './js/yieldShapeRegimeRoutes.js';
 import { createDailyRead } from './js/dailyReadRoutes.js';
 import { createHarShadow } from './js/harShadowRoutes.js';
@@ -265,7 +268,7 @@ import { tradeRows as _jcRows, coach as _jcCoach, execution as _jcExec } from '.
 import { parseRegister as _tdParseRegister, opsReport as _tdOps, outline as _tdOutline, section as _tdSection, readingList as _tdReadingList, registerText as _tdRegisterText, screen as _tdScreen, validateTheories as _tdValidate } from './js/theoryDesk.js';   // Phases 9 and 12
 import { upcoming as _rpUpcoming, playbookText as _rpPlaybookText } from './js/releasePlaybook.js';
 import { searchUrls as _litSearchUrls, PARSERS as _LIT_PARSERS, LIT_SOURCES as _LIT_SOURCES, apiError as _litApiError, dedupe as _litDedupe, titleMatch as _litTitleMatch, isBlockedPage as _litBlocked, arxivHtml as _litArxivHtml, pageMeta as _litPageMeta, htmlToText as _litHtmlToText, cleanPdfText as _litCleanPdf, identifyRef as _litIdentify, lookupUrls as _litLookup, parseOpenAlex as _litParseOpenAlex, parseCrossref as _litParseCrossref, parseArxiv as _litParseArxiv, urlRecord as _litUrlRecord, textRecord as _litTextRecord, libraryIndex as _litLibIndex, libraryText as _litLibText, paperForReader as _litForReader, excerpt as _litExcerpt, validatePaperNotes as _litValidateNotes, noteLine as _litNoteLine, validateDossier as _litValidateDossier, validateQueries as _litValidateQueries, rankPapers as _litRank, readingPlan as _litPlan, findPaper as _litFind, mergePapers as _litMerge, addCitations as _litCite, relevance as _litRelevance, feedRecords as _litFeedRecords, weeklyTopic as _litWeeklyTopic, LENS_INTERESTS as _litInterests, dossierSummary as _litDossierSummary, LIT_API as _LIT_API, hash as _litHash, firstTitleLine as _litTitleLine } from './js/literature.js';
-import { QC as _RL_QC, parseQcTree as _rlParseQcTree, readingListItems as _rlReadingList, manifestItems as _rlManifest, items151 as _rl151Items, record151 as _rlRecord151, qcItems as _rlQcItems, qcRawUrl as _rlQcRaw, qcRecord as _rlQcRecord, matchUpload as _rlMatchUpload, uploadKey as _rlUploadKey, seedQueue as _rlSeedQueue, upsertItem as _rlUpsert, nextItems as _rlNext, markItems as _rlMark, queueSummary as _rlSummary, batchPlan as _rlBatchPlan, searchLocal as _rlSearchLocal, paperFeedRecords as _rlPaperFeedRecords, kindOf as _rlKindOf } from './js/researchLibrary.js';   // §9ai the reading backlog   // §9ah the literature desk
+import { QC as _RL_QC, parseQcTree as _rlParseQcTree, readingListItems as _rlReadingList, manifestItems as _rlManifest, items151 as _rl151Items, record151 as _rlRecord151, qcItems as _rlQcItems, qcRawUrl as _rlQcRaw, qcRecord as _rlQcRecord, matchUpload as _rlMatchUpload, alreadyHeld as _rlAlreadyHeld, dedupeUploads as _rlDedupeUploads, uploadKey as _rlUploadKey, seedQueue as _rlSeedQueue, upsertItem as _rlUpsert, nextItems as _rlNext, markItems as _rlMark, queueSummary as _rlSummary, batchPlan as _rlBatchPlan, searchLocal as _rlSearchLocal, paperFeedRecords as _rlPaperFeedRecords, kindOf as _rlKindOf } from './js/researchLibrary.js';   // §9ai the reading backlog   // §9ah the literature desk
 import { currencyStrength as _evCcy, dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { COST_REPORT_URL as _AC_URL, costReportQuery as _acQuery, parseCostReport as _acParse, dayFlag as _acFlag } from './js/anthropicCost.js';   // Anthropic's own daily cost figures (Admin API)
@@ -6352,7 +6355,7 @@ async function _modelJson({ task = 'desk-head', system, prompt, maxTokens = 12_0
 async function _litModel(budget, { role, sections, date, ledger, maxTokens, timeoutMs, label, validate }) {
   const { system, prompt } = _deskStagePrompt({ role, pack: { date }, ledger, sections });
   if (budget.calls >= budget.max) throw new Error(`${label}: model budget used up (${budget.max} calls)`);
-  const v = await _modelJson({ task: role.tier === 'quick' ? 'desk-analyst' : 'desk-head', system, prompt, maxTokens, timeoutMs, label, validate, tries: Math.min(2, budget.max - budget.calls), onCall: () => { budget.calls++; } });
+  const v = await _modelJson({ task: role.tier === 'quick' ? 'research-reader' : 'desk-head', system, prompt, maxTokens, timeoutMs, label, validate, tries: Math.min(2, budget.max - budget.calls), onCall: () => { budget.calls++; } });   // quick tier = the paper reader: DeepSeek (task research-reader), not the desk analysts' Anthropic task
   if (v.ok) return v;
   throw new Error(`${label}: ${v.errors.join('; ')}`);
 }
@@ -6740,6 +6743,17 @@ app.get('/api/research-pod/backlog', async (_req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // POST /api/research-pod/backlog { calls? 1-12 }: read the next items (uploads first, abstracts eight to a model call). One job at a time.
+// POST /api/research-pod/upload/dedupe: drop unread "upload:<hash>" queue items that duplicate a matched upload (same name
+// or bytes), so they are not read twice. ?dry=1 lists without removing.
+app.post('/api/research-pod/upload/dedupe', async (req, res) => {
+  try {
+    const q = await _rpGet(_RL.queue, { items: [] }), { queue, removed } = _rlDedupeUploads(q);
+    if (req.query.dry === '1' || !removed.length) return res.json({ ok: true, dry: req.query.dry === '1', removed });
+    await kv.put(_RL.queue, JSON.stringify(queue));
+    for (const id of removed) _rlTextMem.delete(id);   // the R2 copies stay (r2Store has no delete); nothing references them
+    res.json({ ok: true, removed });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.post('/api/research-pod/backlog', (req, res) => {
   const calls = Math.min(12, Math.max(1, Number(req.body?.calls) || 6));
   const job = _litStart('backlog', `read the backlog (${calls} calls)`, { calls });
@@ -6759,7 +6773,13 @@ app.post('/api/research-pod/upload', express.raw({ type: ['application/pdf', 'ap
     if (!buf.length) return res.status(400).json({ ok: false, error: 'no file' });
     if (buf.length > 30e6) return res.status(413).json({ ok: false, error: 'over 30 MB' });
     if (buf.subarray(0, 5).toString('latin1') !== '%PDF-') return res.status(400).json({ ok: false, error: 'not a PDF' });
-    const m = _rlMatchUpload(name);
+    const m = _rlMatchUpload(name), sha = crypto.createHash('sha256').update(buf).digest('hex');
+    // skip what the library already holds in full text (same id, or the same bytes under any name); ?force=1 replaces it
+    if (req.query.force !== '1') {
+      const [q0, lib0] = await Promise.all([_rpGet(_RL.queue, { items: [] }), _rpGet(_LIT.papers, [])]);
+      const held = _rlAlreadyHeld({ id: m.id, sha }, q0.items, lib0);
+      if (held) return res.json({ ok: true, skipped: true, id: m.id, reason: held });
+    }
     let text; try { text = await _litPdf(buf); } catch (e) { return res.status(422).json({ ok: false, error: `could not read the PDF: ${e.message.slice(0, 120)}` }); }
     if (text.length < 1000) return res.status(422).json({ ok: false, error: 'no text layer (a scan?); nothing stored' });
     let stored = 'memory';
@@ -6768,7 +6788,7 @@ app.post('/api/research-pod/upload', express.raw({ type: ['application/pdf', 'ap
     let q = await _rlSeed([], { qc: false }); const existing = q.items.find(x => x.id === m.id), at = new Date().toISOString();
     const title = existing?.title || _litTitleLine(text) || name;
     q = _rlUpsert(q, { id: m.id, via: existing?.via ?? m.via, ...(m.arxiv ? { arxiv: m.arxiv } : {}), ...(m.ssrn ? { ssrn: m.ssrn, doi: m.doi } : {}), kind: existing?.kind ?? 'paper', source: existing?.source ?? 'upload', title,
-      status: 'pending', tries: 0, error: null, upload: { name, bytes: buf.length, chars: text.length, at, stored } });
+      status: 'pending', tries: 0, error: null, upload: { name, bytes: buf.length, chars: text.length, at, stored, sha } });
     await kv.put(_RL.queue, JSON.stringify(q));
     const job = read ? _litStart('backlog', `read ${name}`, { calls: 2, ids: [m.id] }) : null;
     res.json({ ok: true, id: m.id, title, matched: existing ? existing.source : null, chars: text.length, stored, reading: !!job, queued: true });
@@ -6781,6 +6801,45 @@ app.get('/api/research-pod/upload/have', async (_req, res) => {
     res.json({ ok: true, ids: [...new Set(up.map(x => x.id))], names: [...new Set(up.map(x => (x.upload ?? x.uploaded)?.name).filter(Boolean))], stored: _r2Ok() ? 'r2' : 'memory' }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── Paper Library (plans/PAPER_LIBRARY.md): /api/library/*. Logic in js/libraryApi.js; this is only the mount.
+// EVERY route sits behind _libGate (main-zone login cookie, same check as requireAuth) and answers 401 JSON, never content.
+// Registered before the global app.use(requireAuth), so the gate is explicit. No model call, no paid TTS (PAPER_TTS_PROVIDER=none disables MP3).
+const _libGate = (req, res, next) => {
+  if (!AUTH_ENABLED) return next();
+  if (authVerifyCookie(authParseCookies(req)[`${AUTH_COOKIE_NAME}_main`], 'main')) return next();
+  res.set('Cache-Control', 'no-store').status(401).json({ ok: false, error: 'login required' });
+};
+app.use('/api/library', _libGate);
+const _libApi = _createLibraryApi({
+  kv, r2: { ok: _r2Ok, getBuffer: _r2GetBuffer, putBuffer: _r2PutBuffer }, keys: { queue: _RL.queue, papers: _LIT.papers }, uploadKey: _rlUploadKey,
+  extractPages: _extractPages, tts: { getProvider: _ttsGetProvider, makeMp3: _ttsMakeMp3 },
+  readTodoMd: async () => fs.promises.readFile(path.join(__dirname, 'education', 'papers', 'SSRN_DOWNLOAD_LIST.md'), 'utf8'),
+  lessonFiles: () => { try { return fs.readdirSync(path.join(__dirname, 'theory-lab', 'lessons')); } catch { return []; } },
+  cases: { read: _rcStore, put: async c => { await _rcEnsure(); await _rcLock(() => _rcPut(c)); } },
+  textFallback: id => _rlTextMem.get(id) ?? null,
+});
+_libApi.reapStaleAudio().catch(() => {});
+const _libRoute = (method, p, fn) => app[method](`/api/library/${p}`, async (req, res) => {
+  try {
+    const out = await fn({ query: req.query, body: req.body, headers: req.headers });
+    res.status(out.status);
+    if (out.headers) res.set(out.headers); else res.set('Cache-Control', 'no-store');
+    if (out.body !== undefined) res.end(out.body); else res.json(out.json);
+  } catch (e) { console.error(`[library] ${p}:`, e.message); res.status(500).json({ ok: false, error: 'library error' }); }
+});
+_libRoute('get', 'papers', _libApi.papers);
+_libRoute('get', 'paper', _libApi.paper);
+_libRoute('get', 'search', _libApi.search);
+_libRoute('get', 'pdf', _libApi.pdf);
+_libRoute('get', 'progress', _libApi.progressGet);
+_libRoute('post', 'progress', _libApi.progressPost);
+_libRoute('post', 'tags', _libApi.tagsPost);
+_libRoute('post', 'case', _libApi.casePost);
+_libRoute('get', 'todo', _libApi.todo);
+_libRoute('get', 'read-next', _libApi.readNext);
+_libRoute('get', 'listen', _libApi.listen);
+_libRoute('post', 'audio', _libApi.audioPost);
+_libRoute('get', 'audio', _libApi.audioGet);
 // GET /api/validation/harness: the validation desk's automatic gates on every harness output in the deployed repo.
 app.get('/api/validation/harness', (_req, res) => {
   try {

@@ -339,6 +339,7 @@ function qtChips() { if (!QTV) return; document.querySelectorAll('[data-qtchips]
 const LENS = { quant: 'Quant', macro: 'Macro', flow: 'Flow' }, MARK = { shortlist: 'warn', build: 'ok', park: '', reject: 'bad' };
 let podFilter = 'open', podView = 'cases', podCase = null, podCaseFilter = '', caseFilter = 'open', casePoll = null;
 try { podView = localStorage.getItem('podView') || 'cases'; podCase = localStorage.getItem('podCase') || null; } catch {}
+try { const q = new URLSearchParams(location.search).get('case'); if (q && /^[\w-]+$/.test(q)) { podCase = q; podView = 'cases'; } } catch {}   // from the Paper Library: "Test this idea"
 const podSave = () => { try { localStorage.setItem('podView', podView); podCase ? localStorage.setItem('podCase', podCase) : localStorage.removeItem('podCase'); } catch {} };
 const openThreads = new Set();
 const STEPS = ['proposed', 'shortlisted', 'chosen', 'carded', 'preregistered', 'tested'];
@@ -695,14 +696,15 @@ ${shown.length ? `<table><thead><tr><th>Entry</th><th>Claim (from the notes)</th
   const lk = $('libkind'); if (lk) lk.onchange = () => { litKind = lk.value; renderLit(); };
   const bb = $('litbacklog'); if (bb) bb.onclick = () => start('/api/research-pod/backlog', { calls: 6 });
   const ub = $('litup'); if (ub) ub.onclick = async () => {
-    const files = [...($('litfile').files ?? [])], msg = $('litupmsg'); if (!files.length) return; ub.disabled = true; const out = [];
+    const files = [...($('litfile').files ?? [])], msg = $('litupmsg'); if (!files.length) return; ub.disabled = true; const out = [], skipped = [];
     for (const [i, f] of files.entries()) {
       msg.textContent = `uploading ${i + 1} of ${files.length}…`;
       if (f.size > 30e6) { out.push(`${f.name}: over 30 MB`); continue; }
       const r = await getJson(`/api/research-pod/upload${files.length === 1 ? '?read=1' : ''}`, { method: 'POST', headers: { 'Content-Type': 'application/pdf', 'X-Filename': encodeURIComponent(f.name) }, body: f });
+      if (r?.skipped) { skipped.push(`${f.name} (${r.reason})`); continue; }   // already held in full text: move on to the next
       out.push(r?.ok ? `${f.name}: ${r.matched ? `matched (${r.matched})` : 'new'}${r.reading ? ', reading now' : ', queued'}` : `${f.name}: ${r?.error ?? 'failed'}`);
     }
-    msg.textContent = out.join(' · '); ub.disabled = false; setTimeout(renderLit, 1500); };
+    msg.textContent = [`${files.length - skipped.length} sent, ${skipped.length} skipped (already in the library)`, ...out, ...(skipped.length ? [`skipped: ${skipped.join('; ')}`] : [])].join(' · '); ub.disabled = false; setTimeout(renderLit, 1500); };
   clearTimeout(litPoll);
   if (running) litPoll = setTimeout(renderLit, 10_000);
   else if (j?.status === 'done' && j.kind !== 'backlog' && j.result && litOpen !== j.result && Date.now() - (j.finishedAt ?? 0) < 120_000) showDossier(j.result, rCur === 'ideas' && !$('research').hidden);
