@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { citedPapers, citedPapersText, LABEL, NEXT_STEPS, caseTitle, newCase, answerOf, appendRound, appendReview, latestReview, proposalIds, lensIds, summary, putCase, setStatus, tagLibrary, uniqueIds,
   validateRoundAnswer, applyRevisions, pickRelevant, clip, fitSections, caseText, roundSections, headSections, validateHeadReview, planProposal, migrate, migrateLibrary, readStore, emptyStore, MAX_CASES, ROUND_RULES,
-  dossierCaseId, caseForDossier, dossierContext, caseFromDossier, dossierText, jobMarker, staleJobs, resumedMarker, finishJob, failJob, LOST_TWICE, RESUME_MAX_ATTEMPTS, RESUME_MAX_AGE_MS } from './researchCase.js';
+  paperText, dossierCaseId, caseForDossier, dossierContext, caseFromDossier, dossierText, jobMarker, staleJobs, resumedMarker, finishJob, failJob, LOST_TWICE, RESUME_MAX_ATTEMPTS, RESUME_MAX_AGE_MS } from './researchCase.js';
 import { validateProposals, mergeLibrary } from './researchPod.js';
 import { suggestSpec } from './quickTest.js';
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
@@ -241,5 +241,26 @@ t('the Head sees the library papers the case cites (2026-11-06: three real paper
   const txt = citedPapersText(citedPapers('arxiv:2611.04223 10.1002/fut.22208', papers));
   assert.match(txt, /intervals undercover in stress/); assert.match(txt, /not read yet/);
   assert.match(citedPapersText([]), /none of the ids/);
+});
+
+// ── a case that started from a paper in the paper library ──
+const paperBlock = { id: 'doi:10.0/x', title: 'A synthetic carry paper', authors: ['A. Writer'], year: 2020, venue: 'SSRN', url: null, tags: ['FX & carry'], abstract: null,
+  notes: { claim: 'carry crashes when funding liquidity dries up', mechanism: 'levered investors unwind', testHere: 'sort G10 by forward points' } };
+t('paperText lists the paper and its notes; an unread paper says so', () => {
+  const txt = paperText(paperBlock);
+  for (const re of [/^The paper: A synthetic carry paper \(2020\) by A\. Writer, SSRN \[doi:10\.0\/x\]/, /Topics: FX & carry/, /Claim: carry crashes/, /Mechanism: levered/, /How to test it here: sort G10/]) assert.match(txt, re);
+  assert.doesNotMatch(txt, /not read yet/);
+  assert.match(paperText({ id: 'u', title: 'T', abstract: 'only an abstract', notes: null }), /Abstract: only an abstract[\s\S]*not read this paper yet/);
+  assert.equal(paperText(null), '');
+});
+t('a case with a paper block shows it to the researchers and the Head; other cases are unchanged', () => {
+  const c = { ...newCase({ id: 'case-paper-x', question: 'Q?', date: '2026-11-08', at: '2026-11-08T10:00:00Z', origin: 'paper' }), paperId: 'doi:10.0/x', paper: paperBlock };
+  const rs = roundSections(c, 'quant'), hs = headSections(c);
+  assert.equal(rs[1][0].startsWith('The paper this case started from'), true); assert.equal(rs[1][1], paperText(paperBlock));
+  assert.equal(hs[1][0].startsWith('The paper this case started from'), true); assert.equal(hs[1][1], paperText(paperBlock));
+  assert.equal(summary(c).paperId, 'doi:10.0/x');
+  const plain = newCase({ id: 'case-9', question: 'Q?', date: '2026-11-08' });
+  assert.equal(roundSections(plain, 'quant').some(([h]) => /started from/.test(h)), false); assert.equal(headSections(plain).some(([h]) => /started from/.test(h)), false);
+  assert.equal('paperId' in summary(plain), false);
 });
 console.log(`researchCase: ${n} tests passed`);

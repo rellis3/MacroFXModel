@@ -152,6 +152,16 @@ Found 2026-11-07 by searching SSRN-registered papers (Crossref, prefix 10.2139) 
 | The Price Impact of Order Book Events · Rama Cont, Arseniy Kukanov | 2010 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1712822) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1712822) |
 | Speculators, Commodities and Cross-Market Linkages · Bahattin Buyuksahin, Michel A. Robe | 2010 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1707103) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1707103) |
 
+## Part 3: retry of the missed classics (2026-11-08)
+
+Retried 16 exact titles through Crossref (prefix 10.2139) and OpenAlex after the rate limits reset. One new SSRN paper was found:
+
+| Paper | Year | Download (SSRN, needs login) |
+|---|---|---|
+| The 10 Reasons Most Machine Learning Funds Fail · Marcos Lopez de Prado | 2018 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=3104816) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3104816) |
+
+No exact SSRN-registered title match (they may be journal-only, book chapters, or filed under a different title; search them by hand on SSRN): The Deflated Sharpe Ratio; Meta-Labeling; Pseudo-Mathematics and Financial Charlatanism; The Variance Risk Premium; Gamma Positioning and Market Volatility; A Tug of War: Overnight Versus Intraday Expected Returns; Trading Volume and Overnight Returns; Leverage Aversion and Risk Parity; Option-Implied Volatility Skew; Dollar Risk Premia and Asset Prices; The Dollar, Bank Leverage and the Deviation from Covered Interest Parity; Carry Trades and Global Foreign Exchange Volatility; Intraday Momentum: The First Half-Hour Return Predicts the Last Half-Hour Return; Pairs Trading: Performance of a Relative-Value Arbitrage Rule. "Tail Risk Hedging" only matched a different paper (Tail Risk Hedging and Regime Switching, 1945303), so it is not listed.
+
 ## Part 4: recent papers, 2023 to 2026
 
 Found 2026-11-07: SSRN-registered papers (Crossref, prefix 10.2139) issued from 2023, on the same desk topics, filtered to titles about our markets and methods (crypto, housing, single-country equity and similar noise left out). At most ten per topic (the ones the most searches found), newest first. Recent SSRN papers are mostly unrefereed working papers: treat them as ideas to test, not findings.

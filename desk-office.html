@@ -339,6 +339,7 @@ function qtChips() { if (!QTV) return; document.querySelectorAll('[data-qtchips]
 const LENS = { quant: 'Quant', macro: 'Macro', flow: 'Flow' }, MARK = { shortlist: 'warn', build: 'ok', park: '', reject: 'bad' };
 let podFilter = 'open', podView = 'cases', podCase = null, podCaseFilter = '', caseFilter = 'open', casePoll = null;
 try { podView = localStorage.getItem('podView') || 'cases'; podCase = localStorage.getItem('podCase') || null; } catch {}
+try { const q = new URLSearchParams(location.search).get('case'); if (q && /^[\w-]+$/.test(q)) { podCase = q; podView = 'cases'; } } catch {}   // from the Paper Library: "Test this idea"
 const podSave = () => { try { localStorage.setItem('podView', podView); podCase ? localStorage.setItem('podCase', podCase) : localStorage.removeItem('podCase'); } catch {} };
 const openThreads = new Set();
 const STEPS = ['proposed', 'shortlisted', 'chosen', 'carded', 'preregistered', 'tested'];

@@ -80,7 +80,7 @@ export const lensIds = (c, lens) => uniq([...(c?.dossier?.proposals ?? []).filte
 /** The case list row. */
 export function summary(c, job = null) {
   const rv = latestReview(c);
-  return { id: c.id, title: c.title, question: c.question, origin: c.origin, dossierId: c.dossierId ?? null, verdict: c.dossier?.verdict ?? null, date: c.date, createdAt: c.createdAt, updatedAt: c.updatedAt, status: c.status,
+  return { id: c.id, title: c.title, question: c.question, origin: c.origin, dossierId: c.dossierId ?? null, ...(c.paperId ? { paperId: c.paperId } : {}), verdict: c.dossier?.verdict ?? null, date: c.date, createdAt: c.createdAt, updatedAt: c.updatedAt, status: c.status,
     rounds: c.rounds.length, reviews: c.reviews.length, reviewed: !!rv, reviewCurrent: !!rv && rv.afterRound === c.rounds.length && c.rounds.length > 0,
     nextStep: rv?.nextStep ?? null, proposals: proposalIds(c).length, job: job ? { status: job.status, kind: job.kind, stage: job.stage ?? null, error: job.error ?? null, ...(job.resumedAfterRestart ? { resumedAfterRestart: true, attempts: job.attempts ?? null } : {}) } : null,
     // the newest round or review was written by a job restarted after a server restart; or the last job was lost to one
@@ -184,6 +184,24 @@ export function dossierText(d) {
     d.questionsForOwner?.length ? `The dossier asked the owner: ${d.questionsForOwner.join(' | ')}` : null,
   ].filter(Boolean).join('\n');
 }
+
+/**
+ * The paper block a case from the paper library keeps (js/paperCatalog.js caseFromPaper): { id, title, authors, year, venue, url,
+ * tags, abstract, notes{ claim, mechanism, data, method, effect, outOfSample, costs, caveats, testHere, stance } } as prompt text.
+ */
+export function paperText(p) {
+  if (!p) return '';
+  const n = p.notes ?? {}, f = (k, name) => (n[k] ? `${name}: ${n[k]}` : null);
+  return [
+    `The paper: ${p.title}${p.year ? ` (${p.year})` : ''}${p.authors?.length ? ` by ${p.authors.join(', ')}` : ''}${p.venue ? `, ${p.venue}` : ''} [${p.id}]`,
+    p.tags?.length ? `Topics: ${p.tags.join(', ')}` : null,
+    p.abstract ? `Abstract: ${p.abstract}` : null,
+    f('claim', 'Claim'), f('mechanism', 'Mechanism'), f('data', 'Data'), f('method', 'Method'), f('effect', 'Effect'), f('outOfSample', 'Out of sample'), f('costs', 'Costs'),
+    f('caveats', 'Caveats'), f('stance', 'Stance toward this desk'), f('testHere', 'How to test it here'),
+    p.notes ? null : '(the desk has not read this paper yet: only the abstract is known)',
+  ].filter(Boolean).join('\n');
+}
+const PAPER_SECTION = 'The paper this case started from (the desk read it; build on it, challenge it, do not repeat it)';
 const DOSSIER_SECTION = 'The literature dossier this case started from (the desk read the papers; build on it, challenge it, do not repeat it)';
 
 // ── the researchers' answer in round 2 on ───────────────────────────────────────────────────────────────────────
@@ -290,6 +308,7 @@ export function roundSections(c, lens, { lib = [], ownerMessage = '', images = [
   return [
     ['The question this case is about', c.question || c.title],
     ...(c.dossier ? [[DOSSIER_SECTION, dossierText(c.dossier)]] : []),
+    ...(c.paper ? [[PAPER_SECTION, paperText(c.paper)]] : []),
     ['The case so far (oldest first)', clip(caseText(c, lib, { replyChars: 600 }), 14_000)],
     ["The other researchers' latest answers", others],
     ['The Head of Research\'s latest review (peer review of all three: take its corrections seriously)', rv ? clip(reviewText(rv, { full: true }), 9000) : '(no review yet: the owner has not sent this case to the Head of Research)'],
@@ -327,6 +346,7 @@ export function headSections(c, { lib = [], fb = {}, quickTests = [], catalogue 
   return [
     ['The question this case is about', c.question || c.title],
     ...(c.dossier ? [[DOSSIER_SECTION, dossierText(c.dossier)]] : []),
+    ...(c.paper ? [[PAPER_SECTION, paperText(c.paper)]] : []),
     ['The whole case, oldest first, with every proposal in full (current versions)', whole],
     ["The papers the researchers cite, from the desk's paper library (read by the literature desk; a citation listed here is a real, read paper, not an invention; judge whether it supports the claim made of it)", citedPapersText(citedPapers(`${whole}\n${c.dossier ? dossierText(c.dossier) : ''}`, papers))],
     ["The owner's marks on these proposals", ids.filter(id => fb[id]).map(id => `- ${id}: ${fb[id].status}${fb[id].note ? ` (${fb[id].note})` : ''}`).join('\n') || '(none)'],
