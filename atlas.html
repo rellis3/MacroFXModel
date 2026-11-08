@@ -300,6 +300,7 @@ import { buildPairWhy, NODE_FOR } from './js/pairWhy.js';
 import * as P from './js/atlasPosition.js';
 import { buildNewsletter, eventNote, flagProximity, familyOf } from './js/newsletter.js';
 import { releaseNewsletterV3 } from './js/newsletterV3.js';
+import { isoWeek } from './js/weeklyDesk.js';
 import { composeTerminal, worldPaths } from './js/newsletterTerminal.js';
 import { composePicto, withTitle } from './js/newsletterPicto.js';
 import { worldEconomies } from './js/worldEconomies.js';
@@ -678,7 +679,7 @@ async function loadArchive() { const r = await J('/api/newsletter/archive'); NL_
 function drawNl() {
   const box = $('nlbox'); if (!box || $('nlBuild')) return;   // built once; a redraw of the page must not wipe a finished issue
   box.innerHTML = `<div class="card"><h2>${ic('cal')}Newsletter</h2>
-    <p class="note" style="margin-bottom:8px"><b>Daily</b> for the day, <b>weekly</b> best generated on Sunday evening for a Monday read (the weekly forecast refreshes after Friday 22:00 UTC and the whole week's releases are known). Each issue opens with a 30-second strip and what changed since the last one, covers the world, each currency and each market, and ends with a not-financial-advice footer that cannot be removed. Every build is saved, and the next issue marks how the previous one's day sizes came out. If today's brief is missing or older than 8 hours it generates one first.</p>
+    <p class="note" style="margin-bottom:8px"><b>Daily</b> for the day, <b>weekly</b> best generated on Sunday after 16:00 London for a Monday read: it opens with the desk strategist's week ahead (written then; the button offers to write it if it is missing) and the Saturday market review across 40 markets, and the weekly forecast refreshes after Friday 22:00 UTC. Each issue opens with a 30-second strip and what changed since the last one, covers the world, each currency and each market, and ends with a not-financial-advice footer that cannot be removed. Every build is saved, and the next issue marks how the previous one's day sizes came out. If today's brief is missing or older than 8 hours it generates one first.</p>
     <p style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0"><button class="btn" id="nlBuild">${icS('cal')}Build daily newsletter</button><button class="btn" id="nlBuildW">${icS('cal')}Build weekly newsletter</button><button class="btn" id="nlEvening">🌙 Evening edition</button><span class="note" id="nlStatus"></span></p><div id="nlOut"></div><h3 style="margin-top:14px">Past issues</h3><div id="nlPast" class="rows"><p class="note">Loading the archive…</p></div></div>`;
   $('nlBuild').onclick = () => buildIssue('daily'); $('nlBuildW').onclick = () => buildIssue('weekly');
   $('nlEvening').onclick = () => showEvening();
@@ -728,6 +729,23 @@ function ensureBrief(st) {
   st.textContent = hrs > 8 ? `Using the stored brief, written ${hrs < 48 ? Math.round(hrs) + ' hours' : Math.round(hrs / 24) + ' days'} ago. Press Generate on the Global page for a fresh one.` : '';
   return true;
 }
+// The strategist's view for the coming week (GET /api/desk-weekly). If this week's is not written yet, start it and wait for it (one model call, the same
+// one the Sunday 16:00 schedule makes, so it is not made twice); after four minutes, or on an error, the issue is built with whatever view there is.
+async function weekDeskFor(week, st) {
+  let rec = await J('/api/desk-weekly');
+  if (rec?.ok && rec.week === week) return rec;
+  if (!confirm(`The desk's week-ahead view for ${week} is not written yet${rec?.ok ? ` (the latest is for ${rec.week})` : ''}. Write it now? It takes one model call and a minute or two. Cancel builds the weekly without it${rec?.ok ? ', using the older view, marked as such' : ''}.`)) return rec?.ok ? rec : null;
+  const start = await J('/api/desk-weekly/run', { method: 'POST' });
+  if (!start?.ok && start?.job?.status !== 'running') { st.textContent = `Could not start the strategist: ${start?.error ?? 'no response'}. Building without this week's view.`; return rec?.ok ? rec : null; }
+  for (const t0 = Date.now(); Date.now() - t0 < 240000;) {
+    st.textContent = `The weekly strategist is writing the week ahead… ${Math.round((Date.now() - t0) / 1000)}s`;
+    await new Promise(r => setTimeout(r, 5000));
+    rec = await J('/api/desk-weekly');
+    if (rec?.ok && rec.week === week) return rec;
+    if (rec?.job?.status === 'error') { st.textContent = `The strategist failed: ${rec.job.error ?? 'unknown error'}. Building without this week's view.`; break; }
+  }
+  return rec?.ok ? rec : null;
+}
 async function buildIssue(kind) {
   const weekly = kind === 'weekly', btn = $(weekly ? 'nlBuildW' : 'nlBuild'), st = $('nlStatus'); $('nlBuild').disabled = $('nlBuildW').disabled = true;
   try {
@@ -751,6 +769,12 @@ async function buildIssue(kind) {
       const evs = P.aheadEvents([...(D.events ?? []), ...extra], Date.now(), { limit: 90, withinHours: 8 * 24 });
       base.week = { events: evs.map(e => ({ ...e, note: eventNote(e, bookFor(e), keys) })), ranges: NL_RANGE_KEYS.filter(k => wf?.instruments?.[k]).map(k => { const f = wf.instruments[k]; return { label: labelOf(k), hl5: f.hl_5d, hl5_75: f.hl_5d_75, hlMed: pairData(k).hlMed }; }) };
       const weekAgo = ukDate(new Date(Date.now() - 8 * 864e5)), wkd = arch.filter(i => i.kind === 'daily' && i.score && i.date > weekAgo), wr = weekRecord(wkd);
+      // the weekly's own pages (js/newsletterWeekly.js): the strategist's week ahead (Sundays from 16:00 London) and the Saturday market review pack
+      base.weekFor = isoWeek(ukDate(new Date(Date.now() + 864e5)));
+      base.weekDesk = await weekDeskFor(base.weekFor, st);
+      st.textContent = 'Loading the Saturday market review…';
+      base.reviewPack = await J('analysis/output/market-review/latest/pack.json');
+      base.release = true;
       base.record = wr ? { line: `${wr.days} daily issues, ${wr.n} market-days: the median day came out ${wr.median}x the expected size, ${wr.pastShare}% ran past it and ${wr.withinShare}% landed within half to one-and-a-half times. A well-calibrated forecast has the median near 1 and about half past it.`, days: wkd.map(i => ({ date: i.date, line: `median ${i.score.median}x the expected size, ${i.score.pastShare}% past it` })), date: today, week: { days: wr.days, n: wr.n, median: wr.median, pastShare: wr.pastShare, withinShare: wr.withinShare }, history: wkd.map(i => ({ date: i.date, median: i.score.median, pastShare: i.score.pastShare, withinShare: i.score.withinShare })) } : null;
     } else {
       // last night's evening edition (js/newsletterEvening.js, archive kind "desk-evening"): its headline is "Yesterday in one line" when it covers the last full day
@@ -762,7 +786,7 @@ async function buildIssue(kind) {
     base.since = diffSnapshots(prev?.snapshot ?? null, snap);
     // the daily is V3 (today first); the weekly keeps its layout. The previous layout is built beside it for comparing only: it is never saved or sent.
     let out = null, out2 = null;
-    if (weekly) out = buildNewsletter(base); else { try { out = releaseNewsletterV3(base); out2 = buildNewsletter(base); } catch (e) { console.warn('[atlas newsletter] V3 failed, using the previous layout:', e.message); out = buildNewsletter(base); } }
+    if (weekly) { try { out = buildNewsletter({ ...base, layout: 'v2' }); } catch (e) { console.warn('[atlas newsletter] weekly magazine failed, using the previous layout:', e.message); out = buildNewsletter({ ...base, release: false }); } } else { try { out = releaseNewsletterV3(base); out2 = buildNewsletter(base); } catch (e) { console.warn('[atlas newsletter] V3 failed, using the previous layout:', e.message); out = buildNewsletter(base); } }
     // The desk edition (plans/DESK_ANALYST_PIPELINE.md §9h): this same issue plus the desk's pages and the desk writer's cover, built only when
     // today's desk run exists. It is saved beside the daily as kind "desk" and shown side by side; the daily itself is unchanged.
     // Two desk formats (owner, 2026-11-03): the desk magazine (an issue built around the desk, top-down) and the desk brief (the cover and one read).

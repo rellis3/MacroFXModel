@@ -13,7 +13,10 @@
  */
 const DIR = { STRONG_LONG: 1, LONG: 1, SHORT: -1, STRONG_SHORT: -1 };
 export const MIN_AHEAD_U = 0.1;   // the first target must be at least this many u beyond the entry to count (same rule as the paper trades)
-const nums = s => (String(s ?? '').match(/\d+(?:\.\d+)?/g) ?? []).map(Number);
+/** The numbers in a plan's text, reading thousands separators as part of the number: "26,850-27,010" is 26850 and 27010, not 26, 850, 27 and 10
+ * (on 2026-11-08 every gold, index and Bitcoin zone written with commas parsed to nothing, or to the wrong levels). */
+export const priceNums = s => (String(s ?? '').replace(/(\d),(?=\d{3}(?!\d))/g, '$1').match(/\d+(?:\.\d+)?/g) ?? []).map(Number);
+const nums = priceNums;
 
 /** The watch plan for one card: { dir, zone: [lo, hi] | null, invalid: number | null, target: number | null }. */
 export function cardPlan(card) {

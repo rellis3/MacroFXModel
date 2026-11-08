@@ -446,7 +446,7 @@ export function composeMagazine(c, H) {
   const p1 = `<div class="pg p1">${mh('The story')}${tape}
 ${c.today ? `${yd}<div class="kick">${esc(c.today.kicker)} · ${esc(M.regime)} regime</div><h1 class="hd">${esc(c.today.headline)}</h1>
 ${c.today.lede ? `<p class="ld">${esc(c.today.lede)}</p>` : ''}${c.today.note ? `<p class="small3">${esc(c.today.note)}</p>` : ''}${c.today.sheet?.length ? `<div class="dsh"><div class="dh">On the clock · UK time</div>${c.today.sheet.map(r => `<div class="dr"><span class="dsw">${esc(r.when)}</span><span class="dsn"><b>${esc(r.name)}</b>${r.detail ? ` <i>${esc(r.detail)}</i>` : ''}</span></div>`).join('')}</div>` : ''}${c.today.board?.length ? `<div class="brd">${c.today.board.map(b => `<div><small>${esc(b.label)}</small><b>${esc(b.value)}</b><em>${esc(b.move)}</em></div>`).join('')}</div>` : ''}
-<p class="mo"><span class="sfl">${esc(c.today.story ?? 'The month in one line')}</span><b>${esc(feature.headline)}</b>${feature.standfirst ? ' ' + esc(feature.standfirst) : ''}</p>` : `<div class="kick">${esc(M.regime)} regime · the investigation</div><h1 class="hd">${esc(feature.headline)}</h1>${feature.standfirst ? `<p class="sf"><span class="sfl">The desk's reading</span>${esc(feature.standfirst)}</p>` : ''}`}
+<p class="mo"><span class="sfl">${esc(c.today.story ?? 'The month in one line')}</span><b>${esc(feature.headline)}</b>${feature.standfirst ? ' ' + esc(feature.standfirst) : ''}</p>${c.reviewLine ? `<p class="mo"><span class="sfl">The market review in one line</span>${esc(c.reviewLine)}</p>` : ''}` : `<div class="kick">${esc(M.regime)} regime · the investigation</div><h1 class="hd">${esc(feature.headline)}</h1>${feature.standfirst ? `<p class="sf"><span class="sfl">The desk's reading</span>${esc(feature.standfirst)}</p>` : ''}`}
 <p class="by">By The Chain research desk · ${esc(M.date)}</p>
 <div class="split"${c.v3 ? ' style="display:block"' : ''}><div>${c.intro && !c.v3 ? threeVoices(c.intro, H) : ''}
 <p class="map"><b>How the issue builds.</b> ${c.mapText ? esc(c.mapText) : c.v3 ? 'Today by level: the global backdrop, the currencies, then pair by pair · the 20-day backdrop · Stress and data checks · the Data Desk' : '1 What happened · 2 Why it might be happening · 3 How markets connect · 4 What broke · 5 Stress and data checks · 6 Competing explanations · 7 What does not fit · 8 The scorecard · the Data Desk'}</p>
@@ -515,6 +515,12 @@ ${c.watch ? `<div class="kick" style="margin-top:14px">The next test</div><h2 cl
       return `<div class="mg">${p1}${pRv}${dG ? fl(dG) : ''}${pBack}${dC ? fl(dC) : ''}${(c.deskGroups ?? []).map(fl).join('')}${dB ? fl(dB) : ''}${dR ? fl(dR) : ''}${pEc}${pR}${p2}${back}</div>`;
     }
     return `<div class="mg">${p1}${pT}${pD}${pP}${p2}${pR}${bd}${p6}${desk}${back}</div>`;
+  }
+  // the weekly (js/newsletterWeekly.js): the strategist's week ahead and the Saturday market review straight after the cover, then the 20-day exhibits.
+  // With the strategist's view the last weekday's brief reading (page 3) is left out: the week has its own reading.
+  if (M.edition === 'Weekly' && (c.weekPages ?? []).length) {
+    const wp = c.weekPages.map(p => `<div class="pg pgflow">${mh(p.section)}${p.html}</div>`).join('');
+    return `<div class="mg">${p1}${wp}${pAhead}${p2}${c.weekDeskOn ? '' : p3}${p4}${p5}${p6}${p7}${p8}${p9}${pAcc}${desk}${back}</div>`;
   }
   return `<div class="mg">${p1}${p2}${p3}${p4}${p5}${p6}${p7}${p8}${p9}${pAhead}${pAcc}${desk}${back}</div>`;
 }
