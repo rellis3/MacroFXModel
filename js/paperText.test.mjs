@@ -297,4 +297,14 @@ await t('an arXiv margin stamp line on page 1 is not a block', () => {
   assert.ok(out.blocks.some(b => /plain paragraph/.test(b.text)));
 });
 
+await t('eq blocks keep their positioned items and the drawn rules next to them (for js/mathLatex.js); prose blocks do not', () => {
+  const items = sysPage(2), pages = [{ n: 1, w: W, h: H, items, rules: [[300, 340, 620, 0.5], [10, 20, 100, 0.5], [300, 340, 400, 0.5]] }];
+  const { blocks } = buildBlocks(pages), eq = blocks.find(b => b.type === 'eq');
+  assert.ok(eq.src && Array.isArray(eq.src.it) && eq.src.it.length >= 6 && Array.isArray(eq.src.fonts));
+  assert.ok(eq.src.it.every(r => typeof r[0] === 'string' && r.slice(1, 5).every(Number.isFinite) && Number.isInteger(r[5]) && r[5] < eq.src.fonts.length));
+  assert.deepEqual(eq.src.rules, [[300, 340, 620, 0.5]], 'only the rule that touches this equation');
+  assert.ok(blocks.filter(b => b.type !== 'eq').every(b => !('src' in b)));
+  assert.ok(!('src' in buildBlocks([{ n: 1, w: W, h: H, items: [header()] }]).blocks[0] ?? {}));
+});
+
 console.log(`paperText: ${n} tests passed`);

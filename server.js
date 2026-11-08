@@ -6824,6 +6824,14 @@ const _libApi = _createLibraryApi({
   lessonFiles: () => { try { return fs.readdirSync(path.join(__dirname, 'theory-lab', 'lessons')); } catch { return []; } },
   cases: { read: _rcStore, put: async c => { await _rcEnsure(); await _rcLock(() => _rcPut(c)); } },
   textFallback: id => _rlTextMem.get(id) ?? null,
+  // the equations job (js/libraryMath.js): DeepSeek via the model router, task 'library-math', text only, capped in KV (library_math_v1)
+  modelReady: () => _aiAnyKey(),
+  mathModel: async ({ system, prompt, maxTokens }) => {
+    const v = await _modelJson({ task: 'library-math', system, prompt, maxTokens, timeoutMs: 150_000, label: 'library:math', tries: 1,
+      validate: o => (o && (Array.isArray(o.results) || Array.isArray(o)) ? { ok: true, value: Array.isArray(o) ? o : o.results } : { ok: false, errors: ['the reply has no results array'] }) });
+    if (!v.ok) throw new Error(v.errors.join('; '));
+    return v.value;
+  },
 });
 _libApi.reapStaleAudio().catch(() => {});
 const _libRoute = (method, p, fn) => app[method](`/api/library/${p}`, async (req, res) => {
@@ -6847,6 +6855,19 @@ _libRoute('get', 'read-next', _libApi.readNext);
 _libRoute('get', 'listen', _libApi.listen);
 _libRoute('post', 'audio', _libApi.audioPost);
 _libRoute('get', 'audio', _libApi.audioGet);
+// GET /api/research-pod/math: the equations job's status (papers todo/done, model calls used against the 1500 cap, the running job).
+// POST /api/research-pod/math { calls? 1-12 }: tidy the equations the rule-based and arXiv layers could not read (DeepSeek, ~25 per call), notes-papers first.
+// Like the reading backlog: no login of its own, but every press is limited to 12 calls and the total to the cap (kv key library_math_v1).
+app.get('/api/research-pod/math', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); res.json(await _libApi.math.status()); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/research-pod/math', async (req, res) => {
+  try {
+    const out = await _libApi.math.start({ calls: Number(req.body?.calls) || 6 });
+    res.status(out.status ?? 200).json(out.ok ? { ok: true, job: out.job } : { ok: false, error: out.error, job: out.job ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // GET /api/validation/harness: the validation desk's automatic gates on every harness output in the deployed repo.
 app.get('/api/validation/harness', (_req, res) => {
   try {

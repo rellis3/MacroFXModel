@@ -109,3 +109,18 @@ level filter on `theory-lab/hub.html`), status badges, kicker/title/meta lines, 
 load its files or the owner is bounced to a second login. So `library.html` is a main-zone page with its own `css/library.css`
 (copy the tokens and component styles you need; do not link into /theory-lab/). Links to Theory Lab lessons open in a new tab.
 Phone first (430px, no page-level horizontal scroll).
+
+## Equations as maths (owner request 2026-11-08; spend approved and capped)
+An equation block can carry LaTeX, drawn with KaTeX in the reader; the image crop of the original page is always one tap away (`Original` on each
+equation, and a header switch `Equations: Rendered | Original`, remembered in localStorage). Three layers; the best one wins (arXiv > model > rules):
+1. **Rules** (`js/mathLatex.js`, free): the positioned items and drawn rules the worker keeps on each eq block (`block.src`, cached blocks v3) become LaTeX:
+   rows by baseline, scripts by size and shift, Greek and cmsy/cmex/Symbol glyph tables, `\frac` from drawn bars, `\sqrt` from a radical touching a bar,
+   big operators with limits, accents, cases, aligned systems at the first relation sign, `\left \right` around tall content, `\tag` from the equation number.
+   A confidence 0..1 (unknown glyphs, stray accents, unmatched rules, unbalanced brackets, prose-like runs, table-like blocks...); the reader renders at >= 0.8.
+2. **arXiv** (`js/arxivMath.js`, free): for a paper with an arXiv id the `<math alttext>` of arxiv.org/html/<id> (else ar5iv) is matched to the blocks by equation
+   number plus a symbol-bag similarity, then by document order; one request per paper, >= 3 s apart, generic User-Agent, cached in the paper's math file.
+3. **Model** (`js/libraryMath.js`, DeepSeek task `library-math`, ledger `brief`): `POST /api/research-pod/math { calls: 1-12 }` sends ~25 unresolved equations per
+   call (linearised geometry plus the sentence before and after), validates every answer with KaTeX, and stops at 1500 calls in total (KV `library_math_v1`,
+   reserved before each call). `GET /api/research-pod/math` is the status. Papers with notes first.
+Storage: R2 `research/papers/<id>.math.json`. `GET /api/library/paper` adds `latex`, `latexSource` ('arxiv'|'model'|'rule') and `latexConf` to eq blocks.
+Tests use synthetic position fixtures only; the real-PDF evaluation is a local script and no paper text is committed. Listening still skips equations.

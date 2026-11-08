@@ -5,6 +5,7 @@ import * as S from './speech.js';
 import * as A from './audio.js';
 import * as P from './progress.js';
 import { cropBlock } from './pdfcrop.js';
+import * as MA from './math.js';
 import * as SUM from './summary.js';
 
 const $ = id => document.getElementById(id);
@@ -167,9 +168,23 @@ function headHtml(p) {
     <div class="row"><span class="lib-badge ${s.key}">${s.label}</span><span id="pctBadge" class="lib-badge pdf"></span>${srcTag(p)}</div>
     <div class="row" id="tagRow">${tagsHtml(p)}</div>
     <div class="actions"><button type="button" class="lib-btn primary" id="listenBtn">🔊 Listen</button>
-    ${p.hasPdf ? `<a class="lib-btn" href="${api.pdfUrl(p.id)}" target="_blank" rel="noopener">Open PDF ↗</a>` : ''}</div></div>`;
+    ${p.hasPdf ? `<a class="lib-btn" href="${api.pdfUrl(p.id)}" target="_blank" rel="noopener">Open PDF ↗</a>` : ''}
+    ${MA.anyMath(st.cur && st.cur.blocks) ? eqSwitchHtml() : ''}</div></div>`;
 }
 
+function eqSwitchHtml() {
+  const m = MA.eqMode(ls);
+  return `<div class="lib-eqswitch" role="group" aria-label="Equations"><span class="lbl">Equations</span>` +
+    `<button type="button" data-eqmode="rendered" aria-pressed="${m === 'rendered'}">Rendered</button><button type="button" data-eqmode="original" aria-pressed="${m === 'original'}">Original</button></div>`;
+}
+function eqHtml(b, a) {
+  const cap = b.label && b.label.toLowerCase().startsWith('equation') ? esc(b.label) : 'Equation' + (b.label ? ' ' + esc(b.label) : '');
+  const src = MA.sourceLabel(b.latexSource);
+  return `<figure class="lib-fig lib-eq" ${a} data-math="1" data-page="${b.page}" data-view="math"><div class="eqmath" role="math" aria-label="Equation"><span class="lib-loading">Equation, page ${b.page}…</span></div><div class="slot" hidden></div>` +
+    `<div class="cap"><span>${cap} · page ${b.page} · <a href="${api.pdfUrl(st.cur.paper.id)}#page=${b.page}" target="_blank" rel="noopener">open PDF</a></span>` +
+    `<button type="button" class="lib-btn sm eqtoggle" aria-pressed="false" title="Show the equation as it is printed in the PDF">Original</button>` +
+    (src ? `<span class="eqsrc" title="${esc(MA.sourceTitle(b.latexSource))}">${esc(src)}</span>` : '') + `</div></figure>`;
+}
 function blocksHtml(blocks) {
   const refs = [];
   let h = '';
@@ -178,6 +193,7 @@ function blocksHtml(blocks) {
     if (b.type === 'h1') h += `<h2 class="b1" ${a}>${esc(b.text)}</h2>`;
     else if (b.type === 'h2') h += `<h3 class="b2" ${a}>${esc(b.text)}</h3>`;
     else if (b.type === 'p') h += `<p class="bp" ${a}>${esc(b.text)}</p>`;
+    else if (MA.hasMath(b)) h += eqHtml(b, a);
     else if (b.type === 'eq' || b.type === 'table' || b.type === 'fig') {
       const what = b.type === 'eq' ? 'Equation' : b.type === 'table' ? 'Table' : 'Figure';
       h += `<figure class="lib-fig ph" ${a} data-lazy="1" data-page="${b.page}"><div class="slot"><span class="lib-loading">${what}, page ${b.page}…</span></div><div class="cap">${b.label && b.label.toLowerCase().startsWith(what.toLowerCase()) ? esc(b.label) : what + (b.label ? ' ' + esc(b.label) : '')} · page ${b.page} · <a href="${api.pdfUrl(st.cur.paper.id)}#page=${b.page}" target="_blank" rel="noopener">open PDF</a></div></figure>`;
@@ -185,6 +201,57 @@ function blocksHtml(blocks) {
   }
   if (refs.length) h += `<details class="lib-refs"><summary>References (${refs.length} block${refs.length > 1 ? 's' : ''})</summary>${refs.map(b => `<p class="refs" data-i="${b.i}">${esc(b.text)}</p>`).join('')}</details>`;
   return h;
+}
+// An equation with LaTeX shows KaTeX (loaded on first use) or, one tap away or if KaTeX fails, the image crop of the original page.
+function ensureCrop(el, b, pageSize) {
+  if (el._crop) return; el._crop = true;
+  const slot = el.querySelector('.slot'), id = st.cur.paper.id;
+  slot.innerHTML = `<span class="lib-loading">Equation, page ${b.page}…</span>`;
+  cropBlock(id, b, pageSize).then(canvas => {
+    if (!el.isConnected) return;
+    if (canvas) { slot.replaceChildren(canvas); canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', 'Equation from page ' + b.page); }
+    else slot.innerHTML = `<b>Equation on page ${b.page}</b>: could not be drawn here. <a href="${api.pdfUrl(id)}#page=${b.page}" target="_blank" rel="noopener">Page ${b.page}, open PDF</a>`;
+  });
+}
+function setEqView(el, view, b, pageSize) {
+  const m = el.querySelector('.eqmath'), s = el.querySelector('.slot'), t = el.querySelector('.eqtoggle');
+  const go = v => {
+    el.dataset.view = v; m.hidden = v !== 'math'; s.hidden = v !== 'crop';
+    t.textContent = v === 'math' ? 'Original' : 'Rendered'; t.setAttribute('aria-pressed', v === 'crop' ? 'true' : 'false');
+    t.title = v === 'math' ? 'Show the equation as it is printed in the PDF' : 'Show the rendered equation again';
+    if (v === 'crop') ensureCrop(el, b, pageSize);
+  };
+  if (view === 'crop') return go('crop');
+  go('math');
+  if (el._mathDone) return;
+  MA.loadKatex().then(k => {
+    if (!el.isConnected) return;
+    if (k && MA.renderInto(m, b.latex, k)) { el._mathDone = true; return; }
+    el._mathBad = true; m.textContent = ''; go('crop');   // KaTeX missing or it refused this formula: the crop, and no toggle back to nothing
+    t.hidden = true;
+  });
+}
+function lazyMath(blocks, pageSize) {
+  const byI = new Map(blocks.map(b => [b.i, b]));
+  const io = new IntersectionObserver(entries => {
+    for (const en of entries) {
+      if (!en.isIntersecting) continue;
+      io.unobserve(en.target);
+      const el = en.target, b = byI.get(+el.dataset.i);
+      setEqView(el, MA.eqMode(ls) === 'original' ? 'crop' : 'math', b, pageSize);
+    }
+  }, { rootMargin: '600px 0px' });
+  $('blocks').querySelectorAll('[data-math]').forEach(el => {
+    io.observe(el);
+    el.querySelector('.eqtoggle').addEventListener('click', () => { io.unobserve(el); const b = byI.get(+el.dataset.i); setEqView(el, el.dataset.view === 'math' ? 'crop' : 'math', b, pageSize); });
+  });
+  return io;
+}
+function setAllEq(mode, blocks, pageSize) {
+  MA.setEqMode(ls, mode);
+  document.querySelectorAll('.lib-eqswitch [data-eqmode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.eqmode === mode)));
+  const byI = new Map(blocks.map(b => [b.i, b]));
+  $('blocks').querySelectorAll('[data-math]').forEach(el => { if (el._mathBad) return; setEqView(el, mode === 'original' ? 'crop' : 'math', byI.get(+el.dataset.i), pageSize); });
 }
 function lazyCrops(blocks, pageSize) {
   const byI = new Map(blocks.map(b => [b.i, b]));
@@ -377,6 +444,9 @@ async function openPaper(id) {
   if (d.blocks && d.blocks.length) {
     $('blocks').innerHTML = blocksHtml(d.blocks);
     lazyCrops(d.blocks, d.pageSize || {});
+    lazyMath(d.blocks, d.pageSize || {});
+    const sw = document.querySelector('.lib-eqswitch');
+    if (sw) sw.addEventListener('click', e => { const x = e.target.closest('[data-eqmode]'); if (x) setAllEq(x.dataset.eqmode, d.blocks, d.pageSize || {}); });
   } else {
     $('blocks').innerHTML = `<div class="lib-card"><p>${p.hasText ? 'The text of this paper could not be shown.' : 'Only the abstract and the desk\'s notes are held for this paper.'}</p><p class="lib-info">Switch to “Desk notes”${p.hasPdf ? ' or “Original PDF”' : ''}.</p></div>`;
   }
