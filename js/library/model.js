@@ -71,9 +71,10 @@ export const NOTE_FIELDS = [
   ['claim', 'Claim'], ['mechanism', 'Mechanism'], ['method', 'Method'], ['effect', 'Effect'],
   ['outOfSample', 'Out of sample'], ['caveats', 'Caveats'], ['testHere', 'Test here'],
 ];
+const txt = v => (Array.isArray(v) ? v.map(x => String(x).trim()).filter(Boolean).join('; ') : v == null ? '' : String(v).trim());
 export function noteRows(notes) {
   if (!notes) return [];
-  return NOTE_FIELDS.filter(([k]) => notes[k] && String(notes[k]).trim()).map(([k, label]) => ({ key: k, label, text: String(notes[k]).trim() }));
+  return NOTE_FIELDS.filter(([k]) => txt(notes[k])).map(([k, label]) => ({ key: k, label, text: txt(notes[k]) }));
 }
 
 /** Theory Lab lesson links by topic (plan examples; the server owns the test that these files exist). */

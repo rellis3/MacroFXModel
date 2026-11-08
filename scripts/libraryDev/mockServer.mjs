@@ -49,16 +49,19 @@ const mk = (id, title, year, tags, o = {}) => ({
   id, title, authors: ['A. Author', 'B. Writer', 'C. Scholar', 'D. Fourth'], year, venue: 'Synthetic Journal', url: null, ssrn: o.ssrn || null, arxiv: null, doi: null,
   kind: 'paper', readFrom: o.readFrom || 'pdf', hasText: o.hasText !== false, hasPdf: o.hasPdf !== false, chars: 90000, pages: 2, uploadedAt: '2026-11-01T00:00:00Z',
   tags: tags.map((k, i) => ({ key: k, label: label(k), source: i === 1 && o.manual ? 'manual' : 'auto' })),
-  notes: o.notes === null ? null : { claim: 'Invented claim: clustering predicts jumps.', mechanism: 'Invented mechanism.', data: 'Synthetic.', method: 'Invented method', effect: 'Small, invented.', outOfSample: 'Not tested.', costs: '', relevance: 'None, it is a fixture.', stance: 'neutral', caveats: 'Entirely made up.', testHere: 'Do not test.' },
+  abstract: o.abstract === undefined ? 'Invented abstract sentence one about clustering. A second invented sentence that should not show.' : o.abstract,
+  theory: o.theory || ['garch-volatility', 'institutional-har-rv'],
+  // real server shapes: data is { market, period, frequency }, caveats is an array, outOfSample / costs are yes|no|partly|unclear
+  notes: o.notes === null ? null : { claim: 'Invented claim: volatility clustering predicts jumps in the next session. A second long sentence follows to prove trimming works and keeps going for a while with filler words.', mechanism: 'Invented mechanism.', data: { market: 'Synthetic G10 FX', period: '2000-2020', frequency: 'daily' }, method: 'Invented regression of next-day jumps on trailing realised variance', effect: 'Small, invented: 0.3 Sharpe before costs.', outOfSample: o.oos || 'partly', costs: 'no', relevance: 'Invented: could size our intraday ranges after clustered days.', stance: 'supports', caveats: ['Entirely made up, so treat as a layout fixture.', 'Second caveat.'], testHere: 'Invented: split sessions by trailing variance tercile and compare next-day range versus the cog ladder.' },
   desk: o.desk || [], progress: o.progress || null, audio: { briefing: { status: 'none' } },
 });
 const state = {
   papers: [
     mk('p1', 'Volatility Clustering and Jump Risk: A Synthetic Study With a Deliberately Long Title to Test Wrapping on Narrow Phones', 2019, ['volatility', 'jump'], { desk: [{ id: 'ev_001', verdict: 'candidate', claim: 'Invented desk entry' }], progress: { pct: 35, pos: 8, at: Date.now() - 1e5, done: false }, manual: true }),
-    mk('p2', 'Carry Trade Crashes (synthetic)', 2012, ['carry'], {}),
-    mk('p3', 'Positioning Extremes in Futures', 2021, ['cot', 'regimes'], { notes: null }),
-    mk('p4', 'An Abstract-Only Note on Brownian Motion', 2005, ['brownian'], { hasPdf: false, hasText: false, notes: null, readFrom: 'abstract' }),
-    mk('p5', 'Machine Learning for Regimes', 2023, ['ml', 'regimes'], {}),
+    mk('p2', 'Carry Trade Crashes (synthetic)', 2012, ['carry'], { oos: 'no' }),
+    mk('p3', 'Positioning Extremes in Futures', 2021, ['cot', 'regimes'], { notes: null, abstract: 'We describe positioning extremes in synthetic futures. Nothing real.' }),
+    mk('p4', 'An Abstract-Only Note on Brownian Motion', 2005, ['brownian'], { hasPdf: false, hasText: false, notes: null, readFrom: 'abstract', abstract: '', theory: [] }),
+    mk('p5', 'Machine Learning for Regimes', 2023, ['ml', 'regimes'], { oos: 'yes' }),
   ],
   audioStart: {}, caseN: 0, progressPosts: [],
 };
