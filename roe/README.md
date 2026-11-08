@@ -128,3 +128,10 @@ Server routes and KV keys, R2 writes, the push client, the question writer (P3),
 the evaluator, Research QA, the board, the forward tracker (P2-P7), the remaining watch items of the 72 (P8), Cboe-chain gamma
 percentiles (no history yet), FX skew, the feature store, IBKR files and M1 realised ranges. Exchange holidays are not modelled
 (sessions are weekdays).
+
+## Item 4 (realised range vs the shipped line) is disabled
+
+`roe-watch-1.0.1` sets `"enabled": false` on `hl_p75`. It reads the live forecast ladder as a threshold, and `js/forecastLadderParams.js` /
+`forecastLadder.js` are in the layer-3 file list of `forge/lockbox_manifest.json`; counting exceedances over the post-2026-08-21 sessions is close
+to scoring that layer. ROE v2 rule 8.4 says no ROE watch item may be an output of the frozen layers before the one lockbox evaluation has run.
+To enable it later (after the evaluation, or if the owner decides otherwise): set `enabled: true`, bump `watchVersion`, run `python -m roe.pin_config`.

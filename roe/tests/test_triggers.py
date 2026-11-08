@@ -152,7 +152,7 @@ def test_planted_fixture_fires_the_expected_triggers():
     res = evaluate(Ctx(c, inp, NOW), ASOF, include_points=True)
     fired = {(r["id"], f["trigger"]) for r in res for f in r["fired"]}
     for want in (("vix_vix3m", "flip"), ("curve_2s10s", "flip"), ("vix9d_vix", "regime"), ("cot_fx:EUR", "extreme"),
-                 ("cot_crowd_release:EUR", "extreme"), ("hl_p75:NQ", "extreme"), ("gamma_breakout_breadth", "regime"),
+                 ("cot_crowd_release:EUR", "extreme"), ("gamma_breakout_breadth", "regime"),
                  ("gamma_flip_dist:SPX", "regime"), ("vol_breadth", "extreme"), ("desk_pack_quality", "stale"),
                  ("divergence:VIX~VXEEM", "divergence")):
         assert want in fired, (want, sorted(fired))
@@ -162,6 +162,24 @@ def test_planted_fixture_fires_the_expected_triggers():
     f2 = {(r["id"], f["trigger"]) for r in res2 for f in r["fired"]}
     for gone in (("vix_vix3m", "flip"), ("cot_crowd_release:EUR", "extreme"), ("gamma_flip_dist:SPX", "regime"), ("desk_pack_quality", "stale")):
         assert gone not in f2, gone
+
+
+def test_hl_p75_is_disabled_by_default_and_fires_when_enabled():
+    """roe-watch-1.0.1 disables the realised-range-vs-shipped-line item (the live ladder is in the layer-3 file list of the lockbox manifest).
+    The item itself still works when the owner enables it (a config change must bump watchVersion and re-pin)."""
+    import copy
+    from roe.fixtures import make_fixture_inputs
+    c = cfg()
+    item = next(i for i in c["items"] if i["id"] == "hl_p75")
+    assert item["enabled"] is False
+    inp = make_fixture_inputs(ASOF, c)
+    res = evaluate(Ctx(c, inp, NOW), ASOF, include_points=True)
+    assert not any(r["id"].startswith("hl_p75") for r in res)
+    c2 = copy.deepcopy(c)
+    next(i for i in c2["items"] if i["id"] == "hl_p75")["enabled"] = True
+    res2 = evaluate(Ctx(c2, inp, NOW), ASOF, include_points=True)
+    fired = {(r["id"], f["trigger"]) for r in res2 for f in r["fired"]}
+    assert ("hl_p75:NQ", "extreme") in fired
 
 
 def test_vol_breadth_does_not_fire_with_too_few_fresh_components():

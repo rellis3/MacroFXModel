@@ -69,7 +69,9 @@ def test_top10_coverage_names_all_ten(tmp_path):
     r, _ = fixture_run(tmp_path)
     t = jread(r["dir"], "state.json")["top10"]
     assert [x["n"] for x in t] == list(range(1, 11))
-    assert all(x["itemsEvaluated"] > 0 for x in t)
+    # item 4 (realised range vs the shipped line) is disabled in roe-watch-1.0.1: the live ladder is lockbox-adjacent (layer-3 file list)
+    assert all(x["itemsEvaluated"] > 0 for x in t if x["n"] != 4)
+    assert [x["itemsEvaluated"] for x in t if x["n"] == 4] == [0]
 
 
 def test_no_watch_item_references_frozen_layer_or_shadow_screen_outputs():

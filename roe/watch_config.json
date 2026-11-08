@@ -1,5 +1,5 @@
 {
-  "watchVersion": "roe-watch-1.0.0",
+  "watchVersion": "roe-watch-1.0.1",
   "note": "FROZEN trigger, watch-item and episode parameters (ROE section 18 P1, DATA_AGENT.md sections 2 and 5). Any change to a number below must bump watchVersion and add its hash to roe/config_pins.json (a test enforces it); a bump starts a new forward record. familyId is never assigned in P1 (question writer, P3).",
   "windows": { "daily": [252, 756], "weekly": [52, 156] },
   "minPriorFraction": 0.99,
@@ -45,7 +45,7 @@
     { "id": "ivrv_spx", "top10": 3, "kind": "ivrv", "iv": "VIX", "px": "SPX", "rvWindow": 20, "triggers": ["extreme", "speed"] },
     { "id": "ivrv_nq", "top10": 3, "kind": "ivrv", "iv": "VXN", "px": "NQ", "rvWindow": 20, "triggers": ["extreme", "speed"] },
     { "id": "ivrv_gold", "top10": 3, "kind": "ivrv", "iv": "GVZ", "px": "GOLD", "rvWindow": 20, "triggers": ["extreme", "speed"] },
-    { "id": "hl_p75", "top10": 4, "kind": "hl_line", "enabled": true, "shareWindows": [5, 20], "minShareHigh": 0.6, "nominalShareHigh": 0.25,
+    { "id": "hl_p75", "top10": 4, "kind": "hl_line", "enabled": false, "shareWindows": [5, 20], "minShareHigh": 0.6, "nominalShareHigh": 0.25,
       "requireAllBelowP50Over": 5, "triggers": ["extreme"] },
     { "id": "cot_fx", "top10": 5, "kind": "cot", "group": "fx", "symbols": ["EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "NZD", "MXN"], "triggers": ["extreme", "speed"] },
     { "id": "cot_indices", "top10": 5, "kind": "cot", "group": "indices", "symbols": ["NQ", "ES", "YM", "RTY"], "triggers": ["extreme", "speed"] },
