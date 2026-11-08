@@ -6814,7 +6814,7 @@ app.get('/api/research-pod/upload/have', async (_req, res) => {
 // Registered before the global app.use(requireAuth), so the gate is explicit. No model call, no paid TTS (PAPER_TTS_PROVIDER=none disables MP3).
 // TEMPORARY, owner-approved 2026-11-08: the library is readable without login until this time, so it can be looked at; it then closes by itself.
 // Only GETs and only the library page + its files; every POST (progress, tags, case, audio) stays behind the login.
-const _LIB_OPEN_UNTIL = Date.parse('2026-11-08T15:30:00Z');
+const _LIB_OPEN_UNTIL = Date.parse('2026-11-09T06:00:00Z');
 const _libOpen = req => Date.now() < _LIB_OPEN_UNTIL && (req.method === 'GET' || req.method === 'HEAD');
 const _libGate = (req, res, next) => {
   if (!AUTH_ENABLED) return next();
