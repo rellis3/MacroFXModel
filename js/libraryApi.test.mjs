@@ -152,6 +152,6 @@ test('sources: every paper has one, the list carries counts, and search can filt
   assert.deepEqual(r.sources.map(s => [s.key, s.count]), [['ssrn', 1], ['upload', 1], ['other', 1]]);
   assert.ok(r.papers.every(p => p.source.label));
   const s = (await api.search({ query: { q: 'volatility', sources: 'ssrn' } })).json; assert.deepEqual(s.hits.map(h => h.id), ['p-read']);
-  const u = (await api.search({ query: { q: 'volatility', sources: 'upload,bogus' } })).json; assert.deepEqual(u.hits.map(h => h.id), ['up1']);
-  const n = (await api.search({ query: { q: 'volatility', sources: 'bogus' } })).json; assert.ok(n.hits.length >= 2);   // unknown keys are ignored
+  const u = (await api.search({ query: { q: 'volatility', sources: 'upload,BOGUS!' } })).json; assert.deepEqual(u.hits.map(h => h.id), ['up1']);
+  const n = (await api.search({ query: { q: 'volatility', sources: 'BOGUS!' } })).json; assert.ok(n.hits.length >= 2);   // malformed keys are ignored
 });

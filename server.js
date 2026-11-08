@@ -6814,6 +6814,7 @@ const _libApi = _createLibraryApi({
   kv, r2: { ok: _r2Ok, getBuffer: _r2GetBuffer, putBuffer: _r2PutBuffer }, keys: { queue: _RL.queue, papers: _LIT.papers }, uploadKey: _rlUploadKey,
   extractPages: _extractPages, tts: { getProvider: _ttsGetProvider, makeMp3: _ttsMakeMp3 },
   readTodoMd: async () => fs.promises.readFile(path.join(__dirname, 'education', 'papers', 'SSRN_DOWNLOAD_LIST.md'), 'utf8'),
+  readFreeSources: async () => JSON.parse(await fs.promises.readFile(path.join(__dirname, 'education', 'papers', 'free_sources.json'), 'utf8')),
   lessonFiles: () => { try { return fs.readdirSync(path.join(__dirname, 'theory-lab', 'lessons')); } catch { return []; } },
   cases: { read: _rcStore, put: async c => { await _rcEnsure(); await _rcLock(() => _rcPut(c)); } },
   textFallback: id => _rlTextMem.get(id) ?? null,

@@ -5,7 +5,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { TOPICS, TOPIC_KEYS, stem, autoTags, scoreTopics, applyOverrides, topicCounts, joinCatalog, buildIndex, addDoc, removeDoc, setDocTags, indexSize, parseQuery, search,
-  deskLinks, THEORY_BY_TOPIC, theoryLinks, parseTodoList, heldSsrnIds, readNext, paperCaseId, caseForPaper, caseFromPaper, sourceOf, sourceCounts, SOURCES } from './paperCatalog.js';
+  deskLinks, THEORY_BY_TOPIC, theoryLinks, parseTodoList, heldSsrnIds, readNext, paperCaseId, caseForPaper, caseFromPaper, sourceOf, sourceCounts, SOURCES, freeLookup, normTitle, sourceOfManifest } from './paperCatalog.js';
 import { DESK_EVIDENCE } from './deskEvidence.js';
 import { putCase, summary, roundSections, headSections, emptyStore } from './researchCase.js';
 
@@ -340,6 +340,41 @@ t('joinCatalog puts a source on every paper and sourceCounts counts them', () =>
   assert.deepEqual(by, { a: 'ecb', b: 'k151', c: 'ssrn', u1: 'ssrn', u2: 'upload' });
   assert.deepEqual(sourceCounts(cat).map(s => [s.key, s.count]), [['ssrn', 2], ['ecb', 1], ['k151', 1], ['upload', 1]]);
   assert.deepEqual(sourceCounts(null), []);
+});
+
+t('free-paper manifest: uploads named "<Title> (<year>).pdf" take the source of the matching entry', () => {
+  assert.equal(normTitle('Bayesian Online Changepoint Detection (2007).pdf'), normTitle('Bayesian online changepoint detection'));
+  const entries = [
+    { title: 'Bayesian Online Changepoint Detection', year: 2007, source: 'arXiv', url: 'https://arxiv.org/pdf/0710.3742', doi: 'arXiv:0710.3742v1' },
+    { title: 'A Synthetic NBER Working Paper On Carry', year: 2010, source: 'NBER', url: 'https://www.nber.org/papers/w123' },
+    { title: 'A Synthetic Fed Note On Liquidity Effects', year: 2012, source: 'NY Fed', url: 'https://www.newyorkfed.org/medialibrary/x.pdf' },
+    { title: 'A Synthetic Bank Of England Paper On Gilts', year: 2015, source: 'Bank of England', url: 'https://www.bankofengland.co.uk/x.pdf' },
+    { title: 'A Synthetic ECB Paper On Euro Money Markets', year: 2016, source: 'ECB', url: 'https://www.ecb.europa.eu/x.pdf' },
+    { title: 'A Synthetic Author Page Paper On Rough Vol', year: 2018, source: 'Author/university repository (math.nyu.edu)', url: 'https://math.nyu.edu/~x/p.pdf' },
+    { title: 'A Synthetic SSRN Paper Hosted By Author Site', year: 2019, source: 'Author/university repository (doi.org)', url: 'https://doi.org/10.2139/ssrn.3000000', doi: 'https://doi.org/10.2139/ssrn.3000000' },
+    { title: 'A Synthetic Working Paper From RePEc Mirror', year: 2020, source: 'MPRA/RePEc', url: 'https://mpra.ub.uni-muenchen.de/1/' },
+    { title: 'A Synthetic Paper With No Source Text At All', year: 2021, url: 'https://example.org/p.pdf' },
+  ];
+  const up = (id, name, extra = {}) => ({ id, source: 'upload', upload: { name, sha: id, chars: 10 }, ...extra });
+  const cat = joinCatalog({ freeSources: entries, queueItems: [
+    up('u1', 'Bayesian Online Changepoint Detection (2007).pdf'), up('u2', 'A Synthetic NBER Working Paper On Carry (2010).pdf'), up('u3', 'a-synthetic-fed-note-on-liquidity-effects.pdf'),
+    up('u4', 'A Synthetic Bank Of England Paper On Gilts (2015).pdf'), up('u5', 'A Synthetic ECB Paper On Euro Money Markets (2016).pdf'),
+    up('u6', 'A Synthetic Author Page Paper On Rough Vol (2018).pdf'), up('u7', 'A Synthetic SSRN Paper Hosted By Author Site (2019).pdf'),
+    up('u8', 'A Synthetic Working Paper From RePEc Mirror (2020).pdf'), up('u9', 'A Synthetic Paper With No Source Text At All (2021).pdf'),
+    up('u10', 'x.pdf', { title: 'Bayesian online changepoint detection' }), up('u11', 'Unlisted Paper (2022).pdf')] });
+  const by = Object.fromEntries(cat.map(p => [p.id, p.source.key]));
+  assert.deepEqual(by, { u1: 'arxiv', u2: 'nber', u3: 'fed', u4: 'boe', u5: 'ecb', u6: 'author', u7: 'ssrn', u8: 'mpra-repec', u9: 'other', u10: 'arxiv', u11: 'upload' });
+  assert.equal(cat.find(p => p.id === 'u8').source.label, 'MPRA/RePEc');
+  assert.ok(sourceCounts(cat).some(s => s.key === 'mpra-repec' && s.count === 1));
+  assert.equal(joinCatalog({ queueItems: [up('z', 'Whatever (2020).pdf')], freeSources: null })[0].source.key, 'upload');
+  assert.equal(freeLookup(null).size, 0); assert.equal(sourceOfManifest(null), null);
+});
+t('the real free_sources.json parses and every entry maps to a non-empty source', () => {
+  const file = join(root, 'education', 'papers', 'free_sources.json');
+  const entries = JSON.parse(readFileSync(file, 'utf8'));
+  assert.ok(entries.length > 100);
+  for (const e of entries) { assert.ok(e.title, 'title'); const s = sourceOfManifest(e); assert.ok(s && s.key && s.label, e.title); }
+  assert.ok(freeLookup(entries).size > entries.length * 0.9);
 });
 
 console.log(`paperCatalog: ${n} tests passed`);

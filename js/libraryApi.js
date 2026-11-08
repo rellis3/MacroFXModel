@@ -14,6 +14,7 @@
  *   uploadKey(id, ext)                                  R2 key of an upload (js/researchLibrary.js uploadKey)
  *   extractPages(buf)                                   positioned pages (js/paperPages.js, worker thread)
  *   tts:{ getProvider(), makeMp3(chunks, provider, opts) }   js/paperTts.js (mock it in tests)
+ *   readFreeSources()                                   (optional) parsed education/papers/free_sources.json; missing or broken = no manifest
  *   readTodoMd()                                        text of education/papers/SSRN_DOWNLOAD_LIST.md
  *   lessonFiles()                                       file names in theory-lab/lessons
  *   cases:{ read() -> { cases }, put(case) }            research cases (server: _rcStore / locked _rcPut)
@@ -24,7 +25,7 @@ import { buildBlocks, plainText, conclusion, abstractOf } from './paperText.js';
 import { flatTextToPages } from './paperPages.js';
 import { speechSentences, briefingScript, chunkForTts, estimateSecs, toSentences } from './paperAudio.js';
 import {
-  joinCatalog, topicCounts, sourceCounts, SOURCES, TOPIC_KEYS, TOPICS, buildIndex, addDoc, search as indexSearch, setDocTags,
+  joinCatalog, topicCounts, sourceCounts, freeLookup, TOPIC_KEYS, TOPICS, buildIndex, addDoc, search as indexSearch, setDocTags,
   theoryLinks, parseTodoList, heldSsrnIds, readNext, caseFromPaper, caseForPaper,
 } from './paperCatalog.js';
 
@@ -94,7 +95,9 @@ export function mergeTagOverride(cur, { add = [], remove = [] } = {}) {
 
 // ── the factory ────────────────────────────────────────────────────────────────────────────────────────────────
 export function createLibraryApi(deps) {
-  const { kv, r2, keys, uploadKey, extractPages, tts, readTodoMd, lessonFiles, cases } = deps;
+  const { kv, r2, keys, uploadKey, extractPages, tts, readTodoMd, readFreeSources, lessonFiles, cases } = deps;
+  let freeMap = null;   // lazily loaded, fail-safe
+  const freeSources = async () => { if (!freeMap) { try { freeMap = freeLookup(await readFreeSources?.()); } catch (e) { log.warn?.(`[library] free_sources: ${e.message}`); freeMap = new Map(); } } return freeMap; };
   const now = deps.now ?? (() => Date.now()), log = deps.log ?? console;
   const jget = async (k, d) => { const raw = await kv.get(k); if (!raw) return d; try { return JSON.parse(raw); } catch { return d; } };
 
@@ -135,7 +138,7 @@ export function createLibraryApi(deps) {
       uploads[it.id] = u;
     }
     for (const p of papers) if (p.uploaded) uploads[p.id] = { ...(uploads[p.id] ?? {}), chars: p.uploaded.chars ?? null, hasPdf: p.uploaded.stored === 'r2', sha: p.uploaded.sha };
-    const list = joinCatalog({ papers, queueItems, uploads, tagOverrides: st.tags, progress: st.progress, audio: st.audio });
+    const list = joinCatalog({ freeSources: await freeSources(), papers, queueItems, uploads, tagOverrides: st.tags, progress: st.progress, audio: st.audio });
     catalogCache = { at: now(), list, papers, queueItems, state: st, byId: new Map(list.map(p => [p.id, p])) };
     return catalogCache;
   }
@@ -212,7 +215,7 @@ export function createLibraryApi(deps) {
   H.search = async ({ query }) => {
     const q = String(query?.q ?? '').trim().slice(0, 200); if (!q) return reply(200, { ok: true, hits: [], total: 0 });
     const tags = String(query?.tags ?? '').split(',').map(s => s.trim()).filter(k => TOPIC_KEYS.includes(k));
-    const sources = String(query?.sources ?? '').split(',').map(s => s.trim()).filter(k => SOURCES.some(x => x.key === k));
+    const sources = String(query?.sources ?? '').split(',').map(s => s.trim()).filter(k => /^[a-z0-9-]{1,60}$/.test(k));
     const limit = Math.min(100, Math.max(1, Number(query?.limit) || 40));
     const ix = await ensureIndex(); const cat = await catalog();
     for (const p of cat.list) setDocTags(ix, p.id, p.tags);   // manual tag changes apply without re-indexing

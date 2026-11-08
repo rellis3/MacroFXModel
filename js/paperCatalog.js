@@ -199,15 +199,42 @@ export function sourceOf(record = {}) {
   if (/ssrn/.test(q)) return src('ssrn');
   if (/reading/.test(q)) return src('reading');
   const isUpload = /^upload/.test(q) || !!r.uploadName || /^upload/.test(String(r.readFrom ?? ''));
-  if (isUpload) return src(nameKey(r.uploadName) ?? 'upload');
+  if (isUpload) {
+    const m = r.manifest ? sourceOfManifest(r.manifest) : null;   // a free-paper manifest entry matched by file name or title
+    return m ?? src(nameKey(r.uploadName) ?? 'upload');
+  }
   return src('other');
 }
 
-/** [{ key, label, count }] of the sources present, in SOURCES order (zero counts left out). */
+/** Normalised match key: lowercase, no extension, no trailing "(year)", letters and digits only. */
+export const normTitle = s => String(s ?? '').toLowerCase().replace(/\.[a-z0-9]{2,4}$/, '').replace(/\(\s*(?:19|20)\d\d\s*\)\s*$/, '').replace(/[^a-z0-9]+/g, '');
+/** Map of normalised title -> manifest entry ({ title, year, source, url, doi }) from education/papers/free_sources.json. */
+export function freeLookup(entries) {
+  const m = new Map();
+  for (const e of Array.isArray(entries) ? entries : []) { const k = e?.title ? normTitle(e.title) : ''; if (k.length >= 8 && !m.has(k)) m.set(k, e); }
+  return m;
+}
+const slug = s => String(s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+/**
+ * Source of a manifest entry, by the same rules (url host, doi prefix, ids). Author / university pages with an SSRN doi are SSRN;
+ * other author pages are 'Author / university page'; anything else is labelled with the manifest's own source text.
+ */
+export function sourceOfManifest(e) {
+  if (!e) return null;
+  const s = sourceOf({ url: e.url, doi: e.doi, arxiv: /^arxiv:/i.test(String(e.doi ?? '')) ? 'x' : null });
+  if (s.key !== 'other') return s;
+  const text = String(e.source ?? '').trim();
+  if (/^author\b|university|repository/i.test(text)) return { key: 'author', label: 'Author / university page' };
+  return text && slug(text) ? { key: slug(text), label: text } : src('other');
+}
+
+/** [{ key, label, count }] of the sources present, in SOURCES order then any manifest-only ones (zero counts left out). */
 export function sourceCounts(papers) {
   const n = new Map();
   for (const p of papers ?? []) { const k = p?.source?.key; if (k) n.set(k, (n.get(k) ?? 0) + 1); }
-  return SOURCES.filter(s => n.has(s.key)).map(s => ({ ...s, count: n.get(s.key) }));
+  const known = SOURCES.filter(s => n.has(s.key)).map(s => ({ ...s, count: n.get(s.key) }));
+  const extra = [...n.keys()].filter(k => !SOURCE_BY_KEY[k]).map(k => ({ key: k, label: (papers.find(p => p.source?.key === k).source.label), count: n.get(k) }));
+  return known.concat(extra.sort((a, b) => a.label.localeCompare(b.label)));
 }
 
 // ── joining read papers, uploads and queue items ───────────────────────────────────────────────────────────────
@@ -230,7 +257,9 @@ const pickNotes = n => (n && typeof n === 'object' ? Object.fromEntries(['claim'
  *   audio       { [id]: { briefing:{ status, secs, error } } }      evidence  the Evidence Book (default DESK_EVIDENCE)
  * An `upload:<hash>` queue item whose sha matches a held paper's upload (or another item's) is the same paper and is dropped.
  */
-export function joinCatalog({ papers = [], queueItems = [], uploads = {}, tagOverrides = {}, progress = {}, audio = {}, evidence = DESK_EVIDENCE } = {}) {
+export function joinCatalog({ papers = [], queueItems = [], uploads = {}, tagOverrides = {}, progress = {}, audio = {}, evidence = DESK_EVIDENCE, freeSources = null } = {}) {
+  const free = freeSources instanceof Map ? freeSources : freeLookup(freeSources);
+  const manifestFor = (...names) => { for (const n of names) { const e = n && free.get(normTitle(n)); if (e) return e; } return null; };
   const up = asMap(uploads), prog = asMap(progress), aud = asMap(audio), ov = asMap(tagOverrides);
   const out = [], seen = new Set(), shaSeen = new Set(), queueById = new Map();
   for (const it of queueItems ?? []) if (it?.id) queueById.set(it.id, it);
@@ -254,7 +283,7 @@ export function joinCatalog({ papers = [], queueItems = [], uploads = {}, tagOve
       id: r.id, title: r.title ?? r.id, authors: r.authors ?? [], year: r.year ?? null, venue: r.venue ?? null, url: r.url ?? null, ssrn: r.ssrn ?? null, arxiv: r.arxiv ?? null, doi: r.doi ?? null,
       kind: r.kind ?? 'paper', readFrom: r.readFrom ?? null, hasText, hasPdf: !!(u.hasPdf ?? (upl && upl.stored)), chars: chars ?? (text.length || null), pages: u.pages ?? null,
       uploadedAt: upl?.at ?? null, abstract: String(r.abstract ?? '').slice(0, 2500), notes: pickNotes(r.notes),
-      _src: { queueSource: q?.source ?? r.source, ssrn: r.ssrn, arxiv: r.arxiv, doi: r.doi, url: r.url, venue: r.venue, uploadName: upl?.name, readFrom: r.readFrom },
+      _src: { queueSource: q?.source ?? r.source, ssrn: r.ssrn, arxiv: r.arxiv, doi: r.doi, url: r.url, venue: r.venue, uploadName: upl?.name, readFrom: r.readFrom, manifest: upl ? manifestFor(upl.name, r.title) : null },
       _auto: autoTags({ title: r.title, abstract: r.abstract, notes: r.notes, text }),
     });
   }
@@ -269,7 +298,7 @@ export function joinCatalog({ papers = [], queueItems = [], uploads = {}, tagOve
     finish({
       id: it.id, title, authors: [], year: null, venue: null, url: null, ssrn: ssrnFromName(it.upload.name), arxiv: null, doi: null, kind: it.kind ?? 'paper', readFrom: 'upload (unread)',
       hasText: (chars ?? 0) > 0 || text.length > 0, hasPdf: !!(u.hasPdf ?? it.upload.stored), chars, pages: u.pages ?? null, uploadedAt: it.upload.at ?? null, abstract: '', notes: null,
-      _src: { queueSource: it.source, ssrn: ssrnFromName(it.upload.name), uploadName: it.upload.name, readFrom: 'upload' },
+      _src: { queueSource: it.source, ssrn: ssrnFromName(it.upload.name), uploadName: it.upload.name, readFrom: 'upload', manifest: manifestFor(it.upload.name, it.title, title) },
       _auto: autoTags({ title, text }),
     });
   }
