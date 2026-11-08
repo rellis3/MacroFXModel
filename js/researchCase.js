@@ -60,8 +60,8 @@ export function answerOf(r, { revised = [], newIds = null } = {}) {
 }
 
 /** Append a round: { owner: the message that started it (round 1: the question), answers: { lens: answer }, errors }. */
-export function appendRound(c, { owner = null, answers = {}, errors = {}, at = new Date().toISOString(), web = undefined, images = [] }) {
-  const round = { n: c.rounds.length + 1, at, owner: owner ? String(owner).slice(0, 3000) : null, answers, errors: Object.keys(errors).length ? errors : undefined, ...(web ? { web } : {}), ...(images?.length ? { images } : {}) };
+export function appendRound(c, { owner = null, answers = {}, errors = {}, at = new Date().toISOString(), web = undefined, images = [], libraryIds = [] }) {
+  const round = { n: c.rounds.length + 1, at, owner: owner ? String(owner).slice(0, 3000) : null, answers, errors: Object.keys(errors).length ? errors : undefined, ...(web ? { web } : {}), ...(images?.length ? { images } : {}), ...(libraryIds?.length ? { libraryIds: [...libraryIds] } : {}) };
   return { ...c, rounds: [...c.rounds, round], updatedAt: at };
 }
 

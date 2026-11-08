@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { yearKey, yearCounts } from '../../js/paperCatalog.js';
 import { cardLine } from '../../js/library/summary.js';
+import * as LIX from '../../js/libraryIndex.js';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const TOPICS = [['volatility', 'Volatility'], ['jump', 'Jump / diffusion'], ['brownian', 'Brownian motion & stochastic processes'], ['carry', 'FX & carry'], ['cot', 'COT & positioning'], ['ml', 'Machine learning'], ['regimes', 'Regimes & HMM']];
@@ -108,6 +109,12 @@ export function startServer(port = 0) {
         const hits = state.papers.filter(x => x.hasText && (x.title + para(1)).toLowerCase().includes(w) && (!tags.length || x.tags.some(t => tags.includes(t.key))) && (!srcs.length || srcs.includes(x.source.key)) && (!yrs.length || yrs.includes(x.yearKey)))
           .map((x, i) => ({ id: x.id, score: 10 - i, title: x.title, snippets: [{ block: 1, text: para(1) }] }));
         return send(res, { ok: true, hits });
+      }
+      if (ep === 'index') return send(res, { ok: true, ...LIX.publicIndex(LIX.buildIndex(state.papers)) });
+      if (ep === 'find') {
+        const ix = LIX.buildIndex(state.papers), csv = k => (q.get(k) || '').split(',').filter(Boolean);
+        const hits = LIX.search(ix, q.get('q') || '', { n: Number(q.get('n')) || 8, topics: csv('topics'), sources: csv('sources'), years: csv('years') });
+        return send(res, { ok: true, q: q.get('q') || '', hits, total: hits.length });
       }
       if (ep === 'todo') return send(res, { ok: true, items: [{ id: 't1', title: 'A Paper We Still Need (synthetic)', year: 2016, part: 'Part 2', url: 'https://example.invalid/ssrn/1', held: false }, { id: 't2', title: 'A Held Paper', year: 2010, part: 'Part 1', url: 'https://example.invalid/ssrn/2', held: true }] });
       if (ep === 'read-next') return send(res, { ok: true, ids: ['p3', 'p5'], why: { p3: 'matches open case "Positioning extremes"', p5: 'matches open case "Regime filter"' } });

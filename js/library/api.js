@@ -12,6 +12,8 @@ export const api = {
   papers: () => j('/api/library/papers'),
   paper: id => j('/api/library/paper?' + q({ id })),
   search: (text, tags, sources, years, limit = 40) => j('/api/library/search?' + q({ q: text, tags: (tags || []).join(','), sources: (sources || []).join(','), years: (years || []).join(','), limit })),
+  index: () => j('/api/library/index'),
+  find: (text, o = {}) => j('/api/library/find?' + q({ q: text, n: o.n || 40, topics: (o.topics || []).join(','), sources: (o.sources || []).join(','), years: (o.years || []).join(',') })),
   todo: () => j('/api/library/todo'),
   readNext: () => j('/api/library/read-next'),
   listen: (id, mode) => j('/api/library/listen?' + q({ id, mode })),

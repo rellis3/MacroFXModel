@@ -144,3 +144,15 @@ A 'Figure N' block used to crop only its caption line, and small tables of numbe
 - Also fixed on the way: a table's wide cell gap on a short column is no longer taken for the page gutter; text heights that are several times the real glyph
   size (old Word/Acrobat output) are rescaled; figures and tables set after the References heading are kept; a page with a JPEG no longer makes the whole
   extraction fail ("Image is not defined" in the worker).
+
+## Index and retrieval (owner request 2026-11-08; no model call, no spend)
+`js/libraryIndex.js` (pure): one compact row per paper `{ id, t, y, src, tg, c, ev, co, m, me, ef, tx, cs, vd }` (about 60-90 tokens; `indexStats()`), rule-based
+TF-IDF-like `search()` (topic / source / year filters, boosts for out-of-sample notes and our verdicts, maths boost only for model / equation queries, deterministic
+ties), `digest(paper)` (<= ~900 chars, up to 3 figure/table notes) and `buildContext(query, index, papers)` -> `{ text, ids }` ('[P1] id: ...' list with a citing header).
+Cache: R2 `research/papers/_index.json` (rows + retrieval vectors), rebuilt when the catalog's content signature changes. Routes (same login gate as the rest):
+`GET /api/library/index` (rows + stats), `GET /api/library/find?q=&n=&topics=&sources=&years=&notes=1&digest=1` (ranked rows with `score` and `why`, optional digests).
+The library page has an Index tab (a row per paper, filter box that calls /find).
+Researchers (flag **off** by default): `LIBRARY_CONTEXT=1` in the server environment adds a `LIBRARY:` section (the best 6 papers' digests) to each researcher's prompt
+(round 1 and later rounds) and to the Head of Research's review; the injected ids are saved on the round / review as `libraryIds` and are accepted as `citations` in
+addition to the held-paper ids (the existing `paperIds` check is unchanged). Off, the prompts are byte-identical. `GET|POST /api/research-pod/case/library-preview?id=&text=`
+returns the text that would be injected, without any model call.
