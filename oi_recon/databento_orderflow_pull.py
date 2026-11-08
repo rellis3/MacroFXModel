@@ -69,13 +69,19 @@ def trading_days(start, end):
 
 def quote(c, schema, root, d0, d1):
     """FREE price of [d0, d1). Retries a 5xx (quotes cost nothing); any other error propagates."""
+    return free_call(lambda: c.metadata.get_cost(dataset=DATASET, symbols=[SYMBOL[root]], stype_in='continuous', schema=schema,
+                                                 start=d0.isoformat(), end=d1.isoformat()))
+
+
+def free_call(fn, tries=6):
+    """Retry a FREE metadata call (quote / record count) on a gateway 5xx or a network error (SSL EOF, reset). Never used for a paid download."""
     import databento as db
-    for attempt in range(4):
+    import requests
+    for attempt in range(tries):
         try:
-            return c.metadata.get_cost(dataset=DATASET, symbols=[SYMBOL[root]], stype_in='continuous', schema=schema,
-                                       start=d0.isoformat(), end=d1.isoformat())
-        except db.BentoServerError:
-            if attempt == 3:
+            return fn()
+        except (db.BentoServerError, requests.exceptions.RequestException):
+            if attempt == tries - 1:
                 raise
             time.sleep(5 * (attempt + 1))
 
@@ -107,16 +113,29 @@ def record(m, schema, root, d, rows, nbytes, cost):
 
 # ------------------------------------------------------------------ one day
 def pull_day(c, m, schema, root, d, cost):
-    """One paid download: the UTC day d for one root and schema -> raw/GLBX/<schema>/<root>/<d>.dbn.zst (written via .part, then renamed)."""
+    """One paid download: the UTC day d for one root and schema -> raw/GLBX/<schema>/<root>/<d>.dbn.zst (written via .part, then renamed).
+    COMPLETENESS GUARD (2026-11-07, after a short file got through): the row count of the downloaded file must equal Databento's FREE record count
+    for the same request, or the file is deleted and the day counts as a failure. The rename waits out a brief Windows file lock."""
     import databento as db
     p = day_path(schema, root, d)
     p.parent.mkdir(parents=True, exist_ok=True)
     part = p.with_suffix('.zst.part')
     part.unlink(missing_ok=True)
-    c.timeseries.get_range(dataset=DATASET, symbols=[SYMBOL[root]], stype_in='continuous', schema=schema,
-                           start=d.isoformat(), end=(d + timedelta(days=1)).isoformat(), path=str(part))
-    part.replace(p)                                   # rename first: no open handle on the file
-    rows = sum(len(a) for a in db.DBNStore.from_file(str(p)).to_ndarray(count=2_000_000))
+    kw = dict(dataset=DATASET, symbols=[SYMBOL[root]], stype_in='continuous', schema=schema, start=d.isoformat(), end=(d + timedelta(days=1)).isoformat())
+    expected = free_call(lambda: c.metadata.get_record_count(**kw))
+    c.timeseries.get_range(path=str(part), **kw)
+    rows = sum(len(a) for a in db.DBNStore.from_file(str(part)).to_ndarray(count=2_000_000))
+    if rows != expected:
+        part.unlink(missing_ok=True)
+        raise RuntimeError(f'short file: {rows:,} rows downloaded, Databento counts {expected:,} for {root} {schema} {d}')
+    for i in range(10):
+        try:
+            part.replace(p)
+            break
+        except PermissionError:
+            if i == 9:
+                raise
+            time.sleep(3)
     record(m, schema, root, d, int(rows), p.stat().st_size, cost)
     save_manifest(m)
     return rows

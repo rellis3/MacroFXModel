@@ -1,0 +1,819 @@
+{
+ "id": "portfolio-book-prop",
+ "meta": {
+  "model": "portfolio-book-prop",
+  "writtenAt": "2026-11-04T23:52:33.667Z",
+  "skipped": 0
+ },
+ "ok": true,
+ "from": "2016-01-07",
+ "to": "2026-08-21",
+ "trades": 1303,
+ "days": 467,
+ "calendarDays": 2772,
+ "instruments": [
+  "EURUSD",
+  "GBPUSD",
+  "AUDUSD",
+  "NZDUSD",
+  "USDCAD",
+  "USDCHF",
+  "USDJPY",
+  "SPX500",
+  "XAUUSD"
+ ],
+ "perTrade": {
+  "trades": 1303,
+  "winRate": 0.3868,
+  "expectancy": 0.0576,
+  "profitFactor": 1.308,
+  "payoff": 2.07,
+  "totalPnl": 75.05,
+  "cagr": 5.41,
+  "sharpe": 0.654,
+  "sortino": 1.05,
+  "maxDD": -16.38,
+  "maxDDdur": 321,
+  "calmar": 0.33,
+  "tradesPerYr": 123,
+  "bootstrap": {
+   "total": {
+    "p5": 19.339,
+    "p50": 75.383,
+    "p95": 132.1
+   },
+   "sharpe": {
+    "p5": 0.187,
+    "p50": 0.664,
+    "p95": 1.091
+   },
+   "pPositive": 0.985
+  },
+  "montecarlo": {
+   "maxDD": {
+    "p50": -18.216,
+    "p95": -28.94,
+    "p99": -33.628
+   }
+  }
+ },
+ "portfolio": {
+  "days": 2772,
+  "sharpe": 0.64,
+  "sortino": 0.73,
+  "psr": 0.999,
+  "skew": 16.36,
+  "excessKurt": 397.26,
+  "acf1": -0.004,
+  "annVol": 10.63,
+  "cagr": 6.5,
+  "maxDD": -11.33,
+  "calmar": 0.57,
+  "profitFactor": 1.65,
+  "winRate": 5.7,
+  "var95": -0.258,
+  "var99": -0.924,
+  "cvar95": -0.685,
+  "raw": {
+   "maxDD": -11.33,
+   "mcMaxDD": {
+    "p50": -12.38,
+    "p95": -19.122,
+    "p99": -24.102
+   },
+   "mcMaxDDBlock": {
+    "p50": -11.356,
+    "p95": -19.899,
+    "p99": -24.92,
+    "blockMean": 21
+   }
+  },
+  "volTarget": {
+   "target": 10,
+   "cagr": 6.13,
+   "maxDD": -10.69,
+   "calmar": 0.57,
+   "mcMaxDD": {
+    "p50": -11.796,
+    "p95": -18.179,
+    "p99": -22.288
+   },
+   "mcMaxDDBlock": {
+    "p50": -10.877,
+    "p95": -18.998,
+    "p99": -23.821,
+    "blockMean": 21
+   }
+  }
+ },
+ "rMultiples": {
+  "mean": 0.132,
+  "median": -0.519,
+  "monteCarlo": {
+   "ok": true,
+   "trades": 1303,
+   "observedDrawdown": 201.8484,
+   "drawdown": {
+    "p50": 202.3904,
+    "p95": 407.1229,
+    "p99": 512.2372
+   },
+   "total": {
+    "p5": -228.6102,
+    "p50": 177.0882,
+    "p95": 587.7483
+   },
+   "pLoss": 0.233,
+   "pRuin": null
+  },
+  "maeMedian": 0,
+  "mfeMedian": 1.67
+ },
+ "streaks": {
+  "longestWin": 9,
+  "longestLoss": 16
+ },
+ "byInstrument": {
+  "EURUSD": {
+   "trades": 129,
+   "winRate": 0.411,
+   "totalPct": -0.155,
+   "expectancyPct": -0.001,
+   "meanR": -0.155,
+   "profitFactor": 0.994
+  },
+  "GBPUSD": {
+   "trades": 151,
+   "winRate": 0.384,
+   "totalPct": -4.056,
+   "expectancyPct": -0.027,
+   "meanR": -0.339,
+   "profitFactor": 0.857
+  },
+  "AUDUSD": {
+   "trades": 156,
+   "winRate": 0.436,
+   "totalPct": 6.217,
+   "expectancyPct": 0.04,
+   "meanR": 0.189,
+   "profitFactor": 1.311
+  },
+  "NZDUSD": {
+   "trades": 172,
+   "winRate": 0.355,
+   "totalPct": -7.313,
+   "expectancyPct": -0.043,
+   "meanR": -0.619,
+   "profitFactor": 0.769
+  },
+  "USDCAD": {
+   "trades": 172,
+   "winRate": 0.343,
+   "totalPct": -9.12,
+   "expectancyPct": -0.053,
+   "meanR": -0.597,
+   "profitFactor": 0.695
+  },
+  "USDCHF": {
+   "trades": 154,
+   "winRate": 0.344,
+   "totalPct": -8.593,
+   "expectancyPct": -0.056,
+   "meanR": -0.667,
+   "profitFactor": 0.68
+  },
+  "USDJPY": {
+   "trades": 135,
+   "winRate": 0.393,
+   "totalPct": 15.407,
+   "expectancyPct": 0.114,
+   "meanR": 0.669,
+   "profitFactor": 2.031
+  },
+  "SPX500": {
+   "trades": 111,
+   "winRate": 0.396,
+   "totalPct": 45.695,
+   "expectancyPct": 0.412,
+   "meanR": 2.31,
+   "profitFactor": 2.611
+  },
+  "XAUUSD": {
+   "trades": 123,
+   "winRate": 0.447,
+   "totalPct": 36.964,
+   "expectancyPct": 0.301,
+   "meanR": 1.455,
+   "profitFactor": 1.944
+  }
+ },
+ "byYear": {
+  "2016": {
+   "trades": 137,
+   "winRate": 0.394,
+   "totalPct": -0.037,
+   "expectancyPct": 0,
+   "meanR": -0.524,
+   "profitFactor": 0.999
+  },
+  "2017": {
+   "trades": 83,
+   "winRate": 0.361,
+   "totalPct": 1.209,
+   "expectancyPct": 0.015,
+   "meanR": -0.26,
+   "profitFactor": 1.095
+  },
+  "2018": {
+   "trades": 192,
+   "winRate": 0.427,
+   "totalPct": 9.034,
+   "expectancyPct": 0.047,
+   "meanR": 0.293,
+   "profitFactor": 1.27
+  },
+  "2019": {
+   "trades": 146,
+   "winRate": 0.342,
+   "totalPct": -1.328,
+   "expectancyPct": -0.009,
+   "meanR": -0.497,
+   "profitFactor": 0.945
+  },
+  "2020": {
+   "trades": 96,
+   "winRate": 0.354,
+   "totalPct": 11.772,
+   "expectancyPct": 0.123,
+   "meanR": 0.183,
+   "profitFactor": 1.578
+  },
+  "2021": {
+   "trades": 73,
+   "winRate": 0.356,
+   "totalPct": 4.732,
+   "expectancyPct": 0.065,
+   "meanR": -0.234,
+   "profitFactor": 1.237
+  },
+  "2022": {
+   "trades": 142,
+   "winRate": 0.401,
+   "totalPct": 11.827,
+   "expectancyPct": 0.083,
+   "meanR": 1.137,
+   "profitFactor": 1.349
+  },
+  "2023": {
+   "trades": 73,
+   "winRate": 0.342,
+   "totalPct": -6.16,
+   "expectancyPct": -0.084,
+   "meanR": -0.85,
+   "profitFactor": 0.552
+  },
+  "2024": {
+   "trades": 113,
+   "winRate": 0.389,
+   "totalPct": 15.419,
+   "expectancyPct": 0.136,
+   "meanR": 0.42,
+   "profitFactor": 1.614
+  },
+  "2025": {
+   "trades": 124,
+   "winRate": 0.468,
+   "totalPct": 26.435,
+   "expectancyPct": 0.213,
+   "meanR": 1.374,
+   "profitFactor": 3.165
+  },
+  "2026": {
+   "trades": 124,
+   "winRate": 0.355,
+   "totalPct": 2.145,
+   "expectancyPct": 0.017,
+   "meanR": -0.291,
+   "profitFactor": 1.106
+  }
+ },
+ "byDirection": {
+  "Long": {
+   "trades": 744,
+   "winRate": 0.401,
+   "totalPct": 92.311,
+   "expectancyPct": 0.124,
+   "meanR": 0.584,
+   "profitFactor": 1.641
+  },
+  "Short": {
+   "trades": 559,
+   "winRate": 0.369,
+   "totalPct": -17.264,
+   "expectancyPct": -0.031,
+   "meanR": -0.469,
+   "profitFactor": 0.826
+  }
+ },
+ "costs": null,
+ "expectedShape": {
+  "ok": true,
+  "window": 176,
+  "paths": 5000,
+  "block": 5,
+  "realisedFrom": 1755896400000,
+  "live": false,
+  "metrics": {
+   "winRate": {
+    "p10": 0.33,
+    "p25": 0.358,
+    "p50": 0.386,
+    "p75": 0.415,
+    "p90": 0.443,
+    "mean": 0.386,
+    "realised": 0.42,
+    "percentile": 0.799,
+    "hist": {
+     "lo": 0.222,
+     "step": 0.0078125,
+     "counts": [
+      2,
+      1,
+      3,
+      3,
+      1,
+      9,
+      6,
+      11,
+      42,
+      39,
+      77,
+      63,
+      87,
+      220,
+      136,
+      137,
+      369,
+      196,
+      475,
+      254,
+      265,
+      537,
+      234,
+      241,
+      418,
+      170,
+      308,
+      138,
+      113,
+      172,
+      75,
+      50,
+      70,
+      22,
+      25,
+      9,
+      9,
+      11,
+      1,
+      1
+     ]
+    }
+   },
+   "profitFactor": {
+    "p10": 0.818,
+    "p25": 1.014,
+    "p50": 1.286,
+    "p75": 1.599,
+    "p90": 1.946,
+    "mean": 1.344,
+    "realised": 1.85,
+    "percentile": 0.869,
+    "hist": {
+     "lo": 0.379,
+     "step": 0.0932341,
+     "counts": [
+      11,
+      40,
+      82,
+      170,
+      267,
+      325,
+      427,
+      397,
+      469,
+      433,
+      417,
+      353,
+      330,
+      275,
+      215,
+      171,
+      141,
+      116,
+      83,
+      77,
+      51,
+      44,
+      33,
+      16,
+      9,
+      17,
+      5,
+      10,
+      5,
+      2,
+      5,
+      0,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    }
+   },
+   "expectancy": {
+    "p10": -0.035,
+    "p25": 0.003,
+    "p50": 0.051,
+    "p75": 0.104,
+    "p90": 0.157,
+    "mean": 0.057,
+    "realised": 0.119,
+    "percentile": 0.803,
+    "hist": {
+     "lo": -0.193,
+     "step": 0.0199812,
+     "counts": [
+      1,
+      2,
+      8,
+      10,
+      32,
+      77,
+      154,
+      260,
+      334,
+      474,
+      468,
+      569,
+      538,
+      452,
+      415,
+      349,
+      255,
+      175,
+      139,
+      99,
+      60,
+      42,
+      31,
+      23,
+      13,
+      8,
+      6,
+      2,
+      1,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    }
+   },
+   "maxDD": {
+    "p10": -14.273,
+    "p25": -11.21,
+    "p50": -8.489,
+    "p75": -6.031,
+    "p90": -4.67,
+    "mean": -9.055,
+    "realised": -7.617,
+    "percentile": 0.591,
+    "hist": {
+     "lo": -29.362,
+     "step": 0.682814,
+     "counts": [
+      3,
+      0,
+      0,
+      2,
+      3,
+      4,
+      1,
+      4,
+      5,
+      4,
+      3,
+      8,
+      8,
+      20,
+      18,
+      37,
+      40,
+      44,
+      60,
+      53,
+      85,
+      88,
+      125,
+      129,
+      165,
+      197,
+      247,
+      307,
+      298,
+      350,
+      377,
+      318,
+      326,
+      359,
+      367,
+      389,
+      284,
+      188,
+      75,
+      9
+     ]
+    }
+   }
+  }
+ },
+ "drawdownProbabilities": {
+  "ok": true,
+  "horizonTrades": 123,
+  "paths": 5000,
+  "rows": [
+   {
+    "threshold": -5,
+    "probability": 0.741
+   },
+   {
+    "threshold": -10,
+    "probability": 0.223
+   },
+   {
+    "threshold": -15,
+    "probability": 0.041
+   },
+   {
+    "threshold": -20,
+    "probability": 0.006
+   },
+   {
+    "threshold": -30,
+    "probability": 0
+   }
+  ],
+  "median": -6.913,
+  "p05": -14.558
+ },
+ "monthly": {
+  "2016": {
+   "months": [
+    -5.156,
+    5.343,
+    0.448,
+    0.632,
+    -0.475,
+    4.198,
+    -1.27,
+    -0.637,
+    -1.209,
+    0.764,
+    -2.668,
+    -0.008
+   ],
+   "total": -0.037,
+   "trades": 137
+  },
+  "2017": {
+   "months": [
+    0.949,
+    0.432,
+    -1.194,
+    3.546,
+    -0.29,
+    -0.078,
+    -0.812,
+    0.279,
+    0.096,
+    -0.255,
+    -0.241,
+    -1.225
+   ],
+   "total": 1.209,
+   "trades": 83
+  },
+  "2018": {
+   "months": [
+    -0.403,
+    3.71,
+    3.763,
+    -0.113,
+    -0.052,
+    -1.915,
+    0.592,
+    -0.469,
+    -0.368,
+    5.028,
+    -0.101,
+    -0.638
+   ],
+   "total": 9.034,
+   "trades": 192
+  },
+  "2019": {
+   "months": [
+    0.366,
+    -1.449,
+    -2.625,
+    -0.209,
+    4.384,
+    -3.941,
+    -2.196,
+    4.248,
+    -0.075,
+    0.461,
+    0.713,
+    -1.006
+   ],
+   "total": -1.328,
+   "trades": 146
+  },
+  "2020": {
+   "months": [
+    3.726,
+    3.44,
+    -0.125,
+    -0.166,
+    0.695,
+    -2.58,
+    -0.242,
+    null,
+    -0.474,
+    6.38,
+    1.117,
+    null
+   ],
+   "total": 11.772,
+   "trades": 96
+  },
+  "2021": {
+   "months": [
+    -1.351,
+    0.226,
+    1.385,
+    0.316,
+    -0.094,
+    -1.749,
+    0.881,
+    -0.641,
+    -1.644,
+    -1.12,
+    -0.463,
+    8.986
+   ],
+   "total": 4.732,
+   "trades": 73
+  },
+  "2022": {
+   "months": [
+    1.362,
+    0.906,
+    -0.844,
+    3.291,
+    -0.618,
+    -1.446,
+    0.924,
+    0.81,
+    -2.081,
+    -0.157,
+    4.057,
+    5.624
+   ],
+   "total": 11.827,
+   "trades": 142
+  },
+  "2023": {
+   "months": [
+    0.982,
+    -0.89,
+    -1.635,
+    -0.915,
+    -2.296,
+    -0.773,
+    0.06,
+    -0.575,
+    0.138,
+    -1.203,
+    -1.266,
+    2.214
+   ],
+   "total": -6.16,
+   "trades": 73
+  },
+  "2024": {
+   "months": [
+    -0.398,
+    -0.443,
+    -2.825,
+    0.313,
+    0.438,
+    -0.499,
+    -0.955,
+    14.267,
+    0.229,
+    2.217,
+    -0.843,
+    3.919
+   ],
+   "total": 15.419,
+   "trades": 113
+  },
+  "2025": {
+   "months": [
+    null,
+    3.122,
+    4.407,
+    -1.289,
+    -0.203,
+    1.344,
+    1.286,
+    -1.206,
+    -0.229,
+    19.169,
+    0.044,
+    -0.01
+   ],
+   "total": 26.435,
+   "trades": 124
+  },
+  "2026": {
+   "months": [
+    -1.955,
+    -2.166,
+    -0.356,
+    -0.64,
+    3.299,
+    0.218,
+    0.381,
+    3.364,
+    null,
+    null,
+    null,
+    null
+   ],
+   "total": 2.145,
+   "trades": 124
+  }
+ },
+ "outliers": {
+  "total": 75.047,
+  "rows": [
+   {
+    "removed": 1,
+    "total": 63.684,
+    "shareOfTotal": 0.151,
+    "sharpePerTrade": 0.053
+   },
+   {
+    "removed": 5,
+    "total": 28.842,
+    "shareOfTotal": 0.616,
+    "sharpePerTrade": 0.028
+   },
+   {
+    "removed": 10,
+    "total": 5.661,
+    "shareOfTotal": 0.925,
+    "sharpePerTrade": 0.006
+   },
+   {
+    "removed": 20,
+    "total": -30.309,
+    "shareOfTotal": 1.404,
+    "sharpePerTrade": -0.036
+   },
+   {
+    "removed": 50,
+    "total": -97.181,
+    "shareOfTotal": 2.295,
+    "sharpePerTrade": -0.139
+   }
+  ]
+ },
+ "costModel": "not stated",
+ "label": "backtest description; the validation desk gates decide whether it goes to paper"
+}
