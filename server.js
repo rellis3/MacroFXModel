@@ -3959,7 +3959,9 @@ app.get('/api/ai-ab/ready', (_req, res) => {
   })) });
 });
 
-app.post('/api/ai-config', async (req, res) => {
+// Changing which model runs which task changes what the desk spends, so the POST needs the main-zone login cookie and a same-origin request (the pages that
+// call it, Bot Config and Today, are same-origin main-zone pages). The gates are defined further down (agents section), so they are called lazily here.
+app.post('/api/ai-config', (q, r, n) => _agentsGate(q, r, n), (q, r, n) => _agentsSameOrigin(q, r, n), async (req, res) => {
   try {
     const { tasks, provider, cache, models } = req.body ?? {};
     const cleanModels = {};

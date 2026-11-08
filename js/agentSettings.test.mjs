@@ -121,8 +121,8 @@ test('server.js: the routes exist, are gated (stricter than /api/ai-config), val
   const gate = src.slice(src.indexOf('const _agentsGate'), src.indexOf("app.get('/api/agents'"));
   assert.ok(gate.includes("if (!AUTH_ENABLED) return next();") && gate.includes("authVerifyCookie(authParseCookies(req)[`${AUTH_COOKIE_NAME}_main`], 'main')") && gate.includes('.status(401)'), 'main-zone login cookie, 401 JSON');
   assert.ok(gate.includes('cross-origin request refused'));
-  // ai-config itself is registered with no gate; the Agents routes must not be weaker
-  assert.ok(src.includes("app.post('/api/ai-config', async (req, res) =>"), 'ai-config has no route gate (documented in the comment above the agents routes)');
+  // the ai-config POST (which changes model routing and so spend) carries the same two gates, called lazily because they are defined further down
+  assert.ok(src.includes("app.post('/api/ai-config', (q, r, n) => _agentsGate(q, r, n), (q, r, n) => _agentsSameOrigin(q, r, n), async (req, res) =>"), 'ai-config POST is gated');
   const post = src.slice(src.indexOf("app.post('/api/agents/toggle'"), src.indexOf("app.post('/api/agents/toggle'") + 900);
   assert.ok(post.includes('_agValidateToggle(req.body)') && post.includes('res.status(400)') && post.includes('_agentToggles.set(v.id, v.value)'));
   const get = src.slice(src.indexOf("app.get('/api/agents'"), src.indexOf("app.post('/api/agents/toggle'"));
