@@ -5,6 +5,7 @@ import * as S from './speech.js';
 import * as A from './audio.js';
 import * as P from './progress.js';
 import { cropBlock } from './pdfcrop.js';
+import * as SUM from './summary.js';
 
 const $ = id => document.getElementById(id);
 const esc = M.escapeHtml;
@@ -40,7 +41,7 @@ function cardHtml(p, hit) {
   return `<a class="lib-card lib-pcard" href="#/paper/${encodeURIComponent(p.id)}" data-id="${esc(p.id)}">
     <div class="lib-pcard-top"><div class="lib-pcard-main"><h3>${esc(p.title)}</h3>
     <div class="meta">${esc(M.authorsLine(p))}${p.year ? ' · ' + esc(p.year) : ''}${p.venue ? ' · ' + esc(p.venue) : ''}</div></div>${ringHtml(pct)}</div>
-    ${snips}<div class="lib-pcard-foot"><span class="lib-badge ${s.key}">${s.label}</span>${tags}</div></a>`;
+    ${(l => `<p class="lib-pcard-short${l.muted ? ' muted' : ''}"><b>In short</b> ${esc(l.text)}</p>`)(SUM.cardLine(p))}${snips}<div class="lib-pcard-foot"><span class="lib-badge ${s.key}">${s.label}</span>${tags}</div></a>`;
 }
 function inScope() {
   return M.filterPapers(st.papers, [], st.hits ? new Set(st.hits.map(h => h.id)) : null);
@@ -133,7 +134,6 @@ function headHtml(p) {
     <div class="row"><span class="lib-badge ${s.key}">${s.label}</span><span id="pctBadge" class="lib-badge pdf"></span></div>
     <div class="row" id="tagRow">${tagsHtml(p)}</div>
     <div class="actions"><button type="button" class="lib-btn primary" id="listenBtn">🔊 Listen</button>
-    <button type="button" class="lib-btn" id="caseBtn">Test this idea</button>
     ${p.hasPdf ? `<a class="lib-btn" href="${api.pdfUrl(p.id)}" target="_blank" rel="noopener">Open PDF ↗</a>` : ''}</div></div>`;
 }
 
@@ -331,7 +331,7 @@ function bindAudio(p) {
 async function openPaper(id) {
   if (st.cur) stopReaderSide();
   $('listView').hidden = true; $('readerView').hidden = false; window.scrollTo(0, 0);
-  $('readerHead').innerHTML = '<div class="lib-loading">Loading…</div>'; $('blocks').innerHTML = ''; $('viewPdf').innerHTML = ''; $('audioBox').innerHTML = '';
+  $('readerHead').innerHTML = '<div class="lib-loading">Loading…</div>'; $('readerSummary').innerHTML = ''; $('blocks').innerHTML = ''; $('viewPdf').innerHTML = ''; $('audioBox').innerHTML = '';
   let d;
   try { d = await api.paper(id); } catch (e) { fail(e); location.hash = ''; return; }
   if (!location.hash.includes(encodeURIComponent(id))) return;
@@ -339,6 +339,7 @@ async function openPaper(id) {
   st.cur = { paper: p, blocks: d.blocks || [], pageSize: d.pageSize || {} };
   document.title = p.title + ' — Library';
   $('readerHead').innerHTML = headHtml(p);
+  $('readerSummary').innerHTML = SUM.inShortHtml(p) + SUM.helpHtml(p);
   $('viewNotes').innerHTML = notesHtml(p);
   if (d.blocks && d.blocks.length) {
     $('blocks').innerHTML = blocksHtml(d.blocks);
@@ -356,7 +357,7 @@ async function openPaper(id) {
 function bindReader(p) {
   const head = $('readerHead');
   head.querySelector('#listenBtn').onclick = openListen;
-  head.querySelector('#caseBtn').onclick = async e => {
+  $('readerSummary').querySelector('#caseBtn').onclick = async e => {
     const b = e.currentTarget; b.disabled = true;
     try {
       const r = await api.makeCase(p.id);
