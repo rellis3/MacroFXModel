@@ -108,3 +108,19 @@ The detector audit, flag counts only, showed about 120 flagged sessions per inst
 - **Proof checks:** this study also runs through `forge/verdict_gate.py`: planted edges, shuffle, power from the realised interval. The minimum effects are 0.03σ for the path, and a 0.5% Brier gain for stop-through and intensity.
 
 ## RESULTS
+
+### A2 — 2026-11-08 — PRE-RESULTS
+The stage 2 look (`scripts/jump-after/look.py`, before-burst prices only; `backtest-data/vol-layer/jump-look.json`) found five problems in what the detector flags. No outcome after a burst has been read. Decisions agreed with the owner on 2026-11-08:
+
+1. **Rollover, shown both ways.** 21:00–01:00 London holds the futures close and the daily rollover (1,319 bursts, spreads wide). The **main read excludes it**: first burst per session between 01:00 and 21:00, controls from the same window. The "with rollover" read (the A1 definition) is reported next to it for every cell, Holm'ed on its own, and labelled secondary. Stop-through and intensity use the main flag definition for features and target; the "with" version is reported beside them.
+2. **Market-wide vs own.** `cojump` = how many instruments burst in the same 5-minute slot on the same day (within the read). **Common** = 3 or more; **own** = fewer than 3. Both become scored path cells.
+3. **News split only where the calendar can see the news.** Scheduled/unscheduled cells use covered instruments (USD/EUR/GBP, gold, the indices; list in §3) and bursts between 07:00 and 21:00 London only. Other bursts stay in the overall cells, unlabelled.
+4. **Size thirds.** Bursts are cut into thirds by absolute size in σ (cut points from the read's own flags, no outcome). Reported descriptively at 60 minutes. Not scored.
+
+**Scored family (path, 60 minutes, main read): 5 cells, Holm α 0.05, two-sided:** unscheduled, scheduled, all 34, common, own. The path gate in §4 is unchanged. Stop-through (3) and intensity (1) are unchanged.
+
+**Proof checks (forge/verdict_gate.py), one per scored cell:**
+- Path. **Planted in the tape:** every close after the burst bar is shifted by sign × δ × σ in a copy of the price panel, for δ = 0.03σ (minimum) and 0.20σ (large). The measured shift must be at least half of δ. **Shuffle:** each burst gets a random direction (seed 20261108), and that interval must include 0. **Effect** for the gate: the 60-minute mean, oriented by the sign of its own estimate, so a NULL needs both ends inside ±0.03σ.
+- Stop-through and intensity. **Planted:** a synthetic target drawn from the in-sample benchmark probability plus a known random feature, sized so that the true Brier gain is about 0.5% (minimum) and about 5% (large). The model, given that feature, must recover at least half of it. **Shuffle:** the added features are permuted across rows as a block, and the gain interval must include 0. Minimum effect 0.005.
+
+**Power for the new cells (no outcomes):** about 75% of bursts are common and 25% own, so own ≈ 2,000 and common ≈ 5,500 after the rollover is removed. With the A1 design effect, the own-cell SE is about 0.013σ and the MDE about 0.04σ: powered against the 0.03σ minimum only if the realised interval is tight. The realised interval decides it.
