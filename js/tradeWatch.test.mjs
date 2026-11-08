@@ -1,6 +1,6 @@
 // Tests for js/tradeWatch.js.   node js/tradeWatch.test.mjs
 import assert from 'node:assert/strict';
-import { cardPlan, watchPlan, check, message } from './tradeWatch.js';
+import { cardPlan, watchPlan, check, message, priceNums } from './tradeWatch.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 const L = { open: 157.92, up: { p50: 158.25, p75: 158.55 }, down: { p50: 157.57, p75: 157.27 } };
@@ -46,6 +46,17 @@ t('fix 2: no "first target" before the zone is reached, and none when the zone s
   const z = check(p2, { USDJPY: 157.55 }, s2);
   assert.equal(z[0].kind, 'zone'); assert.equal(z[0].targetBehind, 157.57); assert.match(message(z[0], far, {}), /already at or behind/);
   assert.deepEqual(check(p2, { USDJPY: 157.0 }, s2), [], 'no target alert follows');
+});
+
+t('numbers written with thousands separators stay whole (gold, indices, Bitcoin; the live NQ plan of 2026-11-08)', () => {
+  assert.deepEqual(priceNums('26,850-27,010'), [26850, 27010]);
+  assert.deepEqual(priceNums('the 4,066-4,070 gamma-flip cluster'), [4066, 4070]);
+  assert.deepEqual(priceNums('above 101,250.5'), [101250.5]);
+  assert.deepEqual(priceNums('1.1118-1.1128, below open 1.11407'), [1.1118, 1.1128, 1.11407]);
+  assert.deepEqual(priceNums('15:00, 2, 3 and 4'), [15, 0, 2, 3, 4], 'a comma between small numbers is a list, not a separator');
+  const nq = { rating: 'SHORT', size: 0.7, levels: { open: 26990, up: { p50: 27250 }, down: { p50: 26700 } }, plan: { zone: '26,850-27,010', invalidation: 'close above 27,327' } };
+  const p = cardPlan(nq);
+  assert.deepEqual(p.zone, [26850, 27010]); assert.equal(p.invalid, 27327); assert.equal(p.target, 26700);
 });
 
 console.log(`tradeWatch: ${n} tests passed`);
