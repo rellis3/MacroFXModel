@@ -8490,6 +8490,25 @@ async function _seLeg15(name) {
   const m15 = add?.t?.length ? _ccMerge(base.m15, _ccAgg(add, 900)) : base.m15, now = Date.now() / 1000;
   return { bars: m15.t.map((t, i) => ({ t, c: m15.c[i] })).filter(b => b.c != null && b.t + 900 <= now), asOf: add?.t?.length ? (live.asOf ?? null) : base.asOf };
 }
+// Case 1's legs over time. SR3U6 stops trading on 15 Dec 2026 and IH7 stops being I2! on 14 Dec, so from those days the engine moves to the next 2nd-quarterly
+// contract (SR3H7 = SR32!, IM7 = I2!). Each earlier piece is shifted by the gap between the two contracts on the last 15-min bar both printed before the switch
+// (difference back-adjustment), so a roll cannot draw a spread turn that never happened. Before the first switch the series is the registered SR3U6 / IH7, unchanged.
+const _SE_ROLLS = {
+  usd: [{ from: 0, name: 'SR3U6' }, { from: Date.UTC(2026, 11, 15) / 1000, name: 'SR3H7' }],
+  eur: [{ from: 0, name: 'IH7' }, { from: Date.UTC(2026, 11, 14) / 1000, name: 'IM7' }],
+};
+async function _seRolled(sched) {
+  const now = Date.now() / 1000, live = sched.filter(x => x.from <= now);
+  const legs = await Promise.all(live.map(x => _seLeg15(x.name)));
+  let bars = legs[0].bars;
+  for (let k = 1; k < live.length; k++) {
+    const sw = live[k].from, nxt = legs[k].bars, have = new Map(nxt.map(b => [b.t, b.c]));
+    const common = bars.filter(b => b.t < sw && have.has(b.t)).pop();
+    const off = common ? have.get(common.t) - common.c : 0;
+    bars = [...bars.filter(b => b.t < sw).map(b => ({ t: b.t, c: b.c + off })), ...nxt.filter(b => b.t >= sw)];
+  }
+  return { bars, asOf: legs[legs.length - 1].asOf, names: live.map(x => x.name) };
+}
 async function _seNasBars() {
   const from = _seNas.length ? new Date((_seNas[_seNas.length - 1].time - 86400) * 1000).toISOString().slice(0, 10) : new Date(Date.now() - 190 * 86400e3).toISOString().slice(0, 10);
   const add = await fetchIntraday('NAS100_USD', 'M15', { from }), m = new Map(_seNas.map(b => [b.time, b]));
@@ -8523,10 +8542,10 @@ async function _seTick(opts = {}) {
   try {
     if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set');
     try {
-      const [s, e, nas] = await Promise.all([_seLeg15('SR3U6'), _seLeg15('IH7'), _seNasBars()]);
+      const [s, e, nas] = await Promise.all([_seRolled(_SE_ROLLS.usd), _seRolled(_SE_ROLLS.eur), _seNasBars()]);
       const F = _seBuild1({ sofr: s.bars, eur: e.bars, nas: nas.map(b => ({ t: b.time, c: b.close })) });
       if (F.n < 3000) throw new Error(`only ${F.n} aligned 15-min bars`);
-      _seLast.F.case1 = F; _seLast.A.case1 = { ..._seAnalyse(F), legsAsOf: { SR3U6: s.asOf, IH7: e.asOf }, stale: Date.now() / 1000 - F.T[F.n - 1] > 3 * 3600 };
+      _seLast.F.case1 = F; _seLast.A.case1 = { ..._seAnalyse(F), legsAsOf: { [s.names.at(-1)]: s.asOf, [e.names.at(-1)]: e.asOf }, legs: { usd: s.names, eur: e.names }, stale: Date.now() / 1000 - F.T[F.n - 1] > 3 * 3600 };
     } catch (e) { errors.case1 = e.message; }
     try {
       if (Date.now() - _rates.at > 6 * 3600_000 || !_rates.series) await _refreshRates();

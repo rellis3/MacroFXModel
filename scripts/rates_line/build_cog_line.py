@@ -1,7 +1,7 @@
 """Build the C.OG rate-spread line series that the Rates page, /api/cog-line and the pasted-data TradingView indicator all read.
 
 The line (identified in analysis/output/cog_video_0918/RECONSTRUCTION.md): (SOFR rate - Euribor rate), in basis points; the indicator then maps it as
-bp * 0.1 + 1.445 (C.OG's scale and default offset).  Legs: CME SOFR Sep26 (SR3U6) and ICE Euribor I2! (the 2nd quarterly: Mar27 / IH7 until the Dec26 contract
+bp * 0.1 + 1.445 (C.OG's scale and default offset).  Legs: CME SOFR Sep26 (SR3U6; Mar27 / SR3H7 = SR32! from 15 Dec 2026) and ICE Euribor I2! (the 2nd quarterly: Mar27 / IH7 until the Dec26 contract
 expires on 14 Dec, then Jun27 / IM7).  Values are 15-minute closes of 1-minute MIDPOINT bars, stored at the bar's OPEN time (how TradingView draws a bar).
 
 Output: analysis/output/cog_line/cog_line_15m.json   {t0, step, bp: [...|null], legs, asOf, ...}.  Inputs: analysis/output/stir_1m/<EXCH>_<LOCAL>.parquet
@@ -12,7 +12,8 @@ import numpy as np, pandas as pd
 ROOT = Path(__file__).resolve().parents[2]; SRC = ROOT / 'analysis' / 'output' / 'stir_1m'; OUT = ROOT / 'analysis' / 'output' / 'cog_line' / 'cog_line_15m.json'
 # leg segments: the pair in force from `from` (UTC date, inclusive) until the next segment starts
 LEGS = [dict(frm='2026-09-15', usd='CME_SR3U6', eur='ICEEU_IH7', label='SOFR Sep26 (CME SR3U6) minus Euribor Mar27 (ICE IH7 = I2!)'),
-        dict(frm='2026-12-15', usd='CME_SR3Z6', eur='ICEEU_IM7', label='SOFR Dec26 (CME SR3Z6) minus Euribor Jun27 (ICE IM7 = I2!)')]
+        dict(frm='2026-12-15', usd='CME_SR3H7', eur='ICEEU_IM7', label='SOFR Mar27 (CME SR3H7 = SR32!) minus Euribor Jun27 (ICE IM7 = I2!)')]
+# From 15 Dec the US leg is SR32! (Mar27), not the new front Dec26: SR3Z6 starts its own 3-month fixing window on 16 Dec and goes flat the way SR3U6 did after 16 Sep.
 def close15(name):
     p = SRC / f'{name}.parquet'
     if not p.exists(): return None
