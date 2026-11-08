@@ -109,7 +109,6 @@ Found 2026-11-07 by searching SSRN-registered papers (Crossref, prefix 10.2139) 
 | Paper | Year | Download (SSRN, needs login) |
 |---|---|---|
 | ★ Stock Returns Over the FOMC Cycle · Anna Cieslak, Adair Morse | 2015 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2687614) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2687614) |
-| ★ The Pre-FOMC Announcement Drift · Emanuel Moench, David O. Lucca | 2012 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2024459) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2024459) |
 | Term Structure Anomalies: Term Premium or Peso Problem? · Caroline Jardet | 2010 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1699598) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1699598) |
 | Does Central Bank Tone Move Asset Prices? · Maik Schmeling, Christian Wagner | 2015 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2629978) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2629978) |
 
@@ -134,7 +133,6 @@ Found 2026-11-07 by searching SSRN-registered papers (Crossref, prefix 10.2139) 
 | The Black-Litterman Model in Detail · Jay Walters | 2011 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=1314585) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1314585) |
 | Beyond Black-Litterman: Views on Non-Normal Markets · Attilio Meucci | 2005 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=848407) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=848407) |
 | Portfolio Optimization with Drawdown Constraints · Alexei Chekhlov, Stanislav P. Uryasev | 2000 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=223323) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=223323) |
-| Risk Parity and Beyond - From Asset Allocation to Risk Allocation Decisions · Romain Deguest, Lionel Martellini | 2013 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=2355778) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2355778) |
 
 ### Method (quant toolbox)
 
@@ -179,7 +177,6 @@ Found 2026-11-07: SSRN-registered papers (Crossref, prefix 10.2139) issued from 
 | Do Carry Trade Returns Follow A Random Walk? · Larissa Adamiec, Deborah Cernauskas | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6844481) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6844481) |
 | Scaling Laws and Yield Curve Dynamics: A Fractal Framework for Improving Currency Carry Trade Return Distributions · Morgan Weinel | 2025 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=5678343) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5678343) |
 | Predictability of Exchange Rates with a Discount Factor Below Unity · Bas Berend Bakker | 2025 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=5144996) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5144996) |
-| Composite Liquidity Imbalance: Integrating Order Flow and Order Book Data for Foreign Exchange · Ryuichi Yamamoto, Almuqrin Fawaz | 2025 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=5355126) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5355126) |
 | Sovereign Momentum Currency Returns · Giovanni Calice, Ming-Tsung Lin | 2023 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=4432214) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4432214) |
 
 ### Volatility
@@ -194,7 +191,6 @@ Found 2026-11-07: SSRN-registered papers (Crossref, prefix 10.2139) issued from 
 | On Options-Driven Realized Volatility Forecasting: Information Gains via Rough Volatility Model · Zheqi Fan, Meng (Melody) Wang | 2025 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=5974814) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5974814) |
 | Forecasting Stock Market Volatility with Realized Volatility, Volatility Components and Jump Dynamics · Xuebao Yin, Xinyu Wu | 2023 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=4578463) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4578463) |
 | NHITS for Forecasting Stock Realized Volatility · Hugo Gobato Souto | 2023 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=4650761) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4650761) |
-| Implied Volatility in Stochastic Volatility Models With Jump to Default · Frido Rolloos | 2023 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=4319391) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4319391) |
 
 ### Options & dealers
 
@@ -235,7 +231,6 @@ Found 2026-11-07: SSRN-registered papers (Crossref, prefix 10.2139) issued from 
 | Forecastability of the US Yield Curve · Emrah Ahi, Levent Guntay | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6507110) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6507110) |
 | Break-Even Yield in Fixed-Income Portfolios: A Unifying Framework for Carry and Risk-Based Allocation · Mario Bajo Traver | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6480378) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6480378) |
 | Election Probabilities and the Treasury Yield Curve · Emrehan Aktug, Orhan Torul | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6972078) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6972078) |
-| The Position and Slope of the Yield Curve · Francis E. Warnock | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6064638) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6064638) |
 | Beyond the Announcement Window: What Monthly FOMC Regressions Measure · Saurabh Ahluwalia | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7674953) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7674953) |
 | When the Chair Speaks: Communication and the FOMC Announcement Premium · Daniil Gerchik | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6614558) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6614558) |
 | What Survives an FOMC Surprise? Confounding and the Persistence of Announcement Effects in Asset Prices · Arka Prava Bandyopadhyay | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7533561) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7533561) |
@@ -290,3 +285,13 @@ Found 2026-11-07: SSRN-registered papers (Crossref, prefix 10.2139) issued from 
 | From Aggregate Hedger Positioning to Firm-Level Tradable Alpha: A Pre-Registered Cross-Sectional COT Shock Strategy on Commodity Producer Equity · Hyun Ahn | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=6730238) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6730238) |
 | Risk Mitigation of Momentum Strategy Using Stop-Loss Rules · Mohsin Sadaqat, Hilal Anwar Butt | 2026 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=7511970) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7511970) |
 | Clarifying the Impact of Speculators and Financial Investors on Commodity Futures Markets · Hilary Till | 2025 | [download](https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=5277088) · [page](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5277088) |
+
+## Not available on SSRN (reported by the owner, 2026-11-08)
+
+These five have a registered SSRN DOI (that is how they were found) but the SSRN page or download does not exist, so they are removed from the lists above and from the library's To get tab. Search by title elsewhere:
+
+- The Pre-FOMC Announcement Drift (Lucca & Moench): free from the New York Fed as Staff Report 512, direct PDF https://www.newyorkfed.org/medialibrary/media/research/staff_reports/sr512.pdf (page https://www.newyorkfed.org/research/staff_reports/sr512). The published version is Journal of Finance 2015.
+- Risk Parity and Beyond: From Asset Allocation to Risk Allocation Decisions (Deguest & Martellini, 2013): try the EDHEC-Risk Institute site.
+- Composite Liquidity Imbalance: Integrating Order Flow and Order Book Data for Foreign Exchange (Yamamoto & Fawaz, 2025): search the authors' pages or Google Scholar.
+- Implied Volatility in Stochastic Volatility Models With Jump to Default (Rolloos, 2023): try arXiv or Google Scholar.
+- The Position and Slope of the Yield Curve (Warnock, 2026): try NBER or the author's page.
