@@ -38,7 +38,7 @@ import {
 
 export const KV_KEY = 'library_state_v1';
 export const MAX_PROGRESS = 3000;
-const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:%@+-]{0,159}$/;
+const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:%@+/-]{0,159}$/;
 const isPlain = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 const reply = (status, json, headers) => ({ status, json, ...(headers ? { headers } : {}) });
 const bad = (status, error) => reply(status, { ok: false, error });
