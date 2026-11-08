@@ -135,6 +135,8 @@ export const TASK_CLASS = {
   // the paper library's equations (owner 2026-11-08, spend approved and capped): text only, about 25 equations per call as compact JSON in, LaTeX out;
   // hard cap of 1500 calls in KV (library_math_v1). DeepSeek, on the cheap 'brief' ledger, like the paper reader.
   'library-math': { ledger: 'brief', label: 'Paper library: equations to LaTeX', defaultProvider: 'deepseek' },
+  // Figure and table notes from the paper's text only (js/libraryFigs.js): same shape as library-math, hard cap of 600 calls in KV (library_figs_v1).
+  'library-figs': { ledger: 'brief', label: 'Paper library: figure and table notes', defaultProvider: 'deepseek' },
   'research-head': { ledger: 'full',  label: 'Research pod: Head of Research review', defaultProvider: 'anthropic', models: { anthropic: 'claude-sonnet-5' }, effort: { anthropic: 'high' } },
   // pictures the owner attaches to a research question (owner 2026-11-06): each is read ONCE by a vision model into a
   // written description that the researchers (DeepSeek, which cannot see images) and the Head then read as text.

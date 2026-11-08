@@ -6839,6 +6839,13 @@ const _libApi = _createLibraryApi({
     if (!v.ok) throw new Error(v.errors.join('; '));
     return v.value;
   },
+  // the figure/table notes job (js/libraryFigs.js): DeepSeek, task 'library-figs', the paper's text only, capped in KV (library_figs_v1)
+  figsModel: async ({ system, prompt, maxTokens }) => {
+    const v = await _modelJson({ task: 'library-figs', system, prompt, maxTokens, timeoutMs: 150_000, label: 'library:figs', tries: 1,
+      validate: o => (o && (Array.isArray(o.notes) || Array.isArray(o)) ? { ok: true, value: o } : { ok: false, errors: ['the reply has no notes array'] }) });
+    if (!v.ok) throw new Error(v.errors.join('; '));
+    return v.value;
+  },
 });
 _libApi.reapStaleAudio().catch(() => {});
 const _libRoute = (method, p, fn) => app[method](`/api/library/${p}`, async (req, res) => {
@@ -6872,6 +6879,19 @@ app.get('/api/research-pod/math', async (_req, res) => {
 app.post('/api/research-pod/math', async (req, res) => {
   try {
     const out = await _libApi.math.start({ calls: Number(req.body?.calls) || 6 });
+    res.status(out.status ?? 200).json(out.ok ? { ok: true, job: out.job } : { ok: false, error: out.error, job: out.job ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/research-pod/figs: the figure/table notes job's status (papers todo/done, model calls used against the 600 cap, the running job).
+// POST /api/research-pod/figs { calls? 1-12 }: one short 'what this shows' note per figure and table, from the paper's text only (DeepSeek), notes-papers first.
+// Same open style as the equations job: no login of its own, but every press is limited to 12 calls and the total to the cap (kv key library_figs_v1).
+app.get('/api/research-pod/figs', async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); res.json(await _libApi.figs.status()); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/research-pod/figs', async (req, res) => {
+  try {
+    const out = await _libApi.figs.start({ calls: Number(req.body?.calls) || 6 });
     res.status(out.status ?? 200).json(out.ok ? { ok: true, job: out.job } : { ok: false, error: out.error, job: out.job ?? null });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });

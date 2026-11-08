@@ -253,6 +253,8 @@ test('the research pod runs on DeepSeek, the Head of Research on Anthropic, by d
   assert.equal(resolveTask('research-reader', { keys: both, provider: 'anthropic' }).provider, 'deepseek', 'the paper reader is on DeepSeek whatever the global default');
   assert.equal(resolveTask('library-math', { keys: both, provider: 'anthropic' }).provider, 'deepseek', 'the library equations job is on DeepSeek whatever the global default');
   assert.equal(TASK_CLASS['library-math'].ledger, 'brief'); assert.equal(carriesLedger('library-math'), true);
+  assert.equal(resolveTask('library-figs', { keys: both, provider: 'anthropic' }).provider, 'deepseek', 'the figure-notes job is on DeepSeek whatever the global default');
+  assert.equal(TASK_CLASS['library-figs'].ledger, 'brief'); assert.equal(carriesLedger('library-figs'), true);
   assert.equal(resolveTask('research-head', { keys: both, provider: 'deepseek' }).provider, 'anthropic', 'the Head stays on Anthropic whatever the global default');
   assert.equal(resolveTask('research-head', { keys: both }).effort, 'high');
   // POST /api/ai-config replaces the whole tasks map: a map saved before these tasks existed leaves them on their own default

@@ -595,13 +595,38 @@ function attachFigureGraphics(figs, pages, linesByPage, B, owned) {
     }
     const rs = g.regs;
     j.f.gfx = [Math.min(...rs.map(r => r.ex0)), Math.min(...rs.map(r => r.ey0)), Math.max(...rs.map(r => r.ex1)), Math.max(...rs.map(r => r.ey1))];
-    for (const r of rs) for (const l of r.labels) { l._junk = 1; owned.add(l); }
+    j.f.inLines = [];
+    for (const r of rs) for (const l of r.labels) { l._junk = 1; owned.add(l); j.f.inLines.push(l); }
     // short unclaimed lines inside the figure box (an axis title set apart from the plot) belong to it too
     const [fx0, fy0, fx1, fy1] = j.f.gfx, capLo = Math.min(j.capBot, fy0), capHi = Math.max(j.capTop, fy1);
-    for (const l of j.lines) if (free(l) && !l._junk && labelLike(l) && l.top <= capHi + 0.5 && l.bot >= capLo - 0.5 && !(l.top > j.capTop && l.bot < j.capBot) && ovl(l.x0, l.x1, fx0, fx1) > 0.5 * (l.x1 - l.x0) && !j.cl.includes(l)) { l._junk = 1; owned.add(l); }
+    for (const l of j.lines) if (free(l) && !l._junk && labelLike(l) && l.top <= capHi + 0.5 && l.bot >= capLo - 0.5 && !(l.top > j.capTop && l.bot < j.capBot) && ovl(l.x0, l.x1, fx0, fx1) > 0.5 * (l.x1 - l.x0) && !j.cl.includes(l)) { l._junk = 1; owned.add(l); j.f.inLines.push(l); }
   }
 }
 
+// Text kept beside the crop for the figure/table notes (js/libraryFigs.js), never in paragraphs, search or listening:
+// table cells (rows of cells joined by '|', <= 40 rows x 12 columns) and the text absorbed inside a graphic (<= 300 chars).
+const CELLS_ROWS = 40, CELLS_COLS = 12, INTEXT_MAX = 300;
+function tableCells(rows) {
+  const out = [];
+  for (const l of rows ?? []) {
+    const c = (l._cells ?? []).map(x => String(x.s ?? '').replace(/[|\s]+/g, ' ').trim()).filter(Boolean).slice(0, CELLS_COLS);
+    if (c.length) out.push(c.join('|').slice(0, 240));
+    if (out.length >= CELLS_ROWS) break;
+  }
+  return out;
+}
+const TICKISH = /^[-\u2212\u2013+]?\(?\d[\d,.]*%?\)?$/;
+function figInText(lines) {
+  const seen = new Set(), words = [], ticks = [];
+  for (const l of [...(lines ?? [])].sort((a, b) => b.top - a.top || a.x0 - b.x0)) {
+    const t = String(l.text ?? '').replace(/\s+/g, ' ').trim(); if (!t) continue;
+    if (TICKISH.test(t)) { const v = parseFloat(t.replace(/[,%()\u2212\u2013]/g, m => (m === '\u2212' || m === '\u2013' ? '-' : '')).replace(/,/g, '')); if (Number.isFinite(v)) ticks.push({ v, t }); continue; }
+    if (/^[^A-Za-z0-9]*$/.test(t) || seen.has(t.toLowerCase())) continue;
+    seen.add(t.toLowerCase()); words.push(t);
+  }
+  if (ticks.length >= 2) { const lo = ticks.reduce((a, b) => (b.v < a.v ? b : a)), hi = ticks.reduce((a, b) => (b.v > a.v ? b : a)); if (lo.t !== hi.t) words.push(`ticks ${lo.t} to ${hi.t}`); }
+  return words.join(' | ').slice(0, INTEXT_MAX);
+}
 const PAD = 3.5;   // crop padding in PDF units around equation and table boxes
 const CAP_FIG = /^(figure|fig\.)\s*(\d+|[IVX]+)\s*[:.—–|-]/i;
 const CAP_TAB = /^(table|tab\.)\s*(\d+|[IVX]+)\s*[:.—–|-]/i;
@@ -898,11 +923,12 @@ function build(input) {
 
   const emitClaim = (cl, L) => {
     if (cl.kind === 'eq') { const eb = push('eq', cl.lines.map(l => l.text).join(' '), L.page, paddedBox(cl.lines, pageLinesMap.get(L.page) ?? [], B, PAD, PAD), cl.label); const sr = eqSource(cl.lines, rulesByPage.get(L.page) ?? [], B); if (sr) eb.src = sr; }
-    else if (cl.kind === 'table') push('table', cl.caption || cl.rows.map(l => l._cells.map(c => c.s).join(' | ')).join('\n').slice(0, 600), L.page, withRules(paddedBox(cl.lines, pageLinesMap.get(L.page) ?? [], B, PAD, PAD), rulesByPage.get(L.page) ?? [], pageSize[L.page]), cl.label);
+    else if (cl.kind === 'table') { const tb = push('table', cl.caption || cl.rows.map(l => l._cells.map(c => c.s).join(' | ')).join('\n').slice(0, 600), L.page, withRules(paddedBox(cl.lines, pageLinesMap.get(L.page) ?? [], B, PAD, PAD), rulesByPage.get(L.page) ?? [], pageSize[L.page]), cl.label); const cells = tableCells(cl.rows); if (cells.length) tb.cells = cells; }
     else {
       let bx = unionBox(cl.lines, 1.5), gfx = false;
       if (cl.gfx && bx) { const sz = pageSize[L.page]; bx = [r1(Math.max(0, Math.min(bx[0], cl.gfx[0] - PAD))), r1(Math.max(0, Math.min(bx[1], cl.gfx[1] - PAD))), r1(Math.min(sz[0], Math.max(bx[2], cl.gfx[2] + PAD))), r1(Math.min(sz[1], Math.max(bx[3], cl.gfx[3] + PAD)))]; gfx = true; }
       const fb = push('fig', cl.caption, L.page, bx, cl.label); if (gfx) fb.gfx = true;
+      const it = figInText(cl.inLines); if (it) fb.inText = it;
     }
   };
   const noteLines = [];

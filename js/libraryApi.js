@@ -16,6 +16,7 @@
  *   tts:{ getProvider(), makeMp3(chunks, provider, opts) }   js/paperTts.js (mock it in tests)
  *   readFreeSources()                                   (optional) parsed education/papers/free_sources.json; missing or broken = no manifest
  *   mathModel({ system, prompt, maxTokens })            (optional) the capped model call of the equations job (task 'library-math'); absent = the job says no key
+ *   figsModel({ system, prompt, maxTokens })            (optional) the capped model call of the figure/table notes job (task 'library-figs'); absent = the job says no key
  *   modelReady()                                        (optional) false when no model key is set
  *   fetchArxiv(id)                                      (optional) arXiv HTML equations (default js/arxivMath.js, polite); tests inject a fake
  *   validateLatex(latex)                                (optional) KaTeX check (default js/libraryMath.js)
@@ -30,6 +31,7 @@ import { cleanBlocks } from './paperStamps.js';
 import { cardLine } from './library/summary.js';
 import { flatTextToPages } from './paperPages.js';
 import { createMath, resolveLatex, mergeLatexIntoBlocks, validateLatex } from './libraryMath.js';
+import { createFigs, mergeNotesIntoBlocks } from './libraryFigs.js';
 import { speechSentences, briefingScript, chunkForTts, estimateSecs, toSentences } from './paperAudio.js';
 import {
   joinCatalog, topicCounts, sourceCounts, yearCounts, freeLookup, TOPIC_KEYS, TOPICS, buildIndex, addDoc, search as indexSearch, setDocTags,
@@ -179,6 +181,18 @@ export function createLibraryApi(deps) {
     getBlocks: id => getBlocks(id, true),
   });
 
+  // ── figure and table notes (js/libraryFigs.js): DeepSeek from the paper's text only, capped in KV (library_figs_v1) ──
+  const figs = createFigs({
+    kv, r2, uploadKey, now, log, figsModel: deps.figsModel, modelReady: deps.modelReady,
+    papers: async () => { const cat = await catalog(); return cat.list.map(p => ({ id: p.id, hasPdf: p.hasPdf, hasText: p.hasText, read: !!(p.notes && (p.notes.claim || p.notes.mechanism || p.notes.method)), title: p.title, abstract: p.abstract })); },
+    getBlocks: id => getBlocks(id, true),
+  });
+  /** Blocks with the stored figure/table notes merged in; any failure returns the blocks as they were. */
+  async function withFigNotes(id, blocks) {
+    if (!blocks?.some(b => b.type === 'fig' || b.type === 'table')) return blocks;
+    try { return mergeNotesIntoBlocks(blocks, await figs.fileOf(id)); } catch (e) { log.warn?.(`[library] figs ${id}: ${e.message}`); return blocks; }
+  }
+
   // ── blocks: R2 cache, built in the worker thread on first open ──
   async function getBlocks(id, paperHasPdf) {
     if (blocksMem.has(id)) return blocksMem.get(id);
@@ -186,7 +200,7 @@ export function createLibraryApi(deps) {
     const job = (async () => {
       if (r2.ok()) {
         const c = await r2.getBuffer(blocksKey(id)).catch(() => null);
-        if (c) { try { const j = JSON.parse(c.toString('utf8')); if (j?.v === 4 && Array.isArray(j.blocks)) return j; /* v3: equation blocks carry their positioned items (src) for the LaTeX layers; v4: figure blocks include their graphic (gfx), tables detected by numeric columns, footnote markers cut out (foot blocks) */ } catch { /* rebuild */ } }
+        if (c) { try { const j = JSON.parse(c.toString('utf8')); if (j?.v === 5 && Array.isArray(j.blocks)) return j; /* v3: equation blocks carry their positioned items (src) for the LaTeX layers; v4: figure blocks include their graphic (gfx), tables detected by numeric columns, footnote markers cut out (foot blocks); v5: table blocks keep their cell rows (cells) and figure blocks the text inside the graphic (inText) for the figure notes, js/libraryFigs.js */ } catch { /* rebuild */ } }
       }
       let pages = null, source = 'flat';
       if (r2.ok() && paperHasPdf !== false) {
@@ -195,7 +209,7 @@ export function createLibraryApi(deps) {
       }
       if (!pages) { const t = await textOf(id); if (!t) return null; pages = flatTextToPages(t).pages; }
       const built = buildBlocks(pages);
-      const doc = { v: 4, source, pages: pages.length, pageSize: built.pageSize, blocks: built.blocks };
+      const doc = { v: 5, source, pages: pages.length, pageSize: built.pageSize, blocks: built.blocks };
       if (r2.ok() && built.blocks.length) await r2.putBuffer(blocksKey(id), Buffer.from(JSON.stringify(doc)), 'application/json').catch(e => log.warn?.(`[library] cache blocks ${id}: ${e.message}`));
       return doc;
     })();
@@ -252,6 +266,7 @@ export function createLibraryApi(deps) {
         if (!file.arxiv) math.syncArxiv(id, arxivRecOf(p, cat), doc.blocks).catch(() => {});   // free, one polite request per paper, in the background: the next open has it
       } catch (e) { log.warn?.(`[library] math ${id}: ${e.message}`); blocks = blocks.map(({ src, ...b }) => b); }
     }
+    blocks = await withFigNotes(id, blocks);
     return reply(200, { ok: true, paper: { ...p, pages: doc?.pages ?? p.pages, theory: theoryOf(p) }, blocks, pageSize: doc?.pageSize ?? {}, pages: doc?.pages ?? p.pages ?? null });
   };
 
@@ -330,7 +345,7 @@ export function createLibraryApi(deps) {
   // the listen script. sentences: string[]; blocks: the source block index of each sentence (null in briefings), for highlighting.
   async function scriptFor(p, mode) {
     let doc = null; if (p.hasText || p.hasPdf) { try { doc = await getBlocks(p.id, p.hasPdf); } catch { doc = null; } }
-    const blocks = doc?.blocks ?? null;
+    const blocks = doc?.blocks ? await withFigNotes(p.id, doc.blocks) : null;
     if (mode === 'briefing') {
       const abs = p.abstract || (blocks ? abstractOf(blocks) : '');
       const b = briefingScript({ title: p.title, year: p.year, abstract: abs, notes: p.notes }, blocks, blocks ? conclusion(blocks) : []);
@@ -385,6 +400,7 @@ export function createLibraryApi(deps) {
   /** A job that was 'working' when the server restarted will never finish: report it as an error instead of spinning forever. */
   H.reapStaleAudio = () => mutate(async s => { for (const [id, a] of Object.entries(s.audio)) if (a.briefing?.status === 'working' && !jobs.has(id) && now() - (a.briefing.at ?? 0) > 60_000) a.briefing = { ...a.briefing, status: 'error', error: 'interrupted by a restart; try again' }; });
 
+  H.figs = figs;   // GET/POST /api/research-pod/figs
   H.math = math;   // GET/POST /api/research-pod/math (server.js mounts it like the reading backlog)
   H._test = { catalog, getBlocks, readState, dropCatalog, jobsActive: () => [...jobs.keys()] };
   return H;

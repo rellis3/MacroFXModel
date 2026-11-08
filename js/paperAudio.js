@@ -219,6 +219,18 @@ export function toSentences(text, max = MAX_SENTENCE) {
   return out;
 }
 
+// ---------- figure and table notes ----------
+const FIG_SOURCE_LINE = "Notes on figures and tables come from the paper's text, not from the pictures.";
+const figNote = (b) => str(b?.note).replace(/\s+/g, ' ').trim().slice(0, 320);
+const figLabel = (b) => (/^(?:Figure|Table)\s+\S+$/.test(str(b?.label)) ? str(b.label) : b?.type === 'table' ? 'Table' : 'Figure');
+
+/** Up to `max` confident notes, the most referred-to first (ties: document order): [{ label, note }]. */
+function chartNotes(blocks, max) {
+  const have = arr(blocks).filter((b) => b && typeof b === 'object' && (b.type === 'fig' || b.type === 'table') && b.noteConfident === true && figNote(b) && /^(?:Figure|Table)\s+\S+$/.test(str(b.label)));
+  have.sort((a, b) => (+b.noteRefs || 0) - (+a.noteRefs || 0) || (+a.i || 0) - (+b.i || 0));
+  return have.slice(0, max).map((b) => ({ label: str(b.label), note: figNote(b) }));
+}
+
 // ---------- full listen text ----------
 const PAGE_NUM = /^\s*(?:page\s*)?\d{1,4}(?:\s*(?:of|\/)\s*\d{1,4})?\s*$/i;
 const BOILER = /electronic copy available|downloaded from|all rights reserved|ssrn\.com\/abstract|^\s*preprint\b|submitted to\b/i;
@@ -256,7 +268,7 @@ export function speechSentences(blocks, opts = {}) {
     const list = arr(blocks);
     const headers = runningHeaders(list.filter((b) => b && typeof b === 'object'));
     const out = [];
-    let inRefs = false;
+    let inRefs = false, saidSource = false;
     list.forEach((b, idx) => {
       if (!b || typeof b !== 'object') return;
       const block = b.i != null && Number.isFinite(+b.i) ? +b.i : idx;
@@ -269,6 +281,10 @@ export function speechSentences(blocks, opts = {}) {
         return;
       }
       if (type === 'eq') return add(['An equation appears here.']);
+      if ((type === 'table' || type === 'fig') && figNote(b)) {   // the model's note from the paper's text (js/libraryFigs.js), never the numbers
+        if (!saidSource) { saidSource = true; add(toSentences(FIG_SOURCE_LINE, max)); }
+        return add(toSentences(`${figLabel(b)}. ${figNote(b)}`, max));
+      }
       if (type === 'table') return add(['A table appears here.']);
       if (type === 'fig' || type === 'refs') return;
       if (type !== 'p' && type !== '') return;
@@ -330,6 +346,7 @@ const NOTE_ORDER = [
   ['relevance', 'For our desk: '],
   ['testHere', 'To test it here: '],
 ];
+const CHART_NOTES_BY_LEVEL = [4, 3, 2, 1];
 const MIN_BRIEFING_WORDS = 0;
 const MAX_BRIEFING_WORDS = 750;   // five minutes at 150 wpm
 
@@ -406,6 +423,11 @@ export function briefingScript(paper, blocks, conclusion) {
         const merged = [first, ...body.slice(1)].map((s, k) => (k === body.length - 1 || /[.!?]$/.test(s) ? s : s + '.'));
         sentences.push(...merged.flatMap((s) => (s.length > MAX_SENTENCE ? splitLong(s) : [s])));
         src.notes = true;
+      }
+      const charts = chartNotes(blocks, CHART_NOTES_BY_LEVEL[level] ?? 1);
+      if (charts.length) {
+        sentences.push('Charts and tables.', FIG_SOURCE_LINE);
+        for (const c of charts) sentences.push(...toSentences(`${c.label}. ${c.note}`));
       }
       if (concl.length) {
         const firstP = trimToSentences(concl[0], c.concl);
