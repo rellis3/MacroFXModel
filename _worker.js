@@ -91,6 +91,7 @@ function isAllowedKVKey(key) {
     'research_pod_dossiers',
     'research_pod_papers',
     'research_pod_queue',
+    'library_state_v1',  // Paper Library (js/libraryApi.js): reading progress, manual tags, MP3 job state
     'research_pod_quicktests',
     'fx_fair_value_log_v1',
     'system_reviews',
@@ -1147,6 +1148,7 @@ export default {
             'research_pod_dossiers',
             'research_pod_papers',
             'research_pod_queue',
+            'library_state_v1',  // Paper Library (js/libraryApi.js): reading progress, manual tags, MP3 job state
             // research_pod_quicktests: the research lab's exploratory quick tests; fx_fair_value_log_v1: the short-term fair value's forward record.
             'research_pod_quicktests',
             'fx_fair_value_log_v1',
