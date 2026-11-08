@@ -13,6 +13,7 @@ below that is not built is drawn dashed and marked `planned` on the Agents tab (
 | v1 | 2026-11-08 | First design (PR #1702): scanner, writer, queue, evaluator, one registry, board, forward tracker, Research QA, three approvals, no daily cap. |
 | v2 | 2026-11-08 | Second design pass: the nine changes in section 0. Design preserved; no new agent added. New boxes are stores, stage gates, a boundary and two owner-decision boxes (all in the flow charts, all `planned` except the lockbox boundary, which is an existing rule). Two v1 statements corrected (section 21): the trial ledger does not read register rows; "Research approved" was set by the Head in section 9 but by the owner in v1 section 15. The lockbox section (8) is a **release blocker**. |
 | v2.1 | 2026-11-08 | Two owner additions: one trial pool across all three routes (section 22) and the Evidence Pack and audit trail (section 23). Windows agreed by the owner (Q1: practice to 2025-09-04, confirmation 2025-09-05 to 2026-08-20). Docs only. |
+| v2.2 | 2026-11-08 | Owner decisions: Q1 windows agreed; Q2 default applied (windows end 2026-08-20); Q3 changed by the owner: the three frozen layers may still be alive, but H-A sessions MAY be used to FORM hypotheses (section 8.6). No lockbox rule changed. Docs only. |
 
 ## 0. The nine changes at a glance
 
@@ -337,8 +338,8 @@ baseline already explains is reported as "no incremental value". Baselines must 
   (H-A), and the shadow screens' operation from 2026-10-07 (H-B: nothing may change because of what they show).
 - **Not literally forbidden by the lockbox file:** other analyses on H-A. The file restricts *scoring layers 3, 5, 6* and
   *changing things because of the shadow screens*. Other studies have already touched post-cutoff data (section 8.5, A5). The ROE
-  chooses to be stricter than the file (8.4), because an ROE selection that used H-A would spoil any later independent check of the
-  same question.
+  was stricter than the file in v2 (8.4). **v2.2: the owner relaxed this for hypothesis FORMATION (8.6).** The remaining reason for
+  care is unchanged: evidence for a hypothesis must come from data that did not inspire or tune it.
 
 ### 8.3 Which dates and datasets each stage may use (PROPOSED; owner confirms: Q1, Q2)
 
@@ -354,7 +355,7 @@ rule changes.
 | **Replay evaluation** (Stage 1) | the same window | same | Stage 1 sees nothing in the confirmation slice. |
 | **Stage 2 Confirmation** | **2025-09-05 through 2026-08-20** (the "former test year": research data for layers 3/5/6, but no ROE question has been run on it) | same series, same snapshots | One look per frozen hypothesis; the slice is shared, so the count of looks is recorded and BH-corrected. About 11.5 months: many questions will return Underpowered, which is the honest answer (`plans/FORECAST_INFORMATION_ROADMAP.md` L58 already says the post-cutoff lockbox "is about 45 sessions, too short for most questions"). |
 | **Stage 3 Forward** | sessions **strictly after the freeze date** of each hypothesis; in practice all after 2026-08-21 | forward data as it arrives | Written to the Forward Ledger; display and use in any decision are **held until the one lockbox evaluation has run** (DATA_AGENT.md open question 3, kept). |
-| **H-A** (all sessions after 2026-08-21) | **not available** to Stage 1 or Stage 2, ever, as selection or independent confirmation | n/a | The only sanctioned use is `forge.lockbox_check --evaluate`, scoring layers 3/5/6. Even after it has run, the ROE does not treat H-A as untouched (the scanner has seen it); Q3. |
+| **H-A** (all sessions after 2026-08-21) | **v2.2: may inspire and form hypotheses** (the scanner sees it; section 8.6). Not used as Stage 2 confirmation. Stage 3 counts only sessions after a hypothesis's freeze date. Questions whose target is a frozen layer's own forecast are not scored on it (8.6). | n/a | The only sanctioned use is `forge.lockbox_check --evaluate`, scoring layers 3/5/6. Even after it has run, the ROE does not treat H-A as untouched (the scanner has seen it); Q3. |
 
 **The rule.** The scanner and discovery must not use H-A-protected observations to select hypotheses that are later evaluated
 against those same observations as independent validation. How it holds:
@@ -380,6 +381,25 @@ against those same observations as independent validation. How it holds:
   realised-vol estimate, not `forecastSigma`/HAR-800.
 - Forward scores are recorded but not displayed or used until the evaluation has run (DATA_AGENT.md open question 3, v1 kept).
 - The ROE changes no model, parameter or rule of any frozen file (hashes in `forge/lockbox_manifest.json`).
+
+### 8.6 Owner decision on H-A (v2.2): hypotheses may be formed from it
+
+The owner's answer to Q3: the three frozen layers (HAR-800 ladder, R3 remaining travel, M2 confidence) **may still be good**, but
+the post-2026-08-21 data **can still be used to form hypotheses**. Recorded as follows. No lockbox rule is changed (the protocol
+never forbade this; A4).
+
+| Question | Rule from v2.2 |
+|---|---|
+| May the scanner and question writer use H-A sessions to *observe* and *form* hypotheses? | **Yes.** |
+| May any ROE result be scored on H-A as independent confirmation of a hypothesis that H-A inspired? | **No.** Confirmation stays on 2025-09-05 to 2026-08-20 (Stage 2); Stage 3 forward counts only sessions strictly after the hypothesis's freeze date. The evidence must come from data that did not inspire or tune the hypothesis. |
+| May the ROE score layers 3, 5 or 6 on H-A, or change them because of what H-A or the shadow screens show? | **No** (the existing lockbox rule, unchanged). The one sanctioned evaluation is `forge.lockbox_check --evaluate`. |
+| May the ROE propose and test questions about the layers' own targets (daily range, remaining travel, confidence in EURUSD) using H-A? | **Not on H-A** until the lockbox evaluation has run: such a hypothesis can be formed and tested on the Stage 1 and Stage 2 windows only. |
+| May ROE baselines, features or watch items be outputs of layers 3/5/6 or the shadow screens? | **No**, until the evaluation has run (8.4, unchanged). |
+| Is H-A treated as untouched after the evaluation? | **No**: the scanner has seen it. |
+
+Effect on the stage table (8.3): none for Stages 1 and 2; the H-A row now says "may inspire hypotheses". A hypothesis inspired by
+a post-2026-08-21 observation is therefore tested on earlier windows that exclude the inspiring observation, then followed forward.
+Q2: the 2026-08-20 default is applied (every ROE window ends on 2026-08-20); say if you want 2026-08-21 included.
 
 ### 8.5 Ambiguities in the existing lockbox files (reported, not resolved; no rule changed)
 
@@ -703,7 +723,7 @@ owner presses Open case); v1 Q5 (ranking) is replaced by section 11.
 2. **Q2 (release blocker): the 2026-08-21 seam (A1).** *Default:* every ROE window ends at 2026-08-20 (the stricter reading; costs at
    most one session; changes no lockbox rule). Say if you want 2026-08-21 included, as the protocol text and `lockbox_check.py`
    allow.
-3. **Q3 (release blocker): selection from H-A, and the frozen layers (A4).** *Default:* the ROE never selects hypotheses using H-A
+3. **Q3 (ANSWERED by the owner in v2.2, see section 8.6): selection from H-A, and the frozen layers (A4).** *Original v2 default (superseded):* the ROE never selects hypotheses using H-A
    sessions, never uses the outputs of layers 3/5/6 or the shadow screens as baselines or watch items until the lockbox has
    been evaluated, and does **not** treat H-A as untouched even after that evaluation (the scanner will have seen it).
 4. **Q4: how Stage 2 starts.** *Default:* automatically when Stage 1 meets the promise rule (no model money; every look is counted
