@@ -17,9 +17,12 @@ export const clip = (s, n) => { s = String(s ?? ''); return s.length > n ? `${s.
 export function layoutFlow(flow, o = {}) {
   const B = { ...BOX, ...o };
   const cols = Math.max(...flow.nodes.map(n => n.col)) + 1, rows = Math.max(...flow.nodes.map(n => n.row)) + 1;
-  const width = B.pad * 2 + cols * B.w + (cols - 1) * B.gapX, height = B.pad * 2 + rows * B.h + (rows - 1) * B.gapY + 6;
+  const colOf = Object.fromEntries(flow.nodes.map(n => [n.id, n.col]));
+  const back = flow.edges.some(e => colOf[e.to] < colOf[e.from]);        // a backward edge arcs over the top: leave room above the first row
+  const topPad = back ? 34 : 0;
+  const width = B.pad * 2 + cols * B.w + (cols - 1) * B.gapX, height = B.pad * 2 + topPad + rows * B.h + (rows - 1) * B.gapY + 6;
   const boxes = {};
-  for (const n of flow.nodes) boxes[n.id] = { x: B.pad + n.col * (B.w + B.gapX), y: B.pad + n.row * (B.h + B.gapY), w: B.w, h: B.h, col: n.col, row: n.row };
+  for (const n of flow.nodes) boxes[n.id] = { x: B.pad + n.col * (B.w + B.gapX), y: B.pad + topPad + n.row * (B.h + B.gapY), w: B.w, h: B.h, col: n.col, row: n.row };
   const edges = flow.edges.map(e => {
     const a = boxes[e.from], b = boxes[e.to];
     let x1, y1, x2, y2, d, lx, ly;

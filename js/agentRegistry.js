@@ -2,11 +2,11 @@
  * The agent registry (owner request 2026-11-08): every agent the platform runs, in plain words, and how they hand work to each other.
  * Data only (no I/O, no clock), so the Agents tab on Bot Config, GET /api/agents and the tests all read the same thing.
  *
- *   AGENTS    one entry per agent: id, name, group ('Research' | 'Library' | 'Desk' | 'News' | 'Tests'), purpose, trigger, reads[], writes[],
+ *   AGENTS    one entry per agent: id, name, group ('Research' | 'Data' | 'Library' | 'Desk' | 'News' | 'Tests'), purpose, trigger, reads[], writes[],
  *             modelTask (an id in js/modelRouter.js TASK_CLASS, or null when it makes no model call), toggles[] (ids in js/agentSettings.js),
  *             cap ({ key, cap, label } for a hard cap kept in KV, else null), spends (true when running it can cost model money), links[]
  *             ({ label, href }), roles[] (desk/roles/<id>.md files it runs), job (an id in server.js _AI_JOBS when a schedule runs it),
- *             planned (true = not built; drawn dashed).
+ *             planned (true = not built; drawn dashed), kind ('service' = a processing service: plain code, no model call; null = the usual agent).
  *   POINTS    the non-agent boxes in the flow charts: the owner, stores and outputs.
  *   EDGES     { from, to, label, kind: 'data' | 'control', optional? }. One entry per (from, to) pair.
  *   FLOWS     named flows: { id, name, blurb, nodes: [{ id, col, row }], edges: ['from>to'] } with a grid layout hint.
@@ -19,13 +19,14 @@ import { MATH_CAP } from './libraryMath.js';
 import { FIGS_CAP } from './libraryFigs.js';
 import { LIBRARIAN_CAP } from './libraryLibrarian.js';
 
-export const GROUPS = ['Research', 'Library', 'Desk', 'News', 'Tests'];
+export const GROUPS = ['Research', 'Data', 'Library', 'Desk', 'News', 'Tests'];
 export const UNMAPPED_ROLES = [];
 
 const A = (id, name, group, o) => ({
-  id, name, group, purpose: '', trigger: '', reads: [], writes: [], modelTask: null, toggles: [], cap: null, spends: false, links: [], roles: [], job: null, planned: false, ...o,
+  id, name, group, purpose: '', trigger: '', reads: [], writes: [], modelTask: null, toggles: [], cap: null, spends: false, links: [], roles: [], job: null, planned: false, kind: null, ...o,
 });
 const L = (label, href) => ({ label, href });
+const ROE = L('Plan: Research Opportunity Engine', 'plans/RESEARCH_OPPORTUNITY_ENGINE.md');
 const CAP = { math: { key: 'library_math_v1', cap: MATH_CAP, label: 'equation calls' }, figs: { key: 'library_figs_v1', cap: FIGS_CAP, label: 'figure and table calls' }, lib: { key: 'library_librarian_v1', cap: LIBRARIAN_CAP, label: 'librarian calls' } };
 
 export const AGENTS = [
@@ -81,6 +82,28 @@ export const AGENTS = [
     modelTask: 'desk-head', spends: true, roles: ['system_architect'], links: [L('Research pod', 'desk-office.html')],
   }),
 
+  // ── Data: the Research Opportunity Engine (ROE), PLANNED, plans/RESEARCH_OPPORTUNITY_ENGINE.md. Nothing here is built. ──────────────────────
+  A('opportunity-scanner', 'Opportunity scanner', 'Data', {
+    purpose: 'Planned: after the daily run, runs fixed statistics over everything the owner holds (percentiles, z-scores, extremes, divergences, lead-lag screens, regime shifts, breakdowns) and logs how many items it scanned. Plain Python on the owner\'s laptop; no model call.',
+    trigger: 'Not built. Planned: once a day on the laptop after the daily run; it pushes the snapshot and the questions to the server.', planned: true, kind: 'service',
+    reads: ['local IBKR files, skew, cross-currency basis, feature store and M1 cache', 'GET /api/state (the Market State document)'], writes: ['the day\'s snapshot and scan count (pushed to the server)'], links: [ROE],
+  }),
+  A('question-writer', 'Question writer', 'Data', {
+    purpose: 'Planned: turns each scanner flag into a written question from fixed templates: why it arose, the observation, the hypothesis, the data needed and the pre-registered test. Rules, no model call; an optional capped DeepSeek tidy of the wording may come later. It is never shown earlier results.',
+    trigger: 'Not built. Planned: straight after the scanner, on the laptop.', planned: true, kind: 'service',
+    reads: ['the scanner\'s flags', 'the question templates in plans/DATA_AGENT.md'], writes: ['questions pushed to the questions queue (no daily cap)'], links: [ROE],
+  }),
+  A('historical-evaluator', 'Historical evaluator', 'Data', {
+    purpose: 'Planned: tests each question on the discovery window only, with pre-specified horizons, a baseline (for example momentum), out-of-sample, regime splits, transaction costs, uncertainty and power. It is the quick-test and backtest machinery; no model call.',
+    trigger: 'Not built. Planned: when new questions arrive in the queue.', planned: true, kind: 'service',
+    reads: ['the questions queue', 'price and feature history up to the cut-off date', 'the registry (trial count and same-spec check only)'], writes: ['the ranked board with an evidence pack', 'the registry (spec, window, result)'], links: [ROE],
+  }),
+  A('forward-tracker', 'Forward tracker', 'Data', {
+    purpose: 'Planned: from the suggestion date, records what happens on new data against the frozen spec of each suggested question. This is the real test; the discovery result is only a screen. Plain code, no model call.',
+    trigger: 'Not built. Planned: daily, as each horizon closes.', planned: true, kind: 'service',
+    reads: ['the frozen specs on the ranked board', 'new daily data after the suggestion date'], writes: ['forward outcomes (to the registry)'], links: [ROE],
+  }),
+
   // ── Tests: checks that decide whether an idea survives ──────────────────────────────────────────────────────
   A('quick-test', 'Quick test', 'Tests', {
     purpose: 'An exploratory "does X lead Y" check on the desk\'s own price data, linked to a proposal. Plain arithmetic: no model call. Never banked in the Evidence Book.',
@@ -101,6 +124,17 @@ export const AGENTS = [
     purpose: 'Checks what the desk published against the data and the Evidence Book and flags claims that do not hold.',
     trigger: 'Owner\'s run button on the claims page.', reads: ['published text', 'the data', 'the Evidence Book'], writes: ['desk claims (KV)'],
     modelTask: 'desk-head', spends: true, roles: ['claims_checker'], links: [L('Claim watch', 'claim-watch.html')],
+  }),
+
+  A('research-qa', 'Research QA', 'Tests', {
+    purpose: 'Planned: a gate that runs before the Head accepts any null result or "no relationship" conclusion. It checks the dataset, timestamp alignment, sample size, power (could the test have found the effect?), controls and baseline, the test used and out-of-sample replication. Plain code, no model call.',
+    trigger: 'Not built. Planned: automatically, before a Head review that leans on a null.', planned: true, kind: 'service',
+    reads: ['the researchers\' tests and datasets', 'quick-test results'], writes: ['a verdict per null claim: pass, underpowered, misaligned, no control, not replicated'], links: [ROE],
+  }),
+  A('acceptance-check', 'Acceptance check', 'Tests', {
+    purpose: 'Planned: checks a finished study against the acceptance criteria that were fixed in the system card and says met or not met. It is the only thing that can set Validation approved, so a model never marks its own work validated. Plain code, no model call.',
+    trigger: 'Not built. Planned: after the Validation desk review and the study run.', planned: true, kind: 'service',
+    reads: ['the system card\'s acceptance criteria', 'the Validation desk review', 'the study results'], writes: ['the Validation approved status'], links: [ROE],
   }),
 
   // ── Library: the paper library and its helpers ──────────────────────────────────────────────────────────────
@@ -298,6 +332,13 @@ export const POINTS = {
   dossier: { name: 'Dossier', kind: 'store', note: 'KV research_pod_dossiers.' },
   'search-engines': { name: 'Scholar search', kind: 'source', note: 'arXiv, OpenAlex, Semantic Scholar, Crossref.' },
   question: { name: 'Question', kind: 'source', note: 'A free-text question.' },
+  'daily-data': { name: 'Daily data', kind: 'source', note: 'Planned (ROE): what the owner holds. On the laptop: IBKR files, skew, cross-currency basis, the feature store and the M1 cache. On the server: GET /api/state.' },
+  'question-queue': { name: 'Questions queue', kind: 'store', planned: true, note: 'Planned (ROE): a server KV key (name to be proposed, not created yet). Every written question, no daily cap.' },
+  'opportunity-registry': { name: 'Opportunity registry', kind: 'store', planned: true, note: 'Planned (ROE): every question, spec, data window, result and trial count. Used only to drop identical specs and to count trials for the multiple-testing correction. It never labels a question rejected or dead, never hides one, and is never shown to the question writer.' },
+  'ranked-board': { name: 'Ranked board', kind: 'output', planned: true, note: 'Planned (ROE): the ranked list of questions with an evidence pack and a neutral history line such as "tested 2026-11-08 on 2019-2026: no incremental power". The owner presses Open case; nothing opens by itself.' },
+  'research-approved': { name: 'Research approved', kind: 'output', planned: true, note: 'Planned status: the evidence supports proceeding. Set by the Head of Research after adjudication. It is not a build instruction.' },
+  'design-approved': { name: 'Design approved', kind: 'output', planned: true, note: 'Planned status: the architecture and implementation are specified. Set after the System architect\'s system card is accepted.' },
+  'validation-approved': { name: 'Validation approved', kind: 'output', planned: true, note: 'Planned status: the tests and acceptance criteria passed. Set by the Validation desk review plus the deterministic acceptance check; a model never marks its own work validated.' },
   digests: { name: 'Paper digests', kind: 'output', note: 'The picked papers\' notes, cut to fit a prompt.' },
 };
 
@@ -423,16 +464,48 @@ export const EDGES = [
   E('book', 'weekly-strategist', 'the week\'s books', 'data', { optional: true }),
   E('book', 'allocation-committee', 'bot records', 'data', { optional: true }),
   E('evidence-book', 'theory-desk', 'verdicts', 'data', { optional: true }),
+  // research QA gate and the three approval statuses (planned)
+  E('researcher-quant', 'research-qa', 'null claims'),
+  E('researcher-macro', 'research-qa', 'null claims'),
+  E('researcher-flow', 'research-qa', 'null claims'),
+  E('quick-test', 'research-qa', 'null result', 'data', { optional: true }),
+  E('research-qa', 'head-of-research', 'power verdict'),
+  E('head-of-research', 'research-approved', 'supports proceeding'),
+  E('system-architect', 'design-approved', 'card accepted', 'control'),
+  E('validation-desk', 'acceptance-check', 'review + results'),
+  E('acceptance-check', 'validation-approved', 'criteria met'),
+  E('case-store', 'head-of-research', 'rounds + answers', 'data', { optional: true }),
+  // research discovery (Research Opportunity Engine, planned)
+  E('daily-data', 'opportunity-scanner', 'series + state'),
+  E('opportunity-scanner', 'question-writer', 'flags + count'),
+  E('question-writer', 'question-queue', 'questions pushed'),
+  E('question-queue', 'historical-evaluator', 'questions to test'),
+  E('historical-evaluator', 'opportunity-registry', 'spec, window, result'),
+  E('opportunity-registry', 'historical-evaluator', 'trial count'),
+  E('historical-evaluator', 'ranked-board', 'ranked + pack'),
+  E('owner', 'ranked-board', 'presses Open case', 'control'),
+  E('ranked-board', 'case-store', 'Open case (button)', 'control'),
+  E('ranked-board', 'forward-tracker', 'frozen spec'),
+  E('forward-tracker', 'opportunity-registry', 'forward outcomes'),
 ];
 
 const G = (id, name, blurb, nodes, edges) => ({ id, name, blurb, nodes: nodes.map(([n, col, row]) => ({ id: n, col, row })), edges });
 export const FLOWS = [
   G('research-case', 'Research case',
-    'You ask a question. The three researchers each answer through their own lens (optionally with papers from the library), the Head of Research reviews them, and a plan says what to do next.',
-    [['owner', 0, 1], ['case-store', 1, 1], ['library-librarian', 1, 0], ['evidence-book', 1, 2], ['researcher-quant', 2, 0], ['researcher-macro', 2, 1], ['researcher-flow', 2, 2], ['head-of-research', 3, 1], ['plan', 4, 1], ['quick-test', 5, 0], ['system-architect', 5, 2], ['validation-desk', 6, 2], ['prereg-card', 7, 2]],
+    'You ask a question. The three researchers each answer through their own lens (optionally with papers from the library), the Head of Research reviews them, and a plan says what to do next. Planned, dashed: Research QA checks any null claim for power before the Head accepts it, and three separate approvals are set along the way (Research, Design, Validation).',
+    [['owner', 0, 1], ['case-store', 1, 1], ['library-librarian', 1, 0], ['evidence-book', 1, 2], ['researcher-quant', 2, 0], ['researcher-macro', 2, 1], ['researcher-flow', 2, 2], ['research-qa', 3, 3], ['head-of-research', 4, 1],
+      ['research-approved', 5, 0], ['plan', 5, 1], ['quick-test', 6, 0], ['system-architect', 6, 2], ['design-approved', 7, 1], ['validation-desk', 7, 2], ['acceptance-check', 8, 2], ['prereg-card', 8, 3], ['validation-approved', 9, 2]],
     ['owner>case-store', 'case-store>library-librarian', 'library-librarian>researcher-quant', 'library-librarian>researcher-macro', 'library-librarian>researcher-flow', 'library-librarian>head-of-research',
       'case-store>researcher-quant', 'case-store>researcher-macro', 'case-store>researcher-flow', 'evidence-book>researcher-quant', 'evidence-book>researcher-macro', 'evidence-book>researcher-flow',
-      'researcher-quant>head-of-research', 'researcher-macro>head-of-research', 'researcher-flow>head-of-research', 'head-of-research>plan', 'plan>quick-test', 'plan>system-architect', 'system-architect>validation-desk', 'validation-desk>prereg-card']),
+      'researcher-quant>head-of-research', 'researcher-macro>head-of-research', 'researcher-flow>head-of-research', 'researcher-quant>research-qa', 'researcher-macro>research-qa', 'researcher-flow>research-qa', 'quick-test>research-qa', 'research-qa>head-of-research',
+      'head-of-research>research-approved', 'head-of-research>plan', 'plan>quick-test', 'plan>system-architect', 'system-architect>design-approved', 'system-architect>validation-desk', 'validation-desk>prereg-card', 'validation-desk>acceptance-check', 'acceptance-check>validation-approved']),
+  G('research-discovery', 'Research discovery',
+    'Planned, nothing built (plans/RESEARCH_OPPORTUNITY_ENGINE.md). After the daily run a scanner on the laptop finds extremes and divergences, a rules-based writer turns them into questions, and the server tests each on the discovery window only. The owner sees a ranked board and presses Open case; no case ever opens by itself. The registry only counts trials and drops identical specs: it never labels a question dead and the writer never sees it. A forward tracker scores each suggestion on new data. A case then runs the usual way, ending in three separate approvals.',
+    [['daily-data', 0, 1], ['opportunity-scanner', 1, 1], ['question-writer', 2, 1], ['question-queue', 3, 1], ['historical-evaluator', 4, 1], ['opportunity-registry', 5, 0], ['ranked-board', 5, 1], ['owner', 5, 2], ['forward-tracker', 6, 0], ['case-store', 6, 1],
+      ['head-of-research', 7, 1], ['research-approved', 8, 0], ['plan', 8, 1], ['system-architect', 9, 1], ['design-approved', 10, 0], ['validation-desk', 10, 1], ['acceptance-check', 11, 1], ['validation-approved', 12, 1]],
+    ['daily-data>opportunity-scanner', 'opportunity-scanner>question-writer', 'question-writer>question-queue', 'question-queue>historical-evaluator', 'historical-evaluator>opportunity-registry', 'opportunity-registry>historical-evaluator', 'historical-evaluator>ranked-board',
+      'owner>ranked-board', 'ranked-board>case-store', 'ranked-board>forward-tracker', 'forward-tracker>opportunity-registry', 'case-store>head-of-research', 'head-of-research>research-approved', 'head-of-research>plan', 'plan>system-architect',
+      'system-architect>design-approved', 'system-architect>validation-desk', 'validation-desk>acceptance-check', 'acceptance-check>validation-approved']),
   G('paper-pipeline', 'Paper pipeline',
     'A paper is uploaded or downloaded, stored with its text and positions, read by the paper reader into notes, indexed, and then found by the librarian and the Library page.',
     [['paper-source', 0, 1], ['paper-ingest', 1, 1], ['paper-store', 2, 1], ['owner', 2, 0], ['paper-reader', 3, 0], ['paper-notes', 4, 0], ['library-index', 4, 1], ['library-librarian', 5, 1], ['library-page', 5, 0]],
@@ -476,6 +549,6 @@ export function resolveFlow(flow) {
   const byKey = new Map(EDGES.map(e => [edgeKey(e), e]));
   const nodes = f.nodes.map(n => { const info = nodeInfo(n.id); if (!info) throw new Error(`flow ${f.id}: unknown node ${n.id}`); return { ...n, name: info.name, kind: info.point ? info.kind : 'agent', planned: !!info.planned, group: info.group ?? null }; });
   const ids = new Set(nodes.map(n => n.id));
-  const edges = f.edges.map(k => { const e = byKey.get(k); if (!e) throw new Error(`flow ${f.id}: unknown edge ${k}`); if (!ids.has(e.from) || !ids.has(e.to)) throw new Error(`flow ${f.id}: edge ${k} leaves the flow`); return { ...e, planned: !!(agentById(e.from)?.planned || agentById(e.to)?.planned) }; });
+  const edges = f.edges.map(k => { const e = byKey.get(k); if (!e) throw new Error(`flow ${f.id}: unknown edge ${k}`); if (!ids.has(e.from) || !ids.has(e.to)) throw new Error(`flow ${f.id}: edge ${k} leaves the flow`); return { ...e, planned: !!(nodeInfo(e.from)?.planned || nodeInfo(e.to)?.planned) }; });
   return { id: f.id, name: f.name, blurb: f.blurb, nodes, edges };
 }

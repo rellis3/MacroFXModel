@@ -26,14 +26,14 @@ try {
     await noScroll('on load');
     // the tab button exists next to AI models and the tab is the active one
     assert.ok(await page.locator('.tab-btn[data-tab="agents"].active').count() === 1);
-    assert.equal(await page.locator('.ag-chip').count(), 6);
+    assert.equal(await page.locator('.ag-chip').count(), 7);
     assert.ok((await page.locator('#agChart [data-node]').count()) >= 10, 'research case flow has its boxes');
     await shot(page, `agents-${w}-research.png`);
     // chart scrolls inside its container at phone width, never the page
     const sw = await page.evaluate(() => { const c = document.getElementById('agChart'); return { sw: c.scrollWidth, cw: c.clientWidth }; });
     if (w < 800) assert.ok(sw.sw > sw.cw, 'the chart is wider than the phone and scrolls inside its box'); else assert.ok(sw.cw <= w, 'the chart box fits the window');
     // every flow draws
-    for (const name of ['Paper pipeline', 'Library enrichment', 'Daily desk', 'Librarian on its own', 'Research an idea']) {
+    for (const name of ['Research discovery', 'Paper pipeline', 'Library enrichment', 'Daily desk', 'Librarian on its own', 'Research an idea']) {
       await page.click(`.ag-chip:has-text("${name}")`); await page.waitForSelector('#agChart svg.ag-svg');
       assert.ok((await page.locator('#agChart [data-node]').count()) >= 4, name);
       await noScroll(name);
