@@ -1143,6 +1143,7 @@ document.getElementById('f').addEventListener('submit', async (e) => {
 function requireAuth(req, res, next) {
   if (!AUTH_ENABLED) return next();
   if (AUTH_EXEMPT_PREFIXES.some(p => req.path.startsWith(p))) return next();
+  if (typeof _libOpen === 'function' && _libOpen(req) && (req.path === '/library' || req.path === '/library.html' || req.path === '/css/library.css' || req.path.startsWith('/js/library/'))) return next();
   const zone    = authZoneForPath(req.path);
   const cookies = authParseCookies(req);
   if (authVerifyCookie(cookies[`${AUTH_COOKIE_NAME}_${zone}`], zone)) return next();
@@ -6804,8 +6805,13 @@ app.get('/api/research-pod/upload/have', async (_req, res) => {
 // ── Paper Library (plans/PAPER_LIBRARY.md): /api/library/*. Logic in js/libraryApi.js; this is only the mount.
 // EVERY route sits behind _libGate (main-zone login cookie, same check as requireAuth) and answers 401 JSON, never content.
 // Registered before the global app.use(requireAuth), so the gate is explicit. No model call, no paid TTS (PAPER_TTS_PROVIDER=none disables MP3).
+// TEMPORARY, owner-approved 2026-11-08: the library is readable without login until this time, so it can be looked at; it then closes by itself.
+// Only GETs and only the library page + its files; every POST (progress, tags, case, audio) stays behind the login.
+const _LIB_OPEN_UNTIL = Date.parse('2026-11-08T14:00:00Z');
+const _libOpen = req => Date.now() < _LIB_OPEN_UNTIL && (req.method === 'GET' || req.method === 'HEAD');
 const _libGate = (req, res, next) => {
   if (!AUTH_ENABLED) return next();
+  if (_libOpen(req)) return next();
   if (authVerifyCookie(authParseCookies(req)[`${AUTH_COOKIE_NAME}_main`], 'main')) return next();
   res.set('Cache-Control', 'no-store').status(401).json({ ok: false, error: 'login required' });
 };
