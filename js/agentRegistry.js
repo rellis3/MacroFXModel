@@ -91,7 +91,7 @@ export const AGENTS = [
       'Try it with no network first: python -m roe --fixtures --asof 2026-11-06',
       'Real run, read only, from the live site: python -m roe',
       'Better: point it at your fresher local files (COT, Cboe csv, T10Y3M). Copy roe/sources.default.json to roe_sources.laptop.json, edit the paths, then python -m roe --sources roe_sources.laptop.json',
-      'To send the run to the server add --push (once: set the same secret, 24+ characters, as the Railway variable ROE_PUSH_TOKEN and as the laptop environment variable ROE_PUSH_TOKEN). A repeat of the same run changes nothing. If a push failed: python -m roe --push-only roe_out/<run id>',
+      'To send the run to the server add --push (once: set the same long password, 24+ characters, as the Railway variable ROE_PUSH_TOKEN and as the laptop environment variable ROE_PUSH_TOKEN). A repeat of the same run changes nothing. If a push failed: python -m roe --push-only roe_out/<run id>',
       'Read the result in roe_out/<run id>/summary.md. Exit code 0 is ok, 2 is degraded (some inputs stale), 3 is failed.',
       'To run it daily after the daily run: Windows schtasks line or the cron line in roe/README.md under Schedule it after the daily run.',
     ],
