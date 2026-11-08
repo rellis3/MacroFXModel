@@ -4,6 +4,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { yearKey, yearCounts } from '../../js/paperCatalog.js';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const TOPICS = [['volatility', 'Volatility'], ['jump', 'Jump / diffusion'], ['brownian', 'Brownian motion & stochastic processes'], ['carry', 'FX & carry'], ['cot', 'COT & positioning'], ['ml', 'Machine learning'], ['regimes', 'Regimes & HMM']];
@@ -48,7 +49,7 @@ for (let k = 4; k < 22; k++) { if (k % 6 === 0) B('h2', 'Section ' + k); B('p', 
 B('refs', 'Invented, A. (2000). A made-up reference list entry.');
 
 const mk = (id, title, year, tags, o = {}) => ({
-  id, title, authors: ['A. Author', 'B. Writer', 'C. Scholar', 'D. Fourth'], year, venue: 'Synthetic Journal', url: null, ssrn: o.ssrn || null, arxiv: null, doi: null,
+  id, title, authors: ['A. Author', 'B. Writer', 'C. Scholar', 'D. Fourth'], year, yearFrom: year ? (o.yearFrom || 'given') : null, yearKey: yearKey(year), venue: 'Synthetic Journal', url: null, ssrn: o.ssrn || null, arxiv: null, doi: null,
   kind: 'paper', readFrom: o.readFrom || 'pdf', hasText: o.hasText !== false, hasPdf: o.hasPdf !== false, chars: 90000, pages: 2, uploadedAt: '2026-11-01T00:00:00Z',
   tags: tags.map((k, i) => ({ key: k, label: label(k), source: i === 1 && o.manual ? 'manual' : 'auto' })),
   abstract: o.abstract === undefined ? 'Invented abstract sentence one about clustering. A second invented sentence that should not show.' : o.abstract,
@@ -69,9 +70,16 @@ const state = {
     mk('p7', 'Statistical Arbitrage Pairs (synthetic)', 2018, ['carry', 'ml'], { source: 'k151' }),
     mk('p8', 'Euro Area Rate Pass-Through (synthetic)', 2020, ['carry'], { source: 'ecb' }),
     mk('p9', 'My scanned notes on gamma', null, ['volatility'], { notes: null, abstract: '' }),
+    mk('p10', 'Older Note on Option Pricing (synthetic, from file name)', 2014, ['volatility'], { notes: null, abstract: '', yearFrom: 'filename', source: 'upload' }),
+    mk('p11', 'Uploaded Draft on Order Flow (synthetic, year from text)', 2025, ['ml'], { notes: null, abstract: '', yearFrom: 'text', source: 'upload' }),
+    mk('p12', 'Early Study of Exchange Rates (synthetic)', 1993, ['carry'], { source: 'nber' }),
+    mk('p13', 'A 1970s Classic on Random Walks (synthetic)', 1976, ['brownian'], { source: 'reading', notes: null }),
+    mk('p14', 'Jump Detection with Intraday Data (synthetic)', 2026, ['jump'], { source: 'arxiv', yearFrom: 'arxiv', notes: null }),
+    mk('p15', 'Unlabelled Scan Without a Date', null, ['regimes'], { notes: null, abstract: '', source: 'upload' }),
   ],
   audioStart: {}, caseN: 0, progressPosts: [],
 };
+const years = () => yearCounts(state.papers);
 const sources = () => SOURCES.map(([key, lab]) => ({ key, label: lab, count: state.papers.filter(p => p.source.key === key).length })).filter(x => x.count);
 const topics = () => TOPICS.map(([key, lab]) => ({ key, label: lab, count: state.papers.filter(p => p.tags.some(t => t.key === key)).length }));
 const send = (res, obj, code = 200) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); };
@@ -84,11 +92,11 @@ export function startServer(port = 0) {
     if (p.startsWith('/api/library/')) {
       const ep = p.slice('/api/library/'.length);
       const paper = state.papers.find(x => x.id === q.get('id'));
-      if (ep === 'papers') return send(res, { ok: true, papers: state.papers, topics: topics(), sources: sources(), totals: { all: state.papers.length, fullText: state.papers.length - 1, abstractOnly: 1 } });
+      if (ep === 'papers') return send(res, { ok: true, papers: state.papers, topics: topics(), sources: sources(), years: years(), totals: { all: state.papers.length, fullText: state.papers.length - 1, abstractOnly: 1 } });
       if (ep === 'paper') return paper ? send(res, { ok: true, paper, blocks: paper.hasText ? blocks : null, pages: 2, pageSize: { 1: [612, 792], 2: [612, 792], 9: [612, 792] } }) : send(res, { ok: false, error: 'not found' }, 404);
       if (ep === 'search') {
-        const w = (q.get('q') || '').toLowerCase(), tags = (q.get('tags') || '').split(',').filter(Boolean), srcs = (q.get('sources') || '').split(',').filter(Boolean);
-        const hits = state.papers.filter(x => x.hasText && (x.title + para(1)).toLowerCase().includes(w) && (!tags.length || x.tags.some(t => tags.includes(t.key))) && (!srcs.length || srcs.includes(x.source.key)))
+        const w = (q.get('q') || '').toLowerCase(), tags = (q.get('tags') || '').split(',').filter(Boolean), srcs = (q.get('sources') || '').split(',').filter(Boolean), yrs = (q.get('years') || '').split(',').filter(Boolean);
+        const hits = state.papers.filter(x => x.hasText && (x.title + para(1)).toLowerCase().includes(w) && (!tags.length || x.tags.some(t => tags.includes(t.key))) && (!srcs.length || srcs.includes(x.source.key)) && (!yrs.length || yrs.includes(x.yearKey)))
           .map((x, i) => ({ id: x.id, score: 10 - i, title: x.title, snippets: [{ block: 1, text: para(1) }] }));
         return send(res, { ok: true, hits });
       }

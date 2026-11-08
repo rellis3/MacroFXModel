@@ -11,7 +11,7 @@ const $ = id => document.getElementById(id);
 const esc = M.escapeHtml;
 const ls = (() => { try { localStorage.getItem('x'); return localStorage; } catch { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k) }; } })();
 
-const st = { papers: [], topics: [], sources: [], totals: null, selected: [], selSources: [], q: '', hits: null, tab: 'papers', todo: null, readNext: null, cur: null };
+const st = { papers: [], topics: [], sources: [], years: [], totals: null, selected: [], selSources: [], selYears: [], sort: M.DEFAULT_SORT, sortTouched: false, q: '', hits: null, tab: 'papers', todo: null, readNext: null, cur: null };
 
 function toast(msg, ms = 3500) {
   const el = $('toast'); el.textContent = msg; el.hidden = false;
@@ -34,8 +34,8 @@ function mark(text, q) {
   const words = q.split(/\s+/).filter(w => w.length > 2).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   return words.length ? s.replace(new RegExp('(' + words.join('|') + ')', 'ig'), '<mark>$1</mark>') : s;
 }
-const SEL_KEY = 'lib.sel.topics.v1', SRC_KEY = 'lib.sel.sources.v1';
-function saveSel() { try { ls.setItem(SEL_KEY, JSON.stringify(st.selected)); ls.setItem(SRC_KEY, JSON.stringify(st.selSources)); } catch { /* storage blocked: selection just is not remembered */ } }
+const SEL_KEY = 'lib.sel.topics.v1', SRC_KEY = 'lib.sel.sources.v1', YR_KEY = 'lib.sel.years.v1', SORT_KEY = 'lib.sort.v1';
+function saveSel() { try { ls.setItem(SEL_KEY, JSON.stringify(st.selected)); ls.setItem(SRC_KEY, JSON.stringify(st.selSources)); ls.setItem(YR_KEY, JSON.stringify(st.selYears)); } catch { /* storage blocked: selection just is not remembered */ } }
 const srcTag = p => (p.source ? `<span class="lib-src" title="Source">${esc(p.source.label)}</span>` : '');
 function cardHtml(p, hit) {
   const s = M.statusOf(p), pct = pctOf(p);
@@ -43,28 +43,39 @@ function cardHtml(p, hit) {
   const snips = hit ? (hit.snippets || []).slice(0, 2).map(x => `<div class="snip">${mark(x.text, st.q)}</div>`).join('') : '';
   return `<a class="lib-card lib-pcard" href="#/paper/${encodeURIComponent(p.id)}" data-id="${esc(p.id)}">
     <div class="lib-pcard-top"><div class="lib-pcard-main"><h3>${esc(p.title)}</h3>
-    <div class="meta">${esc(M.authorsLine(p))}${p.year ? ' · ' + esc(p.year) : ''}${p.venue ? ' · ' + esc(p.venue) : ''}</div></div>${ringHtml(pct)}</div>
+    <div class="meta">${esc(M.authorsLine(p))}${p.year ? ` · <span class="lib-year" title="${esc(M.yearTitle(p))}">${esc(M.yearText(p))}</span>` : ''}${p.venue ? ' · ' + esc(p.venue) : ''}</div></div>${ringHtml(pct)}</div>
     ${(l => `<p class="lib-pcard-short${l.muted ? ' muted' : ''}"><b>In short</b> ${esc(l.text)}</p>`)(SUM.cardLine(p))}${snips}<div class="lib-pcard-foot"><span class="lib-badge ${s.key}">${s.label}</span>${srcTag(p)}${tags}</div></a>`;
 }
 const hitSet = () => (st.hits ? new Set(st.hits.map(h => h.id)) : null);
 function renderChips() {
   // each group's counts honour the other group's selection (and the search), so the numbers add up to what a click would show
-  const forTopics = M.filterPapers(st.papers, [], hitSet(), st.selSources), forSources = M.filterPapers(st.papers, st.selected, hitSet());
+  const forTopics = M.filterPapers(st.papers, [], hitSet(), st.selSources, st.selYears), forSources = M.filterPapers(st.papers, st.selected, hitSet(), [], st.selYears), forYears = M.filterPapers(st.papers, st.selected, hitSet(), st.selSources);
   const chip = (c, on, attr) => `<button type="button" class="lib-chip${c.count ? '' : ' zero'}" ${attr}="${esc(c.key)}" aria-pressed="${on.includes(c.key)}">${esc(c.label)} <span class="n">${c.count}</span></button>`;
   $('chips').innerHTML = M.chipCounts(st.topics, forTopics).map(c => chip(c, st.selected, 'data-key')).join('');
   $('srcChips').innerHTML = M.sourceChips(st.sources, forSources, st.selSources).map(c => chip(c, st.selSources, 'data-src')).join('');
   $('srcRow').hidden = !st.sources.length;
+  $('yrChips').innerHTML = M.yearChips(st.years, forYears, st.selYears).map(c => chip(c, st.selYears, 'data-yr')).join('');
+  $('yrRow').hidden = !st.years.length;
+  $('yrToggle').querySelector('.sel').textContent = st.selYears.length ? ` (${st.selYears.length})` : '';
+}
+const nFilters = () => st.selected.length + st.selSources.length + st.selYears.length;
+const searching = () => !!(st.q.trim() && st.hits);
+const effSort = () => (searching() ? (st.sortTouched ? st.sort : 'match') : (st.sort === 'match' ? M.DEFAULT_SORT : st.sort));
+function renderSort() {
+  const sel = $('sortSel'), cur = effSort(), s = searching();
+  sel.innerHTML = M.SORTS.filter(o => o.key !== 'match' || s).map(o => `<option value="${o.key}"${o.key === cur ? ' selected' : ''}>${o.label}</option>`).join('');
+  $('clearFilters').hidden = !nFilters();
 }
 function renderCards() {
-  const list = M.orderPapers(M.filterPapers(st.papers, st.selected, hitSet(), st.selSources), st.hits);
+  const list = M.sortPapers(M.filterPapers(st.papers, st.selected, hitSet(), st.selSources, st.selYears), effSort(), { hits: st.hits, pct: pctOf });
   const hitBy = new Map((st.hits || []).map(h => [h.id, h]));
-  $('cards').innerHTML = list.length ? list.map(p => cardHtml(p, hitBy.get(p.id))).join('') : `<div class="lib-empty">${st.q ? 'No paper matches that search.' : (st.selected.length || st.selSources.length ? 'No papers match these filters.' : 'No papers yet.')}</div>`;
+  $('cards').innerHTML = list.length ? list.map(p => cardHtml(p, hitBy.get(p.id))).join('') : `<div class="lib-empty">${st.q ? 'No paper matches that search.' : (nFilters() ? 'No papers match these filters.' : 'No papers yet.')}</div>`;
   const t = st.totals;
   $('resultInfo').textContent = st.q
-    ? `${list.length} paper${list.length === 1 ? '' : 's'} match “${st.q}”${st.selected.length || st.selSources.length ? ' with the selected filters' : ''}`
+    ? `${list.length} paper${list.length === 1 ? '' : 's'} match “${st.q}”${nFilters() ? ' with the selected filters' : ''}`
     : (t ? `${list.length} of ${t.all} papers · ${t.fullText} with full text · ${t.abstractOnly} abstract only` : '');
   $('cntPapers').textContent = st.papers.length || '';
-  renderChips();
+  renderChips(); renderSort();
 }
 function renderReadNext() {
   const rows = M.readNextPapers(st.papers, st.readNext);
@@ -88,13 +99,13 @@ function setTab(tab) {
 }
 const runSearch = M.debounce(async () => {
   const q = st.q.trim();
-  if (!q) { st.hits = null; renderCards(); return; }
-  try { const d = await api.search(q, st.selected, st.selSources); if (q === st.q.trim()) { st.hits = d.hits || []; renderCards(); } } catch (e) { fail(e); }
+  if (!q) { st.hits = null; st.sortTouched = false; renderCards(); return; }
+  try { const d = await api.search(q, st.selected, st.selSources, st.selYears); if (q === st.q.trim()) { st.hits = d.hits || []; renderCards(); } } catch (e) { fail(e); }
 }, 250);
 
 function bindList() {
-  $('q').addEventListener('input', e => { st.q = e.target.value; $('qClear').hidden = !st.q; if (!st.q.trim()) { runSearch.cancel(); st.hits = null; renderCards(); } else runSearch(); });
-  $('qClear').addEventListener('click', () => { $('q').value = ''; st.q = ''; $('qClear').hidden = true; runSearch.cancel(); st.hits = null; renderCards(); $('q').focus(); });
+  $('q').addEventListener('input', e => { st.q = e.target.value; $('qClear').hidden = !st.q; if (!st.q.trim()) { runSearch.cancel(); st.hits = null; st.sortTouched = false; renderCards(); } else runSearch(); });
+  $('qClear').addEventListener('click', () => { $('q').value = ''; st.q = ''; $('qClear').hidden = true; runSearch.cancel(); st.hits = null; st.sortTouched = false; renderCards(); $('q').focus(); });
   $('chips').addEventListener('click', e => {
     const b = e.target.closest('.lib-chip'); if (!b) return;
     st.selected = M.toggleTag(st.selected, b.dataset.key); saveSel();
@@ -105,6 +116,18 @@ function bindList() {
     st.selSources = M.toggleTag(st.selSources, b.dataset.src); saveSel();
     renderCards(); if (st.q.trim()) runSearch();
   });
+  $('yrChips').addEventListener('click', e => {
+    const b = e.target.closest('.lib-chip'); if (!b) return;
+    st.selYears = M.toggleTag(st.selYears, b.dataset.yr); saveSel();
+    renderCards(); if (st.q.trim()) runSearch();
+  });
+  $('yrToggle').addEventListener('click', () => { const open = $('yrChips').hidden; $('yrChips').hidden = !open; $('yrToggle').setAttribute('aria-expanded', open); });
+  $('sortSel').addEventListener('change', e => {
+    st.sort = e.target.value; st.sortTouched = true;
+    if (st.sort !== 'match') { try { ls.setItem(SORT_KEY, st.sort); } catch { /* not remembered */ } }
+    renderCards();
+  });
+  $('clearFilters').addEventListener('click', () => { st.selected = []; st.selSources = []; st.selYears = []; saveSel(); renderCards(); if (st.q.trim()) runSearch(); });
   document.querySelector('.lib-tabs').addEventListener('click', e => { const b = e.target.closest('.lib-tab'); if (b) setTab(b.dataset.tab); });
   $('backBtn').addEventListener('click', () => { location.hash = ''; });
 }
@@ -427,11 +450,14 @@ async function init() {
   $('cards').innerHTML = '<div class="lib-loading">Loading papers…</div>';
   try {
     const d = await api.papers();
-    st.papers = d.papers || []; st.topics = d.topics || []; st.sources = d.sources || []; st.totals = d.totals || null;
+    st.papers = d.papers || []; st.topics = d.topics || []; st.sources = d.sources || []; st.years = d.years || []; st.totals = d.totals || null;
     st.selected = M.restoreSelection(ls.getItem(SEL_KEY), st.topics.map(t => t.key));
     st.selSources = M.restoreSelection(ls.getItem(SRC_KEY), st.sources.map(t => t.key));
+    st.selYears = M.restoreSelection(ls.getItem(YR_KEY), st.years.map(t => t.key));
+    const sv = ls.getItem(SORT_KEY); if (M.sortKeyOk(sv) && sv !== 'match') st.sort = sv;
     sync.pullFromPapers(st.papers);
   } catch (e) { $('cards').innerHTML = `<div class="lib-empty">${esc(e.message || 'Could not load the library.')}</div>`; fail(e); return; }
+  if (window.matchMedia('(max-width:640px)').matches && !st.selYears.length) { $('yrChips').hidden = true; $('yrToggle').setAttribute('aria-expanded', 'false'); }
   renderChips(); renderCards();
   api.readNext().then(d => { st.readNext = d; renderReadNext(); }).catch(() => {});
   api.todo().then(d => { st.todo = d; renderTodo(); }).catch(() => {});

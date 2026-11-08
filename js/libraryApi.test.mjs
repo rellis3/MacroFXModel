@@ -155,3 +155,19 @@ test('sources: every paper has one, the list carries counts, and search can filt
   const u = (await api.search({ query: { q: 'volatility', sources: 'upload,BOGUS!' } })).json; assert.deepEqual(u.hits.map(h => h.id), ['up1']);
   const n = (await api.search({ query: { q: 'volatility', sources: 'BOGUS!' } })).json; assert.ok(n.hits.length >= 2);   // malformed keys are ignored
 });
+
+test('years: unread upload year from the cached text head, buckets in the list, search filters by years, unknown stays null', async () => {
+  const { api, blobs } = harness();
+  blobs.set(uploadKey('up1', 'txt'), Buffer.from(`Synthetic Study of Volatility Jumps\nWorking Paper, March 2018\n\n${BODY}\n`));
+  const r = (await api.papers()).json, by = Object.fromEntries(r.papers.map(p => [p.id, [p.year, p.yearFrom, p.yearKey]]));
+  assert.deepEqual(by['up1'], [2018, 'text', 'd2010']); assert.deepEqual(by['p-read'], [2020, 'given', 'd2020']);
+  assert.ok(Array.isArray(r.years) && r.years.every(y => y.key && y.label && y.count > 0));
+  assert.equal(r.years.reduce((a, y) => a + y.count, 0), 3);
+  const s = (await api.search({ query: { q: 'volatility', years: 'd2010' } })).json; assert.deepEqual(s.hits.map(h => h.id), ['up1']);
+  const both = (await api.search({ query: { q: 'volatility', years: 'd2010,d2020', sources: 'upload' } })).json; assert.deepEqual(both.hits.map(h => h.id), ['up1']);   // AND with sources
+  const none = (await api.search({ query: { q: 'volatility', years: 'unknown' } })).json; assert.deepEqual(none.hits, []);
+  const junk = (await api.search({ query: { q: 'volatility', years: 'BOGUS!' } })).json; assert.ok(junk.hits.length >= 2);   // malformed keys are ignored
+  const h2 = harness(); const r2 = (await h2.api.papers()).json;   // the plain fixture has no year anywhere in up1's text
+  assert.deepEqual([r2.papers.find(p => p.id === 'up1').year, r2.papers.find(p => p.id === 'up1').yearFrom], [null, null]);
+  assert.ok(r2.years.some(y => y.key === 'unknown' && y.count === 1));
+});

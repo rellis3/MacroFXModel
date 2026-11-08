@@ -214,4 +214,49 @@ t('pullFromPapers folds server progress into local without lowering it', () => {
   sync.pullFromPapers([{ id: 'a', progress: { pct: 40, pos: 1, at: 9 } }, { id: 'b', progress: { pct: 20, pos: 3, at: 9 } }, { id: 'c', progress: null }]);
   const s = P.storeApi(st).read(); assert.equal(s.a.percent, 90); assert.equal(s.b.percent, 20); assert.ok(!s.c);
 });
+
+// ── years and sorting ──
+t('year filter: OR within years, AND with topics and sources, unknown is a bucket', () => {
+  const ps = [
+    { id: 'a', year: 2025, yearKey: '2025', source: { key: 'ssrn' }, tags: [{ key: 'vol' }] }, { id: 'b', year: 2012, yearKey: 'd2010', source: { key: 'nber' }, tags: [{ key: 'vol' }] },
+    { id: 'c', year: null, yearKey: 'unknown', source: { key: 'ssrn' }, tags: [{ key: 'cot' }] }, { id: 'd', year: 1980, yearKey: 'earlier', tags: [] }, { id: 'e', year: 2024, tags: [] }];
+  const ids = (...a) => M.filterPapers(ps, ...a).map(p => p.id);
+  assert.deepEqual(ids([], null, [], []), ['a', 'b', 'c', 'd', 'e']);
+  assert.deepEqual(ids([], null, [], ['2025', 'd2010']), ['a', 'b']);
+  assert.deepEqual(ids([], null, [], ['unknown']), ['c']);
+  assert.deepEqual(ids(['vol'], null, [], ['d2010', 'unknown']), ['b']);
+  assert.deepEqual(ids([], null, ['ssrn'], ['2025', 'unknown']), ['a', 'c']);
+  assert.deepEqual(ids([], new Set(['a', 'b']), [], ['d2010']), ['b']);
+  assert.deepEqual(ids([], null, [], ['2024']), ['e']);   // no yearKey: falls back to the year itself
+  assert.deepEqual(ids([], null, [], ['d1990']), []);
+});
+t('year chips follow the papers in scope and keep a selected key at zero', () => {
+  const ys = [{ key: '2025', label: '2025' }, { key: 'd2010', label: '2010s' }, { key: 'unknown', label: 'Unknown year' }];
+  assert.deepEqual(M.yearChips(ys, [{ yearKey: '2025' }, { yearKey: '2025' }, { year: null }]).map(c => [c.key, c.count]), [['2025', 2], ['d2010', 0], ['unknown', 1]]);
+  assert.deepEqual(M.yearChips(ys, [], ['gone']).map(c => [c.key, c.count]), [['2025', 0], ['d2010', 0], ['unknown', 0], ['gone', 0]]);
+});
+t('sort: newest / oldest with unknown years last in both, title tie-break', () => {
+  const ps = [{ id: 'u1', title: 'B', year: null }, { id: 'a', title: 'A', year: 2020 }, { id: 'b', title: 'B', year: 2010 }, { id: 'c', title: 'C', year: 2020 }, { id: 'u0', title: 'A', year: null }];
+  const ids = (m, o) => M.sortPapers(ps, m, o).map(p => p.id);
+  assert.deepEqual(ids('newest'), ['a', 'c', 'b', 'u0', 'u1']);
+  assert.deepEqual(ids('oldest'), ['b', 'a', 'c', 'u0', 'u1']);
+  assert.deepEqual(ids('title'), ['a', 'u0', 'u1', 'b', 'c']);
+  assert.deepEqual(ids('bogus'), ids('newest'));
+  assert.deepEqual(ps.map(p => p.id), ['u1', 'a', 'b', 'c', 'u0']);   // input not mutated
+});
+t('sort: best match keeps the ranking, read orders use the percent read, match without hits is newest', () => {
+  const ps = [{ id: 'a', title: 'A', year: 2001 }, { id: 'b', title: 'B', year: 2002 }, { id: 'c', title: 'C', year: 2003 }];
+  assert.deepEqual(M.sortPapers(ps, 'match', { hits: [{ id: 'c' }, { id: 'a' }, { id: 'b' }] }).map(p => p.id), ['c', 'a', 'b']);
+  assert.deepEqual(M.sortPapers(ps, 'match').map(p => p.id), ['c', 'b', 'a']);
+  const pct = p => ({ a: 0, b: 80, c: 30 })[p.id];
+  assert.deepEqual(M.sortPapers(ps, 'read', { pct }).map(p => p.id), ['b', 'c', 'a']);
+  assert.deepEqual(M.sortPapers(ps, 'unread', { pct }).map(p => p.id), ['a', 'c', 'b']);
+  assert.deepEqual(M.orderPapers(ps, [{ id: 'b' }, { id: 'a' }, { id: 'c' }]).map(p => p.id), ['b', 'a', 'c']);
+  assert.ok(M.sortKeyOk('oldest') && !M.sortKeyOk('x')); assert.equal(M.DEFAULT_SORT, 'newest');
+});
+t('year text: ~ marks years estimated from the file name or text only', () => {
+  assert.equal(M.yearText({ year: 2019, yearFrom: 'given' }), '2019'); assert.equal(M.yearText({ year: 2019, yearFrom: 'arxiv' }), '2019');
+  assert.equal(M.yearText({ year: 2019, yearFrom: 'text' }), '~2019'); assert.equal(M.yearText({ year: 2019, yearFrom: 'filename' }), '~2019');
+  assert.equal(M.yearText({ year: null }), ''); assert.equal(M.yearText({ year: 2019 }), '2019');
+});
 console.log(`library tests: ${n} passed`);

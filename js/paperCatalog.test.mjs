@@ -5,7 +5,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { TOPICS, TOPIC_KEYS, stem, autoTags, scoreTopics, applyOverrides, topicCounts, joinCatalog, buildIndex, addDoc, removeDoc, setDocTags, indexSize, parseQuery, search,
-  deskLinks, THEORY_BY_TOPIC, theoryLinks, parseTodoList, heldSsrnIds, readNext, paperCaseId, caseForPaper, caseFromPaper, sourceOf, sourceCounts, SOURCES, freeLookup, normTitle, sourceOfManifest } from './paperCatalog.js';
+  deskLinks, THEORY_BY_TOPIC, theoryLinks, parseTodoList, heldSsrnIds, readNext, paperCaseId, caseForPaper, caseFromPaper, sourceOf, sourceCounts, SOURCES, freeLookup, normTitle, sourceOfManifest, yearOf, arxivYear, yearKey, yearCounts } from './paperCatalog.js';
 import { DESK_EVIDENCE } from './deskEvidence.js';
 import { putCase, summary, roundSections, headSections, emptyStore } from './researchCase.js';
 
@@ -375,6 +375,71 @@ t('the real free_sources.json parses and every entry maps to a non-empty source'
   assert.ok(entries.length > 100);
   for (const e of entries) { assert.ok(e.title, 'title'); const s = sourceOfManifest(e); assert.ok(s && s.key && s.label, e.title); }
   assert.ok(freeLookup(entries).size > entries.length * 0.9);
+});
+
+// ── yearOf, year buckets ──
+const NOW = Date.UTC(2026, 10, 8), yo = (r) => yearOf(r, { now: NOW });
+t('yearOf: an explicit year wins over every other clue', () => {
+  assert.deepEqual(yo({ year: 2015, arxiv: '2001.00001', uploadName: 'x (2010).pdf', text: 'Copyright 2019' }), { year: 2015, from: 'given' });
+  assert.deepEqual(yo({ year: '2015' }), { year: 2015, from: 'given' });
+  assert.deepEqual(yo({ manifestYear: 2011, uploadName: 'x (2010).pdf' }), { year: 2011, from: 'given' });
+});
+t('yearOf: arXiv ids, new style and old style, from the record or the file name', () => {
+  assert.equal(arxivYear('2001.00001'), 2020); assert.equal(arxivYear('arXiv:1805.01234v3'), 2018); assert.equal(arxivYear('0704.0001'), 2007);
+  assert.equal(arxivYear('hep-th/9901001'), 1999); assert.equal(arxivYear('math.PR/0601234'), 2006); assert.equal(arxivYear('q-fin/9105001'), 1991);
+  assert.equal(arxivYear('2013.00001'), null);   // month 13
+  assert.equal(arxivYear('0301.00001'), null);   // the yymm.nnnnn scheme did not exist before 2007
+  assert.deepEqual(yo({ arxiv: '2001.00001', uploadName: 'x (2010).pdf' }), { year: 2020, from: 'arxiv' });
+  assert.deepEqual(yo({ uploadName: '1805.01234v2.pdf' }), { year: 2018, from: 'arxiv' });
+  assert.deepEqual(yo({ uploadName: 'hep-th_9901001.pdf' }), { year: 1999, from: 'arxiv' });
+  assert.equal(yo({ uploadName: 'report 1234.56789 tables.pdf' }).from, null);   // month 34
+  assert.equal(yo({ arxiv: '3001.00001' }).year, null);   // the future is never a release year
+});
+t('yearOf: a trailing (YYYY) in the file name, only when trailing', () => {
+  assert.deepEqual(yo({ uploadName: 'Some Paper Title (2014).pdf' }), { year: 2014, from: 'filename' });
+  assert.deepEqual(yo({ uploadName: 'Some Paper Title ( 1999 )' }), { year: 1999, from: 'filename' });
+  assert.equal(yo({ uploadName: 'Study (2014) final version.pdf' }).year, null);
+  assert.equal(yo({ uploadName: 'Some Paper (1850).pdf' }).year, null);   // out of range
+  assert.deepEqual(yo({ uploadName: 'Some Paper (2014).pdf', text: 'Copyright 2019' }), { year: 2014, from: 'filename' });
+});
+t('yearOf: text rules by preference (copyright, working paper, month dates, bare year)', () => {
+  assert.deepEqual(yo({ text: 'A Title\nSome Author\nCopyright 2019 by the authors\nWorking Paper, May 2021' }), { year: 2019, from: 'text' });
+  assert.equal(yo({ text: 'Title\n© 2017 Elsevier' }).year, 2017);
+  assert.equal(yo({ text: 'NBER WORKING PAPER SERIES\nTITLE\nWorking Paper 24567\nIssued April 2018' }).year, 2018);
+  assert.equal(yo({ text: 'Title\nAuthor\nMarch 12, 2017\nAbstract We study' }).year, 2017);
+  assert.equal(yo({ text: 'Draft 14 June 2021 comments welcome' }).year, 2021);
+  assert.equal(yo({ text: 'First version: Sept 2009; this version: Jan 2012' }).year, 2009);
+  assert.equal(yo({ text: 'Title\nAuthor, University\n2016\nAbstract We study' }).year, 2016);
+});
+t('yearOf: false-positive guards (periods, ranges, citations, references, out of range)', () => {
+  assert.equal(yo({ text: 'Since 1987 the markets have changed.' }).year, null);
+  assert.equal(yo({ text: 'We use data from 1990 to 2010 and from 1985-2005 and between 1995 and 2015.' }).year, null);
+  assert.equal(yo({ text: 'As Fama (1993) and Smith and Jones, 1995 and Lo et al. 1999 show, in 1998 the market fell. See Fama 1993a.' }).year, null);
+  assert.equal(yo({ text: 'Since January 1987 and in March 2020 the pandemic hit, from June 2001 until May 2004.' }).year, null);
+  assert.equal(yo({ text: 'A paper with numbers 1850, 2099, 123456, $1,2019 and 19.2019 only.' }).year, null);
+  assert.equal(yo({ text: 'Title and abstract with no date.\nReferences\nSmith, J. (2012). Published 2012. Copyright 2013' }).year, null);   // after the References heading
+  assert.equal(yo({ text: 'Title\nIntro text since 1987.\n' + 'x'.repeat(3100) + '\nCopyright 2019' }).year, null);   // beyond the first 3000 characters
+  assert.equal(yo({ text: 'Copyright 2031' }).year, null);   // future
+});
+t('yearOf: nothing found -> null, never invented', () => {
+  assert.deepEqual(yo({}), { year: null, from: null }); assert.deepEqual(yo(null), { year: null, from: null });
+  assert.deepEqual(yo({ uploadName: 'notes.pdf', text: 'No dates here at all.', uploadedAt: '2026-01-01' }), { year: null, from: null });
+});
+t('year buckets: keys, labels, order and counts', () => {
+  assert.deepEqual([2026, 2022, 2021, 2020, 2019, 2010, 1995, 1990, 1989, 1950, null].map(y => yearKey(y, NOW)), ['2026', '2022', 'd2020', 'd2020', 'd2010', 'd2010', 'd1990', 'd1990', 'earlier', 'earlier', 'unknown']);
+  const ps = [2026, 2025, 2025, 2021, 2020, 2015, 2012, 1995, 1980, null, null].map(year => ({ year }));
+  assert.deepEqual(yearCounts(ps, NOW).map(b => [b.key, b.label, b.count]),
+    [['2026', '2026', 1], ['2025', '2025', 2], ['d2020', '2020–21', 2], ['d2010', '2010s', 2], ['d1990', '1990s', 1], ['earlier', 'Earlier', 1], ['unknown', 'Unknown year', 2]]);
+  assert.equal(yearCounts(ps, NOW).reduce((a, b) => a + b.count, 0), ps.length);
+  assert.deepEqual(yearCounts([], NOW), []);
+});
+t('joinCatalog: unread uploads and read papers get year, yearFrom and yearKey', () => {
+  const cat = joinCatalog({ now: NOW,
+    papers: [{ id: 'r1', title: 'Read One', year: 2018, readFrom: 'pdf' }, { id: 'r2', title: 'Read Two No Year', readFrom: 'abstract', arxiv: '2105.01234' }],
+    queueItems: [{ id: 'u1', upload: { name: 'A Study (2012).pdf', chars: 10 } }, { id: 'u2', upload: { name: 'b.pdf', chars: 10 } }, { id: 'u3', upload: { name: 'c.pdf', chars: 10 } }],
+    uploads: { u2: { firstText: 'Title\nCopyright 2016 Someone' }, u3: { firstText: 'Title with since 1987 only' } } });
+  const by = Object.fromEntries(cat.map(p => [p.id, [p.year, p.yearFrom, p.yearKey]]));
+  assert.deepEqual(by, { r1: [2018, 'given', 'd2010'], r2: [2021, 'arxiv', 'd2020'], u1: [2012, 'filename', 'd2010'], u2: [2016, 'text', 'd2010'], u3: [null, null, 'unknown'] });
 });
 
 console.log(`paperCatalog: ${n} tests passed`);

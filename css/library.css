@@ -183,3 +183,21 @@ body.lib-listen-open{--listen-h:96px}
 .lib-pcard-short b{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--purple);margin-right:6px}
 .lib-pcard-short.muted{color:var(--text3)}
 @media(min-width:760px){.lib-sums{grid-template-columns:1fr 1fr;align-items:start}}
+
+/* year row, sort + clear */
+.lib-yrtoggle{display:inline-flex;align-items:center;gap:4px;background:none;border:none;padding:0;cursor:pointer;text-align:left}
+.lib-yrtoggle .car{display:none;transition:transform .15s}
+.lib-yrtoggle[aria-expanded="false"] .car{transform:rotate(-90deg)}
+.lib-yrtoggle .sel{color:var(--blue)}
+.lib-year{font-variant-numeric:tabular-nums}
+.lib-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:2px 0 12px}
+.lib-toolbar .lib-info{flex:1 1 200px;margin:0}
+.lib-toolbar .lib-btn.sm{min-height:44px}
+.lib-sort{display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+.lib-sort select{min-height:44px;background:var(--s1);color:var(--text);border:1px solid var(--border);border-radius:var(--r);padding:6px 10px;font-size:14px;font-family:inherit;letter-spacing:0;text-transform:none}
+.lib-sort select:focus{outline:2px solid var(--blue-bd);border-color:var(--blue)}
+@media (max-width:640px){
+  .lib-yrtoggle{min-height:44px}
+  .lib-yrtoggle .car{display:inline}
+  #yrChips[hidden]{display:none}
+}

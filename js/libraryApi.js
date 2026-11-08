@@ -25,7 +25,7 @@ import { buildBlocks, plainText, conclusion, abstractOf } from './paperText.js';
 import { flatTextToPages } from './paperPages.js';
 import { speechSentences, briefingScript, chunkForTts, estimateSecs, toSentences } from './paperAudio.js';
 import {
-  joinCatalog, topicCounts, sourceCounts, freeLookup, TOPIC_KEYS, TOPICS, buildIndex, addDoc, search as indexSearch, setDocTags,
+  joinCatalog, topicCounts, sourceCounts, yearCounts, freeLookup, TOPIC_KEYS, TOPICS, buildIndex, addDoc, search as indexSearch, setDocTags,
   theoryLinks, parseTodoList, heldSsrnIds, readNext, caseFromPaper, caseForPaper,
 } from './paperCatalog.js';
 
@@ -131,14 +131,15 @@ export function createLibraryApi(deps) {
     for (const it of queueItems) {
       if (!it?.upload) continue;
       const u = { chars: it.upload.chars ?? null, hasPdf: !!it.upload.stored && it.upload.stored !== 'memory', sha: it.upload.sha };
-      if (!have.has(it.id)) {   // an unread upload: its first text gives it a title and tags (cached per id)
+      const readNoYear = have.has(it.id) && !papers.find(x => x.id === it.id)?.year;   // a read paper without a year gets its head too
+      if (!have.has(it.id) || readNoYear) {   // an unread upload: its first text gives it a title, tags and a year (head cached per id)
         if (!firstTexts.has(it.id)) { const t = await textOf(it.id).catch(() => null); firstTexts.set(it.id, t ? t.slice(0, 6000) : ''); }
         u.firstText = firstTexts.get(it.id);
       }
       uploads[it.id] = u;
     }
     for (const p of papers) if (p.uploaded) uploads[p.id] = { ...(uploads[p.id] ?? {}), chars: p.uploaded.chars ?? null, hasPdf: p.uploaded.stored === 'r2', sha: p.uploaded.sha };
-    const list = joinCatalog({ freeSources: await freeSources(), papers, queueItems, uploads, tagOverrides: st.tags, progress: st.progress, audio: st.audio });
+    const list = joinCatalog({ freeSources: await freeSources(), papers, queueItems, uploads, tagOverrides: st.tags, progress: st.progress, audio: st.audio, now: now() });
     catalogCache = { at: now(), list, papers, queueItems, state: st, byId: new Map(list.map(p => [p.id, p])) };
     return catalogCache;
   }
@@ -202,7 +203,7 @@ export function createLibraryApi(deps) {
     const cat = await catalog({ fresh: true });
     const papers = cat.list.map(p => ({ ...p, theory: theoryOf(p) }));
     const fullText = papers.filter(p => p.hasText).length;
-    return reply(200, { ok: true, papers, topics: topicCounts(papers), sources: sourceCounts(papers), totals: { all: papers.length, fullText, abstractOnly: papers.length - fullText } });
+    return reply(200, { ok: true, papers, topics: topicCounts(papers), sources: sourceCounts(papers), years: yearCounts(papers, now()), totals: { all: papers.length, fullText, abstractOnly: papers.length - fullText } });
   };
 
   H.paper = async ({ query }) => {
@@ -216,13 +217,15 @@ export function createLibraryApi(deps) {
     const q = String(query?.q ?? '').trim().slice(0, 200); if (!q) return reply(200, { ok: true, hits: [], total: 0 });
     const tags = String(query?.tags ?? '').split(',').map(s => s.trim()).filter(k => TOPIC_KEYS.includes(k));
     const sources = String(query?.sources ?? '').split(',').map(s => s.trim()).filter(k => /^[a-z0-9-]{1,60}$/.test(k));
+    const years = String(query?.years ?? '').split(',').map(s => s.trim()).filter(k => /^(?:\d{4}|d\d{4}|earlier|unknown)$/.test(k));
     const limit = Math.min(100, Math.max(1, Number(query?.limit) || 40));
     const ix = await ensureIndex(); const cat = await catalog();
     for (const p of cat.list) setDocTags(ix, p.id, p.tags);   // manual tag changes apply without re-indexing
-    const r = indexSearch(ix, q, { tags, limit: sources.length ? 100 : limit });   // a source filter applies after ranking, so rank deeper first
+    const r = indexSearch(ix, q, { tags, limit: sources.length || years.length ? 100 : limit });   // source and year filters apply after ranking, so rank deeper first
     const hits = [];
     for (const h of r.hits) {
-      if (sources.length && (!sources.includes(cat.byId.get(h.id)?.source?.key) || hits.length >= limit)) continue;
+      const cp = cat.byId.get(h.id);
+      if ((sources.length && !sources.includes(cp?.source?.key)) || (years.length && !years.includes(cp?.yearKey)) || hits.length >= limit) continue;
       const doc = blocksMem.get(h.id) ?? null;   // only cached blocks resolve a snippet to a block (never builds one here)
       const locate = text => { if (!doc) return null; const probe = String(text).replace(/\s+/g, ' ').slice(0, 40); const b = doc.blocks.find(x => x.text && x.text.replace(/\s+/g, ' ').includes(probe)); return b ? b.i : null; };
       hits.push({ id: h.id, score: h.score, title: h.title, snippets: h.snippets.map(s => ({ block: locate(s.text), text: s.text, marks: s.marks })) });
