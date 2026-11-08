@@ -32,6 +32,7 @@ import { cardLine } from './library/summary.js';
 import { flatTextToPages } from './paperPages.js';
 import { createMath, resolveLatex, mergeLatexIntoBlocks, validateLatex } from './libraryMath.js';
 import { createFigs, mergeNotesIntoBlocks } from './libraryFigs.js';
+import * as LIX from './libraryIndex.js';
 import { speechSentences, briefingScript, chunkForTts, estimateSecs, toSentences } from './paperAudio.js';
 import {
   joinCatalog, topicCounts, sourceCounts, yearCounts, freeLookup, TOPIC_KEYS, TOPICS, buildIndex, addDoc, search as indexSearch, setDocTags,
@@ -400,8 +401,65 @@ export function createLibraryApi(deps) {
   /** A job that was 'working' when the server restarted will never finish: report it as an error instead of spinning forever. */
   H.reapStaleAudio = () => mutate(async s => { for (const [id, a] of Object.entries(s.audio)) if (a.briefing?.status === 'working' && !jobs.has(id) && now() - (a.briefing.at ?? 0) > 60_000) a.briefing = { ...a.briefing, status: 'error', error: 'interrupted by a restart; try again' }; });
 
+  // ── the index (js/libraryIndex.js): one compact row per paper + retrieval vectors, cached in memory and in R2 research/papers/_index.json ──
+  // Rebuilt when the catalog's content signature changes (notes, tags, desk links, titles), never on every request. No model call.
+  const INDEX_R2 = uploadKey('_index', 'json');
+  let ixMem = null, ixBuilding = null, ixCat = null;
+  async function libIndex() {
+    const cat = await catalog();
+    if (ixMem && ixCat === cat) return ixMem;   // same catalog build: nothing to hash
+    const cited = new Map(cat.papers.map(r => [r.id, r.citedBy])), list = cat.list.map(p => ({ ...p, citedBy: cited.get(p.id) })), sig = LIX.catalogSig(list);
+    if (ixMem && ixMem.sig === sig) { ixCat = cat; return ixMem; }
+    if (ixBuilding?.sig === sig) return ixBuilding.job;
+    const job = (async () => {
+      if (r2.ok()) { const c = await r2.getBuffer(INDEX_R2).catch(() => null); if (c) { try { const j = JSON.parse(c.toString('utf8')); if (LIX.validIndex(j, sig)) { ixCat = cat; return (ixMem = j); } } catch { /* rebuild */ } } }
+      const ix = LIX.buildIndex(list, { at: new Date(now()).toISOString() });
+      ixMem = ix; ixCat = cat;
+      if (r2.ok()) await r2.putBuffer(INDEX_R2, Buffer.from(JSON.stringify(ix)), 'application/json').catch(e => log.warn?.(`[library] cache index: ${e.message}`));
+      return ix;
+    })().finally(() => { if (ixBuilding?.job === job) ixBuilding = null; });
+    ixBuilding = { sig, job };
+    return job;
+  }
+  const listOf = v => String(v ?? '').split(',').map(s => s.trim()).filter(Boolean);
+  const topicKeys = v => listOf(v).filter(k => TOPIC_KEYS.includes(k));
+  const srcKeys = v => listOf(v).filter(k => /^[a-z0-9-]{1,60}$/.test(k));
+  const yearKeys = v => listOf(v).filter(k => /^(?:\d{4}|\d{4}-\d{4}|\d{4}-|-\d{4}|unknown)$/.test(k));
+  /** Figure / table notes for a few papers (one small R2 read each; a failure just leaves them out). */
+  async function figNotesFor(ids) {
+    const out = {};
+    await Promise.all(ids.map(async id => { try { const f = await figs.fileOf(id); if (f?.notes && Object.keys(f.notes).length) out[id] = f.notes; } catch { /* none */ } }));
+    return out;
+  }
+  /** The context block for a prompt: { text, ids, rows } (no model call). Used by the researchers when LIBRARY_CONTEXT=1 and by the preview route. */
+  H.contextFor = async (query, opts = {}) => {
+    const ix = await libIndex(), cat = await catalog();
+    const rows = LIX.search(ix, query, { n: opts.n ?? 6, topics: opts.topics, sources: opts.sources, years: opts.years, requireNotes: opts.requireNotes, minScore: opts.minScore ?? 0.6 });
+    const figNotes = await figNotesFor(rows.map(r => r.id));
+    return { ...LIX.buildContext(query, ix, cat.byId, { ...opts, rows, figNotes }), query: String(query ?? '').slice(0, 300) };
+  };
+
+  H.index = async () => {
+    const ix = await libIndex();
+    return reply(200, { ok: true, ...LIX.publicIndex(ix) });
+  };
+
+  H.find = async ({ query }) => {
+    const q = String(query?.q ?? '').trim().slice(0, 300);
+    if (!q) return reply(200, { ok: true, q: '', hits: [], total: 0 });
+    const n = Math.min(40, Math.max(1, Number(query?.n) || 8)), want = query?.digest === '1' || query?.digest === 'true';
+    const ix = await libIndex();
+    const hits = LIX.search(ix, q, { n, topics: topicKeys(query?.topics), sources: srcKeys(query?.sources), years: yearKeys(query?.years), requireNotes: query?.notes === '1' || query?.notes === 'true' });
+    const out = { ok: true, q, hits, total: hits.length };
+    if (want && hits.length) {
+      const cat = await catalog(), fn = await figNotesFor(hits.map(h => h.id));
+      out.digests = Object.fromEntries(hits.map(h => [h.id, cat.byId.get(h.id) ? LIX.digest(cat.byId.get(h.id), { figNotes: fn[h.id] ?? null }) : null]));
+    }
+    return reply(200, out);
+  };
+
   H.figs = figs;   // GET/POST /api/research-pod/figs
   H.math = math;   // GET/POST /api/research-pod/math (server.js mounts it like the reading backlog)
-  H._test = { catalog, getBlocks, readState, dropCatalog, jobsActive: () => [...jobs.keys()] };
+  H._test = { libIndex, dropIndex: () => { ixMem = null; ixCat = null; }, catalog, getBlocks, readState, dropCatalog, jobsActive: () => [...jobs.keys()] };
   return H;
 }

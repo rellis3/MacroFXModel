@@ -7,6 +7,7 @@ import * as P from './progress.js';
 import { cropBlock, cropBlockHi } from './pdfcrop.js';
 import * as MA from './math.js';
 import * as SUM from './summary.js';
+import * as IXV from './indexView.js';
 
 const $ = id => document.getElementById(id);
 const esc = M.escapeHtml;
@@ -91,11 +92,16 @@ function renderTodo() {
   $('cntTodo').textContent = st.todo ? open : '';
   $('todoList').innerHTML = items.length ? items.map(i => `<div class="lib-todo-row${i.held ? ' held' : ''}"><div class="t">${esc(i.title)}<small>${[i.year, i.part].filter(Boolean).map(esc).join(' · ')}${i.held ? ' · held' : ''}</small></div>${i.held ? '<span class="lib-badge desk">held</span>' : (i.url ? `<a class="lib-btn sm" href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">SSRN ↗</a>` : '')}</div>`).join('') : '<div class="lib-empty">Nothing on the list.</div>';
 }
+// the Index tab (js/library/indexView.js): a scan-friendly row per paper, ranked through /api/library/find as you type
+const indexView = IXV.mount({ api, el: { box: $('ixBox'), topic: $('ixTopic'), source: $('ixSource'), ev: $('ixEv'), info: $('ixInfo'), list: $('ixList'), stats: $('ixStats') },
+  labels: () => ({ topic: Object.fromEntries(st.topics.map(t => [t.key, t.label])), source: Object.fromEntries(st.sources.map(t => [t.key, t.label])) }),
+  options: () => ({ topics: st.topics.filter(t => t.count), sources: st.sources }), fail: e => fail(e) });
 function setTab(tab) {
   st.tab = tab;
   document.querySelectorAll('.lib-tab').forEach(b => { const on = b.dataset.tab === tab; b.classList.toggle('active', on); b.setAttribute('aria-selected', on); });
-  $('papersTab').hidden = tab !== 'papers'; $('todoTab').hidden = tab !== 'todo';
+  $('papersTab').hidden = tab !== 'papers'; $('todoTab').hidden = tab !== 'todo'; $('indexTab').hidden = tab !== 'index';
   $('readNext').style.display = tab === 'papers' ? '' : 'none';
+  if (tab === 'index') indexView.show();
   if (tab === 'todo' && !st.todo) { $('todoList').innerHTML = '<div class="lib-loading">Loading…</div>'; api.todo().then(d => { st.todo = d; renderTodo(); }).catch(fail); }
 }
 const runSearch = M.debounce(async () => {

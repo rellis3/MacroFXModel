@@ -21,6 +21,7 @@
 
     <div class="lib-tabs" role="tablist">
       <button type="button" role="tab" class="lib-tab active" data-tab="papers" aria-selected="true">Papers <span id="cntPapers" class="lib-tabcount"></span></button>
+      <button type="button" role="tab" class="lib-tab" data-tab="index" aria-selected="false">Index</button>
       <button type="button" role="tab" class="lib-tab" data-tab="todo" aria-selected="false">To get <span id="cntTodo" class="lib-tabcount"></span></button>
     </div>
 
@@ -45,6 +46,21 @@
         <label class="lib-sort"><span>Sort</span><select id="sortSel" aria-label="Sort papers"></select></label>
       </div>
       <div id="cards" class="lib-grid"></div>
+    </div>
+
+    <div id="indexTab" hidden>
+      <p class="lib-info">Every paper as one compact row, so you can scan them. Type a question to rank them (rule-based, no model): the best matches come first, with the words that matched.</p>
+      <div class="lib-search">
+        <input id="ixBox" type="search" placeholder="Filter by a question, e.g. does COT positioning predict EURUSD" autocomplete="off" aria-label="Filter the index">
+      </div>
+      <div class="lib-ix-selects">
+        <select id="ixTopic" aria-label="Topic"><option value="">All topics</option></select>
+        <select id="ixSource" aria-label="Source"><option value="">All sources</option></select>
+        <select id="ixEv" aria-label="Evidence"><option value="">Any evidence</option><option value="oos">Out-of-sample</option><option value="partly">Partly out-of-sample</option><option value="in-sample">In-sample</option><option value="survey">Survey</option><option value="unknown">Unrated</option></select>
+      </div>
+      <div id="ixInfo" class="lib-info" role="status"></div>
+      <div id="ixList" class="lib-ix" role="table" aria-label="Paper index"></div>
+      <div id="ixStats" class="lib-ix-stats"></div>
     </div>
 
     <div id="todoTab" hidden>

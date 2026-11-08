@@ -153,8 +153,41 @@ test('every /api/library route in server.js is registered after the login gate',
   const src = fs.readFileSync(new URL('../server.js', import.meta.url), 'utf8');
   const gate = src.indexOf("app.use('/api/library', _libGate)"); assert.ok(gate > 0);
   const routes = [...src.matchAll(/_libRoute\('(get|post)', '[a-z-]+'/g)];
-  assert.equal(routes.length, 13); assert.ok(!/app\.(get|post|put)\('\/api\/library/.test(src), 'a route bypasses _libRoute (and so the gate order)');
+  assert.equal(routes.length, 15); assert.ok(!/app\.(get|post|put)\('\/api\/library/.test(src), 'a route bypasses _libRoute (and so the gate order)');
   for (const m of routes) assert.ok(m.index > gate, `${m[0]} registered before the gate`);
+});
+
+test('index and find: compact rows, stats, ranking, filters, digests, R2 cache, no model call', async () => {
+  const h = harness(), { api, blobs } = h;
+  const ix = (await api.index()).json;
+  assert.equal(ix.ok, true); assert.equal(ix.rows.length, 3); assert.equal(ix.stats.rows, 3); assert.ok(ix.stats.tokensPerRow > 0);
+  assert.ok(!('vec' in ix) && !('df' in ix), 'retrieval vectors stay server side');
+  const pr = ix.rows.find(r => r.id === 'p-read'); assert.match(pr.c, /Jumps matter/); assert.equal(pr.ev, 'unknown'); assert.ok(pr.tg.includes('volatility') || pr.tg.includes('jump'));
+  assert.equal(ix.rows.find(r => r.id === 'p-abs').c, undefined, 'abstract-only: title-only row');
+  assert.ok(blobs.has('research/papers/_index.json'), 'cached in R2');
+  // a second load with a cold memory reads the R2 copy (no rebuild): corrupt-proof because the signature must match
+  const cached = JSON.parse(blobs.get('research/papers/_index.json').toString()); cached.rows[0].t = 'FROM-R2'; blobs.set('research/papers/_index.json', Buffer.from(JSON.stringify(cached)));
+  api._test.dropIndex(); assert.equal((await api.index()).json.rows[0].t, 'FROM-R2');
+  blobs.set('research/papers/_index.json', Buffer.from('not json')); api._test.dropIndex(); assert.equal((await api.index()).json.rows.length, 3);
+  const f = (await api.find({ query: { q: 'jump volatility', n: '5' } })).json;
+  assert.equal(f.ok, true); assert.equal(f.hits[0].id, 'p-read'); assert.ok(f.hits[0].score > 0 && f.hits[0].why.terms.length);
+  assert.ok(!('digests' in f));
+  const d = (await api.find({ query: { q: 'jump volatility', digest: '1' } })).json;
+  assert.ok(d.digests['p-read'].includes('id: p-read') && d.digests['p-read'].includes('Claim:') && d.digests['p-read'].length <= 900);
+  assert.deepEqual((await api.find({ query: { q: '' } })).json.hits, []);
+  assert.deepEqual((await api.find({ query: { q: 'carry trade', sources: 'upload' } })).json.hits, []);
+  assert.deepEqual((await api.find({ query: { q: 'carry trade', topics: 'BOGUS,fx', years: '2019' } })).json.hits.map(x => x.id), ['p-abs']);
+  assert.equal(h.calls.tts, 0);
+  // the catalog changing (a new tag) rebuilds the index
+  await api.tagsPost({ body: { id: 'p-abs', add: ['cot'] } });
+  assert.ok((await api.index()).json.rows.find(r => r.id === 'p-abs').tg.includes('cot'));
+});
+
+test('contextFor: the researchers\' library context from the same index (no model)', async () => {
+  const { api } = harness();
+  const c = await api.contextFor('does jump risk matter for volatility');
+  assert.equal(c.ids[0], 'p-read'); assert.ok(c.text.startsWith('LIBRARY:') && c.text.includes('[P1] id: p-read'));
+  const none = await api.contextFor('zzzzqqqq'); assert.deepEqual(none.ids, []); assert.ok(none.text.includes('No held paper covers this.'));
 });
 
 test('KV key library_state_v1 is registered in kv.js, both lists in _worker.js and the store registry', () => {

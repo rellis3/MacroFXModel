@@ -243,3 +243,27 @@ body.lib-listen-open{--listen-h:96px}
 .lib-fs{margin-left:auto;display:inline-flex;gap:6px;align-items:center}
 .lib-fs button{background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:var(--r);min-width:44px;min-height:44px;font:600 14px 'DM Sans',system-ui,sans-serif;cursor:pointer}
 .lib-fs button:disabled{opacity:.4;cursor:default}
+
+/* index tab: one scannable row per paper. Phone: stacked lines; wide screens: a grid of columns. Never scrolls the page sideways. */
+.lib-ix-selects{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+.lib-ix-selects select{min-width:0;width:100%;min-height:44px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:0 8px;font-size:13px;color:var(--text)}
+.lib-ix{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.lib-ix-row{display:grid;grid-template-columns:minmax(0,1fr);gap:3px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:9px 12px;text-decoration:none;color:var(--text);min-width:0}
+.lib-ix-row:hover{border-color:var(--blue-bd)}
+.lib-ix-row>span{min-width:0;overflow-wrap:anywhere}
+.lib-ix-t{font-weight:600;font-size:14px;line-height:1.35}
+.lib-ix-m{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)}
+.lib-ix-tg{display:flex;flex-wrap:wrap;gap:4px}
+.lib-ix-tg:empty{display:none}
+.lib-ix-c{font-size:13px;color:var(--text2);line-height:1.45}
+.lib-ix-c.none{color:var(--text3);font-style:italic}
+.lib-ix-ev{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.lib-ix-cs,.lib-ix-vd{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)}
+.lib-ix-vd{color:var(--purple)}
+.lib-ix-why{font-family:'DM Mono',monospace;font-size:11px;color:var(--blue)}
+.lib-badge.none{background:var(--s2);color:var(--text3);border:1px solid var(--border)}
+.lib-ix-stats{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-top:14px}
+@media (min-width:760px){
+  .lib-ix-row{grid-template-columns:minmax(0,3fr) minmax(0,1.2fr) minmax(0,1.3fr) minmax(0,3fr) minmax(0,1.2fr);align-items:start;gap:4px 12px}
+  .lib-ix-why{grid-column:1/-1}
+}
