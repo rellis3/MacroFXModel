@@ -34,7 +34,7 @@ test('every edge endpoint exists and every flow resolves (nodes, edges, no edge 
   const all = nodeIds();
   for (const e of EDGES) { assert.ok(all.has(e.from), `edge from ${e.from}`); assert.ok(all.has(e.to), `edge to ${e.to}`); assert.ok(['data', 'control'].includes(e.kind)); assert.ok(e.label); }
   assert.equal(new Set(EDGES.map(edgeKey)).size, EDGES.length, 'one edge per (from, to) pair');
-  for (const f of ['research-case', 'paper-pipeline', 'library-enrichment', 'daily-desk', 'librarian-alone']) assert.ok(FLOWS.some(x => x.id === f), `flow ${f}`);
+  for (const f of ['research-case', 'research-discovery', 'paper-pipeline', 'library-enrichment', 'daily-desk', 'librarian-alone']) assert.ok(FLOWS.some(x => x.id === f), `flow ${f}`);
   for (const f of FLOWS) {
     const r = resolveFlow(f);
     const cells = r.nodes.map(n => `${n.col},${n.row}`); assert.equal(new Set(cells).size, cells.length, `${f.id}: two boxes share a cell`);
@@ -54,9 +54,45 @@ test('the research case flow runs owner -> librarian (optional) -> three lenses 
 
 test('planned agents are drawn dashed and never spend; the edges to them are planned', () => {
   const planned = AGENTS.filter(a => a.planned); assert.ok(planned.length >= 2);
-  for (const a of planned) { assert.equal(a.modelTask, null); assert.ok(a.links.some(l => l.href.includes('PAPER_LIBRARY'))); }
+  for (const a of planned) { assert.equal(a.modelTask, null); assert.ok(a.links.some(l => /PAPER_LIBRARY|RESEARCH_OPPORTUNITY_ENGINE/.test(l.href)), `${a.id} links to its plan`); }
   const svg = flowSvg(resolveFlow('library-enrichment'), { models: {}, agents: Object.fromEntries(AGENTS.map(a => [a.id, a])) });
   assert.ok(/class="ag-node ag-g-Library ag-planned"/.test(svg) && svg.includes('ag-e-planned'));
+});
+
+test('the Research Opportunity Engine is drawn as planned: processing services make no model call, and nothing is built', () => {
+  const roe = ['opportunity-scanner', 'question-writer', 'historical-evaluator', 'forward-tracker', 'research-qa', 'acceptance-check'];
+  for (const id of roe) { const a = AGENTS.find(x => x.id === id); assert.ok(a, id); assert.equal(a.planned, true, `${id} planned`); assert.equal(a.kind, 'service', `${id} is a processing service`); assert.equal(a.modelTask, null, `${id}: no model call`); assert.equal(a.spends, false); assert.equal(a.job, null, `${id}: no scheduled job yet`); assert.equal(a.cap, null); assert.deepEqual(a.roles, []); assert.ok(a.links.some(l => l.href === 'plans/RESEARCH_OPPORTUNITY_ENGINE.md')); }
+  for (const id of ['opportunity-scanner', 'question-writer', 'historical-evaluator', 'forward-tracker']) assert.equal(AGENTS.find(a => a.id === id).group, 'Data');
+  assert.ok(fs.existsSync(new URL('../plans/RESEARCH_OPPORTUNITY_ENGINE.md', import.meta.url)), 'the plan doc exists');
+  for (const id of ['question-queue', 'opportunity-registry', 'ranked-board', 'research-approved', 'design-approved', 'validation-approved']) assert.equal(POINTS[id].planned, true, `${id} planned`);
+  assert.ok(/laptop/i.test(AGENTS.find(a => a.id === 'opportunity-scanner').purpose) && /Python/.test(AGENTS.find(a => a.id === 'opportunity-scanner').purpose));
+  const r = resolveFlow('research-discovery');
+  assert.ok(r.edges.filter(e => e.planned).length >= 10 && r.nodes.some(n => n.id === 'opportunity-registry' && n.planned));
+  assert.ok(flowSvg(r, { models: {}, agents: Object.fromEntries(AGENTS.map(a => [a.id, a])) }).includes('ag-planned'));
+});
+
+test('ROE anti-bias rules: the registry never reaches the question writer, nothing opens a case by itself, the three approvals have separate owners', () => {
+  const into = id => EDGES.filter(e => e.to === id), out = id => EDGES.filter(e => e.from === id);
+  assert.deepEqual(into('question-writer').map(e => e.from), ['opportunity-scanner'], 'the writer is fed by the scanner only, never by earlier results');
+  assert.deepEqual(out('opportunity-registry').map(e => e.to), ['historical-evaluator'], 'the registry answers the evaluator (trial count, same spec) and nobody else');
+  assert.ok(!EDGES.some(e => e.from === 'opportunity-registry' && ['question-writer', 'ranked-board', 'question-queue', 'opportunity-scanner'].includes(e.to)), 'no demoting or hiding from the registry');
+  assert.deepEqual(into('case-store').filter(e => e.from === 'ranked-board').map(e => e.kind), ['control'], 'a case opens by a button press');
+  assert.ok(!EDGES.some(e => e.from === 'historical-evaluator' && e.to === 'case-store') && !EDGES.some(e => e.from === 'question-queue' && e.to === 'case-store'), 'no automatic case');
+  assert.deepEqual(into('research-approved').map(e => e.from), ['head-of-research']);
+  assert.deepEqual(into('design-approved').map(e => e.from), ['system-architect']);
+  assert.deepEqual(into('validation-approved').map(e => e.from), ['acceptance-check'], 'only the deterministic check sets Validation approved');
+  assert.deepEqual(out('research-approved'), [], 'Research approved is not a build instruction');
+  assert.deepEqual(into('research-qa').map(e => e.from).sort(), ['quick-test', 'researcher-flow', 'researcher-macro', 'researcher-quant']);
+  assert.deepEqual(out('research-qa').map(e => e.to), ['head-of-research']);
+  assert.ok(/never labels a question rejected or dead/.test(POINTS['opportunity-registry'].note));
+});
+
+test('the research case flow shows Research QA before the Head and the three approvals after it', () => {
+  const r = resolveFlow('research-case'), has = (a, b) => r.edges.some(e => e.from === a && e.to === b);
+  for (const l of ['researcher-quant', 'researcher-macro', 'researcher-flow', 'quick-test']) assert.ok(has(l, 'research-qa'), l);
+  assert.ok(has('research-qa', 'head-of-research') && has('head-of-research', 'research-approved') && has('system-architect', 'design-approved') && has('acceptance-check', 'validation-approved'));
+  const d = resolveFlow('research-discovery'), dh = (a, b) => d.edges.some(e => e.from === a && e.to === b);
+  assert.ok(dh('daily-data', 'opportunity-scanner') && dh('opportunity-scanner', 'question-writer') && dh('question-writer', 'question-queue') && dh('question-queue', 'historical-evaluator') && dh('historical-evaluator', 'ranked-board') && dh('ranked-board', 'case-store') && dh('case-store', 'head-of-research') && dh('forward-tracker', 'opportunity-registry'));
 });
 
 test('every cap key is a registered KV key (kv.js, both _worker.js lists, storeRegistry) and its number is the module constant', async () => {

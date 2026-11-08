@@ -1,3 +1,10 @@
+> **Status (2026-11-08, later): this file is the INVENTORY, the WATCH LIST and the QUESTION TEMPLATES.** The design in it (section 4)
+> is superseded by [`RESEARCH_OPPORTUNITY_ENGINE.md`](RESEARCH_OPPORTUNITY_ENGINE.md) wherever they differ. Main differences: the scan
+> runs on the owner's laptop in Python; there is **no daily cap** on questions (log the count scanned and correct for it); banked nulls are
+> **not** queued as "context only" (the registry never labels, hides or demotes a question and the question writer never sees prior
+> results); and the hand-off to research is an **Open case button**, never automatic. The lockbox rules, Holm/BH and the 2026-08-21
+> cut-off below stand.
+
 # Data Agent: inventory and design
 
 *2026-11-08. Owner idea (tidied): a STANDALONE Data Agent, not one of the research agents. It watches the data from the
