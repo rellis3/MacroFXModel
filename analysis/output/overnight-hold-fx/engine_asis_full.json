@@ -1,0 +1,271 @@
+{
+  "tag": "full",
+  "generated": "2026-11-08T14:28:08.152Z",
+  "instruments": {
+    "gbpusd": {
+      "window": {
+        "start": 1451865600,
+        "end": 1787270340,
+        "startDate": "2016-01-04",
+        "endDate": "2026-08-21"
+      },
+      "expectedTradingDays": 2774,
+      "actualTrades": 2194,
+      "exceptionsByReason": {
+        "no bar within tolerance (market closed / data gap)": 579
+      },
+      "timezoneGate": {
+        "peakUtcHour": 12,
+        "within": true,
+        "fridays": 126
+      },
+      "mirrorTest": {
+        "coveredDays": 2194,
+        "totalDays": 2194,
+        "overnightGrossPctCompounded": -23.227,
+        "mirrorGrossPctCompounded": 20.731,
+        "reconstructedGrossPct": -7.312
+      },
+      "gross_totalPct": -23.227,
+      "net_totalPct": -74.101,
+      "net_cagrPct": -11.94,
+      "net_sharpe": -1.823,
+      "net_maxDD": -74.46,
+      "winRatePct": 43.6,
+      "profitFactor": 0.695,
+      "exposure": {
+        "avgHoldHours": 18.5,
+        "exposureFraction": 0.4358,
+        "returnPerUnitExposurePct": -170.034,
+        "note": "returnPerUnitExposure = totalReturnPct / exposureFraction — a naive linear scale-up, not re-compounded at higher exposure."
+      },
+      "correlationToBuyHold": {
+        "n": 2193,
+        "r": -0.026
+      },
+      "buyHold_gross": {
+        "startDate": "2016-01-04",
+        "endDate": "2026-08-20",
+        "startPrice": 1.4712200164794922,
+        "endPrice": 1.3642100095748901,
+        "totalPct": -7.274,
+        "cagrPct": -0.708,
+        "years": 10.62
+      },
+      "breakevenCostScale": null,
+      "costSweepNote": "net return is already negative at costScale=0 (zero cost) — the gross effect itself is negative, not just cost-eroded",
+      "propCheck_closedTrade": {
+        "dailyLoss": false,
+        "drawdown": false,
+        "profitTargetReachedInTime": false,
+        "consistency": true,
+        "wouldPassOnHistoricalData": false
+      },
+      "propCheck_detail": {
+        "dailyLossBreach": {
+          "day": "2016-06-24",
+          "dayLossPct": -7.37
+        },
+        "trailingDD": {
+          "day": "2016-04-01",
+          "equity": 89.63,
+          "peak": 100
+        },
+        "profitTargetHitDate": null,
+        "profitTargetTradingDays": null,
+        "consistency": {
+          "bestDayPct": 3.26,
+          "totalProfitToTargetPct": 301.63,
+          "ratioPct": 1.1,
+          "breach": false
+        }
+      },
+      "exitSweep_EXTRA_SEARCH": [
+        {
+          "exitTime": "14:30",
+          "trades": 2194,
+          "totalReturnPct": -74.101,
+          "sharpe": -1.823,
+          "winRatePct": 43.6,
+          "profitFactor": 0.695,
+          "avgHoldHours": 18.5
+        },
+        {
+          "exitTime": "15:30",
+          "trades": 2194,
+          "totalReturnPct": -71.919,
+          "sharpe": -1.606,
+          "winRatePct": 44.3,
+          "profitFactor": 0.733,
+          "avgHoldHours": 19.5
+        },
+        {
+          "exitTime": "16:30",
+          "trades": 2194,
+          "totalReturnPct": -70.047,
+          "sharpe": -1.423,
+          "winRatePct": 45.8,
+          "profitFactor": 0.757,
+          "avgHoldHours": 20.5
+        }
+      ],
+      "weekday": [
+        {
+          "weekday": "Mon",
+          "trades": 546,
+          "avgGrossPct": -0.0101,
+          "avgNetPct": -0.0496
+        },
+        {
+          "weekday": "Tue",
+          "trades": 549,
+          "avgGrossPct": 0.0028,
+          "avgNetPct": -0.0367
+        },
+        {
+          "weekday": "Wed",
+          "trades": 549,
+          "avgGrossPct": 0.0116,
+          "avgNetPct": -0.0679
+        },
+        {
+          "weekday": "Thu",
+          "trades": 550,
+          "avgGrossPct": -0.0479,
+          "avgNetPct": -0.0874
+        }
+      ]
+    },
+    "usdjpy": {
+      "window": {
+        "start": 1451865600,
+        "end": 1787270340,
+        "startDate": "2016-01-04",
+        "endDate": "2026-08-21"
+      },
+      "expectedTradingDays": 2774,
+      "actualTrades": 2194,
+      "exceptionsByReason": {
+        "no bar within tolerance (market closed / data gap)": 579
+      },
+      "timezoneGate": {
+        "peakUtcHour": 12,
+        "within": true,
+        "fridays": 126
+      },
+      "mirrorTest": {
+        "coveredDays": 2194,
+        "totalDays": 2194,
+        "overnightGrossPctCompounded": -11.983,
+        "mirrorGrossPctCompounded": 34.667,
+        "reconstructedGrossPct": 18.53
+      },
+      "gross_totalPct": -11.983,
+      "net_totalPct": -70.31,
+      "net_cagrPct": -10.8,
+      "net_sharpe": -1.606,
+      "net_maxDD": -70.71,
+      "winRatePct": 44.8,
+      "profitFactor": 0.724,
+      "exposure": {
+        "avgHoldHours": 18.5,
+        "exposureFraction": 0.4358,
+        "returnPerUnitExposurePct": -161.335,
+        "note": "returnPerUnitExposure = totalReturnPct / exposureFraction — a naive linear scale-up, not re-compounded at higher exposure."
+      },
+      "correlationToBuyHold": {
+        "n": 2193,
+        "r": 0.026
+      },
+      "buyHold_gross": {
+        "startDate": "2016-01-04",
+        "endDate": "2026-08-20",
+        "startPrice": 119.30899810791016,
+        "endPrice": 158.65199279785156,
+        "totalPct": 32.976,
+        "cagrPct": 2.719,
+        "years": 10.62
+      },
+      "breakevenCostScale": null,
+      "costSweepNote": "net return is already negative at costScale=0 (zero cost) — the gross effect itself is negative, not just cost-eroded",
+      "propCheck_closedTrade": {
+        "dailyLoss": true,
+        "drawdown": false,
+        "profitTargetReachedInTime": false,
+        "consistency": true,
+        "wouldPassOnHistoricalData": false
+      },
+      "propCheck_detail": {
+        "dailyLossBreach": null,
+        "trailingDD": {
+          "day": "2016-06-03",
+          "equity": 90.34,
+          "peak": 101.24
+        },
+        "profitTargetHitDate": null,
+        "profitTargetTradingDays": null,
+        "consistency": {
+          "bestDayPct": 2.07,
+          "totalProfitToTargetPct": 311.46,
+          "ratioPct": 0.7,
+          "breach": false
+        }
+      },
+      "exitSweep_EXTRA_SEARCH": [
+        {
+          "exitTime": "14:30",
+          "trades": 2194,
+          "totalReturnPct": -70.31,
+          "sharpe": -1.606,
+          "winRatePct": 44.8,
+          "profitFactor": 0.724,
+          "avgHoldHours": 18.5
+        },
+        {
+          "exitTime": "15:30",
+          "trades": 2194,
+          "totalReturnPct": -73.515,
+          "sharpe": -1.618,
+          "winRatePct": 45.6,
+          "profitFactor": 0.724,
+          "avgHoldHours": 19.5
+        },
+        {
+          "exitTime": "16:30",
+          "trades": 2194,
+          "totalReturnPct": -73.223,
+          "sharpe": -1.536,
+          "winRatePct": 45.9,
+          "profitFactor": 0.736,
+          "avgHoldHours": 20.5
+        }
+      ],
+      "weekday": [
+        {
+          "weekday": "Mon",
+          "trades": 546,
+          "avgGrossPct": 0.0169,
+          "avgNetPct": -0.0226
+        },
+        {
+          "weekday": "Tue",
+          "trades": 549,
+          "avgGrossPct": 0.0145,
+          "avgNetPct": -0.025
+        },
+        {
+          "weekday": "Wed",
+          "trades": 549,
+          "avgGrossPct": -0.0527,
+          "avgNetPct": -0.1322
+        },
+        {
+          "weekday": "Thu",
+          "trades": 550,
+          "avgGrossPct": 0.0028,
+          "avgNetPct": -0.0367
+        }
+      ]
+    }
+  }
+}

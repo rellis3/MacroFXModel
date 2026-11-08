@@ -4,21 +4,21 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-07.
+Generated 2026-11-08.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **299** |
+| claims tested (validated + null + underpowered) | **301** |
 | validated | 51 |
-| null | 170 |
-| underpowered | 78 |
+| null | 171 |
+| underpowered | 79 |
 | context (base rates, descriptions: not counted as tests) | 51 |
 | pre-registrations with no banked verdict (below) | 89 |
 
-**What the count says (Lesson 02 §05).** If none of the 299 claims were real, tests at the usual 5% size would still pass
-about **15** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 301 claims were real, tests at the usual 5% size would still pass
+about **15.1** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
 **roughly 15 of the 51 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -377,6 +377,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-07 | vol-layer-reaction | volatility | context | forge/VOL_LAYER_REACTION_PREREG.md |
 | 2026-11-07 | vol-layer-round-numbers | price | null | forge/VOL_LAYER_ROUND_NUMBERS_PREREG.md |
 | 2026-11-07 | vol-layer-rv5-increment | volatility | validated | forge/VOL_LAYER_RV5_INCREMENT_PREREG.md |
+| 2026-11-08 | overnight-hold-gbpusd | price | null | forge/OVERNIGHT_HOLD_FX_PREREG.md |
+| 2026-11-08 | overnight-hold-usdjpy | price | underpowered | forge/OVERNIGHT_HOLD_FX_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 

@@ -776,6 +776,18 @@ export const DESK_EVIDENCE = [
     use: 'The gold gains have come overnight (descriptive, gross), but the hold nets only ~4% a year after real costs, unconfirmed and below buy & hold. Not a strategy; do not cite as validated.',
   },
   {
+    id: 'overnight-hold-gbpusd', domain: 'price', verdict: 'null', date: '2026-11-08', doc: 'forge/OVERNIGHT_HOLD_FX_PREREG.md', also: ['analysis/output/overnight-hold-fx/RESULTS.md'],
+    claim: 'The C.OG overnight hold (long 20:00 UK -> 14:30 UK, OANDA bid/ask spread, OANDA financing from SONIA - DFF minus a fixed markup) on GBPUSD, the owner extension beside NAS100/gold',
+    result: 'NULL. 2,026 trades 2016-10 to 2026-08: mean net -0.026% per trade [-0.044, -0.009], Holm p 0.008 on the negative side; -5.4% a year, DD -44%, Sharpe -0.85; negative in both halves and 10 of 11 years. Gross overnight move -0.006% a night (nothing); spread 0.014% a round trip and financing (pays both sides, markup 1.09pp) take the rest. CFD buy & hold -0.4% a year. Shorting the same nights also loses (-20.7% net total). Prop pass 0 of 96 starts.',
+    use: 'There is no overnight drift in GBPUSD; the hold just pays the 20:00 spread and the swap. Do not run overnight holds on GBPUSD.',
+  },
+  {
+    id: 'overnight-hold-usdjpy', domain: 'price', verdict: 'underpowered', date: '2026-11-08', doc: 'forge/OVERNIGHT_HOLD_FX_PREREG.md', also: ['analysis/output/overnight-hold-fx/RESULTS.md'], instruments: ['USDJPY'],
+    claim: 'The C.OG overnight hold (long 20:00 UK -> 14:30 UK, real spread, OANDA financing from DFF - TONA minus a fixed markup, a credit when long) on USDJPY',
+    result: 'UNDERPOWERED. 2,026 trades 2016-10 to 2026-08: mean net -0.005% per trade [-0.026, +0.016], Holm p 0.62; -1.3% a year, DD -25%, Sharpe -0.17; halves -0.009 / -0.001. Gross overnight move +0.0004% a night (nothing): the pair rose +52% over the decade entirely outside the window (overnight x between-legs reconstructs buy & hold exactly). Carry credit (+12.8% summed) pays back half the spread (-24.3%). CFD buy & hold +6.0% a year. Prop pass 0 of 96 starts.',
+    use: 'The overnight window holds no USDJPY drift; what a long earns is carry, which buy & hold collects on every day. Not a strategy.',
+  },
+  {
     id: 'overnight-hold-toolkit', domain: 'price', verdict: 'context', date: '2026-10-25', doc: 'forge/OVERNIGHT_HOLD_TOOLKIT_PREREG.md', also: ['analysis/output/overnight-hold-toolkit/RESULTS.md'], instruments: ['NQ', 'GOLD'],
     claim: 'C.OG stage 7: the overnight-hold trades through a prop toolkit (replica of his Prop Firm Toolkit method, FTMO 2-step rules, intraday equity, block bootstrap), gross then net, against a zero-edge copy of the same trades',
     result: 'CONTEXT. FTMO 2-step (+10% then +5%, 10% static floor, 5% daily, no time limit), 5,000 paths: at 1x funded NQ 51% gross / 39% net, gold 70% / 42%, both at half size each 80% / 56%; zero-edge copy 21% / 24% / 23%. So ~18pp of the net funded rate is edge (33pp combined), the rest variance. Median 160-260 trading days to funded; 2x and up mostly breaks the daily limit. Actual history, no resampling, 1x net: 42% / 48% / 59% of finished attempts funded. With the edge at the low end of its CI the edge contribution is ~0. Break-even fee 3.1% / 2.9% / 4.3% of account vs 1.0-1.2% for zero edge (a challenge caps losses at the fee, so zero edge also clears ~0.54%). Under the generic 30-day ruleset: 2-3%.',
@@ -2522,6 +2534,8 @@ const POWER = {
   'dax-ifo-lookahead':       { n: '246 months',                note: 'MDE ~1.0%/month; CI upper +0.21 below the +0.5% bar' },
   'overnight-hold-nq':       { n: '1,949 nights (block 20)',   note: 'MDE ~0.08%/trade vs observed +0.034; a 5-10%/yr edge cannot be confirmed in 10 yrs' },
   'overnight-hold-gold':     { n: '1,962 nights (block 20)',   note: 'MDE ~0.06%/trade vs observed +0.022' },
+  'overnight-hold-gbpusd':   { n: '2,026 nights (block 20)',   note: 'MDE ~0.035%/trade; CI [-0.044, -0.009] wholly below the +0.01% NULL bar' },
+  'overnight-hold-usdjpy':   { n: '2,026 nights (block 20)',   note: 'MDE ~0.035%/trade vs observed -0.005; CI half-width 0.021' },
   'direction-bar':           { n: '6 instruments x 4 horizons; 2,000 placebo sets a cell', note: 'measuring instrument; MDE calibrated by planted-signal control (power 0.76-0.85)' },
   'stress-filter-hold-direction': { n: '5,795 NQ days, 1,122 stressed', note: 'placebo MDE 0.086 sigma vs a Moreira-Muir-sized 0.02-0.04; planted 0.15 found 200/200' },
   'stress-filter-hold-flat':  { n: '5,795 NQ days (block 20)', note: 'Sharpe-difference MDE 0.38 vs the 0.15 bar' },
