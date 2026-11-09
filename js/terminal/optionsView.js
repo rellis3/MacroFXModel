@@ -212,6 +212,10 @@ export { pxs as fmtPx, dm as fmtDay };
 export function walkModel(sm, walk, { w = 460, h = null, back = null, o = WALK_OPTS_DEFAULT } = {}) {
   w = Math.max(300, Math.min(1000, Math.round(w))); const narrow = w < 520; h ??= narrow ? 400 : 380; back ??= narrow ? 22 : 40;
   const ser = (sm?.series ?? []).slice(-back), A = walkAnchor(sm); if (ser.length < 5 || !fin(A.px)) return null;
+  // join the price line to the "now" dot (owner 2026-11-09): the stored series stops at the last close, so a weekend or an intraday move left a gap between
+  // the line and the dot. The line now runs on to today's price: appended when the series ends before today, and moved to the live price when it ends on today.
+  { const last = ser.at(-1), tl = dayN(last[0]), tA = dayN(A.date);
+    if (tl < tA) ser.push([A.date, A.px]); else if (tl === tA) ser[ser.length - 1] = [last[0], A.px]; }
   const pts = (walk?.points ?? []).filter(p => fin(p.px)); const vol = walkVol(sm);
   const mixed = pts.some(p => srcOf(p) !== 'cme');   // a Cboe source is on: the dot labels carry their source, one more legend line
   const tNow = dayN(A.date), t0 = dayN(ser[0][0]), tEnd = Math.max(tNow + 14, ...pts.map(p => dayN(p.expiry)));
