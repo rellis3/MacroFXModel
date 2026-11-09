@@ -477,17 +477,21 @@ if barstate.islast
                     color col = f_lvCol(t)
                     float strn = nz(array.get(lvStr, i), 0.5)
                     bool isEdge = t == "exp_hi" or t == "exp_lo"
+                    int nStack = 1                  // how many levels share this line (1 = alone)
+                    for j = 0 to nL - 1
+                        if array.get(lead, j) == i
+                            nStack += 1
                     if showZones and not isEdge
                         float zh = ref * zoneFrac * (0.6 + 0.8 * strn)
                         array.push(dBox, box.new(left=xStart, top=p + zh, right=xLineEnd, bottom=p - zh, border_color=color(na), bgcolor=color.new(col, 92)))
                     if showLevels
-                        int wdt = isEdge ? 1 : (1 + int(math.round(strn * 2)))
-                        array.push(dLine, line.new(x1=xStart, y1=p, x2=xLineEnd, y2=p, xloc=xloc.bar_index, color=color.new(col, 25), style=f_lvStyle(t), width=wdt))
+                        int wdt = isEdge ? 1 : math.min(5, 1 + int(math.round(strn * 2)) + (nStack - 1))   // a stacked line is one pixel thicker per extra level
+                        array.push(dLine, line.new(x1=xStart, y1=p, x2=xLineEnd, y2=p, xloc=xloc.bar_index, color=color.new(col, nStack > 1 ? 0 : 25), style=f_lvStyle(t), width=wdt))
                         float ly = na(lastY) ? p : math.min(p, lastY - gap)
                         lastY := ly
                         float tp = array.get(lvTouch, i)
                         float et = array.get(lvEta, i)
-                        string txt = array.get(lvLabel, i) + array.get(also, i) + "  " + str.tostring(p, format.mintick) + (array.get(lvExp, i) != "" ? "  ·  " + array.get(lvExp, i) : "") + (f_chgChip(i)) + (na(tp) ? "" : "  ·  " + str.tostring(tp, "#") + "%" + (na(et) ? "" : "~" + str.tostring(et, "#") + "m"))
+                        string txt = (nStack > 1 ? "×" + str.tostring(nStack) + " " : "") + array.get(lvLabel, i) + array.get(also, i) + "  " + str.tostring(p, format.mintick) + (array.get(lvExp, i) != "" ? "  ·  " + array.get(lvExp, i) : "") + (f_chgChip(i)) + (na(tp) ? "" : "  ·  " + str.tostring(tp, "#") + "%" + (na(et) ? "" : "~" + str.tostring(et, "#") + "m"))
                         array.push(dLbl, label.new(x=labX, y=ly, text=txt, xloc=xloc.bar_index, yloc=yloc.price, color=color.new(#0d1117, 12), style=(labLeft ? label.style_label_right : label.style_label_left), textcolor=col, size=f_lblSize()))
                         // a label that had to be moved to clear its neighbour stays tied to its own line by a dotted connector
                         if math.abs(ly - p) > ref * 0.02
