@@ -284,3 +284,4 @@ body.lib-listen-open{--listen-h:96px}
 .lib-lb-t{font-weight:600;font-size:14px;line-height:1.35}
 .lib-lb-why{font-size:13px;color:var(--text2);line-height:1.45}
 @media (min-width:520px){.lib-lb-form{grid-template-columns:minmax(0,1fr) auto}}
+.lib-more{display:block;width:100%;margin:14px 0 4px;min-height:44px}
