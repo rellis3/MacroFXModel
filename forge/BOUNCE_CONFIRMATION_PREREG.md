@@ -200,6 +200,27 @@ effect 1 (episodes de-clustered; block 3 carries residual overlap).
 
 ---
 
+### 2026-11-09 — PRE-RESULTS (planted runs seen) — planted-signal control
+
+`--planted` (the registered +1.5 pp on `Y_5` of the real-label CONFIRMED episodes) gave a
+residual difference of **+1.23 pp, 95 % interval [−0.07, +2.55]**, p 0.068: it beat the
+label-shuffle 95th percentile (1.06) and the shifted-window placebo failed (−0.56), but the
+interval touched zero, so the registered recovery criterion was **missed**. This is what
+the first amendment predicted: a 1.5 pp plant against an MDE of 1.65 pp has roughly 70 %
+power. A second, purely mechanical plant of **+3.0 pp** (`--planted=3`, not pre-registered,
+run only to show the pipeline) was recovered cleanly: +2.72 pp [1.43, 4.04], p 0.001,
+Holm-rejected, every gate leg true. The pipeline recovers a signal it can see; the design is
+not changed, the bars and gate stand, and the verdict rules of the first amendment apply.
+
+**Disclosure.** Planting only `Y_5` of CONFIRMED leaves the other two scored cells untouched,
+and the harness prints all three cells in the planted pass, so the H1 h = 10 and H2 cells were
+seen before the real run (+0.50 pp [−0.95, 1.83] and +0.11 pp [−0.86, 0.99] respectively), and
+the real H1 h = 5 raw difference is implied at about 1.23 − 1.5 ≈ **−0.3 pp**. Nothing in the
+gate or bars is adjusted in light of this, but this amendment is not blind and is tagged
+accordingly. Future preregs with a planted control should print only the planted cell.
+
+---
+
 ## RESULTS — run <YYYY-MM-DD>
 
 *Written to `analysis/output/bounce-confirmation/RESULTS.md`. Nothing above this line changes

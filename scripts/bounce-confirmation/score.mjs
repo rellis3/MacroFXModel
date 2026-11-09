@@ -19,7 +19,9 @@ import { mulberry32 } from '../../js/statsCore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.resolve(__dirname, '../../analysis/output/bounce-confirmation');
-const MODE = process.argv.includes('--counts') ? 'counts' : process.argv.includes('--planted') ? 'planted' : 'run';
+const MODE = process.argv.includes('--counts') ? 'counts' : process.argv.some(a => a.startsWith('--planted')) ? 'planted' : 'run';
+// --planted plants the pre-registered +1.5pp; --planted=3 plants a larger shift as a purely mechanical pipeline check
+const PLANT_ARG = process.argv.find(a => a.startsWith('--planted='));
 
 // ── pre-registered constants ──────────────────────────────────────────────────
 const SEED = 20261109, B = 2000, BLOCK = 3;
@@ -27,7 +29,7 @@ const LOCKBOX_END = '2026-08-21', FROM = '2007-04-11';
 const LOW_WIN = 10, MIN_BOUNCE = 0.015, WITHIN = 3, DECLUSTER = 10;
 const HORIZONS = [5, 10], DESC_H = 20;
 const BAR = { h5: 1.5, h10: 2.0, fade: -1.0 };
-const PLANT = 1.5;
+const PLANT = PLANT_ARG ? parseFloat(PLANT_ARG.split('=')[1]) : 1.5;
 
 // ── data (Yahoo adjusted closes, keyless; truncated at the lockbox BEFORE any join) ───
 const UA = { headers: { 'User-Agent': 'Mozilla/5.0' } };
@@ -160,15 +162,15 @@ const verdict = MODE === 'planted' ? (gate.H1_h5.ci && cells.H1_h5.resid.obs > c
   : (gate.H1_h5.pass || gate.H1_h10.pass || gate.H2_h5.pass) ? 'VALIDATED'
   : (mde.h5 <= BAR.h5 && mde.h10 <= BAR.h10 && mde.fade <= Math.abs(BAR.fade)) ? 'NULL' : 'UNDERPOWERED';
 
-const out = { id: 'bounce-confirmation', mode: MODE, verdict, ranAt: new Date().toISOString(), seed: SEED, B, prereg: 'forge/BOUNCE_CONFIRMATION_PREREG.md', preregCommit: '24bb5870', branch: 'ccr-dfef37e6-2ty8zi',
+const out = { id: 'bounce-confirmation', mode: MODE, plant: MODE === 'planted' ? PLANT : null, verdict, holmAdjusted: holmRes.adjusted, ranAt: new Date().toISOString(), seed: SEED, B, prereg: 'forge/BOUNCE_CONFIRMATION_PREREG.md', preregCommit: '24bb5870', branch: 'ccr-dfef37e6-2ty8zi',
   sample: { n, from: dates[0], to: dates.at(-1), episodes: episodes.length, usable: usable.length, arms: { CONFIRMED: nC, UNCONFIRMED: nU, MIXED: count('MIXED') } }, ctlSd, mde, bar: BAR,
   cells: [
-    { name: 'H1 h5 residual diff', n: `${nC} vs ${nU}`, est: cells.H1_h5.resid.obs, lo: cells.H1_h5.resid.ci95[0], hi: cells.H1_h5.resid.ci95[1], raw: cells.H1_h5.raw.obs, rawCi: cells.H1_h5.raw.ci95, mde: +mde.h5.toFixed(2), bar: BAR.h5, p: pvals[0], holmPass: holmRes[0], halves: cells.H1_h5.halves.map(v => +v.toFixed(2)), placebo: cells.H1_h5.placebo, shifted: { est: cells.H1_h5.shifted.obs, ci: cells.H1_h5.shifted.ci95 }, gate: gate.H1_h5 },
-    { name: 'H1 h10 residual diff', n: `${nC} vs ${nU}`, est: cells.H1_h10.resid.obs, lo: cells.H1_h10.resid.ci95[0], hi: cells.H1_h10.resid.ci95[1], raw: cells.H1_h10.raw.obs, rawCi: cells.H1_h10.raw.ci95, mde: +mde.h10.toFixed(2), bar: BAR.h10, p: pvals[1], holmPass: holmRes[1], halves: cells.H1_h10.halves.map(v => +v.toFixed(2)), placebo: cells.H1_h10.placebo, shifted: { est: cells.H1_h10.shifted.obs, ci: cells.H1_h10.shifted.ci95 }, gate: gate.H1_h10 },
-    { name: 'H2 h5 unconfirmed mean (fade)', n: `${nU}`, est: cells.H2_h5.resid.obs, lo: cells.H2_h5.resid.ci95[0], hi: cells.H2_h5.resid.ci95[1], mde: +mde.fade.toFixed(2), bar: BAR.fade, p: pvals[2], holmPass: holmRes[2], halves: cells.H2_h5.halves.map(v => +v.toFixed(2)), gate: gate.H2_h5 },
+    { name: 'H1 h5 residual diff', n: `${nC} vs ${nU}`, est: cells.H1_h5.resid.obs, lo: cells.H1_h5.resid.ci95[0], hi: cells.H1_h5.resid.ci95[1], raw: cells.H1_h5.raw.obs, rawCi: cells.H1_h5.raw.ci95, mde: +mde.h5.toFixed(2), bar: BAR.h5, p: pvals[0], holmPass: holmRes.rejected[0], halves: cells.H1_h5.halves.map(v => +v.toFixed(2)), placebo: cells.H1_h5.placebo, shifted: { est: cells.H1_h5.shifted.obs, ci: cells.H1_h5.shifted.ci95 }, gate: gate.H1_h5 },
+    { name: 'H1 h10 residual diff', n: `${nC} vs ${nU}`, est: cells.H1_h10.resid.obs, lo: cells.H1_h10.resid.ci95[0], hi: cells.H1_h10.resid.ci95[1], raw: cells.H1_h10.raw.obs, rawCi: cells.H1_h10.raw.ci95, mde: +mde.h10.toFixed(2), bar: BAR.h10, p: pvals[1], holmPass: holmRes.rejected[1], halves: cells.H1_h10.halves.map(v => +v.toFixed(2)), placebo: cells.H1_h10.placebo, shifted: { est: cells.H1_h10.shifted.obs, ci: cells.H1_h10.shifted.ci95 }, gate: gate.H1_h10 },
+    { name: 'H2 h5 unconfirmed mean (fade)', n: `${nU}`, est: cells.H2_h5.resid.obs, lo: cells.H2_h5.resid.ci95[0], hi: cells.H2_h5.resid.ci95[1], mde: +mde.fade.toFixed(2), bar: BAR.fade, p: pvals[2], holmPass: holmRes.rejected[2], halves: cells.H2_h5.halves.map(v => +v.toFixed(2)), gate: gate.H2_h5 },
   ], descriptive: { ...desc, bhFdr: bh }, episodes: usable.map(e => ({ d: e.d, lowD: e.lowD, drop: +e.drop.toFixed(2), bounce: +e.bounce.toFixed(2), C: +e.C.toFixed(2), M: +e.M.toFixed(2), arm: e.arm, y5: +e.y5.toFixed(2), y10: +e.y10.toFixed(2), y20: +e.y20.toFixed(2), giveBack: e.giveBack })) };
 fs.mkdirSync(OUT, { recursive: true });
-fs.writeFileSync(path.join(OUT, MODE === 'planted' ? 'planted.json' : 'results.json'), JSON.stringify(out, null, 1));
+fs.writeFileSync(path.join(OUT, MODE === 'planted' ? `planted_${PLANT}.json` : 'results.json'), JSON.stringify(out, null, 1));
 for (const c of out.cells) console.log(`${c.name.padEnd(32)} est ${c.est >= 0 ? '+' : ''}${c.est.toFixed(2)} [${c.lo.toFixed(2)}, ${c.hi.toFixed(2)}]${c.raw != null ? `  raw ${c.raw >= 0 ? '+' : ''}${c.raw.toFixed(2)}` : ''}  halves ${c.halves.join('/')}  p ${c.p}  holm ${c.holmPass}${c.placebo ? `  placebo p95 ${c.placebo.p95.toFixed(2)} sd ${c.placebo.sd.toFixed(2)}` : ''}${c.shifted ? `  shifted ${c.shifted.est.toFixed(2)} [${c.shifted.ci[0].toFixed(2)}, ${c.shifted.ci[1].toFixed(2)}]` : ''}  gate ${JSON.stringify(c.gate)}`);
 console.log(`VERDICT: ${verdict}`);
 console.log('descriptive:', JSON.stringify({ y5: desc.y5, y10: desc.y10, hit5: desc.hitRate5, giveBack: desc.giveBack10, unconditional5: desc.unconditional5, ordinary5: desc.ordinary5, legs5: { credit: desc.legs.creditOnly[5].obs, semis: desc.legs.semisOnly[5].obs }, ex0820: desc.ex2008_2020, last3y: desc.last3y, oas: desc.oas }));
