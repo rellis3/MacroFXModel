@@ -90,11 +90,11 @@ function groupsSvg(c) {
 }
 
 function tradeSvg(t) {
-  const w = 200, h = 110, ys = t.path.map(p => p[1]).concat(t.stop, t.target, 0), xs = t.path.map(p => p[0]);
+  const w = 200, h = 110, ys = t.path.map(p => p[1]).concat([t.stop, t.target, 0].filter(v => v != null)), xs = t.path.map(p => p[0]);
   const y0 = Math.min(...ys), y1 = Math.max(...ys), x0 = Math.min(...xs), x1 = Math.max(...xs);
   const X = v => 4 + ((v - x0) / ((x1 - x0) || 1)) * (w - 8), Y = v => 4 + (1 - (v - y0) / ((y1 - y0) || 1)) * (h - 8);
   const d = t.path.map((p, i) => `${i ? 'L' : 'M'}${X(p[0]).toFixed(1)} ${Y(p[1]).toFixed(1)}`).join('');
-  return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(t.inst)} ${esc(t.date)}"><line x1="4" x2="${w - 4}" y1="${Y(t.target)}" y2="${Y(t.target)}" stroke="var(--series-3)" stroke-dasharray="3 3"/><line x1="4" x2="${w - 4}" y1="${Y(t.stop)}" y2="${Y(t.stop)}" stroke="var(--series-2)" stroke-dasharray="3 3"/><line x1="${X(0)}" x2="${X(0)}" y1="4" y2="${h - 4}" stroke="var(--grid)"/><path d="${d}" fill="none" stroke="var(--series-1)" stroke-width="1.5"/></svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(t.inst)} ${esc(t.date)}">${t.target != null ? `<line x1="4" x2="${w - 4}" y1="${Y(t.target)}" y2="${Y(t.target)}" stroke="var(--series-3)" stroke-dasharray="3 3"/>` : `<line x1="4" x2="${w - 4}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--grid)"/>`}${t.stop != null ? `<line x1="4" x2="${w - 4}" y1="${Y(t.stop)}" y2="${Y(t.stop)}" stroke="var(--series-2)" stroke-dasharray="3 3"/>` : ''}<line x1="${X(0)}" x2="${X(0)}" y1="4" y2="${h - 4}" stroke="var(--grid)"/><path d="${d}" fill="none" stroke="var(--series-1)" stroke-width="1.5"/></svg>`;
 }
 
 function chartHtml(c) {
@@ -104,7 +104,7 @@ function chartHtml(c) {
   if (c.type === 'hist') { body = histSvg(c); tbl = table([`From (${c.unit})`, 'Trades'], c.bins); }
   if (c.type === 'groups') { body = legend(c.names) + groupsSvg(c); tbl = table(['Item', ...c.names], c.rows.map(r => [r.label, ...r.values])); }
   if (c.type === 'trades') {
-    body = `<div class="tr-grid">${c.trades.map(t => `<div class="tr-card"><b>${esc(t.inst)}</b> ${esc(t.date)}<br>${esc(t.side)} · result ${signed(t.r, 2)} R${tradeSvg(t)}</div>`).join('')}</div>`;
+    body = `<div class="tr-grid">${c.trades.map(t => `<div class="tr-card"><b>${esc(t.inst)}</b> ${esc(t.date)}<br>${esc(t.side)} · result ${signed(t.r, 2)} ${esc(t.unit ?? 'R')}${tradeSvg(t)}</div>`).join('')}</div>`;
   }
   return `<div class="card viz" style="margin-top:12px"><h4>${esc(c.title)}</h4><p class="sub">${esc(c.note ?? '')} Unit: ${esc(c.unit)}.</p>${body}${tbl}</div>`;
 }
@@ -116,7 +116,7 @@ function checksTable(ch) {
   const mark = ok => (ok ? '<span class="pf-ok">Pass</span>' : '<span class="pf-bad">Fail</span>');
   const rows = Object.entries(ch).map(([q, c]) => {
     const pl = c.planted_large ?? {}, pm = c.planted_min ?? {}, sh = c.shuffle ?? {};
-    const shOk = sh.real_beats_all != null ? sh.real_beats_all : (sh.lo <= 0 && 0 <= sh.hi);
+    const shOk = sh.real_beats_all != null ? sh.real_beats_all : sh.one_sided ? sh.lo <= 0 : (sh.lo <= 0 && 0 <= sh.hi);
     const shTxt = sh.real_beats_all != null ? `real ${fmt(sh.real, 4)}, best shuffle ${fmt(sh.best_shuffle, 4)}` : `[${signed(sh.lo)}, ${signed(sh.hi)}]`;
     return `<tr><td>${esc(q.replaceAll('_', ' '))}</td><td class="num">${signed(c.effect, 4)} [${signed(c.lo, 4)}, ${signed(c.hi, 4)}]</td><td class="num">${signed(c.min_effect, 3)}</td><td class="num">${fmt(c.power, 2)}</td><td>${mark(pl.shift >= 0.5 * pl.injected)} put in ${pl.injected}, got ${signed(pl.shift)}</td><td>${mark(pm.shift >= 0.5 * pm.injected)} put in ${pm.injected}, got ${signed(pm.shift, 4)}</td><td>${mark(shOk)} ${shTxt}</td><td><span class="pill ${NAMES[c.verdict] ?? ''}">${esc(c.verdict)}</span></td></tr>`;
   }).join('');

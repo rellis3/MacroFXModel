@@ -27,6 +27,12 @@ def test_failed_proofs_are_invalid():
     assert G.decide(_ok(effect=0.05, lo=0.04, hi=0.06, shuffle={"lo": 0.01, "hi": 0.02}))["verdict"] == "INVALID"
 
 
+def test_one_sided_shuffle_only_fails_on_a_gain():
+    assert G.decide(_ok(shuffle={"lo": -0.0004, "hi": -0.0001, "one_sided": True}))["verdict"] == "NULL"
+    assert G.decide(_ok(shuffle={"lo": 0.001, "hi": 0.002, "one_sided": True}))["verdict"] == "INVALID"
+    assert G.decide(_ok(shuffle={"lo": -0.0004, "hi": -0.0001}))["verdict"] == "INVALID"
+
+
 def test_the_four_words():
     assert G.decide(_ok(effect=0.03, lo=0.02, hi=0.04))["verdict"] == "VALIDATED"
     assert G.decide(_ok(effect=0.005, lo=0.002, hi=0.008))["verdict"] == "CONTEXT"

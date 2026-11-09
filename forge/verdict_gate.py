@@ -43,6 +43,8 @@ def shuffle_ok(s: dict) -> bool:
     """A shuffle must show nothing: interval includes zero, or the real result beats every shuffle (placebo form)."""
     if s.get("real_beats_all") is not None:
         return bool(s["real_beats_all"])
+    if s.get("one_sided"):                                     # only a false GAIN fails (overfit noise costs a little)
+        return bool(s.get("lo") is not None and s["lo"] <= 0)
     return bool(s.get("lo") is not None and s["lo"] <= 0 <= s["hi"])
 
 

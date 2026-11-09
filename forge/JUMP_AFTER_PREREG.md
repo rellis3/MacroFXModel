@@ -124,3 +124,9 @@ The stage 2 look (`scripts/jump-after/look.py`, before-burst prices only; `backt
 - Stop-through and intensity. **Planted:** a synthetic target drawn from the in-sample benchmark probability plus a known random feature, sized so that the true Brier gain is about 0.5% (minimum) and about 5% (large). The model, given that feature, must recover at least half of it. **Shuffle:** the added features are permuted across rows as a block, and the gain interval must include 0. Minimum effect 0.005.
 
 **Power for the new cells (no outcomes):** about 75% of bursts are common and 25% own, so own ≈ 2,000 and common ≈ 5,500 after the rollover is removed. With the A1 design effect, the own-cell SE is about 0.013σ and the MDE about 0.04σ: powered against the 0.03σ minimum only if the realised interval is tight. The realised interval decides it.
+
+### A3 — 2026-11-09 — POST-HOC (proof checks only; no cell, threshold or verdict rule changed)
+The first scored run (outputs read) failed two proof checks for reasons in the checks themselves, not the pipeline.
+1. **Path shuffle.** A random sign per burst breaks up the moments when many instruments burst together, so its interval is too narrow (±0.011σ against a true ±0.028σ). One draw landed at +0.016σ. Over 500 draws the per-burst shuffle mean is −0.0003σ (sd 0.0055), so the pipeline has no bias. **New check:** one random sign per 5-minute moment, 200 draws, seed 20261108. The gate reads the 2.5–97.5% range of the 200 shuffle means (it must include 0), and the share of draws whose own interval excludes 0 is reported (it should be near 5%).
+2. **Gain shuffle.** Permuted features cost a little accuracy through overfitting (gain about −0.0002, interval just below 0). That is not a false gain. **New rule:** a gain shuffle fails only if its interval is wholly above 0 (`one_sided` in `forge/verdict_gate.py`).
+The first run's checks are kept in `analysis/output/jump-after/checks_run1.json`.

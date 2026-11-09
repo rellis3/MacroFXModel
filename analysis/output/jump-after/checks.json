@@ -1,0 +1,304 @@
+{
+ "jump-after-path:unscheduled": {
+  "effect": 0.0374,
+  "lo": -0.0125,
+  "hi": 0.0942,
+  "min_effect": 0.03,
+  "diagnostics": {
+   "ok": true,
+   "why": "1144 bursts"
+  },
+  "planted_large": {
+   "injected": 0.2,
+   "shift": 0.2
+  },
+  "planted_min": {
+   "injected": 0.03,
+   "shift": 0.03
+  },
+  "shuffle": {
+   "lo": -0.0511775,
+   "hi": 0.05114500000000001,
+   "mean": 0.0017014999999999999,
+   "draws": 200,
+   "false_positive_rate": 0.07
+  },
+  "rows": {
+   "used": 1144,
+   "dropped": 0
+  },
+  "verdict": "UNDERPOWERED",
+  "reasons": [
+   "interval [-0.0125, +0.0942] neither reaches nor rules out +0.03"
+  ],
+  "power": 0.2936618881778622
+ },
+ "jump-after-path:scheduled": {
+  "effect": 0.0691,
+  "lo": -0.0238,
+  "hi": 0.1615,
+  "min_effect": 0.03,
+  "diagnostics": {
+   "ok": true,
+   "why": "615 bursts"
+  },
+  "planted_large": {
+   "injected": 0.2,
+   "shift": 0.2
+  },
+  "planted_min": {
+   "injected": 0.03,
+   "shift": 0.03
+  },
+  "shuffle": {
+   "lo": -0.08985749999999999,
+   "hi": 0.09250750000000003,
+   "mean": -0.00026350000000000017,
+   "draws": 200,
+   "false_positive_rate": 0.055
+  },
+  "rows": {
+   "used": 615,
+   "dropped": 0
+  },
+  "verdict": "UNDERPOWERED",
+  "reasons": [
+   "interval [-0.0238, +0.1615] neither reaches nor rules out +0.03"
+  ],
+  "power": 0.15619524551881342
+ },
+ "jump-after-path:all_34": {
+  "effect": 0.0272,
+  "lo": 0.0033,
+  "hi": 0.0534,
+  "min_effect": 0.03,
+  "diagnostics": {
+   "ok": true,
+   "why": "8385 bursts"
+  },
+  "planted_large": {
+   "injected": 0.2,
+   "shift": 0.2
+  },
+  "planted_min": {
+   "injected": 0.03,
+   "shift": 0.03
+  },
+  "shuffle": {
+   "lo": -0.0279575,
+   "hi": 0.027060000000000015,
+   "mean": 0.0015884999999999999,
+   "draws": 200,
+   "false_positive_rate": 0.07
+  },
+  "rows": {
+   "used": 8385,
+   "dropped": 0
+  },
+  "verdict": "CONTEXT",
+  "reasons": [
+   "interval above 0, but +0.0272 is below the minimum +0.03"
+  ],
+  "power": 0.7587878233252976
+ },
+ "jump-after-path:common": {
+  "effect": 0.0398,
+  "lo": 0.0101,
+  "hi": 0.0727,
+  "min_effect": 0.03,
+  "diagnostics": {
+   "ok": true,
+   "why": "6701 bursts"
+  },
+  "planted_large": {
+   "injected": 0.2,
+   "shift": 0.2
+  },
+  "planted_min": {
+   "injected": 0.03,
+   "shift": 0.03
+  },
+  "shuffle": {
+   "lo": -0.031237499999999998,
+   "hi": 0.0286,
+   "mean": -0.000837,
+   "draws": 200,
+   "false_positive_rate": 0.04
+  },
+  "rows": {
+   "used": 6701,
+   "dropped": 0
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.0398 reaches the minimum +0.03"
+  ],
+  "power": 0.5923934308905916
+ },
+ "jump-after-path:own": {
+  "effect": 0.023,
+  "lo": 0.0012,
+  "hi": 0.0451,
+  "min_effect": 0.03,
+  "diagnostics": {
+   "ok": true,
+   "why": "1684 bursts"
+  },
+  "planted_large": {
+   "injected": 0.2,
+   "shift": 0.2
+  },
+  "planted_min": {
+   "injected": 0.03,
+   "shift": 0.03
+  },
+  "shuffle": {
+   "lo": -0.021775,
+   "hi": 0.026510000000000002,
+   "mean": 0.0013700000000000001,
+   "draws": 200,
+   "false_positive_rate": 0.085
+  },
+  "rows": {
+   "used": 1684,
+   "dropped": 0
+  },
+  "verdict": "CONTEXT",
+  "reasons": [
+   "interval above 0, but +0.023 is below the minimum +0.03"
+  ],
+  "power": 0.8494115020255367
+ },
+ "jump-after-stop-through:d0.25": {
+  "effect": 0.00122,
+  "lo": -0.00093,
+  "hi": 0.00329,
+  "min_effect": 0.005,
+  "diagnostics": {
+   "ok": true,
+   "why": "n 66039, base 0.6129"
+  },
+  "planted_large": {
+   "injected": 0.05367,
+   "shift": 0.05306
+  },
+  "planted_min": {
+   "injected": 0.0048,
+   "shift": 0.00455
+  },
+  "shuffle": {
+   "lo": -0.00047,
+   "hi": -3e-05,
+   "mean": -0.00025,
+   "one_sided": true
+  },
+  "rows": {
+   "used": 66039,
+   "dropped": 24290
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.005, so that size is ruled out"
+  ],
+  "power": 0.9986483762099841
+ },
+ "jump-after-stop-through:d0.5": {
+  "effect": 0.00507,
+  "lo": 0.00085,
+  "hi": 0.0097,
+  "min_effect": 0.005,
+  "diagnostics": {
+   "ok": true,
+   "why": "n 66039, base 0.1417"
+  },
+  "planted_large": {
+   "injected": 0.0515,
+   "shift": 0.05007
+  },
+  "planted_min": {
+   "injected": 0.00585,
+   "shift": 0.00569
+  },
+  "shuffle": {
+   "lo": -0.00054,
+   "hi": -9e-05,
+   "mean": -0.00031,
+   "one_sided": true
+  },
+  "rows": {
+   "used": 66039,
+   "dropped": 24290
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.00507 reaches the minimum +0.005"
+  ],
+  "power": 0.7155916130514992
+ },
+ "jump-after-stop-through:d1.0": {
+  "effect": 0.00015,
+  "lo": -0.00133,
+  "hi": 0.00204,
+  "min_effect": 0.005,
+  "diagnostics": {
+   "ok": true,
+   "why": "n 66039, base 0.0258"
+  },
+  "planted_large": {
+   "injected": 0.05281,
+   "shift": 0.04835
+  },
+  "planted_min": {
+   "injected": 0.00487,
+   "shift": 0.00415
+  },
+  "shuffle": {
+   "lo": -0.00032,
+   "hi": -2e-05,
+   "mean": -0.00017,
+   "one_sided": true
+  },
+  "rows": {
+   "used": 66039,
+   "dropped": 24290
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.005, so that size is ruled out"
+  ],
+  "power": 0.9999848409180745
+ },
+ "jump-after-intensity:flag_today": {
+  "effect": 0.00496,
+  "lo": 0.00211,
+  "hi": 0.00796,
+  "min_effect": 0.005,
+  "diagnostics": {
+   "ok": true,
+   "why": "n 66039, base 0.1062"
+  },
+  "planted_large": {
+   "injected": 0.05109,
+   "shift": 0.04869
+  },
+  "planted_min": {
+   "injected": 0.00556,
+   "shift": 0.00549
+  },
+  "shuffle": {
+   "lo": -0.00042,
+   "hi": 3e-05,
+   "mean": -0.00021,
+   "one_sided": true
+  },
+  "rows": {
+   "used": 66039,
+   "dropped": 24290
+  },
+  "verdict": "CONTEXT",
+  "reasons": [
+   "interval above 0, but +0.00496 is below the minimum +0.005"
+  ],
+  "power": 0.9559505291550352
+ }
+}

@@ -258,10 +258,17 @@ def path_proof(bs, f, cell, rng):
     for nm, dl in (("min", 0.03), ("large", 0.20)):
         k = f[f"pl_{nm}"].notna()
         pl[nm] = {"injected": dl, "shift": round(float(f[f"pl_{nm}"][k].mean() - f.m60[k].mean()), 4)}
-    rs = rng.choice([-1.0, 1.0], len(f))
-    sh = bs.mean(f.date, f.m60.to_numpy() * rs)[0]
+    # A3: one random sign per 5-minute moment (keeps cojumps together), 200 draws
+    g = f.groupby(["date", "slot"]).ngroup().to_numpy()
+    x = f.m60.to_numpy()
+    means, hits = [], 0
+    for _ in range(200):
+        ci = bs.mean(f.date, x * rng.choice([-1.0, 1.0], g.max() + 1)[g])[0]
+        means.append(ci[0])
+        hits += (ci[1] > 0) or (ci[2] < 0)
+    sh = [float(np.mean(means)), float(np.percentile(means, 2.5)), float(np.percentile(means, 97.5))]
     return {"effect": sgn * cell["mean"], "lo": lo, "hi": hi, "min_effect": PATH_MIN, "diagnostics": {"ok": len(f) >= 200, "why": f"{len(f)} bursts"},
-            "planted_large": pl["large"], "planted_min": pl["min"], "shuffle": {"lo": sh[1], "hi": sh[2], "mean": sh[0]},
+            "planted_large": pl["large"], "planted_min": pl["min"], "shuffle": {"lo": sh[1], "hi": sh[2], "mean": sh[0], "draws": 200, "false_positive_rate": hits / 200},
             "rows": {"used": int(len(f)), "dropped": int(cell["n"] - len(f))}}
 
 
@@ -311,7 +318,7 @@ def gain_family(bs, X, bench, feats, flag_col, rng, proofs=True):
         c = out[k]
         checks[k] = {"effect": c["gain"], "lo": c["lo"], "hi": c["hi"], "min_effect": GAIN_MIN,
                      "diagnostics": {"ok": c["n"] > 10000 and 0.01 < c["base"] < 0.99, "why": f"n {c['n']}, base {c['base']}"},
-                     "planted_large": pls["large"], "planted_min": pls["min"], "shuffle": {"lo": g["lo"], "hi": g["hi"], "mean": g["gain"]},
+                     "planted_large": pls["large"], "planted_min": pls["min"], "shuffle": {"lo": g["lo"], "hi": g["hi"], "mean": g["gain"], "one_sided": True},
                      "rows": {"used": c["n"], "dropped": int(len(X) - c["n"])}}
     return out, checks
 
@@ -420,7 +427,7 @@ def _row(k, c):
 def write_md(r):
     a = r["audit"]
     H = ["| cell | n | mean [95%] | vs control [95%] | half A / B | Holm p | follow net | fade net | cost |", "|---|---|---|---|---|---|---|---|---|"]
-    md = ["# jump-after: results", "", f"Prereg: `forge/JUMP_AFTER_PREREG.md` with A1 and A2 (both pre-results). Seed {r['seed']}, B = {r['B']}. "
+    md = ["# jump-after: results", "", f"Prereg: `forge/JUMP_AFTER_PREREG.md` with A1 and A2 (pre-results) and A3 (post-hoc, proof checks only; run 1 kept as `RESULTS_run1.md`). Seed {r['seed']}, B = {r['B']}. "
           "Units: daily σ, signed so + means the burst carried on.", "", "## Verdicts", "", "Prereg gate, main read (01:00-21:00) and with the rollover:", ""]
     for ver, vv in r["verdicts_prereg"].items():
         md.append(f"- {'main' if ver == 'x' else 'with rollover'}: " + ", ".join(f"`{k}` **{x}**" for k, x in vv.items() if k.startswith("jump"))
@@ -447,7 +454,7 @@ def write_md(r):
         for h, c in hs.items():
             md.append(f"| {k} | {h} | {c['mean']:+.4f} [{c['lo']:+.4f}, {c['hi']:+.4f}] | {c['vs_control']:+.4f} |")
     (OUT / "RESULTS.md").write_text("\n".join(md) + "\n", encoding="utf-8")
-    print("\n".join(md))
+    print("\n".join(md).encode("ascii", "replace").decode())
 
 
 if __name__ == "__main__":
