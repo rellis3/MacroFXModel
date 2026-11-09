@@ -1,4 +1,5 @@
-"""Command line: python -m roe  (see roe/README.md). Reads are GET only; nothing is ever POSTed or written outside --out."""
+"""Command line: python -m roe  (see roe/README.md). Reads are GET only. The ONLY write to the server is the explicit --push (one POST of the finished run);
+nothing is written outside --out otherwise."""
 from __future__ import annotations
 
 import argparse
@@ -36,6 +37,17 @@ def _doc(args, name, url_attr, file_attr, path, errors, base, optional=False):
         return None
 
 
+def _push(run_dir, base_url) -> int:
+    from .push import PushError, push_run
+    try:
+        r = push_run(run_dir, base_url=base_url)
+    except PushError as e:
+        print(f"PUSH FAILED: {e}", file=sys.stderr)
+        return 4
+    print(f"push: {r.get('status')} (run {r.get('runId')})")
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="python -m roe", description="ROE P1 opportunity scanner (observation only).")
     ap.add_argument("--asof", help="as-of date YYYY-MM-DD (default: today, UTC). Every loader is truncated to it.")
@@ -51,9 +63,13 @@ def main(argv=None) -> int:
     ap.add_argument("--fixtures", action="store_true", help="run on the built-in synthetic fixtures (no files, no network)")
     ap.add_argument("--lookback", type=int, help="sessions to back-evaluate for episodes (default from config)")
     ap.add_argument("--run-id", help="force a run id (an existing id with different inputs is an error)")
+    ap.add_argument("--push", action="store_true", help="after the scan, POST the run to the server (needs env ROE_PUSH_TOKEN; a repeat of the same run changes nothing)")
+    ap.add_argument("--push-only", metavar="RUN_DIR", help="do not scan: push this existing roe_out/<runId>/ folder (use after a failed push)")
     ap.add_argument("--now", help="ISO UTC time to use as 'now' (tests / replays)")
     ap.add_argument("--no-desk-pack", action="store_true", help="skip the 2.7 MB /api/desk-pack GET")
     args = ap.parse_args(argv)
+    if args.push_only:
+        return _push(args.push_only, args.base_url)
 
     now = dt.datetime.fromisoformat(args.now.replace("Z", "")) if args.now else dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
     asof = args.asof or str(now.date())
@@ -78,9 +94,10 @@ def main(argv=None) -> int:
         print(f"CONFLICT: {e}", file=sys.stderr)
         return 3
     print(json.dumps({k: v for k, v in res.items() if k not in ("top10",)}, indent=2))
+    pushed = _push(res["dir"], args.base_url) if args.push and res.get("dir") else 0
     if res.get("noop"):
         print("already recorded: same run id and same inputs, nothing written")
-    return 2 if res["status"] == "failed" else 0
+    return 2 if res["status"] == "failed" else pushed
 
 
 if __name__ == "__main__":

@@ -95,6 +95,7 @@ function isAllowedKVKey(key) {
     'library_math_v1',   // Paper Library equations (js/libraryMath.js): model calls used against the cap, papers done
     'library_librarian_v1',   // Paper Library librarian (js/libraryLibrarian.js): model calls used against the 400 cap
     'library_figs_v1',   // Paper Library figure/table notes (js/libraryFigs.js): model calls used against the 600 cap, papers done
+    'roe_registry_v1',   // Research Opportunity Engine (js/roeStore.js): one summary per laptop scan run
     'agent_settings_v1',   // Bot Config > Agents switches (js/agentSettings.js)
     'research_pod_quicktests',
     'fx_fair_value_log_v1',
@@ -1156,6 +1157,7 @@ export default {
             'library_math_v1',   // Paper Library equations (js/libraryMath.js): model calls used against the cap, papers done
             'library_librarian_v1',   // Paper Library librarian (js/libraryLibrarian.js): model calls used against the 400 cap
             'library_figs_v1',   // Paper Library figure/table notes (js/libraryFigs.js): model calls used against the 600 cap, papers done
+            'roe_registry_v1',   // Research Opportunity Engine (js/roeStore.js): one summary per laptop scan run
             'agent_settings_v1',   // Bot Config > Agents switches (js/agentSettings.js)
             // research_pod_quicktests: the research lab's exploratory quick tests; fx_fair_value_log_v1: the short-term fair value's forward record.
             'research_pod_quicktests',

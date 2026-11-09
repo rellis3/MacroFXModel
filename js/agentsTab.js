@@ -54,6 +54,7 @@ export function cardHtml(a, D, { open = false } = {}) {
     + `<p class="ag-purpose">${esc(a.purpose)}</p>`
     + `<div class="ag-row"><span class="ag-k">Starts when</span><span>${esc(a.trigger)}</span></div>`
     + (job ? `<div class="ag-row"><span class="ag-k">Schedule</span><span>${job.railwayOn === false ? 'not scheduled in Railway' : (job.pageOn ? 'running' : 'paused on the AI models page')}${job.lastRunAt ? `, last run ${esc(new Date(job.lastRunAt).toISOString().replace('T', ' ').slice(0, 16))} UTC (this instance)` : ''}</span></div>` : '')
+    + (a.howTo?.length ? `<div class="ag-row"><span class="ag-k">How to start it</span><ol class="ag-how">${a.howTo.map(h => `<li>${esc(h)}</li>`).join('')}</ol></div>` : '')
     + `<div class="ag-row"><span class="ag-k">Reads</span>${list(a.reads)}</div>`
     + `<div class="ag-row"><span class="ag-k">Writes</span>${list(a.writes)}</div>`
     + `<div class="ag-row"><span class="ag-k">Model</span><span>${a.modelTask ? `${m ? `<b>${esc(m.provider)} / ${esc(m.model)}</b> ` : ''}(task <code>${esc(a.modelTask)}</code>) <a href="#tab-aimodels" data-goto-tab="aimodels">change on the AI models tab</a>` : (a.planned ? 'would need a model' : 'none: this agent makes no model call')}</span></div>`
