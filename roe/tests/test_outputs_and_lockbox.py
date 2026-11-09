@@ -40,7 +40,7 @@ def test_observation_schema(tmp_path):
 def test_episodes_status_state_snapshot_summary_schema(tmp_path):
     r, _ = fixture_run(tmp_path)
     d = Path(r["dir"])
-    assert {p.name for p in d.iterdir()} == {"snapshot.json", "status.json", "state.json", "episodes.json", "observations.jsonl", "summary.md"}
+    assert {p.name for p in d.iterdir()} == {"snapshot.json", "status.json", "state.json", "episodes.json", "observations.jsonl", "questions.json", "summary.md"}
     ep = jread(d, "episodes.json")
     assert ep["schema"] == "roe.episodes.v1" and ep["gapSessions"] == 3 and ep["familyAssignment"].startswith("none")
     ids = {o["obsId"] for o in read_obs(d)}

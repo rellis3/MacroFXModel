@@ -1,0 +1,91 @@
+{
+  "qtVersion": "roe-q-1.0.0",
+  "note": "FROZEN question templates (ROE section 18 P3). One template per mechanism class. A question states why it arose, the observation, the hypothesis, the data needed, the pre-registered test shape, the baseline and the smallest effect of interest. Templates are text with fill-ins from the observation. They never contain, and the writer is never given, earlier results. A change to any template must bump qtVersion.",
+  "dataBoundary": "Form and tune on the practice window (to 2025-09-04). Confirm once on 2025-09-05 to 2026-08-20. Anything after a hypothesis's freeze date is forward only. The frozen layers (HAR-800 ladder, R3 remaining travel, M2 confidence) and the shadow screens are neither inputs nor baselines.",
+  "itemClass": {
+    "vix9d_vix": "vol_term", "vix_vix3m": "vol_term", "vvix_vxn": "vol_term", "vvix_vxn_drdt": "vol_term", "vix_state": "vol_term", "vol_breadth": "vol_term",
+    "ivrv_spx": "ivrv", "ivrv_nq": "ivrv", "ivrv_gold": "ivrv",
+    "cot_fx": "cot", "cot_indices": "cot", "cot_metals_energy": "cot", "cot_crowd_release": "cot_release",
+    "gamma_flip_dist": "gamma", "gamma_breakout_breadth": "gamma",
+    "curve_2s10s": "curve", "curve_3m10y": "curve", "curve_class": "curve",
+    "divergence": "divergence"
+  },
+  "notQuestions": {
+    "stale": "a data-health notice (an input is late); shown on the board header, not turned into a research question"
+  },
+  "itemLabels": {
+    "vix9d_vix": "VIX9D / VIX", "vix_vix3m": "VIX / VIX3M", "vvix_vxn": "VVIX / VXN", "vvix_vxn_drdt": "rate of change of VVIX per VXN",
+    "vix_state": "the VIX level band", "vol_breadth": "the number of vol indices above their own 90th percentile",
+    "ivrv_spx": "implied over realised vol, SPX", "ivrv_nq": "implied over realised vol, Nasdaq", "ivrv_gold": "implied over realised vol, gold",
+    "cot_fx": "COT leveraged-fund positioning, FX", "cot_indices": "COT leveraged-fund positioning, equity indices", "cot_metals_energy": "COT positioning, metals and energy",
+    "cot_crowd_release": "COT crowding going into a high-impact release",
+    "gamma_flip_dist": "distance of spot from the dealer-gamma flip", "gamma_breakout_breadth": "the share of underlyings in short-gamma BREAKOUT",
+    "curve_2s10s": "the 2s10s curve", "curve_3m10y": "the 3m10y curve", "curve_class": "the curve move class (bull/bear steepener/flattener)",
+    "divergence": "a normally-related pair"
+  },
+  "classes": {
+    "vol_term": {
+      "mechanism": "vol term structure and vol-of-vol state",
+      "variableClass": "vol-curve", "outcomeClass": "index-range", "horizonClass": "short-daily", "horizons": [1, 5, 10], "unit": "sessions",
+      "outcome": "the realised range of NQ and SPX over the next {horizons} sessions, measured against what implied vol priced for the same days (IV divided by the square root of 252)",
+      "baseline": "unconditional days; and the same condition with VIX alone, so the question is the increment over VIX",
+      "smallestEffect": "a change in the range ratio that matters after costs, fixed before the run (set from the dispersion of the baseline, not from this observation)",
+      "minN": 150, "mirror": "the opposite extreme or regime", "placebo": "the same condition on dates shifted by plus or minus 1, 5 and 20 sessions",
+      "dataNeeded": "daily VIX family, VVIX, VXN, NQ and SPX daily range, from the committed daily files; no data after 2025-09-04 for Stage 1"
+    },
+    "ivrv": {
+      "mechanism": "implied versus realised vol gap",
+      "variableClass": "iv-rv-gap", "outcomeClass": "realised-vs-implied", "horizonClass": "daily-to-monthly", "horizons": [1, 5, 20], "unit": "sessions",
+      "outcome": "whether realised range converges to implied (the gap closes) or the gap persists, over {horizons} sessions",
+      "baseline": "the implied-vol forecast itself, and unconditional days",
+      "smallestEffect": "a change in realised/implied that matters for sizing, fixed before the run",
+      "minN": 100, "mirror": "the other tail of ln(implied/realised)", "placebo": "an unrelated asset's gap (FX) under the same rule",
+      "dataNeeded": "implied vol index and the matching asset's daily range"
+    },
+    "cot": {
+      "mechanism": "positioning crowding",
+      "variableClass": "positioning", "outcomeClass": "forward-move", "horizonClass": "weekly", "horizons": [1, 4, 13], "unit": "weeks",
+      "outcome": "the forward move of the instrument over the next {horizons} weeks, split by whether price is trending with the crowd or against it",
+      "baseline": "matched non-extreme weeks",
+      "smallestEffect": "a forward move that matters after costs, fixed before the run",
+      "minN": 60, "mirror": "the other tail", "placebo": "positioning shifted by plus or minus 4 and 13 weeks",
+      "dataNeeded": "weekly COT history for the instrument and weekly price; check the COT file is fresh"
+    },
+    "cot_release": {
+      "mechanism": "crowding into a scheduled release",
+      "variableClass": "positioning", "outcomeClass": "release-day-move", "horizonClass": "event", "horizons": [0, 1, 2, 5], "unit": "sessions",
+      "outcome": "whether price on release day moves against the crowd by more than on matched non-crowded release days, and whether it persists for {horizons} sessions",
+      "baseline": "matched release days without the crowding",
+      "smallestEffect": "a release-day move that matters after costs, fixed before the run",
+      "minN": 80, "mirror": "the opposite crowd", "placebo": "non-release days with the same crowding",
+      "dataNeeded": "the economic calendar with impact tags and weekly COT; calendar tags after 2026-07-02 may be unknown"
+    },
+    "gamma": {
+      "mechanism": "dealer gamma state",
+      "variableClass": "gamma", "outcomeClass": "index-range", "horizonClass": "short-daily", "horizons": [1, 2, 5], "unit": "sessions",
+      "outcome": "the next-session range over {horizons} sessions against a vol-matched random walk",
+      "baseline": "a same-vol random walk; and days not in this state",
+      "smallestEffect": "an extra range that matters for sizing, fixed before the run",
+      "minN": 150, "mirror": "the farthest or opposite state", "placebo": "the same state on shifted dates",
+      "dataNeeded": "dealer-gamma history (the Cboe chain history is short, so there may be too few days to test this until more exist)"
+    },
+    "curve": {
+      "mechanism": "curve shape and move class",
+      "variableClass": "rates-curve", "outcomeClass": "cross-asset-move", "horizonClass": "medium", "horizons": [5, 20, 60], "unit": "sessions",
+      "outcome": "what happens to NQ, USDJPY and gold, and to their range, over {horizons} sessions",
+      "baseline": "random dates (for a flip) or unconditional days (for an extreme or a class)",
+      "smallestEffect": "a move that matters after costs, fixed before the run",
+      "minN": 80, "mirror": "the opposite move (re-steepening, the other class)", "placebo": "random flip dates",
+      "dataNeeded": "FRED yields (DGS2, DGS10, T10Y2Y, T10Y3M) and daily prices; events are few, so say so in the power statement"
+    },
+    "divergence": {
+      "mechanism": "related-pair divergence",
+      "variableClass": "pair-residual", "outcomeClass": "gap-closure", "horizonClass": "medium", "horizons": [5, 10, 20], "unit": "sessions",
+      "outcome": "whether the gap between the pair closes over {horizons} sessions",
+      "baseline": "a shifted-spread placebo of the same pair",
+      "smallestEffect": "a closure that matters after costs, fixed before the run",
+      "minN": 100, "mirror": "the opposite divergence", "placebo": "the same pair with the spread shifted",
+      "dataNeeded": "daily history of both series"
+    }
+  }
+}

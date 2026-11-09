@@ -207,14 +207,16 @@ def run_scan(*, asof: str, out_dir, cfg: dict | None = None, sources: dict | Non
                     "familyAssignment": "none in P1 (familyId is null)", "episodes": episodes}
     obs_lines = "\n".join(json.dumps(_clean_obs(o), sort_keys=True) for o in observations) + ("\n" if observations else "")
     summary = render_summary(status, top10, observations, episodes, results_asof, series_recs, cfg, asof)
+    from .questions import write_questions
+    questions_doc = write_questions(rid, asof, episodes_doc, [_clean_obs(o) for o in observations], cfg["watchVersion"])
     raw = {}
     for name, b in (("api_state.json", state_raw), ("api_hit_rates.json", hit_rates_raw), ("api_data_health.json", data_health_raw)):
         if b is not None:
             raw[name] = b
     d = write_run(out_dir, rid, {"snapshot.json": snap, "status.json": status, "state.json": state_doc, "episodes.json": episodes_doc,
-                                 "observations.jsonl": obs_lines, "summary.md": summary}, raw)
+                                 "observations.jsonl": obs_lines, "questions.json": questions_doc, "summary.md": summary}, raw)
     return {"runId": rid, "dir": str(d), "noop": False, "status": state, "reasons": why, "observations": len(observations),
-            "episodes": len(episodes), "top10": top10, "asof": asof}
+            "episodes": len(episodes), "questions": len(questions_doc["questions"]), "top10": top10, "asof": asof}
 
 
 def _clean_obs(o):

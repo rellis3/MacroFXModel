@@ -25,10 +25,12 @@ def build_payload(run_dir) -> dict:
         observations = [json.loads(line) for line in obs_path.read_text(encoding="utf-8").splitlines() if line.strip()] if obs_path.exists() else []
     except (OSError, ValueError) as e:
         raise PushError(f"{d} is not a finished run directory: {e}") from e
+    q_path = d / "questions.json"
+    questions = json.loads(q_path.read_text(encoding="utf-8")) if q_path.exists() else None
     run_id = snapshot.get("runId")
     if not run_id or run_id != d.name:
         raise PushError(f"snapshot.runId {run_id!r} does not match the folder name {d.name!r}")
-    return {"runId": run_id, "snapshot": snapshot, "status": status, "episodes": episodes, "observations": observations}
+    return {"runId": run_id, "snapshot": snapshot, "status": status, "episodes": episodes, "observations": observations, **({"questions": questions} if questions else {})}
 
 
 def push_run(run_dir, base_url: str = DEFAULT_BASE, token: str | None = None, opener=None, timeout: int = 120) -> dict:
