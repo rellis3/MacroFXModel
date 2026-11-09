@@ -131,3 +131,7 @@ Size thirds cut at 0.419σ and 0.703σ.
 - **Rollover:** the main and with-rollover reads agree in every cell. Rollover bursts alone: −0.023σ [−0.098, +0.053].
 - **Stop-through: CONTEXT, downgraded from the prereg's VALIDATED.** The d = 0.5 gain (+0.00507 [+0.00085, +0.00970]) only just clears the 0.005 bar. Split by half of the scored years it is +1.1% in 2019–Aug 2022 and −0.04% since; most of it is the old 20-session jump share (`js20`), not the new burst counts. A gain that has been absent for three years is not a stop-sizing input. This downgrade is post-hoc and stated as such.
 - **Intensity: CONTEXT.** Burst history adds +0.00496 [+0.00211, +0.00796] to predicting a burst today, just under the bar, and +0.58% / +0.50% in the two halves. Bursts cluster from day to day beyond the calendar: the Hawkes idea, small.
+
+## Follow-up: noise check (2026-11-09, descriptive)
+
+See `noise_check.md` (`scripts/jump-after/noise_check.py`). Own-burst give-back at 5 minutes grows with the spread at the burst: -0.011 / -0.025 / -0.043 sigma from normal to wide; wide minus normal -0.031 [-0.057, -0.007]. Partly microstructure noise (Lee-Mykland 2012), not all: normal-spread own bursts still give back -0.024 by 15 minutes. Own bursts are not wider than market-wide ones (29% vs 34% in the wide third).
