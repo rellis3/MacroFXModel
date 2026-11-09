@@ -157,3 +157,14 @@ The board header reads `GET /api/roe/status` (needs the site login): it says "di
 `python -m roe.concepts dry-run [--slice candles-sessions] [--base-url ...]` asks the server what a run would send: items by source (papers, C.OG/education, Theory Lab), estimated tokens, model calls, calls used of the 400 cap, cards so far. It makes no model call and needs no token.
 
 `python -m roe.concepts run [--calls N]` starts one capped press (N is 1 to 12; the server also stops at 400 calls ever) and waits for it. It needs the environment variable `ROE_PUSH_TOKEN` (the same value as on the server; never a file or an argument). An item already sent is never sent again. The cards are kept privately on the server (R2) and are served behind the site login, never committed to git.
+
+
+## One click on Windows: `run_roe.bat`
+
+Double-click `run_roe.bat` in the MacroFXModel folder (or `powershell -File run_roe.ps1`). It scans with `roe_sources.laptop.json` and pushes the run.
+
+- **First run:** it asks for the push token once and stores it **encrypted for your Windows user** in `%USERPROFILE%\.macrofx\roe_push_token.dat` (outside the repo; Windows DPAPI, so only your account on this PC can read it). It also creates `roe_sources.laptop.json` from the default and stops so you can point the paths at your real data.
+- **Later runs:** no questions.
+- **If the server refuses the token** (HTTP 401) the stored copy is deleted and the next run asks again. `-ResetToken` does the same on demand.
+- **Daily:** `powershell -File run_roe.ps1 -Schedule` registers a Windows task at 08:15 (it needs the token stored first, so run it by hand once).
+- The token must equal the Railway variable `ROE_PUSH_TOKEN`. It is never written to a file in the repo or typed on a command line.
