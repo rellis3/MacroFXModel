@@ -55,6 +55,7 @@ a{color:var(--blue)}
 .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
 .top h1{font:700 22px/1.1 var(--disp);margin:0;letter-spacing:-.01em}
 .top .sub{color:var(--text3);font-size:12px;font-family:var(--mono)}
+.top .fresh{margin-top:3px;white-space:normal;line-height:1.45}.top .fresh.green{color:var(--bull)}.top .fresh.amber{color:var(--amber)}
 .topr{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .badge{display:inline-flex;gap:6px;align-items:center;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:var(--amber);border:1px solid color-mix(in srgb,var(--amber) 40%,transparent);border-radius:999px;padding:3px 10px;text-decoration:none}
 .aibox{display:inline-flex;gap:6px;align-items:center;font-size:11px;color:var(--text3)}
@@ -245,7 +246,7 @@ select{background:var(--card2);color:var(--text);border:1px solid var(--line);bo
   <main class="main">
     <div class="wrap">
       <div class="top">
-        <div><h1 id="ttl">Global</h1><div class="sub" id="sub">loading…</div></div>
+        <div><h1 id="ttl">Global</h1><div class="sub" id="sub">loading…</div><div class="sub fresh" id="fresh" role="status"></div></div>
         <div class="topr"><span class="aibox" id="aibox"></span><a class="badge" href="today.html" title="The classic page is unchanged">v2 preview · classic view →</a></div>
       </div>
       <div id="loaderr"></div>
@@ -299,6 +300,7 @@ import { buildCountryCard } from './js/countryCard.js';
 import { buildPairWhy, NODE_FOR } from './js/pairWhy.js';
 import * as P from './js/atlasPosition.js';
 import { buildNewsletter, eventNote, flagProximity, familyOf } from './js/newsletter.js';
+import { atlasFreshness } from './js/atlasFreshness.js';
 import { releaseNewsletterV3 } from './js/newsletterV3.js';
 import { isoWeek } from './js/weeklyDesk.js';
 import { composeTerminal, worldPaths } from './js/newsletterTerminal.js';
@@ -1138,6 +1140,13 @@ async function loadIntel() {
 }
 const okOf = r => !(r == null || r.ok === false);
 function drawSrcs() { $('srcs').innerHTML = [...CORE, ['/api/morning-brief?mode=intel', 'intel', 'stored Intelligence brief'], ...EXTRA].map(s => { const r = D[s[1]]; const pending = D[s[1]] === undefined; return `<span class="pill ${pending ? '' : okOf(r) ? '' : 'amber'}" title="${esc(s[2])}">${pending ? '…' : okOf(r) ? '✓' : '✗'} ${esc(s[0].replace('/api/', ''))}</span>`; }).join(''); }
+/** The header's freshness line (js/atlasFreshness.js): when the data was last refreshed and whether any feed is behind. Re-drawn as feeds arrive and every minute so the age stays true. */
+function drawFresh() {
+  const el = $('fresh'); if (!el) return;
+  try { const r = atlasFreshness(nlSources(D.hmmAt), { nowMs: Date.now(), isoDate: ukDate() }); el.textContent = r.text; el.className = 'sub fresh ' + r.tone; }
+  catch (e) { el.textContent = ''; }
+}
+setInterval(() => { if (D.drill) drawFresh(); }, 60_000);
 async function main() {
   drawNav(); drawSrcs();
   const [coreRes, intelRes] = await Promise.all([Promise.all(CORE.map(s => J(s[0]))), loadIntel()]);
@@ -1145,16 +1154,16 @@ async function main() {
   if (!D.drill?.ok) { $('loaderr').innerHTML = '<div class="err">The market bundle did not load (/api/drill-series). The page needs it for the chain and the currency moves. Reload to try again.</div>'; $('sub').textContent = 'data unavailable'; drawSrcs(); return; }
   derived = { chain: chainNow(), str: strengths() };
   $('sub').textContent = `${new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' })} · bundle to ${D.drill.to ?? D.drill.dates.at(-1)} · ${Object.keys(insts()).length} instruments`;
-  drawGlobal(); drawSrcs();
+  drawGlobal(); drawSrcs(); drawFresh();
   (await Promise.all(EXTRA.map(s => J(s[0])))).forEach((r, i) => { D[EXTRA[i][1]] = r; });
-  D.__extra = true; drawAi(); redraw(); drawSrcs();
+  D.__extra = true; drawAi(); redraw(); drawSrcs(); drawFresh();
 }
 window.__atlas = { go, state, D, main, positionContext, abHtml, intelBodyHtml, nlInput, buildIssue, loadIntel, heroHtml, generateIntel };
 // A brief generated on another device shows up when this tab comes back into view (no reload needed). Never while this page is generating one itself.
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState !== 'visible' || !D.drill || _genP) return;
   const r = await J('/api/morning-brief?mode=intel');
-  if (r?.ok && r.analysis && Date.parse(r.generatedAt) > Date.parse(D.intel?.generatedAt ?? 0)) { D.intel = r; lsPut(r); drawGlobal(); }
+  if (r?.ok && r.analysis && Date.parse(r.generatedAt) > Date.parse(D.intel?.generatedAt ?? 0)) { D.intel = r; lsPut(r); drawGlobal(); drawFresh(); }
 });
 main().catch(e => { $('loaderr').innerHTML = `<div class="err">Page error: ${esc(e.message)}</div>`; console.error('[atlas]', e); });
 </script>
