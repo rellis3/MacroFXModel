@@ -19,6 +19,7 @@ import json
 import os
 import sys
 import time
+import unittest
 import traceback
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -62,6 +63,25 @@ for f in files:
         dt = time.time() - t0
         if dt > 30:
             print(f"  slow: {key} {dt:.0f}s")
+    # unittest.TestCase classes in the same module (roe/tests/test_push.py and others use them): each test method runs once, like a function test
+    def _each(suite):
+        for t in suite:
+            if isinstance(t, unittest.TestSuite):
+                yield from _each(t)
+            else:
+                yield t
+    for case in _each(unittest.defaultTestLoader.loadTestsFromModule(mod)):
+        key = f"{mod_name}::{case.id().split('.', 1)[-1] if case.id().startswith(mod_name + '.') else case.id()}"
+        ran += 1
+        res = unittest.TestResult()
+        case.run(res)
+        if res.wasSuccessful():
+            passed += 1
+            if key in known:
+                now_passing.append(key)
+        else:
+            msg = "\n".join(tb for _, tb in (res.failures + res.errors))[:600]
+            (still_known if key in known else unexpected).append((key, msg))
 
 for key, msg in unexpected:
     print(f"\n✗ {key}\n{msg}")

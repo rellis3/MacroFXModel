@@ -49,8 +49,16 @@ Rules: no always-on heavy process on Railway; every model call path has a hard c
 5. The paper-idea lens (cap set by the owner) and the relationship lens.
 6. The minimal historical test that reuses quick-test, so a question can be answered, not only asked.
 
-## 7. Decisions needed from the owner
-1. Is the first monitor vol and jumps? (proposed)
-2. The model-call cap for the first concept-card build (proposed 400) and for the paper-idea lens (proposed 100).
-3. Confirm: fold the separate ROE P5-P7 into the existing validation desk and Head of Research.
-4. Should the first monitors run on a schedule from the laptop, or do you want them moved to the GitHub runner as soon as their data is in the repo?
+## 7. Decisions (owner, 2026-11-09)
+1. **Fold ROE P5-P7 into the existing validation desk, Head of Research and Evidence Book**: yes. Plain scripts are relabelled **jobs** on the Agents tab.
+2. **First monitor: candle trends and session analysis** (instead of vol and jumps). Vol and jumps is the second. Check the repo's existing session research first so settled questions are not re-asked; follow the data rules for London sessions and bar choice.
+3. **Model-call caps**: 400 for the first concept-card build (the owner also asked for a free dry run showing items, tokens and calls first), 100 for the paper-idea lens.
+4. **Large data** (OI, M1, futures, Databento; some over 100 MB): kept out of git. R2 is the store, with a small manifest (name, size, hash) committed so results reproduce. **A new, separate R2 bucket for research data** (own write key; production gets read-only), because research code must never share write access with production (the 2026-08-16 incident corrupted 41 pairs). Data goes up as small append-only daily files per pair and date, never overwritten, hash-checked. Databento data is licensed: private bucket only. Cloudflare SQL (D1) is not used for candle data: row-read billing makes repeated scans of minute bars a cost risk, while parquet in R2 is the right shape; small derived tables stay JSON in R2/KV.
+5. **Trust in past analysis**: the monitors work from raw candles and re-derive. Old results and the Evidence Book are **cross-checks afterwards, never inputs**: agreement raises trust, disagreement flags a possible bug on either side. A **data audit** (gaps, duplicates, timezones, futures rolls, the known data faults in the data-rules skill) comes before any analysis. This matches the rule that the question writer never sees earlier results.
+
+## 8. Order of work (updated)
+1. Decisions recorded (this section); `python -m roe.inventory <folders>` lists the local data sets (reads only, uploads nothing).
+2. **Knowledge backbone first**: concept cards for the candles-and-sessions slice from the paper digests, C.OG education and Theory Lab, capped model calls, free dry run first, a review page so the owner can read and correct the cards.
+3. In parallel: data audit, then upload to the research bucket with a manifest.
+4. First monitor (candles and sessions) on raw data with its historical profile; cross-check against existing results.
+5. Vol and jumps monitor; relationship and paper-idea lenses; the minimal historical test reusing quick-test.

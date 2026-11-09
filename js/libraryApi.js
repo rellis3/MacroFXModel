@@ -17,6 +17,8 @@
  *   readFreeSources()                                   (optional) parsed education/papers/free_sources.json; missing or broken = no manifest
  *   mathModel({ system, prompt, maxTokens })            (optional) the capped model call of the equations job (task 'library-math'); absent = the job says no key
  *   figsModel({ system, prompt, maxTokens })            (optional) the capped model call of the figure/table notes job (task 'library-figs'); absent = the job says no key
+ *   conceptsModel({ system, prompt, maxTokens })        (optional) the capped model call of the concept-cards job (task 'library-concepts'); absent = the job says no key
+ *   conceptFiles:{ readText(path), listFiles(dir, opts) }  (optional) repo text for the concept cards (education, cog, theory-lab); absent = papers only
  *   librarianModel({ system, prompt, maxTokens })       (optional) the capped model call of the librarian (task 'library-librarian'); absent = the librarian falls back to the rule-based context
  *   modelReady()                                        (optional) false when no model key is set
  *   fetchArxiv(id)                                      (optional) arXiv HTML equations (default js/arxivMath.js, polite); tests inject a fake
@@ -33,6 +35,7 @@ import { cardLine } from './library/summary.js';
 import { flatTextToPages } from './paperPages.js';
 import { createMath, resolveLatex, mergeLatexIntoBlocks, validateLatex } from './libraryMath.js';
 import { createFigs, mergeNotesIntoBlocks } from './libraryFigs.js';
+import { createConcepts } from './libraryConcepts.js';
 import * as LIX from './libraryIndex.js';
 import * as LBR from './libraryLibrarian.js';
 import { speechSentences, briefingScript, chunkForTts, estimateSecs, toSentences } from './paperAudio.js';
@@ -189,6 +192,12 @@ export function createLibraryApi(deps) {
     kv, r2, uploadKey, now, log, figsModel: deps.figsModel, modelReady: deps.modelReady,
     papers: async () => { const cat = await catalog(); return cat.list.map(p => ({ id: p.id, hasPdf: p.hasPdf, hasText: p.hasText, read: !!(p.notes && (p.notes.claim || p.notes.mechanism || p.notes.method)), title: p.title, abstract: p.abstract })); },
     getBlocks: id => getBlocks(id, true),
+  });
+  // ── concept cards (js/libraryConcepts.js): DeepSeek from the library digests and repo text only, capped in KV (library_concepts_v1); cards in R2, private ──
+  const concepts = createConcepts({
+    kv, r2, now, log, conceptsModel: deps.conceptsModel, modelReady: deps.modelReady,
+    readText: deps.conceptFiles?.readText, listFiles: deps.conceptFiles?.listFiles,
+    digests: async () => { const cat = await catalog(); return cat.list.map(p => ({ id: p.id, title: p.title, text: LIX.digest(p, { maxChars: 900 }) })); },
   });
   /** Blocks with the stored figure/table notes merged in; any failure returns the blocks as they were. */
   async function withFigNotes(id, blocks) {
@@ -481,6 +490,7 @@ export function createLibraryApi(deps) {
     return reply(200, out);
   };
 
+  H.concepts = concepts;   // GET/POST /api/research-pod/concepts, GET .../concepts/cards
   H.figs = figs;   // GET/POST /api/research-pod/figs
   H.math = math;   // GET/POST /api/research-pod/math (server.js mounts it like the reading backlog)
   H._test = { libIndex, dropIndex: () => { ixMem = null; ixCat = null; }, catalog, getBlocks, readState, dropCatalog, jobsActive: () => [...jobs.keys()] };

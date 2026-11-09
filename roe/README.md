@@ -146,3 +146,14 @@ One-time setup: choose a secret of 24 or more characters, set it as the Railway 
 If the push fails (network, server restart) the scan is still saved locally: `python -m roe --push-only roe_out/<run id>`. Exit codes: 0 ok, 2 scan failed, 3 run-ID conflict, 4 push failed.
 
 The board header reads `GET /api/roe/status` (needs the site login): it says "discovery not completed for <date>; last completed run <date>" when the laptop has not pushed today's run, and never shows an older run as today's.
+
+
+## Data inventory (before any upload)
+
+`python -m roe.inventory <folder> [<folder> ...]` lists what is in your local data folders (OI, M1, futures, Databento): per file the size, format, columns, first and last timestamp where it can tell cheaply (parquet reads only the file footer), and per folder the totals. Files over 100 MB are flagged. It reads files only and sends nothing anywhere. Output: `roe_out/inventory/<stamp>.json` and `.md`.
+
+## Concept cards (knowledge layer)
+
+`python -m roe.concepts dry-run [--slice candles-sessions] [--base-url ...]` asks the server what a run would send: items by source (papers, C.OG/education, Theory Lab), estimated tokens, model calls, calls used of the 400 cap, cards so far. It makes no model call and needs no token.
+
+`python -m roe.concepts run [--calls N]` starts one capped press (N is 1 to 12; the server also stops at 400 calls ever) and waits for it. It needs the environment variable `ROE_PUSH_TOKEN` (the same value as on the server; never a file or an argument). An item already sent is never sent again. The cards are kept privately on the server (R2) and are served behind the site login, never committed to git.
