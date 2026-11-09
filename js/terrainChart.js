@@ -32,6 +32,24 @@ export function terrainSmiles(j) {
   return out.sort((x, y) => x.dte - y.dte).slice(0, 12);
 }
 
+/** A CME book's own stored smiles (e.ivSmile = primary expiry, e.ivSmiles = nearest extras; strikes already in spot terms) -> the same curve shape. */
+export function cmeSmiles(e, spot) {
+  const src = [];
+  if (e?.ivSmile?.strikes?.length) src.push({ dte: e.dte, strikes: e.ivSmile.strikes, iv: e.ivSmile.iv });
+  for (const s of (Array.isArray(e?.ivSmiles) ? e.ivSmiles : [])) if (s?.strikes?.length) src.push(s);
+  const seen = new Set(), out = [];
+  for (const s of src) {
+    const dte = Number.isFinite(s.dte) ? Math.round(s.dte) : null; if (seen.has(dte)) continue;
+    const pts = s.strikes.map((K, i) => ({ K, iv: s.iv[i] * (s.iv[i] < 2 ? 100 : 1) })).filter(x => Number.isFinite(x.K) && x.iv > 0).sort((a, b) => a.K - b.K);
+    if (pts.length < 6) continue;
+    const j = pts.findIndex(x => x.K >= spot); if (j <= 0) continue;
+    const a = pts[j - 1], c = pts[j], atm = a.iv + (c.iv - a.iv) * (spot - a.K) / ((c.K - a.K) || 1);
+    const dv = pts.map(x => ({ p: x.K, dv: x.iv - atm }));
+    seen.add(dte); out.push({ dte: dte ?? '?', atm, pinch: spot, put: dv, call: dv });
+  }
+  return out.sort((x, y) => (x.dte === '?' ? 1e9 : x.dte) - (y.dte === '?' ? 1e9 : y.dte)).slice(0, 12);
+}
+
 export function terrainColor(i) { return i < 4 ? { c: `hsl(${72 + i * 28} 80% 62%)`, w: 1.9 - i * 0.2, a: 0.95 } : { c: `hsl(${34 - Math.min(14, (i - 4) * 2)} 78% 56%)`, w: 1, a: 0.42 }; }
 
 export function drawTerrain(cv, o) {
@@ -71,7 +89,9 @@ export function drawTerrain(cv, o) {
   // max pain highlight band
   const mp = D.mp; if (Number.isFinite(mp) && mp > lo && mp < hi) { g.fillStyle = 'rgba(255,255,255,.055)'; g.fillRect(PL, yOf(mp) - barH * 0.8, pw, barH * 1.6); }
   // fans
-  const smiles = useSmile && smile && smile.state === 'ok' ? smile.curves : null;
+  // CME books carry their own per-strike smiles (QuikStrike); use them in the fans when the window has any, else gamma lines
+  const cme = !useSmile ? cmeSmiles(e, spot).filter(c => c.dte === '?' || c.dte <= maxDte) : [];
+  const smiles = useSmile && smile && smile.state === 'ok' ? smile.curves : (cme.length ? cme : null);
   let legTxt = '';
   const clipY = (x0, x1) => { g.save(); g.beginPath(); g.rect(x0, PT, x1 - x0, ph); g.clip(); };
   const DMIN = -2, DMAX = 4;
@@ -90,7 +110,7 @@ export function drawTerrain(cv, o) {
     draw(xl0, xc0, 'put'); draw(xr0, xr1, 'call');
     legTxt = smiles.map((c, i) => `<span style="color:${terrainColor(i).c}">■</span> ${c.dte} DTE`).join('  ');
   } else if (!useSmile) {
-    // gamma by strike, one line per expiry: puts left, calls right
+    // no stored smile in this window: gamma by strike, one line per expiry: puts left, calls right
     const rowsE = legs.slice().sort((a, c) => (a.dte ?? 1e9) - (c.dte ?? 1e9)).slice(0, 12).map(l => {
       const T = Math.max(Number.isFinite(l.dte) ? l.dte : 14, 0.25) / 365, s = l.sigma > 0 ? l.sigma : b.flat, pts = [];
       for (let i = 0; i < l.strikes.length; i++) { const K = l.strikes[i]; if (K < lo - step || K > hi + step) continue; const gm = bsGamma(spot, K, T, s) || 0; pts.push({ p: K, c: (l.calls[i] || 0) * gm * b.mult * spot, pu: (l.puts[i] || 0) * gm * b.mult * spot }); }
