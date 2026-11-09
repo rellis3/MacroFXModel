@@ -27,3 +27,11 @@ test('init: 401 shows a login message', async () => {
   await new Promise(r => setTimeout(r, 5));
   assert.match(root.innerHTML, /Log in/);
 });
+
+test('related papers: linked to the library (escaped), absent when there are none', () => {
+  const h = B.rowHtml({ ...row, related: [{ id: 'doi:10.1/x y', title: 'A <i>paper</i>', year: 2019 }] });
+  assert.match(h, /Related papers/);
+  assert.match(h, /library\.html#\/paper\/doi%3A10\.1%2Fx%20y/);
+  assert.ok(!h.includes('<i>paper'), 'escaped');
+  assert.ok(!B.rowHtml(row).includes('Related papers'));
+});

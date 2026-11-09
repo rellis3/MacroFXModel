@@ -1,6 +1,13 @@
 // Thin client for the /api/library/* contract (plans/PAPER_LIBRARY.md). Same-origin, cookie auth.
 async function j(url, opt) {
-  const r = await fetch(url, Object.assign({ credentials: 'same-origin' }, opt));
+  let r;
+  const go = () => fetch(url, Object.assign({ credentials: 'same-origin' }, opt));
+  try { r = await go(); }
+  catch (e1) {   // "Failed to fetch": the connection dropped (phone signal, a server restart). A GET is safe to try once more.
+    const get = !opt || !opt.method || String(opt.method).toUpperCase() === 'GET';
+    if (get) { await new Promise(res => setTimeout(res, 900)); try { r = await go(); } catch { /* fall through */ } }
+    if (!r) { const e = new Error('Could not reach the server (the connection dropped). Check your signal and reload.'); e.network = true; throw e; }
+  }
   if (r.status === 401 || (r.redirected && /\/login/.test(r.url))) { const e = new Error('Please sign in again'); e.auth = true; e.status = 401; throw e; }
   let d = null; try { d = await r.json(); } catch { /* not json */ }
   if (!r.ok || !d || d.ok === false) { const e = new Error((d && d.error) || ('Request failed (' + r.status + ')')); e.status = r.status; throw e; }

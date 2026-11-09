@@ -1028,8 +1028,8 @@ function authParseCookies(req) {
   return out;
 }
 
-function authLoginPage(zone, next, error) {
-  if (zone === 'education') return authLoginPageEducation(next, error);
+function authLoginPage(zone, next, error, brand) {
+  if (zone === 'education') return authLoginPageEducation(next, error, brand);
   const label = 'Dashboard';
   return `<!doctype html><html><head><meta charset="utf-8"><title>Sign in — ${label}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1066,8 +1066,9 @@ document.getElementById('f').addEventListener('submit', async (e) => {
 // Styled to match the "Education Bank" reference design the owner shared —
 // serif gradient wordmark, glowing pill input, teal CTA — for the education
 // zone's login page specifically. The main dashboard keeps the plain form above.
-function authLoginPageEducation(next, error) {
-  return `<!doctype html><html><head><meta charset="utf-8"><title>Sign in — Theory Lab</title>
+function authLoginPageEducation(next, error, brand) {
+  const lib = brand === 'library';
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Sign in — ${lib ? 'Research Library' : 'Theory Lab'}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   *{box-sizing:border-box}
@@ -1105,8 +1106,7 @@ function authLoginPageEducation(next, error) {
   <div class="tag"><span class="ln"></span>PRIVATE QUANTITATIVE &amp; MACRO INSIGHTS<span class="ln r"></span></div>
   <div class="card">
     <div class="restricted">RESTRICTED ACCESS</div>
-    <h1>The <em>Theory</em> Lab</h1>
-    <p class="sub">Every lesson, framework, and walkthrough — held behind a single key.</p>
+    ${lib ? '<h1>Research <em>Library</em></h1>\n    <p class="sub">Every paper the desk holds — search the full text, read it, listen to it. Held behind a single key.</p>' : '<h1>The <em>Theory</em> Lab</h1>\n    <p class="sub">Every lesson, framework, and walkthrough — held behind a single key.</p>'}
     ${error ? `<div class="err">Incorrect password.</div>` : ''}
     <form id="f">
       <div class="field">
@@ -1139,16 +1139,36 @@ document.getElementById('f').addEventListener('submit', async (e) => {
     }),
   });
   if (res.ok) { location.href = ${JSON.stringify(next)}; }
-  else { location.href = '/login?zone=education&next=' + encodeURIComponent(${JSON.stringify(next)}) + '&error=1'; }
+  else { location.href = '/login?zone=education' + ${JSON.stringify(lib ? '&brand=library' : '')} + '&next=' + encodeURIComponent(${JSON.stringify(next)}) + '&error=1'; }
 });
 </script>
 </body></html>`;
 }
 
+// ── Research Library access ─────────────────────────────────────────────────────────────────────────────────────────
+// Owner decision 2026-11-09: the library sits behind the SAME password as the Theory Lab and looks and acts like part of it; the owner does not share
+// the link. It opens for: the owner's dashboard login (main zone), the Theory Lab owner login (admin), or the ordinary Theory Lab password.
+// The papers are copyrighted and private: anyone who has the Theory Lab password and the library address can read them, so the address is not linked from
+// the Theory Lab. LIBRARY_ALLOW_EDUCATION_PASSWORD=0 on Railway takes the ordinary password out again (then only the owner logins open it).
+const LIBRARY_ALLOW_EDU = (process.env.LIBRARY_ALLOW_EDUCATION_PASSWORD ?? '1') !== '0';
+function _isLibraryPagePath(p) { return p === '/library' || p === '/library.html' || p === '/css/library.css' || p.startsWith('/js/library/'); }
+function _libAuthOk(req) {
+  const c = authParseCookies(req);
+  if (authVerifyCookie(c[`${AUTH_COOKIE_NAME}_main`], 'main')) return true;
+  const edu = authDecodeCookie(c[`${AUTH_COOKIE_NAME}_education`], 'education');
+  return !!edu && (edu.role === 'admin' || LIBRARY_ALLOW_EDU);
+}
+
 function requireAuth(req, res, next) {
   if (!AUTH_ENABLED) return next();
   if (AUTH_EXEMPT_PREFIXES.some(p => req.path.startsWith(p))) return next();
-  if (typeof _libOpen === 'function' && _libOpen(req) && (req.path === '/library' || req.path === '/library.html' || req.path === '/css/library.css' || req.path.startsWith('/js/library/'))) return next();
+  if (_isLibraryPagePath(req.path)) {   // the library page and its files: the owner's dashboard login, or the Theory Lab OWNER login (see _libAuthOk)
+    if (_libAuthOk(req)) return next();
+    if (authDecodeCookie(authParseCookies(req)[`${AUTH_COOKIE_NAME}_education`], 'education')) {   // signed in to the Theory Lab, but with the shared password
+      return res.status(403).type('html').send('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Research Library</title><body style="background:#070a10;color:#e6e9ef;font-family:system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;text-align:center;padding:24px"><div style="max-width:420px"><h1 style="font-weight:500">Research Library</h1><p style="color:#8b95a7">This area is for the owner only. The Theory Lab password does not open it at the moment.</p><p><a style="color:#5eead4" href="/logout?zone=education&next=/library.html">Sign in with the owner password</a></p></div></body>');
+    }
+    return res.redirect(`/login?zone=education&brand=library&next=${encodeURIComponent(req.originalUrl)}`);
+  }
   const zone    = authZoneForPath(req.path);
   const cookies = authParseCookies(req);
   if (authVerifyCookie(cookies[`${AUTH_COOKIE_NAME}_${zone}`], zone)) return next();
@@ -4033,7 +4053,13 @@ app.get('/api/roe/status', _agentsGate, async (_req, res) => {
 app.get('/api/roe/questions', _agentsGate, async (_req, res) => {
   try {
     const [reg, idx] = await Promise.all([_ROE.readRegistry(kv), _r2Ok() ? _r2GetJSON(_ROE.QUESTIONS_INDEX_KEY).catch(() => null) : null]);
-    res.set('Cache-Control', 'no-store').json({ ok: true, status: _ROE.boardStatus(reg), groups: _ROE.boardGroups(idx), specs: Object.keys(idx?.specs ?? {}).length });
+    const groups = _ROE.boardGroups(idx), memo = new Map();   // related papers: rule-based library search (no model call, no cost), one search per distinct topic
+    for (const g of groups) for (const r of g.rows) {
+      const q = `${g.mechanism} ${String(r.label ?? '').replace(/\s*\(.*?\)\s*/g, ' ')}`.trim();
+      if (!memo.has(q)) { try { memo.set(q, ((await _libApi.find({ query: { q, n: 3 } }))?.json?.hits ?? []).map(h => ({ id: h.id, title: h.t, year: h.y ?? null }))); } catch { memo.set(q, []); } }
+      r.related = memo.get(q);
+    }
+    res.set('Cache-Control', 'no-store').json({ ok: true, status: _ROE.boardStatus(reg), groups, specs: Object.keys(idx?.specs ?? {}).length });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.get('/api/roe/runs', _agentsGate, async (_req, res) => {
@@ -6964,16 +6990,11 @@ app.get('/api/research-pod/upload/have', async (_req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // ── Paper Library (plans/PAPER_LIBRARY.md): /api/library/*. Logic in js/libraryApi.js; this is only the mount.
-// EVERY route sits behind _libGate (main-zone login cookie, same check as requireAuth) and answers 401 JSON, never content.
+// EVERY route sits behind _libGate (_libAuthOk: the dashboard login or a Theory Lab login) and answers 401 JSON, never content.
 // Registered before the global app.use(requireAuth), so the gate is explicit. No model call, no paid TTS (PAPER_TTS_PROVIDER=none disables MP3).
-// TEMPORARY, owner-approved 2026-11-08: the library is readable without login until this time, so it can be looked at; it then closes by itself.
-// Only GETs and only the library page + its files; every POST (progress, tags, case, audio) stays behind the login.
-const _LIB_OPEN_UNTIL = Date.parse('2026-11-09T06:00:00Z');
-const _libOpen = req => Date.now() < _LIB_OPEN_UNTIL && (req.method === 'GET' || req.method === 'HEAD');
 const _libGate = (req, res, next) => {
   if (!AUTH_ENABLED) return next();
-  if (_libOpen(req)) return next();
-  if (authVerifyCookie(authParseCookies(req)[`${AUTH_COOKIE_NAME}_main`], 'main')) return next();
+  if (_libAuthOk(req)) return next();
   res.set('Cache-Control', 'no-store').status(401).json({ ok: false, error: 'login required' });
 };
 app.use('/api/library', _libGate);
@@ -44414,7 +44435,7 @@ app.all('/api/*', async (req, res) => {
 app.get('/login', (req, res) => {
   const zone = req.query.zone === 'education' ? 'education' : 'main';
   const next = typeof req.query.next === 'string' && req.query.next.startsWith('/') ? req.query.next : '/';
-  res.type('html').send(authLoginPage(zone, next, !!req.query.error));
+  res.type('html').send(authLoginPage(zone, next, !!req.query.error, req.query.brand === 'library' ? 'library' : null));
 });
 
 app.post('/login', (req, res) => {
@@ -44439,10 +44460,13 @@ app.post('/login', (req, res) => {
 // /logout is public, like /login — clears only the zone cookie you were in
 // (an education-zone logout leaves a main-zone session, if any, untouched).
 app.get('/logout', (req, res) => {
-  const zone = req.query.zone === 'education' ? 'education' : 'main';
-  res.setHeader('Set-Cookie',
-    `${AUTH_COOKIE_NAME}_${zone}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`);
-  res.redirect(zone === 'education' ? '/theory-lab/' : '/');
+  const lib = req.query.zone === 'library';   // the library's Log out button: clears BOTH logins (either one opens the library), then back to its sign-in page
+  const zone = lib || req.query.zone === 'education' ? 'education' : 'main';
+  const clear = z => `${AUTH_COOKIE_NAME}_${z}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`;
+  res.setHeader('Set-Cookie', lib ? [clear('education'), clear('main')] : clear(zone));
+  if (lib) return res.redirect('/library.html');
+  const back = typeof req.query.next === 'string' && /^\/library(\.html)?$/.test(req.query.next) ? req.query.next : null;   // the library's "sign in with the owner password" link
+  res.redirect(back ?? (zone === 'education' ? '/theory-lab/' : '/'));
 });
 
 app.use(requireAuth);
