@@ -18,6 +18,7 @@
 import { MATH_CAP } from './libraryMath.js';
 import { FIGS_CAP } from './libraryFigs.js';
 import { LIBRARIAN_CAP } from './libraryLibrarian.js';
+import { CONCEPTS_CAP } from './libraryConcepts.js';
 
 export const GROUPS = ['Research', 'Data', 'Library', 'Desk', 'News', 'Tests'];
 export const UNMAPPED_ROLES = [];
@@ -27,7 +28,7 @@ const A = (id, name, group, o) => ({
 });
 const L = (label, href) => ({ label, href });
 const ROE = L('Plan: Research Opportunity Engine', 'plans/RESEARCH_OPPORTUNITY_ENGINE.md');
-const CAP = { math: { key: 'library_math_v1', cap: MATH_CAP, label: 'equation calls' }, figs: { key: 'library_figs_v1', cap: FIGS_CAP, label: 'figure and table calls' }, lib: { key: 'library_librarian_v1', cap: LIBRARIAN_CAP, label: 'librarian calls' } };
+const CAP = { math: { key: 'library_math_v1', cap: MATH_CAP, label: 'equation calls' }, figs: { key: 'library_figs_v1', cap: FIGS_CAP, label: 'figure and table calls' }, lib: { key: 'library_librarian_v1', cap: LIBRARIAN_CAP, label: 'librarian calls' }, concepts: { key: 'library_concepts_v1', cap: CONCEPTS_CAP, label: 'concept card calls' } };
 
 export const AGENTS = [
   // ── Research: the pod that answers the owner's questions ────────────────────────────────────────────────────
@@ -186,6 +187,11 @@ export const AGENTS = [
     purpose: 'Writes a short "what this shows" note for each figure and table from the paper\'s text alone (it does not look at the picture).',
     trigger: 'Owner presses the figures button on the Library page (at most 12 calls a press).', reads: ['figure and table captions and the text around them'], writes: ['R2 figure notes', 'library_figs_v1 (calls used)'],
     modelTask: 'library-figs', cap: CAP.figs, spends: true, links: [L('Library', 'library.html')],
+  }),
+  A('library-concepts', 'Concept cards', 'Library', {
+    purpose: 'Turns the library digests, the C.OG education text and the Theory Lab lessons into reviewable concept cards (principle, mechanism, the variable to build, what to look for, caveats, sources), one topic slice at a time, from the supplied text only. An item it has already read is never sent twice.',
+    trigger: 'Runs only when you start it: python -m roe.concepts run, or the owner presses it.', reads: ['library digests, education notes, C.OG notes and Theory Lab lessons that match the slice'], writes: ['R2 research/concepts/cards.json (private)', 'library_concepts_v1 (calls used, items sent)'],
+    modelTask: 'library-concepts', cap: CAP.concepts, spends: true, links: [L('Library', 'library.html')],
   }),
   A('library-briefing', 'MP3 briefing', 'Library', {
     purpose: 'Makes an audio briefing of a paper (abstract, the desk\'s notes, the conclusion; not the paper read aloud) with a free voice. No model call, no paid voice.',
