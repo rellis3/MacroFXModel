@@ -377,6 +377,8 @@ export const SERVICES = [
     cadence: 'every 6 h', cost: 'low', lean: false, on: true, feeds: 'the chain gap chips (gilt, bund, JGB minus Treasuries) and rates.html' },
   { id: 'dataArchive', where: 'server', label: 'Data archive to R2: deep FRED histories, ICE credit spreads, CME options capture, 10Y intraday, gold ETF flows, nowcasts (append-only, never deletes)',
     cadence: 'daily', cost: 'low', lean: false, on: true, feeds: 'the permanent record behind plans/DATA_ASSET_MAP.md §4A–B; nothing reads it live yet' },
+  { id: 'libraryWarm', where: 'server', label: 'Paper Library warm-up: fills the paper list and the search index in memory so the first screen after a login is fast (a read of the library files; no model call)',
+    cadence: 'every 4 min', cost: 'low', lean: false, on: true, feeds: 'library.html (the list and search); js/libraryApi.js warm()' },
   { id: 'crack', where: 'server', label: 'Crude and the crack spread (FRED EIA spot, no key)',
     cadence: 'every 6 h', cost: 'low', lean: false, on: true, feeds: 'the Crude & the crack card and the chain crack node' },
   { id: 'hmmHourly', where: 'server', label: 'Hourly market-state log: the daily two-state model refitted on hourly bars, one reading per pair per hour',

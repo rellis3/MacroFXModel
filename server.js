@@ -7060,8 +7060,8 @@ const _libRoute = (method, p, fn) => app[method](`/api/library/${p}`, async (req
   } catch (e) { console.error(`[library] ${p}:`, e.message); res.status(500).json({ ok: false, error: 'library error' }); }
 });
 // keep the library's list and search index warm so the first screen after a login is not a cold build (a cheap read; errors are ignored)
-setTimeout(() => _libApi.warm?.(), 20_000).unref?.();
-setInterval(() => _libApi.warm?.(), 4 * 60_000).unref?.();
+svcTimeout('libraryWarm', () => _libApi.warm?.(), 20_000);
+svcInterval('libraryWarm', () => _libApi.warm?.(), 4 * 60_000);
 _libRoute('get', 'papers', _libApi.papers);
 _libRoute('get', 'paper', _libApi.paper);
 _libRoute('get', 'search', _libApi.search);
