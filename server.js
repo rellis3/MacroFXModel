@@ -3982,14 +3982,38 @@ app.post('/api/ai-config', (q, r, n) => _agentsGate(q, r, n), (q, r, n) => _agen
     if (provider != null && provider !== '' && !AI_PROVIDERS[provider]) {
       return res.status(400).json({ error: `unknown provider: ${provider}` });
     }
+    // 2026-11-09: on 2026-11-08 at 19:14 UTC the owner's routing was replaced by one with no tasks, and every job set to
+    // DeepSeek ran on Opus for a day. The page has two saves: the routing table sends only `tasks`, the "which model"
+    // picker sends only `models`, and each used to overwrite the whole record, so picking a model wiped the routing.
+    // A save now MERGES: a field the request leaves out keeps its saved value. A save that would still empty a routing
+    // with choices in it is refused unless it says so (confirmClear: true, which the page sends only after asking), and
+    // the last 10 saved routings are kept in ai_routing_history_v1 so a lost one can be put back.
+    const prevRaw = await kv.getStrict(_AI_ROUTING_KV).catch(() => null);
+    const prev = prevRaw ? (JSON.parse(prevRaw)?.data ?? null) : null;
+    const body = req.body ?? {};
     const payload = {
-      tasks: clean,
-      models: cleanModels,
-      provider: provider === '' ? null : (provider ?? null),
-      cache: typeof cache === 'boolean' ? cache : null,
+      tasks: 'tasks' in body ? clean : { ...(prev?.tasks ?? {}) },
+      models: { ...(prev?.models ?? {}) },
+      provider: 'provider' in body ? (provider === '' ? null : (provider ?? null)) : (prev?.provider ?? null),
+      cache: 'cache' in body ? (typeof cache === 'boolean' ? cache : null) : (prev?.cache ?? null),
     };
+    // models: each provider the request names is set (or, sent empty, put back to the default); the others are kept
+    for (const [prov, id] of Object.entries(models ?? {})) { if (id === null || id === '') delete payload.models[prov]; else payload.models[prov] = cleanModels[prov]; }
+    const prevTasks = Object.keys(prev?.tasks ?? {}).length;
+    const empties = prevTasks > 0 && !Object.keys(payload.tasks).length;   // this save would drop every job choice
+    if (empties && body.confirmClear !== true) {
+      return res.status(409).json({ ok: false, code: 'would_clear', error: `this save would clear the saved routing (${Object.keys(prev.tasks ?? {}).length} job choice(s)); send confirmClear: true to do it on purpose`, current: prev });
+    }
+    if (prev) {
+      try {
+        const hist = JSON.parse((await kv.get('ai_routing_history_v1').catch(() => null)) || '[]');
+        hist.unshift({ replacedAt: new Date().toISOString(), data: prev });
+        await kv.put('ai_routing_history_v1', JSON.stringify(hist.slice(0, 10)));
+      } catch (e) { console.warn('[ai-config] routing history not kept:', e.message); }
+    }
     await kv.put(_AI_ROUTING_KV, JSON.stringify({ data: payload, timestamp: Date.now() }));
     await _loadAiOverride();
+    console.log(`[ai-config] routing saved: ${Object.keys(payload.tasks).length} job choice(s), ${Object.keys(payload.models).length} model pick(s)${empties ? ' (job choices cleared on purpose)' : ''}`);
     res.json({ ok: true, applied: payload });
   } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
