@@ -24,6 +24,7 @@ import * as ACV from './autocorrView.js';
 import * as LLV from './leadLagView.js';
 import * as OPV from './optionsView.js';
 import { terrainHtml, mountTerrain } from './terrainPanel.js';
+import { smilePanelHtml, mountSmile } from '../smileChart.js';
 import { mountPathChart } from './pathChart.js';
 import * as NV from './newsView.js';
 import { createLevelChart } from '../levelChart.js';
@@ -633,12 +634,14 @@ async function renderOptions() {
     root.innerHTML = `<div class="card glow"><div class="tt-head"><span class="lbl">Options</span><h2 style="flex-basis:100%">What the options market is positioned for</h2></div>
 <p style="margin:4px 0 0">Price shows two dimensions: up and down. Options add a third, the <b>path</b>: every contract has a strike and an expiry, so the book shows at what price, by what date, the market is protected or speculating. Read it as positioning, one lens among several: every reading below carries what the Evidence Book found when it was tested.</p></div>
 ${sec('The terrain', 'open interest, the IV smile or gamma by expiry, and the labelled levels on one price axis')}${terrainHtml()}
+${sec('The IV smile', 'implied vol against strike, one curve per expiry, with the IV and realised-vol reference lines')}${smilePanelHtml()}
 ${sec('Calls against puts', 'the put/call open-interest ratio for each market, read against its own history')}<div id="opt-pos">${loading('open interest')}</div>
 ${sec('Option lines', 'walls, max pain and gamma lines around the price')}<div class="card" style="padding:8px 12px"><label class="muted" style="font-size:12px">Market <select id="opt-lad-inst" style="background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:3px"></select></label></div><div id="opt-lad">${loading('option lines')}</div>
 ${sec('The path', 'open interest by expiry and strike, ahead of the price')}<div class="card" id="opt-path">${loading('the path')}</div>
 ${sec('Dealer hedging', 'which way the dealers who sold the options must trade as price moves')}<div id="opt-dl">${loading('dealer hedging')}</div>
 <div id="opt-skew"></div>
 ${sec('Fear gauge', 'the VIX and its term structure')}<div id="opt-vix">${loading('the VIX')}</div>`;
+    try { mountSmile(root.querySelector('[data-sm="root"]'), {}); } catch (e) { console.warn('smile', e); }
   }
   mountTerrain(root, J, (T.terrain ??= {})).catch(e => console.warn('terrain', e));
   const goPair = box => box?.querySelectorAll('[data-pair]').forEach(b => (b.onclick = () => openPair(b.dataset.pair)));

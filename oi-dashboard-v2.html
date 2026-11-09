@@ -153,6 +153,8 @@ svg text{font-family:var(--mono)}
     <div class="legend" id="cogLeg" style="margin-top:8px"></div>
   </div>
 
+  <div id="smileHost"></div>
+
   <div class="card">
     <h2><em>05</em> Gamma by price level</h2>
     <div class="sub"><b>The simple version.</b> One row per price band, highest price at the top. The <b>wide faint bar</b> is the whole book's gamma in that band: <span style="color:rgb(70,184,122)">right/green</span> = dealers lean against moves there (price tends to stall), <span style="color:rgb(232,97,95)">left/red</span> = dealers push with the move (price tends to speed up). The <b>slim bright bar</b> is the part of that gamma that expires within 3 days. A long bar with a long bright centre = a big zone that is about to matter. Hover a row for numbers.</div>
@@ -264,6 +266,7 @@ import { oiMatrixExpiryLegs, oiContractSize, oiFlatVol, parseOIMatrix, oiRippleB
 import { greekLayers, hedgeFlow, GREEKS } from './js/greekLayers.js';
 import { bsGamma, bsCharm } from './js/gammaGreeks.js';
 import { drawTerrain as drawTerrainChart, terrainSmiles } from './js/terrainChart.js';
+import { smilePanelHtml, mountSmile, SMILE_SYMS as SMILEP_SYMS } from './js/smileChart.js';
 import { hedgingScenario, hedgingRead, bookAt } from './js/hedgingScenario.js';
 import { cmeBookContracts } from './js/hedgingBooks.js';
 
@@ -1379,6 +1382,13 @@ function drawCog(){
   $('#cogLeg').innerHTML = r.legend || '';
 }
 $('#cogExp').querySelectorAll('[data-cexp]').forEach(el => el.onclick = () => { COGX.maxDte = +el.dataset.cexp; $('#cogExp').querySelectorAll('[data-cexp]').forEach(x => x.classList.toggle('on', x === el)); drawCog(); });
+// the IV smile card (js/smileChart.js): follows the instrument on screen when it has a Cboe chain
+let SMILEP = null, SMILE_LAST = null;
+function syncSmile(){
+  const host = $('#smileHost'); if (!host) return;
+  if (!SMILEP) { host.innerHTML = smilePanelHtml(); SMILEP = mountSmile(host.firstElementChild, { sym: SMILEP_SYMS.includes(SYM) ? SYM : 'NAS100_USD', px: v => px(v) }); SMILE_LAST = SYM; return; }
+  if (SYM !== SMILE_LAST) { SMILE_LAST = SYM; SMILEP.setSym(SYM); }
+}
 let _cogRz = null; addEventListener('resize', () => { clearTimeout(_cogRz); _cogRz = setTimeout(() => { try { drawCog(); } catch (_) {} }, 150); });
 
 // ── 04 heat ─────────────────────────────────────────────────────────────────────────────
@@ -1647,7 +1657,7 @@ async function refresh(){
   futPill();
   try { CUR = derive(SYM); rail(); } catch (err) { console.warn('[oi-v2] derive', err.message); lwMsg('Could not read the options data for ' + esc(NAMES[SYM] || SYM) + ': ' + esc(err.message)); return; }
   drawHedging();     // async and self-contained: first, so a failure in another panel cannot skip it
-  for (const f of [stats, drawCog, drawBars, drawRipple, drawGreeks, drawHedgeFlow, drawDayDrift, drawSurfaceDay, drawFootprint, oixDecorate, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
+  for (const f of [stats, drawCog, syncSmile, drawBars, drawRipple, drawGreeks, drawHedgeFlow, drawDayDrift, drawSurfaceDay, drawFootprint, oixDecorate, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
   $('#note').innerHTML = `<span>Source: oi_store (${esc(STORE[SYM]?.savedAt || '')}) · candles: OANDA H1 · colours are the platform's own sign convention (calls − puts, dealers long calls / short puts). Analysis views, not signals — wall and flip effects did not beat placebo levels in your own tests.</span>`;
   await drawTerrain();     // builds the gamma field + curve the brief's structure panel reads
   if (my !== _rfTok) return;
