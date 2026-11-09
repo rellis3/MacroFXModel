@@ -160,6 +160,10 @@ The reasoning is decoded in `HOW_THEY_THINK.md` (patterns F-L). The ideas that c
 Reasoning decoded in `HOW_THEY_THINK.md` §3c (patterns M-T), including a scorecard of E01-E03.
 Things we could test: R12, below.
 
+### E05: a 7% Nasdaq day that macro ignored, binary 2027, the yen, gold (~6-9 Nov 2026)
+Reasoning decoded in `HOW_THEY_THINK.md` §3d (patterns U-AC), including how their views moved since E04.
+Things we could test: R13-R15, below.
+
 ---
 
 ## Theme Index
@@ -288,6 +292,22 @@ distribution once it's ~8% down? That's the base rate behind his dip-buy. It's a
 claim, which suits this desk. Condition on credit widening (HY OAS) vs not, to see whether "this
 time is credit" changes the base rate.
 
+**R13. Follow-through as a size read (AP, E05).** TESTABLE as a size claim. Claim: on a large
+equity down day (NQ −3% or worse), when FX and the US front end barely move (dollar index and the
+2y inside their normal daily range), the next weeks are a *liquidation* and the equity range shrinks
+faster than after a big down day that the other markets did follow. We hold NQ, the dollar index,
+the 2y and the STIR legs, so the condition is measurable. Direction is not the claim; the
+next-5/20-day range and drawdown are. Few episodes per year, so expect underpowered unless the
+threshold is loose. Check `project_yield_asset_coupling` (same-bar only) before registering.
+
+**R14. Metals holding up while momentum breaks (AP, E05).** CONTEXT. Track gold's 20-day return
+against a momentum proxy's (high-beta basket or the Nasdaq) and flag when the usual co-movement
+fails. Few episodes; a chart for the Atlas, not a test.
+
+**R15. Nasdaq calendar-year distribution (BD, E05).** CONTEXT, cheap. BD quotes 39% of years up
+20%+, 13% down 20%+. Rebuild it from our own NQ/NDX history, and add the two-humped question AP
+raised: how often is the middle (0 to +15%) the outcome? A distribution card, never a forecast.
+
 ---
 
 ## Calls to Score
@@ -309,9 +329,16 @@ time is credit" changes the base rate.
 | ~2026-10-16 | BD | France news priced in; spreads peaked at 168 (two Fridays earlier) | 2026-10-30 | OAT-Bund 168 peak | **Wrong** by 10-23: back at 171; BD now says "path of least resistance is wider" |
 | ~2026-10-16 | AP | Rates trend resumes higher; thesis wrong on a weekly close well below 5% US 10y | rolling | 10y just above 5% (peak 5.35%) | **Being tested**: 10y 4.95% on 10-23 ("well below" never pinned to a number); AP still school 1 |
 | ~2026-10-16 | AP | Fed likely skips October; if so the long end sells off | after Oct FOMC | Oct hike priced < 5-6bp | **Right**: no Oct hike; December hike priced < 65% at the 10-22 low |
-| 2026-10-23 | BD | Nasdaq buyer; range 29-30k NQ, S&P ~7,600; "a garden-variety correction" | ~4 weeks | NQ ≈ 29,000, ~8% off high | |
+| 2026-10-23 | BD | Nasdaq buyer; range 29-30k NQ, S&P ~7,600; "a garden-variety correction" | ~4 weeks | NQ ≈ 29,000, ~8% off high | **Against him by E05**: Nasdaq ~14% off the high at the low, 27,000 discussed as a buy level; BD didn't say whether he stopped out |
 | 2026-10-23 | BD | BoC may pause despite a hike being ~fully priced | next BoC meeting | | |
 | 2026-10-23 | BD | Brazil: Flávio wins, BRL then flatlines quickly; vol collapses either way | after the 10-25 runoff | 1w vol ~57; Polymarket ~77% | |
 | 2026-10-23 | AP | If Bolsonaro side wins, BRL rallies harder than expected and knocks out RKOs | after the 10-25 runoff | | |
 | 2026-10-23 | AP | School 1: AI repricing then drift; hikes continue unless credit (AI, France) tightens further | rolling | | |
-| 2026-10-23 | BD | No December Fed hike if equities fall another ~8% | Dec FOMC | | |
+| 2026-10-23 | BD | No December Fed hike if equities fall another ~8% | Dec FOMC | | Open on E05: equities ~6% lower, December still 16-20bp priced; BD says the bar to stop is "pretty low" |
+| ~2026-11-07 | AP | The sell-off is a technical liquidation; macro implications "close to zero"; Fed still hikes in December | Dec FOMC | Dec 16-20bp priced; 10y 4.85% | |
+| ~2026-11-07 | BD | If Anthropic postpones its IPO: negative first, but likely a sign of the bottom (supply removed, capitulation) | ~2026-11-18 | pricing pencilled 16 Nov | |
+| ~2026-11-07 | AP | Anthropic goes ahead; a clearing event for the market | ~2026-11-18 |  | |
+| ~2026-11-07 | AP | 2027 equities two-humped: ~50% down ~20%, ~50% up ~20% | end 2027 |  | |
+| ~2026-11-07 | AP | Gold +15-20% next year if the Fed hikes once more then pauses | end 2027 | gold ~4,000 | |
+| ~2026-11-07 | BD | Maybe long gold, stop below the lows (support 3,900 broke and was reclaimed) | rolling | gold ~4,000 | |
+| ~2026-11-07 | AP / BD | USDJPY lower over 12 months (wages, Shunto 6%+, MoF cap at 160); BD on the sidelines because of carry and skew | ~2027-11 | level not stated; realised vol ~4% | |

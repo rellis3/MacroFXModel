@@ -442,6 +442,190 @@ don't get to play again." / "Don't blow up and have fun."
 
 ---
 
+## 3d. Episode 05 decoded (~6-9 Nov 2026): a 7% Nasdaq day that macro ignored, binary years, the yen trade nobody can hold, gold's quiet strength
+
+*Recording date not stated. Clues: the Nasdaq fell 7% "yesterday"; Anthropic's IPO is pencilled for pricing on 16 Nov, and BD expects any delay "probably next week"; Thanksgiving is still ahead.*
+
+### The setup
+The high-beta momentum basket went from **+60% on the year in June to −20% now**. The Nasdaq fell
+7% in one day and was down ~14% from its high at the low. Thirteen separate Bloomberg headlines in
+a day about hedge funds and pod teams blowing up. And yet: EURUSD is back at ~1.12, USDJPY hasn't
+moved, emerging-market FX barely moved, the Fed's December hike still has 16-20bp priced (it moved
+around inside that band all week), and 2027 is still priced for more hikes. Only the AUD moved
+(a big long met a surprisingly dovish RBA). The 10y has fallen from 5.30% to 4.85%.
+
+### Pattern U: Think slow when the tape is screaming (AP + BD)
+- AP opens with *pole pole* ("slowly, slowly", Swahili): when you have a decision to make, think
+  slow, act slow. It matters most on a day the Nasdaq is down 7% and every instinct says act now.
+- BD: "Between stimulus and response there is a space. In that space is our power to choose."
+  The skill is putting a gap between seeing the move and reacting to it.
+- **Why this is a reasoning rule, not a slogan:** everything below is what they did *in* that gap.
+  They checked whether other markets agreed before deciding what the move meant.
+
+### Pattern V: Check the follow-through: if no other market agrees, it's a liquidation, not a macro story (AP)
+- **The test:** a 7% day in the Nasdaq. Did FX, rates and EM follow? Barely. December pricing moved
+  a few basis points, and 2027 still prices hikes.
+- **The contradiction he uses:** if this were a real AI capex unwind (the second derivative of
+  capex turning, nominal growth slowing, earnings cut), the Fed would not be hiking more next year.
+  The market would price something like **50/50 hikes vs cuts, as Australia does now**. It doesn't.
+  So the market doesn't believe the macro version of the story.
+- **Conclusion:** "the macro implications of the sell-off are close to zero at the moment… a very
+  technical liquidation event of highly leveraged positions in momentum and tech."
+- **Consequence for the trade:** at that point equities are "literally a technical market", so
+  levels like 27,000 on the Nasdaq are for chart readers. AP gives no view on that horizon and moves
+  to his own one (next year).
+- **The skill:** before you believe a big move is *about* something, ask what that something
+  would have to do to every other market, then look. (Pattern M looked for a correlation that
+  flipped; V looks for one that failed to show up.)
+
+### Pattern W: One asset, two time frames pulling opposite ways, and no position to unwind (BD, dollar)
+- **Short horizon:** a liquidity drain is a reflex dollar buy. "The algorithms are tuned that way,"
+  and so are humans: stocks −5%, sell Aussie.
+- **Longer horizon:** money leaving the US and slower AI capex growth are *bad* for the dollar. If
+  capex was the one leg of the stool (E01), its slowing means less Fed hiking and slower 2027
+  growth.
+- "Pretty strong reasons to buy dollars on one time frame and pretty strong reasons to sell dollars
+  on another… then it just gets super confusing." **Two drivers on different clocks cancel**, the
+  same answer as Pattern R's EURUSD between two lines.
+- **The third thing he checks: positioning.** In a big de-grossing event the usual move is an unwind
+  of whatever the market holds (short dollars in 2008, long dollars in 2000). This time there was no
+  big dollar position going in, so **no positioning push either**. The one place there *was* a big
+  position (AUD) is the one major that moved, and it took a policy surprise (dovish RBA) to do it.
+- **Rule:** a shock moves the crowded positions. If nothing is crowded, expect the shock to pass
+  through without much FX follow-through.
+
+### Pattern X: Bad news, good price, and the transmission that broke (AP via BD's book, BD)
+- If you had told anyone in June "Nasdaq −13%, the momentum basket from +60% to −20% on the year, capital leaving US AI",
+  they'd have said the dollar is down. The dollar is flat, and firm even against the yen and euro.
+  "In the bad old days USDJPY would be down 300 or 500 points; today it's basically flat."
+- **From BD's book (as AP tells it):** if something is in the news, everybody sees it, and an asset
+  isn't responding the way it should, that's the "bad news, good price" signal. Don't push your
+  belief that it *should* fall. "The market doesn't care about your beliefs." (This is Pattern A,
+  E01, mirrored: there it was good news and a bad price for USD.)
+- **"The transmission from equities to FX is completely broken."** BD states it flat. It continues
+  Pattern R: don't assume the old equities-to-FX link; rebuild it from the drivers.
+- **The sentiment check:** 13 blow-up headlines in a day → "maybe we have liquidated enough down
+  here." Capitulation shows up in the *number of stories about forced sellers*, not in prices.
+
+### Pattern Y: When next year's outcome is binary, normal valuation tools stop working (AP + BD)
+- **AP's framework problem:** a normal year for stocks has a fat middle (~70% odds of +7-12%). He
+  thinks 2027 has two humps: **50% down ~20% if the capex cycle unwinds, 50% up ~20% if it doesn't**
+  (the $1.2tn gets spent, earnings +20%, and you're buying them at lower multiples). A two-hump
+  distribution needs a different approach from a one-hump one.
+- **BD checks the base rate** before agreeing: Nasdaq history, 39% of years up 20% or more, 13% down
+  20% or more. Big years are normal for this index; the down-20 tail is bigger than he thought.
+- **Why the P/E doesn't help (AP's DRAM story):** Korea's 12-month forward P/E is 3.5x, which looks
+  absurdly cheap. But in the 2018 memory (DRAM) capex cycle, P/Es looked just as cheap at the top:
+  the *E* was the inflated part. Once chip prices fell, the earnings never came, and the 12-month
+  return after peak capex was −30% to −40%. **At a cycle peak, a low P/E is the warning, not the
+  bargain.**
+- **BD's two objections to P/E charts:**
+  1. "I'm not sure I know anyone that's ever made money using price-earnings ratios." It works
+     mostly as a sentiment gauge, and the "low P/E → good forward returns" charts mostly lump
+     together years from the same regime.
+  2. **It's not even the same company.** In 2023 the mega-caps were cash machines with almost no
+     capex. Now they're factory builders spending more than any industry in history, some of them
+     cash-flow negative. A P/E line from 25 to 19 compares two different businesses.
+- **The skill:** before using a ratio across time, ask whether the thing being measured is still the
+  same thing. And when the distribution is two-humped, describe both humps; don't average them into
+  a middle that won't happen.
+
+### Pattern Z: "Can the market wait to find out?", and what an event does to supply and sentiment (BD + AP)
+- **The question under the AI trade:** the spending is huge, the payoff is years away, and there's
+  no visibility until something like January 2027. Until then it runs on faith. When faith cracks,
+  financing gets harder and dearer (CDS wider) and the loop turns (E04's reflexivity).
+- **Anthropic's IPO as the near-term catalyst (BD).** Any other company would delay. If they delay,
+  the first reaction is negative (financing has tightened), **but it may mark the bottom**: it
+  removes a huge chunk of new supply (and everyone else waiting to list stops too), and an issuer
+  backing down is itself a capitulation signal.
+- **AP: they'll go ahead, and that's a clearing event.** Two months ago people "would have given an
+  arm and a leg" for shares. If buyers still turn up at a lower price, it shows real demand is
+  underneath.
+- **The skill:** for a scheduled event, work through *both* outcomes and the second-order effect on
+  supply and sentiment, not just the headline reaction. The bearish-looking outcome can be the
+  bullish one.
+
+### Pattern AA: Right in twelve months isn't a trade: the yen setup they can't hold (AP + BD)
+- **AP's thesis (Japan):** nominal and real wages are picking up; the spring wage talks (Shunto) are
+  pointing to 6%+ demands, double US wage growth. If core inflation reaches 2.5-3%, the BoJ has
+  cover. Meanwhile **around 160 the authorities have shown their hand** (Japan's finance minister
+  and the US), so USDJPY's upside is capped. A cap above plus a domestic reason to fall: an
+  asymmetric setup.
+- **BD agrees with the view and still won't trade it:**
+  - Three catalysts have already arrived (higher wage talks and inflation, the 10y falling from
+    5.30% to 4.85%, 6,000 points off the Nasdaq) and **USDJPY didn't fall**. When good catalysts
+    fail to move price, step back. (Pattern X again.)
+  - **The cost of holding it:** short USDJPY pays the carry, skew is against you, and options he
+    bought have expired worthless. Realised vol is ~4%; "it's very hard to make money long or short
+    or in between."
+  - **Two ways to hold a "right eventually" view, both hard:** time it, or own expensive options and
+    have a lot of faith.
+  - What's left in its favour: pension funds (GPIF and others) may be bringing money home now Japanese
+    yields are reasonable, and there's been "a massive wall of supply" of USDJPY above ~158.30.
+- **Verdict:** "I would definitely take the under 12 months from now… but how do you actually do it?"
+  He's on the sidelines. **A view on direction and a trade are different things: the trade has to
+  survive the carry, the skew and the wait.** (E04 Pattern R already flagged the carry cost of this
+  same position.)
+
+### Pattern AB: Relative strength in the asset that should have broken (AP + BD, gold and silver)
+- **The tell:** precious metals usually trade with momentum (a high R² when you regress one on the
+  other). Momentum is being "taken to the woodshed", and gold holds ~4,000 while silver bounced from
+  $50 to $51-52. **An asset holding up when its usual partner collapses is telling you the bad news is
+  priced.** It's held up against a stronger dollar, lower stocks and lower Bitcoin.
+- **The interest test:** after a parabola, people normally lose interest. AP says it's already
+  happened: since the February peak almost nobody has asked him about gold, apart from a two-week
+  burst around Bessent's buyback. Low interest and low volume mean you can build a position
+  cheaply.
+- **When do metals do well? AP lists the two regimes:**
+  1. Monetary and fiscal policy badly misaligned (late 2025 into early 2026). He doesn't expect that
+     again.
+  2. **The hawkish tails get removed:** US nominal growth eases from ~6.5% to ~5%, the Fed hikes once
+     more and stops. Then gold +15-20% next year, which is roughly a one-standard-deviation year,
+     "pretty fine and quite likely". Supports: a bit of capex slowdown and a fading fiscal impulse.
+     And rates 4% with inflation 3% is already positive real rates, so why not pause?
+- **BD adds the micro:** a big support at 3,900 broke, then gold moved impulsively back above it (a
+  failed breakdown). The Fed "does not want to hike" and is only "embarrassed into it", so the bar
+  to stop is low, lower still if stocks are down 15-20%. Some of the money leaving equities may end
+  up in something conservative.
+- **The time-to-return rule (BD):** speculative money usually waits ~3 years before returning to
+  where it got obliterated (Bitcoin bust in 2018, back in 2021, again in 2025). So it's too early to
+  expect gold at 6,000 on fresh speculative money. That points to a long position at modest size,
+  not a long-vol bet.
+
+### Pattern AC: Start with the simplest way to express it (AP + BD)
+- BD talks himself through a structure: sell put spreads to fund call spreads ("flat vol, long
+  delta"). Then: "or just buy gold and put a stop below the lows." AP: in his experience that's the
+  right answer about 90% of the time. The stop is obvious (below the low that has held, under big
+  support at 3,900), and you don't pay option bid-asks over and over.
+- **BD's test for when options are worth it:** map the P&L of both. Long at 4,000 with a stop vs.
+  the option structure, then reprice both at, say, gold 4,250. "It's usually pretty close to being the
+  same." **Use options only when you have a view on the *path* that differs from what's priced.**
+  Otherwise delta-one (plain spot or futures) with a stop is cheaper and simpler.
+- AP admits the macro trader's bias: "we look at options every time." The lesson is aimed at
+  himself.
+
+### How their views moved since E04
+| Then (E04, 23 Oct) | Now (E05) | What it teaches |
+|---|---|---|
+| BD: Nasdaq buyer at ~8% down, "garden-variety correction", range 29-30k NQ | Nasdaq ~14% off the high at the low; people asking whether 27,000 is the place to buy. BD doesn't mention the long | The base-rate dip-buy (Pattern P) met a liquidation it didn't model. **We don't know if or where he stopped.** Watch whether he says so: a pre-set stop is what makes a base-rate trade survivable |
+| BD: no December hike if equities fall another ~8% | Equities have fallen ~6% more; December still 16-20bp priced. BD: "the bar for them to stop is pretty low" | Still open. The market hasn't moved his way yet, and he hasn't changed the call |
+| AP: school 1 ("repricing then drift"), hikes continue unless credit tightens | "Macro implications close to zero"; 2027 still priced for hikes; next year two-humped | Consistent, but he now gives the bearish hump 50%. His uncertainty window (Pattern O) has widened into two scenarios |
+| AP E01: wrong on a weekly close *well below* 5% US 10y | The 10y is at 4.85% (from 5.30%). Neither host raises AP's line | **Still not honoured or retired out loud.** Third episode in a row. Treat an unpinned invalidation level as no invalidation |
+| BD: agnostic on USD, drivers offsetting (Pattern R) | Agnostic again, now with time frames (W) and positioning added | His dollar view didn't change; his explanation for it got sharper |
+| BD: short USDJPY costs carry while it goes nowhere | On the sidelines: right in 12 months, untradeable now (AA) | The carry cost won. He kept the view and dropped the trade |
+| AP (E03): a bigger buyback → gold at new highs | Peak was February; gold ~4,000, holding up on relative strength | The E03 burst faded in two weeks (AP's own words). Now a slower, regime-based case: hawkish tails removed |
+
+### Questions to practise on this episode
+1. AP says the sell-off has no macro follow-through. Write down which three markets you'd check,
+   and what each would have to do for him to be wrong. (Our site: the rate legs line on today.html,
+   the Fed path, the dollar on Atlas.)
+2. BD agrees with AP on the yen and won't trade it. Write the trade AP would need (instrument,
+   horizon, cost of carry for three months, where it's wrong). Is it worth it at 4% realised vol?
+3. List both outcomes of the Anthropic IPO (go ahead / delay). For each, write the first reaction and
+   the second-order effect on supply. Score it when it happens.
+
+---
+
 ## 4. Glossary: words they assume you know
 
 | Term | Plain meaning |
@@ -499,6 +683,22 @@ don't get to play again." / "Don't blow up and have fun."
 | **Polymarket** | A prediction market: a second "price" for an event, to compare with options |
 | **TPI** | The ECB's Transmission Protection Instrument, its tool to cap a member's spreads (hard to trigger) |
 | **GPIF** | Japan's giant pension fund; a big potential buyer of JGBs or foreign assets |
+| **Pole pole** | Swahili for "slowly, slowly": think and act slowly, especially when the tape is screaming |
+| **De-grossing / liquidation event** | Funds cutting both longs and shorts at once to reduce risk; prices move on forced selling, not news |
+| **Follow-through** | Whether other markets confirm a big move. A big equity day with no move in FX or rates is a liquidation, not a macro story |
+| **Time frames (split)** | The same asset pushed one way on a short horizon and the other way on a longer one (a dash for cash vs. slower growth) |
+| **Transmission** | How a move in one market passes into another (equities into FX). "Broken" = the usual link has stopped working |
+| **Binary (two-humped) distribution** | Outcomes that cluster at two ends (−20% or +20%) with little in the middle, so the average is the least likely result |
+| **Forward P/E** | Share price ÷ next 12 months' expected earnings. Cheap-looking at a cycle peak because the expected earnings are inflated |
+| **DRAM cycle** | The boom-bust cycle in memory-chip prices and spending (Samsung, SK Hynix, Micron); 2018 was the last big one |
+| **Clearing event** | A deal or event that shows where real buyers are, so the market can stop guessing (e.g. an IPO that gets done at a lower price) |
+| **Capitulation** | Sellers (or issuers) giving up all at once; often near a low |
+| **Shunto** | Japan's spring wage negotiations between unions and big employers; sets the tone for wage growth for the year |
+| **Wall of supply** | A price area where large sellers keep showing up (e.g. USDJPY above ~158.30) |
+| **Realised vol** | How much a price has actually moved recently (annualised); 4% in USDJPY is very quiet, so options rarely pay |
+| **Delta-one (D1)** | A plain position in the underlying (spot or futures), with no option optionality; moves one-for-one with price |
+| **Put spread / call spread** | Buy one option and sell a further-out one to cut the cost; "sell put spreads to buy call spreads" = long-delta structure with roughly flat vol |
+| **R² (with momentum)** | How much of an asset's moves another series explains. High R² of metals on momentum = they usually fall together |
 
 ---
 
@@ -529,6 +729,7 @@ comparing**.
 ## Episode index
 | Ep | Recorded | Main reasoning lessons |
 |---|---|---|
+| E05 | ~6-9 Nov 2026 | Think slow (U); no cross-asset follow-through = liquidation, not macro (V); two time frames + no position to unwind (W); bad news, good price, broken equities-FX transmission (X); binary years, P/E traps, "not the same company" (Y); can the market wait, IPO as clearing event (Z); right in 12 months isn't a trade, yen (AA); relative strength in gold (AB); simplest expression first (AC); views moved since E04 |
 | E04 | Fri 2026-10-23 | Correlation flip = story change (M); credit availability > price (N); two schools + uncertainty width (O); base rates for ordinary corrections (P); reaction functions + asymmetry (Q); decompose a price into its drivers, agnostic is valid (R); options/barriers/Polymarket (S); survive (T); scorecard of E01-E03 |
 | E03 | ~early Sept 2026 | Horizon filter (Q0); 3 scenarios incl. "nothing happens"; starting conditions > news size (F); size in risk units/DV01 (G); credibility (H); release valves + EM medicine (I); tail variable + 2nd derivative (J); idiosyncratic bets, NZ, Czech vs Poland (K); fade tariffs (L); scored against what happened next |
 | E02 | ~2026-10-09 | Setup vs trigger (Nasdaq short); equilibrium fair-value build (Pattern C); what ends the trend (D); overbought-but-logical (E); robustness thinking |
