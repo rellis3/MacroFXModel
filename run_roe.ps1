@@ -27,23 +27,30 @@ if ($Schedule) {
   Finish 0 "Scheduled: 'ROE scan' runs every day at 08:15 while you are logged in. Run this script once by hand first so the token is stored."
 }
 
-# 1. the token (stored once, encrypted)
+# 1. the token (stored once, encrypted with Windows DPAPI for this user: System.Security.Cryptography.ProtectedData, base64 in a text file)
+Add-Type -AssemblyName System.Security
+function Get-Plain($secure) {
+  $b = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+  try { [Runtime.InteropServices.Marshal]::PtrToStringBSTR($b) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b) }
+}
+$scope = [Security.Cryptography.DataProtectionScope]::CurrentUser
 if ($ResetToken -and (Test-Path -LiteralPath $tokenFile)) { Remove-Item -LiteralPath $tokenFile -Force }
 if (-not (Test-Path -LiteralPath $tokenFile)) {
   if ($NoPause) { Finish 4 'No stored push token. Run run_roe.bat by hand once to enter it.' }
   Write-Host 'First run: paste the push token (the same text as ROE_PUSH_TOKEN on Railway). It will not show as you type.'
-  $secure = Read-Host 'Push token' -AsSecureString
-  if ($secure.Length -lt 24) { Finish 4 'That token is shorter than 24 characters, so it cannot be the right one. Nothing was saved. Run again.' }
+  $entered = (Get-Plain (Read-Host 'Push token' -AsSecureString)).Trim()
+  if ($entered.Length -lt 24) { Finish 4 'That token is shorter than 24 characters, so it cannot be the right one. Nothing was saved. Run again.' }
   New-Item -ItemType Directory -Force -Path $tokenDir | Out-Null
-  $secure | ConvertFrom-SecureString | Set-Content -LiteralPath $tokenFile -Encoding ASCII
+  $enc = [Security.Cryptography.ProtectedData]::Protect([Text.Encoding]::UTF8.GetBytes($entered), $null, $scope)
+  [IO.File]::WriteAllText($tokenFile, [Convert]::ToBase64String($enc))
   Write-Host "Token stored (encrypted for your Windows user) in $tokenFile"
 }
 try {
-  $secure = Get-Content -LiteralPath $tokenFile -Raw | ConvertTo-SecureString
-  $plain  = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)).Trim()
+  $enc   = [Convert]::FromBase64String(([IO.File]::ReadAllText($tokenFile)).Trim())
+  $plain = [Text.Encoding]::UTF8.GetString([Security.Cryptography.ProtectedData]::Unprotect($enc, $null, $scope)).Trim()
 } catch {
   Remove-Item -LiteralPath $tokenFile -Force -ErrorAction SilentlyContinue
-  Finish 4 'The stored token could not be read (it was saved by another Windows user or PC). It was removed: run again to enter it.'
+  Finish 4 ("The stored token could not be read, so it was removed: run again to enter it. Reason: " + $_.Exception.Message)
 }
 $env:ROE_PUSH_TOKEN = $plain   # this process only; gone when the window closes
 
