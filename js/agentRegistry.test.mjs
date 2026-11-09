@@ -59,9 +59,10 @@ test('planned agents are drawn dashed and never spend; the edges to them are pla
   assert.ok(/class="ag-node ag-g-Library ag-planned"/.test(svg) && svg.includes('ag-e-planned'));
 });
 
-test('the Research Opportunity Engine is drawn as planned: processing services make no model call, and nothing is built', () => {
+const BUILT_ROE = ['opportunity-scanner', 'question-writer'];   // P1-P3 built; the rest are drawn as planned
+test('the Research Opportunity Engine is drawn as built or planned: processing services make no model call, and nothing is built', () => {
   const roe = ['opportunity-scanner', 'question-writer', 'historical-evaluator', 'forward-tracker', 'research-qa', 'acceptance-check'];
-  for (const id of roe) { const a = AGENTS.find(x => x.id === id); assert.ok(a, id); assert.equal(a.planned, true, `${id} planned`); assert.equal(a.kind, 'service', `${id} is a processing service`); assert.equal(a.modelTask, null, `${id}: no model call`); assert.equal(a.spends, false); assert.equal(a.job, null, `${id}: no scheduled job yet`); assert.equal(a.cap, null); assert.deepEqual(a.roles, []); assert.ok(a.links.some(l => l.href === 'plans/RESEARCH_OPPORTUNITY_ENGINE.md')); }
+  for (const id of roe) { const a = AGENTS.find(x => x.id === id); assert.ok(a, id); assert.equal(!!a.planned, !BUILT_ROE.includes(id), `${id} planned flag matches what is built`); assert.equal(a.kind, 'service', `${id} is a processing service`); assert.equal(a.modelTask, null, `${id}: no model call`); assert.equal(a.spends, false); assert.equal(a.job, null, `${id}: no scheduled job yet`); assert.equal(a.cap, null); assert.deepEqual(a.roles, []); assert.ok(a.links.some(l => l.href === 'plans/RESEARCH_OPPORTUNITY_ENGINE.md')); }
   for (const id of ['opportunity-scanner', 'question-writer', 'historical-evaluator', 'forward-tracker']) assert.equal(AGENTS.find(a => a.id === id).group, 'Data');
   assert.ok(fs.existsSync(new URL('../plans/RESEARCH_OPPORTUNITY_ENGINE.md', import.meta.url)), 'the plan doc exists');
   for (const id of ['question-queue', 'opportunity-registry', 'ranked-board', 'research-approved', 'design-approved', 'validation-approved', 'input-snapshot', 'evaluation-store', 'forward-ledger', 'stage-discovery', 'stage-confirmation', 'stage-forward', 'owner-research-decision', 'owner-design-decision']) assert.equal(POINTS[id].planned, true, `${id} planned`);

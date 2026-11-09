@@ -85,22 +85,23 @@ export const AGENTS = [
   // ── Data: the Research Opportunity Engine (ROE), PLANNED, plans/RESEARCH_OPPORTUNITY_ENGINE.md. Nothing here is built. ──────────────────────
   A('opportunity-scanner', 'Opportunity scanner', 'Data', {
     purpose: 'Planned: after the daily run, freezes the day\'s inputs as an immutable snapshot with a run ID and freshness flags, then runs fixed statistics over everything the owner holds (percentiles, z-scores, extremes, divergences, lead-lag screens, regime shifts, breakdowns). It tags each flag with a discovery episode ID and a hypothesis family ID and logs how many items it scanned. Plain Python on the owner\'s laptop; no model call.',
-    trigger: 'Built (phases P1 and P2) as the laptop Python package roe/: scanner and triggers, writes roe_out/ locally, and with --push sends the run to the server. It runs only when you start it, see How to start it below. Planned: once a day on the laptop after the daily run; it pushes the snapshot reference and the questions to the server, and a repeated push of the same run ID changes nothing.', planned: true, kind: 'service',
+    trigger: 'Built (phases P1 and P2) as the laptop Python package roe/: scanner and triggers, writes roe_out/ locally, and with --push sends the run to the server. It runs only when you start it (scheduling it daily after the daily run is in the steps below). A repeated push of the same run ID changes nothing.', kind: 'service',
     howTo: [
       'Open a terminal on the laptop in the MacroFXModel folder (needs Python 3.12 or newer).',
       'Try it with no network first: python -m roe --fixtures --asof 2026-11-06',
       'Real run, read only, from the live site: python -m roe',
       'Better: point it at your fresher local files (COT, Cboe csv, T10Y3M). Copy roe/sources.default.json to roe_sources.laptop.json, edit the paths, then python -m roe --sources roe_sources.laptop.json',
       'To send the run to the server add --push (once: set the same long random text, 24+ characters, as the Railway variable ROE_PUSH_TOKEN and as the laptop environment variable ROE_PUSH_TOKEN). A repeat of the same run changes nothing. If a push failed: python -m roe --push-only roe_out/<run id>',
+      'See the questions on the Research Opportunities page (roe.html) once pushed. Locally: roe_out/<run id>/summary.md and questions.json.',
       'Read the result in roe_out/<run id>/summary.md. Exit code 0 is ok, 2 is degraded (some inputs stale), 3 is failed.',
       'To run it daily after the daily run: Windows schtasks line or the cron line in roe/README.md under Schedule it after the daily run.',
     ],
-    reads: ['local IBKR files, skew, cross-currency basis, feature store and M1 cache', 'GET /api/state (the Market State document)'], writes: ['the day\'s immutable snapshot, run ID, scan count and flags with episode and family IDs (pushed to the server)'], links: [ROE],
+    reads: ['local IBKR files, skew, cross-currency basis, feature store and M1 cache', 'GET /api/state (the Market State document)'], writes: ['the day\'s immutable snapshot, run ID, scan count and flags with episode and family IDs (pushed to the server)'], links: [ROE, L('Research Opportunities board', 'roe.html')],
   }),
   A('question-writer', 'Question writer', 'Data', {
-    purpose: 'Planned: turns each scanner flag into a written question from fixed templates: why it arose, the observation, the hypothesis, the data needed and the pre-registered test. Rules, no model call; an optional capped DeepSeek tidy of the wording may come later. It is never shown earlier results.',
-    trigger: 'Not built. Planned: straight after the scanner, on the laptop.', planned: true, kind: 'service',
-    reads: ['the scanner\'s flags', 'the question templates in plans/DATA_AGENT.md'], writes: ['questions pushed to the questions queue (no daily cap)'], links: [ROE],
+    purpose: 'Turns each scanner episode into one written question from fixed templates: why it arose, the observation, the hypothesis, the data needed, the horizons, the baseline, the smallest effect of interest and the data boundary. Rules, no model call; an optional capped DeepSeek tidy of the wording may come later. It is never shown earlier results, and nothing it writes is labelled or hidden.',
+    trigger: 'Built (phase P3). Runs inside the same laptop command as the scanner (python -m roe) and travels with the push. The same question arising again is counted on the server, not duplicated.', kind: 'service',
+    reads: ['the scanner\'s episodes and observations', 'roe/question_templates.json (frozen, versioned)'], writes: ['questions.json in the run folder, then the server\'s question list (no daily cap)'], links: [ROE, L('Research Opportunities board', 'roe.html')],
   }),
   A('historical-evaluator', 'Historical evaluator', 'Data', {
     purpose: 'Planned: runs Stage 1 (discovery) and, for a frozen hypothesis, Stage 2 (confirmation, one look) on the permitted data windows only, with pre-specified horizons, the relevant baseline, costs, uncertainty and power. It must show incremental value over the baseline, not just significance. It is the quick-test and backtest machinery; no model call.',

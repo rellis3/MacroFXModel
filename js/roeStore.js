@@ -22,6 +22,8 @@ import { createHash } from 'node:crypto';
 export const ROE_KV_KEY = 'roe_registry_v1';
 export const ROE_R2_PREFIX = 'forward/roe/snapshots';
 export const MAX_OBSERVATIONS = 20000;
+export const MAX_QUESTIONS = 5000;
+export const QUESTIONS_INDEX_KEY = 'forward/roe/questions_index.json';
 export const RUN_ID_RE = /^(\d{4}-\d{2}-\d{2})-[0-9a-f]{6,16}$/;
 
 const stable = o => JSON.stringify(sortKeys(o));
@@ -41,6 +43,12 @@ export function validatePayload(p) {
   if (!episodes || typeof episodes !== 'object' || !Array.isArray(episodes.episodes) || episodes.runId !== runId) return err('episodes must be the episodes.json document for this run');
   if (!Array.isArray(observations)) return err('observations must be an array');
   if (observations.length > MAX_OBSERVATIONS) return err(`too many observations (max ${MAX_OBSERVATIONS})`);
+  if (p.questions != null) {
+    const q = p.questions;
+    if (typeof q !== 'object' || q.runId !== runId || !Array.isArray(q.questions)) return err('questions must be the questions.json document for this run');
+    if (q.questions.length > MAX_QUESTIONS) return err(`too many questions (max ${MAX_QUESTIONS})`);
+    for (const x of q.questions) if (!x || typeof x.specHash !== 'string' || typeof x.episodeId !== 'string' || typeof x.familyId !== 'string') return err('every question needs specHash, episodeId and familyId');
+  }
   const seen = new Set();
   for (const o of observations) {
     if (!o || typeof o.obsId !== 'string' || !o.obsId) return err('every observation needs an obsId');
@@ -68,7 +76,7 @@ function summarise(p, asof, recordedAt) {
     watchVersion: p.snapshot.config?.watchVersion ?? p.snapshot.watchVersion ?? null,
     codeCommit: p.snapshot.codeCommit ?? null,
     itemsListed: st.itemsListed ?? null, itemsMeasured: st.itemsMeasured ?? null,
-    observations: p.observations.length, episodes: p.episodes.episodes.length,
+    observations: p.observations.length, episodes: p.episodes.episodes.length, questions: p.questions?.questions?.length ?? null,
     flaggedInputs: Object.values(flags).reduce((a, b) => a + (Number(b) || 0), 0),
     identitySha256: identityHash(p.snapshot.identity),
   };
@@ -83,6 +91,7 @@ export async function recordRun(payload, deps) {
   const reg = await loadRegistry(kv);
   const prior = reg.runs[runId];
   if (prior) {
+    if (prior.identitySha256 === idSha && payload.questions) await indexQuestions(r2, payload.questions, runId);   // repairs a lost index write; a no-op when the run is already in it
     return prior.identitySha256 === idSha
       ? { status: 'already_recorded', runId, summary: prior }
       : { status: 'conflict', runId, error: 'this runId is already recorded with different inputs, config or commit; a correction is a new run id' };
@@ -98,8 +107,10 @@ export async function recordRun(payload, deps) {
     await r2.putJSON(`${base}/status.json`, payload.status);
     await r2.putJSON(`${base}/episodes.json`, payload.episodes);
     await r2.putJSON(`${base}/observations.json`, { runId, asof, observations: payload.observations });
+    if (payload.questions) await r2.putJSON(`${base}/questions.json`, payload.questions);
     await r2.putJSON(`${base}/COMMIT.json`, { runId, asof, committedAt: now.toISOString(), identitySha256: idSha, observations: payload.observations.length });
   }
+  if (payload.questions) await indexQuestions(r2, payload.questions, runId);
   const summary = summarise(payload, asof, now.toISOString());
   reg.runs[runId] = summary;
   const done = Object.values(reg.runs).filter(r => r.discoveryCompleted).sort((a, b) => (a.asof < b.asof ? 1 : a.asof > b.asof ? -1 : a.recordedAt < b.recordedAt ? 1 : -1));
@@ -107,6 +118,43 @@ export async function recordRun(payload, deps) {
   reg.updatedAt = now.toISOString();
   await kv.put(ROE_KV_KEY, JSON.stringify(reg));
   return { status: 'recorded', runId, summary };
+}
+
+/**
+ * The deduplicated question list (R2 forward/roe/questions_index.json). One row per specHash, the same question arising again (a different episode) is
+ * COUNTED, not duplicated (owner decision: de-dup of identical specs). Nothing here is scored, labelled or hidden. Idempotent by runId.
+ */
+export async function indexQuestions(r2, qdoc, runId) {
+  const idx = (await r2.getJSON(QUESTIONS_INDEX_KEY).catch(() => null)) ?? { v: 1, runs: [], specs: {} };
+  if (idx.runs.includes(runId)) return idx;
+  for (const q of qdoc.questions) {
+    const e = idx.specs[q.specHash] ??= { specHash: q.specHash, firstDate: q.date, firstRunId: runId, episodeIds: [] };
+    if (!e.episodeIds.includes(q.episodeId)) e.episodeIds.push(q.episodeId);
+    if (!e.lastDate || q.date >= e.lastDate) { e.lastDate = q.date; e.lastRunId = runId; e.question = q; }
+    if (q.date < e.firstDate) { e.firstDate = q.date; e.firstRunId = runId; }
+    e.timesRaised = e.episodeIds.length;
+  }
+  idx.runs.push(runId);
+  await r2.putJSON(QUESTIONS_INDEX_KEY, idx);
+  return idx;
+}
+
+/** Groups by hypothesis family (never one league table). Inside a group: most recently raised first, then title. No result field exists to rank by. */
+export function boardGroups(idx) {
+  const groups = new Map();
+  for (const e of Object.values(idx?.specs ?? {})) {
+    const q = e.question; if (!q) continue;
+    const g = groups.get(q.familyId) ?? { familyId: q.familyId, familyKey: q.familyKey, mechanism: q.mechanism, rows: [] };
+    g.rows.push({ specHash: e.specHash, title: q.title, label: q.label, item: q.item, trigger: q.trigger, side: q.side, why: q.why, observation: q.observation,
+      hypothesis: q.hypothesis, dataNeeded: q.dataNeeded, horizons: q.horizons, horizonUnit: q.horizonUnit, baseline: q.baseline, smallestEffect: q.smallestEffect,
+      minN: q.minN, mirror: q.mirror, placebo: q.placebo, dataBoundary: q.dataBoundary, inputFlags: q.inputFlags ?? [], watchVersion: q.watchVersion, qtVersion: q.qtVersion,
+      firstDate: e.firstDate, lastDate: e.lastDate, timesRaised: e.timesRaised, runId: e.lastRunId });
+    groups.set(q.familyId, g);
+  }
+  const out = [...groups.values()];
+  for (const g of out) g.rows.sort((a, b) => (a.lastDate < b.lastDate ? 1 : a.lastDate > b.lastDate ? -1 : a.title < b.title ? -1 : 1));
+  out.sort((a, b) => (a.mechanism < b.mechanism ? -1 : 1));
+  return out;
 }
 
 const isWeekend = d => { const w = d.getUTCDay(); return w === 0 || w === 6; };

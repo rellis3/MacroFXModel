@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Research Opportunities — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f1117;--s1:#1a1d27;--s2:#22263a;--border:#2a2f45;--text:#e8eaf2;--text2:#9ba3bf;--text3:#7a84a3;--green:#10b981;--green-bg:#0d2b22;--amber:#fbbf24;--amber-bg:#2b2212;--red:#f87171;--red-bg:#2b1a1a;--r:8px;--rl:12px}
+@media (prefers-color-scheme: light){:root{--bg:#f6f7fb;--s1:#fff;--s2:#eef0f7;--border:#d9dcea;--text:#1b1f2e;--text2:#4b5372;--text3:#6b7391;--green:#047857;--green-bg:#e4f6ee;--amber:#92600a;--amber-bg:#fdf3dc;--red:#b42318;--red-bg:#fde8e6}}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,sans-serif;font-size:15px;line-height:1.6;overflow-x:hidden}
+#page{max-width:900px;margin:0 auto;padding:18px 16px 60px}
+.crumb{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:14px}.crumb a{color:var(--text3);text-decoration:none}
+h1{font-size:26px;margin-bottom:4px}.dek{color:var(--text2);margin-bottom:16px}
+.rb-head{border:1px solid var(--border);border-left-width:4px;border-radius:var(--rl);padding:12px 14px;margin-bottom:18px;background:var(--s1)}
+.rb-head.ok{border-left-color:var(--green)}.rb-head.warn{border-left-color:var(--amber)}.rb-head.bad{border-left-color:var(--red)}
+.rb-run{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-left:6px}.rb-counts{color:var(--text2);font-size:13px;margin-top:2px}
+.rb-group{margin-bottom:22px}.rb-group h2{font-size:15px;text-transform:none;margin-bottom:8px;color:var(--text2)}.rb-n{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-left:6px}
+.rb-row{border:1px solid var(--border);border-radius:var(--r);background:var(--s1);margin-bottom:6px}
+.rb-row summary{list-style:none;cursor:pointer;padding:10px 12px;min-height:44px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:space-between}
+.rb-row summary::-webkit-details-marker{display:none}.rb-title{font-weight:600;flex:1 1 280px}.rb-meta{display:flex;gap:6px;flex-wrap:wrap}
+.rb-chip{font-family:'DM Mono',monospace;font-size:11px;background:var(--s2);border-radius:99px;padding:2px 9px;color:var(--text2)}.rb-chip.warn{background:var(--amber-bg);color:var(--amber)}
+.rb-body{padding:4px 12px 12px;border-top:1px solid var(--border)}.rb-kv{display:flex;gap:12px;padding:5px 0;border-bottom:1px solid var(--border)}
+.rb-kv span:first-child{flex:0 0 150px;color:var(--text3);font-size:12px;padding-top:2px}.rb-kv span:last-child{flex:1;min-width:0;overflow-wrap:anywhere}
+.rb-foot{font-size:12px;color:var(--text3);margin-top:8px}.rb-empty{color:var(--text2)}code{font-family:'DM Mono',monospace;font-size:13px}
+@media (max-width:520px){.rb-kv{flex-direction:column;gap:0}.rb-kv span:first-child{flex-basis:auto}}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="crumb"><a href="/">MacroFX</a> · Research Opportunities</div>
+  <h1>Research Opportunities</h1>
+  <p class="dek">Questions the laptop scanner wrote from what it saw in the data. They are grouped by the kind of idea, newest first. Nothing here has been tested yet, nothing is scored, and none is hidden. The same question arising again is counted, not repeated.</p>
+  <div id="roeRoot"></div>
+</div>
+<script type="module" src="js/roeBoard.js"></script>
+</body>
+</html>
