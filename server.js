@@ -7000,6 +7000,27 @@ const _libApi = _createLibraryApi({
     if (!v.ok) throw new Error(v.errors.join('; '));
     return v.value;
   },
+  // concept cards (js/libraryConcepts.js): DeepSeek, task 'library-concepts', the supplied digests and repo text only, capped in KV (library_concepts_v1); cards kept privately in R2
+  conceptsModel: async ({ system, prompt, maxTokens }) => {
+    const v = await _modelJson({ task: 'library-concepts', system, prompt, maxTokens, timeoutMs: 150_000, label: 'library:concepts', tries: 1,
+      validate: o => (o && (Array.isArray(o.cards) || Array.isArray(o)) ? { ok: true, value: o } : { ok: false, errors: ['the reply has no cards array'] }) });
+    if (!v.ok) throw new Error(v.errors.join('; '));
+    return v.value;
+  },
+  conceptFiles: {
+    readText: async rel => fs.promises.readFile(path.join(__dirname, rel), 'utf8'),
+    listFiles: async (dir, { exts = [], recursive = false } = {}) => {
+      const out = [], walk = async d => {
+        let ents = []; try { ents = await fs.promises.readdir(path.join(__dirname, d), { withFileTypes: true }); } catch { return; }
+        for (const e of ents) {
+          const rel = `${d}/${e.name}`;
+          if (e.isDirectory()) { if (recursive && !e.name.startsWith('.') && e.name !== 'node_modules') await walk(rel); }
+          else if (exts.some(x => e.name.toLowerCase().endsWith(x))) out.push(rel);
+        }
+      };
+      await walk(dir); return out;
+    },
+  },
   // the librarian (js/libraryLibrarian.js): DeepSeek, task 'library-librarian', ONE small call that picks papers from a candidate list; capped in KV (library_librarian_v1)
   librarianModel: async ({ system, prompt, maxTokens }) => {
     const v = await _modelJson({ task: 'library-librarian', system, prompt, maxTokens, timeoutMs: 60_000, label: 'library:librarian', tries: 1,
@@ -7057,6 +7078,30 @@ app.post('/api/research-pod/figs', async (req, res) => {
     const out = await _libApi.figs.start({ calls: Number(req.body?.calls) || 6 });
     res.status(out.status ?? 200).json(out.ok ? { ok: true, job: out.job } : { ok: false, error: out.error, job: out.job ?? null });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── concept cards (js/libraryConcepts.js; plans/KNOWLEDGE_AND_MONITORS.md section 4) ──────────────────────────────────────────────────────────────────────
+// GET  /api/research-pod/concepts?slice=candles-sessions: counts only (the dry run: items, by source, estimated tokens, calls, calls used of the 400 cap, cards so far). Open, no card text, no model call.
+// POST /api/research-pod/concepts { slice, calls }: runs (at most 12 model calls a press). This SPENDS MONEY, so it needs EITHER the main-zone login cookie (_agentsGate) OR the laptop's
+//      bearer token (ROE_PUSH_TOKEN, js/roeStore.js tokenOk). Both are registered before the global requireAuth, so the gate is explicit here.
+// GET  /api/research-pod/concepts/cards: the cards themselves, behind the login (_agentsGate).
+const _conceptsPressGate = (req, res, next) => (_ROE.tokenOk(req.get('authorization'), process.env.ROE_PUSH_TOKEN) ? next() : _agentsGate(req, res, next));
+app.get('/api/research-pod/concepts', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const out = await _libApi.concepts.status(String(req.query?.slice || 'candles-sessions'));
+    res.status(out.ok ? 200 : (out.status ?? 500)).json(out);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/research-pod/concepts', _conceptsPressGate, async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const out = await _libApi.concepts.start({ slice: String(req.body?.slice || 'candles-sessions'), calls: Math.min(12, Number(req.body?.calls) || 6) });
+    res.status(out.status ?? 200).json(out.ok ? { ok: true, job: out.job } : { ok: false, error: out.error, job: out.job ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/research-pod/concepts/cards', _agentsGate, async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); res.json(await _libApi.concepts.cards()); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/validation/harness: the validation desk's automatic gates on every harness output in the deployed repo.
 app.get('/api/validation/harness', (_req, res) => {

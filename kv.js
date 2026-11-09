@@ -97,6 +97,7 @@ const _CF_EXACT = new Set([
   'research_pod_queue',     // the reading backlog (§9ai): the repo's papers, the 151, QuantConnect and uploads, read in batches
   'library_state_v1',  // Paper Library (js/libraryApi.js): reading progress, manual tags, MP3 job state
   'library_librarian_v1',   // Paper Library librarian (js/libraryLibrarian.js): model calls used against the 400 cap. Also in _worker.js (both lists) and js/storeRegistry.js.
+  'library_concepts_v1',   // Paper Library concept cards (js/libraryConcepts.js): model calls used against the 400 cap and the content hashes already sent; the cards are in R2 (private). Also in _worker.js (both lists) and js/storeRegistry.js.
   'library_figs_v1',   // Paper Library figure/table notes (js/libraryFigs.js): model calls used against the 600 cap and which papers are done; the notes per paper are in R2. Also in _worker.js (both lists) and js/storeRegistry.js.
   'library_math_v1',   // Paper Library equations (js/libraryMath.js): model calls used against the 1500 cap and which papers are done; the per-paper LaTeX is in R2. Also in _worker.js (both lists) and js/storeRegistry.js.
   'roe_registry_v1',   // Research Opportunity Engine (js/roeStore.js): one summary per laptop scan run, keyed by runId; the run files are in R2 forward/roe/snapshots/. Also in _worker.js (both lists) and js/storeRegistry.js.
