@@ -72,7 +72,12 @@ function renderSort() {
 function renderCards() {
   const list = M.sortPapers(M.filterPapers(st.papers, st.selected, hitSet(), st.selSources, st.selYears), effSort(), { hits: st.hits, pct: pctOf });
   const hitBy = new Map((st.hits || []).map(h => [h.id, h]));
-  $('cards').innerHTML = list.length ? list.map(p => cardHtml(p, hitBy.get(p.id))).join('') : `<div class="lib-empty">${st.q ? 'No paper matches that search.' : (nFilters() ? 'No papers match these filters.' : 'No papers yet.')}</div>`;
+  // show the first screenful at once and the rest on request: 650 cards in one go is slow on a phone. A change of search, filter or sort starts again at the top.
+  const viewKey = JSON.stringify([st.q, st.selected, st.selSources, st.selYears, effSort()]);
+  if (viewKey !== st.viewKey) { st.viewKey = viewKey; st.shown = 60; }
+  const shown = Math.min(list.length, st.shown || 60);
+  const more = list.length > shown ? `<button type="button" class="lib-btn lib-more" id="showMore">Show ${Math.min(100, list.length - shown)} more (${list.length - shown} not shown)</button>` : '';
+  $('cards').innerHTML = list.length ? list.slice(0, shown).map(p => cardHtml(p, hitBy.get(p.id))).join('') + more : `<div class="lib-empty">${st.q ? 'No paper matches that search.' : (nFilters() ? 'No papers match these filters.' : 'No papers yet.')}</div>`;
   const t = st.totals;
   $('resultInfo').textContent = st.q
     ? `${list.length} paper${list.length === 1 ? '' : 's'} match “${st.q}”${nFilters() ? ' with the selected filters' : ''}`
@@ -114,6 +119,7 @@ const runSearch = M.debounce(async () => {
 
 function bindList() {
   $('q').addEventListener('input', e => { st.q = e.target.value; $('qClear').hidden = !st.q; if (!st.q.trim()) { runSearch.cancel(); st.hits = null; st.sortTouched = false; renderCards(); } else runSearch(); });
+  $('cards').addEventListener('click', e => { if (e.target.closest && e.target.closest('#showMore')) { st.shown = (st.shown || 60) + 100; renderCards(); } });
   $('qClear').addEventListener('click', () => { $('q').value = ''; st.q = ''; $('qClear').hidden = true; runSearch.cancel(); st.hits = null; st.sortTouched = false; renderCards(); $('q').focus(); });
   $('chips').addEventListener('click', e => {
     const b = e.target.closest('.lib-chip'); if (!b) return;

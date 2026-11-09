@@ -160,8 +160,19 @@ export function createLibraryApi(deps) {
   }
   // concurrent first loads share ONE in-flight build (fresh or not); a drop starts a new generation so stale builds are not reused
   let catalogBuilding = null, catalogGen = 0;
+  // Stale-while-revalidate: the list view is the slow first screen (the 650-paper document comes from KV). Within 30 s the cached catalog is used; up to
+  // 10 minutes old it is still served at once while ONE rebuild runs behind it; only a cold start or `fresh` waits. Every write (progress, tags,
+  // uploads) calls dropCatalog(), so the owner's own actions show immediately.
+  let catalogRefreshing = false;
   async function catalog({ fresh = false } = {}) {
-    if (!fresh && catalogCache && now() - catalogCache.at < 30_000) return catalogCache;
+    if (!fresh && catalogCache) {
+      const age = now() - catalogCache.at;
+      if (age < 30_000) return catalogCache;
+      if (age < 600_000) {
+        if (!catalogRefreshing && !catalogBuilding) { catalogRefreshing = true; buildCatalog(catalogGen).catch(() => {}).finally(() => { catalogRefreshing = false; }); }
+        return catalogCache;
+      }
+    }
     if (catalogBuilding) return catalogBuilding;
     const gen = catalogGen;
     const job = buildCatalog(gen).finally(() => { if (catalogBuilding === job) catalogBuilding = null; });
@@ -259,8 +270,11 @@ export function createLibraryApi(deps) {
   // ── handlers ──────────────────────────────────────────────────────────────────────────────────────────────
   const H = {};
 
+  /** Fills the catalog and the search index in the background (server start and every few minutes), so the first screen after a login is not a cold build. Never throws. */
+  H.warm = async () => { try { await catalog(); } catch { /* the next request builds it */ } try { await libIndex(); } catch { /* ditto */ } };
+
   H.papers = async () => {
-    const cat = await catalog({ fresh: true });
+    const cat = await catalog();
     const papers = cat.list.map(listView);   // card fields only: notes, desk, abstract and theory come with GET /paper?id=
     const fullText = papers.filter(p => p.hasText).length;
     return reply(200, { ok: true, papers, topics: topicCounts(papers), sources: sourceCounts(papers), years: yearCounts(papers, now()), totals: { all: papers.length, fullText, abstractOnly: papers.length - fullText } });

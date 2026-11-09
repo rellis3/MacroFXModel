@@ -20,7 +20,8 @@ a:hover{color:var(--blue2)}
 button,input,select{font:inherit;color:inherit}
 [hidden]{display:none!important}
 
-.lib-crumb{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:.05em;margin-bottom:14px}
+.lib-crumb{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:.05em;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.lib-logout{border-bottom:1px dashed var(--border2);padding:6px 0}
 .lib-crumb a{color:var(--text3);text-decoration:none}
 .lib-kicker{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--purple);margin-bottom:6px}
 .lib-title{font-size:26px;font-weight:700;line-height:1.25;margin-bottom:8px}
@@ -283,3 +284,4 @@ body.lib-listen-open{--listen-h:96px}
 .lib-lb-t{font-weight:600;font-size:14px;line-height:1.35}
 .lib-lb-why{font-size:13px;color:var(--text2);line-height:1.45}
 @media (min-width:520px){.lib-lb-form{grid-template-columns:minmax(0,1fr) auto}}
+.lib-more{display:block;width:100%;margin:14px 0 4px;min-height:44px}

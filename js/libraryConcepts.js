@@ -257,8 +257,15 @@ export function createConcepts(deps) {
   const sources = async () => ({ digests: (await deps.digests?.().catch(() => [])) ?? [], readText: deps.readText, listFiles: deps.listFiles });
 
   /** GET: counts only, no card text. Never calls the model. */
+  let memo = null;   // the GET is open (counts only): answer repeat calls from a 30-second memo instead of re-reading every file and digest
   async function status(slice = 'candles-sessions') {
     if (!SLICES[slice]) return { ok: false, status: 400, error: `unknown slice: ${slice}`, slices: Object.keys(SLICES) };
+    if (memo && memo.slice === slice && Date.now() - memo.at < 30_000 && job?.status !== 'running') return memo.value;
+    const value = await statusUncached(slice);
+    memo = { slice, at: Date.now(), value };
+    return value;
+  }
+  async function statusUncached(slice) {
     let s = null, readable = true; try { s = await readState(); } catch { readable = false; }
     const d = await dryRun({ ...(await sources()), slice, sent: s?.items ?? {} });
     const cards = Object.keys((await loadCards()).cards).length;
@@ -297,8 +304,9 @@ export function createConcepts(deps) {
     const n = Math.min(CONCEPTS_PRESS_MAX, Math.max(1, Math.floor(Number(calls) || 6)));
     let s; try { s = await readState(); } catch (e) { return { ok: false, status: 503, error: `the call counter cannot be read, so nothing was sent: ${String(e.message).slice(0, 100)}` }; }   // fail closed
     if (s.used >= CONCEPTS_CAP) return { ok: false, status: 409, error: `the ${CONCEPTS_CAP}-call cap is used up`, callsUsed: s.used, callsCap: CONCEPTS_CAP };
+    memo = null;
     const j = job = { status: 'running', slice, startedAt: now(), finishedAt: null, calls: 0, max: Math.min(n, CONCEPTS_CAP - s.used), items: 0, cards: 0, rejected: 0, stage: 'starting', errors: [], capped: false, error: null };
-    runJob(slice, j.max, j).then(() => { j.status = 'done'; j.stage = 'done'; }).catch(e => { j.status = 'error'; j.error = String(e?.message ?? e).slice(0, 200); }).finally(() => { j.finishedAt = now(); });
+    runJob(slice, j.max, j).then(() => { j.status = 'done'; j.stage = 'done'; }).catch(e => { j.status = 'error'; j.error = String(e?.message ?? e).slice(0, 200); }).finally(() => { j.finishedAt = now(); memo = null; });
     return { ok: true, status: 202, job: j };
   }
 

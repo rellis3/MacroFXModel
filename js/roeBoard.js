@@ -17,10 +17,12 @@ export function rowHtml(r) {
     ['Horizons', `${horizons} ${r.horizonUnit ?? ''}`], ['Baseline', r.baseline], ['Smallest effect of interest', r.smallestEffect],
     ['Minimum events', r.minN], ['Mirror test', r.mirror], ['Placebo', r.placebo], ['Data boundary', r.dataBoundary],
   ].map(([k, v]) => `<div class="rb-kv"><span>${esc(k)}</span><span>${esc(v)}</span></div>`).join('');
+  const rel = (r.related ?? []).length
+    ? `<div class="rb-kv"><span>Related papers</span><span>${r.related.map(x => `<a href="library.html#/paper/${encodeURIComponent(x.id)}" target="_blank" rel="noopener">${esc(x.title)}${x.year ? ` (${esc(x.year)})` : ''}</a>`).join('<br>')}</span></div>` : '';
   const flags = (r.inputFlags ?? []).length ? `<span class="rb-chip warn">input flagged: ${esc(r.inputFlags.join(', '))}</span>` : '';
   return `<details class="rb-row"><summary><span class="rb-title">${esc(r.title)}</span>`
     + `<span class="rb-meta">${flags}<span class="rb-chip">raised ${esc(r.timesRaised)} time${r.timesRaised === 1 ? '' : 's'}</span><span class="rb-chip">last ${esc(r.lastDate)}</span></span></summary>`
-    + `<div class="rb-body">${rows}<div class="rb-foot">first raised ${esc(r.firstDate)}, question spec ${esc(r.specHash)}, templates ${esc(r.qtVersion)}. Not tested yet: the historical evaluator is a later phase. Opening a research case from here is a later phase.</div></div></details>`;
+    + `<div class="rb-body">${rows}${rel}<div class="rb-foot">first raised ${esc(r.firstDate)}, question spec ${esc(r.specHash)}, templates ${esc(r.qtVersion)}. Not tested yet: the historical evaluator is a later phase. Opening a research case from here is a later phase.</div></div></details>`;
 }
 
 export function groupsHtml(groups) {
