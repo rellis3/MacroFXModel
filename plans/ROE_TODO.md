@@ -10,12 +10,17 @@ Last updated 2026-11-09 (after P3).
 5. **Decide** (later, not blocking): whether the desk should ever see ROE output (today: no, by your standing rule).
 
 ## Questions waiting for you
+- Paper-idea lens: how many capped DeepSeek calls (I suggested about 100)?
+- Confirm folding P5-P7 into the existing validation desk and Head of Research, and relabelling the scripts as jobs.
 - Is the question wording what you would want to read? (Open `roe.html` after the first push.)
 - Item 4 (`hl_p75`, realised range vs the shipped line) is switched off because it uses a lockbox-adjacent layer. Leave off until the one evaluation has run?
 - Library cleanup: duplicate papers and author-name titles. OK to tidy?
 - Library no-login window closes by itself at 06:00 UTC today (2026-11-09), after which the library needs the login again. Say if you want it extended; otherwise a later PR can remove the temporary code.
 
-## Build backlog, in order
+## Direction agreed 2026-11-09
+The ROE is several **lenses** (ways of spotting questions) over the same data, feeding one question list: state (built), after-event, behaviour and trend, relationship, calendar, paper idea, owner. See ROE plan section 24. The separate P5-P7 is to be folded into the existing validation desk and Head of Research.
+
+## Build backlog, in order (superseded by the lens order in plan section 24 once you confirm)
 | Phase | What | Needs from you |
 |---|---|---|
 | P3 | Question writer (rules), questions travel with the push, de-dup by spec, `roe.html` board (grouped, no scores) | built |

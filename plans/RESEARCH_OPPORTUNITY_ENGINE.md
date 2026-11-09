@@ -826,3 +826,42 @@ block 4 (P5); the claim links and the claim check with the case workflow (P6); t
 
 What changes: new pack storage and a chain log. New code: yes (P4 to P7). Existing workflows: none until P6 (the Head's review
 prompt would ask for evidence links). Existing research or lockbox rules: none.
+
+## 24. Lenses: the ROE as several ways of spotting questions (owner direction, v3, 2026-11-09)
+
+**Why this section exists.** P1-P3 built one lens: a fixed watch list that asks "is this series unusual today?". The owner's idea was a
+component that reads all the data and asks questions, and that "sees a trend, or price acting a certain way, and asks what happens
+in the time after". So the ROE is **several lenses over the same data, each a different way of spotting a question, all feeding one
+question list and one trial pool (section 22)**. A lens only asks. It never tests, never scores, never hides.
+
+| # | Lens | What it spots | Example question it writes | Status |
+|---|---|---|---|---|
+| L1 | **State** | a series at an extreme, moving fast, flipping or changing regime | "VIX/VIX3M is at its 98th percentile: what happens to range over 1, 5, 10 sessions?" | built (P1-P3) |
+| L2 | **After-event** | an event definition from a frozen catalogue has just occurred (a new N-day high or low, a gap beyond k times the usual range, three straight down days, a vol spike beyond z, a range expansion after compression) | "Nasdaq closed at a new 60-day high after 5 quiet days: what do the next 1, 3, 10 sessions look like against random days?" | to build |
+| L3 | **Behaviour and trend** | how price is acting: trending or mean-reverting (variance ratio, autocorrelation), compressing or expanding (range percentile), momentum persistence, streaks, drawdown depth and age | "EURUSD has trended for 12 sessions with a variance ratio above its 90th percentile: does the trend carry or fade over the next 5, 20?" | to build |
+| L4 | **Relationship** | one series leading, diverging from or decoupling from another: lead-lag over a fixed lag grid, correlation breaks, spread residuals | "Did the 2s10s change lead USDJPY by 1-10 sessions, and does that lead hold in this regime?" | partial (divergence only) |
+| L5 | **Calendar** | time-of-month, before-and-after a scheduled release, session effects | "In the 3 sessions before a high-impact release, does range run above what implied vol priced?" | to build, small |
+| L6 | **Paper idea** | an idea in a library paper that maps onto series we hold | "Paper P suggests X leads Y: does it on our data?" (cites the paper) | to build, capped model calls (owner sets the cap) |
+| L7 | **Owner and C.OG** | the owner's own ideas and C.OG messages (`education/cog_inbox/`, `research-director` skill) | whatever the owner asks | exists (owner route) |
+
+**Rules that keep many lenses honest** (more lenses means more chances of a chance result, so these are not optional):
+1. **Each lens declares its search space in a frozen file** (the event catalogue, the lag grid, the series list, the horizons), versioned
+   like `watch_config.json`. The number of candidates a lens could ask is therefore known in advance and goes in the trial pool whether
+   or not it fires. No lens widens its own search because the first look found nothing.
+2. **Breadth is logged** on every run per lens (candidates considered, candidates that fired), as `scanBreadth` is today.
+3. **A lens asks; the evaluator answers.** A lens may use causal, current data to notice that something is live. It computes no forward
+   outcome. The question carries the horizons, baseline, smallest effect and minimum events from its template (section 18 P3).
+4. **Same question twice is counted, not repeated** (spec hash, section 22). A lens that keeps firing on the same condition adds a count.
+5. **Lens-specific templates** extend `roe/question_templates.json`; each lens adds a class, bumps `qtVersion`, never reads earlier results.
+6. **Data boundary unchanged** (section 8): practice window, one confirmation, forward after the freeze date; frozen layers are not inputs.
+7. **Papers (L6) are not earlier results**, so using them does not break the rule that the writer never sees prior test outcomes. Every
+   series a paper idea names must match the data inventory or the idea is rejected before it is written. Model calls are capped and
+   the cap is set by the owner.
+
+**Build order (proposal).** L2 and L3 first (they answer "price acted like this, what comes after", need no model, and the test shape
+is the same one the evaluator needs), then L4 (lead-lag grid, with the trial count made explicit), then the minimal evaluator that
+reuses the existing quick-test machinery, then L6 once the owner sets the call cap, then L5.
+
+**Simplification this implies (owner to confirm).** The separate P5-P7 build (own QA gate, approvals, forward tracker) is replaced by
+reusing the existing validation desk, Head of Research and Evidence Book wherever they already do the job. The deterministic
+scanner, writer and lenses are labelled **jobs**, not agents, on the Agents tab.
