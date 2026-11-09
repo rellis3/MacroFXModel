@@ -1146,10 +1146,11 @@ document.getElementById('f').addEventListener('submit', async (e) => {
 }
 
 // ── Research Library access ─────────────────────────────────────────────────────────────────────────────────────────
-// The papers are copyrighted and private, so the library is NOT opened by the shared Theory Lab password (other people have it).
-// It opens for: the owner's dashboard login (main zone), or the Theory Lab OWNER login (EDUCATION_ADMIN_PASSWORD, role=admin).
-// LIBRARY_ALLOW_EDUCATION_PASSWORD=1 is the owner's explicit switch to let the ordinary Theory Lab password in too.
-const LIBRARY_ALLOW_EDU = process.env.LIBRARY_ALLOW_EDUCATION_PASSWORD === '1';
+// Owner decision 2026-11-09: the library sits behind the SAME password as the Theory Lab and looks and acts like part of it; the owner does not share
+// the link. It opens for: the owner's dashboard login (main zone), the Theory Lab owner login (admin), or the ordinary Theory Lab password.
+// The papers are copyrighted and private: anyone who has the Theory Lab password and the library address can read them, so the address is not linked from
+// the Theory Lab. LIBRARY_ALLOW_EDUCATION_PASSWORD=0 on Railway takes the ordinary password out again (then only the owner logins open it).
+const LIBRARY_ALLOW_EDU = (process.env.LIBRARY_ALLOW_EDUCATION_PASSWORD ?? '1') !== '0';
 function _isLibraryPagePath(p) { return p === '/library' || p === '/library.html' || p === '/css/library.css' || p.startsWith('/js/library/'); }
 function _libAuthOk(req) {
   const c = authParseCookies(req);
@@ -1164,7 +1165,7 @@ function requireAuth(req, res, next) {
   if (_isLibraryPagePath(req.path)) {   // the library page and its files: the owner's dashboard login, or the Theory Lab OWNER login (see _libAuthOk)
     if (_libAuthOk(req)) return next();
     if (authDecodeCookie(authParseCookies(req)[`${AUTH_COOKIE_NAME}_education`], 'education')) {   // signed in to the Theory Lab, but with the shared password
-      return res.status(403).type('html').send('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Research Library</title><body style="background:#070a10;color:#e6e9ef;font-family:system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;text-align:center;padding:24px"><div style="max-width:420px"><h1 style="font-weight:500">Research Library</h1><p style="color:#8b95a7">This area is for the owner only. The shared Theory Lab password does not open it.</p><p><a style="color:#5eead4" href="/logout?zone=education&next=/library.html">Sign in with the owner password</a></p></div></body>');
+      return res.status(403).type('html').send('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Research Library</title><body style="background:#070a10;color:#e6e9ef;font-family:system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;text-align:center;padding:24px"><div style="max-width:420px"><h1 style="font-weight:500">Research Library</h1><p style="color:#8b95a7">This area is for the owner only. The Theory Lab password does not open it at the moment.</p><p><a style="color:#5eead4" href="/logout?zone=education&next=/library.html">Sign in with the owner password</a></p></div></body>');
     }
     return res.redirect(`/login?zone=education&brand=library&next=${encodeURIComponent(req.originalUrl)}`);
   }
@@ -6989,7 +6990,7 @@ app.get('/api/research-pod/upload/have', async (_req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // ── Paper Library (plans/PAPER_LIBRARY.md): /api/library/*. Logic in js/libraryApi.js; this is only the mount.
-// EVERY route sits behind _libGate (_libAuthOk: the owner's dashboard login or the Theory Lab owner login) and answers 401 JSON, never content.
+// EVERY route sits behind _libGate (_libAuthOk: the dashboard login or a Theory Lab login) and answers 401 JSON, never content.
 // Registered before the global app.use(requireAuth), so the gate is explicit. No model call, no paid TTS (PAPER_TTS_PROVIDER=none disables MP3).
 const _libGate = (req, res, next) => {
   if (!AUTH_ENABLED) return next();
