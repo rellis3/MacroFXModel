@@ -64,7 +64,7 @@ table.t th.num { text-align: right; }
 </div>
 
 <script type="module">
-import { LAYERS, BUILD_ORDER, DEEP_DIVE, SOURCE_NOTE, COMBINED, TESTS, NAMED, PROOF, STAGES } from './js/volLayerResearch.js';
+import { LAYERS, BUILD_ORDER, DEEP_DIVE, SOURCE_NOTE, COMBINED, TESTS, NAMED, PROOF, STAGES, STAGE1 } from './js/volLayerResearch.js';
 import { PROOF_CSS, proofListHtml, proofHtml, cogReviewHtml, jumpLookHtml } from './js/volLayerProof.js';
 
 document.head.insertAdjacentHTML('beforeend', `<style>${PROOF_CSS}</style>`);
@@ -147,6 +147,14 @@ function systemHtml() {
   <div class="card" style="margin-top:12px"><h3>Live shared state, today</h3>${liveTable(['sigma', 'dsig', 'rel', 'reg', 'err', 'jump'])}</div>`;
 }
 
+function stage1Html(id) {
+  const st = STAGE1[id];
+  if (!st) return '';
+  const secs = st.sections.map(x => `<div class="card"><h3>${esc(x.h)}</h3>${x.lesson ? `<p class="muted" style="margin:-2px 0 6px"><a href="theory-lab/lessons/${esc(x.lesson)}.html" target="_blank">Theory Lab lesson</a></p>` : ''}<ul>${x.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`).join('');
+  const read = st.read.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td class="muted" style="font-size:11px">${esc(r[2])}</td></tr>`).join('');
+  return `<div class="card" style="margin-top:12px"><h3>Stage 1: the theory in plain words</h3><div class="scroll"><table class="t"><thead><tr><th>Source</th><th>How it was read</th><th>Where</th></tr></thead><tbody>${read}</tbody></table></div></div><div class="grid">${secs}</div>`;
+}
+
 function stageHtml(id) {
   const st = STAGES[id];
   if (!st) return '';
@@ -178,6 +186,7 @@ function layerHtml(L) {
   </div>
   ${L.id === 'state' || L.id === 'jumps' ? `<div class="card" style="margin-top:12px"><h3>Live, today</h3>${liveTable(L.id === 'state' ? ['sigma', 'dsig', 'rel', 'reg', 'err'] : ['sigma', 'jump'])}</div>` : ''}
   ${stageHtml(L.id)}
+  ${stage1Html(L.id)}
   ${L.id === 'jumps' ? (loadProof('jump-look'), `<div class="card" style="margin-top:12px"><h3>Stage 2: what the detector flags, before any outcome is read</h3>${jumpLookHtml(proofData['jump-look'])}</div>`) : ''}
   <div class="card" style="margin-top:12px"><h3>Tests touching this layer</h3>${trackerHtml(L.id === 'features' ? 'corr' : L.id === 'execution' ? 'stops' : L.id)}</div>
   <div class="card" style="margin-top:12px"><h3>Deep-dive findings</h3>${findings}</div>`;
