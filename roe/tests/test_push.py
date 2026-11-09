@@ -77,3 +77,26 @@ class PushTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LatestRunTests(unittest.TestCase):
+    def test_latest_picks_the_newest_finished_run_and_ignores_unfinished_folders(self):
+        import os
+        from roe.cli import _latest_run
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            for name, done in (("2026-11-06-aaaaaa", True), ("2026-11-09-bbbbbb", True), ("2026-11-10-cccccc", False)):
+                (root / name).mkdir()
+                if done:
+                    (root / name / "snapshot.json").write_text("{}")
+            self.assertTrue(_latest_run(root).endswith("2026-11-09-bbbbbb"))
+            self.assertIsNone(_latest_run(root / "nope"))
+
+    def test_token_whitespace_is_trimmed(self):
+        with tempfile.TemporaryDirectory() as t:
+            seen = {}
+            def opener(req, timeout=0):
+                seen["auth"] = req.get_header("Authorization")
+                return _Resp(json.dumps({"ok": True, "status": "recorded", "runId": "x"}).encode())
+            push_run(_make_run(t), token="  tok\r\n", opener=opener)
+            self.assertEqual(seen["auth"], "Bearer tok")

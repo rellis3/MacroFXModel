@@ -35,9 +35,9 @@ def build_payload(run_dir) -> dict:
 
 def push_run(run_dir, base_url: str = DEFAULT_BASE, token: str | None = None, opener=None, timeout: int = 120) -> dict:
     """Returns the server's JSON answer ({'status': 'recorded' | 'already_recorded', ...}); raises PushError on any refusal."""
-    token = token if token is not None else os.environ.get("ROE_PUSH_TOKEN", "")
+    token = (token if token is not None else os.environ.get("ROE_PUSH_TOKEN", "")).strip()
     if not token:
-        raise PushError("ROE_PUSH_TOKEN is not set (the same value as the ROE_PUSH_TOKEN variable on the server)")
+        raise PushError("no push token in this window. Run the same command in a normal terminal and paste the token when asked, or set it first: $env:ROE_PUSH_TOKEN = \"your token\"")
     body = json.dumps(build_payload(run_dir)).encode("utf-8")
     req = urllib.request.Request(base_url.rstrip("/") + "/api/roe/push", data=body, method="POST",
                                  headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"})

@@ -37,10 +37,27 @@ def _doc(args, name, url_attr, file_attr, path, errors, base, optional=False):
         return None
 
 
+def _latest_run(root="roe_out"):
+    """The newest finished run folder under roe_out (folder names start with the date, so the last one sorted is the newest)."""
+    runs = sorted(p for p in Path(root).glob("*-*") if p.is_dir() and (p / "snapshot.json").exists())
+    return str(runs[-1]) if runs else None
+
+
 def _push(run_dir, base_url) -> int:
+    import getpass
+    import os
     from .push import PushError, push_run
+    if str(run_dir) == "latest":
+        run_dir = _latest_run()
+        if not run_dir:
+            print("PUSH FAILED: no finished run found in roe_out (run the scan first, from the MacroFXModel folder)", file=sys.stderr)
+            return 4
+        print(f"pushing the newest run: {run_dir}")
+    token = os.environ.get("ROE_PUSH_TOKEN", "").strip()
+    if not token and sys.stdin.isatty():   # no environment variable needed: ask once, hidden, nothing is saved
+        token = getpass.getpass("Paste the push token (it will not show as you type): ").strip()
     try:
-        r = push_run(run_dir, base_url=base_url)
+        r = push_run(run_dir, base_url=base_url, token=token or None)
     except PushError as e:
         print(f"PUSH FAILED: {e}", file=sys.stderr)
         return 4
@@ -64,7 +81,7 @@ def main(argv=None) -> int:
     ap.add_argument("--lookback", type=int, help="sessions to back-evaluate for episodes (default from config)")
     ap.add_argument("--run-id", help="force a run id (an existing id with different inputs is an error)")
     ap.add_argument("--push", action="store_true", help="after the scan, POST the run to the server (needs env ROE_PUSH_TOKEN; a repeat of the same run changes nothing)")
-    ap.add_argument("--push-only", metavar="RUN_DIR", help="do not scan: push this existing roe_out/<runId>/ folder (use after a failed push)")
+    ap.add_argument("--push-only", metavar="RUN_DIR", help="do not scan: push this existing roe_out/<runId>/ folder, or the word latest for the newest one (use after a failed push)")
     ap.add_argument("--now", help="ISO UTC time to use as 'now' (tests / replays)")
     ap.add_argument("--no-desk-pack", action="store_true", help="skip the 2.7 MB /api/desk-pack GET")
     args = ap.parse_args(argv)
