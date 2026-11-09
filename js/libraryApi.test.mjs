@@ -323,3 +323,25 @@ test('the equations job is mounted at /api/research-pod/math (GET status, POST c
   for (const [f, n] of [['../kv.js', 1], ['../_worker.js', 2], ['./storeRegistry.js', 1]]) assert.ok(rd(f).split('library_math_v1').length - 1 >= n, `${f} lists library_math_v1`);
   assert.match(rd('./modelRouter.js'), /'library-math': \{ ledger: 'brief'/);
 });
+
+test('catalog: a list older than 30 s is served at once while one rebuild runs behind it; past 10 minutes it waits', async () => {
+  const { api, store } = harness(); let reads = 0; const get = store.get.bind(store);
+  store.get = k => { if (k === 'pp') reads++; return get(k); };
+  const realNow = Date.now; let t = realNow.call(Date);
+  Date.now = () => t;
+  try {
+    await api.papers(); assert.equal(reads, 1);
+    t += 60_000;   // stale, but under 10 minutes
+    const r = await api.papers(); assert.equal(r.json.papers.length, 3);
+    await api.papers(); await new Promise(res => setTimeout(res, 20));
+    assert.equal(reads, 2, 'exactly one background rebuild, not one per request');
+    t += 11 * 60_000;   // too old: this one waits for a fresh build
+    await api.papers(); assert.equal(reads, 3);
+  } finally { Date.now = realNow; }
+});
+
+test('warm: fills the catalog and the index without throwing', async () => {
+  const { api } = harness();
+  await api.warm();
+  const r = await api.papers(); assert.equal(r.json.ok, true);
+});
