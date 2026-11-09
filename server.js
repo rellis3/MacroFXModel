@@ -44460,9 +44460,11 @@ app.post('/login', (req, res) => {
 // /logout is public, like /login — clears only the zone cookie you were in
 // (an education-zone logout leaves a main-zone session, if any, untouched).
 app.get('/logout', (req, res) => {
-  const zone = req.query.zone === 'education' ? 'education' : 'main';
-  res.setHeader('Set-Cookie',
-    `${AUTH_COOKIE_NAME}_${zone}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`);
+  const lib = req.query.zone === 'library';   // the library's Log out button: clears BOTH logins (either one opens the library), then back to its sign-in page
+  const zone = lib || req.query.zone === 'education' ? 'education' : 'main';
+  const clear = z => `${AUTH_COOKIE_NAME}_${z}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`;
+  res.setHeader('Set-Cookie', lib ? [clear('education'), clear('main')] : clear(zone));
+  if (lib) return res.redirect('/library.html');
   const back = typeof req.query.next === 'string' && /^\/library(\.html)?$/.test(req.query.next) ? req.query.next : null;   // the library's "sign in with the owner password" link
   res.redirect(back ?? (zone === 'education' ? '/theory-lab/' : '/'));
 });

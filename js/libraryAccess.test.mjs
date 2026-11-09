@@ -21,3 +21,8 @@ test('the landing page is the Theory Lab login restyled as Research Library, and
 test('when the switch is off, the Theory Lab password gets a clear page, not a loop', () => {
   assert.match(s, /status\(403\)[\s\S]{0,900}This area is for the owner only/);
 });
+
+test('the library has a Log out button that clears both logins and returns to its sign-in page', () => {
+  assert.match(fs.readFileSync(new URL('../library.html', import.meta.url), 'utf8'), /class="lib-logout" href="\/logout\?zone=library">Log out</);
+  assert.match(s, /const lib = req\.query\.zone === 'library'[\s\S]{0,700}\[clear\('education'\), clear\('main'\)\][\s\S]{0,200}res\.redirect\('\/library\.html'\)/);
+});
