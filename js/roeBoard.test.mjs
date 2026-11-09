@@ -18,7 +18,7 @@ test('rows escape text, show the flag, the count and the not-tested note; no sco
   assert.ok(!/rejected|failed|\bdead\b|\bscore\b|rank/i.test(h));
 });
 test('groups render per family and an empty list explains how to fill it', () => {
-  assert.match(B.groupsHtml([{ mechanism: 'dealer gamma state', rows: [row] }]), /dealer gamma state/);
+  assert.match(B.groupsHtml([{ mechanism: 'dealer gamma state', rows: [row] }]), /Dealer gamma state/);
   assert.match(B.groupsHtml([]), /python -m roe --push/);
 });
 test('init: 401 shows a login message', async () => {
