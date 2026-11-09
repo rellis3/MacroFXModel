@@ -3,6 +3,8 @@
 Last updated 2026-11-09 (after P3).
 
 ## Owner actions (only you can do these)
+0. **Run the data inventory** on the laptop and send me the list: `python -m roe.inventory <your OI folder> <M1 folder> <futures folder> <Databento folder>` (reads files only, uploads nothing; writes `roe_out/inventory/*.md`).
+0b. **Create the research R2 bucket** when I ask (a few clicks in Cloudflare: new bucket, one write token scoped to it; I will write the steps). Keys go in environment variables on the laptop, never in chat.
 1. **Set `ROE_PUSH_TOKEN`**: the same long random text (24+ characters) on Railway and as a laptop environment variable. Until then `python -m roe --push` is refused.
 2. **Refresh the stale laptop inputs**: COT (last 2026-10-20), several Cboe csv files, T10Y3M from FRED. Seven of the ten starting items ran on stale inputs in the first dry run.
 3. **Copy `roe/sources.default.json` to `roe_sources.laptop.json`** and point it at your real local files; then schedule the daily run (Windows `schtasks` or cron line in `roe/README.md`).

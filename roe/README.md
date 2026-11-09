@@ -146,3 +146,8 @@ One-time setup: choose a secret of 24 or more characters, set it as the Railway 
 If the push fails (network, server restart) the scan is still saved locally: `python -m roe --push-only roe_out/<run id>`. Exit codes: 0 ok, 2 scan failed, 3 run-ID conflict, 4 push failed.
 
 The board header reads `GET /api/roe/status` (needs the site login): it says "discovery not completed for <date>; last completed run <date>" when the laptop has not pushed today's run, and never shows an older run as today's.
+
+
+## Data inventory (before any upload)
+
+`python -m roe.inventory <folder> [<folder> ...]` lists what is in your local data folders (OI, M1, futures, Databento): per file the size, format, columns, first and last timestamp where it can tell cheaply (parquet reads only the file footer), and per folder the totals. Files over 100 MB are flagged. It reads files only and sends nothing anywhere. Output: `roe_out/inventory/<stamp>.json` and `.md`.
