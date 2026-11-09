@@ -125,3 +125,47 @@ test('the KV key is registered where the repo requires, and the routes are gated
   assert.match(s, /app\.get\('\/api\/roe\/status', _agentsGate/);
   assert.match(s, /app\.get\('\/api\/roe\/runs', _agentsGate/);
 });
+
+const Q = (specHash, episodeId, date, over = {}) => ({ specHash, episodeId, familyId: 'f1', familyKey: 'k', mechanism: 'positioning crowding', date, title: `t ${specHash}`, why: 'w', observation: 'o', hypothesis: 'h', status: 'queued', ...over });
+
+test('questions: stored with the run, indexed by specHash; the same spec raised by another episode is counted, not duplicated', async () => {
+  const h = harness();
+  await R.recordRun(payload({ questions: { runId: RID, questions: [Q('s1', 'e1', '2026-11-06'), Q('s2', 'e2', '2026-11-06')] } }), h.deps);
+  assert.ok(h.r2m.has(`forward/roe/snapshots/2026-11-06/${RID}/questions.json`));
+  const RID2 = '2026-11-09-aaaaaaaaaa';
+  const p2 = payload({ runId: RID2, snapshot: { runId: RID2, asof: '2026-11-09', identity: { asof: '2026-11-09' } }, status: { runId: RID2, state: 'ok', discoveryCompleted: true }, episodes: { runId: RID2, episodes: [] },
+    questions: { runId: RID2, questions: [Q('s1', 'e9', '2026-11-09')] } });
+  await R.recordRun(p2, h.deps);
+  const idx = h.r2m.get(R.QUESTIONS_INDEX_KEY);
+  assert.equal(Object.keys(idx.specs).length, 2);
+  assert.equal(idx.specs.s1.timesRaised, 2);
+  assert.equal(idx.specs.s1.lastDate, '2026-11-09');
+  assert.equal(idx.specs.s1.firstDate, '2026-11-06');
+  const before = JSON.stringify(idx);
+  await R.recordRun(p2, h.deps);   // already recorded: nothing changes
+  assert.equal(JSON.stringify(h.r2m.get(R.QUESTIONS_INDEX_KEY)), before);
+});
+
+test('questions: a lost index write is repaired by pushing the same run again', async () => {
+  const h = harness();
+  const p = payload({ questions: { runId: RID, questions: [Q('s1', 'e1', '2026-11-06')] } });
+  await R.recordRun(p, h.deps);
+  h.r2m.delete(R.QUESTIONS_INDEX_KEY);
+  assert.equal((await R.recordRun(p, h.deps)).status, 'already_recorded');
+  assert.equal(h.r2m.get(R.QUESTIONS_INDEX_KEY).specs.s1.timesRaised, 1);
+});
+
+test('board groups: by family, newest first, and no result or rank field exists on a row', async () => {
+  const h = harness();
+  await R.recordRun(payload({ questions: { runId: RID, questions: [Q('a', 'e1', '2026-11-01'), Q('b', 'e2', '2026-11-05'), Q('c', 'e3', '2026-11-03', { familyId: 'f2', mechanism: 'dealer gamma state' })] } }), h.deps);
+  const g = R.boardGroups(h.r2m.get(R.QUESTIONS_INDEX_KEY));
+  assert.deepEqual(g.map(x => x.mechanism), ['dealer gamma state', 'positioning crowding']);
+  assert.deepEqual(g[1].rows.map(r => r.specHash), ['b', 'a']);
+  for (const r of g.flatMap(x => x.rows)) for (const k of Object.keys(r)) assert.ok(!/result|score|rank|verdict|pass|fail|rejected|dead/i.test(k), k);
+});
+
+test('invalid questions are refused', async () => {
+  const h = harness();
+  assert.equal((await R.recordRun(payload({ questions: { runId: 'x', questions: [] } }), h.deps)).status, 'invalid');
+  assert.equal((await R.recordRun(payload({ questions: { runId: RID, questions: [{ specHash: 'a' }] } }), h.deps)).status, 'invalid');
+});

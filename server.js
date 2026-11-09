@@ -4030,6 +4030,12 @@ app.get('/api/roe/status', _agentsGate, async (_req, res) => {
   try { res.set('Cache-Control', 'no-store').json({ ok: true, ..._ROE.boardStatus(await _ROE.readRegistry(kv)) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+app.get('/api/roe/questions', _agentsGate, async (_req, res) => {
+  try {
+    const [reg, idx] = await Promise.all([_ROE.readRegistry(kv), _r2Ok() ? _r2GetJSON(_ROE.QUESTIONS_INDEX_KEY).catch(() => null) : null]);
+    res.set('Cache-Control', 'no-store').json({ ok: true, status: _ROE.boardStatus(reg), groups: _ROE.boardGroups(idx), specs: Object.keys(idx?.specs ?? {}).length });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.get('/api/roe/runs', _agentsGate, async (_req, res) => {
   try { res.set('Cache-Control', 'no-store').json({ ok: true, runs: _ROE.listRuns(await _ROE.readRegistry(kv)) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
