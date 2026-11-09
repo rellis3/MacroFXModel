@@ -63,12 +63,24 @@ def build_one(sym, ccy, rel_by_day, cal_end):
     crit_i = pd.Series(mx).rolling(500, min_periods=250).quantile(0.88).shift(1).to_numpy()
     with np.errstate(invalid="ignore"):
         flag = absL > crit_i[:, None]
-    first = J.first_flags(flag)
+    # A2: the main read ("x") takes the first burst between 01:00 and 21:00 London; "all" is the A1 read with the rollover
+    in_x = np.zeros(J.N_SLOT, bool)
+    in_x[12:252] = True
+    firsts = {"all": J.first_flags(flag), "x": J.first_flags(flag & in_x[None, :])}
+    # A2 proof: a copy of the tape where every close after the burst bar moves by sign x delta x sigma
+    plants = {}
+    for ver, first in firsts.items():
+        for nm, dl in (("min", 0.03), ("large", 0.20)):
+            P = F.copy()
+            for i in np.flatnonzero(first >= 0):
+                s = first[i]
+                P[i, s + 1:] *= np.exp(np.sign(D["r"][i, s]) * dl * sig[i])
+            plants[(ver, nm)] = P
     rows = []
 
-    def rec(i, s, kind):
+    def rec(i, s, kind, ver):
         sign = np.sign(D["r"][i, s])
-        out = {"inst": sym, "date": d.date[i], "slot": int(s), "kind": kind, "sign": int(sign), "L": float(D["L"][i, s]), "size": float(abs(D["r"][i, s]) / sig[i]),
+        out = {"inst": sym, "date": d.date[i], "slot": int(s), "kind": kind, "ver": ver, "sign": int(sign), "L": float(D["L"][i, s]), "size": float(abs(D["r"][i, s]) / sig[i]),
                "hour": int(s * 5 // 60), "spread0": float(Sp[i, s] / F[i, s]) if np.isfinite(Sp[i, s]) else np.nan}
         for name, h in HORIZONS.items():
             e = s + h
@@ -77,44 +89,57 @@ def build_one(sym, ccy, rel_by_day, cal_end):
                 out[f"sp_{name}"] = float(Sp[i, e] / F[i, e]) if np.isfinite(Sp[i, e]) else np.nan
             else:
                 out[name], out[f"sp_{name}"] = np.nan, np.nan
+        e = s + HORIZONS["m60"]
+        for nm in ("min", "large"):
+            P = plants[(ver, nm)]
+            out[f"pl_{nm}"] = float(sign * np.log(P[i, e] / P[i, s]) / sig[i]) if kind == "flag" and e < J.N_SLOT and np.isfinite(P[i, e]) else np.nan
         return out
 
-    fl_sched = np.full(len(d), np.nan)
-    for i in range(len(d)):
-        s = first[i]
-        if s >= 0:
-            rows.append(rec(i, s, "flag"))
-            if d.date[i] <= cal_end:
-                st = s * 5
-                fl_sched[i] = 0.0
-                if d.date[i] in rel_by_day.groups:
-                    g = rel_by_day.get_group(d.date[i])
-                    g = g[g.ccy.isin(ccy)]
-                    fl_sched[i] = float(((st >= g.minute - 5) & (st <= g.minute + 15)).any())
-            rows[-1]["sched"] = fl_sched[i]
-        L = np.abs(D["L"][i])
-        lim = s if s >= 0 else J.N_SLOT
-        if not np.isfinite(crit_i[i]):
-            continue
-        cand = np.flatnonzero((L[:lim] >= 3) & (L[:lim] < crit_i[i]))
-        if cand.size:
-            rows.append(rec(i, int(cand[0]), "control"))
-            rows[-1]["sched"] = np.nan
+    scheds = {}
+    for ver, first in firsts.items():
+        fl_sched = np.full(len(d), np.nan)
+        for i in range(len(d)):
+            s = first[i]
+            if s >= 0:
+                rows.append(rec(i, s, "flag", ver))
+                if d.date[i] <= cal_end:
+                    st = s * 5
+                    fl_sched[i] = 0.0
+                    if d.date[i] in rel_by_day.groups:
+                        g = rel_by_day.get_group(d.date[i])
+                        g = g[g.ccy.isin(ccy)]
+                        fl_sched[i] = float(((st >= g.minute - 5) & (st <= g.minute + 15)).any())
+                rows[-1]["sched"] = fl_sched[i]
+            L = np.abs(D["L"][i])
+            lim = s if s >= 0 else J.N_SLOT
+            if not np.isfinite(crit_i[i]):
+                continue
+            ok = (L[:lim] >= 3) & (L[:lim] < crit_i[i])
+            if ver == "x":
+                ok &= in_x[:lim]
+            cand = np.flatnonzero(ok)
+            if cand.size:
+                rows.append(rec(i, int(cand[0]), "control", ver))
+                rows[-1]["sched"] = np.nan
+        scheds[ver] = fl_sched
     ev = pd.DataFrame(rows)
-    # session frame: outcomes for Q2/Q3 and pre-open features
-    flag_today = (first >= 0).astype(float)
-    flag_today[~np.isfinite(crit_i)] = np.nan
-    un = np.where(fl_sched == 0, 1.0, 0.0)
-    sc = np.where(fl_sched == 1, 1.0, 0.0)
-    un[np.isnan(flag_today)] = np.nan
-    sc[np.isnan(flag_today)] = np.nan
+    # session frame: outcomes for Q2/Q3 and pre-open features. Main read = x; the A1 read is kept with an _all suffix.
     sd = d.live_sig_daily
     big = np.maximum(d.max_r5.abs().to_numpy(), d.gap.abs().fillna(0).to_numpy()) / d.live_sig_used.to_numpy()
-    sess = pd.DataFrame({"inst": sym, "date": d.date, "event": d.event, "flag": flag_today, "big": big,
-                         "lam_un": S.ewma_before(un, 20), "lam_sch": S.ewma_before(sc, 20),
-                         "flag_last": pd.Series(flag_today).shift(1).to_numpy(),
+    sess = pd.DataFrame({"inst": sym, "date": d.date, "event": d.event, "big": big,
                          "js20": d.jump_share.rolling(20, min_periods=10).mean().shift(1).to_numpy(),
                          "regime": np.log(sd / sd.shift(1).rolling(250, min_periods=120).median()).to_numpy()})
+    for ver, sfx in (("x", ""), ("all", "_all")):
+        flag_today = (firsts[ver] >= 0).astype(float)
+        flag_today[~np.isfinite(crit_i)] = np.nan
+        un = np.where(scheds[ver] == 0, 1.0, 0.0)
+        sc = np.where(scheds[ver] == 1, 1.0, 0.0)
+        un[np.isnan(flag_today)] = np.nan
+        sc[np.isnan(flag_today)] = np.nan
+        sess["flag" + sfx] = flag_today
+        sess["lam_un" + sfx] = S.ewma_before(un, 20)
+        sess["lam_sch" + sfx] = S.ewma_before(sc, 20)
+        sess["flag_last" + sfx] = pd.Series(flag_today).shift(1).to_numpy()
     return ev, sess
 
 
@@ -131,13 +156,13 @@ def stage_build():
         e, x = build_one(s, ccy[s], by, cal_end)
         evs.append(e)
         ss.append(x)
-        fl = e[e.kind == "flag"]
+        fl = e[(e.kind == "flag") & (e.ver == "x")]
         print(f"{s}: {len(fl)} flags, {x.flag.mean() * 252:.1f}/yr, scheduled {fl.sched.mean():.2f}", flush=True)
     E, X = pd.concat(evs, ignore_index=True), pd.concat(ss, ignore_index=True)
     E.to_parquet(OUT / "events.parquet", index=False)
     X.to_parquet(OUT / "sessions.parquet", index=False)
     cov = sorted(i for i, c in ccy.items() if set(c) <= ALLOWED)
-    fl = E[E.kind == "flag"].assign(klass=lambda d: d.inst.map(klass))
+    fl = E[(E.kind == "flag") & (E.ver == "x")].assign(klass=lambda d: d.inst.map(klass))
     audit = {"flags": int(len(fl)), "instruments": len(syms), "covered": cov, "flags_covered": int(fl.inst.isin(cov).sum()),
              "sched_share_covered": float(fl[fl.inst.isin(cov)].sched.mean()), "by_class": fl.groupby("klass").size().to_dict(),
              "by_hour": fl.groupby("hour").size().to_dict(), "flags_per_instrument_year": float(X.groupby("inst").flag.mean().mean() * 252), "gumbel_crit": J.threshold()}
@@ -211,14 +236,101 @@ def holm(cells, key="p"):
         cells[k]["p_holm"] = round(prev, 4)
 
 
+NEWS_HOURS = range(7, 21)                                       # A2: the calendar can only see the news 07:00-21:00 London
+PATH_MIN, GAIN_MIN = 0.03, 0.005
+
+
+def path_family(bs, F, C, cov, h="m60"):
+    """A2 scored cells. News cells: covered instruments, 07:00-21:00 London only."""
+    nw = F.inst.isin(cov) & F.hour.isin(NEWS_HOURS)
+    Cn = C[C.inst.isin(cov) & C.hour.isin(NEWS_HOURS)]
+    cells = {"unscheduled": (F[nw & (F.sched == 0)], Cn), "scheduled": (F[nw & (F.sched == 1)], Cn), "all_34": (F, C),
+             "common": (F[F.cojump >= 3], C), "own": (F[F.cojump < 3], C)}
+    return cells, {k: path_cell(bs, f, c, h) for k, (f, c) in cells.items()}
+
+
+def path_proof(bs, f, cell, rng):
+    """verdict_gate input for one path cell: tape plants, random-direction shuffle, effect oriented by its own sign."""
+    f = f[f.m60.notna()]
+    sgn = 1.0 if cell["mean"] >= 0 else -1.0
+    lo, hi = sorted((sgn * cell["lo"], sgn * cell["hi"]))
+    pl = {}
+    for nm, dl in (("min", 0.03), ("large", 0.20)):
+        k = f[f"pl_{nm}"].notna()
+        pl[nm] = {"injected": dl, "shift": round(float(f[f"pl_{nm}"][k].mean() - f.m60[k].mean()), 4)}
+    rs = rng.choice([-1.0, 1.0], len(f))
+    sh = bs.mean(f.date, f.m60.to_numpy() * rs)[0]
+    return {"effect": sgn * cell["mean"], "lo": lo, "hi": hi, "min_effect": PATH_MIN, "diagnostics": {"ok": len(f) >= 200, "why": f"{len(f)} bursts"},
+            "planted_large": pl["large"], "planted_min": pl["min"], "shuffle": {"lo": sh[1], "hi": sh[2], "mean": sh[0]},
+            "rows": {"used": int(len(f)), "dropped": int(cell["n"] - len(f))}}
+
+
+def plant_target(X, bench, target, goal, rng):
+    """A synthetic target from the in-sample benchmark probability plus a known random feature, sized to a true Brier gain."""
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+    Z = X.dropna(subset=bench + [target]).copy()
+    p0 = make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000)).fit(Z[bench], Z[target]).predict_proba(Z[bench])[:, 1]
+    z, u = rng.normal(size=len(Z)), rng.random(len(Z))
+    lg = np.log(p0 / (1 - p0))
+    sc = (Z.date >= "2019-01-01").to_numpy()
+    best = None
+    for bb in np.linspace(0.05, 2.0, 40):
+        pt = 1 / (1 + np.exp(-(lg + bb * z)))
+        y = (u < pt).astype(float)
+        inj = 1 - ((pt - y) ** 2)[sc].mean() / ((p0 - y) ** 2)[sc].mean()
+        if best is None or abs(inj - goal) < abs(best[1] - goal):
+            best = (bb, inj, y)
+    Z["plant"], Z["y_syn"] = z, best[2]
+    return Z, float(best[1])
+
+
+def gain_family(bs, X, bench, feats, flag_col, rng, proofs=True):
+    """Stop-through d = 0.25/0.5/1 and intensity, each with its verdict_gate input."""
+    out, checks = {}, {}
+    for k in ("d0.25", "d0.5", "d1.0", "flag_today"):
+        Xy = X.copy()
+        if k == "flag_today":
+            tcol = flag_col
+        else:
+            tcol = "y"
+            Xy["y"] = (Xy.big >= float(k[1:])).astype(float)
+        out[k] = skill(bs, logit_cell(Xy, tcol, feats, bench), tcol)
+        if not proofs:
+            continue
+        pls = {}
+        for nm, goal in (("min", 0.005), ("large", 0.05)):
+            Z, inj = plant_target(Xy, bench, tcol, goal, rng)
+            g = skill(bs, logit_cell(Z, "y_syn", feats + ["plant"], bench), "y_syn")
+            pls[nm] = {"injected": round(inj, 5), "shift": g["gain"]}
+        Xs = Xy.copy()
+        perm = rng.permutation(len(Xs))
+        Xs[feats] = Xs[feats].to_numpy()[perm]
+        g = skill(bs, logit_cell(Xs, tcol, feats, bench), tcol)
+        c = out[k]
+        checks[k] = {"effect": c["gain"], "lo": c["lo"], "hi": c["hi"], "min_effect": GAIN_MIN,
+                     "diagnostics": {"ok": c["n"] > 10000 and 0.01 < c["base"] < 0.99, "why": f"n {c['n']}, base {c['base']}"},
+                     "planted_large": pls["large"], "planted_min": pls["min"], "shuffle": {"lo": g["lo"], "hi": g["hi"], "mean": g["gain"]},
+                     "rows": {"used": c["n"], "dropped": int(len(X) - c["n"])}}
+    return out, checks
+
+
+def thirds(F):
+    q = F["size"].quantile([1 / 3, 2 / 3]).to_numpy()
+    lab = np.where(F["size"] <= q[0], "small", np.where(F["size"] <= q[1], "medium", "large"))
+    return lab, [round(float(v), 3) for v in q]
+
+
 def stage_analyse():
+    from forge import verdict_gate as G
     E = pd.read_parquet(OUT / "events.parquet")
     X = pd.read_parquet(OUT / "sessions.parquet")
     audit = json.loads((OUT / "audit.json").read_text())
     cov = audit["covered"]
     bs = LR.Boot(X.date)
+    rng = np.random.default_rng(20261108)
     E["klass"] = E.inst.map(klass)
-    # cost: half the spread at each end, as a price fraction, then in daily σ units
     sig = {}
     for s in E.inst.unique():
         d = pd.read_csv(HIST / f"{s}.csv", usecols=["date", "live_sig_used"])
@@ -226,19 +338,34 @@ def stage_analyse():
     E["sg"] = [sig[i].get(d, np.nan) for i, d in zip(E.inst, E.date)]
     for h in HORIZONS:
         E[f"cost_{h}"] = 0.5 * (E[f"sp_{h}"] + E.spread0) / E.sg
-    F, C = E[E.kind == "flag"], E[E.kind == "control"]
-    res = {"id": "jump-after", "seed": 20261107, "B": 2000, "ranAt": pd.Timestamp.now("UTC").isoformat(), "prereg": "forge/JUMP_AFTER_PREREG.md", "audit": audit, "path": {}, "stop_through": {}, "intensity": {}, "descriptive": {}}
-    Fc = F[F.inst.isin(cov)]
-    cells = {"unscheduled": Fc[Fc.sched == 0], "scheduled": Fc[Fc.sched == 1], "all_34": F}
-    Cc = C[C.inst.isin(cov)]
-    for k, d in cells.items():
-        res["path"][k] = path_cell(bs, d, C if k == "all_34" else Cc, "m60")
-    holm(res["path"], "p_two")
-    # descriptive: horizons, sign and class
-    for k, d in cells.items():
-        res["descriptive"][k] = {h: path_cell(bs, d, C if k == "all_34" else Cc, h) for h in HORIZONS if h != "m60"}
-    res["descriptive"]["by_sign_m60"] = {("up" if s > 0 else "down"): {k: path_cell(bs, d[d.sign == s], C if k == "all_34" else Cc, "m60") for k, d in cells.items()} for s in (1, -1)}
-    res["descriptive"]["by_class_m60"] = {c: path_cell(bs, g, C[C.klass == c], "m60") for c, g in F.groupby("klass")}
+    fl = E.kind == "flag"
+    E.loc[fl, "cojump"] = E[fl].groupby(["ver", "date", "slot"]).inst.transform("size")
+    res = {"id": "jump-after", "seed": 20261107, "B": 2000, "ranAt": pd.Timestamp.now("UTC").isoformat(), "prereg": "forge/JUMP_AFTER_PREREG.md",
+           "amendments": ["A1", "A2"], "audit": audit, "reads": {}, "descriptive": {}}
+    checks = {}
+    for ver in ("x", "all"):
+        F, C = E[fl & (E.ver == ver)], E[(E.kind == "control") & (E.ver == ver)]
+        cells, path = path_family(bs, F, C, cov)
+        holm(path, "p_two")
+        r = {"n_flags": int(len(F)), "events": int(F.groupby(["date", "slot"]).ngroups), "path": path}
+        if ver == "x":
+            for k, (f, _) in cells.items():
+                checks[f"jump-after-path:{k}"] = path_proof(bs, f, path[k], rng)
+            dsc = res["descriptive"]
+            dsc["horizons"] = {k: {h: path_cell(bs, f, c, h) for h in HORIZONS if h != "m60"} for k, (f, c) in cells.items()}
+            dsc["by_sign_m60"] = {("up" if sg > 0 else "down"): {k: path_cell(bs, f[f.sign == sg], c, "m60") for k, (f, c) in cells.items()} for sg in (1, -1)}
+            dsc["by_class_m60"] = {c: path_cell(bs, g, C[C.klass == c], "m60") for c, g in F.groupby("klass")}
+            lab, cuts = thirds(F)
+            dsc["size_cuts_sigma"] = cuts
+            dsc["by_size_m60"] = {t: path_cell(bs, F[lab == t], C, "m60") for t in ("small", "medium", "large")}
+            cj = F.cojump.to_numpy()
+            dsc["by_size_common_m60"] = {f"{t} {nm}": path_cell(bs, F[(lab == t) & m], C, "m60") for t in ("small", "medium", "large")
+                                         for nm, m in (("common", cj >= 3), ("own", cj < 3))}
+            dsc["by_block_m60"] = {nm: path_cell(bs, F[F.hour.isin(hrs)], C, "m60") for nm, hrs in
+                                   (("Asia 01-07", range(1, 7)), ("London 07-12", range(7, 12)), ("US data 12-14", range(12, 14)), ("Afternoon 14-21", range(14, 21)))}
+        else:
+            r["rollover_only"] = path_cell(bs, F[F.hour.isin([21, 0])], C, "m60")
+        res["reads"][ver] = r
 
     X = X[X.event.ne("unknown")].copy()
     X["klass"] = X.inst.map(klass)
@@ -248,32 +375,35 @@ def stage_analyse():
         X[f"e_{t}"] = (X.event == t).astype(float)
     X["monday"] = (pd.to_datetime(X.date).dt.dayofweek == 0).astype(float)
     bench = [c for c in X.columns if c.startswith(("c_", "e_"))] + ["monday", "regime"]
-    feats = ["lam_un", "lam_sch", "flag_last", "js20"]
-    for d in (0.25, 0.5, 1.0):
-        X["y"] = (X.big >= d).astype(float)
-        res["stop_through"][f"d{d}"] = skill(bs, logit_cell(X, "y", feats, bench), "y")
-    holm(res["stop_through"])
-    res["intensity"]["flag_today"] = skill(bs, logit_cell(X, "flag", feats, bench), "flag")
-    holm(res["intensity"])
+    for ver, sfx in (("x", ""), ("all", "_all")):
+        feats = [f + sfx for f in ("lam_un", "lam_sch", "flag_last")] + ["js20"]
+        g, ck = gain_family(bs, X, bench, feats, "flag" + sfx, rng, proofs=(ver == "x"))
+        st = {k: v for k, v in g.items() if k != "flag_today"}
+        holm(st)
+        it = {"flag_today": g["flag_today"]}
+        holm(it)
+        res["reads"][ver]["stop_through"], res["reads"][ver]["intensity"] = st, it
+        for k, c in ck.items():
+            checks[("jump-after-intensity:" if k == "flag_today" else "jump-after-stop-through:") + k] = c
 
     v = {}
-    pc = res["path"]
-    ok = []
-    ctx = []
-    for k, c in pc.items():
-        same = c["half_A"] is not None and c["half_B"] is not None and np.sign(c["half_A"]) == np.sign(c["half_B"]) == np.sign(c["mean"])
-        if c["p_holm"] < 0.05 and same:
-            ctx.append(k)
-            d = "follow_net" if c["mean"] > 0 else "fade_net"
-            if (c["vs_lo"] > 0 or c["vs_hi"] < 0) and c[d][1] > 0:
-                ok.append(k)
-    v["jump-after-path"] = "VALIDATED" if ok else ("CONTEXT" if ctx else "NULL")
-    for name, fam in (("jump-after-stop-through", res["stop_through"]), ("jump-after-intensity", res["intensity"])):
-        val = [k for k, c in fam.items() if c["lo"] > 0 and c["gain"] >= 0.005 and c["p_holm"] < 0.05]
-        sig_ = [k for k, c in fam.items() if c["p_holm"] < 0.05]
-        v[name] = "VALIDATED" if val else ("CONTEXT" if sig_ else "NULL")
-    res["verdicts"] = v
-    res["path_scheduled_half_width"] = round((pc["scheduled"]["hi"] - pc["scheduled"]["lo"]) / 2, 4)
+    for ver, r in res["reads"].items():
+        ok, ctx = [], []
+        for k, c in r["path"].items():
+            same = c["half_A"] is not None and c["half_B"] is not None and np.sign(c["half_A"]) == np.sign(c["half_B"]) == np.sign(c["mean"])
+            if c["p_holm"] < 0.05 and same:
+                ctx.append(k)
+                dn = "follow_net" if c["mean"] > 0 else "fade_net"
+                if (c["vs_lo"] > 0 or c["vs_hi"] < 0) and c[dn][1] > 0:
+                    ok.append(k)
+        vv = {"jump-after-path": "VALIDATED" if ok else ("CONTEXT" if ctx else "NULL"), "path_context_cells": ctx}
+        for name, fam in (("jump-after-stop-through", r["stop_through"]), ("jump-after-intensity", r["intensity"])):
+            val = [k for k, c in fam.items() if c["lo"] > 0 and c["gain"] >= GAIN_MIN and c["p_holm"] < 0.05]
+            sg = [k for k, c in fam.items() if c["p_holm"] < 0.05]
+            vv[name] = "VALIDATED" if val else ("CONTEXT" if sg else "NULL")
+        v[ver] = vv
+    res["verdicts_prereg"] = v
+    res["gate"] = G.write_checks("jump-after", checks)
     (OUT / "results.json").write_text(json.dumps(res, indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o)), encoding="utf-8")
     write_md(res)
 
@@ -282,27 +412,40 @@ def _ci(x):
     return f"{x[0]:+.3f} [{x[1]:+.3f}, {x[2]:+.3f}]"
 
 
+def _row(k, c):
+    return (f"| {k} | {c['n']:,} | {c['mean']:+.4f} [{c['lo']:+.4f}, {c['hi']:+.4f}] | {c['vs_control']:+.4f} [{c['vs_lo']:+.4f}, {c['vs_hi']:+.4f}] | "
+            f"{c['half_A']:+.4f} / {c['half_B']:+.4f} | {c.get('p_holm', float('nan')):.3f} | {_ci(c['follow_net'])} | {_ci(c['fade_net'])} | {c['mean_cost']:.3f} |")
+
+
 def write_md(r):
     a = r["audit"]
-    md = ["# jump-after: results", "", f"Prereg: `forge/JUMP_AFTER_PREREG.md`. Run 2026-11-07, seed {r['seed']}, B = {r['B']}.", "",
-          "## Verdicts", ""] + [f"- `{k}`: **{v}**" for k, v in r["verdicts"].items()] + ["",
-          f"Detector: {a['flags']:,} first flags on {a['instruments']} instruments, {a['flags_per_instrument_year']:.1f} per instrument-year; {a['flags_covered']:,} on covered instruments, {a['sched_share_covered']:.0%} scheduled. The Gumbel value of {a['gumbel_crit']:.3f} flagged about half of sessions, so each instrument uses its own trailing 88th percentile (A1).", "",
-          "## After-jump path, signed 60-minute return, daily σ", "", "| cell | n | mean [95%] | control | vs control [95%] | half A / B | Holm p | follow net | fade net | cost |", "|---|---|---|---|---|---|---|---|---|---|"]
-    for k, c in r["path"].items():
-        md.append(f"| {k} | {c['n']:,} | {c['mean']:+.4f} [{c['lo']:+.4f}, {c['hi']:+.4f}] | {c['control']:+.4f} | {c['vs_control']:+.4f} [{c['vs_lo']:+.4f}, {c['vs_hi']:+.4f}] | {c['half_A']:+.4f} / {c['half_B']:+.4f} | {c['p_holm']:.3f} | {_ci(c['follow_net'])} | {_ci(c['fade_net'])} | {c['mean_cost']:.3f} |")
-    md += ["", "## Other horizons (descriptive)", "", "| cell | horizon | mean [95%] | vs control |", "|---|---|---|---|"]
-    for k in ("unscheduled", "scheduled", "all_34"):
-        for h, c in r["descriptive"][k].items():
+    H = ["| cell | n | mean [95%] | vs control [95%] | half A / B | Holm p | follow net | fade net | cost |", "|---|---|---|---|---|---|---|---|---|"]
+    md = ["# jump-after: results", "", f"Prereg: `forge/JUMP_AFTER_PREREG.md` with A1 and A2 (both pre-results). Seed {r['seed']}, B = {r['B']}. "
+          "Units: daily σ, signed so + means the burst carried on.", "", "## Verdicts", "", "Prereg gate, main read (01:00-21:00) and with the rollover:", ""]
+    for ver, vv in r["verdicts_prereg"].items():
+        md.append(f"- {'main' if ver == 'x' else 'with rollover'}: " + ", ".join(f"`{k}` **{x}**" for k, x in vv.items() if k.startswith("jump"))
+                  + (f" (Holm-significant, same sign both halves: {', '.join(vv['path_context_cells'])})" if vv["path_context_cells"] else ""))
+    md += ["", "Verdict gate (`checks.json`), main read:", "", "| question | verdict | why | power | planted min / large | shuffle |", "|---|---|---|---|---|---|"]
+    for q, c in r["gate"].items():
+        md.append(f"| {q} | **{c['verdict']}** | {c['reasons'][0]} | {c['power']:.2f} | {c['planted_min']['shift']:+.4f} of {c['planted_min']['injected']} / "
+                  f"{c['planted_large']['shift']:+.4f} of {c['planted_large']['injected']} | [{c['shuffle']['lo']:+.4f}, {c['shuffle']['hi']:+.4f}] |")
+    for ver, title in (("x", "Main read: first burst 01:00-21:00 London"), ("all", "With the rollover (A1 read, secondary)")):
+        rr = r["reads"][ver]
+        md += ["", f"## {title}", "", f"{rr['n_flags']:,} bursts in {rr['events']:,} distinct moments.", "", "### After-burst path, 60 minutes", ""] + H
+        md += [_row(k, c) for k, c in rr["path"].items()]
+        if "rollover_only" in rr:
+            md += ["", "Rollover bursts alone (21:00-01:00):", ""] + H + [_row("rollover", rr["rollover_only"])]
+        md += ["", "### Stop-through and intensity: Brier gain over σ, calendar, Monday and class", "", "| cell | n | base | gain [95%] | Holm p |", "|---|---|---|---|---|"]
+        for k, c in {**rr["stop_through"], **rr["intensity"]}.items():
+            md.append(f"| {k} | {c['n']:,} | {c['base']:.3f} | {c['gain']:+.5f} [{c['lo']:+.5f}, {c['hi']:+.5f}] | {c['p_holm']:.3f} |")
+    dsc = r["descriptive"]
+    md += ["", "## Descriptive (main read, not scored)", "", f"Size thirds cut at {dsc['size_cuts_sigma'][0]}σ and {dsc['size_cuts_sigma'][1]}σ.", ""] + H
+    for grp in ("by_size_m60", "by_size_common_m60", "by_block_m60", "by_class_m60"):
+        md += [_row(k, c) for k, c in dsc[grp].items()]
+    md += ["", "| cell | horizon | mean [95%] | vs control |", "|---|---|---|---|"]
+    for k, hs in dsc["horizons"].items():
+        for h, c in hs.items():
             md.append(f"| {k} | {h} | {c['mean']:+.4f} [{c['lo']:+.4f}, {c['hi']:+.4f}] | {c['vs_control']:+.4f} |")
-    md += ["", "## By sign and class, 60 minutes (descriptive)", "", "| group | n | mean [95%] | vs control |", "|---|---|---|---|"]
-    for s, g in r["descriptive"]["by_sign_m60"].items():
-        for k, c in g.items():
-            md.append(f"| {s} {k} | {c['n']:,} | {c['mean']:+.4f} [{c['lo']:+.4f}, {c['hi']:+.4f}] | {c['vs_control']:+.4f} |")
-    for k, c in r["descriptive"]["by_class_m60"].items():
-        md.append(f"| {k} | {c['n']:,} | {c['mean']:+.4f} [{c['lo']:+.4f}, {c['hi']:+.4f}] | {c['vs_control']:+.4f} |")
-    md += ["", "## Stop-through: Brier gain over σ, calendar, Monday and class", "", "| cell | n | base rate | gain [95%] | Holm p |", "|---|---|---|---|---|"]
-    for k, c in {**r["stop_through"], **r["intensity"]}.items():
-        md.append(f"| {k} | {c['n']:,} | {c['base']:.3f} | {c['gain']:+.5f} [{c['lo']:+.5f}, {c['hi']:+.5f}] | {c['p_holm']:.3f} |")
     (OUT / "RESULTS.md").write_text("\n".join(md) + "\n", encoding="utf-8")
     print("\n".join(md))
 

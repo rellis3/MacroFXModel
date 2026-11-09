@@ -28,7 +28,8 @@ def block(h):
 
 
 def main():
-    E = pd.read_parquet(OUT / "events.parquet", columns=["inst", "date", "slot", "kind", "sign", "L", "size", "hour", "spread0", "sched"])
+    E = pd.read_parquet(OUT / "events.parquet", columns=["inst", "date", "slot", "kind", "sign", "L", "size", "hour", "spread0", "sched", "ver"])
+    E = E[E.ver == "all"]                                        # the stage 2 look was on the A1 read
     F = E[E.kind == "flag"].copy()
     C = E[E.kind == "control"].copy()
     F["klass"] = F.inst.map(klass)
@@ -39,7 +40,7 @@ def main():
     F["spread_x"] = F.spread0 / F.typ
     # cojumps: how many instruments burst in the same 5-minute slot on the same day
     F["cojump"] = F.groupby(["date", "slot"]).inst.transform("size")
-    X = pd.read_parquet(OUT / "sessions.parquet", columns=["inst", "flag"])
+    X = pd.read_parquet(OUT / "sessions.parquet", columns=["inst", "flag_all"]).rename(columns={"flag_all": "flag"})
     sess = int(X.flag.notna().sum())                           # sessions where the detector could flag
     out = {"n": int(len(F)), "per_inst_year": round(len(F) / sess * 252, 1), "share_of_sessions": round(len(F) / sess, 3),
            "events": int(F.groupby(["date", "slot"]).ngroups)}
