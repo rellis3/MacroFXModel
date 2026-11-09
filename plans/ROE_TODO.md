@@ -13,7 +13,7 @@ Last updated 2026-11-09 (after P3).
 - Is the question wording what you would want to read? (Open `roe.html` after the first push.)
 - Item 4 (`hl_p75`, realised range vs the shipped line) is switched off because it uses a lockbox-adjacent layer. Leave off until the one evaluation has run?
 - Library cleanup: duplicate papers and author-name titles. OK to tidy?
-- Library no-login window closes by itself 2026-11-09 06:00 UTC (already passed: the library is login-gated again unless extended).
+- Library no-login window closes by itself at 06:00 UTC today (2026-11-09), after which the library needs the login again. Say if you want it extended; otherwise a later PR can remove the temporary code.
 
 ## Build backlog, in order
 | Phase | What | Needs from you |
