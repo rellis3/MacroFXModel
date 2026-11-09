@@ -4033,7 +4033,13 @@ app.get('/api/roe/status', _agentsGate, async (_req, res) => {
 app.get('/api/roe/questions', _agentsGate, async (_req, res) => {
   try {
     const [reg, idx] = await Promise.all([_ROE.readRegistry(kv), _r2Ok() ? _r2GetJSON(_ROE.QUESTIONS_INDEX_KEY).catch(() => null) : null]);
-    res.set('Cache-Control', 'no-store').json({ ok: true, status: _ROE.boardStatus(reg), groups: _ROE.boardGroups(idx), specs: Object.keys(idx?.specs ?? {}).length });
+    const groups = _ROE.boardGroups(idx), memo = new Map();   // related papers: rule-based library search (no model call, no cost), one search per distinct topic
+    for (const g of groups) for (const r of g.rows) {
+      const q = `${g.mechanism} ${String(r.label ?? '').replace(/\s*\(.*?\)\s*/g, ' ')}`.trim();
+      if (!memo.has(q)) { try { memo.set(q, ((await _libApi.find({ query: { q, n: 3 } }))?.json?.hits ?? []).map(h => ({ id: h.id, title: h.t, year: h.y ?? null }))); } catch { memo.set(q, []); } }
+      r.related = memo.get(q);
+    }
+    res.set('Cache-Control', 'no-store').json({ ok: true, status: _ROE.boardStatus(reg), groups, specs: Object.keys(idx?.specs ?? {}).length });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.get('/api/roe/runs', _agentsGate, async (_req, res) => {
