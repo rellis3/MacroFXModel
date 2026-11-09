@@ -43,12 +43,14 @@ def tick_rule(price):
 def load_live(inst, day):
     """Recorder rows for `day` by exchange time. Files roll on arrival time, so the next day's file is read too."""
     name = inst.replace(" ", "_")
-    d = next((x / name for x in LIVE_DIRS if (x / name / f"{day}_ticks_v2.csv").exists()), LIVE_DIRS[0] / name)
     nxt = (datetime.fromisoformat(day) + timedelta(days=1)).strftime("%Y-%m-%d")
-    parts = [pd.read_csv(f) for f in (d / f"{day}_ticks_v2.csv", d / f"{nxt}_ticks_v2.csv") if f.exists()]
+    # Read the day from EVERY recorder folder: after an NT8 restart the recorder can come back writing to the other folder, and
+    # taking only the first folder that has the file froze the page at the restart (2026-11-09: stuck at 07:44 while NQ recorded on).
+    files = [x / name / f"{dd}_ticks_v2.csv" for x in LIVE_DIRS for dd in (day, nxt)]
+    parts = [pd.read_csv(f) for f in files if f.exists()]
     if not parts:
-        sys.exit(f"no recorder file {d / (day + '_ticks_v2.csv')} (start it with nt8_record.py start)")
-    t = pd.concat(parts)
+        sys.exit(f"no recorder file for {name} {day} in {[str(x) for x in LIVE_DIRS]} (start it with nt8_record.py start)")
+    t = pd.concat(parts).drop_duplicates()
     t = t[t["type"].astype(str).str.lower() == "last"].copy()
     t["t"] = pd.to_datetime(t.exch_time, utc=True, errors="coerce")
     t = t[t.t.dt.strftime("%Y-%m-%d") == day].sort_values("t", kind="stable").reset_index(drop=True)
