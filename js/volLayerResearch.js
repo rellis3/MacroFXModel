@@ -366,7 +366,7 @@ export const DEEP_DIVE = [
 // Where each deep dive is in the six stages. A stage is done only when you have seen it.
 export const STAGES = {
   jumps: { at: 5, note: 'Stages 1 to 4 done: stage 1 on 2026-11-09, after the scoring, so out of order. Stages 3 and 4 ran as one because the prereg existed before the look. Now stage 5: your review. Merton\'s original paper is still to read; every copy was blocked.', done: ['2026-11-07: literature pass (abstracts only, so stage 1 is not done)', '2026-11-07: detector built, tested, recalibrated when it flagged half of all sessions', '2026-11-08: looked at all bursts and 30 charts, before-burst prices only. Problems: (1) 70-85% of bursts hit 3 or more instruments in the same 5 minutes, so these are mostly market-wide moves, not separate jumps; (2) the calendar holds only USD, EUR and GBP releases, so "no release" in Asia hours means unknown, not unscheduled; (3) the detector is relative to the hour, so Asia bursts are small in absolute terms, median 0.4σ against 0.77σ at US data; (4) the 21:00-01:00 window includes the futures close and the daily rollover; (5) my own summary said 47.6 a year from a wrong denominator, corrected to about 31', '2026-11-08: your four decisions written into the prereg before any outcome was read (A2): rollover shown with and without, market-wide vs own, news split only where the calendar sees the news, size thirds', '2026-11-09: scored. Two proof checks failed for reasons in the checks, fixed and stated as post-hoc (A3): the shuffle broke up bursts that hit together, and overfitting noise was read as an effect', '2026-11-09: path NULL as a trade, every cell at or below 0 after spread. Own bursts give back 0.025σ in 5 minutes; market-wide drift on 30 minutes. Large market-wide bursts +0.10σ, follow net +0.049σ [-0.010, +0.111], not scored', '2026-11-09: stop-through passed the prereg gate at 0.5σ by a hair, but all of it is 2019-2022 and none since, so I downgraded it to CONTEXT. Intensity (bursts cluster) CONTEXT, holds in both halves', '2026-11-09: stage 1. Read Lee-Mykland 2008 in full and the 2012 noise paper. Our detector matches theirs (formula, window 270, limit 5.37). Merton via lecture notes only. Found a wrong citation: the news-reversal claim is Xiao, Yin & Zhao 2020 (summary only), not Lee 2012. Fixed', '2026-11-09: noise check (descriptive, written down before the split was seen). Own-burst give-back grows with the spread at the burst: -0.011σ, -0.025σ, -0.043σ at 5 minutes from normal to wide spread. Partly noise, but not all of it. Market-wide bursts carry on in the normal and middle thirds, not the wide one. Next: stop orders'] },
-  execution: { at: 0, note: 'Noise-threshold stops wait until jumps is signed off.', done: [] },
+  execution: { at: 2, note: 'Started 2026-11-10 while jumps waits for your review. Stage 1 done (Osler x2 and Kou-Wang read; Kaminski-Lo blocked, abstract only). Now stage 2: building the noise-threshold curve on 2016-10 to 2022 only, for you to look at before anything is scored.', done: ['2026-11-10: stage 1. Read Osler 2003 and 2005 in full and Kou-Wang sections 1-4. Kaminski-Lo blocked everywhere. Key point, derived and checked by simulation: on a random walk, holding after an adverse move of d ends at -d on average, so a noise threshold exists only where small moves revert and bigger ones trend. Worked EURUSD example on the page.'] },
 };
 
 // Stage 1 for each deep dive: the theory in plain words, what was read and how, and what it changes for our tests.
@@ -417,6 +417,70 @@ export const STAGE1 = {
         'Merton first-passage: how much more often a stop is hit, and by how far it is overshot, once jumps are allowed. Still to run.',
         'The jump-test lesson says the limit must come from theory. On our data that limit flags half of all days. The lesson should say so.',
         'The news split rests on a paper we have only seen in summary. It needs reading before it is used as a reason.',
+      ] },
+    ],
+  },
+  execution: {
+    read: [
+      ['Osler 2003, Currency Orders and Exchange-Rate Dynamics (J. Finance; read as the 2001 NY Fed Staff Report 125)', 'Read in full, 36 pages incl. references.', 'newyorkfed.org/medialibrary/media/research/staff_reports/sr125.pdf'],
+      ['Osler 2005, Stop-Loss Orders and Price Cascades in Currency Markets (JIMF; read as the 2002 NY Fed Staff Report 150)', 'Read in full, main text and conclusion.', 'newyorkfed.org/medialibrary/media/research/staff_reports/sr150.pdf'],
+      ['Kou & Wang 2003, First Passage Times of a Jump Diffusion Process (Adv. Appl. Prob.; read as the 2002 preprint)', 'Sections 1-4 read (model, first passage, overshoot). Sections 5-6 (Laplace inversion, numbers) skimmed.', 'dam.brown.edu/people/huiwang/research/kou_wang_jump.pdf'],
+      ['Kaminski & Lo 2014, When Do Stop-Loss Rules Stop Losses? (J. Fin. Markets)', 'NOT read: every copy (MIT, SIFR, Wayback) was blocked on 2026-11-10. Only the abstract summary. The random-walk result below is our own derivation, checked by simulation.', 'dspace.mit.edu/handle/1721.1/114876'],
+      ['Our own earlier work', 'Read: stop-risk map (3.6M random stops, how far past the stop they fill), path map (races vs a random walk), the line-touch MAE-rule stop (cell J), residual-pca-stops.', 'forge/STOP_RISK_PREREG.md, forge/PATH_MAP_SPEC.md, forge/LINE_TOUCH_LIMIT_UNSEEN_PREREG.md'],
+    ],
+    sections: [
+      { h: 'The plain fact: on a random walk a stop changes nothing on average', lesson: 'trade-management-exits', lines: [
+        'Hold a trade to the end of the day. Look only at the days it went d against you at some point.',
+        'On a random walk, those days end on average exactly d down. From the moment it is d down, the future is a coin flip.',
+        'So a stop at d and no stop lose the same on average. The stop only changes the shape: many small losses instead of a few big ones.',
+        'Checked by simulation (fat tails, 20,000 days): days that went 0.25σ against ended -0.26σ; 0.5σ against ended -0.52σ; 1σ against ended -1.02σ. The small extra is the overshoot.',
+        'Then the spread makes every stop slightly worse. A stop can only help if price is not a random walk at that size.',
+      ] },
+      { h: 'What C.OG\'s noise threshold really measures', lesson: '', lines: [
+        'His rule: find the adverse move below which it says nothing about the outcome, and put the stop beyond it.',
+        'In numbers: for each d, the average end of trades that went d against, plus d. Call it the excess.',
+        'Excess above 0: trades that went d against tend to come back. Small moves are noise. A stop there cuts trades that would have recovered.',
+        'Excess below 0: trades that went d against keep going. The move is information. A stop there saves money.',
+        'Excess at 0 at every size: a random walk. There is no threshold, and any d you pick is picking noise.',
+        'So the noise threshold exists only if price reverts at small sizes and trends at bigger ones. That is a claim about the market, and we can measure it before building any trade.',
+        'It also needs to be measured from the entry the system really uses. Random entries tell us the market\'s shape; a real system\'s entries can differ.',
+      ] },
+      { h: 'Kaminski and Lo: the same point, for portfolios', lesson: '', lines: [
+        'From the abstract and the well-known result: under a random walk, a stop-loss rule lowers expected return. It can only add when returns have momentum.',
+        'This matches the excess idea above: a stop pays only where adverse moves keep going.',
+        'Their data is daily to monthly. Whether it holds within a day is for our data to say.',
+      ] },
+      { h: 'Osler: where real stop orders sit, and what happens there', lesson: '', lines: [
+        'One bank\'s book, 9,655 orders, Aug 1999 to Apr 2000, dollar-yen, euro-dollar, dollar-pound.',
+        'Take-profits sit on round numbers: about 10% of them exactly at 00, against about 4% of stop-losses.',
+        'Stop-loss buys sit just above round numbers (14% at 01-10 vs 7% at 90-99); stop-loss sells just below.',
+        'Price, 1996-98, minute quotes, New York hours: reverses more at round numbers (dollar-mark 59.3% vs 54.8% at arbitrary levels) and runs further after crossing (0.061% vs 0.054% in 15 minutes).',
+        'The reversal effect fades within 30 minutes; the run after crossing lasts at least 2 hours. Stronger in the quieter New York afternoon.',
+        'Very large stops ($50m+) sit near 00; the largest stop was over twice the largest take-profit. Cascades happen perhaps once a week.',
+        'Neither paper tests profit. Osler says so herself.',
+        'For us: our round-number test found the rejection replicates on 2016-2020 FX majors, but net R is negative. And a stop just beyond a round number is exactly where other people\'s stops sit, so it fills worse.',
+      ] },
+      { h: 'Kou and Wang: how far past the stop you get filled', lesson: 'merton-jump-diffusion', lines: [
+        'With jumps, price can cross a stop without trading at it. The gap between the stop and the fill is the overshoot.',
+        'For most jump models the overshoot has no formula. With exponential-sized jumps it does, because the exponential has no memory.',
+        'Their result: given that price jumps past the stop, how far past does not depend on where the stop is or how long it took. It has the same exponential shape every time.',
+        'And the chance of jumping past, rather than touching, settles to a fixed level for stops far away.',
+        'What we already measured (stop-risk map): ordinary minutes fill at -1.00R on average at any stop size; on the hour or half hour -1.02 to -1.03R, p99 up to -1.9R; over a weekend p99 -2.8R at a 0.5σ stop.',
+        'Next to test: is our overshoot the same size whatever the stop distance, as Kou-Wang says? If so, wider stops cost less in R from gaps, because the same overshoot is a smaller share.',
+      ] },
+      { h: 'Worked example: EURUSD at 08:00 London', lesson: '', lines: [
+        'Daily σ 0.50% = 54 pips. At 08:00, 83% of the day\'s variance is still to come (our 2019-2026 profile; 45% at 14:00, 7% at 20:00).',
+        'A stop 0.5σ away (27 pips) is touched before the day ends with chance 2 × Φ(-0.5 ÷ √0.83) ≈ 58% on a random walk, whichever way you traded.',
+        'At 1σ (54 pips) it is about 27%. The same 27-pip stop placed at 14:00 is touched about 45% of the time: time left matters as much as distance.',
+        'The median spread is 1.4 pips: 0.05R at a 27-pip stop, 0.03R at 54 pips. Wider stops pay less spread in R.',
+        'The noise-threshold question: of the 58% of days that go 27 pips against, do they end, on average, better than -27 pips (noise) or worse (information)? A random walk says exactly -27.',
+      ] },
+      { h: 'What this changes', lesson: '', lines: [
+        'Stage 2 measures the excess curve for direction-free random entries on every instrument, by time of day and holding horizon, on 2016-10 to 2022 only. 2023 to the lockbox stays unseen for stage 4.',
+        'If the excess is about 0 everywhere, there is no market-wide noise threshold. Stops then only reshape the distribution, and the place to look is a system\'s own entries.',
+        'Wherever the excess turns from positive to negative is a candidate threshold. C.OG\'s look-back windows (2 weeks to 12 months) then ask how stable it is.',
+        'The jump result already hints at the shape: own bursts give back a little (noise), market-wide bursts carry on (information).',
+        'Kou-Wang\'s overshoot claim can be checked on the stop-risk records we already have.',
       ] },
     ],
   },
