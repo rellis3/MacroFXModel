@@ -26,9 +26,19 @@ const big = v => (fin(v) ? Math.round(+v).toLocaleString('en-GB') : '–');
 const pxf = v => (!fin(v) ? '–' : Math.abs(v) >= 100 ? Math.round(+v).toLocaleString('en-GB') : (+v).toPrecision(5));
 
 // ── names: the OI feed's pair keys ↔ the terminal's market ids ──
-export const OI_TO_ID = { 'EUR/USD': 'EURUSD', 'GBP/USD': 'GBPUSD', 'USD/JPY': 'USDJPY', 'AUD/USD': 'AUDUSD', 'XAU/USD': 'GOLD', 'USD/CAD': 'USDCAD', 'USD/CHF': 'USDCHF', NAS100_USD: 'NQ', SPX500_USD: 'SPX500', US30_USD: 'US30', US2000_USD: 'US2000' };
+export const OI_TO_ID = { 'EUR/USD': 'EURUSD', 'GBP/USD': 'GBPUSD', 'USD/JPY': 'USDJPY', 'AUD/USD': 'AUDUSD', 'XAU/USD': 'GOLD', 'USD/CAD': 'USDCAD', 'USD/CHF': 'USDCHF', NAS100_USD: 'NQ', SPX500_USD: 'SPX500', US30_USD: 'US30', US2000_USD: 'US2000',
+  'XAG/USD': 'SILVER', 'XCU/USD': 'COPPER', WTICO_USD: 'WTI', BCO_USD: 'BRENT', NATGAS_USD: 'NATGAS' };
 const HEDGE_TO_ID = { EUR_USD: 'EURUSD', GBP_USD: 'GBPUSD', USD_JPY: 'USDJPY', AUD_USD: 'AUDUSD', XAU_USD: 'GOLD', USD_CAD: 'USDCAD', USD_CHF: 'USDCHF', NAS100_USD: 'NQ', SPX500_USD: 'SPX500', US30_USD: 'US30', US2000_USD: 'US2000' };
-export const NAME = { EURUSD: 'EUR/USD', GBPUSD: 'GBP/USD', USDJPY: 'USD/JPY', AUDUSD: 'AUD/USD', GOLD: 'Gold', USDCAD: 'USD/CAD', USDCHF: 'USD/CHF', NQ: 'Nasdaq 100', SPX500: 'S&P 500', US30: 'Dow', US2000: 'Russell 2000' };
+export const NAME = { EURUSD: 'EUR/USD', GBPUSD: 'GBP/USD', USDJPY: 'USD/JPY', AUDUSD: 'AUD/USD', GOLD: 'Gold', USDCAD: 'USD/CAD', USDCHF: 'USD/CHF', NQ: 'Nasdaq 100', SPX500: 'S&P 500', US30: 'Dow', US2000: 'Russell 2000',
+  NZDUSD: 'NZD/USD', GBPJPY: 'GBP/JPY', SILVER: 'Silver', COPPER: 'Copper', WTI: 'WTI crude', BRENT: 'Brent crude', NATGAS: 'Natural gas' };
+/** The markets the Swing Map (and so "The path") covers: SWING_MAP_INSTRUMENTS in server.js, DESK_SUBSETS.swingMap in js/deskPack.js. */
+export const PATH_MARKETS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GBPJPY', 'GOLD', 'NQ', 'SPX500'];
+/** The Options tab's one market list (owner 2026-11-10: one selector per tab), in a fixed order: metals, indices, FX, energy. */
+const ORDER = ['GOLD', 'SILVER', 'COPPER', 'NQ', 'SPX500', 'US30', 'US2000', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GBPJPY', 'WTI', 'BRENT', 'NATGAS'];
+export function optionMarkets(...keyLists) {
+  const ids = new Set(keyLists.flat().filter(Boolean).map(idOf));
+  return [...ids].sort((a, b) => ((ORDER.indexOf(a) + 1) || 99) - ((ORDER.indexOf(b) + 1) || 99) || a.localeCompare(b));
+}
 export const idOf = k => OI_TO_ID[k] ?? HEDGE_TO_ID[k] ?? String(k ?? '').replace(/[/_]/g, '').toUpperCase();
 
 // ── what the Evidence Book says about each kind of reading (js/deskEvidence.js ids in brackets) ──
@@ -347,7 +357,7 @@ export function walkTable(sm, walk, anchor = 'gammaCentre', o = WALK_OPTS_DEFAUL
 export function walkBar(hideSmall = false) {
   return `<div class="opt-walk-bar"><span class="opt-walk-chips" role="group" aria-label="time range">${['2W', '1M', '3M', 'All'].map(p => `<button type="button" class="opt-chip" data-wview="${p}" aria-pressed="false">${p}</button>`).join('')}</span><button type="button" class="opt-chip" data-wreset title="back to the starting view">Reset</button><label class="opt-walk-small" title="Expiries under 10% of live open interest: hide their dots, labels and expiry lines (the walk line still runs through them)"><input type="checkbox" data-wsmall${hideSmall ? ' checked' : ''}> hide small books</label><span class="opt-walk-hint">pinch or scroll to zoom · drag to move · tap a dot</span></div>`;
 }
-export function pathHtml(sm, inst, { walk = null, anchor = 'gammaCentre', width = 460, o = WALK_OPTS_DEFAULT, hideSmall = false, view = null } = {}) {
+export function pathHtml(sm, inst, { walk = null, anchor = 'gammaCentre', width = 460, o = WALK_OPTS_DEFAULT, hideSmall = false, view = null, pickMarket = true } = {}) {
   if (!sm) return '';
   if (!sm.ok) return `<div class="muted">${esc(sm.error ?? 'No path data for this market.')}</div>`;
   const insts = sm.instruments ?? [], A = walkAnchor(sm), sel = 'background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:3px';
@@ -361,7 +371,7 @@ export function pathHtml(sm, inst, { walk = null, anchor = 'gammaCentre', width 
     : fin(cb.ratio) ? `${esc(cb.label)} strikes × ${(+cb.ratio).toFixed(3)} (XAU ${pxs(cb.xauSpot)} ÷ GLD ${(+cb.spot).toFixed(2)}, ${esc(cb.xauAt ?? '')}) = XAU/USD; one contract = 100 shares = ${(+cb.ozPerContract).toFixed(2)} oz. Calls and puts are in ounces${src === 'combined' ? '; CME is weighed at 100 oz a contract' : ''}.`
     : `${esc(cb.label)} cash strikes ${fin(cb.cfdOffset) ? `${cb.cfdOffset >= 0 ? '+' : ''}${(+cb.cfdOffset).toFixed(2)} (the measured CFD − cash gap)` : 'with no CFD − cash offset measured (levels = the cash index)'}.${src === 'combined' ? ' Weighed by notional: Cboe $100 a point a contract, CME at its own contract size.' : ''}`;
   const asOfHtml = `<p class="opt-path-asof" style="margin:0 0 6px;font-size:11px;color:var(--tx3)">${asOf.map(a => `<b>${esc(a.label)}</b>: ${[a.oi, a.greeks].filter(Boolean).map(esc).join(' · ') || 'no as-of'}`).join(' &nbsp;|&nbsp; ')}${cb?.stale ? ' · <span class="dn">stale copy</span>' : ''}${how ? `<br>${how}` : ''}</p>`;
-  return `<div class="ch"><span class="lbl">The path · ${esc(inst)}</span><span class="r" style="display:flex;gap:6px;flex-wrap:wrap"><select id="opt-path-inst" aria-label="market" style="${sel}">${insts.map(i => `<option${i === inst ? ' selected' : ''}>${esc(i)}</option>`).join('')}</select>${srcSel}<select id="opt-path-anchor" aria-label="what each step goes to" style="${sel}">${Object.entries(WALK_ANCHORS).map(([k, l]) => `<option value="${k}"${k === anchor ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></span></div>
+  return `<div class="ch"><span class="lbl">The path · ${esc(inst)}</span><span class="r" style="display:flex;gap:6px;flex-wrap:wrap">${pickMarket ? `<select id="opt-path-inst" aria-label="market" style="${sel}">${insts.map(i => `<option${i === inst ? ' selected' : ''}>${esc(i)}</option>`).join('')}</select>` : ''}${srcSel}<select id="opt-path-anchor" aria-label="what each step goes to" style="${sel}">${Object.entries(WALK_ANCHORS).map(([k, l]) => `<option value="${k}"${k === anchor ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></span></div>
 <div class="opt-walk-opts" style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--tx3);margin:2px 0 6px">${[
     ['reach', 'within reach', 'Only step to a level price could plausibly reach by that expiry: inside the 90% range of a random walk'],
     ['implied', 'reach from implied vol', `Use each expiry's own implied vol from last night's CME capture for the range and the shading (implied-vol ranges are VALIDATED here)${sm.ivTerm?.points?.length ? '' : '. No implied vol in the last capture: realised is used'}`],
@@ -381,7 +391,7 @@ ${walkTable(sm, walk, anchor, o)}
 export function pairCard(inst, { oi, hist, hs } = {}) {
   const id = String(inst ?? '').toUpperCase(), row = (oi?.pairs ?? []).find(p => idOf(p.pair) === id), dm = (hs?.markets ?? []).find(m => idOf(m.pair) === id);
   const hd = '<div class="ch"><span class="lbl">Options · positioning and lines</span></div>';
-  if (!row && !dm) return `${hd}<div class="muted">No listed options book for this market (CME open interest covers ${Object.values(OI_TO_ID).join(', ')}).</div>`;
+  if (!row && !dm) return `${hd}<div class="muted">No listed options book for this market in the CME open-interest feed.</div>`;
   const st = row ? pcStats(hist?.markets?.[row.pair]) : null, rd = pcRead(st);
   return `${hd}${row ? `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${gaugeSvg(row.pcRatio, { w: 130, pct: st?.pct })}<div><div class="mono" style="font-size:18px">${fin(row.pcRatio) ? (+row.pcRatio).toFixed(2) : '–'} <span class="muted" style="font-size:11px">puts per call</span></div><div class="${rd.cls}">${esc(rd.word)}${st?.pct != null ? ` (${st.pct}th pct)` : ''}</div>${evChip('pc')}</div></div>` : ''}
 ${dm ? `<p style="margin:8px 0 0"><span class="chip ${dm.state === 'calms' ? 'up' : 'gold'}">${dm.state === 'calms' ? 'hedging calms moves' : 'hedging speeds moves'}</span> switch point ${pxf(dm.switchPoint)} (${sg(dm.switchDistPct, 2)}%). ${esc(dm.lines?.[4] ?? '')}</p>` : ''}

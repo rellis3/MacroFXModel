@@ -15,7 +15,7 @@ const pxFor = sym => { const d = /JPY/.test(sym) ? 3 : /USD$|EUR|GBP|AUD|CAD|CHF
 export function terrainHtml() {
   return `<div class="card" id="tr-card" style="padding:14px 14px 10px">
 <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:6px">
-<label class="muted" style="font-size:12px">Market <select id="tr-sym" style="background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:3px"></select></label>
+<b id="tr-name" style="font-size:13px"></b>
 <span id="tr-exp" class="tt-pills" style="margin-left:auto">${[[3, '≤3 DTE (daily)'], [30, '≤30 DTE'], [400, 'whole book']].map(([d, t], i) => `<button type="button" data-d="${d}" aria-pressed="${i ? 'false' : 'true'}">${t}</button>`).join('')}</span></div>
 <div class="muted" style="font-size:12.5px;margin-bottom:6px">Centre: open interest by strike, <span style="color:#6fb6ff">calls</span> right, <span style="color:#f0b04a">puts</span> left. Outer panels: one line per expiry. On SPX, NDX and RUT they are the live Cboe <b>IV smile</b> (vol points above or below the at-the-money vol; every line meets at spot). On other markets, where CME gives one vol per expiry, they are gamma by strike. The price range is about one day's plausible move; <b>≤3 DTE</b> keeps only the expiries that can matter today.</div>
 <canvas id="tr-cv" style="width:100%;height:760px;display:block;border-radius:8px;background:#090e13"></canvas>
@@ -40,26 +40,42 @@ const showTip = (ev, html) => { TIP ??= Object.assign(document.createElement('di
   TIP.innerHTML = html; TIP.style.display = 'block'; TIP.style.left = Math.min(innerWidth - TIP.offsetWidth - 10, ev.clientX + 16) + 'px'; TIP.style.top = Math.min(innerHeight - TIP.offsetHeight - 10, ev.clientY + 14) + 'px'; };
 const hideTip = () => { if (TIP) TIP.style.display = 'none'; };
 
-/** Fill the panel (terrainHtml() must already be in the DOM under `root`). state = the session object the caller keeps. */
-export async function mountTerrain(root, J, state = {}) {
-  const sel = root.querySelector('#tr-sym'), cv = root.querySelector('#tr-cv'), leg = root.querySelector('#tr-leg'), exp = root.querySelector('#tr-exp');
-  if (!sel || !cv) return;
+/** The stored open interest's market keys (OANDA style: 'XAU/USD', 'NAS100_USD'), for the tab's one market list. */
+export async function terrainKeys(J) {
+  const store = await loadStore(J).catch(() => ({}));
+  return Object.keys(store).filter(k => store[k] && store[k].spot > 0);
+}
+
+/**
+ * Fill the panel (terrainHtml() must already be in the DOM under `root`) for the tab's market. The market is chosen
+ * once for the whole Options tab (owner 2026-11-10), so this panel has no picker of its own: state.id is the
+ * terminal's market id (GOLD, NQ, EURUSD) and idOf maps a stored key to it. A market with no stored book says so
+ * rather than showing another one. state = the session object the caller keeps.
+ */
+export async function mountTerrain(root, J, state = {}, { idOf = k => k, nameOf = id => id } = {}) {
+  const cv = root.querySelector('#tr-cv'), leg = root.querySelector('#tr-leg'), exp = root.querySelector('#tr-exp'), nm = root.querySelector('#tr-name');
+  if (!cv) return;
   const store = await loadStore(J);
   const keys = Object.keys(store).filter(k => store[k] && store[k].spot > 0);
-  if (!keys.length) { leg.textContent = 'No stored open interest to draw.'; return; }
-  if (!sel.options.length) sel.innerHTML = keys.map(k => `<option value="${k}">${NAMES[k] ?? k}</option>`).join('');
-  sel.value = keys.includes(state.sym) ? state.sym : (keys.includes('NAS100_USD') ? 'NAS100_USD' : keys[0]);
+  const sym = keys.find(k => idOf(k) === state.id) ?? null;
+  if (nm) nm.textContent = nameOf(state.id);
   state.maxDte ??= 3;
   exp.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.d === state.maxDte));
   const draw = () => {
-    const sym = sel.value; state.sym = sym;
+    if (!sym) {
+      const g = cv.getContext('2d'); g.clearRect(0, 0, cv.width, cv.height); cv.style.display = 'none';
+      leg.textContent = `No stored open interest for ${nameOf(state.id)}. The terrain covers ${keys.map(k => nameOf(idOf(k))).join(', ') || 'no market today'}.`;
+      return;
+    }
+    cv.style.display = 'block';
+    state.sym = sym;
     const useSmile = SMILE_SYMS.includes(sym), smile = useSmile ? (SMILE[sym] ?? (loadSmile(sym, draw), { state: 'loading' })) : null;
     const r = drawTerrain(cv, { e: store[sym], sym, maxDte: state.maxDte, smile, smileCover: useSmile, px: pxFor(sym), fmtBig, showTip, hideTip });
     leg.innerHTML = r.legend || '';
     const lab = root.querySelector('#tr-lab'); if (lab) lab.href = `oi-dashboard-v2.html#${encodeURIComponent(sym)}`;
   };
-  sel.onchange = draw;
-  exp.querySelectorAll('button').forEach(b => b.onclick = () => { state.maxDte = +b.dataset.d; exp.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); draw(); });
-  if (!state.resize) { state.resize = true; let t = null; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if (root.isConnected && root.offsetParent) try { draw(); } catch { /* tab hidden */ } }, 150); }); }
+  state.draw = draw;
+  exp.querySelectorAll('button').forEach(b => b.onclick = () => { state.maxDte = +b.dataset.d; exp.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); state.draw?.(); });
+  if (!state.resize) { state.resize = true; let t = null; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if (root.isConnected && root.offsetParent) try { state.draw?.(); } catch { /* tab hidden */ } }, 150); }); }
   draw();
 }

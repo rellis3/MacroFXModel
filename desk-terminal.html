@@ -513,7 +513,7 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
 try { const t = localStorage.getItem('deskTerminalTab'); if (t) document.querySelector(`#tabs [data-t="${t}"]`)?.click(); } catch { /* ignore */ }
 
 // ── modal ──
-function openModal(html) { const m = $('modal'); m.innerHTML = `<div class="card" role="dialog" aria-modal="true">${html}</div>`; m.hidden = false; m.querySelector('.x')?.focus(); m.querySelector('.x')?.addEventListener('click', closeModal); }
+function openModal(html) { const m = $('modal'); m.innerHTML = `<div class="card" role="dialog" aria-modal="true">${html}</div>`; m.hidden = false; m.querySelectorAll('[data-aa]').forEach(b => globalThis.mountAnalyse?.(b)); m.querySelector('.x')?.focus(); m.querySelector('.x')?.addEventListener('click', closeModal); }
 function closeModal() { $('modal').hidden = true; $('modal').innerHTML = ''; }
 $('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
@@ -960,7 +960,7 @@ function assetCard(n, c, full = false) {
 <div class="drv">${sources(c.why).map(t => `<span>${t}</span>`).join('')}<span title="The card's own conviction (the Head's), not the global ruling's or a currency's">card conviction ${esc(c.conviction ?? '–')}</span><span>size ${c.size ?? '–'}${c.sizeBeforeCap && c.sizeBeforeCap !== c.size ? ` (from ${c.sizeBeforeCap})` : ''}</span></div>
 ${full ? `${c.levels ? '' : noLevels()}<div class="achart" id="achart"></div>` : (c.levels ? ladder(c) : noLevels()) + (globalThis.newsLatestLine?.(D.news, n) ?? '')}
 ${full ? `<p>${esc(c.why)}</p><div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${esc(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Target</b><span class="mono">${Math.sign(DIR[c.rating] ?? 0) >= 0 ? `up p50 ${c.levels.up.p50} · p75 ${c.levels.up.p75} · p90 ${c.levels.up.p90}` : `down p50 ${c.levels.down.p50} · p75 ${c.levels.down.p75} · p90 ${c.levels.down.p90}`}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${esc(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${esc(c.plan.timing)}</span></div>` : ''}</div>
-${deskView(n)}${globalThis.whatDrivesHtml?.(n) ?? ''}<p class="muted">The ladder is today's forecast range (p50, p75, p90 each side of the open); the purple band is the entry zone where the plan names one. ${SCALE_NOTE} The grade is the card's conviction, not a hit rate.</p>` : `<div class="muted" style="margin-top:6px">Read full analysis →</div>`}</div>`;
+${deskView(n)}${globalThis.analyseBoxHtml?.(n) ?? ''}${globalThis.whatDrivesHtml?.(n) ?? ''}<p class="muted">The ladder is today's forecast range (p50, p75, p90 each side of the open); the purple band is the entry zone where the plan names one. ${SCALE_NOTE} The grade is the card's conviction, not a hit rate.</p>` : `<div class="muted" style="margin-top:6px">Read full analysis →</div>`}</div>`;
 }
 function deskView(n) {
   const g = groupOf(n), a = D.run?.debate?.assets?.[g]?.view?.instruments?.[n];

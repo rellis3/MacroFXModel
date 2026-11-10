@@ -1419,6 +1419,24 @@ the evidence clerk and a staleness flag on the asset desks' per-instrument data.
   wrong yesterday and how often that kind of claim has come off, with the day count; never an impact). The terminal's
   Changed tab shows the table (regime, strongest/weakest, every currency, every sized card) and the tally.
 
+
+## 9an. Analyse one market on demand, on DeepSeek (owner, 2026-11-10)
+
+- **Why:** the morning run rates ~41 markets in 7 asset-desk calls, so each market gets a few sentences and is read
+  only from its legs (gold = global tone + USD). Nothing makes it reconcile its own drivers (real yields, breakevens,
+  ETF flows), which is how a read can explain gold's rise with a story the yields contradict.
+- **What:** an **Analyse** button on the Pair tab and in the asset card pop-up. `POST /api/desk-asset-analyse {inst}`
+  (`js/assetAnalysis.js`) sends one market's driver checklist (`DRIVERS`, per group), the morning card and asset
+  desk view, the global and leg rulings, the analysts' reports, its own pack data (`groupData`), 24 h of tier-1/2
+  headlines and the Evidence Book entries for its area. The reply rates each driver supports / contradicts / mixed /
+  no data, names what does not fit, gives bull and bear cases, levels, what to watch and gaps, and says whether it
+  agrees with the card. It never changes a card.
+- **Cost:** task `desk-asset` runs on **DeepSeek** by default (`js/modelRouter.js`; falls back to the global provider
+  with no DeepSeek key, and can be re-routed on the AI models page). About 30-40k tokens in, 2-3k out: about a cent a
+  press. Kept in memory for the day (reopening is free; "Run again" spends), at most 100 fresh reads a day.
+- **Not done (yet):** the drivers are a checklist for the model, not computed numbers. Putting computed driver
+  blocks (real yields, breakevens, DXY, ETF flows for gold, and so on) into the pack data is the next step and costs
+  nothing per call. Whether the deeper read is any more right than the card is a question for the scorecard, not assumed.
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.
