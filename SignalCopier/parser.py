@@ -27,7 +27,7 @@ import re
 # ticker), this list only feeds the review net.
 KNOWN_SYMBOLS = {
     'NAS100', 'US30', 'SP500', 'US500', 'SPX500', 'GER40', 'DAX', 'UK100',
-    'XAUUSD', 'GOLD', 'XAGUSD', 'SILVER', 'BTCUSD', 'ETHUSD', 'BITCOIN', 'ETHEREUM', 'USOIL', 'WTI', 'OIL',
+    'XAUUSD', 'GOLD', 'XAGUSD', 'DJI30', 'DJ30', 'DOW', 'SILVER', 'BTCUSD', 'ETHUSD', 'BITCOIN', 'ETHEREUM', 'USOIL', 'WTI', 'OIL',
     'EURUSD', 'GBPUSD', 'USDJPY', 'EURJPY', 'GBPJPY', 'AUDUSD', 'NZDUSD',
     'USDCAD', 'USDCHF', 'EURGBP', 'AUDJPY', 'CADJPY', 'CHFJPY', 'NZDJPY',
     'EURAUD', 'GBPAUD', 'EURCHF', 'GBPCHF', 'AUDCAD', 'AUDNZD', 'EURCAD',
@@ -35,6 +35,27 @@ KNOWN_SYMBOLS = {
 # words that sit where a symbol would and must never be read as one
 NOT_SYMBOLS = {'THE', 'NOW', 'LIMIT', 'STOP', 'FROM', 'AND', 'BUY', 'SELL', 'ALL', 'THIS', 'THAT',
                'TRADE', 'TRADES', 'ORDER', 'ORDERS', 'POSITION', 'HALF', 'PART', 'MARKET', 'AGAIN', 'INSTANT'}
+
+# Other names he uses for the same market. The parser keeps his symbol as
+# written (the export shows it); matching and the broker lookup go through
+# canonical(), so "DJI30" trades as US30 and a later "CLOSE the US30 …" still
+# finds it. 2026-11-10: a DJI30 signal was skipped as "not a symbol on this account".
+ALIASES = {
+    'DJI30': 'US30', 'DJ30': 'US30', 'DJI': 'US30', 'DJIA': 'US30', 'DOW': 'US30', 'DOW30': 'US30', 'WALLST': 'US30',
+    'WS30': 'US30', 'US30CASH': 'US30',
+    'US500': 'SP500', 'SPX500': 'SP500', 'SPX': 'SP500', 'SPX500CASH': 'SP500', 'US500CASH': 'SP500',
+    'NAS': 'NAS100', 'NASDAQ': 'NAS100', 'NDX': 'NAS100', 'USTEC': 'NAS100', 'US100': 'NAS100', 'USTECH100': 'NAS100',
+    'GOLD': 'XAUUSD', 'SILVER': 'XAGUSD',
+    'BITCOIN': 'BTCUSD', 'BTC': 'BTCUSD', 'ETHEREUM': 'ETHUSD', 'ETH': 'ETHUSD',
+    'GER30': 'GER40', 'DE40': 'GER40', 'DAX': 'GER40', 'DAX40': 'GER40',
+}
+
+
+def canonical(sym):
+    """One name per market: DJI30 / DJ30 / DOW -> US30, GOLD -> XAUUSD, …"""
+    s = str(sym or '').upper()
+    return ALIASES.get(s, s)
+
 
 NUM = r'(\d[\d,]*(?:\.\d+)?)'
 SYM = r'([A-Za-z][A-Za-z0-9]{2,9})'
