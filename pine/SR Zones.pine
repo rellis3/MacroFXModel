@@ -1,0 +1,166 @@
+//@version=6
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+// S/R ZONES — the desk-note ladder of support and resistance zones from the MacroFX site (owner request, 2026-11-10)
+//   Support T1..T6 below spot (green), Resistance T1..T6 above (red), from today's London midnight to 22:00 London.
+//   A single price draws as a line; a range draws as a thin dashed box. The number after the dot is how many source families
+//   sit in the zone (OI, gamma, forecast ladder, IV-adjusted ladder, desk card, volume profile) and sets the opacity.
+//
+// DATA: paste the export from  <site>/api/sr-zones/export?pair=all  (or the "S/R zones" option on the OI Lab page / bot-config OI-Conf tab).
+//   A long paste comes in parts (=====PART i/n=====): paste part 1 into box 1, part 2 into box 2, and so on (Pine caps a string at 4,096
+//   characters). The block whose alias list contains the chart's ticker (or its root) is drawn. Prices are OANDA CFD spot; on a futures
+//   chart (GC1!, NQ1!, 6E1! ...) the block's basis (futures − spot) is added.
+//
+// STATUS: Tier = distance from spot (nearer is reached more often). Sources agreeing is descriptive, not shown to predict a reaction.
+//   OI walls and ladder lines were each placebo-null as reaction levels in our own tests. A map, not a signal.
+// NOTE: written without a Pine compiler — if TradingView reports an error, the line number points at it.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+indicator("SR Zones", shorttitle="SR Zones", overlay=true, max_lines_count=100, max_labels_count=100, max_boxes_count=100)
+
+G1 = "1 · Data (one part per box)"
+paste1 = input.text_area("", "Paste — part 1", group=G1)
+paste2 = input.text_area("", "Paste — part 2", group=G1)
+paste3 = input.text_area("", "Paste — part 3", group=G1)
+paste4 = input.text_area("", "Paste — part 4", group=G1)
+paste5 = input.text_area("", "Paste — part 5", group=G1)
+paste6 = input.text_area("", "Paste — part 6", group=G1)
+forceKey = input.string("", "Force instrument (blank = auto)", group=G1, tooltip="Normally blank: the chart ticker is matched against each block's alias list. Type a block name such as GOLD or NQ to force one.")
+G2 = "2 · Show"
+showSup   = input.bool(true, "Support zones", group=G2)
+showRes   = input.bool(true, "Resistance zones", group=G2)
+maxTier   = input.int(6, "Max tier", minval=1, maxval=6, group=G2)
+minFam    = input.int(1, "Min source families", minval=1, maxval=6, group=G2)
+basisMode = input.string("Auto", "Futures basis", options=["Auto", "Always add", "Never add"], group=G2, tooltip="Auto adds the block's basis on a futures chart (type futures, or a ticker ending in 1!/2!).")
+showSrc   = input.bool(false, "Sources in the label", group=G2)
+showTable = input.bool(true, "Context table", group=G2)
+supCol    = input.color(color.rgb(38, 166, 91), "Support colour", group=G2)
+resCol    = input.color(color.rgb(232, 77, 77), "Resistance colour", group=G2)
+
+// ── parse ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+f_num(string s) =>
+    float v = str.tonumber(str.trim(s))
+    v
+
+f_transp(int nf) =>
+    int t = nf >= 4 ? 0 : nf == 3 ? 20 : nf == 2 ? 45 : 65
+    t
+
+if barstate.islastconfirmedhistory
+    string allTxt = paste1 + "\n" + paste2 + "\n" + paste3 + "\n" + paste4 + "\n" + paste5 + "\n" + paste6
+    array<string> rows = str.split(allTxt, "\n")
+    string tkU = str.upper(syminfo.ticker)
+    string rtU = str.upper(syminfo.root)
+    string fkU = str.upper(str.trim(forceKey))
+    bool found = false
+    bool inBlock = false
+    string blockName = ""
+    float spotX = na
+    float basisX = na
+    string dateX = ""
+    string gexX = "—"
+    string cotX = "—"
+    string deskX = "—"
+    string missX = ""
+    array<string> zoneRows = array.new<string>()
+    for ln0 in rows
+        string ln = str.trim(str.replace_all(ln0, "\r", ""))
+        if str.startswith(ln, "SRZ|")
+            inBlock := false
+            if not found
+                array<string> tk = str.split(ln, "|")
+                int nTk = array.size(tk)
+                if nTk >= 3
+                    string nm = str.upper(array.get(tk, 1))
+                    array<string> al = str.split(str.upper(array.get(tk, 2)), ",")
+                    bool hit = fkU != "" ? fkU == nm : (array.includes(al, tkU) or (rtU != "" and array.includes(al, rtU)))
+                    if hit
+                        found := true
+                        inBlock := true
+                        blockName := nm
+                        if nTk > 3
+                            for j = 3 to nTk - 1
+                                string t = array.get(tk, j)
+                                int eq = str.pos(t, "=")
+                                if not na(eq) and eq > 0
+                                    string k = str.substring(t, 0, eq)
+                                    string v = str.substring(t, eq + 1)
+                                    if k == "spot"
+                                        spotX := f_num(v)
+                                    else if k == "basis"
+                                        basisX := v == "na" ? na : f_num(v)
+                                    else if k == "date"
+                                        dateX := v
+                                    else if k == "gex"
+                                        gexX := v
+                                    else if k == "cot"
+                                        cotX := v
+                                    else if k == "desk"
+                                        deskX := v
+                                    else if k == "missing"
+                                        missX := v
+        else if inBlock and (str.startswith(ln, "S|") or str.startswith(ln, "R|"))
+            array.push(zoneRows, ln)
+
+    // futures shift
+    bool isFut = syminfo.type == "futures" or str.endswith(tkU, "1!") or str.endswith(tkU, "2!")
+    bool wantShift = basisMode == "Always add" or (basisMode == "Auto" and isFut)
+    bool cantShift = wantShift and na(basisX)
+    float shift = wantShift and not na(basisX) ? basisX : 0.0
+
+    // today's window: London midnight to 22:00 London of the export's date (else the last bar's London day)
+    int y = year(time, "Europe/London")
+    int m = month(time, "Europe/London")
+    int d = dayofmonth(time, "Europe/London")
+    if str.length(dateX) >= 10
+        float yy = f_num(str.substring(dateX, 0, 4))
+        float mm = f_num(str.substring(dateX, 5, 7))
+        float dd = f_num(str.substring(dateX, 8, 10))
+        if not na(yy) and not na(mm) and not na(dd)
+            y := int(yy)
+            m := int(mm)
+            d := int(dd)
+    int t0 = timestamp("Europe/London", y, m, d, 0, 0)
+    int t1 = timestamp("Europe/London", y, m, d, 22, 0)
+
+    if found and not cantShift
+        for zr in zoneRows
+            array<string> f = str.split(zr, "|")
+            if array.size(f) >= 5
+                bool isSup = array.get(f, 0) == "S"
+                float tierF = f_num(array.get(f, 1))
+                float lo = f_num(array.get(f, 2))
+                float hi = f_num(array.get(f, 3))
+                float nfF = f_num(array.get(f, 4))
+                string src = array.size(f) >= 6 ? array.get(f, 5) : ""
+                int tier = na(tierF) ? 9 : int(tierF)
+                int nf = na(nfF) ? 1 : int(nfF)
+                bool show = (isSup ? showSup : showRes) and tier <= maxTier and nf >= minFam and not na(lo) and not na(hi)
+                if show
+                    float pLo = lo + shift
+                    float pHi = hi + shift
+                    color c = isSup ? supCol : resCol
+                    int tr = f_transp(nf)
+                    bool isRange = math.abs(pHi - pLo) >= syminfo.mintick
+                    string px = isRange ? str.tostring(pLo, format.mintick) + "–" + str.tostring(pHi, format.mintick) : str.tostring(pLo, format.mintick)
+                    string txt = (isSup ? "Support T" : "Resistance T") + str.tostring(tier) + " " + px + " · " + str.tostring(nf) + (showSrc and src != "" ? "\n" + src : "")
+                    if isRange
+                        box.new(left=t0, top=pHi, right=t1, bottom=pLo, xloc=xloc.bar_time, border_color=color.new(c, tr), border_width=1, border_style=line.style_dashed, bgcolor=color.new(c, math.min(95, tr + 80)))
+                    else
+                        line.new(x1=t0, y1=pLo, x2=t1, y2=pLo, xloc=xloc.bar_time, color=color.new(c, tr), width=tier == 1 ? 2 : 1, style=line.style_solid)
+                    label.new(x=t1, y=(pLo + pHi) / 2, text=txt, xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.black, 100), textcolor=color.new(c, math.max(0, tr - 20)), size=size.small)
+
+    if showTable
+        table tb = table.new(position.top_right, 2, 7, bgcolor=color.new(color.black, 30), border_width=1)
+        table.cell(tb, 0, 0, "S/R zones", text_color=color.white, text_size=size.small)
+        table.cell(tb, 1, 0, found ? blockName + " " + dateX : "no block for " + syminfo.ticker, text_color=color.white, text_size=size.small)
+        table.cell(tb, 0, 1, "spot (export)", text_color=color.gray, text_size=size.small)
+        table.cell(tb, 1, 1, na(spotX) ? "—" : str.tostring(spotX + shift, format.mintick), text_color=color.white, text_size=size.small)
+        table.cell(tb, 0, 2, "gex", text_color=color.gray, text_size=size.small)
+        table.cell(tb, 1, 2, gexX, text_color=color.white, text_size=size.small)
+        table.cell(tb, 0, 3, "cot", text_color=color.gray, text_size=size.small)
+        table.cell(tb, 1, 3, cotX, text_color=color.white, text_size=size.small)
+        table.cell(tb, 0, 4, "desk", text_color=color.gray, text_size=size.small)
+        table.cell(tb, 1, 4, deskX, text_color=color.white, text_size=size.small)
+        table.cell(tb, 0, 5, "basis", text_color=color.gray, text_size=size.small)
+        table.cell(tb, 1, 5, cantShift ? "futures chart but no basis for this book: nothing drawn" : shift != 0 ? "+" + str.tostring(shift, format.mintick) + " added (futures)" : "CFD spot terms", text_color=cantShift ? color.orange : color.white, text_size=size.small)
+        table.cell(tb, 0, 6, "note", text_color=color.gray, text_size=size.small)
+        table.cell(tb, 1, 6, "tier = distance; families descriptive" + (missX != "" ? " · missing: " + missX : ""), text_color=color.gray, text_size=size.tiny)

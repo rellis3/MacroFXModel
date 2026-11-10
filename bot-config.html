@@ -6888,6 +6888,14 @@ python oi_vol_bot/oi_vol_bot.py --live --url &lt;dashboard-url&gt;</pre>
       </div>
       <textarea id="oicExportOut" readonly rows="6" style="width:100%;margin-top:8px;background:var(--s3);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px;font:11px 'DM Mono',monospace"></textarea>
       <div class="bot-banner-sub" style="margin-top:6px">Same <code>TZ</code> line format as the OI and OI-Conf blocks, titled <code>OI-CONF BOT TRADES</code>. The OI Bot Trades indicator picks the bot by that title; until it is taught the third title it will not colour these boxes, but the lines parse.</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+        <span style="font-size:12px;font-weight:600;color:#ffcc80">OI confluence levels — two options</span>
+        <button class="btn-save" style="background:transparent;border:1px solid #ffcc80;color:#ffcc80" onclick="oiConfLevelsExport('core', this)" title="The existing OI tiers export (OI levels + ladder tiers, today only, lean) - unchanged">1 · Core OI levels</button>
+        <button class="btn-save" style="background:transparent;border:1px solid #ffcc80;color:#ffcc80" onclick="oiConfLevelsExport('srz', this)" title="Grouped Support/Resistance T1-T6 zones per instrument for pine/SR Zones.pine: OI, gamma, forecast + IV-adjusted ladders, desk card, nPOC/HVN/LVN">2 · S/R zones</button>
+        <span id="oicLvlStatus" class="bot-banner-sub" style="margin:0"></span>
+      </div>
+      <div id="oicLvlParts"></div>
+      <div class="bot-banner-sub" style="margin-top:6px">Display only, nothing here feeds the bot. S/R zones: Tier = distance from spot (nearer is reached more often); sources agreeing is descriptive, not shown to predict a reaction.</div>
     </div>
 
     <!-- Live status -->
@@ -8786,7 +8794,7 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
   });
 })();
 </script>
-<script type="module" src="js/bot-config.js?v=3"></script>
+<script type="module" src="js/bot-config.js?v=4"></script>
 <script type="module" src="js/agentsTab.js?v=1"></script>
 <!-- Classic (not module) and BEFORE the inline script below, which reads
      window.POS_BOTS synchronously. A module here would be deferred and arrive

@@ -7373,6 +7373,37 @@ async function oiConfExportCopy() {
   } catch (e) { say('Error: ' + e.message, 'var(--red)'); }
 }
 window.oiConfExportCopy = oiConfExportCopy;
+// The two OI confluence level exports (display only): 'core' = the existing OI tiers export, unchanged; 'srz' = the S/R zones (js/srZones.js).
+// Long pastes come as =====PART i/n===== parts (Pine strings are capped at 4,096 characters): one box + Copy button per part.
+async function oiConfLevelsExport(kind, btn) {
+  const st = document.getElementById('oicLvlStatus'), box = document.getElementById('oicLvlParts');
+  const say = (t, c) => { if (st) { st.textContent = t; st.style.color = c || 'var(--text3)'; } };
+  const url = kind === 'srz' ? '/api/sr-zones/export?pair=all' : '/api/oi-tiers/export?mode=today&lean=1';
+  try {
+    say('Fetching… (10-30 s)'); if (btn) btn.disabled = true;
+    const r = await fetch(url, { cache: 'no-store' }); const text = await r.text();
+    if (!r.ok) { say(text || ('Error ' + r.status), 'var(--amber)'); return; }
+    const parts = /^=====PART \d+\/\d+=====$/m.test(text) ? text.split(/^=====PART \d+\/\d+=====$/m).slice(1).map(p => p.replace(/^\r?\n/, '').replace(/\r?\n$/, '')) : [text];
+    if (box) {
+      box.innerHTML = '';
+      parts.forEach((p, i) => {
+        const wrap = document.createElement('div'); wrap.style.marginTop = '8px';
+        const b = document.createElement('button'); b.className = 'btn-save'; b.style.cssText = 'background:transparent;border:1px solid #444;color:var(--text3)';
+        b.textContent = parts.length > 1 ? `Copy part ${i + 1} of ${parts.length}` : 'Copy';
+        const ta = document.createElement('textarea'); ta.readOnly = true; ta.rows = 6; ta.value = p;
+        ta.style.cssText = "width:100%;margin-top:4px;background:var(--s3);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px;font:11px 'DM Mono',monospace";
+        b.onclick = async () => { try { await navigator.clipboard.writeText(p); b.textContent = 'Copied ✓'; } catch (e) { ta.focus(); ta.select(); } };
+        wrap.append(b, ta); box.append(wrap);
+      });
+    }
+    let copied = false;
+    if (parts.length === 1) { try { await navigator.clipboard.writeText(parts[0]); copied = true; } catch (e) { /* the box below has it */ } }
+    const what = kind === 'srz' ? `S/R zones, ${(text.match(/^SRZ\|/gm) || []).length} instruments` : 'core OI levels';
+    say(parts.length > 1 ? `${what}: ${parts.length} parts, copy each into its own box` : copied ? `Copied ✓ (${what})` : `Ready (${what}), copy from the box`, '#ffcc80');
+  } catch (e) { say('Error: ' + e.message, 'var(--red)'); }
+  finally { if (btn) btn.disabled = false; }
+}
+window.oiConfLevelsExport = oiConfLevelsExport;
 async function oiConfRefresh(btn) {
   const was = btn.textContent; btn.disabled = true; btn.textContent = 'Working…';
   const st = document.getElementById('oicExportStatus');

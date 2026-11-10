@@ -95,6 +95,7 @@ svg text{font-family:var(--mono)}
     <button class="btn" id="profAllBtn" title="Every FX pair, gold and index in one paste (no commodities, about 28K characters, under Pine v6's 40,960 limit), with P(touch) on each level: the indicator picks the block that matches the chart, like the Confluence Zones indicator. Takes 10-20 s.">Profile · core</button>
     <button class="btn" id="profEveryBtn" title="Everything: FX, gold, indices AND the commodities (Brent, natgas, WTI, silver, copper, platinum). Same wide ±3 day-sigma window as core. Grains, sugar, platinum and palladium are left out; ask for them by name. Takes 10-20 s.">Profile · all</button>
     <button class="btn" id="tiersBtn" title="OI levels + forecast ladder + IV-adjusted ladder + Confluence Zones grouped into distance-ranked tiers. A SEPARATE export: paste it instead of the OI section of the normal export.">Tiers export</button>
+    <button class="btn" id="srzBtn" title="S/R zones: OI walls/flips, GEX, the forecast and IV-adjusted ladders, the desk card and the volume profile (nPOC/HVN/LVN) grouped into Support/Resistance T1-T6 per instrument, for pine/SR Zones.pine. Tier = distance; sources agreeing is descriptive.">S/R zones</button>
     <a class="btn" href="oi-level-lab.html" title="What the OI lines actually did: each line scored against random lines on the archived nightly captures (exploratory)">Level Lab</a>
     <button class="btn" id="profBooksBtn" title="The OI Profile paste for ALL core instruments (FX majors, gold, indices) with the lines of EVERY expiry book, not only the strongest one the normal Profile draws. Paste once; the indicator shows the block matching the chart. Hidden-book lines are tagged (· 0–1d) and fainter. Raise 'max levels' in the indicator to see them all.">All lines</button>
     <a class="btn" href="oi-all-lines.html" title="A page with every line from every expiry book on one price ladder and a sortable table, next to what the OI Profile draws (one-off, 2026-10-30)">Lines page</a>
@@ -233,6 +234,12 @@ svg text{font-family:var(--mono)}
     <div class="legend">Mechanics, not a signal: how much dealers must trade says nothing about which way price goes. Walls and flips did not beat placebo levels in earlier tests; this view has its own placebo test registered first (oi_research_book/HEDGE_FLOW_PREREG.md). Assumes dealers are long calls and short puts and hold the other side of all open interest, so sizes are upper bounds.</div>
   </div>
 
+  <div class="card" id="srzCard">
+    <h2><em>05s</em> S/R zones — the desk-note ladder <span class="tgl"><button class="btn" id="srzCardBtn" title="Open the S/R zones export (paste for pine/SR Zones.pine)">Export</button></span></h2>
+    <div class="sub">Support and resistance zones for this market: OI walls, max pain and implied-move edges · gamma/GEX/charm/vanna flips · the vol forecast ladder (median/75th/90th) · the IV-adjusted ladder · the desk card's zone and invalidation · naked POCs and the last five London sessions' HVN/LVN. Points within 0.15σ are grouped (zone no wider than 0.3σ), up to six tiers a side within 2.5σ. <b>Tier = distance from spot</b> (nearer is reached more often). <b>Families</b> counts the kinds of source in the zone: descriptive, not shown to predict a reaction (walls and ladder lines were each placebo-null).</div>
+    <div id="srzBody" style="font-size:13px"></div>
+  </div>
+
   <h2 class="sech"><em>06</em> The brief — six questions, in order <span>how far can price go · which levels will be reached · where hedging calms or amplifies · is the market calmer or more nervous · is positioning building · what changed overnight</span></h2>
   <div id="brief"></div>
 
@@ -250,6 +257,7 @@ svg text{font-family:var(--mono)}
 <div id="tiersModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:20;padding:4vh 4vw">
   <div class="card" style="height:100%;display:flex;flex-direction:column;gap:10px;margin:0">
     <div style="display:flex;gap:10px;align-items:center"><b id="exportTitle">OI tiers export</b>
+      <span class="tgl" id="xkChoice" title="Two options for the OI confluence output: the core OI levels export (unchanged) or the grouped S/R zones"><span class="pill" data-xk="tiers">Core OI levels</span><span class="pill" data-xk="srz">S/R zones</span></span>
       <label class="pill" style="cursor:pointer"><input type="checkbox" id="tiersToday" checked style="margin-right:6px">today only</label>
       <label class="pill" style="cursor:pointer"><input type="checkbox" id="tiersFut" style="margin-right:6px">futures terms</label>
       <label class="pill" style="cursor:pointer" title="Only what the indicator reads (drops the explanatory TIERS sentences and legends)"><input type="checkbox" id="tiersLean" checked style="margin-right:6px">lean</label>
@@ -1657,6 +1665,7 @@ async function refresh(){
   futPill();
   try { CUR = derive(SYM); rail(); } catch (err) { console.warn('[oi-v2] derive', err.message); lwMsg('Could not read the options data for ' + esc(NAMES[SYM] || SYM) + ': ' + esc(err.message)); return; }
   drawHedging();     // async and self-contained: first, so a failure in another panel cannot skip it
+  drawSrz().catch(() => {});     // S/R zones card (own fetch; a failure only blanks that card)
   for (const f of [stats, drawCog, syncSmile, drawBars, drawRipple, drawGreeks, drawHedgeFlow, drawDayDrift, drawSurfaceDay, drawFootprint, oixDecorate, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
   $('#note').innerHTML = `<span>Source: oi_store (${esc(STORE[SYM]?.savedAt || '')}) · candles: OANDA H1 · colours are the platform's own sign convention (calls − puts, dealers long calls / short puts). Analysis views, not signals — wall and flip effects did not beat placebo levels in your own tests.</span>`;
   await drawTerrain();     // builds the gamma field + curve the brief's structure panel reads
@@ -1699,8 +1708,39 @@ $('#profEveryBtn').onclick = () => { EXPORT_KIND = 'profileEvery'; $('#exportTit
 $('#profAllBtn').onclick = () => { EXPORT_KIND = 'profileAll'; $('#exportTitle').textContent = 'OI Profile paste — core instruments: FX, gold, indices (the indicator picks the one matching the chart)'; $('#tiersModal').style.display = 'block'; loadProfileAll(); };
 $('#profBtn').onclick = () => { EXPORT_KIND = 'profile'; $('#exportTitle').textContent = 'OI Profile paste — ' + (NAMES[SYM] || SYM) + ' (into pine/OI Profile.pine › 1 · Data)'; $('#tiersModal').style.display = 'block'; loadProfile(); };
 $('#profBooksBtn').onclick = () => { EXPORT_KIND = 'profileBooks'; $('#exportTitle').textContent = 'OI Profile paste, EVERY expiry book — all core instruments: FX, gold, indices (the indicator picks the one matching the chart; raise max levels to draw them all)'; $('#tiersModal').style.display = 'block'; loadProfileBooks(); };
-$('#tiersGo').onclick = () => (EXPORT_KIND === 'levels' ? loadLevels() : EXPORT_KIND === 'profileAll' ? loadProfileAll() : EXPORT_KIND === 'profileEvery' ? loadProfileEvery() : EXPORT_KIND === 'profileBooks' ? loadProfileBooks() : EXPORT_KIND === 'profile' ? loadProfile() : loadTiers()); $('#tiersClose').onclick = () => { $('#tiersModal').style.display = 'none'; };
+$('#tiersGo').onclick = () => (EXPORT_KIND === 'srz' ? loadSrz() : EXPORT_KIND === 'levels' ? loadLevels() : EXPORT_KIND === 'profileAll' ? loadProfileAll() : EXPORT_KIND === 'profileEvery' ? loadProfileEvery() : EXPORT_KIND === 'profileBooks' ? loadProfileBooks() : EXPORT_KIND === 'profile' ? loadProfile() : loadTiers()); $('#tiersClose').onclick = () => { $('#tiersModal').style.display = 'none'; };
 $('#tiersCopy').onclick = () => { try { navigator.clipboard.writeText($('#tiersTxt').value); $('#tiersCopy').textContent = 'Copied ✓'; setTimeout(() => $('#tiersCopy').textContent = 'Copy', 1500); } catch (_) { $('#tiersTxt').select(); } };
+// ── S/R zones (js/srZones.js): the second option for the OI confluence output, next to the core OI levels (tiers) export ──
+async function loadSrz(){ const ta = $('#tiersTxt'); $('#tiersParts').style.display = 'none'; ta.style.display = ''; ta.value = 'building S/R zones for every instrument (OANDA M5 + volume profile, ~10-30 s)...';
+  try { const r = await fetch('/api/sr-zones/export?pair=all', { cache: 'no-store' }); showExport(await r.text()); }
+  catch (e) { ta.value = 'Export failed: ' + e.message; } }
+function xkMark(){ document.querySelectorAll('#xkChoice [data-xk]').forEach(p => p.classList.toggle('on', p.dataset.xk === EXPORT_KIND)); $('#xkChoice').style.display = (EXPORT_KIND === 'tiers' || EXPORT_KIND === 'srz') ? '' : 'none'; }
+function openSrz(){ EXPORT_KIND = 'srz'; $('#exportTitle').textContent = 'S/R zones export - paste into pine/SR Zones.pine (one part per box)'; $('#tiersModal').style.display = 'block'; xkMark(); loadSrz(); }
+$('#srzBtn').onclick = openSrz; $('#srzCardBtn').onclick = openSrz;
+['#tiersBtn', '#lvlBtn', '#profBtn', '#profAllBtn', '#profEveryBtn', '#profBooksBtn'].forEach(id => { const b = $(id); if (b) b.addEventListener('click', xkMark); });
+document.querySelectorAll('#xkChoice [data-xk]').forEach(p => { p.style.cursor = 'pointer'; p.onclick = () => { if (p.dataset.xk === 'srz') openSrz(); else $('#tiersBtn').click(); }; });
+const SRZ = { at: {}, data: {} };
+async function drawSrz(){
+  const body = $('#srzBody'); if (!body) return; const sym = SYM;
+  let it = SRZ.data[sym] && Date.now() - SRZ.at[sym] < 5 * 60e3 ? SRZ.data[sym] : null;
+  if (!it) {
+    body.innerHTML = '<div class="legend">loading S/R zones...</div>';
+    try { const r = await fetch('/api/sr-zones?pair=' + encodeURIComponent(sym), { cache: 'no-store' }); const j = await r.json(); if (!j.ok) throw new Error(j.error || ('HTTP ' + r.status)); it = j.items[0]; SRZ.data[sym] = it; SRZ.at[sym] = Date.now(); }
+    catch (e) { if (sym === SYM) body.innerHTML = '<div class="legend">S/R zones unavailable: ' + esc(e.message) + '</div>'; return; }
+  }
+  if (sym !== SYM || !it) return;
+  const dp = it.digits ?? 2, f = v => (+v).toFixed(dp), one = z => Math.abs(z.hi - z.lo) < 1e-12;
+  const rng = z => one(z) ? f(z.lo) : f(z.lo) + '–' + f(z.hi);
+  const rngF = z => it.basis == null ? '—' : one(z) ? f(z.lo + it.basis) : f(z.lo + it.basis) + '–' + f(z.hi + it.basis);
+  const row = (z, side) => `<tr style="border-top:1px solid var(--line2)"><td style="padding:4px 6px;color:${side === 'S' ? 'rgb(70,184,122)' : 'rgb(232,97,95)'};font-weight:600;white-space:nowrap">${side === 'S' ? 'Support' : 'Resistance'} T${z.tier}</td><td style="padding:4px 6px;font-family:var(--mono);white-space:nowrap">${rng(z)}</td><td style="padding:4px 6px;font-family:var(--mono);color:var(--tx3);white-space:nowrap">${rngF(z)}</td><td style="padding:4px 6px">${z.dist.toFixed(2)}σ</td><td style="padding:4px 6px;white-space:nowrap">${z.nFamilies} · ${esc(z.families.join(', '))}</td><td style="padding:4px 6px;color:var(--tx2)">${esc(z.sources.join(' + '))}</td></tr>`;
+  const res = [...it.zones.resistance].reverse().map(z => row(z, 'R')).join('');
+  const sup = it.zones.support.map(z => row(z, 'S')).join('');
+  const spotRow = `<tr><td colspan="6" style="padding:6px;text-align:center;color:var(--tx3);border-top:1px dashed var(--line2)">spot ${f(it.spot)} · one day's σ ${f(it.sigma)} · ${esc(it.date)}</td></tr>`;
+  const ctx = [it.gex ? 'GEX ' + it.gex : null, it.cot ? 'COT ' + it.cot : null, it.desk ? 'desk ' + it.desk : null,
+    it.basis != null ? 'futures basis ' + (it.basis >= 0 ? '+' : '') + f(it.basis) + (it.basisAgeH != null ? ' (' + it.basisAgeH + 'h old)' : '') : 'no futures basis (inverted or unit-scaled book)',
+    it.missing?.length ? 'empty sources: ' + it.missing.join(', ') : null].filter(Boolean);
+  body.innerHTML = `<div class="legend" style="margin:0 0 8px">${esc(ctx.join(' · '))}</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="color:var(--tx3);text-align:left"><th style="padding:4px 6px">Zone</th><th style="padding:4px 6px">CFD spot</th><th style="padding:4px 6px">Futures</th><th style="padding:4px 6px">Distance</th><th style="padding:4px 6px">Families</th><th style="padding:4px 6px">Sources</th></tr></thead><tbody>${res || '<tr><td colspan="6" style="padding:4px 6px;color:var(--tx3)">no resistance zone within 2.5σ</td></tr>'}${spotRow}${sup || '<tr><td colspan="6" style="padding:4px 6px;color:var(--tx3)">no support zone within 2.5σ</td></tr>'}</tbody></table></div>`;
+}
 $('#mNear').onclick = () => { NEAR = true; $('#mNear').classList.add('on'); $('#mAll').classList.remove('on'); refresh(); };
 $('#mAll').onclick = () => { NEAR = false; $('#mAll').classList.add('on'); $('#mNear').classList.remove('on'); refresh(); };
 document.querySelectorAll('[data-ah]').forEach(b => b.onclick = () => { AH = +b.dataset.ah; document.querySelectorAll('[data-ah]').forEach(x => x.classList.toggle('on', x === b)); drawAhead(); });

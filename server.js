@@ -333,6 +333,7 @@ import { levelHeat } from './js/levelHeat.js';                 // per-level deal
 import { buildOILevelText, leanOIText } from './js/oiLevelExport.js';
 import { wallStrengthTier as _oiWallTier } from './js/oiConfluence.js';
 import { ladderLegs as _tierLadderLegs, czLegs as _tierCzLegs } from './js/oiTiers.js';
+import { createSrZones } from './js/srZonesRoutes.js';   // S/R zones export (side by side with OI tiers; display only)
 import { OI_CONF_DEFAULTS, volLines as _confVolLines, oiLevelList as _confOiLevels, findCoincidences as _confFind, buildConfZones as _confZones, confTolerance as _confTol } from './js/oiConf.js';
 import { sessionState as _irSessionState, reforecast as _irReforecast, morningLevels as _irMorning } from './js/intradayRange.js';
 import { oiGexLadder as _oiGexLadder, computeExpiryLevels as _oiComputeExpiry, oiMatrixExpiryLegs as _oiMatrixLegs, oiFlatVol as _oiFlatVol, oiFuturesTermsPrice as _oiFutPx } from './js/oi.js';
@@ -30781,6 +30782,35 @@ app.get('/api/oi-tiers/export', async (req, res) => {
     res.type('text/plain').send(text);
   } catch (e) { res.status(500).type('text/plain').send(`OI tiers error: ${e.message}`); }
 });
+
+// ── S/R ZONES (js/srZones.js + js/srZonesRoutes.js) — SIDE BY SIDE with the OI tiers export above; nothing there changes, no bot reads it ──
+// OI walls/flips, GEX, the forecast + IV-adjusted ladders, the desk card's zone/invalidation and the volume profile (nPOC/HVN/LVN), grouped
+// into distance-ranked zones either side of spot. GET /api/sr-zones/export?pair=gold|all (text for pine/SR Zones.pine) · GET /api/sr-zones (JSON).
+const _SRZ_OA = { 'EUR/USD': 'EUR_USD', 'GBP/USD': 'GBP_USD', 'USD/JPY': 'USD_JPY', 'AUD/USD': 'AUD_USD', 'XAU/USD': 'XAU_USD', 'USD/CAD': 'USD_CAD', 'USD/CHF': 'USD_CHF',
+  'NAS100_USD': 'NAS100_USD', 'SPX500_USD': 'SPX500_USD', 'US30_USD': 'US30_USD', 'US2000_USD': 'US2000_USD', 'DE30_USD': 'DE30_EUR', 'UK100_GBP': 'UK100_GBP' };
+createSrZones({
+  kv,
+  getForecast: () => forecastState.latest,
+  forecastKeyForPair: _forecastKeyForPair,
+  oandaFor: k => _SRZ_OA[k] ?? _OI_SPEC[k]?.oanda ?? null,
+  ivLadders: async (store) => {
+    const ohlc = await ensureLadderOhlcCache();
+    const { instruments, adjusted } = buildIvAdjInstruments(forecastState.latest, ohlc, store, VOL_INSTRUMENTS, Date.now(), await _ivAdjCboeLatest());
+    return Object.fromEntries(adjusted.map(a => [a.name, instruments[a.name].ladder]));
+  },
+  cotForExport: () => _cotForExport(),
+  // today's desk book, read-only, as the trade watcher reads it: a card keeps its plan levels only while the session updates leave its direction unchanged
+  deskCards: async () => {
+    const date = _dpLondonDate(Date.now()), run = await _drLoad(date);
+    if (!run?.head?.ok) return { date, cards: {}, reason: 'no desk book today' };
+    const view = _duLiveView(run.head.book, await _duLoad(date)), D = { STRONG_LONG: 1, LONG: 1, SHORT: -1, STRONG_SHORT: -1 }, cards = {};
+    for (const [n, c] of Object.entries(run.head.book.instruments ?? {})) {
+      const v = view[n] ?? { rating: c.rating, size: c.size }, d0 = Math.sign(D[c.rating] ?? 0), d1 = Math.sign(D[v.rating] ?? 0);
+      cards[n] = { rating: v.rating ?? c.rating, card: d0 && d0 === d1 ? { ...c, rating: v.rating, size: v.size ?? c.size } : null };
+    }
+    return { date, cards };
+  },
+}).mount(app);
 
 app.get('/api/vol-forecast/zones', async (req, res) => {
   if (!forecastState.latest) {
