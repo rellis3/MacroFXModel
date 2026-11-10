@@ -10,6 +10,15 @@ Generated 2026-11-10.
 
 | | n |
 |---|---|
+| claims tested (validated + null + underpowered) | **303** |
+| validated | 51 |
+| null | 172 |
+| underpowered | 80 |
+| context (base rates, descriptions: not counted as tests) | 53 |
+| pre-registrations with no banked verdict (below) | 88 |
+
+**What the count says (Lesson 02 §05).** If none of the 303 claims were real, tests at the usual 5% size would still pass
+about **15.2** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
 | claims tested (validated + null + underpowered) | **307** |
 | validated | 51 |
 | null | 175 |
@@ -379,6 +388,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-07 | vol-layer-rv5-increment | volatility | validated | forge/VOL_LAYER_RV5_INCREMENT_PREREG.md |
 | 2026-11-08 | overnight-hold-gbpusd | price | null | forge/OVERNIGHT_HOLD_FX_PREREG.md |
 | 2026-11-08 | overnight-hold-usdjpy | price | underpowered | forge/OVERNIGHT_HOLD_FX_PREREG.md |
+| 2026-11-09 | bounce-confirmation | price | underpowered | forge/BOUNCE_CONFIRMATION_PREREG.md |
 | 2026-11-09 | jump-after-intensity | volatility | context | forge/JUMP_AFTER_PREREG.md |
 | 2026-11-09 | jump-after-path | volatility | null | forge/JUMP_AFTER_PREREG.md |
 | 2026-11-09 | jump-after-stop-through | volatility | context | forge/JUMP_AFTER_PREREG.md |
