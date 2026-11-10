@@ -750,3 +750,11 @@ roe_sources.laptop.json
 
 # noise-threshold stage 2: per-entry rows (24MB), rebuilt by scripts/noise-threshold/build.py
 analysis/output/noise-threshold/entries.parquet
+
+
+# Data files rewritten by the local scheduled tasks (ReleaseReaction live 5 min, CogLegs 30 min, Rate hike pull daily).
+# Kept on disk, not in git: tracking them made every pull fail ("local changes would be overwritten"). The site reads KV/R2, not these.
+analysis/output/stir/*.csv
+analysis/output/iv_term/iv_term_daily.csv
+analysis/output/cb_expectations/latest.json
+analysis/output/release_layer1/daily.json
