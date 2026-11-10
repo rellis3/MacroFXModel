@@ -14,6 +14,8 @@ import os
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
+from parser import canonical
+
 UK = ZoneInfo('Europe/London')
 LIVE = ('working', 'open')
 PRICE_TOL = 0.0005          # 0.05 % — "from 157.69" must match the 157.69 entry
@@ -66,7 +68,7 @@ class Book:
 
     def _match(self, ev):
         """Orders a cancel/close event refers to: same symbol and side, and the
-        same entry price (his messages quote it). A CANCEL only ever means a
+        same entry price (his messages quote it); DJI30 and US30 are the same market. A CANCEL only ever means a
         resting limit/stop order; a CLOSE means a market order or a filled limit.
         Expired orders count too: the book can't see fills (a limit that filled
         before its cancel time is still open), and his "Cancel the …" can land
@@ -77,7 +79,7 @@ class Book:
         pool = self.live() + [o for o in self.orders.values() if o['status'] == 'expired']
         if ev['kind'] == 'cancel':
             pool = [o for o in pool if o.get('order') != 'market']
-        cands = [o for o in pool if o['symbol'] == ev['symbol'] and o['side'] == ev['side']]
+        cands = [o for o in pool if canonical(o['symbol']) == canonical(ev['symbol']) and o['side'] == ev['side']]
         priced = [o for o in cands if o.get('entry') is not None and ev.get('entry') is not None]
         exact = [o for o in priced if abs(o['entry'] - ev['entry']) <= PRICE_TOL * max(o['entry'], 1e-9)]
         if exact:

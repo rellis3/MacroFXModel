@@ -78,6 +78,7 @@ class Mt5Broker:
         # immediately after a failed enter() call, before the next one runs.
         self.last_reject_reason: str | None = None
         self._selected: set[str] = set()       # symbols already added to Market Watch (see _sym)
+        self._select_failed: set[str] = set()  # symbols symbol_select refused (warned once)
 
         if mt5_module is not None:
             self.mt5 = mt5_module
@@ -110,8 +111,10 @@ class Mt5Broker:
             try:
                 if self.mt5.symbol_select(sym, True):
                     self._selected.add(sym)
-                else:
-                    self.log.warning(f'could not add {sym} to Market Watch: {self.mt5.last_error()}')
+                elif sym not in self._select_failed:      # once per symbol, not once per price read
+                    self._select_failed.add(sym)
+                    self.log.warning(f'could not add {sym} to Market Watch: {self.mt5.last_error()} '
+                                     f'-- not a symbol on this account? (warned once)')
             except Exception:
                 pass
         return sym

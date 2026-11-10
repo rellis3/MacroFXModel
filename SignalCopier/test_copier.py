@@ -396,6 +396,23 @@ def test_today_lists_his_signals_with_detail_and_bot_action():
     assert rows["101:0"]["exec"] == "open" and rows["101:0"]["style"] == "swing"
 
 
+def test_dji30_is_us30():
+    """2026-11-10: he posted a DJI30 signal; the map only had US30 -> DJ30, so it was skipped
+    and MT5 was asked for "DJI30" on every status push."""
+    from parser import canonical
+    assert canonical("DJI30") == canonical("dj30") == canonical("DOW") == "US30" and canonical("GOLD") == "XAUUSD"
+    cp, kv = make({"symbol_map": {"US30": "DJ30"}})
+    assert cp.bsym("DJI30") == "DJ30" and cp.bsym("US30") == "DJ30"
+    cp2, _ = make({"symbol_map": {"DJI30": "WALLST30", "US30": "DJ30"}})
+    assert cp2.bsym("DJI30") == "WALLST30"          # an exact entry still wins
+    cp.prices["DJI30"] = 52380
+    now = datetime.now(timezone.utc)
+    cp.on_message(301, "SELL DJI30 now at 52,385\nStop loss (SL) 52,520", now)
+    assert statuses(cp)["301:0"] == "open", cp.decisions
+    cp.on_message(302, "CLOSE the US30 SELL from 52,385, flat for the weekend", now + timedelta(minutes=5))
+    assert statuses(cp)["301:0"] == "closed" and not [a for a in cp.alerts if "no matching" in a[0]]
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:

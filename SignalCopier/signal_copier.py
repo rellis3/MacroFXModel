@@ -54,7 +54,7 @@ from pylego.broker.clock import offset_for, weekly_offsets                    # 
 
 from book import Book, describe                                         # noqa: E402
 from outcome import resolve, template_row                               # noqa: E402
-from parser import has_trade_events, parse_message                      # noqa: E402
+from parser import canonical, has_trade_events, parse_message                     # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("signal_copier")
@@ -208,18 +208,23 @@ class Copier:
 
     # ── setup ────────────────────────────────────────────────────────────
     def bsym(self, pair: str) -> str:
+        """Broker symbol: the Symbol map for his exact name, then for the
+        market's usual name (DJI30 -> US30 -> your map's DJ30), then the registry."""
         m = {str(k).upper(): v for k, v in (self.cfg.get("symbol_map") or {}).items() if v}
-        if pair.upper() in m:
-            return m[pair.upper()]
+        p, c = pair.upper(), canonical(pair)
+        if p in m:
+            return m[p]
+        if c in m:
+            return m[c]
         try:
-            return I.mt5_symbol(pair)
+            return I.mt5_symbol(c)
         except Exception:
-            return pair.upper()
+            return c
 
     @staticmethod
     def pip(pair: str) -> float:
         try:
-            return I.pip_size(pair)
+            return I.pip_size(canonical(pair))
         except Exception:
             return 0.0001 if pair.upper()[:3] not in ("BTC", "ETH") else 1.0
 
@@ -392,7 +397,7 @@ class Copier:
                 "posted_ts": _ts(o["posted_at"]), "cancel_ts": _ts(o.get("cancel_at_utc")),
                 "close_ts": _ts(o.get("close_at_utc")), "close_reason": "close-at" if o.get("close_at_utc") else None,
                 "recv_px": (self.price(o["symbol"]) if fresh and o["order"] == "market" else None),
-                "spread": spread_for(o["symbol"], self.data), "final": False, "out": None, "row": None,
+                "spread": spread_for(canonical(o["symbol"]), self.data), "final": False, "out": None, "row": None,
             }
         else:
             r = self.signals.get(rid)
@@ -520,7 +525,7 @@ class Copier:
             return self._skip(o, "stop equals entry")
         if (px - o["sl"]) * d <= 0:
             return self._skip(o, f"price {px:g} is already beyond the stop {o['sl']:g}")
-        spread = spread_for(pair, self.data or self.broker)
+        spread = spread_for(canonical(pair), self.data or self.broker)
         if spread > cfg.get("max_spread_r", 0.2) * risk_dist:
             return self._skip(o, f"spread {spread:g} > {cfg.get('max_spread_r')}R of the {risk_dist:g} stop")
 
@@ -599,7 +604,7 @@ class Copier:
                 lots = vmin
             return round(lots, 2), None
         try:
-            pip, pv = I.pip_size(pair), PV.point_value(pair)
+            pip, pv = I.pip_size(canonical(pair)), PV.point_value(canonical(pair))
         except Exception:
             pip, pv = 0.0001, 10.0
         lots = position_size(bal, cfg.get("risk_pct", 0.5), stop_dist, pip=pip, pip_value=pv, max_lot=max_lot)
