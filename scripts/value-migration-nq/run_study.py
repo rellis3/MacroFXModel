@@ -189,8 +189,16 @@ def mode_score():
     for r, a in zip(cells, adj):
         r["p_holm"] = a
         same = np.sign(r["is"]) == np.sign(r["est"]) == np.sign(r["oos"])
-        r["pass"] = bool(a <= 0.05 and r["est"] >= r["bar"] and r["lo"] > 0 and same)
-        r["mirror"] = bool(a <= 0.05 and r["est"] <= -r["bar"] and r["hi"] < 0 and same)
+        beats = True
+        if r["m2"] is None:   # raw Q1 cells must also beat all 20 session-shift placebos (prereg 4, gate G1)
+            pl = session_shift_placebo(f, r["m1"], r["h"])
+            r["placebo_max"], r["placebo_min"] = float(pl.max()), float(pl.min())
+            beats = r["est"] > pl.max()
+            r["beats_all_placebos"] = bool(beats)
+            r["below_all_placebos"] = bool(r["est"] < pl.min())
+        r["pass"] = bool(a <= 0.05 and r["est"] >= r["bar"] and r["lo"] > 0 and same and beats)
+        r["mirror"] = bool(a <= 0.05 and r["est"] <= -r["bar"] and r["hi"] < 0 and same
+                           and r.get("below_all_placebos", True))
     out["stats_cells"] = cells
 
     # 3. regressions (descriptive): does migration add to the price move already made?
