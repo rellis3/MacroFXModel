@@ -504,6 +504,9 @@ export function createLibraryApi(deps) {
     return reply(200, out);
   };
 
+  /** Review tab: the cards with the owner's marks (GET /api/library/concepts) and a mark on one card (POST /api/library/concepts/review). No model call. */
+  H.conceptsCards = async () => reply(200, await concepts.cards());
+  H.conceptsReview = async ({ body }) => { const r = await concepts.review(body?.id, body?.status, body?.note); return reply(r.status ?? 200, r); };
   H.concepts = concepts;   // GET/POST /api/research-pod/concepts, GET .../concepts/cards
   H.figs = figs;   // GET/POST /api/research-pod/figs
   H.math = math;   // GET/POST /api/research-pod/math (server.js mounts it like the reading backlog)
