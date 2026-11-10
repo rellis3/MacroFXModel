@@ -148,7 +148,7 @@ function systemHtml() {
 }
 
 function stage1Html(id) {
-  const st = STAGE1[id];
+  const st = STAGE1[id] ?? (loadProof(`stage1-${id}`), proofData[`stage1-${id}`]);
   if (!st) return '';
   const secs = st.sections.map(x => `<div class="card"><h3>${esc(x.h)}</h3>${x.lesson ? `<p class="muted" style="margin:-2px 0 6px"><a href="theory-lab/lessons/${esc(x.lesson)}.html" target="_blank">Theory Lab lesson</a></p>` : ''}<ul>${x.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`).join('');
   const read = st.read.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td class="muted" style="font-size:11px">${esc(r[2])}</td></tr>`).join('');
@@ -188,6 +188,7 @@ function layerHtml(L) {
   ${stageHtml(L.id)}
   ${stage1Html(L.id)}
   ${L.id === 'jumps' ? (loadProof('jump-look'), `<div class="card" style="margin-top:12px"><h3>Stage 2: what the detector flags, before any outcome is read</h3>${jumpLookHtml(proofData['jump-look'])}</div>`) : ''}
+  ${!['jumps', 'execution'].includes(L.id) ? (loadProof(`${L.id}-look`), proofData[`${L.id}-look`] ? `<div class="card" style="margin-top:12px"><h3>Stage 2: build and look, before anything is scored</h3>${lookChartsHtml(proofData[`${L.id}-look`])}</div>` : '') : ''}
   ${L.id === 'execution' ? (loadProof('noise-look'), `<div class="card" style="margin-top:12px"><h3>Stage 2: the noise-threshold map, before anything is scored</h3>${lookChartsHtml(proofData['noise-look'])}</div>`) : ''}
   <div class="card" style="margin-top:12px"><h3>Tests touching this layer</h3>${trackerHtml(L.id === 'features' ? 'corr' : L.id === 'execution' ? 'stops' : L.id)}</div>
   <div class="card" style="margin-top:12px"><h3>Deep-dive findings</h3>${findings}</div>`;
