@@ -65,7 +65,7 @@ table.t th.num { text-align: right; }
 
 <script type="module">
 import { LAYERS, BUILD_ORDER, DEEP_DIVE, SOURCE_NOTE, COMBINED, TESTS, NAMED, PROOF, STAGES, STAGE1 } from './js/volLayerResearch.js';
-import { PROOF_CSS, proofListHtml, proofHtml, cogReviewHtml, jumpLookHtml } from './js/volLayerProof.js';
+import { PROOF_CSS, proofListHtml, proofHtml, cogReviewHtml, jumpLookHtml, lookChartsHtml } from './js/volLayerProof.js';
 
 document.head.insertAdjacentHTML('beforeend', `<style>${PROOF_CSS}</style>`);
 
@@ -188,6 +188,7 @@ function layerHtml(L) {
   ${stageHtml(L.id)}
   ${stage1Html(L.id)}
   ${L.id === 'jumps' ? (loadProof('jump-look'), `<div class="card" style="margin-top:12px"><h3>Stage 2: what the detector flags, before any outcome is read</h3>${jumpLookHtml(proofData['jump-look'])}</div>`) : ''}
+  ${L.id === 'execution' ? (loadProof('noise-look'), `<div class="card" style="margin-top:12px"><h3>Stage 2: the noise-threshold map, before anything is scored</h3>${lookChartsHtml(proofData['noise-look'])}</div>`) : ''}
   <div class="card" style="margin-top:12px"><h3>Tests touching this layer</h3>${trackerHtml(L.id === 'features' ? 'corr' : L.id === 'execution' ? 'stops' : L.id)}</div>
   <div class="card" style="margin-top:12px"><h3>Deep-dive findings</h3>${findings}</div>`;
 }

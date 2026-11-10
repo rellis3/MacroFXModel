@@ -747,3 +747,6 @@ analysis/output/swing-walk-heading/_rows.parquet
 # ROE scanner output (immutable run directories; never commit)
 roe_out/
 roe_sources.laptop.json
+
+# noise-threshold stage 2: per-entry rows (24MB), rebuilt by scripts/noise-threshold/build.py
+analysis/output/noise-threshold/entries.parquet
