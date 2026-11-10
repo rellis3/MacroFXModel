@@ -1,0 +1,147 @@
+{
+ "read": [
+  [
+   "Patton 2011 (SSRN 2006 version), Volatility forecast comparison using imperfect volatility proxies (J. Econometrics)",
+   "Full text: sections 1-2.2, 4 and 5 (appendix proofs skipped)",
+   "doi:10.2139/ssrn.932890"
+  ],
+  [
+   "Gmür & Malamud 2013, Forecasting realized volatility of daily futures returns (SSRN WP)",
+   "Sections: abstract, introduction, the FX and rates coefficient sections",
+   "doi:10.2139/ssrn.2361628"
+  ],
+  [
+   "Andersen, Bollerslev, Diebold & Labys 2001, Modeling and forecasting realized volatility (NBER WP 8160)",
+   "Sections: introduction, standardised-return and log-RV passages (front pages are font-garbled in the text copy)",
+   "upload:b354af31"
+  ],
+  [
+   "Adams & MacKay 2007, Bayesian online changepoint detection (arXiv 0710.3742)",
+   "Sections 1-2 in full (run-length recursion, hazard, algorithm)",
+   "upload:6a5a62c5"
+  ],
+  [
+   "Kratz, Lok & McNeil 2016, Multinomial VaR backtests (arXiv 1611.04851)",
+   "Sections: abstract, introduction, conclusion",
+   "upload:c6a80eac"
+  ],
+  [
+   "Bollerslev & Zhou 2007, Expected stock returns and variance risk premia (FEDS 2007-11)",
+   "Sections: abstract, conclusion",
+   "doi:10.2139/ssrn.1315328"
+  ],
+  [
+   "Dew-Becker, Giglio, Le & Rodriguez 2015, The price of variance risk (NBER WP 21182)",
+   "Sections: abstract, introduction, conclusion",
+   "upload:f1077a04"
+  ],
+  [
+   "Puke & Schweikert 2026, Coherent forecasting of realized volatility (SSRN WP)",
+   "Sections: abstract, introduction",
+   "doi:10.2139/ssrn.5233349"
+  ],
+  [
+   "Moreira & Muir 2017, Volatility-managed portfolios (J. Finance; SSRN 2659431)",
+   "Sections: abstract, opening of the introduction",
+   "doi:10.2139/ssrn.2659431"
+  ],
+  [
+   "Sadaqat, Butt & Demirer 2026, Risk mitigation of momentum strategy using stop-loss rules (SSRN preprint, not peer reviewed)",
+   "Abstract only",
+   "doi:10.2139/ssrn.7511970"
+  ],
+  [
+   "Corsi 2004, A simple long memory model of realized volatility (HAR)",
+   "Desk notes only",
+   "doi:10.2139/ssrn.626064"
+  ],
+  [
+   "Gibbs & Candès 2021, Adaptive conformal inference under distribution shift (NeurIPS)",
+   "Not in the library. Method taken from plans/vol-layer/L8_LITERATURE_SPEC.md and general knowledge; not read this session",
+   "plans/vol-layer/L8_LITERATURE_SPEC.md"
+  ]
+ ],
+ "sections": [
+  {
+   "h": "The plain theory: what the feedback layer is",
+   "lesson": "",
+   "lines": [
+    "Every morning the forecaster says how big today should be: a daily σ and lines at p50, p75 and p90. Every evening the day says how big it actually was. The gap is the error.",
+    "We write the error as a log ratio: e = log(realised ÷ forecast). e = 0 is a perfect day, +0.69 means twice as big as forecast, -0.69 half as big. Logs make over and under symmetric.",
+    "Two realised yardsticks. Range (high minus low) is what the lines are about, but it is noisy: even with a perfect σ, log range jumps around by about 0.29 from day to day on a random walk. 5-minute realised variance (RV) is much less noisy (about 0.09). So RV judges the forecast and range judges the lines.",
+    "C.OG's 'feedback loop' can mean three different jobs. (A) Correct: feed recent errors into tomorrow's σ or band width. (B) Signal: today's error so far says something about the rest of the day. (C) Govern: a run of errors says the forecaster or a strategy has broken, so stop or re-fit.",
+    "Scoring rules. To rank two variance forecasts with a noisy yardstick only two common losses are safe: squared error (MSE) and QLIKE = RV/h - log(RV/h) - 1, where h is the forecast variance. Others can prefer a forecast that is wrong by a factor of two (Patton).",
+    "Mincer-Zarnowitz (MZ): regress realised on the forecast. Slope 1 and intercept 0 = efficient. Slope below 1 = the forecast moves too much (shrink it to its average); above 1 = too little. A rolling MZ is itself a feedback loop: re-fit the slope on recent data and apply it.",
+    "Coverage: a p75 line should be crossed on 25% of sides, p90 on 10%. Coverage over all days is weak evidence; what matters is coverage within quiet and busy regimes and after misses (conditional coverage), and the width paid for it.",
+    "Adaptive conformal inference (ACI): keep a running target α_t. After a day outside the band, lower α_t (widen); after a day inside, raise it a little (narrow): α_t+1 = α_t + γ(α - miss_t). It guarantees long-run coverage for any forecaster, which is exactly why coverage alone cannot judge it.",
+    "Drift alarms: CUSUM adds up standardised errors minus a slack k and alarms when the sum passes h. With k = 0.5 and h = 5 it rarely fires on independent noise. Bayesian online changepoint detection does the same job by tracking the probability that the run since the last break has length r.",
+    "Level versus surprise: a high σ (level) and a day running hotter than its σ (surprise) are different things. A stop rule or kill switch must not confuse them."
+   ]
+  },
+  {
+   "h": "What the papers found, and where it does not transfer",
+   "lesson": "",
+   "lines": [
+    "Patton (IBM stock, daily, 1993-2003): with range or RV as the yardstick, MSE and QLIKE rank forecasts correctly; MAE, MSE of standard deviations and log losses can choose a forecast biased by 2x or more. The range must be rescaled before squaring (squared range is about 2.8 times the variance on a random walk). One stock, daily; but the maths is general, so it transfers.",
+    "Gmür and Malamud (47 futures incl. 5 FX futures, 2000-2012, horizons 5 days to 2 months): realised vol moves less than the RiskMetrics rule implies for every contract, the slope drifts a lot over time and jumped in 2008, and a rolling regression on recent data (a rolling MZ) beats the fixed rule. Their shortest horizon is 5 days; ours is one London day.",
+    "Andersen, Bollerslev, Diebold and Labys (DM/$ and yen/$, 5-minute, about a decade): log RV is close to Gaussian and has long memory; returns divided by RV are close to normal; a simple model of log RV beats daily GARCH. This is why we use log errors, and why errors persist: vol has long memory, so any σ that lags it leaves runs of same-signed misses.",
+    "Puke and Schweikert (stocks, 2026 working paper): fitting HAR with the loss you evaluate on (QLIKE) gives clearly better QLIKE out of sample than least squares. So if a feedback term is fitted, fit it on the loss we judge by.",
+    "Kratz, Lok and McNeil (simulation plus a 2008 real-data example): testing exceptions at 4 or more quantile levels together is far more powerful than testing one level. Our p50/p75/p90 lines are a ready-made multinomial test. They study bank trading books and 99% tails; our quantiles are central, so power is higher.",
+    "Adams and MacKay: an exact online run-length posterior; demos on non-financial data and one equity series. No trading evidence; useful as a monitor design.",
+    "Bollerslev and Zhou (S&P 500, quarterly, 1990-2005): implied minus realised variance predicts quarterly returns (R² over 15%). Dew-Becker et al. (variance swaps 1996-2014): only the transitory, unexpected part of realised variance is priced; news about future variance is not. Both are monthly-to-quarterly US equity results about an option-implied level. Neither says anything about intraday FX range.",
+    "Moreira and Muir (equity factors and the currency carry trade, monthly): scale exposure by the inverse of last month's realised variance and the Sharpe ratio rises. This is the sizing use of feedback, not a stop rule, and it is monthly.",
+    "Sadaqat, Butt and Demirer (emerging Asian equity momentum, monthly, unreviewed): stop-loss exits turn a flat momentum strategy positive. No transfer to an intraday stop; only a reminder that stops help where returns trend.",
+    "Not found: any test of adaptive conformal bands on intraday FX, any peer-reviewed live kill-switch study, and any direct test of realised-minus-forecast vol predicting the rest of the day in FX, gold or index futures. The L8 spec found the same gaps in the wider literature."
+   ]
+  },
+  {
+   "h": "Worked example: EURUSD on Thursday 10 November 2022 (US CPI at 13:30 London)",
+   "lesson": "",
+   "lines": [
+    "Morning: the chosen σ is 0.742% of the open (plain σ 0.78%). Chosen lines from the open: up p75 +0.787%, p90 +1.171%; down p75 -0.930%, p90 -1.359%. Yesterday's RV miss was small (e = -0.18), so no feedback signal going in.",
+    "10:00 London: range so far 1.07σ against a usual 0.80σ by 10:00, surprise +0.29 (about 1.3 times usual). 13:00: 1.38σ against a usual 1.00σ, surprise +0.32. On our data that says almost nothing about the afternoon: expected rest-of-day stays near the clock-only 0.53σ.",
+    "13:30 CPI. EURUSD ran to +2.02% (2.7σ, far past the p90 line). Final range 2.86% = 3.86σ. RV 2.40 %², about 3.2 times the calibrated forecast, so e = +1.16. 2.29σ of range came after 13:00 against 0.53σ expected.",
+    "The bands all missed alike: in plain-σ units the static p75 band for the high was 1.14σ, ACI (γ = 0.02) had moved it only to 1.17σ, and the error-feedback band was 1.08σ. The realised high was 2.59σ. No feedback rule sees a scheduled release coming; the event calendar has to.",
+    "Friday 11 Nov: the chosen σ fell to 0.712% (the CPI multiplier dropped off) although yesterday's miss was huge. The day ran to +1.69%, again past p90 (1.12%). But its RV was normal (e = -0.18): one steady trend, not chop. Range and RV can disagree about the same day, which is why the look scores both.",
+    "What feedback would have done on Friday: the fitted betas for the plain σ (+0.34 on yesterday's miss, +0.32 on the 5-day mean) raise the variance forecast by about exp(0.34 × 1.16 + 0.32 × 0.2) ≈ 1.6 times, so σ by about 1.25 times: lines about 25% further out. That covers Friday's high at p90 (1.12% × 1.25 = 1.40%) but not at p75."
+   ]
+  },
+  {
+   "h": "What our earlier repo work found, and where I agree or disagree",
+   "lesson": "",
+   "lines": [
+    "forecast_fix (forge/FORECAST_FIX_PREREG.md, PASS): the chosen σ already contains feedback: yesterday's and the 5-day range miss (res1, res5) plus a regime term. That cut pinball loss 2.4-4% and fixed the quiet/busy coverage gap (quiet 30% to 25%). Agree, and it explains why the plain-σ bands here still miss by regime (29% quiet vs 22% busy) while the chosen lines do not need conformal to fix that.",
+    "vol-layer-rv5-increment (VALIDATED): realised-vol terms make the chosen lines 1.2% more accurate. Agree in direction: the chosen σ's RV miss still has autocorrelation +0.25 and an RV feedback term cuts its QLIKE by about 8%. The gap in size is expected: QLIKE on RV is a more sensitive yardstick than pinball on range.",
+    "vol-layer-reaction (CONTEXT): range and RV so far today add 0.1% at line touches. Agree: intraday surprise is real information about vol but small; here it shows as a flat rest-of-day curve, not a strong one.",
+    "Remaining travel (layer 5 lessons): more range used means more travel left, no exhaustion budget. Agree, and the random-walk benchmark here shows why that matters: with exact σ a wide morning WOULD leave less, so a flat real curve means the surprise persists.",
+    "The range-forecast calibration check: median used 100%. Agree on the average, but by class the chosen p75 is too tight on FX majors (27.3%) and too wide on gold (21.0%) in 2020-22. The earlier checks pooled classes.",
+    "Live Range history (lines about 3pp too far): different lines, no overlap with this look.",
+    "analysis/forecaster_lessons/monitoring_and_tails.py has an SPRT kill rule for per-trade R; there is no forecaster drift alarm. js/volStateVector.js computes a trailing mean log(HL ÷ p50) as forecast_error, but nothing uses it. The governance part of this layer is unbuilt."
+   ]
+  },
+  {
+   "h": "What this layer can do for the entry and the stop",
+   "lesson": "",
+   "lines": [
+    "Stop width after a miss: on the chosen lines, the day after a big over-day crosses p75 on about 28% of sides and the day after a big under-day about 22%. A stop parked at the line should sit wider after hot days and can sit tighter after quiet days. About 3 points of hit rate, so modest; the clean fix is an RV feedback term inside σ, not a separate stop rule.",
+    "Class correction: until the lines are re-fitted, a p75-based stop on FX majors is touched more often than planned (27%) and on gold less (21%). That is static, not feedback, but it is the larger effect.",
+    "Intraday: do NOT tighten a stop or call exhaustion because the morning used a lot of range. Range still to come at 13:00 is about the same whatever the morning did (0.96-1.06 times usual). If anything, a busy morning means a busy day: after 16:00 the busiest tenth leaves 1.25 times the usual.",
+    "Stand aside: scheduled releases and crises dominate the biggest misses (CPI, the September 2022 gilt crisis, a yen intervention). Feedback cannot see them in advance; the calendar layer must widen or stand aside before them.",
+    "Drift alarm: errors come in runs (CUSUM fires several times more often than on shuffled errors). When the alarm says running hot for an instrument, widen its stops and cut its size until it clears. Whether that improves results is a stage 3 question.",
+    "Entry: this layer does not pick a side. It can only veto or resize an entry: smaller size or no entry while the forecaster is in a hot-alarm state, the Moreira-Muir sizing logic at a daily horizon."
+   ]
+  },
+  {
+   "h": "Questions for stage 3/4",
+   "lesson": "",
+   "lines": [
+    "Q1 Correct the σ. Does adding yesterday's, 5-day and 22-day RV miss to the chosen σ (fitted on QLIKE, refit yearly) cut QLIKE and line pinball loss? Benchmarks: the chosen σ alone and a rolling-MZ rescale. Bar: pinball ratio below 0.99 with its 95% range below 1 on 2023-2026. Power: about 900 dates × 34 instruments; the QLIKE effect in discovery (about 8%) is large, the pinball effect may be under 1% and needs the full window.",
+    "Q2 Conditional coverage after misses. Do the chosen p75/p90 lines cross at 25%/10% within each fifth of yesterday's miss, before and after the Q1 correction? Benchmarks: nominal and the uncorrected lines. Multinomial test over p50/p75/p90 per fifth. Power: about 12,000 sides per fifth, enough to see 1.5 points after date clustering.",
+    "Q3 Band rule head to head. Static, error-feedback σ and ACI (γ = 0.005, fixed now) on the chosen σ: pinball loss, width and coverage by regime. Benchmark: static band. Discovery says ACI does not beat static on pinball and error-feedback beats it by about 1%. Fix γ and the half-life in the prereg; never tune them on P&L.",
+    "Q4 Drift alarm. CUSUM (k = 0.5, h = 5) on the standardised chosen-σ miss: false-alarm rate on shuffled errors, delay to detect injected ±20% and ±50% vol shifts, and whether loss over the 20 days after an alarm falls if σ is re-scaled at the alarm. Benchmark: rolling recalibration with no alarm. Simulation first, then the unseen window.",
+    "Q5 Stop width after misses, as a trade input. With a real system's own entries, does a stop scaled by the feedback factor cut stopped-then-recovered trades without raising average loss? Benchmark: a fixed stop at the same average width (matched width is essential). Needs a few thousand trades; blocked until a system's entries exist.",
+    "Q6 Intraday surprise away from releases. Excluding scheduled-release hours, does surprise so far at 10:00/13:00/16:00 change the rest-of-day range beyond the clock? Benchmarks: the clock alone and the two random-walk curves in the look. Bar: the top-tenth ratio at 16:00 (1.25 in discovery) holds with its 95% range above 1.1."
+   ]
+  }
+ ]
+}
