@@ -8699,9 +8699,14 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
     });
     $('aiSaveMsg').textContent = 'Saving...';
     try {
-      const r = await fetch('/api/ai-config', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tasks }),
-      }).then(x => x.json());
+      const post = body => fetch('/api/ai-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json());
+      let r = await post({ tasks });
+      // the server refuses a save that would clear every job choice unless it is confirmed (a lost routing sent the
+      // DeepSeek jobs to the Anthropic default for a day on 2026-11-08)
+      if (!r.ok && r.code === 'would_clear') {
+        if (!confirm('This would clear every saved job choice, so each job goes back to its built-in default. Clear them?')) { $('aiSaveMsg').textContent = 'Not saved.'; return; }
+        r = await post({ tasks, confirmClear: true });
+      }
       if (!r.ok) throw new Error(r.error || 'failed');
       $('aiSaveMsg').innerHTML = '<span style="color:var(--good)">Saved. Stored in KV, so it survives a deploy.</span>';
       aiLoadConfig();
