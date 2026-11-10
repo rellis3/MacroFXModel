@@ -4,21 +4,30 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-09.
+Generated 2026-11-10.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **302** |
+| claims tested (validated + null + underpowered) | **303** |
 | validated | 51 |
 | null | 172 |
-| underpowered | 79 |
+| underpowered | 80 |
 | context (base rates, descriptions: not counted as tests) | 53 |
 | pre-registrations with no banked verdict (below) | 88 |
 
-**What the count says (Lesson 02 §05).** If none of the 302 claims were real, tests at the usual 5% size would still pass
-about **15.1** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 303 claims were real, tests at the usual 5% size would still pass
+about **15.2** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
+| claims tested (validated + null + underpowered) | **307** |
+| validated | 51 |
+| null | 175 |
+| underpowered | 81 |
+| context (base rates, descriptions: not counted as tests) | 54 |
+| pre-registrations with no banked verdict (below) | 88 |
+
+**What the count says (Lesson 02 §05).** If none of the 307 claims were real, tests at the usual 5% size would still pass
+about **15.4** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
 **roughly 15 of the 51 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -379,9 +388,16 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-07 | vol-layer-rv5-increment | volatility | validated | forge/VOL_LAYER_RV5_INCREMENT_PREREG.md |
 | 2026-11-08 | overnight-hold-gbpusd | price | null | forge/OVERNIGHT_HOLD_FX_PREREG.md |
 | 2026-11-08 | overnight-hold-usdjpy | price | underpowered | forge/OVERNIGHT_HOLD_FX_PREREG.md |
+| 2026-11-09 | bounce-confirmation | price | underpowered | forge/BOUNCE_CONFIRMATION_PREREG.md |
 | 2026-11-09 | jump-after-intensity | volatility | context | forge/JUMP_AFTER_PREREG.md |
 | 2026-11-09 | jump-after-path | volatility | null | forge/JUMP_AFTER_PREREG.md |
 | 2026-11-09 | jump-after-stop-through | volatility | context | forge/JUMP_AFTER_PREREG.md |
+| 2026-11-10 | value-migration-nq-absorption-proxy | misc | underpowered | forge/VALUE_MIGRATION_NQ_PREREG.md |
+| 2026-11-10 | value-migration-nq-combo | misc | underpowered | forge/VALUE_MIGRATION_NQ_PREREG.md |
+| 2026-11-10 | value-migration-nq-delta-proxy | misc | null | forge/VALUE_MIGRATION_NQ_PREREG.md |
+| 2026-11-10 | value-migration-nq-poc | misc | context | forge/VALUE_MIGRATION_NQ_PREREG.md |
+| 2026-11-10 | value-migration-nq-strategy | misc | null | forge/VALUE_MIGRATION_NQ_PREREG.md |
+| 2026-11-10 | value-migration-nq-va | misc | null | forge/VALUE_MIGRATION_NQ_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 

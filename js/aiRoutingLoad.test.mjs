@@ -22,3 +22,12 @@ test('a failed read keeps the last good routing', () => {
   assert.match(fn[1], /kv\.getStrict\(_AI_ROUTING_KV\)/);            // a backend failure throws instead of reading as "none saved"
   assert.match(fn[1], /catch \{ _aiOverride = \{ \.\.\._aiOverride/); // and the catch keeps what was there
 });
+
+test('a save merges into the saved routing and refuses to clear every job choice unasked (2026-11-09)', () => {
+  const h = src.match(/app\.post\('\/api\/ai-config'[\s\S]*?\n\}\);/);
+  assert.ok(h, 'POST /api/ai-config not found');
+  assert.match(h[0], /tasks: 'tasks' in body \? clean : \{ \.\.\.\(prev\?\.tasks/);   // a models-only save keeps the job choices
+  assert.match(h[0], /code: 'would_clear'/);
+  assert.match(h[0], /body\.confirmClear !== true/);
+  assert.match(h[0], /ai_routing_history_v1/);
+});

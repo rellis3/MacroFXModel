@@ -4002,14 +4002,38 @@ app.post('/api/ai-config', (q, r, n) => _agentsGate(q, r, n), (q, r, n) => _agen
     if (provider != null && provider !== '' && !AI_PROVIDERS[provider]) {
       return res.status(400).json({ error: `unknown provider: ${provider}` });
     }
+    // 2026-11-09: on 2026-11-08 at 19:14 UTC the owner's routing was replaced by one with no tasks, and every job set to
+    // DeepSeek ran on Opus for a day. The page has two saves: the routing table sends only `tasks`, the "which model"
+    // picker sends only `models`, and each used to overwrite the whole record, so picking a model wiped the routing.
+    // A save now MERGES: a field the request leaves out keeps its saved value. A save that would still empty a routing
+    // with choices in it is refused unless it says so (confirmClear: true, which the page sends only after asking), and
+    // the last 10 saved routings are kept in ai_routing_history_v1 so a lost one can be put back.
+    const prevRaw = await kv.getStrict(_AI_ROUTING_KV).catch(() => null);
+    const prev = prevRaw ? (JSON.parse(prevRaw)?.data ?? null) : null;
+    const body = req.body ?? {};
     const payload = {
-      tasks: clean,
-      models: cleanModels,
-      provider: provider === '' ? null : (provider ?? null),
-      cache: typeof cache === 'boolean' ? cache : null,
+      tasks: 'tasks' in body ? clean : { ...(prev?.tasks ?? {}) },
+      models: { ...(prev?.models ?? {}) },
+      provider: 'provider' in body ? (provider === '' ? null : (provider ?? null)) : (prev?.provider ?? null),
+      cache: 'cache' in body ? (typeof cache === 'boolean' ? cache : null) : (prev?.cache ?? null),
     };
+    // models: each provider the request names is set (or, sent empty, put back to the default); the others are kept
+    for (const [prov, id] of Object.entries(models ?? {})) { if (id === null || id === '') delete payload.models[prov]; else payload.models[prov] = cleanModels[prov]; }
+    const prevTasks = Object.keys(prev?.tasks ?? {}).length;
+    const empties = prevTasks > 0 && !Object.keys(payload.tasks).length;   // this save would drop every job choice
+    if (empties && body.confirmClear !== true) {
+      return res.status(409).json({ ok: false, code: 'would_clear', error: `this save would clear the saved routing (${Object.keys(prev.tasks ?? {}).length} job choice(s)); send confirmClear: true to do it on purpose`, current: prev });
+    }
+    if (prev) {
+      try {
+        const hist = JSON.parse((await kv.get('ai_routing_history_v1').catch(() => null)) || '[]');
+        hist.unshift({ replacedAt: new Date().toISOString(), data: prev });
+        await kv.put('ai_routing_history_v1', JSON.stringify(hist.slice(0, 10)));
+      } catch (e) { console.warn('[ai-config] routing history not kept:', e.message); }
+    }
     await kv.put(_AI_ROUTING_KV, JSON.stringify({ data: payload, timestamp: Date.now() }));
     await _loadAiOverride();
+    console.log(`[ai-config] routing saved: ${Object.keys(payload.tasks).length} job choice(s), ${Object.keys(payload.models).length} model pick(s)${empties ? ' (job choices cleared on purpose)' : ''}`);
     res.json({ ok: true, applied: payload });
   } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
@@ -8193,6 +8217,52 @@ Reply with JSON only: { "answer": "plain text", "sources": ["analyst ids, card n
       res.json({ ok: true, answer, sources: Array.isArray(j.sources) ? j.sources.slice(0, 12).map(String) : [], model: r.model ?? null, bookDate: book?.date ?? null });
     } finally { _askBusy = false; }
   } catch (e) { _askBusy = false; res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/desk-asset-analyse { inst, force }: ONE market analysed on demand (the Analyse button on the Desk Terminal's
+// asset cards and Pair tab; js/assetAnalysis.js). Runs on DeepSeek (task 'desk-asset', about a cent a press), against
+// the market's own driver checklist, the morning book, the analysts' reports, its pack data, headlines and the Evidence
+// Book. Context, never a signal: it never changes a card. Kept in memory for the day (a second open is free; force=1
+// re-runs), at most 100 fresh reads a day, one at a time per market.
+const _aaCache = new Map(), _aaBusy = new Set();
+let _aaDay = { date: null, n: 0 };
+app.post('/api/desk-asset-analyse', express.json({ limit: '4kb' }), async (req, res) => {
+  const inst = String(req.body?.inst ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  try {
+    const { buildAssetPrompt, validateAnalysis } = await import('./js/assetAnalysis.js');
+    const { groupOf } = await import('./js/deskPack.js');
+    if (!groupOf(inst)) return res.status(400).json({ ok: false, error: `unknown market ${inst || '(none)'}` });
+    const today = _dpLondonDate(Date.now());
+    if (_aaDay.date !== today) { _aaDay = { date: today, n: 0 }; _aaCache.clear(); }
+    const key = `${today}:${inst}`;
+    if (!req.body?.force && _aaCache.has(key)) return res.json({ ..._aaCache.get(key), cached: true });
+    if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key on the server' });
+    if (_aaDay.n >= 100) return res.status(429).json({ ok: false, error: 'the daily limit of 100 market reads is reached' });
+    if (_aaBusy.has(inst)) return res.status(409).json({ ok: false, error: `${inst} is being analysed already; try again in a moment` });
+    _aaBusy.add(inst); _aaDay.n++;
+    try {
+      const run = await _drLoad(today).catch(() => null);
+      const pack = _dpLatest?.date === today ? _dpLatest : await _dpLoad(today).catch(() => null);
+      const newsText = await _nwLoad().then(st => _nwText(_nwPick(st.wire, { sinceMs: Date.now() - 24 * 3600e3, tier: 2, limit: 30 }))).catch(() => '');
+      const { system, prompt, meta } = buildAssetPrompt({ name: inst, run, pack, ledger: _DESK_EVIDENCE, newsText, date: today });
+      let r = await callModel({ task: 'desk-asset', system, prompt, maxTokens: 6_000, label: `desk:asset:${inst}` });
+      let v = validateAnalysis(_parseModelJson(r.text ?? _antText(r), 'desk:asset'));
+      if (!v.ok) {   // one retry, told what was wrong
+        r = await callModel({ task: 'desk-asset', system, prompt: `${prompt}\n\nYour previous reply could not be used (${v.errors.join('; ')}). Reply again with the JSON object only, shorter.`, maxTokens: 6_000, label: `desk:asset:${inst}` });
+        v = validateAnalysis(_parseModelJson(r.text ?? _antText(r), 'desk:asset'));
+      }
+      if (!v.ok) return res.status(502).json({ ok: false, error: `the model did not return a usable read (${v.errors.join('; ')})` });
+      const out = { ok: true, inst, date: today, at: new Date().toISOString(), analysis: v.value, model: r.model ?? null, provider: r.provider ?? null,
+        bookDate: run?.head?.ok ? run.date : null, card: run?.head?.ok ? (run.head.book.instruments?.[inst] ?? null) : null, meta, label: 'context, untested: never changes a card' };
+      _aaCache.set(key, out);
+      res.json(out);
+    } finally { _aaBusy.delete(inst); }
+  } catch (e) { _aaBusy.delete(inst); res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
+});
+// GET /api/desk-asset-analyse?inst=GOLD: today's read if one was made (free; never calls a model).
+app.get('/api/desk-asset-analyse', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const inst = String(req.query.inst ?? '').toUpperCase().replace(/[^A-Z0-9]/g, ''), hit = _aaCache.get(`${_dpLondonDate(Date.now())}:${inst}`);
+  res.json(hit ? { ...hit, cached: true } : { ok: false, none: true });
 });
 // GET /api/desk-history?days=30: one compact row per desk day for the Desk Terminal's analytics (the currency
 // ranking and biases, the tone, and the day's score where there is one). Cached 15 minutes.

@@ -86,7 +86,9 @@ export const supportsImages = provider => !!PROVIDERS[provider]?.vision;
  * Override any of these with MODEL_<PROVIDER>_ID / MODEL_<PROVIDER>_MAXOUT.
  */
 export const DEFAULT_MODELS = {
-  anthropic: { id: 'claude-opus-5',  maxOutput: 32000, context: 200000 },
+  // Sonnet 5, not Opus 5 (2026-11-09, owner): the Anthropic default only serves a job that has no model of its own and
+  // is routed to Anthropic. At $2/$10 per MTok against $5/$25 a slip costs 2.5x less, and it is the desk's model.
+  anthropic: { id: 'claude-sonnet-5', maxOutput: 32000, context: 200000 },
   deepseek:  { id: 'deepseek-chat',  maxOutput: 8192,  context: 65536  },
   moonshot:  { id: 'kimi-k2-0905-preview', maxOutput: 16384, context: 262144 },
 };
@@ -100,16 +102,20 @@ export const DEFAULT_MODELS = {
  * other, which is why the toggle is PER TASK and not one global switch.
  */
 export const TASK_CLASS = {
+  // defaultProvider 'deepseek' (2026-11-09, owner): the jobs the owner had routed to DeepSeek on the AI models page.
+  // On 2026-11-08 19:14 UTC the saved routing was emptied and every one of them fell back to the Anthropic default
+  // (Opus 5) for a day. As their own default they stay on DeepSeek whatever the saved routing holds; the page can
+  // still move any of them to Anthropic (a saved choice wins over defaultProvider, js/modelRouter.js resolveTask).
   // carries the full ledger: the model is being asked to obey tested nulls
-  'brief':        { ledger: 'full',  label: 'Morning brief' },
-  'chain':        { ledger: 'full',  label: 'Macro chain read' },
-  'eod-review':   { ledger: 'brief', label: 'End-of-day review' },
+  'brief':        { ledger: 'full',  label: 'Morning brief', defaultProvider: 'deepseek' },
+  'chain':        { ledger: 'full',  label: 'Macro chain read', defaultProvider: 'deepseek' },
+  'eod-review':   { ledger: 'brief', label: 'End-of-day review', defaultProvider: 'deepseek' },
   // reasoning over desk data, no ledger
-  'pair':         { ledger: null,    label: 'Pair analysis' },
-  'cot':          { ledger: null,    label: 'COT positioning analysis' },
-  'currency':     { ledger: null,    label: 'Currency analysis' },
-  'explain':      { ledger: null,    label: 'Explain a reading' },
-  'oi-explain':   { ledger: null,    label: 'OI Lab panel explainer' },
+  'pair':         { ledger: null,    label: 'Pair analysis', defaultProvider: 'deepseek' },
+  'cot':          { ledger: null,    label: 'COT positioning analysis', defaultProvider: 'deepseek' },
+  'currency':     { ledger: null,    label: 'Currency analysis', defaultProvider: 'deepseek' },
+  'explain':      { ledger: null,    label: 'Explain a reading', defaultProvider: 'deepseek' },
+  'oi-explain':   { ledger: null,    label: 'OI Lab panel explainer', defaultProvider: 'deepseek' },
   // desk analyst pipeline (plans/DESK_ANALYST_PIPELINE.md): each call carries a SLICE of the ledger chosen for its
   // area (js/deskRoles.js selectEvidence), so 'brief' -- not routed to a cheap model unless the owner says so.
   // `models` pins a model for this task on a given provider, over that provider's default (owner 2026-11-03:
@@ -128,6 +134,9 @@ export const TASK_CLASS = {
   // 64k context and 8,192-token output); the Head of Research, who peer-reviews their work against the whole book,
   // runs on Anthropic and only when the owner presses the button. Both sit under a per-task choice like desk-news.
   'research-pod':  { ledger: 'brief', label: 'Research pod: the three researchers', defaultProvider: 'deepseek' },
+  // one market analysed on demand (owner 2026-11-10: the Analyse button on the Desk Terminal; js/assetAnalysis.js): about
+  // 30-40k tokens in and 2-3k out, so about a cent a press on DeepSeek. Its own task so the morning desk stays on Anthropic.
+  'desk-asset':    { ledger: 'brief', label: 'Desk Terminal: analyse one market', defaultProvider: 'deepseek' },
   // the literature desk's quick-tier reads (the paper reader, 2026-11-08, owner: "switch to DeepSeek and run"): one call per
   // paper, about 20-25k tokens in and 3.5k out, so about 1 cent a paper on DeepSeek against about 10 cents on Sonnet. A task of
   // its own so the daily desk analysts ('desk-analyst') stay on Anthropic. Deep-tier literature work still uses 'desk-head'.
@@ -147,9 +156,9 @@ export const TASK_CLASS = {
   // `vision: true`: routing it to a provider that cannot read images falls back to anthropic (resolveTask).
   'research-vision': { ledger: null, label: 'Research pod: read an attached picture', defaultProvider: 'anthropic', models: { anthropic: 'claude-sonnet-5' }, effort: { anthropic: 'low' }, vision: true },
   // summarising supplied text — the cheap jobs
-  'headlines':    { ledger: null,    label: 'Headline summary',  cheapSafe: true },
-  'doc-summary':  { ledger: null,    label: 'Document summary',  cheapSafe: true },
-  'misc':         { ledger: null,    label: 'Other',             cheapSafe: true },
+  'headlines':    { ledger: null,    label: 'Headline summary',  cheapSafe: true, defaultProvider: 'deepseek' },
+  'doc-summary':  { ledger: null,    label: 'Document summary',  cheapSafe: true, defaultProvider: 'deepseek' },
+  'misc':         { ledger: null,    label: 'Other',             cheapSafe: true, defaultProvider: 'deepseek' },
 };
 
 /**

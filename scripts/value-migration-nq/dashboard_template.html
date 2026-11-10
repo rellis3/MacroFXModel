@@ -1,0 +1,293 @@
+<title>NQ Value Migration Study</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Archivo:wght@600;700&display=swap">
+<style>
+/* Layout: one reading column of numbered study sections; each section = claim, chart, table. Data in mono. */
+:root {
+  --bg: #f7f8f9; --panel: #ffffff; --ink: #14171a; --ink-2: #4a5259; --ink-3: #7a838b; --rule: #dde1e5; --rule-2: #eceff1;
+  --accent: #2a78d6;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #6250d6; --twin: #8a9299;
+  --good: #1e8a4c; --good-bg: #e3f3e9; --bad: #c03a39; --bad-bg: #fbe8e7; --warn: #a86b00; --warn-bg: #fdf1d9; --neu-bg: #eceff1;
+  --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif; --f-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141618; --panel: #1b1e21; --ink: #eef0f2; --ink-2: #b8bfc5; --ink-3: #8b939a; --rule: #30353a; --rule-2: #25292d;
+  --accent: #3987e5; --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #9085e9; --twin: #8b939a;
+  --good: #4cc27f; --good-bg: #173524; --bad: #ec6b6a; --bad-bg: #3a1c1c; --warn: #e2a536; --warn-bg: #362a12; --neu-bg: #2a2e33; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #141618; --panel: #1b1e21; --ink: #eef0f2; --ink-2: #b8bfc5; --ink-3: #8b939a; --rule: #30353a; --rule-2: #25292d;
+  --accent: #3987e5; --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #9085e9; --twin: #8b939a;
+  --good: #4cc27f; --good-bg: #173524; --bad: #ec6b6a; --bad-bg: #3a1c1c; --warn: #e2a536; --warn-bg: #362a12; --neu-bg: #2a2e33; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 28px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 36px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(26px, 4vw, 36px); line-height: 1.1; }
+h2 { font-size: 21px; }
+h3 { font-size: 15px; font-family: var(--f-body); font-weight: 600; }
+p { margin: 0; max-width: 72ch; color: var(--ink-2); }
+.eyebrow { font-family: var(--f-mono); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); }
+.mono, td.n, .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+header { display: grid; gap: 12px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 18px; font-family: var(--f-mono); font-size: 12.5px; color: var(--ink-3); }
+section { display: grid; gap: 14px; }
+.sec-head { display: grid; gap: 6px; border-top: 2px solid var(--ink); padding-top: 12px; }
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 16px; min-width: 0; }
+.verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.vcard { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+.vcard .q { font-size: 13px; font-weight: 600; }
+.vcard .why { font-size: 13px; color: var(--ink-2); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--f-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; width: fit-content; }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.p-validated { color: var(--good); background: var(--good-bg); } .p-null { color: var(--bad); background: var(--bad-bg); }
+.p-underpowered { color: var(--warn); background: var(--warn-bg); } .p-context { color: var(--ink-2); background: var(--neu-bg); }
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; font-weight: 500; color: var(--ink-3); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 8px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+td { padding: 6px 8px; border-bottom: 1px solid var(--rule-2); white-space: nowrap; }
+td.n, th.n { text-align: right; }
+tr.sel td { background: var(--neu-bg); }
+tbody tr.click { cursor: pointer; } tbody tr.click:hover td { background: var(--rule-2); }
+.pos { color: var(--good); } .neg { color: var(--bad); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.seg button { font: 500 12.5px var(--f-body); background: var(--panel); color: var(--ink-2); border: 0; padding: 5px 10px; cursor: pointer; border-right: 1px solid var(--rule); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+button:focus-visible, select:focus-visible, tr:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select { font: 13px var(--f-body); padding: 4px 6px; border: 1px solid var(--rule); border-radius: 6px; background: var(--panel); color: var(--ink); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { font-family: var(--f-mono); font-size: 11px; fill: var(--ink-3); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 9px; font: 12px var(--f-mono); color: var(--ink); box-shadow: 0 4px 14px rgba(0,0,0,0.12); white-space: nowrap; z-index: 5; }
+.note { font-size: 13px; color: var(--ink-3); max-width: 80ch; }
+.callout { border-left: 3px solid var(--ink); padding: 4px 0 4px 14px; display: grid; gap: 6px; }
+.kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.kv div { display: grid; gap: 2px; } .kv b { font: 500 18px var(--f-mono); color: var(--ink); } .kv span { font-size: 12px; color: var(--ink-3); }
+ul { margin: 0; padding-left: 18px; color: var(--ink-2); max-width: 78ch; } li { margin: 3px 0; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">MacroFXModel research · value-migration-nq · pre-registered study</div>
+    <h1>NQ Value Migration Study</h1>
+    <p>Does volume-profile value migration (POC, VAH and VAL drifting between 15-minute boxes) predict NASDAQ futures direction, do delta and absorption add to it, and can repeated scalps or a trailing stop turn it into net profit? Every number below comes from the registered run. Nothing was tuned.</p>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <section>
+    <div class="sec-head"><div class="eyebrow">Verdicts</div><h2>What the evidence says, question by question</h2></div>
+    <div class="verdicts" id="verdicts"></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div class="eyebrow">1 · Prediction</div><h2>Signed forward move after a migration state</h2>
+      <p>Mean move in the state's direction, in horizon-scaled sigma units (y = move / (σ1·√h)). Above zero means the state pointed the right way. The grey line is the price twin: the same rule on box closes instead of POC. If value migration carried information beyond price, the coloured lines would sit above it.</p></div>
+    <div class="panel">
+      <div class="controls" style="margin-bottom:10px">
+        <div class="seg" id="sliceSeg" role="group" aria-label="Sample"></div>
+      </div>
+      <div class="chart" id="hchart"></div>
+      <div class="legend" id="hlegend"></div>
+    </div>
+    <div class="panel tbl"><table id="cells"></table></div>
+    <p class="note" id="regnote"></p>
+  </section>
+
+  <section>
+    <div class="sec-head"><div class="eyebrow">2 · Strategies</div><h2>Four models × two entries × three exits, after costs</h2>
+      <p>Net of 1 tick slippage per market fill and $4.50 per round turn. "Random" replays each trade on a random other session at the same minute, side and risk, with the same exit, 20 times. A strategy with no information lands near the random line. Select a row to see its equity and breakdowns.</p></div>
+    <div class="panel tbl"><table id="strat"></table></div>
+    <div class="panel">
+      <div class="controls" style="justify-content:space-between;margin-bottom:8px">
+        <h3 id="eqTitle">Equity</h3>
+        <div class="seg" id="unitSeg" role="group" aria-label="Units"></div>
+      </div>
+      <div class="chart" id="eqchart"></div>
+      <div class="chart" id="ddchart" style="margin-top:6px"></div>
+      <div class="kv" id="eqkv" style="margin-top:12px"></div>
+    </div>
+    <div class="grid2">
+      <div class="panel"><h3>Net R per trade by year</h3><div class="chart" id="yearchart"></div></div>
+      <div class="panel"><h3>Net R per trade by regime</h3><div class="controls" style="margin:6px 0"><div class="seg" id="regSeg" role="group" aria-label="Regime"></div></div><div class="chart" id="regchart"></div><p class="note" id="regcaption"></p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div class="eyebrow">3 · Regimes</div><h2>Does the signal behave differently by market condition?</h2>
+      <p>Signed outcome by regime. Ex-ante volatility is knowable before the session. Day type and ex-post volatility use the finished session and are hindsight descriptions, not filters you could trade. Benjamini–Hochberg at q = 0.10 over every slice.</p></div>
+    <div class="panel tbl"><table id="regtbl"></table></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div class="eyebrow">4 · Robustness</div><h2>Parameter grid, walk-forward and box size</h2>
+      <p>27 grid points (θ 0.25/0.5/1, K 2/4/6, φ 0.25/0.5/1). Walk-forward picks, for each year 2017–2025, the grid point with the best net R over the two previous years. If tuning found something real, walk-forward would beat the fixed default.</p></div>
+    <div class="panel tbl"><table id="gridtbl"></table></div>
+    <div class="panel tbl"><table id="boxtbl"></table></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div class="eyebrow">5 · Data</div><h2>What this data can and cannot show</h2></div>
+    <div class="panel" style="display:grid;gap:12px" id="dq"></div>
+  </section>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const $ = (s) => document.querySelector(s);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt = (x, d = 3) => x == null || !isFinite(x) ? "–" : (x > 0 ? "+" : "") + Number(x).toFixed(d);
+const fmt0 = (x, d = 2) => x == null || !isFinite(x) ? "–" : Number(x).toFixed(d);
+const cls = (x) => x == null ? "" : x > 0 ? "pos" : x < 0 ? "neg" : "";
+const NAMES = { A_POC: "POC migration", A: "A · value migration", B: "B · + delta", C_: "C · + absorption", D_: "D · + delta + absorption", TW_POC: "Price twin (closes)", TW_A: "Price twin of A" };
+const COLORS = { A_POC: "--s1", A: "--s2", B: "--s3", C_: "--s4", D_: "--s5", TW_POC: "--twin", TW_A: "--twin" };
+const H = [5, 10, 15, 30, 60];
+const S = DATA.sample;
+
+$("#meta").innerHTML = [
+  `NQ 1-min OHLCV · RTH 09:30–16:00 NY`, `${S.first} → ${S.last}`, `${S.sessions.toLocaleString()} sessions (IS ${S.is_sessions} · OOS ${S.oos_sessions})`,
+  `boxes ${DATA.params.B} min · K ${DATA.params.K} · θ ${DATA.params.theta} · φ ${DATA.params.phi}`, `delta & absorption = OHLCV proxies`
+].map((t) => `<span>${t}</span>`).join("");
+
+// ---------- verdicts
+const V = DATA.verdicts || {};
+$("#verdicts").innerHTML = (V.items || []).map((v) => `<div class="vcard"><span class="pill p-${v.verdict}">${v.verdict}</span><div class="q">${v.q}</div><div class="why">${v.why}</div></div>`).join("");
+
+// ---------- tiny SVG chart kit
+function svgEl(tag, attrs, parent) { const e = document.createElementNS("http://www.w3.org/2000/svg", tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function niceTicks(lo, hi, n = 5) { const span = hi - lo || 1; const step0 = span / n; const mag = Math.pow(10, Math.floor(Math.log10(step0))); const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => span / s <= n) || 10 * mag; const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10)); return out; }
+function tipFor(container) { let t = container.querySelector(".tip"); if (!t) { t = document.createElement("div"); t.className = "tip"; t.hidden = true; container.appendChild(t); } return t; }
+function placeTip(container, tip, x, y, html) { tip.innerHTML = html; tip.hidden = false; const w = container.clientWidth; const tw = tip.offsetWidth; tip.style.left = Math.min(Math.max(0, x + 12), w - tw) + "px"; tip.style.top = Math.max(0, y - 10 - tip.offsetHeight) + "px"; }
+
+function lineChart(el, { xs, series, xLabels, height = 260, yFmt = (v) => v, zero = true, band = null, xType = "cat", nt = 5 }) {
+  el.innerHTML = ""; const W = Math.max(320, el.clientWidth || 640), Hh = height, m = { l: 52, r: 16, t: 12, b: 28 };
+  let ys = series.flatMap((s) => s.y.filter((v) => v != null)); if (band) ys = ys.concat(band.lo, band.hi); if (zero) ys.push(0);
+  let lo = Math.min(...ys), hi = Math.max(...ys); const pad = (hi - lo) * 0.08 || 0.01; lo -= pad; hi += pad;
+  const ticks = niceTicks(lo, hi, nt); lo = Math.min(lo, ticks[0]); hi = Math.max(hi, ticks[ticks.length - 1]);
+  const n = xs.length; const X = (i) => m.l + (n === 1 ? 0 : (i / (n - 1)) * (W - m.l - m.r)); const Y = (v) => m.t + (1 - (v - lo) / (hi - lo)) * (Hh - m.t - m.b);
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${Hh}`, role: "img" }, el);
+  ticks.forEach((t) => { svgEl("line", { x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), stroke: css(t === 0 ? "--ink-3" : "--rule-2"), "stroke-width": t === 0 ? 1 : 1 }, svg); const tx = svgEl("text", { x: m.l - 8, y: Y(t) + 4, "text-anchor": "end" }, svg); tx.textContent = yFmt(t); });
+  const step = Math.ceil(n / 8); xs.forEach((x, i) => { if (xType === "cat" || i % step === 0 || i === n - 1) { const tx = svgEl("text", { x: X(i), y: Hh - 8, "text-anchor": i === 0 && xType !== "cat" ? "start" : i === n - 1 && xType !== "cat" ? "end" : "middle" }, svg); tx.textContent = xLabels ? xLabels[i] : x; } });
+  if (band) { let d = ""; band.hi.forEach((v, i) => { d += (i ? "L" : "M") + X(i) + "," + Y(v); }); for (let i = band.lo.length - 1; i >= 0; i--) d += "L" + X(i) + "," + Y(band.lo[i]); svgEl("path", { d: d + "Z", fill: css(band.color), opacity: 0.14 }, svg); }
+  series.forEach((s) => {
+    let d = "", started = false; s.y.forEach((v, i) => { if (v == null) { started = false; return; } d += (started ? "L" : "M") + X(i) + "," + Y(v); started = true; });
+    svgEl("path", { d, fill: "none", stroke: css(s.color), "stroke-width": s.w || 2, "stroke-dasharray": s.dash || "", "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+    if (s.dots) s.y.forEach((v, i) => { if (v != null) svgEl("circle", { cx: X(i), cy: Y(v), r: 4, fill: css(s.color), stroke: css("--panel"), "stroke-width": 2 }, svg); });
+    if (s.area) { const base = Y(Math.max(lo, Math.min(0, hi))); svgEl("path", { d: d + `L${X(n - 1)},${base}L${X(0)},${base}Z`, fill: css(s.color), opacity: 0.18 }, svg); }
+  });
+  const tip = tipFor(el); const cross = svgEl("line", { y1: m.t, y2: Hh - m.b, stroke: css("--ink-3"), "stroke-width": 1, opacity: 0 }, svg);
+  const hit = svgEl("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: Hh - m.t - m.b, fill: "transparent" }, svg);
+  hit.addEventListener("mousemove", (ev) => { const r = svg.getBoundingClientRect(); const px = (ev.clientX - r.left) * (W / r.width); const i = Math.max(0, Math.min(n - 1, Math.round((px - m.l) / ((W - m.l - m.r) / Math.max(1, n - 1))))); cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i)); cross.setAttribute("opacity", 0.6);
+    const rows = series.filter((s) => !s.noTip).map((s) => `<div><span style="color:${css(s.color)}">■</span> ${s.name}: ${s.y[i] == null ? "–" : yFmt(s.y[i])}</div>`).join("");
+    placeTip(el, tip, (X(i) / W) * r.width, (ev.clientY - r.top), `<div style="color:${css("--ink-3")}">${xLabels ? xLabels[i] : xs[i]}</div>${rows}`); });
+  hit.addEventListener("mouseleave", () => { tip.hidden = true; cross.setAttribute("opacity", 0); });
+}
+
+function barChart(el, { labels, values, counts, height = 200, yFmt = (v) => fmt(v, 2) }) {
+  el.innerHTML = ""; const W = Math.max(300, el.clientWidth || 480), Hh = height, m = { l: 48, r: 10, t: 10, b: 30 };
+  const vals = values.map((v) => v ?? 0); let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals); const pad = (hi - lo) * 0.1 || 0.05; lo -= lo < 0 ? pad : 0; hi += hi > 0 ? pad : 0;
+  const ticks = niceTicks(lo, hi, 4); lo = Math.min(lo, ticks[0]); hi = Math.max(hi, ticks[ticks.length - 1]);
+  const Y = (v) => m.t + (1 - (v - lo) / (hi - lo)) * (Hh - m.t - m.b); const bw = (W - m.l - m.r) / labels.length;
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${Hh}` }, el); const tip = tipFor(el);
+  ticks.forEach((t) => { svgEl("line", { x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), stroke: css(t === 0 ? "--ink-3" : "--rule-2") }, svg); const tx = svgEl("text", { x: m.l - 6, y: Y(t) + 4, "text-anchor": "end" }, svg); tx.textContent = yFmt(t); });
+  labels.forEach((lab, i) => { const v = vals[i]; const x = m.l + i * bw + bw * 0.18, w = bw * 0.64; const y0 = Y(0), y1 = Y(v);
+    const r = svgEl("rect", { x, y: Math.min(y0, y1), width: w, height: Math.max(1, Math.abs(y1 - y0)), rx: 3, fill: css(v >= 0 ? "--good" : "--bad"), opacity: 0.85 }, svg);
+    const tx = svgEl("text", { x: x + w / 2, y: Hh - 10, "text-anchor": "middle" }, svg); tx.textContent = lab;
+    const hit = svgEl("rect", { x: m.l + i * bw, y: m.t, width: bw, height: Hh - m.t - m.b, fill: "transparent" }, svg);
+    hit.addEventListener("mousemove", (ev) => { const rr = svg.getBoundingClientRect(); placeTip(el, tip, ev.clientX - rr.left, ev.clientY - rr.top, `${lab}: ${yFmt(v)} R${counts ? ` · ${counts[i]} trades` : ""}`); });
+    hit.addEventListener("mouseleave", () => { tip.hidden = true; }); });
+}
+
+function seg(el, options, value, onChange) { el.innerHTML = ""; options.forEach(([v, label]) => { const b = document.createElement("button"); b.type = "button"; b.textContent = label; b.setAttribute("aria-pressed", v === value); b.onclick = () => { [...el.children].forEach((c) => c.setAttribute("aria-pressed", "false")); b.setAttribute("aria-pressed", "true"); onChange(v); }; el.appendChild(b); }); }
+
+// ---------- section 1
+let slice = "full";
+function drawH() {
+  const get = (m) => H.map((h) => { const r = DATA.signed.find((x) => x.model === m && x.h === h); return r ? r[slice].est : null; });
+  const models = ["A_POC", "A", "B", "C_", "D_", "TW_POC"];
+  const series = models.map((m) => ({ name: NAMES[m], color: COLORS[m], y: get(m), dots: true, dash: m.startsWith("TW") ? "5 4" : "", w: m === "A_POC" ? 2.5 : 2 }));
+  const b = H.map((h) => DATA.signed.find((x) => x.model === "A_POC" && x.h === h)[slice]);
+  lineChart($("#hchart"), { xs: H, xLabels: H.map((h) => h + " min"), series, yFmt: (v) => fmt(v, 3), band: { lo: b.map((x) => x.lo), hi: b.map((x) => x.hi), color: "--s1" } });
+  $("#hlegend").innerHTML = models.map((m) => `<span><i style="background:${css(COLORS[m])}"></i>${NAMES[m]}</span>`).join("") + `<span><i style="background:${css("--s1")};opacity:.25;height:8px"></i>95% interval, POC migration</span>`;
+}
+seg($("#sliceSeg"), [["full", "All 2015–25"], ["is", "In-sample 2015–19"], ["oos", "Out-of-sample 2020–25"], ["long", "Long states"], ["short", "Short states"]], slice, (v) => { slice = v; drawH(); });
+drawH();
+
+$("#cells").innerHTML = `<thead><tr><th>Scored cell</th><th>Comparison</th><th class="n">n</th><th class="n">Estimate</th><th class="n">95% CI</th><th class="n">IS</th><th class="n">OOS</th><th class="n">Bar</th><th class="n">MDE</th><th class="n">Holm p</th><th>Result</th></tr></thead><tbody>` +
+  DATA.cells.map((c) => { const lab = c.pass ? ["validated", "passes"] : c.mirror ? ["context", "mirror"] : c.powered ? ["null", "fails"] : ["underpowered", "underpowered"];
+    return `<tr><td>${c.cell}</td><td>${c.m2 ? `${NAMES[c.m1]} − ${NAMES[c.m2]}` : `${NAMES[c.m1]}, h = ${c.h}`}</td><td class="n">${(DATA.signed.find((x) => x.model === c.m1 && x.h === c.h)?.full.n ?? "").toLocaleString()}</td><td class="n ${cls(c.est)}">${fmt(c.est, 4)}</td><td class="n">[${fmt(c.lo, 3)}, ${fmt(c.hi, 3)}]</td><td class="n">${fmt(c.is, 3)}</td><td class="n">${fmt(c.oos, 3)}</td><td class="n">${c.m2 ? "≥ +" : "≥ +"}${c.bar}</td><td class="n">${fmt0(c.mde, 3)}</td><td class="n">${fmt0(c.pHolm, 3)}</td><td><span class="pill p-${lab[0]}">${lab[1]}</span></td></tr>`; }).join("") + "</tbody>";
+
+const rg = DATA.regs;
+const bb = (h, k, n) => rg[h][k][n];
+$("#regnote").innerHTML = `Regression, POC migration alone vs with the price move already made (R_K), coefficient per 1 σ_b of migration, 95% CI: ` +
+  ["h5", "h15", "h60"].map((h) => `<b>${h.slice(1)} min</b> alone ${fmt(bb(h, "poc_only", "mig_poc")[0], 4)}, with price ${fmt(bb(h, "poc_plus_price", "mig_poc")[0], 4)} [${fmt(bb(h, "poc_plus_price", "mig_poc")[1], 3)}, ${fmt(bb(h, "poc_plus_price", "mig_poc")[2], 3)}] (price ${fmt(bb(h, "poc_plus_price", "R_K")[0], 4)})`).join(" · ") + `. R² of the full feature set: ${["h5", "h15", "h60"].map((h) => (rg[h].full._r2 * 100).toFixed(2) + "%").join(", ")}.`;
+
+// ---------- section 2
+let selected = DATA.strat[0].key, unit = "R";
+function stratTable() {
+  $("#strat").innerHTML = `<thead><tr><th>Model</th><th>Entry</th><th>Exit</th><th class="n">Trades</th><th class="n">Win</th><th class="n">PF</th><th class="n">Net R</th><th class="n">95% CI</th><th class="n">Gross R</th><th class="n">Random</th><th class="n">vs random</th><th class="n">IS</th><th class="n">OOS</th><th class="n">Sharpe</th><th class="n">Max DD $</th><th>Power</th></tr></thead><tbody>` +
+    DATA.strat.map((s) => `<tr class="click ${s.key === selected ? "sel" : ""}" tabindex="0" data-k="${s.key}"><td>${s.model}</td><td>${s.entry === "pull" ? "pullback" : "continuation"}</td><td>${{ r1: "1:1", r2: "2:1", trail: "trail" }[s.exit]}</td><td class="n">${s.trades.toLocaleString()}</td><td class="n">${(s.win * 100).toFixed(1)}%</td><td class="n">${fmt0(s.pf, 2)}</td><td class="n ${cls(s.expR)}">${fmt(s.expR, 3)}</td><td class="n">[${fmt(s.lo, 2)}, ${fmt(s.hi, 2)}]</td><td class="n ${cls(s.grossR)}">${fmt(s.grossR, 3)}</td><td class="n">${fmt(s.randR, 3)}</td><td class="n ${cls(s.vsRand)}">${fmt(s.vsRand, 3)}</td><td class="n ${cls(s.isR)}">${fmt(s.isR, 3)}</td><td class="n ${cls(s.oosR)}">${fmt(s.oosR, 3)}</td><td class="n">${fmt0(s.sharpe, 2)}</td><td class="n">${Math.round(s.mdd).toLocaleString()}</td><td><span class="pill p-${s.pass ? "validated" : s.powered ? "null" : "underpowered"}">${s.pass ? "passes" : s.powered ? "powered" : "low power"}</span></td></tr>`).join("") + "</tbody>";
+  document.querySelectorAll("#strat tbody tr").forEach((tr) => { const go = () => { selected = tr.dataset.k; stratTable(); drawEq(); }; tr.onclick = go; tr.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } }; });
+}
+let regKey = "vol_exante";
+function drawEq() {
+  const s = DATA.strat.find((x) => x.key === selected), e = DATA.equity[selected];
+  $("#eqTitle").textContent = `Equity · ${NAMES[s.model === "A" ? "A" : s.model + "_"] || s.model}, ${s.entry === "pull" ? "pullback" : "continuation"} entry, ${{ r1: "1:1", r2: "2:1", trail: "trailing" }[s.exit]} exit (net, 1 contract)`;
+  if (!e) { $("#eqchart").innerHTML = "<p class='note'>No trades.</p>"; return; }
+  const y = unit === "R" ? e.R : e.U; const labels = e.d;
+  const expectedRand = e.d.map((_, i) => null);
+  lineChart($("#eqchart"), { xs: e.d, xLabels: labels.map((d) => d.slice(0, 7)), xType: "time", series: [{ name: unit === "R" ? "cumulative net R" : "cumulative net $", color: "--s1", y }], yFmt: (v) => unit === "R" ? v.toFixed(0) : "$" + Math.round(v).toLocaleString(), height: 240 });
+  lineChart($("#ddchart"), { xs: e.d, xLabels: labels.map((d) => d.slice(0, 7)), xType: "time", series: [{ name: "drawdown (R)", color: "--bad", y: e.dd, area: true, w: 1.5 }], yFmt: (v) => v.toFixed(0), height: 130, nt: 2 });
+  const ex = s.exits || {};
+  $("#eqkv").innerHTML = [[s.trades.toLocaleString(), "trades"], [s.days.toLocaleString(), "trading days"], [(s.win * 100).toFixed(1) + "%", "win rate"], [fmt0(s.pf, 2), "profit factor"],
+    [fmt(s.expR, 3) + " R", "expectancy (net)"], ["$" + fmt0(s.exp_usd, 1), "expectancy $ / trade"], ["$" + fmt0(s.avg_win, 0) + " / $" + fmt0(s.avg_loss, 0), "avg winner / loser"],
+    [fmt0(s.sharpe, 2) + " / " + fmt0(s.sortino, 2), "Sharpe / Sortino"], ["$" + Math.round(s.mdd).toLocaleString(), "max drawdown"], [fmt0(s.mae, 2) + " / " + fmt0(s.mfe, 2), "mean MAE / MFE (R)"],
+    [fmt(s.longR, 3) + " / " + fmt(s.shortR, 3), `long / short R (${s.longN}/${s.shortN})`], [fmt(s.grossR, 3) + " / " + fmt(s.stressR, 3), "gross / 2-tick stress R"],
+    [Object.entries(ex).map(([k, v]) => `${k} ${v}`).join(" · "), "exits"], [fmt0(s.hold, 0) + " min", "average hold"]].map(([b, t]) => `<div><b>${b}</b><span>${t}</span></div>`).join("");
+  const yrs = s.byYear || []; barChart($("#yearchart"), { labels: yrs.map((r) => String(r.y).slice(2)), values: yrs.map((r) => r.mean), counts: yrs.map((r) => r.count) });
+  drawReg();
+}
+function drawReg() {
+  const s = DATA.strat.find((x) => x.key === selected); const rows = ((s.byRegime || {})[regKey] || []).filter((r) => r[regKey] !== "na");
+  barChart($("#regchart"), { labels: rows.map((r) => r[regKey]), values: rows.map((r) => r.mean), counts: rows.map((r) => r.count) });
+  $("#regcaption").textContent = regKey === "vol_exante" ? "Known before the session: previous 20 sessions' range vs its own history." : "Hindsight label from the finished session. Description only; not a tradeable filter.";
+}
+seg($("#unitSeg"), [["R", "R"], ["$", "USD"]], unit, (v) => { unit = v; drawEq(); });
+seg($("#regSeg"), [["vol_exante", "Vol, ex-ante"], ["daytype_expost", "Day type, ex-post"], ["vol_expost", "Vol, ex-post"]], regKey, (v) => { regKey = v; drawReg(); });
+stratTable(); drawEq();
+
+// ---------- section 3
+const regLab = { vol_exante: "Volatility, ex-ante", daytype_expost: "Day type, ex-post", vol_expost: "Volatility, ex-post" };
+$("#regtbl").innerHTML = `<thead><tr><th>Model</th><th class="n">h</th><th>Regime</th><th>Label</th><th class="n">n</th><th class="n">Signed outcome</th><th class="n">95% CI</th><th>BH q 0.10</th></tr></thead><tbody>` +
+  DATA.regimes.map((r) => `<tr><td>${NAMES[r.model]}</td><td class="n">${r.h}</td><td>${regLab[r.regime]}</td><td>${r.label}</td><td class="n">${r.n.toLocaleString()}</td><td class="n ${cls(r.est)}">${fmt(r.est, 3)}</td><td class="n">[${fmt(r.lo, 3)}, ${fmt(r.hi, 3)}]</td><td>${r.bh_pass ? `<span class="pill p-context">survives</span>` : ""}</td></tr>`).join("") + "</tbody>";
+
+// ---------- section 4
+if (DATA.grid) {
+  $("#gridtbl").innerHTML = `<thead><tr><th>Model</th><th>Entry</th><th>Exit</th><th class="n">Grid OOS &gt; 0</th><th class="n">Median OOS R</th><th class="n">Best OOS R</th><th class="n">IS→OOS rank corr</th><th class="n">Walk-forward R</th><th class="n">Default R (same years)</th></tr></thead><tbody>` +
+    DATA.grid.summary.map((g) => `<tr><td>${g.model.replace("_", "")}</td><td>${g.entry}</td><td>${g.exit}</td><td class="n">${Math.round(g.share_oos_positive * 27)}/27</td><td class="n ${cls(g.median_oos_expR)}">${fmt(g.median_oos_expR, 3)}</td><td class="n ${cls(g.best_oos_expR)}">${fmt(g.best_oos_expR, 3)}</td><td class="n">${fmt(g.is_oos_rank_corr, 2)}</td><td class="n ${cls(g.wf_expR)}">${fmt(g.wf_expR, 3)}</td><td class="n ${cls(g.default_expR_same_years)}">${fmt(g.default_expR_same_years, 3)}</td></tr>`).join("") + "</tbody>";
+  const bx = DATA.grid.box.filter((r) => r.model === "A_POC");
+  $("#boxtbl").innerHTML = `<thead><tr><th>Box size</th>${H.map((h) => `<th class="n">${h} min</th>`).join("")}</tr></thead><tbody>` +
+    [5, 15, 30].map((B) => `<tr><td>${B}-minute boxes · POC migration signed outcome</td>${H.map((h) => { const r = bx.find((x) => x.B === B && x.h === h); return `<td class="n ${cls(r?.S)}">${fmt(r?.S, 3)}</td>`; }).join("")}</tr>`).join("") + "</tbody>";
+} else { $("#gridtbl").innerHTML = "<tr><td>Grid not run.</td></tr>"; }
+
+// ---------- section 5
+const pv = DATA.dq.proxy_validity, ds = DATA.dq.dataset;
+$("#dq").innerHTML = `
+  <div class="kv"><div><b>${ds.rth_sessions_kept.toLocaleString()}</b><span>RTH sessions kept of ${ds.rth_sessions_seen.toLocaleString()}</span></div>
+  <div><b>${ds.ohlc_violations}</b><span>OHLC violations</span></div><div><b>${ds.in_session_jumps_gt_0p4pct.length}</b><span>in-session jumps &gt; 0.4%</span></div>
+  <div><b>${fmt0(pv["15min"].corr_true_delta_vs_bar_return, 2)}</b><span>true delta vs bar return, 15 min</span></div>
+  <div><b>${fmt0(pv["15min"].corr_bvc_vs_true, 2)}</b><span>OHLCV delta proxy vs true delta, 15 min</span></div>
+  <div><b>${fmt0(pv["15min"].corr_bvc_residual_vs_true_residual, 2)}</b><span>proxy vs true, the part price doesn't explain</span></div></div>
+  <div class="callout"><h3>Reconstructable from 1-minute OHLCV</h3><p>Approximate POC, VAH and VAL (each minute's volume spread over its range), value migration, price-impact ratios, relative volume, a bulk-volume-classification delta estimate.</p></div>
+  <div class="callout"><h3>Needs tick trades with the aggressor flag</h3><p>True bid/ask delta, cumulative delta, footprint-exact profiles, stacked imbalances, large-print detection, delta divergence (absorption by aggression). On the one NQ tick day in the repo, true delta tracks the bar's own return at r ≈ 0.75, and the OHLCV proxy recovers r ≈ ${fmt0(pv["15min"].corr_bvc_residual_vs_true_residual, 2)} of the remainder at the 15-minute box scale.</p></div>
+  <div class="callout"><h3>Needs order-book (market-by-order / MBP-10) data</h3><p>Passive absorption at resting size, iceberg refills, pulled liquidity, queue dynamics. Not attempted.</p></div>
+  <p class="note">Source: free NQ continuous front-month 1-minute set (HuggingFace, MIT), sha256-pinned. RTH only, so the unadjusted roll gaps at the Globex open never enter a feature. Sessions under 385 minutes are dropped (half days, holiday stubs, a 2025-06-20 contract-switch stub).</p>`;
+
+window.addEventListener("resize", () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { drawH(); drawEq(); }, 150); });
+</script>

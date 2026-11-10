@@ -206,7 +206,8 @@ test('a task can pin its own model on a provider; env overrides it; it never lea
   assert.equal(resolveTask('desk-head', { keys }).model, 'claude-sonnet-5');
   // a provider-wide pin does not beat the task's own pin, but does apply to tasks without one
   assert.equal(resolveTask('desk-analyst', { keys, models: { anthropic: { id: 'claude-opus-5' } } }).model, 'claude-sonnet-5');
-  assert.equal(resolveTask('brief', { keys, models: { anthropic: { id: 'claude-opus-5' } } }).model, 'claude-opus-5');
+  // (the brief defaults to DeepSeek since 2026-11-09, so it is routed to Anthropic here to test the provider-wide pin)
+  assert.equal(resolveTask('brief', { keys, tasks: { brief: 'anthropic' }, models: { anthropic: { id: 'claude-opus-5' } } }).model, 'claude-opus-5');
   // env pin wins
   const cfg = { ...configFromEnv({ ANT_KEY: 'k', DEEPSEEK_KEY: 'k', AI_TASK_MODEL_DESK_HEAD: 'claude-opus-5-5' }) };
   assert.equal(resolveTask('desk-head', cfg).model, 'claude-opus-5-5');
@@ -336,4 +337,19 @@ test('cache mark: off when caching is off; a long system gets its own breakpoint
 test('splitCacheMark: no mark means no lead; extra marks are dropped', () => {
   assert.deepEqual(splitCacheMark('plain'), { lead: '', rest: 'plain' });
   assert.deepEqual(splitCacheMark(`a${CACHE_MARK}b${CACHE_MARK}c`), { lead: 'a', rest: 'bc' });
+});
+
+test('with no saved routing, the owner\'s cheap jobs run on DeepSeek and the desk jobs on Sonnet (2026-11-09)', () => {
+  const keys = { anthropic: true, deepseek: true };
+  for (const t of ['brief', 'chain', 'eod-review', 'pair', 'cot', 'currency', 'explain', 'oi-explain', 'headlines', 'doc-summary', 'misc']) {
+    assert.equal(resolveTask(t, { keys, provider: 'anthropic' }).provider, 'deepseek', t);
+  }
+  assert.equal(resolveTask('desk-analyst', { keys, provider: 'anthropic' }).model, 'claude-sonnet-5');
+  assert.equal(resolveTask('desk-head', { keys, provider: 'anthropic' }).model, 'claude-sonnet-5');
+  // a saved choice still wins, and the Anthropic default is Sonnet 5, not Opus 5
+  const r = resolveTask('doc-summary', { keys, provider: 'anthropic', tasks: { 'doc-summary': 'anthropic' } });
+  assert.equal(r.provider, 'anthropic');
+  assert.equal(r.model, 'claude-sonnet-5');
+  // no DeepSeek key: falls back to Anthropic rather than failing
+  assert.equal(resolveTask('doc-summary', { keys: { anthropic: true }, provider: 'anthropic' }).provider, 'anthropic');
 });

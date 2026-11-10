@@ -1308,3 +1308,92 @@ data. Proposed, not built.
   wording for all of it is the ledger's: context, never a forecast.
 - **Closes an open item in this thread.** The MOVE feed decision from the 2026-10-02 entry
   was taken on 2026-10-19 (wired); the dormant 0.6-weight risk-gate factor is live.
+
+## 2026-11-09 — "Will the bounce hold? Watch credit and the semis" (speaker not named; a post-drop Nasdaq bounce, HY spreads, SMH vs equal-weight)
+
+> *"The Nasdaq just had a big drop and now it's bouncing. The question is whether the
+> bounce persists. Don't look at the Nasdaq to answer that — look at what should be
+> confirming it. Credit spreads: if high yield isn't widening while stocks bounce, the
+> credit market isn't worried, and that bounce has legs. Semis: if the semis are
+> outperforming the equal-weight index, the leadership is back. Both confirming — stay
+> with it. Credit widening into the bounce — fade it unless there is a significant reason
+> not to."*
+
+Owner: *"Not Crown but similar. Like the idea of this and would love to check it out and
+test it."* So this entry is a test, not a comment: the full protocol ran on it today
+(`forge/BOUNCE_CONFIRMATION_PREREG.md` → `scripts/bounce-confirmation/score.mjs` →
+`analysis/output/bounce-confirmation/RESULTS.md` → banked as `bounce-confirmation`).
+
+**1. The claim, stated falsifiably.** After a sharp Nasdaq drop, a bounce during which (a)
+high yield does not widen against investment grade and (b) semis outperform the
+equal-weight index goes on to a higher return over the next one to two weeks than a bounce
+during which credit widens; and a credit-widening bounce has a negative expected return (the
+"fade"). Two arms, one outcome, two horizons. The "significant reason" exception is
+discretionary and was not tested (prereg §7).
+
+**2. What's on the desk, audited.**
+- **Credit as a lead is tested and null.** `credit-leads-equities` (NULL, 22 years of
+  Moody's spreads, 12 cells): credit and equities move in the same window, credit does not
+  move first. The clip's version is *conditional* (only during a bounce) and *contemporaneous*
+  (confirmation, not a lead), which is a different and fairer question, so it was run rather
+  than dismissed.
+- **The leverage effect.** `hy-spread-vol-idx` (CONTEXT) says spreads and equity vol move
+  together with the size of the drop, so a deeper drop mechanically widens credit more. A
+  naive version of the clip's test would be partly a test of "deeper drops bounce
+  differently". The prereg controlled for drop depth and bounce size (residuals), and the
+  raw and controlled numbers turned out the same.
+- **Semis-tilted breadth** was already null as a lead (`breadth-tilt-semis`); the validated
+  Nasdaq direction rules on the ledger are vol-based (`vix-beta-change`, `vvix-ratio-*`),
+  not cross-asset.
+- **The test, run once (2026-11-09).** 177 bounces of ≥ 1.5 % within three sessions of a
+  10-session `^NDX` low, 2007-04 → 2026-08-21 (lockbox respected), HYG/LQD and SMH/RSP as
+  the legs, measured from the low to the bounce day. **Confirmed 102, unconfirmed 44, mixed
+  31.** Confirmed minus unconfirmed, leverage-controlled: **−0.27 pp over 5 sessions
+  [−1.56, +1.05]** and **+0.50 pp over 10 [−0.95, +1.83]**. The unconfirmed arm **did not
+  fade**: mean +0.11 % over 5 sessions [−0.86, +0.99], hit rate **66 %** against 54 % for
+  the confirmed arm, give-back to below the low 45 % in both arms. Each leg alone is flat.
+  The shifted-window placebo (confirmation measured over the ten sessions *into* the low)
+  sits exactly where the real labels do, which is what a label carrying no information
+  looks like. **Verdict UNDERPOWERED** by the pre-registered rule: the design cannot exclude
+  a difference under about 1.6 pp at five sessions, because credit widened in only a quarter
+  of bounces and the unconfirmed arm is 44 episodes. But nothing points the clip's way: the
+  five-session estimate has the wrong sign and the "fade" arm held more often than the
+  confirmed one. A +1.5 pp planted signal came back +1.23 pp with an interval touching zero
+  (as the power statement predicted); +3 pp was recovered cleanly, so the pipeline sees what
+  is there to see.
+- **Today's tape, by his rule (descriptive, post-lockbox, not scored).** `^NDX` made a
+  10-session low on **2026-11-05 at 26,630**, 13.8 % off its 20-day high. The bounce
+  qualified on **2026-11-09, +4.8 %** from the low (11-06 was +1.35 %, under the bar). From
+  the low to today HYG/LQD is **+0.29 %** (credit not widening) and SMH/RSP is **+6.85 %**
+  (semis leading hard): a textbook **CONFIRMED** bounce by the clip's definition. The ledger
+  says that label has not separated holders from faders on 177 prior cases. The last four
+  confirmed bounces in the sample (2026-02-06, 06-08, 06-29, 07-21) went −1.4, +3.8, −2.0
+  and −4.8 % over the next five sessions. One live case is one more row, not a verdict.
+
+**3. Trading or macro-understanding.** The mechanism is sound macro-understanding: credit
+and the cyclical leaders *should* agree with an index bounce that is more than short
+covering, and the chain carries that as same-window context (`hy->nq`). As a trading rule
+("stay with confirmed, fade unconfirmed") it is a direction claim and it did not survive the
+test at the sizes a trader would care about. Macro-understanding, kept; trading rule, not
+banked.
+
+**4. Display nugget.** None built. The honest line is already the ledger's `use`: credit
+not widening plus semis leading did not mark the bounces that held. A "bounce confirmation"
+tile would display a label this desk has just shown to carry no read. If the owner wants
+the three ratios on screen during a drawdown, they belong as *context* beside the breadth
+tiles, with the verdict word on them, never as a signal.
+
+**4b. Dates are not claims.** The clip is undated and names no episode; the live case
+above is this desk's, read today for coherence with his rule, and it is after the lockbox
+so it is not scored.
+
+**5. Verdict and action.**
+- **Tested, banked, closed:** `bounce-confirmation` UNDERPOWERED (wrong-signed at five
+  sessions), ledger entry with POWER row, `credit-leads-equities` `use` gains the
+  cross-reference. Register row BANKED.
+- **What would reopen it:** a longer high-yield series (FRED HY OAS from 1996, when FRED
+  answers again) or a pooled multi-index design, under a new prereg. Not a re-run of this one.
+- **What to keep from the clip:** the habit of asking what *should* be confirming a move
+  before trusting it is good desk practice; the specific pair he names has no record here.
+- **Open from this entry:** none for the owner; the November live case will be in the
+  sample when the lockbox rolls forward.
