@@ -2,7 +2,7 @@
 // nothing here is read by a bot. Read-only: KV reads (oi_store, oi_store_cmdty via the server's helpers), the in-memory forecast, the desk book,
 // and OANDA M5 candles (with tick volume) for the London-midnight open, live spot and the volume profile.
 //
-//   GET /api/sr-zones/export?pair=<oi key | forecast name | comma list | all>   text for pine/SR Zones.pine (parts when over 4,000 characters)
+//   GET /api/sr-zones/export?pair=<oi key | forecast name | comma list | all>   text for pine/SR Zones.pine (one block for every instrument; parts only past 40,000 characters)
 //   GET /api/sr-zones?pair=...                                                    the same as JSON, for the pages
 import { oiStoreToLevels } from './oiConfluence.js';
 import { oiFuturesTermsPrice } from './oi.js';
@@ -132,7 +132,8 @@ export function createSrZones({ kv, getForecast, forecastKeyForPair, oandaFor, i
     if (!items.length) return { error: 404, msg: 'No zones could be built (no spot/σ for the instruments asked for).' };
     const generated = new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
     const text = formatExport(core ? items.map(it => ({ ...it, zones: it.coreZones, missing: it.missing.filter(m => m === 'oi' || m === 'gamma') })) : items, { generated });
-    const parts = text.length > 4000 ? splitParts(text, 4000) : [text];
+    // one paste box: Pine v6 strings hold 40,960 characters (all 16 books ~15k); split only past that
+    const parts = text.length > 40000 ? splitParts(text, 40000) : [text];
     return { items, text, parts, generated };
   }
 

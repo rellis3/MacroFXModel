@@ -6,8 +6,8 @@
 //   sit in the zone (OI, gamma, forecast ladder, IV-adjusted ladder, desk card, volume profile) and sets the opacity.
 //
 // DATA: paste the export from  <site>/api/sr-zones/export?pair=all  (or the "S/R zones" option on the OI Lab page / bot-config OI-Conf tab).
-//   A long paste comes in parts (=====PART i/n=====): paste part 1 into box 1, part 2 into box 2, and so on (Pine caps a string at 4,096
-//   characters). The block whose alias list contains the chart's ticker (or its root) is drawn. Prices are OANDA CFD spot; on a futures
+//   One paste holds every instrument (~15,000 characters; Pine v6 strings hold 40,960), like the OI Profile export. The same paste
+//   serves every chart. The block whose alias list contains the chart's ticker (or its root) is drawn. Prices are OANDA CFD spot; on a futures
 //   chart (GC1!, NQ1!, 6E1! ...) the block's basis (futures − spot) is added.
 //
 // STATUS: Tier = distance from spot (nearer is reached more often). Sources agreeing is descriptive, not shown to predict a reaction.
@@ -16,13 +16,8 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 indicator("SR Zones", shorttitle="SR Zones", overlay=true, max_lines_count=100, max_labels_count=100, max_boxes_count=100)
 
-G1 = "1 · Data (one part per box)"
-paste1 = input.text_area("", "Paste — part 1", group=G1)
-paste2 = input.text_area("", "Paste — part 2", group=G1)
-paste3 = input.text_area("", "Paste — part 3", group=G1)
-paste4 = input.text_area("", "Paste — part 4", group=G1)
-paste5 = input.text_area("", "Paste — part 5", group=G1)
-paste6 = input.text_area("", "Paste — part 6", group=G1)
+G1 = "1 · Data"
+paste1 = input.text_area("", "Paste the S/R zones export (all instruments)", group=G1, tooltip="Paste the whole export in one go: every instrument fits (Pine v6 strings hold 40,960 characters). The block matching the chart ticker is drawn.")
 forceKey = input.string("", "Force instrument (blank = auto)", group=G1, tooltip="Normally blank: the chart ticker is matched against each block's alias list. Type a block name such as GOLD or NQ to force one.")
 G2 = "2 · Show"
 showSup   = input.bool(true, "Support zones", group=G2)
@@ -41,7 +36,7 @@ f_num(string s) => str.tonumber(str.trim(s))
 f_transp(int nf) => nf >= 4 ? 0 : nf == 3 ? 20 : nf == 2 ? 45 : 65
 
 if barstate.islastconfirmedhistory
-    string allTxt = paste1 + "\n" + paste2 + "\n" + paste3 + "\n" + paste4 + "\n" + paste5 + "\n" + paste6
+    string allTxt = paste1
     array<string> rows = str.split(allTxt, "\n")
     string tkU = str.upper(syminfo.ticker)
     string rtU = str.upper(syminfo.root)
