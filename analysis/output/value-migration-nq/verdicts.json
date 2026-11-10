@@ -1,0 +1,44 @@
+{
+ "items": [
+  {
+   "q": "Q1 \u00b7 Does POC migration predict direction?",
+   "verdict": "context",
+   "why": "Yes, by a statistical hair: +0.019\u03c3 at 15 min [+0.010, +0.029], above all 20 placebos, positive in both halves. That is \u22480.5 NQ points per signal in 2020\u201325 against a 0.73-point round trip, and below the registered 0.05\u03c3 bar."
+  },
+  {
+   "q": "Q1 \u00b7 Beyond the price move already made?",
+   "verdict": "null",
+   "why": "The same rule on box closes gets about half of it. The increment is +0.009\u03c3 [\u22120.000, +0.018], and the 0.03\u03c3 bar is ruled out. Mostly short-term momentum that value tracks."
+  },
+  {
+   "q": "Q2 \u00b7 Do VAH and VAL migrating too help?",
+   "verdict": "null",
+   "why": "\u22120.0005\u03c3 [\u22120.002, +0.001]. With 1-minute profiles, VAH and VAL move with the POC in 99% of migration windows, so the extra condition changes nothing."
+  },
+  {
+   "q": "Q3 \u00b7 Does delta confirmation add?",
+   "verdict": "null",
+   "why": "\u22120.002\u03c3 [\u22120.015, +0.011] on the OHLCV delta proxy. This tests a price-derived proxy, not real aggressor flow."
+  },
+  {
+   "q": "Q4 \u00b7 Does absorption improve timing?",
+   "verdict": "underpowered",
+   "why": "\u22120.002\u03c3 [\u22120.024, +0.019], with an MDE of 0.049 against a 0.03 bar. The proxy recovers r \u2248 0.10 of true absorption, so the real question needs tick data."
+  },
+  {
+   "q": "Q5 \u00b7 Does the full combination beat migration alone?",
+   "verdict": "underpowered",
+   "why": "\u22120.003\u03c3 [\u22120.037, +0.029] on 3,131 windows. Nothing points to an improvement."
+  },
+  {
+   "q": "Strategies \u00b7 4 models \u00d7 2 entries \u00d7 3 exits",
+   "verdict": "null",
+   "why": "0 of 24 pass. The busy models lose 0.05\u20130.09R per trade net (gross \u2248 0). Signal minus random entry is +0.00 to +0.03R, while costs take \u22480.1R."
+  },
+  {
+   "q": "Q6 \u00b7 Different by regime?",
+   "verdict": "context",
+   "why": "Strongly by hindsight day type (trend +0.09\u03c3, consolidating \u22120.04\u03c3 at 15 min), not by ex-ante volatility (+0.016 to +0.029\u03c3, overlapping). The split cannot be traded in advance."
+  }
+ ]
+}
