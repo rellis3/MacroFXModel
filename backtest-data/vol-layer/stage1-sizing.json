@@ -1,0 +1,146 @@
+{
+ "read": [
+  [
+   "He & Litterman 2002, The Intuition Behind Black-Litterman Model Portfolios (Goldman Sachs working paper, SSRN 334304)",
+   "full text: sections 1-4 and numeric examples",
+   "doi:10.2139/ssrn.334304"
+  ],
+  [
+   "Meucci 2010, The Black-Litterman Approach: Original Model and Extensions (Encyclopedia of Quantitative Finance, SSRN 1117574)",
+   "full text sections 1-3 (original model, market formulation); section 4 literature review skimmed",
+   "doi:10.2139/ssrn.1117574"
+  ],
+  [
+   "Walters 2014, The Black-Litterman Model in Detail (SSRN 1314585)",
+   "sections on tau calibration and the limits of omega (searched in full text)",
+   "doi:10.2139/ssrn.1314585"
+  ],
+  [
+   "Moreira & Muir 2017, Volatility-Managed Portfolios (Journal of Finance, SSRN 2659431)",
+   "full text: introduction, section I (data, portfolio formation, method), transaction costs and leverage sections, the carry/common-vol result; tables read through the text only",
+   "doi:10.2139/ssrn.2659431"
+  ],
+  [
+   "Cooper 2010, Alpha Generation and Risk Smoothing Using Managed Volatility (SSRN 1664823)",
+   "abstract, introduction and the leverage maths section",
+   "doi:10.2139/ssrn.1664823"
+  ],
+  [
+   "Busseti, Ryu & Boyd 2016, Risk-Constrained Kelly Gambling (arXiv 1603.06183)",
+   "full text sections 1-2 and the numerical experiments (7.1-7.2)",
+   "upload:02261d71"
+  ],
+  [
+   "Lopez de Prado 2016, Building Diversified Portfolios that Outperform Out-of-Sample (Journal of Portfolio Management, SSRN 2708678)",
+   "abstract, introduction, Monte Carlo results section",
+   "doi:10.2139/ssrn.2708678"
+  ],
+  [
+   "Bergmeier 2026, The risk parity zoo: which risk contributions should multi-asset investors equalize? (SSRN 6536678)",
+   "abstract and introduction only",
+   "doi:10.2139/ssrn.6536678"
+  ],
+  [
+   "Jacquier, Muhle-Karbe & Mulligan 2025, In-Sample and Out-of-Sample Sharpe Ratios for Linear Predictive Models (arXiv 2501.03938)",
+   "abstract and introduction only",
+   "upload:660abd21"
+  ],
+  [
+   "Cederburg, O'Doherty, Wang & Yan 2020, On the performance of volatility-managed portfolios (Journal of Financial Economics)",
+   "NOT in the library: numbers taken from plans/vol-layer/L6_LITERATURE_SPEC.md (secondary summary), not verified against the paper",
+   "not in library"
+  ],
+  [
+   "Harvey, Hoyle, Korgaonkar, Rattray, Sargaison & Van Hemert 2018, The Impact of Volatility Targeting (Journal of Portfolio Management)",
+   "NOT in the library: cited inside Lim-Zohren-Roberts (upload:0e01ffc4); claims taken from L6_LITERATURE_SPEC.md, not verified",
+   "not in library"
+  ],
+  [
+   "Ledoit & Wolf 2004, Honey, I Shrunk the Sample Covariance Matrix (Journal of Portfolio Management)",
+   "NOT in the library: method known (shrink the sample covariance toward a structured target); used here as a simple constant-correlation shrink, not their optimal intensity",
+   "not in library"
+  ]
+ ],
+ "sections": [
+  {
+   "h": "The plain theory",
+   "lesson": "Sizing turns a view and a stop into a position. Black-Litterman decides how much of each view to hold given confidence and overlap; vol targeting and risk-per-trade decide how big one unit of risk is.",
+   "lines": [
+    "Position size is the one thing a vol forecast can set without knowing direction. If the stop sits k sigma away and you will lose at most a fixed budget B at the stop, size = B / (k x sigma x value per point). Every trade then risks the same 1R.",
+    "Vol targeting is the book-level version: hold w = target vol / forecast vol, so the book's risk stays near the target as markets get loud or quiet. Moreira-Muir scale by 1/variance instead of 1/vol, which moves size twice as hard.",
+    "Why it can help: if expected return does not rise in step with vol, cutting size in loud periods removes risk without removing much return, so the risk-adjusted return improves. If return rises in step with vol, scaling gains nothing. That is a testable premise, not a law.",
+    "Black-Litterman (BL) is a Bayesian blend. Start from a prior for expected returns (in equities, the returns that would make the market portfolio optimal). Each view says 'this portfolio will return q, with uncertainty omega'. The posterior mean is a confidence-weighted average of the prior and the views, spread across assets by their covariance.",
+    "tau scales how unsure the prior is (0.025-0.05 is common, roughly 1 / years of data; Meucci and Walters show other calibrations up to 1). omega is the uncertainty of each view. He-Litterman set omega = tau x the view portfolio's variance, which makes every view half-trusted. Only omega relative to tau matters for the mean.",
+    "He-Litterman's key result: the BL optimal portfolio = (the prior's portfolio + a weighted sum of the view portfolios) / (1 + tau). A view's weight rises with its strength q and its confidence, and falls when it overlaps (covaries) with the prior or with other views, because overlap is the same information counted twice.",
+    "FX has no market portfolio, so our prior is zero expected return (the random walk). Then BL holds ONLY the view portfolios. With one view on one leg, BL reduces to signal / sigma with a shrink factor: weight = q x tau / (tau + omega) / sigma^2 (up to a 1 + tau/2 term). BL differs from signal/sigma only through (a) correlation between views and (b) omega that changes with the state.",
+    "Kelly: the fraction that maximises long-run growth is f = mean / variance of the bet. Growth at c x Kelly is proportional to c(2 - c): half Kelly keeps 75% of the growth at half the volatility; 2x Kelly grows nothing. Because the mean is estimated, a too-big bet costs more than a too-small one, so practitioners use a fraction.",
+    "Estimation error: weights from an estimated mean and covariance are fragile. Shrinking the covariance toward a simple target (Ledoit-Wolf) and treating means as views with stated confidence (BL) are two ways of saying 'trust the estimates less'. Equal risk per leg (inverse vol) is the no-estimate benchmark that is hard to beat out of sample."
+   ]
+  },
+  {
+   "h": "What the papers found",
+   "lesson": "Vol scaling reliably steadies risk and thins tails; its return benefit is contested and smallest in FX. BL is a disciplined way to size views, not a source of edge.",
+   "lines": [
+    "Moreira-Muir (monthly, US equity factors 1926-2015 plus the currency carry factor): scaling each month by 1/last month's realised variance gave the market an alpha of about 4.9% a year and a ~25% higher Sharpe. Vol is forecastable at short horizons and barely related to next month's return. It survived costs of 1-14 bp. But when carry was timed with a common equity vol factor, its alpha disappeared.",
+    "Transfer: monthly rebalancing of diversified factors is not a daily hold of one FX pair, and our sigma is a one-day forecast. Their premise (return does not scale with vol) is what we can check; their Sharpe gain we should not assume.",
+    "Cederburg et al. 2020 (not read, secondary summary): across 103 equity strategies the managed version had a higher Sharpe in about half (53), few significantly, and real-time versions usually lost to the plain ones. Harvey et al. 2018 (not read, secondary): vol targeting cut left tails and vol-of-vol in 60+ assets; the Sharpe gain was concentrated in risk assets (equities, credit) and negligible in currencies and bonds.",
+    "Cooper 2010 (daily, stock indices, Yahoo data): managed vol smoothed risk over time, cut daily kurtosis and maximum drawdown. Equity-only, and the drawdown gain partly comes from leaving the market in crashes, which the leverage effect makes forecastable in equities but not in FX.",
+    "He-Litterman 2002 (seven equity indices, annual views, tau 0.05): a 5%/year Germany-vs-Europe view got a weight of 0.30 on its view portfolio; making a view half as confident cut its weight from 0.29 to 0.19; a third view that the first two already implied got exactly zero weight. No out-of-sample test: it is algebra and an example.",
+    "Meucci 2010: BL is a shrinkage estimator (the prior is the shrinkage target), and the posterior covariance never collapses even at full confidence. He suggests stating views in volatility units ('bullish' = +1 sd of the view portfolio) and setting omega proportional to the view's variance. Again method, not evidence.",
+    "Busseti-Ryu-Boyd 2016 (simulations only): a Kelly bet with a cap on the probability of a drawdown beats fractional Kelly at the same drawdown risk; its quadratic version is Markowitz. Relevant as the principled form of 'fractional Kelly', not as evidence on markets.",
+    "Lopez de Prado 2016 (Monte Carlo, 10 simulated assets): out-of-sample portfolio sd 0.116 (mean-variance), 0.093 (inverse variance), 0.067 (HRP). Simulated data with a planted cluster structure; Bergmeier 2026 (multi-asset, real data) finds plain inverse-variance risk parity a robust benchmark and fancier tail-risk versions no better.",
+    "Jacquier et al. 2025: the out-of-sample Sharpe falls furthest for strategies with many assets and many weak signals, and rises with more training data. For us: many weak views on 30+ instruments are exactly the case where estimated weights should be shrunk hard toward equal risk.",
+    "What is NOT known: no paper in the library tests BL, vol targeting or Kelly on intraday or one-day FX, gold or index-futures trades with stops. All the evidence is monthly or daily buy-and-hold of factors or indices."
+   ]
+  },
+  {
+   "h": "A worked example on our numbers",
+   "lesson": "Sizing from sigma makes the stop the same bet every day; it does not make a bad day small.",
+   "lines": [
+    "EURUSD, Friday 2022-09-23 (UK mini-budget). London open 0.98328. Live forecast sigma for the session 0.73% = 71.8 pips. Trailing 20-session realised vol 0.63% = 62.0 pips. A constant sigma (median of the last 250 forecasts) 0.51% = 50.1 pips.",
+    "Illustrative risk budget: $1,000 per 1R, stop 1 sigma from the open, $10 per pip per lot. Size = 1,000 / (71.8 x 10) = 1.39 lots with the forecast; 1.61 lots with RV20; 2.00 lots with the constant sigma.",
+    "With the constant sigma the 50-pip stop is only 0.69 forecast sigma away. For a random walk a 1-sigma stop is touched in 32% of sessions; a 0.69-sigma stop in 49%. Same '1R', a different bet.",
+    "The day: low -1.674% (164.6 pips, 2.29 forecast sigma), close -1.438%. Any long was stopped: -1R ($1,000 plus slippage) under all three sizes, because the stop scales with the size. A long held without a stop lost 141 pips: -$1,966 (-1.97R) at forecast size, -$2,830 (-2.83R) at constant-sigma size.",
+    "Black-Litterman on the real 2021-22 correlation of the seven USD legs (average 0.54), tau 0.05, He-Litterman omega: a +0.1 sigma short-USD view on each leg gives 0.049 per leg (in sigma units, risk aversion 1) if the correlations are ignored (signal/sigma). With the real correlations BL gives EURUSD 0.016, GBPUSD 0.018, AUDUSD and NZDUSD 0.015, USDCAD 0.022, USDJPY 0.030: the book's vol falls from 0.27 to 0.10. Seven views on the dollar are mostly one view. If the EUR, GBP and CHF views are 4x less certain, they drop further to 0.007-0.008 and the others rise slightly (0.020-0.034).",
+    "Kelly on a hypothetical rule: mean +0.05R, sd 1R per trade gives full Kelly = 0.05 / 1 = risk 5% of capital per trade; half Kelly 2.5%. If the true mean is half the estimate (+0.025R), the 5% bet is 2x Kelly and grows nothing. This is why fixed small risk per trade (0.5-1%) is the sane default until the edge is measured out of sample."
+   ]
+  },
+  {
+   "h": "What our earlier repo work found, and where I agree or disagree",
+   "lesson": "Agreement on the main point: vol sizing is a risk-shaping tool, not a return tool; which sigma barely matters.",
+   "lines": [
+    "vol-target (forge/VOL_TARGET_PREREG.md, banked validated): steadier monthly risk with any sigma, same Sharpe on LONG; which sigma does not matter (HAR vs live +0.00). AGREE: here forecast sigma and a plain 20-session RV give the same spread of monthly vol (0.19 vs 0.19 median; forecast lower in only 15 of 34 instruments).",
+    "vol-managed-mm (forge/STRESS_FILTER_HOLD_PREREG.md): 1/sigma^2 on NQ gave no Sharpe gain (-0.006 [-0.263, +0.257]) but the best drawdown (-30% vs -42% vol-matched). PARTLY DISAGREE on the shape: on daily session holds across 34 instruments, 1/sigma^2 at equal ex-post vol has FATTER daily tails than unscaled (kurtosis 4.1 vs 2.6; 1.41% of days beyond 3 sd vs 1.06%), because squaring the forecast doubles the effect of forecast misses. Their result is on a single overnight NQ hold where the leverage effect helps; mine is broader. Both can be true; 1/sigma is the safer default.",
+    "stress-filter-hold-beyond-vt and overnight-vol-regime (Evidence Book): no state adds to vol sizing; risk-adjusted return is flat across vol regimes. AGREE, and it is the premise that makes 1/sigma sizing cost-free in return.",
+    "IV sizing on MOTIF trades (forge/IV_SIZING_FILTER_PREREG.md): flat/HAR/IV Sharpe 1.62/1.65/1.67, inside noise. AGREE in spirit: the sigma choice is second order.",
+    "Noise-threshold map (Vol-Layer stops stage 2): stops are touched a few points less often than a random walk says. AGREE: a 1-sigma stop from the open is touched 29.5% (forecast sigma) vs 31.7% random walk; vol comes in bursts.",
+    "L6 literature spec: 'BL with a zero prior reduces to signal/sigma; only correlation and a state-varying omega differ'. AGREE and now shown on real numbers: on seven overlapping USD views the correlation step cut per-leg weights 40-70% and book vol 61%; a 4x omega change on three views cut those a further ~55%. Its warning about double-counting sigma (k-sigma stop plus a vol target = 1/sigma^2) is borne out by the fatter 1/sigma^2 tails.",
+    "NEW here, not in earlier work: at equal ex-post vol, equal-risk and book-target sizing do NOT give smaller slow drawdowns once drift is removed (-55 and -61 vs -41 sd; shuffled-order range -29 to -66). Earlier drawdown claims were made without removing drift or matching vol in the same way, so 'vol sizing cuts drawdown' should be read as 'cuts crash days'."
+   ]
+  },
+  {
+   "h": "What this layer can do for the entry and the stop",
+   "lesson": "Sizing does not move the entry or the stop; it decides how much is at risk between them, and when the book is already carrying the same bet.",
+   "lines": [
+    "Risk per trade from sigma: size = risk budget / (stop distance in sigma x sigma x value per point). Use the live forecast sigma (or a plain 20-session RV, which is as good on this evidence). Do not use a fixed pip stop or a constant sigma: then the same '1R' is touched 25% of sessions in a quiet year and 40% in a loud one (2017 vs 2022).",
+    "One vol scaler only: a k-sigma stop with fixed risk already sizes by 1/sigma. Adding a per-trade vol target on top makes it 1/sigma^2, which here gave fatter daily tails. A book vol target should rescale the whole book, not each trade again.",
+    "Book limits: count risk by bet, not by ticket. The seven USD legs have average correlation 0.48, the indices more; the biggest common factor explains 37-54% of a 14-leg book (14% if unrelated) and over 50% about 18% of the time. Cap each cluster (USD, indices, gold) at its share of the budget using a 60-session correlation shrunk ~30% toward its average, computed from sessions before today.",
+    "When to cut size: (1) automatically when the forecast sigma rises; (2) when the forecast is likely to be wrong, e.g. scheduled events and jumps: on the 5% of days vol came in 1.5-2x forecast, a 1-sigma stop was really a 0.6-sigma stop and was touched 55% of the time (the jumps layer must flag these before the open); (3) NOT after a drawdown on this evidence: next-20-session returns show no pattern across drawdown quintiles and lag-1 autocorrelation is 0.02.",
+    "For whom: every instrument gets steadier risk; most for indices (monthly vol spread 0.52 -> 0.25, kurtosis 10.7 -> 3.2) and gold (0.36 -> 0.17), least for FX crosses (0.30 -> 0.19). For when: it matters most across regime changes (2020, 2022), which is exactly when a constant size hurts.",
+    "Black-Litterman only becomes useful once a layer supplies a mean view in R with a measured out-of-sample error. Until then, the practical BL is: equal risk per view, minus a correlation haircut for overlapping views (40-70% per leg for seven USD views on 2021-22 correlations), then scaled by confidence (omega). A range forecast is a size view, not a direction view, so it cannot be the omega of a direction trade."
+   ]
+  },
+  {
+   "h": "Questions for stage 3/4",
+   "lesson": "Each question names the benchmark it must beat and whether 2023-2026 can answer it.",
+   "lines": [
+    "Q1 Risk per trade: on a frozen trade list (the stop layer's entries once fixed), does a k x forecast-sigma stop with fixed risk give a steadier monthly P&L vol and fewer beyond-3-sd trades than (a) a fixed-pip stop with fixed lots and (b) the same rule with RV20? Benchmark (a) must be beaten by >= 0.05 in monthly-vol spread (discovery gap 0.12, 34/34 instruments: well powered over ~44 months x 34 instruments); vs (b) test equivalence within +/- 0.03 (discovery gap ~0.00), not superiority.",
+    "Q2 1R stability: in each year 2023-2026, is the forecast-sigma 1-sigma stop's touch rate inside 29.5% +/- 3pp, while a constant sigma leaves that band in at least one year? Benchmark: random walk 31.7%, RV20, constant sigma. Power: ~250 dates a year x 34 instruments, date-clustered SE about 1-1.5pp, enough for a 3pp band.",
+    "Q3 Book vol target: does the correlation-based book target keep yearly book vol within 0.85-1.15 of target and lower the monthly-vol spread vs plain equal risk (discovery 0.202 vs 0.234)? Benchmark: equal-risk book and equal notional. Power: ~44 months gives a CI of roughly +/- 0.05 on the spread, so a 0.03 gain cannot be judged; only a gain >= 0.06 or the 0.85-1.15 band can.",
+    "Q4 Cluster cap at equal vol: with real concurrent trades, does capping the USD and index clusters at their budget share reduce the book's 1% expected shortfall and worst day vs uncapped equal risk, at the same ex-post vol? Benchmark: uncapped equal risk; shuffled-correlation PC1 0.14. Tail statistics need many days: use ES 1% with a date-block bootstrap; expect only large (>15%) reductions to be detectable.",
+    "Q5 Omega calibration before any P&L: when a layer supplies a mean view in R, are standardised errors (realised - q) / sqrt(omega) of variance ~1 in each state, with omega from out-of-sample error per state vs the He-Litterman constant? Benchmark: constant omega. Power: >= 200 views per state for the variance ratio to be judged within +/- 20%.",
+    "Q6 Drawdown throttle (low priority): is the next-20-session return after the worst quintile of 60-session drawdown below the unconditional mean? Discovery: no pattern (-0.04 to +0.04 sd/day, all intervals cover the mean). Benchmark: constant size at equal vol. An effect of 0.03 sd/day would need far more than 4 years; only worth running if the system's own P&L shows autocorrelation."
+   ]
+  }
+ ]
+}
