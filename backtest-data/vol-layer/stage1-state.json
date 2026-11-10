@@ -1,0 +1,135 @@
+{
+ "read": [
+  [
+   "Corsi 2004/2009, A Simple Long Memory Model of Realized Volatility (J. Financial Econometrics 2009; SSRN 626064 version)",
+   "full text, sections 1-7 (RV notation, measurement error, stylised facts, HAR derivation, estimation and out-of-sample tables)",
+   "doi:10.2139/ssrn.626064"
+  ],
+  [
+   "Patton 2011, Volatility Forecast Comparison Using Imperfect Volatility Proxies (J. Econometrics; SSRN 932890)",
+   "abstract, introduction, conclusion and appendix on optimal forecasts per loss; middle proofs skimmed",
+   "doi:10.2139/ssrn.932890"
+  ],
+  [
+   "Gmür & Malamud 2013, Forecasting Realized Volatility of Daily Futures Returns (SSRN 2361628)",
+   "abstract, introduction, conclusions; the library text cuts the results tables, so numbers are from the desk notes",
+   "doi:10.2139/ssrn.2361628"
+  ],
+  [
+   "Puke & Schweikert 2025/26, Coherent Forecasting of Realized Volatility (SSRN 5233349)",
+   "abstract, introduction, loss-function section and conclusion",
+   "doi:10.2139/ssrn.5233349"
+  ],
+  [
+   "Barunik, Krehlik & Vacha 2016, Modeling and forecasting exchange rate volatility in time-frequency domain (EJOR; arXiv 1204.1452)",
+   "abstract, introduction and conclusion; the empirical section is cut in the library text (desk notes say so too)",
+   "upload:c30fae83"
+  ],
+  [
+   "Bennedsen, Lunde & Pakkanen 2021, Decoupling the short- and long-term behavior of stochastic volatility (J. Financial Econometrics)",
+   "abstract, introduction and conclusion",
+   "upload:b34ab782"
+  ],
+  [
+   "Shu, Yu & Mulvey 2024, Downside Risk Reduction Using Regime-Switching Signals: A Statistical Jump Model Approach",
+   "abstract, conclusion and the out-of-sample table (HMM vs jump model vs buy-and-hold)",
+   "upload:25fef0f7"
+  ],
+  [
+   "(anon., library upload) Analyzing Currency Fluctuations: GARCH, EWMA and IV models for GBP/USD and EUR/GBP, 2018-2023",
+   "abstract and conclusion",
+   "upload:7bafafd0"
+  ],
+  [
+   "Hansen & Lunde 2005 (GARCH(1,1) not beaten for DM/USD); Andersen & Bollerslev 1998 (GARCH looks poor only against squared returns); Bollerslev, Patton & Quaedvlieg 2016 (HARQ); Hamilton 1989 (Markov switching)",
+   "NOT in the library: second-hand only, via plans/vol-layer/L1_LITERATURE_SPEC.md and citations inside the papers above",
+   "not held"
+  ]
+ ],
+ "sections": [
+  {
+   "h": "The plain theory: what the vol state is",
+   "lesson": "Five numbers, one engine. Most of them are views of the same thing.",
+   "lines": [
+    "C.OG's idea: publish one small record per instrument per session that every other layer reads. Five fields: how volatile it is now, which way vol is heading, how that compares with normal, which regime we are in, and how wrong the forecaster has been lately.",
+    "σ now (F1). The daily standard deviation of returns expected for today, known at the open. Here it is the live export σ (live_sig_used, % per day), a Yang-Zhang or EWMA estimator on NY-close daily bars.",
+    "Expected change (F2). Volatility mean-reverts: after a loud week it usually gets quieter, after a quiet month louder. A model with memory at several speeds (HAR, below) can say 'next week should average X'. F2 = half the log of (forecast mean variance next 5 sessions ÷ realised mean variance last 5). Positive = expected to rise.",
+    "Long-run level (F3). log(σ ÷ the median σ of the previous 252 sessions). 0 = normal for this instrument; +0.69 = twice normal.",
+    "Regime probability (F4). A hidden Markov model (HMM) says the market is in one of two hidden states, quiet or loud, each with its own typical log realised variance, and a fixed chance of switching each day. The filter turns yesterday's evidence into P(loud today). It must be the filtered (past-only) number and parameters fitted only on earlier data.",
+    "Forecast error (F5). Each session, compare what happened (√RV5, the 5-minute realised vol) with σ: e = log(√RV5 ÷ σ). Average e with a 10-session half-life and subtract its own long-run average. +0.2 means the last two weeks ran about 22% hotter than σ said.",
+    "Realised variance (RV5): add up the squared 5-minute log returns of the London session (00:00-22:00). With enough returns it measures the day's actual variance far better than one squared daily return.",
+    "HAR (Corsi): tomorrow's log RV = a + b_d·log(yesterday's RV) + b_w·log(last week's mean RV) + b_m·log(last month's mean RV). Three speeds of traders, three memories. It reproduces vol's slow decay with one regression.",
+    "GARCH(1,1): today's variance = ω + α·(yesterday's squared return) + β·(yesterday's variance). α is how hard it reacts to news, β how long it remembers. With variance targeting ω is set so the long-run variance equals the sample variance.",
+    "QLIKE: the loss for a variance forecast h against a realised proxy x is x/h − log(x/h) − 1. It is 0 when h = x and it punishes forecasting too low more than too high. Patton showed it (and squared error) still ranks forecasts correctly when the proxy is noisy.",
+    "Why 5 fields may be fewer: if vol simply reverts to a long-run level, then 'expected change' is just −k × 'vs long-run', and P(loud) is a squashed version of σ now. Then the state has one or two real dimensions, not five. That is what the look checks first."
+   ]
+  },
+  {
+   "h": "What the papers found",
+   "lesson": "Better inputs beat fancier models; regime switching is mostly an equity story; nothing here is about intraday stops.",
+   "lines": [
+    "Corsi (USD/CHF, Olsen tick data, 1989-2001, daily RV): HAR beat GARCH, RiskMetrics, AR and ARFIMA out of sample at 1 day, 1 week and 2 weeks; out-of-sample 1-day RMSE 2.85 vs AR(3) 2.91 and RiskMetrics 3.59 (×100, annualised vol); in sample GARCH was 3.66. Fitted weights 0.37 day, 0.27 week, 0.22 month. One FX pair, ends 2001, small hold-out.",
+    "Corsi also warns that RV from very short returns is biased up by microstructure (tick FX 30-80% too high at 1 minute). We use 5-minute returns; the spread on crosses is still a live question at 5 minutes.",
+    "Patton: with a noisy proxy (squared return, range, RV), only losses like QLIKE and MSE rank forecasts correctly; MAE-type losses can pick a wrong forecast. Range and RV are much less noisy than a squared return. So we score with QLIKE, and check two proxies.",
+    "Gmür-Malamud (47 futures incl. 5 FX, 2000-2012): plain EWMA(0.94) is a good 5-10 day forecaster, but the √h scaling is always too steep, and the past-to-future slope moves a lot over time (spiked in 2008, stayed high outside equities). A rolling recalibration of EWMA matched GARCH. Lesson: the scale of a σ is not stable; recalibrate it, past-only.",
+    "Puke-Schweikert (DJIA stocks, 2003-2024): fitting HAR to minimise QLIKE instead of squared error gives significantly better QLIKE forecasts in most stocks. US equities only.",
+    "Barunik-Krehlik-Vacha (FX futures over the 2008 crisis): splitting out jumps and using high-frequency components improves realised-GARCH forecasts; most information sits at very short horizons. The empirical tables were not in the text we hold, so no sizes.",
+    "Bennedsen-Lunde-Pakkanen (E-mini S&P and ~2,000 stocks): log realised vol is both rough at short lags and very persistent at long lags; models with both beat benchmarks. Equity data; persistence is the part we can check (autocorrelation of our fields).",
+    "Shu-Yu-Mulvey (S&P, DAX, Nikkei, 1990-2023, out of sample): a penalised 'jump model' regime switch beat an HMM switch for cutting drawdowns; HMM regimes flip too often. A trading-on-regime result for equity indices with 10 bp costs; nothing on FX or intraday.",
+    "GBPUSD/EURGBP 2018-2023 study: GARCH-family with rolling windows was best for GBPUSD 20-day vol; asymmetry only in EURGBP. Small, one horizon, RMSE/MAE (not robust losses).",
+    "Second-hand (not read): Hansen-Lunde 2005 found nothing beats GARCH(1,1) for DM/USD; Andersen-Bollerslev 1998 showed GARCH looks bad only when scored against squared returns. HARQ (down-weight noisy RV days) is shown on US equities only.",
+    "Where it does not transfer: all of these forecast daily (or longer) variance as a number. None asks where a stop should go inside a session, or whether a state changes the shape of the day. Most are equities or one FX pair; none covers gold or 30 crosses together. The intraday-stop use is ours to test."
+   ]
+  },
+  {
+   "h": "Worked example: EURUSD, Monday 9 March 2020",
+   "lesson": "On the loudest days the fields disagree: the regime and error fields shouted, the expected-change field said calm down.",
+   "lines": [
+    "σ now (F1): live σ 0.54% per day, known at 00:00 London. The previous year's median σ was 0.29%, so σ vs long-run (F3) = log(0.54/0.29) = +0.62: nearly twice normal.",
+    "P(high regime) (F4): 0.99. The HMM (fitted on 2016-10 to 2019-12 data only) had been in the loud state since late February.",
+    "Forecast error (F5): +0.24. The last ~two weeks of √RV5 ran about 27% above σ (beyond the usual offset). Error-corrected σ = 0.54% × e^0.23 ≈ 0.68%.",
+    "Expected change (F2): −0.24. HAR expected next week's variance to average about 21% lower in vol terms than the previous week (0.45 %² mean RV5, 2-6 March). It reverts by design.",
+    "What happened: the session range was 1.23% = 2.28σ (an average session uses 1.60σ). √RV5 was 1.42% vs σ 0.54%. Next week's mean RV5 was 1.37 %², three times the previous week: realised change +0.55 in log vol, the opposite sign to F2.",
+    "Stops: price went 1.77σ above the open at some point. A 1σ stop from the open on a short was hit; a 1.27σ stop (the width hit on 20% of all sessions) was also hit. With the error-corrected σ the same 1σ stop sits at 0.68% instead of 0.54%.",
+    "Lesson for the layer: in a building crisis σ is too slow (it lags), F4 and F5 flag it, and HAR's mean reversion points the wrong way until the spike is in the data. That is one day; the look measures how often each pattern holds."
+   ]
+  },
+  {
+   "h": "What our earlier repo work found, and where this agrees or disagrees",
+   "lesson": "Agrees that σ stays and RV adds; disagrees on how much, because the yardstick differs.",
+   "lines": [
+    "forecast-pick (2026-11): 'persistence' (σ nudged by regime, recent misses and weekday) beat plain σ by about 2% on range pinball loss, and + IV by about 3%. Its inputs are close to F3 and F5. Agree: the look finds exactly those two fields carry what σ misses (σ too high after loud spells, too low when recent errors run hot).",
+    "vol-layer-rv5-increment (VALIDATED): adding 5-min RV terms to the chosen σ gained 1.2% on range pinball (indices 2.4%). Here log-HAR beats the live σ by 23% on RV5 QLIKE and by 11% on squared range. Not a contradiction: a different yardstick (variance vs range quantiles), and the benchmark here is the plain live σ, not the already-nudged chosen form. Part of it is home advantage: HAR is fitted on the RV5 it is scored on.",
+    "Where I disagree with the literature spec: it expected GARCH(1,1) to be a hard benchmark in FX. Per-instrument daily GARCH, refitted quarterly from 2016-10, loses to the live σ (QLIKE 1.17 variance-targeted, 1.20 free). Median fit α 0.07, α+β 0.94, but some quarters fit badly (10th percentile α+β 0.29). The cause is not pinned down; a short, quiet pre-2020 sample and one noisy squared daily return per update are the suspects. Hansen-Lunde used long DM/USD history.",
+    "The spec guessed Δσ and σ-vs-long-run are one degree of freedom. Half right: they correlate −0.59, but HAR's Δσ tracks next week's change better (r 0.38 vs 0.21).",
+    "vol-layer-reaction (CONTEXT): expected change, filtered regime and forecast error added nothing to whether a line touch rejects. Consistent: the state here is about size, not direction.",
+    "forecast-miss-scan: recent-miss streaks were not discovered as a range-error conditioner (fx +3.8%). Here the smoothed error (F5) separates range ÷ σ by +0.39σ top vs bottom decile. Possible reasons: F5 is a 10-session EWMA of the RV5 error (not HL misses), deciles not streaks, and this is an in-window description against plain σ, not the chosen σ. It needs the confirm test before the size is believed.",
+    "Memory note (hmm.js regimes are variance, not direction): agreed and extended. On realised variance the 2-state P(high) is mostly a squashed σ (r 0.69) and adds nothing to range calibration beyond σ."
+   ]
+  },
+  {
+   "h": "What this layer can do for the entry and the stop",
+   "lesson": "Use the state to resize σ for stops; do not use it to choose direction or to name a regime.",
+   "lines": [
+    "Stop width: scale the σ that sets stops by the recent forecast error. Across error deciles the width hit on 20% of sessions runs 1.13σ to 1.43σ (one width for all days: 1.26σ). A 1σ stop from the open is hit 25-28% of the time after over-forecast spells and 32-33% after under-forecast spells, against 29.6% overall.",
+    "Correct σ's over-reaction: after a high-σ spell the day's range is only 1.41σ; after a quiet spell 1.86σ (mean 1.60σ). A stop in raw σ is too wide in loud spells and too tight in quiet ones. HAR on M1 RV, or σ × error feedback, already removes part of this (QLIKE 0.77 and 0.92 of σ).",
+    "Where it helps most: crosses and indices (HAR loss 0.49-0.85 of σ), least on the USD majors EURUSD, NZDUSD, USDCAD, AUDUSD (0.92-0.97).",
+    "Time of day: in the high state slightly more variance arrives late (17:00-21:00 London: 3.7-4.3% per hour vs 2.9-3.8% in the low state) and slightly less in the London morning. Small; a stop built on a fixed intraday profile would be a little tight late on loud days.",
+    "Whether to trade at all: nothing here says skip a day. The regime probability does not change the stop-hit rate beyond σ and error. Day-skipping needs a cost-aware test, not this look.",
+    "Not known: whether this holds on 2023-2026, whether it pays in R after spread, and whether a system's own entries (not the open) see the same pattern."
+   ]
+  },
+  {
+   "h": "Questions for stage 3/4",
+   "lesson": "Each one is a resizing question with a plain-σ or chosen-σ benchmark.",
+   "lines": [
+    "Q1 Error-scaled σ for stops. Does σ × exp(k·F5), k fitted on discovery only, make the 1σ-from-open stop-hit rate flatter across F5 quintiles than plain σ (spread now 25-33%)? Benchmark: plain live σ and the chosen σ. Power: ~8,000 sessions per quintile in 2023-26; with ~2 independent forecasts per date, a 2-point difference in hit rate is about 3 standard errors.",
+    "Q2 log-HAR on M1 RV5 vs the chosen σ. QLIKE on RV5 AND on squared range, pooled and per class, 2023-2026. Benchmark: the chosen σ (persistence + IV), not plain σ. Must be below 0.98 on both yardsticks with a date-block 95% interval below 1. The discovery gap is large (0.77 / 0.89 vs plain σ); the risk is home advantage, hence two yardsticks.",
+    "Q3 Does F5 survive inside the chosen σ? The chosen σ already nudges by recent misses. Test top-minus-bottom fifth of range ÷ chosen σ by F5. Benchmark: shuffled F5 (±0.03σ here). To matter for stops it needs ≥ +0.10σ with the interval above 0 (one spread is ~0.02-0.04σ).",
+    "Q4 Expected change, 5 sessions ahead. Correlation of HAR Δσ with next week's realised change, against −(σ vs long-run). Benchmark: mean reversion alone (r 0.21 here vs 0.38). Needs a gain of ≥ 0.05 in r with a date-block interval; ~180 weeks × 34 instruments (~2 independent per week) is enough.",
+    "Q5 Regime field: keep or drop? Does adding P(high) to σ + F5 improve range calibration or QLIKE at all? Benchmark: σ + F5. Expected no gain; if so, publish the state as level, error and Δσ, and keep P(high) as a display only.",
+    "Q6 On a real system's own entries (C.OG: map your distribution), does an error-scaled stop cut stop-outs that later recover, net of spread? Benchmark: a plain-σ stop of the same average width, so risk per trade is matched."
+   ]
+  }
+ ]
+}
