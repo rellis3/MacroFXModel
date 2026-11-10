@@ -387,7 +387,12 @@ test('newsView.pairCard / latestLine / filtersHtml', () => {
   assert.match(c, /href="https:\/\/www\.fxstreet\.com\/news\/boe" target="_blank" rel="noopener"/);
   assert.match(NV.pairCard(NEWS, 'COPPER', { now: NOW }), /no read key/);
   assert.match(NV.pairCard([], 'EURUSD', { now: NOW }), /No tier-1\/2 headlines/);
-  assert.match(NV.latestLine(NEWS, 'GBPAUD'), /latest:<\/span> BoE hikes to 4% &lt;b&gt;/);
+  // the Assets card's line leads with what the headline means for this market, then the (escaped) title
+  const ll = NV.latestLine(NEWS, 'GBPAUD', 'LONG');
+  assert.match(ll, /news:<\/span> GBP ↑↑ → <b class="up">GBPAUD ↑↑<\/b>/); assert.match(ll, /supports your card/);
+  assert.match(ll, /<div class="nt-latest-h">BoE hikes to 4% &lt;b&gt;<\/div>/);
+  assert.match(NV.latestLine(NEWS, 'GBPAUD', 'SHORT'), /against your card/);
+  assert.match(NV.latestLine(NEWS, 'GBPAUD', 'FLAT'), /card is flat/);
   assert.equal(NV.latestLine(NEWS, 'COPPER'), '');
   const f = NV.filtersHtml({ tier: 1, keys: ['EUR', 'USD'], market: 'EURUSD', onlyBook: true, q: '"x"' });
   assert.match(f, /data-nt-tier="1" aria-pressed="true"/); assert.match(f, /data-nt-key="EUR" aria-pressed="true"/); assert.match(f, /data-nt-key="GBP" aria-pressed="false"/);
