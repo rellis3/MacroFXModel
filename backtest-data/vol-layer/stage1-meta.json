@@ -1,0 +1,130 @@
+{
+ "read": [
+  [
+   "López de Prado 2018, The 10 Reasons Most Machine Learning Funds Fail (Journal of Portfolio Management)",
+   "full text; pitfalls 5-10 read closely (triple barrier, meta-labelling, uniqueness, purging/embargo, CPCV, deflated Sharpe)",
+   "doi:10.2139/ssrn.3104816"
+  ],
+  [
+   "Zhang, Chang, Zhang & Wang 2026, Evaluating Interpretable Meta-Labeling for Intraday Futures Trend Following (SSRN preprint, not peer reviewed)",
+   "full text",
+   "doi:10.2139/ssrn.7356724"
+  ],
+  [
+   "Carr & López de Prado 2014, Determining Optimal Trading Rules without Backtesting (working paper)",
+   "sections 1-4.1 (setup, O-U framework, numerical method, zero-equilibrium case)",
+   "upload:f25fff16"
+  ],
+  [
+   "Bailey & López de Prado 2014, The Deflated Sharpe Ratio (Journal of Portfolio Management)",
+   "introduction, multiple-testing and selection-bias sections; formula checked against the 10 Reasons paper",
+   "upload:30c4b3ab"
+  ],
+  [
+   "Dashyan 2026, Adversarial Backtest Verification (SSRN preprint)",
+   "sections 6-9 (correlated events, deflation, leakage at the split, defend the raw signal)",
+   "doi:10.2139/ssrn.7338919"
+  ],
+  [
+   "Bailey, Borwein, López de Prado & Zhu, The Probability of Backtest Overfitting (Journal of Computational Finance)",
+   "desk notes only",
+   "doi:10.2139/ssrn.2326253"
+  ],
+  [
+   "Inglese 2026, Measuring the Reliability of Backtest Validation (SSRN preprint)",
+   "desk notes only",
+   "doi:10.2139/ssrn.7210219"
+  ],
+  [
+   "Mir & Shrestha 2026, Quantifying Backtest Overfitting from Information Leakage (SSRN preprint)",
+   "desk notes only",
+   "doi:10.2139/ssrn.7029819"
+  ],
+  [
+   "What survives honest evaluation? Leakage-safe, search-aware assessment of LLM-driven trading strategy discovery (arXiv 2608.27734)",
+   "abstract-level desk notes only",
+   "arxiv:2608.27734"
+  ],
+  [
+   "Joubert 2022 (JFDS); Meyer, Barziy & Joubert 2023 (JFDS); Singh & Joubert; Niculescu-Mizil & Caruana 2005 (ICML)",
+   "NOT in the local library and not read here; cited only through the earlier literature pass",
+   "plans/vol-layer/L5_LITERATURE_SPEC.md"
+  ]
+ ],
+ "sections": [
+  {
+   "h": "The plain theory",
+   "lesson": "institutional-triple-barrier-labeling",
+   "lines": [
+    "Meta-labelling splits a trade into two questions. A primary rule says which way (the side). A second model says whether to take it, and how big. The second model never picks the side.",
+    "Its label comes from the triple barrier: a target a·σ from entry, a stop b·σ the other way, and a time limit. Label = 1 if the target is touched first; stop first or time out = 0. Barriers are in daily σ, so quiet and loud days use the same ruler.",
+    "On a driftless random walk with no time limit, P(target first) = b/(a+b) (gambler's ruin). 1:1 gives 50%, 2:1 (target twice the stop) 33%, 1:2 67%. A win rate means nothing until you know a and b.",
+    "With a time limit some trades run out of clock. How many depends on the variance left in the window (σ² times the share of the day's vol still to come) against the barrier width (a+b)². Early or busy touches resolve; late, quiet ones time out. For a Brownian path there is an exact formula (a sine series for leaving a strip), used in the build.",
+    "Break-even: with cost c (in σ) and time-outs paying about 0, the hit rate must clear (b + c)/(a+b). So the secondary model's bar is the geometry plus the cost, not 0.5.",
+    "AUC (the chance a random winner is ranked above a random loser) above 0.5 can come from geometry alone: anything that predicts 'will this resolve in time' (time of day, vol so far) ranks target-first labels even on a random walk, because time-outs count as losses.",
+    "Calibration: the model's P must match what happens (P = 0.6 means 60% hit). Platt scaling fits a logistic curve to the scores; isotonic fits a rising staircase and needs more data. Sizing from P (AFML: size = 2Φ(z) - 1, z = (p - 0.5)/√(p(1-p)); or size proportional to p·a - (1-p)·b - c) only makes sense once P is calibrated.",
+    "Overlap: trades open at the same time share price moves. Uniqueness = the average of 1/(trades open) over a trade's life. Purging drops training trades whose label window touches the test window; an embargo drops a few more after it, so the test cannot leak into training.",
+    "Deflation: the best of N tries looks good by luck. The deflated Sharpe raises the bar with N and with how much the tries disagree; the probability of backtest overfitting asks how often the in-sample winner lands below the median out of sample."
+   ]
+  },
+  {
+   "h": "What the papers found, and where it does not transfer",
+   "lesson": "walk-forward-purged-cv",
+   "lines": [
+    "López de Prado (2018) proposes meta-labelling, triple-barrier labels, uniqueness weights, purging/embargo, CPCV and the deflated Sharpe as fixes for ten failure modes. It is an essay: no strategy test, no effect size. The claims that meta-labelling limits overfitting and is more robust are stated from experience, not shown.",
+    "Zhang et al. (2026), the only full-text empirical meta-labelling test in the library: 15-minute Chinese futures (5 contracts incl. gold and an equity index, up to 20 years), MA-crossover primary, triple barrier TP 1.0% / SL 0.6% / 60 bars, purged walk-forward. Out-of-sample ROC-AUC 0.48-0.52 for logistic, random forest, LightGBM and XGBoost. The filter kept 1.4-6.8% of events; no paired 95% interval for the change in return/drawdown excluded zero, and the sign flipped between two seeds on 2 of 5 contracts.",
+    "Carr & López de Prado (2014): if prices follow a mean-reverting (O-U) process, the best target/stop pair can be found by simulating the fitted process instead of backtesting many pairs. With zero expected profit and a short half-life, small targets with wide stops win; with no reversion most pairs give zero. Simulated data only; its point for us is that the barrier shape is itself a trial that can be overfitted.",
+    "Bailey & López de Prado (2014): choosing the best of N trials inflates its Sharpe; the deflated Sharpe corrects for N and for non-normal returns. A method paper.",
+    "Dashyan (2026), crypto perpetuals, 1-minute data, TP/SL brackets: in-sample win rates of 56-72% fell to 48-50% out of sample. Two lessons transfer directly: measure skill against the bracket's break-even (33.3% for 2:1, not 50%), and collapse correlated events (123 index events were 58 distinct days; t fell from 4.5 to 2.1).",
+    "Meta-labelling-specific evidence beyond these (Joubert 2022; Meyer, Barziy & Joubert 2023 on calibration and sizing; Singh & Joubert on E-mini precision 0.48 to 0.54 for a trend primary) is not in the local library and was not re-read here; the earlier pass found it comes from one connected author group, with no independent replication and no FX or gold test.",
+    "What does not transfer: most of this is method, not evidence. The empirical pieces are equities, crypto or Chinese futures, on 15-minute or daily bars, and none uses a σ-scaled barrier on a σ-line touch. Nobody shows meta-labelling adding money after costs on intraday FX, gold or index CFDs. What is not known: whether any filter beats geometry on our markets."
+   ]
+  },
+  {
+   "h": "A worked example on our numbers: EURUSD, 19 June 2019",
+   "lesson": "",
+   "lines": [
+    "Session open (00:00 London) 1.11954. HAR daily σ known at the open = 0.37%, so 1σ ≈ 41 pips and the +0.5σ line sits at 1.12161 (about 21 pips up).",
+    "The high first reached the line in the 15:59 London bar. The primary fires: fade = short at that bar's mid close, 1.12164. Barriers 1:1 at 0.25σ: target 1.12060 (about 10 pips down), stop 1.12268 (about 10 pips up), time limit 17:59.",
+    "Geometry: EURUSD's average variance between 16:00 and 18:00 London is 0.13σ² (sd ≈ 0.36σ ≈ 15 pips). For a random walk that gives P(target first) = P(stop first) = 0.451 and P(time out) = 0.098. Without the time limit it would be b/(a+b) = 0.50 each.",
+    "Cost: the bid/ask at entry was 0.031σ (about 1.3 pips). Win +0.25σ, lose -0.25σ, pay 0.031σ, so a resolved trade must win (0.25 + 0.031)/0.5 = 56% of the time to break even. The random walk gives 50%.",
+    "What happened: the target was touched at 17:13 London (74 minutes later), label = 1, +0.25σ gross, +0.22σ after spread. One trade says nothing; the build asks what 60,211 such touches say.",
+    "A secondary model's job on this trade is to say whether this 15:59 touch belongs to a group that beats 56%, not one that beats 50% or the 45% the clock allows."
+   ]
+  },
+  {
+   "h": "What our earlier repo work found, and where I agree or disagree",
+   "lesson": "",
+   "lines": [
+    "meta_proper (forge/META_LABEL_PROPER_PREREG.md, banked FAIL): yield-spread side on 6 USD pairs, CUSUM events, ±2σ / 10-day barriers. 3,144 bets, average uniqueness 0.12 (about 395 effective). Meta precision 50.3% vs primary 51.6%; the logistic variant +1.0pp [-1.7, +3.6]; the model failed its own sanity check. Agree: our overlap is milder (uniqueness 0.35) but the lesson holds, effective n is a fraction of raw n.",
+    "meta_label_ys (FAIL) and 3a 'trust the lines' (Brier skill 1-5% on the plain lines, about 0 on the persistence-adjusted lines): agree with the reading that most of that skill was vol, which the random-walk-at-the-day's-vol benchmark here makes explicit.",
+    "line_reaction (analysis/output/line_reaction/RESULTS_chosen.md, chosen lines 2020-08 on): walk-forward GBM and logit log-loss ÷ base = 1.000 at the line; fading every touch was negative. Agree: here the resolved fade rate is 50.2% vs 50% on a different line (fixed 0.5σ) and a different window.",
+    "Line-touch wide scan and the unseen-pair limit test (memory): gross +0.19 to +0.24R at fresh extremes, net negative for every execution form. Partly disagree in framing: those selectors are meta-filters on touches; this look says target-first labels mostly measure activity, so their gross gain should be read against a random walk at the day's vol, not only against random touches.",
+    "The L5 literature spec's warning that time-limited barriers give AUC above 0.5 on a random walk was reasoned, not shown. This build shows it: 0.59 within one shape from minutes left alone, 0.69 with shapes pooled. The spec's power figures (2,200 / 5,200 for 50 to 53%) match ours (2,178 / 5,186).",
+    "New here: the purged logistic's AUC on real labels (0.573) is matched by the same model on random-walk labels at each day's vol (0.568), and it does not beat the plain geometry on Brier score (-0.45%)."
+   ]
+  },
+  {
+   "h": "What this layer can do for the entry and the stop",
+   "lesson": "action-calibration-scoring",
+   "lines": [
+    "Entry (filter): on this primary a target-first filter mostly learns 'will price move enough before time runs out'. That is a vol and clock forecast, which layer 1 already gives. It does not pick which touches win once they resolve: target and stop sit within 0.05 SD of each other on every entry feature.",
+    "Size: sizing from P is only sound once P beats the geometry, and here it does not (Brier skill vs geometry -0.45%). The useful size input from this layer today is the geometry itself: expected resolution rate and time-out share say how much risk a trade really carries inside its clock.",
+    "Stop and barrier shape: the shape sets the hit rate almost exactly as b/(a+b) says (2:1 32.7% vs 32.8%; 1:2 67.8% vs 67.2%). Moving the stop moves the win rate, not the edge. Choose the shape for cost (0.035σ median spread is 14% of a 0.25σ stop, 7% of a 0.5σ stop) and for the clock (a 1:1 0.5σ trade times out 69% of the time within 2 hours).",
+    "Who for: if anything, markets with the smallest spread in σ and busy hours, where the break-even gap is smallest. EURUSD and EURCHF were the only ones above the random walk (+1.1pp); crosses were lowest on both edge and cost.",
+    "What meta-labelling needs that we do not have yet: a primary whose resolved hit rate sits above b/(a+b). Every touch primary tried so far sits on the random-walk line once resolved. Meta-labelling can sharpen an edge; it cannot make one from a 50/50 primary, and the papers do not claim it can."
+   ]
+  },
+  {
+   "h": "Questions for stage 3/4",
+   "lesson": "sharpe-family-deflated",
+   "lines": [
+    "Q1. Does a purged logistic meta-model on σ-line touches beat the same model trained on random-walk labels at each day's own vol, on Brier score, in 2023-2026? Benchmarks: the vol-matched random-walk model and the geometry formula. Power: the confirm window gives about 10k effective touches (design effect 3.5); a 0.5% Brier-skill gap is the smallest worth chasing.",
+    "Q2. Among touches that resolve, does P(target first) differ from b/(a+b) for one pre-declared shape (1:1 0.25σ, 2h), by asset class? Benchmark: the time-corrected random walk; the bar is the spread break-even (+4.3pp), not 0. Power: 2,178 independent resolved trades for 3pp, times 3.5, so about 7,600 raw per cell; only pooled classes qualify.",
+    "Q3. Does keeping the top half by P raise net R per trade above a seeded random half at equal retention and equal exposure, after the touch bar's real spread? Benchmarks: take-all and the random half. One shape only, so the barrier choice is not a hidden trial.",
+    "Q4. Is a three-class 'will it resolve' model (target / stop / time out) worth more as a SIZE input than σ and minutes left alone? Benchmark: size from layer 1's σ and the clock. Score: variance of realised R per unit risk; power it like the vol layers.",
+    "Q5. Only once some primary shows resolved lift: meta-label it with Platt calibration (below about 2,000 cases) and AFML sizing vs flat at equal exposure, with the deflated Sharpe on the true trial count. Benchmarks: flat sizing and the random filter. Not worth running on the current touch primary."
+   ]
+  }
+ ]
+}
