@@ -759,3 +759,4 @@ analysis/output/iv_term/iv_term_daily.csv
 analysis/output/cb_expectations/latest.json
 analysis/output/release_layer1/daily.json
 analysis/output/vol-layer-deep/meta/events.parquet
+analysis/output/vol-layer-deep/features/grids.npz

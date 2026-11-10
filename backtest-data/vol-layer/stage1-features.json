@@ -1,0 +1,148 @@
+{
+ "read": [
+  [
+   "Tolušić 2026, Does the Dollar Factor Take Over in Stress? Loading Stability and Volatility Attribution in Hourly Exchange Rates (SSRN WP)",
+   "Full text, sections 1-3.1 (intro, data, decomposition, first results table); desk notes for 3.2-4",
+   "doi:10.2139/ssrn.6619501"
+  ],
+  [
+   "Lustig, Roussanov, Verdelhan 2009/2011, Common Risk Factors in Currency Markets (RFS; SSRN version)",
+   "Sections: abstract, introduction, section 2 on principal components and the dollar and carry factors",
+   "doi:10.2139/ssrn.1364313"
+  ],
+  [
+   "Avellaneda, Lee 2008, Statistical Arbitrage in the U.S. Equities Market (Quantitative Finance)",
+   "Sections: abstract, introduction, PCA factor construction, residual OU estimation, PCA-factor-count results",
+   "upload:1b04e5f2"
+  ],
+  [
+   "Gatev, Goetzmann, Rouwenhorst 1999, Pairs Trading: Performance of a Relative Value Arbitrage Rule (NBER WP)",
+   "Sections: introduction and the wait-one-day bid-ask bounce check",
+   "upload:071d85f4"
+  ],
+  [
+   "Deutsche Bank Quantitative Strategy 2013, Dynamic allocation: extremes, tail dependence, and regimes (broker research)",
+   "Sections on GARCH, DCC and copula construction and the implied-correlation figure; desk notes for the rest",
+   "upload:62b47915"
+  ],
+  [
+   "Blitz, Huij et al. 2017, Residual Momentum and Reversal Strategies Revisited (SSRN note)",
+   "Desk notes only",
+   "doi:10.2139/ssrn.2929306"
+  ],
+  [
+   "Menkhoff, Sarno, Schmeling, Schrimpf 2011/2012, Currency Momentum Strategies (JFE)",
+   "Desk notes only",
+   "doi:10.2139/ssrn.1773543"
+  ],
+  [
+   "Grobys, Heinonen, Kolari 2015-16, Is Momentum in Currency Markets Driven by Global Economic Risk? (SSRN WP)",
+   "Desk notes only",
+   "doi:10.2139/ssrn.2619146"
+  ],
+  [
+   "Chaboud, Chiquoine, Hjalmarsson, Vega 2009, Rise of the Machines: Algorithmic Trading in the Foreign Exchange Market (Fed IFDP 980)",
+   "Desk notes only",
+   "upload:5947a627"
+  ],
+  [
+   "Cui, Zhu 2026, Decomposing High-Frequency Order Flow: Commonality and Idiosyncratic Trade Imbalance (SSRN WP)",
+   "Desk notes only",
+   "doi:10.2139/ssrn.6535019"
+  ],
+  [
+   "Kakushadze, Yu 2016, Statistical Risk Models (SSRN WP)",
+   "Desk notes only",
+   "doi:10.2139/ssrn.2732453"
+  ],
+  [
+   "Gradojevic, Gençay, Erdemlioglu 2017, A New Wavelet-based Ultra-High-Frequency Analysis of Triangular Currency Arbitrage (SSRN WP)",
+   "Desk notes only (abstract)",
+   "doi:10.2139/ssrn.3018815"
+  ],
+  [
+   "Engle 2002 (DCC), Forbes and Rigobon 2002 (contagion vs interdependence), Epps 1979 (correlation at short intervals)",
+   "Not in the library. Known only through how Tolušić and plans/vol-layer/L3_LITERATURE_SPEC.md describe them; no numbers quoted from them",
+   "not in library"
+  ]
+ ],
+ "sections": [
+  {
+   "h": "The plain theory",
+   "lesson": "",
+   "lines": [
+    "Any pair's risk has two pieces: how big each leg's moves are (variance) and how much the legs move together (correlation). For two positions the combined variance is σ1² + σ2² + 2·ρ·σ1·σ2. Splitting the two means forecasting the σs and the ρ separately, Σ = D·R·D: D holds the vols, R the correlations.",
+    "In FX the useful split is by CURRENCY, not by pair. EURUSD is the euro leg minus the dollar leg. If many dollar pairs move together, that shared part is the dollar; what is left is the pair's own story (the euro's, here).",
+    "The build: turn each USD major into a 'dollar up' return, then measure the dollar for EURUSD as the average of the OTHER six majors. That is the leave-own-out dollar. The pair is never inside its own factor, otherwise it would partly explain itself.",
+    "Then fit EURUSD's 5-minute returns on that dollar using only the previous 20 sessions (beta, β). Today's move splits into β × dollar (common) and the rest (own). The common share is the part of today's variance the dollar explains.",
+    "Crosses are not new information. EURGBP is EURUSD minus GBPUSD to within the spread. A covariance matrix of all 34 instruments is close to singular (some rows are sums of others), and a cross's 'common move' built from its legs is the cross itself. That is the triangular-arbitrage trap the repo already fell into once.",
+    "Correlation goes up when the common source gets louder even if nothing structural changes (Forbes and Rigobon's point). So 'correlations rise in stress' is only news after you check whether the dollar's variance grew faster than everyone's own variance.",
+    "PCA (principal components) finds the same thing without naming it: on the majors the first component is almost the equal-weight dollar. It adds sign flips and unstable loadings, so a named factor is the cleaner first build."
+   ]
+  },
+  {
+   "h": "What the papers found, and where it does not transfer",
+   "lesson": "",
+   "lines": [
+    "Lustig, Roussanov and Verdelhan (monthly, 1983-2008, forward-sorted portfolios): two principal components explain over 80% of portfolio variation; the first, about 70%, is the plain average currency return, which they call the dollar factor; the second is carry (high- minus low-rate currencies). This is about risk premia over months, not intraday moves, and uses portfolios, not single pairs.",
+    "Tolušić (hourly bars, 12 pairs from one retail MT5 feed, 2014-2018 and 2019-2026) is the closest match to us. The dollar factor's share of six-major variance is about 51-62% on weekly rolling windows. It is 6.5-8.8 points higher in the busiest weeks, but pooled over the same hours it is flat (57.1% vs 57.3%), loadings move by at most 0.17, and dollar and own variances both rise about 5x. His reading: stress changes WHICH currency moves, not the structure.",
+    "He also apportions each month to a currency: January 2015 is 69% franc, March 2020 mostly AUD/NZD/JPY (dollar 9%), November 2022 28% dollar. A 'dollar day' and a 'yen day' look alike on a total-vol gauge but are different animals.",
+    "Avellaneda and Lee (US stocks, daily, 1997-2007): residuals after PCA or sector factors mean-revert over days (median reversion time about 7.5 days in 2007), worth a Sharpe of 1.44 net before 2003 and about 0.9 after. Equities, daily, and decaying: no evidence it carries to FX minutes.",
+    "Blitz, Huij et al. (stocks, monthly): residual reversal about doubles the return per unit of risk of plain reversal (11.1% vs 4.4% a year in the US). Again monthly equities.",
+    "Menkhoff et al. (48 currencies, monthly, to 2010): momentum is twice as large in high idiosyncratic-vol currencies (about 8% vs 4% a year) and transaction costs take about half. Own risk matters for currency momentum, but at a horizon of months.",
+    "Gatev, Goetzmann and Rouwenhorst (stocks, daily): waiting one day before trading a pair cut its excess return by about 200 bp, a measure of how much 'reversal' was bid-ask bounce. Our analogue is skipping one minute and using bid-only quotes.",
+    "Chaboud et al. (EBS, 2006-07): algorithmic trades in FX are more correlated with each other than human trades, and triangular arbitrage gaps close within 100-500 ms (Gradojevic et al.). Cross rates are therefore locked to their legs at any horizon we trade.",
+    "Cui and Zhu (equity ticks): a common activity factor dilutes per-asset order imbalance; purging the common part makes the own part clearer. Same idea as our split, applied to flow.",
+    "What is NOT known: no paper found tests short-horizon (minutes to hours) FX residual reversal after removing the dollar, with costs. No FX head-to-head of EWMA vs DCC correlation forecasts at intraday horizons was found. DCC itself (Engle 2002) is not in the library."
+   ]
+  },
+  {
+   "h": "A worked example on our numbers: EURUSD, Monday 21 November 2022",
+   "lesson": "",
+   "lines": [
+    "Open 1.03308 at 00:00 London. Daily σ known at the open (live_sig_used) 0.87%, about 90 pips.",
+    "β of EURUSD on the dollar ex-EUR, from the previous 20 sessions: 0.85. Over the whole window the dollar explains 56% of EURUSD's 5-minute variance.",
+    "So EURUSD's 90-pip σ splits into a dollar σ of √0.56 × 90 ≈ 67 pips and an own σ of √0.44 × 90 ≈ 60 pips. They add as squares (67² + 60² ≈ 90²), not as pips.",
+    "That day EURUSD fell 1.05σ (about 94 pips) from the open to 22:00. The dollar ex-EUR rose; β × its move = -0.85σ (about 77 pips). The own part was -0.20σ (about 18 pips). The dollar's share of the day's move: 95%. It was a dollar day: the other majors fell with it.",
+    "Benchmark: the same arithmetic with a dollar path from a random other session gives a share near 0, which is what 'no link' looks like.",
+    "Contrast GBPUSD on 26 February 2019 (σ 0.46%): +2.1σ on the day, of which only +0.3σ came from the dollar and +1.8σ was sterling's own (3% dollar share), a Brexit-news day (a vote on delaying exit was offered). Same 'big move' on a vol gauge, opposite cause."
+   ]
+  },
+  {
+   "h": "What our earlier repo work found, and where I agree or disagree",
+   "lesson": "",
+   "lines": [
+    "vol-layer-reaction (forge/VOL_LAYER_REACTION_PREREG.md, analysis/output/vol-layer-reaction/RESULTS.md): the first family D used legs rebuilt from other pairs and so reproduced the pair (cvar60 averaged 0.987), caught before outcomes. The redefined leave-own-out dollar is the same construction used here; I agree with that fix. Here the trap is measured: a cross vs its own legs gives R² 0.99, vs the dollar 0.01-0.05.",
+    "That study reported dollar shares of about 60% for EUR/GBP/AUD/NZD, 15% CAD and 5% JPY (daily returns over 60 sessions). On 5-minute bars I find EUR 56%, AUD 58%, NZD 57%, but GBP 40%, CAD 37%, CHF 43%, JPY 22%. Different horizon and window; GBP in particular swings from about 20% (2016-2019) to 56% (2022), so a 60-session window will catch very different values. I disagree that JPY is near zero: it is low, and lowest in 2018-2020 (7-11%), but 27-34% in 2016-17 and 2022.",
+    "As a reaction predictor at the forecast lines, common60 did not clear the bar (log-loss 0.9994, interval includes 1). This look agrees: a dollar-led move does not continue measurably at 5-60 minutes (slope -0.001 to +0.006, intervals include 0).",
+    "education/residual_pca_currency_test (daily currency-leg PCA residual reversion, 2016-2026): FAIL on its own rule, IC -0.001 in the first half and +0.027 in the second. That is a daily test. Here, at 5-15 minutes, own moves do reverse a little (slope -0.02), but about half of it is quote timing and the rest is about 1/17 of the spread. Both point the same way: no tradeable reversal in the own part.",
+    "COG_NULL_REVIEW rated the correlation layer 'effectively untested' as a layer. I agree: until now nothing measured the split itself, its stability, or what it does to σ and stops. This stage 2 does that; it still scores no trade.",
+    "plans/vol-layer/L3_LITERATURE_SPEC.md listed three hypotheses: H1 common continues and own reverses; H2 common reverses at fixes and in stress; H3 vol is the driver and the split adds little. The look leans to H3 for direction (own reversal tiny, common continuation absent) but the split is large and stable as a description of risk."
+   ]
+  },
+  {
+   "h": "What this layer can do for the entry and the stop",
+   "lesson": "",
+   "lines": [
+    "Stop width, one position: nothing. An unhedged EURUSD position carries both the dollar and the euro, so its stop must use total σ. The split does not make the stop tighter.",
+    "Stop width, several positions: this is where it bites. Two same-direction dollar trades (say long EURUSD and long AUDUSD) are about 0.5 correlated on 5-minute bars (average across the majors), so their joint stop risk is about 1.7x one position, not 2x (no diversification) and not 1.4x (independent). The book's stop budget should come from D·R·D, with R from the currency legs.",
+    "Stop width, dollar-neutral positions (a cross, or long one major and short another): only the own parts are at risk. For EUR, AUD and NZD that is about 0.65-0.70 of the pair's σ; for USDJPY about 0.9. The cross's own σ already holds this, so use the cross's forecast σ, never a sum of the legs' σs.",
+    "Correlation in loud markets: it rises only modestly (0.40 in the calmest tenth of days to about 0.50-0.54 in the loudest), much less than if only the dollar had got louder (0.87). Sorted by yesterday's vol (known at the open) it moves from 0.44 to about 0.48-0.52. So a book's stop budget needs a small stress uplift, not a regime switch.",
+    "Reading a stop-out: was it the dollar or my currency? The split answers that minute by minute. After big dollar moves the pair neither continues nor reverses on average over the next 5-60 minutes; after big own moves it reverses about 0.002σ, against a 0.036σ round-trip spread. So the answer is useful for attribution and for the re-entry decision, not as a fade or follow trigger.",
+    "Entry: no directional edge from the split at intraday horizons. At most a timing nuance: entering right after a sharp own move gives back about 2% of that move. Too small to plan around.",
+    "For whom: EUR, AUD, NZD (55-58% dollar) are mostly dollar trades; GBP, CAD, CHF (37-43%) mixed; USDJPY (22%) mostly its own story; gold is 22% dollar (β about -1: dollar up, gold down); NQ and SPX 12% overall but near 0 in 2016-2019 and about 24-27% in 2022. A dollar view therefore says little about USDJPY or indices in most years."
+   ]
+  },
+  {
+   "h": "Questions for stage 3/4",
+   "lesson": "",
+   "lines": [
+    "Q1 Book risk. For random books of 2-4 USD majors, does Σ = D·R·D with D = the layer-1 σ forecasts and R = an EWMA of 5-minute leave-own-out currency-leg correlations forecast next-session book variance better than D with a rolling 60-session daily correlation (and better than D with ρ = 0)? Metric: QLIKE, Diebold-Mariano with date blocks; also the realised vol of the minimum-variance book. Power: ~900 unseen sessions; detect a 2% QLIKE gain at 80% power if the loss-difference series has a block-adjusted SD under about 0.2 of the mean loss.",
+    "Q2 Stress uplift. On sessions in the top decile of yesterday's realised vol, is realised variance of same-direction dollar books above what the Q1 model forecast (VaR exceedance at 5% vs nominal, Kupiec test)? Benchmark: the same model on the other nine deciles. Power: about 90 stressed sessions unseen; detects a doubling of exceedances (5%→10%) only marginally, so report it as a range check.",
+    "Q3 Stop-outs by cause. For the stops a real system takes (Rule A or the forecast-line entries), split each stop-out into dollar vs own at the moment of the hit. Is P(a further 0.25σ adverse move within 60 minutes) different for dollar-led and own-led stop-outs? Benchmark: all stop-outs pooled, and the random-walk touch rate. Power: needs about 2,000 stop-outs to detect a 3-point difference in a ~45% rate.",
+    "Q4 State at the open. The daily dollar share is persistent (correlation 0.51-0.76 with yesterday's, 0.55-0.81 with the last 20 sessions' mean; shuffled ≈ 0). Does a high trailing-20 dollar share change how far a pair travels relative to its forecast σ (realised range ÷ σ) beyond the layer-1 forecast? Benchmark: the σ forecast alone (ratio 1). Power: about 6,000 pair-sessions unseen; MDE about 1.5% of the ratio.",
+    "Q5 Own-move fade, net. Only if a stage-3 scan finds a cell where the gross fade after a top-decile own move, entered one minute late on the far side of the spread, exceeds the 0.036σ round trip. The discovery look puts the pooled gross at 0.002σ, so expect none; benchmark is the shuffled null and the spread, with FDR over pairs × horizons × sessions."
+   ]
+  }
+ ]
+}
