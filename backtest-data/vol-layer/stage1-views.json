@@ -1,0 +1,157 @@
+{
+ "read": [
+  [
+   "Moskowitz, Ooi & Pedersen 2012, Time Series Momentum (Journal of Financial Economics)",
+   "full text, sections 1-3 (intro, ex-ante vol, regressions, strategies, 2008 episode); later sections skimmed",
+   "doi:10.2139/ssrn.2089463"
+  ],
+  [
+   "Koijen, Moskowitz, Pedersen & Vrugt 2018, Carry (Journal of Financial Economics)",
+   "full text: intro and section II.G (carry timing); risk sections by search",
+   "doi:10.2139/ssrn.2632697"
+  ],
+  [
+   "Brunnermeier, Nagel & Pedersen 2008, Carry Trades and Currency Crashes (NBER Macroeconomics Annual)",
+   "full text: abstract and introduction; results by search (VIX, unwind)",
+   "upload:105a9627"
+  ],
+  [
+   "Menkhoff, Sarno, Schmeling & Schrimpf 2012, Currency Momentum Strategies (Journal of Financial Economics)",
+   "full text: introduction and cost discussion; desk notes for the tables",
+   "doi:10.2139/ssrn.1773543"
+  ],
+  [
+   "Moreira & Muir 2017, Volatility-Managed Portfolios (Journal of Finance)",
+   "full text: abstract, carry factor set-up, Table VII discussion (common-vol timing kills carry alpha)",
+   "doi:10.2139/ssrn.2659431"
+  ],
+  [
+   "Rossi 2013, Exchange Rate Predictability (Journal of Economic Literature)",
+   "abstract and benchmark discussion in full text; desk notes for the rest",
+   "upload:86f0c298"
+  ],
+  [
+   "Mahadzva 2026, Does Positioning Data Predict Currency Returns? COT and carry (SSRN working paper)",
+   "full text: abstract and introduction (daily bars, four majors, FRED policy-rate carry)",
+   "doi:10.2139/ssrn.7434900"
+  ],
+  [
+   "Lustig, Roussanov & Verdelhan 2011, Common Risk Factors in Currency Markets (Review of Financial Studies)",
+   "desk notes only",
+   "doi:10.2139/ssrn.1364313"
+  ],
+  [
+   "Farhi, Fraiberger, Gabaix, Ranciere & Verdelhan 2009, Crash Risk in Currency Markets (NBER WP)",
+   "desk notes only",
+   "doi:10.2139/ssrn.1343987"
+  ],
+  [
+   "Hurst, Ooi & Pedersen 2017, A Century of Evidence on Trend-Following Investing (Journal of Portfolio Management)",
+   "desk notes only",
+   "doi:10.2139/ssrn.2993026"
+  ],
+  [
+   "Grobys & Heinonen 2015, Is Momentum in Currency Markets Driven by Global Economic Risk? (SSRN)",
+   "desk notes only",
+   "doi:10.2139/ssrn.2619146"
+  ],
+  [
+   "Yang 2026, The Carry-unwind Shortcut: JGB Curve Location, Volatility States, and Global FX Repricing (SSRN)",
+   "desk notes only",
+   "doi:10.2139/ssrn.7385740"
+  ],
+  [
+   "Layer 4 literature spec (repo)",
+   "full, read after the papers",
+   "plans/vol-layer/L4_LITERATURE_SPEC.md"
+  ]
+ ],
+ "sections": [
+  {
+   "h": "The plain theory: a view is a small drift",
+   "lesson": "action-base-rates",
+   "lines": [
+    "A view is a direction plus a strength, fixed before the session starts: long, short or flat, and how sure.",
+    "In maths a view is a guess of the drift mu, the average move per day. Everything else (vol, lines, stops) describes the spread around that drift.",
+    "We measure moves in daily sigma, our HAR forecast of one day's typical move. A view worth an annual Sharpe S has a drift of S / sqrt(252) sigma per day. Sharpe 0.5 is 0.032 sigma a day.",
+    "This links a view to our lines. On a driftless random walk, the lines k sigma above and below the open are each touched first half the time.",
+    "With drift mu, P(upper line first) = 1 / (1 + exp(-2 k mu)). For small drifts that is about 50% + k mu / 2.",
+    "So a view helps more with lines further away, because the drift has longer to act. At 0.25 sigma lines it is almost nothing.",
+    "Conditional means the view's accuracy may depend on the state, for example on the vol layer: trust it more in quiet markets and less in panics, or the reverse.",
+    "Combining views: if each view is a noisy guess of the same drift and their errors are unrelated, averaging cuts the noise. Equal weights are hard to beat, because estimated weights add noise of their own."
+   ]
+  },
+  {
+   "h": "What the papers found, and where it does not transfer",
+   "lesson": "",
+   "lines": [
+    "Time-series momentum (Moskowitz, Ooi, Pedersen 2012): in 58 futures, the past 12-month return predicts the next month's return for 1 to 12 months, then partly reverses. All 58 had positive 12-month momentum returns. The diversified, vol-scaled portfolio had an annual Sharpe above 1; single contracts are far weaker.",
+    "Hurst, Ooi, Pedersen 2017 take this back to 1880-2016, with a per-market Sharpe of about 0.4. That per-market figure matters most for us, because we trade one instrument at a time.",
+    "Carry (Koijen et al. 2018): carry is the return you earn if prices do not move. It predicts returns in every asset class. Long-short carry has a Sharpe of about 0.8 per asset class. Timing carry on one asset (long when carry is above its own history) averages 0.6.",
+    "FX carry (Lustig, Roussanov, Verdelhan 2011): currencies with high interest rates minus those with low rates earned 4.8% a year net, Sharpe 0.54; developed currencies alone, 0.39. That is a cross-section of 37 currencies, monthly. We have 7 USD pairs.",
+    "Carry crashes (Brunnermeier, Nagel, Pedersen 2008): high-rate currencies fall suddenly when speculators unwind, which happens when risk appetite and funding dry up. A higher VIX is followed by losses for carry. Farhi et al. 2009: about a quarter of the carry premium is pay for disaster risk.",
+    "Currency momentum (Menkhoff et al. 2012): cross-sectional momentum across 48 currencies earned up to 10% a year. About half went on costs, and the returns sit in small, hard-to-trade currencies. Grobys and Heinonen 2015: it only works when currency returns are widely spread (high dispersion).",
+    "Vol management (Moreira, Muir 2017): scaling a factor by the inverse of last month's variance raised its Sharpe, carry included. But timing carry with a common, equity-led vol removed carry's alpha. The vol has to be the factor's own.",
+    "Exchange-rate forecasting (Rossi 2013): the random walk without drift is the toughest benchmark. Whether anything predicts depends on the predictor, horizon, sample and method, and it is unstable over time.",
+    "Daily, on four majors (Mahadzva 2026): six COT positioning reads and rate-differential carry all fail after costs on daily bars (best out-of-sample carry Sharpe -0.25). It is a working paper, but its set-up is the closest to ours.",
+    "Where it does not transfer: almost all of this is monthly, portfolio-level and spread across dozens of markets. We trade one instrument in one London session, against intraday lines.",
+    "Single-instrument Sharpe ratios are about 0.2-0.5. Per observation, a daily view carries only about 1/sqrt(21) of a monthly view's signal. No paper links a monthly view to which intraday level is touched first.",
+    "Gold has no carry in the FX sense. Index carry is the dividend minus the financing rate, not a rate differential. Neither was built here."
+   ]
+  },
+  {
+   "h": "Worked example: EURUSD on 12 June 2018",
+   "lesson": "trade-management-exits",
+   "lines": [
+    "The London open was 1.17749. The HAR sigma known at the open was 0.51%, so 1 sigma = 0.0060 = 60 pips. The lines at +/-0.5 sigma were 1.18049 and 1.17449.",
+    "The views at the open were as follows. 3-month momentum was short (-1.23, sigma-scaled) and 12-month momentum was long (+0.69).",
+    "Carry was short: the EUR 3-month rate minus the USD rate was -2.03% a year, so the dollar paid more. Macro surprises were short: US data had beaten forecasts by more than euro-area data.",
+    "Three of the four views were short, so the equal-weight combo was -0.5 (half-strength short). The vol state was high: today's sigma ranked above 78% of the last 250 sessions.",
+    "What is that worth? Our measured combo earns about +0.016 sigma a session in its direction (Sharpe about 0.25). So P(lower 0.5 sigma line first) = 1 / (1 + exp(-2 x 0.5 x 0.016)) = 50.4%. At the 1 sigma lines it is 50.8%.",
+    "In money, the 0.5 sigma race is worth (2 x 0.504 - 1) x 30 pips = 0.24 pips per trade before costs. EURUSD costs about 1 pip to trade, so the view alone cannot pay for the trade.",
+    "What happened: EURUSD hit 1.17449 first and closed the session 0.52 sigma lower, so the view was right that day. One day says nothing. The base rate says a Sharpe-0.25 view is right on about 50.6% of sessions.",
+    "If the view had the published Sharpe of 0.5, the 1 sigma race would be 51.6/48.4. That is worth about 1.9 pips on a 60-pip race, still only about two spreads."
+   ]
+  },
+  {
+   "h": "What our earlier repo work found, and where I agree or disagree",
+   "lesson": "",
+   "lines": [
+    "fx-factor-stack (forge/FX_FACTOR_STACK_PREREG.md, analysis/output/fx-factor-stack/RESULTS.md, run November 2026): monthly cross-sectional carry, momentum, value and surprise on 8 currencies were all underpowered out of sample in 2018-2026. Net Sharpe: carry +0.36, surprise +0.34, momentum -0.39, equal-risk book +0.05.",
+    "I agree. This look shows the same pattern at a daily, time-series grain: carry and surprise are the best of the set, momentum is mixed, and the intervals cover both zero and the published sizes.",
+    "rate_xsmom (forge/RATE_XSMOM_PREREG.md): carry earned Sharpe +0.54 in 1976-2014 but +0.26 in 2015-2026. FX price momentum went from +0.25 to -0.82. That fits our 2016-22 year chart, where momentum flips sign every one or two years.",
+    "Trend-following (memory, July 2026): the FX-only trend basket was null, and the broad multi-asset trend was about 0.3 out of sample. Same here: mom12 is mixed in the FX pairs and better on NQ and SPX, which also drift up.",
+    "Entry Lens macro tilt (July 2026): a strong carry-plus-risk tilt lost (Sharpe -0.27 at 20 days). I partly disagree with reading that as 'views are anti-predictive'. Our combo is mildly positive here, and the difference is the risk (VIX) leg, which we did not use.",
+    "Yield-asset coupling and the yield ladder: rates move with assets on the same bar but do not lead them. Our carry view uses rate levels, not changes, which is the one form the literature supports. Its +0.016 sigma is still within noise.",
+    "Harness and deflation: the yield-spread edge was a lookahead. GS2 is a monthly series published about 32 days late. That is why the carry here uses first-print rates known before each open, and EFFR for USD.",
+    "Direction bar (October 2026): one market needs a 6pp move at 1 day to be detectable. Our pooled minimum detectable effect, 0.03-0.04 sigma a session, says the same in drift units: published-size views sit right at the edge of what 6 years can show.",
+    "The formula confirms the L4 literature spec's 1.6pp at 1 sigma for a Sharpe-0.5 view. The shifts measured here (about +/-1pp) are consistent with it, and also with zero."
+   ]
+  },
+  {
+   "h": "What this layer can do for the entry and the stop",
+   "lesson": "",
+   "lines": [
+    "Not a trigger. A Sharpe-0.25 to 0.5 view moves the race at our lines by 0.2 to 1.6pp. At 0.25 sigma stops that is worth less than one spread. A view cannot justify a trade on its own.",
+    "Which side to trade. When another layer gives a level with no direction (a range edge or a line touch), the view can pick the side. That gives a 50.5-51% coin instead of 50%, at no extra cost, since the trade is taken anyway.",
+    "An asymmetric stop and target. With drift mu, the odds for a stop a and a target b are no longer a / (a + b). In the view's direction you can carry a slightly wider target; against it, take profit sooner. The gain is small. The view adds most at 1 sigma or more, where the drift has time to act.",
+    "Size. Scale risk with the view's strength (the combo, -1 to +1) and with the inverse of sigma, as the papers do. This uses the view where its edge compounds, across many trades, and needs no edge on a single trade.",
+    "Holding time. The drift grows with horizon (chart 2). A view argues for holding a winner in its direction over days rather than minutes, which is where the papers find their effect.",
+    "Vol state: so far there is no evidence that the view should be switched off in high sigma. The 2016-22 window had no carry crash, so the papers' carry-crash rule cannot be checked on this data.",
+    "For whom: carry exists only for FX pairs. On NQ and SPX the momentum views mostly carry the indices' upward drift, so their benchmark must be always-long, not 50%."
+   ]
+  },
+  {
+   "h": "Questions for stage 3/4",
+   "lesson": "",
+   "lines": [
+    "Q1 Side-picker: on a direction-free entry from another layer (a line touch or range edge, with a fixed stop and target in sigma), does taking the combo's side raise P(target first)? Benchmark: the same entries with a random side, and with the always-long side, matched on instrument and day. Power: here the race interval is about +/-1.1pp at 12,000 resolved races, so the MDE is about 1.6pp. Detecting a 0.8pp shift needs about 50,000 races, so pool lines and instruments, and declare the pooling in advance.",
+    "Q2 Carry, time-series: pooled over 7 USD pairs, is the next-week return of the FX carry sign above its shifted-view placebo? Benchmark: the placebo 95th percentile and the dollar basket (always short USD). Power: the MDE is about Sharpe 0.45, so only a published-size effect can be detected in 2023-2026. Declare it underpowered in advance if the confirm window has fewer than 900 sessions.",
+    "Q3 Vol-conditioned view: is the combo's hit rate higher in low sigma (52.9% here) than in high sigma? Benchmark: the same gap with vol-state labels shuffled within each year. Power: one cell of about 5,000 instrument-days has a band of +/-1.6pp, so a gap under about 2.3pp cannot be detected. Treat 52.9% as one of 18 cells looked at.",
+    "Q4 Horizon: at 10 and 20 sessions, does the combo's view-signed return beat its placebo 95th percentile (0.084 and 0.154 per sqrt-session here)? Benchmark: the shifted-view placebo, which keeps persistence and drift. Power: overlapping windows leave about 40 independent 20-session blocks per instrument in 3.6 years, so run it as one joint test across all 10 instruments.",
+    "Q5 Asymmetric exits: with the stop fixed at 0.5 sigma, does moving the target from 0.5 to 1.0 sigma in the view's direction raise expectancy net of costs? Compare with the same exits taken against the view. Benchmark: the driftless first-passage value a / (a + b), and costs from the real spread.",
+    "Q6 Sizing: on any stage-3 entry system, does scaling risk by |combo| / sigma lower the drawdown for the same mean? Benchmark: flat 1/sigma sizing on the same trades. Power: judge it on drawdown and on the bootstrap interval of the difference, not on Sharpe alone."
+   ]
+  }
+ ]
+}
