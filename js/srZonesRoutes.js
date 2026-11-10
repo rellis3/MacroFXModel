@@ -92,6 +92,8 @@ export function createSrZones({ kv, getForecast, forecastKeyForPair, oandaFor, i
     const pl = profileLegs(vp);
     if (pl.length) legs.push(...pl); else missing.push('profile');
     const zones = buildSrZones({ spot, sigma, legs });
+    // the "core OI levels" option: OI + gamma levels only, merged only where two sit on (almost) the same price
+    const coreZones = buildSrZones({ spot, sigma, legs: oi, opts: { radius: 0.03, maxSpan: 0.06, maxTiers: 8 } });
     // futures basis (futures − spot) when the conversion is a plain shift; inverted (USD/JPY…) and unit-scaled (grains) books get none
     const fut = oiFuturesTermsPrice(spot, inst);
     const basisOk = Number.isFinite(inst.basis) && Number.isFinite(fut) && Math.abs(fut / spot - 1) < 0.05;
@@ -102,12 +104,12 @@ export function createSrZones({ kv, getForecast, forecastKeyForPair, oandaFor, i
     return {
       key: k, name, aliases, spot, sigma, basis, basisAgeH, date: today, digits: priceDigits(k, spot),
       gex: gexContext(inst), cot: cotContext(fk ? ctx.cot?.[fk] : null), desk: dk?.rating || null,
-      open, missing, zones, profile: { npoc: vp.npoc, hvn: vp.hvn, lvn: vp.lvn, sessions: vp.sessions, binWidth: vp.binWidth, reason: vp.reason || null },
+      open, missing, zones, coreZones, profile: { npoc: vp.npoc, hvn: vp.hvn, lvn: vp.lvn, sessions: vp.sessions, binWidth: vp.binWidth, reason: vp.reason || null },
       oiSavedAt: inst.savedAt || null,
     };
   }
 
-  async function build(pairQ) {
+  async function build(pairQ, { core = false } = {}) {
     const forecast = getForecast();
     const store = await loadStore();
     const keys = resolveKeys(store, pairQ);
@@ -128,7 +130,7 @@ export function createSrZones({ kv, getForecast, forecastKeyForPair, oandaFor, i
     for (const it of res || keys.map(k => itemCache.get(k)?.item)) if (it) items.push(it);
     if (!items.length) return { error: 404, msg: 'No zones could be built (no spot/σ for the instruments asked for).' };
     const generated = new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
-    const text = formatExport(items, { generated });
+    const text = formatExport(core ? items.map(it => ({ ...it, zones: it.coreZones, missing: it.missing.filter(m => m === 'oi' || m === 'gamma') })) : items, { generated });
     const parts = text.length > 4000 ? splitParts(text, 4000) : [text];
     return { items, text, parts, generated };
   }
@@ -137,7 +139,7 @@ export function createSrZones({ kv, getForecast, forecastKeyForPair, oandaFor, i
     app.get('/api/sr-zones/export', async (req, res) => {
       try {
         res.set('Cache-Control', 'no-store');
-        const r = await build(req.query.pair);
+        const r = await build(req.query.pair, { core: String(req.query.mode || '') === 'core' });
         if (r.error) return res.status(r.error).type('text/plain').send(r.msg);
         res.type('text/plain').send(r.parts.length > 1 ? partsText(r.parts) : r.text);
       } catch (e) { res.status(500).type('text/plain').send(`S/R zones error: ${e.message}`); }

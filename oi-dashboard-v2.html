@@ -257,7 +257,7 @@ svg text{font-family:var(--mono)}
 <div id="tiersModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:20;padding:4vh 4vw">
   <div class="card" style="height:100%;display:flex;flex-direction:column;gap:10px;margin:0">
     <div style="display:flex;gap:10px;align-items:center"><b id="exportTitle">OI tiers export</b>
-      <span class="tgl" id="xkChoice" title="Two options for the OI confluence output: the core OI levels export (unchanged) or the grouped S/R zones"><span class="pill" data-xk="tiers">Core OI levels</span><span class="pill" data-xk="srz">S/R zones</span></span>
+      <span class="tgl" id="xkChoice" title="Two options for the OI confluence output: the core OI levels export (unchanged) or the grouped S/R zones"><span class="pill" data-xk="core">Core OI levels</span><span class="pill" data-xk="srz">S/R zones</span></span>
       <label class="pill" style="cursor:pointer"><input type="checkbox" id="tiersToday" checked style="margin-right:6px">today only</label>
       <label class="pill" style="cursor:pointer"><input type="checkbox" id="tiersFut" style="margin-right:6px">futures terms</label>
       <label class="pill" style="cursor:pointer" title="Only what the indicator reads (drops the explanatory TIERS sentences and legends)"><input type="checkbox" id="tiersLean" checked style="margin-right:6px">lean</label>
@@ -1708,17 +1708,20 @@ $('#profEveryBtn').onclick = () => { EXPORT_KIND = 'profileEvery'; $('#exportTit
 $('#profAllBtn').onclick = () => { EXPORT_KIND = 'profileAll'; $('#exportTitle').textContent = 'OI Profile paste — core instruments: FX, gold, indices (the indicator picks the one matching the chart)'; $('#tiersModal').style.display = 'block'; loadProfileAll(); };
 $('#profBtn').onclick = () => { EXPORT_KIND = 'profile'; $('#exportTitle').textContent = 'OI Profile paste — ' + (NAMES[SYM] || SYM) + ' (into pine/OI Profile.pine › 1 · Data)'; $('#tiersModal').style.display = 'block'; loadProfile(); };
 $('#profBooksBtn').onclick = () => { EXPORT_KIND = 'profileBooks'; $('#exportTitle').textContent = 'OI Profile paste, EVERY expiry book — all core instruments: FX, gold, indices (the indicator picks the one matching the chart; raise max levels to draw them all)'; $('#tiersModal').style.display = 'block'; loadProfileBooks(); };
-$('#tiersGo').onclick = () => (EXPORT_KIND === 'srz' ? loadSrz() : EXPORT_KIND === 'levels' ? loadLevels() : EXPORT_KIND === 'profileAll' ? loadProfileAll() : EXPORT_KIND === 'profileEvery' ? loadProfileEvery() : EXPORT_KIND === 'profileBooks' ? loadProfileBooks() : EXPORT_KIND === 'profile' ? loadProfile() : loadTiers()); $('#tiersClose').onclick = () => { $('#tiersModal').style.display = 'none'; };
+$('#tiersGo').onclick = () => (EXPORT_KIND === 'srz' ? loadSrz() : EXPORT_KIND === 'core' ? loadCore() : EXPORT_KIND === 'levels' ? loadLevels() : EXPORT_KIND === 'profileAll' ? loadProfileAll() : EXPORT_KIND === 'profileEvery' ? loadProfileEvery() : EXPORT_KIND === 'profileBooks' ? loadProfileBooks() : EXPORT_KIND === 'profile' ? loadProfile() : loadTiers()); $('#tiersClose').onclick = () => { $('#tiersModal').style.display = 'none'; };
 $('#tiersCopy').onclick = () => { try { navigator.clipboard.writeText($('#tiersTxt').value); $('#tiersCopy').textContent = 'Copied ✓'; setTimeout(() => $('#tiersCopy').textContent = 'Copy', 1500); } catch (_) { $('#tiersTxt').select(); } };
 // ── S/R zones (js/srZones.js): the second option for the OI confluence output, next to the core OI levels (tiers) export ──
 async function loadSrz(){ const ta = $('#tiersTxt'); $('#tiersParts').style.display = 'none'; ta.style.display = ''; ta.value = 'building S/R zones for every instrument (OANDA M5 + volume profile, ~10-30 s)...';
   try { const r = await fetch('/api/sr-zones/export?pair=all', { cache: 'no-store' }); showExport(await r.text()); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
-function xkMark(){ document.querySelectorAll('#xkChoice [data-xk]').forEach(p => p.classList.toggle('on', p.dataset.xk === EXPORT_KIND)); $('#xkChoice').style.display = (EXPORT_KIND === 'tiers' || EXPORT_KIND === 'srz') ? '' : 'none'; }
+function xkMark(){ document.querySelectorAll('#xkChoice [data-xk]').forEach(p => p.classList.toggle('on', p.dataset.xk === EXPORT_KIND)); $('#xkChoice').style.display = (EXPORT_KIND === 'core' || EXPORT_KIND === 'srz') ? '' : 'none'; }
+async function loadCore(){ const ta = $('#tiersTxt'); $('#tiersParts').style.display = 'none'; ta.style.display = ''; ta.value = 'building core OI levels…';
+  try { const r = await fetch('/api/sr-zones/export?pair=all&mode=core', { cache: 'no-store' }); showExport(await r.text()); } catch (e) { ta.value = 'Export failed: ' + e.message; } }
+function openCore(){ EXPORT_KIND = 'core'; $('#exportTitle').textContent = 'Core OI levels - OI walls, max pain, implied move, gamma/GEX flips only (paste into pine/SR Zones.pine)'; $('#tiersModal').style.display = 'block'; xkMark(); loadCore(); }
 function openSrz(){ EXPORT_KIND = 'srz'; $('#exportTitle').textContent = 'S/R zones export - paste into pine/SR Zones.pine (one part per box)'; $('#tiersModal').style.display = 'block'; xkMark(); loadSrz(); }
 $('#srzBtn').onclick = openSrz; $('#srzCardBtn').onclick = openSrz;
 ['#tiersBtn', '#lvlBtn', '#profBtn', '#profAllBtn', '#profEveryBtn', '#profBooksBtn'].forEach(id => { const b = $(id); if (b) b.addEventListener('click', xkMark); });
-document.querySelectorAll('#xkChoice [data-xk]').forEach(p => { p.style.cursor = 'pointer'; p.onclick = () => { if (p.dataset.xk === 'srz') openSrz(); else $('#tiersBtn').click(); }; });
+document.querySelectorAll('#xkChoice [data-xk]').forEach(p => { p.style.cursor = 'pointer'; p.onclick = () => { if (p.dataset.xk === 'srz') openSrz(); else openCore(); }; });
 const SRZ = { at: {}, data: {} };
 async function drawSrz(){
   const body = $('#srzBody'); if (!body) return; const sym = SYM;

@@ -7373,12 +7373,12 @@ async function oiConfExportCopy() {
   } catch (e) { say('Error: ' + e.message, 'var(--red)'); }
 }
 window.oiConfExportCopy = oiConfExportCopy;
-// The two OI confluence level exports (display only): 'core' = the existing OI tiers export, unchanged; 'srz' = the S/R zones (js/srZones.js).
+// The two OI confluence level exports (display only): 'core' = OI + gamma levels only (S/R zones format, mode=core); 'srz' = the grouped S/R zones (js/srZones.js).
 // Long pastes come as =====PART i/n===== parts (Pine strings are capped at 4,096 characters): one box + Copy button per part.
 async function oiConfLevelsExport(kind, btn) {
   const st = document.getElementById('oicLvlStatus'), box = document.getElementById('oicLvlParts');
   const say = (t, c) => { if (st) { st.textContent = t; st.style.color = c || 'var(--text3)'; } };
-  const url = kind === 'srz' ? '/api/sr-zones/export?pair=all' : '/api/oi-tiers/export?mode=today&lean=1';
+  const url = kind === 'srz' ? '/api/sr-zones/export?pair=all' : '/api/sr-zones/export?pair=all&mode=core';
   try {
     say('Fetching… (10-30 s)'); if (btn) btn.disabled = true;
     const r = await fetch(url, { cache: 'no-store' }); const text = await r.text();

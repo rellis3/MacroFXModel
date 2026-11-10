@@ -6890,7 +6890,7 @@ python oi_vol_bot/oi_vol_bot.py --live --url &lt;dashboard-url&gt;</pre>
       <div class="bot-banner-sub" style="margin-top:6px">Same <code>TZ</code> line format as the OI and OI-Conf blocks, titled <code>OI-CONF BOT TRADES</code>. The OI Bot Trades indicator picks the bot by that title; until it is taught the third title it will not colour these boxes, but the lines parse.</div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
         <span style="font-size:12px;font-weight:600;color:#ffcc80">OI confluence levels — two options</span>
-        <button class="btn-save" style="background:transparent;border:1px solid #ffcc80;color:#ffcc80" onclick="oiConfLevelsExport('core', this)" title="The existing OI tiers export (OI levels + ladder tiers, today only, lean) - unchanged">1 · Core OI levels</button>
+        <button class="btn-save" style="background:transparent;border:1px solid #ffcc80;color:#ffcc80" onclick="oiConfLevelsExport('core', this)" title="OI walls, max pain, implied-move edges and gamma/GEX flips only - no forecast, profile or desk levels. Same paste format as the S/R zones (pine/SR Zones.pine)">1 · Core OI levels</button>
         <button class="btn-save" style="background:transparent;border:1px solid #ffcc80;color:#ffcc80" onclick="oiConfLevelsExport('srz', this)" title="Grouped Support/Resistance T1-T6 zones per instrument for pine/SR Zones.pine: OI, gamma, forecast + IV-adjusted ladders, desk card, nPOC/HVN/LVN">2 · S/R zones</button>
         <span id="oicLvlStatus" class="bot-banner-sub" style="margin:0"></span>
       </div>
