@@ -146,8 +146,10 @@ const showTipDefault = (ev, html) => { TIP ??= Object.assign(document.createElem
   TIP.innerHTML = html; TIP.style.display = 'block'; TIP.style.left = Math.min(innerWidth - TIP.offsetWidth - 10, ev.clientX + 16) + 'px'; TIP.style.top = Math.min(innerHeight - TIP.offsetHeight - 10, ev.clientY + 14) + 'px'; };
 const hideTipDefault = () => { if (TIP) TIP.style.display = 'none'; };
 
-export function mountSmile(root, { px, sym = 'NAS100_USD', showTip = showTipDefault, hideTip = hideTipDefault } = {}) {
+export function mountSmile(root, { px, sym = 'NAS100_USD', showTip = showTipDefault, hideTip = hideTipDefault, fixed = false } = {}) {
   const q = k => root.querySelector(`[data-sm="${k}"]`), cv = q('cv'), selSym = q('sym'), selFrom = q('from'), selTo = q('to'), leg = q('leg'), note = q('note');
+  // fixed: the page picks the market for every panel at once (the Desk Terminal's Options tab), so this panel shows no picker of its own
+  if (fixed) { const l = selSym.closest('label'); if (l) l.style.display = 'none'; }
   const S = { sym, curves: [], hv: {}, from: 0, to: 1e9, solo: null, px: px || (v => v.toFixed(1)), showTip, hideTip }, my = { tok: 0 };
   const pxOf = v => Number.isFinite(v) ? (Math.abs(v) >= 1000 ? v.toFixed(0) : v.toFixed(1)) : '—';
   S.px = px || pxOf;
