@@ -1,6 +1,6 @@
 """Concept cards client (plans/KNOWLEDGE_AND_MONITORS.md section 4): `python -m roe.concepts dry-run|run`.
 dry-run asks the server what a run WOULD send (counts only, no model call, no token). run starts a capped run (at most 12 model calls a press; the server also
-keeps a hard cap of 400 calls ever) and waits for it. The token comes from the environment (ROE_PUSH_TOKEN), never from a file or the command line.
+keeps a hard cap of 400 calls ever) and waits for it. The token comes from the environment (ROE_PUSH_TOKEN) or is typed when asked (hidden); never from a file in the repo or the command line.
 urllib only."""
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ def run(base_url: str = DEFAULT_BASE, slice_: str = DEFAULT_SLICE, calls: int = 
     """POST one press (calls is limited to 1..12 here as well as on the server). Returns the server's answer ({'ok': True, 'job': {...}})."""
     token = token if token is not None else os.environ.get("ROE_PUSH_TOKEN", "")
     if not token:
-        raise ConceptsError("ROE_PUSH_TOKEN is not set (the same value as the ROE_PUSH_TOKEN variable on the server)")
+        raise ConceptsError("no push token in this window. Easiest: run   run_roe.bat -Concepts 12   (it uses the token the launcher stored), or paste it when asked")
     n = max(1, min(PRESS_MAX, int(calls)))
     body = json.dumps({"slice": slice_, "calls": n}).encode("utf-8")
     req = urllib.request.Request(base_url.rstrip("/") + "/api/research-pod/concepts", data=body, method="POST",
@@ -84,7 +84,11 @@ def main(argv=None, opener=None, out=print) -> int:
         if a.command == "dry-run":
             out(_fmt(dry_run(a.base_url, a.slice_, opener)))
             return 0
-        r = run(a.base_url, a.slice_, a.calls, opener=opener)
+        token = os.environ.get("ROE_PUSH_TOKEN", "").strip()
+        if not token and sys.stdin.isatty():   # nothing set in this window: ask once (hidden), nothing is saved here. run_roe.bat -Concepts N uses the stored token instead.
+            import getpass
+            token = getpass.getpass("Paste the push token (it will not show as you type): ").strip()
+        r = run(a.base_url, a.slice_, a.calls, token=token or None, opener=opener)
         out(f"started: up to {r['job'].get('max')} calls")
         st = wait(a.base_url, a.slice_, opener)
         job = st.get("job") or {}

@@ -6,8 +6,9 @@
  Options:  -ResetToken   forget the stored token and ask again
            -Schedule     register a daily 08:15 Windows task that runs this script (no window pause)
            -NoPause      do not wait for a key at the end (used by the scheduled task)
+           -Concepts N   instead of the scan: run N concept-card model calls (1-12; spends model money, capped at 400 on the server), with the stored token
 #>
-param([switch]$ResetToken, [switch]$Schedule, [switch]$NoPause)
+param([switch]$ResetToken, [switch]$Schedule, [switch]$NoPause, [int]$Concepts = 0)
 
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
@@ -57,6 +58,21 @@ $env:ROE_PUSH_TOKEN = $plain   # this process only; gone when the window closes
 # 2. the python from the project's venv if there is one
 $py = Join-Path $PSScriptRoot '.venv\Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $py)) { $py = 'python' }
+
+# 2b. concept cards instead of a scan: python -m roe.concepts run --calls N, using the same stored token
+if ($Concepts -gt 0) {
+  $n = [Math]::Min(12, [Math]::Max(1, $Concepts))
+  Write-Host "Running $n concept-card calls (model money; the server stops at its 400-call cap)..."
+  $ErrorActionPreference = 'Continue'
+  & $py -m roe.concepts run --calls $n 2>&1 | ForEach-Object { "$_" } | Tee-Object -Variable clog | Out-Host
+  $ccode = $LASTEXITCODE
+  $ErrorActionPreference = 'Stop'
+  if ($ccode -eq 4 -and (($clog | Out-String) -match 'HTTP 401')) {
+    Remove-Item -LiteralPath $tokenFile -Force -ErrorAction SilentlyContinue
+    Finish 4 'The server refused the token (HTTP 401). The stored copy was deleted. Check ROE_PUSH_TOKEN on Railway, then run again and paste the token.'
+  }
+  Finish $ccode ''
+}
 
 # 3. the sources file (your local data paths); created from the default the first time
 $src = 'roe_sources.laptop.json'
