@@ -1,0 +1,6 @@
+{
+  // ~100 git worktrees (Claude sessions, push helpers) are registered on this repo; VS Code was loading them as
+  // extra repositories, which left the Source Control panel stale and Pull/Push greyed out. Only show the main repo.
+  "git.detectWorktrees": false,
+  "git.repositoryScanIgnoredFolders": [".claude", "wt-m6", "node_modules"]
+}
