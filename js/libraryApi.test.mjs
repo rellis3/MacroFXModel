@@ -152,8 +152,8 @@ test('audio: background job with the mocked free TTS, state in KV, MP3 served wi
 test('every /api/library route in server.js is registered after the login gate', () => {
   const src = fs.readFileSync(new URL('../server.js', import.meta.url), 'utf8');
   const gate = src.indexOf("app.use('/api/library', _libGate)"); assert.ok(gate > 0);
-  const routes = [...src.matchAll(/_libRoute\('(get|post)', '[a-z-]+'/g)];
-  assert.equal(routes.length, 15); assert.ok(!/app\.(get|post|put)\('\/api\/library/.test(src), 'a route bypasses _libRoute (and so the gate order)');
+  const routes = [...src.matchAll(/_libRoute\('(get|post)', '[a-z/-]+'/g)];
+  assert.equal(routes.length, 17); assert.ok(!/app\.(get|post|put)\('\/api\/library/.test(src), 'a route bypasses _libRoute (and so the gate order)');
   for (const m of routes) assert.ok(m.index > gate, `${m[0]} registered before the gate`);
 });
 

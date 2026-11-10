@@ -7086,6 +7086,8 @@ const _libRoute = (method, p, fn) => app[method](`/api/library/${p}`, async (req
 // keep the library's list and search index warm so the first screen after a login is not a cold build (a cheap read; errors are ignored)
 svcTimeout('libraryWarm', () => _libApi.warm?.(), 20_000);
 svcInterval('libraryWarm', () => _libApi.warm?.(), 4 * 60_000);
+_libRoute('get', 'concepts', _libApi.conceptsCards);   // the concept cards for the Concepts tab (library login)
+_libRoute('post', 'concepts/review', _libApi.conceptsReview);   // the owner's mark on a card; free, no model call
 _libRoute('get', 'papers', _libApi.papers);
 _libRoute('get', 'paper', _libApi.paper);
 _libRoute('get', 'search', _libApi.search);

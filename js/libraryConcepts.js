@@ -212,7 +212,7 @@ export function mergeCards(store, cards, now = Date.now()) {
     const had = store.cards[c.id];
     const sources = [...(had?.sources ?? [])]; for (const s of c.sources) if (!sources.some(x => x.kind === s.kind && x.id === s.id)) sources.push(s);
     const domain = [...new Set([...(had?.domain ?? []), ...c.domain])].slice(0, 6);
-    const next = { ...c, sources: sources.slice(0, 24), domain, at: now };
+    const next = { ...c, sources: sources.slice(0, 24), domain, at: now, ...(had?.review ? { review: had.review } : {}) };   // the owner's mark survives a re-run
     if (!had || JSON.stringify({ ...had, at: 0 }) !== JSON.stringify({ ...next, at: 0 })) n++;
     store.cards[c.id] = next;
   }
@@ -311,8 +311,20 @@ export function createConcepts(deps) {
   }
 
   /** The stored cards (private: the route that serves this is login-gated). */
+  /** The owner's mark on one card: status 'good' | 'wrong' | 'unclear' and an optional plain note. Free (no model call); the card text is never changed here. */
+  const REVIEW_STATUS = ['good', 'wrong', 'unclear'];
+  async function review(id, status, note = '') {
+    if (!REVIEW_STATUS.includes(status)) return { ok: false, status: 400, error: 'status must be good, wrong or unclear' };
+    const st = await loadCards(); const c = st.cards[String(id ?? '')];
+    if (!c) return { ok: false, status: 404, error: 'unknown card' };
+    const text = String(note ?? '').replace(/\s+/g, ' ').trim().slice(0, 400);
+    if (BAD_TEXT.test(text)) return { ok: false, status: 400, error: 'the note cannot hold markup or links' };
+    c.review = { status, note: text, at: now() };
+    await saveCards(st);
+    return { ok: true, status: 200, id: c.id, review: c.review };
+  }
   async function cards() { const st = await loadCards(); return { ok: true, at: st.at, count: Object.keys(st.cards).length, cards: Object.values(st.cards).sort((a, b) => a.id.localeCompare(b.id)) }; }
 
   void log;
-  return { status, start, cards, dryRun: async slice => (await status(slice)), readState, _test: { runJob, reserve, loadCards, saveCards, getJob: () => job } };
+  return { status, start, cards, review, dryRun: async slice => (await status(slice)), readState, _test: { runJob, reserve, loadCards, saveCards, getJob: () => job } };
 }

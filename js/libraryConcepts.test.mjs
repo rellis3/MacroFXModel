@@ -200,3 +200,20 @@ test('the Agents tab entry: Library group, task, cap, spends, trigger text; no s
   assert.equal(a.trigger, 'Runs only when you start it: python -m roe.concepts run, or the owner presses it.');
   assert.doesNotMatch(JSON.stringify(a), /secret|password|api key/i);
 });
+
+test('review: a mark is stored on the card, survives a model re-run, and bad input is refused', async () => {
+  const h = harness();
+  const st = await h.c._test.loadCards();
+  const card = { id: 'trend-follow', title: 'Trend following', principle: 'p', mechanism: 'm', measure: 'x', lookFor: 'y', caveats: '', domain: ['trend'], sources: [{ kind: 'paper', id: 'p1' }] };
+  mergeCards(st, [card], 1000); await h.c._test.saveCards(st);
+  assert.equal((await h.c.review('nope', 'good')).status, 404);
+  assert.equal((await h.c.review('trend-follow', 'maybe')).status, 400);
+  assert.equal((await h.c.review('trend-follow', 'wrong', 'see <b>x</b>')).status, 400);
+  const r = await h.c.review('trend-follow', 'wrong', '  too   vague  ');
+  assert.equal(r.ok, true); assert.deepEqual({ s: r.review.status, n: r.review.note }, { s: 'wrong', n: 'too vague' });
+  const again = await h.c._test.loadCards();
+  mergeCards(again, [{ ...card, principle: 'a newer text' }], 2000);   // a later model run rewrites the text
+  assert.equal(again.cards['trend-follow'].principle, 'a newer text');
+  assert.equal(again.cards['trend-follow'].review.status, 'wrong', "the owner's mark survives");
+  assert.equal((await h.c.cards()).cards[0].review.status, 'wrong');
+});

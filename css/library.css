@@ -285,3 +285,21 @@ body.lib-listen-open{--listen-h:96px}
 .lib-lb-why{font-size:13px;color:var(--text2);line-height:1.45}
 @media (min-width:520px){.lib-lb-form{grid-template-columns:minmax(0,1fr) auto}}
 .lib-more{display:block;width:100%;margin:14px 0 4px;min-height:44px}
+
+/* Concepts tab */
+.lib-cc-bar{display:grid;grid-template-columns:1fr;gap:8px;margin:10px 0}
+.lib-cc-bar input,.lib-cc-bar select{width:100%;background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:10px 12px;min-height:44px;font-size:16px;color:var(--text)}
+@media (min-width:640px){.lib-cc-bar{grid-template-columns:2fr 1fr 1fr}}
+.lib-cc{border:1px solid var(--border);border-radius:var(--r);background:var(--s1);margin-bottom:8px}
+.lib-cc summary{list-style:none;cursor:pointer;padding:10px 12px;min-height:44px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:space-between}
+.lib-cc summary::-webkit-details-marker{display:none}
+.lib-cc-title{font-weight:600;flex:1 1 240px}.lib-cc-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.lib-cc-st{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)}
+.lib-cc[data-status="good"] .lib-cc-st{color:var(--green)}.lib-cc[data-status="wrong"] .lib-cc-st{color:var(--red)}.lib-cc[data-status="unclear"] .lib-cc-st{color:var(--amber)}
+.lib-cc-body{padding:4px 12px 12px;border-top:1px solid var(--border)}
+.lib-cc-kv{display:flex;gap:12px;padding:6px 0;border-bottom:1px solid var(--border)}
+.lib-cc-kv>span:first-child{flex:0 0 130px;color:var(--text3);font-size:12px;padding-top:2px}.lib-cc-kv>span:last-child{flex:1;min-width:0;overflow-wrap:anywhere}
+.lib-cc-rev{margin-top:10px;display:flex;flex-direction:column;gap:8px}.lib-cc-btns{display:flex;gap:8px;flex-wrap:wrap}
+.lib-cc-btns .lib-btn[aria-pressed="true"]{background:var(--blue-bg);border-color:var(--blue-bd);color:var(--blue)}
+.lib-cc-note{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;min-height:44px;font-size:16px;color:var(--text)}
+@media (max-width:520px){.lib-cc-kv{flex-direction:column;gap:0}.lib-cc-kv>span:first-child{flex-basis:auto}}
