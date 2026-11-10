@@ -148,8 +148,21 @@ export function pairCard(items, inst, { rating = null, now, name = inst } = {}) 
 <p style="margin:8px 0 0"><a href="#" data-news-more="${esc(inst)}">More news →</a></p><p class="muted" style="font-size:12px">Arrow = the first move the headline implies for this market. Context, never a signal.</p>`;
 }
 
-/** One line for an Assets-tab card: the latest tier-1/2 headline on this market, plain text. */
-export function latestLine(items, inst) {
-  const x = marketNews(items, inst, { n: 1 })[0];
-  return x ? `<div class="nt-latest" title="${esc(x.h.title)}"><span class="muted">latest:</span> ${esc(x.h.title)}</div>` : '';
+/**
+ * The Assets-tab card's news line (owner 2026-11-10: "make the news line say what it means for this market"): the
+ * latest tier-1/2 headline on this market, led by its read: which of the market's keys it moves (USD ↑), what that
+ * means for the market (USDCAD ↑), and whether that supports or goes against today's card. The headline title follows;
+ * the analyst's one-line why is the tooltip.
+ */
+export function latestLine(items, inst, rating = null) {
+  const x = marketNews(items, inst, { n: 1, rating })[0];
+  if (!x) return '';
+  const im = x.h?.read?.impact ?? {}, keys = newsKeysFor(inst).filter(k => Number.isFinite(+im[k]) && +im[k] !== 0);
+  const drv = keys.map(k => `${keyLabel(k)} ${arrow(+im[k])}`).join(', ');
+  const live = /LONG|SHORT/.test(String(rating ?? ''));
+  const meaning = x.dir
+    ? `${drv ? `${esc(drv)} → ` : ''}<b class="${x.dir > 0 ? 'up' : 'dn'}">${esc(inst)} ${arrow(x.dir)}</b> · ${STANCE[x.stance] ? `<span class="${x.stance === 'supports' ? 'up' : 'dn'}">${STANCE[x.stance][1]}</span>` : live ? 'no read against the card' : 'card is flat'}`
+    : '<span class="muted">no read for this market</span>';
+  const tip = [x.h.title, x.h?.read?.why].filter(Boolean).join(' · ');
+  return `<div class="nt-latest" title="${esc(tip)}"><span class="muted">news:</span> ${meaning}<div class="nt-latest-h">${esc(x.h.title)}</div></div>`;
 }

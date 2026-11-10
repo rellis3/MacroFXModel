@@ -47,8 +47,12 @@ export async function mount(box) {
     if (!box.isConnected) return;
     if (r?.ok) show(r); else { body.innerHTML = `<p class="muted" style="margin:0">The read failed: ${h(r?.error ?? 'no answer')}.</p>`; setBtn('Try again', !!force); }
   };
+  // the ✦ Analyse button on a live Assets card opens the card with this set: run at once (today's read, if any, is shown free)
+  const auto = globalThis.aaAutoRun === inst; if (auto) globalThis.aaAutoRun = null;
   let r = null; try { r = await fetch(`/api/desk-asset-analyse?inst=${encodeURIComponent(inst)}`, { cache: 'no-store' }).then(x => x.json()); } catch { /* offline: offer the button */ }
   if (!box.isConnected) return;
+  if (auto) box.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   if (r?.ok) show(r);
+  else if (auto) run(false);
   else { body.innerHTML = `<p class="muted" style="margin:0">The morning book gives each market a few sentences. <b>Analyse</b> reads ${h(inst)} on its own: every driver for this kind of market checked against today's data, what contradicts the move, the bull and bear case, and the levels. Runs on DeepSeek, about a cent a read.</p>`; setBtn(`Analyse ${inst}`, false); }
 }

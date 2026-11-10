@@ -956,11 +956,11 @@ function assetCard(n, c, full = false) {
   return `<div class="${full ? '' : 'card click'}" ${full ? '' : `tabindex="0" data-inst="${esc(n)}"`}><div class="ch"><span class="chip">${esc(GROUPS[groupOf(n)] ?? '')}</span><span class="chip">${esc(n)}</span><span class="r">${gradeChip(c)}${full ? '<button class="x" aria-label="Close">✕</button>' : ''}</span></div>
 <h3 style="margin:0 0 8px;font-size:${full ? 22 : 17}px">Analysis of ${esc(nice(n))}</h3>
 <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${rateChip(c.rating)}${scoreBar(s, '220px', assetWord(c))}${live && live.rating !== c.rating ? `<span class="chip gold" title="${esc(live.why ?? '')}">updated → ${esc(live.rating)}</span>` : ''}</div>
-<div class="thesis">“${esc(firstSentence(c.why))}”</div>
+<div class="thesis">“${esc(full ? firstSentence(c.why) : c.why)}”</div>
 <div class="drv">${sources(c.why).map(t => `<span>${t}</span>`).join('')}<span title="The card's own conviction (the Head's), not the global ruling's or a currency's">card conviction ${esc(c.conviction ?? '–')}</span><span>size ${c.size ?? '–'}${c.sizeBeforeCap && c.sizeBeforeCap !== c.size ? ` (from ${c.sizeBeforeCap})` : ''}</span></div>
-${full ? `${c.levels ? '' : noLevels()}<div class="achart" id="achart"></div>` : (c.levels ? ladder(c) : noLevels()) + (globalThis.newsLatestLine?.(D.news, n) ?? '')}
+${full ? `${c.levels ? '' : noLevels()}<div class="achart" id="achart"></div>` : (c.levels ? ladder(c) : noLevels()) + (globalThis.newsLatestLine?.(D.news, n, c.rating) ?? '')}
 ${full ? `<p>${esc(c.why)}</p><div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${esc(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Target</b><span class="mono">${Math.sign(DIR[c.rating] ?? 0) >= 0 ? `up p50 ${c.levels.up.p50} · p75 ${c.levels.up.p75} · p90 ${c.levels.up.p90}` : `down p50 ${c.levels.down.p50} · p75 ${c.levels.down.p75} · p90 ${c.levels.down.p90}`}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${esc(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${esc(c.plan.timing)}</span></div>` : ''}</div>
-${deskView(n)}${globalThis.analyseBoxHtml?.(n) ?? ''}${globalThis.whatDrivesHtml?.(n) ?? ''}<p class="muted">The ladder is today's forecast range (p50, p75, p90 each side of the open); the purple band is the entry zone where the plan names one. ${SCALE_NOTE} The grade is the card's conviction, not a hit rate.</p>` : `<div class="muted" style="margin-top:6px">Read full analysis →</div>`}</div>`;
+${deskView(n)}${globalThis.analyseBoxHtml?.(n) ?? ''}${globalThis.whatDrivesHtml?.(n) ?? ''}<p class="muted">The ladder is today's forecast range (p50, p75, p90 each side of the open); the purple band is the entry zone where the plan names one. ${SCALE_NOTE} The grade is the card's conviction, not a hit rate.</p>` : `<div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="muted">Read full analysis →</span>${/LONG|SHORT/.test(c.rating ?? '') && c.size > 0 ? `<button class="btn" type="button" data-analyse="${esc(n)}" style="padding:3px 10px" title="A deep read of this market against its own drivers, on DeepSeek (about a cent)">✦ Analyse</button>` : ''}</div>`}</div>`;
 }
 function deskView(n) {
   const g = groupOf(n), a = D.run?.debate?.assets?.[g]?.view?.instruments?.[n];
@@ -1301,6 +1301,8 @@ function wire(root) {
   root.querySelectorAll('[data-ccy]').forEach(el => { const go = () => ccyModal(el.dataset.ccy); el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
   root.querySelectorAll('[data-inst]').forEach(el => { const go = () => { const c = D.cards[el.dataset.inst]; if (c) { openModal(assetCard(el.dataset.inst, c, true)); assetChart($('achart'), el.dataset.inst, c); } }; el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
   root.querySelectorAll('[data-newsrec]').forEach(el => { el.onclick = newsRecord; });
+  // ✦ Analyse on a live card: open the card and start its deep read (js/terminal/assetAnalysisView.js shows today's read if one exists)
+  root.querySelectorAll('[data-analyse]').forEach(b => { b.onclick = e => { e.stopPropagation(); const n = b.dataset.analyse, c = D.cards[n]; if (!c) return; globalThis.aaAutoRun = n; openModal(assetCard(n, c, true)); assetChart($('achart'), n, c); }; b.onkeydown = e => e.stopPropagation(); });
 }
 
 // ── Ask the desk ──

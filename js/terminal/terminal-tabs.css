@@ -185,4 +185,6 @@
 .nt-f2{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
 .nt-book{font-size:13px;display:flex;gap:6px;align-items:center;cursor:pointer}
 .nt-f2 input[type=search]{flex:1 1 200px;min-width:0;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:7px;padding:7px 10px;font:13px var(--sans)}
-.nt-latest{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px;margin-top:8px;color:var(--tx2)}
+.nt-latest{font-size:12.5px;margin-top:8px;color:var(--tx2)}
+.nt-latest .up{color:var(--up)}.nt-latest .dn{color:var(--dn)}
+.nt-latest-h{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--tx3);font-size:12px;margin-top:2px}
