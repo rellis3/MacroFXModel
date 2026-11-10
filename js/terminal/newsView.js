@@ -160,6 +160,8 @@ export function latestLine(items, inst, rating = null) {
   const im = x.h?.read?.impact ?? {}, keys = newsKeysFor(inst).filter(k => Number.isFinite(+im[k]) && +im[k] !== 0);
   const drv = keys.map(k => `${keyLabel(k)} ${arrow(+im[k])}`).join(', ');
   const live = /LONG|SHORT/.test(String(rating ?? ''));
+  // judged against the card on screen, not the book the wire saw when it read the headline (the card can change in the day)
+  x.stance = rating != null ? cardStance(rating, x.dir) : x.stance;
   const meaning = x.dir
     ? `${drv ? `${esc(drv)} → ` : ''}<b class="${x.dir > 0 ? 'up' : 'dn'}">${esc(inst)} ${arrow(x.dir)}</b> · ${STANCE[x.stance] ? `<span class="${x.stance === 'supports' ? 'up' : 'dn'}">${STANCE[x.stance][1]}</span>` : live ? 'no read against the card' : 'card is flat'}`
     : '<span class="muted">no read for this market</span>';
