@@ -25,8 +25,8 @@ export const SRZ_DEFAULTS = { radius: 0.15, maxSpan: 0.3, maxTiers: 6, maxSigma:
 export const FAMILY_ORDER = ['oi', 'gamma', 'forecast', 'iv', 'desk', 'profile'];
 
 const OI_LABEL = { call_wall: 'call wall', put_wall: 'put wall', max_pain: 'max pain', exp_move_hi: 'implied-move high', exp_move_lo: 'implied-move low',
-  gamma_flip: 'gamma flip', gex_flip: 'GEX flip', charm_flip: 'charm flip', vanna_flip: 'vanna flip' };
-const OI_FAMILY = { call_wall: 'oi', put_wall: 'oi', max_pain: 'oi', exp_move_hi: 'oi', exp_move_lo: 'oi', gamma_flip: 'gamma', gex_flip: 'gamma', charm_flip: 'gamma', vanna_flip: 'gamma' };
+  gamma_flip: 'gamma flip', gex_flip: 'GEX flip', charm_flip: 'charm flip', vanna_flip: 'vanna flip', hvl: 'HVL (peak gamma)' };
+const OI_FAMILY = { call_wall: 'oi', put_wall: 'oi', max_pain: 'oi', exp_move_hi: 'oi', exp_move_lo: 'oi', gamma_flip: 'gamma', gex_flip: 'gamma', charm_flip: 'gamma', vanna_flip: 'gamma', hvl: 'gamma' };
 export const SRZ_OI_TYPES = Object.keys(OI_LABEL);
 
 // ── London calendar ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -119,6 +119,44 @@ export function oiLegs(levels, inst) {
   }
   return out;
 }
+/** GEX peaks (family gamma): the strike with the largest positive net GEX (dealers long gamma: the strongest pinning strike) and the
+ *  largest negative (dealers short gamma: where hedging adds to the move), from the record's per-strike profile, within 10% of spot. */
+export function gexPeakLegs(inst, spot) {
+  const gp = Array.isArray(inst?.dayExpiry?.gexProfile) && inst.dayExpiry.gexProfile.length ? inst.dayExpiry.gexProfile : Array.isArray(inst?.gexProfile) ? inst.gexProfile : [];
+  let pos = null, neg = null;
+  for (const g of gp) {
+    const k = +g?.strike, v = +g?.netGex;
+    if (!(k > 0) || !Number.isFinite(v) || !(spot > 0) || Math.abs(k / spot - 1) > 0.10) continue;
+    if (v > 0 && (!pos || v > pos.v)) pos = { k, v };
+    if (v < 0 && (!neg || v < neg.v)) neg = { k, v };
+  }
+  const out = [];
+  if (pos) out.push(leg(pos.k, 'gamma', 'gex_pos_peak', '+GEX peak (pin strike)'));
+  if (neg) out.push(leg(neg.k, 'gamma', 'gex_neg_peak', '−GEX peak (accelerant strike)'));
+  return out;
+}
+/** Overbought / oversold read. Two parts, kept apart because their evidence differs:
+ *  day  = how far price is from the London open in σ and which forecast line it has passed (past p75 typically leaves ~0.3σ of travel:
+ *         nq-lines-as-exhaustion; reach is the validated part of the lines);
+ *  cot  = speculators' net positioning vs its 3-year range (extremes alone tested null as a reversal call: squeeze-fuel, cot-positioning-factor;
+ *         only COT state D, crowded with the trend while price pulls back and the crowd reduces, passed on history). */
+export function stretchContext({ spot, open, sigma, ladder, cot } = {}) {
+  const parts = [];
+  let day = null, dayWord = null;
+  if (spot > 0 && open > 0 && sigma > 0) {
+    day = (spot - open) / sigma;
+    const pct = (spot / open - 1) * 100, up = pct >= 0, side = up ? ladder?.oh : ladder?.ol, a = Math.abs(pct);
+    const past = side ? ['p90', 'p75', 'p50'].find(r => Number.isFinite(side[r]) && a >= side[r]) : null;
+    dayWord = past === 'p90' || past === 'p75' ? (up ? 'overbought on the day' : 'oversold on the day') : 'inside the day range';
+    parts.push(`day ${day >= 0 ? '+' : ''}${day.toFixed(2)}σ from open${past ? `, past ${past} ${up ? 'high' : 'low'}` : ''} (${dayWord}${past === 'p90' || past === 'p75' ? ', ~0.3σ typical travel left' : ''})`);
+  }
+  let cotWord = null;
+  if (cot && cot.pct != null) {
+    cotWord = cot.pct >= 90 ? 'COT overbought (specs crowded long)' : cot.pct <= 10 ? 'COT oversold (specs crowded short)' : cot.pct >= 70 ? 'COT leaning long' : cot.pct <= 30 ? 'COT leaning short' : 'COT neutral';
+    parts.push(`${cotWord}, ${ord(Math.round(cot.pct))} pct 3y`);
+  }
+  return parts.length ? { text: parts.join(' · '), day, dayWord, cotWord, cotPct: cot?.pct ?? null } : null;
+}
 /** The forecast ladder (family forecast) or the IV-adjusted ladder (family iv), anchored at the London-midnight open. */
 export function forecastLegs(ladder, open, family = 'forecast') {
   const lab = family === 'iv' ? { prefix: 'ivadj', name: 'IV-adj' } : { prefix: 'fcst', name: 'forecast' };
@@ -188,6 +226,7 @@ export function formatBlock(item) {
   if (item.gex) head.push(`gex=${safe(item.gex)}`);
   if (item.cot) head.push(`cot=${safe(item.cot)}`);
   if (item.desk) head.push(`desk=${safe(item.desk)}`);
+  if (item.stretch?.text) head.push(`stretch=${safe(item.stretch.text)}`);
   if (item.missing?.length) head.push(`missing=${item.missing.map(safe).join(',')}`);
   const L = [head.join('|')];
   for (const [side, arr] of [['S', item.zones?.support || []], ['R', item.zones?.resistance || []]]) {

@@ -8,7 +8,7 @@ import { oiStoreToLevels } from './oiConfluence.js';
 import { oiFuturesTermsPrice } from './oi.js';
 import { priceDigits } from './hedgingBooks.js';
 import { tvTickers } from './deskBookPine.js';
-import { londonDay, londonOpen, volumeProfileLevels, oiLegs, forecastLegs, deskLegs, profileLegs, buildSrZones, gexContext, cotContext,
+import { londonDay, londonOpen, volumeProfileLevels, oiLegs, gexPeakLegs, stretchContext, forecastLegs, deskLegs, profileLegs, buildSrZones, gexContext, cotContext,
   formatExport, splitParts, partsText, SRZ_HEADER, describeSrZone } from './srZones.js';
 
 const TTL = 5 * 60_000;
@@ -75,7 +75,7 @@ export function createSrZones({ kv, getForecast, forecastKeyForPair, oandaFor, i
     const open = done.length ? londonOpen(done, today) : null;
     const legs = [];
     // OI + gamma
-    const oi = oiLegs((oiStoreToLevels(inst) || []).filter(l => Number.isFinite(l?.price) && l.price > 0), inst);
+    const oi = [...oiLegs((oiStoreToLevels(inst) || []).filter(l => Number.isFinite(l?.price) && l.price > 0), inst), ...gexPeakLegs(inst, spot)];
     if (!oi.some(l => l.family === 'oi')) missing.push('oi');
     if (!oi.some(l => l.family === 'gamma')) missing.push('gamma');
     legs.push(...oi);
@@ -104,6 +104,7 @@ export function createSrZones({ kv, getForecast, forecastKeyForPair, oandaFor, i
     return {
       key: k, name, aliases, spot, sigma, basis, basisAgeH, date: today, digits: priceDigits(k, spot),
       gex: gexContext(inst), cot: cotContext(fk ? ctx.cot?.[fk] : null), desk: dk?.rating || null,
+      stretch: stretchContext({ spot, open, sigma, ladder: fc?.ladder, cot: fk ? ctx.cot?.[fk] : null }),
       open, missing, zones, coreZones, profile: { npoc: vp.npoc, hvn: vp.hvn, lvn: vp.lvn, sessions: vp.sessions, binWidth: vp.binWidth, reason: vp.reason || null },
       oiSavedAt: inst.savedAt || null,
     };

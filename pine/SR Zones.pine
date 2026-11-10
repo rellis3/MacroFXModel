@@ -59,6 +59,7 @@ if barstate.islastconfirmedhistory
     string gexX = "—"
     string cotX = "—"
     string deskX = "—"
+    string strX = "—"
     string missX = ""
     array<string> zoneRows = array.new<string>()
     for ln0 in rows
@@ -95,6 +96,8 @@ if barstate.islastconfirmedhistory
                                         cotX := v
                                     else if k == "desk"
                                         deskX := v
+                                    else if k == "stretch"
+                                        strX := v
                                     else if k == "missing"
                                         missX := v
         else if inBlock and (str.startswith(ln, "S|") or str.startswith(ln, "R|"))
@@ -149,7 +152,7 @@ if barstate.islastconfirmedhistory
                     label.new(x=t1, y=(pLo + pHi) / 2, text=txt, xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.black, 100), textcolor=color.new(c, math.max(0, tr - 20)), size=size.small)
 
     if showTable
-        table tb = table.new(position.top_right, 2, 7, bgcolor=color.new(color.black, 30), border_width=1)
+        table tb = table.new(position.top_right, 2, 8, bgcolor=color.new(color.black, 30), border_width=1)
         table.cell(tb, 0, 0, "S/R zones", text_color=color.white, text_size=size.small)
         table.cell(tb, 1, 0, found ? blockName + " " + dateX : "no block for " + syminfo.ticker, text_color=color.white, text_size=size.small)
         table.cell(tb, 0, 1, "spot (export)", text_color=color.gray, text_size=size.small)
@@ -162,5 +165,7 @@ if barstate.islastconfirmedhistory
         table.cell(tb, 1, 4, deskX, text_color=color.white, text_size=size.small)
         table.cell(tb, 0, 5, "basis", text_color=color.gray, text_size=size.small)
         table.cell(tb, 1, 5, cantShift ? "futures chart but no basis for this book: nothing drawn" : shift != 0 ? "+" + str.tostring(shift, format.mintick) + " added (futures)" : "CFD spot terms", text_color=cantShift ? color.orange : color.white, text_size=size.small)
+        table.cell(tb, 0, 7, "ob / os", text_color=color.gray, text_size=size.small)
+        table.cell(tb, 1, 7, strX, text_color=color.white, text_size=size.tiny)
         table.cell(tb, 0, 6, "note", text_color=color.gray, text_size=size.small)
         table.cell(tb, 1, 6, "tier = distance; families descriptive" + (missX != "" ? " · missing: " + missX : ""), text_color=color.gray, text_size=size.tiny)

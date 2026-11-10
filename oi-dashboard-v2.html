@@ -1739,7 +1739,7 @@ async function drawSrz(){
   const res = [...it.zones.resistance].reverse().map(z => row(z, 'R')).join('');
   const sup = it.zones.support.map(z => row(z, 'S')).join('');
   const spotRow = `<tr><td colspan="6" style="padding:6px;text-align:center;color:var(--tx3);border-top:1px dashed var(--line2)">spot ${f(it.spot)} · one day's σ ${f(it.sigma)} · ${esc(it.date)}</td></tr>`;
-  const ctx = [it.gex ? 'GEX ' + it.gex : null, it.cot ? 'COT ' + it.cot : null, it.desk ? 'desk ' + it.desk : null,
+  const ctx = [it.gex ? 'GEX ' + it.gex : null, it.cot ? 'COT ' + it.cot : null, it.desk ? 'desk ' + it.desk : null, it.stretch?.text ? 'overbought/oversold: ' + it.stretch.text : null,
     it.basis != null ? 'futures basis ' + (it.basis >= 0 ? '+' : '') + f(it.basis) + (it.basisAgeH != null ? ' (' + it.basisAgeH + 'h old)' : '') : 'no futures basis (inverted or unit-scaled book)',
     it.missing?.length ? 'empty sources: ' + it.missing.join(', ') : null].filter(Boolean);
   body.innerHTML = `<div class="legend" style="margin:0 0 8px">${esc(ctx.join(' · '))}</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="color:var(--tx3);text-align:left"><th style="padding:4px 6px">Zone</th><th style="padding:4px 6px">CFD spot</th><th style="padding:4px 6px">Futures</th><th style="padding:4px 6px">Distance</th><th style="padding:4px 6px">Families</th><th style="padding:4px 6px">Sources</th></tr></thead><tbody>${res || '<tr><td colspan="6" style="padding:4px 6px;color:var(--tx3)">no resistance zone within 2.5σ</td></tr>'}${spotRow}${sup || '<tr><td colspan="6" style="padding:4px 6px;color:var(--tx3)">no support zone within 2.5σ</td></tr>'}</tbody></table></div>`;

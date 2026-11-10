@@ -1,6 +1,6 @@
 // node js/srZones.test.mjs
 import assert from 'node:assert/strict';
-import { londonDay, londonOpen, volumeProfileLevels, oiLegs, forecastLegs, deskLegs, profileLegs, buildSrZones, gexContext, cotContext, formatBlock, formatExport, splitParts, partsText, SRZ_HEADER, describeSrZone } from './srZones.js';
+import { londonDay, londonOpen, volumeProfileLevels, oiLegs, forecastLegs, deskLegs, profileLegs, buildSrZones, gexContext, cotContext, gexPeakLegs, stretchContext, formatBlock, formatExport, splitParts, partsText, SRZ_HEADER, describeSrZone } from './srZones.js';
 
 let n = 0; const t = (name, fn) => { fn(); n++; console.log('ok', name); };
 
@@ -55,7 +55,7 @@ const inst = { spot: 4130, exposures: { gex: -5 }, dayExpiry: { exposures: { gex
 const levels = [{ price: 4111.6, type: 'put_wall', dte: 1 }, { price: 4150, type: 'call_wall' }, { price: 4090, type: 'gex_flip' }, { price: 4135, type: 'oi_volume' }, { price: 4100, type: 'hvl' }];
 t('oiLegs: families, implied move, charm flip; volume/hvl dropped', () => {
   const L = oiLegs(levels, inst);
-  assert.deepEqual(L.map(l => l.type).sort(), ['call_wall', 'charm_flip', 'exp_move_hi', 'exp_move_lo', 'gex_flip', 'put_wall']);
+  assert.deepEqual(L.map(l => l.type).sort(), ['call_wall', 'charm_flip', 'exp_move_hi', 'exp_move_lo', 'gex_flip', 'hvl', 'put_wall']);
   assert.equal(L.find(l => l.type === 'gex_flip').family, 'gamma');
   assert.equal(L.find(l => l.type === 'put_wall').label, 'put wall 1d');
 });
@@ -78,7 +78,7 @@ t('zones: distance tiers, family count, sources; σ filter', () => {
   assert.equal(z.support[0].tier, 1);
   assert.deepEqual(z.support[0].families, ['oi', 'forecast']);
   assert.ok(z.support[0].sources.includes('put wall 1d') && z.support[0].sources.includes('forecast median low'));
-  const t2 = z.support[1];
+  const t2 = z.support.find(s => s.families.includes('profile'));   // the GEX flip + nPOC zone (the HVL strike may sit nearer, as its own tier)
   assert.deepEqual(t2.families, ['gamma', 'profile']); assert.equal(t2.nFamilies, 2);
   assert.ok(z.support.every(s => s.dist <= 2.5)); assert.ok(!z.resistance.some(r => r.lo > 4300));   // HVN at 4500 is 9σ away
   assert.ok(z.support.length <= 6 && z.resistance.length <= 6);
@@ -109,3 +109,11 @@ t('text format: header, pipes, plain decimals, parts', () => {
   assert.equal(describeSrZone(zones.support[1], 'S', 1), 'Support T2 4089.4–4091.6 · 3 families — GEX flip + IV-adj median low + nPOC 11-04');
 });
 console.log(`${n} tests passed`);
+t('gamma peaks and the overbought/oversold read', () => {
+  const pk = gexPeakLegs({ gexProfile: [{ strike: 4000, netGex: 5 }, { strike: 4050, netGex: 9 }, { strike: 3950, netGex: -7 }, { strike: 2000, netGex: 99 }] }, 4030);
+  assert.deepEqual(pk.map(l => [l.price, l.type, l.family]), [[4050, 'gex_pos_peak', 'gamma'], [3950, 'gex_neg_peak', 'gamma']]);
+  const s = stretchContext({ spot: 4028, open: 4110, sigma: 56, ladder: { oh: { p50: 0.6, p75: 1.0, p90: 1.5 }, ol: { p50: 0.6, p75: 1.0, p90: 1.5 } }, cot: { pct: 93 } });
+  assert.equal(s.dayWord, 'oversold on the day'); assert.match(s.text, /past p90 low/); assert.match(s.cotWord, /COT overbought/);
+  assert.equal(stretchContext({ spot: 4115, open: 4110, sigma: 56, ladder: { oh: { p50: 0.6, p75: 1.0, p90: 1.5 } } }).dayWord, 'inside the day range');
+  assert.equal(stretchContext({}), null);
+});
