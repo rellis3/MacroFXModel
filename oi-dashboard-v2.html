@@ -1718,7 +1718,7 @@ function xkMark(){ document.querySelectorAll('#xkChoice [data-xk]').forEach(p =>
 async function loadCore(){ const ta = $('#tiersTxt'); $('#tiersParts').style.display = 'none'; ta.style.display = ''; ta.value = 'building core OI levels…';
   try { const r = await fetch('/api/sr-zones/export?pair=all&mode=core', { cache: 'no-store' }); showExport(await r.text()); } catch (e) { ta.value = 'Export failed: ' + e.message; } }
 function openCore(){ EXPORT_KIND = 'core'; $('#exportTitle').textContent = 'Core OI levels - OI walls, max pain, implied move, gamma/GEX flips only (paste into pine/SR Zones.pine)'; $('#tiersModal').style.display = 'block'; xkMark(); loadCore(); }
-function openSrz(){ EXPORT_KIND = 'srz'; $('#exportTitle').textContent = 'S/R zones export - paste into pine/SR Zones.pine (one part per box)'; $('#tiersModal').style.display = 'block'; xkMark(); loadSrz(); }
+function openSrz(){ EXPORT_KIND = 'srz'; $('#exportTitle').textContent = 'S/R zones export - paste the whole block into pine/SR Zones.pine (all instruments, one box)'; $('#tiersModal').style.display = 'block'; xkMark(); loadSrz(); }
 $('#srzBtn').onclick = openSrz; $('#srzCardBtn').onclick = openSrz;
 ['#tiersBtn', '#lvlBtn', '#profBtn', '#profAllBtn', '#profEveryBtn', '#profBooksBtn'].forEach(id => { const b = $(id); if (b) b.addEventListener('click', xkMark); });
 document.querySelectorAll('#xkChoice [data-xk]').forEach(p => { p.style.cursor = 'pointer'; p.onclick = () => { if (p.dataset.xk === 'srz') openSrz(); else openCore(); }; });
