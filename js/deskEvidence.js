@@ -2188,6 +2188,48 @@ export const DESK_EVIDENCE = [
     use: 'Do not trade it: no edge in price before costs, and the overnight spread costs ~0.7R a trade at a 0.2-leg stop. Reusable pieces (misc index): on EURUSD the retest of the opening extreme holds better than chance (fewer sweeps past it, more runs to the impulse extreme, both halves) but is unaffordable at this leg size; on NQ price stalls after the retest. Gold: none.',
   },
   {
+    id: 'value-migration-nq-poc', domain: 'misc', verdict: 'context', date: '2026-11-10', doc: 'forge/VALUE_MIGRATION_NQ_PREREG.md',
+    also: ['analysis/output/value-migration-nq/RESULTS.md'], instruments: ['NQ'],
+    claim: 'Trader playbook (Fabio Valentini, NQ auction method, relayed by the owner 2026-11-10; not C.OG): when the volume-profile POC of successive 15-minute boxes migrates one way for an hour, NQ keeps moving that way over the next 5-60 minutes, beyond the price move already made',
+    result: 'NQ 1-min OHLCV RTH 2015-02 to 2025-07, 2,606 sessions, 24,807 state windows. Signed outcome +0.019 sigma at 15 min [+0.010, +0.029], Holm p 0.001, above all 20 session-shift placebos, IS +0.011 / OOS +0.026; 5 min +0.024 (IS negative), 60 min +0.016 [-0.002, +0.034]. Below the registered 0.05 bar (ruled out); about 0.5 NQ points per signal in 2020-25 vs a 0.73-point round trip. Price twin (same rule on box closes) +0.0105; increment over price +0.009 [-0.000, +0.018], 0.03 bar ruled out. Strongly positive on ex-post trend days (+0.090) and negative on consolidating days (-0.043), flat across ex-ante vol terciles.',
+    use: 'Say "an hour of one-way POC migration is followed by a small continuation lean (~0.02 sigma over 5-30 min), about half of it plain price momentum, too small to trade at NQ costs". Do not present value migration as a direction signal or an edge. The trend-day split is hindsight and cannot be used as a filter.',
+  },
+  {
+    id: 'value-migration-nq-va', domain: 'misc', verdict: 'null', date: '2026-11-10', doc: 'forge/VALUE_MIGRATION_NQ_PREREG.md',
+    also: ['analysis/output/value-migration-nq/RESULTS.md'], instruments: ['NQ'],
+    claim: 'Trader playbook (Fabio Valentini, NQ auction method, relayed by the owner 2026-11-10; not C.OG): requiring VAH and VAL to migrate with the POC (value area shifting, not just the POC) improves the directional read',
+    result: 'Model A minus POC-only at 15 min: -0.0005 sigma [-0.002, +0.001], MDE 0.003, bar 0.03. On 1-minute profiles VAH and VAL move with the POC in 99% of migration windows.',
+    use: 'No value-area condition beyond the POC for NQ migration states.',
+  },
+  {
+    id: 'value-migration-nq-delta-proxy', domain: 'misc', verdict: 'null', date: '2026-11-10', doc: 'forge/VALUE_MIGRATION_NQ_PREREG.md',
+    also: ['analysis/output/value-migration-nq/RESULTS.md'], instruments: ['NQ'],
+    claim: 'Trader playbook (Fabio Valentini, NQ auction method, relayed by the owner 2026-11-10; not C.OG): delta confirmation (cumulative delta of the migration window in the same direction) improves the migration read. Tested with an OHLCV bulk-volume-classification delta proxy, not aggressor-flagged trades',
+    result: 'Model B minus A at 15 min: -0.0016 sigma [-0.015, +0.011], 13,067 windows, MDE 0.020, bar 0.03 ruled out. Delta proxy coefficient negative in the full regression (-0.013 to -0.022). Proxy vs true NQ delta on the one tick day: r 0.60 at 15 min, 0.10 on the part price does not explain.',
+    use: 'An OHLCV delta proxy adds nothing to value migration on NQ. This does not settle real aggressor delta: that needs tick trades with the aggressor flag (tier-T adapter in scripts/value-migration-nq).',
+  },
+  {
+    id: 'value-migration-nq-absorption-proxy', domain: 'misc', verdict: 'underpowered', date: '2026-11-10', doc: 'forge/VALUE_MIGRATION_NQ_PREREG.md',
+    also: ['analysis/output/value-migration-nq/RESULTS.md'], instruments: ['NQ'],
+    claim: 'Trader playbook (Fabio Valentini, NQ auction method, relayed by the owner 2026-11-10; not C.OG): absorption against the move inside a migrating auction (selling aggression that fails to push price lower, in a bull auction) improves the read. Tested with OHLCV proxies (delta-proxy divergence, effort-vs-result volume/range)',
+    result: 'Model C minus A at 15 min: -0.002 sigma [-0.024, +0.019], 5,512 windows, MDE 0.049 vs bar 0.03 (underpowered by design). Absorption strategies: 0 of 6 pass; best C continuation 2:1 +0.013R [-0.06, +0.09].',
+    use: 'Nothing points to an absorption gain on the proxy, but the cell could not reach its bar and the proxy recovers r ~0.10 of the absorption part of true delta. Reopen only with aggressor-flagged NQ trades and about 2.5x the windows.',
+  },
+  {
+    id: 'value-migration-nq-combo', domain: 'misc', verdict: 'underpowered', date: '2026-11-10', doc: 'forge/VALUE_MIGRATION_NQ_PREREG.md',
+    also: ['analysis/output/value-migration-nq/RESULTS.md'], instruments: ['NQ'],
+    claim: 'Trader playbook (Fabio Valentini, NQ auction method, relayed by the owner 2026-11-10; not C.OG): value migration + delta + absorption together beat value migration alone',
+    result: 'Model D minus A at 15 min: -0.003 sigma [-0.037, +0.029], 3,131 windows, MDE 0.067 vs bar 0.03.',
+    use: 'No evidence the full combination improves on migration alone; too few windows on proxies to rule out a small gain.',
+  },
+  {
+    id: 'value-migration-nq-strategy', domain: 'misc', verdict: 'null', date: '2026-11-10', doc: 'forge/VALUE_MIGRATION_NQ_PREREG.md',
+    also: ['analysis/output/value-migration-nq/RESULTS.md'], instruments: ['NQ'],
+    claim: 'Trader playbook (Fabio Valentini, NQ auction method, relayed by the owner 2026-11-10; not C.OG): trading the migration state (models A-D) with pullback/reload or continuation entries and fixed 1:1, 2:1 or box-trailing exits earns net R beyond random entry after NQ costs (1 tick per market fill, USD 4.50 round turn)',
+    result: '0 of 24 cells pass (Holm, halves, random control). Busy cells lose net: A pullback 1:1 -0.084R [-0.107, -0.062] on 11,793 trades (gross +0.019, random -0.114), A continuation 1:1 -0.083R, B pullback 1:1 -0.084R. Signal beats matched random entry by 0.00 to +0.03R while costs take ~0.1R. 14 powered cells all exclude +0.05R; the best underpowered points are D pullback trail +0.044R [-0.08, +0.17] (1,255) and D continuation 2:1 +0.038R [-0.05, +0.13] (875). Walk-forward over a 27-point grid does not beat the fixed default; IS-to-OOS rank correlation negative on the C/D cells that look best OOS.',
+    use: 'Do not trade the Valentini-style NQ scalp or trail as built: it is a cost-losing continuation scalp on 1-min data. A rebuild needs cheaper execution (passive fills, wider stops) and a fresh prereg; do not re-cut these 24 cells.',
+  },
+  {
     id: 'residual-pca-wide10', domain: 'price', verdict: 'null', date: '2026-10-31', doc: 'forge/RESIDUAL_PCA_FAMILY_PREREG.md', also: ['analysis/output/residual-pca-family/RESULTS.md', 'education/residual_pca_currency_test/RESULTS.md'],
     claim: 'C.OG micro bank q1 (mean reversion of PCA residuals, the lesson loop unchanged: window 120, K by the noise-band rule, dead band 0.2, cap 1.5, factor-neutral) works on a wider basket: FX8 + gold + silver, 17:00 New York closes, next-day residual.',
     result: '2018-06 to 2026-08 (2,108 signal days, K 2): daily IC +0.0075 [-0.010, +0.025], NW t 0.85, p 0.20; IS +0.006, OOS +0.009 (gate needed p <= 0.05); MDE 0.027 vs bar 0.03, CI excludes the bar. Gold/silver residuals trend IS (-0.04/-0.02). Book net Sharpe IS -0.49, OOS +0.05, OOS 2x cost -0.15. Engine reproduces the banked q1 run exactly.',
@@ -2644,6 +2686,12 @@ const POWER = {
   'rates-vol-gap-move':        { n: '2,480 sessions (block bootstrap, 21-session blocks)', note: 'MDE partial corr 0.105 vs 0.10 bar; CI [+0.007, +0.108]; without 2020 [-0.058, +0.047]' },
   'rates-vol-gap-state':       { n: '203 state vs 799 equity-cheap days', note: 'MDE 0.29 log vs 0.15 bar; CI [-0.197, +0.069]' },
   'daily-open-fib-retest':     { n: '1,252 bid/ask trades (2,516 sessions, 20-session block bootstrap); mid file 1,796 trades', note: 'MDE 0.10R vs a +0.15R bar; CI [-0.82, -0.63] excludes the bar -> null' },
+  'value-migration-nq-poc': { n: '2,606 NQ RTH sessions (24,807 state windows; 20-session block bootstrap)', note: 'MDE 0.022 sigma at 15 min vs bar 0.05; beyond-price MDE 0.019 vs 0.03. Statistically detected, economically below the bar.' },
+  'value-migration-nq-va': { n: '2,606 sessions (24,607 windows)', note: 'MDE 0.003 vs bar 0.03' },
+  'value-migration-nq-delta-proxy': { n: '2,606 sessions (13,067 windows)', note: 'MDE 0.020 vs bar 0.03; OHLCV proxy only' },
+  'value-migration-nq-absorption-proxy': { n: '2,606 sessions (5,512 windows)', note: 'MDE 0.049 vs bar 0.03: underpowered by design' },
+  'value-migration-nq-combo': { n: '2,606 sessions (3,131 windows)', note: 'MDE 0.067 vs bar 0.03: underpowered by design' },
+  'value-migration-nq-strategy': { n: '2,606 sessions, 804 to 11,793 trades per cell, 24 cells', note: '14 cells powered (MDE vs random <= lift needed from the cost-only control to +0.05R), 10 underpowered' },
 };
 
 const TAG = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };

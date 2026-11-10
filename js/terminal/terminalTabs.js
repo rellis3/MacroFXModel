@@ -23,13 +23,14 @@ import * as FVV from './fairValueView.js';
 import * as ACV from './autocorrView.js';
 import * as LLV from './leadLagView.js';
 import * as OPV from './optionsView.js';
-import { terrainHtml, mountTerrain } from './terrainPanel.js';
-import { smilePanelHtml, mountSmile } from '../smileChart.js';
+import { terrainHtml, mountTerrain, terrainKeys } from './terrainPanel.js';
+import { smilePanelHtml, mountSmile, SMILE_SYMS } from '../smileChart.js';
 import { mountPathChart } from './pathChart.js';
 import * as NV from './newsView.js';
 import { createLevelChart } from '../levelChart.js';
 import { cardDrivers } from './cardExplain.js';
 import { pineForCard, oandaOf } from '../deskBookPine.js';
+import * as AAV from './assetAnalysisView.js';
 
 const el = id => document.getElementById(id);
 const h = CB.esc;
@@ -350,6 +351,7 @@ ${c ? `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${ra
 <div class="tt-chart" id="tt-lc"></div>
 ${c ? `${ladder(c)}<div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${h(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Lines</b><span class="mono">up ${c.levels.up.p50} / ${c.levels.up.p75} / ${c.levels.up.p90} · down ${c.levels.down.p50} / ${c.levels.down.p75} / ${c.levels.down.p90}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${h(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${h(c.plan.timing)}</span></div>` : ''}</div><details><summary>The whole thesis</summary><p>${h(c.why)}</p>${deskView(n)}</details>${whatDrivesHtml(n)}` : ''}
 <p class="tt-note">Chart: hourly candles, today's forecast lines (open, up and down p50 / p75 / p90), the entry zone and the invalidation where the plan names them.</p></div>
+${AAV.boxHtml(n)}
 <div class="tt-grid2" style="margin-top:14px">
 <div class="card" id="tt-p-gr">${loading('the Global Read for this market')}</div>
 <div class="card" id="tt-p-rates">${loading('rates')}</div>
@@ -375,6 +377,7 @@ ${c ? `${ladder(c)}<div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b
     if (msg) msg.innerHTML = `${ok ? 'Pine script copied.' : 'The clipboard is blocked here, so the script was downloaded as a .pine file.'} In TradingView: Pine Editor → new indicator → paste → Save → Add to chart${o ? `, on OANDA:${h(o.replace('_', ''))}` : ''}. Today only; description, not the scored test.`;
   };
   wire(root);
+  AAV.mount(root.querySelector('[data-aa]')).catch(e => console.warn('analyse', e));
   pairChart(n, c);
   const mine = () => T.pair === n;
   J('/api/global-read').then(g => mine() && pairGR(n, g));
@@ -633,27 +636,52 @@ async function renderOptions() {
     root.dataset.built = '1';
     root.innerHTML = `<div class="card glow"><div class="tt-head"><span class="lbl">Options</span><h2 style="flex-basis:100%">What the options market is positioned for</h2></div>
 <p style="margin:4px 0 0">Price shows two dimensions: up and down. Options add a third, the <b>path</b>: every contract has a strike and an expiry, so the book shows at what price, by what date, the market is protected or speculating. Read it as positioning, one lens among several: every reading below carries what the Evidence Book found when it was tested.</p></div>
+<div class="card" id="opt-mkt-bar" style="position:sticky;top:0;z-index:5;padding:8px 12px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:10px"><label class="lbl" for="opt-mkt" style="margin:0">Market</label><select id="opt-mkt" style="background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:4px 6px;font-size:14px;font-weight:600"></select><span class="muted" style="font-size:12px">Every chart on this tab shows this market. A chart that does not cover it says so. Data-source choices (CME, Cboe) stay on their own chart.</span></div>
 ${sec('The terrain', 'open interest, the IV smile or gamma by expiry, and the labelled levels on one price axis')}${terrainHtml()}
-${sec('The IV smile', 'implied vol against strike, one curve per expiry, with the IV and realised-vol reference lines')}${smilePanelHtml()}
-${sec('Calls against puts', 'the put/call open-interest ratio for each market, read against its own history')}<div id="opt-pos">${loading('open interest')}</div>
-${sec('Option lines', 'walls, max pain and gamma lines around the price')}<div class="card" style="padding:8px 12px"><label class="muted" style="font-size:12px">Market <select id="opt-lad-inst" style="background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:3px"></select></label></div><div id="opt-lad">${loading('option lines')}</div>
+${sec('The IV smile', 'implied vol against strike, one curve per expiry, with the IV and realised-vol reference lines')}<div id="opt-smile-none" class="card muted" hidden></div><div id="opt-smile">${smilePanelHtml()}</div>
+${sec('Option lines', 'walls, max pain and gamma lines around the price')}<div id="opt-lad">${loading('option lines')}</div>
 ${sec('The path', 'open interest by expiry and strike, ahead of the price')}<div class="card" id="opt-path">${loading('the path')}</div>
-${sec('Dealer hedging', 'which way the dealers who sold the options must trade as price moves')}<div id="opt-dl">${loading('dealer hedging')}</div>
+${sec('Calls against puts', 'the put/call open-interest ratio for every market, read against its own history')}<div id="opt-pos">${loading('open interest')}</div>
+${sec('Dealer hedging', 'which way the dealers who sold the options must trade as price moves, every market')}<div id="opt-dl">${loading('dealer hedging')}</div>
 <div id="opt-skew"></div>
 ${sec('Fear gauge', 'the VIX and its term structure')}<div id="opt-vix">${loading('the VIX')}</div>`;
-    try { mountSmile(root.querySelector('[data-sm="root"]'), {}); } catch (e) { console.warn('smile', e); }
   }
-  mountTerrain(root, J, (T.terrain ??= {})).catch(e => console.warn('terrain', e));
   const goPair = box => box?.querySelectorAll('[data-pair]').forEach(b => (b.onclick = () => openPair(b.dataset.pair)));
-  const [oi, hist, hs, sk] = await Promise.all([J('/api/oi-today'), J('/api/options-history'), J('/api/hedging-summary'), J('/api/options-skew')]);
-  const pos = el('opt-pos'); if (pos) { pos.innerHTML = OPV.positioningHtml(oi, hist); goPair(pos); }
-  const sel = el('opt-lad-inst'), lad = el('opt-lad'), rows = oi?.pairs ?? [];
-  if (sel && lad) {
-    if (!sel.options.length) sel.innerHTML = rows.map(r => `<option value="${h(r.pair)}">${h(OPV.NAME[OPV.idOf(r.pair)] ?? r.pair)}</option>`).join('');
-    const want = T.optInst && rows.some(r => r.pair === T.optInst) ? T.optInst : rows[0]?.pair; if (want) sel.value = want;
-    const draw = () => { T.optInst = sel.value; lad.innerHTML = OPV.ladderHtml(rows.find(r => r.pair === sel.value)) || '<div class="card muted">No option lines.</div>'; };
-    sel.onchange = draw; draw();
+  const [oi, hist, hs, sk, tKeys] = await Promise.all([J('/api/oi-today'), J('/api/options-history'), J('/api/hedging-summary'), J('/api/options-skew'), terrainKeys(J)]);
+  const rows = oi?.pairs ?? [];
+  // one market for the whole tab (owner 2026-11-10: "I was looking at something which I thought was gold but turned out
+  // to be EURUSD"): the union of what any panel covers; each panel maps it to its own key and says when it has no book
+  const markets = OPV.optionMarkets(tKeys, rows.map(r => r.pair), OPV.PATH_MARKETS, SMILE_SYMS);
+  const nameOf = id => OPV.NAME[id] ?? id;
+  if (!T.optMkt) { try { T.optMkt = localStorage.getItem('deskOptMarket'); } catch { /* private window */ } }
+  if (!markets.includes(T.optMkt)) T.optMkt = markets.includes('GOLD') ? 'GOLD' : markets[0];
+  const msel = el('opt-mkt');
+  if (msel) {
+    msel.innerHTML = markets.map(id => `<option value="${h(id)}"${id === T.optMkt ? ' selected' : ''}>${h(nameOf(id))}</option>`).join('');
+    msel.onchange = () => { T.optMkt = msel.value; try { localStorage.setItem('deskOptMarket', T.optMkt); } catch { /* ignore */ } drawMarket(); };
   }
+  const drawMarket = () => {
+    const id = T.optMkt, name = nameOf(id);
+    // the terrain
+    (T.terrain ??= {}).id = id;
+    mountTerrain(root, J, T.terrain, { idOf: OPV.idOf, nameOf }).catch(e => console.warn('terrain', e));
+    // the smile: Cboe index chains only
+    const smSym = SMILE_SYMS.find(k => OPV.idOf(k) === id), smBox = el('opt-smile'), smNone = el('opt-smile-none');
+    if (smBox && smNone) {
+      smBox.hidden = !smSym; smNone.hidden = !!smSym;
+      smNone.textContent = smSym ? '' : `No IV smile for ${name}. The smile needs a live Cboe chain with many strikes: S&P 500, Nasdaq 100 and Russell 2000 only. CME books carry one vol per expiry; the terrain above shows gamma by strike instead.`;
+      if (smSym) { if (!T.smile) { try { T.smile = mountSmile(smBox.querySelector('[data-sm="root"]'), { sym: smSym, fixed: true }); } catch (e) { console.warn('smile', e); } } else T.smile.setSym(smSym); }
+    }
+    // option lines
+    const lad = el('opt-lad'), row = rows.find(r => OPV.idOf(r.pair) === id);
+    if (lad) lad.innerHTML = row ? (OPV.ladderHtml(row) || `<div class="card muted">No option lines for ${h(name)}.</div>`) : `<div class="card muted">No CME option lines for ${h(name)} today. Option lines cover ${h(rows.map(r => nameOf(OPV.idOf(r.pair))).join(', ') || 'no market today')}.</div>`;
+    // the path
+    if (OPV.PATH_MARKETS.includes(id)) drawPath(id);
+    else { const box = el('opt-path'); if (box) box.innerHTML = `<div class="ch"><span class="lbl">The path · ${h(name)}</span></div><p class="muted" style="margin:0">No path for ${h(name)}: the Swing Map covers ${h(OPV.PATH_MARKETS.map(nameOf).join(', '))}.</p>`; }
+    // the all-market panels: mark the chosen market
+    root.querySelectorAll('#opt-pos [data-pair], #opt-dl [data-pair]').forEach(b => { b.style.outline = b.dataset.pair === id ? '2px solid var(--pur2,#9b8cff)' : ''; });
+  };
+  const pos = el('opt-pos'); if (pos) { pos.innerHTML = OPV.positioningHtml(oi, hist); goPair(pos); }
   const dl = el('opt-dl'); if (dl) { dl.innerHTML = OPV.dealersHtml(hs) || '<div class="card muted">No dealer hedging read.</div>'; goPair(dl); }
   const skb = el('opt-skew'); if (skb && typeof E !== 'undefined' && E) { E['options-skew'] ??= sk; skb.innerHTML = globalThis.skewHtml?.() ?? ''; }
   const vx = el('opt-vix'); if (vx) vx.innerHTML = OPV.vixHtml(hist) || '<div class="card muted">No VIX series.</div>';
@@ -663,21 +691,21 @@ ${sec('Fear gauge', 'the VIX and its term structure')}<div id="opt-vix">${loadin
     // the source (CME, the Cboe chain, or both) is kept for the session; a market without a Cboe book reads CME
     const src = OPV.pathSourceFor(inst, T.optSrc);
     const sm = await J(`/api/swing-map?inst=${encodeURIComponent(inst)}${src !== 'cme' ? `&source=${src}` : ''}`);
+    if (T.optMkt !== inst) return;   // the market changed while this loaded
     let walk = null;
     const o = (T.optWalk ??= { ...OPV.WALK_OPTS_DEFAULT });   // the walk options (Swing Map's), kept for the session
     try { if (sm?.ok) walk = OPV.zoneWalk(sm.expiries ?? [], OPV.walkOptsFor(sm, anchor, o)); } catch (e) { console.warn('options walk', e); }
     // drawn at the card's own width, so a phone gets full-size text rather than a shrunken chart
     const width = Math.max(300, (box.clientWidth || 460) - 26), view = (T.optPathView ??= {});   // zoom, range and "hide small books", kept for the session
     view.hideSmall ??= window.innerWidth < 600;
-    box.innerHTML = OPV.pathHtml(sm, inst, { walk, anchor, width, o, hideSmall: view.hideSmall });
+    box.innerHTML = OPV.pathHtml(sm, inst, { walk, anchor, width, o, hideSmall: view.hideSmall, pickMarket: false });
     try { mountPathChart(box, { sm, walk, anchor, o, width, inst, state: view }); } catch (e) { console.warn('path chart zoom', e); }
-    box.querySelectorAll('[data-wopt]').forEach(c => (c.onchange = () => { o[c.dataset.wopt] = c.checked; drawPath(T.optPath ?? inst, T.optAnchor ?? anchor); }));
-    const ps = box.querySelector('#opt-path-inst'); if (ps) ps.onchange = () => { T.optPath = ps.value; drawPath(ps.value); };
-    const pq = box.querySelector('#opt-path-src'); if (pq) pq.onchange = () => { T.optSrc = pq.value; drawPath(T.optPath ?? inst, T.optAnchor ?? anchor); };
-    const pa = box.querySelector('#opt-path-anchor'); if (pa) pa.onchange = () => { T.optAnchor = pa.value; drawPath(T.optPath ?? inst, pa.value); };
+    box.querySelectorAll('[data-wopt]').forEach(c => (c.onchange = () => { o[c.dataset.wopt] = c.checked; drawPath(inst, T.optAnchor ?? anchor); }));
+    const pq = box.querySelector('#opt-path-src'); if (pq) pq.onchange = () => { T.optSrc = pq.value; drawPath(inst, T.optAnchor ?? anchor); };
+    const pa = box.querySelector('#opt-path-anchor'); if (pa) pa.onchange = () => { T.optAnchor = pa.value; drawPath(inst, pa.value); };
   };
-  drawPath(T.optPath ?? 'GOLD');
-  if (!T.optResize) { let last = window.innerWidth; T.optResize = true; window.addEventListener('resize', () => { if (Math.abs(window.innerWidth - last) > 60 && el('options') && !el('options').hidden) { last = window.innerWidth; drawPath(T.optPath ?? 'GOLD'); } }); }
+  drawMarket();
+  if (!T.optResize) { let last = window.innerWidth; T.optResize = true; window.addEventListener('resize', () => { if (Math.abs(window.innerWidth - last) > 60 && el('options') && !el('options').hidden && OPV.PATH_MARKETS.includes(T.optMkt)) { last = window.innerWidth; drawPath(T.optMkt); } }); }
 }
 // ═════════════════════════════════════════════ NEWS TAB ═════════════════════════════════════════════
 // The wire as a scannable list (js/terminal/newsView.js): top stories, filters, newest first; refreshed every 2 min
@@ -748,6 +776,9 @@ const RENDER = { today: renderToday, pair: renderPair, changed: renderChanged, r
   corr: () => import('./corrView.js').then(V => V.render(el('corr'), { getJson, book: () => D })).catch(e => { el('corr').innerHTML = `<div class="card"><p class="muted">Correlations &amp; hedges did not load: ${h(e.message)}</p></div>`; }) };
 globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'news') { clearInterval(NS.timer); NS.timer = null; } if (t !== 'pair' && /pair=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
 globalThis.openPairPage = openPair;
+// the asset card pop-up (desk-terminal.html assetCard) carries the same Analyse box
+globalThis.analyseBoxHtml = AAV.boxHtml;
+globalThis.mountAnalyse = box => AAV.mount(box).catch(e => console.warn('analyse', e));
 globalThis.openNewsTab = openNews;
 // the Assets cards' one-line latest headline (desk-terminal.html assetCard reads it; D.news is tier 1-2, 24 h)
 globalThis.newsLatestLine = (items, inst) => NV.latestLine(items, inst);

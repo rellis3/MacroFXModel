@@ -8194,6 +8194,52 @@ Reply with JSON only: { "answer": "plain text", "sources": ["analyst ids, card n
     } finally { _askBusy = false; }
   } catch (e) { _askBusy = false; res.status(500).json({ ok: false, error: e.message }); }
 });
+// POST /api/desk-asset-analyse { inst, force }: ONE market analysed on demand (the Analyse button on the Desk Terminal's
+// asset cards and Pair tab; js/assetAnalysis.js). Runs on DeepSeek (task 'desk-asset', about a cent a press), against
+// the market's own driver checklist, the morning book, the analysts' reports, its pack data, headlines and the Evidence
+// Book. Context, never a signal: it never changes a card. Kept in memory for the day (a second open is free; force=1
+// re-runs), at most 100 fresh reads a day, one at a time per market.
+const _aaCache = new Map(), _aaBusy = new Set();
+let _aaDay = { date: null, n: 0 };
+app.post('/api/desk-asset-analyse', express.json({ limit: '4kb' }), async (req, res) => {
+  const inst = String(req.body?.inst ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  try {
+    const { buildAssetPrompt, validateAnalysis } = await import('./js/assetAnalysis.js');
+    const { groupOf } = await import('./js/deskPack.js');
+    if (!groupOf(inst)) return res.status(400).json({ ok: false, error: `unknown market ${inst || '(none)'}` });
+    const today = _dpLondonDate(Date.now());
+    if (_aaDay.date !== today) { _aaDay = { date: today, n: 0 }; _aaCache.clear(); }
+    const key = `${today}:${inst}`;
+    if (!req.body?.force && _aaCache.has(key)) return res.json({ ..._aaCache.get(key), cached: true });
+    if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key on the server' });
+    if (_aaDay.n >= 100) return res.status(429).json({ ok: false, error: 'the daily limit of 100 market reads is reached' });
+    if (_aaBusy.has(inst)) return res.status(409).json({ ok: false, error: `${inst} is being analysed already; try again in a moment` });
+    _aaBusy.add(inst); _aaDay.n++;
+    try {
+      const run = await _drLoad(today).catch(() => null);
+      const pack = _dpLatest?.date === today ? _dpLatest : await _dpLoad(today).catch(() => null);
+      const newsText = await _nwLoad().then(st => _nwText(_nwPick(st.wire, { sinceMs: Date.now() - 24 * 3600e3, tier: 2, limit: 30 }))).catch(() => '');
+      const { system, prompt, meta } = buildAssetPrompt({ name: inst, run, pack, ledger: _DESK_EVIDENCE, newsText, date: today });
+      let r = await callModel({ task: 'desk-asset', system, prompt, maxTokens: 6_000, label: `desk:asset:${inst}` });
+      let v = validateAnalysis(_parseModelJson(r.text ?? _antText(r), 'desk:asset'));
+      if (!v.ok) {   // one retry, told what was wrong
+        r = await callModel({ task: 'desk-asset', system, prompt: `${prompt}\n\nYour previous reply could not be used (${v.errors.join('; ')}). Reply again with the JSON object only, shorter.`, maxTokens: 6_000, label: `desk:asset:${inst}` });
+        v = validateAnalysis(_parseModelJson(r.text ?? _antText(r), 'desk:asset'));
+      }
+      if (!v.ok) return res.status(502).json({ ok: false, error: `the model did not return a usable read (${v.errors.join('; ')})` });
+      const out = { ok: true, inst, date: today, at: new Date().toISOString(), analysis: v.value, model: r.model ?? null, provider: r.provider ?? null,
+        bookDate: run?.head?.ok ? run.date : null, card: run?.head?.ok ? (run.head.book.instruments?.[inst] ?? null) : null, meta, label: 'context, untested: never changes a card' };
+      _aaCache.set(key, out);
+      res.json(out);
+    } finally { _aaBusy.delete(inst); }
+  } catch (e) { _aaBusy.delete(inst); res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
+});
+// GET /api/desk-asset-analyse?inst=GOLD: today's read if one was made (free; never calls a model).
+app.get('/api/desk-asset-analyse', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const inst = String(req.query.inst ?? '').toUpperCase().replace(/[^A-Z0-9]/g, ''), hit = _aaCache.get(`${_dpLondonDate(Date.now())}:${inst}`);
+  res.json(hit ? { ...hit, cached: true } : { ok: false, none: true });
+});
 // GET /api/desk-history?days=30: one compact row per desk day for the Desk Terminal's analytics (the currency
 // ranking and biases, the tone, and the day's score where there is one). Cached 15 minutes.
 let _dhCache = { at: 0, key: null, data: null };

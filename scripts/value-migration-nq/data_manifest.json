@@ -1,0 +1,50 @@
+{
+ "source": "https://huggingface.co/datasets/mdelcristo/NQ-F_1min_OHLCV_Parquet",
+ "license": "MIT (per dataset card)",
+ "files": {
+  "NQ_1min_2015.parquet": {
+   "sha256": "3331cdaff6ce5516f9421360e40c5e0a3c8f20ba9a799c7e600e56e5b98361a8",
+   "bytes": 3709180
+  },
+  "NQ_1min_2016.parquet": {
+   "sha256": "200a5d63d4d5706b98825db96cc119d4e0053bc175b28845c60f654ad19c83c2",
+   "bytes": 4146279
+  },
+  "NQ_1min_2017.parquet": {
+   "sha256": "c78fc81305255c2ed5821f8ff07c3a7f74ae47cf51757a4ea9fbd526bcf2ef27",
+   "bytes": 4098005
+  },
+  "NQ_1min_2018.parquet": {
+   "sha256": "e8d53b861727f8810cc5872dfe1ae91f7203953c23c05a2e6a504f5ecf0ccf8b",
+   "bytes": 4588343
+  },
+  "NQ_1min_2019.parquet": {
+   "sha256": "49f0c81282c33aafd8c16a1bfaf00b1ee3c0e9410ed2295ced7a28e2cfcb0187",
+   "bytes": 4526498
+  },
+  "NQ_1min_2020.parquet": {
+   "sha256": "7367f042ceacb9788bb5f17cbf47b1da58a7fe168e3e4858bebf7e109276c65a",
+   "bytes": 5080381
+  },
+  "NQ_1min_2021.parquet": {
+   "sha256": "592f9f61ebf88f407e78a64619c4da8acd31b4dfe2239dfc60f748afb2c709e1",
+   "bytes": 5060258
+  },
+  "NQ_1min_2022.parquet": {
+   "sha256": "3c4f8647f9edeca6fb7f87f653764f3e11c2a9eb7bff324df6815e7f43868e64",
+   "bytes": 5260200
+  },
+  "NQ_1min_2023.parquet": {
+   "sha256": "c8dd91925e1662ba190ecc671bf5beba748e404d3b299d1d7fe493c3f63a90fa",
+   "bytes": 5151552
+  },
+  "NQ_1min_2024.parquet": {
+   "sha256": "a5ddb039c2c25a5600bd0e4009535deb5ebe3ab25c3b7b4447d17cf794cc5e96",
+   "bytes": 5189137
+  },
+  "NQ_1min_2025.parquet": {
+   "sha256": "295797d194aa8b54655a1a6a21c3da3b58a6033659f3287de97b346c5712c23c",
+   "bytes": 3094018
+  }
+ }
+}

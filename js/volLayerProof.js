@@ -13,7 +13,7 @@ export const PROOF_CSS = `
 .pf-lines { margin: 0; padding: 0; list-style: none; } .pf-lines li { font-size: 12.5px; line-height: 1.55; color: var(--text2); padding: 2px 0; }
 .pf-k { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .05em; margin: 12px 0 4px; }
 .pf-ok { color: var(--green); font-weight: 700; } .pf-bad { color: var(--red); font-weight: 700; }
-.viz { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --grid: rgba(255,255,255,.08); --ink: var(--text2); --ink2: var(--text3); }
+.viz { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #9a62d8; --grid: rgba(255,255,255,.08); --ink: var(--text2); --ink2: var(--text3); }
 .viz svg { width: 100%; height: auto; display: block; } .viz text { fill: var(--ink2); font: 10.5px 'DM Mono', monospace; }
 .viz .lbl { fill: var(--ink); } .viz h4 { margin: 0 0 2px; font-size: 13px; color: var(--text); } .viz .sub { font-size: 11.5px; color: var(--text3); margin: 0 0 6px; }
 .viz .hit:hover { opacity: .7; } .viz details { margin-top: 4px; font-size: 11px; color: var(--text3); } .viz summary { cursor: pointer; }
@@ -173,4 +173,10 @@ export function jumpLookHtml(d) {
   return `<p class="muted">${d.n.toLocaleString()} bursts, ${d.per_inst_year} per instrument per year (${(d.share_of_sessions * 100).toFixed(0)}% of sessions). They fall in only ${d.events?.toLocaleString() ?? '–'} distinct 5-minute moments, because most hit several instruments at once. Nothing below reads a price after the burst bar, so the scored test stays blind.</p>
   <div class="scroll"><table class="t"><thead><tr><th>London time</th><th class="num">Bursts</th><th class="num">Share</th><th class="num">Spread vs normal</th><th class="num">Spread over 3×</th><th class="num">3+ instruments together</th><th class="num">Median size</th><th class="num">On a release</th></tr></thead><tbody>${rows}</tbody></table></div>
   <h3 style="margin-top:12px">30 bursts by a fixed seed, six per time block</h3><p class="sub muted">Blue: price over the hour before. The shaded part is the burst bar. Orange bars: the bid/ask spread each minute.</p><div class="tr-grid viz">${shots}</div>`;
+}
+
+// Stage 2 look panels built from a list of charts (backtest-data/vol-layer/<id>.json with { charts, intro }).
+export function lookChartsHtml(d) {
+  if (!d) return '<p class="empty">Loading the charts…</p>';
+  return `${(d.intro ?? []).map(t => `<p class="muted">${esc(t)}</p>`).join('')}${(d.charts ?? []).map(chartHtml).join('')}`;
 }
