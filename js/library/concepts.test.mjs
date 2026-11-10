@@ -29,3 +29,8 @@ test('a card escapes its text, links papers to the reader, shows the mark and th
 test('the summary counts every state', () => {
   assert.equal(summaryText([A, B], 1), '1 of 2 cards shown · 0 good · 1 wrong · 0 unclear · 1 not reviewed');
 });
+
+test('on another page the paper links point at the library and open in a new tab', () => {
+  const h = cardHtml(A, { paperBase: 'library.html' });
+  assert.match(h, /href="library\.html#\/paper\/doi%3A10\.1%2Fx%20y" target="_blank"/);
+});
