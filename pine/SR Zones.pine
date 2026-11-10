@@ -36,13 +36,9 @@ supCol    = input.color(color.rgb(38, 166, 91), "Support colour", group=G2)
 resCol    = input.color(color.rgb(232, 77, 77), "Resistance colour", group=G2)
 
 // ── parse ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-f_num(string s) =>
-    float v = str.tonumber(str.trim(s))
-    v
+f_num(string s) => str.tonumber(str.trim(s))
 
-f_transp(int nf) =>
-    int t = nf >= 4 ? 0 : nf == 3 ? 20 : nf == 2 ? 45 : 65
-    t
+f_transp(int nf) => nf >= 4 ? 0 : nf == 3 ? 20 : nf == 2 ? 45 : 65
 
 if barstate.islastconfirmedhistory
     string allTxt = paste1 + "\n" + paste2 + "\n" + paste3 + "\n" + paste4 + "\n" + paste5 + "\n" + paste6
@@ -79,27 +75,27 @@ if barstate.islastconfirmedhistory
                         blockName := nm
                         if nTk > 3
                             for j = 3 to nTk - 1
-                                string t = array.get(tk, j)
-                                int eq = str.pos(t, "=")
+                                string tok = array.get(tk, j)
+                                int eq = str.pos(tok, "=")
                                 if not na(eq) and eq > 0
-                                    string k = str.substring(t, 0, eq)
-                                    string v = str.substring(t, eq + 1)
-                                    if k == "spot"
-                                        spotX := f_num(v)
-                                    else if k == "basis"
-                                        basisX := v == "na" ? na : f_num(v)
-                                    else if k == "date"
-                                        dateX := v
-                                    else if k == "gex"
-                                        gexX := v
-                                    else if k == "cot"
-                                        cotX := v
-                                    else if k == "desk"
-                                        deskX := v
-                                    else if k == "stretch"
-                                        strX := v
-                                    else if k == "missing"
-                                        missX := v
+                                    string key = str.substring(tok, 0, eq)
+                                    string val = str.substring(tok, eq + 1)
+                                    if key == "spot"
+                                        spotX := f_num(val)
+                                    else if key == "basis"
+                                        basisX := f_num(val)   // "na" parses to na
+                                    else if key == "date"
+                                        dateX := val
+                                    else if key == "gex"
+                                        gexX := val
+                                    else if key == "cot"
+                                        cotX := val
+                                    else if key == "desk"
+                                        deskX := val
+                                    else if key == "stretch"
+                                        strX := val
+                                    else if key == "missing"
+                                        missX := val
         else if inBlock and (str.startswith(ln, "S|") or str.startswith(ln, "R|"))
             array.push(zoneRows, ln)
 
