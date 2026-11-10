@@ -298,10 +298,14 @@ export function barFigure(title, rows, H, { unit = '%', note = '' } = {}) {
   const R = (rows ?? []).filter(r => Number.isFinite(r.v)); if (!R.length) return '';
   const W = 660, row = 19, top = 30, left = 152, right = 190, Ht = top + R.length * row + 14, mx = Math.max(1, ...R.map(r => Math.abs(r.v))), zero = left + (W - left - right) / 2, half = (W - left - right) / 2;
   const f = (v, d = 1) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(d)}`;
+  // the value column moves right when no row carries a "today" figure, and a note is cut to the room it has, so a long
+  // note on a negative bar never runs into the value (the evening issue's "cards that moved the day", 2026-11-10)
+  const hasSub = R.some(r => Number.isFinite(r.sub)), vx = hasSub ? W - right + 14 : W - 58, CH = 6.1;
+  const fit = (t, px) => { const n = Math.max(0, Math.floor(px / CH)); return t.length <= n ? t : n > 1 ? `${t.slice(0, n - 1)}…` : ''; };
   return `<figure><svg viewBox="0 0 ${W} ${Ht}" class="fsvg fw" role="img" aria-label="${H.esc(title)}" font-family="Consolas,'SF Mono',Menlo,monospace"><rect width="${W}" height="${Ht}" rx="10" fill="${T.bg}"/>`
     + `<text x="12" y="17" font-size="10.5" font-weight="700" fill="${T.hi}" letter-spacing="1">${H.esc(title.toUpperCase())}</text><line x1="${zero}" y1="${top - 6}" x2="${zero}" y2="${Ht - 8}" stroke="${T.zero}"/>`
     + R.map((r, i) => { const y = top + i * row, w = Math.max(1.5, Math.abs(r.v) / mx * half), x = r.v >= 0 ? zero : zero - w, c = r.v >= 0 ? T.up : T.down;
-      return `<text x="12" y="${y + 12}" font-size="12" fill="${T.hi}">${H.esc(String(r.label).slice(0, 22))}</text><rect x="${x.toFixed(1)}" y="${y + 2}" width="${w.toFixed(1)}" height="12" rx="2" fill="${c}"/>${r.note ? `<text x="${r.v >= 0 ? zero - 8 : zero + 8}" y="${y + 12}" text-anchor="${r.v >= 0 ? 'end' : 'start'}" font-size="10" fill="${T.amber}">${H.esc(r.note)}</text>` : ''}<text x="${W - right + 14}" y="${y + 12}" font-size="12" font-weight="700" fill="${c}">${f(r.v)}${unit}</text><text x="${W - 12}" y="${y + 12}" text-anchor="end" font-size="10.5" fill="${T.txt}">${Number.isFinite(r.sub) ? f(r.sub, 2) + ' today' : ''}</text>`; }).join('')
+      return `<text x="12" y="${y + 12}" font-size="12" fill="${T.hi}">${H.esc(String(r.label).slice(0, 22))}</text><rect x="${x.toFixed(1)}" y="${y + 2}" width="${w.toFixed(1)}" height="12" rx="2" fill="${c}"/>${r.note ? `<text x="${r.v >= 0 ? zero - 8 : zero + 8}" y="${y + 12}" text-anchor="${r.v >= 0 ? 'end' : 'start'}" font-size="10" fill="${T.amber}">${H.esc(fit(String(r.note), r.v >= 0 ? zero - 8 - 12 - String(r.label).slice(0, 22).length * 7.3 - 8 : vx - 10 - (zero + 8)))}</text>` : ''}<text x="${vx}" y="${y + 12}" font-size="12" font-weight="700" fill="${c}">${f(r.v)}${unit}</text><text x="${W - 12}" y="${y + 12}" text-anchor="end" font-size="10.5" fill="${T.txt}">${Number.isFinite(r.sub) ? f(r.sub, 2) + ' today' : ''}</text>`; }).join('')
     + `</svg>${note ? `<figcaption>${note}</figcaption>` : ''}</figure>`;
 }
 
