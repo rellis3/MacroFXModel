@@ -87,12 +87,15 @@ export function renderEvening(ev, H) {
   ], H);
   const cs = currencyStrength(moves);
   const ccyFig = cs.length >= 4 ? barFigure('The currencies today, strongest to weakest (average move in u across their pairs)', cs.map(c => ({ label: c.ccy, v: c.v, note: `${c.n} pairs` })), H, { unit: '', note: '' }) : '';
-  const sections = (is.sections ?? []).map(s => `<h3 class="ss" style="margin:14px 0 4px">${esc(s.title)}</h3><p class="evl">${evBadge(LBL[s.label] ?? 'untested')}</p><p>${esc(prose(s.body, { sentences: 3, chars: 420 }))}</p>`).join('');
+  // the writer's sections (desk/roles/evening_writer.md: six, top-down, 2-5 sentences each): the first two and the
+  // currency chart on page 1, the rest on a page that flows, so a full review never overflows the first printed page
+  const secHtml = s => `<h3 class="ss" style="margin:14px 0 4px">${esc(s.title)}</h3><p class="evl">${evBadge(LBL[s.label] ?? 'untested')}</p><p>${esc(prose(s.body, { sentences: 6, chars: 900 }))}</p>`;
+  const secs = is.sections ?? [], sections = secs.slice(0, 2).map(secHtml).join(''), rest = secs.slice(2).map(secHtml).join('');
   const rv = reviewPage({ score: ev.score, reflection: ev.reflection, movers: ev.movers, record: ev.record }, H, { title: 'The book against the day', compact: true });
   const subject = is.subject ? `Evening: ${is.subject}` : `Evening: the day in ${all.length} markets`;
   const p1 = `<div class="pg p1">${mh('The day')}<div class="kick">Evening edition · ${esc(M.date)}</div><h1 class="hd">${esc(is.subject ?? 'The day, in the markets')}</h1>
-${is.standfirst ? `<p class="ld">${esc(prose(is.standfirst, { sentences: 2, chars: 300 }))}</p>` : ''}<p class="small3">Written by the desk pipeline at the close from the day's prices, the morning book and the evening review. Moves run 08:00 to 21:00 London; u is the morning forecast's p50 distance, so 1 u is a typical half-day move.</p>
-${tiles}${ccyFig}${sections ? `<div class="kick" style="margin-top:12px">What happened</div>${sections}` : ''}</div>`;
+${is.standfirst ? `<p class="ld">${esc(prose(is.standfirst, { sentences: 2, chars: 380 }))}</p>` : ''}<p class="small3">Written by the desk pipeline at the close from the day's prices, the morning book and the evening review. Moves run 08:00 to 21:00 London; u is the morning forecast's p50 distance, so 1 u is a typical half-day move.</p>
+${tiles}${sections ? `<div class="kick" style="margin-top:12px">What happened</div>${sections}` : ''}${ccyFig}</div>${rest ? `<div class="pg pgflow">${mh('Across markets')}<div class="kick">Across markets</div>${rest}</div>` : ''}`;
   const p2 = `<div class="pg pgflow">${mh('Every market')}<div class="kick">The day in every market</div><h2 class="sh">Where the moves were</h2><p class="evl">${evBadge('observed')}<span style="font:11px var(--sans,system-ui);color:#5b6b82">08:00 to 21:00 London, in u (1 u = that market's typical half-day move), with the move in pips (FX) or points and in percent. Green rose, red fell; the label is the morning book's view.</span></p>${moveGrid(moves, cards, H)}</div>`;
   const p3 = rv ? `<div class="pg pgflow">${mh(rv.section)}${rv.html}</div>` : '';
   const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">The Chain · evening ${esc(ev.date)}</div></div>`;

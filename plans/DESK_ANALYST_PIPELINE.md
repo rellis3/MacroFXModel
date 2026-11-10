@@ -1437,6 +1437,24 @@ the evidence clerk and a staleness flag on the asset desks' per-instrument data.
 - **Not done (yet):** the drivers are a checklist for the model, not computed numbers. Putting computed driver
   blocks (real yields, breakevens, DXY, ETF flows for gold, and so on) into the pack data is the next step and costs
   nothing per call. Whether the deeper read is any more right than the card is a question for the scorecard, not assumed.
+
+## 9ao. The evening edition reviews the whole day (owner, 2026-11-10)
+
+- **Why:** the 10 Nov evening issue never named the day's main event (US Core CPI at 13:30), wrote about it in "Into
+  tomorrow" as still to come, and said "no feed explains" gold's fall on a day the wire carried hawkish Fed talk and
+  the 10-year yield rose 12bp. The writer had only prices, the morning book and the score, and the renderer cut each
+  section to three sentences.
+- **Inputs added** (`js/eveningFacts.js`, gathered by `_evFacts` in `server.js`; each fails on its own and is then
+  named as missing): the day's releases with actual against forecast (calendar, surprise store, FRED fill, release
+  scorecard) and the measured 30 minutes after; the day's tier-1/2 headlines with their read and 30-minute reaction;
+  US 3m/5y/10y/30y yields, DXY, VIX and MOVE closes and day changes (Yahoo; the 2-year and real yields are not in it,
+  and the prompt says so); each big mover's busiest 30 minutes from the M1 bars; the morning's timed events, handed
+  over as having happened.
+- **Role** (`desk/roles/evening_writer.md`): six top-down sections, about 350-450 words: the day, rates and the
+  dollar, currencies, stocks/commodities/crypto, what stood out, into tomorrow. A move is tied to a cause only through
+  a release or headline given and its timing.
+- **Layout:** the first two sections and the currency chart on page 1, the rest on a flowing page; sections keep up to
+  six sentences. The "cards that moved the day" chart keeps notes clear of the value column.
 ## 11. Roadmap: Phase 5 onwards (owner, 2026-11-03: "love them all")
 
 Not built yet. The order is the owner's call; each item names what it needs first.

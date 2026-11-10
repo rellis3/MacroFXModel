@@ -275,6 +275,7 @@ import { upcoming as _rpUpcoming, playbookText as _rpPlaybookText } from './js/r
 import { searchUrls as _litSearchUrls, PARSERS as _LIT_PARSERS, LIT_SOURCES as _LIT_SOURCES, apiError as _litApiError, dedupe as _litDedupe, titleMatch as _litTitleMatch, isBlockedPage as _litBlocked, arxivHtml as _litArxivHtml, pageMeta as _litPageMeta, htmlToText as _litHtmlToText, cleanPdfText as _litCleanPdf, identifyRef as _litIdentify, lookupUrls as _litLookup, parseOpenAlex as _litParseOpenAlex, parseCrossref as _litParseCrossref, parseArxiv as _litParseArxiv, urlRecord as _litUrlRecord, textRecord as _litTextRecord, libraryIndex as _litLibIndex, libraryText as _litLibText, paperForReader as _litForReader, excerpt as _litExcerpt, validatePaperNotes as _litValidateNotes, noteLine as _litNoteLine, validateDossier as _litValidateDossier, validateQueries as _litValidateQueries, rankPapers as _litRank, readingPlan as _litPlan, findPaper as _litFind, mergePapers as _litMerge, addCitations as _litCite, relevance as _litRelevance, feedRecords as _litFeedRecords, weeklyTopic as _litWeeklyTopic, LENS_INTERESTS as _litInterests, dossierSummary as _litDossierSummary, LIT_API as _LIT_API, hash as _litHash, firstTitleLine as _litTitleLine } from './js/literature.js';
 import { QC as _RL_QC, parseQcTree as _rlParseQcTree, readingListItems as _rlReadingList, manifestItems as _rlManifest, items151 as _rl151Items, record151 as _rlRecord151, qcItems as _rlQcItems, qcRawUrl as _rlQcRaw, qcRecord as _rlQcRecord, matchUpload as _rlMatchUpload, alreadyHeld as _rlAlreadyHeld, dedupeUploads as _rlDedupeUploads, uploadKey as _rlUploadKey, seedQueue as _rlSeedQueue, upsertItem as _rlUpsert, nextItems as _rlNext, markItems as _rlMark, queueSummary as _rlSummary, batchPlan as _rlBatchPlan, searchLocal as _rlSearchLocal, paperFeedRecords as _rlPaperFeedRecords, kindOf as _rlKindOf } from './js/researchLibrary.js';   // §9ai the reading backlog   // §9ah the literature desk
 import { currencyStrength as _evCcy, dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
+import { moveTiming as _efTiming, timingText as _efTimingText, releasesText as _efReleases, headlinesText as _efHeadlines, ratesText as _efRates, pastEvents as _efPast, RATE_SERIES as _EF_RATES } from './js/eveningFacts.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { COST_REPORT_URL as _AC_URL, costReportQuery as _acQuery, parseCostReport as _acParse, dayFlag as _acFlag } from './js/anthropicCost.js';   // Anthropic's own daily cost figures (Admin API)
 import { alertStep as _spAlertStep, alertText as _spAlertText, addCall as _spAdd, emptyDay as _spEmpty, mergeDays as _spMerge, daySummary as _spSummary, capCheck as _spCap, callerFromStack as _spCaller, utcDay as _spDay, LIST_PRICES as _SP_PRICES } from './js/aiSpend.js';   // the model-spend ledger (KV, by day and caller)
@@ -5054,14 +5055,44 @@ async function _dsReflect(run, score) {
   }
   return null;
 }
+// The day's facts for the evening writer (js/eveningFacts.js; owner 2026-11-10): what printed and how markets took it,
+// the day's headlines and their reactions, US yields / DXY / VIX / MOVE closes, and when each big move happened. Each
+// input fails on its own and is then named as missing; none is filled in.
+async function _evFacts(run, bars, moves) {
+  const { entryMs, exitMs } = _dsWindow(run.date), out = {};
+  try {
+    const feed = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
+    const evs = (feed.events ?? []).filter(e => e.ms >= entryMs - 8 * 3600e3 && e.ms < exitMs).map(e => ({ ...e }));
+    const stored = await _readSurpriseStore().catch(() => []);
+    const seen = new Map(stored.filter(x => x.actual != null).map(x => [`${String(x.country).toUpperCase()}|${String(x.event).trim().toLowerCase()}|${x.ms}`, x.actual]));
+    for (const e of evs) if (e.actual == null) e.actual = seen.get(`${String(e.country).toUpperCase()}|${String(e.event).trim().toLowerCase()}|${e.ms}`) ?? null;
+    try { await _fillActualsFromFred(evs.filter(e => e.actual == null && e.ms <= exitMs), stored); } catch { /* the line then says "actual not on the feed" */ }
+    const snap = await _loadSnapStore().catch(() => null), day = (snap?.days ?? []).find(d => d.day === run.date);
+    out.releases = _efReleases(evs, day?.scorecards ?? [], { now: exitMs });
+  } catch (e) { out.releases = `(the calendar was not available: ${e.message})`; }
+  try { const st = await _nwLoad(); out.headlines = _efHeadlines(st.wire ?? [], { sinceMs: entryMs - 3600e3, untilMs: exitMs }); }
+  catch (e) { out.headlines = `(the news wire was not available: ${e.message})`; }
+  const series = {};
+  for (const r of _EF_RATES) { try { series[r.key] = await _yahooDaily(r.ticker, '5d'); } catch (e) { console.warn('[evening] rates', r.ticker, e.message); } }
+  out.rates = _efRates(series, run.date);
+  try { out.timing = _efTimingText(_efTiming(bars, moves, run.date)); } catch (e) { out.timing = `(timing not worked out: ${e.message})`; }
+  out.past = _efPast(run.head.book.risks ?? [], run.date);
+  return out;
+}
 // The evening edition (js/newsletterEvening.js, desk/roles/evening_writer.md): the day's moves, the morning's rulings,
 // the score and the review, written up and saved to the newsletter archive as kind "desk-evening" (never scored).
 async function _dsEvening(run, score, reflection, bars, idx) {
   const role = _deskLoadRoles().find(r => r.id === 'evening_writer');
   if (!role || !_aiAnyKey()) return null;
   const cards = run.head.book.instruments ?? {}, moves = _evDayMoves(bars, cards, run.date), d = run.debate ?? {};
+  const facts = await _evFacts(run, bars, moves);
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
   const { system, prompt } = _deskStagePrompt({ role, pack: { date: run.date }, ledger: DESK_EVIDENCE, sections: [
+    ['What printed today: releases, actual against forecast, and the 30 minutes after (the day\'s main events)', facts.releases],
+    ['The day\'s headlines, tier 1-2, oldest first, with the news analyst\'s read and the 30-minute reaction', facts.headlines],
+    ['US rates, the dollar and volatility: today\'s closes and day changes', facts.rates],
+    ['When the big moves happened (each market\'s busiest 30 minutes, from the M1 bars)', facts.timing],
+    ['The morning\'s timed events, which have now happened', facts.past],
     ['The currencies today, strongest to weakest (the average move in u across each one\'s pairs; the issue draws this chart)', _evCcy(moves).map(c => `${c.ccy} ${c.v > 0 ? '+' : ''}${c.v} u (${c.n} pairs)`).join(', ')],
     ['Every market, 08:00 to 21:00 London (move, in u, range in u, the morning view)', _evMovesText(moves, cards)],
     ["The morning's global ruling", d.global?.view ? { tone: d.global.view.tone, conviction: d.global.view.conviction, summary: d.global.view.summary } : run.head.book.global],
