@@ -36,33 +36,36 @@ export function safeUrl(u) {
   if (!/^https?:\/\/[^\s<>"']+$/i.test(s) || s.length > 900) return null;
   return s.replace(/&/g, '&amp;');
 }
-const arrows = (v, up) => (up ? '▲' : '▼').repeat(Math.min(2, Math.abs(v)) || 1);
-
 /** The impact map → { long: [{ key, v }], short: [{ key, v }] }, strongest first, then the fixed market order. Only keys the analyst may use. */
 export function groups(impact) {
   const rows = Object.entries(impact ?? {}).filter(([k, v]) => k in ORDER && Number.isFinite(Number(v)) && Number(v) !== 0).map(([key, v]) => ({ key, v: Number(v) }));
   const by = (a, b) => Math.abs(b.v) - Math.abs(a.v) || ORDER[a.key] - ORDER[b.key];
   return { long: rows.filter(r => r.v > 0).sort(by), short: rows.filter(r => r.v < 0).sort(by) };
 }
-const item = (r, up) => `${META[r.key].flag} ${r.key === META[r.key].name ? r.key : META[r.key].name} ${arrows(r.v, up)}`;
+const STRONG = 2;                                                  // a push of this size or more gets an arrow
+const FX = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'], ASSETS = ['GOLD', 'OIL', 'EQUITIES', 'CRYPTO'];
+const push = (impact, k) => (Number.isFinite(Number(impact?.[k])) ? Number(impact[k]) : 0);
+const arrow = (v, up) => (Math.abs(v) >= STRONG ? ` ${up ? '▲' : '▼'}` : '');
 
-/** The public FX list: majors and the usual crosses. Generic arithmetic only (base impact minus quote impact); nothing here knows any desk book or card. */
-const FX_PAIRS = ['EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','EURGBP','EURJPY','GBPJPY','AUDJPY','CADJPY','CHFJPY','NZDJPY','EURCHF','GBPCHF','EURAUD','EURCAD','GBPAUD','GBPCAD','AUDCAD','AUDNZD','AUDCHF'];
-/** For one currency with a push v: the pairs it moves, as 'EURUSD short'. Only pairs whose net push (base minus quote) agrees with this currency's own direction. Strongest first, at most 5. */
-export function pairsFor(ccy, impact) {
-  const v = k => (Number.isFinite(Number(impact?.[k])) ? Number(impact[k]) : 0), c = v(ccy);
-  if (!c) return [];
-  const out = [];
-  FX_PAIRS.forEach((p, order) => {
-    const base = p.slice(0, 3), quote = p.slice(3);
-    if (base !== ccy && quote !== ccy) return;
-    const net = v(base) - v(quote), own = base === ccy ? c : -c;
-    if (!net || Math.sign(net) !== Math.sign(own)) return;
-    out.push({ p, net, order });
-  });
-  return out.sort((a, b) => Math.abs(b.net) - Math.abs(a.net) || a.order - b.order).slice(0, 5).map(x => `${x.p} ${x.net > 0 ? 'long' : 'short'}`);
+/** Currencies the read pushes: { stronger: [{ key, v }], weaker: [...] }, strongest first, then the fixed order. FX only; assets go in the markets block. */
+export function currencyGroups(impact) {
+  const rows = FX.map(key => ({ key, v: push(impact, key) })).filter(r => r.v);
+  const by = (a, b) => Math.abs(b.v) - Math.abs(a.v) || ORDER[a.key] - ORDER[b.key];
+  return { stronger: rows.filter(r => r.v > 0).sort(by), weaker: rows.filter(r => r.v < 0).sort(by) };
 }
-const pairLines = (rows, impact) => rows.map(r => { const ps = pairsFor(r.key, impact); return ps.length ? `      ↳ ${META[r.key].flag} ${esc(ps.join(' · '))}` : null; }).filter(Boolean);
+
+/** The public FX list: majors and the usual crosses. Generic arithmetic only (base push minus quote push); nothing here knows any desk book or card. */
+const FX_PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'EURGBP', 'EURJPY', 'GBPJPY', 'AUDJPY', 'CADJPY', 'CHFJPY', 'NZDJPY', 'EURCHF', 'GBPCHF', 'EURAUD', 'EURCAD', 'GBPAUD', 'GBPCAD', 'AUDCAD', 'AUDNZD', 'AUDCHF'];
+/** Markets: every pair once (net direction = base push minus quote push) and every pushed asset, as { long: [...], short: [...] } of { name, v }, strongest first, at most `cap` a side. */
+export function marketGroups(impact, cap = 6) {
+  const rows = [];
+  FX_PAIRS.forEach((p, i) => { const v = push(impact, p.slice(0, 3)) - push(impact, p.slice(3)); if (v) rows.push({ name: p, v, order: i }); });
+  ASSETS.forEach((k, i) => { const v = push(impact, k); if (v) rows.push({ name: k, v, order: -10 + i, asset: true }); });
+  const by = (a, b) => Math.abs(b.v) - Math.abs(a.v) || a.order - b.order;
+  return { long: rows.filter(r => r.v > 0).sort(by).slice(0, cap), short: rows.filter(r => r.v < 0).sort(by).slice(0, cap) };
+}
+const curItem = r => `${META[r.key].flag} ${r.key}${arrow(r.v, r.v > 0)}`;
+const mktItem = r => `${r.asset ? `${META[r.name].flag} ${META[r.name].name}` : r.name}${arrow(r.v, r.v > 0)}`;
 
 const tierOf = h => (h?.read?.tier ?? h?.tier);
 const ukTime = ms => (Number.isFinite(ms) ? new Date(ms).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }) : '');
@@ -70,26 +73,28 @@ const ukTime = ms => (Number.isFinite(ms) ? new Date(ms).toLocaleTimeString('en-
 /** The longer explanation is shown only if it reads as public market commentary: anything mentioning the desk, its book, cards, positions or tools is dropped. */
 export const publicDetail = d => { const s = String(d ?? '').trim(); return s && !/\b(desk|book|cards?|positions?|dashboards?|terminal|our|we|my|bot|shadow|atlas|signals?)\b/i.test(s) ? s : ''; };
 
-/** The Telegram note (HTML). Tier 1 is 🚨, tier 2 is 📌. Longs and shorts are grouped; each item has its flag and a ▲/▼ (two = a strong push). No book lines. */
+/** The Telegram note (HTML). Tier 1 is 🚨, tier 2 is 📌. Currencies (stronger/weaker) then markets (long/short); an arrow marks only a strong push. No book lines. */
 export function channelMessage(h) {
   const tier = tierOf(h) === 1 ? 1 : 2;
   const url = safeUrl(h?.link), title = clip(h?.title, 300);
   const srcList = h?.sources?.length ? h.sources : [h?.source].filter(Boolean);
   const srcs = srcList.slice(0, 3).join(', ');
   const time = ukTime(h?.ms);
-  const g = groups(h?.read?.impact);
+  const cur = currencyGroups(h?.read?.impact), mk = marketGroups(h?.read?.impact);
+  const anyArrow = [...cur.stronger, ...cur.weaker, ...mk.long, ...mk.short].some(r => Math.abs(r.v) >= STRONG);
   const lines = [
     `${tier === 1 ? '🚨' : '📌'} <b>TIER ${tier}</b>${time ? ` · ${time} UK` : ''}`,
     url ? `<a href="${url}"><b>${esc(title)}</b></a>` : `<b>${esc(title)}</b>`,
     url ? `<a href="${url}">→ Read the article</a>${srcList[0] ? ` (${esc(srcList[0])})` : ''}` : null,
     h?.read?.why ? `\nWhy: ${esc(clip(h.read.why, 200))}` : null,
     publicDetail(h?.read?.detail) ? esc(clip(publicDetail(h.read.detail), 280)) : null,
-    (g.long.length || g.short.length) ? '' : null,
-    g.long.length ? `🟢 <b>LONG</b>   ${g.long.map(r => esc(item(r, true))).join('   ')}` : null,
-    ...pairLines(g.long, h?.read?.impact),
-    g.short.length ? `🔴 <b>SHORT</b>   ${g.short.map(r => esc(item(r, false))).join('   ')}` : null,
-    ...pairLines(g.short, h?.read?.impact),
-    `\n<i>Context, not a signal${srcs ? ` · ${esc(srcs)}` : ''}</i>`,
+    cur.stronger.length || cur.weaker.length ? '\n💱 <b>CURRENCIES</b>' : null,
+    cur.stronger.length ? `🟢 <b>Stronger</b>   ${cur.stronger.map(r => esc(curItem(r))).join('   ')}` : null,
+    cur.weaker.length ? `🔴 <b>Weaker</b>     ${cur.weaker.map(r => esc(curItem(r))).join('   ')}` : null,
+    mk.long.length || mk.short.length ? '\n📊 <b>MARKETS</b>' : null,
+    mk.long.length ? `🟢 <b>LONG</b>    ${mk.long.map(r => esc(mktItem(r))).join(' · ')}` : null,
+    mk.short.length ? `🔴 <b>SHORT</b>   ${mk.short.map(r => esc(mktItem(r))).join(' · ')}` : null,
+    `\n<i>Context, not a signal${anyArrow ? ' · ▲▼ = stronger impact' : ''}${srcs ? ` · ${esc(srcs)}` : ''}</i>`,
   ];
   return lines.filter(x => x !== null).join('\n');
 }

@@ -30,7 +30,7 @@ t('the preview bubble shows the real Telegram message: bold, italics and https l
   const tg = channelMessage({ id: 'x', title: 'US CPI <hot> & more', link: 'https://example.com/a?x=1&y=2', ms: Date.parse('2026-11-11T14:32:00Z'), sources: ['Reuters'], tier: 1, read: { tier: 1, why: 'Why.', impact: { USD: 2, EUR: -1 } } });
   const b = bubbleHtml(tg);
   assert.match(b, /<b>TIER 1<\/b>/); assert.match(b, /<a href="https:\/\/example\.com\/a\?x=1&amp;y=2" target="_blank" rel="noopener noreferrer"><b>US CPI &lt;hot&gt; &amp; more<\/b><\/a>/);
-  assert.match(b, /🟢 <b>LONG<\/b>[\s\S]*🇺🇸 USD ▲▲/); assert.match(b, /🔴 <b>SHORT<\/b>[\s\S]*🇪🇺 EUR ▼/); assert.ok(b.includes('<br>'));
+  assert.ok(b.includes('🟢 <b>Stronger</b>   🇺🇸 USD ▲') && b.includes('🔴 <b>Weaker</b>     🇪🇺 EUR') && b.includes('<br>'));
   assert.ok(!bubbleHtml('<script>alert(1)</script><a href="javascript:alert(1)">x</a>').includes('<script>'));
   assert.ok(!/<a href="javascript/.test(bubbleHtml('<a href="javascript:alert(1)">x</a>')));
 });

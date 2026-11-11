@@ -1,7 +1,7 @@
 // Tests for js/newsChannel.js.   node js/newsChannel.test.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { channelMessage, channelCandidates, pairsFor, allowChannel, validateConfig, publicView, parseConfig, groups, safeUrl, explainTelegramError, persistConfig, removeConfig, CAPS, CHANNEL_KV_KEY } from './newsChannel.js';
+import { channelMessage, channelCandidates, currencyGroups, marketGroups, allowChannel, validateConfig, publicView, parseConfig, groups, safeUrl, explainTelegramError, persistConfig, removeConfig, CAPS, CHANNEL_KV_KEY } from './newsChannel.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 const M = 60e3;
@@ -14,18 +14,31 @@ t('the message has the tier, the headline as a link, the read-more link, the why
   assert.match(m, /<a href="https:\/\/example\.com\/a\?x=1&amp;y=2"><b>US CPI hotter than forecast, core at 0\.4%<\/b><\/a>/);
   assert.match(m, /<a href="[^"]+">→ Read the article<\/a> \(Reuters\)/);
   assert.match(m, /Why: Faster inflation pushes back the first cut\./);
-  assert.match(m, /🟢 <b>LONG<\/b>   🇺🇸 USD ▲▲   🛢️ Oil ▲/);
-  assert.match(m, /🔴 <b>SHORT<\/b>   🥇 Gold ▼▼   🇪🇺 EUR ▼   🇯🇵 JPY ▼   📈 Equities ▼/);
-  assert.match(m, /<i>Context, not a signal · Reuters, Bloomberg<\/i>/);
+  assert.ok(m.includes('💱 <b>CURRENCIES</b>') && m.includes('📊 <b>MARKETS</b>'));
+  assert.match(m, /🟢 <b>Stronger<\/b>   🇺🇸 USD ▲/);
+  assert.match(m, /🔴 <b>Weaker<\/b>     🇪🇺 EUR   🇯🇵 JPY/);
+  assert.ok(m.includes('🟢 <b>LONG</b>    USDJPY ▲') && m.includes('🔴 <b>SHORT</b>   EURUSD ▼'));
+  assert.match(m, /<i>Context, not a signal · ▲▼ = stronger impact · Reuters, Bloomberg<\/i>/);
 });
 
-t('grouped: every longs item has an up arrow and every shorts item a down arrow, strongest first', () => {
-  const g = groups({ USD: 1, EUR: -2, GBP: -1, GOLD: 2, FOO: 5, JPY: 0 });
-  assert.deepEqual(g.long.map(r => r.key), ['GOLD', 'USD']);
-  assert.deepEqual(g.short.map(r => r.key), ['EUR', 'GBP']);
-  const m = channelMessage(H({ read: { tier: 1, impact: { USD: 1, EUR: -2 } } }));
-  const long = m.split('\n').find(l => l.includes('LONG')), short = m.split('\n').find(l => l.includes('SHORT'));
-  assert.ok(long.includes('▲') && !long.includes('▼')); assert.ok(short.includes('▼') && !short.includes('▲'));
+t('currencies: stronger and weaker, strongest first; markets: pairs by net push, assets included, one row each', () => {
+  const g = currencyGroups({ USD: 1, EUR: -2, GBP: -1, GOLD: 2, FOO: 5, JPY: 0 });
+  assert.deepEqual(g.stronger.map(r => r.key), ['USD']); assert.deepEqual(g.weaker.map(r => r.key), ['EUR', 'GBP']);
+  const mk = marketGroups({ USD: 1, JPY: -1, GOLD: 2 });
+  assert.deepEqual(mk.long.map(r => r.name).slice(0, 2), ['GOLD', 'USDJPY']);   // gold 2 and USDJPY 2 tie: assets first
+  assert.ok(mk.long.length <= 6 && mk.short.length <= 6);
+  assert.ok(!mk.short.some(r => r.name === 'USDJPY'));                           // each pair appears once, on its net side
+  const eu = marketGroups({ EUR: 1, USD: 2 });
+  assert.ok(eu.short.some(r => r.name === 'EURUSD') && !eu.long.some(r => r.name === 'EURUSD'));   // EUR up but USD up more: EURUSD is net down
+});
+
+t('an arrow marks only a strong push; the legend appears only when an arrow does', () => {
+  const plain = channelMessage(H({ read: { tier: 1, why: 'x', impact: { USD: 1 } } }));
+  assert.ok(!plain.includes('▲') && !plain.includes('▼') && !plain.includes('stronger impact'));
+  const strong = channelMessage(H({ read: { tier: 1, why: 'x', impact: { USD: 2 } } }));
+  assert.ok(strong.includes('USD ▲') && strong.includes('stronger impact'));
+  const pair = channelMessage(H({ read: { tier: 1, why: 'x', impact: { USD: 1, JPY: -1 } } }));   // two legs agree: USDJPY nets 2
+  assert.ok(pair.includes('USDJPY ▲') && pair.includes('stronger impact') && !pair.includes('USD ▲'));
 });
 
 t('an empty group is left out; tier 2 uses the pin; no link means no link lines', () => {
@@ -69,17 +82,6 @@ t('the longer detail is shown, but never if it mentions the desk, book or tools'
   assert.match(ok, /Why: Faster inflation[^\n]*\nHotter inflation lifts yield expectations/);
   for (const bad of ['This fits the desk book short USDJPY card.', 'We expect our signal to fire.', 'See the dashboard terminal.']) assert.doesNotMatch(channelMessage(H({ read: { ...H().read, detail: bad } })), /desk|signal to fire|dashboard/);
   assert.doesNotMatch(channelMessage(H()), /undefined|null/);
-});
-
-t('pairs follow the currency push, generic, and never contradict it', () => {
-  assert.deepEqual(pairsFor('USD', { USD: 1 }).slice(0, 3), ['EURUSD short', 'GBPUSD short', 'USDJPY long']);
-  assert.ok(pairsFor('JPY', { JPY: -1 }).includes('USDJPY long'));
-  assert.deepEqual(pairsFor('GBP', { USD: 1, GBP: -1 }).slice(0, 2), ['GBPUSD short', 'EURGBP long']);   // both legs agree: strongest first
-  assert.deepEqual(pairsFor('EUR', { EUR: 1, USD: 2 }).filter(p => p.startsWith('EURUSD')), []);        // EUR up but USD up more: EURUSD net is down, so it is not listed under EUR
-  assert.deepEqual(pairsFor('GOLD', { GOLD: 1 }), []);
-  const m = channelMessage(H({ read: { tier: 1, why: 'x', impact: { USD: 1, JPY: -1 } } }));
-  assert.ok(m.includes('USDJPY long') && m.includes('↳'));
-  assert.doesNotMatch(m, /against|supports|book/i);
 });
 
 t('throttle: one per headline, six an hour for tier 1 and ten for tier 2, kept apart', () => {
