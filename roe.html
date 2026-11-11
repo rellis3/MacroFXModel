@@ -53,6 +53,16 @@ h1{font-size:26px;margin-bottom:4px}.dek{color:var(--text2);margin-bottom:16px}
 .lib-cc-note{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;min-height:44px;font-size:16px;color:var(--text)}
 @media (max-width:520px){.lib-cc-kv{flex-direction:column;gap:0}.lib-cc-kv>span:first-child{flex-basis:auto}}
 
+
+/* New idea tab */
+#ideaText{width:100%;background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:12px;font:inherit;font-size:16px;line-height:1.5;color:var(--text);resize:vertical}
+.idea-bar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.lib-btn.primary{background:#4f7df0;border-color:#4f7df0;color:#fff}
+.ib-brief{border:1px solid var(--border);border-radius:var(--rl);background:var(--s1);padding:14px;margin-top:8px}.ib-brief h2{font-size:18px;margin-bottom:8px}
+.ib-sec{border-top:1px solid var(--border);margin-top:10px;padding-top:8px}.ib-sec h3{font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.ib-brief ul,.ib-brief ol{margin:4px 0 4px 20px}.ib-brief li{margin:4px 0}.ib-brief p{margin:6px 0}
+.ib-chip{display:inline-block;font-family:'DM Mono',monospace;font-size:11px;border-radius:99px;padding:2px 9px;margin:2px 4px 2px 0}.ib-chip.ok{background:var(--green-bg);color:var(--green)}.ib-chip.no{background:var(--amber-bg);color:var(--amber)}
+.ib-q{margin-top:12px;padding:10px 12px;border-left:4px solid var(--amber);background:var(--amber-bg);border-radius:var(--r)}
+.ib-foot{font-size:12px;color:var(--text3);margin-top:12px}.ib-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.ib-err{color:var(--red);margin:8px 0}
 @media (max-width:520px){.rb-kv{flex-direction:column;gap:0}.rb-kv span:first-child{flex-basis:auto}}
 </style>
 </head>
@@ -64,8 +74,16 @@ h1{font-size:26px;margin-bottom:4px}.dek{color:var(--text2);margin-bottom:16px}
   <div class="tabs" role="tablist">
     <button type="button" role="tab" class="tab active" data-tab="questions" aria-selected="true">Questions</button>
     <button type="button" role="tab" class="tab" data-tab="concepts" aria-selected="false">Concepts</button>
+    <button type="button" role="tab" class="tab" data-tab="idea" aria-selected="false">New idea</button>
   </div>
   <div id="questionsTab"><div id="roeRoot"></div></div>
+  <div id="ideaTab" hidden>
+    <p class="lib-info">Type a research idea in your own words, however rough. One small AI call turns it into a precise brief: one hypothesis, each variable built exactly, the lags and regimes to examine (your own method suggestions included), the assumptions it made and at most one question. Code then checks which series we hold. Read it and fix it before anything goes further.</p>
+    <textarea id="ideaText" rows="8" maxlength="4000" placeholder="e.g. I'm considering whether the gap between the euro and US yield curves moves before EURUSD does..." aria-label="Your research idea"></textarea>
+    <div class="idea-bar"><button type="button" id="ideaGo" class="lib-btn primary">Translate (1 AI call)</button><button type="button" id="ideaEx" class="lib-btn">Use the yield-curve example</button></div>
+    <div id="ideaInfo" class="lib-info" role="status"></div>
+    <div id="ideaOut" aria-live="polite"></div>
+  </div>
   <div id="conceptsTab" hidden>
     <p class="lib-info">Concept cards built from the papers, the C.OG education and the Theory Lab: each says what a principle is, why it works, what to measure and what to look for. They are what the monitors will measure against. Read them and mark each Good, Wrong or Unclear; your marks are kept and a later run never overwrites them. Marking uses no AI.</p>
     <div class="cc-bar"><input id="ccBox" type="search" placeholder="Search the cards" autocomplete="off" aria-label="Search the concept cards"><select id="ccStatus" aria-label="Show cards by review state"></select><select id="ccDomain" aria-label="Show cards by area"></select></div>

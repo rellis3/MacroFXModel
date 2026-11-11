@@ -94,6 +94,7 @@ function isAllowedKVKey(key) {
     'library_state_v1',  // Paper Library (js/libraryApi.js): reading progress, manual tags, MP3 job state
     'library_math_v1',   // Paper Library equations (js/libraryMath.js): model calls used against the cap, papers done
     'library_librarian_v1',   // Paper Library librarian (js/libraryLibrarian.js): model calls used against the 400 cap
+    'research_brief_v1',   // Research brief translator (js/researchBrief.js): model calls used against the cap
     'library_concepts_v1',   // Paper Library concept cards (js/libraryConcepts.js): model calls used against the 400 cap, content hashes sent
     'library_figs_v1',   // Paper Library figure/table notes (js/libraryFigs.js): model calls used against the 600 cap, papers done
     'roe_registry_v1',   // Research Opportunity Engine (js/roeStore.js): one summary per laptop scan run
@@ -1157,6 +1158,7 @@ export default {
             'library_state_v1',  // Paper Library (js/libraryApi.js): reading progress, manual tags, MP3 job state
             'library_math_v1',   // Paper Library equations (js/libraryMath.js): model calls used against the cap, papers done
             'library_librarian_v1',   // Paper Library librarian (js/libraryLibrarian.js): model calls used against the 400 cap
+            'research_brief_v1',   // Research brief translator (js/researchBrief.js): model calls used against the cap
             'library_concepts_v1',   // Paper Library concept cards (js/libraryConcepts.js): model calls used against the 400 cap, content hashes sent
     'library_figs_v1',   // Paper Library figure/table notes (js/libraryFigs.js): model calls used against the 600 cap, papers done
             'roe_registry_v1',   // Research Opportunity Engine (js/roeStore.js): one summary per laptop scan run

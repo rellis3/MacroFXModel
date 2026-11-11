@@ -103,6 +103,8 @@ import { mountBotAuditRoutes } from './js/botAuditRoutes.js';
 import { createPaperRecord } from './js/paperRecordRoutes.js';
 import { createToggleStore as _agCreateToggles, validateToggleBody as _agValidateToggle, TOGGLES as _AG_TOGGLES } from './js/agentSettings.js';   // Bot Config > Agents switches (KV agent_settings_v1); the env var is the fallback
 import * as _AGR from './js/agentRegistry.js';
+import { createBriefService as _createBriefService } from './js/researchBrief.js';   // the brief translator (one capped model call; KV research_brief_v1)
+import { CATALOGUE as _QT_CATALOGUE } from './js/quickTest.js';
 import * as _ROE from './js/roeStore.js';   // Research Opportunity Engine P2: records the laptop scanner's runs (KV roe_registry_v1, R2 forward/roe/snapshots/); no model call
 import { buildAgentsPayload } from './js/agentsApi.js';   // every agent, flow and edge, for GET /api/agents
 import * as _LIX from './js/libraryIndex.js';   // Paper Library index + retrieval (LIBRARY_CONTEXT=1 puts the best papers' notes in the researchers' prompts)
@@ -7168,6 +7170,25 @@ app.post('/api/research-pod/figs', async (req, res) => {
 //      bearer token (ROE_PUSH_TOKEN, js/roeStore.js tokenOk). Both are registered before the global requireAuth, so the gate is explicit here.
 // GET  /api/research-pod/concepts/cards: the cards themselves, behind the login (_agentsGate).
 const _conceptsPressGate = (req, res, next) => (_ROE.tokenOk(req.get('authorization'), process.env.ROE_PUSH_TOKEN) ? next() : _agentsGate(req, res, next));
+// ── the brief translator (js/researchBrief.js): POST /api/research-pod/brief { text } turns a loose idea into a research brief with ONE capped model call (task 'research-brief').
+// It SPENDS MONEY, so it needs the dashboard login and a same-origin request. GET /api/research-pod/brief is the free status (calls used of the cap).
+const _briefSvc = _createBriefService({
+  kv, r2: { ok: _r2Ok, putBuffer: _r2PutBuffer }, catalogue: _QT_CATALOGUE, modelReady: () => _aiAnyKey(),
+  model: async ({ system, prompt, maxTokens }) => {
+    const v = await _modelJson({ task: 'research-brief', system, prompt, maxTokens, timeoutMs: 120_000, label: 'research:brief', tries: 1,
+      validate: o => (o && typeof o === 'object' && !Array.isArray(o) ? { ok: true, value: o } : { ok: false, errors: ['the reply is not a JSON object'] }) });
+    if (!v.ok) throw new Error(v.errors.join('; '));
+    return v.value;
+  },
+});
+app.get('/api/research-pod/brief', _agentsGate, async (_req, res) => { try { res.set('Cache-Control', 'no-store').json(await _briefSvc.status()); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+app.post('/api/research-pod/brief', _agentsGate, _agentsSameOrigin, async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const out = await _briefSvc.translate(req.body?.text);
+    res.status(out.status ?? 200).json(out);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.get('/api/research-pod/concepts', async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store');

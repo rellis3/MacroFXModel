@@ -19,6 +19,7 @@ import { MATH_CAP } from './libraryMath.js';
 import { FIGS_CAP } from './libraryFigs.js';
 import { LIBRARIAN_CAP } from './libraryLibrarian.js';
 import { CONCEPTS_CAP } from './libraryConcepts.js';
+import { BRIEF_CAP } from './researchBrief.js';
 
 export const GROUPS = ['Research', 'Data', 'Library', 'Desk', 'News', 'Tests'];
 export const UNMAPPED_ROLES = [];
@@ -28,7 +29,7 @@ const A = (id, name, group, o) => ({
 });
 const L = (label, href) => ({ label, href });
 const ROE = L('Plan: Research Opportunity Engine', 'plans/RESEARCH_OPPORTUNITY_ENGINE.md');
-const CAP = { math: { key: 'library_math_v1', cap: MATH_CAP, label: 'equation calls' }, figs: { key: 'library_figs_v1', cap: FIGS_CAP, label: 'figure and table calls' }, lib: { key: 'library_librarian_v1', cap: LIBRARIAN_CAP, label: 'librarian calls' }, concepts: { key: 'library_concepts_v1', cap: CONCEPTS_CAP, label: 'concept card calls' } };
+const CAP = { math: { key: 'library_math_v1', cap: MATH_CAP, label: 'equation calls' }, figs: { key: 'library_figs_v1', cap: FIGS_CAP, label: 'figure and table calls' }, lib: { key: 'library_librarian_v1', cap: LIBRARIAN_CAP, label: 'librarian calls' }, concepts: { key: 'library_concepts_v1', cap: CONCEPTS_CAP, label: 'concept card calls' }, brief: { key: 'research_brief_v1', cap: BRIEF_CAP, label: 'brief translator calls' } };
 
 export const AGENTS = [
   // ── Research: the pod that answers the owner's questions ────────────────────────────────────────────────────
@@ -184,6 +185,11 @@ export const AGENTS = [
     purpose: 'Writes a short "what this shows" note for each figure and table from the paper\'s text alone (it does not look at the picture).',
     trigger: 'Owner presses the figures button on the Library page (at most 12 calls a press).', reads: ['figure and table captions and the text around them'], writes: ['R2 figure notes', 'library_figs_v1 (calls used)'],
     modelTask: 'library-figs', cap: CAP.figs, spends: true, links: [L('Library', 'library.html')],
+  }),
+  A('brief-translator', 'Brief translator', 'Research', {
+    purpose: 'Turns a research idea written in loose words into a precise, falsifiable research brief: one hypothesis, each variable built exactly, the lags and regimes to examine (including your own method suggestions), the assumptions it made, and at most one question. It may only name series the repo holds; plain code then checks which are held, which must be built first and whether the quick test can take it. It never states a result.',
+    trigger: 'Runs only when you press Translate on the New idea tab of the Research Opportunities page (one small model call, capped).', reads: ['your idea in your own words', 'the quick-test series catalogue'], writes: ['R2 research/briefs/<id>.json (private)', 'research_brief_v1 (calls used)'],
+    modelTask: 'research-brief', cap: CAP.brief, spends: true, links: [L('New idea tab', 'roe.html#idea')],
   }),
   A('library-concepts', 'Concept cards', 'Library', {
     purpose: 'Turns the library digests, the C.OG education text and the Theory Lab lessons into reviewable concept cards (principle, mechanism, the variable to build, what to look for, caveats, sources), one topic slice at a time, from the supplied text only. An item it has already read is never sent twice.',

@@ -149,6 +149,7 @@ export const TASK_CLASS = {
   // The librarian (js/libraryLibrarian.js, LIBRARY_CONTEXT=1): ONE small call that picks the papers worth reading from a scanned candidate list (at most 2 per run, hard cap of 400 in KV library_librarian_v1).
   'library-librarian': { ledger: 'brief', label: 'Paper library: the librarian picks papers', defaultProvider: 'deepseek' },
   // Concept cards (js/libraryConcepts.js): the library digests and the owner's education text turned into reviewable cards, up to 12 calls a press, hard cap of 400 in KV (library_concepts_v1).
+  'research-brief': { ledger: 'brief', label: 'Research: translate an idea into a brief', defaultProvider: 'deepseek' },
   'library-concepts': { ledger: 'brief', label: 'Paper library: concept cards', defaultProvider: 'deepseek' },
   'research-head': { ledger: 'full',  label: 'Research pod: Head of Research review', defaultProvider: 'anthropic', models: { anthropic: 'claude-sonnet-5' }, effort: { anthropic: 'high' } },
   // pictures the owner attaches to a research question (owner 2026-11-06): each is read ONCE by a vision model into a
