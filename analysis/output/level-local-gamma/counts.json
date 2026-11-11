@@ -1,0 +1,330 @@
+{
+ "run": "2026-11-11T14:24:28.679760+00:00",
+ "rho_assumed": 0.02,
+ "cells": [
+  {
+   "sample": "primary",
+   "cell": "random",
+   "n_bottom": 3128,
+   "n_top": 3674,
+   "clusters": 581,
+   "events_per_cluster": 16.2,
+   "deff": 1.3,
+   "mde_pp": 3.89,
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "sample": "primary",
+   "cell": "real",
+   "n_bottom": 885,
+   "n_top": 1266,
+   "clusters": 408,
+   "events_per_cluster": 7.3,
+   "deff": 1.13,
+   "mde_pp": 6.51,
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "sample": "primary",
+   "cell": "ladder",
+   "n_bottom": 722,
+   "n_top": 1059,
+   "clusters": 293,
+   "events_per_cluster": 8.4,
+   "deff": 1.15,
+   "mde_pp": 7.24,
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "sample": "primary",
+   "cell": "wall",
+   "n_bottom": 163,
+   "n_top": 207,
+   "clusters": 288,
+   "events_per_cluster": 1.8,
+   "deff": 1.02,
+   "mde_pp": 14.77,
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "sample": "primary",
+   "cell": "dte_LGs_d1",
+   "events_with_bucket": 219
+  },
+  {
+   "sample": "primary",
+   "cell": "dte_LGs_d5",
+   "events_with_bucket": 710
+  },
+  {
+   "sample": "primary",
+   "cell": "close_window_60",
+   "n_bottom": 255,
+   "n_top": 241
+  },
+  {
+   "sample": "primary",
+   "cell": "close_window_30",
+   "n_bottom": 137,
+   "n_top": 136
+  },
+  {
+   "sample": "gold",
+   "cell": "random",
+   "n_bottom": 815,
+   "n_top": 740,
+   "clusters": 164,
+   "events_per_cluster": 16.7,
+   "deff": 1.31,
+   "mde_pp": 8.15,
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "sample": "gold",
+   "cell": "real",
+   "n_bottom": 417,
+   "n_top": 407,
+   "clusters": 164,
+   "events_per_cluster": 9.2,
+   "deff": 1.17,
+   "mde_pp": 10.53,
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "sample": "gold",
+   "cell": "ladder",
+   "n_bottom": 393,
+   "n_top": 364,
+   "clusters": 164,
+   "events_per_cluster": 8.5,
+   "deff": 1.15,
+   "mde_pp": 10.92,
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "sample": "gold",
+   "cell": "wall",
+   "n_bottom": 24,
+   "n_top": 43,
+   "clusters": 63,
+   "events_per_cluster": 2.0,
+   "deff": 1.02,
+   "mde_pp": 36.01,
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "sample": "gold",
+   "cell": "dte_LGs_d1",
+   "events_with_bucket": 168
+  },
+  {
+   "sample": "gold",
+   "cell": "dte_LGs_d5",
+   "events_with_bucket": 386
+  },
+  {
+   "sample": "gold",
+   "cell": "close_window_60",
+   "n_bottom": 25,
+   "n_top": 48
+  },
+  {
+   "sample": "gold",
+   "cell": "close_window_30",
+   "n_bottom": 12,
+   "n_top": 21
+  },
+  {
+   "sample": "fx",
+   "cell": "random",
+   "n_bottom": 9633,
+   "n_top": 9496,
+   "clusters": 1763,
+   "events_per_cluster": 17.0,
+   "deff": 1.32,
+   "mde_pp": 2.33,
+   "verdict": "POWERED"
+  },
+  {
+   "sample": "fx",
+   "cell": "real",
+   "n_bottom": 1420,
+   "n_top": 1642,
+   "clusters": 1237,
+   "events_per_cluster": 3.9,
+   "deff": 1.06,
+   "mde_pp": 5.22,
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "sample": "fx",
+   "cell": "ladder",
+   "n_bottom": 734,
+   "n_top": 742,
+   "clusters": 295,
+   "events_per_cluster": 8.1,
+   "deff": 1.14,
+   "mde_pp": 7.79,
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "sample": "fx",
+   "cell": "wall",
+   "n_bottom": 686,
+   "n_top": 900,
+   "clusters": 1148,
+   "events_per_cluster": 2.1,
+   "deff": 1.02,
+   "mde_pp": 7.17,
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "sample": "fx",
+   "cell": "dte_LGs_d1",
+   "events_with_bucket": 1892
+  },
+  {
+   "sample": "fx",
+   "cell": "dte_LGs_d5",
+   "events_with_bucket": 6188
+  },
+  {
+   "sample": "fx",
+   "cell": "close_window_60",
+   "n_bottom": 842,
+   "n_top": 887
+  },
+  {
+   "sample": "fx",
+   "cell": "close_window_30",
+   "n_bottom": 355,
+   "n_top": 352
+  }
+ ],
+ "primary_sessions": {
+  "NAS100_USD": 1377,
+  "SPX500_USD": 1296
+ },
+ "primary_kind_counts": {
+  "NAS100_USD|ladder": 2456,
+  "NAS100_USD|random": 4741,
+  "NAS100_USD|wall": 322,
+  "SPX500_USD|random": 4673,
+  "SPX500_USD|wall": 183
+ },
+ "primary_lgs_quantiles": {
+  "NAS100_USD": [
+   -0.428,
+   -0.026,
+   0.068,
+   0.218,
+   0.822
+  ],
+  "SPX500_USD": [
+   -0.423,
+   -0.042,
+   0.061,
+   0.158,
+   0.658
+  ]
+ },
+ "primary_share_lgs_negative": {
+  "NAS100_USD": 0.37,
+  "SPX500_USD": 0.396
+ },
+ "gold_sessions": {
+  "XAU_USD": 776
+ },
+ "gold_kind_counts": {
+  "XAU_USD|ladder": 1394,
+  "XAU_USD|random": 2737,
+  "XAU_USD|wall": 123
+ },
+ "gold_lgs_quantiles": {
+  "XAU_USD": [
+   0.059,
+   0.313,
+   0.41,
+   0.491,
+   0.66
+  ]
+ },
+ "gold_share_lgs_negative": {
+  "XAU_USD": 0.026
+ },
+ "fx_sessions": {
+  "AUD_USD": 1397,
+  "EUR_USD": 1433,
+  "GBP_USD": 1398,
+  "USD_CAD": 1398,
+  "USD_CHF": 1393,
+  "USD_JPY": 1357
+ },
+ "fx_kind_counts": {
+  "AUD_USD|random": 5151,
+  "AUD_USD|wall": 398,
+  "EUR_USD|ladder": 2397,
+  "EUR_USD|random": 5095,
+  "EUR_USD|wall": 440,
+  "GBP_USD|random": 5010,
+  "GBP_USD|wall": 480,
+  "USD_CAD|random": 5109,
+  "USD_CAD|wall": 347,
+  "USD_CHF|random": 4975,
+  "USD_CHF|wall": 377,
+  "USD_JPY|random": 4699,
+  "USD_JPY|wall": 353
+ },
+ "fx_lgs_quantiles": {
+  "AUD_USD": [
+   -0.535,
+   -0.082,
+   0.085,
+   0.222,
+   0.678
+  ],
+  "EUR_USD": [
+   -0.481,
+   -0.159,
+   -0.025,
+   0.13,
+   0.487
+  ],
+  "GBP_USD": [
+   -0.585,
+   -0.172,
+   -0.045,
+   0.101,
+   0.493
+  ],
+  "USD_CAD": [
+   -0.527,
+   -0.161,
+   -0.009,
+   0.161,
+   0.602
+  ],
+  "USD_CHF": [
+   -0.951,
+   -0.148,
+   0.047,
+   0.286,
+   0.763
+  ],
+  "USD_JPY": [
+   -0.676,
+   -0.197,
+   -0.076,
+   0.072,
+   0.726
+  ]
+ },
+ "fx_share_lgs_negative": {
+  "AUD_USD": 0.408,
+  "EUR_USD": 0.528,
+  "GBP_USD": 0.555,
+  "USD_CAD": 0.509,
+  "USD_CHF": 0.47,
+  "USD_JPY": 0.599
+ }
+}

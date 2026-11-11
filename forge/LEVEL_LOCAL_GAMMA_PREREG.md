@@ -221,7 +221,44 @@ After the run, the realised bootstrap SE replaces the assumed deff in the verdic
 
 ## Amendments
 
-(none yet; A1 = the count-first power table, PRE-RESULTS)
+### A1 — 2026-11-11 — PRE-RESULTS (count-first pass; no race, return or outcome computed)
+
+Run by `python scripts/level-local-gamma/analyze.py count` → `analysis/output/level-local-gamma/counts.json`, on the
+event tables from `events.py` (levels, first touches, LG only). Scorable = after the 60-session tercile warm-up and the
+60-session normaliser warm-up.
+
+**Measured n and MDE** (formula of §5, ρ = 0.02, measured events per cluster):
+
+| Sample / cell | n bottom | n top | clusters | MDE (pp) | vs 3pp bar |
+|---|---|---|---|---|---|
+| Primary P1 random (NQ+ES) | 3,128 | 3,674 | 581 | **3.9** | UNDERPOWERED by design |
+| Primary P2 real (NQ ladder + NQ/ES walls) | 885 | 1,266 | 408 | 6.5 | UNDERPOWERED by design |
+| … ladder only (NQ) | 722 | 1,059 | 293 | 7.2 | UNDERPOWERED |
+| … walls only | 163 | 207 | 288 | 14.8 | UNDERPOWERED |
+| Gold S1 random | 815 | 740 | 164 | 8.2 | UNDERPOWERED |
+| Gold real | 417 | 407 | 164 | 10.5 | UNDERPOWERED |
+| FX S2 random (6 pairs) | 9,633 | 9,496 | 1,763 | 2.3 | POWERED |
+| FX real | 1,420 | 1,642 | 1,237 | 5.2 | UNDERPOWERED |
+
+Close window (last 60 / 30 min before the cash close), primary: 255 / 241 and 137 / 136 events per arm → UNDERPOWERED
+(descriptive). DTE: primary events with any ≤ 1 DTE contract 219, 2-5 DTE 710 (CME NQ/ES books are quarterlies) →
+both buckets UNDERPOWERED by the < 400-per-arm rule; FX 1,892 / 6,188 events.
+
+Why fewer events than planned: only ~33% of random levels (|d| up to 2σ) are touched in a session (planning assumed
+50-60%), walls sit a median 5-7σ from the open (3-8% touched), ES has no archived ladder.
+
+**Consequences, fixed now:** P1 and P2 cannot reach their gate with 80% power; by the §5 rule a P1/P2 cell whose CI
+still contains +3pp is banked UNDERPOWERED, one whose CI upper bound is below +3pp is banked NULL. FX random (S2) is
+the only powered cell.
+
+**Clarifications (no outcome seen):**
+1. Stale-book guard: a session is scored only if its settlement date P is within 5 calendar days (the gold archive
+   ends 2026-04-15; without the guard later sessions would reuse the last book).
+2. Neighbour-year mirror scale: LGs_nb = (net/gross of the neighbour-year book at the level and minute) ×
+   (gross/GG_open of today's book), so both books are on the session's scale (the prereg did not say how to scale it).
+3. Gold LGs is positive on 97% of events (the OG book is call-heavy under the dealers-long-calls convention), so
+   gold's "bottom tercile" is low-positive, not negative gamma; S1 reads as a dose test within long gamma.
+4. NQ/ES: LGs < 0 on 37% / 40% of events, so the bottom tercile is mostly negative and the top all positive.
 
 ## RESULTS
 
