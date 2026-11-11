@@ -7646,15 +7646,8 @@ async function _nwTick() {
     if (process.env.OANDA_KEY) { try { react = await _nwReactPass(wire, now); } catch (e) { console.warn('[news] react:', e.message); } }
     const rec = await _nwRecLoad();
     if (react.final.length) { rec.rows = _nwAppendRecord(rec.rows, react.final.map(_nwRecordRow).filter(Boolean), { now }); _nwState.recDirty = true; }
-    // Telegram: a tier-1 read, once per headline, at most 6 an hour (tgMaster.newsBreaking; tgMaster.newsWire mutes it too)
+    // The old private tier-1 note to the macrodash chat is retired (owner 2026-11-11): tier 1 and 2 go only to the shared news channel below. It re-sent hours-old stories after every restart (firstSeen resets) and carried book lines.
     let sent = 0;
-    if (tgOn('newsBreaking') && tgOn('newsWire') && state.tg?.token && state.tg?.chatId) {
-      for (const h of _nwBreaking(wire, now, { sent: rec.alerts.sent })) {
-        const a = _nwAllowAlert(rec.alerts, h.id, Date.now());
-        if (!a.ok) { if (a.why === 'already sent') continue; break; }
-        if (await sendTelegram(state.tg.token, state.tg.chatId, _nwBreakingMsg(h, h.pairs))) { rec.alerts = a.state; h.alerted = new Date().toISOString(); sent++; }
-      }
-    }
     // The shared channel (js/newsChannel.js): its OWN bot, tier 1 and 2 as chosen, longs and shorts grouped, NO book lines. Own caps (6 an hour tier 1, 10 an hour tier 2),
     // at most 3 sends a pass, nothing older than the moment it was connected. A failed send stops the pass; the reason is shown in the modal.
     let chSent = 0;
