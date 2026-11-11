@@ -102,7 +102,7 @@ function renderTodo() {
 const indexView = IXV.mount({ api, el: { box: $('ixBox'), topic: $('ixTopic'), source: $('ixSource'), ev: $('ixEv'), info: $('ixInfo'), list: $('ixList'), stats: $('ixStats') },
   labels: () => ({ topic: Object.fromEntries(st.topics.map(t => [t.key, t.label])), source: Object.fromEntries(st.sources.map(t => [t.key, t.label])) }),
   options: () => ({ topics: st.topics.filter(t => t.count), sources: st.sources }), fail: e => fail(e) });
-LBV.mount({ api, el: { box: $('lbBox'), go: $('lbGo'), out: $('lbOut') }, fail: e => fail(e) });   // Ask the librarian (one small AI call)
+LBV.mount({ api, el: { box: $('lbBox'), go: $('lbGo'), out: $('lbOut') }, fail: e => fail(e) });
 function setTab(tab) {
   st.tab = tab;
   document.querySelectorAll('.lib-tab').forEach(b => { const on = b.dataset.tab === tab; b.classList.toggle('active', on); b.setAttribute('aria-selected', on); });

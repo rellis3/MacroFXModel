@@ -21,6 +21,8 @@ export const api = {
   search: (text, tags, sources, years, limit = 40) => j('/api/library/search?' + q({ q: text, tags: (tags || []).join(','), sources: (sources || []).join(','), years: (years || []).join(','), limit })),
   index: () => j('/api/library/index'),
   find: (text, o = {}) => j('/api/library/find?' + q({ q: text, n: o.n || 40, topics: (o.topics || []).join(','), sources: (o.sources || []).join(','), years: (o.years || []).join(',') })),
+  concepts: () => j('/api/library/concepts'),
+  reviewConcept: body => post('/api/library/concepts/review', body),
   librarian: q => post('/api/research-pod/librarian', { q, n: 6 }),
   todo: () => j('/api/library/todo'),
   readNext: () => j('/api/library/read-next'),

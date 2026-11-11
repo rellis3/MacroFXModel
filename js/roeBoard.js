@@ -42,3 +42,24 @@ export function init(doc = document, fetchFn = (...a) => fetch(...a)) {
   }).catch(e => { root.innerHTML = `<p class="rb-empty">Could not load: ${esc(e.message)}</p>`; });
 }
 if (typeof document !== 'undefined' && document.getElementById && document.getElementById('roeRoot')) init();
+
+// The Concepts tab on this page (the cards live with the ROE: they are what the monitors measure against). The cards and marks are served by /api/library/concepts,
+// which accepts the dashboard login this page already needs.
+export function initTabs(doc = document, fetchFn = (...a) => fetch(...a)) {
+  const tabs = doc.querySelectorAll?.('.tab'); if (!tabs?.length) return;
+  let concepts = null;
+  const getJson = async (url, opt) => { const r = await fetchFn(url, { credentials: 'same-origin', ...opt }); const d = await r.json().catch(() => null); if (!r.ok || !d || d.ok === false) throw new Error(d?.error || `Request failed (${r.status})`); return d; };
+  const api = { concepts: () => getJson('/api/library/concepts'), reviewConcept: body => getJson('/api/library/concepts/review', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }) };
+  tabs.forEach(b => b.addEventListener('click', async () => {
+    const t = b.dataset.tab;
+    tabs.forEach(x => { const on = x === b; x.classList.toggle('active', on); x.setAttribute('aria-selected', String(on)); });
+    doc.getElementById('questionsTab').hidden = t !== 'questions'; doc.getElementById('conceptsTab').hidden = t !== 'concepts';
+    if (t === 'concepts') {
+      if (!concepts) { const CV = await import('./library/concepts.js'); const g = id => doc.getElementById(id);
+        concepts = CV.mount({ api, paperBase: 'library.html', el: { box: g('ccBox'), status: g('ccStatus'), domain: g('ccDomain'), info: g('ccInfo'), list: g('ccList') }, fail: e => { g('ccInfo').textContent = e.message; } }); }
+      concepts.show();
+    }
+  }));
+  if (/#concepts/.test(doc.location?.hash ?? '')) tabs.forEach(b => b.dataset.tab === 'concepts' && b.click());
+}
+if (typeof document !== 'undefined' && document.getElementById && document.getElementById('roeRoot')) initTabs();

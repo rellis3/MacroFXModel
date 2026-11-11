@@ -24,6 +24,35 @@ h1{font-size:26px;margin-bottom:4px}.dek{color:var(--text2);margin-bottom:16px}
 .rb-body{padding:4px 12px 12px;border-top:1px solid var(--border)}.rb-kv{display:flex;gap:12px;padding:5px 0;border-bottom:1px solid var(--border)}
 .rb-kv span:first-child{flex:0 0 150px;color:var(--text3);font-size:12px;padding-top:2px}.rb-kv span:last-child{flex:1;min-width:0;overflow-wrap:anywhere}
 .rb-foot{font-size:12px;color:var(--text3);margin-top:8px}.rb-empty{color:var(--text2)}code{font-family:'DM Mono',monospace;font-size:13px}
+
+/* tabs */
+.tabs{display:flex;gap:6px;border-bottom:1.5px solid var(--border);margin:6px 0 16px}
+.tab{background:none;border:none;border-bottom:2px solid transparent;padding:10px 14px;min-height:44px;color:var(--text2);font:inherit;font-weight:600;cursor:pointer;margin-bottom:-1.5px}
+.tab.active{color:#4f7df0;border-bottom-color:#4f7df0}
+/* concept cards (same look as the library) */
+.lib-info{color:var(--text2);font-size:14px;margin:6px 0 10px}
+.lib-tag{font-family:'DM Mono',monospace;font-size:11px;background:var(--s2);border-radius:99px;padding:2px 9px;color:var(--text2)}
+.lib-btn{display:inline-flex;align-items:center;justify-content:center;background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;min-height:44px;font:inherit;font-size:13px;font-weight:600;color:var(--text);cursor:pointer}
+.lib-btn[disabled]{opacity:.6}
+
+/* Concepts tab */
+.cc-bar{display:grid;grid-template-columns:1fr;gap:8px;margin:10px 0}
+.cc-bar input,.cc-bar select{width:100%;background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:10px 12px;min-height:44px;font-size:16px;color:var(--text)}
+@media (min-width:640px){.cc-bar{grid-template-columns:2fr 1fr 1fr}}
+.lib-cc{border:1px solid var(--border);border-radius:var(--r);background:var(--s1);margin-bottom:8px}
+.lib-cc summary{list-style:none;cursor:pointer;padding:10px 12px;min-height:44px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:space-between}
+.lib-cc summary::-webkit-details-marker{display:none}
+.lib-cc-title{font-weight:600;flex:1 1 240px}.lib-cc-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.lib-cc-st{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)}
+.lib-cc[data-status="good"] .lib-cc-st{color:var(--green)}.lib-cc[data-status="wrong"] .lib-cc-st{color:var(--red)}.lib-cc[data-status="unclear"] .lib-cc-st{color:var(--amber)}
+.lib-cc-body{padding:4px 12px 12px;border-top:1px solid var(--border)}
+.lib-cc-kv{display:flex;gap:12px;padding:6px 0;border-bottom:1px solid var(--border)}
+.lib-cc-kv>span:first-child{flex:0 0 130px;color:var(--text3);font-size:12px;padding-top:2px}.lib-cc-kv>span:last-child{flex:1;min-width:0;overflow-wrap:anywhere}
+.lib-cc-rev{margin-top:10px;display:flex;flex-direction:column;gap:8px}.lib-cc-btns{display:flex;gap:8px;flex-wrap:wrap}
+.lib-cc-btns .lib-btn[aria-pressed="true"]{background:rgba(79,125,240,.16);border-color:rgba(79,125,240,.5);color:#4f7df0}
+.lib-cc-note{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;min-height:44px;font-size:16px;color:var(--text)}
+@media (max-width:520px){.lib-cc-kv{flex-direction:column;gap:0}.lib-cc-kv>span:first-child{flex-basis:auto}}
+
 @media (max-width:520px){.rb-kv{flex-direction:column;gap:0}.rb-kv span:first-child{flex-basis:auto}}
 </style>
 </head>
@@ -32,7 +61,17 @@ h1{font-size:26px;margin-bottom:4px}.dek{color:var(--text2);margin-bottom:16px}
   <div class="crumb"><a href="/">MacroFX</a> · Research Opportunities</div>
   <h1>Research Opportunities</h1>
   <p class="dek">Questions the laptop scanner wrote from what it saw in the data. They are grouped by the kind of idea, newest first. Nothing here has been tested yet, nothing is scored, and none is hidden. The same question arising again is counted, not repeated.</p>
-  <div id="roeRoot"></div>
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" class="tab active" data-tab="questions" aria-selected="true">Questions</button>
+    <button type="button" role="tab" class="tab" data-tab="concepts" aria-selected="false">Concepts</button>
+  </div>
+  <div id="questionsTab"><div id="roeRoot"></div></div>
+  <div id="conceptsTab" hidden>
+    <p class="lib-info">Concept cards built from the papers, the C.OG education and the Theory Lab: each says what a principle is, why it works, what to measure and what to look for. They are what the monitors will measure against. Read them and mark each Good, Wrong or Unclear; your marks are kept and a later run never overwrites them. Marking uses no AI.</p>
+    <div class="cc-bar"><input id="ccBox" type="search" placeholder="Search the cards" autocomplete="off" aria-label="Search the concept cards"><select id="ccStatus" aria-label="Show cards by review state"></select><select id="ccDomain" aria-label="Show cards by area"></select></div>
+    <div id="ccInfo" class="lib-info" role="status"></div>
+    <div id="ccList"></div>
+  </div>
 </div>
 <script type="module" src="js/roeBoard.js"></script>
 </body>
