@@ -1,7 +1,7 @@
 // Tests for js/newsChannel.js.   node js/newsChannel.test.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { channelMessage, channelCandidates, allowChannel, validateConfig, publicView, parseConfig, groups, safeUrl, CAPS, CHANNEL_KV_KEY } from './newsChannel.js';
+import { channelMessage, channelCandidates, allowChannel, validateConfig, publicView, parseConfig, groups, safeUrl, explainTelegramError, CAPS, CHANNEL_KV_KEY } from './newsChannel.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 const M = 60e3;
@@ -92,6 +92,18 @@ t('registered where the repo requires, and the server routes are login-gated and
   assert.equal((fs.readFileSync(new URL('../_worker.js', import.meta.url), 'utf8').match(/'news_channel_v1'/g) ?? []).length, 2, 'both lists in _worker.js');
   const s = fs.readFileSync(new URL('../server.js', import.meta.url), 'utf8');
   for (const r of ["app.get('/api/news-channel', _agentsGate", "app.post('/api/news-channel', _agentsGate, _agentsSameOrigin", "app.delete('/api/news-channel', _agentsGate, _agentsSameOrigin", "app.post('/api/news-channel/test', _agentsGate, _agentsSameOrigin", "app.get('/api/news-channel/preview', _agentsGate"]) assert.ok(s.includes(r), r);
+});
+
+t('a bot name is refused as the channel, and Telegram errors are explained in plain words', () => {
+  const e = validateConfig({ token: TOKEN, chatId: '@TheChain_Newsbot' }).error;
+  assert.match(e, /looks like a bot's name/); assert.match(e, /add the bot as an administrator/);
+  assert.equal(validateConfig({ token: TOKEN, chatId: '-1001234567890' }).ok, true, 'the number always works');
+  assert.match(explainTelegramError("Forbidden: the bot can't send messages to the bot"), /CHANNEL, not to the bot[\s\S]*\(Telegram said: Forbidden: the bot can't send messages to the bot\)/);
+  assert.match(explainTelegramError('Bad Request: chat not found'), /cannot find that channel/);
+  assert.match(explainTelegramError('Forbidden: bot is not a member of the channel chat'), /not in the channel/);
+  assert.match(explainTelegramError('Bad Request: not enough rights to send text messages to the chat'), /allow "Post messages"/);
+  assert.match(explainTelegramError('Unauthorized'), /rejected the bot token/);
+  assert.equal(explainTelegramError('something new'), 'something new', 'an unknown message is passed through as it is');
 });
 
 console.log(`newsChannel: ${n} tests ok`);

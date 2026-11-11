@@ -40,7 +40,7 @@ export function modalHtml(s) {
 <div class="sec" style="margin-top:12px"><h2 style="font-size:14px">Connection</h2></div>
 <label class="muted" for="nc-token">Bot token ${s?.configured ? `(saved, ${esc(s.tokenHint)}; leave empty to keep it)` : '(from @BotFather)'}</label>
 <input id="nc-token" type="password" autocomplete="off" spellcheck="false" placeholder="${s?.configured ? '••••••••••' : '123456789:AA...'}" style="width:100%;margin:4px 0 10px;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:8px;padding:9px 10px;font:14px var(--sans)">
-<label class="muted" for="nc-chat">Channel (@name, or the -100... number)</label>
+<label class="muted" for="nc-chat">Channel: its @name, or its -100... number. Not the bot's name</label>
 <input id="nc-chat" type="text" autocomplete="off" spellcheck="false" value="${esc(s?.chatId ?? '')}" placeholder="@macro_news" style="width:100%;margin:4px 0 10px;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:8px;padding:9px 10px;font:14px var(--sans)">
 <label class="muted" for="nc-tiers">What to send</label>
 <select id="nc-tiers" style="width:100%;margin:4px 0 10px;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:8px;padding:9px 10px;font:14px var(--sans)"><option value="12"${tiers === '12' ? ' selected' : ''}>Tier 1 and tier 2 (up to 6 and 10 an hour)</option><option value="1"${tiers === '1' ? ' selected' : ''}>Tier 1 only (up to 6 an hour)</option></select>

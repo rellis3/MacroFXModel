@@ -100,10 +100,25 @@ export function validateConfig(body, existing = null, now = Date.now()) {
   if (!TOKEN_RE.test(token)) return { ok: false, error: 'that does not look like a bot token (it should look like 123456789:AA... from @BotFather)' };
   const chatId = String(b.chatId ?? existing?.chatId ?? '').trim();
   if (!CHAT_RE.test(chatId)) return { ok: false, error: 'the channel must be @channelname (a public channel) or its number, for example -1001234567890' };
+  if (/^@.*bot$/i.test(chatId)) return { ok: false, error: `${chatId} looks like a bot's name (it ends in "bot"). Messages go to a CHANNEL, not to the bot: create a channel, add the bot as an administrator, then enter the channel's @name here (or its -100... number)` };
   const tiers = Array.isArray(b.tiers) ? [...new Set(b.tiers.map(Number).filter(n => n === 1 || n === 2))].sort() : (existing?.tiers ?? [1, 2]);
   if (!tiers.length) return { ok: false, error: 'pick tier 1, or tier 1 and 2' };
   const on = typeof b.on === 'boolean' ? b.on : (existing?.on ?? true);
   return { ok: true, cfg: { v: 1, token, chatId, on, tiers, savedAt: new Date(now).toISOString() } };
+}
+/** Telegram's error text → plain words saying what to fix, with Telegram's own words kept in brackets. */
+export function explainTelegramError(desc) {
+  const d = String(desc ?? '').trim();
+  const rules = [
+    [/can'?t send messages to (the )?bots?/i, "That is the bot's own name. Messages go to a CHANNEL, not to the bot: create a channel, add the bot as an administrator, and enter the channel's @name."],
+    [/chat not found/i, 'Telegram cannot find that channel. Check the @name (public channels) or use the -100... number, and make sure the bot has been added to the channel.'],
+    [/not a member|was kicked|was blocked/i, 'The bot is not in the channel. Add it to the channel as an administrator.'],
+    [/not enough rights|no rights|administrator rights|CHAT_WRITE_FORBIDDEN|can'?t send messages to the channel/i, 'The bot is in the channel but is not allowed to post. In the channel: Administrators, the bot, and allow "Post messages".'],
+    [/unauthorized|invalid token|token/i, 'Telegram rejected the bot token. Copy it whole from @BotFather (it looks like 123456789:AA...).'],
+    [/too many requests|retry after/i, 'Telegram asked us to slow down. It will try again on the next pass.'],
+  ];
+  const hit = rules.find(([re]) => re.test(d));
+  return hit ? `${hit[1]} (Telegram said: ${d})` : d;
 }
 export function parseConfig(raw) {
   try { const c = typeof raw === 'string' ? JSON.parse(raw) : raw; return c && typeof c.token === 'string' && typeof c.chatId === 'string' ? c : null; } catch { return null; }

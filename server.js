@@ -248,7 +248,7 @@ import { policyRates as _prRates } from './js/policyRates.js';   // each central
 import { expectations as _cbExpect } from './js/cbExpectations.js';   // what the futures price for each bank
 import { parseFeed as _nwParse, fromFinnhub as _nwFinnhub, mergeWire as _nwMerge, validateRead as _nwValidate, pick as _nwPick, wireText as _nwText } from './js/newsAnalyst.js';   // agent 21
 import { pairImpacts as _nwPairs, reactionMarkets as _nwReactMarkets, reactionStart as _nwReactStart, scoreMarket as _nwScoreMarket, headlineReaction as _nwHeadReact, recordRow as _nwRecordRow, appendRecord as _nwAppendRecord, aggregateRecord as _nwAggregate } from './js/newsImpact.js';
-import { CHANNEL_KV_KEY as _NC_KEY, MAX_PER_TICK as _NC_MAX_PER_TICK, channelMessage as _ncMessage, channelCandidates as _ncCandidates, allowChannel as _ncAllow, validateConfig as _ncValidate, publicView as _ncPublic, parseConfig as _ncParse } from './js/newsChannel.js';   // the shared news channel: its own bot, tier 1-2, no book lines
+import { CHANNEL_KV_KEY as _NC_KEY, MAX_PER_TICK as _NC_MAX_PER_TICK, channelMessage as _ncMessage, channelCandidates as _ncCandidates, allowChannel as _ncAllow, validateConfig as _ncValidate, publicView as _ncPublic, parseConfig as _ncParse, explainTelegramError as _ncExplain } from './js/newsChannel.js';   // the shared news channel: its own bot, tier 1-2, no book lines
 import { NEWS_SOURCES as _NW_SOURCES, POLL_MIN as _NW_POLL_MIN, backoff as _nwBackoff, dueSources as _nwDue, allowAlert as _nwAllowAlert, breakingCandidates as _nwBreaking, breakingMessage as _nwBreakingMsg } from './js/newsOps.js';
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
 import { RESEARCHERS as _RP_RESEARCHERS, WEB_SOURCES as _RP_WEB, parseFeed as _rpParseFeed, feedItems as _rpFeedItems, webDigest as _rpWebDigest, validateProposals as _rpValidate, applyFeedback as _rpApplyFeedback, feedbackBrief as _rpFeedbackBrief, buildList as _rpBuildList, mergeLibrary as _rpMerge, validateCard as _rpValidateCard, cardPrereg as _rpPrereg, slug as _rpSlug, lifecycle as _rpLifecycle, setLink as _rpSetLink, outcomesBrief as _rpOutcomes, scorecard as _rpScorecard, validateReply as _rpValidateReply, applyRevision as _rpApplyRevision, threadText as _rpThreadText } from './js/researchPod.js';   // Phases 23-25
@@ -7691,7 +7691,7 @@ async function _ncSend(cfg, text) {
       body: JSON.stringify({ chat_id: cfg.chatId, text, parse_mode: 'HTML', disable_web_page_preview: true }), signal: AbortSignal.timeout(10_000) });
     const j = await r.json().catch(() => ({}));
     if (j.ok === true) { _ncState.lastSendAt = new Date().toISOString(); _ncState.lastError = null; return true; }
-    _ncState.lastError = scrub(j.description ?? `Telegram answered HTTP ${r.status}`);
+    _ncState.lastError = _ncExplain(scrub(j.description ?? `Telegram answered HTTP ${r.status}`));
     return false;
   } catch (e) { _ncState.lastError = scrub(e.message); return false; }
 }
