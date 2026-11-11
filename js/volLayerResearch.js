@@ -492,6 +492,78 @@ export const STAGE1 = {
   },
 };
 
+// System assembly: each input a trading system needs, which layer feeds it, how solid that is today, and what is missing.
+// strength: 'holds' (our data supports it), 'partial' (describes well, no trade yet), 'none' (no evidence), 'blocked' (waits on another slot).
+// Evidence is discovery window 2016-10-24..2022-12-30 unless it says otherwise. Update a row in the same change that moves it.
+export const ASSEMBLY = [
+  { slot: 'Direction', feeds: [4], strength: 'none',
+    now: 'Conditional views (carry, momentum, combo) give +0.016σ a session, the same as always-long and inside the placebo band. Every earlier mechanical direction test in the repo is null.',
+    missing: 'A view with lift. Our sample can only detect Sharpe 0.45-0.6, larger than published FX carry/momentum, so the honest status is "too small to see", not "proved absent".',
+    next: 'Parked by the owner. When it reopens: daily horizon views, judged by IC per bet and breadth (fundamental law), not by intraday R.' },
+  { slot: 'Entry / when to trade', feeds: [1, 2, 8, 7], strength: 'partial',
+    now: 'σ over-reacts (range/σ 1.86 in the quietest decile vs 1.41 loudest, flat would be 1.60). A big morning predicts a big afternoon. No trade straight after a burst. Round numbers locate breaks but stop orders through them lose (−0.031 R net).',
+    missing: 'An entry that is positive net of spread. Tight geometry (0.25σ) loses to spread in both follow and fade.',
+    next: 'Three candidates in C.OG\'s own form: A full fade recipe, B state-selected follow at 0.5-1.5σ, C meta-labelling on Rule A (handoff 2026-11-10).' },
+  { slot: 'Stop loss', feeds: [1, 6, 8, 7, 2], strength: 'holds',
+    now: 'A 1σ stop is hit 29.5% of sessions in every year, against 25-40% for a fixed width. Forecast error adds +0.39σ of range beyond σ (shuffled −0.03): 1σ stops are hit 32-33% after under-forecasts vs 25-28% after over-forecasts. No market-wide noise threshold exists (excess within 0.03σ of a random walk). Weekend gap p99 2.1 R.',
+    missing: 'Proof on real entries: everything so far is random or direction-free entries. Jump risk passes through stops (L03), so the stop must also carry a jump allowance.',
+    next: 'Error-scaled σ stop vs plain σ stop on the base system\'s own entries, scored on unseen 2023-2026 data (stage 4 prereg).' },
+  { slot: 'Take profit', feeds: [5, 1], strength: 'partial',
+    now: 'Win rate is set by the barrier geometry b/(a+b); a random walk gives AUC 0.69 from geometry alone. The chosen p50/p75 lines are calibrated (p75 coverage 25.6% vs 25%).',
+    missing: 'Any target that beats geometry. Today a target only trades win rate for payoff.',
+    next: 'Target placed on the chosen lines vs a fixed multiple of the stop, same entries, compared on net R distribution.' },
+  { slot: 'Size', feeds: [6, 1], strength: 'holds',
+    now: 'Sizing by σ steadies realised risk on 34/34 instruments, but a 20-day realised vol does as well. 1/σ² fattens tails. Black-Litterman with no prior reduces to signal/σ.',
+    missing: 'Evidence that the forecaster beats plain realised vol for sizing, and a jump-aware size (L03: sizing on vol alone understates one-step loss).',
+    next: 'Size on chosen σ vs 20d RV vs σ plus jump allowance, at equal ex-post vol, on the base system.' },
+  { slot: 'Book risk', feeds: [3, 6], strength: 'holds',
+    now: 'Seven USD views are one dollar bet: the dollar factor is 37-54% of book variance. Dollar share of each pair runs 22% (USDJPY) to 58% (EURUSD/AUDUSD/NZDUSD) vs 0.5% random. Correlation rises 0.40 to 0.52 with vol. A book vol target cuts crash days (−9.6 to −4.1 sd), not drawdowns.',
+    missing: 'A rule for how many same-factor positions to hold at once, tested on real trades.',
+    next: 'Cap on dollar-factor exposure across open trades vs no cap, on the base system\'s book.' },
+  { slot: 'Trade filter', feeds: [5], strength: 'blocked',
+    now: 'Logistic AUC 0.573 on real labels vs 0.568 on random-walk labels: the filter only learns geometry. Every quintile loses after one spread.',
+    missing: 'A primary signal with lift for the filter to sort. Meta-labelling cannot create an edge, only keep the good part of one.',
+    next: 'Waits on Entry. Then label the base system\'s own trades and score precision and R by size against taking every trade.' },
+  { slot: 'Feedback / monitoring', feeds: [8], strength: 'partial',
+    now: 'Misses persist (+0.25 chosen, +0.50 plain). Error feedback improves QLIKE 0.715 vs 0.778. The chosen σ lags rises in vol. Bands gain ~1%; conformal does not help.',
+    missing: 'A live rule that moves stops or sizes when the forecaster is running wrong, and a test that it helps trades.',
+    next: 'Folded into the Stop and Size tests above (error-scaled σ is this layer in use).' },
+];
+
+// C.OG's six "Forecaster Portfolio" case-study lessons (education/forecaster-portfolio-case-study/), read in full 2026-11-11,
+// mined for anything that changes the layer research. He keeps every layer's logic private, so this is mostly how he measures, not what he trades.
+// used: 'yes' = already in our work, 'no' = not yet, 'fix' = we do it differently and should change.
+export const COG_LESSONS = {
+  headline: [
+    'The course says SEVEN layers, not six: layer 3 is vol forecasting and meta-labelling is another; the other five are proprietary and never described (L03).',
+    'His record is daily P&L from January 2022, about 4.5 years, before costs, not compounded: 10 legs in two books, average pairwise correlation 0.000, Sharpe 3.51 (SE 0.42), 50% losing days with a 1.83 win/loss ratio (L01, L06).',
+    'His edge is explicitly not a direction forecast: the system targets "forecastable quantities that are less contested than direction" (L02, L03). Our direction nulls are therefore not evidence against his system.',
+    'His legs are near-orthogonal strategies (effective bets 9.5 of 10). Our seven USD views are one dollar bet, the "market mode" case he builds to avoid (L06).',
+    'Our unseen confirm window (2023-01 to 2026-08) sits inside his record; our discovery window (2016-10 to 2022) mostly predates it. Stage 4 tests are on his regime.',
+  ],
+  items: [
+    { layer: 'All', lesson: 'L03', says: 'Validate each layer by its own factor: IR ≈ TC · IC · √breadth. Skill (IC) for forecasts, breadth for the opportunity set, transfer coefficient for construction.', change: 'Score forecast layers by IC against outcomes, sizing/book by how much forecast value survives into positions, not every layer by trade R.', used: 'no' },
+    { layer: 'All', lesson: 'L01', says: 'Every result is rerun with all inputs delayed one more day; a parameter is accepted on a plateau, not a peak.', change: 'Add a +1-day lag rerun and a neighbour-settings sweep to every stage 3/4 prereg.', used: 'no' },
+    { layer: 'All', lesson: 'L01', says: 'Results are judged on daily P&L at day/week/month/quarter/year, gross of costs, with costs as a separate module.', change: 'Report a daily-P&L view and a gross column beside our per-trade net R, so our numbers compare with his.', used: 'fix' },
+    { layer: 'All', lesson: 'L02/L04', says: 'Count trials by research direction, not configuration; use t ≈ 3, not 2; one independent confirmation moves a 40% prior to 91%.', change: 'Deflate by directions tried in the Evidence Book; keep the one-shot confirm.', used: 'yes' },
+    { layer: '1 State', lesson: 'L03', says: 'GARCH half-life h = ln½ / ln(α+β): 11 days at 0.94, 34 at 0.98.', change: 'Publish the half-life of each instrument\'s fitted persistence as the "expected change in vol" field; our near-integrated GARCH (stage 2) means very long half-lives to check.', used: 'no' },
+    { layer: '1 State', lesson: 'L05', says: 'Turbulent regime = 3-month vol above 1.25× its median for a month or more; the effective sample is the number of regime episodes, not days. Microstructure noise inflates 1-minute RV.', change: 'Bootstrap regime results in regime-length blocks; keep RV on 5-minute returns (forge/rv.py already does).', used: 'fix' },
+    { layer: '2 Jumps', lesson: 'L03', says: 'Jump risk passes through stops and cannot be traded out of; sizing on vol alone understates one-step loss. Excess kurtosis falls as 1/horizon (24.7 daily vs 1.2 monthly).', change: 'Intraday stops live where jumps dominate: give the stop and the size a jump allowance, and check our jump effects shrink at multi-day horizons.', used: 'no' },
+    { layer: '2 Jumps', lesson: 'L01/L05', says: 'Fit a generalised Pareto tail beyond a threshold; a bootstrap cannot make a day worse than the worst seen. A single bad print adds k⁴/n to kurtosis: flag it, never alter it, check a second source.', change: 'GPD fit on stop overshoot; cross-check each flagged burst against bid/ask before counting it.', used: 'no' },
+    { layer: '3 Corr ÷ var', lesson: 'L04/L06', says: 'Effective bets N = N / (1 + (N−1)ρ); report N_PR, N_ent and N_var and say which. Correlation rises with a common factor\'s variance with no change in the legs (0.09 → 0.47 at 3× factor variance).', change: 'One-number summary of the USD views as N_PR; our dollar-share-by-vol result already uses the "only the factor\'s variance rose" benchmark.', used: 'yes' },
+    { layer: '3 Corr ÷ var', lesson: 'L06', says: 'Prefers rank-based joint-worst-day counts to correlations measured in stress. Note: the formula printed on the page is the forward Forbes-Rigobon map (calm → stress), not the correction.', change: 'Add a joint-worst-day count, dollar factor vs each pair\'s residual. Keep our correction ρ/√(1+δ(1−ρ²)) from the L3 spec.', used: 'no' },
+    { layer: '3 Corr ÷ var', lesson: 'L04', says: 'Absorption ratio: share of variance in the top few principal components, a crowding/coupling gauge.', change: 'Rolling top-k PC share across FX, gold and indices as a regime input.', used: 'no' },
+    { layer: '4 Views', lesson: 'L05', says: 'SE of a mean return is σ/√T however often you sample: 10 years at 16% vol gives about 5% a year.', change: 'M1 data adds nothing to direction precision; only span does. This is the power ceiling to state in any direction prereg.', used: 'yes' },
+    { layer: '5 Meta', lesson: 'L06', says: 'A new leg is worth what its correlation with the legs already held allows.', change: 'Judge a meta-model by its marginal effect on book Sharpe and effective bets, not by win rate (which our stage 2 showed is barrier geometry).', used: 'no' },
+    { layer: '6 Sizing', lesson: 'L01', says: 'Scaling exposure inversely to forecast vol is "the bridge to the layered structure"; Kelly is μ/σ², half-Kelly keeps ~75% of growth; overstating the edge 2× gives zero growth.', change: 'Our stage 2 already compared 1/σ and 1/σ² (1/σ² fattens tails). Add shrinkage of the edge before any Kelly-style size.', used: 'yes' },
+    { layer: '6 Sizing', lesson: 'L06', says: 'Weights are set at the leg level (inverse vol / equal risk contribution); size knowing the price of every correlation going to 1.', change: 'Report an all-correlations-to-1 risk figure as a book size cap next to the dollar-factor cap.', used: 'no' },
+    { layer: '7 Stops', lesson: 'L05', says: 'Fill only at quoted prices after the decision: buy at the offer, sell at the bid. Coarse bars hide intra-period risk (annual −40.6% vs daily −52.2% drawdown).', change: 'Stop touches on the M1 bid/ask path, never mid or bar closes. Checked: the 29.5% 1σ stop-hit rate (sizing look) is on session high/low from the forecast history, not bid/ask, so with the spread it can only be higher; the state look and noise map use data/m1_bidask. Redo the stop rates on bid/ask in stage 3.', used: 'fix' },
+    { layer: '7 Stops', lesson: 'L01', says: 'Daily P&L: 50% losing days, wins 1.83× losses, positive skew 0.97, no losing quarter in 18.', change: 'The shape any stop/target design has to reproduce: frequent small losses, larger wins. Use it as the target distribution, not a win rate.', used: 'no' },
+    { layer: '8 Feedback', lesson: 'L04/L01', says: 'Decay shows as falling risk-adjusted return by sub-period, a shrinking response to the same conditions, and rising costs. His rules are fixed: no walk-forward refit.', change: 'Three monitors on every forward record. Treat the feedback loop as a fixed rule inside the system, not periodic refitting.', used: 'no' },
+    { layer: 'Data', lesson: 'L05', says: 'Futures, unadjusted, explicit rolls timed by liquidity, signals from the contract to be held; a later start date must be declared and justified.', change: 'Spot/CFD intraday is a fair stand-in intraday; for multi-day holds include real swap/roll (cost_table.json). State why the discovery window is 2016-10 to 2022.', used: 'fix' },
+  ],
+};
+
 // The combined test, filled as stacks are run. Units: R, where 1 R = the stop distance.
 export const COMBINED = [
   { stack: '1 state + 7 stops (dumb view), 0.25σ stop: follow', trades: 15755, gross: 0.058, net: -0.113, ci: [-0.133, -0.091], against: 'loses to spread; model adds 0.1%' },

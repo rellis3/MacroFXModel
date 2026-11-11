@@ -64,7 +64,7 @@ table.t th.num { text-align: right; }
 </div>
 
 <script type="module">
-import { LAYERS, BUILD_ORDER, DEEP_DIVE, SOURCE_NOTE, COMBINED, TESTS, NAMED, PROOF, STAGES, STAGE1 } from './js/volLayerResearch.js';
+import { LAYERS, BUILD_ORDER, DEEP_DIVE, SOURCE_NOTE, COMBINED, TESTS, NAMED, PROOF, STAGES, STAGE1, ASSEMBLY, COG_LESSONS } from './js/volLayerResearch.js';
 import { PROOF_CSS, proofListHtml, proofHtml, cogReviewHtml, jumpLookHtml, lookChartsHtml } from './js/volLayerProof.js';
 
 document.head.insertAdjacentHTML('beforeend', `<style>${PROOF_CSS}</style>`);
@@ -119,6 +119,30 @@ function namedHtml() {
   return `<p class="muted" style="margin:0 0 6px">${counts}</p><div class="scroll"><table class="t"><thead><tr><th>Item</th><th>Named by</th><th>Status</th><th>So far</th><th>Next</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
+function assemblyHtml() {
+  const lab = { holds: 'holds on our data', partial: 'describes, no trade yet', none: 'no evidence', blocked: 'waits on another slot' };
+  const col = { holds: 'var(--green)', partial: '#e0a32e', none: '#f87171', blocked: 'var(--text3)' };
+  const name = n => { const L = LAYERS.find(x => x.n === n); return L ? `<a href="#${L.id}" class="muted">${n} ${esc(L.title)}</a>` : n; };
+  const rows = ASSEMBLY.map(a => `<tr><td><b>${esc(a.slot)}</b></td><td style="font-size:11px">${a.feeds.map(name).join('<br>')}</td>
+    <td><span class="pill" style="color:${col[a.strength]};border-color:${col[a.strength]}">${lab[a.strength]}</span></td>
+    <td>${esc(a.now)}</td><td class="muted">${esc(a.missing)}</td><td>${esc(a.next)}</td></tr>`).join('');
+  return `<p class="muted" style="margin:0 0 6px">The layers are researched one at a time; a system needs one answer per row. Green = our data supports it,
+    amber = describes the market well but no trade yet, red = nothing yet. Discovery window 2016-10-24 to 2022-12-30; 2023 on is kept unseen for the confirm.</p>
+    <div class="scroll"><table class="t"><thead><tr><th>Slot</th><th>Fed by</th><th>Status</th><th>What we have</th><th>What is missing</th><th>Next test</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p style="margin-top:8px"><b>Reading it:</b> the layers already give the risk side (stop, size, book, when to stand aside). The money side (direction, an entry with an edge) is empty.
+    That is the order C.OG's own lesson 03 gives: forecast risk because it is forecastable, then act on a separate signal. The next step is one base system run through every row.</p>`;
+}
+
+function lessonsHtml() {
+  const lab = { yes: 'already in our work', no: 'not yet used', fix: 'we do it differently' };
+  const col = { yes: 'var(--green)', no: '#e0a32e', fix: '#f87171' };
+  const rows = COG_LESSONS.items.map(i => `<tr><td><b>${esc(i.layer)}</b></td><td class="muted">${esc(i.lesson)}</td><td>${esc(i.says)}</td><td>${esc(i.change)}</td>
+    <td><span class="pill" style="color:${col[i.used]};border-color:${col[i.used]}">${lab[i.used]}</span></td></tr>`).join('');
+  return `<p class="muted" style="margin:0 0 6px">Read in full 2026-11-11 from education/forecaster-portfolio-case-study/. He keeps every layer's logic private, so these lessons tell us how he measures and validates, not what he trades.</p>
+    <ul>${COG_LESSONS.headline.map(h => `<li>${esc(h)}</li>`).join('')}</ul>
+    <div class="scroll"><table class="t"><thead><tr><th>Layer</th><th>Lesson</th><th>What he says</th><th>What it changes for us</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
 function systemHtml() {
   const stack = LAYERS.map(L => `<div class="lyr ${L.id === 'feedback' ? 'fb' : ''}" data-go="${L.id}"><div class="num">${L.n}</div>
     <div><div class="nm">${esc(L.title)}</div><div class="ds">${esc(L.question.slice(0, 140))}${L.question.length > 140 ? '…' : ''}</div></div>
@@ -128,6 +152,8 @@ function systemHtml() {
   "every single position is different" because every position is the product of all the layers. This page researches each layer on its own tab,
   then brings them together here and tests them combined. <b>No layer is assumed in or out</b>: every candidate stays open until our own
   pre-registered test decides it.</div>
+  <div class="card" style="margin-top:12px"><h3>System assembly: what each layer feeds into a trade</h3>${assemblyHtml()}</div>
+  <div class="card" style="margin-top:12px"><h3>C.OG's six Forecaster Portfolio lessons: what they add to the layer research</h3>${lessonsHtml()}</div>
   <div class="card" style="margin-top:12px"><h3>Everything named, and how far it has gone</h3>${namedHtml()}</div>
   <div class="card" style="margin-top:12px"><h3>What we have tested, why, and the output</h3>${trackerHtml()}</div>
   <div class="grid">
