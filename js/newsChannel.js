@@ -46,6 +46,24 @@ export function groups(impact) {
 }
 const item = (r, up) => `${META[r.key].flag} ${r.key === META[r.key].name ? r.key : META[r.key].name} ${arrows(r.v, up)}`;
 
+/** The public FX list: majors and the usual crosses. Generic arithmetic only (base impact minus quote impact); nothing here knows any desk book or card. */
+const FX_PAIRS = ['EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','EURGBP','EURJPY','GBPJPY','AUDJPY','CADJPY','CHFJPY','NZDJPY','EURCHF','GBPCHF','EURAUD','EURCAD','GBPAUD','GBPCAD','AUDCAD','AUDNZD','AUDCHF'];
+/** For one currency with a push v: the pairs it moves, as 'EURUSD short'. Only pairs whose net push (base minus quote) agrees with this currency's own direction. Strongest first, at most 5. */
+export function pairsFor(ccy, impact) {
+  const v = k => (Number.isFinite(Number(impact?.[k])) ? Number(impact[k]) : 0), c = v(ccy);
+  if (!c) return [];
+  const out = [];
+  FX_PAIRS.forEach((p, order) => {
+    const base = p.slice(0, 3), quote = p.slice(3);
+    if (base !== ccy && quote !== ccy) return;
+    const net = v(base) - v(quote), own = base === ccy ? c : -c;
+    if (!net || Math.sign(net) !== Math.sign(own)) return;
+    out.push({ p, net, order });
+  });
+  return out.sort((a, b) => Math.abs(b.net) - Math.abs(a.net) || a.order - b.order).slice(0, 5).map(x => `${x.p} ${x.net > 0 ? 'long' : 'short'}`);
+}
+const pairLines = (rows, impact) => rows.map(r => { const ps = pairsFor(r.key, impact); return ps.length ? `      ↳ ${META[r.key].flag} ${esc(ps.join(' · '))}` : null; }).filter(Boolean);
+
 const tierOf = h => (h?.read?.tier ?? h?.tier);
 const ukTime = ms => (Number.isFinite(ms) ? new Date(ms).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }) : '');
 
@@ -68,7 +86,9 @@ export function channelMessage(h) {
     publicDetail(h?.read?.detail) ? esc(clip(publicDetail(h.read.detail), 280)) : null,
     (g.long.length || g.short.length) ? '' : null,
     g.long.length ? `🟢 <b>LONG</b>   ${g.long.map(r => esc(item(r, true))).join('   ')}` : null,
+    ...pairLines(g.long, h?.read?.impact),
     g.short.length ? `🔴 <b>SHORT</b>   ${g.short.map(r => esc(item(r, false))).join('   ')}` : null,
+    ...pairLines(g.short, h?.read?.impact),
     `\n<i>Context, not a signal${srcs ? ` · ${esc(srcs)}` : ''}</i>`,
   ];
   return lines.filter(x => x !== null).join('\n');

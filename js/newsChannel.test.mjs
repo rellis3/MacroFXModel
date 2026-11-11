@@ -1,7 +1,7 @@
 // Tests for js/newsChannel.js.   node js/newsChannel.test.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { channelMessage, channelCandidates, allowChannel, validateConfig, publicView, parseConfig, groups, safeUrl, explainTelegramError, persistConfig, removeConfig, CAPS, CHANNEL_KV_KEY } from './newsChannel.js';
+import { channelMessage, channelCandidates, pairsFor, allowChannel, validateConfig, publicView, parseConfig, groups, safeUrl, explainTelegramError, persistConfig, removeConfig, CAPS, CHANNEL_KV_KEY } from './newsChannel.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 const M = 60e3;
@@ -69,6 +69,17 @@ t('the longer detail is shown, but never if it mentions the desk, book or tools'
   assert.match(ok, /Why: Faster inflation[^\n]*\nHotter inflation lifts yield expectations/);
   for (const bad of ['This fits the desk book short USDJPY card.', 'We expect our signal to fire.', 'See the dashboard terminal.']) assert.doesNotMatch(channelMessage(H({ read: { ...H().read, detail: bad } })), /desk|signal to fire|dashboard/);
   assert.doesNotMatch(channelMessage(H()), /undefined|null/);
+});
+
+t('pairs follow the currency push, generic, and never contradict it', () => {
+  assert.deepEqual(pairsFor('USD', { USD: 1 }).slice(0, 3), ['EURUSD short', 'GBPUSD short', 'USDJPY long']);
+  assert.ok(pairsFor('JPY', { JPY: -1 }).includes('USDJPY long'));
+  assert.deepEqual(pairsFor('GBP', { USD: 1, GBP: -1 }).slice(0, 2), ['GBPUSD short', 'EURGBP long']);   // both legs agree: strongest first
+  assert.deepEqual(pairsFor('EUR', { EUR: 1, USD: 2 }).filter(p => p.startsWith('EURUSD')), []);        // EUR up but USD up more: EURUSD net is down, so it is not listed under EUR
+  assert.deepEqual(pairsFor('GOLD', { GOLD: 1 }), []);
+  const m = channelMessage(H({ read: { tier: 1, why: 'x', impact: { USD: 1, JPY: -1 } } }));
+  assert.ok(m.includes('USDJPY long') && m.includes('↳'));
+  assert.doesNotMatch(m, /against|supports|book/i);
 });
 
 t('throttle: one per headline, six an hour for tier 1 and ten for tier 2, kept apart', () => {
