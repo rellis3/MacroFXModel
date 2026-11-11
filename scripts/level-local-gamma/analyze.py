@@ -147,6 +147,8 @@ def summarize(est, rng, scale=100.0):
     pt = est.point()
     bs = est.boot(cluster_weights(est.cl, rng))
     bs = bs[np.isfinite(bs)]
+    if not np.isfinite(pt) or len(bs) < 100:
+        return {"n_lo": est.n_lo, "n_hi": est.n_hi, "est": None, "note": "no stratum with >= 10 per arm"}
     lo, hi = np.percentile(bs, [2.5, 97.5])
     p = float(min(1.0, 2 * min((bs <= 0).mean(), (bs >= 0).mean())))
     se = float(bs.std())
@@ -268,14 +270,19 @@ def perm_pct(e, lab, y, rng, real, n=B):
     """Whole-cluster block permutation of the label sequence within each instrument."""
     vals = []
     pairs = e["pair"].to_numpy()
+    cl_all = e["cluster"].to_numpy()
+    groups = []
+    for p in np.unique(pairs):
+        ix = np.where(pairs == p)[0]
+        u, inv = np.unique(cl_all[ix], return_inverse=True)
+        o = np.argsort(inv, kind="stable")
+        bounds = np.searchsorted(inv[o], np.arange(len(u) + 1))
+        groups.append((ix, [ix[o[bounds[k]:bounds[k + 1]]] for k in range(len(u))]))
     for _ in range(n):
         newlab = lab.copy()
-        for p in np.unique(pairs):
-            ix = np.where(pairs == p)[0]
-            cl = e["cluster"].to_numpy()[ix]
-            u, inv = np.unique(cl, return_inverse=True)
-            order = rng.permutation(len(u))
-            seq = np.concatenate([lab[ix][inv == k] for k in order])
+        for ix, parts in groups:
+            order = rng.permutation(len(parts))
+            seq = lab[np.concatenate([parts[k] for k in order])]
             newlab[ix] = seq
         est = Est(e, newlab, y)
         vals.append(est.point())
@@ -292,7 +299,14 @@ def score():
         e = load(pairs)
         e["lab"] = pit_terciles(e, "LGs")
         e = e[e["lab"] >= 0].reset_index(drop=True)
-        y, amb, unres, rets = outcomes(e)
+        cf = CACHE / f"outcomes_{name}.npz"
+        if cf.exists():
+            z = np.load(cf)
+            y, amb, unres, rets = z["y"], z["amb"], z["unres"], {h: z[f"r{h}"] for h in (15, 60, 240)}
+            assert len(y) == len(e)
+        else:
+            y, amb, unres, rets = outcomes(e)
+            np.savez(cf, y=y, amb=amb, unres=unres, **{f"r{h}": v for h, v in rets.items()})
         e["y"], e["amb"], e["unres"] = y, amb, unres
         for hm, v in rets.items():
             e[f"r{hm}"] = v

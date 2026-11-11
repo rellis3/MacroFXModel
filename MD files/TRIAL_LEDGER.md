@@ -10,15 +10,15 @@ Generated 2026-11-11.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **316** |
+| claims tested (validated + null + underpowered) | **320** |
 | validated | 51 |
-| null | 178 |
-| underpowered | 87 |
+| null | 180 |
+| underpowered | 89 |
 | context (base rates, descriptions: not counted as tests) | 55 |
-| pre-registrations with no banked verdict (below) | 88 |
+| pre-registrations with no banked verdict (below) | 87 |
 
-**What the count says (Lesson 02 §05).** If none of the 316 claims were real, tests at the usual 5% size would still pass
-about **15.8** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 320 claims were real, tests at the usual 5% size would still pass
+about **16** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
 **roughly 16 of the 51 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -394,6 +394,10 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-11 | close-window-momentum-levels | price | underpowered | forge/CLOSE_WINDOW_MOMENTUM_PREREG.md |
 | 2026-11-11 | close-window-momentum-secondary | price | context | forge/CLOSE_WINDOW_MOMENTUM_PREREG.md |
 | 2026-11-11 | close-window-momentum-trade | price | null | forge/CLOSE_WINDOW_MOMENTUM_PREREG.md |
+| 2026-11-11 | level-local-gamma | positioning | null | forge/LEVEL_LOCAL_GAMMA_PREREG.md |
+| 2026-11-11 | level-local-gamma-fx | positioning | null | forge/LEVEL_LOCAL_GAMMA_PREREG.md |
+| 2026-11-11 | level-local-gamma-gold | positioning | underpowered | forge/LEVEL_LOCAL_GAMMA_PREREG.md |
+| 2026-11-11 | level-local-gamma-levels | positioning | underpowered | forge/LEVEL_LOCAL_GAMMA_PREREG.md |
 | 2026-11-11 | wall-dte-style-h1 | positioning | underpowered | oi_research_book/WALL_DTE_STYLE_PREREG.md |
 | 2026-11-11 | wall-dte-style-h2 | positioning | underpowered | oi_research_book/WALL_DTE_STYLE_PREREG.md |
 | 2026-11-11 | wall-dte-style-h3-fx | positioning | null | oi_research_book/WALL_DTE_STYLE_PREREG.md |
@@ -450,7 +454,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/IEP_TIME_PREREG.md`: IEP-TIME: time of day, trading session and day of week in band attainment, first touch and consolidation
 - `forge/INTRADAY_EXTREME_PATHS_PREREG.md`: INTRADAY-EXTREME-PATHS: after a dynamic intraday extreme, what is the probability of continuation, meaningful 
 - `forge/IVRV_COT_PREREG.md`: IV ÷ RV in the book, the rich-IV break rule on the indices, and COT positioning at the lines — pre-registratio
-- `forge/LEVEL_LOCAL_GAMMA_PREREG.md`: level-local-gamma — when price first touches a level, does the dealer gamma repriced AT that level predict whe
 - `forge/LEVEL_P2_PREREG.md`: Level engine, Phase 2: reach, which-first, time-to-reach (registered 2026-10-10, before any Phase 2 outcome is
 - `forge/LEVEL_SCENARIO_SHADOW_PREREG.md`: S3 shadow: level scenarios, live reach / which-first / time (registered 2026-10-11, before any live session is
 - `forge/LINE_CLUSTER_MFE_PREREG.md`: Clusters of the forecast lines, and fade MFE / MAE at every touch — pre-registration

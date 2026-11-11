@@ -2470,6 +2470,38 @@ export const DESK_EVIDENCE = [
     result: 'UNDERPOWERED (EURUSD NULL). Follow share among resolved races, late vs early: NQ lines 58.5% (106) vs 55.2% (849), +3.3pp [-7.1, +12.5]; placebo lines 55.4% vs 53.9%, L2 +1.8pp [-8.8, +12.1]; gold +0.3pp [-16.9, +16.9] (36 late), L2 +7.7pp [-7.5, +24.1]; EURUSD -3.6pp [-11.0, +3.3] (259 late, the 10pp bar ruled out), L2 -0.4pp; NQ walls 4 late arrivals. About half of with-the-day touches never resolve the race in 30 minutes, which halved the planned n.',
     use: 'No evidence that a with-the-day line touch late in the session follows through more than earlier: the small NQ lift appears at placebo lines too (clock, not level). EURUSD rules out a 10pp late lift. Do not call late arrivals at lines continuation setups.',
   },
+  {
+    id: 'level-local-gamma', domain: 'positioning', verdict: 'null', date: '2026-11-11', doc: 'forge/LEVEL_LOCAL_GAMMA_PREREG.md',
+    also: ['analysis/output/level-local-gamma/RESULTS.md'],
+    instruments: ['NQ', 'SPX500'],
+    claim: 'When price first touches a random price level, dealer gamma repriced AT that level at the touch minute (CME book, per-strike IV, point-in-time OI) predicts break vs hold: negative local gamma breaks more (0.25 sigma race)',
+    result: 'NQ+ES CME options 2020-09/10 to 2026-08-21, 6,459 resolved random-level touches, 508 (instrument, ISO-week) clusters: break 51.5% bottom LG tercile vs 52.0% top, stratified D -0.22pp [-3.57, +2.82] (bar +3pp; realised MDE 4.5pp); NQ -0.29, ES -0.16; halves +0.9 / -4.7; neighbour-year book +3.0 [-0.9, +6.4]; permutation 44th pct. Close window (last 60 min to the cash close) and <=5 DTE cells untestable (126/93 touches; quarterly book).',
+    use: 'Do not say dealer gamma at a price makes it hold or break: a 3pp effect from the CME book is ruled out, 1-2pp is not. Gamma stays a range/vol context (gex-range-es). Reopen on the Cboe full-chain archive (SPX/NDX/QQQ, near-dated strikes) with the close window as primary.',
+  },
+  {
+    id: 'level-local-gamma-levels', domain: 'positioning', verdict: 'underpowered', date: '2026-11-11', doc: 'forge/LEVEL_LOCAL_GAMMA_PREREG.md',
+    also: ['analysis/output/level-local-gamma/RESULTS.md'],
+    instruments: ['NQ', 'SPX500'],
+    claim: 'At real levels (NQ forecast-ladder OH/OL lines, NQ/ES OI walls) local repriced dealer gamma predicts break vs hold, and does so more than at random prices',
+    result: 'Real levels: D -1.49pp [-6.14, +3.72] (n 836/1,178, MDE 6.9pp; ES walls only 128 touches). Real minus random: -1.27pp [-5.55, +4.42] (MDE 7.2pp). Nothing beyond random prices seen; too wide to rule out 3pp.',
+    use: 'No claim that walls or forecast lines carry gamma behaviour beyond any price; treat them like random prices for gamma purposes.',
+  },
+  {
+    id: 'level-local-gamma-gold', domain: 'positioning', verdict: 'underpowered', date: '2026-11-11', doc: 'forge/LEVEL_LOCAL_GAMMA_PREREG.md',
+    also: ['analysis/output/level-local-gamma/RESULTS.md'],
+    instruments: ['GOLD'],
+    claim: 'On gold (CME OG book), local repriced dealer gamma at a touched level predicts break vs hold',
+    result: '2022-11 to 2026-04-15, 1,517 random touches: D -2.18pp [-8.17, +3.98] (MDE 8.8pp); real levels -0.99 [-10.85, +8.54]. Book is 97% long gamma under the convention, so this is a dose test within long gamma.',
+    use: 'No gamma hold/break wording on gold pages.',
+  },
+  {
+    id: 'level-local-gamma-fx', domain: 'positioning', verdict: 'null', date: '2026-11-11', doc: 'forge/LEVEL_LOCAL_GAMMA_PREREG.md',
+    also: ['analysis/output/level-local-gamma/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDJPY', 'USDCAD', 'USDCHF'],
+    claim: 'On six FX majors (CME FX options book), local repriced dealer gamma at a touched random price level predicts break vs hold',
+    result: '2020-09 to 2026-08-21, 18,435 resolved random touches, 1,494 clusters: D +0.60pp [-1.34, +2.42] (MDE 2.7pp, powered); 3 of 6 pairs positive (rule >= 4); neighbour-year -1.52; real levels +0.60 [-5.53, +5.48] underpowered. Pointer only: local share of gross gamma at real levels +7.3pp [+1.8, +11.6], BH q 0.12 (not a survivor).',
+    use: 'FX pages must not say dealer gamma at a price makes it hold or break.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -2535,6 +2567,10 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'level-local-gamma': { n: '508 (instrument, ISO-week) clusters, 6,459 resolved random touches NQ+ES; cluster bootstrap B 2000', note: 'realised MDE 4.5pp vs a 3pp bar; CI upper +2.82 excludes the bar' },
+  'level-local-gamma-levels': { n: '333 clusters, 2,014 resolved real-level touches', note: 'MDE 6.9pp (P2), 7.2pp (DiD) vs a 3pp bar' },
+  'level-local-gamma-gold': { n: '144 clusters, 1,517 resolved random touches', note: 'MDE 8.8pp vs a 3pp bar' },
+  'level-local-gamma-fx': { n: '1,494 clusters, 18,435 resolved random touches', note: 'MDE 2.7pp vs a 3pp bar; CI upper +2.42 excludes it' },
   'wall-dte-style-h1': { n: '489 distinct days FX/gold (985 resolved wall touches), 97 days NQ+SPX; (instrument, ISO week) cluster bootstrap B 2000', note: 'MDE 9.0pp FX/gold and 12.8pp NQ+SPX against a 3pp bar; NQ+SPX below the 400-day gate' },
   'wall-dte-style-h2': { n: '1,175 distinct days FX/gold, 661 NQ+SPX; cluster bootstrap B 2000', note: 'MDE 4.7 / 5.8pp against a 3pp bar; the mirror passes (grid placebo bias ~3-5pp)' },
   'wall-dte-style-h3-fx': { n: '1,197 distinct days, 2,571 resolved wall touches; cluster bootstrap B 2000', note: 'MDE 5.7pp; CI upper +1.6pp excludes the +3pp bar' },
