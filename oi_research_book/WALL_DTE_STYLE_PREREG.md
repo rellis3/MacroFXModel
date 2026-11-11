@@ -111,4 +111,84 @@ weeklies; the count-first pass says so.
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-11 — PRE-RESULTS (implementation choices where the frozen text is silent)
+Written after the levels and touches were built and counted, before any race outcome (break/bounce) was computed.
+`scripts/30_wall_dte_style.py` has three phases; `build` and `count` never call the race.
+
+1. **Basis and inverted pairs (data fault DATA_SPEC §5 #12, still open in `01_build_daily_dataset.py`).** Walls are rebuilt
+   from the raw chains here, not from 01's parquets. Every strike is moved to the CFD price by the futures-minus-CFD basis
+   of the front expiry (3-120 DTE, put-call parity F = K + C - P on 4 near-ATM settlements, against the OANDA M1 close at
+   the CME settle minute: FX 14:00 CT, gold 12:30 CT, NQ/SPX 15:00 CT), taken from the last CME date before the session.
+   On USD/CAD, USD/CHF, USD/JPY the strike is inverted and the call/put labels are swapped (production `js/oi.js`).
+   Measured medians match the 2026-10-24 audit: EUR +25 pips, JPY -66, CHF -37, CAD -10, NQ +45, SPX +11, gold +12.5.
+2. **Timing.** OI(D) is public ~16:00 UTC on the next CME date, so London session S uses the latest book D whose next
+   CME date is before S (S = D+2 business days in practice). The T-1 row lag in 05/17 used a book not yet public for
+   ~2/3 of the day (audit P1); this removes it.
+3. **Gamma.** Per contract: OI (forward-filled <= 5 rows, as 01) x Black-Scholes gamma at the session-open futures price,
+   flat vol = the NY-close sigma annualised, T = max(DTE, 1)/365; DTE counted from the session date, expired contracts
+   dropped. Book sign = sum over all expiries of (+call, -put) x OI x gamma x multiplier x spot (dealers long calls,
+   short puts, OANDA labels after the swap). Neutral band: |book| < 0.25 x median |book| of the previous 60 sessions
+   (needs 20; the first 20 sessions per instrument are `unknown`, excluded and counted).
+4. **Wall candidates** are strikes within +-3 sigma of spot (js/oiProfile.js window). Strength neighbours = the 2 listed
+   strikes on each side in that bucket's strike grid (any right with OI), same side's gamma; a neighbour median of 0
+   counts as strong. rm = sigma in price (the profile's dayMove).
+5. **Placebo increment** = the 17/24 grid step: FX 0.005 native (USD/JPY 0.00005 native), NQ 100. Not in 17/24, fixed
+   now: **SPX 25, gold 25** (a comparable fraction of sigma to NQ 100 / FX 50 pips; gold's listing step of 5 is ~0.14
+   sigma, too close to the wall to be a control). A placebo must be a strike listed in that day's book (any expiry), on
+   the same side of spot as its wall, and > 0.1 sigma from every real wall (top-2 per side per bucket, any strength). It
+   inherits the wall's bucket, strength, stacked/far-only, book sign and local sign; its hour block is its own touch's.
+6. **Event and race.** Session open = open of the first M1 bar at/after 00:00 London; the touch can be on any bar,
+   including the first. Race thresholds +-0.25 sigma from the level. On the touch bar only the break side is read (the
+   bar came from the approach side, so a bounce cannot be ordered inside it); a later bar hitting both thresholds is
+   ambiguous and counted unresolved.
+7. **Duplicates and cells.** Within each hypothesis a level that is a wall in two buckets counts once (dedup by
+   instrument, session, side, level), placebos likewise. Stacked = a strong wall in a different bucket within 0.1 sigma
+   (both walls tagged). H1 = strong walls in 0-1 or 2-7 with book sign positive; H3 = strong walls, any bucket, book
+   sign negative.
+8. **Gate mechanics.** Statistic = pooled wall break rate minus pooled placebo break rate over resolved touches
+   (ratio of sums), sample by sample (FX/gold; NQ+SPX), never pooled across samples. CI = 95% percentile of 2,000
+   (instrument, ISO week) cluster resamples, seed 20261027, one RNG for the whole run. p = bootstrap one-sided (H1 below,
+   H3 above), two-sided for H2. Halves = split at the median session date of the resolved wall touches in that test.
+   Instrument rule = per-instrument difference has the hypothesised sign (H2: the pooled sign) in >= 5 of 7 FX/gold or
+   both NQ and SPX. **"Independent days" = distinct calendar session dates** with a resolved wall touch (the
+   conservative reading: same-day touches on 7 correlated instruments are not 7 days). BH q = 0.10 over the six
+   (H x sample) tests (plus H4 if scored). Verdict per (H, sample): VALIDATED = every gate + BH + the mirror not passing;
+   < 400 days = UNDERPOWERED; otherwise NULL if the CI excludes the 3 pp bar in the hypothesised direction (H2: both
+   directions), else UNDERPOWERED.
+9. **Mirror ruler.** No IV history exists for gold or SPX in this book, so the expected-move edge is open +- 1 NY-close
+   sigma (the profile's own fallback `dayMove`), with grid placebos at +-1/+-2 increments in CFD units, scored on the
+   same gamma-sign days as the hypothesis it mirrors (positive for H1/H2, negative for H3).
+10. **H4** = Wald chi2(3) for equal wall-minus-placebo differences across the four hour blocks, bootstrap covariance,
+    only inside an (H1 or H3, sample) that passed.
+11. **Map (section 5)**: 4 buckets x 2 signs x {strong, moderate} x 4 hours x {stacked, not} per sample, n, rates, CI,
+    unresolved share (> 20% flagged), BH q = 0.10 over cells with >= 20 resolved wall touches. CONTEXT only.
+
+### A2 — 2026-11-11 — PRE-RESULTS (count-first pass, touches only)
+Data actually present: the FX chains are **monthlies only** (12 expiries a year, no weeklies); gold (`OG.OPT`) is
+monthlies, 2022-11-08 to 2026-04-21 (88 sessions dropped for a book > 7 days old); **NQ and SPX are quarterlies only**
+(4 a year). Sessions scored: 1,543-1,544 per FX pair, 889 gold, 1,539 NQ, 1,508 SPX (2020-09 to 2026-08-21).
+Sessions with any 0-7 DTE OI: 423 per FX pair (27%), gold 244, NQ 144 (9%), SPX 138.
+Book sign: FX/gold 4,994 pos / 3,799 neg / 1,219 neutral / 140 unknown (gold is positive on 778 of 889); NQ+SPX
+1,783 / 749 / 475 / 40.
+
+| Test | Sample | wall touches | placebo touches | distinct days | instrument-days | vs 400 |
+|---|---|---|---|---|---|---|
+| H1 near-DTE, long gamma | FX/gold | 1,021 | 277 | 496 | 822 | clears (before dropping unresolved) |
+| H1 | NQ+SPX | 267 | 228 | **97** | 164 | **UNDERPOWERED by design** |
+| H2 far-only, long gamma | FX/gold | 2,528 | 1,251 | 1,188 | 2,153 | clears |
+| H2 | NQ+SPX | 1,090 | 1,597 | 686 | 907 | clears |
+| H3 short gamma | FX/gold | 2,646 | 838 | 1,210 | 2,140 | clears (gold contributes 15) |
+| H3 | NQ+SPX | 812 | 1,254 | 405 | 575 | borderline: may fall below 400 once unresolved touches drop |
+
+FX placebo touches are few relative to walls (the 50-pip step is ~0.8 sigma, so neighbours sit further from spot), so
+the placebo side carries most of the FX/gold CI width. Map: of 96 FX/gold cells only 2 reach 400 days (median 86); of
+93 NQ+SPX cells none (max 149). The map is CONTEXT as registered. As section 6 says, H1 on NQ+SPX is UNDERPOWERED
+whatever the race shows; the forward record (OI bots and the hedging-plan shadow log every wall's DTE, on weekly books)
+is the way to power it.
+
+### A3 — 2026-11-11 — PRE-RESULTS (owner's addition, CONTEXT only, not a scored hypothesis)
+Each strong wall is also split by the **local** gamma sign at its strike: net dealer gamma (same convention as the book
+sign, all expiries) summed over strikes within +-0.25 sigma of the wall, positive or negative. Reported as book sign x
+local sign (x all / near 0-7 / far 8+), wall vs placebo break rate with CI and n. Placebos inherit the wall's local
+sign. Descriptive only; a separate study will test local gamma properly. It changes no H1-H4 verdict and enters no FDR
+family.
