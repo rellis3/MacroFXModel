@@ -1397,3 +1397,92 @@ so it is not scored.
   before trusting it is good desk practice; the specific pair he names has no record here.
 - **Open from this entry:** none for the owner; the November live case will be in the
   sample when the lockbox rolls forward.
+
+## 2026-11-10 — "Macro in 90 seconds: credit spreads" (speaker not named; yields down, spread is the fear, cracks start in junk)
+
+> *"Over the last couple of weeks Treasury yields have started to come down… but a
+> company's borrowing cost is two pieces: the Treasury yield, the government's risk-free
+> rate, and a spread on top of it, the extra yield a company pays because it is riskier than
+> the government. If yields fall and the spread stays the same, total borrowing cost falls,
+> everyone's happy. If yields fall and the spread widens by more than yields fell, the market
+> is demanding a bigger risk premium even while the headline yield drops. The spread is the
+> piece that tells you about credit on its own; the yield is just the baseline moving. The
+> spread measures the fear. And the cracks don't show up everywhere at once: they start in
+> the junkiest-rated borrowers and move progressively towards higher-quality borrowers."*
+
+**1. The claims, stated plainly.**
+- **(a) Corporate yield = Treasury yield + spread; the spread is the credit read.** An
+  identity, true by construction, and the right decomposition.
+- **(b) If yields fall but the spread widens by more, all-in cost rises.** Arithmetic on (a).
+- **(c) "Yields have come down over the last couple of weeks."** A happening-now fact; checked
+  for coherence below, not scored (4b).
+- **(d) Cracks start in the lowest-rated borrowers and move up the quality ladder.** The one
+  forward-looking, testable claim: lower tiers widen first, higher tiers follow.
+
+**2. What's on the desk, audited.**
+- **(a) is the chain's `credit-confirms` mechanism**, almost word for word: *"the number to
+  watch is the SPREAD: the extra yield a risky borrower pays over a government borrowing for
+  the same period."* Its `tested` line already carries the desk's verdict on the forward half:
+  *"the lead-lag ordering holds as a description; it is NOT a validated forward signal."*
+  Behind that sit `credit-leads-equities` (NULL, 22 years, 12 cells), `spread-episodes-nq` /
+  `-eurusd` (NULL), `rates-spread-asset-lead` (NULL), `macro-confluence-baa-credit` (NULL),
+  and `hy-spread-vol-idx` (CONTEXT: spreads widen with the size of the equity fall, the
+  leverage effect). Yesterday's `bounce-confirmation` added the conditional version
+  (UNDERPOWERED, wrong-signed). The clip's *description* of the spread is the house view; its
+  use as a lead is the thing the house has repeatedly failed to find.
+- **(b) is exactly the current tape, by tier.** From the drill bundle, 2026-10-09 → 11-09:
+
+  | | 10-09 | 10-23 | 11-09 | 4 weeks |
+  |---|---|---|---|---|
+  | 10-year Treasury | 5.24 % | 5.00 % | 4.88 % | **−36 bp** |
+  | 5-year Treasury (the HY index's duration) | 5.02 % | 4.82 % | 4.67 % | −35 bp |
+  | HY OAS (`BAMLH0A0HYM2`) | 3.11 % | 3.38 % | 3.34 % | **+23 bp** |
+  | IG OAS | 0.83 % | 0.91 % | 0.91 % | +8 bp |
+  | CCC OAS | 12.53 % | 13.56 % | 13.11 % | **+58 bp** |
+  | HY all-in (5y + HY OAS) | 8.13 % | 8.20 % | 8.01 % | −12 bp |
+  | CCC all-in (5y + CCC OAS) | 17.55 % | 18.38 % | 17.78 % | **+23 bp** |
+  | IG all-in (10y + IG OAS) | 6.07 % | 5.91 % | 5.79 % | −28 bp |
+
+  So his hypothetical is literally true for one tier only: **CCC borrowers pay more today than
+  four weeks ago despite a 35 bp rally in Treasuries**, because their spread widened by more
+  than yields fell. The HY index and IG both got cheaper all-in. Over his "couple of weeks"
+  (10-23 → 11-09) the spreads are flat to tighter (HY −4 bp, CCC −45 bp), so the clip's
+  framing fits the four-week move, not the two-week one. On the bundle's six years, the
+  10-year fell in 344 of 742 five-session windows and HY widened in 46 % of those: yields
+  down with spreads wider is a coin flip, not a regime. Descriptive, not scored.
+- **(c) coherent:** the 10-year is down 36 bp in four weeks and 12 bp in two. Fine.
+- **(d) is NOT tested here.** The desk *displays* the ladder: the credit gate on `today.html`
+  (`creditBrick.creditGate`) reads the HY index with the BB and CCC tiers and their changes,
+  and `macro.js` carries BB/CCC in basis points. But no ledger entry asks whether a CCC
+  widening leads BB or IG widening. The register has nothing on it either. What the ladder
+  shows right now cuts against the clip in one reading: in basis points CCC widened most
+  (+58) and IG least (+8), as he says; in *proportion* IG widened most (+10 %), HY +7 %, CCC
+  +5 %. "Junk first" depends on the units, and a test has to fix them first.
+
+**3. Trading or macro-understanding.** (a), (b), (c) are macro-understanding and the desk
+already teaches them in the chain with the right caveat. (d) is the only claim with a
+forward half, and it is a *sequencing* claim about credit itself, not about equities, so it
+is not covered by the credit-leads-equities null. It stays a candidate.
+
+**4. Display nugget.** The all-in line in the table above is the one thing the desk does
+not show: the credit gate reads spreads, the rates tiles read yields, nothing adds them.
+"CCC all-in 17.8 %, up 23 bp in four weeks while the 5-year fell 35 bp" is a sentence a
+learner understands at once and it is already computable from the bundle (`us5y + ccc`).
+Proposed as one context line on the credit gate; not built.
+
+**4b. Dates are not claims.** The clip is undated; "the last couple of weeks" was read
+against the bundle as of 2026-11-09 for coherence only. Nothing here is scored.
+
+**5. Verdict and action.**
+- **Nothing to re-run.** The spread-as-lead question has five nulls and one underpowered
+  result on this desk; the clip adds no new angle to it.
+- **One candidate for the register, not started:** `credit-ladder-lead` — does a CCC OAS
+  widening (z-scored, 20 sessions) lead BB and IG OAS widening at 5–20 sessions beyond what
+  the common factor explains? FRED daily OAS runs from 1996 for all three tiers, so the
+  power is there once FRED answers again (it has returned an error page since 2026-11-02);
+  the drill bundle's six years would be a thin fallback. Units fixed in the prereg (bp vs
+  proportional vs z), with the 2008, 2015–16 energy and 2020 episodes as the halves check.
+  Owner's call.
+- **What to keep from the clip:** the decomposition and the all-in arithmetic, which the
+  chain already has, and the reminder that the headline yield can rally while the weakest
+  borrowers' cost rises. That is this month's tape.
