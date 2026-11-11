@@ -88,6 +88,14 @@
     <div id="chart"></div>
     <div id="readout">Move the cursor over the chart.</div>
     <div class="note" id="notes"></div>
+    <details class="box" id="nqrBox" open><summary>Nasdaq vs rates (daily): is Nasdaq trading on rates right now?</summary>
+      <div class="row" style="margin-top:6px"><label>Window <select id="nqrW"><option value="60">60 days</option><option value="120" selected>120 days</option><option value="250">250 days</option></select></label>
+        <label>Show <select id="nqrShow"><option value="z">20-day gap (z) + R2</option><option value="beta">betas</option></select></label>
+        <label>History <select id="nqrDays"><option value="750">3 years</option><option value="1500" selected>6 years</option><option value="6000">all (12y)</option></select></label></div>
+      <div id="nqrRead" class="keybox">loading</div>
+      <div id="nqrChart" style="height:260px;margin-top:8px"></div>
+      <div class="note" style="margin-top:6px">Daily Nasdaq-100 log return regressed on the change in the 2y yield and in the 10y-2y slope, fitted on the previous <i>window</i> days only, so each day's gap is out of sample. <b>R2</b> = share of Nasdaq's daily moves the rates explain. <b>20-day gap (z)</b> = what Nasdaq did beyond what rates implied, summed over 20 days and scaled (beyond &plusmn;2.5 = rare). Context, not a signal: the gap does not persist and trading it is a banked null. Study: analysis/output/nq-rates-residual-monitor/RESULTS.md (exploratory).</div>
+    </details>
     <details class="box" id="findBox" open><summary>Analysis findings: everything we tested on these rate legs, and what came out</summary><div id="findings">loading</div></details>
     <details class="box" id="covBox" open><summary>Contracts &amp; data: what each one is, what it is good for, how far back it goes</summary><div id="coverage">loading</div></details>
   </div>
@@ -442,6 +450,45 @@ function renderCoverage() {
   }
   $('coverage').innerHTML = h;
 }
+
+// ---------------------------------------------------------------- Nasdaq vs rates monitor (/api/cog-chart/nq-rates, js/nqRatesResidual.js)
+const nqrChart = LightweightCharts.createChart($('nqrChart'), {
+  layout: { background: { color: '#161b22' }, textColor: '#9da7b3', fontSize: 11 }, grid: { vertLines: { color: '#1f2630' }, horzLines: { color: '#1f2630' } },
+  rightPriceScale: { borderColor: '#30363d' }, leftPriceScale: { visible: true, borderColor: '#30363d' }, timeScale: { borderColor: '#30363d' }, crosshair: { mode: 0 },
+});
+new ResizeObserver(() => nqrChart.applyOptions({ width: $('nqrChart').clientWidth, height: $('nqrChart').clientHeight })).observe($('nqrChart'));
+let nqrSeries = [], nqrData = null;
+function nqrDraw() {
+  nqrSeries.forEach(x => nqrChart.removeSeries(x)); nqrSeries = [];
+  if (!nqrData) return;
+  const rows = nqrData.rows, pts = k => rows.filter(o => o[k] != null).map(o => ({ time: o.date, value: o[k] }));
+  if ($('nqrShow').value === 'z') {
+    const r2 = nqrChart.addAreaSeries({ priceScaleId: 'right', lineColor: '#5a9', topColor: 'rgba(85,170,153,.45)', bottomColor: 'rgba(85,170,153,.05)', lineWidth: 1, title: 'R2', priceLineVisible: false });
+    r2.setData(pts('r2'));
+    const z = nqrChart.addLineSeries({ priceScaleId: 'left', color: '#a371f7', lineWidth: 1, title: '20d gap z', priceLineVisible: false });
+    z.setData(pts('z20'));
+    [-2.5, 2.5].forEach(v => z.createPriceLine({ price: v, color: '#f85149', lineWidth: 1, lineStyle: 2, axisLabelVisible: false }));
+    nqrSeries = [r2, z];
+  } else {
+    const b1 = nqrChart.addLineSeries({ priceScaleId: 'left', color: '#4f7df0', lineWidth: 1, title: '2y beta (%/10bp)', priceLineVisible: false }); b1.setData(pts('b2y'));
+    const b2 = nqrChart.addLineSeries({ priceScaleId: 'left', color: '#f97316', lineWidth: 1, title: 'slope beta', priceLineVisible: false }); b2.setData(pts('bslope'));
+    b1.createPriceLine({ price: 0, color: '#6e7681', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
+    nqrSeries = [b1, b2];
+  }
+  nqrChart.timeScale().fitContent();
+}
+async function nqrLoad() {
+  try {
+    nqrData = await jget(`/api/cog-chart/nq-rates?w=${$('nqrW').value}&days=${$('nqrDays').value}`);
+    const L = nqrData.latest, R = nqrData.read, f = (x, d = 2) => (x == null ? 'n/a' : (x > 0 ? '+' : '') + x.toFixed(d));
+    $('nqrRead').innerHTML = `<b>${esc(L.date)}:</b> ${esc(R.regime)} (R2 ${L.r2 == null ? 'n/a' : L.r2.toFixed(2)}); ${esc(R.sign)} (2y beta ${f(L.b2y)}% per +10 bp).<br>` +
+      `Last 20 days: rates implied Nasdaq <b>${f(L.implied20, 1)}%</b>, it did <b>${f(L.actual20, 1)}%</b>, gap z <b>${f(L.z20)}</b>. ${esc(R.gap ?? '')}.`;
+    nqrDraw();
+  } catch (e) { $('nqrRead').textContent = 'Nasdaq vs rates: could not load (' + e.message + ')'; }
+}
+['nqrW', 'nqrDays'].forEach(id => $(id).addEventListener('change', nqrLoad));
+$('nqrShow').addEventListener('change', nqrDraw);
+nqrLoad();
 
 // ---------------------------------------------------------------- analysis findings (js/cogFindings.js: one entry per tested question, checked against its results file)
 let findFilter = 'all';
