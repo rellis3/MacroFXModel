@@ -1,0 +1,39 @@
+P1_beta_NQ_FUT           n=2356  est=-0.0006 [-0.0157,+0.0151] t=-0.07 p=0.9408 bh=False halves=[0.0044, -0.0055] bar=0.025 -> NULL
+P2_betaneg_NQ_FUT        n=216   est=-0.0167 [-0.0423,+0.0111] t=-1.22 p=0.2218 bh=False halves=[-0.0153, -0.0177] bar=0.066 -> NULL
+P3_inter_NQ_FUT          n=636   est=-0.0112 [-0.0520,+0.0351] t=-0.50 p=0.6172 bh=False halves=[0.0249, -0.0397] bar=0.058 -> NULL
+P4_betafh_NQ_FUT         n=2355  est=-0.0139 [-0.0319,+0.0035] t=-1.49 p=0.1355 bh=False halves=[-0.003, -0.0239] bar=0.035 -> NULL
+P5_trade_NQ_FUT          n=2355  est=+0.2627 [-1.1089,+1.7372] t=+0.36 p=0.7161 bh=False halves=[0.5858, -0.0601] bar=2.75 -> NULL
+P1_beta_ES_FUT           n=2350  est=+0.0024 [-0.0186,+0.0227] t=+0.23 p=0.8218 bh=False halves=[0.0059, -0.0013] bar=0.025 -> NULL
+P2_betaneg_ES_FUT        n=174   est=+0.0043 [-0.0339,+0.0499] t=+0.20 p=0.8442 bh=False halves=[0.0123, -0.0028] bar=0.066 -> NULL
+P3_inter_ES_FUT          n=611   est=+0.0182 [-0.0338,+0.0778] t=+0.63 p=0.5297 bh=False halves=[0.0485, -0.0066] bar=0.058 -> UNDERPOWERED
+P4_betafh_ES_FUT         n=2349  est=-0.0188 [-0.0439,+0.0040] t=-1.53 p=0.1262 bh=False halves=[-0.0037, -0.0346] bar=0.035 -> NULL
+P5_trade_ES_FUT          n=2335  est=-0.8654 [-2.0831,+0.4656] t=-1.36 p=0.1751 bh=False halves=[-0.9732, -0.7577] bar=2.75 -> NULL
+P6_beta_NQ_CFD           n=2141  est=+0.0010 [-0.0148,+0.0179] t=+0.12 p=0.9064 bh=False halves=[0.0038, -0.0018] bar=0.025 -> NULL
+P6_trade_NQ_CFD          n=2141  est=+0.5706 [-0.8877,+2.2450] t=+0.72 p=0.4712 bh=False halves=[1.5192, -0.3771] bar=2.75 -> NULL
+P6_beta_SPX_CFD          n=2021  est=+0.0092 [-0.0155,+0.0366] t=+0.69 p=0.4913 bh=False halves=[0.0038, 0.0153] bar=0.025 -> UNDERPOWERED
+P6_trade_SPX_CFD         n=2010  est=-0.0604 [-1.3828,+1.5176] t=-0.08 p=0.9356 bh=False halves=[0.1679, -0.2887] bar=2.75 -> NULL
+S1_beta_GOLD             n=2141  est=+0.0066 [-0.0023,+0.0155] t=+1.48 p=0.1398 bh=False halves=[0.0189, -0.0052] bar=0.025 -> NULL
+S2_trade_GOLD            n=2141  est=-2.5226 [-3.1086,-1.9646] t=-8.53 p=0.0000 bh=True halves=[-2.8258, -2.2197] bar=1.0 -> NULL
+S1_beta_EURUSD           n=2517  est=-0.0114 [-0.0229,+0.0001] t=-1.91 p=0.0563 bh=False halves=[-0.0222, -0.0013] bar=0.025 -> NULL
+S2_trade_EURUSD          n=2517  est=-1.6374 [-2.0353,-1.2424] t=-8.01 p=0.0000 bh=True halves=[-1.8233, -1.4516] bar=1.0 -> NULL
+S1_beta_GBPUSD           n=2519  est=+0.0161 [+0.0036,+0.0279] t=+2.65 p=0.0080 bh=True halves=[0.0151, 0.017] bar=0.025 -> CONTEXT
+S2_trade_GBPUSD          n=2515  est=-1.0986 [-1.6204,-0.5939] t=-4.21 p=0.0000 bh=True halves=[-0.6269, -1.5698] bar=1.0 -> NULL
+S1_beta_USDJPY           n=2517  est=+0.0157 [+0.0036,+0.0263] t=+2.72 p=0.0065 bh=True halves=[0.0143, 0.0167] bar=0.025 -> CONTEXT
+S2_trade_USDJPY          n=2514  est=-0.4259 [-0.8625,-0.0203] t=-1.97 p=0.0486 bh=False halves=[-0.7621, -0.0897] bar=1.0 -> NULL
+S1_beta_AUDUSD           n=2501  est=-0.0049 [-0.0174,+0.0082] t=-0.75 p=0.4524 bh=False halves=[-0.0158, 0.0054] bar=0.025 -> NULL
+S2_trade_AUDUSD          n=2497  est=-2.1955 [-2.7485,-1.5894] t=-7.50 p=0.0000 bh=True halves=[-2.6171, -1.7743] bar=1.0 -> NULL
+L1_NQ                    n=955   est=+0.0325 [-0.0713,+0.1250] t=+0.65 p=0.5126 bh=False halves=[0.075, -0.0148] bar=0.1 -> UNDERPOWERED
+L2_NQ                    n=955   est=+0.0181 [-0.0881,+0.1208] t=+0.34 p=0.7366 bh=False halves=[-0.0015, 0.0144] bar=0.1 -> UNDERPOWERED
+L1_GOLD                  n=821   est=+0.0027 [-0.1694,+0.1688] t=+0.03 p=0.9759 bh=False halves=[-0.044, 0.0625] bar=0.1 -> UNDERPOWERED
+L2_GOLD                  n=821   est=+0.0771 [-0.0754,+0.2408] t=+0.95 p=0.3397 bh=False halves=[0.0391, 0.1348] bar=0.1 -> UNDERPOWERED
+L1_EURUSD                n=1252  est=-0.0362 [-0.1096,+0.0331] t=-0.99 p=0.3220 bh=False halves=[-0.019, -0.0531] bar=0.1 -> NULL
+L2_EURUSD                n=1252  est=-0.0043 [-0.0753,+0.0672] t=-0.12 p=0.9084 bh=False halves=[-0.0137, 0.005] bar=0.1 -> NULL
+L1_NQ_WALL               n=20    est=-0.1250 [-0.5500,+0.5000] t=-0.46 p=0.6444 bh=False halves=[0.0833, -0.5] bar=0.1 -> UNDERPOWERED
+L2_NQ_WALL               n=20    est=-0.3750 [-1.1038,+0.2765] t=-1.03 p=0.3040 bh=False halves=[0.0658, -1.119] bar=0.1 -> UNDERPOWERED
+{
+ "close-window-momentum": "NULL",
+ "close-window-momentum-gamma": "UNDERPOWERED",
+ "close-window-momentum-levels": "UNDERPOWERED",
+ "close-window-momentum-secondary": "CONTEXT",
+ "close-window-momentum-trade": "NULL"
+}

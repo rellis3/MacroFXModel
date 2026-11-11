@@ -207,7 +207,15 @@ anchor will be tried.
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-11 — POST-HOC (results seen)
+Bug fix toward the text of section 3: halves were split at each instrument's full-sample median, which left the gamma
+cells (2020-11 onward) with one empty or very short half. They are now split at each cell's own median date, as written.
+No verdict changed. Can only demote or describe.
+
+### A2 — 2026-11-11 — POST-HOC (results seen)
+Bookkeeping toward the text of section 4: the P6 beta (CFD) cells had been counted into the `close-window-momentum`
+question verdict; the prereg defines that question as P1 + P4 on the futures with P6 beta "reported with P1". The question
+verdict now follows the text (NULL); the SPX_CFD beta cell stays UNDERPOWERED in the results table.
 
 ## RESULTS
 

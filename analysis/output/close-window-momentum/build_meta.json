@@ -1,0 +1,34 @@
+{
+ "NQ_FUT": {
+  "rows": 2490,
+  "first": "2016-01-04",
+  "last": "2026-08-21",
+  "w1_present": 2383,
+  "w0_present": 2383,
+  "window_bars_ge_25": 2382
+ },
+ "ES_FUT": {
+  "rows": 2480,
+  "first": "2016-01-04",
+  "last": "2026-08-21",
+  "w1_present": 2376,
+  "w0_present": 2376,
+  "window_bars_ge_25": 2375
+ },
+ "NQ_CFD": {
+  "rows": 2555,
+  "first": "2016-10-24",
+  "last": "2026-08-21",
+  "w1_present": 2447,
+  "w0_present": 2448,
+  "window_bars_ge_25": 2446
+ },
+ "SPX_CFD": {
+  "rows": 2555,
+  "first": "2016-10-24",
+  "last": "2026-08-21",
+  "w1_present": 2448,
+  "w0_present": 2445,
+  "window_bars_ge_25": 2329
+ }
+}
