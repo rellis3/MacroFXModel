@@ -64,6 +64,13 @@ t('a story published long ago is not sent even if the server only just saw it', 
   assert.deepEqual(channelCandidates([fresh, stale], now).map(h => h.id), ['n']);
 });
 
+t('the longer detail is shown, but never if it mentions the desk, book or tools', () => {
+  const ok = channelMessage(H({ read: { ...H().read, detail: 'Hotter inflation lifts yield expectations and the dollar. Watch Friday payrolls.' } }));
+  assert.match(ok, /Why: Faster inflation[^\n]*\nHotter inflation lifts yield expectations/);
+  for (const bad of ['This fits the desk book short USDJPY card.', 'We expect our signal to fire.', 'See the dashboard terminal.']) assert.doesNotMatch(channelMessage(H({ read: { ...H().read, detail: bad } })), /desk|signal to fire|dashboard/);
+  assert.doesNotMatch(channelMessage(H()), /undefined|null/);
+});
+
 t('throttle: one per headline, six an hour for tier 1 and ten for tier 2, kept apart', () => {
   assert.deepEqual(CAPS, { 1: 6, 2: 10 });
   let st = null;

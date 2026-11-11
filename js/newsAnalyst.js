@@ -103,7 +103,7 @@ export function validateRead(obj, batch) {
   for (const x of obj.items) {
     const i = Number(x?.i); if (!Number.isInteger(i) || i < 0 || i >= batch.length) continue;
     const impact = {}; for (const [k, v] of Object.entries(x?.impact ?? {})) { const q = Number(v); if (CCYS.includes(k) && Number.isFinite(q) && q !== 0) impact[k] = Math.sign(q) * Math.min(2, Math.max(1, Math.round(Math.abs(q)))); }
-    out[batch[i].id] = { tier: [1, 2, 3].includes(Number(x?.tier)) ? Number(x.tier) : batch[i].tier, impact, why: str(x?.why, 240) ?? '', book: str(x?.book, 200) ?? null };
+    out[batch[i].id] = { tier: [1, 2, 3].includes(Number(x?.tier)) ? Number(x.tier) : batch[i].tier, impact, why: str(x?.why, 240) ?? '', book: str(x?.book, 200) ?? null, ...(str(x?.detail, 260) ? { detail: str(x?.detail, 260) } : {}) };
   }
   return Object.keys(out).length ? { ok: true, value: out } : { ok: false, errors: ['no usable item'] };
 }

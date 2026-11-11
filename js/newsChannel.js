@@ -49,6 +49,9 @@ const item = (r, up) => `${META[r.key].flag} ${r.key === META[r.key].name ? r.ke
 const tierOf = h => (h?.read?.tier ?? h?.tier);
 const ukTime = ms => (Number.isFinite(ms) ? new Date(ms).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }) : '');
 
+/** The longer explanation is shown only if it reads as public market commentary: anything mentioning the desk, its book, cards, positions or tools is dropped. */
+export const publicDetail = d => { const s = String(d ?? '').trim(); return s && !/\b(desk|book|cards?|positions?|dashboards?|terminal|our|we|my|bot|shadow|atlas|signals?)\b/i.test(s) ? s : ''; };
+
 /** The Telegram note (HTML). Tier 1 is 🚨, tier 2 is 📌. Longs and shorts are grouped; each item has its flag and a ▲/▼ (two = a strong push). No book lines. */
 export function channelMessage(h) {
   const tier = tierOf(h) === 1 ? 1 : 2;
@@ -62,6 +65,7 @@ export function channelMessage(h) {
     url ? `<a href="${url}"><b>${esc(title)}</b></a>` : `<b>${esc(title)}</b>`,
     url ? `<a href="${url}">→ Read the article</a>${srcList[0] ? ` (${esc(srcList[0])})` : ''}` : null,
     h?.read?.why ? `\nWhy: ${esc(clip(h.read.why, 200))}` : null,
+    publicDetail(h?.read?.detail) ? esc(clip(publicDetail(h.read.detail), 280)) : null,
     (g.long.length || g.short.length) ? '' : null,
     g.long.length ? `🟢 <b>LONG</b>   ${g.long.map(r => esc(item(r, true))).join('   ')}` : null,
     g.short.length ? `🔴 <b>SHORT</b>   ${g.short.map(r => esc(item(r, false))).join('   ')}` : null,
