@@ -1225,6 +1225,34 @@ export const DESK_EVIDENCE = [
     use: 'Use IV as the vol forecast input; it says nothing about direction.',
   },
   {
+    id: 'wall-dte-style-h1', domain: 'positioning', verdict: 'underpowered', date: '2026-11-11', doc: 'oi_research_book/WALL_DTE_STYLE_PREREG.md', also: ['oi_research_book/WALL_DTE_STYLE_RESULTS.md', 'oi_research_book/data/results/wall_dte_style.json'],
+    claim: 'Strong walls in the 0-7 DTE buckets on long-gamma days break less often than their listed neighbours (fade)',
+    result: 'Basis- and swap-corrected walls, book used only once public, 0.25 sigma race by 22:00 London. FX/gold: walls 54.4% vs placebos 57.2% break, -2.8pp [-8.9, +3.8], 489 days, MDE 9pp against a 3pp bar, 3 of 7 instruments. NQ+SPX: +4.6pp [-4.3, +13.8] on 97 days (gate 400). The archive is monthlies (FX/gold) and quarterlies (NQ/SPX) only, so near-DTE OI exists on 27% / 9% of sessions. H4 (hour interaction) not scored because nothing passed.',
+    use: 'No evidence that near-dated walls fade on long-gamma days; do not restrict or switch the OI bots on it. Power it from the forward record (weekly books with every wall DTE logged).',
+    instruments: [...['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD'], 'NQ', 'SPX500'],
+  },
+  {
+    id: 'wall-dte-style-h2', domain: 'positioning', verdict: 'underpowered', date: '2026-11-11', doc: 'oi_research_book/WALL_DTE_STYLE_PREREG.md', also: ['oi_research_book/WALL_DTE_STYLE_RESULTS.md', 'oi_research_book/data/results/wall_dte_style.json'],
+    claim: 'Strong far-only walls (8+ DTE, no strong 0-7 wall within 0.25 sigma) on long-gamma days break at a different rate from their neighbours',
+    result: 'FX/gold -2.3pp [-5.6, +1.1] (walls 49.5% vs 51.8%, 1,175 days, MDE 4.7); NQ+SPX +1.0pp [-2.9, +5.0] (661 days, MDE 5.8). Neither passes, and the mirror (open +- 1 sigma edge vs its grid placebos) passes its own gate on the same days (+3.1 [+0.6, +5.6] and +5.2 [+1.6, +9.1]), so the grid placebo is biased by about 3-5pp. Stacked vs far-only same day: 49.6% vs 48.8% (588 days). A first run had a placebo selection bug (placebos kept only when their wall was touched, gap -13.6pp); fixed before write-up, only the corrected run is scored.',
+    use: 'Far-dated walls that are strong enough to show on the profile are not a follow or fade signal; label them as positioning only.',
+    instruments: [...['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD'], 'NQ', 'SPX500'],
+  },
+  {
+    id: 'wall-dte-style-h3-fx', domain: 'positioning', verdict: 'null', date: '2026-11-11', doc: 'oi_research_book/WALL_DTE_STYLE_PREREG.md', also: ['oi_research_book/WALL_DTE_STYLE_RESULTS.md', 'oi_research_book/data/results/wall_dte_style.json'],
+    claim: 'On short-gamma days strong FX and gold walls (any DTE) break more often than their listed neighbours (follow)',
+    result: 'Walls 49.9% vs placebos 52.2% break, -2.4pp [-6.5, +1.6], 1,197 days, wrong sign in 6 of 7 instruments (gold has only 15 short-gamma wall touches); the interval excludes the +3pp bar. Mirror on the same days +0.6 [-1.9, +3.1].',
+    use: 'Do not switch FX or gold wall trades to follow (break) mode on a negative gamma book; the evidence rules out a 3pp follow edge.',
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD'],
+  },
+  {
+    id: 'wall-dte-style-h3-idx', domain: 'positioning', verdict: 'underpowered', date: '2026-11-11', doc: 'oi_research_book/WALL_DTE_STYLE_PREREG.md', also: ['oi_research_book/WALL_DTE_STYLE_RESULTS.md', 'oi_research_book/data/results/wall_dte_style.json'],
+    claim: 'On short-gamma days strong NQ and SPX walls (any DTE) break more often than their listed neighbours (follow)',
+    result: 'Walls 55.2% vs placebos 51.3% break, +3.9pp [-0.1, +8.0], one-sided p 0.027 (fails BH q 0.10), both halves and both instruments positive, but 397 distinct days against a 400 gate. The mirror (open +- 1 sigma edge) on the same days shows +3.0 [-1.7, +7.7], the same size, so the lean is not wall-specific.',
+    use: 'A lean only: a short-gamma index wall is not shown to break more than any nearby strike. Do not run a follow mode on it; the local-gamma study is the next test.',
+    instruments: ['NQ', 'SPX500'],
+  },
+  {
     id: 'wall-placebo', domain: 'positioning', verdict: 'null', date: '2026-10-24', doc: 'oi_research_book/WALL_PLACEBO_PREREG.md', also: ['analysis/output/null-audit/wall-placebo/AUDIT.md'],
     claim: 'The ~60% rejection at a max-OI wall touch is specific to the wall rather than any touched level',
     result: 'Banked 2026-09-23: wall-minus-placebo break rates within +/-2.1pp, every CI containing 0. Audit 2026-10-24 (bugs found, verdict unchanged): the shared builder oi_research_book/01_build_daily_dataset.py compared futures-priced walls with CFD prices WITHOUT the futures-CFD basis (EUR +25 pips, JPY -66, CHF -37, NQ ~+100 pts) and did not swap call/put on the inverted pairs (USD/JPY, CAD, CHF), so the banked design could not see a 4-6pp effect at the true wall. Corrected (basis + swap; also own-expiry basis, book used only once public, clock-time horizons): still null, all CIs contain 0, none reaches 1pp at 15 min; intervals exclude a wall-specific excess above ~2.8pp. Reproduction exact; 246 lockbox rows in the banked run (no effect).',
@@ -2472,6 +2500,10 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'wall-dte-style-h1': { n: '489 distinct days FX/gold (985 resolved wall touches), 97 days NQ+SPX; (instrument, ISO week) cluster bootstrap B 2000', note: 'MDE 9.0pp FX/gold and 12.8pp NQ+SPX against a 3pp bar; NQ+SPX below the 400-day gate' },
+  'wall-dte-style-h2': { n: '1,175 distinct days FX/gold, 661 NQ+SPX; cluster bootstrap B 2000', note: 'MDE 4.7 / 5.8pp against a 3pp bar; the mirror passes (grid placebo bias ~3-5pp)' },
+  'wall-dte-style-h3-fx': { n: '1,197 distinct days, 2,571 resolved wall touches; cluster bootstrap B 2000', note: 'MDE 5.7pp; CI upper +1.6pp excludes the +3pp bar' },
+  'wall-dte-style-h3-idx': { n: '397 distinct days (776 resolved wall touches)', note: '397 < 400-day gate; MDE 5.8pp against a 3pp bar' },
   'bounce-confirmation': { n: '177 bounce episodes 2007-04 to 2026-08-21, arms 102 confirmed / 44 unconfirmed / 31 mixed, episode block bootstrap B 2000', note: 'MDE 1.65 / 2.24 / 1.38pp against bars 1.5 / 2.0 / 1.0pp (underpowered by design: credit widened in only a quarter of bounces); +1.5pp plant missed the interval, +3pp recovered' },
   'swing-walk-heading-nextday':  { n: '12,741-17,215 steps per anchor, 72 origin-month clusters', note: 'MDE 0.024-0.034 sigma vs bar 0.05; every CI upper below the bar' },
   'swing-walk-heading-touch-oi': { n: '16,937-17,215 steps per anchor, 71 expiry-month clusters', note: 'MDE 4.4-4.9pp vs bar 5pp; CI upper +1.5 and +2.5pp' },

@@ -371,6 +371,9 @@ def race(lv):
     """BREAK = 0.25 sigma beyond the level first, BOUNCE = 0.25 sigma back first, by 22:00 London; else unresolved.
     On the touch bar only the break side can be read (the bar arrived from the approach side); a later bar that hits
     both thresholds is ambiguous and counted unresolved."""
+    lv = lv.copy()
+    orig = lv.index
+    lv = lv.reset_index(drop=True)
     out = np.full(len(lv), "none", dtype=object)
     for inst in lv["inst"].unique():
         sess = london_sessions(load_m1(inst))
@@ -395,7 +398,7 @@ def race(lv):
             res = np.where((fb == n + 1) & (fo == n + 1), "none", np.where(fb < fo, "break", np.where(fo < fb, "bounce", "ambig")))
             out[sub.index.values] = res
         log(f"  race {inst} done")
-    return out
+    return pd.Series(out, index=orig)
 
 
 class Boot:
@@ -525,14 +528,19 @@ def wald_hours(sub, boot):
 def score():
     t0 = time.time()
     lv = load_levels()
-    lv = lv[lv["touch_bar"] >= 0].copy()
-    lv["out"] = race(lv)
+    # Every level stays in the frame: populations are chosen by the parent wall's attributes whether or not the wall
+    # itself was touched that session (run 1 dropped untouched levels first, which kept placebos only on sessions where
+    # their wall was reached; see RESULTS "Deviations"). The race runs on touched levels; untouched rows get "untouched".
+    lv = lv.reset_index(drop=True)
+    lv["out"] = "untouched"
+    t = lv["touch_bar"] >= 0
+    lv.loc[t, "out"] = race(lv[t])
     lv.to_parquet(WORK / "events_scored.parquet", index=False)
     log(f"race done {time.time()-t0:.0f}s; outcomes {lv['out'].value_counts().to_dict()}")
     rng = np.random.default_rng(SEED)
-    R = {"id": "wall-dte-style", "seed": SEED, "B": N_BOOT, "ranAt": pd.Timestamp.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+    R = {"id": "wall-dte-style", "seed": SEED, "B": N_BOOT, "ranAt": pd.Timestamp.now("UTC").strftime("%Y-%m-%dT%H:%M:%SZ"),
          "prereg": "oi_research_book/WALL_DTE_STYLE_PREREG.md", "hypotheses": [], "mirror": [], "h2_stacked_gate": {},
-         "local_gamma_context": [], "map": [], "outcomes": lv["out"].value_counts().to_dict()}
+         "local_gamma_context": [], "map": [], "outcomes": lv.loc[lv["touch_bar"] >= 0, "out"].value_counts().to_dict()}
     boots = {}
     for samp in ("FXG", "IDX"):
         ls = lv[lv["sample"] == samp]
@@ -635,7 +643,7 @@ def score():
                             cells_days_ge_400=int((mp["days"] >= MIN_DAYS).sum()))
     # accounting
     R["accounting"] = {i: json.load(open(WORK / f"drops_{i.lower()}.json")) for i in INST}
-    R["unresolved_by_kind"] = (lv.groupby(["sample", "kind"])["out"].apply(lambda s: round(100 * (~s.isin(["break", "bounce"])).mean(), 1))
+    R["unresolved_by_kind"] = (lv[lv["touch_bar"] >= 0].groupby(["sample", "kind"])["out"].apply(lambda s: round(100 * (~s.isin(["break", "bounce"])).mean(), 1))
                                .unstack().to_dict())
     RES.mkdir(parents=True, exist_ok=True)
     json.dump(R, open(RES / "wall_dte_style.json", "w"), indent=2, default=lambda o: None if (isinstance(o, float) and o != o) else (bool(o) if isinstance(o, np.bool_) else (int(o) if isinstance(o, np.integer) else (float(o) if isinstance(o, np.floating) else str(o)))))

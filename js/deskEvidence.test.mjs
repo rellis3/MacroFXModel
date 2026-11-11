@@ -9,7 +9,7 @@ ok('prompt tags underpowered entries', /\[UNDERPOWERED\b/.test(evidenceForPrompt
 ok('every entry has a domain', DESK_EVIDENCE.every(e => ['macro', 'events', 'positioning', 'price', 'volatility', 'execution', 'misc'].includes(e.domain)));
 ok('validated entries name instruments', DESK_EVIDENCE.filter(e => e.verdict === 'validated').every(e => Array.isArray(e.instruments) && e.instruments.length));
 ok('no entry claims direction', DESK_EVIDENCE.every(e => !/predicts? (the )?direction|goes (up|down) next/i.test(e.use)));
-ok('evidenceFor(NQ) includes the down-week and every null', evidenceFor('NQ').some(e => e.id === 'nq-down-week') && evidenceFor('NQ').filter(e => e.verdict === 'null').length === DESK_EVIDENCE.filter(e => e.verdict === 'null').length);
+ok('evidenceFor(NQ) includes the down-week and every null', evidenceFor('NQ').some(e => e.id === 'nq-down-week') && evidenceFor('NQ').filter(e => e.verdict === 'null').length === DESK_EVIDENCE.filter(e => e.verdict === 'null' && (!e.instruments || e.instruments.some(i => ['NQ', 'NAS100', 'NAS100_USD', 'US100'].includes(i)))).length);   // nulls scoped to other instruments only (e.g. wall-dte-style-h3-fx, FX/gold) are excluded by design
 ok('evidenceFor(EURUSD) excludes the NQ-only result', !evidenceFor('EURUSD').some(e => e.id === 'nq-down-week'));
 const txt = evidenceForPrompt();
 ok('prompt block: one line per entry, tagged', txt.split('\n').length === DESK_EVIDENCE.length && /\[VALIDATED[,\u2014]/.test(txt) && /\[TESTED NULL[,\u2014]/.test(txt));

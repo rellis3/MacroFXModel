@@ -192,3 +192,12 @@ sign, all expiries) summed over strikes within +-0.25 sigma of the wall, positiv
 local sign (x all / near 0-7 / far 8+), wall vs placebo break rate with CI and n. Placebos inherit the wall's local
 sign. Descriptive only; a separate study will test local gamma properly. It changes no H1-H4 verdict and enters no FDR
 family.
+
+### A4 — 2026-11-11 — POST-HOC (results seen; describes a bug fix, promotes nothing)
+Run 1 of `score` dropped untouched levels before choosing each hypothesis's population. Placebos were therefore kept
+only on sessions where their parent wall had been touched (conditioning on price having reached the wall), which
+inflated placebo break rates to 60-64% and produced spurious wall-minus-placebo gaps of -4 to -14 pp. A diagnostic
+(all strong walls vs placebos, pooled: -2.8 pp) exposed it before any write-up. Run 2 selects placebos exactly as
+section 3 defines them (neighbours of each real wall, same day, touched or not). Only run 2 is scored. Run 1's numbers
+are listed in `WALL_DTE_STYLE_RESULTS.md` under Deviations. Also post-hoc and descriptive only: a distance-from-open
+matched comparison (it changes nothing).
