@@ -316,7 +316,7 @@ export const AGENTS = [
   // ── News ────────────────────────────────────────────────────────────────────────────────────────────────────
   A('news-wire', 'News analyst', 'News', {
     purpose: 'Reads new tier-1 and tier-2 headlines (up to 20 at a time), tags them by currency and importance, and says which book cards each supports or goes against. Context, not a signal.',
-    trigger: 'Every 2 minutes, when new headlines have arrived.', job: 'newsWire', reads: ['the headline feeds', 'today\'s live cards'], writes: ['the news wire (KV)', 'a Telegram note for a breaking tier-1 headline'],
+    trigger: 'Every 2 minutes, when new headlines have arrived.', job: 'newsWire', reads: ['the headline feeds', 'today\'s live cards'], writes: ['the news wire (KV)', 'a Telegram note for a breaking tier-1 headline', 'optionally, the shared Telegram news channel (its own bot; tier 1-2, longs and shorts grouped, no book lines)'],
     modelTask: 'desk-news', spends: true, roles: ['news_analyst'], links: [L('Desk Terminal', 'desk-terminal.html')],
   }),
   A('events-analyst', 'Events analyst', 'News', {

@@ -27,6 +27,7 @@ import { terrainHtml, mountTerrain, terrainKeys } from './terrainPanel.js';
 import { smilePanelHtml, mountSmile, SMILE_SYMS } from '../smileChart.js';
 import { mountPathChart } from './pathChart.js';
 import * as NV from './newsView.js';
+import * as NCV from './newsChannelView.js';
 import { createLevelChart } from '../levelChart.js';
 import { cardDrivers } from './cardExplain.js';
 import { pineForCard, oandaOf } from '../deskBookPine.js';
@@ -735,10 +736,11 @@ async function renderNews() {
   const root = el('news'); if (!root) return;
   if (!root.dataset.built) {
     root.dataset.built = '1';
-    root.innerHTML = `<div class="card glow"><div class="tt-head"><span class="lbl">News</span><h2 style="flex-basis:100%">The wire</h2><span class="r"><span class="muted" id="nt-upd"></span><button class="btn" data-newsrec style="padding:3px 8px">Track record</button></span></div>
+    root.innerHTML = `<div class="card glow"><div class="tt-head"><span class="lbl">News</span><h2 style="flex-basis:100%">The wire</h2><span class="r"><span class="muted" id="nt-upd"></span><button class="btn" data-newsch style="padding:3px 8px" title="Send these headlines to a Telegram channel">Share channel</button> <button class="btn" data-newsrec style="padding:3px 8px">Track record</button></span></div>
 <div id="nt-top"></div><div id="nt-f"></div><div id="nt-n" class="muted" style="margin-bottom:4px"></div><div id="nt-list">${loading('the wire')}</div>
 <p class="tt-note">Headlines from the last 72 hours, read by the news analyst. Arrows are the first move a headline implies (two arrows: a strong push); markets show base minus quote and whether that supports or goes against today's card. The reaction is the move 5 and 30 minutes later, once known. Context, never a signal.</p></div>`;
     root.querySelector('[data-newsrec]').onclick = () => globalThis.newsRecord?.();
+    root.querySelector('[data-newsch]').onclick = () => NCV.mount({ open: openModal }).show();   // the shared Telegram channel settings (js/terminal/newsChannelView.js)
     const f = el('nt-f');
     f.addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;

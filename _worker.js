@@ -79,6 +79,7 @@ function isAllowedKVKey(key) {
     'desk_alerts_v1',
     'release_reaction_log_v1',
     'desk_news_record_v1',
+    'news_channel_v1',
     'tg_master_all',
     'chain_stats_v1',
     'research_pod_sessions',
@@ -1140,6 +1141,7 @@ export default {
             // desk_news_record_v1: the news wire's reaction record and breaking-alert dedupe (js/newsImpact.js); a forward record.
             'desk_news_record_v1',
             // tg_master_all: the master kill switch for every Telegram message (js/telegramGuard.js); owner-set, must survive redeploys.
+            'news_channel_v1',   // the shared news channel's own bot token + channel (js/newsChannel.js); owner-set, must survive redeploys
             'tg_master_all',
             'chain_stats_v1',
             // research_pod_*: the research pod's sessions, proposals, the owner's marks and the system cards (server writes; the owner's feedback cannot be rebuilt).

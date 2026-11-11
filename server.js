@@ -248,6 +248,7 @@ import { policyRates as _prRates } from './js/policyRates.js';   // each central
 import { expectations as _cbExpect } from './js/cbExpectations.js';   // what the futures price for each bank
 import { parseFeed as _nwParse, fromFinnhub as _nwFinnhub, mergeWire as _nwMerge, validateRead as _nwValidate, pick as _nwPick, wireText as _nwText } from './js/newsAnalyst.js';   // agent 21
 import { pairImpacts as _nwPairs, reactionMarkets as _nwReactMarkets, reactionStart as _nwReactStart, scoreMarket as _nwScoreMarket, headlineReaction as _nwHeadReact, recordRow as _nwRecordRow, appendRecord as _nwAppendRecord, aggregateRecord as _nwAggregate } from './js/newsImpact.js';
+import { CHANNEL_KV_KEY as _NC_KEY, MAX_PER_TICK as _NC_MAX_PER_TICK, channelMessage as _ncMessage, channelCandidates as _ncCandidates, allowChannel as _ncAllow, validateConfig as _ncValidate, publicView as _ncPublic, parseConfig as _ncParse } from './js/newsChannel.js';   // the shared news channel: its own bot, tier 1-2, no book lines
 import { NEWS_SOURCES as _NW_SOURCES, POLL_MIN as _NW_POLL_MIN, backoff as _nwBackoff, dueSources as _nwDue, allowAlert as _nwAllowAlert, breakingCandidates as _nwBreaking, breakingMessage as _nwBreakingMsg } from './js/newsOps.js';
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
 import { RESEARCHERS as _RP_RESEARCHERS, WEB_SOURCES as _RP_WEB, parseFeed as _rpParseFeed, feedItems as _rpFeedItems, webDigest as _rpWebDigest, validateProposals as _rpValidate, applyFeedback as _rpApplyFeedback, feedbackBrief as _rpFeedbackBrief, buildList as _rpBuildList, mergeLibrary as _rpMerge, validateCard as _rpValidateCard, cardPrereg as _rpPrereg, slug as _rpSlug, lifecycle as _rpLifecycle, setLink as _rpSetLink, outcomesBrief as _rpOutcomes, scorecard as _rpScorecard, validateReply as _rpValidateReply, applyRevision as _rpApplyRevision, threadText as _rpThreadText } from './js/researchPod.js';   // Phases 23-25
@@ -7654,7 +7655,22 @@ async function _nwTick() {
         if (await sendTelegram(state.tg.token, state.tg.chatId, _nwBreakingMsg(h, h.pairs))) { rec.alerts = a.state; h.alerted = new Date().toISOString(); sent++; }
       }
     }
-    if (sent || (_nwState.recDirty && now - _nwState.recAt >= 10 * 60_000)) await _nwRecSave();
+    // The shared channel (js/newsChannel.js): its OWN bot, tier 1 and 2 as chosen, longs and shorts grouped, NO book lines. Own caps (6 an hour tier 1, 10 an hour tier 2),
+    // at most 3 sends a pass, nothing older than the moment it was connected. A failed send stops the pass; the reason is shown in the modal.
+    let chSent = 0;
+    try {
+      const ch = await _ncLoad();
+      if (ch && ch.on !== false && ch.token && ch.chatId) {
+        rec.channel ??= { 1: { sent: {}, times: [] }, 2: { sent: {}, times: [] } };
+        const since = Date.parse(ch.savedAt ?? '') || 0, t = Date.now();
+        for (const h of _ncCandidates(wire, t, { tiers: ch.tiers ?? [1, 2], sent: rec.channel, since }).slice(0, _NC_MAX_PER_TICK)) {
+          const a = _ncAllow(rec.channel, h.id, (h.read?.tier ?? h.tier) === 1 ? 1 : 2, t);
+          if (!a.ok) continue;   // already sent, or this tier's hourly cap: try the next headline
+          if (await _ncSend(ch, _ncMessage(h))) { rec.channel = a.state; chSent++; } else break;
+        }
+      }
+    } catch (e) { console.warn('[news] channel:', e.message); }
+    if (sent || chSent || (_nwState.recDirty && now - _nwState.recAt >= 10 * 60_000)) await _nwRecSave();
     const backoff = Object.fromEntries(Object.entries(_nwState.src).filter(([, s]) => s.fails).map(([k, s]) => [k, { fails: s.fails, retryAt: new Date(s.nextAt).toISOString(), error: s.lastError }]));
     await kv.put(_NW_KEY, JSON.stringify({ wire, updatedAt: new Date().toISOString(), health, backoff }));
     _nwState = { ..._nwState, at: Date.now(), health };
@@ -7662,6 +7678,60 @@ async function _nwTick() {
   } finally { _nwState.running = false; }
 }
 svcInterval('newsWire', () => _nwTick().catch(e => console.warn('[news]', e.message)), _NW_POLL_MIN * 60_000);
+// ── The shared news channel: settings and send (js/newsChannel.js; Desk Terminal → News → "Share channel") ───────────────────────────────────────────
+// Its OWN Telegram bot and channel (KV news_channel_v1), separate from tg_config. The routes need the dashboard login (the token is a credential, and most /api routes are
+// open); changes need a same-origin request; the token is NEVER sent back (only its last four characters). The master Telegram switch still mutes it.
+const _ncState = { lastSendAt: null, lastError: null, lastTestAt: 0 };
+async function _ncLoad() { try { return _ncParse(await kv.get(_NC_KEY)); } catch { return null; } }
+async function _ncSend(cfg, text) {
+  if (!tgAllOn()) { _ncState.lastError = 'muted by the Telegram master switch (all Telegram messages are off)'; return false; }
+  const scrub = s => String(s ?? '').split(cfg.token).join('•••').slice(0, 200);
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${cfg.token}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: cfg.chatId, text, parse_mode: 'HTML', disable_web_page_preview: true }), signal: AbortSignal.timeout(10_000) });
+    const j = await r.json().catch(() => ({}));
+    if (j.ok === true) { _ncState.lastSendAt = new Date().toISOString(); _ncState.lastError = null; return true; }
+    _ncState.lastError = scrub(j.description ?? `Telegram answered HTTP ${r.status}`);
+    return false;
+  } catch (e) { _ncState.lastError = scrub(e.message); return false; }
+}
+const _NC_SAMPLE = { id: 'sample', title: 'US CPI hotter than forecast, core at 0.4%', link: 'https://example.com/article', ms: Date.now(), sources: ['Reuters'], tier: 1,
+  read: { tier: 1, why: 'Faster inflation pushes back the first cut.', impact: { USD: 2, GOLD: -2, EUR: -1, JPY: -1, EQUITIES: -1, OIL: 1 } } };
+async function _ncSample() {
+  try { const store = await _nwLoad(); const h = (store.wire ?? []).filter(x => (x.read?.tier ?? x.tier) <= 2 && Object.keys(x.read?.impact ?? {}).length).sort((a, b) => b.ms - a.ms)[0]; if (h) return { h, real: true }; } catch { /* the sample below */ }
+  return { h: { ..._NC_SAMPLE, ms: Date.now() }, real: false };
+}
+app.get('/api/news-channel', _agentsGate, async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store').json({ ok: true, ..._ncPublic(await _ncLoad()), lastSendAt: _ncState.lastSendAt, lastError: _ncState.lastError, masterOn: tgAllOn() }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/news-channel', _agentsGate, _agentsSameOrigin, async (req, res) => {
+  try {
+    const v = _ncValidate(req.body, await _ncLoad());
+    if (!v.ok) return res.status(400).json({ ok: false, error: v.error });
+    await kv.put(_NC_KEY, JSON.stringify(v.cfg));
+    res.set('Cache-Control', 'no-store').json({ ok: true, ..._ncPublic(v.cfg) });
+  } catch (e) { res.status(500).json({ ok: false, error: 'could not save' }); }
+});
+app.delete('/api/news-channel', _agentsGate, _agentsSameOrigin, async (_req, res) => {
+  try { await kv.del(_NC_KEY); _ncState.lastError = null; res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ ok: false, error: 'could not disconnect' }); }
+});
+app.get('/api/news-channel/preview', _agentsGate, async (_req, res) => {
+  try { const s = await _ncSample(); res.set('Cache-Control', 'no-store').json({ ok: true, html: _ncMessage(s.h), real: s.real }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// A real note to the channel, marked TEST, built from the latest read headline (or a sample): shows exactly what members will get. 10 seconds between tests.
+app.post('/api/news-channel/test', _agentsGate, _agentsSameOrigin, async (_req, res) => {
+  try {
+    const cfg = await _ncLoad();
+    if (!cfg) return res.status(400).json({ ok: false, error: 'save the bot token and channel first' });
+    if (Date.now() - _ncState.lastTestAt < 10_000) return res.status(429).json({ ok: false, error: 'wait a few seconds between tests' });
+    _ncState.lastTestAt = Date.now();
+    const s = await _ncSample(), ok = await _ncSend(cfg, `🧪 <b>TEST</b>${s.real ? '' : ' (sample headline)'}\n\n${_ncMessage(s.h)}`);
+    res.json({ ok, error: ok ? null : (_ncState.lastError ?? 'Telegram refused the message') });
+  } catch (e) { res.status(500).json({ ok: false, error: 'test failed' }); }
+});
 // GET /api/desk-news?hours=24&tier=2&ccy=USD: the wire. ?pack=1 is the Desk Pack feed (last 18 h, tiers 1-2, compact).
 // Each read item carries `pairs` (the desk's markets it touches, against today's book) and, once known, `react`.
 app.get('/api/desk-news', async (req, res) => {

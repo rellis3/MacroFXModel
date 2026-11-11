@@ -51,6 +51,7 @@ const KV_FILE   = path.join(DATA_DIR, 'kv.json');
 // how the 🗄 Data Map learns when each store was last written.
 const _CF_EXACT = new Set([
   'tg_config', 'ai_alert_cfg',
+  'news_channel_v1',        // the shared news channel's OWN bot token + channel (js/newsChannel.js; Desk Terminal News tab). Owner-set: must survive redeploys. Also in _worker.js (both lists) and js/storeRegistry.js.
   'tg_master_all',          // the master kill switch for every Telegram message (js/telegramGuard.js; ⚙ Alerts). Owner-set: a reset would un-mute. Also in _worker.js (both lists).
   'kv_write_times_v1',      // the write-time ledger the Data Map reads (js/storeRegistry.js); see _noteWrite above. Also in _worker.js PERMANENT_KEYS.
   'cog_legs_live_v1',      // chart page legs: the laptop's latest IBKR 5-minute bars per futures contract, pushed by scripts/rates_line/refresh_leg_bars.py
