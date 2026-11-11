@@ -20,9 +20,12 @@ import { nakedLevels } from './nakedLevels.js';
 import { oiLevelList } from './oiConf.js';
 import { cardPlan } from './tradeWatch.js';
 
-export const SRZ_HEADER = 'Tier = distance from spot (nearer is reached more often). Sources agreeing is descriptive, not shown to predict a reaction.';
-export const SRZ_DEFAULTS = { radius: 0.15, maxSpan: 0.3, maxTiers: 6, maxSigma: 2.5, binFrac: 0.02, npocLookback: 15, compositeN: 5, hvnMult: 1.3, lvnMult: 0.5, maxHvn: 3, maxLvn: 3, minSessionBars: 36 };
+export const SRZ_HEADER = 'Tier = distance from spot (nearer is reached more often). touch = calibrated P(price trades there within 4h), a reach estimate, not a reaction. Sources agreeing is descriptive, not shown to predict a reaction.';
+export const SRZ_DEFAULTS = { radius: 0.05, maxSpan: 0.1, maxTiers: 6, maxSigma: 2.5, binFrac: 0.02, npocLookback: 15, compositeN: 5, hvnMult: 1.3, lvnMult: 0.5, maxHvn: 3, maxLvn: 3, minSessionBars: 36 };
 export const FAMILY_ORDER = ['oi', 'gamma', 'forecast', 'iv', 'desk', 'profile'];
+// The IV-adjusted ladder is the forecast ladder re-scaled by implied vol: one source, so it counts once with the forecast ladder (2026-11-11 review:
+// counting both gave most zones a free extra family).
+export const indepFamily = f => (f === 'iv' ? 'forecast' : f);
 
 const OI_LABEL = { call_wall: 'call wall', put_wall: 'put wall', max_pain: 'max pain', exp_move_hi: 'implied-move high', exp_move_lo: 'implied-move low',
   gamma_flip: 'gamma flip', gex_flip: 'GEX flip', charm_flip: 'charm flip', vanna_flip: 'vanna flip', hvl: 'HVL (peak gamma)' };
@@ -191,8 +194,9 @@ export function buildSrZones({ spot, sigma, legs = [], opts = {} }) {
   const t = buildTiers({ spot, sigma, levels: [], legs: clean, radius: o.radius, maxSpan: o.maxSpan, maxTiers: o.maxTiers, maxSigma: o.maxSigma });
   const shape = z => {
     const fam = FAMILY_ORDER.filter(f => z.members.some(m => m.family === f));
+    const indep = [...new Set(fam.map(indepFamily))];
     const ms = [...z.members].sort((a, b) => FAMILY_ORDER.indexOf(a.family) - FAMILY_ORDER.indexOf(b.family));
-    return { tier: z.n, lo: z.lo, hi: z.hi, mid: z.mid, dist: z.dist, families: fam, nFamilies: fam.length, sources: [...new Set(ms.map(m => m.label))],
+    return { tier: z.n, lo: z.lo, hi: z.hi, mid: z.mid, dist: z.dist, families: fam, nFamilies: indep.length, sources: [...new Set(ms.map(m => m.label))],
       members: ms.map(m => ({ price: m.price, family: m.family, type: m.type, label: m.label })) };
   };
   return { support: t.below.map(shape), resistance: t.above.map(shape) };
@@ -230,7 +234,9 @@ export function formatBlock(item) {
   if (item.missing?.length) head.push(`missing=${item.missing.map(safe).join(',')}`);
   const L = [head.join('|')];
   for (const [side, arr] of [['S', item.zones?.support || []], ['R', item.zones?.resistance || []]]) {
-    for (const z of arr) L.push([side, z.tier, f(z.lo), f(z.hi), z.nFamilies, safe(z.sources.join(' + ')), z.dist.toFixed(2)].join('|'));
+    // fields 7-8 (touch, member prices) are new 2026-11-11; older Pine copies read 0-5 and ignore them
+    for (const z of arr) L.push([side, z.tier, f(z.lo), f(z.hi), z.nFamilies, safe(z.sources.join(' + ')), z.dist.toFixed(2), safe(z.touch || '-'),
+      [...new Set((z.members || []).map(m => m.price).sort((a, b) => a - b).map(f))].join(';')].join('|'));
   }
   return L.join('\n');
 }
@@ -253,5 +259,5 @@ export const partsText = parts => parts.map((p, i) => `=====PART ${i + 1}/${part
 /** Human-readable desk note for one item: "Support T2 4089.4–4091.6 · 3 families — GEX flip + IV-adj median low + nPOC 11-04". */
 export function describeSrZone(z, side, dp = 2) {
   const f = v => (+v).toFixed(dp), rng = Math.abs(z.hi - z.lo) < 1e-12 ? f(z.lo) : `${f(z.lo)}–${f(z.hi)}`;
-  return `${side === 'S' || side === 'support' ? 'Support' : 'Resistance'} T${z.tier} ${rng} · ${z.nFamilies} famil${z.nFamilies === 1 ? 'y' : 'ies'} — ${z.sources.join(' + ')}`;
+  return `${side === 'S' || side === 'support' ? 'Support' : 'Resistance'} T${z.tier} ${rng} · ${z.nFamilies} famil${z.nFamilies === 1 ? 'y' : 'ies'}${z.touch ? ` · touch ${z.touch}` : ''} — ${z.sources.join(' + ')}`;
 }

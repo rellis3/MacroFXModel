@@ -95,8 +95,8 @@ t('text format: header, pipes, plain decimals, parts', () => {
   const b = formatBlock({ name: 'GOLD', aliases: ['XAUUSD', 'GC1!'], spot: 4130.1, sigma: 35.2, basis: 23.3, date: '2026-11-10', digits: 2, gex: 'neg breakout', cot: 'a|b=c', desk: 'LONG', zones });
   const L = b.split('\n');
   assert.equal(L[0], 'SRZ|GOLD|XAUUSD,GC1!|spot=4130.10|sigma=35.20|basis=23.30|date=2026-11-10|gex=neg breakout|cot=a b:c|desk=LONG');
-  assert.equal(L[1], 'S|1|4111.60|4111.60|2|forecast median low + put wall|0.50');
-  assert.equal(L[2], 'S|2|4089.40|4091.60|3|GEX flip + IV-adj median low + nPOC 11-04|1.10');
+  assert.equal(L[1], 'S|1|4111.60|4111.60|2|forecast median low + put wall|0.50|-|');
+  assert.equal(L[2], 'S|2|4089.40|4091.60|3|GEX flip + IV-adj median low + nPOC 11-04|1.10|-|');
   assert.equal(formatBlock({ name: 'USDJPY', aliases: [], spot: 150, sigma: 1, basis: null, date: 'd', digits: 3, zones }).split('\n')[0].includes('basis=na'), true);
   const txt = formatExport([{ name: 'A', aliases: [], spot: 1, sigma: 1, basis: 0, date: 'd', zones }], {});
   assert.ok(txt.startsWith('# ' + SRZ_HEADER));
@@ -108,7 +108,6 @@ t('text format: header, pipes, plain decimals, parts', () => {
   assert.match(partsText(parts), /^=====PART 1\/\d+=====\n/);
   assert.equal(describeSrZone(zones.support[1], 'S', 1), 'Support T2 4089.4–4091.6 · 3 families — GEX flip + IV-adj median low + nPOC 11-04');
 });
-console.log(`${n} tests passed`);
 t('gamma peaks and the overbought/oversold read', () => {
   const pk = gexPeakLegs({ gexProfile: [{ strike: 4000, netGex: 5 }, { strike: 4050, netGex: 9 }, { strike: 3950, netGex: -7 }, { strike: 2000, netGex: 99 }] }, 4030);
   assert.deepEqual(pk.map(l => [l.price, l.type, l.family]), [[4050, 'gex_pos_peak', 'gamma'], [3950, 'gex_neg_peak', 'gamma']]);
@@ -117,3 +116,14 @@ t('gamma peaks and the overbought/oversold read', () => {
   assert.equal(stretchContext({ spot: 4115, open: 4110, sigma: 56, ladder: { oh: { p50: 0.6, p75: 1.0, p90: 1.5 } } }).dayWord, 'inside the day range');
   assert.equal(stretchContext({}), null);
 });
+t('tight zones: no box wider than 0.1σ; IV-adj counts with the forecast; touch + members in the row', () => {
+  const legs = [{ price: 101, family: 'forecast', type: 'a', label: 'forecast median high' }, { price: 101.2, family: 'iv', type: 'b', label: 'IV-adj median high' },
+    { price: 102, family: 'oi', type: 'c', label: 'call wall' }, { price: 104.5, family: 'profile', type: 'd', label: 'LVN' }];
+  const z = buildSrZones({ spot: 100, sigma: 20, legs });   // join radius 0.05σ = 1, span cap 0.1σ = 2: 101, 101.2, 102 join; 104.5 does not
+  assert.ok(z.resistance.every(r => r.hi - r.lo <= 2 + 1e-9), JSON.stringify(z.resistance));
+  assert.equal(z.resistance[0].nFamilies, 2);   // forecast+iv = 1, oi = 1
+  z.resistance[0].touch = '41%~2h';
+  const row = formatBlock({ name: 'X', aliases: [], spot: 100, sigma: 20, basis: 0, date: 'd', digits: 1, zones: { support: [], resistance: z.resistance } }).split(String.fromCharCode(10))[1].split('|');
+  assert.equal(row[7], '41%~2h'); assert.equal(row[8], '101.0;101.2;102.0');
+});
+console.log(`${n} tests passed`);

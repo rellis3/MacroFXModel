@@ -2,8 +2,12 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 // S/R ZONES — the desk-note ladder of support and resistance zones from the MacroFX site (owner request, 2026-11-10)
 //   Support T1..T6 below spot (green), Resistance T1..T6 above (red), from today's London midnight to 22:00 London.
-//   A single price draws as a line; a range draws as a thin dashed box. The number after the dot is how many source families
-//   sit in the zone (OI, gamma, forecast ladder, IV-adjusted ladder, desk card, volume profile) and sets the opacity.
+//   A zone where 2+ independent source families sit within 0.1σ draws as a thin dashed box (its width is the spread of those levels,
+//   never more than 0.1σ). A one-family zone draws as plain lines at its own prices, not a box. The number after the dot is the count of
+//   independent families (OI, gamma, vol ladder = forecast + IV-adjusted counted once, desk card, volume profile); every zone is drawn
+//   at the same strength because the count has not been shown to predict a reaction. "touch" = calibrated P(price trades at the zone's
+//   near edge within 4h), the same reach model as the OI levels export: how likely it is to be reached, not whether it holds.
+//   (2026-11-11: zones were 0.3σ wide and shaded by count; a 170-point NQ box was 5 lines with gaps between them.)
 //
 // DATA: paste the export from  <site>/api/sr-zones/export?pair=all  (or the "S/R zones" option on the OI Lab page / bot-config OI-Conf tab).
 //   One paste holds every instrument (~15,000 characters; Pine v6 strings hold 40,960), like the OI Profile export. The same paste
@@ -14,7 +18,7 @@
 //   OI walls and ladder lines were each placebo-null as reaction levels in our own tests. A map, not a signal.
 // NOTE: written without a Pine compiler — if TradingView reports an error, the line number points at it.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
-indicator("SR Zones", shorttitle="SR Zones", overlay=true, max_lines_count=100, max_labels_count=100, max_boxes_count=100)
+indicator("SR Zones", shorttitle="SR Zones", overlay=true, max_lines_count=300, max_labels_count=100, max_boxes_count=100)
 
 G1 = "1 · Data"
 paste1 = input.text_area("", "Paste the S/R zones export (all instruments)", group=G1, tooltip="Paste the whole export in one go: every instrument fits (Pine v6 strings hold 40,960 characters). The block matching the chart ticker is drawn.")
@@ -26,6 +30,7 @@ maxTier   = input.int(6, "Max tier", minval=1, maxval=6, group=G2)
 minFam    = input.int(1, "Min source families", minval=1, maxval=6, group=G2)
 basisMode = input.string("Auto", "Futures basis", options=["Auto", "Always add", "Never add"], group=G2, tooltip="Auto adds the block's basis on a futures chart (type futures, or a ticker ending in 1!/2!).")
 showSrc   = input.bool(false, "Sources in the label", group=G2)
+showTouch = input.bool(true, "P(touch within 4h) in the label", group=G2)
 showTable = input.bool(true, "Context table", group=G2)
 supCol    = input.color(color.rgb(38, 166, 91), "Support colour", group=G2)
 resCol    = input.color(color.rgb(232, 77, 77), "Resistance colour", group=G2)
@@ -33,7 +38,6 @@ resCol    = input.color(color.rgb(232, 77, 77), "Resistance colour", group=G2)
 // ── parse ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 f_num(string s) => str.tonumber(str.trim(s))
 
-f_transp(int nf) => nf >= 4 ? 0 : nf == 3 ? 20 : nf == 2 ? 45 : 65
 
 if barstate.islastconfirmedhistory
     string allTxt = paste1
@@ -125,6 +129,8 @@ if barstate.islastconfirmedhistory
                 float hi = f_num(array.get(f, 3))
                 float nfF = f_num(array.get(f, 4))
                 string src = array.size(f) >= 6 ? array.get(f, 5) : ""
+                string touch = array.size(f) >= 8 ? str.trim(array.get(f, 7)) : "-"
+                string mem = array.size(f) >= 9 ? str.trim(array.get(f, 8)) : ""
                 int tier = na(tierF) ? 9 : int(tierF)
                 int nf = na(nfF) ? 1 : int(nfF)
                 bool show = (isSup ? showSup : showRes) and tier <= maxTier and nf >= minFam and not na(lo) and not na(hi)
@@ -132,15 +138,25 @@ if barstate.islastconfirmedhistory
                     float pLo = lo + shift
                     float pHi = hi + shift
                     color c = isSup ? supCol : resCol
-                    int tr = f_transp(nf)
+                    int tr = 30
                     bool isRange = math.abs(pHi - pLo) >= syminfo.mintick
                     string px = isRange ? str.tostring(pLo, format.mintick) + "–" + str.tostring(pHi, format.mintick) : str.tostring(pLo, format.mintick)
-                    string txt = (isSup ? "Support T" : "Resistance T") + str.tostring(tier) + " " + px + " · " + str.tostring(nf) + (showSrc and src != "" ? "\n" + src : "")
-                    if isRange
-                        box.new(left=t0, top=pHi, right=t1, bottom=pLo, xloc=xloc.bar_time, border_color=color.new(c, tr), border_width=1, border_style=line.style_dashed, bgcolor=color.new(c, math.min(95, tr + 80)))
+                    string tch = showTouch and touch != "-" and touch != "" ? " · touch " + touch : ""
+                    string txt = (isSup ? "Support T" : "Resistance T") + str.tostring(tier) + " " + px + " · " + str.tostring(nf) + tch + (showSrc and src != "" ? "\n" + src : "")
+                    if isRange and nf >= 2
+                        box.new(left=t0, top=pHi, right=t1, bottom=pLo, xloc=xloc.bar_time, border_color=color.new(c, tr), border_width=1, border_style=line.style_dashed, bgcolor=color.new(c, 85))
+                    else if isRange and mem != ""
+                        // one family spread over a range (e.g. two call walls): its own prices as lines, no box
+                        for mp in str.split(mem, ";")
+                            float pm = f_num(mp)
+                            if not na(pm)
+                                line.new(x1=t0, y1=pm + shift, x2=t1, y2=pm + shift, xloc=xloc.bar_time, color=color.new(c, tr), width=1, style=line.style_solid)
+                    else if isRange
+                        line.new(x1=t0, y1=pLo, x2=t1, y2=pLo, xloc=xloc.bar_time, color=color.new(c, tr), width=1, style=line.style_solid)
+                        line.new(x1=t0, y1=pHi, x2=t1, y2=pHi, xloc=xloc.bar_time, color=color.new(c, tr), width=1, style=line.style_solid)
                     else
-                        line.new(x1=t0, y1=pLo, x2=t1, y2=pLo, xloc=xloc.bar_time, color=color.new(c, tr), width=tier == 1 ? 2 : 1, style=line.style_solid)
-                    label.new(x=t1, y=(pLo + pHi) / 2, text=txt, xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.black, 100), textcolor=color.new(c, math.max(0, tr - 20)), size=size.small)
+                        line.new(x1=t0, y1=pLo, x2=t1, y2=pLo, xloc=xloc.bar_time, color=color.new(c, tr), width=1, style=line.style_solid)
+                    label.new(x=t1, y=(pLo + pHi) / 2, text=txt, xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.black, 100), textcolor=c, size=size.small)
 
     if showTable
         table tb = table.new(position.top_right, 2, 8, bgcolor=color.new(color.black, 30), border_width=1)
@@ -159,4 +175,4 @@ if barstate.islastconfirmedhistory
         table.cell(tb, 0, 7, "ob / os", text_color=color.gray, text_size=size.small)
         table.cell(tb, 1, 7, strX, text_color=color.white, text_size=size.tiny)
         table.cell(tb, 0, 6, "note", text_color=color.gray, text_size=size.small)
-        table.cell(tb, 1, 6, "tier = distance; families descriptive" + (missX != "" ? " · missing: " + missX : ""), text_color=color.gray, text_size=size.tiny)
+        table.cell(tb, 1, 6, "tier = distance; touch = P(reach) 4h; families descriptive" + (missX != "" ? " · missing: " + missX : ""), text_color=color.gray, text_size=size.tiny)

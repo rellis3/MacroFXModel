@@ -8,6 +8,8 @@ import { oiStoreToLevels } from './oiConfluence.js';
 import { oiFuturesTermsPrice } from './oi.js';
 import { priceDigits } from './hedgingBooks.js';
 import { tvTickers } from './deskBookPine.js';
+import { wallReachability, reachLabel } from './oiReachability.js';
+import { buildIntradayContext } from './forecastPathCore.js';
 import { londonDay, londonOpen, volumeProfileLevels, oiLegs, gexPeakLegs, stretchContext, forecastLegs, deskLegs, profileLegs, buildSrZones, gexContext, cotContext,
   formatExport, splitParts, partsText, SRZ_HEADER, describeSrZone } from './srZones.js';
 
@@ -57,6 +59,16 @@ export function createSrZones({ kv, getForecast, forecastKeyForPair, oandaFor, i
     return want.map(w => keys.find(k => k === w || norm(k) === norm(w) || (fkOf(k) && (fkOf(k) === fkOf(w) || fkOf(k) === aliasFk[norm(w)])))).filter(Boolean);
   }
 
+  function addTouch(done, k, sup, res) {
+    const bars = done.slice(-2000);   // the window the OI export's reachability uses
+    if (bars.length < 400) return;
+    const edge = [...sup.map(z => ({ z, price: z.hi })), ...res.map(z => ({ z, price: z.lo }))];
+    const uniq = [...new Map(edge.map(e => [e.price.toFixed(8), e.price])).values()];
+    const rows = wallReachability(buildIntradayContext(bars, {}), bars.length, uniq.map(price => ({ price })), 48, { nPaths: 300, instrument: k });
+    const lab = new Map(rows.map(r => [r.price.toFixed(8), reachLabel(r, 5)]));
+    for (const e of edge) e.z.touch = lab.get(e.price.toFixed(8)) || '<1%';
+  }
+
   async function buildItem(k, inst, ctx) {
     const missing = [];
     const fk = fkOf(k), fc = fk ? ctx.forecast?.instruments?.[fk] : null;
@@ -94,6 +106,8 @@ export function createSrZones({ kv, getForecast, forecastKeyForPair, oandaFor, i
     const zones = buildSrZones({ spot, sigma, legs });
     // the "core OI levels" option: OI + gamma levels only, merged only where two sit on (almost) the same price
     const coreZones = buildSrZones({ spot, sigma, legs: oi, opts: { radius: 0.03, maxSpan: 0.06, maxTiers: 8 } });
+    // the near edge of each zone gets the calibrated P(touch within 4h) the OI levels export uses (js/oiReachability.js, per-instrument curve)
+    try { addTouch(done, k, [...zones.support, ...coreZones.support], [...zones.resistance, ...coreZones.resistance]); } catch (e) { log.warn?.('[sr-zones] touch', k, e.message); }
     // futures basis (futures − spot) when the conversion is a plain shift; inverted (USD/JPY…) and unit-scaled (grains) books get none
     const fut = oiFuturesTermsPrice(spot, inst);
     const basisOk = Number.isFinite(inst.basis) && Number.isFinite(fut) && Math.abs(fut / spot - 1) < 0.05;
