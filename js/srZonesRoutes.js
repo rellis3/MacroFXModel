@@ -65,7 +65,7 @@ export function createSrZones({ kv, getForecast, forecastKeyForPair, oandaFor, i
     const edge = [...sup.map(z => ({ z, price: z.hi })), ...res.map(z => ({ z, price: z.lo }))];
     const uniq = [...new Map(edge.map(e => [e.price.toFixed(8), e.price])).values()];
     const rows = wallReachability(buildIntradayContext(bars, {}), bars.length, uniq.map(price => ({ price })), 48, { nPaths: 300, instrument: k });
-    const lab = new Map(rows.map(r => [r.price.toFixed(8), reachLabel(r, 5)]));
+    const lab = new Map(rows.map(r => [r.price.toFixed(8), reachLabel(r, 5).replace(/~?$/, '')]));   // '~?' = no ETA estimate: drop it
     for (const e of edge) e.z.touch = lab.get(e.price.toFixed(8)) || '<1%';
   }
 
