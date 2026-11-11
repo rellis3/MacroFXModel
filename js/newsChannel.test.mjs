@@ -79,7 +79,7 @@ t('a story published long ago is not sent even if the server only just saw it', 
 
 t('the longer detail is shown, but never if it mentions the desk, book or tools', () => {
   const ok = channelMessage(H({ read: { ...H().read, detail: 'Hotter inflation lifts yield expectations and the dollar. Watch Friday payrolls.' } }));
-  assert.match(ok, /Why: Faster inflation[^\n]*\nHotter inflation lifts yield expectations/);
+  assert.match(ok, /Why: Faster inflation[^\n]*\nWatch: Hotter inflation lifts yield expectations/);
   for (const bad of ['This fits the desk book short USDJPY card.', 'We expect our signal to fire.', 'See the dashboard terminal.']) assert.doesNotMatch(channelMessage(H({ read: { ...H().read, detail: bad } })), /desk|signal to fire|dashboard/);
   assert.doesNotMatch(channelMessage(H()), /undefined|null/);
 });

@@ -87,7 +87,7 @@ export function channelMessage(h) {
     url ? `<a href="${url}"><b>${esc(title)}</b></a>` : `<b>${esc(title)}</b>`,
     url ? `<a href="${url}">→ Read the article</a>${srcList[0] ? ` (${esc(srcList[0])})` : ''}` : null,
     h?.read?.why ? `\nWhy: ${esc(clip(h.read.why, 200))}` : null,
-    publicDetail(h?.read?.detail) ? esc(clip(publicDetail(h.read.detail), 280)) : null,
+    publicDetail(h?.read?.detail) ? `Watch: ${esc(clip(publicDetail(h.read.detail).replace(/^watch:?\s*/i, ''), 200))}` : null,
     cur.stronger.length || cur.weaker.length ? '\n💱 <b>CURRENCIES</b>' : null,
     cur.stronger.length ? `🟢 <b>Stronger</b>   ${cur.stronger.map(r => esc(curItem(r))).join('   ')}` : null,
     cur.weaker.length ? `🔴 <b>Weaker</b>     ${cur.weaker.map(r => esc(curItem(r))).join('   ')}` : null,

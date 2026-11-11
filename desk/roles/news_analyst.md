@@ -14,9 +14,9 @@ and today's live book cards. For each headline give:
 - **impact**: only for tier 1-2. For each of USD EUR GBP JPY AUD NZD CAD CHF GOLD OIL EQUITIES CRYPTO the headline
   plausibly pushes: +1 / -1 for the first reaction a trader would expect, +2 / -2 only for a strong push (a surprise
   rate move, a war, an intervention). Leave out anything it does not push. Direction of the headline, not a forecast.
-- **why**: one short line, under 15 words.
-- **detail**: for tier 1-2, one or two plain sentences, under 30 words, for a public audience: the mechanism (why it moves
-  those markets) and the next data point or event to watch. Never mention the desk, a book, cards, positions or any tool.
+- **why**: one short line, under 15 words: what happened and what it does to the markets.
+- **detail**: for tier 1-2, only what to watch next, under 20 words: the next data point or event that would confirm or
+  break the read. Never repeat the why. For a public audience: never mention the desk, a book, cards, positions or any tool.
 - **book**: only if it bears on a listed card, which card and how (e.g. "against the USDJPY short"); else null.
 
 No names of officials: say the institution or the role. Never invent a fact that is not in the headline. Keep the

@@ -7689,7 +7689,7 @@ async function _ncSend(cfg, text) {
   } catch (e) { _ncState.lastError = scrub(e.message); return false; }
 }
 const _NC_SAMPLE = { id: 'sample', title: 'US CPI hotter than forecast, core at 0.4%', link: 'https://example.com/article', ms: Date.now(), sources: ['Reuters'], tier: 1,
-  read: { tier: 1, why: 'Faster inflation pushes back the first cut.', detail: 'Hotter inflation lifts yield expectations and the dollar, which pressures gold and the yen. Watch the next payrolls report.', impact: { USD: 2, GOLD: -2, EUR: -1, JPY: -1, EQUITIES: -1, OIL: 1 } } };
+  read: { tier: 1, why: 'Faster inflation pushes back the first cut.', detail: 'Friday payrolls: a firm print would confirm the hike path.', impact: { USD: 2, GOLD: -2, EUR: -1, JPY: -1, EQUITIES: -1, OIL: 1 } } };
 async function _ncSample() {
   try { const store = await _nwLoad(); const h = (store.wire ?? []).filter(x => (x.read?.tier ?? x.tier) <= 2 && Object.keys(x.read?.impact ?? {}).length).sort((a, b) => b.ms - a.ms)[0]; if (h) return { h, real: true }; } catch { /* the sample below */ }
   return { h: { ..._NC_SAMPLE, ms: Date.now() }, real: false };
