@@ -12,22 +12,26 @@
  *
  * Pure: no fetch, no clock (the caller passes nowMs). Tested in js/macroIdea.test.mjs.
  */
-import { CHAIN_NODES, CHAIN_WINDOW_DAYS } from './macroChain.js';
+import { CHAIN_NODES, CHAIN_WINDOW_DAYS, scaledFloor } from './macroChain.js';
 
 const num = x => Number.isFinite(x);
-const floorOf = (key, nodes) => nodes[key]?.floor ?? null;
+// the floor for the window being judged (the 20-day floor scaled by √(days/20), as the chain board does); 20 days = the plain floor
+const floorOf = (key, nodes, win = CHAIN_WINDOW_DAYS) => (nodes[key]?.floor == null ? null : win === CHAIN_WINDOW_DAYS ? nodes[key].floor : scaledFloor(nodes[key], win));
 /** How decisively both ends moved: each end's move as a multiple of its noise floor, the smaller of the two (a chain is only as strong as its quieter end). */
-function strength(l, nodes) {
-  const fa = floorOf(l.a?.key, nodes), fb = floorOf(l.b?.key, nodes);
+function strength(l, nodes, win = CHAIN_WINDOW_DAYS) {
+  const fa = floorOf(l.a?.key, nodes, win), fb = floorOf(l.b?.key, nodes, win);
   if (!num(l.a?.delta) || !num(l.b?.delta) || !(fa > 0) || !(fb > 0)) return 0;
   return Math.min(Math.abs(l.a.delta) / fa, Math.abs(l.b.delta) / fb);
 }
 const dirWord = d => (d === 'up' ? 'rose' : d === 'down' ? 'fell' : 'did not move');
 
-export function buildIdea({ links = [], events = [], rangePressure = null, fear = null, crowding = null, cotDate = null, nowMs = null, nodes = CHAIN_NODES } = {}) {
+// window: the chain window the links were judged on (1, 5, 20 days or 'live'); the default, 20, gives the newsletter's wording unchanged.
+export function buildIdea({ links = [], events = [], rangePressure = null, fear = null, crowding = null, cotDate = null, nowMs = null, nodes = CHAIN_NODES, window: win = CHAIN_WINDOW_DAYS } = {}) {
+  const W20 = win === CHAIN_WINDOW_DAYS, over = W20 ? `over ${CHAIN_WINDOW_DAYS} days` : win === 'live' ? 'since the last close' : `over ${win} day${win === 1 ? '' : 's'}`;
+  const overCal = W20 ? `over ${CHAIN_WINDOW_DAYS} calendar days` : over, viewWord = W20 ? 'a weeks view, not an intraday one' : win === 5 ? 'a one-week view' : 'a today view, not a trend';
   const judged = links.filter(l => l.verdict === 'holding' || l.verdict === 'broken');
   if (!judged.length) return null;
-  const score = new Map(judged.map(l => [l.id, strength(l, nodes)]));
+  const score = new Map(judged.map(l => [l.id, strength(l, nodes, win)]));
   const best = arr => arr.slice().sort((x, y) => score.get(y.id) - score.get(x.id))[0];
   const broken = judged.filter(l => l.verdict === 'broken');
   const story = best(broken.length ? broken : judged);
@@ -68,19 +72,19 @@ export function buildIdea({ links = [], events = [], rangePressure = null, fear 
   const floorTxt = story.a.floorText ?? '';
 
   const q = [
-    { n: 1, g: 'view', t: "What's the story?", body: `${steps.map(s => `${s.label} ${s.text}`).join(', then ')}. Moves are over ${CHAIN_WINDOW_DAYS} days.` },
+    { n: 1, g: 'view', t: "What's the story?", body: `${steps.map(s => `${s.label} ${s.text}`).join(', then ')}. Moves are ${over}.` },
     { n: 2, g: 'view', t: 'What is it resting on?', body: `${weak.a.label} to ${weak.b.label}. ${weakWhy}` },
-    { n: 3, g: 'view', t: 'Is the data agreeing?', body: `${holding} of ${judged.length} testable links across the whole chain are holding over ${CHAIN_WINDOW_DAYS} days. ${broken.length ? `The ones that are not: ${broken.map(l => `${l.a.label} to ${l.b.label}`).join(', ')}.` : 'None are broken.'}` },
+    { n: 3, g: 'view', t: 'Is the data agreeing?', body: `${holding} of ${judged.length} testable links across the whole chain are holding ${over}. ${broken.length ? `The ones that are not: ${broken.map(l => `${l.a.label} to ${l.b.label}`).join(', ')}.` : 'None are broken.'}` },
     { n: 4, g: 'timing', t: 'What does the market already believe?', body: posn.join(' ') },
     { n: 5, g: 'timing', t: 'How is price reacting?', body: story.verdict === 'broken' ? `Price is the referee here. ${story.a.label} ${dirWord(story.a.dir)} ${story.a.text} and ${story.b.label} was meant to ${expectDir ?? 'follow'} but went ${story.b.text}.` : `Price is following the cause: ${story.a.label} ${story.a.text}, then ${story.b.label} ${story.b.text}, the textbook way.` },
     { n: 6, g: 'timing', t: "What's on the calendar?", body: cal.length ? cal.map(e => `${e.ccy ? e.ccy + ' ' : ''}${e.event}`).join(' and ') + ' can force the issue.' : 'No high-impact release is lined up to force the issue soon.' },
-    { n: 7, g: 'trade', t: 'Which markets does it touch, over what horizon?', body: `${touched.join(', ')}. It is judged over ${CHAIN_WINDOW_DAYS} calendar days, so read it as a weeks view, not an intraday one.` },
+    { n: 7, g: 'trade', t: 'Which markets does it touch, over what horizon?', body: `${touched.join(', ')}. It is judged ${overCal}, so read it as ${viewWord}.` },
     { n: 8, g: 'trade', t: 'What would prove it wrong?', body: story.verdict === 'broken' ? `If ${story.a.label} drifts back inside its noise band (${floorTxt}) the story is over. If ${story.b.label} starts to ${expectDir ?? 'follow'}, the link has repaired itself.` : `If ${story.a.label} drifts back inside its noise band (${floorTxt}) the story is over. If ${story.b.label} stops moving with it, the link has broken.` },
   ];
   const pattern = story.verdict === 'broken' ? 'The cause moved but price did not follow' : null;
   // Question 0, the horizon filter: does this move markets on a weeks timeframe, or is it background? Judged on the size of the move against the noise floor.
   const str = score.get(story.id), real = str >= 2;
-  const q0 = { n: 0, g: 'filter', t: 'Does it matter on your timeframe?', body: `${real ? 'Both ends moved at least twice their noise band over' : 'The ends only just cleared their noise band over'} ${CHAIN_WINDOW_DAYS} calendar days, so ${real ? 'this is a real weeks story' : 'treat this as background, not a driver'}. Slow structural stories, such as long-running deficits, are not measured here.` };
+  const q0 = { n: 0, g: 'filter', t: 'Does it matter on your timeframe?', body: `${real ? 'Both ends moved at least twice their noise band' : 'The ends only just cleared their noise band'} ${overCal}, so ${real ? `this is a real ${W20 ? 'weeks' : win === 5 ? 'week' : 'day'} story` : 'treat this as background, not a driver'}. Slow structural stories, such as long-running deficits, are not measured here.` };
   // At least three scenarios, always including "nothing happens". Conditions to watch, never probabilities: this desk's tests found direction not forecastable.
   const scenarios = [
     { name: 'Carries on', what: `${story.a.label} keeps moving${story.verdict === 'broken' ? ` while ${story.b.label} goes the other way` : ` and ${story.b.label} keeps pace`}.` },

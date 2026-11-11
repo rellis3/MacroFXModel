@@ -773,6 +773,8 @@ function drawNews(filters = false) {
 // the Assets cards were drawn before this module loaded: draw them again once so each gets its "latest:" line
 const assetsNews = () => { if (typeof assets === 'function' && D?.cards && D.news?.length && !document.querySelector('#assets .nt-latest')) assets(); };
 const RENDER = { today: renderToday, pair: renderPair, changed: renderChanged, research: renderResearch, options: renderOptions, news: renderNews, assets: assetsNews,
+  // the Trader's Read: the podcast hosts' eight questions and checks on the desk's own chain (js/traderRead.js)
+  read: () => import('./traderReadView.js').then(V => V.render(el('read'), { getJson, openModal })).catch(e => { el('read').innerHTML = `<div class="card"><p class="muted">The Trader's Read did not load: ${h(e.message)}</p></div>`; }),
   corr: () => import('./corrView.js').then(V => V.render(el('corr'), { getJson, book: () => D })).catch(e => { el('corr').innerHTML = `<div class="card"><p class="muted">Correlations &amp; hedges did not load: ${h(e.message)}</p></div>`; }) };
 globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'news') { clearInterval(NS.timer); NS.timer = null; } if (t !== 'pair' && /pair=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
 globalThis.openPairPage = openPair;
