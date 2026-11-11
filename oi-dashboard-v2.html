@@ -260,6 +260,7 @@ svg text{font-family:var(--mono)}
       <span class="tgl" id="xkChoice" title="Two options for the OI confluence output: the core OI levels export (unchanged) or the grouped S/R zones"><span class="pill" data-xk="core">Core OI levels</span><span class="pill" data-xk="srz">S/R zones</span></span>
       <label class="pill" style="cursor:pointer"><input type="checkbox" id="tiersToday" checked style="margin-right:6px">today only</label>
       <label class="pill" style="cursor:pointer"><input type="checkbox" id="tiersFut" style="margin-right:6px">futures terms</label>
+      <label class="pill" title="Which expiry book the Profile export reads: the strongest (most gamma near spot), the nearest-dated, or both (nearest added as tagged extra lines)">book <select id="tiersBook" style="background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px"><option value="">strongest</option><option value="nearest">nearest (0–1 DTE)</option><option value="both">strongest + nearest</option></select></label>
       <label class="pill" style="cursor:pointer" title="Only what the indicator reads (drops the explanatory TIERS sentences and legends)"><input type="checkbox" id="tiersLean" checked style="margin-right:6px">lean</label>
       <button class="btn" id="tiersGo">Refresh</button><button class="btn" id="tiersCopy">Copy</button><span style="flex:1"></span><button class="btn" id="tiersClose">Close</button></div>
     <div class="legend" style="margin:0">Separate from the normal export: paste this <b>instead of</b> its OI section. Tier = distance from spot (nearer is reached first); "confluence" lists sources in the same zone and is descriptive only.</div>
@@ -500,6 +501,7 @@ function plvDrawCboe() {
     const v = L[k]; if (Number.isFinite(v)) PLV.cboeLines.push(LW.series.createPriceLine({ price: v, color, lineWidth: 1, lineStyle: 1, axisLabelVisible: true, title }));
   });
 }
+const bookQ = () => { const v = ($('#tiersBook') || {}).value; return v ? '&book=' + v : ''; };
 async function plvFetch() {
   if (PLV.busy === SYM || document.hidden || !CUR) return;
   PLV.busy = SYM; const sym = SYM;
@@ -1687,20 +1689,20 @@ function showExport(text){
   box.querySelectorAll('button[data-part]').forEach(b => b.onclick = () => { try { navigator.clipboard.writeText(parts[+b.dataset.part]); b.textContent = 'Copied ✓'; setTimeout(() => b.textContent = 'Copy part ' + (+b.dataset.part + 1), 1500); } catch (_) { b.parentElement.nextElementSibling.select(); } });
 }
 async function loadProfile(){ const ta = $('#tiersTxt'); ta.value = 'fetching… (price feed + P(touch), ~5–15 s)';
-  try { const r = await fetch('/api/oi-profile/export?pair=' + encodeURIComponent(SYM) + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); showExport(await r.text()); }
+  try { const r = await fetch('/api/oi-profile/export?pair=' + encodeURIComponent(SYM) + ($('#tiersFut').checked ? '&terms=futures' : '') + bookQ(), { cache: 'no-store' }); showExport(await r.text()); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 let EXPORT_KIND = 'tiers';
 async function loadLevels(){ const ta = $('#tiersTxt'); $('#tiersParts').style.display = 'none'; ta.style.display = ''; ta.value = 'fetching… (price feed + P(touch), ~10–20 s)';
   try { const r = await fetch('/api/vol-forecast/zones?reach=1' + ($('#tiersToday').checked ? '&mode=today' : '') + ($('#tiersFut').checked ? '&terms=futures' : '') + ($('#tiersLean').checked ? '&lean=1' : ''), { cache: 'no-store' }); ta.value = await r.text(); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 async function loadProfileEvery(){ const ta = $('#tiersTxt'); ta.value = 'building every instrument incl. commodities…';
-  try { const r = await fetch('/api/oi-profile/export?pair=all' + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); showExport(await r.text()); }
+  try { const r = await fetch('/api/oi-profile/export?pair=all' + ($('#tiersFut').checked ? '&terms=futures' : '') + bookQ(), { cache: 'no-store' }); showExport(await r.text()); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 async function loadProfileBooks(){ const ta = $('#tiersTxt'); ta.value = 'building every core instrument, every expiry book…';
-  try { const r = await fetch('/api/oi-profile/export?pair=core&books=all' + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); showExport(await r.text()); }
+  try { const r = await fetch('/api/oi-profile/export?pair=core&books=all' + ($('#tiersFut').checked ? '&terms=futures' : '') + bookQ(), { cache: 'no-store' }); showExport(await r.text()); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 async function loadProfileAll(){ const ta = $('#tiersTxt'); ta.value = 'building every instrument…';
-  try { const r = await fetch('/api/oi-profile/export?pair=core' + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); showExport(await r.text()); }
+  try { const r = await fetch('/api/oi-profile/export?pair=core' + ($('#tiersFut').checked ? '&terms=futures' : '') + bookQ(), { cache: 'no-store' }); showExport(await r.text()); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 $('#tiersBtn').onclick = () => { EXPORT_KIND = 'tiers'; $('#exportTitle').textContent = 'OI tiers export'; $('#tiersModal').style.display = 'block'; loadTiers(); };
 $('#lvlBtn').onclick = () => { EXPORT_KIND = 'levels'; $('#exportTitle').textContent = 'Levels export — the Confluence Zones indicator paste (C+Z + OI lines, every instrument)'; $('#tiersModal').style.display = 'block'; loadLevels(); };

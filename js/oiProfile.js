@@ -56,7 +56,10 @@ export function buildOiProfile(inst, opts = {}) {
   }
   if (!bucketStat.length) return null;
   const total = sum(bucketStat.map(b => b.abs)) || 1;
-  const strong = bucketStat.reduce((m, b) => (b.abs > m.abs ? b : m), bucketStat[0]);
+  // BOOK CHOICE (opts.book): 'strongest' (default) = the bucket with the most gamma near spot; 'nearest' = the nearest-dated bucket that exists (the whole picture, bars and levels, comes from it);
+  // 'both' = the strongest book as usual PLUS the nearest book's walls/nodes/pain/flip as tagged extra lines (same machinery as allBooks, nearest bucket only). Not a claim that either is the better book.
+  const nearest = bucketStat[0];
+  const strong = opts.book === 'nearest' ? nearest : bucketStat.reduce((m, b) => (b.abs > m.abs ? b : m), bucketStat[0]);
   const lad = strong.lad, n = lad.strikes.length;
   const call = new Array(n).fill(0), put = new Array(n).fill(0), van = new Array(n).fill(0);
   for (const s of lad.series) for (let i = 0; i < n; i++) { call[i] += s.call[i]; put[i] += s.put[i]; van[i] += s.vanna[i]; }
@@ -115,11 +118,12 @@ export function buildOiProfile(inst, opts = {}) {
   // ALL BOOKS (opts.allBooks, the "All lines" export): the walls, gamma peak and gamma nodes of EVERY expiry bucket, not only the strongest one, so a line the Profile would hide stays on the chart (a 0–1 day put wall on a day
   // when 8–45 day gamma dominates, say). A hidden line's strength is its gamma against the biggest gamma in ANY bucket, so a small near-dated wall stays faint rather than looking as strong as the main book's.
   // A line the strongest book already draws keeps its strength and gains the other books it also sits in as a "+tag"; a hidden-only line is labelled "· tag". Off by default: the normal paste is unchanged.
-  if (opts.allBooks) {
+  if (opts.allBooks || (opts.book === 'both' && nearest.id !== strong.id)) {
     const tagOf = b => b.label.replace(/\s*DTE/i, 'd').replace(/\s+/g, '');
     const sides = bucketStat.map(b => { const n2 = b.lad.strikes.length, c2 = new Array(n2).fill(0), p2 = new Array(n2).fill(0); for (const s of b.lad.series) for (let i = 0; i < n2; i++) { c2[i] += s.call[i]; p2[i] += s.put[i]; } return { b, c2, p2 }; });
     const gMax = Math.max(1e-12, ...sides.map(x => Math.max(...x.c2, ...x.p2)));
     for (const { b, c2, p2 } of sides) {
+      if (!opts.allBooks && b.id !== nearest.id) continue;   // 'both': only the nearest-dated book is added
       const k2 = b.lad.strikes, net2 = c2.map((c, i) => c - p2[i]), isStrong = b.id === strong.id;
       const top2 = (arr, above) => k2.map((k, i) => ({ k, v: arr[i] })).filter(x => (above ? x.k > spot : x.k < spot) && x.v > 0).sort((a, c) => c.v - a.v);
       const found = [];

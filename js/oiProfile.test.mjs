@@ -100,5 +100,15 @@ ok('integers only in the bar series (compact)', rows.filter(r => /^[GVO]\|/.test
   ok('allBooks keeps every line the normal build drew, at the same price and strength', base.levels.every(b => all.levels.some(a => a.type === b.type && Math.abs(a.price - b.price) < 1e-9 && a.strength === b.strength)));
   ok('allBooks lines stay sorted high to low and survive into the paste text', all.levels.every((l, i, a) => i === 0 || a[i - 1].price >= l.price) && buildProfileText(all, { name: 'X', digits: 2 }).split(String.fromCharCode(10)).filter(r => r.startsWith('L|')).length === all.levels.length);
 }
+// BOOK CHOICE: strongest (default, unchanged) / nearest / both
+{
+  const base = buildOiProfile(inst, { legs, mult: 1, flat: 0.2, hedge });
+  const near = buildOiProfile(inst, { legs, mult: 1, flat: 0.2, hedge, book: 'nearest' });
+  const both = buildOiProfile(inst, { legs, mult: 1, flat: 0.2, hedge, book: 'both' });
+  ok('book strongest = same as passing nothing', buildOiProfile(inst, { legs, mult: 1, flat: 0.2, hedge, book: 'strongest' }).book.id === base.book.id);
+  ok('book nearest reads the first (nearest-dated) bucket', near.book.id === base.book.buckets[0].id);
+  ok('book both keeps every line the strongest build drew', base.levels.every(b => both.levels.some(a => a.type === b.type && Math.abs(a.price - b.price) < 1e-9)));
+  ok('book both adds only single-tagged extra lines', both.levels.filter(l => l.hidden).every(l => l.tags.length === 1));
+}
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

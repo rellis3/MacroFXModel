@@ -30795,6 +30795,7 @@ app.get('/api/oi-profile/export', async (req, res) => {
       for (const [k, v] of Object.entries(cm || {})) if (!(k in store)) store[k] = v;
     }
     const windowSig = Math.min(5, Math.max(1.5, parseFloat(req.query.window) || 3));   // ±N one-day σ around price
+    const bookMode = ['nearest', 'both'].includes(String(req.query.book || '')) ? String(req.query.book) : 'strongest';   // which expiry book the Profile reads (default: the strongest)
     const allBooks = String(req.query.books || '') === 'all';   // every expiry bucket's lines, not only the strongest book's (default off: the paste is unchanged)
     const want = String(req.query.pair || '').split(',').map(s => s.trim()).filter(Boolean);
     if (!want.length) return res.status(400).type('text/plain').send('Give ?pair=nq (or gold, spx, eurusd … a comma list, or all).');
@@ -30821,7 +30822,7 @@ app.get('/api/oi-profile/export', async (req, res) => {
         const bk = _cmeBook(sk, inst, { maxDte: 3 });
         if (bk) { const half = Math.min(0.08, Math.max(0.008, (windowSig + 0.1) * rm / inst.spot)); hedge = hedgingScenario(bk.contracts, { spot: bk.spot, lo: bk.spot * (1 - half), hi: bk.spot * (1 + half), n: 81, shifts: [-2, 0, 2, 4], optMult: 1, futMult: 1 }); }
       } catch { hedge = null; }
-      const prof = buildOiProfile(inst, { sym: sk, hedge, dayMove, windowRm: windowSig, allBooks });
+      const prof = buildOiProfile(inst, { sym: sk, hedge, dayMove, windowRm: windowSig, allBooks, book: bookMode });
       if (prof) items.push({ sk, inst, hedge, prof, dayMove });
     }
     // phase 2 — calibrated P(touch) + median ETA per level, all instruments in parallel within a time budget (same engine as the other exports);
@@ -30834,7 +30835,7 @@ app.get('/api/oi-profile/export', async (req, res) => {
         const ctx = _fpBuildCtx(bars, {});
         const rows = _oiWallReach(ctx, bars.length, it.prof.levels.map(l => ({ price: l.price, type: l.type })), 48, { nPaths: 300, instrument: it.sk });
         const byP = new Map(rows.map(r => [r.price.toFixed(6), r]));
-        it.prof = buildOiProfile(it.inst, { sym: it.sk, hedge: it.hedge, dayMove: it.dayMove, windowRm: windowSig, allBooks, reach: pr => { const r = byP.get(pr.toFixed(6)); return r && Number.isFinite(r.calibrated) ? { p: r.calibrated, eta: Number.isFinite(r.medBarsToTouch) ? r.medBarsToTouch * 5 : null } : null; } });
+        it.prof = buildOiProfile(it.inst, { sym: it.sk, hedge: it.hedge, dayMove: it.dayMove, windowRm: windowSig, allBooks, book: bookMode, reach: pr => { const r = byP.get(pr.toFixed(6)); return r && Number.isFinite(r.calibrated) ? { p: r.calibrated, eta: Number.isFinite(r.medBarsToTouch) ? r.medBarsToTouch * 5 : null } : null; } });
       };
       await Promise.race([Promise.all(items.map(it => addReach(it).catch(e => console.warn('[oi-profile] reach failed for', it.sk, e.message)))), new Promise(r => setTimeout(r, 40_000))]);
     }
