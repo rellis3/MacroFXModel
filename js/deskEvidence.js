@@ -2435,6 +2435,41 @@ export const DESK_EVIDENCE = [
     result: 'Underpowered by design (MDE 5.8, 5.3, 6.7pp vs bar 5pp), none clear of zero. Gamma centre 76.0% vs 75.4%, +0.7pp [-2.7, +4.1], 12,741 steps. Gamma best strike 61.6% vs 62.2%, -0.6pp [-4.0, +2.5], 15,418. Max pain 41.3% vs 44.2%, -2.9pp [-7.2, +1.2], 16,495. Described only: with 1-5 sessions left dots lead mirrors by a few points (gamma centre 1-2 sessions +7.2pp [+1.2, +13.5]), and 11-20 sessions reverses (-5.1pp); 0 of 186 slices past BH. One first-run gamma centre INVALID was a one-draw flip false alarm (prereg A2).',
     use: 'No sign any of these draws price; a small effect is not ruled out. High reach for the gamma centre means only that it sits near price. The last-few-sessions pattern is a pointer for the forward record, not a result.',
   },
+  {
+    id: 'close-window-momentum', domain: 'price', verdict: 'null', date: '2026-11-11', doc: 'forge/CLOSE_WINDOW_MOMENTUM_PREREG.md', also: ['analysis/output/close-window-momentum/RESULTS.md'],
+    instruments: ['NQ', 'SPX500'],
+    claim: 'Baltussen et al. (2021) / Gao et al. (2018) on our data: the vol-scaled move from the prior 16:00 ET close to 15:30 ET (and the first half hour, prior close to 10:00 ET) predicts the 15:30 to 16:00 ET move on NQ and ES futures (slope at least 0.025 / 0.035, both halves, BH q 0.10 over 32 cells)',
+    result: 'NULL, all four cells rule out their bar. NT8 futures 2016-01 to 2026-08-21: close-window slope NQ -0.001 [-0.016, +0.015] (2,356 days), ES +0.002 [-0.019, +0.023] (2,350); first half hour NQ -0.014 [-0.032, +0.004], ES -0.019 [-0.044, +0.004]. CFD replication: NQ +0.001 [-0.015, +0.018] (null), SPX500 +0.009 [-0.016, +0.037] (underpowered). Mirror windows (14:30-15:00, 16:00-16:15 ET) are just as flat. Descriptive only: the raw unscaled slope is +0.014 to +0.023 (NQ CFD CI just above 0) because raw OLS is weighted to the top trailing-vol tercile (vol-scaled slope there about +0.025; 2020 and 2022 carry it); and the last 30 minutes partly reverse over the next 1-2 sessions (NQ -0.35 per unit, HAC t -2.5).',
+    use: 'Do not say the day\'s move tends to carry into the US cash close on NQ or ES: the literature\'s market intraday momentum does not replicate here in 2016-2026 at the vol-scaled level. A high-vol-only version is a pointer for a new prereg on unseen data, not a result. A planted-signal control recovered a 0.025 slope in 40/40 draws, so this is a real null.',
+  },
+  {
+    id: 'close-window-momentum-gamma', domain: 'positioning', verdict: 'underpowered', date: '2026-11-11', doc: 'forge/CLOSE_WINDOW_MOMENTUM_PREREG.md', also: ['analysis/output/close-window-momentum/RESULTS.md'],
+    instruments: ['NQ', 'SPX500'],
+    claim: 'The close-window slope (prior 16:00 ET close to 15:30 ET, then 15:30 to 16:00 ET) is larger on CME negative-gamma days (net GEX of OI date D < 0, used on session D+2) than on positive-gamma days, as Baltussen et al. found on the S&P (6.63 vs 0.82, x 100)',
+    result: 'UNDERPOWERED as a question (the ES interaction was underpowered by design); the NQ cells are NULL. 2020-11 to 2026-08-21. Negative-gamma slope NQ -0.017 [-0.042, +0.011] (216 days), ES +0.004 [-0.034, +0.050] (174) against the paper\'s 0.066; interaction (neg minus pos) NQ -0.011 [-0.052, +0.035] (null, MDE 0.055 vs bar 0.058), ES +0.018 [-0.034, +0.078] (underpowered). D+1 timing (sensitivity) also wrong-signed (NQ -0.031, ES -0.043).',
+    use: 'The CME gamma sign does not switch on close-window continuation: no page may say short gamma makes the day\'s move carry into the close. CME monthly/quarterly books only (about 5% of Nasdaq dealer gamma, no 0DTE, no SPX/SPY/QQQ), so the paper\'s full-book mechanism is not refuted; the Cboe capture (from 2026-10-19) is the place to re-test it.',
+  },
+  {
+    id: 'close-window-momentum-trade', domain: 'price', verdict: 'null', date: '2026-11-11', doc: 'forge/CLOSE_WINDOW_MOMENTUM_PREREG.md', also: ['analysis/output/close-window-momentum/RESULTS.md'],
+    instruments: ['NQ', 'SPX500'],
+    claim: 'Taking sign(prior 16:00 ET close to 15:30 ET move) for 15:30 to 16:00 ET pays at least 2.75 bp per trade net on NQ and ES futures (1 tick a side + 4.50 USD) and on the NQ and SPX500 CFDs (OANDA bid/ask at the minute), positive in both halves with long and short trades each positive gross',
+    result: 'NULL on all four, the 2.75 bp bar ruled out. Net bp per trade: NQ futures +0.26 [-1.11, +1.74] (gross +0.91, cost 0.65, 2,355 trades, net Sharpe 0.12), ES futures -0.87 [-2.08, +0.47] (gross +0.66, cost 1.52), NQ CFD +0.57 [-0.89, +2.25] (gross +1.21, cost 0.64), SPX500 CFD -0.06 [-1.38, +1.52]. The window drifts down on average (always long -0.14 to -0.54 bp) and shorts carry slightly more gross than longs. NQ futures net is positive in 2018, 2020 (+5.6), 2022 (+3.9) and negative in calm years (2025 -4.4); trimming the top and bottom 1% of days leaves +0.01 bp.',
+    use: 'No close-window momentum trade on NQ or ES, futures or CFD. The gross (+0.7 to +1.2 bp) is inside noise and about one cost wide.',
+  },
+  {
+    id: 'close-window-momentum-secondary', domain: 'price', verdict: 'context', date: '2026-11-11', doc: 'forge/CLOSE_WINDOW_MOMENTUM_PREREG.md', also: ['analysis/output/close-window-momentum/RESULTS.md'],
+    instruments: ['GOLD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD'],
+    claim: 'On gold (prior 13:30 ET settle to 13:00 ET, then 13:00 to 13:30 ET) and FX majors (prior 16:00 London fix to 15:30 London, then 15:30 to 16:00 London) the vol-scaled slope is at least 0.025, and a sign(r1) trade over the window pays at least 1 bp net at OANDA bid/ask',
+    result: 'CONTEXT. Slopes 2016-11 to 2026-08-21: GBPUSD +0.016 [+0.004, +0.028] and USDJPY +0.016 [+0.004, +0.026] are BH-significant and positive in both halves but below the 0.025 bar (CONTEXT); gold +0.007 [-0.002, +0.016], EURUSD -0.011 [-0.023, +0.000], AUDUSD -0.005 [-0.017, +0.008] NULL. Every trade loses net: gold -2.52 bp [-3.11, -1.96], EURUSD -1.64, GBPUSD -1.10, USDJPY -0.43 [-0.86, -0.02], AUDUSD -2.20 (gross -0.4 to +0.7 bp against 1.2 to 2.3 bp of spread).',
+    use: 'Into the London 16:00 fix, GBPUSD and USDJPY carry a small part of the day\'s move (statistical, not economic): fine as context for fix-window behaviour, never a trade at retail spread. Gold\'s settle window and EURUSD/AUDUSD show nothing.',
+  },
+  {
+    id: 'close-window-momentum-levels', domain: 'price', verdict: 'underpowered', date: '2026-11-11', doc: 'forge/CLOSE_WINDOW_MOMENTUM_PREREG.md', also: ['analysis/output/close-window-momentum/RESULTS.md'],
+    instruments: ['NQ', 'GOLD', 'EURUSD'],
+    claim: 'A first arrival at a forecast-ladder line (static OH/OL p50/p75/p90) or an NQ OI wall in the direction of the day, in the last hour before the close (15:00-16:00 ET NQ, 12:30-13:30 ET gold, 15:00-16:00 London EURUSD), wins a 0.25 sigma follow-vs-fail race at least 10pp more often than the same arrival earlier in the day (L1), and more than at shifted placebo lines (L2)',
+    result: 'UNDERPOWERED (EURUSD NULL). Follow share among resolved races, late vs early: NQ lines 58.5% (106) vs 55.2% (849), +3.3pp [-7.1, +12.5]; placebo lines 55.4% vs 53.9%, L2 +1.8pp [-8.8, +12.1]; gold +0.3pp [-16.9, +16.9] (36 late), L2 +7.7pp [-7.5, +24.1]; EURUSD -3.6pp [-11.0, +3.3] (259 late, the 10pp bar ruled out), L2 -0.4pp; NQ walls 4 late arrivals. About half of with-the-day touches never resolve the race in 30 minutes, which halved the planned n.',
+    use: 'No evidence that a with-the-day line touch late in the session follows through more than earlier: the small NQ lift appears at placebo lines too (clock, not level). EURUSD rules out a 10pp late lift. Do not call late arrivals at lines continuation setups.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -2724,6 +2759,11 @@ const POWER = {
   'value-migration-nq-absorption-proxy': { n: '2,606 sessions (5,512 windows)', note: 'MDE 0.049 vs bar 0.03: underpowered by design' },
   'value-migration-nq-combo': { n: '2,606 sessions (3,131 windows)', note: 'MDE 0.067 vs bar 0.03: underpowered by design' },
   'value-migration-nq-strategy': { n: '2,606 sessions, 804 to 11,793 trades per cell, 24 cells', note: '14 cells powered (MDE vs random <= lift needed from the cost-only control to +0.05R), 10 underpowered' },
+  'close-window-momentum': { n: '2,356 and 2,350 futures days (week-cluster bootstrap)', note: 'MDE 0.015/0.018 (slope) and 0.022/0.027 (first half hour) vs bars 0.025/0.035: powered; all four bars ruled out' },
+  'close-window-momentum-gamma': { n: '216 and 174 negative-gamma days of 636 and 611 (2020-11 to 2026-08)', note: 'beta_neg MDE 0.042/0.061 vs 0.066; interaction MDE 0.055 (NQ, powered) / 0.075 (ES, underpowered by design) vs 0.058' },
+  'close-window-momentum-trade': { n: '2,355 / 2,335 futures and 2,141 / 2,010 CFD trades', note: 'MDE 2.2-2.7 bp vs bar 2.75 bp net: powered; bar ruled out on all four' },
+  'close-window-momentum-secondary': { n: '2,141 to 2,519 days per instrument', note: 'slope MDE 0.010-0.016 vs 0.025; trade MDE 0.7-1.0 bp vs 1.0 bp' },
+  'close-window-momentum-levels': { n: '106/849 (NQ), 36/785 (gold), 259/993 (EURUSD), 4/16 (NQ walls) resolved late/early real-line races', note: 'planned MDE 11.6/16.9/8.9 pp vs 10 pp bar: only EURUSD powered (bar ruled out); realised n about half the plan (unresolved races)' },
 };
 
 const TAG = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };

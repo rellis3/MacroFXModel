@@ -10,15 +10,15 @@ Generated 2026-11-11.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **312** |
+| claims tested (validated + null + underpowered) | **316** |
 | validated | 51 |
-| null | 176 |
-| underpowered | 85 |
-| context (base rates, descriptions: not counted as tests) | 54 |
-| pre-registrations with no banked verdict (below) | 89 |
+| null | 178 |
+| underpowered | 87 |
+| context (base rates, descriptions: not counted as tests) | 55 |
+| pre-registrations with no banked verdict (below) | 88 |
 
-**What the count says (Lesson 02 §05).** If none of the 312 claims were real, tests at the usual 5% size would still pass
-about **15.6** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 316 claims were real, tests at the usual 5% size would still pass
+about **15.8** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
 **roughly 16 of the 51 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -389,6 +389,11 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-10 | value-migration-nq-poc | misc | context | forge/VALUE_MIGRATION_NQ_PREREG.md |
 | 2026-11-10 | value-migration-nq-strategy | misc | null | forge/VALUE_MIGRATION_NQ_PREREG.md |
 | 2026-11-10 | value-migration-nq-va | misc | null | forge/VALUE_MIGRATION_NQ_PREREG.md |
+| 2026-11-11 | close-window-momentum | price | null | forge/CLOSE_WINDOW_MOMENTUM_PREREG.md |
+| 2026-11-11 | close-window-momentum-gamma | positioning | underpowered | forge/CLOSE_WINDOW_MOMENTUM_PREREG.md |
+| 2026-11-11 | close-window-momentum-levels | price | underpowered | forge/CLOSE_WINDOW_MOMENTUM_PREREG.md |
+| 2026-11-11 | close-window-momentum-secondary | price | context | forge/CLOSE_WINDOW_MOMENTUM_PREREG.md |
+| 2026-11-11 | close-window-momentum-trade | price | null | forge/CLOSE_WINDOW_MOMENTUM_PREREG.md |
 | 2026-11-11 | wall-dte-style-h1 | positioning | underpowered | oi_research_book/WALL_DTE_STYLE_PREREG.md |
 | 2026-11-11 | wall-dte-style-h2 | positioning | underpowered | oi_research_book/WALL_DTE_STYLE_PREREG.md |
 | 2026-11-11 | wall-dte-style-h3-fx | positioning | null | oi_research_book/WALL_DTE_STYLE_PREREG.md |
@@ -404,7 +409,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/ATLAS_HONEST_GONOGO_PREREG.md`: atlas-honest-gonogo — With the known leaks removed, real bid/ask fills and the production settings, do the Vot
 - `forge/BREAK_IVRV_PREREG.md`: Break trades when implied vol is rich — pre-registration
 - `forge/CB_TONE_REACTION_PREREG.md`: cb-tone-reaction — does the ECB / BoE / BoJ statement's hawkish shift line up with the first-30-minute move in
-- `forge/CLOSE_WINDOW_MOMENTUM_PREREG.md`: close-window-momentum — does the move into 15:30 ET predict the last 30 minutes of the US cash session on our 
 - `forge/COG_ANALOG_PREREG.md`: COG-ANALOG: match the last 12 hours of the line against its own past and read what Nasdaq did next
 - `forge/COG_CROSS_ASSET_PREREG.md`: COG-CROSS-ASSET: does the SOFR-Euribor / SOFR-ESTR information relate to, or lead, gold, EURUSD, USDJPY, the R
 - `forge/COG_DYNAMIC_LEAD_PREREG.md`: COG-DYNAMIC-LEAD: do yield and futures spreads begin moving first, in identifiable periods, and does FX (or go
