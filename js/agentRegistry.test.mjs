@@ -122,7 +122,7 @@ test('every cap key is a registered KV key (kv.js, both _worker.js lists, storeR
   }
   const { CONCEPTS_CAP } = await import('./libraryConcepts.js'), { MATH_CAP } = await import('./libraryMath.js'), { FIGS_CAP } = await import('./libraryFigs.js'), { LIBRARIAN_CAP } = await import('./libraryLibrarian.js');
   const by = Object.fromEntries(caps.map(a => [a.cap.key, a.cap.cap]));
-  assert.deepEqual(by, { library_librarian_v1: LIBRARIAN_CAP, library_figs_v1: FIGS_CAP, library_math_v1: MATH_CAP, library_concepts_v1: CONCEPTS_CAP });
+  assert.deepEqual(by, { library_librarian_v1: LIBRARIAN_CAP, library_figs_v1: FIGS_CAP, library_math_v1: MATH_CAP, library_concepts_v1: CONCEPTS_CAP, research_brief_v1: (await import('./researchBrief.js')).BRIEF_CAP });
 });
 
 test('the settings key agent_settings_v1 is registered in kv.js, both _worker.js lists and the store registry', () => {

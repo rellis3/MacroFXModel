@@ -47,19 +47,21 @@ if (typeof document !== 'undefined' && document.getElementById && document.getEl
 // which accepts the dashboard login this page already needs.
 export function initTabs(doc = document, fetchFn = (...a) => fetch(...a)) {
   const tabs = doc.querySelectorAll?.('.tab'); if (!tabs?.length) return;
-  let concepts = null;
+  let concepts = null, idea = null;
   const getJson = async (url, opt) => { const r = await fetchFn(url, { credentials: 'same-origin', ...opt }); const d = await r.json().catch(() => null); if (!r.ok || !d || d.ok === false) throw new Error(d?.error || `Request failed (${r.status})`); return d; };
   const api = { concepts: () => getJson('/api/library/concepts'), reviewConcept: body => getJson('/api/library/concepts/review', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }) };
   tabs.forEach(b => b.addEventListener('click', async () => {
     const t = b.dataset.tab;
     tabs.forEach(x => { const on = x === b; x.classList.toggle('active', on); x.setAttribute('aria-selected', String(on)); });
-    doc.getElementById('questionsTab').hidden = t !== 'questions'; doc.getElementById('conceptsTab').hidden = t !== 'concepts';
+    doc.getElementById('questionsTab').hidden = t !== 'questions'; doc.getElementById('conceptsTab').hidden = t !== 'concepts'; doc.getElementById('ideaTab').hidden = t !== 'idea';
+    if (t === 'idea' && !idea) { const IV = await import('./roeIdea.js'); idea = IV.mount({ doc, fetchFn }); idea.status(); }
     if (t === 'concepts') {
       if (!concepts) { const CV = await import('./library/concepts.js'); const g = id => doc.getElementById(id);
         concepts = CV.mount({ api, paperBase: 'library.html', el: { box: g('ccBox'), status: g('ccStatus'), domain: g('ccDomain'), info: g('ccInfo'), list: g('ccList') }, fail: e => { g('ccInfo').textContent = e.message; } }); }
       concepts.show();
     }
   }));
-  if (/#concepts/.test(doc.location?.hash ?? '')) tabs.forEach(b => b.dataset.tab === 'concepts' && b.click());
+  const h = doc.location?.hash ?? ''; const want = /#concepts/.test(h) ? 'concepts' : /#idea/.test(h) ? 'idea' : null;
+  if (want) tabs.forEach(b => b.dataset.tab === want && b.click());
 }
 if (typeof document !== 'undefined' && document.getElementById && document.getElementById('roeRoot')) initTabs();
