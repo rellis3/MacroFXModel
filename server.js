@@ -286,6 +286,7 @@ import { scoreClaimFires as _scoreClaimFires, CLAIMS as _WATCH_CLAIMS } from './
 import { evaluateGauges as _evaluateGauges } from './js/deskWatch.js';
 import { ratesRegimeRead as _ratesRegimeRead, alertText as _ratesRegimeAlert, attributionLine as _ratesRegimeAttrib } from './js/ratesRegime.js';
 import { buildCase1 as _seBuild1, buildCase2 as _seBuild2, analyse as _seAnalyse, alertText as _seAlertText } from './js/spreadEpisodes.js';
+import { alignDaily as _nqrAlign, rollingMonitor as _nqrRolling, describe as _nqrDescribe } from './js/nqRatesResidual.js';
 import { night as _dofNight, adrFrom as _dofAdrFrom, sessionAnchor as _dofAnchor, sessionKey as _dofKey, nyWallToUtc as _dofNyWall, sessionFromCandles as _dofSessionFrom, preFromCandles as _dofPreFrom, summarise as _dofSummarise, DOF_DEFAULTS as _DOF_DEFAULTS, DOF_ANCHORS as _DOF_ANCHORS } from './js/dailyOpenFib.js';
 import { fetchBankCreditRows as _bcFetch, buildBankCredit as _bcBuild, bankCreditLine as _bcLine } from './js/bankCredit.js';
 import { fetchFundingSeries as _frFetchSeries, fetchUstLeverage as _frFetchUst, buildFundingRead as _frBuild, fundingLine as _frLine } from './js/fundingRead.js';
@@ -8614,6 +8615,26 @@ async function _ylLeg(name) {
              liveAsOf: L.mode === 'intraday' ? asOf : null, segments: null, duration: L.duration, mode: L.mode, m5: _ylCols(L.m5), m15: _ylCols(L.m15), h1: _ylCols(L.h1) };
   _ylCache.set(name, { at: Date.now(), v }); return v;
 }
+// Nasdaq vs rates monitor for the chart page (js/nqRatesResidual.js; analysis/output/nq-rates-residual-monitor/RESULTS.md, exploratory, CONTEXT):
+// daily FRED NASDAQ100 against the 2y and the 10y-2y slope (the 'rates' cache), past-only rolling OLS. Context, not a signal.
+let _nqr = { at: 0, nq: null, out: new Map() };
+app.get('/api/cog-chart/nq-rates', async (req, res) => {
+  try {
+    const W = [60, 120, 250].includes(+req.query.w) ? +req.query.w : 120, keep = Math.min(Math.max(parseInt(req.query.days, 10) || 1000, 100), 6000);
+    if (Date.now() - _rates.at > 6 * 3600_000 || !_rates.series) await _refreshRates();
+    const S = _rates.series; if (!S?.us2y?.length || !S?.us10y?.length) return res.status(503).json({ ok: false, error: _rates.error ?? 'FRED 2y/10y not loaded yet' });
+    if (Date.now() - _nqr.at > 6 * 3600_000 || !_nqr.nq) { _nqr = { at: Date.now(), nq: await _fredCsv('NASDAQ100'), out: new Map() }; }
+    const key = `${W}|${keep}|${_rates.at}`;
+    if (!_nqr.out.has(key)) {
+      const rows = _nqrRolling(_nqrAlign(_nqr.nq, S.us2y, S.us10y), W);
+      const r4 = x => (x == null || !Number.isFinite(x) ? null : +x.toFixed(4));
+      const tail = rows.slice(-keep).map(o => ({ date: o.date, nq: o.nq, b2y: r4(10 * o.b2y), bslope: r4(10 * o.bslope), r2: r4(o.r2), z: r4(o.z), z20: r4(o.z20), implied20: r4(o.implied20), actual20: r4(o.actual20) }));
+      _nqr.out.set(key, { ok: true, window: W, units: { b2y: '% NQ per +10 bp 2y', bslope: '% NQ per +10 bp steeper 10y-2y', implied20: '%', actual20: '%' }, latest: tail.at(-1), read: _nqrDescribe(rows.at(-1)), rows: tail,
+        source: 'FRED NASDAQ100, DGS2, DGS10 (yields ~15:30 ET, Nasdaq close 16:00 ET)', note: 'Exploratory context, not a signal: the residual does not persist and the catch-up trade is banked NULL (rates_residual S1).', at: new Date().toISOString() });
+    }
+    res.set('Cache-Control', 'public, max-age=900'); res.json(_nqr.out.get(key));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.get('/api/cog-chart/leg', async (req, res) => {
   try {
     const name = String(req.query.name || '');
