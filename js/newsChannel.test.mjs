@@ -57,6 +57,13 @@ t('candidates: the chosen tiers, with an impact, recent, unsent, oldest first', 
   assert.deepEqual(channelCandidates(w, now, { sent: { 1: { sent: { a: 1 } }, 2: { sent: { b: 1 } } } }).map(h => h.id), ['f']);
 });
 
+t('a story published long ago is not sent even if the server only just saw it', () => {
+  const now = Date.parse('2026-11-11T18:50:00Z');
+  const fresh = H({ id: 'n', ms: now - 20 * M, firstSeen: now - 2 * M });
+  const stale = H({ id: 'o', ms: now - 2 * 24 * 60 * M, firstSeen: now - 2 * M });
+  assert.deepEqual(channelCandidates([fresh, stale], now).map(h => h.id), ['n']);
+});
+
 t('throttle: one per headline, six an hour for tier 1 and ten for tier 2, kept apart', () => {
   assert.deepEqual(CAPS, { 1: 6, 2: 10 });
   let st = null;

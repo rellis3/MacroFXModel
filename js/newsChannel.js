@@ -16,7 +16,8 @@ import { allowAlert } from './newsOps.js';
 
 export const CHANNEL_KV_KEY = 'news_channel_v1';
 export const CAPS = { 1: 6, 2: 10 };          // notes an hour, by tier
-export const MAX_AGE_MIN = 60;                // a headline older than this is not sent
+export const MAX_PUBLISHED_AGE_MIN = 120;     // a story published more than this long ago is never sent, whenever we first saw it
+export const MAX_AGE_MIN = 60;             // a headline older than this is not sent
 export const MAX_PER_TICK = 3;                // at most this many sends in one 2-minute pass
 
 /** The analyst's impact keys, in the order shown, with their flag/emoji and a plain name. */
@@ -77,6 +78,7 @@ export function channelCandidates(wire, now, { tiers = [1, 2], sent = {}, since 
     if (!tiers.includes(t) || (t !== 1 && t !== 2)) return false;
     const g = groups(h?.read?.impact); if (!g.long.length && !g.short.length) return false;
     const seen = h.firstSeen ?? h.ms;
+    if (Number.isFinite(h.ms) && now - h.ms > MAX_PUBLISHED_AGE_MIN * 60e3) return false;   // the story itself must be fresh: a feed re-listing an old story (or a restart re-reading it) is "first seen" now but published days ago
     return now - seen <= MAX_AGE_MIN * 60e3 && seen >= since && !sentIds.has(h.id);   // `since`: nothing older than the moment the channel was connected is sent (no flood on connect)
   }).sort((a, b) => a.ms - b.ms);
 }
