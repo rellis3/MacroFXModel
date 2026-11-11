@@ -9,7 +9,6 @@ import * as MA from './math.js';
 import * as SUM from './summary.js';
 import * as IXV from './indexView.js';
 import * as LBV from './librarianView.js';
-import * as CCV from './concepts.js';
 
 const $ = id => document.getElementById(id);
 const esc = M.escapeHtml;
@@ -104,14 +103,12 @@ const indexView = IXV.mount({ api, el: { box: $('ixBox'), topic: $('ixTopic'), s
   labels: () => ({ topic: Object.fromEntries(st.topics.map(t => [t.key, t.label])), source: Object.fromEntries(st.sources.map(t => [t.key, t.label])) }),
   options: () => ({ topics: st.topics.filter(t => t.count), sources: st.sources }), fail: e => fail(e) });
 LBV.mount({ api, el: { box: $('lbBox'), go: $('lbGo'), out: $('lbOut') }, fail: e => fail(e) });
-const conceptsView = CCV.mount({ api, el: { box: $('ccBox'), status: $('ccStatus'), domain: $('ccDomain'), info: $('ccInfo'), list: $('ccList') }, fail: e => fail(e) });   // the Concepts tab (js/library/concepts.js)   // Ask the librarian (one small AI call)
 function setTab(tab) {
   st.tab = tab;
   document.querySelectorAll('.lib-tab').forEach(b => { const on = b.dataset.tab === tab; b.classList.toggle('active', on); b.setAttribute('aria-selected', on); });
-  $('papersTab').hidden = tab !== 'papers'; $('todoTab').hidden = tab !== 'todo'; $('indexTab').hidden = tab !== 'index'; $('conceptsTab').hidden = tab !== 'concepts';
+  $('papersTab').hidden = tab !== 'papers'; $('todoTab').hidden = tab !== 'todo'; $('indexTab').hidden = tab !== 'index';
   $('readNext').style.display = tab === 'papers' ? '' : 'none';
   if (tab === 'index') indexView.show();
-  if (tab === 'concepts') conceptsView.show();
   if (tab === 'todo' && !st.todo) { $('todoList').innerHTML = '<div class="lib-loading">Loading…</div>'; api.todo().then(d => { st.todo = d; renderTodo(); }).catch(fail); }
 }
 const runSearch = M.debounce(async () => {

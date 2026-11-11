@@ -22,7 +22,6 @@
     <div class="lib-tabs" role="tablist">
       <button type="button" role="tab" class="lib-tab active" data-tab="papers" aria-selected="true">Papers <span id="cntPapers" class="lib-tabcount"></span></button>
       <button type="button" role="tab" class="lib-tab" data-tab="index" aria-selected="false">Index</button>
-      <button type="button" role="tab" class="lib-tab" data-tab="concepts" aria-selected="false">Concepts</button>
       <button type="button" role="tab" class="lib-tab" data-tab="todo" aria-selected="false">To get <span id="cntTodo" class="lib-tabcount"></span></button>
     </div>
 
@@ -47,17 +46,6 @@
         <label class="lib-sort"><span>Sort</span><select id="sortSel" aria-label="Sort papers"></select></label>
       </div>
       <div id="cards" class="lib-grid"></div>
-    </div>
-
-    <div id="conceptsTab" hidden>
-      <p class="lib-info">Concept cards built from the papers, the C.OG education and the Theory Lab: each says what a principle is, why it works, what to measure and what to look for. Read them and mark each Good, Wrong or Unclear; your marks are kept and a later run never overwrites them. Marking uses no AI.</p>
-      <div class="lib-cc-bar">
-        <input id="ccBox" type="search" placeholder="Search the cards" autocomplete="off" aria-label="Search the concept cards">
-        <select id="ccStatus" aria-label="Show cards by review state"></select>
-        <select id="ccDomain" aria-label="Show cards by area"></select>
-      </div>
-      <div id="ccInfo" class="lib-info" role="status"></div>
-      <div id="ccList"></div>
     </div>
 
     <div id="indexTab" hidden>
