@@ -1,7 +1,7 @@
 // Tests for js/newsChannel.js.   node js/newsChannel.test.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { channelMessage, channelCandidates, allowChannel, validateConfig, publicView, parseConfig, groups, safeUrl, explainTelegramError, CAPS, CHANNEL_KV_KEY } from './newsChannel.js';
+import { channelMessage, channelCandidates, allowChannel, validateConfig, publicView, parseConfig, groups, safeUrl, explainTelegramError, persistConfig, removeConfig, CAPS, CHANNEL_KV_KEY } from './newsChannel.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 const M = 60e3;
@@ -106,4 +106,25 @@ t('a bot name is refused as the channel, and Telegram errors are explained in pl
   assert.equal(explainTelegramError('something new'), 'something new', 'an unknown message is passed through as it is');
 });
 
+
+// a fake store that behaves like kv.js: a "silent" backend failure keeps the value in memory only and the strict read does not see it
+const fakeKv = ({ silentPutFail = false, putThrows = false, strictThrows = false, delSilentFail = false } = {}) => { const durable = new Map(), mem = new Map();
+  return { durable, mem,
+    put: async (k, v) => { if (putThrows) throw new Error('boom'); if (silentPutFail) { mem.set(k, v); return; } durable.set(k, v); },
+    getStrict: async k => { if (strictThrows) throw new Error('CF down'); return durable.get(k) ?? null; },
+    del: async k => { if (delSilentFail) return; durable.delete(k); } }; };
+const GOOD = () => validateConfig({ token: TOKEN, chatId: '@macro_news' }).cfg;
+
+
+await (async () => {
+  const a = fakeKv(); const cfg = GOOD(); assert.deepEqual(await persistConfig(a, cfg), { ok: true }); assert.equal(JSON.parse(a.durable.get(CHANNEL_KV_KEY)).token, TOKEN); n++;
+  const b = fakeKv({ silentPutFail: true }); const rb = await persistConfig(b, cfg); assert.equal(rb.ok, false); for (const w of ['did not reach the permanent store', 'lost on the next deploy', 'Nothing was changed']) assert.ok(rb.error.includes(w), w); assert.equal(b.durable.size, 0); n++;
+  const c = fakeKv({ putThrows: true }); assert.equal((await persistConfig(c, cfg)).ok, false); n++;
+  const d = fakeKv({ strictThrows: true }); assert.equal((await persistConfig(d, cfg)).ok, false, 'an unreadable store is not "saved"'); n++;
+  // an update that silently fails must not look saved when the OLD value is still what the store holds
+  const e = fakeKv(); await persistConfig(e, cfg); e.put = async (k, v) => { e.mem.set(k, v); }; const upd = { ...cfg, chatId: '@other_channel' }; assert.equal((await persistConfig(e, upd)).ok, false); assert.equal(JSON.parse(e.durable.get(CHANNEL_KV_KEY)).chatId, '@macro_news'); n++;
+  // disconnect: proven gone, and a silent delete failure is reported
+  const f = fakeKv(); await persistConfig(f, cfg); assert.deepEqual(await removeConfig(f), { ok: true }); assert.equal(f.durable.size, 0); n++;
+  const g = fakeKv({ delSilentFail: true }); await persistConfig(g, cfg); const rg = await removeConfig(g); assert.equal(rg.ok, false); assert.match(rg.error, /could not be deleted/); n++;
+})();
 console.log(`newsChannel: ${n} tests ok`);

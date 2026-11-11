@@ -106,6 +106,24 @@ export function validateConfig(body, existing = null, now = Date.now()) {
   const on = typeof b.on === 'boolean' ? b.on : (existing?.on ?? true);
   return { ok: true, cfg: { v: 1, token, chatId, on, tiers, savedAt: new Date(now).toISOString() } };
 }
+const NOT_STORED = 'The settings did not reach the permanent store (Cloudflare KV), so they would be lost on the next deploy. Nothing was changed. Try again in a minute; if it repeats, check CF_ACCOUNT_ID and CF_API_TOKEN on Railway.';
+const same = (a, b) => !!a && !!b && a.token === b.token && a.chatId === b.chatId && a.on === b.on && JSON.stringify(a.tiers) === JSON.stringify(b.tiers);
+/**
+ * Save and PROVE it. kv.put() keeps the value in memory alone when the durable backend rejects a write (and says nothing), so "Saved" would be a lie that surfaces at the next
+ * deploy. This writes, reads the value back through the strict path (which throws on a backend failure), and only then answers ok. kv = { put, getStrict }.
+ */
+export async function persistConfig(kv, cfg) {
+  try { await kv.put(CHANNEL_KV_KEY, JSON.stringify(cfg)); } catch { return { ok: false, error: NOT_STORED }; }
+  let back = null; try { back = parseConfig(await kv.getStrict(CHANNEL_KV_KEY)); } catch { back = null; }
+  return same(back, cfg) ? { ok: true } : { ok: false, error: NOT_STORED };
+}
+/** Disconnect and prove the token is really gone from the store. kv = { del, getStrict }. */
+export async function removeConfig(kv) {
+  try { await kv.del(CHANNEL_KV_KEY); } catch { return { ok: false, error: 'The saved token could not be deleted from the permanent store. Try again in a minute.' }; }
+  let back = null; try { back = parseConfig(await kv.getStrict(CHANNEL_KV_KEY)); } catch { back = { stillThere: true, token: '', chatId: '' }; }
+  return back ? { ok: false, error: 'The saved token could not be deleted from the permanent store. Try again in a minute.' } : { ok: true };
+}
+
 /** Telegram's error text → plain words saying what to fix, with Telegram's own words kept in brackets. */
 export function explainTelegramError(desc) {
   const d = String(desc ?? '').trim();

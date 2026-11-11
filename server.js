@@ -248,7 +248,7 @@ import { policyRates as _prRates } from './js/policyRates.js';   // each central
 import { expectations as _cbExpect } from './js/cbExpectations.js';   // what the futures price for each bank
 import { parseFeed as _nwParse, fromFinnhub as _nwFinnhub, mergeWire as _nwMerge, validateRead as _nwValidate, pick as _nwPick, wireText as _nwText } from './js/newsAnalyst.js';   // agent 21
 import { pairImpacts as _nwPairs, reactionMarkets as _nwReactMarkets, reactionStart as _nwReactStart, scoreMarket as _nwScoreMarket, headlineReaction as _nwHeadReact, recordRow as _nwRecordRow, appendRecord as _nwAppendRecord, aggregateRecord as _nwAggregate } from './js/newsImpact.js';
-import { CHANNEL_KV_KEY as _NC_KEY, MAX_PER_TICK as _NC_MAX_PER_TICK, channelMessage as _ncMessage, channelCandidates as _ncCandidates, allowChannel as _ncAllow, validateConfig as _ncValidate, publicView as _ncPublic, parseConfig as _ncParse, explainTelegramError as _ncExplain } from './js/newsChannel.js';   // the shared news channel: its own bot, tier 1-2, no book lines
+import { CHANNEL_KV_KEY as _NC_KEY, MAX_PER_TICK as _NC_MAX_PER_TICK, channelMessage as _ncMessage, channelCandidates as _ncCandidates, allowChannel as _ncAllow, validateConfig as _ncValidate, publicView as _ncPublic, parseConfig as _ncParse, explainTelegramError as _ncExplain, persistConfig as _ncPersist, removeConfig as _ncRemove } from './js/newsChannel.js';   // the shared news channel: its own bot, tier 1-2, no book lines
 import { NEWS_SOURCES as _NW_SOURCES, POLL_MIN as _NW_POLL_MIN, backoff as _nwBackoff, dueSources as _nwDue, allowAlert as _nwAllowAlert, breakingCandidates as _nwBreaking, breakingMessage as _nwBreakingMsg } from './js/newsOps.js';
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
 import { RESEARCHERS as _RP_RESEARCHERS, WEB_SOURCES as _RP_WEB, parseFeed as _rpParseFeed, feedItems as _rpFeedItems, webDigest as _rpWebDigest, validateProposals as _rpValidate, applyFeedback as _rpApplyFeedback, feedbackBrief as _rpFeedbackBrief, buildList as _rpBuildList, mergeLibrary as _rpMerge, validateCard as _rpValidateCard, cardPrereg as _rpPrereg, slug as _rpSlug, lifecycle as _rpLifecycle, setLink as _rpSetLink, outcomesBrief as _rpOutcomes, scorecard as _rpScorecard, validateReply as _rpValidateReply, applyRevision as _rpApplyRevision, threadText as _rpThreadText } from './js/researchPod.js';   // Phases 23-25
@@ -7702,19 +7702,20 @@ async function _ncSample() {
   return { h: { ..._NC_SAMPLE, ms: Date.now() }, real: false };
 }
 app.get('/api/news-channel', _agentsGate, async (_req, res) => {
-  try { res.set('Cache-Control', 'no-store').json({ ok: true, ..._ncPublic(await _ncLoad()), lastSendAt: _ncState.lastSendAt, lastError: _ncState.lastError, masterOn: tgAllOn() }); }
+  try { res.set('Cache-Control', 'no-store').json({ ok: true, ..._ncPublic(await _ncLoad()), lastSendAt: _ncState.lastSendAt, lastError: _ncState.lastError, masterOn: tgAllOn(), durable: kv.health().persistent }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/news-channel', _agentsGate, _agentsSameOrigin, async (req, res) => {
   try {
     const v = _ncValidate(req.body, await _ncLoad());
     if (!v.ok) return res.status(400).json({ ok: false, error: v.error });
-    await kv.put(_NC_KEY, JSON.stringify(v.cfg));
-    res.set('Cache-Control', 'no-store').json({ ok: true, ..._ncPublic(v.cfg) });
+    const saved = await _ncPersist(kv, v.cfg);   // writes, reads it back from the permanent store, and only then says ok
+    if (!saved.ok) return res.status(503).json({ ok: false, error: saved.error });
+    res.set('Cache-Control', 'no-store').json({ ok: true, durable: kv.health().persistent, ..._ncPublic(v.cfg) });
   } catch (e) { res.status(500).json({ ok: false, error: 'could not save' }); }
 });
 app.delete('/api/news-channel', _agentsGate, _agentsSameOrigin, async (_req, res) => {
-  try { await kv.del(_NC_KEY); _ncState.lastError = null; res.json({ ok: true }); }
+  try { const r = await _ncRemove(kv); if (!r.ok) return res.status(503).json({ ok: false, error: r.error }); _ncState.lastError = null; res.json({ ok: true }); }
   catch (e) { res.status(500).json({ ok: false, error: 'could not disconnect' }); }
 });
 app.get('/api/news-channel/preview', _agentsGate, async (_req, res) => {

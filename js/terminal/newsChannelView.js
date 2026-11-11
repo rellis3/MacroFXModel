@@ -16,6 +16,7 @@ export function statusLine(s) {
   if (!s.configured) return '<span class="chip">not connected</span>';
   const bits = [s.on ? '<span class="chip up">on</span>' : '<span class="chip gold">paused</span>', `<span class="chip">${esc(s.chatId)}</span>`, `<span class="chip">tier ${s.tiers?.length === 1 ? '1 only' : '1 and 2'}</span>`];
   if (s.masterOn === false) bits.push('<span class="chip dn">all Telegram is muted (master switch)</span>');
+  if (s.durable === false) bits.push('<span class="chip dn">storage not permanent: lost on the next deploy</span>');
   const last = s.lastSendAt ? `Last note sent ${esc(new Date(s.lastSendAt).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }))} London.` : 'Nothing sent since the server last started.';
   return `${bits.join(' ')}<p class="muted" style="margin-top:6px">${last}${s.lastError ? ` <b style="color:var(--dn)">Last problem: ${esc(s.lastError)}</b>` : ''}</p>`;
 }
@@ -68,7 +69,8 @@ export function mount({ doc = document, fetchFn = (...a) => fetch(...a), open })
     g('nc-save').onclick = async () => {
       const r = await call('/api/news-channel', 'POST', { token: g('nc-token').value.trim() || undefined, chatId: g('nc-chat').value.trim(), tiers: g('nc-tiers').value === '1' ? [1] : [1, 2], on: g('nc-on').checked });
       if (!r.ok) return say(r.error ?? 'Could not save.', true);
-      await show(); const m = g('nc-msg'); if (m) m.textContent = 'Saved. Press Send test to check it reaches the channel.';
+      await show(); const m = g('nc-msg');
+      if (m) { m.textContent = r.durable === false ? 'Saved, but this server\'s storage is not permanent, so it will be lost on the next deploy (Cloudflare KV is not configured here).' : 'Saved to the permanent store: it survives restarts and deploys. Press Send test to check it reaches the channel.'; if (r.durable === false) m.style.color = 'var(--dn)'; }
     };
     const test = g('nc-test'); if (test) test.onclick = async () => { say('Sending…'); const r = await call('/api/news-channel/test', 'POST'); say(r.ok ? 'Sent. Check the channel.' : `Not sent: ${r.error ?? 'unknown problem'}`, !r.ok); const st = await call('/api/news-channel'); const el = g('nc-status'); if (el) el.innerHTML = statusLine(st); };
     const off = g('nc-off'); if (off) off.onclick = async () => { if (!confirm('Disconnect the channel? The saved token is deleted.')) return; const r = await call('/api/news-channel', 'DELETE'); if (!r.ok) return say(r.error ?? 'Could not disconnect.', true); await show(); };
