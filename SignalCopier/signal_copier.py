@@ -37,6 +37,7 @@ import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
@@ -81,6 +82,8 @@ DEFAULT_CFG = {
     "max_entry_drift_r": 0.25,      # skip a market signal if price is already this many R worse than his entry
     "max_spread_r": 0.20,           # skip if the spread is more than this fraction of the stop distance (live: real MT5 spread)
     "limit_through": "market",      # limit already traded through (better price): "market" = take it now, "skip"
+    "use_set_and_forget_tp": False, # his "Set and forget option: TP …" -- off = hold for his close, as he recommends
+    "catchup_on_start": True,       # at start, read the topic back to the session start for messages missed while off
     "tg_chat": DEFAULT_CHAT,
     "tg_topic": None,               # "Signals" topic id; None = whole group
     "tg_senders": "",               # comma list of trusted sender names/ids; blank = everyone
@@ -130,6 +133,15 @@ def _deep_merge(base: dict, over: dict) -> dict:
     for k, v in (over or {}).items():
         out[k] = _deep_merge(out[k], v) if isinstance(v, dict) and isinstance(out.get(k), dict) else v
     return out
+
+
+def session_start(now=None) -> float:
+    """The last session end: 17:00 New York (22:00 UK), as a UTC epoch."""
+    ny = (now or datetime.now(timezone.utc)).astimezone(ZoneInfo("America/New_York"))
+    start = ny.replace(hour=17, minute=0, second=0, microsecond=0)
+    if ny < start:
+        start -= timedelta(days=1)
+    return start.timestamp()
 
 
 def _now() -> float:
@@ -195,6 +207,9 @@ class Copier:
         self.retries: dict[str, dict] = st.get("retries") or {}
         self.manual_seen: list = list(st.get("manual_seen") or [])      # request ids already handled
         self.manual_results: list = []
+        self.catchup_seen: list = list(st.get("catchup_seen") or [])    # catch-up request ids already handled
+        self.catchup_pending: list = []           # [{req, hours}] from the bot page's "Catch up" button
+        self.catchup_last: dict | None = st.get("catchup_last")
         self.guard = RiskGuard(log=log)
         self.guard.sync_cfg(cfg)
         self.guard_state: dict = {}
@@ -348,7 +363,7 @@ class Copier:
         return " [PAPER]" if self.paper else ""
 
     # ── message → book → broker + record ──────────────────────────────────
-    def on_message(self, msg_id, text, posted: datetime, edited=False, execute=True):
+    def on_message(self, msg_id, text, posted: datetime, edited=False, execute=True, catchup=None):
         events = parse_message(text)
         key, sig = str(msg_id), repr(events)
         if edited:
@@ -361,7 +376,49 @@ class Copier:
             return
         self.book.seen[key] = sig
         self.dirty["state"] = True
-        self.apply(self.book.apply(events, msg_id, posted.astimezone(timezone.utc)), execute)
+        trans = self.book.apply(events, msg_id, posted.astimezone(timezone.utc))
+        if catchup is not None:
+            return self.apply_missed(trans, catchup)
+        self.apply(trans, execute)
+
+    def apply_missed(self, transitions, tally):
+        """A message read back after the bot was off (catch-up). His cancels and
+        closes act on our orders as usual. A new signal is entered only while it
+        is still valid: a market signal within Max signal age, a limit/stop before
+        its cancel / close time. Anything older is logged as missed, with no
+        per-signal alert, and waits on the page for "Send to MT5"."""
+        now = _now()
+        for action, o, detail in transitions:
+            if action == "warn":
+                self.alert(f"⚠️ (caught up) {detail}")
+                continue
+            self.record(action, o)
+            if action != "place":
+                self.execute(action, o, detail)
+                continue
+            tally["signals"] += 1
+            if self.ignored(o["symbol"]):
+                self.execute(action, o, detail)          # logs "crypto ignored", no alert
+                continue
+            age = now - _ts(o["posted_at"])
+            ends = [t for t in (_ts(o.get("cancel_at_utc")), _ts(o.get("close_at_utc"))) if t]
+            stale = (age > self.cfg.get("max_signal_age_secs", 300) if o["order"] == "market"
+                     else any(now >= t for t in ends))
+            if not stale:
+                self.execute(action, o, detail)
+                ok = (self.execs.get(o["id"]) or {}).get("status") in LIVE_EXEC
+                tally["placed" if ok else "skipped"] += 1
+                continue
+            posted_uk = datetime.fromtimestamp(_ts(o["posted_at"]), timezone.utc).astimezone(
+                ZoneInfo("Europe/London")).strftime("%H:%M")
+            why = (f"missed while the bot was off (posted {posted_uk} UK) — use Send to MT5 if you still want it"
+                   if o["order"] == "market" else f"missed while the bot was off (posted {posted_uk} UK), past its "
+                                                  f"{'cancel' if o.get('cancel_at_utc') else 'close'} time")
+            self.execs[o["id"]] = {"id": o["id"], "status": "skipped", "reason": why}
+            self.decide(o, "skipped", why)
+            tally["missed"] += 1
+        if transitions:
+            self.dirty["state"] = True
 
     def apply(self, transitions, execute=True):
         for action, o, detail in transitions:
@@ -538,6 +595,9 @@ class Copier:
         if not lots:
             return self._skip(o, why)
 
+        tp = o.get("tp")
+        if tp is None and cfg.get("use_set_and_forget_tp") and o.get("tp_option") is not None:
+            tp = o["tp_option"]                  # his 1:1 "set and forget" TP instead of holding for his close
         tag = o["id"].replace(":", "-")
         comment = f"SC[{tag}]"
         direction = "LONG" if d > 0 else "SHORT"
@@ -545,7 +605,7 @@ class Copier:
         ticket, kind = None, "market"
         if not as_market:
             kind = "pending"
-            ticket = self.broker.place_pending(pair, direction, o["order"], o["entry"], o["sl"], o.get("tp"),
+            ticket = self.broker.place_pending(pair, direction, o["order"], o["entry"], o["sl"], tp,
                                                lots, False, comment=comment, dedupe_tag=tag)
             if ticket is None and (self.broker.last_reject_reason or "").startswith("price_through"):
                 if cfg.get("limit_through") == "market" and o["order"] == "limit":
@@ -555,7 +615,7 @@ class Copier:
                 else:
                     return self._skip(o, f"limit already traded through ({self.broker.last_reject_reason})")
         if kind == "market":
-            ticket = self.broker.enter(pair, direction, o["sl"], o.get("tp") or 0, lots, max_spread_pips, False,
+            ticket = self.broker.enter(pair, direction, o["sl"], tp or 0, lots, max_spread_pips, False,
                                        comment=comment, dedupe_tag=tag)
         if ticket is None:
             reason = self.broker.last_reject_reason or "rejected"
@@ -641,6 +701,7 @@ class Copier:
             if self.dirty["state"] or force:
                 kv.put_json(f"{K}_state", {"book": self.book.to_dict(), "execs": self.execs, "retries": self.retries,
                                            "manual_seen": self.manual_seen[-200:],
+                                           "catchup_seen": self.catchup_seen[-50:], "catchup_last": self.catchup_last,
                                            "tg_entry_msgid": self.tg_entry_msgid,
                                            "tg_closed_alerted": sorted(self.tg_closed_alerted, key=str)[-2000:]})
                 self.dirty["state"] = False
@@ -662,10 +723,17 @@ class Copier:
         order -- runs once, and only while fresh (10 min), so a restart never
         replays an old click."""
         try:
-            reqs = (self.kv.get_json(f"{K}_manual_override") or {}).get("requests") or []
+            doc = self.kv.get_json(f"{K}_manual_override") or {}
         except Exception as e:
             log.warning(f"manual request read failed: {e}")
             return
+        reqs = doc.get("requests") or []
+        for r in doc.get("catchup") or []:          # the "Catch up" button: read the topic back
+            rid = str(r.get("req") or "")
+            if rid and rid not in self.catchup_seen and _now() - (r.get("t") or 0) / 1000 <= 600:
+                self.catchup_seen.append(rid)
+                self.catchup_pending.append({"req": rid, "hours": r.get("hours")})
+                self.dirty["state"] = True
         for r in reqs:
             rid, sid = str(r.get("req") or ""), str(r.get("id") or "")
             if not rid or rid in self.manual_seen or _now() - (r.get("t") or 0) / 1000 > 600:
@@ -694,12 +762,7 @@ class Copier:
     def today(self):
         """His signals since the last session end (17:00 New York), with the full
         detail from the message, the bot's action and the live price."""
-        from zoneinfo import ZoneInfo
-        ny = datetime.now(ZoneInfo("America/New_York"))
-        start = ny.replace(hour=17, minute=0, second=0, microsecond=0)
-        if ny < start:
-            start -= timedelta(days=1)
-        t0 = start.timestamp()
+        t0 = session_start()
         rows = []
         for o in self.book.orders.values():
             if (_ts(o.get("posted_at")) or 0) < t0:
@@ -711,7 +774,7 @@ class Copier:
             drift = (round((px - entry) * d / abs(entry - sl), 2)
                      if o["order"] == "market" and px is not None and entry is not None and sl is not None
                      and entry != sl else None)
-            rows.append({k: o.get(k) for k in ("id", "symbol", "side", "order", "entry", "sl", "tp", "targets", "style",
+            rows.append({k: o.get(k) for k in ("id", "symbol", "side", "order", "entry", "sl", "tp", "tp_option", "targets", "style",
                                                "cancel_at", "close_at", "close_rule", "risk_lots", "risk_usd", "note",
                                                "posted_at", "status", "end_reason")}
                         | {"exec": e.get("status"), "exec_reason": e.get("reason"), "ticket": e.get("ticket"),
@@ -745,6 +808,8 @@ class Copier:
             "retrying": len(self.retries),
             "today": self.today(),
             "manual_results": self.manual_results,
+            "catchup": self.catchup_last, "catchup_running": bool(self.catchup_pending),
+            "use_set_and_forget_tp": bool(self.cfg.get("use_set_and_forget_tp")),
             "pushed_at": int(_now()),
         }
 
@@ -941,6 +1006,9 @@ async def run(base_url, force_live, backfill_since=None, parse_only=False):
     client.add_event_handler(on_new, tev.NewMessage(chats=chat))
     client.add_event_handler(on_edit, tev.MessageEdited(chats=chat))
     client.add_event_handler(on_delete, tev.MessageDeleted(chats=chat))
+    if cfg.get("catchup_on_start", True):
+        await catch_up(cp, client, chat, ok, session_start(), "start")
+
     cp.alert(f"📡 Signal Copier listening to \"{cp.tg['chat']}\" (topic {cfg.get('tg_topic') or 'all'}) — "
              f"{'PAPER' if cp.paper else 'LIVE'}, risk {cfg['risk_pct']}%/signal")
 
@@ -953,6 +1021,11 @@ async def run(base_url, force_live, backfill_since=None, parse_only=False):
                 before = len(cp.manual_results)
                 cp.check_manual()
                 last_manual = now
+                while cp.catchup_pending:            # the bot page's "Catch up" button
+                    r = cp.catchup_pending.pop(0)
+                    hrs = r.get("hours")
+                    since = _now() - float(hrs) * 3600 if hrs else session_start()
+                    await catch_up(cp, client, chat, ok, since, "button")
                 if len(cp.manual_results) != before:
                     cp.push_status()                  # show the result on the page straight away
             if now - last_resolve >= cp.cfg.get("resolve_secs", 60):
@@ -981,6 +1054,44 @@ async def run(base_url, force_live, backfill_since=None, parse_only=False):
         except Exception as e:
             log.exception(f"loop error: {e}")
         await asyncio.sleep(cp.cfg.get("poll_secs", 5))
+
+
+async def catch_up(cp: Copier, client, chat, ok, since_ts: float, why: str):
+    """Read the topic back from `since_ts` and apply every message the book has
+    not seen (the bot was off, or Telegram dropped an update). Timers run in
+    message order; still-valid signals are entered, older ones are logged as
+    missed for "Send to MT5" (Copier.apply_missed)."""
+    topic = cp.cfg.get("tg_topic")
+    kw = {"reply_to": int(topic)} if topic and int(topic) != 1 else {}
+    tally = {"signals": 0, "placed": 0, "skipped": 0, "missed": 0}
+    scanned = new = 0
+    start = datetime.fromtimestamp(since_ts, timezone.utc)
+    try:
+        async for msg in client.iter_messages(chat, reverse=True, offset_date=start, **kw):
+            if not ok(msg):
+                continue
+            scanned += 1
+            if str(msg.id) in cp.book.seen:
+                continue
+            new += 1
+            cp.apply(cp.book.tick(msg.date.astimezone(timezone.utc)))
+            cp.on_message(msg.id, msg.message or "", msg.date, catchup=tally)
+        err = None
+    except Exception as e:
+        err = str(e)
+        log.exception(f"catch-up failed: {e}")
+    cp.catchup_last = {"at": int(_now()), "since": int(since_ts), "why": why, "scanned": scanned,
+                       "new_messages": new, **tally, "error": err}
+    cp.dirty["state"] = True
+    since_uk = start.astimezone(ZoneInfo("Europe/London")).strftime("%a %H:%M")
+    log.info(f"catch-up ({why}) since {since_uk} UK: {scanned} messages, {new} new, {tally['signals']} signals "
+             f"({tally['placed']} placed, {tally['missed']} missed, {tally['skipped']} skipped)")
+    if new or why == "button" or err:
+        cp.alert(f"🔁 Caught up since {since_uk} UK: {new} missed message(s), {tally['signals']} new signal(s) — "
+                 f"{tally['placed']} placed, {tally['missed']} too old (Send to MT5 on the bot page)"
+                 + (f"\n⚠️ stopped early: {err}" if err else "") + cp.mode_tag())
+    cp.push_status()
+    cp.flush()
 
 
 def replay_history(cp: Copier, messages, record=True):

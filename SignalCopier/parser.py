@@ -82,14 +82,18 @@ RE_NUMBERED = re.compile(r'^\W*(\d)\)\s*' + NUM + r'\W*$')
 RE_CANCEL_AT = re.compile(r'cancel\s+at\s+' + TIME + r'\s*(?:UK)?', re.I)
 RE_CLOSE_AT = re.compile(r'close[d]?\s+at\s+' + TIME + r'\s*(?:UK)?', re.I)
 RE_RISK = re.compile(r'([\d.]+)\s*lots?\s*=\s*\$\s*' + NUM + r'\s*risk', re.I)
+# "Set and forget option: TP 1.3312 (1:1)" under "Hold option (recommended): no TP set, hold until I
+# post the close" (from 11 Nov 2026): an alternative TP, not his recommendation. Kept as tp_option; the bot
+# holds for his close unless "use set-and-forget TP" is on.
+RE_SET_FORGET = re.compile(r'set\s*(?:and|&)\s*forget', re.I)
 RE_DETAIL = re.compile(r'(stop\s*loss|\bSL\b|\bTP\d?\b|\btargets?\b|cancel\s+at|close[d]?\s+at|\blots?\s*=)', re.I)
 
 # instructions about an existing trade ───────────────────────────────────
-RE_CANCEL = re.compile(r'\bcancel\s+(?:the\s+)?' + SYM + r'\s+(?:(limit|stop)\s+)?' + SIDE + r'\s+at\s+' + NUM, re.I)
-RE_CLOSE = re.compile(r'\bclose\s+(?:the\s+)?' + SYM + r'\s+' + SIDE + r'\s+from\s+' + NUM + r'(.*)$', re.I)
+RE_CANCEL = re.compile(r'\bcancel\s+(?:the\s+)?' + SYM + r'\s*(?:\([^)]*\))?\s+(?:(limit|stop)\s+)?' + SIDE + r'\s+at\s+' + NUM, re.I)
+RE_CLOSE = re.compile(r'\bclose\s+(?:the\s+)?' + SYM + r'\s*(?:\([^)]*\))?\s+' + SIDE + r'\s+from\s+' + NUM + r'(.*)$', re.I)
 # "Target hit on the SP500 SELL from 7,640.6" · "US30 SELL from 52,445 stopped out"
 # · "Stopped the Ethereum SELL from 2,321.38 at 2,346.96"
-RE_FROM = re.compile(r'\b' + SYM + r'\s+' + SIDE + r'\s+from\s+' + NUM, re.I)
+RE_FROM = re.compile(r'\b' + SYM + r'\s*(?:\([^)]*\))?\s+' + SIDE + r'\s+from\s+' + NUM, re.I)
 RE_RESULT_WORD = re.compile(r'(target\s+hit|tp\s+hit|take\s*profit\s+hit|profit\s+hit|hit\s+(?:the\s+)?(?:target|tp)|stopped|sl\s+hit|\bclosed?\b|\bexit)', re.I)
 # notices that need no action: a fill, or "has already moved. If you are not in, do not enter now"
 RE_FILLED = re.compile(r'^\W*filled\b|\bis\s+now\s+open\b|\balready\s+moved\b|\bdo\s+not\s+enter\b', re.I)
@@ -162,21 +166,27 @@ def _entry(line):
 def _trade_event(lines, section):
     order, side, sym, price, note = _entry(lines[0])
     rest = '\n'.join(lines)
+    option = [ln for ln in lines[1:] if RE_SET_FORGET.search(ln)]
+    main = '\n'.join(ln for ln in lines if ln not in option)
     ev = {'kind': 'open', 'symbol': sym, 'side': side, 'order': order, 'entry': price,
           'sl': None, 'tp': None, 'targets': [], 'cancel_at': None, 'close_at': None,
           'risk_lots': None, 'risk_usd': None, 'style': section.get('style'), 'note': note}
     if (s := RE_SL.search(rest)):
         ev['sl'] = num(s.group(1))
-    targets = [num(t.group(1)) for t in RE_TP.finditer(rest)]
-    if not targets and (t := RE_TARGET.search(rest)):
+    targets = [num(t.group(1)) for t in RE_TP.finditer(main)]
+    if not targets and (t := RE_TARGET.search(main)):
         targets.append(num(t.group(1)))
     for ln in lines[1:]:
+        if ln in option:
+            continue
         if (n := RE_NUMBERED.match(ln)):
             v = num(n.group(2))
             if v not in targets:
                 targets.append(v)
     ev['targets'] = targets
     ev['tp'] = targets[0] if targets else None       # first target is the one the bot uses
+    if option and (t := RE_TP.search('\n'.join(option)) or RE_TARGET.search('\n'.join(option))):
+        ev['tp_option'] = num(t.group(1))
     if (c := RE_CANCEL_AT.search(rest)):
         ev['cancel_at'] = hhmm(c.group(1))
     if (c := RE_CLOSE_AT.search(rest)):

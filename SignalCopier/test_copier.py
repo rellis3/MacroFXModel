@@ -413,6 +413,78 @@ def test_dji30_is_us30():
     assert statuses(cp)["301:0"] == "closed" and not [a for a in cp.alerts if "no matching" in a[0]]
 
 
+class _Msg:
+    def __init__(self, mid, text, when):
+        self.id, self.message, self.date = mid, text, when
+
+
+class _Client:
+    def __init__(self, msgs):
+        self.msgs, self.calls = msgs, []
+
+    async def iter_messages(self, chat, reverse=True, offset_date=None, **kw):
+        self.calls.append((offset_date, kw))
+        for m in sorted(self.msgs, key=lambda m: m.date):
+            if m.date >= offset_date:
+                yield m
+
+
+def test_catch_up_applies_missed_messages_once():
+    """11 Nov 2026: the bot was off overnight and missed the 07:00 message."""
+    import asyncio
+    cp, kv = make({"tg_topic": 6319})
+    cp.push_status = lambda: None
+    now = datetime.now(timezone.utc)
+    cp.on_message(400, "SELL USDJPY now at 157.70\nStop loss (SL) 157.96", now - timedelta(seconds=20))  # seen live
+    later = (now + timedelta(hours=2)).astimezone(sc.ZoneInfo("Europe/London")).strftime("%H:%M")
+    msgs = [_Msg(400, "SELL USDJPY now at 157.70\nStop loss (SL) 157.96", now - timedelta(seconds=20)),
+            _Msg(401, "SELL GBPJPY now at 211.20\nStop loss (SL) 211.60", now - timedelta(hours=2)),
+            _Msg(402, f"Limit SELL NAS100 at 28,965\nSL 29,096, TP 28,703\nCancel at {later} UK if not filled",
+                 now - timedelta(hours=2)),
+            _Msg(403, "SELL SP500 now at 7,661\nSL 7,700, TP 7,600", now - timedelta(seconds=60)),
+            _Msg(404, "CLOSE the USDJPY SELL from 157.70, flat", now - timedelta(seconds=10))]
+    client = _Client(msgs)
+    since = now - timedelta(hours=4)
+    asyncio.run(sc.catch_up(cp, client, 0, lambda m: True, since.timestamp(), "start"))
+    st = statuses(cp)
+    assert st["401:0"] == "skipped" and "missed while the bot was off" in cp.execs["401:0"]["reason"]
+    assert st["402:0"] == "pending" and st["403:0"] == "open" and st["400:0"] == "closed", st
+    assert client.calls[0][1] == {"reply_to": 6319}
+    c = cp.catchup_last
+    assert (c["scanned"], c["new_messages"], c["signals"], c["placed"], c["missed"]) == (5, 4, 3, 2, 1), c
+    assert sum("Caught up" in a[0] for a in cp.alerts) == 1 and not any("SKIPPED" in a[0] for a in cp.alerts)
+    # the missed one can still be sent by hand, and a second catch-up changes nothing
+    assert cp.send_manual("401:0")["ok"]
+    asyncio.run(sc.catch_up(cp, client, 0, lambda m: True, since.timestamp(), "start"))
+    assert cp.catchup_last["new_messages"] == 0 and statuses(cp)["401:0"] == "open"
+
+
+def test_catch_up_button_request_is_read_once():
+    import time as _t
+    cp, kv = make()
+    kv.data["signal_copier_manual_override"] = {"requests": [], "catchup": [
+        {"req": "c1", "t": int(_t.time() * 1000), "hours": 24},
+        {"req": "old", "t": int((_t.time() - 3600) * 1000)}]}
+    cp.check_manual()
+    cp.check_manual()
+    assert cp.catchup_pending == [{"req": "c1", "hours": 24}]
+
+
+def test_set_and_forget_tp_is_an_option():
+    msg = ("SELL GBPJPY now at 211.20\nStop loss (SL) 211.60\n"
+           "Hold option (recommended): no TP set, hold until I post the close\n"
+           "Set and forget option: TP 210.80 (1:1)")
+    now = datetime.now(timezone.utc)
+    cp, _ = make()
+    cp.on_message(501, msg, now)
+    (p,) = [p for p in cp.broker._pos.values() if p["pair"] == "GBPJPY"]
+    assert not p["tp"], p
+    cp2, _ = make({"use_set_and_forget_tp": True})
+    cp2.on_message(501, msg, now)
+    (p,) = [p for p in cp2.broker._pos.values() if p["pair"] == "GBPJPY"]
+    assert abs(p["tp"] - 210.80) < 1e-9, p
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:

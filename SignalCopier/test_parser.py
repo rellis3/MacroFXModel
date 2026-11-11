@@ -258,6 +258,22 @@ def test_chat_with_a_symbol_is_not_flagged_but_management_is():
     assert [e['kind'] for e in parse_message("BTC and GBPJPY both SL to BE please")] == ['review']
 
 
+def test_close_with_bracket_note_after_symbol():
+    (c,) = parse_message("CLOSE the DJI30(normal, NOT futures) BUY from 51,635, the bias has changed")
+    assert (c['kind'], c['symbol'], c['side'], c['entry']) == ('close', 'DJI30', 'BUY', 51635), c
+    (x,) = parse_message("Cancel the SP500(normal, NOT futures) limit SELL at 6,800")
+    assert (x['kind'], x['symbol'], x['entry']) == ('cancel', 'SP500', 6800)
+
+
+def test_hold_option_and_set_and_forget_tp():
+    """11 Nov 2026 format: hold with no TP is recommended; the 1:1 TP is an option."""
+    (o,) = parse_message("SELL GBPUSD now at 1.3335\nStop loss (SL) 1.3358\n"
+                         "Hold option (recommended): no TP set, hold until I post the close\n"
+                         "Set and forget option: TP 1.3312 (1:1)\n0.01 lots = $2.29 risk")
+    assert (o['symbol'], o['side'], o['order'], o['entry'], o['sl']) == ('GBPUSD', 'SELL', 'market', 1.3335, 1.3358)
+    assert o['tp'] is None and o['targets'] == [] and o['tp_option'] == 1.3312 and o['risk_usd'] == 2.29
+
+
 if __name__ == '__main__':
     fns = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     for f in fns:

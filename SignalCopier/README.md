@@ -72,6 +72,17 @@ It writes a request to `signal_copier_manual_override` naming his signal by id, 
 - refuses a limit after its cancel time
 - handles each request once, and never replays a click older than 10 minutes
 
+**Catch up** (Today's Signals card, and automatically at start): reads the Signals topic back over this session
+(since 22:00 UK), the last 24 hours or the last 3 days, and applies every message the book hasn't seen, in order.
+His cancels and closes act on your orders. A limit still before its cancel time is placed, and a market signal still
+within Max signal age is entered. Older market signals are logged as "missed while the bot was off", with one summary
+alert, and wait in Today's Signals for **Send to MT5**. Running it twice changes nothing. The request rides
+`signal_copier_manual_override` (`catchup: [{req, t, hours}]`).
+
+**Set-and-forget TP:** his newer posts offer "Hold option (recommended): no TP set" and "Set and forget option: TP …
+(1:1)". The bot follows the hold option by default, with no TP: the trade exits on his close or the SL. Tick
+**Set-and-forget TP** to send the 1:1 TP instead. Signal Outcomes always score the hold option.
+
 It behaves like the other pylego bots (Vote Atlas / Motif / Fib Atlas):
 - **Risk guard:** the shared `pylego.risk_guard` daily/monthly drawdown lockout. It's on by default; the cooldown defaults to 0.
 - **Symbol check:** `verify_symbols` runs at start and on each new symbol. A mismatch shows on the tab and skips that symbol's signals.
