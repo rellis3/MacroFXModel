@@ -15,7 +15,7 @@ Generated 2026-11-11.
 | null | 176 |
 | underpowered | 85 |
 | context (base rates, descriptions: not counted as tests) | 54 |
-| pre-registrations with no banked verdict (below) | 88 |
+| pre-registrations with no banked verdict (below) | 89 |
 
 **What the count says (Lesson 02 §05).** If none of the 312 claims were real, tests at the usual 5% size would still pass
 about **15.6** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
@@ -404,6 +404,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/ATLAS_HONEST_GONOGO_PREREG.md`: atlas-honest-gonogo — With the known leaks removed, real bid/ask fills and the production settings, do the Vot
 - `forge/BREAK_IVRV_PREREG.md`: Break trades when implied vol is rich — pre-registration
 - `forge/CB_TONE_REACTION_PREREG.md`: cb-tone-reaction — does the ECB / BoE / BoJ statement's hawkish shift line up with the first-30-minute move in
+- `forge/CLOSE_WINDOW_MOMENTUM_PREREG.md`: close-window-momentum — does the move into 15:30 ET predict the last 30 minutes of the US cash session on our 
 - `forge/COG_ANALOG_PREREG.md`: COG-ANALOG: match the last 12 hours of the line against its own past and read what Nasdaq did next
 - `forge/COG_CROSS_ASSET_PREREG.md`: COG-CROSS-ASSET: does the SOFR-Euribor / SOFR-ESTR information relate to, or lead, gold, EURUSD, USDJPY, the R
 - `forge/COG_DYNAMIC_LEAD_PREREG.md`: COG-DYNAMIC-LEAD: do yield and futures spreads begin moving first, in identifiable periods, and does FX (or go
