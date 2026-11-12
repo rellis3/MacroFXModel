@@ -1,8 +1,10 @@
 # Agenda: rough volatility (is log realised volatility "rough", and does it change what we forecast?)
 
-Set 2026-11-12 by research-director, from a pasted lecture transcript (a quant lecturer; speaker not named in the
-text, **not C.OG**; a free walkthrough of Gatheral, Jaisson and Rosenbaum, shown on about a year of five-minute S&P
-500 bars). A lead, not a source. Theme keywords for `evidence_map.mjs`:
+Set 2026-11-12 by research-director, from Quant Guild's lecture "Rough Volatility for Quantitative Finance" (Roman
+Paolucci, https://www.youtube.com/watch?v=Io_f4G7a_Eo; intake note
+`education/intake/technical/quant-guild/2026-11-12-volatility-is-rough.md`; **not C.OG**; a free walkthrough of
+Gatheral, Jaisson and Rosenbaum on "a few hundred days" of five-minute S&P 500 bars from Interactive Brokers, rolling
+realised-variance windows; slope 0.155 at q=1 with no interval, which he calls "an academic educational exercise"). A lead, not a source. Theme keywords for `evidence_map.mjs`:
 `rough roughness hurst structure function realised vol HAR forecast`. Hand chosen cards to `research-protocol` to
 claim. Logged beside it as the 2026-11-12 entry in `MD files/CLIP_WATCH.md`.
 
@@ -71,7 +73,8 @@ price. If it is an artefact of measuring volatility, there is no mechanism and n
 | Data & power | rv5 Step 0 tables (not in the sandbox), about 1,500 sessions per instrument; descriptive, so the verdict word is CONTEXT |
 | If yes → | rough and outside the artefact band: Q2 and Q3 become worth running; the Theory Lab gets a lesson with a live slope plot |
 | If no → | inside the band: stop saying "volatility is rough" on this desk, close Q2 and Q3, note the Cont and Das result in the HAR lesson |
-| Falsifier | real slopes sit inside the smooth-volatility band, or zeta(q) is not linear in q |
+| Construct note | non-overlapping per-session log rv5 only; lag >= the proxy window (the lecture's overlapping rolling windows make short-lag increments mechanical); report H on two proxy specs (M1-built rv5 and a 1h-bar RV) |
+| Falsifier | real slopes sit inside the smooth-volatility band, or zeta(q) is not linear in q; linear zeta(q) alone is not support, since a noise-driven artefact is also linear in q, so only the artefact band discriminates |
 
 ### Q2. Does a rough forecast beat HAR-800 on the range lines? — score 11/15, gated on Q1
 
