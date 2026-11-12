@@ -78,6 +78,7 @@ export const STORES = {
   research_pod_queue: L('Literature desk: the reading backlog (reading list, SSRN manifest, 151, QuantConnect, uploads)', 30, { market: false }),
   library_state_v1: L('Paper Library: reading progress (Theory Lab merge rules), manual tags, MP3 briefing job state (js/libraryApi.js)', 60, { market: false }),
   library_librarian_v1: L('Paper Library librarian: model calls used against the hard cap of 400 (js/libraryLibrarian.js; one small DeepSeek call picks the papers for a question)', 60, { market: false }),
+  research_room_talk_v1: L('Research rooms: short-remark model calls used against the hard cap of 300 (js/researchRoom.js; one small call per voice when a guest speaks or the table discusses)', 60, { market: false }),
   research_brief_v1: L('Research brief translator: model calls used against the hard cap of 100 (js/researchBrief.js; one small call turns a loose idea into a precise research brief)', 60, { market: false }),
   library_concepts_v1: L('Paper Library concept cards: model calls used against the hard cap of 400 and the content hashes already sent (js/libraryConcepts.js; the cards are private, in R2)', 60, { market: false }),
   library_figs_v1: L('Paper Library figure and table notes: model calls used against the hard cap and the papers done (js/libraryFigs.js; the notes per paper are in R2)', 60, { market: false }),

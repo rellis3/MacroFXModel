@@ -17,9 +17,9 @@ test('the brief shows the hypothesis, escapes text, and marks what we hold and w
   assert.match(h, /try: ECB data portal/); assert.match(h, /One question for you/); assert.match(h, /3 of 100 translator calls used/);
   assert.match(h, /Not a result/);
 });
-test('an error is shown plainly and the Go button is not live yet', () => {
+test('an error is shown plainly and Go opens a research room', () => {
   assert.match(briefHtml({ ok: false, error: 'the 100-call cap is used up' }), /cap is used up/);
-  assert.match(briefHtml(res), /<button type="button" class="lib-btn" disabled/);
+  assert.match(briefHtml(res), /data-act="room">Go: open a research room/);
 });
 test('the example carries the owner\'s yield-curve question and the method suggestions', () => {
   assert.match(EXAMPLE_TEXT, /euro 2-year versus 10-year/); assert.match(EXAMPLE_TEXT, /changes rather than absolute levels/);

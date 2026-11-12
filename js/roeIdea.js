@@ -31,12 +31,13 @@ export function briefHtml(res) {
     + sec('Assumptions made', (b.assumptions ?? []).length ? `<ul>${li(b.assumptions)}</ul>` : '')
     + (b.question ? `<div class="ib-q"><b>One question for you.</b> ${esc(b.question)}</div>` : '')
     + `<div class="ib-foot">Brief ${esc(res.id)} · ${res.callsUsed ?? '?'} of ${res.callsCap ?? '?'} translator calls used. Not a result: a hypothesis to be tested.</div>`
-    + `<div class="ib-actions"><button type="button" class="lib-btn" data-act="edit">Edit my words</button><button type="button" class="lib-btn" disabled title="The next step: the researchers work from this brief">Go: send to the researchers (next step, not built yet)</button></div></article>`;
+    + `<div class="ib-actions"><button type="button" class="lib-btn" data-act="edit">Edit my words</button><button type="button" class="lib-btn primary" data-act="room">Go: open a research room</button></div></article>`;
 }
 
 export function mount({ doc = document, fetchFn = (...a) => fetch(...a) } = {}) {
   const g = id => doc.getElementById(id), text = g('ideaText'), go = g('ideaGo'), out = g('ideaOut'), info = g('ideaInfo');
   const status = async () => { try { const r = await fetchFn('/api/research-pod/brief', { credentials: 'same-origin' }); const d = await r.json(); if (d.ok && d.callsUsed != null) info.textContent = `${d.callsUsed} of ${d.callsCap} translator calls used.`; } catch { /* the number is a nicety */ } };
+  let last = null;   // the latest translation, for the Go button
   g('ideaEx').addEventListener('click', () => { text.value = EXAMPLE_TEXT; text.focus(); });
   go.addEventListener('click', async () => {
     const t = text.value.trim(); if (!t) { out.innerHTML = '<p class="ib-err">Write the idea first, in your own words.</p>'; return; }
@@ -44,10 +45,22 @@ export function mount({ doc = document, fetchFn = (...a) => fetch(...a) } = {}) 
     try {
       const r = await fetchFn('/api/research-pod/brief', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: t }) });
       if (r.status === 401) { out.innerHTML = '<p class="ib-err">Log in to use this.</p>'; return; }
-      out.innerHTML = briefHtml(await r.json().catch(() => ({ ok: false, error: 'The server sent something unreadable.' })));
+      last = await r.json().catch(() => ({ ok: false, error: 'The server sent something unreadable.' }));
+      out.innerHTML = briefHtml(last);
       status();
     } catch (e) { out.innerHTML = `<p class="ib-err">Could not reach the server: ${esc(e.message)}</p>`; } finally { go.disabled = false; }
   });
-  out.addEventListener('click', e => { if (e.target.closest?.('[data-act="edit"]')) { text.focus(); text.scrollIntoView?.({ block: 'center' }); } });
+  out.addEventListener('click', async e => {
+    if (e.target.closest?.('[data-act="edit"]')) { text.focus(); text.scrollIntoView?.({ block: 'center' }); return; }
+    const go = e.target.closest?.('[data-act="room"]'); if (!go || !last?.ok) return;
+    // the research room (research.html, js/researchRoom.js): the brief opens a room; nothing runs until the owner starts the discussion there
+    go.disabled = true; go.textContent = 'Opening the room…';
+    try {
+      const r = await fetchFn('/api/research-room/open', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ brief: last.brief, text: text.value.trim() }) });
+      const d = await r.json().catch(() => ({ ok: false, error: 'The server sent something unreadable.' }));
+      if (!r.ok || !d.ok) throw new Error(d.error || `request failed (${r.status})`);
+      doc.location.href = `research.html#room=${encodeURIComponent(d.id)}`;
+    } catch (err) { go.disabled = false; go.textContent = 'Go: open a research room'; info.textContent = err.message; }
+  });
   return { status };
 }
