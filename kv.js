@@ -70,6 +70,7 @@ const _CF_EXACT = new Set([
   'spread_episodes_v1',     // spread-turn episodes forward record (forge/SPREAD_EPISODES_PREREG.md): every confirmed turn since
                              // 2026-10-20 and its outcome; not re-derivable once the live window moves on. Must also be in _worker.js PERMANENT_KEYS.
   'cb_rate_futures_v1',     // the other central banks' rate futures, pushed from the owner's TWS by scripts/rates_line/refresh_cb_expectations.py
+  'residual_fx8_forward_v1', // FX8 residual book forward paper record (forge/RESIDUAL_FX8_FORWARD_PREREG.md), pushed nightly by scripts/residual-fx8-forward/record.py. Also in _worker.js (both lists).
   'xccy_basis_v1',
   'xccy_basis_hist',
   'options_skew_v1',        // the laptop's IBKR options-skew pull (scripts/rates_line/refresh_options_skew.py)

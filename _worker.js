@@ -66,6 +66,7 @@ function isAllowedKVKey(key) {
     'oi_conf_bot_config', 'oi_conf_bot_credentials', 'oi_conf_bot_status', 'oi_conf_bot_zones', 'oi_conf_bot_trade_log', 'oi_conf_bot_state',
     'zq_path_v1',
     'cb_rate_futures_v1',
+    'residual_fx8_forward_v1',
     'xccy_basis_v1',
     'xccy_basis_hist',
     'options_skew_v1',
@@ -1122,6 +1123,8 @@ export default {
             'zq_path_v1',
             // cb_rate_futures_v1: the laptop's IBKR pull of the other central banks' rate futures (scripts/rates_line/refresh_cb_expectations.py).
             'cb_rate_futures_v1',
+            // residual_fx8_forward_v1: the FX8 residual book's forward paper record (scripts/residual-fx8-forward/record.py, forge/RESIDUAL_FX8_FORWARD_PREREG.md), pushed nightly from the laptop.
+            'residual_fx8_forward_v1',
             'xccy_basis_v1',
             'xccy_basis_hist',
             // options_skew_*: the laptop's IBKR options-skew pull and its daily history (scripts/rates_line/refresh_options_skew.py).

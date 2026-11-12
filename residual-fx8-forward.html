@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FX8 residual book (forward)</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;--amber:#d29922;--red:#f85149;
+        --s1:#3987e5;--s2:#d95926;--s3:#199e70;--grid:#21262d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--s1);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700}
+  .spacer{flex:1}
+  .chip{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2)}
+  .chip.warn{color:var(--amber);border-color:var(--amber)} .chip.bad{color:var(--red);border-color:var(--red)} .chip.ok{color:var(--s3);border-color:var(--s3)}
+  .wrap{max-width:1300px;margin:0 auto;padding:12px 16px 40px;display:flex;flex-direction:column;gap:14px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:0}
+  .box h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media (max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12px} .kv span:nth-child(odd){color:var(--text3)} .kv b{font-variant-numeric:tabular-nums}
+  table{border-collapse:collapse;width:100%;font-size:11.5px;font-variant-numeric:tabular-nums}
+  th,td{padding:3px 6px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap} th{color:var(--text3);font-weight:600;position:sticky;top:0;background:var(--card)}
+  td:first-child,th:first-child{text-align:left}
+  .tscroll{overflow:auto;max-height:420px}
+  .pos{color:var(--s3)} .neg{color:var(--s2)} .mut{color:var(--text3)}
+  .note{font-size:11.5px;color:var(--text3);line-height:1.6;max-width:120ch} .note b{color:var(--text2)}
+  .note li{margin-left:18px}
+  #chart{height:300px}
+  .legend{display:flex;gap:14px;font-size:11px;color:var(--text2);margin-top:6px;flex-wrap:wrap} .legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+  .empty{color:var(--text3);font-size:12px;padding:20px 0;text-align:center}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>FX8 residual book · forward record</h1>
+  <span class="chip" id="cAsOf">loading…</span>
+  <span class="chip" id="cDays">—</span>
+  <span class="chip" id="cKill">—</span>
+  <span class="spacer"></span>
+  <a class="chip" href="today.html">Today</a>
+</div>
+<div class="wrap">
+
+  <div class="box">
+    <h2>What this is</h2>
+    <p class="note">The last lead from the micro bank <b>Mean Reversion of Residuals</b> lesson (48 slides). The lesson's own book failed on our data
+      (q1 FAIL, FX8 + metals NULL). The <b>threshold version on the 8 currencies</b> (enter at |z| ≥ 1.5, exit when z gets back to 0) ran net Sharpe
+      +0.43 / +0.38 in the two backtest halves, but that rule was chosen after looking at the same history. So it is frozen and judged only on
+      data from <b>2026-11-12</b> on. Pre-registration: <code>forge/RESIDUAL_FX8_FORWARD_PREREG.md</code>. Paper only: no orders are placed.</p>
+    <ul class="note" style="margin-top:6px">
+      <li><b>Every night:</b> PCA on the last 120 days of the 8 currencies' returns (K = 2 frozen) → each currency's residual path → its z-score → threshold trades → inverse-vol weights → factor exposure projected out → gross 1.</li>
+      <li><b>Costs:</b> house spread on every change in weight, plus OANDA's live overnight financing on each USD pair, logged nightly.</li>
+      <li><b>Verdicts:</b> F1 (net > 0) is judged on 2028-11-13 and is underpowered by design: at this Sharpe, proof takes years (slide 46). F2 kills the idea if the forward Sharpe's upper bound is below the backtest's 0.38.</li>
+    </ul>
+  </div>
+
+  <div class="grid3">
+    <div class="box"><h2>Forward vs backtest</h2><div class="kv" id="kvStats"></div></div>
+    <div class="box"><h2>Kill rules (declared before the first trade)</h2><div class="kv" id="kvKill"></div></div>
+    <div class="box"><h2>Monitors (flags, not kills)</h2><div class="kv" id="kvFlags"></div></div>
+  </div>
+
+  <div class="box">
+    <h2>Equity, gross 1 (net = after spread and financing)</h2>
+    <div id="chart"></div>
+    <div class="legend"><span><i style="background:var(--s3)"></i>net</span><span><i style="background:var(--text3)"></i>gross</span><span><i style="background:var(--s2)"></i>mirror (direction flipped, net)</span></div>
+    <p class="note" style="margin-top:6px">At gross 1 the book runs about 2.2% annual volatility, so the numbers are small by design. Scaled to 10% volatility everything is about 4.4× larger (illustration only).</p>
+  </div>
+
+  <div class="grid2">
+    <div class="box">
+      <h2>Tonight's book (signal at the last 17:00 NY close)</h2>
+      <div id="openTrades" class="note" style="margin-bottom:6px"></div>
+      <table><thead><tr><th>Currency</th><th>z</th><th>Weight</th><th>Pair</th><th>Pair position</th></tr></thead><tbody id="tBook"></tbody></table>
+      <p class="note" style="margin-top:6px">Weights are after the factor-neutral projection, so a currency with no open trade still carries a hedge weight. The weights add up to zero, so the 7 USD pairs carry the whole book exactly.</p>
+    </div>
+    <div class="box">
+      <h2>Trades since the record started</h2>
+      <div class="tscroll"><table><thead><tr><th>Currency</th><th>Side</th><th>Entry</th><th>z at entry</th><th>Exit</th><th>Days</th><th>Result (res-sd)</th></tr></thead><tbody id="tTrades"></tbody></table></div>
+      <p class="note" style="margin-top:6px">Backtest C trades: median result +1.7 residual sd, median hold 28 days, about 65–70% winners, and a fat losing tail (median loser −8 res-sd).</p>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>Daily record</h2>
+    <div class="tscroll"><table><thead><tr><th>Date</th><th>Gross %</th><th>Spread %</th><th>Financing %</th><th>Net %</th><th>Mirror %</th><th>K above noise</th></tr></thead><tbody id="tDaily"></tbody></table></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const pct = (v, d = 3) => v == null ? '—' : (v * 100).toFixed(d);
+const cls = v => v > 0 ? 'pos' : v < 0 ? 'neg' : 'mut';
+const kv = pairs => pairs.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
+
+async function load() {
+  let j;
+  try { j = await (await fetch('/api/residual-fx8-forward', { cache: 'no-store' })).json(); }
+  catch (e) { $('cAsOf').textContent = 'fetch failed'; $('cAsOf').className = 'chip bad'; return; }
+  if (!j.ok) { $('cAsOf').textContent = j.error || 'no record yet'; $('cAsOf').className = 'chip warn'; return; }
+  const ageH = (Date.now() - Date.parse(j.asOf)) / 36e5;
+  $('cAsOf').textContent = 'updated ' + j.asOf.replace('T', ' ').slice(0, 16) + ' UTC';
+  $('cAsOf').className = 'chip ' + (ageH > 50 ? 'warn' : 'ok');
+  $('cDays').textContent = `${j.days} forward day${j.days === 1 ? '' : 's'} since ${j.first_signal}`;
+  const st = j.stats || {}, fl = j.flags || {}, bt = j.backtest, k = j.kill;
+  const killed = fl.R1_hit;
+  $('cKill').textContent = killed ? 'KILL RULE HIT' : 'running · judge ' + k.judge_date;
+  $('cKill').className = 'chip ' + (killed ? 'bad' : 'ok');
+
+  $('kvStats').innerHTML = kv([
+    ['Net, cumulative', st.net_cum_pct == null ? '—' : `<span class="${cls(st.net_cum_pct)}">${st.net_cum_pct.toFixed(3)}%</span>`],
+    ['Gross, cumulative', st.gross_cum_pct == null ? '—' : st.gross_cum_pct.toFixed(3) + '%'],
+    ['Spread paid', st.cost_sum_pct == null ? '—' : '−' + st.cost_sum_pct.toFixed(3) + '%'],
+    ['Financing', st.financing_sum_pct == null ? '—' : st.financing_sum_pct.toFixed(3) + '%'],
+    ['Net Sharpe (after 20 days)', st.net_sharpe ?? '—'],
+    ['Backtest net Sharpe', `${bt.IS_net_sharpe} / ${bt.OOS_net_sharpe} (halves)`],
+    ['Mirror, cumulative', st.mirror_cum_pct == null ? '—' : st.mirror_cum_pct.toFixed(3) + '%'],
+    ['Mean daily IC', st.mean_ic ?? '—'],
+  ]);
+  $('kvKill').innerHTML = kv([
+    ['R1: drawdown beyond', `${k.R1_max_dd_pct}% (now ${st.max_dd_pct == null ? '—' : st.max_dd_pct.toFixed(2) + '%'})`],
+    ['R2: at ' + k.R2_date, `Sharpe below ${k.R2_sharpe_floor}`],
+    ['F2 kill at judgement', `upper bound < ${k.F2_backtest_sharpe}`],
+    ['Judgement date', k.judge_date],
+  ]);
+  $('kvFlags').innerHTML = kv([
+    ['Factor structure rotated', fl.factor_rotation ? '<span class="neg">yes</span>' : 'no'],
+    ['Days with K ≠ 2', st.k_not_2_share == null ? '—' : (st.k_not_2_share * 100).toFixed(0) + '%'],
+    ['Financing > gross (12m)', fl.financing_exceeds_gross ? '<span class="neg">yes</span>' : 'no'],
+    ['Days on stale financing', st.fin_stale_days ?? '—'],
+    ['Tonight\'s financing logged', j.financing_logged_tonight ? 'yes' : '<span class="neg">no</span>'],
+  ]);
+
+  const L = j.latest;
+  $('openTrades').innerHTML = `Signal ${L.signal_date} · K above noise ${L.k_above_noise} · open trades: ` +
+    (L.open.length ? L.open.map(o => `<b>${o.side} ${o.ccy}</b> (z ${o.z})`).join(', ') : 'none');
+  const pairOf = { EUR: 'EURUSD', GBP: 'GBPUSD', AUD: 'AUDUSD', NZD: 'NZDUSD', JPY: 'USDJPY', CAD: 'USDCAD', CHF: 'USDCHF' };
+  $('tBook').innerHTML = Object.keys(L.w).map(c => `<tr><td>${c}</td><td class="${Math.abs(L.z[c]) >= 1.5 ? 'neg' : ''}">${L.z[c].toFixed(2)}</td>` +
+    `<td class="${cls(L.w[c])}">${L.w[c].toFixed(3)}</td><td>${pairOf[c] || '(sum of the rest)'}</td>` +
+    `<td>${pairOf[c] ? L.pairs[pairOf[c]].toFixed(3) : ''}</td></tr>`).join('');
+
+  $('tTrades').innerHTML = (j.trades || []).length ? j.trades.slice().reverse().map(t => `<tr><td>${t.ccy}</td><td>${t.side}</td><td>${t.entry_signal}</td>` +
+    `<td>${t.z0.toFixed(2)}</td><td>${t.exit_signal || '<span class="mut">open</span>'}</td><td>${t.days}</td>` +
+    `<td class="${cls(t.res_sd)}">${t.res_sd == null ? '—' : t.res_sd.toFixed(2)}</td></tr>`).join('')
+    : '<tr><td colspan="7" class="empty">No trade opened since the record started yet.</td></tr>';
+
+  const S = j.series || [];
+  $('tDaily').innerHTML = S.length ? S.slice().reverse().map(r => `<tr><td>${r.d}</td><td class="${cls(r.gross)}">${pct(r.gross)}</td>` +
+    `<td class="neg">${pct(r.gross - r.net + r.fin)}</td><td class="${cls(r.fin)}">${pct(r.fin, 4)}</td><td class="${cls(r.net)}">${pct(r.net)}</td>` +
+    `<td class="${cls(r.mirror)}">${pct(r.mirror)}</td><td class="${r.k !== 2 ? 'neg' : ''}">${r.k}</td></tr>`).join('')
+    : '<tr><td colspan="7" class="empty">The first forward day appears after the first 17:00 New York close following registration.</td></tr>';
+
+  if (S.length && window.LightweightCharts) {
+    const ch = LightweightCharts.createChart($('chart'), { layout: { background: { color: '#161b22' }, textColor: '#9da7b3' },
+      grid: { vertLines: { color: '#21262d' }, horzLines: { color: '#21262d' } }, rightPriceScale: { borderColor: '#30363d' },
+      timeScale: { borderColor: '#30363d' }, autoSize: true });
+    const line = (key, color, w) => { let e = 1; const s = ch.addLineSeries({ color, lineWidth: w, priceFormat: { type: 'percent' } });
+      s.setData(S.map(r => { e *= 1 + r[key]; return { time: r.d, value: (e - 1) * 100 }; })); };
+    line('gross', '#6e7681', 1); line('mirror', '#d95926', 1); line('net', '#199e70', 2);
+    ch.timeScale().fitContent();
+  } else { $('chart').innerHTML = '<div class="empty">The curve starts with the first forward day.</div>'; }
+}
+load();
+</script>
+</body>
+</html>

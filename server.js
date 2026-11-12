@@ -8335,6 +8335,16 @@ app.get('/api/cb-expectations', async (_req, res) => {
     res.json({ ok: true, policy: pr.rates ?? {}, ..._cbExpect(payload, Object.fromEntries(Object.entries(pr.rates ?? {}).map(([k, v]) => [k, v.rate]))) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// GET /api/residual-fx8-forward: the FX8 residual book's forward paper record (forge/RESIDUAL_FX8_FORWARD_PREREG.md), pushed nightly
+// from the laptop by scripts/residual-fx8-forward/record.py --push (KV residual_fx8_forward_v1). Page: residual-fx8-forward.html.
+app.get('/api/residual-fx8-forward', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const raw = await kv.get('residual_fx8_forward_v1').catch(() => null), p = raw ? JSON.parse(raw) : null, payload = p?.data ?? p;
+    if (!payload?.latest) return res.json({ ok: false, error: 'no record pushed yet: run scripts/residual-fx8-forward/run_record.bat on the laptop' });
+    res.json({ ok: true, ...payload });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // GET /api/desk-cot-history?weeks=156: speculators' net share of open interest by week, per market, from the COT
 // series the cot-extremes engine caches (cot_series_v2). For the Desk Terminal's positioning charts.
 app.get('/api/desk-cot-history', async (req, res) => {

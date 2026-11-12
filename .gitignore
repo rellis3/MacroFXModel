@@ -766,3 +766,7 @@ analysis/output/vol-layer-deep/state/sessions.parquet
 scripts/release_layer1/.state/
 analysis/output/stir_1m_deep/*.lock
 analysis/output/stir_1m_deep/*.tmp
+
+# residual-fx8-forward: live paper record rewritten nightly by a laptop task (rebuildable except financing_log.csv; summary pushed to KV residual_fx8_forward_v1)
+analysis/output/residual-fx8-forward/
+scripts/residual-fx8-forward/logs/
