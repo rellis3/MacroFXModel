@@ -11,7 +11,7 @@ const room = () => R.newRoom({ id: 'room-1', date: '2026-11-12', at: '2026-11-12
 
 test('a room is a case with the brief as its question, and nothing has run', () => {
   const c = room();
-  assert.equal(c.title, 'Vol as a shared state'); assert.match(c.question, /Hypothesis: A shared vol state/); assert.match(c.question, /When does it work/);
+  assert.equal(c.title, 'Vol as a shared state'); assert.match(c.question, /In one line: A shared vol state/); assert.match(c.question, /When does it work/);
   assert.equal(c.rounds.length, 0); assert.deepEqual(c.room.guests, []); assert.ok(c.room.suggested.includes('volopt'), 'vol topics suggest the vol & options guest');
   assert.equal(R.waitingOn(c).on, 'you'); assert.match(R.waitingOn(c).why, /start the discussion/);
   assert.throws(() => R.newRoom({ id: 'x', date: 'd' }), /needs an idea/);
@@ -55,7 +55,7 @@ test('the prompts: each voice has its lens and the rules; the researchers and th
   c = R.appendTalk(c, [{ who: 'skeptic', text: 'Six layers is six chances to overfit.', at: '2026-11-12T02:00:00Z' }, { who: 'quant', pass: true, at: '2026-11-12T02:00:01Z' }]);
   assert.match(R.talkSystem('skeptic'), /skeptic/i); assert.match(R.talkSystem('quant'), /quant/i); assert.match(R.talkSystem('macro'), /Reply with ONE JSON/);
   const p = R.talkPrompt(c, 'macro', { earlier: [{ who: 'flow', text: 'COT may matter.' }] });
-  assert.match(p, /Hypothesis/); assert.match(p, /six chances to overfit/); assert.match(p, /Flow researcher: COT may matter/); assert.match(p, /jump-diffusion \[context\]/); assert.match(p, /You are Macro researcher/);
+  assert.match(p, /In one line/); assert.match(p, /six chances to overfit/); assert.match(p, /Flow researcher: COT may matter/); assert.match(p, /jump-diffusion \[context\]/); assert.match(p, /You are Macro researcher/);
   const text = R.roomText(c); assert.match(text, /Guests at the table: Skeptic/); assert.match(text, /\(passed\)/);
   const rs = roundSections(c, 'quant', { ownerMessage: 'go', roomSection: text });
   assert.ok(rs.some(([k, v]) => /research room/.test(k) && /overfit/.test(v)));

@@ -1,8 +1,8 @@
 /**
  * The brief translator (plans/KNOWLEDGE_AND_MONITORS.md, owner direction 2026-11-11): the owner types a research idea in loose words; ONE small model call turns it
- * into a precise, falsifiable research brief that the researchers can work from, and plain code checks every series it names against what the repo holds.
+ * into a clear brief in researchers' words (owner 2026-11-12: a generic translator, wide not one fixed structure; no forced lags or regimes) that the researchers can work from, and plain code checks every series it names against what the repo holds.
  *
- *   translate(text) -> { ok, id, brief, dataCheck, callsUsed, callsCap }   brief: hypothesis, mechanism, target, variables, method, missing, assumptions, one question
+ *   translate(text) -> { ok, id, brief, dataCheck, callsUsed, callsCap }   brief: kind, restated, hypothesis, mechanism, lenses, target?, variables?, missing, assumptions, one question
  *   status()        -> { ok, callsUsed, callsCap, callsLeft }                 free
  *
  * Rules: the model may only pick series ids from the catalogue it is shown (an id it makes up is moved to "unknown" and shown as missing); have / missing and
@@ -22,27 +22,35 @@ const clip = (s, n) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); 
 const plain = (s, n) => { const t = clip(s, n); return BAD_TEXT.test(t) ? '' : t; };
 const list = (a, n, len) => (Array.isArray(a) ? a : []).map(x => plain(x, len)).filter(Boolean).slice(0, n);
 
-export const BRIEF_SYSTEM = `You turn a research idea, written in loose everyday words by someone who is not a quant, into a precise brief for a team of quantitative researchers.
+export const BRIEF_SYSTEM = `You help an owner who is not a quant put a research idea into clear words for a room of researchers with different lenses (quant, macro, volatility, flow, a sceptic, a librarian). The room decides how to study it. Your job is translation, not research design.
 Do this:
-- Restate the idea as ONE falsifiable hypothesis: what is supposed to lead what, over what horizon, in which direction, and why it might be true.
-- Construct every variable exactly (a formula on daily data). Prefer changes to levels, as the owner usually asks.
-- Choose series ONLY from the catalogue ids you are given. If a series you need is not in the catalogue, do NOT invent an id: list it under "missing" with the name of a free source.
-- Keep the owner's own method suggestions in "method" (for example changes not levels, cross-correlations across lags, regime conditioning) and make them concrete: the lag range, and which regimes (each defined by a catalogue series).
-- State the assumptions you made. Do not ask questions you can answer with an assumption. Ask at most ONE question, only if you truly cannot go on; otherwise leave it empty.
-- Never say or imply that the idea works, is profitable or has an edge. It is a hypothesis to be tested. No trading advice. Plain text only: no markup and no links.
+- Restate the idea faithfully, in plain and precise words a researcher would use. Fix spelling and vague terms; keep the owner's meaning.
+- Keep the kind of idea the owner wrote. A question or "how does this work" stays a question; a proposed test stays a test; "how do I build a system" stays a system-design question. Never narrow a broad idea down to one test.
+- Keep the owner's own judgements, doubts and conclusions explicitly (for example "I don't think this is possible").
+- Add no method the owner did not ask for. If structure the owner gave matters (horizons, lags, splits by regime, a condition, which markets), write it into the restated text where it belongs.
+- Offer 2 to 5 lenses: different ways the room could look at the problem (for example a practitioner view, a mechanism, what the literature says, what the desk's own past tests found, something to measure). They are options for the room, not a plan.
+- Name variables only where the idea points at something measurable; use catalogue ids where one fits, otherwise leave components empty and describe it in words.
+- Besides the catalogue (daily series the quick test can read), the desk holds 1-minute and daily open-high-low-close bars for about 40 FX, index, metal and energy markets, the owner's daily range and volatility levels for them, options implied volatility, and a record of past tests. Never list those as missing. List as missing only data the desk plainly lacks, with the name of a free source.
+- Choose series ids ONLY from the catalogue you are given; never invent an id.
+- State the assumptions you made. Ask at most ONE question, only if you truly cannot go on; otherwise leave it empty.
+- Never say or imply that the idea works, is profitable or has an edge. No trading advice. Plain text only: no markup and no links.
 Reply with ONE JSON object and nothing else.`;
 
 /** The catalogue as compact lines "id: label" so the model can only pick real ids. */
 export const catalogueText = catalogue => Object.entries(catalogue ?? {}).map(([id, c]) => `${id}: ${c.label}`).join('\n');
 
+export const KINDS = ['question', 'test', 'system', 'explanation'];
 export function buildPrompt(text, catalogue) {
   return `OWNER'S IDEA, in their own words:\n"""\n${clip(text, BRIEF_TEXT_MAX)}\n"""\n\nCATALOGUE (the only series ids you may use):\n${catalogueText(catalogue)}\n\n`
-    + `Reply with this JSON:\n{\n  "title": "under 70 characters",\n  "hypothesis": "one sentence",\n  "mechanism": "why it might hold, one or two sentences",\n`
-    + `  "target": { "series": "a catalogue id, or empty if none fits", "label": "plain name", "note": "" },\n`
-    + `  "variables": [ { "name": "plain name", "construction": "the exact formula on daily data", "components": ["catalogue ids it is built from"], "transform": "e.g. 1-day and 5-day changes, not levels", "role": "leader | follower | condition | control" } ],\n`
-    + `  "method": { "steps": ["at most 6 concrete steps, including the owner's own suggestions"], "lags": "the lag range to examine and whether to test both directions", "regimes": ["each regime to split by, with the catalogue series that defines it"] },\n`
-    + `  "missing": [ { "what": "a series or data you need that the catalogue lacks", "suggestedSource": "a named free source" } ],\n`
-    + `  "assumptions": ["each assumption you made, at most 6"],\n  "question": "",\n  "searchTerms": ["at most 8 words or phrases to search the papers and lessons with"]\n}`;
+    + `Reply with this JSON:\n{\n  "title": "under 70 characters",\n  "kind": "question | test | system | explanation (what the owner is asking for)",\n`
+    + `  "restated": "the idea in clear, precise words, 2 to 6 sentences, keeping the owner's doubts and any structure they gave",\n`
+    + `  "hypothesis": "the core of it in one line: the claim, or the question",\n  "mechanism": "what might be going on underneath, one or two sentences, or empty",\n`
+    + `  "lenses": [ { "name": "a few words", "angle": "one or two sentences: a way the room could look at it" } ],\n`
+    + `  "target": { "series": "a catalogue id, or empty", "label": "plain name, or empty", "note": "" },\n`
+    + `  "variables": [ { "name": "plain name", "construction": "how it is measured", "components": ["catalogue ids it is built from, or none"], "transform": "", "role": "leader | follower | condition | control" } ],\n`
+    + `  "missing": [ { "what": "data the desk plainly lacks", "suggestedSource": "a named free source" } ],\n`
+    + `  "assumptions": ["each assumption you made, at most 6"],\n  "question": "",\n  "searchTerms": ["at most 8 words or phrases to search the papers and lessons with"]\n}\n`
+    + `variables and target may be empty when the idea is not about specific series.`;
 }
 
 const ROLES = ['leader', 'follower', 'condition', 'control'];
@@ -62,13 +70,11 @@ export function parseBrief(modelJson, catalogue) {
     if (!name || !construction) return null;
     return { name, construction, components: comps.filter(has), unknownComponents: comps.filter(c => !has(c)), transform: plain(v.transform, 160), role: ROLES.includes(v.role) ? v.role : 'leader' };
   }).filter(Boolean);
-  if (!variables.length) return { ok: false, error: 'the reply has no usable variable' };
-  const m = isPlain(o.method) ? o.method : {};
   return { ok: true, brief: {
-    title, hypothesis, mechanism: plain(o.mechanism, 400),
+    title, kind: KINDS.includes(o.kind) ? o.kind : 'question', restated: plain(o.restated, 1200) || hypothesis, hypothesis, mechanism: plain(o.mechanism, 400),
+    lenses: (Array.isArray(o.lenses) ? o.lenses : []).slice(0, 5).map(x => ({ name: plain(x?.name, 60), angle: plain(x?.angle, 300) })).filter(x => x.name && x.angle),
     target: { series: has(tSeries) ? tSeries : '', unknownSeries: tSeries && !has(tSeries) ? tSeries.slice(0, 60) : '', label: plain(o.target?.label, 80), note: plain(o.target?.note, 200) },
     variables,
-    method: { steps: list(m.steps, 6, 260), lags: plain(m.lags, 200), regimes: list(m.regimes, 6, 200) },
     missing: (Array.isArray(o.missing) ? o.missing : []).slice(0, 6).map(x => ({ what: plain(x?.what, 160), suggestedSource: plain(x?.suggestedSource, 120) })).filter(x => x.what),
     assumptions: list(o.assumptions, 6, 240), question: plain(o.question, 240), searchTerms: list(o.searchTerms, 8, 60),
   } };
@@ -84,13 +90,14 @@ export function dataCheck(brief, catalogue) {
   const leaders = vars.filter(v => v.role === 'leader');
   const allHave = !!target && unknown.length === 0 && missingList.length === 0;
   const derived = leaders.filter(v => v.derived).map(v => v.name);
+  const applicable = !!target || vars.length > 0;   // a question or system idea names no series: no data check to show
   const quickTestReady = allHave && leaders.length === 1 && leaders[0].components.length === 1;
   const notes = [];
-  if (!target) notes.push('no target series from the catalogue: the thing to be predicted needs choosing');
+  if (applicable && !target) notes.push('no target series from the catalogue: the thing to be predicted needs choosing');
   if (unknown.length) notes.push(`series not in the catalogue: ${unknown.join(', ')}`);
   if (derived.length) notes.push(`${derived.join('; ')} must be built from its parts first: the quick test takes one catalogue series as the leader`);
   if (missingList.length) notes.push(`missing data: ${missingList.map(x => x.what).join('; ')}`);
-  return { allHave, quickTestReady, target, variables: vars, unknown, derivedLeaders: derived, notes };
+  return { applicable, allHave, quickTestReady, target, variables: vars, unknown, derivedLeaders: derived, notes };
 }
 
 const hash = s => createHash('sha256').update(String(s)).digest('hex').slice(0, 8);

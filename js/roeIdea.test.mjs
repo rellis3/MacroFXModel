@@ -12,7 +12,7 @@ const res = {
 
 test('the brief shows the hypothesis, escapes text, and marks what we hold and what is missing', () => {
   const h = briefHtml(res);
-  assert.ok(!h.includes('<EURUSD>'), 'escaped'); assert.match(h, /Hypothesis\./); assert.match(h, /we hold it/);
+  assert.ok(!h.includes('<EURUSD>'), 'escaped'); assert.match(h, /In one line\./); assert.match(h, /we hold it/);
   assert.match(h, /fred:MADEUP \(not held\)/); assert.match(h, /some data is missing/); assert.match(h, /not quick-test ready/);
   assert.match(h, /try: ECB data portal/); assert.match(h, /One question for you/); assert.match(h, /3 of 100 translator calls used/);
   assert.match(h, /Not a result/);

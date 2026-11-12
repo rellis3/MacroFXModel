@@ -77,15 +77,15 @@ const BAD = /[<>]|https?:|www\./i;
 export function briefQuestion(brief, { shape = null, ownerText = '' } = {}) {
   if (!brief?.hypothesis) return str(ownerText, 1500);
   const v = (brief.variables ?? []).map(x => `- ${x.name} (${x.role}): ${x.construction}${x.transform ? `; ${x.transform}` : ''}`);
-  const m = brief.method ?? {};
   return [
     `${brief.title}${shape && SHAPES[shape] ? ` [${SHAPES[shape]}]` : ''}`,
-    `Hypothesis: ${brief.hypothesis}`,
-    brief.mechanism ? `Why it might hold: ${brief.mechanism}` : '',
+    brief.kind ? `Kind: ${brief.kind}` : '',
+    brief.restated && brief.restated !== brief.hypothesis ? `The idea: ${brief.restated}` : '',
+    `In one line: ${brief.hypothesis}`,
+    brief.mechanism ? `Underneath: ${brief.mechanism}` : '',
+    brief.lenses?.length ? `Lenses offered: ${brief.lenses.map(x => `${x.name} (${x.angle})`).join('; ')}` : '',
     brief.target?.label || brief.target?.series ? `Predicted: ${brief.target.label || brief.target.series}` : '',
     v.length ? `Variables:\n${v.join('\n')}` : '',
-    m.lags ? `Lags: ${m.lags}` : '',
-    m.regimes?.length ? `Regimes: ${m.regimes.join('; ')}` : '',
     brief.assumptions?.length ? `Assumptions: ${brief.assumptions.join('; ')}` : '',
   ].filter(Boolean).join('\n').slice(0, 1500);
 }

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CATALOGUE } from './quickTest.js';
-import { BRIEF_CAP, BRIEF_KV_KEY, buildPrompt, parseBrief, dataCheck, createBriefService, catalogueText } from './researchBrief.js';
+import { BRIEF_CAP, BRIEF_KV_KEY, BRIEF_SYSTEM, buildPrompt, parseBrief, dataCheck, createBriefService, catalogueText } from './researchBrief.js';
 
 const GOOD = {
   title: 'Does the euro-minus-US curve slope lead EURUSD?',
@@ -39,7 +39,7 @@ test('a good reply is kept; an invented series id is moved out and shown as miss
   const p = parseBrief(bad, CATALOGUE).brief;
   assert.deepEqual(p.variables[0].unknownComponents, ['fred:MADEUP']); assert.equal(p.target.series, ''); assert.equal(p.target.unknownSeries, 'oanda:NOPE'); assert.equal(p.mechanism, '');
   const d = dataCheck(p, CATALOGUE); assert.equal(d.allHave, false); assert.match(d.notes.join(' '), /fred:MADEUP/); assert.match(d.notes.join(' '), /no target series/);
-  assert.equal(parseBrief('not json', CATALOGUE).ok, false); assert.equal(parseBrief({ title: 't' }, CATALOGUE).ok, false); assert.equal(parseBrief({ title: 't', hypothesis: 'h', variables: [] }, CATALOGUE).ok, false);
+  assert.equal(parseBrief('not json', CATALOGUE).ok, false); assert.equal(parseBrief({ title: 't' }, CATALOGUE).ok, false); assert.equal(parseBrief({ title: 't', hypothesis: 'h', variables: [] }, CATALOGUE).ok, true);
 });
 
 test('data check is code: all four yields and EURUSD are held; the spread must be built first so it is not quick-test ready', () => {
@@ -67,4 +67,16 @@ test('guards: too short, no model, counter unreadable (fails closed), cap used u
   const me = harness({ modelErr: 'timeout' }); assert.equal((await me.svc.translate(IDEA)).status, 502); assert.equal(JSON.parse(me.kvm.get(BRIEF_KV_KEY)).used, 1);
   const bad = harness({ reply: { nope: 1 } }); assert.equal((await bad.svc.translate(IDEA)).status, 502);
   assert.deepEqual(Object.keys(await harness({ preUsed: 5 }).svc.status()).sort(), ['callsCap', 'callsLeft', 'callsUsed', 'model', 'ok']);
+});
+
+test('generic translator (owner 2026-11-12): a question keeps its shape, needs no series, and gets no forced lags or regimes', () => {
+  const p = buildPrompt('How do volatility traders trade my range levels? I do not think picking fade or continuation is possible.', CATALOGUE);
+  assert.match(p, /"restated"/); assert.match(p, /"lenses"/); assert.doesNotMatch(p, /"lags"|"regimes"/);
+  assert.match(BRIEF_SYSTEM, /Never narrow a broad idea/); assert.match(BRIEF_SYSTEM, /open-high-low-close bars/); assert.match(BRIEF_SYSTEM, /doubts and conclusions/);
+  const r = parseBrief({ title: 'How vol traders use range levels', kind: 'question', restated: 'The owner computes daily range distributions and doubts direction can be called at them.',
+    hypothesis: 'How would a volatility trader use these levels?', lenses: [{ name: 'Practitioner', angle: 'trade size of move, not direction' }, { name: 'bad', angle: '' }],
+    method: { lags: '1 to 5', regimes: ['VIX'] } }, CATALOGUE);
+  assert.equal(r.ok, true); assert.equal(r.brief.kind, 'question'); assert.equal(r.brief.lenses.length, 1); assert.equal(r.brief.method, undefined);
+  const d = dataCheck(r.brief, CATALOGUE); assert.equal(d.applicable, false); assert.deepEqual(d.notes, []);
+  assert.equal(parseBrief({ title: 't', hypothesis: 'h', kind: 'nonsense' }, CATALOGUE).brief.kind, 'question');
 });

@@ -15,7 +15,8 @@ const sec = (h, body) => (body ? `<div class="ib-sec"><h3>${esc(h)}</h3>${body}<
 export function briefHtml(res) {
   if (!res?.ok) return `<p class="ib-err" role="alert">${esc(res?.error ?? 'Something went wrong.')}</p>`;
   const b = res.brief, d = res.dataCheck ?? {};
-  const target = b.target?.series || b.target?.unknownSeries
+  const applicable = d.applicable !== false;
+  const target = !applicable ? '' : b.target?.series || b.target?.unknownSeries
     ? `<p>${esc(b.target.label || b.target.series || b.target.unknownSeries)} ${d.target ? chip(d.target.have, d.target.have ? 'we hold it' : 'not held') : chip(false, 'not in the catalogue')}${b.target.note ? ` <small>${esc(b.target.note)}</small>` : ''}</p>` : '<p>No target series fits: this needs choosing.</p>';
   const vars = (d.variables ?? []).map((v, i) => {
     const src = b.variables?.[i] ?? {};
@@ -23,14 +24,14 @@ export function briefHtml(res) {
   }).join('');
   const check = `<p>${chip(!!d.allHave, d.allHave ? 'every series is held' : 'some data is missing')} ${chip(!!d.quickTestReady, d.quickTestReady ? 'ready for the quick test' : 'not quick-test ready as it stands')}</p>${(d.notes ?? []).length ? `<ul>${li(d.notes)}</ul>` : ''}`;
   return `<article class="ib-brief"><h2>${esc(b.title)}</h2>`
-    + `<p class="ib-hyp"><b>Hypothesis.</b> ${esc(b.hypothesis)}</p>${b.mechanism ? `<p><b>Why it might hold.</b> ${esc(b.mechanism)}</p>` : ''}`
+    + `${b.restated && b.restated !== b.hypothesis ? `<p>${esc(b.restated)}</p>` : ''}<p class="ib-hyp"><b>In one line.</b> ${esc(b.hypothesis)}</p>${b.mechanism ? `<p><b>Underneath.</b> ${esc(b.mechanism)}</p>` : ''}`
     + sec('What is being predicted', target) + sec('The variables', vars ? `<ul>${vars}</ul>` : '')
-    + sec('How it will be examined', `${b.method?.steps?.length ? `<ol>${li(b.method.steps)}</ol>` : ''}${b.method?.lags ? `<p><b>Lags.</b> ${esc(b.method.lags)}</p>` : ''}${b.method?.regimes?.length ? `<p><b>Regimes to split by.</b></p><ul>${li(b.method.regimes)}</ul>` : ''}`)
-    + sec('Data check (done by code, not the model)', check)
+    + sec('Lenses the room could take', (b.lenses ?? []).length ? `<ul>${b.lenses.map(x => `<li><b>${esc(x.name)}</b>: ${esc(x.angle)}</li>`).join('')}</ul>` : '')
+    + (applicable ? sec('Data check (done by code, not the model)', check) : '')
     + sec('Still missing', (b.missing ?? []).length ? `<ul>${(b.missing ?? []).map(m => `<li>${esc(m.what)}${m.suggestedSource ? ` <small>(try: ${esc(m.suggestedSource)})</small>` : ''}</li>`).join('')}</ul>` : '')
     + sec('Assumptions made', (b.assumptions ?? []).length ? `<ul>${li(b.assumptions)}</ul>` : '')
     + (b.question ? `<div class="ib-q"><b>One question for you.</b> ${esc(b.question)}</div>` : '')
-    + `<div class="ib-foot">Brief ${esc(res.id)} · ${res.callsUsed ?? '?'} of ${res.callsCap ?? '?'} translator calls used. Not a result: a hypothesis to be tested.</div>`
+    + `<div class="ib-foot">Brief ${esc(res.id)} · ${res.callsUsed ?? '?'} of ${res.callsCap ?? '?'} translator calls used. Not a result: an idea for the room.</div>`
     + `<div class="ib-actions"><button type="button" class="lib-btn" data-act="edit">Edit my words</button><button type="button" class="lib-btn primary" data-act="room">Go: open a research room</button></div></article>`;
 }
 

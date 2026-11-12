@@ -109,8 +109,7 @@ const lines = s => String(s ?? '').split('\n').map(x => x.trim()).filter(Boolean
 function editedBrief() {
   if (!S.brief) return null;
   const b = structuredClone(S.brief.brief);
-  b.title = $('bfTitle').value.trim() || b.title; b.hypothesis = $('bfHyp').value.trim() || b.hypothesis;
-  b.method = { ...(b.method ?? {}), lags: $('bfLags').value.trim(), regimes: lines($('bfRegimes').value) };
+  b.title = $('bfTitle').value.trim() || b.title; b.restated = $('bfRest').value.trim() || b.restated; b.hypothesis = $('bfHyp').value.trim() || b.hypothesis;
   return b;
 }
 function renderBriefEditor() {
@@ -120,11 +119,11 @@ function renderBriefEditor() {
   out.innerHTML = `<div class="card"><div class="ch"><h3>The brief</h3><span class="r lbl">${esc(r.callsUsed ?? '?')} of ${esc(r.callsCap ?? '?')} translator calls used</span></div>`
     + `<p class="muted">Fix anything it got wrong, right here. This is what the team will work from.</p>`
     + `<label class="fl">Title<input id="bfTitle" value="${esc(b.title)}" maxlength="70"></label>`
-    + `<label class="fl">The idea in one line<textarea id="bfHyp" rows="2" maxlength="400">${esc(b.hypothesis)}</textarea></label>`
-    + `<div class="two"><label class="fl">Lags<input id="bfLags" value="${esc(b.method?.lags ?? '')}" maxlength="200"></label><label class="fl">Split by (one per line)<textarea id="bfRegimes" rows="2">${esc((b.method?.regimes ?? []).join('\n'))}</textarea></label></div>`
+    + `<label class="fl">Your idea in clear words<textarea id="bfRest" rows="5" maxlength="1200">${esc(b.restated ?? b.hypothesis)}</textarea></label>`
+    + `<label class="fl">In one line<textarea id="bfHyp" rows="2" maxlength="400">${esc(b.hypothesis)}</textarea></label>`
     + `<div id="bfPreview">${briefCard(b, r.dataCheck)}</div>`
     + `<div class="actions"><button type="button" class="btn pri" id="niOpen">Open the room →</button><span class="muted">Nothing runs until you press Start the discussion inside.</span></div></div>`;
-  for (const id of ['bfTitle', 'bfHyp', 'bfLags', 'bfRegimes']) $(id).addEventListener('input', () => { $('bfPreview').innerHTML = briefCard(editedBrief(), r.dataCheck); });
+  for (const id of ['bfTitle', 'bfRest', 'bfHyp']) $(id).addEventListener('input', () => { $('bfPreview').innerHTML = briefCard(editedBrief(), r.dataCheck); });
   $('niOpen').addEventListener('click', () => openRoom(true));
   checkOnFile(`${b.title} ${b.hypothesis} ${(b.searchTerms ?? []).join(' ')}`);
 }

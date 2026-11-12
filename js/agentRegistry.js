@@ -188,7 +188,7 @@ export const AGENTS = [
     modelTask: 'library-figs', cap: CAP.figs, spends: true, links: [L('Library', 'library.html')],
   }),
   A('brief-translator', 'Brief translator', 'Research', {
-    purpose: 'Turns a research idea written in loose words into a precise, falsifiable research brief: one hypothesis, each variable built exactly, the lags and regimes to examine (including your own method suggestions), the assumptions it made, and at most one question. It may only name series the repo holds; plain code then checks which are held, which must be built first and whether the quick test can take it. It never states a result.',
+    purpose: 'Turns a research idea written in loose words into the words a researcher would use, keeping its shape (a question stays a question, a test a test, a system idea a system idea) and your own doubts: the idea restated, one line, what may be underneath, 2 to 5 lenses the room could take, and variables only where the idea names something measurable. No fixed structure such as lags or regimes is added; where your idea has one it is written into the text. Plain code checks any series it names. It never states a result.',
     trigger: 'Runs only when you press Translate on the New idea tab of the Research Opportunities page (one small model call, capped).', reads: ['your idea in your own words', 'the quick-test series catalogue'], writes: ['R2 research/briefs/<id>.json (private)', 'research_brief_v1 (calls used)'],
     modelTask: 'research-brief', cap: CAP.brief, spends: true, links: [L('New idea tab', 'roe.html#idea')],
   }),
