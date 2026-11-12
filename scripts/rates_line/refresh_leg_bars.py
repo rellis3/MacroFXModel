@@ -65,9 +65,21 @@ def pace():
 
 
 def merge(path, df):
-    if path.exists():
-        df = pd.concat([pd.read_parquet(path), df], ignore_index=True).drop_duplicates('time', keep='last')
-    df.sort_values('time').reset_index(drop=True).to_parquet(path, index=False)
+    """merge new bars into a parquet file. Two scheduled tasks (this refresh and scripts/release_layer1/live_push.py) write the same files, so the read-modify-write holds a lock file
+    and the result is written to a temp file and swapped in (a reader never sees a half-written file, two writers never drop each other's bars)."""
+    lock = Path(str(path) + '.lock'); t0 = time.time()
+    while True:
+        try: os.close(os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)); break
+        except FileExistsError:
+            if time.time() - lock.stat().st_mtime > 300: lock.unlink(missing_ok=True); continue        # a crashed run left it: stale after 5 minutes
+            if time.time() - t0 > 180: raise TimeoutError(f'{path.name}: lock held for over 3 minutes')
+            time.sleep(0.5)
+    try:
+        if path.exists():
+            df = pd.concat([pd.read_parquet(path), df], ignore_index=True).drop_duplicates('time', keep='last')
+        tmp = Path(str(path) + '.tmp'); df.sort_values('time').reset_index(drop=True).to_parquet(tmp, index=False); os.replace(tmp, path)
+    finally:
+        lock.unlink(missing_ok=True)
 
 
 def kv_set(obj):

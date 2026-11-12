@@ -16,6 +16,8 @@ from schedule import all_events, HIST_END, BASE
 from daily_lib import refresh_daily, load_daily
 
 KV_KEY = 'release_layer1_v1'
+STATE = Path(__file__).resolve().parent / '.state'            # local only (gitignored): when we last pushed, the release times, and the rows already built
+IDLE_PUSH_MIN = 25                                            # with no release near, push at most this often (the page's freshness chip stays green under 35 minutes)
 NAMES = ['SR3U6', 'IH7', 'ZTZ6', 'ZNZ6', 'DXZ6', 'NQZ6', '6EZ6', '6BZ6', '6JZ6', 'GCZ6', 'ESZ6', 'VIX', 'VXN']
 
 
@@ -49,9 +51,23 @@ def pull(names, hours=24):
     ib.disconnect(); return 'pulled ' + ', '.join(names) + ('; ' + '; '.join(notes) if notes else '')
 
 
+def _jload(p):
+    try: return json.loads(Path(p).read_text(encoding='utf-8'))
+    except Exception: return {}
+
+
+def _jsave(p, obj):
+    p = Path(p); p.parent.mkdir(exist_ok=True); tmp = p.with_suffix(p.suffix + '.tmp'); tmp.write_text(json.dumps(obj, separators=(',', ':')), encoding='utf-8'); tmp.replace(p)
+
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(); ap.add_argument('--no-pull', action='store_true'); ap.add_argument('--no-push', action='store_true'); ap.add_argument('--force-pull', action='store_true')
-    a = ap.parse_args(); now = pd.Timestamp.now(tz='UTC')
+    ap.add_argument('--force', action='store_true', help='skip the idle check and rebuild every release'); a = ap.parse_args(); now = pd.Timestamp.now(tz='UTC')
+    st = _jload(STATE / 'live_state.json')
+    if not (a.force or a.force_pull) and st.get('pushedAt') and st.get('times'):          # idle gate: this runs every 5 minutes, but nothing changes unless a release is near
+        near = [x for x in st['times'] if pd.Timestamp(x) - pd.Timedelta(minutes=15) <= now <= pd.Timestamp(x) + pd.Timedelta(minutes=255)]
+        age = (now - pd.Timestamp(st['pushedAt'])).total_seconds() / 60
+        if not near and 0 <= age < IDLE_PUSH_MIN: print(f'{now:%Y-%m-%d %H:%M}Z  idle: no release within its window, last push {age:.0f} min ago; nothing to do'); sys.exit(0)
     EV = all_events(include_ahead=True); live = [e for e in EV if e['t'] >= HIST_END]
     in_window = [e for e in live if e['t'] - pd.Timedelta(minutes=10) <= now <= e['t'] + pd.Timedelta(minutes=250)]
     note = 'no release in its window: rebuilt from disk'
@@ -69,16 +85,26 @@ if __name__ == '__main__':
     EV = all_events(include_ahead=True, usdjpy=usdjpy_series(S)); live = [e for e in EV if e['t'] >= HIST_END]      # again, now the BoJ minute can be read from USD/JPY
     event_days = {e['t'].date() for e in EV}
     rows, paths = [], {}
+    cache = _jload(STATE / 'live_rows.json'); ver = ','.join(KEYS) + '|' + ','.join(ASSETS)                 # rows already built are reused: only a release in progress, a recent one (its day moves still fill in) or a changed one is rebuilt
+    if cache.get('ver') != ver or a.force: cache = {'ver': ver, 'rows': {}}
+    nbuilt = nreuse = 0
     for e in live:
         if e['t'] > now: continue
         s0 = S['sofr'].cands[0][1]
         if e['family'] not in JUMP_ON and not covers(s0, e['t']): continue
         if e['family'] in JUMP_ON and not any(covers(s, e['t']) for k in ASSETS for _, s in S[k].cands): continue
-        r, P = build_event(S, e, event_days); r['id'] = f"{r['t']}|{e['family']}"; r['status'] = e['status']
-        r['inProgress'] = bool(now < e['t'] + pd.Timedelta(minutes=240)); rows.append(r); paths[r['id']] = P
+        rid = f"{e['t'].strftime('%Y-%m-%dT%H:%M:%SZ')}|{e['family']}"; age = now - e['t']; c = cache['rows'].get(rid)
+        fresh = c is not None and age >= pd.Timedelta(minutes=260) and c['row'].get('actual') == e.get('actual') and c['row'].get('consensus') == e.get('consensus') \
+            and (age >= pd.Timedelta(days=9) or (now - pd.Timestamp(c['builtAt'])) < pd.Timedelta(hours=6))
+        if fresh: r, P = c['row'], c['paths']; nreuse += 1
+        else:
+            r, P = build_event(S, e, event_days); r['id'] = rid; nbuilt += 1; cache['rows'][rid] = dict(builtAt=now.isoformat(), row=r, paths=P)
+        r['status'] = e['status']; r['inProgress'] = bool(now < e['t'] + pd.Timedelta(minutes=240)); rows.append(r); paths[r['id']] = P
+    _jsave(STATE / 'live_rows.json', cache); note += f' | rows: {nbuilt} built, {nreuse} reused'
     ahead = [dict(t=e['t'].strftime('%Y-%m-%dT%H:%M:%SZ'), family=e['family'], name=e['name'], consensus=e.get('consensus'), previous=e.get('previous')) for e in EV if e['t'] > now]
     last_bar = {k: max((s.index.max() for _, s in S[k].cands), default=None) for k in tuple(ASSETS)}
     payload = dict(asOf=now.isoformat(), note=note, rows=rows, paths=paths, ahead=ahead, lastBar={k: (v.isoformat() if v is not None else None) for k, v in last_bar.items()})
     print(f'{now:%Y-%m-%d %H:%M}Z  {note}; {len(rows)} live releases built, {len(ahead)} ahead; newest bars: ' + ', '.join(f"{k} {v:%m-%d %H:%M}" for k, v in last_bar.items() if v is not None))
     if not a.no_push:
         code, resp = kv_set(payload); print(f'POST /api/kv/set {KV_KEY} ({len(json.dumps(payload)) // 1024} KB) -> HTTP {code} {resp}')
+        if code == 200: _jsave(STATE / 'live_state.json', dict(pushedAt=now.isoformat(), times=[e['t'].strftime('%Y-%m-%dT%H:%M:%SZ') for e in EV if e['t'] >= HIST_END]))

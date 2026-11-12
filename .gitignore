@@ -761,3 +761,8 @@ analysis/output/release_layer1/daily.json
 analysis/output/vol-layer-deep/meta/events.parquet
 analysis/output/vol-layer-deep/features/grids.npz
 analysis/output/vol-layer-deep/state/sessions.parquet
+
+# Release Reaction live push: local state/cache and parquet lock/temp files (2026-11-12)
+scripts/release_layer1/.state/
+analysis/output/stir_1m_deep/*.lock
+analysis/output/stir_1m_deep/*.tmp
