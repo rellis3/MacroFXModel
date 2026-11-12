@@ -1486,3 +1486,64 @@ against the bundle as of 2026-11-09 for coherence only. Nothing here is scored.
 - **What to keep from the clip:** the decomposition and the all-in arithmetic, which the
   chain already has, and the reminder that the headline yield can rally while the weakest
   borrowers' cost rises. That is this month's tape.
+
+## 2026-11-12 — "Rough volatility for quantitative finance" (quant lecturer; speaker not named in the transcript)
+
+> *"The rough volatility hypothesis says the absolute increment moments, based on that
+> structure function, should approximately follow a power law… we regress the log structure
+> function on the log of the lag… the slope for a Q value of one is 0.155 for this sample.
+> If it were 0.5 that would be classical Brownian motion… We don't observe standard Brownian
+> motion dynamics, we observe fractional dynamics… if we simulate volatility incorrectly,
+> our models are just not as great as they could be."*
+
+Owner: *"Not sure where this can fit in, feed into ideas, but just a thought."* So this
+entry places it, and the working agenda is `.claude/skills/research-director/agendas/
+rough-volatility.md`.
+
+**1. The claims, stated plainly.**
+- **(a) Log realised volatility is rough.** Increments of log vol scale like lag^(qH) with H
+  near 0.1, not 0.5. Falsifiable on any volatility series.
+- **(b) The scaling is linear in q** (one Hurst exponent, not many).
+- **(c) Volatility should be modelled as a fractional Ornstein-Uhlenbeck process**, since
+  plain fractional Brownian motion is non-stationary.
+- **(d) Wrong vol dynamics gives wrong calibration and exotic prices**, and the memory kernel
+  is costly to simulate (Markovian lifting). Derivatives-desk engineering.
+
+**2. What's on the desk, audited.**
+- **Nothing measures roughness.** The repo's Hurst code is a Hurst of *price returns* for
+  trend votes (`hurstBench`, the trend engine), a different object. The ledger has no entry
+  on the Hurst exponent of log volatility.
+- **The object it is about, we forecast and have banked results on.** `forecast-pick`
+  (HAR-800 0.984, persistence 0.980 of plain, chosen), `vol-layer-rv5-increment` (0.9884 of
+  persistence, 32 of 34 better), `horizon-reversion` (weekly 0.968, monthly 0.936). HAR is the
+  benchmark the rough papers say they beat, and it is already our base.
+- **The ceiling is small and known.** `vol-target`: which sigma is used does not matter for
+  sizing; `iv-forecast`: implied vol, not model form, moved forecasts most. A rough forecast,
+  if it works, is a percent-scale gain to the range lines.
+- **The lecture's own evidence is thin on the one thing that decides it.** His slope (0.155)
+  comes from about a year of five-minute S&P bars with no artefact control. Cont and Das (2022,
+  *Sankhya* 2024) argue realised-vol roughness is largely estimation error: a plainly
+  Brownian-driven volatility measured through realised variance already reads as rough.
+  Gatheral et al. (2018) is the other side. Both read as abstracts only this session. Which of
+  the two holds on *our* series is the question, and it is testable.
+- **(c), (d) are modelling choices**, not claims we can score; Theory Lab material.
+
+**3. Trading or macro-understanding.** Macro-understanding of how volatility behaves, with
+one trading-adjacent use: the volatility forecast that sets the range lines. Not a direction
+claim and not an option-pricing one on this desk.
+
+**4. Display nugget.** None now. After the descriptive check, one lesson between
+`heston-model` and `fractional-brownian-motion` showing the slope on our own data with the
+critique alongside; written before, it would state a contested claim as settled.
+
+**4b. Dates are not claims.** No market-dated claim in the clip.
+
+**5. Verdict and action.**
+- **Nothing banked, nothing run.** A modelling hypothesis, no forward claim to score.
+- **Where it feeds ideas:** a three-card agenda (rough on our series vs the proxy artefact;
+  rough forecast vs HAR-800; power-law vs exponential fade for weekly and monthly lines),
+  gated so the cheap descriptive card runs first and the forecasting cards only if it
+  survives the artefact control.
+- **Needs data not in the sandbox:** the Step 0 realised-vol tables live on the laptop or R2,
+  so the first card needs a session with them or the owner supplying them.
+- **Owner's call:** claim the descriptive card, or leave it parked as an idea.
