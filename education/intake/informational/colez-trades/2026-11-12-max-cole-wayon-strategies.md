@@ -1,11 +1,11 @@
-# Max Cole: "fundamentals with confluence" gold strategy (Wayon "Strategies" episode)
+# Max Cole: "fundamentals with confluence" gold strategy (Wayond "Strategies" episode)
 
 | | |
 |---|---|
 | Lane / source | informational / colez-trades (elevated pass: Colez Trades educator, not C.OG) |
 | Speaker(s) | MAX = Max Cole (gold trader, Colez Trades educator); HOST = Wayon interviewer |
-| URL | unknown (owner pasted the transcript; YouTube episode on the Wayon channel) |
-| ReelScribe id | none (pasted text; full text kept in the session transcript 2f58d0fd, not committed) |
+| URL | https://www.youtube.com/watch?v=yAWtqkEUn_E (Wayond channel `wayondtv`) |
+| ReelScribe id | j5706wn83tfxxnkv88ecvb48rs8j2zym · 29 min (same text as the owner's paste; raw saved, gitignored) |
 | Recorded | unknown; the trade shown is from 20 April (year not stated) |
 | Processed | 2026-11-12 |
 
