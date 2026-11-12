@@ -33,7 +33,7 @@ known = json.load(open("tests/KNOWN_FAILING.json")) if os.path.exists("tests/KNO
 ran = passed = 0
 unexpected, still_known, now_passing = [], [], []
 for f in files:
-    mod_name = f[:-3].replace("/", ".")
+    mod_name = f[:-3].replace("\\", "/").replace("/", ".")
     try:
         mod = importlib.import_module(mod_name)
     except Exception as e:  # noqa: BLE001 — an import error is a failure of every test in the file

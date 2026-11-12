@@ -1,0 +1,10 @@
+[
+ "60,211 first touches of the open ± 0.5σ line on 34 instruments, 1,604 London sessions, Oct 2016 to Dec 2022 (2023 onward not loaded). Each is labelled fade and follow on six barrier shapes.",
+ "The barriers set the hit rate, not the market. Fade 1:1 at 0.25σ with a 2-hour limit: 38.6% hit the target first; a random walk with the same barriers and clock gives 41.7%. Among touches that hit a barrier: 50.2% [49.5, 51.0] vs exactly 50% for the random walk. 2:1: 32.7% vs 32.8%. 1:2: 67.8% vs 67.2%.",
+ "Real touches time out more than the random walk says (23% vs about 17% at 2 hours), on both sides equally. That is a vol shape effect (the average variance is inflated by bursts), not a direction effect.",
+ "Geometry alone gives AUC well above 0.5: pooling the six shapes 0.69 on a pure random walk, minutes left in the day 0.59. The purged 6-fold logistic reaches AUC 0.573 on real labels and 0.568 on random-walk labels run at each day's actual vol. Brier skill: +1.3% vs the base rate, -0.45% vs the geometry alone.",
+ "Target vs stop barely differ on any entry feature (gaps of 0.04σ-units or less); time-outs differ a lot (late, quiet, slow approach). A meta-model trained on target-first learns 'will this resolve', not 'which side wins'.",
+ "After one median spread (0.035σ) every quintile of the model's P loses about -0.03 to -0.05σ per trade, the top quintile most; taking every touch -0.041σ, a random 20% -0.040σ. To pay, the 1:1 2-hour fade needs +4.3pp over the random walk; 0.25σ held to 21:00 needs about +7pp.",
+ "Trades overlap: mean uniqueness 0.35, and the date-block variance is 3.5x the independent figure, so 60k touches are about 17k effective. Seeing 50% -> 53% needs 2,178 kept independent trades (5,186 after 100 trials), about 7,600 raw kept touches here.",
+ "Stable by year: the real-minus-random-walk gap is negative every year 2016-2022 (2h fade -1.6 to -5.7pp, all time-out driven). Only EURUSD and EURCHF sit above the random walk (+1.1pp each); crosses are lowest."
+]

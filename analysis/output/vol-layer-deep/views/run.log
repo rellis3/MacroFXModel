@@ -1,0 +1,53 @@
+EURUSD 1604 races 1604
+GBPUSD 1604 races 1604
+AUDUSD 1604 races 1601
+NZDUSD 1605 races 1603
+USDJPY 1604 races 1604
+USDCAD 1604 races 1604
+USDCHF 1604 races 1601
+GOLD 1597 races 1597
+NQ 1598 races 1596
+SPX500 1598 races 1492
+{
+ "mde": {
+  "mom1": {
+   "se": 0.01273,
+   "mde_sigma": 0.0356,
+   "mde_sharpe": 0.542
+  },
+  "mom3": {
+   "se": 0.01153,
+   "mde_sigma": 0.0323,
+   "mde_sharpe": 0.491
+  },
+  "mom12": {
+   "se": 0.01408,
+   "mde_sigma": 0.0394,
+   "mde_sharpe": 0.596
+  },
+  "carry": {
+   "se": 0.01046,
+   "mde_sigma": 0.0293,
+   "mde_sharpe": 0.451
+  },
+  "surprise": {
+   "se": 0.01281,
+   "mde_sigma": 0.0359,
+   "mde_sharpe": 0.545
+  },
+  "combo": {
+   "se": 0.01296,
+   "mde_sigma": 0.0363,
+   "mde_sharpe": 0.552
+  }
+ },
+ "coverage": {
+  "mom1": 1.0,
+  "mom3": 1.0,
+  "mom12": 0.936,
+  "carry": 0.701,
+  "surprise": 1.0,
+  "combo": 1.0
+ }
+}
+written C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\backtest-data\vol-layer\views-look.json 22907
