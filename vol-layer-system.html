@@ -119,6 +119,17 @@ function namedHtml() {
   return `<p class="muted" style="margin:0 0 6px">${counts}</p><div class="scroll"><table class="t"><thead><tr><th>Item</th><th>Named by</th><th>Status</th><th>So far</th><th>Next</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
+function wideHtml(id) {
+  loadProof(`${id}-wide`);
+  const d = proofData[`${id}-wide`];
+  if (!d) return '';
+  const holds = (d.holds ?? []).map(h => `<tr><td>${esc(h.effect)}</td><td>${esc(h.where)}</td><td class="num">${esc(String(h.size))}</td><td class="muted">${esc(h.benchmark)}</td></tr>`).join('');
+  return `<div class="card" style="margin-top:12px"><h3>Stage 3: go wide, how it acts across instruments, times, regimes and years</h3>
+    <p class="muted" style="margin:0 0 6px">${d.cells_tested ?? '?'} cells tested; ${d.cells_pass_bh ?? '?'} pass Benjamini-Hochberg at q 0.10 (about ${d.cells_expected_by_chance ?? '?'} would by chance). Discovery window ${esc((d.window ?? []).join(' to '))}; 2023 on stays unseen.</p>
+    ${holds ? `<div class="scroll"><table class="t"><thead><tr><th>Effect</th><th>Where it holds</th><th class="num">Size</th><th>Benchmark</th></tr></thead><tbody>${holds}</tbody></table></div>` : ''}
+    ${lookChartsHtml(d)}</div>`;
+}
+
 function assemblyHtml() {
   const lab = { holds: 'holds on our data', partial: 'describes, no trade yet', none: 'no evidence', blocked: 'waits on another slot' };
   const col = { holds: 'var(--green)', partial: '#e0a32e', none: '#f87171', blocked: 'var(--text3)' };
@@ -153,6 +164,7 @@ function systemHtml() {
   then brings them together here and tests them combined. <b>No layer is assumed in or out</b>: every candidate stays open until our own
   pre-registered test decides it.</div>
   <div class="card" style="margin-top:12px"><h3>System assembly: what each layer feeds into a trade</h3>${assemblyHtml()}</div>
+  ${wideHtml('system')}
   <div class="card" style="margin-top:12px"><h3>C.OG's six Forecaster Portfolio lessons: what they add to the layer research</h3>${lessonsHtml()}</div>
   <div class="card" style="margin-top:12px"><h3>Everything named, and how far it has gone</h3>${namedHtml()}</div>
   <div class="card" style="margin-top:12px"><h3>What we have tested, why, and the output</h3>${trackerHtml()}</div>
@@ -216,6 +228,7 @@ function layerHtml(L) {
   ${L.id === 'jumps' ? (loadProof('jump-look'), `<div class="card" style="margin-top:12px"><h3>Stage 2: what the detector flags, before any outcome is read</h3>${jumpLookHtml(proofData['jump-look'])}</div>`) : ''}
   ${!['jumps', 'execution'].includes(L.id) ? (loadProof(`${L.id}-look`), proofData[`${L.id}-look`] ? `<div class="card" style="margin-top:12px"><h3>Stage 2: build and look, before anything is scored</h3>${lookChartsHtml(proofData[`${L.id}-look`])}</div>` : '') : ''}
   ${L.id === 'execution' ? (loadProof('noise-look'), `<div class="card" style="margin-top:12px"><h3>Stage 2: the noise-threshold map, before anything is scored</h3>${lookChartsHtml(proofData['noise-look'])}</div>`) : ''}
+  ${L.id !== 'jumps' ? wideHtml(L.id) : ''}
   <div class="card" style="margin-top:12px"><h3>Tests touching this layer</h3>${trackerHtml(L.id === 'features' ? 'corr' : L.id === 'execution' ? 'stops' : L.id)}</div>
   <div class="card" style="margin-top:12px"><h3>Deep-dive findings</h3>${findings}</div>`;
 }

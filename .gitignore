@@ -773,3 +773,4 @@ scripts/residual-fx8-forward/logs/
 
 # learn-intake: full transcripts and private media (creators' material; the repo is public)
 /education/intake/raw/
+analysis/output/vol-layer-deep/features/wide/events_h15.parquet
