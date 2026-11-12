@@ -1,0 +1,152 @@
+# Quant Guild Library: lecture catalogue
+
+From https://github.com/romanmichaelpaolucci/Quant-Guild-Library (README, 2026-11-12). Each lecture has a
+Jupyter notebook in the repo plus the YouTube video. ✓ = processed by learn-intake (note in this folder). To process
+more, paste the links or say "process QG lectures <numbers>"; notebooks are read from a scratch clone, never copied into the repo.
+
+142 lectures listed, 23 processed.
+
+| # | Lecture | Video | Done |
+|---|---|---|---|
+| 1 | Inverse Transform Method for Generating Random Variables | https://youtu.be/x_O0nCtzEoY |  |
+| 2 | Control Variates for Variance Reduction | https://youtu.be/q_oDJF14qD8 |  |
+| 3 | How to Make & Lose Money Trading | https://youtu.be/EYeu6LkTKDY |  |
+| 4 | Analyzing Trading Strategy Performance Over Time | https://youtu.be/qbKSHYXz_k4 |  |
+| 5 | I Made an Open-Source Market-Making Game to Practice Trading | https://youtu.be/3KYJlI36Omc |  |
+| 6 | How to Trade with the Black-Scholes Model | https://youtu.be/ZoWvYpn5eqI |  |
+| 7 | Martingale Volatility Trading | https://youtu.be/QB_0sN7Uowk |  |
+| 8 | Why is the Definition of a Derivative Useful | https://youtu.be/ghu_8XFAj2k |  |
+| 9 | Delta Hedging and Black-Scholes Prices | https://youtu.be/C5r3C07WgMo |  |
+| 10 | A Quant's Visual Guide to Progress | https://youtu.be/M2ewY6sJDLg |  |
+| 11 | Managing Option Portfolios with Black-Scholes Greeks | https://youtu.be/K9BaFjVQYiE |  |
+| 12 | Equity Trading and Tariffs | https://youtu.be/N7Pxt3DcRAo |  |
+| 13 | Can AI Learn Black-Scholes | https://youtu.be/36ybUnnD7wY |  |
+| 14 | Quant Investing for Beginners | https://youtu.be/fE90eCbLxrA |  |
+| 15 | How to Build an AI Trading Bot in Python | https://youtu.be/ZkRcdlCcP-Y |  |
+| 16 | Information and Stock Price Prediction | https://youtu.be/Ao9InJohtpY |  |
+| 17 | Analyzing Stock Returns with Principal Component Analysis in Python | https://youtu.be/CyCy1LGtk4Q |  |
+| 18 | Why Quant Traders Care About Pricing | https://youtu.be/HrwZy_z2Vr8 |  |
+| 19 | Monte Carlo Simulation and Black-Scholes for Pricing Options | https://youtu.be/VIE7uiRB1vE |  |
+| 20 | Why Portfolio Optimization Doesn't Work | https://youtu.be/32EAVUHVZHg |  |
+| 21 | Expected Stock Returns Don't Exist | https://youtu.be/tHEOQ4Wq5KU |  |
+| 22 | How to Trade | https://youtu.be/7tIeyZIn0T4 |  |
+| 23 | How to Trade Option Implied Volatility | https://youtu.be/kqJd3YQAvL4 |  |
+| 24 | Trading with Violated Model Assumptions | https://youtu.be/2ezWtM8J_os |  |
+| 25 | How to Simulate Fractional Brownian Motion (fbM) via Davies-Harte | https://youtu.be/qQYgbIYz9i0 |  |
+| 26 | Is Quant Trading Gambling - Roulette, Poker, and Trading | https://youtu.be/fI3UHYD389g |  |
+| 27 | A Quant Derives the Karhunen-Loève Expansion of the Brownian Bridge in Continuous-Time | https://youtu.be/Nm0XXPhpEx8 |  |
+| 28 | Gambler's Ruin Problem in Quant Trading | https://youtu.be/YNvhjSr_nz0 |  |
+| 29 | Ito's Lemma Clearly and Visually Explained | https://youtu.be/TgBzqdN24fo |  |
+| 30 | Trading with the Black-Scholes Implied Volatility Surface | https://youtu.be/YH0tWpBaKGs | ✓ |
+| 31 | Ito Integration Clearly and Visually Explained | https://youtu.be/dUvZ8m3QpeI |  |
+| 32 | How to Price Exotic Options | https://youtu.be/hsot26myYYM |  |
+| 33 | Why Monte Carlo Simulation Works | https://youtu.be/-4sf43SLL3A |  |
+| 34 | How to Trade with an Edge | https://youtu.be/NlqpDB2BhxE |  |
+| 35 | What Does AI Actually Learn | https://youtu.be/tX7b2KT63WQ |  |
+| 36 | How to Trade with the Kelly Criterion | https://youtu.be/7tvW3NvRnPk |  |
+| 37 | Stochastic Differential Equations for Quant Finance | https://youtu.be/qDAeSC40ZJE |  |
+| 38 | Finite Differences Option Pricing for Quant Finance | https://youtu.be/uzbveN8n34U |  |
+| 39 | Heston Stochastic Volatility Model and Fast Fourier Transforms | https://youtu.be/2-oAlnZV6hA |  |
+| 40 | Quant Trader on Retail vs. Institutional Trading | https://youtu.be/j1XAcdEHzbU |  |
+| 41 | How to Build a Volatility Trading Dashboard in Python with Interactive Brokers | https://youtu.be/19-rFVgJVkg | ✓ |
+| 42 | Quant on Trading and Investing | https://youtu.be/CKXp_sMwPuY |  |
+| 43 | How to Trade Implied Volatility Crush | https://youtu.be/jM7Zd6GU86Q |  |
+| 44 | Time Series Analysis for Quant Finance | https://youtu.be/JwqjuUnR8OY | ✓ |
+| 45 | How to Build an Options Volatility Trading Tool in Python with Interactive Brokerss | https://youtu.be/ZF4Eci5casc |  |
+| 46 | Is Trading Luck or Skill? Quant Debunks Trading Gurus with Math | https://youtu.be/czEyUZabE2U |  |
+| 47 | Master Volatility with ARCH & GARCH Models | https://youtu.be/iImtlBRcczA | ✓ |
+| 48 | Why Trading Metrics are Misleading (Unless This is True) | https://youtu.be/xziwmju7x2s |  |
+| 49 | Markov Chains for Quant Finance | https://youtu.be/k8oQfd6M5sA | ✓ |
+| 50 | Why Poker Pros Make the Best Traders (It's NOT Luck) | https://youtu.be/JuD3KGQhofw |  |
+| 51 | Hidden Markov Models for Quant Finance | https://youtu.be/Bru4Mkr601Q | ✓ |
+| 52 | Quant Proves Trading Can't Be Taught (But You CAN Learn This) | https://youtu.be/uivlsPk0WLQ |  |
+| 53 | Do Emojis Predict Stock Returns? | Quant Guild at UCSD's Triton Quantitative Trading | https://youtu.be/915-fyEM9l8 |  |
+| 54 | Quant vs. Discretionary Trading | https://youtu.be/3gblERSSHXI | ✓ |
+| 55 | How to Build an Earnings Event Trading Dashboard in Python (Interactive Brokers API) | https://youtu.be/Xtth2F1xm5Q |  |
+| 56 | Quant Busts 3 Trading Myths with Math | https://youtu.be/wJfIk3VnubE |  |
+| 57 | Banks are Just Casinos (Quant Explains Why) | https://youtu.be/gG9Xsvgqvp4 |  |
+| 58 | Why Quant Models Break | https://youtu.be/brdG1TmsPlw |  |
+| 59 | Brownian Motion for Quant Finance | https://youtu.be/jiAdz9W4aDI | ✓ |
+| 60 | Is Trading Gambling? Quant Proves It's Not With Math & Logic | https://youtu.be/GvX8Ragl3ZU |  |
+| 61 | Central Limit Theorem for Quant Finance | https://youtu.be/q2era-4pnic |  |
+| 62 | My Life as a Quant | https://youtu.be/n1Z90Iwc_co |  |
+| 63 | Neural Networks for Quant Finance | https://youtu.be/n5acv8R-lN8 |  |
+| 64 | Books that Made Me a Quant | https://youtu.be/izuZqWz-Dpg |  |
+| 65 | Natural Language Processing (NLP) for Quant Trading | https://youtu.be/6llKh4kQBYs |  |
+| 66 | How I Cracked the Quant Interview | https://youtu.be/vygK0EXY8ZI |  |
+| 67 | How Physics Accidentally Proved the Black-Scholes Model | https://youtu.be/IIzGqL3ChEs |  |
+| 68 | I Ranked the Best College Majors for Becoming a Quant | https://youtu.be/DL_mG-RUFlQ |  |
+| 69 | Quant Explains Algorithmic Market-Making | https://youtu.be/aVzFKwyzwM0 |  |
+| 70 | Non-Target to Quant: How to Get a Quant Job in 3 Steps | https://youtu.be/qBSrjoTdQpA |  |
+| 71 | Why Your Backtests are Wrong | Markov Property for Quant Trading | https://youtu.be/w-EbZ6Xct_E |  |
+| 72 | How to Build a Markov Chain Regime Switching Bot in Python with Interactive Brokers | Part 1 | https://youtu.be/mais1dsB_1g |  |
+| 73 | How to Price Options with Monte Carlo Simulation | https://youtu.be/2-VRYBKfoyE |  |
+| 74 | How to Build a Markov Chain Regime Switching Bot in Python with Interactive Brokers | Part 2 | https://youtu.be/CkXljL6eI5A |  |
+| 75 | Quant Explains Backtesting with Poker | https://youtu.be/xJJ1nWj9Rto |  |
+| 76 | I Built the Quant Roadmap | https://youtu.be/kLJEXE5_7rI |  |
+| 77 | Profitable vs Tradable: Why Most Strategies Fail Live | https://youtu.be/fzz22JNg9HE |  |
+| 78 | Quant Explains Alpha in 3 Minutes | https://youtu.be/Ivz58kZLD2U |  |
+| 79 | My Approach to Solving Quant Interview Questions (Optiver Example) | https://youtu.be/pyD-zXuP8Qo |  |
+| 80 | The 5 Papers that Built Modern Quant Finance | https://youtu.be/ZwS1gMGegrM |  |
+| 81 | Why Most Traders Lose: Ergodicity for Quant Trading | https://youtu.be/dryV1qJYUw8 |  |
+| 82 | Poisson Processes for Quant Finance | https://youtu.be/oug0vzbwISQ |  |
+| 83 | Quant Explains Risk-Neutral Option Pricing | https://youtu.be/wYpg0TGxvgM |  |
+| 84 | How to Build a Live Volatility Surface in Python (Interactive Brokers) | https://youtu.be/5JEeAsQqlro | ✓ |
+| 85 | Quant Derives Volterra Process Discretization and Simulation | https://youtu.be/ifwhZDCjAgo | ✓ |
+| 86 | 5 Projects that Made me a Quant | https://youtu.be/bTMSAEn0XW4 |  |
+| 87 | How to Quant Trade in 3 Minutes | https://youtu.be/mZLNzqDZHbA |  |
+| 88 | How a Quant Manages a Portfolio | https://youtu.be/JjbBAyu0DmI |  |
+| 89 | Black-Scholes Implied Volatility in 3 Minutes | https://youtu.be/8CB22YhioRw |  |
+| 90 | Quant Responds to and Corrects YouTube Comments | https://youtu.be/CFqo-BMtKgY |  |
+| 91 | How Goldman Sachs Prices Variance Swaps | https://youtu.be/24-wC8RI7BA |  |
+| 92 | Kalman Filters for Quant Finance | https://youtu.be/zVJY_oaVh-0 | ✓ |
+| 93 | Non-Stationarity and Why Market Timing Fails | https://youtu.be/7nvjrgqKjJE | ✓ |
+| 94 | Hawkes Processes for Quant Finance | https://youtu.be/BotPHbWFRUA |  |
+| 95 | Trading Mean Reversion with Kalman Filters | https://youtu.be/BuPil7nXvMU | ✓ |
+| 96 | I Bet You've Never Found Alpha (and I Can Prove It) | https://youtu.be/UzTJHs3-eT0 |  |
+| 97 | 3 Backtesting Pitfalls That Ruin Your Trading Strategy | https://youtu.be/sjq3toGtr0U |  |
+| 98 | How to Get Historical Market Data with Interactive Brokers and Python | https://youtu.be/7hezNf49iKc |  |
+| 99 | Quant Ranks Retail Trading Mistakes that Blow Up Your Account | https://youtu.be/1mpNxBaBeOw |  |
+| 100 | Black-Litterman vs. Mean-Variance Portfolio Optimization in Python | https://youtu.be/o1mCFVt79Y8 | ✓ |
+| 101 | Stop Using the Sharpe Ratio Until You Watch This | https://youtu.be/NJ5PNfIQHrE |  |
+| 102 | How Markovian Lifting Solves the Rough Volatility Problem | https://youtu.be/Cr7kBSPqD8A | ✓ |
+| 103 | Quant Finance in 3 Minutes | https://youtu.be/2-gEfXQZFr0 |  |
+| 104 | The Gaussian Cookbook for Aspiring Quants | https://youtu.be/GyrcydIWJpo |  |
+| 105 | How to Read Options Chains | https://youtu.be/RrRbz6oXwxE | ✓ |
+| 106 | How to Trade the Covered Call | https://youtu.be/iPsPRQlDeTA | ✓ |
+| 107 | How to Trade Options with the Black-Scholes Model | https://youtu.be/1OByexsEJXc |  |
+| 108 | Ultimate Options Trading Crash Course | https://youtu.be/-lQdlJh8cCE | ✓ |
+| 109 | Vibe Coding an Options Trading System | https://youtu.be/FdqvAuHOQeE |  |
+| 110 | Coding an AI Bot to Trade Nvidia (From Scratch) | https://youtu.be/qKCjatq9CZM |  |
+| 111 | The Mathematical Delusion of Retail Trading | https://youtu.be/RBfc8SkRwwU |  |
+| 112 | Why your Trading Strategy Sucks | https://youtu.be/8kBpVelo9Tg |  |
+| 113 | How to Trade the Cash Secured Put | https://youtu.be/mFovTf-TMvw |  |
+| 114 | Modeling with the Law of Total Expectation | https://youtu.be/-CPUbalMh14 | ✓ |
+| 115 | How a Quant Engineers a Portfolio | https://youtu.be/ztQNQBP3MIc |  |
+| 116 | The S&P 500 Lie Retail Investors Believe | https://youtu.be/sgbEkAYAdwk |  |
+| 117 | What Exactly is Volatility Drag | https://youtu.be/Soea_7rzkR8 |  |
+| 118 | No. You don't need to backtest a trading strategy. | https://youtu.be/KD_fh_jA_iQ |  |
+| 119 | Volatility Risk Premium Explained: Implied vs Realized Volatility | https://youtu.be/kmAE9ZhQ0jU | ✓ |
+| 120 | I Met a Jane Street Quant at the Gym (He Got This Wrong) | https://youtu.be/E73rL7Hex-k | ✓ |
+| 121 | Stock Picking is Worse than Gambling at a Casino (I Can Prove It) | https://youtu.be/E2PuxT_SucA |  |
+| 122 | A REAL Quant Debunks the Day Trading Scam | https://youtu.be/xa5eSjASDWo |  |
+| 123 | How a Quant would Invest $1,000,000 | https://youtu.be/37wRzGdC9w4 |  |
+| 124 | When Does a Trading Strategy Actually Need to be Secret | https://youtu.be/WsEwKlr_1lA |  |
+| 125 | How to Calculate and Use Compound Annual Growth Rate (CAGR) | https://youtu.be/kOzvtRE_uX8 |  |
+| 126 | How to Model Tail-Risk: A Quantitative Survival Guide | https://youtu.be/-sE1kz-fypI | ✓ |
+| 127 | The Ultimate Guide to Quant Portfolio Management | https://youtu.be/LX4Ugaxx9n0 |  |
+| 128 | How to Calculate Portfolio Alpha & Beta (Python + Interactive Brokers) | https://youtu.be/A7zJARrdo3U |  |
+| 129 | How to get Higher Sharpe Ratios in a Trading Strategy | https://youtu.be/GTVBT1SQKWY |  |
+| 130 | Projects to Help you Become a Quant (Beginner) | https://youtu.be/secelDZAmWc |  |
+| 131 | Quant Explains Investing at 5 Levels | https://youtu.be/tmkkddOeAsM |  |
+| 132 | Live Capital Management: My 2025 Crisis Alpha | https://youtu.be/yRDs4atfRB0 |  |
+| 133 | Projects to Help you Become a Quant (Intermediate) | https://youtu.be/swPOLhSIBHo |  |
+| 134 | How to Build an AI Stock Trading Bot with Interactive Brokers | https://youtu.be/ogZmSXD_56U |  |
+| 135 | Arithmetic and Geometric Brownian Motion Masterclass | https://youtu.be/J23tj13WOK8 | ✓ |
+| 136 | How Volatility Drag Destroys (and Creates) Wealth | https://youtu.be/pNRkxItN0qM |  |
+| 137 | Projects to Help you Become a Quant (Advanced) | https://youtu.be/MvdP0b7zyQs |  |
+| 138 | How to Protect your Stock Portfolio Against a Market Crash | https://youtu.be/Z3w8TpH7kYw |  |
+| 139 | How to Derive the Black-Scholes Equation | https://youtu.be/iMSUU_emIDQ |  |
+| 140 | More like Situational Unawareness LP | https://youtu.be/-h8hPIlMgvs |  |
+| 141 | You can't remove emotion from trading, ever | https://youtu.be/24DFxKF4hzs |  |
+| 142 | Everything is technical analysis | https://youtu.be/H1kuzEP-tw8 |  |

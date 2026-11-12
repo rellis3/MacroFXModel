@@ -11,8 +11,8 @@ attachments or private files. For those, the owner pastes the text, or a local t
 
 1 credit per *new* video; an existing transcript is reused for free. Retention is unlimited while the subscription is active.
 1. `search_transcriptions` for each URL first. Found means use it, at no cost.
-2. Count the new ones and check `get_credits`. **Up to 25 new: proceed and say the count.** More than 25, or under
-   100 credits left: give the count and ask first.
+2. Count the new ones and check `get_credits`. **The owner has standing approval for transcription (2026-11-12: "always
+   yes to the transcription, I have loads").** Proceed at any count and state it. Ask only if the balance would drop under 50.
 3. Submit with `transcribe_video`, one call per URL. `transcribe_bulk` needs an API key or batch consent this
    account may not have; try it only for big backfills, and if it's refused fall back to single calls (the refusal costs nothing).
 4. A failed job: report it. **Don't retry without asking** (owner rule: paid APIs stop on failure).

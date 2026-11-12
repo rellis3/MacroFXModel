@@ -24,10 +24,10 @@ standard error. The joke short ("correlated … prescriptions in Madagascar with
 | # | Claim (speaker) | Type | On file? |
 |---|---|---|---|
 | 1 | "We have time-varying return distributions… this creates what looks like just noise" (QG) | method | ALREADY DO in part: per-year / per-regime breakdowns and walk-forward folds in studies; HMM regimes |
-| 2 | A quant should have run a Fama-MacBeth regression (QG) | method | PARTLY ON FILE: taught (C.OG regression course notes, `education/tools/whiteboards/institutional_fama_macbeth.py`, Theory Lab) but **never used in a study** (no hit in forge/, analysis/, preregs) |
+| 2 | A quant should have run a Fama-MacBeth regression (QG) | method | ON FILE under other names (corrected 2026-11-12 after the full-video note): `fx-factor-stack` (mean monthly rank-IC) and the residual-PCA family (daily IC, Newey-West 5 lags) are univariate Fama-MacBeth. Not done: joint multivariate per-period slopes. See [full video note](2026-11-12-fama-macbeth-regressions.md) |
 
 ## What we could learn
-- **DON'T DO**: for cross-instrument questions (the 8 FX majors, the 62-market board, line-touch across pairs, residual-fx8)
+- *(Corrected 2026-11-12: we already do univariate FM; the gap is multivariate slopes, see lesson #9.)* Originally written as **DON'T DO**: for cross-instrument questions (the 8 FX majors, the 62-market board, line-touch across pairs, residual-fx8)
   we pool. Fama-MacBeth gives a per-period coefficient series, so you see whether an effect is steady or comes from a few
   periods, and the standard errors handle cross-sectional correlation that pooled OLS understates.
 - Overlaps with the data-rules multiple-testing rules (the shrimp-boat joke = data snooping). **ALREADY DO**.

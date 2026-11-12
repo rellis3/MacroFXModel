@@ -74,6 +74,7 @@ price. If it is an artefact of measuring volatility, there is no mechanism and n
 | If yes → | rough and outside the artefact band: Q2 and Q3 become worth running; the Theory Lab gets a lesson with a live slope plot |
 | If no → | inside the band: stop saying "volatility is rough" on this desk, close Q2 and Q3, note the Cont and Das result in the HAR lesson |
 | Construct note | non-overlapping per-session log rv5 only; lag >= the proxy window (the lecture's overlapping rolling windows make short-lag increments mechanical); report H on two proxy specs (M1-built rv5 and a 1h-bar RV) |
+| Simulator check | positive control (#1): any rough simulator is exact Cholesky on the closed-form fBM covariance, checked first against the closed-form variance t^{2H} and the structure-function slope. **Do not use QG's left-point Volterra scheme**: at H=0.1 its variance is 0.70 of the truth at 252 steps (0.81 at 2,520) and its increments read H≈0.25 when the truth is 0.1; his own check (`L@L.T`) is circular. The smooth artefact band only needs an H=½ simulator, which is easy to get exactly right (note `2026-11-12-volterra-discretization.md`) |
 | Falsifier | real slopes sit inside the smooth-volatility band, or zeta(q) is not linear in q; linear zeta(q) alone is not support, since a noise-driven artefact is also linear in q, so only the artefact band discriminates |
 
 ### Q2. Does a rough forecast beat HAR-800 on the range lines? — score 11/15, gated on Q1
@@ -116,6 +117,7 @@ not change sizing (`vol-target`). A yes here is a small improvement to the lines
 | Data & power | same tables; weekly and monthly overlapping windows, clustered by month |
 | If yes → | a candidate for the "Forecast Weekly · Reverting" export; shadow only |
 | If no → | the exponential half-life stays; no change |
+| Extra arm | a 2–3-factor exponential mixture (Markovian lifting; HAR-like) between one exponential and the power law: if the power law doesn't beat the mixture, the gain is multi-speed memory, not roughness (note `2026-11-12-markovian-lifting.md`) |
 | Falsifier | power-law kernel adds under 1% in pinball beyond the exponential one |
 
 ## Parked
