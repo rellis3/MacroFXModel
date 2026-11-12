@@ -10,6 +10,10 @@ learns from his material, reverse-engineers his published forecast lines, and ha
 system can be replicated. This skill holds what has been learned so far, so a session doesn't rediscover it or redo
 dead work.
 
+**C.OG ≠ Colez Trades** (owner, 2026-11-12): Colez Trades is the wider educator group; C.OG is a private group within it.
+Other Colez Trades educators (Max Cole, Jay, Craig) are not C.OG: never attribute their words to him. Their material goes
+through `learn-intake`'s informational lane (elevated pass), source `colez-trades`.
+
 ## Who said what (tag every claim)
 
 | Who | What they are | Material |

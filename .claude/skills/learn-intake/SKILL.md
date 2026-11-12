@@ -1,6 +1,6 @@
 ---
 name: learn-intake
-description: Takes learning material the owner pastes (video URLs, images or screenshots, pasted text or transcripts, or "backfill everything from <creator>"), turns it into stored lesson notes, method lessons and screened research ideas, and files each item in one of three lanes. The lanes are cog (C.OG / Colez / the paid Discord, highest-quality pass), informational (Nicholas Crown, Jessinskip and other market-commentary creators, podcasts) and technical (Quant Guild and other quant-method teachers). Fetches video transcripts through the ReelScribe connector. Use this whenever the owner pastes a YouTube/Instagram/TikTok/Facebook/X link to learn from, drops a screenshot or a block of text with "learn from this", "process this", "add this to cog / crown / quant", names a lane, asks to backfill a creator's videos, or says "process the research inbox" (the drop box on the research hub). Use it even for a single clip with no instructions.
+description: Takes learning material the owner pastes (video URLs, images or screenshots, pasted text or transcripts, or "backfill everything from <creator>"), turns it into stored lesson notes, method lessons and screened research ideas, and files each item in one of three lanes. The lanes are cog (C.OG, the private paid Discord inside Colez Trades, highest-quality pass), informational (Colez Trades educators such as Max Cole and Jay with an elevated pass, Nicholas Crown, Jessinskip and other market-commentary creators, podcasts) and technical (Quant Guild and other quant-method teachers). Fetches video transcripts through the ReelScribe connector. Use this whenever the owner pastes a YouTube/Instagram/TikTok/Facebook/X link to learn from, drops a screenshot or a block of text with "learn from this", "process this", "add this to cog / crown / quant", names a lane, asks to backfill a creator's videos, or says "process the research inbox" (the drop box on the research hub). Use it even for a single clip with no instructions.
 ---
 
 # Learn intake
@@ -13,8 +13,12 @@ every time, with the depth set by the lane.
 
 | Lane | Who | What we want from it | Depth | Lane file |
 |---|---|---|---|---|
-| `cog` | C.OG / Colez Trades, Jordan, other members of the paid Discord, his YouTube `@QuantitativeAndMacroInsights` | His method and his claims, exactly. Core education. | **Highest.** Full read, verbatim quotes, term repair, a second independent read, cross-check against everything we've tested | `references/lane-cog.md` |
-| `informational` | Nicholas Crown, Jessinskip, Marilee Cordova, Aleks Rosme, podcasts (Donnelly/Peccarelli) | Market-mechanics understanding: how X moves Y, setups worth watching, display/alert nuggets | Standard | `references/lane-informational.md` |
+| `cog` | C.OG: the private group inside Colez Trades (the paid Discord), Jordan and other members, his YouTube `@QuantitativeAndMacroInsights` | His method and his claims, exactly. Core education. | **Highest.** Full read, verbatim quotes, term repair, a second independent read, cross-check against everything we've tested | `references/lane-cog.md` |
+| `informational` | **Colez Trades educators** (Max Cole, Jay: the wider group, not C.OG; elevated pass), Nicholas Crown, Jessinskip, Marilee Cordova, Aleks Rosme, podcasts (Donnelly/Peccarelli) | Market-mechanics understanding: how X moves Y, setups worth watching, display/alert nuggets | Standard; Colez Trades elevated (see lane file) | `references/lane-informational.md` |
+
+**C.OG ≠ Colez Trades** (owner, 2026-11-12): Colez Trades is the wider educator group; C.OG is a private group within it.
+Colez Trades educators matter more than general commentators but less than C.OG, so they go in the informational lane
+with the elevated pass, never the cog lane, and their words are never attributed to C.OG.
 | `technical` | Quant Guild and other quant educators | **How they approach a question**: framing, validation, statistics, what kills an idea. Their market views are secondary | Standard, method-focused | `references/lane-technical.md` |
 
 Picking the lane: the owner usually names it ("cog", "crown", "quant"). Otherwise use the creator (ReelScribe's

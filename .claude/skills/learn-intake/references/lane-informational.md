@@ -19,6 +19,18 @@ For each claim in the clip:
 Then also ask the method question, briefly: **how did they reason** (what they looked at first, what they compared,
 what would change their mind)? That goes in Approach, and into `RESEARCH_METHOD_LESSONS.md` if it's a habit worth stealing.
 
+## Colez Trades educators: elevated pass
+
+Max Cole, Jay, Craig and other Colez Trades educators (the wider group; C.OG is the private group inside it and has its
+own lane). Owner, 2026-11-12: important, but less than C.OG. On top of the pass above:
+- Every claim gets a short verbatim quote and a speaker tag; never attribute it to C.OG.
+- Screen against their method as already written down (`MD files/GOLD_CHART_STRATEGY.md`, `max copier strategy.md`,
+  `jay_pivot_method.md`) and what tested it (ConfluenceBot zone verdict, `vmcResearch/`, `CONFLUENCE_RESULTS.md`,
+  `live-range-confluence-book`, `daily-open-fib-retest`, `delta-at-line`). Say what the item adds beyond those docs.
+- Separate entry, management and bias claims; management claims are read against #27 in `RESEARCH_METHOD_LESSONS.md`.
+- Self-reported P&L / drawdown / "funded" numbers are not evidence; note them as self-report.
+- No second independent read (that stays C.OG-only).
+
 ## Files
 
 - **Crown**: the note goes in `education/intake/informational/crown/`, **and** add a dated entry to `MD files/CROWN_WATCH.md`

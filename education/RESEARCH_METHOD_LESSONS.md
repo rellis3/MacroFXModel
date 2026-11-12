@@ -42,6 +42,7 @@ against our code; where his code shows the failure mode, the note says so. That 
 | 24 | **Test discretion from an ex-ante ON/OFF log**, not a blind backtest of the trader's tool | DON'T DO (the caveat is ALREADY DO at `forge/COG_SETUPS_PREREG.md:77`) | C.OG direction nulls test his tools blind | QG quant vs discretionary | WATCH; `portfolio-construction` Q5 |
 | 25 | **Quantile ladder as the standard display** (monotone across quantiles), not just top-minus-bottom | DO WORSE | Tercile books report T−B | QG Fama-MacBeth | WATCH |
 | 26 | **Selection objective is a risk measure** (expected shortfall / growth), not the mean | DO WORSE | Tails are reported (stop-risk p99) but selection is on mean R / Sharpe | QG deep hedging | WATCH |
+| 27 | **Trade management is not an edge**: before testing any stop / partials / trail / breakeven / add-to-winners rule, run it on random (placebo) entries; the mean must come out ~0R, because management on an entry with no drift only reshapes the distribution (win rate vs payoff). Read the rule's effect as its difference from that placebo, never its raw R | DO WORSE | Shown study by study (`daily-open-fib-retest` BE/targets, `range-edge-limit-fade` 1:1 vs 2:1, line-touch adaptive stops) but never written as a rule; exit-variant ideas keep coming back | Colez Trades (Max Cole: partials at 1–1.5R, trail, add to winners) | WATCH (special case of #1) |
 
 ## Already do (independent confirmation)
 
@@ -76,6 +77,8 @@ against our code; where his code shows the failure mode, the note says so. That 
 | Nelson-Siegel D tier | A macro FX desk lives on curve shape (PCA level/slope) | QG model tier list |
 | "Learning styles aren't real" vs Theory Lab VARK | Keep the modes (dual coding), drop the "styles" rationale, add graded problem sets | QG how to learn |
 | Model probabilities can't be scored for calibration ("we don't live in a frequentist world") | Reliability bins and Brier work; the real gap is risk-neutral vs physical, which is testable (`iv-forecast` ±1σ holds 77%) | QG options crash course, chains |
+| "What profitable traders do" as evidence (prop-firm payout traders average RR < 1.5, so take 1:1; "big people ask about drawdown") | Survivorship: the population is selected on the outcome, and RR trades off against win rate at a fixed edge. Only EV net of cost against a placebo counts (#27) | Colez Trades (Max Cole) |
+| "Adding to a winner risks nothing, only unrealised gains" | Unrealised profit is money; an add is a new position at today's price with its own risk. Zero-EV on a no-drift entry; on a drifting book it is trend following, judged as such | Colez Trades (Max Cole) |
 | Synthetic demos as evidence (planted crises, puts that know the crisis, flat-vol "arbitrage") | Synthetic data is a known-answer check only (#1), never evidence of an edge | QG diversification vs hedging, tail risk, IV surface, covered call |
 
 ## For the owner's own learning (not research rules)
