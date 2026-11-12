@@ -770,3 +770,6 @@ analysis/output/stir_1m_deep/*.tmp
 # residual-fx8-forward: live paper record rewritten nightly by a laptop task (rebuildable except financing_log.csv; summary pushed to KV residual_fx8_forward_v1)
 analysis/output/residual-fx8-forward/
 scripts/residual-fx8-forward/logs/
+
+# learn-intake: full transcripts and private media (creators' material; the repo is public)
+/education/intake/raw/

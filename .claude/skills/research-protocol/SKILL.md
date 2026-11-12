@@ -24,6 +24,10 @@ verdict. Also search the Evidence Book (`js/deskEvidence.js`) and the domain reg
 `references/verdicts.md`) for the question. If someone is already on it, or it's a banked null, say so to the user
 before doing anything. "Re-running a banked null in new clothes is not allowed" (`MD files/PREREG_TEMPLATE.md`).
 
+Then skim `education/RESEARCH_METHOD_LESSONS.md`: method lessons taken from the quant teachers, C.OG and commentators
+the owner feeds in (via the `learn-intake` skill). Apply any marked DO WORSE / DON'T DO that bear on this study's design,
+and say in the prereg which ones you applied.
+
 ## The lifecycle
 
 | Step | What you do | Commit |
