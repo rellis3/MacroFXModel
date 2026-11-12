@@ -253,6 +253,7 @@ import { NEWS_SOURCES as _NW_SOURCES, POLL_MIN as _NW_POLL_MIN, backoff as _nwBa
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
 import { RESEARCHERS as _RP_RESEARCHERS, WEB_SOURCES as _RP_WEB, parseFeed as _rpParseFeed, feedItems as _rpFeedItems, webDigest as _rpWebDigest, validateProposals as _rpValidate, applyFeedback as _rpApplyFeedback, feedbackBrief as _rpFeedbackBrief, buildList as _rpBuildList, mergeLibrary as _rpMerge, validateCard as _rpValidateCard, cardPrereg as _rpPrereg, slug as _rpSlug, lifecycle as _rpLifecycle, setLink as _rpSetLink, outcomesBrief as _rpOutcomes, scorecard as _rpScorecard, validateReply as _rpValidateReply, applyRevision as _rpApplyRevision, threadText as _rpThreadText } from './js/researchPod.js';   // Phases 23-25
 import * as _RCS from './js/researchCase.js';   // research cases: one per question to the pod, in a loop with the Head of Research
+import * as _RRM from './js/researchRoom.js';   // research rooms: a case shown as a conversation at a table (guests, bench, short remarks)
 import * as _RIM from './js/researchImages.js';   // pictures attached to research questions: read once by a vision model, then text
 import { normaliseTrades as _sxNormalise, tearsheet as _sxTearsheet, toolkitCsv as _sxToolkitCsv, terminalCsv as _sxTerminalCsv, liveVsExpected as _sxLiveVsExpected } from './js/systemExports.js';   // §9ac
 import { selectPairs as _psSelect } from './js/pairSelector.js';   // §9ae
@@ -5988,7 +5989,7 @@ function _rpStart(opts = {}) {
 // ── Research cases (js/researchCase.js): one per question, its rounds and the Head of Research's reviews ──────────
 // KV research_cases. Every write is serialised (_rcLock) because a round, a review and "Ask the pod" can run at once on
 // different cases and each rewrites the whole store (and the library). One job per case at a time (_rcJobs, 409).
-const _RC_KEY = 'research_cases', _rcJobs = {};
+const _RC_KEY = 'research_cases', _rcJobs = {}, _rmJobs = {};   // _rmJobs: a research room's short-remarks job (js/researchRoom.js), one per case, never resumed after a restart
 let _rcChain = Promise.resolve(), _rcMigrated = false;
 const _rcLock = fn => { const p = _rcChain.then(fn); _rcChain = p.catch(() => {}); return p; };
 // Read-modify-write reads are strict: a backend failure (or a corrupt value) throws instead of reading as empty, so a
@@ -6045,11 +6046,15 @@ async function _rcRound(id, text, job, images = []) {
   const c = store.cases.find(x => x.id === id); if (!c) throw new Error(`no case ${id}`);
   const heldIds = new Set(papers.map(p => p.id)), answers = {}, errors = {};
   const libCtx = await _libRoundCtx(_LIX.caseQuery(c, text)), paperIds = _LIX.citeableIds(heldIds, libCtx?.ids);   // LIBRARY_CONTEXT=1 only
-  job.stage = 'the three researchers';
-  await Promise.all(_RCS.LENSES.map(async lens => {
+  // a research room (js/researchRoom.js): only the researchers not benched answer, and they take turns (quant, macro, flow), each reading
+  // the ones before it in this round; the same calls as answering together, just one after another. Other cases answer together as before.
+  const lenses = c.room ? _RRM.activeLenses(c) : _RCS.LENSES, turns = !!c.room, roomSection = c.room ? _RRM.roomText(c) : '';
+  job.stage = turns ? 'the researchers, taking turns' : 'the three researchers';
+  const runLens = async lens => {
+    if (turns) job.stage = `${_RP_RESEARCHERS[lens].label} is answering`;
     const base = roles.find(r => r.id === _RP_RESEARCHERS[lens].role); if (!base) { errors[lens] = 'no role file'; return; }
     const own = _RCS.lensIds(c, lens), query = `${c.question} ${text} ${own.map(x => lib.find(p => p.id === x)?.title ?? '').join(' ')}`;
-    const ev = _rcEvidence(DESK_EVIDENCE, query, 40), reg = _rcRegister(rows, query, 30), rs = _RCS.roundSections(c, lens, { lib, ownerMessage: text, images });
+    const ev = _rcEvidence(DESK_EVIDENCE, query, 40), reg = _rcRegister(rows, query, 30), rs = _RCS.roundSections(c, lens, { lib, ownerMessage: text, images, thisRound: turns ? answers : {}, roomSection });
     const { system, prompt } = _deskStagePrompt({ role: { ...base, output: 'case_answer' }, pack: { date }, ledger: DESK_EVIDENCE, sections: _RCS.fitSections(_LIX.withLibrary([
       ...rs.slice(0, -1),
       ['The data inventory (feeds the server holds)', _rpInventory()],
@@ -6061,7 +6066,8 @@ async function _rcRound(id, text, job, images = []) {
     ], libCtx, { beforeLast: true }), _RC_PROMPT_CHARS) });   // the owner's message stays last
     const v = await _modelJson({ task: 'research-pod', system, prompt, maxTokens: 6000, label: `desk:case-${lens}`, validate: o => _RCS.validateRoundAnswer(o, lens, { ownIds: own, paperIds }) });
     if (v.ok) answers[lens] = { ...v.value, notes: v.notes, model: v.model }; else errors[lens] = v.errors.join('; ');
-  }));
+  };
+  if (turns) { for (const lens of lenses) await runLens(lens); } else await Promise.all(lenses.map(runLens));
   if (!Object.keys(answers).length) throw new Error(Object.entries(errors).map(([k, v]) => `${k}: ${v}`).join('; ') || 'no researcher answered');
   job.stage = 'saving';
   await _rcLock(async () => {
@@ -6103,7 +6109,7 @@ async function _rcReview(id, job) {
     ['The data inventory (feeds the server holds; name feed ids in the plan)', _rpInventory()],
     ['The Evidence Book (every entry: [tag] claim -> use)', evidenceBrief(DESK_EVIDENCE)],
     ['The research register (id [status] question -> next)', _tdRegisterText(rows)],
-    ..._RCS.headSections(c, { lib, fb, quickTests, catalogue: Object.keys(QT.CATALOGUE), papers }),
+    ..._RCS.headSections(c, { lib, fb, quickTests, catalogue: Object.keys(QT.CATALOGUE), papers, roomSection: c.room ? _RRM.roomText(c) : '' }),
     ...picSection,
     ...(libCtx ? [_LIX.librarySection(libCtx)] : []),   // LIBRARY_CONTEXT=1 only; after everything else, so the stable cached prefix is unchanged
   ] });
@@ -6262,12 +6268,12 @@ app.post('/api/research-pod/case/reply', async (req, res) => {
     if (!id || !text) return res.status(400).json({ ok: false, error: 'id and text are required' });
     const images = await _rimAttach(req.body?.images);   // up to 6 pictures with the message, each with its (possibly corrected) reading
     const c = (await _rcStore()).cases.find(x => x.id === id); if (!c) return res.status(404).json({ ok: false, error: 'no such case' });
-    if (_rcJobs[id]?.status === 'running') return res.status(409).json({ ok: false, error: 'this case is already working', job: _rcJobs[id] });
+    if (_rcJobs[id]?.status === 'running' || _rmJobs[id]?.status === 'running') return res.status(409).json({ ok: false, error: 'this case is already working', job: _rcJobs[id] ?? _rmJobs[id] });
     if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key' });
     // a case whose round 1 failed runs round 1 again (the full session), with the message added to the question (and its
     // pictures to the question's); a case opened from a dossier has the dossier as its context instead, so its first
     // round is an ordinary round over it
-    const rerun = !c.rounds.length && !c.dossier, qImages = rerun ? [...(c.images ?? []), ...images.filter(a => !(c.images ?? []).some(x => x.id === a.id))].slice(-_RIM.MAX_PER_MESSAGE * 2) : null;
+    const rerun = !c.rounds.length && !c.dossier && !c.room, qImages = rerun ? [...(c.images ?? []), ...images.filter(a => !(c.images ?? []).some(x => x.id === a.id))].slice(-_RIM.MAX_PER_MESSAGE * 2) : null;
     await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); await _rcPut({ ...c2, ...(rerun && qImages.length ? { images: qImages } : {}), pending: { owner: text, at: new Date().toISOString(), ...(images.length ? { images } : {}) }, updatedAt: new Date().toISOString() }); });
     if (rerun) { const job = _rpStart({ brief: [c.question, text].filter(Boolean).join('\n\n'), caseId: id, images: qImages }); if (!job) return res.status(409).json({ ok: false, error: 'the research pod is already working on another question', job: _rpJob }); return res.status(202).json({ ok: true, job }); }
     res.status(202).json({ ok: true, job: _rcStartJob(id, 'round', job => _rcRound(id, text, job, images), _RCS.jobMarker({ kind: 'round', owner: text, images })) });
@@ -6278,7 +6284,7 @@ app.post('/api/research-pod/case/review', async (req, res) => {
   try {
     const id = String(req.body?.id ?? ''), c = (await _rcStore()).cases.find(x => x.id === id);
     if (!c) return res.status(404).json({ ok: false, error: 'no such case' });
-    if (_rcJobs[id]?.status === 'running') return res.status(409).json({ ok: false, error: 'this case is already working', job: _rcJobs[id] });
+    if (_rcJobs[id]?.status === 'running' || _rmJobs[id]?.status === 'running') return res.status(409).json({ ok: false, error: 'this case is already working', job: _rcJobs[id] ?? _rmJobs[id] });
     if (!c.rounds.length) return res.status(400).json({ ok: false, error: 'the researchers have not answered yet' });
     if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key' });
     res.status(202).json({ ok: true, job: _rcStartJob(id, 'review', job => _rcReview(id, job), _RCS.jobMarker({ kind: 'review' })) });
@@ -7188,6 +7194,102 @@ app.post('/api/research-pod/brief', _agentsGate, _agentsSameOrigin, async (req, 
     res.set('Cache-Control', 'no-store');
     const out = await _briefSvc.translate(req.body?.text);
     res.status(out.status ?? 200).json(out);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── Research rooms (js/researchRoom.js, research.html): a research case shown as a conversation at a table. ─────────────────────────────────────────────
+// Every route needs the dashboard login (_agentsGate); the POSTs also need a same-origin request. Opening a room, the Evidence Book check, the librarian's
+// rule-based paper list and the seat changes make NO model call. POST /api/research-room/talk is the only route here that spends: one small call per voice
+// (task 'research-room'), capped in KV research_room_talk_v1 and reserved before each call. Rounds, the Head and parking use the case routes above.
+const _rmTalk = _RRM.createTalkCounter({ getStrict: k => kv.getStrict(k), put: (k, v) => kv.put(k, v) });
+const _rmJob = id => _rmJobs[id]?.status === 'running' ? _rmJobs[id] : (_rcJobs[id] ?? _rmJobs[id] ?? null);
+async function _rmOnFile(query) { const { DESK_EVIDENCE } = await import('./js/deskEvidence.js'); return _RRM.onFileEntries(DESK_EVIDENCE, query, 4); }
+async function _rmLibrary(query) {
+  try { const ctx = await _libCtx(query, { force: true }); const papers = (ctx?.rows ?? []).slice(0, 6).map(r => ({ id: r.id, title: String(r.t ?? r.title ?? r.id).slice(0, 200), year: r.y ?? r.year ?? null, why: r.why ? String(r.why).slice(0, 160) : '' }));
+    return papers.length ? { ids: papers.map(p => p.id), papers, how: 'rule-based (no model call)' } : null; }
+  catch { return null; }
+}
+const _rmView = async c => {
+  const lib = await _rpGet(_RP.library, []), job = _rmJob(c.id);
+  return { ok: true, label: _RCS.LABEL, id: c.id, title: c.title, status: c.status, question: c.question, room: _RRM.roomOf(c), timeline: _RRM.timeline(c, lib), stages: _RRM.stages(c, job), seats: _RRM.seats(c, job),
+    waiting: _RRM.waitingOn(c, job), job, guests: Object.fromEntries(Object.entries(_RRM.GUESTS).map(([k, g]) => [k, { label: g.label, short: g.short }])), maxGuests: _RRM.MAX_GUESTS, talk: await _rmTalk.status(), plan: _RCS.planProposal(c) };
+};
+// GET /api/research-room/list: every case as a room row (rooms first by update), sorted by who it waits on on the page.
+app.get('/api/research-room/list', _agentsGate, async (_req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const st = await _rcStore(); res.json({ ok: true, rooms: st.cases.map(c => _RRM.roomSummary(c, _rmJob(c.id))), talk: await _rmTalk.status() }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/research-room?id=: one room: the conversation, the table, the stage line, who it waits on, the running job.
+app.get('/api/research-room', _agentsGate, async (req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const id = String(req.query.id ?? ''), c = (await _rcStore()).cases.find(x => x.id === id);
+    if (!c) return res.status(404).json({ ok: false, error: 'no such room' });
+    res.json(await _rmView(c)); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/research-room/onfile?q=: the Evidence Book entries most related to some text (code, free), for the New idea page's "tested before?" check.
+app.get('/api/research-room/onfile', _agentsGate, async (req, res) => {
+  try { res.set('Cache-Control', 'no-store'); const q = String(req.query.q ?? '').slice(0, 2000); res.json({ ok: true, entries: q.trim() ? await _rmOnFile(q) : [] }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/research-room/open { brief?, dataCheck?, text, shape? }: a new room from a translated brief (re-checked here against the catalogue) or from plain
+// words. The Evidence Book check and the librarian's rule-based paper list are posted at once; nothing runs until the owner starts the discussion.
+app.post('/api/research-room/open', _agentsGate, _agentsSameOrigin, async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const BR = await import('./js/researchBrief.js'), text = String(req.body?.text ?? '').replace(/\s+/g, ' ').trim().slice(0, 4000), shape = String(req.body?.shape ?? '') || null;
+    let brief = null, dataCheck = null;
+    if (req.body?.brief && typeof req.body.brief === 'object') {
+      const b = req.body.brief, back = { ...b, target: { ...(b.target ?? {}), series: b.target?.series || b.target?.unknownSeries || '' }, variables: (b.variables ?? []).map(v => ({ ...v, components: [...(v.components ?? []), ...(v.unknownComponents ?? [])] })) };
+      const p = BR.parseBrief(back, _QT_CATALOGUE); if (!p.ok) return res.status(400).json({ ok: false, error: `the brief could not be used: ${p.error}` });
+      brief = p.brief; dataCheck = BR.dataCheck(brief, _QT_CATALOGUE);
+    }
+    if (!brief && text.length < 12) return res.status(400).json({ ok: false, error: 'write the idea first, or translate it' });
+    const query = [brief ? _RRM.briefQuestion(brief) : '', text, ...(brief?.searchTerms ?? [])].join(' ');
+    const [onFile, library] = await Promise.all([_rmOnFile(query), _rmLibrary(query)]);
+    await _rcEnsure();
+    const date = _dpLondonDate(Date.now()), id = `room-${date}-${Date.now().toString(36)}`;
+    const c = _RRM.newRoom({ id, date, brief, dataCheck, ownerText: text, shape, onFile, library });
+    await _rcLock(async () => { await _rcPut(c); });
+    res.status(201).json({ ok: true, id, view: await _rmView(c) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/research-room/seat { id, action: accept|remove|dismiss|bench|unbench, who }: change who sits at the table. Free.
+app.post('/api/research-room/seat', _agentsGate, _agentsSameOrigin, async (req, res) => {
+  try {
+    const id = String(req.body?.id ?? ''), action = String(req.body?.action ?? ''), who = String(req.body?.who ?? '');
+    await _rcEnsure();
+    const out = await _rcLock(async () => { const c = (await _rcRead()).cases.find(x => x.id === id); if (!c) return { status: 404, error: 'no such room' };
+      const r = _RRM.setSeat(c, action, who); if (!r.ok) return { status: 400, error: r.error }; await _rcPut(r.case); return { c: r.case }; });
+    if (out.error) return res.status(out.status).json({ ok: false, error: out.error });
+    res.json(await _rmView(out.c));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// POST /api/research-room/talk { id, who: 'discuss' | a guest id | quant|macro|flow }: short remarks, one small call per voice, in turn (each reads the ones before).
+async function _rmRunTalk(id, who, job) {
+  const lib = await _rpGet(_RP.library, []);
+  const c = (await _rcRead()).cases.find(x => x.id === id); if (!c) throw new Error('no such room');
+  const targets = _RRM.talkTargets(c, who), said = [];
+  for (const t of targets) {
+    job.stage = `${_RRM.seatLabel(t)} is thinking`;
+    let okToCall; try { okToCall = await _rmTalk.reserve(); } catch (e) { said.push({ who: t, at: new Date().toISOString(), pass: true, text: '', error: `the call counter cannot be read, so nothing was sent: ${e.message}` }); break; }
+    if (!okToCall) { said.push({ who: t, at: new Date().toISOString(), pass: true, text: '', error: `the ${_RRM.TALK_CAP}-call cap for short remarks is used up` }); break; }
+    const v = await _modelJson({ task: 'research-room', system: _RRM.talkSystem(t), prompt: _RRM.talkPrompt(c, t, { lib, earlier: said.filter(x => !x.error) }), maxTokens: 700, timeoutMs: 90_000, label: `research:room-${t}`, tries: 1,
+      validate: o => _RRM.validateTalk(o, { who: t }) }).catch(e => ({ ok: false, errors: [e.message] }));
+    said.push(v.ok ? { who: t, at: new Date().toISOString(), ...v.value, model: v.model ?? null } : { who: t, at: new Date().toISOString(), pass: true, text: '', error: (v.errors ?? ['failed']).join('; ') });
+  }
+  job.stage = 'saving';
+  await _rcLock(async () => { const c2 = (await _rcRead()).cases.find(x => x.id === id); if (c2) await _rcPut(_RRM.appendTalk(c2, said)); });
+}
+app.post('/api/research-room/talk', _agentsGate, _agentsSameOrigin, async (req, res) => {
+  try {
+    const id = String(req.body?.id ?? ''), who = String(req.body?.who ?? 'discuss'), c = (await _rcStore()).cases.find(x => x.id === id);
+    if (!c) return res.status(404).json({ ok: false, error: 'no such room' });
+    if (_rcJobs[id]?.status === 'running' || _rmJobs[id]?.status === 'running') return res.status(409).json({ ok: false, error: 'this room is already working', job: _rmJob(id) });
+    if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key' });
+    const targets = _RRM.talkTargets(c, who); if (!targets.length) return res.status(400).json({ ok: false, error: 'nobody at the table to speak (accept a guest, or unbench a researcher)' });
+    const st = await _rmTalk.status(); if (st.callsLeft === 0) return res.status(409).json({ ok: false, error: `the ${_RRM.TALK_CAP}-call cap for short remarks is used up` });
+    const job = _rmJobs[id] = { status: 'running', kind: 'talk', caseId: id, who, stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null };
+    _rmRunTalk(id, who, job).then(() => { job.status = 'done'; }).catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
+    res.status(202).json({ ok: true, job, speakers: targets.length });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.get('/api/research-pod/concepts', async (req, res) => {

@@ -298,9 +298,11 @@ export function caseText(c, lib = [], { proposals = 'line', replyChars = 1500 } 
  * answers, the Head's latest review, its own proposals in full, the owner's message last). Context the server adds
  * (the data inventory, a slice of the Evidence Book and register) goes after these.
  */
-export function roundSections(c, lens, { lib = [], ownerMessage = '', images = [] } = {}) {
+export function roundSections(c, lens, { lib = [], ownerMessage = '', images = [], thisRound = {}, roomSection = '' } = {}) {
   const byId = Object.fromEntries((lib ?? []).map(p => [p.id, p])), last = c.rounds.at(-1), rv = latestReview(c);
   const others = LENSES.filter(l => l !== lens).map(l => {
+    // a research room takes turns: a researcher who already spoke in THIS round is read first (js/researchRoom.js)
+    const now = thisRound?.[l]; if (now) return `${label(l)} (this round, just now, before you): ${now.headline ?? ''}${now.reply ? `\n${String(now.reply).slice(0, 1500)}` : ''}${now.proposals?.length ? `\nIts new proposals: ${now.proposals.map(p => p.title ?? p.id).join('; ')}` : ''}`;
     const r = [...c.rounds].reverse().find(x => x.answers?.[l]), a = r?.answers?.[l]; if (!a) return `${label(l)}: (has not answered yet)`;
     return `${label(l)} (round ${r.n}): ${a.headline}${a.reply ? `\n${String(a.reply).slice(0, 1500)}` : ''}\nIts proposals:\n${lensIds(c, l).map(id => proposalLine(byId[id]) || `- ${id} (no longer in the library)`).join('\n') || '(none)'}`;
   }).join('\n\n');
@@ -312,6 +314,7 @@ export function roundSections(c, lens, { lib = [], ownerMessage = '', images = [
     ['The case so far (oldest first)', clip(caseText(c, lib, { replyChars: 600 }), 14_000)],
     ["The other researchers' latest answers", others],
     ['The Head of Research\'s latest review (peer review of all three: take its corrections seriously)', rv ? clip(reviewText(rv, { full: true }), 9000) : '(no review yet: the owner has not sent this case to the Head of Research)'],
+    ...(roomSection ? [['The research room: what is already on file, the guests and the short remarks made at the table', clip(roomSection, 6000)]] : []),
     ['Your proposals in this case (current versions; revise them by id)', own.length ? own.map(id => byId[id] ? proposalFull(byId[id]) : `${id} (no longer in the library)`).join('\n') : '(none yet)'],
     [`The owner's message that starts round ${(last?.n ?? 0) + 1} (answer it)`, [ownerMessage || '(no message)', picturesText(images)].filter(Boolean).join('\n\n')],
   ];
@@ -341,13 +344,14 @@ export function citedPapersText(list) {
     : '(none of the ids the researchers cite are in the paper library)';
 }
 
-export function headSections(c, { lib = [], fb = {}, quickTests = [], catalogue = [], papers = [] } = {}) {
+export function headSections(c, { lib = [], fb = {}, quickTests = [], catalogue = [], papers = [], roomSection = '' } = {}) {
   const ids = proposalIds(c), whole = caseText(c, lib, { proposals: 'full', replyChars: 3000 });
   return [
     ['The question this case is about', c.question || c.title],
     ...(c.dossier ? [[DOSSIER_SECTION, dossierText(c.dossier)]] : []),
     ...(c.paper ? [[PAPER_SECTION, paperText(c.paper)]] : []),
     ['The whole case, oldest first, with every proposal in full (current versions)', whole],
+    ...(roomSection ? [['The research room: what is already on file, the guests and the short remarks made at the table', clip(roomSection, 8000)]] : []),
     ["The papers the researchers cite, from the desk's paper library (read by the literature desk; a citation listed here is a real, read paper, not an invention; judge whether it supports the claim made of it)", citedPapersText(citedPapers(`${whole}\n${c.dossier ? dossierText(c.dossier) : ''}`, papers))],
     ["The owner's marks on these proposals", ids.filter(id => fb[id]).map(id => `- ${id}: ${fb[id].status}${fb[id].note ? ` (${fb[id].note})` : ''}`).join('\n') || '(none)'],
     ['Quick tests already run for this case or its proposals (exploratory, never banked)', quickTests.length ? quickTests.map(t => `- ${t.id}: ${t.x} → ${t.y}, verdict ${t.verdict ?? '–'}${t.summary ? `: ${t.summary}` : ''}`).join('\n') : '(none)'],
