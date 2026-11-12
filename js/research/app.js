@@ -2,9 +2,10 @@
 // Server: /api/research-room* (js/researchRoom.js) for the rooms, the table and short remarks; /api/research-pod/brief for the translator;
 // /api/research-pod/case/{reply,review,status} for rounds, the Head and parking (the same case machinery the Desk Office uses).
 import { esc, roomsList, tableHtml, guestsBox, stageLine, conversationHtml, briefCard, SHAPES, LABEL, verdictChip } from './roomView.js';
+import { loopHtml, agendasHtml, registerHtml, latestHtml, queueHtml, intakeHtml } from './hubView.js';
 
 const $ = id => document.getElementById(id);
-const S = { view: null, id: null, poll: null, data: null, filter: null, to: 'all', shape: null, brief: null, lastCount: -1, pics: [] };
+const S = { view: null, id: null, poll: null, data: null, filter: null, to: 'all', shape: null, brief: null, lastCount: -1, pics: [], hub: null, lane: 'auto', fromCard: null };
 
 async function api(url, body = null) {
   const r = await fetch(url, body ? { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : { credentials: 'same-origin', cache: 'no-store' });
@@ -18,7 +19,7 @@ const stopPoll = () => { clearTimeout(S.poll); S.poll = null; };
 
 function show(view) {
   S.view = view;
-  for (const v of ['rooms', 'room', 'new']) $(`v-${v}`).hidden = v !== view;
+  for (const v of ['home', 'in', 'rooms', 'room', 'new']) $(`v-${v}`).hidden = v !== view;
   document.querySelectorAll('#tabs a').forEach(b => b.setAttribute('aria-selected', String(b.dataset.t === view || (view === 'room' && b.dataset.t === 'rooms'))));
 }
 
@@ -137,8 +138,8 @@ async function openRoom(withBrief) {
   const text = $('niText').value.trim(), msg = $('niMsg');
   say(msg, 'Opening the room: checking the Evidence Book and the library…');
   try {
-    const d = await api('/api/research-room/open', { text, shape: S.shape, ...(withBrief && S.brief ? { brief: editedBrief() } : {}) });
-    S.brief = null; $('niText').value = ''; renderBriefEditor(); say(msg, '');
+    const d = await api('/api/research-room/open', { text, shape: S.shape, ...(withBrief && S.brief ? { brief: editedBrief() } : {}), ...(S.fromCard ? { fromCard: S.fromCard } : {}) });
+    S.brief = null; S.fromCard = null; $('niText').value = ''; renderBriefEditor(); say(msg, '');
     location.hash = `room=${encodeURIComponent(d.id)}`;
   } catch (e) { say(msg, e.message, true); }
 }
@@ -159,10 +160,66 @@ async function loadNew() {
   try { const d = await api('/api/research-pod/brief'); $('niCalls').textContent = d.callsUsed != null ? `${d.callsUsed} of ${d.callsCap} translator calls used` : ''; } catch { /* a nicety */ }
 }
 
+// ── the hub: Home (the loop map, the Director's questions, studies in flight, latest verdicts) and Drop in ───────
+async function loadHub(view = 'home', anchor = null) {
+  show(view); stopPoll();
+  try {
+    const d = S.hub = await api('/api/research-hub');
+    $('hubLoop').innerHTML = loopHtml(d.map);
+    $('hubAgendas').innerHTML = agendasHtml(d.agendas);
+    $('hubReg').innerHTML = registerHtml(d.register);
+    $('hubLatest').innerHTML = latestHtml(d.map.find(s => s.id === 'known')?.latest);
+    $('hubIntake').innerHTML = intakeHtml(d.intake?.slice(0, 6) ?? null);
+    $('hubLessons').innerHTML = d.lessons ? `${d.lessons.total} method lessons from the teachers${d.lessons.proposed ? `, <b class="gold">${d.lessons.proposed} proposed edits to the research rules wait on you</b>` : ''} (education/RESEARCH_METHOD_LESSONS.md).` : '';
+    $('inQueue').innerHTML = queueHtml(d.queue, d.lanes);
+    $('inLedger').innerHTML = intakeHtml(d.intake);
+    if (!$('inLanes').children.length) renderLanes(d.lanes);
+  } catch (e) { $('hubLoop').innerHTML = `<p class="bad">${esc(e.message)}</p>`; $('inQueue').innerHTML = `<p class="bad">${esc(e.message)}</p>`; }
+  if (anchor) $(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function renderLanes(lanes) {
+  $('inLanes').innerHTML = Object.entries(lanes ?? {}).map(([k, t]) => `<button type="button" class="shape" data-lane="${esc(k)}" aria-pressed="${k === S.lane}"><b>${esc(k === 'auto' ? 'Not sure' : k)}</b><small>${esc(t)}</small></button>`).join('');
+}
+function wireHub() {
+  $('hubAgendas').addEventListener('click', e => {
+    const b = e.target.closest('[data-card]'); if (!b) return;
+    const c = (S.hub?.agendas ?? []).flatMap(a => a.cards.map(x => ({ ...x, agenda: a.title }))).find(x => x.key === b.dataset.card); if (!c) return;
+    S.fromCard = `${c.key} ${c.title} ${c.text}`;
+    $('niText').value = `From the Director's agenda "${c.agenda}", Q${c.n} (${c.score ?? '?'}/15): ${c.title}.\n\n${c.text}`;
+    location.hash = 'new';
+  });
+  $('inLanes').addEventListener('click', e => { const b = e.target.closest('[data-lane]'); if (!b) return; S.lane = b.dataset.lane; document.querySelectorAll('#inLanes [data-lane]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.lane === S.lane))); });
+  $('inGo').addEventListener('click', async () => {
+    const msg = $('inMsg'), url = $('inUrl').value.trim(), text = $('inText').value.trim(), note = $('inNote').value.trim(), files = [...($('inFile').files ?? [])];
+    if (!url && !text && !files.length) { say(msg, 'Paste a link, some text, or pick a file first.', true); return; }
+    $('inGo').disabled = true; const done = [], bad = [];
+    try {
+      if (url) { try { await api('/api/research-hub/drop', { lane: S.lane, url, note }); done.push('the link'); $('inUrl').value = ''; } catch (e) { bad.push(`link: ${e.message}`); } }
+      if (text) { try { await api('/api/research-hub/drop', { lane: S.lane, text, note }); done.push('the text'); $('inText').value = ''; } catch (e) { bad.push(`text: ${e.message}`); } }
+      for (const f of files) {
+        say(msg, `Sending ${f.name}…`);
+        try {
+          const pdf = /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name);
+          const r = pdf ? await fetch('/api/research-pod/upload', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/pdf', 'x-filename': encodeURIComponent(f.name) }, body: f })
+            : await fetch(`/api/research-hub/drop/image?lane=${encodeURIComponent(S.lane)}&name=${encodeURIComponent(f.name)}&note=${encodeURIComponent(note.slice(0, 600))}`, { method: 'POST', credentials: 'same-origin', headers: { 'content-type': f.type }, body: f });
+          const d = await r.json().catch(() => ({ ok: false, error: `unreadable reply (${r.status})` }));
+          if (!r.ok || !d.ok) throw new Error(d.error || `failed (${r.status})`);
+          done.push(pdf ? `${f.name} (${d.skipped ? 'already in the library' : 'into the Library backlog'})` : f.name);
+        } catch (e) { bad.push(`${f.name}: ${e.message}`); }
+      }
+      $('inFile').value = ''; if (!bad.length) $('inNote').value = '';
+      say(msg, [done.length ? `Dropped in: ${done.join(', ')}.` : '', bad.length ? `Not taken: ${bad.join(' · ')}` : ''].filter(Boolean).join(' '), bad.length > 0);
+      await loadHub('in');
+    } finally { $('inGo').disabled = false; }
+  });
+}
+
+const ANCHORS = { ask: 'sec-ask', test: 'sec-test', known: 'sec-known', shelf: 'sec-shelf' };
 function route() {
   const h = location.hash.replace(/^#/, ''), m = h.match(/^room=(.+)$/);
-  if (m) loadRoom(decodeURIComponent(m[1])); else if (h === 'new') loadNew(); else loadRooms();
+  if (m) loadRoom(decodeURIComponent(m[1])); else if (h === 'new') loadNew(); else if (h === 'rooms') loadRooms(); else if (h === 'in') loadHub('in');
+  else loadHub('home', ANCHORS[h] ?? null);
 }
-wireRoom(); wireNew();
+wireRoom(); wireNew(); wireHub();
 window.addEventListener('hashchange', route);
 route();

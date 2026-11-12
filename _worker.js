@@ -97,6 +97,7 @@ function isAllowedKVKey(key) {
     'library_math_v1',   // Paper Library equations (js/libraryMath.js): model calls used against the cap, papers done
     'library_librarian_v1',   // Paper Library librarian (js/libraryLibrarian.js): model calls used against the 400 cap
     'research_room_talk_v1',   // Research rooms (js/researchRoom.js): short-remark model calls used against the cap
+    'research_intake_queue_v1',   // Research hub drop box (js/researchHub.js): items waiting for the learn-intake skill
     'research_brief_v1',   // Research brief translator (js/researchBrief.js): model calls used against the cap
     'library_concepts_v1',   // Paper Library concept cards (js/libraryConcepts.js): model calls used against the 400 cap, content hashes sent
     'library_figs_v1',   // Paper Library figure/table notes (js/libraryFigs.js): model calls used against the 600 cap, papers done
@@ -1165,6 +1166,7 @@ export default {
             'library_math_v1',   // Paper Library equations (js/libraryMath.js): model calls used against the cap, papers done
             'library_librarian_v1',   // Paper Library librarian (js/libraryLibrarian.js): model calls used against the 400 cap
             'research_room_talk_v1',   // Research rooms (js/researchRoom.js): short-remark model calls used against the cap
+            'research_intake_queue_v1',   // Research hub drop box (js/researchHub.js): items waiting for the learn-intake skill
             'research_brief_v1',   // Research brief translator (js/researchBrief.js): model calls used against the cap
             'library_concepts_v1',   // Paper Library concept cards (js/libraryConcepts.js): model calls used against the 400 cap, content hashes sent
     'library_figs_v1',   // Paper Library figure/table notes (js/libraryFigs.js): model calls used against the 600 cap, papers done

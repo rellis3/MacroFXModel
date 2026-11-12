@@ -253,6 +253,7 @@ import { NEWS_SOURCES as _NW_SOURCES, POLL_MIN as _NW_POLL_MIN, backoff as _nwBa
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
 import { RESEARCHERS as _RP_RESEARCHERS, WEB_SOURCES as _RP_WEB, parseFeed as _rpParseFeed, feedItems as _rpFeedItems, webDigest as _rpWebDigest, validateProposals as _rpValidate, applyFeedback as _rpApplyFeedback, feedbackBrief as _rpFeedbackBrief, buildList as _rpBuildList, mergeLibrary as _rpMerge, validateCard as _rpValidateCard, cardPrereg as _rpPrereg, slug as _rpSlug, lifecycle as _rpLifecycle, setLink as _rpSetLink, outcomesBrief as _rpOutcomes, scorecard as _rpScorecard, validateReply as _rpValidateReply, applyRevision as _rpApplyRevision, threadText as _rpThreadText } from './js/researchPod.js';   // Phases 23-25
 import * as _RCS from './js/researchCase.js';   // research cases: one per question to the pod, in a loop with the Head of Research
+import * as _RHUB from './js/researchHub.js';   // research hub: the loop map, the drop box queue, the shared read route
 import * as _RRM from './js/researchRoom.js';   // research rooms: a case shown as a conversation at a table (guests, bench, short remarks)
 import * as _RIM from './js/researchImages.js';   // pictures attached to research questions: read once by a vision model, then text
 import { normaliseTrades as _sxNormalise, tearsheet as _sxTearsheet, toolkitCsv as _sxToolkitCsv, terminalCsv as _sxTerminalCsv, liveVsExpected as _sxLiveVsExpected } from './js/systemExports.js';   // §9ac
@@ -7245,9 +7246,10 @@ app.post('/api/research-room/open', _agentsGate, _agentsSameOrigin, async (req, 
     if (!brief && text.length < 12) return res.status(400).json({ ok: false, error: 'write the idea first, or translate it' });
     const query = [brief ? _RRM.briefQuestion(brief) : '', text, ...(brief?.searchTerms ?? [])].join(' ');
     const [onFile, library] = await Promise.all([_rmOnFile(query), _rmLibrary(query)]);
+    const sh = _rhShelf(), reading = _RHUB.relatedReading(`${query} ${String(req.body?.fromCard ?? '')}`, { cards: sh.cards ?? [], intake: sh.intake ?? [] });
     await _rcEnsure();
     const date = _dpLondonDate(Date.now()), id = `room-${date}-${Date.now().toString(36)}`;
-    const c = _RRM.newRoom({ id, date, brief, dataCheck, ownerText: text, shape, onFile, library });
+    const c = _RRM.newRoom({ id, date, brief, dataCheck, ownerText: text, shape, onFile, library, reading });
     await _rcLock(async () => { await _rcPut(c); });
     res.status(201).json({ ok: true, id, view: await _rmView(c) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -7290,6 +7292,126 @@ app.post('/api/research-room/talk', _agentsGate, _agentsSameOrigin, async (req, 
     const job = _rmJobs[id] = { status: 'running', kind: 'talk', caseId: id, who, stage: 'starting', startedAt: Date.now(), finishedAt: null, error: null };
     _rmRunTalk(id, who, job).then(() => { job.status = 'done'; }).catch(e => { job.status = 'error'; job.error = e.message; }).finally(() => { job.finishedAt = Date.now(); });
     res.status(202).json({ ok: true, job, speakers: targets.length });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── Research hub (js/researchHub.js, research.html#home): one front door for research, drawn as a loop (in, ask, talk, test, known, shelf). ─────────────
+// GET  /api/research-hub: the map's live counts, the Director's question cards, the register's live rows, the intake ledger and the drop-box queue.
+//      Login (_agentsGate). Reads repo files and KV only: no model call. A source that cannot be read comes back null (the tile says so), never 0.
+// POST /api/research-hub/drop { lane, url | text, note }: a link, video or text into the drop box queue (KV research_intake_queue_v1). Free.
+// POST /api/research-hub/drop/image (raw image body, ?lane=&note=&name=): the picture is stored in R2 research/intake/ UNREAD (no model call) and queued.
+//      PDFs do not come here: the page sends them to the library's own upload route (/api/research-pod/upload), so the Library keeps one store.
+// The learn-intake skill (a Claude session) empties the queue through the shared read route below.
+const _rhRepo = rel => { try { return fs.readFileSync(path.join(__dirname, rel), 'utf8'); } catch { return null; } };
+function _rhShelf() {
+  let agendas = null;
+  try { const dir = path.join(__dirname, _RHUB.AGENDA_DIR); agendas = fs.readdirSync(dir).filter(f => f.endsWith('.md')).sort().map(f => _RHUB.parseAgenda(fs.readFileSync(path.join(dir, f), 'utf8'), f)); } catch { agendas = null; }
+  const reg = _rhRepo(_RHUB.REGISTER_FILE), idx = _rhRepo(_RHUB.INTAKE_INDEX), les = _rhRepo(_RHUB.METHOD_LESSONS);
+  return { agendas, cards: agendas ? agendas.flatMap(a => a.cards.map(c => ({ ...c, agendaTitle: a.title }))) : null,
+    register: reg == null ? null : _RHUB.parseRegister(reg), intake: idx == null ? null : _RHUB.parseIntakeIndex(idx), lessons: les == null ? null : _RHUB.methodLessonCounts(les) };
+}
+const _rhQueue = async (strict = false) => { const raw = strict ? await kv.getStrict(_RHUB.QUEUE_KEY) : await kv.get(_RHUB.QUEUE_KEY).catch(() => null); let q = null; try { q = raw ? JSON.parse(raw) : null; if (typeof q === 'string') q = JSON.parse(q); } catch { q = null; } return q?.items ? q : { v: 1, items: [] }; };
+const _rhIntakeKey = (id, ext) => `research/intake/${id}.${ext}`;
+app.get('/api/research-hub', _agentsGate, async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const sh = _rhShelf(), safe = p => p.catch(() => null);
+    const [st, queue, lib, bq, concepts, roeReg, roeIdx, ev] = await Promise.all([
+      safe(_rcStore()), safe(_rhQueue()), safe(_rpGet(_LIT.papers, null)), safe(_rpGet(_RL.queue, null)), safe(_libApi.concepts.cards()),
+      safe(_ROE.readRegistry(kv)), _r2Ok() ? safe(_r2GetJSON(_ROE.QUESTIONS_INDEX_KEY)) : null, safe(import('./js/deskEvidence.js')),
+    ]);
+    const rooms = st ? st.cases.map(c => _RRM.roomSummary(c, _rmJob(c.id))) : null;
+    const roeGroups = roeIdx ? _ROE.boardGroups(roeIdx) : null;
+    const roe = roeReg || roeGroups ? { questions: roeGroups ? roeGroups.reduce((n, g) => n + g.rows.length, 0) : null, status: roeReg ? _ROE.boardStatus(roeReg).message : '' } : null;
+    const papers = Array.isArray(lib) ? { count: lib.length, read: lib.filter(p => p.notes?.claim).length } : null;
+    const backlog = bq?.items ? { pending: bq.items.filter(x => x.status === 'pending').length } : null;
+    const evidence = ev?.DESK_EVIDENCE ?? null;
+    const map = _RHUB.hubMap({ rooms, roe, agendas: sh.agendas, register: sh.register, intake: sh.intake, queue, lessons: sh.lessons, evidence, papers, backlog, concepts: concepts?.count ?? null });
+    res.json({ ok: true, map, lanes: _RHUB.LANES,
+      agendas: sh.agendas, register: (sh.register ?? []).filter(r => ['CLAIMED', 'REGISTERED', 'RUNNING'].includes(r.status)),
+      intake: (sh.intake ?? []).slice(-40).reverse(), queue: queue.items.slice(0, 60), lessons: sh.lessons,
+      rooms: (rooms ?? []).filter(r => r.status === 'open').slice(0, 8), shared: { configured: !!(process.env.RESEARCH_READ_TOKEN || process.env.ROE_PUSH_TOKEN) } });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+async function _rhAdd(item) {
+  return _rcLock(async () => { const q = await _rhQueue(true), r = _RHUB.addDrop(q, item); if (!r.ok) return { ok: false, error: r.error }; await kv.put(_RHUB.QUEUE_KEY, JSON.stringify(r.queue)); return { ok: true, item }; });
+}
+app.post('/api/research-hub/drop', _agentsGate, _agentsSameOrigin, async (req, res) => {
+  try {
+    const n = _RHUB.normaliseDrop(req.body); if (!n.ok) return res.status(400).json(n);
+    const r = await _rhAdd(n.item); res.status(r.ok ? 201 : 409).json(r);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/research-hub/drop/image', _agentsGate, _agentsSameOrigin, express.raw({ type: () => true, limit: '7mb' }), async (req, res) => {
+  try {
+    const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+    const v = _RIM.validateUpload({ contentType: req.get('content-type'), buf }); if (!v.ok) return res.status(v.status).json({ ok: false, error: v.error });
+    if (!_r2Ok()) return res.status(503).json({ ok: false, error: 'the file store (R2) is not configured, so pictures cannot be kept' });
+    const id = `img-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`;
+    await _r2PutBuffer(_rhIntakeKey(id, v.ext), buf, v.mime);
+    const n = _RHUB.normaliseDrop({ lane: req.query.lane, note: req.query.note, image: { id, ext: v.ext, name: String(req.query.name ?? '').slice(0, 120), bytes: buf.length } });
+    if (!n.ok) return res.status(400).json(n);
+    const r = await _rhAdd(n.item); res.status(r.ok ? 201 : 409).json(r);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── the shared read route: the same shelf for a Claude session (the research-director and learn-intake skills, on the laptop or a phone) ─────────────
+// Bearer token: RESEARCH_READ_TOKEN (24+ characters), or the laptop's ROE_PUSH_TOKEN. Unset = every request refused (fails closed). Read-only, except
+// marking a drop-box item done. Papers are private: notes and full text go only to a holder of the token and are never written to the repo.
+// The Library page keeps its own password; this route does not open it.
+//   GET  /api/research-shared/queue?status=queued      the drop box
+//   GET  /api/research-shared/image?id=               a dropped picture (bytes)
+//   POST /api/research-shared/queue/done { id, status: done|failed|dropped, note, path }
+//   GET  /api/research-shared/papers?q=&n=            library search with each paper's desk notes (rule-based, free)
+//   GET  /api/research-shared/paper?id=&full=1        one paper's notes, and its full text when held (at most 120k characters)
+//   GET  /api/research-shared/rooms                   every room: brief, status, the Head's latest verdict and next step
+const _rhShareGate = (req, res, next) => {
+  const h = req.get('authorization');
+  if (_ROE.tokenOk(h, process.env.RESEARCH_READ_TOKEN) || _ROE.tokenOk(h, process.env.ROE_PUSH_TOKEN)) { res.set('Cache-Control', 'no-store'); return next(); }
+  res.status(401).json({ ok: false, error: 'token missing, wrong, or not configured on the server (RESEARCH_READ_TOKEN)' });
+};
+app.get('/api/research-shared/queue', _rhShareGate, async (req, res) => {
+  try { const q = await _rhQueue(), s = String(req.query.status ?? 'queued'); res.json({ ok: true, items: s === 'all' ? q.items : q.items.filter(x => x.status === s) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/research-shared/image', _rhShareGate, async (req, res) => {
+  try {
+    const id = String(req.query.id ?? ''), it = (await _rhQueue()).items.find(x => x.image?.id === id);
+    if (!it) return res.status(404).json({ ok: false, error: 'no such picture' });
+    const buf = _r2Ok() ? await _r2GetBuffer(_rhIntakeKey(id, it.image.ext)) : null; if (!buf) return res.status(404).json({ ok: false, error: 'the picture is not in the store' });
+    res.set({ 'Content-Type': { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' }[it.image.ext] ?? 'application/octet-stream', 'X-Content-Type-Options': 'nosniff' }).send(buf);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/research-shared/queue/done', _rhShareGate, async (req, res) => {
+  try {
+    const out = await _rcLock(async () => { const r = _RHUB.markItem(await _rhQueue(true), String(req.body?.id ?? ''), { status: String(req.body?.status ?? 'done'), note: req.body?.note, path: req.body?.path });
+      if (r.ok) await kv.put(_RHUB.QUEUE_KEY, JSON.stringify(r.queue)); return r; });
+    res.status(out.ok ? 200 : 400).json(out.ok ? { ok: true } : out);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/research-shared/papers', _rhShareGate, async (req, res) => {
+  try {
+    const q = String(req.query.q ?? '').slice(0, 300), n = Math.min(20, Math.max(1, Number(req.query.n) || 8));
+    const found = q.trim() ? (await _libApi.find({ query: { q, n } }))?.json?.hits ?? [] : [];
+    const lib = await _rpGet(_LIT.papers, []), byId = new Map(lib.map(p => [p.id, p]));
+    res.json({ ok: true, q, papers: found.map(h => { const p = byId.get(h.id); return { id: h.id, title: h.t ?? p?.title ?? h.id, year: h.y ?? p?.year ?? null, notes: p?.notes ?? null, abstract: p?.abstract ? String(p.abstract).slice(0, 1200) : null }; }) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/research-shared/paper', _rhShareGate, async (req, res) => {
+  try {
+    const id = String(req.query.id ?? '').slice(0, 200), p = (await _rpGet(_LIT.papers, [])).find(x => x.id === id);
+    let text = null;
+    if (req.query.full === '1') { try { const b = _r2Ok() ? await _r2GetBuffer(_rlUploadKey(id, 'txt')) : null; text = b ? b.toString('utf8').slice(0, 120_000) : _rlTextMem.get(id)?.slice(0, 120_000) ?? null; } catch { text = null; } }
+    if (!p && !text) return res.status(404).json({ ok: false, error: 'no such paper' });
+    const { keys, history, ...rest } = p ?? {};
+    res.json({ ok: true, paper: p ? rest : { id }, text, fullTextHeld: text != null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/research-shared/rooms', _rhShareGate, async (_req, res) => {
+  try {
+    const st = await _rcStore();
+    res.json({ ok: true, rooms: st.cases.map(c => { const r = _RRM.roomOf(c), rv = c.reviews?.at?.(-1) ?? null;
+      return { id: c.id, title: c.title, status: c.status, updatedAt: c.updatedAt, isRoom: !!c.room, question: c.question, rounds: c.rounds.length,
+        head: rv ? { headline: rv.headline ?? '', nextStep: rv.nextStep ?? null, why: rv.nextStepWhy ?? '', plan: rv.plan ?? null } : null,
+        remarks: r.talk.filter(t => !t.pass).slice(-6).map(t => ({ who: t.who, text: t.text })) }; }) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.get('/api/research-pod/concepts', async (req, res) => {

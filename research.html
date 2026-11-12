@@ -176,6 +176,46 @@ textarea:focus,input:focus{outline:none;border-color:var(--pur)}
 .fl input,.fl textarea{font:15px var(--sans);letter-spacing:0;text-transform:none}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media (max-width:640px){.two{grid-template-columns:1fr}}
 .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
+/* the hub: the loop map */
+.loop{display:grid;gap:0;align-items:stretch;margin:14px 0 0;grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr) 18px minmax(0,1fr) 18px minmax(0,1fr) 18px minmax(0,1fr)}
+.arr{display:flex;align-items:center;justify-content:center;color:var(--pur2);font:700 20px var(--mono)}
+.step{background:linear-gradient(180deg,var(--bg2),var(--bg1));border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.step header{display:flex;gap:10px;align-items:center}
+.step h3{margin:0;font-size:14px;font-weight:700;letter-spacing:.02em}
+.step header small{color:var(--tx3);font:10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase}
+.sn{flex:none;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font:700 12px var(--mono);background:var(--purbg);color:var(--pur2);border:1px solid rgba(139,124,246,.45)}
+.st-talk{border-color:rgba(139,124,246,.5);box-shadow:0 0 24px -8px rgba(139,124,246,.5)}
+.st-known .sn{background:var(--upbg);color:var(--up);border-color:rgba(47,211,154,.4)}
+.tile{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:10px;align-items:baseline;padding:8px 10px;border-radius:9px;background:var(--bg3);border:1px solid var(--line);text-decoration:none;color:var(--tx);transition:border-color .15s}
+.tile:hover,.tile:focus-visible{border-color:var(--pur);outline:none}
+.tile .tv{grid-row:span 2;font:700 20px var(--mono);color:var(--tx);min-width:30px;text-align:right}
+.tile .tv.na{color:var(--tx3)}.tile .tv.go{color:var(--pur2);font-size:16px}
+.tile .tl{font-size:12.5px;font-weight:600}.tile small{grid-column:2;color:var(--tx3);font-size:11.5px;line-height:1.35}
+.tile.warn{border-color:rgba(232,184,90,.5);background:var(--goldbg)}.tile.warn .tv{color:var(--gold)}
+.back{position:relative;height:30px;margin:4px 9% 4px;border:1.5px dashed var(--line2);border-top:0;border-radius:0 0 14px 14px;display:flex;align-items:flex-end;justify-content:center}
+.back span{transform:translateY(50%);background:var(--bg);padding:0 10px;font:10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--tx3)}
+.shelf{margin-top:16px;border-style:dashed}
+.shelfrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:8px}
+@media (max-width:1100px){.loop{grid-template-columns:1fr}.arr{transform:rotate(90deg);height:18px}.back{display:none}}
+.hubcols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;margin-top:22px;align-items:start}
+@media (max-width:1000px){.hubcols{grid-template-columns:1fr}}
+.hubside{display:flex;flex-direction:column;gap:16px;min-width:0}
+.agenda{border-top:1px solid var(--line);padding:10px 0 4px}
+.agenda>summary{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;color:var(--tx);font:600 13.5px var(--sans);letter-spacing:0;text-transform:none}
+.agenda .at{font-weight:650}
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:10px;margin-top:10px}
+.qcard{background:var(--bg3);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.qcard p{margin:0;font-size:13px;color:var(--tx2)}
+.qh{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.qh b{flex:1 1 100%;font-size:13.5px}
+.score{font:700 14px var(--mono);color:var(--gold)}.score small{color:var(--tx3);font-size:10px}
+.qcard .btn{align-self:flex-start}
+details.done>summary{font-size:10.5px}
+.reg,.queue{list-style:none;margin:0;padding:0}.reg li,.queue li{padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;overflow-wrap:anywhere}
+.reg li:last-child,.queue li:last-child{border-bottom:0}
+.chip.bad{color:var(--dn);border-color:rgba(255,93,120,.4);background:var(--dnbg)}
+.lanes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:8px}
+.steps{margin:0;padding-left:18px;color:var(--tx2);font-size:13px}.steps li{margin:0 0 10px}
+code{font:12px var(--mono);color:var(--pur2)}
 </style>
 </head>
 <body>
@@ -187,23 +227,85 @@ textarea:focus,input:focus{outline:none;border-color:var(--pur)}
       <a class="btn ghost" href="roe.html">Scanner questions</a>
       <a class="btn ghost" href="roe.html#concepts">Concept cards</a>
       <a class="btn ghost" href="evidence.html">Evidence Book</a>
+      <a class="btn ghost" href="library.html" title="Opens with its own password">Library 🔒</a>
       <a class="btn" href="desk-terminal.html">Desk Terminal</a>
     </div>
   </div>
 </header>
 <main class="wrap">
   <nav class="tabs" id="tabs" aria-label="Research">
-    <a href="#" data-t="rooms" aria-selected="true">Rooms</a>
+    <a href="#" data-t="home" aria-selected="true">Home</a>
+    <a href="#rooms" data-t="rooms" aria-selected="false">Rooms</a>
     <a href="#new" data-t="new" aria-selected="false">+ New idea</a>
+    <a href="#in" data-t="in" aria-selected="false">⤓ Drop in</a>
   </nav>
 
-  <section id="v-rooms" aria-label="Rooms">
+  <section id="v-home" aria-label="Research home">
+    <p class="intro">Research is a loop. Things come <b>in</b> (videos, papers, pictures, your notes), become <b>questions</b>, get <b>talked</b> through in a room, are <b>tested</b> under a pre-registration, and end as <b>known</b> verdicts that feed the next round. The <b>shelf</b> underneath is what everyone reads. Every number is live; tap one to go there.</p>
+    <div id="hubLoop"><p class="muted">Loading the map…</p></div>
+    <div class="hubcols">
+      <section id="sec-ask" class="card" aria-label="The Director's questions">
+        <div class="ch"><h3>② The Director's questions</h3><span class="r lbl">research-director agendas</span></div>
+        <p class="muted">Set by the research-director skill (on your phone or here), from a theme, a C.OG idea, a video you fed in or a finished result. Each card is ranked out of 15 and already checked against the Evidence Book. <b>Open a room</b> starts the conversation from it.</p>
+        <div id="hubAgendas"></div>
+        <p class="muted" style="margin-top:12px">Also: <a href="roe.html">scanner questions</a> (the laptop scan's research opportunities) · <a href="#new">your own idea</a>.</p>
+      </section>
+      <div class="hubside">
+        <section id="sec-test" class="card" aria-label="Studies in flight">
+          <div class="ch"><h3>④ Studies in flight</h3><span class="r lbl">plans/RESEARCH_REGISTER.md</span></div>
+          <div id="hubReg"></div>
+          <p class="muted">Run: <a href="desk-office.html#research/ideas">Quick test</a> · <a href="desk-office.html#research/build">Build &amp; validate</a></p>
+        </section>
+        <section id="sec-known" class="card" aria-label="Latest verdicts">
+          <div class="ch"><h3>⑤ Latest verdicts</h3><a class="r btn ghost" href="evidence.html">Evidence Book</a></div>
+          <div id="hubLatest"></div>
+          <p class="muted"><a href="research-log.html">Research Log</a>: what each study found, in plain words.</p>
+        </section>
+        <section id="sec-shelf" class="card" aria-label="The shelf">
+          <div class="ch"><h3>⑥ What you've fed in</h3><span class="r lbl">education/intake</span></div>
+          <div id="hubIntake"></div>
+          <p class="muted" id="hubLessons"></p>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <section id="v-in" hidden aria-label="Drop in">
+    <div class="nigrid">
+      <div>
+        <p class="intro">One place for anything that should feed research: a video, a paper, a screenshot, a Discord message, your own notes. Pick a lane, drop it in.</p>
+        <div class="sec"><h2>1 · Which lane</h2></div>
+        <div class="lanes" id="inLanes" role="group" aria-label="Lane"></div>
+        <div class="sec"><h2>2 · Drop it</h2></div>
+        <label class="fl">A link (YouTube, Instagram, TikTok, X, a podcast, SSRN, arXiv…)<input id="inUrl" type="url" inputmode="url" placeholder="https://…" maxlength="2000"></label>
+        <label class="fl">Or paste text (a Discord message, a transcript, your own notes)<textarea id="inText" rows="4" maxlength="20000"></textarea></label>
+        <label class="fl">Or files: pictures (PNG, JPEG, WebP) or paper PDFs<input id="inFile" type="file" accept="image/png,image/jpeg,image/webp,application/pdf,.pdf" multiple></label>
+        <label class="fl">A note for the reader (optional): what caught your eye, what to look for<input id="inNote" maxlength="600"></label>
+        <div class="actions"><button type="button" class="btn pri" id="inGo">Drop in</button><span class="muted" id="inMsg" role="status"></span></div>
+      </div>
+      <aside class="card" aria-label="What happens next">
+        <div class="ch"><h3>What happens next</h3></div>
+        <ul class="steps">
+          <li><b>Videos, links, pictures, text</b> wait in the queue below. Ask any Claude session (laptop or phone) to <b>"process the research inbox"</b>: the learn-intake skill fetches transcripts (ReelScribe), writes the note, checks every claim against the Evidence Book and turns the ideas into the Director's question cards.</li>
+          <li><b>PDFs</b> go straight into the Library's reading backlog (the Literature desk reads them). The Library keeps its own password.</li>
+          <li>Ideas come back on <a href="#">Home</a> as question cards; <b>Open a room</b> takes one to the table.</li>
+        </ul>
+        <p class="muted">Nothing here calls a model: dropping in is free.</p>
+      </aside>
+    </div>
+    <div class="hubcols" style="margin-top:18px">
+      <section class="card"><div class="ch"><h3>The queue</h3><span class="r lbl">waiting for learn-intake</span></div><div id="inQueue"></div></section>
+      <section class="card"><div class="ch"><h3>Already learned</h3><span class="r lbl">education/intake/INDEX.md</span></div><div id="inLedger"></div></section>
+    </div>
+  </section>
+
+  <section id="v-rooms" hidden aria-label="Rooms">
     <p class="intro">Each idea is a <b>room</b>: a conversation between you and the team at one table. Nothing moves by hand: the dots fill in as people speak, and the list is sorted by who each room is waiting on.</p>
     <div id="roomsList"></div>
   </section>
 
   <section id="v-room" hidden aria-label="One room">
-    <div class="rmhead"><a class="btn ghost" href="#">← Rooms</a><h1 id="rmTitle"></h1><div id="rmStages"></div></div>
+    <div class="rmhead"><a class="btn ghost" href="#rooms">← Rooms</a><h1 id="rmTitle"></h1><div id="rmStages"></div></div>
     <div class="rmgrid">
       <aside class="side" aria-label="The table and guests">
         <div class="card"><div class="ch"><h3>The table</h3><span class="r lbl">tap a seat to read only them</span></div><div id="rmTable"></div></div>

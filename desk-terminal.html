@@ -59,6 +59,8 @@ button{font:inherit}
 .tabs button{cursor:pointer;background:none;border:0;color:var(--tx3);padding:8px 14px;border-radius:8px;font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase}
 .tabs button[aria-selected="true"]{background:var(--purbg);color:var(--pur2);box-shadow:inset 0 0 0 1px rgba(139,124,246,.4)}
 .tabs button:focus-visible{outline:2px solid var(--pur)}
+.tabs .tablink{color:var(--pur2);padding:8px 14px;border-radius:8px;font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;text-decoration:none;display:inline-flex;align-items:center}
+.tabs .tablink:hover,.tabs .tablink:focus-visible{background:var(--purbg);outline:none}
 /* cards */
 .grid{display:grid;gap:14px}
 .g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr))}
@@ -200,7 +202,7 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
     <button role="tab" aria-selected="false" data-t="changed">Changed</button>
     <button role="tab" aria-selected="false" data-t="options">Options</button>
     <button role="tab" aria-selected="false" data-t="news">News</button>
-    <button role="tab" aria-selected="false" data-t="research">Research</button>
+    <a class="tablink" href="research.html" title="Research has its own hub now: ideas, rooms, tests, verdicts">Research ↗</a>
     <button role="tab" aria-selected="false" data-t="corr">Correlations &amp; hedges</button>
   </nav>
   <div id="wstrip" aria-live="polite"></div>

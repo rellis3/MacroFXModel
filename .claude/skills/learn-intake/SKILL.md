@@ -1,6 +1,6 @@
 ---
 name: learn-intake
-description: Takes learning material the owner pastes (video URLs, images or screenshots, pasted text or transcripts, or "backfill everything from <creator>"), turns it into stored lesson notes, method lessons and screened research ideas, and files each item in one of three lanes. The lanes are cog (C.OG / Colez / the paid Discord, highest-quality pass), informational (Nicholas Crown, Jessinskip and other market-commentary creators, podcasts) and technical (Quant Guild and other quant-method teachers). Fetches video transcripts through the ReelScribe connector. Use this whenever the owner pastes a YouTube/Instagram/TikTok/Facebook/X link to learn from, drops a screenshot or a block of text with "learn from this", "process this", "add this to cog / crown / quant", names a lane, or asks to backfill a creator's videos. Use it even for a single clip with no instructions.
+description: Takes learning material the owner pastes (video URLs, images or screenshots, pasted text or transcripts, or "backfill everything from <creator>"), turns it into stored lesson notes, method lessons and screened research ideas, and files each item in one of three lanes. The lanes are cog (C.OG / Colez / the paid Discord, highest-quality pass), informational (Nicholas Crown, Jessinskip and other market-commentary creators, podcasts) and technical (Quant Guild and other quant-method teachers). Fetches video transcripts through the ReelScribe connector. Use this whenever the owner pastes a YouTube/Instagram/TikTok/Facebook/X link to learn from, drops a screenshot or a block of text with "learn from this", "process this", "add this to cog / crown / quant", names a lane, asks to backfill a creator's videos, or says "process the research inbox" (the drop box on the research hub). Use it even for a single clip with no instructions.
 ---
 
 # Learn intake
@@ -29,6 +29,13 @@ then add them to `sources.md`.
   Save the file under `education/intake/<lane>/<source>/media/` (cog: per `lane-cog.md`).
 - **Pasted text** (a Discord message, a transcript, the owner's own notes): take as-is. The owner's own words are
   tagged `OWNER`, never attributed to the creator.
+- **The research inbox** (owner 2026-11-12): the drop box on the research hub (research.html, "Drop in") holds links,
+  videos, pictures and text the owner dropped from the site or a phone, each with a lane (or `auto`) and an optional note.
+  `node .claude/skills/research-director/scripts/shelf.mjs queue` lists them; `shelf.mjs image <id> <scratchpad file>`
+  fetches a picture. Process each one like any other item, then mark it with
+  `shelf.mjs done <id> --path <note path> --note "<the lesson in a line>"` (or `--status failed` / `dropped` with the
+  reason), so the hub shows it as learned. Needs env `RESEARCH_READ_TOKEN` (or `ROE_PUSH_TOKEN`). PDFs never come
+  through here: the hub sends them straight to the library's reading backlog.
 
 ## The pass (every item, every lane)
 

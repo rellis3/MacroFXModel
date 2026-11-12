@@ -6,7 +6,9 @@
  * The Head of Research joins only when the owner calls. Nothing runs on its own: every model call starts with a button.
  *
  * A room IS a research case (js/researchCase.js, KV research_cases) with a `room` block:
- *   room: { v:1, brief, dataCheck, ownerText, shape, onFile[], library{ ids, papers[] }, suggested[], guests[], benched[], talk[] }
+ *   room: { v:1, brief, dataCheck, ownerText, shape, onFile[], library{ ids, papers[] }, reading{ cards[], intake[] }, suggested[], guests[], benched[], talk[] }
+ * `reading` (js/researchHub.js relatedReading, code, free): the research director's open question cards and the owner's
+ * intake notes most related to the room, so the room and the director skill work from the same shelf.
  * The rounds, the Head's reviews, the proposals and the jobs are the case's own, so the Desk Office research tab keeps working.
  *
  * Short remarks ("talk"): a guest's remark, or "Let them discuss" (each seat at the table gives one short reaction or
@@ -18,6 +20,7 @@
  */
 import { RESEARCHERS } from './researchPod.js';
 import { newCase, latestReview, pickRelevant, clip, caseText } from './researchCase.js';
+import { readingText } from './researchHub.js';
 
 export const CORE = ['quant', 'macro', 'flow'];
 export const MAX_GUESTS = 2;
@@ -104,17 +107,17 @@ export function onFileEntries(ledger, query, max = 4) {
 }
 
 /** A new room: a case with the room block. Nothing runs until the owner starts the discussion. */
-export function newRoom({ id, date, at = new Date().toISOString(), brief = null, dataCheck = null, ownerText = '', shape = null, onFile = [], library = null }) {
+export function newRoom({ id, date, at = new Date().toISOString(), brief = null, dataCheck = null, ownerText = '', shape = null, onFile = [], library = null, reading = null }) {
   const question = briefQuestion(brief, { shape, ownerText });
   if (!question) throw new Error('a room needs an idea or a brief');
   const c = newCase({ id, question, date, at, origin: 'owner' });
   if (brief?.title) c.title = brief.title;
   return { ...c, room: { v: 1, brief: brief ?? null, dataCheck: dataCheck ?? null, ownerText: str(ownerText, 4000), shape: SHAPES[shape] ? shape : null,
-    onFile, library, suggested: suggestGuests(`${question} ${(library?.papers ?? []).map(p => p.title).join(' ')}`), guests: [], benched: [], talk: [] } };
+    onFile, library, reading: reading?.cards?.length || reading?.intake?.length ? reading : null, suggested: suggestGuests(`${question} ${(library?.papers ?? []).map(p => p.title).join(' ')}`), guests: [], benched: [], talk: [] } };
 }
 
 /** The room block of any case (an older case without one gets the defaults, so every case can be shown as a room). */
-export const roomOf = c => ({ v: 1, brief: null, dataCheck: null, ownerText: '', shape: null, onFile: [], library: null, suggested: [], guests: [], benched: [], talk: [], ...(c?.room ?? {}) });
+export const roomOf = c => ({ v: 1, brief: null, dataCheck: null, ownerText: '', shape: null, onFile: [], library: null, reading: null, suggested: [], guests: [], benched: [], talk: [], ...(c?.room ?? {}) });
 
 // ── seats: guests and the bench ─────────────────────────────────────────────────────────────────────────────────
 
@@ -174,6 +177,7 @@ export function talkSystem(who) {
 export function roomText(c) {
   const r = roomOf(c), out = [];
   if (r.onFile.length) out.push(`Already on file in the Evidence Book (checked by code):\n${r.onFile.map(e => `- ${e.id} [${e.verdict ?? '?'}]: ${e.claim}`).join('\n')}`);
+  if (r.reading) out.push(readingText(r.reading));
   if (r.guests.length) out.push(`Guests at the table: ${r.guests.map(g => GUESTS[g]?.label ?? g).join(', ')}`);
   if (r.benched.length) out.push(`Benched by the owner for this room: ${r.benched.map(seatLabel).join(', ')}`);
   if (r.talk.length) out.push(`Short remarks made at the table (oldest first):\n${r.talk.map(t => `- ${seatLabel(t.who)}${t.replyTo ? ` (to ${seatLabel(t.replyTo)})` : ''}: ${t.pass ? '(passed)' : t.text}`).join('\n')}`);
@@ -187,6 +191,7 @@ export function talkPrompt(c, who, { lib = [], earlier = [] } = {}) {
   return [
     `THE CONVERSATION SO FAR (oldest first):\n${clip(caseText(c, lib, { replyChars: 700 }), 9000)}`,
     roomOf(c).onFile.length ? `ALREADY ON FILE (Evidence Book):\n${roomOf(c).onFile.map(e => `- ${e.id} [${e.verdict ?? '?'}]: ${e.claim}`).join('\n')}` : '',
+    roomOf(c).reading ? clip(readingText(roomOf(c).reading), 2500) : '',
     `SHORT REMARKS SO FAR:\n${remarks}`,
     `You are ${seatLabel(who)}. Add your one short remark now, or pass.`,
   ].filter(Boolean).join('\n\n');
@@ -279,6 +284,7 @@ export function timeline(c, lib = []) {
   if (r.brief) push({ key: 'brief', at: t0, who: 'translator', kind: 'brief', brief: r.brief, dataCheck: r.dataCheck }, i++);
   if (r.onFile.length) push({ key: 'onfile', at: t0, who: 'onfile', kind: 'onfile', entries: r.onFile }, i++);
   if (r.library?.papers?.length) push({ key: 'library', at: t0, who: 'librarian', kind: 'library', papers: r.library.papers }, i++);
+  if (r.reading) push({ key: 'reading', at: t0, who: 'librarian', kind: 'reading', cards: r.reading.cards ?? [], intake: r.reading.intake ?? [] }, i++);
   if (c.dossier) push({ key: 'dossier', at: t0, who: 'librarian', kind: 'system', text: `Literature dossier ${c.dossier.id}: ${c.dossier.verdict ?? ''} ${c.dossier.summary ?? ''}`.trim() }, i++);
   for (const rd of c.rounds) {
     if (rd.owner && (rd.n > 1 || r.brief || c.room)) push({ key: `r${rd.n}-o`, at: rd.at, who: 'owner', kind: 'owner', text: rd.owner, round: rd.n, images: pics(rd.images) }, i++);

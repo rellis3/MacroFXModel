@@ -21,6 +21,13 @@ deserve that.
    register row and prereg matching the theme, grouped by verdict. Add `research_status.mjs` for in-flight work. Write
    the map as five to ten lines: what is validated (with the honest number, after controls), what is null or
    underpowered and why, what data exists and when more arrives. The map is the floor every question stands on.
+   **Then read the shared shelf** (the same one the research rooms on research.html use; owner 2026-11-12: "attack it
+   from both sides", phone skill or desk room):
+   `node .claude/skills/research-director/scripts/shelf.mjs papers "<theme words>"` gives the paper library's desk
+   notes (claim, mechanism, data, effect, caveats) for the closest papers. `paper <id> --full` reads one in full.
+   `rooms` gives what the rooms have already discussed and what the Head decided. Cite papers by id and title in the
+   map. Needs env `RESEARCH_READ_TOKEN` (or the laptop's `ROE_PUSH_TOKEN`). If it is unset, say so in the map, never
+   skip silently. Paper text is private: it stays in the conversation or the scratchpad, never in the repo.
 2. **Name the mechanism.** Who is forced to trade, and why would the effect persist (risk premium, structural or
    hedging flow, behaviour, information arriving slowly)? A question with no mechanism is a data-mining candidate. It's
    allowed only if labelled exploratory.
@@ -83,7 +90,8 @@ chooses what goes in.
 | `references/cog-question-style.md` | writing questions: his verbatim questions, the structure, vocabulary, what he says not to do |
 | `references/question-card.md` | the card template and the screening/ranking rubric |
 | `references/cog-inbox.md` | processing new C.OG messages from `education/cog_inbox/` |
-| `agendas/*.md` | the current agenda for a theme; update it rather than starting a new one |
+| `agendas/*.md` | the current agenda for a theme; update it rather than starting a new one. The research hub (research.html, Home) shows every card with an "Open a room" button, so keep the `### Q<n>. title — score s/15` heading and the `>` quoted statement (js/researchHub.test.mjs fails on a card it cannot read) |
+| `scripts/shelf.mjs` | the shared shelf: library papers, research rooms, the hub's drop box (see step 1) |
 
 ## Growing this skill
 

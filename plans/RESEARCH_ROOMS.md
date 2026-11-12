@@ -32,3 +32,28 @@
 3. Concept cards (Theory Lab and C.OG education) in the researchers' reading.
 4. Test results posted back into the room as a message, with the count of changes tried on the idea.
 5. Pictures (screenshots) attached to a room message from this page (the case routes already accept them).
+
+## The research hub (2026-11-12): one front door, two ways in
+
+Owner: "attack it from both sides": on a phone, the research-director skill; at the desk, the rooms. Both read and write one shelf.
+
+research.html opens on **Home**, the loop: ① In → ② Ask → ③ Talk → ④ Test → ⑤ Known, with ⑥ Shelf underneath feeding every step. Every count is live (`GET /api/research-hub`, js/researchHub.js `hubMap`); a source that cannot be read shows a dash, never 0.
+
+| Step | What sits there |
+|---|---|
+| ① In | **Drop in** tab: links, videos, pictures, text (KV `research_intake_queue_v1`, free, no model call); PDFs go straight to the library backlog (`/api/research-pod/upload`) |
+| ② Ask | the Director's agenda cards (parsed from `.claude/skills/research-director/agendas/*.md`, each with **Open a room**), ROE scanner questions, New idea |
+| ③ Talk | the rooms. A new room's librarian now also posts the related open agenda cards and intake notes (`room.reading`, code, free), and every prompt in the room reads them |
+| ④ Test | the register's claimed/registered/running rows; links to Quick test and Build & validate (Desk Office) |
+| ⑤ Known | Evidence Book count and the latest verdicts; Research Log |
+| ⑥ Shelf | Library 🔒 (link only: it keeps its own password), concept cards, method lessons, Theory Lab, C.OG education |
+
+**The Claude side** (`.claude/skills/research-director/scripts/shelf.mjs`, bearer `RESEARCH_READ_TOKEN` or the laptop's `ROE_PUSH_TOKEN`; unset = refused):
+`papers "<q>"` (library desk notes), `paper <id> --full`, `rooms` (what the rooms said, the Head's verdict), `queue`, `image <id> <file>`, `done <id> --path <note>`.
+The research-director skill reads papers and rooms at step 1; learn-intake empties the drop box ("process the research inbox") and marks each item done.
+
+Retired: the Desk Terminal's Research tab is now a link to the hub (its renderer in js/terminal/terminalTabs.js is unreachable and goes with step 3).
+
+### Next (step 3, needs the owner's sign-off)
+Move the Desk Office Research tab's Ideas & cases and Build & validate tools into the hub, then retire that tab. Its Forecasts and Fleet & allocation sub-tabs are not research and need their own home first.
+To use the shelf from a phone/cloud session: set `RESEARCH_READ_TOKEN` (24+ characters) on Railway and in the cloud environment's settings.
