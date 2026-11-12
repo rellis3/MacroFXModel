@@ -252,6 +252,8 @@
   <div class="chub-dd" id="chubDDresearch">
     <button class="chub-btn" style="color:#f59e0b;border-color:rgba(245,158,11,.35)" onclick="chubToggleDD(event,'chubDDresearch')">Research ▾</button>
     <div class="chub-menu">
+      <a class="chub-item" href="research.html" target="_blank" data-href="research.html"><span class="ci-txt">💬 Research Rooms (ideas, the team, the Head)</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('research.html')" data-href="research.html">☆</button></a>
+      <a class="chub-item" href="roe.html" target="_blank" data-href="roe.html"><span class="ci-txt">🔎 Research Opportunities (scanner questions, concept cards)</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('roe.html')" data-href="roe.html">☆</button></a>
       <a class="chub-item" href="flow-chain.html" target="_blank" data-href="flow-chain.html"><span class="ci-txt">⛓ Capital-Flow Chain</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('flow-chain.html')" data-href="flow-chain.html">☆</button></a>
       <a class="chub-item" href="research-log.html" target="_blank" data-href="research-log.html"><span class="ci-txt">🗂 Research Log (what's been done)</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('research-log.html')" data-href="research-log.html">☆</button></a>
       <a class="chub-item" href="market-review.html" target="_blank" data-href="market-review.html"><span class="ci-txt">🌐 Weekly Market Review (40 markets)</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('market-review.html')" data-href="market-review.html">☆</button></a>
@@ -573,7 +575,7 @@ window.chubHealthOpen = function () {
         if(placed[h])return;
         var at=-1;
         for(var j=i-1;j>=0&&at<0;j--){var k=result[catId].indexOf(def[j]);if(k>=0)at=k+1;}
-        if(at<0)result[catId].push(h);else result[catId].splice(at,0,h);
+        if(at<0&&i===0)result[catId].unshift(h);else if(at<0)result[catId].push(h);else result[catId].splice(at,0,h);
         placed[h]=true;
       });
     });
