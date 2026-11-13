@@ -781,3 +781,4 @@ analysis/output/vol-layer-deep/execution/wide/overshoot.parquet
 analysis/output/vol-layer-deep/execution/wide/paths.json
 analysis/output/vol-layer-deep/views/wide/rows.parquet
 analysis/output/vol-layer-deep/views/wide/paths.pkl
+analysis/output/vol-layer-deep/sizing/wide/stops_bidask.parquet
