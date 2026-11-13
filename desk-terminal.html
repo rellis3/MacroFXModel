@@ -170,6 +170,9 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
 .hero .hhead,.hero .legend{}
 @media (max-width:700px){.hero .hhead{position:static;padding:12px 14px 0}.hero .hhead h2{font-size:16px}.hero .legend{position:static;margin:0 10px 10px;justify-content:center}.map .lab{font-size:9px}}
 .glow{box-shadow:0 0 0 1px rgba(139,124,246,.25),0 20px 60px rgba(139,124,246,.08)}
+html:not([data-role]) [data-surface]{visibility:hidden}   /* until access.js says who is looking: no flash of the owner's links and tabs */
+.sfc{display:contents}   /* a surface wrapper: invisible to layout; access.js hides the switched-off ones (js/terminal/tabRegistry.js) */
+.nolink{color:var(--tx3);cursor:default}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
@@ -181,57 +184,68 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
 <header class="top">
   <div class="topin">
     <div class="brand"><i></i>DESK <span>TERMINAL</span></div>
-    <div class="clocks" id="clocks"></div>
-    <div class="tright"><span id="bookchip" class="chip">book…</span><span id="dqchip" class="chip">data…</span><a class="btn" href="research.html">Research</a><a class="btn" href="desk-office.html">Desk Office</a><a class="btn" href="desk-run.html">Desk Run</a></div>
+    <div class="clocks" id="clocks" data-surface="widget.clocks"></div>
+    <div class="tright"><span id="bookchip" class="chip" data-surface="widget.bookchip">book…</span><span id="dqchip" class="chip" data-surface="widget.dqchip">data…</span><a class="btn" data-surface="nav.access" href="desk-admin.html" title="Which tabs, links and panels the desk login sees">Access</a><a class="btn" data-surface="nav.research" href="research.html">Research</a><a class="btn" data-surface="nav.deskoffice" href="desk-office.html">Desk Office</a><a class="btn" data-surface="nav.deskrun" href="desk-run.html">Desk Run</a></div>
   </div>
   <div class="ticker" aria-label="headlines"><div class="tk" id="tk"><span>Loading the desk…</span></div></div>
 </header>
 <main class="wrap">
   <nav class="tabs" role="tablist" id="tabs">
-    <button role="tab" aria-selected="true" data-t="overview">Overview</button>
-    <button role="tab" aria-selected="false" data-t="ccy">Currencies</button>
-    <button role="tab" aria-selected="false" data-t="assets">Assets</button>
-    <button role="tab" aria-selected="false" data-t="macro">Macro</button>
-    <button role="tab" aria-selected="false" data-t="pos">Positioning</button>
-    <button role="tab" aria-selected="false" data-t="cal">Calendar</button>
-    <button role="tab" aria-selected="false" data-t="ana">Analytics</button>
-    <button role="tab" aria-selected="false" data-t="charts">Charts</button>
-    <button role="tab" aria-selected="false" data-t="today">Chain</button>
-    <button role="tab" aria-selected="false" data-t="read">Trader's read</button>
-    <button role="tab" aria-selected="false" data-t="pair">Pair</button>
-    <button role="tab" aria-selected="false" data-t="changed">Changed</button>
-    <button role="tab" aria-selected="false" data-t="options">Options</button>
-    <button role="tab" aria-selected="false" data-t="news">News</button>
-    <a class="tablink" href="research.html" title="Research has its own hub now: ideas, rooms, tests, verdicts">Research ↗</a>
-    <button role="tab" aria-selected="false" data-t="corr">Correlations &amp; hedges</button>
-    <button role="tab" aria-selected="false" data-t="infomap" title="What information the repo holds and how much of it the terminal draws">Info map</button>
+    <button role="tab" aria-selected="true" data-t="overview" data-surface="tab.overview">Overview</button>
+    <button role="tab" aria-selected="false" data-t="ccy" data-surface="tab.ccy">Currencies</button>
+    <button role="tab" aria-selected="false" data-t="assets" data-surface="tab.assets">Assets</button>
+    <button role="tab" aria-selected="false" data-t="macro" data-surface="tab.macro">Macro</button>
+    <button role="tab" aria-selected="false" data-t="pos" data-surface="tab.pos">Positioning</button>
+    <button role="tab" aria-selected="false" data-t="cal" data-surface="tab.cal">Calendar</button>
+    <button role="tab" aria-selected="false" data-t="ana" data-surface="tab.ana">Analytics</button>
+    <button role="tab" aria-selected="false" data-t="charts" data-surface="tab.charts">Charts</button>
+    <button role="tab" aria-selected="false" data-t="today" data-surface="tab.today">Chain</button>
+    <button role="tab" aria-selected="false" data-t="read" data-surface="tab.read">Trader's read</button>
+    <button role="tab" aria-selected="false" data-t="pair" data-surface="tab.pair">Pair</button>
+    <button role="tab" aria-selected="false" data-t="changed" data-surface="tab.changed">Changed</button>
+    <button role="tab" aria-selected="false" data-t="options" data-surface="tab.options">Options</button>
+    <button role="tab" aria-selected="false" data-t="news" data-surface="tab.news">News</button>
+    <a class="tablink" data-surface="nav.research-tab" href="research.html" title="Research has its own hub now: ideas, rooms, tests, verdicts">Research ↗</a>
+    <button role="tab" aria-selected="false" data-t="corr" data-surface="tab.corr">Correlations &amp; hedges</button>
+    <button role="tab" aria-selected="false" data-t="infomap" data-surface="tab.infomap" title="What information the repo holds and how much of it the terminal draws">Info map</button>
   </nav>
-  <div id="wstrip" aria-live="polite"></div>
-  <section id="overview"></section>
-  <section id="ccy" hidden></section>
-  <section id="assets" hidden></section>
-  <section id="macro" hidden></section>
-  <section id="pos" hidden></section>
-  <section id="cal" hidden></section>
-  <section id="ana" hidden></section>
-  <section id="charts" hidden></section>
-  <section id="today" hidden></section>
-  <section id="read" hidden></section>
-  <section id="pair" hidden></section>
-  <section id="changed" hidden></section>
-  <section id="options" hidden></section>
-  <section id="news" hidden></section>
+  <div id="wstrip" aria-live="polite" data-surface="widget.worldstress"></div>
+  <section id="overview" data-surface="tab.overview"></section>
+  <section id="ccy" hidden data-surface="tab.ccy"></section>
+  <section id="assets" hidden data-surface="tab.assets"></section>
+  <section id="macro" hidden data-surface="tab.macro"></section>
+  <section id="pos" hidden data-surface="tab.pos"></section>
+  <section id="cal" hidden data-surface="tab.cal"></section>
+  <section id="ana" hidden data-surface="tab.ana"></section>
+  <section id="charts" hidden data-surface="tab.charts"></section>
+  <section id="today" hidden data-surface="tab.today"></section>
+  <section id="read" hidden data-surface="tab.read"></section>
+  <section id="pair" hidden data-surface="tab.pair"></section>
+  <section id="changed" hidden data-surface="tab.changed"></section>
+  <section id="options" hidden data-surface="tab.options"></section>
+  <section id="news" hidden data-surface="tab.news"></section>
   <section id="research" hidden></section>
-  <section id="corr" hidden></section>
-  <section id="infomap" hidden></section>
+  <section id="corr" hidden data-surface="tab.corr"></section>
+  <section id="infomap" hidden data-surface="tab.infomap"></section>
 </main>
-<button class="fab" id="askbtn" data-surface="ask-pill" title="Owner only: a free-form question is a paid model call">✦ Ask the desk</button>
+<button class="fab" id="askbtn" data-surface="widget.ask" title="Owner only: a free-form question is a paid model call">✦ Ask the desk</button>
 <div class="modal" id="modal" hidden></div>
 <div class="tip" id="tip" hidden></div>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const getJson = u => fetch(u, { cache: 'no-store' }).then(r => r.json()).catch(e => ({ ok: false, error: e.message }));
+// The desk login: js/terminal/access.js resolves who is looking and sets globalThis.deskAccessState. A viewer never fetches a route the server would
+// refuse them (js/deskAccess.js), and load() waits for the answer so the owner's routes are not even asked for.
+const getJson = u => {
+  const A = globalThis.deskAccessState;
+  if (A && A.role === 'viewer' && !A.mayCall('GET', u)) return Promise.resolve({ ok: false, error: 'owner only' });
+  return fetch(u, { cache: 'no-store' }).then(r => r.json()).catch(e => ({ ok: false, error: e.message }));
+};
+function whenDeskAccess(fn) {
+  if (globalThis.deskAccessState) { fn(); return; }
+  addEventListener('deskaccess', () => fn(), { once: true });
+  setTimeout(() => { if (!globalThis.deskAccessState) { const m = document.getElementById('overview'); if (m) m.innerHTML = '<div class="card"><p>The access check did not load.</p><p class="muted">Reload the page. If it keeps happening, sign in again.</p></div>'; } }, 10_000);
+}
 const f = (x, d = 2) => (x == null || !Number.isFinite(+x) ? '–' : (+x > 0 ? '+' : '') + (+x).toFixed(d));
 const LONDON = 'Europe/London';
 const CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
@@ -569,11 +583,11 @@ function enrichOverview() {
   const rf = E['risk-flags'], em = E['em-gauges'];
   const LV = { CALM: 'up', CAUTION: 'gold', RISK_OFF: 'dn' }, EL = { calm: 'up', 'risk-on': 'up', watch: 'gold', stress: 'dn' };
   el.innerHTML = `<div class="grid g2" style="margin-top:14px">
-${rf?.ok ? `<div class="card"><div class="ch"><span class="lbl">Risk state</span><span class="r"><span class="chip ${LV[rf.level] ?? ''}">${esc(String(rf.level).replace('_', ' ').toLowerCase())}</span> <span class="muted">${rf.active}/${rf.available} flags on</span></span></div>
-<div class="drv">${(rf.flags ?? []).map(f => `<span class="chip ${f.on ? 'dn' : ''}" title="${esc(f.detail ?? '')}">${esc(f.label)}${f.value != null ? ` · ${esc(String(f.value))}` : ''}</span>`).join(' ')}</div>${rf.note ? `<p class="muted" style="font-size:12px">${esc(rf.note)}</p>` : ''}</div>` : ''}
-${em?.ok ? `<div class="card"><div class="ch"><span class="lbl">Emerging markets · read, not traded</span>${em.stress ? `<span class="r"><span class="chip ${EL[em.stress.level] ?? ''}">${esc(em.stress.level)}</span> <span class="muted mono">z ${sgn(em.stress.z)}</span></span>` : ''}</div>
-${em.stress ? `<p style="margin:2px 0 8px">${esc(em.stress.read)}.</p>` : ''}<table><tbody>${Object.values(em.pairs).filter(p => p.ok).map(p => `<tr title="${esc(p.role)}"><td class="mono"><b>${esc(p.label)}</b></td><td>${spk(p.spark)}</td><td class="n mono ${p.chg5d > 0 ? 'dn' : 'up'}">${sgn(p.chg5d)}% 5d</td><td class="n mono">z ${sgn(p.z5)}</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px">USD/EM up (red) = the EM currency weaker. MXN and ZAR are the carry gauges; CNH leads AUD and NZD.</p></div>` : ''}
-</div>${alertsHtml()}`;
+${rf?.ok ? `<div class="sfc" data-surface="panel.ov.riskstate"><div class="card"><div class="ch"><span class="lbl">Risk state</span><span class="r"><span class="chip ${LV[rf.level] ?? ''}">${esc(String(rf.level).replace('_', ' ').toLowerCase())}</span> <span class="muted">${rf.active}/${rf.available} flags on</span></span></div>
+<div class="drv">${(rf.flags ?? []).map(f => `<span class="chip ${f.on ? 'dn' : ''}" title="${esc(f.detail ?? '')}">${esc(f.label)}${f.value != null ? ` · ${esc(String(f.value))}` : ''}</span>`).join(' ')}</div>${rf.note ? `<p class="muted" style="font-size:12px">${esc(rf.note)}</p>` : ''}</div></div>` : ''}
+${em?.ok ? `<div class="sfc" data-surface="panel.ov.em"><div class="card"><div class="ch"><span class="lbl">Emerging markets · read, not traded</span>${em.stress ? `<span class="r"><span class="chip ${EL[em.stress.level] ?? ''}">${esc(em.stress.level)}</span> <span class="muted mono">z ${sgn(em.stress.z)}</span></span>` : ''}</div>
+${em.stress ? `<p style="margin:2px 0 8px">${esc(em.stress.read)}.</p>` : ''}<table><tbody>${Object.values(em.pairs).filter(p => p.ok).map(p => `<tr title="${esc(p.role)}"><td class="mono"><b>${esc(p.label)}</b></td><td>${spk(p.spark)}</td><td class="n mono ${p.chg5d > 0 ? 'dn' : 'up'}">${sgn(p.chg5d)}% 5d</td><td class="n mono">z ${sgn(p.z5)}</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px">USD/EM up (red) = the EM currency weaker. MXN and ZAR are the carry gauges; CNH leads AUD and NZD.</p></div></div>` : ''}
+</div><div class="sfc" data-surface="panel.ov.alerts">${alertsHtml()}</div>`;
 }
 const CYC = { hiking: '#e8b85a', 'on hold after hikes': 'rgba(232,184,90,.45)', 'on hold': 'rgba(138,147,184,.35)', 'on hold after cuts': 'rgba(91,157,255,.45)', cutting: '#5b9dff', unknown: 'rgba(138,147,184,.2)' };
 async function worldRatesMap(el) {
@@ -740,13 +754,13 @@ const lt = ms => new Date(ms).toLocaleString('en-GB', { timeZone: LONDON, weekda
 
 function ticker() {
   const items = [];
-  for (const h of D.news.filter(h => (h.read?.tier ?? h.tier) === 1).slice(0, 8)) items.push(`<span><b>📰 ${new Date(h.ms).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</b> ${esc(h.title)}${impactTxt(h)}</span>`);
-  for (const e of (D.tw?.events ?? []).slice(-6).reverse()) items.push(`<span><b>${e.kind === 'zone' ? '🎯 IN ZONE' : e.kind === 'target' ? '✅ TARGET' : '⛔ INVALID'}</b> ${esc(e.inst)} @ ${px(e.price)} · ${new Date(e.at).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</span>`);
-  const g = D.run?.head?.book?.global; if (g) items.push(`<span><b>REGIME</b> ${esc(String(g.tone).replace('_', '-').toUpperCase())}</span>`);
-  for (const e of upcoming(36).filter(e => /high/i.test(e.impact)).slice(0, 10)) items.push(`<span><b>${esc(e.country)}</b> ${esc(e.event)} · ${lt(e.ms)}${e.estimate ? ` · est ${esc(e.estimate)}` : ''}</span>`);
-  for (const s of Object.values(D.upd?.slots ?? {})) if (s?.view?.headline) items.push(`<span><b>UPDATE</b> ${esc(s.view.headline)}</span>`);
-  for (const r of (D.run?.head?.book?.risks ?? []).slice(0, 4)) items.push(`<span><b>RISK</b> ${esc(firstSentence(r))}</span>`);
-  if (D.gpr?.ok) items.push(`<span><b>GEOPOLITICAL RISK</b> ${D.gpr.level} · z ${f(D.gpr.z, 1)} · ${esc(D.gpr.trend)}</span>`);
+  for (const h of D.news.filter(h => (h.read?.tier ?? h.tier) === 1).slice(0, 8)) items.push(`<span data-surface="strip.news"><b>📰 ${new Date(h.ms).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</b> ${esc(h.title)}${impactTxt(h)}</span>`);
+  for (const e of (D.tw?.events ?? []).slice(-6).reverse()) items.push(`<span data-surface="strip.zone"><b>${e.kind === 'zone' ? '🎯 IN ZONE' : e.kind === 'target' ? '✅ TARGET' : '⛔ INVALID'}</b> ${esc(e.inst)} @ ${px(e.price)} · ${new Date(e.at).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</span>`);
+  const g = D.run?.head?.book?.global; if (g) items.push(`<span data-surface="strip.regime"><b>REGIME</b> ${esc(String(g.tone).replace('_', '-').toUpperCase())}</span>`);
+  for (const e of upcoming(36).filter(e => /high/i.test(e.impact)).slice(0, 10)) items.push(`<span data-surface="strip.events"><b>${esc(e.country)}</b> ${esc(e.event)} · ${lt(e.ms)}${e.estimate ? ` · est ${esc(e.estimate)}` : ''}</span>`);
+  for (const s of Object.values(D.upd?.slots ?? {})) if (s?.view?.headline) items.push(`<span data-surface="strip.update"><b>UPDATE</b> ${esc(s.view.headline)}</span>`);
+  for (const r of (D.run?.head?.book?.risks ?? []).slice(0, 4)) items.push(`<span data-surface="strip.risk"><b>RISK</b> ${esc(firstSentence(r))}</span>`);
+  if (D.gpr?.ok) items.push(`<span data-surface="strip.gpr"><b>GEOPOLITICAL RISK</b> ${D.gpr.level} · z ${f(D.gpr.z, 1)} · ${esc(D.gpr.trend)}</span>`);
   const html = items.join('') || '<span>No headlines.</span>';
   $('tk').innerHTML = html + html;   // twice, so the scroll loops
 }
@@ -878,18 +892,12 @@ async function newsRecord() {
   el.className = '';
   el.innerHTML = `<p><span class="chip pur">${esc(r.label)}</span></p><p class="muted">How often a tier-1/2 headline was followed by a move the way its read implied. ${esc(r.method)}</p>${tbl('All headlines', [r.overall])}${tbl('By source', r.bySource ?? [])}${tbl('By topic', r.byTopic ?? [])}<p class="muted">Small counts mean little; many headlines land on a market already moving.</p>`;
 }
-function overview() {
-  if (!D.run?.ok) { $('overview').innerHTML = `<div class="card"><p>No desk book yet today.</p><p class="muted">${esc(D.run?.error ?? '')} The book is written at 06:55 London when the Desk Run service is on, or from the Desk Run page.</p></div>`; return; }
-  const live = Object.entries(D.cards).filter(([, c]) => DIR[c.rating] && c.size > 0).sort((a, b) => b[1].size * (CONV[b[1].conviction] ?? .8) * Math.abs(DIR[b[1].rating]) - a[1].size * (CONV[a[1].conviction] ?? .8) * Math.abs(DIR[a[1].rating])).slice(0, 6);
-  $('overview').innerHTML = `<div class="card hero glow" style="margin-bottom:14px"><div class="hhead"><span class="lbl">The desk's world · ${esc(D.run.date)}</span><h2>${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest</h2></div><div class="map" id="heromap" style="min-height:240px"></div><div style="position:absolute;right:16px;top:14px;z-index:3;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end" class="filters"><button aria-pressed="${HLAYER === 'bias'}" data-layer="bias">Desk bias</button><button aria-pressed="${HLAYER === 'rates'}" data-layer="rates">Rate cycle</button><button aria-pressed="${HLAYER === 'credit'}" data-layer="credit">Bank credit</button><button aria-pressed="${HLAYER === 'value'}" data-layer="value">Fair value</button><span style="width:8px"></span><button aria-pressed="true" data-view="globe">Globe</button><button aria-pressed="false" data-view="map">Map</button></div><div class="legend" id="herolegend">${LAYER_LEGEND[HLAYER]}<span>tap a bank or a country</span></div></div>
-${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span class="lbl">Today's book</span><div class="thesis" style="font-size:16px">${esc(D.run.head.book.headline)}</div></div>` : ''}<div id="bkintel" style="margin-bottom:14px"></div>
-<div class="grid g2">${regimeCard()}<div class="grid" style="align-content:start">${strengthStrip()}${exposureChart()}${recordCard()}</div></div>
-${weekSection()}${bestPairs()}<div id="xo"></div>${dayShape()}
-<div class="sec"><h2>Trade watch</h2><span class="lbl">the book against live prices, every 2 minutes</span></div>${watchBoard()}
-<div class="sec"><h2>Playbooks</h2><span class="lbl">the six largest cards · tap for the full analysis</span></div><div class="grid g3">${live.map(([n, c]) => playbookCard(n, c)).join('')}</div>
-<div class="sec"><h2>News, releases and risks</h2></div><div class="grid g2">${wireCard(D.news)}<div class="grid" style="align-content:start">${releasesCard()}<div class="card"><div class="ch"><span class="lbl">Risk desk warnings</span></div><ul style="margin:0;padding-left:18px">${(D.run.head.book.risks ?? []).map(r => `<li style="margin:6px 0">${esc(r)}</li>`).join('') || '<li class="muted">None.</li>'}</ul></div></div></div>`;
-  wire($('overview'));
-  globalThis.drawBookIntel?.($('bkintel'));   // js/terminal/bookPanels.js
+// the hero: the globe and the map. The desk's own view labels it with the Currency Manager's ranking and offers the Desk bias layer; the
+// no-book view (the desk login, or no run yet) shows the market layers only.
+function heroCard(lbl, title, bias) {
+  return `<div class="card hero glow" style="margin-bottom:14px"><div class="hhead"><span class="lbl">${lbl}</span><h2>${title}</h2></div><div class="map" id="heromap" style="min-height:240px"></div><div style="position:absolute;right:16px;top:14px;z-index:3;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end" class="filters">${bias ? `<button aria-pressed="${HLAYER === 'bias'}" data-layer="bias">Desk bias</button>` : ''}<button aria-pressed="${HLAYER === 'rates'}" data-layer="rates">Rate cycle</button><button aria-pressed="${HLAYER === 'credit'}" data-layer="credit">Bank credit</button><button aria-pressed="${HLAYER === 'value'}" data-layer="value">Fair value</button><span style="width:8px"></span><button aria-pressed="true" data-view="globe">Globe</button><button aria-pressed="false" data-view="map">Map</button></div><div class="legend" id="herolegend">${LAYER_LEGEND[HLAYER]}<span>tap a bank or a country</span></div></div>`;
+}
+function mountHero() {
   let view = 'globe'; try { view = localStorage.getItem('deskTerminalHero') || 'globe'; } catch { /* default */ }
   document.querySelectorAll('[data-layer]').forEach(b => b.onclick = () => { HLAYER = b.dataset.layer; try { localStorage.setItem('deskTerminalLayer', HLAYER); } catch { /* fine */ }
     document.querySelectorAll('[data-layer]').forEach(x => x.setAttribute('aria-pressed', x.dataset.layer === HLAYER)); const lg = $('herolegend'); if (lg) lg.innerHTML = `${LAYER_LEGEND[HLAYER]}<span>tap a bank or a country</span>`; showHero(view); });
@@ -897,6 +905,28 @@ ${weekSection()}${bestPairs()}<div id="xo"></div>${dayShape()}
   const showHero = v => { view = v; document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === v)); try { localStorage.setItem('deskTerminalHero', v); } catch { /* fine */ } if (v === 'globe') drawGlobe($('heromap')); else { stopGlobe(); drawMap($('heromap'), 'bias'); } };
   document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => showHero(b.dataset.view));
   showHero(view);
+}
+// no desk book (the desk login never gets it, and the owner has none before the 06:55 run): the market panels only
+function overviewNoBook() {
+  const viewer = globalThis.deskAccessState?.role === 'viewer';
+  if (HLAYER === 'bias') HLAYER = 'rates';
+  $('overview').innerHTML = `${viewer ? '' : `<div class="card"><p>No desk book yet today.</p><p class="muted">${esc(D.run?.error ?? '')} The book is written at 06:55 London when the Desk Run service is on, or from the Desk Run page.</p></div>`}<div class="sfc" data-surface="panel.ov.hero">${heroCard('The world', 'Rate cycle, bank credit and fair value', false)}</div><div id="xo"></div><div class="sfc" data-surface="panel.ov.dayshape">${dayShape()}</div><div class="sec"><h2>News</h2></div><div class="sfc" data-surface="panel.ov.wire">${wireCard(D.news)}</div>`;
+  wire($('overview'));
+  mountHero();
+}
+function overview() {
+  if (!D.run?.ok) { overviewNoBook(); return; }
+  const live = Object.entries(D.cards).filter(([, c]) => DIR[c.rating] && c.size > 0).sort((a, b) => b[1].size * (CONV[b[1].conviction] ?? .8) * Math.abs(DIR[b[1].rating]) - a[1].size * (CONV[a[1].conviction] ?? .8) * Math.abs(DIR[a[1].rating])).slice(0, 6);
+  $('overview').innerHTML = `<div class="sfc" data-surface="panel.ov.hero">${heroCard(`The desk's world · ${esc(D.run.date)}`, `${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest`, true)}</div>
+<div class="sfc" data-surface="panel.ov.book">${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span class="lbl">Today's book</span><div class="thesis" style="font-size:16px">${esc(D.run.head.book.headline)}</div></div>` : ''}</div><div class="sfc" data-surface="panel.ov.bookintel"><div id="bkintel" style="margin-bottom:14px"></div></div>
+<div class="grid g2"><div class="sfc" data-surface="panel.ov.regime">${regimeCard()}</div><div class="grid" style="align-content:start"><div class="sfc" data-surface="panel.ov.strength">${strengthStrip()}</div><div class="sfc" data-surface="panel.ov.exposure">${exposureChart()}</div><div class="sfc" data-surface="panel.ov.record">${recordCard()}</div></div></div>
+<div class="sfc" data-surface="panel.ov.week">${weekSection()}</div><div class="sfc" data-surface="panel.ov.bestpairs">${bestPairs()}</div><div id="xo"></div><div class="sfc" data-surface="panel.ov.dayshape">${dayShape()}</div>
+<div class="sfc" data-surface="panel.ov.tradewatch"><div class="sec"><h2>Trade watch</h2><span class="lbl">the book against live prices, every 2 minutes</span></div>${watchBoard()}</div>
+<div class="sfc" data-surface="panel.ov.playbooks"><div class="sec"><h2>Playbooks</h2><span class="lbl">the six largest cards · tap for the full analysis</span></div><div class="grid g3">${live.map(([n, c]) => playbookCard(n, c)).join('')}</div></div>
+<div class="sec"><h2>News, releases and risks</h2></div><div class="grid g2"><div class="sfc" data-surface="panel.ov.wire">${wireCard(D.news)}</div><div class="grid" style="align-content:start"><div class="sfc" data-surface="panel.ov.releases">${releasesCard()}</div><div class="sfc" data-surface="panel.ov.riskwarn"><div class="card"><div class="ch"><span class="lbl">Risk desk warnings</span></div><ul style="margin:0;padding-left:18px">${(D.run.head.book.risks ?? []).map(r => `<li style="margin:6px 0">${esc(r)}</li>`).join('') || '<li class="muted">None.</li>'}</ul></div></div></div></div>`;
+  wire($('overview'));
+  globalThis.drawBookIntel?.($('bkintel'));   // js/terminal/bookPanels.js
+  mountHero();
   $('overview').querySelectorAll('.spk').forEach(el => sparkline(el, el.dataset.spk, D.cards[el.dataset.spk]));
 }
 
@@ -1242,8 +1272,8 @@ async function charts() {
     const [reg, sur, cot] = await Promise.all([getJson('/api/regime'), getJson('/api/econ-surprise'), getJson('/api/desk-cot-history?weeks=156')]);
     CH = { reg, sur, cot, season: {} };
   }
-  $('charts').innerHTML = `<div class="card glow"><div class="ch"><span class="lbl">How today's book was built</span><span class="r muted">the global ruling → the currencies → every card · tap a currency or a card</span></div><div id="flow"></div></div>
-<div class="sec"><h2>Currency ranking vs realised</h2><span class="lbl">the Currency Manager's morning order against how the currencies finished · descriptive, n shown</span></div><div id="rankreal"></div>
+  $('charts').innerHTML = `<div class="sfc" data-surface="panel.charts.bookflow"><div class="card glow"><div class="ch"><span class="lbl">How today's book was built</span><span class="r muted">the global ruling → the currencies → every card · tap a currency or a card</span></div><div id="flow"></div></div></div>
+<div class="sfc" data-surface="panel.charts.ranking"><div class="sec"><h2>Currency ranking vs realised</h2><span class="lbl">the Currency Manager's morning order against how the currencies finished · descriptive, n shown</span></div><div id="rankreal"></div></div>
 <div class="grid g2" style="margin-top:14px"><div class="card"><div class="ch"><span class="lbl">Macro regime</span><span class="r muted">growth against inflation, the last 24 months</span></div><div id="quad"></div></div>
 <div class="card"><div class="ch"><span class="lbl">Data surprises</span><span class="r muted">each release against consensus (z), last 120 days, by currency</span></div><div id="surp"></div></div></div>
 <div class="sec"><h2>Positioning history</h2><span class="lbl">speculators' net share of open interest, 3 years · shaded = the top and bottom 10% · dot = latest week</span></div><div class="grid g4" id="cotgrid"></div>
@@ -1330,9 +1360,10 @@ $('askbtn').onclick = () => {
   };
 };
 
-load();
+whenDeskAccess(load);
 setInterval(() => { if (!document.hidden) { ANA = null; ASC = null; load(); if (!$('ana').hidden) analytics(); } }, 5 * 60_000);   // the Charts tab's sources change daily at most: drawn once per visit
 </script>
+<script type="module" src="js/terminal/access.js"></script>
 <script type="module" src="js/terminal/terminalTabs.js"></script>
 <script type="module" src="js/terminal/bookPanels.js"></script>
 </body>

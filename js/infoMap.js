@@ -121,6 +121,7 @@ export const FAMILIES = [
 // Root html pages that are not in a family and not a backtest/bot/system page (pages.csv category c, d, e, f or g is excluded
 // automatically). Each needs a reason; js/infoMap.test.mjs fails when a page is in neither place.
 export const EXCLUDED_PAGES = {
+  'desk-admin.html': 'owner admin: which Desk Terminal surfaces the desk login sees (js/terminal/tabRegistry.js)',
   'daily-open-fib.html': 'tool: fib tracker',
   'drift.html': 'research view',
   'forecast-analysis.html': 'research view: what price does at each vol-forecast line',

@@ -34,6 +34,7 @@ export const STORES = {
   forecast_audit_bt_v1: L('Forecast auditor history backtests', 365, { market: false }),
   signal_journal_v1: R('Signal journal (forward test)', 1),
   pair_ledger_v1: R('Pair ledger (lean record)', 1),
+  desk_tab_access_v1: R('Desk Terminal: tab access switches for the desk login', 365, { market: false }),
   chain_read_v1: R('Chain read (AI narrative)', 3, { market: false }),
   desk_shared_reads_v1: L('Desk shared daily reads: the deep read of each market, one per market per London day, written by the first desk user to press the button (js/deskSharedReads.js)', 14, { market: false }),
   eod_review_v1: R('End-of-day written review', 2, { market: false }),

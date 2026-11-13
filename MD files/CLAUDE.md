@@ -371,6 +371,15 @@ Apply these to any new signal, Python throwaway or JS engine alike.
     the same number. Either use a per-trade-varying risk unit (e.g. that
     period's realized vol) or note plainly that R and % Return are redundant
     here.
+- **Desk Terminal: every surface is registered (owner rule, 2026-11-13).** Every tab, link out, widget, ticker segment and panel of `desk-terminal.html` is a
+  *surface* with a row in `js/terminal/tabRegistry.js` (`id`, `kind` = tab|nav|widget|strip|panel, `label`, `group`, `defaultVisible`, `ownerData`). The desk login
+  (a second shared password) sees only the surfaces the owner has switched on in `desk-admin.html`; the owner sees everything. **When you add a tab or any new
+  block to the terminal:** (1) add its row to `SURFACES` — default `defaultVisible: false, ownerData: true` unless it is market data the owner is happy to show
+  anyone; (2) put `data-surface="<id>"` on its markup (a tab: on the nav button AND its `<section>`), or wrap generated HTML in
+  `<div class="sfc" data-surface="<id>">…</div>`; (3) if it calls a new `/api/` route that carries the owner's book, positions, P&L, ops or a paid model call, add the
+  prefix to `VIEWER_DENY_PREFIXES` in `js/deskAccess.js`. `js/terminal/tabRegistry.test.mjs` FAILS until (1) and (2) are done, and fails on a registry row with no
+  markup. A surface you forget to register is hidden from the desk login (safe), but the test will still stop the push. Never rely on hiding alone for owner data:
+  the route must also be on the deny list. The shared once-a-day AI reads are the only viewer POSTs (`VIEWER_POST_ALLOWED` in `js/deskAccess.js`).
 - **`hub.html` IS NOT A USEFUL PAGE. DO NOT TOUCH IT, EVEN IF A REQUEST SOUNDS
   LIKE IT MIGHT MEAN HUB.HTML.** The owner has said this multiple times, the
   second time in frustration at a session (this one) that defaulted to it
@@ -472,6 +481,7 @@ var is set in Railway first.
 | `CF_ACCOUNT_ID`, `CF_API_TOKEN` | Cloudflare API (worker/KV ops) |
 | `KV_WRITE_SECRET` | **opt-in** auth for credential/config KV writes — if set, the dashboard write path must present it (server.js injects it when proxying). Unset ⇒ writes allowed (see `_worker.js`) |
 | `DASHBOARD_PASSWORD`, `EDUCATION_PASSWORD`, `COOKIE_SIGNING_SECRET` | site login gate (`server.js`, `requireAuth`) — two independent zones, each its own password + signed 30-day cookie; a zone's cookie never unlocks the other. `education/*` and `theory-lab/*` require `EDUCATION_PASSWORD`; every other page requires `DASHBOARD_PASSWORD`. `/api/*` stays unauthenticated (Railway healthcheck hits `/api/config`). Gate is fully disabled unless **all three** vars are set |
+| `DESK_PASSWORD` | the **desk login** (2026-11-13): a third zone that opens ONLY `/desk-terminal` and its static assets (`js/`, `css/`), as role `viewer`. Unset ⇒ the zone is disabled and only the main login reaches the terminal. Sign-in: `/login?zone=desk&next=/desk-terminal.html`. What a viewer sees is the owner's switch panel `desk-admin.html` (KV `desk_tab_access_v1`). A request carrying a desk cookie is held to `js/deskAccess.js` (`viewerMayCall`): GET only, no owner-data routes, no ops paths, no POSTs except the shared once-a-day reads. `/api/*` is still ungated for cookie-less callers (owner's decision: obfuscation for read data) |
 | `ANALYSER_ADMIN_PASSWORD` | forecast-analyser admin/refresh gate |
 | `VOL_PLAN_UTC_HOUR` / `VOL_PLAN_UTC_MIN` | when the volatility-bot daily plan refreshes (default 23:05 UTC) |
 | `VOL_FORECAST_UTC` | when the vol-forecast recompute runs |

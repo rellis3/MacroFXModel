@@ -148,6 +148,8 @@ const _CF_EXACT = new Set([
   'daily_snapshot_v1',       // one row per day of what the page THOUGHT: the brief's regime line, the chain
                              // verdicts, the watch states, the macro deltas, the leans. The look-back
                              // timeline's memory; not re-derivable. Must also be in _worker.js PERMANENT_KEYS.
+  'desk_tab_access_v1',      // the owner's switches for what the desk login sees on the Desk Terminal (admin page desk-admin.html). Not re-derivable:
+                             // losing it silently hides every opt-in surface again. Must also be in _worker.js PERMANENT_KEYS.
   'chain_read_v1',           // the last trader's-voice chain read (+ the day's earlier ones). A paid
                              // model call each; the reader expects to find the last one hours later
                              // and after a redeploy. Must also be in _worker.js PERMANENT_KEYS.

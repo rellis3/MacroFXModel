@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Desk Terminal Access</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Desk Terminal Access: the owner's switches for what the desk login sees (js/terminal/tabRegistry.js is the list; desk-terminal.html reads it).
+   Same tokens as the terminal: deep navy, purple for anything you can press, gold for the warning on owner data, green only for "on". */
+:root{--bg:#070a17;--bg1:#0c1124;--bg2:#111833;--bg3:#18203f;--line:#1f2950;--line2:#2c3866;--tx:#eef0fb;--tx2:#a9b0d0;--tx3:#6d7599;
+  --pur:#8b7cf6;--pur2:#b4a9ff;--purbg:rgba(139,124,246,.12);--gold:#e8b85a;--goldbg:rgba(232,184,90,.10);--up:#2fd39a;--upbg:rgba(47,211,154,.12);--dn:#ff5d78;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;--sans:Inter,ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;--r:12px}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.55 var(--sans)}
+body{background:radial-gradient(1200px 600px at 80% -10%,rgba(139,124,246,.10),transparent 60%),radial-gradient(900px 500px at -10% 10%,rgba(232,184,90,.05),transparent 60%),var(--bg);min-height:100vh}
+a{color:var(--pur2)}
+.lbl{font:600 10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--tx3)}
+.top{position:sticky;top:0;z-index:20;background:rgba(7,10,23,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topin{max-width:980px;margin:0 auto;padding:10px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font:700 15px var(--mono);letter-spacing:.18em}
+.brand i{width:10px;height:10px;border-radius:50%;background:var(--pur);box-shadow:0 0 12px var(--pur)}
+.brand span{color:var(--gold)}
+.tright{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{cursor:pointer;border:1px solid var(--line2);background:var(--bg2);color:var(--tx2);padding:6px 12px;border-radius:8px;font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;text-decoration:none;display:inline-block}
+.btn:hover{border-color:var(--pur);color:var(--pur2)}
+.btn.primary{border-color:rgba(139,124,246,.55);color:var(--pur2);background:var(--purbg)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn:focus-visible,.sw:focus-visible{outline:2px solid var(--pur2);outline-offset:2px}
+main{max-width:980px;margin:0 auto;padding:18px 16px 60px}
+h1{font:600 22px/1.3 var(--sans);margin:6px 0 4px}
+p.sub{color:var(--tx2);margin:0 0 16px;max-width:70ch}
+.card{background:var(--bg1);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin-bottom:12px}
+.chip{display:inline-flex;align-items:center;gap:6px;font:600 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid var(--line2);color:var(--tx2);background:var(--bg2);white-space:nowrap}
+.chip.gold{color:var(--gold);border-color:rgba(232,184,90,.45);background:var(--goldbg)}
+.chip.up{color:var(--up);border-color:rgba(47,211,154,.4);background:var(--upbg)}
+.chip.pur{color:var(--pur2);border-color:rgba(139,124,246,.45);background:var(--purbg)}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
+.grp{margin:18px 0 8px}
+.row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 4px;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row .nm{font-weight:600}
+.row .nt{color:var(--tx3);font-size:12.5px}
+.row .meta{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.sw{width:42px;height:24px;border-radius:999px;border:1px solid var(--line2);background:var(--bg3);position:relative;cursor:pointer;padding:0;flex:none}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--tx3);transition:transform .15s,background .15s}
+.sw[aria-checked="true"]{background:var(--upbg);border-color:rgba(47,211,154,.55)}
+.sw[aria-checked="true"]::after{transform:translateX(18px);background:var(--up)}
+@media (prefers-reduced-motion:reduce){.sw::after{transition:none}}
+.warn{color:var(--gold);font-size:12.5px}
+#msg{font:600 12px var(--mono);letter-spacing:.06em;color:var(--tx2)}
+#msg.err{color:var(--dn)} #msg.ok{color:var(--up)}
+@media (max-width:560px){.row{grid-template-columns:auto 1fr}.row .meta{grid-column:1/-1;justify-content:flex-start}}
+</style>
+</head>
+<body>
+<header class="top"><div class="topin">
+  <div class="brand"><i></i>DESK <span>TERMINAL</span></div>
+  <span class="lbl">Access</span>
+  <div class="tright"><a class="btn" href="desk-terminal.html">Open the terminal</a></div>
+</div></header>
+<main>
+  <h1>What the desk login can see</h1>
+  <p class="sub">Every tab, link, widget, ticker segment and panel of the Desk Terminal is a switch. Anyone signed in with the desk password sees only what is switched on here. You, signed in with the main password, always see everything. Surfaces that show your own book, positions or analysis start switched off and carry a gold <b>owner data</b> label.</p>
+  <div id="root"><div class="card muted">Loading…</div></div>
+</main>
+<script type="module">
+import { SURFACES as ALL, ALWAYS_OWNER_IDS } from './js/terminal/tabRegistry.js';
+const SURFACES = ALL.filter(s => !ALWAYS_OWNER_IDS.includes(s.id));   // the Access link itself is never a switch: only the owner ever sees it
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const KIND_LABEL = { tab: 'Tab', nav: 'Link', widget: 'Widget', strip: 'Ticker', panel: 'Panel' };
+const GROUP_ORDER = ['Tabs', 'Links', 'Shell', 'Ticker', 'Overview', 'Charts'];
+let state = {};      // id -> boolean, the switches as drawn
+let saved = {};      // id -> boolean, as last saved
+let deskLogin = false;
+
+const eff = (s, from) => (s.id in from ? from[s.id] : s.defaultVisible);
+function draw() {
+  const groups = [...new Set(SURFACES.map(s => s.group))].sort((a, b) => GROUP_ORDER.indexOf(a) - GROUP_ORDER.indexOf(b));
+  const dirty = SURFACES.some(s => state[s.id] !== eff(s, saved));
+  const onCount = SURFACES.filter(s => state[s.id]).length;
+  $('root').innerHTML = `
+    <div class="card">
+      <div class="bar">
+        <span class="chip ${deskLogin ? 'up' : 'gold'}">${deskLogin ? 'desk login on' : 'desk login off: DESK_PASSWORD is not set'}</span>
+        <span class="chip pur">${onCount} of ${SURFACES.length} visible to the desk login</span>
+        <span id="msg"></span>
+        <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" id="reset">Reset to defaults</button>
+          <button class="btn primary" id="save" ${dirty ? '' : 'disabled'}>Save changes</button>
+        </span>
+      </div>
+      <div class="muted" style="font-size:12.5px;color:var(--tx3)">The sign-in address for the desk login is <a href="login?zone=desk&next=%2Fdesk-terminal.html">/login?zone=desk</a>. Changes apply the next time a viewer opens or reloads the terminal. A new surface added to the terminal is hidden from the desk login until it appears here and you switch it on.</div>
+    </div>
+    ${groups.map(g => `<div class="grp lbl">${esc(g)}</div><div class="card">${SURFACES.filter(s => s.group === g).map(s => `
+      <div class="row">
+        <button class="sw" role="switch" aria-checked="${state[s.id]}" aria-label="${esc(s.label)}" data-id="${esc(s.id)}"></button>
+        <div><div class="nm">${esc(s.label)}</div><div class="nt">${esc(s.note)}</div>${s.ownerData ? '<div class="warn">Shows your own data (book, positions, analysis, ops or paid-model buttons). Its data routes are also refused to the desk login, so switching it on shows an empty panel.</div>' : ''}</div>
+        <div class="meta"><span class="chip">${KIND_LABEL[s.kind]}</span>${s.ownerData ? '<span class="chip gold">owner data</span>' : ''}${s.defaultVisible ? '' : '<span class="chip">off by default</span>'}</div>
+      </div>`).join('')}</div>`).join('')}`;
+  document.querySelectorAll('.sw').forEach(b => b.onclick = () => { state[b.dataset.id] = !state[b.dataset.id]; draw(); });
+  $('save').onclick = save;
+  $('reset').onclick = () => { for (const s of SURFACES) state[s.id] = s.defaultVisible; draw(); };
+}
+function say(t, cls) { const m = $('msg'); if (m) { m.textContent = t; m.className = cls || ''; } }
+async function save() {
+  const body = Object.fromEntries(SURFACES.map(s => [s.id, !!state[s.id]]));
+  $('save').disabled = true; say('Saving…');
+  try {
+    const r = await fetch('/api/desk-access', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+    saved = j.saved ?? body; draw(); say('Saved', 'ok');
+  } catch (e) { draw(); say(`Not saved: ${e.message}`, 'err'); }
+}
+(async () => {
+  try {
+    const [s, a] = await Promise.all([fetch('/api/desk-session', { cache: 'no-store' }).then(r => r.json()), fetch('/api/desk-access', { cache: 'no-store' }).then(r => r.json())]);
+    if (!a.ok || a.role !== 'owner') { $('root').innerHTML = '<div class="card"><p>This page is for the owner. Sign in with the main password to change what the desk login sees.</p></div>'; return; }
+    deskLogin = !!s.deskLogin; saved = a.saved ?? {};
+    for (const x of SURFACES) state[x.id] = eff(x, saved);
+    draw();
+  } catch (e) { $('root').innerHTML = `<div class="card"><p>Could not load the switches: ${esc(e.message)}</p></div>`; }
+})();
+</script>
+</body>
+</html>

@@ -185,6 +185,8 @@ import { BOJ_MEETINGS, pendingAsOf as bojPendingAsOf } from './js/bojCalendar.js
 import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl as bojStatementUrl, outlookViewUrl as bojOutlookViewUrl, outlookFullUrl as bojOutlookFullUrl, opinionsUrl as bojOpinionsUrl, minutesPdfUrl as bojMinutesPdfUrl } from './js/bojFetch.js';
 import { RBNZ_MEETINGS, pendingAsOf as rbnzPendingAsOf, allReleases as rbnzAllReleases } from './js/rbnzCalendar.js';
 import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote, fetchOcrDecisions as rbnzFetchOcrDecisions, ocrActualFor as rbnzOcrActualFor } from './js/rbnzFetch.js';
+import { viewerMayCall as _deskViewerMayCall } from './js/deskAccess.js';                       // what a desk-login VIEWER may call (js/deskAccess.js)
+import { visibleFor as _deskVisibleFor, cleanSwitches as _deskCleanSwitches } from './js/terminal/tabRegistry.js';   // the Desk Terminal surface registry
 import { RBA_MEETINGS, pendingAsOf as rbaPendingAsOf, allReleases as rbaAllReleases } from './js/rbaCalendar.js';
 import { FETCHERS as RBA_FETCHERS, extractVote as rbaExtractVote } from './js/rbaFetch.js';
 import { BOC_MEETINGS, pendingAsOf as bocPendingAsOf, allReleases as bocAllReleases } from './js/bocCalendar.js';
@@ -876,6 +878,15 @@ const AUTH_PASSWORDS     = {
   education: process.env.EDUCATION_PASSWORD  || '',
 };
 const AUTH_ENABLED = !!AUTH_SECRET && !!AUTH_PASSWORDS.main && !!AUTH_PASSWORDS.education;
+// ── Desk login (2026-11-13) ─────────────────────────────────────────────────
+// A third password zone, 'desk', for people the owner shows the Desk Terminal to. A desk cookie (role 'viewer') opens ONLY the terminal page
+// (/desk-terminal) and the static assets it needs; the owner's dashboard login (zone 'main') opens it too and counts as role 'owner'. Which tabs,
+// links, widgets and panels a viewer sees is the owner's switch panel (desk-admin.html, KV desk_tab_access_v1, registry js/terminal/tabRegistry.js).
+// Unset DESK_PASSWORD (the default) and the zone is DISABLED: only the main login reaches the terminal, exactly as before.
+// "Security by obfuscation" for read data is the owner's decision: /api/* stays ungated; a request carrying a desk cookie is held to js/deskAccess.js.
+const DESK_PASSWORD = process.env.DESK_PASSWORD || '';
+const DESK_ENABLED = AUTH_ENABLED && !!DESK_PASSWORD;
+const DESK_ACCESS_KV = 'desk_tab_access_v1';
 // Optional second password for the 'education' zone only. Signing in with
 // this one (instead of EDUCATION_PASSWORD) mints a cookie carrying
 // role=admin, which the HIDE_MICRO_EDUCATION gate below treats as always
@@ -1042,6 +1053,7 @@ function authParseCookies(req) {
 
 function authLoginPage(zone, next, error, brand) {
   if (zone === 'education') return authLoginPageEducation(next, error, brand);
+  if (zone === 'desk') return authLoginPageDesk(next, error);
   const label = 'Dashboard';
   return `<!doctype html><html><head><meta charset="utf-8"><title>Sign in — ${label}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1070,6 +1082,75 @@ document.getElementById('f').addEventListener('submit', async (e) => {
   });
   if (res.ok) { location.href = ${JSON.stringify(next)}; }
   else { location.href = '/login?zone=' + encodeURIComponent(${JSON.stringify(zone)}) + '&next=' + encodeURIComponent(${JSON.stringify(next)}) + '&error=1'; }
+});
+</script>
+</body></html>`;
+}
+
+// The Desk Terminal's own sign-in: its deep navy, purple for what you press, gold for the wordmark, the pulsing dot of its top bar.
+function authLoginPageDesk(next, error) {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Sign in — Desk Terminal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#070a17;--bg1:#0c1124;--bg2:#111833;--line:#1f2950;--line2:#2c3866;--tx:#eef0fb;--tx2:#a9b0d0;--tx3:#6d7599;--pur:#8b7cf6;--pur2:#b4a9ff;--gold:#e8b85a;--dn:#ff5d78;--up:#2fd39a;
+    --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;--sans:Inter,ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{font:14px/1.55 var(--sans);color:var(--tx);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;
+    background:radial-gradient(1100px 560px at 80% -10%,rgba(139,124,246,.16),transparent 60%),radial-gradient(800px 460px at -10% 110%,rgba(232,184,90,.07),transparent 60%),var(--bg)}
+  .wrap{width:100%;max-width:400px}
+  .brand{display:flex;align-items:center;justify-content:center;gap:12px;font:700 17px var(--mono);letter-spacing:.2em;margin-bottom:22px}
+  .brand i{width:11px;height:11px;border-radius:50%;background:var(--pur);box-shadow:0 0 14px var(--pur);animation:pulse 2.4s ease-in-out infinite}
+  .brand span{color:var(--gold)}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
+  @media (prefers-reduced-motion:reduce){.brand i{animation:none}}
+  .card{background:linear-gradient(180deg,rgba(17,24,51,.92),rgba(12,17,36,.92));border:1px solid var(--line2);border-radius:14px;padding:28px 24px;box-shadow:0 0 60px rgba(139,124,246,.08)}
+  .lbl{font:600 10.5px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--tx3);margin-bottom:10px}
+  h1{font:600 20px/1.3 var(--sans);margin:0 0 6px}
+  p.sub{margin:0 0 20px;color:var(--tx2);font-size:13.5px}
+  .field{position:relative;margin-bottom:12px}
+  .field input{width:100%;background:var(--bg);border:1px solid var(--line2);border-radius:10px;padding:13px 44px 13px 14px;color:var(--tx);font:500 15px var(--sans);outline:none}
+  .field input:focus{border-color:var(--pur);box-shadow:0 0 0 3px rgba(139,124,246,.2)}
+  .field button{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--tx3);cursor:pointer;padding:8px;border-radius:8px}
+  .field button:hover{color:var(--pur2)}
+  .remember{display:flex;align-items:center;gap:9px;color:var(--tx2);font-size:13px;margin:2px 0 16px}
+  .remember input{accent-color:var(--pur);width:15px;height:15px}
+  button.go{width:100%;border:1px solid rgba(139,124,246,.5);border-radius:10px;padding:13px;font:700 12px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--pur2);background:rgba(139,124,246,.14);cursor:pointer}
+  button.go:hover{background:rgba(139,124,246,.24)}
+  button.go:focus-visible,.field button:focus-visible{outline:2px solid var(--pur2);outline-offset:2px}
+  .err{color:var(--dn);font-size:13px;margin:0 0 12px}
+  .foot{margin-top:18px;text-align:center;font:600 10.5px var(--mono);letter-spacing:.16em;color:var(--tx3);text-transform:uppercase}
+</style></head><body>
+<div class="wrap">
+  <div class="brand"><i></i>DESK <span>TERMINAL</span></div>
+  <div class="card">
+    <div class="lbl">Private access</div>
+    <h1>Sign in to the Desk Terminal</h1>
+    <p class="sub">Markets, rates, central banks and the macro chain, in one place.</p>
+    ${error ? '<div class="err">Incorrect password.</div>' : ''}
+    <form id="f" autocomplete="off">
+      <div class="field">
+        <input type="password" id="pw" placeholder="Password" aria-label="Password" autofocus>
+        <button type="button" id="toggle" aria-label="Show password">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <label class="remember"><input type="checkbox" id="remember" checked> Keep me signed in for 30 days</label>
+      <button type="submit" class="go">Enter</button>
+    </form>
+  </div>
+  <div class="foot">Authorised viewers only</div>
+</div>
+<script>
+document.getElementById('toggle').addEventListener('click', () => { const pw = document.getElementById('pw'); pw.type = pw.type === 'password' ? 'text' : 'password'; });
+document.getElementById('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const res = await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ zone: 'desk', password: document.getElementById('pw').value, remember: document.getElementById('remember').checked }) });
+  if (res.ok) { location.href = ${JSON.stringify(next)}; }
+  else { location.href = '/login?zone=desk&next=' + encodeURIComponent(${JSON.stringify(next)}) + '&error=1'; }
 });
 </script>
 </body></html>`;
@@ -1171,9 +1252,27 @@ function _libAuthOk(req) {
   return !!edu && (edu.role === 'admin' || LIBRARY_ALLOW_EDU);
 }
 
+// The desk page, and the static files it needs to render, are the only things a desk cookie opens. Everything else falls through to the main zone.
+function _isDeskPagePath(p) { return p === '/desk-terminal' || p === '/desk-terminal.html'; }
+const _DESK_ASSET_PREFIXES = ['/js/', '/css/', '/assets/', '/img/', '/images/', '/fonts/'];
+function _isDeskAssetPath(p) { return _DESK_ASSET_PREFIXES.some(x => p.startsWith(x)) || p === '/favicon.ico' || p === '/favicon.svg'; }
+/** 'owner' (main login, or no auth configured at all), 'viewer' (desk login), or null. */
+function deskSessionRole(req) {
+  if (!AUTH_ENABLED) return 'owner';
+  const c = authParseCookies(req);
+  if (authVerifyCookie(c[`${AUTH_COOKIE_NAME}_main`], 'main')) return 'owner';
+  if (DESK_ENABLED && authVerifyCookie(c[`${AUTH_COOKIE_NAME}_desk`], 'desk')) return 'viewer';
+  return null;
+}
+
 function requireAuth(req, res, next) {
   if (!AUTH_ENABLED) return next();
   if (AUTH_EXEMPT_PREFIXES.some(p => req.path.startsWith(p))) return next();
+  if (_isDeskPagePath(req.path) || (DESK_ENABLED && _isDeskAssetPath(req.path))) {   // the terminal: the owner's login, or the desk login
+    const role = deskSessionRole(req);
+    if (role) return next();
+    if (_isDeskPagePath(req.path) && DESK_ENABLED) return res.redirect(`/login?zone=desk&next=${encodeURIComponent(req.originalUrl)}`);
+  }
   if (_isLibraryPagePath(req.path)) {   // the library page and its files: the owner's dashboard login, or the Theory Lab OWNER login (see _libAuthOk)
     if (_libAuthOk(req)) return next();
     if (authDecodeCookie(authParseCookies(req)[`${AUTH_COOKIE_NAME}_education`], 'education')) {   // signed in to the Theory Lab, but with the shared password
@@ -3275,6 +3374,19 @@ const app = express();
 app.use(egressMiddleware);
 app.use(compression());
 app.use(express.json({ limit: '25mb' }));
+// A request that carries a DESK cookie (and not the owner's) is a read-only viewer: held to js/deskAccess.js (owner-data routes, ops paths, every
+// POST except the shared once-a-day reads). Requests with no cookie are unchanged: /api/* is ungated by design, so this governs the desk login, it is
+// not a wall. A request with both cookies is the owner.
+app.use('/api', (req, res, next) => {
+  if (!DESK_ENABLED) return next();
+  const h = req.headers.cookie;
+  if (!h || !h.includes(`${AUTH_COOKIE_NAME}_desk=`)) return next();
+  const c = authParseCookies(req);
+  if (authVerifyCookie(c[`${AUTH_COOKIE_NAME}_main`], 'main')) return next();
+  if (!authVerifyCookie(c[`${AUTH_COOKIE_NAME}_desk`], 'desk')) return next();
+  if (_deskViewerMayCall(req.method, req.originalUrl)) return next();
+  res.status(403).json({ ok: false, error: 'owner only' });
+});
 // Where the outbound bytes go, ranked, since boot -- see js/egressMeter.js.
 app.get('/api/egress-audit', (req, res) => res.json(egressSnapshot(Number(req.query.limit) || 40)));
 // Ledger survives redeploys via KV (egress_audit): load now, flush every 5 min + on SIGTERM.
@@ -45037,6 +45149,33 @@ app.post('/api/data-archive/run', requireAuth, async (_req, res) => {
   try { res.json(await _archiveDaily()); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// ── Desk Terminal access (registered BEFORE the /api/* worker catch-all below, which would swallow them) ──────────────────────
+// GET /api/desk-session -> { role: 'owner' | 'viewer' | null, deskLogin: bool }. Works with either cookie. No cookie and auth configured => role null.
+app.get('/api/desk-session', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ ok: true, role: deskSessionRole(req), deskLogin: DESK_ENABLED });
+});
+async function _deskSwitches() {
+  try { const raw = await kv.get(DESK_ACCESS_KV); return raw ? JSON.parse(raw) : {}; } catch { return {}; }
+}
+// GET /api/desk-access -> the surface ids this session may see (owner: all; viewer: the defaults overridden by the owner's switches), plus, for the
+// owner, the saved switches so the admin page can draw them. Fails closed: a viewer with no saved switches gets the defaults.
+app.get('/api/desk-access', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const role = deskSessionRole(req) === 'owner' ? 'owner' : 'viewer';
+  const saved = await _deskSwitches();
+  res.json({ ok: true, role, visible: _deskVisibleFor(role, saved), ...(role === 'owner' ? { saved } : {}) });
+});
+// POST /api/desk-access { [id]: true|false } -> saves the switches. Owner only (the main login): a desk cookie is refused whatever the body says.
+app.post('/api/desk-access', async (req, res) => {
+  if (deskSessionRole(req) !== 'owner') return res.status(403).json({ ok: false, error: 'owner only' });
+  const v = _deskCleanSwitches(req.body);
+  if (!v.ok) return res.status(400).json({ ok: false, error: v.error });
+  const saved = { ...(await _deskSwitches()), ...v.clean, updatedAt: new Date().toISOString() };
+  try { await kv.put(DESK_ACCESS_KV, JSON.stringify(saved)); } catch (e) { return res.status(500).json({ ok: false, error: `could not save: ${e.message}` }); }
+  res.json({ ok: true, saved, visible: _deskVisibleFor('viewer', saved) });
+});
+
 // All other /api/* routes — call _worker.js and return the JSON response.
 app.all('/api/*', async (req, res) => {
   try {
@@ -45059,18 +45198,21 @@ app.all('/api/*', async (req, res) => {
 // gated (Railway's healthcheck hits /api/config, and existing bot/API
 // consumers expect unauthenticated access unchanged).
 app.get('/login', (req, res) => {
-  const zone = req.query.zone === 'education' ? 'education' : 'main';
+  const zone = req.query.zone === 'education' ? 'education' : (req.query.zone === 'desk' && DESK_ENABLED) ? 'desk' : 'main';
   const next = typeof req.query.next === 'string' && req.query.next.startsWith('/') ? req.query.next : '/';
   res.type('html').send(authLoginPage(zone, next, !!req.query.error, req.query.brand === 'library' ? 'library' : null));
 });
 
 app.post('/login', (req, res) => {
-  const zone     = req.body?.zone === 'education' ? 'education' : 'main';
+  const zone     = req.body?.zone === 'education' ? 'education' : (req.body?.zone === 'desk' && DESK_ENABLED) ? 'desk' : 'main';
   const password = req.body?.password || '';
   const remember = req.body?.remember !== false; // no checkbox on the main-zone page ⇒ always remember
   if (!AUTH_ENABLED) return res.status(401).json({ error: 'invalid password' });
   let role = null;
-  if (password === AUTH_PASSWORDS[zone]) {
+  if (zone === 'desk') {
+    if (!password || password !== DESK_PASSWORD) return res.status(401).json({ error: 'invalid password' });
+    role = 'viewer';
+  } else if (password === AUTH_PASSWORDS[zone]) {
     // plain session, role stays null
   } else if (zone === 'education' && EDUCATION_ADMIN_PASSWORD && password === EDUCATION_ADMIN_PASSWORD) {
     role = 'admin';
@@ -45087,10 +45229,11 @@ app.post('/login', (req, res) => {
 // (an education-zone logout leaves a main-zone session, if any, untouched).
 app.get('/logout', (req, res) => {
   const lib = req.query.zone === 'library';   // the library's Log out button: clears BOTH logins (either one opens the library), then back to its sign-in page
-  const zone = lib || req.query.zone === 'education' ? 'education' : 'main';
+  const zone = lib || req.query.zone === 'education' ? 'education' : req.query.zone === 'desk' ? 'desk' : 'main';
   const clear = z => `${AUTH_COOKIE_NAME}_${z}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`;
   res.setHeader('Set-Cookie', lib ? [clear('education'), clear('main')] : clear(zone));
   if (lib) return res.redirect('/library.html');
+  if (zone === 'desk') return res.redirect('/login?zone=desk&next=%2Fdesk-terminal.html');
   const back = typeof req.query.next === 'string' && /^\/library(\.html)?$/.test(req.query.next) ? req.query.next : null;   // the library's "sign in with the owner password" link
   res.redirect(back ?? (zone === 'education' ? '/theory-lab/' : '/'));
 });

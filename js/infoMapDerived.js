@@ -2729,6 +2729,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
     ],
@@ -2863,6 +2864,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/tabRegistry.js",
      "js/terminal/traderReadView.js"
     ],
     "today": [
@@ -3391,6 +3393,7 @@ export const DERIVED = {
      "js/terminal/chainBoard.js",
      "js/terminal/optionsView.js",
      "js/terminal/pairView.js",
+     "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
     ],
@@ -3560,7 +3563,7 @@ export const DERIVED = {
   }
  },
  "unclassified": [],
- "rootPageCount": 261,
+ "rootPageCount": 262,
  "packFeeds": 115,
  "generatedAt": "2026-11-13"
 };
