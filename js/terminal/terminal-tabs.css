@@ -188,3 +188,26 @@
 .nt-latest{font-size:12.5px;margin-top:8px;color:var(--tx2)}
 .nt-latest .up{color:var(--up)}.nt-latest .dn{color:var(--dn)}
 .nt-latest-h{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--tx3);font-size:12px;margin-top:2px}
+
+/* Info map tab (js/terminal/infoMapView.js): one row per information family, opening to its detail. Same tokens as the rest:
+   purple = what you can press, gold = attention (stale, analysts-only), muted = everything else. */
+.im-row{border-bottom:1px solid var(--line);min-width:0}
+.im-row:last-of-type{border-bottom:0}
+.im-row>summary{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:9px 0;cursor:pointer;list-style:none;font-size:13.5px}
+.im-row>summary::-webkit-details-marker{display:none}
+.im-row>summary::before{content:"+";font:600 12px var(--mono);color:var(--tx3);width:12px}
+.im-row[open]>summary::before{content:"-"}
+.im-row>summary:focus-visible{outline:2px solid var(--pur);outline-offset:2px}
+.im-n{font-weight:600;color:var(--tx);min-width:0;overflow-wrap:anywhere}
+.im-u{font-size:12px;margin-left:auto}
+.im-b{padding:2px 0 12px 22px;display:grid;gap:8px;min-width:0;font-size:13px}
+.im-line{min-width:0;overflow-wrap:anywhere;line-height:1.5}
+.im-vis{background:var(--goldbg);border:1px solid rgba(232,184,90,.35);border-radius:10px;padding:8px 11px;line-height:1.5}
+.im-vis .lbl{margin-right:6px;color:var(--gold)}
+.im-kv{grid-template-columns:92px minmax(0,1fr);align-items:baseline}
+.im-kv>span{min-width:0;overflow-wrap:anywhere}
+.im-kv .chip{margin:0 4px 4px 0;white-space:normal}
+.im-drift{font-size:12px;color:var(--gold)}
+.im-gone{text-decoration:line-through;color:var(--tx3)}
+#im-stale .nt-topi{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline}
+@media (max-width:600px){.im-u{margin-left:0;flex-basis:100%}.im-b{padding-left:6px}.im-kv{grid-template-columns:1fr}}
