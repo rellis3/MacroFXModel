@@ -10,6 +10,10 @@ import { VIEWER_SHARED_POSTS } from './deskSharedReads.js';
 //     (debug, rebuild, run, backfill, send ...) and forced refreshes (?refresh=1, ?force=1), which spend compute or money.
 //   - Anything that is not a GET is refused unless it is on VIEWER_POST_ALLOWED: the shared once-a-day reads (Task 2 extends that list in this
 //     one place). Model-calling routes that are not shared reads (Ask-the-desk, explain, analysis...) are therefore owner-only by default.
+//   - THE LENS (owner, 2026-11-13): the desk login is an education tool and a macro dashboard, not a signal service. Analysis is shown; a trade signal
+//     (entries, stops, targets, sizes, best expressions, hedge recommendations) and the owner's private area (book, record, research, bots, ops) are not.
+//     The desk's morning book carries both in the same objects, so a viewer's copy of it is built from an allowlist (js/deskViewerView.js, applied in
+//     server.js to the exact routes in VIEWER_ALLOW_EXACT). The deny list below is therefore limited to the signal and private routes.
 //   - When unsure, deny. Every deny-list entry is listed in the report so the owner can review it.
 
 /** POSTs a viewer may make: the shared once-a-day reads (first caller generates, everyone else reads the stored copy). The list lives with the
@@ -24,6 +28,8 @@ export const VIEWER_DENY_PREFIXES = [
   '/api/oi-bot', '/api/oi-bots', '/api/oi-conf-bot', '/api/oi-vol-bot', '/api/position-size', '/api/range-line-bot',
   '/api/signal-', '/api/trade-decision', '/api/trade-lab', '/api/trade-watch', '/api/volatility-bot', '/api/volatility-v2', '/api/volatility-v3',
   '/api/scenario',                       // scenarios run against the owner's book
+  '/api/pair-select',                    // the best-expression matrix: how the view is best traded (a recommendation)
+  '/api/thesis-reality',                 // the book's claims laid against the evening score, with sizes
   '/api/desk-',                          // the desk's own book, run, paper trades, journal, memory, score record, updates (market ones are re-allowed below)
   // broker, order books and capture ops
   '/api/oanda-book', '/api/oanda-fetch', '/api/oanda_stream', '/api/footprint', '/api/live-validation',
@@ -38,6 +44,11 @@ export const VIEWER_ALLOW_OVERRIDES = [
   '/api/desk-asset-analyse', '/api/desk-shared-reads',   // the shared once-a-day reads: GET is free and never calls a model (POST: VIEWER_POST_ALLOWED)
   '/api/desk-session', '/api/desk-access',      // who am I, and which surfaces may I see (GET only: the POST is a non-GET and is refused for viewers)
 ];
+
+/** Analysis routes under the '/api/desk-' deny prefix that a viewer may read, EXACT paths only (a prefix here would also open /roles, /status and the like).
+ *  The server hands a viewer the allowlisted copy of each (js/deskViewerView.js): the desk's morning book, the session updates, the weekly strategist,
+ *  the daily history and the index of runs. Everything else under /api/desk-run, /api/desk-score, /api/desk-paper, /api/desk-risk ... stays denied. */
+export const VIEWER_ALLOW_EXACT = ['/api/desk-run', '/api/desk-run/index', '/api/desk-update', '/api/desk-weekly', '/api/desk-history'];
 
 /** Path segments that mark an ops or compute-triggering route. */
 const OPS_SEGMENTS = new Set(['debug', 'debug-fetch', 'debug-index', 'fetch-status', 'fetch-now', 'run', 'run-now', 'rebuild', 'backfill', 'trigger',
@@ -63,6 +74,7 @@ export function viewerMayCall(method, url) {
   const seg = path.split('/').filter(Boolean);
   if (seg.slice(1).some(s => OPS_SEGMENTS.has(s) || /backfill|rebuild/.test(s) || /^\$\{/.test(s))) return false;
   if (path === '/api/desk-bars' && query.get('role')) return false;          // a role makes it a model call; plain bars are market data
+  if (VIEWER_ALLOW_EXACT.includes(path)) return true;
   const denied = VIEWER_DENY_PREFIXES.some(p => under(path, p));
   if (!denied) return true;
   return VIEWER_ALLOW_OVERRIDES.some(p => under(path, p));

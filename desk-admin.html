@@ -62,7 +62,8 @@ p.sub{color:var(--tx2);margin:0 0 16px;max-width:70ch}
 </div></header>
 <main>
   <h1>What the desk login can see</h1>
-  <p class="sub">Every tab, link, widget, ticker segment and panel of the Desk Terminal is a switch. Anyone signed in with the desk password sees only what is switched on here. You, signed in with the main password, always see everything. Surfaces that show your own book, positions or analysis start switched off and carry a gold <b>owner data</b> label.</p>
+  <p class="sub">Every tab, link, widget, ticker segment and panel of the Desk Terminal is a switch. Anyone signed in with the desk password sees only what is switched on here. You, signed in with the main password, always see everything. The desk login is an education tool and a macro dashboard, not a signal service, so every row has a class:</p>
+  <p class="sub" style="margin-top:0"><span class="chip up">analysis</span> shown by default: the bias of the day, risk state, regime, strength, correlations, surprises, forecast ranges. <span class="chip gold">signal</span> trade-like (entries, stops, targets, sizes, best expressions, playbooks, hedge picks): hidden by default. <span class="chip pur">private</span> your own book, record, research, bots and ops: hidden by default.</p>
   <div id="root"><div class="card muted">Loading…</div></div>
 </main>
 <script type="module">
@@ -72,7 +73,8 @@ const SURFACES = ALL.filter(s => !ALWAYS_OWNER_IDS.includes(s.id) && !ALWAYS_VIS
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const KIND_LABEL = { tab: 'Tab', nav: 'Link', widget: 'Widget', strip: 'Ticker', panel: 'Panel' };
-const GROUP_ORDER = ['Tabs', 'Links', 'Shell', 'Ticker', 'Overview', 'Charts'];
+const GROUP_ORDER = ['Tabs', 'Links', 'Shell', 'Ticker', 'Overview', 'Currencies', 'Markets', 'Analytics', 'Charts', 'Changed', 'Correlations', 'Macro'];
+const CLASS_CHIP = { analytic: ['up', 'analysis'], signal: ['gold', 'signal'], private: ['pur', 'private'] };
 let state = {};      // id -> boolean, the switches as drawn
 let saved = {};      // id -> boolean, as last saved
 let deskLogin = false;
@@ -98,8 +100,8 @@ function draw() {
     ${groups.map(g => `<div class="grp lbl">${esc(g)}</div><div class="card">${SURFACES.filter(s => s.group === g).map(s => `
       <div class="row">
         <button class="sw" role="switch" aria-checked="${state[s.id]}" aria-label="${esc(s.label)}" data-id="${esc(s.id)}"></button>
-        <div><div class="nm">${esc(s.label)}</div><div class="nt">${esc(s.note)}</div>${s.ownerData ? '<div class="warn">Shows your own data (book, positions, analysis, ops or paid-model buttons). Its data routes are also refused to the desk login, so switching it on shows an empty panel.</div>' : ''}</div>
-        <div class="meta"><span class="chip">${KIND_LABEL[s.kind]}</span>${s.ownerData ? '<span class="chip gold">owner data</span>' : ''}${s.defaultVisible ? '' : '<span class="chip">off by default</span>'}</div>
+        <div><div class="nm">${esc(s.label)}</div><div class="nt">${esc(s.note)}</div>${s.class === 'signal' ? '<div class="warn">Reads as a trade signal. Switching it on shows trade-level lines (the desk login then receives that part of the book\'s data too).</div>' : s.class === 'private' ? '<div class="warn">Your own area (book, positions, record, research, ops or paid-model buttons). Its data routes are also refused to the desk login, so switching it on shows an empty panel.</div>' : ''}</div>
+        <div class="meta"><span class="chip">${KIND_LABEL[s.kind]}</span><span class="chip ${CLASS_CHIP[s.class]?.[0] ?? ''}">${CLASS_CHIP[s.class]?.[1] ?? s.class}</span>${s.defaultVisible ? '' : '<span class="chip">off by default</span>'}</div>
       </div>`).join('')}</div>`).join('')}`;
   document.querySelectorAll('.sw').forEach(b => b.onclick = () => { state[b.dataset.id] = !state[b.dataset.id]; draw(); });
   $('save').onclick = save;

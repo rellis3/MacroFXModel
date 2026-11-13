@@ -185,6 +185,7 @@ import { BOJ_MEETINGS, pendingAsOf as bojPendingAsOf } from './js/bojCalendar.js
 import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl as bojStatementUrl, outlookViewUrl as bojOutlookViewUrl, outlookFullUrl as bojOutlookFullUrl, opinionsUrl as bojOpinionsUrl, minutesPdfUrl as bojMinutesPdfUrl } from './js/bojFetch.js';
 import { RBNZ_MEETINGS, pendingAsOf as rbnzPendingAsOf, allReleases as rbnzAllReleases } from './js/rbnzCalendar.js';
 import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote, fetchOcrDecisions as rbnzFetchOcrDecisions, ocrActualFor as rbnzOcrActualFor } from './js/rbnzFetch.js';
+import { sanitizerFor as _deskViewerSanitiser, sanitizeStoredRead as _deskSanitizeStored, validateSharedRead as _validateSharedRead } from './js/deskViewerView.js';   // what a viewer is shown of the desk's own outputs (the lens: analysis, not signals)
 import { viewerMayCall as _deskViewerMayCall } from './js/deskAccess.js';                       // what a desk-login VIEWER may call (js/deskAccess.js)
 import { logoutPlan as _logoutPlan, clearCookieHeader as _clearCookieHeader, sameSiteOk as _logoutSameSiteOk } from './js/deskLogout.js';   // what /logout clears and where it goes (desk, all, library, education, main)
 import { visibleFor as _deskVisibleFor, cleanSwitches as _deskCleanSwitches } from './js/terminal/tabRegistry.js';   // the Desk Terminal surface registry
@@ -3385,7 +3386,13 @@ app.use('/api', (req, res, next) => {
   const c = authParseCookies(req);
   if (authVerifyCookie(c[`${AUTH_COOKIE_NAME}_main`], 'main')) return next();
   if (!authVerifyCookie(c[`${AUTH_COOKIE_NAME}_desk`], 'desk')) return next();
-  if (_deskViewerMayCall(req.method, req.originalUrl)) return next();
+  if (_deskViewerMayCall(req.method, req.originalUrl)) {
+    // the desk's own book and its companions are handed to a viewer as an allowlisted copy: analysis kept, trade fields and owner data dropped (js/deskViewerView.js)
+    const san = req.method === 'GET' ? _deskViewerSanitiser(req.baseUrl + req.path) : null;
+    if (!san) return next();
+    const orig = res.json.bind(res), wrap = on => { res.json = body => orig(san(body, on)); next(); };
+    return _deskSwitches().then(saved => { const vis = new Set(_deskVisibleFor('viewer', saved)); wrap(id => vis.has(id)); }, () => wrap(() => false));
+  }
   res.status(403).json({ ok: false, error: 'owner only' });
 });
 // Where the outbound bytes go, ranked, since boot -- see js/egressMeter.js.
@@ -8722,57 +8729,71 @@ Reply with JSON only: { "answer": "plain text", "sources": ["analyst ids, card n
     } finally { _askBusy = false; }
   } catch (e) { _askBusy = false; res.status(500).json({ ok: false, error: e.message }); }
 });
-// POST /api/desk-asset-analyse { inst, force }: ONE market analysed on demand (the Analyse button on the Desk Terminal's
+// POST /api/desk-asset-analyse { inst, force, audience }: ONE market analysed on demand (the Analyse button on the Desk Terminal's
 // asset cards and Pair tab; js/assetAnalysis.js). Runs on DeepSeek (task 'desk-asset', about a cent a press), against
 // the market's own driver checklist, the morning book, the analysts' reports, its pack data, headlines and the Evidence
 // Book. Context, never a signal: it never changes a card.
-// SHARED DAILY (2026-11-13): the first press of the London day writes the read for everyone (desk_shared_reads_v1); after that
-// every request is served the stored read and a viewer's force is ignored. Only the owner's force=1 regenerates, replacing the
-// shared copy. Two presses at once cost one call (single flight). At most 100 model calls a day.
+// TWO COPIES (owner 2026-11-13: the desk login is an education tool, not a signal service):
+//   audience 'shared' (the default): the ONE stored copy every desk user sees. Written as analysis: no card size, no plan, no entry/stop/target, no
+//     recommendation (buildSharedAssetPrompt, checked by validateSharedRead). SHARED DAILY: the first press of the London day writes it for everyone;
+//     after that every request is served the stored read and a viewer's force is ignored. Only the owner's force=1 regenerates, replacing the shared
+//     copy. Two presses at once cost one call (single flight). At most 100 model calls a day.
+//   audience 'desk' (OWNER ONLY, 403 otherwise): the owner's private read with the morning card, the plan and the levels as the desk wrote them
+//     (buildAssetPrompt). Its own store key (kind 'assetdesk'), never served to a viewer, at most 40 model calls a day.
 app.post('/api/desk-asset-analyse', express.json({ limit: '4kb' }), async (req, res) => {
   const inst = _srNormInst(req.body?.inst);
+  const audience = req.body?.audience === 'desk' ? 'desk' : 'shared', kind = audience === 'desk' ? 'assetdesk' : 'asset';
   try {
-    const { buildAssetPrompt, validateAnalysis } = await import('./js/assetAnalysis.js');
+    const { buildAssetPrompt, buildSharedAssetPrompt, validateAnalysis } = await import('./js/assetAnalysis.js');
     const { groupOf } = await import('./js/deskPack.js');
     if (!groupOf(inst)) return res.status(400).json({ ok: false, error: `unknown market ${inst || '(none)'}` });
+    const owner = _srIsOwner(req);
+    if (audience === 'desk' && !owner) return res.status(403).json({ ok: false, error: 'Owner only: the desk version carries the book\'s card and plan.' });
     await _srEnsure();
-    const owner = _srIsOwner(req), today = _srDay(), flightKey = `asset:${inst}`;
-    const st = _srStore(), have = _srReadToday(st, 'asset', inst);
-    const d = _srDecide({ isOwner: owner, force: !!req.body?.force, hasToday: !!have, inflight: _srFlight.has(flightKey), calls: _srCallsToday(st, 'asset'), cap: _SR_KINDS.asset.cap });
-    if (d.action === 'serve') return res.json({ ...have.read, generatedAt: have.generatedAt, generatedBy: have.generatedBy, cached: true, shared: true, today, role: owner ? 'owner' : 'viewer' });
-    if (d.action === 'cap') return res.status(429).json({ ok: false, error: `the daily limit of ${_SR_KINDS.asset.cap} market reads is reached` });
+    const today = _srDay(), flightKey = `${kind}:${inst}`;
+    const st = _srStore(), have = _srReadToday(st, kind, inst);
+    const d = _srDecide({ isOwner: owner, force: !!req.body?.force, hasToday: !!have, inflight: _srFlight.has(flightKey), calls: _srCallsToday(st, kind), cap: _SR_KINDS[kind].cap });
+    const shown = r => (owner ? r : _deskSanitizeStored(r));   // a read stored before the change is cleaned for a viewer
+    if (d.action === 'serve') return res.json({ ...shown(have.read), generatedAt: have.generatedAt, generatedBy: have.generatedBy, cached: true, shared: audience === 'shared', audience, today, role: owner ? 'owner' : 'viewer' });
+    if (d.action === 'cap') return res.status(429).json({ ok: false, error: `the daily limit of ${_SR_KINDS[kind].cap} market reads is reached` });
     if (d.action === 'generate' && !_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key on the server' });
     const out = await _srFlight.run(flightKey, async () => {
-      _srUpdate(x => _srCountCall(x, 'asset'));
+      _srUpdate(x => _srCountCall(x, kind));
       const run = await _drLoad(today).catch(() => null);
       const pack = _dpLatest?.date === today ? _dpLatest : await _dpLoad(today).catch(() => null);
       const newsText = await _nwLoad().then(s2 => _nwText(_nwPick(s2.wire, { sinceMs: Date.now() - 24 * 3600e3, tier: 2, limit: 30 }))).catch(() => '');
-      const { system, prompt, meta } = buildAssetPrompt({ name: inst, run, pack, ledger: _DESK_EVIDENCE, newsText, date: today });
+      const build = audience === 'desk' ? buildAssetPrompt : buildSharedAssetPrompt;
+      const { system, prompt, meta } = build({ name: inst, run, pack, ledger: _DESK_EVIDENCE, newsText, date: today });
+      const check = o => (audience === 'desk' ? validateAnalysis(o) : _validateSharedRead(o));
       let r = await callModel({ task: 'desk-asset', system, prompt, maxTokens: 6_000, label: `desk:asset:${inst}` });
-      let v = validateAnalysis(_parseModelJson(r.text ?? _antText(r), 'desk:asset'));
+      let v = check(_parseModelJson(r.text ?? _antText(r), 'desk:asset'));
       if (!v.ok) {   // one retry, told what was wrong
-        r = await callModel({ task: 'desk-asset', system, prompt: `${prompt}\n\nYour previous reply could not be used (${v.errors.join('; ')}). Reply again with the JSON object only, shorter.`, maxTokens: 6_000, label: `desk:asset:${inst}` });
-        v = validateAnalysis(_parseModelJson(r.text ?? _antText(r), 'desk:asset'));
+        r = await callModel({ task: 'desk-asset', system, prompt: `${prompt}\n\nYour previous reply could not be used (${v.errors.join('; ')}). Reply again with the JSON object only, shorter${audience === 'desk' ? '' : ', and with no trade instruction of any kind'}.`, maxTokens: 6_000, label: `desk:asset:${inst}` });
+        v = check(_parseModelJson(r.text ?? _antText(r), 'desk:asset'));
       }
       if (!v.ok) throw _srHttpError(502, `the model did not return a usable read (${v.errors.join('; ')})`);
       const at = new Date().toISOString();
-      const read = { ok: true, inst, date: today, at, analysis: v.value, model: r.model ?? null, provider: r.provider ?? null,
-        bookDate: run?.head?.ok ? run.date : null, card: run?.head?.ok ? (run.head.book.instruments?.[inst] ?? null) : null, meta, label: 'context, untested: never changes a card' };
-      _srUpdate(x => _srPutRead(x, 'asset', inst, read, { by: owner ? 'owner' : 'viewer', at }));
+      const read = { ok: true, inst, date: today, at, analysis: v.value, model: r.model ?? null, provider: r.provider ?? null, audience,
+        bookDate: run?.head?.ok ? run.date : null, card: audience === 'desk' && run?.head?.ok ? (run.head.book.instruments?.[inst] ?? null) : null, meta,
+        ...(audience === 'shared' ? { stripped: v.stripped ?? 0 } : {}),
+        label: audience === 'desk' ? 'context, untested: never changes a card' : 'educational context: not a trade signal' };
+      _srUpdate(x => _srPutRead(x, kind, inst, read, { by: owner ? 'owner' : 'viewer', at }));
       return { read, generatedAt: at, generatedBy: owner ? 'owner' : 'viewer' };
     });
-    res.json({ ...out.read, generatedAt: out.generatedAt, generatedBy: out.generatedBy, cached: d.action === 'join', shared: true, today, role: owner ? 'owner' : 'viewer' });
+    res.json({ ...out.read, generatedAt: out.generatedAt, generatedBy: out.generatedBy, cached: d.action === 'join', shared: audience === 'shared', audience, today, role: owner ? 'owner' : 'viewer' });
   } catch (e) { res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
 });
-// GET /api/desk-asset-analyse?inst=GOLD: the newest shared read (today's, else yesterday's marked stale), whether another
-// user is generating it now, and the caller's role. Free: never calls a model.
+// GET /api/desk-asset-analyse?inst=GOLD[&audience=desk]: the newest shared read (today's, else yesterday's marked stale), whether another
+// user is generating it now, and the caller's role. Free: never calls a model. audience=desk is the owner's private version (403 for anyone else).
 app.get('/api/desk-asset-analyse', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   await _srEnsure();
-  const inst = _srNormInst(req.query.inst), owner = _srIsOwner(req), today = _srDay(), flightKey = `asset:${inst}`;
-  const meta = { today, role: owner ? 'owner' : 'viewer', inflight: _srFlight.has(flightKey) };
-  const hit = _srReadLatest(_srStore(), 'asset', inst);
-  res.json(hit ? { ...hit.read, generatedAt: hit.generatedAt, generatedBy: hit.generatedBy, cached: true, shared: true, stale: _srDayKey(hit.generatedAt) !== today, ...meta } : { ok: false, none: true, ...meta });
+  const audience = req.query.audience === 'desk' ? 'desk' : 'shared', kind = audience === 'desk' ? 'assetdesk' : 'asset';
+  const inst = _srNormInst(req.query.inst), owner = _srIsOwner(req), today = _srDay(), flightKey = `${kind}:${inst}`;
+  if (audience === 'desk' && !owner) return res.status(403).json({ ok: false, error: 'Owner only.' });
+  const meta = { today, role: owner ? 'owner' : 'viewer', inflight: _srFlight.has(flightKey), audience };
+  const hit = _srReadLatest(_srStore(), kind, inst);
+  res.json(hit ? { ...(owner ? hit.read : _deskSanitizeStored(hit.read)), generatedAt: hit.generatedAt, generatedBy: hit.generatedBy, cached: true, shared: audience === 'shared', stale: _srDayKey(hit.generatedAt) !== today, ...meta } : { ok: false, none: true, ...meta });
 });
 // GET /api/desk-shared-reads[?kinds=asset,chain]: which shared reads exist, who may generate, what is generating, the day's
 // model-call counts. Metadata only (no read bodies), so the page can hide a button a colleague already used. Never calls a model.

@@ -372,15 +372,22 @@ Apply these to any new signal, Python throwaway or JS engine alike.
     period's realized vol) or note plainly that R and % Return are redundant
     here.
 - **Desk Terminal: every surface is registered (owner rule, 2026-11-13).** Every tab, link out, widget, ticker segment and panel of `desk-terminal.html` is a
-  *surface* with a row in `js/terminal/tabRegistry.js` (`id`, `kind` = tab|nav|widget|strip|panel, `label`, `group`, `defaultVisible`, `ownerData`). The desk login
+  *surface* with a row in `js/terminal/tabRegistry.js` (`id`, `kind` = tab|nav|widget|strip|panel, `label`, `group`, `class` = analytic|signal|private). The desk login
   (a second shared password) sees only the surfaces the owner has switched on in `desk-admin.html`; the owner sees everything. **When you add a tab or any new
-  block to the terminal:** (1) add its row to `SURFACES` — default `defaultVisible: false, ownerData: true` unless it is market data the owner is happy to show
-  anyone; (2) put `data-surface="<id>"` on its markup (a tab: on the nav button AND its `<section>`), or wrap generated HTML in
+  block to the terminal:** (1) add its row to `SURFACES` with `mk(id, kind, label, group, A|S|P, note)`; (2) put `data-surface="<id>"` on its markup (a tab: on the nav button AND its `<section>`), or wrap generated HTML in
   `<div class="sfc" data-surface="<id>">…</div>`; (3) if it calls a new `/api/` route that carries the owner's book, positions, P&L, ops or a paid model call, add the
   prefix to `VIEWER_DENY_PREFIXES` in `js/deskAccess.js`. `js/terminal/tabRegistry.test.mjs` FAILS until (1) and (2) are done, and fails on a registry row with no
   markup. A surface you forget to register is hidden from the desk login (safe), but the test will still stop the push. Never rely on hiding alone for owner data:
   the route must also be on the deny list. The shared once-a-day AI reads are the only viewer POSTs (`VIEWER_POST_ALLOWED` in `js/deskAccess.js`).
   **Links to other pages are the owner's (2026-11-13):** a link from a card to a page outside the desk zone (`bank-credit.html`, the sentiment pages, Research...) must go through `ownerLink(href, label, { hide, suffix, target })` or `ownerOnly(html)` from `js/terminal/links.js` (`globalThis.ownerLink` in `desk-terminal.html`'s classic script): the owner gets the anchor, a desk viewer gets plain text or nothing. `js/terminal/links.test.mjs` FAILS on a raw `href="x.html"` with its file:line. **Sign out** (`widget.signout`, `POST /logout?zone=all|desk`, `js/deskLogout.js`) is always visible to every session and is not a switch.
+  **The lens (owner, 2026-11-13): the desk login is an education tool and a macro dashboard, not a signal service.** *Analysis* (the bias of the day, risk state, regime,
+  strength, correlations, surprises, forecast ranges) is class `analytic` and shown by default. *Anything that can be read as a trade signal* (entry, stop, target,
+  invalidation level, size, best expression, playbook, trade watch, hedge pick) is class `signal`, and the owner's own area (book, record, research, bots, ops, paid-model
+  buttons) is class `private`: both hidden by default. To classify, ask: could a reader take it as an instruction to place a trade at a level? Yes = `signal`. The desk's
+  morning book carries both in one object, so the viewer's copy of it is an ALLOWLIST (`js/deskViewerView.js`: size, plan and invalidation are dropped unless the owner
+  switches `panel.asset.size` / `panel.asset.plan` on) and text is scrubbed of trade language; the market read shared with everyone is written as analysis only
+  (`buildSharedAssetPrompt`, checked by `validateSharedRead`), the owner's trade-plan version has its own owner-only key (`assetdesk`). `tabRegistry.test.mjs` fails when a
+  surface has no class, when a `signal`/`private` one is visible by default, or when a label naming trade content is classed analytic.
 - **`hub.html` IS NOT A USEFUL PAGE. DO NOT TOUCH IT, EVEN IF A REQUEST SOUNDS
   LIKE IT MIGHT MEAN HUB.HTML.** The owner has said this multiple times, the
   second time in frustration at a session (this one) that defaulted to it

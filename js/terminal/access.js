@@ -11,6 +11,10 @@ import { SURFACE_IDS, DEFAULT_VISIBLE_IDS, ALWAYS_OWNER_IDS, visibleFor } from '
 import './links.js';   // sets globalThis.ownerLink / ownerOnly for the page's classic script
 import { viewerMayCall } from '../deskAccess.js';
 
+// the renderers ask these (before init they answer as the owner would see it, so a page that never calls init() is unchanged)
+globalThis.deskSurfaceOn ??= () => true;
+globalThis.deskIsViewer ??= () => false;
+
 /** The stylesheet text that hides every surface not in `visible`. */
 export function hideCss(visible) {
   const on = new Set(visible);
@@ -86,6 +90,8 @@ export async function init() {
   const [session, access] = await Promise.all([j('/api/desk-session'), j('/api/desk-access')]);
   const state = resolveSession(session, access);
   globalThis.deskAccessState = { role: state.role, visible: state.visible, failed: state.failed, mayCall: state.role === 'viewer' ? viewerMayCall : () => true };
+  globalThis.deskSurfaceOn = id => state.role === 'owner' || state.visible.includes(id);
+  globalThis.deskIsViewer = () => state.role === 'viewer';
   applyAccess(state);
   wireSignout(state);
   dispatchEvent(new Event('deskaccess'));

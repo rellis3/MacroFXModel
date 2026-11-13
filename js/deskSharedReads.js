@@ -17,6 +17,7 @@ export const SHARED_KV = 'desk_shared_reads_v1';
 /** Kinds of fixed, keyed reads, with the key each is keyed by and the daily runaway guard on model calls. */
 export const SHARED_KINDS = {
   asset: { label: 'Market deep read', keyedBy: 'market', cap: 100 },   // POST /api/desk-asset-analyse (the cap it already had)
+  assetdesk: { label: 'Market deep read, desk version (owner only: the card, the plan)', keyedBy: 'market', cap: 40 },   // the owner's private trade-plan read: never shown to the desk login
   chain: { label: 'Chain read', keyedBy: 'window', cap: 40 },          // POST /api/chain-read, stored in chain_read_v1 (byWin)
 };
 
