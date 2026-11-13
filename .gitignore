@@ -776,3 +776,6 @@ scripts/residual-fx8-forward/logs/
 analysis/output/vol-layer-deep/features/wide/events_h15.parquet
 analysis/output/vol-layer-deep/state/wide/m1_extras.parquet
 analysis/output/vol-layer-deep/feedback/wide/m1_hours.parquet
+analysis/output/vol-layer-deep/execution/wide/entries.parquet
+analysis/output/vol-layer-deep/execution/wide/overshoot.parquet
+analysis/output/vol-layer-deep/execution/wide/paths.json
