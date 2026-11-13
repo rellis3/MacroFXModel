@@ -187,6 +187,7 @@ import { RBNZ_MEETINGS, pendingAsOf as rbnzPendingAsOf, allReleases as rbnzAllRe
 import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote, fetchOcrDecisions as rbnzFetchOcrDecisions, ocrActualFor as rbnzOcrActualFor } from './js/rbnzFetch.js';
 import { sanitizerFor as _deskViewerSanitiser, sanitizeStoredRead as _deskSanitizeStored, validateSharedRead as _validateSharedRead } from './js/deskViewerView.js';   // what a viewer is shown of the desk's own outputs (the lens: analysis, not signals)
 import { viewerMayCall as _deskViewerMayCall } from './js/deskAccess.js';                       // what a desk-login VIEWER may call (js/deskAccess.js)
+import { deskLoginPage as _deskLoginPage } from './js/deskLoginPage.js';                  // the desk zone's sign-in page (js/deskLoginPage.js)
 import { logoutPlan as _logoutPlan, clearCookieHeader as _clearCookieHeader, sameSiteOk as _logoutSameSiteOk } from './js/deskLogout.js';   // what /logout clears and where it goes (desk, all, library, education, main)
 import { visibleFor as _deskVisibleFor, cleanSwitches as _deskCleanSwitches } from './js/terminal/tabRegistry.js';   // the Desk Terminal surface registry
 import { RBA_MEETINGS, pendingAsOf as rbaPendingAsOf, allReleases as rbaAllReleases } from './js/rbaCalendar.js';
@@ -1089,74 +1090,8 @@ document.getElementById('f').addEventListener('submit', async (e) => {
 </body></html>`;
 }
 
-// The Desk Terminal's own sign-in: its deep navy, purple for what you press, gold for the wordmark, the pulsing dot of its top bar.
-function authLoginPageDesk(next, error) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Sign in — Desk Terminal</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<style>
-  :root{--bg:#070a17;--bg1:#0c1124;--bg2:#111833;--line:#1f2950;--line2:#2c3866;--tx:#eef0fb;--tx2:#a9b0d0;--tx3:#6d7599;--pur:#8b7cf6;--pur2:#b4a9ff;--gold:#e8b85a;--dn:#ff5d78;--up:#2fd39a;
-    --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;--sans:Inter,ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
-  *{box-sizing:border-box}
-  html,body{margin:0;min-height:100%}
-  body{font:14px/1.55 var(--sans);color:var(--tx);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;
-    background:radial-gradient(1100px 560px at 80% -10%,rgba(139,124,246,.16),transparent 60%),radial-gradient(800px 460px at -10% 110%,rgba(232,184,90,.07),transparent 60%),var(--bg)}
-  .wrap{width:100%;max-width:400px}
-  .brand{display:flex;align-items:center;justify-content:center;gap:12px;font:700 17px var(--mono);letter-spacing:.2em;margin-bottom:22px}
-  .brand i{width:11px;height:11px;border-radius:50%;background:var(--pur);box-shadow:0 0 14px var(--pur);animation:pulse 2.4s ease-in-out infinite}
-  .brand span{color:var(--gold)}
-  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
-  @media (prefers-reduced-motion:reduce){.brand i{animation:none}}
-  .card{background:linear-gradient(180deg,rgba(17,24,51,.92),rgba(12,17,36,.92));border:1px solid var(--line2);border-radius:14px;padding:28px 24px;box-shadow:0 0 60px rgba(139,124,246,.08)}
-  .lbl{font:600 10.5px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--tx3);margin-bottom:10px}
-  h1{font:600 20px/1.3 var(--sans);margin:0 0 6px}
-  p.sub{margin:0 0 20px;color:var(--tx2);font-size:13.5px}
-  .field{position:relative;margin-bottom:12px}
-  .field input{width:100%;background:var(--bg);border:1px solid var(--line2);border-radius:10px;padding:13px 44px 13px 14px;color:var(--tx);font:500 15px var(--sans);outline:none}
-  .field input:focus{border-color:var(--pur);box-shadow:0 0 0 3px rgba(139,124,246,.2)}
-  .field button{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--tx3);cursor:pointer;padding:8px;border-radius:8px}
-  .field button:hover{color:var(--pur2)}
-  .remember{display:flex;align-items:center;gap:9px;color:var(--tx2);font-size:13px;margin:2px 0 16px}
-  .remember input{accent-color:var(--pur);width:15px;height:15px}
-  button.go{width:100%;border:1px solid rgba(139,124,246,.5);border-radius:10px;padding:13px;font:700 12px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--pur2);background:rgba(139,124,246,.14);cursor:pointer}
-  button.go:hover{background:rgba(139,124,246,.24)}
-  button.go:focus-visible,.field button:focus-visible{outline:2px solid var(--pur2);outline-offset:2px}
-  .err{color:var(--dn);font-size:13px;margin:0 0 12px}
-  .foot{margin-top:18px;text-align:center;font:600 10.5px var(--mono);letter-spacing:.16em;color:var(--tx3);text-transform:uppercase}
-</style></head><body>
-<div class="wrap">
-  <div class="brand"><i></i>DESK <span>TERMINAL</span></div>
-  <div class="card">
-    <div class="lbl">Private access</div>
-    <h1>Sign in to the Desk Terminal</h1>
-    <p class="sub">Markets, rates, central banks and the macro chain, in one place.</p>
-    ${error ? '<div class="err">Incorrect password.</div>' : ''}
-    <form id="f" autocomplete="off">
-      <div class="field">
-        <input type="password" id="pw" placeholder="Password" aria-label="Password" autofocus>
-        <button type="button" id="toggle" aria-label="Show password">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
-        </button>
-      </div>
-      <label class="remember"><input type="checkbox" id="remember" checked> Keep me signed in for 30 days</label>
-      <button type="submit" class="go">Enter</button>
-    </form>
-  </div>
-  <div class="foot">Authorised viewers only</div>
-</div>
-<script>
-document.getElementById('toggle').addEventListener('click', () => { const pw = document.getElementById('pw'); pw.type = pw.type === 'password' ? 'text' : 'password'; });
-document.getElementById('f').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const res = await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ zone: 'desk', password: document.getElementById('pw').value, remember: document.getElementById('remember').checked }) });
-  if (res.ok) { location.href = ${JSON.stringify(next)}; }
-  else { location.href = '/login?zone=desk&next=' + encodeURIComponent(${JSON.stringify(next)}) + '&error=1'; }
-});
-</script>
-</body></html>`;
-}
+// The Desk Terminal's own sign-in: the page itself lives in js/deskLoginPage.js (pure, tested); same form contract as the other zones.
+function authLoginPageDesk(next, error) { return _deskLoginPage(next, error); }
 
 // Styled to match the "Education Bank" reference design the owner shared —
 // serif gradient wordmark, glowing pill input, teal CTA — for the education
