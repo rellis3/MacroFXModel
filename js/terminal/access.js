@@ -38,13 +38,32 @@ const j = async (u, ms = 8000) => {
 
 // links to another page bounce a viewer to the owner's login: show them as plain text instead
 const KEEP = /^(#|https?:|mailto:|\/api\/|desk-terminal(\.html)?(#|\?|$)|\/desk-terminal)/i;
-function deLink(root) {
+const inHiddenSurface = (el, hidden) => { const s = el.closest?.('[data-surface]'); return !!s && hidden.has(s.getAttribute('data-surface')); };
+/** Turns links to other pages into plain text for a viewer. A link that sits on, or inside, a switched-off surface is LEFT ALONE: it is already
+ *  display:none, and swapping it for a bare span (which had no data-surface) is exactly what brought the top-bar Research / Desk Office / Desk Run
+ *  buttons back as dead labels. A span made from a link that stays visible keeps its data-surface. */
+export function deLink(root, hidden = new Set(), doc = globalThis.document) {
   for (const a of root.querySelectorAll('a[href]')) {
     const h = a.getAttribute('href') || '';
     if ((KEEP.test(h) && !a.hasAttribute('data-owner-link')) || a.closest('[data-keep-link]')) continue;
-    const s = document.createElement('span');
+    if (inHiddenSurface(a, hidden)) continue;
+    const s = doc.createElement('span');
     s.className = `${a.className} nolink`.trim(); s.title = 'Owner only'; s.innerHTML = a.innerHTML;
+    const sf = a.getAttribute('data-surface'); if (sf) s.setAttribute('data-surface', sf);
     a.replaceWith(s);
+  }
+}
+
+/** No empty shells: a card whose value cells (.v) are ALL blank or a dash is a panel whose data is withheld from this session. Hide the whole card,
+ *  heading and labels included, so a viewer never sees "Largest scenario loss" over a dash. Needs at least two value cells, so a card with one
+ *  honest "no data" tile is not swept. Viewers only (the owner's own empty panels stay visible: they mean something is broken). */
+const BLANK = /^[\s–—-]*$/;
+export function sweepEmpty(root) {
+  for (const el of root.querySelectorAll('.card')) {
+    if (el.hasAttribute('data-empty')) continue;
+    if ((el.textContent ?? '').trim().toLowerCase() === 'owner only') { el.setAttribute('data-empty', ''); el.hidden = true; continue; }   // a read the desk login is refused, shown as its only content
+    const vals = [...el.querySelectorAll('.v')];
+    if (vals.length >= 2 && vals.every(v => BLANK.test(v.textContent ?? ''))) { el.setAttribute('data-empty', ''); el.hidden = true; }
   }
 }
 
@@ -65,8 +84,8 @@ export function applyAccess(state) {
     first?.click();
   }
   let raf = 0;
-  const run = () => { raf = 0; deLink(document.body); };
-  deLink(document.body);
+  const run = () => { raf = 0; deLink(document.body, hidden); sweepEmpty(document.body); };
+  deLink(document.body, hidden); sweepEmpty(document.body);
   new MutationObserver(() => { if (!raf) raf = requestAnimationFrame(run); }).observe(document.body, { childList: true, subtree: true });
 }
 

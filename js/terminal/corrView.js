@@ -139,7 +139,7 @@ export async function render(root, { getJson, book = () => ({}) } = {}) {
 <div class="ct-bar">${pills('view', VIEWS.filter(([k]) => k !== 'hedges' || globalThis.deskSurfaceOn?.('panel.corr.hedges') !== false), ST.view)}</div>
 <p class="tt-note">Daily log-return correlations over trailing 20, 60 and 120 trading days. Descriptive: what has moved together, not what will. The card-level web of today's book is on Analytics. ${ownerOnly(`Old page: ${ownerLink('correlations.html', 'correlations.html')}.`)}</p></div>
 <div id="ct-body" style="margin-top:14px"><div class="tt-load">Loading the correlation panel…</div></div>
-<details class="ct-admin"><summary>Admin</summary><p class="muted">The panel is rebuilt by the server every 6 hours (5 years of OANDA H4 bars, worker thread). Force a rebuild only if the time above is stale.</p><button class="btn" data-rebuild>Rebuild now</button> <span class="muted" id="ct-rb"></span></details>`;
+${globalThis.deskIsViewer?.() ? '' : '<details class="ct-admin"><summary>Admin</summary><p class="muted">The panel is rebuilt by the server every 6 hours (5 years of OANDA H4 bars, worker thread). Force a rebuild only if the time above is stale.</p><button class="btn" data-rebuild>Rebuild now</button> <span class="muted" id="ct-rb"></span></details>'}`;
     root.addEventListener('click', e => onClick(e, root, getJson, book));
     root.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest?.('.ct-click')) { e.preventDefault(); onClick(e, root, getJson, book); } });
     root.addEventListener('change', e => onChange(e, root, getJson, book));

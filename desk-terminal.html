@@ -184,6 +184,7 @@ html:not([data-role]) [data-surface]{visibility:hidden}   /* until access.js say
 html[data-role="owner"] .disclaimer{display:none}
 .sfc{display:contents}   /* a surface wrapper: invisible to layout; access.js hides the switched-off ones (js/terminal/tabRegistry.js) */
 .nolink{color:var(--tx3);cursor:default}
+[data-empty]{display:none!important}   /* access.js sweepEmpty: a card whose values are all blank for this session (its data is withheld) */
 </style>
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>

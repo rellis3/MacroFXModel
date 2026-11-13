@@ -132,8 +132,10 @@ export const SURFACES = [
 export const KINDS = ['tab', 'nav', 'widget', 'strip', 'panel'];
 export const SURFACE_IDS = SURFACES.map(s => s.id);
 export const DEFAULT_VISIBLE_IDS = SURFACES.filter(s => s.defaultVisible).map(s => s.id);
-/** Surfaces only the owner ever sees, whatever the saved switches say (the admin link itself). */
-export const ALWAYS_OWNER_IDS = ['nav.access'];
+/** Surfaces only the owner ever sees, whatever the saved switches say: every link out to another page (it would bounce a desk login to the main login)
+    and every PRIVATE surface (the owner's own area: its data routes are withheld from the desk login, so switching one on could only show an empty shell).
+    They are not listed in the admin panel and are never in a viewer's visible list. Derived from the registry, so a new private surface or link is covered automatically. */
+export const ALWAYS_OWNER_IDS = SURFACES.filter(s => s.kind === 'nav' || s.class === 'private').map(s => s.id);
 /** Surfaces every session always sees, whatever the saved switches say (Sign out: a viewer must always be able to leave). */
 export const ALWAYS_VISIBLE_IDS = ['widget.signout'];
 

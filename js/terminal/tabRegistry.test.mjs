@@ -106,15 +106,28 @@ test('the safe defaults: owner-only data is off, market data is on', () => {
 test('visibleFor: owner sees all; a viewer sees the defaults plus what the owner switched on, never the admin link', () => {
   assert.deepEqual(visibleFor('owner', {}), SURFACE_IDS);
   assert.deepEqual(visibleFor('viewer', null), DEFAULT_VISIBLE_IDS);
-  const v = visibleFor('viewer', { 'tab.read': true, 'tab.macro': false, 'nav.access': true, 'bogus.id': true });
-  assert.ok(v.includes('tab.read')); assert.ok(!v.includes('tab.macro')); assert.ok(!v.includes('bogus.id'));
+  // a SIGNAL surface can be switched on by the owner; a PRIVATE one or a link out to another page can not (its data is withheld / it would bounce)
+  const v = visibleFor('viewer', { 'panel.asset.plan': true, 'tab.macro': false, 'nav.access': true, 'tab.read': true, 'panel.ov.bookintel': true, 'nav.research': true, 'bogus.id': true });
+  assert.ok(v.includes('panel.asset.plan')); assert.ok(!v.includes('tab.macro')); assert.ok(!v.includes('bogus.id'));
+  for (const id of ['tab.read', 'panel.ov.bookintel', 'nav.research', 'nav.access']) assert.ok(!v.includes(id), `${id} is never visible to a viewer`);
   for (const id of ALWAYS_OWNER_IDS) assert.ok(!v.includes(id), `${id} is never visible to a viewer`);
 });
 
+test('ALWAYS_OWNER_IDS is every link out to another page and every private surface, and nothing else', () => {
+  const want = SURFACES.filter(s => s.kind === 'nav' || s.class === 'private').map(s => s.id);
+  assert.deepEqual([...ALWAYS_OWNER_IDS], want);
+  for (const s of SURFACES) if (s.class === 'private' || s.kind === 'nav') assert.ok(ALWAYS_OWNER_IDS.includes(s.id), s.id);
+  // switching everything on still never shows the owner's area to a viewer
+  const all = Object.fromEntries(SURFACE_IDS.map(id => [id, true]));
+  const v = visibleFor('viewer', all);
+  for (const s of SURFACES) if (s.class === 'private' || s.kind === 'nav') assert.ok(!v.includes(s.id), `${s.id} stays hidden even when switched on`);
+});
+
 test('cleanSwitches accepts known ids with booleans and nothing else', () => {
-  assert.deepEqual(cleanSwitches({ 'tab.read': true, 'tab.macro': false, updatedAt: 'x' }), { ok: true, clean: { 'tab.read': true, 'tab.macro': false } });
+  assert.deepEqual(cleanSwitches({ 'panel.asset.plan': true, 'tab.macro': false, updatedAt: 'x' }), { ok: true, clean: { 'panel.asset.plan': true, 'tab.macro': false } });
+  assert.deepEqual(cleanSwitches({ 'tab.read': true, 'nav.research': true }), { ok: true, clean: {} });   // private and link surfaces are never switchable
   assert.equal(cleanSwitches({ 'tab.nope': true }).ok, false);
-  assert.equal(cleanSwitches({ 'tab.read': 'yes' }).ok, false);
+  assert.equal(cleanSwitches({ 'panel.asset.plan': 'yes' }).ok, false);
   assert.equal(cleanSwitches([]).ok, false); assert.equal(cleanSwitches(null).ok, false);
   assert.deepEqual(cleanSwitches({ 'nav.access': true }), { ok: true, clean: {} });
 });

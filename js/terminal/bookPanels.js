@@ -24,11 +24,14 @@ const scenRead = () => once(`scen|${runDate()}`, () => getJson(`/api/scenarios?f
 const ccyView = () => D?.run?.debate?.currency?.view?.currencies ?? D?.run?.head?.book?.currencies ?? {};
 const cards = () => D?.run?.head?.book?.instruments ?? {};
 function openCard(n) { const c = D?.cards?.[n]; if (!c) return; openModal(assetCard(n, c, true)); assetChart(document.getElementById('achart'), n, c); }
+// a read the desk login may not make comes back as { ok:false, error:'owner only' } (desk-terminal.html getJson): hide the whole panel, never show its heading over a message
+const withheld = r => r?.ok === false && r?.error === 'owner only';
+const hideShell = el => { const w = el.closest?.('[data-surface]') ?? el; w.setAttribute('data-empty', ''); w.hidden = true; el.innerHTML = ''; };
 const onKey = (x, go) => { x.onclick = e => { e.preventDefault?.(); go(); }; x.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }; };
 
 // ── Overview: book intelligence ──
 async function drawBookIntel(el) {
-  if (!el || !D?.run?.head?.ok) return;
+  if (!el || !D?.run?.head?.ok || globalThis.deskSurfaceOn?.('panel.ov.bookintel') === false) return;   // the module-ready call below is not gated by the page: a viewer's book data is withheld, so the panel must never be built for them
   const draw = (risk, scen) => {
     const m = scen?.ok ? scenarioMatrix(scen, cards(), { groups: BV.concentration(cards(), risk?.ok ? risk : null) }) : null;
     const x = bookIntel({ run: D.run, risk, matrix: m });
@@ -49,7 +52,7 @@ const VIEWS = {
   gross: ['Gross exposure', 'each card\'s full size on every currency it is exposed to · node = gross, label shows net'],
 };
 async function drawBookFlow(el) {
-  if (!el) return;
+  if (!el || globalThis.deskSurfaceOn?.('panel.charts.bookflow') === false) return;
   const b = D?.run?.head?.book; if (!b) { el.innerHTML = '<p class="muted">No book today.</p>'; return; }
   const risk = await riskRead();
   const cs = cards(), cv = ccyView(), check = BV.viewCheck(cs, cv), flags = BV.concentration(cs, risk?.ok ? risk : null), tally = BV.viewTally(check);
@@ -78,7 +81,7 @@ ${body}
 
 // ── Analytics: the scenario map ──
 async function drawScenarioMap(el) {
-  if (!el) return;
+  if (!el || globalThis.deskSurfaceOn?.('panel.ana.scenmap') === false) return;
   el.innerHTML = '<div class="card muted">Running every scenario on every card…</div>';
   const [scen, risk] = await Promise.all([scenRead(), riskRead()]);
   if (!scen?.ok) { el.innerHTML = `<div class="card muted">${h(scen?.error ?? 'No scenario read yet.')}</div>`; return; }
@@ -96,6 +99,7 @@ async function drawRankReality(el) {
   if (!el) return;
   el.innerHTML = '<div class="card muted">Reading the scored days…</div>';
   const idx = await once('tr', () => getJson('/api/thesis-reality'));
+  if (withheld(idx)) return hideShell(el);   // the desk login is refused this route (it carries the book's sizes), so the ranking panel is not shown to it at all
   const dates = (idx?.dates ?? []).slice(-30);
   if (!dates.length) { el.innerHTML = `<div class="card muted">${h(idx?.error ?? 'No scored day yet: the first is built after the evening score.')}</div>`; return; }
   const days = (await Promise.all(dates.map(d => (d === idx?.day?.date ? Promise.resolve({ ok: true, day: idx.day }) : once(`tr|${d}`, () => getJson(`/api/thesis-reality?date=${d}`)))))).filter(r => r?.ok && r.day).map(r => r.day);
