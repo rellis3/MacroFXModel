@@ -1,10 +1,14 @@
 /**
  * The Analyse button (owner 2026-11-10): a deep read of ONE market, on demand, on DeepSeek. Shown on the Pair tab and
- * in the asset card pop-up. POST /api/desk-asset-analyse (js/assetAnalysis.js); today's read is kept on the server, so
- * opening the same market again is free and only "Run again" spends.
+ * in the asset card pop-up. POST /api/desk-asset-analyse (js/assetAnalysis.js).
+ * SHARED DAILY (owner 2026-11-13): the first press of the London day writes the read for EVERYONE and the button then goes for
+ * everyone ("Shared read · synced today 09:42 UK"); only the owner keeps a Refresh, which replaces the shared copy. An earlier
+ * day's read stays visible, dated, with the button back. While a colleague's read is being written the card says so and polls.
  *
  * boxHtml(inst) is the empty card; mount(box) fills it (reads [data-aa] for the market).
  */
+import { stateOf, controlsHtml, confirmReplace, pollWhile } from './sharedRead.js';
+
 const h = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const FIT = { supports: ['up', 'supports'], contradicts: ['dn', 'contradicts'], mixed: ['gold', 'mixed'], 'no data': ['', 'no data'] };
 const AGREE = { agree: ['up', 'agrees with the card'], disagree: ['dn', 'disagrees with the card'], partly: ['gold', 'partly agrees with the card'] };
@@ -35,24 +39,41 @@ ${a.gaps.length ? `<div class="lbl" style="margin-top:12px">Gaps</div>${list(a.g
 export async function mount(box) {
   const inst = box?.dataset?.aa; if (!inst) return;
   const body = box.querySelector('[data-aa-body]'), btns = box.querySelector('[data-aa-btns]');
-  const setBtn = (label, force) => {
-    btns.innerHTML = `<button class="btn" type="button" style="padding:3px 10px" title="Runs on DeepSeek, about a cent a read">${h(label)}</button>`;
-    btns.querySelector('button').onclick = () => run(force);
-  };
-  const show = r => { body.innerHTML = analysisHtml(r); setBtn('Run again', true); };
-  const run = async force => {
-    btns.querySelector('button')?.setAttribute('disabled', '');
-    body.innerHTML = `<p class="muted" style="margin:0">Analysing ${h(inst)} on DeepSeek… about 20-60 seconds.</p>`;
-    let r; try { r = await fetch('/api/desk-asset-analyse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inst, force }) }).then(x => x.json()); } catch (e) { r = { ok: false, error: e.message }; }
+  let cur = null, busy = false, pollOn = false;   // cur: the last server answer (GET or POST) for this market
+  const intro = `<p class="muted" style="margin:0">The morning book gives each market a few sentences. <b>Analyse</b> reads ${h(inst)} on its own: every driver for this kind of market checked against today's data, what contradicts the move, the bull and bear case, and the levels. Runs on DeepSeek, about a cent a read. One read a day, shared: the first press writes it for everyone.</p>`;
+  const draw = () => {
     if (!box.isConnected) return;
-    if (r?.ok) show(r); else { body.innerHTML = `<p class="muted" style="margin:0">The read failed: ${h(r?.error ?? 'no answer')}.</p>`; setBtn('Try again', !!force); }
+    const vs = stateOf(cur);
+    btns.innerHTML = controlsHtml(vs, { genLabel: `Analyse ${inst}`, genTitle: 'Runs on DeepSeek, about a cent a read. The first press of the day writes it for everyone; after that the button goes.', busy });
+    btns.querySelectorAll('[data-sr]').forEach(b => { b.onclick = () => run(b.dataset.sr === 'refresh'); });
+    if (busy) return;
+    if (cur?.ok) body.innerHTML = analysisHtml(cur) + (vs.state === 'generating' ? '<p class="tt-note">A colleague is writing today\'s read now; this one is the earlier read and will refresh itself.</p>' : '');
+    else if (vs.state === 'generating') body.innerHTML = `<p class="muted" style="margin:0">A colleague is writing today's ${h(inst)} read now. It will appear here, about 20-60 seconds.</p>`;
+    else body.innerHTML = intro;
+    if (vs.state === 'generating') watch();
   };
-  // the ✦ Analyse button on a live Assets card opens the card with this set: run at once (today's read, if any, is shown free)
+  // another user's generation is running: look again every ~5 s until it finishes, so the read appears without a reload
+  const watch = () => {
+    if (pollOn) return; pollOn = true;
+    pollWhile(async () => { const r = await get(); if (r) cur = r; const done = !r?.inflight; if (done) { pollOn = false; draw(); } return done; }, { alive: () => box.isConnected });
+  };
+  const get = async () => { try { return await fetch(`/api/desk-asset-analyse?inst=${encodeURIComponent(inst)}`, { cache: 'no-store' }).then(x => x.json()); } catch { return null; } };
+  const run = async force => {
+    if (busy) return;
+    if (force && !confirmReplace('market read')) return;
+    busy = true; draw();
+    body.innerHTML = `<p class="muted" style="margin:0">Analysing ${h(inst)} on DeepSeek… about 20-60 seconds. Everyone sees it once it is written.</p>`;
+    let r; try { r = await fetch('/api/desk-asset-analyse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inst, force }) }).then(x => x.json()); } catch (e) { r = { ok: false, error: e.message }; }
+    busy = false; if (!box.isConnected) return;
+    if (r?.ok) { cur = r; draw(); }
+    else { const keep = cur; draw(); body.innerHTML = `<p class="muted" style="margin:0">The read failed: ${h(r?.error ?? 'no answer')}.</p>` + (keep?.ok ? analysisHtml(keep) : ''); }
+  };
+  // the ✦ Analyse button on a live Assets card opens the card with this set: run at once (today's shared read, if any, is shown free)
   const auto = globalThis.aaAutoRun === inst; if (auto) globalThis.aaAutoRun = null;
-  let r = null; try { r = await fetch(`/api/desk-asset-analyse?inst=${encodeURIComponent(inst)}`, { cache: 'no-store' }).then(x => x.json()); } catch { /* offline: offer the button */ }
+  cur = await get();
   if (!box.isConnected) return;
   if (auto) box.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-  if (r?.ok) show(r);
-  else if (auto) run(false);
-  else { body.innerHTML = `<p class="muted" style="margin:0">The morning book gives each market a few sentences. <b>Analyse</b> reads ${h(inst)} on its own: every driver for this kind of market checked against today's data, what contradicts the move, the bull and bear case, and the levels. Runs on DeepSeek, about a cent a read.</p>`; setBtn(`Analyse ${inst}`, false); }
+  const vs0 = stateOf(cur);
+  draw();
+  if (auto && (vs0.state === 'none' || vs0.state === 'old') && vs0.showGenerate) run(false);
 }

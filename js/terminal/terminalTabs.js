@@ -35,6 +35,7 @@ import { createLevelChart } from '../levelChart.js';
 import { cardDrivers } from './cardExplain.js';
 import { pineForCard, oandaOf } from '../deskBookPine.js';
 import * as AAV from './assetAnalysisView.js';
+import * as SR from './sharedRead.js';
 import * as RBV from './ratesBoardView.js';
 
 const el = id => document.getElementById(id);
@@ -179,11 +180,19 @@ function linksList(links) {
 // the chain read: peeked for free on load; generated only on a click (a paid model call), as today.html does
 function readHtml(links, vals) {
   const C = T.chain, w = C.win, st = (C.read[w] ??= { state: 'idle' });
-  if (st.state === 'idle') { st.state = 'peek'; getJson(`/api/chain-read?window=${w}`).then(r => { C.read[w] = r?.ok ? { state: 'ready', data: r } : { state: 'none' }; if (C.win === w) drawChain(); }); }
+  if (st.state === 'idle') { st.state = 'peek'; getJson(`/api/chain-read?window=${w}`).then(r => { C.read[w] = r?.ok ? { state: 'ready', data: r } : { state: 'none', data: r }; if (C.win === w) drawChain(); }); }
   const r = st.data?.read, age = st.data?.ageMin;
-  const btn = `<button class="btn" data-act="read" ${st.state === 'loading' ? 'disabled' : ''} title="Writes the read from the numbers on screen. A model call: nothing is generated automatically; a read written in the last 30 minutes is returned free.">${st.state === 'loading' ? `reading… ${Math.round((Date.now() - (st.startedAt ?? Date.now())) / 1000)}s` : r ? '↻ re-read' : '✦ read the tape'}</button>`;
+  // SHARED DAILY (owner 2026-11-13): one read per window per London day. The first press writes it for everyone and the button goes
+  // for everyone; only the owner keeps a Refresh (it replaces the shared copy). The live window is an intraday snapshot: owner only.
+  const vs = SR.stateOf(st.data?.ok ? st.data : { ...(st.data ?? {}), ok: false }, { liveSnapshot: w === 'live' });
+  const btn = st.state === 'loading' ? `<button class="btn" disabled>reading… ${Math.round((Date.now() - (st.startedAt ?? Date.now())) / 1000)}s</button>`
+    : SR.controlsHtml(vs, { genLabel: '✦ read the tape', genTitle: 'Writes the read from the numbers on screen. A model call. One read a day per window, shared: the first press writes it for everyone, then the button goes.' });
+  if (vs.state === 'generating' && st.state !== 'loading' && !st.polling) {   // a colleague's generation is running: look again every ~5 s
+    st.polling = true;
+    SR.pollWhile(async () => { const r2 = await getJson(`/api/chain-read?window=${w}`); const done = !!r2 && !r2.inflight; if (done) { C.read[w] = r2.ok ? { state: 'ready', data: r2 } : { state: 'none', data: r2 }; if (C.win === w) drawChain(); } return done; }, { alive: () => C.win === w });
+  }
   const head = `<div class="ch" style="margin:0"><span class="lbl">The read · ${CB.winWord(w)}</span><span class="chip gold">AI · not backtested</span>${age != null && age >= 1440 ? `<span class="chip dn">${Math.round(age / 1440)}d old</span>` : ''}<span class="r">${btn}</span></div>`;
-  if (!r) return `<div class="tt-read">${head}<div class="muted" style="margin-top:6px">${st.state === 'peek' ? 'Looking for a cached read…' : st.state === 'loading' ? 'Reading the tape (usually under a minute).' : st.state === 'error' ? `Could not build the read: ${h(st.err ?? '')}` : `No ${CB.winWord(w)} read has been written recently. The board above is the measured chain; the button writes the trader's-voice explanation of it, over this window only.`}</div></div>`;
+  if (!r) return `<div class="tt-read">${head}<div class="muted" style="margin-top:6px">${st.state === 'peek' ? 'Looking for a cached read…' : st.state === 'loading' ? 'Reading the tape (usually under a minute). Everyone sees it once it is written.' : vs.state === 'generating' ? `A colleague is writing today's ${CB.winWord(w)} read now. It will appear here.` : st.state === 'error' ? `Could not build the read: ${h(st.err ?? '')}` : `No ${CB.winWord(w)} read has been written today. The board above is the measured chain; the button writes the trader's-voice explanation of it, over this window only.`}</div></div>`;
   const paras = String(r.read ?? '').split(/\n\s*\n|\n/).map(x => x.trim()).filter(Boolean);
   const stories = (r.stories ?? []).filter(x => x?.name && x.status !== 'absent');
   const when = st.data.generatedAt ? new Date(st.data.generatedAt).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '';
@@ -191,11 +200,12 @@ function readHtml(links, vals) {
 ${stories.length ? `<div class="tt-stories">${stories.map(x => `<span class="chip ${x.status === 'dominant' ? 'gold' : x.status === 'reloading' ? 'pur' : ''}" title="${h(`${x.legs ?? ''}${x.evidence ? ' — ' + x.evidence : ''}`)}">${h(x.name)} · ${h(x.status)}</span>`).join('')}</div>` : ''}
 ${paras.map(p => `<p>${h(p)}</p>`).join('')}
 ${r.shouldHave ? `<div class="row"><b>Should be happening, isn't:</b> ${h(r.shouldHave)}</div>` : ''}${r.next ? `<div class="row"><b>Next:</b> ${h(r.next)}</div>` : ''}${r.forFx ? `<div class="row"><b>For FX:</b> ${h(r.forFx)}</div>` : ''}
-<div class="tt-note">Written ${when ? `${h(when)} London` : ''}${age != null && age >= 2 ? ` (${age >= 120 ? `${Math.round(age / 60)}h` : `${age} min`} ago; the numbers in it are from then, the board above is current)` : ''}. An opinion in a trader's voice, not a forecast. Shared with today.html: one cached read per window for everyone.</div></div>`;
+<div class="tt-note">Written ${when ? `${h(when)} London` : ''}${age != null && age >= 2 ? ` (${age >= 120 ? `${Math.round(age / 60)}h` : `${age} min`} ago; the numbers in it are from then, the board above is current)` : ''}. An opinion in a trader's voice, not a forecast. One read per window per day, shared by everyone.</div></div>`;
 }
-async function writeRead() {
+async function writeRead(force = false) {
   const C = T.chain, w = C.win, cur = C.read[w] ?? {};
   if (cur.state === 'loading') return;
+  if (force && !SR.confirmReplace('chain read')) return;
   if (w === 'live') await loadLive();
   const now = chainNow(); if (!now) return;
   C.read[w] = { ...cur, state: 'loading', startedAt: Date.now() }; drawChain();
@@ -203,13 +213,14 @@ async function writeRead() {
   const rg = await J('/api/macro-regime-fx'), watch = T._watch;
   const setups = watch?.states ? watch.states.filter(t => t.claimId && t.firing).map(t => `  LIVE: ${String(t.label).replace(/^Setup watch · /, '')}`).join('\n') || null : null;
   const snapshot = CB.chainSnapshot({ links: now.links, vals: now.vals, win: w, policy: rg?.policy ?? null, events: D.ev ?? [], setups });
-  const r = await fetch(`/api/chain-read${cur.data?.read ? '?force=1' : ''}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ snapshot }) }).then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
+  const r = await fetch(`/api/chain-read${force ? '?force=1' : ''}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ snapshot }) }).then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
   C.read[w] = r?.ok ? { state: 'ready', data: r } : { state: 'error', data: cur.data, err: r?.error ?? 'no read' };
   if (C.win === w) drawChain();
 }
 
 function onTodayClick(ev) {
-  const C = T.chain, a = ev.target.closest?.('[data-act],[data-node],[data-link],[data-pair],[data-ccy2]'); if (!a) return;
+  const C = T.chain, a = ev.target.closest?.('[data-act],[data-sr],[data-node],[data-link],[data-pair],[data-ccy2]'); if (!a) return;
+  if (a.dataset.sr) { ev.preventDefault?.(); return writeRead(a.dataset.sr === 'refresh'); }
   if (a.dataset.pair) { ev.preventDefault(); return openPair(a.dataset.pair); }
   if (a.dataset.ccy2) { ev.preventDefault(); return ccyModal(a.dataset.ccy2); }
   if (a.dataset.node) { C.linkSel = null; C.nodeSel = C.nodeSel === a.dataset.node ? null : a.dataset.node; tip(null); return drawChain(); }

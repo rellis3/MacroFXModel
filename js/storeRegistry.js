@@ -35,6 +35,7 @@ export const STORES = {
   signal_journal_v1: R('Signal journal (forward test)', 1),
   pair_ledger_v1: R('Pair ledger (lean record)', 1),
   chain_read_v1: R('Chain read (AI narrative)', 3, { market: false }),
+  desk_shared_reads_v1: L('Desk shared daily reads: the deep read of each market, one per market per London day, written by the first desk user to press the button (js/deskSharedReads.js)', 14, { market: false }),
   eod_review_v1: R('End-of-day written review', 2, { market: false }),
   daily_snapshot_v1: R('Daily snapshot', 1),
   exhaustion_ladder_v1: R('Exhaustion-ladder fit', 8, { market: false }),

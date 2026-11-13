@@ -350,6 +350,7 @@ import { emptyBook as _oiShadowEmptyBook, syncPlan as _oiShadowSyncPlan, stepBar
 import { INTRADAY_SYMS as _CBOE_INTRA_SYMS, INTRADAY_FIELDS as _CBOE_INTRA_FIELDS, slimSnapshot as _cboeSlimSnapshot, volumeBetween as _cboeVolumeBetween, flowByStrike as _cboeFlowByStrike } from './js/cboeIntraday.js';
 import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _parseCboeChain, cboeLadder as _cboeLadder, cboeSnapshotRow as _cboeSnapshotRow, cboeOverlayInst as _cboeOverlayInst, cfdCashOffset as _cfdCashOffset, cboeShift as _cboeShift, cashRefTime as _cashRefTime } from './js/cboeChain.js';   // free delayed Cboe index-options chain (additive to CME; dashboard toggle + tracking)   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
 import { meetingProbabilities as _zqMeetingProbs } from './js/fedPathZq.js';
+import { SHARED_KV as _SR_KV, SHARED_KINDS as _SR_KINDS, dayKey as _srDayKey, rollStore as _srRoll, readToday as _srReadToday, readLatest as _srReadLatest, putRead as _srPutRead, countCall as _srCountCall, callsToday as _srCallsToday, decideRead as _srDecide, createSingleFlight as _srCreateSingleFlight, normInst as _srNormInst, CHAIN_WINDOWS as _SR_CHAIN_WINDOWS } from './js/deskSharedReads.js';
 import { CB_BANKS as _CB_BOARD_BANKS, CB_HISTORY as _CB_BOARD_HISTORY, pastDates as _cbbPastDates, shapeBank as _cbbShape, boardPayload as _cbbPayload } from './js/terminal/cbBoardCore.js';
 import { buildRatesBoard as _buildRatesBoard } from './js/terminal/ratesBoardCore.js';
 import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE, OI_PRODUCT_SPEC as _OI_SPEC } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
@@ -6390,7 +6391,7 @@ app.get('/api/research-pod/thread', async (req, res) => {
   try { res.set('Cache-Control', 'no-store'); const id = String(req.query.id ?? ''); res.json({ ok: true, id, messages: (await _rpGet(_RP.threads, {}))[id] ?? [], job: _rpThreadJobs[id] ?? null }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-app.post('/api/research-pod/thread', async (req, res) => {
+app.post('/api/research-pod/thread', _ownerOnly, async (req, res) => {
   try {
     const id = String(req.body?.id ?? ''), text = String(req.body?.text ?? '').trim().slice(0, 3000);
     if (!id || !text) return res.status(400).json({ ok: false, error: 'id and text are required' });
@@ -8542,11 +8543,44 @@ app.get('/api/desk-volcheck', async (req, res) => {
     res.json(data);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── Shared daily reads (js/deskSharedReads.js; owner 2026-11-13) ─────────────────────────────────────────────────────
+// Every FIXED, KEYED AI read on the Desk Terminal (a market's deep read, the chain read per window) is generated ONCE per
+// Europe/London day: the first desk user to press the button writes it, it is stored for everyone, and the button goes for
+// everyone. Only the owner (the main-login session) may Refresh, which replaces the shared copy. Free-form / per-question /
+// explain routes are not shared: they are OWNER-ONLY (_ownerOnly below) so nobody else can run up the model bill.
+// Single instance assumed: the in-flight lock is an in-memory Map, so two Railway instances could race into two calls (still
+// bounded by the daily guard; the later write wins). Chain reads keep living in chain_read_v1 (byWin); the market reads use
+// the one new key desk_shared_reads_v1 = { day, reads:{kind:{key:{read,generatedAt,generatedBy}}}, counts, prev }.
+function _srIsOwner(req) {
+  if (!AUTH_ENABLED) return true;   // local / sandbox runs have no login: the person running it is the owner
+  return authVerifyCookie(authParseCookies(req)[`${AUTH_COOKIE_NAME}_main`], 'main');
+}
+function _ownerOnly(req, res, next) {
+  if (_srIsOwner(req)) return next();
+  res.status(403).json({ ok: false, error: 'Owner only: this runs a free-form model call that costs money.' });
+}
+const _srFlight = _srCreateSingleFlight();
+let _srMem = null, _srLoaded = false, _srBroken = false, _srPersistP = Promise.resolve();
+const _srDay = () => _srDayKey(Date.now());
+async function _srEnsure() {
+  if (_srLoaded) return;
+  _srLoaded = true;
+  try { const raw = await kv.get(_SR_KV); _srMem = raw ? JSON.parse(raw) : null; }
+  catch (e) { console.warn('[shared-reads] store unreadable, working in memory only and not overwriting it:', e.message); _srBroken = true; _srMem = null; }
+}
+function _srStore() { _srMem = _srRoll(_srMem, _srDay()); return _srMem; }
+function _srPersist() {
+  if (_srBroken) return;
+  _srPersistP = _srPersistP.then(() => kv.put(_SR_KV, JSON.stringify(_srMem))).catch(e => console.warn('[shared-reads] persist failed:', e.message));
+}
+function _srUpdate(fn) { _srMem = fn(_srStore()); _srPersist(); return _srMem; }
+const _srHttpError = (status, message) => Object.assign(new Error(message), { status });
+
 // POST /api/desk-ask {q}: the Desk Terminal's "Ask the desk" (Phase 17, §9r). One model call over today's book, the
 // analysts' reports, the last evening reviews and the Evidence Book. Answers from those only and says when they do
 // not answer the question. One at a time, at most 60 a day.
 let _askBusy = false, _askDay = { date: null, n: 0 };
-app.post('/api/desk-ask', express.json({ limit: '16kb' }), async (req, res) => {
+app.post('/api/desk-ask', _ownerOnly, express.json({ limit: '16kb' }), async (req, res) => {
   try {
     const q = String(req.body?.q ?? '').trim().slice(0, 800);
     if (q.length < 3) return res.status(400).json({ ok: false, error: 'ask a question' });
@@ -8578,28 +8612,28 @@ Reply with JSON only: { "answer": "plain text", "sources": ["analyst ids, card n
 // POST /api/desk-asset-analyse { inst, force }: ONE market analysed on demand (the Analyse button on the Desk Terminal's
 // asset cards and Pair tab; js/assetAnalysis.js). Runs on DeepSeek (task 'desk-asset', about a cent a press), against
 // the market's own driver checklist, the morning book, the analysts' reports, its pack data, headlines and the Evidence
-// Book. Context, never a signal: it never changes a card. Kept in memory for the day (a second open is free; force=1
-// re-runs), at most 100 fresh reads a day, one at a time per market.
-const _aaCache = new Map(), _aaBusy = new Set();
-let _aaDay = { date: null, n: 0 };
+// Book. Context, never a signal: it never changes a card.
+// SHARED DAILY (2026-11-13): the first press of the London day writes the read for everyone (desk_shared_reads_v1); after that
+// every request is served the stored read and a viewer's force is ignored. Only the owner's force=1 regenerates, replacing the
+// shared copy. Two presses at once cost one call (single flight). At most 100 model calls a day.
 app.post('/api/desk-asset-analyse', express.json({ limit: '4kb' }), async (req, res) => {
-  const inst = String(req.body?.inst ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const inst = _srNormInst(req.body?.inst);
   try {
     const { buildAssetPrompt, validateAnalysis } = await import('./js/assetAnalysis.js');
     const { groupOf } = await import('./js/deskPack.js');
     if (!groupOf(inst)) return res.status(400).json({ ok: false, error: `unknown market ${inst || '(none)'}` });
-    const today = _dpLondonDate(Date.now());
-    if (_aaDay.date !== today) { _aaDay = { date: today, n: 0 }; _aaCache.clear(); }
-    const key = `${today}:${inst}`;
-    if (!req.body?.force && _aaCache.has(key)) return res.json({ ..._aaCache.get(key), cached: true });
-    if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key on the server' });
-    if (_aaDay.n >= 100) return res.status(429).json({ ok: false, error: 'the daily limit of 100 market reads is reached' });
-    if (_aaBusy.has(inst)) return res.status(409).json({ ok: false, error: `${inst} is being analysed already; try again in a moment` });
-    _aaBusy.add(inst); _aaDay.n++;
-    try {
+    await _srEnsure();
+    const owner = _srIsOwner(req), today = _srDay(), flightKey = `asset:${inst}`;
+    const st = _srStore(), have = _srReadToday(st, 'asset', inst);
+    const d = _srDecide({ isOwner: owner, force: !!req.body?.force, hasToday: !!have, inflight: _srFlight.has(flightKey), calls: _srCallsToday(st, 'asset'), cap: _SR_KINDS.asset.cap });
+    if (d.action === 'serve') return res.json({ ...have.read, generatedAt: have.generatedAt, generatedBy: have.generatedBy, cached: true, shared: true, today, role: owner ? 'owner' : 'viewer' });
+    if (d.action === 'cap') return res.status(429).json({ ok: false, error: `the daily limit of ${_SR_KINDS.asset.cap} market reads is reached` });
+    if (d.action === 'generate' && !_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key on the server' });
+    const out = await _srFlight.run(flightKey, async () => {
+      _srUpdate(x => _srCountCall(x, 'asset'));
       const run = await _drLoad(today).catch(() => null);
       const pack = _dpLatest?.date === today ? _dpLatest : await _dpLoad(today).catch(() => null);
-      const newsText = await _nwLoad().then(st => _nwText(_nwPick(st.wire, { sinceMs: Date.now() - 24 * 3600e3, tier: 2, limit: 30 }))).catch(() => '');
+      const newsText = await _nwLoad().then(s2 => _nwText(_nwPick(s2.wire, { sinceMs: Date.now() - 24 * 3600e3, tier: 2, limit: 30 }))).catch(() => '');
       const { system, prompt, meta } = buildAssetPrompt({ name: inst, run, pack, ledger: _DESK_EVIDENCE, newsText, date: today });
       let r = await callModel({ task: 'desk-asset', system, prompt, maxTokens: 6_000, label: `desk:asset:${inst}` });
       let v = validateAnalysis(_parseModelJson(r.text ?? _antText(r), 'desk:asset'));
@@ -8607,19 +8641,39 @@ app.post('/api/desk-asset-analyse', express.json({ limit: '4kb' }), async (req, 
         r = await callModel({ task: 'desk-asset', system, prompt: `${prompt}\n\nYour previous reply could not be used (${v.errors.join('; ')}). Reply again with the JSON object only, shorter.`, maxTokens: 6_000, label: `desk:asset:${inst}` });
         v = validateAnalysis(_parseModelJson(r.text ?? _antText(r), 'desk:asset'));
       }
-      if (!v.ok) return res.status(502).json({ ok: false, error: `the model did not return a usable read (${v.errors.join('; ')})` });
-      const out = { ok: true, inst, date: today, at: new Date().toISOString(), analysis: v.value, model: r.model ?? null, provider: r.provider ?? null,
+      if (!v.ok) throw _srHttpError(502, `the model did not return a usable read (${v.errors.join('; ')})`);
+      const at = new Date().toISOString();
+      const read = { ok: true, inst, date: today, at, analysis: v.value, model: r.model ?? null, provider: r.provider ?? null,
         bookDate: run?.head?.ok ? run.date : null, card: run?.head?.ok ? (run.head.book.instruments?.[inst] ?? null) : null, meta, label: 'context, untested: never changes a card' };
-      _aaCache.set(key, out);
-      res.json(out);
-    } finally { _aaBusy.delete(inst); }
-  } catch (e) { _aaBusy.delete(inst); res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
+      _srUpdate(x => _srPutRead(x, 'asset', inst, read, { by: owner ? 'owner' : 'viewer', at }));
+      return { read, generatedAt: at, generatedBy: owner ? 'owner' : 'viewer' };
+    });
+    res.json({ ...out.read, generatedAt: out.generatedAt, generatedBy: out.generatedBy, cached: d.action === 'join', shared: true, today, role: owner ? 'owner' : 'viewer' });
+  } catch (e) { res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
 });
-// GET /api/desk-asset-analyse?inst=GOLD: today's read if one was made (free; never calls a model).
-app.get('/api/desk-asset-analyse', (req, res) => {
+// GET /api/desk-asset-analyse?inst=GOLD: the newest shared read (today's, else yesterday's marked stale), whether another
+// user is generating it now, and the caller's role. Free: never calls a model.
+app.get('/api/desk-asset-analyse', async (req, res) => {
   res.set('Cache-Control', 'no-store');
-  const inst = String(req.query.inst ?? '').toUpperCase().replace(/[^A-Z0-9]/g, ''), hit = _aaCache.get(`${_dpLondonDate(Date.now())}:${inst}`);
-  res.json(hit ? { ...hit, cached: true } : { ok: false, none: true });
+  await _srEnsure();
+  const inst = _srNormInst(req.query.inst), owner = _srIsOwner(req), today = _srDay(), flightKey = `asset:${inst}`;
+  const meta = { today, role: owner ? 'owner' : 'viewer', inflight: _srFlight.has(flightKey) };
+  const hit = _srReadLatest(_srStore(), 'asset', inst);
+  res.json(hit ? { ...hit.read, generatedAt: hit.generatedAt, generatedBy: hit.generatedBy, cached: true, shared: true, stale: _srDayKey(hit.generatedAt) !== today, ...meta } : { ok: false, none: true, ...meta });
+});
+// GET /api/desk-shared-reads[?kinds=asset,chain]: which shared reads exist, who may generate, what is generating, the day's
+// model-call counts. Metadata only (no read bodies), so the page can hide a button a colleague already used. Never calls a model.
+app.get('/api/desk-shared-reads', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    await _srEnsure();
+    const want = new Set(String(req.query.kinds ?? 'asset,chain').split(',').map(x => x.trim()).filter(Boolean));
+    const st = _srStore(), today = _srDay(), reads = {};
+    if (want.has('asset')) reads.asset = Object.fromEntries(Object.entries(st.reads?.asset ?? {}).map(([k, v]) => [k, { generatedAt: v.generatedAt, by: v.generatedBy }]));
+    if (want.has('chain')) { reads.chain = {}; for (const w of _SR_CHAIN_WINDOWS) { const l = await _chainLatest(w); if (l) reads.chain[w] = { generatedAt: l.generatedAt, by: l.generatedBy ?? null }; } }
+    res.json({ ok: true, day: today, role: _srIsOwner(req) ? 'owner' : 'viewer', reads, inflight: _srFlight.keys(),
+      caps: Object.fromEntries(Object.entries(_SR_KINDS).map(([k, v]) => [k, { used: _srCallsToday(st, k), cap: v.cap }])) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/desk-history?days=30: one compact row per desk day for the Desk Terminal's analytics (the currency
 // ranking and biases, the tone, and the day's score where there is one). Cached 15 minutes.
@@ -9839,7 +9893,7 @@ Respond with a single valid JSON object, no markdown:
 {"terms":[{"term":"a term or phrase used in the read, in the order it appears","plain":"one or two sentences: what it means, in plain words, and why it matters here"}],"differences":"one short paragraph (60-100 words): the two or three distinctions a beginner most needs to hold apart to follow this read -- e.g. real yield vs breakeven, front end vs long end, dominant vs overshadowed -- each in one sentence","oneLine":"the whole read in one plain sentence a beginner could repeat"}
 List every term a beginner would stumble on (8-14 terms). Do not list plain words.`;
 }
-app.post('/api/explain', async (req, res) => {
+app.post('/api/explain', _ownerOnly, async (req, res) => {
   if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
   try {
     const { item, ctx } = req.body ?? {};
@@ -9869,7 +9923,7 @@ app.post('/api/explain', async (req, res) => {
 const _oixCache = new Map();
 const _OIX_TTL_MS = 10 * 60_000, _OIX_DAILY_CAP = 80;
 let _oixDay = '', _oixCount = 0;
-app.post('/api/oi-explain', async (req, res) => {
+app.post('/api/oi-explain', _ownerOnly, async (req, res) => {
   if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
   try {
     const b = req.body ?? {};
@@ -10015,56 +10069,76 @@ app.post('/api/eod-review', express.json({ limit: '256kb' }), async (req, res) =
 
 // Free read of whatever is cached -- no model call. The page shows this on load
 // and only generates when the reader clicks.
+// The newest chain read for a window: the memory copy, or the KV copy when that is newer.
+async function _chainLatest(win) {
+  const w = _chainWin(win);
+  let latest = _chainReadCaches[w].data;
+  try { const st = await _loadChainReadStore(w); if (st?.latest && (!latest || Date.parse(st.latest.generatedAt) > (Date.parse(latest.generatedAt) || 0))) latest = st.latest; } catch { /* memory copy will do */ }
+  return latest;
+}
 app.get('/api/chain-read', async (req, res) => {
-  // Whatever was last written, however old -- the page shows its time stamp.
-  // `fresh` says whether a POST without force would return it (under 30 min).
-  const win = _chainWin(req.query.window);
-  let latest = _chainReadCaches[win].data, history = [];
-  try { const st = await _loadChainReadStore(win); if (st?.latest) { if (!latest || Date.parse(st.latest.generatedAt) > (Date.parse(latest.generatedAt) || 0)) latest = st.latest; history = st.history; } } catch { /* memory copy will do */ }
-  if (!latest) return res.json({ ok: false, none: true });
+  // Whatever was last written, however old -- the page shows its time stamp. SHARED DAILY (2026-11-13): `sharedToday` says
+  // a read from today's London day exists, in which case a viewer has no button; `inflight` says someone is writing it now.
+  const win = _chainWin(req.query.window), owner = _srIsOwner(req), today = _srDay();
+  const meta = { window: win, today, role: owner ? 'owner' : 'viewer', inflight: _srFlight.has(`chain:${win}`) };
+  let history = [];
+  try { const st = await _loadChainReadStore(win); if (st) history = st.history ?? []; } catch { /* history is a nicety */ }
+  const latest = await _chainLatest(win);
+  if (!latest) return res.json({ ok: false, none: true, ...meta });
   const ageMs = Date.now() - (Date.parse(latest.generatedAt) || 0);
   res.json({ ok: true, cached: true, fresh: ageMs < _chainReadTtl(win), ageMin: Math.round(ageMs / 60_000), ...latest,
-    window: win, earlier: history.map(h => ({ generatedAt: h.generatedAt, hook: h.read?.hook ?? null })) });
+    ...meta, sharedToday: _srDayKey(latest.generatedAt) === today, earlier: history.map(h => ({ generatedAt: h.generatedAt, hook: h.read?.hook ?? null })) });
 });
+// POST /api/chain-read: SHARED DAILY per window (1, 5, 20, live). The first press of the London day writes the read for
+// everyone; later requests are served it. Only the owner's force=1 regenerates and replaces it. The 'live' window is an
+// intraday snapshot, so only the owner generates it. Two presses at once cost one call. At most 40 model calls a day.
 app.post('/api/chain-read', async (req, res) => {
-  if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
   try {
     const { snapshot } = req.body ?? {};
-    if (!snapshot) return res.status(400).json({ error: 'Missing snapshot' });
-    const force = req.query.force === '1';
-    // One read per half hour for everyone. The snapshot's own stamp is the cache
-    // key so a new trading day (or a fresh chain) is never served yesterday's read.
+    if (!snapshot || typeof snapshot !== 'object') return res.status(400).json({ error: 'Missing snapshot' });
+    if (JSON.stringify(snapshot).length > 60_000) return res.status(413).json({ error: 'snapshot too large' });
+    await _srEnsure();
+    const owner = _srIsOwner(req), force = req.query.force === '1', today = _srDay();
     const win = _chainWin(snapshot.window);
     snapshot.window = win;
-    const ck = `${String(snapshot.asOf ?? '').slice(0, 13)}${win === 20 ? '' : `|w${win}`}`;   // the 20-day key stays as it was, so a warmed read still matches
-    const cache = _chainReadCaches[win];
-    if (!force && cache.data && cache.key === ck && Date.now() - cache.at < _chainReadTtl(win))
-      return res.json({ ok: true, cached: true, window: win, ...(cache.data) });
-    let headlines = [];
-    try { headlines = await _fetchYahooHeadlines(); } catch { /* prompt tolerates absence */ }
-    const prompt = buildChainReadPrompt(snapshot, headlines);
-    const antRes = await callModel({ task: 'chain', maxTokens: 4000,
-    // THE LEDGER AS STANDING CONTENT. ~34k tokens, identical on every call of this task,
-    // and it used to sit in the MIDDLE of a prompt whose opening paragraphs are today's
-    // snapshot -- so it was re-sent and re-billed every time and no cache could ever hit,
-    // because a cache only hits on a stable PREFIX. Moving it in front of the volatile
-    // half is the whole saving. It also belongs here on the merits: standing instruction
-    // is what a system prompt is for, and the snapshot is the only thing that changes.
-      standing: _evidenceForPrompt(),
-      system: 'You are a former fixed-income trader explaining the macro tape after the close. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
-      prompt: prompt });
-    const j = antRes;
-    const txt = _antText(j);
-    const read = _parseModelJson(txt, 'chain-read');
-    if (!read) return res.status(502).json({ error: `model did not return parseable JSON${j.stop_reason === 'max_tokens' ? ' (response truncated at the token cap)' : ''} -- press re-read once more` });
-    const data = { read, generatedAt: new Date().toISOString(), headlineCount: headlines.length, snapshotKey: ck, window: win };
-    _chainReadCaches[win] = { at: Date.now(), data, key: ck };
-    _persistChainRead(data, win).catch(e => console.warn('[chain-read] persist failed:', e.message));
-    res.json({ ok: true, cached: false, fresh: true, ageMin: 0, ...data });
+    const flightKey = `chain:${win}`;
+    const latest = await _chainLatest(win), st = _srStore();
+    const d = _srDecide({ isOwner: owner, force, hasToday: !!latest && _srDayKey(latest.generatedAt) === today, inflight: _srFlight.has(flightKey),
+      calls: _srCallsToday(st, 'chain'), cap: _SR_KINDS.chain.cap, liveSnapshot: win === 'live' });
+    if (d.action === 'serve') return res.json({ ok: true, cached: true, shared: true, window: win, today, role: owner ? 'owner' : 'viewer', ...latest });
+    if (d.action === 'forbid') return res.status(403).json({ error: 'The live read is written by the owner only.' });
+    if (d.action === 'cap') return res.status(429).json({ error: `the daily limit of ${_SR_KINDS.chain.cap} chain reads is reached` });
+    if (d.action === 'generate' && !_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
+    const data = await _srFlight.run(flightKey, async () => {
+      _srUpdate(x => _srCountCall(x, 'chain'));
+      const ck = `${String(snapshot.asOf ?? '').slice(0, 13)}${win === 20 ? '' : `|w${win}`}`;   // the 20-day key stays as it was, so a warmed read still matches
+      let headlines = [];
+      try { headlines = await _fetchYahooHeadlines(); } catch { /* prompt tolerates absence */ }
+      const prompt = buildChainReadPrompt(snapshot, headlines);
+      const antRes = await callModel({ task: 'chain', maxTokens: 4000,
+      // THE LEDGER AS STANDING CONTENT. ~34k tokens, identical on every call of this task,
+      // and it used to sit in the MIDDLE of a prompt whose opening paragraphs are today's
+      // snapshot -- so it was re-sent and re-billed every time and no cache could ever hit,
+      // because a cache only hits on a stable PREFIX. Moving it in front of the volatile
+      // half is the whole saving. It also belongs here on the merits: standing instruction
+      // is what a system prompt is for, and the snapshot is the only thing that changes.
+        standing: _evidenceForPrompt(),
+        system: 'You are a former fixed-income trader explaining the macro tape after the close. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
+        prompt: prompt });
+      const j = antRes;
+      const txt = _antText(j);
+      const read = _parseModelJson(txt, 'chain-read');
+      if (!read) throw _srHttpError(502, `model did not return parseable JSON${j.stop_reason === 'max_tokens' ? ' (response truncated at the token cap)' : ''} -- press re-read once more`);
+      const out = { read, generatedAt: new Date().toISOString(), headlineCount: headlines.length, snapshotKey: ck, window: win, generatedBy: owner ? 'owner' : 'viewer' };
+      _chainReadCaches[win] = { at: Date.now(), data: out, key: ck };
+      _persistChainRead(out, win).catch(e => console.warn('[chain-read] persist failed:', e.message));
+      return out;
+    });
+    res.json({ ok: true, cached: d.action === 'join', shared: true, fresh: true, ageMin: 0, today, role: owner ? 'owner' : 'viewer', ...data });
   } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
 
-app.post('/api/currency-analysis', async (req, res) => {
+app.post('/api/currency-analysis', _ownerOnly, async (req, res) => {
   if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
   try {
     const { ccy, snapshot, mode } = req.body ?? {};
@@ -10081,7 +10155,7 @@ app.post('/api/currency-analysis', async (req, res) => {
   } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
 
-app.post('/api/analysis', async (req, res) => {
+app.post('/api/analysis', _ownerOnly, async (req, res) => {
   // Was ANT_KEY-only. callModel picks the provider for this task and throws if THAT
   // one has no key, so gating on Anthropic would 503 a working DeepSeek setup.
   if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY in Railway)' });
@@ -10128,7 +10202,7 @@ app.post('/api/analysis', async (req, res) => {
 });
 
 // ── Historical analysis synthesis — sends statistical summary to Claude ────────
-app.post('/api/analysis-historical', async (req, res) => {
+app.post('/api/analysis-historical', _ownerOnly, async (req, res) => {
   if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
 
   const { summary } = req.body ?? {};
@@ -11056,7 +11130,7 @@ app.get('/api/morning-brief/status', (_req, res) => {
   const j = _briefJob; res.set('Cache-Control', 'no-store');
   res.json({ ok: true, running: _morningBriefRunning, job: j ? { mode: j.mode, status: j.status, startedAt: j.startedAt, finishedAt: j.finishedAt ?? null, error: j.error ?? null, payload: j.status === 'done' ? j.payload : null } : null });
 });
-app.post('/api/morning-brief', express.json({ limit: '64kb' }), async (req, res) => {
+app.post('/api/morning-brief', _ownerOnly, express.json({ limit: '64kb' }), async (req, res) => {
   if (_morningBriefRunning) return res.status(409).json({ ok: false, error: 'a morning brief is already generating' });
   _morningBriefRunning = true;
   if (req.query?.async === '1') {
