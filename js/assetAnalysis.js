@@ -16,6 +16,7 @@
  */
 import { groupOf, instrumentLegs } from './deskPack.js';
 import { groupData, selectEvidence, evidenceBlock } from './deskRoles.js';
+import { scrubText } from './deskViewerView.js';
 
 /**
  * What moves each kind of market. Each driver names what to look for in the data; the model must reconcile the
@@ -165,4 +166,77 @@ ${ANALYSIS_SCHEMA}`;
   ];
   const prompt = `Market: ${name} (${g}). Date: ${date ?? pack?.date ?? run?.date ?? 'unknown'}. Book written: ${run?.finishedAt ?? 'no book'}.\n\n${sections.map(([t, x]) => `## ${t}\n${x}`).join('\n\n')}\n\nAnalyse ${name} now. JSON only.`;
   return { system, prompt, meta: { group: g, legs, drivers: drivers.length, evidence: ev.map(e => e.id), hasCard: !!card, hasPack: !!own, chars: system.length + prompt.length } };
+}
+
+// ── The SHARED read (owner 2026-11-13: the desk login is an education tool, not a signal service) ─────────────────────────────────────────────────────
+// ONE stored copy is shown to every desk user, so it is written as analysis and never as advice: what the data shows, the bias of the day as an
+// observation, the drivers, what to watch. It is NOT given the morning card's size, plan or invalidation, and the market's own pack data has its
+// trade-decision keys stripped. The owner's private version (the card, the plan, the levels as the desk wrote them) is buildAssetPrompt() above, under
+// its own owner-only key (kind 'assetdesk'). The reply is checked by validateSharedRead() in js/deskViewerView.js.
+export const SHARED_ANALYSIS_SCHEMA = `{
+  "headline": "one sentence: what this market is doing today and why",
+  "drivers": [ { "driver": "name from the checklist", "reading": "what today's data shows, with the number and its source", "fits": "supports | contradicts | mixed | no data" } ],
+  "contradictions": ["any driver that argues against the price move, and what would explain it; empty if none"],
+  "bull": "the best case for higher prices today, 1-3 sentences",
+  "bear": "the best case for lower prices today, 1-3 sentences",
+  "bias": "bullish | bearish | neutral | mixed: what the data leans towards today. An observation, not a recommendation",
+  "biasWhy": "one or two sentences: why the data leans that way",
+  "levels": "reference levels from the data only: the forecast range lines, options walls, swing map. Where the day's range may sit; never an entry, stop, target or invalidation",
+  "watch": ["what to watch in the next session that would change the read: scheduled events, data, levels where the data says something happens"],
+  "gaps": ["data the read needed and did not have"],
+  "confidence": "low | medium | high"
+}`;
+const TRADE_KEY = /trade[-_]?decision|\bplan\b|entry|stop|target|zone|invalid|size|tp\b|sl\b/i;
+/** A copy of obj without any key that names a trade plan (entry, stop, target, zone, invalidation, size, trade-decision). */
+export function stripTradeKeys(obj) {
+  if (Array.isArray(obj)) return obj.map(stripTradeKeys);
+  if (obj && typeof obj === 'object') return Object.fromEntries(Object.entries(obj).filter(([k]) => !TRADE_KEY.test(k)).map(([k, v]) => [k, stripTradeKeys(v)]));
+  return obj;
+}
+export function buildSharedAssetPrompt({ name, run = null, pack = null, ledger = [], newsText = '', date = null }) {
+  const g = groupOf(name);
+  if (!g) throw new Error(`unknown market ${name}`);
+  const legs = instrumentLegs(name) ?? [];
+  const drivers = DRIVERS[g] ?? FX_DRIVERS;
+  const book = run?.head?.ok ? run.head.book : null;
+  const card = book?.instruments?.[name] ?? null;
+  const biasOnly = x => (x ? { rating: x.rating, conviction: x.conviction, why: scrubText(x.why, 600) } : null);
+  const deskView = biasOnly(run?.debate?.assets?.[g]?.view?.instruments?.[name] ?? null);
+  const ccyViews = run?.debate?.currency?.view?.currencies ?? null;
+  const legViews = Object.fromEntries(legs.map(c => [c, book?.currencies?.[c] ?? ccyViews?.[c] ?? null]));
+  const ranking = run?.debate?.currency?.view?.ranking ?? null;
+  const globalView = run?.debate?.global?.view ?? (book ? { tone: book.global?.tone, summary: book.global?.summary } : null);
+  const analysts = Object.fromEntries(Object.entries(run?.analysts ?? {}).filter(([, a]) => a?.ok && a.report)
+    .map(([id, a]) => [id, { headline: scrubText(a.report.headline, 300), confidence: a.report.confidence,
+      points: (a.report.points ?? []).map(p => ({ claim: scrubText(p.claim, 400), evidence: scrubText(p.evidence, 300), impact: p.impact })).filter(p => p.claim), gaps: a.report.gaps ?? [] }]));
+  const own = pack ? groupData(pack, [name])[name] : null;
+  const ev = selectEvidence(ledger, EVIDENCE_DOMAINS[g] ?? ['price', 'volatility'], { max: 25 });
+
+  const system = `You are the desk's analyst for ONE market: ${name}. This read is stored once and shown to EVERY reader of an educational macro dashboard, so it teaches and informs and never advises. Your job is a deeper read of this market alone, top-down: the global tone, then the currency legs (${legs.join('/') || 'none'}), then the market's own drivers.
+
+Work through EVERY driver in the checklist. For each one, say what today's data shows (quote the number and the feed or analyst it came from) and whether it supports the price move, contradicts it, is mixed, or is not in the data. Then reconcile them: where a driver contradicts the move (for example gold rising while real yields rise), say so plainly and give the explanations the data allows, ranked, rather than a story that ignores the contradiction.
+
+Rules:
+- Use only the material below. Never invent a number, a level or a headline. If a driver has no data, say "no data" and list it under gaps.
+- NEVER give a trade. No buy, sell, long or short instruction; no entry, stop, stop-loss, target, take-profit, invalidation level, position size or risk-reward; no "best way to trade it". State the bias of the day as an observation of what the data leans towards, and say what to watch and which scheduled events carry risk.
+- Levels are reference points only: where the forecast range, options walls or the swing map say the day's range may sit. Quote them in price from the material given; never as something to act on.
+- An Evidence Book entry marked null or underpowered was tested and found no reliable edge: never present it as working.
+- Be direct. Every field short: one to three sentences.
+- Reply with JSON only, no text before or after it, in exactly this shape:
+${SHARED_ANALYSIS_SCHEMA}`;
+
+  const sections = [
+    ['Driver checklist for this market', drivers.map((d, i) => `${i + 1}. ${d}`).join('\n')],
+    ['The desk\'s bias for this market (an observation, not a position)', card ? cut(biasOnly(card), 2000) : '(no desk bias for this market today: the morning run is missing or failed)'],
+    ['The asset desk\'s view', deskView ? cut(deskView, 1500) : '(none)'],
+    ['Global ruling', globalView ? cut({ tone: globalView.tone, conviction: globalView.conviction, summary: scrubText(globalView.summary, 800), drivers: globalView.drivers }, 3000) : '(none)'],
+    [`Currency rulings for the legs (${legs.join(', ')})`, cut({ legs: Object.fromEntries(Object.entries(legViews).map(([c, v]) => [c, v ? { bias: v.bias, conviction: v.conviction, why: scrubText(v.why, 500) } : null])), ranking }, 3000)],
+    ['This market\'s own data (vol lines, session so far, forecast levels in price, implied vol, swing map)', own ? cut(stripTradeKeys(own), 30_000) : '(no Desk Pack today)'],
+    ['Analysts\' reports', Object.keys(analysts).length ? cut(analysts, 70_000) : '(no analyst reports today)'],
+    ['Headlines, last 24 hours, tier 1-2 (context, never a signal on its own)', newsText ? cut(newsText, 12_000) : '(none)'],
+    ['Evidence Book entries for this area', evidenceBlock(ev)],
+    ['Book risks and gaps', book ? cut({ risks: (book.risks ?? []).map(r => scrubText(r, 300)).filter(Boolean), gaps: book.gaps }, 3000) : '(none)'],
+  ];
+  const prompt = `Market: ${name} (${g}). Date: ${date ?? pack?.date ?? run?.date ?? 'unknown'}. Analysis written: ${run?.finishedAt ?? 'no morning run'}.\n\n${sections.map(([t, x]) => `## ${t}\n${x}`).join('\n\n')}\n\nAnalyse ${name} now. JSON only.`;
+  return { system, prompt, meta: { group: g, legs, drivers: drivers.length, evidence: ev.map(e => e.id), hasCard: !!card, hasPack: !!own, chars: system.length + prompt.length, audience: 'shared' } };
 }

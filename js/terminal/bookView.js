@@ -135,7 +135,7 @@ export function concentration(cards, risk = null, { min = 3 } = {}) {
   }
   return out.sort((a, b) => b.units - a.units || b.cards.length - a.cards.length);
 }
-const sideWord = (s, k) => (k === EQUITY ? (s > 0 ? 'long equities' : 'short equities') : `${s > 0 ? 'long' : 'short'} ${k}`);
+const sideWord = (s, k) => { const w = globalThis.deskIsViewer?.() ? (s > 0 ? 'bullish' : 'bearish') : (s > 0 ? 'long' : 'short'); return k === EQUITY ? `${w} equities` : `${w} ${k}`; };   // the desk login reads a lean, not a position
 /** One plain sentence for a flag. */
 export function flagText(f, { days = null } = {}) {
   const b = f.bets ? `, ~${f.bets.bets} independent bet${f.bets.bets === 1 ? '' : 's'}${f.bets.of < f.cards.length ? ` among the ${f.bets.of} with price history` : ''}${days ? ` on the last ${days} sessions' correlations` : ''}` : '';
@@ -190,7 +190,7 @@ export function flowSvg(cards, view, { tone = '', ranking = [], ccyView = {}, se
   const right = live.map(([n, c]) => legsOf[n].map(l => {
     const h = l.w * scale, src = cy[l.leg], dst = ky[n];
     const col = l.side > 0 ? UP : l.side < 0 ? DN : FL;
-    const r = ribbon(colX[1] + bw, src.y + src.used, h, colX[2], dst.y + dst.used, Math.min(h, dst.h), col, 0.34, `${n}: ${l.side > 0 ? 'long' : l.side < 0 ? 'short' : 'uses'} ${l.leg} · ${r2(l.w)}`, dim(l.leg));
+    const r = ribbon(colX[1] + bw, src.y + src.used, h, colX[2], dst.y + dst.used, Math.min(h, dst.h), col, 0.34, `${n}: ${l.side > 0 ? (globalThis.deskIsViewer?.() ? 'bullish' : 'long') : l.side < 0 ? (globalThis.deskIsViewer?.() ? 'bearish' : 'short') : 'uses'} ${l.leg} · ${r2(l.w)}`, dim(l.leg));
     src.used += h; dst.used += Math.min(h, dst.h); return r;
   }).join('')).join('');
   const bias = c => { const b = Number(ccyView?.[c]?.bias); return Number.isFinite(b) ? b : null; };

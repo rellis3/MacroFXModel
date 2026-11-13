@@ -118,7 +118,7 @@ const HAND_FEEDS = [
     purpose: 'The curve, real yields, term premium and the funding plumbing (SOFR, EFFR, IORB, SRF, RRP, discount window).',
     details: 'Keyless fredgraph CSVs plus the NY Fed SOFR 99th percentile.',
     refresh: 'Every 6h, plus a boot run 7 min after a deploy; also refreshed on request when older than 6h. In memory, so a deploy empties it until then.',
-    store: '_rates (memory)', endpoints: ['/api/rates'], health: ['rates'], series: ['rates'], hosts: ['newyorkfed.org'] },
+    store: '_rates (memory)', endpoints: ['/api/rates', '/api/rates-board'], health: ['rates'], series: ['rates'], hosts: ['newyorkfed.org'] },
   { id: 'chapters', name: 'Curve & inflation chapters', provider: 'FRED', category: 'rates',
     purpose: 'The full Treasury curve, TIPS, breakevens, CPI/PCE/PPI and wages for the chapter pages.',
     details: '21 keyless CSV series plus legs borrowed from the drill bundle.',

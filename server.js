@@ -185,6 +185,11 @@ import { BOJ_MEETINGS, pendingAsOf as bojPendingAsOf } from './js/bojCalendar.js
 import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl as bojStatementUrl, outlookViewUrl as bojOutlookViewUrl, outlookFullUrl as bojOutlookFullUrl, opinionsUrl as bojOpinionsUrl, minutesPdfUrl as bojMinutesPdfUrl } from './js/bojFetch.js';
 import { RBNZ_MEETINGS, pendingAsOf as rbnzPendingAsOf, allReleases as rbnzAllReleases } from './js/rbnzCalendar.js';
 import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote, fetchOcrDecisions as rbnzFetchOcrDecisions, ocrActualFor as rbnzOcrActualFor } from './js/rbnzFetch.js';
+import { sanitizerFor as _deskViewerSanitiser, sanitizeStoredRead as _deskSanitizeStored, validateSharedRead as _validateSharedRead } from './js/deskViewerView.js';   // what a viewer is shown of the desk's own outputs (the lens: analysis, not signals)
+import { viewerMayCall as _deskViewerMayCall, deskLoginDecision as _deskLoginDecision } from './js/deskAccess.js';                       // what a desk-login VIEWER may call (js/deskAccess.js)
+import { deskLoginPage as _deskLoginPage } from './js/deskLoginPage.js';                  // the desk zone's sign-in page (js/deskLoginPage.js)
+import { logoutPlan as _logoutPlan, clearCookieHeader as _clearCookieHeader, sameSiteOk as _logoutSameSiteOk } from './js/deskLogout.js';   // what /logout clears and where it goes (desk, all, library, education, main)
+import { visibleFor as _deskVisibleFor, cleanSwitches as _deskCleanSwitches, savedFor as _deskSavedFor, SCHEMA as _DESK_SCHEMA } from './js/terminal/tabRegistry.js';   // the Desk Terminal surface registry
 import { RBA_MEETINGS, pendingAsOf as rbaPendingAsOf, allReleases as rbaAllReleases } from './js/rbaCalendar.js';
 import { FETCHERS as RBA_FETCHERS, extractVote as rbaExtractVote } from './js/rbaFetch.js';
 import { BOC_MEETINGS, pendingAsOf as bocPendingAsOf, allReleases as bocAllReleases } from './js/bocCalendar.js';
@@ -205,6 +210,7 @@ import { compareForecastLines as _compareForecastLines } from './js/forecastDrif
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
 import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';
+import { buildMacroBoard as _buildMacroBoard, flattenAhead as _macroFlattenAhead } from './js/terminal/macroEnginesCore.js';
 import { INTL_YIELDS as _INTL_YIELDS } from './js/intlYields.js';
 import { parseBubaCsv as _parseBubaCsv } from './js/intlYields.js';
 import { buildFlowChain as _buildFlowChain } from './js/flowChainSources.js';
@@ -349,6 +355,9 @@ import { emptyBook as _oiShadowEmptyBook, syncPlan as _oiShadowSyncPlan, stepBar
 import { INTRADAY_SYMS as _CBOE_INTRA_SYMS, INTRADAY_FIELDS as _CBOE_INTRA_FIELDS, slimSnapshot as _cboeSlimSnapshot, volumeBetween as _cboeVolumeBetween, flowByStrike as _cboeFlowByStrike } from './js/cboeIntraday.js';
 import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _parseCboeChain, cboeLadder as _cboeLadder, cboeSnapshotRow as _cboeSnapshotRow, cboeOverlayInst as _cboeOverlayInst, cfdCashOffset as _cfdCashOffset, cboeShift as _cboeShift, cashRefTime as _cashRefTime } from './js/cboeChain.js';   // free delayed Cboe index-options chain (additive to CME; dashboard toggle + tracking)   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
 import { meetingProbabilities as _zqMeetingProbs } from './js/fedPathZq.js';
+import { SHARED_KV as _SR_KV, SHARED_KINDS as _SR_KINDS, dayKey as _srDayKey, rollStore as _srRoll, readToday as _srReadToday, readLatest as _srReadLatest, putRead as _srPutRead, countCall as _srCountCall, callsToday as _srCallsToday, decideRead as _srDecide, createSingleFlight as _srCreateSingleFlight, normInst as _srNormInst, CHAIN_WINDOWS as _SR_CHAIN_WINDOWS } from './js/deskSharedReads.js';
+import { CB_BANKS as _CB_BOARD_BANKS, CB_HISTORY as _CB_BOARD_HISTORY, pastDates as _cbbPastDates, shapeBank as _cbbShape, boardPayload as _cbbPayload } from './js/terminal/cbBoardCore.js';
+import { buildRatesBoard as _buildRatesBoard } from './js/terminal/ratesBoardCore.js';
 import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE, OI_PRODUCT_SPEC as _OI_SPEC } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
 import { buildOIZones, explainNoZones, oiSizeCalibrationStats as _oiSizeCalibrationStats } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
@@ -872,6 +881,15 @@ const AUTH_PASSWORDS     = {
   education: process.env.EDUCATION_PASSWORD  || '',
 };
 const AUTH_ENABLED = !!AUTH_SECRET && !!AUTH_PASSWORDS.main && !!AUTH_PASSWORDS.education;
+// ── Desk login (2026-11-13) ─────────────────────────────────────────────────
+// A third password zone, 'desk', for people the owner shows the Desk Terminal to. A desk cookie (role 'viewer') opens ONLY the terminal page
+// (/desk-terminal) and the static assets it needs; the owner's dashboard login (zone 'main') opens it too and counts as role 'owner'. Which tabs,
+// links, widgets and panels a viewer sees is the owner's switch panel (desk-admin.html, KV desk_tab_access_v1, registry js/terminal/tabRegistry.js).
+// Unset DESK_PASSWORD (the default) and the zone is DISABLED: only the main login reaches the terminal, exactly as before.
+// "Security by obfuscation" for read data is the owner's decision: /api/* stays ungated; a request carrying a desk cookie is held to js/deskAccess.js.
+const DESK_PASSWORD = process.env.DESK_PASSWORD || '';
+const DESK_ENABLED = AUTH_ENABLED && !!DESK_PASSWORD;
+const DESK_ACCESS_KV = 'desk_tab_access_v1';
 // Optional second password for the 'education' zone only. Signing in with
 // this one (instead of EDUCATION_PASSWORD) mints a cookie carrying
 // role=admin, which the HIDE_MICRO_EDUCATION gate below treats as always
@@ -1038,6 +1056,7 @@ function authParseCookies(req) {
 
 function authLoginPage(zone, next, error, brand) {
   if (zone === 'education') return authLoginPageEducation(next, error, brand);
+  if (zone === 'desk') return authLoginPageDesk(next, error);
   const label = 'Dashboard';
   return `<!doctype html><html><head><meta charset="utf-8"><title>Sign in — ${label}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1070,6 +1089,9 @@ document.getElementById('f').addEventListener('submit', async (e) => {
 </script>
 </body></html>`;
 }
+
+// The Desk Terminal's own sign-in: the page itself lives in js/deskLoginPage.js (pure, tested); same form contract as the other zones.
+function authLoginPageDesk(next, error) { return _deskLoginPage(next, error); }
 
 // Styled to match the "Education Bank" reference design the owner shared —
 // serif gradient wordmark, glowing pill input, teal CTA — for the education
@@ -1167,9 +1189,27 @@ function _libAuthOk(req) {
   return !!edu && (edu.role === 'admin' || LIBRARY_ALLOW_EDU);
 }
 
+// The desk page, and the static files it needs to render, are the only things a desk cookie opens. Everything else falls through to the main zone.
+function _isDeskPagePath(p) { return p === '/desk-terminal' || p === '/desk-terminal.html'; }
+const _DESK_ASSET_PREFIXES = ['/js/', '/css/', '/assets/', '/img/', '/images/', '/fonts/'];
+function _isDeskAssetPath(p) { return _DESK_ASSET_PREFIXES.some(x => p.startsWith(x)) || p === '/favicon.ico' || p === '/favicon.svg'; }
+/** 'owner' (main login, or no auth configured at all), 'viewer' (desk login), or null. */
+function deskSessionRole(req) {
+  if (!AUTH_ENABLED) return 'owner';
+  const c = authParseCookies(req);
+  if (authVerifyCookie(c[`${AUTH_COOKIE_NAME}_main`], 'main')) return 'owner';
+  if (DESK_ENABLED && authVerifyCookie(c[`${AUTH_COOKIE_NAME}_desk`], 'desk')) return 'viewer';
+  return null;
+}
+
 function requireAuth(req, res, next) {
   if (!AUTH_ENABLED) return next();
   if (AUTH_EXEMPT_PREFIXES.some(p => req.path.startsWith(p))) return next();
+  if (_isDeskPagePath(req.path) || (DESK_ENABLED && _isDeskAssetPath(req.path))) {   // the terminal: the owner's login, or the desk login
+    const role = deskSessionRole(req);
+    if (role) return next();
+    if (_isDeskPagePath(req.path) && DESK_ENABLED) return res.redirect(`/login?zone=desk&next=${encodeURIComponent(req.originalUrl)}`);
+  }
   if (_isLibraryPagePath(req.path)) {   // the library page and its files: the owner's dashboard login, or the Theory Lab OWNER login (see _libAuthOk)
     if (_libAuthOk(req)) return next();
     if (authDecodeCookie(authParseCookies(req)[`${AUTH_COOKIE_NAME}_education`], 'education')) {   // signed in to the Theory Lab, but with the shared password
@@ -3271,6 +3311,26 @@ const app = express();
 app.use(egressMiddleware);
 app.use(compression());
 app.use(express.json({ limit: '25mb' }));
+// A request that carries a DESK cookie (and not the owner's) is a read-only viewer: held to js/deskAccess.js (owner-data routes, ops paths, every
+// POST except the shared once-a-day reads). Requests with no cookie are unchanged: /api/* is ungated by design, so this governs the desk login, it is
+// not a wall. A request with both cookies is the owner.
+app.use('/api', (req, res, next) => {
+  if (!DESK_ENABLED) return next();
+  const h = req.headers.cookie;
+  if (!h || !h.includes(`${AUTH_COOKIE_NAME}_desk=`)) return next();
+  const c = authParseCookies(req);
+  if (authVerifyCookie(c[`${AUTH_COOKIE_NAME}_main`], 'main')) return next();
+  if (!authVerifyCookie(c[`${AUTH_COOKIE_NAME}_desk`], 'desk')) return next();
+  // what the owner switched on for the desk login decides which switchable routes open (a P&L or trade panel's data) and which trade-level fields stay
+  _deskSwitches().catch(() => ({})).then(saved => {
+    const vis = new Set(_deskVisibleFor('viewer', saved)), on = id => vis.has(id);
+    if (!_deskViewerMayCall(req.method, req.originalUrl, on)) return res.status(403).json({ ok: false, error: 'owner only' });
+    // the desk's own book and its companions are handed to a viewer whole, with only the trade-level fields removed (js/deskViewerView.js)
+    const san = req.method === 'GET' ? _deskViewerSanitiser(req.baseUrl + req.path) : null;
+    if (!san) return next();
+    const orig = res.json.bind(res); res.json = body => orig(san(body, on)); next();
+  });
+});
 // Where the outbound bytes go, ranked, since boot -- see js/egressMeter.js.
 app.get('/api/egress-audit', (req, res) => res.json(egressSnapshot(Number(req.query.limit) || 40)));
 // Ledger survives redeploys via KV (egress_audit): load now, flush every 5 min + on SIGTERM.
@@ -6387,7 +6447,7 @@ app.get('/api/research-pod/thread', async (req, res) => {
   try { res.set('Cache-Control', 'no-store'); const id = String(req.query.id ?? ''); res.json({ ok: true, id, messages: (await _rpGet(_RP.threads, {}))[id] ?? [], job: _rpThreadJobs[id] ?? null }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-app.post('/api/research-pod/thread', async (req, res) => {
+app.post('/api/research-pod/thread', _ownerOnly, async (req, res) => {
   try {
     const id = String(req.body?.id ?? ''), text = String(req.body?.text ?? '').trim().slice(0, 3000);
     if (!id || !text) return res.status(400).json({ ok: false, error: 'id and text are required' });
@@ -8539,11 +8599,44 @@ app.get('/api/desk-volcheck', async (req, res) => {
     res.json(data);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── Shared daily reads (js/deskSharedReads.js; owner 2026-11-13) ─────────────────────────────────────────────────────
+// Every FIXED, KEYED AI read on the Desk Terminal (a market's deep read, the chain read per window) is generated ONCE per
+// Europe/London day: the first desk user to press the button writes it, it is stored for everyone, and the button goes for
+// everyone. Only the owner (the main-login session) may Refresh, which replaces the shared copy. Free-form / per-question /
+// explain routes are not shared: they are OWNER-ONLY (_ownerOnly below) so nobody else can run up the model bill.
+// Single instance assumed: the in-flight lock is an in-memory Map, so two Railway instances could race into two calls (still
+// bounded by the daily guard; the later write wins). Chain reads keep living in chain_read_v1 (byWin); the market reads use
+// the one new key desk_shared_reads_v1 = { day, reads:{kind:{key:{read,generatedAt,generatedBy}}}, counts, prev }.
+function _srIsOwner(req) {
+  if (!AUTH_ENABLED) return true;   // local / sandbox runs have no login: the person running it is the owner
+  return authVerifyCookie(authParseCookies(req)[`${AUTH_COOKIE_NAME}_main`], 'main');
+}
+function _ownerOnly(req, res, next) {
+  if (_srIsOwner(req)) return next();
+  res.status(403).json({ ok: false, error: 'Owner only: this runs a free-form model call that costs money.' });
+}
+const _srFlight = _srCreateSingleFlight();
+let _srMem = null, _srLoaded = false, _srBroken = false, _srPersistP = Promise.resolve();
+const _srDay = () => _srDayKey(Date.now());
+async function _srEnsure() {
+  if (_srLoaded) return;
+  _srLoaded = true;
+  try { const raw = await kv.get(_SR_KV); _srMem = raw ? JSON.parse(raw) : null; }
+  catch (e) { console.warn('[shared-reads] store unreadable, working in memory only and not overwriting it:', e.message); _srBroken = true; _srMem = null; }
+}
+function _srStore() { _srMem = _srRoll(_srMem, _srDay()); return _srMem; }
+function _srPersist() {
+  if (_srBroken) return;
+  _srPersistP = _srPersistP.then(() => kv.put(_SR_KV, JSON.stringify(_srMem))).catch(e => console.warn('[shared-reads] persist failed:', e.message));
+}
+function _srUpdate(fn) { _srMem = fn(_srStore()); _srPersist(); return _srMem; }
+const _srHttpError = (status, message) => Object.assign(new Error(message), { status });
+
 // POST /api/desk-ask {q}: the Desk Terminal's "Ask the desk" (Phase 17, §9r). One model call over today's book, the
 // analysts' reports, the last evening reviews and the Evidence Book. Answers from those only and says when they do
 // not answer the question. One at a time, at most 60 a day.
 let _askBusy = false, _askDay = { date: null, n: 0 };
-app.post('/api/desk-ask', express.json({ limit: '16kb' }), async (req, res) => {
+app.post('/api/desk-ask', _ownerOnly, express.json({ limit: '16kb' }), async (req, res) => {
   try {
     const q = String(req.body?.q ?? '').trim().slice(0, 800);
     if (q.length < 3) return res.status(400).json({ ok: false, error: 'ask a question' });
@@ -8572,51 +8665,85 @@ Reply with JSON only: { "answer": "plain text", "sources": ["analyst ids, card n
     } finally { _askBusy = false; }
   } catch (e) { _askBusy = false; res.status(500).json({ ok: false, error: e.message }); }
 });
-// POST /api/desk-asset-analyse { inst, force }: ONE market analysed on demand (the Analyse button on the Desk Terminal's
+// POST /api/desk-asset-analyse { inst, force, audience }: ONE market analysed on demand (the Analyse button on the Desk Terminal's
 // asset cards and Pair tab; js/assetAnalysis.js). Runs on DeepSeek (task 'desk-asset', about a cent a press), against
 // the market's own driver checklist, the morning book, the analysts' reports, its pack data, headlines and the Evidence
-// Book. Context, never a signal: it never changes a card. Kept in memory for the day (a second open is free; force=1
-// re-runs), at most 100 fresh reads a day, one at a time per market.
-const _aaCache = new Map(), _aaBusy = new Set();
-let _aaDay = { date: null, n: 0 };
+// Book. Context, never a signal: it never changes a card.
+// TWO COPIES (owner 2026-11-13: the desk login is an education tool, not a signal service):
+//   audience 'shared' (the default): the ONE stored copy every desk user sees. Written as analysis: no card size, no plan, no entry/stop/target, no
+//     recommendation (buildSharedAssetPrompt, checked by validateSharedRead). SHARED DAILY: the first press of the London day writes it for everyone;
+//     after that every request is served the stored read and a viewer's force is ignored. Only the owner's force=1 regenerates, replacing the shared
+//     copy. Two presses at once cost one call (single flight). At most 100 model calls a day.
+//   audience 'desk' (OWNER ONLY, 403 otherwise): the owner's private read with the morning card, the plan and the levels as the desk wrote them
+//     (buildAssetPrompt). Its own store key (kind 'assetdesk'), never served to a viewer, at most 40 model calls a day.
 app.post('/api/desk-asset-analyse', express.json({ limit: '4kb' }), async (req, res) => {
-  const inst = String(req.body?.inst ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const inst = _srNormInst(req.body?.inst);
+  const audience = req.body?.audience === 'desk' ? 'desk' : 'shared', kind = audience === 'desk' ? 'assetdesk' : 'asset';
   try {
-    const { buildAssetPrompt, validateAnalysis } = await import('./js/assetAnalysis.js');
+    const { buildAssetPrompt, buildSharedAssetPrompt, validateAnalysis } = await import('./js/assetAnalysis.js');
     const { groupOf } = await import('./js/deskPack.js');
     if (!groupOf(inst)) return res.status(400).json({ ok: false, error: `unknown market ${inst || '(none)'}` });
-    const today = _dpLondonDate(Date.now());
-    if (_aaDay.date !== today) { _aaDay = { date: today, n: 0 }; _aaCache.clear(); }
-    const key = `${today}:${inst}`;
-    if (!req.body?.force && _aaCache.has(key)) return res.json({ ..._aaCache.get(key), cached: true });
-    if (!_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key on the server' });
-    if (_aaDay.n >= 100) return res.status(429).json({ ok: false, error: 'the daily limit of 100 market reads is reached' });
-    if (_aaBusy.has(inst)) return res.status(409).json({ ok: false, error: `${inst} is being analysed already; try again in a moment` });
-    _aaBusy.add(inst); _aaDay.n++;
-    try {
+    const owner = _srIsOwner(req);
+    if (audience === 'desk' && !owner) return res.status(403).json({ ok: false, error: 'Owner only: the desk version carries the book\'s card and plan.' });
+    await _srEnsure();
+    const today = _srDay(), flightKey = `${kind}:${inst}`;
+    const st = _srStore(), have = _srReadToday(st, kind, inst);
+    const d = _srDecide({ isOwner: owner, force: !!req.body?.force, hasToday: !!have, inflight: _srFlight.has(flightKey), calls: _srCallsToday(st, kind), cap: _SR_KINDS[kind].cap });
+    const shown = r => (owner ? r : _deskSanitizeStored(r));   // a read stored before the change is cleaned for a viewer
+    if (d.action === 'serve') return res.json({ ...shown(have.read), generatedAt: have.generatedAt, generatedBy: have.generatedBy, cached: true, shared: audience === 'shared', audience, today, role: owner ? 'owner' : 'viewer' });
+    if (d.action === 'cap') return res.status(429).json({ ok: false, error: `the daily limit of ${_SR_KINDS[kind].cap} market reads is reached` });
+    if (d.action === 'generate' && !_aiAnyKey()) return res.status(503).json({ ok: false, error: 'no model key on the server' });
+    const out = await _srFlight.run(flightKey, async () => {
+      _srUpdate(x => _srCountCall(x, kind));
       const run = await _drLoad(today).catch(() => null);
       const pack = _dpLatest?.date === today ? _dpLatest : await _dpLoad(today).catch(() => null);
-      const newsText = await _nwLoad().then(st => _nwText(_nwPick(st.wire, { sinceMs: Date.now() - 24 * 3600e3, tier: 2, limit: 30 }))).catch(() => '');
-      const { system, prompt, meta } = buildAssetPrompt({ name: inst, run, pack, ledger: _DESK_EVIDENCE, newsText, date: today });
+      const newsText = await _nwLoad().then(s2 => _nwText(_nwPick(s2.wire, { sinceMs: Date.now() - 24 * 3600e3, tier: 2, limit: 30 }))).catch(() => '');
+      const build = audience === 'desk' ? buildAssetPrompt : buildSharedAssetPrompt;
+      const { system, prompt, meta } = build({ name: inst, run, pack, ledger: _DESK_EVIDENCE, newsText, date: today });
+      const check = o => (audience === 'desk' ? validateAnalysis(o) : _validateSharedRead(o));
       let r = await callModel({ task: 'desk-asset', system, prompt, maxTokens: 6_000, label: `desk:asset:${inst}` });
-      let v = validateAnalysis(_parseModelJson(r.text ?? _antText(r), 'desk:asset'));
+      let v = check(_parseModelJson(r.text ?? _antText(r), 'desk:asset'));
       if (!v.ok) {   // one retry, told what was wrong
-        r = await callModel({ task: 'desk-asset', system, prompt: `${prompt}\n\nYour previous reply could not be used (${v.errors.join('; ')}). Reply again with the JSON object only, shorter.`, maxTokens: 6_000, label: `desk:asset:${inst}` });
-        v = validateAnalysis(_parseModelJson(r.text ?? _antText(r), 'desk:asset'));
+        r = await callModel({ task: 'desk-asset', system, prompt: `${prompt}\n\nYour previous reply could not be used (${v.errors.join('; ')}). Reply again with the JSON object only, shorter${audience === 'desk' ? '' : ', and with no trade instruction of any kind'}.`, maxTokens: 6_000, label: `desk:asset:${inst}` });
+        v = check(_parseModelJson(r.text ?? _antText(r), 'desk:asset'));
       }
-      if (!v.ok) return res.status(502).json({ ok: false, error: `the model did not return a usable read (${v.errors.join('; ')})` });
-      const out = { ok: true, inst, date: today, at: new Date().toISOString(), analysis: v.value, model: r.model ?? null, provider: r.provider ?? null,
-        bookDate: run?.head?.ok ? run.date : null, card: run?.head?.ok ? (run.head.book.instruments?.[inst] ?? null) : null, meta, label: 'context, untested: never changes a card' };
-      _aaCache.set(key, out);
-      res.json(out);
-    } finally { _aaBusy.delete(inst); }
-  } catch (e) { _aaBusy.delete(inst); res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
+      if (!v.ok) throw _srHttpError(502, `the model did not return a usable read (${v.errors.join('; ')})`);
+      const at = new Date().toISOString();
+      const read = { ok: true, inst, date: today, at, analysis: v.value, model: r.model ?? null, provider: r.provider ?? null, audience,
+        bookDate: run?.head?.ok ? run.date : null, card: audience === 'desk' && run?.head?.ok ? (run.head.book.instruments?.[inst] ?? null) : null, meta,
+        ...(audience === 'shared' ? { stripped: v.stripped ?? 0 } : {}),
+        label: audience === 'desk' ? 'context, untested: never changes a card' : 'educational context: not a trade signal' };
+      _srUpdate(x => _srPutRead(x, kind, inst, read, { by: owner ? 'owner' : 'viewer', at }));
+      return { read, generatedAt: at, generatedBy: owner ? 'owner' : 'viewer' };
+    });
+    res.json({ ...out.read, generatedAt: out.generatedAt, generatedBy: out.generatedBy, cached: d.action === 'join', shared: audience === 'shared', audience, today, role: owner ? 'owner' : 'viewer' });
+  } catch (e) { res.status(e.status ?? 500).json({ ok: false, error: e.message }); }
 });
-// GET /api/desk-asset-analyse?inst=GOLD: today's read if one was made (free; never calls a model).
-app.get('/api/desk-asset-analyse', (req, res) => {
+// GET /api/desk-asset-analyse?inst=GOLD[&audience=desk]: the newest shared read (today's, else yesterday's marked stale), whether another
+// user is generating it now, and the caller's role. Free: never calls a model. audience=desk is the owner's private version (403 for anyone else).
+app.get('/api/desk-asset-analyse', async (req, res) => {
   res.set('Cache-Control', 'no-store');
-  const inst = String(req.query.inst ?? '').toUpperCase().replace(/[^A-Z0-9]/g, ''), hit = _aaCache.get(`${_dpLondonDate(Date.now())}:${inst}`);
-  res.json(hit ? { ...hit, cached: true } : { ok: false, none: true });
+  await _srEnsure();
+  const audience = req.query.audience === 'desk' ? 'desk' : 'shared', kind = audience === 'desk' ? 'assetdesk' : 'asset';
+  const inst = _srNormInst(req.query.inst), owner = _srIsOwner(req), today = _srDay(), flightKey = `${kind}:${inst}`;
+  if (audience === 'desk' && !owner) return res.status(403).json({ ok: false, error: 'Owner only.' });
+  const meta = { today, role: owner ? 'owner' : 'viewer', inflight: _srFlight.has(flightKey), audience };
+  const hit = _srReadLatest(_srStore(), kind, inst);
+  res.json(hit ? { ...(owner ? hit.read : _deskSanitizeStored(hit.read)), generatedAt: hit.generatedAt, generatedBy: hit.generatedBy, cached: true, shared: audience === 'shared', stale: _srDayKey(hit.generatedAt) !== today, ...meta } : { ok: false, none: true, ...meta });
+});
+// GET /api/desk-shared-reads[?kinds=asset,chain]: which shared reads exist, who may generate, what is generating, the day's
+// model-call counts. Metadata only (no read bodies), so the page can hide a button a colleague already used. Never calls a model.
+app.get('/api/desk-shared-reads', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    await _srEnsure();
+    const want = new Set(String(req.query.kinds ?? 'asset,chain').split(',').map(x => x.trim()).filter(Boolean));
+    const st = _srStore(), today = _srDay(), reads = {};
+    if (want.has('asset')) reads.asset = Object.fromEntries(Object.entries(st.reads?.asset ?? {}).map(([k, v]) => [k, { generatedAt: v.generatedAt, by: v.generatedBy }]));
+    if (want.has('chain')) { reads.chain = {}; for (const w of _SR_CHAIN_WINDOWS) { const l = await _chainLatest(w); if (l) reads.chain[w] = { generatedAt: l.generatedAt, by: l.generatedBy ?? null }; } }
+    res.json({ ok: true, day: today, role: _srIsOwner(req) ? 'owner' : 'viewer', reads, inflight: _srFlight.keys(),
+      caps: Object.fromEntries(Object.entries(_SR_KINDS).map(([k, v]) => [k, { used: _srCallsToday(st, k), cap: v.cap }])) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/desk-history?days=30: one compact row per desk day for the Desk Terminal's analytics (the currency
 // ranking and biases, the tone, and the day's score where there is one). Cached 15 minutes.
@@ -9836,7 +9963,7 @@ Respond with a single valid JSON object, no markdown:
 {"terms":[{"term":"a term or phrase used in the read, in the order it appears","plain":"one or two sentences: what it means, in plain words, and why it matters here"}],"differences":"one short paragraph (60-100 words): the two or three distinctions a beginner most needs to hold apart to follow this read -- e.g. real yield vs breakeven, front end vs long end, dominant vs overshadowed -- each in one sentence","oneLine":"the whole read in one plain sentence a beginner could repeat"}
 List every term a beginner would stumble on (8-14 terms). Do not list plain words.`;
 }
-app.post('/api/explain', async (req, res) => {
+app.post('/api/explain', _ownerOnly, async (req, res) => {
   if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
   try {
     const { item, ctx } = req.body ?? {};
@@ -9866,7 +9993,7 @@ app.post('/api/explain', async (req, res) => {
 const _oixCache = new Map();
 const _OIX_TTL_MS = 10 * 60_000, _OIX_DAILY_CAP = 80;
 let _oixDay = '', _oixCount = 0;
-app.post('/api/oi-explain', async (req, res) => {
+app.post('/api/oi-explain', _ownerOnly, async (req, res) => {
   if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
   try {
     const b = req.body ?? {};
@@ -10012,56 +10139,76 @@ app.post('/api/eod-review', express.json({ limit: '256kb' }), async (req, res) =
 
 // Free read of whatever is cached -- no model call. The page shows this on load
 // and only generates when the reader clicks.
+// The newest chain read for a window: the memory copy, or the KV copy when that is newer.
+async function _chainLatest(win) {
+  const w = _chainWin(win);
+  let latest = _chainReadCaches[w].data;
+  try { const st = await _loadChainReadStore(w); if (st?.latest && (!latest || Date.parse(st.latest.generatedAt) > (Date.parse(latest.generatedAt) || 0))) latest = st.latest; } catch { /* memory copy will do */ }
+  return latest;
+}
 app.get('/api/chain-read', async (req, res) => {
-  // Whatever was last written, however old -- the page shows its time stamp.
-  // `fresh` says whether a POST without force would return it (under 30 min).
-  const win = _chainWin(req.query.window);
-  let latest = _chainReadCaches[win].data, history = [];
-  try { const st = await _loadChainReadStore(win); if (st?.latest) { if (!latest || Date.parse(st.latest.generatedAt) > (Date.parse(latest.generatedAt) || 0)) latest = st.latest; history = st.history; } } catch { /* memory copy will do */ }
-  if (!latest) return res.json({ ok: false, none: true });
+  // Whatever was last written, however old -- the page shows its time stamp. SHARED DAILY (2026-11-13): `sharedToday` says
+  // a read from today's London day exists, in which case a viewer has no button; `inflight` says someone is writing it now.
+  const win = _chainWin(req.query.window), owner = _srIsOwner(req), today = _srDay();
+  const meta = { window: win, today, role: owner ? 'owner' : 'viewer', inflight: _srFlight.has(`chain:${win}`) };
+  let history = [];
+  try { const st = await _loadChainReadStore(win); if (st) history = st.history ?? []; } catch { /* history is a nicety */ }
+  const latest = await _chainLatest(win);
+  if (!latest) return res.json({ ok: false, none: true, ...meta });
   const ageMs = Date.now() - (Date.parse(latest.generatedAt) || 0);
   res.json({ ok: true, cached: true, fresh: ageMs < _chainReadTtl(win), ageMin: Math.round(ageMs / 60_000), ...latest,
-    window: win, earlier: history.map(h => ({ generatedAt: h.generatedAt, hook: h.read?.hook ?? null })) });
+    ...meta, sharedToday: _srDayKey(latest.generatedAt) === today, earlier: history.map(h => ({ generatedAt: h.generatedAt, hook: h.read?.hook ?? null })) });
 });
+// POST /api/chain-read: SHARED DAILY per window (1, 5, 20, live). The first press of the London day writes the read for
+// everyone; later requests are served it. Only the owner's force=1 regenerates and replaces it. The 'live' window is an
+// intraday snapshot, so only the owner generates it. Two presses at once cost one call. At most 40 model calls a day.
 app.post('/api/chain-read', async (req, res) => {
-  if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
   try {
     const { snapshot } = req.body ?? {};
-    if (!snapshot) return res.status(400).json({ error: 'Missing snapshot' });
-    const force = req.query.force === '1';
-    // One read per half hour for everyone. The snapshot's own stamp is the cache
-    // key so a new trading day (or a fresh chain) is never served yesterday's read.
+    if (!snapshot || typeof snapshot !== 'object') return res.status(400).json({ error: 'Missing snapshot' });
+    if (JSON.stringify(snapshot).length > 60_000) return res.status(413).json({ error: 'snapshot too large' });
+    await _srEnsure();
+    const owner = _srIsOwner(req), force = req.query.force === '1', today = _srDay();
     const win = _chainWin(snapshot.window);
     snapshot.window = win;
-    const ck = `${String(snapshot.asOf ?? '').slice(0, 13)}${win === 20 ? '' : `|w${win}`}`;   // the 20-day key stays as it was, so a warmed read still matches
-    const cache = _chainReadCaches[win];
-    if (!force && cache.data && cache.key === ck && Date.now() - cache.at < _chainReadTtl(win))
-      return res.json({ ok: true, cached: true, window: win, ...(cache.data) });
-    let headlines = [];
-    try { headlines = await _fetchYahooHeadlines(); } catch { /* prompt tolerates absence */ }
-    const prompt = buildChainReadPrompt(snapshot, headlines);
-    const antRes = await callModel({ task: 'chain', maxTokens: 4000,
-    // THE LEDGER AS STANDING CONTENT. ~34k tokens, identical on every call of this task,
-    // and it used to sit in the MIDDLE of a prompt whose opening paragraphs are today's
-    // snapshot -- so it was re-sent and re-billed every time and no cache could ever hit,
-    // because a cache only hits on a stable PREFIX. Moving it in front of the volatile
-    // half is the whole saving. It also belongs here on the merits: standing instruction
-    // is what a system prompt is for, and the snapshot is the only thing that changes.
-      standing: _evidenceForPrompt(),
-      system: 'You are a former fixed-income trader explaining the macro tape after the close. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
-      prompt: prompt });
-    const j = antRes;
-    const txt = _antText(j);
-    const read = _parseModelJson(txt, 'chain-read');
-    if (!read) return res.status(502).json({ error: `model did not return parseable JSON${j.stop_reason === 'max_tokens' ? ' (response truncated at the token cap)' : ''} -- press re-read once more` });
-    const data = { read, generatedAt: new Date().toISOString(), headlineCount: headlines.length, snapshotKey: ck, window: win };
-    _chainReadCaches[win] = { at: Date.now(), data, key: ck };
-    _persistChainRead(data, win).catch(e => console.warn('[chain-read] persist failed:', e.message));
-    res.json({ ok: true, cached: false, fresh: true, ageMin: 0, ...data });
+    const flightKey = `chain:${win}`;
+    const latest = await _chainLatest(win), st = _srStore();
+    const d = _srDecide({ isOwner: owner, force, hasToday: !!latest && _srDayKey(latest.generatedAt) === today, inflight: _srFlight.has(flightKey),
+      calls: _srCallsToday(st, 'chain'), cap: _SR_KINDS.chain.cap, liveSnapshot: win === 'live' });
+    if (d.action === 'serve') return res.json({ ok: true, cached: true, shared: true, window: win, today, role: owner ? 'owner' : 'viewer', ...latest });
+    if (d.action === 'forbid') return res.status(403).json({ error: 'The live read is written by the owner only.' });
+    if (d.action === 'cap') return res.status(429).json({ error: `the daily limit of ${_SR_KINDS.chain.cap} chain reads is reached` });
+    if (d.action === 'generate' && !_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
+    const data = await _srFlight.run(flightKey, async () => {
+      _srUpdate(x => _srCountCall(x, 'chain'));
+      const ck = `${String(snapshot.asOf ?? '').slice(0, 13)}${win === 20 ? '' : `|w${win}`}`;   // the 20-day key stays as it was, so a warmed read still matches
+      let headlines = [];
+      try { headlines = await _fetchYahooHeadlines(); } catch { /* prompt tolerates absence */ }
+      const prompt = buildChainReadPrompt(snapshot, headlines);
+      const antRes = await callModel({ task: 'chain', maxTokens: 4000,
+      // THE LEDGER AS STANDING CONTENT. ~34k tokens, identical on every call of this task,
+      // and it used to sit in the MIDDLE of a prompt whose opening paragraphs are today's
+      // snapshot -- so it was re-sent and re-billed every time and no cache could ever hit,
+      // because a cache only hits on a stable PREFIX. Moving it in front of the volatile
+      // half is the whole saving. It also belongs here on the merits: standing instruction
+      // is what a system prompt is for, and the snapshot is the only thing that changes.
+        standing: _evidenceForPrompt(),
+        system: 'You are a former fixed-income trader explaining the macro tape after the close. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
+        prompt: prompt });
+      const j = antRes;
+      const txt = _antText(j);
+      const read = _parseModelJson(txt, 'chain-read');
+      if (!read) throw _srHttpError(502, `model did not return parseable JSON${j.stop_reason === 'max_tokens' ? ' (response truncated at the token cap)' : ''} -- press re-read once more`);
+      const out = { read, generatedAt: new Date().toISOString(), headlineCount: headlines.length, snapshotKey: ck, window: win, generatedBy: owner ? 'owner' : 'viewer' };
+      _chainReadCaches[win] = { at: Date.now(), data: out, key: ck };
+      _persistChainRead(out, win).catch(e => console.warn('[chain-read] persist failed:', e.message));
+      return out;
+    });
+    res.json({ ok: true, cached: d.action === 'join', shared: true, fresh: true, ageMin: 0, today, role: owner ? 'owner' : 'viewer', ...data });
   } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
 
-app.post('/api/currency-analysis', async (req, res) => {
+app.post('/api/currency-analysis', _ownerOnly, async (req, res) => {
   if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
   try {
     const { ccy, snapshot, mode } = req.body ?? {};
@@ -10078,7 +10225,7 @@ app.post('/api/currency-analysis', async (req, res) => {
   } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
 
-app.post('/api/analysis', async (req, res) => {
+app.post('/api/analysis', _ownerOnly, async (req, res) => {
   // Was ANT_KEY-only. callModel picks the provider for this task and throws if THAT
   // one has no key, so gating on Anthropic would 503 a working DeepSeek setup.
   if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY in Railway)' });
@@ -10125,7 +10272,7 @@ app.post('/api/analysis', async (req, res) => {
 });
 
 // ── Historical analysis synthesis — sends statistical summary to Claude ────────
-app.post('/api/analysis-historical', async (req, res) => {
+app.post('/api/analysis-historical', _ownerOnly, async (req, res) => {
   if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
 
   const { summary } = req.body ?? {};
@@ -11053,7 +11200,7 @@ app.get('/api/morning-brief/status', (_req, res) => {
   const j = _briefJob; res.set('Cache-Control', 'no-store');
   res.json({ ok: true, running: _morningBriefRunning, job: j ? { mode: j.mode, status: j.status, startedAt: j.startedAt, finishedAt: j.finishedAt ?? null, error: j.error ?? null, payload: j.status === 'done' ? j.payload : null } : null });
 });
-app.post('/api/morning-brief', express.json({ limit: '64kb' }), async (req, res) => {
+app.post('/api/morning-brief', _ownerOnly, express.json({ limit: '64kb' }), async (req, res) => {
   if (_morningBriefRunning) return res.status(409).json({ ok: false, error: 'a morning brief is already generating' });
   _morningBriefRunning = true;
   if (req.query?.async === '1') {
@@ -14099,6 +14246,47 @@ app.get('/api/rbnz/decisions', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// GET /api/cb-board: the Desk Terminal's central-bank statement board (js/terminal/cbBoardCore.js, drawn by cbBoardView.js).
+// One read of the eight sentiment engines' stored statement analyses (and the Beige Book) from KV: no fetch of the banks'
+// sites, no model call, no new KV key. The RBNZ's statement pages are blocked by its firewall (403), so for that bank the
+// decision headline from its news RSS (cached by /api/rbnz/decisions, 6 h) stands in and the tile says so. 10-minute cache.
+let _cbBoardCache = { at: 0, data: null };
+const _CB_BOARD_TTL_MS = 10 * 60_000;
+const _CB_BOARD_MEETINGS = () => ({ fomc: FOMC_MEETINGS, ecb: ECB_MEETINGS, boe: BOE_MEETINGS, boj: BOJ_MEETINGS, rba: RBA_MEETINGS, rbnz: RBNZ_MEETINGS, boc: BOC_MEETINGS, snb: SNB_MEETINGS, beige: BEIGE_BOOK_RELEASES });
+async function _cbBoardRbnzHeadline(meetingDate) {
+  try {
+    if (!_rbnzDecisions || Date.now() - _rbnzDecisions.at > 6 * 3600e3) {
+      const r = await rbnzFetchOcrDecisions();
+      if (r.ok) _rbnzDecisions = { at: Date.now(), decisions: r.decisions };
+    }
+    const ds = _rbnzDecisions?.decisions ?? [];
+    return ds.find(d => d?.date === meetingDate) ?? ds.find(d => d?.date > meetingDate) ?? null;
+  } catch { return null; }
+}
+async function _cbBoardBuild() {
+  const now = Date.now(), M = _CB_BOARD_MEETINGS();
+  const pr = await _policyRatesNow().catch(() => ({ rates: {} }));
+  const rbnzLog = await kv.get('rbnz_fetch_log').then(r => (r ? JSON.parse(r) : null)).catch(() => null);
+  const rbnzBlocked = /403|restricted|firewall/i.test((rbnzLog?.log ?? []).join(' · '));
+  const banks = await Promise.all(_CB_BOARD_BANKS.map(async meta => {
+    const meetings = M[meta.id] ?? [], dates = _cbbPastDates(meetings, now, _CB_BOARD_HISTORY), reads = {};
+    await Promise.all(dates.map(async d => { try { const raw = await kv.get(`${meta.prefix}${d}`); reads[d] = raw ? JSON.parse(raw) : null; } catch { reads[d] = null; } }));
+    const newest = dates.at(-1), noRead = newest && !reads[newest]?.analysis;
+    const headline = meta.id === 'rbnz' && noRead ? await _cbBoardRbnzHeadline(newest) : null;
+    return _cbbShape(meta, { meetings, reads, now, headline, blocked: rbnzBlocked, rate: meta.beige ? null : (pr.rates?.[meta.ccy] ?? null) });
+  }));
+  return _cbbPayload(banks, { now });
+}
+app.get('/api/cb-board', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    if (_cbBoardCache.data && Date.now() - _cbBoardCache.at < _CB_BOARD_TTL_MS) return res.json({ ..._cbBoardCache.data, cached: true });
+    const data = await _cbBoardBuild();
+    _cbBoardCache = { at: Date.now(), data };
+    res.json(data);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/rate-diff', async (_req, res) => {
   try {
     const raw = await kv.get(_RATE_DIFF_KV);
@@ -14797,6 +14985,24 @@ app.get('/api/macro-scorecard', async (_req, res) => {
   try {
     const data = await _buildMacroScorecard();
     res.json({ ok: true, ...data });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Macro engines board (Desk Terminal, Macro tab): currency x indicator, each cell the family's headline release against
+// consensus from the surprise store, sized by that release's own history, with the engine reading beside it. The engines
+// themselves keep no consensus or history (js/terminal/macroEnginesCore.js), so the surprise store is the source of the
+// cell and the scorecard supplies the engine side and the composite. KV and memory reads only; no model call, no new
+// store; the shaped board is small and held ten minutes because the store and the scorecard move no faster than that.
+let _macroBoardCache = { at: 0, data: null };
+app.get('/api/macro-engines-board', async (req, res) => {
+  try {
+    if (!_macroBoardCache.data || Date.now() - _macroBoardCache.at > 10 * 60_000 || req.query.refresh === '1') {
+      const [rows, scorecard] = await Promise.all([_readSurpriseStore(), _buildMacroScorecard().catch(() => null)]);
+      const ahead = _macroFlattenAhead(_calFeed?.data?.ahead, _calAhead?.rows);
+      _macroBoardCache = { at: Date.now(), data: { ok: true, ..._buildMacroBoard({ rows, scorecard, ahead, now: Date.now() }), generatedAt: new Date().toISOString(), source: 'surprise store (ForexFactory + Nasdaq calendars, FRED vintages) + macro scorecard engines' } };
+    }
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json(_macroBoardCache.data);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -21828,6 +22034,7 @@ async function _refreshRates() {
     const out = {}; const since = new Date(Date.now() - 12 * 365.25 * 864e5).toISOString().slice(0, 10);
     for (const [k, id] of Object.entries(_RATES_IDS)) out[k] = (await _fredCsv(id)).filter(o => o.date >= since);
     try { out.sofr99 = (await _nyfedSofr99()).filter(o => o.date >= since); } catch (e) { console.warn('[rates] sofr99', e.message); }
+    try { out.us5y = (await _fredCsv('DGS5')).filter(o => o.date >= since); } catch (e) { console.warn('[rates] us5y (the curve board draws without it)', e.message); }
     _rates = { at: Date.now(), series: out, error: null };
   } catch (e) { _rates.error = e.message; console.warn('[rates]', e.message); }
   return _rates;
@@ -21844,6 +22051,18 @@ app.get('/api/rates', async (_req, res) => {
     const keys = Object.keys(S);
     const plumbing = (() => { const l = k => S[k]?.[S[k].length - 1]; const iorb = l('iorb')?.value, sofr = l('sofr')?.value, s99 = l('sofr99')?.value, effr = l('effr')?.value; return { sofr: l('sofr'), sofr99: l('sofr99'), effr: l('effr'), iorb: l('iorb'), srf: l('srf'), dw: l('dw'), rrp: l('rrp'), sofrFloorBp: sofr != null && iorb != null ? Math.round((sofr - iorb) * 100) : null, sofr99FloorBp: s99 != null && iorb != null ? Math.round((s99 - iorb) * 100) : null, effrFloorBp: effr != null && iorb != null ? Math.round((effr - iorb) * 100) : null }; })();
     res.json({ ok: true, now, change20d: Object.fromEntries(keys.map(k => [k, chg(k, 28)])), pct5y: { tp: pct('tp', 5), real: pct('real', 5), bei: pct('bei', 5), us10y: pct('us10y', 5) }, pct10y: { tp: pct('tp', 10) }, plumbing, series: Object.fromEntries(keys.map(k => [k, trim(k)])), at: new Date(_rates.at).toISOString() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// The Desk Terminal's Rates & policy board (Macro tab): the Treasury curve, its slopes against their own 1y/5y history, the curve a
+// week and a month ago, and the 2Y-minus-fed-funds proxy. Built from the same in-memory FRED series /api/rates serves (12 years held,
+// nothing new fetched except DGS5), shaped by js/terminal/ratesBoardCore.js; a few KB, rebuilt only when the series refresh.
+let _ratesBoard = { at: 0, payload: null };
+app.get('/api/rates-board', async (_req, res) => {
+  try {
+    if (Date.now() - _rates.at > 6 * 3600_000 || !_rates.series) await _refreshRates();
+    if (!_rates.series) return res.status(503).json({ ok: false, error: _rates.error ?? 'no rates yet' });
+    if (_ratesBoard.at !== _rates.at || !_ratesBoard.payload) _ratesBoard = { at: _rates.at, payload: _buildRatesBoard(_rates.series) };
+    res.json(_ratesBoard.payload);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 svcInterval('rates', () => _refreshRates().catch(e => console.error('[rates]', e.message)), 6 * 3600_000);
@@ -44888,6 +45107,42 @@ app.post('/api/data-archive/run', requireAuth, async (_req, res) => {
   try { res.json(await _archiveDaily()); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// ── Desk Terminal access (registered BEFORE the /api/* worker catch-all below, which would swallow them) ──────────────────────
+// GET /api/desk-session -> { role: 'owner' | 'viewer' | null, deskLogin: bool, auth: bool (false = no passwords set, nothing to sign out of) }. Works with either cookie. No cookie and auth configured => role null.
+app.get('/api/desk-session', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ ok: true, role: deskSessionRole(req), deskLogin: DESK_ENABLED, auth: AUTH_ENABLED });
+});
+// The stored object is { schema, [id]: bool, updatedAt }. A copy stored under another schema (the rules changed) is ignored whole: the new defaults apply
+// until the owner saves again. The raw read is cached for 10 s so a viewer's every /api call does not hit KV; a save clears the cache.
+let _deskSwCache = { at: 0, stored: {} };
+async function _deskStored() {
+  if (Date.now() - _deskSwCache.at < 10_000) return _deskSwCache.stored;
+  let stored = {};
+  try { const raw = await kv.get(DESK_ACCESS_KV); stored = raw ? JSON.parse(raw) : {}; } catch { stored = {}; }
+  _deskSwCache = { at: Date.now(), stored };
+  return stored;
+}
+async function _deskSwitches() { return _deskSavedFor(await _deskStored()).saved; }
+// GET /api/desk-access -> the surface ids this session may see (owner: all; viewer: the defaults overridden by the owner's switches), plus, for the
+// owner, the saved switches so the admin page can draw them. Fails closed: a viewer with no saved switches gets the defaults.
+app.get('/api/desk-access', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const role = deskSessionRole(req) === 'owner' ? 'owner' : 'viewer';
+  const { saved, reset } = _deskSavedFor(await _deskStored());
+  res.json({ ok: true, role, schema: _DESK_SCHEMA, visible: _deskVisibleFor(role, saved), ...(role === 'owner' ? { saved, reset } : {}) });
+});
+// POST /api/desk-access { [id]: true|false } -> saves the switches. Owner only (the main login): a desk cookie is refused whatever the body says.
+app.post('/api/desk-access', async (req, res) => {
+  if (deskSessionRole(req) !== 'owner') return res.status(403).json({ ok: false, error: 'owner only' });
+  const v = _deskCleanSwitches(req.body);
+  if (!v.ok) return res.status(400).json({ ok: false, error: v.error });
+  const saved = { ...(await _deskSwitches()), ...v.clean, schema: _DESK_SCHEMA, updatedAt: new Date().toISOString() };
+  try { await kv.put(DESK_ACCESS_KV, JSON.stringify(saved)); } catch (e) { return res.status(500).json({ ok: false, error: `could not save: ${e.message}` }); }
+  _deskSwCache = { at: 0, stored: {} };
+  res.json({ ok: true, saved, visible: _deskVisibleFor('viewer', saved) });
+});
+
 // All other /api/* routes — call _worker.js and return the JSON response.
 app.all('/api/*', async (req, res) => {
   try {
@@ -44910,18 +45165,24 @@ app.all('/api/*', async (req, res) => {
 // gated (Railway's healthcheck hits /api/config, and existing bot/API
 // consumers expect unauthenticated access unchanged).
 app.get('/login', (req, res) => {
-  const zone = req.query.zone === 'education' ? 'education' : 'main';
+  const zone = req.query.zone === 'education' ? 'education' : (req.query.zone === 'desk' && DESK_ENABLED) ? 'desk' : 'main';
   const next = typeof req.query.next === 'string' && req.query.next.startsWith('/') ? req.query.next : '/';
   res.type('html').send(authLoginPage(zone, next, !!req.query.error, req.query.brand === 'library' ? 'library' : null));
 });
 
 app.post('/login', (req, res) => {
-  const zone     = req.body?.zone === 'education' ? 'education' : 'main';
+  const zone     = req.body?.zone === 'education' ? 'education' : (req.body?.zone === 'desk' && DESK_ENABLED) ? 'desk' : 'main';
   const password = req.body?.password || '';
   const remember = req.body?.remember !== false; // no checkbox on the main-zone page ⇒ always remember
   if (!AUTH_ENABLED) return res.status(401).json({ error: 'invalid password' });
-  let role = null;
-  if (password === AUTH_PASSWORDS[zone]) {
+  let role = null, cookieZone = zone;
+  if (zone === 'desk') {
+    // The desk login takes the DESK password (a viewer session) AND the owner's main password (the main-zone session, so the owner lands as owner with
+    // every surface). Same success shape either way. Without DESK_PASSWORD the zone resolves to 'main' above, where the main password already works.
+    const d = _deskLoginDecision({ password, mainPassword: AUTH_PASSWORDS.main, deskPassword: DESK_PASSWORD, deskEnabled: DESK_ENABLED });
+    if (!d) return res.status(401).json({ error: 'invalid password' });
+    cookieZone = d.zone; role = d.role;
+  } else if (password === AUTH_PASSWORDS[zone]) {
     // plain session, role stays null
   } else if (zone === 'education' && EDUCATION_ADMIN_PASSWORD && password === EDUCATION_ADMIN_PASSWORD) {
     role = 'admin';
@@ -44930,21 +45191,24 @@ app.post('/login', (req, res) => {
   }
   const maxAge = remember ? `; Max-Age=${Math.floor(AUTH_COOKIE_MAX_MS / 1000)}` : '';
   res.setHeader('Set-Cookie',
-    `${AUTH_COOKIE_NAME}_${zone}=${authMakeCookie(zone, role)}${maxAge}; Path=/; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`);
+    `${AUTH_COOKIE_NAME}_${cookieZone}=${authMakeCookie(cookieZone, role)}${maxAge}; Path=/; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`);
   res.json({ ok: true });
 });
 
-// /logout is public, like /login — clears only the zone cookie you were in
-// (an education-zone logout leaves a main-zone session, if any, untouched).
-app.get('/logout', (req, res) => {
-  const lib = req.query.zone === 'library';   // the library's Log out button: clears BOTH logins (either one opens the library), then back to its sign-in page
-  const zone = lib || req.query.zone === 'education' ? 'education' : 'main';
-  const clear = z => `${AUTH_COOKIE_NAME}_${z}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`;
-  res.setHeader('Set-Cookie', lib ? [clear('education'), clear('main')] : clear(zone));
-  if (lib) return res.redirect('/library.html');
-  const back = typeof req.query.next === 'string' && /^\/library(\.html)?$/.test(req.query.next) ? req.query.next : null;   // the library's "sign in with the owner password" link
-  res.redirect(back ?? (zone === 'education' ? '/theory-lab/' : '/'));
-});
+// /logout is public, like /login. What it clears and where it goes is js/deskLogout.js (tested): zone=desk clears the desk cookie only; zone=all (the
+// owner's Sign out on the Desk Terminal) clears main + desk + education so the owner can try the desk password; library / education / main are as before.
+// POST is what the terminal's button uses (returns the redirect as JSON); GET stays for the existing links. A browser-marked cross-site request is refused.
+function _logoutDo(req, res, q, asJson) {
+  const sameSite = _logoutSameSiteOk({ secFetchSite: req.get('sec-fetch-site'), origin: req.get('origin'), host: req.get('host') });
+  if (!sameSite && (asJson || q.zone === 'all' || q.zone === 'desk')) return res.status(403).json({ ok: false, error: 'cross-site sign-out refused' });
+  const plan = _logoutPlan({ zone: q.zone, next: q.next, deskEnabled: DESK_ENABLED });
+  res.setHeader('Set-Cookie', plan.clear.map(z => _clearCookieHeader(z, !!req.secure)));
+  res.set('Cache-Control', 'no-store');
+  if (asJson) return res.json({ ok: true, redirect: plan.redirect });
+  res.redirect(plan.redirect);
+}
+app.get('/logout', (req, res) => _logoutDo(req, res, req.query, false));
+app.post('/logout', (req, res) => _logoutDo(req, res, req.query, true));
 
 app.use(requireAuth);
 

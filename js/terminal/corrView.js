@@ -17,6 +17,7 @@
 import * as M from './corrMath.js';
 import { chipsFor } from './corrEvidence.js';
 import * as HV from './hedgeView.js';
+import { ownerLink, ownerOnly } from './links.js';
 
 export const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const fin = v => v != null && Number.isFinite(v);
@@ -130,14 +131,15 @@ function load(getJson, force = false) {
 
 export async function render(root, { getJson, book = () => ({}) } = {}) {
   if (!root) return;
+  if (ST.view === 'hedges' && globalThis.deskSurfaceOn?.('panel.corr.hedges') === false) ST.view = 'matrix';   // the hedge finder is a recommendation: not for the desk login
   if (!document.querySelector('link[data-corr-css]')) document.head.insertAdjacentHTML('beforeend', `<link rel="stylesheet" href="${new URL('./corr-tab.css', import.meta.url).href}" data-corr-css>`);
   if (!root.dataset.built) {
     root.dataset.built = '1';
     root.innerHTML = `<div class="card glow"><div class="tt-head"><span class="lbl">Correlations &amp; hedges</span><h2 style="flex-basis:100%">How markets are moving together, and what has offset what</h2><span id="ct-asof"></span></div>
-<div class="ct-bar">${pills('view', VIEWS, ST.view)}</div>
-<p class="tt-note">Daily log-return correlations over trailing 20, 60 and 120 trading days. Descriptive: what has moved together, not what will. The card-level web of today's book is on Analytics. Old page: <a href="correlations.html">correlations.html</a>.</p></div>
+<div class="ct-bar">${pills('view', VIEWS.filter(([k]) => k !== 'hedges' || globalThis.deskSurfaceOn?.('panel.corr.hedges') !== false), ST.view)}</div>
+<p class="tt-note">Daily log-return correlations over trailing 20, 60 and 120 trading days. Descriptive: what has moved together, not what will. The card-level web of today's book is on Analytics. ${ownerOnly(`Old page: ${ownerLink('correlations.html', 'correlations.html')}.`)}</p></div>
 <div id="ct-body" style="margin-top:14px"><div class="tt-load">Loading the correlation panel…</div></div>
-<details class="ct-admin"><summary>Admin</summary><p class="muted">The panel is rebuilt by the server every 6 hours (5 years of OANDA H4 bars, worker thread). Force a rebuild only if the time above is stale.</p><button class="btn" data-rebuild>Rebuild now</button> <span class="muted" id="ct-rb"></span></details>`;
+${globalThis.deskIsViewer?.() ? '' : '<details class="ct-admin"><summary>Admin</summary><p class="muted">The panel is rebuilt by the server every 6 hours (5 years of OANDA H4 bars, worker thread). Force a rebuild only if the time above is stale.</p><button class="btn" data-rebuild>Rebuild now</button> <span class="muted" id="ct-rb"></span></details>'}`;
     root.addEventListener('click', e => onClick(e, root, getJson, book));
     root.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest?.('.ct-click')) { e.preventDefault(); onClick(e, root, getJson, book); } });
     root.addEventListener('change', e => onChange(e, root, getJson, book));

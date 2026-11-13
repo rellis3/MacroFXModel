@@ -19,7 +19,10 @@ import { whatChanged } from './whatChanged.js';
 import * as PV from './pairView.js';
 import * as CSV from './chainStatsView.js';
 import { reactionsHtml } from './reactionPanel.js';
+import { boardHtml as macroBoardHtml, pick as macroBoardPick } from './macroEngines.js';
+import { DESK_EVIDENCE, citable } from '../deskEvidence.js';
 import * as FVV from './fairValueView.js';
+import * as CBV from './cbBoardView.js';
 import * as ACV from './autocorrView.js';
 import * as LLV from './leadLagView.js';
 import * as OPV from './optionsView.js';
@@ -32,11 +35,23 @@ import { createLevelChart } from '../levelChart.js';
 import { cardDrivers } from './cardExplain.js';
 import { pineForCard, oandaOf } from '../deskBookPine.js';
 import * as AAV from './assetAnalysisView.js';
+import * as SR from './sharedRead.js';
+import * as RBV from './ratesBoardView.js';
+import * as ML from './mapLayers.js';
+import { cellHtml as macroCellHtml } from './macroEngines.js';
+import { FAMILIES as MACRO_FAMILIES } from './macroEnginesCore.js';
+import { ownerLink, ownerOnly } from './links.js';
 
 const el = id => document.getElementById(id);
 const h = CB.esc;
 // the Calendar tab (desk-terminal.html enrichCal) draws its "Expectations vs reality" panel through this
 globalThis.ttReactionsHtml = p => reactionsHtml(p, h);
+// the Macro tab (desk-terminal.html enrichMacro) draws its currency x indicator board through these (js/terminal/macroEngines.js)
+// the Overview map's layers (js/terminal/mapLayers.js): the pills, the legends, the ranking under the map and the country card. The country card
+// reuses the Central banks tile and the Macro engines cells, so nothing is drawn twice.
+globalThis.ttMapLayers = { ...ML, tile: CBV.tileHtml, cell: macroCellHtml, families: MACRO_FAMILIES };
+globalThis.ttMacroBoardHtml = p => { let ev = null; try { const e = DESK_EVIDENCE.find(x => x.id === 'surprise-size'); if (e) { const c = citable(e); ev = { tag: /REOPENED/.test(c.tag) ? 'size tested, reopened by audit' : String(c.tag).split(/\s+[—-]\s+/)[0], result: `${c.tag}. ${e.claim}` }; } } catch { /* the board draws without the stamp */ } return macroBoardHtml(p, h, ev); };
+globalThis.ttMacroPick = macroBoardPick;
 const T = {
   tab: null, cache: {},
   chain: { inputs: null, loading: null, live: null, liveErr: null, liveTimer: null, read: {}, nodeSel: null, linkSel: null, showQuiet: true,
@@ -67,7 +82,7 @@ ${sec('Day Read', 'one row per market, verdict first')}<div class="card" id="tt-
 <div><div class="sec tt-sec" style="margin-top:0"><h2>Precedent</h2><span class="lbl">what followed days like today, 20 sessions on</span></div><div class="card" id="tt-prec">${loading('the precedent study')}</div></div></div>
 ${sec('Timeline', '20 sessions back, 20 ahead')}<div id="tt-tl">${loading('the timeline')}</div>
 ${sec('The week ahead', 'high-impact releases still to come, with how the last prints of the same release landed')}<div class="card" id="tt-week">${loading('the calendar')}</div>
-<p class="tt-note">Brought over from <a href="today.html">today.html</a>. The 20-day Market Outlook and the per-currency drill stay there (they are built from the page's own pair rows); the per-pair drill is on the Pair tab here.</p>`;
+${ownerOnly(`<p class="tt-note">Brought over from ${ownerLink('today.html', 'today.html')}. The 20-day Market Outlook and the per-currency drill stay there (they are built from the page's own pair rows); the per-pair drill is on the Pair tab here.</p>`)}`;
     root.addEventListener('click', onTodayClick);
     root.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest?.('[data-node],[data-link],[data-pair],[data-act]')) { e.preventDefault(); onTodayClick(e); } });
     root.addEventListener('mousemove', onChainHover); root.addEventListener('mouseleave', () => tip(null));
@@ -172,11 +187,19 @@ function linksList(links) {
 // the chain read: peeked for free on load; generated only on a click (a paid model call), as today.html does
 function readHtml(links, vals) {
   const C = T.chain, w = C.win, st = (C.read[w] ??= { state: 'idle' });
-  if (st.state === 'idle') { st.state = 'peek'; getJson(`/api/chain-read?window=${w}`).then(r => { C.read[w] = r?.ok ? { state: 'ready', data: r } : { state: 'none' }; if (C.win === w) drawChain(); }); }
+  if (st.state === 'idle') { st.state = 'peek'; getJson(`/api/chain-read?window=${w}`).then(r => { C.read[w] = r?.ok ? { state: 'ready', data: r } : { state: 'none', data: r }; if (C.win === w) drawChain(); }); }
   const r = st.data?.read, age = st.data?.ageMin;
-  const btn = `<button class="btn" data-act="read" ${st.state === 'loading' ? 'disabled' : ''} title="Writes the read from the numbers on screen. A model call: nothing is generated automatically; a read written in the last 30 minutes is returned free.">${st.state === 'loading' ? `reading… ${Math.round((Date.now() - (st.startedAt ?? Date.now())) / 1000)}s` : r ? '↻ re-read' : '✦ read the tape'}</button>`;
+  // SHARED DAILY (owner 2026-11-13): one read per window per London day. The first press writes it for everyone and the button goes
+  // for everyone; only the owner keeps a Refresh (it replaces the shared copy). The live window is an intraday snapshot: owner only.
+  const vs = SR.stateOf(st.data?.ok ? st.data : { ...(st.data ?? {}), ok: false }, { liveSnapshot: w === 'live' });
+  const btn = st.state === 'loading' ? `<button class="btn" disabled>reading… ${Math.round((Date.now() - (st.startedAt ?? Date.now())) / 1000)}s</button>`
+    : SR.controlsHtml(vs, { genLabel: '✦ read the tape', genTitle: 'Writes the read from the numbers on screen. A model call. One read a day per window, shared: the first press writes it for everyone, then the button goes.' });
+  if (vs.state === 'generating' && st.state !== 'loading' && !st.polling) {   // a colleague's generation is running: look again every ~5 s
+    st.polling = true;
+    SR.pollWhile(async () => { const r2 = await getJson(`/api/chain-read?window=${w}`); const done = !!r2 && !r2.inflight; if (done) { C.read[w] = r2.ok ? { state: 'ready', data: r2 } : { state: 'none', data: r2 }; if (C.win === w) drawChain(); } return done; }, { alive: () => C.win === w });
+  }
   const head = `<div class="ch" style="margin:0"><span class="lbl">The read · ${CB.winWord(w)}</span><span class="chip gold">AI · not backtested</span>${age != null && age >= 1440 ? `<span class="chip dn">${Math.round(age / 1440)}d old</span>` : ''}<span class="r">${btn}</span></div>`;
-  if (!r) return `<div class="tt-read">${head}<div class="muted" style="margin-top:6px">${st.state === 'peek' ? 'Looking for a cached read…' : st.state === 'loading' ? 'Reading the tape (usually under a minute).' : st.state === 'error' ? `Could not build the read: ${h(st.err ?? '')}` : `No ${CB.winWord(w)} read has been written recently. The board above is the measured chain; the button writes the trader's-voice explanation of it, over this window only.`}</div></div>`;
+  if (!r) return `<div class="tt-read">${head}<div class="muted" style="margin-top:6px">${st.state === 'peek' ? 'Looking for a cached read…' : st.state === 'loading' ? 'Reading the tape (usually under a minute). Everyone sees it once it is written.' : vs.state === 'generating' ? `A colleague is writing today's ${CB.winWord(w)} read now. It will appear here.` : st.state === 'error' ? `Could not build the read: ${h(st.err ?? '')}` : `No ${CB.winWord(w)} read has been written today. The board above is the measured chain; the button writes the trader's-voice explanation of it, over this window only.`}</div></div>`;
   const paras = String(r.read ?? '').split(/\n\s*\n|\n/).map(x => x.trim()).filter(Boolean);
   const stories = (r.stories ?? []).filter(x => x?.name && x.status !== 'absent');
   const when = st.data.generatedAt ? new Date(st.data.generatedAt).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '';
@@ -184,11 +207,12 @@ function readHtml(links, vals) {
 ${stories.length ? `<div class="tt-stories">${stories.map(x => `<span class="chip ${x.status === 'dominant' ? 'gold' : x.status === 'reloading' ? 'pur' : ''}" title="${h(`${x.legs ?? ''}${x.evidence ? ' — ' + x.evidence : ''}`)}">${h(x.name)} · ${h(x.status)}</span>`).join('')}</div>` : ''}
 ${paras.map(p => `<p>${h(p)}</p>`).join('')}
 ${r.shouldHave ? `<div class="row"><b>Should be happening, isn't:</b> ${h(r.shouldHave)}</div>` : ''}${r.next ? `<div class="row"><b>Next:</b> ${h(r.next)}</div>` : ''}${r.forFx ? `<div class="row"><b>For FX:</b> ${h(r.forFx)}</div>` : ''}
-<div class="tt-note">Written ${when ? `${h(when)} London` : ''}${age != null && age >= 2 ? ` (${age >= 120 ? `${Math.round(age / 60)}h` : `${age} min`} ago; the numbers in it are from then, the board above is current)` : ''}. An opinion in a trader's voice, not a forecast. Shared with today.html: one cached read per window for everyone.</div></div>`;
+<div class="tt-note">Written ${when ? `${h(when)} London` : ''}${age != null && age >= 2 ? ` (${age >= 120 ? `${Math.round(age / 60)}h` : `${age} min`} ago; the numbers in it are from then, the board above is current)` : ''}. An opinion in a trader's voice, not a forecast. One read per window per day, shared by everyone.</div></div>`;
 }
-async function writeRead() {
+async function writeRead(force = false) {
   const C = T.chain, w = C.win, cur = C.read[w] ?? {};
   if (cur.state === 'loading') return;
+  if (force && !SR.confirmReplace('chain read')) return;
   if (w === 'live') await loadLive();
   const now = chainNow(); if (!now) return;
   C.read[w] = { ...cur, state: 'loading', startedAt: Date.now() }; drawChain();
@@ -196,13 +220,14 @@ async function writeRead() {
   const rg = await J('/api/macro-regime-fx'), watch = T._watch;
   const setups = watch?.states ? watch.states.filter(t => t.claimId && t.firing).map(t => `  LIVE: ${String(t.label).replace(/^Setup watch · /, '')}`).join('\n') || null : null;
   const snapshot = CB.chainSnapshot({ links: now.links, vals: now.vals, win: w, policy: rg?.policy ?? null, events: D.ev ?? [], setups });
-  const r = await fetch(`/api/chain-read${cur.data?.read ? '?force=1' : ''}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ snapshot }) }).then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
+  const r = await fetch(`/api/chain-read${force ? '?force=1' : ''}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ snapshot }) }).then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
   C.read[w] = r?.ok ? { state: 'ready', data: r } : { state: 'error', data: cur.data, err: r?.error ?? 'no read' };
   if (C.win === w) drawChain();
 }
 
 function onTodayClick(ev) {
-  const C = T.chain, a = ev.target.closest?.('[data-act],[data-node],[data-link],[data-pair],[data-ccy2]'); if (!a) return;
+  const C = T.chain, a = ev.target.closest?.('[data-act],[data-sr],[data-node],[data-link],[data-pair],[data-ccy2]'); if (!a) return;
+  if (a.dataset.sr) { ev.preventDefault?.(); return writeRead(a.dataset.sr === 'refresh'); }
   if (a.dataset.pair) { ev.preventDefault(); return openPair(a.dataset.pair); }
   if (a.dataset.ccy2) { ev.preventDefault(); return ccyModal(a.dataset.ccy2); }
   if (a.dataset.node) { C.linkSel = null; C.nodeSel = C.nodeSel === a.dataset.node ? null : a.dataset.node; tip(null); return drawChain(); }
@@ -267,7 +292,7 @@ function drawWatch(w) {
   const row = (t, tag) => `<div class="tt-row"><span class="chip ${tag === 'firing' ? 'gold' : tag === 'chain' ? 'gold' : 'pur'}">${tag === 'firing' ? (t.kind === 'tested' ? '✓ tested' : '~ ' + h(t.kind ?? '')) : tag}</span><b style="flex:1;min-width:0">${h(String(t.label).replace(/^Setup watch · /, '').replace(/^Chain link broken: /, ''))}</b>${t.since ? `<span class="w">since ${h(dayName(Date.parse(t.since)))}</span>` : ''}<span class="muted" style="flex-basis:100%">${h(String(t.detail ?? t.lookFor ?? '').slice(0, 260))}${t.expect?.length ? ` → expect ${t.expect.slice(0, 2).map(e => `${h(e.inst)} ~${h(e.after)}${h(e.unit ?? '')}`).join(', ')}` : ''}</span></div>`;
   box.innerHTML = `<div class="tt-counts"><span class="chip ${firing.length ? 'gold' : ''}">${firing.length} firing</span><span class="chip ${chain.length ? 'gold' : ''}">${chain.length} chain breaks</span><span class="chip">${near.length} approaching</span>${w.lastTick ? `<span class="chip">checked ${h(hm(Date.parse(w.lastTick)))}</span>` : ''}</div>
 ${(() => { const all = [...firing.map(t => row(t, 'firing')), ...chain.map(t => row(t, 'chain')), ...near.slice(0, 6).map(t => row(t, 'approaching'))]; return all.slice(0, 6).join('') + (all.length > 6 ? `<details><summary>${all.length - 6} more</summary>${all.slice(6).join('')}</details>` : ''); })()}${!firing.length && !chain.length && !near.length ? '<div class="muted">Nothing firing and nothing approaching.</div>' : ''}
-<p class="tt-note">Telegram on change. Each condition carries this desk's verdict on it: <a href="evidence.html" target="_blank" rel="noopener">the evidence book →</a></p>`;
+<p class="tt-note">Telegram on change. Each condition carries this desk's verdict on it: ${ownerLink('evidence.html', 'the evidence book', { target: '_blank', suffix: ' →' })}</p>`;
 }
 function precVerdict(row) {
   if (!row?.all?.enough) return ['too few days', ''];
@@ -342,15 +367,16 @@ async function renderPair() {
   const list = pairList();
   if (!T.pair || !list.includes(T.pair)) T.pair = (location.hash.match(/pair=([A-Z0-9]+)/i)?.[1] ?? '').toUpperCase() || Object.entries(D.cards ?? {}).sort((a, b) => (b[1].size ?? 0) - (a[1].size ?? 0))[0]?.[0] || 'EURUSD';
   const n = T.pair, c = D.cards?.[n], legs = PV.legsOf(n);
-  const top = Object.entries(D.cards ?? {}).filter(([, x]) => (DIR[x.rating] ?? 0) !== 0 && x.size > 0).sort((a, b) => b[1].size - a[1].size).slice(0, 8);
+  const V = globalThis.deskIsViewer?.(), strength = x => (V ? Math.abs(assetScore(x) ?? 0) : (x.size ?? 0));   // the desk login has no sizes: order by the strength of the view
+  const top = Object.entries(D.cards ?? {}).filter(([, x]) => (DIR[x.rating] ?? 0) !== 0 && (V || x.size > 0)).sort((a, b) => strength(b[1]) - strength(a[1])).slice(0, 8);
   T.pairChart?.destroy?.(); T.pairChart = null;
   root.innerHTML = `<div class="tt-pick"><label class="lbl" for="tt-sel">Market</label><select id="tt-sel">${Object.entries(GROUPS).map(([g, gl]) => { const xs = list.filter(x => groupOf(x) === g); return xs.length ? `<optgroup label="${h(gl)}">${xs.map(x => `<option value="${x}"${x === n ? ' selected' : ''}>${h(nice(x))}</option>`).join('')}</optgroup>` : ''; }).join('')}</select>${top.map(([x, cx]) => `<button class="chip ${(DIR[cx.rating] ?? 0) > 0 ? 'up' : 'dn'}" data-p="${x}" style="cursor:pointer">${h(x)}</button>`).join('')}<span class="muted" style="margin-left:auto">link: <span class="mono">desk-terminal.html#pair=${h(n)}</span></span></div>
-<div class="card glow"><div class="ch"><span class="chip">${h(GROUPS[groupOf(n)] ?? '')}</span><span class="chip">${h(n)}</span>${legs?.[0] ? `<span class="chip pur" data-ccy="${legs[0]}" style="cursor:pointer">${FLAG[legs[0]] ?? ''} ${legs[0]}</span><span class="chip pur" data-ccy="${legs[1]}" style="cursor:pointer">${FLAG[legs[1]] ?? ''} ${legs[1]}</span>` : ''}<span class="r">${c ? gradeChip(c) : ''}${c ? `<button type="button" class="chip" id="tt-p-tv" style="cursor:pointer;margin-left:6px" title="Copy a TradingView (Pine) script that draws this card's lines, entry zone, invalidation and first target for today">TradingView</button>` : ''}</span></div>
+<div class="card glow"><div class="ch"><span class="chip">${h(GROUPS[groupOf(n)] ?? '')}</span><span class="chip">${h(n)}</span>${legs?.[0] ? `<span class="chip pur" data-ccy="${legs[0]}" style="cursor:pointer">${FLAG[legs[0]] ?? ''} ${legs[0]}</span><span class="chip pur" data-ccy="${legs[1]}" style="cursor:pointer">${FLAG[legs[1]] ?? ''} ${legs[1]}</span>` : ''}<span class="r">${c ? gradeChip(c) : ''}${c ? `<span class="sfc" data-surface="panel.asset.plan"><button type="button" class="chip" id="tt-p-tv" style="cursor:pointer;margin-left:6px" title="Copy a TradingView (Pine) script that draws this card's lines, entry zone, invalidation and first target for today">TradingView</button></span>` : ''}</span></div>
 <h2 style="margin:0 0 8px;font:700 24px var(--sans)">${h(nice(n))}</h2><div id="tt-p-tvmsg" class="muted" style="font-size:12px"></div>
-${c ? `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${rateChip(c.rating)}${scoreBar(assetScore(c), '240px', assetWord(c))}${D.live?.[n] && D.live[n].rating !== c.rating ? `<span class="chip gold" title="${h(D.live[n].why ?? '')}">updated → ${h(D.live[n].rating)}</span>` : ''}</div>
-<div class="thesis">“${h(c.why)}”</div><div class="drv">${sources(c.why).map(t => `<span>${t}</span>`).join('')}<span title="the card's own conviction, not the global ruling's or a currency's">card conviction ${h(c.conviction ?? '–')}</span><span>size ${c.size ?? '–'}${c.sizeBeforeCap && c.sizeBeforeCap !== c.size ? ` (from ${c.sizeBeforeCap}, capped by ${h((c.cappedBy ?? []).join(', '))})` : ''}</span></div>` : '<div class="muted">The desk has no card for this market today.</div>'}
+${c ? `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${rateChip(c.rating)}${scoreBar(assetScore(c), '240px', assetWordV(c))}${D.live?.[n] && D.live[n].rating !== c.rating ? `<span class="chip gold" title="${h(D.live[n].why ?? '')}">updated → ${h(D.live[n].rating)}</span>` : ''}</div>
+<div class="thesis">“${h(c.why)}”</div><div class="drv">${sources(c.why).map(t => `<span>${t}</span>`).join('')}<span title="the card's own conviction, not the global ruling's or a currency's">card conviction ${h(c.conviction ?? '–')}</span><span class="sfc" data-surface="panel.asset.size"><span>size ${c.size ?? '–'}${c.sizeBeforeCap && c.sizeBeforeCap !== c.size ? ` (from ${c.sizeBeforeCap}, capped by ${h((c.cappedBy ?? []).join(', '))})` : ''}</span></span></div>` : '<div class="muted">The desk has no card for this market today.</div>'}
 <div class="tt-chart" id="tt-lc"></div>
-${c ? `${ladder(c)}<div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${h(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Lines</b><span class="mono">up ${c.levels.up.p50} / ${c.levels.up.p75} / ${c.levels.up.p90} · down ${c.levels.down.p50} / ${c.levels.down.p75} / ${c.levels.down.p90}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${h(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${h(c.plan.timing)}</span></div>` : ''}</div><details><summary>The whole thesis</summary><p>${h(c.why)}</p>${deskView(n)}</details>${whatDrivesHtml(n)}` : ''}
+${c ? `${ladder(c)}<div class="sfc" data-surface="panel.asset.plan"><div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${h(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Lines</b><span class="mono">up ${c.levels.up.p50} / ${c.levels.up.p75} / ${c.levels.up.p90} · down ${c.levels.down.p50} / ${c.levels.down.p75} / ${c.levels.down.p90}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${h(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${h(c.plan.timing)}</span></div>` : ''}</div></div><details><summary>The whole thesis</summary><p>${h(c.why)}</p>${deskView(n)}</details>${whatDrivesHtml(n)}` : ''}
 <p class="tt-note">Chart: hourly candles, today's forecast lines (open, up and down p50 / p75 / p90), the entry zone and the invalidation where the plan names them.</p></div>
 ${AAV.boxHtml(n)}
 <div class="tt-grid2" style="margin-top:14px">
@@ -501,6 +527,7 @@ async function renderChanged() {
   const [prevRun, snap, watch] = await Promise.all([prevDate ? J(`/api/desk-run?date=${prevDate}`) : null, J('/api/terminal/stress-snap'), J('/api/desk-watch')]);
   const curStress = snap?.ok ? snap.now : (E?.['world-stress']?.ok ? E['world-stress'] : null), prevStress = snap?.ok ? snap.previous : null;
   const r = whatChanged({ prevRun: prevRun?.ok ? prevRun : null, curRun: D.run, prevStress, curStress, watchLog: watch?.log ?? [] });
+  if (!globalThis.deskSurfaceOn('panel.changed.cards')) r.items = r.items.filter(x => x.kind !== 'card');   // a card flip is a position change: not shown to the desk login
   const maxW = Math.max(1, ...r.items.map(x => x.weight)), KIND = { tone: 'tone', card: 'card', bias: 'ccy', stress: 'stress', chain: 'chain' };
   const prevB = prevRun?.ok ? (prevRun.debate?.currency?.view?.currencies ?? prevRun.head?.book?.currencies ?? {}) : {}, bar = (v, col) => `<i style="display:block;height:8px;border-radius:3px;width:${Math.abs(v) * 25}%;margin-left:${v >= 0 ? 50 : 50 - Math.abs(v) * 25}%;background:${col}"></i>`;
   const biasRows = CCYS.map(c => { const a = numOrNull(prevB[c]?.bias), b = numOrNull(D.ccy?.[c]?.bias); return `<b>${c}</b><span style="background:var(--bg3);border-radius:4px;position:relative" title="previous ${a ?? 'no ruling (no data)'}">${a == null ? '' : bar(a, 'rgba(138,147,184,.6)')}</span><span style="background:var(--bg3);border-radius:4px" title="now ${b ?? 'no ruling (no data)'}">${b == null ? '' : bar(b, b > 0 ? 'var(--up)' : b < 0 ? 'var(--dn)' : 'var(--flat)')}</span>`; }).join('');
@@ -511,11 +538,11 @@ ${r.items.length ? (() => { const one = x => `<div class="tt-chg${x.kind === 'ca
 <p class="tt-note">Ranked by how much it matters to the book: a flipped or new card weighs by its size, a currency bias by how far it moved (more if it changed sides), then world-stress tiles that changed colour${prevStress ? '' : ' (the first comparison appears once a snapshot from an earlier day exists: the server keeps the first look of each day)'}, then chain links that broke or came back in the desk watch since the previous book (more when they end on something the book holds). A reading order, not a model.</p></div>
 <div class="tt-grid2" style="margin-top:14px"><div class="card"><div class="ch"><span class="lbl">Currency bias · previous → now</span></div><div class="tt-bias">${biasRows}</div><div class="muted" style="margin-top:6px">left: ${h(r.prevDate ?? '–')} · right: ${h(r.curDate ?? '–')} · −2 … +2</div></div>
 <div class="card"><div class="ch"><span class="lbl">World stress now</span>${curStress ? `<span class="r chip ${curStress.overall === 'stress' ? 'dn' : curStress.overall === 'watch' ? 'gold' : 'up'}">${h(curStress.overall)}</span>` : ''}</div>${(curStress?.tiles ?? []).map(t => { const p = prevStress?.tiles?.find(x => x.id === t.id); return `<div class="tt-row"><span class="chip ${t.level === 'stress' ? 'dn' : t.level === 'watch' ? 'gold' : 'up'}">${h(t.level)}</span><b>${h(t.label)}</b>${p && p.level !== t.level ? `<span class="chip pur">was ${h(p.level)}</span>` : ''}<span class="w">${h(t.detail)}</span></div>`; }).join('') || '<div class="muted">No world-stress board.</div>'}</div></div>`;
-  root.insertAdjacentHTML('beforeend', `${sec('Morning thesis vs evening reality', 'the book\'s claims laid against the day after the evening score · description, not a scored cell')}<div class="card" id="tt-tr">${loading('the thesis against reality')}</div><div class="card" id="tt-pp" style="margin-top:10px">${loading('the paper trades')}</div>`);
+  root.insertAdjacentHTML('beforeend', `<div class="sfc" data-surface="panel.changed.thesis">${sec('Morning thesis vs evening reality', 'the book\'s claims laid against the day after the evening score · description, not a scored cell')}<div class="card" id="tt-tr">${loading('the thesis against reality')}</div></div><div class="sfc" data-surface="panel.changed.paper"><div class="card" id="tt-pp" style="margin-top:10px">${loading('the paper trades')}</div></div>`);
   wire(root);
   root.querySelectorAll('[data-pair]').forEach(x => { x.onclick = () => openPair(x.dataset.pair); x.onkeydown = e => { if (e.key === 'Enter') openPair(x.dataset.pair); }; });
-  drawThesisReality(el('tt-tr'));
-  drawPaperLine(el('tt-pp'));
+  if (globalThis.deskSurfaceOn('panel.changed.thesis')) drawThesisReality(el('tt-tr'));
+  if (globalThis.deskSurfaceOn('panel.changed.paper')) drawPaperLine(el('tt-pp'));
 }
 
 // the paper-trade running total (GET /api/desk-paper/history): one line beside the thesis-vs-reality panel
@@ -526,7 +553,7 @@ async function drawPaperLine(box) {
   box.innerHTML = `<div class="ch"><span class="lbl">Paper trades · the alerts' own rules</span></div>${t?.days
     ? `<div class="mono" style="font-size:13px">${t.trades} trades over ${t.days} day${t.days === 1 ? '' : 's'} · ${t.wins} won${t.hitRate != null ? ` (${Math.round(t.hitRate * 100)}%)` : ''} · mean ${sg(t.meanR)} u · size × R <b class="${t.sumSizeR > 0 ? 'up' : t.sumSizeR < 0 ? 'dn' : ''}">${sg(t.sumSizeR)}</b> after costs</div>`
     : `<div class="muted">${h(r?.ok === false ? r.error ?? 'Could not load.' : 'No finished day yet: the first is saved after the evening score (21:10 London).')}</div>`}
-<div class="muted" style="font-size:12px;margin-top:4px">${h(note)} In at the entry zone, out at the first target, the invalidation or 21:00 London, one spread per trade. Each day: <a href="desk-run.html">Desk Run</a>.</div>`;
+<div class="muted" style="font-size:12px;margin-top:4px">${h(note)} In at the entry zone, out at the first target, the invalidation or 21:00 London, one spread per trade. ${ownerOnly(`Each day: ${ownerLink('desk-run.html', 'Desk Run')}.`)}</div>`;
 }
 
 // ═════════════════════════════════════════════ RESEARCH TAB ═════════════════════════════════════════════
@@ -543,7 +570,7 @@ async function renderResearch() {
   const paperLive = lib.filter(p => ['paper', 'live'].includes(p.lifecycle?.stage));
   const sc = rp?.scorecard ?? {};
   const propRow = p => `<div class="tt-row"><span class="chip ${['passed', 'paper', 'live'].includes(p.lifecycle?.stage) ? 'up' : p.lifecycle?.stage === 'failed' ? 'dn' : p.feedback?.status === 'build' ? 'gold' : 'pur'}">${h(p.lifecycle?.stage ?? 'proposed')}</span><b style="flex:1;min-width:0">${h(p.title)}</b><span class="w">${h(p.lens ?? '')}${p.priority ? ` · ${h(p.priority)}` : ''}${p.feedback?.status ? ` · marked ${h(p.feedback.status)}` : ''}</span>${p.thesis ? `<span class="muted" style="flex-basis:100%">${h(String(p.thesis).slice(0, 220))}</span>` : ''}${p.lifecycle?.outcome?.headline ? `<span class="muted" style="flex-basis:100%">${p.lifecycle.outcome.headline.trades} trades · Sharpe ${p.lifecycle.outcome.headline.sharpe ?? '?'}${p.lifecycle.outcome.verdict ? ` · Evidence Book ${h(p.lifecycle.outcome.verdict)}` : ''}</span>` : ''}</div>`;
-  root.innerHTML = `<div class="card glow"><div class="tt-head"><span class="lbl">Research pipeline</span><h2 style="flex-basis:100%">From papers to proposals to systems</h2><span class="r" style="margin-left:0"><a class="btn" href="research.html" style="border-color:var(--pur);color:var(--pur2)">Research rooms →</a> <a class="btn" href="desk-office.html">Desk Office</a></span></div>
+  root.innerHTML = `<div class="card glow"><div class="tt-head"><span class="lbl">Research pipeline</span><h2 style="flex-basis:100%">From papers to proposals to systems</h2><span class="r" style="margin-left:0">${ownerLink('research.html', 'Research rooms', { cls: 'btn', style: 'border-color:var(--pur);color:var(--pur2)', suffix: ' →', hide: true })} ${ownerLink('desk-office.html', 'Desk Office', { cls: 'btn', hide: true })}</span></div>
 <div class="tt-pipe">${['proposed', 'shortlisted', 'carded', 'preregistered', 'tested', 'passed', 'failed', 'paper', 'live'].map(s => `<div class="${cnt[s] ? 'on' : ''}"><b>${cnt[s] ?? 0}</b><span>${s}</span></div>`).join('')}</div>
 <div class="scroll" style="margin-top:12px"><table style="min-width:520px"><thead><tr><th>Researcher</th><th class="n">Proposed</th><th class="n">Accepted</th><th class="n">Carded</th><th class="n">Tested</th><th class="n">Passed</th><th class="n">Failed</th><th class="n">Paper/live</th></tr></thead><tbody>${Object.entries(sc).map(([k, v]) => `<tr><td><b>${h(rp?.researchers?.[k]?.label ?? k)}</b></td>${['proposed', 'accepted', 'carded', 'tested', 'passed', 'failed', 'paperOrLive'].map(f => `<td class="n">${v[f] ?? 0}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
 <p class="tt-note">${h(rp?.label ?? '')}${rp?.job ? ` · a session is running (${h(rp.job.status ?? '')})` : ''}. Stages are read from what exists (the owner's mark, the card, the register row, the harness output, the Evidence Book); paper and live are set by the owner.</p></div>
@@ -553,7 +580,7 @@ async function renderResearch() {
 <div class="card"><div class="ch"><span class="lbl">Shortlisted and building</span><span class="r muted">${active.length}</span></div>${active.map(propRow).join('') || '<div class="muted">Nothing shortlisted or in build yet.</div>'}${fresh.length ? `<details><summary>${fresh.length} new, unmarked</summary>${fresh.map(propRow).join('')}</details>` : ''}</div>
 <div class="card"><div class="ch"><span class="lbl">Latest dossiers</span><span class="r muted">${(ds?.dossiers ?? []).length}</span></div>${(ds?.dossiers ?? []).slice().sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 8).map(d => `<div class="tt-row"><span class="chip ${d.ok ? 'pur' : 'dn'}">${h(d.kind ?? 'dossier')}</span><b style="flex:1;min-width:0">${h(d.hypothesis ?? d.id)}</b><span class="w">${h(String(d.at ?? '').slice(0, 10))} · ${d.papers} papers · ${d.proposals} proposals</span>${d.headline ? `<span class="muted" style="flex-basis:100%">${h(d.headline)}</span>` : ''}${d.verdict ? `<span class="chip gold">${h(d.verdict)}</span>` : ''}</div>`).join('') || `<div class="muted">No dossier yet${ds?.job ? ` (one is being written: ${h(ds.job.status ?? '')})` : ''}. ${h(ds?.label ?? '')}</div>`}</div>
 <div class="card"><div class="ch"><span class="lbl">In paper or live</span></div>${paperLive.map(propRow).join('')}${Object.entries(map).map(([bot, id]) => `<div class="tt-row" data-live="${h(bot)}|${h(id)}"><span class="chip gold">live bot</span><b>${h(bot)}</b><span class="muted">trades ${h(id)}</span><span class="w" data-check>checking live vs backtest…</span></div>`).join('')}${(shd?.shadows ?? []).map(s => `<div class="tt-row"><span class="chip pur">shadow</span><b>${h(s.bot)}</b><span class="muted">${h(s.rule ?? '')}</span><span class="w">${h(s.verdict ?? '')}</span></div>`).join('')}${!paperLive.length && !Object.keys(map).length && !(shd?.shadows ?? []).length ? '<div class="muted">No proposal is in paper or live, no backtested system is linked to a live bot and no forward shadow is running. Link a bot to its system in the Desk Office to get the live-against-backtest check here.</div>' : ''}</div>
-<div class="card"><div class="ch"><span class="lbl">Systems on file</span><span class="r muted">${systems.length}</span></div><div class="scroll"><table style="min-width:520px"><thead><tr><th>System</th><th class="n">Trades</th><th class="n">Sharpe</th><th class="n">Max DD</th><th>Trend</th><th>Review</th></tr></thead><tbody>${systems.slice().sort((a, b) => (b.sharpe ?? -99) - (a.sharpe ?? -99)).map(s => `<tr${liveIds.has(s.id) ? ' style="background:var(--goldbg)"' : ''}><td><a href="system-backtest.html?id=${encodeURIComponent(s.id)}" style="color:var(--tx)">${h(s.model ?? s.id)}</a></td><td class="n">${s.trades ?? '–'}</td><td class="n ${dirCls(s.sharpe)}">${s.sharpe ?? '–'}</td><td class="n">${s.maxDD != null ? `${s.maxDD}%` : '–'}</td><td class="muted" style="font-size:12px">${h(s.trend ?? '')}</td><td>${s.verdicts ? Object.entries(s.verdicts).map(([k, v]) => `<span class="chip ${v === 'dead' ? 'dn' : v === 'alive' || v === 'promising' ? 'up' : ''}" style="font-size:9px">${h(k)} ${h(v)}</span>`).join(' ') : '<span class="muted">–</span>'}${s.validation ? ` <span class="chip ${s.validation === 'pass' ? 'up' : 'gold'}" style="font-size:9px">validation ${h(s.validation)}</span>` : ''}</td></tr>`).join('')}</tbody></table></div><p class="tt-note">Backtests on file (net of costs); highlighted = traded by a live bot. Results, not proposals.</p></div></div>`;
+<div class="card"><div class="ch"><span class="lbl">Systems on file</span><span class="r muted">${systems.length}</span></div><div class="scroll"><table style="min-width:520px"><thead><tr><th>System</th><th class="n">Trades</th><th class="n">Sharpe</th><th class="n">Max DD</th><th>Trend</th><th>Review</th></tr></thead><tbody>${systems.slice().sort((a, b) => (b.sharpe ?? -99) - (a.sharpe ?? -99)).map(s => `<tr${liveIds.has(s.id) ? ' style="background:var(--goldbg)"' : ''}><td>${ownerLink(`system-backtest.html?id=${encodeURIComponent(s.id)}`, h(s.model ?? s.id), { style: 'color:var(--tx)' })}</td><td class="n">${s.trades ?? '–'}</td><td class="n ${dirCls(s.sharpe)}">${s.sharpe ?? '–'}</td><td class="n">${s.maxDD != null ? `${s.maxDD}%` : '–'}</td><td class="muted" style="font-size:12px">${h(s.trend ?? '')}</td><td>${s.verdicts ? Object.entries(s.verdicts).map(([k, v]) => `<span class="chip ${v === 'dead' ? 'dn' : v === 'alive' || v === 'promising' ? 'up' : ''}" style="font-size:9px">${h(k)} ${h(v)}</span>`).join(' ') : '<span class="muted">–</span>'}${s.validation ? ` <span class="chip ${s.validation === 'pass' ? 'up' : 'gold'}" style="font-size:9px">validation ${h(s.validation)}</span>` : ''}</td></tr>`).join('')}</tbody></table></div><p class="tt-note">Backtests on file (net of costs); highlighted = traded by a live bot. Results, not proposals.</p></div></div>`;
   // the research lab's quick test (js/quickTestView.js), the same panel as the Desk Office's Research tab
   import('../quickTestView.js').then(Q => Q.mount(root.querySelector('#tt-qt'), { getJson: (u, o) => fetch(u, { cache: 'no-store', ...(o ?? {}) }).then(r => r.json()).catch(e => ({ ok: false, error: e.message })) })).catch(e => { const b = root.querySelector('#tt-qt'); if (b) b.innerHTML = `<p class="muted">Quick test did not load: ${h(e.message)}</p>`; });
   // the forecast auditor (js/forecastAuditView.js), the same card as the Desk Office's Research tab
@@ -583,7 +610,7 @@ function whatDrivesHtml(n) {
 <div class="card" style="padding:10px 14px">${x.analysts.length ? `<div class="muted" style="font-size:12px;margin-bottom:4px">Points that move ${h(nice(n))} through ${h(x.channels.join(', '))}: ${x.dir ? `<b class="up">${x.forPush}</b> of push the card's way, <b class="dn">${x.againstPush}</b> against.` : 'the card is flat.'}</div>${rows}${x.more ? `<div class="muted">+${x.more} more analyst${x.more === 1 ? '' : 's'}</div>` : ''}` : '<div class="muted">No analyst point names this market or its currencies today: the card comes from the desks\' reading of the rulings and the levels.</div>'}
 <div class="drv" style="margin-top:8px"><span>Desk Pack built ${h(lt2(x.data.packBuiltAt))}</span><span>book written ${h(lt2(x.data.bookAt))} London</span><span>forecast lines for ${h(x.data.linesFor ?? '–')}</span></div>
 <div class="muted" style="font-size:12px;margin-top:6px">Stale or empty feeds behind these analysts that morning: <span class="${x.data.gaps.length ? 'gold' : ''}">${gaps}</span>.</div>
-<div class="pb" style="margin-top:8px"><div class="iv"><b>Invalid</b><span>${h(x.invalidation ?? '–')}</span></div></div></div>`;
+<div class="sfc" data-surface="panel.asset.plan"><div class="pb" style="margin-top:8px"><div class="iv"><b>Invalid</b><span>${h(x.invalidation ?? '–')}</span></div></div></div></div>`;
 }
 globalThis.whatDrivesHtml = whatDrivesHtml;
 
@@ -777,6 +804,8 @@ const assetsNews = () => { if (typeof assets === 'function' && D?.cards && D.new
 const RENDER = { today: renderToday, pair: renderPair, changed: renderChanged, research: renderResearch, options: renderOptions, news: renderNews, assets: assetsNews,
   // the Trader's Read: the podcast hosts' eight questions and checks on the desk's own chain (js/traderRead.js)
   read: () => import('./traderReadView.js').then(V => V.render(el('read'), { getJson, openModal })).catch(e => { el('read').innerHTML = `<div class="card"><p class="muted">The Trader's Read did not load: ${h(e.message)}</p></div>`; }),
+  // the Info map: every information family the repo holds against what the terminal draws (js/infoMap.js, built by scripts/build_info_map.mjs)
+  infomap: () => import('./infoMapView.js').then(V => { const r = el('infomap'); if (!r.dataset.built) { r.dataset.built = '1'; V.mount(r); } }).catch(e => { el('infomap').innerHTML = `<div class="card"><p class="muted">The Info map did not load: ${h(e.message)}</p></div>`; }),
   corr: () => import('./corrView.js').then(V => V.render(el('corr'), { getJson, book: () => D })).catch(e => { el('corr').innerHTML = `<div class="card"><p class="muted">Correlations &amp; hedges did not load: ${h(e.message)}</p></div>`; }) };
 globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'news') { clearInterval(NS.timer); NS.timer = null; } if (t !== 'pair' && /pair=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
 globalThis.openPairPage = openPair;
@@ -792,5 +821,9 @@ if (/pair=/.test(location.hash)) fromHash();
 else { const sel = document.querySelector('#tabs [aria-selected="true"]')?.dataset.t; if (RENDER[sel]) globalThis.onTerminalTab(sel); }
 // the Macro tab's short-term fair value table (desk-terminal.html driversHtml, a classic script) reads this
 globalThis.stfvHtml = FVV.stfvTable;
+// the Macro tab's central-bank statement board (desk-terminal.html enrichMacro, a classic script) reads this
+globalThis.cbBoardHtml = CBV.boardHtml;
 globalThis.acBoardHtml = ACV.boardHtml;
 globalThis.llGridHtml = LLV.gridHtml;
+// the Macro tab's Rates & policy board (desk-terminal.html enrichMacro): the curve, its slopes, the priced Fed path beside them
+globalThis.ratesBoardHtml = (rb, fp, gy) => { try { return RBV.boardHtml(rb, fp, gy, { esc, spk, sgn }); } catch (e) { console.warn('rates board', e); return ''; } };

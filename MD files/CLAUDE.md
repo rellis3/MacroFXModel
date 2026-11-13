@@ -371,6 +371,27 @@ Apply these to any new signal, Python throwaway or JS engine alike.
     the same number. Either use a per-trade-varying risk unit (e.g. that
     period's realized vol) or note plainly that R and % Return are redundant
     here.
+- **Desk Terminal: every surface is registered (owner rule, 2026-11-13).** Every tab, link out, widget, ticker segment and panel of `desk-terminal.html` is a
+  *surface* with a row in `js/terminal/tabRegistry.js` (`id`, `kind` = tab|nav|widget|strip|panel, `label`, `group`, `hidden`). The desk login (a second shared
+  password) sees only the surfaces switched on in `desk-admin.html`; the owner sees everything. **When you add a tab or any new block to the terminal:** (1) add its
+  row to `SURFACES` with `mk(id, kind, label, group, HIDDEN, note)`; (2) put `data-surface="<id>"` on its markup (a tab: on the nav button AND its `<section>`), or wrap
+  generated HTML in `<div class="sfc" data-surface="<id>">…</div>`; (3) if it calls a new `/api/` route that is a trade, a cost, internal or P&L, add the prefix to
+  `VIEWER_DENY_PREFIXES` in `js/deskAccess.js` (and, if a switchable surface backs it, to `VIEWER_SURFACE_ROUTES`). `js/terminal/tabRegistry.test.mjs` FAILS until (1) and
+  (2) are done, and fails on a registry row with no markup. The shared once-a-day AI reads are the only viewer POSTs (`VIEWER_POST_ALLOWED` in `js/deskAccess.js`).
+  **Links to other pages are the owner's (2026-11-13):** a link from a card to a page outside the desk zone (`bank-credit.html`, the sentiment pages, Research...) must go through `ownerLink(href, label, { hide, suffix, target })` or `ownerOnly(html)` from `js/terminal/links.js` (`globalThis.ownerLink` in `desk-terminal.html`'s classic script): the owner gets the anchor, a desk viewer gets plain text or nothing. `js/terminal/links.test.mjs` FAILS on a raw `href="x.html"` with its file:line. **Sign out** (`widget.signout`, `POST /logout?zone=all|desk`, `js/deskLogout.js`) is always visible to every session and is not a switch.
+  **THE THREE RULES (owner, 2026-11-13, after two builds hid far too much): the desk login is an education tool and a macro dashboard. Hide ONLY (1) what reads as a TRADE
+  instruction, (2) what COSTS money, (3) the owner's own tooling and real P&L. EVERYTHING ELSE IS SHOWN.** `HIDDEN` in `mk(...)` is `null` (shown, on by default) or one of
+  `'trade'` (trade watch, playbooks, best pairs / expressions, entry / stop / target / invalidation / size lines on a card, the ticker's zone/target/invalid, the Trader's read,
+  the hedge finder), `'cost'` (Research, Ask the desk, paid model buttons), `'internal'` (Info map, Desk Office, Desk Run, Access, alerts, the data-quality chip, links out to other
+  pages) or `'pnl'` (real or scored P&L, accounts, bots, journal, paper trades, the desk's track record): those are off by default and switchable in the admin panel. The directional
+  analysis and why (which currencies the desk leans bullish or bearish, with the reasons), the book's exposure, risk and scenarios, ratings, drivers, regime and correlations are
+  SHOWN. To decide: could a reader take it as an instruction to place a trade at a level, does it spend money, or is it the owner's own tooling or P&L? If none, it is shown. The
+  desk's morning book carries analysis and trade-level fields in one object, so the viewer's copy of it is a DENYLIST (`js/deskViewerView.js`: plan, invalidation, entry, stop,
+  target, take-profit, risk-reward, trade `ideas` and the risk desk's sizes/vetoes are cut; `size` stays in the data because the exposure and scenario panels are computed from it,
+  and its display on a market card is its own `trade` switch), free text loses only imperative sentences that carry a level, and the desk login reads a rating as a lean (bullish /
+  bearish), never as long / short or buy / sell. The market read shared with everyone is written as analysis only (`buildSharedAssetPrompt`, checked by `validateSharedRead`);
+  the owner's trade-plan version has its own owner-only key (`assetdesk`). The saved switches carry a `schema` number (`SCHEMA` in the registry): bump it when the rules change
+  and every old override is ignored. `tabRegistry.test.mjs` fails when a surface with a hide reason is on by default or one without is off.
 - **`hub.html` IS NOT A USEFUL PAGE. DO NOT TOUCH IT, EVEN IF A REQUEST SOUNDS
   LIKE IT MIGHT MEAN HUB.HTML.** The owner has said this multiple times, the
   second time in frustration at a session (this one) that defaulted to it
@@ -472,6 +493,7 @@ var is set in Railway first.
 | `CF_ACCOUNT_ID`, `CF_API_TOKEN` | Cloudflare API (worker/KV ops) |
 | `KV_WRITE_SECRET` | **opt-in** auth for credential/config KV writes — if set, the dashboard write path must present it (server.js injects it when proxying). Unset ⇒ writes allowed (see `_worker.js`) |
 | `DASHBOARD_PASSWORD`, `EDUCATION_PASSWORD`, `COOKIE_SIGNING_SECRET` | site login gate (`server.js`, `requireAuth`) — two independent zones, each its own password + signed 30-day cookie; a zone's cookie never unlocks the other. `education/*` and `theory-lab/*` require `EDUCATION_PASSWORD`; every other page requires `DASHBOARD_PASSWORD`. `/api/*` stays unauthenticated (Railway healthcheck hits `/api/config`). Gate is fully disabled unless **all three** vars are set |
+| `DESK_PASSWORD` | the **desk login** (2026-11-13): a third zone that opens ONLY `/desk-terminal` and its static assets (`js/`, `css/`), as role `viewer`. Unset ⇒ the zone is disabled and only the main login reaches the terminal. Sign-in: `/login?zone=desk&next=/desk-terminal.html`. What a viewer sees is the owner's switch panel `desk-admin.html` (KV `desk_tab_access_v1`). A request carrying a desk cookie is held to `js/deskAccess.js` (`viewerMayCall`): GET only, no owner-data routes, no ops paths, no POSTs except the shared once-a-day reads. `/api/*` is still ungated for cookie-less callers (owner's decision: obfuscation for read data) |
 | `ANALYSER_ADMIN_PASSWORD` | forecast-analyser admin/refresh gate |
 | `VOL_PLAN_UTC_HOUR` / `VOL_PLAN_UTC_MIN` | when the volatility-bot daily plan refreshes (default 23:05 UTC) |
 | `VOL_FORECAST_UTC` | when the vol-forecast recompute runs |

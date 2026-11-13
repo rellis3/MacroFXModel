@@ -26,6 +26,7 @@ export const STORES = {
   // ── forward records and model outputs ─────────────────────────────────────
   kv_write_times_v1: R('KV write-time ledger (what this map reads)', 1),
   paper_record_v1: R('Rich-vol break paper record', 1),
+  residual_fx8_forward_v1: R('Residual FX8 forward paper record (laptop push, nightly)', 3),
   global_read_v1: R('Global Read forward record', 1),
   daily_read_v1: R('Daily Read (tags + scored days)', 1),
   forecast_scorecard_v1: R('Forecast scorecard', 1),
@@ -33,7 +34,9 @@ export const STORES = {
   forecast_audit_bt_v1: L('Forecast auditor history backtests', 365, { market: false }),
   signal_journal_v1: R('Signal journal (forward test)', 1),
   pair_ledger_v1: R('Pair ledger (lean record)', 1),
+  desk_tab_access_v1: R('Desk Terminal: tab access switches for the desk login', 365, { market: false }),
   chain_read_v1: R('Chain read (AI narrative)', 3, { market: false }),
+  desk_shared_reads_v1: L('Desk shared daily reads: the deep read of each market, one per market per London day, written by the first desk user to press the button (js/deskSharedReads.js)', 14, { market: false }),
   eod_review_v1: R('End-of-day written review', 2, { market: false }),
   daily_snapshot_v1: R('Daily snapshot', 1),
   exhaustion_ladder_v1: R('Exhaustion-ladder fit', 8, { market: false }),

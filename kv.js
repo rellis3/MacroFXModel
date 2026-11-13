@@ -101,6 +101,7 @@ const _CF_EXACT = new Set([
   'library_librarian_v1',   // Paper Library librarian (js/libraryLibrarian.js): model calls used against the 400 cap. Also in _worker.js (both lists) and js/storeRegistry.js.
   'research_intake_queue_v1',   // Research hub drop box (js/researchHub.js): links, videos, pictures and text waiting for the learn-intake skill. Also in _worker.js (both lists) and js/storeRegistry.js.
   'research_room_talk_v1',   // Research rooms (js/researchRoom.js): short-remark model calls used against the 300 cap. Also in _worker.js (both lists) and js/storeRegistry.js.
+  'desk_shared_reads_v1',   // Desk shared daily reads (js/deskSharedReads.js): one market deep read per market per London day, written by the first desk user to press the button. Also in kv.js, _worker.js (both lists) and js/storeRegistry.js.
   'research_brief_v1',   // Research brief translator (js/researchBrief.js): model calls used against the 100 cap. Also in _worker.js (both lists) and js/storeRegistry.js.
   'library_concepts_v1',   // Paper Library concept cards (js/libraryConcepts.js): model calls used against the 400 cap and the content hashes already sent; the cards are in R2 (private). Also in _worker.js (both lists) and js/storeRegistry.js.
   'library_figs_v1',   // Paper Library figure/table notes (js/libraryFigs.js): model calls used against the 600 cap and which papers are done; the notes per paper are in R2. Also in _worker.js (both lists) and js/storeRegistry.js.
@@ -147,6 +148,8 @@ const _CF_EXACT = new Set([
   'daily_snapshot_v1',       // one row per day of what the page THOUGHT: the brief's regime line, the chain
                              // verdicts, the watch states, the macro deltas, the leans. The look-back
                              // timeline's memory; not re-derivable. Must also be in _worker.js PERMANENT_KEYS.
+  'desk_tab_access_v1',      // the owner's switches for what the desk login sees on the Desk Terminal (admin page desk-admin.html). Not re-derivable:
+                             // losing it silently hides every opt-in surface again. Must also be in _worker.js PERMANENT_KEYS.
   'chain_read_v1',           // the last trader's-voice chain read (+ the day's earlier ones). A paid
                              // model call each; the reader expects to find the last one hours later
                              // and after a redeploy. Must also be in _worker.js PERMANENT_KEYS.
