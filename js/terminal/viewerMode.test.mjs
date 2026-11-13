@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SURFACES, SURFACE_IDS, ALWAYS_OWNER_IDS, visibleFor } from './tabRegistry.js';
+import { SURFACES, SURFACE_IDS, LOCKED_HIDDEN_IDS, visibleFor } from './tabRegistry.js';
 import { hideCss, resolveSession, deLink, sweepEmpty } from './access.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -82,11 +82,10 @@ test('the top bar: every control carries a data-surface that is in the registry'
   assert.ok(askButton().getAttribute('data-surface') && SURFACE_IDS.includes(askButton().getAttribute('data-surface')));
 });
 
-test('a viewer sees none of the owner chrome: Research, Access, Desk Office, Desk Run, Ask the desk are removed, not left as dead labels', () => {
+test('a viewer (the defaults) sees none of the owner chrome: Research, Access, Desk Office, Desk Run, Ask the desk are removed, not left as dead labels', () => {
   const bar = parseTopBar(), ask = askButton();
   const body = new El('body', {}, [bar, ask]);
-  // the owner has even switched EVERYTHING on for the desk login: private surfaces and links must still not appear
-  const st = viewerState(Object.fromEntries(SURFACE_IDS.map(id => [id, true])));
+  const st = viewerState(null);
   deLink(body, st.hidden, doc);
   const seen = visibleText(body, st.hidden);
   for (const w of ['Research', 'Access', 'Desk Office', 'Desk Run', 'Ask the desk']) assert.ok(!seen.includes(w), `a viewer can see "${w}": ${seen}`);
@@ -97,6 +96,15 @@ test('a viewer sees none of the owner chrome: Research, Access, Desk Office, Des
   for (const id of ['nav.access', 'nav.research', 'nav.deskoffice', 'nav.deskrun', 'widget.ask', 'widget.dqchip']) assert.ok(css.includes(`[data-surface="${id}"]{display:none!important}`), `${id} is hidden by the stylesheet`);
   // what stays: the sign-out chip and the clocks (analysis / always visible)
   assert.ok(seen.includes('Sign out'));
+});
+
+test('even with EVERYTHING switched on, a link out to another page never appears for a viewer (it would bounce to the main login)', () => {
+  const bar = parseTopBar(), body = new El('body', {}, [bar]);
+  const st = viewerState(Object.fromEntries(SURFACE_IDS.map(id => [id, true])));
+  deLink(body, st.hidden, doc);
+  const seen = visibleText(body, st.hidden);
+  for (const w of ['Research', 'Access', 'Desk Office', 'Desk Run']) assert.ok(!seen.includes(w), `a viewer can see the link "${w}": ${seen}`);
+  for (const id of LOCKED_HIDDEN_IDS) assert.ok(hideCss(st.visible).includes(`[data-surface="${id}"]{display:none!important}`), `${id} is hidden by the stylesheet`);
 });
 
 test('the owner still sees every one of them', () => {
@@ -147,10 +155,12 @@ test('bookPanels.js never builds a book panel for a session that may not see it 
   }
 });
 
-test('every private surface and every link out is owner-only, whatever the saved switches say, and there is no switch for it', () => {
+test('the admin panel lists EVERY surface (nothing is unlistable), with a lock on the links out', () => {
   const admin = fs.readFileSync(path.join(root, 'desk-admin.html'), 'utf8');
-  assert.match(admin, /ALWAYS_OWNER_IDS\.includes\(s\.id\)/, 'the admin panel does not list owner-only surfaces');
-  for (const s of SURFACES) if (s.class === 'private' || s.kind === 'nav') assert.ok(ALWAYS_OWNER_IDS.includes(s.id), `${s.id} must be owner-only`);
+  assert.doesNotMatch(admin, /ALWAYS_OWNER_IDS/, 'the old "never listed" rule is gone: the owner can switch anything');
+  assert.match(admin, /SURFACES\.filter\(s => s\.group === g\)/, 'every surface of every group is drawn');
+  assert.match(admin, /locked\(s\)/, 'the links out are drawn with a lock');
+  for (const s of SURFACES) assert.equal(LOCKED_HIDDEN_IDS.includes(s.id), s.kind === 'nav', `${s.id}: only links out are locked`);
 });
 
 test('a card whose only content is "owner only" is swept for a viewer', () => {

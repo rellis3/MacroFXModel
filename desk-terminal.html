@@ -818,11 +818,12 @@ function regimeCard() {
   const live = Object.entries(D.cards).filter(([, c]) => DIR[c.rating] && c.size > 0);
   const top = s => live.filter(([, c]) => Math.sign(DIR[c.rating]) === s).sort((a, b) => b[1].size * (CONV[b[1].conviction] ?? .8) - a[1].size * (CONV[a[1].conviction] ?? .8)).slice(0, 5);
   const li = ([n, c]) => `<li><b class="mono" style="min-width:74px">${esc(n)}</b><span class="muted">${esc(firstSentence(c.why).slice(0, 120))}</span></li>`;
+  const V = globalThis.deskIsViewer?.();   // the desk login reads the same lists as a lean (bullish / bearish), never as an instruction (buy / sell)
   return `<div class="card"><div class="ch"><span class="lbl">Market regime</span><span class="r"><span class="chip gold" title="The Global Manager's conviction in the risk-on / risk-off ruling. Each card carries its own conviction, and each currency its own.">global ruling conviction ${esc(v.conviction ?? '–')}</span></span></div>
 <div class="regime"><div>${regimeGauge(v.tone, v.conviction)}</div><div style="flex:1;min-width:180px"><span class="big ${on ? 'up' : off ? 'dn' : 'fl'}">${esc(String(v.tone ?? '').replace('_', '-').toUpperCase())}</span><div class="muted">environment, ruled by the Global Manager over the risk-on and risk-off cases</div></div></div>
 <div class="synth">${esc(v.summary)}</div>
 ${v.drivers?.length ? `<div class="drv">${v.drivers.slice(0, 5).map(d => `<span title="${esc(d)}">${esc(d.length > 70 ? d.slice(0, 68) + '…' : d)}</span>`).join('')}</div>` : ''}
-<div class="sfc" data-surface="panel.ov.regime-lists"><div class="lists"><div><span class="lbl up">Buy</span><ul>${top(1).map(li).join('') || '<li class="muted">No longs.</li>'}</ul></div><div><span class="lbl dn">Sell</span><ul>${top(-1).map(li).join('') || '<li class="muted">No shorts.</li>'}</ul></div></div></div>
+<div class="sfc" data-surface="panel.ov.regime-lists"><div class="lists"><div><span class="lbl up">${V ? 'Bullish lean' : 'Buy'}</span><ul>${top(1).map(li).join('') || `<li class="muted">${V ? 'No bullish lean.' : 'No longs.'}</li>`}</ul></div><div><span class="lbl dn">${V ? 'Bearish lean' : 'Sell'}</span><ul>${top(-1).map(li).join('') || `<li class="muted">${V ? 'No bearish lean.' : 'No shorts.'}</li>`}</ul></div></div></div>
 ${v.flip?.length ? `<details><summary>What would flip it</summary><ul>${v.flip.map(x => `<li class="muted">${esc(x)}</li>`).join('')}</ul></details>` : ''}</div>`;
 }
 function strengthStrip() {

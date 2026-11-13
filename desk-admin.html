@@ -36,6 +36,9 @@ p.sub{color:var(--tx2);margin:0 0 16px;max-width:70ch}
 .chip.gold{color:var(--gold);border-color:rgba(232,184,90,.45);background:var(--goldbg)}
 .chip.up{color:var(--up);border-color:rgba(47,211,154,.4);background:var(--upbg)}
 .chip.pur{color:var(--pur2);border-color:rgba(139,124,246,.45);background:var(--purbg)}
+.chip.dn{color:var(--dn);border-color:rgba(255,93,120,.4);background:rgba(255,93,120,.10)}
+.lock{font-size:12px;opacity:.8}
+.sw:disabled{opacity:.45;cursor:not-allowed}
 .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
 .grp{margin:18px 0 8px}
 .row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 4px;border-top:1px solid var(--line)}
@@ -62,67 +65,73 @@ p.sub{color:var(--tx2);margin:0 0 16px;max-width:70ch}
 </div></header>
 <main>
   <h1>What the desk login can see</h1>
-  <p class="sub">Every tab, link, widget, ticker segment and panel of the Desk Terminal is a switch. Anyone signed in with the desk password sees only what is switched on here. You, signed in with the main password, always see everything. The desk login is an education tool and a macro dashboard, not a signal service, so every row has a class:</p>
-  <p class="sub" style="margin-top:0"><span class="chip up">analysis</span> shown by default: the bias of the day, risk state, regime, strength, correlations, surprises, forecast ranges. <span class="chip gold">signal</span> trade-like (entries, stops, targets, sizes, best expressions, playbooks, hedge picks): hidden by default. <span class="chip pur">private</span> your own book, record, research, bots and ops, and every link out to another page: <b>never shown to the desk login</b>, so they are not listed here.</p>
+  <p class="sub">Every tab, link, widget, ticker segment and panel of the Desk Terminal is a switch. Anyone signed in with the desk password sees only what is switched on here. You, signed in with the main password, always see everything. The desk login is an education tool and a macro dashboard, so <b>everything is shown except four things</b>, each row says which:</p>
+  <p class="sub" style="margin-top:0"><span class="chip gold">trade</span> reads as a trade instruction (trade watch, playbooks, best pairs, entry / stop / target / size lines, the Trader's read, the hedge finder). <span class="chip dn">cost</span> costs money (Research, Ask the desk, paid model buttons). <span class="chip pur">internal</span> your own tooling (Info map, Desk Office, Desk Run, Access, alerts, the data-quality chip). <span class="chip gold">P&amp;L</span> real or scored P&amp;L: the desk's record. Those four are <b>off by default</b>; everything else is <span class="chip up">shown</span>. Links out to other pages are locked off (they would bounce a desk login to the main login).</p>
   <div id="root"><div class="card muted">Loading…</div></div>
 </main>
 <script type="module">
-import { SURFACES as ALL, ALWAYS_OWNER_IDS, ALWAYS_VISIBLE_IDS } from './js/terminal/tabRegistry.js';
-const SURFACES = ALL.filter(s => !ALWAYS_OWNER_IDS.includes(s.id) && !ALWAYS_VISIBLE_IDS.includes(s.id));   // Sign out is always visible: never a switch
-   // the Access link itself is never a switch: only the owner ever sees it
+import { SURFACES, LOCKED_HIDDEN_IDS, ALWAYS_VISIBLE_IDS, REASON_LABEL, REASON_WARNING } from './js/terminal/tabRegistry.js';
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const KIND_LABEL = { tab: 'Tab', nav: 'Link', widget: 'Widget', strip: 'Ticker', panel: 'Panel' };
-const GROUP_ORDER = ['Tabs', 'Links', 'Shell', 'Ticker', 'Overview', 'Currencies', 'Markets', 'Analytics', 'Charts', 'Changed', 'Correlations', 'Macro'];
-const CLASS_CHIP = { analytic: ['up', 'analysis'], signal: ['gold', 'signal'], private: ['pur', 'private'] };
+const GROUP_ORDER = ['Tabs', 'Links', 'Shell', 'Ticker', 'Overview', 'Overview map layers', 'Currencies', 'Markets', 'Analytics', 'Charts', 'Changed', 'Correlations', 'Macro'];
+const REASON_CHIP = { trade: 'gold', cost: 'dn', internal: 'pur', pnl: 'gold' };
+const locked = s => LOCKED_HIDDEN_IDS.includes(s.id), pinned = s => ALWAYS_VISIBLE_IDS.includes(s.id);
 let state = {};      // id -> boolean, the switches as drawn
-let saved = {};      // id -> boolean, as last saved
-let deskLogin = false;
+let saved = {};      // id -> boolean, as last saved (under the current schema)
+let deskLogin = false, wasReset = false;
 
-const eff = (s, from) => (s.id in from ? from[s.id] : s.defaultVisible);
+const eff = (s, from) => (locked(s) ? false : pinned(s) ? true : (s.id in from ? from[s.id] : s.defaultVisible));
+const differs = s => !locked(s) && !pinned(s) && state[s.id] !== s.defaultVisible;
 function draw() {
   const groups = [...new Set(SURFACES.map(s => s.group))].sort((a, b) => GROUP_ORDER.indexOf(a) - GROUP_ORDER.indexOf(b));
-  const dirty = SURFACES.some(s => state[s.id] !== eff(s, saved));
-  const onCount = SURFACES.filter(s => state[s.id]).length;
+  const dirty = SURFACES.some(s => !locked(s) && !pinned(s) && state[s.id] !== eff(s, saved));
+  const onCount = SURFACES.filter(s => state[s.id]).length, changed = SURFACES.filter(differs).length;
   $('root').innerHTML = `
     <div class="card">
       <div class="bar">
         <span class="chip ${deskLogin ? 'up' : 'gold'}">${deskLogin ? 'desk login on' : 'desk login off: DESK_PASSWORD is not set'}</span>
         <span class="chip pur">${onCount} of ${SURFACES.length} visible to the desk login</span>
+        ${changed ? `<span class="chip gold">${changed} differ${changed === 1 ? 's' : ''} from the default</span>` : ''}
         <span id="msg"></span>
         <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn" id="reset">Reset to defaults</button>
+          <button class="btn" id="resetchanged" ${changed ? '' : 'disabled'} title="Put back to their default only the rows marked 'differs'">Reset the changed ones</button>
+          <button class="btn" id="reset">Reset all to defaults</button>
           <button class="btn primary" id="save" ${dirty ? '' : 'disabled'}>Save changes</button>
         </span>
       </div>
-      <div class="muted" style="font-size:12.5px;color:var(--tx3)">The sign-in address for the desk login is <a href="login?zone=desk&next=%2Fdesk-terminal.html">/login?zone=desk</a>. Changes apply the next time a viewer opens or reloads the terminal. A new surface added to the terminal is hidden from the desk login until it appears here and you switch it on.</div>
+      ${wasReset ? '<div class="warn" style="margin-bottom:8px">Your earlier switches were reset because the rules changed (only trade, cost, internal and P&amp;L surfaces are hidden now). The defaults below apply until you save.</div>' : ''}
+      <div class="muted" style="font-size:12.5px;color:var(--tx3)">The sign-in address for the desk login is <a href="login?zone=desk&next=%2Fdesk-terminal.html">/login?zone=desk</a>. Changes apply the next time a viewer opens or reloads the terminal. A new surface added to the terminal is listed here automatically, hidden only if it is a trade, cost, internal or P&amp;L surface.</div>
     </div>
-    ${groups.map(g => `<div class="grp lbl">${esc(g)}</div><div class="card">${SURFACES.filter(s => s.group === g).map(s => `
+    ${groups.map(g => `<div class="grp lbl">${esc(g)}</div><div class="card">${SURFACES.filter(s => s.group === g).map(s => {
+      const on = state[s.id], lk = locked(s), pin = pinned(s), warn = !lk && !pin && s.hidden && on;
+      return `
       <div class="row">
-        <button class="sw" role="switch" aria-checked="${state[s.id]}" aria-label="${esc(s.label)}" data-id="${esc(s.id)}"></button>
-        <div><div class="nm">${esc(s.label)}</div><div class="nt">${esc(s.note)}</div>${s.class === 'signal' ? '<div class="warn">Reads as a trade signal. Switching it on shows trade-level lines (the desk login then receives that part of the book\'s data too).</div>' : s.class === 'private' ? '<div class="warn">Your own area (book, positions, record, research, ops or paid-model buttons). Its data routes are also refused to the desk login, so switching it on shows an empty panel.</div>' : ''}</div>
-        <div class="meta"><span class="chip">${KIND_LABEL[s.kind]}</span><span class="chip ${CLASS_CHIP[s.class]?.[0] ?? ''}">${CLASS_CHIP[s.class]?.[1] ?? s.class}</span>${s.defaultVisible ? '' : '<span class="chip">off by default</span>'}</div>
-      </div>`).join('')}</div>`).join('')}`;
-  document.querySelectorAll('.sw').forEach(b => b.onclick = () => { state[b.dataset.id] = !state[b.dataset.id]; draw(); });
+        <button class="sw" role="switch" aria-checked="${on}" aria-label="${esc(s.label)}" data-id="${esc(s.id)}" ${lk || pin ? 'disabled title="' + (lk ? 'Locked off: a link to another page would bounce a desk login to the main login' : 'Always shown, so a desk user can always sign out') + '"' : ''}></button>
+        <div><div class="nm">${esc(s.label)}${lk ? ' <span class="lock" title="Locked off for the desk login">&#128274;</span>' : ''}</div><div class="nt">${esc(s.note)}</div>${warn ? `<div class="warn">${esc(REASON_WARNING[s.hidden])}</div>` : ''}</div>
+        <div class="meta"><span class="chip">${KIND_LABEL[s.kind]}</span>${s.hidden ? `<span class="chip ${REASON_CHIP[s.hidden]}">${esc(REASON_LABEL[s.hidden])}</span>` : '<span class="chip up">shown</span>'}${differs(s) ? '<span class="chip gold" title="Not at its default">differs</span>' : ''}</div>
+      </div>`; }).join('')}</div>`).join('')}`;
+  document.querySelectorAll('.sw:not(:disabled)').forEach(b => b.onclick = () => { state[b.dataset.id] = !state[b.dataset.id]; draw(); });
   $('save').onclick = save;
-  $('reset').onclick = () => { for (const s of SURFACES) state[s.id] = s.defaultVisible; draw(); };
+  $('reset').onclick = () => { for (const s of SURFACES) state[s.id] = eff(s, {}); draw(); };
+  $('resetchanged').onclick = () => { for (const s of SURFACES) if (differs(s)) state[s.id] = s.defaultVisible; draw(); };
 }
 function say(t, cls) { const m = $('msg'); if (m) { m.textContent = t; m.className = cls || ''; } }
 async function save() {
-  const body = Object.fromEntries(SURFACES.map(s => [s.id, !!state[s.id]]));
+  const body = Object.fromEntries(SURFACES.filter(s => !locked(s) && !pinned(s)).map(s => [s.id, !!state[s.id]]));
   $('save').disabled = true; say('Saving…');
   try {
     const r = await fetch('/api/desk-access', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
-    saved = j.saved ?? body; draw(); say('Saved', 'ok');
+    saved = j.saved ?? body; wasReset = false; draw(); say('Saved', 'ok');
   } catch (e) { draw(); say(`Not saved: ${e.message}`, 'err'); }
 }
 (async () => {
   try {
     const [s, a] = await Promise.all([fetch('/api/desk-session', { cache: 'no-store' }).then(r => r.json()), fetch('/api/desk-access', { cache: 'no-store' }).then(r => r.json())]);
     if (!a.ok || a.role !== 'owner') { $('root').innerHTML = '<div class="card"><p>This page is for the owner. Sign in with the main password to change what the desk login sees.</p></div>'; return; }
-    deskLogin = !!s.deskLogin; saved = a.saved ?? {};
+    deskLogin = !!s.deskLogin; saved = a.saved ?? {}; wasReset = !!a.reset;
     for (const x of SURFACES) state[x.id] = eff(x, saved);
     draw();
   } catch (e) { $('root').innerHTML = `<div class="card"><p>Could not load the switches: ${esc(e.message)}</p></div>`; }

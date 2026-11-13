@@ -1,15 +1,15 @@
 // The Desk Terminal surface registry: every tab, link, widget, ticker segment and panel the terminal can show is listed in
 // js/terminal/tabRegistry.js (so the admin panel can switch it for the desk login), and the registry lists nothing that has no markup.
 //   node --test js/terminal/tabRegistry.test.mjs
-// If this fails: you added (or removed) a surface. Add the row to SURFACES in js/terminal/tabRegistry.js (id, kind, label, group, defaultVisible,
-// ownerData) and put data-surface="<id>" on the markup (or wrap generated HTML in <div class="sfc" data-surface="<id>">). Default it OFF and
-// ownerData:true unless it is market data you are happy to show anyone with the desk login. See "Desk Terminal: every surface is registered" in CLAUDE.md.
+// If this fails: you added (or removed) a surface. Add the row to SURFACES in js/terminal/tabRegistry.js (mk(id, kind, label, group, hidden, note)) and put
+// data-surface="<id>" on the markup (or wrap generated HTML in <div class="sfc" data-surface="<id>">). `hidden` is null (shown) unless the surface is one
+// of the owner's FOUR hide reasons. See "Desk Terminal: every surface is registered" in CLAUDE.md.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SURFACES, KINDS, CLASSES, SURFACE_IDS, DEFAULT_VISIBLE_IDS, ALWAYS_OWNER_IDS, surfaceById, visibleFor, cleanSwitches } from './tabRegistry.js';
+import { SURFACES, KINDS, HIDDEN_REASONS, SCHEMA, SURFACE_IDS, DEFAULT_VISIBLE_IDS, LOCKED_HIDDEN_IDS, ALWAYS_VISIBLE_IDS, surfaceById, visibleFor, savedFor, cleanSwitches } from './tabRegistry.js';
 import { hideCss, resolveSession } from './access.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -28,8 +28,8 @@ for (const f of sources) {
   for (const m of t.matchAll(/\bsf\('([a-z][\w.-]*)'/g)) used.add(m[1]);
   for (const m of t.matchAll(/deskSurfaceOn\??\.?\('([a-z][\w.-]*)'/g)) used.add(m[1]);   // a panel the code draws (or skips) by asking the registry
 }
-const LENS = 'THE LENS: the desk login is an education tool and a macro dashboard, not a signal service. Analysis is shown; a trade signal (entries, stops, targets, size, best expressions, hedge picks) or the owner\'s private area is not.';
-const HOW = id => `Add mk('${id}', kind, label, group, CLASS, note) to SURFACES in js/terminal/tabRegistry.js, CLASS being A (analysis), S (signal) or P (private). ${LENS} (CLAUDE.md: "Desk Terminal: every surface is registered").`;
+const RULES = 'THE OWNER\'S THREE RULES: the desk login is an education tool and a macro dashboard. Hide ONLY (1) what reads as a TRADE instruction (trade watch, playbooks, best pairs, entry/stop/target/size lines, the Trader\'s read, the hedge finder), (2) what COSTS money (Research, Ask the desk, paid model buttons), (3) the owner\'s own tooling (Info map, Desk Office, Desk Run, Access, alerts, the data-quality chip) and real P&L / the desk\'s record. EVERYTHING ELSE IS SHOWN, including the directional analysis, the book\'s exposure and risk, scenarios, ratings and drivers.';
+const HOW = id => `Add mk('${id}', kind, label, group, HIDDEN, note) to SURFACES in js/terminal/tabRegistry.js, HIDDEN being null (shown) or one of ${HIDDEN_REASONS.map(r => `'${r}'`).join(' | ')}. ${RULES} (CLAUDE.md: "Desk Terminal: every surface is registered")`;
 
 test('every id used in the markup is registered', () => {
   for (const id of used) assert.ok(surfaceById(id), `data-surface="${id}" is not in the registry. ${HOW(id)}`);
@@ -46,31 +46,39 @@ test('registry rows are well formed and ids are unique', () => {
     assert.ok(KINDS.includes(s.kind), `${s.id}: kind ${s.kind}`);
     assert.equal(s.id.split('.')[0], s.kind === 'nav' ? 'nav' : s.kind, `${s.id}: the id prefix must be its kind`);
     for (const f of ['label', 'group', 'note']) assert.ok(typeof s[f] === 'string' && s[f].length > 2, `${s.id}: ${f}`);
-    assert.equal(typeof s.defaultVisible, 'boolean', s.id); assert.equal(typeof s.ownerData, 'boolean', s.id);
-    assert.ok(!(s.defaultVisible && s.ownerData), `${s.id}: a surface that shows the owner's data cannot be visible by default`);
-    assert.ok(CLASSES.includes(s.class), `${s.id}: class must be one of ${CLASSES.join(' | ')}. ${LENS}`);
-    assert.equal(s.defaultVisible, s.class === 'analytic', `${s.id} is class '${s.class}' so defaultVisible must be ${s.class === 'analytic'}. ${LENS}`);
-    assert.equal(s.ownerData, s.class !== 'analytic', `${s.id}: ownerData must be ${s.class !== 'analytic'} for class '${s.class}'`);
+    assert.equal(typeof s.defaultVisible, 'boolean', s.id);
   }
 });
 
-test('the lens: nothing that reads as a trade signal is classed as analysis', () => {
-  const TRADEY = /\b(entry|entries|stop|target|invalid|playbooks?|trade watch|best pairs?|expressions?|hedge|size|flips)\b/i;
-  for (const s of SURFACES) if (TRADEY.test(s.label)) assert.notEqual(s.class, 'analytic', `"${s.label}" (${s.id}) names trade-level content but is classed analytic. ${LENS}`);
-  const PRIVATE = /\b(book intelligence|exposure|the desk's record|desk alerts|track record|analyst scorecard|paper trades|ask the desk|data-quality)\b/i;
-  for (const s of SURFACES) if (PRIVATE.test(s.label)) assert.equal(s.class, 'private', `"${s.label}" (${s.id}) is the owner's own area: class it private. ${LENS}`);
+test('the rule: a surface with a hide reason is OFF by default, a surface without one is ON by default', () => {
+  for (const s of SURFACES) {
+    if (s.hidden != null) {
+      assert.ok(HIDDEN_REASONS.includes(s.hidden), `${s.id}: hidden must be null or one of ${HIDDEN_REASONS.join(' | ')}, not '${s.hidden}'. ${RULES}`);
+      assert.equal(s.defaultVisible, false, `${s.id} is hidden because it is '${s.hidden}', so it must be off by default. ${RULES}`);
+    } else {
+      assert.equal(s.defaultVisible, true, `${s.id} has no hide reason, so it must be shown by default. If it IS a trade instruction, a cost, the owner's tooling or P&L, give it that reason. ${RULES}`);
+    }
+  }
+  assert.deepEqual(DEFAULT_VISIBLE_IDS, SURFACES.filter(s => s.hidden == null).map(s => s.id));
 });
 
-test('the lens: signal and private surfaces are never visible by default; the market analysis is', () => {
-  for (const s of SURFACES) assert.equal(DEFAULT_VISIBLE_IDS.includes(s.id), s.class === 'analytic', `${s.id}`);
-  for (const id of ['tab.ccy', 'tab.ana', 'tab.changed', 'tab.corr', 'strip.regime', 'strip.update', 'strip.risk', 'panel.ov.strength', 'panel.ov.regime', 'panel.ov.week', 'panel.ov.releases', 'panel.ov.riskwarn', 'panel.ov.book', 'panel.ana.strength', 'panel.charts.ranking', 'widget.disclaimer', 'widget.bookchip']) {
-    assert.equal(surfaceById(id)?.class, 'analytic', `${id} is analysis (the owner: show analysis, hide signals)`);
-  }
-  for (const id of ['panel.ov.tradewatch', 'panel.ov.playbooks', 'panel.ov.bestpairs', 'panel.ov.regime-lists', 'panel.asset.plan', 'panel.asset.size', 'panel.ccy.expressions', 'panel.corr.hedges', 'strip.zone', 'panel.charts.bookflow', 'panel.changed.cards']) {
-    assert.equal(surfaceById(id)?.class, 'signal', `${id} reads as a trade signal`);
-  }
-  for (const id of ['tab.read', 'tab.infomap', 'nav.research', 'nav.deskoffice', 'nav.deskrun', 'widget.ask', 'widget.dqchip', 'panel.ov.exposure', 'panel.ov.record', 'panel.ov.alerts', 'panel.ana.risk', 'panel.ana.analysts', 'panel.changed.paper']) {
-    assert.equal(surfaceById(id)?.class, 'private', `${id} is the owner's own area`);
+test('the owner\'s list: exactly these are hidden, each for its reason', () => {
+  const want = {
+    trade: ['tab.read', 'strip.zone', 'panel.ov.tradewatch', 'panel.ov.playbooks', 'panel.ov.bestpairs', 'panel.ccy.expressions', 'panel.asset.plan', 'panel.asset.size', 'panel.corr.hedges'],
+    cost: ['widget.ask', 'nav.research', 'nav.research-tab'],
+    internal: ['tab.infomap', 'nav.deskoffice', 'nav.deskrun', 'nav.access', 'widget.dqchip', 'panel.ov.alerts'],
+    pnl: ['panel.ov.record', 'panel.ana.track', 'panel.ana.fall', 'panel.ana.days', 'panel.charts.ranking', 'panel.changed.thesis', 'panel.changed.paper'],
+  };
+  for (const [reason, ids] of Object.entries(want)) for (const id of ids) assert.equal(surfaceById(id)?.hidden, reason, `${id} is hidden as '${reason}'`);
+  const listed = Object.values(want).flat();
+  assert.deepEqual(SURFACES.filter(s => s.hidden).map(s => s.id).sort(), [...listed].sort(), 'a surface is hidden that is not on the owner\'s list (or the other way round)');
+});
+
+test('the owner\'s complaint: the analysis is shown, including book intelligence, exposure, the lean lists and the risk panels', () => {
+  for (const id of ['panel.ov.bookintel', 'panel.ov.exposure', 'panel.ov.regime', 'panel.ov.regime-lists', 'panel.ov.strength', 'panel.ana.risk', 'panel.ana.scenmap', 'panel.ana.web', 'panel.ana.analysts',
+    'panel.ana.strength', 'panel.ana.volfc', 'panel.ana.fans', 'panel.charts.bookflow', 'panel.changed.cards', 'panel.macro.carryside', 'tab.ccy', 'tab.ana', 'tab.changed', 'tab.corr', 'tab.charts', 'tab.pair',
+    'strip.regime', 'strip.update', 'strip.risk', 'widget.ovl.bias']) {
+    assert.equal(surfaceById(id)?.hidden, null, `${id} is analysis and must be shown. ${RULES}`);
   }
 });
 
@@ -93,60 +101,67 @@ test('every nav tab is a registered tab with a registered section; every RENDER 
   for (const k of keys) assert.ok(LEGACY.has(k) || surfaceById(`tab.${k}`), `RENDER hook "${k}" is not a registered tab. ${HOW(`tab.${k}`)}`);
 });
 
-test('the safe defaults: owner-only data is off, market data is on', () => {
-  for (const id of ['tab.read', 'tab.infomap', 'nav.research', 'nav.research-tab', 'nav.deskoffice', 'nav.deskrun', 'widget.ask', 'widget.dqchip', 'strip.zone',
-    'panel.ov.tradewatch', 'panel.ov.playbooks', 'panel.ov.exposure', 'panel.ov.record', 'panel.ana.risk', 'panel.corr.hedges']) {
-    const s = surfaceById(id); assert.ok(s, id); assert.equal(s.defaultVisible, false, id); assert.equal(s.ownerData, true, id);
-  }
-  for (const id of ['tab.overview', 'tab.macro', 'tab.pos', 'tab.cal', 'tab.today', 'tab.pair', 'tab.news', 'tab.ccy', 'tab.ana', 'tab.corr', 'panel.ov.riskstate', 'panel.ov.em', 'panel.ov.dayshape', 'panel.ov.strength', 'widget.worldstress', 'strip.events', 'strip.regime']) {
-    assert.equal(surfaceById(id)?.defaultVisible, true, id);
-  }
-});
-
-test('visibleFor: owner sees all; a viewer sees the defaults plus what the owner switched on, never the admin link', () => {
+test('visibleFor: owner sees all; a viewer sees the defaults plus what the owner switched on; links out are locked off', () => {
   assert.deepEqual(visibleFor('owner', {}), SURFACE_IDS);
   assert.deepEqual(visibleFor('viewer', null), DEFAULT_VISIBLE_IDS);
-  // a SIGNAL surface can be switched on by the owner; a PRIVATE one or a link out to another page can not (its data is withheld / it would bounce)
-  const v = visibleFor('viewer', { 'panel.asset.plan': true, 'tab.macro': false, 'nav.access': true, 'tab.read': true, 'panel.ov.bookintel': true, 'nav.research': true, 'bogus.id': true });
-  assert.ok(v.includes('panel.asset.plan')); assert.ok(!v.includes('tab.macro')); assert.ok(!v.includes('bogus.id'));
-  for (const id of ['tab.read', 'panel.ov.bookintel', 'nav.research', 'nav.access']) assert.ok(!v.includes(id), `${id} is never visible to a viewer`);
-  for (const id of ALWAYS_OWNER_IDS) assert.ok(!v.includes(id), `${id} is never visible to a viewer`);
+  // ANY surface except a link out can be switched on (a trade, cost, internal or P&L surface included): the owner decides
+  const v = visibleFor('viewer', { 'panel.asset.plan': true, 'tab.macro': false, 'nav.access': true, 'tab.read': true, 'panel.ov.record': true, 'tab.infomap': true, 'nav.research': true, 'bogus.id': true });
+  assert.ok(v.includes('panel.asset.plan')); assert.ok(v.includes('tab.read')); assert.ok(v.includes('panel.ov.record')); assert.ok(v.includes('tab.infomap'));
+  assert.ok(!v.includes('tab.macro')); assert.ok(!v.includes('bogus.id'));
+  for (const id of ['nav.access', 'nav.research']) assert.ok(!v.includes(id), `${id} is a link to another page: never visible to a viewer`);
+  for (const id of LOCKED_HIDDEN_IDS) assert.ok(!v.includes(id), `${id} is locked off`);
+  // switching everything on still never shows a link out
+  const all = Object.fromEntries(SURFACE_IDS.map(id => [id, true]));
+  const everything = visibleFor('viewer', all);
+  for (const s of SURFACES) assert.equal(everything.includes(s.id), s.kind !== 'nav', s.id);
 });
 
-test('ALWAYS_OWNER_IDS is every link out to another page and every private surface, and nothing else', () => {
-  const want = SURFACES.filter(s => s.kind === 'nav' || s.class === 'private').map(s => s.id);
-  assert.deepEqual([...ALWAYS_OWNER_IDS], want);
-  for (const s of SURFACES) if (s.class === 'private' || s.kind === 'nav') assert.ok(ALWAYS_OWNER_IDS.includes(s.id), s.id);
-  // switching everything on still never shows the owner's area to a viewer
-  const all = Object.fromEntries(SURFACE_IDS.map(id => [id, true]));
-  const v = visibleFor('viewer', all);
-  for (const s of SURFACES) if (s.class === 'private' || s.kind === 'nav') assert.ok(!v.includes(s.id), `${s.id} stays hidden even when switched on`);
+test('LOCKED_HIDDEN_IDS is every link out to another page and nothing else', () => {
+  assert.deepEqual([...LOCKED_HIDDEN_IDS], SURFACES.filter(s => s.kind === 'nav').map(s => s.id));
+  assert.deepEqual([...ALWAYS_VISIBLE_IDS], ['widget.signout']);
+});
+
+test('schema: switches saved under another schema are ignored whole, and the owner is told', () => {
+  assert.ok(Number.isInteger(SCHEMA) && SCHEMA >= 2);
+  assert.deepEqual(savedFor({ 'panel.ov.bestpairs': true, updatedAt: 'x' }), { saved: {}, reset: true }, 'an old object (no schema) is ignored and flagged');
+  assert.deepEqual(savedFor({ schema: SCHEMA - 1, 'tab.macro': false }), { saved: {}, reset: true });
+  const cur = { schema: SCHEMA, 'tab.macro': false };
+  assert.deepEqual(savedFor(cur), { saved: cur, reset: false });
+  assert.deepEqual(savedFor({}), { saved: {}, reset: false }, 'nothing stored: nothing to reset');
+  assert.deepEqual(savedFor(null), { saved: {}, reset: false });
+  // an old override that put a trade surface on does NOT survive: the viewer falls to the new defaults
+  const old = savedFor({ 'panel.ov.bestpairs': true, 'panel.ov.regime-lists': false }).saved;
+  const v = visibleFor('viewer', old);
+  assert.ok(!v.includes('panel.ov.bestpairs')); assert.ok(v.includes('panel.ov.regime-lists'));
 });
 
 test('cleanSwitches accepts known ids with booleans and nothing else', () => {
-  assert.deepEqual(cleanSwitches({ 'panel.asset.plan': true, 'tab.macro': false, updatedAt: 'x' }), { ok: true, clean: { 'panel.asset.plan': true, 'tab.macro': false } });
-  assert.deepEqual(cleanSwitches({ 'tab.read': true, 'nav.research': true }), { ok: true, clean: {} });   // private and link surfaces are never switchable
+  assert.deepEqual(cleanSwitches({ 'panel.asset.plan': true, 'tab.macro': false, updatedAt: 'x', schema: 2 }), { ok: true, clean: { 'panel.asset.plan': true, 'tab.macro': false } });
+  assert.deepEqual(cleanSwitches({ 'tab.read': true, 'panel.ov.record': false }), { ok: true, clean: { 'tab.read': true, 'panel.ov.record': false } }, 'a hidden-by-reason surface is switchable');
+  assert.deepEqual(cleanSwitches({ 'nav.research': true, 'nav.access': true, 'widget.signout': false }), { ok: true, clean: {} }, 'links out and Sign out are never switchable');
   assert.equal(cleanSwitches({ 'tab.nope': true }).ok, false);
   assert.equal(cleanSwitches({ 'panel.asset.plan': 'yes' }).ok, false);
   assert.equal(cleanSwitches([]).ok, false); assert.equal(cleanSwitches(null).ok, false);
-  assert.deepEqual(cleanSwitches({ 'nav.access': true }), { ok: true, clean: {} });
 });
 
 test('access.js: fails closed, hides exactly the surfaces that are off', () => {
   const failed = resolveSession(null, null);
-  assert.equal(failed.role, 'viewer'); assert.equal(failed.failed, true); assert.deepEqual(failed.visible, DEFAULT_VISIBLE_IDS);
+  assert.equal(failed.role, 'viewer'); assert.equal(failed.failed, true); assert.deepEqual(failed.visible, visibleFor('viewer', null));
   const half = resolveSession({ ok: true, role: 'owner' }, null);
   assert.equal(half.role, 'viewer', 'an owner answer without the access answer is still treated as a viewer');
   const owner = resolveSession({ ok: true, role: 'owner' }, { ok: true, role: 'owner', visible: SURFACE_IDS });
   assert.equal(owner.role, 'owner'); assert.equal(hideCss(owner.visible), '');
   const viewer = resolveSession({ ok: true, role: 'viewer' }, { ok: true, role: 'viewer', visible: ['tab.macro', 'nav.access', 'bogus'] });
-  assert.deepEqual(viewer.visible, ['tab.macro'], 'unknown ids and the admin link are dropped');
+  assert.deepEqual(viewer.visible, ['tab.macro'], 'unknown ids and links out are dropped');
   const css = hideCss(viewer.visible);
   assert.ok(css.includes('[data-surface="tab.read"]{display:none!important}')); assert.ok(!css.includes('"tab.macro"'));
 });
 
-test('the admin page and the terminal use the same registry', () => {
+test('the admin page and the terminal use the same registry, and the admin page lists every surface', () => {
   const admin = read('desk-admin.html');
   assert.match(admin, /terminal\/tabRegistry\.js/, 'desk-admin.html imports the registry');
+  assert.match(admin, /SURFACES\.filter\(s => s\.group === g\)/, 'the admin page draws every surface of every group (nothing is filtered out)');
+  assert.doesNotMatch(admin, /ALWAYS_OWNER_IDS/, 'the old "never listed" rule is gone');
+  assert.match(admin, /Reset the changed ones/); assert.match(admin, /differs/);
   assert.match(html, /js\/terminal\/access\.js/, 'desk-terminal.html loads access.js');
 });

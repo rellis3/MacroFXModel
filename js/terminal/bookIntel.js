@@ -17,7 +17,8 @@ import { groupOf } from '../deskPack.js';
 const n2 = v => (Number.isFinite(v) ? (Math.round(v * 100) / 100).toString() : '–');
 const sgn = v => (v > 0 ? '+' : v < 0 ? '−' : '') + n2(Math.abs(v));
 const toneTxt = t => String(t ?? '').replace(/_/g, '-') || 'no ruling';
-const sideTxt = (net, k) => (k === EQUITY ? `${net > 0 ? 'long' : 'short'} equities` : `${net > 0 ? 'long' : 'short'} ${k}`);
+// the desk login reads a net position as a lean (bullish / bearish), never as a position (long / short)
+const sideTxt = (net, k) => { const w = globalThis.deskIsViewer?.() ? (net > 0 ? 'bullish' : 'bearish') : (net > 0 ? 'long' : 'short'); return k === EQUITY ? `${w} equities` : `${w} ${k}`; };
 const list = xs => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 
 /**

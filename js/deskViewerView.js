@@ -1,15 +1,18 @@
 // js/deskViewerView.js: what a Desk Terminal VIEWER (the separate desk login) is shown of the desk's own outputs. Pure: no fetch, no env, no clock.
 //
-// THE LENS (owner, 2026-11-13): the desk login is an EDUCATION tool and a macro dashboard, not a signal service.
-//   ANALYSIS is shown: the bias of the day, risk state, regime, currency strength, correlations, surprises, forecast ranges, what the data is showing.
-//   A TRADE SIGNAL is not: "this is a trade", buy here / short there, entries, stops, targets, invalidation levels as a plan, position size,
-//   "best expression", playbooks, hedge recommendations, scenario P&L on the owner's book. The owner's PRIVATE area (his book, record,
-//   journal, research, bots, ops) is not shown either.
-// The desk's morning book (/api/desk-run) carries both kinds in the same objects (a card has a rating AND a size AND a plan), so this module builds the
-// viewer's copy from an ALLOWLIST: only the analytic fields are copied. A field that is not listed here never reaches a viewer, whatever the page does.
-// The owner can switch a trade-level sub-surface back on in the admin panel (panel.asset.plan, panel.asset.size, ...): `on(id)` says whether a surface is visible to
-// viewers, and the matching fields are then included. Wired in server.js (a res.json wrapper for requests that carry only a desk cookie).
-// Tested by js/deskViewerView.test.mjs.
+// THE THREE RULES (owner, 2026-11-13; see js/terminal/tabRegistry.js): the desk login is an education tool and a macro dashboard. Hide ONLY what reads as
+// a TRADE INSTRUCTION, what COSTS money, and the owner's own tooling / P&L. EVERYTHING ELSE IS SHOWN: the directional analysis and why (which
+// currencies the desk leans bullish or bearish, with the reasons), the ratings and convictions, the book's exposure, risk and scenarios, drivers, regime.
+// The desk's morning book (/api/desk-run) carries analysis and trade-level fields in the same objects (a card has a rating AND a size AND a plan), so
+// this module builds the viewer's copy with a DENYLIST: the whole payload is kept and only the trade-level fields are removed:
+//   plan (zone, invalidation, timing), invalidation, entry, stop / stop-loss, target / take-profit / tp, risk-reward, the desk edition's trade `ideas`,
+//   the risk desk's `adjustments` (sizes and vetoes), plus internal job fields (tokens, roles, cost, job, mode, stack).
+// `size` is KEPT: it is how the book's exposure and scenarios are computed (the exposure panels are shown). The place a size is DISPLAYED as a trade
+// line is the market card's size row, which is its own switch (panel.asset.size, a 'trade' surface). Free text loses only the imperative trade
+// sentences that carry a LEVEL ("buy at 1.0850", "stop at 1.0800", "target 4,100", "entry 1.0840"); analytic sentences are never cut.
+// The owner can switch a trade-level surface back on in the admin panel (panel.asset.plan): `on(id)` says whether a surface is visible to viewers,
+// and the plan fields are then kept. Wired in server.js (a res.json wrapper for requests that carry only a desk cookie). Tested by js/deskViewerView.test.mjs.
+// The SHARED once-a-day reads (validateSharedRead below) stay strict: one stored copy for everyone, no trade language at all.
 
 // ── trade language ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 // A sentence is dropped from viewer text when it reads as an instruction or a trade plan. The patterns are deliberately about the PLAN words (entry, stop,
@@ -54,64 +57,63 @@ const list = (xs, n = 8, len = 400) => (Array.isArray(xs) ? xs.map(x => scrubTex
 const num = v => (Number.isFinite(Number(v)) && v !== null && v !== '' ? Number(v) : null);
 const onFn = on => (typeof on === 'function' ? on : () => false);
 
-// ── the morning book ───────────────────────────────────────────────────────────────────────────────────────────────────────────
-function card(c, on) {
-  if (!c || typeof c !== 'object') return c;
-  const out = { rating: c.rating, conviction: c.conviction, why: scrubText(c.why, 700) };
-  if (c.missing) out.missing = true;
-  if (c.levels && typeof c.levels === 'object') out.levels = c.levels;           // the forecast ranges: information (p50 / p75 / p90 each side of the open)
-  if (on('panel.asset.size')) for (const k of ['size', 'sizeBeforeCap', 'cappedBy']) if (c[k] !== undefined) out[k] = c[k];
-  if (on('panel.asset.plan')) {
-    if (c.plan && typeof c.plan === 'object') out.plan = { zone: c.plan.zone ?? null, invalidation: c.plan.invalidation ?? null, timing: c.plan.timing ?? null };
-    if (c.invalidation !== undefined) out.invalidation = c.invalidation;
+// ── the morning book (denylist) ──────────────────────────────────────────────────────────────────────────────────────────────────
+// Trade-level KEYS, removed wherever they appear. `plan` and `invalidation` come back when the owner switches panel.asset.plan on.
+const TRADE_KEYS = new Set(['entry', 'entries', 'stop', 'stops', 'stopLoss', 'stop_loss', 'takeProfit', 'take_profit', 'tp', 'target', 'targets', 'riskReward', 'risk_reward', 'rr',
+  'ideas', 'adjustments', 'veto']);
+const PLAN_KEYS = new Set(['plan', 'invalidation']);
+const INTERNAL_KEYS = new Set(['tokens', 'roles', 'cost', 'costs', 'stack', 'job', 'mode']);
+// Imperative trade sentences that carry a LEVEL. Narrower than TRADE_RES above on purpose: "go long the dollar" is a lean, "buy at 1.0850" is an instruction.
+const LEVEL_RES = [
+  /\b(entry|entries|enter(ing)?)\b[^.\n]{0,40}[$£€]?\d/i,
+  /\bstop[- ]?loss(es)?\b/i,
+  /\bstops?\s+(at|above|below|beyond|under|over|near)\b[^.\n]{0,20}\d/i,
+  /\btake[- ]?profits?\b/i,
+  /\btp\s*\d/i,
+  /(?<!\b(?:inflation|policy|rate|growth|employment|yield|curve|debt)\s)\b(price )?targets?\s*(of|at|near|around|to|:|=)?\s*[$£€]?\d/i,
+  /\binvalidat(ion|ed|es)\b[^.]{0,30}(\d|\babove\b|\bbelow\b)/i,
+  /\binvalid(ation)?\s*[:=]?\s*[$£€]?\d/i,
+  /\b(buy|sell|long|short)\s+(on|at|near|around|above|below|into)\s+[$£€]?\d/i,
+  /\b(buy|sell)\b[^.]{0,30}\b(at|near|around|above|below|from)\s+[$£€]?\d/i,
+  /\brisk[- ]?(to[- ]?)?reward\b|\br:r\b/i,
+];
+/** Does this text read as an imperative trade sentence with a level? */
+export function isTradeLevelText(s) { const t = String(s ?? ''); return LEVEL_RES.some(re => re.test(t)); }
+/** The text with every trade-LEVEL sentence removed ('' when nothing is left). Analytic sentences are kept whole. */
+export function scrubLevels(s, max = 4000) {
+  const t = String(s ?? '');
+  if (!t) return '';
+  if (!LEVEL_RES.some(re => re.test(t))) return t.length > max ? t.slice(0, max) : t;
+  return (t.match(SENT) ?? [t]).filter(x => !LEVEL_RES.some(re => re.test(x))).join('').trim().slice(0, max);
+}
+const hasText = o => Object.values(o).some(x => typeof x === 'string' && x.trim());
+const hasContent = y => (typeof y === 'string' ? y.trim() !== '' : Array.isArray(y) ? y.some(hasContent) : y && typeof y === 'object' ? Object.values(y).some(hasContent) : y != null);
+/** A deep copy with the trade-level keys, the internal keys and the trade-level sentences removed. on(id): which switchable surfaces the owner turned on. */
+export function stripTrade(v, on, depth = 0) {
+  const O = onFn(on);
+  if (typeof v === 'string') return scrubLevels(v);
+  if (Array.isArray(v)) {
+    // an item that was text (or a card of text) and is left with nothing once its trade sentences are cut is dropped, not shown as a blank bullet
+    const out = [];
+    for (const x of v) { const y = stripTrade(x, on, depth + 1); if ((typeof x === 'string' || (x && typeof x === 'object' && hasText(x))) && !hasContent(y)) continue; out.push(y); }
+    return out;
+  }
+  if (!v || typeof v !== 'object' || depth > 14) return v;
+  const planOn = O('panel.asset.plan');
+  const out = {};
+  for (const [k, x] of Object.entries(v)) {
+    if (INTERNAL_KEYS.has(k) || TRADE_KEYS.has(k)) continue;
+    if (PLAN_KEYS.has(k) && !planOn) continue;
+    out[k] = stripTrade(x, on, depth + 1);
   }
   return out;
 }
-const mapObj = (o, f) => (o && typeof o === 'object' ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, f(v, k)])) : o);
-const ccyBlock = v => (v && typeof v === 'object' ? { bias: v.bias, conviction: v.conviction, why: scrubText(v.why, 700), ...(v.flip ? { flip: scrubText(v.flip, 300) } : {}) } : v);
 
-/** The viewer's copy of a desk run: analysis only. `on(id)` says which trade-level sub-surfaces the owner switched on for viewers. */
+/** The viewer's copy of a desk run: the whole book with the trade-level fields removed. `on(id)` says which trade-level sub-surfaces the owner switched on. */
 export function sanitizeRun(run, on) {
-  const O = onFn(on);
   if (!run || typeof run !== 'object') return run;
   if (run.ok === false) return { ok: false, error: run.error ?? 'no desk run yet', running: run.running };
-  const out = { ok: true, date: run.date, startedAt: run.startedAt, finishedAt: run.finishedAt };
-  const b = run.head?.book;
-  out.head = { ok: !!run.head?.ok };
-  if (run.head?.ok && b) {
-    out.head.book = {
-      headline: scrubText(b.headline, 400),
-      global: b.global ? { tone: b.global.tone, summary: scrubText(b.global.summary, 800) } : null,
-      currencies: mapObj(b.currencies, ccyBlock),
-      instruments: mapObj(b.instruments, c => card(c, O)),
-      risks: list(b.risks, 8, 400),
-      gaps: list(b.gaps, 8, 300),
-    };
-  }
-  const d = run.debate;
-  if (d) {
-    out.debate = {};
-    const cv = d.currency?.view;
-    if (cv) out.debate.currency = { view: { currencies: mapObj(cv.currencies, ccyBlock), ranking: cv.ranking } };
-    const gv = d.global?.view;
-    if (gv) out.debate.global = { view: { tone: gv.tone, conviction: gv.conviction, summary: scrubText(gv.summary, 800), drivers: list(gv.drivers, 6, 200), flip: list(gv.flip, 5, 300) } };
-    if (d.assets && typeof d.assets === 'object') {
-      out.debate.assets = mapObj(d.assets, g => ({ view: g?.view ? { summary: scrubText(g.view.summary, 600), instruments: mapObj(g.view.instruments, i => card({ rating: i?.rating, conviction: i?.conviction, why: i?.why, plan: i?.plan }, O)) } : null }));
-    }
-  }
-  if (run.analysts && typeof run.analysts === 'object') {
-    out.analysts = mapObj(run.analysts, a => (a?.ok && a.report
-      ? { ok: true, id: a.id, report: { headline: scrubText(a.report.headline, 300), confidence: a.report.confidence, gaps: list(a.report.gaps, 6, 200),
-          points: (a.report.points ?? []).slice(0, 12).map(p => ({ claim: scrubText(p.claim, 400), evidence: scrubText(p.evidence, 300), impact: p.impact })).filter(p => p.claim) } }
-      : { ok: false, id: a?.id }));
-  }
-  if (run.economist) {
-    out.economist = {
-      releases: (run.economist.releases ?? []).map(r => ({ at: r.at, event: r.event, playbook: r.playbook })),
-      view: run.economist.view ? { briefs: (run.economist.view.briefs ?? []).map(x => ({ event: x.event, sizeAndSpeed: scrubText(x.sizeAndSpeed, 500), priced: scrubText(x.priced, 400), ifHot: scrubText(x.ifHot, 400), ifCold: scrubText(x.ifCold, 400), watch: scrubText(x.watch, 300) })) } : null,
-    };
-  }
-  return out;
+  return stripTrade(run, on);
 }
 
 /** The index of runs (/api/desk-run/index): dates only. */
@@ -120,49 +122,32 @@ export function sanitizeRunIndex(ix) {
   return { ok: ix.ok !== false, days: (ix.days ?? []).map(d => ({ date: d.date, headOk: !!d.headOk })) };
 }
 
-/** Session updates (/api/desk-update): the headlines and what changed, no sizes, no job state. */
+/** Session updates (/api/desk-update): the headlines, what changed and the live ratings; trade-level fields removed, job state dropped. */
 export function sanitizeUpdate(u, on) {
-  const O = onFn(on);
   if (!u || typeof u !== 'object') return u;
-  const slotOut = s => {
-    if (!s || typeof s !== 'object') return s;
-    const v = s.view ?? s;
-    const view = { headline: scrubText(v.headline, 300), globalStillHolds: v.globalStillHolds, watch: list(v.watch, 5, 300),
-      changes: (v.changes ?? []).slice(0, 12).map(c => ({ instrument: c.instrument, to: c.to, why: scrubText(c.why, 400), ...(O('panel.asset.size') && c.size !== undefined ? { size: c.size } : {}) })) };
-    return { ...(s.at ? { at: s.at } : {}), ...(s.label ? { label: s.label } : {}), view };
-  };
-  return { ok: u.ok !== false, date: u.date, slots: mapObj(u.slots, slotOut),
-    live: u.live && u.live.instruments ? { ...u.live, instruments: mapObj(u.live.instruments, i => ({ rating: i?.rating, from: i?.from, was: i?.was, why: scrubText(i?.why, 300), ...(O('panel.asset.size') && i?.size !== undefined ? { size: i.size } : {}) })) } : (u.live ?? null) };
+  return stripTrade(u, on);
 }
 
-/** The weekly strategist (/api/desk-weekly): the view, themes, dates and what-ifs; no job state. */
-export function sanitizeWeekly(w) {
+/** The weekly strategist (/api/desk-weekly): the view, themes, dates and what-ifs; the desk edition's trade ideas are dropped with the trade keys. */
+export function sanitizeWeekly(w, on) {
   if (!w || typeof w !== 'object') return w;
   if (w.ok === false) return { ok: false, error: w.error };
-  const v = w.view ?? {};
-  return { ok: true, week: w.week, label: w.label, view: {
-    headline: scrubText(v.headline, 400), ranking: v.ranking, currencies: mapObj(v.currencies, ccyBlock),
-    themes: (v.themes ?? []).map(t => ({ title: scrubText(t.title, 200), body: scrubText(t.body, 800) })).filter(t => t.title || t.body),
-    week: (v.week ?? []).map(x => ({ when: x.when, event: x.event, why: scrubText(x.why, 300) })),
-    scenarios: (v.scenarios ?? []).map(x => ({ if: scrubText(x.if, 300), then: scrubText(x.then, 400) })).filter(x => x.if && x.then),
-    lastWeek: scrubText(v.lastWeek, 800) } };
+  return stripTrade(w, on);
 }
 
-/** The daily history (/api/desk-history): the ranking, biases and tone per day. The desk's own score for a day is its private record: dropped. */
-export function sanitizeHistory(h) {
+/** The daily history (/api/desk-history): the ranking, biases and tone per day. The desk's own score for a day is its record (P&L class): dropped
+ *  unless the owner switched a record surface on. */
+export function sanitizeHistory(h, on) {
   if (!h || typeof h !== 'object') return h;
-  return { ...h, rows: (h.rows ?? []).map(r => ({ date: r.date, tone: r.tone, conviction: r.conviction, ranking: r.ranking, biases: r.biases })) };
+  const O = onFn(on);
+  if (O('panel.ana.track') || O('panel.ana.days') || O('panel.ana.fall') || O('panel.ov.record')) return stripTrade(h, on);
+  return { ...stripTrade({ ...h, rows: undefined }, on), rows: (h.rows ?? []).map(r => ({ date: r.date, tone: r.tone, conviction: r.conviction, ranking: r.ranking, biases: r.biases })) };
 }
 
-/** The wire (/api/desk-news): the read of each headline (tier, impact, why), without the line about the owner's book or his card's stance. */
-export function sanitizeNews(res) {
+/** The wire (/api/desk-news): the read of each headline, its pairs and its line on the book (analysis); trade-level sentences removed. */
+export function sanitizeNews(res, on) {
   if (!res || typeof res !== 'object' || !Array.isArray(res.items)) return res;
-  return { ...res, items: res.items.map(h => {
-    const { read, pairs, ...rest } = h;
-    const r = read && typeof read === 'object' ? { ...read } : read;
-    if (r && typeof r === 'object') { delete r.book; if (r.why) r.why = scrubText(r.why, 500); }
-    return { ...rest, ...(r ? { read: r } : {}), ...(Array.isArray(pairs) ? { pairs: pairs.map(p => ({ inst: p.inst, dir: p.dir })) } : {}) };
-  }) };
+  return stripTrade(res, on);
 }
 
 // ── the shared reads ───────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -203,13 +188,15 @@ export function sanitizeStoredRead(read) {
   return { ...rest, card: null, analysis: v.ok ? v.value : empty, label: 'educational context: not a trade signal' };
 }
 
-/** The routes whose JSON a viewer receives as an allowlisted copy: (body, on) => body. Wired in server.js (a res.json wrapper). */
+/** The routes whose JSON a viewer receives with the trade-level fields removed: (body, on) => body. Wired in server.js (a res.json wrapper). */
 export const VIEWER_SANITISERS = {
   '/api/desk-run': sanitizeRun,
   '/api/desk-run/index': body => sanitizeRunIndex(body),
   '/api/desk-update': sanitizeUpdate,
-  '/api/desk-weekly': body => sanitizeWeekly(body),
-  '/api/desk-history': body => sanitizeHistory(body),
-  '/api/desk-news': body => sanitizeNews(body),
+  '/api/desk-weekly': sanitizeWeekly,
+  '/api/desk-history': sanitizeHistory,
+  '/api/desk-news': sanitizeNews,
+  '/api/desk-risk': (body, on) => stripTrade(body, on),    // the model description of the book's risk and exposure: analysis; stripped defensively
+  '/api/desk-watch': (body, on) => stripTrade(body, on),   // the setup watch and the chain-link log
 };
 export const sanitizerFor = path => VIEWER_SANITISERS[String(path ?? '').split('?')[0].replace(/\/+$/, '')] ?? null;

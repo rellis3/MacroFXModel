@@ -1,13 +1,13 @@
 // js/terminal/access.js: who is looking at the Desk Terminal, and which surfaces they may see. Loaded first, before terminalTabs.js.
 //
 //   1. asks the server: GET /api/desk-session (owner | viewer) and GET /api/desk-access (the surface ids this session may see);
-//   2. FAILS CLOSED: if either call fails, the session is treated as a viewer and gets only the registry's DEFAULT_VISIBLE_IDS;
+//   2. FAILS CLOSED: if either call fails, the session is treated as a viewer and gets only the registry's default-visible surfaces;
 //   3. hides every other surface with ONE stylesheet ([data-surface="id"]{display:none}), so panels that re-render stay hidden;
 //   4. for a viewer: moves off a hidden tab, turns links to other pages into plain text (they would bounce to the owner's login),
 //      and sets globalThis.deskAccessState = { role, visible, mayCall } so getJson never asks for a route the server refuses them;
 //   5. dispatches 'deskaccess': the page's load() waits for it.
 // The registry is js/terminal/tabRegistry.js; the guard test is js/terminal/tabRegistry.test.mjs. Pure parts are exported for tests.
-import { SURFACE_IDS, DEFAULT_VISIBLE_IDS, ALWAYS_OWNER_IDS, visibleFor } from './tabRegistry.js';
+import { SURFACE_IDS, LOCKED_HIDDEN_IDS, visibleFor } from './tabRegistry.js';
 import './links.js';   // sets globalThis.ownerLink / ownerOnly for the page's classic script
 import { viewerMayCall } from '../deskAccess.js';
 
@@ -27,7 +27,7 @@ export function resolveSession(session, access) {
   const owner = ok && session.role === 'owner' && access.role === 'owner';
   const auth = session?.auth !== false;   // false only when the server says no passwords are set; unknown => show Sign out
   if (owner) return { role: 'owner', visible: [...SURFACE_IDS], failed: false, auth };
-  const visible = ok ? access.visible.filter(id => SURFACE_IDS.includes(id) && !ALWAYS_OWNER_IDS.includes(id)) : visibleFor('viewer', null);
+  const visible = ok ? access.visible.filter(id => SURFACE_IDS.includes(id) && !LOCKED_HIDDEN_IDS.includes(id)) : visibleFor('viewer', null);
   return { role: 'viewer', visible, failed: !ok, auth };
 }
 
@@ -108,7 +108,7 @@ export function wireSignout(state, doc = document) {
 export async function init() {
   const [session, access] = await Promise.all([j('/api/desk-session'), j('/api/desk-access')]);
   const state = resolveSession(session, access);
-  globalThis.deskAccessState = { role: state.role, visible: state.visible, failed: state.failed, mayCall: state.role === 'viewer' ? viewerMayCall : () => true };
+  globalThis.deskAccessState = { role: state.role, visible: state.visible, failed: state.failed, mayCall: state.role === 'viewer' ? (m, u) => viewerMayCall(m, u, id => state.visible.includes(id)) : () => true };
   globalThis.deskSurfaceOn = id => state.role === 'owner' || state.visible.includes(id);
   globalThis.deskIsViewer = () => state.role === 'viewer';
   applyAccess(state);

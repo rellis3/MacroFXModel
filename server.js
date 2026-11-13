@@ -189,7 +189,7 @@ import { sanitizerFor as _deskViewerSanitiser, sanitizeStoredRead as _deskSaniti
 import { viewerMayCall as _deskViewerMayCall, deskLoginDecision as _deskLoginDecision } from './js/deskAccess.js';                       // what a desk-login VIEWER may call (js/deskAccess.js)
 import { deskLoginPage as _deskLoginPage } from './js/deskLoginPage.js';                  // the desk zone's sign-in page (js/deskLoginPage.js)
 import { logoutPlan as _logoutPlan, clearCookieHeader as _clearCookieHeader, sameSiteOk as _logoutSameSiteOk } from './js/deskLogout.js';   // what /logout clears and where it goes (desk, all, library, education, main)
-import { visibleFor as _deskVisibleFor, cleanSwitches as _deskCleanSwitches } from './js/terminal/tabRegistry.js';   // the Desk Terminal surface registry
+import { visibleFor as _deskVisibleFor, cleanSwitches as _deskCleanSwitches, savedFor as _deskSavedFor, SCHEMA as _DESK_SCHEMA } from './js/terminal/tabRegistry.js';   // the Desk Terminal surface registry
 import { RBA_MEETINGS, pendingAsOf as rbaPendingAsOf, allReleases as rbaAllReleases } from './js/rbaCalendar.js';
 import { FETCHERS as RBA_FETCHERS, extractVote as rbaExtractVote } from './js/rbaFetch.js';
 import { BOC_MEETINGS, pendingAsOf as bocPendingAsOf, allReleases as bocAllReleases } from './js/bocCalendar.js';
@@ -3321,14 +3321,15 @@ app.use('/api', (req, res, next) => {
   const c = authParseCookies(req);
   if (authVerifyCookie(c[`${AUTH_COOKIE_NAME}_main`], 'main')) return next();
   if (!authVerifyCookie(c[`${AUTH_COOKIE_NAME}_desk`], 'desk')) return next();
-  if (_deskViewerMayCall(req.method, req.originalUrl)) {
-    // the desk's own book and its companions are handed to a viewer as an allowlisted copy: analysis kept, trade fields and owner data dropped (js/deskViewerView.js)
+  // what the owner switched on for the desk login decides which switchable routes open (a P&L or trade panel's data) and which trade-level fields stay
+  _deskSwitches().catch(() => ({})).then(saved => {
+    const vis = new Set(_deskVisibleFor('viewer', saved)), on = id => vis.has(id);
+    if (!_deskViewerMayCall(req.method, req.originalUrl, on)) return res.status(403).json({ ok: false, error: 'owner only' });
+    // the desk's own book and its companions are handed to a viewer whole, with only the trade-level fields removed (js/deskViewerView.js)
     const san = req.method === 'GET' ? _deskViewerSanitiser(req.baseUrl + req.path) : null;
     if (!san) return next();
-    const orig = res.json.bind(res), wrap = on => { res.json = body => orig(san(body, on)); next(); };
-    return _deskSwitches().then(saved => { const vis = new Set(_deskVisibleFor('viewer', saved)); wrap(id => vis.has(id)); }, () => wrap(() => false));
-  }
-  res.status(403).json({ ok: false, error: 'owner only' });
+    const orig = res.json.bind(res); res.json = body => orig(san(body, on)); next();
+  });
 });
 // Where the outbound bytes go, ranked, since boot -- see js/egressMeter.js.
 app.get('/api/egress-audit', (req, res) => res.json(egressSnapshot(Number(req.query.limit) || 40)));
@@ -45112,24 +45113,33 @@ app.get('/api/desk-session', (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json({ ok: true, role: deskSessionRole(req), deskLogin: DESK_ENABLED, auth: AUTH_ENABLED });
 });
-async function _deskSwitches() {
-  try { const raw = await kv.get(DESK_ACCESS_KV); return raw ? JSON.parse(raw) : {}; } catch { return {}; }
+// The stored object is { schema, [id]: bool, updatedAt }. A copy stored under another schema (the rules changed) is ignored whole: the new defaults apply
+// until the owner saves again. The raw read is cached for 10 s so a viewer's every /api call does not hit KV; a save clears the cache.
+let _deskSwCache = { at: 0, stored: {} };
+async function _deskStored() {
+  if (Date.now() - _deskSwCache.at < 10_000) return _deskSwCache.stored;
+  let stored = {};
+  try { const raw = await kv.get(DESK_ACCESS_KV); stored = raw ? JSON.parse(raw) : {}; } catch { stored = {}; }
+  _deskSwCache = { at: Date.now(), stored };
+  return stored;
 }
+async function _deskSwitches() { return _deskSavedFor(await _deskStored()).saved; }
 // GET /api/desk-access -> the surface ids this session may see (owner: all; viewer: the defaults overridden by the owner's switches), plus, for the
 // owner, the saved switches so the admin page can draw them. Fails closed: a viewer with no saved switches gets the defaults.
 app.get('/api/desk-access', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const role = deskSessionRole(req) === 'owner' ? 'owner' : 'viewer';
-  const saved = await _deskSwitches();
-  res.json({ ok: true, role, visible: _deskVisibleFor(role, saved), ...(role === 'owner' ? { saved } : {}) });
+  const { saved, reset } = _deskSavedFor(await _deskStored());
+  res.json({ ok: true, role, schema: _DESK_SCHEMA, visible: _deskVisibleFor(role, saved), ...(role === 'owner' ? { saved, reset } : {}) });
 });
 // POST /api/desk-access { [id]: true|false } -> saves the switches. Owner only (the main login): a desk cookie is refused whatever the body says.
 app.post('/api/desk-access', async (req, res) => {
   if (deskSessionRole(req) !== 'owner') return res.status(403).json({ ok: false, error: 'owner only' });
   const v = _deskCleanSwitches(req.body);
   if (!v.ok) return res.status(400).json({ ok: false, error: v.error });
-  const saved = { ...(await _deskSwitches()), ...v.clean, updatedAt: new Date().toISOString() };
+  const saved = { ...(await _deskSwitches()), ...v.clean, schema: _DESK_SCHEMA, updatedAt: new Date().toISOString() };
   try { await kv.put(DESK_ACCESS_KV, JSON.stringify(saved)); } catch (e) { return res.status(500).json({ ok: false, error: `could not save: ${e.message}` }); }
+  _deskSwCache = { at: 0, stored: {} };
   res.json({ ok: true, saved, visible: _deskVisibleFor('viewer', saved) });
 });
 

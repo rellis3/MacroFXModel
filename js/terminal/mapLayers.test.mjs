@@ -27,13 +27,13 @@ const ctx = {
   h: { esc: s => String(s ?? ''), sgn: (x, d = 2) => (x == null ? '–' : `${x > 0 ? '+' : ''}${(+x).toFixed(d)}`), spk: () => '<svg/>', tile: b => `<div>tile ${b.bank}</div>`, cell: (ccy, f) => `<td>${ccy}${f.key}</td>`, families: [{ key: 'labour', label: 'Labour' }] },
 };
 
-test('every layer has a registered surface; owner layers match the registry ownerData flag; ids unique', () => {
+test('every layer has a registered surface, and every layer is shown by default (a map layer is analysis, never a trade); ids unique', () => {
   assert.equal(new Set(LAYER_IDS).size, LAYER_IDS.length);
   for (const l of LAYERS) {
     const sf = surfaceOf(l.id), row = surfaceById(sf);
     assert.ok(sf && row, `${l.id}: no surface in the registry`);
-    assert.equal(row.ownerData, !!l.owner, `${l.id}: registry ownerData must match the layer's owner flag`);
-    assert.equal(row.defaultVisible, !l.owner, `${l.id}: owner layers are off by default, market layers on`);
+    assert.equal(row.hidden, null, `${l.id}: a map layer has no hide reason (the owner's three rules)`);
+    assert.equal(row.defaultVisible, true, `${l.id}: map layers are on by default`);
   }
 });
 
