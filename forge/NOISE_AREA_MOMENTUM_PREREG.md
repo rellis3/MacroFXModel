@@ -169,7 +169,22 @@ Logged trials: 3 scored + 7 described variants.
 
 ## Amendments
 
-(none yet)
+### A1 — 2026-11-13 — PRE-RESULTS
+Building the day matrices (no band, signal or return computed) found two data problems:
+1. **NT8 holes.** The continuous and per-contract NT8 files miss ~6-week runs inside contracts (2018 ×2, 2024 ×3,
+   2025 ×4, 2026 ×1; DATA_SPEC #24), about 10% of days and ~40% of 2024-25. Those days are **filled with the OANDA CFD
+   cash-session minutes** (`data/m1_bidask/{spx,nq,dow,us2000}_m1.parquet`, open-stamped mid, tick volume), scaled to
+   the futures level by the futures/CFD close ratio on the most recent day both exist. At a CFD → futures switch the
+   previous close is the CFD close times today's futures/CFD open ratio (no basis jump). Costs stay the futures costs.
+   On overlap days (H1 2023) the CFD's 1-minute returns correlate 0.986 (ES) / 0.998 (NQ) with the futures, open-to-close
+   differs by ~2.5 bp; tick volume correlates only 0.43 / 0.66 with contract volume, so VWAP on filled days is a proxy.
+   Days flagged `src`. **Added sensitivity (described):** all stats on futures-only days.
+2. **Holiday Globex sessions.** CME trades to 13:00 ET on US exchange holidays; those days (last bar ending 13:00) are
+   dropped as the cash market is shut. True half-days (13:15 futures close) stay and are closed at their last bar.
+3. **σ_daily** uses the same-source previous close and needs 13 of the 14 returns (one gap after a long holiday break);
+   a day whose previous used day is more than 5 calendar days back has no previous close (no gap widening, no σ return).
+Result: ES/NQ/YM 2,684 days 2015-12-14 → 2026-08-21, RTY 2,293 from 2017-07-10; remaining missing business days are the
+exchange holidays (~9-10 a year). No outcome had been computed.
 
 ## RESULTS
 

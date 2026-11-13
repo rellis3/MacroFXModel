@@ -61,3 +61,4 @@ contradictions found between docs and code. Add new entries at the bottom of the
   (`oi_research_book/data/gex_range_es/*_nyclose_d1.parquet`). Superseded by v2. Check
   `plans/MARKET_STATE_ENGINE_PLAN.md` §0b before fetching anything.
 - 2026-11-07: NT8 1-minute bars (`analysis/output/nt8/`) are end-stamped: the 09:30 New York minute carries the label 09:31 (median volume spikes on 09:31 and on 16:00, for NQ, ES, GC, CL). Move stamps back one minute before cutting sessions. Studies on these bars before this date were not audited for it (`forge/FAILED_AUCTION_VOLUME_PREREG.md` A1).
+- 2026-11-13: NT8 continuous futures (ES/NQ/YM/RTY at least) miss ~6-week runs inside contracts in 2018 and 2024-26 (~40% of 2024-25 days); and a 09:30-16:00 ET cut keeps US-holiday Globex sessions (last bar 13:00). DATA_SPEC #24. Check `bdate_range` coverage before trusting an NT8 day count.
