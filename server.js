@@ -351,6 +351,7 @@ import { INTRADAY_SYMS as _CBOE_INTRA_SYMS, INTRADAY_FIELDS as _CBOE_INTRA_FIELD
 import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _parseCboeChain, cboeLadder as _cboeLadder, cboeSnapshotRow as _cboeSnapshotRow, cboeOverlayInst as _cboeOverlayInst, cfdCashOffset as _cfdCashOffset, cboeShift as _cboeShift, cashRefTime as _cashRefTime } from './js/cboeChain.js';   // free delayed Cboe index-options chain (additive to CME; dashboard toggle + tracking)   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
 import { meetingProbabilities as _zqMeetingProbs } from './js/fedPathZq.js';
 import { CB_BANKS as _CB_BOARD_BANKS, CB_HISTORY as _CB_BOARD_HISTORY, pastDates as _cbbPastDates, shapeBank as _cbbShape, boardPayload as _cbbPayload } from './js/terminal/cbBoardCore.js';
+import { buildRatesBoard as _buildRatesBoard } from './js/terminal/ratesBoardCore.js';
 import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE, OI_PRODUCT_SPEC as _OI_SPEC } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
 import { buildOIZones, explainNoZones, oiSizeCalibrationStats as _oiSizeCalibrationStats } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
@@ -21889,6 +21890,7 @@ async function _refreshRates() {
     const out = {}; const since = new Date(Date.now() - 12 * 365.25 * 864e5).toISOString().slice(0, 10);
     for (const [k, id] of Object.entries(_RATES_IDS)) out[k] = (await _fredCsv(id)).filter(o => o.date >= since);
     try { out.sofr99 = (await _nyfedSofr99()).filter(o => o.date >= since); } catch (e) { console.warn('[rates] sofr99', e.message); }
+    try { out.us5y = (await _fredCsv('DGS5')).filter(o => o.date >= since); } catch (e) { console.warn('[rates] us5y (the curve board draws without it)', e.message); }
     _rates = { at: Date.now(), series: out, error: null };
   } catch (e) { _rates.error = e.message; console.warn('[rates]', e.message); }
   return _rates;
@@ -21905,6 +21907,18 @@ app.get('/api/rates', async (_req, res) => {
     const keys = Object.keys(S);
     const plumbing = (() => { const l = k => S[k]?.[S[k].length - 1]; const iorb = l('iorb')?.value, sofr = l('sofr')?.value, s99 = l('sofr99')?.value, effr = l('effr')?.value; return { sofr: l('sofr'), sofr99: l('sofr99'), effr: l('effr'), iorb: l('iorb'), srf: l('srf'), dw: l('dw'), rrp: l('rrp'), sofrFloorBp: sofr != null && iorb != null ? Math.round((sofr - iorb) * 100) : null, sofr99FloorBp: s99 != null && iorb != null ? Math.round((s99 - iorb) * 100) : null, effrFloorBp: effr != null && iorb != null ? Math.round((effr - iorb) * 100) : null }; })();
     res.json({ ok: true, now, change20d: Object.fromEntries(keys.map(k => [k, chg(k, 28)])), pct5y: { tp: pct('tp', 5), real: pct('real', 5), bei: pct('bei', 5), us10y: pct('us10y', 5) }, pct10y: { tp: pct('tp', 10) }, plumbing, series: Object.fromEntries(keys.map(k => [k, trim(k)])), at: new Date(_rates.at).toISOString() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// The Desk Terminal's Rates & policy board (Macro tab): the Treasury curve, its slopes against their own 1y/5y history, the curve a
+// week and a month ago, and the 2Y-minus-fed-funds proxy. Built from the same in-memory FRED series /api/rates serves (12 years held,
+// nothing new fetched except DGS5), shaped by js/terminal/ratesBoardCore.js; a few KB, rebuilt only when the series refresh.
+let _ratesBoard = { at: 0, payload: null };
+app.get('/api/rates-board', async (_req, res) => {
+  try {
+    if (Date.now() - _rates.at > 6 * 3600_000 || !_rates.series) await _refreshRates();
+    if (!_rates.series) return res.status(503).json({ ok: false, error: _rates.error ?? 'no rates yet' });
+    if (_ratesBoard.at !== _rates.at || !_ratesBoard.payload) _ratesBoard = { at: _rates.at, payload: _buildRatesBoard(_rates.series) };
+    res.json(_ratesBoard.payload);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 svcInterval('rates', () => _refreshRates().catch(e => console.error('[rates]', e.message)), 6 * 3600_000);

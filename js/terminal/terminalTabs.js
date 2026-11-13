@@ -35,6 +35,7 @@ import { createLevelChart } from '../levelChart.js';
 import { cardDrivers } from './cardExplain.js';
 import { pineForCard, oandaOf } from '../deskBookPine.js';
 import * as AAV from './assetAnalysisView.js';
+import * as RBV from './ratesBoardView.js';
 
 const el = id => document.getElementById(id);
 const h = CB.esc;
@@ -802,3 +803,5 @@ globalThis.stfvHtml = FVV.stfvTable;
 globalThis.cbBoardHtml = CBV.boardHtml;
 globalThis.acBoardHtml = ACV.boardHtml;
 globalThis.llGridHtml = LLV.gridHtml;
+// the Macro tab's Rates & policy board (desk-terminal.html enrichMacro): the curve, its slopes, the priced Fed path beside them
+globalThis.ratesBoardHtml = (rb, fp, gy) => { try { return RBV.boardHtml(rb, fp, gy, { esc, spk, sgn }); } catch (e) { console.warn('rates board', e); return ''; } };
