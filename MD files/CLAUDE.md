@@ -380,6 +380,7 @@ Apply these to any new signal, Python throwaway or JS engine alike.
   prefix to `VIEWER_DENY_PREFIXES` in `js/deskAccess.js`. `js/terminal/tabRegistry.test.mjs` FAILS until (1) and (2) are done, and fails on a registry row with no
   markup. A surface you forget to register is hidden from the desk login (safe), but the test will still stop the push. Never rely on hiding alone for owner data:
   the route must also be on the deny list. The shared once-a-day AI reads are the only viewer POSTs (`VIEWER_POST_ALLOWED` in `js/deskAccess.js`).
+  **Links to other pages are the owner's (2026-11-13):** a link from a card to a page outside the desk zone (`bank-credit.html`, the sentiment pages, Research...) must go through `ownerLink(href, label, { hide, suffix, target })` or `ownerOnly(html)` from `js/terminal/links.js` (`globalThis.ownerLink` in `desk-terminal.html`'s classic script): the owner gets the anchor, a desk viewer gets plain text or nothing. `js/terminal/links.test.mjs` FAILS on a raw `href="x.html"` with its file:line. **Sign out** (`widget.signout`, `POST /logout?zone=all|desk`, `js/deskLogout.js`) is always visible to every session and is not a switch.
 - **`hub.html` IS NOT A USEFUL PAGE. DO NOT TOUCH IT, EVEN IF A REQUEST SOUNDS
   LIKE IT MIGHT MEAN HUB.HTML.** The owner has said this multiple times, the
   second time in frustration at a session (this one) that defaulted to it

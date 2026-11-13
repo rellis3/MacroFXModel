@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CB_BANKS, pastDates, nextMeeting, voteText, dimsOf, readOf, shapeBank, rankBanks, boardPayload } from './cbBoardCore.js';
 import { boardHtml, tileHtml, rankHtml, toneBar, spark, changeHtml, dimsHtml, dshort } from './cbBoardView.js';
+globalThis.deskAccessState = { role: 'owner' };   // the owner sees the links to the main site (js/terminal/links.test.mjs covers the viewer)
 
 const NOW = Date.parse('2026-11-07T12:00:00Z');
 const META = id => CB_BANKS.find(b => b.id === id);

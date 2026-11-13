@@ -50,6 +50,7 @@ export const SURFACES = [
   { id: 'widget.worldstress', kind: 'widget', label: 'World stress strip', group: 'Shell', defaultVisible: true, ownerData: false, note: 'every stress input green/amber/red, pinned above the tabs' },
   { id: 'widget.bookchip',  kind: 'widget', label: 'Book chip', group: 'Shell', defaultVisible: false, ownerData: true, note: 'the date and time of the desk\'s run' },
   { id: 'widget.dqchip',    kind: 'widget', label: 'Data-quality chip', group: 'Shell', defaultVisible: false, ownerData: true, note: 'the desk\'s data health count' },
+  { id: 'widget.signout',   kind: 'widget', label: 'Sign out (top bar)', group: 'Shell', defaultVisible: true,  ownerData: false, note: 'shows the session (owner or desk) and signs out; always visible, never a switch' },
   { id: 'widget.ask',       kind: 'widget', label: 'Ask the desk (floating button)', group: 'Shell', defaultVisible: false, ownerData: true, note: 'free-form paid model calls: never for the desk login' },
   // ── ticker segments ──
   { id: 'strip.news',    kind: 'strip', label: 'Ticker: tier-1 headlines', group: 'Ticker', defaultVisible: true,  ownerData: false, note: 'wire headlines' },
@@ -99,6 +100,8 @@ export const SURFACE_IDS = SURFACES.map(s => s.id);
 export const DEFAULT_VISIBLE_IDS = SURFACES.filter(s => s.defaultVisible).map(s => s.id);
 /** Surfaces only the owner ever sees, whatever the saved switches say (the admin link itself). */
 export const ALWAYS_OWNER_IDS = ['nav.access'];
+/** Surfaces every session always sees, whatever the saved switches say (Sign out: a viewer must always be able to leave). */
+export const ALWAYS_VISIBLE_IDS = ['widget.signout'];
 
 export const surfaceById = id => SURFACES.find(s => s.id === id) ?? null;
 
@@ -111,6 +114,7 @@ export function visibleFor(role, saved) {
   const on = new Set(DEFAULT_VISIBLE_IDS);
   for (const [id, v] of Object.entries(saved ?? {})) { if (!surfaceById(id)) continue; if (v === true) on.add(id); else if (v === false) on.delete(id); }
   for (const id of ALWAYS_OWNER_IDS) on.delete(id);
+  for (const id of ALWAYS_VISIBLE_IDS) on.add(id);
   return SURFACE_IDS.filter(id => on.has(id));
 }
 
@@ -122,7 +126,7 @@ export function cleanSwitches(body) {
     if (id === 'updatedAt') continue;
     if (!surfaceById(id)) return { ok: false, error: `unknown surface id: ${id}` };
     if (typeof v !== 'boolean') return { ok: false, error: `${id} must be true or false` };
-    if (ALWAYS_OWNER_IDS.includes(id)) continue;
+    if (ALWAYS_OWNER_IDS.includes(id) || ALWAYS_VISIBLE_IDS.includes(id)) continue;
     clean[id] = v;
   }
   return { ok: true, clean };

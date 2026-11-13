@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { counts, filterFamilies, filtersHtml, staleHtml, rowHtml, listHtml, headerHtml, STATUS_ORDER } from './infoMapView.js';
 import { FAMILIES, GROUPS } from '../infoMap.js';
+globalThis.deskAccessState = { role: 'owner' };   // the owner sees the links to the main site (js/terminal/links.test.mjs covers the viewer)
 
 let n = 0;
 const t = (name, fn) => { fn(); n++; console.log('ok', name); };

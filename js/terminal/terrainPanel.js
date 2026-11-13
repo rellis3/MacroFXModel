@@ -5,6 +5,7 @@
  * Greeks stay in OI Lab: this panel is the one picture, not the whole instrument panel (link below the chart).
  */
 import { drawTerrain, terrainSmiles, SMILE_SYMS } from '../terrainChart.js';
+import { ownerLink, ownerOnly } from './links.js';
 
 const NAMES = { 'XAU/USD': 'Gold', NAS100_USD: 'Nasdaq (NQ)', SPX500_USD: 'S&P 500 (ES)', US2000_USD: 'Russell (RTY)', US30_USD: 'Dow (YM)', 'EUR/USD': 'EURUSD', 'GBP/USD': 'GBPUSD',
   'USD/JPY': 'USDJPY', 'AUD/USD': 'AUDUSD', 'USD/CAD': 'USDCAD', 'USD/CHF': 'USDCHF', 'XAG/USD': 'Silver', 'XCU/USD': 'Copper', WTICO_USD: 'WTI', BCO_USD: 'Brent', NATGAS_USD: 'Nat gas' };
@@ -20,7 +21,7 @@ export function terrainHtml() {
 <div class="muted" style="font-size:12.5px;margin-bottom:6px">Centre: open interest by strike, <span style="color:#6fb6ff">calls</span> right, <span style="color:#f0b04a">puts</span> left. Outer panels: one line per expiry. On SPX, NDX and RUT they are the live Cboe <b>IV smile</b> (vol points above or below the at-the-money vol; every line meets at spot). On other markets, where CME gives one vol per expiry, they are gamma by strike. The price range is about one day's plausible move; <b>≤3 DTE</b> keeps only the expiries that can matter today.</div>
 <canvas id="tr-cv" style="width:100%;height:760px;display:block;border-radius:8px;background:#090e13"></canvas>
 <div class="muted" id="tr-leg" style="font-size:12px;margin-top:8px"></div>
-<div class="muted" style="font-size:12px;margin-top:6px">All the greeks (vanna, charm, vega, delta flow) for this market are in <a id="tr-lab" href="oi-dashboard-v2.html">OI Lab</a>.</div></div>`;
+${ownerOnly(`<div class="muted" style="font-size:12px;margin-top:6px">All the greeks (vanna, charm, vega, delta flow) for this market are in ${ownerLink('oi-dashboard-v2.html', 'OI Lab', { id: 'tr-lab' })}.</div>`)}</div>`;
 }
 
 let STORE = null, STORE_AT = 0, TIP = null;
@@ -72,7 +73,7 @@ export async function mountTerrain(root, J, state = {}, { idOf = k => k, nameOf 
     const useSmile = SMILE_SYMS.includes(sym), smile = useSmile ? (SMILE[sym] ?? (loadSmile(sym, draw), { state: 'loading' })) : null;
     const r = drawTerrain(cv, { e: store[sym], sym, maxDte: state.maxDte, smile, smileCover: useSmile, px: pxFor(sym), fmtBig, showTip, hideTip });
     leg.innerHTML = r.legend || '';
-    const lab = root.querySelector('#tr-lab'); if (lab) lab.href = `oi-dashboard-v2.html#${encodeURIComponent(sym)}`;
+    const lab = root.querySelector('#tr-lab'); if (lab && lab.dataset.ownerLink !== undefined) lab.href = `oi-dashboard-v2.html#${encodeURIComponent(sym)}`;   // only the owner's anchor exists; a viewer has nothing to point
   };
   state.draw = draw;
   exp.querySelectorAll('button').forEach(b => b.onclick = () => { state.maxDte = +b.dataset.d; exp.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); state.draw?.(); });

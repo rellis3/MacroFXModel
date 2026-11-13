@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { familyOf, cadenceOf, buildMacroBoard, flattenAhead, FAMILIES, CCYS } from './macroEnginesCore.js';
 import { cellHtml, drawerHtml, boardHtml, defaultPick, heat, sparkSvg } from './macroEngines.js';
+globalThis.deskAccessState = { role: 'owner' };   // the owner sees the links to the main site (js/terminal/links.test.mjs covers the viewer)
 
 const NOW = Date.UTC(2026, 10, 13, 12, 0, 0);
 const D = n => NOW - n * 864e5;

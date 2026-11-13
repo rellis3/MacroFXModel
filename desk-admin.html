@@ -66,8 +66,9 @@ p.sub{color:var(--tx2);margin:0 0 16px;max-width:70ch}
   <div id="root"><div class="card muted">Loading…</div></div>
 </main>
 <script type="module">
-import { SURFACES as ALL, ALWAYS_OWNER_IDS } from './js/terminal/tabRegistry.js';
-const SURFACES = ALL.filter(s => !ALWAYS_OWNER_IDS.includes(s.id));   // the Access link itself is never a switch: only the owner ever sees it
+import { SURFACES as ALL, ALWAYS_OWNER_IDS, ALWAYS_VISIBLE_IDS } from './js/terminal/tabRegistry.js';
+const SURFACES = ALL.filter(s => !ALWAYS_OWNER_IDS.includes(s.id) && !ALWAYS_VISIBLE_IDS.includes(s.id));   // Sign out is always visible: never a switch
+   // the Access link itself is never a switch: only the owner ever sees it
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const KIND_LABEL = { tab: 'Tab', nav: 'Link', widget: 'Widget', strip: 'Ticker', panel: 'Panel' };

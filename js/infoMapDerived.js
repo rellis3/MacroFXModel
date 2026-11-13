@@ -1881,6 +1881,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/links.js",
      "js/terminal/mapLayers.js"
     ],
     "today": [
@@ -3409,6 +3410,7 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/bookPanels.js",
      "js/terminal/chainBoard.js",
+     "js/terminal/links.js",
      "js/terminal/mapLayers.js",
      "js/terminal/optionsView.js",
      "js/terminal/pairView.js",

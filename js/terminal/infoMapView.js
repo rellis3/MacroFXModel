@@ -9,6 +9,7 @@
  */
 import { FAMILIES, GROUPS, STATUSES, USES, FLAG_KINDS, TAB_LABELS } from '../infoMap.js';
 import { DERIVED } from '../infoMapDerived.js';
+import { ownerLink } from './links.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const STATUS_ORDER = ['DRAWN', 'SUMMARY', 'PACK', 'STANDALONE'];
@@ -50,7 +51,7 @@ export function staleHtml(fams = FAMILIES) {
   return `<div class="nt-top" id="im-stale"><div class="lbl">Stale, blocked or doubtful: check before building on these</div>${fl.map(f => `<div class="nt-topi"><span class="chip gold">${esc(FLAG_KINDS[f.flag.kind] ?? f.flag.kind)}</span> <b>${esc(f.name)}</b> <span class="muted">${esc(f.flag.text)}</span></div>`).join('')}</div>`;
 }
 
-const link = (href, text) => `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(text)}</a>`;
+const link = (href, text) => ownerLink(href, esc(text), { target: '_blank' });
 
 /** one family as a row that opens to its detail. d = DERIVED.families[id] */
 export function rowHtml(f, d = DERIVED.families?.[f.id]) {

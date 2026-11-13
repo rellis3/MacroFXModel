@@ -6,6 +6,7 @@
  * claims and deficits inverted); it is never a market direction. Pure string builders, tested in macroEngines.test.mjs.
  */
 import { FAMILIES, FAMILY_BY_KEY, CCYS } from './macroEnginesCore.js';
+import { ownerLink, ownerOnly } from './links.js';
 
 const escD = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const fin = Number.isFinite;
@@ -63,7 +64,7 @@ export function drawerHtml(p, ccy, famKey, esc = escD) {
   const next = c.next ? `<span class="chip pur">next · ${esc(c.next.event)} · ${esc(when(c.next.ms))}</span>` : '<span class="muted" style="font-size:12px">no release of this family in the next 9 days</span>';
   return `<div class="ch" style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><b>${FLAG[ccy] ?? ''} ${esc(ccy)} · ${esc(f.label)}</b><span class="muted">${esc(c.event ?? '')}</span>${c.stale ? '<span class="chip gold">older than its cadence</span>' : ''}${next}</div>
 <div class="grid g2" style="margin-top:8px"><div class="scroll">${rows ? `<table><thead><tr><th>Release</th><th class="n">Actual</th><th class="n">Expected</th><th class="n">Prior</th><th class="n">z</th></tr></thead><tbody>${rows}</tbody></table>` : ''}${also}</div>
-<div>${sparkSvg(c.prints)}<div class="muted" style="font-size:11px">last ${(c.prints ?? []).length} prints, oldest to newest</div>${engine}<div style="margin-top:8px"><a href="${esc(f.page)}" target="_blank">the ${esc(f.label.toLowerCase())} engine page</a></div></div></div>`;
+<div>${sparkSvg(c.prints)}<div class="muted" style="font-size:11px">last ${(c.prints ?? []).length} prints, oldest to newest</div>${engine}${ownerOnly(`<div style="margin-top:8px">${ownerLink(f.page, `the ${esc(f.label.toLowerCase())} engine page`, { target: '_blank' })}</div>`)}</div></div>`;
 }
 
 /** The whole panel. p = /api/macro-engines-board. Selecting a cell redraws only the drawer. */

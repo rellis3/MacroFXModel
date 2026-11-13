@@ -186,6 +186,7 @@ import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl a
 import { RBNZ_MEETINGS, pendingAsOf as rbnzPendingAsOf, allReleases as rbnzAllReleases } from './js/rbnzCalendar.js';
 import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote, fetchOcrDecisions as rbnzFetchOcrDecisions, ocrActualFor as rbnzOcrActualFor } from './js/rbnzFetch.js';
 import { viewerMayCall as _deskViewerMayCall } from './js/deskAccess.js';                       // what a desk-login VIEWER may call (js/deskAccess.js)
+import { logoutPlan as _logoutPlan, clearCookieHeader as _clearCookieHeader, sameSiteOk as _logoutSameSiteOk } from './js/deskLogout.js';   // what /logout clears and where it goes (desk, all, library, education, main)
 import { visibleFor as _deskVisibleFor, cleanSwitches as _deskCleanSwitches } from './js/terminal/tabRegistry.js';   // the Desk Terminal surface registry
 import { RBA_MEETINGS, pendingAsOf as rbaPendingAsOf, allReleases as rbaAllReleases } from './js/rbaCalendar.js';
 import { FETCHERS as RBA_FETCHERS, extractVote as rbaExtractVote } from './js/rbaFetch.js';
@@ -45150,10 +45151,10 @@ app.post('/api/data-archive/run', requireAuth, async (_req, res) => {
 });
 
 // ── Desk Terminal access (registered BEFORE the /api/* worker catch-all below, which would swallow them) ──────────────────────
-// GET /api/desk-session -> { role: 'owner' | 'viewer' | null, deskLogin: bool }. Works with either cookie. No cookie and auth configured => role null.
+// GET /api/desk-session -> { role: 'owner' | 'viewer' | null, deskLogin: bool, auth: bool (false = no passwords set, nothing to sign out of) }. Works with either cookie. No cookie and auth configured => role null.
 app.get('/api/desk-session', (req, res) => {
   res.set('Cache-Control', 'no-store');
-  res.json({ ok: true, role: deskSessionRole(req), deskLogin: DESK_ENABLED });
+  res.json({ ok: true, role: deskSessionRole(req), deskLogin: DESK_ENABLED, auth: AUTH_ENABLED });
 });
 async function _deskSwitches() {
   try { const raw = await kv.get(DESK_ACCESS_KV); return raw ? JSON.parse(raw) : {}; } catch { return {}; }
@@ -45225,18 +45226,20 @@ app.post('/login', (req, res) => {
   res.json({ ok: true });
 });
 
-// /logout is public, like /login — clears only the zone cookie you were in
-// (an education-zone logout leaves a main-zone session, if any, untouched).
-app.get('/logout', (req, res) => {
-  const lib = req.query.zone === 'library';   // the library's Log out button: clears BOTH logins (either one opens the library), then back to its sign-in page
-  const zone = lib || req.query.zone === 'education' ? 'education' : req.query.zone === 'desk' ? 'desk' : 'main';
-  const clear = z => `${AUTH_COOKIE_NAME}_${z}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`;
-  res.setHeader('Set-Cookie', lib ? [clear('education'), clear('main')] : clear(zone));
-  if (lib) return res.redirect('/library.html');
-  if (zone === 'desk') return res.redirect('/login?zone=desk&next=%2Fdesk-terminal.html');
-  const back = typeof req.query.next === 'string' && /^\/library(\.html)?$/.test(req.query.next) ? req.query.next : null;   // the library's "sign in with the owner password" link
-  res.redirect(back ?? (zone === 'education' ? '/theory-lab/' : '/'));
-});
+// /logout is public, like /login. What it clears and where it goes is js/deskLogout.js (tested): zone=desk clears the desk cookie only; zone=all (the
+// owner's Sign out on the Desk Terminal) clears main + desk + education so the owner can try the desk password; library / education / main are as before.
+// POST is what the terminal's button uses (returns the redirect as JSON); GET stays for the existing links. A browser-marked cross-site request is refused.
+function _logoutDo(req, res, q, asJson) {
+  const sameSite = _logoutSameSiteOk({ secFetchSite: req.get('sec-fetch-site'), origin: req.get('origin'), host: req.get('host') });
+  if (!sameSite && (asJson || q.zone === 'all' || q.zone === 'desk')) return res.status(403).json({ ok: false, error: 'cross-site sign-out refused' });
+  const plan = _logoutPlan({ zone: q.zone, next: q.next, deskEnabled: DESK_ENABLED });
+  res.setHeader('Set-Cookie', plan.clear.map(z => _clearCookieHeader(z, !!req.secure)));
+  res.set('Cache-Control', 'no-store');
+  if (asJson) return res.json({ ok: true, redirect: plan.redirect });
+  res.redirect(plan.redirect);
+}
+app.get('/logout', (req, res) => _logoutDo(req, res, req.query, false));
+app.post('/logout', (req, res) => _logoutDo(req, res, req.query, true));
 
 app.use(requireAuth);
 

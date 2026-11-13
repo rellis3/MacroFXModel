@@ -10,6 +10,7 @@
  * DESCRIPTION ONLY. The statement's tone is priced inside 30 minutes and does not predict the next-day dollar
  * (Evidence Book entry cb-tone-direction, NULL, N=82 meetings), so nothing here is a lean.
  */
+import { ownerLink } from './links.js';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fin = v => v != null && v !== '' && Number.isFinite(+v);
 const sg = (v, dp = 2) => (fin(v) ? `${+v > 0 ? '+' : ''}${(+v).toFixed(dp)}` : '–');
@@ -52,7 +53,7 @@ export function dimsHtml(dims) {
 
 const nextLine = n => (n ? `Next ${n.days === 0 ? 'today' : `${esc(dshort(n.date))} (${n.days === 1 ? 'tomorrow' : `in ${n.days} days`})`}` : 'Next meeting not on the calendar');
 const rateLine = r => (r && fin(r.rate) ? `policy rate <b class="mono">${(+r.rate).toFixed(2)}%</b>${r.asOf ? ` <span class="muted">(${esc(r.asOf)})</span>` : ''}` : '');
-const link = b => `<a href="${esc(b.page)}" target="_blank" rel="noopener">Read the ${esc(b.doc)} →</a>`;
+const link = b => ownerLink(b.page, `Read the ${esc(b.doc)}`, { target: '_blank', suffix: ' →', hide: true });   // the sentiment pages are owner-only: a viewer gets no link
 
 /** One tile. */
 export function tileHtml(b) {
@@ -102,5 +103,5 @@ export function boardHtml(d, { cbx = null } = {}) {
   const c = d.counts ?? {};
   const miss = banks.filter(b => b.status !== 'read').map(b => b.bank);
   return `${head}<div class="grid g3">${banks.map(tileHtml).join('')}</div>${rankHtml(d, cbx)}
-<p class="muted" style="font-size:12px">${esc(String(c.read ?? 0))} of ${esc(String(c.total ?? banks.length))} have a read for their latest meeting${miss.length ? ` (no current read: ${miss.map(esc).join(', ')})` : ''}. Scores come from an AI read of each statement against the previous meeting's wording; they describe tone and are not a forecast (<a href="evidence.html#ev-cb-tone-direction" target="_blank" rel="noopener">tested here: no next-day lean</a>). Read as of ${esc(String(d.asOf ?? '').slice(0, 16).replace('T', ' '))} UTC.</p>`;
+<p class="muted" style="font-size:12px">${esc(String(c.read ?? 0))} of ${esc(String(c.total ?? banks.length))} have a read for their latest meeting${miss.length ? ` (no current read: ${miss.map(esc).join(', ')})` : ''}. Scores come from an AI read of each statement against the previous meeting's wording; they describe tone and are not a forecast (${ownerLink('evidence.html#ev-cb-tone-direction', 'tested here: no next-day lean', { target: '_blank' })}). Read as of ${esc(String(d.asOf ?? '').slice(0, 16).replace('T', ' '))} UTC.</p>`;
 }
