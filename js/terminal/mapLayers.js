@@ -49,7 +49,7 @@ export const GROUPS = [
  * in full because the guard test finds a surface by that literal. `owner` layers are never drawn without the desk book (Desk bias).
  */
 export const LAYERS = [
-  { id: 'bias',   label: 'Desk bias',     group: 'desk',    owner: true,  attr: 'data-surface="widget.ovl.bias"' },
+  { id: 'bias',   label: 'Desk bias',     group: 'desk',    owner: false, needsBook: true, attr: 'data-surface="widget.ovl.bias"' },
   { id: 'rates',  label: 'Rate cycle',    group: 'policy',  attr: 'data-surface="widget.ovl.rates"' },
   { id: 'level',  label: 'Policy rate',   group: 'policy',  attr: 'data-surface="widget.ovl.level"' },
   { id: 'priced', label: 'Priced path',   group: 'policy',  attr: 'data-surface="widget.ovl.priced"' },
@@ -69,7 +69,7 @@ export const surfaceOf = id => { const m = /data-surface="([^"]+)"/.exec(LAYERS.
 /** The pill row, grouped: a small group label, then its pills. `owner` false drops the owner layers. */
 export function pillsHtml(active, { owner = false } = {}) {
   return GROUPS.map(g => {
-    const ls = LAYERS.filter(l => l.group === g.id && (owner || !l.owner));
+    const ls = LAYERS.filter(l => l.group === g.id && (owner || !l.needsBook));
     if (!ls.length) return '';
     return `<span class="lgrp"><span class="lgl">${g.label}</span>${ls.map(l => `<button aria-pressed="${active === l.id}" data-layer="${l.id}" ${l.attr}>${l.label}</button>`).join('')}</span>`;
   }).join('');

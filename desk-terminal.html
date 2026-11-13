@@ -378,7 +378,7 @@ function mapCtx() {
 function layerAllowed(id) {
   const ML = globalThis.ttMapLayers, L = ML?.LAYERS.find(l => l.id === id); if (!L) return ['bias', 'rates', 'credit', 'value'].includes(id);
   const st = globalThis.deskAccessState;
-  if (L.owner && (!D.run?.ok || st?.role === 'viewer')) return false;
+  if ((L.owner || L.needsBook) && !D.run?.ok) return false;   // the Desk bias layer needs the morning analysis (the lens: a bias is analysis, so the desk login gets it too)
   if (st?.role === 'viewer') { const sf = ML.surfaceOf(id); if (sf && Array.isArray(st.visible) && !st.visible.includes(sf)) return false; }
   return true;
 }
