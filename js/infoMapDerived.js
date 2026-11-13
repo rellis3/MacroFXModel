@@ -1797,11 +1797,25 @@ export const DERIVED = {
       "skill": "credit_funding",
       "maxAgeH": 144
      }
+    },
+    {
+     "route": "/api/credit-liquidity",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/creditLiquidityView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/creditLiquidityView.js",
+     "js/terminal/moreBoards.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -1830,11 +1844,25 @@ export const DERIVED = {
       "skill": "credit_funding",
       "maxAgeH": 144
      }
+    },
+    {
+     "route": "/api/credit-liquidity",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/creditLiquidityView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/creditLiquidityView.js",
+     "js/terminal/moreBoards.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -1959,12 +1987,24 @@ export const DERIVED = {
      "route": "/api/global-liquidity",
      "exists": true,
      "pack": null
+    },
+    {
+     "route": "/api/credit-liquidity",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/creditLiquidityView.js",
+     "exists": true
+    }
+   ],
    "names": {
     "terminal": [
-     "desk-terminal.html"
+     "desk-terminal.html",
+     "js/terminal/creditLiquidityView.js",
+     "js/terminal/moreBoards.js"
     ],
     "today": [],
     "atlas": [],
@@ -3417,6 +3457,7 @@ export const DERIVED = {
      "js/terminal/chainBoard.js",
      "js/terminal/links.js",
      "js/terminal/mapLayers.js",
+     "js/terminal/moreBoards.js",
      "js/terminal/optionsView.js",
      "js/terminal/pairView.js",
      "js/terminal/tabRegistry.js",
