@@ -12,6 +12,7 @@ import { buildCurveBoard } from './curveBoardCore.js';
 import { buildRegimeBoard } from './regimeBoardCore.js';
 import { buildReleasesBoard } from './releasesBoardCore.js';
 import { buildStrength, PAIRS } from './ccyStrengthCore.js';
+import { buildVolBoard } from './volBoardCore.js';
 
 // Currency strength keeps two layers of OANDA bars so a per-minute refresh stays cheap: hourly and daily history (15 minutes, for each pair's normal
 // move and the 1D / 1W anchors) and the latest five-minute bars (50 seconds). One in-flight refresh serves every viewer; nothing is fetched while no
@@ -71,6 +72,12 @@ export function mountDeskBoards(app, d) {
       try { res.set('Cache-Control', 'no-store'); res.json(await feed.get()); } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
     });
   }
+
+  // The fear complex: the state document's vol readings (VIX, VVIX, SKEW, MOVE ...) and realised vol by market, plus the laptop's FX skew pull (its age is shown)
+  route('/api/vol-board', 'volboard', 0.17, async () => {
+    const [state, skew] = await Promise.all([d.getState().catch(() => null), d.selfJson('/api/options-skew').catch(() => null)]);
+    return buildVolBoard({ state, skew });
+  });
 
   // Releases and who is positioned: the calendar, the COT crowding, the measured reactions and the front-end rate legs (self-calls, all cached feeds)
   route('/api/releases-board', 'releasesboard', 0.1, async () => {

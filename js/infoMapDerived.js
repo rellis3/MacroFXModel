@@ -1871,7 +1871,8 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/creditLiquidityView.js",
-     "js/terminal/moreBoards.js"
+     "js/terminal/moreBoards.js",
+     "js/terminal/volBoardView.js"
     ],
     "today": [
      "today.html"
@@ -1918,7 +1919,8 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/creditLiquidityView.js",
-     "js/terminal/moreBoards.js"
+     "js/terminal/moreBoards.js",
+     "js/terminal/volBoardView.js"
     ],
     "today": [
      "today.html"
@@ -2061,7 +2063,8 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/creditLiquidityView.js",
-     "js/terminal/moreBoards.js"
+     "js/terminal/moreBoards.js",
+     "js/terminal/volBoardView.js"
     ],
     "today": [],
     "atlas": [],
@@ -2419,11 +2422,25 @@ export const DERIVED = {
       "skill": "vol_iv",
       "maxAgeH": 72
      }
+    },
+    {
+     "route": "/api/vol-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/volBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/moreBoards.js",
+     "js/terminal/volBoardView.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -3427,14 +3444,26 @@ export const DERIVED = {
      "route": "/api/options-history",
      "exists": true,
      "pack": null
+    },
+    {
+     "route": "/api/vol-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/volBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/moreBoards.js",
      "js/terminal/optionsView.js",
-     "js/terminal/terminalTabs.js"
+     "js/terminal/terminalTabs.js",
+     "js/terminal/volBoardView.js"
     ],
     "today": [],
     "atlas": [],

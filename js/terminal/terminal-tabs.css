@@ -301,3 +301,7 @@
 .cs-say{margin:12px 0 4px;font-size:14px;line-height:1.5}
 @media (max-width:640px){.cs-row{grid-template-columns:18px 64px minmax(80px,1fr) 56px}.cs-os{display:none}}
 @media (prefers-reduced-motion:reduce){.cs-row,.cs-b,.cs-g{transition:none}}
+.bv-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.bv-tile{min-width:0}
+.bv-th{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px}
+.bv-tn{font-size:10.5px;margin-top:2px}

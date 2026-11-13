@@ -68,4 +68,12 @@ export const moreFixtures = {
     const eventDay = { ok: true, frontEnds: { stale: false, asOf: '2026-11-13T21:00:00.000Z', rows: [{ label: 'Euro STR Dec26', area: 'euro area', unit: 'bp', d1: -0.25, d5: 3.75 }, { label: 'Bund future', area: 'euro area', unit: '%', d1: -0.2, d5: -0.5 }] } };
     return { events, cot, reactions, eventDay };
   },
+  vol(now) {
+    const sp = (a, n) => Array.from({ length: n }, (_, i) => ['d' + i, +(a + Math.sin(i / 7) * a * 0.1).toFixed(2)]);
+    const g = (id, last, pct5y, group = 'vol') => ({ id, label: id, group, unit: 'pt', ctx: { last, asOf: '2026-11-12', since: '1990-01-02', pct5y, pctAll: pct5y, z5y: 0.1, chg20: -0.5, chg20Pct: -3.2, high: { value: last * 3.3, date: '2020-03-16' }, low: { value: last * 0.5, date: '2017-11-03' }, spark: sp(last, 260) } });
+    const state = { history: { long: [g('VIX', 18.7, 58), g('VIX_TERM', 0.93, 72), g('VVIX', 96.7, 57), g('SKEW', 150.2, 79), g('MOVE', 101.3, 49), g('OVX', 51.7, 81), g('GVZ', 25.9, 89), g('VXEEM', 31.3, 90), g('VXTLT', 14.1, 22)] },
+      layers: { vol: { rows: [{ sym: 'AUDNZD', volPct: 98, volAnnual: 6.3 }, { sym: 'NQ', volPct: 97, volAnnual: 28.6 }, { sym: 'EURUSD', volPct: 72, volAnnual: 6.4 }, { sym: 'GOLD', volPct: 16, volAnnual: 18.9 }, { sym: 'USDJPY', volPct: 13, volAnnual: 5.6 }, { sym: 'SILVER', volPct: 8, volAnnual: 36 }] } } };
+    const skew = { ok: true, ageH: 221.7, asOf: '2026-11-04', rows: [{ pair: 'EUR/USD', pairRr: -0.22, bf: 0.18, atm: 5.73, slope: 0.56, lean: 'paying for EUR weakness' }, { pair: 'USD/JPY', pairRr: -1.76, bf: 0.4, atm: 9, slope: 1 }, { pair: 'Nasdaq 100', pairRr: -4.71, bf: 1, atm: 22 }, { pair: 'nothing', pairRr: null }] };
+    return { state, skew };
+  },
 };

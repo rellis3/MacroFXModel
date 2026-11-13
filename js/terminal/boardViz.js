@@ -143,3 +143,24 @@ export function stateStrip(cells, { cell = 9, gap = 2 } = {}) {
   const TONE = { up: 'var(--up)', dn: 'var(--dn)', gold: 'var(--gold)', pur: 'var(--pur2)', flat: 'var(--line2)' };
   return `<div class="bv-strip" role="img" aria-label="one cell per day, oldest first">${(cells ?? []).map((c, i) => `<i style="width:${cell}px;background:${TONE[c.tone] ?? 'var(--bg3)'};opacity:${c.tone ? (c.tone === 'flat' ? 0.5 : 0.85) : 0.5};margin-right:${gap}px;--d:${(i * 0.012).toFixed(3)}s" title="${esc(c.title ?? '')}"></i>`).join('')}</div>`;
 }
+
+/**
+ * A radar of percentiles: one axis per reading, the radius is where it sits in its own history (0 centre, 100 rim), the polygon glows, a dashed
+ * ring marks the middle (the 50th percentile) and each vertex is labelled. axes = [{ label, pct, value }]. Tokens only.
+ */
+export function radar({ axes, w = 320, h = 300 }) {
+  const a = (axes ?? []).filter(x => fin(x.pct));
+  if (a.length < 3) return '';
+  const cx = w / 2, cy = h / 2 + 4, R = Math.min(w, h) / 2 - 44, n = a.length, id = uid('bvd');
+  const pt = (i, f) => { const t = -Math.PI / 2 + (i / n) * 2 * Math.PI; return [cx + R * f * Math.cos(t), cy + R * f * Math.sin(t)]; };
+  const ring = f => `<polygon points="${a.map((_, i) => pt(i, f).map(f1).join(',')).join(' ')}" fill="none" stroke="${f === 0.5 ? 'var(--tx3)' : 'var(--line2)'}" stroke-width="1"${f === 0.5 ? ' stroke-dasharray="3 3"' : ''} opacity="${f === 0.5 ? 0.8 : 0.6}"/>`;
+  const spokes = a.map((_, i) => { const [x, y] = pt(i, 1); return `<line x1="${cx}" y1="${cy}" x2="${f1(x)}" y2="${f1(y)}" stroke="var(--line)" stroke-width="1"/>`; }).join('');
+  const poly = a.map((x, i) => pt(i, clamp(x.pct, 0, 100) / 100).map(f1).join(',')).join(' ');
+  const dots = a.map((x, i) => { const [px, py] = pt(i, clamp(x.pct, 0, 100) / 100), hot = x.pct >= 90; return `<circle cx="${f1(px)}" cy="${f1(py)}" r="${hot ? 5 : 3.5}" fill="${hot ? 'var(--gold)' : 'var(--pur2)'}" stroke="var(--bg1)" stroke-width="1.5" class="bv-fade" style="--d:${(i * 0.05).toFixed(2)}s"/>`; }).join('');
+  const labels = a.map((x, i) => { const [lx, ly] = pt(i, 1.2), anchor = Math.abs(lx - cx) < 8 ? 'middle' : lx > cx ? 'start' : 'end';
+    return `<text x="${f1(lx)}" y="${f1(ly + 3)}" text-anchor="${anchor}" font-size="10.5" fill="var(--tx2)" font-family="var(--mono)">${esc(x.label)}<tspan fill="var(--tx3)" dx="4">${Math.round(x.pct)}</tspan></text>`; }).join('');
+  return `<svg class="bv-svg" viewBox="0 0 ${w} ${h}" width="100%" style="max-width:${w}px" role="img" aria-label="Where each volatility reading sits in its own five-year history"><defs><filter id="${id}" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="4"/></filter></defs>
+${[0.25, 0.5, 0.75, 1].map(ring).join('')}${spokes}
+<polygon points="${poly}" fill="var(--pur)" fill-opacity=".18" stroke="var(--gold)" stroke-width="3" stroke-opacity=".5" filter="url(#${id})" class="bv-fade"/>
+<polygon points="${poly}" fill="var(--pur)" fill-opacity=".22" stroke="var(--gold)" stroke-width="1.6" class="bv-fade"/>${dots}${labels}</svg>`;
+}
