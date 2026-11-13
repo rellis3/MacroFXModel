@@ -1059,7 +1059,9 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/ratesBoardView.js"
+     "js/terminal/fedPathYieldsView.js",
+     "js/terminal/ratesBoardView.js",
+     "js/terminal/terminalTabs.js"
     ],
     "today": [
      "today.html"
@@ -1306,6 +1308,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/fedPathYieldsView.js",
      "js/terminal/mapLayers.js",
      "js/terminal/ratesBoardCore.js",
      "js/terminal/ratesBoardView.js",
@@ -1466,7 +1469,9 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
-     "desk-terminal.html"
+     "desk-terminal.html",
+     "js/terminal/fedPathYieldsView.js",
+     "js/terminal/terminalTabs.js"
     ],
     "today": [
      "today.html"
@@ -3585,8 +3590,10 @@ export const DERIVED = {
    "drift": []
   }
  },
- "unclassified": [],
- "rootPageCount": 262,
+ "unclassified": [
+  "noise-area-momentum.html"
+ ],
+ "rootPageCount": 263,
  "packFeeds": 115,
  "generatedAt": "2026-11-13"
 };

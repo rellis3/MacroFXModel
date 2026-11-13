@@ -1,6 +1,7 @@
 // The Fed path -> yields join: the shaping (fedPathYieldsCore.js) and the board HTML (terminal/fedPathYieldsView.js).
 //   node js/fedPathYieldsCore.test.mjs
 import test from 'node:test';
+import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import * as C from './fedPathYieldsCore.js';
 import { boardHtml } from './terminal/fedPathYieldsView.js';
@@ -125,4 +126,52 @@ test('the board draws the matrix, the sentence, the Atlanta card and the surface
   assert.doesNotMatch(html, /forecast to|will (rise|fall)/i);
   const none = boardHtml({ ok: true, zq: null }, BOARD(), null, {}, NOW);
   assert.match(none, /not loaded/);
+});
+
+// ── the drawings (js/terminal/fedPathYieldsViz.js) ──
+import { pathRibbonSvg, curveSvg, flowSvg, smooth } from './terminal/fedPathYieldsViz.js';
+const nums = svg => [...svg.matchAll(/(?:cx|cy|x|y|x1|x2|y1|y2)="(-?[\d.]+)"/g)].map(m => +m[1]);
+const withAgo = FP({ ago: { 28: strip('2026-10-16T21:00:00Z', 3.75, [4, 0, 0, 0, 0]) } });
+const RES = C.fedPathYields({ fp: withAgo, board: { ...BOARD(21), tenors: [{ k: '2y', level: 4.1, chg1d: 2, chg7d: 21, chg28d: 18 }, { k: '5y', level: 4.05, chg1d: 2, chg7d: 15, chg28d: 15 }, { k: '10y', level: 4.22, chg1d: 1, chg7d: 9, chg28d: 12 }] }, now: NOW });
+
+test('drawings use theme tokens only, stay inside their viewBox and respect reduced motion', () => {
+  const board = { ...BOARD(21), tenors: [{ k: '2y', level: 4.1, chg1d: 2, chg7d: 21, chg28d: 18 }, { k: '5y', level: 4.05, chg1d: 2, chg7d: 15, chg28d: 15 }, { k: '10y', level: 4.22, chg1d: 1, chg7d: 9, chg28d: 12 }] };
+  for (const [name, svg] of [['ribbon', pathRibbonSvg(RES, withAgo.zq)], ['curve', curveSvg(board)], ['flow', flowSvg(RES)]]) {
+    assert.ok(svg.length > 200, name);
+    assert.doesNotMatch(svg.replace(/stop-color:var\([^)]*\)/g, ''), /#[0-9a-fA-F]{3,8}\b|rgba?\(/, `${name}: a hard-coded colour`);
+    const vb = /viewBox="0 0 (\d+) (\d+)"/.exec(svg); const [W, H] = [+vb[1], +vb[2]];
+    for (const v of nums(svg)) assert.ok(v >= -1 && v <= Math.max(W, H) + 1, `${name}: ${v} outside ${W}x${H}`);
+  }
+  const css = fs.readFileSync(new URL('./terminal/terminal-tabs.css', import.meta.url), 'utf8');
+  assert.match(css, /prefers-reduced-motion:reduce\)\{\.fpy-sweep/);
+});
+
+test('ribbon: ghosts for every lookback that exists, thin tail dashed, a flat strip still gets a visible scale', () => {
+  const svg = pathRibbonSvg(RES, withAgo.zq);
+  assert.equal((svg.match(/stroke-dasharray="5 4"/g) ?? []).length, 1);           // the 5D ghost (chosen, dashed)
+  assert.match(svg, /the same contracts 20D ago/);
+  assert.doesNotMatch(svg, /held flat/);                                          // every contract liquid: no dashed tail
+  const thinZq = { ...withAgo.zq, meetings: strip('2026-11-13T21:00:00Z', 3.75, [20, 5, 0, 0, 0], { thinFrom: 2 }).meetings };
+  assert.match(pathRibbonSvg(C.fedPathYields({ fp: { ...withAgo, zq: thinZq }, board: BOARD(), now: NOW }), thinZq), /held flat/);
+  const flat = strip('2026-11-13T21:00:00Z', 3.75, [0, 0, 0, 0, 0]);
+  assert.ok(pathRibbonSvg(C.fedPathYields({ fp: { ...FP(), zq: { ...flat, weekAgo: flat } }, board: BOARD(), now: NOW }), flat).length > 200);
+  assert.equal(pathRibbonSvg(null, null), '');
+});
+
+test('curve: the pill ghosts are the level minus the change, exactly (1D/5D/20D), and need three tenors', () => {
+  const svg = curveSvg({ tenors: [{ k: '2y', level: 4.1, chg1d: 2, chg7d: 21, chg28d: 18 }, { k: '5y', level: 4.05, chg1d: 2, chg7d: 15, chg28d: 15 }, { k: '10y', level: 4.22, chg1d: 1, chg7d: 9, chg28d: 12 }] });
+  assert.match(svg, /fpy-gh-1/); assert.match(svg, /fpy-gh-5/); assert.match(svg, /fpy-gh-20/);
+  assert.match(svg, />\+21bp</); assert.match(svg, />\+9bp</);
+  assert.equal(curveSvg({ tenors: [{ k: '2y', level: 4.1 }] }), '');
+});
+
+test('flow: one bp scale for every row; an opposite-signed rest is drawn dashed as an offset', () => {
+  const svg = flowSvg(RES);
+  const hs = [...svg.matchAll(/<rect x="440" y="[\d.]+" width="12" height="([\d.]+)"/g)].map(m => +m[1]);
+  assert.equal(hs.length, 4);                                                       // two rows x (path, rest)
+  const [p5, r5, p20, r20] = hs; assert.ok(Math.abs(p20 / p5 - 20 / 14) < 0.06, `${p20}/${p5}`);   // thickness ∝ bp (14 vs 20)
+  assert.match(svg, /offset −2bp/); assert.match(svg, /stroke-dasharray="4 3"/);
+  assert.ok(r5 > r20);
+  assert.equal(flowSvg({ windows: [{ available: false }] }), '');
+  assert.match(smooth([[0, 0], [10, 5], [20, 0]]), /^M0,0C/);
 });

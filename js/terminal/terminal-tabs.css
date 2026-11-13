@@ -211,3 +211,20 @@
 .im-gone{text-decoration:line-through;color:var(--tx3)}
 #im-stale .nt-topi{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline}
 @media (max-width:600px){.im-u{margin-left:0;flex-basis:100%}.im-b{padding-left:6px}.im-kv{grid-template-columns:1fr}}
+
+/* Fed path against the yields (js/terminal/fedPathYieldsViz.js): theme tokens only; motion off under prefers-reduced-motion */
+.fpy-svg{display:block;max-width:100%;height:auto;overflow:visible}
+.fpy-leg{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:11.5px;color:var(--tx2);margin-top:6px}
+.fpy-cv{position:relative}
+.fpy-r{position:absolute;opacity:0;pointer-events:none}
+.fpy-pill{display:inline-block;margin:0 6px 8px 0;padding:3px 12px;border:1px solid var(--line);border-radius:999px;font:600 11px var(--mono);color:var(--tx2);cursor:pointer;user-select:none}
+.fpy-r:checked+.fpy-pill{color:var(--tx);border-color:var(--pur2);background:var(--bg2)}
+.fpy-r:focus-visible+.fpy-pill{outline:2px solid var(--pur2);outline-offset:2px}
+.fpy-gh{opacity:0;transition:opacity .35s ease;pointer-events:none}
+.fpy-cv:has(#fpyc-1:checked) .fpy-gh-1,.fpy-cv:has(#fpyc-5:checked) .fpy-gh-5,.fpy-cv:has(#fpyc-20:checked) .fpy-gh-20{opacity:1}
+.fpy-sweep{stroke-dasharray:1;stroke-dashoffset:0;animation:fpy-draw 1.3s cubic-bezier(.3,.7,.2,1) both}
+.fpy-flow{animation:fpy-fade .9s ease both}
+.fpy-fan{animation:fpy-fade 1.4s ease both}
+@keyframes fpy-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes fpy-fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.fpy-sweep,.fpy-flow,.fpy-fan{animation:none}.fpy-gh{transition:none}}

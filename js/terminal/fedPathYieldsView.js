@@ -10,6 +10,7 @@
 import { fedPathYields, atlantaWindows } from '../fedPathYieldsCore.js';
 import { chipFor } from './corrEvidence.js';
 import { ownerLink, ownerOnly } from './links.js';
+import { pathRibbonSvg, curveSvg, flowSvg } from './fedPathYieldsViz.js';
 
 const defEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const bp = v => (v == null || !Number.isFinite(+v) ? '–' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(Math.round(v))}bp`);
@@ -71,5 +72,8 @@ ${matrix(res, esc)}
 ${missing ? `<div class="muted" style="font-size:12px;margin-top:6px">Not shown: ${missing}.</div>` : ''}
 ${proxyLine}${notes}
 <p class="muted" style="font-size:12px;margin-top:8px">1D, 5D and 20D are the chain's windows (1, 5 and 20 trading days: 1, 7 and 28 calendar days here, for both the strip and the yields). "The futures path accounts for" is the change in the average policy rate priced over the next two years (the 2Y's horizon), taking the strip as far as its liquid contracts and holding the last liquid rate flat; it is an approximation, not a decomposition. The rest is everything else in the 2Y, mainly term premium and inflation compensation. Yields are daily prints (the prior close). A priced hike is red, a priced cut green; yields carry no colour.${esc(term)}${link}</p>${stamp}</div>`;
-  return `<div class="sfc" data-surface="panel.macro.fedyields">${head}<div class="grid g2">${card}${atlantaCard(atlantaWindows(fp), esc)}</div></div>`;
+  // the drawings: the priced path as a ribbon, the curve with a switchable ghost, the 2Y split as a flow (js/terminal/fedPathYieldsViz.js)
+  const ribbon = pathRibbonSvg(res, fp.zq), curve = curveSvg(rb), flow = flowSvg(res);
+  const vizCards = `${ribbon || curve ? `<div class="grid g2">${ribbon ? `<div class="card"><div class="ch"><span class="lbl">The priced path · fed funds after each meeting</span><span class="r muted">solid = liquid contracts, dashed = held flat</span></div>${ribbon}</div>` : ''}${curve ? `<div class="card"><div class="ch"><span class="lbl">The curve · now against the pill's date</span><span class="r muted">${esc(rb.asOf ?? '')}</span></div>${curve}</div>` : ''}</div>` : ''}${flow ? `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">Where the 2Y's move came from</span><span class="r muted">the futures path against the rest</span></div>${flow}</div>` : ''}`;
+  return `<div class="sfc" data-surface="panel.macro.fedyields">${head}${vizCards}<div class="grid g2" style="margin-top:14px">${card}${atlantaCard(atlantaWindows(fp), esc)}</div></div>`;
 }
