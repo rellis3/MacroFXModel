@@ -79,3 +79,16 @@ export function viewerMayCall(method, url) {
   if (!denied) return true;
   return VIEWER_ALLOW_OVERRIDES.some(p => under(path, p));
 }
+
+/**
+ * Who a password on the DESK login page signs in as. The owner's main (dashboard) password is accepted here too and mints the MAIN-zone session
+ * (owner: every surface, the admin panel, the paid routes); the desk password mints the desk viewer session. Anything else, or an empty password, is refused.
+ * When the desk zone is disabled (no DESK_PASSWORD) only the owner path exists. Main wins if both passwords are the same string.
+ * Returns { zone: 'main'|'desk', role: null|'viewer' } or null.
+ */
+export function deskLoginDecision({ password, mainPassword, deskPassword, deskEnabled }) {
+  if (!password || typeof password !== 'string') return null;
+  if (mainPassword && password === mainPassword) return { zone: 'main', role: null };
+  if (deskEnabled && deskPassword && password === deskPassword) return { zone: 'desk', role: 'viewer' };
+  return null;
+}

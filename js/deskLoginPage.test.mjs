@@ -32,9 +32,9 @@ test('a crafted next can never close the script tag', () => {
 });
 
 test('the error state shows only when asked, and says what happened without apologising', () => {
-  assert.ok(!deskLoginPage('/desk-terminal.html', false).includes('That key did not fit'));
+  assert.ok(!deskLoginPage('/desk-terminal.html', false).includes("That password didn’t work"));
   const e = deskLoginPage('/desk-terminal.html', true);
-  assert.ok(e.includes('That key did not fit. Check it and try again.'));
+  assert.ok(e.includes("That password didn’t work. Check it and try again."));
   assert.match(e, /role="alert"/);
   assert.match(e, /aria-invalid="true"/);
   assert.match(e, /classList\.add\('shake'\)/);

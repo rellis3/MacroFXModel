@@ -1,7 +1,7 @@
 // What a Desk Terminal VIEWER (the separate desk login) may call.   node --test js/deskAccess.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { viewerMayCall, VIEWER_POST_ALLOWED, VIEWER_DENY_PREFIXES, VIEWER_ALLOW_OVERRIDES, VIEWER_ALLOW_EXACT } from './deskAccess.js';
+import { viewerMayCall, deskLoginDecision, VIEWER_POST_ALLOWED, VIEWER_DENY_PREFIXES, VIEWER_ALLOW_OVERRIDES, VIEWER_ALLOW_EXACT } from './deskAccess.js';
 import { OWNER_ONLY_POSTS } from './deskSharedReads.js';
 
 test('market read routes are open to a viewer', () => {
@@ -73,4 +73,26 @@ test('lists are well formed', () => {
   for (const p of [...VIEWER_DENY_PREFIXES, ...VIEWER_ALLOW_OVERRIDES]) assert.match(p, /^\/api\/[a-z0-9_-]+$/, p);
   // an override must sit under a deny prefix, otherwise it is dead weight
   for (const o of VIEWER_ALLOW_OVERRIDES) assert.ok(VIEWER_DENY_PREFIXES.some(p => o.startsWith(p)), `override ${o} is not under a deny prefix`);
+});
+
+test('the desk login: the main password signs the owner in (main session), the desk password a viewer, anything else nothing', () => {
+  const base = { mainPassword: 'owner-pw', deskPassword: 'desk-pw', deskEnabled: true };
+  assert.deepEqual(deskLoginDecision({ ...base, password: 'owner-pw' }), { zone: 'main', role: null });
+  assert.deepEqual(deskLoginDecision({ ...base, password: 'desk-pw' }), { zone: 'desk', role: 'viewer' });
+  assert.equal(deskLoginDecision({ ...base, password: 'wrong' }), null);
+  assert.equal(deskLoginDecision({ ...base, password: '' }), null);
+  assert.equal(deskLoginDecision({ ...base, password: undefined }), null);
+  assert.equal(deskLoginDecision({ ...base, password: ['owner-pw'] }), null);
+});
+
+test('the desk login with the desk zone disabled: only the owner path exists, and an empty desk password never matches an empty input', () => {
+  const off = { mainPassword: 'owner-pw', deskPassword: '', deskEnabled: false };
+  assert.deepEqual(deskLoginDecision({ ...off, password: 'owner-pw' }), { zone: 'main', role: null });
+  assert.equal(deskLoginDecision({ ...off, password: 'desk-pw' }), null);
+  assert.equal(deskLoginDecision({ ...off, password: '' }), null);
+  assert.equal(deskLoginDecision({ mainPassword: '', deskPassword: 'd', deskEnabled: true, password: '' }), null);
+});
+
+test('if the two passwords are the same string, the owner path wins (never a viewer by accident)', () => {
+  assert.deepEqual(deskLoginDecision({ password: 'same', mainPassword: 'same', deskPassword: 'same', deskEnabled: true }), { zone: 'main', role: null });
 });

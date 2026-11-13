@@ -186,7 +186,7 @@ import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl a
 import { RBNZ_MEETINGS, pendingAsOf as rbnzPendingAsOf, allReleases as rbnzAllReleases } from './js/rbnzCalendar.js';
 import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote, fetchOcrDecisions as rbnzFetchOcrDecisions, ocrActualFor as rbnzOcrActualFor } from './js/rbnzFetch.js';
 import { sanitizerFor as _deskViewerSanitiser, sanitizeStoredRead as _deskSanitizeStored, validateSharedRead as _validateSharedRead } from './js/deskViewerView.js';   // what a viewer is shown of the desk's own outputs (the lens: analysis, not signals)
-import { viewerMayCall as _deskViewerMayCall } from './js/deskAccess.js';                       // what a desk-login VIEWER may call (js/deskAccess.js)
+import { viewerMayCall as _deskViewerMayCall, deskLoginDecision as _deskLoginDecision } from './js/deskAccess.js';                       // what a desk-login VIEWER may call (js/deskAccess.js)
 import { deskLoginPage as _deskLoginPage } from './js/deskLoginPage.js';                  // the desk zone's sign-in page (js/deskLoginPage.js)
 import { logoutPlan as _logoutPlan, clearCookieHeader as _clearCookieHeader, sameSiteOk as _logoutSameSiteOk } from './js/deskLogout.js';   // what /logout clears and where it goes (desk, all, library, education, main)
 import { visibleFor as _deskVisibleFor, cleanSwitches as _deskCleanSwitches } from './js/terminal/tabRegistry.js';   // the Desk Terminal surface registry
@@ -45165,10 +45165,13 @@ app.post('/login', (req, res) => {
   const password = req.body?.password || '';
   const remember = req.body?.remember !== false; // no checkbox on the main-zone page ⇒ always remember
   if (!AUTH_ENABLED) return res.status(401).json({ error: 'invalid password' });
-  let role = null;
+  let role = null, cookieZone = zone;
   if (zone === 'desk') {
-    if (!password || password !== DESK_PASSWORD) return res.status(401).json({ error: 'invalid password' });
-    role = 'viewer';
+    // The desk login takes the DESK password (a viewer session) AND the owner's main password (the main-zone session, so the owner lands as owner with
+    // every surface). Same success shape either way. Without DESK_PASSWORD the zone resolves to 'main' above, where the main password already works.
+    const d = _deskLoginDecision({ password, mainPassword: AUTH_PASSWORDS.main, deskPassword: DESK_PASSWORD, deskEnabled: DESK_ENABLED });
+    if (!d) return res.status(401).json({ error: 'invalid password' });
+    cookieZone = d.zone; role = d.role;
   } else if (password === AUTH_PASSWORDS[zone]) {
     // plain session, role stays null
   } else if (zone === 'education' && EDUCATION_ADMIN_PASSWORD && password === EDUCATION_ADMIN_PASSWORD) {
@@ -45178,7 +45181,7 @@ app.post('/login', (req, res) => {
   }
   const maxAge = remember ? `; Max-Age=${Math.floor(AUTH_COOKIE_MAX_MS / 1000)}` : '';
   res.setHeader('Set-Cookie',
-    `${AUTH_COOKIE_NAME}_${zone}=${authMakeCookie(zone, role)}${maxAge}; Path=/; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`);
+    `${AUTH_COOKIE_NAME}_${cookieZone}=${authMakeCookie(cookieZone, role)}${maxAge}; Path=/; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`);
   res.json({ ok: true });
 });
 

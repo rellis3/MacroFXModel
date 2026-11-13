@@ -83,12 +83,12 @@ export function deskLoginPage(next = '/desk-terminal.html', error = false) {
   <p class="says">The desk's macro analysis. None of the advice.<span class="inside">Inside · <em id="says">Rates</em></span></p>
   <div class="card" id="card">
     <div class="lbl">Private access</div>
-    <div id="msg" role="alert" aria-live="assertive">${error ? '<div class="err"><span aria-hidden="true">✕</span><span>That key did not fit. Check it and try again.</span></div>' : ''}</div>
+    <div id="msg" role="alert" aria-live="assertive">${error ? '<div class="err"><span aria-hidden="true">✕</span><span>That password didn’t work. Check it and try again.</span></div>' : ''}</div>
     <form id="f" autocomplete="on">
       <div class="field${error ? ' bad' : ''}" id="field">
         <label class="vh" for="pw">Password</label>
         <svg class="lock" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-        <input type="password" id="pw" name="password" placeholder="Enter access key" autocomplete="current-password" autofocus required${error ? ' aria-invalid="true"' : ''}>
+        <input type="password" id="pw" name="password" placeholder="Enter your password" autocomplete="current-password" autofocus required${error ? ' aria-invalid="true"' : ''}>
         <button type="button" class="toggle" id="toggle" aria-label="Show password" aria-pressed="false">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
