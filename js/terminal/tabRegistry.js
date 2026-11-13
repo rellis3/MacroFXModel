@@ -78,6 +78,17 @@ export const SURFACES = [
   { id: 'panel.ov.wire',       kind: 'panel', label: 'Overview: the wire', group: 'Overview', defaultVisible: true,  ownerData: false, note: 'tier 1-2 headlines with their reads' },
   { id: 'panel.ov.releases',   kind: 'panel', label: 'Overview: releases and playbooks', group: 'Overview', defaultVisible: false, ownerData: true, note: 'the economist\'s release briefs: the desk\'s analysis' },
   { id: 'panel.ov.riskwarn',   kind: 'panel', label: 'Overview: risk desk warnings', group: 'Overview', defaultVisible: false, ownerData: true, note: 'the book\'s own risks' },
+  // ── Overview map layers (the pills on the world map and globe; js/terminal/mapLayers.js) ──
+  { id: 'widget.ovl.bias', kind: 'widget', label: 'Map layer: Desk bias', group: 'Overview map layers', defaultVisible: false, ownerData: true, note: 'the Currency Manager ranking painted on the map: the owner analysis' },
+  { id: 'widget.ovl.rates', kind: 'widget', label: 'Map layer: Rate cycle', group: 'Overview map layers', defaultVisible: true, ownerData: false, note: 'every BIS central bank by hiking / holding / cutting: market data' },
+  { id: 'widget.ovl.level', kind: 'widget', label: 'Map layer: Policy rate', group: 'Overview map layers', defaultVisible: true, ownerData: false, note: 'every BIS central bank by policy-rate level: market data' },
+  { id: 'widget.ovl.priced', kind: 'widget', label: 'Map layer: Priced path', group: 'Overview map layers', defaultVisible: true, ownerData: false, note: 'what the short-rate futures price for the eight banks over ~6 months: market data' },
+  { id: 'widget.ovl.tone', kind: 'widget', label: 'Map layer: Bank tone', group: 'Overview map layers', defaultVisible: true, ownerData: false, note: 'statement tone per bank from the Central banks board: description only (cb-tone-direction NULL)' },
+  { id: 'widget.ovl.y10', kind: 'widget', label: 'Map layer: 10Y yield', group: 'Overview map layers', defaultVisible: true, ownerData: false, note: 'government 10-year yields from the Global yields board: market data' },
+  { id: 'widget.ovl.gap', kind: 'widget', label: 'Map layer: 2Y gap to US', group: 'Overview map layers', defaultVisible: true, ownerData: false, note: '2-year yield gap to the US from the Global yields board: market data' },
+  { id: 'widget.ovl.macro', kind: 'widget', label: 'Map layer: Macro composite', group: 'Overview map layers', defaultVisible: true, ownerData: false, note: 'the macro engines composite per currency: market data, size not direction' },
+  { id: 'widget.ovl.credit', kind: 'widget', label: 'Map layer: Bank credit', group: 'Overview map layers', defaultVisible: true, ownerData: false, note: 'BIS cross-border bank credit growth: market data' },
+  { id: 'widget.ovl.value', kind: 'widget', label: 'Map layer: Fair value', group: 'Overview map layers', defaultVisible: true, ownerData: false, note: 'BIS real effective exchange rates against their 20-year average: market data' },
   // ── Charts panels ──
   { id: 'panel.charts.bookflow', kind: 'panel', label: 'Charts: how today\'s book was built', group: 'Charts', defaultVisible: false, ownerData: true, note: 'the ruling to the currencies to every card' },
   { id: 'panel.charts.ranking',  kind: 'panel', label: 'Charts: currency ranking vs realised', group: 'Charts', defaultVisible: false, ownerData: true, note: 'the Currency Manager\'s order against how currencies finished' },

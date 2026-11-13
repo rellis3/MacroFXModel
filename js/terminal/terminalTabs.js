@@ -37,12 +37,18 @@ import { pineForCard, oandaOf } from '../deskBookPine.js';
 import * as AAV from './assetAnalysisView.js';
 import * as SR from './sharedRead.js';
 import * as RBV from './ratesBoardView.js';
+import * as ML from './mapLayers.js';
+import { cellHtml as macroCellHtml } from './macroEngines.js';
+import { FAMILIES as MACRO_FAMILIES } from './macroEnginesCore.js';
 
 const el = id => document.getElementById(id);
 const h = CB.esc;
 // the Calendar tab (desk-terminal.html enrichCal) draws its "Expectations vs reality" panel through this
 globalThis.ttReactionsHtml = p => reactionsHtml(p, h);
 // the Macro tab (desk-terminal.html enrichMacro) draws its currency x indicator board through these (js/terminal/macroEngines.js)
+// the Overview map's layers (js/terminal/mapLayers.js): the pills, the legends, the ranking under the map and the country card. The country card
+// reuses the Central banks tile and the Macro engines cells, so nothing is drawn twice.
+globalThis.ttMapLayers = { ...ML, tile: CBV.tileHtml, cell: macroCellHtml, families: MACRO_FAMILIES };
 globalThis.ttMacroBoardHtml = p => { let ev = null; try { const e = DESK_EVIDENCE.find(x => x.id === 'surprise-size'); if (e) { const c = citable(e); ev = { tag: /REOPENED/.test(c.tag) ? 'size tested, reopened by audit' : String(c.tag).split(/\s+[—-]\s+/)[0], result: `${c.tag}. ${e.claim}` }; } } catch { /* the board draws without the stamp */ } return macroBoardHtml(p, h, ev); };
 globalThis.ttMacroPick = macroBoardPick;
 const T = {
