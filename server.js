@@ -21367,6 +21367,15 @@ app.get('/api/fed-path', async (_req, res) => {
           const ago = _zqMeetingProbs(zd.weekAgo.rungs, mtgs.filter(x => x >= zd.weekAgo.rungs[0].ym));
           zq.weekAgo = { asOf: zd.weekAgo.asOf, meetings: ago.rows };
         }
+        // Other lookbacks (calendar days: 1 and 28 = the chain's 1D and 20D), same arithmetic, when the pull wrote them. The Fed path -> yields
+        // join (js/fedPathYieldsCore.js) says "unavailable" for any it lacks; nothing is invented.
+        for (const [days, s] of Object.entries(zd.ago ?? {})) {
+          if (!s?.rungs?.length) continue;
+          try {
+            const a = _zqMeetingProbs(s.rungs, mtgs.filter(x => x >= s.rungs[0].ym));
+            (zq.ago ??= {})[days] = { asOf: s.asOf, meetings: a.rows };
+          } catch { /* one bad lookback does not take the strip down */ }
+        }
       }
     } catch { /* the window series still serves on its own */ }
     const ageDays = d.asOf

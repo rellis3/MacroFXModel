@@ -173,7 +173,7 @@ export function chainSvg(links, { win = 20, nodeSel = null, linkSel = null, show
 }
 
 /** A reduced snapshot for POST /api/chain-read (the read is written only on a click: a paid model call). */
-export function chainSnapshot({ links, vals, win, policy = null, events = [], setups = null, now = Date.now() }) {
+export function chainSnapshot({ links, vals, win, policy = null, events = [], setups = null, fedPath = null, now = Date.now() }) {
   const fmt = (v, dp = 0) => (v == null ? '?' : `${v > 0 ? '+' : ''}${Number(v).toFixed(dp)}`);
   const assets = ['oil', 'gold', 'copper', 'btc', 'audusd', 'usdcad', 'usdjpy', 'eurusd', 'gbpusd', 'nq', 'spx', 'dxy']
     .filter(k => vals?.[k] && !(win === 'live' && vals[k].basis === 'last-print'))
@@ -184,7 +184,9 @@ export function chainSnapshot({ links, vals, win, policy = null, events = [], se
     '  Written from the Desk Terminal: the macro-moves strip, the risk board and the currency-strength row were not sent.'].filter(Boolean).join('\n');
   const evs = (events ?? []).filter(e => /high/i.test(e.impact ?? '') && e.ms > now - 3 * 3600e3 && e.ms < now + 48 * 3600e3).sort((a, b) => a.ms - b.ms).slice(0, 6)
     .map(e => { const h = Math.round((e.ms - now) / 3600e3); return `  ${e.country} ${e.event}${e.estimate != null && e.estimate !== '' ? ` (consensus ${e.estimate})` : ''} -- ${h < 0 ? `${-h}h ago` : h === 0 ? 'now' : `in ${h}h`}`; }).join('\n') || null;
-  const pol = policy ? `  2Y ${policy.twoYear}% vs policy rate ${policy.policyRate}% (${fmt(policy.gapBp)}bp): roughly ${Math.abs(policy.movesPriced ?? 0).toFixed(1)} ${policy.direction === 'cuts' ? 'cuts' : policy.direction === 'hikes' ? 'hikes' : 'moves'} already priced` : null;
+  const pol0 = policy ? `  2Y ${policy.twoYear}% vs policy rate ${policy.policyRate}% (${fmt(policy.gapBp)}bp): roughly ${Math.abs(policy.movesPriced ?? 0).toFixed(1)} ${policy.direction === 'cuts' ? 'cuts' : policy.direction === 'hikes' ? 'hikes' : 'moves'} already priced` : null;
+  // the Fed path against the yields (js/fedPathYieldsCore.js chainLine): a rule-built sentence over THIS window, "priced" not forecast
+  const pol = [pol0, fedPath ? `  FED FUTURES PATH, ${win}-day: ${fedPath}` : null].filter(Boolean).join('\n') || null;
   return { asOf: new Date(now).toISOString(), window: win, moved: null, chain: chainForPrompt(links, win) || null, ratesSplit: null, policy: pol, assets: assets || null, risk: null, equities: null, setups, ccy: null, divergences: null, caveats, events: evs, evidence: null };
 }
 

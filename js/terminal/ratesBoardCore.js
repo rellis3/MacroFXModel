@@ -78,13 +78,15 @@ export function buildRatesBoard(S, now = Date.now()) {
   const asOf = [us2.date, us10.date, us30.date].sort().at(-1);
   const tenors = TENORS.map(([k, y, key]) => {
     const l = last(S[key]); if (!l) return null;
-    return { k, y, level: l.value, asOf: l.date, ageDays: ageDays(l.date, now), chg1d: changeBp(S[key], 1), chg5d: changeBp(S[key], 5), chg20d: changeBp(S[key], 20) };
+    return { k, y, level: l.value, asOf: l.date, ageDays: ageDays(l.date, now), chg1d: changeBp(S[key], 1), chg5d: changeBp(S[key], 5), chg20d: changeBp(S[key], 20),
+      // 7 and 28 calendar days = the chain's 5D and 20D (trading days): the spans the fed funds strip is looked back over (js/fedPathYieldsCore.js)
+      chg7d: changeBp(S[key], 7), chg28d: changeBp(S[key], 28) };
   }).filter(Boolean);
   const slopes = SLOPES.map(([k, label, long, short]) => {
     const sr = spreadSeries(S[long], S[short]); const l = last(sr); if (!l) return null;
     const p1 = pctile(sr, 1), p5 = pctile(sr, 5, 250);
     const chg = n => { const ref = onOrBefore(sr, iso(ts(l.date) - n * DAY)); return ref && ref.date !== l.date ? +(l.value - ref.value).toFixed(1) : null; };
-    return { k, label, bp: Math.round(l.value), asOf: l.date, ageDays: ageDays(l.date, now), chg1d: chg(1), chg5d: chg(5), chg20d: chg(20),
+    return { k, label, bp: Math.round(l.value), asOf: l.date, ageDays: ageDays(l.date, now), chg1d: chg(1), chg5d: chg(5), chg20d: chg(20), chg7d: chg(7), chg28d: chg(28),
       pct1y: p1.pct, n1y: p1.n, pct5y: p5.pct, n5y: p5.n, inverted: l.value < 0, spark: sr.slice(-60).map(p => p.value) };
   }).filter(Boolean);
   const wk = iso(ts(asOf) - 7 * DAY), mo = iso(ts(asOf) - 28 * DAY);

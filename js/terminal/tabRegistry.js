@@ -140,6 +140,7 @@ export const SURFACES = [
   mk('panel.changed.thesis', 'panel', 'Changed: thesis against reality', 'Changed', M, 'the book\'s claims laid against the evening score'),
   mk('panel.changed.paper', 'panel', 'Changed: paper trades', 'Changed', M, 'the paper-trade running total'),
   mk('panel.corr.hedges', 'panel', 'Correlations: the hedge finder', 'Correlations', T, 'ranked hedges for a market or a book card: what to put on'),
+  mk('panel.macro.fedyields', 'panel', 'Macro: the Fed path against the yields', 'Macro', null, 'the priced fed funds path (December, June) beside the 2Y, 2s10s and 10Y over the same 1D/5D/20D dates, how much of the 2Y the futures path accounts for, and the Atlanta Fed window odds'),
   mk('panel.macro.carryside', 'panel', 'Macro: carry board "side" column', 'Macro', null, 'which side of a pair earns the carry'),
 ];
 

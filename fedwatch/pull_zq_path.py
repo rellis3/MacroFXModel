@@ -176,7 +176,9 @@ def main():
                "source": "IBKR / CBOT ZQ 30-day fed funds futures, last 15-min close",
                "note": "Raw contract rungs only. Per-meeting probabilities are computed by "
                        "js/fedPathZq.js, which is tested against CME FedWatch.",
-               "rungs": rungs, "weekAgo": rungs_ago(7)}
+               "rungs": rungs, "weekAgo": rungs_ago(7),
+               # the chain's 1D and 20D (1 and 28 calendar days): js/fedPathYieldsCore.js reads these; a missing one is "unavailable"
+               "ago": {str(d): s for d, s in ((1, rungs_ago(1)), (28, rungs_ago(28))) if s}}
     print(f"\n{len(rungs)} rungs, asOf {asof}")
     if a.dry_run:
         print("--dry-run, not writing")
