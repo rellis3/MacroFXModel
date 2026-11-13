@@ -349,6 +349,7 @@ import { emptyBook as _oiShadowEmptyBook, syncPlan as _oiShadowSyncPlan, stepBar
 import { INTRADAY_SYMS as _CBOE_INTRA_SYMS, INTRADAY_FIELDS as _CBOE_INTRA_FIELDS, slimSnapshot as _cboeSlimSnapshot, volumeBetween as _cboeVolumeBetween, flowByStrike as _cboeFlowByStrike } from './js/cboeIntraday.js';
 import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _parseCboeChain, cboeLadder as _cboeLadder, cboeSnapshotRow as _cboeSnapshotRow, cboeOverlayInst as _cboeOverlayInst, cfdCashOffset as _cfdCashOffset, cboeShift as _cboeShift, cashRefTime as _cashRefTime } from './js/cboeChain.js';   // free delayed Cboe index-options chain (additive to CME; dashboard toggle + tracking)   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
 import { meetingProbabilities as _zqMeetingProbs } from './js/fedPathZq.js';
+import { CB_BANKS as _CB_BOARD_BANKS, CB_HISTORY as _CB_BOARD_HISTORY, pastDates as _cbbPastDates, shapeBank as _cbbShape, boardPayload as _cbbPayload } from './js/terminal/cbBoardCore.js';
 import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE, OI_PRODUCT_SPEC as _OI_SPEC } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
 import { buildOIZones, explainNoZones, oiSizeCalibrationStats as _oiSizeCalibrationStats } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
@@ -14096,6 +14097,47 @@ app.get('/api/rbnz/decisions', async (req, res) => {
     const d = _rbnzDecisions.decisions;
     res.json({ ok: true, source: 'RBNZ news RSS (headline only: the statements are blocked by the RBNZ firewall)', fetchedAt: new Date(_rbnzDecisions.at).toISOString(),
       asOf: d[0]?.date ?? null, current: d[0] ?? null, decisions: d.slice(0, 12) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// GET /api/cb-board: the Desk Terminal's central-bank statement board (js/terminal/cbBoardCore.js, drawn by cbBoardView.js).
+// One read of the eight sentiment engines' stored statement analyses (and the Beige Book) from KV: no fetch of the banks'
+// sites, no model call, no new KV key. The RBNZ's statement pages are blocked by its firewall (403), so for that bank the
+// decision headline from its news RSS (cached by /api/rbnz/decisions, 6 h) stands in and the tile says so. 10-minute cache.
+let _cbBoardCache = { at: 0, data: null };
+const _CB_BOARD_TTL_MS = 10 * 60_000;
+const _CB_BOARD_MEETINGS = () => ({ fomc: FOMC_MEETINGS, ecb: ECB_MEETINGS, boe: BOE_MEETINGS, boj: BOJ_MEETINGS, rba: RBA_MEETINGS, rbnz: RBNZ_MEETINGS, boc: BOC_MEETINGS, snb: SNB_MEETINGS, beige: BEIGE_BOOK_RELEASES });
+async function _cbBoardRbnzHeadline(meetingDate) {
+  try {
+    if (!_rbnzDecisions || Date.now() - _rbnzDecisions.at > 6 * 3600e3) {
+      const r = await rbnzFetchOcrDecisions();
+      if (r.ok) _rbnzDecisions = { at: Date.now(), decisions: r.decisions };
+    }
+    const ds = _rbnzDecisions?.decisions ?? [];
+    return ds.find(d => d?.date === meetingDate) ?? ds.find(d => d?.date > meetingDate) ?? null;
+  } catch { return null; }
+}
+async function _cbBoardBuild() {
+  const now = Date.now(), M = _CB_BOARD_MEETINGS();
+  const pr = await _policyRatesNow().catch(() => ({ rates: {} }));
+  const rbnzLog = await kv.get('rbnz_fetch_log').then(r => (r ? JSON.parse(r) : null)).catch(() => null);
+  const rbnzBlocked = /403|restricted|firewall/i.test((rbnzLog?.log ?? []).join(' · '));
+  const banks = await Promise.all(_CB_BOARD_BANKS.map(async meta => {
+    const meetings = M[meta.id] ?? [], dates = _cbbPastDates(meetings, now, _CB_BOARD_HISTORY), reads = {};
+    await Promise.all(dates.map(async d => { try { const raw = await kv.get(`${meta.prefix}${d}`); reads[d] = raw ? JSON.parse(raw) : null; } catch { reads[d] = null; } }));
+    const newest = dates.at(-1), noRead = newest && !reads[newest]?.analysis;
+    const headline = meta.id === 'rbnz' && noRead ? await _cbBoardRbnzHeadline(newest) : null;
+    return _cbbShape(meta, { meetings, reads, now, headline, blocked: rbnzBlocked, rate: meta.beige ? null : (pr.rates?.[meta.ccy] ?? null) });
+  }));
+  return _cbbPayload(banks, { now });
+}
+app.get('/api/cb-board', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    if (_cbBoardCache.data && Date.now() - _cbBoardCache.at < _CB_BOARD_TTL_MS) return res.json({ ..._cbBoardCache.data, cached: true });
+    const data = await _cbBoardBuild();
+    _cbBoardCache = { at: Date.now(), data };
+    res.json(data);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

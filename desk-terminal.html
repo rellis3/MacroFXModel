@@ -555,7 +555,7 @@ async function loadEnrich() {
   E = Object.fromEntries(k.map((x, i) => [x.replace(/\?.*$/, ''), r[i]]));
   enrichAll();
   // the newer boards (some build on first call in ~20 s): fetched after the first draw, each merged as it lands
-  for (const x of ['fair-value', 'fx-fair-value', 'leading-indicators', 'commodity-fx', 'carry-vol', 'copper-gold', 'session-heat', 'options-skew', 'speech-drift', 'desk-alerts', 'release-surprises', 'release-reactions', 'autocorrelation', 'lead-lag']) getJson(`/api/${x}`).then(v => { E[x] = v; enrichAll(); });
+  for (const x of ['fair-value', 'fx-fair-value', 'leading-indicators', 'commodity-fx', 'carry-vol', 'copper-gold', 'session-heat', 'options-skew', 'speech-drift', 'desk-alerts', 'release-surprises', 'release-reactions', 'autocorrelation', 'lead-lag', 'cb-board']) getJson(`/api/${x}`).then(v => { E[x] = v; enrichAll(); });
 }
 function slot(sec, id) { const s = $(sec); if (!s) return null; let el = s.querySelector(`#${id}`); if (!el) { el = document.createElement('div'); el.id = id; s.appendChild(el); } return el; }
 function enrichAll() { if (!E) return; try { globalThis.redrawHero?.(); stressStrip(); enrichOverview(); enrichMacro(); enrichAssets(); enrichPos(); enrichCal(); } catch (e) { console.warn('enrich', e); } }
@@ -681,6 +681,8 @@ function enrichCal() {
 <p class="muted" style="font-size:12px">${esc(r.note ?? '')}</p></div>${rx}`;
 }
 function enrichMacro() {
+  // the central-bank statement board (js/terminal/cbBoardView.js): tone, vote, dimensions, next meeting per bank, under the policy-rate cards
+  const cbEl = $('xcb'); if (cbEl) cbEl.innerHTML = globalThis.cbBoardHtml?.(E['cb-board'], { cbx: D.cbx?.ok ? D.cbx.banks : null }) ?? '';
   const el = slot('macro', 'xm'); if (!el) return;
   const wr = E['world-rates'], fp = E['fed-path'], fr = E['funding-read'], nc = E.nowcast, bc = E['bank-credit'];
   const banks = wr?.ok ? Object.values(wr.banks).filter(b => !b.stale) : [];
@@ -991,6 +993,7 @@ function macro() {
 <div class="mono" style="font-size:24px;font-weight:700">${pol(c) ? pct(pol(c).rate) : '–'}</div><div class="muted" title="${esc(pol(c)?.source ?? '')}">policy rate · ${esc(pol(c)?.asOf ?? 'not available')}${rd[c]?.latestRate != null ? ` · 3m ${rd[c].latestRate}%` : ''}</div>
 ${s ? `<div style="margin-top:10px"><span class="lbl">Hawkishness</span><div class="bar" style="margin-top:4px"><i style="width:${s.score * 100}%;background:linear-gradient(90deg,var(--pur),var(--gold))"></i></div><span class="muted">${s.score} · meeting ${esc(s.meetingDate)}</span></div>` : ''}
 ${ry[c] ? `<div class="muted" style="margin-top:6px">real 10y <b class="${dirCls(ry[c].latestReal)}">${f(ry[c].latestReal)}%</b> (10y ${ry[c].latestY10}% − CPI ${ry[c].latestCpiYoy}%)</div>` : ''}</div>`; }).join('')}</div>
+<div id="xcb"></div>
 ${cbExpectCard()}
 <div class="grid g2" style="margin-top:14px"><div class="card"><div class="ch"><span class="lbl">Policy-rate differential</span><span class="r muted">row minus column, percentage points</span></div><div class="scroll"><table class="heat"><thead><tr><th></th>${have.map(c => `<th style="text-align:center">${c}</th>`).join('')}</tr></thead><tbody>${have.map(a => `<tr><th>${a}</th>${have.map(b => { const v = pol(a).rate - pol(b).rate; return `<td style="background:${a === b ? 'transparent' : heat(v)}">${a === b ? '·' : f(v)}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div></div>
 <div class="card"><div class="ch"><span class="lbl">US rates</span><span class="r muted">level and 20-day change (bp)</span></div>${curveChart()}<table><tbody>${usRow.map(([l, k]) => `<tr><td>${l}</td><td class="n">${R[k].value}%</td><td class="n ${dirCls(ch[k])}">${ch[k] == null ? '' : f(ch[k], 0) + ' bp'}</td><td class="muted">${esc(R[k].date)}</td></tr>`).join('')}</tbody></table></div></div>

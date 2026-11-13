@@ -20,6 +20,7 @@ import * as PV from './pairView.js';
 import * as CSV from './chainStatsView.js';
 import { reactionsHtml } from './reactionPanel.js';
 import * as FVV from './fairValueView.js';
+import * as CBV from './cbBoardView.js';
 import * as ACV from './autocorrView.js';
 import * as LLV from './leadLagView.js';
 import * as OPV from './optionsView.js';
@@ -792,5 +793,7 @@ if (/pair=/.test(location.hash)) fromHash();
 else { const sel = document.querySelector('#tabs [aria-selected="true"]')?.dataset.t; if (RENDER[sel]) globalThis.onTerminalTab(sel); }
 // the Macro tab's short-term fair value table (desk-terminal.html driversHtml, a classic script) reads this
 globalThis.stfvHtml = FVV.stfvTable;
+// the Macro tab's central-bank statement board (desk-terminal.html enrichMacro, a classic script) reads this
+globalThis.cbBoardHtml = CBV.boardHtml;
 globalThis.acBoardHtml = ACV.boardHtml;
 globalThis.llGridHtml = LLV.gridHtml;
