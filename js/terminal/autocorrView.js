@@ -21,7 +21,7 @@ export function lagBars(p, kind = 'ret', w = 220, h = 64) {
     const x = i * bw + bw * 0.2, bwi = bw * 0.6, y = v.r >= 0 ? mid - v.r * sc : mid, hh = Math.abs(v.r ?? 0) * sc;
     const hot = kind === 'ret' ? v.sig : (v.r ?? 0) > (p.bandAbs ?? 1);
     const band = kind === 'ret' && fin(v.se) ? (v.se * (p.bandRetZ ?? 2.8)) * sc : 0;
-    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bwi.toFixed(1)}" height="${Math.max(0.5, hh).toFixed(1)}" rx="1.5" fill="${hot ? 'var(--gold)' : 'var(--pur2, #9b8cff)'}" opacity="${hot ? 1 : 0.7}"><title>lag ${v.lag}: ${sg(v.r, 3)}${kind === 'ret' && fin(v.se) ? ` (band ±${(v.se * (p.bandRetZ ?? 2.8)).toFixed(3)})` : ''}</title></rect>`
+    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bwi.toFixed(1)}" height="${Math.max(0.5, hh).toFixed(1)}" rx="1.5" fill="${hot ? 'var(--gold)' : 'var(--pur2)'}" opacity="${hot ? 1 : 0.7}"><title>lag ${v.lag}: ${sg(v.r, 3)}${kind === 'ret' && fin(v.se) ? ` (band ±${(v.se * (p.bandRetZ ?? 2.8)).toFixed(3)})` : ''}</title></rect>`
       + (band ? `<line x1="${x.toFixed(1)}" x2="${(x + bwi).toFixed(1)}" y1="${(mid - band).toFixed(1)}" y2="${(mid - band).toFixed(1)}" stroke="var(--tx3)" stroke-width="1"/><line x1="${x.toFixed(1)}" x2="${(x + bwi).toFixed(1)}" y1="${(mid + band).toFixed(1)}" y2="${(mid + band).toFixed(1)}" stroke="var(--tx3)" stroke-width="1"/>` : '')
       + `<text x="${(x + bwi / 2).toFixed(1)}" y="${h - 1}" font-size="8" text-anchor="middle" fill="var(--tx3)">${v.lag}</text>`;
   }).join('');
@@ -30,7 +30,7 @@ export function lagBars(p, kind = 'ret', w = 220, h = 64) {
   return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${kind === 'ret' ? 'return' : 'volatility'} autocorrelation, lags 1 to 10 days">${base}${vband}${bars}</svg>`;
 }
 
-const vrCell = v => (v ? `<td class="n mono${v.vr > 1 ? ' up' : ''}"${v.vr < 1 ? ' style="color:var(--pur2, #9b8cff)"' : ''} title="z ${sg(v.z)} · p ${v.p ?? '–'}">${(+v.vr).toFixed(2)}</td>` : '<td class="n mono">–</td>');
+const vrCell = v => (v ? `<td class="n mono${v.vr > 1 ? ' up' : ''}"${v.vr < 1 ? ' style="color:var(--pur2)"' : ''} title="z ${sg(v.z)} · p ${v.p ?? '–'}">${(+v.vr).toFixed(2)}</td>` : '<td class="n mono">–</td>');
 
 /** The Assets-tab board. */
 export function boardHtml(d) {

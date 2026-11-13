@@ -19,7 +19,7 @@ const day = ms => new Date(ms).toLocaleString('en-GB', { timeZone: 'Europe/Londo
 export function heat(c) {
   if (!c || c.strength == null || c.strength === 0) return 'transparent';
   const a = fin(c.z) ? Math.min(0.5, 0.08 + (Math.abs(c.z) / 3) * 0.42) : 0.1;
-  return c.strength > 0 ? `rgba(47,211,154,${a.toFixed(2)})` : `rgba(255,93,120,${a.toFixed(2)})`;
+  return c.strength > 0 ? `rgba(var(--uprgb),${a.toFixed(2)})` : `rgba(var(--dnrgb),${a.toFixed(2)})`;
 }
 const ageText = d => (!fin(d) ? '' : d < 1 ? 'today' : d < 60 ? `${d}d` : `${Math.round(d / 30)}mo`);
 
@@ -82,7 +82,7 @@ export function boardHtml(p, esc = escD, evidence = null) {
   return `<div class="sec"><h2>Macro engines</h2><span class="lbl">each currency's latest headline release against consensus · colour = the size of the surprise against that release's own history, in economic-strength terms · ${esc(p.scoredReleases ?? 0)} scored releases</span></div>
 <div class="card"><div class="ch"><span class="lbl">Currency × indicator</span><span class="r"><span class="chip">context, not a signal</span> ${tag}</span></div>
 <div class="scroll"><table class="metab" style="min-width:860px"><thead>${head}</thead><tbody>${body}</tbody></table></div>
-<div class="legend" style="margin-top:8px"><span><i style="background:rgba(47,211,154,.45)"></i>stronger than expected</span><span><i style="background:rgba(255,93,120,.45)"></i>weaker than expected</span><span>▲ ▼ = beat or miss · z = surprises of this release's usual size · dimmed = older than the release's cadence · "vs prior" = no consensus published · "engine" = only the engine scores it · – = no feed</span></div>
+<div class="legend" style="margin-top:8px"><span><i style="background:rgba(var(--uprgb),.45)"></i>stronger than expected</span><span><i style="background:rgba(var(--dnrgb),.45)"></i>weaker than expected</span><span>▲ ▼ = beat or miss · z = surprises of this release's usual size · dimmed = older than the release's cadence · "vs prior" = no consensus published · "engine" = only the engine scores it · – = no feed</span></div>
 <div id="me-drawer" class="card" style="margin-top:10px;background:var(--bg2)">${_sel ? drawerHtml(p, _sel.ccy, _sel.fam, esc) : '<span class="muted">Click a cell for the last six prints, the engine reading and the next release.</span>'}</div>
 <p class="muted" style="font-size:12px;margin:8px 0 0">Coverage: ${cov}. Colour is the sign of the surprise (unemployment, claims and trade deficits are inverted, so green always means a stronger economy than expected); it says nothing about which way a market moves. Surprise size widens the release session's range; the desk has never found a direction in it.</p></div>
 <style>.metab td.mecell{cursor:pointer;min-width:84px;vertical-align:top;border:1px solid var(--line)}.metab td.me-none{cursor:default;text-align:center;opacity:.55}.metab td.me-stale{opacity:.5}.metab td.me-sel{outline:2px solid var(--pur);outline-offset:-2px}.metab td.me-eng{background:var(--purbg)}.metab th{white-space:nowrap}</style>`;

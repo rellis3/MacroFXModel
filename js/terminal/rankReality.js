@@ -43,9 +43,9 @@ export function rankHistory(days, { w = 5 } = {}) {
 const sg = v => (v == null || !Number.isFinite(+v) ? '–' : `${+v > 0 ? '+' : ''}${(+v).toFixed(2)}`);
 /** realised rank → a colour from green (1st) to red (last). */
 export function rankColour(rank, of) {
-  if (!rank || !(of > 1)) return 'rgba(138,147,184,.15)';
+  if (!rank || !(of > 1)) return 'rgba(var(--flatrgb),.15)';
   const t = (rank - 1) / (of - 1);
-  return t <= 0.5 ? `rgba(47,211,154,${(0.65 - t * 1.0).toFixed(2)})` : `rgba(255,93,120,${(0.15 + (t - 0.5) * 1.0).toFixed(2)})`;
+  return t <= 0.5 ? `rgba(var(--uprgb),${(0.65 - t * 1.0).toFixed(2)})` : `rgba(var(--dnrgb),${(0.15 + (t - 0.5) * 1.0).toFixed(2)})`;
 }
 
 /** The latest day's table. */

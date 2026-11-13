@@ -86,7 +86,8 @@ const pricedOf = (ccy, ctx) => { const h = ctx.cbx?.[ccy]?.m6; return h && fin(h
 const toneOf = (ccy, ctx) => { const b = cbBank(ccy, ctx); return b?.status === 'read' && fin(b.read?.score) ? +b.read.score : null; };
 
 // ── colours ───────────────────────────────────────────────────────────────────────────────────────────────────────────
-const GOLD = '232,184,90', BLUE = '91,157,255', PUR = '139,124,246', UP = '47,211,154', DN = '255,93,120', FLAT = '138,147,184';
+// the layer colours are the page's rgb tokens, so a theme recolours the map (rgba(var(--goldrgb),.4))
+const GOLD = 'var(--goldrgb)', BLUE = 'var(--bluergb)', PUR = 'var(--purrgb)', UP = 'var(--uprgb)', DN = 'var(--dnrgb)', FLAT = 'var(--flatrgb)';
 const rgba = (c, a) => `rgba(${c},${a2(a)})`;
 /** One-sided ramp: 0 → faint, 1 → strong. */
 const ramp = (c, t) => rgba(c, 0.16 + 0.66 * clamp01(t));
@@ -214,7 +215,7 @@ export function rankingHtml(layer, ctx) {
   const esc = ctx.h?.esc ?? defEsc, spk = ctx.h?.spk;
   const r = layerRanking(layer, ctx);
   if (!r.rows.length) return '';
-  const body = r.rows.map(x => `<tr${x.id ? ` class="click" tabindex="0" data-ctry="${esc(x.id)}"` : ''}><td><b>${esc(x.name)}</b>${x.sub ? ` <span class="muted">${esc(x.sub)}</span>` : ''}</td><td>${spk && x.spark ? spk(x.spark, 90, 22, x.cls === 'gold' ? '#e8b85a' : x.cls === 'blue' ? '#5b9dff' : x.cls === 'dn' ? '#ff5d78' : x.cls === 'up' ? '#2fd39a' : x.cls === 'pur' ? '#b4a9ff' : 'var(--gold)') : ''}</td><td class="n mono ${esc(x.cls ?? '')}">${esc(x.value)}</td><td class="muted">${esc(x.note ?? '')}</td></tr>`).join('');
+  const body = r.rows.map(x => `<tr${x.id ? ` class="click" tabindex="0" data-ctry="${esc(x.id)}"` : ''}><td><b>${esc(x.name)}</b>${x.sub ? ` <span class="muted">${esc(x.sub)}</span>` : ''}</td><td>${spk && x.spark ? spk(x.spark, 90, 22, x.cls === 'gold' ? 'var(--gold)' : x.cls === 'blue' ? 'rgb(var(--bluergb))' : x.cls === 'dn' ? 'var(--dn)' : x.cls === 'up' ? 'var(--up)' : x.cls === 'pur' ? 'var(--pur2)' : 'var(--gold)') : ''}</td><td class="n mono ${esc(x.cls ?? '')}">${esc(x.value)}</td><td class="muted">${esc(x.note ?? '')}</td></tr>`).join('');
   return `<div class="ch" style="margin-bottom:4px"><span class="lbl">${esc(r.title)}</span><span class="r muted">${esc(r.sub)}</span></div><div class="scroll"><table><tbody>${body}</tbody></table></div>${r.foot ? `<p class="muted" style="font-size:12px;margin:6px 0 0">${esc(r.foot)}</p>` : ''}`;
 }
 

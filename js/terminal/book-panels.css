@@ -22,13 +22,13 @@
 .bf-node:focus-visible,.bf-card:focus-visible{outline:none}
 .bf-node:focus-visible text,.bf-card:focus-visible text{text-decoration:underline}
 .bf-flags{display:grid;gap:6px;margin-bottom:10px}
-.bf-flag{font-size:13px;padding:6px 10px;border-radius:8px;background:var(--goldbg);border:1px solid rgba(232,184,90,.3);cursor:pointer;overflow-wrap:anywhere}
+.bf-flag{font-size:13px;padding:6px 10px;border-radius:8px;background:var(--goldbg);border:1px solid rgba(var(--goldrgb),.3);cursor:pointer;overflow-wrap:anywhere}
 .bf-flag:hover,.bf-flag:focus-visible{border-color:var(--gold);outline:none}
 .bf-foot{font-size:12px;margin-top:8px}
 .bf-net{display:grid;gap:4px}
 .bf-nrow{display:grid;grid-template-columns:62px 28px minmax(0,1fr) 52px;gap:8px;align-items:center;padding:4px 6px;border-radius:8px;cursor:pointer}
-.bf-nrow:hover,.bf-nrow:focus-visible{background:rgba(139,124,246,.08);outline:none}
-.bf-nrow.bf-sel{background:var(--purbg);box-shadow:inset 0 0 0 1px rgba(139,124,246,.45)}
+.bf-nrow:hover,.bf-nrow:focus-visible{background:rgba(var(--purrgb),.08);outline:none}
+.bf-nrow.bf-sel{background:var(--purbg);box-shadow:inset 0 0 0 1px rgba(var(--purrgb),.45)}
 .bf-nrow.bf-dim{opacity:.35}
 .bf-nrow .bf-g{grid-column:3/5;font-size:10.5px;margin-top:-3px}
 .bf-bias{font-size:11px}
@@ -36,9 +36,9 @@
 .bf-track{position:relative;height:16px;background:var(--bg3);border-radius:4px;overflow:hidden}
 .bf-zero{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line2)}
 .bf-cap{position:absolute;top:0;bottom:0;width:0;border-left:1px dashed var(--gold);opacity:.7}
-.bf-seg{position:absolute;top:3px;height:10px;box-shadow:inset -1px 0 0 rgba(7,10,23,.8)}
-.bf-seg.up{background:rgba(47,211,154,.7)}
-.bf-seg.dn{background:rgba(255,93,120,.7)}
+.bf-seg{position:absolute;top:3px;height:10px;box-shadow:inset -1px 0 0 rgba(var(--bgrgb),.8)}
+.bf-seg.up{background:rgba(var(--uprgb),.7)}
+.bf-seg.dn{background:rgba(var(--dnrgb),.7)}
 .bf-mark{position:absolute;top:2px;width:10px;height:12px;border-radius:2px;transform:rotate(45deg) scale(.8);background:var(--tx);box-shadow:0 0 0 2px var(--bg)}
 .bf-panel{margin-top:12px;padding:12px;border-radius:10px;background:var(--bg2);border:1px solid var(--line2)}
 .bf-panel .ch{flex-wrap:wrap}
@@ -64,7 +64,7 @@
 .sm .sm-book.up{color:var(--up)}.sm .sm-book.dn{color:var(--dn)}
 .sm tr.sm-hit .sm-first{box-shadow:inset 3px 0 0 var(--gold),1px 0 0 var(--line2)}
 .sm .sm-flag{color:var(--gold)}
-.sm td.sm-in{outline:1px solid rgba(232,184,90,.75);outline-offset:-2px}
+.sm td.sm-in{outline:1px solid rgba(var(--goldrgb),.75);outline-offset:-2px}
 .sm tr.sm-off td{text-align:left}
 @media (max-width:600px){.sm .sm-first{min-width:104px;max-width:112px;font-size:11px}.sm th,.sm td{padding:4px 5px}}
 .sm-notes{margin:8px 0 0;padding-left:18px;font-size:12px;color:var(--tx2)}
@@ -73,4 +73,4 @@
 /* ranking vs realised */
 .rr-heat td.rr-m{font-weight:700;color:var(--tx)}
 .rr-heat td.rr-c{color:var(--tx3)}
-.rr-heat td.rr-m{color:#fff}
+.rr-heat td.rr-m{color:var(--tx)}

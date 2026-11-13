@@ -156,7 +156,7 @@ export function currencyDetail(ccy, cards, ccyView, check = null) {
 }
 
 // ─────────────────────────────── drawing (strings only; the page wires the clicks) ───────────────────────────────
-const UP = '#2fd39a', DN = '#ff5d78', FL = '#8a93b8', TX = '#eef0fb', TX3 = '#6d7599', GOLD = '#e8b85a';
+const UP = 'var(--up)', DN = 'var(--dn)', FL = 'var(--flat)', TX = 'var(--tx)', TX3 = 'var(--tx3)', GOLD = 'var(--gold)';
 const ribbon = (x1, y1, h1, x2, y2, h2, col, op, title, cls = '') => `<path class="bf-rb ${cls}" d="M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2} L${x2},${y2 + h2} C${(x1 + x2) / 2},${y2 + h2} ${(x1 + x2) / 2},${y1 + h1} ${x1},${y1 + h1} Z" fill="${col}" opacity="${op}"><title>${esc(title)}</title></path>`;
 const f1 = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(+v || 0).toFixed(Math.abs(v) < 10 ? 2 : 1).replace(/\.?0+$/, '');
 

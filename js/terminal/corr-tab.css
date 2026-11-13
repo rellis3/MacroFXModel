@@ -11,7 +11,7 @@
 #corr .ct-cell:focus-visible{outline:none}
 #corr .ct-chg{display:grid;gap:2px}
 #corr .ct-chgrow{display:grid;grid-template-columns:minmax(0,1.3fr) auto auto auto;gap:10px;align-items:center;padding:7px 6px;border-bottom:1px solid var(--line);font-size:12.5px;border-radius:6px}
-#corr .ct-chgrow:hover,#corr .ct-chgrow:focus-visible,#corr .ct-rt tr.ct-click:hover,#corr .ct-rt tr.ct-click:focus-visible{background:rgba(139,124,246,.07);outline:none}
+#corr .ct-chgrow:hover,#corr .ct-chgrow:focus-visible,#corr .ct-rt tr.ct-click:hover,#corr .ct-rt tr.ct-click:focus-visible{background:rgba(var(--purrgb),.07);outline:none}
 #corr .ct-chgrow b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (max-width:560px){#corr .ct-chgrow{grid-template-columns:1fr auto;row-gap:4px}#corr .ct-chgrow svg{grid-column:1}}
 #corr .ct-sel{display:inline-flex;gap:6px;align-items:center;font:600 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)}

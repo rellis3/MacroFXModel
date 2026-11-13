@@ -27,7 +27,7 @@ export function pathSvg(hist, w = 300, h = 60) {
   const all = H.flatMap(x => [x.price, x.fair]), lo = Math.min(...all), hi = Math.max(...all), sp = hi - lo || 1;
   const X = i => ((i / (H.length - 1)) * w).toFixed(1), Y = v => (h - 2 - ((v - lo) / sp) * (h - 4)).toFixed(1);
   const line = k => H.map((x, i) => `${i ? 'L' : 'M'}${X(i)},${Y(x[k])}`).join('');
-  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="price against short-term fair value"><path d="${line('fair')}" fill="none" stroke="var(--pur2, #9b8cff)" stroke-width="1.5" stroke-dasharray="4 3"/><path d="${line('price')}" fill="none" stroke="var(--gold, #e8b85a)" stroke-width="1.5"/></svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="price against short-term fair value"><path d="${line('fair')}" fill="none" stroke="var(--pur2)" stroke-width="1.5" stroke-dasharray="4 3"/><path d="${line('price')}" fill="none" stroke="var(--gold)" stroke-width="1.5"/></svg>`;
 }
 
 /** Macro tab: every pair in one table, verdict first. */

@@ -7,7 +7,7 @@ import { pairLine } from '../leadLag.js';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fin = v => v != null && Number.isFinite(+v);
 const sg = (v, dp = 3) => (fin(v) ? `${+v > 0 ? '+' : ''}${(+v).toFixed(dp)}` : '–');
-const cellBg = (r, m = 0.08) => (!fin(r) ? 'transparent' : r > 0 ? `rgba(47,211,154,${Math.min(0.9, Math.abs(r) / m * 0.9).toFixed(2)})` : `rgba(255,93,120,${Math.min(0.9, Math.abs(r) / m * 0.9).toFixed(2)})`);
+const cellBg = (r, m = 0.08) => (!fin(r) ? 'transparent' : r > 0 ? `rgba(var(--uprgb),${Math.min(0.9, Math.abs(r) / m * 0.9).toFixed(2)})` : `rgba(var(--dnrgb),${Math.min(0.9, Math.abs(r) / m * 0.9).toFixed(2)})`);
 const chip = x => (x.isLead ? '<span class="chip up">lead</span>' : x.survivedBH ? '<span class="chip gold">halves disagree</span>' : '<span class="chip">near miss</span>');
 
 function row(x, labels) {

@@ -103,8 +103,8 @@ test('buildMacroBoard: an empty store builds an all-"no feed" board without thro
 });
 
 test('render: heat is green for stronger, red for weaker, none for inline or unknown, and grows with |z|', () => {
-  assert.match(heat({ strength: 1, z: 2 }), /47,211,154/);
-  assert.match(heat({ strength: -1, z: 2 }), /255,93,120/);
+  assert.match(heat({ strength: 1, z: 2 }), /--uprgb/);
+  assert.match(heat({ strength: -1, z: 2 }), /--dnrgb/);
   assert.equal(heat({ strength: 0, z: 0 }), 'transparent');
   assert.equal(heat({ strength: null }), 'transparent');
   const a = s => +/,([\d.]+)\)$/.exec(s)[1];
@@ -117,7 +117,7 @@ test('render: cells say what they are; no-feed cells say so; stale cells are dim
   const b = buildMacroBoard({ rows, now: NOW });
   const f = k => FAMILIES.find(x => x.key === k);
   const ok = cellHtml('USD', f('cpi'), b.cells.USD.cpi);
-  assert.match(ok, /0\.90%/); assert.match(ok, /▲/); assert.match(ok, /z \+/); assert.match(ok, /rgba\(47,211,154/);
+  assert.match(ok, /0\.90%/); assert.match(ok, /▲/); assert.match(ok, /z \+/); assert.match(ok, /rgba\(var\(--uprgb\)/);
   assert.match(cellHtml('AUD', f('gdp'), b.cells.AUD.gdp), /me-stale/);
   assert.match(cellHtml('CAD', f('cpi'), b.cells.CAD.cpi), /no feed/);
   assert.doesNotMatch(cellHtml('USD', f('cpi'), { ...b.cells.USD.cpi, event: '<b>x</b>' }), /<b>x<\/b>/);
