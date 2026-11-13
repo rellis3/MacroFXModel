@@ -26,6 +26,7 @@ export const STORES = {
   // ── forward records and model outputs ─────────────────────────────────────
   kv_write_times_v1: R('KV write-time ledger (what this map reads)', 1),
   paper_record_v1: R('Rich-vol break paper record', 1),
+  residual_fx8_forward_v1: R('Residual FX8 forward paper record (laptop push, nightly)', 3),
   global_read_v1: R('Global Read forward record', 1),
   daily_read_v1: R('Daily Read (tags + scored days)', 1),
   forecast_scorecard_v1: R('Forecast scorecard', 1),
