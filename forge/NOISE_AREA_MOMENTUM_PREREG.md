@@ -188,4 +188,6 @@ exchange holidays (~9-10 a year). No outcome had been computed.
 
 ## RESULTS
 
-(not yet run)
+Run 2026-11-13: `analysis/output/noise-area-momentum/RESULTS.md`. P1 UNDERPOWERED (NQ passes: net Sharpe 1.23
+[0.78, 1.69]; ES misses: 0.47 [-0.04, 0.98]); P2 UNDERPOWERED (book 0.39 [-0.19, 0.89]); P3 UNDERPOWERED (V2 - V1
+-0.23 bp/day [-1.45, +0.99]). Mechanics check rho 0.94. Page: `noise-area-momentum.html`.

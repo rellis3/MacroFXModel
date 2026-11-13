@@ -2471,6 +2471,27 @@ export const DESK_EVIDENCE = [
     use: 'No evidence that a with-the-day line touch late in the session follows through more than earlier: the small NQ lift appears at placebo lines too (clock, not level). EURUSD rules out a 10pp late lift. Do not call late arrivals at lines continuation setups.',
   },
   {
+    id: 'noise-area-momentum', domain: 'price', verdict: 'underpowered', date: '2026-11-13', doc: 'forge/NOISE_AREA_MOMENTUM_PREREG.md', also: ['analysis/output/noise-area-momentum/RESULTS.md'],
+    instruments: ['NQ', 'SPX500'],
+    claim: 'Zarattini, Aziz & Barbon (2024) "Beat the Market" on our data: the noise-band rule (14-day mean move from the open by minute, gap-widened; long/short beyond the band and VWAP at :00/:30 from 10:00 ET; flat back inside the band or across VWAP; flat at 16:00), 1x, net of 1 tick each side + $4.50, beats a shuffled-minute null, has a mean CI above 0 and positive halves on BOTH ES and NQ futures (2016-01 to 2026-08-21)',
+    result: 'UNDERPOWERED: NQ passes every part, ES misses. NQ net Sharpe 1.23 [0.78, 1.69], 4.2 bp/day [2.5, 6.0], above all 200 shuffled histories (null mean 0.35, p97.5 0.70), halves 1.14/1.32, futures-only 1.24, after publication (2024-05 on) 0.97. ES 0.47 [-0.04, 0.98], mean CI [-0.05, +2.6] bp, halves 0.21/0.75, above all 200 draws; gross 1.03, costs 1.5 bp/day (paper-like 0.4 bp cost: 0.90). Build checked: ES V3 monthly returns vs the paper’s SPY table rho 0.94 (116 months). Positive control passed. YM ~0, RTY -0.79 (described). Decomposition: breach held to 16:00 beats the null on ES (+3.4 bp) and NQ (+7.3 bp); the stop adds nothing beyond chance.',
+    use: 'Do not call this rule validated on index futures. Fine to show the backtest (noise-area-momentum.html) and say NQ alone matches the paper (Sharpe ~1.2 net, both halves, after publication too) but was one of two required cells, and that on ES costs take about half the edge. Next step is a pre-registered NQ forward paper record, not money.',
+  },
+  {
+    id: 'noise-area-momentum-book', domain: 'price', verdict: 'underpowered', date: '2026-11-13', doc: 'forge/NOISE_AREA_MOMENTUM_PREREG.md', also: ['analysis/output/noise-area-momentum/RESULTS.md'],
+    instruments: ['NQ', 'SPX500', 'US30', 'US2000'],
+    claim: 'The paper’s headline version (band + VWAP stop, leverage min(4, 2% / 14-day daily sigma)) as an equal-weight ES+NQ+YM+RTY futures book beats the shuffled-minute null, has a Sharpe CI above 0 and positive halves (NULL if the CI top is below 0.66, half the paper’s 1.33)',
+    result: 'UNDERPOWERED: book Sharpe 0.39 [-0.19, 0.89], above all 200 shuffled books (null mean -0.64), halves 0.27/0.51, MDD 32%, CAGR 3.9%. Per index V3: NQ 1.15, ES 0.44 (MDD 53%), YM 0.02, RTY -0.21. Vol targeting raises return, not Sharpe.',
+    use: 'No page may quote the paper’s 1.33 / 19.6% as achievable on index futures at our costs: the four-index book runs at about 0.4. YM and RTY add nothing.',
+  },
+  {
+    id: 'noise-area-momentum-stop', domain: 'execution', verdict: 'underpowered', date: '2026-11-13', doc: 'forge/NOISE_AREA_MOMENTUM_PREREG.md', also: ['analysis/output/noise-area-momentum/RESULTS.md'],
+    instruments: ['NQ', 'SPX500'],
+    claim: 'The paper’s trailing stop (exit back inside the current band or across VWAP) earns more per day than the base opposite-band stop (V2 - V1, ES and NQ pooled per day, 1x, net); NULL if the CI top is below 0.35 bp/day (half the paper’s gap)',
+    result: 'UNDERPOWERED: V2 - V1 = -0.23 bp/day [-1.45, +0.99], halves +0.23/-0.68. Sharpe rises (ES 0.40 -> 0.47, NQ 1.03 -> 1.23) because volatility and drawdown fall (NQ MDD 19% -> 11%), not because return rises. Decomposition: the exits add +1.1 / +1.0 bp gross vs chance at the 72nd / 64th percentile.',
+    use: 'The band + VWAP stop is a risk tool, not a return source: say it cuts drawdown, not that it adds edge.',
+  },
+  {
     id: 'level-local-gamma', domain: 'positioning', verdict: 'null', date: '2026-11-11', doc: 'forge/LEVEL_LOCAL_GAMMA_PREREG.md',
     also: ['analysis/output/level-local-gamma/RESULTS.md'],
     instruments: ['NQ', 'SPX500'],
@@ -2800,6 +2821,9 @@ const POWER = {
   'close-window-momentum-trade': { n: '2,355 / 2,335 futures and 2,141 / 2,010 CFD trades', note: 'MDE 2.2-2.7 bp vs bar 2.75 bp net: powered; bar ruled out on all four' },
   'close-window-momentum-secondary': { n: '2,141 to 2,519 days per instrument', note: 'slope MDE 0.010-0.016 vs 0.025; trade MDE 0.7-1.0 bp vs 1.0 bp' },
   'close-window-momentum-levels': { n: '106/849 (NQ), 36/785 (gold), 259/993 (EURUSD), 4/16 (NQ walls) resolved late/early real-line races', note: 'planned MDE 11.6/16.9/8.9 pp vs 10 pp bar: only EURUSD powered (bar ruled out); realised n about half the plan (unresolved races)' },
+  'noise-area-momentum': { n: '2,670 ES and 2,670 NQ sessions (week-cluster bootstrap) + 200 shuffled histories each', note: 'Sharpe MDE ~0.92 per instrument vs paper 1.24 (detectable); NQ passes, ES CI [-0.04, 0.98] neither passes nor rules out 0.62' },
+  'noise-area-momentum-book': { n: '2,671 book sessions (4 correlated indices, ~2 effective)', note: 'MDE ~0.7 vs null bar 0.66: borderline; CI [-0.19, 0.89]' },
+  'noise-area-momentum-stop': { n: '2,670 sessions, ES+NQ pooled per day', note: 'CI width ~2.4 bp vs 0.35 bp null bar: underpowered by design' },
 };
 
 const TAG = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };

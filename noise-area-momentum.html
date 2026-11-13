@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Noise-Area Momentum Backtest</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+        --blue:#3987e5;--orange:#d95926;--aqua:#199e70;--amber:#d29922;--red:#f85149;--green:#3fb950;--grid:#21262d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--blue);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700}
+  .spacer{flex:1}
+  .chip{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .chip.ok{color:var(--green);border-color:var(--green)} .chip.warn{color:var(--amber);border-color:var(--amber)} .chip.bad{color:var(--red);border-color:var(--red)}
+  .wrap{max-width:1500px;margin:0 auto;padding:12px 16px 48px;display:flex;flex-direction:column;gap:14px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:0}
+  .box h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .note{font-size:12px;color:var(--text2);line-height:1.6;max-width:130ch} .note b{color:var(--text)}
+  .ctrl{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+  .ctrl label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+  select{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font:inherit;font-size:12.5px;text-transform:none;letter-spacing:0;max-width:100%}
+  .btn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+  .btn.on{background:#22304d;color:#fff;border-color:var(--blue)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+  .kpi{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+  .kpi .l{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+  .kpi .v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .kpi .s{font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px} @media (max-width:950px){.grid2{grid-template-columns:1fr}}
+  table{border-collapse:collapse;width:100%;font-size:11.5px;font-variant-numeric:tabular-nums}
+  th,td{padding:4px 7px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap}
+  th{color:var(--text3);font-weight:600;background:var(--card);position:sticky;top:0;z-index:1}
+  td:first-child,th:first-child{text-align:left}
+  tr.sel td{background:#1d2a40} tr.click{cursor:pointer} tr.click:hover td{background:#1b2230}
+  .xscroll{overflow-x:auto;max-width:100%} .tscroll{overflow:auto;max-height:420px}
+  .pos{color:#5fb4ff} .neg{color:#ff8a5c} .mut{color:var(--text3)}
+  #eq{height:380px} #dd{height:130px} #day{height:420px} @media (max-width:700px){#eq{height:300px}#day{height:320px}}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--text2);margin:2px 0 6px}
+  .sw{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+  .verdict{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
+  .vcard{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text2)}
+  .vcard b{color:var(--text)} .vword{font-weight:800;letter-spacing:.04em}
+  .vword.VALIDATED{color:var(--green)} .vword.NULL{color:var(--red)} .vword.UNDERPOWERED{color:var(--amber)} .vword.CONTEXT{color:var(--text2)}
+  .mcell{min-width:46px}
+  svg text{fill:var(--text2);font-size:10.5px}
+  .tip{position:fixed;pointer-events:none;background:#0b0f14;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11.5px;color:var(--text);z-index:99;display:none;font-variant-numeric:tabular-nums}
+  .rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px;margin-top:8px}
+  .rule{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text2)} .rule b{color:var(--text)}
+  .pager{display:flex;gap:6px;align-items:center;margin-top:6px;font-size:11.5px;color:var(--text3)}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>Noise-Area Momentum · backtest</h1>
+  <span class="chip">Zarattini, Aziz &amp; Barbon (2024) "Beat the Market"</span>
+  <span class="chip" id="chipRange">—</span>
+  <span class="spacer"></span>
+  <span class="chip" id="chipMech">mechanics —</span>
+  <span class="chip" id="chipP1">P1 —</span>
+  <a class="chip" href="evidence.html" target="_blank">Evidence Book</a>
+</div>
+<div class="tip" id="tip"></div>
+<div class="wrap">
+
+  <div class="box">
+    <h2>Strategy</h2>
+    <div class="note">The paper's intraday momentum rule, rebuilt minute by minute on <b>US index futures</b> (ES ≈ SPY, NQ, YM, RTY), cash session 09:30–16:00 New York, Jan 2016 → 21 Aug 2026 (later sessions are the held-out lockbox). Pre-registered before any result was computed: <a href="https://github.com/rellis3/MacroFXModel/blob/main/forge/NOISE_AREA_MOMENTUM_PREREG.md" target="_blank">forge/NOISE_AREA_MOMENTUM_PREREG.md</a>.</div>
+    <div class="rules">
+      <div class="rule"><b>Noise band</b><br>For each minute, the average |move from the open| over the last 14 days. Upper = max(open, prior close)·(1+σ), lower = min(open, prior close)·(1−σ).</div>
+      <div class="rule"><b>Entry</b><br>Checked only at :00 and :30 from 10:00. Long above the upper band (and above VWAP), short below the lower band (and below VWAP).</div>
+      <div class="rule"><b>Exit</b><br>Paper's improved stop: flat when price is back inside the band or across VWAP at a check. Base version: hold until the opposite band. Always flat at 16:00.</div>
+      <div class="rule"><b>Size</b><br>1x notional, or vol-targeted: leverage = min(4, 2% ÷ last-14-day daily σ). Compounds from $100k, fractional contracts.</div>
+    </div>
+  </div>
+
+  <div class="box">
+    <div class="ctrl">
+      <label>Instrument<select id="selInst"></select></label>
+      <label>Variant<select id="selVar"></select></label>
+      <label>Costs<select id="selCost"></select></label>
+      <label>Period<select id="selPer">
+        <option value="all">Full sample (2016 → Aug 2026)</option>
+        <option value="paper">Overlap with paper's sample (→ Apr 2024)</option>
+        <option value="post">After publication (May 2024 →)</option>
+        <option value="fut">Futures days only (no CFD fill)</option>
+      </select></label>
+      <label>Compare with<select id="selCmp"><option value="">— none —</option></select></label>
+      <label>Scale<span><button class="btn on" id="bLog">log</button> <button class="btn" id="bLin">linear</button></span></label>
+    </div>
+    <div class="note" id="costNote" style="margin-top:8px"></div>
+  </div>
+
+  <div class="box">
+    <h2 id="kpiTitle">Performance</h2>
+    <div class="kpis" id="kpis"></div>
+  </div>
+
+  <div class="box">
+    <h2>Equity curve ($100,000 start)</h2>
+    <div class="legend" id="eqLegend"></div>
+    <div id="eq"></div>
+    <h2 style="margin-top:10px">Drawdown</h2>
+    <div id="dd"></div>
+  </div>
+
+  <div class="box">
+    <h2>All variants at these costs and this period</h2>
+    <div class="xscroll"><table id="varTable"></table></div>
+    <div class="note" style="margin-top:6px">Paper column = the paper's own number on SPY 2007–2024 (their costs ≈ 0.4 bp round trip). Trades are round trips. Click a row to switch variant.</div>
+  </div>
+
+  <div class="box">
+    <h2>Monthly returns (%)</h2>
+    <div class="xscroll"><table id="monTable"></table></div>
+  </div>
+
+  <div class="box">
+    <h2>Scored verdicts (pre-registered costs: 1 tick each side + $4.50 round trip)</h2>
+    <div class="verdict" id="verdicts"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="box">
+      <h2>Permutation null: Sharpe with the day's minutes shuffled</h2>
+      <div class="note" id="nullNote"></div>
+      <svg id="nullSvg" width="100%" height="200"></svg>
+    </div>
+    <div class="box">
+      <h2>Is the build right? ES vs the paper's published SPY year (V3)</h2>
+      <div class="note" id="mechNote"></div>
+      <svg id="mechSvg" width="100%" height="200"></svg>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="box">
+      <h2>Where the P&amp;L comes from (V2, 1x, gross, bp per day)</h2>
+      <svg id="todSvg" width="100%" height="190"></svg>
+      <div class="note" id="todNote"></div>
+    </div>
+    <div class="box">
+      <h2>Which part works: entry, hold or stop (gross bp, first entry of each day)</h2>
+      <div class="xscroll"><table id="decTable"></table></div>
+      <div class="note" style="margin-top:6px">Each part is compared with the same part on the shuffled-minute paths. "Null pct" = share of shuffled draws the real number beats.</div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>Day viewer</h2>
+    <div class="ctrl"><label>Day<select id="selDay"></select></label><span class="note" id="dayNote"></span></div>
+    <div class="legend"><span><i class="sw" style="background:#e6edf3"></i>price</span><span><i class="sw" style="background:var(--aqua)"></i>noise band</span><span><i class="sw" style="background:var(--orange)"></i>VWAP</span><span>▲ long · ▼ short · ● flat (V2 position at each check)</span></div>
+    <div id="day"></div>
+  </div>
+
+  <div class="box">
+    <h2 id="trTitle">Trade list</h2>
+    <div class="note" id="trNote"></div>
+    <div class="tscroll"><table id="trTable"></table></div>
+    <div class="pager" id="trPager"></div>
+  </div>
+
+  <div class="box">
+    <h2>Data notes</h2>
+    <div class="note" id="dataNote"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const SLOT = ['10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00'];
+const TICK = {ES:{tick:.25,pv:50},NQ:{tick:.25,pv:20},YM:{tick:1,pv:5},RTY:{tick:.1,pv:50}};
+const COSTS = [
+  {id:'gross', label:'Zero cost (gross)', slip:0, comm:0, bp:0},
+  {id:'paper', label:"Paper's SPY cost (~0.4 bp round trip)", slip:0, comm:0, bp:0.4},
+  {id:'comm', label:'Commission only ($4.50 round trip)', slip:0, comm:1, bp:0},
+  {id:'half', label:'Commission + ½ tick each side', slip:.5, comm:1, bp:0},
+  {id:'prereg', label:'Commission + 1 tick each side (pre-registered)', slip:1, comm:1, bp:0},
+  {id:'two', label:'Commission + 2 ticks each side', slip:2, comm:1, bp:0},
+];
+const PAPER_STAT = {V1:{sharpe:.61,cagr:.062,mdd:.21}, V2:{sharpe:1.24,cagr:.097,mdd:.12}, V3:{sharpe:1.33,cagr:.196,mdd:.25}, V4:{sharpe:1.17,cagr:.183,mdd:.27}, V6:{sharpe:1.50,cagr:.217,mdd:.13}, V7:{sharpe:1.55}};
+const PAPER_MONTHLY_NOTE = 'Paper SPY table: FAQ Q24 (to Aug 2025).';
+let S = null, st = {inst:'ES', v:'V3', cost:'prereg', per:'all', cmp:'', log:true}, trades = {}, days = {};
+let eqChart, eqS, eqB, eqC, ddChart, ddS, dayChart, dayS = {};
+const fmtP = (x, d=1) => x == null || !isFinite(x) ? '—' : (x*100).toFixed(d) + '%';
+const fmtN = (x, d=2) => x == null || !isFinite(x) ? '—' : x.toFixed(d);
+const cls = x => x > 0 ? 'pos' : x < 0 ? 'neg' : 'mut';
+const tip = $('tip');
+function showTip(e, html){ tip.innerHTML = html; tip.style.display = 'block'; tip.style.left = Math.min(e.clientX + 12, innerWidth - 220) + 'px'; tip.style.top = (e.clientY + 12) + 'px'; }
+function hideTip(){ tip.style.display = 'none'; }
+
+// ---------------------------------------------------------------- core maths
+function costRT(sym, c, uopen){ const t = TICK[sym]; return 2*c.slip*t.tick + (c.comm ? 4.5/t.pv : 0) + c.bp*uopen/1e4; }
+function netSeries(sym, v, costId){
+  const I = S.instruments[sym], D = I.daily, c = COSTS.find(x => x.id === costId);
+  const sized = S.meta.variants[v].sized, g = D.gross[v], u = D.units[v];
+  return g.map((x, i) => { const L = sized ? D.lev[i] : 1; return x - L * u[i] * costRT(sym, c, D.uopen[i]) / 2 / D.uopen[i]; });
+}
+function periodMask(sym, per){
+  const I = S.instruments[sym];
+  return I.dates.map((d, i) => per === 'all' ? true : per === 'paper' ? d <= '2024-04-30' : per === 'post' ? d >= '2024-05-01' : I.daily.src[i] === 0);
+}
+function series(sym, v, costId, per){
+  // returns {dates, r, bh, units, traded} for one instrument or the 4-index book
+  if (sym !== 'BOOK') {
+    const I = S.instruments[sym], m = periodMask(sym, per), r = netSeries(sym, v, costId);
+    const out = {dates:[], r:[], bh:[], units:[]};
+    I.dates.forEach((d, i) => { if (m[i]) { out.dates.push(d); out.r.push(r[i]); out.bh.push(I.daily.bh[i]); out.units.push(I.daily.units[v][i]); } });
+    return out;
+  }
+  const map = new Map();
+  for (const s of ['ES','NQ','YM','RTY']) {
+    const x = series(s, v, costId, per);
+    x.dates.forEach((d, i) => { const e = map.get(d) || {r:0, b:0, n:0, u:0}; e.r += x.r[i]; e.b += x.bh[i]; e.u += x.units[i]; e.n++; map.set(d, e); });
+  }
+  const ds = [...map.keys()].sort();
+  return {dates: ds, r: ds.map(d => map.get(d).r / map.get(d).n), bh: ds.map(d => map.get(d).b / map.get(d).n), units: ds.map(d => map.get(d).u)};
+}
+function stats(x){
+  const r = x.r, n = r.length; if (!n) return null;
+  let eq = 1, peak = 1, mdd = 0, s = 0, s2 = 0, s3 = 0, w = Infinity, b = -Infinity, hit = 0, tr = 0, units = 0;
+  const curve = [], dd = [];
+  for (let i = 0; i < n; i++) { eq *= 1 + r[i]; peak = Math.max(peak, eq); const d = eq/peak - 1; mdd = Math.min(mdd, d); curve.push(eq); dd.push(d);
+    s += r[i]; w = Math.min(w, r[i]); b = Math.max(b, r[i]); if (x.units[i] > 0) { tr++; if (r[i] > 0) hit++; } units += x.units[i]; }
+  const mu = s/n; for (const v of r) { s2 += (v-mu)**2; s3 += (v-mu)**3; }
+  const sd = Math.sqrt(s2/(n-1)), yrs = n/252;
+  let bb = 0, sbx = 0, sbb = 0, mb = x.bh.reduce((a,c)=>a+c,0)/n;
+  for (let i = 0; i < n; i++) { sbx += (x.bh[i]-mb)*(r[i]-mu); sbb += (x.bh[i]-mb)**2; }
+  bb = sbb ? sbx/sbb : 0;
+  return {total: eq-1, cagr: Math.pow(eq, 1/yrs) - 1, vol: sd*Math.sqrt(252), sharpe: sd ? mu/sd*Math.sqrt(252) : 0, mdd: -mdd,
+    worst: w, best: b, skew: sd ? (s3/n)/sd**3 : 0, hit: tr ? hit/tr : 0, exposure: tr/n, trades: units/2, tpd: units/2/n,
+    avgTradeBp: units ? s/(units/2)*1e4 : 0, beta: bb, alpha: (mu - bb*mb)*252, curve, dd, days: n};
+}
+
+// ---------------------------------------------------------------- render
+function render(){
+  const x = series(st.inst, st.v, st.cost, st.per), k = stats(x);
+  const bh = stats({r: x.bh, bh: x.bh, units: x.bh.map(()=>0), dates: x.dates});
+  const vlab = S.meta.variants[st.v].label, ilab = st.inst === 'BOOK' ? '4-index book (equal weight)' : st.inst;
+  $('kpiTitle').textContent = `Performance · ${ilab} · ${vlab} · ${x.dates[0]} → ${x.dates[x.dates.length-1]}`;
+  const tile = (l, v, s, c='') => `<div class="kpi"><div class="l">${l}</div><div class="v ${c}">${v}</div><div class="s">${s}</div></div>`;
+  $('kpis').innerHTML = [
+    tile('Total return', fmtP(k.total, 0), 'buy &amp; hold ' + fmtP(bh.total, 0), cls(k.total)),
+    tile('CAGR', fmtP(k.cagr), 'buy &amp; hold ' + fmtP(bh.cagr), cls(k.cagr)),
+    tile('Sharpe', fmtN(k.sharpe), 'buy &amp; hold ' + fmtN(bh.sharpe) + (PAPER_STAT[st.v] ? ' · paper ' + PAPER_STAT[st.v].sharpe : ''), cls(k.sharpe)),
+    tile('Max drawdown', fmtP(k.mdd, 0), 'buy &amp; hold ' + fmtP(bh.mdd, 0)),
+    tile('Volatility', fmtP(k.vol), 'annualised'),
+    tile('Hit ratio', fmtP(k.hit, 0), 'of days with a trade'),
+    tile('Trades', Math.round(k.trades).toLocaleString(), fmtN(k.tpd) + ' round trips / day'),
+    tile('Avg trade', fmtN(k.avgTradeBp, 1) + ' bp', 'net, on equity'),
+    tile('In market', fmtP(k.exposure, 0), 'of days'),
+    tile('Skew', fmtN(k.skew), 'worst ' + fmtP(k.worst) + ' · best ' + fmtP(k.best)),
+    tile('Beta to B&amp;H', fmtN(k.beta), 'alpha ' + fmtP(k.alpha) + '/yr'),
+  ].join('');
+  drawEquity(x, k, bh);
+  drawVarTable();
+  drawMonthly(x);
+  drawTrades();
+  const c = COSTS.find(c => c.id === st.cost), s0 = st.inst === 'BOOK' ? 'ES' : st.inst;
+  const u = S.instruments[s0].daily.uopen; const p = u[u.length-1];
+  const rt = costRT(s0, c, p);
+  $('costNote').innerHTML = `Cost per round trip on ${s0} now: <b>${rt.toFixed(3)} pts ≈ ${(rt/p*1e4).toFixed(2)} bp</b> of notional, paid on every entry, exit and reversal, scaled by leverage. The paper charged SPY about 0.4 bp. ES's spread is one tick (≈ 0.4 bp), so "½ tick each side" is a passive-ish fill and "1 tick each side" is a market order that pays the spread and a bit more.`;
+}
+
+function drawEquity(x, k, bh){
+  const toPts = (arr) => arr.map((v, i) => ({time: x.dates[i], value: 100000*v}));
+  if (!eqChart) {
+    const opt = {layout:{background:{color:'#161b22'}, textColor:'#9da7b3'}, grid:{vertLines:{color:'#21262d'}, horzLines:{color:'#21262d'}},
+      rightPriceScale:{borderColor:'#30363d'}, timeScale:{borderColor:'#30363d'}, crosshair:{mode:0}};
+    eqChart = LightweightCharts.createChart($('eq'), opt);
+    const pf = {type:'price', precision:0, minMove:1};
+    eqB = eqChart.addLineSeries({color:'#6e7681', lineWidth:2, priceLineVisible:false, priceFormat:pf});
+    eqC = eqChart.addLineSeries({color:'#d95926', lineWidth:2, priceLineVisible:false, priceFormat:pf});
+    eqS = eqChart.addLineSeries({color:'#3987e5', lineWidth:2, priceLineVisible:false, priceFormat:pf});
+    ddChart = LightweightCharts.createChart($('dd'), opt);
+    ddS = ddChart.addAreaSeries({lineColor:'#d95926', topColor:'rgba(217,89,38,.05)', bottomColor:'rgba(217,89,38,.35)', lineWidth:1, priceLineVisible:false, priceFormat:{type:'percent'}});
+    new ResizeObserver(() => { eqChart.applyOptions({width:$('eq').clientWidth}); ddChart.applyOptions({width:$('dd').clientWidth}); dayChart && dayChart.applyOptions({width:$('day').clientWidth}); }).observe(document.body);
+    eqChart.timeScale().subscribeVisibleLogicalRangeChange(r => r && ddChart.timeScale().setVisibleLogicalRange(r));
+    eqChart.subscribeCrosshairMove(p => {
+      if (!p.time) { setLegend(); return; }
+      const a = p.seriesData.get(eqS), b = p.seriesData.get(eqB), c = p.seriesData.get(eqC);
+      setLegend(p.time, a && a.value, b && b.value, c && c.value);
+    });
+  }
+  eqChart.applyOptions({rightPriceScale:{mode: st.log ? 1 : 0}});
+  eqS.setData(toPts(k.curve)); eqB.setData(toPts(bh.curve));
+  if (st.cmp) { const y = series(st.inst, st.cmp, st.cost, st.per), kc = stats(y); eqC.setData(kc.curve.map((v, i) => ({time:y.dates[i], value:100000*v}))); }
+  else eqC.setData([]);
+  ddS.setData(k.dd.map((v, i) => ({time:x.dates[i], value:100*v})));
+  eqChart.timeScale().fitContent(); ddChart.timeScale().fitContent();
+  window._eqLast = {s: 100000*k.curve.at(-1), b: 100000*bh.curve.at(-1)};
+  setLegend();
+}
+function setLegend(t, a, b, c){
+  const L = window._eqLast || {}, m = v => v == null ? '—' : '$' + Math.round(v).toLocaleString();
+  const cmp = st.cmp ? `<span><i class="sw" style="background:#d95926"></i>${S.meta.variants[st.cmp].label} ${t ? m(c) : ''}</span>` : '';
+  $('eqLegend').innerHTML = `<span><i class="sw" style="background:#3987e5"></i>${S.meta.variants[st.v].label} <b>${m(t ? a : L.s)}</b></span>${cmp}<span><i class="sw" style="background:#6e7681"></i>Buy &amp; hold (1x) <b>${m(t ? b : L.b)}</b></span>${t ? '<span class="mut">' + t + '</span>' : ''}`;
+}
+
+function drawVarTable(){
+  const rows = Object.keys(S.meta.variants).map(v => {
+    const k = stats(series(st.inst, v, st.cost, st.per)), p = PAPER_STAT[v] || {};
+    return `<tr class="click ${v === st.v ? 'sel' : ''}" data-v="${v}"><td><b>${v}</b> ${S.meta.variants[v].label}</td><td class="${cls(k.total)}">${fmtP(k.total,0)}</td><td>${fmtP(k.cagr)}</td><td>${fmtP(k.vol)}</td><td class="${cls(k.sharpe)}"><b>${fmtN(k.sharpe)}</b></td><td class="mut">${p.sharpe ?? '—'}</td><td>${fmtP(k.mdd,0)}</td><td>${fmtP(k.hit,0)}</td><td>${Math.round(k.trades).toLocaleString()}</td><td>${fmtN(k.skew)}</td><td>${fmtN(k.beta)}</td></tr>`;
+  });
+  const b = stats((() => { const x = series(st.inst, 'V2', st.cost, st.per); return {r:x.bh, bh:x.bh, units:x.bh.map(()=>0)}; })());
+  rows.push(`<tr><td class="mut">Buy &amp; hold (1x)</td><td>${fmtP(b.total,0)}</td><td>${fmtP(b.cagr)}</td><td>${fmtP(b.vol)}</td><td>${fmtN(b.sharpe)}</td><td class="mut">0.45</td><td>${fmtP(b.mdd,0)}</td><td>—</td><td>—</td><td>${fmtN(b.skew)}</td><td>1.00</td></tr>`);
+  $('varTable').innerHTML = `<tr><th>Variant</th><th>Total</th><th>CAGR</th><th>Vol</th><th>Sharpe</th><th>Paper Sharpe</th><th>Max DD</th><th>Hit</th><th>Trades</th><th>Skew</th><th>Beta</th></tr>` + rows.join('');
+  $('varTable').querySelectorAll('tr.click').forEach(tr => tr.onclick = () => { st.v = tr.dataset.v; $('selVar').value = st.v; render(); });
+}
+
+function heat(v){ // diverging orange <- grey -> blue, |v| up to ~8%
+  if (v == null) return '';
+  const a = Math.min(Math.abs(v)/8, 1) * .55;
+  return `background:${v >= 0 ? `rgba(57,135,229,${a})` : `rgba(217,89,38,${a})`}`;
+}
+function drawMonthly(x){
+  const by = {}, byb = {};
+  x.dates.forEach((d, i) => { const y = +d.slice(0,4), m = +d.slice(5,7); (by[y] ??= {}); (byb[y] ??= 1); by[y][m] = (by[y][m] ?? 1) * (1 + x.r[i]); byb[y] *= 1 + x.bh[i]; });
+  const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let h = '<tr><th>Year</th>' + M.map(m => `<th>${m}</th>`).join('') + '<th>Year</th><th>B&amp;H</th></tr>';
+  for (const y of Object.keys(by).sort()) {
+    let yr = 1;
+    h += `<tr><td><b>${y}</b></td>` + M.map((_, i) => { const v = by[y][i+1]; if (v == null) return '<td class="mut">·</td>'; yr *= v; const p = (v-1)*100;
+      return `<td class="mcell" style="${heat(p)}" data-t="${M[i]} ${y}: ${p.toFixed(2)}%">${p.toFixed(1)}</td>`; }).join('')
+      + `<td style="${heat((yr-1)*100/3)}"><b>${((yr-1)*100).toFixed(1)}</b></td><td class="mut">${((byb[y]-1)*100).toFixed(1)}</td></tr>`;
+  }
+  $('monTable').innerHTML = h;
+}
+
+// ---------------------------------------------------------------- scored panels (fixed, pre-registered cost)
+function drawVerdicts(){
+  const V = S.verdicts, c = V.P1.cells, f = n => fmtN(n);
+  const p1 = Object.entries(c).map(([s, x]) => `${s}: Sharpe <b>${f(x.sharpe)}</b> [${f(x.ci[0])}, ${f(x.ci[1])}], beats ${x.null_pct == null ? '—' : x.null_pct.toFixed(1)}% of shuffled draws, halves ${f(x.h1)} / ${f(x.h2)} ${x.passes ? '✓' : '✗'}`).join('<br>');
+  $('verdicts').innerHTML = `
+    <div class="vcard"><div class="vword ${V.P1.verdict}">P1 · ${V.P1.verdict}</div><b>Band + VWAP stop, 1x, on ES and on NQ</b><br>${p1}<br><span class="mut">Pass: beat 97.5% of shuffled draws, mean CI &gt; 0, both halves &gt; 0, on both. Null: CI top &lt; 0.62 (half the paper's 1.24) on both.</span></div>
+    <div class="vcard"><div class="vword ${V.P2.verdict}">P2 · ${V.P2.verdict}</div><b>Vol-targeted, 4-index book</b><br>Sharpe <b>${f(V.P2.sharpe)}</b> [${f(V.P2.ci[0])}, ${f(V.P2.ci[1])}], beats ${V.P2.null_pct == null ? '—' : V.P2.null_pct.toFixed(1)}% of shuffled books, halves ${f(V.P2.h1)} / ${f(V.P2.h2)}<br><span class="mut">Null: CI top &lt; 0.66 (half the paper's 1.33).</span></div>
+    <div class="vcard"><div class="vword ${V.P3.verdict}">P3 · ${V.P3.verdict}</div><b>Does the band + VWAP stop beat the opposite-band stop?</b> (ES+NQ, 1x)<br>Difference <b>${f(V.P3.mean_bp)} bp/day</b> [${f(V.P3.ci_bp[0])}, ${f(V.P3.ci_bp[1])}], halves ${f(V.P3.h1_bp)} / ${f(V.P3.h2_bp)}<br><span class="mut">Paper: +1.4 bp/day. Null: CI top &lt; 0.35 bp.</span></div>
+    <div class="vcard"><b>Positive control</b> (synthetic paths, gross): pure random walk ${S.control.random_walk.mean_bp} bp/day (t ${S.control.random_walk.t}) → nothing to find, as it should be; planted day trend Sharpe ${S.control.planted_drift.sharpe} → found. ${S.control.pass ? '<span class="pos">pass</span>' : '<span class="neg">FAIL</span>'}</div>`;
+  $('chipP1').textContent = 'P1 ' + V.P1.verdict; $('chipP1').className = 'chip ' + (V.P1.verdict === 'VALIDATED' ? 'ok' : V.P1.verdict === 'NULL' ? 'bad' : 'warn');
+}
+function hist(svg, vals, real, label){
+  const W = svg.clientWidth || 600, H = 200, pad = 28;
+  const lo = Math.min(...vals, real) - .1, hi = Math.max(...vals, real) + .1, nb = 30, bw = (hi-lo)/nb, cnt = Array(nb).fill(0);
+  vals.forEach(v => cnt[Math.min(nb-1, Math.floor((v-lo)/bw))]++);
+  const mx = Math.max(...cnt), X = v => pad + (v-lo)/(hi-lo)*(W-2*pad), bwp = (W-2*pad)/nb;
+  let g = '';
+  cnt.forEach((c, i) => { const h = c/mx*(H-60); g += `<rect x="${X(lo+i*bw)+1}" y="${H-30-h}" width="${Math.max(bwp-2,1)}" height="${h}" rx="2" fill="#6e7681" data-t="${(lo+i*bw).toFixed(2)} to ${(lo+(i+1)*bw).toFixed(2)}: ${c} draws"></rect>`; });
+  g += `<line x1="${X(real)}" x2="${X(real)}" y1="18" y2="${H-30}" stroke="#3987e5" stroke-width="2"/><text x="${X(real)+4}" y="28" style="fill:#e6edf3">${label} ${real.toFixed(2)}</text>`;
+  for (let t = Math.ceil(lo*2)/2; t <= hi; t += .5) g += `<text x="${X(t)}" y="${H-12}" text-anchor="middle">${t.toFixed(1)}</text>`;
+  svg.innerHTML = g;
+}
+function drawNull(){
+  const s = st.inst === 'BOOK' ? null : st.inst, svg = $('nullSvg');
+  if (!s) { const b = S.book; if (!b.null || !b.null.length) { svg.innerHTML = ''; return; } hist(svg, b.null, b.sharpe, 'real book'); $('nullNote').innerHTML = `4-index vol-targeted book at pre-registered costs vs ${b.null.length} books built on shuffled paths.`; return; }
+  const v = ['V1','V2','V3'].includes(st.v) ? st.v : 'V2', I = S.instruments[s], vals = I.null[v];
+  if (!vals || !vals.length) { svg.innerHTML = ''; $('nullNote').textContent = 'no draws'; return; }
+  hist(svg, vals, I.variants[v].sharpe, 'real');
+  $('nullNote').innerHTML = `${s} ${v} at pre-registered costs vs ${vals.length} histories where each day keeps its open, close and minute moves but the order of the minutes is shuffled. If the edge is real intraday trending, the real line sits far right. Real beats <b>${I.null_pct[v].toFixed(1)}%</b> of draws.`;
+}
+function drawMech(){
+  const m = S.mechanics, svg = $('mechSvg'), W = svg.clientWidth || 600, H = 200, ys = Object.keys(m.yearly);
+  const vals = ys.flatMap(y => [m.yearly[y].ours, m.yearly[y].paper]), lo = Math.min(0, ...vals), hi = Math.max(...vals);
+  const pad = 30, bw = (W-2*pad)/ys.length, Y = v => 20 + (hi - v)/(hi-lo)*(H-50);
+  let g = `<line x1="${pad}" x2="${W-pad}" y1="${Y(0)}" y2="${Y(0)}" stroke="#30363d"/>`;
+  ys.forEach((y, i) => { const o = m.yearly[y].ours, p = m.yearly[y].paper, x0 = pad + i*bw + 3, w = (bw-8)/2;
+    g += `<rect x="${x0}" y="${Math.min(Y(o),Y(0))}" width="${w}" height="${Math.abs(Y(o)-Y(0))}" rx="2" fill="#3987e5" data-t="${y} ES (ours): ${(o*100).toFixed(1)}%"/>`;
+    g += `<rect x="${x0+w+2}" y="${Math.min(Y(p),Y(0))}" width="${w}" height="${Math.abs(Y(p)-Y(0))}" rx="2" fill="#d95926" data-t="${y} paper SPY: ${(p*100).toFixed(1)}%"/>`;
+    g += `<text x="${x0+w}" y="${H-8}" text-anchor="middle">${String(y).slice(2)}</text>`; });
+  svg.innerHTML = g;
+  $('mechNote').innerHTML = `<span><i class="sw" style="background:#3987e5"></i>ours, ES</span> <span><i class="sw" style="background:#d95926"></i>paper, SPY</span> · monthly correlation <b>${m.corr.toFixed(2)}</b> over ${m.months.length} months (2016 → Aug 2025; 2025 to August). A high correlation says the rules are coded the same way; the level differs because our costs are higher and ES is not SPY.`;
+  $('chipMech').textContent = 'mechanics vs paper ρ ' + m.corr.toFixed(2); $('chipMech').className = 'chip ' + (m.corr >= .5 ? 'ok' : 'bad');
+}
+function drawTod(){
+  const s = st.inst === 'BOOK' ? 'ES' : st.inst, t = S.instruments[s].time_of_day, svg = $('todSvg'), W = svg.clientWidth || 600, H = 190, pad = 30;
+  const vals = t.map(x => x.mean_bp), lo = Math.min(0, ...vals), hi = Math.max(0, ...vals), bw = (W-2*pad)/t.length, Y = v => 15 + (hi-v)/(hi-lo||1)*(H-45);
+  let g = `<line x1="${pad}" x2="${W-pad}" y1="${Y(0)}" y2="${Y(0)}" stroke="#30363d"/>`;
+  t.forEach((x, i) => { g += `<rect x="${pad+i*bw+2}" y="${Math.min(Y(x.mean_bp),Y(0))}" width="${bw-4}" height="${Math.abs(Y(x.mean_bp)-Y(0))}" rx="2" fill="#3987e5" data-t="${SLOT[i]}–${SLOT[i+1]}: ${x.mean_bp.toFixed(2)} bp/day · in a position ${(x.in_pos*100).toFixed(0)}% of days"/><text x="${pad+i*bw+bw/2}" y="${H-10}" text-anchor="middle">${SLOT[i]}</text>`; });
+  svg.innerHTML = g;
+  $('todNote').innerHTML = `${s}: gross P&amp;L of the position held from each check to the next, averaged over all days (hover a bar). The paper finds trend P&amp;L from 10:00 to noon and from 14:00 to the close, with a lunch pause.`;
+  const d = S.instruments[s].decomposition, np = S.instruments[s].null_pct;
+  const r = (l, v, h, p) => `<tr><td>${l}</td><td class="${cls(v)}"><b>${v.toFixed(2)}</b></td><td>${h[0].toFixed(2)} / ${h[1].toFixed(2)}</td><td>${p == null ? '—' : p.toFixed(1) + '%'}</td></tr>`;
+  $('decTable').innerHTML = `<tr><th>${s} part</th><th>bp</th><th>halves</th><th>null pct</th></tr>` +
+    r('Entry: next 30 min after the first entry', d.entry30_bp, d.entry30_h, np.entry30) +
+    r('Hold: first entry held to 16:00, no stop', d.hold_bp, d.hold_h, np.hold) +
+    r('Stop: what the band + VWAP exits add', d.stop_bp, d.stop_h, np.stop);
+}
+
+// ---------------------------------------------------------------- trades + day viewer
+async function loadTrades(s){ if (!trades[s]) trades[s] = await (await fetch(`analysis/output/noise-area-momentum/trades_${s}.json`, {cache:'no-store'})).json(); return trades[s]; }
+async function loadDays(s){ if (!days[s]) days[s] = await (await fetch(`analysis/output/noise-area-momentum/days_${s}.json`, {cache:'no-store'})).json(); return days[s]; }
+let trPage = 0, trSort = 'date';
+async function drawTrades(){
+  const s = st.inst === 'BOOK' ? 'ES' : st.inst;
+  if (!['V2','V3'].includes(st.v)) { $('trTitle').textContent = 'Trade list'; $('trNote').innerHTML = 'The trade list is stored for the paper\'s rule (V2 / V3, same entries and exits; V3 only changes size). Pick V2 or V3 to see it.'; $('trTable').innerHTML = ''; $('trPager').innerHTML = ''; return; }
+  const T = await loadTrades(s), I = S.instruments[s], c = COSTS.find(x => x.id === st.cost), m = periodMask(s, st.per);
+  const sampled = new Set((await loadDays(s)).map(d => d.date));
+  let rows = T.rows.filter(r => m[r[0]]).map(r => { const u = I.daily.uopen[r[0]], netbp = r[4] - costRT(s, c, u)/u*1e4, L = st.v === 'V3' ? r[6] : 1;
+    return {date: I.dates[r[0]], en: SLOT[r[1]], ex: SLOT[r[2]], side: r[3], gross: r[4], net: netbp, lev: L, eqbp: netbp*L}; });
+  rows.reverse();
+  if (trSort === 'best') rows.sort((a,b) => b.eqbp - a.eqbp); if (trSort === 'worst') rows.sort((a,b) => a.eqbp - b.eqbp);
+  const n = rows.length, win = rows.filter(r => r.net > 0).length, avg = rows.reduce((a,r) => a + r.net, 0)/(n||1);
+  const wins = rows.filter(r => r.net > 0), loss = rows.filter(r => r.net <= 0);
+  const aw = wins.reduce((a,r)=>a+r.net,0)/(wins.length||1), al = loss.reduce((a,r)=>a+r.net,0)/(loss.length||1);
+  $('trTitle').textContent = `Trade list · ${s} · ${n.toLocaleString()} trades`;
+  $('trNote').innerHTML = `Win rate <b>${(win/n*100).toFixed(1)}%</b> · avg trade <b>${avg.toFixed(2)} bp</b> (1x, net) · avg win ${aw.toFixed(1)} bp · avg loss ${al.toFixed(1)} bp · payoff ${(aw/Math.abs(al||1)).toFixed(2)}. Sort: <button class="btn ${trSort==='date'?'on':''}" data-s="date">newest</button> <button class="btn ${trSort==='best'?'on':''}" data-s="best">best</button> <button class="btn ${trSort==='worst'?'on':''}" data-s="worst">worst</button> · rows marked ▸ open in the day viewer.`;
+  $('trNote').querySelectorAll('button').forEach(b => b.onclick = () => { trSort = b.dataset.s; trPage = 0; drawTrades(); });
+  const P = 50, pages = Math.ceil(n/P); trPage = Math.min(trPage, Math.max(pages-1, 0));
+  $('trTable').innerHTML = `<tr><th>Date</th><th>Side</th><th>Entry</th><th>Exit</th><th>Gross bp (1x)</th><th>Net bp (1x)</th><th>Leverage</th><th>Net on equity</th></tr>` +
+    rows.slice(trPage*P, trPage*P+P).map(r => `<tr class="${sampled.has(r.date) ? 'click' : ''}" data-d="${r.date}"><td>${sampled.has(r.date) ? '▸ ' : ''}${r.date}</td><td class="${r.side > 0 ? 'pos' : 'neg'}">${r.side > 0 ? 'long' : 'short'}</td><td>${r.en}</td><td>${r.ex}</td><td class="${cls(r.gross)}">${r.gross.toFixed(1)}</td><td class="${cls(r.net)}">${r.net.toFixed(1)}</td><td>${r.lev.toFixed(2)}x</td><td class="${cls(r.eqbp)}">${(r.eqbp/100).toFixed(2)}%</td></tr>`).join('');
+  $('trTable').querySelectorAll('tr.click').forEach(tr => tr.onclick = () => { $('selDay').value = tr.dataset.d; drawDay(); $('day').scrollIntoView({behavior:'smooth', block:'center'}); });
+  $('trPager').innerHTML = `<button class="btn" id="pp">‹</button> page ${trPage+1} / ${pages||1} <button class="btn" id="pn">›</button>`;
+  $('pp').onclick = () => { trPage = Math.max(0, trPage-1); drawTrades(); }; $('pn').onclick = () => { trPage = Math.min(pages-1, trPage+1); drawTrades(); };
+}
+async function fillDays(){
+  const s = st.inst === 'BOOK' ? 'ES' : st.inst, D = await loadDays(s), sel = $('selDay'), cur = sel.value;
+  const ex = ['2022-01-20','2022-01-31','2022-04-29'], byV3 = [...D].sort((a,b) => b.v3_bp - a.v3_bp);
+  const best = new Set(byV3.slice(0,15).map(d => d.date)), worst = new Set(byV3.slice(-15).map(d => d.date));
+  const grp = (lab, f) => { const o = D.filter(f); return o.length ? `<optgroup label="${lab}">` + o.map(d => `<option value="${d.date}">${d.date} · V2 ${d.v2_bp.toFixed(0)} bp · V3 ${d.v3_bp.toFixed(0)} bp</option>`).join('') + '</optgroup>' : ''; };
+  sel.innerHTML = grp("Paper's example days", d => ex.includes(d.date)) + grp('15 best V3 days', d => best.has(d.date)) + grp('15 worst V3 days', d => worst.has(d.date)) + grp('Last 25 days before the lockbox', d => d.date >= D[D.length-25].date && !best.has(d.date) && !worst.has(d.date)) + grp('Random days', d => !ex.includes(d.date) && !best.has(d.date) && !worst.has(d.date) && d.date < D[D.length-25].date);
+  if ([...sel.options].some(o => o.value === cur)) sel.value = cur; else sel.value = D.find(d => d.date === '2022-01-20') ? '2022-01-20' : D[0].date;
+  drawDay();
+}
+async function drawDay(){
+  const s = st.inst === 'BOOK' ? 'ES' : st.inst, D = await loadDays(s), d = D.find(x => x.date === $('selDay').value); if (!d) return;
+  const [Y, M, Dd] = d.date.split('-').map(Number), t0 = Date.UTC(Y, M-1, Dd, 9, 31)/1000;
+  const pts = a => a.map((v, i) => v == null ? null : {time: t0 + i*60, value: v}).filter(Boolean);
+  if (!dayChart) {
+    dayChart = LightweightCharts.createChart($('day'), {layout:{background:{color:'#161b22'}, textColor:'#9da7b3'}, grid:{vertLines:{color:'#21262d'}, horzLines:{color:'#21262d'}},
+      rightPriceScale:{borderColor:'#30363d'}, timeScale:{borderColor:'#30363d', timeVisible:true, secondsVisible:false}, crosshair:{mode:0}});
+    dayS.ub = dayChart.addLineSeries({color:'#199e70', lineWidth:2, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false});
+    dayS.lb = dayChart.addLineSeries({color:'#199e70', lineWidth:2, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false});
+    dayS.vw = dayChart.addLineSeries({color:'#d95926', lineWidth:2, lineStyle:2, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false});
+    dayS.px = dayChart.addLineSeries({color:'#e6edf3', lineWidth:1.5, priceLineVisible:false});
+  }
+  dayS.ub.setData(pts(d.ub)); dayS.lb.setData(pts(d.lb)); dayS.vw.setData(pts(d.vwap)); dayS.px.setData(pts(d.close));
+  const mk = []; let prev = 0;
+  d.pos.forEach((p, k) => { const i = 29 + 30*k; if (i >= d.close.length - 1 || p === prev) return;
+    mk.push({time: t0 + i*60, position: p > 0 ? 'belowBar' : p < 0 ? 'aboveBar' : 'inBar', color: p > 0 ? '#3987e5' : p < 0 ? '#d95926' : '#9da7b3', shape: p > 0 ? 'arrowUp' : p < 0 ? 'arrowDown' : 'circle', text: p > 0 ? 'long' : p < 0 ? 'short' : 'flat'}); prev = p; });
+  if (prev !== 0) mk.push({time: t0 + (d.close.length-1)*60, position:'inBar', color:'#9da7b3', shape:'circle', text:'close'});
+  dayS.px.setMarkers(mk);
+  dayChart.timeScale().fitContent();
+  $('dayNote').innerHTML = `${s} ${d.date}: V1 (opposite band) <b class="${cls(d.v1_bp)}">${d.v1_bp.toFixed(1)} bp</b> · V2 <b class="${cls(d.v2_bp)}">${d.v2_bp.toFixed(1)} bp</b> · V3 <b class="${cls(d.v3_bp)}">${d.v3_bp.toFixed(1)} bp</b> at ${d.lev.toFixed(2)}x (net, pre-registered costs)${d.src ? ' · <span class="neg">CFD-filled day</span>' : ''} · prior close ${d.prev ?? '—'}. Times are New York.`;
+}
+
+// ---------------------------------------------------------------- wiring
+document.addEventListener('mousemove', e => { const t = e.target.closest('[data-t]'); t ? showTip(e, t.dataset.t) : hideTip(); });
+(async () => {
+  S = await (await fetch('analysis/output/noise-area-momentum/site.json', {cache:'no-store'})).json();
+  $('selInst').innerHTML = ['ES','NQ','YM','RTY'].map(s => `<option value="${s}">${s} — ${({ES:'S&P 500 (≈ SPY)',NQ:'Nasdaq 100',YM:'Dow',RTY:'Russell 2000'})[s]}</option>`).join('') + '<option value="BOOK">4-index book (equal weight)</option>';
+  $('selVar').innerHTML = Object.entries(S.meta.variants).map(([k, v]) => `<option value="${k}">${k} · ${v.label}</option>`).join('');
+  $('selCmp').innerHTML += Object.entries(S.meta.variants).map(([k, v]) => `<option value="${k}">${k} · ${v.label}</option>`).join('');
+  $('selCost').innerHTML = COSTS.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
+  $('selInst').value = st.inst; $('selVar').value = st.v; $('selCost').value = st.cost;
+  const E = S.instruments.ES; $('chipRange').textContent = `${E.start} → ${E.end}`;
+  $('selInst').onchange = e => { st.inst = e.target.value; trPage = 0; render(); drawNull(); drawTod(); fillDays(); };
+  $('selVar').onchange = e => { st.v = e.target.value; trPage = 0; render(); drawNull(); };
+  $('selCost').onchange = e => { st.cost = e.target.value; render(); };
+  $('selPer').onchange = e => { st.per = e.target.value; trPage = 0; render(); };
+  $('selCmp').onchange = e => { st.cmp = e.target.value; render(); };
+  $('bLog').onclick = () => { st.log = true; $('bLog').classList.add('on'); $('bLin').classList.remove('on'); render(); };
+  $('bLin').onclick = () => { st.log = false; $('bLin').classList.add('on'); $('bLog').classList.remove('on'); render(); };
+  $('selDay').onchange = drawDay;
+  const cd = Object.fromEntries(['ES','NQ','YM','RTY'].map(s => [s, S.instruments[s].cfd_days]));
+  $('dataNote').innerHTML = `<b>Bars:</b> NT8 1-minute futures, ratio-adjusted, cash session only. <b>Gaps:</b> NT8's history has ~6-week holes inside contracts (2018, 2024–26); those days are filled with OANDA CFD minutes scaled to the futures (1-minute returns correlate 0.99): ES ${cd.ES}, NQ ${cd.NQ}, YM ${cd.YM}, RTY ${cd.RTY} days. Pick "Futures days only" to drop them. US-holiday Globex sessions are dropped. <b>Costs</b> are futures costs on every entry, exit and reversal; fills at the decision bar's close; fractional contracts. <b>Not here:</b> SPY itself, other futures, the paper's RSI and NR4/NR7 conditioners, anything after 21 Aug 2026. Scored verdicts use the pre-registered cost and are fixed; the controls above re-cut the same daily P&amp;L at other costs and periods (described, not scored).`;
+  render(); drawVerdicts(); drawNull(); drawMech(); drawTod(); fillDays();
+  addEventListener('resize', () => { drawNull(); drawMech(); drawTod(); });
+})();
+</script>
+</body>
+</html>

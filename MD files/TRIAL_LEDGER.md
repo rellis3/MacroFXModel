@@ -4,21 +4,21 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-11.
+Generated 2026-11-13.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **320** |
+| claims tested (validated + null + underpowered) | **323** |
 | validated | 51 |
 | null | 180 |
-| underpowered | 89 |
+| underpowered | 92 |
 | context (base rates, descriptions: not counted as tests) | 55 |
-| pre-registrations with no banked verdict (below) | 87 |
+| pre-registrations with no banked verdict (below) | 88 |
 
-**What the count says (Lesson 02 §05).** If none of the 320 claims were real, tests at the usual 5% size would still pass
-about **16** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 323 claims were real, tests at the usual 5% size would still pass
+about **16.2** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
 **roughly 16 of the 51 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -402,6 +402,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-11 | wall-dte-style-h2 | positioning | underpowered | oi_research_book/WALL_DTE_STYLE_PREREG.md |
 | 2026-11-11 | wall-dte-style-h3-fx | positioning | null | oi_research_book/WALL_DTE_STYLE_PREREG.md |
 | 2026-11-11 | wall-dte-style-h3-idx | positioning | underpowered | oi_research_book/WALL_DTE_STYLE_PREREG.md |
+| 2026-11-13 | noise-area-momentum | price | underpowered | forge/NOISE_AREA_MOMENTUM_PREREG.md |
+| 2026-11-13 | noise-area-momentum-book | price | underpowered | forge/NOISE_AREA_MOMENTUM_PREREG.md |
+| 2026-11-13 | noise-area-momentum-stop | execution | underpowered | forge/NOISE_AREA_MOMENTUM_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -467,6 +470,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/RANGE_BOOK_EURUSD_PREREG.md`: EURUSD Range Book — pre-registration
 - `forge/REACTION_TRADES_PREREG.md`: Trading the reaction after the touch — pre-registration
 - `forge/REMAINING_TRAVEL_PREREG.md`: Layer 5 — REMAINING TRAVEL: from here, with the time left, how far can price still go?
+- `forge/RESIDUAL_FX8_FORWARD_PREREG.md`: residual-fx8-forward — does the frozen FX8 residual threshold book keep its edge on new data?
 - `forge/RESIDUAL_INTRADAY_PREREG.md`: Study 3 — intraday relative value: does a lagging market catch up? (pre-registration)
 - `forge/RUBBER_BAND_PREREG.md`: Study 2 — the rubber band: stretch from fair value at three speeds (pre-registration)
 - `forge/RULE_A_BOOK_FORWARD_PREREG.md`: rule-a-book-forward: forward record of rule A on the chosen lines, alongside the portfolio book, as one combin
