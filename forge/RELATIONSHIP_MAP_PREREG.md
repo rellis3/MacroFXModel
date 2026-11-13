@@ -138,7 +138,13 @@ first day it is wired.
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-13 — PRE-RESULTS
+The planted-signal control as written (one run within 0.05 σ of the planted 0.335) is tighter than one run's own sampling
+error (~0.08 σ at ~150 events): the first control run gave 0.429 [0.279, 0.576], an interval that covers the planted answer.
+The control is now judged on **50 replications**: the mean effect within 0.05 σ of 0.335 and ≥ 80% of replications' CIs clear
+of zero (bias and power); with no drift, the mean within 0.05 σ of zero and ≤ 15% of CIs clear of zero (false-positive rate,
+allowing for the bootstrap's small-sample width). The VIX/S&P same-day check is unchanged (it passed: r = −0.784).
+**No real pair's outcome had been computed** (the script exits before scoring when a control fails).
 
 ## RESULTS
 
