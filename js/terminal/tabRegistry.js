@@ -78,6 +78,7 @@ export const SURFACES = [
   mk('widget.ask', 'widget', 'Ask the desk (floating button)', 'Shell', C, 'free-form paid model calls'),
   mk('widget.disclaimer', 'widget', 'Educational notice (desk login only)', 'Shell', null, 'one line under the tabs for the desk login: educational and informational macro analysis, not advice and not a trade signal'),
   mk('widget.signout', 'widget', 'Sign out (top bar)', 'Shell', null, 'shows the session (owner or desk) and signs out; always shown, so a desk user can always leave'),
+  mk('widget.themepicker', 'widget', 'Colour theme picker (top bar)', 'Shell', null, 'swatches that change the colours, the glow and the fonts; remembered in this browser; changes nothing else'),
   // ── ticker segments ──
   mk('strip.news', 'strip', 'Ticker: tier-1 headlines', 'Ticker', null, 'wire headlines'),
   mk('strip.events', 'strip', 'Ticker: high-impact releases', 'Ticker', null, 'the next 36 hours of high-impact events'),

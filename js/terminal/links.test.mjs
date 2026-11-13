@@ -57,7 +57,7 @@ test('the classic script reaches the helpers through globalThis once access.js i
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const files = ['desk-terminal.html', ...fs.readdirSync(path.join(ROOT, 'js', 'terminal')).filter(f => f.endsWith('.js') && !/\.test\./.test(f) && !/^(links|access|tabRegistry)\.js$/.test(f)).map(f => `js/terminal/${f}`)];
 // dynamic hrefs that are external sources (a central-bank speech, a news headline, a paper) or the page's own assets, not pages of this site
-const EXTERNAL_OK = ['esc(sp.url)', 'esc(l.url)', 'esc(h.link', 'esc(u)', 'h(p.url)', '${url}', 'new URL(', 'createObjectURL', 'safeHref('];
+const EXTERNAL_OK = ['esc(sp.url)', 'esc(l.url)', 'esc(h.link', 'esc(u)', 'h(p.url)', '${url}', 'new URL(', 'createObjectURL', 'safeHref(', 'fonts.googleapis.com'];   // fonts.googleapis.com: the theme picker's one extra font stylesheet (the head script, js/terminal/themes.js)
 
 function scan(text) {
   const out = [];

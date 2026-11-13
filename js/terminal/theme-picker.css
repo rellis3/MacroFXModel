@@ -1,0 +1,16 @@
+/* The theme picker (js/terminal/themePicker.js): a chip in the top bar and a small popover of swatches. Tokens only; the swatches get their colours from themes.js. */
+.tright{position:relative}
+#themebtn{display:inline-flex;align-items:center;gap:7px}
+#themebtn svg{flex:none}
+#themebtn[aria-expanded="true"]{border-color:var(--pur);color:var(--pur2)}
+.tpop{position:absolute;right:0;top:100%;margin-top:8px;z-index:60;width:min(340px,calc(100vw - 24px));padding:8px;border:1px solid var(--line2);border-radius:var(--r);background:var(--bg1);box-shadow:0 18px 48px rgba(0,0,0,.35)}
+.tpop[hidden]{display:none}
+.tpop .tph{padding:4px 8px 8px;font:600 10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--tx3)}
+.topt{display:flex;align-items:center;gap:12px;width:100%;padding:8px;border:1px solid transparent;border-radius:10px;background:none;color:var(--tx);text-align:left;cursor:pointer;font:inherit}
+.topt:hover,.topt:focus-visible{background:var(--bg3);border-color:var(--line2);outline:none}
+.topt[aria-checked="true"]{border-color:var(--pur);background:var(--purbg)}
+.topt .sw{display:flex;flex:none;width:76px;height:34px;border-radius:8px;overflow:hidden;border:1px solid var(--line2)}
+.topt .sw i{flex:1 1 0;display:block}
+.topt .sw i:first-child{flex:1.6 1 0}
+.topt .tn{display:block;font-weight:600;font-size:13px}
+.topt .tt{display:block;margin-top:1px;font-size:11.5px;line-height:1.35;color:var(--tx3)}

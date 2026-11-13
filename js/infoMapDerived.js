@@ -3416,6 +3416,7 @@ export const DERIVED = {
      "js/terminal/pairView.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
+     "js/terminal/themes.js",
      "js/terminal/traderReadView.js"
     ],
     "today": [
