@@ -652,7 +652,7 @@ async function loadEnrich() {
   E = Object.fromEntries(k.map((x, i) => [x.replace(/\?.*$/, ''), r[i]]));
   enrichAll();
   // the newer boards (some build on first call in ~20 s): fetched after the first draw, each merged as it lands
-  for (const x of ['fair-value', 'fx-fair-value', 'leading-indicators', 'commodity-fx', 'carry-vol', 'copper-gold', 'session-heat', 'options-skew', 'speech-drift', 'desk-alerts', 'release-surprises', 'release-reactions', 'autocorrelation', 'lead-lag', 'cb-board', 'macro-engines-board', 'rates-board', 'credit-liquidity', 'curve-board']) getJson(`/api/${x}`).then(v => { E[x] = v; enrichAll(); });
+  for (const x of ['fair-value', 'fx-fair-value', 'leading-indicators', 'commodity-fx', 'carry-vol', 'copper-gold', 'session-heat', 'options-skew', 'speech-drift', 'desk-alerts', 'release-surprises', 'release-reactions', 'autocorrelation', 'lead-lag', 'cb-board', 'macro-engines-board', 'rates-board', 'credit-liquidity', 'curve-board', 'regime-board']) getJson(`/api/${x}`).then(v => { E[x] = v; enrichAll(); });
 }
 function slot(sec, id) { const s = $(sec); if (!s) return null; let el = s.querySelector(`#${id}`); if (!el) { el = document.createElement('div'); el.id = id; s.appendChild(el); } return el; }
 function enrichAll() { if (!E) return; try { globalThis.redrawHero?.(); stressStrip(); enrichOverview(); enrichMacro(); enrichAssets(); enrichPos(); enrichCal(); } catch (e) { console.warn('enrich', e); } }

@@ -143,6 +143,7 @@ export const SURFACES = [
   mk('panel.macro.fedyields', 'panel', 'Macro: the Fed path against the yields', 'Macro', null, 'the priced fed funds path (December, June) beside the 2Y, 2s10s and 10Y over the same 1D/5D/20D dates, how much of the 2Y the futures path accounts for, and the Atlanta Fed window odds'),
   mk('panel.macro.creditliq', 'panel', 'Macro: credit & liquidity', 'Macro', null, 'the Credit Stress Index, the long-history Baa-10Y spread against 5 and 20 years, global central-bank liquidity (level, impulse, by bank) and the liquidity conditions z-scores'),
   mk('panel.macro.curve', 'panel', 'Macro: the curve through time', 'Macro', null, 'the Treasury curve drawn through 36 month-ends, six slopes against their 3y and 5y history, three years of curve shape, the yield-to-EURUSD coupling and the SOFR-Euribor spread-turn log'),
+  mk('panel.macro.regime', 'panel', 'Macro: where the market is (regime stack)', 'Macro', null, 'the growth x inflation quadrant, seven regime lenses, the correlation regime, risk-state flags and which markets are quiet or active over 30 days, plus the registered range edges'),
   mk('panel.macro.carryside', 'panel', 'Macro: carry board "side" column', 'Macro', null, 'which side of a pair earns the carry'),
 ];
 

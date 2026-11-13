@@ -9,6 +9,7 @@
  */
 import { buildCreditLiquidity } from './creditLiquidityCore.js';
 import { buildCurveBoard } from './curveBoardCore.js';
+import { buildRegimeBoard } from './regimeBoardCore.js';
 
 export function mountDeskBoards(app, d) {
   const route = (path, key, hours, build) => app.get(path, async (_req, res) => {
@@ -34,5 +35,11 @@ export function mountDeskBoards(app, d) {
     if (!S) throw new Error('no rates yet');
     const [coupling, episodes] = await Promise.all([d.selfJson('/api/yield-coupling').catch(() => null), d.selfJson('/api/spread-episodes/live').catch(() => null)]);
     return buildCurveBoard({ S, coupling, episodes });
+  });
+
+  // Where the market is: the state document's regime lenses, risk flags, vol and registered edges, the daily two-state HMM, the pair-correlation regime
+  route('/api/regime-board', 'regimeboard', 0.17, async () => {
+    const [state, hmm, hist, hedge] = await Promise.all([d.getState().catch(() => null), d.selfJson('/api/hmm/regimes').catch(() => null), d.selfJson('/api/hmm-daily-history').catch(() => null), d.selfJson('/api/hedge-alerts').catch(() => null)]);
+    return buildRegimeBoard({ state, hmm, hist, hedge });
   });
 }

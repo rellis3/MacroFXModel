@@ -563,6 +563,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/macroEnginesCore.js",
+     "js/terminal/regimeBoardView.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [
@@ -622,12 +623,24 @@ export const DERIVED = {
       "skill": "global_market",
       "maxAgeH": 1080
      }
+    },
+    {
+     "route": "/api/regime-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/regimeBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/moreBoards.js",
+     "js/terminal/regimeBoardView.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [
@@ -674,11 +687,25 @@ export const DERIVED = {
      "route": "/api/state",
      "exists": true,
      "pack": null
+    },
+    {
+     "route": "/api/regime-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/regimeBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/moreBoards.js",
+     "js/terminal/regimeBoardView.js"
+    ],
     "today": [],
     "atlas": [],
     "newsletter": []
@@ -2454,15 +2481,36 @@ export const DERIVED = {
       "skill": "global_market",
       "maxAgeH": 24
      }
+    },
+    {
+     "route": "/api/hmm-daily-history",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/regime-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/regimeBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/moreBoards.js",
+     "js/terminal/regimeBoardView.js"
+    ],
     "today": [
      "today.html"
     ],
-    "atlas": [],
+    "atlas": [
+     "atlas.html"
+    ],
     "newsletter": []
    },
    "evidence": [],
@@ -3490,6 +3538,7 @@ export const DERIVED = {
      "js/terminal/moreBoards.js",
      "js/terminal/optionsView.js",
      "js/terminal/pairView.js",
+     "js/terminal/regimeBoardView.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/themes.js",

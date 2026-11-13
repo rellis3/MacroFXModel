@@ -37,4 +37,22 @@ export const moreFixtures = {
       events: [...Array(17)].map((_, i) => ({ outcome: { '4h': i % 3 === 0 ? 'follow' : i % 3 === 1 ? 'revert' : 'flat' } })) };
     return { S, coupling, episodes };
   },
+  regime(now) {
+    const frames = [['quadrant', 'Growth × inflation quadrant', 'Goldilocks', 'growth above trend (US surprises 0.45σ), inflation cooling (breakevens)', { met: 1, judged: 2, of: 4 }, 'theory'],
+      ['smile', 'Dollar smile', 'Right side (US outperformance)', 'VIX 18.7, credit down', { met: 0, judged: 1, of: 2 }, 'theory'], ['credit', 'Credit cycle', 'Repair (wide but tightening)', 'HY -18bp over 20d', { met: 2, judged: 2, of: 3 }, 'theory'],
+      ['vol', 'Volatility regime', 'Normal', 'VIX 18.7, VIX/VIX3M 0.932', { met: 1, judged: 1, of: 3 }, 'theory'], ['curve', 'Policy & the curve', 'Bear flattener', 'a hawkish central bank repricing the front end: 2Y +17bp, 10Y +10bp over 20d', null, 'theory'],
+      ['risk', 'Risk-on / risk-off', 'Mixed: barometers disagree', '3 of 5 moving barometers read risk-on', null, null], ['flow', 'Capital-flow order', 'Out of order', 'Moved first: Rates then Credit then Equities', null, null]]
+      .map(([id, name, state, why, conformity, ev]) => ({ id, name, state, why, expectations: [{ key: 'spx', label: 'Broad stocks', expected: 'up', actual: 'flat', ok: null }], conformity, evidence: ev ? { status: ev } : undefined }));
+    const state = { asOf: '2026-11-12', playbook: { frames, overall: null }, global: { regime: { describe: 'real yields falling, credit spreads widening, and a normally-sloped curve' },
+      risk: { level: 'CALM', active: 0, available: 5, asOf: '2026-11-13T22:58:12Z', note: 'Cross-asset risk backdrop calm: pair-specific drivers dominate.',
+        flags: [{ key: 'vix_level', label: 'VIX elevated', on: false, value: 18.7, detail: 'VIX 18.7 (flag >= 25)' }, { key: 'vix_term', label: 'VIX curve backwardated', on: false, value: 0.932, detail: '' }, { key: 'hy_speed', label: 'Credit widening fast', on: false, value: -12, detail: '' },
+          { key: 'jpy_bid', label: 'JPY safe-haven bid', on: false, value: 0.48, detail: '' }, { key: 'evz_stress', label: 'FX implied vol stressed', on: null, value: null, detail: 'no 5y percentile wired' }], move: { level: 98.79, pct1y: 89, chg20: -3.7 } } },
+      layers: { vol: { rows: [{ sym: 'NQ', volPct: 97, volAnnual: 28.6 }, { sym: 'SPX500', volPct: 97, volAnnual: 21.3 }, { sym: 'EURUSD', volPct: 72, volAnnual: 6.4 }, { sym: 'USDJPY', volPct: 13, volAnnual: 5.6 }, { sym: 'GOLD', volPct: 16, volAnnual: 18.9 }, { sym: 'CHFJPY', volPct: 4, volAnnual: 5.5 }] } },
+      edges: [{ id: 'forecast-miss-shock-fx', label: 'Equity/vol stress → FX ranges beat the forecast', applies: 'FX', active: false, grade: 'ROBUST', standing: 'edge', why: '2 of 5 stress conditions on' }, { id: 'vix-inversion', label: 'VIX inverted → a wider week', applies: 'indices', active: false, grade: 'PLAUSIBLE', standing: 'edge', why: 'VIX/VIX3M 0.93' }, { id: 'nq-down-week', label: 'NQ down-week follow', applies: 'NQ', active: null, grade: 'FRAGILE', standing: 'research only', why: '' }] };
+    const hmm = Object.fromEntries(['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'XAU/USD', 'NAS100_USD'].map((k, i) => [k, { regime: i % 3 === 1 ? 'TREND' : 'RANGE', rangeProb: 0.5 + 0.08 * i, trendProb: 0.5 - 0.08 * i, reliable: true, sigmaRatio: 1.4 }]));
+    const q = n => [...Array(30)].map((_, i) => (i % 7 === 0 || i % 7 === 6 ? '.' : (i * n) % 5 < 2 ? 'a' : 'q')).join('');
+    const hist = { ok: true, days: [...Array(30)].map((_, i) => '2026-10-' + String(15 + (i % 16)).padStart(2, '0')), pairs: { GOLD: q(2), NQ: q(3), SPX500: q(4), US30: q(1), EURUSD: q(5) } };
+    const lc = {}, av = {}, sd = {}; ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].forEach((k, i) => { lc[k] = (i % 2 ? -1 : 1) * (0.4 + 0.05 * i); av[k] = 0.4; sd[k] = 0.15; });
+    return { state, hmm, hist, hedge: { generated: '2026-11-13T23:03:20Z', last_corr: lc, avg_corr: av, corr_std: sd } };
+  },
 };
