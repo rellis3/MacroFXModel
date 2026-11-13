@@ -78,10 +78,10 @@ export function mountPathChart(box, { sm, walk, anchor = 'gammaCentre', o, width
     const x = xh.x, y = Math.max(m.top, Math.min(m.bot, xh.y)), t = cur.Xinv(x), dd = Math.round(t - m.tNow);
     const dl = `${fmtDay(PZ.isoOfDay(t))}${dd ? ` · ${dd > 0 ? '+' : ''}${dd}d` : ' · today'}`, dw = PZ.textW(dl, 10) + 10;
     const bx = Math.max(m.L - 10, Math.min(m.w - dw - 1, x - dw / 2)), pl = fmtPx(cur.Yinv(y)), pw = PZ.textW(pl, 10) + 8;
-    xhSvg.innerHTML = `<line x1="${x}" x2="${x}" y1="${m.top - 6}" y2="${m.bot}" stroke="var(--tx2,#bbb)" stroke-opacity=".7" stroke-dasharray="3 3"/>`
-      + `<line x1="${m.L}" x2="${m.R}" y1="${y}" y2="${y}" stroke="var(--tx2,#bbb)" stroke-opacity=".45" stroke-dasharray="3 3"/>`
-      + `<rect x="${bx}" y="${m.bot + 3}" width="${dw}" height="16" rx="3" fill="var(--bg3,#222)" stroke="var(--line2,#444)"/><text x="${bx + dw / 2}" y="${m.bot + 15}" font-size="10" text-anchor="middle" fill="var(--tx,#eee)">${esc(dl)}</text>`
-      + `<rect x="${Math.max(1, m.L - pw - 2)}" y="${y - 8}" width="${pw}" height="16" rx="3" fill="var(--bg3,#222)" stroke="var(--line2,#444)"/><text x="${Math.max(1, m.L - pw - 2) + pw / 2}" y="${y + 4}" font-size="10" text-anchor="middle" fill="var(--tx,#eee)">${esc(pl)}</text>`;
+    xhSvg.innerHTML = `<line x1="${x}" x2="${x}" y1="${m.top - 6}" y2="${m.bot}" stroke="var(--tx2)" stroke-opacity=".7" stroke-dasharray="3 3"/>`
+      + `<line x1="${m.L}" x2="${m.R}" y1="${y}" y2="${y}" stroke="var(--tx2)" stroke-opacity=".45" stroke-dasharray="3 3"/>`
+      + `<rect x="${bx}" y="${m.bot + 3}" width="${dw}" height="16" rx="3" fill="var(--bg3)" stroke="var(--line2)"/><text x="${bx + dw / 2}" y="${m.bot + 15}" font-size="10" text-anchor="middle" fill="var(--tx)">${esc(dl)}</text>`
+      + `<rect x="${Math.max(1, m.L - pw - 2)}" y="${y - 8}" width="${pw}" height="16" rx="3" fill="var(--bg3)" stroke="var(--line2)"/><text x="${Math.max(1, m.L - pw - 2) + pw / 2}" y="${y + 4}" font-size="10" text-anchor="middle" fill="var(--tx)">${esc(pl)}</text>`;
   }
   const setXh = v => { xh = v; drawXh(); };
 

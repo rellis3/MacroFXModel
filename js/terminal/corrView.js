@@ -24,14 +24,13 @@ const fin = v => v != null && Number.isFinite(v);
 export const sg = (v, dp = 2) => (fin(v) ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(dp)}` : '–');
 const LONDON = 'Europe/London';
 export const VIEWS = [['matrix', 'Matrix'], ['rolling', 'Rolling'], ['factors', 'Factors'], ['hedges', 'Hedges'], ['regimes', 'Regimes']];
-export const FCOL = { DXY: '#7aa2ff', RATES: '#b4a9ff', RISK: '#5fd0c9', OIL: '#e0a458' };
+export const FCOL = { DXY: 'var(--blue)', RATES: 'var(--pur2)', RISK: 'var(--teal)', OIL: '#e0a458' };
 
 /** Correlation colour: purple for positive, gold for negative (green / red stay for direction only). */
 export function corrColor(r, alpha = 1) {
-  if (!fin(r)) return alpha < 1 ? 'transparent' : '#111833';
-  const a = Math.min(1, Math.abs(r)), [R, G, B] = r >= 0 ? [139, 124, 246] : [232, 184, 90];
-  const mix = (c, base) => Math.round(base + (c - base) * (0.15 + 0.85 * a));
-  return alpha < 1 ? `rgba(${R},${G},${B},${(alpha * Math.min(1, Math.abs(r) * 1.4)).toFixed(2)})` : `rgb(${mix(R, 24)},${mix(G, 32)},${mix(B, 63)})`;
+  if (!fin(r)) return alpha < 1 ? 'transparent' : 'var(--bg2)';
+  const a = Math.min(1, Math.abs(r)), tok = r >= 0 ? '--purrgb' : '--goldrgb';   // theme tokens, so a theme recolours the matrix
+  return alpha < 1 ? `rgba(var(${tok}),${(alpha * Math.min(1, Math.abs(r) * 1.4)).toFixed(2)})` : `color-mix(in srgb,rgb(var(${tok})) ${Math.round(100 * (0.15 + 0.85 * a))}%,var(--bg2))`;
 }
 export const pills = (name, opts, cur) => `<div class="tt-pills" role="group" data-pills="${esc(name)}">${opts.map(([v, l]) => `<button type="button" data-${esc(name)}="${esc(v)}" aria-pressed="${String(v) === String(cur)}">${esc(l)}</button>`).join('')}</div>`;
 const winPills = cur => pills('win', M.WINDOWS.map(w => [w, `${w}d`]), cur);
@@ -57,8 +56,8 @@ export function heatmapSvg(mx, { marks = {}, cell = 34 } = {}) {
   for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
     const r = mx.m[i][j], x = lab + j * cell, y = lab + i * cell, mk = i !== j ? marks[`${mx.ids[i]}|${mx.ids[j]}`] ?? marks[`${mx.ids[j]}|${mx.ids[i]}`] : null;
     const tl = i === j ? M.labelOf(mx.ids[i]) : `${M.labelOf(mx.ids[i])} vs ${M.labelOf(mx.ids[j])}: ${sg(r)} over ${mx.w} days${mk ? ` · ${mk} vs the 120-day` : ''}`;
-    s += `<g class="ct-cell${i !== j ? ' ct-click' : ''}" ${i !== j ? `data-a="${esc(mx.ids[i])}" data-b="${esc(mx.ids[j])}" tabindex="0" role="button" aria-label="${esc(tl)}"` : ''}><rect x="${x + 1}" y="${y + 1}" width="${cell - 2}" height="${cell - 2}" rx="4" fill="${i === j ? '#18203f' : corrColor(r)}"${mk ? ' stroke="#eef0fb" stroke-width="1.6" stroke-dasharray="3 2"' : ''}><title>${esc(tl)}</title></rect>`;
-    if (i !== j && fin(r)) s += `<text x="${x + cell / 2}" y="${y + cell / 2 + 4}" text-anchor="middle" class="ct-v" fill="${Math.abs(r) > 0.55 ? '#070a17' : '#eef0fb'}">${mk ? sym[mk] ?? '' : ''}${Math.round(r * 100)}</text>`;
+    s += `<g class="ct-cell${i !== j ? ' ct-click' : ''}" ${i !== j ? `data-a="${esc(mx.ids[i])}" data-b="${esc(mx.ids[j])}" tabindex="0" role="button" aria-label="${esc(tl)}"` : ''}><rect x="${x + 1}" y="${y + 1}" width="${cell - 2}" height="${cell - 2}" rx="4" fill="${i === j ? 'var(--bg3)' : corrColor(r)}"${mk ? ' stroke="var(--tx)" stroke-width="1.6" stroke-dasharray="3 2"' : ''}><title>${esc(tl)}</title></rect>`;
+    if (i !== j && fin(r)) s += `<text x="${x + cell / 2}" y="${y + cell / 2 + 4}" text-anchor="middle" class="ct-v" fill="${Math.abs(r) > 0.55 ? 'var(--bg)' : 'var(--tx)'}">${mk ? sym[mk] ?? '' : ''}${Math.round(r * 100)}</text>`;
     s += '</g>';
   }
   return s + '</svg>';
@@ -66,7 +65,7 @@ export function heatmapSvg(mx, { marks = {}, cell = 34 } = {}) {
 /** A -1..1 track with the 120-day value (hollow) and the current one (filled). */
 export function shiftBar(now, base, w = 120) {
   const X = v => ((v + 1) / 2) * w;
-  return `<svg viewBox="0 0 ${w} 14" width="${w}" height="14" aria-hidden="true"><rect x="0" y="6" width="${w}" height="2" rx="1" fill="#1f2950"/><line x1="${w / 2}" x2="${w / 2}" y1="2" y2="12" stroke="#2c3866"/><line x1="${X(base)}" x2="${X(now)}" y1="7" y2="7" stroke="#a9b0d0" stroke-width="1.5"/><circle cx="${X(base)}" cy="7" r="3.5" fill="none" stroke="#a9b0d0"/><circle cx="${X(now)}" cy="7" r="4" fill="${corrColor(now)}" stroke="#eef0fb" stroke-width=".8"/></svg>`;
+  return `<svg viewBox="0 0 ${w} 14" width="${w}" height="14" aria-hidden="true"><rect x="0" y="6" width="${w}" height="2" rx="1" fill="var(--line)"/><line x1="${w / 2}" x2="${w / 2}" y1="2" y2="12" stroke="var(--line2)"/><line x1="${X(base)}" x2="${X(now)}" y1="7" y2="7" stroke="var(--tx2)" stroke-width="1.5"/><circle cx="${X(base)}" cy="7" r="3.5" fill="none" stroke="var(--tx2)"/><circle cx="${X(now)}" cy="7" r="4" fill="${corrColor(now)}" stroke="var(--tx)" stroke-width=".8"/></svg>`;
 }
 const LCLS = { strengthening: 'pur', weakening: '', flipped: 'gold', steady: '' };
 export function changesHtml(list, w) {
@@ -75,8 +74,8 @@ export function changesHtml(list, w) {
 }
 
 // ═════════════════════ ROLLING (d3) ═════════════════════
-const RCOL = { 20: '#7f88b5', 60: '#b4a9ff', 120: '#e8b85a' };
-const SHADE = { HIGH: 'rgba(255,93,120,.10)', LOW: 'rgba(95,208,201,.07)', BULL: 'rgba(47,211,154,.08)', BEAR: 'rgba(255,93,120,.09)' };
+const RCOL = { 20: 'var(--flat)', 60: 'var(--pur2)', 120: 'var(--gold)' };
+const SHADE = { HIGH: 'rgba(var(--dnrgb),.10)', LOW: 'rgba(var(--tealrgb),.07)', BULL: 'rgba(var(--uprgb),.08)', BEAR: 'rgba(var(--dnrgb),.09)' };
 export function rollingSvg(S, a, b, { from = 0, width = 900, regimes = null } = {}) {
   const d3 = globalThis.d3; if (!d3) return '<p class="muted">The chart library did not load.</p>';
   const H = width < 520 ? 230 : 300, m = { l: 34, r: 12, t: 12, b: 24 };
@@ -86,7 +85,7 @@ export function rollingSvg(S, a, b, { from = 0, width = 900, regimes = null } = 
   const shade = regimes ? M.regimeRuns(regimes, from).filter(r => SHADE[r.label]).map(r => `<rect x="${x(r.from - 0.5)}" y="${m.t}" width="${Math.max(1, x(r.to + 0.5) - x(r.from - 0.5))}" height="${H - m.t - m.b}" fill="${SHADE[r.label]}"><title>${esc(r.label)} ${esc(S.dates[r.from])} to ${esc(S.dates[r.to])}</title></rect>`).join('') : '';
   const nt = width < 520 ? 4 : 8, span = S.n - 1 - from, ticks = []; for (let k = 0; k <= nt; k++) { const i = Math.round(from + span * k / nt); if (!ticks.length || String(S.dates[i]).slice(0, 7) !== String(S.dates[ticks.at(-1)]).slice(0, 7)) ticks.push(i); }
   return `<svg class="ct-roll" viewBox="0 0 ${width} ${H}" width="100%" role="img" aria-label="${esc(M.labelOf(a))} against ${esc(M.labelOf(b))}: rolling correlation">${shade}
-${[-1, -0.5, 0, 0.5, 1].map(v => `<line x1="${m.l}" x2="${width - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="${v === 0 ? '#2c3866' : '#151c3a'}"/><text x="${m.l - 6}" y="${y(v) + 3}" text-anchor="end" class="ct-ax">${v}</text>`).join('')}
+${[-1, -0.5, 0, 0.5, 1].map(v => `<line x1="${m.l}" x2="${width - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="${v === 0 ? 'var(--line2)' : 'var(--line)'}"/><text x="${m.l - 6}" y="${y(v) + 3}" text-anchor="end" class="ct-ax">${v}</text>`).join('')}
 ${ticks.map(i => `<text x="${x(i)}" y="${H - 6}" text-anchor="middle" class="ct-ax">${esc(String(S.dates[i] ?? '').slice(0, 7))}</text>`).join('')}
 ${lines.map(L => `<path d="${line(L.pts) ?? ''}" fill="none" stroke="${RCOL[L.w]}" stroke-width="${L.w === 120 ? 2.2 : L.w === 60 ? 1.7 : 1.1}" opacity="${L.w === 20 ? 0.85 : 1}"/>`).join('')}
 ${lines.map(L => { const p = L.pts.at(-1); return p ? `<circle cx="${x(p.i)}" cy="${y(p.v)}" r="3.5" fill="${RCOL[L.w]}"/>` : ''; }).join('')}
@@ -94,10 +93,10 @@ ${lines.map(L => { const p = L.pts.at(-1); return p ? `<circle cx="${x(p.i)}" cy
 }
 
 // ═════════════════════ FACTORS ═════════════════════
-export function spark(pts, { w = 110, h = 22, col = '#b4a9ff' } = {}) {
+export function spark(pts, { w = 110, h = 22, col = 'var(--pur2)' } = {}) {
   const v = pts.filter(p => fin(p.v)); if (v.length < 3) return `<svg width="${w}" height="${h}"></svg>`;
   const lo = Math.min(0, ...v.map(p => p.v)), hi = Math.max(0, ...v.map(p => p.v)), X = k => (k / (v.length - 1)) * w, Y = y => h - 2 - ((y - lo) / (hi - lo || 1)) * (h - 4);
-  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><line x1="0" x2="${w}" y1="${Y(0)}" y2="${Y(0)}" stroke="#2c3866"/><polyline points="${v.map((p, k) => `${X(k).toFixed(1)},${Y(p.v).toFixed(1)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="1.3"/></svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><line x1="0" x2="${w}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--line2)"/><polyline points="${v.map((p, k) => `${X(k).toFixed(1)},${Y(p.v).toFixed(1)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="1.3"/></svg>`;
 }
 export function factorTile(S, row, w, from) {
   const F = M.FACTORS, dom = row.dom ? F.find(f => f.k === row.dom) : null, self = F.find(f => row.f[f.k]?.self);

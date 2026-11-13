@@ -164,7 +164,7 @@ test('views: escaped, no raw input reaches the HTML', () => {
   const hv = hedgeHtml(S, { win: 60 });   // the hedges sub-view keeps the finder and the book hedge, not the retired signals card
   assert.match(hv, /Hedge finder/); assert.match(hv, /Book hedge/);
   assert.doesNotMatch(hv, /hedge-signals|hedge-backtest|ct-sig/);
-  assert.match(corrColor(0.9), /^rgb\(/); assert.equal(corrColor(null), '#111833');
+  assert.match(corrColor(0.9), /^color-mix\(/); assert.match(corrColor(-0.9), /--goldrgb/); assert.equal(corrColor(null), 'var(--bg2)');
 });
 
 test('hedge view helpers: book cards, carry sign, book hedge text', () => {

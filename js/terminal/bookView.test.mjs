@@ -151,7 +151,7 @@ test('matrixHtml: sticky first and book columns, a flag on the clustered row, es
   assert.ok(html.includes('Carry &lt;b&gt;unwind&lt;/b&gt;') && !html.includes('<b>unwind'));
   assert.match(html, /before the price history/);
   assert.ok(!/NaN|undefined/.test(html));
-  assert.equal(cellBg(null, 1), 'transparent'); assert.match(cellBg(-1, 1), /^rgba\(255,93,120/); assert.match(cellBg(0.5, 1), /^rgba\(47,211,154/);
+  assert.equal(cellBg(null, 1), 'transparent'); assert.match(cellBg(-1, 1), /^rgba\(var\(--dnrgb\)/); assert.match(cellBg(0.5, 1), /^rgba\(var\(--uprgb\)/);
 });
 
 // ── book intelligence ──
@@ -202,5 +202,5 @@ test('rankHistory: days oldest first, top/bottom marks, rolling mean Spearman an
   const html = rankHeatHtml(hh);
   assert.match(html, /▲4/); assert.ok(!/NaN|undefined/.test(html));
   assert.equal(rankHistory([]).days, 0); assert.match(rankHeatHtml(rankHistory([])), /No scored day/);
-  assert.match(rankColour(1, 8), /^rgba\(47/); assert.match(rankColour(8, 8), /^rgba\(255/);
+  assert.match(rankColour(1, 8), /^rgba\(var\(--uprgb\)/); assert.match(rankColour(8, 8), /^rgba\(var\(--dnrgb\)/);
 });

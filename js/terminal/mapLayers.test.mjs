@@ -52,10 +52,10 @@ test('a country with no data in a layer is null / "no feed", never a zero fill',
 
 test('policy-rate level scales with the rate; priced path colours hikes gold, cuts blue, flat grey', () => {
   const us = layerStyle('level', '840', ctx), jp = layerStyle('level', '392', ctx);
-  assert.match(us, /^fill:rgba\(232,184,90,/); const a = s => +/,([\d.]+)\)$/.exec(s)[1]; assert.ok(a(us) > a(jp));
-  assert.match(layerStyle('priced', '392', ctx), /232,184,90/);   // JPY +30bp
-  assert.match(layerStyle('priced', '840', ctx), /91,157,255/);   // USD -25bp
-  assert.match(layerStyle('priced', '826', ctx), /138,147,184/);  // GBP +1bp: flat
+  assert.match(us, /^fill:rgba\(var\(--goldrgb\),/); const a = s => +/,([\d.]+)\)$/.exec(s)[1]; assert.ok(a(us) > a(jp));
+  assert.match(layerStyle('priced', '392', ctx), /--goldrgb/);   // JPY +30bp
+  assert.match(layerStyle('priced', '840', ctx), /--bluergb/);   // USD -25bp
+  assert.match(layerStyle('priced', '826', ctx), /--flatrgb/);  // GBP +1bp: flat
   assert.equal(layerStyle('priced', '124', ctx), null, 'CAD has no futures pull in this ctx');
 });
 
@@ -65,7 +65,7 @@ test('the euro area colours every member the same way', () => {
 });
 
 test('tone: only a current read is coloured (gold hawkish, purple dovish); headline-only and no-read banks say why', () => {
-  assert.match(layerStyle('tone', '840', ctx), /139,124,246/);
+  assert.match(layerStyle('tone', '840', ctx), /--purrgb/);
   assert.equal(layerStyle('tone', '554', ctx), null);
   assert.match(layerTip('tone', '554', 'New Zealand', ctx), /OCR held at 2\.75%.*blocked|blocked/);
   assert.match(layerTip('tone', '826', 'United Kingdom', ctx), /no read/);
@@ -73,15 +73,15 @@ test('tone: only a current read is coloured (gold hawkish, purple dovish); headl
 });
 
 test('yield layers: only the desk currencies, the US row is grey on the gap layer, the sign picks gold or blue', () => {
-  assert.match(layerStyle('gap', '826', ctx), /232,184,90/);
-  assert.match(layerStyle('gap', '392', ctx), /91,157,255/);
-  assert.match(layerStyle('gap', '840', ctx), /138,147,184/);
+  assert.match(layerStyle('gap', '826', ctx), /--goldrgb/);
+  assert.match(layerStyle('gap', '392', ctx), /--bluergb/);
+  assert.match(layerStyle('gap', '840', ctx), /--flatrgb/);
   assert.match(layerTip('y10', '826', 'United Kingdom', ctx), /uses 5y/);
 });
 
 test('macro composite: green for stronger, red for weaker, null when the composite is missing', () => {
-  assert.match(layerStyle('macro', '840', ctx), /47,211,154/);
-  assert.match(layerStyle('macro', '826', ctx), /255,93,120/);
+  assert.match(layerStyle('macro', '840', ctx), /--uprgb/);
+  assert.match(layerStyle('macro', '826', ctx), /--dnrgb/);
   assert.equal(layerStyle('macro', '276', ctx), null);
 });
 

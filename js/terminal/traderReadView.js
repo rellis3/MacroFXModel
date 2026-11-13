@@ -21,20 +21,20 @@ const CSS = `
 .tr-strip{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));margin:6px 0 14px}
 .tr-tile{cursor:pointer;text-align:left;background:var(--bg3);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--tx);font:inherit;transition:border-color .15s,background .15s}
 .tr-tile:hover,.tr-tile:focus-visible{border-color:var(--pur);outline:none}
-.tr-tile[aria-pressed="true"]{border-color:var(--pur);background:var(--purbg);box-shadow:0 0 0 1px rgba(139,124,246,.35)}
+.tr-tile[aria-pressed="true"]{border-color:var(--pur);background:var(--purbg);box-shadow:0 0 0 1px rgba(var(--purrgb),.35)}
 .tr-tile .w{display:flex;gap:6px;align-items:center;font:600 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--tx3)}
 .tr-tile .s{font-size:12.5px;margin-top:4px;color:var(--tx2);line-height:1.35}
 .tr-tag{font:600 9.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:1px 6px;border-radius:99px;border:1px solid var(--line2);color:var(--tx3)}
-.tr-tag.broke{color:var(--gold);border-color:rgba(232,184,90,.5)}.tr-tag.hold{color:var(--pur2);border-color:rgba(139,124,246,.5)}
+.tr-tag.broke{color:var(--gold);border-color:rgba(var(--goldrgb),.5)}.tr-tag.hold{color:var(--pur2);border-color:rgba(var(--purrgb),.5)}
 .tr-headline{margin:2px 0 4px;font:700 21px var(--sans);letter-spacing:.005em;line-height:1.3}
 @media (max-width:600px){.tr-headline{font-size:17px}}
-.tr-path{overflow-x:auto;margin:10px 0 6px;border-radius:12px;background:radial-gradient(700px 300px at 50% 0%,rgba(139,124,246,.10),transparent 70%),#080c1d;border:1px solid var(--line)}
+.tr-path{overflow-x:auto;margin:10px 0 6px;border-radius:12px;background:radial-gradient(700px 300px at 50% 0%,rgba(var(--purrgb),.10),transparent 70%),var(--bg);border:1px solid var(--line)}
 .tr-path svg{display:block;width:100%;min-width:620px;height:auto}
 .tr-q0{font-size:12.5px;color:var(--tx3);margin-top:6px}
 .tr-qs{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr))}
 .tr-q{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:4px 10px;align-items:start;padding:9px 6px;border-bottom:1px solid var(--line);cursor:pointer;border-radius:6px}
 .tr-q:last-child{border-bottom:0}
-.tr-q:hover,.tr-q:focus-visible{background:rgba(139,124,246,.06);outline:none}
+.tr-q:hover,.tr-q:focus-visible{background:rgba(var(--purrgb),.06);outline:none}
 .tr-q b{font-size:13.5px;font-weight:600}
 .tr-q p{grid-column:2/4;margin:0;font-size:12.5px;color:var(--tx2);line-height:1.45}
 .tr-q .n{font:600 10px var(--mono);color:var(--tx3);margin-right:4px}
@@ -102,11 +102,11 @@ function pathSvg(idea, vals, win) {
   const box = (s, i) => {
     const z = TR.zOf(vals, s.key, win), az = z == null ? 0 : Math.min(Math.abs(z), zMax), x = x0(i);
     const meterW = BW - 28, fill = (az / zMax) * meterW, noise = (1 / zMax) * meterW;
-    return `<g><rect x="${x}" y="22" width="${BW}" height="96" rx="12" fill="#111833" stroke="${i === 0 ? 'rgba(232,184,90,.6)' : 'rgba(139,124,246,.35)'}"/>
+    return `<g><rect x="${x}" y="22" width="${BW}" height="96" rx="12" fill="var(--bg2)" stroke="${i === 0 ? 'rgba(var(--goldrgb),.6)' : 'rgba(var(--purrgb),.35)'}"/>
 <text x="${x + 14}" y="44" style="font:600 10px var(--mono);letter-spacing:.12em;fill:var(--tx3)">${i === 0 ? 'CAUSE' : i === n - 1 ? 'EFFECT' : 'THEN'}</text>
 <text x="${x + 14}" y="64" style="font:600 13px var(--sans);fill:var(--tx)">${h(CB.CHAIN_NODES[s.key] ? CB.shortLabel(CB.CHAIN_NODES[s.key]) : s.label)}</text>
 <text x="${x + 14}" y="88" style="font:700 18px var(--mono);fill:${z == null ? 'var(--tx3)' : 'var(--tx)'}">${h(s.text ?? '–')}</text>
-<rect x="${x + 14}" y="99" width="${meterW}" height="5" rx="3" fill="#18203f"/>
+<rect x="${x + 14}" y="99" width="${meterW}" height="5" rx="3" fill="var(--bg3)"/>
 <rect x="${x + 14}" y="99" width="${fill.toFixed(1)}" height="5" rx="3" fill="${az >= 1 ? 'var(--pur)' : 'var(--line2)'}"/>
 <line x1="${(x + 14 + noise).toFixed(1)}" x2="${(x + 14 + noise).toFixed(1)}" y1="95" y2="108" stroke="var(--tx3)" stroke-width="1"/>
 <text x="${x + BW - 14}" y="88" text-anchor="end" style="font:10px var(--mono);fill:var(--tx3)">${z == null ? '' : `${Math.abs(z).toFixed(1)}× band`}</text></g>`;
@@ -150,7 +150,7 @@ function barsSvg(rows, { leadKey = null } = {}) {
 <text class="val" x="${W - 8}" y="${yy + 4}" text-anchor="end">${h(r.text)}</text>`);
     y += rowH;
   }
-  g = `<rect x="${x(-1)}" y="${top}" width="${x(1) - x(-1)}" height="${rows.length * rowH}" fill="rgba(139,124,246,.07)"/><line x1="${x0}" x2="${x0}" y1="${top - 4}" y2="${top + rows.length * rowH}" stroke="var(--tx3)" stroke-width="1"/>`;
+  g = `<rect x="${x(-1)}" y="${top}" width="${x(1) - x(-1)}" height="${rows.length * rowH}" fill="rgba(var(--purrgb),.07)"/><line x1="${x0}" x2="${x0}" y1="${top - 4}" y2="${top + rows.length * rowH}" stroke="var(--tx3)" stroke-width="1"/>`;
   const ticks = [-4, -2, -1, 0, 1, 2, 4].map(t => `<text class="ax" x="${x(t)}" y="${H - 6}" text-anchor="middle">${t === 0 ? '0' : `${t > 0 ? '+' : '−'}${Math.abs(t)}`}</text>`).join('');
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="moves in noise-band units">${g}${out.join('')}${ticks}<text class="ax" x="${L}" y="10">× noise band · shaded = inside the band</text></svg>`;
 }
@@ -162,10 +162,10 @@ function clocksSvg(rows, shortWin) {
     const y = top + i * rowH + rowH / 2, col = r.state === 'opposed' ? 'var(--gold)' : r.state === 'aligned' ? 'var(--pur2)' : 'var(--tx3)';
     return `<text class="lab" x="10" y="${y + 4}" ${r.state === 'opposed' ? 'style="fill:var(--gold)"' : ''}>${h(CB.shortLabel(CB.CHAIN_NODES[r.key]))}</text>
 <line x1="${x(r.zl)}" x2="${x(r.zs)}" y1="${y}" y2="${y}" stroke="${col}" stroke-width="2" opacity=".7"/>
-<circle cx="${x(r.zl)}" cy="${y}" r="5" fill="#0c1124" stroke="${col}" stroke-width="1.6"><title>${h(r.label)} over 20 days: ${h(r.long)}</title></circle>
+<circle cx="${x(r.zl)}" cy="${y}" r="5" fill="var(--bg1)" stroke="${col}" stroke-width="1.6"><title>${h(r.label)} over 20 days: ${h(r.long)}</title></circle>
 <circle cx="${x(r.zs)}" cy="${y}" r="5" fill="${col}"><title>${h(r.label)} ${h(winWord(shortWin))}: ${h(r.short)}</title></circle>`;
   }).join('');
-  const band = `<rect x="${x(-1)}" y="${top}" width="${x(1) - x(-1)}" height="${show.length * rowH}" fill="rgba(139,124,246,.07)"/><line x1="${x(0)}" x2="${x(0)}" y1="${top - 4}" y2="${top + show.length * rowH}" stroke="var(--tx3)"/>`;
+  const band = `<rect x="${x(-1)}" y="${top}" width="${x(1) - x(-1)}" height="${show.length * rowH}" fill="rgba(var(--purrgb),.07)"/><line x1="${x(0)}" x2="${x(0)}" y1="${top - 4}" y2="${top + show.length * rowH}" stroke="var(--tx3)"/>`;
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="short window against the month">${band}${body}<text class="ax" x="${L}" y="11">● ${h(winWord(shortWin))} · ○ 20 days · in × noise band</text>${[-4, -1, 0, 1, 4].map(t => `<text class="ax" x="${x(t)}" y="${H - 6}" text-anchor="middle">${t}</text>`).join('')}</svg>`;
 }
 // chart: crowding gauge per market with the short-window move
@@ -175,7 +175,7 @@ function crowdSvg(rows) {
     const y = top + i * rowH + rowH / 2, px = r.pct == null ? null : L + (r.pct / 100) * G, col = r.crowd !== 0 ? 'var(--gold)' : 'var(--tx3)';
     const mv = r.move == null ? '' : `<text class="val" x="${L + G + 18}" y="${y + 4}" ${r.against ? 'style="fill:var(--gold)"' : ''}>${h(r.move)}${r.against ? '  against the crowd' : r.withIt ? '  with the crowd' : ''}</text>`;
     return `<text class="lab" x="10" y="${y + 4}">${h(r.key)}</text>
-<rect x="${L}" y="${y - 3}" width="${G}" height="6" rx="3" fill="#18203f"/><rect x="${L}" y="${y - 3}" width="${G * 0.2}" height="6" rx="3" fill="rgba(232,184,90,.18)"/><rect x="${L + G * 0.8}" y="${y - 3}" width="${G * 0.2}" height="6" rx="3" fill="rgba(232,184,90,.18)"/>
+<rect x="${L}" y="${y - 3}" width="${G}" height="6" rx="3" fill="var(--bg3)"/><rect x="${L}" y="${y - 3}" width="${G * 0.2}" height="6" rx="3" fill="rgba(var(--goldrgb),.18)"/><rect x="${L + G * 0.8}" y="${y - 3}" width="${G * 0.2}" height="6" rx="3" fill="rgba(var(--goldrgb),.18)"/>
 ${px == null ? '' : `<circle cx="${px.toFixed(1)}" cy="${y}" r="5.5" fill="${col}"><title>${h(r.key)}: speculators at the ${r.pct}th percentile of their own history. ${h(r.label)}</title></circle>`}${mv}`;
   }).join('');
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="crowding and today's move"><text class="ax" x="${L}" y="11">short ← speculators' position, own history → long</text>${body}</svg>`;
@@ -184,11 +184,11 @@ ${px == null ? '' : `<circle cx="${px.toFixed(1)}" cy="${y}" r="5.5" fill="${col
 function newsSvg(pts) {
   const W = 460, H = 250, P = 34, m = Math.max(0.05, ...pts.flatMap(p => [Math.abs(p.exp), Math.abs(p.act)])) * 1.15;
   const x = v => P + ((v + m) / (2 * m)) * (W - 2 * P), y = v => H - P - ((v + m) / (2 * m)) * (H - 2 * P);
-  const q = `<rect x="${x(0)}" y="${y(m)}" width="${x(m) - x(0)}" height="${y(0) - y(m)}" fill="rgba(139,124,246,.07)"/><rect x="${x(-m)}" y="${y(0)}" width="${x(0) - x(-m)}" height="${y(-m) - y(0)}" fill="rgba(139,124,246,.07)"/>
-<rect x="${x(-m)}" y="${y(m)}" width="${x(0) - x(-m)}" height="${y(0) - y(m)}" fill="rgba(232,184,90,.06)"/><rect x="${x(0)}" y="${y(0)}" width="${x(m) - x(0)}" height="${y(-m) - y(0)}" fill="rgba(232,184,90,.06)"/>
+  const q = `<rect x="${x(0)}" y="${y(m)}" width="${x(m) - x(0)}" height="${y(0) - y(m)}" fill="rgba(var(--purrgb),.07)"/><rect x="${x(-m)}" y="${y(0)}" width="${x(0) - x(-m)}" height="${y(-m) - y(0)}" fill="rgba(var(--purrgb),.07)"/>
+<rect x="${x(-m)}" y="${y(m)}" width="${x(0) - x(-m)}" height="${y(0) - y(m)}" fill="rgba(var(--goldrgb),.06)"/><rect x="${x(0)}" y="${y(0)}" width="${x(m) - x(0)}" height="${y(-m) - y(0)}" fill="rgba(var(--goldrgb),.06)"/>
 <line x1="${x(-m)}" x2="${x(m)}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line2)"/><line x1="${x(0)}" x2="${x(0)}" y1="${y(m)}" y2="${y(-m)}" stroke="var(--line2)"/>
 <line x1="${x(-m)}" x2="${x(m)}" y1="${y(-m)}" y2="${y(m)}" stroke="var(--tx3)" stroke-dasharray="3 5"/>`;
-  const dots = pts.map(p => `<circle cx="${x(p.exp).toFixed(1)}" cy="${y(p.act).toFixed(1)}" r="5" fill="${p.cls === 'against' ? 'var(--gold)' : p.cls === 'with' ? 'var(--pur)' : 'var(--tx3)'}" fill-opacity=".85" stroke="#070a17"><title>${h(p.release)} · ${h(p.label ?? p.id)}: history said ${sgn(p.exp, 2)}%, it moved ${sgn(p.act, 2)}% in 30 min</title></circle>`).join('');
+  const dots = pts.map(p => `<circle cx="${x(p.exp).toFixed(1)}" cy="${y(p.act).toFixed(1)}" r="5" fill="${p.cls === 'against' ? 'var(--gold)' : p.cls === 'with' ? 'var(--pur)' : 'var(--tx3)'}" fill-opacity=".85" stroke="var(--bg)"><title>${h(p.release)} · ${h(p.label ?? p.id)}: history said ${sgn(p.exp, 2)}%, it moved ${sgn(p.act, 2)}% in 30 min</title></circle>`).join('');
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="expected against actual 30-minute moves">${q}${dots}
 <text class="ax" x="${W - P}" y="${y(0) - 6}" text-anchor="end">what history says (30 min) →</text><text class="ax" x="${x(0) + 6}" y="${P - 10}">actual ↑</text>
 <text class="ax" x="${x(-m) + 6}" y="${y(m) + 14}" style="fill:var(--gold)">price fought the news</text><text class="ax" x="${x(m) - 6}" y="${y(m) + 14}" text-anchor="end" style="fill:var(--pur2)">went with it</text></svg>`;

@@ -26,7 +26,7 @@ test('the source series is not changed, and the drawn line ends exactly at the n
   const m = walkModel(sm, { points: [] });
   assert.equal(JSON.stringify(sm.series), before);
   const r = renderWalk(m);
-  const hist = /<path d="(M[^"]+)" fill="none" stroke="var\(--pur2,#9b8cff\)" stroke-width="2"\/>/.exec(r.svg);
+  const hist = /<path d="(M[^"]+)" fill="none" stroke="var\(--pur2\)" stroke-width="2"\/>/.exec(r.svg);
   assert.ok(hist, 'the price line is drawn');
   const lastPt = hist[1].split('L').at(-1).split(',').map(Number);
   assert.ok(Math.abs(lastPt[0] - r.X(m.tNow)) < 0.2 && Math.abs(lastPt[1] - r.Y(4141)) < 0.2, `the line ends at the now dot, got ${lastPt}`);

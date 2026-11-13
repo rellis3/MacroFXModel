@@ -23,7 +23,8 @@
   --bgrgb:7,10,23;--txrgb:238,240,251;--purrgb:139,124,246;--pur2rgb:180,169,255;--goldrgb:232,184,90;--uprgb:47,211,154;--dnrgb:255,93,120;--bluergb:91,157,255;--tealrgb:95,208,201;
   --purbg:rgba(var(--purrgb),.12);--goldbg:rgba(var(--goldrgb),.10);--upbg:rgba(var(--uprgb),.12);--dnbg:rgba(var(--dnrgb),.12);
   --glow1:rgba(139,124,246,.10);--glow2:rgba(232,184,90,.05);--scrim:rgba(3,5,12,.72);--on-acc:#ffffff;
-  --chart-grid:rgba(44,56,102,.35);--chart-text:#a9b0d0;--map-land:#18203f;--map-sea:#070a17;--map-line:#2c3866;
+  --chart-grid:rgba(44,56,102,.35);--chart-text:#a9b0d0;--map-land:#141b38;--map-sea:#070a17;--map-line:#232c55;
+  --bg1rgb:12,17,36;--pur3rgb:155,140,255;--flatrgb:138,147,184;--line2rgb:44,56,102;--pur-dk:#6a5be0;--map-glow-hi:#101736;--map-sea-hi:#1b2452;--map-nodata:#2a3160;--gauge-mid:#3a4170;
   --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;--sans:Inter,ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
   --r:12px;
 }
@@ -48,10 +49,10 @@ button{font:inherit}
 .dot.on{background:var(--up);box-shadow:0 0 8px var(--up)}
 .tright{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .chip{display:inline-flex;align-items:center;gap:6px;font:600 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid var(--line2);color:var(--tx2);background:var(--bg2);white-space:nowrap}
-.chip.up{color:var(--up);border-color:rgba(47,211,154,.4);background:var(--upbg)}
-.chip.dn{color:var(--dn);border-color:rgba(255,93,120,.4);background:var(--dnbg)}
-.chip.gold{color:var(--gold);border-color:rgba(232,184,90,.45);background:var(--goldbg)}
-.chip.pur{color:var(--pur2);border-color:rgba(139,124,246,.45);background:var(--purbg)}
+.chip.up{color:var(--up);border-color:rgba(var(--uprgb),.4);background:var(--upbg)}
+.chip.dn{color:var(--dn);border-color:rgba(var(--dnrgb),.4);background:var(--dnbg)}
+.chip.gold{color:var(--gold);border-color:rgba(var(--goldrgb),.45);background:var(--goldbg)}
+.chip.pur{color:var(--pur2);border-color:rgba(var(--purrgb),.45);background:var(--purbg)}
 .btn{cursor:pointer;border:1px solid var(--line2);background:var(--bg2);color:var(--tx2);padding:6px 12px;border-radius:8px;font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;text-decoration:none}
 .btn:hover,.btn:focus-visible{border-color:var(--pur);color:var(--tx);outline:none}
 /* ticker */
@@ -65,7 +66,7 @@ button{font:inherit}
 .wrap{max-width:1440px;margin:0 auto;padding:16px 16px 90px}
 .tabs{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 18px;padding:4px;background:var(--bg1);border:1px solid var(--line);border-radius:12px;width:max-content;max-width:100%}
 .tabs button{cursor:pointer;background:none;border:0;color:var(--tx3);padding:8px 14px;border-radius:8px;font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase}
-.tabs button[aria-selected="true"]{background:var(--purbg);color:var(--pur2);box-shadow:inset 0 0 0 1px rgba(139,124,246,.4)}
+.tabs button[aria-selected="true"]{background:var(--purbg);color:var(--pur2);box-shadow:inset 0 0 0 1px rgba(var(--purrgb),.4)}
 .tabs button:focus-visible{outline:2px solid var(--pur)}
 .tabs .tablink{color:var(--pur2);padding:8px 14px;border-radius:8px;font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;text-decoration:none;display:inline-flex;align-items:center}
 .tabs .tablink:hover,.tabs .tablink:focus-visible{background:var(--purbg);outline:none}
@@ -83,7 +84,7 @@ button{font:inherit}
 .sec{display:flex;align-items:baseline;gap:10px;margin:22px 0 10px}
 .sec h2{margin:0;font:600 11px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--tx2)}
 .sec .lbl{letter-spacing:.06em;text-transform:none;font-weight:400;font-family:var(--sans);font-size:12px}
-.thesis{border-left:2px solid var(--gold);padding:2px 0 2px 12px;margin:10px 0;color:#f3e3bf;font-style:italic}
+.thesis{border-left:2px solid var(--gold);padding:2px 0 2px 12px;margin:10px 0;color:var(--gold2);font-style:italic}
 .synth{border-left:2px solid var(--gold);background:var(--goldbg);padding:10px 12px;border-radius:0 8px 8px 0;margin:10px 0}
 .muted{color:var(--tx3);font-size:12.5px}
 .drv{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
@@ -91,8 +92,8 @@ button{font:inherit}
 .nwi{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
 .nwp{display:flex;flex-wrap:wrap;gap:4px;margin:5px 0 0}
 .nwp span{font:10.5px var(--mono);padding:2px 6px;border-radius:5px;border:1px solid var(--line);color:var(--tx2);white-space:nowrap}
-.nwp span.sup{border-color:rgba(232,184,90,.55);color:var(--gold)}
-.nwp span.ag{border-color:rgba(255,93,120,.55);color:var(--dn)}
+.nwp span.sup{border-color:rgba(var(--goldrgb),.55);color:var(--gold)}
+.nwp span.ag{border-color:rgba(var(--dnrgb),.55);color:var(--dn)}
 .nwp b{font-weight:600}
 .nwr{display:flex;flex-wrap:wrap;gap:4px;margin:5px 0 0;font-size:12px}
 .score{display:flex;align-items:center;gap:10px}
@@ -105,7 +106,7 @@ button{font:inherit}
 .pb div{display:grid;grid-template-columns:96px 1fr;gap:10px;padding:7px 10px;border-radius:8px;background:var(--bg3);border-left:3px solid var(--line2);font-size:13px}
 .pb div b{font:600 10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);padding-top:2px}
 .pb .en{border-left-color:var(--up)}.pb .tg{border-left-color:var(--gold)}.pb .iv{border-left-color:var(--dn)}
-.grade{font:700 13px var(--mono);color:var(--gold);border:1px solid rgba(232,184,90,.5);border-radius:7px;padding:2px 8px;background:var(--goldbg)}
+.grade{font:700 13px var(--mono);color:var(--gold);border:1px solid rgba(var(--goldrgb),.5);border-radius:7px;padding:2px 8px;background:var(--goldbg)}
 .up{color:var(--up)}.dn{color:var(--dn)}.fl{color:var(--flat)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;font:600 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);padding:0 8px 8px;border-bottom:1px solid var(--line)}
@@ -116,7 +117,7 @@ td.n{font-family:var(--mono);white-space:nowrap}
 .ladder .rail{position:absolute;left:0;right:0;top:13px;height:4px;border-radius:9px;background:linear-gradient(90deg,var(--dnbg),var(--bg3) 45%,var(--bg3) 55%,var(--upbg))}
 .ladder .tick{position:absolute;top:6px;width:1px;height:18px;background:var(--line2)}
 .ladder .tick.o{background:var(--tx);height:22px;top:4px;width:2px}
-.ladder .zone{position:absolute;top:9px;height:12px;border-radius:4px;background:var(--purbg);border:1px solid rgba(139,124,246,.6)}
+.ladder .zone{position:absolute;top:9px;height:12px;border-radius:4px;background:var(--purbg);border:1px solid rgba(var(--purrgb),.6)}
 .ladlab{display:flex;justify-content:space-between;font:10.5px var(--mono);color:var(--tx3)}
 .regime{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
 .regime .big{font:700 26px var(--mono);letter-spacing:.06em}
@@ -135,11 +136,11 @@ td.n{font-family:var(--mono);white-space:nowrap}
 .gauge{height:10px;border-radius:99px;display:flex;overflow:hidden;background:var(--bg3)}
 .gauge i{display:block;height:100%}
 /* modal */
-.modal{position:fixed;inset:0;z-index:50;background:rgba(3,5,12,.72);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px;overflow-y:auto}
-.modal .card{max-width:min(1280px,94vw);width:100%;box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 1px rgba(139,124,246,.25)}
+.modal{position:fixed;inset:0;z-index:50;background:var(--scrim);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px;overflow-y:auto}
+.modal .card{max-width:min(1280px,94vw);width:100%;box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 1px rgba(var(--purrgb),.25)}
 .x{margin-left:auto;cursor:pointer;background:none;border:1px solid var(--line2);color:var(--tx2);border-radius:8px;width:30px;height:30px}
 /* ask */
-.fab{position:fixed;right:20px;bottom:20px;z-index:30;cursor:pointer;border:0;border-radius:999px;padding:12px 18px;background:linear-gradient(135deg,var(--pur),#6a5be0);color:#fff;font:600 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;box-shadow:0 10px 30px rgba(139,124,246,.4)}
+.fab{position:fixed;right:20px;bottom:20px;z-index:30;cursor:pointer;border:0;border-radius:999px;padding:12px 18px;background:linear-gradient(135deg,var(--pur),var(--pur-dk));color:var(--on-acc);font:600 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;box-shadow:0 10px 30px rgba(var(--purrgb),.4)}
 textarea{width:100%;min-height:80px;background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:10px;padding:10px;font:14px var(--sans);resize:vertical}
 textarea:focus{outline:none;border-color:var(--pur)}
 .ans{white-space:pre-wrap;margin-top:12px}
@@ -152,23 +153,23 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
 .hero{position:relative;overflow:hidden;padding:0}
 .hero .hhead{position:absolute;left:18px;top:14px;z-index:2;pointer-events:none}
 .hero .hhead h2{margin:4px 0 0;font:700 20px var(--sans);letter-spacing:.01em}
-.hero .legend{position:absolute;right:16px;bottom:12px;z-index:2;display:flex;gap:10px;flex-wrap:wrap;font:10.5px var(--mono);color:var(--tx3);background:rgba(7,10,23,.7);padding:6px 10px;border-radius:8px;border:1px solid var(--line)}
+.hero .legend{position:absolute;right:16px;bottom:12px;z-index:2;display:flex;gap:10px;flex-wrap:wrap;font:10.5px var(--mono);color:var(--tx3);background:rgba(var(--bgrgb),.7);padding:6px 10px;border-radius:8px;border:1px solid var(--line)}
 .hero .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .map svg{display:block;width:100%;height:auto}
-.map .land{fill:#141b38;stroke:#232c55;stroke-width:.5}
+.map .land{fill:var(--map-land);stroke:var(--map-line);stroke-width:.5}
 .map .zone{cursor:pointer;transition:opacity .2s}
 .map .zone:hover{opacity:.85}
-.map .grat{fill:none;stroke:rgba(139,124,246,.07);stroke-width:.6}
-.map .sphere{fill:url(#ocean);stroke:rgba(139,124,246,.18)}
+.map .grat{fill:none;stroke:rgba(var(--purrgb),.07);stroke-width:.6}
+.map .sphere{fill:url(#ocean);stroke:rgba(var(--purrgb),.18)}
 .map .cb{cursor:pointer}
 .map .pulse{transform-box:fill-box;transform-origin:center;animation:pulse 2.4s ease-out infinite}
 @keyframes pulse{0%{transform:scale(.6);opacity:.9}100%{transform:scale(2.6);opacity:0}}
-.map .arc{fill:none;stroke:var(--gold);stroke-width:1.6;stroke-dasharray:4 6;animation:dash 1.6s linear infinite;filter:drop-shadow(0 0 4px rgba(232,184,90,.7))}
+.map .arc{fill:none;stroke:var(--gold);stroke-width:1.6;stroke-dasharray:4 6;animation:dash 1.6s linear infinite;filter:drop-shadow(0 0 4px rgba(var(--goldrgb),.7))}
 @keyframes dash{to{stroke-dashoffset:-20}}
-.map .lab{font:600 11px var(--mono);fill:var(--tx);paint-order:stroke;stroke:#070a17;stroke-width:3px;letter-spacing:.04em}
-.map .lab2{font:10px var(--mono);fill:var(--tx2);paint-order:stroke;stroke:#070a17;stroke-width:3px}
+.map .lab{font:600 11px var(--mono);fill:var(--tx);paint-order:stroke;stroke:var(--bg);stroke-width:3px;letter-spacing:.04em}
+.map .lab2{font:10px var(--mono);fill:var(--tx2);paint-order:stroke;stroke:var(--bg);stroke-width:3px}
 @media (prefers-reduced-motion:reduce){.map .pulse,.map .arc{animation:none}}
-.tip{position:fixed;z-index:60;pointer-events:none;background:rgba(12,17,36,.96);border:1px solid var(--line2);border-radius:8px;padding:7px 10px;font:12px var(--sans);max-width:260px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.tip{position:fixed;z-index:60;pointer-events:none;background:rgba(var(--bg1rgb),.96);border:1px solid var(--line2);border-radius:8px;padding:7px 10px;font:12px var(--sans);max-width:260px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .ring{display:block}
 .spark{display:block;width:100%;height:64px;margin-top:8px}
 .achart{height:320px;margin:12px 0;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
@@ -185,7 +186,7 @@ details summary{cursor:pointer;color:var(--pur2);font:600 11px var(--mono);lette
 .hero tr.click{cursor:pointer}.hero tr.click:hover td{background:var(--bg2)}.blue,.pur{color:var(--pur2)}
 
 @media (max-width:700px){.hero .hhead{position:static;padding:12px 14px 0}.hero .hhead h2{font-size:16px}.hero .legend{position:static;margin:0 10px 10px;justify-content:center}.map .lab{font-size:9px}}
-.glow{box-shadow:0 0 0 1px rgba(139,124,246,.25),0 20px 60px rgba(139,124,246,.08)}
+.glow{box-shadow:0 0 0 1px rgba(var(--purrgb),.25),0 20px 60px rgba(var(--purrgb),.08)}
 html:not([data-role]) [data-surface]{visibility:hidden}   /* until access.js says who is looking: no flash of the owner's links and tabs */
 .sfc{display:contents}
 .disclaimer{margin:6px 0 10px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--tx3);background:var(--bg1)}
@@ -255,6 +256,10 @@ html[data-role="owner"] .disclaimer{display:none}
 <div class="modal" id="modal" hidden></div>
 <div class="tip" id="tip" hidden></div>
 <script>
+// Theme colours for the few things that cannot take var(): chart libraries and computed fills. Read at draw time, never cached across a theme change;
+// themePicker.js fires 'themechange' and these redraw (the map, the candle chart). Everything else uses var(--x) / rgba(var(--xrgb),a) directly.
+const themeColor = n => getComputedStyle(document.documentElement).getPropertyValue('--' + n).trim();
+const themeRgba = (n, a) => `rgba(${themeColor(n + 'rgb')},${a})`;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 // The desk login: js/terminal/access.js resolves who is looking and sets globalThis.deskAccessState. A viewer never fetches a route the server would
@@ -335,8 +340,10 @@ async function world() {
   return (WORLD = all);
 }
 const tip = (e, html) => { const t = $('tip'); if (!html) { t.hidden = true; return; } t.innerHTML = html; t.hidden = false; const x = Math.min(e.clientX + 14, innerWidth - 280); t.style.left = x + 'px'; t.style.top = (e.clientY + 14) + 'px'; };
-const biasFill = b => (b == null ? 'rgba(138,147,184,.10)' : b > 0 ? `rgba(47,211,154,${0.22 + 0.22 * Math.min(2, b)})` : b < 0 ? `rgba(255,93,120,${0.22 + 0.22 * Math.min(2, -b)})` : 'rgba(138,147,184,.28)');
-const hawkFill = h => d3.interpolateRgb('#3a2f8f', '#e8b85a')(Math.max(0, Math.min(1, h ?? 0.5)));
+const biasFill = b => (b == null ? 'rgba(var(--flatrgb),.10)' : b > 0 ? `rgba(var(--uprgb),${0.22 + 0.22 * Math.min(2, b)})` : b < 0 ? `rgba(var(--dnrgb),${0.22 + 0.22 * Math.min(2, -b)})` : 'rgba(var(--flatrgb),.28)');
+let _hawkInterp = null;
+const hawkFill = h => (_hawkInterp ??= d3.interpolateRgb(themeColor('purdeep'), themeColor('gold')))(Math.max(0, Math.min(1, h ?? 0.5)));
+window.addEventListener('themechange', () => { _hawkInterp = null; try { globalThis.redrawHero?.(); } catch { /* the map is not on screen */ } });
 // mode 'bias': zones shaded by the desk's currency bias, an arc from the strongest to the weakest currency.
 // mode 'cb': zones shaded by each bank's hawkishness, dots sized by the policy rate.
 // §9af: the rest of the world on the hero map and globe. Layers: 'bias' (the desk's eight zones by bias, every other
@@ -345,15 +352,15 @@ const hawkFill = h => d3.interpolateRgb('#3a2f8f', '#e8b85a')(Math.max(0, Math.m
 // other countries stay plain.
 let HLAYER = (() => { try { return localStorage.getItem('deskTerminalLayer') || 'bias'; } catch { return 'bias'; } })();
 const ISO2N = { US: '840', GB: '826', CN: '156', JP: '392', FR: '250', DE: '276', AE: '784', SA: '682', CH: '756', LU: '442', IE: '372', CA: '124', NL: '528', IT: '380', ES: '724', AU: '036', KR: '410', IN: '356', BR: '076', MX: '484', BE: '056', SE: '752', NO: '578', DK: '208', AT: '040', FI: '246', TR: '792', ZA: '710', BM: '060', PA: '591', SG: '702', HK: '344', KY: '136' };
-const CYCOL = { hiking: 'rgba(232,184,90,.85)', 'on hold after hikes': 'rgba(232,184,90,.45)', 'on hold': 'rgba(138,147,184,.38)', 'on hold after cuts': 'rgba(91,157,255,.45)', cutting: 'rgba(91,157,255,.85)' };
-const creditCol = g => (g == null ? null : g >= 0 ? `rgba(47,211,154,${Math.min(0.85, 0.2 + g / 15).toFixed(2)})` : `rgba(255,93,120,${Math.min(0.85, 0.2 - g / 15).toFixed(2)})`);
+const CYCOL = { hiking: 'rgba(var(--goldrgb),.85)', 'on hold after hikes': 'rgba(var(--goldrgb),.45)', 'on hold': 'rgba(var(--flatrgb),.38)', 'on hold after cuts': 'rgba(var(--bluergb),.45)', cutting: 'rgba(var(--bluergb),.85)' };
+const creditCol = g => (g == null ? null : g >= 0 ? `rgba(var(--uprgb),${Math.min(0.85, 0.2 + g / 15).toFixed(2)})` : `rgba(var(--dnrgb),${Math.min(0.85, 0.2 - g / 15).toFixed(2)})`);
 function worldBank(id) { const wr = E?.['world-rates']; const a = wr?.iso?.[id]; return a ? wr.banks[a] : null; }
 function creditOf(id) { const bc = E?.['bank-credit']; if (!bc?.ok) return null; for (const k of ['borrowers', 'usdBorrowers']) { const r = (bc[k] ?? []).find(x => ISO2N[x.code] === id); if (r) return { ...r, list: k }; } return null; }
 // the fair-value layer: BIS area → the countries it colours (the euro area spreads over its members)
 const FV_ISO = { US: ['840'], GB: ['826'], JP: ['392'], AU: ['036'], NZ: ['554'], CA: ['124'], CH: ['756'], CN: ['156'], NO: ['578'], SE: ['752'], MX: ['484'], ZA: ['710'], BR: ['076'], IN: ['356'], KR: ['410'],
   XM: ['040', '056', '191', '196', '233', '246', '250', '276', '300', '372', '380', '428', '440', '442', '470', '528', '620', '703', '705', '724'] };
 function fairOf(id) { const fv = E?.['fair-value']; if (!fv?.ok) return null; const area = Object.keys(FV_ISO).find(a => FV_ISO[a].includes(String(id).padStart(3, '0'))); return area ? fv.rows.find(r => r.area === area) ?? null : null; }
-const fvCol = dev => (dev == null ? null : dev >= 0 ? `rgba(255,93,120,${Math.min(0.85, 0.2 + dev / 25).toFixed(2)})` : `rgba(47,211,154,${Math.min(0.85, 0.2 - dev / 25).toFixed(2)})`);
+const fvCol = dev => (dev == null ? null : dev >= 0 ? `rgba(var(--dnrgb),${Math.min(0.85, 0.2 + dev / 25).toFixed(2)})` : `rgba(var(--uprgb),${Math.min(0.85, 0.2 - dev / 25).toFixed(2)})`);
 function landStyle(d, layer) {
   if (globalThis.ttMapLayers?.isOwn(layer)) return globalThis.ttMapLayers.layerStyle(layer, d.id, mapCtx());
   if (layer === 'value') { const r = fairOf(d.id); return r ? `fill:${fvCol(r.devPct)}` : null; }
@@ -374,10 +381,10 @@ function landTip(e, d, layer) {
   tip(e, `<b>${nm}</b>${layer === 'credit' ? creditLine + rateLine : rateLine + creditLine}`);
 }
 const LAYER_LEGEND = {
-  value: '<span><i style="background:rgba(255,93,120,.7)"></i>dearer than its 20-year average (real terms)</span><span><i style="background:rgba(47,211,154,.7)"></i>cheaper</span><span>BIS real effective exchange rates, monthly · a slow anchor, not timing</span>',
-  bias: '<span><i style="background:rgba(47,211,154,.6)"></i>bullish</span><span><i style="background:rgba(255,93,120,.6)"></i>bearish</span><span><i style="background:var(--gold)"></i>strongest → weakest</span><span>other countries: their central bank\'s cycle, dimmed</span>',
+  value: '<span><i style="background:rgba(var(--dnrgb),.7)"></i>dearer than its 20-year average (real terms)</span><span><i style="background:rgba(var(--uprgb),.7)"></i>cheaper</span><span>BIS real effective exchange rates, monthly · a slow anchor, not timing</span>',
+  bias: '<span><i style="background:rgba(var(--uprgb),.6)"></i>bullish</span><span><i style="background:rgba(var(--dnrgb),.6)"></i>bearish</span><span><i style="background:var(--gold)"></i>strongest → weakest</span><span>other countries: their central bank\'s cycle, dimmed</span>',
   rates: Object.entries(CYCOL).map(([k, c]) => `<span><i style="background:${c}"></i>${k}</span>`).join('') + '<span>BIS, monthly</span>',
-  credit: '<span><i style="background:rgba(47,211,154,.7)"></i>cross-border bank credit growing</span><span><i style="background:rgba(255,93,120,.7)"></i>shrinking</span><span>4-quarter growth, BIS · the largest borrower countries</span>',
+  credit: '<span><i style="background:rgba(var(--uprgb),.7)"></i>cross-border bank credit growing</span><span><i style="background:rgba(var(--dnrgb),.7)"></i>shrinking</span><span>4-quarter growth, BIS · the largest borrower countries</span>',
 };
 // the Overview map's layers live in js/terminal/mapLayers.js (globalThis.ttMapLayers): the pills, legends, source-and-age chips, the ranking
 // under the map and the country card. The page owns the data (E, D, ZONE) and hands it over as ctx.
@@ -424,11 +431,11 @@ async function drawMap(el, mode = 'bias') {
   const W = Math.max(320, el.clientWidth || 900), H = Math.round(W * (W < 600 ? 0.62 : 0.46));
   const proj = d3.geoNaturalEarth1().fitExtent([[6, mode === 'bias' && W >= 600 ? 40 : 6], [W - 6, H - 6]], geo), path = d3.geoPath(proj);
   const cb = D.sc?.cbSentiment ?? {}, rd = D.rd?.byCcy ?? {};
-  const fill = c => (mode === 'cb' ? (cb[c] ? hawkFill(cb[c].score) : '#2a3160') : biasFill(numOrNull(D.ccy[c]?.bias)));
+  const fill = c => (mode === 'cb' ? (cb[c] ? hawkFill(cb[c].score) : 'var(--map-nodata)') : biasFill(numOrNull(D.ccy[c]?.bias)));
   const svg = d3.create('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', mode === 'cb' ? 'Central banks of the eight currencies' : 'The desk\'s currency bias by country');
   const defs = svg.append('defs');
   const og = defs.append('radialGradient').attr('id', 'ocean').attr('cx', '50%').attr('cy', '40%').attr('r', '70%');
-  og.append('stop').attr('offset', '0%').attr('stop-color', '#101736'); og.append('stop').attr('offset', '100%').attr('stop-color', '#070a17');
+  og.append('stop').attr('offset', '0%').attr('stop-color', 'var(--map-glow-hi)'); og.append('stop').attr('offset', '100%').attr('stop-color', 'var(--bg)');
   const gl = defs.append('filter').attr('id', 'glow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
   gl.append('feGaussianBlur').attr('stdDeviation', 3.2).attr('result', 'b'); const fm = gl.append('feMerge'); fm.append('feMergeNode').attr('in', 'b'); fm.append('feMergeNode').attr('in', 'SourceGraphic');
   svg.append('path').attr('class', 'sphere').attr('d', path({ type: 'Sphere' }));
@@ -446,17 +453,17 @@ async function drawMap(el, mode = 'bias') {
   const g = svg.append('g');
   for (const c of CCYS) {
     const [lon, lat, city] = CB_GEO[c], [x, y] = proj([lon, lat]), b = D.ccy[c]?.bias ?? 0;
-    const col = mode === 'cb' ? (cb[c] ? hawkFill(cb[c].score) : '#8a93b8') : (b > 0 ? '#2fd39a' : b < 0 ? '#ff5d78' : '#b4a9ff');
+    const col = mode === 'cb' ? (cb[c] ? hawkFill(cb[c].score) : 'var(--flat)') : (b > 0 ? 'var(--up)' : b < 0 ? 'var(--dn)' : 'var(--pur2)');
     const r = mode === 'cb' && pol(c) ? 3.5 + Math.max(0, pol(c).rate) * 0.9 : 4.5;
     const n = g.append('g').attr('class', 'cb').attr('transform', `translate(${x},${y})`).attr('tabindex', 0)
       .on('click', () => dotOpen(el, c)).on('keydown', e => { if (e.key === 'Enter') dotOpen(el, c); })
       .on('mousemove', e => tip(e, `<b>${BANK[c]}</b> · ${city}<br>${pol(c) ? `policy ${pct(pol(c).rate)} (${esc(pol(c).asOf)}) · ` : ''}${cb[c] ? `${esc(cb[c].regime.toLowerCase())}, hawkishness ${cb[c].score}` : ''}<br><span class="muted">tap for the ${c} card</span>`)).on('mouseleave', () => tip(null));
     n.append('circle').attr('class', 'pulse').attr('r', r).attr('fill', col).attr('opacity', .6);
     n.append('circle').attr('r', r).attr('fill', col).attr('filter', 'url(#glow)');
-    n.append('circle').attr('r', Math.max(1.6, r * 0.35)).attr('fill', '#fff');
+    n.append('circle').attr('r', Math.max(1.6, r * 0.35)).attr('fill', 'var(--tx)');
     // label placement per bank: Europe's three banks sit close together, so each gets its own side and a leader line
     const sm = W < 600 ? 0.6 : 1, [lx, ly] = ({ USD: [-16, 20], CAD: [-16, -16], GBP: [-34, -26], EUR: [30, -30], CHF: [30, 26], JPY: W < 600 ? [-14, -12] : [14, -8], AUD: [-14, -6], NZD: [-16, 18] }[c]).map(v => v * sm), left = lx < 0;
-    if (Math.abs(lx) > 20 || Math.abs(ly) > 18) n.append('line').attr('x1', 0).attr('y1', 0).attr('x2', lx * 0.8).attr('y2', ly * 0.8).attr('stroke', 'rgba(238,240,251,.35)').attr('stroke-width', 1);
+    if (Math.abs(lx) > 20 || Math.abs(ly) > 18) n.append('line').attr('x1', 0).attr('y1', 0).attr('x2', lx * 0.8).attr('y2', ly * 0.8).attr('stroke', 'rgba(var(--txrgb),.35)').attr('stroke-width', 1);
     n.append('text').attr('class', 'lab').attr('x', lx).attr('y', ly).attr('text-anchor', left ? 'end' : 'start').text(`${BANKSHORT[c]} ${pol(c) ? pct(pol(c).rate) : ''}`);
     if (mode === 'bias' && W >= 600) n.append('text').attr('class', 'lab2').attr('x', lx).attr('y', ly + 12).attr('text-anchor', left ? 'end' : 'start').attr('fill', col).text(`${c} ${D.ccy[c]?.bias == null ? '– no data' : fmtScore(ccyScore(D.ccy[c].bias))}`);
   }
@@ -475,12 +482,12 @@ async function drawGlobe(el) {
   const proj = d3.geoOrthographic().scale(R).translate([W / 2, H / 2 + 10]).clipAngle(90).rotate([-20, -25]), path = d3.geoPath(proj);
   const svg = d3.create('svg').attr('viewBox', `0 0 ${W} ${H + 20}`).attr('role', 'img').attr('aria-label', 'globe of the desk\'s currency bias');
   const defs = svg.append('defs');
-  const atm = defs.append('radialGradient').attr('id', 'atm'); atm.append('stop').attr('offset', '82%').attr('stop-color', 'rgba(139,124,246,0)'); atm.append('stop').attr('offset', '92%').attr('stop-color', 'rgba(139,124,246,.35)'); atm.append('stop').attr('offset', '100%').attr('stop-color', 'rgba(139,124,246,0)');
-  const sea = defs.append('radialGradient').attr('id', 'sea').attr('cx', '38%').attr('cy', '32%'); sea.append('stop').attr('offset', '0%').attr('stop-color', '#1b2452'); sea.append('stop').attr('offset', '100%').attr('stop-color', '#070a17');
+  const atm = defs.append('radialGradient').attr('id', 'atm'); atm.append('stop').attr('offset', '82%').attr('stop-color', 'rgba(var(--purrgb),0)'); atm.append('stop').attr('offset', '92%').attr('stop-color', 'rgba(var(--purrgb),.35)'); atm.append('stop').attr('offset', '100%').attr('stop-color', 'rgba(var(--purrgb),0)');
+  const sea = defs.append('radialGradient').attr('id', 'sea').attr('cx', '38%').attr('cy', '32%'); sea.append('stop').attr('offset', '0%').attr('stop-color', 'var(--map-sea-hi)'); sea.append('stop').attr('offset', '100%').attr('stop-color', 'var(--bg)');
   const gl = defs.append('filter').attr('id', 'gglow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%'); gl.append('feGaussianBlur').attr('stdDeviation', 3.5).attr('result', 'b'); const fm = gl.append('feMerge'); fm.append('feMergeNode').attr('in', 'b'); fm.append('feMergeNode').attr('in', 'SourceGraphic');
   const [cx, cy] = proj.translate();
   svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', R * 1.12).attr('fill', 'url(#atm)');
-  svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', R).attr('fill', 'url(#sea)').attr('stroke', 'rgba(139,124,246,.35)');
+  svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', R).attr('fill', 'url(#sea)').attr('stroke', 'rgba(var(--purrgb),.35)');
   const grat = svg.append('path').attr('class', 'grat');
   const land = svg.append('g').selectAll('path').data(geo.features).join('path').attr('class', d => (ZONE[d.id] ? 'land zone' : 'land'))
     .attr('style', d => landStyle(d, HLAYER))
@@ -489,10 +496,10 @@ async function drawGlobe(el) {
   const arcEl = svg.append('path').attr('class', 'arc');
   const a = CB_GEO[D.ranking?.[0]], b = CB_GEO[D.ranking?.at(-1)];
   const dots = svg.append('g');
-  const nodes = CCYS.map(c => { const bb = D.ccy[c]?.bias ?? 0, col = bb > 0 ? '#2fd39a' : bb < 0 ? '#ff5d78' : '#b4a9ff', g = dots.append('g').attr('class', 'cb').style('cursor', 'pointer').on('click', () => dotOpen(el, c));
-    g.append('circle').attr('class', 'pulse').attr('r', 5).attr('fill', col).attr('opacity', .6); g.append('circle').attr('r', 5).attr('fill', col).attr('filter', 'url(#gglow)'); g.append('circle').attr('r', 1.8).attr('fill', '#fff');
+  const nodes = CCYS.map(c => { const bb = D.ccy[c]?.bias ?? 0, col = bb > 0 ? 'var(--up)' : bb < 0 ? 'var(--dn)' : 'var(--pur2)', g = dots.append('g').attr('class', 'cb').style('cursor', 'pointer').on('click', () => dotOpen(el, c));
+    g.append('circle').attr('class', 'pulse').attr('r', 5).attr('fill', col).attr('opacity', .6); g.append('circle').attr('r', 5).attr('fill', col).attr('filter', 'url(#gglow)'); g.append('circle').attr('r', 1.8).attr('fill', 'var(--tx)');
     const [lx, ly] = LABEL_OFF[c] ?? [10, -8], left = lx < 0;
-    if (Math.abs(lx) > 20 || Math.abs(ly) > 18) g.append('line').attr('x1', 0).attr('y1', 0).attr('x2', lx * 0.8).attr('y2', ly * 0.8).attr('stroke', 'rgba(238,240,251,.35)');
+    if (Math.abs(lx) > 20 || Math.abs(ly) > 18) g.append('line').attr('x1', 0).attr('y1', 0).attr('x2', lx * 0.8).attr('y2', ly * 0.8).attr('stroke', 'rgba(var(--txrgb),.35)');
     g.append('text').attr('class', 'lab').attr('x', lx).attr('y', ly).attr('text-anchor', left ? 'end' : 'start').text(`${BANKSHORT[c]} ${pol(c) ? pct(pol(c).rate) : ''}`);
     g.append('text').attr('class', 'lab2').attr('x', lx).attr('y', ly + 12).attr('text-anchor', left ? 'end' : 'start').attr('fill', col).text(`${c} ${bb > 0 ? '▲' : bb < 0 ? '▼' : '●'}`);
     return { c, g }; });
@@ -517,9 +524,9 @@ function regimeGauge(tone, conviction) {
   const W = 220, H = 128, cx = 110, cy = 112, R = 92, ang = a => [cx + R * Math.cos(a), cy - R * Math.sin(a)];
   const arc = (a0, a1, col) => { const [x0, y0] = ang(a0), [x1, y1] = ang(a1); return `<path d="M${x0},${y0} A${R},${R} 0 0 1 ${x1},${y1}" stroke="${col}" stroke-width="12" fill="none" stroke-linecap="round"/>`; };
   const na = Math.PI / 2 - v * Math.PI / 2, [nx, ny] = [cx + (R - 18) * Math.cos(na), cy - (R - 18) * Math.sin(na)];
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:240px" role="img" aria-label="regime dial"><defs><linearGradient id="rg" x1="0" x2="1"><stop offset="0" stop-color="#ff5d78"/><stop offset=".5" stop-color="#3a4170"/><stop offset="1" stop-color="#2fd39a"/></linearGradient></defs>
-${arc(Math.PI - 0.02, 0.02, 'url(#rg)')}<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="#eef0fb" stroke-width="3" stroke-linecap="round" style="filter:drop-shadow(0 0 6px rgba(255,255,255,.5))"/><circle cx="${cx}" cy="${cy}" r="6" fill="#eef0fb"/>
-<text x="16" y="${H - 2}" fill="#ff5d78" font-family="JetBrains Mono" font-size="10" letter-spacing="1">RISK-OFF</text><text x="${W - 16}" y="${H - 2}" text-anchor="end" fill="#2fd39a" font-family="JetBrains Mono" font-size="10" letter-spacing="1">RISK-ON</text></svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:240px" role="img" aria-label="regime dial"><defs><linearGradient id="rg" x1="0" x2="1"><stop offset="0" stop-color="var(--dn)"/><stop offset=".5" stop-color="var(--gauge-mid)"/><stop offset="1" stop-color="var(--up)"/></linearGradient></defs>
+${arc(Math.PI - 0.02, 0.02, 'url(#rg)')}<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="var(--tx)" stroke-width="3" stroke-linecap="round" style="filter:drop-shadow(0 0 6px rgba(var(--txrgb),.5))"/><circle cx="${cx}" cy="${cy}" r="6" fill="var(--tx)"/>
+<text x="16" y="${H - 2}" fill="var(--dn)" font-family="JetBrains Mono" font-size="10" letter-spacing="1">RISK-OFF</text><text x="${W - 16}" y="${H - 2}" text-anchor="end" fill="var(--up)" font-family="JetBrains Mono" font-size="10" letter-spacing="1">RISK-ON</text></svg>`;
 }
 // a score ring, signed −5..+5: filled by |score| / 5, coloured by direction; "–" when there is no data
 function ring(score, size = 58, word = '') {
@@ -533,39 +540,44 @@ async function sparkline(el, inst, c) {
   const r = await bars(inst, 3); const b = r?.bars ?? []; if (b.length < 5) { el.remove(); return; }
   const L = c.levels, ys = b.map(x => x.close).concat(L ? [L.up?.p50, L.down?.p50].filter(Number.isFinite) : []);
   const lo = Math.min(...ys), hi = Math.max(...ys), W = 300, H = 64, X = i => (i / (b.length - 1)) * W, Y = v => H - 4 - ((v - lo) / (hi - lo || 1)) * (H - 8);
-  const d = Math.sign(DIR[c.rating] ?? 0), col = b.at(-1).close >= b[0].close ? '#2fd39a' : '#ff5d78', id = 'sg' + inst;
+  const d = Math.sign(DIR[c.rating] ?? 0), col = b.at(-1).close >= b[0].close ? 'var(--up)' : 'var(--dn)', id = 'sg' + inst;
   const line = b.map((x, i) => `${X(i).toFixed(1)},${Y(x.close).toFixed(1)}`).join(' ');
   const hl = (v, colr, dash) => (Number.isFinite(v) ? `<line x1="0" x2="${W}" y1="${Y(v)}" y2="${Y(v)}" stroke="${colr}" stroke-width="1" stroke-dasharray="${dash}" opacity=".8"/>` : '');
   el.innerHTML = `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${inst} last three sessions"><defs><linearGradient id="${id}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".35"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
-<polygon points="0,${H} ${line} ${W},${H}" fill="url(#${id})"/>${L ? hl(L.open, '#eef0fb', '2 3') + hl(d >= 0 ? L.up?.p50 : L.down?.p50, '#e8b85a', '4 3') : ''}<polyline points="${line}" fill="none" stroke="${col}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`;
+<polygon points="0,${H} ${line} ${W},${H}" fill="url(#${id})"/>${L ? hl(L.open, 'var(--tx)', '2 3') + hl(d >= 0 ? L.up?.p50 : L.down?.p50, 'var(--gold)', '4 3') : ''}<polyline points="${line}" fill="none" stroke="${col}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`;
 }
 // the full chart in an asset card: H1 candles, today's forecast lines, the entry zone and the invalidation
 async function assetChart(el, inst, c) {
   if (!window.LightweightCharts) { el.remove(); return; }
   const r = await bars(inst, 5); const b = r?.bars ?? []; if (!b.length) { el.innerHTML = '<p class="muted" style="padding:12px">No price bars.</p>'; return; }
   const dp = b[0].close >= 1000 ? 1 : b[0].close >= 100 ? 2 : b[0].close >= 10 ? 3 : 5;
-  const ch = LightweightCharts.createChart(el, { height: 320, layout: { background: { color: '#0c1124' }, textColor: '#a9b0d0', fontFamily: 'JetBrains Mono' }, grid: { vertLines: { color: 'rgba(44,56,102,.35)' }, horzLines: { color: 'rgba(44,56,102,.35)' } }, rightPriceScale: { borderColor: '#2c3866' }, timeScale: { borderColor: '#2c3866', timeVisible: true }, crosshair: { mode: 0 } });
-  const s = ch.addCandlestickSeries({ upColor: '#2fd39a', downColor: '#ff5d78', borderVisible: false, wickUpColor: '#2fd39a', wickDownColor: '#ff5d78', priceFormat: { type: 'price', precision: dp, minMove: 1 / 10 ** dp } });
+  const chartOpts = () => ({ layout: { background: { color: themeColor('bg1') }, textColor: themeColor('chart-text') }, grid: { vertLines: { color: themeColor('chart-grid') }, horzLines: { color: themeColor('chart-grid') } }, rightPriceScale: { borderColor: themeColor('line2') }, timeScale: { borderColor: themeColor('line2') } });
+  const seriesOpts = () => ({ upColor: themeColor('up'), downColor: themeColor('dn'), wickUpColor: themeColor('up'), wickDownColor: themeColor('dn') });
+  const ch = LightweightCharts.createChart(el, { height: 320, ...chartOpts(), layout: { ...chartOpts().layout, fontFamily: 'JetBrains Mono' }, timeScale: { ...chartOpts().timeScale, timeVisible: true }, crosshair: { mode: 0 } });
+  const s = ch.addCandlestickSeries({ ...seriesOpts(), borderVisible: false, priceFormat: { type: 'price', precision: dp, minMove: 1 / 10 ** dp } });
   s.setData(b);
-  const L = c.levels, pl = (price, color, title, style = 2) => Number.isFinite(price) && s.createPriceLine({ price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title });
-  if (L) { pl(L.open, '#eef0fb', 'open', 0); for (const q of ['p50', 'p75', 'p90']) { pl(L.up?.[q], 'rgba(47,211,154,.7)', `up ${q}`); pl(L.down?.[q], 'rgba(255,93,120,.7)', `dn ${q}`); } }
+  const plines = [], tcol = spec => (Array.isArray(spec) ? themeRgba(spec[0], spec[1]) : themeColor(spec));   // a line's colour is a token name, or [token, alpha]
+  const L = c.levels, pl = (price, spec, title, style = 2) => { if (!Number.isFinite(price)) return false; const ln = s.createPriceLine({ price, color: tcol(spec), lineWidth: 1, lineStyle: style, axisLabelVisible: true, title }); plines.push([ln, spec]); return ln; };
+  if (L) { pl(L.open, 'tx', 'open', 0); for (const q of ['p50', 'p75', 'p90']) { pl(L.up?.[q], ['up', .7], `up ${q}`); pl(L.down?.[q], ['dn', .7], `dn ${q}`); } }
   const z = priceNums(c.plan?.zone).filter(v => L ? v > L.down.p90 * 0.97 && v < L.up.p90 * 1.03 : true);
-  if (z.length >= 1) { pl(Math.min(...z), '#b4a9ff', 'entry', 0); if (z.length >= 2) pl(Math.max(...z), '#b4a9ff', 'entry', 0); }
-  const inv = priceNums(c.plan?.invalidation ?? c.invalidation).find(v => !L || (v > L.down.p90 * 0.97 && v < L.up.p90 * 1.03)); if (inv && (!L || (+inv > L.down.p90 * 0.97 && +inv < L.up.p90 * 1.03))) pl(+inv, '#ff5d78', 'invalid', 0);
+  if (z.length >= 1) { pl(Math.min(...z), 'pur2', 'entry', 0); if (z.length >= 2) pl(Math.max(...z), 'pur2', 'entry', 0); }
+  const inv = priceNums(c.plan?.invalidation ?? c.invalidation).find(v => !L || (v > L.down.p90 * 0.97 && v < L.up.p90 * 1.03)); if (inv && (!L || (+inv > L.down.p90 * 0.97 && +inv < L.up.p90 * 1.03))) pl(+inv, 'dn', 'invalid', 0);
   ch.timeScale().fitContent();
   new ResizeObserver(() => ch.applyOptions({ width: el.clientWidth })).observe(el);
+  const onTheme = () => { if (!el.isConnected) { window.removeEventListener('themechange', onTheme); return; } ch.applyOptions(chartOpts()); s.applyOptions(seriesOpts()); plines.forEach(([ln, spec]) => ln.applyOptions({ color: tcol(spec) })); };
+  window.addEventListener('themechange', onTheme);
 }
 // net currency exposure: before the cap (ghost) and after (solid)
 function exposureChart() {
   const x = D.run?.head?.book?.exposure; if (!x?.after) return '';
   const cs = CCYS.filter(c => x.after[c] != null || x.before?.[c] != null), m = Math.max(x.cap ?? 4, ...cs.map(c => Math.abs(x.before?.[c] ?? 0)), 1), w = v => (Math.abs(v) / m) * 50;
   return `<div class="card"><div class="ch"><span class="lbl">Net currency exposure</span><span class="r muted">after the ±${x.cap} cap · ghost = before</span></div>${cs.map(c => { const a = x.after[c] ?? 0, b = x.before?.[c] ?? 0;
-    return `<div style="display:grid;grid-template-columns:44px 1fr 52px;gap:8px;align-items:center;margin:5px 0"><b class="mono">${c}</b><div style="position:relative;height:14px;background:var(--bg3);border-radius:4px"><i style="position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--line2)"></i>${b !== a ? `<i style="position:absolute;top:3px;height:8px;border-radius:3px;${b >= 0 ? `left:50%` : `right:50%`};width:${w(b)}%;border:1px dashed ${b >= 0 ? 'var(--up)' : 'var(--dn)'};opacity:.6"></i>` : ''}<i style="position:absolute;top:2px;height:10px;border-radius:3px;${a >= 0 ? `left:50%` : `right:50%`};width:${w(a)}%;background:${a >= 0 ? 'var(--up)' : 'var(--dn)'};box-shadow:0 0 8px ${a >= 0 ? 'rgba(47,211,154,.5)' : 'rgba(255,93,120,.5)'}"></i>${[-1, 1].map(sg => `<i style="position:absolute;top:-2px;bottom:-2px;left:${50 + sg * (x.cap / m) * 50}%;width:1px;background:var(--gold);opacity:.6"></i>`).join('')}</div><span class="mono ${dirCls(a)}" style="font-size:12px">${f(a, 1)}</span></div>`; }).join('')}</div>`;
+    return `<div style="display:grid;grid-template-columns:44px 1fr 52px;gap:8px;align-items:center;margin:5px 0"><b class="mono">${c}</b><div style="position:relative;height:14px;background:var(--bg3);border-radius:4px"><i style="position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--line2)"></i>${b !== a ? `<i style="position:absolute;top:3px;height:8px;border-radius:3px;${b >= 0 ? `left:50%` : `right:50%`};width:${w(b)}%;border:1px dashed ${b >= 0 ? 'var(--up)' : 'var(--dn)'};opacity:.6"></i>` : ''}<i style="position:absolute;top:2px;height:10px;border-radius:3px;${a >= 0 ? `left:50%` : `right:50%`};width:${w(a)}%;background:${a >= 0 ? 'var(--up)' : 'var(--dn)'};box-shadow:0 0 8px ${a >= 0 ? 'rgba(var(--uprgb),.5)' : 'rgba(var(--dnrgb),.5)'}"></i>${[-1, 1].map(sg => `<i style="position:absolute;top:-2px;bottom:-2px;left:${50 + sg * (x.cap / m) * 50}%;width:1px;background:var(--gold);opacity:.6"></i>`).join('')}</div><span class="mono ${dirCls(a)}" style="font-size:12px">${f(a, 1)}</span></div>`; }).join('')}</div>`;
 }
 // a donut of the long share
 function donut(pct, label, d24) {
   const r = 26, C = 2 * Math.PI * r;
-  return `<div class="donut"><svg width="72" height="72" viewBox="0 0 72 72" role="img" aria-label="${label} ${pct.toFixed(0)}% long"><circle cx="36" cy="36" r="${r}" stroke="#ff5d78" stroke-width="8" fill="none" opacity=".85"/><circle cx="36" cy="36" r="${r}" stroke="#2fd39a" stroke-width="8" fill="none" stroke-dasharray="${C * pct / 100} ${C}" transform="rotate(-90 36 36)"/><text x="36" y="34" text-anchor="middle" fill="#eef0fb" font-family="JetBrains Mono" font-weight="700" font-size="13">${pct.toFixed(0)}%</text><text x="36" y="47" text-anchor="middle" fill="#6d7599" font-family="JetBrains Mono" font-size="8">LONG</text></svg><b>${esc(label)}</b><span class="mono ${dirCls(d24)}" style="font-size:10.5px">${d24 == null ? '' : f(d24, 1) + ' 24h'}</span></div>`;
+  return `<div class="donut"><svg width="72" height="72" viewBox="0 0 72 72" role="img" aria-label="${label} ${pct.toFixed(0)}% long"><circle cx="36" cy="36" r="${r}" stroke="var(--dn)" stroke-width="8" fill="none" opacity=".85"/><circle cx="36" cy="36" r="${r}" stroke="var(--up)" stroke-width="8" fill="none" stroke-dasharray="${C * pct / 100} ${C}" transform="rotate(-90 36 36)"/><text x="36" y="34" text-anchor="middle" fill="var(--tx)" font-family="JetBrains Mono" font-weight="700" font-size="13">${pct.toFixed(0)}%</text><text x="36" y="47" text-anchor="middle" fill="var(--tx3)" font-family="JetBrains Mono" font-size="8">LONG</text></svg><b>${esc(label)}</b><span class="mono ${dirCls(d24)}" style="font-size:10.5px">${d24 == null ? '' : f(d24, 1) + ' 24h'}</span></div>`;
 }
 // the US curve now and 20 sessions ago
 function curveChart() {
@@ -574,7 +586,7 @@ function curveChart() {
   const now = pts.map(([l, k]) => [l, R[k].value]), then = pts.map(([l, k]) => [l, R[k].value - (ch[k] ?? 0) / 100]);
   const all = [...now, ...then].map(p => p[1]), lo = Math.min(...all) - 0.1, hi = Math.max(...all) + 0.1, W = 320, H = 150, X = i => 30 + i * ((W - 60) / (pts.length - 1)), Y = v => H - 22 - ((v - lo) / (hi - lo)) * (H - 40);
   const ln = (p, col, dash) => `<polyline points="${p.map((q, i) => `${X(i)},${Y(q[1])}`).join(' ')}" fill="none" stroke="${col}" stroke-width="2" ${dash ? 'stroke-dasharray="4 4"' : ''}/>${p.map((q, i) => `<circle cx="${X(i)}" cy="${Y(q[1])}" r="3.5" fill="${col}"/>`).join('')}`;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-height:180px" role="img" aria-label="US yield curve">${ln(then, '#6d7599', true)}${ln(now, '#e8b85a')}${now.map((q, i) => `<text x="${X(i)}" y="${H - 6}" text-anchor="middle" fill="#a9b0d0" font-family="JetBrains Mono" font-size="10">${q[0]}</text><text x="${X(i)}" y="${Y(q[1]) - 9}" text-anchor="middle" fill="#eef0fb" font-family="JetBrains Mono" font-size="10">${q[1].toFixed(2)}</text>`).join('')}</svg><div class="muted"><span style="color:var(--gold)">●</span> now · <span>◌</span> 20 sessions ago</div>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-height:180px" role="img" aria-label="US yield curve">${ln(then, 'var(--tx3)', true)}${ln(now, 'var(--gold)')}${now.map((q, i) => `<text x="${X(i)}" y="${H - 6}" text-anchor="middle" fill="var(--tx2)" font-family="JetBrains Mono" font-size="10">${q[0]}</text><text x="${X(i)}" y="${Y(q[1]) - 9}" text-anchor="middle" fill="var(--tx)" font-family="JetBrains Mono" font-size="10">${q[1].toFixed(2)}</text>`).join('')}</svg><div class="muted"><span style="color:var(--gold)">●</span> now · <span>◌</span> 20 sessions ago</div>`;
 }
 
 
@@ -670,13 +682,13 @@ let GYV = 'all';
 globalThis.setGyView = k => { GYV = k; document.querySelectorAll('table.gyt').forEach(t => { t.dataset.gy = k; }); document.querySelectorAll('[data-gyv]').forEach(b => b.setAttribute('aria-pressed', b.dataset.gyv === k)); };
 function boardsHtml() {
   const gy = E['global-yields'], cb = E['credit-board'], lb = E['liquidity-board'], tp = E['term-premium'], xb = E['xccy-basis'];
-  const bp = v => (v == null ? '–' : `${v > 0 ? '+' : ''}${Math.round(v)}bp`), heat = (v, m = 30) => (v == null ? 'transparent' : v > 0 ? `rgba(255,93,120,${Math.min(0.55, 0.08 + Math.abs(v) / m * 0.4).toFixed(2)})` : `rgba(47,211,154,${Math.min(0.55, 0.08 + Math.abs(v) / m * 0.4).toFixed(2)})`);
+  const bp = v => (v == null ? '–' : `${v > 0 ? '+' : ''}${Math.round(v)}bp`), heat = (v, m = 30) => (v == null ? 'transparent' : v > 0 ? `rgba(var(--dnrgb),${Math.min(0.55, 0.08 + Math.abs(v) / m * 0.4).toFixed(2)})` : `rgba(var(--uprgb),${Math.min(0.55, 0.08 + Math.abs(v) / m * 0.4).toFixed(2)})`);
   const CS = { stress: 'dn', widening: 'gold', normal: 'up', tight: 'gold' }, LS = { draining: 'dn', adding: 'up', steady: '' }, BS = { 'dollar squeeze': 'dn', 'dollars dear': 'gold', normal: 'up' };
   return `${gy?.ok ? `<div class="sec"><h2>Global yields</h2><span class="lbl">2-year (UK 5-year) and 10-year government yields · the 2y gap to the US is a core FX driver · daily from each issuer</span></div>
 <div class="card scroll"><div class="filters" role="group" aria-label="Global yields: columns" style="margin-bottom:8px">${[['all', 'All'], ['l', 'Levels'], ['c', '20-day changes'], ['g', 'Gap to US']].map(([k, t]) => `<button aria-pressed="${GYV === k}" data-gyv="${k}" onclick="setGyView('${k}')">${t}</button>`).join('')}</div><table class="gyt" data-gy="${GYV}"><thead><tr><th>Country</th><th class="n gy-l">2y</th><th class="n gy-l">10y</th><th class="n gy-l">10y−2y</th><th class="n gy-c">2y, 20d</th><th class="n gy-c">10y, 20d</th><th class="n gy-g">2y gap to US</th><th class="n gy-g">Gap, 20d</th><th class="gy-g">Gap, 60d</th><th class="n gy-g">Currency vs USD, 20d</th><th class="n gy-g">Gap ↔ FX</th></tr></thead><tbody>${gy.rows.map(r => `<tr title="${esc(r.note ?? '')}"><td><b>${esc(r.short)}</b> <span class="muted">${esc(r.ccy)}</span>${r.note ? ' <span class="muted">*</span>' : ''}</td><td class="n mono gy-l">${r.y2 != null ? r.y2.toFixed(2) + '%' : '–'}</td><td class="n mono gy-l">${r.y10 != null ? r.y10.toFixed(2) + '%' : '–'}</td><td class="n mono gy-l">${bp(r.slope)}</td><td class="n mono gy-c" style="background:${heat(r.chg2y20d)}">${bp(r.chg2y20d)}</td><td class="n mono gy-c" style="background:${heat(r.chg10y20d)}">${bp(r.chg10y20d)}</td><td class="n mono gy-g">${r.gapToUs == null ? '–' : bp(r.gapToUs)}</td><td class="n mono gy-g ${r.gapChg20d > 0 ? 'up' : r.gapChg20d < 0 ? 'dn' : ''}">${r.gapChg20d == null ? '–' : bp(r.gapChg20d)}</td><td class="gy-g">${spk(r.sparkGap, 90, 22)}</td><td class="n mono gy-g ${r.fxChg20d > 0 ? 'up' : r.fxChg20d < 0 ? 'dn' : ''}">${r.fxChg20d == null ? '–' : sgn(r.fxChg20d) + '%'}</td><td class="n mono gy-g">${r.gapFxCorr == null ? '–' : sgn(r.gapFxCorr)}</td></tr>`).join('')}</tbody></table>
 <p class="muted" style="font-size:12px">A widening 2y gap in a currency's favour (green) usually lifts it against the dollar; "gap ↔ FX" is how closely the gap and the currency have moved together day to day over 60 days (1 = in lockstep). * The BoE publishes no clean 2-year gilt series, so the UK row uses the 5-year.${Object.keys(gy.errors ?? {}).length ? ` Missing: ${Object.keys(gy.errors).map(esc).join(', ')}.` : ''}</p></div>` : ''}
 <div class="grid g2" style="margin-top:14px">
-${cb?.ok ? `<div class="card"><div class="ch"><span class="lbl">Credit spreads</span><span class="r">${cb.state ? `<span class="chip ${CS[cb.state] ?? ''}">${esc(cb.state)}</span>` : ''}</span></div><table><thead><tr><th>Index</th><th class="n">Spread</th><th class="n">20d</th><th class="n">1y pct</th><th class="n">5y pct</th><th></th></tr></thead><tbody>${cb.rows.filter(r => r.oas != null).map(r => `<tr><td>${esc(r.label)}</td><td class="n mono">${r.oas}bp</td><td class="n mono" style="background:${heat(r.chg20d, 60)}">${bp(r.chg20d)}</td><td class="n mono">${r.pctile1y ?? '–'}</td><td class="n mono">${r.pctile5y ?? '–'}</td><td>${spk(r.spark, 90, 22, r.chg20d > 0 ? '#ff5d78' : '#2fd39a')}</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px">Option-adjusted spreads over government bonds. Widening (red) = investors demanding more to lend to companies, usually risk-off for AUD, NZD, CAD and equities, supportive of JPY and CHF.</p></div>` : ''}
+${cb?.ok ? `<div class="card"><div class="ch"><span class="lbl">Credit spreads</span><span class="r">${cb.state ? `<span class="chip ${CS[cb.state] ?? ''}">${esc(cb.state)}</span>` : ''}</span></div><table><thead><tr><th>Index</th><th class="n">Spread</th><th class="n">20d</th><th class="n">1y pct</th><th class="n">5y pct</th><th></th></tr></thead><tbody>${cb.rows.filter(r => r.oas != null).map(r => `<tr><td>${esc(r.label)}</td><td class="n mono">${r.oas}bp</td><td class="n mono" style="background:${heat(r.chg20d, 60)}">${bp(r.chg20d)}</td><td class="n mono">${r.pctile1y ?? '–'}</td><td class="n mono">${r.pctile5y ?? '–'}</td><td>${spk(r.spark, 90, 22, r.chg20d > 0 ? 'var(--dn)' : 'var(--up)')}</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px">Option-adjusted spreads over government bonds. Widening (red) = investors demanding more to lend to companies, usually risk-off for AUD, NZD, CAD and equities, supportive of JPY and CHF.</p></div>` : ''}
 ${lb?.ok ? `<div class="card"><div class="ch"><span class="lbl">Fed liquidity</span><span class="r">${lb.state ? `<span class="chip ${LS[lb.state] ?? ''}">${esc(lb.state)}</span>` : ''}</span></div><table><thead><tr><th></th><th class="n">$bn</th><th class="n">4 weeks</th><th class="n">13 weeks</th><th></th></tr></thead><tbody>${lb.items.map(i => `<tr><td>${esc(i.label)}</td><td class="n mono">${i.value != null ? Math.round(i.value).toLocaleString('en-GB') : '–'}</td><td class="n mono ${i.chg4w > 0 ? 'up' : i.chg4w < 0 ? 'dn' : ''}">${i.chg4w != null ? sgn(i.chg4w, 0) : '–'}</td><td class="n mono">${i.chg13w != null ? sgn(i.chg13w, 0) : '–'}</td><td>${spk(i.spark, 90, 22)}</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px">Net liquidity = the Fed's balance sheet minus the Treasury's cash and reverse repo. Falling net liquidity has tended to weigh on risk assets and support the dollar.</p></div>` : ''}
 ${tp?.ok ? `<div class="card"><div class="ch"><span class="lbl">US 10-year term premium</span><span class="r muted">${esc(tp.asOf)}</span></div><div class="grid g4"><div><span class="lbl">Term premium</span><div class="mono" style="font-size:20px">${tp.value}%</div></div><div><span class="lbl">20 days</span><div class="mono" style="font-size:20px">${bp(tp.chg20d)}</div></div><div><span class="lbl">Expected rates part</span><div class="mono" style="font-size:20px">${tp.expectations ?? '–'}%</div></div><div><span class="lbl">5y percentile</span><div class="mono" style="font-size:20px">${tp.pctile5y ?? '–'}</div></div></div>${spk(tp.spark, 300, 40)}<p class="muted" style="font-size:12px">${esc(tp.label)}. A rising term premium lifts long yields without a hawkish Fed: fiscal or supply worries rather than rate expectations.</p></div>` : ''}
 <div class="card"><div class="ch"><span class="lbl">Cross-currency basis</span><span class="r">${xb?.state ? `<span class="chip ${BS[xb.state] ?? ''}">${esc(xb.state)}</span>` : ''}${xb?.ageH != null ? ` <span class="muted">${xb.ageH}h old</span>` : ''}</span></div>${xb?.ok ? `<table><thead><tr><th></th><th class="n">Basis</th><th class="n">5 days</th><th>Contract</th><th></th></tr></thead><tbody>${xb.rows.map(r => `<tr><td><b>${esc(r.ccy)}</b>/USD <span class="muted" style="font-size:11px">${esc(r.rate)}</span></td><td class="n mono ${r.basis < -30 ? 'dn' : ''}">${r.basis != null ? sgn(r.basis, 1) + 'bp' : '–'}</td><td class="n mono">${r.chg5d != null ? sgn(r.chg5d, 1) : '–'}</td><td class="mono muted">${esc(r.contract ?? '')}${r.t ? ` · ${r.t}d` : ''}</td><td>${spk(r.spark, 90, 22)}</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px">${esc(xb.label)}. Below −30bp dollars are dear offshore; JPY usually carries the widest premium.</p>` : `<p class="muted">${esc(xb?.error ?? 'not available')}</p>`}</div>
@@ -704,7 +716,7 @@ function skewHtml() {
   const sk = E['options-skew'];
   if (!sk) return '';
   if (!sk.ok) return `<div class="sec"><h2>Options skew</h2><span class="lbl">risk reversals, butterflies, at-the-money vol</span></div><div class="card muted">${esc(sk.error ?? 'No options pull yet.')}</div>`;
-  const rrCell = v => `<td class="n mono" style="background:${v == null ? 'transparent' : v > 0 ? `rgba(47,211,154,${Math.min(0.5, 0.08 + Math.abs(v) / 4).toFixed(2)})` : `rgba(255,93,120,${Math.min(0.5, 0.08 + Math.abs(v) / 4).toFixed(2)})`}">${sgn(v)}</td>`;
+  const rrCell = v => `<td class="n mono" style="background:${v == null ? 'transparent' : v > 0 ? `rgba(var(--uprgb),${Math.min(0.5, 0.08 + Math.abs(v) / 4).toFixed(2)})` : `rgba(var(--dnrgb),${Math.min(0.5, 0.08 + Math.abs(v) / 4).toFixed(2)})`}">${sgn(v)}</td>`;
   const T = ['1w', '1m', '3m'];
   return `<div class="sec"><h2>Options skew</h2><span class="lbl">25-delta risk reversals, butterflies and at-the-money vol · IBKR futures options · ${sk.ageH != null ? `${sk.ageH}h old` : ''}</span></div>
 <div class="card scroll"><table><thead><tr><th>Market</th>${T.map(t => `<th class="n">RR ${t}</th>`).join('')}<th class="n">ATM 1m</th><th class="n">Fly 1m</th><th class="n">1w − 1m</th><th class="n">RR 5d</th><th class="n">Pctl</th><th>Reading</th><th>RR, 60 days</th></tr></thead><tbody>${sk.rows.map(r => `<tr title="${esc(r.label)}${r.data ? ` · ${esc(r.data)} data` : ''}"><td><b>${esc(r.pair)}</b>${r.data && r.data !== 'live' ? ` <span class="muted" style="font-size:11px">${esc(r.data)}</span>` : ''}</td>${T.map(t => rrCell(r.tenors?.[t]?.rr25 != null ? +(r.tenors[t].rr25 * (r.sign ?? 1)).toFixed(2) : null)).join('')}<td class="n mono">${r.atm != null ? r.atm.toFixed(1) : '–'}</td><td class="n mono">${sgn(r.bf)}</td><td class="n mono ${r.slope >= 1 ? 'gold' : ''}">${sgn(r.slope)}</td><td class="n mono">${sgn(r.rr5d != null ? r.rr5d * (r.sign ?? 1) : null)}</td><td class="n mono">${r.rrPct ?? '–'}</td><td style="font-size:12px">${esc(r.lean)}${r.event ? `<br><span class="gold">${esc(r.event)}</span>` : ''}</td><td>${spk((r.spark ?? []).map(v => v * (r.sign ?? 1)), 100, 24)}</td></tr>`).join('')}</tbody></table>
@@ -713,7 +725,7 @@ function skewHtml() {
 // When each market moves: hourly ranges by London hour (Assets tab).
 function sessionHeatHtml() {
   const sh = E['session-heat']; if (!sh?.ok) return '';
-  const mx = Math.max(...sh.rows.flatMap(r => r.share)), cell = v => `rgba(232,184,90,${Math.min(0.95, 0.06 + (v / mx) * 0.9).toFixed(2)})`;
+  const mx = Math.max(...sh.rows.flatMap(r => r.share)), cell = v => `rgba(var(--goldrgb),${Math.min(0.95, 0.06 + (v / mx) * 0.9).toFixed(2)})`;
   return `<div class="sec"><h2>When markets move</h2><span class="lbl">share of the day's range in each London hour · last ${esc(sh.window)} of hourly bars</span></div><div class="card scroll"><table style="min-width:640px"><thead><tr><th></th>${Array.from({ length: 24 }, (_, h) => `<th class="n mono" style="font-size:10px;padding:2px">${String(h).padStart(2, '0')}</th>`).join('')}</tr></thead><tbody>${sh.rows.map(r => `<tr><td class="mono"><b>${esc(r.inst)}</b></td>${r.share.map((v, h) => `<td title="${esc(r.inst)} ${String(h).padStart(2, '0')}:00 London: ${r.hours[h]}% average range, ${v}% of the day" style="padding:0;background:${cell(v)};height:22px;${h === r.peakHour ? 'outline:1px solid var(--tx)' : ''}"></td>`).join('')}</tr>`).join('')}</tbody></table>
 <p class="muted" style="font-size:12px">${esc(sh.label)} The outlined cell is each market's busiest hour. 07-09 is the London open, 13-15 the US data and New York open.</p></div>`;
 }
@@ -786,7 +798,7 @@ function enrichPos() {
   const el = slot('pos', 'xp'); if (!el) return;
   const c = E['cot-extremes'], rows = Array.isArray(c) ? c : (c?.rows ?? c?.data ?? c?.instruments ?? []);
   if (!rows.length) { el.innerHTML = ''; return; }
-  const G = ['fx', 'rates', 'equities', 'metals', 'energy', 'grains', 'softs', 'livestock', 'crypto'], heat = p => (p == null ? 'transparent' : p >= 50 ? `rgba(47,211,154,${((p - 50) / 50 * 0.6).toFixed(2)})` : `rgba(255,93,120,${((50 - p) / 50 * 0.6).toFixed(2)})`);
+  const G = ['fx', 'rates', 'equities', 'metals', 'energy', 'grains', 'softs', 'livestock', 'crypto'], heat = p => (p == null ? 'transparent' : p >= 50 ? `rgba(var(--uprgb),${((p - 50) / 50 * 0.6).toFixed(2)})` : `rgba(var(--dnrgb),${((50 - p) / 50 * 0.6).toFixed(2)})`);
   el.innerHTML = `<div class="sec"><h2>Speculators across 35 futures</h2><span class="lbl">CFTC COT: where speculators' net position sits in its own history (0-100th percentile), weekly${rows[0]?.reportDate ? ` · ${esc(rows[0].reportDate)}` : ''}</span></div><div class="card scroll"><table><thead><tr><th>Market</th><th>Group</th><th class="n">Spec percentile</th><th class="n">z</th><th class="n">Share of OI</th><th class="n">4w change</th></tr></thead><tbody>${[...rows].sort((a, b) => G.indexOf(a.group) - G.indexOf(b.group) || Math.abs((b.specPct ?? 50) - 50) - Math.abs((a.specPct ?? 50) - 50)).map(r => `<tr><td><b>${esc(r.label ?? r.sym)}</b></td><td class="muted">${esc(r.group ?? '')}</td><td class="n mono" style="background:${heat(r.specPct)}">${r.specPct != null ? Math.round(r.specPct) : '–'}</td><td class="n mono">${sgn(r.specZ, 1)}</td><td class="n mono">${r.specSharePct != null ? Math.round(r.specSharePct) + '%' : r.specShare != null ? (+r.specShare).toFixed(0) + '%' : '–'}</td><td class="n mono">${sgn(r.specShareChg4w, 1)}pp</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px">Green = speculators longer than usual, red = shorter. Extremes are where crowding reverses; MXN, the dollar index, Treasuries, equity futures and commodities sit beside the G10 currencies.</p></div>`;
 }
 function header() {
@@ -882,7 +894,7 @@ ${v.lastWeek ? `<details><summary>Last week</summary><p class="muted">${esc(v.la
 function bestPairs() {
   const p = D.ps; if (!p?.ok || !p.picks?.length) return '';
   const C = ['EUR', 'GBP', 'AUD', 'NZD', 'USD', 'CAD', 'CHF', 'JPY'], mx = Math.max(0.01, ...C.flatMap(a => C.map(b => Math.abs(p.matrix[a]?.[b] ?? 0))));
-  const bg = v => (v == null ? 'transparent' : v > 0 ? `rgba(47,211,154,${(0.1 + 0.6 * v / mx).toFixed(2)})` : v < 0 ? `rgba(255,93,120,${(0.1 + 0.6 * -v / mx).toFixed(2)})` : 'transparent');
+  const bg = v => (v == null ? 'transparent' : v > 0 ? `rgba(var(--uprgb),${(0.1 + 0.6 * v / mx).toFixed(2)})` : v < 0 ? `rgba(var(--dnrgb),${(0.1 + 0.6 * -v / mx).toFixed(2)})` : 'transparent');
   const sw = p.strongestWeakest;
   return `<div class="card" style="margin-top:14px"><div class="hhead"><span class="lbl">Best expression · how today's currency view is best traded</span></div>
 ${sw ? `<p style="margin:4px 0 10px">Cleanest expression of the view: <b class="mono">${esc(sw.direction === 'Long' ? sw.pair : sw.pair)}</b> ${esc(sw.direction.toLowerCase())} (${esc(p.ranked[0])} strongest, ${esc(p.ranked.at(-1))} weakest)${sw.usdFree ? ' · no dollar leg' : ''}.</p>` : ''}
@@ -911,7 +923,7 @@ function watchBoard() {
   const rows = names.map(n => ({ n, p: plan[n], px: last[n], s: st(n) })).sort((a, b) => rank[a.s[0]] - rank[b.s[0]]);
   // a bar from invalidation to target with the live price and the zone on it
   const bar = r => { const p = r.p, ends = [p.invalid, p.target, ...(p.zone ?? []), r.px].filter(Number.isFinite); if (ends.length < 2) return ''; const lo = Math.min(...ends), hi = Math.max(...ends), x = v => ((v - lo) / (hi - lo || 1)) * 100;
-    return `<div style="position:relative;height:16px;background:var(--bg3);border-radius:5px">${p.zone ? `<i style="position:absolute;top:2px;bottom:2px;left:${x(Math.min(...p.zone))}%;width:${Math.max(1.5, x(Math.max(...p.zone)) - x(Math.min(...p.zone)))}%;background:var(--purbg);border:1px solid rgba(139,124,246,.6);border-radius:3px"></i>` : ''}${Number.isFinite(p.invalid) ? `<i style="position:absolute;top:0;bottom:0;left:${x(p.invalid)}%;width:2px;background:var(--dn)"></i>` : ''}${Number.isFinite(p.target) ? `<i style="position:absolute;top:0;bottom:0;left:${x(p.target)}%;width:2px;background:var(--gold)"></i>` : ''}${Number.isFinite(r.px) ? `<i style="position:absolute;top:-3px;left:calc(${x(r.px)}% - 5px);width:10px;height:22px;border-radius:4px;background:#eef0fb;box-shadow:0 0 10px rgba(255,255,255,.6)"></i>` : ''}</div>`; };
+    return `<div style="position:relative;height:16px;background:var(--bg3);border-radius:5px">${p.zone ? `<i style="position:absolute;top:2px;bottom:2px;left:${x(Math.min(...p.zone))}%;width:${Math.max(1.5, x(Math.max(...p.zone)) - x(Math.min(...p.zone)))}%;background:var(--purbg);border:1px solid rgba(var(--purrgb),.6);border-radius:3px"></i>` : ''}${Number.isFinite(p.invalid) ? `<i style="position:absolute;top:0;bottom:0;left:${x(p.invalid)}%;width:2px;background:var(--dn)"></i>` : ''}${Number.isFinite(p.target) ? `<i style="position:absolute;top:0;bottom:0;left:${x(p.target)}%;width:2px;background:var(--gold)"></i>` : ''}${Number.isFinite(r.px) ? `<i style="position:absolute;top:-3px;left:calc(${x(r.px)}% - 5px);width:10px;height:22px;border-radius:4px;background:var(--tx);box-shadow:0 0 10px rgba(var(--txrgb),.6)"></i>` : ''}</div>`; };
   return `<div class="card"><div class="ch"><span class="lbl">Trade watch</span><span class="r muted">live price (white) against the zone (purple), first target (gold) and invalidation (red) · ${t.live ? 'watching' : 'not running now'}</span></div>
 <div class="scroll" style="max-height:560px;overflow-y:auto"><table><tbody>${rows.map(r => `<tr><td class="n" style="width:80px"><a href="#" data-inst="${esc(r.n)}" style="color:var(--tx);text-decoration:none">${esc(r.n)}</a></td><td style="width:90px">${rateChip(D.cards[r.n]?.rating)}</td><td style="min-width:160px">${bar(r)}</td><td class="n" style="width:80px">${px(r.px)}</td><td style="width:120px"><span class="chip ${r.s[1]}">${r.s[2]}</span></td></tr>`).join('')}</tbody></table></div>
 ${(t.events ?? []).length ? `<div class="drv">${t.events.slice(-8).reverse().map(e => `<span>${new Date(e.at).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })} ${esc(e.inst)} ${esc(e.kind)}</span>`).join('')}</div>` : ''}
@@ -1081,11 +1093,11 @@ function assets() {
 // ── MACRO ──
 function macro() {
   const rd = D.rd?.byCcy ?? {}, ry = D.ry?.byCcy ?? {}, cb = D.sc?.cbSentiment ?? {}, have = CCYS.filter(c => pol(c));
-  const heat = v => { const a = Math.min(1, Math.abs(v) / 4); return v > 0 ? `rgba(47,211,154,${0.08 + a * 0.45})` : v < 0 ? `rgba(255,93,120,${0.08 + a * 0.45})` : 'var(--bg3)'; };
+  const heat = v => { const a = Math.min(1, Math.abs(v) / 4); return v > 0 ? `rgba(var(--uprgb),${0.08 + a * 0.45})` : v < 0 ? `rgba(var(--dnrgb),${0.08 + a * 0.45})` : 'var(--bg3)'; };
   const R = D.rates?.now ?? {}, ch = D.rates?.change20d ?? {};
   const usRow = [['Policy', 'policy'], ['US 2y', 'us2y'], ['US 10y', 'us10y'], ['US 30y', 'us30y'], ['10y real', 'real'], ['Breakeven', 'bei'], ['SOFR', 'sofr']].filter(([, k]) => R[k]);
   const sc = D.sc?.ranked ?? [];
-  $('macro').innerHTML = `<div class="card hero glow" style="margin-bottom:14px"><div class="hhead"><span class="lbl">Central bank map</span><h2>Policy rates and stance</h2></div><div class="map" id="cbmap"></div><div class="legend"><span><i style="background:#3a2f8f"></i>dovish</span><span><i style="background:#e8b85a"></i>hawkish</span><span>dot size = policy rate</span></div></div>
+  $('macro').innerHTML = `<div class="card hero glow" style="margin-bottom:14px"><div class="hhead"><span class="lbl">Central bank map</span><h2>Policy rates and stance</h2></div><div class="map" id="cbmap"></div><div class="legend"><span><i style="background:var(--purdeep)"></i>dovish</span><span><i style="background:var(--gold)"></i>hawkish</span><span>dot size = policy rate</span></div></div>
 <div class="sec" style="margin-top:0"><h2>Central banks</h2><span class="lbl">policy rate, stance from the last statement, real 10y yield</span></div>
 <div class="grid g4">${CCYS.map(c => { const s = cb[c]; return `<div class="card click" tabindex="0" data-ccy="${c}"><div class="ch"><span style="font-size:20px">${FLAG[c]}</span><h3>${BANKSHORT[c]}</h3><span class="r">${s ? `<span class="chip ${s.regime === 'HAWKISH' ? 'gold' : s.regime === 'DOVISH' ? 'pur' : ''}">${esc(s.regime)}</span>` : ''}</span></div>
 <div class="mono" style="font-size:24px;font-weight:700">${pol(c) ? pct(pol(c).rate) : '–'}</div><div class="muted" title="${esc(pol(c)?.source ?? '')}">policy rate · ${esc(pol(c)?.asOf ?? 'not available')}${rd[c]?.latestRate != null ? ` · 3m ${rd[c].latestRate}%` : ''}</div>
@@ -1207,10 +1219,10 @@ function corrWeb(el, r) {
   const edges = [];
   for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const v = c.m[i][j]; if (Math.abs(v) >= 0.5) edges.push([i, j, v]); }
   edges.sort((a, b) => Math.abs(a[2]) - Math.abs(b[2]));
-  const node = i => { const [x, y, a] = pos[i], w = c.weights[i], rr = 5 + Math.min(12, Math.abs(w) * 9), col = w > 0 ? '#2fd39a' : '#ff5d78', lx = cx + (R + 16) * Math.cos(a), ly = cy + (R + 16) * Math.sin(a), anchor = Math.cos(a) > 0.2 ? 'start' : Math.cos(a) < -0.2 ? 'end' : 'middle';
-    return `<g class="wn" data-i="${i}" style="cursor:pointer"><circle cx="${x}" cy="${y}" r="${rr}" fill="${col}" opacity=".9" style="filter:drop-shadow(0 0 6px ${col})"/><text x="${lx}" y="${ly + 4}" text-anchor="${anchor}" fill="#a9b0d0" font-family="JetBrains Mono" font-size="10">${esc(c.names[i])}</text></g>`; };
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="correlation web"><circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(139,124,246,.12)"/>
-${edges.map(([i, j, v]) => { const [x1, y1] = pos[i], [x2, y2] = pos[j]; return `<path class="we" data-a="${i}" data-b="${j}" d="M${x1},${y1} Q${cx},${cy} ${x2},${y2}" fill="none" stroke="${v > 0 ? '#e8b85a' : '#8b7cf6'}" stroke-width="${(Math.abs(v) - 0.4) * 5}" opacity="${0.15 + (Math.abs(v) - 0.5) * 1.2}"/>`; }).join('')}
+  const node = i => { const [x, y, a] = pos[i], w = c.weights[i], rr = 5 + Math.min(12, Math.abs(w) * 9), col = w > 0 ? 'var(--up)' : 'var(--dn)', lx = cx + (R + 16) * Math.cos(a), ly = cy + (R + 16) * Math.sin(a), anchor = Math.cos(a) > 0.2 ? 'start' : Math.cos(a) < -0.2 ? 'end' : 'middle';
+    return `<g class="wn" data-i="${i}" style="cursor:pointer"><circle cx="${x}" cy="${y}" r="${rr}" fill="${col}" opacity=".9" style="filter:drop-shadow(0 0 6px ${col})"/><text x="${lx}" y="${ly + 4}" text-anchor="${anchor}" fill="var(--tx2)" font-family="JetBrains Mono" font-size="10">${esc(c.names[i])}</text></g>`; };
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="correlation web"><circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(var(--purrgb),.12)"/>
+${edges.map(([i, j, v]) => { const [x1, y1] = pos[i], [x2, y2] = pos[j]; return `<path class="we" data-a="${i}" data-b="${j}" d="M${x1},${y1} Q${cx},${cy} ${x2},${y2}" fill="none" stroke="${v > 0 ? 'var(--gold)' : 'var(--pur)'}" stroke-width="${(Math.abs(v) - 0.4) * 5}" opacity="${0.15 + (Math.abs(v) - 0.5) * 1.2}"/>`; }).join('')}
 ${order.map(node).join('')}</svg>
 <div class="muted"><span style="color:var(--gold)">━</span> the same bet (they win and lose together) · <span style="color:var(--pur2)">━</span> a hedge (one offsets the other) · dot size = card size · ${r.effectiveBets} effective bets across ${r.cards} cards. Hover a card.</div>`;
   el.querySelectorAll('.wn').forEach(g => { g.onmouseenter = () => { const i = g.dataset.i; el.querySelectorAll('.we').forEach(p => p.style.opacity = (p.dataset.a === i || p.dataset.b === i) ? 1 : 0.04); };
@@ -1220,9 +1232,9 @@ function strengthHeat(el, h) {
   const rows = (h?.rows ?? []).filter(r => r.biases);
   if (rows.length < 2) { el.innerHTML = `<p class="muted">${rows.length} desk day${rows.length === 1 ? '' : 's'} so far: the timeline fills in as the desk runs each morning.</p>${rows.length ? strengthStripFor(rows[0]) : ''}`; return; }
   const cw = Math.max(8, Math.min(48, 560 / rows.length)), W = 50 + rows.length * cw, H = 24 + CCYS.length * 22, every = Math.max(1, Math.ceil(40 / cw));   // a date label needs ~40px
-  const col = b => (b > 0 ? `rgba(47,211,154,${0.25 + 0.35 * Math.min(2, b)})` : b < 0 ? `rgba(255,93,120,${0.25 + 0.35 * Math.min(2, -b)})` : 'rgba(138,147,184,.18)');
-  el.innerHTML = `<div class="scroll"><svg viewBox="0 0 ${W} ${H}" width="${W}" style="max-width:100%" role="img" aria-label="currency bias by day">${CCYS.map((c, i) => `<text x="0" y="${20 + i * 22 + 14}" fill="#a9b0d0" font-family="JetBrains Mono" font-size="11">${c}</text>${rows.map((r, k) => `<rect x="${50 + k * cw}" y="${20 + i * 22}" width="${cw - 2}" height="18" rx="3" fill="${col(r.biases[c] ?? 0)}"><title>${r.date} ${c} ${r.biases[c] ?? 0}</title></rect>`).join('')}`).join('')}
-${rows.map((r, k) => (k % every === 0 ? `<text x="${50 + k * cw + (cw - 2) / 2}" y="12" text-anchor="middle" fill="#6d7599" font-family="JetBrains Mono" font-size="9">${r.date.slice(5)}</text>` : '')).join('')}</svg></div><div class="muted">Green = bullish bias that morning, red = bearish, by strength.</div>`;
+  const col = b => (b > 0 ? `rgba(var(--uprgb),${0.25 + 0.35 * Math.min(2, b)})` : b < 0 ? `rgba(var(--dnrgb),${0.25 + 0.35 * Math.min(2, -b)})` : 'rgba(var(--flatrgb),.18)');
+  el.innerHTML = `<div class="scroll"><svg viewBox="0 0 ${W} ${H}" width="${W}" style="max-width:100%" role="img" aria-label="currency bias by day">${CCYS.map((c, i) => `<text x="0" y="${20 + i * 22 + 14}" fill="var(--tx2)" font-family="JetBrains Mono" font-size="11">${c}</text>${rows.map((r, k) => `<rect x="${50 + k * cw}" y="${20 + i * 22}" width="${cw - 2}" height="18" rx="3" fill="${col(r.biases[c] ?? 0)}"><title>${r.date} ${c} ${r.biases[c] ?? 0}</title></rect>`).join('')}`).join('')}
+${rows.map((r, k) => (k % every === 0 ? `<text x="${50 + k * cw + (cw - 2) / 2}" y="12" text-anchor="middle" fill="var(--tx3)" font-family="JetBrains Mono" font-size="9">${r.date.slice(5)}</text>` : '')).join('')}</svg></div><div class="muted">Green = bullish bias that morning, red = bearish, by strength.</div>`;
 }
 const strengthStripFor = r => `<div class="drv">${CCYS.map(c => `<span class="${dirCls(r.biases[c])}">${c} ${r.biases[c] == null ? '–' : `${r.biases[c] > 0 ? '+' : ''}${r.biases[c]}`}</span>`).join('')}</div>`;
 function trackChart(el, h) {
@@ -1238,9 +1250,9 @@ function trackChart(el, h) {
   const W = 520, H = 220, X = i => 30 + (i / Math.max(1, rows.length - 1)) * (W - 40), Y = v => H - 24 - ((v - lo) / (hi - lo || 1)) * (H - 44), bw = Math.max(3, (W - 40) / rows.length * 0.6);
   const line = (arr, col, dash = '') => `<polyline points="${arr.map((v, i) => `${X(i)},${Y(v)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="2" ${dash ? `stroke-dasharray="${dash}"` : ''}/>`;
   const sm = Math.max(...rows.map(r => Math.abs(r.score.S)), 0.1), base = H - 24;
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="track record"><line x1="30" x2="${W - 10}" y1="${Y(0)}" y2="${Y(0)}" stroke="#2c3866"/>
-${rows.map((r, i) => `<rect x="${X(i) - bw / 2}" y="${r.score.S >= 0 ? Y(0) - Math.abs(r.score.S) / sm * 30 : Y(0)}" width="${bw}" height="${Math.abs(r.score.S) / sm * 30}" fill="${r.score.S >= 0 ? 'rgba(47,211,154,.45)' : 'rgba(255,93,120,.45)'}" ${r.score.counts ? '' : 'opacity=".4"'}><title>${r.date}: ${f(r.score.S)} u${r.score.counts ? '' : ' (not counted)'}</title></rect>`).join('')}
-${line(Dd, '#6d7599', '3 4')}${line(C, '#8b7cf6', '6 4')}${line(S, '#e8b85a')}<circle cx="${X(rows.length - 1)}" cy="${Y(S.at(-1))}" r="4" fill="#e8b85a" style="filter:drop-shadow(0 0 6px #e8b85a)"/></svg>
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="track record"><line x1="30" x2="${W - 10}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--line2)"/>
+${rows.map((r, i) => `<rect x="${X(i) - bw / 2}" y="${r.score.S >= 0 ? Y(0) - Math.abs(r.score.S) / sm * 30 : Y(0)}" width="${bw}" height="${Math.abs(r.score.S) / sm * 30}" fill="${r.score.S >= 0 ? 'rgba(var(--uprgb),.45)' : 'rgba(var(--dnrgb),.45)'}" ${r.score.counts ? '' : 'opacity=".4"'}><title>${r.date}: ${f(r.score.S)} u${r.score.counts ? '' : ' (not counted)'}</title></rect>`).join('')}
+${line(Dd, 'var(--tx3)', '3 4')}${line(C, 'var(--pur)', '6 4')}${line(S, 'var(--gold)')}<circle cx="${X(rows.length - 1)}" cy="${Y(S.at(-1))}" r="4" fill="var(--gold)" style="filter:drop-shadow(0 0 6px var(--gold))"/></svg>
 <div class="muted"><span style="color:var(--gold)">━</span> the desk, cumulative · <span style="color:var(--pur2)">╍</span> single-analyst control · <span>┈</span> long everything · bars = each day (faded = not counted). ${rows.length} scored day(s): running numbers, judged at 120.</div>`;
 }
 function waterfall(el, d) {
@@ -1248,10 +1260,10 @@ function waterfall(el, d) {
   if (!L) { el.innerHTML = '<p class="muted">Fills in from the first scored day: each layer of the desk (global ruling, currency ranking, asset desks, Head, sizing) scored as its own book on the same moves.</p>'; return; }
   const steps = [['Global', L.global?.score], ['Currency', L.currency?.score], ['Desks', L.desks?.score], ['Head', L.head?.score], ['Sized', L.sized?.score]].filter(([, v]) => Number.isFinite(v));
   const vals = steps.map(x => x[1]), lo = Math.min(0, ...vals), hi = Math.max(0, ...vals), W = 520, H = 220, bw = (W - 60) / steps.length, Y = v => 16 + (1 - (v - lo) / (hi - lo || 1)) * (H - 50);
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="attribution waterfall"><line x1="30" x2="${W - 10}" y1="${Y(0)}" y2="${Y(0)}" stroke="#2c3866"/>
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="attribution waterfall"><line x1="30" x2="${W - 10}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--line2)"/>
 ${steps.map(([l, v], i) => { const prev = i ? steps[i - 1][1] : 0, x = 40 + i * bw, top = Y(Math.max(prev, v)), h = Math.max(2, Math.abs(Y(prev) - Y(v))), up = v >= prev, final = i === steps.length - 1;
     const y0 = i === 0 || final ? Math.min(Y(0), Y(v)) : top, h0 = i === 0 || final ? Math.max(2, Math.abs(Y(0) - Y(v))) : h;
-    return `<rect x="${x}" y="${y0}" width="${bw * 0.62}" height="${h0}" rx="4" fill="${final ? '#e8b85a' : up ? '#2fd39a' : '#ff5d78'}" opacity=".85"/>${i < steps.length - 1 ? `<line x1="${x + bw * 0.62}" x2="${x + bw}" y1="${Y(v)}" y2="${Y(v)}" stroke="#6d7599" stroke-dasharray="3 3"/>` : ''}<text x="${x + bw * 0.31}" y="${H - 18}" text-anchor="middle" fill="#a9b0d0" font-family="JetBrains Mono" font-size="10">${l}</text><text x="${x + bw * 0.31}" y="${y0 - 5}" text-anchor="middle" fill="#eef0fb" font-family="JetBrains Mono" font-size="10">${f(v)}</text>`; }).join('')}</svg>
+    return `<rect x="${x}" y="${y0}" width="${bw * 0.62}" height="${h0}" rx="4" fill="${final ? 'var(--gold)' : up ? 'var(--up)' : 'var(--dn)'}" opacity=".85"/>${i < steps.length - 1 ? `<line x1="${x + bw * 0.62}" x2="${x + bw}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--tx3)" stroke-dasharray="3 3"/>` : ''}<text x="${x + bw * 0.31}" y="${H - 18}" text-anchor="middle" fill="var(--tx2)" font-family="JetBrains Mono" font-size="10">${l}</text><text x="${x + bw * 0.31}" y="${y0 - 5}" text-anchor="middle" fill="var(--tx)" font-family="JetBrains Mono" font-size="10">${f(v)}</text>`; }).join('')}</svg>
 <div class="muted">Each bar is that stage's book scored on the day (u); green where a stage improved on the one before, red where it gave back; gold is the sized book, the day score.</div>`;
 }
 
@@ -1265,8 +1277,8 @@ async function analystPanel(el) {
   const pc = x => (x == null ? '–' : `${Math.round(x * 100)}%`);
   const hitCls = x => (x == null ? 'fl' : x > 0.52 ? 'up' : x < 0.48 ? 'dn' : 'fl');
   const spark = pts => { const v = (pts ?? []).map(p => p.rolling).filter(Number.isFinite); if (v.length < 2) return '<span class="muted">–</span>';
-    const W = 120, H = 28, lo = Math.min(0, ...v), hi = Math.max(0, ...v), X = i => (i / (v.length - 1)) * W, Y = y => H - 3 - ((y - lo) / (hi - lo || 1)) * (H - 6), col = v.at(-1) >= 0 ? '#2fd39a' : '#ff5d78';
-    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="rolling edge"><line x1="0" x2="${W}" y1="${Y(0)}" y2="${Y(0)}" stroke="#2c3866"/><polyline points="${v.map((y, i) => `${X(i)},${Y(y)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="1.6"/><circle cx="${X(v.length - 1)}" cy="${Y(v.at(-1))}" r="2.5" fill="${col}"/></svg>`; };
+    const W = 120, H = 28, lo = Math.min(0, ...v), hi = Math.max(0, ...v), X = i => (i / (v.length - 1)) * W, Y = y => H - 3 - ((y - lo) / (hi - lo || 1)) * (H - 6), col = v.at(-1) >= 0 ? 'var(--up)' : 'var(--dn)';
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="rolling edge"><line x1="0" x2="${W}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--line2)"/><polyline points="${v.map((y, i) => `${X(i)},${Y(y)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="1.6"/><circle cx="${X(v.length - 1)}" cy="${Y(v.at(-1))}" r="2.5" fill="${col}"/></svg>`; };
   const wChip = a => `<span class="chip ${a.status === 'earned' ? 'up' : a.status === 'lagging' ? 'dn' : a.weight > 1.02 ? 'gold' : ''}">${a.weight.toFixed(2)} · ${esc(a.status)}</span>`;
   const bk = b => `<span class="${hitCls(b.rate)}">${pc(b.rate)}</span><span class="muted"> /${b.n}</span>`;
   A.sort((x, y) => y[1].weight - x[1].weight || y[1].days - x[1].days);
@@ -1291,26 +1303,26 @@ async function volChart(el, inst) {
   if (!r?.ok || !r.rows?.length) { el.innerHTML = `<p class="muted">${esc(r?.error ?? 'No archived forecasts yet.')}</p>`; return; }
   const rows = r.rows, W = 1000, H = 300, lo = 0, hi = Math.max(...rows.flatMap(x => [x.p75, x.hl])) * 1.08;
   const X = i => 46 + (i / Math.max(1, rows.length - 1)) * (W - 70), Y = v => H - 28 - ((v - lo) / (hi - lo)) * (H - 50);
-  const band = `<polygon points="${rows.map((x, i) => `${X(i)},${Y(x.p75)}`).join(' ')} ${rows.map((x, i) => `${X(i)},${Y(x.p50)}`).reverse().join(' ')}" fill="rgba(139,124,246,.22)"/>`;
-  const ln = k => `<polyline points="${rows.map((x, i) => `${X(i)},${Y(x[k])}`).join(' ')}" fill="none" stroke="${k === 'p50' ? '#8b7cf6' : '#b4a9ff'}" stroke-width="1.4" ${k === 'p75' ? 'stroke-dasharray="4 3"' : ''}/>`;
-  const dot = (x, i) => { const col = x.over75 ? '#ff5d78' : x.over50 ? '#e8b85a' : '#2fd39a'; return `<circle cx="${X(i)}" cy="${Y(x.hl)}" r="${rows.length > 60 ? 3 : 4}" fill="${col}" style="filter:drop-shadow(0 0 4px ${col})"><title>${x.date}: realised ${x.hl}% · forecast p50 ${x.p50}% · p75 ${x.p75}%</title></circle>`; };
-  const ticks = [0, hi / 3, (2 * hi) / 3].map(v => `<line x1="46" x2="${W - 24}" y1="${Y(v)}" y2="${Y(v)}" stroke="#1f2950"/><text x="40" y="${Y(v) + 4}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="10">${v.toFixed(2)}%</text>`).join('');
-  const gauge = (lab, v, tgt) => `<div><span class="lbl">${lab}</span><div style="position:relative;height:12px;background:var(--bg3);border-radius:6px;margin:6px 0"><i style="position:absolute;left:0;top:0;bottom:0;width:${(v ?? 0) * 100}%;border-radius:6px;background:linear-gradient(90deg,var(--pur),var(--gold))"></i><i style="position:absolute;left:${tgt * 100}%;top:-4px;bottom:-4px;width:2px;background:#eef0fb"></i></div><span class="mono">${v == null ? '–' : Math.round(v * 100) + '%'}</span> <span class="muted">target ${tgt * 100}%</span></div>`;
+  const band = `<polygon points="${rows.map((x, i) => `${X(i)},${Y(x.p75)}`).join(' ')} ${rows.map((x, i) => `${X(i)},${Y(x.p50)}`).reverse().join(' ')}" fill="rgba(var(--purrgb),.22)"/>`;
+  const ln = k => `<polyline points="${rows.map((x, i) => `${X(i)},${Y(x[k])}`).join(' ')}" fill="none" stroke="${k === 'p50' ? 'var(--pur)' : 'var(--pur2)'}" stroke-width="1.4" ${k === 'p75' ? 'stroke-dasharray="4 3"' : ''}/>`;
+  const dot = (x, i) => { const col = x.over75 ? 'var(--dn)' : x.over50 ? 'var(--gold)' : 'var(--up)'; return `<circle cx="${X(i)}" cy="${Y(x.hl)}" r="${rows.length > 60 ? 3 : 4}" fill="${col}" style="filter:drop-shadow(0 0 4px ${col})"><title>${x.date}: realised ${x.hl}% · forecast p50 ${x.p50}% · p75 ${x.p75}%</title></circle>`; };
+  const ticks = [0, hi / 3, (2 * hi) / 3].map(v => `<line x1="46" x2="${W - 24}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="40" y="${Y(v) + 4}" text-anchor="end" fill="var(--tx3)" font-family="JetBrains Mono" font-size="10">${v.toFixed(2)}%</text>`).join('');
+  const gauge = (lab, v, tgt) => `<div><span class="lbl">${lab}</span><div style="position:relative;height:12px;background:var(--bg3);border-radius:6px;margin:6px 0"><i style="position:absolute;left:0;top:0;bottom:0;width:${(v ?? 0) * 100}%;border-radius:6px;background:linear-gradient(90deg,var(--pur),var(--gold))"></i><i style="position:absolute;left:${tgt * 100}%;top:-4px;bottom:-4px;width:2px;background:var(--tx)"></i></div><span class="mono">${v == null ? '–' : Math.round(v * 100) + '%'}</span> <span class="muted">target ${tgt * 100}%</span></div>`;
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(inst)} vol forecast against realised">${ticks}${band}${ln('p50')}${ln('p75')}${rows.map(dot).join('')}
-<text x="46" y="${H - 8}" fill="#6d7599" font-family="JetBrains Mono" font-size="10">${esc(r.from)}</text><text x="${W - 24}" y="${H - 8}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="10">${esc(r.to)}</text></svg>
+<text x="46" y="${H - 8}" fill="var(--tx3)" font-family="JetBrains Mono" font-size="10">${esc(r.from)}</text><text x="${W - 24}" y="${H - 8}" text-anchor="end" fill="var(--tx3)" font-family="JetBrains Mono" font-size="10">${esc(r.to)}</text></svg>
 <div class="grid g3" style="margin-top:10px">${gauge('Days above the p50', r.over50, 0.5)}${gauge('Days above the p75', r.over75, 0.25)}<div><span class="lbl">Realised ÷ p50, median day</span><div class="mono" style="font-size:22px;font-weight:700;margin-top:4px">${r.medianRatio ?? '–'}×</div><span class="muted">${r.n} days</span></div></div>
-<p class="muted"><span style="color:#2fd39a">●</span> inside the p50 · <span style="color:var(--gold)">●</span> between p50 and p75 · <span style="color:#ff5d78">●</span> beyond the p75. ${esc(r.definition)}. A calibrated forecast puts about half the days above the p50 and a quarter above the p75; a few weeks of days is not enough to call it either way.</p>`;
+<p class="muted"><span style="color:var(--up)">●</span> inside the p50 · <span style="color:var(--gold)">●</span> between p50 and p75 · <span style="color:var(--dn)">●</span> beyond the p75. ${esc(r.definition)}. A calibrated forecast puts about half the days above the p50 and a quarter above the p75; a few weeks of days is not enough to call it either way.</p>`;
 }
 function scoreCalendar(el, h) {
   const rows = (h?.rows ?? []).filter(r => r.score && Number.isFinite(r.score.S));
   if (!rows.length) { el.innerHTML = '<p class="muted">No scored day yet: each weekday is scored after 21:10 London. This fills in like a contribution calendar.</p>'; return; }
   const first = new Date(`${rows[0].date}T12:00:00Z`), start = new Date(first); start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7));
   const by = Object.fromEntries(rows.map(r => [r.date, r])), last = new Date(`${rows.at(-1).date}T12:00:00Z`), weeks = Math.ceil((last - start) / (7 * 864e5)) + 1, cs = 16;
-  const col = v => { const z = Math.max(-1, Math.min(1, v / 0.6)); return z > 0 ? `rgba(47,211,154,${0.2 + z * 0.75})` : `rgba(255,93,120,${0.2 - z * 0.75})`; };
+  const col = v => { const z = Math.max(-1, Math.min(1, v / 0.6)); return z > 0 ? `rgba(var(--uprgb),${0.2 + z * 0.75})` : `rgba(var(--dnrgb),${0.2 - z * 0.75})`; };
   let cells = '';
   for (let w = 0; w < weeks; w++) for (let d = 0; d < 5; d++) { const dt = new Date(start.getTime() + (w * 7 + d) * 864e5).toISOString().slice(0, 10), r = by[dt];
     cells += `<rect x="${40 + w * (cs + 3)}" y="${10 + d * (cs + 3)}" width="${cs}" height="${cs}" rx="3" fill="${r ? col(r.score.S) : 'var(--bg3)'}" ${r && !r.score.counts ? 'opacity=".45"' : ''}><title>${dt}${r ? `: ${f(r.score.S)} u${r.score.counts ? '' : ' (not counted)'}` : ''}</title></rect>`; }
-  el.innerHTML = `<div class="scroll"><svg viewBox="0 0 ${50 + weeks * (cs + 3)} ${20 + 5 * (cs + 3)}" width="${50 + weeks * (cs + 3)}" style="max-width:100%">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((d, i) => `<text x="0" y="${22 + i * (cs + 3)}" fill="#6d7599" font-family="JetBrains Mono" font-size="10">${d}</text>`).join('')}${cells}</svg></div><div class="muted">Green = the book made money in u that day, red = lost; faded = not counted in the test.</div>`;
+  el.innerHTML = `<div class="scroll"><svg viewBox="0 0 ${50 + weeks * (cs + 3)} ${20 + 5 * (cs + 3)}" width="${50 + weeks * (cs + 3)}" style="max-width:100%">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((d, i) => `<text x="0" y="${22 + i * (cs + 3)}" fill="var(--tx3)" font-family="JetBrains Mono" font-size="10">${d}</text>`).join('')}${cells}</svg></div><div class="muted">Green = the book made money in u that day, red = lost; faded = not counted in the test.</div>`;
 }
 
 function releaseFans(el) {
@@ -1320,11 +1332,11 @@ function releaseFans(el) {
     const sc = (v, u) => (Math.abs(v ?? 0) / (u === 'bp' ? 10 : 1)) / mx * 105;   // half-width in px around the centre (x 300)
     return `<div class="card"><div class="ch"><span class="chip gold">${esc(r.family)}</span><b>${esc(r.event)}</b><span class="r mono muted">${lt(Date.parse(r.at))}</span></div>
 <svg viewBox="0 0 520 ${30 + ms.length * 26}" width="100%" role="img" aria-label="release reactions">${ms.map((m, i) => { const y = 20 + i * 26;
-      return `<text x="0" y="${y + 4}" fill="#a9b0d0" font-family="JetBrains Mono" font-size="10">${esc(m.label)}</text><line x1="300" x2="300" y1="${y - 10}" y2="${y + 10}" stroke="#2c3866"/>
-<rect x="${300 - sc(m.abs240, m.unit)}" y="${y - 7}" width="${sc(m.abs240, m.unit) * 2}" height="14" rx="7" fill="rgba(139,124,246,.18)"/><rect x="${300 - sc(m.abs30, m.unit)}" y="${y - 4}" width="${sc(m.abs30, m.unit) * 2}" height="8" rx="4" fill="rgba(139,124,246,.55)"/>
-${m.hot ? `<circle cx="${300 + Math.sign(m.hot.m30) * sc(m.hot.m30, m.unit)}" cy="${y}" r="4.5" fill="#ff5d78"><title>after hot prints: ${m.hot.m30}${m.unit} at 30 min (n ${m.hot.n})</title></circle>` : ''}${m.cold ? `<circle cx="${300 + Math.sign(m.cold.m30) * sc(m.cold.m30, m.unit)}" cy="${y}" r="4.5" fill="#4fb3ff"><title>after cold prints: ${m.cold.m30}${m.unit} at 30 min (n ${m.cold.n})</title></circle>` : ''}
-<text x="520" y="${y + 4}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="9">${m.abs30}${m.unit} · ${m.abs240}${m.unit}</text>`; }).join('')}</svg>
-<div class="muted">Bands: the typical move either way at 30 min (inner) and 4 h (outer). <span style="color:#ff5d78">●</span> after hot prints, <span style="color:#4fb3ff">●</span> after cold, at 30 min. ${r.playbook.n} past releases, ${esc(r.playbook.from)} to ${esc(r.playbook.to)}. History, not a forecast.</div></div>`; }).join('');
+      return `<text x="0" y="${y + 4}" fill="var(--tx2)" font-family="JetBrains Mono" font-size="10">${esc(m.label)}</text><line x1="300" x2="300" y1="${y - 10}" y2="${y + 10}" stroke="var(--line2)"/>
+<rect x="${300 - sc(m.abs240, m.unit)}" y="${y - 7}" width="${sc(m.abs240, m.unit) * 2}" height="14" rx="7" fill="rgba(var(--purrgb),.18)"/><rect x="${300 - sc(m.abs30, m.unit)}" y="${y - 4}" width="${sc(m.abs30, m.unit) * 2}" height="8" rx="4" fill="rgba(var(--purrgb),.55)"/>
+${m.hot ? `<circle cx="${300 + Math.sign(m.hot.m30) * sc(m.hot.m30, m.unit)}" cy="${y}" r="4.5" fill="var(--dn)"><title>after hot prints: ${m.hot.m30}${m.unit} at 30 min (n ${m.hot.n})</title></circle>` : ''}${m.cold ? `<circle cx="${300 + Math.sign(m.cold.m30) * sc(m.cold.m30, m.unit)}" cy="${y}" r="4.5" fill="var(--blue2)"><title>after cold prints: ${m.cold.m30}${m.unit} at 30 min (n ${m.cold.n})</title></circle>` : ''}
+<text x="520" y="${y + 4}" text-anchor="end" fill="var(--tx3)" font-family="JetBrains Mono" font-size="9">${m.abs30}${m.unit} · ${m.abs240}${m.unit}</text>`; }).join('')}</svg>
+<div class="muted">Bands: the typical move either way at 30 min (inner) and 4 h (outer). <span style="color:var(--dn)">●</span> after hot prints, <span style="color:var(--blue2)">●</span> after cold, at 30 min. ${r.playbook.n} past releases, ${esc(r.playbook.from)} to ${esc(r.playbook.to)}. History, not a forecast.</div></div>`; }).join('');
 }
 
 
@@ -1347,7 +1359,7 @@ async function charts() {
 <div class="sec"><h2>Seasonality</h2><span class="lbl">mean return by calendar month over the history · this month outlined · tap a market for its weekdays</span></div><div class="card"><div id="season"><p class="muted">Reading up to 20 years of daily bars for ${SEASON_INSTS.length} markets…</p></div><div id="wkday"></div></div>`;
   if (globalThis.deskSurfaceOn('panel.charts.bookflow')) sh(() => globalThis.drawBookFlow?.($('flow'))); globalThis.drawRankReality?.($('rankreal')); regimeQuad($('quad'), CH.reg); surprises($('surp'), CH.sur); cotGrid($('cotgrid'), CH.cot); seasonHeat($('season'));
 }
-const REG_COL = { goldilocks: '#2fd39a', reflation: '#e8b85a', stagflation: '#ff5d78', deflation: '#4fb3ff' };
+const REG_COL = { goldilocks: 'var(--up)', reflation: 'var(--gold)', stagflation: 'var(--dn)', deflation: 'var(--blue2)' };
 function regimeQuad(el, r) {
   const h = r?.history ?? []; if (!h.length) { el.innerHTML = '<p class="muted">No regime history.</p>'; return; }
   const last = h.slice(-24), W = 520, H = 340, cx = W / 2, cy = H / 2 - 10, m = Math.max(0.3, ...last.flatMap(p => [Math.abs(p.growth), Math.abs(p.inflation)])) * 1.15;
@@ -1357,13 +1369,13 @@ function regimeQuad(el, r) {
   const strip = h.slice(-240), sw = (W - 20) / strip.length;
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H + 40}" width="100%" role="img" aria-label="macro regime quadrant">
 ${quad(cx, 10, W / 2 - 10, cy - 10, 'reflation', 'REFLATION', W - 20, 26)}${quad(10, 10, W / 2 - 10, cy - 10, 'stagflation', 'STAGFLATION', 20, 26)}${quad(10, cy, W / 2 - 10, H - 40 - cy, 'deflation', 'DEFLATION', 20, H - 46)}${quad(cx, cy, W / 2 - 10, H - 40 - cy, 'goldilocks', 'GOLDILOCKS', W - 20, H - 46)}
-<line x1="10" x2="${W - 10}" y1="${cy}" y2="${cy}" stroke="#2c3866"/><line x1="${cx}" x2="${cx}" y1="10" y2="${H - 40}" stroke="#2c3866"/>
-<text x="${W - 12}" y="${cy - 6}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="9">GROWTH →</text><text x="${cx + 6}" y="20" fill="#6d7599" font-family="JetBrains Mono" font-size="9">INFLATION ↑</text>
-<polyline points="${pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="rgba(238,240,251,.35)" stroke-width="1.5"/>
-${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === pts.length - 1 ? 7 : 2.5 + i / 12}" fill="${REG_COL[last[i].regime]}" opacity="${0.35 + 0.65 * i / pts.length}" ${i === pts.length - 1 ? 'style="filter:drop-shadow(0 0 8px #fff)"' : ''}><title>${last[i].m}: ${last[i].regime}</title></circle>`).join('')}
-<text x="${pts.at(-1)[0] + 10}" y="${pts.at(-1)[1] - 8}" fill="#eef0fb" font-family="JetBrains Mono" font-size="11">${esc(last.at(-1).m)} ${esc(r.now?.label ?? '')}</text>
+<line x1="10" x2="${W - 10}" y1="${cy}" y2="${cy}" stroke="var(--line2)"/><line x1="${cx}" x2="${cx}" y1="10" y2="${H - 40}" stroke="var(--line2)"/>
+<text x="${W - 12}" y="${cy - 6}" text-anchor="end" fill="var(--tx3)" font-family="JetBrains Mono" font-size="9">GROWTH →</text><text x="${cx + 6}" y="20" fill="var(--tx3)" font-family="JetBrains Mono" font-size="9">INFLATION ↑</text>
+<polyline points="${pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="rgba(var(--txrgb),.35)" stroke-width="1.5"/>
+${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === pts.length - 1 ? 7 : 2.5 + i / 12}" fill="${REG_COL[last[i].regime]}" opacity="${0.35 + 0.65 * i / pts.length}" ${i === pts.length - 1 ? 'style="filter:drop-shadow(0 0 8px var(--tx))"' : ''}><title>${last[i].m}: ${last[i].regime}</title></circle>`).join('')}
+<text x="${pts.at(-1)[0] + 10}" y="${pts.at(-1)[1] - 8}" fill="var(--tx)" font-family="JetBrains Mono" font-size="11">${esc(last.at(-1).m)} ${esc(r.now?.label ?? '')}</text>
 ${strip.map((p, i) => `<rect x="${10 + i * sw}" y="${H - 18}" width="${sw + 0.3}" height="14" fill="${REG_COL[p.regime]}" opacity=".75"><title>${p.m} ${p.regime}</title></rect>`).join('')}
-<text x="10" y="${H + 10}" fill="#6d7599" font-family="JetBrains Mono" font-size="9">${esc(strip[0].m)}</text><text x="${W - 10}" y="${H + 10}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="9">${esc(strip.at(-1).m)}</text></svg>
+<text x="10" y="${H + 10}" fill="var(--tx3)" font-family="JetBrains Mono" font-size="9">${esc(strip[0].m)}</text><text x="${W - 10}" y="${H + 10}" text-anchor="end" fill="var(--tx3)" font-family="JetBrains Mono" font-size="9">${esc(strip.at(-1).m)}</text></svg>
 <div class="muted">${esc(r.now?.what ?? '')}. ${esc(String(r.now?.usual ?? '').replace(/([^.])$/, '$1.'))} The strip is the regime month by month over ${Math.round(strip.length / 12)} years. Context, not a signal.</div>`;
 }
 function surprises(el, s) {
@@ -1372,10 +1384,10 @@ function surprises(el, s) {
   for (const [k, arr] of Object.entries(s.series ?? {})) { const c = CC2[k.split('|')[0]]; if (!c) continue; for (const p of arr ?? []) if (p.ms >= from && Number.isFinite(p.z)) pts.push({ c, ms: p.ms, z: Math.max(-4, Math.min(4, p.z)), ev: k.split('|')[1] }); }
   const W = 520, rowH = 34, H = 26 + CCYS.length * rowH, X = ms => 70 + ((ms - from) / (now - from)) * (W - 140);
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="data surprises">${CCYS.map((c, i) => { const y = 20 + i * rowH + rowH / 2, sc = s.byCcy?.[c]?.score;
-    return `<line x1="70" x2="${W - 70}" y1="${y}" y2="${y}" stroke="#1f2950"/><text x="0" y="${y + 4}" fill="#a9b0d0" font-family="JetBrains Mono" font-size="11">${FLAG[c] ?? ''} ${c}</text>
-${pts.filter(p => p.c === c).map(p => `<circle cx="${X(p.ms)}" cy="${y - p.z * 3.6}" r="${2 + Math.abs(p.z) * 0.9}" fill="${p.z > 0 ? '#2fd39a' : '#ff5d78'}" opacity=".7"><title>${new Date(p.ms).toISOString().slice(0, 10)} ${esc(p.ev)}: z ${p.z.toFixed(2)}</title></circle>`).join('')}
-<rect x="${W - 60}" y="${y - 7}" width="50" height="14" rx="4" fill="var(--bg3)"/><rect x="${W - 35}" y="${y - 7}" width="${Math.min(25, Math.abs(sc ?? 0) * 25)}" height="14" rx="3" fill="${(sc ?? 0) > 0 ? '#2fd39a' : '#ff5d78'}" opacity=".4" transform="${(sc ?? 0) < 0 ? `translate(${-Math.min(25, Math.abs(sc) * 25)},0)` : ''}"/><text x="${W - 35}" y="${y + 4}" text-anchor="middle" fill="#eef0fb" font-family="JetBrains Mono" font-size="10" font-weight="700" paint-order="stroke" stroke="#070a17" stroke-width="2.5">${sc == null ? '–' : f(sc)}</text>`; }).join('')}
-<text x="70" y="${H - 2}" fill="#6d7599" font-family="JetBrains Mono" font-size="9">${new Date(from).toISOString().slice(5, 10)}</text><text x="${W - 70}" y="${H - 2}" text-anchor="end" fill="#6d7599" font-family="JetBrains Mono" font-size="9">today</text></svg>
+    return `<line x1="70" x2="${W - 70}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="0" y="${y + 4}" fill="var(--tx2)" font-family="JetBrains Mono" font-size="11">${FLAG[c] ?? ''} ${c}</text>
+${pts.filter(p => p.c === c).map(p => `<circle cx="${X(p.ms)}" cy="${y - p.z * 3.6}" r="${2 + Math.abs(p.z) * 0.9}" fill="${p.z > 0 ? 'var(--up)' : 'var(--dn)'}" opacity=".7"><title>${new Date(p.ms).toISOString().slice(0, 10)} ${esc(p.ev)}: z ${p.z.toFixed(2)}</title></circle>`).join('')}
+<rect x="${W - 60}" y="${y - 7}" width="50" height="14" rx="4" fill="var(--bg3)"/><rect x="${W - 35}" y="${y - 7}" width="${Math.min(25, Math.abs(sc ?? 0) * 25)}" height="14" rx="3" fill="${(sc ?? 0) > 0 ? 'var(--up)' : 'var(--dn)'}" opacity=".4" transform="${(sc ?? 0) < 0 ? `translate(${-Math.min(25, Math.abs(sc) * 25)},0)` : ''}"/><text x="${W - 35}" y="${y + 4}" text-anchor="middle" fill="var(--tx)" font-family="JetBrains Mono" font-size="10" font-weight="700" paint-order="stroke" stroke="var(--bg)" stroke-width="2.5">${sc == null ? '–' : f(sc)}</text>`; }).join('')}
+<text x="70" y="${H - 2}" fill="var(--tx3)" font-family="JetBrains Mono" font-size="9">${new Date(from).toISOString().slice(5, 10)}</text><text x="${W - 70}" y="${H - 2}" text-anchor="end" fill="var(--tx3)" font-family="JetBrains Mono" font-size="9">today</text></svg>
 <div class="muted">Each dot is one release: above the line beat consensus, below missed it, bigger = a bigger surprise. Right: the decayed surprise index per currency.</div>`;
 }
 function cotGrid(el, c) {
@@ -1387,7 +1399,7 @@ function cotGrid(el, c) {
     const last = ok.at(-1), ext = last >= p90 ? 'crowded long' : last <= p10 ? 'crowded short' : null;
     const line = v.map((x, i) => (Number.isFinite(x) ? `${X(i).toFixed(1)},${Y(x).toFixed(1)}` : null)).filter(Boolean).join(' ');
     return `<div class="card" style="padding:12px 14px"><div class="ch" style="margin-bottom:4px"><b class="mono">${esc(S[k].label ?? k)}</b><span class="r">${ext ? `<span class="chip ${last > 0 ? 'up' : 'dn'}">${ext}</span>` : ''}<span class="mono ${dirCls(last)}" style="font-size:12px">${f(last, 1)}%</span></span></div>
-<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="none" role="img" aria-label="${esc(k)} positioning"><rect x="0" y="0" width="${W}" height="${Y(p90)}" fill="rgba(47,211,154,.07)"/><rect x="0" y="${Y(p10)}" width="${W}" height="${H - Y(p10)}" fill="rgba(255,93,120,.07)"/>${lo < 0 && hi > 0 ? `<line x1="0" x2="${W}" y1="${Y(0)}" y2="${Y(0)}" stroke="#2c3866"/>` : ''}<polyline points="${line}" fill="none" stroke="#b4a9ff" stroke-width="1.6" vector-effect="non-scaling-stroke"/><circle cx="${X(v.length - 1)}" cy="${Y(last)}" r="4" fill="${last > 0 ? '#2fd39a' : '#ff5d78'}" style="filter:drop-shadow(0 0 5px ${last > 0 ? '#2fd39a' : '#ff5d78'})"/></svg>
+<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="none" role="img" aria-label="${esc(k)} positioning"><rect x="0" y="0" width="${W}" height="${Y(p90)}" fill="rgba(var(--uprgb),.07)"/><rect x="0" y="${Y(p10)}" width="${W}" height="${H - Y(p10)}" fill="rgba(var(--dnrgb),.07)"/>${lo < 0 && hi > 0 ? `<line x1="0" x2="${W}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--line2)"/>` : ''}<polyline points="${line}" fill="none" stroke="var(--pur2)" stroke-width="1.6" vector-effect="non-scaling-stroke"/><circle cx="${X(v.length - 1)}" cy="${Y(last)}" r="4" fill="${last > 0 ? 'var(--up)' : 'var(--dn)'}" style="filter:drop-shadow(0 0 5px ${last > 0 ? 'var(--up)' : 'var(--dn)'})"/></svg>
 <div class="muted" style="font-size:11px">${esc(S[k].dates[0])} → ${esc(S[k].dates.at(-1))}</div></div>`; }).join('');
 }
 async function seasonHeat(el) {
@@ -1395,11 +1407,11 @@ async function seasonHeat(el) {
   const rows = SEASON_INSTS.map((i, k) => [i, got[k]]).filter(([, r]) => r?.ok);
   if (!rows.length) { el.innerHTML = '<p class="muted">No daily history available.</p>'; return; }
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], cm = new Date().getUTCMonth();
-  const col = (m, sd) => { if (m == null) return 'var(--bg3)'; const z = Math.max(-1, Math.min(1, m / Math.max(0.3, sd ?? 1) * 1.5)); return z > 0 ? `rgba(47,211,154,${0.12 + z * 0.6})` : `rgba(255,93,120,${0.12 - z * 0.6})`; };
+  const col = (m, sd) => { if (m == null) return 'var(--bg3)'; const z = Math.max(-1, Math.min(1, m / Math.max(0.3, sd ?? 1) * 1.5)); return z > 0 ? `rgba(var(--uprgb),${0.12 + z * 0.6})` : `rgba(var(--dnrgb),${0.12 - z * 0.6})`; };
   el.innerHTML = `<div class="scroll"><table class="heat" style="min-width:720px"><thead><tr><th></th>${MON.map((m, i) => `<th style="text-align:center;${i === cm ? 'color:var(--gold)' : ''}">${m}</th>`).join('')}<th>Since</th></tr></thead><tbody>${rows.map(([i, r]) => `<tr><th><a href="#" data-wk="${i}" style="color:var(--tx);text-decoration:none">${esc(i)}</a></th>${r.months.map((m, k) => `<td style="background:${col(m.mean, m.sd)};${k === cm ? 'outline:2px solid var(--gold);outline-offset:-2px' : ''}" title="${MON[k]}: mean ${m.mean}% · up ${Math.round((m.up ?? 0) * 100)}% of ${m.n} years">${m.mean == null ? '' : (m.mean > 0 ? '+' : '') + m.mean.toFixed(1)}<br><span style="font-size:9px;opacity:.7">${m.up == null ? '' : Math.round(m.up * 100) + '%↑'}</span></td>`).join('')}<td class="muted" style="font-size:10px">${esc(r.from?.slice(0, 4))}</td></tr>`).join('')}</tbody></table></div>
 <div class="muted">Mean monthly return (%) and the share of years it rose. Each month is one draw per year, so ~15-20 per cell: history, not a forecast, and most cells are within noise.</div>`;
   el.querySelectorAll('[data-wk]').forEach(a => a.onclick = ev => { ev.preventDefault(); const r = CH.season[a.dataset.wk], D5 = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], m = Math.max(...r.weekdays.map(w => Math.abs(w.mean ?? 0)), 0.001);
-    $('wkday').innerHTML = `<div class="sec"><h2>${esc(a.dataset.wk)} by weekday</h2><span class="lbl">mean daily return and share up, ${esc(r.from)} to ${esc(r.to)}</span></div><svg viewBox="0 0 520 150" width="100%" style="max-width:640px">${r.weekdays.map((w, k) => { const x = 40 + k * 95, h = Math.abs(w.mean ?? 0) / m * 50; return `<rect x="${x}" y="${w.mean >= 0 ? 70 - h : 70}" width="60" height="${h}" rx="4" fill="${w.mean >= 0 ? '#2fd39a' : '#ff5d78'}" opacity=".8"/><text x="${x + 30}" y="140" text-anchor="middle" fill="#a9b0d0" font-family="JetBrains Mono" font-size="11">${D5[k]}</text><text x="${x + 30}" y="${w.mean >= 0 ? 64 - h : 86 + h}" text-anchor="middle" fill="#eef0fb" font-family="JetBrains Mono" font-size="10">${w.mean == null ? '' : (w.mean > 0 ? '+' : '') + w.mean.toFixed(3)}% · ${Math.round((w.up ?? 0) * 100)}%↑</text>`; }).join('')}<line x1="30" x2="510" y1="70" y2="70" stroke="#2c3866"/></svg>`; });
+    $('wkday').innerHTML = `<div class="sec"><h2>${esc(a.dataset.wk)} by weekday</h2><span class="lbl">mean daily return and share up, ${esc(r.from)} to ${esc(r.to)}</span></div><svg viewBox="0 0 520 150" width="100%" style="max-width:640px">${r.weekdays.map((w, k) => { const x = 40 + k * 95, h = Math.abs(w.mean ?? 0) / m * 50; return `<rect x="${x}" y="${w.mean >= 0 ? 70 - h : 70}" width="60" height="${h}" rx="4" fill="${w.mean >= 0 ? 'var(--up)' : 'var(--dn)'}" opacity=".8"/><text x="${x + 30}" y="140" text-anchor="middle" fill="var(--tx2)" font-family="JetBrains Mono" font-size="11">${D5[k]}</text><text x="${x + 30}" y="${w.mean >= 0 ? 64 - h : 86 + h}" text-anchor="middle" fill="var(--tx)" font-family="JetBrains Mono" font-size="10">${w.mean == null ? '' : (w.mean > 0 ? '+' : '') + w.mean.toFixed(3)}% · ${Math.round((w.up ?? 0) * 100)}%↑</text>`; }).join('')}<line x1="30" x2="510" y1="70" y2="70" stroke="var(--line2)"/></svg>`; });
 }
 
 // clicking a currency or an instrument anywhere opens its card

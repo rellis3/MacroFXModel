@@ -54,7 +54,7 @@ const fmt = v => (v == null ? '·' : v === 0 ? '0' : `${v > 0 ? '+' : '−'}${Ma
 export function cellBg(v, rowMax) {
   if (!Number.isFinite(v) || !v || !(rowMax > 0)) return 'transparent';
   const a = Math.min(1, Math.abs(v) / rowMax);
-  return v > 0 ? `rgba(47,211,154,${(0.08 + 0.5 * a).toFixed(2)})` : `rgba(255,93,120,${(0.08 + 0.5 * a).toFixed(2)})`;
+  return v > 0 ? `rgba(var(--uprgb),${(0.08 + 0.5 * a).toFixed(2)})` : `rgba(var(--dnrgb),${(0.08 + 0.5 * a).toFixed(2)})`;
 }
 const sideWord = h => `${h.side > 0 ? 'long' : 'short'} ${h.ccy}`;
 

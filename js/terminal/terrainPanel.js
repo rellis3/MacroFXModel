@@ -37,7 +37,7 @@ async function loadSmile(sym, redraw) {
   catch (e) { SMILE[sym] = { state: 'err', at: Date.now(), err: e.message }; }
   redraw(); return SMILE[sym];
 }
-const showTip = (ev, html) => { TIP ??= Object.assign(document.createElement('div'), { style: 'position:fixed;z-index:50;background:#0c1124;border:1px solid #2a3350;border-radius:6px;padding:6px 9px;font:12px ui-monospace,Consolas,monospace;color:#d8dcf0;pointer-events:none' }); if (!TIP.isConnected) document.body.appendChild(TIP);
+const showTip = (ev, html) => { TIP ??= Object.assign(document.createElement('div'), { style: 'position:fixed;z-index:50;background:var(--bg1);border:1px solid var(--line2);border-radius:6px;padding:6px 9px;font:12px ui-monospace,Consolas,monospace;color:var(--tx);pointer-events:none' }); if (!TIP.isConnected) document.body.appendChild(TIP);
   TIP.innerHTML = html; TIP.style.display = 'block'; TIP.style.left = Math.min(innerWidth - TIP.offsetWidth - 10, ev.clientX + 16) + 'px'; TIP.style.top = Math.min(innerHeight - TIP.offsetHeight - 10, ev.clientY + 14) + 'px'; };
 const hideTip = () => { if (TIP) TIP.style.display = 'none'; };
 
