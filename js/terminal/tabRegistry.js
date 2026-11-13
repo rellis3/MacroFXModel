@@ -100,6 +100,7 @@ export const SURFACES = [
   mk('panel.ov.bestpairs', 'panel', 'Overview: best pairs', 'Overview', T, 'the pair-selection matrix: how the view is best traded'),
   mk('panel.ov.riskstate', 'panel', 'Overview: risk state', 'Overview', null, 'the risk flags: market data'),
   mk('panel.ov.em', 'panel', 'Overview: emerging markets', 'Overview', null, 'EM gauges: market data'),
+  mk('panel.ov.ccystrength', 'panel', 'Overview: currency strength (σ), price-based and live', 'Overview', null, 'eight currencies as bars from a centre line over 1H, 4H, 1D and 1W, in units of each window\'s normal move, refreshed every minute or two while on screen; ordering only, and separate from the analyst strength strip'),
   mk('panel.ov.alerts', 'panel', 'Overview: desk alerts', 'Overview', I, 'the alert engine\'s status, including the Telegram mute'),
   mk('panel.ov.dayshape', 'panel', 'Overview: the day\'s shape', 'Overview', null, 'the day forecaster: volatility ranges (market data)'),
   mk('panel.ov.tradewatch', 'panel', 'Overview: trade watch', 'Overview', T, 'the book against live prices: zone, target, invalidation'),

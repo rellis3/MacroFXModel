@@ -278,3 +278,26 @@
 .bv-stack i{display:block;height:100%}
 .bv-chips{display:flex;flex-wrap:wrap;gap:4px}
 .bv-chips .chip{white-space:normal;line-height:1.3}
+/* Currency strength (σ): js/terminal/ccyStrengthView.js. Rows are absolutely placed so a rank change SLIDES; bars and ghosts transition. */
+.cs-tag{font:600 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--gold);border:1px solid var(--gold);border-radius:999px;padding:2px 8px;margin-left:8px;vertical-align:middle}
+.cs-pills{margin:0 8px 0 0;display:inline-flex}
+.cs-asof{font-size:11.5px;color:var(--tx3)}
+.cs-board{position:relative;margin-top:6px}
+.cs-row{position:absolute;left:0;right:0;height:36px;display:grid;grid-template-columns:22px 74px minmax(120px,1fr) 62px minmax(0,auto);gap:10px;align-items:center;transition:top .7s cubic-bezier(.3,.7,.2,1)}
+.cs-n{color:var(--tx3);font-size:11px;text-align:right}
+.cs-c{display:flex;gap:6px;align-items:center;font-size:13px}
+.cs-f{font-size:15px}
+.cs-t{position:relative;height:14px;background:var(--bg3);border-radius:7px}
+.cs-z{position:absolute;left:50%;top:-4px;bottom:-4px;width:1px;background:var(--tx3)}
+.cs-b{position:absolute;top:0;bottom:0;border-radius:7px;transition:left .7s cubic-bezier(.3,.7,.2,1),width .7s cubic-bezier(.3,.7,.2,1)}
+.cs-b.pos{background:var(--up);opacity:.85}
+.cs-b.neg{background:var(--dn);opacity:.85}
+.cs-g{position:absolute;top:2px;bottom:2px;width:3px;margin-left:-1px;border-radius:2px;background:var(--tx2);opacity:.7;transition:left .7s cubic-bezier(.3,.7,.2,1)}
+.cs-lead .cs-b{box-shadow:0 0 14px var(--up),0 0 4px var(--up)}
+.cs-lag .cs-b{box-shadow:0 0 14px var(--dn),0 0 4px var(--dn)}
+.cs-v{font-size:14px;text-align:right}
+.cs-os{display:flex;gap:10px;font-size:11px;color:var(--tx3)}
+.cs-o i{font-style:normal;margin-right:4px;opacity:.8}
+.cs-say{margin:12px 0 4px;font-size:14px;line-height:1.5}
+@media (max-width:640px){.cs-row{grid-template-columns:18px 64px minmax(80px,1fr) 56px}.cs-os{display:none}}
+@media (prefers-reduced-motion:reduce){.cs-row,.cs-b,.cs-g{transition:none}}

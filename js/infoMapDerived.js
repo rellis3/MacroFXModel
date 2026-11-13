@@ -3605,6 +3605,34 @@ export const DERIVED = {
    ],
    "drift": []
   },
+  "currency-strength-live": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/ccy-strength",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/terminal/ccyStrengthView.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "js/terminal/ccyStrengthView.js",
+     "js/terminal/moreBoards.js"
+    ],
+    "today": [],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [],
+   "packSkills": [],
+   "drift": []
+  },
   "fx-fair-value": {
    "pages": [],
    "routes": [

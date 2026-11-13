@@ -38,7 +38,7 @@ import * as AAV from './assetAnalysisView.js';
 import * as SR from './sharedRead.js';
 import * as RBV from './ratesBoardView.js';
 import * as FYV from './fedPathYieldsView.js';
-import { macroMoreHtml } from './moreBoards.js';
+import { macroMoreHtml, overviewMoreHtml, mountOverview } from './moreBoards.js';
 import { fedPathYields, chainLine as fedPathChainLine } from '../fedPathYieldsCore.js';
 import * as ML from './mapLayers.js';
 import { cellHtml as macroCellHtml } from './macroEngines.js';
@@ -845,5 +845,7 @@ globalThis.llGridHtml = LLV.gridHtml;
 // the Macro tab's Rates & policy board (desk-terminal.html enrichMacro): the curve, its slopes, the priced Fed path beside them
 globalThis.ratesBoardHtml = (rb, fp, gy) => { try { return RBV.boardHtml(rb, fp, gy, { esc, spk, sgn }); } catch (e) { console.warn('rates board', e); return ''; } };
 // ...and the Fed path against the yields (js/fedPathYieldsCore.js): the priced path, the 2Y / 2s10s / 10Y and the Atlanta window odds, same dates
-globalThis.macroMoreHtml = (E, extra) => macroMoreHtml(E, extra);   // the newer Macro boards (js/terminal/moreBoards.js)
+globalThis.macroMoreHtml = (E, extra) => macroMoreHtml(E, extra);
+globalThis.overviewMoreHtml = overviewMoreHtml;                   // the Overview's live currency strength slot
+globalThis.ccyStrengthMount = () => { try { mountOverview(getJson); } catch (e) { console.warn('ccy strength', e); } };   // the newer Macro boards (js/terminal/moreBoards.js)
 globalThis.fedYieldsHtml = (fp, rb, tp) => { try { return FYV.boardHtml(fp, rb, tp, { esc }); } catch (e) { console.warn('fed path yields', e); return ''; } };

@@ -8,6 +8,7 @@ import * as CL from './creditLiquidityView.js';
 import * as CV from './curveBoardView.js';
 import * as RG from './regimeBoardView.js';
 import * as RL from './releasesBoardView.js';
+import * as CS from './ccyStrengthView.js';
 
 const BOARDS = [
   ['credit-liquidity', CL.boardHtml],
@@ -15,6 +16,11 @@ const BOARDS = [
   ['regime-board', RG.boardHtml],
   ['releases-board', RL.boardHtml],
 ];
+
+/** The Overview's extra block: the live currency strength board's slot (js/terminal/ccyStrengthView.js). The slot is filled by mountOverview() once it is in the page. */
+export const overviewMoreHtml = () => '<div class="sfc" data-surface="panel.ov.ccystrength"><div id="csx" class="cs-root"></div></div>';
+/** Attach the live board to its slot (idempotent: the Overview re-renders its slot, the state survives). getJson = the page's fetcher. */
+export function mountOverview(getJson) { const root = typeof document !== 'undefined' ? document.getElementById('csx') : null; if (root) CS.mount(root, { getJson }); }
 
 /** E = the terminal's enrichment store ({ 'feed-name': payload }). Returns the HTML for every board whose feed has landed. */
 export function macroMoreHtml(E, extra = {}) {

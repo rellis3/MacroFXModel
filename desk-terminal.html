@@ -668,7 +668,8 @@ ${rf?.ok ? `<div class="sfc" data-surface="panel.ov.riskstate"><div class="card"
 <div class="drv">${(rf.flags ?? []).map(f => `<span class="chip ${f.on ? 'dn' : ''}" title="${esc(f.detail ?? '')}">${esc(f.label)}${f.value != null ? ` · ${esc(String(f.value))}` : ''}</span>`).join(' ')}</div>${rf.note ? `<p class="muted" style="font-size:12px">${esc(rf.note)}</p>` : ''}</div></div>` : ''}
 ${em?.ok ? `<div class="sfc" data-surface="panel.ov.em"><div class="card"><div class="ch"><span class="lbl">Emerging markets · read, not traded</span>${em.stress ? `<span class="r"><span class="chip ${EL[em.stress.level] ?? ''}">${esc(em.stress.level)}</span> <span class="muted mono">z ${sgn(em.stress.z)}</span></span>` : ''}</div>
 ${em.stress ? `<p style="margin:2px 0 8px">${esc(em.stress.read)}.</p>` : ''}<table><tbody>${Object.values(em.pairs).filter(p => p.ok).map(p => `<tr title="${esc(p.role)}"><td class="mono"><b>${esc(p.label)}</b></td><td>${spk(p.spark)}</td><td class="n mono ${p.chg5d > 0 ? 'dn' : 'up'}">${sgn(p.chg5d)}% 5d</td><td class="n mono">z ${sgn(p.z5)}</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px">USD/EM up (red) = the EM currency weaker. MXN and ZAR are the carry gauges; CNH leads AUD and NZD.</p></div></div>` : ''}
-</div><div class="sfc" data-surface="panel.ov.alerts">${alertsHtml()}</div>`;
+</div><div class="sfc" data-surface="panel.ov.alerts">${alertsHtml()}</div>${globalThis.overviewMoreHtml?.() ?? ''}`;
+  globalThis.ccyStrengthMount?.();
 }
 // §9ag: the World stress strip, pinned above the tabs: every input green / amber / red, and the overall reading.
 function stressStrip() {
@@ -849,7 +850,7 @@ ${v.drivers?.length ? `<div class="drv">${v.drivers.slice(0, 5).map(d => `<span 
 ${v.flip?.length ? `<details><summary>What would flip it</summary><ul>${v.flip.map(x => `<li class="muted">${esc(x)}</li>`).join('')}</ul></details>` : ''}</div>`;
 }
 function strengthStrip() {
-  return `<div class="card"><div class="ch"><span class="lbl">Currency strength</span><span class="r muted">strongest → weakest, the Currency Manager's ruling · tap for the card</span></div><div class="strength">${D.ranking.map(c => { const b = numOrNull(D.ccy[c]?.bias), s = ccyScore(b);
+  return `<div class="card"><div class="ch"><span class="lbl">Currency strength · analyst read, daily</span><span class="r muted">strongest → weakest, the Currency Manager's ruling · tap for the card</span></div><div class="strength">${D.ranking.map(c => { const b = numOrNull(D.ccy[c]?.bias), s = ccyScore(b);
     return `<div class="sbox" tabindex="0" data-ccy="${c}" title="${esc(ccyText(b))} (−5..+5)"><b>${FLAG[c] ?? ''} ${c}</b><div class="vbar"><i style="height:${s == null ? 2 : Math.max(6, Math.abs(s) * 8)}px;background:${b > 0 ? 'var(--up)' : b < 0 ? 'var(--dn)' : 'var(--flat)'}"></i></div><div class="v ${dirCls(b)}">${fmtScore(s)}</div><span class="muted">${s == null ? 'no data' : ccyWord(b)}</span></div>`; }).join('')}</div><p class="muted" style="font-size:11.5px;margin:6px 0 0">${esc(SCALE_NOTE)}</p></div>`;
 }
 function playbookCard(n, c) {
