@@ -19,6 +19,8 @@ import { whatChanged } from './whatChanged.js';
 import * as PV from './pairView.js';
 import * as CSV from './chainStatsView.js';
 import { reactionsHtml } from './reactionPanel.js';
+import { boardHtml as macroBoardHtml, pick as macroBoardPick } from './macroEngines.js';
+import { DESK_EVIDENCE, citable } from '../deskEvidence.js';
 import * as FVV from './fairValueView.js';
 import * as CBV from './cbBoardView.js';
 import * as ACV from './autocorrView.js';
@@ -38,6 +40,9 @@ const el = id => document.getElementById(id);
 const h = CB.esc;
 // the Calendar tab (desk-terminal.html enrichCal) draws its "Expectations vs reality" panel through this
 globalThis.ttReactionsHtml = p => reactionsHtml(p, h);
+// the Macro tab (desk-terminal.html enrichMacro) draws its currency x indicator board through these (js/terminal/macroEngines.js)
+globalThis.ttMacroBoardHtml = p => { let ev = null; try { const e = DESK_EVIDENCE.find(x => x.id === 'surprise-size'); if (e) { const c = citable(e); ev = { tag: /REOPENED/.test(c.tag) ? 'size tested, reopened by audit' : String(c.tag).split(/\s+[—-]\s+/)[0], result: `${c.tag}. ${e.claim}` }; } } catch { /* the board draws without the stamp */ } return macroBoardHtml(p, h, ev); };
+globalThis.ttMacroPick = macroBoardPick;
 const T = {
   tab: null, cache: {},
   chain: { inputs: null, loading: null, live: null, liveErr: null, liveTimer: null, read: {}, nodeSel: null, linkSel: null, showQuiet: true,

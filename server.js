@@ -205,6 +205,7 @@ import { compareForecastLines as _compareForecastLines } from './js/forecastDrif
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
 import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';
+import { buildMacroBoard as _buildMacroBoard, flattenAhead as _macroFlattenAhead } from './js/terminal/macroEnginesCore.js';
 import { INTL_YIELDS as _INTL_YIELDS } from './js/intlYields.js';
 import { parseBubaCsv as _parseBubaCsv } from './js/intlYields.js';
 import { buildFlowChain as _buildFlowChain } from './js/flowChainSources.js';
@@ -14839,6 +14840,24 @@ app.get('/api/macro-scorecard', async (_req, res) => {
   try {
     const data = await _buildMacroScorecard();
     res.json({ ok: true, ...data });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Macro engines board (Desk Terminal, Macro tab): currency x indicator, each cell the family's headline release against
+// consensus from the surprise store, sized by that release's own history, with the engine reading beside it. The engines
+// themselves keep no consensus or history (js/terminal/macroEnginesCore.js), so the surprise store is the source of the
+// cell and the scorecard supplies the engine side and the composite. KV and memory reads only; no model call, no new
+// store; the shaped board is small and held ten minutes because the store and the scorecard move no faster than that.
+let _macroBoardCache = { at: 0, data: null };
+app.get('/api/macro-engines-board', async (req, res) => {
+  try {
+    if (!_macroBoardCache.data || Date.now() - _macroBoardCache.at > 10 * 60_000 || req.query.refresh === '1') {
+      const [rows, scorecard] = await Promise.all([_readSurpriseStore(), _buildMacroScorecard().catch(() => null)]);
+      const ahead = _macroFlattenAhead(_calFeed?.data?.ahead, _calAhead?.rows);
+      _macroBoardCache = { at: Date.now(), data: { ok: true, ..._buildMacroBoard({ rows, scorecard, ahead, now: Date.now() }), generatedAt: new Date().toISOString(), source: 'surprise store (ForexFactory + Nasdaq calendars, FRED vintages) + macro scorecard engines' } };
+    }
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json(_macroBoardCache.data);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
