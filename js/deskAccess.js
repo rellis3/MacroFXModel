@@ -1,3 +1,5 @@
+import { VIEWER_SHARED_POSTS } from './deskSharedReads.js';
+
 // js/deskAccess.js: what a Desk Terminal VIEWER (the separate desk login) may call. Pure: no fetch, no env. Tested by js/deskAccess.test.mjs.
 //
 // The owner's decision (2026-11-13): the desk login is "security by obfuscation" for READ data. /api/* is not gated by the site login (the
@@ -10,8 +12,9 @@
 //     one place). Model-calling routes that are not shared reads (Ask-the-desk, explain, analysis...) are therefore owner-only by default.
 //   - When unsure, deny. Every deny-list entry is listed in the report so the owner can review it.
 
-/** POSTs a viewer may make: the shared once-a-day reads (first caller generates, everyone else reads the stored copy). Extend here only. */
-export const VIEWER_POST_ALLOWED = [];
+/** POSTs a viewer may make: the shared once-a-day reads (first caller generates, everyone else reads the stored copy). The list lives with the
+ *  shared-reads rules (js/deskSharedReads.js VIEWER_SHARED_POSTS); extend it there. The owner-only model routes (OWNER_ONLY_POSTS) are never in it. */
+export const VIEWER_POST_ALLOWED = [...VIEWER_SHARED_POSTS];
 
 /** Prefixes (of /api/...) a viewer may never call, even with GET. */
 export const VIEWER_DENY_PREFIXES = [
@@ -32,6 +35,7 @@ export const VIEWER_DENY_PREFIXES = [
 /** Market-data routes under a denied prefix that a viewer may read (checked only after the ops and forced-refresh rules, which always win). */
 export const VIEWER_ALLOW_OVERRIDES = [
   '/api/desk-news', '/api/desk-dayfc', '/api/desk-cot-history', '/api/desk-season', '/api/desk-bars', '/api/desk-volcheck',
+  '/api/desk-asset-analyse', '/api/desk-shared-reads',   // the shared once-a-day reads: GET is free and never calls a model (POST: VIEWER_POST_ALLOWED)
   '/api/desk-session', '/api/desk-access',      // who am I, and which surfaces may I see (GET only: the POST is a non-GET and is refused for viewers)
 ];
 
@@ -54,10 +58,10 @@ export function viewerMayCall(method, url) {
   const { path, query } = split(url);
   if (!path.startsWith('/api/') && path !== '/api') return true;
   const m = String(method ?? 'GET').toUpperCase();
+  if (query.get('refresh') === '1' || query.get('force') === '1' || query.get('rebuild') === '1') return false;   // a forced refresh is the owner's, on any method
   if (m !== 'GET' && m !== 'HEAD') return VIEWER_POST_ALLOWED.some(p => path === p || path.startsWith(p + '/'));
   const seg = path.split('/').filter(Boolean);
   if (seg.slice(1).some(s => OPS_SEGMENTS.has(s) || /backfill|rebuild/.test(s) || /^\$\{/.test(s))) return false;
-  if (query.get('refresh') === '1' || query.get('force') === '1' || query.get('rebuild') === '1') return false;
   if (path === '/api/desk-bars' && query.get('role')) return false;          // a role makes it a model call; plain bars are market data
   const denied = VIEWER_DENY_PREFIXES.some(p => under(path, p));
   if (!denied) return true;

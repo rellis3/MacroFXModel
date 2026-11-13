@@ -2,12 +2,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { viewerMayCall, VIEWER_POST_ALLOWED, VIEWER_DENY_PREFIXES, VIEWER_ALLOW_OVERRIDES } from './deskAccess.js';
+import { OWNER_ONLY_POSTS } from './deskSharedReads.js';
 
 test('market read routes are open to a viewer', () => {
   for (const u of ['/api/rates', '/api/cot-state', '/api/chain-live', '/api/chain-read', '/api/fed-path', '/api/rates-board', '/api/cb-board',
     '/api/macro-engines-board', '/api/risk-flags', '/api/em-gauges', '/api/world-stress', '/api/events', '/api/ohlc?symbol=EUR_USD',
     '/api/desk-news?hours=24&tier=2', '/api/desk-dayfc', '/api/desk-cot-history', '/api/desk-season', '/api/desk-bars?symbol=EUR_USD',
-    '/api/global-yields', '/api/intl-yields', '/api/options-skew', '/api/thesis-reality', '/api/corr-terminal', '/api/version']) {
+    '/api/desk-shared-reads', '/api/desk-asset-analyse?inst=GOLD', '/api/global-yields', '/api/intl-yields', '/api/options-skew', '/api/thesis-reality', '/api/corr-terminal', '/api/version']) {
     assert.equal(viewerMayCall('GET', u), true, u);
   }
 });
@@ -32,10 +33,17 @@ test('ops-style paths and forced refreshes are refused even on a market route', 
 });
 
 test('a viewer cannot POST anything unless it is on the shared-read list', () => {
-  for (const u of ['/api/desk-ask', '/api/explain', '/api/analysis', '/api/currency-analysis', '/api/oi-explain', '/api/eod-review', '/api/chain-read',
-    '/api/desk-asset-analyse', '/api/desk-run', '/api/desk-update/run', '/api/research-room/talk', '/api/access', '/api/desk-access']) {
+  for (const u of ['/api/desk-ask', '/api/explain', '/api/analysis', '/api/currency-analysis', '/api/oi-explain', '/api/eod-review', '/api/analysis-historical',
+    '/api/morning-brief', '/api/research-pod/thread', '/api/desk-run', '/api/desk-update/run', '/api/research-room/talk', '/api/access', '/api/desk-access']) {
     for (const m of ['POST', 'PUT', 'DELETE', 'PATCH']) assert.equal(viewerMayCall(m, u), false, `${m} ${u}`);
   }
+});
+
+test('the shared once-a-day reads are the only viewer POSTs (js/deskSharedReads.js VIEWER_SHARED_POSTS)', () => {
+  assert.equal(viewerMayCall('POST', '/api/chain-read?window=1'), true);
+  assert.equal(viewerMayCall('POST', '/api/desk-asset-analyse'), true);
+  assert.equal(viewerMayCall('POST', '/api/chain-read?window=1&force=1'), false, "a forced refresh is the owner's");
+  for (const u of OWNER_ONLY_POSTS) assert.equal(viewerMayCall('POST', u), false, `${u} must stay owner-only`);
 });
 
 test('the shared-read allowlist is the one place that opens a POST, and it opens only what it lists', () => {

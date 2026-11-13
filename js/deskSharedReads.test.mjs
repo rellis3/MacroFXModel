@@ -146,8 +146,8 @@ test('the new KV key is listed everywhere a permanent store must be (kv.js, both
   assert.ok(rd('js/storeRegistry.js').includes(SHARED_KV + ': '), 'js/storeRegistry.js');
 });
 
-test('the desk terminal pill carries a data-surface hook and the views use the shared helper', () => {
-  assert.ok(/id="askbtn"[^>]*data-surface="ask-pill"/.test(rd('desk-terminal.html')));
+test('the desk terminal pill carries its registry data-surface hook (widget.ask, js/terminal/tabRegistry.js) and the views use the shared helper', () => {
+  assert.ok(/id="askbtn"[^>]*data-surface="widget.ask"/.test(rd('desk-terminal.html')));
   assert.ok(rd('js/terminal/assetAnalysisView.js').includes("from './sharedRead.js'"));
   assert.ok(rd('js/terminal/terminalTabs.js').includes("from './sharedRead.js'"));
 });
