@@ -779,3 +779,5 @@ analysis/output/vol-layer-deep/feedback/wide/m1_hours.parquet
 analysis/output/vol-layer-deep/execution/wide/entries.parquet
 analysis/output/vol-layer-deep/execution/wide/overshoot.parquet
 analysis/output/vol-layer-deep/execution/wide/paths.json
+analysis/output/vol-layer-deep/views/wide/rows.parquet
+analysis/output/vol-layer-deep/views/wide/paths.pkl
