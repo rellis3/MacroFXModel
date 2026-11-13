@@ -7,11 +7,13 @@
 import * as CL from './creditLiquidityView.js';
 import * as CV from './curveBoardView.js';
 import * as RG from './regimeBoardView.js';
+import * as RL from './releasesBoardView.js';
 
 const BOARDS = [
   ['credit-liquidity', CL.boardHtml],
   ['curve-board', CV.boardHtml],
   ['regime-board', RG.boardHtml],
+  ['releases-board', RL.boardHtml],
 ];
 
 /** E = the terminal's enrichment store ({ 'feed-name': payload }). Returns the HTML for every board whose feed has landed. */

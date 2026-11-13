@@ -144,6 +144,7 @@ export const SURFACES = [
   mk('panel.macro.creditliq', 'panel', 'Macro: credit & liquidity', 'Macro', null, 'the Credit Stress Index, the long-history Baa-10Y spread against 5 and 20 years, global central-bank liquidity (level, impulse, by bank) and the liquidity conditions z-scores'),
   mk('panel.macro.curve', 'panel', 'Macro: the curve through time', 'Macro', null, 'the Treasury curve drawn through 36 month-ends, six slopes against their 3y and 5y history, three years of curve shape, the yield-to-EURUSD coupling and the SOFR-Euribor spread-turn log'),
   mk('panel.macro.regime', 'panel', 'Macro: where the market is (regime stack)', 'Macro', null, 'the growth x inflation quadrant, seven regime lenses, the correlation regime, risk-state flags and which markets are quiet or active over 30 days, plus the registered range edges'),
+  mk('panel.macro.releases', 'panel', 'Macro: releases and who is positioned', 'Macro', null, 'the week\'s high-impact releases against the leveraged-fund crowd in each currency, the usual size of the 30-minute move, what the last releases did, how releases ran by volatility regime and the front-end rate legs'),
   mk('panel.macro.carryside', 'panel', 'Macro: carry board "side" column', 'Macro', null, 'which side of a pair earns the carry'),
 ];
 

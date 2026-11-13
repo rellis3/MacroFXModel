@@ -55,4 +55,17 @@ export const moreFixtures = {
     const lc = {}, av = {}, sd = {}; ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].forEach((k, i) => { lc[k] = (i % 2 ? -1 : 1) * (0.4 + 0.05 * i); av[k] = 0.4; sd[k] = 0.15; });
     return { state, hmm, hist, hedge: { generated: '2026-11-13T23:03:20Z', last_corr: lc, avg_corr: av, corr_std: sd } };
   },
+  releases(now) {
+    const H = 3600e3, mk = (country, event, dh, est, prev, actual = null) => ({ country, event, impact: 'high', ms: now + dh * H, estimate: est, prev, actual, time: '' });
+    const events = [mk('US', 'Core CPI m/m', -2, '0.2%', '0.3%', '0.3%'), mk('US', 'CPI m/m', -2, '0.3%', '0.6%', '0.3%'), mk('EU', 'ECB President Lagarde Speaks', 20, null, null), mk('GB', 'GDP m/m', 30, '0.0%', '0.1%'), mk('AU', 'Employment Change', 40, '20K', '15K'), mk('JP', 'Core CPI y/y', 90, '2.9%', '2.8%'), { ...mk('US', 'Retail Sales m/m', 300, '0.4%', '0.1%') }];
+    const fxRow = (sym, pct, share) => ({ sym, label: sym, group: 'fx', specPct: pct, specSharePct: pct, specNet: share * 1000, specShare: share });
+    const cot = { ok: true, reportDate: '2026-11-03', instruments: [fxRow('EUR', 0, -8.97), fxRow('GBP', 32, 10.86), fxRow('JPY', 21, 3.89), fxRow('AUD', 82, 15.25), fxRow('CAD', 75, 24.75), fxRow('CHF', 81, 12.65), fxRow('NZD', 19, -17.47), fxRow('MXN', 81, 25.2)] };
+    const mkt = (id, label, m30, l30) => ({ id, label, unit: '%', m30, label30: l30, m240: m30 * 2, label240: l30 });
+    const reactions = { studyN: 159, live: [{ source: 'live', country: 'CA', event: 'Employment Change', ms: now - 170 * H, surprise: { ok: true, direction: 'below', z: -0.34, size: 'in line', actual: '-4.7K', estimate: '14.6K' }, regime: { tone: 'normal' }, markets: [mkt('gold', 'Gold', -0.366, null)] }],
+      recent: [{ source: 'study', family: 'CPI', country: 'US', event: 'Core CPI m/m', ms: now - 80 * H, surprise: { ok: true, direction: 'above', z: 1.11, actual: 0.3, estimate: 0.2 }, regime: { tone: 'normal' }, markets: [mkt('eurusd', 'EUR/USD', -0.232, 'in line'), mkt('usdjpy', 'USD/JPY', 0.221, 'in line'), mkt('gold', 'Gold', -0.486, 'overreaction')] },
+        { source: 'study', family: 'CPI', country: 'US', event: 'CPI m/m', ms: now - 80 * H, surprise: { ok: true, direction: 'above', z: 0.8, actual: 0.3, estimate: 0.3 }, regime: { tone: 'normal' }, markets: [mkt('eurusd', 'EUR/USD', -0.232, 'in line')] }],
+      summary: ['calm', 'normal', 'stressed'].map((regime, i) => ({ family: 'ALL', regime, n: 39 + i * 20, m30: { n: 23, nClear: 3, expected: 0.67, labels: { overreaction: 4, 'in line': 15 + i, 'priced in': 1, underreaction: 2, opposite: 1 } } })) };
+    const eventDay = { ok: true, frontEnds: { stale: false, asOf: '2026-11-13T21:00:00.000Z', rows: [{ label: 'Euro STR Dec26', area: 'euro area', unit: 'bp', d1: -0.25, d5: 3.75 }, { label: 'Bund future', area: 'euro area', unit: '%', d1: -0.2, d5: -0.5 }] } };
+    return { events, cot, reactions, eventDay };
+  },
 };

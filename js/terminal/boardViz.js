@@ -102,17 +102,17 @@ export function ridgeCurves({ curves, tenors, w = 560, h = 300, depthX = 0.5, de
  * rows = [{ label, value (text), pct (0-100), pct2 (optional second percentile), note }]. Tone: the marker is gold in the middle, dn/up at the ends
  * only when `ends` is given ('hi' = a high percentile is the notable end).
  */
-export function pctRails(rows, { w = 520 } = {}) {
+export function pctRails(rows, { w = 520, marks = [25, 50, 75], rightW = 96 } = {}) {
   const rs = (rows ?? []).filter(r => fin(r.pct));
   if (!rs.length) return '';
-  const rowH = 34, L = 108, R = 96, H = rs.length * rowH + 22, id = uid('bvp');
+  const rowH = 34, L = 108, R = rightW, H = rs.length * rowH + 22, id = uid('bvp');
   const x = p => L + (p / 100) * (w - L - R);
   const body = rs.map((r, i) => {
     const y = 18 + i * rowH, extreme = r.pct >= 90 || r.pct <= 10, col = extreme ? (r.pct >= 90 ? 'var(--gold)' : 'var(--pur2)') : 'var(--tx2)';
     return `<g class="bv-fade" style="--d:${(i * 0.06).toFixed(2)}s"><text x="0" y="${y + 4}" font-size="11.5" fill="var(--tx2)">${esc(r.label)}</text>
 <rect x="${L}" y="${y - 3}" width="${w - L - R}" height="6" rx="3" fill="var(--bg3)"/>
 <rect x="${L}" y="${y - 3}" width="${f1(x(r.pct) - L)}" height="6" rx="3" fill="${col}" fill-opacity=".28"/>
-${[25, 50, 75].map(q => `<line x1="${f1(x(q))}" x2="${f1(x(q))}" y1="${y - 6}" y2="${y + 6}" stroke="var(--line2)" stroke-width="1"/>`).join('')}
+${marks.map(q => `<line x1="${f1(x(q))}" x2="${f1(x(q))}" y1="${y - 6}" y2="${y + 6}" stroke="var(--line2)" stroke-width="1"/>`).join('')}
 ${fin(r.pct2) ? `<line x1="${f1(x(r.pct2))}" x2="${f1(x(r.pct2))}" y1="${y - 8}" y2="${y + 8}" stroke="var(--tx3)" stroke-width="1.5" stroke-dasharray="2 2"/>` : ''}
 <circle cx="${f1(x(r.pct))}" cy="${y}" r="9" fill="${col}" opacity=".35" filter="url(#${id})"/><circle cx="${f1(x(r.pct))}" cy="${y}" r="5" fill="${col}" stroke="var(--bg1)" stroke-width="1.5"/>
 <text x="${w - R + 12}" y="${y + 4}" font-size="11" fill="var(--tx)" font-family="var(--mono)">${esc(r.value ?? '')}</text>

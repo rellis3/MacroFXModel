@@ -2700,6 +2700,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/releasesBoardView.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
     ],
@@ -2810,15 +2811,39 @@ export const DERIVED = {
       "skill": "events_news",
       "maxAgeH": 96
      }
+    },
+    {
+     "route": "/api/cot-extremes",
+     "exists": true,
+     "pack": {
+      "skill": "cot_positioning",
+      "maxAgeH": 240
+     }
+    },
+    {
+     "route": "/api/releases-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/releasesBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/moreBoards.js",
+     "js/terminal/releasesBoardView.js"
+    ],
     "today": [
      "today.html"
     ],
-    "atlas": [],
+    "atlas": [
+     "atlas.html"
+    ],
     "newsletter": []
    },
    "evidence": [
@@ -2829,7 +2854,8 @@ export const DERIVED = {
     }
    ],
    "packSkills": [
-    "events_news"
+    "events_news",
+    "cot_positioning"
    ],
    "drift": []
   },
@@ -2923,29 +2949,31 @@ export const DERIVED = {
    ],
    "routes": [
     {
-     "route": "/api/release-layer1",
-     "exists": true,
-     "pack": null
-    },
-    {
-     "route": "/api/release-layer2",
-     "exists": true,
-     "pack": null
-    },
-    {
      "route": "/api/release-reactions",
      "exists": true,
      "pack": {
       "skill": "events_news",
       "maxAgeH": 336
      }
+    },
+    {
+     "route": "/api/releases-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/releasesBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/moreBoards.js",
      "js/terminal/reactionPanel.js",
+     "js/terminal/releasesBoardView.js",
      "js/terminal/traderReadView.js"
     ],
     "today": [
@@ -3006,6 +3034,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/releasesBoardView.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/traderReadView.js"
     ],
@@ -3049,11 +3078,25 @@ export const DERIVED = {
       "skill": "events_news",
       "maxAgeH": 96
      }
+    },
+    {
+     "route": "/api/releases-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/releasesBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/moreBoards.js",
+     "js/terminal/releasesBoardView.js"
+    ],
     "today": [
      "today.html"
     ],

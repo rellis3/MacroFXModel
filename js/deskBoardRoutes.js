@@ -10,6 +10,7 @@
 import { buildCreditLiquidity } from './creditLiquidityCore.js';
 import { buildCurveBoard } from './curveBoardCore.js';
 import { buildRegimeBoard } from './regimeBoardCore.js';
+import { buildReleasesBoard } from './releasesBoardCore.js';
 
 export function mountDeskBoards(app, d) {
   const route = (path, key, hours, build) => app.get(path, async (_req, res) => {
@@ -41,5 +42,11 @@ export function mountDeskBoards(app, d) {
   route('/api/regime-board', 'regimeboard', 0.17, async () => {
     const [state, hmm, hist, hedge] = await Promise.all([d.getState().catch(() => null), d.selfJson('/api/hmm/regimes').catch(() => null), d.selfJson('/api/hmm-daily-history').catch(() => null), d.selfJson('/api/hedge-alerts').catch(() => null)]);
     return buildRegimeBoard({ state, hmm, hist, hedge });
+  });
+
+  // Releases and who is positioned: the calendar, the COT crowding, the measured reactions and the front-end rate legs (self-calls, all cached feeds)
+  route('/api/releases-board', 'releasesboard', 0.1, async () => {
+    const [events, cot, reactions, eventDay] = await Promise.all(['/api/events', '/api/cot-extremes', '/api/release-reactions', '/api/event-day'].map(p => d.selfJson(p).catch(() => null)));
+    return buildReleasesBoard({ events: Array.isArray(events) ? events : (events?.events ?? []), cot, reactions, eventDay });
   });
 }
