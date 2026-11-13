@@ -143,6 +143,7 @@ export const EXCLUDED_PAGES = {
   'desk-terminal.html': 'the terminal itself',
   'footprint.html': 'order-flow capture (research)',
   'library.html': 'education',
+  'noise-area-momentum.html': 'backtest',
   'nq-forecast-target.html': 'research',
   'primary-signal.html': 'research',
   'research.html': 'research hub',
