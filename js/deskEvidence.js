@@ -2523,6 +2523,14 @@ export const DESK_EVIDENCE = [
     result: '2020-09 to 2026-08-21, 18,435 resolved random touches, 1,494 clusters: D +0.60pp [-1.34, +2.42] (MDE 2.7pp, powered); 3 of 6 pairs positive (rule >= 4); neighbour-year -1.52; real levels +0.60 [-5.53, +5.48] underpowered. Pointer only: local share of gross gamma at real levels +7.3pp [+1.8, +11.6], BH q 0.12 (not a survivor).',
     use: 'FX pages must not say dealer gamma at a price makes it hold or break.',
   },
+  {
+    id: 'relationship-map', domain: 'macro', verdict: 'underpowered', date: '2026-11-13', doc: 'forge/RELATIONSHIP_MAP_PREREG.md',
+    also: ['analysis/output/relationship-map/RESULTS.md'],
+    instruments: ['GOLD', 'SPX500', 'NQ', 'USDJPY', 'EURUSD', 'AUDUSD', 'USDCAD'],
+    claim: 'Twenty widely believed cross-market relationships (DXY/gold, yields/gold, VIX/S&P, oil/CAD, copper/AUD, curve slope/EURUSD...): after a big move in A (|z| >= 2), does B move the believed way over the next 5 days more than on an ordinary day?',
+    result: 'Daily 2006-2026-08-21, 137-199 de-clustered big moves per pair, MDE 0.23-0.36 sigma vs 0.10 that matters: no pair passes the gate (CI, BH over 20, both halves, placebo). Grades: 0 Leaning, 9 Faint, 11 Untested properly, 0 Against. DXY -> gold -0.043 [-0.200, +0.106]. Strongest: VIX -> gold +0.218 [+0.048, +0.393], halves +0.23/+0.21, placebo 99th pct, misses BH only. Same day, 12 of 20 move together reliably (|r| >= 0.20, believed sign in >= 80% of years); rates up / Nasdaq down is the OPPOSITE over 2006-2026 (r +0.20, believed sign 25% of years). Linear 5-day lead absent in all 20 (|z| <= 1.52), as the lead-lag grid found.',
+    use: 'A map for the monitor rulebook, not a signal: the reliable same-day pairs are the "out of line" baseline; Faint after-move rules may be shown at low weight, never alerted alone. Never say one of these markets leads another.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -2824,6 +2832,7 @@ const POWER = {
   'noise-area-momentum': { n: '2,670 ES and 2,670 NQ sessions (week-cluster bootstrap) + 200 shuffled histories each', note: 'Sharpe MDE ~0.92 per instrument vs paper 1.24 (detectable); NQ passes, ES CI [-0.04, 0.98] neither passes nor rules out 0.62' },
   'noise-area-momentum-book': { n: '2,671 book sessions (4 correlated indices, ~2 effective)', note: 'MDE ~0.7 vs null bar 0.66: borderline; CI [-0.19, 0.89]' },
   'noise-area-momentum-stop': { n: '2,670 sessions, ES+NQ pooled per day', note: 'CI width ~2.4 bp vs 0.35 bp null bar: underpowered by design' },
+  'relationship-map': { n: '137-199 de-clustered big moves per pair (20 pairs), month-block bootstrap', note: 'MDE 0.23-0.36 sigma per pair vs 0.10 SESOI: underpowered by design; positive control recovered 0.322 vs planted 0.335' },
 };
 
 const TAG = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };
