@@ -1239,7 +1239,9 @@ export const DERIVED = {
    ],
    "modules": [],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "js/terminal/curveBoardView.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -1551,11 +1553,25 @@ export const DERIVED = {
       "skill": "yields_curve",
       "maxAgeH": 96
      }
+    },
+    {
+     "route": "/api/curve-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/curveBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/curveBoardView.js",
+     "js/terminal/moreBoards.js"
+    ],
     "today": [],
     "atlas": [],
     "newsletter": []
@@ -1591,11 +1607,25 @@ export const DERIVED = {
       "skill": "global_market",
       "maxAgeH": 72
      }
+    },
+    {
+     "route": "/api/curve-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/curveBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/curveBoardView.js",
+     "js/terminal/moreBoards.js"
+    ],
     "today": [],
     "atlas": [],
     "newsletter": []

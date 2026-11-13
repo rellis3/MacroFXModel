@@ -35827,7 +35827,7 @@ const _stateRoutes = createStateRoutes({ kv, port: PORT, fetchD1: _btFetchD1, re
   edgeRegimes: () => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'analysis/output/edges-by-regime/results.json'), 'utf8')); } catch { return null; } },
 } }); _stateRoutes.mount(app);   // must sit above the /api/* worker catch-all
 mountDeskBoards(app, {
-  mbCached: _mbCached, fredKey: process.env.FRED_KEY, getState: () => _stateRoutes.get(), buildCsiInputs, buildCsi, CSI_DEFAULTS,
+  mbCached: _mbCached, fredKey: process.env.FRED_KEY, ratesSeries: async () => { if (Date.now() - _rates.at > 6 * 3600_000 || !_rates.series) await _refreshRates(); return _rates.series; }, getState: () => _stateRoutes.get(), buildCsiInputs, buildCsi, CSI_DEFAULTS,
   selfJson: async p => { const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { signal: AbortSignal.timeout(60_000) }); if (!r.ok) throw new Error(`${p} ${r.status}`); return r.json(); },
 });
 svcInterval('dailyRead', () => svcRun('dailyRead', () => dailyRead.tick('scheduled')), 5 * 60_000);

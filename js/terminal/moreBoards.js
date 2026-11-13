@@ -5,9 +5,11 @@
  * A throwing board is logged and skipped: it can never blank the tab.
  */
 import * as CL from './creditLiquidityView.js';
+import * as CV from './curveBoardView.js';
 
 const BOARDS = [
   ['credit-liquidity', CL.boardHtml],
+  ['curve-board', CV.boardHtml],
 ];
 
 /** E = the terminal's enrichment store ({ 'feed-name': payload }). Returns the HTML for every board whose feed has landed. */

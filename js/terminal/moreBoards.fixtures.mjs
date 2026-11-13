@@ -25,4 +25,16 @@ export const moreFixtures = {
       pulse: { ok: true, stats: { n: 2035, corrSameDay: -0.0176, corrNextDay: -0.0024, hitRateNextDay: 0.4959, hitRateSettlement: 0.5223, hitRateNonSettlement: 0.4776 } },
     };
   },
+  curve(now) {
+    const ds = days('2013-01-01', '2026-11-12');
+    const mk = (base, amp, ph) => ds.map((d, i) => ({ date: d, value: Math.max(0.05, base + amp * Math.sin(i / 380 + ph) + 0.4 * Math.sin(i / 53 + ph)) }));
+    const S = { effr: mk(2.2, 1.9, 0), us2y: mk(2.4, 1.7, 0.2), us5y: mk(2.7, 1.4, 0.35), us10y: mk(3.0, 1.1, 0.5), us30y: mk(3.4, 0.9, 0.6) };
+    S.us2y[S.us2y.length - 1].value = 4.86; S.us10y[S.us10y.length - 1].value = 5.10; S.us30y[S.us30y.length - 1].value = 5.43; S.us5y[S.us5y.length - 1].value = 4.95; S.effr[S.effr.length - 1].value = 3.88;
+    const coupling = { symbol: 'EUR/USD', availability: [{ last: '2026-11-13T21:55:00.000000000Z' }], spreads: [
+      { tenor: '10Y', label: 'DE-US 10Y (Bund vs T-Note)', available: true, bars: 1229, coincident: 0.78, state: { regimeCorr: -0.07, state: 'decoupled', note: 'rates not driving price right now' } },
+      { tenor: '2Y', label: 'US 2Y only', available: true, bars: 1360, coincident: 0.84, state: { regimeCorr: 0.45, state: 'divergent', note: 'price running against rates' } }] };
+    const episodes = { ok: true, stale: false, asOfT: 1794603600, now: { spread: 79.75, link20: 0.076, pending: { legDir: -1, retraced: 0 } },
+      events: [...Array(17)].map((_, i) => ({ outcome: { '4h': i % 3 === 0 ? 'follow' : i % 3 === 1 ? 'revert' : 'flat' } })) };
+    return { S, coupling, episodes };
+  },
 };

@@ -8,6 +8,7 @@
  * The shaping lives in pure modules (js/creditLiquidityCore.js ...), tested on their own; this file is wiring only.
  */
 import { buildCreditLiquidity } from './creditLiquidityCore.js';
+import { buildCurveBoard } from './curveBoardCore.js';
 
 export function mountDeskBoards(app, d) {
   const route = (path, key, hours, build) => app.get(path, async (_req, res) => {
@@ -25,5 +26,13 @@ export function mountDeskBoards(app, d) {
       d.selfJson('/api/liquidity-pulse/data').catch(() => null),
     ]);
     return buildCreditLiquidity({ components, csi, state, gate, pulse });
+  });
+
+  // The curve through time: the Treasury series the Rates & policy board holds (12 years, in memory), the yield-vs-EURUSD coupling and the spread-turn log
+  route('/api/curve-board', 'curveboard', 1, async () => {
+    const S = await d.ratesSeries();
+    if (!S) throw new Error('no rates yet');
+    const [coupling, episodes] = await Promise.all([d.selfJson('/api/yield-coupling').catch(() => null), d.selfJson('/api/spread-episodes/live').catch(() => null)]);
+    return buildCurveBoard({ S, coupling, episodes });
   });
 }

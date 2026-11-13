@@ -70,7 +70,7 @@ ${sub ? `<text x="${cx}" y="${cy + 18}" text-anchor="middle" font-size="9.5" fil
  * and glows. Each ridge is filled with the panel colour so it hides the ones behind it. Labels: tenors under the front curve, the levels on the
  * left (the front curve's scale), the dates of the oldest and newest ridge.
  */
-export function ridgeCurves({ curves, tenors, w = 560, h = 300, depthX = 2.1, depthY = 4.6 }) {
+export function ridgeCurves({ curves, tenors, w = 560, h = 300, depthX = 0.5, depthY = 3 }) {
   const cs = (curves ?? []).filter(c => c?.pts?.length === tenors.length && c.pts.every(p => fin(p.v)));
   if (cs.length < 3) return '';
   const n = cs.length, L = 46, B = 46, T = 20, R = 18;
@@ -85,7 +85,7 @@ export function ridgeCurves({ curves, tenors, w = 560, h = 300, depthX = 2.1, de
     const [ox, oy] = off(i), pts = c.pts.map((p, j) => [ox + xs(j), oy + ys(p.v)]), line = smoothPath(pts);
     const base = oy + plotH + 6, area = `${line}L${f1(pts[pts.length - 1][0])},${f1(base)}L${f1(pts[0][0])},${f1(base)}Z`;
     const front = i === n - 1, op = front ? 1 : clamp(0.16 + 0.62 * (i / (n - 1)), 0.16, 0.8);
-    return `<g class="bv-ridge" style="--d:${(i * 0.025).toFixed(3)}s"><path d="${area}" fill="var(--bg1)" stroke="none"/>
+    return `<g class="bv-ridge" style="--d:${(i * 0.025).toFixed(3)}s"><path d="${area}" class="bv-occ" stroke="none"/>
 <path d="${line}" fill="none" stroke="${front ? 'var(--gold)' : 'var(--pur2)'}" stroke-opacity="${f2(op)}" stroke-width="${front ? 2.4 : 1.1}"${front ? ` filter="url(#${id})"` : ''}/>${front ? `<path d="${line}" fill="none" stroke="var(--gold)" stroke-width="2.2"/>` : ''}</g>`;
   }).join('');
   const [fx, fy] = off(n - 1);
