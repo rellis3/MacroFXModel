@@ -292,3 +292,20 @@ this, because a log-score mean with a fixed shift takes discrete values.
 ---
 
 ## RESULTS — run <YYYY-MM-DD>
+
+### A2 — 2026-11-14 — PRE-RESULTS
+
+No forward row exists yet (the recorder is not deployed), so no outcome has been computed.
+
+**Added a derived cell `macro-h4-blend`** (owner 2026-11-14: "the 4h rule should add into the weight but the macro analysis
+should be the stronger factor"). It is computed from rows the ledger already records, so the recorder does not change:
+- **Side:** the side of `desk-rating`. No desk view = no row.
+- **Size:** 1 when `h4-trend` has the same side, 0.5 when it has the opposite side.
+- **Probability:** p_up = clip(p0 ± (desk shift if h4 agrees, else desk shift / 2)).
+- **Scoring:** as every forecaster: Brier and log score vs B0 on rows where it speaks, and size-weighted R.
+- **Holm family:** the cell joins it, now six cells.
+
+The exploratory run that motivated it is `analysis/output/macro-h4-blend/RESULTS.md` (not pre-registered; 22 days, every
+variant about flat). `scripts/bias-scoreboard/score.mjs` must compute this cell from the `desk-rating` and `h4-trend` rows
+before the 60-day judgement.
+
