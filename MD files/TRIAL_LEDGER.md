@@ -10,14 +10,14 @@ Generated 2026-11-14.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **327** |
+| claims tested (validated + null + underpowered) | **328** |
 | validated | 51 |
-| null | 181 |
+| null | 182 |
 | underpowered | 95 |
 | context (base rates, descriptions: not counted as tests) | 56 |
-| pre-registrations with no banked verdict (below) | 95 |
+| pre-registrations with no banked verdict (below) | 94 |
 
-**What the count says (Lesson 02 §05).** If none of the 327 claims were real, tests at the usual 5% size would still pass
+**What the count says (Lesson 02 §05).** If none of the 328 claims were real, tests at the usual 5% size would still pass
 about **16.4** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
 **roughly 16 of the 51 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
@@ -410,6 +410,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-14 | fomc-range-share | events | context | forge/FOMC_RANGE_SHARE_PREREG.md |
 | 2026-11-14 | gex-range-iv-calm-es | positioning | null | forge/GEX_RANGE_IV_CALM_PREREG.md |
 | 2026-11-14 | gex-range-iv-calm-nq | positioning | underpowered | forge/GEX_RANGE_IV_CALM_PREREG.md |
+| 2026-11-14 | hl-spread-estimator | execution | null | forge/HL_SPREAD_ESTIMATOR_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -463,7 +464,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/HARNESS_REGISTRY_PREREG.md`: Unified study harness, and deflating the registry it will re-score
 - `forge/HEDGING_PLAN_OI_PREREG.md`: HEDGING PLAN, OI-LEVEL VERSION: do orders on the OI map's own levels do better than orders on the forecast lin
 - `forge/HEDGING_STATE_FORWARD_PREREG.md`: hedging-state-forward — On the full Cboe book, does the dealer-hedging state at the open tell us how the day b
-- `forge/HL_SPREAD_ESTIMATOR_PREREG.md`: hl-spread-estimator — can a daily high-low-close spread estimator reproduce the quoted OANDA spread?
 - `forge/HOLD_DAY_ONE_CONFIRM_PREREG.md`: hold-day-one-confirm — When a day closes ≥ 1σ one way, does the way it closed (at its extreme, fast, through t
 - `forge/IEP_TIME_PREREG.md`: IEP-TIME: time of day, trading session and day of week in band attainment, first touch and consolidation
 - `forge/INTRADAY_EXTREME_PATHS_PREREG.md`: INTRADAY-EXTREME-PATHS: after a dynamic intraday extreme, what is the probability of continuation, meaningful 
