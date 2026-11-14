@@ -198,7 +198,7 @@ def read_m1(path, cutoff=M1_CUTOFF_UTC):
         flt = pds.field(tcol) < int(cutoff.tz_localize('UTC').timestamp()) * mult
     else:
         raise SystemExit(f'{path}: unsupported time type {typ}')
-    tb = dset.to_table(columns=[tcol, 'open', 'high', 'low', 'close'], filter=flt).to_pandas()
+    tb = dset.to_table(columns=[tcol, 'open', 'high', 'low', 'close'], filter=flt).to_pandas(ignore_metadata=True)
     tt = tb[tcol]
     if pa.types.is_integer(typ):
         tt = pd.to_datetime(tt * (1_000_000_000 // mult), utc=True)
