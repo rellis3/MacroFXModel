@@ -173,14 +173,13 @@ class Inst:
         self.h1_c = d['mc'][last]
         self.h1_end = self.h1_t + 3600
         # NY-close daily bars (17:00 New York), from M1 mid, n >= n_min_daily
-        ny = pd.to_datetime(t, unit='s', utc=True).tz_convert(NY) + pd.Timedelta(hours=7)
+        ny = pd.DatetimeIndex(pd.to_datetime(t, unit='s', utc=True)).tz_convert(NY) + pd.Timedelta(hours=7)
         key = ny.normalize()
-        kk = key.values
+        kk = key.asi8
         brk = np.r_[np.nonzero(kk[1:] != kk[:-1])[0], len(t) - 1]
         start = np.r_[0, brk[:-1] + 1]
         n = brk - start + 1
-        keys = pd.DatetimeIndex(kk[brk]).tz_localize(None) if getattr(key.dt, 'tz', None) is None else key.iloc[brk]
-        ends = np.array([int(datetime(k.year, k.month, k.day, 17, tzinfo=NY).timestamp()) for k in keys], np.int64)
+        ends = np.array([int(datetime(k.year, k.month, k.day, 17, tzinfo=NY).timestamp()) for k in key[brk]], np.int64)
         ok = n >= n_min_daily
         self.d_end, self.d_close = ends[ok], d['mc'][brk][ok]
 
@@ -475,7 +474,7 @@ def score(df: pd.DataFrame, opts: dict, rng, log=print):
         return np.where(sides > 0, df[col_L].to_numpy(), df[col_S].to_numpy())
 
     D_L = {x: df[f'{x}_Lq'].to_numpy() - df['E0_Lq'].to_numpy() for x in SCORED + FRI}
-    D_S = {x: df[f'{x}_Sq'].to_numpy() - df[f'{"E0"}_Sq'].to_numpy() for x in SCORED + FRI}
+    D_S = {x: df[f'{x}_Sq'].to_numpy() - df['E0_Sq'].to_numpy() for x in SCORED + FRI}
     Dr = {x: p * D_L[x] + (1 - p) * D_S[x] for x in SCORED + FRI}
     # gross (mid) for the design check
     gL = {x: df[f'{x}_Lm'].to_numpy() - df['E0_Lm'].to_numpy() for x in SCORED}
@@ -746,7 +745,7 @@ def selftest(out_dir: Path, log=print, n_days=2000):
     report['b_closed_form'] = {'ok': bool(b_ok), 'rows': b_rows}
     # (c) planted momentum: holding (E1) and trailing (E2) and the 5-day stop must pass the full gate
     data, days = synth(n_days=n_days, mu=0.20, seed=SEED + 2)
-    _, r = run_case(data, days, {}, 'planted momentum 0.20R/day', log)
+    _, r = run_case(data, days, {'ignore_design': True}, 'planted momentum 0.20R/day', log)
     need = ['E1', 'E2', 'E3_5']
     c_ok = 'cells' in r and all(r['cells'][x]['verdict'] == 'VALIDATED' for x in need)
     report['c_planted'] = {'ok': c_ok, 'stopped': r.get('stopped'), 'required_validated': need,
