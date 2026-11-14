@@ -50,6 +50,13 @@ test('a shut market is cached for ten minutes, not 75 seconds, and the answer sa
   T += CLOSED_TTL_MS; await L.get(); assert.equal(calls.pricing, 2);
 });
 
+test('a copy built while shut is dropped the moment the clock says open again', async () => {
+  let open = false; const { calls, d } = deps({ isFxOpen: () => open }); const L = makeLiveLayer(d);
+  await L.get(); T += 60e3; await L.get(); assert.equal(calls.pricing, 1, 'still shut: kept');
+  open = true; T += 1000; const a = await L.get();
+  assert.equal(calls.pricing, 2, 'reopened: rebuilt at once, not ten minutes later'); assert.equal(a.closed, false);
+});
+
 test('a failing part never drops the rest, and says why', async () => {
   const { d } = deps({ pricing: async () => { throw new Error('OANDA pricing 503'); }, clYield: async () => { throw new Error('no anchor'); } });
   const L = makeLiveLayer(d); const a = await L.get();

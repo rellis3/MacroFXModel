@@ -69,8 +69,10 @@ export function makeLiveLayer(d) {
   }
 
   async function get() {
-    const t = now(), ttl = st.data?.closed ? CLOSED_TTL_MS : OPEN_TTL_MS;
-    if (st.data && t - st.at < ttl) return st.data;
+    // a copy built while the market was shut is only kept for ten minutes while it STAYS shut: the moment the clock says open again it is stale
+    const t = now(), shut = st.data?.closed && (d.isFxOpen ? d.isFxOpen(t) === false : true), ttl = shut ? CLOSED_TTL_MS : OPEN_TTL_MS;
+    const reopened = st.data?.closed && d.isFxOpen?.(t) === true;
+    if (st.data && !reopened && t - st.at < ttl) return st.data;
     if (!st.inflight) {
       st.inflight = build().then(v => { st.data = v; st.at = now(); st.builds++; st.lastError = null; if (v.ok) st.lastOkAt = st.at; return v; })
         .catch(e => { st.lastError = e.message; if (st.data) return { ...st.data, warning: e.message }; throw e; })

@@ -11,6 +11,7 @@
  * stamped with the quote time. "Quiet" means small moves so far, not that there is no direction. The price read is a description of recent movement.
  */
 import { priceRead } from '../liveLayerCore.js';
+import { clockState } from '../marketClock.js';
 import { esc, fin } from './boardViz.js';
 
 const sg = (v, d = 1) => (!fin(v) ? '–' : Number(Math.abs(+v).toFixed(d)) === 0 ? (0).toFixed(d) : `${v > 0 ? '+' : '−'}${Math.abs(+v).toFixed(d)}`);
@@ -22,9 +23,11 @@ const London = iso => (iso ? new Date(iso).toLocaleString('en-GB', { timeZone: '
 const LL = { payload: null, at: 0, timer: null, loading: false, getJson: null, getAnalyst: null, strength: null, prRoot: null };
 export const _state = LL;
 
+/** "Markets closed · showing the close, Fri 21:00 UTC (London 22:00)" from the shared clock (js/marketClock.js); a plain fallback if it cannot say. */
+const closedLabel = () => { try { const st = clockState(Date.now()); return st.open ? 'market closed · showing the last prints' : st.label; } catch { return 'market closed · showing the last prints'; } };
 /** The stamp line: quote time in London, and the shut-market flag. */
 export function stampHtml(p) {
-  return `<span class="ll-stamp">quotes as of ${esc(London(p?.quoteAt ?? p?.builtAt))} London${p?.closed ? ' · <span class="chip gold">market closed · showing the last prints</span>' : ''}</span>`;
+  return `<span class="ll-stamp">quotes as of ${esc(London(p?.quoteAt ?? p?.builtAt))} London${p?.closed ? ` · <span class="chip gold">${esc(closedLabel())}</span>` : ''}</span>`;
 }
 
 // ── the curve now against the last daily close ─────────────────────────────────────────────────────────────────────────────────────────
@@ -49,11 +52,11 @@ function yieldsCard(y) {
   if (!y?.ok) return `<div class="card"><div class="ch"><span class="lbl">Yields, live (implied)</span></div><p class="muted">${esc(y?.error ?? 'not available')}. The official daily prints are on the global yields and curve boards.</p></div>`;
   const rows = y.rows.map(r => `<tr title="official ${r.official ? `${r.official.value}% on ${esc(r.official.date)}` : 'not loaded'}; implied from the bond CFD through a duration of ${r.D ?? '–'}">
 <td><b>${esc(r.label)}</b></td><td class="n mono">${r.official ? r.official.value.toFixed(2) : '–'}<span class="muted ll-d">${r.official ? esc(r.official.date.slice(5)) : ''}</span></td><td class="n mono"><b>${fin(r.implied) ? r.implied.toFixed(3) : '–'}</b></td><td class="n mono ${r.deltaBp > 0 ? 'dn' : r.deltaBp < 0 ? 'up' : ''}">${sg(r.deltaBp, 1)}bp</td></tr>`).join('');
-  const slopes = (y.slopes ?? []).map(s => `<span class="chip">${esc(s.label)} <b class="mono">${sg(s.nowBp, 0)}bp</b> <span class="muted mono">${sg(s.deltaBp, 1)}</span></span>`).join(' ');
-  const gap = y.bundGap ? `<span class="chip">Bund–UST 10y <b class="mono">${sg(y.bundGap.nowBp, 0)}bp</b> <span class="muted mono">${sg(y.bundGap.deltaBp, 1)}</span></span>` : '';
+  const slopes = (y.slopes ?? []).map(s => `<span class="chip ll-nc">${esc(s.label)} <b class="mono">${sg(s.nowBp, 0)}bp</b> <span class="muted mono">${sg(s.deltaBp, 1)}</span></span>`).join(' ');
+  const gap = y.bundGap ? `<span class="chip ll-nc">Bund–UST 10y <b class="mono">${sg(y.bundGap.nowBp, 0)}bp</b> <span class="muted mono">${sg(y.bundGap.deltaBp, 1)}</span></span>` : '';
   return `<div class="card"><div class="ch"><span class="lbl">Yields, live (implied)</span><span class="r muted">beside the official prints, which are unchanged</span></div>
-<div class="bv-two" style="grid-template-columns:minmax(0,1fr) minmax(200px,340px);align-items:start"><div class="scroll"><table><thead><tr><th></th><th class="n" title="the last official daily print (FRED / Bundesbank) and its date">Official</th><th class="n">Implied now</th><th class="n" title="the implied move since the last daily close, in basis points">Since close</th></tr></thead><tbody>${rows}</tbody></table></div>
-<div>${curveGlyph(y.rows)}<div class="bv-legend"><span><i class="bv-dot" style="background:var(--gold)"></i>implied now</span><span><i class="bv-dot" style="background:var(--tx3)"></i>at the last close</span></div></div></div>
+<div><div class="scroll"><table><thead><tr><th></th><th class="n" title="the last official daily print (FRED / Bundesbank) and its date">Official</th><th class="n">Implied now</th><th class="n" title="the implied move since the last daily close, in basis points">Since close</th></tr></thead><tbody>${rows}</tbody></table></div>
+<div style="margin-top:10px">${curveGlyph(y.rows)}<div class="bv-legend"><span><i class="bv-dot" style="background:var(--gold)"></i>implied now</span><span><i class="bv-dot" style="background:var(--tx3)"></i>at the last close</span></div></div></div>
 <div class="drv" style="margin-top:8px">${slopes} ${gap}</div>
 ${y.line ? `<div class="bv-say card"><p>${esc(y.line)}</p></div>` : ''}
 <p class="muted bv-note">${esc(y.basis)}. US yields are re-anchored at the 15:30 New York print; the Bund at the Bundesbank's. Expect a bp or two of drift: this is a live look, the official print is the record.</p></div>`;
@@ -62,7 +65,7 @@ ${y.line ? `<div class="bv-say card"><p>${esc(y.line)}</p></div>` : ''}
 function indicesCard(ix) {
   if (!ix?.ok) return `<div class="card"><div class="ch"><span class="lbl">Equity indices, since the close</span></div><p class="muted">${esc(ix?.error ?? 'not available')}.</p></div>`;
   const tiles = Object.values(ix.rows).map(r => `<div class="ll-tile"><span class="lbl">${esc(r.label)}</span><div class="mono ll-big ${tone(r.chgPct)}">${sg(r.chgPct, 2)}%</div><span class="muted mono">${Number(r.live).toLocaleString('en-GB', { maximumFractionDigits: 0 })}</span></div>`).join('');
-  const sv = (k, name) => (ix[k] == null ? '' : `<span class="chip">${name} <b class="mono ${tone(ix[k])}">${sg(ix[k], 2)}pp</b></span>`);
+  const sv = (k, name) => (ix[k] == null ? '' : `<span class="chip ll-nc">${name} <b class="mono ${tone(ix[k])}">${sg(ix[k], 2)}pp</b></span>`);
   return `<div class="card"><div class="ch"><span class="lbl">Equity indices, since the close</span><span class="r muted">index CFDs vs the last daily close</span></div>
 <div class="ll-tiles">${tiles}</div><div class="drv" style="margin-top:8px">${sv('smallVsBig', 'Russell − S&P')} ${sv('techVsBroad', 'Nasdaq − S&P')}</div>
 ${ix.line ? `<p style="margin:8px 0 0">${esc(ix.line)}</p>` : ''}
@@ -97,7 +100,7 @@ export function boardHtml(p0) {
   const p = LL.payload ?? p0;
   const head = `<div class="sec"><h2>Live layer <span class="cs-tag">price-based, live</span></h2><span class="lbl">the daily boards stay the reference; this is how far the market has moved since · refreshes about every 90 seconds while the page is open</span></div>`;
   if (!p?.ok) return `<div class="sfc" data-surface="panel.macro.livelayer">${head}<div class="card"><p class="muted">${esc(p?.error ?? 'the live layer has not loaded yet')}.</p></div></div>`;
-  return `<div class="sfc" data-surface="panel.macro.livelayer">${head}<div data-llroot>${inner(p)}</div></div>`;
+  return `<div class="sfc" data-surface="panel.macro.livelayer">${head}<div data-llroot data-mktboard>${inner(p)}</div></div>`;
 }
 function inner(p) {
   return `<div class="card ll-meta">${stampHtml(p)}</div><div class="grid g2" style="margin-top:12px">${yieldsCard(p.yields)}${indicesCard(p.indices)}</div><div class="grid g2" style="margin-top:12px">${rangeCard(p.state?.range)}${corrCard(p.state?.corr)}</div>`;
@@ -117,7 +120,7 @@ export function priceReadHtml(pr, { closed = false } = {}) {
 <span class="chip ${RT[r.read]}">${r.read}</span><span class="muted mono ll-ps">4H ${sg(r.s4h, 1)} · 1D ${sg(r.s1d, 1)}</span>
 <span class="ll-tag ${r.state}">${r.state === 'disagree' ? 'disagree' : r.state === 'agree' ? 'agree' : r.state === 'no-analyst' ? '' : 'open'}</span></div>`;
   }).join('');
-  return `${head}<div class="card"><div class="ch"><span class="lbl">Dawn read (left) · price read (right)</span><span class="r">${closed ? '<span class="chip gold">market closed · last prints</span>' : ''}</span></div>
+  return `${head}<div class="card" data-mktboard><div class="ch"><span class="lbl">Dawn read (left) · price read (right)</span><span class="r">${closed ? `<span class="chip gold">${esc(closedLabel())}</span>` : ''}</span></div>
 <div class="ll-prh"><span></span><span>analyst bias</span><span></span><span>4H + 1D strength</span><span></span><span></span><span></span></div>${rows}
 <p class="cs-say">${esc(pr.line)}</p>
 <p class="muted bv-note">${esc(pr.basis)} The dawn read is an analyst's daily view and the price read is a rule over recent prices: they measure different things and may disagree. Neither is a trade instruction, and the price read never changes the desk's book.</p></div>`;
@@ -168,5 +171,6 @@ export function mount({ getJson, getAnalyst } = {}) {
   LL.prRoot = typeof document !== 'undefined' ? document.getElementById('prx') : null;
   paintPriceRead(); applyLive();
   if (!LL.timer) LL.timer = setInterval(tick, 20e3);
+  if (!LL.bound && typeof window !== 'undefined') { LL.bound = true; window.addEventListener('marketstate', () => { LL.at = 0; refresh(); }); }     // the market opened or shut: rebuild at once, back to now
   if (!LL.payload || !LL.strength) refresh();
 }

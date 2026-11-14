@@ -29,8 +29,8 @@ test('the Macro block draws every part, wrapped in its own surface, with the dai
 });
 
 test('a closed market says so and shows the last prints', () => {
-  assert.match(stampHtml({ ...payload, closed: true }), /market closed · showing the last prints/);
-  assert.doesNotMatch(stampHtml(payload), /market closed/);
+  assert.match(stampHtml({ ...payload, closed: true }), /closed · showing the (close|last prints)/i);
+  assert.doesNotMatch(stampHtml(payload), /closed/i);
 });
 
 test('a failed or missing payload draws a plain sentence, never a blank or a throw', () => {
@@ -53,7 +53,7 @@ test('the price read: dawn bias beside the price read, a disagreement framed in 
   assert.match(priceReadHtml(null), /loading the price bars/);
   assert.match(priceReadHtml({ ok: false, error: 'no strength data' }), /no strength data/);
   assert.match(priceReadSlot(), /data-surface="panel\.ov\.priceread"/);
-  assert.match(priceReadHtml(priceRead({ strength, analyst: {} }), { closed: true }), /market closed/);
+  assert.match(priceReadHtml(priceRead({ strength, analyst: {} }), { closed: true }), /closed/i);
 });
 
 test('live figures inside the existing boards are empty until data lands, then escaped text', () => {

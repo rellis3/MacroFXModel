@@ -119,7 +119,7 @@ import { createStressShadow } from './js/stressShadowRoutes.js';       // stress
 import { createVolState } from './js/volStateRoutes.js';             // vol state vector, descriptive (GET /api/vol-state)
 import { createTradePlan } from './js/tradePlanRoutes.js';           // trade-plan shadow forward record, display only (forge/TRADE_PLAN_SHADOW_PREREG.md)
 import { mountLiveLayer as _mountLiveLayer } from './js/liveLayerRoutes.js';   // intraday overlay for the daily boards: EM, indices, implied yields, range used, correlation regime (/api/live-layer)
-import { isFxOpen as _llIsFxOpen } from './js/deskSnapshot.js';
+import { fxWeekOpen as _llIsFxOpen } from './js/marketClock.js';   // the PRECISE FX-week rule (Friday 17:00 to Sunday 17:00 New York)
 import { mountDeskBoards } from './js/deskBoardRoutes.js';              // the Desk Terminal's newer Macro boards (credit & liquidity, curve, regime, releases, strength, vol)
 import { createStateRoutes } from './js/stateRoutes.js';                // Market State Engine: GET /api/state (plans/MARKET_STATE_ENGINE_PLAN.md)
 import { createSurfaceLab } from './js/surfaceLabRoutes.js';
