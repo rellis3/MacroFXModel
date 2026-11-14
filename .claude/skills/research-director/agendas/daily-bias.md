@@ -310,6 +310,51 @@ regime where trends last.
 Q6 and Q7 come first: answerable on history, and each "no" also changes the desk (no overnight holds; 21:00 close).
 Q8 rides on Q2's run. Q9 waits on Q6. Q10 is forward only.
 
+## Part 3 — a bias that learns from what it got right and wrong (added 2026-11-14)
+
+Owner: "have we analysed different ideas on different timeframes over differing periods, then trained the analysis to
+see if it was correct, like ML learning what it got right and wrong, and how to improve its bias over multiple assets?"
+
+What exists:
+- **One idea at a time, by timeframe, never combined:** 85 macro direction cells, the direction-bar MDE map, and the
+  forward direction ledger since 2026-11-01.
+- **Learned models that were tested and found nothing:** `analogue-weeks` NULL (walk-forward nearest weeks, S&P 75%
+  vs 76% base), `gr-hmm-trend-direction` NULL, `gr-us-yields-direction` NULL.
+- **One live learning loop, and it is young:** `js/analystScorecard.js` scores the desk's 11 analysts daily and can
+  weight them by empirical Bayes. It starts 2026-11-03 and its feedback is OFF by default.
+- **Never built:** a learner that weights many weak, multi-timeframe readings per asset, walk-forward, and learns when
+  to abstain.
+
+### Q11. Can a walk-forward learner that weights many weak readings beat the base rate, and know when to stay out? — score 11/15
+
+> Build one feature table per instrument-day from readings knowable before 07:00 London:
+> - 1h, 4h, daily and weekly trend; the Asia move
+> - event state and the latest surprise sign
+> - carry; COT state; σ regime and the IV/RV ratio
+>
+> Train a small, heavily regularised model per horizon (21:00, +1, +3, +5 days) walk-forward by year, pooled across
+> assets with asset effects. Read calibration and Brier skill against B0 by asset and horizon. Read the accuracy you
+> keep as you drop low-confidence days. Read which readings it leaned on, and whether that changed between years.
+
+| | |
+|---|---|
+| Construct | point-in-time feature table, about 15 readings × 13 instruments; models: L2 logistic (primary), shallow gradient boosting (secondary); the prediction is P(up) |
+| Knowable when | 07:00 London; targets 21:00 same day, +1/+3/+5 days 21:00 |
+| Condition | asset group (FX, gold, indices); confidence decile (abstention) |
+| Horizons | same day, 1, 3, 5 days |
+| Noise threshold | the same pipeline on shuffled targets (block-permuted by day); B0; each single best reading alone |
+| Outcome distribution | OOS Brier skill vs B0, reliability curve, accuracy-coverage curve, R at 1σ risk on the top-confidence days, per-year stability of the learned weights |
+| Benchmark / control / mirror | B0; the best single reading; the 4h rule (`h4-trend-hold`) |
+| Mechanism | many weak, partly independent pieces of information (macro and 4h agree only 48%); a learner can only combine, so any gain must exceed the best single input |
+| Builds on | direction-bar MDE (0.13σ at 1 day), `analogue-weeks` NULL, `fx-factor-*` UNDERPOWERED, `macro-h4-blend` (exploratory), analyst scorecard |
+| Data & power | M1/D1 2016→2026-08-21 (laptop), ~2,500 days × 13 instruments; MDE about 1–2pp of hit rate pooled. Macro features with point-in-time history only (no desk or Global Read before 2026-10) |
+| If yes → | the learner's P(up) and its "no view" become the direction line of the desk card, and the analyst scorecard feedback is switched on with the same weighting idea |
+| If no → | direction on this information is not learnable at these horizons; the desk keeps day type plus event-led direction only (Q1/Q2) and abstains otherwise |
+| Falsifier | OOS Brier skill inside the shuffled-target band for every horizon and asset group |
+
+Forward twin: the bias-scoreboard (Q4) is already the learner's live training set. After 120 days, an online Hedge
+weighting over its forecasters is scored against the equal-weight blend (forward only; a future amendment).
+
 ## Parked
 
 - **Slow priors as daily direction** (carry, time-series momentum, 1–12 months: Moskowitz, Ooi & Pedersen 2012;
