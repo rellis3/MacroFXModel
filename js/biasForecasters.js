@@ -133,6 +133,32 @@ export function surpriseRule(store, calendar, date, { insts = Object.keys(SAMEDA
     knowable_ms: at, conviction: Math.abs(z), event_key: key, inputs: { ...base, state: 'carried' } }));
 }
 
+// ── h4-trend (Amendment A1, PRE-RESULTS 2026-11-14) ─────────────────────────────────────────────────────────────
+// Sign of the 4h EMA20 slope at 07:00 London, rebuilt exactly as scripts/max-bias-reverse/analyze.py: H1 bars that
+// closed at or before T (the last 320), 4h closes = the last H1 close in each bucket aligned to 00/04/08 UTC (the
+// latest bucket may be partial), EMA20 seeded with the first value; slope = EMA20(all) - EMA20(all but the last 3).
+// The exploratory look found Max's side agrees with it on 84% of instrument-days; this row shows whether he adds anything.
+export const H4_SHIFT = 0.04;
+const emaOf = (xs, n) => { const k = 2 / (n + 1); let e = null; for (const x of xs) e = e == null ? x : e + k * (x - e); return e; };
+/** `h1` = [{t: bar open (s, UTC), c}] oldest first. Returns +1 / -1 / 0 (or null with too little history). */
+export function h4Slope(h1, Tsec) {
+  const closed = (h1 || []).filter(b => Number.isFinite(b.c) && b.t + 3600 <= Tsec).slice(-320), out = [];
+  let cur = null;
+  for (const b of closed) { const k = Math.floor(b.t / 14400); if (k !== cur) { out.push(b.c); cur = k; } else out[out.length - 1] = b.c; }
+  if (out.length < 24) return null;
+  const d = emaOf(out, 20) - emaOf(out.slice(0, -3), 20);
+  return d > 0 ? 1 : d < 0 ? -1 : 0;
+}
+/** `h1ByInst` = { inst: H1 bars } as fetched at 07:00 London on D. */
+export function h4Trend(h1ByInst, date, { insts = Object.keys(SAMEDAY_INSTRUMENTS) } = {}) {
+  const at = londonMs(date, 7);
+  return insts.map(inst => {
+    const s = h4Slope(h1ByInst?.[inst], at / 1000), side = s === 1 || s === -1 ? s : 0;
+    return { model_id: 'h4-trend', model_version: V('h4-trend'), inst, speaks: !!side, side, shift: side ? H4_SHIFT : 0, knowable_ms: at,
+      inputs: { h4_ema20_slope_sign: s, source: 'OANDA H1 mid, closed bars only' } };
+  });
+}
+
 // ── fundabias: disabled until the owner confirms its terms allow storing readings (prereg §3.3). ──────────────────
 export const FUNDABIAS_ENABLED = false;
 export function fundabias() { return []; }

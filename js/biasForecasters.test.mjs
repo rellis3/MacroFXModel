@@ -1,6 +1,6 @@
 // node js/biasForecasters.test.mjs   (forge/BIAS_SCOREBOARD_PREREG.md §3.3-3.4)
 import assert from 'node:assert/strict';
-import { deskRating, deskCcy, maxSignals, maxWindow, surpriseRule, releaseZ, tier1Of, fundabias, FUNDABIAS_ENABLED, maxInst } from './biasForecasters.js';
+import { h4Slope, h4Trend, deskRating, deskCcy, maxSignals, maxWindow, surpriseRule, releaseZ, tier1Of, fundabias, FUNDABIAS_ENABLED, maxInst } from './biasForecasters.js';
 import { londonMs } from './directionLedger.js';
 
 let passed = 0;
@@ -93,6 +93,22 @@ ok('surprise: flat on a release day (calendar), silent when in line or z unknown
   assert.equal(by(v, 'usdjpy').inputs.release, 'Core CPI m/m');
   const fed = [...store, { country: 'US', event: 'Federal Funds Rate', ms: londonMs('2026-11-10', 19), actual: '3.75%', estimate: '3.75%' }];
   assert.ok(surpriseRule(fed, [], '2026-11-11').every(x => !x.speaks));
+});
+
+ok('h4-trend: EMA20 slope of 4h closes from closed H1 bars only; +-0.04; silent with too little history', () => {
+  const T = londonMs(D, 7) / 1000, t0 = T - 200 * 3600;
+  const up = Array.from({ length: 200 }, (_, i) => ({ t: t0 + i * 3600, c: 100 + i * 0.1 }));
+  assert.equal(h4Slope(up, T), 1);
+  const down = up.map((b, i) => ({ ...b, c: 200 - i * 0.1 }));
+  assert.equal(h4Slope(down, T), -1);
+  // a bar still open at T is ignored: a huge spike in the bar that opens at T changes nothing
+  assert.equal(h4Slope([...down, { t: T - 1800, c: 1e6 }], T), -1);
+  assert.equal(h4Slope(up.slice(-40), T), null);
+  const v = h4Trend({ eurusd: up, gold: down }, D);
+  assert.deepEqual([by(v, 'eurusd').side, by(v, 'eurusd').shift, by(v, 'eurusd').knowable_ms], [1, 0.04, londonMs(D, 7)]);
+  assert.equal(by(v, 'gold').side, -1);
+  assert.equal(by(v, 'nq').speaks, false);
+  assert.equal(v.length, 13);
 });
 
 ok('fundabias: disabled, writes nothing', () => {
