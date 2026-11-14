@@ -132,7 +132,6 @@ export function judge(recs, outs, { look = 1, seed = SEED, coinB = B } = {}) {
   // descriptive: per instrument, n07 / d5, extended instruments, by style -- BH q = 0.10
   const desc = [];
   for (const m of [...SCORED, 'B0']) for (const t of SAMEDAY_TARGETS) for (const inst of [...Object.keys(SAMEDAY_CORE), ...Object.keys(SAMEDAY_EXTENDED)]) {
-    if (t === 'd21' && core.has(inst) && false) continue;
     const x = rows.filter(r => r.model === m && r.target === t && r.inst === inst);
     if (!x.some(r => r.speaks)) continue;
     const s = cellStats(x, shared, { block: BLOCK[t], seed, coinB: 200 });
