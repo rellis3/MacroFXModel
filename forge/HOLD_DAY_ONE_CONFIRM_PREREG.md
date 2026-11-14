@@ -288,7 +288,23 @@ Readings:
 
 ## Amendments
 
-*(none)*
+### A1 — 2026-11-14 — PRE-RESULTS
+Runner details fixed while writing `scripts/hold-day-one-confirm/run.py`; no real forward outcome had been computed
+(the M1 is not in this container; only synthetic data was scored by `--selftest`).
+1. **CI and the SE floor.** When the MC null SD exceeds the bootstrap SE, the percentile CI is widened about P̄ by
+   the ratio MC SD / bootstrap SE, so G1's CI and its p use the same floor.
+2. **Shift placebo for `-hold-r`** moves the STRONG labels (membership and side) without re-applying the one-position
+   rule; the coin-flip management placebo term stays fixed. Shifted labels are read against the outcome date's own σ1
+   and hold R (only membership and side move), for every cell.
+3. **One-position rule** counts sessions on the date spine (the union of `part1_lines` dates); an instrument holiday can
+   shorten a busy window by a day. The coin-flip placebo uses seed 20261115 (= seed + 1); the MC null and the positive
+   control use seed + 2 … + 4. All derive from the one study seed.
+4. **MID weights** (instrument × z1-bin) are fixed on the full sample, not re-estimated inside each bootstrap draw.
+5. **Positive control (b)** checks the coin placebo's mean at h = 1; the SE floor inside the positive control comes
+   from 100 null draws (the scored run uses 300).
+6. **Synthetic engine** (MC null, positive control): sessions on the spine, 24 sub-steps a day, stop fill at the first
+   sub-step at or below −1R (gap-through), rows present only where a real forward row exists. The existence of a row is
+   known before any forward price is read (a later valid 21:00 close inside the lockbox).
 
 ---
 
