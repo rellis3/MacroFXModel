@@ -68,7 +68,8 @@ export function cellStats(rows, days, { block = 5, seed = SEED, coinB = B } = {}
   const hx = mean(sp.map(hitEx)), hxBoot = blockBoot(sp, days, hitEx, { block, seed: seed + 1 });
   const R = rng(seed + 2), coin = [];
   for (let k = 0; k < coinB; k++) coin.push(mean(sp.map(r => { const s = R() < 0.5 ? 1 : -1; return logScore(clipP(r.b0_p + s * r.shift), r.y) - logScore(r.b0_p, r.y); })));
-  const coinPct = 100 * coin.filter(c => c < est).length / coin.length + 50 * coin.filter(c => c === est).length / coin.length;
+  // randomised mid-rank: ties with the real value are split uniformly, so a no-skill forecaster's percentile is exactly uniform
+  const coinPct = 100 * (coin.filter(c => c < est - 1e-12).length + R() * coin.filter(c => Math.abs(c - est) <= 1e-12).length) / coin.length;
   const withR = sp.filter(r => Number.isFinite(r.R));
   return { n: sp.length, events: new Set(sp.map(r => r.event)).size, days: new Set(sp.map(r => r.day)).size, logdiff: est, se, z, p: 2 * (1 - Phi(Math.abs(z))),
     mirror_logdiff: estM, mirror_z: seM > 0 ? estM / seM : 0, hit_rate: mean(sp.map(r => (r.side > 0 ? r.y : 1 - r.y))), hit_excess: hx,
