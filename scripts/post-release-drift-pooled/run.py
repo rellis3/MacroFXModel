@@ -42,6 +42,10 @@ DEVIATIONS = [
     "events with >= 3 instruments measured.",
     "Placebo-entry R: 200 placebo draws per event.",
     "Non-US mirror: legacy calendar file only (to 2026-07-02).",
+    "Pre-2016-10 cost: 1.5 x the instrument x family median cost measured in R units (the prereg says 1.5 x the median "
+    "entry spread; R units also carry sigma, so this is the same rule up to the sigma ratio).",
+    "PPI 2014-15 summer rows stamped 13:30Z in calendar_events.csv are re-clocked to 08:30 ET (one-hour vendor slip); "
+    "the 2y release-bar audit is the check.",
 ]
 
 

@@ -180,6 +180,12 @@ def y_cols(rows: pd.DataFrame, events: pd.DataFrame, regime_L: pd.Series | None 
     R["d"] = R["inst"].map(DIRS).fillna(1).astype(int)
     R["dir_sig"] = R["s"] * R["d"]
     R["dir_mom"] = np.sign(R["m"]).fillna(0)
+    # prereg §3.6: before 2016-10 (no bid/ask) cost = 1.5 x the instrument x family median of the measured cost
+    for h in HORIZONS:
+        for side in ("p", "n"):
+            col = f"costR{side}_{h}"
+            if col in R:
+                R[col] = R[col].fillna(1.5 * R.groupby(["inst", "family"])[col].transform("median"))
     for h in HORIZONS:
         cens = R[f"cont_{h}"].fillna(False).astype(bool) if h != "h4" else pd.Series(False, index=R.index)
         raw = R[f"lr_{h}"] / R["sig"]
