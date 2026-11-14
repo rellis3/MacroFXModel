@@ -115,4 +115,7 @@ No calm-subsample coefficient had been computed. `scripts/gex-range-iv-calm/run.
 - No other change.
 
 
+### A2 — 2026-11-14 — POST-HOC (results seen; bookkeeping only)
+The two scored cells came out with different registered verdict words (ES-calm NULL by the interval-upper-below-+0.10 rule, marginal at 0.0986; NQ-calm UNDERPOWERED), so they are banked as two ledger ids, `gex-range-iv-calm-es` and `gex-range-iv-calm-nq`, both with this prereg as `doc`. The calm-from-D (OI date) sensitivity listed in §3 was not run: the parent frame carries no separate OI-date IV column. This changes no scored number and promotes nothing.
+
 ## RESULTS
