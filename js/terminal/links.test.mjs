@@ -77,6 +77,7 @@ function scan(text) {
     for (const m of sinks) {
       if (wrapped || EXTERNAL_OK.some(s => line.includes(s))) continue;
       if (/\.href\s*=\s*['"`]?#/.test(line) || /location\.hash/.test(line)) continue;
+      if (/\.href\s*=\s*['"`](js\/|css\/|desk-terminal)/.test(line) && !/location\.href\s*=/.test(line)) continue;   // a stylesheet/script link element (replayView loads js/terminal/replay.css), the same exemption the href= attribute form has
       out.push({ line: i + 1, v: m[0], text: line.trim().slice(0, 140) });
     }
   });
@@ -94,6 +95,8 @@ test('the guard catches what it should (self-test)', () => {
   assert.equal(scan('`<a href="${esc(b.page)}">x</a>`').length, 1);
   assert.ok(scan('a.href = `oi-dashboard-v2.html#${x}`;').length >= 1);
   assert.equal(scan("window.open('research.html')").length, 1);
+  assert.equal(scan("l.href = 'js/terminal/replay.css';").length, 0);
+  assert.ok(scan("l.href = 'research.html';").length >= 1);
   assert.equal(scan("${ownerLink('bank-credit.html', 'x')}").length, 0);
   assert.equal(scan('<a href="#" data-x>').length, 0);
   assert.equal(scan('<a href="https://x.org">').length, 0);

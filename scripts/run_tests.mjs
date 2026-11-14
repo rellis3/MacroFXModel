@@ -16,8 +16,9 @@ import { spawn } from 'node:child_process';
 import { readdirSync, statSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKIP_DIRS = new Set(['node_modules', '.git', 'scratchpad', 'output', 'archive']);
 const TIMEOUT_MS = 600_000;   // the two atlas walk tests take 3-4 min on a shared runner
 
