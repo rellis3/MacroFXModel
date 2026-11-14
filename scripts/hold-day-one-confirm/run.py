@@ -120,7 +120,7 @@ def control_moments(lines, insts):
     z = lines.assign(z=lines.r_ocs / lines.pit_sig_used).pivot(index='date', columns='inst', values='z')
     z = z.reindex(columns=list(insts))
     sd = z.std().fillna(1.0).values
-    C = z.corr().fillna(0.0).values
+    C = z.corr().fillna(0.0).values.copy()
     np.fill_diagonal(C, 1.0)
     w, V = np.linalg.eigh(C)
     C = V @ np.diag(np.clip(w, 1e-6, None)) @ V.T
@@ -374,12 +374,14 @@ class Stat:
 
     def sums(self, O, shift=0):
         out = []
-        for sign, mask, side, wt, kind in self.terms:
+        for t in self.terms:
+            sign, mask, side, wt, kind = t[:5]
+            fixed = len(t) > 5 and t[5]                                # the coin placebo term never moves
             row = []
             for h in H:
                 mk = mask[h] if isinstance(mask, dict) else mask
                 sd, w_ = side, wt
-                if shift:
+                if shift and not fixed:
                     mk, sd, w_ = np.roll(mk, shift, 0), np.roll(sd, shift, 0), np.roll(w_, shift, 0)
                 if kind == 'Z':
                     val = O[f'Z{h}'] - h * O['b']
@@ -428,7 +430,7 @@ def make_stats(lab, taken=None, coin=None):
     if coin is not None:
         cm, cs = coin
         st['hold-r'] = Stat('hold-r', [(1, taken if taken is not None else L['STRONG'], S, one, 'R'),
-                                       (-1, cm, cs, one, 'R')])
+                                       (-1, cm, cs, one, 'R', True)])
         st['_hold_strong'] = Stat('_hold_strong', [(1, taken if taken is not None else L['STRONG'], S, one, 'R')])
     st['_faded'] = Stat('_faded', [(1, L['FADED'], SF, one, 'Z')])
     st['_run_minus_faded'] = Stat('_run_minus_faded', [(1, L['STRONG'], S, one, 'Z'), (-1, L['FADED'], SF, one, 'Z')])
@@ -630,7 +632,7 @@ def run(cfg):
         G.new(nm)
     for nm in ('ok', 'u90', 'd90', 'u90_00', 'd90_00'):
         G.new(nm, False, bool)
-    G['o00'] = G.new('o00')
+    G.new('o00')
     m1s, ones, drops = {}, {}, {}
 
     log(cfg, 'reading M1 (lockbox-filtered at read time) and building DAY-ONE features (07:00-21:00 London) ...')
@@ -771,12 +773,13 @@ def mask_cols(stats, cols):
     out = {}
     for n, st in stats.items():
         terms = []
-        for sign, mask, side, wt, kind in st.terms:
+        for t in st.terms:
+            mask = t[1]
             if isinstance(mask, dict):
                 mk = {h: m & cols[None, :] for h, m in mask.items()}
             else:
                 mk = mask & cols[None, :]
-            terms.append((sign, mk, side, wt, kind))
+            terms.append((t[0], mk) + tuple(t[2:]))
         out[n] = Stat(n, terms)
     return out
 
@@ -907,8 +910,7 @@ def describe(G, O, lab, stats, X, coin_t, taken, sd, Lc, cfg, rng, mc_sd_h, res)
                            e_loss=float(r[r <= 0].mean()) if (r <= 0).any() else None,
                            stopped=float((r <= -1 - COST + 1e-12).mean()),
                            top10_share_of_pnl=float(top / r.sum()) if r.sum() != 0 else None,
-                           es5=float(srt[:max(1, len(r) // 20)].mean()),
-                           mean_cost_0.06 if False else None)
+                           es5=float(srt[:max(1, len(r) // 20)].mean()))
             legs[h]['mean_cost_0.06'] = float(r.mean() - COST)
             legs[h]['mean_with_financing'] = float(r.mean() - 0.01 * h)
             legs[h]['coin_placebo_mean'] = float(rc.mean()) if len(rc) else None
@@ -1025,10 +1027,10 @@ def write_outputs(cfg, G, cells, res, desc, drops, counts, counts_dates, pc, pow
 
 # ───────────────────────────── self-test ─────────────────────────────
 
-ST_INSTS = ('EURUSD', 'GBPUSD', 'GOLD', 'NQ')
+ST_INSTS = INSTS
 
 
-def make_world(root, drift_after_strong, seed, start='2023-06-01'):
+def make_world(root, drift_after_strong, seed, start='2020-08-24'):
     """Synthetic M1 + part1_lines in the real layouts. In the planted world, a day that closes >= 1 sigma in the outer
     10% of its 07:00-21:00 range drifts on in its direction for the next 5 sessions (drift_after_strong sigma a day)."""
     rng = np.random.default_rng(seed)
