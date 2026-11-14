@@ -121,6 +121,7 @@ import { createTradePlan } from './js/tradePlanRoutes.js';           // trade-pl
 import { mountLiveLayer as _mountLiveLayer } from './js/liveLayerRoutes.js';   // intraday overlay for the daily boards: EM, indices, implied yields, range used, correlation regime (/api/live-layer)
 import { fxWeekOpen as _llIsFxOpen } from './js/marketClock.js';   // the PRECISE FX-week rule (Friday 17:00 to Sunday 17:00 New York)
 import { mountDeskBoards } from './js/deskBoardRoutes.js';              // the Desk Terminal's newer Macro boards (credit & liquidity, curve, regime, releases, strength, vol)
+import { mountReplay as _mountReplay } from './js/replayRoutes.js';                  // the Desk Terminal REPLAY (time machine, stage 1): a session as minutes, the option levels as known then, strength every 15 min (/api/replay/*)
 import { createStateRoutes } from './js/stateRoutes.js';                // Market State Engine: GET /api/state (plans/MARKET_STATE_ENGINE_PLAN.md)
 import { createSurfaceLab } from './js/surfaceLabRoutes.js';
 import { createVixCapture } from './js/vixCaptureRoutes.js';
@@ -35897,6 +35898,13 @@ const _stateRoutes = createStateRoutes({ kv, port: PORT, fetchD1: _btFetchD1, re
 } }); _stateRoutes.mount(app);   // must sit above the /api/* worker catch-all
 mountDeskBoards(app, {
   mbCached: _mbCached, fredKey: process.env.FRED_KEY, fetchCandles: process.env.OANDA_KEY ? _fetchOandaCandles : null, ratesSeries: async () => { if (Date.now() - _rates.at > 6 * 3600_000 || !_rates.series) await _refreshRates(); return _rates.series; }, getState: () => _stateRoutes.get(), buildCsiInputs, buildCsi, CSI_DEFAULTS,
+  selfJson: async p => { const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { signal: AbortSignal.timeout(60_000) }); if (!r.ok) throw new Error(`${p} ${r.status}`); return r.json(); },
+});
+// Desk Terminal replay (js/replayRoutes.js): read-only routes behind the Replay tab. Past sessions are cached for hours; nothing is written and no model is called.
+_mountReplay(app, {
+  fetchRange: (sym, gran, fromISO, toISO) => { if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not configured'); return fetchOandaCandleRange(_liqGateOandaSym(sym), gran, fromISO, toISO); },
+  earliest: (sym, gran) => _probeEarliestBarCached(_liqGateOandaSym(sym), gran),
+  kvGet: key => kv.get(key),
   selfJson: async p => { const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { signal: AbortSignal.timeout(60_000) }); if (!r.ok) throw new Error(`${p} ${r.status}`); return r.json(); },
 });
 // The live layer (js/liveLayerRoutes.js): ONE OANDA pricing call for every EM and index price, the Chain Live window's own implied-yield functions, the vol-forecast session tracker's cache
