@@ -21,14 +21,14 @@ Usage: python -I scripts/bias-learner/power_sim.py [--draws N] [--jobs 4] [--out
 import argparse, json, os, sys, time
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor
-from sklearn.linear_model import LogisticRegression
 
 SEED = 20261114
 INST = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCAD', 'AUDUSD', 'NZDUSD', 'USDCHF', 'EURJPY', 'GBPJPY', 'GOLD', 'NAS100', 'SPX500', 'US30']
 GROUP = np.array([0] * 9 + [1] + [2] * 3)  # 0 fx, 1 gold, 2 idx
 GNAME = ['fx', 'gold', 'idx']
 FEAT = ['tr1h', 'tr4h', 'trD', 'trW', 'asia', 'cloc', 'ev_today', 'ev_tmrw', 'surp', 'carry', 'cot', 'sigreg', 'ivrv']
-CGRID = [1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2, 1e-1]
+CGRID = [1e-5, 3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2, 1e-1]
+RULE = os.environ.get('BL_RULE', 'min')  # 'min' (registered) or '1se' (sensitivity)
 TEST_YEARS = list(range(2018, 2027))
 
 
@@ -67,7 +67,8 @@ def simulate(rng, ic):
     F[:, :, 1] = ema(past, 3)                                         # 4h
     F[:, :, 2] = ema(past, 20)                                        # daily
     F[:, :, 3] = ema(past, 100)                                       # weekly
-    F[:, :, 4] = rng.standard_normal((T, N)) * 0.8 + 0.2 * np.sqrt(rho) * fac  # Asia move (own info, partly common)
+    asia_c = np.where(GROUP[None, :] == 2, rng.standard_normal(T)[:, None], rng.standard_normal(T)[:, None])
+    F[:, :, 4] = np.sqrt(rho) * asia_c + np.sqrt(1 - rho) * rng.standard_normal((T, N))  # Asia move: before 07:00, own shock, cross-correlated like returns
     F[:, :, 5] = 0.6 * past + 0.8 * rng.standard_normal((T, N))      # prior close location
     ev = (rng.random(T) < 0.08).astype(float)
     F[:, :, 6] = ev[:, None]
@@ -106,10 +107,33 @@ def design(Fz, inst_ix, grp):
     return np.concatenate([oh, Fz, dev], axis=1)
 
 
-def fit_predict(Xtr, ytr, Xte, C):
-    m = LogisticRegression(C=C, fit_intercept=False, max_iter=300, tol=1e-5)
-    m.fit(Xtr, ytr)
-    return m.predict_proba(Xte)[:, 1], m.coef_[0]
+def fit_predict(Xtr, ytr, Xte, C, otr=None, ote=None, w0=None):
+    """L2 logistic, the same objective as sklearn LogisticRegression(C, fit_intercept=False):
+    sum log-loss + ||w||^2 / (2C). Newton (IRLS) with a step-halving guard; 65 parameters, so exact and fast.
+    otr/ote: a fixed offset (logit of the point-in-time B0), so all shrinkage is TOWARD B0, never toward 50%."""
+    k = Xtr.shape[1]; lam = 1.0 / C
+    otr = np.zeros(len(ytr)) if otr is None else otr
+    ote = np.zeros(Xte.shape[0]) if ote is None else ote
+    w = np.zeros(k) if w0 is None else w0.copy()
+    def obj(w):
+        z = otr + Xtr @ w
+        return np.sum(np.logaddexp(0, z) - ytr * z) + 0.5 * lam * w @ w
+    f = obj(w)
+    for _ in range(50):
+        z = otr + Xtr @ w; q = 1 / (1 + np.exp(-z))
+        g = Xtr.T @ (q - ytr) + lam * w
+        H = (Xtr * (q * (1 - q))[:, None]).T @ Xtr + lam * np.eye(k)
+        step = np.linalg.solve(H, g); t = 1.0
+        while True:
+            wn = w - t * step; fn = obj(wn)
+            if fn <= f or t < 1e-6:
+                break
+            t *= 0.5
+        conv = abs(f - fn) < 1e-9 * max(1.0, abs(f))
+        w, f = wn, fn
+        if conv:
+            break
+    return 1 / (1 + np.exp(-(ote + Xte @ w))), w
 
 
 def standardise(Ftr, Fte):
@@ -117,7 +141,7 @@ def standardise(Ftr, Fte):
     return (Ftr - mu) / sd, (Fte - mu) / sd
 
 
-def choose_C(F, y, inst_ix, grp, year, month, end_day, start_day_of, train_mask):
+def choose_C(F, y, inst_ix, grp, year, month, end_day, start_day_of, train_mask, off):
     """One-SE rule over inner expanding folds = the last up to 3 training years."""
     yrs = sorted(set(year[train_mask]))
     inner = yrs[1:][-3:]
@@ -132,7 +156,7 @@ def choose_C(F, y, inst_ix, grp, year, month, end_day, start_day_of, train_mask)
         a, b = standardise(F[tr], F[va])
         Xa, Xb = design(a, inst_ix[tr], grp[tr]), design(b, inst_ix[va], grp[va])
         for C in CGRID:
-            p, _ = fit_predict(Xa, y[tr], Xb, C)
+            p, _ = fit_predict(Xa, y[tr], Xb, C, off[tr], off[va])
             se = (p - y[va]) ** 2
             mo = month[va]
             for u in np.unique(mo):
@@ -144,7 +168,7 @@ def choose_C(F, y, inst_ix, grp, year, month, end_day, start_day_of, train_mask)
     diff = M - M[best]
     se = diff.std(1, ddof=1) / np.sqrt(M.shape[1])
     ok = [i for i in range(len(CGRID)) if M[i].mean() <= M[best].mean() + se[i]]
-    return CGRID[min(ok)]
+    return CGRID[best] if RULE == 'min' else CGRID[min(ok)]
 
 
 def walk_forward(D, F, y, h, cols=None):
@@ -166,15 +190,16 @@ def walk_forward(D, F, y, h, cols=None):
         for t in range(T):
             k = max(0, t - h)  # labels of days < t-h are realised
             b0[t * N + i] = (cum[k] + 10) / (cnt[k] + 20)
+    off = np.log(b0 / (1 - b0))
     p = np.full(T * N, np.nan); Cs = {}
     for Y in TEST_YEARS:
         te = valid & (year == Y)
         tr = valid & (end_day < start_day_of[Y])
         if te.sum() == 0:
             continue
-        C = choose_C(Ff, yf, inst_ix, grp, year, month, end_day, start_day_of, tr)
+        C = choose_C(Ff, yf, inst_ix, grp, year, month, end_day, start_day_of, tr, off)
         a, b = standardise(Ff[tr], Ff[te])
-        p[te], _ = fit_predict(design(a, inst_ix[tr], grp[tr]), yf[tr], design(b, inst_ix[te], grp[te]), C)
+        p[te], _ = fit_predict(design(a, inst_ix[tr], grp[tr]), yf[tr], design(b, inst_ix[te], grp[te]), C, off[tr], off[te])
         Cs[Y] = C
     out = {}
     m = np.isfinite(p) & valid
