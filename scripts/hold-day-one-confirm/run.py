@@ -24,6 +24,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import warnings
 from dataclasses import dataclass, field, replace
 from statistics import NormalDist
 
@@ -741,7 +742,9 @@ def run(cfg):
         cells[c] = dict(res[c], p_holm=float(p), gates=g, verdict=verdict(c, res[c], g, p), power=power[c])
 
     log(cfg, 'descriptive arms ...')
-    desc = describe(G, O, lab, stats, X, coin_t, taken, sd, Lc, cfg, rng, mc_sd_h, res)
+    with np.errstate(all='ignore'), warnings.catch_warnings():         # empty descriptive slices are reported as None
+        warnings.simplefilter('ignore', RuntimeWarning)
+        desc = describe(G, O, lab, stats, X, coin_t, taken, sd, Lc, cfg, rng, mc_sd_h, res)
     write_outputs(cfg, G, cells, res, desc, drops, counts, counts_dates, pc, power, time.time() - t0)
     return cells
 
