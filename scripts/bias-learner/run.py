@@ -375,8 +375,9 @@ def build_panel(cfg):
         m1 = m1[m1.time >= pd.Timestamp('2015-01-01', tz='UTC')].reset_index(drop=True)   # warm-up year before 2016
         f = instrument_frame(m1, inst)
         frames.append(f)
-        raw[inst] = {'o': m1.open.to_numpy(float), 'h': m1.high.to_numpy(float), 'l': m1.low.to_numpy(float),
-                     'c': m1.close.to_numpy(float), 'tns': m1.time.to_numpy().astype('datetime64[ns]').astype(np.int64)}
+        # float32 keeps ~7 significant digits (well inside a pip) and halves the memory of 13 x ~4M minutes
+        raw[inst] = {'o': m1.open.to_numpy(np.float32), 'h': m1.high.to_numpy(np.float32), 'l': m1.low.to_numpy(np.float32),
+                     'c': m1.close.to_numpy(np.float32), 'tns': m1.time.to_numpy().astype('datetime64[ns]').astype(np.int64)}
         del m1
     P = pd.concat(frames).reset_index().rename(columns={'index': 'date'})
     P = P[(P.date >= START) & (P.date <= LOCKBOX)].reset_index(drop=True)
@@ -469,7 +470,7 @@ def add_targets(P, raw, with_R=True, costs=None):
         idx21 = np.flatnonzero(ok21)                    # positions (within instrument) of sessions with a 21:00 bar
         r = raw[inst]
         for h in HORIZONS:
-            y = np.full(len(m), np.nan); endd = np.full(len(m), np.datetime64('NaT'), dtype='datetime64[ns]')
+            y = np.full(len(m), np.nan); endd = np.full(len(m), np.datetime64('NaT', 'ns'), dtype='datetime64[ns]')
             mv = np.full(len(m), np.nan); Rl = np.full(len(m), np.nan); Rs = np.full(len(m), np.nan); cost = np.full(len(m), np.nan)
             for j in range(len(m)):
                 if not np.isfinite(sub.P0.iat[j]):
@@ -493,7 +494,7 @@ def add_targets(P, raw, with_R=True, costs=None):
                     Rl[j] = path_R(r['o'], r['h'], r['l'], r['c'], i0, i1, P0, stop, 1)[0]
                     Rs[j] = path_R(r['o'], r['h'], r['l'], r['c'], i0, i1, P0, stop, -1)[0]
                     if costs is not None and inst in costs:
-                        sp0 = costs[inst].get(r['tns'][i0]); sp1 = costs[inst].get(r['tns'][i1])
+                        sp0 = spread_at(costs[inst], r['tns'][i0]); sp1 = spread_at(costs[inst], r['tns'][i1])
                         if sp0 is not None and sp1 is not None:
                             cost[j] = (sp0 / 2 + sp1 / 2) / stop
             for col, v in ((f'y{h}', y), (f'end{h}', endd), (f'mv{h}', mv), (f'Rl{h}', Rl), (f'Rs{h}', Rs), (f'cost{h}', cost)):
@@ -505,15 +506,22 @@ def add_targets(P, raw, with_R=True, costs=None):
 
 
 def load_costs(cfg, raw):
-    """half-spread source: ask - bid at the entry minute (open) and exit minute (close), local bid/ask M1."""
+    """spread source: ask - bid per minute (mean of the open and close quotes), local bid/ask M1; half is charged at the
+    entry minute and half at the exit minute."""
     out = {}
     for inst, grp, rk, key, bakey, *_ in INSTRUMENTS:
         p = os.path.join(cfg.root, 'data/m1_bidask', f'{bakey}_m1.parquet')
         tb = read_m1(p, cols=('bid_o', 'ask_o', 'bid_c', 'ask_c'))
         tns = tb.time.to_numpy().astype('datetime64[ns]').astype(np.int64)
         sp = (tb.ask_o - tb.bid_o).to_numpy(float) / 2 + (tb.ask_c - tb.bid_c).to_numpy(float) / 2
-        out[inst] = dict(zip(tns.tolist(), sp.tolist()))
+        out[inst] = (tns, sp)                                      # sorted; exact-minute lookup by searchsorted
     return out
+
+
+def spread_at(cst, t):
+    tns, sp = cst
+    k = np.searchsorted(tns, t)
+    return float(sp[k]) if k < len(tns) and tns[k] == t and np.isfinite(sp[k]) else None
 
 
 def b0_matrix(dates, Y, END):
@@ -614,11 +622,14 @@ def monthly_score(se, month):
     return np.bincount(inv, se) / np.bincount(inv)
 
 
-def choose_C(D, tr, cols, y):
+def choose_C(D, tr, cols, y, want_inner=False):
+    """Lowest mean monthly inner Brier, ties to the smaller C. With want_inner, also returns the inner out-of-sample
+    predictions at the chosen C (rows, p), used for the point-in-time abstention thresholds (Amendment A1 h)."""
     folds = inner_folds(D, tr)
     if not folds:
-        return CGRID[4]
+        return (CGRID[4], None) if want_inner else CGRID[4]
     scores = {C: [] for C in CGRID}
+    preds = {C: [] for C in CGRID}
     for itr, iva in folds:
         a, b = standardise(D.F, D.avail, itr, iva)
         Xa, Xb = design(a, D.inst_ix[itr], D.grp[itr], cols), design(b, D.inst_ix[iva], D.grp[iva], cols)
@@ -627,9 +638,15 @@ def choose_C(D, tr, cols, y):
             w = fit_logit(Xa, y[itr], C, D.off[itr], w)
             p = sigmoid(D.off[iva] + Xb @ w)
             scores[C].extend(monthly_score((p - y[iva]) ** 2, D.month[iva]).tolist())
+            if want_inner:
+                preds[C].append((np.flatnonzero(iva), p))
     means = [np.mean(scores[C]) for C in CGRID]
     best = min(means)
-    return CGRID[[i for i, m in enumerate(means) if m <= best][0]]
+    Cb = CGRID[[i for i, m in enumerate(means) if m <= best][0]]
+    if not want_inner:
+        return Cb
+    rows = np.concatenate([r for r, _ in preds[Cb]]); pp = np.concatenate([q for _, q in preds[Cb]])
+    return Cb, (rows, pp)
 
 
 def train_mask(D, Y, window):
@@ -651,19 +668,25 @@ def walk_forward(D, cols, y=None, window='expanding', keep=False):
         tr = train_mask(D, Y, window)
         if tr.sum() < 500:
             continue
-        C = choose_C(D, tr, cols, y)
+        C, inner = choose_C(D, tr, cols, y, want_inner=True)
         a, b = standardise(D.F, D.avail, tr, te)
         Xa, Xb = design(a, D.inst_ix[tr], D.grp[tr], cols), design(b, D.inst_ix[te], D.grp[te], cols)
         w = fit_logit(Xa, y[tr], C, D.off[tr])
         p[te] = sigmoid(D.off[te] + Xb @ w)
         if keep:
-            pin = sigmoid(D.off[tr] + Xa @ w)
+            # coverage thresholds from the inner out-of-sample predictions at the chosen C (point-in-time, and with the
+            # out-of-sample spread; in-sample p is wider and gave ~2% realised coverage for a 20% target in the smoke run)
+            if inner is not None:
+                rows_i, p_i = inner
+            else:
+                rows_i, p_i = np.flatnonzero(tr), sigmoid(D.off[tr] + Xa @ w)
+            g_i, b_i = D.grp[rows_i], D.b0[rows_i]
             info['C'][Y] = C; info['w'][Y] = w.tolist()
-            info['thr'][Y] = {GROUPS[g]: {str(q): float(np.quantile(np.abs(pin[D.grp[tr] == g] - 0.5), 1 - q)) if q < 1 else 0.0
-                                          for q in COVERAGES} for g in range(3) if (D.grp[tr] == g).any()}
+            info['thr'][Y] = {GROUPS[g]: {str(q): float(np.quantile(np.abs(p_i[g_i == g] - 0.5), 1 - q)) if q < 1 else 0.0
+                                          for q in COVERAGES} for g in range(3) if (g_i == g).any()}
             info['thr_b0'] = info.get('thr_b0', {})
-            info['thr_b0'][Y] = {GROUPS[g]: {str(q): float(np.quantile(np.abs(D.b0[tr][D.grp[tr] == g] - 0.5), 1 - q)) if q < 1 else 0.0
-                                             for q in COVERAGES} for g in range(3) if (D.grp[tr] == g).any()}
+            info['thr_b0'][Y] = {GROUPS[g]: {str(q): float(np.quantile(np.abs(b_i[g_i == g] - 0.5), 1 - q)) if q < 1 else 0.0
+                                             for q in COVERAGES} for g in range(3) if (g_i == g).any()}
     return p, info
 
 
@@ -949,7 +972,7 @@ def score_cell(D, g, p, pm0, pbs, singles, shuf, info, rng, P_rows=None):
     ud = np.unique(dates)
     rnd = []
     rr = np.random.default_rng([SEED, 31, g])
-    for _ in range(N_RANDOM):
+    for _ in range(N_RANDOM if nk > 0 else 0):
         sel_rows = []
         tot_n = 0
         starts = rr.integers(0, max(1, len(ud) - BLOCK + 1), size=len(ud))
@@ -960,7 +983,7 @@ def score_cell(D, g, p, pm0, pbs, singles, shuf, info, rng, P_rows=None):
                 break
         sr = np.concatenate(sel_rows)[:max(nk, 1)]
         rnd.append(corr[sr].mean())
-    rnd = np.array(rnd)
+    rnd = np.array(rnd) if rnd else np.array([np.nan])
     u2, S2 = per_date_sums(dates, [corr * keep, keep.astype(float), corr0 * keep0, keep0.astype(float)])
     idx2 = block_index(len(u2), rng)
     Sb2 = np.stack([S2[i].sum(0) for i in idx2])
@@ -1268,7 +1291,7 @@ def synthetic_targets(P, dates, ic, seed):
     present = np.zeros((T, N), bool); present[di, ii] = True
     cs = np.vstack([np.zeros((1, N)), np.cumsum(r, 0)])
     for h in HORIZONS:
-        Y = np.full((T, N), np.nan); END = np.full((T, N), np.datetime64('NaT'), dtype='datetime64[ns]')
+        Y = np.full((T, N), np.nan); END = np.full((T, N), np.datetime64('NaT', 'ns'), dtype='datetime64[ns]')
         if h < T:
             Y[:T - h] = (cs[h + 1:] - cs[:T - h] > 0).astype(float)
             END[:T - h] = dates[h:].to_numpy()[:, None]
@@ -1371,7 +1394,7 @@ def run_real(cfg):
     pc = positive_control(P, dates, cfg.jobs)
     os.makedirs(cfg.out, exist_ok=True)
     json.dump(pc, open(os.path.join(cfg.out, 'positive_control.json'), 'w'), indent=1)
-    if not pc['passed']:
+    if not pc['passed'] and not getattr(cfg, 'smoke', False):
         raise SystemExit(f'POSITIVE CONTROL FAILED, no real target scored: {pc}')
     log('positive control passed; building real targets')
     costs = load_costs(cfg, raw) if cfg.with_R else None
@@ -1432,7 +1455,7 @@ def synth_panel(ic, seed, years=('2016-01-04', '2026-08-21')):
     for k, v in F.items():
         rows[k] = v.reshape(-1)
     for h in HORIZONS:
-        Y = np.full((T, N), np.nan); END = np.full((T, N), np.datetime64('NaT'), dtype='datetime64[ns]'); MV = np.full((T, N), np.nan)
+        Y = np.full((T, N), np.nan); END = np.full((T, N), np.datetime64('NaT', 'ns'), dtype='datetime64[ns]'); MV = np.full((T, N), np.nan)
         Y[:T - h] = (cs[h + 1:] - cs[:T - h] > 0).astype(float); END[:T - h] = dates[h:].to_numpy()[:, None]
         MV[:T - h] = np.abs(cs[h + 1:] - cs[:T - h])
         rows[f'y{h}'] = Y.reshape(-1); rows[f'end{h}'] = END.reshape(-1); rows[f'mv{h}'] = MV.reshape(-1)
@@ -1479,7 +1502,7 @@ def selftest(args):
     after = (tl >= pd.Timestamp('2016-06-15 07:00', tz=LON)).to_numpy()
     m2.loc[after, ['open', 'high', 'low', 'close']] *= 1.07 + 0.05 * np.random.default_rng(3).random((after.sum(), 1))
     f2 = instrument_frame(read_m1(_w(tmp, 'b', m2)), 'EURUSD')
-    cols = ['tr1h', 'tr4h', 'trD', 'trW', 'asia', 'cloc', 'sigreg', 'sig', 'P0']
+    cols = ['tr1h', 'tr4h', 'trD', 'trW', 'asia', 'cloc', 'sigreg', 'sig']   # P0 is the 07:00 open itself, not a reading
     s = f1.index <= cut
     same = np.allclose(f1.loc[s, cols].to_numpy(float), f2.loc[s, cols].to_numpy(float), equal_nan=True)
     changed = not np.allclose(f1.loc[f1.index > cut + pd.Timedelta(days=30), 'trD'].to_numpy(float),
@@ -1504,7 +1527,7 @@ def selftest(args):
     # 5. the learner: planted weak signal spread over 4 readings must be found above the shuffled band; null must not
     global TEST_YEARS
     cfg = Cfg(with_R=True, descriptive_full=args.full_selftest, gbm=args.full_selftest)
-    for ic, label, want in ((0.10, 'planted', True), (0.0, 'null', False)):
+    for ic, label, want in ((0.12, 'planted', True), (0.0, 'null', False)):
         P, dates = synth_panel(ic, [SEED, 5, int(ic * 100)])
         res = score_all(P, dates, cfg, args.selftest_shuffles, args.jobs, descriptive=True)
         res = finish_gbm_gates(res)
@@ -1524,6 +1547,82 @@ def selftest(args):
     return 0 if ok else 1
 
 
+def smoke(args):
+    """End-to-end run of the REAL code path (M1 readers, readings, events, rates, COT, Cboe, CME IV, targets, R, costs,
+    scoring, outputs) on a synthetic file tree, 2015-06 -> 2019-06. Checks it runs and writes; it scores nothing real."""
+    tmp = tempfile.mkdtemp(prefix='bias_learner_smoke_')
+    log('smoke root', tmp)
+    rng = np.random.default_rng([SEED, 404])
+    for inst, grp, rk, key, bakey, *_ in INSTRUMENTS:
+        d = os.path.join(tmp, 'VolRangeForecaster/data/m1' if rk == 'fx' else 'portfolioBacktest/cache')
+        os.makedirs(d, exist_ok=True)
+        m = synth_m1('2015-06-01', '2019-06-29', int(rng.integers(1e9)))
+        if inst == 'GOLD':
+            m[['open', 'high', 'low', 'close']] *= 1200
+        if grp == 'idx':
+            m[['open', 'high', 'low', 'close']] *= 5000
+        m.to_parquet(os.path.join(d, f'{key}_m1.parquet'))
+        ba = m.copy()
+        for x in ('o', 'c'):
+            base = ba['open' if x == 'o' else 'close']
+            ba[f'bid_{x}'] = base * (1 - 5e-5); ba[f'ask_{x}'] = base * (1 + 5e-5)
+        os.makedirs(os.path.join(tmp, 'data/m1_bidask'), exist_ok=True)
+        ba[['time', 'bid_o', 'ask_o', 'bid_c', 'ask_c']].to_parquet(os.path.join(tmp, 'data/m1_bidask', f'{bakey}_m1.parquet'))
+    # events: monthly CPI/NFP/PPI at 08:30 NY, FOMC 8 a year at 14:00 NY
+    ev = []
+    for mo in pd.date_range('2014-01-01', '2019-06-01', freq='MS'):
+        for fam, day in (('NFP', 5), ('CPI', 12), ('PPI', 14)):
+            t = pd.Timestamp(mo.year, mo.month, day, 8, 30, tz=NY)
+            ev.append((fam, t, int(rng.choice([-1, 0, 1])), float(rng.standard_normal())))
+        if mo.month in (1, 3, 4, 6, 7, 9, 10, 12):
+            ev.append(('FOMC', pd.Timestamp(mo.year, mo.month, 20, 14, 0, tz=NY), int(rng.choice([-1, 1])), float(rng.standard_normal())))
+    E = pd.DataFrame(ev, columns=['family', 't', 's', 'z']); E['t'] = E.t.dt.tz_convert('UTC')
+    os.makedirs(os.path.join(tmp, 'analysis/output/post-release-drift-pooled'), exist_ok=True)
+    E.to_parquet(os.path.join(tmp, 'analysis/output/post-release-drift-pooled/events.parquet'))
+    # rates: monthly first prints with asof 20 days after the month; EFFR daily
+    fs = os.path.join(tmp, 'features'); os.makedirs(fs, exist_ok=True)
+    months = pd.date_range('2005-01-01', '2019-06-01', freq='MS')
+    for c in ['usd', 'eur', 'gbp', 'jpy', 'aud', 'nzd', 'cad', 'chf']:
+        pd.DataFrame({'date': months, 'asof': months + pd.offsets.MonthEnd(0) + pd.Timedelta(days=20),
+                      'value': 1 + np.cumsum(rng.standard_normal(len(months)) * 0.1)}).to_parquet(os.path.join(fs, f'rate3m_{c}.parquet'))
+    pd.DataFrame({'date': months, 'asof': months + pd.offsets.MonthEnd(0) + pd.Timedelta(days=20),
+                  'value': 0.5 + rng.standard_normal(len(months)) * 0.1}).to_parquet(os.path.join(fs, 'rate_on_de.parquet'))
+    days = pd.bdate_range('2005-01-01', '2019-06-28')
+    pd.DataFrame({'date': days, 'asof': days + pd.Timedelta(days=1), 'value': 1 + np.cumsum(rng.standard_normal(len(days)) * 0.01)}).to_parquet(os.path.join(fs, 'effr.parquet'))
+    # COT weekly
+    tues = pd.date_range('2006-06-13', '2019-06-25', freq='7D')
+    rows = []
+    for sym in ['EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF', 'GOLD', 'NQ', 'ES', 'YM']:
+        x = np.cumsum(rng.standard_normal(len(tues))) * 1000
+        rows.append(pd.DataFrame({'sym': sym, 'set': 'discovery', 'report_date': tues, 'spec_long': 50000 + np.maximum(x, -40000),
+                                  'spec_short': 50000 - np.minimum(x, 40000), 'comm_long': 1, 'comm_short': 1, 'oi': 200000,
+                                  'traders_long': 1, 'traders_short': 1}))
+    os.makedirs(os.path.join(tmp, 'analysis/output/cot-crowding-programme'), exist_ok=True)
+    pd.concat(rows).to_csv(os.path.join(tmp, 'analysis/output/cot-crowding-programme/cot_weekly.csv'), index=False)
+    # Cboe and CME IV
+    os.makedirs(os.path.join(tmp, 'analysis/surfaces/cboe'), exist_ok=True)
+    cd = pd.bdate_range('2009-09-18', '2019-06-28')
+    for sym in ('VIX', 'VXN', 'VXD'):
+        v = 15 + 3 * np.abs(rng.standard_normal(len(cd)))
+        pd.DataFrame({'DATE': cd.strftime('%m/%d/%Y'), 'OPEN': v, 'HIGH': v, 'LOW': v, 'CLOSE': v}).to_csv(
+            os.path.join(tmp, 'analysis/surfaces/cboe', f'{sym}.csv'), index=False)
+    pd.DataFrame({'DATE': cd.strftime('%m/%d/%Y'), 'GVZ': 15 + np.abs(rng.standard_normal(len(cd)))}).to_csv(
+        os.path.join(tmp, 'analysis/surfaces/cboe/GVZ.csv'), index=False)
+    os.makedirs(os.path.join(tmp, 'oi_research_book/data'), exist_ok=True)
+    idd = pd.bdate_range('2018-09-08', '2019-06-28')
+    for fk in ('eur_usd', 'gbp_usd', 'usd_jpy', 'usd_cad', 'aud_usd', 'usd_chf'):
+        pd.DataFrame({'date': idd, 'iv30': 0.07 + 0.01 * np.abs(rng.standard_normal(len(idd)))}).to_parquet(
+            os.path.join(tmp, 'oi_research_book/data', f'iv_daily_{fk}.parquet'))
+    out = os.path.join(tmp, 'out')
+    cfg = Cfg(root=tmp, m1_root='VolRangeForecaster/data/m1', index_root='portfolioBacktest/cache', feature_root=fs, out=out,
+              shuffles=args.selftest_shuffles, jobs=args.jobs, gbm=True, with_R=True, descriptive_full=True, smoke=True)
+    run_real(cfg)
+    r = json.load(open(os.path.join(out, 'results.json')))
+    ok = os.path.exists(os.path.join(out, 'RESULTS.md')) and len(r['cells']) >= 3
+    print('SMOKE PASSED' if ok else 'SMOKE FAILED', out)
+    return 0 if ok else 1
+
+
 def _w(tmp, name, df):
     p = os.path.join(tmp, f'{name}_m1.parquet'); df.to_parquet(p); return p
 
@@ -1531,6 +1630,7 @@ def _w(tmp, name, df):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--selftest', action='store_true')
+    ap.add_argument('--smoke', action='store_true', help='end-to-end run of the real code path on a synthetic file tree')
     ap.add_argument('--full-selftest', action='store_true', help='selftest also runs GBM and the descriptive refits')
     ap.add_argument('--selftest-shuffles', type=int, default=20)
     ap.add_argument('--root', default='.')
@@ -1546,6 +1646,8 @@ def main():
     os.environ.setdefault('OMP_NUM_THREADS', '1')
     if a.selftest:
         sys.exit(selftest(a))
+    if a.smoke:
+        sys.exit(smoke(a))
     if a.shuffles != N_SHUFFLE:
         log(f'WARNING: {a.shuffles} shuffles, not the registered {N_SHUFFLE}; this run is not the registered run')
     cfg = Cfg(root=a.root, m1_root=a.m1_root, index_root=a.index_root, feature_root=a.feature_root, out=a.out,

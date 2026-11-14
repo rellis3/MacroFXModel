@@ -351,7 +351,13 @@ completes on its last trading day); (c) rows with a NaN in any reading that exis
 counted; (d) the random-abstention band draws contiguous 21-session date blocks until the kept count is reached;
 (e) the positive control uses 20 shuffles (a code check, not a scored cell); the scored cells use the registered 200;
 (f) the recalibration-slope CI uses 500 of the 2000 bootstrap draws (G6 gates the point estimate only); (g) per-
-instrument disaggregation uses B = 1000.
+instrument disaggregation uses B = 1000. (h) **Abstention thresholds (changes §3.6):** the coverage cut for q is the (1 − q)
+quantile of |p − 0.5| over the fold's **inner validation predictions at the chosen C** (out-of-sample, dated before the
+test year), not over in-sample training predictions: in-sample p is wider than out-of-sample p, and the end-to-end
+smoke run on synthetic files realised ~2% coverage for a 20% target. B0's own cut uses B0 on the same inner rows. The
+first fold falls back to in-sample p only if it has no inner year. (i) The runner also has `--smoke`: the real code path
+end to end on a synthetic file tree (2015-06 → 2019-06); it checks that the run completes and writes, and scores nothing
+real.
 
 ---
 
