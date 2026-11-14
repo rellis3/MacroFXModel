@@ -15,6 +15,7 @@
  * This is PRICE-based and LIVE (it moves with every bar); the desk's own strength strip is the Currency Manager's analyst read, once a day. They
  * measure different things and may disagree. Ordering only: nothing here is a direction call or a trade.
  */
+import { fxWeekOpen, clockState } from './marketClock.js';
 export const CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'NZD'];
 // the 28 pairs in OANDA's own orientation (base_quote)
 export const PAIRS = ['EUR_USD', 'GBP_USD', 'AUD_USD', 'NZD_USD', 'USD_JPY', 'USD_CAD', 'USD_CHF', 'EUR_GBP', 'EUR_JPY', 'EUR_CHF', 'EUR_AUD', 'EUR_CAD', 'EUR_NZD',
@@ -91,9 +92,13 @@ export function buildStrength({ bars, now = Date.now() } = {}) {
     per[pair] = { base, quote, last, b, sig: normalMoves(b.h1 ?? [], b.d ?? []) };
   }
   if (!Object.keys(per).length) return { ok: false, error: 'no price bars yet' };
+  // While the FX week is shut (or the bars have stopped for 90 minutes) every window is anchored to the LAST PRICE instead of now, so "1H" is the last hour of
+  // trading before the close, not an empty hour of nothing (which read as a flat board and left 1W without a start price). Reopening returns it to now by itself.
+  const stale = !!latest && now - latest > 90 * 60e3, weekShut = !fxWeekOpen(now), closed = !!latest && (weekShut || stale);
+  const anchor = closed ? Math.min(now, latest) : now;
   const horizons = {};
   for (const hz of HORIZONS) {
-    const t0 = now - hz.hours * HOUR, obs = [];
+    const t0 = anchor - hz.hours * HOUR, obs = [];
     for (const p of Object.values(per)) {
       const sigma = p.sig[hz.key]; if (!fin(sigma) || sigma <= 0) continue;
       // the price at the start of the window; when the market has been shut since before that instant the last known price IS the price then (a flat window), not a gap
@@ -107,11 +112,11 @@ export function buildStrength({ bars, now = Date.now() } = {}) {
     if (!fit) { horizons[hz.key] = { available: false, reason: `only ${obs.length} of 28 pairs had prices and a normal move for ${hz.key}`, pairs: obs.length }; continue; }
     const flat = obs.every(x => x.raw === 0);
     const sorted = [...fit.scores].sort((a, b) => b.score - a.score).map((s, i) => ({ ...s, rank: i + 1 }));
-    horizons[hz.key] = { available: true, flat, from: new Date(t0).toISOString(), pairs: fit.n, unitPct: r2(fit.unit * 100 * 1000) / 1000, concentration: fit.concentration,
+    horizons[hz.key] = { available: true, flat, from: new Date(t0).toISOString(), to: new Date(anchor).toISOString(), pairs: fit.n, unitPct: r2(fit.unit * 100 * 1000) / 1000, concentration: fit.concentration,
       scores: sorted, leader: sorted[0].ccy, laggard: sorted[sorted.length - 1].ccy, spread: r2(sorted[0].score - sorted[sorted.length - 1].score) };
   }
-  const closed = latest && now - latest > 90 * 60e3;
-  return { ok: true, builtAt: new Date(now).toISOString(), asOf: latest ? new Date(latest).toISOString() : null, closed: !!closed, horizons, unit: 'σ' };
+  const ms = clockState(now);
+  return { ok: true, builtAt: new Date(now).toISOString(), asOf: latest ? new Date(latest).toISOString() : null, closed: !!closed, anchored: closed, closeLabel: closed ? (ms.open ? 'the last prices' : ms.closeLabel) : null, horizons, unit: 'σ' };
 }
 
 const sg = v => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(1)}`;
@@ -120,8 +125,9 @@ export function describeStrength(payload, hz) {
   const h = payload?.horizons?.[hz];
   if (!payload?.ok || !h?.available) return null;
   if (h.flat) return `The market has not moved over ${hz}: every currency is at zero.`;
+  const when = payload.anchored ? ` (the last ${hz} of trading before the close)` : '';
   const lead = h.scores[0], lag = h.scores[h.scores.length - 1];
-  let s = `Strongest vs weakest on ${hz}: ${lead.ccy} vs ${lag.ccy} (${sg(lead.score)}σ and ${sg(lag.score)}σ, a ${h.spread.toFixed(1)}σ spread).`;
+  let s = `Strongest vs weakest on ${hz}${when}: ${lead.ccy} vs ${lag.ccy} (${sg(lead.score)}σ and ${sg(lag.score)}σ, a ${h.spread.toFixed(1)}σ spread).`;
   if (h.concentration != null) s += h.concentration >= 0.4 ? ` One currency is doing most of the moving (${Math.round(h.concentration * 100)}% of the board's strength).` : ' The move is spread across currencies, not one story.';
   return s;
 }

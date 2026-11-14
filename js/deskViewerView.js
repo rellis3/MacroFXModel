@@ -14,6 +14,8 @@
 // and the plan fields are then kept. Wired in server.js (a res.json wrapper for requests that carry only a desk cookie). Tested by js/deskViewerView.test.mjs.
 // The SHARED once-a-day reads (validateSharedRead below) stay strict: one stored copy for everyone, no trade language at all.
 
+import { OWNER_ONLY_FEEDS } from './deskSnapshot.js';
+
 // ── trade language ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 // A sentence is dropped from viewer text when it reads as an instruction or a trade plan. The patterns are deliberately about the PLAN words (entry, stop,
 // take-profit, a target at a number, invalidation at a level, sizing, buy/sell as an instruction) and not about analysis that uses the same words ("the
@@ -188,6 +190,37 @@ export function sanitizeStoredRead(read) {
   return { ...rest, card: null, analysis: v.ok ? v.value : empty, label: 'educational context: not a trade signal' };
 }
 
+/** Drop every key named in `names`, at any depth (copies; never mutates). */
+function dropKeys(v, names, depth = 0) {
+  if (Array.isArray(v)) return v.map(x => dropKeys(x, names, depth + 1));
+  if (!v || typeof v !== 'object' || depth > 14) return v;
+  const out = {};
+  for (const [k, x] of Object.entries(v)) if (!names.has(k)) out[k] = dropKeys(x, names, depth + 1);
+  return out;
+}
+/**
+ * The time machine's snapshots (/api/desk-snapshots, /api/desk-snapshots/full; js/deskSnapshot.js) for a viewer. A series of the book's `size` reads as a
+ * trade-sizing record, so it is removed everywhere (the live card's size row is its own switch); the trade-level keys and sentences go as in the morning book,
+ * and the FULL snapshot loses the feeds that carry trade levels or the owner's record (OWNER_ONLY_FEEDS) unless the owner switched that surface on.
+ */
+const SNAPSHOT_FEED_SURFACE = { 'trade-watch': ['strip.zone', 'panel.ov.tradewatch'], 'pair-select': ['panel.ov.bestpairs'], 'desk-alerts': ['panel.ov.alerts'],
+  'desk-score/record': ['panel.ov.record', 'panel.ana.track', 'panel.ana.fall', 'panel.ana.days'], 'desk-quality': ['widget.dqchip'] };
+export function sanitizeSnapshot(body, on) {
+  if (!body || typeof body !== 'object') return body;
+  const O = onFn(on);
+  let b = body;
+  const snap = b.snapshot && typeof b.snapshot === 'object' ? b.snapshot : null;
+  if (snap?.feeds) {
+    const feeds = {};
+    for (const [k, v] of Object.entries(snap.feeds)) {
+      if (OWNER_ONLY_FEEDS.includes(k) && !(SNAPSHOT_FEED_SURFACE[k] ?? []).some(id => O(id))) continue;
+      feeds[k] = v;
+    }
+    b = { ...b, snapshot: { ...snap, feeds } };
+  }
+  return stripTrade(dropKeys(b, new Set(['size'])), on);
+}
+
 /** The routes whose JSON a viewer receives with the trade-level fields removed: (body, on) => body. Wired in server.js (a res.json wrapper). */
 export const VIEWER_SANITISERS = {
   '/api/desk-run': sanitizeRun,
@@ -198,5 +231,7 @@ export const VIEWER_SANITISERS = {
   '/api/desk-news': sanitizeNews,
   '/api/desk-risk': (body, on) => stripTrade(body, on),    // the model description of the book's risk and exposure: analysis; stripped defensively
   '/api/desk-watch': (body, on) => stripTrade(body, on),   // the setup watch and the chain-link log
+  '/api/desk-snapshots': sanitizeSnapshot,          // the time machine's CORE series
+  '/api/desk-snapshots/full': sanitizeSnapshot,     // and a day's FULL snapshot
 };
 export const sanitizerFor = path => VIEWER_SANITISERS[String(path ?? '').split('?')[0].replace(/\/+$/, '')] ?? null;

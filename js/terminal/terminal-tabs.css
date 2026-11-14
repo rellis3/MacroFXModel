@@ -305,3 +305,10 @@
 .bv-tile{min-width:0}
 .bv-th{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px}
 .bv-tn{font-size:10.5px;margin-top:2px}
+
+/* ── market closed: the live boards show the close, calmly (js/terminal/marketStateView.js stamps <html data-market>) ── */
+[data-mktboard],#tt-chain .cg-wrap{transition:filter .6s ease}
+html[data-market="closed"] [data-mktboard],html[data-market="closed"] #tt-chain .cg-wrap{filter:saturate(.78)}
+.mkt-chip[hidden]{display:none}
+.mkt-chip{cursor:default}
+@media (prefers-reduced-motion:reduce){[data-mktboard],#tt-chain .cg-wrap{transition:none}}

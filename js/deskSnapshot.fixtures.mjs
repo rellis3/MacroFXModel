@@ -1,0 +1,33 @@
+// Payloads shaped like the live routes the time machine reads (copied from production on 2026-11-14 and cut down), one per CORE feed, in CORE_FEEDS order.
+// Used by js/deskSnapshot.test.mjs and js/deskSnapshotStore.test.mjs. Values are real readings; none of them is a signal.
+export const FIXTURES = {
+  stress: { ok: true, at: '2026-11-14T17:22:45.134Z', overall: 'watch', score: 2, tiles: [{ id: 'risk', label: 'Risk flags', level: 'ok', detail: '0 of 5 flags on' }, { id: 'credit', label: 'Credit', level: 'watch', detail: 'x' }] },
+  risk: { ok: true, computed_at: '2026-11-14T17:18:45.487Z', flags: [{ key: 'vix_level', label: 'VIX elevated', on: false, value: 18.7, detail: 'VIX 18.7 (flag >=25)' }, { key: 'hy_oas', label: 'HY OAS', on: true, value: 3.3, detail: 'x' }], active: 1, available: 5, total: 6, level: 'CALM', move: { level: 98.79, pct1y: 89, chg5: 0.9, chg20: -3.7, asOf: '2026-11-13' } },
+  em: { ok: true, fetchedAt: '2026-11-14T17:15:45.511Z', pairs: { USDMXN: { ok: true, last: 18.53801, chg1d: -0.34, z5: -0.4, spark: [1, 2, 3] }, USDZAR: { ok: true, last: 16.93473, chg1d: 0.98, z5: 1.92 } }, stress: { z: 0.76, level: 'calm', read: 'nothing unusual' } },
+  strength: { ok: true, builtAt: '2026-11-14T17:22:52.269Z', asOf: '2026-11-13T22:00:00.000Z', closed: true, horizons: {
+    '1H': { available: true, flat: true, pairs: 28, leader: 'USD', laggard: 'NZD', spread: 0, scores: [{ ccy: 'USD', score: 0, rank: 1 }, { ccy: 'NZD', score: 0, rank: 8 }] },
+    '1D': { available: true, flat: false, pairs: 28, leader: 'JPY', laggard: 'EUR', spread: 1.87, scores: [{ ccy: 'JPY', score: 1.17, rank: 1 }, { ccy: 'EUR', score: -0.7, rank: 8 }] },
+    '1W': { available: false, reason: 'only 0 of 28 pairs had prices and a normal move for 1W', pairs: 0 } }, unit: 'σ' },
+  yields: { ok: true, fetchedAt: '2026-11-14T17:20:45.932Z', rows: [{ ccy: 'USD', y2: 4.86, y10: 5.1, asOf: '2026-11-12', slope: 24, gapToUs: null }, { ccy: 'EUR', y2: 3.13, y10: 3.41, asOf: '2026-11-13', slope: 28, gapToUs: -173 }] },
+  credit: { ok: true, builtAt: '2026-11-14T17:20:53.910Z', csi: { value: -0.89, asOf: '2026-11-12', word: 'easier than the past year', components: { quality: -1.28, credit: -1.31, vix: -0.1 }, series: [{ d: '2026-11-01', v: -0.8 }] },
+    spread: { asOf: '2026-11-12', bp: 148, chg20d: 4, pct5y: 12, quality: { bp: 46 } }, g4: { asOf: '2026-11-14', level: -1.07, impulse: -1.14, phase: 'Falling', regime: 'GOLDILOCKS_LATE', history: [] },
+    net: { last: 5844.3, asOf: '2026-11-11', chg4w: -27.7, impulse: 'flat', tga: 933.1, rrp: 0.3 }, gateZ: { asOf: '2026-11-13', netliq: -0.03, curve: -1.69, credit: -1.47 }, pulse: null },
+  creditBoard: { ok: true, fetchedAt: '2026-11-14T15:00:47.915Z', rows: [{ id: 'BAMLC0A0CM', label: 'US investment grade', oas: 89, asOf: '2026-11-12', chg20d: 5, z1y: 1.75, spark: [1, 2] }, { id: 'BAMLH0A0HYM2', label: 'US high yield', oas: 330, asOf: '2026-11-12', chg20d: 14, z1y: 1.2 }], state: 'widening' },
+  liquidity: { ok: true, fetchedAt: '2026-11-14T15:00:49.389Z', items: [{ label: 'Net liquidity', value: 5844.3, asOf: '2026-11-11', chg4w: -27.7, pctile: 21, spark: [1] }], state: 'steady' },
+  fed: { ok: true, asOf: '2026-11-12', currentRange: '375bps - 400bps', windows: [{ ref: '2026-12-16', hike: 98.38, cut: 1.21, mean: 431.48, dist: {} }],
+    zq: { asOf: '2026-11-13T21:45:00Z', meetings: [{ meeting: '2026-12-09', ym: '2026-12', combined: null, moveBp: 27.13, probPct: 108.5, direction: 'hike', volumeHint: 45, thin: false }, { meeting: '2027-06-16', moveBp: 3.1, probPct: 12, thin: true }] } },
+  regime: { ok: true, builtAt: '2026-11-14T17:20:51.121Z', frames: [{ id: 'quadrant', state: 'Reflation' }, { id: 'corr', state: 'NORMAL' }], overall: { met: 4, of: 8, pct: 50 }, quadrant: { name: 'Reflation', cell: 'reflation' }, risk: { level: 'CALM' },
+    corr: { state: 'NORMAL', mean: 0.33, z: 0.14, n: 325 }, vol: { n: 51, hot: 9, cold: 8 }, hmm: { n: 29, quiet: 20, active: 9, rows: [] } },
+  cb: { ok: true, asOf: '2026-11-14T17:20:50.478Z', banks: [{ id: 'fomc', ccy: 'USD', bank: 'Fed', read: { date: '2026-10-28', score: 0.72, regime: 'HAWKISH' }, change: { delta: 0.17 }, next: { date: '2026-12-09' } }, { id: 'rbnz', ccy: 'NZD', bank: 'RBNZ', read: null }] },
+  macro: { ok: true, ranked: [{ ccy: 'CAD', composite: 0.42, asOf: '2026-11-13' }, { ccy: 'USD', composite: 0.1 }], pair: { long: 'CAD', short: 'AUD', gap: 0.62 }, driver: { key: 'external' } },
+  releases: { ok: true, builtAt: '2026-11-14T17:20:53.354Z', positions: [{ ccy: 'EUR', pct: 0, side: 'short', crowded: true, state: 'crowded short' }], releases: [], cotDate: '2026-11-03', frontEnds: { rows: [{ label: 'SOFR Dec26', d1: -3, d5: 15 }] } },
+  watch: { ok: true, lastTick: '2026-11-14T17:15:49.504Z', states: [{ id: 'vix-inversion', firing: false }, { id: 'credit-leads', firing: true }], gauges: [{ watchId: 'vix-inversion', stage: 'idle' }] },
+  desk: { ok: true, date: '2026-11-13', finishedAt: '2026-11-13T06:57:38.645Z', packBuiltAt: '2026-11-13T06:48:17Z', label: 'context, untested', dataQuality: { decision: 'run', usableShare: 0.96 },
+    head: { ok: true, book: { global: { tone: 'risk_off', summary: 'x' }, currencies: { USD: { bias: 2, why: 'x' }, EUR: { bias: -1, why: 'x' } },
+      instruments: { EURUSD: { rating: 'SHORT', conviction: 'medium', size: 0.8, plan: { zone: '1.1055-1.1060', invalidation: '1.1081' }, invalidation: 'a close above 1.1081', levels: { open: 1.105 } } }, exposure: { cap: 4, after: { USD: 3.4, EUR: -0.7 }, cuts: [] } } } },
+  deskLive: { ok: true, date: '2026-11-14', slots: {}, live: null, job: null },
+  curve: { ok: true, builtAt: '2026-11-14T17:20:52Z', slopes: [{ k: '2s10s', bp: 24, asOf: '2026-11-12', chg1d: -1, chg5d: -14, chg20d: -9, pct3y: 38, weeks: [1, 2, 3] }], t2: { k: '2y', level: 4.86, chg5d: 40 }, move: { '5D': { key: 'bearflat' } } },
+  vol: { ok: true, builtAt: '2026-11-14T17:20:50Z', gauges: [{ id: 'VIX', last: 19.3, asOf: '2026-11-13', pct5y: 63, z5y: 0.04, spark: [1, 2] }, { id: 'VVIX', last: 101.53, pct5y: 69, z5y: 0.26 }], term: { ratio: 0.94, asOf: '2026-11-13', pct5y: 74 } },
+  market: { ok: true, to: '2026-11-13', at: '2026-11-14T17:20:00Z', state: { name: 'Rotation without direction', quiet: false }, brokenLinks: [{ a: 1 }, { a: 2 }], boardFreshness: { lagging: [{ key: 'dxy' }] } },
+  termprem: { ok: true, fetchedAt: '2026-11-14T15:00:48.955Z', value: 0.87, asOf: '2026-11-06', chg20d: -20, pctile5y: 96 },
+};

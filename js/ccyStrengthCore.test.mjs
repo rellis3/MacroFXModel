@@ -133,3 +133,36 @@ test('loading, error and unavailable-window states', () => {
   assert.match(boardHtml({ ok: false, error: 'no price bars yet' }), /no price bars yet.*stands on its own/);
   assert.match(boardHtml({ ok: true, asOf: null, horizons: { '1H': { available: false, reason: 'only 4 of 28 pairs had prices' } } }, '1H'), /only 4 of 28 pairs/);
 });
+
+test('over a weekend the windows anchor to the last price: 1H is the last hour of trading, 1W has its start, and the footer says so', () => {
+  const CLOSE = Date.parse('2026-11-13T22:00:00Z'), SAT = Date.parse('2026-11-14T17:56:00Z');
+  const truth = { USD: 1, EUR: -1, GBP: 0.5, JPY: -0.5, CHF: 0, CAD: 0.2, AUD: -0.2, NZD: 0 };
+  // bars built so the strength was still building at the close: the last hour carries a real move
+  const p = buildStrength({ bars: barsFrom(truth, { now: CLOSE }), now: SAT });
+  assert.equal(p.ok, true); assert.equal(p.closed, true); assert.equal(p.anchored, true);
+  assert.equal(p.asOf, new Date(CLOSE).toISOString());
+  assert.match(p.closeLabel, /Fri 22:00 UTC \(London 22:00\)/);
+  for (const k of ['1H', '4H', '1D', '1W']) {
+    const h = p.horizons[k]; assert.equal(h.available, true, `${k} available (it was unavailable, or flat, when anchored to now)`);
+    assert.equal(h.to, new Date(CLOSE).toISOString(), `${k} ends at the close`);
+    assert.equal(h.from, new Date(CLOSE - HORIZONS.find(x => x.key === k).hours * H).toISOString(), `${k} starts that long before the close`);
+  }
+  assert.equal(p.horizons['1H'].flat, false, 'the last hour before the close is a real window, not an empty one');
+  assert.equal(p.horizons['1D'].leader, 'USD');
+  assert.match(describeStrength(p, '1H'), /the last 1H of trading before the close/);
+  // the same bars read at the close itself (week open) are not anchored, and say nothing about it
+  const live = buildStrength({ bars: barsFrom(truth, { now: CLOSE - 3600e3 }), now: CLOSE - 3600e3 + 60e3 });
+  assert.equal(live.anchored, false); assert.equal(live.closeLabel, null);
+  assert.doesNotMatch(describeStrength(live, '1H'), /before the close/);
+});
+
+test('at the Sunday reopen the board returns to now by itself', () => {
+  const OPEN = Date.parse('2026-11-15T22:30:00Z');
+  const p = buildStrength({ bars: barsFrom({ USD: 1, EUR: -1, GBP: 0, JPY: 0, CHF: 0, CAD: 0, AUD: 0, NZD: 0 }, { now: OPEN }), now: OPEN });
+  assert.equal(p.closed, false); assert.equal(p.anchored, false);
+  assert.equal(p.horizons['1H'].to, new Date(OPEN).toISOString());
+  // one minute before the open the same bars (stale by days) stay anchored
+  const SUN = Date.parse('2026-11-15T21:59:00Z');
+  const q = buildStrength({ bars: barsFrom({ USD: 1, EUR: -1, GBP: 0, JPY: 0, CHF: 0, CAD: 0, AUD: 0, NZD: 0 }, { now: Date.parse('2026-11-13T22:00:00Z') }), now: SUN });
+  assert.equal(q.anchored, true);
+});

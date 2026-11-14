@@ -1,6 +1,6 @@
 // Synthetic tests for js/chainLive.js. No network, no clock.
 //   node js/chainLive.test.mjs
-import { DOLLAR_BASKET, pctMove, dollarBasketPct, anchorAt, impliedYield, liveYieldMove, buildLiveNodes, mergeLive } from './chainLive.js';
+import { marketReading, DOLLAR_BASKET, pctMove, dollarBasketPct, anchorAt, impliedYield, liveYieldMove, buildLiveNodes, mergeLive } from './chainLive.js';
 import { zonedEpoch } from './yieldLegs.js';
 
 let failures = 0;
@@ -86,6 +86,25 @@ console.log('[the live node map]');
   ok('a null print stays null (no data), not a fake', merged.hy === null);
   ok('the live real yield beats the last-print one', /implied/.test(merged.real.basis));
   ok('with no live data every node is a last print', Object.values(mergeLive({}, prints)).filter(Boolean).every(v => v.basis === 'last-print'));
+}
+
+console.log('[marketReading: the weekend anchor]');
+{
+  // OANDA daily candles open 17:00 New York: the last completed one opened Thu 22:00 UTC and closed Fri 22:00 UTC (winter); the one before opened Wed 22:00
+  const T0 = Date.parse('2026-11-12T22:00:00Z') / 1000;                       // Thu 22:00 UTC, the open of the candle that closed Friday
+  const d = [{ time: T0 - 86400, close: 100 }, { time: T0, close: 103 }];       // Wed-open candle closed 100 (Thu close); Thu-open candle closed 103 (Fri close)
+  const FRI = T0 + 86400, lastM1 = { time: FRI - 60, close: 103.02 };           // Fri 21:59
+  const SAT = FRI + 19 * 3600;
+  const normal = marketReading(d, [lastM1], { frozen: false, nowS: SAT });
+  ok('unfrozen, a shut market reads zero against its own close (the old behaviour, which today.html keeps)', near(pctMove(normal.price, normal.ref), 0.0194, 1e-3) && normal.closed === true && !normal.frozen);
+  const fz = marketReading(d, [lastM1], { frozen: true, nowS: SAT });
+  ok('frozen, the weekend reads the final session: the close before the last one to the last close', fz.frozen && fz.ref === 100 && fz.price === 103 && near(pctMove(fz.price, fz.ref), 3));
+  ok('the window starts at the Thursday close and ends at the Friday close', fz.refOpen + 86400 === T0 && fz.endS === FRI);
+  const mid = marketReading(d, [{ time: FRI - 120, close: 103.5 }], { frozen: true, nowS: FRI - 100 });
+  ok('frozen but the market is still printing (last minute under 30 min old): normal live reading, so a market that trades on is never frozen', !mid.frozen && mid.closed === false && mid.ref === 103);
+  ok('frozen with only one daily candle falls back to the normal reading, never a fake', !marketReading([d[1]], [lastM1], { frozen: true, nowS: SAT }).frozen);
+  let threw = false; try { marketReading([], [lastM1], { frozen: true }); } catch { threw = true; }
+  ok('no candles throws, as before', threw);
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
