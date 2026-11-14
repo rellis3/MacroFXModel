@@ -327,19 +327,22 @@ def walk_forward(d, fam, y, feats=None, rolling_years=None, b1_cache=None, extra
             mu, sd = v[tr].mean(), v[tr].std()
             Z[c] = (v - mu) / (sd if sd > 0 else 1.0)
         if b1_cache is not None and fi in b1_cache:
-            p1 = b1_cache[fi]
+            p1, thr1 = b1_cache[fi]
         else:
             X1 = np.column_stack([I] + [Z[c] for c in B1F])
-            p1 = sigm(X1[te] @ logit_fit(X1[tr], y[tr]))
+            b1 = logit_fit(X1[tr], y[tr])
+            p1 = sigm(X1[te] @ b1)
+            thr1 = pd.Series(sigm(X1[tr] @ b1)).groupby(d.inst.values[tr]).quantile(0.8)
             if b1_cache is not None:
-                b1_cache[fi] = p1
+                b1_cache[fi] = (p1, thr1)
         XM = np.column_stack([I] + [Z[c] for c in B1F + feats])
         bm = logit_fit(XM[tr], y[tr])
         pm = sigm(XM[te] @ bm)
         pin = sigm(XM[tr] @ bm)
         thr = pd.Series(pin).groupby(d.inst.values[tr]).quantile(0.8)
         rows.append(pd.DataFrame({'i': np.where(te)[0], 'fold': fi, 'p1': p1, 'pm': pm,
-                                  'thr80': thr.reindex(d.inst.values[te]).values}))
+                                  'thr80': thr.reindex(d.inst.values[te]).values,
+                                  'thr80_1': thr1.reindex(d.inst.values[te]).values}))
     o = pd.concat(rows, ignore_index=True)
     o['date'] = d.date.values[o.i]
     o['inst'] = d.inst.values[o.i]
@@ -511,9 +514,7 @@ def describe_cell(res, cfg, rng):
     res['mirror_bottom_decile_below_b0'] = bool(tab.realised.iloc[0] < tab.mean_b0.iloc[0])
     # capture share (secondary)
     hi_m = o.pm >= o.thr80
-    o2 = o.assign(r1=o.p1.rank(pct=True))
-    thr1 = o2.groupby('fold').p1.transform(lambda s: s.quantile(0.8))
-    hi_1 = o.p1 >= thr1
+    hi_1 = o.p1 >= o.thr80_1
     tot = o.absm.sum()
     res['capture_m'] = float(o.absm[hi_m].sum() / tot)
     res['capture_m_days'] = float(hi_m.mean())
@@ -567,8 +568,11 @@ def positive_control(cfg, inp, rng):
         above = r['bss_b1'] > r['p1_95'] and r['bss_b1'] > r['p2_95']
         out[f'beta_{beta}'] = dict(bss_b1=r['bss_b1'], ci=[r['lo'], r['hi']], p1_95=r['p1_95'], p2_95=r['p2_95'],
                                    above_placebos=bool(above), ybar=float(y.mean()))
+    # prereg A1 (PRE-RESULTS): the null arm passes when it gives no false positive (CI lower <= 0, not above both
+    # placebos); a CI wholly below 0 is the model's overfit cost, recorded as null_ci_covers_0.
+    out['null_ci_covers_0'] = bool(out['beta_0.0']['ci'][0] <= 0 <= out['beta_0.0']['ci'][1])
     ok = (out['beta_0.35']['ci'][0] > 0 and out['beta_0.35']['above_placebos']
-          and out['beta_0.0']['ci'][0] <= 0 <= out['beta_0.0']['ci'][1] and not out['beta_0.0']['above_placebos'])
+          and out['beta_0.0']['ci'][0] <= 0 and not out['beta_0.0']['above_placebos'])
     out['passed'] = bool(ok)
     return out
 
@@ -600,8 +604,8 @@ def gamma_arm(cfg, d, k, rng, B):
         g = load_gex(cfg, inst)
         x = d[d.inst == inst].sort_values('date')
         dates = x.date.values
-        src = np.r_[np.full(2, np.datetime64('NaT'), dtype='datetime64[ns]'), dates[:-2]]   # OI(D) -> session D+2
-        val = g.reindex(pd.DatetimeIndex(src)).values
+        src = pd.DatetimeIndex([pd.NaT, pd.NaT] + list(pd.DatetimeIndex(dates)[:-2]))   # OI(D) -> session D+2
+        val = g.reindex(src).values
         parts.append(x.assign(short_gamma=(val < 0).astype(float), has_g=~np.isnan(val)))
     e = pd.concat(parts).sort_values(['date', 'inst'])
     e = e[e.has_g].reset_index(drop=True)
@@ -707,15 +711,13 @@ def fmt(x, pct=True, nd=2):
 def write_outputs(cfg, cells, verdicts, desc, dis, chance, drops, pc, secs):
     sha = git('log', '--diff-filter=A', '--format=%h', '--', PREREG) or 'unknown'
     branch = git('rev-parse', '--abbrev-ref', 'HEAD') or 'unknown'
-    ran = pd.Timestamp.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+    ran = pd.Timestamp.now('UTC').strftime('%Y-%m-%dT%H:%M:%SZ')
     clean = lambda c: {k: v for k, v in c.items() if not k.startswith('_')}
     jcells = []
     for c in cells:
-        vfam = verdicts[c['family']].lower()
         jcells.append(dict(name=f"{c['family']}_k{c['k']}", n=c['n_dates'], est=c['bss_b1'], lo=c['lo'], hi=c['hi'],
                            mde=MDE[c['family']], p=c['p'], p_holm=c['p_holm'], gates=c['gates'],
-                           verdict=('validated' if all(c['gates'].values()) else vfam if vfam != 'validated' else 'null'),
-                           detail=clean(c)))
+                           verdict=family_verdict([c]).lower(), detail=clean(c)))
     order = ['validated', 'context', 'underpowered', 'null']
     overall = min((v.lower() for v in verdicts.values()), key=order.index)
     J = dict(id=SLUG, verdict=overall, ranAt=ran, seed=SEED, B=cfg.B, prereg=PREREG, preregCommit=sha, branch=branch,
@@ -829,7 +831,6 @@ def make_world(root, beta, seed):
         steps = rng.normal(0, 1, (n, len(mins))) * (0.75 * s / math.sqrt(840))[:, None]
         drift = np.where(T, rng.choice([-1, 1], n) * rng.uniform(1.0, 1.6, n) * s, 0.0)
         steps[:, win] += (drift / 840)[:, None]
-        steps[T][:, win] *= 0.5
         lp = math.log(100) + np.cumsum(steps, axis=1)
         close = np.exp(lp)
         openp = np.c_[close[:, :1] * np.exp(-steps[:, :1]), close[:, :-1]]

@@ -252,7 +252,14 @@ hence the SE floor in §3.8. (4) Label autocorrelation across days was not simul
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-14 — PRE-RESULTS
+Runner details fixed while writing `scripts/day-type-expansion/run.py`; no real label had been read (the M1 is not in
+this container; only synthetic data was scored). (1) Positive control, null arm: the §5 simulation shows the overfit
+cost puts the null BSS_B1 near −0.2% with SD ≈ 0.2%, so its CI can sit wholly below 0. The null arm therefore passes when
+it gives **no false positive** (CI lower ≤ 0 and not above both placebos); whether the CI covers 0 is recorded
+(`null_ci_covers_0`). (2) The positive control uses P1 step 25 sessions and 100 P2 permutations (a code check, not a
+scored cell); the scored cells use step 5 and 500 as registered. (3) Each cell's own word in `results.json` applies the
+family table of §4 to that cell alone; the banked word per family is the §4 rule over its three k cells.
 
 ---
 
