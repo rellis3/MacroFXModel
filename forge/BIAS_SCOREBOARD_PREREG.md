@@ -257,7 +257,37 @@ date, and never after its window closes.
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-14 — PRE-RESULTS
+
+No forward row exists yet (the recorder was not deployed when this was written), so no outcome has been computed.
+
+**Added forecaster `h4-trend`** (owner request). An exploratory look, `analysis/output/max-bias-reverse/RESULTS.md`
+(commit cbbe645b, *exploratory, not pre-registered*), found that Max's daily side agrees with the sign of the 4h EMA20
+slope on 84% of 57 instrument-days (88% day-clustered, 21 days). This row lets the record show whether Max's side adds
+anything beyond that public price reading.
+
+- **Rule.** Take the OANDA H1 mid bars that closed at or before 07:00 London on `D` (the last 320). Make 4h closes from
+  them: the last H1 close in each bucket aligned to 00/04/08/12/16/20 UTC; the latest bucket may be partial. Then
+  EMA20 is seeded with the first value, and slope = EMA20(all) − EMA20(all but the last 3).
+  - Side = the slope's sign. No view when the slope is 0 or there are fewer than 24 4h closes.
+  - This reproduces `scripts/max-bias-reverse/analyze.py` `h4_closes` / `ema` exactly: parity checked on 30 synthetic
+    series, 30/30.
+  - Code: `js/biasForecasters.js` `h4Slope`, `h4Trend`.
+- **Mapping.** p_up = clip(p0 ± 0.04). Knowable 07:00 London, so anchor 07:00. All scored instruments (core six and
+  extended). It is written in the `base` file.
+- **Scoring and multiplicity.** It is a fifth scored cell (`d21`, core six pooled), on the same primary statistic, gate
+  and verdict rules as §4–§8. The Holm family in §6 is now **five** cells at each look, with the same OBF boundaries
+  and nominal α. No other cell changes.
+- **Head-to-head.** `max-signals` vs `h4-trend` on the rows where both speak, at Max's anchor. This is descriptive
+  (BH, §6). So is Max's agreement rate with `h4-trend`.
+- **Power** (§5 method, c ≈ 0.95): n_eff ≈ 120 / 239 at 60 / 120 days, hit-rate MDE ≈ 13 pp / 9 pp against the 6 pp
+  bar. **UNDERPOWERED by design**, like the other cells.
+- **Prior.** The exploratory file is evidence about Max's choices, not about returns. The expectation for `h4-trend`
+  vs B0 is **Null**.
+
+**Also recorded (build detail, no change to a rule).** The coin-control percentile (§3.5) splits ties uniformly at
+random (seeded randomised mid-rank), so a no-skill forecaster's percentile is exactly uniform. The §3.9 KS check needs
+this, because a log-score mean with a fixed shift takes discrete values.
 
 ---
 

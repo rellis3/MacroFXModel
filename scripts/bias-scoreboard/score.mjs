@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { SAMEDAY_CORE, SAMEDAY_EXTENDED, SAMEDAY_TARGETS, issueSameDay, outcomeSameDay, londonMs, addWeekdays, logScore } from '../../js/directionLedger.js';
 
 export const SEED = 20261114, B = 2000, BLOCK = { d21: 5, n07: 5, d5: 10 };
-export const SCORED = ['desk-rating', 'desk-ccy', 'max-signals', 'surprise-rule'];
+export const SCORED = ['desk-rating', 'desk-ccy', 'max-signals', 'surprise-rule', 'h4-trend'];   // h4-trend: prereg Amendment A1 (Holm family of five)
 export const RANKABLE = ['desk-rating', 'desk-ccy', 'surprise-rule'];
 export const OBF = { 1: { z: 2.797, alpha: 0.0052 }, 2: { z: 1.977, alpha: 0.048 } };
 export const PASS_BAR_PP = 0.06, UNRESOLVED_MAX = 0.10, COIN_PCT = 97.5;

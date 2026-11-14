@@ -419,7 +419,7 @@ import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, getBuffer as _r2GetBuffer
 import { INSTRUMENTS as _DL_INSTRUMENTS, HORIZONS as _DL_HORIZONS, closesFromCandles as _dlClosesFromCandles, issueRecord as _dlIssue, outcomeRecord as _dlOutcome, summarise as _dlSummarise } from './js/directionLedger.js';
 import { RESEARCH as _DL_RESEARCH, volFlags as _dlVolFlags, FX_CARRY_EUR_OFFSET as _DL_EUR_OFFSET, FX_CARRY_MAX_AGE_DAYS as _DL_RATE_MAX_AGE_DAYS } from './js/directionResearch.js';
 import { SAMEDAY_INSTRUMENTS as _BS_INSTRUMENTS, SAMEDAY_TARGETS as _BS_TARGETS, issueSameDay as _bsIssue, outcomeSameDay as _bsOutcome, summariseSameDay as _bsSummarise, midAt as _bsMidAt, sigmaDay as _bsSigmaDay, londonMs as _bsLondonMs, targetEndMs as _bsEndMs, isWeekday as _bsIsWeekday, MID_LOOKBACK_MS as _BS_LOOKBACK } from './js/directionLedger.js';   // bias-scoreboard same-day rows (forge/BIAS_SCOREBOARD_PREREG.md)
-import { deskRating as _bsDeskRating, deskCcy as _bsDeskCcy, maxSignals as _bsMaxSignals, surpriseRule as _bsSurpriseRule, fundabias as _bsFundabias, FUNDABIAS_ENABLED as _BS_FUNDABIAS_ON } from './js/biasForecasters.js';
+import { h4Trend as _bsH4Trend, deskRating as _bsDeskRating, deskCcy as _bsDeskCcy, maxSignals as _bsMaxSignals, surpriseRule as _bsSurpriseRule, fundabias as _bsFundabias, FUNDABIAS_ENABLED as _BS_FUNDABIAS_ON } from './js/biasForecasters.js';
 import { scoreTrack as _dlScoreTrack } from './js/directionScore.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
 import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
@@ -29804,7 +29804,7 @@ app.get('/api/direction-ledger', async (req, res) => {
 // ── bias-scoreboard: same-day rows of the direction ledger (forge/BIAS_SCOREBOARD_PREREG.md §9; logic in js/directionLedger.js
 // and js/biasForecasters.js) ─────────────────────────────────────────────────────────────────────────────────────
 // Each London weekday D, write once to R2 forward/direction_ledger/sameday/:
-//   <D>_base.json  first tick in [07:00, 09:00) London: B0 + surprise-rule rows, 07:00 anchors, sigma_day
+//   <D>_base.json  first tick in [07:00, 09:00) London: B0 + surprise-rule + h4-trend rows, 07:00 anchors, sigma_day
 //   <D>_desk.json  first tick after the eligible desk book exists (desk_run_elig_<D>, finished before 08:00), before 10:00
 //   <D>_max.json   first tick in [16:05, 20:00) London: Max's first posted side per instrument (instrument/side/time/style only)
 //   out/<D>_<target>.json  once the target's end price exists (d21 after 21:05; n07 / d5 the mornings after)
@@ -29854,6 +29854,17 @@ async function _bsIssueBase(date) {
     let cal = []; try { cal = (await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY })).events ?? []; status.calendar = 'ok'; } catch (e) { status.calendar = `error: ${e.message}`; }
     views = _bsSurpriseRule(store, cal, date, { insts }); status.surprise = 'ok';
   } catch (e) { status.surprise = `error: ${e.message}`; }
+  // h4-trend (prereg Amendment A1): OANDA H1 mid, closed bars only, as of 07:00 London
+  const h1 = {};
+  await Promise.all(insts.map(async inst => {
+    try {
+      const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(_BS_INSTRUMENTS[inst])}/candles?granularity=H1&price=M&count=400&to=${encodeURIComponent(new Date(at).toISOString())}`,
+        { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(15_000) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      h1[inst] = ((await r.json()).candles ?? []).filter(k => k.complete && k.mid).map(k => ({ t: Math.floor(Date.parse(k.time) / 1000), c: +k.mid.c }));
+    } catch (e) { status[`h1_${inst}`] = `error: ${e.message}`; }
+  }));
+  views.push(..._bsH4Trend(h1, date, { insts: insts.filter(i => h1[i]) }));
   if (_BS_FUNDABIAS_ON) views.push(..._bsFundabias());
   const rec = _bsIssue({ date, source: 'base', views, baselines: _bsBaselines, sigma, anchors0700: anchors, issuedAt: new Date().toISOString(), code: _bsCode(), externalStatus: status, withB0: true, insts });
   await _bsPutOnce(key, rec);
