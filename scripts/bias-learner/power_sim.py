@@ -28,6 +28,7 @@ GROUP = np.array([0] * 9 + [1] + [2] * 3)  # 0 fx, 1 gold, 2 idx
 GNAME = ['fx', 'gold', 'idx']
 FEAT = ['tr1h', 'tr4h', 'trD', 'trW', 'asia', 'cloc', 'ev_today', 'ev_tmrw', 'surp', 'carry', 'cot', 'sigreg', 'ivrv']
 CGRID = [1e-5, 3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2, 1e-1]
+DESIGN = os.environ.get('BL_DESIGN', 'dev')  # 'dev' = pooled + group deviations; 'pooled' = pooled slopes only
 RULE = os.environ.get('BL_RULE', 'min')  # 'min' (registered) or '1se' (sensitivity)
 TEST_YEARS = list(range(2018, 2027))
 
@@ -103,6 +104,8 @@ def targets(r, h):
 def design(Fz, inst_ix, grp):
     n = Fz.shape[0]
     oh = np.zeros((n, len(INST))); oh[np.arange(n), inst_ix] = 1.0
+    if DESIGN == 'pooled':
+        return np.concatenate([oh, Fz], axis=1)
     dev = np.concatenate([Fz * (grp == g)[:, None] for g in range(3)], axis=1)
     return np.concatenate([oh, Fz, dev], axis=1)
 
