@@ -40,8 +40,7 @@ Searched 2026-11-14 (`forge/`, `plans/`, `scripts/`, `js/`, register, Evidence B
 ## 3. Definitions, fixed in advance (required)
 
 - **Daily range:** r_{i,t} = ln(H_{i,t} / L_{i,t}) for market i over the London session of date t (mid bars), weekends excluded. A
-  market-day counts only if it has ≥ 95% of the instrument's median session minute count (the earlier FOMC-range study's rule is
-  not reused; 85% as there). Days where fewer than 9 of 10 markets qualify are dropped.
+  market-day counts only if it has at least 85% of the instrument's median London-session minute count (the coverage rule of `fomc-range-share`, without the window-minute clause). Days where fewer than 9 of 10 markets qualify are dropped.
 - **Connectedness (primary):** at the end of each London date t, a VAR(1) with intercept is fitted by OLS on the ten log-range
   series over the trailing W = 250 qualifying days (all ten markets present; days with a missing market are skipped from the VAR
   window and counted), the generalized forecast-error variance decomposition at horizon H = 10 (Koop-Pesaran-Potter / Pesaran-Shin,
