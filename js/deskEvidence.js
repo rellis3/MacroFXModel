@@ -2550,6 +2550,12 @@ export const DESK_EVIDENCE = [
     result: 'UNDERPOWERED. 770 sessions to 2026-08-20 (lockbox), calm 461 of which 87 short-gamma. b_IV,calm +0.083 [-0.041, +0.195], t 1.37, Holm p 0.34, real above 86% of shift placebos (gate 95%); in stress -0.028 [-0.211, +0.141]; calm minus stress +0.111 [-0.110, +0.331]. IV absorbs 59% of the calm effect (B0 +0.201 to B1 +0.083). Positive in both halves and under the fixed and tercile cuts (+0.113, +0.070) but never distinguishable from 0. MDE 0.19.',
     use: 'Say "on NQ, implied vol already prices most of the gamma widening in calm sessions too; a small calm-only remainder (point +0.08, interval -0.04 to +0.20) is not ruled out and not shown". Do not print "gamma is informative in calm regimes". Reopen only with the Cboe full book or roughly four to six times the calm short-gamma sessions.',
   },
+  {
+    id: 'event-vol-ramp', domain: 'volatility', verdict: 'underpowered', date: '2026-11-14', doc: 'forge/EVENT_VOL_RAMP_PREREG.md', also: ['analysis/output/event-vol-ramp/RESULTS.md'], instruments: ['NQ', 'SPX500'],
+    claim: 'Beyond the level of the front implied-vol ratio (VIX9D/VIX, vol-curve-front), a rise in that ratio over the two sessions before a scheduled FOMC, CPI or payrolls release adds to how wide the event-day range runs (NQ and SPX500, NY-close sessions)',
+    result: 'UNDERPOWERED on both. 2,726 NY-close sessions 2016-02 to 2026-08-20 (lockbox), 322 event days (FOMC 82, CPI 121, NFP 126), level of VIX9D/VIX, implied-to-realised ratio, family and weekday controls in the model. Extra event-day DR per SD of pre-event front-ratio ramp: SPX500 +0.033 [-0.047, +0.112], NQ +0.044 [-0.030, +0.117]; Holm p 0.48; MDE 0.11/0.11 vs +0.05 gate and +0.10 operational bar; real above 81% / 92% of shift placebos (gate 95%). Positive and stable across halves; carried by payrolls (NFP interaction +0.131 / +0.155), FOMC negative. On ordinary days a rising front ratio goes with a slightly narrower range (SPX500 -0.043).',
+    use: 'Say "the front ratio rose into the event" as a description only; the level of the front stays the range read (vol-curve-front, validated). Do not use the ramp as an input or a multiplier: the extra range per SD of ramp is small (about +0.03 to +0.04) and the design could not see anything under about +0.11. A larger event sample would be needed to settle a +0.05 effect.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -2755,6 +2761,7 @@ const POWER = {
   'fomc-range-share':        { n: '84 scheduled FOMC meetings (72 with a press conference, 12 statement-only)', note: 'MDE 0.006 (S) / 0.008 (P) vs +0.05 / +0.03 gates; control H3 (statement-only P excess +0.055 [+0.033, +0.081], n 12) failed, so CONTEXT' },
   'gex-range-iv-calm-es':    { n: '770 ES sessions (475 calm, 59 short-gamma calm)', note: 'calm design MDE 0.26 vs +0.05 gate; b_IV,calm -0.033 [-0.212, +0.099], upper end under +0.10 so NULL by rule (marginal)' },
   'gex-range-iv-calm-nq':    { n: '770 NQ sessions (461 calm, 87 short-gamma calm)', note: 'calm design MDE 0.19 vs +0.05 gate; b_IV,calm +0.083 [-0.041, +0.195]' },
+  'event-vol-ramp':          { n: '322 event days (FOMC 82, CPI 121, NFP 126) in 2,726 sessions', note: 'MDE 0.11 (SPX500) / 0.11 (NQ) vs +0.05 gate; b +0.033 [-0.047, +0.112] / +0.044 [-0.030, +0.117] per SD ramp' },
   'gex-range-iv':            { n: '770 sessions each (ES, NQ)', note: 'MDE ~0.22 ES / ~0.15 NQ vs +0.05 gate; b_IV +0.054 / +0.044; IV absorbs 64% / 73% (paired CI > 0)' },
   'gex-range-gold':          { n: '866 gold OI dates (156 short / 710 long)', note: 'realised MDE ~0.25 (bootstrap SE 0.091) vs +0.05 gate; vm -0.031 [-0.209, +0.148] does not exclude the +0.10 bar' },
   'gex-split-book':          { n: '135 disagreement days (83/52) vs 635 agreement', note: 'MDE ~0.09-0.10 (control sd 0.281, deff 1.5); beta +0.027 [-0.024, +0.078] below the +0.10 bar; weak-book days only' },
