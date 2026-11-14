@@ -97,6 +97,14 @@ whether spillover "causes" anything; anything after 2026-08-21.
 
 ## Amendments
 
-(none yet)
+### A1 — 2026-11-14 — PRE-RESULTS (units, sample, design SE/MDE)
+No b_C had been computed. The power stage reads the B0 residual SD and the design matrix only. Three clarifications, made before any connectedness coefficient was read:
+
+- **Units:** §3 wrote the daily range as ln(H/L), the log-price range, but the gate (0.02 = "2% wider range per SD") and the D-Y practice need the **natural log of that range**. The VAR series and the target are therefore **ln(ln(H/L))**, the log range. A first power-stage run on the raw ln(H/L) (residual SD 0.003) made the unit mismatch visible; it read no b_C and is discarded.
+- **Sample:** the ten-market VAR needs all ten markets on a day and the SPX500 minute file has many missing sessions in 2016-18 (2,049 qualifying days in total), so the first VAR window closes in 2019: the scored sample is **1800 sessions, 2019-01-04 to 2026-08-19** (not from 2016). The window length W = 250 and H = 10 are unchanged.
+- **Design SE and MDE:** residual SD of B0 0.251 log points; iid design SE of b_C 0.0064; with the block-bootstrap inflation (1.5-2x) the SE is 0.0096 to 0.0127 and **MDE (x3.0) 0.029 to 0.038** per SD, above the +0.02 gate (so a small effect would be UNDERPOWERED by design) and below the +0.05 operational bar (so a NULL is reachable).
+- **Is C a new variable?** C averages 61.6% (SD 6.5, range 42-74); rank correlation with ln VIX -0.08, with mean |rho| +0.26, with the pooled log range +0.05: largely independent of the controls, so the marginal coefficient is not mechanically absorbed.
+- No other change.
+
 
 ## RESULTS
