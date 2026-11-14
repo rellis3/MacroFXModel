@@ -3652,7 +3652,46 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "js/terminal/ccyStrengthView.js",
+     "js/terminal/liveLayerView.js",
      "js/terminal/moreBoards.js"
+    ],
+    "today": [],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [],
+   "packSkills": [],
+   "drift": []
+  },
+  "live-layer": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/live-layer",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/liveLayerCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/liveLayerRoutes.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/liveLayerView.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/liveLayerView.js",
+     "js/terminal/moreBoards.js",
+     "js/terminal/terminalTabs.js"
     ],
     "today": [],
     "atlas": [],
@@ -3813,5 +3852,5 @@ export const DERIVED = {
  "unclassified": [],
  "rootPageCount": 263,
  "packFeeds": 115,
- "generatedAt": "2026-11-13"
+ "generatedAt": "2026-11-14"
 };

@@ -102,6 +102,7 @@ export const SURFACES = [
   mk('panel.ov.riskstate', 'panel', 'Overview: risk state', 'Overview', null, 'the risk flags: market data'),
   mk('panel.ov.em', 'panel', 'Overview: emerging markets', 'Overview', null, 'EM gauges: market data'),
   mk('panel.ov.ccystrength', 'panel', 'Overview: currency strength (σ), price-based and live', 'Overview', null, 'eight currencies as bars from a centre line over 1H, 4H, 1D and 1W, in units of each window\'s normal move, refreshed every minute or two while on screen; ordering only, and separate from the analyst strength strip'),
+  mk('panel.ov.priceread', 'panel', 'Overview: analyst read vs price read', 'Overview', null, 'the desk\'s dawn bias per currency beside a rule over the last four hours and day of prices (firm, soft or mixed), with a flag where they disagree; descriptive, never a trade instruction and never written into the book'),
   mk('panel.ov.alerts', 'panel', 'Overview: desk alerts', 'Overview', I, 'the alert engine\'s status, including the Telegram mute'),
   mk('panel.ov.dayshape', 'panel', 'Overview: the day\'s shape', 'Overview', null, 'the day forecaster: volatility ranges (market data)'),
   mk('panel.ov.tradewatch', 'panel', 'Overview: trade watch', 'Overview', T, 'the book against live prices: zone, target, invalidation'),
@@ -148,6 +149,7 @@ export const SURFACES = [
   mk('panel.macro.regime', 'panel', 'Macro: where the market is (regime stack)', 'Macro', null, 'the growth x inflation quadrant, seven regime lenses, the correlation regime, risk-state flags and which markets are quiet or active over 30 days, plus the registered range edges'),
   mk('panel.macro.releases', 'panel', 'Macro: releases and who is positioned', 'Macro', null, 'the week\'s high-impact releases against the leveraged-fund crowd in each currency, the usual size of the 30-minute move, what the last releases did, how releases ran by volatility regime and the front-end rate legs'),
   mk('panel.macro.vol', 'panel', 'Macro: the fear complex (vol)', 'Macro', null, 'VIX, VVIX, SKEW, MOVE, OVX, GVZ, VXEEM and VXTLT against their own five-year history as a radar and a year of closes, the VIX curve, realised volatility across 51 markets and the FX risk reversals'),
+  mk('panel.macro.livelayer', 'panel', 'Macro: live layer (implied yields, indices, range used, correlation)', 'Macro', null, 'the daily boards moved on by live prices: implied intraday US and Bund yields beside the official prints, equity indices since the close, range used so far against the forecast day, the majors\' correlation regime; price-based and descriptive'),
   mk('panel.macro.carryside', 'panel', 'Macro: carry board "side" column', 'Macro', null, 'which side of a pair earns the carry'),
 ];
 
