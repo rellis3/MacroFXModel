@@ -40,6 +40,7 @@ import * as SR from './sharedRead.js';
 import * as RBV from './ratesBoardView.js';
 import * as FYV from './fedPathYieldsView.js';
 import * as MacroSubs from './macroSubtabs.js';
+import { boardById as paperBoardById } from './paperBoardsView.js';
 import { macroMoreHtml, macroMoreBoard, overviewMoreHtml, mountOverview, mountLive, liveEmCell, liveWiderChip } from './moreBoards.js';
 import { fedPathYields, chainLine as fedPathChainLine } from '../fedPathYieldsCore.js';
 import * as ML from './mapLayers.js';
@@ -854,6 +855,7 @@ globalThis.ratesBoardHtml = (rb, fp, gy) => { try { return RBV.boardHtml(rb, fp,
 globalThis.macroMoreHtml = (E, extra) => macroMoreHtml(E, extra);
 globalThis.macroMoreBoard = (key, E, extra) => macroMoreBoard(key, E, extra);
 globalThis.macroSubs = MacroSubs;
+globalThis.paperBoardById = (surface, E) => paperBoardById(surface, E);                // the paper-ideas boards (js/terminal/paperBoardsView.js): FOMC day, path gap, JGB, inflation, auctions, coverage, connectedness ...
 globalThis.overviewMoreHtml = overviewMoreHtml;                   // the Overview's live currency strength slot
 globalThis.liveLayerMount = getAnalyst => { try { mountLive(getJson, getAnalyst); } catch (e) { console.warn('live layer', e); } };   // intraday overlay + the price read (js/terminal/liveLayerView.js)
 globalThis.liveEmCell = liveEmCell; globalThis.liveWiderChip = liveWiderChip;

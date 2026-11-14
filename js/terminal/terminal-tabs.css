@@ -344,3 +344,16 @@ html[data-market="closed"] [data-mktboard],html[data-market="closed"] #tt-chain 
 .ll-tag.disagree{color:var(--gold)}.ll-tag.agree{color:var(--up)}
 @media (max-width:760px){.ll-prh{display:none}.ll-pr{grid-template-columns:62px minmax(40px,1fr) 24px minmax(40px,1fr) 50px;row-gap:2px}.ll-ps,.ll-tag{grid-column:2 / -1;text-align:left}.ll-rr{grid-template-columns:62px minmax(0,1fr) 40px 56px}}
 @media (prefers-reduced-motion:reduce){.ll-pulse{animation:none}.ll-rf,.ll-pa,.ll-mk{transition:none}}
+
+/* paper-ideas boards (js/terminal/paperBoardsView.js): condition lights, spillover flow, big numbers, bid-to-cover bars. Tokens only; motion off under prefers-reduced-motion. */
+.pb-lights{display:grid;gap:14px}
+.pb-lightbox{display:flex;gap:12px;align-items:flex-start}
+.pb-light{flex:none;width:18px;height:18px;margin-top:3px;border-radius:50%;background:var(--bg3);border:1px solid var(--line2)}
+.pb-light.on{background:var(--gold);border-color:var(--gold);box-shadow:0 0 12px 2px var(--gold)}
+.pb-light.type{background:var(--pur2);border-color:var(--pur2);box-shadow:0 0 10px 1px var(--pur2)}
+.pb-big{font-size:30px;font-weight:700;color:var(--tx);margin:4px 0}
+.pb-bar{display:inline-block;width:70px;height:7px;margin-right:6px;border-radius:4px;background:var(--bg3);vertical-align:middle;overflow:hidden}
+.pb-bar i{display:block;height:100%;background:var(--pur2)}
+@keyframes pbpulse{50%{box-shadow:0 0 20px 5px var(--gold)}}
+@keyframes pbflow{to{stroke-dashoffset:-28}}
+@media (prefers-reduced-motion:no-preference){.pb-light.on{animation:pbpulse 2.4s ease-in-out infinite}.pb-flow{stroke-dasharray:6 8;animation:pbflow 3s linear infinite}}

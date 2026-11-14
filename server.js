@@ -120,6 +120,7 @@ import { createVolState } from './js/volStateRoutes.js';             // vol stat
 import { createTradePlan } from './js/tradePlanRoutes.js';           // trade-plan shadow forward record, display only (forge/TRADE_PLAN_SHADOW_PREREG.md)
 import { mountLiveLayer as _mountLiveLayer } from './js/liveLayerRoutes.js';   // intraday overlay for the daily boards: EM, indices, implied yields, range used, correlation regime (/api/live-layer)
 import { fxWeekOpen as _llIsFxOpen } from './js/marketClock.js';   // the PRECISE FX-week rule (Friday 17:00 to Sunday 17:00 New York)
+import { mountPaperBoards } from './js/paperBoardsRoutes.js';                  // the paper-ideas boards' routes (FOMC day, path gap, JGB, inflation, auctions, range coverage, connectedness, coupling, SKEW, trend, walls)
 import { mountDeskBoards } from './js/deskBoardRoutes.js';              // the Desk Terminal's newer Macro boards (credit & liquidity, curve, regime, releases, strength, vol)
 import { mountReplay as _mountReplay } from './js/replayRoutes.js';                  // the Desk Terminal REPLAY (time machine, stage 1): a session as minutes, the option levels as known then, strength every 15 min (/api/replay/*)
 import { createStateRoutes } from './js/stateRoutes.js';                // Market State Engine: GET /api/state (plans/MARKET_STATE_ENGINE_PLAN.md)
@@ -21620,6 +21621,14 @@ async function _buildDataHealth() {
     // nothing asks for it until a terminal tab is open, so a never-built layer is 'waiting', not dead; once built it should stay inside minutes while a tab is open
     push('liveLayer', `Desk Terminal live layer (EM, indices, implied yields, range used)${s.lastError ? ` (${s.lastError.slice(0, 120)})` : ''}`, s.lastOkAt ? new Date(s.lastOkAt).toISOString() : null, 0.2, { market: true, refreshEveryH: 0.02 });
   } catch { /* best-effort */ }
+  // the paper-ideas feeds: judged on the date the data itself runs to, so a server nobody has opened never reads as a dead feed (null = not built since boot, shown as waiting)
+  try {
+    const s = _paperBoards.status();
+    push('jgbCurve', 'Japan JGB curve (MoF file, 2-40y)', s.jgb, 4, { market: false, refreshEveryH: 6 });
+    push('fomcTimes', 'FOMC statement and press-conference times (schedule)', s.fomc, 3, { market: false, refreshEveryH: 12 });
+    push('policyUncert', `Economic policy uncertainty (FRED)${s.errors?.epu && Object.keys(s.errors.epu).length ? ` (${Object.entries(s.errors.epu).map(([k, v]) => `${k}: ${v}`).join('; ').slice(0, 120)})` : ''}`, s.epu, 6, { market: false, refreshEveryH: 6 });
+    push('auctionResults', 'Treasury auction results (TreasuryDirect)', s.auctions, 14, { market: false, refreshEveryH: 1 });
+  } catch { /* best-effort */ }
   const out = { ..._dataHealth(srcs), bootedAt: new Date(_BOOTED_AT).toISOString() };
   _dataHealthCache = { at: Date.now(), data: out };
   return out;
@@ -36043,6 +36052,8 @@ mountDeskBoards(app, {
   mbCached: _mbCached, fredKey: process.env.FRED_KEY, fetchCandles: process.env.OANDA_KEY ? _fetchOandaCandles : null, ratesSeries: async () => { if (Date.now() - _rates.at > 6 * 3600_000 || !_rates.series) await _refreshRates(); return _rates.series; }, getState: () => _stateRoutes.get(), buildCsiInputs, buildCsi, CSI_DEFAULTS,
   selfJson: async p => { const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { signal: AbortSignal.timeout(60_000) }); if (!r.ok) throw new Error(`${p} ${r.status}`); return r.json(); },
 });
+// The boards from the paper-ideas pass (js/paperBoardsRoutes.js): four small free data feeds (JGB curve, FOMC times, policy uncertainty, Treasury auction results) and one feed per Macro section.
+const _paperBoards = mountPaperBoards(app, { fredCsv: _fredCsv, selfJson: async p => { const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { signal: AbortSignal.timeout(60_000) }); if (!r.ok) throw new Error(`${p} ${r.status}`); return r.json(); } });
 // Desk Terminal replay (js/replayRoutes.js): read-only routes behind the Replay tab. Past sessions are cached for hours; nothing is written and no model is called.
 _mountReplay(app, {
   fetchRange: (sym, gran, fromISO, toISO) => { if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not configured'); return fetchOandaCandleRange(_liqGateOandaSym(sym), gran, fromISO, toISO); },
