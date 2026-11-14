@@ -304,7 +304,54 @@ POWER_TABLE_PLACEHOLDER
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-14 — PRE-RESULTS
+**§5 was committed with a placeholder** because the power simulation was still running when the prereg was pushed
+(`f3f1365b`). This fills it. No market data was read: `scripts/bias-learner/power_sim.py` (seed 20261114) uses
+synthetic readings **and** synthetic targets (13 instruments × every weekday 2016-01-04 → 2026-08-21; returns
+cross-correlated FX 0.47, gold 0.30 on the FX factor, indices 0.85; readings built like the real ones, trends from past
+simulated returns; a planted daily IC on a composite of `trD`, `carry`/`sigreg`, `cot`, `asia`), and runs the exact §3.4–3.5
+pipeline (offset on logit B0, 65 columns, the C rule, 9 expanding folds 2018–2026, purge). 24 draws per planted IC;
+40 day-block shuffles per cell (4 null draws × 10). Output `analysis/output/bias-learner/power_sim.json`; the table the
+runner reads is `scripts/bias-learner/power_table.json`.
+
+**Rules fixed here.** SD of BSS_B0 under no signal = max(Monte-Carlo SD across null draws, SD of the shuffle
+distribution). **MDE** = (z + 0.84) × SD, z = 2.87 (Holm's first step, 0.05/12) and 1.96 (last step). **U (useful
+effect)** = the mean BSS_B0 the exact pipeline recovers from a planted daily **IC of 0.08**, i.e. a hit-rate gain over B0
+of ≈ 1.3 pp at 21:00, 1.5 at +1, 1.9 at +3, 2.3 at +5 (the card's "1–2 pp"). A cell is POWERED when its Holm-first MDE ≤ U.
+
+| Cell | Null mean BSS (overfit cost) | SD: MC / shuffle | **MDE** Holm first / last | Recovered BSS at planted IC 0.05 / 0.08 / 0.12 | Pass bar U | Verdict |
+|---|---|---|---|---|---|---|
+| 21:00 × fx | −0.014% | 0.022% / 0.032% | **0.119% / 0.090%** | +0.021% / +0.186% / +0.600% | +0.186% | POWERED |
+| 21:00 × gold | −0.012% | 0.050% / 0.036% | **0.186% / 0.141%** | +0.047% / +0.131% / +0.491% | +0.131% | UNDERPOWERED |
+| 21:00 × idx | −0.021% | 0.043% / 0.030% | **0.158% / 0.120%** | +0.008% / +0.113% / +0.471% | +0.113% | UNDERPOWERED |
+| +1 × fx | −0.028% | 0.046% / 0.043% | **0.170% / 0.128%** | +0.042% / +0.239% / +0.842% | +0.239% | POWERED |
+| +1 × gold | −0.018% | 0.068% / 0.049% | **0.253% / 0.191%** | +0.052% / +0.218% / +0.698% | +0.218% | UNDERPOWERED |
+| +1 × idx | −0.028% | 0.062% / 0.060% | **0.230% / 0.174%** | +0.011% / +0.132% / +0.658% | +0.132% | UNDERPOWERED |
+| +3 × fx | −0.053% | 0.062% / 0.042% | **0.228% / 0.172%** | +0.096% / +0.372% / +1.432% | +0.372% | POWERED |
+| +3 × gold | −0.046% | 0.174% / 0.099% | **0.646% / 0.488%** | +0.041% / +0.318% / +1.292% | +0.318% | UNDERPOWERED |
+| +3 × idx | −0.053% | 0.125% / 0.085% | **0.462% / 0.349%** | +0.064% / +0.275% / +1.228% | +0.275% | UNDERPOWERED |
+| +5 × fx | −0.056% | 0.108% / 0.092% | **0.402% / 0.303%** | +0.107% / +0.528% / +1.830% | +0.528% | POWERED |
+| +5 × gold | −0.032% | 0.207% / 0.189% | **0.766% / 0.578%** | +0.035% / +0.321% / +1.735% | +0.321% | UNDERPOWERED |
+| +5 × idx | −0.069% | 0.172% / 0.209% | **0.774% / 0.584%** | +0.111% / +0.398% / +1.476% | +0.398% | UNDERPOWERED |
+
+Readings: (1) only the **FX** cells can resolve U; gold and the indices can only find effects of roughly IC 0.10–0.12, so
+an empty result there banks `UNDERPOWERED` by design (the §4 table already says so). (2) The shrunk pipeline recovers
+little of a weak signal: planted IC 0.05 (the `direction-bar` always-on bar is 0.04) comes back as +0.02% at 21:00, about
+a tenth of the ideal ≈ 0.16% (the 2026-10-21 lesson, measured here, not assumed). The inner rule chose C ≤ 3e-4 in ~70%
+of folds. (3) The overfit cost is small (−0.01% to −0.07%) because shrinkage is toward B0. (4) In the simulation the
+learner without the B0 offset "beat" B0 by ~0.1% by shrinking per-instrument base rates (B0 noise, not readings), which
+is why the offset and the M0 gate (G2) are in the design. (5) Not simulated: label autocorrelation in real returns and
+B0 drift; the shuffle SE floor (§3.8) covers both in the real run. The GBM is not in the simulation (secondary).
+
+**Runner details fixed while writing `scripts/bias-learner/run.py` (no real data read; the M1 is not in this
+container):** (a) the GBM's `max_iter` is chosen from staged predictions of one 200-iteration fit per inner fold (the
+same as separate fits, cheaper); the GBM pass test is G1 at raw p < 0.05 with CI lower > 0 plus G4 against the
+logistic's shuffle 95th percentile; (b) a weekly bar completes with its last NY-close daily bar (a short holiday week
+completes on its last trading day); (c) rows with a NaN in any reading that exists for their group are dropped and
+counted; (d) the random-abstention band draws contiguous 21-session date blocks until the kept count is reached;
+(e) the positive control uses 20 shuffles (a code check, not a scored cell); the scored cells use the registered 200;
+(f) the recalibration-slope CI uses 500 of the 2000 bootstrap draws (G6 gates the point estimate only); (g) per-
+instrument disaggregation uses B = 1000.
 
 ---
 
