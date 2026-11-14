@@ -573,6 +573,10 @@ function isCfKey(key) {
   // (refreshed per write), so the _worker.js 48h-TTL gate does not apply. Writes are
   // capped server-side (unchanged pushes skipped, <=500/day).
   if (key.startsWith('tl_sync_')) return true;
+  // desk_snap_core_<YYYY-MM-DDTHH> and desk_snap_full_<London date> - the Desk Terminal time machine (js/deskSnapshotStore.js; plans/TIME_MACHINE.md): one gzipped chunk of
+  // 5-minute CORE points per UTC hour (16-day expiration set on the write) and one FULL snapshot a day (20 days). Written only by server.js straight to this REST API with its
+  // own expirationTtl, so _worker.js (the second TTL gate, which only governs writes that come through the worker) is not involved. Each finished day is copied to R2 for good.
+  if (key.startsWith('desk_snap_')) return true;
   return _CF_EXACT.has(key) || key.startsWith('journal_') || key.startsWith('ai_');
 }
 
@@ -805,6 +809,8 @@ const WT_FLUSH_MS = 30 * 60_000;
 let _wt = {}, _wtLoaded = false, _wtDirty = false, _wtTimer = null;
 function _noteWrite(key) {
   if (key === WT_KEY || key.startsWith('kv_probe_')) return;
+  // the time machine writes 24 hour-chunk keys a day: one ledger row for the family (desk_snap_core_*), not a row per hour that would grow the ledger for ever
+  if (key.startsWith('desk_snap_core_')) key = 'desk_snap_core_*';
   _wt[key] = Date.now(); _wtDirty = true;
   if (!_wtTimer) { _wtTimer = setTimeout(() => { _wtTimer = null; flushWriteTimes().catch(() => {}); }, WT_FLUSH_MS); _wtTimer.unref?.(); }
 }

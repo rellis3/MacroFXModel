@@ -44,6 +44,7 @@ export const VIEWER_ALLOW_OVERRIDES = [
   '/api/desk-asset-analyse', '/api/desk-shared-reads',   // the shared once-a-day reads: GET is free and never calls a model (POST: VIEWER_POST_ALLOWED)
   '/api/desk-session', '/api/desk-access',      // who am I, and which surfaces may I see (GET only: the POST is a non-GET and is refused for viewers)
   '/api/oanda-book/history',                    // retail-crowd positioning history: market data, not the owner's account
+  '/api/desk-snapshots',                        // the time machine: stored point-in-time copies of the terminal's analysis (read only; the viewer copy loses sizes and trade-level fields, js/deskViewerView.js)
 ];
 
 /** Analysis routes under the '/api/desk-' deny prefix that a viewer may read, EXACT paths only (a prefix here would also open /roles, /status and the like).

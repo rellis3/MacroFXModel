@@ -483,6 +483,8 @@ import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillRep
 import { Worker as _NodeWorker } from 'node:worker_threads';   // fx-factor-v2 / ou-pairs research runs, the corr-history build (off the main loop)
 import { pearson as corrPearson } from './js/corrHistoryCompute.js';   // the corr-history maths (built in js/corrHistoryWorker.js)
 import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataArchive.js';
+import { createSnapshotService as _createSnapshotService } from './js/deskSnapshotStore.js';   // the Desk Terminal time machine: CORE + FULL snapshots, KV window, R2 record (plans/TIME_MACHINE.md)
+import { parseFields as _snapParseFields } from './js/deskSnapshot.js';
 import { createExpiryTrackStore } from './js/expiryTrackStore.js';
 import { buildSwingMap as _buildSwingMap, sigmaSeries as _swingSigma, THIN_FLOOR as _SWING_THIN_FLOOR } from './js/swingMap.js';
 import { zoneWalk as _swingZoneWalk } from './js/swingPaths.js';
@@ -793,7 +795,7 @@ for (const [sig, code] of [['SIGTERM', 143], ['SIGINT', 130]]) {
       console.log(`[service-stats] ${sig} — flushing before exit`);
       const bail = setTimeout(() => process.exit(code), 4_000);
       // also the KV write-time ledger the Data Map reads: with redeploys every few minutes its 30-min timer never fires
-      Promise.allSettled([svcStatsFlush(sig), kv.flushWriteTimes(), _spendFlush(), typeof _egressFlush === 'function' ? _egressFlush() : null]).finally(() => { clearTimeout(bail); process.exit(code); });
+      Promise.allSettled([svcStatsFlush(sig), kv.flushWriteTimes(), _spendFlush(), typeof _egressFlush === 'function' ? _egressFlush() : null, typeof _deskSnapFlush === 'function' ? _deskSnapFlush() : null]).finally(() => { clearTimeout(bail); process.exit(code); });
     };
     // A brief being written by a slow model (minutes, and paid for) must not be thrown away by someone else's push. Wait for it, up to 9 minutes. This only helps
     // if the host leaves the old process alive that long: on Railway that is the deployment draining time (RAILWAY_DEPLOYMENT_DRAINING_SECONDS).
@@ -3708,6 +3710,7 @@ async function _longPost(url, headers, body, timeoutMs) {
 // hit the temporal dead zone if a signal arrives while the module is still loading.
 var _aiInFlight = 0;
 var _egressFlush = null;   // set once egressPersist has loaded; called by the SIGTERM handler
+var _deskSnapFlush = null;   // the time machine's unwritten points (set once its service exists); flushed by the SIGTERM handler so a redeploy does not drop the hour in memory
 // `images` ([{ mediaType, data: base64 }]): pictures sent with the prompt, on a provider that reads them (anthropic). A
 // task routed to one that cannot (DeepSeek, Kimi) is refused here with a clear error, never sent (modelRouter refuses too).
 async function callModel({ task = 'misc', system = '', standing = '', prompt = '', maxTokens = 4000, temperature = null, timeoutMs = 300_000, images = [], label = null } = {}) {
@@ -5077,6 +5080,50 @@ svcInterval('deskRun', async () => {
   if ((await _drLoadIndex()).some(r => r.date === today)) { _drLatest = await _drLoad(today) ?? _drLatest; if (_drLatest?.date === today) return; }
   _drStart('schedule');
 }, 10 * 60_000);
+
+// ── Desk Terminal time machine (js/deskSnapshot.js, js/deskSnapshotStore.js; plans/TIME_MACHINE.md) ─────────────────────────────────
+// Stores the terminal's analysis as it was published, so a board can be scrubbed back and forward. CORE: a compact point (stress tiles, risk flags, the desk book's
+// ratings, strength, yields, credit, the Fed path, regime, central banks ...) every 5 minutes while the FX week is open and every 30 otherwise; FULL: every terminal feed
+// once a London day. KV holds the rolling window (hour chunks, 16 days; FULL 20 days); each finished day is copied to R2 for good. It reads this server's own routes over
+// loopback (the same way the Desk Pack does) because the terminal's feeds are route handlers with no shared builder; the routes are cached, slow feeds are fetched every
+// 10-30 minutes and carried between, and nothing is fetched upstream here. Off = no history from then on (SVC_DESKSNAPSHOT=0).
+const _deskSnap = _createSnapshotService({
+  kvGet: k => kv.get(k), kvGetStrict: k => kv.getStrict(k), kvPut: (k, v, o) => kv.put(k, v, o), kvKeys: p => kv.keys(p),
+  archive: _archive, r2Get: k => _r2GetJSON(k), fetchFeed: (path, o) => _dpFetchFeed({ path, timeoutMs: o?.timeoutMs }),
+  deskRunDate: () => _drLatest?.date ?? null, log: console,
+});
+_deskSnapFlush = () => _deskSnap.flush();
+svcTimeout('deskSnapshot', () => _deskSnap.tick({ boot: true }).catch(e => console.error('[desk-snapshot]', e.message)), 150_000);   // a first point soon after boot, not in the boot burst
+svcInterval('deskSnapshot', () => _deskSnap.tick().catch(e => console.error('[desk-snapshot]', e.message)), 5 * 60_000);
+const _snapTime = v => { if (v == null || v === '') return null; const n = /^\d+$/.test(String(v)) ? Number(v) : Date.parse(String(v)); return Number.isFinite(n) ? n : null; };
+// GET /api/desk-snapshots?from=&to=&fields=desk,strength&step=15&max=300   from/to: ISO or epoch ms (default the last 24 h; at most 31 days); fields: section ids (default all);
+// step: minutes (widened so the answer holds at most `max` points and about 6 MB). A desk viewer gets the copy without sizes and trade-level fields (js/deskViewerView.js).
+app.get('/api/desk-snapshots', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const r = await _deskSnap.readCore({ from: _snapTime(req.query.from), to: _snapTime(req.query.to), fields: _snapParseFields(req.query.fields), stepMin: Number(req.query.step) || 0, max: Math.min(2000, Math.max(10, Number(req.query.max) || 300)) });
+    res.status(r.ok ? 200 : 400).json(r);
+  } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
+// GET /api/desk-snapshots/full?date=YYYY-MM-DD[&feeds=risk-flags,fed-path]   one London day's FULL snapshot (KV for 20 days, then R2)
+app.get('/api/desk-snapshots/full', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const feeds = String(req.query.feeds ?? '').split(',').map(x => x.trim()).filter(Boolean);
+    const r = await _deskSnap.readFull(String(req.query.date ?? _dpLondonDate(Date.now())), feeds);
+    res.status(r.ok ? 200 : 404).json(r);
+  } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
+app.get('/api/desk-snapshots/index', async (_req, res) => { try { res.set('Cache-Control', 'no-store'); res.json(await _deskSnap.index()); } catch (e) { res.status(502).json({ ok: false, error: e.message }); } });
+app.get('/api/desk-snapshots/status', (_req, res) => { res.set('Cache-Control', 'no-store'); res.json(_deskSnap.status()); });
+// owner only (a POST is refused to a desk viewer): take a point now, or the day's FULL snapshot with ?full=1
+app.post('/api/desk-snapshots/capture', async (req, res) => {
+  try {
+    const full = req.query.full === '1', r = full ? await _deskSnap.captureFull() : await _deskSnap.captureCore();
+    if (!full) await _deskSnap.flush();
+    const { point: _p, ...rest } = r; res.json({ ...rest, ok: r.ok !== false });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 // ── Desk Score and memory (js/deskScore.js, js/deskReflect.js; plans/DESK_ANALYST_PIPELINE.md Phase 4) ─────────
 // After 21:10 London each weekday: the day's desk book (the first eligible run if there is one, else the latest run,
@@ -21548,6 +21595,15 @@ async function _buildDataHealth() {
     srcs.push({ id: `kv:${key}`, label: `${f.name} (KV ${key})`, last, cadenceDays, market });
   }
 
+  // the Desk Terminal time machine: judged on the last time each step WORKED, not on its run count. A capture that never succeeds has no timestamp at all, so after 20
+  // minutes of uptime it is stamped 1970 and reads dead instead of 'waiting': a missing history must show up now, not when someone goes looking for it.
+  try {
+    const s = _deskSnap.status(), up = Date.now() - _BOOTED_AT, never = up > 20 * 60_000 ? 0 : null;
+    push('deskSnapCore', `Desk time machine: CORE capture${s.lastError ? ` (${s.lastError})` : ''}`, s.lastCaptureOkAt ?? never, 0.025, { market: false, refreshEveryH: 0.1 });
+    push('deskSnapKv', `Desk time machine: KV write${s.flushError ? ` (${s.flushError.slice(0, 120)})` : ''}`, s.lastFlushOkAt ?? (s.pendingPoints ? never : null), 0.05, { market: false, refreshEveryH: 0.35 });
+    if (s.archiveEnabled !== false) push('deskSnapArchive', `Desk time machine: R2 archive of finished days${s.archiveError ? ` (${s.archiveError.slice(0, 120)})` : ''}`, s.lastArchiveOkAt ?? never, 0.15, { market: false, refreshEveryH: 1 });
+    push('deskSnapFull', `Desk time machine: FULL daily snapshot${s.fullError ? ` (${s.fullError.slice(0, 120)})` : ''}`, s.lastFullAt ?? (up > 26 * 3600_000 ? 0 : null), 0.7, { market: false, refreshEveryH: 24 });
+  } catch { /* the rows are best-effort */ }
   const out = { ..._dataHealth(srcs), bootedAt: new Date(_BOOTED_AT).toISOString() };
   _dataHealthCache = { at: Date.now(), data: out };
   return out;
