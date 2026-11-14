@@ -60,6 +60,7 @@ export const SURFACES = [
   mk('tab.read', 'tab', 'Trader\'s read', 'Tabs', T, 'the owner\'s own read of the day: marking up a trade'),
   mk('tab.pair', 'tab', 'Pair', 'Tabs', null, 'one page per market; the research it pulls is shared once a day; entry, target and size lines are separate switches'),
   mk('tab.changed', 'tab', 'Changed', 'Tabs', null, 'what changed in the bias, the tone, world stress and the chain; the thesis check and the paper record are separate switches'),
+  mk('tab.replay', 'tab', 'Replay', 'Tabs', null, 'play a past session forward: candles, the option levels as published then, touches of them, strength and the desk\'s book as of the moment; it describes, it never predicts'),
   mk('tab.options', 'tab', 'Options', 'Tabs', null, 'skew, dealer hedging, put/call, option lines, the VIX term'),
   mk('tab.news', 'tab', 'News', 'Tabs', null, 'the wire with its reads'),
   mk('tab.corr', 'tab', 'Correlations & hedges', 'Tabs', null, 'matrix, rolling, factors and regimes; the hedge finder is a separate switch'),

@@ -104,16 +104,17 @@ export function mountReplay(app, d) {
     if (!date) throw bad(400, 'date must be a London date, YYYY-MM-DD, from 2015 up to today');
     return cached(`day|${I.key}|${date}`, ttlFor(date), async () => {
       const win = sessionWindow(date), to = Math.min(win.end, now());
+      let oiError = null;
       const [values, hist, fcDoc, dawn] = await Promise.all([
         d.fetchRange(I.oanda, 'M1', iso(win.start - 4 * HOUR), iso(to)),
-        I.oi ? oiHist().catch(() => null) : null,
+        I.oi ? oiHist().catch(e => { oiError = e.message; return null; }) : null,
         d.kvGet(`vol_forecast_${date}`).then(r => (r ? JSON.parse(r) : null)).catch(() => null),
         d.selfJson(`/api/desk-run?date=${date}&summary=1`).catch(() => null),
       ]);
       const oi = oiEntries(hist, I.oi, win.start - 7 * DAY, win.end);
       // only the lean (long / short / flat) and the tone, never the headline or any size: the headline can carry a trade sentence
       const dawnOut = dawn?.ok && dawn.head ? { date, finishedAt: dawn.finishedAt ?? null, finishedMs: Date.parse(dawn.finishedAt ?? '') || null, tone: dawn.head.tone ?? null, rating: dawn.head.ratings?.[I.key] ?? null } : null;
-      return { ok: true, inst: I.key, label: I.label, dp: I.dp, date, win, bars: shapeBars(values), oi: { pair: I.oi, ...oi }, forecast: forecastOf(fcDoc, I.key), dawn: dawnOut,
+      return { ok: true, inst: I.key, label: I.label, dp: I.dp, date, win, bars: shapeBars(values), oi: { pair: I.oi, ...oi, error: oiError || (I.oi && !hist ? 'the option store could not be read' : null) }, forecast: forecastOf(fcDoc, I.key), dawn: dawnOut,
         note: 'Bars are one-minute OANDA mid prices. Option levels are shown from the time their capture was saved. The forecast lines are shown from the session open (or from when the forecast was computed, if later).' };
     });
   }));

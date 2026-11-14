@@ -46,6 +46,7 @@ import * as ML from './mapLayers.js';
 import { cellHtml as macroCellHtml } from './macroEngines.js';
 import { FAMILIES as MACRO_FAMILIES } from './macroEnginesCore.js';
 import { ownerLink, ownerOnly } from './links.js';
+import { installReplayLink } from './replayLink.js';
 
 const el = id => document.getElementById(id);
 const h = CB.esc;
@@ -825,9 +826,12 @@ const RENDER = { today: renderToday, pair: renderPair, changed: renderChanged, r
   read: () => import('./traderReadView.js').then(V => V.render(el('read'), { getJson, openModal })).catch(e => { el('read').innerHTML = `<div class="card"><p class="muted">The Trader's Read did not load: ${h(e.message)}</p></div>`; }),
   // the Info map: every information family the repo holds against what the terminal draws (js/infoMap.js, built by scripts/build_info_map.mjs)
   infomap: () => import('./infoMapView.js').then(V => { const r = el('infomap'); if (!r.dataset.built) { r.dataset.built = '1'; V.mount(r); } }).catch(e => { el('infomap').innerHTML = `<div class="card"><p class="muted">The Info map did not load: ${h(e.message)}</p></div>`; }),
+  // the Replay tab (the time machine): pick a London session and play it forward; the view loads on first use (js/terminal/replayView.js)
+  replay: () => import('./replayView.js').then(V => V.mount(el('replay'))).catch(e => { el('replay').innerHTML = `<div class="card"><p class="muted">The Replay tab did not load: ${h(e.message)}</p></div>`; }),
   corr: () => import('./corrView.js').then(V => V.render(el('corr'), { getJson, book: () => D })).catch(e => { el('corr').innerHTML = `<div class="card"><p class="muted">Correlations &amp; hedges did not load: ${h(e.message)}</p></div>`; }) };
 globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'news') { clearInterval(NS.timer); NS.timer = null; } if (t !== 'pair' && /pair=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
 globalThis.openPairPage = openPair;
+installReplayLink();                               // globalThis.openReplay(inst, ts) and the #replay/NQ/2026-11-12T14:30 deep link
 // the asset card pop-up (desk-terminal.html assetCard) carries the same Analyse box
 globalThis.analyseBoxHtml = AAV.boxHtml;
 globalThis.mountAnalyse = box => AAV.mount(box).catch(e => console.warn('analyse', e));

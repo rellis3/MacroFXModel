@@ -3724,6 +3724,86 @@ export const DERIVED = {
    "packSkills": [],
    "drift": []
   },
+  "time-machine": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/desk-snapshots",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/replay/day",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/replay/strength",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/replay/meta",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/replay/notable",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/deskSnapshot.js",
+     "exists": true
+    },
+    {
+     "file": "js/deskSnapshotStore.js",
+     "exists": true
+    },
+    {
+     "file": "js/replayCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/replayRoutes.js",
+     "exists": true
+    },
+    {
+     "file": "js/replayStrength.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/replayView.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "js/terminal/replayLink.js",
+     "js/terminal/replayView.js",
+     "js/terminal/terminalTabs.js"
+    ],
+    "today": [],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [
+    {
+     "id": "level-touch",
+     "known": true,
+     "verdict": "null"
+    },
+    {
+     "id": "line-touch-limit-unseen",
+     "known": true,
+     "verdict": "null"
+    }
+   ],
+   "packSkills": [],
+   "drift": []
+  },
   "fx-fair-value": {
    "pages": [],
    "routes": [

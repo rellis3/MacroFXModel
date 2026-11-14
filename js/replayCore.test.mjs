@@ -91,6 +91,10 @@ test('levels are point-in-time: a capture is shown only from the time it was SAV
   const fc = R.levelsAt(ctx, 3500).filter(l => l.kind === 'fc');
   assert.equal(fc.length, 4);
   assert.ok(Math.abs(fc.find(l => l.type === 'H50').price - 102) < 1e-9 && Math.abs(fc.find(l => l.type === 'L75').price - 97) < 1e-9);
+  // walls far from the spot are left off while nearer ones exist; with none near, the biggest are used
+  const far = { ...e1, spot: 100, callWalls: [{ strike: 106, oi: 10 }, { strike: 130, oi: 999 }, { strike: 102, oi: 5 }, { strike: 101, oi: 6 }], putWalls: [{ strike: 70, oi: 50 }] };
+  assert.deepEqual(R.oiLines(far).filter(l => l.type === 'call').map(l => l.price), [101, 102]);
+  assert.deepEqual(R.oiLines(far).filter(l => l.type === 'put').map(l => l.price), [70]);
   assert.equal(R.levelsAt(ctx, 1000 + 4 * 86400e3).find(l => l.kind === 'oi').stale, true);
   assert.equal(R.levelsAt(ctx, 2500).find(l => l.kind === 'oi').publishedDate, '2026-11-11');
 });

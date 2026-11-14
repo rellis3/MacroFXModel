@@ -148,7 +148,7 @@ export function mount(root) {
 
   function draw(M) {
     const { g, w, h } = fitCanvas(els.cv), I = R.INSTRUMENTS[S.inst], W = win();
-    const narrow = w < 560, PAD = { l: narrow ? 46 : 62, r: narrow ? 62 : 150, t: 30, b: 24 }, pw = w - PAD.l - PAD.r, ph = h - PAD.t - PAD.b;
+    const narrow = w < 560, PAD = { l: narrow ? 52 : 62, r: narrow ? 66 : 196, t: 30, b: 24 }, pw = w - PAD.l - PAD.r, ph = h - PAD.t - PAD.b;
     const vs = S.view === 'follow' ? S.ts - 6 * HOUR : W.start, ve = S.view === 'follow' ? S.ts + HOUR : W.end;
     const x = t => PAD.l + (t - vs) / (ve - vs) * pw;
     const vis = M.bars.filter(b => b.t + tfMs() >= vs && b.t <= ve);
@@ -166,10 +166,10 @@ export function mount(root) {
     // grid + price axis
     g.strokeStyle = gridC; g.lineWidth = 1; g.fillStyle = txtC; g.textAlign = 'right';
     const st = niceStep(hi - lo, 5);
-    for (let p = Math.ceil(lo / st) * st; p <= hi; p += st) { const yy = Math.round(y(p)) + .5; g.beginPath(); g.moveTo(PAD.l, yy); g.lineTo(PAD.l + pw, yy); g.stroke(); g.fillText(R.fmtPrice(S.inst, p), PAD.l - 6, yy); }
+    for (let p = Math.ceil(lo / st) * st; p <= hi; p += st) { const yy = Math.round(y(p)) + .5; g.beginPath(); g.moveTo(PAD.l, yy); g.lineTo(PAD.l + pw, yy); g.stroke(); g.fillText(st >= 1 ? Math.round(p).toLocaleString('en-GB') : R.fmtPrice(S.inst, p), PAD.l - 6, yy); }
     // time axis
     g.textAlign = 'center'; const hs = (ve - vs) > 12 * HOUR ? 3 * HOUR : HOUR;
-    for (let t = Math.ceil(vs / hs) * hs; t <= ve; t += hs) { const xx = Math.round(x(t)) + .5; g.strokeStyle = gridC; g.beginPath(); g.moveTo(xx, PAD.t); g.lineTo(xx, PAD.t + ph); g.stroke(); g.fillStyle = txtC; g.fillText(R.londonHM(t), xx, h - 10); }
+    for (let t = Math.ceil(vs / hs) * hs; t <= ve; t += hs) { const xx = Math.round(x(t)) + .5; g.strokeStyle = gridC; g.beginPath(); g.moveTo(xx, PAD.t); g.lineTo(xx, PAD.t + ph); g.stroke(); if (xx < PAD.l + pw - 14) { g.fillStyle = txtC; g.fillText(R.londonHM(t), xx, h - 10); } }
     // closed stretches (no prices): shaded, so a gap is a gap
     const m1 = S.m1;
     g.fillStyle = rgba('flat', 0.07);
@@ -189,9 +189,14 @@ export function mount(root) {
         g.beginPath(); g.moveTo(x0, yy); g.lineTo(PAD.l + pw, yy); g.stroke(); g.restore();
         if (pulse && !noMotion) { const k = (now - pulse.t0) / 2200; g.save(); g.strokeStyle = col; g.globalAlpha = (1 - k) * 0.8; g.lineWidth = 2; g.beginPath(); g.arc(PAD.l + pw - 6, yy, 4 + 22 * k, 0, Math.PI * 2); g.stroke(); g.restore(); }
       }
-      labels.push({ y: Math.min(Math.max(yy, PAD.t + 4), PAD.t + ph - 4), edge: yy < PAD.t ? '▲' : yy > PAD.t + ph ? '▼' : '', col, text: narrow ? R.fmtPrice(S.inst, l.price) : `${l.label.replace('Forecast ', 'Fcst ')} ${R.fmtPrice(S.inst, l.price)}`, strong: sty.strong });
+      labels.push({ y: Math.min(Math.max(yy, PAD.t + 4), PAD.t + ph - 4), dist: Math.abs(l.price - (M.price ?? l.price)), edge: yy < PAD.t ? '▲' : yy > PAD.t + ph ? '▼' : '', col, text: narrow ? (l.price >= 1000 ? Math.round(l.price).toLocaleString('en-GB') : R.fmtPrice(S.inst, l.price)) : `${l.label.replace('Forecast ', 'Fcst ').replace('Session open', 'Open')} ${R.fmtPrice(S.inst, l.price)}`, strong: sty.strong });
     }
-    labels.sort((a, b) => a.y - b.y); for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 13) labels[i].y = labels[i - 1].y + 13;
+    // a label for each line on the chart, plus the nearest two off the top and off the bottom (the Levels panel lists the rest); packed so none overlaps or leaves the plot
+    const keep = labels.filter(L => !L.edge), up = labels.filter(L => L.edge === '▲').sort((a, b) => a.dist - b.dist).slice(0, 2), dn = labels.filter(L => L.edge === '▼').sort((a, b) => a.dist - b.dist).slice(0, 2);
+    labels.length = 0; labels.push(...keep, ...up, ...dn);
+    labels.sort((a, b) => a.y - b.y);
+    for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 13) labels[i].y = labels[i - 1].y + 13;
+    for (let i = labels.length - 1; i >= 0; i--) { const maxY = PAD.t + ph - 4 - (labels.length - 1 - i) * 13; if (labels[i].y > maxY) labels[i].y = maxY; }
     g.textAlign = 'left';
     for (const L of labels) { g.fillStyle = L.col; g.fillRect(PAD.l + pw + 5, L.y - 1.5, 8, 3); g.fillStyle = L.strong ? tc('tx') : tc('tx2'); g.fillText(`${L.edge}${L.text}`.trim(), PAD.l + pw + 17, L.y); }
     // candles
@@ -273,9 +278,10 @@ export function mount(root) {
   }
   function levelsDraw(M) {
     const p = M.price, box = $('rp-lv');
-    if (!M.lines.length) { box.innerHTML = '<p class="rp-none">No levels yet at this moment: no option capture had been saved and the session has not opened.</p>'; return; }
+    if (!M.lines.length) { box.innerHTML = `<p class="rp-none">No levels yet at this moment: ${S.day?.oi?.error ? `the option store could not be read (${esc(S.day.oi.error)})` : !S.day?.oi?.pair ? 'this market has no option book in the capture' : 'no option capture had been saved yet'} and the session has not opened.</p>`; return; }
+    const oiNote = !M.lines.some(l => l.kind === 'oi') ? `<p class="rp-none" style="margin-bottom:6px">No option levels at this moment: ${S.day?.oi?.error ? `the option store could not be read (${esc(S.day.oi.error)})` : !S.day?.oi?.pair ? 'this market has no option book in the capture' : 'no capture had been saved yet, or none within a week'}.</p>` : '';
     const I = R.INSTRUMENTS[S.inst];
-    box.innerHTML = [...M.lines].sort((a, b) => b.price - a.price).map(l => { const d = p != null ? (l.price - p) : null, nearL = d != null && Math.abs(d) <= Math.abs(l.price) * 0.0006, k = M.counts[l.id] ?? 0;
+    box.innerHTML = oiNote + [...M.lines].sort((a, b) => b.price - a.price).map(l => { const d = p != null ? (l.price - p) : null, nearL = d != null && Math.abs(d) <= Math.abs(l.price) * 0.0006, k = M.counts[l.id] ?? 0;
       return `<div class="rp-lv-row ${KIND_CLS(l)}${nearL ? ' near' : ''}"><i></i><span class="nm">${esc(l.label)}${l.tier === 'strong' ? ' · strong' : ''}${l.oi ? ` · OI ${l.oi.toLocaleString('en-GB')}` : ''}<small>${esc(lagLabel(l))}${k ? ` · touched ${k}×` : ''}</small></span><span class="px">${R.fmtPrice(S.inst, l.price)}<small>${d == null ? '' : `${d > 0 ? '+' : '−'}${(Math.abs(d) * I.mult).toLocaleString('en-GB', { maximumFractionDigits: I.mult > 1 ? 0 : 1 })} ${I.unit}`}</small></span></div>`; }).join('');
   }
   function logDraw(M) {

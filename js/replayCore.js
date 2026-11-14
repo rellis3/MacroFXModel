@@ -152,11 +152,19 @@ export function activeOi(entries, ts) {
   return best;
 }
 const WALL_LABEL = { call: 'Call wall', put: 'Put wall', maxpain: 'Max pain', gammaflip: 'Gamma flip', gexflip: 'GEX flip' };
-/** The lines one OI capture gives: its three biggest call walls and put walls (by open interest), max pain, the gamma flip and the first GEX flip. */
-export function oiLines(entry, { walls = 3 } = {}) {
+/**
+ * The lines one OI capture gives: its three biggest call walls and put walls (by open interest) among those within 3% of the spot at the capture
+ * (a wall 6% away cannot meet price in a day, so it would only squash the chart; if none is that near the biggest are used), max pain, the gamma flip
+ * and the first GEX flip.
+ */
+export function oiLines(entry, { walls = 3, near = 0.03 } = {}) {
   if (!entry) return [];
   const out = [], push = (type, price, extra = {}) => { if (fin(price)) out.push({ id: `oi:${type}:${Math.round(price * 100)}`, kind: 'oi', type, label: WALL_LABEL[type], price: +price, ...extra }); };
-  const top = a => [...(a ?? [])].filter(w => fin(w?.strike)).sort((x, y) => (y.oi ?? 0) - (x.oi ?? 0)).slice(0, walls);
+  const top = a => {
+    const all = [...(a ?? [])].filter(w => fin(w?.strike));
+    const close = fin(entry.spot) && entry.spot > 0 ? all.filter(w => Math.abs(w.strike / entry.spot - 1) <= near) : all;
+    return (close.length ? close : all).sort((x, y) => (y.oi ?? 0) - (x.oi ?? 0)).slice(0, walls);
+  };
   for (const w of top(entry.callWalls)) push('call', w.strike, { tier: w.tier ?? null, oi: w.oi ?? null });
   for (const w of top(entry.putWalls)) push('put', w.strike, { tier: w.tier ?? null, oi: w.oi ?? null });
   push('maxpain', entry.maxPain);
