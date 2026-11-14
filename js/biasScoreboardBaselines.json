@@ -1,0 +1,190 @@
+{
+ "version": "b0-coin",
+ "prereg": "forge/BIAS_SCOREBOARD_PREREG.md",
+ "note": "Fallback registered in prereg 3.3: the M1 cache was not available when the build ran (2026-11-14), so p0 = 0.5. Replace by running scripts/bias-scoreboard/b0.py (history to 2026-08-21) before the first live row; the version travels in every record.",
+ "window": null,
+ "instruments": {
+  "nq": {
+   "d21": {
+    "p0": 0.5,
+    "n": null
+   },
+   "n07": {
+    "p0": 0.5,
+    "n": null
+   },
+   "d5": {
+    "p0": 0.5,
+    "n": null
+   }
+  },
+  "es": {
+   "d21": {
+    "p0": 0.5,
+    "n": null
+   },
+   "n07": {
+    "p0": 0.5,
+    "n": null
+   },
+   "d5": {
+    "p0": 0.5,
+    "n": null
+   }
+  },
+  "gold": {
+   "d21": {
+    "p0": 0.5,
+    "n": null
+   },
+   "n07": {
+    "p0": 0.5,
+    "n": null
+   },
+   "d5": {
+    "p0": 0.5,
+    "n": null
+   }
+  },
+  "eurusd": {
+   "d21": {
+    "p0": 0.5,
+    "n": null
+   },
+   "n07": {
+    "p0": 0.5,
+    "n": null
+   },
+   "d5": {
+    "p0": 0.5,
+    "n": null
+   }
+  },
+  "gbpusd": {
+   "d21": {
+    "p0": 0.5,
+    "n": null
+   },
+   "n07": {
+    "p0": 0.5,
+    "n": null
+   },
+   "d5": {
+    "p0": 0.5,
+    "n": null
+   }
+  },
+  "usdjpy": {
+   "d21": {
+    "p0": 0.5,
+    "n": null
+   },
+   "n07": {
+    "p0": 0.5,
+    "n": null
+   },
+   "d5": {
+    "p0": 0.5,
+    "n": null
+   }
+  },
+  "us30": {
+   "d21": {
+    "p0": 0.5,
+    "n": null
+   },
+   "n07": {
+    "p0": 0.5,
+    "n": null
+   },
+   "d5": {
+    "p0": 0.5,
+    "n": null
+   }
+  },
+  "audusd": {
+   "d21": {
+    "p0": 0.5,
+    "n": null
+   },
+   "n07": {
+    "p0": 0.5,
+    "n": null
+   },
+   "d5": {
+    "p0": 0.5,
+    "n": null
+   }
+  },
+  "nzdusd": {
+   "d21": {
+    "p0": 0.5,
+    "n": null
+   },
+   "n07": {
+    "p0": 0.5,
+    "n": null
+   },
+   "d5": {
+    "p0": 0.5,
+    "n": null
+   }
+  },
+  "usdcad": {
+   "d21": {
+    "p0": 0.5,
+    "n": null
+   },
+   "n07": {
+    "p0": 0.5,
+    "n": null
+   },
+   "d5": {
+    "p0": 0.5,
+    "n": null
+   }
+  },
+  "usdchf": {
+   "d21": {
+    "p0": 0.5,
+    "n": null
+   },
+   "n07": {
+    "p0": 0.5,
+    "n": null
+   },
+   "d5": {
+    "p0": 0.5,
+    "n": null
+   }
+  },
+  "gbpjpy": {
+   "d21": {
+    "p0": 0.5,
+    "n": null
+   },
+   "n07": {
+    "p0": 0.5,
+    "n": null
+   },
+   "d5": {
+    "p0": 0.5,
+    "n": null
+   }
+  },
+  "eurjpy": {
+   "d21": {
+    "p0": 0.5,
+    "n": null
+   },
+   "n07": {
+    "p0": 0.5,
+    "n": null
+   },
+   "d5": {
+    "p0": 0.5,
+    "n": null
+   }
+  }
+ }
+}

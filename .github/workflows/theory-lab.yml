@@ -18,6 +18,8 @@ on:
       - 'theory-lab/**'
       - 'js/deskEvidence.js'
       - 'js/deskStrip.js'
+      - '.github/workflows/theory-lab.yml'   # a workflow edit is checked on push too
+  workflow_dispatch:
 
 jobs:
   checks:

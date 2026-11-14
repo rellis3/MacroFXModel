@@ -16,8 +16,9 @@ import { spawn } from 'node:child_process';
 import { readdirSync, statSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKIP_DIRS = new Set(['node_modules', '.git', 'scratchpad', 'output', 'archive']);
 const TIMEOUT_MS = 600_000;   // the two atlas walk tests take 3-4 min on a shared runner
 
@@ -50,7 +51,7 @@ function runOne(file) {
 const args = process.argv.slice(2);
 const jsonAt = args.indexOf('--json');
 const jsonOut = jsonAt >= 0 ? args[jsonAt + 1] : null;
-const only = args.filter((a, i) => !a.startsWith('--') && i !== jsonAt + 1);
+const only = args.filter((a, i) => !a.startsWith('--') && !(jsonAt >= 0 && i === jsonAt + 1));   // (before 2026-11-14 this dropped the first file when --json was absent: jsonAt is -1, so index 0 was skipped)
 const files = (only.length ? only : walk(ROOT)).sort();
 const known = existsSync(path.join(ROOT, 'tests/KNOWN_FAILING.json')) ? JSON.parse(readFileSync(path.join(ROOT, 'tests/KNOWN_FAILING.json'), 'utf8')) : {};
 
