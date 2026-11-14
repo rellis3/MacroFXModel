@@ -51,7 +51,7 @@ function runOne(file) {
 const args = process.argv.slice(2);
 const jsonAt = args.indexOf('--json');
 const jsonOut = jsonAt >= 0 ? args[jsonAt + 1] : null;
-const only = args.filter((a, i) => !a.startsWith('--') && i !== jsonAt + 1);
+const only = args.filter((a, i) => !a.startsWith('--') && !(jsonAt >= 0 && i === jsonAt + 1));   // (before 2026-11-14 this dropped the first file when --json was absent: jsonAt is -1, so index 0 was skipped)
 const files = (only.length ? only : walk(ROOT)).sort();
 const known = existsSync(path.join(ROOT, 'tests/KNOWN_FAILING.json')) ? JSON.parse(readFileSync(path.join(ROOT, 'tests/KNOWN_FAILING.json'), 'utf8')) : {};
 
