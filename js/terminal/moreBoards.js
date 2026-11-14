@@ -36,6 +36,13 @@ export function macroMoreHtml(E, extra = {}) {
   return out;
 }
 
+/** One of the boards above by its feed key (the Macro tab draws them one section at a time): '' while its feed has not landed or if it throws. */
+export function macroMoreBoard(key, E, extra = {}) {
+  const draw = BOARDS.find(([k]) => k === key)?.[1];
+  if (!draw || !E || E[key] === undefined) return '';
+  try { return draw(E[key], extra); } catch (e) { console.warn('board', key, e); return ''; }
+}
+
 /** The live layer (js/terminal/liveLayerView.js): start its refresh and fill the Overview's price-read slot. getAnalyst = () => the desk's dawn read per currency. */
 export const mountLive = (getJson, getAnalyst) => LV.mount({ getJson, getAnalyst });
 export const liveEmCell = LV.liveEmCell, liveWiderChip = LV.liveWiderChip;

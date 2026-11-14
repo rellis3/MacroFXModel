@@ -39,7 +39,8 @@ import * as AAV from './assetAnalysisView.js';
 import * as SR from './sharedRead.js';
 import * as RBV from './ratesBoardView.js';
 import * as FYV from './fedPathYieldsView.js';
-import { macroMoreHtml, overviewMoreHtml, mountOverview, mountLive, liveEmCell, liveWiderChip } from './moreBoards.js';
+import * as MacroSubs from './macroSubtabs.js';
+import { macroMoreHtml, macroMoreBoard, overviewMoreHtml, mountOverview, mountLive, liveEmCell, liveWiderChip } from './moreBoards.js';
 import { fedPathYields, chainLine as fedPathChainLine } from '../fedPathYieldsCore.js';
 import * as ML from './mapLayers.js';
 import { cellHtml as macroCellHtml } from './macroEngines.js';
@@ -837,7 +838,7 @@ function fromHash() { const m = location.hash.match(/pair=([A-Za-z0-9]+)/); if (
 addEventListener('hashchange', fromHash);
 if (/pair=/.test(location.hash)) fromHash();
 else { const sel = document.querySelector('#tabs [aria-selected="true"]')?.dataset.t; if (RENDER[sel]) globalThis.onTerminalTab(sel); }
-// the Macro tab's short-term fair value table (desk-terminal.html driversHtml, a classic script) reads this
+// the Macro tab's short-term fair value table (desk-terminal.html driverBlocks(), a classic script) reads this
 globalThis.stfvHtml = FVV.stfvTable;
 // the Macro tab's central-bank statement board (desk-terminal.html enrichMacro, a classic script) reads this
 globalThis.cbBoardHtml = CBV.boardHtml;
@@ -847,8 +848,11 @@ globalThis.llGridHtml = LLV.gridHtml;
 globalThis.ratesBoardHtml = (rb, fp, gy) => { try { return RBV.boardHtml(rb, fp, gy, { esc, spk, sgn }); } catch (e) { console.warn('rates board', e); return ''; } };
 // ...and the Fed path against the yields (js/fedPathYieldsCore.js): the priced path, the 2Y / 2s10s / 10Y and the Atlanta window odds, same dates
 globalThis.macroMoreHtml = (E, extra) => macroMoreHtml(E, extra);
+globalThis.macroMoreBoard = (key, E, extra) => macroMoreBoard(key, E, extra);
+globalThis.macroSubs = MacroSubs;
 globalThis.overviewMoreHtml = overviewMoreHtml;                   // the Overview's live currency strength slot
 globalThis.liveLayerMount = getAnalyst => { try { mountLive(getJson, getAnalyst); } catch (e) { console.warn('live layer', e); } };   // intraday overlay + the price read (js/terminal/liveLayerView.js)
 globalThis.liveEmCell = liveEmCell; globalThis.liveWiderChip = liveWiderChip;
 globalThis.ccyStrengthMount = () => { try { mountOverview(getJson); } catch (e) { console.warn('ccy strength', e); } };   // the newer Macro boards (js/terminal/moreBoards.js)
 globalThis.fedYieldsHtml = (fp, rb, tp) => { try { return FYV.boardHtml(fp, rb, tp, { esc }); } catch (e) { console.warn('fed path yields', e); return ''; } };
+dispatchEvent(new Event('terminalmodule'));   // every hook above now exists: the classic page repaints what it drew before they did (the Macro sections need macroSubs)

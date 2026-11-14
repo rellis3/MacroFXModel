@@ -16,6 +16,7 @@
 // change (the desk book, the central-bank board) is carried between its refreshes WITH its original asOf and `src: 'carried'`.
 
 import { londonDate } from './deskPack.js';
+import { SUB_FEEDS as MACRO_SECTION_FEEDS } from './terminal/macroSubtabs.js';
 
 export const CORE_VERSION = 1;
 export const FULL_VERSION = 1;
@@ -191,6 +192,7 @@ export const FULL_EXCLUDED = [
   { path: 'fx-fair-value', why: 'about 85 KB; the model re-runs from stored prices and keeps its own forward record (fx_fair_value_log_v1)' },
   { path: 'release-reactions', why: 'about 200 KB; every live reaction is already in release_reaction_log_v1' },
   { path: 'lead-lag', why: 'about 135 KB of statistics recomputed from stored prices' },
+  { path: 'live-layer', why: 'an intraday overlay rebuilt from OANDA prices every 75 seconds (implied yields, index moves, range used); the CORE point already carries strength and yields, and a daily full copy of a minute-old overlay is not a record' },
   { path: 'autocorrelation', why: 'about 55 KB of statistics recomputed from stored prices' },
   { path: 'desk-news', why: 'about 75 KB wire window; each headline and its reaction is kept in desk_news_record_v1' },
   { path: 'state', why: 'about 350 KB market-state document; its history is archived by the state engine (archive/oi_summary, archive/series) and it is rebuilt from them' },
@@ -218,5 +220,6 @@ export function terminalRoutes(html) {
   const src = loadAt >= 0 && enrichEnd > loadAt ? html.slice(loadAt, enrichEnd) : '';
   for (const m of src.matchAll(/getJson\('\/api\/([a-z0-9/?=&-]+)'\)/g)) out.add(m[1]);
   for (const m of src.matchAll(/(?:const k = |for \(const x of )\[([^\]]+)\]/g)) for (const q of m[1].matchAll(/'([a-z0-9/?=&-]+)'/g)) out.add(q[1]);
+  for (const list of Object.values(MACRO_SECTION_FEEDS)) for (const f of list) out.add(f);   // the Macro-only feeds load per section (js/terminal/macroSubtabs.js), not from the page-load lists above
   return [...out];
 }
