@@ -107,6 +107,12 @@ anything after 2026-08-21.
 
 ## Amendments
 
-(none yet)
+### A1 — 2026-11-14 — PRE-RESULTS (calm sample sizes and design standard errors)
+No calm-subsample coefficient had been computed. `scripts/gex-range-iv-calm/run.py --stage power` reads only the label counts and the design matrix; the residual SD is the parent whole-sample B1 fit (already banked), so no calm-subsample coefficient is read.
+
+- **Sample:** 770 sessions each. The trailing-252 median had at least 126 prior observations for every session (none dropped). **ES:** 475 calm / 295 stress; short-gamma sessions 59 calm / 140 stress. **NQ:** 461 calm / 309 stress; short 87 calm / 143 stress.
+- **Design SE and MDE (calm):** ES residual SD 0.476, design SE 0.088, **MDE 0.265**; NQ residual SD 0.417, design SE 0.062, **MDE 0.186** (×3.0 SE). Both exceed the +0.10 operational bar, so a NULL by the rule is out of reach; the expected label is UNDERPOWERED. With only 59 (ES) and 87 (NQ) short-gamma calm sessions the arm is thin; the +0.05 gate is far below the MDE.
+- No other change.
+
 
 ## RESULTS

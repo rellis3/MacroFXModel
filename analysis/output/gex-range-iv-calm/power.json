@@ -1,0 +1,28 @@
+{
+ "seed": 20261114,
+ "stage": "power",
+ "cells": {
+  "ES": {
+   "n_total": 770,
+   "n_with_label": 770,
+   "n_calm": 475,
+   "n_stress": 295,
+   "resid_sd_whole_sample": 0.4759723909108371,
+   "se_design_calm": 0.08828889149968634,
+   "mde_calm": 0.26486667449905904,
+   "n_short_calm": 59,
+   "n_short_stress": 140
+  },
+  "NQ": {
+   "n_total": 770,
+   "n_with_label": 770,
+   "n_calm": 461,
+   "n_stress": 309,
+   "resid_sd_whole_sample": 0.41680360056033067,
+   "se_design_calm": 0.06187289711017501,
+   "mde_calm": 0.18561869133052503,
+   "n_short_calm": 87,
+   "n_short_stress": 143
+  }
+ }
+}
