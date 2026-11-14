@@ -118,6 +118,7 @@ import { createDrawdownShadow } from './js/drawdownShadowRoutes.js';   // drawdo
 import { createStressShadow } from './js/stressShadowRoutes.js';       // stress-count shadow band, read-only (forecast-miss-scan A1)
 import { createVolState } from './js/volStateRoutes.js';             // vol state vector, descriptive (GET /api/vol-state)
 import { createTradePlan } from './js/tradePlanRoutes.js';           // trade-plan shadow forward record, display only (forge/TRADE_PLAN_SHADOW_PREREG.md)
+import { mountDeskBoards } from './js/deskBoardRoutes.js';              // the Desk Terminal's newer Macro boards (credit & liquidity, curve, regime, releases, strength, vol)
 import { createStateRoutes } from './js/stateRoutes.js';                // Market State Engine: GET /api/state (plans/MARKET_STATE_ENGINE_PLAN.md)
 import { createSurfaceLab } from './js/surfaceLabRoutes.js';
 import { createVixCapture } from './js/vixCaptureRoutes.js';
@@ -21367,6 +21368,15 @@ app.get('/api/fed-path', async (_req, res) => {
           const ago = _zqMeetingProbs(zd.weekAgo.rungs, mtgs.filter(x => x >= zd.weekAgo.rungs[0].ym));
           zq.weekAgo = { asOf: zd.weekAgo.asOf, meetings: ago.rows };
         }
+        // Other lookbacks (calendar days: 1 and 28 = the chain's 1D and 20D), same arithmetic, when the pull wrote them. The Fed path -> yields
+        // join (js/fedPathYieldsCore.js) says "unavailable" for any it lacks; nothing is invented.
+        for (const [days, s] of Object.entries(zd.ago ?? {})) {
+          if (!s?.rungs?.length) continue;
+          try {
+            const a = _zqMeetingProbs(s.rungs, mtgs.filter(x => x >= s.rungs[0].ym));
+            (zq.ago ??= {})[days] = { asOf: s.asOf, meetings: a.rows };
+          } catch { /* one bad lookback does not take the strip down */ }
+        }
       }
     } catch { /* the window series still serves on its own */ }
     const ageDays = d.asOf
@@ -35782,7 +35792,7 @@ async function _stateEtfGamma() {
   })().finally(() => { _stateGamma.inflight = null; });
   return _stateGamma.inflight;
 }
-createStateRoutes({ kv, port: PORT, fetchD1: _btFetchD1, readers: {   // in-memory reads only; never trigger the heavy builds
+const _stateRoutes = createStateRoutes({ kv, port: PORT, fetchD1: _btFetchD1, readers: {   // in-memory reads only; never trigger the heavy builds
   globalRead: () => _grLatest, riskFlags: () => computeRiskFlags(), funding: () => _frLast?.read ?? null, nowcast: () => _nowcast,
   oiToday: () => _oiTodayCache?.payload ?? null, volForecast: () => forecastState.latest ?? null,
   // The COT cache (KV cot_extremes_v3) is filled by the worker's /api/cot-extremes, which only ran when someone opened
@@ -35815,7 +35825,11 @@ createStateRoutes({ kv, port: PORT, fetchD1: _btFetchD1, readers: {   // in-memo
     return out;
   },
   edgeRegimes: () => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'analysis/output/edges-by-regime/results.json'), 'utf8')); } catch { return null; } },
-} }).mount(app);   // must sit above the /api/* worker catch-all
+} }); _stateRoutes.mount(app);   // must sit above the /api/* worker catch-all
+mountDeskBoards(app, {
+  mbCached: _mbCached, fredKey: process.env.FRED_KEY, fetchCandles: process.env.OANDA_KEY ? _fetchOandaCandles : null, ratesSeries: async () => { if (Date.now() - _rates.at > 6 * 3600_000 || !_rates.series) await _refreshRates(); return _rates.series; }, getState: () => _stateRoutes.get(), buildCsiInputs, buildCsi, CSI_DEFAULTS,
+  selfJson: async p => { const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { signal: AbortSignal.timeout(60_000) }); if (!r.ok) throw new Error(`${p} ${r.status}`); return r.json(); },
+});
 svcInterval('dailyRead', () => svcRun('dailyRead', () => dailyRead.tick('scheduled')), 5 * 60_000);
 
 // ── Surface Lab (surface-lab.html) ────────────────────────────────────────────

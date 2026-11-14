@@ -100,6 +100,7 @@ export const SURFACES = [
   mk('panel.ov.bestpairs', 'panel', 'Overview: best pairs', 'Overview', T, 'the pair-selection matrix: how the view is best traded'),
   mk('panel.ov.riskstate', 'panel', 'Overview: risk state', 'Overview', null, 'the risk flags: market data'),
   mk('panel.ov.em', 'panel', 'Overview: emerging markets', 'Overview', null, 'EM gauges: market data'),
+  mk('panel.ov.ccystrength', 'panel', 'Overview: currency strength (σ), price-based and live', 'Overview', null, 'eight currencies as bars from a centre line over 1H, 4H, 1D and 1W, in units of each window\'s normal move, refreshed every minute or two while on screen; ordering only, and separate from the analyst strength strip'),
   mk('panel.ov.alerts', 'panel', 'Overview: desk alerts', 'Overview', I, 'the alert engine\'s status, including the Telegram mute'),
   mk('panel.ov.dayshape', 'panel', 'Overview: the day\'s shape', 'Overview', null, 'the day forecaster: volatility ranges (market data)'),
   mk('panel.ov.tradewatch', 'panel', 'Overview: trade watch', 'Overview', T, 'the book against live prices: zone, target, invalidation'),
@@ -140,6 +141,12 @@ export const SURFACES = [
   mk('panel.changed.thesis', 'panel', 'Changed: thesis against reality', 'Changed', M, 'the book\'s claims laid against the evening score'),
   mk('panel.changed.paper', 'panel', 'Changed: paper trades', 'Changed', M, 'the paper-trade running total'),
   mk('panel.corr.hedges', 'panel', 'Correlations: the hedge finder', 'Correlations', T, 'ranked hedges for a market or a book card: what to put on'),
+  mk('panel.macro.fedyields', 'panel', 'Macro: the Fed path against the yields', 'Macro', null, 'the priced fed funds path (December, June) beside the 2Y, 2s10s and 10Y over the same 1D/5D/20D dates, how much of the 2Y the futures path accounts for, and the Atlanta Fed window odds'),
+  mk('panel.macro.creditliq', 'panel', 'Macro: credit & liquidity', 'Macro', null, 'the Credit Stress Index, the long-history Baa-10Y spread against 5 and 20 years, global central-bank liquidity (level, impulse, by bank) and the liquidity conditions z-scores'),
+  mk('panel.macro.curve', 'panel', 'Macro: the curve through time', 'Macro', null, 'the Treasury curve drawn through 36 month-ends, six slopes against their 3y and 5y history, three years of curve shape, the yield-to-EURUSD coupling and the SOFR-Euribor spread-turn log'),
+  mk('panel.macro.regime', 'panel', 'Macro: where the market is (regime stack)', 'Macro', null, 'the growth x inflation quadrant, seven regime lenses, the correlation regime, risk-state flags and which markets are quiet or active over 30 days, plus the registered range edges'),
+  mk('panel.macro.releases', 'panel', 'Macro: releases and who is positioned', 'Macro', null, 'the week\'s high-impact releases against the leveraged-fund crowd in each currency, the usual size of the 30-minute move, what the last releases did, how releases ran by volatility regime and the front-end rate legs'),
+  mk('panel.macro.vol', 'panel', 'Macro: the fear complex (vol)', 'Macro', null, 'VIX, VVIX, SKEW, MOVE, OVX, GVZ, VXEEM and VXTLT against their own five-year history as a radar and a year of closes, the VIX curve, realised volatility across 51 markets and the FX risk reversals'),
   mk('panel.macro.carryside', 'panel', 'Macro: carry board "side" column', 'Macro', null, 'which side of a pair earns the carry'),
 ];
 

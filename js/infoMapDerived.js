@@ -563,6 +563,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/macroEnginesCore.js",
+     "js/terminal/regimeBoardView.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [
@@ -622,12 +623,24 @@ export const DERIVED = {
       "skill": "global_market",
       "maxAgeH": 1080
      }
+    },
+    {
+     "route": "/api/regime-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/regimeBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/moreBoards.js",
+     "js/terminal/regimeBoardView.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [
@@ -674,11 +687,25 @@ export const DERIVED = {
      "route": "/api/state",
      "exists": true,
      "pack": null
+    },
+    {
+     "route": "/api/regime-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/regimeBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/moreBoards.js",
+     "js/terminal/regimeBoardView.js"
+    ],
     "today": [],
     "atlas": [],
     "newsletter": []
@@ -1059,7 +1086,9 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/ratesBoardView.js"
+     "js/terminal/fedPathYieldsView.js",
+     "js/terminal/ratesBoardView.js",
+     "js/terminal/terminalTabs.js"
     ],
     "today": [
      "today.html"
@@ -1237,7 +1266,9 @@ export const DERIVED = {
    ],
    "modules": [],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "js/terminal/curveBoardView.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -1306,6 +1337,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/fedPathYieldsView.js",
      "js/terminal/mapLayers.js",
      "js/terminal/ratesBoardCore.js",
      "js/terminal/ratesBoardView.js",
@@ -1466,7 +1498,9 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
-     "desk-terminal.html"
+     "desk-terminal.html",
+     "js/terminal/fedPathYieldsView.js",
+     "js/terminal/terminalTabs.js"
     ],
     "today": [
      "today.html"
@@ -1546,11 +1580,25 @@ export const DERIVED = {
       "skill": "yields_curve",
       "maxAgeH": 96
      }
+    },
+    {
+     "route": "/api/curve-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/curveBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/curveBoardView.js",
+     "js/terminal/moreBoards.js"
+    ],
     "today": [],
     "atlas": [],
     "newsletter": []
@@ -1586,11 +1634,25 @@ export const DERIVED = {
       "skill": "global_market",
       "maxAgeH": 72
      }
+    },
+    {
+     "route": "/api/curve-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/curveBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/curveBoardView.js",
+     "js/terminal/moreBoards.js"
+    ],
     "today": [],
     "atlas": [],
     "newsletter": []
@@ -1792,11 +1854,26 @@ export const DERIVED = {
       "skill": "credit_funding",
       "maxAgeH": 144
      }
+    },
+    {
+     "route": "/api/credit-liquidity",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/creditLiquidityView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/creditLiquidityView.js",
+     "js/terminal/moreBoards.js",
+     "js/terminal/volBoardView.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -1825,11 +1902,26 @@ export const DERIVED = {
       "skill": "credit_funding",
       "maxAgeH": 144
      }
+    },
+    {
+     "route": "/api/credit-liquidity",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/creditLiquidityView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/creditLiquidityView.js",
+     "js/terminal/moreBoards.js",
+     "js/terminal/volBoardView.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -1954,12 +2046,25 @@ export const DERIVED = {
      "route": "/api/global-liquidity",
      "exists": true,
      "pack": null
+    },
+    {
+     "route": "/api/credit-liquidity",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/creditLiquidityView.js",
+     "exists": true
+    }
+   ],
    "names": {
     "terminal": [
-     "desk-terminal.html"
+     "desk-terminal.html",
+     "js/terminal/creditLiquidityView.js",
+     "js/terminal/moreBoards.js",
+     "js/terminal/volBoardView.js"
     ],
     "today": [],
     "atlas": [],
@@ -2317,11 +2422,25 @@ export const DERIVED = {
       "skill": "vol_iv",
       "maxAgeH": 72
      }
+    },
+    {
+     "route": "/api/vol-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/volBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/moreBoards.js",
+     "js/terminal/volBoardView.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -2379,15 +2498,36 @@ export const DERIVED = {
       "skill": "global_market",
       "maxAgeH": 24
      }
+    },
+    {
+     "route": "/api/hmm-daily-history",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/regime-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/regimeBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/moreBoards.js",
+     "js/terminal/regimeBoardView.js"
+    ],
     "today": [
      "today.html"
     ],
-    "atlas": [],
+    "atlas": [
+     "atlas.html"
+    ],
     "newsletter": []
    },
    "evidence": [],
@@ -2577,6 +2717,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/releasesBoardView.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
     ],
@@ -2687,15 +2828,39 @@ export const DERIVED = {
       "skill": "events_news",
       "maxAgeH": 96
      }
+    },
+    {
+     "route": "/api/cot-extremes",
+     "exists": true,
+     "pack": {
+      "skill": "cot_positioning",
+      "maxAgeH": 240
+     }
+    },
+    {
+     "route": "/api/releases-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/releasesBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/moreBoards.js",
+     "js/terminal/releasesBoardView.js"
+    ],
     "today": [
      "today.html"
     ],
-    "atlas": [],
+    "atlas": [
+     "atlas.html"
+    ],
     "newsletter": []
    },
    "evidence": [
@@ -2706,7 +2871,8 @@ export const DERIVED = {
     }
    ],
    "packSkills": [
-    "events_news"
+    "events_news",
+    "cot_positioning"
    ],
    "drift": []
   },
@@ -2800,29 +2966,31 @@ export const DERIVED = {
    ],
    "routes": [
     {
-     "route": "/api/release-layer1",
-     "exists": true,
-     "pack": null
-    },
-    {
-     "route": "/api/release-layer2",
-     "exists": true,
-     "pack": null
-    },
-    {
      "route": "/api/release-reactions",
      "exists": true,
      "pack": {
       "skill": "events_news",
       "maxAgeH": 336
      }
+    },
+    {
+     "route": "/api/releases-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/releasesBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/moreBoards.js",
      "js/terminal/reactionPanel.js",
+     "js/terminal/releasesBoardView.js",
      "js/terminal/traderReadView.js"
     ],
     "today": [
@@ -2883,6 +3051,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/releasesBoardView.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/traderReadView.js"
     ],
@@ -2926,11 +3095,25 @@ export const DERIVED = {
       "skill": "events_news",
       "maxAgeH": 96
      }
+    },
+    {
+     "route": "/api/releases-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/releasesBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/moreBoards.js",
+     "js/terminal/releasesBoardView.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -3261,14 +3444,26 @@ export const DERIVED = {
      "route": "/api/options-history",
      "exists": true,
      "pack": null
+    },
+    {
+     "route": "/api/vol-board",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/volBoardView.js",
+     "exists": true
+    }
+   ],
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/moreBoards.js",
      "js/terminal/optionsView.js",
-     "js/terminal/terminalTabs.js"
+     "js/terminal/terminalTabs.js",
+     "js/terminal/volBoardView.js"
     ],
     "today": [],
     "atlas": [],
@@ -3412,8 +3607,10 @@ export const DERIVED = {
      "js/terminal/chainBoard.js",
      "js/terminal/links.js",
      "js/terminal/mapLayers.js",
+     "js/terminal/moreBoards.js",
      "js/terminal/optionsView.js",
      "js/terminal/pairView.js",
+     "js/terminal/regimeBoardView.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/themes.js",
@@ -3435,6 +3632,34 @@ export const DERIVED = {
     "options_oi",
     "global_market"
    ],
+   "drift": []
+  },
+  "currency-strength-live": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/ccy-strength",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/terminal/ccyStrengthView.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "js/terminal/ccyStrengthView.js",
+     "js/terminal/moreBoards.js"
+    ],
+    "today": [],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [],
+   "packSkills": [],
    "drift": []
   },
   "fx-fair-value": {
@@ -3586,7 +3811,7 @@ export const DERIVED = {
   }
  },
  "unclassified": [],
- "rootPageCount": 262,
+ "rootPageCount": 263,
  "packFeeds": 115,
  "generatedAt": "2026-11-13"
 };

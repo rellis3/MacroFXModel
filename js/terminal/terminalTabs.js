@@ -37,6 +37,9 @@ import { pineForCard, oandaOf } from '../deskBookPine.js';
 import * as AAV from './assetAnalysisView.js';
 import * as SR from './sharedRead.js';
 import * as RBV from './ratesBoardView.js';
+import * as FYV from './fedPathYieldsView.js';
+import { macroMoreHtml, overviewMoreHtml, mountOverview } from './moreBoards.js';
+import { fedPathYields, chainLine as fedPathChainLine } from '../fedPathYieldsCore.js';
 import * as ML from './mapLayers.js';
 import { cellHtml as macroCellHtml } from './macroEngines.js';
 import { FAMILIES as MACRO_FAMILIES } from './macroEnginesCore.js';
@@ -87,6 +90,7 @@ ${ownerOnly(`<p class="tt-note">Brought over from ${ownerLink('today.html', 'tod
     root.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest?.('[data-node],[data-link],[data-pair],[data-act]')) { e.preventDefault(); onTodayClick(e); } });
     root.addEventListener('mousemove', onChainHover); root.addEventListener('mouseleave', () => tip(null));
     loadChain().then(drawChain).then(() => drawTimeline());
+    loadFedPath().then(drawChain);
     J('/api/global-read').then(g => { drawGR(g); drawDay(g); });
     J('/api/chain-stats').then(cs => { T.chain.stats = cs; drawChain(); });   // context, not a signal: per-link correlation, lead/lag, divergence
     J('/api/desk-watch').then(w => { drawWatch(w); drawTimeline(); drawChain(); });
@@ -107,6 +111,15 @@ async function loadChain() {
         ohlc: Object.fromEntries(syms.map(([k], i) => [k, CB.ohlcAscending(oh[i])])) };
     });
   return T.chain.loading;
+}
+/** The Fed path against the yields, for the Chain tab's line and the read's snapshot (cached routes; never blocks the chain). */
+async function loadFedPath() {
+  if (T.chain.fed) return T.chain.fed;
+  try {
+    const [fp, rb, tp] = await Promise.all([J('/api/fed-path'), J('/api/rates-board'), J('/api/term-premium')]);
+    T.chain.fed = fedPathYields({ fp, board: rb, tp });
+  } catch (e) { console.warn('fed path yields', e); T.chain.fed = { ok: false, windows: [] }; }
+  return T.chain.fed;
 }
 async function loadLive() {
   const r = await getJson('/api/chain-live');
@@ -131,12 +144,15 @@ function drawChain() {
   const C = T.chain, win = C.win, now = chainNow(), { links, sum } = now;
   const pills = `<div class="tt-pills" role="group" aria-label="window">${CB.WINDOWS.map(w => `<button data-act="win" data-w="${w}" aria-pressed="${w === win}">${w === 'live' ? 'Live' : `${w}D`}</button>`).join('')}</div>`;
   const liveLine = win === 'live' ? `<div class="tt-note" style="margin-top:0">${C.live ? `Live since the last daily close (${h(new Date(C.live.refAt).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }))} London), refreshed every minute; last ${h(hm(Date.parse(C.live.asOf)))}. Yields, the real yield, the Bund gap and the dollar are implied; a chip with no live price keeps its last print (dashed) and its links are not judged.` : C.liveErr ? `Live feed: ${h(C.liveErr)}` : 'Fetching live prices…'}</div>` : '';
+  // the Fed path against the yields (js/fedPathYieldsCore.js): one rule-built line for this window; nothing on Live (no per-meeting strip intraday)
+  const fw = T.chain.fed?.ok && win !== 'live' ? T.chain.fed.windows.find(x => x.win === win) : null;
+  const fedLine = fw?.available && fw.sentence ? `<div class="tt-note" style="margin-top:0"><b>Fed path → 2Y</b> (priced, not a forecast): ${h(fw.sentence)} <span class="muted">Detail: Macro tab.</span></div>` : '';
   const watch = T.cache['/api/desk-watch'] && T._watch ? T._watch : null;
   const brokenNow = watch ? watch.states.filter(t => t.id.startsWith('chain-') && t.firing).length : null;
   box.innerHTML = `<div class="tt-head"><span class="lbl">The chain, today</span><h2 style="flex-basis:100%">Energy → inflation → yields → real yields → the dollar → gold, commodity FX and bitcoin; fear → the yen and credit</h2><span class="r" style="margin-left:0">${pills}</span></div>
 <div class="tt-sum">${h(sum.headline)}</div>
 <div class="tt-counts"><span class="vchip hold">${sum.holding} holding</span><span class="vchip broke">${sum.broken} broken</span><span class="vchip">${sum.quiet + sum.unmeasured} quiet</span>${sum.notlive ? `<span class="vchip">${sum.notlive} not live</span>` : ''}${brokenNow != null && win === 20 ? `<span class="chip" title="The desk watch judges the 20-day chain every 15 minutes and alerts on a break">watch: ${brokenNow} broken</span>` : ''}<span class="chip">${CB.winWord(win)}</span></div>
-${liveLine}
+${liveLine}${fedLine}
 <div class="cg-wrap" id="tt-cg">${CB.chainSvg(links, { win, nodeSel: C.nodeSel, linkSel: C.linkSel, showQuiet: C.showQuiet })}</div>
 <div class="cg-legend"><span><i class="hold"></i>holding · flows the textbook way</span><span><i class="broke"></i>broken · both moved, the wrong way round</span><span><i class="quiet"></i>quiet · an end inside its noise floor, not judged · <u data-act="quiet" role="button" tabindex="0">${C.showQuiet ? 'hide' : 'show'}</u></span><span><i class="up"></i><i class="dn" style="margin-left:-4px"></i>chip ring = which way that thing moved · gold ring = the end of a broken link</span><span>hover for what it is · tap a chip or a link for the why · scrolls sideways on a phone</span></div>
 ${C.linkSel ? linkCard(links.find(l => l.id === C.linkSel)) : ''}${C.nodeSel ? nodeCard(C.nodeSel, links) : ''}
@@ -219,7 +235,8 @@ async function writeRead(force = false) {
   const tick = setInterval(() => { if (C.read[w]?.state !== 'loading') return clearInterval(tick); if (C.win === w) drawChain(); }, 5000);
   const rg = await J('/api/macro-regime-fx'), watch = T._watch;
   const setups = watch?.states ? watch.states.filter(t => t.claimId && t.firing).map(t => `  LIVE: ${String(t.label).replace(/^Setup watch · /, '')}`).join('\n') || null : null;
-  const snapshot = CB.chainSnapshot({ links: now.links, vals: now.vals, win: w, policy: rg?.policy ?? null, events: D.ev ?? [], setups });
+  await loadFedPath();
+  const snapshot = CB.chainSnapshot({ links: now.links, vals: now.vals, win: w, policy: rg?.policy ?? null, events: D.ev ?? [], setups, fedPath: fedPathChainLine(T.chain.fed, w) });
   const r = await fetch(`/api/chain-read${force ? '?force=1' : ''}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ snapshot }) }).then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
   C.read[w] = r?.ok ? { state: 'ready', data: r } : { state: 'error', data: cur.data, err: r?.error ?? 'no read' };
   if (C.win === w) drawChain();
@@ -827,3 +844,8 @@ globalThis.acBoardHtml = ACV.boardHtml;
 globalThis.llGridHtml = LLV.gridHtml;
 // the Macro tab's Rates & policy board (desk-terminal.html enrichMacro): the curve, its slopes, the priced Fed path beside them
 globalThis.ratesBoardHtml = (rb, fp, gy) => { try { return RBV.boardHtml(rb, fp, gy, { esc, spk, sgn }); } catch (e) { console.warn('rates board', e); return ''; } };
+// ...and the Fed path against the yields (js/fedPathYieldsCore.js): the priced path, the 2Y / 2s10s / 10Y and the Atlanta window odds, same dates
+globalThis.macroMoreHtml = (E, extra) => macroMoreHtml(E, extra);
+globalThis.overviewMoreHtml = overviewMoreHtml;                   // the Overview's live currency strength slot
+globalThis.ccyStrengthMount = () => { try { mountOverview(getJson); } catch (e) { console.warn('ccy strength', e); } };   // the newer Macro boards (js/terminal/moreBoards.js)
+globalThis.fedYieldsHtml = (fp, rb, tp) => { try { return FYV.boardHtml(fp, rb, tp, { esc }); } catch (e) { console.warn('fed path yields', e); return ''; } };

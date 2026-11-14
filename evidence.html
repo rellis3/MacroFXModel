@@ -56,6 +56,10 @@
   .wrec{margin-top:5px;font-size:11.5px;color:var(--text2);line-height:1.6}
   .wrec table{border-collapse:collapse;margin-top:3px;font-size:11px;width:100%} .wrec th{text-align:left;color:var(--text3);font-weight:600;padding:1px 8px 1px 0} .wrec td{padding:2px 8px 2px 0;border-top:1px solid var(--border);vertical-align:top} .wrec td b{color:var(--text)}
   .note{color:var(--text3);font-size:11px;line-height:1.55;margin-top:14px}
+  .g{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;padding:2px 7px;border-radius:4px;border:1px solid var(--border);color:var(--text2)}
+  .g.strong{background:var(--bull-bg);color:var(--bull);border-color:var(--bull)} .g.leaning{color:var(--bull)} .g.faint{color:var(--amber)} .g.untested{color:var(--blue);border-style:dashed} .g.against{color:var(--text3)} .g.context{color:var(--amber)}
+  .g i{font-style:normal;font-weight:600;opacity:.8;margin-left:4px}
+  .gb{font-size:11.5px;color:var(--text2);margin-top:5px;line-height:1.55} .gb b{color:var(--text)} .gb code{font-size:10.5px;color:var(--text3)}
   @media (max-width:560px){.wrap{padding:12px}}
 </style>
 </head>
@@ -69,6 +73,12 @@
   <button class="hbtn" data-f="null" onclick="setFilter('null')">∅ null</button>
   <button class="hbtn" data-f="context" onclick="setFilter('context')">~ base rate</button>
   <button class="hbtn" data-f="underpowered" onclick="setFilter('underpowered')">◌ underpowered</button>
+  <span class="stamp">grade:</span>
+  <button class="hbtn" data-f="g:strong" onclick="setFilter('g:strong')">Strong</button>
+  <button class="hbtn" data-f="g:leaning" onclick="setFilter('g:leaning')">Leaning</button>
+  <button class="hbtn" data-f="g:faint" onclick="setFilter('g:faint')">Faint</button>
+  <button class="hbtn" data-f="g:untested" onclick="setFilter('g:untested')">Untested properly</button>
+  <button class="hbtn" data-f="g:against" onclick="setFilter('g:against')">Against</button>
   <button class="hbtn" data-f="firing" onclick="setFilter('firing')">● firing now</button>
   <button class="hbtn" data-f="approaching" onclick="setFilter('approaching')">⏳ approaching</button>
   <button class="hbtn" data-f="watched" onclick="setFilter('watched')">👁 watched</button>
@@ -84,7 +94,7 @@
   <a class="hbtn" href="today.html">☀️ Daily Brief</a>
 </div>
 <div class="wrap">
-  <div class="intro">Every line here was written down as a claim, <b>pre-registered</b>, then run against this desk's own data with paired controls — the same method whether the idea came from an educator, a newsletter, or the page itself. A <b>✓ validated</b> finding is about <b>range</b>, never direction. A <b>∅ null</b> is a relationship that was tested and did nothing — the brief is told to say so when it touches one. A <b>~ base rate</b> is a description with its odds. A <b>◌ underpowered</b> test could only have found an effect far larger than a realistic one: it rules out a big effect and says nothing about a small one. Each finding accumulates a <b>forward record</b> from the Desk Watch: every time it fired, and what the next five sessions actually did.</div>
+  <div class="intro">Every line here was written down as a claim, <b>pre-registered</b>, then run against this desk's own data with paired controls — the same method whether the idea came from an educator, a newsletter, or the page itself. A <b>✓ validated</b> finding is about <b>range</b>, never direction. A <b>∅ null</b> is a relationship that was tested and did nothing — the brief is told to say so when it touches one. A <b>~ base rate</b> is a description with its odds. A <b>◌ underpowered</b> test could only have found an effect far larger than a realistic one: it rules out a big effect and says nothing about a small one. <b>Grade (since 2026-11-13).</b> A verdict word is not the whole story, so every entry also carries a <b>grade and a weight out of 100</b>, built from what the test actually showed (its estimate and interval), how far the test itself can be trusted (the 2026-10-31 code audit) and the verdict only as a tie-break: <b>Strong</b> (passed, audited sound), <b>Leaning</b> (clear of zero, something missing), <b>Faint</b> (points the claimed way, too small to see), <b>Untested properly</b> (the test is suspect or could only see a big effect: unknown, not dead), <b>Against</b> (a sound, powered test put it at zero or the wrong way; still a small weight). A weight only rises on new data scored forward. Each finding accumulates a <b>forward record</b> from the Desk Watch: every time it fired, and what the next five sessions actually did.</div>
   <div class="tally" id="tally"></div>
   <div id="cards"><div class="note">Loading…</div></div>
   <div class="note"><b>👁 Watched</b> findings carry a gauge: how far today's reading is along the way to the setup the study tested (past the mark it is <b>approaching</b>, at the line it is <b>live</b>), the rule exactly as pre-registered, what to look for, and a setup record scored on the study's own outcome. The register (<code>js/claimWatch.js</code>) holds Crown setups and the desk's own findings in one format. A null finding going live is its <i>setup</i> occurring, never the claim confirming. Design: <code>MD files/CLAIM_WATCH.md</code>.</div>
@@ -92,6 +102,10 @@
 </div>
 <script type="module">
   import { DESK_EVIDENCE } from './js/deskEvidence.js';
+  import { EVIDENCE_AUDIT } from './js/evidenceAudit.js';
+  import { gradeAll, gradeCounts, GRADE_WORD } from './js/evidenceGrade.js';   // the confidence grade: estimate + interval + trust in the test
+  const GRADE = Object.fromEntries(gradeAll(DESK_EVIDENCE, EVIDENCE_AUDIT).map(r => [r.id, r]));
+  const GC = gradeCounts(Object.values(GRADE)).byGrade;
   import { CLAIMS as REGISTER, APPROACH_AT } from './js/claimWatch.js';   // the watch register: gauged setups (Crown + desk) keyed by evidenceId
   const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const GL = { validated: '✓', null: '∅', context: '~', underpowered: '◌' };
@@ -121,6 +135,9 @@
       <div class="wlook"><b>What to look for:</b> ${esc(row.lookFor)}</div>
       <div class="wrule"><b>Rule, as tested:</b> ${esc(row.rule)}</div>${rec}</div>`;
   }
+  const gradeChip = e => { const g = GRADE[e.id]; return g ? `<span class="g ${g.grade}" title="${esc(g.basis)}">${GRADE_WORD[g.grade]}${g.weight != null ? `<i>${g.weight}/100</i>` : ''}</span>` : ''; };
+  const gradeWhy = e => { const g = GRADE[e.id]; if (!g || g.grade === 'context') return ''; const iv = g.iv;
+    return `<div class="gb"><b>Grade:</b> ${esc(g.basis)} Trust in the test: <b>${esc(g.trust)}</b>.${iv && !g.review ? ` Read from: <code>${esc(iv.snippet)}</code>` : ''}</div>`; };
   window.setDomain = d => { domain = d; document.querySelectorAll('.hbtn[data-d]').forEach(b => b.classList.toggle('on', b.dataset.d === d)); render(); };
   window.setFilter = f => { filter = f; document.querySelectorAll('.hbtn[data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === f)); render(); };
   const ago = iso => { const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 60 ? `${m}m` : m < 48 * 60 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
@@ -129,11 +146,11 @@
     const firingFor = id => states.filter(t => t.firing && t.evidenceId === id);
     const logFor = id => log.filter(f => f.evidenceId === id && f.event === 'started' && !f.claimId);   // register fires render in their own setup record
     const approachingFor = e => rowsFor(e.id).some(row => stageFor(row, e) === 'approaching');
-    const list = DESK_EVIDENCE.filter(e => (domain === 'all' || e.domain === domain) && (filter === 'all' ? true : filter === 'firing' ? firingFor(e.id).length : filter === 'approaching' ? approachingFor(e) : filter === 'watched' ? rowsFor(e.id).length : e.verdict === filter))
-      .sort((a, b) => filter === 'watched' || filter === 'approaching' ? (['live', 'approaching', 'idle', 'unmeasured'].indexOf(rowsFor(a.id).map(r => stageFor(r, a)).sort()[0] ?? 'unmeasured') - ['live', 'approaching', 'idle', 'unmeasured'].indexOf(rowsFor(b.id).map(r => stageFor(r, b)).sort()[0] ?? 'unmeasured')) : 0);
+    const list = DESK_EVIDENCE.filter(e => (domain === 'all' || e.domain === domain) && (filter === 'all' ? true : filter === 'firing' ? firingFor(e.id).length : filter === 'approaching' ? approachingFor(e) : filter === 'watched' ? rowsFor(e.id).length : filter.startsWith('g:') ? GRADE[e.id]?.grade === filter.slice(2) : e.verdict === filter))
+      .sort((a, b) => filter.startsWith('g:') ? (GRADE[b.id]?.weight ?? 0) - (GRADE[a.id]?.weight ?? 0) : filter === 'watched' || filter === 'approaching' ? (['live', 'approaching', 'idle', 'unmeasured'].indexOf(rowsFor(a.id).map(r => stageFor(r, a)).sort()[0] ?? 'unmeasured') - ['live', 'approaching', 'idle', 'unmeasured'].indexOf(rowsFor(b.id).map(r => stageFor(r, b)).sort()[0] ?? 'unmeasured')) : 0);
     const n = v => DESK_EVIDENCE.filter(e => e.verdict === v).length;
     const nd = d => DESK_EVIDENCE.filter(e => e.domain === d).length;
-    document.getElementById('tally').innerHTML = `<span><b>${DESK_EVIDENCE.length}</b> tested</span><span>macro <b>${nd('macro')}</b> · events <b>${nd('events')}</b> · price <b>${nd('price')}</b> · vol <b>${nd('volatility')}</b> · positioning <b>${nd('positioning')}</b> · execution <b>${nd('execution')}</b></span><span>✓ <b>${n('validated')}</b> validated</span><span>∅ <b>${n('null')}</b> null</span><span>~ <b>${n('context')}</b> base rates</span><span>◌ <b>${n('underpowered')}</b> underpowered</span><span>firing now <b>${states.filter(t => t.firing && t.evidenceId).length}</b></span><span>👁 watched <b>${new Set(REGISTER.map(r => r.evidenceId)).size}</b> findings · ${REGISTER.length} gauges</span><span>⏳ approaching <b>${DESK_EVIDENCE.filter(approachingFor).length}</b></span>`;
+    document.getElementById('tally').innerHTML = `<span><b>${DESK_EVIDENCE.length}</b> tested</span><span>macro <b>${nd('macro')}</b> · events <b>${nd('events')}</b> · price <b>${nd('price')}</b> · vol <b>${nd('volatility')}</b> · positioning <b>${nd('positioning')}</b> · execution <b>${nd('execution')}</b></span><span>✓ <b>${n('validated')}</b> validated</span><span>∅ <b>${n('null')}</b> null</span><span>~ <b>${n('context')}</b> base rates</span><span>◌ <b>${n('underpowered')}</b> underpowered</span><span>grades: Strong <b>${GC.strong}</b> · Leaning <b>${GC.leaning}</b> · Faint <b>${GC.faint}</b> · Untested properly <b>${GC.untested}</b> · Against <b>${GC.against}</b></span><span>firing now <b>${states.filter(t => t.firing && t.evidenceId).length}</b></span><span>👁 watched <b>${new Set(REGISTER.map(r => r.evidenceId)).size}</b> findings · ${REGISTER.length} gauges</span><span>⏳ approaching <b>${DESK_EVIDENCE.filter(approachingFor).length}</b></span>`;
     document.getElementById('cards').innerHTML = list.map(e => {
       const fire = firingFor(e.id), rec = logFor(e.id);
       const rows = rowsFor(e.id);
@@ -147,9 +164,10 @@
         ? `<div class="rec"><b>Forward record</b> — fired ${rec.length}× since ${new Date(rec.at(-1).at).toLocaleDateString('en-GB')}${scored.length ? `; ${scored.length} scored so far: mean next-5-session range ${(scored.flatMap(f => f.after5.map(a => a.range5)).reduce((s, x) => s + x, 0) / scored.flatMap(f => f.after5).length).toFixed(2)} ATR (unconditional ≈ 2.3)` : ''}.<table>${rec.slice(0, 8).map(f => `<tr><td>${new Date(f.at).toLocaleDateString('en-GB')}</td><td>${esc(f.label)}</td><td>${f.after5 ? f.after5.map(a => `${a.inst} ${a.range5}`).join(' · ') : 'awaiting 5 sessions'}</td></tr>`).join('')}</table></div>`
         : rows.length ? '' : `<div class="rec"><b>Forward record</b> — nothing fired since this was written down${e.verdict === 'validated' ? '; the first fire will appear here with its next-5-session range' : ''}.</div>`;   // a watched finding's record is its setup record above
       return `<div class="card ${e.verdict}" id="ev-${esc(e.id)}">
-        <div class="top"><span class="v ${e.verdict}">${GL[e.verdict]} ${WORD[e.verdict]}</span><span class="claim">${esc(e.claim)}</span></div>
+        <div class="top"><span class="v ${e.verdict}">${GL[e.verdict]} ${WORD[e.verdict]}</span>${gradeChip(e)}<span class="claim">${esc(e.claim)}</span></div>
         <div class="meta"><b>${esc(e.domain)}</b> · ${e.date} · ${esc(e.doc)}${e.instruments ? ` · ${e.instruments.join(', ')}` : ''}</div>
         <div class="r">${esc(e.result)}</div>
+        ${gradeWhy(e)}
         <div class="use"><b>How to use it:</b> ${esc(e.use)}</div>
         ${live}${watchHtml}${record}
       </div>`;
