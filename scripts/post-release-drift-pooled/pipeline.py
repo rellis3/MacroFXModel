@@ -58,8 +58,8 @@ def load_real_world(params: Params, events: pd.DataFrame, mirror: pd.DataFrame) 
     return finish_world(params, px, events, mirror, y2, notes)
 
 
-def finish_world(params, px, events, mirror, y2_m15: pd.Series, notes) -> World:
-    sig = {k: sigma_table(p, params, OUT / "_tmp") for k, p in px.items()}
+def finish_world(params, px, events, mirror, y2_m15: pd.Series, notes, workdir=None) -> World:
+    sig = {k: sigma_table(p, params, (workdir or OUT) / "_tmp") for k, p in px.items()}
     key = (y2_m15.index.tz_convert(NEWYORK) + pd.Timedelta(hours=7)).tz_localize(None).normalize()
     y2d = y2_m15.groupby(key).last()
     for k, s in sig.items():

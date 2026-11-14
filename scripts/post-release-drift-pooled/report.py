@@ -13,6 +13,10 @@ def _f(x, k=3):
     return "—" if x is None or (isinstance(x, float) and not math.isfinite(x)) else f"{x:+.{k}f}"
 
 
+def _p(x):
+    return "—" if x is None or not math.isfinite(x) else f"{x:.3f}"
+
+
 def prereg_commit() -> str:
     try:
         r = subprocess.run(["git", "log", "-1", "--format=%h", "--", PREREG], capture_output=True, text=True, cwd=ROOT)
@@ -111,7 +115,7 @@ def write(out_dir, params: Params, res: dict, power: dict, coverage: list, notes
         L.append("|---|---|---|---|---|---|")
         for k, v in sl["cells"].items():
             L.append(f"| {k} | {v['n']} | {_f(v['est'])} | [{_f(v.get('lo'))}, {_f(v.get('hi'))}] | "
-                     f"{'—' if not math.isfinite(v['p']) else f'{v[chr(112)]:.3f}'} | {'yes' if v.get('bh_q10') else ''} |")
+                     f"{_p(v['p'])} | {'yes' if v.get('bh_q10') else ''} |")
         L.append("")
     d = res["descriptive"]
     L.append("In-line events (s = 0), unsigned USD-positive-direction σ return: " +
