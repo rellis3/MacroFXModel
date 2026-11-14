@@ -174,6 +174,142 @@ ledger against its base rate. The LLM desk becomes the explainer of these number
 | If no → | conviction is decoration; drop it from sizing |
 | Falsifier | accuracy-coverage curve inside the random-abstention band |
 
+## Part 2 — take the trade and hold it (added 2026-11-14)
+
+Owner: "what would improve the bias so we can take the trade and hold?" Today's exploratory runs set the floor:
+- **`max-bias-reverse`**: Max's daily side = the 4h EMA20 slope on 84% of instrument-days.
+- **`h4-trend-hold`**: the 4h rule from 07:00 loses (day −0.04R, holding overnight −0.11R a trade, before the lockbox
+  date). Max beats it on his own days with the same side, so his edge is selection, timing and exits, not direction.
+  His profit came from a few multi-day swings and post-data days.
+- **`macro-h4-blend`**: macro and the 4h trend agree only 48% of the time; every blend about flat over 22 days.
+
+What the book says about holding:
+- **Continuation inside a day is validated, as range:**
+  - `band-reach-from-here`: reaching the median band early raises the odds of the 75th.
+  - `fast-start-rest-of-day`, `line-touch-reach`, `extreme-in-probability`.
+  - `rule-a-portfolio-second-book` (rich-day break) is a separate return source.
+- **Multi-day drift is validated in one place:** `post-fomc-usd-drift` (dollar, 5 sessions, FRAGILE), plus
+  `cot-crowding-p5` (4 weeks, futures).
+- **Monthly FX momentum, carry and surprise:** UNDERPOWERED (`fx-factor-*`).
+- **Lesson #27:** a management rule (hold, trail, partials) cannot create edge on an entry with none; test it on
+  random entries first.
+
+So "hold" needs a reason that arrives after entry: the day confirming the view, an event that keeps paying, or a
+regime where trends last.
+
+### Q6. What does day one look like for trades that go on to run for days? — score 13/15
+
+> Take every day an instrument closed ≥ k·σ in one direction. Map the next one to five days against how that day
+> closed (at its extreme or not), how fast it got there, how much of its band it used, and whether a tier-1 release or
+> a macro view was behind it. Read where continuation lives, against same-size days that closed mid-range.
+
+| | |
+|---|---|
+| Construct | day-1 features at 21:00 London: open→close / σ, close location in the day's range, time to reach the p50 band, band used, event tier, desk/Global Read side if any |
+| Knowable when | 21:00 London on day 1 (the review time); outcome from 21:00 to day +1…+5 21:00 |
+| Condition | close in the outer 10% vs the middle of the range; fast vs slow start; event vs no event; σ regime |
+| Horizons | +1, +2, +3, +5 days |
+| Noise threshold | same-size days with a mid-range close; shifted-date placebo |
+| Outcome distribution | signed move / σ, MAE/MFE paths, share of holds reaching +1R before −1R |
+| Benchmark / control / mirror | B0 drift; the opposite close location (a big day that faded into the close) |
+| Mechanism | slow-moving money and repositioning after information; close-location value is the classic "who won the day" read |
+| Builds on | `band-reach-from-here`, `fast-start-rest-of-day`, `extreme-in-probability` (validated, intraday range); `h4-trend-hold` (the plain hold loses) |
+| Data & power | M1 2016→2026-08-21, ~2,500 days × 13 instruments; thousands of ≥1σ days; powered for ~0.05σ at +1 day. Laptop run |
+| If yes → | the 21:00 review gets a rule: hold only when day one confirmed (closed strong in the bias direction) |
+| If no → | holding overnight is not supported; trade the day and re-enter |
+| Falsifier | outer-close days continue no more than mid-close days at any horizon |
+
+### Q7. Which exit turns the same entries into the most R? — score 12/15
+
+> Fix the entries (desk side, the blend, Max's sides, and random entries as the control). Map each one's MFE/MAE path
+> over five days first, then compare exits: 21:00 close, hold while the bias holds, trail behind the prior day's low or
+> high, a fixed N-day time stop, half off at 1R with the rest trailed.
+
+| | |
+|---|---|
+| Construct | per-entry paths in R; exit rules applied to the same paths |
+| Knowable when | each rule uses only bars closed by its decision time |
+| Condition | entry source; event vs no event; σ regime |
+| Horizons | up to 5 days |
+| Noise threshold | random entries with the same instrument, day and side mix (lesson #27: zero edge → every exit ≈ 0R) |
+| Outcome distribution | R per trade, win rate, payoff ratio, tail share (how much P&L the top 10% of trades make) |
+| Benchmark / control / mirror | the random-entry control; Max's own exits on his trades |
+| Mechanism | exits reshape the distribution; they only add mean when the entry already has drift (trend) |
+| Builds on | `h4-trend-hold` (the hold rule loses), `noise-area-momentum-stop` (UNDERPOWERED, trailing stop), Max management claims (intake note claim 8) |
+| Data & power | history for the rule-based entries (laptop); Max and desk entries forward only |
+| If yes → | the copier and the desk card get a named exit rule |
+| If no → | keep a 21:00 close: holding adds risk, not return |
+| Falsifier | the best exit beats the 21:00 close by no more than it does on random entries |
+
+### Q8. Does the event carry the hold? (extends Q2 to the next release) — score 11/15
+
+> After a tier-1 US surprise, hold in the surprise direction until the next tier-1 release instead of to 21:00. Sweep
+> the hold from one to five days. Read whether the post-FOMC dollar drift generalises to CPI, NFP and PPI, and where it
+> stops paying.
+
+| | |
+|---|---|
+| Construct | the Q2 event table (`post-release-drift-pooled`) with longer exits |
+| Knowable when | release + 15 min |
+| Condition | surprise size tercile; data and market surprise agree; family |
+| Horizons | +1, +2, +3, +5 days, and "to the next tier-1 release" |
+| Noise threshold | Q2's placebo and random sign |
+| Outcome distribution | R per event at a fixed σ stop; MAE/MFE |
+| Benchmark / control / mirror | Q2's 21:00 result; `post-fomc-usd-drift` |
+| Mechanism | information absorbed over days (the FOMC drift is the validated case) |
+| Builds on | `post-fomc-usd-drift` (VALIDATED, FRAGILE), `rate-surprise-*` (UNDERPOWERED), `fed-two-moves` (CONTEXT: the first move unwinds) |
+| Data & power | the same as Q2; +5 days underpowered by design |
+| If yes → | post-data days become the desk's hold days |
+| If no → | event days are day trades only |
+| Falsifier | no family holds a drift past next morning |
+
+### Q9. Do trends last longer in some regimes? — score 10/15
+
+> Name the regimes first: σ rising vs falling against its own year, the VIX curve inverted, the dollar's 20-day trend
+> strong, COT state D. Then read whether a multi-day hold in the bias direction pays in one regime and dies in the rest.
+
+| | |
+|---|---|
+| Construct | regime flags known at entry; the Q6/Q7 hold outcomes split by regime |
+| Knowable when | morning or 21:00 review |
+| Condition | the four regimes, fixed before looking |
+| Horizons | +1 to +5 days |
+| Noise threshold | shifted regime labels |
+| Outcome distribution | hold R by regime |
+| Benchmark / control / mirror | all days |
+| Mechanism | trends persist when vol is expanding and positioning is one-sided |
+| Builds on | `vix-inversion`, `forecast-miss-shock-*`, `cot-crowding-p5`, `stress-filter-hold` (stress adds nothing beyond vol sizing) |
+| Data & power | as Q6; each regime cuts n by 3 to 5 times; the family is multiplicity-heavy |
+| If yes → | a "hold allowed" flag on the card |
+| If no → | no regime gate |
+| Falsifier | hold R inside the shifted-label band in every regime |
+
+### Q10. When the macro view and the slow trend agree, is that the swing? — score 9/15
+
+> Macro and the 4h trend disagree half the time. Test agreement on a slower clock: the macro view against the
+> 20-day trend. Read whether agreeing days, held three to ten days, carry more than either alone. Max's big swings
+> look like this, but there are only two of them.
+
+| | |
+|---|---|
+| Construct | desk / Global Read side × sign of the 20-day return |
+| Knowable when | morning |
+| Condition | agree vs disagree vs no view |
+| Horizons | 3, 5, 10 days |
+| Noise threshold | coin with the same activity |
+| Outcome distribution | R per hold |
+| Benchmark / control / mirror | 20-day trend alone; macro alone |
+| Mechanism | macro supplies the reason, the slow trend says the market agrees |
+| Builds on | `macro-h4-blend` (48% agreement on the 4h clock), `fx-factor-momentum` (UNDERPOWERED) |
+| Data & power | macro history from 2026-10-14 (Global Read) and 2026-11-03 (desk) only: **forward record** (a bias-scoreboard d5 cell) |
+| If yes → | the swing tag on the card |
+| If no → | swings are Max's discretion, not a rule |
+| Falsifier | agreeing days no better than either input alone at 120 forward days |
+
+### Ranking note
+Q6 and Q7 come first: answerable on history, and each "no" also changes the desk (no overnight holds; 21:00 close).
+Q8 rides on Q2's run. Q9 waits on Q6. Q10 is forward only.
+
 ## Parked
 
 - **Slow priors as daily direction** (carry, time-series momentum, 1–12 months: Moskowitz, Ooi & Pedersen 2012;
