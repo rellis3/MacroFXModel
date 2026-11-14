@@ -10,16 +10,16 @@ Generated 2026-11-14.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **328** |
+| claims tested (validated + null + underpowered) | **329** |
 | validated | 51 |
-| null | 182 |
+| null | 183 |
 | underpowered | 95 |
 | context (base rates, descriptions: not counted as tests) | 56 |
 | pre-registrations with no banked verdict (below) | 94 |
 
-**What the count says (Lesson 02 §05).** If none of the 328 claims were real, tests at the usual 5% size would still pass
-about **16.4** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
-**roughly 16 of the 51 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 329 claims were real, tests at the usual 5% size would still pass
+about **16.5** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
+**roughly 17 of the 51 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -406,6 +406,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-13 | noise-area-momentum-book | price | underpowered | forge/NOISE_AREA_MOMENTUM_PREREG.md |
 | 2026-11-13 | noise-area-momentum-stop | execution | underpowered | forge/NOISE_AREA_MOMENTUM_PREREG.md |
 | 2026-11-13 | relationship-map | macro | underpowered | forge/RELATIONSHIP_MAP_PREREG.md |
+| 2026-11-14 | connectedness-range | volatility | null | forge/CONNECTEDNESS_RANGE_PREREG.md |
 | 2026-11-14 | event-vol-ramp | volatility | underpowered | forge/EVENT_VOL_RAMP_PREREG.md |
 | 2026-11-14 | fomc-range-share | events | context | forge/FOMC_RANGE_SHARE_PREREG.md |
 | 2026-11-14 | gex-range-iv-calm-es | positioning | null | forge/GEX_RANGE_IV_CALM_PREREG.md |
