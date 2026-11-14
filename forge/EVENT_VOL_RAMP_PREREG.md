@@ -103,6 +103,13 @@ Direction or the surprise; trade rules or stops; other events (ECB, NFP revision
 
 ## Amendments
 
-(none yet)
+### A1 — 2026-11-14 — PRE-RESULTS (sample, design SE and MDE, alignment check)
+No ramp coefficient had been computed. `scripts/event-vol-ramp/run.py --stage power` fits the baseline B0 (no ramp terms) for the alignment check and the residual SD, and uses the design matrix only for the interaction SE.
+
+- **Sample (both instruments):** 2726 sessions 2016-02-02 to 2026-08-20, of which 322 event days (FOMC 82, CPI 121, NFP 126); the first 20 sessions drop for the trailing sigma and the VIX9D lags.
+- **Design SE and MDE (interaction, per SD of ramp, x3.0 SE):** SPX500 residual SD 0.508, SE 0.038, **MDE 0.114**; NQ residual SD 0.467, SE 0.035, **MDE 0.105**. Both sit just above the +0.10 operational bar, so a NULL by the rule is out of reach unless the estimate is negative; the expected label is UNDERPOWERED by design, with the interval as the real output.
+- **THE MIRROR (positive control) before scoring:** event days are wider than ordinary days (mean DR 1.16 vs 1.00 SPX500, 1.11 vs 0.97 NQ) and the B0 family dummies are positive (SPX500 FOMC +0.081, CPI +0.051, NFP +0.119; NQ +0.052, +0.050, +0.132), so the alignment check passes. Note the time-shifted label is not a clean zero for FOMC: the day after (shift +1) is also wide (SPX500 +0.125, NQ +0.158) while the day before (shift -1) is quiet; this is read as post-decision vol, not misalignment, and the family dummies are small after the level and IV controls because the front ratio already carries the event premium.
+- No other change.
+
 
 ## RESULTS
