@@ -201,6 +201,29 @@ def unit_checks(params: Params):
                       "a_core": [0.2] * 13 + [5.0], "c_core": [0.1, 0.3] * 6 + [0.2, 0.2], "src": "x"})
     s = EV.surprises(e)
     assert s["s_data"].iat[-1] == 1 and np.isfinite(s["z_core"].iat[-1]) and np.isnan(s["z_core"].iat[11])
+    # file loaders on the research schema (`time` column, bid/ask AFTER time) and the NQ M15 -> M1 splice
+    from common import load_close_m15, load_ohlc, load_spread
+    tmp = Path(tempfile.mkdtemp(prefix="prdp_unit_"))
+    ti = pd.date_range("2016-12-29 10:00", periods=300, freq="1min")          # naive UTC, as the research cache
+    m1 = pd.DataFrame({"open": 1.0, "high": 1.1, "low": 0.9, "close": 1.05, "volume": 1, "time": ti,
+                       "bid_o": 1.0, "bid_h": 1.0, "bid_l": 1.0, "bid_c": 1.0, "ask_o": 1.0002, "ask_h": 1.0, "ask_l": 1.0, "ask_c": 1.0003})
+    m1.to_parquet(tmp / "x_m1.parquet")
+    o = load_ohlc(tmp / "x_m1.parquet", params, "x")
+    st, so, sc = load_spread(tmp / "x_m1.parquet", params, "x")
+    assert len(o) == 300 and abs(so[0] - 0.0002) < 1e-12 and abs(sc[0] - 0.0003) < 1e-12
+    pd.DataFrame({"close": np.linspace(1, 2, 40)}, index=pd.date_range("2016-12-29 00:00", periods=40, freq="15min", tz="UTC")).to_parquet(tmp / "m15.parquet")
+    m15 = load_close_m15(tmp / "m15.parquet", params, "m15")
+    spl = px_from_m1("nq", o, None, m15_before=m15)
+    assert spl.barlen[0] == 15 * NS_MIN and spl.barlen[-1] == NS_MIN and np.all(np.diff(spl.end) >= 0)
+    t_m15 = pd.Timestamp("2016-12-29 03:00", tz="UTC").value
+    assert spl.entry(t_m15)[2] == 15 * NS_MIN and spl.exit(t_m15 + 15 * NS_MIN)[0] == m15.iloc[12]
+    bad = m1.assign(time=pd.Timestamp("1970-01-01") + pd.to_timedelta(np.arange(300), "s"))
+    bad.to_parquet(tmp / "bad_m1.parquet")
+    try:
+        load_ohlc(tmp / "bad_m1.parquet", params, "bad")
+        raise AssertionError("1970 stamps were not rejected")
+    except ValueError:
+        pass
     print("[selftest] unit checks passed (price clocks, lockbox cut, NY-close key, point-in-time z)")
 
 

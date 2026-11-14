@@ -107,6 +107,16 @@ def build_us_events(params: Params, audit: list) -> pd.DataFrame:
     ldate = ev["t"].dt.tz_convert(LONDON).dt.date.astype(str)
     n_lb = int((ldate > params.lockbox_last_date).sum())
     ev = ev[ldate <= params.lockbox_last_date]
+    # Data releases are published at 08:30 ET. Some calendar rows (PPI 2014-15) carry a stamp one hour off (a DST
+    # slip in the vendor file): re-clock a data-family row to 08:30 ET on its New York date when its stamp is within
+    # +-1h of 08:30, as rate-surprise-events did for the ff rows. The 2y release-bar audit below checks the result.
+    ny = ev["t"].dt.tz_convert(NEWYORK)
+    mins = ny.dt.hour * 60 + ny.dt.minute
+    fix = (ev["family"] != "FOMC") & (ev["src"] != "ff_calendar") & (mins != 510) & ((mins - 510).abs() <= 60)
+    if fix.any():
+        ev.loc[fix, "t"] = [pd.Timestamp(f"{d.date()} 08:30").tz_localize(NEWYORK).tz_convert("UTC") for d in ny[fix]]
+    audit.append(f"- Re-clocked to 08:30 ET (stamp off by <= 1h): {int(fix.sum())} "
+                 + (", ".join(f"{f} {d:%Y-%m-%d}" for f, d in zip(ev.loc[fix, 'family'], ny[fix])) or ""))
     # scheduled clock check (2018+ calendar rows; ff rows carry the published schedule already)
     ny = ev["t"].dt.tz_convert(NEWYORK)
     hhmm = ny.dt.strftime("%H:%M")
