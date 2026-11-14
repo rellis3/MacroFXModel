@@ -268,13 +268,31 @@ def placebo_arrays(P: pd.DataFrame, nkeys: int) -> dict:
 
 
 def draw_placebo(cand: dict, eids: np.ndarray, arr: np.ndarray, D: int, rng) -> np.ndarray:
-    """E x D matrix of placebo values: for each event, D uniform draws among its candidates with a finite value."""
-    out = np.full((len(eids), D), np.nan)
-    for k, e in enumerate(eids):
+    """E x D matrix of placebo values. In each draw every event gets one of its candidate days with a finite value,
+    and no placebo day is given to two events of the same draw when it can be avoided (up to 20 re-draws): events
+    sharing a placebo day would be duplicated rows, which makes the sign-flip test anti-conservative (found by the
+    selftest's null positive control on the momentum id, 2026-11-14)."""
+    lists = []
+    for e in eids:
         c = cand.get(e, np.array([], dtype=np.int64))
-        c = c[np.isfinite(arr[c])] if len(c) else c
-        if len(c):
-            out[k] = arr[c[rng.integers(0, len(c), size=D)]]
+        lists.append(c[np.isfinite(arr[c])] if len(c) else c)
+    out = np.full((len(eids), D), np.nan)
+    order_all = rng.permuted(np.tile(np.arange(len(eids)), (D, 1)), axis=1)
+    picks = [rng.integers(0, max(len(c), 1), size=(D, 21)) for c in lists]
+    for d in range(D):
+        used = set()
+        for k in order_all[d]:
+            c = lists[k]
+            if not len(c):
+                continue
+            pk = picks[k][d]
+            choice = c[pk[0]]
+            for a in range(1, 21):
+                if choice not in used:
+                    break
+                choice = c[pk[a]]
+            used.add(int(choice))
+            out[k, d] = arr[choice]
     return out
 
 
@@ -291,7 +309,7 @@ def power_run(world: World, scored: pd.DataFrame, cand: dict, A: dict) -> dict:
     clus = clusters_for(scored)
     sgn = scored.set_index("eid")["s"]
     eids = scored["eid"].to_numpy()
-    out = {"ranAt": pd.Timestamp.utcnow().isoformat(), "seed": p.seed, "events_sha": events_sha(world.events),
+    out = {"ranAt": pd.Timestamp.now("UTC").isoformat(), "seed": p.seed, "events_sha": events_sha(world.events),
            "n_scored_events": int(len(eids)), "rho_bar_placebo_h2": A["rho_bar_h2"], "cells": {}}
     F = flip_matrix(p.n_flip_posctrl, len(eids), rng_for(p, "posctrl-flips"))
     for idn, U in ((IDS[0], "U_sig"), (IDS[1], "U_mom")):
@@ -317,7 +335,10 @@ def power_run(world: World, scored: pd.DataFrame, cand: dict, A: dict) -> dict:
                 pv = (1 + (Ms >= np.abs(M)[None, :] - 1e-12).sum(0)) / (1 + F.shape[0])
                 pc[f"{mult:g}xbar"] = {"delta": delta, "mean_M": float(M.mean()), "bias": float(M.mean() - delta),
                                        "reject_0.05": float((pv < 0.05).mean()), "detect_holm1_0.0125": float((pv < 0.0125).mean())}
-            checks = {"recovery_within_0.25bar": all(abs(v["bias"]) <= 0.25 * bar for v in pc.values()),
+            base0 = pc["0xbar"]["mean_M"]          # the placebo pool's own mean in this sample (sampling noise, not bias)
+            for v in pc.values():
+                v["increment_bias"] = float(v["mean_M"] - base0 - v["delta"])
+            checks = {"recovery_within_0.25bar": all(abs(v["increment_bias"]) <= 0.25 * bar for v in pc.values()),
                       "null_rejection_le_8pct": pc["0xbar"]["reject_0.05"] <= 0.08,
                       "placebo_mean_within_0.5bar": abs(float(Mp.mean())) <= 0.5 * bar}
             out["cells"][f"{idn}|{h}"] = {

@@ -103,7 +103,7 @@ def run_pipeline(world: PL.World, out_dir: Path, stage: str, coverage: list, sel
     rows.to_parquet(out_dir / "rows.parquet")
     mrows = mirror_rows(world, world.mirror)
     res = PL.score(world, rows, P, cand, power, mrows)
-    ran_at = pd.Timestamp.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    ran_at = pd.Timestamp.now("UTC").strftime("%Y-%m-%dT%H:%M:%SZ")
     RP.write(out_dir, p, res, power, coverage, world.notes, DEVIATIONS, ran_at, selftest=selftest)
     for idn in IDS:
         print(f"[verdict] {idn}: {res['ids'][idn]['verdict']}  " + ", ".join(f"{h} {res['ids'][idn]['cell_verdicts'][h]}" for h in HORIZONS))
