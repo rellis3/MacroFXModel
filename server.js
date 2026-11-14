@@ -216,7 +216,8 @@ import { INTL_YIELDS as _INTL_YIELDS } from './js/intlYields.js';
 import { parseBubaCsv as _parseBubaCsv } from './js/intlYields.js';
 import { buildFlowChain as _buildFlowChain } from './js/flowChainSources.js';
 import { londonDateKey as _londonDateKey, isLondonBoundary as _isLondonBoundary } from './js/forecastAnalyser.js';
-import { liveYieldMove as _clYieldMove, buildLiveNodes as _clBuildNodes } from './js/chainLive.js';
+import { liveYieldMove as _clYieldMove, buildLiveNodes as _clBuildNodes, marketReading as _clMarketReading } from './js/chainLive.js';
+import { fxWeekOpen as _fxWeekOpen, clockState as _clockState } from './js/marketClock.js';
 import { YIELD_LEGS as _YL, YIELD_GROUP as _YL_GROUP, yieldMeta as _ylMeta, buildYieldLeg as _ylBuild, toColumns as _ylCols } from './js/yieldLegs.js';   // gilts, JGBs, bunds daily, for the chain's gap chips
 import { crackHistory as _crackHistory, crackContext as _crackContext } from './js/crackSpread.js';
 import { BAND_REACH_PARAMS as _BAND_REACH_PARAMS } from './js/bandReachParams.js';   // T7b: the band clock and the Asia conditioner, for the digest's board   // the 3-2-1 refining margin (MD files/CRACK_SPREAD.md)
@@ -9152,14 +9153,15 @@ app.get('/api/cog-chart/leg', async (req, res) => {
 // Cached 30 s for everyone (about 30 OANDA calls per refresh). Reference instant = close of the last completed daily candle.
 const _CL_MARKETS = { oil: 'WTICO_USD', gold: 'XAU_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdcad: 'USD_CAD', usdjpy: 'USD_JPY', btc: 'BTC_USD', nq: 'NAS100_USD', spx: 'SPX500_USD', gbpusd: 'GBP_USD', eurusd: 'EUR_USD' };
 const _CL_YIELDS = { us2y: 'Y_US2', us10y: 'Y_US10', us30y: 'Y_US30', bund10: 'Y_DE10' };
-let _clCache = { at: 0, v: null, p: null }; const _clDur = {};
-async function _clMarket(sym) {
+// Two readings of the same batch, cached apart: mode 'now' (today.html, the default) is the last completed daily close -> now; mode 'session' (the Desk Terminal,
+// ?anchor=session) is the same until the FX week shuts, and then it is the FINAL SESSION: the close before the last one -> the last close, so the Live pill shows
+// the move into the weekend instead of zero against itself. It returns to now by itself at the Sunday reopen (js/marketClock.js, fxWeekOpen).
+const _clCaches = {}; const _clDur = {};
+async function _clMarket(sym, frozen = false) {
   const [d, m] = await Promise.all([fetchIntradayOnce(sym, 'D', { count: 3 }), fetchIntradayOnce(sym, 'M1', { count: 3, incomplete: true })]);
-  const ref = d.at(-1), px = m.at(-1);
-  if (!ref || !px) throw new Error('no candles');
-  return { price: px.close, ref: ref.close, refOpen: ref.time, asOf: new Date(px.time * 1000).toISOString(), closed: Date.now() / 1000 - px.time > 1800 };
+  return _clMarketReading(d, m, { frozen, nowS: Date.now() / 1000 });
 }
-async function _clYield(name, tRef, nowS) {
+async function _clYield(name, tRef, nowS, frozen = false) {
   const s = _YL[name];
   let D = s.D; const dc = _clDur[name];
   if (dc && Date.now() - dc.at < 6 * 3600_000) D = dc.D;
@@ -9171,28 +9173,31 @@ async function _clYield(name, tRef, nowS) {
   if (!px || !bars.length) throw new Error('no CFD bars');
   const mv = _clYieldMove({ bars, step: 300, official, fix: s.fix, D, pNow: px.close, now: nowS, tRef });
   if (!mv) throw new Error('no anchor');
-  return { ...mv, D, asOf: new Date(px.time * 1000).toISOString(), closed: nowS - px.time > 1800 };
+  return { ...mv, D, asOf: new Date(px.time * 1000).toISOString(), closed: frozen || nowS - px.time > 1800 };
 }
-async function _chainLive() {
-  if (_clCache.v && Date.now() - _clCache.at < 30_000) return _clCache.v;
-  if (_clCache.p) return _clCache.p;
-  _clCache.p = (async () => {
-    const errors = {}, nowS = Math.floor(Date.now() / 1000);
-    const mk = await Promise.all(Object.entries(_CL_MARKETS).map(async ([k, sym]) => [k, await _clMarket(sym).catch(e => { errors[k] = `${sym}: ${e.message}`; return null; })]));
+async function _chainLive(mode = 'now') {
+  const C = _clCaches[mode] ??= { at: 0, v: null, p: null };
+  if (C.v && Date.now() - C.at < 30_000) return C.v;
+  if (C.p) return C.p;
+  C.p = (async () => {
+    const errors = {}, nowS = Math.floor(Date.now() / 1000), frozen = mode === 'session' && !_fxWeekOpen(Date.now());
+    const mk = await Promise.all(Object.entries(_CL_MARKETS).map(async ([k, sym]) => [k, await _clMarket(sym, frozen).catch(e => { errors[k] = `${sym}: ${e.message}`; return null; })]));
     const markets = Object.fromEntries(mk.filter(([, v]) => v));
     const tRef = markets.eurusd ? markets.eurusd.refOpen + 86400 : (Object.values(markets)[0]?.refOpen ?? nowS) + 86400;
-    const ys = await Promise.all(Object.entries(_CL_YIELDS).map(async ([k, nm]) => [k, await _clYield(nm, tRef, nowS).catch(e => { errors[k] = `${nm}: ${e.message}`; return null; })]));
+    const endS = frozen ? (markets.eurusd?.endS ?? Object.values(markets).find(x => x.endS)?.endS ?? nowS) : nowS;
+    const ys = await Promise.all(Object.entries(_CL_YIELDS).map(async ([k, nm]) => [k, await _clYield(nm, tRef, endS, frozen).catch(e => { errors[k] = `${nm}: ${e.message}`; return null; })]));
     const yields = Object.fromEntries(ys.filter(([, v]) => v));
     const nodes = _clBuildNodes({ markets, yields });
-    const v = { ok: true, asOf: new Date().toISOString(), refAt: new Date(tRef * 1000).toISOString(), nodes, errors,
+    const closedNow = frozen && Object.values(markets).some(x => x.frozen);
+    const v = { ok: true, asOf: new Date().toISOString(), refAt: new Date(tRef * 1000).toISOString(), frozen: closedNow, window: closedNow ? { from: new Date(tRef * 1000).toISOString(), to: new Date(endS * 1000).toISOString(), label: _clockState(Date.now()).closeLabel } : null, nodes, errors,
       method: { markets: 'OANDA last M1 price vs the close of the last completed D candle', yields: 'US 2/10/30Y and Bund 10Y: official yield moved by the bond CFD price change through a fitted duration (js/yieldLegs.js); approximate, ~1-2bp drift', real: '10Y implied move, breakevens assumed flat', dollar: 'EUR/JPY/GBP/CAD basket, ICE DXY weights renormalised', notLive: 'breakevens, credit spreads, funding, MOVE, VIX, crack, sector ETFs, JGB and gilt gaps: no live price here' } };
-    _clCache = { at: Date.now(), v, p: null }; return v;
-  })().catch(e => { _clCache.p = null; throw e; });
-  return _clCache.p;
+    Object.assign(C, { at: Date.now(), v, p: null }); return v;
+  })().catch(e => { C.p = null; throw e; });
+  return C.p;
 }
-app.get('/api/chain-live', async (_req, res) => {
+app.get('/api/chain-live', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not configured' });
-  try { res.set('Cache-Control', 'no-store'); res.json(await _chainLive()); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try { res.set('Cache-Control', 'no-store'); res.json(await _chainLive(req.query?.anchor === 'session' ? 'session' : 'now')); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ── Spread episodes (js/spreadEpisodes.js; forge/SPREAD_EPISODES_PREREG.md, results analysis/output/spread-episodes/) ──

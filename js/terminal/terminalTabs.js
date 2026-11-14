@@ -15,6 +15,7 @@
  * chain read is peeked (free, cached server-side) and only written when the button is pressed, as on today.html.
  */
 import * as CB from './chainBoard.js';
+import { setLiveFrozen } from '../macroChain.js';
 import { whatChanged } from './whatChanged.js';
 import * as PV from './pairView.js';
 import * as CSV from './chainStatsView.js';
@@ -122,8 +123,8 @@ async function loadFedPath() {
   return T.chain.fed;
 }
 async function loadLive() {
-  const r = await getJson('/api/chain-live');
-  if (r?.ok) { T.chain.live = r; T.chain.liveErr = null; } else T.chain.liveErr = r?.error ?? 'no live feed';
+  const r = await getJson('/api/chain-live?anchor=session');       // while the FX week is shut this is the final session, not a zero against itself
+  if (r?.ok) { T.chain.live = r; T.chain.liveErr = null; setLiveFrozen(!!r.frozen); } else T.chain.liveErr = r?.error ?? 'no live feed';
   if (T.chain.win === 'live') drawChain();
 }
 function startLive() {
@@ -142,8 +143,8 @@ function chainNow() {
 function drawChain() {
   const box = el('tt-chain'); if (!box || !T.chain.inputs) return;
   const C = T.chain, win = C.win, now = chainNow(), { links, sum } = now;
-  const pills = `<div class="tt-pills" role="group" aria-label="window">${CB.WINDOWS.map(w => `<button data-act="win" data-w="${w}" aria-pressed="${w === win}">${w === 'live' ? 'Live' : `${w}D`}</button>`).join('')}</div>`;
-  const liveLine = win === 'live' ? `<div class="tt-note" style="margin-top:0">${C.live ? `Live since the last daily close (${h(new Date(C.live.refAt).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }))} London), refreshed every minute; last ${h(hm(Date.parse(C.live.asOf)))}. Yields, the real yield, the Bund gap and the dollar are implied; a chip with no live price keeps its last print (dashed) and its links are not judged.` : C.liveErr ? `Live feed: ${h(C.liveErr)}` : 'Fetching live prices…'}</div>` : '';
+  const pills = `<div class="tt-pills" role="group" aria-label="window">${CB.WINDOWS.map(w => `<button data-act="win" data-w="${w}" aria-pressed="${w === win}">${w === 'live' ? (C.live?.frozen ? 'Last session' : 'Live') : `${w}D`}</button>`).join('')}</div>`;
+  const liveLine = win === 'live' ? `<div class="tt-note" style="margin-top:0">${C.live?.frozen ? `<span class="chip gold mkt-chip">market closed</span> The last session: ${h(new Date(C.live.window.from).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }))} to ${h(new Date(C.live.window.to).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }))} London (the close before the last one to the last close), because the FX week is shut. Those are the last prints, not a forecast. It goes live by itself at the reopen. Yields, the real yield, the Bund gap and the dollar are implied; a chip with no live price keeps its last print (dashed) and its links are not judged.` : C.live ? `Live since the last daily close (${h(new Date(C.live.refAt).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }))} London), refreshed every minute; last ${h(hm(Date.parse(C.live.asOf)))}. Yields, the real yield, the Bund gap and the dollar are implied; a chip with no live price keeps its last print (dashed) and its links are not judged.` : C.liveErr ? `Live feed: ${h(C.liveErr)}` : 'Fetching live prices…'}</div>` : '';
   // the Fed path against the yields (js/fedPathYieldsCore.js): one rule-built line for this window; nothing on Live (no per-meeting strip intraday)
   const fw = T.chain.fed?.ok && win !== 'live' ? T.chain.fed.windows.find(x => x.win === win) : null;
   const fedLine = fw?.available && fw.sentence ? `<div class="tt-note" style="margin-top:0"><b>Fed path → 2Y</b> (priced, not a forecast): ${h(fw.sentence)} <span class="muted">Detail: Macro tab.</span></div>` : '';

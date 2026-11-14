@@ -53,9 +53,14 @@ export const CHAIN_WINDOWS = [1, 5, 20];
 export const CHAIN_WINDOW_KEYS = ['live', 1, 5, 20];
 export const LIVE_MIN_IMPLIED_BP = 3;
 export const scaledFloor = (node, win = CHAIN_WINDOW_DAYS) => node.floor * Math.sqrt((win === 'live' ? 1 : win) / CHAIN_WINDOW_DAYS);
-const _winWord = w => (w === 'live' ? 'the live move' : w === 1 ? '1 day' : `${w} days`);
-const _over = w => (w === 'live' ? 'since the last close' : `over ${_winWord(w)}`);
-const _short = w => (w === 'live' ? 'live' : w === 1 ? '1-day' : `${w}-day`);
+// While the FX week is shut the Desk Terminal's Live window is the FINAL SESSION (the close before the last one -> the last close), not "since the last close"
+// (a zero against itself). The page that fetched that feed says so once here and every sentence below follows; today.html never calls it, so it is unchanged.
+let _liveFrozen = false;
+export const setLiveFrozen = on => { _liveFrozen = !!on; };
+export const isLiveFrozen = () => _liveFrozen;
+const _winWord = w => (w === 'live' ? (_liveFrozen ? 'the last session' : 'the live move') : w === 1 ? '1 day' : `${w} days`);
+const _over = w => (w === 'live' ? (_liveFrozen ? 'over the last session' : 'since the last close') : `over ${_winWord(w)}`);
+const _short = w => (w === 'live' ? (_liveFrozen ? 'last-session' : 'live') : w === 1 ? '1-day' : `${w}-day`);
 
 // unit: how the 20d change is expressed. pct = percent change of a price;
 // bp = change in a percent-quoted rate ×100; pt = change in a level.
@@ -617,7 +622,7 @@ export function summariseChain(links, window = CHAIN_WINDOW_DAYS) {
   const brokenIds = links.filter(l => l.verdict === 'broken').map(l => l.id);
   const brokenShort = links.filter(l => l.verdict === 'broken').map(l => l.short ?? l.id);
   let headline;
-  if (judged === 0) headline = n.unmeasured === links.length ? 'Nothing measured yet.' : `Quiet: no link has both ends moving ${_over(window)}. The textbook is not being tested ${window === 'live' ? 'live' : 'today'}.`;
+  if (judged === 0) headline = n.unmeasured === links.length ? 'Nothing measured yet.' : `Quiet: no link has both ends moving ${_over(window)}. The textbook is not being tested ${window === 'live' ? (_liveFrozen ? 'in the last session' : 'live') : 'today'}.`;
   else if (n.broken === 0) headline = `${n.holding} of ${judged} testable link${judged === 1 ? '' : 's'} holding. The textbook is working — first-order reads are enough today.`;
   else headline = `${n.broken} of ${judged} testable link${judged === 1 ? '' : 's'} broken: ${brokenShort.join(', ')}. That is where the story is.`;
   if (window === 'live' && n.notlive) headline += ` ${n.notlive} link${n.notlive === 1 ? '' : 's'} need${n.notlive === 1 ? 's' : ''} a series with no live price and ${n.notlive === 1 ? 'is' : 'are'} not judged.`;

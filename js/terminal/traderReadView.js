@@ -56,7 +56,7 @@ async function load(getJson) {
   if (S.loading) return S.loading;
   const syms = Object.entries(CB.CHAIN_OHLC), ok = r => (r && r.ok !== false && !r.error ? r : null);
   S.loading = Promise.all([getJson(`/api/fredhistory?keys=${CB.CHAIN_FRED_KEYS}`), getJson('/api/intl-yields'), getJson('/api/chain-extra'), getJson('/api/crack'),
-    getJson('/api/chain-live'), getJson('/api/cot-state'), getJson('/api/release-reactions'), getJson('/api/events'), ...syms.map(([, s]) => getJson(`/api/ohlc?symbol=${s}`))])
+    getJson('/api/chain-live?anchor=session'), getJson('/api/cot-state'), getJson('/api/release-reactions'), getJson('/api/events'), ...syms.map(([, s]) => getJson(`/api/ohlc?symbol=${s}`))])
     .then(([fred, iy, cx, cr, live, cot, rr, ev, ...oh]) => {
       S.inputs = { fred: ok(fred) ?? {}, intl: iy?.series ?? {}, extra: cx?.series ?? {}, crack: Array.isArray(cr?.series) ? cr.series : null, ohlc: Object.fromEntries(syms.map(([k], i) => [k, CB.ohlcAscending(oh[i])])) };
       S.live = live?.ok ? live : null; S.cot = ok(cot); S.rr = ok(rr);
@@ -240,6 +240,6 @@ export async function render(root, deps) {
   clearInterval(S.timer);
   S.timer = setInterval(async () => {
     if (root.hidden || document.hidden) return;
-    const live = await deps.getJson('/api/chain-live'); if (live?.ok) { S.live = live; draw(); }
+    const live = await deps.getJson('/api/chain-live?anchor=session'); if (live?.ok) { S.live = live; draw(); }
   }, 120_000);
 }

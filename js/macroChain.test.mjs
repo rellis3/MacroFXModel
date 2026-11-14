@@ -1,6 +1,6 @@
 // Synthetic tests for js/macroChain.js. No network, no clock.
 //   node js/macroChain.test.mjs
-import { CHAIN_NODES, CHAIN_LINKS, nodeDelta, evaluateChain, summariseChain, chainForPrompt, CHAIN_WINDOW_DAYS, CHAIN_WINDOWS, CHAIN_WINDOW_KEYS, scaledFloor, tintStrength, leanOf } from './macroChain.js';
+import { CHAIN_NODES, CHAIN_LINKS, nodeDelta, evaluateChain, summariseChain, chainForPrompt, CHAIN_WINDOW_DAYS, CHAIN_WINDOWS, CHAIN_WINDOW_KEYS, scaledFloor, tintStrength, leanOf, setLiveFrozen, isLiveFrozen } from './macroChain.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -234,6 +234,16 @@ console.log('[graded colour - presentation helpers]');
   const nlv = evaluateChain({ oil: { delta: 1.2, basis: 'live' }, bei: { delta: 9, basis: 'last-print' } }, CHAIN_LINKS, CHAIN_NODES, 'live').find(x => x.id === 'oil-bei');
   ok('a not-live link never leans', nlv.verdict === 'notlive' && leanOf(nlv) === null);
   ok('leanOf is a pure read: the verdict and counts are what evaluateChain says', summariseChain(L({ oil: v(1.2), bei: v(1.5) })).holding === 0);
+}
+
+console.log('[live window while the FX week is shut: the final session]');
+{
+  const v = delta => ({ delta, last: 1, asOf: '2026-11-13', basis: 'live' }), head = () => summariseChain(evaluateChain({ oil: v(0.1), bei: v(0.1) }, undefined, undefined, 'live'), 'live').headline;
+  ok('default wording is unchanged (today.html never sets the flag)', !isLiveFrozen() && /since the last close/.test(head()) && /tested live\./.test(head()));
+  setLiveFrozen(true);
+  ok('frozen, the Live window is called the last session, not since the last close', /over the last session/.test(head()) && /in the last session\./.test(head()) && !/since the last close/.test(head()));
+  setLiveFrozen(false);
+  ok('and it goes back by itself', /since the last close/.test(head()));
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');

@@ -30,7 +30,7 @@ export function geometry(h, prevH) {
 /** The "as of" stamp: the last price bar, in London time, and whether the market is shut. */
 export function stampHtml(payload) {
   const asOf = payload?.asOf ? new Date(payload.asOf) : null;
-  return `as of ${asOf ? asOf.toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '–'} London${payload?.closed ? ' · <span class="chip gold">market closed</span>' : ''}`;
+  return `as of ${asOf ? asOf.toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '–'} London${payload?.closed ? ` · <span class="chip gold mkt-chip" title="${esc(payload.closeLabel ?? '')}">market closed · windows end at the close</span>` : ''}`;
 }
 
 function otherHorizons(payload, hz, ccy) {
@@ -52,10 +52,10 @@ export function boardHtml(payload, hz = '1H', prev = null) {
   const body = g ? `<div class="cs-board" style="height:${CCYS.length * ROW}px" data-csbody>${rows}</div>` : `<p class="muted">${esc(h?.reason ?? 'no data for this window')}.</p>`;
   const say = describeStrength(payload, hz);
   const unit = h?.available && h.unitPct != null ? `1.0σ is a typical currency's normal move over ${hz}, about ${h.unitPct < 0.1 ? h.unitPct.toFixed(3) : h.unitPct.toFixed(2)}% against the others.` : '';
-  return `${head}<div class="card" data-csroot><div class="ch"><span class="lbl">${esc(hz)} window</span><span class="r">${pills} ${stamp}</span></div>
+  return `${head}<div class="card" data-csroot data-mktboard><div class="ch"><span class="lbl">${esc(hz)} window</span><span class="r">${pills} ${stamp}</span></div>
 ${body}
 <p class="cs-say" data-cssay>${esc(say ?? '')}</p>
-<p class="muted bv-note">${esc(unit)} Each pair's move over the window is weighted by how quiet that pair normally is, and the eight scores are fitted so they sum to zero. The ghost dot is where the currency stood at the last refresh. Price-based and live: it can disagree with the analyst strip above, which is the Currency Manager's read once a day. Ordering only, not a trade.</p></div>`;
+<p class="muted bv-note">${esc(unit)} Each pair's move over the window is weighted by how quiet that pair normally is, and the eight scores are fitted so they sum to zero. The ghost dot is where the currency stood at the last refresh. Price-based and live: it can disagree with the analyst strip above, which is the Currency Manager's read once a day.${payload.anchored ? ' While the market is shut every window ends at the last price: 1H is the last hour of trading before the close, 1W the week up to it. These are the last prints, not a forecast, and it goes live by itself at the reopen.' : ''} Ordering only, not a trade.</p></div>`;
 }
 
 // ── the live board: drawn once, then only updated, so the bars and rows slide ──────────────────────────────────────────────────────────────────────
@@ -106,6 +106,8 @@ export function mount(root, { getJson } = {}) {
     root.addEventListener('click', e => { const b = e.target.closest?.('[data-cshz]'); if (!b || b.dataset.cshz === S.hz) return; S.hz = b.dataset.cshz; S.prev = null; paint(true); if (Date.now() - S.at > 20e3) load(); });
   }
   if (!S.timer) S.timer = setInterval(tick, 20e3);
+  // the shell tells the boards when the FX week opens or shuts (js/terminal/marketStateView.js): rebuild at once so the windows move from the close back to now
+  if (!S.mktBound && typeof window !== 'undefined') { S.mktBound = true; window.addEventListener('marketstate', () => { S.at = 0; load(); }); }
   if (!S.payload || Date.now() - S.at > (EVERY[S.hz] ?? 90e3)) load();
 }
 export const _state = S;

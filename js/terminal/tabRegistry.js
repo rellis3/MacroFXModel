@@ -74,6 +74,7 @@ export const SURFACES = [
   mk('widget.clocks', 'widget', 'Market clocks', 'Shell', null, 'session clocks in the top bar'),
   mk('widget.worldstress', 'widget', 'World stress strip', 'Shell', null, 'every stress input green/amber/red, pinned above the tabs'),
   mk('widget.bookchip', 'widget', 'Analysis date chip', 'Shell', null, 'the date and time of the morning analysis'),
+  mk('widget.mktchip', 'widget', 'Market-closed chip', 'Shell', null, 'top-bar chip while the FX week is shut ("closed · as at Fri 22:00 UTC"), and a note on a US/UK/euro holiday; the live boards show the close instead of going flat'),
   mk('widget.dqchip', 'widget', 'Data-quality chip', 'Shell', I, 'the desk\'s data health count (ops)'),
   mk('widget.ask', 'widget', 'Ask the desk (floating button)', 'Shell', C, 'free-form paid model calls'),
   mk('widget.disclaimer', 'widget', 'Educational notice (desk login only)', 'Shell', null, 'one line under the tabs for the desk login: educational and informational macro analysis, not advice and not a trade signal'),

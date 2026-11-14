@@ -28,14 +28,8 @@ const str = (v, n = 80) => (v == null ? null : String(v).slice(0, n));
 const isObj = v => v && typeof v === 'object' && !Array.isArray(v);
 
 // ── when the FX week is open, and how often to capture ─────────────────────────────────────────────────────────────────────────
-/** FX is open from Sunday 21:00 UTC to Friday 22:00 UTC (the 17:00 New York roll, either side of daylight saving). Crypto trades all weekend; this is the FX week. */
-export function isFxOpen(ms) {
-  const d = new Date(ms), dow = d.getUTCDay(), h = d.getUTCHours() + d.getUTCMinutes() / 60;
-  if (dow === 6) return false;
-  if (dow === 0) return h >= 21;
-  if (dow === 5) return h < 22;
-  return true;
-}
+import { isFxOpen } from './marketClock.js';
+export { isFxOpen };      // the wide capture rule now lives in js/marketClock.js beside the precise one used for display
 export const CAPTURE_OPEN_MS = 5 * 60_000, CAPTURE_CLOSED_MS = 30 * 60_000;
 export const captureIntervalMs = ms => (isFxOpen(ms) ? CAPTURE_OPEN_MS : CAPTURE_CLOSED_MS);
 

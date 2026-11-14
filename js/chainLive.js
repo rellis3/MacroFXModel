@@ -25,6 +25,21 @@ export const DOLLAR_BASKET = [
 /** Close of the last COMPLETED candle's end: candles are stamped by their OPEN, so the close instant is open + one step. */
 export const dailyCloseInstant = (lastCompleteOpenEpoch, stepSec = 86400) => lastCompleteOpenEpoch + stepSec;
 
+/**
+ * One market's reading from its last completed daily candles `d` (ascending [{time (open, epoch s), close}]) and its latest one-minute candles `m`.
+ *   normal : { price: last M1 close, ref: the last completed daily close }  -> the move since that close (zero over a weekend, against itself)
+ *   frozen : only when the FX week is shut AND this market's last M1 is more than 30 minutes old: { price: the last completed daily close, ref: the close BEFORE it }
+ *            -> the final session, with endS = the instant of the last close and the window starting at the close before it.
+ * `refOpen` keeps the contract the caller uses to find the reference instant (refOpen + 86400 is the start of the window).
+ */
+export function marketReading(d, m, { frozen = false, nowS = Date.now() / 1000 } = {}) {
+  const ref = d?.at?.(-1), px = m?.at?.(-1);
+  if (!ref || !px) throw new Error('no candles');
+  const stale = nowS - px.time > 1800, prev = d.at(-2);
+  if (frozen && stale && prev) return { price: ref.close, ref: prev.close, refOpen: prev.time, endS: ref.time + 86400, asOf: new Date(px.time * 1000).toISOString(), closed: true, frozen: true };
+  return { price: px.close, ref: ref.close, refOpen: ref.time, asOf: new Date(px.time * 1000).toISOString(), closed: stale };
+}
+
 /** Percent move of a live price against its reference close; null if either is unusable. */
 export function pctMove(price, ref) {
   if (!(price > 0) || !(ref > 0)) return null;

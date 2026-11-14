@@ -8,7 +8,7 @@
  *
  * It explains; it does not predict. None of these links is a validated forward signal on this desk.
  */
-import { CHAIN_NODES, CHAIN_LAYOUT, evaluateChain, nodeDelta, summariseChain, chainForPrompt, leanOf, tintStrength } from '../macroChain.js';
+import { CHAIN_NODES, CHAIN_LAYOUT, evaluateChain, nodeDelta, summariseChain, chainForPrompt, leanOf, tintStrength, isLiveFrozen } from '../macroChain.js';
 import { mergeLive } from '../chainLive.js';
 
 /** OANDA daily series behind the market chips (same map as today.html). */
@@ -83,8 +83,8 @@ export function termPremiumSplit(fred, win = 20) {
 }
 
 export const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-export const winWord = w => (w === 'live' ? 'live' : w === 1 ? '1-day' : `${w}-day`);
-export const overWord = w => (w === 'live' ? 'since the last close' : `over ${w} day${w === 1 ? '' : 's'}`);
+export const winWord = w => (w === 'live' ? (isLiveFrozen() ? 'last session' : 'live') : w === 1 ? '1-day' : `${w}-day`);
+export const overWord = w => (w === 'live' ? (isLiveFrozen() ? 'over the last session' : 'since the last close') : `over ${w} day${w === 1 ? '' : 's'}`);
 
 /** Short pill labels that fit between the chips (today.html's, so both pages name a link the same). */
 export const EDGE_LABEL = { 'oil-bei': 'oil→infl.', 'bei-us10y': 'infl.→10Y', 'us10y-real': 'nom→real', 'us2y-us30y': 'front→long', 'real-dxy': 'real→$', 'dxy-audusd': '$→AUD', 'real-gold': 'real→gold', 'dxy-gold': '$→gold', 'dxy-usdjpy': '$→yen', 'real-nq': 'real→growth', 'real-spx': 'real→broad', 'oil-usdcad': 'oil→CAD', 'copper-audusd': 'Cu→AUD', 'vix-usdjpy': 'fear→yen', 'vix-hy': 'fear→HY', 'dxy-btc': '$→BTC', 'funding-dxy': 'fund→$', 'funding-vix': 'fund→fear', 'giltgap-gbpusd': 'gilts→£', 'bundgap-eurusd': 'bunds→€', 'jgbgap-usdjpy': 'JGBs→yen', 'crack-bei': 'crack→infl.', 'hy-nq': 'HY→growth', 'hy-spx': 'HY→broad', 'smh-nq': 'chips→Nasdaq', 'oil-xle': 'oil→energy', 'us10y-xlre': '10Y→property', 'move-vix': 'bond fear→VIX', 'hy-ccc': 'HY→CCC', 'ccc-nq': 'CCC→growth', 'dxy-emdollar': '$→EM FX', 'emdollar-copper': 'EM→Cu', 'emoas-hy': 'EM credit→HY' };
