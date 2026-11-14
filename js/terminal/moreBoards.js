@@ -10,6 +10,7 @@ import * as RG from './regimeBoardView.js';
 import * as RL from './releasesBoardView.js';
 import * as VB from './volBoardView.js';
 import * as CS from './ccyStrengthView.js';
+import * as LV from './liveLayerView.js';
 
 const BOARDS = [
   ['credit-liquidity', CL.boardHtml],
@@ -17,10 +18,11 @@ const BOARDS = [
   ['regime-board', RG.boardHtml],
   ['releases-board', RL.boardHtml],
   ['vol-board', VB.boardHtml],
+  ['live-layer', LV.boardHtml],
 ];
 
 /** The Overview's extra block: the live currency strength board's slot (js/terminal/ccyStrengthView.js). The slot is filled by mountOverview() once it is in the page. */
-export const overviewMoreHtml = () => '<div class="sfc" data-surface="panel.ov.ccystrength"><div id="csx" class="cs-root"></div></div>';
+export const overviewMoreHtml = () => `<div class="sfc" data-surface="panel.ov.ccystrength"><div id="csx" class="cs-root"></div></div>${LV.priceReadSlot()}`;
 /** Attach the live board to its slot (idempotent: the Overview re-renders its slot, the state survives). getJson = the page's fetcher. */
 export function mountOverview(getJson) { const root = typeof document !== 'undefined' ? document.getElementById('csx') : null; if (root) CS.mount(root, { getJson }); }
 
@@ -33,3 +35,14 @@ export function macroMoreHtml(E, extra = {}) {
   }
   return out;
 }
+
+/** One of the boards above by its feed key (the Macro tab draws them one section at a time): '' while its feed has not landed or if it throws. */
+export function macroMoreBoard(key, E, extra = {}) {
+  const draw = BOARDS.find(([k]) => k === key)?.[1];
+  if (!draw || !E || E[key] === undefined) return '';
+  try { return draw(E[key], extra); } catch (e) { console.warn('board', key, e); return ''; }
+}
+
+/** The live layer (js/terminal/liveLayerView.js): start its refresh and fill the Overview's price-read slot. getAnalyst = () => the desk's dawn read per currency. */
+export const mountLive = (getJson, getAnalyst) => LV.mount({ getJson, getAnalyst });
+export const liveEmCell = LV.liveEmCell, liveWiderChip = LV.liveWiderChip;

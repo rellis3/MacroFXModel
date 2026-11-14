@@ -18,6 +18,8 @@ on:
       - 'theory-lab/**'
       - 'js/deskEvidence.js'
       - 'js/deskStrip.js'
+      - '.github/workflows/theory-lab.yml'   # a workflow edit is checked on push too
+  workflow_dispatch:
 
 jobs:
   checks:
@@ -50,7 +52,9 @@ jobs:
   # Every number printed in a lesson's calculator readout must equal what the calculator computes on load.
   # Runs the pages in Chromium (JavaScript off, then on) and compares the two.
   readouts:
-    runs-on: ubuntu-latest
+    # 2026-11-14: pinned. On ubuntu-latest this job died in 3 s at "Install Playwright and Chromium" on every run since
+    # 2026-11-13 22:57 (the label has been migrating to Ubuntu 26, which playwright 1.56 --with-deps may not support).
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4

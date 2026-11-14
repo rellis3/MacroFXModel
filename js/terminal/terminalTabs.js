@@ -39,12 +39,14 @@ import * as AAV from './assetAnalysisView.js';
 import * as SR from './sharedRead.js';
 import * as RBV from './ratesBoardView.js';
 import * as FYV from './fedPathYieldsView.js';
-import { macroMoreHtml, overviewMoreHtml, mountOverview } from './moreBoards.js';
+import * as MacroSubs from './macroSubtabs.js';
+import { macroMoreHtml, macroMoreBoard, overviewMoreHtml, mountOverview, mountLive, liveEmCell, liveWiderChip } from './moreBoards.js';
 import { fedPathYields, chainLine as fedPathChainLine } from '../fedPathYieldsCore.js';
 import * as ML from './mapLayers.js';
 import { cellHtml as macroCellHtml } from './macroEngines.js';
 import { FAMILIES as MACRO_FAMILIES } from './macroEnginesCore.js';
 import { ownerLink, ownerOnly } from './links.js';
+import { installReplayLink } from './replayLink.js';
 
 const el = id => document.getElementById(id);
 const h = CB.esc;
@@ -824,9 +826,12 @@ const RENDER = { today: renderToday, pair: renderPair, changed: renderChanged, r
   read: () => import('./traderReadView.js').then(V => V.render(el('read'), { getJson, openModal })).catch(e => { el('read').innerHTML = `<div class="card"><p class="muted">The Trader's Read did not load: ${h(e.message)}</p></div>`; }),
   // the Info map: every information family the repo holds against what the terminal draws (js/infoMap.js, built by scripts/build_info_map.mjs)
   infomap: () => import('./infoMapView.js').then(V => { const r = el('infomap'); if (!r.dataset.built) { r.dataset.built = '1'; V.mount(r); } }).catch(e => { el('infomap').innerHTML = `<div class="card"><p class="muted">The Info map did not load: ${h(e.message)}</p></div>`; }),
+  // the Replay tab (the time machine): pick a London session and play it forward; the view loads on first use (js/terminal/replayView.js)
+  replay: () => import('./replayView.js').then(V => V.mount(el('replay'))).catch(e => { el('replay').innerHTML = `<div class="card"><p class="muted">The Replay tab did not load: ${h(e.message)}</p></div>`; }),
   corr: () => import('./corrView.js').then(V => V.render(el('corr'), { getJson, book: () => D })).catch(e => { el('corr').innerHTML = `<div class="card"><p class="muted">Correlations &amp; hedges did not load: ${h(e.message)}</p></div>`; }) };
 globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'news') { clearInterval(NS.timer); NS.timer = null; } if (t !== 'pair' && /pair=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
 globalThis.openPairPage = openPair;
+installReplayLink();                               // globalThis.openReplay(inst, ts) and the #replay/NQ/2026-11-12T14:30 deep link
 // the asset card pop-up (desk-terminal.html assetCard) carries the same Analyse box
 globalThis.analyseBoxHtml = AAV.boxHtml;
 globalThis.mountAnalyse = box => AAV.mount(box).catch(e => console.warn('analyse', e));
@@ -837,7 +842,7 @@ function fromHash() { const m = location.hash.match(/pair=([A-Za-z0-9]+)/); if (
 addEventListener('hashchange', fromHash);
 if (/pair=/.test(location.hash)) fromHash();
 else { const sel = document.querySelector('#tabs [aria-selected="true"]')?.dataset.t; if (RENDER[sel]) globalThis.onTerminalTab(sel); }
-// the Macro tab's short-term fair value table (desk-terminal.html driversHtml, a classic script) reads this
+// the Macro tab's short-term fair value table (desk-terminal.html driverBlocks(), a classic script) reads this
 globalThis.stfvHtml = FVV.stfvTable;
 // the Macro tab's central-bank statement board (desk-terminal.html enrichMacro, a classic script) reads this
 globalThis.cbBoardHtml = CBV.boardHtml;
@@ -847,6 +852,11 @@ globalThis.llGridHtml = LLV.gridHtml;
 globalThis.ratesBoardHtml = (rb, fp, gy) => { try { return RBV.boardHtml(rb, fp, gy, { esc, spk, sgn }); } catch (e) { console.warn('rates board', e); return ''; } };
 // ...and the Fed path against the yields (js/fedPathYieldsCore.js): the priced path, the 2Y / 2s10s / 10Y and the Atlanta window odds, same dates
 globalThis.macroMoreHtml = (E, extra) => macroMoreHtml(E, extra);
+globalThis.macroMoreBoard = (key, E, extra) => macroMoreBoard(key, E, extra);
+globalThis.macroSubs = MacroSubs;
 globalThis.overviewMoreHtml = overviewMoreHtml;                   // the Overview's live currency strength slot
+globalThis.liveLayerMount = getAnalyst => { try { mountLive(getJson, getAnalyst); } catch (e) { console.warn('live layer', e); } };   // intraday overlay + the price read (js/terminal/liveLayerView.js)
+globalThis.liveEmCell = liveEmCell; globalThis.liveWiderChip = liveWiderChip;
 globalThis.ccyStrengthMount = () => { try { mountOverview(getJson); } catch (e) { console.warn('ccy strength', e); } };   // the newer Macro boards (js/terminal/moreBoards.js)
 globalThis.fedYieldsHtml = (fp, rb, tp) => { try { return FYV.boardHtml(fp, rb, tp, { esc }); } catch (e) { console.warn('fed path yields', e); return ''; } };
+dispatchEvent(new Event('terminalmodule'));   // every hook above now exists: the classic page repaints what it drew before they did (the Macro sections need macroSubs)

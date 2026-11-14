@@ -118,7 +118,10 @@ import { createDrawdownShadow } from './js/drawdownShadowRoutes.js';   // drawdo
 import { createStressShadow } from './js/stressShadowRoutes.js';       // stress-count shadow band, read-only (forecast-miss-scan A1)
 import { createVolState } from './js/volStateRoutes.js';             // vol state vector, descriptive (GET /api/vol-state)
 import { createTradePlan } from './js/tradePlanRoutes.js';           // trade-plan shadow forward record, display only (forge/TRADE_PLAN_SHADOW_PREREG.md)
+import { mountLiveLayer as _mountLiveLayer } from './js/liveLayerRoutes.js';   // intraday overlay for the daily boards: EM, indices, implied yields, range used, correlation regime (/api/live-layer)
+import { fxWeekOpen as _llIsFxOpen } from './js/marketClock.js';   // the PRECISE FX-week rule (Friday 17:00 to Sunday 17:00 New York)
 import { mountDeskBoards } from './js/deskBoardRoutes.js';              // the Desk Terminal's newer Macro boards (credit & liquidity, curve, regime, releases, strength, vol)
+import { mountReplay as _mountReplay } from './js/replayRoutes.js';                  // the Desk Terminal REPLAY (time machine, stage 1): a session as minutes, the option levels as known then, strength every 15 min (/api/replay/*)
 import { createStateRoutes } from './js/stateRoutes.js';                // Market State Engine: GET /api/state (plans/MARKET_STATE_ENGINE_PLAN.md)
 import { createSurfaceLab } from './js/surfaceLabRoutes.js';
 import { createVixCapture } from './js/vixCaptureRoutes.js';
@@ -21611,6 +21614,12 @@ async function _buildDataHealth() {
     if (s.archiveEnabled !== false) push('deskSnapArchive', `Desk time machine: R2 archive of finished days${s.archiveError ? ` (${s.archiveError.slice(0, 120)})` : ''}`, s.lastArchiveOkAt ?? never, 0.15, { market: false, refreshEveryH: 1 });
     push('deskSnapFull', `Desk time machine: FULL daily snapshot${s.fullError ? ` (${s.fullError.slice(0, 120)})` : ''}`, s.lastFullAt ?? (up > 26 * 3600_000 ? 0 : null), 0.7, { market: false, refreshEveryH: 24 });
   } catch { /* the rows are best-effort */ }
+  // the live layer: judged on the last time a build produced something, only while the FX week is open (a shut market is allowed to sit)
+  try {
+    const s = _llLayer.status();
+    // nothing asks for it until a terminal tab is open, so a never-built layer is 'waiting', not dead; once built it should stay inside minutes while a tab is open
+    push('liveLayer', `Desk Terminal live layer (EM, indices, implied yields, range used)${s.lastError ? ` (${s.lastError.slice(0, 120)})` : ''}`, s.lastOkAt ? new Date(s.lastOkAt).toISOString() : null, 0.2, { market: true, refreshEveryH: 0.02 });
+  } catch { /* best-effort */ }
   const out = { ..._dataHealth(srcs), bootedAt: new Date(_BOOTED_AT).toISOString() };
   _dataHealthCache = { at: Date.now(), data: out };
   return out;
@@ -36033,6 +36042,28 @@ const _stateRoutes = createStateRoutes({ kv, port: PORT, fetchD1: _btFetchD1, re
 mountDeskBoards(app, {
   mbCached: _mbCached, fredKey: process.env.FRED_KEY, fetchCandles: process.env.OANDA_KEY ? _fetchOandaCandles : null, ratesSeries: async () => { if (Date.now() - _rates.at > 6 * 3600_000 || !_rates.series) await _refreshRates(); return _rates.series; }, getState: () => _stateRoutes.get(), buildCsiInputs, buildCsi, CSI_DEFAULTS,
   selfJson: async p => { const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { signal: AbortSignal.timeout(60_000) }); if (!r.ok) throw new Error(`${p} ${r.status}`); return r.json(); },
+});
+// Desk Terminal replay (js/replayRoutes.js): read-only routes behind the Replay tab. Past sessions are cached for hours; nothing is written and no model is called.
+_mountReplay(app, {
+  fetchRange: (sym, gran, fromISO, toISO) => { if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not configured'); return fetchOandaCandleRange(_liqGateOandaSym(sym), gran, fromISO, toISO); },
+  earliest: (sym, gran) => _probeEarliestBarCached(_liqGateOandaSym(sym), gran),
+  kvGet: key => kv.get(key),
+  selfJson: async p => { const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { signal: AbortSignal.timeout(60_000) }); if (!r.ok) throw new Error(`${p} ${r.status}`); return r.json(); },
+});
+// The live layer (js/liveLayerRoutes.js): ONE OANDA pricing call for every EM and index price, the Chain Live window's own implied-yield functions, the vol-forecast session tracker's cache
+// and the strength feed's hourly bars. Cached 75 s while the FX week is open, 10 min while it is shut. Read-only: it writes nowhere.
+const _llLayer = _mountLiveLayer(app, {
+  fetchCandles: process.env.OANDA_KEY ? _fetchOandaCandles : null,
+  pricing: async list => {
+    if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not configured');
+    if (!process.env.OANDA_ACCOUNT_ID) throw new Error('OANDA_ACCOUNT_ID not configured');
+    const r = await fetch(`${_oandaBaseMe()}/v3/accounts/${process.env.OANDA_ACCOUNT_ID}/pricing?instruments=${list.map(encodeURIComponent).join('%2C')}`, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(8_000) });
+    if (!r.ok) throw new Error(`OANDA pricing ${r.status}`);
+    return r.json();
+  },
+  selfJson: async p => { const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { signal: AbortSignal.timeout(60_000) }); if (!r.ok) throw new Error(`${p} ${r.status}`); return r.json(); },
+  clMarket: _clMarket, clYield: _clYield, ylOfficial: _ylOfficial, YL: _YL, getSession: getSessionStatus, isFxOpen: _llIsFxOpen,
+  strengthState: () => app.locals.strengthFeed?.state ?? null,
 });
 svcInterval('dailyRead', () => svcRun('dailyRead', () => dailyRead.tick('scheduled')), 5 * 60_000);
 

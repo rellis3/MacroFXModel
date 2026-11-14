@@ -68,6 +68,7 @@ export function mountDeskBoards(app, d) {
   // Currency strength (σ): price-based and live, from OANDA bars already pulled elsewhere (no new feed)
   if (d.fetchCandles) {
     const feed = makeStrengthFeed(d.fetchCandles);
+    app.locals.strengthFeed = feed;                                    // the live layer reads its hourly bars (js/liveLayerRoutes.js): no second set of OANDA calls
     app.get('/api/ccy-strength', async (_req, res) => {
       try { res.set('Cache-Control', 'no-store'); res.json(await feed.get()); } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
     });

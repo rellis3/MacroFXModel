@@ -478,7 +478,7 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
-     "desk-terminal.html"
+     "js/terminal/macroSubtabs.js"
     ],
     "today": [
      "today.html"
@@ -520,7 +520,8 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
-     "desk-terminal.html"
+     "desk-terminal.html",
+     "js/terminal/macroSubtabs.js"
     ],
     "today": [],
     "atlas": [],
@@ -639,6 +640,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/regimeBoardView.js",
      "js/terminal/terminalTabs.js"
@@ -703,6 +705,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/regimeBoardView.js"
     ],
@@ -1196,7 +1199,8 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
-     "desk-terminal.html"
+     "desk-terminal.html",
+     "js/terminal/macroSubtabs.js"
     ],
     "today": [],
     "atlas": [
@@ -1338,6 +1342,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/fedPathYieldsView.js",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js",
      "js/terminal/ratesBoardCore.js",
      "js/terminal/ratesBoardView.js",
@@ -1500,6 +1505,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/fedPathYieldsView.js",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [
@@ -1597,6 +1603,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/curveBoardView.js",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js"
     ],
     "today": [],
@@ -1651,6 +1658,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/curveBoardView.js",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js"
     ],
     "today": [],
@@ -1752,6 +1760,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/hedgeView.js",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [],
@@ -1785,7 +1794,8 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
-     "desk-terminal.html"
+     "desk-terminal.html",
+     "js/terminal/macroSubtabs.js"
     ],
     "today": [],
     "atlas": [],
@@ -1812,7 +1822,8 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
-     "desk-terminal.html"
+     "desk-terminal.html",
+     "js/terminal/macroSubtabs.js"
     ],
     "today": [],
     "atlas": [],
@@ -1871,6 +1882,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/creditLiquidityView.js",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/volBoardView.js"
     ],
@@ -1919,6 +1931,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/creditLiquidityView.js",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/volBoardView.js"
     ],
@@ -1974,6 +1987,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/links.js",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js"
     ],
     "today": [
@@ -2063,6 +2077,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/creditLiquidityView.js",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/volBoardView.js"
     ],
@@ -2438,6 +2453,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/volBoardView.js"
     ],
@@ -2519,6 +2535,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/regimeBoardView.js"
     ],
@@ -2852,6 +2869,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/releasesBoardView.js"
     ],
@@ -2988,6 +3006,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/reactionPanel.js",
      "js/terminal/releasesBoardView.js",
@@ -3111,6 +3130,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/releasesBoardView.js"
     ],
@@ -3460,6 +3480,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/optionsView.js",
      "js/terminal/terminalTabs.js",
@@ -3606,6 +3627,7 @@ export const DERIVED = {
      "js/terminal/bookPanels.js",
      "js/terminal/chainBoard.js",
      "js/terminal/links.js",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js",
      "js/terminal/moreBoards.js",
      "js/terminal/optionsView.js",
@@ -3652,6 +3674,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "js/terminal/ccyStrengthView.js",
+     "js/terminal/liveLayerView.js",
      "js/terminal/moreBoards.js"
     ],
     "today": [],
@@ -3659,6 +3682,125 @@ export const DERIVED = {
     "newsletter": []
    },
    "evidence": [],
+   "packSkills": [],
+   "drift": []
+  },
+  "live-layer": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/live-layer",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/liveLayerCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/liveLayerRoutes.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/liveLayerView.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/liveLayerView.js",
+     "js/terminal/macroSubtabs.js",
+     "js/terminal/moreBoards.js",
+     "js/terminal/terminalTabs.js"
+    ],
+    "today": [],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [],
+   "packSkills": [],
+   "drift": []
+  },
+  "time-machine": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/desk-snapshots",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/replay/day",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/replay/strength",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/replay/meta",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/replay/notable",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/deskSnapshot.js",
+     "exists": true
+    },
+    {
+     "file": "js/deskSnapshotStore.js",
+     "exists": true
+    },
+    {
+     "file": "js/replayCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/replayRoutes.js",
+     "exists": true
+    },
+    {
+     "file": "js/replayStrength.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/replayView.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "js/terminal/replayLink.js",
+     "js/terminal/replayView.js",
+     "js/terminal/terminalTabs.js"
+    ],
+    "today": [],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [
+    {
+     "id": "level-touch",
+     "known": true,
+     "verdict": "null"
+    },
+    {
+     "id": "line-touch-limit-unseen",
+     "known": true,
+     "verdict": "null"
+    }
+   ],
    "packSkills": [],
    "drift": []
   },
@@ -3684,6 +3826,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/fairValueView.js",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js",
      "js/terminal/terminalTabs.js"
     ],
@@ -3791,6 +3934,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/macroSubtabs.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [],
@@ -3813,5 +3957,5 @@ export const DERIVED = {
  "unclassified": [],
  "rootPageCount": 263,
  "packFeeds": 115,
- "generatedAt": "2026-11-13"
+ "generatedAt": "2026-11-14"
 };

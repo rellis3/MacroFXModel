@@ -1,0 +1,71 @@
+/* Desk Terminal REPLAY tab (js/terminal/replayView.js). Theme tokens only (themeTokens test); the chart is a canvas that reads the same tokens at draw time. */
+.rp{display:grid;gap:14px}
+.rp .rp-ctl{display:flex;gap:10px 14px;align-items:flex-end;flex-wrap:wrap;margin-top:10px}
+.rp .rp-f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.rp .rp-f select,.rp .rp-f input{background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:7px;padding:7px 9px;font:13px var(--mono);min-width:0;color-scheme:dark light}
+.rp .rp-f select:focus-visible,.rp .rp-f input:focus-visible,.rp button:focus-visible,.rp .rp-scrub:focus-visible{outline:2px solid var(--pur);outline-offset:2px}
+.rp .rp-go{margin-bottom:0}
+.rp-grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:14px;align-items:start}
+@media (max-width:1100px){.rp-grid{grid-template-columns:minmax(0,1fr)}}
+.rp-main{padding:12px 14px 14px;position:relative}
+.rp-stage{position:relative;width:100%;height:clamp(300px,46vh,460px);border-radius:10px;overflow:hidden;background:radial-gradient(120% 90% at 70% 0%,rgba(var(--purrgb),.07),transparent 60%),var(--bg1);border:1px solid var(--line)}
+.rp-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.rp-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--tx3);font:13px var(--sans);line-height:1.5;pointer-events:none}
+.rp-hud{position:absolute;left:10px;top:8px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+.rp-hud .chip{background:rgba(var(--bg1rgb),.7);backdrop-filter:blur(3px)}
+.rp-cap{margin:10px 2px 8px;font:13px/1.55 var(--sans);color:var(--tx2);min-height:3.2em}
+.rp-cap b{color:var(--tx);font-weight:600}
+.rp-bar{display:flex;gap:8px 10px;flex-wrap:wrap;align-items:center;margin:6px 0 8px}
+.rp-bar .btn{padding:6px 10px}
+.rp-bar .btn.on,.rp-bar .btn[aria-pressed="true"]{border-color:var(--pur);color:var(--pur2);background:var(--purbg)}
+.rp-bar .btn[disabled]{opacity:.45;cursor:not-allowed}
+.rp-sp{display:inline-flex;gap:4px;flex-wrap:wrap}
+.rp-sp button,.rp-seg button{cursor:pointer;background:var(--bg1);border:1px solid var(--line);color:var(--tx3);padding:5px 9px;border-radius:999px;font:600 10.5px var(--mono);letter-spacing:.06em}
+.rp-sp button[aria-pressed="true"],.rp-seg button[aria-pressed="true"]{border-color:var(--pur);color:var(--pur2);background:var(--purbg)}
+.rp-sp button[disabled]{opacity:.45;cursor:not-allowed}
+.rp-seg{display:inline-flex;gap:4px}
+.rp-time{margin-left:auto;font:600 13px var(--mono);color:var(--tx);white-space:nowrap}
+.rp-time small{color:var(--tx3);font-weight:400;margin-left:6px}
+.rp-mini{position:relative;height:46px;margin-top:2px}
+.rp-mini canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.rp-scrub{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:ew-resize}
+.rp-note{margin:8px 2px 0;font-size:11.5px;color:var(--tx3);line-height:1.5}
+.rp-side{display:grid;gap:14px;min-width:0}
+.rp-side .card{padding:12px 14px}
+.rp-side h3{margin:0 0 8px;font:600 10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--tx3);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.rp-side h3 .r{margin-left:auto;display:inline-flex;gap:4px}
+.rp-st{position:relative}
+.rp-st-row{display:grid;grid-template-columns:34px 1fr 46px;gap:8px;align-items:center;height:26px;font:600 11.5px var(--mono)}
+.rp-st-row b{color:var(--tx2);font-weight:600}
+.rp-st-t{position:relative;height:10px;border-radius:5px;background:rgba(var(--line2rgb),.35)}
+.rp-st-z{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line3)}
+.rp-st-b{position:absolute;top:0;bottom:0;border-radius:5px;background:var(--flat);transition:left .35s ease,width .35s ease,background-color .35s}
+.rp-st-b.pos{background:var(--up);box-shadow:0 0 8px rgba(var(--uprgb),.45)}
+.rp-st-b.neg{background:var(--dn);box-shadow:0 0 8px rgba(var(--dnrgb),.45)}
+.rp-st-v{text-align:right;color:var(--tx2)}
+.rp-st-v.up{color:var(--up)}.rp-st-v.dn{color:var(--dn)}
+.rp-none{color:var(--tx3);font-size:12.5px;line-height:1.5;border:1px dashed var(--line2);border-radius:8px;padding:9px 11px}
+.rp-desk .rp-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.rp-desk .chip i{font-style:normal;opacity:.75;margin-left:3px}
+.rp-lv{display:grid;gap:5px;font:12px var(--mono)}
+.rp-lv-row{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:8px;align-items:baseline;padding:3px 0;border-bottom:1px solid rgba(var(--line2rgb),.4)}
+.rp-lv-row i{display:block;width:10px;height:3px;border-radius:2px;background:var(--tx3);align-self:center}
+.rp-lv-row .nm{color:var(--tx2);overflow-wrap:anywhere}
+.rp-lv-row .nm small{display:block;color:var(--tx3);font:11px var(--sans);margin-top:1px}
+.rp-lv-row .px{color:var(--tx);text-align:right;white-space:nowrap}
+.rp-lv-row .px small{display:block;color:var(--tx3);font-size:10.5px}
+.rp-lv-row.near{background:rgba(var(--purrgb),.08)}
+.k-call i{background:var(--blue2)}.k-put i{background:var(--teal)}.k-maxpain i{background:var(--gold)}.k-gammaflip i,.k-gexflip i{background:var(--pur2)}.k-fc i{background:var(--flat)}.k-open i{background:var(--tx3)}
+.rp-log{display:grid;gap:4px;font:12px var(--mono);max-height:230px;overflow:auto}
+.rp-log div{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:8px;color:var(--tx2)}
+.rp-log div span:first-child{color:var(--tx3)}
+.rp-log div em{font-style:normal;color:var(--tx3)}
+.rp-cov{width:100%;border-collapse:collapse;font-size:12px}
+.rp-cov th{font:600 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line2)}
+.rp-cov td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--tx2);line-height:1.45}
+.rp-cov td:first-child{color:var(--tx);white-space:nowrap}
+.rp-cov-w{overflow-x:auto}
+.rp-load{animation:rp-pulse 1.4s ease-in-out infinite}
+@keyframes rp-pulse{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.rp-load{animation:none}.rp-st-b{transition:none}}
+@media (max-width:640px){.rp-time{margin-left:0;width:100%}.rp .rp-f{flex:1 1 140px}}

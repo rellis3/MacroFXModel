@@ -142,3 +142,20 @@ Feeds whose source moves intraday but which the terminal shows from a daily bar,
 - The loopback load of a capture on a busy server is not measured. It reads cached routes, but the first capture after a boot can trigger a cold build of `credit-liquidity` and `curve-board` (about 20 seconds on a cold server).
 - The desk run is off by default (`SVC_DESKRUN`), so a morning book may not exist on a given day; then `desk` carries the last one with its own asOf and a failing `desk-run` shows as a gap.
 - Chain verdicts per window are computed in the browser from price legs (`js/macroChain.js`), not on the server, so they are not captured. The `watch` section carries the desk-watch states, which is what the Changed tab's "chain links that broke" reads.
+
+## The Replay tab (stage 1, 2026-11-14)
+
+Code: `js/replayCore.js` (pure, tested in `js/replayCore.test.mjs`), `js/replayStrength.js`, `js/replayRoutes.js` (mounted in `server.js`, search `Desk Terminal replay`), `js/terminal/replayView.js`, `replay.css`, `replayLink.js`. Surface `tab.replay` (viewer-visible: it shows analysis, no trade lines).
+
+Pick a market and a London session day, go back, and play it forward at 1x, 2x, 5x, 10x, 60x or 300x real time (300x = one 5-minute candle a second). Deep link `#replay/NQ/2026-11-12T14:30` (London wall clock; a trailing Z means UTC). Any board can call `globalThis.openReplay(inst, tsMs)`.
+
+| Layer | Replays from | Source | Point-in-time rule |
+|---|---|---|---|
+| Candles (1m, 5m, 15m, 1h, with the forming candle) | as far back as OANDA's one-minute history goes for the market | `/api/replay/day` (M1 from 4 h before the open) | a minute counts once it has finished |
+| Option levels (three biggest call and put walls within 3% of the spot, max pain, gamma flip, first GEX flip) | 2026-08-20 (87 nightly captures), eleven markets | KV `oi_history` | shown from the capture's own `savedAtMs` (about 06:45 London the next morning), never from the trade date; a level over 3 days old is marked stale |
+| Forecast lines (high/low median and p75; no p90 is archived) | 2026-06-11 | KV `vol_forecast_<date>` | from the session open, or from `computed_at` if that was later |
+| Strength (σ) | as far back as the 28 pairs | `/api/replay/strength`, every 15 min, ~84 range calls the first time then cached | each step's bars are truncated to what had finished, so each pair's normal move uses only earlier bars |
+| Desk book | the morning book from 2026-11-03 (lean on the chosen market and the tone, no sizes, no headline); the snapshot bias strip from 2026-11-14 | `/api/desk-run?date=&summary=1`, `/api/desk-snapshots` | the morning book from the minute it finished; "not recorded then" otherwise, never estimated |
+| Touches | with the levels | `scanTouches` over the minutes | a touch is price within 0.02% of a line that was on the chart; once until price has gone away by three tolerances |
+
+It describes. A touch is shown, never traded: the Evidence Book has the line-touch book failing net. Not drawn yet: intraday option levels (only the S&P and Nasdaq have a 15-minute Cboe log, since 2026-11-01), release-day markers on the chart, the full-day bias strip before 2026-11-14.
