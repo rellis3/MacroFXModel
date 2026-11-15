@@ -28,8 +28,9 @@ export const CB_BANKS = [
   { id: 'beige', ccy: 'USD', bank: 'Beige Book', name: 'Fed Beige Book', prefix: 'beigebook_analysis_', page: 'beige-book.html', doc: 'Beige Book', beige: true },
 ];
 
-/** How many past meetings a tile reads back: the latest, the one before it for the change, and a short tone history. */
-export const CB_HISTORY = 6;
+/** How many past meetings a tile reads back: the latest, the one before it for the change, and the tone timeline (the last ten meetings;
+ *  a meeting with no stored read is drawn as a gap, never filled in). */
+export const CB_HISTORY = 10;
 
 const fin = v => v != null && v !== '' && Number.isFinite(+v);
 const r2 = v => (fin(v) ? Math.round(+v * 100) / 100 : null);
@@ -79,6 +80,66 @@ export function dimsOf(analysis) {
   return out.length ? out : null;
 }
 
+const DIM_LABEL = {
+  inflationConcern: 'Prices', laborConcern: 'Labour', growthConcern: 'Growth', financialStabilityConcern: 'Stability',
+  fragmentationConcern: 'Fragmentation', committeeConfidence: 'Committee confidence', regionalBreadth: 'Breadth',
+};
+
+/** Every dimension the statement was scored on, by its stored key (0..1: how much the text dwells on it), or null. */
+export function dimsRaw(analysis) {
+  const d = analysis?.dimensions;
+  if (!d || typeof d !== 'object') return null;
+  const out = {};
+  for (const [k, v] of Object.entries(d)) if (DIM_LABEL[k] && fin(v)) out[k] = r2(Math.min(1, Math.max(0, +v)));
+  return Object.keys(out).length ? out : null;
+}
+
+/** The themes whose weight moved most against the previous read: [{ k, label, delta }], at most three, only moves of 0.10 or more.
+ *  This is how much the text dwells on a theme (concern), never a direction. */
+export function themeShift(cur, prev, { min = 0.1, n = 3 } = {}) {
+  if (!cur || !prev) return [];
+  return Object.keys(cur).filter(k => fin(prev[k]) && DIM_LABEL[k]).map(k => ({ k, label: DIM_LABEL[k], delta: r2(cur[k] - prev[k]) }))
+    .filter(x => Math.abs(x.delta) >= min - 1e-9).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, n);
+}
+
+// ── The words that changed since the previous statement ──
+// The stored diff is word level and noisy (dates, vote counts, page furniture), so a change is kept only when a removed run is
+// immediately followed by an added run, both are plain words, and neither is a date, a number or a run of dots. Those that touch the
+// subjects a statement turns on (rates, inflation, labour, risks, guidance) come first. Up to three, each side cut at a word boundary.
+const JUNK = /^[\W\d_]*$|\.{4,}|\b(19|20)\d\d\b|\b(January|February|March|April|May|June|July|August|September|October|November|December)\b|https?:|©/i;
+const SALIENT = /\b(hike\w*|rais\w+|cut\w*|eas\w+|tighten\w*|restrictive|accommodat\w*|inflation\w*|labou?r|employment|growth|risks?|upside|downside|patient|persistent|elevated|energy|further|gradual\w*|guidance|vigilan\w*|uncertain\w*|data|broadly|moderat\w*|strong\w*|soft\w*|weak\w*|slow\w*)\b/i;
+const POLICY = /\b(hike\w*|rais\w+|cut\w*|eas\w+|maintain\w*|keep|kept|hold|held|unchanged|tighten\w*|restrictive|accommodat\w*)\b/i;
+const tidy = t => String(t ?? '').replace(/\s+/g, ' ').replace(/^[\s,;:.\-–—]+|[\s,;:\-–—]+$/g, '').trim();
+const cutWords = (t, n = 52) => { if (t.length <= n) return t; const c = t.slice(0, n - 1), i = c.lastIndexOf(' '); return `${(i > n * 0.5 ? c.slice(0, i) : c).replace(/[\s,;:.\-–—]+$/, '')}…`; };
+
+/** diffSegments ([{ type: 'same'|'add'|'del', text }]) → [{ from, to }] up to n. [] when nothing readable changed. */
+export function phrasesOf(segs, n = 3) {
+  if (!Array.isArray(segs)) return [];
+  const cand = [];
+  for (let i = 0; i < segs.length - 1; i++) {
+    const a = segs[i], b = segs[i + 1];
+    if (a?.type !== 'del' || b?.type !== 'add') continue;
+    const from = tidy(a.text), to = tidy(b.text);
+    if (from.length < 3 || to.length < 3 || from.toLowerCase() === to.toLowerCase()) continue;
+    if (JUNK.test(from) || JUNK.test(to) || !/[A-Za-z]{3}/.test(from) || !/[A-Za-z]{3}/.test(to)) continue;
+    const wf = from.split(' ').length, wt = to.split(' ').length;
+    if (Math.abs(wf - wt) > Math.max(1, Math.floor(0.4 * Math.max(wf, wt)))) continue;   // a swap replaces like with like: a word for a word, a clause for a clause
+    if (Math.max(from.length, to.length) > 20 && Math.max(from.length, to.length) / Math.min(from.length, to.length) > 4) continue;   // a short word against a clause is a mismatch, not a swap
+    if (/^[A-Z][a-z]+[.,]?$/.test(from) || /^[A-Z][a-z]+[.,]?$/.test(to)) continue;   // a lone capitalised word is a name (East, Prices), not a wording change
+    if (/[.!?]\s+[A-Z]/.test(from) || /[.!?]\s+[A-Z]/.test(to)) continue;   // a cut across a sentence boundary reads as a fragment
+    const sal = (SALIENT.test(from) ? 1 : 0) + (SALIENT.test(to) ? 1 : 0) + (POLICY.test(from) ? 2 : 0) + (POLICY.test(to) ? 2 : 0);
+    cand.push({ from, to, sal, len: from.length + to.length });
+  }
+  const seen = new Set(), out = [];
+  for (const c of cand.sort((x, y) => y.sal - x.sal || x.len - y.len)) {
+    const key = c.from.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key); out.push({ from: cutWords(c.from), to: cutWords(c.to) });
+    if (out.length >= n) break;
+  }
+  return out;
+}
+
 /** One stored payload ({ analysis, vote, ... }) → the fields a tile shows, or null if it carries no score. */
 export function readOf(date, payload, now) {
   const a = payload?.analysis;
@@ -89,7 +150,8 @@ export function readOf(date, payload, now) {
     score: r2(a.hawkishScore), regime: a.regime ?? null, confidence: a.confidence ?? null,
     headline: clip(a.headline, 220), whatChanged: clip(a.whatChanged, 260), voteNote: clip(a.voteNote, 200),
     vote: voteText(payload.vote ?? a.vote),
-    dims: dimsOf(a),
+    dims: dimsOf(a), dimsRaw: dimsRaw(a),
+    phrases: phrasesOf(payload.diffSegments),
     ageDays: Number.isFinite(now) ? Math.max(0, Math.floor((now - Date.parse(date)) / DAY)) : null,
   };
 }
@@ -121,7 +183,11 @@ export function shapeBank(meta, { meetings, reads, now = Date.now(), headline = 
     unreadMeeting: current ? null : newestMeeting,
     read: last ? last.r : null,
     change: last && prior ? { delta: r2(last.r.score - prior.r.score), from: prior.d, fromScore: prior.r.score } : null,
+    themes: last && prior ? themeShift(last.r.dimsRaw, prior.r.dimsRaw) : [],
     history: scored.map(x => ({ date: x.d, score: x.r.score })),
+    // the tone timeline: every meeting in the window, oldest first; one with no stored read is a gap (unread), never an estimate
+    timeline: dates.map(d => { const r = scored.find(x => x.d === d)?.r; return r ? { date: d, score: r.score, regime: r.regime, headline: r.headline && r.headline.length > 150 ? `${r.headline.slice(0, 149).trimEnd()}…` : r.headline } : { date: d, unread: true }; }),
+    coverage: { read: scored.length, of: dates.length },
     next: nextMeeting(meetings, now),
     rate: rate && fin(rate.rate) ? { rate: +rate.rate, asOf: rate.asOf ?? null } : null,
   };

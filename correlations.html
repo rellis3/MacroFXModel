@@ -905,6 +905,8 @@ async function init() {
       loadLiveHistory(data);
       return;
     }
+    // an honest empty answer (the live-bot file does not exist on this server): show the same empty state as an unbuilt history, not a stuck spinner
+    showNoBuildYet();
   } catch (e) {
     showError(e.message);
   } finally {

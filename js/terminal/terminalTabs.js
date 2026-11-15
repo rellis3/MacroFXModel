@@ -33,14 +33,18 @@ import { mountPathChart } from './pathChart.js';
 import * as NV from './newsView.js';
 import * as NCV from './newsChannelView.js';
 import { createLevelChart } from '../levelChart.js';
+import { mountTfBar } from './timeframePills.js';
 import { cardDrivers } from './cardExplain.js';
+import * as HDV from './humanDriversView.js';
 import { pineForCard, oandaOf } from '../deskBookPine.js';
 import * as AAV from './assetAnalysisView.js';
 import * as SR from './sharedRead.js';
 import * as RBV from './ratesBoardView.js';
 import * as FYV from './fedPathYieldsView.js';
 import * as MacroSubs from './macroSubtabs.js';
+import { boardById as paperBoardById } from './paperBoardsView.js';
 import { macroMoreHtml, macroMoreBoard, overviewMoreHtml, mountOverview, mountLive, liveEmCell, liveWiderChip } from './moreBoards.js';
+import * as VCV from './volClockView.js';
 import { fedPathYields, chainLine as fedPathChainLine } from '../fedPathYieldsCore.js';
 import * as ML from './mapLayers.js';
 import { cellHtml as macroCellHtml } from './macroEngines.js';
@@ -395,9 +399,9 @@ async function renderPair() {
 <h2 style="margin:0 0 8px;font:700 24px var(--sans)">${h(nice(n))}</h2><div id="tt-p-tvmsg" class="muted" style="font-size:12px"></div>
 ${c ? `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${rateChip(c.rating)}${scoreBar(assetScore(c), '240px', assetWordV(c))}${D.live?.[n] && D.live[n].rating !== c.rating ? `<span class="chip gold" title="${h(D.live[n].why ?? '')}">updated → ${h(D.live[n].rating)}</span>` : ''}</div>
 <div class="thesis">“${h(c.why)}”</div><div class="drv">${sources(c.why).map(t => `<span>${t}</span>`).join('')}<span title="the card's own conviction, not the global ruling's or a currency's">card conviction ${h(c.conviction ?? '–')}</span><span class="sfc" data-surface="panel.asset.size"><span>size ${c.size ?? '–'}${c.sizeBeforeCap && c.sizeBeforeCap !== c.size ? ` (from ${c.sizeBeforeCap}, capped by ${h((c.cappedBy ?? []).join(', '))})` : ''}</span></span></div>` : '<div class="muted">The desk has no card for this market today.</div>'}
-<div class="tt-chart" id="tt-lc"></div>
+<div class="tfp-host" id="tt-tf"></div><div class="tt-chart" id="tt-lc"></div>
 ${c ? `${ladder(c)}<div class="sfc" data-surface="panel.asset.plan"><div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${h(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Lines</b><span class="mono">up ${c.levels.up.p50} / ${c.levels.up.p75} / ${c.levels.up.p90} · down ${c.levels.down.p50} / ${c.levels.down.p75} / ${c.levels.down.p90}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${h(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${h(c.plan.timing)}</span></div>` : ''}</div></div><details><summary>The whole thesis</summary><p>${h(c.why)}</p>${deskView(n)}</details>${whatDrivesHtml(n)}` : ''}
-<p class="tt-note">Chart: hourly candles, today's forecast lines (open, up and down p50 / p75 / p90), the entry zone and the invalidation where the plan names them.</p></div>
+<p class="tt-note">Chart: candles in the size you pick (5m to 4h; the choice is remembered), today's forecast lines (open, up and down p50 / p75 / p90), the entry zone and the invalidation where the plan names them.</p></div>
 ${AAV.boxHtml(n)}
 <div class="tt-grid2" style="margin-top:14px">
 <div class="card" id="tt-p-gr">${loading('the Global Read for this market')}</div>
@@ -444,23 +448,28 @@ ${AAV.boxHtml(n)}
 async function pairChart(n, c) {
   const box = el('tt-lc'); if (!box) return;
   if (!window.LightweightCharts) { box.innerHTML = '<p class="muted" style="padding:12px">The chart library did not load.</p>'; return; }
-  const r = await J(`/api/desk-bars?inst=${n}&days=8`), b = r?.bars ?? [];
-  if (T.pair !== n || !el('tt-lc')) return;
-  if (!b.length) { box.innerHTML = `<p class="muted" style="padding:12px">${h(r?.error ?? 'No price bars for this market.')}</p>`; return; }
-  const dp = b[0].close >= 1000 ? 1 : b[0].close >= 100 ? 2 : b[0].close >= 10 ? 3 : 5;
-  const v = createLevelChart(box, { height: 340, priceDigits: dp, chartOptions: { layout: { background: { color: 'var(--bg1)' }, textColor: 'var(--tx2)', fontFamily: 'JetBrains Mono' }, grid: { vertLines: { color: 'rgba(var(--line2rgb),.35)' }, horzLines: { color: 'rgba(var(--line2rgb),.35)' } }, rightPriceScale: { borderColor: 'var(--line2)' }, timeScale: { borderColor: 'var(--line2)', timeVisible: true } },
-    candleColors: { upColor: 'var(--up)', downColor: 'var(--dn)', wickUpColor: 'var(--up)', wickDownColor: 'var(--dn)' } });
-  T.pairChart = v;
-  v.setCandles(b);
-  const L = c?.levels, lv = [];
-  if (L) { lv.push({ price: L.open, kind: 'daily_open', label: 'open' }); for (const q of ['p50', 'p75', 'p90']) { lv.push({ price: L.up?.[q], kind: 'pdl', label: `up ${q}` }); lv.push({ price: L.down?.[q], kind: 'pdh', label: `dn ${q}` }); } }
-  const inRange = x => !L?.down?.p90 || (x > L.down.p90 * 0.97 && x < L.up.p90 * 1.03);
-  const z = String(c?.plan?.zone ?? '').match(/\d+(?:\.\d+)?/g)?.map(Number).filter(inRange) ?? [];
-  if (z.length) { lv.push({ price: Math.min(...z), kind: 'zone', label: 'entry' }); if (z.length > 1) lv.push({ price: Math.max(...z), kind: 'zone', label: 'entry' }); }
-  const inv = Number(String(c?.plan?.invalidation ?? c?.invalidation ?? '').match(/\d+(?:\.\d+)?/)?.[0]); if (Number.isFinite(inv) && inRange(inv)) lv.push({ price: inv, kind: 'resistance', label: 'invalid' });
-  v.setLevels(lv.filter(x => Number.isFinite(x.price))).fit();
-  // the short-term fair value as a line (description only: its label carries the verdict word)
-  if (PV.isFx(n)) J('/api/fx-fair-value').then(d => { const f = FVV.fairLevel(d, n), lastC = b.at(-1)?.close; if (f && T.pairChart === v && lastC && Math.abs(f.price / lastC - 1) < 0.03) v.setLevels([...lv, f].filter(x => Number.isFinite(x.price))); });
+  T.pairTf?.stop();
+  let v = null;
+  // the candle size is the pills' (js/terminal/timeframePills.js); the chart is built from the first bars it gets, then only re-fed
+  const build = b => {
+    const dp = b[0].close >= 1000 ? 1 : b[0].close >= 100 ? 2 : b[0].close >= 10 ? 3 : 5;
+    v = createLevelChart(box, { height: 340, priceDigits: dp, chartOptions: { layout: { background: { color: 'var(--bg1)' }, textColor: 'var(--tx2)', fontFamily: 'JetBrains Mono' }, grid: { vertLines: { color: 'rgba(var(--line2rgb),.35)' }, horzLines: { color: 'rgba(var(--line2rgb),.35)' } }, rightPriceScale: { borderColor: 'var(--line2)' }, timeScale: { borderColor: 'var(--line2)', timeVisible: true } },
+      candleColors: { upColor: 'var(--up)', downColor: 'var(--dn)', wickUpColor: 'var(--up)', wickDownColor: 'var(--dn)' } });
+    T.pairChart = v;
+    v.setCandles(b);
+    const L = c?.levels, lv = [];
+    if (L) { lv.push({ price: L.open, kind: 'daily_open', label: 'open' }); for (const q of ['p50', 'p75', 'p90']) { lv.push({ price: L.up?.[q], kind: 'pdl', label: `up ${q}` }); lv.push({ price: L.down?.[q], kind: 'pdh', label: `dn ${q}` }); } }
+    const inRange = x => !L?.down?.p90 || (x > L.down.p90 * 0.97 && x < L.up.p90 * 1.03);
+    const z = String(c?.plan?.zone ?? '').match(/\d+(?:\.\d+)?/g)?.map(Number).filter(inRange) ?? [];
+    if (z.length) { lv.push({ price: Math.min(...z), kind: 'zone', label: 'entry' }); if (z.length > 1) lv.push({ price: Math.max(...z), kind: 'zone', label: 'entry' }); }
+    const inv = Number(String(c?.plan?.invalidation ?? c?.invalidation ?? '').match(/\d+(?:\.\d+)?/)?.[0]); if (Number.isFinite(inv) && inRange(inv)) lv.push({ price: inv, kind: 'resistance', label: 'invalid' });
+    v.setLevels(lv.filter(x => Number.isFinite(x.price))).fit();
+    // the short-term fair value as a line (description only: its label carries the verdict word)
+    if (PV.isFx(n)) J('/api/fx-fair-value').then(d => { const f = FVV.fairLevel(d, n), lastC = b.at(-1)?.close; if (f && T.pairChart === v && lastC && Math.abs(f.price / lastC - 1) < 0.03) v.setLevels([...lv, f].filter(x => Number.isFinite(x.price))); });
+  };
+  T.pairTf = mountTfBar(el('tt-tf'), { family: 'pair', inst: n, days: { '1h': 8 }, fetchJson: getJson,
+    apply: (b, { fit }) => { if (T.pair !== n || !el('tt-lc')) { T.pairTf?.stop(); return; } if (!v) { build(b); return; } v.setCandles(b); if (fit) v.fit(); },
+    onError: msg => { if (!v && el('tt-lc')) box.innerHTML = `<p class="muted" style="padding:12px">${h(msg)}</p>`; } });
 }
 function pairGR(n, g) {
   const box = el('tt-p-gr'); if (!box) return;
@@ -501,7 +510,7 @@ async function pairPos(n) {
   const key = { EURUSD: 'EUR', GBPUSD: 'GBP', USDJPY: 'JPY', AUDUSD: 'AUD', USDCAD: 'CAD', USDCHF: 'CHF', NZDUSD: 'NZD', GOLD: 'GOLD', NQ: 'NQ', SPX500: 'SPX' }[n], S = hist?.series?.[key];
   box.innerHTML = `<div class="lbl">Positioning</div>
 ${ct ? `<div class="tt-row"><b>COT speculators</b><span class="chip ${ct.side === 'long' ? 'up' : ct.side === 'short' ? 'dn' : ''}">${h(ct.label ?? ct.zone ?? '–')}</span><span class="mono">${ct.pct ?? '–'}th pct · share ${sg(ct.share, 1)}%</span><span class="muted" style="flex-basis:100%">${h(ct.line ?? '')} <span class="chip" style="font-size:9px">${h(ct.verdict ?? '')}</span> · report ${h(ct.reportDate ?? '')}</span></div>${S ? `<div>${spk(S.specShare.map(Number), 300, 40, 'var(--pur2)')}<div class="muted" style="font-size:11px">speculators' net share, ${h(S.dates[0])} → ${h(S.dates.at(-1))}${['USDJPY', 'USDCAD', 'USDCHF'].includes(n) ? ` (the ${key} future: inverted against the pair)` : ''}</div></div>` : ''}` : '<div class="muted">No COT row for this market.</div>'}
-${cr ? `<div class="tt-row"><b>Retail (OANDA)</b><span style="flex:1;min-width:120px"><span class="gauge" style="display:flex"><i style="width:${cr.long}%;background:var(--up)"></i><i style="width:${100 - cr.long}%;background:var(--dn)"></i></span></span><span class="mono">${cr.long.toFixed(0)}% long${cr.d24 != null ? ` <span class="${dirCls(cr.d24)}">${sg(cr.d24, 1)}</span>` : ''}</span></div>` : '<div class="muted">No retail book for this market.</div>'}
+${cr ? `<div class="tt-row"><b>Retail (OANDA)</b><span style="flex:1;min-width:120px"><span class="gauge" style="display:flex"><i style="width:${cr.long}%;background:var(--up)"></i><i style="width:${100 - cr.long}%;background:var(--dn)"></i></span></span><span class="mono">${cr.long.toFixed(0)}% long${cr.d24 != null ? ` <span class="${dirCls(cr.d24)}">${sg(cr.d24, 1)}</span>` : ''}</span>${globalThis.dataAge?.bookChip(cr.at) ?? ''}</div>` : '<div class="muted">No retail book for this market.</div>'}
 <p class="tt-note">Context, not a signal: the COT positioning factor tested null for direction here.</p>`;
 }
 function pairCarry(n, cv, sk) {
@@ -621,15 +630,14 @@ async function renderResearch() {
 const lt2 = iso => (iso ? new Date(iso).toLocaleString('en-GB', { timeZone: 'Europe/London', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '–');
 function whatDrivesHtml(n) {
   if (typeof D === 'undefined' || !D.run?.head?.ok) return '';
-  const x = cardDrivers(D.run, n); if (!x.rating) return '';
-  const sgnN = v => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v)}`;
-  const rows = x.analysts.map(a => `<div class="tt-row"><span class="chip ${a.net > 0 ? 'up' : a.net < 0 ? 'dn' : ''}" title="net push on ${h(n)}: + up, − down">${h(SRC[a.id] ?? a.id)} ${sgnN(a.net)}</span><b style="flex:1;min-width:0">${h(a.id)}</b><span class="w">${x.dir ? `${a.forN} for · ${a.againstN} against` : `${a.points.length} point${a.points.length === 1 ? '' : 's'}`}${a.gaps.length ? ` · <span class="gold">${a.gaps.length} feed gap${a.gaps.length === 1 ? '' : 's'}</span>` : ''}</span>
-<span class="muted" style="flex-basis:100%;font-size:12px">${a.points.slice(0, 3).map(p => `<span class="${p.push > 0 ? 'up' : 'dn'}">${p.push > 0 ? '▲' : '▼'}${Math.abs(p.push)}</span> ${h(String(p.claim).slice(0, 200))} <span class="mono" style="font-size:10.5px">[${h(p.via.join(', '))}${p.evidence ? ` · ${h(p.evidence)}` : ''}]</span>${p.staleFeeds.length ? ` <span class="chip gold" title="this point rests on a feed that was not fresh that morning">${h(p.staleFeeds.join(', '))}</span>` : ''}`).join('<br>')}${a.points.length > 3 ? `<br>+${a.points.length - 3} more` : ''}</span></div>`).join('');
-  const gaps = x.data.gaps.length ? x.data.gaps.map(g => `${h(g.id)} (${h(g.status)}${g.ageH != null ? `, ${Math.round(g.ageH)}h old` : ''})`).join(', ') : 'none';
-  return `<div class="sec"><h2>What drives this</h2><span class="lbl">from the stored run's analyst reports · not a tested signal</span></div>
-<div class="card" style="padding:10px 14px">${x.analysts.length ? `<div class="muted" style="font-size:12px;margin-bottom:4px">Points that move ${h(nice(n))} through ${h(x.channels.join(', '))}: ${x.dir ? `<b class="up">${x.forPush}</b> of push the card's way, <b class="dn">${x.againstPush}</b> against.` : 'the card is flat.'}</div>${rows}${x.more ? `<div class="muted">+${x.more} more analyst${x.more === 1 ? '' : 's'}</div>` : ''}` : '<div class="muted">No analyst point names this market or its currencies today: the card comes from the desks\' reading of the rulings and the levels.</div>'}
-<div class="drv" style="margin-top:8px"><span>Desk Pack built ${h(lt2(x.data.packBuiltAt))}</span><span>book written ${h(lt2(x.data.bookAt))} London</span><span>forecast lines for ${h(x.data.linesFor ?? '–')}</span></div>
-<div class="muted" style="font-size:12px;margin-top:6px">Stale or empty feeds behind these analysts that morning: <span class="${x.data.gaps.length ? 'gold' : ''}">${gaps}</span>.</div>
+  const x = cardDrivers(D.run, n, { cap: 12 }); if (!x.rating) return '';
+  HDV.ensureCss();
+  const mkt = typeof nice === 'function' ? nice(n) : n;
+  const body = x.analysts.length ? HDV.humanDriversHtml(x, { market: mkt, esc: h })
+    : `<p class="hd-empty">No analyst named ${h(mkt)} or its currencies this morning, so the card rests on the desks' reading of the rulings and the levels.</p>`;
+  return `<div class="sec"><h2>What drives this</h2><span class="lbl">how this morning's analysts read ${h(mkt)} · it explains their thinking, it is not a tested signal</span></div>
+<div class="card hd" style="padding:10px 14px">${body}
+<div class="drv hd-when"><span>Data gathered ${h(lt2(x.data.packBuiltAt))}</span><span>book written ${h(lt2(x.data.bookAt))} London</span><span>forecast lines for ${h(x.data.linesFor ?? '–')}</span></div>
 <div class="sfc" data-surface="panel.asset.plan"><div class="pb" style="margin-top:8px"><div class="iv"><b>Invalid</b><span>${h(x.invalidation ?? '–')}</span></div></div></div></div>`;
 }
 globalThis.whatDrivesHtml = whatDrivesHtml;
@@ -846,6 +854,7 @@ else { const sel = document.querySelector('#tabs [aria-selected="true"]')?.datas
 globalThis.stfvHtml = FVV.stfvTable;
 // the Macro tab's central-bank statement board (desk-terminal.html enrichMacro, a classic script) reads this
 globalThis.cbBoardHtml = CBV.boardHtml;
+globalThis.cbToneStrip = CBV.toneStrip;   // the Currency modal's tone timeline (js/terminal/toneTimelineView.js)
 globalThis.acBoardHtml = ACV.boardHtml;
 globalThis.llGridHtml = LLV.gridHtml;
 // the Macro tab's Rates & policy board (desk-terminal.html enrichMacro): the curve, its slopes, the priced Fed path beside them
@@ -854,6 +863,9 @@ globalThis.ratesBoardHtml = (rb, fp, gy) => { try { return RBV.boardHtml(rb, fp,
 globalThis.macroMoreHtml = (E, extra) => macroMoreHtml(E, extra);
 globalThis.macroMoreBoard = (key, E, extra) => macroMoreBoard(key, E, extra);
 globalThis.macroSubs = MacroSubs;
+globalThis.paperBoardById = (surface, E) => paperBoardById(surface, E);                // the paper-ideas boards (js/terminal/paperBoardsView.js): FOMC day, path gap, JGB, inflation, auctions, coverage, connectedness ...
+globalThis.volClockHtml = VCV.boardHtml;                           // the Assets tab's vol clock board (js/terminal/volClockView.js)
+globalThis.volClockMount = VCV.mount;
 globalThis.overviewMoreHtml = overviewMoreHtml;                   // the Overview's live currency strength slot
 globalThis.liveLayerMount = getAnalyst => { try { mountLive(getJson, getAnalyst); } catch (e) { console.warn('live layer', e); } };   // intraday overlay + the price read (js/terminal/liveLayerView.js)
 globalThis.liveEmCell = liveEmCell; globalThis.liveWiderChip = liveWiderChip;

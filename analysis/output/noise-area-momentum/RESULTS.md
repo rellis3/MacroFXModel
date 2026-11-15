@@ -5,7 +5,34 @@ Prereg: `forge/NOISE_AREA_MOMENTUM_PREREG.md` (committed in `debecee9`, 2026-11-
 (YM, RTY). Branch `main`. Ledger ids: `noise-area-momentum`, `noise-area-momentum-book`, `noise-area-momentum-stop`.
 Page: `noise-area-momentum.html` (standard backtest view; any cost, period and variant).
 
-## Verdict: UNDERPOWERED (all three questions), with a strong Nasdaq cell
+## Re-run on repaired data (2026-11-15, POST-HOC data amendment A2: describes, cannot promote)
+
+The NT8 holes behind A1 were a download fault, not missing history (DATA_SPEC #24: 40-day BarsRequest chunks returned
+only their first hour). ES/NQ/YM/RTY were re-pulled week by week (`nt8_bridge/nt8_gapfill.py`) and re-stitched; the
+same prereg, seed and code (cache `*_days_v3`) were re-run. CFD-filled days fall from ES 277 / NQ 268 / YM 283 / RTY 288
+to **36 / 36 / 39 / 43**; those are days NT8 itself returns nothing for (e.g. ES 2018-07-24..27 and 2018-10-23..26).
+**All three verdicts are unchanged (UNDERPOWERED).** The page and `results.json` now carry the re-run.
+
+| Cell | Banked (CFD fill) | Re-run (repaired NT8) |
+|---|---|---|
+| P1 NQ V2 net Sharpe | 1.23 [0.78, 1.69], halves 1.14 / 1.32 | **1.23 [0.77, 1.65]**, halves 1.13 / 1.32, mean CI [2.5, 6.0] bp |
+| P1 ES V2 net Sharpe | 0.47 [−0.04, 0.98], halves 0.21 / 0.75 | **0.45 [−0.06, 0.93]**, halves 0.17 / 0.76, mean CI [−0.11, 2.64] bp |
+| P2 book V3 | 0.39 [−0.19, 0.89] | **0.37 [−0.16, 0.90]**, halves 0.25 / 0.51 |
+| P3 V2 − V1 (bp/day) | −0.23 [−1.45, +0.99] | **−0.25 [−1.45, +0.94]**, halves +0.18 / −0.68 |
+| ES / NQ V2 gross | 1.03 / 1.42 | 1.02 / 1.42 |
+| ES / NQ after publication (V2) | −0.09 / 0.97 | −0.07 / 0.98 |
+| ES / NQ futures-only days (V2) | 0.66 / 1.24 (277 / 268 days dropped) | 0.41 / 1.16 (36 days dropped) |
+| Decomposition hold (bp, null pct) | ES +3.44 (99.5), NQ +7.26 (99.5) | ES +3.49 (100), NQ +7.30 (100) |
+| YM / RTY V2 | ≈ 0 / −0.79 | −0.04 / −0.79 |
+
+The old "futures-only days" sensitivity (ES 0.66) was a sample that had lost the holed months; on the full futures
+history ES is 0.41. Mechanics ρ unchanged at 0.94.
+
+**SPY, the paper's own instrument**, is now tested separately: `analysis/output/noise-area-momentum/spy/RESULTS.md`
+(`noise-area-momentum-spy` VALIDATED in the paper's window, 1.17 net; post-publication UNDERPOWERED, 0.20). On the
+2,654 days SPY and ES share, daily returns correlate 0.95 and ES is better gross (0.98 vs 0.83): ES's shortfall is cost.
+
+## Verdict: UNDERPOWERED (all three questions), with a strong Nasdaq cell (banked 2026-11-13; numbers below are the original run)
 
 The paper's band + VWAP rule (V2, 1x, net of 1 tick each side + $4.50) **passes every part of the gate on NQ** and
 misses it narrowly on ES, so P1, which needs both, is UNDERPOWERED:

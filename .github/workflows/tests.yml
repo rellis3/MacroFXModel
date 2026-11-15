@@ -14,9 +14,12 @@ on:
   push:
     branches: [main]
 
+# A new push to a pull request cancels the older run of that PR. A push to main never cancels a run that is already going:
+# 2026-11-14 research sessions push a commit a minute, and with cancel-in-progress every one of them cancelled the last, so main
+# had no finished run for hours. GitHub keeps only the newest waiting run, so the queue cannot grow.
 concurrency:
   group: tests-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   javascript:

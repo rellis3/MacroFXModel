@@ -1,0 +1,37 @@
+{
+ "seed": 20261114,
+ "post_hoc": true,
+ "presser_2016_18_P_excess": {
+  "n": 12,
+  "mean": 0.1316342495092547
+ },
+ "statement_only_2016_18_P_excess": {
+  "n": 12,
+  "mean": 0.05454255816967226
+ },
+ "difference": {
+  "mean": 0.07709169133958244,
+  "lo95": 0.03383333581820702,
+  "hi95": 0.1188028619700069
+ },
+ "extreme_in_window_FOMC_days": {
+  "S": {
+   "share": 0.2198952879581152,
+   "cells": 764
+  },
+  "P": {
+   "share": 0.3913612565445026,
+   "cells": 764
+  }
+ },
+ "extreme_in_window_ordinary_days": {
+  "S": {
+   "share": 0.061068702290076333,
+   "cells": 3406
+  },
+  "P": {
+   "share": 0.09864944216089254,
+   "cells": 3406
+  }
+ }
+}

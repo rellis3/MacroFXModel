@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { logoutPlan } from './deskLogout.js';
 
 const s = fs.readFileSync(new URL('../server.js', import.meta.url), 'utf8');
 
@@ -24,5 +25,8 @@ test('when the switch is off, the Theory Lab password gets a clear page, not a l
 
 test('the library has a Log out button that clears both logins and returns to its sign-in page', () => {
   assert.match(fs.readFileSync(new URL('../library.html', import.meta.url), 'utf8'), /class="lib-logout" href="\/logout\?zone=library">Log out</);
-  assert.match(s, /const lib = req\.query\.zone === 'library'[\s\S]{0,700}\[clear\('education'\), clear\('main'\)\][\s\S]{0,200}res\.redirect\('\/library\.html'\)/);
+  // the clearing moved out of server.js into js/deskLogout.js (2026-11-13): the plan is tested here, and server.js must still use it for /logout
+  assert.deepEqual(logoutPlan({ zone: 'library' }), { clear: ['education', 'main'], redirect: '/library.html' });
+  assert.match(s, /app\.get\('\/logout', \(req, res\) => _logoutDo\(req, res, req\.query, false\)\)/);
+  assert.match(s, /_logoutPlan\(\{/);
 });

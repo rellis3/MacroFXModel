@@ -7,15 +7,15 @@
 /** The sections, in pill order, with their blocks in on-screen order. `alias` is the URL hash part: #macro/rates, #macro/rates/fedyields. */
 export const MACRO_SUBS = [
   { id: 'policy', alias: 'policy', label: 'Policy',
-    blocks: ['panel.macro.cbcards', 'panel.macro.cbboard', 'panel.macro.cbfutures', 'panel.macro.ratediff', 'panel.macro.speakers', 'panel.macro.speechdrift', 'panel.macro.ratecycle'] },
+    blocks: ['panel.macro.cbcards', 'panel.macro.cbboard', 'panel.macro.cbfutures', 'panel.macro.ratediff', 'panel.macro.speakers', 'panel.macro.speechdrift', 'panel.macro.ratecycle', 'panel.macro.fomcstrip', 'panel.macro.pathdiff'] },
   { id: 'rates', alias: 'rates', label: 'Rates & curve',
-    blocks: ['panel.macro.ratesboard', 'panel.macro.fedyields', 'panel.macro.curve', 'panel.macro.globalyields', 'panel.macro.termprem'] },
+    blocks: ['panel.macro.ratesboard', 'panel.macro.fedyields', 'panel.macro.curve', 'panel.macro.globalyields', 'panel.macro.termprem', 'panel.macro.jgb', 'panel.macro.inflation', 'panel.macro.fiscalauct'] },
   { id: 'economy', alias: 'economy', label: 'Economy',
     blocks: ['panel.macro.engines', 'panel.macro.scorecard', 'panel.macro.nowcasts', 'panel.macro.cli', 'panel.macro.releases'] },
   { id: 'credit', alias: 'credit', label: 'Credit & liquidity',
     blocks: ['panel.macro.creditliq', 'panel.macro.creditspreads', 'panel.macro.fedliq', 'panel.macro.plumbing', 'panel.macro.xccy', 'panel.macro.bankcredit'] },
   { id: 'markets', alias: 'markets', label: 'Markets & FX',
-    blocks: ['panel.macro.regime', 'panel.macro.vol', 'panel.macro.livelayer', 'panel.macro.fairvalue', 'panel.macro.fxfv', 'panel.macro.carry', 'panel.macro.commodfx', 'panel.macro.copper', 'panel.macro.gpr'] },
+    blocks: ['panel.macro.regime', 'panel.macro.vol', 'panel.macro.livelayer', 'panel.macro.fairvalue', 'panel.macro.fxfv', 'panel.macro.carry', 'panel.macro.commodfx', 'panel.macro.copper', 'panel.macro.gpr', 'panel.macro.rangecoverage', 'panel.macro.connected', 'panel.macro.coupling', 'panel.macro.uncertainty', 'panel.macro.skewhist', 'panel.macro.trendbasket', 'panel.macro.walls'] },
 ];
 
 /** panel.macro.carryside is a column inside the carry block, not a block of its own. */
@@ -29,11 +29,11 @@ const shortOf = b => b.replace(/^panel\.macro\./, '');
 /** The feeds ONLY the Macro tab reads, per section: fetched the first time the section opens, not on page load. Everything the Overview map layers
  *  or another tab reads (world-rates, fed-path, global-yields, bank-credit, fair-value, cb-board, macro-engines-board) stays on the page-load list. */
 export const SUB_FEEDS = {
-  policy: ['speech-drift'],
-  rates: ['rates-board', 'curve-board', 'term-premium'],
+  policy: ['speech-drift', 'policy-extra'],
+  rates: ['rates-board', 'curve-board', 'term-premium', 'rates-extra'],
   economy: ['nowcast', 'leading-indicators', 'releases-board'],
   credit: ['credit-board', 'liquidity-board', 'xccy-basis', 'funding-read?spark=0', 'credit-liquidity'],
-  markets: ['regime-board', 'vol-board', 'live-layer', 'fx-fair-value', 'carry-vol', 'commodity-fx', 'copper-gold'],
+  markets: ['regime-board', 'vol-board', 'live-layer', 'fx-fair-value', 'carry-vol', 'commodity-fx', 'copper-gold', 'markets-extra'],
 };
 
 export const subById = id => MACRO_SUBS.find(s => s.id === id) ?? null;

@@ -2,6 +2,7 @@
  * stateHistory — on the committed seeds (real data), no network.
  * Run: node --test js/stateHistory.test.mjs
  */
+import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -54,7 +55,7 @@ test('surprise history from the 26,403-release backfill: 8 economies, monthly, n
 test('COT board from the committed CSV, back in raw futures terms; spec share from TFF or Disaggregated fields', () => {
   assert.equal(specShare({ lev_money_positions_long: 60, lev_money_positions_short: 40, open_interest_all: 100 }), 0.2);
   assert.equal(specShare({ m_money_positions_long_all: 10, m_money_positions_short_all: 30, open_interest_all: 100 }), -0.2);
-  const csv = loadCotCsv(new URL('..', import.meta.url).pathname);
+  const csv = loadCotCsv(fileURLToPath(new URL('..', import.meta.url)));
   const b = cotBoard(csv);
   assert.ok(b.length >= 20);
   // 2024: specs heavily SHORT the yen futures (the carry trade) — raw terms must show a negative share mid-2024

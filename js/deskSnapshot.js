@@ -184,7 +184,7 @@ export const FULL_FEEDS = [
   'risk-flags', 'em-gauges', 'world-rates', 'fed-path', 'funding-read?spark=0', 'nowcast', 'bank-credit', 'wider-market', 'chain-extra', 'hedging-summary', 'cot-extremes', 'global-yields',
   'credit-board', 'liquidity-board', 'term-premium', 'xccy-basis', 'world-stress',
   'fair-value', 'leading-indicators', 'commodity-fx', 'carry-vol', 'copper-gold', 'session-heat', 'options-skew', 'speech-drift', 'desk-alerts', 'release-surprises',
-  'cb-board', 'macro-engines-board', 'rates-board', 'credit-liquidity', 'curve-board', 'regime-board', 'releases-board', 'vol-board', 'ccy-strength', 'desk-watch',
+  'cb-board', 'macro-engines-board', 'rates-board', 'credit-liquidity', 'curve-board', 'regime-board', 'releases-board', 'vol-board', 'vol-clock', 'ccy-strength', 'desk-watch',
 ];
 /** Long histories or whole books that are already stored somewhere durable, or can be rebuilt from stored prices. Each is left out of FULL, with the reason. */
 export const FULL_EXCLUDED = [
@@ -192,6 +192,9 @@ export const FULL_EXCLUDED = [
   { path: 'fx-fair-value', why: 'about 85 KB; the model re-runs from stored prices and keeps its own forward record (fx_fair_value_log_v1)' },
   { path: 'release-reactions', why: 'about 200 KB; every live reaction is already in release_reaction_log_v1' },
   { path: 'lead-lag', why: 'about 135 KB of statistics recomputed from stored prices' },
+  { path: 'policy-extra', why: 'the FOMC clock and the priced path gap, rebuilt from the schedule and from cb-expectations (which the FULL snapshot already holds)' },
+  { path: 'rates-extra', why: 'the JGB shock card, 5y5y and core PCE, fiscal events and Treasury auctions, rebuilt from their own stored feeds; auction results are kept by TreasuryDirect' },
+  { path: 'markets-extra', why: 'connectedness, commodity coupling, range-line coverage, policy uncertainty, SKEW history, trend basket and option-wall distance, each rebuilt from daily series and bars held elsewhere' },
   { path: 'live-layer', why: 'an intraday overlay rebuilt from OANDA prices every 75 seconds (implied yields, index moves, range used); the CORE point already carries strength and yields, and a daily full copy of a minute-old overlay is not a record' },
   { path: 'autocorrelation', why: 'about 55 KB of statistics recomputed from stored prices' },
   { path: 'desk-news', why: 'about 75 KB wire window; each headline and its reaction is kept in desk_news_record_v1' },

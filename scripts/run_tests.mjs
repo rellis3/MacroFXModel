@@ -16,8 +16,9 @@ import { spawn } from 'node:child_process';
 import { readdirSync, statSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKIP_DIRS = new Set(['node_modules', '.git', 'scratchpad', 'output', 'archive']);
 const TIMEOUT_MS = 600_000;   // the two atlas walk tests take 3-4 min on a shared runner
 
@@ -42,7 +43,10 @@ function runOne(file) {
     const timer = setTimeout(() => { child.kill('SIGKILL'); }, TIMEOUT_MS);
     child.on('close', (code, signal) => {
       clearTimeout(timer);
-      resolve({ file, ok: code === 0, code, timedOut: signal === 'SIGKILL', ms: Date.now() - t0, tail: out.split('\n').slice(-25).join('\n') });
+      // the first failing assertion in the WHOLE output (Node 22 prints TAP when not on a terminal, so the failure sits far above the last lines)
+      const all = out.replace(/\r/g, '').split('\n'); const fi = all.findIndex(l => /^\s*not ok\b|\u2716|AssertionError|\bError:|\bFAIL\b/.test(l));
+      const firstFail = fi >= 0 ? all.slice(fi, fi + 4).map(l => l.trim()).filter(Boolean).join(' | ') : '';
+      resolve({ file, ok: code === 0, code, timedOut: signal === 'SIGKILL', ms: Date.now() - t0, tail: out.split('\n').slice(-25).join('\n'), firstFail });
     });
   });
 }
@@ -50,7 +54,7 @@ function runOne(file) {
 const args = process.argv.slice(2);
 const jsonAt = args.indexOf('--json');
 const jsonOut = jsonAt >= 0 ? args[jsonAt + 1] : null;
-const only = args.filter((a, i) => !a.startsWith('--') && i !== jsonAt + 1);
+const only = args.filter((a, i) => !a.startsWith('--') && !(jsonAt >= 0 && i === jsonAt + 1));   // (before 2026-11-14 this dropped the first file when --json was absent: jsonAt is -1, so index 0 was skipped)
 const files = (only.length ? only : walk(ROOT)).sort();
 const known = existsSync(path.join(ROOT, 'tests/KNOWN_FAILING.json')) ? JSON.parse(readFileSync(path.join(ROOT, 'tests/KNOWN_FAILING.json'), 'utf8')) : {};
 
@@ -68,6 +72,15 @@ const knownStillFailing = failed.filter(r => known[r.file]);
 const nowPassing = results.filter(r => r.ok && known[r.file]);
 
 for (const r of unexpected) console.log(`\n✗ ${r.file} (${r.timedOut ? 'timed out' : `exit ${r.code}`}, ${(r.ms / 1000).toFixed(1)}s)\n${r.tail}`);
+// On GitHub Actions: one annotation per failing file, so the failing test and its first error line show on the run page and in the public
+// annotations API (the full log needs a login). 2026-11-15: two red runs could not be diagnosed from outside without this.
+if (process.env.GITHUB_ACTIONS) {
+  for (const r of unexpected.slice(0, 10)) {
+    const ls = String(r.tail ?? '').replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
+    const hit = r.firstFail || (ls.find(l => /AssertionError|Error:|✖|not ok|refusing|FAILED/.test(l)) ?? ls[ls.length - 1] ?? '');
+    console.log(`::error title=Test failed: ${r.file}::${hit.slice(0, 400).replace(/%/g, '%25').replace(/\r|\n/g, ' ')}`);
+  }
+}
 console.log(`\n${results.length} test files: ${results.length - failed.length} passed, ${failed.length} failed`);
 if (knownStillFailing.length) {
   console.log(`\nKnown failing on main (${knownStillFailing.length}), not counted against this run — fix and remove from tests/KNOWN_FAILING.json:`);

@@ -120,6 +120,7 @@ import { createVolState } from './js/volStateRoutes.js';             // vol stat
 import { createTradePlan } from './js/tradePlanRoutes.js';           // trade-plan shadow forward record, display only (forge/TRADE_PLAN_SHADOW_PREREG.md)
 import { mountLiveLayer as _mountLiveLayer } from './js/liveLayerRoutes.js';   // intraday overlay for the daily boards: EM, indices, implied yields, range used, correlation regime (/api/live-layer)
 import { fxWeekOpen as _llIsFxOpen } from './js/marketClock.js';   // the PRECISE FX-week rule (Friday 17:00 to Sunday 17:00 New York)
+import { mountPaperBoards } from './js/paperBoardsRoutes.js';                  // the paper-ideas boards' routes (FOMC day, path gap, JGB, inflation, auctions, range coverage, connectedness, coupling, SKEW, trend, walls)
 import { mountDeskBoards } from './js/deskBoardRoutes.js';              // the Desk Terminal's newer Macro boards (credit & liquidity, curve, regime, releases, strength, vol)
 import { mountReplay as _mountReplay } from './js/replayRoutes.js';                  // the Desk Terminal REPLAY (time machine, stage 1): a session as minutes, the option levels as known then, strength every 15 min (/api/replay/*)
 import { createStateRoutes } from './js/stateRoutes.js';                // Market State Engine: GET /api/state (plans/MARKET_STATE_ENGINE_PLAN.md)
@@ -418,6 +419,8 @@ import { evaluateIntradayAllHorizons } from './js/intradayForecastResearch.js';
 import { analyzeCrossPair, portfolioIndependence } from './js/crossPairResearch.js';
 import { scanFeatures } from './js/forecastFeatureScan.js';
 import { bandCalcAB } from './js/bandCalcAB.js';
+import { fetchYahooFundAum as _fetchYahooFundAumAuth } from './js/yahooFundAum.js';
+import { saveCorrHistory as _corrSaveR2, restoreCorrHistory as _corrRestoreR2 } from './js/corrHistoryPersist.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, getBuffer as _r2GetBuffer, putBuffer as _r2PutBuffer, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
 import { INSTRUMENTS as _DL_INSTRUMENTS, HORIZONS as _DL_HORIZONS, closesFromCandles as _dlClosesFromCandles, issueRecord as _dlIssue, outcomeRecord as _dlOutcome, summarise as _dlSummarise } from './js/directionLedger.js';
 import { RESEARCH as _DL_RESEARCH, volFlags as _dlVolFlags, FX_CARRY_EUR_OFFSET as _DL_EUR_OFFSET, FX_CARRY_MAX_AGE_DAYS as _DL_RATE_MAX_AGE_DAYS } from './js/directionResearch.js';
@@ -431,6 +434,7 @@ import { buildHedgePlanText as _hpText, orderStates as _hpStates, HEDGE_BLOCK as
 import { cmeBookContracts as _cmeBook, priceDigits as _priceDigits } from './js/hedgingBooks.js';
 import { buildOiProfile, buildProfileText, shiftProfilePrices, chunkText } from './js/oiProfile.js';   // OI Profile indicator export   // CME listed book → hedging contracts (FX, US30)
 import compression from 'compression';
+import { tfOf as _dbTfOf, clampDays as _dbClampDays, candlesUrl as _dbCandlesUrl, shapeCandles as _dbShape, describeBars as _dbDescribe } from './js/deskBarsCore.js';
 import { egressMiddleware, egressSnapshot, egressPersist } from './js/egressMeter.js';
 import { spreadProfileInit, spreadProfileSample, spreadProfileFlush, spreadProfileReport, MOTIF_UNIVERSE as _SPREAD_UNIVERSE } from './js/spreadProfile.js';
 import { loadM1Resampled as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
@@ -1783,6 +1787,9 @@ async function buildCorrHistoryJS() {
       _corrPanelMem = { body: JSON.stringify(res.panel), generated: res.panel.generated, src: 'build' };
       try { await kv.put(CORR_PANEL_KV, _corrPanelMem.body); } catch (kvErr) { console.warn('[CORR] corr panel KV write failed:', kvErr.message); }
     }
+    // keep the 12 MB history across deploys: gzipped in R2, restored at boot while it is still fresh (js/corrHistoryPersist.js)
+    _corrSaveR2({ readFile: () => fs.readFileSync(CORR_HISTORY_PATH, 'utf8'), putBuffer: _r2PutBuffer, configured: _r2Ok })
+      .then(r => console.log(r.ok ? `[CORR] history kept in R2 (${Math.round(r.bytes / 1024)} KB gz)` : `[CORR] history not kept in R2: ${r.reason}`));
     corrProgress = { pct: 100, msg: `Done — ${res.nRecords} snapshots · ${res.pairs.length} pairs · ${kb} KB`, step: 'done', error: null };
 
   } catch (e) {
@@ -7753,21 +7760,31 @@ svcInterval('researchPod', async () => {
   if (s.some(x => !x.brief && _tdWeek(x.date) === _tdWeek(date))) return;
   _rpStart({});
 }, 30 * 60_000);
-// GET /api/desk-bars?inst=USDJPY&days=5: H1 candles for one desk instrument (Desk Terminal charts and sparklines).
-// The desk's names map to OANDA through the vol-forecast list. Cached 10 minutes per instrument and span.
-const _dbCache = new Map();
+// GET /api/desk-bars?inst=USDJPY&tf=1h&days=5: candles for one desk instrument (Desk Terminal charts and sparklines).
+// tf = 5m | 15m | 30m | 1h | 4h (default 1h, the old behaviour); each is OANDA's own granularity, so ONE call per instrument and timeframe,
+// shared by every viewer (pure rules: js/deskBarsCore.js). A bar's time is its OPEN (epoch s); the last bar may be forming (forming:true).
+// The desk's names map to OANDA through the vol-forecast list. Cached per instrument, timeframe and span (1 min for 5m up to 10 min for 1h and 4h);
+// concurrent identical requests share one OANDA call.
+const _dbCache = new Map(), _dbInflight = new Map();
 app.get('/api/desk-bars', async (req, res) => {
   try {
     const inst = String(req.query.inst ?? '').toUpperCase(), sym = _dsOanda[inst];
     if (!sym) return res.status(400).json({ ok: false, error: `unknown instrument ${inst}` });
-    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 5, 1), 20), key = `${inst}|${days}`, hit = _dbCache.get(key);
-    if (hit && Date.now() - hit.at < 10 * 60_000) return res.json(hit.data);
-    const to = new Date(), from = new Date(Date.now() - (days + 2) * 864e5);
-    const vals = await fetchOandaCandleRange(sym, 'H1', from.toISOString().slice(0, 10) + 'T00:00:00Z', to.toISOString().slice(0, 19) + 'Z');
-    const bars = vals.map(v => ({ time: v.t, open: +v.open, high: +v.high, low: +v.low, close: +v.close })).filter(b => Number.isFinite(b.close));
-    const cut = Date.now() / 1000 - days * 86400;
-    const data = { ok: true, inst, bars: bars.filter(b => b.time >= cut) };
-    if (_dbCache.size > 200) _dbCache.clear();
+    const tf = _dbTfOf(req.query.tf), days = _dbClampDays(tf, req.query.days), key = `${inst}|${tf.key}|${days}`, hit = _dbCache.get(key);
+    if (hit && Date.now() - hit.at < tf.ttlMs) return res.json(hit.data);
+    let job = _dbInflight.get(key);
+    if (!job) {
+      job = (async () => {
+        const url = _dbCandlesUrl(_oandaBaseMe(), sym, tf, days);
+        const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(30_000) });
+        if (!r.ok) throw new Error(`OANDA ${sym} ${tf.gran} HTTP ${r.status}`);
+        const now = Date.now(), bars = _dbShape((await r.json()).candles, now, days), d = _dbDescribe(bars, tf, now);
+        return { ok: true, inst, tf: tf.key, gran: tf.gran, sec: tf.sec, days, asOf: now, forming: d.forming, bars };
+      })().finally(() => _dbInflight.delete(key));
+      _dbInflight.set(key, job);
+    }
+    const data = await job;
+    if (_dbCache.size > 300) _dbCache.clear();
     _dbCache.set(key, { at: Date.now(), data });
     res.json(data);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -14310,6 +14327,11 @@ app.get('/api/rbnz/decisions', async (req, res) => {
 // decision headline from its news RSS (cached by /api/rbnz/decisions, 6 h) stands in and the tile says so. 10-minute cache.
 let _cbBoardCache = { at: 0, data: null };
 const _CB_BOARD_TTL_MS = 10 * 60_000;
+// The board reads ten past meetings a bank (the tone timeline). Only the newest two need the whole stored payload (the vote, the word-level diff,
+// the theme scores for the change); older meetings need their score, regime, headline and themes, and a past analysis does not change, so those
+// are kept compact in memory after the first read (the Beige Book payloads alone are ~350 KB each).
+const _cbBoardOld = new Map();
+const _cbBoardCompact = p => (p?.analysis ? { kind: p.kind ?? null, analysis: { hawkishScore: p.analysis.hawkishScore, regime: p.analysis.regime, confidence: p.analysis.confidence, headline: p.analysis.headline, dimensions: p.analysis.dimensions } } : null);
 const _CB_BOARD_MEETINGS = () => ({ fomc: FOMC_MEETINGS, ecb: ECB_MEETINGS, boe: BOE_MEETINGS, boj: BOJ_MEETINGS, rba: RBA_MEETINGS, rbnz: RBNZ_MEETINGS, boc: BOC_MEETINGS, snb: SNB_MEETINGS, beige: BEIGE_BOOK_RELEASES });
 async function _cbBoardRbnzHeadline(meetingDate) {
   try {
@@ -14328,7 +14350,11 @@ async function _cbBoardBuild() {
   const rbnzBlocked = /403|restricted|firewall/i.test((rbnzLog?.log ?? []).join(' · '));
   const banks = await Promise.all(_CB_BOARD_BANKS.map(async meta => {
     const meetings = M[meta.id] ?? [], dates = _cbbPastDates(meetings, now, _CB_BOARD_HISTORY), reads = {};
-    await Promise.all(dates.map(async d => { try { const raw = await kv.get(`${meta.prefix}${d}`); reads[d] = raw ? JSON.parse(raw) : null; } catch { reads[d] = null; } }));
+    await Promise.all(dates.map(async (d, i) => {
+      const key = `${meta.prefix}${d}`, old = i < dates.length - 2;
+      if (old && _cbBoardOld.has(key)) { reads[d] = _cbBoardOld.get(key); return; }
+      try { const raw = await kv.get(key); const p = raw ? JSON.parse(raw) : null; reads[d] = old ? _cbBoardCompact(p) : p; if (old && reads[d]) _cbBoardOld.set(key, reads[d]); } catch { reads[d] = null; }
+    }));
     const newest = dates.at(-1), noRead = newest && !reads[newest]?.analysis;
     const headline = meta.id === 'rbnz' && noRead ? await _cbBoardRbnzHeadline(newest) : null;
     return _cbbShape(meta, { meetings, reads, now, headline, blocked: rbnzBlocked, rate: meta.beige ? null : (pr.rates?.[meta.ccy] ?? null) });
@@ -21620,6 +21646,19 @@ async function _buildDataHealth() {
     // nothing asks for it until a terminal tab is open, so a never-built layer is 'waiting', not dead; once built it should stay inside minutes while a tab is open
     push('liveLayer', `Desk Terminal live layer (EM, indices, implied yields, range used)${s.lastError ? ` (${s.lastError.slice(0, 120)})` : ''}`, s.lastOkAt ? new Date(s.lastOkAt).toISOString() : null, 0.2, { market: true, refreshEveryH: 0.02 });
   } catch { /* best-effort */ }
+  // the vol clock board: judged on its last good build, and only once a tab has asked for it (nothing builds it until then, so never-built is 'waiting')
+  try {
+    const s = app.locals.volClockStatus;
+    if (s) push('volClock', `Desk Terminal vol clock (IV against the forecast sigma)${s.lastError ? ` (${String(s.lastError).slice(0, 120)})` : ''}`, s.lastOkAt ? new Date(s.lastOkAt).toISOString() : null, 0.5, { market: false, refreshEveryH: 0.05 });
+  } catch { /* best-effort */ }
+  // the paper-ideas feeds: judged on the date the data itself runs to, so a server nobody has opened never reads as a dead feed (null = not built since boot, shown as waiting)
+  try {
+    const s = _paperBoards.status();
+    push('jgbCurve', 'Japan JGB curve (MoF file, 2-40y)', s.jgb, 4, { market: false, refreshEveryH: 6 });
+    push('fomcTimes', 'FOMC statement and press-conference times (schedule)', s.fomc, 3, { market: false, refreshEveryH: 12 });
+    push('policyUncert', `Economic policy uncertainty (FRED)${s.errors?.epu && Object.keys(s.errors.epu).length ? ` (${Object.entries(s.errors.epu).map(([k, v]) => `${k}: ${v}`).join('; ').slice(0, 120)})` : ''}`, s.epu, 6, { market: false, refreshEveryH: 6 });
+    push('auctionResults', 'Treasury auction results (TreasuryDirect)', s.auctions, 14, { market: false, refreshEveryH: 1 });
+  } catch { /* best-effort */ }
   const out = { ..._dataHealth(srcs), bootedAt: new Date(_BOOTED_AT).toISOString() };
   _dataHealthCache = { at: Date.now(), data: out };
   return out;
@@ -23252,24 +23291,9 @@ const _goldEtfFlowCache = { data: null, fetchedAt: 0 };
 // possible module/field names depending on ticker/module-set quirks — try each,
 // first one present wins, so a minor Yahoo schema drift degrades gracefully
 // instead of silently returning zero.
-async function _fetchYahooFundAum(ticker) {
-  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}`
-            + `?modules=defaultKeyStatistics,summaryDetail,price`;
-  const r = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX/1.0)' },
-    signal:  AbortSignal.timeout(20_000),
-  });
-  if (!r.ok) throw new Error(`Yahoo fund AUM ${ticker} HTTP ${r.status}`);
-  const json = await r.json();
-  const result = json?.quoteSummary?.result?.[0];
-  if (!result) throw new Error(`Yahoo fund AUM ${ticker}: unexpected response`);
-  const raw = result.defaultKeyStatistics?.totalAssets?.raw
-    ?? result.summaryDetail?.totalAssets?.raw
-    ?? result.price?.marketCap?.raw               // last-resort proxy: share market cap ≈ AUM for a physically-backed trust
-    ?? null;
-  if (raw == null || !Number.isFinite(raw)) throw new Error(`Yahoo fund AUM ${ticker}: no totalAssets/marketCap field found`);
-  return raw;
-}
+// Since 2026-11-15 this goes through js/yahooFundAum.js: quoteSummary needs Yahoo's cookie + crumb and returned HTTP 401 without them, which left the
+// gold ETF history empty (the daily archive job logged 'fetch failed' and moved on).
+async function _fetchYahooFundAum(ticker) { return _fetchYahooFundAumAuth(ticker); }
 
 async function _goldEtfFlowSeries() {
   const age = Date.now() - _goldEtfFlowCache.fetchedAt;
@@ -36043,6 +36067,8 @@ mountDeskBoards(app, {
   mbCached: _mbCached, fredKey: process.env.FRED_KEY, fetchCandles: process.env.OANDA_KEY ? _fetchOandaCandles : null, ratesSeries: async () => { if (Date.now() - _rates.at > 6 * 3600_000 || !_rates.series) await _refreshRates(); return _rates.series; }, getState: () => _stateRoutes.get(), buildCsiInputs, buildCsi, CSI_DEFAULTS,
   selfJson: async p => { const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { signal: AbortSignal.timeout(60_000) }); if (!r.ok) throw new Error(`${p} ${r.status}`); return r.json(); },
 });
+// The boards from the paper-ideas pass (js/paperBoardsRoutes.js): four small free data feeds (JGB curve, FOMC times, policy uncertainty, Treasury auction results) and one feed per Macro section.
+const _paperBoards = mountPaperBoards(app, { fredCsv: _fredCsv, selfJson: async p => { const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { signal: AbortSignal.timeout(60_000) }); if (!r.ok) throw new Error(`${p} ${r.status}`); return r.json(); } });
 // Desk Terminal replay (js/replayRoutes.js): read-only routes behind the Replay tab. Past sessions are cached for hours; nothing is written and no model is called.
 _mountReplay(app, {
   fetchRange: (sym, gran, fromISO, toISO) => { if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not configured'); return fetchOandaCandleRange(_liqGateOandaSym(sym), gran, fromISO, toISO); },
@@ -43336,6 +43362,9 @@ app.get('/api/beta-history', (req, res) => {
     }
     res.json({ records, total: lines.length, sampled: records.length });
   } catch (e) {
+    // The file is written by the LOCAL bot (bot/modules/beta_estimator.py, MT5), never by this server, and bot/data is wiped by every deploy, so on Railway
+    // it normally does not exist. That is an empty history, not a server error: say so (the correlations page then falls back or shows its empty state).
+    if (e && e.code === 'ENOENT') return res.json({ records: [], total: 0, sampled: 0, built: false, message: 'No live-bot beta history on this server: it is written by the local bot, not by Railway. The correlation history (/api/corr-history) and the Desk Terminal Correlations tab do not need it.' });
     res.status(500).json({ error: e.message });
   }
 });
@@ -46406,7 +46435,18 @@ setTimeout(() => {
 // Fetches 5y of H4 OANDA bars for all pairs, computes rolling Pearson correlations + factor betas.
 // ~3 min to build, ~500-900 KB output. Stored at bot/data/corr_history.json.
 // 6-hour cadence keeps z-scores fresh: each H4 bar advances the rolling window by one step.
-svcTimeout('corrHistory', () => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), 60_000);
+// A deploy wipes bot/data. Put the history back from R2 first (when it is fresh enough), and the terminal's daily panel from KV, so the refresh below
+// sees a fresh file and skips the 3-minute, few-hundred-call OANDA rebuild.
+async function _corrRestoreAtBoot() {
+  const r = await _corrRestoreR2({ exists: () => fs.existsSync(CORR_HISTORY_PATH), getBuffer: _r2GetBuffer, configured: _r2Ok, maxAgeMs: CORR_STALE_MS - CORR_STALE_MARGIN_MS,
+    writeFile: txt => { fs.mkdirSync(path.dirname(CORR_HISTORY_PATH), { recursive: true }); fs.writeFileSync(CORR_HISTORY_PATH, txt); },
+    touch: ms => fs.utimesSync(CORR_HISTORY_PATH, new Date(ms), new Date(ms)) });
+  console.log(r.restored ? `[CORR] history restored from R2 (${r.ageH}h old)` : `[CORR] history not restored: ${r.reason}`);
+  if (r.restored && !fs.existsSync(CORR_PANEL_PATH)) {
+    try { const raw = await kv.get(CORR_PANEL_KV); if (raw) fs.writeFileSync(CORR_PANEL_PATH, raw); } catch (e) { console.warn('[CORR] panel restore', e.message); }
+  }
+}
+svcTimeout('corrHistory', () => _corrRestoreAtBoot().catch(e => console.warn('[CORR] restore', e.message)).then(() => runCorrHistoryRefresh()).catch(e => console.error('[CORR]', e.message)), 60_000);
 svcInterval('corrHistory', () => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), CORR_CHECK_MS);   // rebuilds when ~6 h old
 
 // Beta estimation — runs every 2 hours; first run 90s after startup (after corr fetch begins)

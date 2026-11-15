@@ -13,6 +13,7 @@ import { buildRegimeBoard } from './regimeBoardCore.js';
 import { buildReleasesBoard } from './releasesBoardCore.js';
 import { buildStrength, PAIRS } from './ccyStrengthCore.js';
 import { buildVolBoard } from './volBoardCore.js';
+import { buildVolClock } from './volClockCore.js';
 
 // Currency strength keeps two layers of OANDA bars so a per-minute refresh stays cheap: hourly and daily history (15 minutes, for each pair's normal
 // move and the 1D / 1W anchors) and the latest five-minute bars (50 seconds). One in-flight refresh serves every viewer; nothing is fetched while no
@@ -78,6 +79,19 @@ export function mountDeskBoards(app, d) {
   route('/api/vol-board', 'volboard', 0.17, async () => {
     const [state, skew] = await Promise.all([d.getState().catch(() => null), d.selfJson('/api/options-skew').catch(() => null)]);
     return buildVolBoard({ state, skew });
+  });
+
+  // Implied vol against the forecast and the vol clock (Assets tab): the Daily Read's IV / sigma rows and forward record, the vol intelligence for every market and the live
+  // layer's range used (self-calls, all cached feeds; nothing here fetches a paid feed). Its last good build is what the health row judges.
+  const vcStatus = app.locals.volClockStatus = { lastOkAt: null, lastError: null };
+  route('/api/vol-clock', 'volclock', 0.03, async () => {
+    try {
+      const [dailyRead, intel, live] = await Promise.all(['/api/daily-read', '/api/vol-forecast/intelligence', '/api/live-layer'].map(p => d.selfJson(p).catch(() => null)));
+      const out = buildVolClock({ dailyRead, intel, live });
+      if (!out.ok) throw new Error(out.error);
+      vcStatus.lastOkAt = Date.now(); vcStatus.lastError = null;
+      return out;
+    } catch (e) { vcStatus.lastError = e.message; throw e; }
   });
 
   // Releases and who is positioned: the calendar, the COT crowding, the measured reactions and the front-end rate legs (self-calls, all cached feeds)

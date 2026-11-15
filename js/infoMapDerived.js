@@ -31,6 +31,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -85,6 +86,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -146,6 +148,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -202,6 +205,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -248,6 +252,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -294,6 +299,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -342,6 +348,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -390,6 +397,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -424,6 +432,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEnginesCore.js"
     ],
     "today": [
@@ -1090,6 +1099,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/fedPathYieldsView.js",
+     "js/terminal/humanDrivers.js",
      "js/terminal/ratesBoardView.js",
      "js/terminal/terminalTabs.js"
     ],
@@ -1133,6 +1143,7 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/cbBoardCore.js",
      "js/terminal/cbBoardView.js",
+     "js/terminal/dataAge.js",
      "js/terminal/mapLayers.js",
      "js/terminal/terminalTabs.js"
     ],
@@ -1224,11 +1235,38 @@ export const DERIVED = {
       "skill": "rates_cb",
       "maxAgeH": 240
      }
+    },
+    {
+     "route": "/api/treasury-auction-results",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/rates-extra",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/paperBoardsCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/paperBoardsRoutes.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/paperBoardsView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "js/terminal/macroSubtabs.js",
+     "js/terminal/paperBoardsView.js",
+     "js/terminal/terminalTabs.js"
+    ],
     "today": [],
     "atlas": [
      "atlas.html"
@@ -1795,6 +1833,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/dataAge.js",
      "js/terminal/macroSubtabs.js"
     ],
     "today": [],
@@ -2318,6 +2357,19 @@ export const DERIVED = {
      }
     },
     {
+     "route": "/api/vol-forecast/intelligence",
+     "exists": true,
+     "pack": {
+      "skill": "vol_iv",
+      "maxAgeH": 24
+     }
+    },
+    {
+     "route": "/api/vol-clock",
+     "exists": true,
+     "pack": null
+    },
+    {
      "route": "/api/forecast-path",
      "exists": true,
      "pack": {
@@ -2344,7 +2396,10 @@ export const DERIVED = {
    ],
    "modules": [],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/volClockView.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -2681,11 +2736,33 @@ export const DERIVED = {
       "skill": "global_market",
       "maxAgeH": 72
      }
+    },
+    {
+     "route": "/api/markets-extra",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/paperBoardsCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/paperBoardsRoutes.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/paperBoardsView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "js/terminal/macroSubtabs.js",
+     "js/terminal/paperBoardsView.js",
+     "js/terminal/terminalTabs.js"
+    ],
     "today": [],
     "atlas": [],
     "newsletter": []
@@ -3217,11 +3294,25 @@ export const DERIVED = {
       "skill": "events_news",
       "maxAgeH": 720
      }
+    },
+    {
+     "route": "/api/rates-extra",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/paperBoardsView.js",
+     "exists": true
+    }
+   ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "js/terminal/macroSubtabs.js",
+     "js/terminal/paperBoardsView.js",
+     "js/terminal/terminalTabs.js"
+    ],
     "today": [],
     "atlas": [
      "atlas.html"
@@ -3245,7 +3336,7 @@ export const DERIVED = {
     {
      "file": "correlations.html",
      "exists": true,
-     "lastModified": "2026-11-06",
+     "lastModified": "2026-11-15",
      "hub": [
       "research"
      ]
@@ -3480,6 +3571,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/dataAge.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/optionsView.js",
@@ -3632,6 +3724,7 @@ export const DERIVED = {
      "js/terminal/moreBoards.js",
      "js/terminal/optionsView.js",
      "js/terminal/pairView.js",
+     "js/terminal/paperBoardsView.js",
      "js/terminal/regimeBoardView.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
@@ -3682,6 +3775,497 @@ export const DERIVED = {
     "newsletter": []
    },
    "evidence": [],
+   "packSkills": [],
+   "drift": []
+  },
+  "jgb-curve": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/jgb-curve",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/rates-extra",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/paperBoardsCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/paperBoardsRoutes.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/paperBoardsView.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "js/terminal/macroSubtabs.js",
+     "js/terminal/paperBoardsView.js",
+     "js/terminal/terminalTabs.js"
+    ],
+    "today": [],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [],
+   "packSkills": [],
+   "drift": []
+  },
+  "fomc-event-times": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/fomc-event-times",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/policy-extra",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/paperBoardsCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/paperBoardsRoutes.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/paperBoardsView.js",
+     "exists": true
+    },
+    {
+     "file": "js/fomcCalendar.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "js/terminal/macroSubtabs.js",
+     "js/terminal/paperBoardsView.js",
+     "js/terminal/terminalTabs.js"
+    ],
+    "today": [],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [],
+   "packSkills": [],
+   "drift": []
+  },
+  "policy-uncertainty": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/policy-uncertainty",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/markets-extra",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/paperBoardsCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/paperBoardsRoutes.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/paperBoardsView.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "js/terminal/macroSubtabs.js",
+     "js/terminal/paperBoardsView.js",
+     "js/terminal/terminalTabs.js"
+    ],
+    "today": [],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [],
+   "packSkills": [],
+   "drift": []
+  },
+  "market-connectedness": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/markets-extra",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/paperBoardsCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/paperBoardsRoutes.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/paperBoardsView.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "js/terminal/macroSubtabs.js",
+     "js/terminal/paperBoardsView.js",
+     "js/terminal/terminalTabs.js"
+    ],
+    "today": [],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [],
+   "packSkills": [],
+   "drift": []
+  },
+  "range-line-coverage": {
+   "pages": [
+    {
+     "file": "forecast-coverage.html",
+     "exists": true,
+     "lastModified": "2026-07-25",
+     "hub": [
+      "vol"
+     ]
+    }
+   ],
+   "routes": [
+    {
+     "route": "/api/markets-extra",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/paperBoardsCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/paperBoardsRoutes.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/paperBoardsView.js",
+     "exists": true
+    },
+    {
+     "file": "js/forecastCoverage.js",
+     "exists": true
+    },
+    {
+     "file": "js/forecastCore.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "js/terminal/macroSubtabs.js",
+     "js/terminal/paperBoardsView.js",
+     "js/terminal/terminalTabs.js"
+    ],
+    "today": [],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [
+    {
+     "id": "vol-curve-front",
+     "known": true,
+     "verdict": "validated"
+    }
+   ],
+   "packSkills": [],
+   "drift": []
+  },
+  "commodity-currency-coupling": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/markets-extra",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/paperBoardsCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/paperBoardsRoutes.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/paperBoardsView.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "js/terminal/macroSubtabs.js",
+     "js/terminal/paperBoardsView.js",
+     "js/terminal/terminalTabs.js"
+    ],
+    "today": [],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [],
+   "packSkills": [],
+   "drift": []
+  },
+  "policy-path-differential": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/cb-expectations",
+     "exists": true,
+     "pack": {
+      "skill": "rates_cb",
+      "maxAgeH": 72
+     }
+    },
+    {
+     "route": "/api/policy-extra",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/paperBoardsCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/paperBoardsRoutes.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/paperBoardsView.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/cbBoardView.js",
+     "js/terminal/dataAge.js",
+     "js/terminal/macroSubtabs.js",
+     "js/terminal/mapLayers.js",
+     "js/terminal/paperBoardsView.js",
+     "js/terminal/terminalTabs.js"
+    ],
+    "today": [],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [
+    {
+     "id": "stir-wide-scan",
+     "known": true,
+     "verdict": "null"
+    },
+    {
+     "id": "rate-surprise-eurusd",
+     "known": true,
+     "verdict": "underpowered"
+    }
+   ],
+   "packSkills": [
+    "rates_cb"
+   ],
+   "drift": []
+  },
+  "inflation-5y5y-core-pce": {
+   "pages": [
+    {
+     "file": "chapters.html",
+     "exists": true,
+     "lastModified": "2026-10-26",
+     "hub": [
+      "live"
+     ]
+    }
+   ],
+   "routes": [
+    {
+     "route": "/api/chapters",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/rates-extra",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/paperBoardsCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/paperBoardsRoutes.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/paperBoardsView.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "js/terminal/macroSubtabs.js",
+     "js/terminal/paperBoardsView.js",
+     "js/terminal/terminalTabs.js"
+    ],
+    "today": [
+     "today.html"
+    ],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [],
+   "packSkills": [],
+   "drift": []
+  },
+  "skew-index-history": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/chapters",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/markets-extra",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/paperBoardsCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/paperBoardsRoutes.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/paperBoardsView.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "js/terminal/macroSubtabs.js",
+     "js/terminal/paperBoardsView.js",
+     "js/terminal/terminalTabs.js"
+    ],
+    "today": [
+     "today.html"
+    ],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [
+    {
+     "id": "skew-fade",
+     "known": true,
+     "verdict": "null"
+    }
+   ],
+   "packSkills": [],
+   "drift": []
+  },
+  "oi-wall-distance": {
+   "pages": [
+    {
+     "file": "oi-dashboard-v2.html",
+     "exists": true,
+     "lastModified": "2026-11-11",
+     "hub": [
+      "live"
+     ]
+    }
+   ],
+   "routes": [
+    {
+     "route": "/api/oi-store",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/markets-extra",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/paperBoardsCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/paperBoardsRoutes.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/paperBoardsView.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "js/terminal/dataAge.js",
+     "js/terminal/macroSubtabs.js",
+     "js/terminal/optionsView.js",
+     "js/terminal/paperBoardsView.js",
+     "js/terminal/terminalTabs.js",
+     "js/terminal/terrainPanel.js"
+    ],
+    "today": [
+     "today.html"
+    ],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [
+    {
+     "id": "wall-placebo",
+     "known": true,
+     "verdict": "null"
+    }
+   ],
    "packSkills": [],
    "drift": []
   },
@@ -3903,7 +4487,9 @@ export const DERIVED = {
     "vol_iv",
     "levels_structure"
    ],
-   "drift": []
+   "drift": [
+    "The traced status says drawn but no terminal file names its route: re-trace (it may arrive through a bundle)."
+   ]
   },
   "commodity-fx-copper-gold-session-heat": {
    "pages": [],

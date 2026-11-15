@@ -344,3 +344,31 @@ html[data-market="closed"] [data-mktboard],html[data-market="closed"] #tt-chain 
 .ll-tag.disagree{color:var(--gold)}.ll-tag.agree{color:var(--up)}
 @media (max-width:760px){.ll-prh{display:none}.ll-pr{grid-template-columns:62px minmax(40px,1fr) 24px minmax(40px,1fr) 50px;row-gap:2px}.ll-ps,.ll-tag{grid-column:2 / -1;text-align:left}.ll-rr{grid-template-columns:62px minmax(0,1fr) 40px 56px}}
 @media (prefers-reduced-motion:reduce){.ll-pulse{animation:none}.ll-rf,.ll-pa,.ll-mk{transition:none}}
+
+/* paper-ideas boards (js/terminal/paperBoardsView.js): condition lights, spillover flow, big numbers, bid-to-cover bars. Tokens only; motion off under prefers-reduced-motion. */
+.pb-lights{display:grid;gap:14px}
+.pb-lightbox{display:flex;gap:12px;align-items:flex-start}
+.pb-light{flex:none;width:18px;height:18px;margin-top:3px;border-radius:50%;background:var(--bg3);border:1px solid var(--line2)}
+.pb-light.on{background:var(--gold);border-color:var(--gold);box-shadow:0 0 12px 2px var(--gold)}
+.pb-light.type{background:var(--pur2);border-color:var(--pur2);box-shadow:0 0 10px 1px var(--pur2)}
+.pb-big{font-size:30px;font-weight:700;color:var(--tx);margin:4px 0}
+.pb-bar{display:inline-block;width:70px;height:7px;margin-right:6px;border-radius:4px;background:var(--bg3);vertical-align:middle;overflow:hidden}
+.pb-bar i{display:block;height:100%;background:var(--pur2)}
+@keyframes pbpulse{50%{box-shadow:0 0 20px 5px var(--gold)}}
+@keyframes pbflow{to{stroke-dashoffset:-28}}
+@media (prefers-reduced-motion:no-preference){.pb-light.on{animation:pbpulse 2.4s ease-in-out infinite}.pb-flow{stroke-dasharray:6 8;animation:pbflow 3s linear infinite}}
+/* timeframe pills (js/terminal/timeframePills.js): the candle size on every intraday chart, and the muted "daily data" chip on the rest. Tokens only. */
+.tfp-host{margin:10px 0 0}
+.tfp-row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.tfp{display:inline-flex;gap:2px;padding:2px;border:1px solid var(--line2);border-radius:9px;background:var(--bg2);max-width:100%;overflow-x:auto}
+.tfp-b{appearance:none;border:0;background:transparent;color:var(--tx3);font:600 11px var(--mono);letter-spacing:.04em;padding:6px 10px;min-width:38px;border-radius:7px;cursor:pointer}
+.tfp-b:hover{color:var(--tx)}
+.tfp-b[aria-pressed="true"]{background:rgba(var(--purrgb),.22);color:var(--tx);box-shadow:0 0 10px rgba(var(--purrgb),.28)}
+.tfp-b:focus-visible{outline:2px solid var(--pur2);outline-offset:1px}
+.tfp-chips{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0}
+.tfp-chip{font:600 10.5px var(--mono);letter-spacing:.05em;padding:2px 8px;border-radius:999px;border:1px solid var(--line2);color:var(--tx3);white-space:nowrap}
+.tfp-chip.forming{color:var(--gold);border-color:var(--gold)}
+.tfp-chip.closed{color:var(--tx2)}
+.tfp-chip.err{color:var(--dn);border-color:var(--dn);white-space:normal}
+.tfp-chip.daily{border-style:dashed;font-weight:500}
+@media (prefers-reduced-motion:no-preference){.tfp-chip.forming{animation:tfpPulse 2.4s ease-in-out infinite}@keyframes tfpPulse{50%{opacity:.55}}}
