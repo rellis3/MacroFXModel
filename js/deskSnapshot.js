@@ -199,6 +199,7 @@ export const FULL_EXCLUDED = [
   { path: 'autocorrelation', why: 'about 55 KB of statistics recomputed from stored prices' },
   { path: 'desk-news', why: 'about 75 KB wire window; each headline and its reaction is kept in desk_news_record_v1' },
   { path: 'state', why: 'about 350 KB market-state document; its history is archived by the state engine (archive/oi_summary, archive/series) and it is rebuilt from them' },
+  { path: 'bias-engine', why: 'the bias engine issue is already kept for good, one write-once KV key a day (bias_engine_<date>, served by /api/bias-engine?date=), and scored forward on the bias scoreboard; an unstored live read is not a record' },
   { path: 'desk-run', why: 'about 275 KB; the morning book is already kept for good, one key a day (desk_run_<date>); CORE carries its ratings, convictions and exposure' },
 ];
 /** Feeds that carry trade levels or the owner's own record: stored in FULL for the owner, removed from a desk viewer's copy. */

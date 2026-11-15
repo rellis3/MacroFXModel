@@ -1,4 +1,4 @@
-// The Macro tab's five sections (js/terminal/macroSubtabs.js): every Macro surface sits in exactly one section, the page draws it in THAT section,
+// The Macro tab's six sections (js/terminal/macroSubtabs.js): every Macro surface sits in exactly one section, the page draws it in THAT section,
 // the pure helpers (hash, pills, which section opens, which feeds a section still needs) behave, and no feed that another tab reads became lazy.
 //   node --test js/terminal/macroSubtabs.test.mjs
 import test from 'node:test';
@@ -59,6 +59,8 @@ test('hash: #macro/rates, #macro/rates/fedyields, #macro/fedyields, junk', () =>
   assert.equal(parseHash(''), null);
   assert.deepEqual(parseHash('#macro/nonsense'), { sub: null, block: null });
   assert.equal(hashFor('credit'), '#macro/credit');
+  assert.deepEqual(parseHash('#macro/engine'), { sub: 'engine', block: null });
+  assert.deepEqual(parseHash('#macro/biasengine'), { sub: 'engine', block: 'panel.macro.biasengine' });
   assert.equal(hashFor('rates', 'panel.macro.fedyields'), '#macro/rates/fedyields');
   for (const s of MACRO_SUBS) assert.equal(parseHash(hashFor(s.id)).sub, s.id);
   for (const b of ALL_BLOCKS) assert.deepEqual(parseHash(hashFor(BLOCK_SUB[b], b)), { sub: BLOCK_SUB[b], block: b });
@@ -86,14 +88,16 @@ test('a section whose blocks are all switched off is hidden; one on block keeps 
 test('pills: a tablist with the active one selected and keyboard stepping that wraps', () => {
   const h = pillsHtml('rates');
   assert.match(h, /role="tablist"/);
-  assert.equal((h.match(/role="tab"/g) ?? []).length, 5);
+  assert.equal((h.match(/role="tab"/g) ?? []).length, SUB_IDS.length);
+  assert.ok(h.includes('data-msub="engine"'), 'the Bias engine section has a pill');
   assert.match(h, /data-msub="rates"[^>]*>/);
   assert.match(h, /id="msubtab-rates" aria-selected="true"/);
   assert.match(h, /id="msubtab-policy" aria-selected="false"/);
   assert.ok(!pillsHtml('rates', ['policy', 'rates']).includes('data-msub="credit"'));
   assert.equal(stepSub('policy', 1), 'rates');
-  assert.equal(stepSub('markets', 1), 'policy');
-  assert.equal(stepSub('policy', -1), 'markets');
+  assert.equal(stepSub('markets', 1), 'engine');
+  assert.equal(stepSub('engine', 1), 'policy');
+  assert.equal(stepSub('policy', -1), 'engine');
   assert.equal(stepSub('rates', 1, ['rates']), 'rates');
   assert.equal(stepSub('x', 1, []), null);
   assert.match(pillsHtml('policy'), /Credit &amp; liquidity/, 'labels are escaped');

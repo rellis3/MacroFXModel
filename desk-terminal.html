@@ -200,6 +200,31 @@ html[data-role="owner"] .disclaimer{display:none}
 .sfc{display:contents}   /* a surface wrapper: invisible to layout; access.js hides the switched-off ones (js/terminal/tabRegistry.js) */
 .nolink{color:var(--tx3);cursor:default}
 [data-empty]{display:none!important}   /* access.js sweepEmpty: a card whose values are all blank for this session (its data is withheld) */
+/* the bias engine on the cards (js/terminal/biasEngineView.js): theme tokens only */
+.be-key{margin:8px 0 2px}
+.be-key ul{margin:4px 0 0;padding:0;list-style:none}
+.be-key li{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr) auto;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.be-key li b{font-weight:600;color:var(--tx);white-space:nowrap}
+.be-key li .muted{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px}
+.be-foot{font-size:11px;margin:6px 0 0}
+.be-why{font-size:13px;color:var(--tx2);margin:6px 0 10px}
+.be-table td,.be-table th{padding:5px 6px;vertical-align:top}
+.be-table tfoot td{border-top:1px solid var(--line2)}
+.be-miss{margin:6px 0;font-size:12px}
+.be-miss ul{margin:4px 0;padding-left:18px}
+.be-flip{border-left:3px solid var(--line2);background:var(--bg3);border-radius:0 8px 8px 0;padding:8px 12px;margin:10px 0}
+.be-flip p{margin:4px 0 0;font-size:13px}
+.be-ring{display:inline-flex;flex-direction:column;align-items:center;gap:0;margin-left:4px}
+.be-ring small{font:600 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)}
+.be-rank .sbox{position:relative}
+.be-rank .be-rk{position:absolute;top:6px;right:8px;font-size:10px}
+.be-legs{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
+.be-leg{background:var(--bg3);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.be-grid td{min-width:58px}
+.be-grid th{white-space:nowrap}
+.be-w .be-wr{display:grid;grid-template-columns:92px 1fr 40px;gap:8px;align-items:center;margin:4px 0;font-size:12px}
+.be-gaps{margin:0;padding-left:18px;font-size:12.5px}
+.be-gaps li{margin:3px 0}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
@@ -636,11 +661,14 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 
 // ── data ──
 async function load() {
+  // the bias engine (GET /api/bias-engine: today's stored issue, else a live read). Asked for with the others but not waited on, since a live read can take
+  // a few seconds to gather; the cards that show it are drawn again when it lands. No answer, or not ok: nothing of the engine is drawn (fail soft).
+  getJson('/api/bias-engine').then(be => { D.be = be?.ok && be.currencies ? be : null; beArrived(); }).catch(() => {});
   const [run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev, tw, wk, news, pr, cbx, dfc, ps] = await Promise.all([
     getJson('/api/desk-run'), getJson('/api/desk-score/record'), getJson('/api/desk-update'), getJson('/api/desk-quality'),
     getJson('/api/macro-scorecard'), getJson('/api/rate-diff'), getJson('/api/real-yield'), getJson('/api/rates'),
     getJson('/api/cot-state'), getJson('/api/oanda-book/history'), getJson('/api/gpr'), getJson('/api/events'), getJson('/api/trade-watch'), getJson('/api/desk-weekly'), getJson('/api/desk-news?hours=24&tier=2'), getJson('/api/policy-rates'), getJson('/api/cb-expectations'), getJson('/api/desk-dayfc'), getJson('/api/pair-select')]);
-  D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, tw, wk, pr, cbx, dfc, ps, news: news?.ok ? news.items : [], ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
+  D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, tw, wk, pr, cbx, dfc, ps, be: D.be, news: news?.ok ? news.items : [], ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
   const ok = run?.ok && run.head?.ok;
   D.cards = ok ? run.head.book.instruments : {};
   D.ccy = ok ? (run.debate?.currency?.view?.currencies ?? Object.fromEntries(Object.entries(run.head.book.currencies ?? {}).map(([k, v]) => [k, { bias: v.bias, why: v.why }]))) : {};
@@ -809,6 +837,7 @@ function mxSection(sub) {
   if (sub === 'rates') return sf('panel.macro.ratesboard', globalThis.ratesBoardHtml?.(E['rates-board'], fp, E['global-yields']) ?? '') + (globalThis.fedYieldsHtml?.(fp, E['rates-board'], E['term-premium']) ?? '') + more('curve-board') + sf('panel.macro.globalyields', BB.globalyields) + grid(sf('panel.macro.termprem', BB.termprem)) + sf('panel.macro.jgb', paper('panel.macro.jgb')) + sf('panel.macro.inflation', paper('panel.macro.inflation')) + sf('panel.macro.fiscalauct', paper('panel.macro.fiscalauct'));
   if (sub === 'economy') return sf('panel.macro.engines', globalThis.ttMacroBoardHtml?.(E['macro-engines-board']) ?? '') + sf('panel.macro.scorecard', mxScorecard()) + grid(sf('panel.macro.cli', DB.cli) + sf('panel.macro.nowcasts', OB.nowcasts)) + more('releases-board');
   if (sub === 'credit') return more('credit-liquidity') + grid(sf('panel.macro.creditspreads', BB.creditspreads) + sf('panel.macro.fedliq', BB.fedliq) + sf('panel.macro.xccy', BB.xccy) + sf('panel.macro.plumbing', OB.plumbing) + sf('panel.macro.bankcredit', OB.bankcredit));
+  if (sub === 'engine') return sf('panel.macro.biasengine', beTry(() => BEV()?.macroSectionHtml(beRec())) || `<div class="card muted">${D.be === null ? 'The bias engine has no read right now.' : 'Loading the bias engine…'}</div>`);
   if (sub === 'markets') return more('regime-board') + more('vol-board') + more('live-layer') + sf('panel.macro.fairvalue', DB.fairvalue) + sf('panel.macro.fxfv', DB.fxfv) + grid(sf('panel.macro.carry', DB.carry) + sf('panel.macro.commodfx', DB.commodfx) + sf('panel.macro.copper', DB.copper)) + sf('panel.macro.gpr', mxGpr()) + sf('panel.macro.rangecoverage', paper('panel.macro.rangecoverage')) + sf('panel.macro.connected', paper('panel.macro.connected')) + sf('panel.macro.coupling', paper('panel.macro.coupling')) + sf('panel.macro.uncertainty', paper('panel.macro.uncertainty')) + sf('panel.macro.skewhist', paper('panel.macro.skewhist')) + sf('panel.macro.trendbasket', paper('panel.macro.trendbasket')) + sf('panel.macro.walls', paper('panel.macro.walls'));
   return '';
 }
@@ -1061,16 +1090,17 @@ function mountHero() {
 function overviewNoBook() {
   const viewer = globalThis.deskAccessState?.role === 'viewer';
   if (HLAYER === 'bias') HLAYER = 'rates';
-  $('overview').innerHTML = `${viewer ? '' : `<div class="card"><p>No desk book yet today.</p><p class="muted">${esc(D.run?.error ?? '')} The book is written at 06:55 London when the Desk Run service is on, or from the Desk Run page.</p></div>`}<div class="sfc" data-surface="panel.ov.hero">${heroCard('The world', 'Policy, markets, economy, credit and value', false)}</div><div id="xo"></div><div class="sfc" data-surface="panel.ov.dayshape">${dayShape()}</div><div class="sec"><h2>News</h2></div><div class="sfc" data-surface="panel.ov.wire">${wireCard(D.news)}</div>`;
+  $('overview').innerHTML = `${viewer ? '' : `<div class="card"><p>No desk book yet today.</p><p class="muted">${esc(D.run?.error ?? '')} The book is written at 06:55 London when the Desk Run service is on, or from the Desk Run page.</p></div>`}<div class="sfc" data-surface="panel.ov.hero">${heroCard('The world', 'Policy, markets, economy, credit and value', false)}</div><div class="sfc" data-surface="panel.ov.engine"><div id="beov" style="margin-bottom:14px"></div></div><div id="xo"></div><div class="sfc" data-surface="panel.ov.dayshape">${dayShape()}</div><div class="sec"><h2>News</h2></div><div class="sfc" data-surface="panel.ov.wire">${wireCard(D.news)}</div>`;
   wire($('overview'));
   mountHero();
+  beOverview();
 }
 function overview() {
   if (!D.run?.ok) { overviewNoBook(); return; }
   const live = Object.entries(D.cards).filter(([, c]) => DIR[c.rating] && c.size > 0).sort((a, b) => b[1].size * (CONV[b[1].conviction] ?? .8) * Math.abs(DIR[b[1].rating]) - a[1].size * (CONV[a[1].conviction] ?? .8) * Math.abs(DIR[a[1].rating])).slice(0, 6);
   $('overview').innerHTML = `<div class="sfc" data-surface="panel.ov.hero">${heroCard(`The desk's world · ${esc(D.run.date)}`, `${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest`, true)}</div>
 <div class="sfc" data-surface="panel.ov.book">${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span class="lbl">Today's book</span><div class="thesis" style="font-size:16px">${esc(D.run.head.book.headline)}</div></div>` : ''}</div><div class="sfc" data-surface="panel.ov.bookintel"><div id="bkintel" style="margin-bottom:14px"></div></div>
-<div class="grid g2"><div class="sfc" data-surface="panel.ov.regime">${regimeCard()}</div><div class="grid" style="align-content:start"><div class="sfc" data-surface="panel.ov.strength">${strengthStrip()}</div><div class="sfc" data-surface="panel.ov.exposure">${sh(exposureChart)}</div><div class="sfc" data-surface="panel.ov.record">${sh(recordCard)}</div></div></div>
+<div class="grid g2"><div class="sfc" data-surface="panel.ov.regime">${regimeCard()}</div><div class="grid" style="align-content:start"><div class="sfc" data-surface="panel.ov.strength">${strengthStrip()}</div><div class="sfc" data-surface="panel.ov.engine"><div id="beov"></div></div><div class="sfc" data-surface="panel.ov.exposure">${sh(exposureChart)}</div><div class="sfc" data-surface="panel.ov.record">${sh(recordCard)}</div></div></div>
 <div class="sfc" data-surface="panel.ov.week">${sh(weekSection)}</div><div class="sfc" data-surface="panel.ov.bestpairs">${sh(bestPairs)}</div><div id="xo"></div><div class="sfc" data-surface="panel.ov.dayshape">${dayShape()}</div>
 <div class="sfc" data-surface="panel.ov.tradewatch"><div class="sec"><h2>Trade watch</h2><span class="lbl">the book against live prices, every 2 minutes</span></div>${sh(watchBoard)}</div>
 <div class="sfc" data-surface="panel.ov.playbooks"><div class="sec"><h2>Playbooks</h2><span class="lbl">the six largest cards · tap for the full analysis</span></div><div class="grid g3">${live.map(([n, c]) => playbookCard(n, c)).join('')}</div></div>
@@ -1078,8 +1108,32 @@ function overview() {
   wire($('overview'));
   if (globalThis.deskSurfaceOn('panel.ov.bookintel')) sh(() => globalThis.drawBookIntel?.($('bkintel')));   // js/terminal/bookPanels.js
   mountHero();
+  beOverview();
   $('overview').querySelectorAll('.spk').forEach(el => sparkline(el, el.dataset.spk, D.cards[el.dataset.spk]));
 }
+
+// ── the BIAS ENGINE on the cards (js/biasEngine.js via /api/bias-engine, drawn by js/terminal/biasEngineView.js). Every piece is a registered surface
+// (panel.ov.engine, panel.ccy.engine, panel.asset.engine, panel.macro.biasengine; the flip line is panel.asset.beflip, a 'trade' surface). No engine data, or
+// the module not loaded yet: each draws nothing. A rule-based macro checklist scored forward on the bias scoreboard; not a trade signal. ──
+const BEV = () => globalThis.biasEngineView ?? null;
+const beRec = () => (D.be?.currencies ? D.be : null);
+const beOf = n => { const V = BEV(), r = beRec(); if (!V || !r) return null; try { return V.marketView(r, n); } catch { return null; } };
+const beTry = fn => { try { return fn() ?? ''; } catch (e) { console.warn('bias engine', e); return ''; } };
+function beOverview() {
+  const box = $('beov'), V = BEV(), r = beRec(); if (!box) return;
+  box.innerHTML = V && r ? beTry(() => V.rankingStripHtml(r, { deskRanking: D.run?.ok ? D.ranking : null, agree: D.run?.ok ? V.agreement(r, { cards: D.cards, ccy: D.ccy }) : null, flag: FLAG })) : '';
+  wire(box);
+}
+function beCcyRing(c) {
+  const V = BEV(), m = beRec()?.currencies?.[c]; if (!V || !m) return '';
+  return `<span class="be-ring" title="${esc(`Bias engine: ${V.engineLabel(m)}, score ${V.sgn(m.score)} of ±2 (ring ×2.5, so −5..+5). ${V.FOOTNOTE}`)}">${ring(V.ring5(m), 40, `engine ${V.engineLabel(m)}`)}<small>engine</small></span>`;
+}
+// the engine has landed (or the module that draws it has): draw again only what shows it
+function beArrived() {
+  if (!BEV() || !D.run) return;
+  try { currencies(); assets(); beOverview(); if (MSUB === 'engine' && !$('macro').hidden) paintMacro(); } catch (e) { console.warn('bias engine', e); }
+}
+addEventListener('terminalmodule', () => { if (D.be) beArrived(); });
 
 // ── CURRENCIES ──
 function ccyDrivers(c) {
@@ -1115,6 +1169,7 @@ ${globalThis.cbToneStrip?.(E['cb-board'], c) ?? ''}
 ${globalThis.ccyMacro?.stripHtml(c, E?.['macro-engines-board'], D.sc) ?? ''}
 <div class="sec" style="margin-top:14px"><h2>Key drivers</h2><span class="lbl">from today's analyst reports</span></div>
 ${drv.length ? drv.map(d => `<div style="display:flex;gap:10px;padding:8px 10px;margin:6px 0;border-radius:8px;background:var(--bg3);border-left:3px solid ${d.v > 0 ? 'var(--up)' : 'var(--dn)'}"><span class="mono" style="font-size:10.5px;white-space:nowrap;color:${d.v > 0 ? 'var(--up)' : 'var(--dn)'}">[${d.tier} ${d.sign}${d.type}]</span><span style="font-size:13px">${esc(d.claim)}</span></div>`).join('') : '<p class="muted">No analyst point scored this currency today.</p>'}
+${sf('panel.ccy.engine', beTry(() => { const V = BEV(), m = beRec()?.currencies?.[c]; return V && m ? V.fullBlockHtml(m, { title: `Bias engine · ${c}`, desk: V.deskSign({ bias: numOrNull(v.bias) }), who: 'the Currency Manager', rec: D.be }) : ''; }))}
 <div class="sfc" data-surface="panel.ccy.expressions"><div class="sec"><h2>Best expressions</h2><span class="lbl">the book's cards on this currency</span></div>
 ${best.length ? `<div class="grid g2">${best.map(e => `<div class="card click" tabindex="0" data-inst="${esc(e.n)}" style="padding:10px 12px"><div class="ch" style="margin:0"><b class="mono">${esc(nice(e.n))}</b>${rateChip(e.x.rating)}<span class="r">${e.agrees ? '<span class="chip gold">fits the bias</span>' : '<span class="chip">against the bias</span>'}</span></div><span class="muted">bias gap ${e.gap} · size ${e.x.size}</span></div>`).join('')}</div>` : '<p class="muted">No live card on this currency.</p>'}</div>
 ${v.flip ? `<div class="sec"><h2>What would flip it</h2></div><p>${esc(v.flip)}</p>` : ''}${(() => { const hs = D.news.filter(h => (h.touches ?? []).includes(c) || h.read?.impact?.[c]).slice(0, 5); return hs.length ? `<div class="sec"><h2>On the wire</h2><span class="lbl">the last 24 h</span></div>${hs.map(h => `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><span class="mono muted" style="font-size:11px">${new Date(h.ms).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</span> ${esc(h.title)} ${h.read?.impact?.[c] ? `<span class="chip ${h.read.impact[c] > 0 ? 'up' : 'dn'}">${c} ${h.read.impact[c] > 0 ? '▲' : '▼'}</span>` : ''}</div>`).join('')}` : ''; })()}
@@ -1123,7 +1178,7 @@ ${v.flip ? `<div class="sec"><h2>What would flip it</h2></div><p>${esc(v.flip)}<
 }
 function currencies() {
   $('ccy').innerHTML = `<div class="card hero" style="margin-bottom:14px"><div class="hhead"><span class="lbl">Currency bias by country</span></div><div class="map" id="ccymap"></div></div><div class="grid g4">${D.ranking.map(c => { const v = D.ccy[c] ?? {}, cb = D.sc?.cbSentiment?.[c];
-    return `<div class="card click" tabindex="0" data-ccy="${c}"><div class="ch"><span style="font-size:22px">${FLAG[c] ?? ''}</span><h3>${c}</h3>${biasChip(v.bias)}<span class="r">${ring(ccyScore(v.bias), 52, ccyWord(v.bias))}</span></div><div class="muted" style="margin-top:4px">${esc(firstSentence(v.why))}</div>${globalThis.ccyMacro?.miniHtml(c, D.sc) ?? ''}<div class="drv">${cb ? `<span>${BANKSHORT[c]} ${esc(cb.regime.toLowerCase())}</span>` : ''}${pol(c) ? `<span>policy ${pct(pol(c).rate)}</span>` : ''}</div></div>`; }).join('')}</div>`;
+    return `<div class="card click" tabindex="0" data-ccy="${c}"><div class="ch"><span style="font-size:22px">${FLAG[c] ?? ''}</span><h3>${c}</h3>${biasChip(v.bias)}<span class="r">${ring(ccyScore(v.bias), 52, ccyWord(v.bias))}${sf('panel.ccy.engine', beTry(() => beCcyRing(c)))}</span></div><div class="muted" style="margin-top:4px">${esc(firstSentence(v.why))}</div>${globalThis.ccyMacro?.miniHtml(c, D.sc) ?? ''}<div class="drv">${cb ? `<span>${BANKSHORT[c]} ${esc(cb.regime.toLowerCase())}</span>` : ''}${pol(c) ? `<span>policy ${pct(pol(c).rate)}</span>` : ''}</div></div>`; }).join('')}</div>`;
   wire($('ccy'));
   drawMap($('ccymap'), 'bias');
 }
@@ -1143,15 +1198,15 @@ function ladder(c) {
   return `<div class="ladder"><div class="rail"></div>${['p90', 'p75', 'p50'].flatMap(q => [L.down[q], L.up[q]]).map(v => `<i class="tick" style="left:${x(v)}%"></i>`).join('')}<i class="tick o" style="left:${x(L.open)}%"></i>${z ? `<i class="zone" style="left:${Math.max(0, x(z[0]))}%;width:${Math.max(1.5, Math.min(100, x(z[1])) - Math.max(0, x(z[0])))}%" title="entry zone"></i>` : ''}</div><div class="ladlab"><span>${lo}</span><span>open ${L.open}</span><span>${hi}</span></div>`;
 }
 function assetCard(n, c, full = false) {
-  const s = assetScore(c), live = D.live?.[n];
+  const s = assetScore(c), live = D.live?.[n], be = beOf(n);
   return `<div class="${full ? '' : 'card click'}" ${full ? '' : `tabindex="0" data-inst="${esc(n)}"`}><div class="ch"><span class="chip">${esc(GROUPS[groupOf(n)] ?? '')}</span><span class="chip">${esc(n)}</span><span class="r">${gradeChip(c)}${full ? '<button class="x" aria-label="Close">✕</button>' : ''}</span></div>
 <h3 style="margin:0 0 8px;font-size:${full ? 22 : 17}px">Analysis of ${esc(nice(n))}</h3>
-<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${rateChip(c.rating)}${scoreBar(s, '220px', assetWordV(c))}${live && live.rating !== c.rating ? `<span class="chip gold" title="${esc(live.why ?? '')}">updated → ${esc(live.rating)}</span>` : ''}</div>
-<div class="thesis">“${esc(full ? firstSentence(c.why) : c.why)}”</div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${rateChip(c.rating)}${sf('panel.asset.engine', beTry(() => (be ? BEV().cardChipsHtml(be, BEV().deskSign({ rating: c.rating })) : '')))}${scoreBar(s, '220px', assetWordV(c))}${live && live.rating !== c.rating ? `<span class="chip gold" title="${esc(live.why ?? '')}">updated → ${esc(live.rating)}</span>` : ''}</div>
+<div class="thesis">“${esc(full ? firstSentence(c.why) : c.why)}”</div>${full ? '' : sf('panel.asset.engine', beTry(() => (be ? BEV().keyDriversHtml(be) + BEV().footnoteHtml(D.be) : '')))}
 <div class="drv">${sources(c.why).map(t => `<span>${t}</span>`).join('')}<span title="The card's own conviction (the Head's), not the global ruling's or a currency's">card conviction ${esc(c.conviction ?? '–')}</span><span class="sfc" data-surface="panel.asset.size"><span>size ${c.size ?? '–'}${c.sizeBeforeCap && c.sizeBeforeCap !== c.size ? ` (from ${c.sizeBeforeCap})` : ''}</span></span></div>
 ${full ? `${c.levels ? '' : noLevels()}<div class="tfp-host" id="achart-tf"></div><div class="achart" id="achart"></div>` : (c.levels ? ladder(c) : noLevels()) + (globalThis.newsLatestLine?.(D.news, n, c.rating) ?? '')}
 ${full ? `<p>${esc(c.why)}</p><div class="sfc" data-surface="panel.asset.plan"><div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${esc(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Target</b><span class="mono">${Math.sign(DIR[c.rating] ?? 0) >= 0 ? `up p50 ${c.levels.up.p50} · p75 ${c.levels.up.p75} · p90 ${c.levels.up.p90}` : `down p50 ${c.levels.down.p50} · p75 ${c.levels.down.p75} · p90 ${c.levels.down.p90}`}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${esc(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${esc(c.plan.timing)}</span></div>` : ''}</div></div>
-${deskView(n)}${globalThis.analyseBoxHtml?.(n) ?? ''}${globalThis.whatDrivesHtml?.(n) ?? ''}<p class="muted">The ladder is today's forecast range (p50, p75, p90 each side of the open); the purple band is the entry zone where the plan names one. ${SCALE_NOTE} The grade is the card's conviction, not a hit rate.</p>` : `<div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="muted">Read full analysis →</span>${/LONG|SHORT/.test(c.rating ?? '') && (c.size > 0 || globalThis.deskIsViewer?.()) ? `<button class="btn" type="button" data-analyse="${esc(n)}" style="padding:3px 10px" title="A deep read of this market against its own drivers, on DeepSeek (about a cent)">✦ Analyse</button>` : ''}</div>`}</div>`;
+${sf('panel.asset.engine', beTry(() => (be ? BEV().fullBlockHtml(be, { title: `Bias engine · ${nice(n)}`, desk: BEV().deskSign({ rating: c.rating }), rec: D.be }) : '')))}${deskView(n)}${globalThis.analyseBoxHtml?.(n) ?? ''}${globalThis.whatDrivesHtml?.(n) ?? ''}<p class="muted">The ladder is today's forecast range (p50, p75, p90 each side of the open); the purple band is the entry zone where the plan names one. ${SCALE_NOTE} The grade is the card's conviction, not a hit rate.</p>` : `<div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="muted">Read full analysis →</span>${/LONG|SHORT/.test(c.rating ?? '') && (c.size > 0 || globalThis.deskIsViewer?.()) ? `<button class="btn" type="button" data-analyse="${esc(n)}" style="padding:3px 10px" title="A deep read of this market against its own drivers, on DeepSeek (about a cent)">✦ Analyse</button>` : ''}</div>`}</div>`;
 }
 function deskView(n) {
   const g = groupOf(n), a = D.run?.debate?.assets?.[g]?.view?.instruments?.[n];

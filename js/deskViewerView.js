@@ -222,7 +222,21 @@ export function sanitizeSnapshot(body, on) {
 }
 
 /** The routes whose JSON a viewer receives with the trade-level fields removed: (body, on) => body. Wired in server.js (a res.json wrapper). */
+/** The bias engine (/api/bias-engine) for the desk login: every `flip` line ("what would flip it", which reads as an invalidation line) is removed unless the
+ *  owner switched panel.asset.beflip on. The rest is directional analysis and is kept whole. */
+export function sanitizeBiasEngine(body, on) {
+  if (onFn(on)('panel.asset.beflip')) return body;
+  const walk = (v, depth = 0) => {
+    if (Array.isArray(v)) return v.map(x => walk(x, depth + 1));
+    if (!v || typeof v !== 'object' || depth > 8) return v;
+    const out = {};
+    for (const [k, x] of Object.entries(v)) if (k !== 'flip') out[k] = walk(x, depth + 1);
+    return out;
+  };
+  return walk(body);
+}
 export const VIEWER_SANITISERS = {
+  '/api/bias-engine': sanitizeBiasEngine,           // the engine's flip lines are a 'trade' surface (panel.asset.beflip)
   '/api/desk-run': sanitizeRun,
   '/api/desk-run/index': body => sanitizeRunIndex(body),
   '/api/desk-update': sanitizeUpdate,

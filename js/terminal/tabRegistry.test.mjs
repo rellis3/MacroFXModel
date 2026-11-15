@@ -64,7 +64,7 @@ test('the rule: a surface with a hide reason is OFF by default, a surface withou
 
 test('the owner\'s list: exactly these are hidden, each for its reason', () => {
   const want = {
-    trade: ['tab.read', 'strip.zone', 'panel.ov.tradewatch', 'panel.ov.playbooks', 'panel.ov.bestpairs', 'panel.ccy.expressions', 'panel.asset.plan', 'panel.asset.size', 'panel.corr.hedges'],
+    trade: ['tab.read', 'strip.zone', 'panel.ov.tradewatch', 'panel.ov.playbooks', 'panel.ov.bestpairs', 'panel.ccy.expressions', 'panel.asset.plan', 'panel.asset.size', 'panel.corr.hedges', 'panel.asset.beflip'],
     cost: ['widget.ask', 'nav.research', 'nav.research-tab'],
     internal: ['tab.infomap', 'nav.deskoffice', 'nav.deskrun', 'nav.access', 'widget.dqchip', 'panel.ov.alerts'],
     pnl: ['panel.ov.record', 'panel.ana.track', 'panel.ana.fall', 'panel.ana.days', 'panel.charts.ranking', 'panel.changed.thesis', 'panel.changed.paper'],
@@ -78,7 +78,8 @@ test('the owner\'s list: exactly these are hidden, each for its reason', () => {
 test('the owner\'s complaint: the analysis is shown, including book intelligence, exposure, the lean lists and the risk panels', () => {
   for (const id of ['panel.ov.bookintel', 'panel.ov.exposure', 'panel.ov.regime', 'panel.ov.regime-lists', 'panel.ov.strength', 'panel.ana.risk', 'panel.ana.scenmap', 'panel.ana.web', 'panel.ana.analysts',
     'panel.ana.strength', 'panel.ana.volfc', 'panel.ana.fans', 'panel.charts.bookflow', 'panel.changed.cards', 'panel.macro.carryside', 'tab.ccy', 'tab.ana', 'tab.changed', 'tab.corr', 'tab.charts', 'tab.pair',
-    'strip.regime', 'strip.update', 'strip.risk', 'widget.ovl.bias']) {
+    'strip.regime', 'strip.update', 'strip.risk', 'widget.ovl.bias',
+    'panel.ov.engine', 'panel.ccy.engine', 'panel.asset.engine', 'panel.pair.engine', 'panel.macro.biasengine', 'panel.replay.engine']) {
     assert.equal(surfaceById(id)?.hidden, null, `${id} is analysis and must be shown. ${RULES}`);
   }
 });

@@ -9,6 +9,7 @@
  */
 import * as R from '../replayCore.js';
 import { esc, fin } from './boardViz.js';
+import { replayHtml as beReplayHtml } from './biasEngineView.js';
 
 const HOUR = 3600e3, MIN = 60e3;
 const tc = n => (typeof themeColor === 'function' ? themeColor(n) : getComputedStyle(document.documentElement).getPropertyValue('--' + n).trim());
@@ -85,6 +86,7 @@ export function mount(root) {
 <div class="rp-side">
 <div class="card"><h3>Currency strength (σ) <span class="r" id="rp-hz" role="group" aria-label="Strength window">${R.HORIZONS.map(h => `<button type="button" class="chip" data-hz="${h}" aria-pressed="false" style="cursor:pointer">${h}</button>`).join('')}</span></h3><div id="rp-st"></div></div>
 <div class="card rp-desk"><h3>The desk's book then</h3><div id="rp-desk"></div></div>
+<div class="sfc" data-surface="panel.replay.engine"><div class="card" id="rp-be-card" hidden><h3>The bias engine that morning</h3><div id="rp-be"></div></div></div>
 <div class="card"><h3>Levels known now</h3><div class="rp-lv" id="rp-lv"></div></div>
 <div class="card"><h3>Touches so far <span class="r" id="rp-tn"></span></h3><div class="rp-log" id="rp-log"></div></div>
 </div></div>
@@ -98,7 +100,9 @@ export function mount(root) {
   async function load(inst, date, ts) {
     const tok = ++S.token; stop();
     Object.assign(S, { inst, date, ts: ts ?? R.londonWall(date, 7, 0), loading: true, error: null, day: null, m1: [], agg: {}, lctx: null, touches: [], strength: null, snaps: [], pulses: [], shown: 0 });
-    $('rp-inst').value = inst; $('rp-date').value = date; setMsg('Loading the session…', true); sideDraw(); paint();
+    $('rp-inst').value = inst; $('rp-date').value = date; setMsg('Loading the session…', true); beDraw(null); sideDraw(); paint();
+    // the engine's stored issue for that day (never back-issued: a day without one, or today's unstored live read, shows nothing); apart from the bars
+    J(`/api/bias-engine?date=${date}&market=${inst}`).then(r => { if (tok === S.token) beDraw(r && !r.live && r.market ? r : null); }).catch(() => { if (tok === S.token) beDraw(null); });
     try {
       const metaP = J(`/api/replay/meta?inst=${inst}`).catch(() => null), nbP = J(`/api/replay/notable?inst=${inst}`).catch(() => null);
       const day = await J(`/api/replay/day?inst=${inst}&date=${date}`);
@@ -120,6 +124,11 @@ export function mount(root) {
       J(`/api/replay/strength?date=${date}`).then(s => { if (tok === S.token) { S.strength = s; sideDraw(); paint(); } }).catch(e => { if (tok === S.token) { S.strength = { error: e.message }; sideDraw(); } });
       J(`/api/desk-snapshots?from=${win.start}&to=${Math.min(win.end, Date.now())}&fields=desk&step=5&max=400`).then(r => { if (tok === S.token) { S.snaps = r.points ?? []; sideDraw(); } }).catch(() => { /* none stored then: the panel says so */ });
     } catch (e) { if (tok !== S.token) return; S.loading = false; S.error = e.message; setMsg(`The session did not load: ${e.message}`); sideDraw(); paint(); }
+  }
+  function beDraw(r) {
+    const card = $('rp-be-card'), box = $('rp-be'); if (!card || !box) return;
+    let html = ''; try { html = r ? beReplayHtml(r.market, r) : ''; } catch (e) { console.warn('bias engine replay', e); }
+    box.innerHTML = html; card.hidden = !html;
   }
   function setMsg(t, loading = false) { els.msg.textContent = t; els.msg.style.display = t ? '' : 'none'; els.msg.classList.toggle('rp-load', !!loading); }
 

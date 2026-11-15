@@ -17,7 +17,7 @@ export const PANELS = new Map(SURFACES.filter(s => s.kind === 'panel').map(s => 
 export const isPanel = id => PANELS.has(id);
 
 /** The tab section a panel lives in (its home): panel.ov.* is on Overview, panel.macro.* on Macro, and so on. null when unknown. */
-const HOME = { ov: 'overview', ccy: 'ccy', asset: 'assets', ana: 'ana', charts: 'charts', changed: 'changed', corr: 'corr', macro: 'macro' };
+const HOME = { ov: 'overview', ccy: 'ccy', asset: 'assets', ana: 'ana', charts: 'charts', changed: 'changed', corr: 'corr', macro: 'macro', pair: 'pair', replay: 'replay' };
 export const homeSection = id => HOME[String(id).split('.')[1]] ?? null;
 
 const int = (v, lo, hi, d) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };

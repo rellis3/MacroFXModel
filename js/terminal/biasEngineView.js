@@ -2,13 +2,13 @@
 // "Desk Terminal"). Pure: HTML strings and small helpers, no DOM, no fetch. Colours are theme tokens only. Tested in biasEngineView.test.mjs.
 //
 // Surfaces (js/terminal/tabRegistry.js): panel.asset.engine (Assets cards), panel.ccy.engine (Currencies cards and modal), panel.pair.engine (Pair tab),
-// panel.ov.engine (Overview ranking strip), panel.macro.biasengine (Macro section), panel.replay.engine (Replay side card), and panel.be.flip: the
+// panel.ov.engine (Overview ranking strip), panel.macro.biasengine (Macro section), panel.replay.engine (Replay side card), and panel.asset.beflip: the
 // "what would flip it" line, which reads as an invalidation line, so it is a 'trade' surface, hidden from the desk login by default.
 //
 // The engine is a rule-based macro checklist with theory weights, scored forward on the bias scoreboard. It is not a trade signal, and every card says so.
 import { marketView, CCYS, CCY_WEIGHTS, GOLD_WEIGHTS, INDEX_WEIGHTS, EU_INDEX_WEIGHTS, CMDTY_WEIGHTS, RISK_WEIGHTS, FOOTNOTE, ASSETS } from '../biasEngine.js';
 
-export { FOOTNOTE };
+export { FOOTNOTE, marketView };
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const fin = x => typeof x === 'number' && Number.isFinite(x);
 /** Signed number with a true minus sign: +0.42, −0.13, 0.00. */
@@ -77,9 +77,9 @@ export function driverTableHtml(m, { legs = false } = {}) {
 ${miss ? `<details class="be-miss"><summary class="muted">Missing (${(m.missing ?? []).length}): dropped, the rest renormalised</summary><ul>${miss}</ul></details>` : ''}`;
 }
 
-/** What would change the label. A 'trade' surface (it reads as an invalidation line): wrapped in panel.be.flip, off for the desk login by default. */
+/** What would change the label. A 'trade' surface (it reads as an invalidation line): wrapped in panel.asset.beflip, off for the desk login by default. */
 export function flipHtml(m) {
-  return m?.flip ? `<div class="sfc" data-surface="panel.be.flip"><div class="be-flip"><span class="lbl">What would flip the engine</span><p>${esc(m.flip)}</p></div></div>` : '';
+  return m?.flip ? `<div class="sfc" data-surface="panel.asset.beflip"><div class="be-flip"><span class="lbl">What would flip the engine</span><p>${esc(m.flip)}</p></div></div>` : '';
 }
 
 /** The full engine block for a market (the Assets full view, the Currency modal): chip, why, the table, flip, footnote. */
@@ -131,7 +131,7 @@ export const CCY_COLS = [['policy', 'Policy'], ['rates', 'Rate diff'], ['data', 
 export function heat(c, full = 0.5) {
   if (!fin(c) || c === 0) return 'var(--bg3)';
   const a = 0.08 + Math.min(1, Math.abs(c) / full) * 0.45;
-  return `rgba(var(--${c > 0 ? 'up' : 'dn'}rgb),${a.toFixed(2)})`;
+  return c > 0 ? `rgba(var(--uprgb),${a.toFixed(2)})` : `rgba(var(--dnrgb),${a.toFixed(2)})`;
 }
 /** One grid cell for a market and a driver key: its contribution, missing (·) or not applicable (n/a). */
 export function cellOf(m, key) {
@@ -144,7 +144,7 @@ export function cellOf(m, key) {
 const cellTd = (m, key) => { const c = cellOf(m, key);
   return c.kind === 'used' ? `<td style="background:${heat(c.contrib)}" title="${esc(c.title)}">${sgn(c.contrib)}</td>` : `<td class="muted" title="${esc(c.title)}">${c.kind === 'missing' ? '·' : 'n/a'}</td>`; };
 function gridTable(rows, cols, rec) {
-  return `<div class="scroll"><table class="heat be-grid"><thead><tr><th></th>${cols.map(([, l]) => `<th style="text-align:center">${esc(l)}</th>`).join('')}<th style="text-align:center">Score</th><th style="text-align:center">Read</th><th style="text-align:center">Coverage</th></tr></thead><tbody>${rows.map(([name, m]) => `<tr><th${m ? ` data-be="${esc(name)}"` : ''}>${esc(name)}</th>${cols.map(([k]) => cellTd(m, k)).join('')}<td style="background:${heat(m?.score, 1.2)}"><b>${sgn(m?.score)}</b></td><td>${engineChip(m, { prefix: 'Engine' }).replace('Engine: ', '') || '–'}</td><td class="${fin(m?.coverage) && m.coverage < 0.5 ? 'dn' : ''}">${pctTxt(m?.coverage)}</td></tr>`).join('')}</tbody></table></div>`;
+  return `<div class="scroll"><table class="heat be-grid"><thead><tr><th></th>${cols.map(([, l]) => `<th style="text-align:center">${esc(l)}</th>`).join('')}<th style="text-align:center">Score</th><th style="text-align:center">Read</th><th style="text-align:center">Coverage</th></tr></thead><tbody>${rows.map(([name, m]) => `<tr><th>${esc(name)}</th>${cols.map(([k]) => cellTd(m, k)).join('')}<td style="background:${heat(m?.score, 1.2)}"><b>${sgn(m?.score)}</b></td><td>${engineChip(m, { prefix: 'Engine' }).replace('Engine: ', '') || '–'}</td><td class="${fin(m?.coverage) && m.coverage < 0.5 ? 'dn' : ''}">${pctTxt(m?.coverage)}</td></tr>`).join('')}</tbody></table></div>`;
 }
 const WEIGHT_SETS = () => [['Currencies', CCY_WEIGHTS], ['Gold, silver', GOLD_WEIGHTS], ['US indices', INDEX_WEIGHTS], ['DE30, UK100', EU_INDEX_WEIGHTS], ['Oil, copper', CMDTY_WEIGHTS], ['Risk score R', RISK_WEIGHTS]];
 export function weightsHtml() {
