@@ -2824,6 +2824,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/goldCore.js",
+     "js/terminal/goldView.js",
      "js/terminal/releasesBoardView.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
@@ -2903,7 +2905,10 @@ export const DERIVED = {
    ],
    "modules": [],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "js/terminal/goldCore.js",
+     "js/terminal/goldView.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -3660,6 +3665,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "js/terminal/chainBoard.js",
+     "js/terminal/goldCore.js",
      "js/terminal/insightData.js",
      "js/terminal/insightSeries.js",
      "js/terminal/matrixCore.js",
@@ -3742,6 +3748,7 @@ export const DERIVED = {
      "js/terminal/bookPanels.js",
      "js/terminal/chainBoard.js",
      "js/terminal/commandCore.js",
+     "js/terminal/goldCore.js",
      "js/terminal/insightData.js",
      "js/terminal/insightSeries.js",
      "js/terminal/links.js",
