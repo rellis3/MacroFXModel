@@ -1,0 +1,468 @@
+{
+ "slug": "slow-bias-clock:dirp5_fx",
+ "unit": "Brier skill vs B0 (test rows)",
+ "bar": 0.004,
+ "n_rows": 54299,
+ "n_clusters": 6053,
+ "n_instruments": 9,
+ "span": [
+  "2003-04-29",
+  "2026-08-14"
+ ],
+ "estimate": -0.00039359752651257907,
+ "ci": [
+  -0.0015244353193402615,
+  0.0003623058892943149
+ ],
+ "se": 0.0005088748158402725,
+ "verdict_word": "NULL",
+ "notes": "Rows: fit (label end < 2016-01-01) and test (2016-01-04 ->) rows of the group. Every estimate refits logit P = logit(B0) + a + b S on its fit rows (registered fit: a -0.0402, b -0.0109) and scores Brier skill vs B0 on its test rows. Outcome = horizon log return in sigma60 units; y = outcome > 0. Plant: a drift in the side direction on all rows, sized by bisection so the skill rises by the planted amount. Per-year and per-half rows with no fit rows use the registered (a, b); the pack halves split on the median date of fit+test rows, so read the RESULTS halves instead.",
+ "placebo": {
+  "n": 100,
+  "mean": -0.000530300470301952,
+  "p2_5": -0.0007352466825232384,
+  "p97_5": -0.0003640658417523037,
+  "real_percentile": 91.0
+ },
+ "buckets": [
+  {
+   "bucket": "D1",
+   "n": 5430,
+   "mean_outcome": 0.004030510118776695,
+   "lo": -0.027753468042092545,
+   "hi": 0.03581448827964594,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D2",
+   "n": 5430,
+   "mean_outcome": -0.0017760570243257401,
+   "lo": -0.03005574551213578,
+   "hi": 0.0265036314634843,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D3",
+   "n": 5430,
+   "mean_outcome": -0.003728732616021119,
+   "lo": -0.030815448957174304,
+   "hi": 0.023357983725132068,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D4",
+   "n": 5430,
+   "mean_outcome": -0.0010273564610266347,
+   "lo": -0.0272870097641416,
+   "hi": 0.025232296842088334,
+   "mean_side": -0.8928176795580111
+  },
+  {
+   "bucket": "D5",
+   "n": 5430,
+   "mean_outcome": 0.012440211353836965,
+   "lo": -0.014973928274763215,
+   "hi": 0.03985435098243714,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D6",
+   "n": 5429,
+   "mean_outcome": 0.01412145560407277,
+   "lo": -0.013152363950033429,
+   "hi": 0.04139527515817897,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D7",
+   "n": 5430,
+   "mean_outcome": 0.02108014746907625,
+   "lo": -0.0056749000754821866,
+   "hi": 0.04783519501363469,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D8",
+   "n": 5430,
+   "mean_outcome": -0.029990505726916594,
+   "lo": -0.05709079439761529,
+   "hi": -0.0028902170562179023,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D9",
+   "n": 5430,
+   "mean_outcome": -0.006910657107034447,
+   "lo": -0.034491641938236825,
+   "hi": 0.020670327724167933,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D10",
+   "n": 5430,
+   "mean_outcome": 0.004623952199895132,
+   "lo": -0.02866301823360039,
+   "hi": 0.03791092263339066,
+   "mean_side": 1.0
+  }
+ ],
+ "by_instrument": [
+  {
+   "inst": "AUDUSD",
+   "n": 6036,
+   "estimate": -0.00046397151660637626,
+   "ci": [
+    -0.01139780600597754,
+    0.0063909483721795125
+   ]
+  },
+  {
+   "inst": "EURJPY",
+   "n": 6047,
+   "estimate": -0.004125367215687126,
+   "ci": [
+    -0.011429626307003721,
+    0.0005346333001685965
+   ]
+  },
+  {
+   "inst": "EURUSD",
+   "n": 6045,
+   "estimate": -0.007121011061704818,
+   "ci": [
+    -0.022967883258410426,
+    0.002113515991495723
+   ]
+  },
+  {
+   "inst": "GBPJPY",
+   "n": 6047,
+   "estimate": -0.0007707168104460482,
+   "ci": [
+    -0.006182301868437862,
+    0.0023960912132963536
+   ]
+  },
+  {
+   "inst": "GBPUSD",
+   "n": 6046,
+   "estimate": 0.002129787073569367,
+   "ci": [
+    -0.004554272054017916,
+    0.006058640926936018
+   ]
+  },
+  {
+   "inst": "NZDUSD",
+   "n": 5947,
+   "estimate": 0.006189185488641891,
+   "ci": [
+    -0.006657590935388191,
+    0.01149120725028177
+   ]
+  },
+  {
+   "inst": "USDCAD",
+   "n": 6043,
+   "estimate": 0.0007758502365732278,
+   "ci": [
+    -0.010505561931399043,
+    0.006962258514976942
+   ]
+  },
+  {
+   "inst": "USDCHF",
+   "n": 6042,
+   "estimate": -0.004723906659403587,
+   "ci": [
+    -0.02026324349025166,
+    0.004020915361027986
+   ]
+  },
+  {
+   "inst": "USDJPY",
+   "n": 6046,
+   "estimate": 0.006445962271885208,
+   "ci": [
+    -0.0010061492826777478,
+    0.010064704679927355
+   ]
+  }
+ ],
+ "by_year": [
+  {
+   "year": "2003",
+   "n": 1483,
+   "estimate": NaN,
+   "ci": [
+    NaN,
+    NaN
+   ]
+  },
+  {
+   "year": "2004",
+   "n": 2342,
+   "estimate": NaN,
+   "ci": [
+    NaN,
+    NaN
+   ]
+  },
+  {
+   "year": "2005",
+   "n": 2335,
+   "estimate": NaN,
+   "ci": [
+    NaN,
+    NaN
+   ]
+  },
+  {
+   "year": "2006",
+   "n": 2338,
+   "estimate": NaN,
+   "ci": [
+    NaN,
+    NaN
+   ]
+  },
+  {
+   "year": "2007",
+   "n": 2349,
+   "estimate": NaN,
+   "ci": [
+    NaN,
+    NaN
+   ]
+  },
+  {
+   "year": "2008",
+   "n": 2358,
+   "estimate": NaN,
+   "ci": [
+    NaN,
+    NaN
+   ]
+  },
+  {
+   "year": "2009",
+   "n": 2349,
+   "estimate": NaN,
+   "ci": [
+    NaN,
+    NaN
+   ]
+  },
+  {
+   "year": "2010",
+   "n": 2348,
+   "estimate": NaN,
+   "ci": [
+    NaN,
+    NaN
+   ]
+  },
+  {
+   "year": "2011",
+   "n": 2340,
+   "estimate": NaN,
+   "ci": [
+    NaN,
+    NaN
+   ]
+  },
+  {
+   "year": "2012",
+   "n": 2338,
+   "estimate": NaN,
+   "ci": [
+    NaN,
+    NaN
+   ]
+  },
+  {
+   "year": "2013",
+   "n": 2331,
+   "estimate": NaN,
+   "ci": [
+    NaN,
+    NaN
+   ]
+  },
+  {
+   "year": "2014",
+   "n": 2330,
+   "estimate": NaN,
+   "ci": [
+    NaN,
+    NaN
+   ]
+  },
+  {
+   "year": "2015",
+   "n": 2285,
+   "estimate": NaN,
+   "ci": [
+    NaN,
+    NaN
+   ]
+  },
+  {
+   "year": "2016",
+   "n": 2331,
+   "estimate": 0.0011711243101595326,
+   "ci": [
+    -0.00039316516315211487,
+    0.0028041373041680284
+   ]
+  },
+  {
+   "year": "2017",
+   "n": 2322,
+   "estimate": -0.00041995489592316915,
+   "ci": [
+    -0.0022756123799400952,
+    0.0019133820434328547
+   ]
+  },
+  {
+   "year": "2018",
+   "n": 2330,
+   "estimate": 0.0027497689924204094,
+   "ci": [
+    0.0006937138209735767,
+    0.004527691379481561
+   ]
+  },
+  {
+   "year": "2019",
+   "n": 2330,
+   "estimate": 0.0012205631357405933,
+   "ci": [
+    -0.0006952969919737261,
+    0.0032925750163165625
+   ]
+  },
+  {
+   "year": "2020",
+   "n": 2341,
+   "estimate": -0.001161428972575651,
+   "ci": [
+    -0.0032534998663783675,
+    0.00081190512491747
+   ]
+  },
+  {
+   "year": "2021",
+   "n": 2339,
+   "estimate": 0.0001900061990434132,
+   "ci": [
+    -0.0021027781974314484,
+    0.0025056602621654545
+   ]
+  },
+  {
+   "year": "2022",
+   "n": 2331,
+   "estimate": 0.00023105028657799398,
+   "ci": [
+    -0.001611494742807401,
+    0.0019937549719507655
+   ]
+  },
+  {
+   "year": "2023",
+   "n": 2331,
+   "estimate": -0.0024797694693594607,
+   "ci": [
+    -0.004804901432884051,
+    -0.0003778442947327707
+   ]
+  },
+  {
+   "year": "2024",
+   "n": 2340,
+   "estimate": -0.0022449179036312383,
+   "ci": [
+    -0.004874695248853145,
+    0.0004242283175910364
+   ]
+  },
+  {
+   "year": "2025",
+   "n": 2330,
+   "estimate": -0.0015311042246688444,
+   "ci": [
+    -0.003997808331967495,
+    0.0007759996296468038
+   ]
+  },
+  {
+   "year": "2026",
+   "n": 1448,
+   "estimate": -0.003170015269551296,
+   "ci": [
+    -0.006010319457763136,
+    -0.000458844481710396
+   ]
+  }
+ ],
+ "by_half": [
+  {
+   "half": "H1",
+   "n": 27151,
+   "estimate": NaN,
+   "ci": [
+    NaN,
+    NaN
+   ]
+  },
+  {
+   "half": "H2",
+   "n": 27148,
+   "estimate": -0.004842940267856255,
+   "ci": [
+    -0.01818398456289515,
+    -0.0002488109137038395
+   ]
+  }
+ ],
+ "without_top1pct": -0.00040405403666277095,
+ "positive_control": [
+  {
+   "multiple_of_bar": 0.5,
+   "planted": 0.002,
+   "detected_share": 0.0,
+   "mean_recovered": 0.0016064900017765948
+  },
+  {
+   "multiple_of_bar": 1.0,
+   "planted": 0.004,
+   "detected_share": 1.0,
+   "mean_recovered": 0.003608620015285946
+  },
+  {
+   "multiple_of_bar": 2.0,
+   "planted": 0.008,
+   "detected_share": 1.0,
+   "mean_recovered": 0.007610002683014039
+  }
+ ],
+ "lookahead_canary": {
+  "estimate_with_leak": 1.0,
+  "estimate_clean": -0.00039359752651257907
+ },
+ "diagnosis": {
+  "checks": {
+   "ci_excludes_zero": false,
+   "ci_excludes_bar": true,
+   "beats_placebo_97_5": false,
+   "pipeline_finds_planted_bar": true,
+   "same_sign_both_halves": false,
+   "share_instruments_same_sign": 0.5555555555555556,
+   "survives_top1pct_removed": true,
+   "survives_costs": null
+  },
+  "label": "FLAT: the test could see a useful effect (planted control found), and the interval rules it out"
+ }
+}
