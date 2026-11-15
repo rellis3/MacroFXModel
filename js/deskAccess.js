@@ -64,6 +64,7 @@ export const VIEWER_SURFACE_ROUTES = [
   ['/api/desk-quality', ['widget.dqchip']],
   ['/api/desk-alerts', ['panel.ov.alerts']],
   ['/api/desk-workspaces', ['tab.workspace']],   // the Workspace tab's saved layouts (preview feature; the owner always has it)
+  ['/api/desk-alert-rules', ['widget.alerts']],  // the list of alert rules, read only: only the owner may change them (js/deskAlertRules.js)
 ];
 
 /** POSTs that back a SWITCHABLE preview surface: refused for the desk login unless the owner switched one of the listed surfaces on. The route itself checks again. */

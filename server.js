@@ -191,7 +191,8 @@ import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl a
 import { RBNZ_MEETINGS, pendingAsOf as rbnzPendingAsOf, allReleases as rbnzAllReleases } from './js/rbnzCalendar.js';
 import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote, fetchOcrDecisions as rbnzFetchOcrDecisions, ocrActualFor as rbnzOcrActualFor } from './js/rbnzFetch.js';
 import { sanitizerFor as _deskViewerSanitiser, sanitizeStoredRead as _deskSanitizeStored, validateSharedRead as _validateSharedRead } from './js/deskViewerView.js';   // what a viewer is shown of the desk's own outputs (the lens: analysis, not signals)
-import * as _deskWs from './js/deskWorkspaces.js';   // the Desk Terminal's named workspaces (shared saved layouts; js/deskWorkspaces.js)
+import * as _deskWs from './js/deskWorkspaces.js';
+import * as _deskAr from './js/deskAlertRules.js';   // the alert rules you set (js/deskAlertRules.js); the older automatic board alerts are js/deskAlerts.js   // the Desk Terminal's named workspaces (shared saved layouts; js/deskWorkspaces.js)
 import { viewerMayCall as _deskViewerMayCall, deskLoginDecision as _deskLoginDecision } from './js/deskAccess.js';                       // what a desk-login VIEWER may call (js/deskAccess.js)
 import { deskLoginPage as _deskLoginPage } from './js/deskLoginPage.js';                  // the desk zone's sign-in page (js/deskLoginPage.js)
 import { logoutPlan as _logoutPlan, clearCookieHeader as _clearCookieHeader, sameSiteOk as _logoutSameSiteOk } from './js/deskLogout.js';   // what /logout clears and where it goes (desk, all, library, education, main)
@@ -2021,6 +2022,7 @@ const TG_SENDERS = {
   surpriseReader:    'Live surprise reader: a high-impact print, its surprise against consensus and the release playbook, within a minute (history, not a forecast)',
   forecastDrift:     'Forecast auditor: a forecast line set drifted out of its calibration band (only after opting in on the Forecast auditor card; a prompt to look, nothing is changed)',
   aiSpend:           'Model spend: a note at every £5 (or the step set on Bot Config → AI models) spent on model calls in a UTC day, with the dearest jobs and the last call',
+  deskAlertRules:    'Desk alert rules you set yourself: range used, Fed path move, data gone stale, a level touched, a weekend gap closed (one note per episode, at most 12 a day, descriptions not trade instructions)',
   deskAlerts:        'Desk alerts: world stress colour, options-skew extremes, fair value beyond 10%, carry/vol collapse, leading-indicator phase, speaker drift (context, not a signal)',
   // volatility_bot_v2 (the Python bot) checks this directly via ai_alert_cfg
   // (see its own tg_master_on doc) — unlike every other sender above, this
@@ -45431,6 +45433,22 @@ async function _deskWsRoute(req, res) {
 }
 app.get('/api/desk-workspaces', _deskWsRoute);
 app.post('/api/desk-workspaces', _deskWsRoute);
+// GET /api/desk-alert-rules -> { ok, rules, sentToday }; POST { action: 'add'|'delete'|'mute'|'unmute'|'rename', ... } -> the new list. POST is the OWNER only: an alert sends a Telegram
+// message. The desk login reads the list once the owner switched widget.alerts on. The tick (every 2 min, only with an active rule) is below; it sends through sendTelegram, so the
+// master kill switch and tgMaster.deskAlertRules both apply.
+async function _deskArRoute(req, res) {
+  res.set('Cache-Control', 'no-store');
+  const vis = new Set(_deskVisibleFor('viewer', await _deskSwitches().catch(() => ({}))));
+  const r = await _deskAr.handle({ method: req.method, role: deskSessionRole(req), body: req.body, kv, on: id => vis.has(id) });
+  res.status(r.status).json(r.json);
+}
+app.get('/api/desk-alert-rules', _deskArRoute);
+app.post('/api/desk-alert-rules', _deskArRoute);
+svcInterval('deskAlertRules', () => _deskAr.tick({
+  kv, fetchFeed: p => _dpFetchFeed({ path: p, timeoutMs: 20_000 }),
+  canSend: () => tgOn('deskAlertRules') && !!state.tg?.token && !!state.tg?.chatId,
+  send: text => sendTelegram(state.tg.token, state.tg.chatId, String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')),
+}).catch(e => console.error('[desk-alert-rules]', e.message)), 2 * 60_000);
 
 // All other /api/* routes — call _worker.js and return the JSON response.
 app.all('/api/*', async (req, res) => {

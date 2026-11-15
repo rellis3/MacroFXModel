@@ -154,3 +154,16 @@ test('workspace commands: WORKSPACE <name> loads a starter or a saved layout, SA
   const off = buildCommands({ now: () => NOW, isOn: id => id !== 'tab.workspace' });
   assert.ok(!off.some(c => c.id === 'tab.workspace' || c.id === 'ws.save'), 'hidden surface: no command');
 });
+
+test('alert commands: ALERTS opens the panel, ALERT <kind> ... adds a rule in one line, bad ones say why, a hidden surface has no command', () => {
+  assert.deepEqual(plainAction(top('alerts').cmd).action, { kind: 'alerts' });
+  assert.deepEqual(top('alert range eurusd 85').action, { kind: 'alert-add', body: { kind: 'range_used', params: { market: 'EURUSD', pct: 85 } } });
+  assert.deepEqual(top('alert fed 7').action.body, { kind: 'fed_move', params: { bp: 7 } });
+  assert.deepEqual(top('alert stale').action.body, { kind: 'data_stale', params: { feed: 'fed-zq' } });
+  assert.deepEqual(top('alert touch nq oi').action.body, { kind: 'level_touch', params: { market: 'NQ', which: 'oi' } });
+  assert.deepEqual(top('alert gap nq').action.body, { kind: 'gap_closed', params: { market: 'NQ', minPct: 0.3 } });
+  assert.match(top('alert touch zzz').error, /do not make a "Level touched" alert/);
+  assert.match(top('alert range').error, /Say which market/);
+  assert.match(top('alert buy now').error, /Say RANGE, FED, STALE, TOUCH or GAP/);
+  assert.ok(!buildCommands({ now: () => NOW, isOn: id => id !== 'widget.alerts' }).some(c => c.id === 'alerts'), 'switched off: no command');
+});

@@ -19,6 +19,7 @@ import { THEMES } from './themes.js';
 import { TF_KEYS } from '../deskBarsCore.js';
 import { ASSET_WORDS } from './pairView.js';
 import { STARTERS as WS_STARTERS, cleanName as wsCleanName } from './workspaceCore.js';
+import { KINDS as AL_KINDS, FEEDS as AL_FEEDS } from '../deskAlertRulesCore.js';
 import { INSTRUMENTS as REPLAY_INSTRUMENTS, validDate, londonDate, londonWall } from '../replayCore.js';
 
 // ── markets (a copy of the page's UNIVERSE and NAME; commandCore.test.mjs fails if desk-terminal.html drifts from it) ──
@@ -196,6 +197,8 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   add({ id: 'link', group: 'Look and feel', name: 'LINK', args: '<on|off>', help: 'Switch linked selection on or off: when on, picking a market in one place moves the Pair page, Replay, strength board and vol clock with it.', example: 'link off', opens: 'The linked chip in the top bar', surface: 'widget.linked', run: linkRun });
   add({ id: 'ws.save', group: 'Look and feel', name: 'SAVE', aliases: ['SAVEWORKSPACE'], args: 'workspace <name>', help: 'Save the Workspace tab layout as it is now under a name, shared with the desk. A built-in starter name makes you pick your own.', example: 'save workspace my morning',
     opens: 'The Workspace tab, saved under that name', surface: 'tab.workspace', run: args => workspaceSaveRun(args) });
+  add({ id: 'alerts', group: 'Alerts', name: 'ALERTS', aliases: ['ALERT', 'BELL'], args: '[range <market> [%] | fed [bp] | stale [feed] | touch <market> | gap <market> [%]]', help: 'Open the alerts panel; or set one in a line: ALERT RANGE <market> 80, ALERT FED 5, ALERT STALE, ALERT TOUCH <market>, ALERT GAP <market> 0.3. A note goes to the desk Telegram once per episode.',
+    example: 'alerts', opens: 'The alerts panel (the owner can add, mute and delete; the desk login sees the list)', surface: 'widget.alerts', run: args => alertRun(args) });
   add({ id: 'help', group: 'Help', name: 'HELP', aliases: ['?', 'COMMANDS'], help: 'List every command with what it does and an example.', example: '?', opens: 'This list', action: { kind: 'help' } });
   return out;
 
@@ -211,6 +214,17 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     if (!when) return { action: { kind: 'replay', inst, ts: null }, summary: `Opens the Replay on ${instLabel(inst)}, last session.` };
     const ts = londonWall(when.date, when.hh ?? 7, when.mm ?? 0);
     return { action: { kind: 'replay', inst, ts }, summary: `Opens the Replay on ${instLabel(inst)}, ${when.date} at ${p2(when.hh ?? 7)}:${p2(when.mm ?? 0)} London.` };
+  }
+  function alertRun(args) {
+    const t = String(args ?? '').trim().split(/\s+/).filter(Boolean);
+    if (!t.length) return { action: { kind: 'alerts' }, summary: 'Opens the alerts panel.' };
+    const w = t[0].toLowerCase(), build = (kind, params) => { const p = AL_KINDS[kind].check(params); return p ? { action: { kind: 'alert-add', body: { kind, params: p } }, summary: `Adds the alert: ${AL_KINDS[kind].describe(p)}.` } : { error: `Those settings do not make a "${AL_KINDS[kind].label}" alert: ${AL_KINDS[kind].help}` }; };
+    if (w === 'range') return t[1] ? build('range_used', { market: t[1], pct: t[2] ?? 80 }) : { error: 'Say which market: ALERT RANGE EURUSD 80.' };
+    if (w === 'fed') return build('fed_move', { bp: t[1] ?? 5 });
+    if (w === 'stale') return build('data_stale', { feed: (t[1] ?? 'fed-zq').toLowerCase() });
+    if (w === 'touch') return t[1] ? build('level_touch', { market: t[1], which: (t[2] ?? 'any').toLowerCase() }) : { error: 'Say which market: ALERT TOUCH NQ.' };
+    if (w === 'gap') return t[1] ? build('gap_closed', { market: t[1], minPct: t[2] ?? 0.3 }) : { error: 'Say which market: ALERT GAP NQ 0.3.' };
+    return { error: `Say RANGE, FED, STALE, TOUCH or GAP (or nothing to open the panel). Feeds for STALE: ${Object.keys(AL_FEEDS).join(', ')}.` };
   }
   function workspaceRun(args) {
     const a = String(args ?? '').trim();
@@ -265,7 +279,7 @@ export function nameScore(q, name) {
   if (q.length >= 3 && isSubseq(q, n)) return 150;
   return 0;
 }
-const GROUP_RANK = { 'Go to a tab': 0, Markets: 1, 'Macro sections': 2, 'Macro boards': 3, Releases: 4, 'Look and feel': 5, Help: 6 };
+const GROUP_RANK = { 'Go to a tab': 0, Markets: 1, 'Macro sections': 2, 'Macro boards': 3, Releases: 4, 'Look and feel': 5, Alerts: 5, Help: 6 };
 
 /**
  * search(commands, line) -> up to `limit` results [{ cmd, score, action?, summary?, error?, args? }], best first.

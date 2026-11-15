@@ -86,6 +86,7 @@ export const SURFACES = [
   // ── preview features: the owner always sees them, the desk login only once the owner switches them on (shortcut under the Info map tab) ──
   mk('widget.cmdline', 'widget', 'Command line (press / or `)', 'Terminal features (preview)', P, 'type a market, a board or a command (EURUSD, FED, MACRO RATES, REPLAY NQ 12 NOV) and jump straight there; every command has its own help line and ? lists them all'),
   mk('tab.workspace', 'tab', 'Workspace', 'Tabs', P, 'a grid of this terminal panels you drag and resize into a screen of your own, saved under a name (Morning, Rates, Event day) and shared by the desk; export and import as a file'),
+  mk('widget.alerts', 'widget', 'Alerts (bell)', 'Terminal features (preview)', P, 'alerts you set on numbers the terminal already computes (range used, Fed path move, data gone stale, a level touched, a weekend gap closed); one Telegram note per episode. Only the owner can change them; the desk login sees the list'),
   mk('widget.linked', 'widget', 'Linked selection', 'Terminal features (preview)', P, 'pick a market once and the Pair page, the Replay, the strength board, the vol clock and the asset cards follow it; one chip in the top bar shows it is linked and switches it off'),
   // ── ticker segments ──
   mk('strip.news', 'strip', 'Ticker: tier-1 headlines', 'Ticker', null, 'wire headlines'),

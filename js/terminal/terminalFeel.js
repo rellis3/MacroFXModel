@@ -13,6 +13,12 @@ function addCss() {
   l.id = 'feelCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/command-line.css';
   document.head.appendChild(l);
 }
+function addAlCss() {
+  if (document.getElementById('alCss')) return;
+  const l = document.createElement('link');
+  l.id = 'alCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/alerts.css';
+  document.head.appendChild(l);
+}
 function addWsCss() {
   if (document.getElementById('wsCss')) return;
   const l = document.createElement('link');
@@ -27,10 +33,13 @@ const hooksReady = () => new Promise(res => {
 });
 
 export async function start() {
-  const wantLinked = on('widget.linked'), wantCmd = on('widget.cmdline'), wantWs = on('tab.workspace');
-  if (!wantLinked && !wantCmd && !wantWs) return { linked: false, cmdline: false, workspace: false };
+  const wantLinked = on('widget.linked'), wantCmd = on('widget.cmdline'), wantWs = on('tab.workspace'), wantAl = on('widget.alerts');
+  if (!wantLinked && !wantCmd && !wantWs && !wantAl) return { linked: false, cmdline: false, workspace: false, alerts: false };
   if (wantLinked || wantCmd) addCss();
-  let linked = false, cmdline = false, workspace = false;
+  let linked = false, cmdline = false, workspace = false, alerts = false;
+  try {
+    if (wantAl) { addAlCss(); const m = await import('./alertsView.js'); alerts = !!m.mountAlerts(); }
+  } catch (e) { console.warn('alerts', e); }
   try {
     if (wantWs) { addWsCss(); const m = await import('./workspaceView.js'); workspace = !!m.mountWorkspace(); }
   } catch (e) { console.warn('workspace', e); }
@@ -40,7 +49,7 @@ export async function start() {
   try {
     if (wantCmd) { const m = await import('./commandLine.js'); cmdline = !!m.mountCommandLine(); }
   } catch (e) { console.warn('command line', e); }
-  return { linked, cmdline, workspace };
+  return { linked, cmdline, workspace, alerts };
 }
 
 if (typeof document !== 'undefined' && !globalThis.__terminalFeelNoAutoStart) {

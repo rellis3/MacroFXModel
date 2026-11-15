@@ -1,0 +1,59 @@
+// js/terminal/alertsView.js: the ALERTS panel (the bell in the top bar). List the desk's alert rules, add one, mute, unmute or delete it. The rules, their wording and
+// the episode logic are js/deskAlertRulesCore.js; the list lives on the server (/api/desk-alert-rules) and a note goes to Telegram when a rule fires.
+// Only the OWNER can change rules: a desk login sees the list read only (and only once the owner switched widget.alerts on). A PREVIEW feature: js/terminal/terminalFeel.js
+// only loads this file when the session may see it.
+import { KINDS, KIND_IDS, FEEDS, LIVE_INDICES, LIVE_EM, MAX_RULES, DAILY_CAP, describeRule } from '../deskAlertRulesCore.js';
+import { INSTRUMENTS as REPLAY_INSTRUMENTS } from '../replayCore.js';
+
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const LABEL = { market: 'Market', pct: 'Share of the median range, %', bp: 'Move, basis points', feed: 'Feed', which: 'Level', minPct: 'Gap at least, %' };
+const optionsFor = (kind, f) => (f === 'feed' ? Object.entries(FEEDS).map(([v, x]) => [v, x.label])
+  : f === 'which' ? [['any', 'Option wall or forecast line'], ['oi', 'Option wall'], ['fc', 'Forecast line']]
+    : kind === 'level_touch' && f === 'market' ? Object.keys(REPLAY_INSTRUMENTS).map(k => [k, k])
+      : kind === 'gap_closed' && f === 'market' ? [...LIVE_INDICES, ...LIVE_EM].map(k => [k, k]) : null);
+export const fieldHtml = (kind, [name, type, def]) => {
+  const o = optionsFor(kind, name), id = `al-f-${name}`;
+  return `<label class="al-f" for="${id}"><span>${esc(LABEL[name] ?? name)}</span>${o ? `<select id="${id}" data-f="${name}">${o.map(([v, l]) => `<option value="${esc(v)}"${v === def ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>` : `<input id="${id}" data-f="${name}" type="${type === 'number' ? 'number' : 'text'}" value="${esc(def)}"${type === 'number' ? ' step="any"' : ' maxlength="12"'}>`}</label>`;
+};
+const when = iso => { const t = Date.parse(iso); return Number.isFinite(t) ? new Date(t).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : null; };
+
+export function mountAlerts({ doc = document, win = window, canEdit = () => !(win.deskIsViewer?.() ?? false), fetchJson = null } = {}) {
+  const btn = doc.getElementById('alertsbtn');
+  if (!btn || doc.getElementById('al-back')) return null;
+  const call = fetchJson ?? (async (method, body) => { const r = await win.fetch('/api/desk-alert-rules', { method, headers: body ? { 'content-type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined, credentials: 'same-origin' }); let j = null; try { j = await r.json(); } catch { /* */ } return j ?? { ok: false, error: `The server answered ${r.status}.` }; });
+  const back = doc.createElement('div');
+  back.id = 'al-back'; back.className = 'al-back'; back.hidden = true;
+  back.innerHTML = '<div class="al" role="dialog" aria-modal="true" aria-label="Alerts"><div class="al-h"><b>Alerts</b><span id="al-sub" class="muted"></span><button type="button" class="ws-x" id="al-x" aria-label="Close">×</button></div><div id="al-msg" class="al-msg" role="status" aria-live="polite"></div><div id="al-body"></div></div>';
+  doc.body.appendChild(back);
+  const body = back.querySelector('#al-body'), msg = back.querySelector('#al-msg'), sub = back.querySelector('#al-sub');
+  let rules = [], sentToday = 0, kind = KIND_IDS[0], last = null;
+  const say = t => { msg.textContent = t || ''; };
+
+  function draw() {
+    const edit = canEdit();
+    sub.textContent = `${rules.length} of ${MAX_RULES} · ${sentToday} of ${DAILY_CAP} notes sent today`;
+    const list = rules.length ? rules.map(r => `<li class="al-r${r.muted ? ' off' : ''}"><div><b>${esc(r.name || KINDS[r.kind]?.label || r.kind)}</b><span>${esc(describeRule(r))}${r.firedAt ? ` · last note ${esc(when(r.firedAt) ?? '')}` : ''}${r.muted ? ' · muted' : ''}</span></div>${edit ? `<span class="al-b"><button type="button" class="btn" data-mute="${esc(r.id)}" data-to="${r.muted ? 'unmute' : 'mute'}">${r.muted ? 'Unmute' : 'Mute'}</button><button type="button" class="btn" data-del="${esc(r.id)}">Delete</button></span>` : ''}</li>`).join('') : '<li class="muted">No alerts yet.</li>';
+    const form = edit ? `<form class="al-form" id="al-form"><label class="al-f" for="al-kind"><span>Alert me when</span><select id="al-kind">${KIND_IDS.map(k => `<option value="${k}"${k === kind ? ' selected' : ''}>${esc(KINDS[k].label)}</option>`).join('')}</select></label><p class="muted al-help">${esc(KINDS[kind].help)}</p>${KINDS[kind].fields.map(f => fieldHtml(kind, f)).join('')}<label class="al-f" for="al-name"><span>Name (optional)</span><input id="al-name" type="text" maxlength="40"></label><button type="submit" class="btn">Add alert</button></form>` : '<p class="muted">Alerts can only be changed by the owner. You can see what is set.</p>';
+    body.innerHTML = `<ul class="al-list">${list}</ul>${form}<p class="muted al-foot">A note goes to the desk's Telegram once per episode, never more than ${DAILY_CAP} a day. Notes describe a number, they are not trade instructions.</p>`;
+  }
+  async function load() { const r = await call('GET'); if (r.ok) { rules = r.rules; sentToday = r.sentToday ?? 0; say(''); } else say(r.error ?? 'Could not load the alerts.'); draw(); }
+  async function post(b) { const r = await call('POST', b); if (r.ok) { rules = r.rules; sentToday = r.sentToday ?? sentToday; say(''); draw(); } else say(r.error ?? 'Could not save.'); return r; }
+
+  body.addEventListener('change', e => { if (e.target.id === 'al-kind') { kind = e.target.value; draw(); body.querySelector('#al-kind')?.focus(); } });
+  body.addEventListener('click', e => {
+    const m = e.target.closest?.('[data-mute]'); if (m) { post({ action: m.dataset.to, id: m.dataset.mute }); return; }
+    const d = e.target.closest?.('[data-del]'); if (d && win.confirm('Delete this alert?')) post({ action: 'delete', id: d.dataset.del });
+  });
+  body.addEventListener('submit', e => {
+    e.preventDefault();
+    const params = {}; for (const el of body.querySelectorAll('[data-f]')) params[el.dataset.f] = el.value;
+    post({ action: 'add', kind, params, name: body.querySelector('#al-name')?.value ?? '' });
+  });
+  const open = () => { last = doc.activeElement; back.hidden = false; load(); back.querySelector('#al-x').focus(); };
+  const close = () => { back.hidden = true; try { last?.focus?.(); } catch { /* gone */ } };
+  back.addEventListener('click', e => { if (e.target === back || e.target.id === 'al-x') close(); });
+  back.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); close(); } });
+  btn.hidden = false; btn.addEventListener('click', open);
+  win.deskAlerts = { open, close, add: async b => { open(); const r = await post({ action: 'add', ...b }); say(r.ok ? 'Alert added.' : (r.error ?? '')); return r; } };
+  return { open, close, destroy() { btn.hidden = true; btn.removeEventListener('click', open); back.remove(); delete win.deskAlerts; } };
+}

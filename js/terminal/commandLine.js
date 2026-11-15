@@ -34,6 +34,8 @@ export function perform(a, doc = document, win = window) {
       return ok;
     }
     case 'workspace': { const ok = tab('workspace'); if (ok && a.name) win.setTimeout(() => win.deskWorkspace?.load?.(a.name), 60); return ok; }
+    case 'alerts': return win.deskAlerts?.open ? (win.deskAlerts.open(), true) : false;
+    case 'alert-add': return win.deskAlerts?.add ? (win.deskAlerts.add(a.body), true) : false;
     case 'workspace-save': return win.deskWorkspace?.saveAs ? (win.deskWorkspace.saveAs(a.name), true) : false;
     case 'theme': import('./themePicker.js').then(m => m.applyTheme(a.id)).catch(() => {}); return true;
     case 'tf': return win.deskSelection ? (win.deskSelection.set({ tf: a.tf }, 'command'), true) : false;
