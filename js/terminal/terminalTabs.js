@@ -34,6 +34,7 @@ import * as NV from './newsView.js';
 import * as NCV from './newsChannelView.js';
 import { createLevelChart } from '../levelChart.js';
 import { cardDrivers } from './cardExplain.js';
+import * as HDV from './humanDriversView.js';
 import { pineForCard, oandaOf } from '../deskBookPine.js';
 import * as AAV from './assetAnalysisView.js';
 import * as SR from './sharedRead.js';
@@ -622,15 +623,14 @@ async function renderResearch() {
 const lt2 = iso => (iso ? new Date(iso).toLocaleString('en-GB', { timeZone: 'Europe/London', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '–');
 function whatDrivesHtml(n) {
   if (typeof D === 'undefined' || !D.run?.head?.ok) return '';
-  const x = cardDrivers(D.run, n); if (!x.rating) return '';
-  const sgnN = v => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v)}`;
-  const rows = x.analysts.map(a => `<div class="tt-row"><span class="chip ${a.net > 0 ? 'up' : a.net < 0 ? 'dn' : ''}" title="net push on ${h(n)}: + up, − down">${h(SRC[a.id] ?? a.id)} ${sgnN(a.net)}</span><b style="flex:1;min-width:0">${h(a.id)}</b><span class="w">${x.dir ? `${a.forN} for · ${a.againstN} against` : `${a.points.length} point${a.points.length === 1 ? '' : 's'}`}${a.gaps.length ? ` · <span class="gold">${a.gaps.length} feed gap${a.gaps.length === 1 ? '' : 's'}</span>` : ''}</span>
-<span class="muted" style="flex-basis:100%;font-size:12px">${a.points.slice(0, 3).map(p => `<span class="${p.push > 0 ? 'up' : 'dn'}">${p.push > 0 ? '▲' : '▼'}${Math.abs(p.push)}</span> ${h(String(p.claim).slice(0, 200))} <span class="mono" style="font-size:10.5px">[${h(p.via.join(', '))}${p.evidence ? ` · ${h(p.evidence)}` : ''}]</span>${p.staleFeeds.length ? ` <span class="chip gold" title="this point rests on a feed that was not fresh that morning">${h(p.staleFeeds.join(', '))}</span>` : ''}`).join('<br>')}${a.points.length > 3 ? `<br>+${a.points.length - 3} more` : ''}</span></div>`).join('');
-  const gaps = x.data.gaps.length ? x.data.gaps.map(g => `${h(g.id)} (${h(g.status)}${g.ageH != null ? `, ${Math.round(g.ageH)}h old` : ''})`).join(', ') : 'none';
-  return `<div class="sec"><h2>What drives this</h2><span class="lbl">from the stored run's analyst reports · not a tested signal</span></div>
-<div class="card" style="padding:10px 14px">${x.analysts.length ? `<div class="muted" style="font-size:12px;margin-bottom:4px">Points that move ${h(nice(n))} through ${h(x.channels.join(', '))}: ${x.dir ? `<b class="up">${x.forPush}</b> of push the card's way, <b class="dn">${x.againstPush}</b> against.` : 'the card is flat.'}</div>${rows}${x.more ? `<div class="muted">+${x.more} more analyst${x.more === 1 ? '' : 's'}</div>` : ''}` : '<div class="muted">No analyst point names this market or its currencies today: the card comes from the desks\' reading of the rulings and the levels.</div>'}
-<div class="drv" style="margin-top:8px"><span>Desk Pack built ${h(lt2(x.data.packBuiltAt))}</span><span>book written ${h(lt2(x.data.bookAt))} London</span><span>forecast lines for ${h(x.data.linesFor ?? '–')}</span></div>
-<div class="muted" style="font-size:12px;margin-top:6px">Stale or empty feeds behind these analysts that morning: <span class="${x.data.gaps.length ? 'gold' : ''}">${gaps}</span>.</div>
+  const x = cardDrivers(D.run, n, { cap: 12 }); if (!x.rating) return '';
+  HDV.ensureCss();
+  const mkt = typeof nice === 'function' ? nice(n) : n;
+  const body = x.analysts.length ? HDV.humanDriversHtml(x, { market: mkt, esc: h })
+    : `<p class="hd-empty">No analyst named ${h(mkt)} or its currencies this morning, so the card rests on the desks' reading of the rulings and the levels.</p>`;
+  return `<div class="sec"><h2>What drives this</h2><span class="lbl">how this morning's analysts read ${h(mkt)} · it explains their thinking, it is not a tested signal</span></div>
+<div class="card hd" style="padding:10px 14px">${body}
+<div class="drv hd-when"><span>Data gathered ${h(lt2(x.data.packBuiltAt))}</span><span>book written ${h(lt2(x.data.bookAt))} London</span><span>forecast lines for ${h(x.data.linesFor ?? '–')}</span></div>
 <div class="sfc" data-surface="panel.asset.plan"><div class="pb" style="margin-top:8px"><div class="iv"><b>Invalid</b><span>${h(x.invalidation ?? '–')}</span></div></div></div></div>`;
 }
 globalThis.whatDrivesHtml = whatDrivesHtml;
