@@ -42,6 +42,20 @@ feed goes in js/infoMap.js with its status.
 | Earnings and sector rotation calendar | TODO | |
 | CDS or sovereign spreads | TODO | Needs a source. |
 
+## 5a. Bloomberg gap review (2026-11-15, plans/BLOOMBERG_GAP_REVIEW.md)
+| Item | Status | Notes |
+|---|---|---|
+| What is unusual right now (percentile rank across held series) | TODO | Rank 1. No new data. |
+| Chance-of-reaching-a-level calculator on our IV and calibrated range | TODO | Rank 2. Range and reach validate. |
+| Release detail on the Calendar (actual, forecast, prior, revision, surprise history strip) | TODO | Rank 3. Paid consensus feed is an owner decision; US vintages only today. |
+| Gold board (ETF flows, real yields, dollar, COT, gold vol) | TODO | Rank 4. Data held. |
+| Currency rates matrix with strength rank and timeframe change | TODO | Rank 5. 28 pairs held. |
+| Monitors: user-chosen list of markets with live columns | TODO | Rank 6. Same item as dense monitor mode. |
+| News saved searches and keyword alerts; context-only chip on the arrows | TODO | Rank 7. news-asymmetry is NULL. |
+| Rate probabilities for ECB, BoE, BoJ as deep as the Fed | TODO | Rank 8. Needs a laptop task for the bank futures and the stale guard. |
+| Earnings chips on the Calendar, then a sector heat map | TODO | Rank 9. Sector data source is an owner decision. |
+| Export: CSV for tables, PNG for charts | TODO | Rank 10. |
+
 ## 5. Open decisions and housekeeping
 | Item | Status |
 |---|---|
