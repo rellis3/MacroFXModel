@@ -205,6 +205,7 @@ html[data-role="owner"] .disclaimer{display:none}
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <link rel="stylesheet" href="js/terminal/terminal-tabs.css">
+<link rel="stylesheet" href="js/terminal/macro-strip.css">
 <link rel="stylesheet" href="js/terminal/book-panels.css">
 <link rel="stylesheet" href="js/terminal/tone-timeline.css">
 <link rel="stylesheet" href="js/terminal/themes.css">
@@ -1105,6 +1106,7 @@ function ccyModal(c) {
 <div class="synth">${esc(v.why ?? (['NOK', 'SEK'].includes(c) ? 'Traded, not debated: the desk reads NOK and SEK pairs from the EUR or USD view, the central bank, oil (NOK) and the risk tone.' : 'No ruling.'))}</div>
 <div class="drv">${cb ? `<span class="chip ${cb.regime === 'HAWKISH' ? 'gold' : cb.regime === 'DOVISH' ? 'pur' : ''}">${esc(cb.regime)} · hawk ${cb.score}</span><span>last meeting ${esc(cb.meetingDate)}</span>` : ''}${pol(c) ? `<span title="${esc(pol(c).source)}">policy ${pct(pol(c).rate)} · ${esc(pol(c).asOf)}</span>` : ''}${rate ? `<span>3m rate ${rate.latestRate}%</span>` : ''}${real ? `<span>real 10y ${f(real.latestReal)}%</span>` : ''}${exp?.after?.[c] != null ? `<span>book exposure ${f(exp.after[c])}${exp.before?.[c] !== exp.after?.[c] ? ` (was ${f(exp.before[c])})` : ''}</span>` : ''}<span title="The Currency Manager's conviction in this currency's bias (not the global ruling's, not a card's)">currency conviction ${esc(v.conviction ?? '–')}</span></div>
 ${globalThis.cbToneStrip?.(E['cb-board'], c) ?? ''}
+${globalThis.ccyMacro?.stripHtml(c, E?.['macro-engines-board'], D.sc) ?? ''}
 <div class="sec" style="margin-top:14px"><h2>Key drivers</h2><span class="lbl">from today's analyst reports</span></div>
 ${drv.length ? drv.map(d => `<div style="display:flex;gap:10px;padding:8px 10px;margin:6px 0;border-radius:8px;background:var(--bg3);border-left:3px solid ${d.v > 0 ? 'var(--up)' : 'var(--dn)'}"><span class="mono" style="font-size:10.5px;white-space:nowrap;color:${d.v > 0 ? 'var(--up)' : 'var(--dn)'}">[${d.tier} ${d.sign}${d.type}]</span><span style="font-size:13px">${esc(d.claim)}</span></div>`).join('') : '<p class="muted">No analyst point scored this currency today.</p>'}
 <div class="sfc" data-surface="panel.ccy.expressions"><div class="sec"><h2>Best expressions</h2><span class="lbl">the book's cards on this currency</span></div>
@@ -1115,7 +1117,7 @@ ${v.flip ? `<div class="sec"><h2>What would flip it</h2></div><p>${esc(v.flip)}<
 }
 function currencies() {
   $('ccy').innerHTML = `<div class="card hero" style="margin-bottom:14px"><div class="hhead"><span class="lbl">Currency bias by country</span></div><div class="map" id="ccymap"></div></div><div class="grid g4">${D.ranking.map(c => { const v = D.ccy[c] ?? {}, cb = D.sc?.cbSentiment?.[c];
-    return `<div class="card click" tabindex="0" data-ccy="${c}"><div class="ch"><span style="font-size:22px">${FLAG[c] ?? ''}</span><h3>${c}</h3>${biasChip(v.bias)}<span class="r">${ring(ccyScore(v.bias), 52, ccyWord(v.bias))}</span></div><div class="muted" style="margin-top:4px">${esc(firstSentence(v.why))}</div><div class="drv">${cb ? `<span>${BANKSHORT[c]} ${esc(cb.regime.toLowerCase())}</span>` : ''}${pol(c) ? `<span>policy ${pct(pol(c).rate)}</span>` : ''}</div></div>`; }).join('')}</div>`;
+    return `<div class="card click" tabindex="0" data-ccy="${c}"><div class="ch"><span style="font-size:22px">${FLAG[c] ?? ''}</span><h3>${c}</h3>${biasChip(v.bias)}<span class="r">${ring(ccyScore(v.bias), 52, ccyWord(v.bias))}</span></div><div class="muted" style="margin-top:4px">${esc(firstSentence(v.why))}</div>${globalThis.ccyMacro?.miniHtml(c, D.sc) ?? ''}<div class="drv">${cb ? `<span>${BANKSHORT[c]} ${esc(cb.regime.toLowerCase())}</span>` : ''}${pol(c) ? `<span>policy ${pct(pol(c).rate)}</span>` : ''}</div></div>`; }).join('')}</div>`;
   wire($('ccy'));
   drawMap($('ccymap'), 'bias');
 }
@@ -1174,8 +1176,7 @@ function mxRateDiff() {
   return `<div style="margin-top:14px"><div class="card"><div class="ch"><span class="lbl">Policy-rate differential</span><span class="r muted">row minus column, percentage points</span></div><div class="scroll"><table class="heat"><thead><tr><th></th>${have.map(c => `<th style="text-align:center">${c}</th>`).join('')}</tr></thead><tbody>${have.map(a => `<tr><th>${a}</th>${have.map(b => { const v = pol(a).rate - pol(b).rate; return `<td style="background:${a === b ? 'transparent' : heat(v)}">${a === b ? '·' : f(v)}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div></div>`;
 }
 function mxScorecard() {
-  const sc = D.sc?.ranked ?? [];
-  return sc.length ? `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">Macro scorecard</span><span class="r muted">composite of rates, inflation, growth and labour by currency</span></div><div class="scroll"><table><thead><tr><th>Currency</th><th>Composite</th>${Object.values(sc[0].factors ?? {}).map(x => `<th>${esc(x.label)}</th>`).join('')}</tr></thead><tbody>${sc.map(r => `<tr><td class="n">${FLAG[r.ccy] ?? ''} ${r.ccy}</td><td class="n ${dirCls(r.composite)}">${f(r.composite)}</td>${Object.values(r.factors ?? {}).map(x => `<td class="n ${dirCls(x.score)}">${x.score == null ? '–' : f(x.score)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>` : '';
+  return globalThis.ccyMacro?.scorecardHtml(D.sc, { flag: FLAG }) ?? '';
 }
 function mxGpr() {
   return D.gpr?.ok ? `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">Geopolitical risk index</span><span class="r"><span class="chip ${D.gpr.trend === 'rising' ? 'gold' : ''}">${esc(D.gpr.trend)}</span></span></div><div class="score"><b>${D.gpr.level}</b><small>z ${f(D.gpr.z, 1)} · ${esc(D.gpr.asOfDate)}</small></div></div>` : '';
@@ -1531,6 +1532,7 @@ whenDeskAccess(load);
 setInterval(() => { if (!document.hidden) { ANA = null; ASC = null; load(); if (!$('ana').hidden) analytics(); } }, 5 * 60_000);   // the Charts tab's sources change daily at most: drawn once per visit
 </script>
 <script type="module" src="js/terminal/dataAge.js"></script>
+<script type="module" src="js/terminal/ccyMacroStrip.js"></script>
 <script type="module" src="js/terminal/access.js"></script>
 <script type="module" src="js/terminal/terminalTabs.js"></script>
 <script type="module" src="js/terminal/bookPanels.js"></script>

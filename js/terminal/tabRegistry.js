@@ -125,6 +125,7 @@ export const SURFACES = [
   // ── Currencies, Assets, Pair: the trade-level lines inside an otherwise analytic card ──
   mk('panel.ccy.expressions', 'panel', 'Currency card: best expressions', 'Currencies', T, 'the book\'s cards on a currency, with size: how to trade the view'),
   mk('panel.ccy.tone', 'panel', 'Currency card: central-bank tone timeline', 'Currencies', null, 'how the bank\'s statement tone has moved over its last ten meetings, and the wording that changed: context for tone and timing (cb-tone-direction NULL), not a signal'),
+  mk('panel.ccy.macrostrip', 'panel', 'Currency card: macro picture', 'Currencies', null, 'per-currency macro prints against expectations, the next release, a 12-month ribbon and the six scorecard factors behind the composite'),
   mk('panel.asset.plan', 'panel', 'Market card: entry, target, invalid, timing', 'Markets', T, 'the plan lines on a card, and the entry zone / invalidation lines on the charts'),
   mk('panel.asset.size', 'panel', 'Market card: size and grade', 'Markets', T, 'the position size and the conviction grade derived from it'),
   // ── Analytics panels ──
