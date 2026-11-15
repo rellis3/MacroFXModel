@@ -266,6 +266,12 @@ Implementation details the prereg left open, fixed in `scripts/meta-labelling/ru
 - The pack's plant removes the real estimate and adds a constant on acted rows, solved so the statistic equals the planted effect exactly (a secant solve; for C3 the Sharpe statistic is not linear in the constant).
 - The selftest's one-day-leak canary (3.6 d) runs on a panel with persistent outcomes (AR(1) 0.9 component), where a clean `hit20` is legitimately informative; the check is that the leaked version lifts C1 by > 0.01R above the clean one. Selftest passed (planted C1 +0.176R [+0.166, +0.184]; null C1 +0.002R [−0.007, +0.012]; outcome canary +0.56R; leak 0.293 → 0.334R; features unchanged when every later R is replaced by noise; R hand paths exact).
 
+### A2 — 2026-11-15 — POST-HOC (results seen): describe only, nothing promoted
+
+- **Power grid floor.** Every γ on the registered grid, including the smallest (0.05), was detected in 30/30 runs. The runner's interpolation rule therefore returns the mean realised C1 at γ = 0.05, +0.034R. That is an **upper bound** on the simulated MDE, not a point estimate. The grid was not extended after the results: the bound is already below the 0.05R bar, so C1's POWERED status does not depend on it.
+- **Diagnosis added by hand to RESULTS.md**, computed from the saved `test_rows.parquet` after the run and not part of any gate: R by group for the meta and strength-only rules (the model acts on 87% of index days vs ~41% FX; strong calls are concentrated on indices). These explain the pooled numbers; no cell, threshold or word changed.
+- The run used one process, ≤ 2 threads, R2 env unset; selftest passed; no lockbox data read.
+
 ---
 
 ## RESULTS — run <YYYY-MM-DD>

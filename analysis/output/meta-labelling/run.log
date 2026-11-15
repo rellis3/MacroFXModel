@@ -1,0 +1,43 @@
+17:43:25 selftest {"planted_C1": {"est": 0.17550663379398007, "lo": 0.1663876681332848, "hi": 0.1838607374158573}, "sanity_quintile_means": [-1.39, -0.52, -0.0, 0.527, 1.387], "null": {"dR_meta_all": {"est": 0.0023044311618822047, "lo": -0.00652888938483099, "hi": 0.011712046254645732, "placebo_pct": 77.0, "word": "NULL"}, "dhit_meta_all": {"est": -0.0003743232361206883, "lo": -0.006513957149451783, "hi": 0.006094349279818504, "placebo_pct": 62.0, "word": "NULL"}, "dSR_meta_all": {"est": -0.08276105200304529, "lo": -0.5387478315422833, "hi": 0.41513909613052324, "placebo_pct": 76.0, "word": "UNDERPOWERED"}, "dR_meta_conf": {"est": 0.0036672714188859153, "lo": -0.010143726734296673, "hi": 0.01599992617299588, "placebo_pct": 77.0, "word": "NULL"}}, "canary_outcome_C1": 0.5592979352603019, "leak_hit20_C1": [0.2930227772454431, 0.33430592200551607], "features_invariant_to_future_R": true, "R_hand": [0.8, -1.4, -1.0], "checks": {"a_planted_C1_lo_gt0": true, "a_planted_C1_ge_bar": true, "b_null_C1_ci_includes0": true, "b_null_no_cell_validated": true, "c_outcome_canary_blows_up": true, "d_leak_lifts_C1": true, "d_features_invariant_to_future_R": true, "e_sanity_top_quintile_highest": true, "f_R_hand_exact": true}, "passed": true}
+17:43:26 reading bid/ask M1 dow
+17:43:37 reading bid/ask M1 gold
+17:43:50 entries GOLD {'days': 2545, 'no_0700': 30, 'no_21': 179, 'no_daily': 0, 'entries': 2336}
+17:43:50 reading bid/ask M1 eurusd
+17:44:04 entries EURUSD {'days': 2545, 'no_0700': 18, 'no_21': 34, 'no_daily': 0, 'entries': 2493}
+17:44:04 reading bid/ask M1 gbpusd
+17:44:19 entries GBPUSD {'days': 2545, 'no_0700': 18, 'no_21': 34, 'no_daily': 0, 'entries': 2493}
+17:44:19 reading bid/ask M1 usdjpy
+17:44:34 entries USDJPY {'days': 2545, 'no_0700': 18, 'no_21': 32, 'no_daily': 0, 'entries': 2495}
+17:44:35 reading bid/ask M1 usdcad
+17:44:47 entries USDCAD {'days': 2545, 'no_0700': 18, 'no_21': 33, 'no_daily': 0, 'entries': 2494}
+17:44:47 reading bid/ask M1 audusd
+17:45:00 entries AUDUSD {'days': 2545, 'no_0700': 18, 'no_21': 34, 'no_daily': 0, 'entries': 2493}
+17:45:00 reading bid/ask M1 nzdusd
+17:45:10 entries NZDUSD {'days': 2545, 'no_0700': 18, 'no_21': 34, 'no_daily': 0, 'entries': 2493}
+17:45:10 reading bid/ask M1 usdchf
+17:45:23 entries USDCHF {'days': 2545, 'no_0700': 18, 'no_21': 34, 'no_daily': 0, 'entries': 2493}
+17:45:23 reading bid/ask M1 eurjpy
+17:45:38 entries EURJPY {'days': 2545, 'no_0700': 18, 'no_21': 34, 'no_daily': 0, 'entries': 2493}
+17:45:39 reading bid/ask M1 gbpjpy
+17:45:55 entries GBPJPY {'days': 2545, 'no_0700': 18, 'no_21': 34, 'no_daily': 0, 'entries': 2493}
+17:45:55 reading bid/ask M1 nq
+17:46:10 entries NAS100 {'days': 2545, 'no_0700': 32, 'no_21': 119, 'no_daily': 0, 'entries': 2394}
+17:46:10 reading bid/ask M1 spx
+17:46:20 entries SPX500 {'days': 2545, 'no_0700': 32, 'no_21': 118, 'no_daily': 0, 'entries': 2395}
+17:46:27 entries US30 {'days': 2545, 'no_0700': 32, 'no_21': 116, 'no_daily': 1, 'entries': 2396}
+17:46:29 rows 28068 dates 2208 side long share 0.6657759726378795
+17:47:28 power {'gamma': 0.05, 'detect': 1.0, 'mean_C1': 0.03362879108341544, 'mean_dSR': 1.328399340052917}
+17:48:22 power {'gamma': 0.1, 'detect': 1.0, 'mean_C1': 0.07360201946241446, 'mean_dSR': 2.8189159171592792}
+17:49:11 power {'gamma': 0.15, 'detect': 1.0, 'mean_C1': 0.11539419189715239, 'mean_dSR': 4.431272117997724}
+17:50:07 power {'gamma': 0.25, 'detect': 1.0, 'mean_C1': 0.19524305849639384, 'mean_dSR': 7.379559608723347}
+17:51:07 power {'gamma': 0.4, 'detect': 1.0, 'mean_C1': 0.31928094850897, 'mean_dSR': 11.758862196786705}
+17:51:45 cells {'dR_meta_all': (0.0029, -0.0105, 0.0162, 'NULL'), 'dhit_meta_all': (0.0081, 0.0009, 0.0151, 'NULL'), 'dSR_meta_all': (0.1772, -0.336, 0.6841, 'UNDERPOWERED'), 'dR_meta_conf': (-0.0176, -0.0309, -0.0033, 'NULL')}
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\meta-labelling\run.py:661: RuntimeWarning: Mean of empty slice
+  up = np.nanmean(Rtr[ok & hi_tr]) >= np.nanmean(Rtr[ok & ~hi_tr])
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\meta-labelling\run.py:661: RuntimeWarning: Mean of empty slice
+  up = np.nanmean(Rtr[ok & hi_tr]) >= np.nanmean(Rtr[ok & ~hi_tr])
+17:59:13 pack dR_meta_all FLAT: the test could see a useful effect plant1x 1.0
+18:05:13 pack dhit_meta_all SMALL BUT REAL: above zero, below the us plant1x 1.0
+18:12:22 pack dSR_meta_all UNDERPOWERED: the test cannot reliably s plant1x 0.0
+18:17:55 pack dR_meta_conf WRONG SIGN: there is an effect, and it i plant1x 1.0
+18:17:55 DONE UNDERPOWERED {'dR_meta_all': 'NULL', 'dhit_meta_all': 'NULL', 'dSR_meta_all': 'UNDERPOWERED', 'dR_meta_conf': 'NULL'} 1794766675
