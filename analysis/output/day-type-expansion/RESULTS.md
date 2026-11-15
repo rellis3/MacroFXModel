@@ -100,4 +100,10 @@ Disaggregation (instrument × k, BH q 0.10): 0 of 27 survive (expected at 5%: 1.
 
 ## What this changes
 
-See prereg §8 for each family verdict. (Edit this section by hand after reading.)
+- **FX and gold (NULL):** the morning card does not add a separate range-day / expansion-day call. The validated inputs
+  (IV vs RV, VIX curve, stress, event size, month-end, the prior day's speed) add nothing beyond the σ already in the
+  shipped lines. The range lines remain the day-type read.
+- **Indices (UNDERPOWERED):** k = 1.0 BSS vs σ-only is +1.88% [+0.39%, +3.43%] but fails Holm and the halves (all of
+  it in the second half). Nothing ships. The candidate is a forward record of the index score, on fresh data only.
+- **Reopen** with an input the σ lines do not already hold, or with more index years after the lockbox evaluation.
+

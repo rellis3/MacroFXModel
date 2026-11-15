@@ -61,4 +61,13 @@ Pass bar +0.05R; gate = Δ ≥ bar, Holm p < 0.05 (p = max of bootstrap and shif
 
 ## What this changes
 
-*(written by hand after reading, per prereg §8)*
+- **All six exits NULL, all powered:**
+  - On the 4h-slope entries, none of hold-while-the-slope-holds, prior-day trail, 2/3/5-day time stop, or half at 1R
+    plus trail beats the 21:00 close by more than the same exit does on random entries. |Δ| ≤ 0.012R, bar 0.05R.
+  - The entries themselves lose about −0.03R a trade after spreads under every exit.
+  - That confirms method lesson #27 on 32,738 entries: an exit cannot create edge on an entry that has none.
+- **For the copier and the desk card:** no exit rule is promoted. The 21:00 close stays the default; holding adds
+  holding time and financing, not return.
+- **Reopen** only with an entry that has its own validated edge (then rerun this map on it), e.g. a forecaster that
+  passes the bias-scoreboard.
+

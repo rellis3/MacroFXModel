@@ -2567,7 +2567,7 @@ export const DESK_EVIDENCE = [
     also: ['analysis/output/post-release-drift-pooled/RESULTS.md'],
     instruments: ['GOLD', 'EURUSD', 'GBPUSD', 'USDJPY', 'NQ'],
     claim: 'After a tier-1 US release, price keeps moving in the direction of each instrument own first 15-minute move from a +15 min entry to +1h / 21:00 UK / next 07:00 / +3 days, pooled over gold, EURUSD, GBPUSD, USDJPY and NQ (continuation, or reversal as the mirror)',
-    result: 'NULL. Same 373-383 events and method. Signed move in sigma: +1h -0.026 [-0.056, +0.002] (cell underpowered); 21:00 UK (headline) -0.031 [-0.082, +0.019], Holm p 0.74, powered (MDE 0.057), interval inside +/-0.10; next 07:00 -0.008 [-0.063, +0.044]; +3 days -0.004 [-0.122, +0.120] (MDE 0.171 vs bar 0.20). No cell passes. Trading view (0.5 sigma stop, net): -0.11R at +1h, -0.08R at 21:00.',
+    result: 'NULL. Same 373-383 events and method. Signed move in sigma: +1h -0.026 [-0.056, +0.002] (cell underpowered); 21:00 UK (headline) -0.031 [-0.082, +0.019], Holm p 0.74, powered (MDE 0.057), interval inside +/-0.10; next 07:00 -0.008 [-0.063, +0.044]; +3 days -0.004 [-0.122, +0.120] (MDE 0.171 vs bar 0.20). No cell passes. Trading view (0.5 sigma stop, net): -0.11R at +1h, -0.08R at 21:00. Laptop-run caveat: the h4 positive control failed the null-rejection check (13.2% vs <= 8%), so that cell is anti-conservative; its estimate is -0.004 sigma, the NULL stands.',
     use: 'Joining the first post-release spike is not supported: a 0.10 sigma follow-through by 21:00 is ruled out, and the trade loses net at +1h and 21:00. Do not tell anyone to trade the initial data move; event days mean a bigger range, not a direction.',
   },
   {
