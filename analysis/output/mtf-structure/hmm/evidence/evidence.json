@@ -1,0 +1,305 @@
+{
+ "slug": "mtf-structure-hmm",
+ "unit": "hit-rate excess over B0",
+ "bar": 0.03,
+ "n_rows": 13401,
+ "n_clusters": 107,
+ "n_instruments": 13,
+ "span": [
+  "2018-01-02",
+  "2026-08-19"
+ ],
+ "estimate": -0.003827717709483316,
+ "ci": [
+  -0.013673635869360363,
+  0.006376348944242781
+ ],
+ "se": 0.005323761297968539,
+ "verdict_word": "UNDERPOWERED",
+ "notes": "Family hmm, horizon 24h (07:00 London to the next session 07:00). Outcome = y - B0 (point-in-time base rate), so the estimate is the hit-rate excess over B0 (called days). Cluster = 21-session date block. leak_fn = smoothed-HMM alignment side (forward-backward over the test year). The pack placebo shuffles rows within instrument (row-level); the registered noise test in RESULTS.md shuffles whole 21-session date blocks.",
+ "placebo": {
+  "n": 300,
+  "mean": -0.002773291919889865,
+  "p2_5": -0.007192602732656878,
+  "p97_5": 0.0015426815688129748,
+  "real_percentile": 30.0
+ },
+ "buckets": [
+  {
+   "bucket": "-1.0",
+   "n": 2806,
+   "mean_outcome": 0.015594733447019189,
+   "lo": -0.0029001953808317042,
+   "hi": 0.03408966227487008,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "1.0",
+   "n": 10595,
+   "mean_outcome": -0.0007113188270363451,
+   "lo": -0.01021047937775994,
+   "hi": 0.00878784172368725,
+   "mean_side": 1.0
+  }
+ ],
+ "by_instrument": [
+  {
+   "inst": "AUDUSD",
+   "n": 649,
+   "estimate": -0.009914302265357989,
+   "ci": [
+    -0.046874305107837994,
+    0.019193015052093275
+   ]
+  },
+  {
+   "inst": "EURJPY",
+   "n": 1243,
+   "estimate": 0.009539891179904522,
+   "ci": [
+    -0.011991103009160401,
+    0.03223571671029204
+   ]
+  },
+  {
+   "inst": "EURUSD",
+   "n": 1059,
+   "estimate": -0.039433717624221085,
+   "ci": [
+    -0.06344834040304263,
+    -0.016959699925924915
+   ]
+  },
+  {
+   "inst": "GBPJPY",
+   "n": 652,
+   "estimate": 0.04269509045079358,
+   "ci": [
+    0.007310701550605388,
+    0.06954630157624055
+   ]
+  },
+  {
+   "inst": "GBPUSD",
+   "n": 594,
+   "estimate": -0.05383532480547392,
+   "ci": [
+    -0.08709929506823007,
+    -0.01911569147685134
+   ]
+  },
+  {
+   "inst": "GOLD",
+   "n": 2052,
+   "estimate": 0.00845376615926446,
+   "ci": [
+    -0.01563336833705394,
+    0.028415945553547674
+   ]
+  },
+  {
+   "inst": "NAS100",
+   "n": 1284,
+   "estimate": -0.016261258973489227,
+   "ci": [
+    -0.04379705207930167,
+    0.011291531823999524
+   ]
+  },
+  {
+   "inst": "NZDUSD",
+   "n": 689,
+   "estimate": -0.006606355028310659,
+   "ci": [
+    -0.05337212876677982,
+    0.026486741321992177
+   ]
+  },
+  {
+   "inst": "SPX500",
+   "n": 1350,
+   "estimate": -0.003827752158137746,
+   "ci": [
+    -0.0289706876441322,
+    0.01943288286439083
+   ]
+  },
+  {
+   "inst": "US30",
+   "n": 1694,
+   "estimate": -0.022675794592000108,
+   "ci": [
+    -0.046491404310346894,
+    -0.0010511003137149172
+   ]
+  },
+  {
+   "inst": "USDCAD",
+   "n": 949,
+   "estimate": 0.004524055669393955,
+   "ci": [
+    -0.02851804715899255,
+    0.0370955565154116
+   ]
+  },
+  {
+   "inst": "USDCHF",
+   "n": 388,
+   "estimate": -0.012503377592294264,
+   "ci": [
+    -0.05742273059669423,
+    0.040081690845787596
+   ]
+  },
+  {
+   "inst": "USDJPY",
+   "n": 798,
+   "estimate": 0.05188558075055052,
+   "ci": [
+    0.019102723009139167,
+    0.08413168751697858
+   ]
+  }
+ ],
+ "by_year": [
+  {
+   "year": "2018",
+   "n": 1675,
+   "estimate": -0.026625117445121776,
+   "ci": [
+    -0.06003696375020545,
+    0.008636041099302709
+   ]
+  },
+  {
+   "year": "2019",
+   "n": 1163,
+   "estimate": 0.013410275838626712,
+   "ci": [
+    -0.016930505415232194,
+    0.04665438633491173
+   ]
+  },
+  {
+   "year": "2020",
+   "n": 916,
+   "estimate": 0.015045006449422405,
+   "ci": [
+    -0.011284942008735603,
+    0.03606748703658854
+   ]
+  },
+  {
+   "year": "2021",
+   "n": 1802,
+   "estimate": 0.0007053021024299134,
+   "ci": [
+    -0.029923641154614666,
+    0.03109053497065904
+   ]
+  },
+  {
+   "year": "2022",
+   "n": 1327,
+   "estimate": -0.03384315954473263,
+   "ci": [
+    -0.07589246308436431,
+    0.015322280608632916
+   ]
+  },
+  {
+   "year": "2023",
+   "n": 1439,
+   "estimate": -0.009503995776834258,
+   "ci": [
+    -0.03950648161214136,
+    0.02124429288289547
+   ]
+  },
+  {
+   "year": "2024",
+   "n": 1995,
+   "estimate": 0.01737744071722181,
+   "ci": [
+    -0.0005298008272619217,
+    0.03383448605271208
+   ]
+  },
+  {
+   "year": "2025",
+   "n": 1920,
+   "estimate": -0.005272670941292639,
+   "ci": [
+    -0.022869641547396163,
+    0.010725829269426392
+   ]
+  },
+  {
+   "year": "2026",
+   "n": 1164,
+   "estimate": -0.0028392163106790214,
+   "ci": [
+    -0.03202120770171799,
+    0.04570548754053023
+   ]
+  }
+ ],
+ "by_half": [
+  {
+   "half": "H1",
+   "n": 6704,
+   "estimate": -0.010574833096818056,
+   "ci": [
+    -0.024147784682152024,
+    0.007934907328762621
+   ]
+  },
+  {
+   "half": "H2",
+   "n": 6697,
+   "estimate": 0.00292645006066632,
+   "ci": [
+    -0.008386144245911853,
+    0.013029835974953495
+   ]
+  }
+ ],
+ "without_top1pct": 0.001435713550432851,
+ "positive_control": [
+  {
+   "multiple_of_bar": 0.5,
+   "planted": 0.015,
+   "detected_share": 0.775,
+   "mean_recovered": 0.011172282290516698
+  },
+  {
+   "multiple_of_bar": 1.0,
+   "planted": 0.03,
+   "detected_share": 1.0,
+   "mean_recovered": 0.026172282290516706
+  },
+  {
+   "multiple_of_bar": 2.0,
+   "planted": 0.06,
+   "detected_share": 1.0,
+   "mean_recovered": 0.0561722822905167
+  }
+ ],
+ "lookahead_canary": {
+  "estimate_with_leak": 0.007531162552748637,
+  "estimate_clean": -0.003827717709483316
+ },
+ "diagnosis": {
+  "checks": {
+   "ci_excludes_zero": false,
+   "ci_excludes_bar": true,
+   "beats_placebo_97_5": false,
+   "pipeline_finds_planted_bar": true,
+   "same_sign_both_halves": false,
+   "share_instruments_same_sign": 0.6153846153846154,
+   "survives_top1pct_removed": false,
+   "survives_costs": null
+  },
+  "label": "FLAT: the test could see a useful effect (planted control found), and the interval rules it out"
+ }
+}

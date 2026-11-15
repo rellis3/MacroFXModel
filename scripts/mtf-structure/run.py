@@ -13,9 +13,11 @@ from __future__ import annotations
 import os
 import sys
 
-os.environ.setdefault('OMP_NUM_THREADS', '2')
-os.environ.setdefault('MKL_NUM_THREADS', '2')
-os.environ.setdefault('OPENBLAS_NUM_THREADS', '2')
+# single-threaded pools: under a shared, fully loaded CPU the 2-thread KMeans init / numpy pools spun ~2.7x slower
+# (profiled 2026-11-15: one H1 fold 290 s -> 109 s, identical EM iterations); n_jobs stays 2
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
 for _k in list(os.environ):
     if _k.startswith('R2_'):
         del os.environ[_k]
@@ -355,12 +357,24 @@ def instrument_states(m1, inst, years=TEST_YEARS, cutoff=CUTOFF_UTC, want_smooth
 
 
 def _worker(row):
+    """States for one instrument; cached per instrument (states only, no outcome) so a restart resumes."""
+    from threadpoolctl import threadpool_limits
+    threadpool_limits(1)
     inst, grp, rk, key = row
+    cdir = os.path.join(OUT, 'state_cache')
+    os.makedirs(cdir, exist_ok=True)
+    cp, cm = os.path.join(cdir, f'{inst}.parquet'), os.path.join(cdir, f'{inst}.json')
+    if os.path.exists(cp) and os.path.exists(cm):
+        info = json.load(open(cm))
+        return inst, pd.read_parquet(cp), info['meta'], (info['m1_rows'], info['wdd']), 0.0
     p = os.path.join(ROOT, ROOTS[rk], f'{key}_m1.parquet')
     t0 = time.time()
     m1 = read_m1(p)
     sess, meta = instrument_states(m1, inst)
     wdd = int(sess.attrs.get('weekdays_with_data', -1))
+    sess.attrs = {}
+    sess.to_parquet(cp)
+    json.dump({'meta': meta, 'm1_rows': int(len(m1)), 'wdd': wdd}, open(cm, 'w'))
     return inst, sess, meta, (len(m1), wdd), time.time() - t0
 
 
