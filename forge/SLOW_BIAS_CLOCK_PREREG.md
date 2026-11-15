@@ -207,7 +207,33 @@ Holm first-step α = 0.05/9 two-sided → z = 2.77; MDE = (2.77 + 0.84) × SE = 
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-15 — POST-HOC (scored estimates seen; packs not yet read)
+
+Bug in the evidence-pack wiring for the direction cells, found while the first pack ran: the pack was given only the
+test rows with the calibration (a, b) frozen, so (1) the shuffled-signal placebo barely moved p (band ±0.00006 BSS,
+far too narrow) and (2) a drift planted "in the signal direction" lowers the skill whenever the frozen b is negative
+(FX +1 b = −0.007), so the positive control could never be found. Fix: the direction pack holds the fit **and** test
+rows, and every pack estimate (placebo draw, plant, leak, bootstrap) refits the one-slope calibration on its fit rows
+before scoring the test rows — i.e. the placebo, plant and leak go through the registered pipeline (§3.2, §3.5). The
+scored estimates, their bootstrap CIs and the 9-cell set are unchanged (same seed, same code path). The placebo SD and
+percentile feed the gate and the p-value (SE = max(bootstrap SE, placebo SD)); the fix can only widen the placebo and
+so can only demote. Also fixed: the pack output sits at `evidence/<cell>/evidence/` (the verdict stamp looked one
+level up). The run was restarted from scratch. Because the laptop was saturated by concurrent studies (this process
+got < 10% of a core), the evidence packs run with fewer resamples than §3.5 says (direction and book packs: 100
+placebo shuffles, 10 plants per multiple, bootstrap 200; R packs: 200 / 10 / 300). The scored cells keep B = 2000.
+Fewer placebo draws make the 97.5th-percentile gate noisier (± ~1.5 percentile points), not biased.
+
+### A2 — 2026-11-15 — POST-HOC (results seen) — demote only
+
+The direction cells' scored CI holds the fitted calibration (a, b) fixed, so it leaves out the noise of fitting b.
+The evidence pack refits (a, b) on every resample and every plant; on the index and gold cells it found a planted
+bar-sized effect in < 80% of plants although §5's MDE called some of them POWERED. Rule added (applied by
+`scripts/slow-bias-clock/finalize.py`, never promotes): a cell whose pack positive control detects the 1× bar plant in
+< 80% of plants cannot be NULL; it becomes UNDERPOWERED. Ledger-id words are recomputed from the demoted cell words.
+
+Noted, not changed: the book is annualised with √252 although FX books trade ~260 weekdays a year (understates the
+Sharpe by ~1.6%); the gold 21:00 bar is missing on 179 of 2,545 days (US holiday / early-close sessions), counted, not
+imputed.
 
 ---
 

@@ -16,7 +16,7 @@ import math
 import os
 import sys
 import time
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from statistics import NormalDist
 from zoneinfo import ZoneInfo
@@ -32,7 +32,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts' / 'evidence_pack'))
-from pack import build_pack  # noqa: E402
+from pack import build_pack, _markdown  # noqa: E402
 
 SLUG = 'slow-bias-clock'
 PREREG = 'forge/SLOW_BIAS_CLOCK_PREREG.md'
@@ -591,39 +591,55 @@ def id_word(words):
 
 # ───────────────────────────── evidence packs ─────────────────────────────
 
-def pack_direction(test, name, a, b, rng_seed, bar=U_DIR, word=None):
-    rows = pd.DataFrame({'date': test['date'], 'inst': test['inst'], 'signal': test['S'], 'side': np.sign(test['S']),
-                         'outcome': test['mv'], 'b0': test['b0'], 'y0': test['y']}).reset_index(drop=True)
+def pack_direction(g, name, a_full, b_full, rng_seed, bar=U_DIR, word=None):
+    """Rows = the group's fit AND test rows (is_fit flag). The estimate refits the one-slope calibration on the fit rows
+    it is given, then scores BSS on the test rows, so the placebo (shuffled signal), the plant (drift in the side
+    direction on all rows) and the leak (side = sign of the outcome) all go through the exact pipeline. Subsets with no
+    fit rows (per-year / per-half breakdowns of test years) fall back to the registered fit (a, b)."""
+    g = g[(g['end'] < FIT_END) | (g['date'] >= TEST_START)]
+    rows = pd.DataFrame({'date': g['date'], 'inst': g['inst'], 'signal': g['S'], 'side': np.sign(g['S']),
+                         'outcome': g['mv'], 'b0': g['b0'], 'is_fit': (g['end'] < FIT_END).to_numpy()}).reset_index(drop=True)
 
     def est(r):
-        p = sigmoid(logit(r['b0'].to_numpy(float)) + a + b * r['signal'].to_numpy(float))
-        y = (r['outcome'].to_numpy(float) > 0).astype(float)
-        bb = r['b0'].to_numpy(float)
+        fit = r[r['is_fit'].to_numpy(bool)]
+        te = r[~r['is_fit'].to_numpy(bool)]
+        if len(te) < 30:
+            return float('nan')
+        if len(fit) >= 200:
+            yf = (fit['outcome'].to_numpy(float) > 0).astype(float)
+            a, b = fit_ab(fit['signal'].to_numpy(float), yf, logit(fit['b0'].to_numpy(float)), iters=25)
+        else:
+            a, b = a_full, b_full
+        bb = te['b0'].to_numpy(float)
+        p = sigmoid(logit(bb) + a + b * te['signal'].to_numpy(float))
+        y = (te['outcome'].to_numpy(float) > 0).astype(float)
         den = ((bb - y) ** 2).sum()
         return float(1 - ((p - y) ** 2).sum() / den) if den > 0 else float('nan')
 
     base = est(rows)
 
-    def plant(r, effect, g):
-        lo_, hi_ = 0.0, 2.0
-        for _ in range(30):
+    def plant(r, effect, gg):
+        lo_, hi_ = 0.0, 1.0
+        for _ in range(20):
             mid = (lo_ + hi_) / 2
-            rr = r.assign(outcome=r['outcome'] + mid * r['side'])
-            if est(rr) - base < effect:
+            if est(r.assign(outcome=r['outcome'] + mid * r['side'])) - base < effect:
                 lo_ = mid
             else:
                 hi_ = mid
         return r.assign(outcome=r['outcome'] + hi_ * r['side'])
 
-    def leak(r, g):
+    def leak(r, gg):
         return r.assign(signal=3 * np.sign(r['outcome']), side=np.sign(r['outcome']))
 
     return build_pack(rows, slug=f'{SLUG}:{name}', out=str(OUT / 'evidence' / name), estimate_fn=est, bar=bar,
-                      unit='Brier skill vs B0', plant_fn=plant, leak_fn=leak, verdict_word=word, seed=rng_seed,
-                      B=500, n_placebo=300, n_plants=20,
-                      notes=f'Calibration fixed on the fit window: logit P = logit(B0) + {a:+.4f} + {b:+.4f} S. Outcome = the '
-                            'horizon log return in sigma60 units; y = outcome > 0. Plant: a drift in the side direction sized '
-                            'by bisection so the Brier skill rises by the planted amount.')
+                      unit='Brier skill vs B0 (test rows)', plant_fn=plant, leak_fn=leak, verdict_word=word, seed=rng_seed,
+                      B=200, n_placebo=100, n_plants=10,
+                      notes=f'Rows: fit (label end < 2016-01-01) and test (2016-01-04 ->) rows of the group. Every estimate '
+                            f'refits logit P = logit(B0) + a + b S on its fit rows (registered fit: a {a_full:+.4f}, b {b_full:+.4f}) '
+                            'and scores Brier skill vs B0 on its test rows. Outcome = horizon log return in sigma60 units; y = '
+                            'outcome > 0. Plant: a drift in the side direction on all rows, sized by bisection so the skill rises '
+                            'by the planted amount. Per-year and per-half rows with no fit rows use the registered (a, b); the '
+                            'pack halves split on the median date of fit+test rows, so read the RESULTS halves instead.')
 
 
 def pack_R(E, name, bench, rng_seed, word=None):
@@ -649,7 +665,7 @@ def pack_R(E, name, bench, rng_seed, word=None):
 
     return build_pack(rows.drop(columns=['outcome']).assign(outcome=rows['outcome']), slug=f'{SLUG}:{name}',
                       out=str(OUT / 'evidence' / name), estimate_fn=est, bar=BAR_R, unit='R per entry (risk-weighted)',
-                      plant_fn=plant, leak_fn=leak, verdict_word=word, seed=rng_seed, B=500, n_placebo=300, n_plants=20,
+                      plant_fn=plant, leak_fn=leak, verdict_word=word, seed=rng_seed, B=300, n_placebo=200, n_plants=10,
                       notes=f'Benchmark: {"4h EMA20 slope side" if bench == "h4" else "always long"}. Plant: the market drifts '
                             f'by e R in the slow side direction on every entry, e = effect/(1 - agreement {agree:+.3f}), so the '
                             'difference rises by the planted amount. Leak: the side is the sign of the same session move.')
@@ -681,7 +697,7 @@ def pack_book(R, name, rng_seed, word=None):
 
     return build_pack(rows, slug=f'{SLUG}:{name}', out=str(OUT / 'evidence' / name), estimate_fn=est, bar=BAR_SR,
                       unit='annualised net Sharpe', plant_fn=plant, leak_fn=leak, verdict_word=word, seed=rng_seed,
-                      B=300, n_placebo=200, n_plants=20,
+                      B=200, n_placebo=100, n_plants=10,
                       notes='Rows = (instrument, day) positions held close t to close t+1; estimate = Sharpe of the equal-'
                             'weight daily mean of side*w*scale*return minus the mean cost (costs from the real turnover, held '
                             'fixed under shuffles, so the placebo is slightly flattered). Bootstrap clusters = calendar months.')
@@ -796,14 +812,15 @@ def main():
     carry_cov = {inst: float(np.isfinite(frames[inst]['carry']).mean()) for inst in INST if GROUP[inst] == 'fx'}
 
     res = {'id': SLUG, 'seed': SEED, 'B': B_BOOT, 'prereg': PREREG, 'branch': 'claude/signal-bot-bias-analysis-bwr1qv',
-           'ranAt': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'), 'coverage': cov, 'carry_coverage': carry_cov,
+           'ranAt': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'coverage': cov, 'carry_coverage': carry_cov,
            'selftest': st, 'cells': []}
     cells = []
 
     # (i) direction
-    dir_tests = {}
+    dir_tests, dir_rows = {}, {}
     for h in (1, 5):
         D = direction_rows(frames, h)
+        dir_rows[f'dir+{h}'] = D
         for g in GROUPS:
             sc = score_direction(D, g, rng)
             name = f'dir+{h}|{g}'
@@ -865,7 +882,8 @@ def main():
             log('evidence pack', nm)
             if c['name'].startswith('dir'):
                 sc = dir_tests[c['name']]
-                pk = pack_direction(sc['test'], nm, sc['a'], sc['b'], SEED + i)
+                Dg = dir_rows[c['name'].split('|')[0]]
+                pk = pack_direction(Dg[Dg['grp'] == c['name'].split('|')[1]], nm, sc['a'], sc['b'], SEED + i)
             elif c['name'] == 'dR_slow_h4':
                 pk = pack_R(common, nm, 'h4', SEED + i)
             elif c['name'] == 'dR_slow_long':
@@ -880,7 +898,7 @@ def main():
             c['placebo_sd'] = (pl['p97_5'] - pl['p2_5']) / 3.92 if pl['p97_5'] is not None else None
             c['pack'] = {'diagnosis': pk['diagnosis']['label'], 'checks': pk['diagnosis']['checks'],
                          'positive_control': pk['positive_control'], 'lookahead_canary': pk.get('lookahead_canary'),
-                         'placebo': pl, 'dir': f'analysis/output/{SLUG}/evidence/{nm}/'}
+                         'placebo': pl, 'dir': f'analysis/output/{SLUG}/evidence/{nm}/evidence/'}
     for c in cells:
         c['se_used'] = max(c['se'], c.get('placebo_sd') or 0.0)
         c['p'] = pz(c['est'], c['se_used'])
@@ -892,13 +910,14 @@ def main():
     res['ids'] = {lid: id_word([c['verdict'] for c in cells if c['ledger'] == lid])
                   for lid in ('slow-bias-clock-dir', 'slow-bias-clock-r', 'slow-bias-clock-book')}
     for name, pk in packs.items():
-        pk_path = OUT / 'evidence' / name.replace('|', '_').replace('+', 'p') / 'evidence.json'
+        pk_path = OUT / 'evidence' / name.replace('|', '_').replace('+', 'p') / 'evidence' / 'evidence.json'
         try:
             j = json.load(open(pk_path))
             j['verdict_word'] = next(c['verdict'] for c in cells if c['name'] == name)
             json.dump(j, open(pk_path, 'w'), indent=1, default=float)
-        except Exception:
-            pass
+            _markdown(j, str(pk_path.parent))
+        except Exception as ex:
+            log('could not stamp verdict on', pk_path, ex)
 
     # ── descriptive: decomposition (BH q = 0.10), size cut, book variants ──
     desc = {}
