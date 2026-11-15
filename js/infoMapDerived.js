@@ -8,7 +8,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -63,7 +63,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -125,7 +125,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -182,7 +182,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -229,7 +229,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -276,7 +276,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -325,7 +325,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -374,7 +374,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -455,7 +455,9 @@ export const DERIVED = {
      "file": "world-economies.html",
      "exists": true,
      "lastModified": "2026-11-01",
-     "hub": []
+     "hub": [
+      "macro"
+     ]
     }
    ],
    "routes": [],
@@ -613,7 +615,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-09-20",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -733,7 +735,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -802,7 +804,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     },
     {
@@ -810,7 +812,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     },
     {
@@ -818,7 +820,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -888,7 +890,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     },
     {
@@ -896,7 +898,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     },
     {
@@ -904,7 +906,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -974,7 +976,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-11-07",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -1036,7 +1038,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -1081,7 +1083,9 @@ export const DERIVED = {
      "file": "fed-path.html",
      "exists": true,
      "lastModified": "2026-10-29",
-     "hub": []
+     "hub": [
+      "macro"
+     ]
     }
    ],
    "routes": [
@@ -1292,7 +1296,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -1343,7 +1347,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-15",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -1458,7 +1462,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-24",
      "hub": [
-      "research"
+      "macro"
      ]
     },
     {
@@ -1466,7 +1470,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -1524,7 +1528,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-15",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -1565,7 +1569,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -1667,7 +1671,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-20",
      "hub": [
-      "live"
+      "null"
      ]
     }
    ],
@@ -1722,7 +1726,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-11-11",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -1892,7 +1896,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "retired"
+      "null"
      ]
     }
    ],
@@ -1999,7 +2003,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-21",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -2285,7 +2289,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-09-28",
      "hub": [
-      "live"
+      "vol"
      ]
     },
     {
@@ -2300,14 +2304,16 @@ export const DERIVED = {
      "file": "volatility-intelligence.html",
      "exists": true,
      "lastModified": "2026-09-13",
-     "hub": []
+     "hub": [
+      "vol"
+     ]
     },
     {
      "file": "forecast-path.html",
      "exists": true,
      "lastModified": "2026-11-06",
      "hub": [
-      "live"
+      "vol"
      ]
     },
     {
@@ -2315,7 +2321,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-08-05",
      "hub": [
-      "live"
+      "vol"
      ]
     },
     {
@@ -2338,13 +2344,17 @@ export const DERIVED = {
      "file": "exhaustion-surface.html",
      "exists": true,
      "lastModified": "2026-10-03",
-     "hub": []
+     "hub": [
+      "vol"
+     ]
     },
     {
      "file": "path-map.html",
      "exists": true,
      "lastModified": "2026-10-06",
-     "hub": []
+     "hub": [
+      "vol"
+     ]
     }
    ],
    "routes": [
@@ -2467,7 +2477,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "live"
+      "vol"
      ]
     },
     {
@@ -2475,7 +2485,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "live"
+      "vol"
      ]
     }
    ],
@@ -2716,7 +2726,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-07-21",
      "hub": [
-      "vol"
+      "null"
      ]
     },
     {
@@ -2724,7 +2734,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-07-17",
      "hub": [
-      "retired"
+      "null"
      ]
     }
    ],
@@ -2780,7 +2790,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "research"
+      "macro"
      ]
     }
    ],
@@ -2910,7 +2920,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "research"
+      "macro"
      ]
     }
    ],
@@ -2978,7 +2988,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -3055,7 +3065,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -3121,7 +3131,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "research"
+      "macro"
      ]
     }
    ],
@@ -3282,7 +3292,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -3338,7 +3348,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-11-15",
      "hub": [
-      "research"
+      "retired"
      ]
     }
    ],
@@ -3394,7 +3404,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-06-25",
      "hub": [
-      "live"
+      "vol"
      ]
     }
    ],
@@ -3438,20 +3448,24 @@ export const DERIVED = {
      "file": "oi-all-lines.html",
      "exists": true,
      "lastModified": "2026-10-30",
-     "hub": []
+     "hub": [
+      "vol"
+     ]
     },
     {
      "file": "oi-level-lab.html",
      "exists": true,
      "lastModified": "2026-10-29",
-     "hub": []
+     "hub": [
+      "vol"
+     ]
     },
     {
      "file": "oi-dashboard.html",
      "exists": true,
      "lastModified": "2026-10-20",
      "hub": [
-      "live"
+      "vol"
      ]
     }
    ],
@@ -3606,7 +3620,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -3678,7 +3692,9 @@ export const DERIVED = {
      "file": "terminal.html",
      "exists": true,
      "lastModified": "2026-09-24",
-     "hub": []
+     "hub": [
+      "macro"
+     ]
     }
    ],
    "routes": [
@@ -3952,7 +3968,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-07-25",
      "hub": [
-      "vol"
+      "research"
      ]
     }
    ],
@@ -4111,7 +4127,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -4437,7 +4453,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-03",
      "hub": [
-      "live"
+      "vol"
      ]
     },
     {
@@ -4445,7 +4461,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-09-21",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -4541,7 +4557,7 @@ export const DERIVED = {
   }
  },
  "unclassified": [],
- "rootPageCount": 264,
+ "rootPageCount": 257,
  "packFeeds": 115,
  "generatedAt": "2026-11-15"
 };
