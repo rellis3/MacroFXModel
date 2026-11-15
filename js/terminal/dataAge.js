@@ -3,6 +3,8 @@
 // carries its age and goes amber, then red, past a threshold. The state is in words as well as colour ("stale", "very stale"), never colour alone.
 // Pure: no DOM, no fetch. Colours come from the existing .chip.gold / .chip.dn tokens, so every theme follows.
 
+import { clockState } from '../marketClock.js';
+
 const HOUR = 3600e3;
 
 /** Hours since an ISO / epoch-ms timestamp (or a 'YYYY-MM-DD' date, read as the end of that UTC day); null when it cannot be read. */
@@ -56,4 +58,18 @@ export const LAPTOP_TILES = {
 };
 export const tileChip = (id, o = {}) => ageChip({ ...(LAPTOP_TILES[id] ?? {}), ...o });
 
-globalThis.dataAge = { ageHours, ageLevel, ageWords, ageChip, tileChip, LAPTOP_TILES };
+/**
+ * The retail-crowd (OANDA position book) row on the Pair tab. The book is still served and recorded every 10 minutes while the FX week
+ * is open, but it moves slowly (about 0.3 points of spread over two weeks on EUR/USD), and OANDA freezes it from the Friday close to the
+ * Sunday reopen. So: while the market is shut it says "as at <close>" and is never flagged stale; while it is open, 3h amber, 24h red.
+ */
+export function bookChip(atMs, { now = Date.now(), esc: e = esc } = {}) {
+  const st = clockState(now);
+  if (!st.open) {
+    const h = ageHours(atMs, now);
+    return `<span class="chip dage" data-age="shut" title="${e('OANDA freezes the book from the Friday close to the Sunday reopen; this is the last reading before the close.')}">${e(st.short ?? 'market closed')}${h != null ? '' : ' · no reading'}</span>`;
+  }
+  return ageChip({ asOf: atMs, what: 'book read', warnH: 3, badH: 24, now, source: 'OANDA position book' });
+}
+
+globalThis.dataAge = { ageHours, ageLevel, ageWords, ageChip, tileChip, bookChip, LAPTOP_TILES };

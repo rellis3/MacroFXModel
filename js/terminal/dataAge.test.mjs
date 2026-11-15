@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { ageHours, ageLevel, ageWords, ageChip, tileChip, LAPTOP_TILES } from './dataAge.js';
+import { ageHours, ageLevel, ageWords, ageChip, tileChip, bookChip, LAPTOP_TILES } from './dataAge.js';
 
 let n = 0; const t = (name, fn) => { fn(); n++; console.log('✓', name); };
 const NOW = Date.parse('2026-11-15T12:00:00Z');
@@ -50,5 +50,13 @@ t('the laptop-fed tiles in the terminal actually use the chip (guard: no bare "h
   const html = readFileSync(join(root, 'desk-terminal.html'), 'utf8');
   for (const id of ['cb-expectations', 'options-skew', 'xccy-basis']) assert.ok(html.includes(`tileChip('${id}'`) || html.includes(`dataAge?.tileChip('${id}'`), `${id} tile has no data-age chip in desk-terminal.html`);
   assert.ok(!/\$\{xb\.ageH\} ?h old/.test(html) && !/\$\{sk\.ageH\}h old/.test(html));
+});
+t('the retail book chip: shut market = "as at the close", never stale; open market = 3h amber, 24h red', () => {
+  const sat = Date.parse('2026-11-14T15:00:00Z'), tue = Date.parse('2026-11-17T12:00:00Z');
+  const shut = bookChip(Date.parse('2026-11-13T20:40:00Z'), { now: sat });
+  assert.ok(/data-age="shut"/.test(shut) && /closed · as at/.test(shut) && !/stale/.test(shut));
+  assert.ok(!/gold|dn/.test(shut));
+  assert.ok(/gold/.test(bookChip(tue - 5 * 3600e3, { now: tue })) && /· stale/.test(bookChip(tue - 5 * 3600e3, { now: tue })));
+  assert.ok(/chip dage dn/.test(bookChip(tue - 30 * 3600e3, { now: tue })) && !/gold|dn/.test(bookChip(tue - 1 * 3600e3, { now: tue })));
 });
 console.log(`\n${n} passed`);
