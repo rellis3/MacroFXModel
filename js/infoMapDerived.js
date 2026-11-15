@@ -2408,6 +2408,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/monitorCore.js",
+     "js/terminal/monitorView.js",
      "js/terminal/volClockView.js"
     ],
     "today": [
@@ -3019,6 +3021,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/monitorView.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
@@ -4498,6 +4501,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/monitorCore.js",
+     "js/terminal/monitorView.js",
      "js/terminal/volClockView.js"
     ],
     "today": [
