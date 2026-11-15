@@ -4,22 +4,22 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-14.
+Generated 2026-11-15.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **329** |
-| validated | 51 |
-| null | 183 |
-| underpowered | 95 |
+| claims tested (validated + null + underpowered) | **336** |
+| validated | 52 |
+| null | 185 |
+| underpowered | 99 |
 | context (base rates, descriptions: not counted as tests) | 56 |
 | pre-registrations with no banked verdict (below) | 94 |
 
-**What the count says (Lesson 02 §05).** If none of the 329 claims were real, tests at the usual 5% size would still pass
-about **16.5** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
-**roughly 17 of the 51 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 336 claims were real, tests at the usual 5% size would still pass
+about **16.8** of them by luck. 52 passed, so most passes are unlikely to be luck alone, but
+**roughly 17 of the 52 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -412,6 +412,13 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-14 | gex-range-iv-calm-es | positioning | null | forge/GEX_RANGE_IV_CALM_PREREG.md |
 | 2026-11-14 | gex-range-iv-calm-nq | positioning | underpowered | forge/GEX_RANGE_IV_CALM_PREREG.md |
 | 2026-11-14 | hl-spread-estimator | execution | null | forge/HL_SPREAD_ESTIMATOR_PREREG.md |
+| 2026-11-15 | noise-area-momentum-spy | price | validated | forge/NOISE_AREA_MOMENTUM_SPY_PREREG.md |
+| 2026-11-15 | noise-area-momentum-spy-post | price | underpowered | forge/NOISE_AREA_MOMENTUM_SPY_PREREG.md |
+| 2026-11-15 | vol-layer-rule-a-confirm-k1 | execution | underpowered | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
+| 2026-11-15 | vol-layer-rule-a-confirm-s1 | execution | underpowered | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
+| 2026-11-15 | vol-layer-rule-a-confirm-s2 | execution | underpowered | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
+| 2026-11-15 | vol-layer-rule-a-confirm-s3 | execution | null | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
+| 2026-11-15 | vol-layer-rule-a-confirm-z1 | execution | null | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 

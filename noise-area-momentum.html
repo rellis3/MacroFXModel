@@ -61,6 +61,7 @@
   <span class="chip" id="chipRange">—</span>
   <span class="spacer"></span>
   <span class="chip" id="chipMech">mechanics —</span>
+  <span class="chip" id="chipSPY">SPY —</span>
   <span class="chip" id="chipP1">P1 —</span>
   <a class="chip" href="evidence.html" target="_blank">Evidence Book</a>
 </div>
@@ -69,7 +70,7 @@
 
   <div class="box">
     <h2>Strategy</h2>
-    <div class="note">The paper's intraday momentum rule, rebuilt minute by minute on <b>US index futures</b> (ES ≈ SPY, NQ, YM, RTY), cash session 09:30–16:00 New York, Jan 2016 → 21 Aug 2026 (later sessions are the held-out lockbox). Pre-registered before any result was computed: <a href="https://github.com/rellis3/MacroFXModel/blob/main/forge/NOISE_AREA_MOMENTUM_PREREG.md" target="_blank">forge/NOISE_AREA_MOMENTUM_PREREG.md</a>.</div>
+    <div class="note">The paper's intraday momentum rule, rebuilt minute by minute on <b>SPY</b> as the paper ran it (IBKR 1-minute bars, May 2007 → 21 Aug 2026, the paper's $0.009/share cost) and on <b>US index futures</b> (ES, NQ, YM, RTY, Jan 2016 →), cash session 09:30–16:00 New York. Later sessions are the held-out lockbox. Pre-registered before any result was computed: <a href="https://github.com/rellis3/MacroFXModel/blob/main/forge/NOISE_AREA_MOMENTUM_SPY_PREREG.md" target="_blank">SPY prereg</a> · <a href="https://github.com/rellis3/MacroFXModel/blob/main/forge/NOISE_AREA_MOMENTUM_PREREG.md" target="_blank">futures prereg</a>. <b>Headline:</b> on SPY the paper's result reproduces (1.17 net vs their 1.24; monthly ρ 0.97) and beats a shuffled-minute null; after publication it is too short to judge (0.20). ES is the same trade (ρ 0.95 with SPY) but futures costs take most of it.</div>
     <div class="rules">
       <div class="rule"><b>Noise band</b><br>For each minute, the average |move from the open| over the last 14 days. Upper = max(open, prior close)·(1+σ), lower = min(open, prior close)·(1−σ).</div>
       <div class="rule"><b>Entry</b><br>Checked only at :00 and :30 from 10:00. Long above the upper band (and above VWAP), short below the lower band (and below VWAP).</div>
@@ -84,10 +85,10 @@
       <label>Variant<select id="selVar"></select></label>
       <label>Costs<select id="selCost"></select></label>
       <label>Period<select id="selPer">
-        <option value="all">Full sample (2016 → Aug 2026)</option>
+        <option value="all">Full sample (→ Aug 2026)</option>
         <option value="paper">Overlap with paper's sample (→ Apr 2024)</option>
         <option value="post">After publication (May 2024 →)</option>
-        <option value="fut">Futures days only (no CFD fill)</option>
+        <option value="fut">Drop CFD-filled futures days</option>
       </select></label>
       <label>Compare with<select id="selCmp"><option value="">— none —</option></select></label>
       <label>Scale<span><button class="btn on" id="bLog">log</button> <button class="btn" id="bLin">linear</button></span></label>
@@ -120,7 +121,7 @@
   </div>
 
   <div class="box">
-    <h2>Scored verdicts (pre-registered costs: 1 tick each side + $4.50 round trip)</h2>
+    <h2>Scored verdicts (pre-registered costs: futures 1 tick each side + $4.50 round trip; SPY the paper's $0.009/share)</h2>
     <div class="verdict" id="verdicts"></div>
   </div>
 
@@ -131,7 +132,7 @@
       <svg id="nullSvg" width="100%" height="200"></svg>
     </div>
     <div class="box">
-      <h2>Is the build right? ES vs the paper's published SPY year (V3)</h2>
+      <h2 id="mechTitle">Is the build right? ES vs the paper's published SPY year (V3)</h2>
       <div class="note" id="mechNote"></div>
       <svg id="mechSvg" width="100%" height="200"></svg>
     </div>
@@ -173,10 +174,11 @@
 <script>
 const $ = id => document.getElementById(id);
 const SLOT = ['10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00'];
-const TICK = {ES:{tick:.25,pv:50},NQ:{tick:.25,pv:20},YM:{tick:1,pv:5},RTY:{tick:.1,pv:50}};
+const TICK = {ES:{tick:.25,pv:50},NQ:{tick:.25,pv:20},YM:{tick:1,pv:5},RTY:{tick:.1,pv:50},SPY:{tick:.01,pv:1}};
+const SPY_RT = {gross:0, paper:0.009, comm:0.007, half:0.017, prereg:0.027, two:0.047}; // $/share round trip: commission $0.0035/side, + spread steps
 const COSTS = [
   {id:'gross', label:'Zero cost (gross)', slip:0, comm:0, bp:0},
-  {id:'paper', label:"Paper's SPY cost (~0.4 bp round trip)", slip:0, comm:0, bp:0.4},
+  {id:'paper', label:"Paper's SPY cost (~0.4 bp round trip; SPY: $0.009/share)", slip:0, comm:0, bp:0.4},
   {id:'comm', label:'Commission only ($4.50 round trip)', slip:0, comm:1, bp:0},
   {id:'half', label:'Commission + ½ tick each side', slip:.5, comm:1, bp:0},
   {id:'prereg', label:'Commission + 1 tick each side (pre-registered)', slip:1, comm:1, bp:0},
@@ -194,7 +196,7 @@ function showTip(e, html){ tip.innerHTML = html; tip.style.display = 'block'; ti
 function hideTip(){ tip.style.display = 'none'; }
 
 // ---------------------------------------------------------------- core maths
-function costRT(sym, c, uopen){ const t = TICK[sym]; return 2*c.slip*t.tick + (c.comm ? 4.5/t.pv : 0) + c.bp*uopen/1e4; }
+function costRT(sym, c, uopen){ if (sym === 'SPY') return SPY_RT[c.id]; const t = TICK[sym]; return 2*c.slip*t.tick + (c.comm ? 4.5/t.pv : 0) + c.bp*uopen/1e4; }
 function netSeries(sym, v, costId){
   const I = S.instruments[sym], D = I.daily, c = COSTS.find(x => x.id === costId);
   const sized = S.meta.variants[v].sized, g = D.gross[v], u = D.units[v];
@@ -263,14 +265,14 @@ function render(){
   const c = COSTS.find(c => c.id === st.cost), s0 = st.inst === 'BOOK' ? 'ES' : st.inst;
   const u = S.instruments[s0].daily.uopen; const p = u[u.length-1];
   const rt = costRT(s0, c, p);
-  $('costNote').innerHTML = `Cost per round trip on ${s0} now: <b>${rt.toFixed(3)} pts ≈ ${(rt/p*1e4).toFixed(2)} bp</b> of notional, paid on every entry, exit and reversal, scaled by leverage. The paper charged SPY about 0.4 bp. ES's spread is one tick (≈ 0.4 bp), so "½ tick each side" is a passive-ish fill and "1 tick each side" is a market order that pays the spread and a bit more.`;
+  $('costNote').innerHTML = s0 === 'SPY' ? `Cost per round trip on SPY: <b>$${rt.toFixed(3)}/share ≈ ${(rt/p*1e4).toFixed(2)} bp</b> at the latest price (several times more in bp in 2008–09, when SPY traded at $70–130), paid on every entry, exit and reversal, scaled by leverage. The paper's $0.009 = commission $0.0035 + slippage $0.001 per side. SPY's spread is one cent, so the steps above add ½, 1 and 2 cents each side on top of commission.` : `Cost per round trip on ${s0} now: <b>${rt.toFixed(3)} pts ≈ ${(rt/p*1e4).toFixed(2)} bp</b> of notional, paid on every entry, exit and reversal, scaled by leverage. The paper charged SPY about 0.4 bp. ES's spread is one tick (≈ 0.4 bp), so "½ tick each side" is a passive-ish fill and "1 tick each side" is a market order that pays the spread and a bit more.`;
 }
 
 function drawEquity(x, k, bh){
   const toPts = (arr) => arr.map((v, i) => ({time: x.dates[i], value: 100000*v}));
   if (!eqChart) {
     const opt = {layout:{background:{color:'#161b22'}, textColor:'#9da7b3'}, grid:{vertLines:{color:'#21262d'}, horzLines:{color:'#21262d'}},
-      rightPriceScale:{borderColor:'#30363d'}, timeScale:{borderColor:'#30363d'}, crosshair:{mode:0}};
+      rightPriceScale:{borderColor:'#30363d'}, timeScale:{borderColor:'#30363d', minBarSpacing:0.05}, crosshair:{mode:0}};
     eqChart = LightweightCharts.createChart($('eq'), opt);
     const pf = {type:'price', precision:0, minMove:1};
     eqB = eqChart.addLineSeries({color:'#6e7681', lineWidth:2, priceLineVisible:false, priceFormat:pf});
@@ -339,8 +341,13 @@ function drawVerdicts(){
     <div class="vcard"><div class="vword ${V.P1.verdict}">P1 · ${V.P1.verdict}</div><b>Band + VWAP stop, 1x, on ES and on NQ</b><br>${p1}<br><span class="mut">Pass: beat 97.5% of shuffled draws, mean CI &gt; 0, both halves &gt; 0, on both. Null: CI top &lt; 0.62 (half the paper's 1.24) on both.</span></div>
     <div class="vcard"><div class="vword ${V.P2.verdict}">P2 · ${V.P2.verdict}</div><b>Vol-targeted, 4-index book</b><br>Sharpe <b>${f(V.P2.sharpe)}</b> [${f(V.P2.ci[0])}, ${f(V.P2.ci[1])}], beats ${V.P2.null_pct == null ? '—' : V.P2.null_pct.toFixed(1)}% of shuffled books, halves ${f(V.P2.h1)} / ${f(V.P2.h2)}<br><span class="mut">Null: CI top &lt; 0.66 (half the paper's 1.33).</span></div>
     <div class="vcard"><div class="vword ${V.P3.verdict}">P3 · ${V.P3.verdict}</div><b>Does the band + VWAP stop beat the opposite-band stop?</b> (ES+NQ, 1x)<br>Difference <b>${f(V.P3.mean_bp)} bp/day</b> [${f(V.P3.ci_bp[0])}, ${f(V.P3.ci_bp[1])}], halves ${f(V.P3.h1_bp)} / ${f(V.P3.h2_bp)}<br><span class="mut">Paper: +1.4 bp/day. Null: CI top &lt; 0.35 bp.</span></div>
-    <div class="vcard"><b>Positive control</b> (synthetic paths, gross): pure random walk ${S.control.random_walk.mean_bp} bp/day (t ${S.control.random_walk.t}) → nothing to find, as it should be; planted day trend Sharpe ${S.control.planted_drift.sharpe} → found. ${S.control.pass ? '<span class="pos">pass</span>' : '<span class="neg">FAIL</span>'}</div>`;
-  $('chipP1').textContent = 'P1 ' + V.P1.verdict; $('chipP1').className = 'chip ' + (V.P1.verdict === 'VALIDATED' ? 'ok' : V.P1.verdict === 'NULL' ? 'bad' : 'warn');
+    <div class="vcard"><b>Positive control</b> (synthetic paths, gross): pure random walk ${S.control.random_walk.mean_bp} bp/day (t ${S.control.random_walk.t}) → nothing to find, as it should be; planted day trend Sharpe ${S.control.planted_drift.sharpe} → found. ${S.control.pass ? '<span class="pos">pass</span>' : '<span class="neg">FAIL</span>'}</div>` + (S.spy ? (() => {
+    const A = S.spy.verdicts.S1, B = S.spy.verdicts.S2, pc = x => x.null_pct == null ? '—' : x.null_pct.toFixed(1) + '%';
+    const card = (id, x, title, bar) => `<div class="vcard"><div class="vword ${x.verdict}">${id} · ${x.verdict}</div><b>${title}</b><br>Sharpe <b>${f(x.sharpe)}</b> [${f(x.sharpe_ci[0])}, ${f(x.sharpe_ci[1])}] over ${x.n_days.toLocaleString()} days, mean ${f(x.mean_bp)} bp/day [${f(x.mean_ci_bp[0])}, ${f(x.mean_ci_bp[1])}], beats ${pc(x)} of shuffled draws, halves ${f(x.h1)} / ${f(x.h2)}<br><span class="mut">Pass: beat 97.5% of shuffled draws, mean CI &gt; 0, both halves &gt; 0. Null: Sharpe CI top &lt; ${bar}.</span></div>`;
+    return card('SPY S1', A, "SPY, paper's window (May 2007 → Apr 2024), band + VWAP 1x, paper's cost", '0.62') + card('SPY S2', B, 'SPY after publication (May 2024 → 21 Aug 2026), vol-targeted', '0.66');
+  })() : '');
+  if (S.spy) { const w = S.spy.verdicts.S1.verdict; $('chipSPY').textContent = 'SPY 2007–24 ' + w; $('chipSPY').className = 'chip ' + (w === 'VALIDATED' ? 'ok' : w === 'NULL' ? 'bad' : 'warn'); } else $('chipSPY').style.display = 'none';
+  $('chipP1').textContent = 'Futures P1 ' + V.P1.verdict; $('chipP1').title = 'Futures P1 (ES and NQ)'; $('chipP1').className = 'chip ' + (V.P1.verdict === 'VALIDATED' ? 'ok' : V.P1.verdict === 'NULL' ? 'bad' : 'warn');
 }
 function hist(svg, vals, real, label){
   const W = svg.clientWidth || 600, H = 200, pad = 28;
@@ -362,16 +369,21 @@ function drawNull(){
   $('nullNote').innerHTML = `${s} ${v} at pre-registered costs vs ${vals.length} histories where each day keeps its open, close and minute moves but the order of the minutes is shuffled. If the edge is real intraday trending, the real line sits far right. Real beats <b>${I.null_pct[v].toFixed(1)}%</b> of draws.`;
 }
 function drawMech(){
-  const m = S.mechanics, svg = $('mechSvg'), W = svg.clientWidth || 600, H = 200, ys = Object.keys(m.yearly);
+  const spy = st.inst === 'SPY' && S.spy, who = spy ? 'SPY' : 'ES';
+  let m = S.mechanics;
+  if (spy) { const M = S.spy.mechanics, yearly = {}; M.monthly.labels.forEach((l, i) => { const y = l.slice(0,4); yearly[y] ??= {ours:1, paper:1}; yearly[y].ours *= 1 + M.monthly.ours[i]/100; yearly[y].paper *= 1 + M.monthly.paper[i]/100; }); // stored in %
+    Object.values(yearly).forEach(v => { v.ours -= 1; v.paper -= 1; }); m = {yearly, corr: M.monthly_corr, months: M.monthly.labels}; }
+  $('mechTitle').textContent = `Is the build right? ${who} vs the paper's published SPY year (V3)`;
+  const svg = $('mechSvg'), W = svg.clientWidth || 600, H = 200, ys = Object.keys(m.yearly);
   const vals = ys.flatMap(y => [m.yearly[y].ours, m.yearly[y].paper]), lo = Math.min(0, ...vals), hi = Math.max(...vals);
   const pad = 30, bw = (W-2*pad)/ys.length, Y = v => 20 + (hi - v)/(hi-lo)*(H-50);
   let g = `<line x1="${pad}" x2="${W-pad}" y1="${Y(0)}" y2="${Y(0)}" stroke="#30363d"/>`;
   ys.forEach((y, i) => { const o = m.yearly[y].ours, p = m.yearly[y].paper, x0 = pad + i*bw + 3, w = (bw-8)/2;
-    g += `<rect x="${x0}" y="${Math.min(Y(o),Y(0))}" width="${w}" height="${Math.abs(Y(o)-Y(0))}" rx="2" fill="#3987e5" data-t="${y} ES (ours): ${(o*100).toFixed(1)}%"/>`;
+    g += `<rect x="${x0}" y="${Math.min(Y(o),Y(0))}" width="${w}" height="${Math.abs(Y(o)-Y(0))}" rx="2" fill="#3987e5" data-t="${y} ${who} (ours): ${(o*100).toFixed(1)}%"/>`;
     g += `<rect x="${x0+w+2}" y="${Math.min(Y(p),Y(0))}" width="${w}" height="${Math.abs(Y(p)-Y(0))}" rx="2" fill="#d95926" data-t="${y} paper SPY: ${(p*100).toFixed(1)}%"/>`;
     g += `<text x="${x0+w}" y="${H-8}" text-anchor="middle">${String(y).slice(2)}</text>`; });
   svg.innerHTML = g;
-  $('mechNote').innerHTML = `<span><i class="sw" style="background:#3987e5"></i>ours, ES</span> <span><i class="sw" style="background:#d95926"></i>paper, SPY</span> · monthly correlation <b>${m.corr.toFixed(2)}</b> over ${m.months.length} months (2016 → Aug 2025; 2025 to August). A high correlation says the rules are coded the same way; the level differs because our costs are higher and ES is not SPY.`;
+  $('mechNote').innerHTML = `<span><i class="sw" style="background:#3987e5"></i>ours, ${who}</span> <span><i class="sw" style="background:#d95926"></i>paper, SPY</span> · monthly correlation <b>${m.corr.toFixed(2)}</b> over ${m.months.length} months (2016 → Aug 2025; 2025 to August). ` + (spy ? `Same instrument and the paper's cost, so a high correlation and similar levels mean we rebuilt their rule; what is left is their data vs IB's bars. ${S.spy.mechanics.reproduces ? '<span class="pos">Reproduces</span>' : '<span class="neg">Does not reproduce</span>'} by the pre-registered test (Sharpe within 0.25 of the paper on V2 and V3, monthly ρ ≥ 0.8).` : 'A high correlation says the rules are coded the same way; the level differs because our costs are higher and ES is not SPY.');
   $('chipMech').textContent = 'mechanics vs paper ρ ' + m.corr.toFixed(2); $('chipMech').className = 'chip ' + (m.corr >= .5 ? 'ok' : 'bad');
 }
 function drawTod(){
@@ -450,13 +462,14 @@ async function drawDay(){
 document.addEventListener('mousemove', e => { const t = e.target.closest('[data-t]'); t ? showTip(e, t.dataset.t) : hideTip(); });
 (async () => {
   S = await (await fetch('analysis/output/noise-area-momentum/site.json', {cache:'no-store'})).json();
-  $('selInst').innerHTML = ['ES','NQ','YM','RTY'].map(s => `<option value="${s}">${s} — ${({ES:'S&P 500 (≈ SPY)',NQ:'Nasdaq 100',YM:'Dow',RTY:'Russell 2000'})[s]}</option>`).join('') + '<option value="BOOK">4-index book (equal weight)</option>';
+  $('selInst').innerHTML = ['SPY','ES','NQ','YM','RTY'].filter(s => S.instruments[s]).map(s => `<option value="${s}">${s} — ${({SPY:'SPY ETF, as the paper (2007 →)',ES:'S&P 500 futures',NQ:'Nasdaq 100',YM:'Dow',RTY:'Russell 2000'})[s]}</option>`).join('') + '<option value="BOOK">4-index book (equal weight)</option>';
   $('selVar').innerHTML = Object.entries(S.meta.variants).map(([k, v]) => `<option value="${k}">${k} · ${v.label}</option>`).join('');
   $('selCmp').innerHTML += Object.entries(S.meta.variants).map(([k, v]) => `<option value="${k}">${k} · ${v.label}</option>`).join('');
   $('selCost').innerHTML = COSTS.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
+  if (S.instruments.SPY) { st.inst = 'SPY'; st.cost = 'paper'; }
   $('selInst').value = st.inst; $('selVar').value = st.v; $('selCost').value = st.cost;
-  const E = S.instruments.ES; $('chipRange').textContent = `${E.start} → ${E.end}`;
-  $('selInst').onchange = e => { st.inst = e.target.value; trPage = 0; render(); drawNull(); drawTod(); fillDays(); };
+  const E = S.instruments.SPY || S.instruments.ES; $('chipRange').textContent = `${E.start} → ${E.end}`;
+  $('selInst').onchange = e => { st.inst = e.target.value; trPage = 0; render(); drawNull(); drawMech(); drawTod(); fillDays(); };
   $('selVar').onchange = e => { st.v = e.target.value; trPage = 0; render(); drawNull(); };
   $('selCost').onchange = e => { st.cost = e.target.value; render(); };
   $('selPer').onchange = e => { st.per = e.target.value; trPage = 0; render(); };
@@ -465,7 +478,7 @@ document.addEventListener('mousemove', e => { const t = e.target.closest('[data-
   $('bLin').onclick = () => { st.log = false; $('bLin').classList.add('on'); $('bLog').classList.remove('on'); render(); };
   $('selDay').onchange = drawDay;
   const cd = Object.fromEntries(['ES','NQ','YM','RTY'].map(s => [s, S.instruments[s].cfd_days]));
-  $('dataNote').innerHTML = `<b>Bars:</b> NT8 1-minute futures, ratio-adjusted, cash session only. <b>Gaps:</b> NT8's history has ~6-week holes inside contracts (2018, 2024–26); those days are filled with OANDA CFD minutes scaled to the futures (1-minute returns correlate 0.99): ES ${cd.ES}, NQ ${cd.NQ}, YM ${cd.YM}, RTY ${cd.RTY} days. Pick "Futures days only" to drop them. US-holiday Globex sessions are dropped. <b>Costs</b> are futures costs on every entry, exit and reversal; fills at the decision bar's close; fractional contracts. <b>Not here:</b> SPY itself, other futures, the paper's RSI and NR4/NR7 conditioners, anything after 21 Aug 2026. Scored verdicts use the pre-registered cost and are fixed; the controls above re-cut the same daily P&amp;L at other costs and periods (described, not scored).`;
+  $('dataNote').innerHTML = `<b>SPY:</b> IBKR 1-minute TRADES bars (ARCA), regular hours, unadjusted; IB's extra 16:00–16:15 bars dropped, half-days exit at the 13:00 close; prior close not dividend-adjusted. Costs $0.009/share round trip (the paper's), fractional shares. <b>Futures:</b> NT8 1-minute bars, ratio-adjusted, cash session only. NT8's download had ~6-week holes (a 40-day request returned only its first hour); re-pulled week by week on 15 Nov 2026. The few days NT8 itself has no bars for are filled with OANDA CFD minutes scaled to the futures: ES ${cd.ES}, NQ ${cd.NQ}, YM ${cd.YM}, RTY ${cd.RTY} days (pick "Drop CFD-filled futures days" to exclude them). US-holiday Globex sessions dropped. Futures costs on every entry, exit and reversal; fills at the decision bar's close. <b>Not here:</b> the paper's RSI and NR4/NR7 conditioners, anything after 21 Aug 2026. Scored verdicts use the pre-registered cost and are fixed; the controls above re-cut the same daily P&amp;L at other costs and periods (described, not scored).`;
   render(); drawVerdicts(); drawNull(); drawMech(); drawTod(); fillDays();
   addEventListener('resize', () => { drawNull(); drawMech(); drawTod(); });
 })();

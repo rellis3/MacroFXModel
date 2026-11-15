@@ -135,13 +135,15 @@ def start_index(F):
     return int(np.argmax(ok))
 
 
-def run_instrument(sym, draws, rng_null):
+def run_instrument(sym, draws, rng_null, seed_base=None, start=None):
     t0 = time.time()
     Z = E.build_days(sym)
     cost = E.COST_RT_PTS[sym]
     feats = {(lb, vm): E.features(Z, lb, vm) for lb, vm in {(s["lookback"], s["vm"]) for s in VARIANTS.values()}}
     F = feats[(14, 1.0)]
     i0 = start_index(F)
+    if start is not None:  # SPY prereg: first scored day of the window (warm-up before it)
+        i0 = max(i0, int(np.searchsorted(Z["days"], pd.Timestamp(start).value // 86_400_000_000_000)))
     days = Z["days"][i0:]
     res = sim_all(Z, cost, feats)
     bh = F["bh"][i0:]
@@ -226,9 +228,9 @@ def run_instrument(sym, draws, rng_null):
     trades_out = dict(cols=["day", "entry_slot", "exit_slot", "side", "gross_bp_1x", "net_bp_1x", "lev_v3"],
                       rows=[[int(t[0] - i0), t[1], t[2], t[3], t[4], t[5], round(float(lev3[t[0]]), 3)] for t in tr])
     # permutation null
-    null = dict(V2=[], V3=[], V1=[], diff21=[], entry30=[], hold=[], stop=[], V3_daily=[])
+    null = dict(V2=[], V3=[], V1=[], diff21=[], entry30=[], hold=[], stop=[], V3_daily=[], V2_daily=[])
     for k in range(draws):
-        rng = np.random.default_rng(E.SEED + 1000 * E.INSTRUMENTS.index(sym) + k)
+        rng = np.random.default_rng((E.SEED + 1000 * E.INSTRUMENTS.index(sym) if seed_base is None else seed_base) + k)
         Zp = E.permute(Z, rng)
         Fp = E.features(Zp)
         r1 = E.run_variant(Zp, Fp, "V1", cost, False)
@@ -244,7 +246,9 @@ def run_instrument(sym, draws, rng_null):
         null["hold"].append(float(np.nanmean(pb) * 1e4))
         null["stop"].append(float(np.nanmean((r2["gross"][i0:] - np.nan_to_num(pb))[np.isfinite(pb)]) * 1e4))
         null["V3_daily"].append(np.round(r3["net"][i0:], 7))
+        null["V2_daily"].append(np.round(r2["net"][i0:], 7))
     v3d = np.array(null.pop("V3_daily")) if draws else np.zeros((0, len(days)))
+    out["_v2_null_daily"] = np.array(null.pop("V2_daily")) if draws else np.zeros((0, len(days)))
     out["null"] = {k: v for k, v in null.items()}
     out["null_pct"] = {}
     if draws:
@@ -323,6 +327,7 @@ def main():
     inst, v3null, resall = {}, {}, {}
     for s in E.INSTRUMENTS:
         out, trades_out, sample, v3d, res, i0 = run_instrument(s, draws[s], None)
+        out.pop("_v2_null_daily", None)
         inst[s] = out
         v3null[s] = (v3d, out["dates"])
         resall[s] = (res, i0)

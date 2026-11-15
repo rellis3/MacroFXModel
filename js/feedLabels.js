@@ -1,0 +1,33 @@
+// Friendly names for the data feeds the analysts cite in their evidence, keyed by route id. Kept OUT of js/terminal/ on purpose: the info map
+// (scripts/build_info_map.mjs) counts a quoted route name in a terminal file as the terminal 'naming' that feed, and a label is not a panel.
+// Used by js/terminal/humanDrivers.js (the 'What drives this' panel). Unknown ids fall back to a sentence-case version of the id.
+export const FEED_LABEL = {
+  'fed-path': 'Fed path', 'fomc/latest': 'FOMC statement', 'fomc-latest': 'FOMC statement', 'rate-diff': 'Rate differentials',
+  'rates': 'Policy rates', 'rates-regime': 'Rate regime', 'speech-drift': 'Central-bank speeches', 'fed-speakers': 'Fed speakers',
+  'ecb/latest': 'ECB statement', 'boe/latest': 'BoE statement', 'boj/latest': 'BoJ statement', 'boc/latest': 'BoC statement',
+  'rba/latest': 'RBA statement', 'rbnz/latest': 'RBNZ statement', 'rbnz/decisions': 'RBNZ decisions', 'snb/latest': 'SNB statement',
+  'beigebook/latest': 'Beige Book', 'cb-expectations': 'Rate expectations (futures)', 'world-rates': 'World policy rates',
+  'policy-rates': 'Policy rates', 'carry-vol': 'Carry against vol', 'treasury-auctions': 'Treasury auctions',
+  'macro-scorecard': 'Macro scorecard', 'macro-changes': 'Macro changes', 'nowcast': 'Cleveland nowcast', 'cpi': 'CPI',
+  'ppi': 'PPI', 'gdp': 'GDP', 'ism': 'ISM', 'retail-sales': 'Retail sales', 'trade-balance': 'Trade balance',
+  'consumer-confidence': 'Consumer confidence', 'labor-market': 'Labour market', 'econ-surprise': 'Economic surprises',
+  'econ-trend': 'Economic trend', 'gpr': 'Geopolitical risk', 'leading-indicators': 'Leading indicators',
+  'global-yields': 'Global yields', 'real-yield': 'Real yields', 'yield-curve': 'Yield curve', 'yield-context': 'Yield context',
+  'yield-coupling': 'Yield coupling', 'yield-spread/plan': 'Yield-spread signals', 'term-premium': 'Term premium',
+  'spread-episodes/live': 'Spread episodes', 'xccy-basis': 'Cross-currency basis',
+  'cot-state': 'CFTC positioning', 'cot-extremes': 'CFTC extremes', 'oanda-book': 'Retail positioning', 'oanda-book/history': 'Retail positioning',
+  'credit-stress': 'Credit stress', 'credit-quality': 'Credit quality', 'credit-board': 'Credit board', 'liquidity-pulse/data': 'Liquidity pulse',
+  'liquidity-gate/live': 'Liquidity gate', 'liquidity-board': 'Liquidity board', 'bank-credit': 'Bank credit', 'credit-leads-equities': 'Credit-leads-equities',
+  'chain-read': 'Chain read', 'chain-extra': 'Chain extras', 'regime': 'Growth and inflation regime', 'hmm/regimes': 'Volatility regimes',
+  'market-sense/last': 'Market-sense checks', 'world-stress': 'World stress', 'risk-flags': 'Risk flags', 'gold-etf-flow': 'Gold ETF flows',
+  'wider-market': 'Wider market', 'em-gauges': 'Emerging-market gauges', 'fair-value': 'Fair value', 'fx-fair-value': 'FX fair value',
+  'events': 'Economic calendar', 'event-day': 'Event-day context', 'release-calls': 'Release calls', 'news-outcome': 'News outcomes',
+  'earnings-ahead': 'Earnings ahead', 'fiscal/events': 'Fiscal events', 'desk-news': 'News wire', 'desk-weekly': 'Weekly strategist view',
+  'cvol': 'CME implied vol', 'daily-read': 'Daily read', 'today-reads': 'Daily reads', 'forecast-path': 'Forecast path',
+  'exhaustion-ladder': 'Exhaustion ladder', 'options-skew': 'Options skew', 'hedging-summary': 'Dealer hedging', 'oi-levels': 'Option-interest levels',
+  'oi-today': 'Option interest', 'levels': 'Level engine', 'asia-today': 'Asia session', 'daily-open-fib': 'Daily-open Fibonacci levels',
+  'weekmap': 'Week map', 'range-calls': 'Range calls', 'trade-decision/state': 'Market state', 'trade-state': 'Market state',
+  'swing-map': 'Swing map', 'ledger': 'Desk ledger', 'direction-ledger': 'Direction ledger', 'eod-review': 'End-of-day review',
+  'morning-brief': 'Morning brief', 'desk-memory': 'Desk memory', 'daily-snapshot': 'Daily snapshot', 'trend-basket': 'Trend basket',
+  'rates-nasdaq': 'Rates against Nasdaq',
+};

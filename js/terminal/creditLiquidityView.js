@@ -9,6 +9,7 @@ import { describe, csiTone } from '../creditLiquidityCore.js';
 import { arcGauge, pctRails, glowLine, esc as vEsc, fin } from './boardViz.js';
 import { chipFor } from './corrEvidence.js';
 import { ownerLink, ownerOnly } from './links.js';
+import { dailyChip } from './timeframePills.js';
 
 const sg = (v, d = 2) => (!fin(v) ? '–' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(d)}`);
 
@@ -42,7 +43,7 @@ function spreadCard(cl) {
     s.quality?.pct5y != null ? { label: 'Quality slope, 5 years', value: `${s.quality.bp}bp`, pct: s.quality.pct5y, pct2: s.quality.pct20y } : null,
   ].filter(Boolean), { w: 520 });
   const line = glowLine(s.spark, { w: 300, h: 64, tone: 'var(--gold)', label: 'Baa minus 10-year Treasury, one year' });
-  return `<div class="card"><div class="ch"><span class="lbl">Baa over the 10-year Treasury</span><span class="r muted">${esc2(s.asOf)}</span></div>
+  return `<div class="card"><div class="ch"><span class="lbl">Baa over the 10-year Treasury</span><span class="r muted">${dailyChip('daily data')} ${esc2(s.asOf)}</span></div>
 <div class="bv-big"><span class="mono">${s.bp}bp</span><span class="mono ${s.chg20d > 0 ? 'dn' : s.chg20d < 0 ? 'up' : ''}">${s.chg20d != null ? `${sg(s.chg20d, 0)}bp / 20d` : ''}</span><span class="mono muted">${s.chg5d != null ? `${sg(s.chg5d, 0)}bp / 5d` : ''}</span></div>
 ${rails}${line ? `<div class="bv-cap">One year, weekly</div>${line}` : ''}
 <p class="muted bv-note">Moody's Baa yield minus the 10-year Treasury, daily back to the 1980s: a long-history stand-in for credit spreads (the ICE option-adjusted series on the board above only reaches 2023). The dashed tick is the 20-year percentile where the 5-year one is drawn.</p></div>`;

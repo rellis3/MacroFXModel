@@ -126,7 +126,9 @@ export function buildMacroBoard({ rows = [], scorecard = null, ahead = [], now =
   const series = [];
   for (const [, s] of bySeries) {
     s.rows.sort((a, b) => b.ms - a.ms);
-    series.push({ ccy: s.ccy, family: s.family, rank: s.rank, event: s.event, cadence: cadenceOf(s.event), latestMs: s.rows[0].ms, prints: s.rows.slice(0, 6).map(r => printOf(s, r)) });
+    // the last year of prints, oldest first, for the per-currency strip's 12-month sparkline (additive: nothing else reads it)
+    const history = s.rows.filter(r => r.ms >= s.rows[0].ms - 400 * DAY).slice(0, 14).map(r => ({ ms: r.ms, v: parseCalNumber(r.actual) })).filter(x => Number.isFinite(x.v)).reverse();
+    series.push({ ccy: s.ccy, family: s.family, rank: s.rank, event: s.event, cadence: cadenceOf(s.event), latestMs: s.rows[0].ms, history, prints: s.rows.slice(0, 6).map(r => printOf(s, r)) });
   }
 
   const engineRow = ccy => (scorecard?.ranked ?? []).find(r => r.ccy === ccy) ?? null;
@@ -150,6 +152,7 @@ export function buildMacroBoard({ rows = [], scorecard = null, ahead = [], now =
           event: pick.event, cadence: pick.cadence, ms: p.ms, ageDays, stale,
           actual: p.actual, estimate: p.estimate, prev: p.prev, z: p.z, strength: p.strength, basis: p.basis,
           prints: pick.prints.map(x => ({ ms: x.ms, actual: x.actual, estimate: x.estimate, prev: x.prev, z: x.z, value: x.value })),
+          history: pick.history,
           also: cand.filter(s => s !== pick).sort((a, b) => b.latestMs - a.latestMs).slice(0, 4).map(s => ({ event: s.event, ms: s.latestMs, actual: s.prints[0].actual, estimate: s.prints[0].estimate, z: s.prints[0].z })),
         };
       }

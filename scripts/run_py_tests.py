@@ -85,6 +85,12 @@ for f in files:
 
 for key, msg in unexpected:
     print(f"\n✗ {key}\n{msg}")
+# On GitHub Actions: one annotation per failing test, so the failing test and its first error line show on the run page and in the public
+# annotations API (the full log needs a login).
+if os.environ.get("GITHUB_ACTIONS"):
+    for key, msg in unexpected[:10]:
+        first = next((ln.strip() for ln in str(msg).splitlines() if ln.strip()), "")
+        print(f"::error title=Test failed: {key}::" + first[:400].replace("%", "%25"))
 print(f"\n{ran} Python tests: {passed} passed, {ran - passed} failed")
 if still_known:
     print(f"\nKnown failing on main ({len(still_known)}), not counted — fix and remove from tests/KNOWN_FAILING.json:")

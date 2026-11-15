@@ -42,7 +42,7 @@ test('the radar needs three axes, marks the median ring and puts the 90th-percen
 test('the board: own surface, stale skew flagged, nulls and the range-not-direction wording on the page, tokens only', () => {
   const html = boardHtml(VB());
   assert.match(html, /data-surface="panel\.macro\.vol"/);
-  assert.match(html, /laptop pull is old/);
+  assert.match(html, /data-age="bad"[^>]*>skew pulled \d+ days ago · very stale</);   // the shared laptop-feed age chip (js/terminal/dataAge.js, f6ef6bd2) replaced the board's own "laptop pull is old" chip
   assert.match(html, /Dear is not a sell and cheap is not a buy/);
   assert.match(html, /skew-fade/); assert.match(html, /vix-inversion/);
   assert.doesNotMatch(html, /#[0-9a-f]{3,6}\b|rgb\(/i);
