@@ -10,15 +10,15 @@ Generated 2026-11-15.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **358** |
+| claims tested (validated + null + underpowered) | **364** |
 | validated | 53 |
 | null | 191 |
-| underpowered | 114 |
+| underpowered | 120 |
 | context (base rates, descriptions: not counted as tests) | 56 |
-| pre-registrations with no banked verdict (below) | 90 |
+| pre-registrations with no banked verdict (below) | 89 |
 
-**What the count says (Lesson 02 §05).** If none of the 358 claims were real, tests at the usual 5% size would still pass
-about **17.9** of them by luck. 53 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 364 claims were real, tests at the usual 5% size would still pass
+about **18.2** of them by luck. 53 passed, so most passes are unlikely to be luck alone, but
 **roughly 18 of the 53 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -427,6 +427,12 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-15 | hold-day-one-confirm-run | price | null | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
 | 2026-11-15 | hold-day-one-confirm-speed | price | underpowered | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
 | 2026-11-15 | meta-labelling | price | underpowered | forge/META_LABELLING_PREREG.md |
+| 2026-11-15 | mtf-structure-conflict-ema | price | underpowered | forge/MTF_STRUCTURE_PREREG.md |
+| 2026-11-15 | mtf-structure-conflict-hmm | price | underpowered | forge/MTF_STRUCTURE_PREREG.md |
+| 2026-11-15 | mtf-structure-ema | price | underpowered | forge/MTF_STRUCTURE_PREREG.md |
+| 2026-11-15 | mtf-structure-hmm | price | underpowered | forge/MTF_STRUCTURE_PREREG.md |
+| 2026-11-15 | mtf-structure-pullback | price | underpowered | forge/MTF_STRUCTURE_PREREG.md |
+| 2026-11-15 | mtf-structure-swing | price | underpowered | forge/MTF_STRUCTURE_PREREG.md |
 | 2026-11-15 | positioning-flow-book | positioning | underpowered | forge/POSITIONING_FLOW_INPUTS_PREREG.md |
 | 2026-11-15 | positioning-flow-monthend | positioning | underpowered | forge/POSITIONING_FLOW_INPUTS_PREREG.md |
 | 2026-11-15 | positioning-flow-rr | positioning | underpowered | forge/POSITIONING_FLOW_INPUTS_PREREG.md |
@@ -502,7 +508,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/LINE_TOUCH_COST_PREREG.md`: Pre-registration: the line-touch fade with a per-instrument cost and a stop sized to it
 - `forge/LINE_TOUCH_WIDE_SCAN_PREREG.md`: Pre-registration: wide scan of candle shape / position / time / regime at the forecast lines
 - `forge/MACRO_TREND_WEEKDAY_PREREG.md`: Macro state, H1/H4 trend state and weekday at the vol lines — pre-registration
-- `forge/MTF_STRUCTURE_PREREG.md`: mtf-structure — Do multi-timeframe structure states (EMA trend, confirmed swings, filtered HMM states on W1/D1
 - `forge/NEWS_TOUCH_PREREG.md`: News at the vol lines — pre-registration
 - `forge/OI_WALL_BUILDING_FORWARD_PREREG.md`: oi-wall-building-forward — does a wall where open interest is being built bounce price more than a flat wall, 
 - `forge/RANGE_BOOK_EURUSD_PREREG.md`: EURUSD Range Book — pre-registration
