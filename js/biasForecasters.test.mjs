@@ -1,6 +1,6 @@
 // node js/biasForecasters.test.mjs   (forge/BIAS_SCOREBOARD_PREREG.md §3.3-3.4)
 import assert from 'node:assert/strict';
-import { h4Slope, h4Trend, deskRating, deskCcy, maxSignals, maxWindow, surpriseRule, releaseZ, tier1Of, fundabias, FUNDABIAS_ENABLED, maxInst } from './biasForecasters.js';
+import { h4Slope, h4Trend, deskRating, deskCcy, maxSignals, maxWindow, surpriseRule, releaseZ, tier1Of, fundabias, FUNDABIAS_ENABLED, maxInst, biasEngine } from './biasForecasters.js';
 import { londonMs } from './directionLedger.js';
 
 let passed = 0;
@@ -113,6 +113,20 @@ ok('h4-trend: EMA20 slope of 4h closes from closed H1 bars only; +-0.04; silent 
 
 ok('fundabias: disabled, writes nothing', () => {
   assert.equal(FUNDABIAS_ENABLED, false); assert.deepEqual(fundabias(), []);
+});
+
+ok('bias-engine: side = dir, Neutral / missing = no view, shift 0.01 x strength, knowable at the issue time', () => {
+  const rec = { version: 'bias-engine-v1', weights: 'theory-v1', asOf: '2026-11-13T07:04:00.000Z', markets: {
+    GOLD: { dir: 'BEARISH', strength: 7, score: -1.4, coverage: 0.9 }, EURUSD: { dir: 'BULLISH', strength: 3, score: 0.6, coverage: 0.8 },
+    USDJPY: { dir: 'NEUTRAL', strength: 6, score: 1.2, coverage: 0.4 }, NQ: { dir: 'BULLISH', strength: 10, score: 2, coverage: 1 } } };
+  const v = biasEngine(rec);
+  assert.deepEqual([by(v, 'gold').side, by(v, 'gold').shift, by(v, 'gold').conviction], [-1, 0.07, 7]);
+  assert.deepEqual([by(v, 'eurusd').side, by(v, 'eurusd').shift], [1, 0.03]);
+  assert.equal(by(v, 'nq').shift, 0.1);
+  assert.equal(by(v, 'usdjpy').speaks, false); assert.equal(by(v, 'usdjpy').shift, 0);
+  assert.equal(by(v, 'es').speaks, false); assert.equal(by(v, 'es').inputs.missing, true);
+  assert.ok(v.every(x => x.model_id === 'bias-engine' && x.model_version === 'bias-engine-v1' && x.knowable_ms === Date.parse(rec.asOf)));
+  assert.deepEqual(biasEngine(null).filter(x => x.speaks), []);
 });
 
 console.log(`\n${passed} passed`);

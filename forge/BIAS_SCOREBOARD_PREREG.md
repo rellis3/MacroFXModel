@@ -309,3 +309,24 @@ The exploratory run that motivated it is `analysis/output/macro-h4-blend/RESULTS
 variant about flat). `scripts/bias-scoreboard/score.mjs` must compute this cell from the `desk-rating` and `h4-trend` rows
 before the 60-day judgement.
 
+
+### A3 — 2026-11-15 — PRE-RESULTS (for this forecaster)
+
+**Added forecaster `bias-engine`, forward from its first issue date; no back-issue.** The first issue date is the first
+London weekday with a stored `bias_engine_<D>` (KV, written 07:00–07:30 London by the deployed engine; no earlier than
+2026-11-16). Days before it have no `bias-engine` rows, and none will ever be written for them.
+- **What it is:** the rule-based macro checklist of `plans/BIAS_ENGINE_SPEC.md` (`js/biasEngine.js`, version
+  `bias-engine-v1`, weights `theory-v1`). Pure and deterministic; inputs only as published before the issue time, each
+  driver with its `asOf`. No language model in the scoring path.
+- **Mapping (frozen):** side = the market's direction (BULLISH +1, BEARISH −1); NEUTRAL or a missing market = no view.
+  p_up = clip(p0 ± 0.01 × strength), so s runs 0.03 (strength 3) to 0.10 (strength 10). Conviction = strength.
+  Instruments: all scored instruments, by the desk's names (`DESK_NAME`). Code: `js/biasForecasters.js` `biasEngine`.
+- **Record:** a fourth source file `forward/direction_ledger/sameday/<D>_engine.json`, written on the first tick after the
+  stored issue exists and before 10:00 London; knowable time = the issue's `asOf` (anchor = max(07:00, asOf)). A live
+  (unstored) read from `/api/bias-engine` is never a row. Resolved with the other sources, unchanged.
+- **Scoring and multiplicity:** the same statistics as §3.5 on its own clock: judged at 60 and 120 shared days counted
+  from its first issue date. It is **descriptive** (BH, §6) and does **not** join the Holm family, which stays at the six
+  cells of A2, so no existing cell's test changes. A weights revision is a new model version (`theory-v2`) with its own
+  clock; the `-v1` rows are never re-scored under new weights.
+- **Prior:** Null at 24 h (synthesis §2: direction at 24 h from public data is close to a coin). The record exists to
+  measure it, not because an edge is expected.
