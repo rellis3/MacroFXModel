@@ -251,6 +251,62 @@ understated; the real run's SE floor (placebo SD) covers the overlap.
 
 ## Amendments
 
+### A1 — 2026-11-15 — PRE-RESULTS
+
+**§5 power table**, from `scripts/positioning-flow-inputs/run.py --power` (seed 20261115; output
+`scripts/positioning-flow-inputs/power_table.json`, log `analysis/output/positioning-flow-inputs/cache/power.log`).
+Real cell rows and real readings, synthetic labels only (the target columns were placeholders; no outcome was read),
+B0 = 0.5, 16 draws at IC 0 and 16 at IC 0.08, through the exact §3.3 walk-forward. Depth measured by `--depth` matches
+§3.2 (book 2,379 pre-lockbox snapshots per instrument; CME IV 1,500 settlements per FX pair, 1,497 NAS100; SPX500,
+DE30, UK100 M1 from 2016-01-04). The book crowd series was checked against the server's daily rows
+(`/api/oanda-book/history`, 1,771 overlapping days per instrument, 2019-09-09 → lockbox): correlation ≥ 0.9996, mean
+absolute difference 0.025 pp (rounding) — `analysis/output/positioning-flow-inputs/book_crosscheck.json`.
+
+**One rule added (conservative, changes POWERED only, never a pass bar):** the simulation's labels are independent
+across instruments and days, which understates the null SD (FX labels correlate ≈ 0.47, indices ≈ 0.85; +5 labels
+overlap). SD_null is therefore inflated by √(1 + (k − 1)ρ) for the k instruments of the group (ρ: fx 0.47, idx 0.85,
+gold 0) and by √h for h = 5, before MDE = (3.12 + 0.84) × SD_null. U is unchanged. (The raw +5 draws equal the 21:00
+draws because the synthetic labels are drawn per row, not per horizon; the √5 is what separates them.) Code:
+`adjust_power` in `run.py`. The NULL word still needs the **real** CI upper < U, so this rule can only move a cell
+from NULL to UNDERPOWERED, never the other way.
+
+| Cell | rows (dates), train+test | null mean | SD raw / inflation / SD | MDE (Holm first) | U (IC 0.08) | Power |
+|---|---|---|---|---|---|---|
+| `book|fx|alone|21:00` | 6921 (2307) | -0.030% | 0.056% / x1.39 / 0.078% | 0.311% | +0.408% | POWERED |
+| `book|fx|incr|21:00` | 6864 (2289) | +0.002% | 0.017% / x1.39 / 0.023% | 0.092% | +0.245% | POWERED |
+| `book|gold|alone|21:00` | 2297 (2297) | -0.081% | 0.083% / x1.00 / 0.083% | 0.327% | +0.375% | POWERED |
+| `book|gold|incr|21:00` | 2275 (2275) | -0.017% | 0.148% / x1.00 / 0.148% | 0.588% | +0.246% | UNDERPOWERED |
+| `rr|fx|alone|21:00` | 9274 (1546) | -0.024% | 0.028% / x1.83 / 0.051% | 0.201% | +0.479% | POWERED |
+| `rr|fx|incr|21:00` | 9200 (1536) | -0.003% | 0.048% / x1.83 / 0.087% | 0.346% | +0.278% | UNDERPOWERED |
+| `rr|idx|alone|21:00` | 1542 (1542) | -0.050% | 0.171% / x1.00 / 0.171% | 0.678% | -0.020% | UNDERPOWERED |
+| `rr|idx|incr|21:00` | 1526 (1526) | +0.031% | 0.315% / x1.00 / 0.315% | 1.249% | +0.001% | UNDERPOWERED |
+| `vrp|fx|alone|21:00` | 9306 (1551) | -0.011% | 0.014% / x1.83 / 0.025% | 0.101% | +0.614% | POWERED |
+| `vrp|fx|incr|21:00` | 9232 (1541) | +0.013% | 0.047% / x1.83 / 0.085% | 0.338% | +0.445% | POWERED |
+| `vrp|gold|alone|21:00` | 2740 (2740) | -0.043% | 0.064% / x1.00 / 0.064% | 0.253% | +0.559% | POWERED |
+| `vrp|idx|alone|21:00` | 8229 (2743) | -0.014% | 0.030% / x1.64 / 0.049% | 0.193% | +0.578% | POWERED |
+| `monthend|fx|alone|21:00` | 2646 (378) | -0.036% | 0.071% / x1.95 / 0.138% | 0.546% | +0.559% | POWERED |
+| `monthend|fx|incr|21:00` | 2527 (362) | +0.018% | 0.096% / x1.95 / 0.188% | 0.744% | +0.202% | UNDERPOWERED |
+| `book|fx|alone|+5` | 6921 (2307) | -0.030% | 0.056% / x3.11 / 0.175% | 0.695% | +0.408% | UNDERPOWERED |
+| `book|fx|incr|+5` | 6864 (2289) | +0.002% | 0.017% / x3.11 / 0.052% | 0.205% | +0.245% | POWERED |
+| `book|gold|alone|+5` | 2297 (2297) | -0.081% | 0.083% / x2.24 / 0.185% | 0.731% | +0.375% | UNDERPOWERED |
+| `book|gold|incr|+5` | 2275 (2275) | -0.017% | 0.148% / x2.24 / 0.332% | 1.315% | +0.246% | UNDERPOWERED |
+| `rr|fx|alone|+5` | 9274 (1546) | -0.024% | 0.028% / x4.09 / 0.113% | 0.449% | +0.479% | POWERED |
+| `rr|fx|incr|+5` | 9200 (1536) | -0.003% | 0.048% / x4.09 / 0.195% | 0.773% | +0.278% | UNDERPOWERED |
+| `rr|idx|alone|+5` | 1542 (1542) | -0.050% | 0.171% / x2.24 / 0.383% | 1.516% | -0.020% | UNDERPOWERED |
+| `rr|idx|incr|+5` | 1526 (1526) | +0.031% | 0.315% / x2.24 / 0.705% | 2.792% | +0.001% | UNDERPOWERED |
+| `vrp|fx|alone|+5` | 9306 (1551) | -0.011% | 0.014% / x4.09 / 0.057% | 0.225% | +0.614% | POWERED |
+| `vrp|fx|incr|+5` | 9232 (1541) | +0.013% | 0.047% / x4.09 / 0.191% | 0.756% | +0.445% | UNDERPOWERED |
+| `vrp|gold|alone|+5` | 2740 (2740) | -0.043% | 0.064% / x2.24 / 0.143% | 0.566% | +0.559% | UNDERPOWERED |
+| `vrp|idx|alone|+5` | 8229 (2743) | -0.014% | 0.030% / x3.67 / 0.109% | 0.431% | +0.578% | POWERED |
+| `monthend|fx|alone|+5` | 2646 (378) | -0.036% | 0.071% / x4.37 / 0.308% | 1.221% | +0.559% | UNDERPOWERED |
+| `monthend|fx|incr|+5` | 2527 (362) | +0.018% | 0.096% / x4.37 / 0.420% | 1.665% | +0.202% | UNDERPOWERED |
+
+Readings: **13 of 28 cells are POWERED** (mostly 21:00 alone cells). NAS100 RR (one instrument, ~4 test years) cannot
+recover a planted IC 0.08 at all (U ≈ 0: the inner C rule shrinks it to B0), so both RR-index cells are
+UNDERPOWERED by design. Every +5 incremental cell except the book's is UNDERPOWERED. The selftest (synthetic panel,
+exact cell scorer) passed on 2026-11-15: planted IC 0.15 recovered (alone +2.35% BSS, CI lower +1.60%, placebo 95th
++0.04%; incremental +2.23%), IC 0 not flagged (alone −0.09%, incremental −0.03%).
+
 ## RESULTS — run <YYYY-MM-DD>
 
 *Written to `analysis/output/positioning-flow-inputs/RESULTS.md` and `results.json` (seed 20261115). Nothing above
