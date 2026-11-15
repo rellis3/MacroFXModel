@@ -209,7 +209,15 @@ quadrant and the 4w map estimates. A canary that changes nothing would mean the 
 
 ## Amendments
 
-(none yet)
+### A1 — 2026-11-15 — POST-HOC (results seen), describe only
+The positive controls (gate c7 in `run.py` and the evidence packs' 0.5×/1×/2× plants) added the planted effect ON TOP
+of the real rows, so they measured "real estimate + plant", not what the pipeline can see from zero. For a cell whose
+real estimate is negative (USD, indices, S2) the plant then reads 0% detection whatever the power, and the pack
+labelled those cells "UNDERPOWERED" for the wrong reason (same family as pre-release-ranging A1). The evidence packs
+were rebuilt (`run.py --repack`) with the plant added to NULL-IZED rows (the real estimate × side removed first).
+Gate c7 in `results.json` is left as coded at the run and is flagged there as confounded; it cannot change any
+verdict, because no cell passes c1 (smallest Holm p = 0.39), so no cell could be VALIDATED either way. No verdict
+changes.
 
 ---
 

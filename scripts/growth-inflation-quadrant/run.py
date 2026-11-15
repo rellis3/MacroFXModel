@@ -511,12 +511,16 @@ def packs(cells_by_id: dict, res: list):
                              "outcome": c.zdm(np.ones(len(c.z))), "cluster": c.cl_codes[c.cl]})
         rows = rows[rows["side"] != 0].reset_index(drop=True)
         est = lambda rr: float((rr["side"] * rr["outcome"]).mean())
-        plant = lambda rr, e, g: rr.assign(outcome=rr["outcome"] + e * rr["side"])
+        # A1 (post-hoc, describe only): plant into NULL-IZED real rows (the real tilt removed first), so the
+        # positive control measures what the pipeline can see from zero, not "real estimate + plant"
+        est0 = est(rows)
+        plant = lambda rr, e, g, est0=est0: rr.assign(outcome=rr["outcome"] - est0 * rr["side"] + e * rr["side"])
         leak = lambda rr, g: rr.assign(side=np.where(rr["outcome"] >= 0, 1, -1))
         note = ("Rows = (instrument, Friday) where the map takes a side; outcome = forward z demeaned per instrument "
                 "(B0). Cluster = calendar half-year. CAUTION: the pack's shuffled placebo permutes the side row by row, "
                 "which breaks the quadrant's persistence and makes its band too narrow; the registered placebo is the "
-                "circular shift in results.json (placebo_p97_5). Leak = side set to the sign of the realised outcome.")
+                "circular shift in results.json (placebo_p97_5). Leak = side set to the sign of the realised outcome. "
+                "Plants are added to the real rows AFTER removing the real estimate (prereg amendment A1).")
         out[r["cell"]] = build_pack(rows, slug=f"{SLUG}/{r['cell']}", out=str(OUT / r["cell"]), estimate_fn=est,
                                     bar=r["bar"], unit=f"sigma of {r['h']}w return", plant_fn=plant, leak_fn=leak,
                                     verdict_word=r["verdict"], seed=SEED, B=1000, n_placebo=500, n_plants=40,
@@ -669,6 +673,24 @@ def main_power():
     (OUT / "power.json").write_text(json.dumps({"z_mde": Z_MDE, "cells": table, "labels": describe_labels(lab)}, indent=1, default=str))
 
 
+def main_repack():
+    """Rebuild the evidence packs only (amendment A1), with verdict words and labels from results.json."""
+    V = load_vintages(); lab = build_labels(V); R = outcome_rows(lab)
+    res_all = json.loads((OUT / "results.json").read_text())
+    res = res_all["cells"]
+    cells = {}
+    for spec in CELLS:
+        if spec["arm"] in ("map", "transition") and spec["h"] == 4:
+            cells[spec["id"]] = Cell(R, spec, "label" if spec["def"] == "primary" else "label_s2")
+    pk = packs(cells, res)
+    for r in res:
+        if r["cell"] in pk:
+            r["evidence_label"] = pk[r["cell"]]["diagnosis"]["label"]
+            r["evidence_plants_nullized"] = pk[r["cell"]]["positive_control"]
+    (OUT / "results.json").write_text(json.dumps(res_all, indent=1, default=float))
+    print("repacked", list(pk))
+
+
 def main_run():
     V = load_vintages()
     lab = build_labels(V)
@@ -719,6 +741,7 @@ if __name__ == "__main__":
     ap.add_argument("--fetch", action="store_true")
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--power", action="store_true")
+    ap.add_argument("--repack", action="store_true")
     a = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True); CACHE.mkdir(parents=True, exist_ok=True)
     if a.fetch:
@@ -727,5 +750,7 @@ if __name__ == "__main__":
         sys.exit(0 if selftest() else 1)
     elif a.power:
         main_power()
+    elif a.repack:
+        main_repack()
     else:
         main_run()
