@@ -61,7 +61,7 @@ const TAB_WORDS = {
   options: ['OPTIONS', ['OPT', 'GEX'], 'The Options tab: skew, dealer hedging, put/call, option lines and the VIX term.'],
   news: ['NEWS', ['WIRE'], 'The News tab: the wire, with its reads.'],
   corr: ['CORRELATIONS', ['CORR', 'HEDGES'], 'The Correlations tab: the matrix, rolling correlations, factors and regimes.'],
-  kchart: ['CHART', ['KLINE', 'CANDLES', 'PRO'], 'The Chart tab (preview): a candle chart with indicators, drawing tools and the day\'s lines. Add a market and a candle size: CHART NQ 15M.'],
+  kchart: ['CHART', ['KLINE', 'CANDLES', 'PRO'], 'The Chart tab (preview): a candle chart with indicators (each with its own settings) and the day\'s lines. Add a market and a candle size: CHART NQ 15M.'],
   workspace: ['WORKSPACE', ['WS', 'LAYOUT', 'WORKSPACES'], 'The Workspace tab (preview): drag and resize the terminal panels into a screen of your own. Add a name to load a saved layout: WORKSPACE RATES.'],
   infomap: ['INFO', ['INFOMAP', 'SWITCHES'], 'The Info map tab (owner only): what data the repo holds, and the preview-feature switches.'],
 };

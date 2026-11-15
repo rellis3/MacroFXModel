@@ -1,4 +1,4 @@
-// js/terminal/kchartCore.js: the PURE half of the Chart tab (KLineChart: an open-source candle chart with built-in indicators and drawing tools). No DOM, no fetch.
+// js/terminal/kchartCore.js: the PURE half of the Chart tab (KLineChart: an open-source candle chart with built-in indicators). No DOM, no fetch.
 //
 //   KLINE       the pinned library file we load (version, URL, Subresource Integrity hash, licence). Checked 2026-11-15: klinecharts 10.1.0 (published 2026-10-14), Apache-2.0
 //               (LICENSE in the package, NOTICE names TradingView Lightweight Charts, whose Apache-2.0 licence ships beside it), 240 KB, no dependencies. The desk page sends no
@@ -7,6 +7,8 @@
 //   toKline     our /api/desk-bars bars -> the library's candles
 //   levelsFromDay   today's lines for a market from the /api/replay/day payload, by the Replay's own functions (js/replayCore.js): forecast lines, option walls within 3% of
 //               price, the session's high and low so far, and the dawn read as a chip. Described as where price has been drawn to, never as which way it goes.
+//   settings    each indicator's few numbers (periods, band width, MACD speeds): ranges, validation, the library's calcParams, a one-line legend, and what is remembered in this
+//               browser. Drawing tools were removed 2026-11-15 (owner: clunky); the chart keeps crosshair, zoom, the pills and our own lines.
 //   styleFor    the library's style object from the terminal's theme tokens, so every theme paints it and a theme change repaints it.
 import { INSTRUMENTS as REPLAY_INSTRUMENTS, sessionOpen, levelsAt, londonHM } from '../replayCore.js';
 
@@ -21,21 +23,62 @@ export const NEAR = 0.03;   // option walls are drawn only within 3% of price
 const PERIODS = { '5m': { type: 'minute', span: 5 }, '15m': { type: 'minute', span: 15 }, '30m': { type: 'minute', span: 30 }, '1h': { type: 'hour', span: 1 }, '4h': { type: 'hour', span: 4 } };
 export const periodFor = tf => PERIODS[String(tf ?? '').toLowerCase()] ?? PERIODS['1h'];
 
-/** Indicators the toolbar offers. `main` ones draw on the candles, the rest get their own pane under them. The bars carry no volume, so there is no volume indicator. */
+/** Indicators the toolbar offers. `main` ones draw on the candles, the rest get their own pane under them. The bars carry no volume, so there is no volume indicator.
+ *  `fields` are the numbers a person may change (settings popover); `defaults` are the library's own values, so an untouched chart looks as it did before settings existed. */
+const P = (id, label, min, max, optional = false) => ({ id, label, min, max, int: true, optional });
 export const INDICATORS = [
-  { id: 'MA', label: 'Moving average', short: 'MA', main: true, note: 'Simple moving averages (5, 10, 30, 60 bars).' },
-  { id: 'EMA', label: 'Exponential moving average', short: 'EMA', main: true, note: 'Exponential moving averages (6, 12, 20 bars).' },
-  { id: 'BOLL', label: 'Bollinger bands', short: 'BOLL', main: true, note: '20-bar average with bands 2 standard deviations either side.' },
-  { id: 'RSI', label: 'Relative strength index', short: 'RSI', main: false, note: '6, 12 and 24-bar RSI, 0 to 100.' },
-  { id: 'MACD', label: 'MACD', short: 'MACD', main: false, note: 'MACD line, signal and histogram (12, 26, 9).' },
-];
-/** Drawing tools (the library's own overlay names). */
-export const DRAWINGS = [
-  { id: 'horizontalStraightLine', label: 'Horizontal line' }, { id: 'straightLine', label: 'Line' }, { id: 'rayLine', label: 'Ray' }, { id: 'segment', label: 'Segment' },
-  { id: 'parallelStraightLine', label: 'Parallel lines' }, { id: 'priceChannelLine', label: 'Channel' }, { id: 'fibonacciLine', label: 'Fibonacci' },
+  { id: 'MA', label: 'Moving average', short: 'MA', main: true, note: 'Simple moving averages: up to four lines, each a number of bars.', defaults: [5, 10, 30, 60], fields: [P('p1', 'Line 1', 1, 250), P('p2', 'Line 2', 1, 250, true), P('p3', 'Line 3', 1, 250, true), P('p4', 'Line 4', 1, 250, true)], kind: 'periods' },
+  { id: 'EMA', label: 'Exponential moving average', short: 'EMA', main: true, note: 'Exponential moving averages: up to three lines, each a number of bars.', defaults: [6, 12, 20], fields: [P('p1', 'Line 1', 1, 250), P('p2', 'Line 2', 1, 250, true), P('p3', 'Line 3', 1, 250, true)], kind: 'periods' },
+  { id: 'BOLL', label: 'Bollinger bands', short: 'BOLL', main: true, note: 'Moving average with bands a set number of standard deviations either side.', defaults: [20, 2], fields: [P('period', 'Bars', 2, 200), { id: 'width', label: 'Width (std devs)', min: 0.5, max: 5, int: false, optional: false }], kind: 'boll' },
+  { id: 'RSI', label: 'Relative strength index', short: 'RSI', main: false, note: 'RSI, 0 to 100: up to three lines, each a number of bars.', defaults: [6, 12, 24], fields: [P('p1', 'Line 1', 2, 200), P('p2', 'Line 2', 2, 200, true), P('p3', 'Line 3', 2, 200, true)], kind: 'periods' },
+  { id: 'MACD', label: 'MACD', short: 'MACD', main: false, note: 'MACD line, signal and histogram from a fast and a slow average and a signal length.', defaults: [12, 26, 9], fields: [P('fast', 'Fast', 2, 100), P('slow', 'Slow', 3, 250), P('signal', 'Signal', 1, 100)], kind: 'macd' },
 ];
 export const indicatorById = id => INDICATORS.find(i => i.id === id) ?? null;
-export const drawingById = id => DRAWINGS.find(d => d.id === id) ?? null;
+
+/**
+ * Settings for one indicator. `raw` is the popover's text per field ({ p1: '6', p2: '12', ... }) or an array of numbers.
+ * Returns { ok, values, errors } where values are the library's calcParams. A bad number gives an error naming the field and its range; nothing is guessed or clamped silently.
+ * Period lists: blank optional fields drop that line (line 1 is always needed); MACD needs fast < slow; Bollinger width may have decimals.
+ * An array in the stored form is dense (blank lines already dropped), so for the period lists it is read field by field from the left.
+ */
+export function validateSettings(id, raw) {
+  const ind = indicatorById(id); if (!ind) return { ok: false, values: [], errors: ['Unknown indicator.'] };
+  const get = (f, i) => (Array.isArray(raw) ? raw[i] : raw?.[f.id]);
+  const errors = [], vals = [];
+  ind.fields.forEach((f, i) => {
+    const t = get(f, i), blank = t == null || String(t).trim() === '';
+    if (blank) { if (f.optional) return; errors.push(`${f.label} is needed.`); return; }
+    const v = Number(String(t).trim());
+    if (!Number.isFinite(v)) { errors.push(`${f.label} must be a number.`); return; }
+    if (f.int && !Number.isInteger(v)) { errors.push(`${f.label} must be a whole number.`); return; }
+    if (v < f.min || v > f.max) { errors.push(`${f.label} must be between ${f.min} and ${f.max}.`); return; }
+    vals.push(f.int ? v : Math.round(v * 100) / 100);
+  });
+  if (Array.isArray(raw) && raw.length > ind.fields.length) errors.push('Too many values.');
+  if (!errors.length && ind.kind === 'macd' && vals[0] >= vals[1]) errors.push('Fast must be smaller than slow.');
+  return errors.length ? { ok: false, values: [], errors } : { ok: true, values: vals, errors: [] };
+}
+export const defaultSettings = id => [...(indicatorById(id)?.defaults ?? [])];
+/** One line for the legend and the settings popover: "EMA 6 / 12 / 20", "BOLL 20 bars, 2 std devs", "MACD 12 / 26 / 9". */
+export function describeSettings(id, values) {
+  const ind = indicatorById(id), v = Array.isArray(values) && values.length ? values : defaultSettings(id); if (!ind) return '';
+  if (ind.kind === 'boll') return `${id} ${v[0]} bars, ${v[1]} std devs`;
+  return `${id} ${v.join(' / ')}`;
+}
+export const SETTINGS_KEY = 'deskKchartInd';
+/** What this browser remembers: { MA:[..], ... } for the indicators changed from default. Anything invalid or unknown is dropped on read, so a bad store can never break the chart. */
+export function loadSettings(store) {
+  let o = null; try { o = JSON.parse(store?.getItem(SETTINGS_KEY) ?? 'null'); } catch { o = null; }
+  const out = {};
+  for (const i of INDICATORS) { const v = o && typeof o === 'object' ? o[i.id] : null; if (Array.isArray(v)) { const r = validateSettings(i.id, v); if (r.ok) out[i.id] = r.values; } }
+  return out;
+}
+export function saveSettings(store, settings) {
+  const clean = {}; for (const i of INDICATORS) { const v = settings?.[i.id]; if (Array.isArray(v) && validateSettings(i.id, v).ok && v.join() !== i.defaults.join()) clean[i.id] = v; }
+  try { if (!Object.keys(clean).length) store?.removeItem(SETTINGS_KEY); else store?.setItem(SETTINGS_KEY, JSON.stringify(clean)); return true; } catch { return false; }
+}
+/** The values the chart should use for an indicator: the remembered ones, else the defaults. */
+export const settingsFor = (settings, id) => (settings?.[id] && validateSettings(id, settings[id]).ok ? [...settings[id]] : defaultSettings(id));
 
 const fin = v => v != null && v !== '' && Number.isFinite(+v);
 

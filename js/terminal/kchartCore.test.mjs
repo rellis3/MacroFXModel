@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { KLINE, periodFor, INDICATORS, DRAWINGS, toKline, precisionFor, newerThan, levelsFromDay, styleFor, TOKENS, cleanSymbol, NEAR } from './kchartCore.js';
+import { KLINE, periodFor, INDICATORS, toKline, precisionFor, newerThan, levelsFromDay, styleFor, TOKENS, cleanSymbol, NEAR, validateSettings, defaultSettings, describeSettings, loadSettings, saveSettings, settingsFor, SETTINGS_KEY } from './kchartCore.js';
 import { TF_KEYS } from '../deskBarsCore.js';
 import { INSTRUMENTS } from '../replayCore.js';
 let n = 0; const ok = (c, m) => { assert.ok(c, m); n++; };
@@ -27,7 +27,38 @@ ok(precisionFor('NQ', 27000) === INSTRUMENTS.NQ.dp && precisionFor('ZZZ', 1.12) 
 
 // the toolbar's catalogue
 ok(INDICATORS.map(i => i.id).join() === 'MA,EMA,BOLL,RSI,MACD' && INDICATORS.every(i => i.label && i.note), 'indicators asked for: MA, EMA, BOLL, RSI, MACD (no volume: the bars have none)');
-ok(DRAWINGS.length >= 5 && DRAWINGS.every(d => d.id && d.label), 'drawing tools');
+ok(!('DRAWINGS' in await import('./kchartCore.js')), 'drawing tools are gone');
+
+// indicator settings: ranges, validation, what the library gets, the legend, what this browser remembers
+const memStore = () => { const m = new Map(); return { getItem: k => (m.has(k) ? m.get(k) : null), setItem: (k, v) => { m.set(k, String(v)); }, removeItem: k => { m.delete(k); }, m }; };
+for (const i of INDICATORS) { const r = validateSettings(i.id, i.defaults); ok(r.ok && r.values.join() === i.defaults.join(), `${i.id}: the library's own defaults are valid settings`); ok(i.fields.length >= i.defaults.length, `${i.id}: a field per default number`); }
+ok(validateSettings('EMA', { p1: '9', p2: '21', p3: '' }).values.join() === '9,21', 'a blank optional line is dropped');
+ok(validateSettings('EMA', { p1: ' 9 ', p2: '21', p3: '50' }).values.join() === '9,21,50', 'up to three EMA lines, spaces trimmed');
+ok(validateSettings('MA', { p1: '5', p2: '10', p3: '30', p4: '60' }).values.length === 4, 'MA takes up to four lines');
+ok(!validateSettings('EMA', { p1: '', p2: '21' }).ok && /Line 1 is needed/.test(validateSettings('EMA', { p1: '' }).errors[0]), 'line 1 is always needed');
+ok(/between 1 and 250/.test(validateSettings('MA', { p1: '0' }).errors[0]) && /between 1 and 250/.test(validateSettings('MA', { p1: '251' }).errors[0]), 'MA range 1 to 250 is enforced both ends');
+ok(/whole number/.test(validateSettings('RSI', { p1: '14.5' }).errors[0]) && /must be a number/.test(validateSettings('RSI', { p1: 'abc' }).errors[0]) && /between 2 and 200/.test(validateSettings('RSI', { p1: '1' }).errors[0]), 'RSI: whole numbers, 2 to 200, words for the mistake');
+ok(validateSettings('RSI', { p1: '14' }).values.join() === '14', 'RSI with one period');
+ok(validateSettings('BOLL', { period: '20', width: '2.5' }).values.join() === '20,2.5' && !validateSettings('BOLL', { period: '20', width: '9' }).ok && !validateSettings('BOLL', { period: '1', width: '2' }).ok && !validateSettings('BOLL', { period: '20', width: '' }).ok, 'Bollinger: bars 2 to 200, width 0.5 to 5 with decimals, both needed');
+ok(validateSettings('BOLL', { period: '20', width: '2.456' }).values[1] === 2.46, 'a long decimal is rounded to two places');
+ok(validateSettings('MACD', { fast: '8', slow: '21', signal: '5' }).values.join() === '8,21,5' && /smaller than slow/.test(validateSettings('MACD', { fast: '26', slow: '12', signal: '9' }).errors[0]) && /smaller than slow/.test(validateSettings('MACD', { fast: '12', slow: '12', signal: '9' }).errors[0]), 'MACD: fast must be below slow');
+ok(!validateSettings('MACD', { fast: '12', slow: '26' }).ok && !validateSettings('NOPE', {}).ok, 'a missing MACD signal and an unknown indicator are refused');
+ok(validateSettings('EMA', [9, 21]).ok && !validateSettings('EMA', [9, 21, 50, 80]).ok && !validateSettings('BOLL', [20]).ok, 'the stored (array) form is checked the same way, and extra values are refused');
+ok(describeSettings('EMA', [6, 12, 20]) === 'EMA 6 / 12 / 20' && describeSettings('BOLL', [20, 2]) === 'BOLL 20 bars, 2 std devs' && describeSettings('MACD', null) === 'MACD 12 / 26 / 9', 'the legend line, defaults when nothing is set');
+ok(defaultSettings('MA').join() === '5,10,30,60' && defaultSettings('NOPE').length === 0, 'defaults');
+{ // persistence
+  const st = memStore();
+  ok(Object.keys(loadSettings(st)).length === 0 && Object.keys(loadSettings(null)).length === 0, 'nothing stored: no settings');
+  ok(saveSettings(st, { EMA: [9, 21], MA: [5, 10, 30, 60] }) === true, 'saved');
+  const raw = JSON.parse(st.getItem(SETTINGS_KEY)); ok(raw.EMA.join() === '9,21' && !('MA' in raw), 'only what differs from the default is stored');
+  const back = loadSettings(st); ok(back.EMA.join() === '9,21' && settingsFor(back, 'EMA').join() === '9,21' && settingsFor(back, 'RSI').join() === '6,12,24', 'read back; untouched indicators use the defaults');
+  saveSettings(st, { EMA: [6, 12, 20] }); ok(st.getItem(SETTINGS_KEY) === null, 'resetting everything to default clears the key');
+  st.setItem(SETTINGS_KEY, '{not json'); ok(Object.keys(loadSettings(st)).length === 0, 'a corrupt store is ignored');
+  st.setItem(SETTINGS_KEY, JSON.stringify({ EMA: [0, 5], RSI: [14], MACD: [26, 12, 9], BOLL: 'x', ZZZ: [1] })); const l = loadSettings(st);
+  ok(!('EMA' in l) && l.RSI.join() === '14' && !('MACD' in l) && !('BOLL' in l) && !('ZZZ' in l), 'invalid or unknown entries are dropped one by one, valid ones kept');
+  const bad = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); }, removeItem() { throw new Error('blocked'); } };
+  ok(Object.keys(loadSettings(bad)).length === 0 && saveSettings(bad, { EMA: [9] }) === false, 'a blocked store never throws');
+}
 
 // levels from a Replay day payload
 const HOUR = 3600e3, start = Date.parse('2026-11-16T00:00:00Z'), end = start + 24 * HOUR, now = start + 6 * HOUR;

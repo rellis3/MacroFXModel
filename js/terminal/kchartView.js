@@ -1,11 +1,11 @@
-// js/terminal/kchartView.js: the CHART tab, a KLineChart candle chart on OUR bars (/api/desk-bars) with built-in indicators (MA, EMA, BOLL, RSI, MACD), drawing tools and our own
+// js/terminal/kchartView.js: the CHART tab, a KLineChart candle chart on OUR bars (/api/desk-bars) with built-in indicators (MA, EMA, BOLL, RSI, MACD, each with a small settings popover) and our own
 // lines laid over it: the day's forecast lines, option walls within 3% of price, the session's high and low so far, and the dawn read as a chip. It sits BESIDE the terminal's own glow
 // charts and replaces none of them. The pure half (bars, pinned library, indicators, levels, theme styles) is kchartCore.js.
 //
 // The library is loaded on first visit from a pinned jsDelivr URL with an integrity hash (KLINE in kchartCore.js): nothing downloads for a session that never opens the tab, and a
 // changed file would not run. Colours are theme tokens read at draw time and repainted on 'themechange'. The linked selection (js/terminal/selectionCore.js) drives the market and
 // the candle size when linking is on. A PREVIEW feature (registry id tab.kchart): js/terminal/terminalFeel.js only loads this file when the session may see that surface.
-import { KLINE, INDICATORS, DRAWINGS, TOKENS, toKline, periodFor, precisionFor, newerThan, levelsFromDay, styleFor, indicatorById, drawingById, cleanSymbol } from './kchartCore.js';
+import { KLINE, INDICATORS, TOKENS, toKline, periodFor, precisionFor, newerThan, levelsFromDay, styleFor, indicatorById, cleanSymbol, validateSettings, defaultSettings, describeSettings, loadSettings, saveSettings, settingsFor } from './kchartCore.js';
 import { mountTfBar } from './timeframePills.js';
 import { ALL_INSTRUMENTS, instLabel } from './commandCore.js';
 import { INSTRUMENTS as REPLAY_INSTRUMENTS, londonDate } from '../replayCore.js';
@@ -41,18 +41,17 @@ export function mountKChart({ doc = document, win = window, fetchJson = null, lo
 <label class="kc-l" for="kc-sym">Market</label><input id="kc-sym" list="kc-syms" autocomplete="off" spellcheck="false" maxlength="12"><datalist id="kc-syms">${ALL_INSTRUMENTS.map(k => `<option value="${k}">${esc(instLabel(k))}</option>`).join('')}</datalist>
 <div id="kc-tf" class="kc-tf"></div>
 <span class="kc-sep"></span>
-<span class="kc-l">Indicators</span><span id="kc-ind" class="kc-ind">${INDICATORS.map(i => `<button type="button" class="btn" data-ind="${i.id}" aria-pressed="false" title="${esc(i.note)}">${esc(i.short)}</button>`).join('')}</span>
-<span class="kc-sep"></span>
-<label class="kc-l" for="kc-draw">Draw</label><select id="kc-draw"><option value="">Choose a tool…</option>${DRAWINGS.map(d => `<option value="${d.id}">${esc(d.label)}</option>`).join('')}</select><button type="button" class="btn" id="kc-clear">Clear drawings</button>
+<span class="kc-l">Indicators</span><span id="kc-ind" class="kc-ind">${INDICATORS.map(i => `<span class="kc-ig"><button type="button" class="btn" data-ind="${i.id}" aria-pressed="false" title="${esc(i.note)} Right-click or use the gear to change its numbers.">${esc(i.short)}</button><button type="button" class="btn kc-gear" data-gear="${i.id}" aria-expanded="false" aria-controls="kc-pop" aria-label="${esc(i.label)} settings" title="${esc(i.label)} settings">&#9881;</button></span>`).join('')}</span>
 <span class="kc-sep"></span>
 <button type="button" class="btn" id="kc-lv" aria-pressed="true" title="The day's forecast lines, option walls within 3% of price and the session range">Levels</button><button type="button" class="btn" id="kc-fit">Latest</button>
-</div><div id="kc-info" class="kc-info" role="status" aria-live="polite"></div><div id="kc-chart" class="kc-chart"></div>
+</div><div id="kc-pop" class="kc-pop" role="dialog" aria-label="Indicator settings" hidden></div><div id="kc-legend" class="kc-legend" aria-label="Indicators on the chart"></div><div id="kc-info" class="kc-info" role="status" aria-live="polite"></div><div id="kc-chart" class="kc-chart"></div>
 <p class="kc-foot muted">Candles are the terminal's own OANDA mid-price bars; they carry no volume. Lines are where price has been drawn to and how big the day is forecast to be, not which way it will go. Chart by KLineChart (Apache-2.0).</p>`;
   const $ = s => sec.querySelector(s);
   const symEl = $('#kc-sym'), infoEl = $('#kc-info'), box = $('#kc-chart');
 
   let K = null, chart = null, tfbar = null, open = false, inst = null, tfNow = null, pending = [], lastTs = null, subCb = null, ro = null, lvTimer = null, lvOn = true, lvSeq = 0, lvNote = '', dawn = '';
   const on = new Set();
+  let cfg = loadSettings(ls), popId = null;   // cfg: the numbers this browser remembers, per indicator; unlisted = the library's own defaults
   const say = t => { infoEl.textContent = t || ''; };
   const drawInfo = () => { infoEl.innerHTML = [dawn && `<span>${esc(dawn)}</span>`, lvNote && `<span class="muted">${esc(lvNote)}</span>`].filter(Boolean).join(' '); };
 
@@ -80,8 +79,48 @@ export function mountKChart({ doc = document, win = window, fetchJson = null, lo
     if ('ResizeObserver' in win) { ro = new win.ResizeObserver(() => chart?.resize()); ro.observe(box); }
     return true;
   }
-  function addIndicator(id) { const i = indicatorById(id); if (!i || !chart) return; chart.createIndicator(i.main ? { name: id, paneId: MAIN_PANE } : { name: id }, i.main); }
+  function addIndicator(id) { const i = indicatorById(id); if (!i || !chart) return; const calcParams = settingsFor(cfg, id); chart.createIndicator(i.main ? { name: id, calcParams, paneId: MAIN_PANE } : { name: id, calcParams }, i.main); }
   function removeIndicator(id) { const i = indicatorById(id); if (i && chart) chart.removeIndicator(i.main ? { name: id, paneId: MAIN_PANE } : { name: id }); }
+
+  // ── indicator settings: a small popover under the toolbar (in the page flow, so it can never run off a phone screen) ──
+  const popEl = $('#kc-pop'), legEl = $('#kc-legend');
+  const drawLegend = () => { legEl.innerHTML = INDICATORS.filter(i => on.has(i.id)).map(i => `<span>${esc(describeSettings(i.id, settingsFor(cfg, i.id)))}</span>`).join(''); };
+  const gearOf = id => sec.querySelector(`[data-gear="${id}"]`);
+  function closePop(focusBack = true) {
+    if (!popId) return; const g = gearOf(popId); popId = null; popEl.hidden = true; popEl.innerHTML = '';
+    for (const x of sec.querySelectorAll('[data-gear]')) x.setAttribute('aria-expanded', 'false');
+    if (focusBack && g?.focus) g.focus();
+  }
+  function openPop(id) {
+    const ind = indicatorById(id); if (!ind) return;
+    if (popId === id) { closePop(); return; }
+    closePop(false); popId = id;
+    const cur = settingsFor(cfg, id), dense = ind.kind === 'periods';
+    popEl.innerHTML = `<h4>${esc(ind.label)}</h4><p>${esc(ind.note)} Now: ${esc(describeSettings(id, cur))}.</p><div class="kc-fields">${ind.fields.map((f, k) => `<label>${esc(f.label)}<input type="text" inputmode="decimal" data-f="${f.id}" value="${esc(cur[k] ?? '')}" placeholder="${f.optional ? 'off' : ''}" autocomplete="off" aria-label="${esc(ind.label)} ${esc(f.label)}${f.optional ? ' (leave blank to switch the line off)' : ''}"></label>`).join('')}</div><div class="kc-err" role="alert"></div><div class="kc-acts"><button type="button" class="btn" data-act="apply">Apply</button><button type="button" class="btn" data-act="reset">Reset to default</button><button type="button" class="btn" data-act="close">Close</button></div>`;
+    popEl.hidden = false; void dense;
+    gearOf(id)?.setAttribute('aria-expanded', 'true');
+    popEl.querySelector('input')?.focus();
+  }
+  function applySettings(id, values) {
+    if (values.join() === defaultSettings(id).join()) delete cfg[id]; else cfg[id] = values;
+    saveSettings(ls, cfg);
+    if (on.has(id) && chart) { removeIndicator(id); addIndicator(id); }
+    drawLegend();
+  }
+  function readPop() { const raw = {}; for (const el of popEl.querySelectorAll('[data-f]')) raw[el.dataset.f] = el.value; return raw; }
+  popEl.addEventListener('click', e => {
+    const b = e.target.closest?.('[data-act]'); if (!b || !popId) return;
+    const id = popId, errEl = popEl.querySelector('.kc-err');
+    if (b.dataset.act === 'close') { closePop(); return; }
+    if (b.dataset.act === 'reset') { applySettings(id, defaultSettings(id)); closePop(); say(`${indicatorById(id).short} back to its default numbers.`); return; }
+    const r = validateSettings(id, readPop());
+    if (!r.ok) { errEl.textContent = r.errors[0]; return; }
+    applySettings(id, r.values); closePop(); say('');
+  });
+  popEl.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.stopPropagation(); closePop(); return; }
+    if (e.key === 'Enter' && e.target?.dataset?.f != null) { e.preventDefault(); popEl.querySelector('[data-act="apply"]')?.click(); }
+  });
 
   // ── data ──
   function apply(bars, { tf, fit }) {
@@ -150,21 +189,22 @@ export function mountKChart({ doc = document, win = window, fetchJson = null, lo
     mountTf();
     if (sel()?.get().tf) { /* the pills remember their own size; a linked size is applied through the page's own tf command */ }
   }
-  function leave() { open = false; tfbar?.stop(); tfbar = null; clearInterval(lvTimer); lvTimer = null; }
+  function leave() { open = false; closePop(false); tfbar?.stop(); tfbar = null; clearInterval(lvTimer); lvTimer = null; }
   const tabBtns = [...doc.querySelectorAll('#tabs [data-t]')], onTab = e => { const b = e.currentTarget ?? e.target; if (b.dataset.t === 'kchart') win.setTimeout(enter, 0); else leave(); };
   for (const b of tabBtns) b.addEventListener('click', onTab);
 
   symEl.addEventListener('change', () => setInst(symEl.value));
   symEl.addEventListener('keydown', e => { if (e.key === 'Enter') setInst(symEl.value); });
   $('#kc-ind').addEventListener('click', e => {
+    const g = e.target.closest?.('[data-gear]'); if (g) { openPop(g.dataset.gear); return; }
     const b = e.target.closest?.('[data-ind]'); if (!b) return;
     const id = b.dataset.ind, now = !on.has(id);
     if (now) on.add(id); else on.delete(id);
     b.setAttribute('aria-pressed', String(now));
     if (now) addIndicator(id); else removeIndicator(id);
+    drawLegend();
   });
-  $('#kc-draw').addEventListener('change', e => { const d = drawingById(e.target.value); if (d && chart) { chart.createOverlay({ name: d.id, groupId: 'drawing' }); say(`${d.label}: click on the chart to place it.`); } e.target.value = ''; });
-  $('#kc-clear').addEventListener('click', () => { chart?.removeOverlay({ groupId: 'drawing' }); say('Drawings cleared.'); });
+  $('#kc-ind').addEventListener('contextmenu', e => { const b = e.target.closest?.('[data-ind]'); if (!b) return; e.preventDefault(); openPop(b.dataset.ind); });
   $('#kc-fit').addEventListener('click', () => chart?.scrollToRealTime(0));
   $('#kc-lv').addEventListener('click', e => { lvOn = !lvOn; e.currentTarget.setAttribute('aria-pressed', String(lvOn)); loadLevels(); });
   const onTheme = () => { if (!chart) return; chart.setStyles(styleFor(tokens())); loadLevels(); };

@@ -34,4 +34,14 @@ const html = fs.readFileSync(path.join(ROOT, 'desk-terminal.html'), 'utf8'), fee
 ok(/<button role="tab"[^>]*data-t="kchart"[^>]*data-surface="tab\.kchart"/.test(html) && /<section id="kchart" hidden data-surface="tab\.kchart">/.test(html), 'tab button and section are registered surfaces');
 ok(/import\('\.\/kchartView\.js'\)/.test(feel) && !/^import .*kchartView/m.test(feel), 'the loader imports the view dynamically, never statically (a desk login with the switch off gets no code)');
 ok(!/<script[^>]*klinecharts/.test(html), 'the library is not in the page: it loads on first visit to the tab');
+// settings popover and no drawing tools, by the page's own source (the library is not run here)
+const src = fs.readFileSync(path.join(ROOT, 'js/terminal/kchartView.js'), 'utf8');
+ok(src.includes('data-gear="${i.id}"') && src.includes('aria-label="${esc(i.label)} settings"'), 'every indicator has a labelled gear button');
+ok(src.includes("'contextmenu'") && src.includes("e.key === 'Escape'") && src.includes('aria-controls="kc-pop"'), 'right-click opens settings, Escape closes, the gear names its popover');
+ok(/id="kc-pop"[^>]*hidden/.test(src) && src.includes('calcParams') && src.includes('saveSettings(ls, cfg)') && src.includes('loadSettings(ls)'), 'popover starts hidden; the numbers reach the library as calcParams and are remembered in this browser');
+ok(!/kc-draw|kc-clear|DRAWINGS|drawingById/.test(src), 'no drawing tools in the page');
+ok(src.includes('kc-legend') && src.includes('describeSettings'), 'the legend shows the current numbers');
+const css = fs.readFileSync(path.join(ROOT, 'js/terminal/kchart.css'), 'utf8');
+ok(/\.kc-pop \{[^}]*width: min\(360px, 100%\)/.test(css) && !/\.kc-pop \{[^}]*position: (absolute|fixed)/.test(css), 'the popover sits in the page flow and is never wider than the screen');
+ok(!/#[0-9a-fA-F]{3,8}\b/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')), 'the stylesheet uses theme tokens only');
 console.log(`kchartView: ${n} checks OK`);
