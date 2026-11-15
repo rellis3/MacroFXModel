@@ -86,6 +86,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/calendarDrillsCore.js",
      "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
@@ -148,6 +149,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/calendarDrillsCore.js",
      "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
@@ -489,6 +491,8 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
+     "js/terminal/calendarDrillsCore.js",
+     "js/terminal/calendarDrillsView.js",
      "js/terminal/macroSubtabs.js"
     ],
     "today": [
@@ -2966,6 +2970,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/calendarDrillsCore.js",
+     "js/terminal/calendarDrillsView.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/releasesBoardView.js"
@@ -3168,6 +3174,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/calendarDrillsCore.js",
+     "js/terminal/calendarDrillsView.js",
      "js/terminal/releasesBoardView.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/traderReadView.js"
@@ -3262,7 +3270,10 @@ export const DERIVED = {
    ],
    "modules": [],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "js/terminal/calendarDrillsCore.js",
+     "js/terminal/calendarDrillsView.js"
+    ],
     "today": [],
     "atlas": [
      "atlas.html"
@@ -3277,7 +3288,16 @@ export const DERIVED = {
   },
   "release-scorecard": {
    "pages": [],
-   "routes": [],
+   "routes": [
+    {
+     "route": "/api/release-calls",
+     "exists": true,
+     "pack": {
+      "skill": "events_news",
+      "maxAgeH": 96
+     }
+    }
+   ],
    "modules": [
     {
      "file": "js/releaseScorecard.js",
@@ -3285,7 +3305,10 @@ export const DERIVED = {
     }
    ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "js/terminal/calendarDrillsCore.js",
+     "js/terminal/calendarDrillsView.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -3293,7 +3316,9 @@ export const DERIVED = {
     "newsletter": []
    },
    "evidence": [],
-   "packSkills": [],
+   "packSkills": [
+    "events_news"
+   ],
    "drift": []
   },
   "fiscal-events": {
@@ -3748,6 +3773,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/bookPanels.js",
+     "js/terminal/calendarDrillsView.js",
      "js/terminal/chainBoard.js",
      "js/terminal/commandCore.js",
      "js/terminal/goldCore.js",

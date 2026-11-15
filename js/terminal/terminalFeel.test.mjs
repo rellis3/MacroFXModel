@@ -16,7 +16,7 @@ const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 globalThis.__terminalFeelNoAutoStart = true;
 globalThis.localStorage = memStore();
 const { start } = await import('./terminalFeel.js');
-const PREVIEW = ['widget.cmdline', 'widget.export', 'panel.news.saved', 'tab.monitor', 'tab.workspace', 'tab.kchart', 'tab.insight', 'widget.alerts', 'widget.linked'];   // registry order
+const PREVIEW = ['widget.cmdline', 'panel.cal.drills', 'widget.export', 'panel.news.saved', 'tab.monitor', 'tab.workspace', 'tab.kchart', 'tab.insight', 'widget.alerts', 'widget.linked'];   // registry order
 
 test('the preview features are registry surfaces, hidden from the desk login by default, with a reason and a note', () => {
   assert.ok(HIDDEN_REASONS.includes('preview'));
@@ -58,19 +58,19 @@ test('start(): a desk login with the switches off loads nothing and adds nothing
   const win = makeWin(doc); globalThis.document = doc; globalThis.window = win;
   try {
     globalThis.deskSurfaceOn = () => false;
-    assert.deepEqual(await start(), { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false });
+    assert.deepEqual(await start(), { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false });
     assert.equal(doc.getElementById('feelCss'), null); assert.equal(doc.getElementById('cmdk-back'), null); assert.equal(doc.getElementById('cmdbtn').hidden, true); assert.equal(doc.getElementById('linkchip').hidden, true);
     assert.equal(win.deskSelection, undefined);
     delete globalThis.deskSurfaceOn;
-    assert.deepEqual(await start(), { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false }, 'deskSurfaceOn missing = not allowed');
+    assert.deepEqual(await start(), { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false }, 'deskSurfaceOn missing = not allowed');
     globalThis.deskSurfaceOn = id => id !== 'widget.linked' && id !== 'widget.cmdline';
-    assert.deepEqual(await start(), { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false });
+    assert.deepEqual(await start(), { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false });
   } finally { delete globalThis.deskSurfaceOn; delete globalThis.document; delete globalThis.window; }
 });
 
 test('start(): the owner gets both (button, chip, stylesheet, key handler); one switched on gives only that one', async () => {
   // workspace is false below: this stand-in page has no #workspace section to mount into (workspaceState/Core tests cover the feature)
-  for (const [on, want] of [[() => true, { linked: true, cmdline: true, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false }], [id => id === 'widget.cmdline', { linked: false, cmdline: true, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false }], [id => id === 'widget.linked', { linked: true, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false }]]) {
+  for (const [on, want] of [[() => true, { linked: true, cmdline: true, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false }], [id => id === 'widget.cmdline', { linked: false, cmdline: true, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false }], [id => id === 'widget.linked', { linked: true, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false }]]) {
     const doc = makePage(); doc.head = new El('head'); doc.root.appendChild(doc.head);
     const win = makeWin(doc); globalThis.document = doc; globalThis.window = win; globalThis.deskSurfaceOn = on;
     globalThis.openPairPage = win.openPairPage; globalThis.openReplay = win.openReplay;   // the hooks terminalTabs.js sets (the loader waits for them)

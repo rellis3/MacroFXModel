@@ -25,6 +25,12 @@ function addKcCss() {
   l.id = 'kcCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/kchart.css';
   document.head.appendChild(l);
 }
+function addCdCss() {
+  if (document.getElementById('cdCss')) return;
+  const l = document.createElement('link');
+  l.id = 'cdCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/calendar-drills.css';
+  document.head.appendChild(l);
+}
 function addExCss() {
   if (document.getElementById('exCss')) return;
   const l = document.createElement('link');
@@ -63,10 +69,10 @@ const hooksReady = () => new Promise(res => {
 });
 
 export async function start() {
-  const wantLinked = on('widget.linked'), wantCmd = on('widget.cmdline'), wantWs = on('tab.workspace'), wantAl = on('widget.alerts'), wantKc = on('tab.kchart'), wantMon = on('tab.monitor'), wantIn = on('tab.insight'), wantNs = on('panel.news.saved'), wantEx = on('widget.export');
-  if (!wantLinked && !wantCmd && !wantWs && !wantAl && !wantKc && !wantMon && !wantIn && !wantNs && !wantEx) return { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false };
+  const wantLinked = on('widget.linked'), wantCmd = on('widget.cmdline'), wantWs = on('tab.workspace'), wantAl = on('widget.alerts'), wantKc = on('tab.kchart'), wantMon = on('tab.monitor'), wantIn = on('tab.insight'), wantNs = on('panel.news.saved'), wantEx = on('widget.export'), wantCd = on('panel.cal.drills');
+  if (!wantLinked && !wantCmd && !wantWs && !wantAl && !wantKc && !wantMon && !wantIn && !wantNs && !wantEx && !wantCd) return { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false };
   if (wantLinked || wantCmd) addCss();
-  let linked = false, cmdline = false, workspace = false, alerts = false, chart = false, monitor = false, insight = false, newsSearches = false, exporter = false;
+  let linked = false, cmdline = false, workspace = false, alerts = false, chart = false, monitor = false, insight = false, newsSearches = false, exporter = false, calendarDrills = false;
   try {
     if (wantKc) { addKcCss(); const m = await import('./kchartView.js'); chart = !!m.mountKChart(); }
   } catch (e) { console.warn('chart', e); }
@@ -89,12 +95,15 @@ export async function start() {
     if (wantNs) { addNsCss(); const m = await import('./newsSearchView.js'); newsSearches = !!m.installNewsSearches(); }
   } catch (e) { console.warn('news searches', e); }
   try {
+    if (wantCd) { addCdCss(); const m = await import('./calendarDrillsView.js'); calendarDrills = !!m.mountCalendarDrills(); }
+  } catch (e) { console.warn('calendar drills', e); }
+  try {
     if (wantEx) { addExCss(); const m = await import('./exportView.js'); exporter = !!m.mountExport(); }   // after the boards it decorates are mounted
   } catch (e) { console.warn('export', e); }
   try {
     if (wantCmd) { const m = await import('./commandLine.js'); cmdline = !!m.mountCommandLine(); }
   } catch (e) { console.warn('command line', e); }
-  return { linked, cmdline, workspace, alerts, chart, monitor, insight, newsSearches, exporter };
+  return { linked, cmdline, workspace, alerts, chart, monitor, insight, newsSearches, exporter, calendarDrills };
 }
 
 if (typeof document !== 'undefined' && !globalThis.__terminalFeelNoAutoStart) {
