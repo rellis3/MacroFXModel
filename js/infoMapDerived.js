@@ -2411,6 +2411,8 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/monitorCore.js",
      "js/terminal/monitorView.js",
+     "js/terminal/reachCore.js",
+     "js/terminal/reachView.js",
      "js/terminal/volClockView.js"
     ],
     "today": [

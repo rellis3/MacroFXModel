@@ -114,3 +114,10 @@ p.in-cap { font-size: 11.5px; color: var(--tx2); }
 .in-rail u { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--tx3); opacity: .55; }
 .in-rm { position: absolute; top: -4px; width: 4px; height: 16px; margin-left: -2px; border-radius: 2px; background: var(--pur2); box-shadow: 0 0 10px rgba(var(--purrgb), .8); }
 .in-mini { margin-top: 8px; font-size: 12px; }
+
+/* Level-reach calculator (js/terminal/reachView.js) */
+.in-input { background: var(--bg2); color: var(--tx); border: 1px solid var(--line2); border-radius: 8px; padding: 6px 8px; font: 600 12px var(--mono); width: 120px; }
+.in-input:focus-visible { outline: 2px solid var(--pur2); outline-offset: 1px; }
+.in-presets { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.in-reach { background: var(--bg2); }
+.in-rb { position: absolute; top: 1px; bottom: 1px; border-radius: 99px; background: rgba(var(--purrgb), .3); }

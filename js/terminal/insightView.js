@@ -13,6 +13,7 @@ export const PANELS = [
   { key: 'rotation', surface: 'panel.insight.rotation', pill: '<button type="button" class="in-tab" data-p="rotation" data-surface="panel.insight.rotation">Sector rotation</button>', load: () => import('./matrixView.js').then(m => m.mountRotation) },
   { key: 'fxmatrix', surface: 'panel.insight.fxmatrix', pill: '<button type="button" class="in-tab" data-p="fxmatrix" data-surface="panel.insight.fxmatrix">Currency matrix</button>', load: () => import('./fxMatrixView.js').then(m => m.mountFx) },
   { key: 'gold', surface: 'panel.insight.gold', pill: '<button type="button" class="in-tab" data-p="gold" data-surface="panel.insight.gold">Gold</button>', load: () => import('./goldView.js').then(m => m.mountGold) },
+  { key: 'reach', surface: 'panel.insight.reach', pill: '<button type="button" class="in-tab" data-p="reach" data-surface="panel.insight.reach">Level reach</button>', load: () => import('./reachView.js').then(m => m.mountReach) },
 ];
 const LS = 'deskInsight:v1';
 
