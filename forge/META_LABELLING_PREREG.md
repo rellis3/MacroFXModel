@@ -259,7 +259,12 @@ excludes the bar.
 
 ## Amendments
 
-*(none yet)*
+### A1 — 2026-11-15 — PRE-RESULTS (set in the runner before any real outcome was computed)
+
+Implementation details the prereg left open, fixed in `scripts/meta-labelling/run.py` (commit d7695e24) before the scored run started:
+- Evidence-pack sizes: the pack defaults (B = 1000 iid date bootstrap, 500 placebo shuffles, 40 plants per multiple) for C1, C2, C4; for C3 (the Sharpe statistic needs a date group-by per evaluation) B = 600, 400 placebo shuffles, 20 plants per multiple. The runner's own 21-day block bootstrap (B = 2000) and the 1000-draw random same-fraction placebo stay as registered and are the binding numbers.
+- The pack's plant removes the real estimate and adds a constant on acted rows, solved so the statistic equals the planted effect exactly (a secant solve; for C3 the Sharpe statistic is not linear in the constant).
+- The selftest's one-day-leak canary (3.6 d) runs on a panel with persistent outcomes (AR(1) 0.9 component), where a clean `hit20` is legitimately informative; the check is that the leaked version lifts C1 by > 0.01R above the clean one. Selftest passed (planted C1 +0.176R [+0.166, +0.184]; null C1 +0.002R [−0.007, +0.012]; outcome canary +0.56R; leak 0.293 → 0.334R; features unchanged when every later R is replaced by noise; R hand paths exact).
 
 ---
 
