@@ -1070,6 +1070,41 @@ export const DESK_EVIDENCE = [
     instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
   },
   {
+    id: 'vol-layer-rule-a-confirm-s1', domain: 'execution', verdict: 'underpowered', date: '2026-11-15', doc: 'forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md', also: ['analysis/output/vol-layer-rule-a-confirm/RESULTS.md'],
+    claim: "Moving Rule A's stop one bid/ask spread further behind the line (Vol-Layer stage 3 spread effect) raises the daily book Sharpe",
+    result: "Pre-registered, scored once on 2023-01-01 to 2026-08-20, Rule A's 1,135 trades, 943 book days, M1 bid/ask fills (parity with the registered grid 1,135/1,135). Book Sharpe change -0.009 [-0.20, +0.19], Holm p 1.0, MDE 0.31; neighbours a=0.5/1.5 +0.04/-0.00, one-session-lag spread -0.04; no year sign holds.",
+    use: "Do not add a spread allowance to Rule A's stop; the narrow break stop gains nothing measurable. The spread effect stays a wide-stop (0.5 sigma+) recipe.",
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
+  },
+  {
+    id: 'vol-layer-rule-a-confirm-s2', domain: 'execution', verdict: 'underpowered', date: '2026-11-15', doc: 'forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md', also: ['analysis/output/vol-layer-rule-a-confirm/RESULTS.md'],
+    claim: "Scaling Rule A's stop by the vol clock (square root of the share of the day's variance still to come) raises the daily book Sharpe",
+    result: "Pre-registered, scored once on 2023-01-01 to 2026-08-20, Rule A's 1,135 trades, 943 book days, M1 bid/ask fills (parity with the registered grid 1,135/1,135). Book Sharpe change -0.029 [-0.20, +0.16], Holm p 1.0, MDE 0.25; p=0.25/0.75 -0.11/-0.02. Entries are 00:00-10:00, where the clock only trims the stop by 0-18%.",
+    use: 'No time-left scaling on Rule A. The vol-clock stop applies to systems entering later in the day with wide stops.',
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
+  },
+  {
+    id: 'vol-layer-rule-a-confirm-s3', domain: 'execution', verdict: 'null', date: '2026-11-15', doc: 'forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md', also: ['analysis/output/vol-layer-rule-a-confirm/RESULTS.md'],
+    claim: "The spread-aware and vol-clock stops together raise Rule A's daily book Sharpe",
+    result: "Pre-registered, scored once on 2023-01-01 to 2026-08-20, Rule A's 1,135 trades, 943 book days, M1 bid/ask fills (parity with the registered grid 1,135/1,135). Book Sharpe change -0.001 [-0.12, +0.13], Holm p 1.0; interval excludes the +0.15 bar. Stop rate ~72% in every arm.",
+    use: "The stage 3 stop recipe does not transfer to Rule A's 0.2 sigma break stop.",
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
+  },
+  {
+    id: 'vol-layer-rule-a-confirm-z1', domain: 'execution', verdict: 'null', date: '2026-11-15', doc: 'forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md', also: ['analysis/output/vol-layer-rule-a-confirm/RESULTS.md'],
+    claim: "Flooring the sigma used for Rule A's stop at the 20th percentile of the past 252 sessions raises the daily book Sharpe",
+    result: "Pre-registered, scored once on 2023-01-01 to 2026-08-20, Rule A's 1,135 trades, 943 book days, M1 bid/ask fills (parity with the registered grid 1,135/1,135). Book Sharpe change -0.025 [-0.13, +0.09], Holm p 1.0, MDE 0.10; q=0.1/0.3 +0.02/-0.05; lag -0.03.",
+    use: 'No sigma floor on Rule A. The floor finding from stage 3 (tail days move to quiet sessions) is not a Rule A improvement.',
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
+  },
+  {
+    id: 'vol-layer-rule-a-confirm-k1', domain: 'execution', verdict: 'underpowered', date: '2026-11-15', doc: 'forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md', also: ['analysis/output/vol-layer-rule-a-confirm/RESULTS.md'],
+    claim: 'Capping Rule A at 2 open same-direction USD trades makes its worst days less bad than skipping the same number of trades at random',
+    result: "Pre-registered, scored once on 2023-01-01 to 2026-08-20, Rule A's 1,135 trades, 943 book days, M1 bid/ask fills (parity with the registered grid 1,135/1,135). Cap skips 189 trades. Worst-5% day mean -4.61R -> -3.71R (+0.90 [+0.51, +1.37]) but random same-day skips give -3.74R (p 0.19, Holm 0.94). Book Sharpe -0.14 [-0.49, +0.24] vs no cap (random skips average Sharpe -0.05: busy days hold the big winners). Banked underpowered by post-hoc amendment A1.",
+    use: 'Do not cap Rule A by the dollar: the shallower worst days come from trading less, not from the cap, and the busy multi-break days carry the winners.',
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
+  },
+  {
     id: 'rule-a-portfolio-second-book', domain: 'price', verdict: 'validated', date: '2026-10-27', doc: 'forge/RULE_A_PORTFOLIO_PREREG.md', also: ['analysis/output/rule-a-portfolio/RESULTS.md'],
     claim: 'Rule A (the rich-day break, 1R per trade, 11 instruments) is a separate source of return from the CFD-tradeable portfolio book (core beta VIX-gated, trend, carry VIX-gated, FOMC USD drift): correlation upper bound below 0.20 and its worst days not shared beyond chance (Lesson 06)',
     result: 'Validated, pre-registered. 1,559 common weekdays 2020-08 to 2026-08: daily correlation -0.013 [-0.075, +0.053] (4-week block bootstrap); joint worst-5% days 6 vs 3.9 expected (hypergeometric p 0.19); on the book\'s worst days rule A made +115R. Mirror vs the core-beta sleeve alone: -0.003 [-0.061, +0.050], 4 vs 3.9. Per sleeve -0.07 to +0.00. Described, not scored: equal-risk Sharpe rule A 0.86, book 1.41 (registered costs, before portfolio-book-validate\'s financing haircuts), combined 1.61; 15 streams = 12.2 effective bets (participation ratio).',
@@ -2633,6 +2668,11 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'vol-layer-rule-a-confirm-s1': { n: '943 book weekdays 2023-01 to 2026-08 (20-day block bootstrap)', note: 'MDE 0.31 Sharpe vs +0.15 bar' },
+  'vol-layer-rule-a-confirm-s2': { n: '943 book weekdays 2023-01 to 2026-08 (20-day block bootstrap)', note: 'MDE 0.25 Sharpe vs +0.15 bar' },
+  'vol-layer-rule-a-confirm-s3': { n: '943 book weekdays 2023-01 to 2026-08 (20-day block bootstrap)', note: 'MDE 0.27; CI upper +0.13 excludes the 0.15 bar' },
+  'vol-layer-rule-a-confirm-z1': { n: '943 book weekdays 2023-01 to 2026-08 (20-day block bootstrap)', note: 'MDE 0.10 Sharpe, powered' },
+  'vol-layer-rule-a-confirm-k1': { n: '943 book weekdays, 189 skipped trades vs 500 random same-day skips', note: 'no MDE registered; judged against random skip' },
   'level-local-gamma': { n: '508 (instrument, ISO-week) clusters, 6,459 resolved random touches NQ+ES; cluster bootstrap B 2000', note: 'realised MDE 4.5pp vs a 3pp bar; CI upper +2.82 excludes the bar' },
   'level-local-gamma-levels': { n: '333 clusters, 2,014 resolved real-level touches', note: 'MDE 6.9pp (P2), 7.2pp (DiD) vs a 3pp bar' },
   'level-local-gamma-gold': { n: '144 clusters, 1,517 resolved random touches', note: 'MDE 8.8pp vs a 3pp bar' },

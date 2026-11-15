@@ -4,21 +4,21 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-14.
+Generated 2026-11-15.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **329** |
+| claims tested (validated + null + underpowered) | **334** |
 | validated | 51 |
-| null | 183 |
-| underpowered | 95 |
+| null | 185 |
+| underpowered | 98 |
 | context (base rates, descriptions: not counted as tests) | 56 |
-| pre-registrations with no banked verdict (below) | 94 |
+| pre-registrations with no banked verdict (below) | 95 |
 
-**What the count says (Lesson 02 §05).** If none of the 329 claims were real, tests at the usual 5% size would still pass
-about **16.5** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 334 claims were real, tests at the usual 5% size would still pass
+about **16.7** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
 **roughly 17 of the 51 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -412,6 +412,11 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-14 | gex-range-iv-calm-es | positioning | null | forge/GEX_RANGE_IV_CALM_PREREG.md |
 | 2026-11-14 | gex-range-iv-calm-nq | positioning | underpowered | forge/GEX_RANGE_IV_CALM_PREREG.md |
 | 2026-11-14 | hl-spread-estimator | execution | null | forge/HL_SPREAD_ESTIMATOR_PREREG.md |
+| 2026-11-15 | vol-layer-rule-a-confirm-k1 | execution | underpowered | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
+| 2026-11-15 | vol-layer-rule-a-confirm-s1 | execution | underpowered | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
+| 2026-11-15 | vol-layer-rule-a-confirm-s2 | execution | underpowered | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
+| 2026-11-15 | vol-layer-rule-a-confirm-s3 | execution | null | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
+| 2026-11-15 | vol-layer-rule-a-confirm-z1 | execution | null | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -478,6 +483,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/LINE_TOUCH_WIDE_SCAN_PREREG.md`: Pre-registration: wide scan of candle shape / position / time / regime at the forecast lines
 - `forge/MACRO_TREND_WEEKDAY_PREREG.md`: Macro state, H1/H4 trend state and weekday at the vol lines — pre-registration
 - `forge/NEWS_TOUCH_PREREG.md`: News at the vol lines — pre-registration
+- `forge/NOISE_AREA_MOMENTUM_SPY_PREREG.md`: noise-area-momentum-spy — does the "Beat the Market" noise-band strategy replicate on SPY as the paper ran it,
 - `forge/OI_WALL_BUILDING_FORWARD_PREREG.md`: oi-wall-building-forward — does a wall where open interest is being built bounce price more than a flat wall, 
 - `forge/POST_RELEASE_DRIFT_POOLED_PREREG.md`: post-release-drift-pooled — After a tier-1 US release, does price keep moving in the surprise direction after 
 - `forge/RANGE_BOOK_EURUSD_PREREG.md`: EURUSD Range Book — pre-registration

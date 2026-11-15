@@ -130,3 +130,12 @@ So **Z1 is powered** to rule out an effect of 0.15. **S1, S2 and S3 are not**: a
 - **K1 harmful:** don't cap Rule A by the dollar; its same-day USD trades carry its winners.
 
 ## Amendments
+
+### A1 — 2026-11-15 — POST-HOC (results seen)
+**What the K1 rules said.** K1's NULL clause needed the ΔCVaR5 interval to include 0. No rule that skips trades can meet that clause, because fewer trades always make the worst days shallower: here +0.90 [+0.51, +1.37].
+
+**Result against the registered benchmark.** That benchmark is a random skip of the same count on the same days, and K1 is not distinguishable from it:
+- CVaR5 −3.71R against −3.74R, p 0.19.
+- K1 does not reach VALIDATED.
+
+**Change.** K1 is banked as UNDERPOWERED, not NULL. This only describes the result; it does not promote it.

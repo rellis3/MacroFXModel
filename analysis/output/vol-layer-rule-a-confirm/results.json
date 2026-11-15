@@ -1,0 +1,102 @@
+{
+ "id": "vol-layer-rule-a-confirm",
+ "verdict": "null",
+ "ranAt": "2026-11-15T15:15:00Z",
+ "seed": 20261115,
+ "B": 2000,
+ "prereg": "forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md",
+ "preregCommit": "2bb73c3e",
+ "branch": "main",
+ "window": [
+  "2023-01-01",
+  "2026-08-20"
+ ],
+ "book_days": 943,
+ "B0": {
+  "net_R": 0.0782,
+  "gross_mid_R": 0.195,
+  "sharpe": 0.4411,
+  "cvar5": -4.6098,
+  "stop_rate": 0.7233,
+  "net_R_ci": [
+   0.0782,
+   -0.0937,
+   0.267
+  ]
+ },
+ "parity": {
+  "n": 1135,
+  "same_sign": 1.0,
+  "mean_reg": 0.195,
+  "mean_mid_here": 0.195,
+  "abs_diff_lt_0p1": 1.0
+ },
+ "cells": [
+  {
+   "name": "S1",
+   "cell": "S1_1.0",
+   "n": 1135,
+   "est": -0.0085,
+   "lo": -0.2023,
+   "hi": 0.1906,
+   "mde": 0.31,
+   "p": 0.907,
+   "p_holm": 1.0,
+   "verdict": "underpowered"
+  },
+  {
+   "name": "S2",
+   "cell": "S2_0.5",
+   "n": 1135,
+   "est": -0.0287,
+   "lo": -0.2035,
+   "hi": 0.1561,
+   "mde": 0.25,
+   "p": 0.747,
+   "p_holm": 1.0,
+   "verdict": "underpowered"
+  },
+  {
+   "name": "S3",
+   "cell": "S3",
+   "n": 1135,
+   "est": -0.0014,
+   "lo": -0.1241,
+   "hi": 0.1309,
+   "mde": 0.27,
+   "p": 0.972,
+   "p_holm": 1.0,
+   "verdict": "null"
+  },
+  {
+   "name": "Z1",
+   "cell": "Z1_0.2",
+   "n": 1135,
+   "est": -0.0252,
+   "lo": -0.1321,
+   "hi": 0.0855,
+   "mde": 0.1,
+   "p": 0.587,
+   "p_holm": 1.0,
+   "verdict": "null"
+  },
+  {
+   "name": "K1",
+   "cell": "K1_2",
+   "n": 946,
+   "est": 0.9023,
+   "lo": 0.5064,
+   "hi": 1.365,
+   "mde": null,
+   "p": 0.18762475049900199,
+   "p_holm": 0.9381,
+   "verdict": "underpowered",
+   "d_sharpe": -0.1406,
+   "d_sharpe_ci": [
+    -0.4898,
+    0.2404
+   ],
+   "rand_cvar5_mean": -3.741
+  }
+ ]
+}
