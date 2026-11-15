@@ -16,7 +16,7 @@ sys.path.insert(0, str(REPO / 'nt8_bridge'))
 import nt8_backfill as nb  # noqa: E402  (call/pull/keep_awake, PRE_DAYS/POST_DAYS)
 
 BASE = REPO / 'analysis' / 'output' / 'nt8' / 'contracts'
-MIN_BARS = 5000          # a normal futures week is ~6,900 1-min bars; holiday weeks ~5,500
+MIN_BARS = int(__import__("os").environ.get("NT8_MIN_BARS", 5000))  # normal week ~6,900 1-min bars, holiday ~5,500; a hole starting mid-week can leave > 5,000, so check the study's day count after
 LOG = BASE / 'gapfill_log.jsonl'
 
 roots = sys.argv[1:] or ['ES', 'NQ', 'YM', 'RTY']

@@ -186,6 +186,13 @@ Building the day matrices (no band, signal or return computed) found two data pr
 Result: ES/NQ/YM 2,684 days 2015-12-14 → 2026-08-21, RTY 2,293 from 2017-07-10; remaining missing business days are the
 exchange holidays (~9-10 a year). No outcome had been computed.
 
+### A2 — 2026-11-15 — POST-HOC (results seen): data repair re-run
+DATA_SPEC #24's holes were a download fault (`nt8_backfill.py` 40-day chunks truncated after the first hour with
+NoError), not missing history. ES/NQ/YM/RTY re-pulled week by week and re-stitched; the A1 CFD fill now covers only the
+36–43 days per market that NT8 itself has no bars for. Same rules, seed and scoring re-run; every verdict unchanged
+(ES 0.47 → 0.45, NQ 1.23 → 1.23, book 0.39 → 0.37, P3 −0.23 → −0.25 bp). Post-hoc, so it can only describe or demote;
+it does neither. Details: RESULTS.md "Re-run on repaired data". Register row `noise-area-momentum-rerun`.
+
 ## RESULTS
 
 Run 2026-11-13: `analysis/output/noise-area-momentum/RESULTS.md`. P1 UNDERPOWERED (NQ passes: net Sharpe 1.23
