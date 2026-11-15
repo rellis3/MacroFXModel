@@ -19,6 +19,12 @@ function addAlCss() {
   l.id = 'alCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/alerts.css';
   document.head.appendChild(l);
 }
+function addKcCss() {
+  if (document.getElementById('kcCss')) return;
+  const l = document.createElement('link');
+  l.id = 'kcCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/kchart.css';
+  document.head.appendChild(l);
+}
 function addWsCss() {
   if (document.getElementById('wsCss')) return;
   const l = document.createElement('link');
@@ -33,10 +39,13 @@ const hooksReady = () => new Promise(res => {
 });
 
 export async function start() {
-  const wantLinked = on('widget.linked'), wantCmd = on('widget.cmdline'), wantWs = on('tab.workspace'), wantAl = on('widget.alerts');
-  if (!wantLinked && !wantCmd && !wantWs && !wantAl) return { linked: false, cmdline: false, workspace: false, alerts: false };
+  const wantLinked = on('widget.linked'), wantCmd = on('widget.cmdline'), wantWs = on('tab.workspace'), wantAl = on('widget.alerts'), wantKc = on('tab.kchart');
+  if (!wantLinked && !wantCmd && !wantWs && !wantAl && !wantKc) return { linked: false, cmdline: false, workspace: false, alerts: false, chart: false };
   if (wantLinked || wantCmd) addCss();
-  let linked = false, cmdline = false, workspace = false, alerts = false;
+  let linked = false, cmdline = false, workspace = false, alerts = false, chart = false;
+  try {
+    if (wantKc) { addKcCss(); const m = await import('./kchartView.js'); chart = !!m.mountKChart(); }
+  } catch (e) { console.warn('chart', e); }
   try {
     if (wantAl) { addAlCss(); const m = await import('./alertsView.js'); alerts = !!m.mountAlerts(); }
   } catch (e) { console.warn('alerts', e); }
@@ -49,7 +58,7 @@ export async function start() {
   try {
     if (wantCmd) { const m = await import('./commandLine.js'); cmdline = !!m.mountCommandLine(); }
   } catch (e) { console.warn('command line', e); }
-  return { linked, cmdline, workspace, alerts };
+  return { linked, cmdline, workspace, alerts, chart };
 }
 
 if (typeof document !== 'undefined' && !globalThis.__terminalFeelNoAutoStart) {

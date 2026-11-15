@@ -61,6 +61,7 @@ const TAB_WORDS = {
   options: ['OPTIONS', ['OPT', 'GEX'], 'The Options tab: skew, dealer hedging, put/call, option lines and the VIX term.'],
   news: ['NEWS', ['WIRE'], 'The News tab: the wire, with its reads.'],
   corr: ['CORRELATIONS', ['CORR', 'HEDGES'], 'The Correlations tab: the matrix, rolling correlations, factors and regimes.'],
+  kchart: ['CHART', ['KLINE', 'CANDLES', 'PRO'], 'The Chart tab (preview): a candle chart with indicators, drawing tools and the day\'s lines. Add a market and a candle size: CHART NQ 15M.'],
   workspace: ['WORKSPACE', ['WS', 'LAYOUT', 'WORKSPACES'], 'The Workspace tab (preview): drag and resize the terminal panels into a screen of your own. Add a name to load a saved layout: WORKSPACE RATES.'],
   infomap: ['INFO', ['INFOMAP', 'SWITCHES'], 'The Info map tab (owner only): what data the repo holds, and the preview-feature switches.'],
 };
@@ -159,6 +160,11 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
       c.run = args => replayRun(args, now);
       c.example = 'replay';
     }
+    if (key === 'kchart') {
+      c.args = `[market] [${TF_KEYS.join('|')}]`;
+      c.run = args => chartRun(args);
+      c.example = 'chart nq 15m';
+    }
     if (key === 'workspace') {
       c.args = '[name]';
       c.run = args => workspaceRun(args);
@@ -225,6 +231,19 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     if (w === 'touch') return t[1] ? build('level_touch', { market: t[1], which: (t[2] ?? 'any').toLowerCase() }) : { error: 'Say which market: ALERT TOUCH NQ.' };
     if (w === 'gap') return t[1] ? build('gap_closed', { market: t[1], minPct: t[2] ?? 0.3 }) : { error: 'Say which market: ALERT GAP NQ 0.3.' };
     return { error: `Say RANGE, FED, STALE, TOUCH or GAP (or nothing to open the panel). Feeds for STALE: ${Object.keys(AL_FEEDS).join(', ')}.` };
+  }
+  function chartRun(args) {
+    const t = String(args ?? '').trim().split(/\s+/).filter(Boolean);
+    if (!t.length) return { action: { kind: 'kchart', inst: null, tf: null }, summary: 'Opens the Chart tab.' };
+    let inst = null, tf = null;
+    for (const w of t) {
+      const lw = w.toLowerCase();
+      if (TF_KEYS.includes(lw) && !tf) { tf = lw; continue; }
+      const m = resolveInstrument(w);
+      if (m && !inst) { inst = m; continue; }
+      return { error: `"${w}" is not a market or a candle size I know. Try CHART NQ 15M (sizes: ${TF_KEYS.join(', ')}).` };
+    }
+    return { action: { kind: 'kchart', inst, tf }, summary: `Opens the Chart tab${inst ? ` on ${instLabel(inst)}` : ''}${tf ? ` at ${tf} candles` : ''}.` };
   }
   function workspaceRun(args) {
     const a = String(args ?? '').trim();

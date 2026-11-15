@@ -167,3 +167,13 @@ test('alert commands: ALERTS opens the panel, ALERT <kind> ... adds a rule in on
   assert.match(top('alert buy now').error, /Say RANGE, FED, STALE, TOUCH or GAP/);
   assert.ok(!buildCommands({ now: () => NOW, isOn: id => id !== 'widget.alerts' }).some(c => c.id === 'alerts'), 'switched off: no command');
 });
+
+test('chart command: CHART opens the Chart tab, CHART NQ 15M opens it on a market and a candle size, bad words say why', () => {
+  assert.deepEqual(plainAction(top('chart').cmd).action, { kind: 'tab', t: 'kchart' }, 'plain CHART is the tab, like REPLAY');
+  assert.deepEqual(top('chart nq 15m').action, { kind: 'kchart', inst: 'NQ', tf: '15m' });
+  assert.deepEqual(top('chart 4h gold').action, { kind: 'kchart', inst: 'GOLD', tf: '4h' }, 'any order');
+  assert.match(top('chart zzz').error, /not a market or a candle size/);
+  assert.equal(top('charts').cmd.id, 'tab.charts', 'CHARTS still goes to the Charts tab');
+  assert.equal(top('chart').cmd.id, 'tab.kchart');
+  assert.ok(!buildCommands({ now: () => NOW, isOn: id => id !== 'tab.kchart' }).some(c => c.id === 'tab.kchart'), 'switched off: no command');
+});
