@@ -61,3 +61,24 @@ test('unusualHtml: the chance line, the sky map, a row per series, the working w
 test('spark: needs three points, draws a path and an end dot, and says nothing about a value', () => {
   assert.equal(spark([1, 2]), ''); const s = spark([1, 3, 2, 5]); assert.match(s, /<path/); assert.match(s, /<circle/); assert.match(s, /aria-hidden="true"/);
 });
+
+// ── the cross-asset board and the rotation map ──
+import { gridHtml, corrHtml, rotationHtml, rotationSvg } from './matrixView.js';
+import { returnsGrid, corrMatrix, rotation } from './matrixCore.js';
+const syn = (n, keys) => { const series = {}; keys.forEach((k, i) => { series[k] = walk(n, 0.008, 100, 50 + i); }); return { dates: dates(n), series, to: dates(n)[n - 1] }; };
+test('cross-asset HTML: a row per asset with three moves, the correlation matrix has a cell per pair, the chance line is printed, labels are escaped, tokens only', () => {
+  const b = syn(400, ['gold', 'spx', 'nq', 'vix', 'dxy', 'oil']), g = returnsGrid(b), c = corrMatrix(b, ['gold', 'spx', 'nq', 'vix', 'dxy', 'oil']);
+  const gh = gridHtml(g); assert.equal((gh.match(/<th scope="row">/g) ?? []).length, 6); assert.equal((gh.match(/class="in-mv/g) ?? []).length, 18); assert.match(gh, /brightness is how big that move is/);
+  const ch = corrHtml(c, 'short'); assert.equal((ch.match(/class="in-cc/g) ?? []).length, 36); assert.match(ch, /would by chance alone/); assert.match(ch, /does not say the link will hold/);
+  assert.match(corrHtml(c, 'chg'), /aria-pressed="true"[^>]*>What changed|What changed<\/button>/);
+  for (const h of [gh, ch]) { assert.ok(!/#[0-9a-f]{6}\b/i.test(h)); assert.ok(!/\b(buy|sell|go long|go short|stop loss)\b/i.test(h.replace(/<[^>]+>/g, ' '))); }
+  assert.ok(!gridHtml({ rows: [{ key: 'x', label: '<img src=x>', group: 'other', go: null, stale: null, moves: [null, null, null] }], asOf: 'd' }).includes('<img src=x>'));
+  assert.match(gridHtml({ rows: [], asOf: 'd' }), /None of the basket/); assert.match(corrHtml({ keys: [] }), /No correlation can be drawn/);
+});
+test('rotation HTML: the map names the quadrants, every sector has a dot and a tag, says it is not a forecast; no base = a plain message', () => {
+  const n = 120, series = { spy: new Array(n).fill(100) }; ['xlk', 'xle', 'xlf', 'xlv'].forEach((k, i) => { series[k] = Array.from({ length: n }, (_, j) => 100 * (1 + (i - 1.5) * 0.002 * j)); });
+  const r = rotation({ dates: dates(n), series }), svg = rotationSvg(r);
+  assert.match(svg, /LEADING/); assert.match(svg, /LAGGING/); assert.equal((svg.match(/class="in-pt"/g) ?? []).length, 4); assert.match(svg, /role="img"/);
+  const h = rotationHtml(r); assert.match(h, /It is not a forecast/); assert.equal((h.match(/class="in-qc /g) ?? []).length, 4); assert.ok(!/#[0-9a-f]{6}\b/i.test(h));
+  assert.match(rotationHtml(null), /cannot be drawn/);
+});

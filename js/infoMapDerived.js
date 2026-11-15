@@ -3662,6 +3662,7 @@ export const DERIVED = {
      "js/terminal/chainBoard.js",
      "js/terminal/insightData.js",
      "js/terminal/insightSeries.js",
+     "js/terminal/matrixCore.js",
      "js/terminal/optionsView.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
@@ -3746,6 +3747,7 @@ export const DERIVED = {
      "js/terminal/links.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js",
+     "js/terminal/matrixCore.js",
      "js/terminal/moreBoards.js",
      "js/terminal/optionsView.js",
      "js/terminal/pairView.js",
@@ -3772,9 +3774,7 @@ export const DERIVED = {
     "options_oi",
     "global_market"
    ],
-   "drift": [
-    "The terminal code names every route of this feed but the traced status says it is not drawn: re-trace."
-   ]
+   "drift": []
   },
   "currency-strength-live": {
    "pages": [],

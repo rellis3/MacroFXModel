@@ -72,6 +72,8 @@ export const TAB_WORD_IDS = Object.keys(TAB_WORDS);
 
 // ── the Insight boards (preview): name, aliases, one line of help; a board without a row here fails the Insight guard test ──
 export const INSIGHT_WORDS = {
+  matrix: ['MATRIX', ['CROSSASSET', 'CORRELATION', 'CROSS'], 'The cross-asset board: the 1, 5 and 20 session move of every market, and how markets have been moving together lately.'],
+  rotation: ['ROTATION', ['SECTORS', 'SECTOR'], 'US sector rotation: the 11 sectors against the S&P 500 over 20 sessions, on a map with a four-week trail.'],
   unusual: ['UNUSUAL', ['MOVERS', 'EXTREME', 'WHATSUNUSUAL'], 'What is unusual right now: every series ranked by how extreme it is against its own history, with the working and the odds it is just chance.'],
 };
 
