@@ -453,8 +453,11 @@ async function pairChart(n, c) {
   // the candle size is the pills' (js/terminal/timeframePills.js); the chart is built from the first bars it gets, then only re-fed
   const build = b => {
     const dp = b[0].close >= 1000 ? 1 : b[0].close >= 100 ? 2 : b[0].close >= 10 ? 3 : 5;
-    v = createLevelChart(box, { height: 340, priceDigits: dp, chartOptions: { layout: { background: { color: 'var(--bg1)' }, textColor: 'var(--tx2)', fontFamily: 'JetBrains Mono' }, grid: { vertLines: { color: 'rgba(var(--line2rgb),.35)' }, horzLines: { color: 'rgba(var(--line2rgb),.35)' } }, rightPriceScale: { borderColor: 'var(--line2)' }, timeScale: { borderColor: 'var(--line2)', timeVisible: true } },
-      candleColors: { upColor: 'var(--up)', downColor: 'var(--dn)', wickUpColor: 'var(--up)', wickDownColor: 'var(--dn)' } });
+    // Lightweight-Charts parses colours itself and throws on a CSS var(): read the live theme values instead (the same way the other desk charts do)
+    const tc = k => (typeof themeColor === 'function' ? themeColor(k) : getComputedStyle(document.documentElement).getPropertyValue('--' + k).trim());
+    const up = tc('up'), dn = tc('dn'), grid = `rgba(${tc('line2rgb')},.35)`;
+    v = createLevelChart(box, { height: 340, priceDigits: dp, chartOptions: { layout: { background: { color: tc('bg1') }, textColor: tc('tx2'), fontFamily: 'JetBrains Mono' }, grid: { vertLines: { color: grid }, horzLines: { color: grid } }, rightPriceScale: { borderColor: tc('line2') }, timeScale: { borderColor: tc('line2'), timeVisible: true } },
+      candleColors: { upColor: up, downColor: dn, wickUpColor: up, wickDownColor: dn } });
     T.pairChart = v;
     v.setCandles(b);
     const L = c?.levels, lv = [];
