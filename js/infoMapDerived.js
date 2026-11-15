@@ -3794,6 +3794,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "js/terminal/ccyStrengthView.js",
+     "js/terminal/fxMatrixCore.js",
+     "js/terminal/fxMatrixView.js",
      "js/terminal/liveLayerView.js",
      "js/terminal/moreBoards.js"
     ],
