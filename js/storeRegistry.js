@@ -35,6 +35,7 @@ export const STORES = {
   signal_journal_v1: R('Signal journal (forward test)', 1),
   pair_ledger_v1: R('Pair ledger (lean record)', 1),
   desk_alert_rules_v1: C('Desk Terminal: alert rules you set (and their memory), js/deskAlertRules.js'),
+  desk_monitors_v1: C('Desk Terminal: named monitors (saved market lists, shared by the desk)'),
   desk_workspaces_v1: C('Desk Terminal: named workspaces (saved layouts, shared by the desk)'),
   desk_tab_access_v1: R('Desk Terminal: tab access switches for the desk login', 365, { market: false }),
   chain_read_v1: R('Chain read (AI narrative)', 3, { market: false }),

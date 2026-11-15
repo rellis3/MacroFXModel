@@ -25,6 +25,12 @@ function addKcCss() {
   l.id = 'kcCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/kchart.css';
   document.head.appendChild(l);
 }
+function addMonCss() {
+  if (document.getElementById('monCss')) return;
+  const l = document.createElement('link');
+  l.id = 'monCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/monitor.css';
+  document.head.appendChild(l);
+}
 function addWsCss() {
   if (document.getElementById('wsCss')) return;
   const l = document.createElement('link');
@@ -39,10 +45,10 @@ const hooksReady = () => new Promise(res => {
 });
 
 export async function start() {
-  const wantLinked = on('widget.linked'), wantCmd = on('widget.cmdline'), wantWs = on('tab.workspace'), wantAl = on('widget.alerts'), wantKc = on('tab.kchart');
-  if (!wantLinked && !wantCmd && !wantWs && !wantAl && !wantKc) return { linked: false, cmdline: false, workspace: false, alerts: false, chart: false };
+  const wantLinked = on('widget.linked'), wantCmd = on('widget.cmdline'), wantWs = on('tab.workspace'), wantAl = on('widget.alerts'), wantKc = on('tab.kchart'), wantMon = on('tab.monitor');
+  if (!wantLinked && !wantCmd && !wantWs && !wantAl && !wantKc && !wantMon) return { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false };
   if (wantLinked || wantCmd) addCss();
-  let linked = false, cmdline = false, workspace = false, alerts = false, chart = false;
+  let linked = false, cmdline = false, workspace = false, alerts = false, chart = false, monitor = false;
   try {
     if (wantKc) { addKcCss(); const m = await import('./kchartView.js'); chart = !!m.mountKChart(); }
   } catch (e) { console.warn('chart', e); }
@@ -56,9 +62,12 @@ export async function start() {
     if (wantLinked) { await hooksReady(); const m = await import('./linkedSelection.js'); linked = !!m.mountLinked(); }
   } catch (e) { console.warn('linked selection', e); }
   try {
+    if (wantMon) { addMonCss(); const m = await import('./monitorView.js'); monitor = !!m.mountMonitor(); }   // after linked selection, so a picked row can be shared
+  } catch (e) { console.warn('monitor', e); }
+  try {
     if (wantCmd) { const m = await import('./commandLine.js'); cmdline = !!m.mountCommandLine(); }
   } catch (e) { console.warn('command line', e); }
-  return { linked, cmdline, workspace, alerts, chart };
+  return { linked, cmdline, workspace, alerts, chart, monitor };
 }
 
 if (typeof document !== 'undefined' && !globalThis.__terminalFeelNoAutoStart) {
