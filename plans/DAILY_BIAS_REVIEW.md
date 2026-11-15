@@ -156,11 +156,29 @@ EURUSD 0.485). Every call is a move away from that.
    as the higher-timeframe bias (`plans/MACRO_DIRECTION_RESEARCH_PROPOSAL.md` H4, H7, H9, H3).
 10. **"Don't chase" as a rule:** pre-register the reversal after strong days and after surprises on fresh data.
 
+### Relation to `plans/BIAS_RESEARCH_SYNTHESIS.md` (a parallel session's review, same day)
+
+That review reached the same conclusions: a slow, weeks-scale bias; range and size as the 24-hour job; "no view" as a
+normal answer. Its ranked plan maps onto the list above:
+
+| Synthesis | This review | Merged order |
+|---|---|---|
+| P1 multi-timeframe structure + HMM, conflict = "no view" | test 2 | **1** (after the grader fix) |
+| P2 slow bias clock (1/3/12-month trend + carry) | step 2 + tests 7 and 9 | **2** |
+| P3 regime picks the rule (fade / follow / break) | — (theirs) | **3** |
+| P4 positioning and flow inputs (VRP, OANDA book, risk reversals, month-end) | tests 6 and 7 | **4** |
+| P5 pre-release ranging | — (theirs) | **5** |
+| — | tests 3, 4, 5 (growth × inflation quadrant, coherence multiplier, meta-labelling) | **6–8** |
+| — | test 1, fix the evidence grader | **0** (a fix, not a study) |
+
+Use the synthesis for the study plan and this file for the morning process (§3) and the graded evidence (§2).
+
 ## 6. Housekeeping found during the review
 
 - **Paid content in a public repo.** `education/bank-verbatim/` (73 files), `education/cog_inbox/` (3) and
   `education/cog-snippets.md` hold C.OG's paid material verbatim, and the repo is public. Owner decision: make it
-  private, or remove and rewrite history.
+  private, or remove and rewrite history. `analysis/output/bias-research/B_educators.md`, committed 2026-11-15 by the
+  parallel review, also quotes those pages.
 - **Evidence grader misreads** (§5.1).
 - **No Theory Lab lesson on multiple timeframes.** One should follow test 2.
 
