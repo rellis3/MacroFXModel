@@ -233,6 +233,12 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   add({ id: 'link', group: 'Look and feel', name: 'LINK', args: '<on|off>', help: 'Switch linked selection on or off: when on, picking a market in one place moves the Pair page, Replay, strength board and vol clock with it.', example: 'link off', opens: 'The linked chip in the top bar', surface: 'widget.linked', run: linkRun });
   add({ id: 'export', group: 'Look and feel', name: 'EXPORT', aliases: ['CSV', 'DOWNLOAD'], args: '[png]', help: 'Save the biggest table on the open tab as a CSV file; EXPORT PNG saves its first chart as an image. Made in this browser from what the page shows.', example: 'export',
     opens: 'A download of the open tab (nothing is sent anywhere)', surface: 'widget.export', run: args => exportRun(args) });
+  add({ id: 'fav.show', group: 'Look and feel', name: 'FAV', aliases: ['FAVS', 'FAVOURITES', 'FAVORITES'], help: 'Open the Pair page with only your starred markets (the Favourites filter). Star a market with the ☆ beside its name or with STAR. They are kept in this browser only.', example: 'fav',
+    opens: 'The Pair tab, filtered to your favourites', surface: 'panel.pair.favourites', needs: ['tab.pair'], action: { kind: 'fav', on: true }, summary: 'Opens the Pair page with the Favourites filter on.' });
+  add({ id: 'fav.star', group: 'Look and feel', name: 'STAR', aliases: [], args: '<market>', help: 'Star a market so it appears under Favourites on the Pair page and starts a new Monitor. Kept in this browser only.', example: 'star gold',
+    opens: 'Your favourites list (nothing opens)', surface: 'panel.pair.favourites', run: args => favRun(args, true) });
+  add({ id: 'fav.unstar', group: 'Look and feel', name: 'UNSTAR', aliases: [], args: '<market>', help: 'Take a market off your favourites.', example: 'unstar gold',
+    opens: 'Your favourites list (nothing opens)', surface: 'panel.pair.favourites', run: args => favRun(args, false) });
   add({ id: 'mon.add', group: 'Look and feel', name: 'ADD', aliases: [], args: '<market>', help: 'Add a market to the open Monitor (the table of markets you picked). Save the monitor to keep it for the desk.', example: 'add eurusd',
     opens: 'The Monitor tab, with that market added', surface: 'tab.monitor', run: args => monitorAddRun(args) });
   add({ id: 'ws.save', group: 'Look and feel', name: 'SAVE', aliases: ['SAVEWORKSPACE'], args: 'workspace <name>', help: 'Save the Workspace tab layout as it is now under a name, shared with the desk. A built-in starter name makes you pick your own.', example: 'save workspace my morning',
@@ -301,6 +307,13 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     const hit = names.find(n => n.toLowerCase() === a.toLowerCase()) ?? names.find(n => n.toLowerCase().startsWith(a.toLowerCase()));
     if (!hit) return { error: `No monitor called "${a}". Try ${names.join(', ')}.` };
     return { action: { kind: 'monitor', name: hit }, summary: `Opens the Monitor tab with "${hit}".` };
+  }
+  function favRun(args, on) {
+    const w = String(args ?? '').trim();
+    if (!w) return { error: `Say which market to ${on ? 'star' : 'unstar'}: ${on ? 'STAR GOLD' : 'UNSTAR GOLD'}.` };
+    const inst = resolveInstrument(w.split(/\s+/)[0]);
+    if (!inst) return { error: `"${w}" is not a market on this terminal.` };
+    return { action: { kind: on ? 'star' : 'unstar', inst }, summary: `${on ? 'Adds' : 'Removes'} ${instLabel(inst)} ${on ? 'to' : 'from'} your favourites.` };
   }
   function monitorAddRun(args) {
     const w = String(args ?? '').trim().replace(/^to\s+monitor\s*/i, '');

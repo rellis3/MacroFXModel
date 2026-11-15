@@ -149,6 +149,7 @@ export const SURFACES = [
   mk('panel.ccy.macrostrip', 'panel', 'Currency card: macro picture', 'Currencies', null, 'per-currency macro prints against expectations, the next release, a 12-month ribbon and the six scorecard factors behind the composite'),
   mk('panel.asset.plan', 'panel', 'Market card: entry, target, invalid, timing', 'Markets', T, 'the plan lines on a card, and the entry zone / invalidation lines on the charts'),
   mk('panel.asset.size', 'panel', 'Market card: size and grade', 'Markets', T, 'the position size and the conviction grade derived from it'),
+  mk('panel.pair.favourites', 'panel', 'Pair: favourites', 'Markets', null, 'a star on each market, a Favourites filter pill and copy / paste of your list; a display preference kept in this browser only'),
   mk('panel.asset.volclock', 'panel', 'Assets: implied vol against the forecast (vol clock)', 'Markets', null, 'options-implied sigma over the forecast sigma per market, how much of the day\'s range is used, the vol ranking and the Daily Read\'s forward record: size, never direction'),
   // ── Analytics panels ──
   mk('panel.ana.web', 'panel', 'Analytics: correlation web of the book', 'Analytics', null, 'today\'s cards as held, joined by how they move together'),

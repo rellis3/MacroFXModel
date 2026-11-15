@@ -8,7 +8,11 @@ import { STARTERS, starterByName, cleanItems, cleanName, MAX_ITEMS, isKnown, MAX
 export const LOCAL_KEY = 'deskMonitor:v1';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-export function createMonitorState({ api, store = null, known = isKnown } = {}) {
+export const FAV_MONITOR = 'My favourites';
+
+// `favourites` (optional): () => the markets starred on the Pair tab (this browser). They are the default monitor for a browser that has none yet,
+// and a 'My favourites' entry in the picker. Left out, nothing changes.
+export function createMonitorState({ api, store = null, known = isKnown, favourites = null } = {}) {
   let cur = { name: STARTERS[0].name, items: clone(STARTERS[0].items), source: 'starter' };
   let saved = [], dirty = false, note = '';
   const subs = new Set();
@@ -17,12 +21,15 @@ export function createMonitorState({ api, store = null, known = isKnown } = {}) 
   const persist = () => safe(() => store?.setItem(LOCAL_KEY, JSON.stringify({ name: cur.name, source: cur.source, items: cur.items, dirty })));
   const change = (items, msg = '') => { cur = { ...cur, items }; dirty = true; note = msg; persist(); emit(); };
   const setSaved = lists => { saved = Array.isArray(lists) ? lists : saved; };
+  const favItems = () => cleanItems(safe(() => favourites?.(), []) ?? [], known).items;
   const takenNames = () => [...STARTERS.map(s => s.name), ...saved.map(l => l.name)];
 
   const s = {
     get current() { return cur; }, get dirty() { return dirty; }, get saved() { return saved; }, get note() { return note; },
     subscribe(f) { subs.add(f); return () => subs.delete(f); },
     allNames() { return takenNames(); },
+    /** The starred markets, cleaned (empty when there are none or the option is not passed). */
+    favouriteItems() { return favItems(); },
 
     /** This browser's last monitor first, then the shared list. Offline or signed out: the starters still work. */
     async init() {
@@ -33,6 +40,10 @@ export function createMonitorState({ api, store = null, known = isKnown } = {}) 
           cur = { name: cleanName(local.name) || 'My monitor', items, source: ['starter', 'saved', 'new'].includes(local.source) ? local.source : 'new' }; dirty = !!local.dirty;
           if (dropped.length) note = `${dropped.length} market${dropped.length === 1 ? '' : 's'} in your last monitor ${dropped.length === 1 ? 'is' : 'are'} not on this terminal and ${dropped.length === 1 ? 'was' : 'were'} left out.`;
         }
+      }
+      if (!local || !Array.isArray(local.items) || !cleanItems(local.items, known).items.length) {
+        const fav = favItems();
+        if (fav.length) { cur = { name: FAV_MONITOR, items: fav, source: 'new' }; dirty = false; note = 'Starting from the markets you starred on the Pair page.'; persist(); }
       }
       await s.refresh();
       emit();
@@ -47,6 +58,7 @@ export function createMonitorState({ api, store = null, known = isKnown } = {}) 
     load(name) {
       const w = String(name ?? '').trim().toLowerCase();
       const all = [...STARTERS.map(x => ({ ...x, source: 'starter' })), ...saved.map(x => ({ ...x, source: 'saved' }))];
+      const fav = favItems(); if (fav.length) all.push({ name: FAV_MONITOR, items: fav, source: 'new' });
       const hit = all.find(x => x.name.toLowerCase() === w) ?? (() => { const m = all.filter(x => x.name.toLowerCase().startsWith(w)); return m.length === 1 ? m[0] : null; })();
       if (!hit) return { ok: false, error: `No monitor called "${name}". Try ${all.map(x => x.name).join(', ')}.` };
       const { items } = cleanItems(hit.items, known);
