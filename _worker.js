@@ -1206,6 +1206,7 @@ export default {
             'desk_tab_access_v1',
             'desk_workspaces_v1',
             'desk_monitors_v1',
+            'desk_news_searches_v1',
             'desk_alert_rules_v1',
             'chain_read_v1',
             'eod_review_v1',

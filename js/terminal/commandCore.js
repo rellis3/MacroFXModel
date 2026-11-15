@@ -156,7 +156,7 @@ const INDICATORS = [
  * Every command the session may use. isOn(surfaceId) -> bool says which surfaces this session can see (the owner: all; a desk login: the switched-on ones).
  * A command whose surface is off is left out. now() is only used to resolve dates.
  */
-export function buildCommands({ isOn = () => true, now = () => Date.now(), workspaceNames = () => [], monitorNames = () => [] } = {}) {
+export function buildCommands({ isOn = () => true, now = () => Date.now(), workspaceNames = () => [], monitorNames = () => [], newsSearchNames = () => [] } = {}) {
   const out = [];
   const add = c => { if ([c.surface, ...(c.needs ?? [])].every(id => !id || isOn(id))) out.push({ aliases: [], ...c }); };
 
@@ -175,6 +175,11 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
       c.args = `[market] [${TF_KEYS.join('|')}]`;
       c.run = args => chartRun(args);
       c.example = 'chart nq 15m';
+    }
+    if (key === 'news') {
+      c.args = '[saved search]';
+      c.run = args => newsRun(args);
+      c.example = 'news';
     }
     if (key === 'monitor') {
       c.args = '[name]';
@@ -226,7 +231,7 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     opens: 'The Monitor tab, with that market added', surface: 'tab.monitor', run: args => monitorAddRun(args) });
   add({ id: 'ws.save', group: 'Look and feel', name: 'SAVE', aliases: ['SAVEWORKSPACE'], args: 'workspace <name>', help: 'Save the Workspace tab layout as it is now under a name, shared with the desk. A built-in starter name makes you pick your own.', example: 'save workspace my morning',
     opens: 'The Workspace tab, saved under that name', surface: 'tab.workspace', run: args => workspaceSaveRun(args) });
-  add({ id: 'alerts', group: 'Alerts', name: 'ALERTS', aliases: ['ALERT', 'BELL'], args: '[range <market> [%] | fed [bp] | stale [feed] | touch <market> | gap <market> [%]]', help: 'Open the alerts panel; or set one in a line: ALERT RANGE <market> 80, ALERT FED 5, ALERT STALE, ALERT TOUCH <market>, ALERT GAP <market> 0.3. A note goes to the desk Telegram once per episode.',
+  add({ id: 'alerts', group: 'Alerts', name: 'ALERTS', aliases: ['ALERT', 'BELL'], args: '[range <market> [%] | fed [bp] | stale [feed] | touch <market> | gap <market> [%] | news <words>]', help: 'Open the alerts panel; or set one in a line: ALERT RANGE <market> 80, ALERT FED 5, ALERT STALE, ALERT TOUCH <market>, ALERT GAP <market> 0.3, ALERT NEWS <words> (a new headline matching your words). A note goes to the desk Telegram once per episode.',
     example: 'alerts', opens: 'The alerts panel (the owner can add, mute and delete; the desk login sees the list)', surface: 'widget.alerts', run: args => alertRun(args) });
   add({ id: 'help', group: 'Help', name: 'HELP', aliases: ['?', 'COMMANDS'], help: 'List every command with what it does and an example.', example: '?', opens: 'This list', action: { kind: 'help' } });
   return out;
@@ -253,7 +258,8 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     if (w === 'stale') return build('data_stale', { feed: (t[1] ?? 'fed-zq').toLowerCase() });
     if (w === 'touch') return t[1] ? build('level_touch', { market: t[1], which: (t[2] ?? 'any').toLowerCase() }) : { error: 'Say which market: ALERT TOUCH NQ.' };
     if (w === 'gap') return t[1] ? build('gap_closed', { market: t[1], minPct: t[2] ?? 0.3 }) : { error: 'Say which market: ALERT GAP NQ 0.3.' };
-    return { error: `Say RANGE, FED, STALE, TOUCH or GAP (or nothing to open the panel). Feeds for STALE: ${Object.keys(AL_FEEDS).join(', ')}.` };
+    if (w === 'news') return t[1] ? build('news_keyword', { q: t.slice(1).join(' '), tier: 2 }) : { error: 'Say which words to watch for: ALERT NEWS ecb hawkish.' };
+    return { error: `Say RANGE, FED, STALE, TOUCH, GAP or NEWS (or nothing to open the panel). Feeds for STALE: ${Object.keys(AL_FEEDS).join(', ')}.` };
   }
   function chartRun(args) {
     const t = String(args ?? '').trim().split(/\s+/).filter(Boolean);
@@ -267,6 +273,14 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
       return { error: `"${w}" is not a market or a candle size I know. Try CHART NQ 15M (sizes: ${TF_KEYS.join(', ')}).` };
     }
     return { action: { kind: 'kchart', inst, tf }, summary: `Opens the Chart tab${inst ? ` on ${instLabel(inst)}` : ''}${tf ? ` at ${tf} candles` : ''}.` };
+  }
+  function newsRun(args) {
+    const a = String(args ?? '').trim();
+    if (!a) return { action: { kind: 'tab', t: 'news' }, summary: 'Opens the News tab.' };
+    const names = newsSearchNames();
+    const hit = names.find(n => n.toLowerCase() === a.toLowerCase()) ?? names.find(n => n.toLowerCase().startsWith(a.toLowerCase()));
+    if (!hit) return { error: names.length ? `No saved search called "${a}". Try ${names.join(', ')}.` : 'No saved searches yet. Save one on the News tab first.' };
+    return { action: { kind: 'news-search', name: hit }, summary: `Opens the News tab with the saved search "${hit}".` };
   }
   function monitorRun(args) {
     const a = String(args ?? '').trim();

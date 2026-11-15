@@ -25,6 +25,12 @@ function addKcCss() {
   l.id = 'kcCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/kchart.css';
   document.head.appendChild(l);
 }
+function addNsCss() {
+  if (document.getElementById('nsCss')) return;
+  const l = document.createElement('link');
+  l.id = 'nsCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/news-search.css';
+  document.head.appendChild(l);
+}
 function addMonCss() {
   if (document.getElementById('monCss')) return;
   const l = document.createElement('link');
@@ -51,10 +57,10 @@ const hooksReady = () => new Promise(res => {
 });
 
 export async function start() {
-  const wantLinked = on('widget.linked'), wantCmd = on('widget.cmdline'), wantWs = on('tab.workspace'), wantAl = on('widget.alerts'), wantKc = on('tab.kchart'), wantMon = on('tab.monitor'), wantIn = on('tab.insight');
-  if (!wantLinked && !wantCmd && !wantWs && !wantAl && !wantKc && !wantMon && !wantIn) return { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false };
+  const wantLinked = on('widget.linked'), wantCmd = on('widget.cmdline'), wantWs = on('tab.workspace'), wantAl = on('widget.alerts'), wantKc = on('tab.kchart'), wantMon = on('tab.monitor'), wantIn = on('tab.insight'), wantNs = on('panel.news.saved');
+  if (!wantLinked && !wantCmd && !wantWs && !wantAl && !wantKc && !wantMon && !wantIn && !wantNs) return { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false };
   if (wantLinked || wantCmd) addCss();
-  let linked = false, cmdline = false, workspace = false, alerts = false, chart = false, monitor = false, insight = false;
+  let linked = false, cmdline = false, workspace = false, alerts = false, chart = false, monitor = false, insight = false, newsSearches = false;
   try {
     if (wantKc) { addKcCss(); const m = await import('./kchartView.js'); chart = !!m.mountKChart(); }
   } catch (e) { console.warn('chart', e); }
@@ -74,9 +80,12 @@ export async function start() {
     if (wantMon) { addMonCss(); const m = await import('./monitorView.js'); monitor = !!m.mountMonitor(); }   // after linked selection, so a picked row can be shared
   } catch (e) { console.warn('monitor', e); }
   try {
+    if (wantNs) { addNsCss(); const m = await import('./newsSearchView.js'); newsSearches = !!m.installNewsSearches(); }
+  } catch (e) { console.warn('news searches', e); }
+  try {
     if (wantCmd) { const m = await import('./commandLine.js'); cmdline = !!m.mountCommandLine(); }
   } catch (e) { console.warn('command line', e); }
-  return { linked, cmdline, workspace, alerts, chart, monitor, insight };
+  return { linked, cmdline, workspace, alerts, chart, monitor, insight, newsSearches };
 }
 
 if (typeof document !== 'undefined' && !globalThis.__terminalFeelNoAutoStart) {

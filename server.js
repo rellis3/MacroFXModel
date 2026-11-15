@@ -191,6 +191,7 @@ import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl a
 import { RBNZ_MEETINGS, pendingAsOf as rbnzPendingAsOf, allReleases as rbnzAllReleases } from './js/rbnzCalendar.js';
 import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote, fetchOcrDecisions as rbnzFetchOcrDecisions, ocrActualFor as rbnzOcrActualFor } from './js/rbnzFetch.js';
 import { sanitizerFor as _deskViewerSanitiser, sanitizeStoredRead as _deskSanitizeStored, validateSharedRead as _validateSharedRead } from './js/deskViewerView.js';   // what a viewer is shown of the desk's own outputs (the lens: analysis, not signals)
+import * as _deskNs from './js/deskNewsSearches.js';   // the News tab's saved searches (js/deskNewsSearches.js)
 import * as _deskMon from './js/deskMonitors.js';   // the Desk Terminal's named monitors (shared saved market lists; js/deskMonitors.js)
 import * as _deskWs from './js/deskWorkspaces.js';
 import * as _deskAr from './js/deskAlertRules.js';   // the alert rules you set (js/deskAlertRules.js); the older automatic board alerts are js/deskAlerts.js   // the Desk Terminal's named workspaces (shared saved layouts; js/deskWorkspaces.js)
@@ -45444,6 +45445,16 @@ async function _deskMonRoute(req, res) {
 }
 app.get('/api/desk-monitors', _deskMonRoute);
 app.post('/api/desk-monitors', _deskMonRoute);
+// GET /api/desk-news-searches -> { ok, searches }; POST { action: 'save'|'delete', name, search? } -> the new list. Reads: the owner always, the desk login once the owner switched panel.news.saved
+// on; writes: the owner only (js/deskNewsSearches.js handle()).
+async function _deskNsRoute(req, res) {
+  res.set('Cache-Control', 'no-store');
+  const vis = new Set(_deskVisibleFor('viewer', await _deskSwitches().catch(() => ({}))));
+  const r = await _deskNs.handle({ method: req.method, role: deskSessionRole(req), body: req.body, kv, on: id => vis.has(id) });
+  res.status(r.status).json(r.json);
+}
+app.get('/api/desk-news-searches', _deskNsRoute);
+app.post('/api/desk-news-searches', _deskNsRoute);
 // GET /api/desk-alert-rules -> { ok, rules, sentToday }; POST { action: 'add'|'delete'|'mute'|'unmute'|'rename', ... } -> the new list. POST is the OWNER only: an alert sends a Telegram
 // message. The desk login reads the list once the owner switched widget.alerts on. The tick (every 2 min, only with an active rule) is below; it sends through sendTelegram, so the
 // master kill switch and tgMaster.deskAlertRules both apply.

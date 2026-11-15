@@ -7,7 +7,7 @@ const rule = (kind, params, state = {}) => ({ id: `r${Math.random().toString(36)
 const live = (rows = [], extra = {}) => ({ closed: false, state: { range: { rows } }, indices: { rows: {} }, em: { pairs: {} }, ...extra });
 
 // ── rules in and out ──
-ok(KIND_IDS.length === 5 && KIND_IDS.every(k => KINDS[k].label && KINDS[k].help && KINDS[k].describe && KINDS[k].fields.length), 'every kind has a label, help, fields and a sentence');
+ok(KIND_IDS.length === 6 && KIND_IDS.every(k => KINDS[k].label && KINDS[k].help && KINDS[k].describe && KINDS[k].fields.length), 'every kind has a label, help, fields and a sentence');
 ok(makeRule({ kind: 'nope', params: {} }).ok === false && !makeRule({ kind: 'range_used', params: {} }).ok && !makeRule({ kind: 'data_stale', params: { feed: 'x' } }).ok && !makeRule({ kind: 'level_touch', params: { market: 'ZZZ' } }).ok && !makeRule({ kind: 'gap_closed', params: { market: 'EURUSD' } }).ok, 'bad rules are refused in words');
 const a = makeRule({ kind: 'range_used', params: { market: 'eur/usd', pct: 999 }, name: '<b>x</b>' }, T0);
 ok(a.ok && a.rule.params.market === 'EURUSD' && a.rule.params.pct === 300 && !/[<>]/.test(a.rule.name), 'params are cleaned and clamped, names lose angle brackets');

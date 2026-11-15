@@ -63,6 +63,7 @@ export const VIEWER_SURFACE_ROUTES = [
   ['/api/pair-select', ['panel.ov.bestpairs']],
   ['/api/desk-quality', ['widget.dqchip']],
   ['/api/desk-alerts', ['panel.ov.alerts']],
+  ['/api/desk-news-searches', ['panel.news.saved']],   // the News tab's saved searches (preview feature, read only for the desk login)
   ['/api/desk-monitors', ['tab.monitor']],   // the Monitor tab's saved market lists (preview feature, read only for the desk login; the owner always has it)
   ['/api/desk-workspaces', ['tab.workspace']],   // the Workspace tab's saved layouts (preview feature; the owner always has it)
   ['/api/desk-alert-rules', ['widget.alerts']],  // the list of alert rules, read only: only the owner may change them (js/deskAlertRules.js)

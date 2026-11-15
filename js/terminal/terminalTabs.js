@@ -792,10 +792,11 @@ async function renderNews() {
   if (!root.dataset.built) {
     root.dataset.built = '1';
     root.innerHTML = `<div class="card glow"><div class="tt-head"><span class="lbl">News</span><h2 style="flex-basis:100%">The wire</h2><span class="r"><span class="muted" id="nt-upd"></span><button class="btn" data-newsch style="padding:3px 8px" title="Send these headlines to a Telegram channel">Share channel</button> <button class="btn" data-newsrec style="padding:3px 8px">Track record</button></span></div>
-<div id="nt-top"></div><div id="nt-f"></div><div id="nt-n" class="muted" style="margin-bottom:4px"></div><div id="nt-list">${loading('the wire')}</div>
+<div id="nt-top"></div><div id="nt-f"></div><div id="nt-saved" data-surface="panel.news.saved"></div><div id="nt-n" class="muted" style="margin-bottom:4px"></div><div id="nt-list">${loading('the wire')}</div>
 <p class="tt-note">Headlines from the last 72 hours, read by the news analyst. Arrows are the first move a headline implies (two arrows: a strong push); markets show base minus quote and whether that supports or goes against today's card. The reaction is the move 5 and 30 minutes later, once known. Context, never a signal.</p></div>`;
     root.querySelector('[data-newsrec]').onclick = () => globalThis.newsRecord?.();
     root.querySelector('[data-newsch]').onclick = () => NCV.mount({ open: openModal }).show();   // the shared Telegram channel settings (js/terminal/newsChannelView.js)
+    globalThis.deskNewsSavedMount?.(el('nt-saved'));   // the saved-searches bar (preview feature; js/terminal/newsSearchView.js)
     const f = el('nt-f');
     f.addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
@@ -815,6 +816,11 @@ async function renderNews() {
   clearInterval(NS.timer);
   NS.timer = setInterval(async () => { if (T.tab !== 'news' || document.hidden) return; await newsFeed(true); drawNews(); }, NEWS_EVERY_MS);
 }
+// the News filter, readable and settable from outside (saved searches, js/terminal/newsSearchView.js)
+globalThis.deskNews = {
+  state: () => ({ tier: NS.tier, keys: [...NS.keys], onlyBook: NS.onlyBook, q: NS.q }),
+  apply: st => { NS.market = null; NS.tier = [1, 2, 3].includes(+st?.tier) ? +st.tier : 2; NS.keys = (Array.isArray(st?.keys) ? st.keys : []).filter(k => NV.NEWS_KEYS.includes(k)); NS.onlyBook = !!st?.onlyBook; NS.q = String(st?.q ?? ''); drawNews(true); },
+};
 function drawNews(filters = false) {
   if (!el('nt-list')) return;
   const now = Date.now();
