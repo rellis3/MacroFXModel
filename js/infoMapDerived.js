@@ -31,7 +31,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -86,7 +86,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -148,7 +148,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -205,7 +205,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -252,7 +252,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -299,7 +299,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -348,7 +348,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -397,7 +397,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -432,7 +432,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEnginesCore.js"
     ],
     "today": [
@@ -487,7 +487,6 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js"
     ],
     "today": [
@@ -531,7 +530,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js"
     ],
     "today": [],
@@ -574,7 +572,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/regimeBoardView.js",
      "js/terminal/terminalTabs.js"
@@ -652,7 +649,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/regimeBoardView.js",
@@ -767,7 +763,6 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/cbBoardCore.js",
      "js/terminal/cbBoardView.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/mapLayers.js"
     ],
     "today": [
@@ -864,7 +859,6 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/cbBoardCore.js",
      "js/terminal/cbBoardView.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/mapLayers.js"
     ],
     "today": [
@@ -951,7 +945,6 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/cbBoardCore.js",
      "js/terminal/cbBoardView.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/mapLayers.js"
     ],
     "today": [
@@ -1014,7 +1007,6 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/cbBoardCore.js",
      "js/terminal/cbBoardView.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/mapLayers.js"
     ],
     "today": [
@@ -1069,7 +1061,6 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/cbBoardCore.js",
      "js/terminal/cbBoardView.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/mapLayers.js"
     ],
     "today": [],
@@ -1152,7 +1143,7 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/cbBoardCore.js",
      "js/terminal/cbBoardView.js",
-     "js/terminal/humanDrivers.js",
+     "js/terminal/dataAge.js",
      "js/terminal/mapLayers.js",
      "js/terminal/terminalTabs.js"
     ],
@@ -1184,7 +1175,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/mapLayers.js"
     ],
     "today": [],
@@ -1221,7 +1211,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js"
     ],
     "today": [],
@@ -1274,7 +1263,6 @@ export const DERIVED = {
    ],
    "names": {
     "terminal": [
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/paperBoardsView.js",
      "js/terminal/terminalTabs.js"
@@ -1321,8 +1309,7 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
-     "js/terminal/curveBoardView.js",
-     "js/terminal/humanDrivers.js"
+     "js/terminal/curveBoardView.js"
     ],
     "today": [
      "today.html"
@@ -1393,7 +1380,6 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/fedPathYieldsView.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js",
      "js/terminal/ratesBoardCore.js",
@@ -1446,7 +1432,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/mapLayers.js",
      "js/terminal/ratesBoardView.js"
     ],
@@ -1558,7 +1543,6 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/fedPathYieldsView.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/terminalTabs.js"
     ],
@@ -1599,7 +1583,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [
@@ -1658,7 +1641,6 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/curveBoardView.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js"
     ],
@@ -1714,7 +1696,6 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/curveBoardView.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js"
     ],
@@ -1817,7 +1798,6 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/hedgeView.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/terminalTabs.js"
     ],
@@ -1853,7 +1833,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
+     "js/terminal/dataAge.js",
      "js/terminal/macroSubtabs.js"
     ],
     "today": [],
@@ -1882,7 +1862,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js"
     ],
     "today": [],
@@ -1942,7 +1921,6 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/creditLiquidityView.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/volBoardView.js"
@@ -1992,7 +1970,6 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/creditLiquidityView.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/volBoardView.js"
@@ -2048,7 +2025,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/links.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js"
@@ -2140,7 +2116,6 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/creditLiquidityView.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/volBoardView.js"
@@ -2186,7 +2161,6 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/chainBoard.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
     ],
@@ -2219,8 +2193,7 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
-     "desk-terminal.html",
-     "js/terminal/humanDrivers.js"
+     "desk-terminal.html"
     ],
     "today": [
      "today.html"
@@ -2252,7 +2225,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/whatChanged.js"
     ],
@@ -2286,8 +2258,7 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
-     "desk-terminal.html",
-     "js/terminal/humanDrivers.js"
+     "desk-terminal.html"
     ],
     "today": [
      "today.html"
@@ -2427,7 +2398,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/volClockView.js"
     ],
     "today": [
@@ -2538,7 +2508,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/volBoardView.js"
@@ -2621,7 +2590,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/regimeBoardView.js"
@@ -2665,7 +2633,6 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/chainBoard.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
     ],
@@ -2715,9 +2682,7 @@ export const DERIVED = {
    ],
    "modules": [],
    "names": {
-    "terminal": [
-     "js/terminal/humanDrivers.js"
-    ],
+    "terminal": [],
     "today": [],
     "atlas": [],
     "newsletter": []
@@ -2742,9 +2707,7 @@ export const DERIVED = {
    "packSkills": [
     "global_market"
    ],
-   "drift": [
-    "The terminal code names every route of this feed but the traced status says it is not drawn: re-trace."
-   ]
+   "drift": []
   },
   "trend-basket": {
    "pages": [
@@ -2796,7 +2759,6 @@ export const DERIVED = {
    ],
    "names": {
     "terminal": [
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/paperBoardsView.js",
      "js/terminal/terminalTabs.js"
@@ -2849,7 +2811,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/releasesBoardView.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
@@ -2895,7 +2856,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/pairView.js"
     ],
     "today": [
@@ -2930,9 +2890,7 @@ export const DERIVED = {
    ],
    "modules": [],
    "names": {
-    "terminal": [
-     "js/terminal/humanDrivers.js"
-    ],
+    "terminal": [],
     "today": [
      "today.html"
     ],
@@ -2943,9 +2901,7 @@ export const DERIVED = {
    "packSkills": [
     "global_market"
    ],
-   "drift": [
-    "The terminal code names every route of this feed but the traced status says it is not drawn: re-trace."
-   ]
+   "drift": []
   },
   "positioning-into-releases": {
    "pages": [
@@ -2990,7 +2946,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/releasesBoardView.js"
@@ -3054,7 +3009,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
@@ -3193,7 +3147,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/releasesBoardView.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/traderReadView.js"
@@ -3218,9 +3171,7 @@ export const DERIVED = {
    "packSkills": [
     "events_news"
    ],
-   "drift": [
-    "The terminal code names every route of this feed but the traced status says it is not drawn: re-trace."
-   ]
+   "drift": []
   },
   "event-day-context": {
    "pages": [],
@@ -3256,7 +3207,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/releasesBoardView.js"
@@ -3291,9 +3241,7 @@ export const DERIVED = {
    ],
    "modules": [],
    "names": {
-    "terminal": [
-     "js/terminal/humanDrivers.js"
-    ],
+    "terminal": [],
     "today": [],
     "atlas": [
      "atlas.html"
@@ -3304,9 +3252,7 @@ export const DERIVED = {
    "packSkills": [
     "events_news"
    ],
-   "drift": [
-    "The terminal code names every route of this feed but the traced status says it is not drawn: re-trace."
-   ]
+   "drift": []
   },
   "release-scorecard": {
    "pages": [],
@@ -3363,7 +3309,6 @@ export const DERIVED = {
    ],
    "names": {
     "terminal": [
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/paperBoardsView.js",
      "js/terminal/terminalTabs.js"
@@ -3391,7 +3336,7 @@ export const DERIVED = {
     {
      "file": "correlations.html",
      "exists": true,
-     "lastModified": "2026-11-06",
+     "lastModified": "2026-11-15",
      "hub": [
       "research"
      ]
@@ -3556,7 +3501,6 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
-     "js/terminal/humanDrivers.js",
      "js/terminal/optionsView.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/terrainPanel.js"
@@ -3627,7 +3571,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/humanDrivers.js",
+     "js/terminal/dataAge.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/optionsView.js",
@@ -3698,7 +3642,6 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "js/terminal/chainBoard.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/optionsView.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
@@ -3775,7 +3718,6 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/bookPanels.js",
      "js/terminal/chainBoard.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/links.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js",
@@ -4135,7 +4077,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/cbBoardView.js",
-     "js/terminal/humanDrivers.js",
+     "js/terminal/dataAge.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js",
      "js/terminal/paperBoardsView.js",
@@ -4304,7 +4246,9 @@ export const DERIVED = {
    ],
    "names": {
     "terminal": [
+     "js/terminal/dataAge.js",
      "js/terminal/macroSubtabs.js",
+     "js/terminal/optionsView.js",
      "js/terminal/paperBoardsView.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/terrainPanel.js"
@@ -4466,7 +4410,6 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/fairValueView.js",
-     "js/terminal/humanDrivers.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js",
      "js/terminal/terminalTabs.js"
@@ -4526,9 +4469,7 @@ export const DERIVED = {
    ],
    "modules": [],
    "names": {
-    "terminal": [
-     "js/terminal/humanDrivers.js"
-    ],
+    "terminal": [],
     "today": [
      "today.html"
     ],
@@ -4546,7 +4487,9 @@ export const DERIVED = {
     "vol_iv",
     "levels_structure"
    ],
-   "drift": []
+   "drift": [
+    "The traced status says drawn but no terminal file names its route: re-trace (it may arrive through a bundle)."
+   ]
   },
   "commodity-fx-copper-gold-session-heat": {
    "pages": [],
