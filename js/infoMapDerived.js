@@ -3734,6 +3734,7 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/bookPanels.js",
      "js/terminal/chainBoard.js",
+     "js/terminal/commandCore.js",
      "js/terminal/links.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js",
@@ -4381,6 +4382,8 @@ export const DERIVED = {
    ],
    "names": {
     "terminal": [
+     "js/terminal/commandCore.js",
+     "js/terminal/linkedSelection.js",
      "js/terminal/replayLink.js",
      "js/terminal/replayView.js",
      "js/terminal/terminalTabs.js"
