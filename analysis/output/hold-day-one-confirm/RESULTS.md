@@ -156,3 +156,14 @@ Positive control: {'planted_recovered': True, 'null_not_flagged': True, 'placebo
   - That is a candidate for its own prereg on fresh data, never a result.
 - **Reopen** with post-lockbox sessions, or with a positioning or flow reason for continuation.
 
+
+## Evidence pack (2026-11-15)
+
+Diagnostics only (register row `evidence-pack-retrofit`, EXPLORATORY); the verdict above does not change. Built by `scripts/hold-day-one-confirm/evidence.py` with the shared `scripts/evidence_pack/pack.py`.
+
+Rows are rebuilt by calling the runner's own run() (hooks capture the outcome arrays it scores; its side files go to a temp folder). Both headlines reproduce the banked P̄ exactly (run −0.038, hold-r +0.003). How to read it: (1) **run** — the positive control plants +0.10 on the real rows, but the real estimate is −0.038, so the planted total is only +0.062 and is found 33% of the time (100% at 2× bar); that offset, not noise, gives the pack's UNDERPOWERED label. The runner's Monte-Carlo power (MDE 0.098, POWERED) is the binding power statement, and the CI rules out the bar either way (upper end +0.027). 11 of 13 instruments are negative (gold and USDCAD the exceptions); both halves negative. The shuffle band here (±0.02) is narrower than the bootstrap because a per-row side shuffle breaks the way big days cluster across instruments and horizons; the runner's date-shift placebo (11.6th pct) is the binding one. (2) **hold-r** — FLAT: a planted +0.10 R is found 100% of the time, 0.5× bar 90%, and the CI [−0.043, +0.054] stops below the bar. Its sign is not stable (halves −0.009 / +0.014, 7 of 13 instruments positive, flips sign without the top 1%). The 'survives costs' tick is only because the 0.03 R cost is already inside R. The shuffled band sits above zero (+0.019 mean) because shuffled sides keep the one-position entry set but not its side; the runner's placebo is binding. Canary: leaking the outcome sign gives +0.88 (run) and +0.63 R (hold-r).
+
+| Cell | Diagnosis | Estimate [95% CI] | Bar | Planted 0.5×/1×/2× found | Shuffle pct | Halves H1 / H2 | Inst. same sign | Top-1% removed | Canary (leaked) | Charts |
+|---|---|---|---|---|---|---|---|---|---|---|
+| run | **UNDERPOWERED** | -0.0382 [-0.0986, +0.0274] | +0.1 | 0%/33%/100% | 0 | -0.0424 / -0.0339 | 85% | ✓ | +0.878 | [placebo](evidence/run/placebo.png) · [buckets](evidence/run/buckets.png) · [breakdown](evidence/run/breakdown.png) · [plants](evidence/run/plants.png) · [pack](evidence/run/EVIDENCE.md) |
+| hold-r | **FLAT** | +0.00288 [-0.0427, +0.0535] | +0.1 | 90%/100%/100% | 3 | -0.0086 / +0.0142 | 54% | ✗ | +0.632 | [placebo](evidence/hold-r/placebo.png) · [buckets](evidence/hold-r/buckets.png) · [breakdown](evidence/hold-r/breakdown.png) · [plants](evidence/hold-r/plants.png) · [pack](evidence/hold-r/EVIDENCE.md) |
