@@ -4384,6 +4384,8 @@ export const DERIVED = {
     "terminal": [
      "js/terminal/alertsView.js",
      "js/terminal/commandCore.js",
+     "js/terminal/kchartCore.js",
+     "js/terminal/kchartView.js",
      "js/terminal/linkedSelection.js",
      "js/terminal/replayLink.js",
      "js/terminal/replayView.js",
