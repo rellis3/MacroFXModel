@@ -17,11 +17,7 @@ const linked = f => hub.includes(`data-href="${f}"`);
 
 const ORPHANS = new Set([
   'index.html',          // the site root itself
-  'terminal.html', 'brief-config.html',
-  'band-fade.html', 'claim-watch.html', 'drift.html', 'exhaustion-surface.html', 'fed-path.html', 'forecast-range-timeline.html', 'forecaster-system.html',
-  'hedge-backtest.html', 'hedge-signals-v2.html', 'hedge-signals.html', 'impulse-range-lab.html', 'ips-shadow.html', 'jump-diffusion.html',
-  'level-atlas-vote-portfolio-v2.html', 'live-range-shadow.html', 'live-validation.html', 'motif-combined-backtest.html', 'oi-all-lines.html',
-  'oi-level-lab.html', 'path-map.html', 'pattern-lab.html', 'portfolio-book.html', 'trade-lab.html', 'volatility-intelligence.html', 'world-economies.html',
+  // 2026-11-15: every other orphan was given a tab in the nav restructure (plans/NAV_REVIEW_2026-11-15.md).
 ]);
 
 test('every top-level page has a shortcut in the command strip (or is a listed, older orphan)', () => {
@@ -35,6 +31,19 @@ test('the orphan list only shrinks: a listed page that now has a shortcut (or no
 });
 
 test('the research pages are in the Research menu', () => {
-  const menu = hub.slice(hub.indexOf('id="chubDDresearch"'), hub.indexOf('id="chubDDequity"'));
+  const menu = hub.slice(hub.indexOf('id="chubDDresearch"'), hub.indexOf('id="chubDDlearn"'));
   for (const f of ['research.html', 'roe.html', 'research-log.html']) assert.ok(menu.includes(`data-href="${f}"`), f);
+});
+
+// 2026-11-15 restructure: the eight tabs, in order, and Null/Retired kept apart (owner: "move all pages which are null to null,
+// retired where a new page/version has taken over").
+test('the strip has the eight tabs in order', () => {
+  const ids = [...hub.matchAll(/<div class="chub-dd" id="(chubDD\w+)">/g)].map(m => m[1]);
+  assert.deepEqual(ids, ['chubDDlive', 'chubDDvol', 'chubDDmacro', 'chubDDbots', 'chubDDresearch', 'chubDDlearn', 'chubDDnull', 'chubDDretired']);
+});
+
+test('no page sits in two tabs', () => {
+  const hrefs = [...hub.matchAll(/data-href="([^"']+)"[^>]*><span/g)].map(m => m[1]).filter(h => !/[#?]/.test(h));
+  const dup = hrefs.filter((h, i) => hrefs.indexOf(h) !== i);
+  assert.deepEqual(dup, []);
 });
