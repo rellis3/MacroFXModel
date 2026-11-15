@@ -71,3 +71,13 @@ Pass bar +0.05R; gate = Δ ≥ bar, Holm p < 0.05 (p = max of bootstrap and shif
 - **Reopen** only with an entry that has its own validated edge (then rerun this map on it), e.g. a forecaster that
   passes the bias-scoreboard.
 
+
+## Evidence pack (2026-11-15)
+
+Diagnostics only (register row `evidence-pack-retrofit`, EXPLORATORY); the verdict above does not change. Built by `scripts/exit-on-fixed-entries/evidence.py` with the shared `scripts/evidence_pack/pack.py`.
+
+Entries are rebuilt with the runner's own build() (one instrument at a time; `evidence/entries_E1.parquet`). The rebuilt E1 Δ is +0.0118 R, matching the banked +0.012. How to read it: (1) FLAT against the useful bar. A planted +0.05 R is found 100% of the time (0.5× bar too), and the interval [−0.000, +0.024] stops well below +0.05. (2) There is a small positive Δ: it sits above every iid shuffle (100th pct) and above 99.4% of the runner's date shifts; 10 of 13 instruments are positive. It is NOT robust, though: **removing the largest 1% of entries turns it to −0.010 R**, and it lives in H1 (+0.022, CI above zero) and not in H2 (+0.002). A few long trend holds make it. (3) Buckets: under E1, long-slope entries gain more from going long (+0.046 R [+0.026, +0.066]) while short-slope entries show nothing (−0.006 R). The small edge is on the long side only. (4) The iid shuffle band (±0.007) is narrower than the runner's shift band because 4h-slope sides persist for days; the runner's shift placebo and block bootstrap are binding. Canary: giving each entry its better side gives +0.41 R.
+
+| Cell | Diagnosis | Estimate [95% CI] | Bar | Planted 0.5×/1×/2× found | Shuffle pct | Halves H1 / H2 | Inst. same sign | Top-1% removed | Canary (leaked) | Charts |
+|---|---|---|---|---|---|---|---|---|---|---|
+| E1 | **FLAT** | +0.0118 [-0.000178, +0.0241] | +0.05 | 100%/100%/100% | 100 | +0.0216 / +0.00195 | 77% | ✗ | +0.408 | [placebo](evidence/E1/placebo.png) · [buckets](evidence/E1/buckets.png) · [breakdown](evidence/E1/breakdown.png) · [plants](evidence/E1/plants.png) · [pack](evidence/E1/EVIDENCE.md) |
