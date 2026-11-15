@@ -18,6 +18,7 @@ import { MACRO_SUBS, ALL_BLOCKS, BLOCK_SUB, subById } from './macroSubtabs.js';
 import { THEMES } from './themes.js';
 import { TF_KEYS } from '../deskBarsCore.js';
 import { ASSET_WORDS } from './pairView.js';
+import { STARTERS as WS_STARTERS, cleanName as wsCleanName } from './workspaceCore.js';
 import { INSTRUMENTS as REPLAY_INSTRUMENTS, validDate, londonDate, londonWall } from '../replayCore.js';
 
 // ── markets (a copy of the page's UNIVERSE and NAME; commandCore.test.mjs fails if desk-terminal.html drifts from it) ──
@@ -59,6 +60,7 @@ const TAB_WORDS = {
   options: ['OPTIONS', ['OPT', 'GEX'], 'The Options tab: skew, dealer hedging, put/call, option lines and the VIX term.'],
   news: ['NEWS', ['WIRE'], 'The News tab: the wire, with its reads.'],
   corr: ['CORRELATIONS', ['CORR', 'HEDGES'], 'The Correlations tab: the matrix, rolling correlations, factors and regimes.'],
+  workspace: ['WORKSPACE', ['WS', 'LAYOUT', 'WORKSPACES'], 'The Workspace tab (preview): drag and resize the terminal panels into a screen of your own. Add a name to load a saved layout: WORKSPACE RATES.'],
   infomap: ['INFO', ['INFOMAP', 'SWITCHES'], 'The Info map tab (owner only): what data the repo holds, and the preview-feature switches.'],
 };
 export const TAB_WORD_IDS = Object.keys(TAB_WORDS);
@@ -141,7 +143,7 @@ const INDICATORS = [
  * Every command the session may use. isOn(surfaceId) -> bool says which surfaces this session can see (the owner: all; a desk login: the switched-on ones).
  * A command whose surface is off is left out. now() is only used to resolve dates.
  */
-export function buildCommands({ isOn = () => true, now = () => Date.now() } = {}) {
+export function buildCommands({ isOn = () => true, now = () => Date.now(), workspaceNames = () => [] } = {}) {
   const out = [];
   const add = c => { if ([c.surface, ...(c.needs ?? [])].every(id => !id || isOn(id))) out.push({ aliases: [], ...c }); };
 
@@ -155,6 +157,11 @@ export function buildCommands({ isOn = () => true, now = () => Date.now() } = {}
       c.args = '[market] [date] [time]';
       c.run = args => replayRun(args, now);
       c.example = 'replay';
+    }
+    if (key === 'workspace') {
+      c.args = '[name]';
+      c.run = args => workspaceRun(args);
+      c.example = 'workspace rates';
     }
     add(c);
   }
@@ -187,6 +194,8 @@ export function buildCommands({ isOn = () => true, now = () => Date.now() } = {}
   add({ id: 'theme', group: 'Look and feel', name: 'THEME', args: '<name>', help: `Change the colour theme (${THEMES.map(t => t.id).join(', ')}). It is remembered in this browser.`, example: 'theme amber', opens: 'The whole terminal, in that theme', surface: 'widget.themepicker', run: themeRun });
   add({ id: 'tf', group: 'Look and feel', name: 'TF', aliases: ['TIMEFRAME'], args: `<${TF_KEYS.join('|')}>`, help: 'Set the candle size on every chart that offers one (Pair page and asset cards).', example: 'tf 15m', opens: 'The candle-size pills on the charts', surface: 'widget.linked', run: tfRun });
   add({ id: 'link', group: 'Look and feel', name: 'LINK', args: '<on|off>', help: 'Switch linked selection on or off: when on, picking a market in one place moves the Pair page, Replay, strength board and vol clock with it.', example: 'link off', opens: 'The linked chip in the top bar', surface: 'widget.linked', run: linkRun });
+  add({ id: 'ws.save', group: 'Look and feel', name: 'SAVE', aliases: ['SAVEWORKSPACE'], args: 'workspace <name>', help: 'Save the Workspace tab layout as it is now under a name, shared with the desk. A built-in starter name makes you pick your own.', example: 'save workspace my morning',
+    opens: 'The Workspace tab, saved under that name', surface: 'tab.workspace', run: args => workspaceSaveRun(args) });
   add({ id: 'help', group: 'Help', name: 'HELP', aliases: ['?', 'COMMANDS'], help: 'List every command with what it does and an example.', example: '?', opens: 'This list', action: { kind: 'help' } });
   return out;
 
@@ -202,6 +211,20 @@ export function buildCommands({ isOn = () => true, now = () => Date.now() } = {}
     if (!when) return { action: { kind: 'replay', inst, ts: null }, summary: `Opens the Replay on ${instLabel(inst)}, last session.` };
     const ts = londonWall(when.date, when.hh ?? 7, when.mm ?? 0);
     return { action: { kind: 'replay', inst, ts }, summary: `Opens the Replay on ${instLabel(inst)}, ${when.date} at ${p2(when.hh ?? 7)}:${p2(when.mm ?? 0)} London.` };
+  }
+  function workspaceRun(args) {
+    const a = String(args ?? '').trim();
+    if (!a) return { action: { kind: 'workspace', name: null }, summary: 'Opens the Workspace tab.' };
+    const names = [...WS_STARTERS.map(s => s.name), ...workspaceNames()];
+    const hit = names.find(n => n.toLowerCase() === a.toLowerCase()) ?? names.find(n => n.toLowerCase().startsWith(a.toLowerCase()));
+    if (!hit) return { error: `No workspace called "${a}". Try ${names.join(', ')}.` };
+    return { action: { kind: 'workspace', name: hit }, summary: `Opens the Workspace tab with "${hit}".` };
+  }
+  function workspaceSaveRun(args) {
+    const a = wsCleanName(String(args ?? '').replace(/^\s*workspace\b/i, ''));
+    if (!a) return { error: 'Say what to call it: SAVE WORKSPACE my morning.' };
+    if (WS_STARTERS.some(s => s.name.toLowerCase() === a.toLowerCase())) return { error: `"${a}" is a built-in starter. Pick your own name.` };
+    return { action: { kind: 'workspace-save', name: a }, summary: `Saves the Workspace as "${a}".` };
   }
   function indicatorRun(word, args) {
     const a = String(args ?? '').trim().split(/\s+/).filter(Boolean)[0];
@@ -256,10 +279,11 @@ export function search(commands, line, { limit = 10 } = {}) {
   const sp = q.indexOf(' ');
   if (sp > 0) {
     const head = q.slice(0, sp), rest = q.slice(sp + 1);
+    const rawLine = String(line ?? '').replace(/^[/`\s]+/, '').replace(/\s+/g, ' ').trim(), rawRest = rawLine.slice(rawLine.indexOf(' ') + 1);   // the words as typed: a saved workspace keeps its capitals
     for (const c of commands) {
       if (!c.run) continue;
       if (![c.name, ...c.aliases].some(n => norm(n) === head)) continue;
-      const r = c.run(rest);
+      const r = c.run(rawRest);
       res.push(r.error ? { cmd: c, score: 900, error: r.error, args: rest } : { cmd: c, score: 1100, action: r.action, summary: r.summary, args: rest });
     }
   }

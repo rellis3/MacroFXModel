@@ -16,7 +16,7 @@ const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 globalThis.__terminalFeelNoAutoStart = true;
 globalThis.localStorage = memStore();
 const { start } = await import('./terminalFeel.js');
-const PREVIEW = ['widget.cmdline', 'widget.linked'];
+const PREVIEW = ['widget.cmdline', 'tab.workspace', 'widget.linked'];   // registry order
 
 test('the preview features are registry surfaces, hidden from the desk login by default, with a reason and a note', () => {
   assert.ok(HIDDEN_REASONS.includes('preview'));
@@ -58,18 +58,19 @@ test('start(): a desk login with the switches off loads nothing and adds nothing
   const win = makeWin(doc); globalThis.document = doc; globalThis.window = win;
   try {
     globalThis.deskSurfaceOn = () => false;
-    assert.deepEqual(await start(), { linked: false, cmdline: false });
+    assert.deepEqual(await start(), { linked: false, cmdline: false, workspace: false });
     assert.equal(doc.getElementById('feelCss'), null); assert.equal(doc.getElementById('cmdk-back'), null); assert.equal(doc.getElementById('cmdbtn').hidden, true); assert.equal(doc.getElementById('linkchip').hidden, true);
     assert.equal(win.deskSelection, undefined);
     delete globalThis.deskSurfaceOn;
-    assert.deepEqual(await start(), { linked: false, cmdline: false }, 'deskSurfaceOn missing = not allowed');
+    assert.deepEqual(await start(), { linked: false, cmdline: false, workspace: false }, 'deskSurfaceOn missing = not allowed');
     globalThis.deskSurfaceOn = id => id !== 'widget.linked' && id !== 'widget.cmdline';
-    assert.deepEqual(await start(), { linked: false, cmdline: false });
+    assert.deepEqual(await start(), { linked: false, cmdline: false, workspace: false });
   } finally { delete globalThis.deskSurfaceOn; delete globalThis.document; delete globalThis.window; }
 });
 
 test('start(): the owner gets both (button, chip, stylesheet, key handler); one switched on gives only that one', async () => {
-  for (const [on, want] of [[() => true, { linked: true, cmdline: true }], [id => id === 'widget.cmdline', { linked: false, cmdline: true }], [id => id === 'widget.linked', { linked: true, cmdline: false }]]) {
+  // workspace is false below: this stand-in page has no #workspace section to mount into (workspaceState/Core tests cover the feature)
+  for (const [on, want] of [[() => true, { linked: true, cmdline: true, workspace: false }], [id => id === 'widget.cmdline', { linked: false, cmdline: true, workspace: false }], [id => id === 'widget.linked', { linked: true, cmdline: false, workspace: false }]]) {
     const doc = makePage(); doc.head = new El('head'); doc.root.appendChild(doc.head);
     const win = makeWin(doc); globalThis.document = doc; globalThis.window = win; globalThis.deskSurfaceOn = on;
     globalThis.openPairPage = win.openPairPage; globalThis.openReplay = win.openReplay;   // the hooks terminalTabs.js sets (the loader waits for them)
@@ -86,7 +87,7 @@ test('start(): the owner gets both (button, chip, stylesheet, key handler); one 
 test('the Info map panel: one row per preview feature, desk-login state in words, a button to flip it', () => {
   const h = panelHtml({});
   for (const r of previewRows()) { assert.ok(h.includes(r.label.replace(/`/g, '`')), r.label); assert.ok(h.includes(`data-pv="${r.id}"`)); }
-  assert.equal((h.match(/desk login: off/g) ?? []).length, 2); assert.match(h, /Show to the desk login/);
+  assert.equal((h.match(/desk login: off/g) ?? []).length, PREVIEW.length); assert.match(h, /Show to the desk login/);
   const h2 = panelHtml({ 'widget.cmdline': true });
   assert.equal((h2.match(/desk login: on/g) ?? []).length, 1); assert.match(h2, /Hide from the desk login/);
   assert.equal(deskSees(SURFACES.find(s => s.id === 'widget.linked'), { 'widget.linked': true }), true); assert.equal(deskSees(SURFACES.find(s => s.id === 'widget.linked'), null), false);

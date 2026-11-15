@@ -1204,6 +1204,7 @@ export default {
             'oanda_book_history_v1',
             'pair_ledger_v1',
             'desk_tab_access_v1',
+            'desk_workspaces_v1',
             'chain_read_v1',
             'eod_review_v1',
             'daily_snapshot_v1',

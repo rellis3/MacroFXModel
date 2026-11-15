@@ -13,6 +13,12 @@ function addCss() {
   l.id = 'feelCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/command-line.css';
   document.head.appendChild(l);
 }
+function addWsCss() {
+  if (document.getElementById('wsCss')) return;
+  const l = document.createElement('link');
+  l.id = 'wsCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/workspace.css';
+  document.head.appendChild(l);
+}
 /** The Pair page's and the Replay's opener hooks are set by terminalTabs.js; wait (up to 6 s) so linked selection can wrap them. */
 const hooksReady = () => new Promise(res => {
   const t0 = Date.now();
@@ -21,17 +27,20 @@ const hooksReady = () => new Promise(res => {
 });
 
 export async function start() {
-  const wantLinked = on('widget.linked'), wantCmd = on('widget.cmdline');
-  if (!wantLinked && !wantCmd) return { linked: false, cmdline: false };
-  addCss();
-  let linked = false, cmdline = false;
+  const wantLinked = on('widget.linked'), wantCmd = on('widget.cmdline'), wantWs = on('tab.workspace');
+  if (!wantLinked && !wantCmd && !wantWs) return { linked: false, cmdline: false, workspace: false };
+  if (wantLinked || wantCmd) addCss();
+  let linked = false, cmdline = false, workspace = false;
+  try {
+    if (wantWs) { addWsCss(); const m = await import('./workspaceView.js'); workspace = !!m.mountWorkspace(); }
+  } catch (e) { console.warn('workspace', e); }
   try {
     if (wantLinked) { await hooksReady(); const m = await import('./linkedSelection.js'); linked = !!m.mountLinked(); }
   } catch (e) { console.warn('linked selection', e); }
   try {
     if (wantCmd) { const m = await import('./commandLine.js'); cmdline = !!m.mountCommandLine(); }
   } catch (e) { console.warn('command line', e); }
-  return { linked, cmdline };
+  return { linked, cmdline, workspace };
 }
 
 if (typeof document !== 'undefined' && !globalThis.__terminalFeelNoAutoStart) {

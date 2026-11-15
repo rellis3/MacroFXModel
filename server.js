@@ -191,6 +191,7 @@ import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl a
 import { RBNZ_MEETINGS, pendingAsOf as rbnzPendingAsOf, allReleases as rbnzAllReleases } from './js/rbnzCalendar.js';
 import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote, fetchOcrDecisions as rbnzFetchOcrDecisions, ocrActualFor as rbnzOcrActualFor } from './js/rbnzFetch.js';
 import { sanitizerFor as _deskViewerSanitiser, sanitizeStoredRead as _deskSanitizeStored, validateSharedRead as _validateSharedRead } from './js/deskViewerView.js';   // what a viewer is shown of the desk's own outputs (the lens: analysis, not signals)
+import * as _deskWs from './js/deskWorkspaces.js';   // the Desk Terminal's named workspaces (shared saved layouts; js/deskWorkspaces.js)
 import { viewerMayCall as _deskViewerMayCall, deskLoginDecision as _deskLoginDecision } from './js/deskAccess.js';                       // what a desk-login VIEWER may call (js/deskAccess.js)
 import { deskLoginPage as _deskLoginPage } from './js/deskLoginPage.js';                  // the desk zone's sign-in page (js/deskLoginPage.js)
 import { logoutPlan as _logoutPlan, clearCookieHeader as _clearCookieHeader, sameSiteOk as _logoutSameSiteOk } from './js/deskLogout.js';   // what /logout clears and where it goes (desk, all, library, education, main)
@@ -45420,6 +45421,16 @@ app.post('/api/desk-access', async (req, res) => {
   _deskSwCache = { at: 0, stored: {} };
   res.json({ ok: true, saved, visible: _deskVisibleFor('viewer', saved) });
 });
+// GET /api/desk-workspaces -> { ok, layouts }; POST { action: 'save'|'delete'|'rename', name, newName?, layout? } -> the new list. The owner always; the desk login only once the owner
+// switched the Workspace tab on (tab.workspace). Registered before the global requireAuth, so the session check is explicit (js/deskWorkspaces.js handle()).
+async function _deskWsRoute(req, res) {
+  res.set('Cache-Control', 'no-store');
+  const vis = new Set(_deskVisibleFor('viewer', await _deskSwitches().catch(() => ({}))));
+  const r = await _deskWs.handle({ method: req.method, role: deskSessionRole(req), body: req.body, kv, on: id => vis.has(id) });
+  res.status(r.status).json(r.json);
+}
+app.get('/api/desk-workspaces', _deskWsRoute);
+app.post('/api/desk-workspaces', _deskWsRoute);
 
 // All other /api/* routes — call _worker.js and return the JSON response.
 app.all('/api/*', async (req, res) => {

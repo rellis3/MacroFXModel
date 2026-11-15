@@ -33,6 +33,8 @@ export function perform(a, doc = document, win = window) {
       if (a.ccy) win.setTimeout(() => win.ccyModal?.(a.ccy), 450);
       return ok;
     }
+    case 'workspace': { const ok = tab('workspace'); if (ok && a.name) win.setTimeout(() => win.deskWorkspace?.load?.(a.name), 60); return ok; }
+    case 'workspace-save': return win.deskWorkspace?.saveAs ? (win.deskWorkspace.saveAs(a.name), true) : false;
     case 'theme': import('./themePicker.js').then(m => m.applyTheme(a.id)).catch(() => {}); return true;
     case 'tf': return win.deskSelection ? (win.deskSelection.set({ tf: a.tf }, 'command'), true) : false;
     case 'link': return win.deskSelection ? (win.deskSelection.setLinked(a.on, 'command'), true) : false;
@@ -79,7 +81,7 @@ export function mountCommandLine({ doc = document, win = window, isOn = id => wi
     main.querySelector(`#cmdk-o${idx}`)?.scrollIntoView?.({ block: 'nearest' });
   }
   function open(prefill = '') {
-    cmds = buildCommands({ isOn, now });
+    cmds = buildCommands({ isOn, now, workspaceNames: () => win.deskWorkspace?.names?.() ?? [] });
     lastFocus = doc.activeElement; mode = 'search'; idx = 0;
     back.hidden = false; input.value = prefill; render(); input.focus();
   }

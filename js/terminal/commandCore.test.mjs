@@ -138,3 +138,19 @@ test('VIEWER: a command whose surface is switched off for the session is not off
 });
 
 test('every instrument key is in the list once', () => { assert.equal(new Set(ALL_INSTRUMENTS).size, ALL_INSTRUMENTS.length); });
+
+test('workspace commands: WORKSPACE <name> loads a starter or a saved layout, SAVE WORKSPACE <name> saves, both explain themselves', () => {
+  const cmds = buildCommands({ now: () => NOW, workspaceNames: () => ['Team view'] });
+  assert.deepEqual(top('workspace', cmds).cmd.id, 'tab.workspace');
+  assert.deepEqual(top('workspace rates', cmds).action, { kind: 'workspace', name: 'Rates' });
+  assert.deepEqual(top('ws team', cmds).action, { kind: 'workspace', name: 'Team view' }, 'a saved name, by prefix, through an alias');
+  assert.match(top('workspace nope', cmds).error, /No workspace called "nope".*Morning, Rates, Event day, Team view/);
+  assert.deepEqual(top('save workspace my morning', cmds).action, { kind: 'workspace-save', name: 'my morning' }, 'typed capitals are kept');
+  assert.deepEqual(top('save desk', cmds).action, { kind: 'workspace-save', name: 'desk' });
+  assert.match(top('save workspace rates', cmds).error, /built-in starter/);
+  assert.match(top('save workspace', cmds).error, /Say what to call it/);
+  for (const id of ['tab.workspace', 'ws.save']) { const c = cmds.find(x => x.id === id); assert.ok(c.help.length > 20 && c.example && c.opens, id); }
+  // a desk login with the Workspace switch off is never offered them
+  const off = buildCommands({ now: () => NOW, isOn: id => id !== 'tab.workspace' });
+  assert.ok(!off.some(c => c.id === 'tab.workspace' || c.id === 'ws.save'), 'hidden surface: no command');
+});

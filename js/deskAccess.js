@@ -63,6 +63,12 @@ export const VIEWER_SURFACE_ROUTES = [
   ['/api/pair-select', ['panel.ov.bestpairs']],
   ['/api/desk-quality', ['widget.dqchip']],
   ['/api/desk-alerts', ['panel.ov.alerts']],
+  ['/api/desk-workspaces', ['tab.workspace']],   // the Workspace tab's saved layouts (preview feature; the owner always has it)
+];
+
+/** POSTs that back a SWITCHABLE preview surface: refused for the desk login unless the owner switched one of the listed surfaces on. The route itself checks again. */
+export const VIEWER_SURFACE_POSTS = [
+  ['/api/desk-workspaces', ['tab.workspace']],
 ];
 
 /** Path segments that mark an ops or compute-triggering route. */
@@ -85,7 +91,7 @@ export function viewerMayCall(method, url, on = () => false) {
   if (!path.startsWith('/api/') && path !== '/api') return true;
   const m = String(method ?? 'GET').toUpperCase();
   if (query.get('refresh') === '1' || query.get('force') === '1' || query.get('rebuild') === '1') return false;   // a forced refresh is the owner's, on any method
-  if (m !== 'GET' && m !== 'HEAD') return VIEWER_POST_ALLOWED.some(p => path === p || path.startsWith(p + '/'));
+  if (m !== 'GET' && m !== 'HEAD') return VIEWER_POST_ALLOWED.some(p => path === p || path.startsWith(p + '/')) || (typeof on === 'function' && VIEWER_SURFACE_POSTS.some(([p, ids]) => path === p && ids.some(id => on(id))));
   const seg = path.split('/').filter(Boolean);
   if (seg.slice(1).some(s => OPS_SEGMENTS.has(s) || /backfill|rebuild/.test(s) || /^\$\{/.test(s))) return false;
   if (path === '/api/desk-bars' && query.get('role')) return false;          // a role makes it a model call; plain bars are market data
