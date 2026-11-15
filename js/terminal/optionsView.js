@@ -19,7 +19,8 @@ import { bsVega } from '../greekLayers.js';
 import { PATH_HORIZON_DAYS, sourceChoices, sourceAsOf, normaliseSource } from '../pathSourceMeta.js';
 import * as PZ from './pathZoom.js';
 import { ownerLink } from './links.js';
-import { dailyChip } from './timeframePills.js';
+import { dailyChip } from './timeframePills.js';
+import { tileChip } from './dataAge.js';
 export { zoneWalk };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fin = v => v != null && Number.isFinite(+v);
@@ -123,7 +124,7 @@ export function ladderHtml(row) {
   const above = L.filter(l => l.distPips > 0).sort((a, b) => a.distPips - b.distPips).slice(0, 5).reverse(), below = L.filter(l => l.distPips <= 0).sort((a, b) => b.distPips - a.distPips).slice(0, 5);
   const px = v => (Math.abs(v) >= 100 ? (+v).toFixed(1) : (+v).toFixed(4));
   const tr = l => `<tr><td><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${LCOL[l.type] ?? 'var(--flat)'};margin-right:5px"></i>${esc(LTYPE[l.type] ?? l.type)}${l.tier ? ` <span class="muted" style="font-size:10px">${esc(l.tier)}</span>` : ''}</td><td class="n mono">${px(l.price)}</td><td class="n mono ${l.distPips > 0 ? 'up' : 'dn'}">${sg(l.distPips, 0)}</td><td class="n mono">${fin(l.touchPct) ? `${l.touchPct}%` : '–'}</td><td>${evChip(l.type)}</td></tr>`;
-  return `<div class="card"><div class="ch"><span class="lbl">${esc(NAME[id] ?? row.pair)} · option lines</span><span class="r muted">${row.savedAt ? `book ${esc(row.savedAt)}` : ''}</span></div><div class="scroll"><table><thead><tr><th>Line</th><th class="n">Price</th><th class="n">Pips/pts</th><th class="n" title="chance of a touch within 4 hours (calibrated Monte Carlo)">Touch 4h</th><th>Evidence</th></tr></thead><tbody>${above.map(tr).join('')}<tr style="background:var(--bg3)"><td><b>Price now</b></td><td class="n mono"><b>${fin(row.spot) ? px(row.spot) : '–'}</b></td><td colspan="3" class="muted" style="font-size:11px">${row.regime === 'PIN' ? 'dealers long gamma: hedging calms moves' : row.regime === 'BREAKOUT' ? 'dealers short gamma: hedging speeds moves' : ''}</td></tr>${below.map(tr).join('')}</tbody></table></div>
+  return `<div class="card"><div class="ch"><span class="lbl">${esc(NAME[id] ?? row.pair)} · option lines</span><span class="r muted">${row.savedAt ? `book ${esc(row.savedAt)} ${tileChip('oi-store', { asOf: row.savedAtMs ?? null })}` : ''}</span></div><div class="scroll"><table><thead><tr><th>Line</th><th class="n">Price</th><th class="n">Pips/pts</th><th class="n" title="chance of a touch within 4 hours (calibrated Monte Carlo)">Touch 4h</th><th>Evidence</th></tr></thead><tbody>${above.map(tr).join('')}<tr style="background:var(--bg3)"><td><b>Price now</b></td><td class="n mono"><b>${fin(row.spot) ? px(row.spot) : '–'}</b></td><td colspan="3" class="muted" style="font-size:11px">${row.regime === 'PIN' ? 'dealers long gamma: hedging calms moves' : row.regime === 'BREAKOUT' ? 'dealers short gamma: hedging speeds moves' : ''}</td></tr>${below.map(tr).join('')}</tbody></table></div>
 <p class="tt-note">The five nearest lines each side. Every kind carries the Evidence Book's word: walls and max pain tested NULL (they behave like ordinary levels), so read them as where open interest sits, not where price must go.${row.basisStale ? ' The futures-to-spot basis is over 4 hours old, so lines can be a few pips off.' : ''}</p></div>`;
 }
 

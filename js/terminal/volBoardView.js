@@ -11,6 +11,7 @@ import { chipFor } from './corrEvidence.js';
 import { ownerLink, ownerOnly } from './links.js';
 import { zBar } from './creditLiquidityView.js';
 import { dailyChip } from './timeframePills.js';
+import { tileChip } from './dataAge.js';
 
 const sg = (v, d = 1) => (!fin(v) ? '–' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(+v).toFixed(d)}`);
 
@@ -49,9 +50,8 @@ function realisedCard(vb) {
 
 function skewCard(vb) {
   const s = vb.skew; if (!s?.rows?.length) return '';
-  const stale = fin(s.ageH) && s.ageH > 48;
   const rows = s.rows.map(r => zBar(r.pair, r.rr, { max: 4, hot: 'up', cool: 'dn', title: r.lean ?? '' })).join('');
-  return `<div class="card"><div class="ch"><span class="lbl">Options skew · 25-delta risk reversal, 1 month</span><span class="r muted">${fin(s.ageH) ? `${Math.round(s.ageH)}h old` : ''}${stale ? ' <span class="chip gold">laptop pull is old</span>' : ''}</span></div>${rows}
+  return `<div class="card"><div class="ch"><span class="lbl">Options skew · 25-delta risk reversal, 1 month</span><span class="r muted">${tileChip('options-skew', { ageH: s.ageH, asOf: s.asOf })}</span></div>${rows}
 <p class="muted bv-note">Positive = calls on the pair cost more than puts (protection against a rise dearer); negative = puts dearer. From the laptop's IBKR futures-options pull: when the laptop is off this is the last copy, and the age is shown. Skew has not been shown to call the next move (skew-fade is null).</p></div>`;
 }
 
