@@ -554,26 +554,32 @@ async function sparkline(el, inst, c) {
   el.innerHTML = `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${inst} last three sessions"><defs><linearGradient id="${id}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".35"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
 <polygon points="0,${H} ${line} ${W},${H}" fill="url(#${id})"/>${L ? hl(L.open, 'var(--tx)', '2 3') + hl(d >= 0 ? L.up?.p50 : L.down?.p50, 'var(--gold)', '4 3') : ''}<polyline points="${line}" fill="none" stroke="${col}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`;
 }
-// the full chart in an asset card: H1 candles, today's forecast lines, the entry zone and the invalidation
+// the full chart in an asset card: candles in the chosen size (5m to 4h, js/terminal/timeframePills.js), today's forecast lines, the entry zone and the invalidation
 async function assetChart(el, inst, c) {
   if (!window.LightweightCharts) { el.remove(); return; }
-  const r = await bars(inst, 5); const b = r?.bars ?? []; if (!b.length) { el.innerHTML = '<p class="muted" style="padding:12px">No price bars.</p>'; return; }
-  const dp = b[0].close >= 1000 ? 1 : b[0].close >= 100 ? 2 : b[0].close >= 10 ? 3 : 5;
+  const { mountTfBar } = await import('./js/terminal/timeframePills.js');
   const chartOpts = () => ({ layout: { background: { color: themeColor('bg1') }, textColor: themeColor('chart-text') }, grid: { vertLines: { color: themeColor('chart-grid') }, horzLines: { color: themeColor('chart-grid') } }, rightPriceScale: { borderColor: themeColor('line2') }, timeScale: { borderColor: themeColor('line2') } });
   const seriesOpts = () => ({ upColor: themeColor('up'), downColor: themeColor('dn'), wickUpColor: themeColor('up'), wickDownColor: themeColor('dn') });
-  const ch = LightweightCharts.createChart(el, { height: 320, ...chartOpts(), layout: { ...chartOpts().layout, fontFamily: 'JetBrains Mono' }, timeScale: { ...chartOpts().timeScale, timeVisible: true }, crosshair: { mode: 0 } });
-  const s = ch.addCandlestickSeries({ ...seriesOpts(), borderVisible: false, priceFormat: { type: 'price', precision: dp, minMove: 1 / 10 ** dp } });
-  s.setData(b);
-  const plines = [], tcol = spec => (Array.isArray(spec) ? themeRgba(spec[0], spec[1]) : themeColor(spec));   // a line's colour is a token name, or [token, alpha]
-  const L = c.levels, pl = (price, spec, title, style = 2) => { if (!Number.isFinite(price)) return false; const ln = s.createPriceLine({ price, color: tcol(spec), lineWidth: 1, lineStyle: style, axisLabelVisible: true, title }); plines.push([ln, spec]); return ln; };
-  if (L) { pl(L.open, 'tx', 'open', 0); for (const q of ['p50', 'p75', 'p90']) { pl(L.up?.[q], ['up', .7], `up ${q}`); pl(L.down?.[q], ['dn', .7], `dn ${q}`); } }
-  const z = priceNums(c.plan?.zone).filter(v => L ? v > L.down.p90 * 0.97 && v < L.up.p90 * 1.03 : true);
-  if (z.length >= 1) { pl(Math.min(...z), 'pur2', 'entry', 0); if (z.length >= 2) pl(Math.max(...z), 'pur2', 'entry', 0); }
-  const inv = priceNums(c.plan?.invalidation ?? c.invalidation).find(v => !L || (v > L.down.p90 * 0.97 && v < L.up.p90 * 1.03)); if (inv && (!L || (+inv > L.down.p90 * 0.97 && +inv < L.up.p90 * 1.03))) pl(+inv, 'dn', 'invalid', 0);
-  ch.timeScale().fitContent();
-  new ResizeObserver(() => ch.applyOptions({ width: el.clientWidth })).observe(el);
-  const onTheme = () => { if (!el.isConnected) { window.removeEventListener('themechange', onTheme); return; } ch.applyOptions(chartOpts()); s.applyOptions(seriesOpts()); plines.forEach(([ln, spec]) => ln.applyOptions({ color: tcol(spec) })); };
-  window.addEventListener('themechange', onTheme);
+  let ch = null, s = null;
+  const build = b => {
+    const dp = b[0].close >= 1000 ? 1 : b[0].close >= 100 ? 2 : b[0].close >= 10 ? 3 : 5;
+    ch = LightweightCharts.createChart(el, { height: 320, ...chartOpts(), layout: { ...chartOpts().layout, fontFamily: 'JetBrains Mono' }, timeScale: { ...chartOpts().timeScale, timeVisible: true }, crosshair: { mode: 0 } });
+    s = ch.addCandlestickSeries({ ...seriesOpts(), borderVisible: false, priceFormat: { type: 'price', precision: dp, minMove: 1 / 10 ** dp } });
+    s.setData(b);
+    const plines = [], tcol = spec => (Array.isArray(spec) ? themeRgba(spec[0], spec[1]) : themeColor(spec));   // a line's colour is a token name, or [token, alpha]
+    const L = c.levels, pl = (price, spec, title, style = 2) => { if (!Number.isFinite(price)) return false; const ln = s.createPriceLine({ price, color: tcol(spec), lineWidth: 1, lineStyle: style, axisLabelVisible: true, title }); plines.push([ln, spec]); return ln; };
+    if (L) { pl(L.open, 'tx', 'open', 0); for (const q of ['p50', 'p75', 'p90']) { pl(L.up?.[q], ['up', .7], `up ${q}`); pl(L.down?.[q], ['dn', .7], `dn ${q}`); } }
+    const z = priceNums(c.plan?.zone).filter(v => L ? v > L.down.p90 * 0.97 && v < L.up.p90 * 1.03 : true);
+    if (z.length >= 1) { pl(Math.min(...z), 'pur2', 'entry', 0); if (z.length >= 2) pl(Math.max(...z), 'pur2', 'entry', 0); }
+    const inv = priceNums(c.plan?.invalidation ?? c.invalidation).find(v => !L || (v > L.down.p90 * 0.97 && v < L.up.p90 * 1.03)); if (inv && (!L || (+inv > L.down.p90 * 0.97 && +inv < L.up.p90 * 1.03))) pl(+inv, 'dn', 'invalid', 0);
+    ch.timeScale().fitContent();
+    new ResizeObserver(() => ch.applyOptions({ width: el.clientWidth })).observe(el);
+    const onTheme = () => { if (!el.isConnected) { window.removeEventListener('themechange', onTheme); return; } ch.applyOptions(chartOpts()); s.applyOptions(seriesOpts()); plines.forEach(([ln, spec]) => ln.applyOptions({ color: tcol(spec) })); };
+    window.addEventListener('themechange', onTheme);
+  };
+  mountTfBar(document.getElementById('achart-tf'), { family: 'asset', inst, days: { '1h': 5 }, fetchJson: getJson,
+    apply: (b, { fit }) => { if (!el.isConnected) return; if (!ch) { build(b); return; } s.setData(b); if (fit) ch.timeScale().fitContent(); },
+    onError: msg => { if (!ch && el.isConnected) el.innerHTML = `<p class="muted" style="padding:12px">${esc(msg)}</p>`; } });
 }
 // net currency exposure: before the cap (ghost) and after (solid)
 function exposureChart() {
@@ -1133,7 +1139,7 @@ function assetCard(n, c, full = false) {
 <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${rateChip(c.rating)}${scoreBar(s, '220px', assetWordV(c))}${live && live.rating !== c.rating ? `<span class="chip gold" title="${esc(live.why ?? '')}">updated → ${esc(live.rating)}</span>` : ''}</div>
 <div class="thesis">“${esc(full ? firstSentence(c.why) : c.why)}”</div>
 <div class="drv">${sources(c.why).map(t => `<span>${t}</span>`).join('')}<span title="The card's own conviction (the Head's), not the global ruling's or a currency's">card conviction ${esc(c.conviction ?? '–')}</span><span class="sfc" data-surface="panel.asset.size"><span>size ${c.size ?? '–'}${c.sizeBeforeCap && c.sizeBeforeCap !== c.size ? ` (from ${c.sizeBeforeCap})` : ''}</span></span></div>
-${full ? `${c.levels ? '' : noLevels()}<div class="achart" id="achart"></div>` : (c.levels ? ladder(c) : noLevels()) + (globalThis.newsLatestLine?.(D.news, n, c.rating) ?? '')}
+${full ? `${c.levels ? '' : noLevels()}<div class="tfp-host" id="achart-tf"></div><div class="achart" id="achart"></div>` : (c.levels ? ladder(c) : noLevels()) + (globalThis.newsLatestLine?.(D.news, n, c.rating) ?? '')}
 ${full ? `<p>${esc(c.why)}</p><div class="sfc" data-surface="panel.asset.plan"><div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${esc(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Target</b><span class="mono">${Math.sign(DIR[c.rating] ?? 0) >= 0 ? `up p50 ${c.levels.up.p50} · p75 ${c.levels.up.p75} · p90 ${c.levels.up.p90}` : `down p50 ${c.levels.down.p50} · p75 ${c.levels.down.p75} · p90 ${c.levels.down.p90}`}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${esc(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${esc(c.plan.timing)}</span></div>` : ''}</div></div>
 ${deskView(n)}${globalThis.analyseBoxHtml?.(n) ?? ''}${globalThis.whatDrivesHtml?.(n) ?? ''}<p class="muted">The ladder is today's forecast range (p50, p75, p90 each side of the open); the purple band is the entry zone where the plan names one. ${SCALE_NOTE} The grade is the card's conviction, not a hit rate.</p>` : `<div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="muted">Read full analysis →</span>${/LONG|SHORT/.test(c.rating ?? '') && (c.size > 0 || globalThis.deskIsViewer?.()) ? `<button class="btn" type="button" data-analyse="${esc(n)}" style="padding:3px 10px" title="A deep read of this market against its own drivers, on DeepSeek (about a cent)">✦ Analyse</button>` : ''}</div>`}</div>`;
 }

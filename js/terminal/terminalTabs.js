@@ -33,6 +33,7 @@ import { mountPathChart } from './pathChart.js';
 import * as NV from './newsView.js';
 import * as NCV from './newsChannelView.js';
 import { createLevelChart } from '../levelChart.js';
+import { mountTfBar } from './timeframePills.js';
 import { cardDrivers } from './cardExplain.js';
 import * as HDV from './humanDriversView.js';
 import { pineForCard, oandaOf } from '../deskBookPine.js';
@@ -397,9 +398,9 @@ async function renderPair() {
 <h2 style="margin:0 0 8px;font:700 24px var(--sans)">${h(nice(n))}</h2><div id="tt-p-tvmsg" class="muted" style="font-size:12px"></div>
 ${c ? `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${rateChip(c.rating)}${scoreBar(assetScore(c), '240px', assetWordV(c))}${D.live?.[n] && D.live[n].rating !== c.rating ? `<span class="chip gold" title="${h(D.live[n].why ?? '')}">updated → ${h(D.live[n].rating)}</span>` : ''}</div>
 <div class="thesis">“${h(c.why)}”</div><div class="drv">${sources(c.why).map(t => `<span>${t}</span>`).join('')}<span title="the card's own conviction, not the global ruling's or a currency's">card conviction ${h(c.conviction ?? '–')}</span><span class="sfc" data-surface="panel.asset.size"><span>size ${c.size ?? '–'}${c.sizeBeforeCap && c.sizeBeforeCap !== c.size ? ` (from ${c.sizeBeforeCap}, capped by ${h((c.cappedBy ?? []).join(', '))})` : ''}</span></span></div>` : '<div class="muted">The desk has no card for this market today.</div>'}
-<div class="tt-chart" id="tt-lc"></div>
+<div class="tfp-host" id="tt-tf"></div><div class="tt-chart" id="tt-lc"></div>
 ${c ? `${ladder(c)}<div class="sfc" data-surface="panel.asset.plan"><div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${h(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Lines</b><span class="mono">up ${c.levels.up.p50} / ${c.levels.up.p75} / ${c.levels.up.p90} · down ${c.levels.down.p50} / ${c.levels.down.p75} / ${c.levels.down.p90}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${h(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${h(c.plan.timing)}</span></div>` : ''}</div></div><details><summary>The whole thesis</summary><p>${h(c.why)}</p>${deskView(n)}</details>${whatDrivesHtml(n)}` : ''}
-<p class="tt-note">Chart: hourly candles, today's forecast lines (open, up and down p50 / p75 / p90), the entry zone and the invalidation where the plan names them.</p></div>
+<p class="tt-note">Chart: candles in the size you pick (5m to 4h; the choice is remembered), today's forecast lines (open, up and down p50 / p75 / p90), the entry zone and the invalidation where the plan names them.</p></div>
 ${AAV.boxHtml(n)}
 <div class="tt-grid2" style="margin-top:14px">
 <div class="card" id="tt-p-gr">${loading('the Global Read for this market')}</div>
@@ -446,23 +447,28 @@ ${AAV.boxHtml(n)}
 async function pairChart(n, c) {
   const box = el('tt-lc'); if (!box) return;
   if (!window.LightweightCharts) { box.innerHTML = '<p class="muted" style="padding:12px">The chart library did not load.</p>'; return; }
-  const r = await J(`/api/desk-bars?inst=${n}&days=8`), b = r?.bars ?? [];
-  if (T.pair !== n || !el('tt-lc')) return;
-  if (!b.length) { box.innerHTML = `<p class="muted" style="padding:12px">${h(r?.error ?? 'No price bars for this market.')}</p>`; return; }
-  const dp = b[0].close >= 1000 ? 1 : b[0].close >= 100 ? 2 : b[0].close >= 10 ? 3 : 5;
-  const v = createLevelChart(box, { height: 340, priceDigits: dp, chartOptions: { layout: { background: { color: 'var(--bg1)' }, textColor: 'var(--tx2)', fontFamily: 'JetBrains Mono' }, grid: { vertLines: { color: 'rgba(var(--line2rgb),.35)' }, horzLines: { color: 'rgba(var(--line2rgb),.35)' } }, rightPriceScale: { borderColor: 'var(--line2)' }, timeScale: { borderColor: 'var(--line2)', timeVisible: true } },
-    candleColors: { upColor: 'var(--up)', downColor: 'var(--dn)', wickUpColor: 'var(--up)', wickDownColor: 'var(--dn)' } });
-  T.pairChart = v;
-  v.setCandles(b);
-  const L = c?.levels, lv = [];
-  if (L) { lv.push({ price: L.open, kind: 'daily_open', label: 'open' }); for (const q of ['p50', 'p75', 'p90']) { lv.push({ price: L.up?.[q], kind: 'pdl', label: `up ${q}` }); lv.push({ price: L.down?.[q], kind: 'pdh', label: `dn ${q}` }); } }
-  const inRange = x => !L?.down?.p90 || (x > L.down.p90 * 0.97 && x < L.up.p90 * 1.03);
-  const z = String(c?.plan?.zone ?? '').match(/\d+(?:\.\d+)?/g)?.map(Number).filter(inRange) ?? [];
-  if (z.length) { lv.push({ price: Math.min(...z), kind: 'zone', label: 'entry' }); if (z.length > 1) lv.push({ price: Math.max(...z), kind: 'zone', label: 'entry' }); }
-  const inv = Number(String(c?.plan?.invalidation ?? c?.invalidation ?? '').match(/\d+(?:\.\d+)?/)?.[0]); if (Number.isFinite(inv) && inRange(inv)) lv.push({ price: inv, kind: 'resistance', label: 'invalid' });
-  v.setLevels(lv.filter(x => Number.isFinite(x.price))).fit();
-  // the short-term fair value as a line (description only: its label carries the verdict word)
-  if (PV.isFx(n)) J('/api/fx-fair-value').then(d => { const f = FVV.fairLevel(d, n), lastC = b.at(-1)?.close; if (f && T.pairChart === v && lastC && Math.abs(f.price / lastC - 1) < 0.03) v.setLevels([...lv, f].filter(x => Number.isFinite(x.price))); });
+  T.pairTf?.stop();
+  let v = null;
+  // the candle size is the pills' (js/terminal/timeframePills.js); the chart is built from the first bars it gets, then only re-fed
+  const build = b => {
+    const dp = b[0].close >= 1000 ? 1 : b[0].close >= 100 ? 2 : b[0].close >= 10 ? 3 : 5;
+    v = createLevelChart(box, { height: 340, priceDigits: dp, chartOptions: { layout: { background: { color: 'var(--bg1)' }, textColor: 'var(--tx2)', fontFamily: 'JetBrains Mono' }, grid: { vertLines: { color: 'rgba(var(--line2rgb),.35)' }, horzLines: { color: 'rgba(var(--line2rgb),.35)' } }, rightPriceScale: { borderColor: 'var(--line2)' }, timeScale: { borderColor: 'var(--line2)', timeVisible: true } },
+      candleColors: { upColor: 'var(--up)', downColor: 'var(--dn)', wickUpColor: 'var(--up)', wickDownColor: 'var(--dn)' } });
+    T.pairChart = v;
+    v.setCandles(b);
+    const L = c?.levels, lv = [];
+    if (L) { lv.push({ price: L.open, kind: 'daily_open', label: 'open' }); for (const q of ['p50', 'p75', 'p90']) { lv.push({ price: L.up?.[q], kind: 'pdl', label: `up ${q}` }); lv.push({ price: L.down?.[q], kind: 'pdh', label: `dn ${q}` }); } }
+    const inRange = x => !L?.down?.p90 || (x > L.down.p90 * 0.97 && x < L.up.p90 * 1.03);
+    const z = String(c?.plan?.zone ?? '').match(/\d+(?:\.\d+)?/g)?.map(Number).filter(inRange) ?? [];
+    if (z.length) { lv.push({ price: Math.min(...z), kind: 'zone', label: 'entry' }); if (z.length > 1) lv.push({ price: Math.max(...z), kind: 'zone', label: 'entry' }); }
+    const inv = Number(String(c?.plan?.invalidation ?? c?.invalidation ?? '').match(/\d+(?:\.\d+)?/)?.[0]); if (Number.isFinite(inv) && inRange(inv)) lv.push({ price: inv, kind: 'resistance', label: 'invalid' });
+    v.setLevels(lv.filter(x => Number.isFinite(x.price))).fit();
+    // the short-term fair value as a line (description only: its label carries the verdict word)
+    if (PV.isFx(n)) J('/api/fx-fair-value').then(d => { const f = FVV.fairLevel(d, n), lastC = b.at(-1)?.close; if (f && T.pairChart === v && lastC && Math.abs(f.price / lastC - 1) < 0.03) v.setLevels([...lv, f].filter(x => Number.isFinite(x.price))); });
+  };
+  T.pairTf = mountTfBar(el('tt-tf'), { family: 'pair', inst: n, days: { '1h': 8 }, fetchJson: getJson,
+    apply: (b, { fit }) => { if (T.pair !== n || !el('tt-lc')) { T.pairTf?.stop(); return; } if (!v) { build(b); return; } v.setCandles(b); if (fit) v.fit(); },
+    onError: msg => { if (!v && el('tt-lc')) box.innerHTML = `<p class="muted" style="padding:12px">${h(msg)}</p>`; } });
 }
 function pairGR(n, g) {
   const box = el('tt-p-gr'); if (!box) return;

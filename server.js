@@ -432,6 +432,7 @@ import { buildHedgePlanText as _hpText, orderStates as _hpStates, HEDGE_BLOCK as
 import { cmeBookContracts as _cmeBook, priceDigits as _priceDigits } from './js/hedgingBooks.js';
 import { buildOiProfile, buildProfileText, shiftProfilePrices, chunkText } from './js/oiProfile.js';   // OI Profile indicator export   // CME listed book → hedging contracts (FX, US30)
 import compression from 'compression';
+import { tfOf as _dbTfOf, clampDays as _dbClampDays, candlesUrl as _dbCandlesUrl, shapeCandles as _dbShape, describeBars as _dbDescribe } from './js/deskBarsCore.js';
 import { egressMiddleware, egressSnapshot, egressPersist } from './js/egressMeter.js';
 import { spreadProfileInit, spreadProfileSample, spreadProfileFlush, spreadProfileReport, MOTIF_UNIVERSE as _SPREAD_UNIVERSE } from './js/spreadProfile.js';
 import { loadM1Resampled as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
@@ -7754,21 +7755,31 @@ svcInterval('researchPod', async () => {
   if (s.some(x => !x.brief && _tdWeek(x.date) === _tdWeek(date))) return;
   _rpStart({});
 }, 30 * 60_000);
-// GET /api/desk-bars?inst=USDJPY&days=5: H1 candles for one desk instrument (Desk Terminal charts and sparklines).
-// The desk's names map to OANDA through the vol-forecast list. Cached 10 minutes per instrument and span.
-const _dbCache = new Map();
+// GET /api/desk-bars?inst=USDJPY&tf=1h&days=5: candles for one desk instrument (Desk Terminal charts and sparklines).
+// tf = 5m | 15m | 30m | 1h | 4h (default 1h, the old behaviour); each is OANDA's own granularity, so ONE call per instrument and timeframe,
+// shared by every viewer (pure rules: js/deskBarsCore.js). A bar's time is its OPEN (epoch s); the last bar may be forming (forming:true).
+// The desk's names map to OANDA through the vol-forecast list. Cached per instrument, timeframe and span (1 min for 5m up to 10 min for 1h and 4h);
+// concurrent identical requests share one OANDA call.
+const _dbCache = new Map(), _dbInflight = new Map();
 app.get('/api/desk-bars', async (req, res) => {
   try {
     const inst = String(req.query.inst ?? '').toUpperCase(), sym = _dsOanda[inst];
     if (!sym) return res.status(400).json({ ok: false, error: `unknown instrument ${inst}` });
-    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 5, 1), 20), key = `${inst}|${days}`, hit = _dbCache.get(key);
-    if (hit && Date.now() - hit.at < 10 * 60_000) return res.json(hit.data);
-    const to = new Date(), from = new Date(Date.now() - (days + 2) * 864e5);
-    const vals = await fetchOandaCandleRange(sym, 'H1', from.toISOString().slice(0, 10) + 'T00:00:00Z', to.toISOString().slice(0, 19) + 'Z');
-    const bars = vals.map(v => ({ time: v.t, open: +v.open, high: +v.high, low: +v.low, close: +v.close })).filter(b => Number.isFinite(b.close));
-    const cut = Date.now() / 1000 - days * 86400;
-    const data = { ok: true, inst, bars: bars.filter(b => b.time >= cut) };
-    if (_dbCache.size > 200) _dbCache.clear();
+    const tf = _dbTfOf(req.query.tf), days = _dbClampDays(tf, req.query.days), key = `${inst}|${tf.key}|${days}`, hit = _dbCache.get(key);
+    if (hit && Date.now() - hit.at < tf.ttlMs) return res.json(hit.data);
+    let job = _dbInflight.get(key);
+    if (!job) {
+      job = (async () => {
+        const url = _dbCandlesUrl(_oandaBaseMe(), sym, tf, days);
+        const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(30_000) });
+        if (!r.ok) throw new Error(`OANDA ${sym} ${tf.gran} HTTP ${r.status}`);
+        const now = Date.now(), bars = _dbShape((await r.json()).candles, now, days), d = _dbDescribe(bars, tf, now);
+        return { ok: true, inst, tf: tf.key, gran: tf.gran, sec: tf.sec, days, asOf: now, forming: d.forming, bars };
+      })().finally(() => _dbInflight.delete(key));
+      _dbInflight.set(key, job);
+    }
+    const data = await job;
+    if (_dbCache.size > 300) _dbCache.clear();
     _dbCache.set(key, { at: Date.now(), data });
     res.json(data);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }

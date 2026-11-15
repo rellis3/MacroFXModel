@@ -41,7 +41,7 @@ export const INSTRUMENTS = {
 export const DEFAULT_INST = 'NQ';
 /** Real-time multiples: 1x is one second of market per second. 300x is one five-minute bar per second. */
 export const SPEEDS = [1, 2, 5, 10, 60, 300];
-export const TIMEFRAMES = [{ key: '1m', min: 1 }, { key: '5m', min: 5 }, { key: '15m', min: 15 }, { key: '1h', min: 60 }];
+export const TIMEFRAMES = [{ key: '1m', min: 1 }, { key: '5m', min: 5 }, { key: '15m', min: 15 }, { key: '30m', min: 30 }, { key: '1h', min: 60 }];
 export const HORIZONS = ['1H', '4H', '1D', '1W'];
 /** A touch = the price came within this share of the line (0.02% = 5.6 points on the Nasdaq at 27,850, 2.2 pips on EUR/USD). */
 export const TOUCH_TOL_PCT = 0.02;

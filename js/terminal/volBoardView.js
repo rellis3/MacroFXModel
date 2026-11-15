@@ -10,6 +10,7 @@ import { radar, arcGauge, glowLine, stateStrip, esc, fin } from './boardViz.js';
 import { chipFor } from './corrEvidence.js';
 import { ownerLink, ownerOnly } from './links.js';
 import { zBar } from './creditLiquidityView.js';
+import { dailyChip } from './timeframePills.js';
 
 const sg = (v, d = 1) => (!fin(v) ? '–' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(+v).toFixed(d)}`);
 
@@ -27,14 +28,14 @@ function termCard(vb) {
   const gauge = arcGauge({ value: Math.max(0.7, Math.min(1.3, t.ratio)), min: 0.7, max: 1.3, label: 'VIX over VIX3M', sub: `as of ${t.asOf}`, w: 260,
     zones: [{ from: 0.7, to: 0.9, tone: 'up' }, { from: 0.9, to: 1, tone: 'flat' }, { from: 1, to: 1.3, tone: 'dn' }], ticks: [{ v: 0.8, label: '0.8' }, { v: 1, label: '1.0' }, { v: 1.2, label: '1.2' }] });
   const vix = vb.gauges.find(g => g.id === 'VIX');
-  return `<div class="card"><div class="ch"><span class="lbl">The VIX curve</span><span class="r"><span class="chip ${t.inverted ? 'dn' : 'up'}">${t.inverted ? 'inverted' : 'not inverted'}</span></span></div>
+  return `<div class="card"><div class="ch"><span class="lbl">The VIX curve</span><span class="r">${dailyChip('daily closes')} <span class="chip ${t.inverted ? 'dn' : 'up'}">${t.inverted ? 'inverted' : 'not inverted'}</span></span></div>
 <div class="bv-two"><div>${gauge}</div><div>${glowLine(t.spark, { w: 300, h: 70, tone: 'var(--gold)', label: 'VIX over VIX3M over one year' })}<div class="bv-cap">VIX over VIX3M · one year${vix ? '' : ''}</div>${vix ? glowLine(vix.spark, { w: 300, h: 56, tone: 'var(--pur2)', label: 'VIX over one year' }) : ''}<div class="bv-cap">VIX · one year</div></div></div>
 <p class="muted bv-note">Above 1.0 the front is dearer than the three-month: near-term fear above medium-term. After a first day of inversion the next week has run wider (range, not direction). A rising ratio below 1 is the curve flattening toward that line.</p></div>`;
 }
 
 function tilesCard(vb) {
   const tiles = vb.gauges.map(g => `<div class="bv-tile"><div class="bv-th"><b>${esc(g.label)}</b><span class="mono ${g.pct5y >= 90 ? 'gold' : ''}">${g.last}</span></div>${glowLine(g.spark, { w: 220, h: 46, tone: g.pct5y >= 90 ? 'var(--gold)' : 'var(--pur2)', label: `${g.label} over one year` })}<div class="muted bv-tn">${g.pct5y ?? '–'}th of 5y · ${fin(g.high?.value) ? `high ${Math.round(g.high.value * 10) / 10} (${esc(String(g.high.date ?? '').slice(0, 4))})` : ''}</div></div>`).join('');
-  return `<div class="card"><div class="ch"><span class="lbl">The year in each reading</span><span class="r muted">closes, about every third day</span></div><div class="bv-tiles">${tiles}</div></div>`;
+  return `<div class="card"><div class="ch"><span class="lbl">The year in each reading</span><span class="r muted">${dailyChip('daily closes')} closes, about every third day</span></div><div class="bv-tiles">${tiles}</div></div>`;
 }
 
 function realisedCard(vb) {

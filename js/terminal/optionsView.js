@@ -19,6 +19,7 @@ import { bsVega } from '../greekLayers.js';
 import { PATH_HORIZON_DAYS, sourceChoices, sourceAsOf, normaliseSource } from '../pathSourceMeta.js';
 import * as PZ from './pathZoom.js';
 import { ownerLink } from './links.js';
+import { dailyChip } from './timeframePills.js';
 export { zoneWalk };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fin = v => v != null && Number.isFinite(+v);
@@ -145,7 +146,7 @@ export function vixHtml(h) {
   const ratio = fin(l3) ? last.value / l3 : null, pctl = Math.round(v.filter(p => p.value < last.value).length / v.length * 100);
   const state = ratio == null ? '' : ratio > 1 ? 'backwardation: fear is NOW (near-term protection dearer than 3-month)' : ratio > 0.9 ? 'flat: some near-term worry' : 'contango: calm now, uncertainty priced further out (the normal state)';
   const ratioSeries = v.map(p => (m3.has(p.date) ? p.value / m3.get(p.date) : null)).filter(fin);
-  return `<div class="card"><div class="ch"><span class="lbl">VIX · the S&amp;P's implied volatility</span><span class="r muted">to ${esc(last.date)}</span></div>
+  return `<div class="card"><div class="ch"><span class="lbl">VIX · the S&amp;P's implied volatility</span><span class="r muted">${dailyChip('daily closes')} to ${esc(last.date)}</span></div>
 <div class="grid g4" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px"><div><span class="lbl">VIX</span><div class="mono" style="font-size:22px">${(+last.value).toFixed(1)}</div><span class="muted mono">${pctl}th pct, 1 year</span></div><div><span class="lbl">VIX 3-month</span><div class="mono" style="font-size:22px">${fin(l3) ? (+l3).toFixed(1) : '–'}</div></div><div><span class="lbl">VIX ÷ 3-month</span><div class="mono ${ratio > 1 ? 'dn' : ratio > 0.9 ? 'gold' : 'up'}" style="font-size:22px">${ratio == null ? '–' : ratio.toFixed(2)}</div></div><div>${spark(v.map(p => p.value), 140, 40, 'var(--gold)')}<div class="muted" style="font-size:10px">VIX, 1 year</div></div></div>
 <p style="margin:8px 0 0">${esc(state)}.</p><div>${spark(ratioSeries, 300, 30)}<div class="muted" style="font-size:10px">VIX ÷ 3-month, 1 year (above 1 = backwardation)</div></div>
 <p class="tt-note">The VIX is built from S&amp;P 500 options: the market's price for the next 30 days' swings. Comparing it with the 3-month VIX shows whether the worry is immediate or further out.</p></div>`;
