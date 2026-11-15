@@ -4382,6 +4382,7 @@ export const DERIVED = {
    ],
    "names": {
     "terminal": [
+     "js/terminal/alertsView.js",
      "js/terminal/commandCore.js",
      "js/terminal/linkedSelection.js",
      "js/terminal/replayLink.js",

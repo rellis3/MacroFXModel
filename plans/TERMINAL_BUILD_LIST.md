@@ -15,7 +15,7 @@ feed goes in js/infoMap.js with its status.
 | Linked selection (pick an instrument once, all open boards follow) | DONE 03da9ef8 | js/terminal/selectionCore.js + linkedSelection.js. Followers: Pair page, Replay (same moment), asset cards and vol-clock tiles (glow ring), strength board (rings the two currencies), candle-size pills. Top-bar chip links/unlinks. Drivers follow the Pair page. Not wired: Currencies tab and Charts. Not verified in a real browser. |
 | Workspaces (grid layouts, saved by name) | DONE (preview, 0a1e9d89) | Workspace tab: drag/resize grid of the terminal's own panels, 3 starters, named layouts shared by the desk (KV desk_workspaces_v1), this browser's current layout, file export/import, phone stack; commands WORKSPACE and SAVE WORKSPACE. Not yet seen in a browser. |
 | Dense monitor mode | TODO | A density setting on the existing themes. |
-| Alerts (range used, Fed path move, data-age red) | TODO | Conditions on numbers already computed; delivery from Railway, never the cron-worker. |
+| Alerts (range used, Fed path move, data-age red, level touch, weekend gap closed) | DONE (preview, d89a6e0f) | Rules you set; one Telegram note per episode via Railway sendTelegram (master switch + tgMaster.deskAlertRules); 12 a day, 30 rules; owner changes, desk login reads. Not yet sent live: first real note unverified. Separate from the automatic board alerts (js/deskAlerts.js). |
 | "What changed since I last looked" feed | TODO | Uses the snapshot store. |
 
 ## 2. Queued from "build all" (Info map Part C)
