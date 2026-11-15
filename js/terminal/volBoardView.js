@@ -21,7 +21,7 @@ function radarCard(vb) {
   return `<div class="card"><div class="ch"><span class="lbl">Where each reading sits in its own history</span><span class="r muted">radius = five-year percentile</span></div>
 <div class="bv-two" style="grid-template-columns:minmax(240px,320px) minmax(0,1fr);align-items:start"><div>${radar({ axes })}</div>
 <div class="scroll"><table><thead><tr><th>Reading</th><th class="n">Now</th><th class="n" title="percentile of five years">Pct</th><th class="n">20d</th></tr></thead><tbody>${rows}</tbody></table></div></div>
-<p class="muted bv-note">The dashed ring is the middle of each reading's own five-year range (the 50th percentile); a gold vertex is past the 90th. Dear is not a sell and cheap is not a buy: this says how much protection costs against its own past, nothing about what happens next.</p></div>`;
+<p class="muted bv-note">The dashed ring is the middle of each reading's own five-year range (the 50th percentile); a gold vertex is past the 90th. Dear is not a sell and cheap is not a buy: this says how much protection costs against its own past, nothing about what happens next. The CME CVOL series (EUR/USD implied vol and skew) is a manual export frozen at 2026-08-21 and is not used on this board.</p></div>`;
 }
 
 function termCard(vb) {
