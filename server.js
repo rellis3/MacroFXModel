@@ -419,6 +419,8 @@ import { evaluateIntradayAllHorizons } from './js/intradayForecastResearch.js';
 import { analyzeCrossPair, portfolioIndependence } from './js/crossPairResearch.js';
 import { scanFeatures } from './js/forecastFeatureScan.js';
 import { bandCalcAB } from './js/bandCalcAB.js';
+import { fetchYahooFundAum as _fetchYahooFundAumAuth } from './js/yahooFundAum.js';
+import { saveCorrHistory as _corrSaveR2, restoreCorrHistory as _corrRestoreR2 } from './js/corrHistoryPersist.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, getBuffer as _r2GetBuffer, putBuffer as _r2PutBuffer, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
 import { INSTRUMENTS as _DL_INSTRUMENTS, HORIZONS as _DL_HORIZONS, closesFromCandles as _dlClosesFromCandles, issueRecord as _dlIssue, outcomeRecord as _dlOutcome, summarise as _dlSummarise } from './js/directionLedger.js';
 import { RESEARCH as _DL_RESEARCH, volFlags as _dlVolFlags, FX_CARRY_EUR_OFFSET as _DL_EUR_OFFSET, FX_CARRY_MAX_AGE_DAYS as _DL_RATE_MAX_AGE_DAYS } from './js/directionResearch.js';
@@ -1785,6 +1787,9 @@ async function buildCorrHistoryJS() {
       _corrPanelMem = { body: JSON.stringify(res.panel), generated: res.panel.generated, src: 'build' };
       try { await kv.put(CORR_PANEL_KV, _corrPanelMem.body); } catch (kvErr) { console.warn('[CORR] corr panel KV write failed:', kvErr.message); }
     }
+    // keep the 12 MB history across deploys: gzipped in R2, restored at boot while it is still fresh (js/corrHistoryPersist.js)
+    _corrSaveR2({ readFile: () => fs.readFileSync(CORR_HISTORY_PATH, 'utf8'), putBuffer: _r2PutBuffer, configured: _r2Ok })
+      .then(r => console.log(r.ok ? `[CORR] history kept in R2 (${Math.round(r.bytes / 1024)} KB gz)` : `[CORR] history not kept in R2: ${r.reason}`));
     corrProgress = { pct: 100, msg: `Done — ${res.nRecords} snapshots · ${res.pairs.length} pairs · ${kb} KB`, step: 'done', error: null };
 
   } catch (e) {
@@ -23281,24 +23286,9 @@ const _goldEtfFlowCache = { data: null, fetchedAt: 0 };
 // possible module/field names depending on ticker/module-set quirks — try each,
 // first one present wins, so a minor Yahoo schema drift degrades gracefully
 // instead of silently returning zero.
-async function _fetchYahooFundAum(ticker) {
-  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}`
-            + `?modules=defaultKeyStatistics,summaryDetail,price`;
-  const r = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX/1.0)' },
-    signal:  AbortSignal.timeout(20_000),
-  });
-  if (!r.ok) throw new Error(`Yahoo fund AUM ${ticker} HTTP ${r.status}`);
-  const json = await r.json();
-  const result = json?.quoteSummary?.result?.[0];
-  if (!result) throw new Error(`Yahoo fund AUM ${ticker}: unexpected response`);
-  const raw = result.defaultKeyStatistics?.totalAssets?.raw
-    ?? result.summaryDetail?.totalAssets?.raw
-    ?? result.price?.marketCap?.raw               // last-resort proxy: share market cap ≈ AUM for a physically-backed trust
-    ?? null;
-  if (raw == null || !Number.isFinite(raw)) throw new Error(`Yahoo fund AUM ${ticker}: no totalAssets/marketCap field found`);
-  return raw;
-}
+// Since 2026-11-15 this goes through js/yahooFundAum.js: quoteSummary needs Yahoo's cookie + crumb and returned HTTP 401 without them, which left the
+// gold ETF history empty (the daily archive job logged 'fetch failed' and moved on).
+async function _fetchYahooFundAum(ticker) { return _fetchYahooFundAumAuth(ticker); }
 
 async function _goldEtfFlowSeries() {
   const age = Date.now() - _goldEtfFlowCache.fetchedAt;
@@ -43367,6 +43357,9 @@ app.get('/api/beta-history', (req, res) => {
     }
     res.json({ records, total: lines.length, sampled: records.length });
   } catch (e) {
+    // The file is written by the LOCAL bot (bot/modules/beta_estimator.py, MT5), never by this server, and bot/data is wiped by every deploy, so on Railway
+    // it normally does not exist. That is an empty history, not a server error: say so (the correlations page then falls back or shows its empty state).
+    if (e && e.code === 'ENOENT') return res.json({ records: [], total: 0, sampled: 0, built: false, message: 'No live-bot beta history on this server: it is written by the local bot, not by Railway. The correlation history (/api/corr-history) and the Desk Terminal Correlations tab do not need it.' });
     res.status(500).json({ error: e.message });
   }
 });
@@ -46437,7 +46430,18 @@ setTimeout(() => {
 // Fetches 5y of H4 OANDA bars for all pairs, computes rolling Pearson correlations + factor betas.
 // ~3 min to build, ~500-900 KB output. Stored at bot/data/corr_history.json.
 // 6-hour cadence keeps z-scores fresh: each H4 bar advances the rolling window by one step.
-svcTimeout('corrHistory', () => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), 60_000);
+// A deploy wipes bot/data. Put the history back from R2 first (when it is fresh enough), and the terminal's daily panel from KV, so the refresh below
+// sees a fresh file and skips the 3-minute, few-hundred-call OANDA rebuild.
+async function _corrRestoreAtBoot() {
+  const r = await _corrRestoreR2({ exists: () => fs.existsSync(CORR_HISTORY_PATH), getBuffer: _r2GetBuffer, configured: _r2Ok, maxAgeMs: CORR_STALE_MS - CORR_STALE_MARGIN_MS,
+    writeFile: txt => { fs.mkdirSync(path.dirname(CORR_HISTORY_PATH), { recursive: true }); fs.writeFileSync(CORR_HISTORY_PATH, txt); },
+    touch: ms => fs.utimesSync(CORR_HISTORY_PATH, new Date(ms), new Date(ms)) });
+  console.log(r.restored ? `[CORR] history restored from R2 (${r.ageH}h old)` : `[CORR] history not restored: ${r.reason}`);
+  if (r.restored && !fs.existsSync(CORR_PANEL_PATH)) {
+    try { const raw = await kv.get(CORR_PANEL_KV); if (raw) fs.writeFileSync(CORR_PANEL_PATH, raw); } catch (e) { console.warn('[CORR] panel restore', e.message); }
+  }
+}
+svcTimeout('corrHistory', () => _corrRestoreAtBoot().catch(e => console.warn('[CORR] restore', e.message)).then(() => runCorrHistoryRefresh()).catch(e => console.error('[CORR]', e.message)), 60_000);
 svcInterval('corrHistory', () => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), CORR_CHECK_MS);   // rebuilds when ~6 h old
 
 // Beta estimation — runs every 2 hours; first run 90s after startup (after corr fetch begins)
