@@ -173,13 +173,22 @@ def known_monthly(d, sessions):
     return out
 
 
+def _asof(left, right, on=None, left_on=None, right_on=None):
+    """pd.merge_asof with both datetime keys cast to datetime64[ns] (pandas 3 parses date strings to [us]; amendment A3)."""
+    lk, rk = (on, on) if on else (left_on, right_on)
+    left, right = left.copy(), right.copy()
+    left[lk] = left[lk].astype('datetime64[ns]')
+    right[rk] = right[rk].astype('datetime64[ns]')
+    return pd.merge_asof(left, right, on=on, left_on=left_on, right_on=right_on)
+
+
 def known_daily(d, sessions):
     d = d.copy()
     d['asof'] = pd.to_datetime(d['asof'], utc=True).dt.tz_localize(None)
     d['value'] = pd.to_numeric(d['value'], errors='coerce')
     d = d.dropna(subset=['value']).sort_values('asof')
     q = pd.DataFrame({'t': pd.DatetimeIndex(sessions) + pd.Timedelta(hours=6)})
-    m = pd.merge_asof(q, d[['asof', 'value']], left_on='t', right_on='asof')
+    m = _asof(q, d[['asof', 'value']], left_on='t', right_on='asof')
     return m['value'].to_numpy()
 
 
@@ -221,7 +230,7 @@ def load_cot(root, sessions):
         k = pd.DataFrame({'known': known, 'z': z}).sort_values('known', kind='stable')
         k = k.groupby('known', as_index=False).last()             # several reports released together: newest wins
         q = pd.DataFrame({'t': S})
-        m = pd.merge_asof(q, k, left_on='t', right_on='known')
+        m = _asof(q, k, left_on='t', right_on='known')
         out[sym] = m['z'].to_numpy()
     return out
 
@@ -434,7 +443,7 @@ def add_external(P, cfg):
         s = load_cboe(cfg.root, ivs)
         m = (P.inst == inst).to_numpy()
         q = pd.DataFrame({'d': P.date[m].to_numpy() - np.timedelta64(1, 'D')})
-        mm = pd.merge_asof(q, pd.DataFrame({'d': s.index, 'v': s.to_numpy()}), on='d')
+        mm = _asof(q, pd.DataFrame({'d': s.index, 'v': s.to_numpy()}), on='d')
         iv[m] = np.log(mm.v.to_numpy() / (P.sig[m].to_numpy() * math.sqrt(252) * 100))
     P['ivrv'] = iv
     # FX CME IV arm (descriptive): iv30 dated before d
@@ -447,7 +456,7 @@ def add_external(P, cfg):
         d = d[d.date < LOCKBOX].sort_values('date')
         m = (P.inst == inst).to_numpy()
         q = pd.DataFrame({'d': P.date[m].to_numpy() - np.timedelta64(1, 'D')})
-        mm = pd.merge_asof(q, d.rename(columns={'date': 'd'}), on='d')
+        mm = _asof(q, d.rename(columns={'date': 'd'}), on='d')
         fxiv[m] = np.log(mm.iv30.to_numpy() / (P.sig[m].to_numpy() * math.sqrt(252)))
     P['fxivrv'] = fxiv
     return P

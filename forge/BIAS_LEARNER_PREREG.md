@@ -365,6 +365,10 @@ real.
 
 Loader bug fix, no design change. On the laptop's real M1 caches (`VolRangeForecaster/data/m1`, `portfolioBacktest/cache`) the time column `datetime` is stored as the pandas index in the parquet metadata, so `to_table(...).to_pandas()` in `scripts/bias-learner/run.py` (the M1 reader) restored it as the index and the column lookup raised `KeyError: 'datetime'` before any M1 was scored (the selftest's synthetic files carry no pandas index metadata, so it passed). Fix: `.to_pandas()` → `.to_pandas(ignore_metadata=True)` on that one line. Same rows, same values, same read-time lockbox filter and asserts; no pass bar, metric, window or design changed. No scored result had been printed when this was made.
 
+### A3 — 2026-11-15 — PRE-RESULTS
+
+Loader bug fix, no design change. The laptop runs pandas 3.0.3, which parses date strings to `datetime64[us]`, while the session index is `datetime64[ns]`; `pd.merge_asof` refuses mixed resolutions (`MergeError: incompatible merge keys dtype('<M8[ns]') and dtype('<M8[us]')`). The first scored run stopped there, in `known_daily` (EFFR, the carry reading), after the M1 readings and before the positive control, so no scored result was printed. Fix in `scripts/bias-learner/run.py`: a helper `_asof` casts both join keys to `datetime64[ns]` and calls `pd.merge_asof`; the four merge_asof sites (`known_daily` EFFR, `load_cot` known dates, Cboe IV/RV, CME iv30) call it. Same rows, same as-of rule (backward), same point-in-time cut; no pass bar, metric, window or design changed. Checked on the real feature files: all eight rates and every COT symbol join with no gaps over 2015-01 → 2026-08-21.
+
 ## RESULTS — run <YYYY-MM-DD>
 
 *Written to `analysis/output/bias-learner/RESULTS.md` and `results.json` (seed 20261114). Nothing above this line
