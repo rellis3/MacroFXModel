@@ -1811,3 +1811,12 @@ pages have the plumbing). Proposed, not built.
   reversion is the hard part, not the construction.
 - **One candidate logged** (index): sector-ETF pair reversion under those three conditions.
   Low prior, stated.
+
+## 2026-11-15 — "Become a relative value trader" (dollar-, beta- and vol-neutral)
+
+Repeat of the 2026-11-03 entry's hedge-ratio material. The clip says size pairs dollar-neutral ("buy 100 bucks of this,
+sell 100 bucks of that"; RSP/SPY, NVDA/SOXX, CRWV/SOXX, NVDA/SPY into the Fed); the caption lists dollar-, beta- and
+vol-neutral, "each serves a different purpose". Dollar-neutral is only neutral when the betas match (RSP/SPY roughly;
+NVDA/SPY not: beta ~2.1, see 11-03). "The market is about to get narrower" → calls to score. Owner flagged hedging as worth
+taking further: carded as `portfolio-construction` Q5, *which hedge ratio stays neutral a month after you set it*. Note:
+`education/intake/informational/crown/2026-11-15-relative-value-weightings.md`. Pair builder (11-03 §4) still unbuilt.
