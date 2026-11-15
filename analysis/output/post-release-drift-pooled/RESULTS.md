@@ -281,4 +281,14 @@ Mirror events (signal != 0): MIRROR_EA 62 (2018-2026), MIRROR_UK 80 (2018-2026)
 
 ## What this changes
 
-Per prereg §8, by the verdict words above: VALIDATED → a research-only decaying lean at the passing horizon and a forward-record prereg; CONTEXT → a release-day page line with size and interval, never a trade; NULL → the desk stops saying "trade the surprise"; UNDERPOWERED → recorded with power.json, more release families as one family is the next design.
+- **momentum (NULL):** the desk stops saying "trade the direction of the first 15 minutes after a tier-1 release".
+- **drift (UNDERPOWERED):** recorded with power. The surprise-direction hold is not supported either: every point
+  estimate from +1h to next morning is slightly against the surprise, and the net R at a 0.5σ stop is negative at
+  h1 to h3.
+- **On the card:** event days mean "expect a bigger range" (validated elsewhere: `event-impact-map`, `surprise-size`),
+  never a direction.
+- **Caveat (laptop run, 2026-11-15):** the momentum h4 positive control failed the prereg's null-rejection check
+  (13.2% vs ≤ 8%), so that one cell's test is anti-conservative. Its estimate is −0.004σ, so the NULL stands.
+- **DATA_AUDIT:** the 20-event first-print spot-check is 20/20 against the BLS release text and the FOMC statements.
+  The score stage used to overwrite it; `events.py` now keeps a hand-filled file.
+

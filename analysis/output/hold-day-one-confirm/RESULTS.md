@@ -146,5 +146,13 @@ Positive control: {'planted_recovered': True, 'null_not_flagged': True, 'placebo
 
 ## What this changes
 
-*(owner / banking session: fill in from prereg §8 for each verdict above)*
+- **run and hold-r (NULL, powered):**
+  - Big days (≥ 1σ) do not continue over +1 to +5 days on average.
+  - Holding from 21:00 with a 1σ stop earns +0.003R [−0.044, +0.053], which is nothing.
+  - The 21:00 review keeps no "hold because the day was big" rule, and the desk card's default is flat at 21:00.
+- **close, speed, band, event (UNDERPOWERED by design):** no hold rule ships on any of them.
+  - The one lead is `band` at h = 2: +0.128 [+0.019, +0.235], uncorrected; 1 of 24 cells, not significant after BH.
+    A day that reaches its p90 band may run on for two sessions.
+  - That is a candidate for its own prereg on fresh data, never a result.
+- **Reopen** with post-lockbox sessions, or with a positioning or flow reason for continuation.
 

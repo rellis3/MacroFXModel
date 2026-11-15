@@ -2567,7 +2567,7 @@ export const DESK_EVIDENCE = [
     also: ['analysis/output/post-release-drift-pooled/RESULTS.md'],
     instruments: ['GOLD', 'EURUSD', 'GBPUSD', 'USDJPY', 'NQ'],
     claim: 'After a tier-1 US release, price keeps moving in the direction of each instrument own first 15-minute move from a +15 min entry to +1h / 21:00 UK / next 07:00 / +3 days, pooled over gold, EURUSD, GBPUSD, USDJPY and NQ (continuation, or reversal as the mirror)',
-    result: 'NULL. Same 373-383 events and method. Signed move in sigma: +1h -0.026 [-0.056, +0.002] (cell underpowered); 21:00 UK (headline) -0.031 [-0.082, +0.019], Holm p 0.74, powered (MDE 0.057), interval inside +/-0.10; next 07:00 -0.008 [-0.063, +0.044]; +3 days -0.004 [-0.122, +0.120] (MDE 0.171 vs bar 0.20). No cell passes. Trading view (0.5 sigma stop, net): -0.11R at +1h, -0.08R at 21:00.',
+    result: 'NULL. Same 373-383 events and method. Signed move in sigma: +1h -0.026 [-0.056, +0.002] (cell underpowered); 21:00 UK (headline) -0.031 [-0.082, +0.019], Holm p 0.74, powered (MDE 0.057), interval inside +/-0.10; next 07:00 -0.008 [-0.063, +0.044]; +3 days -0.004 [-0.122, +0.120] (MDE 0.171 vs bar 0.20). No cell passes. Trading view (0.5 sigma stop, net): -0.11R at +1h, -0.08R at 21:00. Laptop-run caveat: the h4 positive control failed the null-rejection check (13.2% vs <= 8%), so that cell is anti-conservative; its estimate is -0.004 sigma, the NULL stands.',
     use: 'Joining the first post-release spike is not supported: a 0.10 sigma follow-through by 21:00 is ruled out, and the trade loses net at +1h and 21:00. Do not tell anyone to trade the initial data move; event days mean a bigger range, not a direction.',
   },
   {
@@ -2633,6 +2633,30 @@ export const DESK_EVIDENCE = [
     claim: 'Descriptive map (registered as context): MFE / MAE over sessions 1-5 of 4h-slope entries against random side-matched entries',
     result: 'Same 32,738 entries. MFE slope (random): session 1 +0.689R (+0.688), session 5 +1.814R (+1.807); MAE -0.757 (-0.758), -1.871 (-1.878). +1R before -1R within 5 sessions: slope 0.477, random 0.471. R at the 21:00 close, session 1: slope -0.040, random -0.033.',
     use: 'Base rate for stop and target design only: the 4h-slope side has the same excursion map as a random side, so these MFE / MAE numbers describe volatility, not the signal.',
+  },
+  {
+    id: 'bias-learner-fx', domain: 'price', verdict: 'null', date: '2026-11-15', doc: 'forge/BIAS_LEARNER_PREREG.md',
+    also: ['analysis/output/bias-learner/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCAD', 'AUDUSD', 'NZDUSD', 'USDCHF', 'EURJPY', 'GBPJPY'],
+    claim: 'A walk-forward, heavily regularised (L2, offset on the base rate) logistic over ~13-15 point-in-time multi-timeframe morning readings (1h/4h/daily/weekly trend, Asia move, close location, events, surprises, carry, COT, sigma regime, IV/RV), pooled over 9 FX pairs, beats the base rate B0 on calibrated P(up) at 21:00 / +1 / +3 / +5 days, beats a no-readings model and the best single reading, and abstains usefully on its top-20% confidence days',
+    result: 'NULL. 2016-01-04 to 2026-08-21 (lockbox), test years 2018-2026, ~20,030 rows on ~2,235 dates per cell; date-block bootstrap B 2000, 200 day-block shuffles. Brier skill vs B0: 21:00 +0.045% [-0.017, +0.102], +1 +0.048% [-0.045, +0.141], +3 +0.097% [-0.078, +0.255], +5 +0.148% [-0.212, +0.494]; Holm p 1.0 on all; every CI upper below the useful bar U (0.186 / 0.239 / 0.372 / 0.528%, planted IC 0.08; powered, MDE 0.12-0.40%). Above the shuffle 95th pct but fails halves, M0 and abstention (top-20% accuracy 0.538-0.547 vs B0 0.539-0.565). Top-confidence R mostly equals the B0-side drift (e.g. +1: learner +0.070R gross vs B0 side +0.069R).',
+    use: 'A regularised learner over the multi-timeframe morning readings does not beat the base rate in FX on calibrated P(up) at same-day to +5 days, and its top-confidence R is mostly the base-rate side drift. Nothing here licenses a learned daily direction call: the card says FX direction on this morning information is not learnable at 0-5 days and keeps day type plus event-led context, abstaining otherwise.',
+  },
+  {
+    id: 'bias-learner-gold', domain: 'price', verdict: 'underpowered', date: '2026-11-15', doc: 'forge/BIAS_LEARNER_PREREG.md',
+    also: ['analysis/output/bias-learner/RESULTS.md'],
+    instruments: ['GOLD'],
+    claim: 'The same regularised learner over the morning readings beats the base rate on calibrated P(up) for gold at 21:00 / +1 / +3 / +5 days (with the same M0, best-single, shuffle, halves, calibration and abstention gates)',
+    result: 'UNDERPOWERED. ~2,150-2,220 dates per cell. Brier skill vs B0: 21:00 +0.014% [-0.068, +0.083], +1 +0.025% [-0.077, +0.111], +3 -0.150% [-0.379, +0.003], +5 -0.362% [-0.920, +0.106]; Holm p 1.0; shuffle pct 4-90. Underpowered by design (MDE 0.19-0.77% vs U 0.13-0.32%); the 21:00 and +1 CIs do not exclude U. Top-20% accuracy below random abstention at every horizon; top-confidence R equals the B0 side.',
+    use: 'No learned gold direction call: nothing beats the base rate and the longer horizons come out worse. Gold drift seen on confident days is the base-rate side, not the readings. Testable only on a longer pooled history or the forward bias-scoreboard.',
+  },
+  {
+    id: 'bias-learner-idx', domain: 'price', verdict: 'underpowered', date: '2026-11-15', doc: 'forge/BIAS_LEARNER_PREREG.md',
+    also: ['analysis/output/bias-learner/RESULTS.md'],
+    instruments: ['NQ', 'SPX500', 'US30'],
+    claim: 'The same regularised learner over the morning readings, pooled over NQ, SPX500 and US30, beats the base rate on calibrated P(up) at 21:00 / +1 / +3 / +5 days (with the same gates)',
+    result: 'UNDERPOWERED. ~6,350-6,590 rows on ~2,140-2,220 dates per cell (indices rho ~0.85). Brier skill vs B0: 21:00 -0.053% [-0.148, +0.024], +1 -0.019% [-0.153, +0.102], +3 -0.058% [-0.270, +0.109], +5 -0.259% [-0.739, +0.117]; Holm p 1.0; shuffle pct 16-46; recalibration slope negative at 21:00/+3/+5. Underpowered by design (MDE 0.16-0.77% vs U 0.11-0.40%). Top-confidence R equals the B0 (index up-drift) side.',
+    use: 'No learned index direction call: every point estimate is at or below the base rate, and confident-day gains are the index up-drift B0 already has. Do not present the learner as adding direction on NQ / SPX500 / US30. Testable only on a longer pooled history or the forward bias-scoreboard.',
   },
 ];
 
@@ -2948,6 +2972,9 @@ const POWER = {
   'hold-day-one-confirm-hold-r': { n: '899 dates (2,032-2,453 holds per horizon, one position per instrument)', note: 'MDE 0.086R vs 0.10R bar (powered); CI upper +0.053R' },
   'exit-on-fixed-entries': { n: '~2,520 London entry dates (32,738 entries, 13 instruments); date-block bootstrap B 2000 + shifted-side placebo', note: 'binding MDE 0.018-0.047R per exit vs the +0.05R bar (all six powered); every CI upper <= +0.031R' },
   'exit-on-fixed-entries-map': { n: '~2,520 London entry dates (32,738 entries)', note: 'descriptive map, no gate; slope vs random MFE/MAE within 0.01R at every session' },
+  'bias-learner-fx': { n: '~2,235 test dates per horizon (9 pairs, ~20,030 rows); date-block bootstrap B 2000, 200 day-block shuffles', note: 'MDE 0.119/0.170/0.228/0.402% Brier skill vs U 0.186/0.239/0.372/0.528% (powered); every CI upper below U' },
+  'bias-learner-gold': { n: '~2,150-2,220 test dates per horizon', note: 'MDE 0.186/0.253/0.646/0.766% vs U 0.131/0.218/0.318/0.321%: underpowered by design' },
+  'bias-learner-idx': { n: '~2,140-2,220 test dates per horizon (3 indices, rho ~0.85)', note: 'MDE 0.158/0.230/0.462/0.774% vs U 0.113/0.132/0.275/0.398%: underpowered by design' },
 };
 
 const TAG = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };

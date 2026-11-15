@@ -8,7 +8,7 @@ Prereg: `forge/BIAS_LEARNER_PREREG.md` (seed 20261114; §5 power table in Amendm
 Needs local files only (never the R2 tail; nothing is written to R2). A missing file stops the run with
 `MISSING DATA FILE: <path>`.
 
-- M1 mid, 2015-01 (warm-up) → 2026-08-21: `VolRangeForecaster/data/m1/{eurusd,gbpusd,usdjpy,usdcad,audusd,nzdusd,usdchf,eurjpy,gbpjpy,gold}_m1.parquet`,
+- M1 mid, 2016-01-04 (the local caches start there; the prereg expects trW from ~2016-07 after warm-up) → 2026-08-21: `VolRangeForecaster/data/m1/{eurusd,gbpusd,usdjpy,usdcad,audusd,nzdusd,usdchf,eurjpy,gbpjpy,gold}_m1.parquet`,
   `portfolioBacktest/cache/{nq,spx500,us30}_m1.parquet`
 - bid/ask M1 for the R table's costs: `data/m1_bidask/{eurusd,...,gold,nq,spx,dow}_m1.parquet` (or pass `--no-R`)
 - feature store (`$MFX_DATA_ROOT/features` or `--feature-root`): `rate3m_{usd,eur,gbp,jpy,aud,nzd,cad,chf}.parquet`,
