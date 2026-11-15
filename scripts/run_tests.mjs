@@ -69,6 +69,15 @@ const knownStillFailing = failed.filter(r => known[r.file]);
 const nowPassing = results.filter(r => r.ok && known[r.file]);
 
 for (const r of unexpected) console.log(`\n✗ ${r.file} (${r.timedOut ? 'timed out' : `exit ${r.code}`}, ${(r.ms / 1000).toFixed(1)}s)\n${r.tail}`);
+// On GitHub Actions: one annotation per failing file, so the failing test and its first error line show on the run page and in the public
+// annotations API (the full log needs a login). 2026-11-15: two red runs could not be diagnosed from outside without this.
+if (process.env.GITHUB_ACTIONS) {
+  for (const r of unexpected.slice(0, 10)) {
+    const ls = String(r.tail ?? '').replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
+    const hit = ls.find(l => /AssertionError|Error:|✖|not ok|refusing|FAILED/.test(l)) ?? ls[ls.length - 1] ?? '';
+    console.log(`::error title=Test failed: ${r.file}::${hit.slice(0, 400).replace(/%/g, '%25').replace(/\r|\n/g, ' ')}`);
+  }
+}
 console.log(`\n${results.length} test files: ${results.length - failed.length} passed, ${failed.length} failed`);
 if (knownStillFailing.length) {
   console.log(`\nKnown failing on main (${knownStillFailing.length}), not counted against this run — fix and remove from tests/KNOWN_FAILING.json:`);
