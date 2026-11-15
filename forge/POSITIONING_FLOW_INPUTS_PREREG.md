@@ -307,7 +307,18 @@ UNDERPOWERED by design. Every +5 incremental cell except the book's is UNDERPOWE
 exact cell scorer) passed on 2026-11-15: planted IC 0.15 recovered (alone +2.35% BSS, CI lower +1.60%, placebo 95th
 +0.04%; incremental +2.23%), IC 0 not flagged (alone −0.09%, incremental −0.03%).
 
-## RESULTS — run <YYYY-MM-DD>
+### A2 — 2026-11-15 — POST-HOC (results seen)
+
+Demotion only. `monthend|fx|alone|21:00` met the registered NULL rule (POWERED by A1, CI upper +0.417% < U +0.559%),
+but its evidence pack (planted bar-sized drift on the real rows) found the plant in 0% of draws, so A1's POWERED label
+was optimistic for this cell; it is banked UNDERPOWERED. Every other NULL cell's pack found the plant in 100% of draws.
+Nothing is promoted; the per-input words are unchanged (all UNDERPOWERED).
+
+## RESULTS — run 2026-11-15
+
+All four inputs **UNDERPOWERED** by the per-input rule; no cell passes G1 (every Holm p = 1.00). 10 of 28 cells NULL,
+including every powered FX 21:00 cell (book alone and incremental, RR alone, FX VRP alone and incremental). Details:
+`analysis/output/positioning-flow-inputs/RESULTS.md`.
 
 *Written to `analysis/output/positioning-flow-inputs/RESULTS.md` and `results.json` (seed 20261115). Nothing above
 this line changes after the run, except dated amendments.*
