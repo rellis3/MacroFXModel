@@ -10,6 +10,7 @@ feed goes in js/infoMap.js with its status.
 ## 1. Terminal feel (2026-11-15, agreed)
 | Item | Status | Notes |
 |---|---|---|
+| Owner-only switch for the new terminal features (command line, linked selection, workspaces, dense mode) | TODO | Owner request 2026-11-15: only the owner sees them until ready, so viewers are not disturbed. Register each as a surface hidden from viewers and add an on/off setting under the Info view or admin panel. Flip to viewers when agreed. |
 | Command line (`/` opens it: EURUSD, FED, CPI US, MACRO RATES, REPLAY NQ 12 NOV) | TODO | Every command has a one-line help, an example and a "what it opens" note, generated from the surface registry so a new surface cannot ship without them. A guard test fails on a command with no help text. `?` lists everything; typing shows matches with their help. |
 | Linked selection (pick an instrument once, all open boards follow) | TODO | Chart, strength, vol clock, drivers, Replay. |
 | Workspaces (grid layouts, saved by name) | TODO | Built on the surface registry and admin visibility. |

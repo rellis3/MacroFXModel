@@ -4481,11 +4481,19 @@ export const DERIVED = {
       "skill": "levels_structure",
       "maxAgeH": 168
      }
+    },
+    {
+     "route": "/api/vol-clock",
+     "exists": true,
+     "pack": null
     }
    ],
    "modules": [],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/volClockView.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -4503,9 +4511,7 @@ export const DERIVED = {
     "vol_iv",
     "levels_structure"
    ],
-   "drift": [
-    "The traced status says drawn but no terminal file names its route: re-trace (it may arrive through a bundle)."
-   ]
+   "drift": []
   },
   "commodity-fx-copper-gold-session-heat": {
    "pages": [],
