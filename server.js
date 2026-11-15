@@ -21646,6 +21646,11 @@ async function _buildDataHealth() {
     // nothing asks for it until a terminal tab is open, so a never-built layer is 'waiting', not dead; once built it should stay inside minutes while a tab is open
     push('liveLayer', `Desk Terminal live layer (EM, indices, implied yields, range used)${s.lastError ? ` (${s.lastError.slice(0, 120)})` : ''}`, s.lastOkAt ? new Date(s.lastOkAt).toISOString() : null, 0.2, { market: true, refreshEveryH: 0.02 });
   } catch { /* best-effort */ }
+  // the vol clock board: judged on its last good build, and only once a tab has asked for it (nothing builds it until then, so never-built is 'waiting')
+  try {
+    const s = app.locals.volClockStatus;
+    if (s) push('volClock', `Desk Terminal vol clock (IV against the forecast sigma)${s.lastError ? ` (${String(s.lastError).slice(0, 120)})` : ''}`, s.lastOkAt ? new Date(s.lastOkAt).toISOString() : null, 0.5, { market: false, refreshEveryH: 0.05 });
+  } catch { /* best-effort */ }
   // the paper-ideas feeds: judged on the date the data itself runs to, so a server nobody has opened never reads as a dead feed (null = not built since boot, shown as waiting)
   try {
     const s = _paperBoards.status();
