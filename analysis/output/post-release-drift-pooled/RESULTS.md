@@ -292,3 +292,51 @@ Mirror events (signal != 0): MIRROR_EA 62 (2018-2026), MIRROR_UK 80 (2018-2026)
 - **DATA_AUDIT:** the 20-event first-print spot-check is 20/20 against the BLS release text and the FOMC statements.
   The score stage used to overwrite it; `events.py` now keeps a hand-filled file.
 
+
+## Evidence pack (2026-11-15)
+
+Diagnostics only (register row `evidence-pack-retrofit`, EXPLORATORY); the verdict above does not change. Built by `scripts/post-release-drift-pooled/evidence.py` with the shared `scripts/evidence_pack/pack.py`.
+
+Reading the pack. (1) The headlines reproduce the banked h2 cells exactly (drift -0.049σ, momentum -0.031σ). (2) The positive control plants the bar on top of the REAL rows, so with a negative real estimate a planted +0.10σ lands at only +0.051σ (drift) and +0.069σ (momentum); recovery is exact (planted − real = 0.100), and the drift 'UNDERPOWERED' label comes from that offset, not from noise: at 2× bar detection is 100%. The study's own placebo-based power run (POWERED at h2) is the binding power statement. (3) Both estimates sit low in the shuffled band (drift at the 0.4th percentile, momentum 5th): the shuffle here permutes each instrument's side separately, which breaks the within-event agreement of sides and so gives a narrower null than the event-level bootstrap; the study's own non-release-time placebo (0.9th / 0.7th percentile) says the same thing — the sign is negative (mild reversal), not continuation. (4) All five instruments are negative for drift; NQ carries most of the momentum reversal (−0.115σ). Costs (0.5 × R cost) take both further negative.
+
+### drift_h2: UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown
+
+Headline -0.04913 [-0.1087, +0.01114] daily sigma; useful bar +0.1. 2034 rows, 362 clusters, 5 instruments, 2010-11-03 → 2026-08-13.
+
+| Check | Result |
+|---|---|
+| ci excludes zero | False |
+| ci excludes bar | True |
+| beats placebo 97 5 | False |
+| pipeline finds planted bar | False |
+| same sign both halves | True |
+| share instruments same sign | 100% |
+| survives top1pct removed | True |
+| survives costs | False |
+| positive control detected at 0.5× / 1× / 2× bar | 0% / 12% / 100% |
+| shuffled-signal 95% band (real percentile) | [-0.0326, +0.03574] (0th) |
+| halves (H1 / H2, split at median row date) | -0.00988 / -0.0818 |
+| lookahead canary (leaked / clean) | +0.5951 / -0.04913 |
+
+Charts: [placebo](evidence/drift_h2/placebo.png) · [buckets](evidence/drift_h2/buckets.png) · [breakdown](evidence/drift_h2/breakdown.png) · [plants](evidence/drift_h2/plants.png) · [full pack](evidence/drift_h2/EVIDENCE.md) · [30 sample rows](evidence/drift_h2/sample_rows.csv)
+
+### momentum_h2: FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+
+Headline -0.03143 [-0.07985, +0.01678] daily sigma; useful bar +0.1. 2028 rows, 360 clusters, 5 instruments, 2010-11-03 → 2026-08-13.
+
+| Check | Result |
+|---|---|
+| ci excludes zero | False |
+| ci excludes bar | True |
+| beats placebo 97 5 | False |
+| pipeline finds planted bar | True |
+| same sign both halves | True |
+| share instruments same sign | 80% |
+| survives top1pct removed | True |
+| survives costs | False |
+| positive control detected at 0.5× / 1× / 2× bar | 0% / 100% / 100% |
+| shuffled-signal 95% band (real percentile) | [-0.03522, +0.03391] (5th) |
+| halves (H1 / H2, split at median row date) | -0.0138 / -0.0461 |
+| lookahead canary (leaked / clean) | +0.5955 / -0.03143 |
+
+Charts: [placebo](evidence/momentum_h2/placebo.png) · [buckets](evidence/momentum_h2/buckets.png) · [breakdown](evidence/momentum_h2/breakdown.png) · [plants](evidence/momentum_h2/plants.png) · [full pack](evidence/momentum_h2/EVIDENCE.md) · [30 sample rows](evidence/momentum_h2/sample_rows.csv)
