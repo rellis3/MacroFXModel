@@ -1,0 +1,252 @@
+{
+ "slug": "positioning-flow-inputs:book|gold|alone|21:00",
+ "unit": "Brier skill vs B0 (fraction)",
+ "bar": 0.00374674782667353,
+ "n_rows": 1906,
+ "n_clusters": 1906,
+ "n_instruments": 1,
+ "span": [
+  "2019-01-02",
+  "2026-08-20"
+ ],
+ "estimate": -0.0004379063713492135,
+ "ci": [
+  -0.005218943850373476,
+  0.004121328822315616
+ ],
+ "se": 0.002419014926030946,
+ "verdict_word": "UNDERPOWERED",
+ "notes": "Runner: est -0.00044 [-0.00493, +0.00416] (21-date moving-block bootstrap); 200-refit block-shuffled-input placebo 95th pct +0.00065. The pack bootstraps dates iid and its placebo shuffles the fitted lean without refit, so the runner's numbers are the binding ones. Plant = labels flipped toward the lean until the statistic rises by the bar; canary = lean set to the realised direction.",
+ "placebo": {
+  "n": 500,
+  "mean": -0.0030675994796469045,
+  "p2_5": -0.0077723387803066615,
+  "p97_5": 0.0017768959164001152,
+  "real_percentile": 85.8
+ },
+ "buckets": [
+  {
+   "bucket": "D1",
+   "n": 191,
+   "mean_outcome": 0.0005459449983890188,
+   "lo": -0.008860373381446593,
+   "hi": 0.00995226337822463,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D2",
+   "n": 191,
+   "mean_outcome": 0.0013220715887249004,
+   "lo": -0.0013863697766718019,
+   "hi": 0.004030512954121603,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D3",
+   "n": 190,
+   "mean_outcome": -0.00019356074099694545,
+   "lo": -0.0012649041795152974,
+   "hi": 0.0008777826975214066,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D4",
+   "n": 191,
+   "mean_outcome": -2.6957526848407768e-05,
+   "lo": -0.0001222246192042608,
+   "hi": 6.830956550744527e-05,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D5",
+   "n": 190,
+   "mean_outcome": -2.0894585310714765e-05,
+   "lo": -4.962966866846326e-05,
+   "hi": 7.840498047033725e-06,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D6",
+   "n": 191,
+   "mean_outcome": -8.645139486028282e-06,
+   "lo": -1.6628848284560228e-05,
+   "hi": -6.614306874963352e-07,
+   "mean_side": -0.3193717277486911
+  },
+  {
+   "bucket": "D7",
+   "n": 190,
+   "mean_outcome": 8.623330839539142e-05,
+   "lo": 3.5242171972099497e-05,
+   "hi": 0.00013722444481868332,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D8",
+   "n": 191,
+   "mean_outcome": 0.00011997357526156652,
+   "lo": -0.00020947063878496374,
+   "hi": 0.00044941778930809677,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D9",
+   "n": 190,
+   "mean_outcome": -0.001938145856240472,
+   "lo": -0.0038560826831699783,
+   "hi": -2.020902931096553e-05,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D10",
+   "n": 191,
+   "mean_outcome": -0.000989081976356329,
+   "lo": -0.006928135960777992,
+   "hi": 0.0049499720080653335,
+   "mean_side": 1.0
+  }
+ ],
+ "by_instrument": [
+  {
+   "inst": "GOLD",
+   "n": 1906,
+   "estimate": -0.0004379063713492135,
+   "ci": [
+    -0.004504322567557058,
+    0.003618153933497365
+   ]
+  }
+ ],
+ "by_year": [
+  {
+   "year": "2019",
+   "n": 249,
+   "estimate": -1.0702379817122632e-05,
+   "ci": [
+    -0.0014831446814094352,
+    0.0010698414846178033
+   ]
+  },
+  {
+   "year": "2020",
+   "n": 251,
+   "estimate": 0.00034793662677489373,
+   "ci": [
+    0.00010687511681336726,
+    0.0005913274630248126
+   ]
+  },
+  {
+   "year": "2021",
+   "n": 251,
+   "estimate": 0.0067651524111235995,
+   "ci": [
+    -0.003494084061051491,
+    0.017486332654847718
+   ]
+  },
+  {
+   "year": "2022",
+   "n": 248,
+   "estimate": -0.00519762724235654,
+   "ci": [
+    -0.0330975865243027,
+    0.02544230928698655
+   ]
+  },
+  {
+   "year": "2023",
+   "n": 249,
+   "estimate": -0.0028066558821211065,
+   "ci": [
+    -0.015972231519176674,
+    0.009041921539056327
+   ]
+  },
+  {
+   "year": "2024",
+   "n": 250,
+   "estimate": -0.0024744508285009584,
+   "ci": [
+    -0.014771510677321574,
+    0.006632568395195022
+   ]
+  },
+  {
+   "year": "2025",
+   "n": 249,
+   "estimate": -6.768812726526509e-05,
+   "ci": [
+    -0.00016297263881145854,
+    3.6967773387329615e-05
+   ]
+  },
+  {
+   "year": "2026",
+   "n": 159,
+   "estimate": -1.5774525801625342e-05,
+   "ci": [
+    -0.00010007338547881757,
+    6.53621121286031e-05
+   ]
+  }
+ ],
+ "by_half": [
+  {
+   "half": "H1",
+   "n": 954,
+   "estimate": 0.00046508728699960636,
+   "ci": [
+    -0.006652300440038253,
+    0.00805102169449102
+   ]
+  },
+  {
+   "half": "H2",
+   "n": 952,
+   "estimate": -0.0013460080674369962,
+   "ci": [
+    -0.005231984128211329,
+    0.0030912601576863256
+   ]
+  }
+ ],
+ "without_top1pct": 0.0015133392654139112,
+ "positive_control": [
+  {
+   "multiple_of_bar": 0.5,
+   "planted": 0.001873373913336765,
+   "detected_share": 0.0,
+   "mean_recovered": 0.0015215897491179116
+  },
+  {
+   "multiple_of_bar": 1.0,
+   "planted": 0.00374674782667353,
+   "detected_share": 0.0,
+   "mean_recovered": 0.0034487424906733686
+  },
+  {
+   "multiple_of_bar": 2.0,
+   "planted": 0.00749349565334706,
+   "detected_share": 1.0,
+   "mean_recovered": 0.00711874853794814
+  }
+ ],
+ "lookahead_canary": {
+  "estimate_with_leak": 0.9999999999959991,
+  "estimate_clean": -0.0004379063713492135
+ },
+ "diagnosis": {
+  "checks": {
+   "ci_excludes_zero": false,
+   "ci_excludes_bar": false,
+   "beats_placebo_97_5": false,
+   "pipeline_finds_planted_bar": false,
+   "same_sign_both_halves": false,
+   "share_instruments_same_sign": 1.0,
+   "survives_top1pct_removed": false,
+   "survives_costs": null
+  },
+  "label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown"
+ }
+}
