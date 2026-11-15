@@ -37,7 +37,7 @@ test('the owner can flip one on for the desk login, and off again; only known id
 test('NO TRACE for a desk login: the markup of both is hidden by the registry stylesheet and by the hidden attribute until a feature mounts', () => {
   const html = read('desk-terminal.html');
   for (const [id, el] of [['widget.cmdline', 'cmdbtn'], ['widget.linked', 'linkchip']]) {
-    const tag = new RegExp(`<button[^>]*id="${el}"[^>]*>`).exec(html)?.[0];
+    const tag = new RegExp(`<(?:button|input)[^>]*id="${el}"[^>]*>`).exec(html)?.[0];
     assert.ok(tag, `${el} is in the top bar`); assert.ok(tag.includes(`data-surface="${id}"`), `${el} carries data-surface="${id}"`); assert.ok(/\shidden[\s>]/.test(tag), `${el} starts hidden`);
   }
   const css = hideCss(visibleFor('viewer', null));

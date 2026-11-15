@@ -132,3 +132,14 @@ test('mounting twice does not double the box; destroy removes the box, the key h
   m.destroy(); assert.equal(doc.getElementById('cmdk-back'), null); assert.equal(doc.getElementById('cmdbtn').hidden, true);
   press(doc, '/'); assert.equal(doc.getElementById('cmdk-back'), null, 'no handler left'); void back;
 });
+
+test('top-bar box: typing a letter into it opens the palette with that letter searched; Enter opens it empty; Tab does not', () => {
+  const { doc, back, input } = setup();
+  const bar = doc.getElementById('cmdbtn');
+  const e = press(doc, 'e', bar);
+  assert.equal(e.defaultPrevented, true); assert.equal(back.hidden, false); assert.equal(input.value, 'e');
+  doc.fire('keydown', input, { key: 'Escape' }); assert.equal(back.hidden, true);
+  press(doc, 'Enter', bar); assert.equal(back.hidden, false); assert.equal(input.value, '');
+  doc.fire('keydown', input, { key: 'Escape' });
+  press(doc, 'Tab', bar); assert.equal(back.hidden, true);
+});

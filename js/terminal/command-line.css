@@ -46,3 +46,10 @@
 [data-lk-hit] { box-shadow: 0 0 0 1.5px rgba(var(--purrgb), .8), 0 0 16px rgba(var(--purrgb), .35); border-radius: 10px; }
 .cs-row[data-lk-leg] { outline: 1.5px solid rgba(var(--purrgb), .75); outline-offset: 1px; border-radius: 6px; }
 @media (prefers-reduced-motion: no-preference) { [data-lk-hit] { transition: box-shadow .25s ease; } }
+
+/* Top-bar command box: looks like a text box, behaves as the palette's front door */
+.cmdbar { width: 170px; max-width: 28vw; font: 600 12px var(--mono); color: var(--tx); background: var(--bg2); border: 1px solid var(--line2); border-radius: 6px; padding: 5px 9px; cursor: text; }
+.cmdbar::placeholder { color: var(--tx3); }
+.cmdbar:hover { border-color: var(--pur2); }
+.cmdbar:focus-visible { outline: 2px solid var(--pur2); outline-offset: 1px; }
+@media (max-width: 700px) { .cmdbar { width: 110px; } }

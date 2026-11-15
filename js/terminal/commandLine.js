@@ -118,8 +118,15 @@ export function mountCommandLine({ doc = document, win = window, isOn = id => wi
     if ((k === '/' || k === '`') && !e.ctrlKey && !e.metaKey && !e.altKey && !typing(doc.activeElement) && !typing(e.target)) { e.preventDefault(); open(); }
   };
   doc.addEventListener('keydown', onKey);
+  // The top-bar box (an input, or a button on an older page): click or Enter opens the palette; a typed character opens it
+  // with that character already in the search, so you can type straight into the bar. The palette does the matching.
   const btn = doc.getElementById('cmdbtn');
   const onBtn = () => open();
-  if (btn) { btn.hidden = false; btn.addEventListener('click', onBtn); }
-  return { open, close, destroy() { doc.removeEventListener('keydown', onKey); btn?.removeEventListener('click', onBtn); if (btn) btn.hidden = true; back.remove(); } };
+  const onBarKey = e => {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.key === 'Tab' || e.key === 'Escape' || e.key.startsWith?.('Arrow') || e.key === 'Shift') return;
+    if (e.key === 'Enter') { e.preventDefault(); open(); return; }
+    if (e.key.length === 1) { e.preventDefault(); open(e.key === '`' ? '' : e.key); }
+  };
+  if (btn) { btn.hidden = false; btn.addEventListener('click', onBtn); btn.addEventListener('keydown', onBarKey); }
+  return { open, close, destroy() { doc.removeEventListener('keydown', onKey); btn?.removeEventListener('click', onBtn); btn?.removeEventListener('keydown', onBarKey); if (btn) btn.hidden = true; back.remove(); } };
 }
