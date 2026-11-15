@@ -74,6 +74,7 @@ export const TAB_WORD_IDS = Object.keys(TAB_WORDS);
 export const INSIGHT_WORDS = {
   matrix: ['MATRIX', ['CROSSASSET', 'CORRELATION', 'CROSS'], 'The cross-asset board: the 1, 5 and 20 session move of every market, and how markets have been moving together lately.'],
   rotation: ['ROTATION', ['SECTORS', 'SECTOR'], 'US sector rotation: the 11 sectors against the S&P 500 over 20 sessions, on a map with a four-week trail.'],
+  fxmatrix: ['FXMATRIX', ['CURRENCYMATRIX', 'STRENGTHMATRIX', 'FXC'], 'The currency matrix: the eight currencies across four windows, and who has out-run whom.'],
   unusual: ['UNUSUAL', ['MOVERS', 'EXTREME', 'WHATSUNUSUAL'], 'What is unusual right now: every series ranked by how extreme it is against its own history, with the working and the odds it is just chance.'],
 };
 

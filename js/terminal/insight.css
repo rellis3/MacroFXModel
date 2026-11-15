@@ -88,3 +88,12 @@
 .in-sec:hover .in-glow { opacity: .6; }
 .in-qc { font: 700 11px var(--mono); text-transform: capitalize; }
 .in-qc.leading { color: var(--up); } .in-qc.improving { color: var(--blue); } .in-qc.weakening { color: var(--pur2); } .in-qc.lagging { color: var(--dn); }
+
+/* Currency rates matrix (js/terminal/fxMatrixView.js) */
+.in-mv small { font-weight: 500; color: var(--tx3); }
+.in-tn { font: 700 10.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line2); color: var(--tx2); }
+.in-tn.firming { color: var(--up); border-color: rgba(var(--uprgb), .5); } .in-tn.fading { color: var(--dn); border-color: rgba(var(--dnrgb), .5); }
+.in-pmx .in-pm { text-align: center; padding: 8px 2px; min-width: 38px; border-radius: 4px; background: var(--bg2); color: var(--tx); font-variant-numeric: tabular-nums; }
+.in-pm.u { background: color-mix(in srgb, var(--up) calc(10% + var(--s) * 62%), var(--bg2)); }
+.in-pm.d { background: color-mix(in srgb, var(--dn) calc(10% + var(--s) * 62%), var(--bg2)); }
+.in-pm[data-go] { cursor: pointer; } .in-pm[data-go]:hover { outline: 1px solid var(--pur2); } .in-pm:focus-visible { outline: 2px solid var(--pur2); }

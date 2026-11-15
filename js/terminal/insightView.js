@@ -11,6 +11,7 @@ export const PANELS = [
   { key: 'unusual', surface: 'panel.insight.unusual', pill: '<button type="button" class="in-tab" data-p="unusual" data-surface="panel.insight.unusual">Unusual now</button>', load: () => import('./unusualView.js').then(m => m.mountUnusual) },
   { key: 'matrix', surface: 'panel.insight.matrix', pill: '<button type="button" class="in-tab" data-p="matrix" data-surface="panel.insight.matrix">Cross-asset</button>', load: () => import('./matrixView.js').then(m => m.mountCross) },
   { key: 'rotation', surface: 'panel.insight.rotation', pill: '<button type="button" class="in-tab" data-p="rotation" data-surface="panel.insight.rotation">Sector rotation</button>', load: () => import('./matrixView.js').then(m => m.mountRotation) },
+  { key: 'fxmatrix', surface: 'panel.insight.fxmatrix', pill: '<button type="button" class="in-tab" data-p="fxmatrix" data-surface="panel.insight.fxmatrix">Currency matrix</button>', load: () => import('./fxMatrixView.js').then(m => m.mountFx) },
 ];
 const LS = 'deskInsight:v1';
 
