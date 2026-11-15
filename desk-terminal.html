@@ -206,6 +206,7 @@ html[data-role="owner"] .disclaimer{display:none}
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <link rel="stylesheet" href="js/terminal/terminal-tabs.css">
 <link rel="stylesheet" href="js/terminal/book-panels.css">
+<link rel="stylesheet" href="js/terminal/tone-timeline.css">
 <link rel="stylesheet" href="js/terminal/themes.css">
 <link rel="stylesheet" href="js/terminal/theme-picker.css">
 </head>
@@ -1103,6 +1104,7 @@ function ccyModal(c) {
 <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap"><div style="text-align:center">${ring(s, 84, ccyWord(v.bias))}<div class="muted" style="font-size:11px">${esc(ccyText(v.bias))}</div></div>${rateBars(c)}</div>
 <div class="synth">${esc(v.why ?? (['NOK', 'SEK'].includes(c) ? 'Traded, not debated: the desk reads NOK and SEK pairs from the EUR or USD view, the central bank, oil (NOK) and the risk tone.' : 'No ruling.'))}</div>
 <div class="drv">${cb ? `<span class="chip ${cb.regime === 'HAWKISH' ? 'gold' : cb.regime === 'DOVISH' ? 'pur' : ''}">${esc(cb.regime)} · hawk ${cb.score}</span><span>last meeting ${esc(cb.meetingDate)}</span>` : ''}${pol(c) ? `<span title="${esc(pol(c).source)}">policy ${pct(pol(c).rate)} · ${esc(pol(c).asOf)}</span>` : ''}${rate ? `<span>3m rate ${rate.latestRate}%</span>` : ''}${real ? `<span>real 10y ${f(real.latestReal)}%</span>` : ''}${exp?.after?.[c] != null ? `<span>book exposure ${f(exp.after[c])}${exp.before?.[c] !== exp.after?.[c] ? ` (was ${f(exp.before[c])})` : ''}</span>` : ''}<span title="The Currency Manager's conviction in this currency's bias (not the global ruling's, not a card's)">currency conviction ${esc(v.conviction ?? '–')}</span></div>
+${globalThis.cbToneStrip?.(E['cb-board'], c) ?? ''}
 <div class="sec" style="margin-top:14px"><h2>Key drivers</h2><span class="lbl">from today's analyst reports</span></div>
 ${drv.length ? drv.map(d => `<div style="display:flex;gap:10px;padding:8px 10px;margin:6px 0;border-radius:8px;background:var(--bg3);border-left:3px solid ${d.v > 0 ? 'var(--up)' : 'var(--dn)'}"><span class="mono" style="font-size:10.5px;white-space:nowrap;color:${d.v > 0 ? 'var(--up)' : 'var(--dn)'}">[${d.tier} ${d.sign}${d.type}]</span><span style="font-size:13px">${esc(d.claim)}</span></div>`).join('') : '<p class="muted">No analyst point scored this currency today.</p>'}
 <div class="sfc" data-surface="panel.ccy.expressions"><div class="sec"><h2>Best expressions</h2><span class="lbl">the book's cards on this currency</span></div>

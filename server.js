@@ -14322,6 +14322,11 @@ app.get('/api/rbnz/decisions', async (req, res) => {
 // decision headline from its news RSS (cached by /api/rbnz/decisions, 6 h) stands in and the tile says so. 10-minute cache.
 let _cbBoardCache = { at: 0, data: null };
 const _CB_BOARD_TTL_MS = 10 * 60_000;
+// The board reads ten past meetings a bank (the tone timeline). Only the newest two need the whole stored payload (the vote, the word-level diff,
+// the theme scores for the change); older meetings need their score, regime, headline and themes, and a past analysis does not change, so those
+// are kept compact in memory after the first read (the Beige Book payloads alone are ~350 KB each).
+const _cbBoardOld = new Map();
+const _cbBoardCompact = p => (p?.analysis ? { kind: p.kind ?? null, analysis: { hawkishScore: p.analysis.hawkishScore, regime: p.analysis.regime, confidence: p.analysis.confidence, headline: p.analysis.headline, dimensions: p.analysis.dimensions } } : null);
 const _CB_BOARD_MEETINGS = () => ({ fomc: FOMC_MEETINGS, ecb: ECB_MEETINGS, boe: BOE_MEETINGS, boj: BOJ_MEETINGS, rba: RBA_MEETINGS, rbnz: RBNZ_MEETINGS, boc: BOC_MEETINGS, snb: SNB_MEETINGS, beige: BEIGE_BOOK_RELEASES });
 async function _cbBoardRbnzHeadline(meetingDate) {
   try {
@@ -14340,7 +14345,11 @@ async function _cbBoardBuild() {
   const rbnzBlocked = /403|restricted|firewall/i.test((rbnzLog?.log ?? []).join(' · '));
   const banks = await Promise.all(_CB_BOARD_BANKS.map(async meta => {
     const meetings = M[meta.id] ?? [], dates = _cbbPastDates(meetings, now, _CB_BOARD_HISTORY), reads = {};
-    await Promise.all(dates.map(async d => { try { const raw = await kv.get(`${meta.prefix}${d}`); reads[d] = raw ? JSON.parse(raw) : null; } catch { reads[d] = null; } }));
+    await Promise.all(dates.map(async (d, i) => {
+      const key = `${meta.prefix}${d}`, old = i < dates.length - 2;
+      if (old && _cbBoardOld.has(key)) { reads[d] = _cbBoardOld.get(key); return; }
+      try { const raw = await kv.get(key); const p = raw ? JSON.parse(raw) : null; reads[d] = old ? _cbBoardCompact(p) : p; if (old && reads[d]) _cbBoardOld.set(key, reads[d]); } catch { reads[d] = null; }
+    }));
     const newest = dates.at(-1), noRead = newest && !reads[newest]?.analysis;
     const headline = meta.id === 'rbnz' && noRead ? await _cbBoardRbnzHeadline(newest) : null;
     return _cbbShape(meta, { meetings, reads, now, headline, blocked: rbnzBlocked, rate: meta.beige ? null : (pr.rates?.[meta.ccy] ?? null) });

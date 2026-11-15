@@ -853,6 +853,7 @@ else { const sel = document.querySelector('#tabs [aria-selected="true"]')?.datas
 globalThis.stfvHtml = FVV.stfvTable;
 // the Macro tab's central-bank statement board (desk-terminal.html enrichMacro, a classic script) reads this
 globalThis.cbBoardHtml = CBV.boardHtml;
+globalThis.cbToneStrip = CBV.toneStrip;   // the Currency modal's tone timeline (js/terminal/toneTimelineView.js)
 globalThis.acBoardHtml = ACV.boardHtml;
 globalThis.llGridHtml = LLV.gridHtml;
 // the Macro tab's Rates & policy board (desk-terminal.html enrichMacro): the curve, its slopes, the priced Fed path beside them

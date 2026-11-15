@@ -11,6 +11,7 @@
  * (Evidence Book entry cb-tone-direction, NULL, N=82 meetings), so nothing here is a lean.
  */
 import { ownerLink } from './links.js';
+import * as TT from './toneTimelineView.js';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fin = v => v != null && v !== '' && Number.isFinite(+v);
 const sg = (v, dp = 2) => (fin(v) ? `${+v > 0 ? '+' : ''}${(+v).toFixed(dp)}` : '–');
@@ -55,30 +56,30 @@ const nextLine = n => (n ? `Next ${n.days === 0 ? 'today' : `${esc(dshort(n.date
 const rateLine = r => (r && fin(r.rate) ? `policy rate <b class="mono">${(+r.rate).toFixed(2)}%</b>${r.asOf ? ` <span class="muted">(${esc(r.asOf)})</span>` : ''}` : '');
 const link = b => ownerLink(b.page, `Read the ${esc(b.doc)}`, { target: '_blank', suffix: ' →', hide: true });   // the sentiment pages are owner-only: a viewer gets no link
 
-/** One tile. */
-export function tileHtml(b) {
+/** One tile. beige = the Beige Book's tile, passed to the Fed's tile only (its change chip). */
+export function tileHtml(b, beige = null) {
   const head = (chips = '') => `<div class="ch"><h3>${esc(b.bank)}</h3><span class="muted">${esc(b.ccy)}${b.id === 'beige' ? ' · twelve districts' : ''}</span><span class="r">${chips}</span></div>`;
   const foot = `<div class="muted" style="margin-top:10px;font-size:12px;display:flex;gap:6px 14px;flex-wrap:wrap;justify-content:space-between"><span>${nextLine(b.next)}${rateLine(b.rate) ? ` · ${rateLine(b.rate)}` : ''}</span>${link(b)}</div>`;
   if (b.status === 'headline_only') {
     const d = b.decision ?? {};
     return `<div class="card" data-cb="${esc(b.id)}">${head(`<span class="chip">headline only</span>`)}
 <p style="margin:0 0 6px"><b>${esc(d.title ?? 'Decision')}</b> <span class="muted">${esc(dshort(d.date))} · from the bank's news feed</span></p>
-<p class="muted" style="margin:0">${b.blocked ? `The statement and the record of the meeting are blocked by the ${esc(b.bank)}'s firewall (403), so there is no tone score for this meeting. Nothing is estimated in its place.` : 'The statement and record of the meeting have not been captured, so there is no tone score for this meeting.'}</p>${foot}</div>`;
+<p class="muted" style="margin:0">${b.blocked ? `The statement and the record of the meeting are blocked by the ${esc(b.bank)}'s firewall (403), so there is no tone score for this meeting. Nothing is estimated in its place.` : 'The statement and record of the meeting have not been captured, so there is no tone score for this meeting.'}</p>${TT.stripHtml(b)}${foot}</div>`;
   }
   if (b.status === 'no_read' || !b.read) {
     const old = b.read ? `<p class="muted" style="margin:6px 0 0">Last read: ${esc(dshort(b.read.date))}, tone <b class="mono">${esc(sg(b.read.score))}</b> ${b.read.regime ? `(${esc(regimeWord(b.read.regime))})` : ''} · <b>older than the latest meeting</b>, not ranked.</p>` : '';
     return `<div class="card" data-cb="${esc(b.id)}">${head(`<span class="chip">no read</span>`)}
-<p style="margin:0">${b.unreadMeeting ? `No read yet for the ${esc(dshort(b.unreadMeeting))} ${b.id === 'beige' ? 'release' : 'meeting'}.` : 'No statement has been read yet.'}</p>${old}${foot}</div>`;
+<p style="margin:0">${b.unreadMeeting ? `No read yet for the ${esc(dshort(b.unreadMeeting))} ${b.id === 'beige' ? 'release' : 'meeting'}.` : 'No statement has been read yet.'}</p>${old}${TT.stripHtml(b)}${foot}</div>`;
   }
   const r = b.read;
   const stale = r.ageDays != null && r.ageDays > 120;
   return `<div class="card" data-cb="${esc(b.id)}">${head(`${r.regime ? `<span class="chip ${REGIME(r.regime)}">${esc(regimeWord(r.regime))}</span>` : ''}<span class="chip" title="the meeting this read is from">${esc(dshort(r.date))}</span>${stale ? '<span class="chip gold" title="over four months old">old</span>' : ''}`)}
 <div class="score"><b>${esc(sg(r.score))}</b><small>tone, ${b.id === 'beige' ? 'Beige Book' : 'last statement'} · ${changeHtml(b.change) || 'no earlier read to compare'}</small></div>
-<div style="display:flex;gap:12px;align-items:center;margin:6px 0 2px"><div style="flex:1;min-width:0">${toneBar(r.score)}</div>${spark(b.history)}</div>
+<div style="margin:6px 0 2px">${toneBar(r.score)}</div>
 ${r.headline ? `<p style="margin:8px 0 0;font-size:13px">${esc(r.headline)}</p>` : ''}
 ${r.vote ? `<p style="margin:6px 0 0"><span class="lbl">vote</span> <b class="mono">${esc(r.vote)}</b>${r.voteNote ? ` <span class="muted">· ${esc(r.voteNote)}</span>` : ''}</p>` : (b.id === 'beige' ? '' : `<p class="muted" style="margin:6px 0 0;font-size:12px">No vote published for this bank.</p>`)}
 ${dimsHtml(r.dims)}
-${r.whatChanged ? `<p class="muted" style="margin:10px 0 0;font-size:12px"><b>What changed:</b> ${esc(r.whatChanged)}</p>` : ''}${foot}</div>`;
+${r.whatChanged ? `<p class="muted" style="margin:10px 0 0;font-size:12px"><b>What changed:</b> ${esc(r.whatChanged)}</p>` : ''}${TT.stripHtml(b, { beige })}${foot}</div>`;
 }
 
 /** What the futures price over about six months, per bank, as the strip's last column (cbx = /api/cb-expectations .banks). */
@@ -94,6 +95,15 @@ export function rankHtml(d, cbx) {
 <p class="muted" style="font-size:12px">Tone and the futures-priced path are different questions: one is how hawkish the last statement read, the other is what the market expects the bank to do next. ${cbx ? 'Green = hikes priced, red = cuts.' : ''}</p></div>`;
 }
 
+/** The Currency modal's tone strip for one currency (cb = /api/cb-board): the ribbon and the wording swaps, in the board's wrapper surface. '' when that bank has no timeline. */
+export function toneStrip(cb, ccy) {
+  const banks = cb?.banks ?? [];
+  const b = banks.find(x => x.ccy === ccy && !String(x.id).startsWith('beige'));
+  if (!b) return '';
+  const inner = TT.stripHtml(b, { compact: true, beige: ccy === 'USD' ? banks.find(x => x.id === 'beige') : null });
+  return inner ? `<div class="sfc" data-surface="panel.ccy.tone"><div class="sec" style="margin-top:14px"><h2>How the ${esc(b.bank)}'s tone has moved</h2><span class="lbl">context for tone and timing, not a signal</span></div>${inner}</div>` : '';
+}
+
 /** The whole board: a section header with the evidence stamp, the nine tiles, the ranking, the footnote. */
 export function boardHtml(d, { cbx = null } = {}) {
   const head = `<div class="sec"><h2>Central-bank statements</h2><span class="lbl">what each bank's latest statement said, how its tone moved, how the committee voted · <span class="chip gold" title="Tested, N=82 FOMC meetings: the statement's tone and the first 30-minute reaction do not predict the next-day dollar. It is priced inside half an hour.">description only · tone is priced in 30 min</span></span></div>`;
@@ -102,6 +112,6 @@ export function boardHtml(d, { cbx = null } = {}) {
   const banks = d.banks ?? [];
   const c = d.counts ?? {};
   const miss = banks.filter(b => b.status !== 'read').map(b => b.bank);
-  return `${head}<div class="grid g3">${banks.map(tileHtml).join('')}</div>${rankHtml(d, cbx)}
+  return `${head}<div class="grid g3">${banks.map(b => tileHtml(b, b.id === 'fomc' ? banks.find(x => x.id === 'beige') : null)).join('')}</div>${rankHtml(d, cbx)}
 <p class="muted" style="font-size:12px">${esc(String(c.read ?? 0))} of ${esc(String(c.total ?? banks.length))} have a read for their latest meeting${miss.length ? ` (no current read: ${miss.map(esc).join(', ')})` : ''}. Scores come from an AI read of each statement against the previous meeting's wording; they describe tone and are not a forecast (${ownerLink('evidence.html#ev-cb-tone-direction', 'tested here: no next-day lean', { target: '_blank' })}). Read as of ${esc(String(d.asOf ?? '').slice(0, 16).replace('T', ' '))} UTC.</p>`;
 }
