@@ -1,0 +1,48 @@
+/* Command line + linked selection (js/terminal/commandLine.js, linkedSelection.js). Theme tokens only (themeTokens.test.mjs). */
+.cmdk-back { position: fixed; inset: 0; z-index: 70; background: var(--scrim); backdrop-filter: blur(4px); display: flex; align-items: flex-start; justify-content: center; padding: 10vh 16px 16px; }
+.cmdk { width: 100%; max-width: 720px; background: var(--bg1); border: 1px solid var(--line2); border-radius: 14px; box-shadow: 0 30px 80px rgba(0, 0, 0, .55), 0 0 0 1px rgba(var(--purrgb), .25); overflow: hidden; display: flex; flex-direction: column; max-height: 78vh; }
+.cmdk-in { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.cmdk-in b { font: 700 13px var(--mono); color: var(--pur2); letter-spacing: .08em; }
+.cmdk-in input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: var(--tx); font: 500 16px var(--mono); caret-color: var(--pur2); }
+.cmdk-in input::placeholder { color: var(--tx3); }
+.cmdk-in kbd, .cmdk-foot kbd { font: 600 10.5px var(--mono); color: var(--tx2); background: var(--bg2); border: 1px solid var(--line2); border-radius: 5px; padding: 1px 6px; }
+.cmdk-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); min-height: 0; flex: 1; }
+.cmdk-list { overflow-y: auto; max-height: 52vh; border-right: 1px solid var(--line); padding: 6px; }
+.cmdk-g { font: 600 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--tx3); padding: 8px 8px 4px; }
+.cmdk-opt { display: flex; flex-direction: column; gap: 1px; width: 100%; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 6px 8px; color: var(--tx); cursor: pointer; font: inherit; }
+.cmdk-opt .nm { font: 700 12.5px var(--mono); letter-spacing: .04em; }
+.cmdk-opt .nm i { font-style: normal; color: var(--tx3); font-weight: 500; }
+.cmdk-opt .sm { font-size: 11.5px; color: var(--tx2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmdk-opt[aria-selected="true"], .cmdk-opt:hover { background: var(--bg3); border-color: rgba(var(--purrgb), .45); }
+.cmdk-opt.err .sm { color: var(--gold); }
+.cmdk-detail { padding: 12px 14px; overflow-y: auto; max-height: 52vh; font-size: 13px; line-height: 1.55; }
+.cmdk-detail h4 { margin: 0 0 6px; font: 700 14px var(--mono); letter-spacing: .04em; color: var(--pur2); }
+.cmdk-detail dl { margin: 10px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; }
+.cmdk-detail dt { font: 600 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--tx3); padding-top: 2px; }
+.cmdk-detail dd { margin: 0; color: var(--tx); }
+.cmdk-detail code { font: 600 12px var(--mono); color: var(--gold); background: var(--bg2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; cursor: pointer; }
+.cmdk-detail .warn { color: var(--gold); }
+.cmdk-empty { padding: 18px 14px; color: var(--tx2); font-size: 13px; }
+.cmdk-foot { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 8px 14px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--tx3); }
+.cmdk-all { padding: 10px 14px; overflow-y: auto; max-height: 60vh; }
+.cmdk-all table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.cmdk-all td { padding: 4px 8px 4px 0; vertical-align: top; border-top: 1px solid var(--line); }
+.cmdk-all td:first-child { font: 700 12px var(--mono); white-space: nowrap; color: var(--pur2); }
+.cmdk-all td.ex { font: 500 11.5px var(--mono); color: var(--gold); white-space: nowrap; }
+.cmdk-btn { cursor: pointer; }
+@media (max-width: 640px) {
+  .cmdk-back { padding: 0; align-items: flex-end; }
+  .cmdk { max-width: none; max-height: 92vh; border-radius: 14px 14px 0 0; }
+  .cmdk-body { grid-template-columns: minmax(0, 1fr); }
+  .cmdk-list { border-right: 0; max-height: 34vh; border-bottom: 1px solid var(--line); }
+  .cmdk-detail { max-height: 30vh; }
+  .cmdk-all td.ex { white-space: normal; }
+}
+.cmdk-opt:focus-visible, .cmdk-in input:focus-visible, .lk-chip:focus-visible { outline: 2px solid var(--pur2); outline-offset: 2px; }
+
+/* linked selection: the chip, and what a followed market looks like */
+.lk-chip { cursor: pointer; }
+.lk-chip[data-linked="off"] { color: var(--tx3); border-style: dashed; background: transparent; }
+[data-lk-hit] { box-shadow: 0 0 0 1.5px rgba(var(--purrgb), .8), 0 0 16px rgba(var(--purrgb), .35); border-radius: 10px; }
+.cs-row[data-lk-leg] { outline: 1.5px solid rgba(var(--purrgb), .75); outline-offset: 1px; border-radius: 6px; }
+@media (prefers-reduced-motion: no-preference) { [data-lk-hit] { transition: box-shadow .25s ease; } }

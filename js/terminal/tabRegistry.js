@@ -12,6 +12,7 @@
 //     'cost'      anything that costs money: Research, Ask the desk, every free-form or paid model button. (The shared once-a-day reads STAY.)
 //     'internal'  the owner's own tooling: Info map, Desk Office, Desk Run, Access, the data-quality chip, alerts, links to pages outside the desk zone.
 //     'pnl'       real P&L, accounts, bots, journal, paper trades, and the desk's track record. Hidden by default, switchable.
+//     'preview'   (2026-11-15) a NEW terminal feature the owner is still trying out (command line, linked selection). The owner always sees it; the desk login sees it only when the owner flips it on.
 //   EVERYTHING ELSE IS SHOWN, including the directional analysis and why (which currencies the desk leans bullish or bearish, the reasons),
 //   book intelligence, net currency exposure, scenarios, strength, scores, ratings, drivers, risk, regime, correlations.
 //   A surface with a `hidden` reason is OFF by default; a surface without one is ON by default. The guard test enforces both.
@@ -32,19 +33,20 @@
 /** Bump when the defaults or the rules change: old saved switches are then ignored (the admin page says so). */
 export const SCHEMA = 2;
 
-export const HIDDEN_REASONS = ['trade', 'cost', 'internal', 'pnl'];
-export const REASON_LABEL = { trade: 'trade', cost: 'cost', internal: 'internal', pnl: 'P&L' };
+export const HIDDEN_REASONS = ['trade', 'cost', 'internal', 'pnl', 'preview'];
+export const REASON_LABEL = { trade: 'trade', cost: 'cost', internal: 'internal', pnl: 'P&L', preview: 'preview' };
 /** One line shown beside a switch when the owner turns a hidden-by-reason surface ON for the desk login. */
 export const REASON_WARNING = {
   trade: 'Reads as a trade instruction. Switching it on shows trade-level lines to the desk login.',
   cost: 'Costs money (paid model calls). Switching it on shows the control; the server still refuses paid calls from the desk login.',
   internal: 'Your own tooling. Switching it on shows it to the desk login; its data routes are still refused, so it may show empty.',
   pnl: 'Real or scored P&L, the desk\'s record. Switching it on shows it to the desk login.',
+  preview: 'A new feature you are still trying out. Switching it on shows it to everyone on the desk login.',
 };
 
 // mk(id, kind, label, group, hidden, note): hidden is null (shown) or one of HIDDEN_REASONS (off by default).
 const mk = (id, kind, label, group, hidden, note) => ({ id, kind, label, group, hidden, defaultVisible: !hidden, note });
-const T = 'trade', C = 'cost', I = 'internal', M = 'pnl';
+const T = 'trade', C = 'cost', I = 'internal', M = 'pnl', P = 'preview';
 
 export const SURFACES = [
   // ── tabs ──
@@ -81,6 +83,9 @@ export const SURFACES = [
   mk('widget.disclaimer', 'widget', 'Educational notice (desk login only)', 'Shell', null, 'one line under the tabs for the desk login: educational and informational macro analysis, not advice and not a trade signal'),
   mk('widget.signout', 'widget', 'Sign out (top bar)', 'Shell', null, 'shows the session (owner or desk) and signs out; always shown, so a desk user can always leave'),
   mk('widget.themepicker', 'widget', 'Colour theme picker (top bar)', 'Shell', null, 'swatches that change the colours, the glow and the fonts; remembered in this browser; changes nothing else'),
+  // ── preview features: the owner always sees them, the desk login only once the owner switches them on (shortcut under the Info map tab) ──
+  mk('widget.cmdline', 'widget', 'Command line (press / or `)', 'Terminal features (preview)', P, 'type a market, a board or a command (EURUSD, FED, MACRO RATES, REPLAY NQ 12 NOV) and jump straight there; every command has its own help line and ? lists them all'),
+  mk('widget.linked', 'widget', 'Linked selection', 'Terminal features (preview)', P, 'pick a market once and the Pair page, the Replay, the strength board, the vol clock and the asset cards follow it; one chip in the top bar shows it is linked and switches it off'),
   // ── ticker segments ──
   mk('strip.news', 'strip', 'Ticker: tier-1 headlines', 'Ticker', null, 'wire headlines'),
   mk('strip.events', 'strip', 'Ticker: high-impact releases', 'Ticker', null, 'the next 36 hours of high-impact events'),
