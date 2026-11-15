@@ -119,6 +119,12 @@ test('mountSwitches: draws for the owner, flips with the same call the Access pa
   const v3 = new El('div'); await mountSwitches(v3, { fetchJson: async () => { throw new Error('offline'); } }); assert.equal(v3.innerHTML, '');
 });
 
+test('the vol clock tiles and rows carry data-lk-inst (an inert attribute the page\'s own click handlers ignore), so they can be linked', () => {
+  const v = read('js/terminal/volClockView.js');
+  assert.match(v, /vc-tile" data-tag="\$\{esc\(t\.tag \?\? ''\)\}" data-lk-inst="\$\{esc\(t\.sym\)\}"/); assert.match(v, /data-lk-inst="\$\{esc\(r\.name\)\}"/);
+  assert.ok(!/data-inst=/.test(v), 'data-inst would make the page open an asset card on click: the vol clock uses data-lk-inst');
+});
+
 test('the Info map tab hosts the panel and the admin page knows the preview reason', () => {
   assert.match(read('js/terminal/infoMapView.js'), /id="im-sw"/); assert.match(read('js/terminal/infoMapView.js'), /previewSwitches\.js/);
   const admin = read('desk-admin.html');
