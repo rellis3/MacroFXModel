@@ -4,22 +4,22 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-13.
+Generated 2026-11-15.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **324** |
+| claims tested (validated + null + underpowered) | **336** |
 | validated | 51 |
-| null | 180 |
-| underpowered | 93 |
-| context (base rates, descriptions: not counted as tests) | 55 |
-| pre-registrations with no banked verdict (below) | 88 |
+| null | 186 |
+| underpowered | 99 |
+| context (base rates, descriptions: not counted as tests) | 56 |
+| pre-registrations with no banked verdict (below) | 90 |
 
-**What the count says (Lesson 02 §05).** If none of the 324 claims were real, tests at the usual 5% size would still pass
-about **16.2** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
-**roughly 16 of the 51 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 336 claims were real, tests at the usual 5% size would still pass
+about **16.8** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
+**roughly 17 of the 51 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -406,6 +406,19 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-13 | noise-area-momentum-book | price | underpowered | forge/NOISE_AREA_MOMENTUM_PREREG.md |
 | 2026-11-13 | noise-area-momentum-stop | execution | underpowered | forge/NOISE_AREA_MOMENTUM_PREREG.md |
 | 2026-11-13 | relationship-map | macro | underpowered | forge/RELATIONSHIP_MAP_PREREG.md |
+| 2026-11-14 | post-release-drift-pooled | events | underpowered | forge/POST_RELEASE_DRIFT_POOLED_PREREG.md |
+| 2026-11-14 | post-release-momentum-pooled | events | null | forge/POST_RELEASE_DRIFT_POOLED_PREREG.md |
+| 2026-11-15 | day-type-expansion-fx | volatility | null | forge/DAY_TYPE_EXPANSION_PREREG.md |
+| 2026-11-15 | day-type-expansion-gold | volatility | null | forge/DAY_TYPE_EXPANSION_PREREG.md |
+| 2026-11-15 | day-type-expansion-idx | volatility | underpowered | forge/DAY_TYPE_EXPANSION_PREREG.md |
+| 2026-11-15 | exit-on-fixed-entries | execution | null | forge/EXIT_ON_FIXED_ENTRIES_PREREG.md |
+| 2026-11-15 | exit-on-fixed-entries-map | execution | context | forge/EXIT_ON_FIXED_ENTRIES_PREREG.md |
+| 2026-11-15 | hold-day-one-confirm-band | price | underpowered | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
+| 2026-11-15 | hold-day-one-confirm-close | price | underpowered | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
+| 2026-11-15 | hold-day-one-confirm-event | price | underpowered | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
+| 2026-11-15 | hold-day-one-confirm-hold-r | price | null | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
+| 2026-11-15 | hold-day-one-confirm-run | price | null | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
+| 2026-11-15 | hold-day-one-confirm-speed | price | underpowered | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -415,6 +428,8 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/APPROACH_BOOK_EURUSD_PREREG.md`: EURUSD Approach Book — pre-registration (how price arrives at a line)
 - `forge/ASYMMETRIC_TRADES_PREREG.md`: Tight stop, far target at the forecast levels — pre-registration
 - `forge/ATLAS_HONEST_GONOGO_PREREG.md`: atlas-honest-gonogo — With the known leaks removed, real bid/ask fills and the production settings, do the Vot
+- `forge/BIAS_LEARNER_PREREG.md`: bias-learner — Can a walk-forward, heavily regularised learner over ~13 point-in-time morning readings, pooled
+- `forge/BIAS_SCOREBOARD_PREREG.md`: bias-scoreboard — whose morning bias beats the shared public base on the same rows?
 - `forge/BREAK_IVRV_PREREG.md`: Break trades when implied vol is rich — pre-registration
 - `forge/CB_TONE_REACTION_PREREG.md`: cb-tone-reaction — does the ECB / BoE / BoJ statement's hawkish shift line up with the first-30-minute move in
 - `forge/COG_ANALOG_PREREG.md`: COG-ANALOG: match the last 12 hours of the line against its own past and read what Nasdaq did next
