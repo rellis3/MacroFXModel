@@ -254,7 +254,20 @@ UNDERPOWERED whatever its estimate.
 
 ## Amendments
 
-(none)
+### A0 — 2026-11-15 — PRE-RESULTS (code only, no outcome computed)
+The selftest's null panel gave all three synthetic rules the same negative mean, so the picker went FLAT everywhere
+and C2 was trivially 0 (not a test of "null not flagged"). The synthetic rules now carry different regime-free means
+(+0.02 / 0 / −0.02) so the picker trades and a regime-free difference can appear by chance. Synthetic data only. Also:
+because the selftest takes ~25 min on the shared laptop, the real run accepts `--selftest-passed`, which refuses to
+run unless the saved `selftest.log` ends in `SELFTEST PASSED`.
+
+### A1 — 2026-11-15 — POST-HOC (results seen), descriptive only
+Every rule lost in every regime of every family in training, so all three registered books (and the regime-free
+picker) chose FLAT at every quarterly refit and scored exactly 0. The registered evidence packs then have no traded
+rows to plant onto, so their pack-level "UNDERPOWERED" labels are an artefact (the run's own full-pipeline plants,
+G6, are the registered power check). To show *why* the books stayed flat, `scripts/regime-picks-rule/evidence_forced.py`
+packs a **forced** picker (best training-mean rule per regime even when negative) per family. Descriptive; it changes
+no cell word.
 
 ---
 

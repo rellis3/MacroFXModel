@@ -1,0 +1,11 @@
+[selftest i] planted +0.15 interaction: C2 +0.0505 [+0.0381,+0.0630] z 8.03
+[selftest ii] null registered draw: C2 -0.0035 z -0.62
+[selftest ii] null draws flagged: 0/20
+[selftest iii] K chosen 2; |filtered - hmmlearn posterior| at last obs = 1.19e-13
+[selftest iii] filtered labels before t unchanged when returns after t perturbed: True
+[selftest iii] smoothed book - filtered book: +0.0125, CI lower +0.0033
+[selftest iv] FADE target R +1.667 (expect +1.667) via target
+[selftest iv] FADE gap-through stop R -1.700 (expect -1.700) via stop
+[selftest iv] FOLLOW time exit R +0.680 (expect +0.680) via time; exit bar 1314
+[selftest iv] BREAK OCO short then stopped R -1.000 (expect -1.000) via stop
+SELFTEST PASSED
