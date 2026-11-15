@@ -255,7 +255,26 @@ excludes the bar.
 
 ## Amendments
 
-*(none yet)*
+### A1 — 2026-11-15 — PRE-RESULTS (set in the runner before any outcome was computed)
+
+The evidence packs run with fewer resamples than §3.5's 500 placebo draws: 300 placebo shuffles, 20 plants per
+multiple, a 400-draw cluster bootstrap. Other studies were using the laptop at the same time. The scored cells keep
+B = 2000, and the power stage keeps 40 runs per multiple. Fewer placebo draws make the 97.5th-percentile gate noisier
+(about ±1 percentile point); they do not bias it.
+
+### A2 — 2026-11-15 — POST-HOC (results seen): a crash fix in a descriptive step only
+
+The first full run crashed after the scored cells and packs were written, in the §6 quintile ladder of K.
+K = 1 (all four oriented components unanimous) on 29% of rows, so `qcut` found tied edges. Fix: rank K (ties broken by
+row order) before cutting into quintiles. The whole run was repeated from scratch with the same seed. The six scored
+estimates, CIs, power-stage MDEs and verdicts are identical in both runs. No scored cell, threshold or gate changed.
+
+Noted, not changed:
+- Because of the same ties, the causal 2/3 quantile q2 sits at or near 1.0 for much of the sample, so COH is in
+  practice "all four unanimous". COH covers 29% of dates, not the third the design assumed; INC covers 37%.
+- The pack's positive control (cluster = date, i.i.d.; detection = 95% CI lower bound > 0 on the real labels) finds the
+  1× plant in 100% of plants on every cell. The §3.7 power stage (labels permuted as whole dates, 21-day block SE,
+  detection at the Holm first-step z = 2.64) is stricter. Per §4, the binding MDE is the larger of the two.
 
 ---
 

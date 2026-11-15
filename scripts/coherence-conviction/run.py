@@ -460,7 +460,8 @@ def decomposition(P, f, x, betas, E_raw, rng):
     dec.pop()
     # quintile ladder of K (causal? descriptive ladder on full-sample quintiles, labelled as such)
     lad = []
-    qk = pd.qcut(Q['K'], 5, labels=False)
+    qk = pd.qcut(Q['K'].rank(method='first'), 5, labels=False)   # K = 1 (unanimous) ties >20% of rows; rank breaks ties by row order
+    extra['K_eq_1_share_rows'] = float((Q['K'] >= 1 - 1e-12).mean())
     for k in range(5):
         g = Q[qk == k]
         lad.append({'quintile': k + 1, 'n': int(len(g)), 'K_mean': float(g['K'].mean()), 'R': float(g['R'].mean()),
