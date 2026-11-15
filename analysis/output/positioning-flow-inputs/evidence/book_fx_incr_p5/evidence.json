@@ -1,0 +1,270 @@
+{
+ "slug": "positioning-flow-inputs:book|fx|incr|+5",
+ "unit": "Brier skill gain over the bias-learner base, as a fraction of B0 error",
+ "bar": 0.002448531391026029,
+ "n_rows": 5911,
+ "n_clusters": 1972,
+ "n_instruments": 3,
+ "span": [
+  "2019-01-02",
+  "2026-08-13"
+ ],
+ "estimate": 0.00028602600592955653,
+ "ci": [
+  -0.0010469918481504654,
+  0.00168840623975212
+ ],
+ "se": 0.0007091663004636645,
+ "verdict_word": "UNDERPOWERED",
+ "notes": "Runner: est +0.00029 [-0.00277, +0.00381] (21-date moving-block bootstrap); 200-refit block-shuffled-input placebo 95th pct +0.00145. The pack bootstraps dates iid and its placebo shuffles the fitted lean without refit, so the runner's numbers are the binding ones. Plant = labels flipped toward the lean until the statistic rises by the bar; canary = lean set to the realised direction.",
+ "placebo": {
+  "n": 500,
+  "mean": -0.0005039187498484678,
+  "p2_5": -0.0015058274462616845,
+  "p97_5": 0.0005603734340419313,
+  "real_percentile": 92.2
+ },
+ "buckets": [
+  {
+   "bucket": "D1",
+   "n": 592,
+   "mean_outcome": -0.0009679480732272133,
+   "lo": -0.002789182543996299,
+   "hi": 0.000853286397541872,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D2",
+   "n": 591,
+   "mean_outcome": -0.0005717349633801751,
+   "lo": -0.0011923440047224444,
+   "hi": 4.887407796209421e-05,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D3",
+   "n": 591,
+   "mean_outcome": 0.00022189830493688157,
+   "lo": -6.061588949051876e-05,
+   "hi": 0.0005044124993642819,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D4",
+   "n": 591,
+   "mean_outcome": -8.42416269605919e-05,
+   "lo": -0.00015627610178772626,
+   "hi": -1.2207152133457552e-05,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D5",
+   "n": 591,
+   "mean_outcome": -1.5385548300318688e-06,
+   "lo": -3.7593633953087887e-06,
+   "hi": 6.822537352450509e-07,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D6",
+   "n": 591,
+   "mean_outcome": -5.569136130688471e-07,
+   "lo": -1.0293194649000586e-06,
+   "hi": -8.450776123763561e-08,
+   "mean_side": 0.7123519458544839
+  },
+  {
+   "bucket": "D7",
+   "n": 591,
+   "mean_outcome": 1.8488737430629673e-05,
+   "lo": -3.2766486224566758e-06,
+   "hi": 4.025412348371602e-05,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D8",
+   "n": 591,
+   "mean_outcome": -0.00010310483898668139,
+   "lo": -0.0003402130806649892,
+   "hi": 0.0001340034026916264,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D9",
+   "n": 591,
+   "mean_outcome": -0.00038570699876876646,
+   "lo": -0.0010732988228802085,
+   "hi": 0.0003018848253426756,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D10",
+   "n": 591,
+   "mean_outcome": 0.0025881083368302226,
+   "lo": 0.0007092586053374331,
+   "hi": 0.004466958068323012,
+   "mean_side": 1.0
+  }
+ ],
+ "by_instrument": [
+  {
+   "inst": "EURUSD",
+   "n": 1970,
+   "estimate": -0.001605893379971631,
+   "ci": [
+    -0.0037262179829175134,
+    0.0006168739235582507
+   ]
+  },
+  {
+   "inst": "GBPUSD",
+   "n": 1970,
+   "estimate": -0.0010052688529766888,
+   "ci": [
+    -0.002440429292576911,
+    0.0009073253442681451
+   ]
+  },
+  {
+   "inst": "USDJPY",
+   "n": 1971,
+   "estimate": 0.0035364728240257,
+   "ci": [
+    0.0015793901941563383,
+    0.00569278826875415
+   ]
+  }
+ ],
+ "by_year": [
+  {
+   "year": "2019",
+   "n": 771,
+   "estimate": -0.0004199808173032157,
+   "ci": [
+    -0.0024929017588889864,
+    0.0018380836230118052
+   ]
+  },
+  {
+   "year": "2020",
+   "n": 780,
+   "estimate": -0.004427603849607688,
+   "ci": [
+    -0.008806981567817382,
+    0.00011410802189724289
+   ]
+  },
+  {
+   "year": "2021",
+   "n": 777,
+   "estimate": -0.0009301679133378069,
+   "ci": [
+    -0.003471821840941605,
+    0.0012089400554754059
+   ]
+  },
+  {
+   "year": "2022",
+   "n": 771,
+   "estimate": 0.010297646368460088,
+   "ci": [
+    0.002099115831749777,
+    0.01921069501222663
+   ]
+  },
+  {
+   "year": "2023",
+   "n": 777,
+   "estimate": 2.772925567492348e-06,
+   "ci": [
+    -3.726870473985279e-06,
+    8.45673240969209e-06
+   ]
+  },
+  {
+   "year": "2024",
+   "n": 779,
+   "estimate": -4.216197568246218e-06,
+   "ci": [
+    -1.2208861630060593e-05,
+    3.1068896450836033e-06
+   ]
+  },
+  {
+   "year": "2025",
+   "n": 776,
+   "estimate": -0.0021000474226348866,
+   "ci": [
+    -0.003358368549882909,
+    -0.0010285956208804512
+   ]
+  },
+  {
+   "year": "2026",
+   "n": 480,
+   "estimate": -0.00017319320919978668,
+   "ci": [
+    -0.0006673718793162698,
+    0.00023368229756691908
+   ]
+  }
+ ],
+ "by_half": [
+  {
+   "half": "H1",
+   "n": 2958,
+   "estimate": -0.0021817198068345167,
+   "ci": [
+    -0.004211317665029336,
+    0.00010581983665630118
+   ]
+  },
+  {
+   "half": "H2",
+   "n": 2953,
+   "estimate": 0.002770906220494449,
+   "ci": [
+    0.0014101939798977072,
+    0.004656574425939291
+   ]
+  }
+ ],
+ "without_top1pct": -0.0015065440058304085,
+ "positive_control": [
+  {
+   "multiple_of_bar": 0.5,
+   "planted": 0.0012242656955130146,
+   "detected_share": 1.0,
+   "mean_recovered": 0.0015223205891130795
+  },
+  {
+   "multiple_of_bar": 1.0,
+   "planted": 0.002448531391026029,
+   "detected_share": 1.0,
+   "mean_recovered": 0.002745630591945758
+  },
+  {
+   "multiple_of_bar": 2.0,
+   "planted": 0.004897062782052058,
+   "detected_share": 1.0,
+   "mean_recovered": 0.0051945020724044975
+  }
+ ],
+ "lookahead_canary": {
+  "estimate_with_leak": 1.0010696978538458,
+  "estimate_clean": 0.00028602600592955653
+ },
+ "diagnosis": {
+  "checks": {
+   "ci_excludes_zero": false,
+   "ci_excludes_bar": true,
+   "beats_placebo_97_5": false,
+   "pipeline_finds_planted_bar": true,
+   "same_sign_both_halves": false,
+   "share_instruments_same_sign": 0.3333333333333333,
+   "survives_top1pct_removed": false,
+   "survives_costs": null
+  },
+  "label": "FLAT: the test could see a useful effect (planted control found), and the interval rules it out"
+ }
+}

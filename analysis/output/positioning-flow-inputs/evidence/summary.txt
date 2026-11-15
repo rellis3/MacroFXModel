@@ -1,0 +1,28 @@
+book|fx|alone|21:00: est -0.00023 bar +0.00408 plant1x 1.0 placebo pct 17 canary +1.000 -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+book|fx|incr|21:00: est +0.00056 bar +0.00245 plant1x 1.0 placebo pct 98 canary +1.000 -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+book|gold|alone|21:00: est -0.00044 bar +0.00375 plant1x 0.0 placebo pct 86 canary +1.000 -> UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown
+book|gold|incr|21:00: est +0.00007 bar +0.00246 plant1x 0.15 placebo pct 86 canary +0.999 -> UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown
+rr|fx|alone|21:00: est -0.00037 bar +0.00479 plant1x 1.0 placebo pct 79 canary +1.000 -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+rr|fx|incr|21:00: est -0.00192 bar +0.00278 plant1x 0.0 placebo pct 15 canary +1.001 -> UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown
+rr|idx|alone|21:00: est +0.00077 bar -0.00020 plant1x 0.0 placebo pct 83 canary +1.000 -> UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown
+rr|idx|incr|21:00: est +0.00079 bar +0.00001 plant1x 0.0 placebo pct 90 canary +1.003 -> UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown
+vrp|fx|alone|21:00: est -0.00012 bar +0.00614 plant1x 1.0 placebo pct 39 canary +1.000 -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+vrp|fx|incr|21:00: est +0.00085 bar +0.00445 plant1x 1.0 placebo pct 96 canary +1.002 -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+vrp|gold|alone|21:00: est -0.00077 bar +0.00559 plant1x 1.0 placebo pct 0 canary +1.000 -> WRONG SIGN: there is an effect, and it is the opposite of the claim
+vrp|idx|alone|21:00: est -0.00003 bar +0.00578 plant1x 1.0 placebo pct 24 canary +1.000 -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+monthend|fx|alone|21:00: est -0.00190 bar +0.00559 plant1x 0.0 placebo pct 45 canary +1.000 -> UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown
+monthend|fx|incr|21:00: est -0.00090 bar +0.00202 plant1x 0.0 placebo pct 22 canary +0.998 -> UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown
+book|fx|alone|+5: est -0.00013 bar +0.00408 plant1x 1.0 placebo pct 15 canary +1.000 -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+book|fx|incr|+5: est +0.00029 bar +0.00245 plant1x 1.0 placebo pct 92 canary +1.001 -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+book|gold|alone|+5: est -0.00437 bar +0.00375 plant1x 0.0 placebo pct 1 canary +1.000 -> UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown
+book|gold|incr|+5: est -0.00472 bar +0.00246 plant1x 0.0 placebo pct 68 canary +1.000 -> UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown
+rr|fx|alone|+5: est +0.00096 bar +0.00479 plant1x 1.0 placebo pct 100 canary +1.000 -> SMALL BUT REAL: above zero, below the useful size
+rr|fx|incr|+5: est +0.00004 bar +0.00278 plant1x 1.0 placebo pct 69 canary +0.999 -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+rr|idx|alone|+5: est -0.00050 bar -0.00020 plant1x 0.0 placebo pct 30 canary +1.000 -> UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown
+rr|idx|incr|+5: est -0.00051 bar +0.00001 plant1x 0.0 placebo pct 24 canary +1.021 -> UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown
+vrp|fx|alone|+5: est -0.00314 bar +0.00614 plant1x 1.0 placebo pct 0 canary +1.000 -> WRONG SIGN: there is an effect, and it is the opposite of the claim
+vrp|fx|incr|+5: est -0.00129 bar +0.00445 plant1x 1.0 placebo pct 19 canary +0.999 -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+vrp|gold|alone|+5: est -0.00042 bar +0.00559 plant1x 1.0 placebo pct 32 canary +1.000 -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+vrp|idx|alone|+5: est -0.00263 bar +0.00578 plant1x 1.0 placebo pct 0 canary +1.000 -> WRONG SIGN: there is an effect, and it is the opposite of the claim
+monthend|fx|alone|+5: est +0.01877 bar +0.00559 plant1x 0.05 placebo pct 100 canary +1.000 -> UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown
+monthend|fx|incr|+5: est +0.01641 bar +0.00202 plant1x 0.0 placebo pct 100 canary +0.999 -> UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown

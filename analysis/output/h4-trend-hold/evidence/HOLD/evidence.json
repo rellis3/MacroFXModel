@@ -1,0 +1,323 @@
+{
+ "slug": "h4-trend-hold:HOLD",
+ "unit": "R per trade (net of 0.03 R)",
+ "bar": 0.05,
+ "n_rows": 16719,
+ "n_clusters": 2659,
+ "n_instruments": 13,
+ "span": [
+  "2016-01-27",
+  "2026-08-20"
+ ],
+ "estimate": 0.010345056245555614,
+ "ci": [
+  -0.028230740183752632,
+  0.046561861201236746
+ ],
+ "se": 0.018690007549890184,
+ "verdict_word": "EXPLORATORY (no verdict word)",
+ "notes": "DATA DIFFERS FROM THE STUDY: local M1 mid resampled to H1, 2016-01-04 -> 2026-08-21, 13 instruments; the study used dashboard OANDA H1 2026-02-26 -> 2026-11-12. The rule is the study's own simulate(). Bar +0.05 R borrowed from exit-on-fixed-entries (the study had none). Max |chosen-side R - simulate() R| = 0.00e+00. HOLD: opposite-side R approximated as -(R+cost)-cost (wrong for stopped trades), so the HOLD placebo is approximate. Buckets: (R_long - R_short)/2 by slope state; a working trend read would put the long-slope bucket above zero and the short-slope bucket below.",
+ "placebo": {
+  "n": 500,
+  "mean": -0.02682960587887934,
+  "p2_5": -0.05066432954683731,
+  "p97_5": -0.003076984602734365,
+  "real_percentile": 100.0
+ },
+ "buckets": [
+  {
+   "bucket": "-1",
+   "n": 8059,
+   "mean_outcome": -0.0011276804175817056,
+   "lo": -0.03714448915319376,
+   "hi": 0.03488912831803035,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "1",
+   "n": 8660,
+   "mean_outcome": 0.07684076430532955,
+   "lo": 0.04264965678745648,
+   "hi": 0.11103187182320261,
+   "mean_side": 1.0
+  }
+ ],
+ "by_instrument": [
+  {
+   "inst": "AUDUSD",
+   "n": 1295,
+   "estimate": -0.008950796091040566,
+   "ci": [
+    -0.09019100023116569,
+    0.06811046675318268
+   ]
+  },
+  {
+   "inst": "EURJPY",
+   "n": 1294,
+   "estimate": 0.016547713844885924,
+   "ci": [
+    -0.0797925765692936,
+    0.08782307230021774
+   ]
+  },
+  {
+   "inst": "EURUSD",
+   "n": 1282,
+   "estimate": 0.026236112220223054,
+   "ci": [
+    -0.061292640815964576,
+    0.10289654267649004
+   ]
+  },
+  {
+   "inst": "GBPJPY",
+   "n": 1274,
+   "estimate": 0.015248249227272912,
+   "ci": [
+    -0.06475435763918679,
+    0.09232653735905905
+   ]
+  },
+  {
+   "inst": "GBPUSD",
+   "n": 1341,
+   "estimate": -0.021310852859658804,
+   "ci": [
+    -0.11161340103771711,
+    0.05743650151514075
+   ]
+  },
+  {
+   "inst": "GOLD",
+   "n": 1267,
+   "estimate": 0.1027115648018303,
+   "ci": [
+    -0.0025321288736405217,
+    0.18671884843476438
+   ]
+  },
+  {
+   "inst": "NAS100",
+   "n": 1265,
+   "estimate": 0.002198380268679937,
+   "ci": [
+    -0.07512278158750127,
+    0.08481611506252701
+   ]
+  },
+  {
+   "inst": "NZDUSD",
+   "n": 1276,
+   "estimate": 0.00647786113596397,
+   "ci": [
+    -0.0770267017122908,
+    0.09689925537878626
+   ]
+  },
+  {
+   "inst": "SPX500",
+   "n": 1268,
+   "estimate": -0.0005643406708878583,
+   "ci": [
+    -0.08879438619842406,
+    0.07858771010400539
+   ]
+  },
+  {
+   "inst": "US30",
+   "n": 1285,
+   "estimate": -0.0025470076853425882,
+   "ci": [
+    -0.08184289906673646,
+    0.08582984259009999
+   ]
+  },
+  {
+   "inst": "USDCAD",
+   "n": 1262,
+   "estimate": -0.024518193257602607,
+   "ci": [
+    -0.11684998034231175,
+    0.06242584409531512
+   ]
+  },
+  {
+   "inst": "USDCHF",
+   "n": 1348,
+   "estimate": -0.012967166954606766,
+   "ci": [
+    -0.10655257927084974,
+    0.0822562375131535
+   ]
+  },
+  {
+   "inst": "USDJPY",
+   "n": 1262,
+   "estimate": 0.03952643283197821,
+   "ci": [
+    -0.043555142766269477,
+    0.1278776633271818
+   ]
+  }
+ ],
+ "by_year": [
+  {
+   "year": "2016",
+   "n": 1442,
+   "estimate": 0.007795177759416867,
+   "ci": [
+    -0.09227739062504807,
+    0.14181731043841664
+   ]
+  },
+  {
+   "year": "2017",
+   "n": 1551,
+   "estimate": -0.0013694566270646463,
+   "ci": [
+    -0.11174577437835223,
+    0.10775451533835279
+   ]
+  },
+  {
+   "year": "2018",
+   "n": 1596,
+   "estimate": 0.027714659320601253,
+   "ci": [
+    -0.1035930143512465,
+    0.12193638732816302
+   ]
+  },
+  {
+   "year": "2019",
+   "n": 1552,
+   "estimate": 0.045223854963996245,
+   "ci": [
+    -0.060459605713209505,
+    0.1553709676510348
+   ]
+  },
+  {
+   "year": "2020",
+   "n": 1541,
+   "estimate": 0.12163836072236069,
+   "ci": [
+    -0.02162071974054531,
+    0.3049550946970703
+   ]
+  },
+  {
+   "year": "2021",
+   "n": 1630,
+   "estimate": -0.0641607857548798,
+   "ci": [
+    -0.17445245694355915,
+    0.06562554639148904
+   ]
+  },
+  {
+   "year": "2022",
+   "n": 1585,
+   "estimate": -0.011852920862180538,
+   "ci": [
+    -0.14188628678683748,
+    0.12279090967526615
+   ]
+  },
+  {
+   "year": "2023",
+   "n": 1610,
+   "estimate": -0.017628388110931044,
+   "ci": [
+    -0.1343615733616582,
+    0.09383116307758953
+   ]
+  },
+  {
+   "year": "2024",
+   "n": 1566,
+   "estimate": 0.046833495467092666,
+   "ci": [
+    -0.07231294335116642,
+    0.17068894326005227
+   ]
+  },
+  {
+   "year": "2025",
+   "n": 1560,
+   "estimate": 0.018785954274094543,
+   "ci": [
+    -0.08096611118590664,
+    0.12526777296119754
+   ]
+  },
+  {
+   "year": "2026",
+   "n": 1086,
+   "estimate": -0.08187756367169664,
+   "ci": [
+    -0.1917181472946716,
+    0.04412336471061384
+   ]
+  }
+ ],
+ "by_half": [
+  {
+   "half": "H1",
+   "n": 8364,
+   "estimate": 0.027681817176508958,
+   "ci": [
+    -0.020269347996448677,
+    0.08916534513621646
+   ]
+  },
+  {
+   "half": "H2",
+   "n": 8355,
+   "estimate": -0.007010379831822442,
+   "ci": [
+    -0.06241783216453927,
+    0.04907328258492716
+   ]
+  }
+ ],
+ "without_top1pct": -0.06885535473313692,
+ "positive_control": [
+  {
+   "multiple_of_bar": 0.5,
+   "planted": 0.025,
+   "detected_share": 0.43333333333333335,
+   "mean_recovered": 0.0353450562455556
+  },
+  {
+   "multiple_of_bar": 1.0,
+   "planted": 0.05,
+   "detected_share": 1.0,
+   "mean_recovered": 0.06034505624555562
+  },
+  {
+   "multiple_of_bar": 2.0,
+   "planted": 0.1,
+   "detected_share": 1.0,
+   "mean_recovered": 0.11034505624555561
+  }
+ ],
+ "lookahead_canary": {
+  "estimate_with_leak": 1.156376724430106,
+  "estimate_clean": 0.010345056245555614
+ },
+ "diagnosis": {
+  "checks": {
+   "ci_excludes_zero": false,
+   "ci_excludes_bar": true,
+   "beats_placebo_97_5": true,
+   "pipeline_finds_planted_bar": true,
+   "same_sign_both_halves": false,
+   "share_instruments_same_sign": 0.5384615384615384,
+   "survives_top1pct_removed": false,
+   "survives_costs": null
+  },
+  "label": "FLAT: the test could see a useful effect (planted control found), and the interval rules it out"
+ }
+}

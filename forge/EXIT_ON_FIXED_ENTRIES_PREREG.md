@@ -279,7 +279,18 @@ Any exit whose MDE = 3.48 × max(shift-placebo SD of Δ, date-block bootstrap SE
 
 ## Amendments
 
-*(none)*
+### A1 — 2026-11-14 — PRE-RESULTS
+Runner details fixed while writing `scripts/exit-on-fixed-entries/run.py`. No real data had been read: M1 is not in this
+container, and only `--selftest` synthetic paths were scored.
+1. **Stricter planted check in the selftest.** A 0.20R/day planted momentum must pass the full gate. This is a code
+   check only, not a scored cell.
+2. **Reconciliation stop.** Before any Δ is scored, the 21:00-close baseline is reconciled with the exploratory
+   `h4-trend-hold` DAY variant on the same entries. The run stops if the gap is above 0.03R, unless
+   `--ack-reconciliation` is given; RESULTS.md must then explain the gap.
+3. **Continuous synthetic paths.** The selftest uses continuous paths, because a coarse random walk with stops filled
+   at their level biased both sides by about +0.005R at the 21:00 close.
+
+None of this changes an entry, an exit, the metric, the gate or a pass bar.
 
 ---
 

@@ -1,0 +1,169 @@
+# hold-day-one-confirm: does how a big day closes say whether it keeps running?
+
+Pre-registered: `forge/HOLD_DAY_ONE_CONFIRM_PREREG.md`. Seed 20261114. Run 2026-11-15 at `63f71968` (dirty tree), 3.9 min. Sample 2020-08-24 → 2026-08-20 (lockbox 2026-08-21), 13 instruments, k = 1.0σ, horizons [1, 2, 3, 5] sessions, B = 2000, shift step 5, MC 300.
+
+## Verdicts (scored cells, P̄ = ¼ Σ_h cell_h / √h)
+
+| Ledger id | P̄ | 95% CI | SE (boot / MC) | Holm p | H1 / H2 | placebo pct | gates | power (MDE first step) | **verdict** |
+|---|---|---|---|---|---|---|---|---|---|
+| `hold-day-one-confirm-run` | -0.038 | [-0.095, +0.020] | 0.030 / 0.028 | 1.000 | -0.030 / -0.048 | 11.6 | G1✗ G2✗ G3✗ G5✗ | 0.098 (POWERED) | **NULL** |
+| `hold-day-one-confirm-close` | -0.016 | [-0.161, +0.124] | 0.073 / 0.059 | 1.000 | +0.056 / -0.092 | 35.8 | G1✗ G2✗ G3✗ G5✗ | 0.205 (UNDERPOWERED) | **UNDERPOWERED** |
+| `hold-day-one-confirm-speed` | +0.021 | [-0.065, +0.105] | 0.043 / 0.044 | 1.000 | +0.072 / -0.051 | 69.5 | G1✗ G2✗ G3✗ | 0.152 (UNDERPOWERED) | **UNDERPOWERED** |
+| `hold-day-one-confirm-band` | +0.046 | [-0.020, +0.115] | 0.034 / 0.032 | 1.000 | +0.092 / -0.008 | 93.0 | G1✗ G2✗ G3✗ | 0.112 (POWERED at the last Holm step only) | **UNDERPOWERED** |
+| `hold-day-one-confirm-event` | +0.066 | [-0.069, +0.202] | 0.068 / 0.060 | 1.000 | +0.215 / -0.096 | 85.1 | G1✗ G2✗ G3✗ | 0.210 (UNDERPOWERED) | **UNDERPOWERED** |
+| `hold-day-one-confirm-hold-r` | +0.003 | [-0.044, +0.053] | 0.023 / 0.025 | 1.000 | +0.000 / +0.007 | 59.9 | G1✗ G2✓ G3✗ G4✗ | 0.086 (POWERED) | **NULL** |
+
+U = 0.1 (σ per √day; R for hold-r). Gates per prereg §4. Mirror (FADED − B0) P̄ +0.056 [-0.009, +0.114]; STRONG − FADED -0.094 [-0.177, -0.003]. STRONG hold vs flat -0.018 [-0.064, +0.030] R.
+
+## Per horizon (descriptive, BH q = 0.10 over 24)
+
+| cell | h | value | 95% CI | p | BH |
+|---|---|---|---|---|---|
+| run | 1 | -0.005 | [-0.061, +0.063] | 0.883 |  |
+| run | 2 | -0.051 | [-0.140, +0.043] | 0.282 |  |
+| run | 3 | -0.115 | [-0.244, +0.005] | 0.072 |  |
+| run | 5 | -0.102 | [-0.265, +0.054] | 0.210 |  |
+| close | 1 | +0.079 | [-0.088, +0.258] | 0.368 |  |
+| close | 2 | -0.123 | [-0.377, +0.125] | 0.335 |  |
+| close | 3 | +0.025 | [-0.267, +0.298] | 0.861 |  |
+| close | 5 | -0.156 | [-0.628, +0.268] | 0.484 |  |
+| speed | 1 | -0.067 | [-0.177, +0.040] | 0.228 |  |
+| speed | 2 | +0.108 | [-0.046, +0.261] | 0.165 |  |
+| speed | 3 | +0.116 | [-0.067, +0.291] | 0.207 |  |
+| speed | 5 | +0.014 | [-0.206, +0.242] | 0.903 |  |
+| band | 1 | +0.026 | [-0.056, +0.113] | 0.528 |  |
+| band | 2 | +0.128 | [+0.019, +0.235] | 0.020 |  |
+| band | 3 | +0.059 | [-0.077, +0.197] | 0.401 |  |
+| band | 5 | +0.079 | [-0.089, +0.245] | 0.360 |  |
+| event | 1 | +0.137 | [-0.016, +0.288] | 0.083 |  |
+| event | 2 | +0.050 | [-0.194, +0.282] | 0.681 |  |
+| event | 3 | +0.083 | [-0.179, +0.351] | 0.534 |  |
+| event | 5 | +0.095 | [-0.270, +0.471] | 0.610 |  |
+| hold-r | 1 | +0.004 | [-0.045, +0.065] | 0.892 |  |
+| hold-r | 2 | -0.001 | [-0.065, +0.064] | 0.979 |  |
+| hold-r | 3 | -0.021 | [-0.106, +0.064] | 0.640 |  |
+| hold-r | 5 | +0.045 | [-0.057, +0.153] | 0.407 |  |
+
+## Counts
+
+| class | instrument-days | dates |
+|---|---|---|
+| big | 4968 | 1247 |
+| STRONG | 2456 | 899 |
+| MID | 681 | 399 |
+| TRUEMID | 418 | 260 |
+| FAST | 958 | 432 |
+| SLOW | 4010 | 1172 |
+| P90 | 2624 | 887 |
+| NOP90 | 2344 | 1032 |
+| EVT | 766 | 150 |
+| NOEVT | 4116 | 1070 |
+| FADED | 2488 | 976 |
+
+## Hold R legs (STRONG, one position per instrument, net of 0.03R)
+
+| h | n | skipped | mean | P(win) | E[win] | E[loss] | stopped | top-10% share | ES 5% | cost 0.06 | + financing | coin placebo | MID hold |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 2453 | 3 | -0.024 | 0.45 | +0.855 | -0.754 | 0.32 | -8.408 | -1.092 | -0.054 | -0.034 | -0.028 | -0.044 |
+| 2 | 2304 | 152 | -0.033 | 0.41 | +1.249 | -0.909 | 0.48 | -8.367 | -1.097 | -0.063 | -0.053 | -0.032 | -0.024 |
+| 3 | 2198 | 258 | -0.040 | 0.35 | +1.640 | -0.960 | 0.57 | -8.414 | -1.123 | -0.070 | -0.070 | -0.019 | -0.121 |
+| 5 | 2032 | 424 | -0.003 | 0.31 | +2.220 | -1.011 | 0.66 | -162.014 | -1.131 | -0.033 | -0.053 | -0.047 | -0.142 |
+
+## Descriptive arms (no pass/fail weight)
+
+- **k0.75**: run -0.049 [-0.095, -0.002]; close -0.048 [-0.167, +0.083]; speed +0.029 [-0.046, +0.105]; band +0.060 [-0.005, +0.122]; event +0.048 [-0.061, +0.153]
+- **k1.5**: run -0.027 [-0.117, +0.063]; close +0.019 [-0.234, +0.293]; speed +0.008 [-0.109, +0.136]; band -0.044 [-0.256, +0.231]; event +0.151 [-0.053, +0.355]
+- **sigma_har800**: run -0.033 [-0.088, +0.022]; close +0.039 [-0.095, +0.185]; speed +0.019 [-0.083, +0.106]; band +0.043 [-0.026, +0.107]; event +0.072 [-0.071, +0.210]
+- **bands_00_anchor**: run -0.038 [-0.095, +0.017]; close -0.016 [-0.157, +0.139]; speed -0.024 [-0.103, +0.061]; band +0.066 [-0.004, +0.131]; event +0.066 [-0.068, +0.197]
+- **strong_minus_truemid_0.30_0.70**: -0.074 [-0.216, +0.081]
+- **run_thinned**: -0.059 [-0.119, -0.003]
+- **run_without_top1pct**: -0.040 [-0.095, +0.013]
+- **run_last_two_years**: -0.061 [-0.186, +0.065]
+- **run by year**: 2020 -0.172, 2021 -0.084, 2022 +0.051, 2023 -0.017, 2024 -0.040, 2025 -0.123, 2026 +0.043
+- **ladder_q** (bin: n, R1, R5): None–0.1: 0, —, —; 0.1–0.2: 0, —, —; 0.2–0.30000000000000004: 0, —, —; 0.30000000000000004–0.4: 10, +1.007, +1.976; 0.4–0.5: 24, +0.028, +0.127; 0.5–0.6: 101, -0.040, +0.376; 0.6–0.7000000000000001: 283, +0.001, +0.005; 0.7000000000000001–0.8: 686, +0.032, -0.060; 0.8–0.9: 1408, -0.035, -0.085; 0.9–None: 2456, -0.005, -0.102
+- **ladder_z1** (bin: n, R1, R5): None–1.25: 1785, -0.023, -0.137; 1.25–1.5: 1146, +0.016, -0.006; 1.5–2.0: 1231, +0.012, -0.019; 2.0–2.5: 432, -0.015, -0.068; 2.5–None: 374, -0.048, -0.117
+- **ladder_t50** (bin: n, R1, R5): None–30.0: 51, -0.108, -0.104; 30.0–60.0: 184, -0.095, +0.139; 60.0–120.0: 710, -0.047, -0.094; 120.0–240.0: 904, -0.026, -0.106; 240.0–480.0: 2161, +0.029, +0.043; 480.0–None: 958, -0.015, -0.310
+
+### Paths by class (σ units; MFE / MAE at h; share reaching +1σ before −1σ within 5 sessions)
+
+| class | n | MFE1 | MAE1 | MFE5 | MAE5 | +1 before −1 | neither |
+|---|---|---|---|---|---|---|---|
+| STRONG | 2456 | +0.870 | -0.865 | +1.946 | -1.980 | +0.506 | +0.020 |
+| MID | 681 | +0.990 | -0.918 | +2.218 | -2.013 | +0.517 | +0.012 |
+| FADED | 2488 | +0.955 | -0.871 | +2.132 | -1.963 | +0.507 | +0.014 |
+| FAST | 958 | +0.948 | -0.980 | +2.202 | -2.109 | +0.509 | +0.005 |
+| SLOW | 4010 | +0.875 | -0.860 | +1.938 | -1.977 | +0.508 | +0.016 |
+| P90 | 2624 | +0.960 | -0.938 | +2.152 | -2.076 | +0.518 | +0.012 |
+| NOP90 | 2344 | +0.810 | -0.823 | +1.807 | -1.921 | +0.496 | +0.016 |
+| EVT | 766 | +0.943 | -0.809 | +1.960 | -1.818 | +0.532 | +0.021 |
+| NOEVT | 4116 | +0.880 | -0.893 | +1.994 | -2.030 | +0.506 | +0.009 |
+
+### Per family
+
+| family | run | close | speed | band | event | hold-r |
+|---|---|---|---|---|---|---|
+| fx | -0.037 [-0.108, +0.037] | +0.054 [-0.085, +0.203] | +0.064 [-0.043, +0.159] | +0.005 [-0.070, +0.076] | +0.120 [-0.032, +0.267] | -0.008 [-0.055, +0.052] |
+| gold | +0.070 [-0.088, +0.248] | -0.259 [-0.811, +0.353] | +0.057 [-0.297, +0.428] | +0.237 [-0.014, +0.487] | -0.127 [-0.442, +0.177] | +0.035 [-0.077, +0.168] |
+| idx | -0.070 [-0.175, +0.024] | -0.110 [-0.474, +0.209] | -0.192 [-0.510, +0.125] | +0.096 [-0.028, +0.242] | -0.025 [-0.248, +0.198] | +0.023 [-0.061, +0.096] |
+
+### Per instrument (BH q = 0.10): 0 of 78 survive; nominal p < 0.05: 5 vs 3.9 expected (P ≥ that by chance 0.351). Survivors are candidates for their own prereg, never results.
+
+| inst | run | close | speed | band | event | hold-r |
+|---|---|---|---|---|---|---|
+| EURUSD | -0.022 | +0.149 | +0.040 | +0.133 | +0.225 | -0.050 |
+| GBPUSD | -0.036 | -0.048 | +0.193 | -0.031 | +0.177 | +0.012 |
+| USDJPY | -0.089 | -0.130 | +0.013 | -0.065 | +0.299 | -0.049 |
+| AUDUSD | -0.067 | +0.133 | +0.152 | +0.209 | -0.136 | +0.001 |
+| USDCAD | +0.004 | +0.090 | -0.138 | +0.048 | -0.029 | +0.002 |
+| USDCHF | -0.009 | +0.013 | +0.019 | +0.014 | +0.266 | +0.008 |
+| NZDUSD | -0.050 | +0.112 | +0.254 | -0.100 | -0.098 | -0.040 |
+| EURJPY | -0.049 | +0.207 | +0.019 | -0.187 | +0.131 | +0.042 |
+| GBPJPY | -0.046 | -0.027 | +0.058 | +0.004 | +0.247 | -0.006 |
+| GOLD | +0.070 | -0.259 | +0.057 | +0.237 | -0.127 | +0.035 |
+| NQ | -0.022 | -0.254 | -0.274 | +0.166 | -0.041 | +0.049 |
+| SPX500 | -0.078 | +0.037 | -0.115 | +0.058 | -0.052 | +0.027 |
+| US30 | -0.110 | -0.108 | -0.189 | +0.071 | +0.019 | -0.009 |
+
+## Data drops
+
+| inst | sigma days | valid day ones | dropped |
+|---|---|---|---|
+| EURUSD | 1555 | 1552 | 3 |
+| GBPUSD | 1555 | 1552 | 3 |
+| USDJPY | 1555 | 1552 | 3 |
+| AUDUSD | 1555 | 1536 | 19 |
+| USDCAD | 1555 | 1548 | 7 |
+| USDCHF | 1555 | 1517 | 38 |
+| NZDUSD | 1556 | 1535 | 21 |
+| EURJPY | 1555 | 1550 | 5 |
+| GBPJPY | 1555 | 1552 | 3 |
+| GOLD | 1498 | 1494 | 4 |
+| NQ | 1493 | 1489 | 4 |
+| SPX500 | 1493 | 1486 | 7 |
+| US30 | 1493 | 1489 | 4 |
+
+Positive control: {'planted_recovered': True, 'null_not_flagged': True, 'placebo_at_minus_cost': True} (`positive_control.json`). Power table on the real setup dates: `power.json`.
+
+## What this changes
+
+- **run and hold-r (NULL, powered):**
+  - Big days (≥ 1σ) do not continue over +1 to +5 days on average.
+  - Holding from 21:00 with a 1σ stop earns +0.003R [−0.044, +0.053], which is nothing.
+  - The 21:00 review keeps no "hold because the day was big" rule, and the desk card's default is flat at 21:00.
+- **close, speed, band, event (UNDERPOWERED by design):** no hold rule ships on any of them.
+  - The one lead is `band` at h = 2: +0.128 [+0.019, +0.235], uncorrected; 1 of 24 cells, not significant after BH.
+    A day that reaches its p90 band may run on for two sessions.
+  - That is a candidate for its own prereg on fresh data, never a result.
+- **Reopen** with post-lockbox sessions, or with a positioning or flow reason for continuation.
+
+
+## Evidence pack (2026-11-15)
+
+Diagnostics only (register row `evidence-pack-retrofit`, EXPLORATORY); the verdict above does not change. Built by `scripts/hold-day-one-confirm/evidence.py` with the shared `scripts/evidence_pack/pack.py`.
+
+Rows are rebuilt by calling the runner's own run() (hooks capture the outcome arrays it scores; its side files go to a temp folder). Both headlines reproduce the banked P̄ exactly (run −0.038, hold-r +0.003). How to read it: (1) **run** — the positive control plants +0.10 on the real rows, but the real estimate is −0.038, so the planted total is only +0.062 and is found 33% of the time (100% at 2× bar); that offset, not noise, gives the pack's UNDERPOWERED label. The runner's Monte-Carlo power (MDE 0.098, POWERED) is the binding power statement, and the CI rules out the bar either way (upper end +0.027). 11 of 13 instruments are negative (gold and USDCAD the exceptions); both halves negative. The shuffle band here (±0.02) is narrower than the bootstrap because a per-row side shuffle breaks the way big days cluster across instruments and horizons; the runner's date-shift placebo (11.6th pct) is the binding one. (2) **hold-r** — FLAT: a planted +0.10 R is found 100% of the time, 0.5× bar 90%, and the CI [−0.043, +0.054] stops below the bar. Its sign is not stable (halves −0.009 / +0.014, 7 of 13 instruments positive, flips sign without the top 1%). The 'survives costs' tick is only because the 0.03 R cost is already inside R. The shuffled band sits above zero (+0.019 mean) because shuffled sides keep the one-position entry set but not its side; the runner's placebo is binding. Canary: leaking the outcome sign gives +0.88 (run) and +0.63 R (hold-r).
+
+| Cell | Diagnosis | Estimate [95% CI] | Bar | Planted 0.5×/1×/2× found | Shuffle pct | Halves H1 / H2 | Inst. same sign | Top-1% removed | Canary (leaked) | Charts |
+|---|---|---|---|---|---|---|---|---|---|---|
+| run | **UNDERPOWERED** | -0.0382 [-0.0986, +0.0274] | +0.1 | 0%/33%/100% | 0 | -0.0424 / -0.0339 | 85% | ✓ | +0.878 | [placebo](evidence/run/placebo.png) · [buckets](evidence/run/buckets.png) · [breakdown](evidence/run/breakdown.png) · [plants](evidence/run/plants.png) · [pack](evidence/run/EVIDENCE.md) |
+| hold-r | **FLAT** | +0.00288 [-0.0427, +0.0535] | +0.1 | 90%/100%/100% | 3 | -0.0086 / +0.0142 | 54% | ✗ | +0.632 | [placebo](evidence/hold-r/placebo.png) · [buckets](evidence/hold-r/buckets.png) · [breakdown](evidence/hold-r/breakdown.png) · [plants](evidence/hold-r/plants.png) · [pack](evidence/hold-r/EVIDENCE.md) |

@@ -1,0 +1,98 @@
+{
+ "planted": {
+  "dR_coh_inc": {
+   "est": 0.14469402333819292,
+   "lo": 0.12854745663342854,
+   "hi": 0.16366085363576932
+  },
+  "dR_coh_all": {
+   "est": 0.09403404175817433,
+   "lo": 0.0845507106438656,
+   "hi": 0.10355448115867821
+  },
+  "dhit_coh_inc": {
+   "est": 0.07430315225796791,
+   "lo": 0.061510283379931016,
+   "hi": 0.08638210395117166
+  },
+  "dhit_coh_all": {
+   "est": 0.048912942467758125,
+   "lo": 0.04158959503446228,
+   "hi": 0.05624411927089041
+  },
+  "dR_agree_all": {
+   "est": 0.09509272394486916,
+   "lo": 0.07623621209180698,
+   "hi": 0.11434952272064938
+  },
+  "dR_tape_h4": {
+   "est": -0.1429153511388559,
+   "lo": -0.160733224138537,
+   "hi": -0.12399394821268925
+  },
+  "words": {
+   "dR_coh_inc": "VALIDATED",
+   "dR_coh_all": "VALIDATED",
+   "dhit_coh_inc": "VALIDATED",
+   "dhit_coh_all": "CONTEXT",
+   "dR_agree_all": "VALIDATED",
+   "dR_tape_h4": "NULL"
+  }
+ },
+ "null": {
+  "dR_coh_inc": {
+   "est": -0.006606945873033526,
+   "lo": -0.02452652678322116,
+   "hi": 0.011901773321472553
+  },
+  "dR_coh_all": {
+   "est": -0.0010828983985830556,
+   "lo": -0.011391478454651138,
+   "hi": 0.009582701536417035
+  },
+  "dhit_coh_inc": {
+   "est": -0.004741871803742914,
+   "lo": -0.019336599715952453,
+   "hi": 0.009201389931220228
+  },
+  "dhit_coh_all": {
+   "est": 0.0014259090078567183,
+   "lo": -0.006859739819729422,
+   "hi": 0.008621376633316932
+  },
+  "dR_agree_all": {
+   "est": 0.010491240553204296,
+   "lo": -0.004450564938284495,
+   "hi": 0.02688286761525271
+  },
+  "dR_tape_h4": {
+   "est": 0.00930472662243841,
+   "lo": -0.009221632255571193,
+   "hi": 0.02687844326178569
+  },
+  "words": {
+   "dR_coh_inc": "UNDERPOWERED",
+   "dR_coh_all": "NULL",
+   "dhit_coh_inc": "NULL",
+   "dhit_coh_all": "NULL",
+   "dR_agree_all": "NULL",
+   "dR_tape_h4": "NULL"
+  }
+ },
+ "label_shares_synthetic": {
+  "COH": 0.26478283621140764,
+  "MID": 0.2585034013605442,
+  "INC": 0.25588697017268447,
+  "NA": 0.2208267922553637
+ },
+ "checks": {
+  "planted_C1_ci_lower_gt0": true,
+  "planted_C3_ci_lower_gt0": true,
+  "null_C1_ci_includes0": true,
+  "null_C3_ci_includes0": true,
+  "null_no_cell_validated": true,
+  "no_lookahead_coherence": true,
+  "R_hand_exact": true
+ },
+ "passed": true
+}

@@ -25,7 +25,7 @@ gold) / Macro / Research / Learn / Null / Retired, and clear out what is known t
 | Vol · FX · Gold | 31 | Vol forecast tools, options/OI, FX and gold |
 | Macro | 39 | Rates, central banks, data releases, regime |
 | Bots | 25 | Bot control, audit, performance, journals |
-| Research | 77 | Research hub, open studies, underpowered results, backtests with no banked verdict |
+| Research | 78 | Research hub, open studies, underpowered results, backtests with no banked verdict |
 | Learn | 8 | Theory Lab, library, COG hub, explainers |
 | ∅ Null | 31 | Tested and failed: null, falsified or no edge |
 | 🗃 Retired | 38 | Superseded by a newer page or version, moved, or abandoned |
@@ -187,13 +187,14 @@ the Site Map (`js/siteApiMap.js`); mentions in older Markdown notes were left as
 | `backtest-vmc.html` 🌊 Backtest VMC Test (entry quality) | live | 2026-07-31 |  |
 | `regime-viewer.html` 🔍 Regime Viewer | research | 2026-06-06 |  |
 
-### Research (77)
+### Research (78)
 
 | Page | Was in | Last changed | Note |
 |---|---|---|---|
 | `research.html` 🧭 Research Hub (drop in, questions, rooms, tests, verdicts) | research | 2026-11-12 |  |
 | `roe.html` 🔎 Research Opportunities (scanner questions, concept cards) | research | 2026-11-11 |  |
 | `research-log.html` 🗂 Research Log (what's been done) | research | 2026-10-27 |  |
+| `bias-evidence.html` 🔬 Bias Evidence (why each verdict holds) | research | 2026-11-15 | added on main while this PR was open; kept in Research next to Research Log |
 | `evidence.html?filter=watched` 👁 Setup Watch (watched findings) | learn | 2026-11-13 |  |
 | `market-sense.html` 🧪 Market-Sense Studies | research | 2026-09-18 |  |
 | `vol-layer-system.html` 🧱 Vol-Layer System (research) | systems | 2026-11-12 |  |

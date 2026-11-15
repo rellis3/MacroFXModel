@@ -1,0 +1,251 @@
+{
+ "slug": "pre-release-ranging/D_coiling",
+ "unit": "Spearman rho",
+ "bar": 0.15,
+ "n_rows": 7023,
+ "n_clusters": 1229,
+ "n_instruments": 6,
+ "span": [
+  "2017-01-06",
+  "2026-08-13"
+ ],
+ "estimate": -0.20214669378435948,
+ "ci": [
+  -0.2749048673904544,
+  -0.12734742336744656
+ ],
+ "se": 0.036436341595493166,
+ "verdict_word": "UNDERPOWERED",
+ "notes": "Rows as above; estimate = Spearman(pre, post) on pseudo days - Spearman(pre, post) on event days (positive = coiling: a tight pre-release range goes with a wider post-release range, beyond normal days). Plant adds a negative pre->post rank relation of about the bar on event rows.",
+ "placebo": {
+  "n": 300,
+  "mean": -0.0025816417903462762,
+  "p2_5": -0.04649735009373422,
+  "p97_5": 0.04900103848480696,
+  "real_percentile": 0.0
+ },
+ "buckets": [
+  {
+   "bucket": "-1",
+   "n": 4664,
+   "mean_outcome": 0.932070259559513,
+   "lo": 0.9157672701197521,
+   "hi": 0.9483732489992738,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "1",
+   "n": 2359,
+   "mean_outcome": 1.34981719205624,
+   "lo": 1.3232341238471157,
+   "hi": 1.3764002602653644,
+   "mean_side": 1.0
+  }
+ ],
+ "by_instrument": [
+  {
+   "inst": "eurusd",
+   "n": 1220,
+   "estimate": -0.08411044935993472,
+   "ci": [
+    -0.2182062699647216,
+    0.038870770003056554
+   ]
+  },
+  {
+   "inst": "gbpusd",
+   "n": 1222,
+   "estimate": -0.16130696958700044,
+   "ci": [
+    -0.267337322685901,
+    -0.0467299562827541
+   ]
+  },
+  {
+   "inst": "gold",
+   "n": 1200,
+   "estimate": -0.21575863565054187,
+   "ci": [
+    -0.31840804343254797,
+    -0.0810135730717727
+   ]
+  },
+  {
+   "inst": "nq",
+   "n": 1183,
+   "estimate": -0.2712429476710063,
+   "ci": [
+    -0.37668786781921393,
+    -0.14025907972295037
+   ]
+  },
+  {
+   "inst": "spx500",
+   "n": 976,
+   "estimate": -0.14057455470451077,
+   "ci": [
+    -0.2716839197807983,
+    -0.015531823061171823
+   ]
+  },
+  {
+   "inst": "usdjpy",
+   "n": 1222,
+   "estimate": -0.10752404735032692,
+   "ci": [
+    -0.22182720159986474,
+    0.03178888693367414
+   ]
+  }
+ ],
+ "by_year": [
+  {
+   "year": "2017",
+   "n": 644,
+   "estimate": -0.1283770530864169,
+   "ci": [
+    -0.34417687188265816,
+    0.05529483774935623
+   ]
+  },
+  {
+   "year": "2018",
+   "n": 768,
+   "estimate": -0.14369632195341947,
+   "ci": [
+    -0.3504136715241476,
+    0.05715767935511675
+   ]
+  },
+  {
+   "year": "2019",
+   "n": 692,
+   "estimate": -0.36208580623588327,
+   "ci": [
+    -0.5302987713840365,
+    -0.15078034725242068
+   ]
+  },
+  {
+   "year": "2020",
+   "n": 707,
+   "estimate": -0.16289791958188915,
+   "ci": [
+    -0.38949521695292444,
+    0.05909321882246346
+   ]
+  },
+  {
+   "year": "2021",
+   "n": 834,
+   "estimate": -0.1992273478641414,
+   "ci": [
+    -0.395139409157191,
+    -0.04282578115335134
+   ]
+  },
+  {
+   "year": "2022",
+   "n": 731,
+   "estimate": -0.25500969868965156,
+   "ci": [
+    -0.4706548071424596,
+    -0.048776125544148674
+   ]
+  },
+  {
+   "year": "2023",
+   "n": 770,
+   "estimate": -0.15439189178815244,
+   "ci": [
+    -0.36907126889847947,
+    0.050892257069402536
+   ]
+  },
+  {
+   "year": "2024",
+   "n": 637,
+   "estimate": -0.24852519192378925,
+   "ci": [
+    -0.4645685037364686,
+    -0.014427712110666244
+   ]
+  },
+  {
+   "year": "2025",
+   "n": 768,
+   "estimate": -0.2113597885570962,
+   "ci": [
+    -0.4736460642755163,
+    0.02530565892512411
+   ]
+  },
+  {
+   "year": "2026",
+   "n": 472,
+   "estimate": -0.32074941296401516,
+   "ci": [
+    -0.6035116650977582,
+    -0.024964148899682626
+   ]
+  }
+ ],
+ "by_half": [
+  {
+   "half": "H1",
+   "n": 3513,
+   "estimate": -0.17665974422155464,
+   "ci": [
+    -0.27783088963586183,
+    -0.0928498788738184
+   ]
+  },
+  {
+   "half": "H2",
+   "n": 3510,
+   "estimate": -0.23249728322379834,
+   "ci": [
+    -0.322574273306842,
+    -0.13016450177655992
+   ]
+  }
+ ],
+ "without_top1pct": -0.19976269741398406,
+ "positive_control": [
+  {
+   "multiple_of_bar": 0.5,
+   "planted": 0.075,
+   "detected_share": 0.0,
+   "mean_recovered": -0.09910510825163207
+  },
+  {
+   "multiple_of_bar": 1.0,
+   "planted": 0.15,
+   "detected_share": 0.0,
+   "mean_recovered": 0.0005837942928112183
+  },
+  {
+   "multiple_of_bar": 2.0,
+   "planted": 0.3,
+   "detected_share": 1.0,
+   "mean_recovered": 0.1789430711990267
+  }
+ ],
+ "lookahead_canary": {
+  "estimate_with_leak": -0.08463384722633516,
+  "estimate_clean": -0.20214669378435948
+ },
+ "diagnosis": {
+  "checks": {
+   "ci_excludes_zero": true,
+   "ci_excludes_bar": true,
+   "beats_placebo_97_5": false,
+   "pipeline_finds_planted_bar": false,
+   "same_sign_both_halves": true,
+   "share_instruments_same_sign": 1.0,
+   "survives_top1pct_removed": true,
+   "survives_costs": null
+  },
+  "label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown"
+ }
+}

@@ -1,0 +1,67 @@
+{
+ "planted_C1": {
+  "est": 0.17550663379398007,
+  "lo": 0.1663876681332848,
+  "hi": 0.1838607374158573
+ },
+ "sanity_quintile_means": [
+  -1.39,
+  -0.52,
+  -0.0,
+  0.527,
+  1.387
+ ],
+ "null": {
+  "dR_meta_all": {
+   "est": 0.0023044311618822047,
+   "lo": -0.00652888938483099,
+   "hi": 0.011712046254645732,
+   "placebo_pct": 77.0,
+   "word": "NULL"
+  },
+  "dhit_meta_all": {
+   "est": -0.0003743232361206883,
+   "lo": -0.006513957149451783,
+   "hi": 0.006094349279818504,
+   "placebo_pct": 62.0,
+   "word": "NULL"
+  },
+  "dSR_meta_all": {
+   "est": -0.08276105200304529,
+   "lo": -0.5387478315422833,
+   "hi": 0.41513909613052324,
+   "placebo_pct": 76.0,
+   "word": "UNDERPOWERED"
+  },
+  "dR_meta_conf": {
+   "est": 0.0036672714188859153,
+   "lo": -0.010143726734296673,
+   "hi": 0.01599992617299588,
+   "placebo_pct": 77.0,
+   "word": "NULL"
+  }
+ },
+ "canary_outcome_C1": 0.5592979352603019,
+ "leak_hit20_C1": [
+  0.2930227772454431,
+  0.33430592200551607
+ ],
+ "features_invariant_to_future_R": true,
+ "R_hand": [
+  0.8,
+  -1.4,
+  -1.0
+ ],
+ "checks": {
+  "a_planted_C1_lo_gt0": true,
+  "a_planted_C1_ge_bar": true,
+  "b_null_C1_ci_includes0": true,
+  "b_null_no_cell_validated": true,
+  "c_outcome_canary_blows_up": true,
+  "d_leak_lifts_C1": true,
+  "d_features_invariant_to_future_R": true,
+  "e_sanity_top_quintile_highest": true,
+  "f_R_hand_exact": true
+ },
+ "passed": true
+}

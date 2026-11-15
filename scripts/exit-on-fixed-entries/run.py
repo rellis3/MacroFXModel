@@ -102,11 +102,17 @@ def load_instrument(path: Path) -> dict:
     return out
 
 
-def load_financing(names):
-    p = ROOT / 'Oanda Parquet Files' / 'Bid and Ask' / 'instrument_meta_log.parquet'
+FIN_META = ROOT / 'Oanda Parquet Files' / 'Bid and Ask' / 'instrument_meta_log.parquet'
+
+
+def load_financing(names, p=FIN_META):
+    p = Path(p)
     if not p.exists():
         die(f'MISSING DATA FILE: {p} (financing snapshot, prereg 3.5)')
     m = pd.read_parquet(p)
+    need = ['name', 'financing_long_rate', 'financing_short_rate', 'financing_days_wed']
+    if any(c not in m.columns for c in need):
+        die(f'{p}: missing columns {[c for c in need if c not in m.columns]}')
     out = {}
     for a in names:
         r = m[m['name'] == OANDA[a]]
@@ -173,14 +179,13 @@ class Inst:
         self.h1_c = d['mc'][last]
         self.h1_end = self.h1_t + 3600
         # NY-close daily bars (17:00 New York), from M1 mid, n >= n_min_daily
-        ny = pd.to_datetime(t, unit='s', utc=True).tz_convert(NY) + pd.Timedelta(hours=7)
+        ny = pd.DatetimeIndex(pd.to_datetime(t, unit='s', utc=True)).tz_convert(NY) + pd.Timedelta(hours=7)
         key = ny.normalize()
-        kk = key.values
+        kk = key.asi8
         brk = np.r_[np.nonzero(kk[1:] != kk[:-1])[0], len(t) - 1]
         start = np.r_[0, brk[:-1] + 1]
         n = brk - start + 1
-        keys = pd.DatetimeIndex(kk[brk]).tz_localize(None) if getattr(key.dt, 'tz', None) is None else key.iloc[brk]
-        ends = np.array([int(datetime(k.year, k.month, k.day, 17, tzinfo=NY).timestamp()) for k in keys], np.int64)
+        ends = np.array([int(datetime(k.year, k.month, k.day, 17, tzinfo=NY).timestamp()) for k in key[brk]], np.int64)
         ok = n >= n_min_daily
         self.d_end, self.d_close = ends[ok], d['mc'][brk][ok]
 
@@ -475,7 +480,7 @@ def score(df: pd.DataFrame, opts: dict, rng, log=print):
         return np.where(sides > 0, df[col_L].to_numpy(), df[col_S].to_numpy())
 
     D_L = {x: df[f'{x}_Lq'].to_numpy() - df['E0_Lq'].to_numpy() for x in SCORED + FRI}
-    D_S = {x: df[f'{x}_Sq'].to_numpy() - df[f'{"E0"}_Sq'].to_numpy() for x in SCORED + FRI}
+    D_S = {x: df[f'{x}_Sq'].to_numpy() - df['E0_Sq'].to_numpy() for x in SCORED + FRI}
     Dr = {x: p * D_L[x] + (1 - p) * D_S[x] for x in SCORED + FRI}
     # gross (mid) for the design check
     gL = {x: df[f'{x}_Lm'].to_numpy() - df['E0_Lm'].to_numpy() for x in SCORED}
@@ -658,42 +663,40 @@ def map_table(df):
 
 
 # ----------------------------------------------------------------------------------------------------- synthetic
-def synth(n_inst=13, n_days=2000, mu=0.0, const_drift=0.0, half_spread=0.04, seed=SEED, start=date(2016, 11, 1)):
-    """15-minute arithmetic random walk on weekdays (all 24h of each weekday London date), daily sd 6 at a level
-    of 1000 (sigma ~0.6%). mu: momentum drift per day in R (sign of the 4h-bucket EMA20 slope, as power_sim);
-    const_drift: drift per day in price units (closed-form check)."""
+def synth(n_inst=13, n_days=2000, mu=0.0, const_drift=0.0, half_spread=0.04, seed=SEED, start=date(2016, 11, 1),
+          bar_sec=900):
+    """15-minute bars on weekdays (all 24h of each weekday London date) of a continuous arithmetic Brownian motion:
+    Gaussian bar increments, and each bar's high and low drawn from the exact Brownian-bridge extreme distribution, so
+    a stop filled at its level is consistent with the path (no discretisation overshoot; a coarse random walk with
+    fill-at-level stops is biased upward by the overshoot, found while building this test). Daily sd 6 at a level of
+    1000 (sigma ~0.6%). mu: momentum drift per day in R in the sign of the 4h-bucket EMA20 slope (as the prereg power
+    simulation); const_drift: drift per day in price units (closed-form check)."""
     rng = np.random.default_rng(seed)
     days = weekdays(start, start + timedelta(int(n_days * 1.45)))[:n_days]
-    per = 96
-    T = np.concatenate([lon_epoch(d, 0) + 900 * np.arange(per) for d in days]).astype(np.int64)
+    per = 86400 // bar_sec
+    T = np.concatenate([lon_epoch(d, 0) + bar_sec * np.arange(per) for d in days]).astype(np.int64)
     sd_day = 6.0
-    sd_bar = sd_day / math.sqrt(per) / math.sqrt(2.0)        # t4 variance 2
+    sd_bar = sd_day / math.sqrt(per)
     out = {}
     for k in range(n_inst):
-        inc = rng.standard_t(4, len(T)) * sd_bar + const_drift / per
+        inc = rng.standard_normal(len(T)) * sd_bar + const_drift / per
         if mu:
-            bucket = (T // 14400)
+            bucket = T // 14400
             brk = np.r_[0, np.nonzero(np.diff(bucket))[0] + 1, len(T)]
-            x = np.empty(len(T))
-            p, ema, hist = 1000.0, None, []
-            kk = 2 / 21
-            for b in range(len(brk) - 1):
-                a, z = brk[b], brk[b + 1]
-                dr = 0.0
+            ema, hist, kk, p = None, [], 2 / 21, 1000.0
+            for bb in range(len(brk) - 1):
+                a_, z_ = brk[bb], brk[bb + 1]
                 if len(hist) >= 4:
-                    dr = mu * sd_day / per * np.sign(hist[-1] - hist[-4])
-                seg = p + np.cumsum(inc[a:z] + dr)
-                x[a:z] = seg
-                p = seg[-1]
+                    inc[a_:z_] += mu * sd_day / per * np.sign(hist[-1] - hist[-4])
+                p = p + inc[a_:z_].sum()
                 ema = p if ema is None else ema + kk * (p - ema)
                 hist.append(ema)
-        else:
-            x = 1000.0 + np.cumsum(inc)
-        o = np.r_[1000.0, x[:-1]]
-        c = x
-        wig = np.abs(rng.normal(0, sd_bar * 0.5, (2, len(T))))
-        h = np.maximum(o, c) + wig[0]
-        l = np.minimum(o, c) - wig[1]
+        c = 1000.0 + np.cumsum(inc)
+        o = np.r_[1000.0, c[:-1]]
+        u = rng.random((2, len(T)))
+        rad = lambda uu: np.sqrt((c - o) ** 2 - 2 * sd_bar ** 2 * np.log(uu))
+        h = (o + c + rad(u[0])) / 2
+        l = (o + c - rad(u[1])) / 2
         out[INSTS[k % len(INSTS)] if n_inst <= len(INSTS) else f'S{k}'] = {
             't': T, 'mo': o, 'mh': h, 'ml': l, 'mc': c,
             'bo': o - half_spread, 'bh': h - half_spread, 'bl': l - half_spread, 'bc': c - half_spread,
@@ -746,12 +749,19 @@ def selftest(out_dir: Path, log=print, n_days=2000):
     report['b_closed_form'] = {'ok': bool(b_ok), 'rows': b_rows}
     # (c) planted momentum: holding (E1) and trailing (E2) and the 5-day stop must pass the full gate
     data, days = synth(n_days=n_days, mu=0.20, seed=SEED + 2)
-    _, r = run_case(data, days, {}, 'planted momentum 0.20R/day', log)
+    _, r = run_case(data, days, {'ignore_design': True}, 'planted momentum 0.20R/day', log)
     need = ['E1', 'E2', 'E3_5']
     c_ok = 'cells' in r and all(r['cells'][x]['verdict'] == 'VALIDATED' for x in need)
     report['c_planted'] = {'ok': c_ok, 'stopped': r.get('stopped'), 'required_validated': need,
                            'cells': {x: {k: r['cells'][x][k] for k in ('mean', 'se_used', 'p_holm', 'verdict')}
                                      for x in SCORED} if 'cells' in r else None}
+    # (c2) prereg 3.9 (c): planted momentum 0.10R/day must recover Delta(E3_5) ~ +0.08 (prereg 5) within 3 SE
+    data, days = synth(n_days=n_days, mu=0.10, seed=SEED + 3)
+    _, r = run_case(data, days, {'ignore_design': True}, 'planted momentum 0.10R/day', log)
+    c2 = r['cells']['E3_5'] if 'cells' in r else None
+    c2_ok = bool(c2 and abs(c2['mean'] - 0.08) <= 3 * c2['se_used'])
+    report['c2_planted_0.10'] = {'ok': c2_ok, 'target': 0.08,
+                                 'E3_5': {k: c2[k] for k in ('mean', 'se_used', 'verdict')} if c2 else None}
     # (d) lockbox guard: a path session after 2026-08-21 must raise
     try:
         data, days = synth(n_inst=1, n_days=40, start=date(2026, 7, 20))
@@ -761,7 +771,7 @@ def selftest(out_dir: Path, log=print, n_days=2000):
     except AssertionError:
         d_ok = True
     report['d_lockbox_assert'] = {'ok': d_ok}
-    ok = a_ok and b_ok and c_ok and d_ok
+    ok = a_ok and b_ok and c_ok and c2_ok and d_ok
     report['passed'] = bool(ok)
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / 'selftest.json').write_text(json.dumps(report, indent=1, default=str))
@@ -828,7 +838,8 @@ def write_results(res, counts, mp, out: Path, meta):
              f"{mp['up_first']['random_mean']:.3f}. Quantiles in `map.json`.")
     rc = res['reconciliation']
     L += ['', '## Checks', '',
-          f"- Design (lesson #27): gross random-entry Dr per exit {', '.join(f'{x} {v['mean']:+.4f}' for x, v in res['design_check'].items())}; no fault.",
+          '- Design (lesson #27): gross random-entry Dr per exit ' +
+          ', '.join('%s %+.4f (%.1f SE)' % (x, v['mean'], v['mean'] / v['se']) for x, v in res['design_check'].items()) + '; no fault.',
           f"- Reconciliation with h4-trend-hold DAY: {rc}",
           f"- Slices: {res.get('slices_chance_baseline')}; BH survivors are candidates only (results.json `slices`).",
           f"- Entry counts and drops per instrument: results.json `counts`.", '',
@@ -844,6 +855,7 @@ def main(argv=None):
     ap.add_argument('--selftest-days', type=int, default=2000)
     ap.add_argument('--m1-root', default=str(ROOT / 'data' / 'm1_bidask'))
     ap.add_argument('--out', default=str(ROOT / 'analysis' / 'output' / SLUG))
+    ap.add_argument('--fin-meta', default=str(FIN_META), help='OANDA instrument_meta_log.parquet (financing snapshot)')
     ap.add_argument('--ack-reconciliation', action='store_true',
                     help='continue when the h4-trend-hold reconciliation gap exceeds 0.03R (explain it in RESULTS.md)')
     a = ap.parse_args(argv)
@@ -858,7 +870,7 @@ def main(argv=None):
         if not ok:
             die('positive control failed; nothing real was read')
     root = Path(a.m1_root)
-    fin = load_financing(INSTS)
+    fin = load_financing(INSTS, a.fin_meta)
     events = load_events()
     insts = {}
     for k in INSTS:

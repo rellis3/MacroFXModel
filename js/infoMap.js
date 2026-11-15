@@ -136,6 +136,7 @@ export const FAMILIES = [
 export const EXCLUDED_PAGES = {
   'desk-admin.html': 'owner admin: which Desk Terminal surfaces the desk login sees (js/terminal/tabRegistry.js)',
   'daily-open-fib.html': 'tool: fib tracker',
+  'bias-evidence.html': 'research view: the evidence behind the bias card (built from analysis/output/bias-evidence/manifest.json)',
   'drift.html': 'research view',
   'forecast-analysis.html': 'research view: what price does at each vol-forecast line',
   'gold-zones.html': 'bot verifier',

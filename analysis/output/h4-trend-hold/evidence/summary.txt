@@ -1,0 +1,2 @@
+DAY: n 35545 est -0.0153 CI [-0.0322, +0.0032] placebo pct 75 plant1x 1.00 halves [-0.0108, -0.0198] canary +0.733 -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+HOLD: n 16719 est +0.0103 CI [-0.0282, +0.0466] placebo pct 100 plant1x 1.00 halves [0.0277, -0.007] canary +1.156 -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out

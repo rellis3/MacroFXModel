@@ -1,0 +1,37 @@
+{
+ "n_event_dates_planned": 411,
+ "n_pseudo_dates": 821,
+ "control_mean_pre_sig": 0.8461652114512799,
+ "control_mean_share": 0.6800084871377484,
+ "control_mean_brk": 0.9486492281303602,
+ "cells": {
+  "A_share": {
+   "se_did": 0.007714832791752837,
+   "mde_holm_0125": 0.025767541524454474,
+   "fake_split_mean": 0.00039990174687758444
+  },
+  "B_pre_sigma": {
+   "se_did": 0.016227558881020624,
+   "mde_holm_0125": 0.05420004666260888,
+   "fake_split_mean": -0.0016306220354499702
+  },
+  "C_asia_break": {
+   "se_did": 0.007842703895644359,
+   "mde_holm_0125": 0.026194631011452155,
+   "fake_split_mean": 0.0005375926345155871
+  },
+  "D_coiling": {
+   "se_did": 0.039264529689805386,
+   "mde_holm_0125": 0.13114352916394997,
+   "fake_split_mean": 0.002817865468170196
+  }
+ },
+ "bar_B": 0.085,
+ "sample_from": "2017-01-06",
+ "family_counts": {
+  "NFP": 116,
+  "PPI": 115,
+  "CPI": 114,
+  "FOMC": 66
+ }
+}
