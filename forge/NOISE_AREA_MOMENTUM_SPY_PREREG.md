@@ -86,7 +86,10 @@ Two scored cells (S1, S2), each with its own bar; independent windows. Everythin
 
 ## Amendments
 
-(none)
+- **A1, 2026-11-15, PRE-RESULTS** (loader smoke test on 2007-01 → 2009-02 bars only: bar counts and last-bar times read,
+  no scored statistic): IB's ETF regular hours also run 15 minutes past the 13:00 close on half-days (last bar starts
+  13:14). On any day whose last bar is before 15:59, the last 15 bars are dropped so the exit is the exchange close, as on
+  full days. One odd IB record (2007-12-24, ends 15:44) is kept as delivered.
 
 ## RESULTS
 
