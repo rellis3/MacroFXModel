@@ -1,0 +1,1664 @@
+{
+ "slug": "growth-inflation-quadrant",
+ "prereg": "forge/GROWTH_INFLATION_QUADRANT_PREREG.md",
+ "prereg_commit": "11ce3c39",
+ "seed": 20261115,
+ "branch": "claude/signal-bot-bias-analysis-bwr1qv",
+ "code_commit_at_run": "394e76f5",
+ "lockbox_last_price": "2026-08-21",
+ "n_cells_holm": 21,
+ "z_mde": 3.8796955384971255,
+ "labels": {
+  "first": "2009-05-29",
+  "n_fridays": 900,
+  "share": {
+   "deflation": 0.258,
+   "stagflation": 0.253,
+   "reflation": 0.252,
+   "goldilocks": 0.237
+  },
+  "n_spells": 102,
+  "median_spell_weeks": 8.0,
+  "label_month_age_months": {
+   "1": 415,
+   "2": 476,
+   "3": 9
+  },
+  "agree_primary_s2": 0.56
+ },
+ "cells": [
+  {
+   "cell": "map_usd_1w",
+   "id": "map_usd_1w",
+   "arm": "map",
+   "group": "usd",
+   "h": 1,
+   "def": "primary",
+   "n_rows": 6293,
+   "n_dates": 899,
+   "n_active_rows": 3108,
+   "n_clusters": 36,
+   "span": [
+    "2009-05-29",
+    "2026-08-14"
+   ],
+   "estimate": -0.033624762822269796,
+   "ci": [
+    -0.10177281792197798,
+    0.038091293859473165
+   ],
+   "se_boot": 0.036548755323734076,
+   "p_raw": 0.35757407572292377,
+   "placebo_sd": 0.03965211494894187,
+   "placebo_p97_5": 0.07305908680940358,
+   "placebo_pct_of_real": 18.099999999999998,
+   "mde": 0.15383813345938496,
+   "bar": 0.041602514716892185,
+   "large_bar": 0.1386750490563073,
+   "halves": [
+    -0.07105208081113881,
+    -0.0015218331665453185
+   ],
+   "per_inst": {
+    "audusd": -0.06597603286466606,
+    "eurusd": -0.02926463738681412,
+    "gbpusd": -0.0063677315445166225,
+    "nzdusd": -0.021257995108382898,
+    "usdcad": -0.02854199202949467,
+    "usdchf": -0.04435080724359401,
+    "usdjpy": -0.0396141435784201
+   },
+   "without_top1pct": -0.028451445204731394,
+   "plant_mde_detected": 1.0,
+   "plant_bar_detected": 0.0,
+   "quad_counts": {
+    "goldilocks": 212,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 1.0,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": false,
+    "c3_placebo": false,
+    "c4_halves": false,
+    "c5_instruments": false,
+    "c6_top1pct": false,
+    "c7_plant_mde": true
+   },
+   "powered_for_bar": false,
+   "verdict": "null",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": false,
+   "gate_c7_note": "confounded: plant added on top of a non-positive real estimate (prereg A1); cannot change the verdict (c1 fails)"
+  },
+  {
+   "cell": "map_usd_2w",
+   "id": "map_usd_2w",
+   "arm": "map",
+   "group": "usd",
+   "h": 2,
+   "def": "primary",
+   "n_rows": 6286,
+   "n_dates": 898,
+   "n_active_rows": 3101,
+   "n_clusters": 36,
+   "span": [
+    "2009-05-29",
+    "2026-08-07"
+   ],
+   "estimate": -0.03822948813674337,
+   "ci": [
+    -0.13745785339608926,
+    0.07036666302598
+   ],
+   "se_boot": 0.05168940442431475,
+   "p_raw": 0.4595426873719406,
+   "placebo_sd": 0.05284171797094354,
+   "placebo_p97_5": 0.10065055762769089,
+   "placebo_pct_of_real": 19.400000000000002,
+   "mde": 0.20500977745839302,
+   "bar": 0.05883484054145521,
+   "large_bar": 0.19611613513818404,
+   "halves": [
+    -0.09875984389341184,
+    0.0139080031662694
+   ],
+   "per_inst": {
+    "audusd": -0.07852258247626795,
+    "eurusd": -0.04240728182885267,
+    "gbpusd": -0.010865490208212423,
+    "nzdusd": -0.025926219303847035,
+    "usdcad": -0.01658401717534257,
+    "usdchf": -0.04960802773865053,
+    "usdjpy": -0.04369279822603034
+   },
+   "without_top1pct": -0.029982715024757176,
+   "plant_mde_detected": 1.0,
+   "plant_bar_detected": 0.0,
+   "quad_counts": {
+    "goldilocks": 211,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 1.0,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": false,
+    "c3_placebo": false,
+    "c4_halves": false,
+    "c5_instruments": false,
+    "c6_top1pct": false,
+    "c7_plant_mde": true
+   },
+   "powered_for_bar": false,
+   "verdict": "underpowered",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": false,
+   "gate_c7_note": "confounded: plant added on top of a non-positive real estimate (prereg A1); cannot change the verdict (c1 fails)"
+  },
+  {
+   "cell": "map_usd_4w",
+   "id": "map_usd_4w",
+   "arm": "map",
+   "group": "usd",
+   "h": 4,
+   "def": "primary",
+   "n_rows": 6272,
+   "n_dates": 896,
+   "n_active_rows": 3087,
+   "n_clusters": 36,
+   "span": [
+    "2009-05-29",
+    "2026-07-24"
+   ],
+   "estimate": -0.06678100990951082,
+   "ci": [
+    -0.20173280890997056,
+    0.06955669033657104
+   ],
+   "se_boot": 0.06820107231062858,
+   "p_raw": 0.32749188965009957,
+   "placebo_sd": 0.07434416293355253,
+   "placebo_p97_5": 0.14908631675600573,
+   "placebo_pct_of_real": 16.400000000000002,
+   "mde": 0.28843271724660713,
+   "bar": 0.08320502943378437,
+   "large_bar": 0.2773500981126146,
+   "halves": [
+    -0.13445376496589964,
+    -0.007997472678325583
+   ],
+   "per_inst": {
+    "audusd": -0.10775287654086114,
+    "eurusd": -0.11296338279505727,
+    "gbpusd": -0.03900145894709396,
+    "nzdusd": -0.07005258405311122,
+    "usdcad": -0.01534920167466142,
+    "usdchf": -0.07927632464644675,
+    "usdjpy": -0.04307124070934395
+   },
+   "without_top1pct": -0.05666596416094454,
+   "plant_mde_detected": 1.0,
+   "plant_bar_detected": 0.0,
+   "quad_counts": {
+    "goldilocks": 209,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 1.0,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": false,
+    "c3_placebo": false,
+    "c4_halves": false,
+    "c5_instruments": false,
+    "c6_top1pct": false,
+    "c7_plant_mde": true
+   },
+   "powered_for_bar": false,
+   "verdict": "null",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": false,
+   "evidence_label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown",
+   "evidence_pack": "analysis/output/growth-inflation-quadrant/map_usd_4w/evidence/EVIDENCE.md",
+   "evidence_plants_nullized": [
+    {
+     "multiple_of_bar": 0.5,
+     "planted": 0.041602514716892185,
+     "detected_share": 0.0,
+     "mean_recovered": 0.041602514716892164
+    },
+    {
+     "multiple_of_bar": 1.0,
+     "planted": 0.08320502943378437,
+     "detected_share": 0.0,
+     "mean_recovered": 0.08320502943378436
+    },
+    {
+     "multiple_of_bar": 2.0,
+     "planted": 0.16641005886756874,
+     "detected_share": 1.0,
+     "mean_recovered": 0.16641005886756874
+    }
+   ],
+   "gate_c7_note": "confounded: plant added on top of a non-positive real estimate (prereg A1); cannot change the verdict (c1 fails)"
+  },
+  {
+   "cell": "map_usd_8w",
+   "id": "map_usd_8w",
+   "arm": "map",
+   "group": "usd",
+   "h": 8,
+   "def": "primary",
+   "n_rows": 6244,
+   "n_dates": 892,
+   "n_active_rows": 3059,
+   "n_clusters": 35,
+   "span": [
+    "2009-05-29",
+    "2026-06-26"
+   ],
+   "estimate": -0.07286788041186269,
+   "ci": [
+    -0.226591681698413,
+    0.07141940861276078
+   ],
+   "se_boot": 0.07783817463955937,
+   "p_raw": 0.3491981237297417,
+   "placebo_sd": 0.09831725519125026,
+   "placebo_p97_5": 0.17064004757564435,
+   "placebo_pct_of_real": 21.8,
+   "mde": 0.381441016322777,
+   "bar": 0.11766968108291043,
+   "large_bar": 0.3922322702763681,
+   "halves": [
+    -0.09845198798119777,
+    -0.05026123363723472
+   ],
+   "per_inst": {
+    "audusd": -0.07832105046235192,
+    "eurusd": -0.20363701319598587,
+    "gbpusd": -0.005571089684091718,
+    "nzdusd": -0.05109939149628205,
+    "usdcad": 0.02964754503131222,
+    "usdchf": -0.08655560869441536,
+    "usdjpy": -0.11453855438122408
+   },
+   "without_top1pct": -0.06906003798575015,
+   "plant_mde_detected": 1.0,
+   "plant_bar_detected": 0.0,
+   "quad_counts": {
+    "goldilocks": 205,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 1.0,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": false,
+    "c3_placebo": false,
+    "c4_halves": false,
+    "c5_instruments": false,
+    "c6_top1pct": false,
+    "c7_plant_mde": true
+   },
+   "powered_for_bar": false,
+   "verdict": "null",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": false,
+   "gate_c7_note": "confounded: plant added on top of a non-positive real estimate (prereg A1); cannot change the verdict (c1 fails)"
+  },
+  {
+   "cell": "map_gold_1w",
+   "id": "map_gold_1w",
+   "arm": "map",
+   "group": "gold",
+   "h": 1,
+   "def": "primary",
+   "n_rows": 899,
+   "n_dates": 899,
+   "n_active_rows": 672,
+   "n_clusters": 36,
+   "span": [
+    "2009-05-29",
+    "2026-08-14"
+   ],
+   "estimate": 0.0851477505179604,
+   "ci": [
+    0.009521216373703982,
+    0.15548150854953904
+   ],
+   "se_boot": 0.03740069868866155,
+   "p_raw": 0.02280801365471108,
+   "placebo_sd": 0.0349285307723945,
+   "placebo_p97_5": 0.06731792498487528,
+   "placebo_pct_of_real": 99.0,
+   "mde": 0.1355120650039185,
+   "bar": 0.041602514716892185,
+   "large_bar": 0.1386750490563073,
+   "halves": [
+    0.024932866760986612,
+    0.14465003210029545
+   ],
+   "per_inst": {
+    "xauusd": 0.0851477505179604
+   },
+   "without_top1pct": 0.07382770470937071,
+   "plant_mde_detected": 1.0,
+   "plant_bar_detected": 1.0,
+   "quad_counts": {
+    "goldilocks": 212,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 0.4561602730942216,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": true,
+    "c3_placebo": true,
+    "c4_halves": true,
+    "c5_instruments": null,
+    "c6_top1pct": true,
+    "c7_plant_mde": true
+   },
+   "powered_for_bar": false,
+   "verdict": "underpowered",
+   "large_tilt_ruled_out": false,
+   "wrong_sign": false
+  },
+  {
+   "cell": "map_gold_2w",
+   "id": "map_gold_2w",
+   "arm": "map",
+   "group": "gold",
+   "h": 2,
+   "def": "primary",
+   "n_rows": 898,
+   "n_dates": 898,
+   "n_active_rows": 671,
+   "n_clusters": 36,
+   "span": [
+    "2009-05-29",
+    "2026-08-07"
+   ],
+   "estimate": 0.11412160530252179,
+   "ci": [
+    0.01405325369406994,
+    0.2053810327863292
+   ],
+   "se_boot": 0.048437315882713924,
+   "p_raw": 0.01846954114767274,
+   "placebo_sd": 0.04802527489540539,
+   "placebo_p97_5": 0.08903914650496295,
+   "placebo_pct_of_real": 99.0,
+   "mde": 0.1863234447468023,
+   "bar": 0.05883484054145521,
+   "large_bar": 0.19611613513818404,
+   "halves": [
+    0.04316488888888738,
+    0.1844466595522366
+   ],
+   "per_inst": {
+    "xauusd": 0.11412160530252179
+   },
+   "without_top1pct": 0.11048519113560284,
+   "plant_mde_detected": 1.0,
+   "plant_bar_detected": 1.0,
+   "quad_counts": {
+    "goldilocks": 211,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 0.38786036410112756,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": true,
+    "c3_placebo": true,
+    "c4_halves": true,
+    "c5_instruments": null,
+    "c6_top1pct": true,
+    "c7_plant_mde": true
+   },
+   "powered_for_bar": false,
+   "verdict": "underpowered",
+   "large_tilt_ruled_out": false,
+   "wrong_sign": false
+  },
+  {
+   "cell": "map_gold_4w",
+   "id": "map_gold_4w",
+   "arm": "map",
+   "group": "gold",
+   "h": 4,
+   "def": "primary",
+   "n_rows": 896,
+   "n_dates": 896,
+   "n_active_rows": 669,
+   "n_clusters": 36,
+   "span": [
+    "2009-05-29",
+    "2026-07-24"
+   ],
+   "estimate": 0.13181375289877204,
+   "ci": [
+    0.004699228622587939,
+    0.2555930047673322
+   ],
+   "se_boot": 0.06444005225771893,
+   "p_raw": 0.04080310415444166,
+   "placebo_sd": 0.06521297447073579,
+   "placebo_p97_5": 0.11913964384581036,
+   "placebo_pct_of_real": 98.5,
+   "mde": 0.2530064861062406,
+   "bar": 0.08320502943378437,
+   "large_bar": 0.2773500981126146,
+   "halves": [
+    0.00777978956991317,
+    0.2547402701264804
+   ],
+   "per_inst": {
+    "xauusd": 0.13181375289877204
+   },
+   "without_top1pct": 0.11718024993429003,
+   "plant_mde_detected": 1.0,
+   "plant_bar_detected": 1.0,
+   "quad_counts": {
+    "goldilocks": 209,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 0.6936527706255082,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": true,
+    "c3_placebo": true,
+    "c4_halves": true,
+    "c5_instruments": null,
+    "c6_top1pct": true,
+    "c7_plant_mde": true
+   },
+   "powered_for_bar": false,
+   "verdict": "underpowered",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": false,
+   "evidence_label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown",
+   "evidence_pack": "analysis/output/growth-inflation-quadrant/map_gold_4w/evidence/EVIDENCE.md",
+   "evidence_plants_nullized": [
+    {
+     "multiple_of_bar": 0.5,
+     "planted": 0.041602514716892185,
+     "detected_share": 0.0,
+     "mean_recovered": 0.04160251471689218
+    },
+    {
+     "multiple_of_bar": 1.0,
+     "planted": 0.08320502943378437,
+     "detected_share": 0.0,
+     "mean_recovered": 0.08320502943378436
+    },
+    {
+     "multiple_of_bar": 2.0,
+     "planted": 0.16641005886756874,
+     "detected_share": 1.0,
+     "mean_recovered": 0.16641005886756877
+    }
+   ]
+  },
+  {
+   "cell": "map_gold_8w",
+   "id": "map_gold_8w",
+   "arm": "map",
+   "group": "gold",
+   "h": 8,
+   "def": "primary",
+   "n_rows": 892,
+   "n_dates": 892,
+   "n_active_rows": 665,
+   "n_clusters": 35,
+   "span": [
+    "2009-05-29",
+    "2026-06-26"
+   ],
+   "estimate": 0.16797658331387352,
+   "ci": [
+    0.0170293644315178,
+    0.3206627639394527
+   ],
+   "se_boot": 0.07907016904180475,
+   "p_raw": 0.03363679855099733,
+   "placebo_sd": 0.08171309568606562,
+   "placebo_p97_5": 0.1451141559057036,
+   "placebo_pct_of_real": 98.7,
+   "mde": 0.3170219327700175,
+   "bar": 0.11766968108291043,
+   "large_bar": 0.3922322702763681,
+   "halves": [
+    -0.03867347250919588,
+    0.3727705009109873
+   ],
+   "per_inst": {
+    "xauusd": 0.16797658331387352
+   },
+   "without_top1pct": 0.13248118927088703,
+   "plant_mde_detected": 1.0,
+   "plant_bar_detected": 1.0,
+   "quad_counts": {
+    "goldilocks": 205,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 0.6390991724689492,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": true,
+    "c3_placebo": true,
+    "c4_halves": false,
+    "c5_instruments": null,
+    "c6_top1pct": true,
+    "c7_plant_mde": true
+   },
+   "powered_for_bar": false,
+   "verdict": "underpowered",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": false
+  },
+  {
+   "cell": "map_indices_1w",
+   "id": "map_indices_1w",
+   "arm": "map",
+   "group": "indices",
+   "h": 1,
+   "def": "primary",
+   "n_rows": 1798,
+   "n_dates": 899,
+   "n_active_rows": 1798,
+   "n_clusters": 36,
+   "span": [
+    "2009-05-29",
+    "2026-08-14"
+   ],
+   "estimate": -0.016971041104887664,
+   "ci": [
+    -0.07933076048604067,
+    0.0399961072549783
+   ],
+   "se_boot": 0.030206792165054147,
+   "p_raw": 0.5742327736253718,
+   "placebo_sd": 0.03140000406142934,
+   "placebo_p97_5": 0.05573305828508219,
+   "placebo_pct_of_real": 34.300000000000004,
+   "mde": 0.12182245566591904,
+   "bar": 0.041602514716892185,
+   "large_bar": 0.1386750490563073,
+   "halves": [
+    -0.027608828393274304,
+    -0.006356893343808538
+   ],
+   "per_inst": {
+    "nas100": -0.0026976428530031743,
+    "spx500": -0.03124443935677215
+   },
+   "without_top1pct": 0.007462300636981359,
+   "plant_mde_detected": 1.0,
+   "plant_bar_detected": 0.0,
+   "quad_counts": {
+    "goldilocks": 212,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 1.0,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": false,
+    "c3_placebo": false,
+    "c4_halves": false,
+    "c5_instruments": false,
+    "c6_top1pct": true,
+    "c7_plant_mde": true
+   },
+   "powered_for_bar": false,
+   "verdict": "null",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": false,
+   "gate_c7_note": "confounded: plant added on top of a non-positive real estimate (prereg A1); cannot change the verdict (c1 fails)"
+  },
+  {
+   "cell": "map_indices_2w",
+   "id": "map_indices_2w",
+   "arm": "map",
+   "group": "indices",
+   "h": 2,
+   "def": "primary",
+   "n_rows": 1796,
+   "n_dates": 898,
+   "n_active_rows": 1796,
+   "n_clusters": 36,
+   "span": [
+    "2009-05-29",
+    "2026-08-07"
+   ],
+   "estimate": -0.011006245644734099,
+   "ci": [
+    -0.08449702116614266,
+    0.0658090696986068
+   ],
+   "se_boot": 0.03835373513870232,
+   "p_raw": 0.7741378011287487,
+   "placebo_sd": 0.04437835366242042,
+   "placebo_p97_5": 0.07383035503993855,
+   "placebo_pct_of_real": 45.9,
+   "mde": 0.17217450070994006,
+   "bar": 0.05883484054145521,
+   "large_bar": 0.19611613513818404,
+   "halves": [
+    -0.03695204243133534,
+    0.014939551141867142
+   ],
+   "per_inst": {
+    "nas100": 0.006571441611814025,
+    "spx500": -0.028583932901282215
+   },
+   "without_top1pct": 0.008005432635347044,
+   "plant_mde_detected": 1.0,
+   "plant_bar_detected": 0.0,
+   "quad_counts": {
+    "goldilocks": 211,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 1.0,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": false,
+    "c3_placebo": false,
+    "c4_halves": false,
+    "c5_instruments": false,
+    "c6_top1pct": true,
+    "c7_plant_mde": true
+   },
+   "powered_for_bar": false,
+   "verdict": "underpowered",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": false,
+   "gate_c7_note": "confounded: plant added on top of a non-positive real estimate (prereg A1); cannot change the verdict (c1 fails)"
+  },
+  {
+   "cell": "map_indices_4w",
+   "id": "map_indices_4w",
+   "arm": "map",
+   "group": "indices",
+   "h": 4,
+   "def": "primary",
+   "n_rows": 1792,
+   "n_dates": 896,
+   "n_active_rows": 1792,
+   "n_clusters": 36,
+   "span": [
+    "2009-05-29",
+    "2026-07-24"
+   ],
+   "estimate": 0.017959560188439434,
+   "ci": [
+    -0.07941469980208382,
+    0.11404757903989303
+   ],
+   "se_boot": 0.049907188999896636,
+   "p_raw": 0.7189524432346301,
+   "placebo_sd": 0.06087069470983732,
+   "placebo_p97_5": 0.10197346895846446,
+   "placebo_pct_of_real": 65.3,
+   "mde": 0.2361597626909764,
+   "bar": 0.08320502943378437,
+   "large_bar": 0.2773500981126146,
+   "halves": [
+    -0.0441239415281462,
+    0.08004306190502507
+   ],
+   "per_inst": {
+    "nas100": 0.03485986347685778,
+    "spx500": 0.001059256900021082
+   },
+   "without_top1pct": 0.014483936680396168,
+   "plant_mde_detected": 1.0,
+   "plant_bar_detected": 0.55,
+   "quad_counts": {
+    "goldilocks": 209,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 1.0,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": false,
+    "c3_placebo": false,
+    "c4_halves": false,
+    "c5_instruments": true,
+    "c6_top1pct": true,
+    "c7_plant_mde": true
+   },
+   "powered_for_bar": false,
+   "verdict": "underpowered",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": false,
+   "evidence_label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown",
+   "evidence_pack": "analysis/output/growth-inflation-quadrant/map_indices_4w/evidence/EVIDENCE.md",
+   "evidence_plants_nullized": [
+    {
+     "multiple_of_bar": 0.5,
+     "planted": 0.041602514716892185,
+     "detected_share": 0.0,
+     "mean_recovered": 0.04160251471689215
+    },
+    {
+     "multiple_of_bar": 1.0,
+     "planted": 0.08320502943378437,
+     "detected_share": 0.025,
+     "mean_recovered": 0.08320502943378434
+    },
+    {
+     "multiple_of_bar": 2.0,
+     "planted": 0.16641005886756874,
+     "detected_share": 1.0,
+     "mean_recovered": 0.16641005886756874
+    }
+   ]
+  },
+  {
+   "cell": "map_indices_8w",
+   "id": "map_indices_8w",
+   "arm": "map",
+   "group": "indices",
+   "h": 8,
+   "def": "primary",
+   "n_rows": 1784,
+   "n_dates": 892,
+   "n_active_rows": 1784,
+   "n_clusters": 35,
+   "span": [
+    "2009-05-29",
+    "2026-06-26"
+   ],
+   "estimate": 0.09535785417071124,
+   "ci": [
+    -0.04227656090585763,
+    0.2235599725733826
+   ],
+   "se_boot": 0.06914896471247499,
+   "p_raw": 0.16788836973201127,
+   "placebo_sd": 0.08151395535449213,
+   "placebo_p97_5": 0.1404276789958369,
+   "placebo_pct_of_real": 89.0,
+   "mde": 0.316249328914077,
+   "bar": 0.11766968108291043,
+   "large_bar": 0.3922322702763681,
+   "halves": [
+    -0.04072242751132918,
+    0.23143813585275166
+   ],
+   "per_inst": {
+    "nas100": 0.09703556781427455,
+    "spx500": 0.09368014052714793
+   },
+   "without_top1pct": 0.06954628384366414,
+   "plant_mde_detected": 1.0,
+   "plant_bar_detected": 1.0,
+   "quad_counts": {
+    "goldilocks": 205,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 1.0,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": false,
+    "c3_placebo": false,
+    "c4_halves": false,
+    "c5_instruments": true,
+    "c6_top1pct": true,
+    "c7_plant_mde": true
+   },
+   "powered_for_bar": false,
+   "verdict": "underpowered",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": false
+  },
+  {
+   "cell": "trans_usd_4w",
+   "id": "trans_usd_4w",
+   "arm": "transition",
+   "group": "usd",
+   "h": 4,
+   "def": "primary",
+   "n_rows": 6272,
+   "n_dates": 896,
+   "n_active_rows": 343,
+   "n_clusters": 36,
+   "span": [
+    "2009-05-29",
+    "2026-07-24"
+   ],
+   "estimate": -0.015508289930276647,
+   "ci": [
+    -0.19205326266337275,
+    0.12904824854827956
+   ],
+   "se_boot": 0.08358126909433782,
+   "p_raw": 0.8527996799198805,
+   "placebo_sd": 0.1067500027499259,
+   "placebo_p97_5": 0.22975347700626905,
+   "placebo_pct_of_real": 43.5,
+   "mde": 0.41415750940344337,
+   "bar": 0.08320502943378437,
+   "large_bar": 0.2773500981126146,
+   "halves": [
+    -0.0840593315357896,
+    0.055899045075466024
+   ],
+   "per_inst": {
+    "audusd": -0.17986607427928475,
+    "eurusd": 0.05737598180123171,
+    "gbpusd": -0.004485055168364256,
+    "nzdusd": -0.006408292628260418,
+    "usdcad": -0.09113707832317354,
+    "usdchf": 0.00382791325274397,
+    "usdjpy": 0.1121345758331707
+   },
+   "without_top1pct": -0.035787912545816127,
+   "plant_mde_detected": 1.0,
+   "plant_bar_detected": 0.0,
+   "quad_counts": {
+    "goldilocks": 209,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 1.0,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": false,
+    "c3_placebo": false,
+    "c4_halves": false,
+    "c5_instruments": false,
+    "c6_top1pct": false,
+    "c7_plant_mde": true
+   },
+   "powered_for_bar": false,
+   "verdict": "underpowered",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": false,
+   "evidence_label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown",
+   "evidence_pack": "analysis/output/growth-inflation-quadrant/trans_usd_4w/evidence/EVIDENCE.md",
+   "evidence_plants_nullized": [
+    {
+     "multiple_of_bar": 0.5,
+     "planted": 0.041602514716892185,
+     "detected_share": 0.0,
+     "mean_recovered": 0.04160251471689217
+    },
+    {
+     "multiple_of_bar": 1.0,
+     "planted": 0.08320502943378437,
+     "detected_share": 0.0,
+     "mean_recovered": 0.08320502943378438
+    },
+    {
+     "multiple_of_bar": 2.0,
+     "planted": 0.16641005886756874,
+     "detected_share": 0.6,
+     "mean_recovered": 0.16641005886756877
+    }
+   ],
+   "gate_c7_note": "confounded: plant added on top of a non-positive real estimate (prereg A1); cannot change the verdict (c1 fails)"
+  },
+  {
+   "cell": "trans_gold_4w",
+   "id": "trans_gold_4w",
+   "arm": "transition",
+   "group": "gold",
+   "h": 4,
+   "def": "primary",
+   "n_rows": 896,
+   "n_dates": 896,
+   "n_active_rows": 76,
+   "n_clusters": 36,
+   "span": [
+    "2009-05-29",
+    "2026-07-24"
+   ],
+   "estimate": 0.19299170577461502,
+   "ci": [
+    0.0023732423224164085,
+    0.3932880134699007
+   ],
+   "se_boot": 0.10125843321896356,
+   "p_raw": 0.05665900606921337,
+   "placebo_sd": 0.12798590707626317,
+   "placebo_p97_5": 0.27677837166120794,
+   "placebo_pct_of_real": 93.5,
+   "mde": 0.49654635267428593,
+   "bar": 0.08320502943378437,
+   "large_bar": 0.2773500981126146,
+   "halves": [
+    0.15588682875656407,
+    0.23421934690578283
+   ],
+   "per_inst": {
+    "xauusd": 0.19299170577461502
+   },
+   "without_top1pct": 0.16466267548001934,
+   "plant_mde_detected": 1.0,
+   "plant_bar_detected": 1.0,
+   "quad_counts": {
+    "goldilocks": 209,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 0.9065440971074139,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": true,
+    "c3_placebo": false,
+    "c4_halves": true,
+    "c5_instruments": null,
+    "c6_top1pct": true,
+    "c7_plant_mde": true
+   },
+   "powered_for_bar": false,
+   "verdict": "underpowered",
+   "large_tilt_ruled_out": false,
+   "wrong_sign": false,
+   "evidence_label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown",
+   "evidence_pack": "analysis/output/growth-inflation-quadrant/trans_gold_4w/evidence/EVIDENCE.md",
+   "evidence_plants_nullized": [
+    {
+     "multiple_of_bar": 0.5,
+     "planted": 0.041602514716892185,
+     "detected_share": 0.0,
+     "mean_recovered": 0.04160251471689216
+    },
+    {
+     "multiple_of_bar": 1.0,
+     "planted": 0.08320502943378437,
+     "detected_share": 0.0,
+     "mean_recovered": 0.08320502943378431
+    },
+    {
+     "multiple_of_bar": 2.0,
+     "planted": 0.16641005886756874,
+     "detected_share": 0.1,
+     "mean_recovered": 0.16641005886756874
+    }
+   ]
+  },
+  {
+   "cell": "trans_indices_4w",
+   "id": "trans_indices_4w",
+   "arm": "transition",
+   "group": "indices",
+   "h": 4,
+   "def": "primary",
+   "n_rows": 1792,
+   "n_dates": 896,
+   "n_active_rows": 202,
+   "n_clusters": 36,
+   "span": [
+    "2009-05-29",
+    "2026-07-24"
+   ],
+   "estimate": -0.18296916968197577,
+   "ci": [
+    -0.47254214536401334,
+    0.06811173379603573
+   ],
+   "se_boot": 0.14176405982324852,
+   "p_raw": 0.1968216784163772,
+   "placebo_sd": 0.10805763595036141,
+   "placebo_p97_5": 0.20566845451208815,
+   "placebo_pct_of_real": 5.0,
+   "mde": 0.4192307280971638,
+   "bar": 0.08320502943378437,
+   "large_bar": 0.2773500981126146,
+   "halves": [
+    0.0015516636246112952,
+    -0.4035919051572431
+   ],
+   "per_inst": {
+    "nas100": -0.13559332663253762,
+    "spx500": -0.23034501273141403
+   },
+   "without_top1pct": -0.06482448090194827,
+   "plant_mde_detected": 0.0,
+   "plant_bar_detected": 0.0,
+   "quad_counts": {
+    "goldilocks": 209,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 1.0,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": false,
+    "c3_placebo": false,
+    "c4_halves": false,
+    "c5_instruments": false,
+    "c6_top1pct": false,
+    "c7_plant_mde": false
+   },
+   "powered_for_bar": false,
+   "verdict": "null",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": false,
+   "evidence_label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown",
+   "evidence_pack": "analysis/output/growth-inflation-quadrant/trans_indices_4w/evidence/EVIDENCE.md",
+   "evidence_plants_nullized": [
+    {
+     "multiple_of_bar": 0.5,
+     "planted": 0.041602514716892185,
+     "detected_share": 0.0,
+     "mean_recovered": 0.041602514716892115
+    },
+    {
+     "multiple_of_bar": 1.0,
+     "planted": 0.08320502943378437,
+     "detected_share": 0.0,
+     "mean_recovered": 0.08320502943378433
+    },
+    {
+     "multiple_of_bar": 2.0,
+     "planted": 0.16641005886756874,
+     "detected_share": 0.0,
+     "mean_recovered": 0.16641005886756874
+    }
+   ],
+   "gate_c7_note": "confounded: plant added on top of a non-positive real estimate (prereg A1); cannot change the verdict (c1 fails)"
+  },
+  {
+   "cell": "xfit_usd_4w",
+   "id": "xfit_usd_4w",
+   "arm": "crossfit",
+   "group": "usd",
+   "h": 4,
+   "def": "primary",
+   "n_rows": 6272,
+   "n_dates": 896,
+   "n_active_rows": 3087,
+   "n_clusters": 36,
+   "span": [
+    "2009-05-29",
+    "2026-07-24"
+   ],
+   "estimate": -0.029801196208915463,
+   "ci": [
+    -0.1288568465906288,
+    0.10549482381979013
+   ],
+   "se_boot": 0.0597433907308831,
+   "p_raw": 0.6179062196468446,
+   "placebo_sd": 0.05826426949982295,
+   "placebo_p97_5": 0.1220162733873309,
+   "placebo_pct_of_real": 30.2,
+   "mde": 0.22604762643225723,
+   "bar": 0.08320502943378437,
+   "large_bar": 0.2773500981126146,
+   "halves": [
+    -0.03648469145039463,
+    -0.023117700967436296
+   ],
+   "per_inst": {
+    "audusd": 0.003028693462528364,
+    "eurusd": -0.026055982142847323,
+    "gbpusd": -0.040436260819785776,
+    "nzdusd": 0.02562162278475297,
+    "usdcad": 0.006120771359069763,
+    "usdchf": -0.08777041958107278,
+    "usdjpy": -0.08911679852505348
+   },
+   "without_top1pct": -0.020563618054543664,
+   "plant_mde_detected": 0.0,
+   "plant_bar_detected": 0.0,
+   "quad_counts": {
+    "goldilocks": 209,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 1.0,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": false,
+    "c3_placebo": false,
+    "c4_halves": false,
+    "c5_instruments": false,
+    "c6_top1pct": false,
+    "c7_plant_mde": false
+   },
+   "powered_for_bar": false,
+   "verdict": "underpowered",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": false,
+   "gate_c7_note": "confounded: plant added on top of a non-positive real estimate (prereg A1); cannot change the verdict (c1 fails)"
+  },
+  {
+   "cell": "xfit_gold_4w",
+   "id": "xfit_gold_4w",
+   "arm": "crossfit",
+   "group": "gold",
+   "h": 4,
+   "def": "primary",
+   "n_rows": 896,
+   "n_dates": 896,
+   "n_active_rows": 669,
+   "n_clusters": 36,
+   "span": [
+    "2009-05-29",
+    "2026-07-24"
+   ],
+   "estimate": -0.08477036991283877,
+   "ci": [
+    -0.2243013579182149,
+    0.1732695843425056
+   ],
+   "se_boot": 0.1020060336855363,
+   "p_raw": 0.4059550441907305,
+   "placebo_sd": 0.06338612730321885,
+   "placebo_p97_5": 0.07488790670116098,
+   "placebo_pct_of_real": 40.1,
+   "mde": 0.24591887530090903,
+   "bar": 0.08320502943378437,
+   "large_bar": 0.2773500981126146,
+   "halves": [
+    -0.04966203640076427,
+    -0.11987870342491327
+   ],
+   "per_inst": {
+    "xauusd": -0.08477036991283877
+   },
+   "without_top1pct": -0.0880134590338167,
+   "plant_mde_detected": 0.0,
+   "plant_bar_detected": 0.0,
+   "quad_counts": {
+    "goldilocks": 209,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 1.0,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": false,
+    "c3_placebo": false,
+    "c4_halves": false,
+    "c5_instruments": null,
+    "c6_top1pct": false,
+    "c7_plant_mde": false
+   },
+   "powered_for_bar": false,
+   "verdict": "underpowered",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": false,
+   "gate_c7_note": "confounded: plant added on top of a non-positive real estimate (prereg A1); cannot change the verdict (c1 fails)"
+  },
+  {
+   "cell": "xfit_indices_4w",
+   "id": "xfit_indices_4w",
+   "arm": "crossfit",
+   "group": "indices",
+   "h": 4,
+   "def": "primary",
+   "n_rows": 1792,
+   "n_dates": 896,
+   "n_active_rows": 1792,
+   "n_clusters": 36,
+   "span": [
+    "2009-05-29",
+    "2026-07-24"
+   ],
+   "estimate": -0.049635892827555934,
+   "ci": [
+    -0.15622763662393493,
+    0.09978810063900308
+   ],
+   "se_boot": 0.06663029024212906,
+   "p_raw": 0.4563050489914642,
+   "placebo_sd": 0.0650840401528907,
+   "placebo_p97_5": 0.11815606172800434,
+   "placebo_pct_of_real": 32.7,
+   "mde": 0.2525062602085378,
+   "bar": 0.08320502943378437,
+   "large_bar": 0.2773500981126146,
+   "halves": [
+    -0.0441239415281462,
+    -0.05514784412696567
+   ],
+   "per_inst": {
+    "nas100": -0.019922353120213326,
+    "spx500": -0.07934943253489855
+   },
+   "without_top1pct": -0.03802303090727528,
+   "plant_mde_detected": 0.3,
+   "plant_bar_detected": 0.0,
+   "quad_counts": {
+    "goldilocks": 209,
+    "reflation": 227,
+    "stagflation": 228,
+    "deflation": 232
+   },
+   "p_holm": 1.0,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": false,
+    "c3_placebo": false,
+    "c4_halves": false,
+    "c5_instruments": false,
+    "c6_top1pct": false,
+    "c7_plant_mde": false
+   },
+   "powered_for_bar": false,
+   "verdict": "underpowered",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": false,
+   "gate_c7_note": "confounded: plant added on top of a non-positive real estimate (prereg A1); cannot change the verdict (c1 fails)"
+  },
+  {
+   "cell": "s2map_usd_4w",
+   "id": "s2map_usd_4w",
+   "arm": "map",
+   "group": "usd",
+   "h": 4,
+   "def": "secondary",
+   "n_rows": 8330,
+   "n_dates": 1190,
+   "n_active_rows": 4326,
+   "n_clusters": 47,
+   "span": [
+    "2003-10-10",
+    "2026-07-24"
+   ],
+   "estimate": -0.11311510168910027,
+   "ci": [
+    -0.21931348170834797,
+    -0.011997038706100648
+   ],
+   "se_boot": 0.053517416494960494,
+   "p_raw": 0.0345483434540077,
+   "placebo_sd": 0.05401107045005275,
+   "placebo_p97_5": 0.10641091702655123,
+   "placebo_pct_of_real": 2.1999999999999997,
+   "mde": 0.2095465090545236,
+   "bar": 0.08320502943378437,
+   "large_bar": 0.2773500981126146,
+   "halves": [
+    -0.10642581857912657,
+    -0.119935547212995
+   ],
+   "per_inst": {
+    "audusd": -0.22478126163127937,
+    "eurusd": -0.18098101260419083,
+    "gbpusd": -0.0399462409842394,
+    "nzdusd": -0.1377626652713007,
+    "usdcad": -0.17277101962927152,
+    "usdchf": -0.05152289326663621,
+    "usdjpy": 0.015959381563216263
+   },
+   "without_top1pct": -0.09615405369931192,
+   "plant_mde_detected": 0.025,
+   "plant_bar_detected": 0.0,
+   "quad_counts": {
+    "goldilocks": 240,
+    "reflation": 263,
+    "stagflation": 309,
+    "deflation": 378
+   },
+   "p_holm": 0.6390991724689492,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": false,
+    "c3_placebo": false,
+    "c4_halves": false,
+    "c5_instruments": false,
+    "c6_top1pct": false,
+    "c7_plant_mde": false
+   },
+   "powered_for_bar": false,
+   "verdict": "null",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": true,
+   "evidence_label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown",
+   "evidence_pack": "analysis/output/growth-inflation-quadrant/s2map_usd_4w/evidence/EVIDENCE.md",
+   "evidence_plants_nullized": [
+    {
+     "multiple_of_bar": 0.5,
+     "planted": 0.041602514716892185,
+     "detected_share": 0.0,
+     "mean_recovered": 0.041602514716892205
+    },
+    {
+     "multiple_of_bar": 1.0,
+     "planted": 0.08320502943378437,
+     "detected_share": 0.025,
+     "mean_recovered": 0.08320502943378438
+    },
+    {
+     "multiple_of_bar": 2.0,
+     "planted": 0.16641005886756874,
+     "detected_share": 1.0,
+     "mean_recovered": 0.16641005886756877
+    }
+   ],
+   "gate_c7_note": "confounded: plant added on top of a non-positive real estimate (prereg A1); cannot change the verdict (c1 fails)"
+  },
+  {
+   "cell": "s2map_gold_4w",
+   "id": "s2map_gold_4w",
+   "arm": "map",
+   "group": "gold",
+   "h": 4,
+   "def": "secondary",
+   "n_rows": 1022,
+   "n_dates": 1022,
+   "n_active_rows": 818,
+   "n_clusters": 41,
+   "span": [
+    "2006-12-29",
+    "2026-07-24"
+   ],
+   "estimate": 0.04512961610745863,
+   "ci": [
+    -0.06825745903668322,
+    0.1612397443162491
+   ],
+   "se_boot": 0.05818906019170974,
+   "p_raw": 0.43800366350821673,
+   "placebo_sd": 0.0701425340972471,
+   "placebo_p97_5": 0.14077898151254672,
+   "placebo_pct_of_real": 75.3,
+   "mde": 0.2721316765959721,
+   "bar": 0.08320502943378437,
+   "large_bar": 0.2773500981126146,
+   "halves": [
+    -0.06808730981342143,
+    0.16696712014414172
+   ],
+   "per_inst": {
+    "xauusd": 0.04512961610745863
+   },
+   "without_top1pct": 0.03379119888084557,
+   "plant_mde_detected": 1.0,
+   "plant_bar_detected": 0.175,
+   "quad_counts": {
+    "goldilocks": 205,
+    "reflation": 204,
+    "stagflation": 273,
+    "deflation": 340
+   },
+   "p_holm": 1.0,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": false,
+    "c3_placebo": false,
+    "c4_halves": false,
+    "c5_instruments": null,
+    "c6_top1pct": true,
+    "c7_plant_mde": true
+   },
+   "powered_for_bar": false,
+   "verdict": "underpowered",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": false,
+   "evidence_label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown",
+   "evidence_pack": "analysis/output/growth-inflation-quadrant/s2map_gold_4w/evidence/EVIDENCE.md",
+   "evidence_plants_nullized": [
+    {
+     "multiple_of_bar": 0.5,
+     "planted": 0.041602514716892185,
+     "detected_share": 0.0,
+     "mean_recovered": 0.04160251471689219
+    },
+    {
+     "multiple_of_bar": 1.0,
+     "planted": 0.08320502943378437,
+     "detected_share": 0.0,
+     "mean_recovered": 0.08320502943378437
+    },
+    {
+     "multiple_of_bar": 2.0,
+     "planted": 0.16641005886756874,
+     "detected_share": 1.0,
+     "mean_recovered": 0.16641005886756877
+    }
+   ]
+  },
+  {
+   "cell": "s2map_indices_4w",
+   "id": "s2map_indices_4w",
+   "arm": "map",
+   "group": "indices",
+   "h": 4,
+   "def": "secondary",
+   "n_rows": 2356,
+   "n_dates": 1178,
+   "n_active_rows": 2356,
+   "n_clusters": 46,
+   "span": [
+    "2004-01-02",
+    "2026-07-24"
+   ],
+   "estimate": -0.07373210905188897,
+   "ci": [
+    -0.16695418695135822,
+    0.018646924572395255
+   ],
+   "se_boot": 0.047631012358092854,
+   "p_raw": 0.12162582516151277,
+   "placebo_sd": 0.050275752727937426,
+   "placebo_p97_5": 0.10478749597587979,
+   "placebo_pct_of_real": 6.800000000000001,
+   "mde": 0.1950546135531635,
+   "bar": 0.08320502943378437,
+   "large_bar": 0.2773500981126146,
+   "halves": [
+    -0.035841914645975935,
+    -0.11162230345780202
+   ],
+   "per_inst": {
+    "nas100": -0.06679923190664551,
+    "spx500": -0.08066498619713243
+   },
+   "without_top1pct": -0.06663981398651447,
+   "plant_mde_detected": 1.0,
+   "plant_bar_detected": 0.0,
+   "quad_counts": {
+    "goldilocks": 238,
+    "reflation": 254,
+    "stagflation": 309,
+    "deflation": 377
+   },
+   "p_holm": 1.0,
+   "gate": {
+    "c1_holm": false,
+    "c2_bar": false,
+    "c3_placebo": false,
+    "c4_halves": false,
+    "c5_instruments": false,
+    "c6_top1pct": false,
+    "c7_plant_mde": true
+   },
+   "powered_for_bar": false,
+   "verdict": "null",
+   "large_tilt_ruled_out": true,
+   "wrong_sign": false,
+   "evidence_label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown",
+   "evidence_pack": "analysis/output/growth-inflation-quadrant/s2map_indices_4w/evidence/EVIDENCE.md",
+   "evidence_plants_nullized": [
+    {
+     "multiple_of_bar": 0.5,
+     "planted": 0.041602514716892185,
+     "detected_share": 0.0,
+     "mean_recovered": 0.04160251471689218
+    },
+    {
+     "multiple_of_bar": 1.0,
+     "planted": 0.08320502943378437,
+     "detected_share": 0.075,
+     "mean_recovered": 0.08320502943378438
+    },
+    {
+     "multiple_of_bar": 2.0,
+     "planted": 0.16641005886756874,
+     "detected_share": 1.0,
+     "mean_recovered": 0.16641005886756877
+    }
+   ],
+   "gate_c7_note": "confounded: plant added on top of a non-positive real estimate (prereg A1); cannot change the verdict (c1 fails)"
+  }
+ ],
+ "canary": {
+  "share_labels_same_if_released_35d_earlier": 0.5788888888888889,
+  "share_labels_same_with_revised_data_1m_lag": 0.6488888888888888,
+  "estimates": {
+   "released_35d_earlier": {
+    "usd": -0.0910757512225177,
+    "gold": 0.18739264766813893,
+    "indices": -0.036004259932120676
+   },
+   "revised_data": {
+    "usd": -0.06606766645064951,
+    "gold": 0.1638512191852502,
+    "indices": 0.0895268538387396
+   },
+   "point_in_time": {
+    "usd": -0.06678100990951082,
+    "gold": 0.13181375289877204,
+    "indices": 0.017959560188439434
+   }
+  },
+  "flag_revised_data_differs": true,
+  "flag_early_release_changes_labels": true
+ },
+ "per_quadrant_4w": {
+  "usd": {
+   "goldilocks": {
+    "n_dates": 209,
+    "mean_z_dm": 0.06298918847487887,
+    "ci": [
+     -0.17441203624928517,
+     0.29857484932255135
+    ]
+   },
+   "reflation": {
+    "n_dates": 227,
+    "mean_z_dm": 0.017359658771435995,
+    "ci": [
+     -0.18632404012577752,
+     0.24348316860344724
+    ]
+   },
+   "stagflation": {
+    "n_dates": 228,
+    "mean_z_dm": -0.0035951664628118885,
+    "ci": [
+     -0.13891514972733873,
+     0.15840345785191576
+    ]
+   },
+   "deflation": {
+    "n_dates": 232,
+    "mean_z_dm": -0.07019691801226115,
+    "ci": [
+     -0.16912469568681873,
+     0.03390764773837073
+    ]
+   }
+  },
+  "gold": {
+   "goldilocks": {
+    "n_dates": 209,
+    "mean_z_dm": -0.16360609011359986,
+    "ci": [
+     -0.39851334211787565,
+     0.08352379780553422
+    ]
+   },
+   "reflation": {
+    "n_dates": 227,
+    "mean_z_dm": -0.08720729084490621,
+    "ci": [
+     -0.35050894820724354,
+     0.1346372229203562
+    ]
+   },
+   "stagflation": {
+    "n_dates": 228,
+    "mean_z_dm": 0.0976482292317525,
+    "ci": [
+     -0.13816361848941222,
+     0.3433516238891555
+    ]
+   },
+   "deflation": {
+    "n_dates": 232,
+    "mean_z_dm": 0.1367497051323127,
+    "ci": [
+     -0.024879346596887526,
+     0.3160778528862632
+    ]
+   }
+  },
+  "indices": {
+   "goldilocks": {
+    "n_dates": 209,
+    "mean_z_dm": -0.029421536382203885,
+    "ci": [
+     -0.16729398412626764,
+     0.10754853040668182
+    ]
+   },
+   "reflation": {
+    "n_dates": 227,
+    "mean_z_dm": 0.06253296946388288,
+    "ci": [
+     -0.12922380482465104,
+     0.26163701081242224
+    ]
+   },
+   "stagflation": {
+    "n_dates": 228,
+    "mean_z_dm": -0.017318556797457477,
+    "ci": [
+     -0.31834194558138773,
+     0.2626600863214537
+    ]
+   },
+   "deflation": {
+    "n_dates": 232,
+    "mean_z_dm": -0.017660569028450965,
+    "ci": [
+     -0.18139048899230104,
+     0.14877934283956004
+    ]
+   }
+  }
+ },
+ "amendments": [
+  "A1 2026-11-15 post-hoc describe-only: packs rebuilt with plants on null-ized rows; c7 confounded for non-positive cells; no verdict changes"
+ ],
+ "verdict_counts": {
+  "null": 7,
+  "underpowered": 14
+ }
+}

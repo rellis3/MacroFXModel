@@ -1,0 +1,122 @@
+{
+ "slug": "growth-inflation-quadrant/trans_gold_4w",
+ "unit": "sigma of 4w return",
+ "bar": 0.08320502943378437,
+ "n_rows": 76,
+ "n_clusters": 33,
+ "n_instruments": 1,
+ "span": [
+  "2009-08-21",
+  "2026-05-22"
+ ],
+ "estimate": 0.19299170577461502,
+ "ci": [
+  0.012366825090475818,
+  0.41230684007395885
+ ],
+ "se": 0.09868691434030101,
+ "verdict_word": "underpowered",
+ "notes": "Rows = (instrument, Friday) where the map takes a side; outcome = forward z demeaned per instrument (B0). Cluster = calendar half-year. CAUTION: the pack's shuffled placebo permutes the side row by row, which breaks the quadrant's persistence and makes its band too narrow; the registered placebo is the circular shift in results.json (placebo_p97_5). Leak = side set to the sign of the realised outcome. Plants are added to the real rows AFTER removing the real estimate (prereg amendment A1).",
+ "placebo": {
+  "n": 500,
+  "mean": 0.029147022712043974,
+  "p2_5": -0.1675720993624456,
+  "p97_5": 0.22653768231527566,
+  "real_percentile": 94.8
+ },
+ "buckets": [
+  {
+   "bucket": "deflation",
+   "n": 24,
+   "mean_outcome": 0.23263975493168165,
+   "lo": -0.14381018756201902,
+   "hi": 0.6090896974253823,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "goldilocks",
+   "n": 25,
+   "mean_outcome": -0.12828455578842526,
+   "lo": -0.5083187306826217,
+   "hi": 0.2517496191057712,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "stagflation",
+   "n": 27,
+   "mean_outcome": 0.21766302317776856,
+   "lo": -0.13757368224287406,
+   "hi": 0.5728997285984112,
+   "mean_side": 1.0
+  }
+ ],
+ "by_instrument": [
+  {
+   "inst": "xauusd",
+   "n": 76,
+   "estimate": 0.19299170577461502,
+   "ci": [
+    0.005540979264916574,
+    0.39406304172052425
+   ]
+  }
+ ],
+ "by_year": [],
+ "by_half": [
+  {
+   "half": "H1",
+   "n": 39,
+   "estimate": 0.14586895368521144,
+   "ci": [
+    -0.07951987539262467,
+    0.46985402917884567
+   ]
+  },
+  {
+   "half": "H2",
+   "n": 37,
+   "estimate": 0.24266163365263504,
+   "ci": [
+    -0.09526644464502565,
+    0.5367264666915541
+   ]
+  }
+ ],
+ "positive_control": [
+  {
+   "multiple_of_bar": 0.5,
+   "planted": 0.041602514716892185,
+   "detected_share": 0.0,
+   "mean_recovered": 0.04160251471689216
+  },
+  {
+   "multiple_of_bar": 1.0,
+   "planted": 0.08320502943378437,
+   "detected_share": 0.0,
+   "mean_recovered": 0.08320502943378431
+  },
+  {
+   "multiple_of_bar": 2.0,
+   "planted": 0.16641005886756874,
+   "detected_share": 0.1,
+   "mean_recovered": 0.16641005886756874
+  }
+ ],
+ "lookahead_canary": {
+  "estimate_with_leak": 0.771512201595009,
+  "estimate_clean": 0.19299170577461502
+ },
+ "diagnosis": {
+  "checks": {
+   "ci_excludes_zero": true,
+   "ci_excludes_bar": false,
+   "beats_placebo_97_5": false,
+   "pipeline_finds_planted_bar": false,
+   "same_sign_both_halves": true,
+   "share_instruments_same_sign": 1.0,
+   "survives_top1pct_removed": false,
+   "survives_costs": null
+  },
+  "label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown"
+ }
+}
