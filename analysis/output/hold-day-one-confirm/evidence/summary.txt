@@ -1,0 +1,2 @@
+run: est -0.0382 (registered -0.0382) CI [-0.0986, +0.0274] placebo pct 0 plant1x 0.33 halves [-0.0424, -0.0339] canary +0.878 -> UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown
+hold-r: est +0.0029 (registered +0.0029) CI [-0.0427, +0.0535] placebo pct 3 plant1x 1.00 halves [-0.0086, 0.0142] canary +0.632 -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out

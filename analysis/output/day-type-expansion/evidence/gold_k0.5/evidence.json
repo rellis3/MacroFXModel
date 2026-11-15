@@ -1,0 +1,225 @@
+{
+ "slug": "day-type-expansion:gold_k0.5",
+ "unit": "Brier skill vs sigma-only (fraction)",
+ "bar": 0.02,
+ "n_rows": 953,
+ "n_clusters": 953,
+ "n_instruments": 1,
+ "span": [
+  "2022-09-06",
+  "2026-07-02"
+ ],
+ "estimate": -0.003607711162052718,
+ "ci": [
+  -0.011707350352972956,
+  0.004987652794330596
+ ],
+ "se": 0.004213254307096156,
+ "verdict_word": "NULL",
+ "notes": "OOS predictions rebuilt with the runner's own functions (same seed/folds); the registered BSS_B1 for this cell was -0.0036. The pack bootstraps dates iid (the runner used 21-day moving blocks), so its CI can be a little narrower. Placebo = the model's lift (pm - p1) shuffled across dates within instrument.",
+ "placebo": {
+  "n": 500,
+  "mean": -0.004468320994490877,
+  "p2_5": -0.01261449848316577,
+  "p97_5": 0.003974597339103381,
+  "real_percentile": 58.599999999999994
+ },
+ "buckets": [
+  {
+   "bucket": "D1",
+   "n": 96,
+   "mean_outcome": -0.02939342145586422,
+   "lo": -0.12226528876766529,
+   "hi": 0.06347844585593684,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D2",
+   "n": 95,
+   "mean_outcome": 0.014448433459341183,
+   "lo": -0.08069311831757951,
+   "hi": 0.10958998523626189,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D3",
+   "n": 95,
+   "mean_outcome": 0.0034097197480830598,
+   "lo": -0.09228273992882713,
+   "hi": 0.09910217942499325,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D4",
+   "n": 95,
+   "mean_outcome": -0.058309855436902036,
+   "lo": -0.1493279122150321,
+   "hi": 0.03270820134122804,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D5",
+   "n": 96,
+   "mean_outcome": -0.04288225645848839,
+   "lo": -0.13173855948934826,
+   "hi": 0.04597404657237148,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D6",
+   "n": 95,
+   "mean_outcome": 0.02121084826685585,
+   "lo": -0.07411086891622004,
+   "hi": 0.11653256544993174,
+   "mean_side": 0.6210526315789474
+  },
+  {
+   "bucket": "D7",
+   "n": 95,
+   "mean_outcome": -0.017423465261545538,
+   "lo": -0.11417326347433779,
+   "hi": 0.07932633295124672,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D8",
+   "n": 95,
+   "mean_outcome": -0.008206890123042836,
+   "lo": -0.10262058115411452,
+   "hi": 0.08620680090802885,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D9",
+   "n": 95,
+   "mean_outcome": -0.010482361060782003,
+   "lo": -0.10638201018380469,
+   "hi": 0.08541728806224069,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D10",
+   "n": 96,
+   "mean_outcome": -0.010998951202265378,
+   "lo": -0.10764259480496895,
+   "hi": 0.08564469240043819,
+   "mean_side": 1.0
+  }
+ ],
+ "by_instrument": [
+  {
+   "inst": "GOLD",
+   "n": 953,
+   "estimate": -0.003607711162052718,
+   "ci": [
+    -0.011466185432634479,
+    0.005540386397021227
+   ]
+  }
+ ],
+ "by_year": [
+  {
+   "year": "2022",
+   "n": 81,
+   "estimate": 0.0015274738959007994,
+   "ci": [
+    -0.020325591874761493,
+    0.025692955754357136
+   ]
+  },
+  {
+   "year": "2023",
+   "n": 249,
+   "estimate": 0.007284099511748687,
+   "ci": [
+    -0.012702315605655545,
+    0.021373646010492332
+   ]
+  },
+  {
+   "year": "2024",
+   "n": 249,
+   "estimate": -0.023337705604967507,
+   "ci": [
+    -0.04070351215999674,
+    -0.00222112141053121
+   ]
+  },
+  {
+   "year": "2025",
+   "n": 249,
+   "estimate": -0.002065635201783156,
+   "ci": [
+    -0.014623444063334361,
+    0.012604722826613055
+   ]
+  },
+  {
+   "year": "2026",
+   "n": 125,
+   "estimate": 0.009470242868391598,
+   "ci": [
+    -0.014737877828531781,
+    0.030334146780844624
+   ]
+  }
+ ],
+ "by_half": [
+  {
+   "half": "H1",
+   "n": 477,
+   "estimate": -0.007699575890933952,
+   "ci": [
+    -0.022312533411355688,
+    0.0040281772883023845
+   ]
+  },
+  {
+   "half": "H2",
+   "n": 476,
+   "estimate": 0.000934707354743658,
+   "ci": [
+    -0.008735911347501369,
+    0.01141809567676119
+   ]
+  }
+ ],
+ "without_top1pct": -0.005001427087321764,
+ "positive_control": [
+  {
+   "multiple_of_bar": 0.5,
+   "planted": 0.01,
+   "detected_share": 0.0,
+   "mean_recovered": 0.006392288837947291
+  },
+  {
+   "multiple_of_bar": 1.0,
+   "planted": 0.02,
+   "detected_share": 1.0,
+   "mean_recovered": 0.01639228883794719
+  },
+  {
+   "multiple_of_bar": 2.0,
+   "planted": 0.04,
+   "detected_share": 1.0,
+   "mean_recovered": 0.0363922888379472
+  }
+ ],
+ "lookahead_canary": {
+  "estimate_with_leak": 0.9999999999954328,
+  "estimate_clean": -0.003607711162052718
+ },
+ "diagnosis": {
+  "checks": {
+   "ci_excludes_zero": false,
+   "ci_excludes_bar": true,
+   "beats_placebo_97_5": false,
+   "pipeline_finds_planted_bar": true,
+   "same_sign_both_halves": false,
+   "share_instruments_same_sign": 1.0,
+   "survives_top1pct_removed": true,
+   "survives_costs": null
+  },
+  "label": "FLAT: the test could see a useful effect (planted control found), and the interval rules it out"
+ }
+}

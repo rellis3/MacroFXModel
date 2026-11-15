@@ -1,0 +1,30 @@
+{
+ "EURUSD": {
+  "n_overlap": 1771,
+  "corr": 0.9995652574832292,
+  "mean_abs_diff_pp": 0.024681088686082556,
+  "server_first": "2019-09-09",
+  "server_rows_pre_lockbox": 1771
+ },
+ "GBPUSD": {
+  "n_overlap": 1771,
+  "corr": 0.9996785943903261,
+  "mean_abs_diff_pp": 0.02515190275926524,
+  "server_first": "2019-09-09",
+  "server_rows_pre_lockbox": 1771
+ },
+ "USDJPY": {
+  "n_overlap": 1771,
+  "corr": 0.9999184735647129,
+  "mean_abs_diff_pp": 0.02488973688186597,
+  "server_first": "2019-09-09",
+  "server_rows_pre_lockbox": 1771
+ },
+ "GOLD": {
+  "n_overlap": 1771,
+  "corr": 0.9999691650332492,
+  "mean_abs_diff_pp": 0.02556318775371538,
+  "server_first": "2019-09-09",
+  "server_rows_pre_lockbox": 1771
+ }
+}

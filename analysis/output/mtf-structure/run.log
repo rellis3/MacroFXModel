@@ -1,0 +1,55 @@
+15:35:23 selftest (i) planted: E +0.0634 [+0.0516, +0.0795] z +7.72
+15:35:23 selftest (i) null: E +0.0056 [-0.0078, +0.0216] z +0.73
+15:35:29 selftest (i) abstention planted: Delta +0.0622 [+0.0526, +0.0721], random band 97.5 +0.0091
+15:35:54 selftest (ii) forward filter vs hmmlearn posterior at the last obs: max diff 1.39e-12
+15:35:54 selftest (ii) future perturbation: filtered max change before t 0.0e+00; smoothed 0.36
+15:35:54 selftest (ii) next-obs direction accuracy: filtered 0.576, smoothed 0.627 (leak +0.051)
+15:40:00 selftest (iii) states on/before the perturbed date changed: none; smoothed changed: ['Hs_W1']; filled rows {'T_W1': 118, 'S_W1': 118, 'H_W1': 118, 'N_W1': 0, 'T_D1': 118, 'S_D1': 118, 'H_D1': 118, 'N_D1': 118, 'T_H4': 118, 'S_H4': 118, 'H_H4': 118, 'N_H4': 118, 'T_H1': 118, 'S_H1': 118, 'H_H1': 118, 'N_H1': 118}
+15:40:01 SELFTEST PASSED
+16:08:22 EURUSD: 3840908 M1 rows, 2756 sessions with a 07:00 bar of 2773 weekdays with data, 1688s
+16:08:22 GBPUSD: 3815842 M1 rows, 2756 sessions with a 07:00 bar of 2773 weekdays with data, 1432s
+16:31:13 USDJPY: 3874254 M1 rows, 2756 sessions with a 07:00 bar of 2773 weekdays with data, 1627s
+16:36:16 USDCAD: 3850955 M1 rows, 2756 sessions with a 07:00 bar of 2773 weekdays with data, 1674s
+17:07:45 AUDUSD: 3686619 M1 rows, 2756 sessions with a 07:00 bar of 2773 weekdays with data, 2192s
+17:14:13 NZDUSD: 3802273 M1 rows, 2756 sessions with a 07:00 bar of 2773 weekdays with data, 2276s
+17:41:10 USDCHF: 3590697 M1 rows, 2756 sessions with a 07:00 bar of 2773 weekdays with data, 2005s
+17:44:05 EURJPY: 3876310 M1 rows, 2755 sessions with a 07:00 bar of 2773 weekdays with data, 1792s
+18:04:41 GBPJPY: 3933231 M1 rows, 2756 sessions with a 07:00 bar of 2773 weekdays with data, 1411s
+18:10:17 GOLD: 3722340 M1 rows, 2743 sessions with a 07:00 bar of 2761 weekdays with data, 1572s
+18:23:27 NAS100: 3693815 M1 rows, 2741 sessions with a 07:00 bar of 2764 weekdays with data, 1125s
+18:25:38 SPX500: 3288848 M1 rows, 2722 sessions with a 07:00 bar of 2764 weekdays with data, 920s
+18:37:34 US30: 3657894 M1 rows, 2741 sessions with a 07:00 bar of 2764 weekdays with data, 847s
+18:37:38 coverage (share of test instrument-sessions called / kept): {'ema': 0.296, 'swing': 0.021, 'hmm': 0.463, 'named': 0.248, 'hmm_smooth': 0.463, 'pullback': 0.181, 'conflict-ema': 0.294, 'conflict-hmm': 0.461, 'conflict-named': 0.246, 'conflict-hmm-smooth': 0.461}
+18:37:39 ema|h1: est -0.0034 [-0.0176, +0.0100] z -0.48 n 8539 plant 1.00
+18:37:41 ema|h3: est -0.0142 [-0.0355, +0.0037] z -1.40 n 8546 plant 0.00
+18:37:42 ema|h5: est -0.0226 [-0.0465, -0.0008] z -1.86 n 8537 plant 0.00
+18:37:44 swing|h1: est -0.0258 [-0.0770, +0.0217] z -1.04 n 558 plant 0.00
+18:37:45 swing|h3: est -0.0399 [-0.0953, +0.0052] z -1.55 n 558 plant 0.00
+18:37:47 swing|h5: est -0.0573 [-0.1114, -0.0063] z -2.03 n 558 plant 0.00
+18:37:49 hmm|h1: est -0.0038 [-0.0153, +0.0063] z -0.69 n 13401 plant 1.00
+18:37:50 hmm|h3: est -0.0043 [-0.0219, +0.0127] z -0.48 n 13403 plant 0.80
+18:37:52 hmm|h5: est -0.0085 [-0.0301, +0.0123] z -0.77 n 13387 plant 0.00
+18:37:54 pullback|h1: est +0.0075 [-0.0115, +0.0254] z +0.80 n 5196 plant 1.00
+18:37:55 pullback|h3: est -0.0024 [-0.0269, +0.0225] z -0.19 n 5194 plant 0.00
+18:37:56 pullback|h5: est +0.0007 [-0.0289, +0.0314] z +0.05 n 5196 plant 0.00
+18:38:02 conflict-ema|h1: est -0.0027 [-0.0138, +0.0084] z -0.47 n 8539 plant 0.57
+18:38:08 conflict-ema|h3: est -0.0064 [-0.0243, +0.0093] z -0.75 n 8546 plant 0.00
+18:38:14 conflict-ema|h5: est -0.0125 [-0.0330, +0.0062] z -1.25 n 8537 plant 0.00
+18:38:21 conflict-hmm|h1: est -0.0026 [-0.0125, +0.0054] z -0.59 n 13401 plant 1.00
+18:38:29 conflict-hmm|h3: est -0.0032 [-0.0163, +0.0083] z -0.50 n 13403 plant 0.30
+18:38:35 conflict-hmm|h5: est -0.0039 [-0.0211, +0.0106] z -0.49 n 13387 plant 0.00
+18:38:35 family verdicts: {'mtf-structure-ema': 'UNDERPOWERED', 'mtf-structure-swing': 'UNDERPOWERED', 'mtf-structure-hmm': 'UNDERPOWERED', 'mtf-structure-pullback': 'UNDERPOWERED', 'mtf-structure-conflict-ema': 'UNDERPOWERED', 'mtf-structure-conflict-hmm': 'UNDERPOWERED'}
+18:38:49 wrote results.json
+18:38:51 evidence pack ema: 8539 rows
+18:40:58   -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+18:40:58 evidence pack swing: 558 rows
+18:42:14   -> UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown
+18:42:14 evidence pack hmm: 13401 rows
+18:44:04   -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+18:44:04 evidence pack pullback: 5196 rows
+18:45:37   -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+18:45:37 evidence pack conflict-ema: 28993 rows
+18:49:00   -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+18:49:00 evidence pack conflict-hmm: 28993 rows
+18:52:00   -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out
+18:52:00 done

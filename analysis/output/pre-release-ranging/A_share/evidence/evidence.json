@@ -1,0 +1,251 @@
+{
+ "slug": "pre-release-ranging/A_share",
+ "unit": "share of day range",
+ "bar": 0.05,
+ "n_rows": 7023,
+ "n_clusters": 1229,
+ "n_instruments": 6,
+ "span": [
+  "2017-01-06",
+  "2026-08-13"
+ ],
+ "estimate": 0.14719916148186596,
+ "ci": [
+  0.12961183932235157,
+  0.1664087699702338
+ ],
+ "se": 0.009222112711673435,
+ "verdict_word": "VALIDATED",
+ "notes": "Rows: event days (side +1) and pseudo-event non-release days (side -1); outcome = compression vs the row's own matched controls (control - row; positive = narrower / fewer breaks). Estimate = event mean - pseudo mean. Placebo = event/pseudo labels shuffled across dates. Leak canary: labels reassigned by the realised post-release range excess (top half = +1).",
+ "placebo": {
+  "n": 500,
+  "mean": -0.000295621467041808,
+  "p2_5": -0.010491997067736434,
+  "p97_5": 0.010514664618358845,
+  "real_percentile": 100.0
+ },
+ "buckets": [
+  {
+   "bucket": "-1",
+   "n": 4664,
+   "mean_outcome": 0.0036034517545587667,
+   "lo": -0.002385022623832893,
+   "hi": 0.009591926132950426,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "1",
+   "n": 2359,
+   "mean_outcome": 0.15080261323642472,
+   "lo": 0.1413652613746697,
+   "hi": 0.16023996509817973,
+   "mean_side": 1.0
+  }
+ ],
+ "by_instrument": [
+  {
+   "inst": "eurusd",
+   "n": 1220,
+   "estimate": 0.17629800644543206,
+   "ci": [
+    0.1448047935923397,
+    0.20691843808747432
+   ]
+  },
+  {
+   "inst": "gbpusd",
+   "n": 1222,
+   "estimate": 0.15390710013294717,
+   "ci": [
+    0.13272971280357143,
+    0.18182744242679005
+   ]
+  },
+  {
+   "inst": "gold",
+   "n": 1200,
+   "estimate": 0.14596983322039517,
+   "ci": [
+    0.11838034274077561,
+    0.17065097487561212
+   ]
+  },
+  {
+   "inst": "nq",
+   "n": 1183,
+   "estimate": 0.10625911672348484,
+   "ci": [
+    0.08410002755838039,
+    0.1336296598917643
+   ]
+  },
+  {
+   "inst": "spx500",
+   "n": 976,
+   "estimate": 0.11298118450430746,
+   "ci": [
+    0.0848723543522199,
+    0.13789544815126317
+   ]
+  },
+  {
+   "inst": "usdjpy",
+   "n": 1222,
+   "estimate": 0.18096242174090355,
+   "ci": [
+    0.1519425712360918,
+    0.2097672519039144
+   ]
+  }
+ ],
+ "by_year": [
+  {
+   "year": "2017",
+   "n": 644,
+   "estimate": 0.17739675050633955,
+   "ci": [
+    0.12376041615270165,
+    0.22399600190091729
+   ]
+  },
+  {
+   "year": "2018",
+   "n": 768,
+   "estimate": 0.11568797317569648,
+   "ci": [
+    0.06931617604251784,
+    0.16926406780467332
+   ]
+  },
+  {
+   "year": "2019",
+   "n": 692,
+   "estimate": 0.12176030194165659,
+   "ci": [
+    0.06572564311239733,
+    0.1859906245781861
+   ]
+  },
+  {
+   "year": "2020",
+   "n": 707,
+   "estimate": 0.07020293577506412,
+   "ci": [
+    0.024387626375112964,
+    0.11548204524658354
+   ]
+  },
+  {
+   "year": "2021",
+   "n": 834,
+   "estimate": 0.124241070684774,
+   "ci": [
+    0.07132919856906952,
+    0.17280250186961926
+   ]
+  },
+  {
+   "year": "2022",
+   "n": 731,
+   "estimate": 0.1825724034815748,
+   "ci": [
+    0.1195336966268174,
+    0.2376563234793091
+   ]
+  },
+  {
+   "year": "2023",
+   "n": 770,
+   "estimate": 0.1687882709764436,
+   "ci": [
+    0.1252008441947092,
+    0.22445384529002588
+   ]
+  },
+  {
+   "year": "2024",
+   "n": 637,
+   "estimate": 0.19544072419695627,
+   "ci": [
+    0.12523749881818824,
+    0.25215513061879197
+   ]
+  },
+  {
+   "year": "2025",
+   "n": 768,
+   "estimate": 0.18646723352438088,
+   "ci": [
+    0.11889041522757673,
+    0.2382171771770739
+   ]
+  },
+  {
+   "year": "2026",
+   "n": 472,
+   "estimate": 0.11974378182779316,
+   "ci": [
+    0.03941071711095709,
+    0.20647045301746422
+   ]
+  }
+ ],
+ "by_half": [
+  {
+   "half": "H1",
+   "n": 3513,
+   "estimate": 0.11992746725668506,
+   "ci": [
+    0.09658879456941606,
+    0.14455005939634927
+   ]
+  },
+  {
+   "half": "H2",
+   "n": 3510,
+   "estimate": 0.17333591618186017,
+   "ci": [
+    0.14865792820084178,
+    0.19971941572396426
+   ]
+  }
+ ],
+ "without_top1pct": 0.1346128643799946,
+ "positive_control": [
+  {
+   "multiple_of_bar": 0.5,
+   "planted": 0.025,
+   "detected_share": 1.0,
+   "mean_recovered": 0.17219916148186598
+  },
+  {
+   "multiple_of_bar": 1.0,
+   "planted": 0.05,
+   "detected_share": 1.0,
+   "mean_recovered": 0.19719916148186598
+  },
+  {
+   "multiple_of_bar": 2.0,
+   "planted": 0.1,
+   "detected_share": 1.0,
+   "mean_recovered": 0.247199161481866
+  }
+ ],
+ "lookahead_canary": {
+  "estimate_with_leak": 0.24012205505401055,
+  "estimate_clean": 0.14719916148186596
+ },
+ "diagnosis": {
+  "checks": {
+   "ci_excludes_zero": true,
+   "ci_excludes_bar": false,
+   "beats_placebo_97_5": true,
+   "pipeline_finds_planted_bar": true,
+   "same_sign_both_halves": true,
+   "share_instruments_same_sign": 1.0,
+   "survives_top1pct_removed": true,
+   "survives_costs": null
+  },
+  "label": "REAL: check the prereg gate for the formal verdict"
+ }
+}

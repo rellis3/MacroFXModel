@@ -1,0 +1,1 @@
+E1: est +0.0118 CI [-0.0002, +0.0241] placebo pct 100 plant1x 1.00 halves [0.0216, 0.002] canary +0.408 -> FLAT: the test could see a useful effect (planted control found), and the interval rules it out

@@ -1,0 +1,80 @@
+{
+ "EURUSD": {
+  "m1_rows": 3840908,
+  "sessions_with_P0": 2756,
+  "weekdays_with_data": 2773,
+  "dropped_no_0700_bar": 17
+ },
+ "GBPUSD": {
+  "m1_rows": 3815842,
+  "sessions_with_P0": 2756,
+  "weekdays_with_data": 2773,
+  "dropped_no_0700_bar": 17
+ },
+ "USDJPY": {
+  "m1_rows": 3874254,
+  "sessions_with_P0": 2756,
+  "weekdays_with_data": 2773,
+  "dropped_no_0700_bar": 17
+ },
+ "USDCAD": {
+  "m1_rows": 3850955,
+  "sessions_with_P0": 2756,
+  "weekdays_with_data": 2773,
+  "dropped_no_0700_bar": 17
+ },
+ "AUDUSD": {
+  "m1_rows": 3686619,
+  "sessions_with_P0": 2756,
+  "weekdays_with_data": 2773,
+  "dropped_no_0700_bar": 17
+ },
+ "NZDUSD": {
+  "m1_rows": 3802273,
+  "sessions_with_P0": 2756,
+  "weekdays_with_data": 2773,
+  "dropped_no_0700_bar": 17
+ },
+ "USDCHF": {
+  "m1_rows": 3590697,
+  "sessions_with_P0": 2756,
+  "weekdays_with_data": 2773,
+  "dropped_no_0700_bar": 17
+ },
+ "EURJPY": {
+  "m1_rows": 3876310,
+  "sessions_with_P0": 2755,
+  "weekdays_with_data": 2773,
+  "dropped_no_0700_bar": 18
+ },
+ "GBPJPY": {
+  "m1_rows": 3933231,
+  "sessions_with_P0": 2756,
+  "weekdays_with_data": 2773,
+  "dropped_no_0700_bar": 17
+ },
+ "GOLD": {
+  "m1_rows": 3722340,
+  "sessions_with_P0": 2743,
+  "weekdays_with_data": 2761,
+  "dropped_no_0700_bar": 18
+ },
+ "NAS100": {
+  "m1_rows": 3693815,
+  "sessions_with_P0": 2741,
+  "weekdays_with_data": 2764,
+  "dropped_no_0700_bar": 23
+ },
+ "SPX500": {
+  "m1_rows": 3288848,
+  "sessions_with_P0": 2722,
+  "weekdays_with_data": 2764,
+  "dropped_no_0700_bar": 42
+ },
+ "US30": {
+  "m1_rows": 3657894,
+  "sessions_with_P0": 2741,
+  "weekdays_with_data": 2764,
+  "dropped_no_0700_bar": 23
+ }
+}

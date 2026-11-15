@@ -323,5 +323,12 @@ def build(params: Params, write: bool = True):
         OUT.mkdir(parents=True, exist_ok=True)
         ev.drop(columns=["ny_date"]).to_parquet(OUT / "events.parquet")
         mirror.drop(columns=["ny_date"]).to_parquet(OUT / "mirror_events.parquet")
-        (OUT / "DATA_AUDIT.md").write_text("\n".join(audit) + "\n")
+        text = "\n".join(audit) + "\n"
+        dest = OUT / "DATA_AUDIT.md"
+        # never overwrite a hand-filled audit (the 20-event first-print spot-check): if the file exists and differs
+        # from what would be generated, keep it and write the fresh table beside it
+        if dest.exists() and dest.read_text() != text:
+            dest = OUT / "DATA_AUDIT.generated.md"
+            print(f"[events] kept the existing DATA_AUDIT.md (hand-filled); fresh table in {dest.name}")
+        dest.write_text(text)
     return ev, mirror, audit
