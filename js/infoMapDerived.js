@@ -32,6 +32,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/ccyMacroStrip.js",
+     "js/terminal/economiesView.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -88,6 +89,7 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/calendarDrillsCore.js",
      "js/terminal/ccyMacroStrip.js",
+     "js/terminal/economiesView.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -151,6 +153,7 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/calendarDrillsCore.js",
      "js/terminal/ccyMacroStrip.js",
+     "js/terminal/economiesView.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -302,6 +305,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/ccyMacroStrip.js",
+     "js/terminal/economiesView.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -351,6 +355,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/ccyMacroStrip.js",
+     "js/terminal/economiesView.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -400,6 +405,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/ccyMacroStrip.js",
+     "js/terminal/economiesView.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -435,6 +441,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/ccyMacroStrip.js",
+     "js/terminal/economiesView.js",
      "js/terminal/macroEnginesCore.js"
     ],
     "today": [
@@ -1317,7 +1324,8 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
-     "js/terminal/curveBoardView.js"
+     "js/terminal/curveBoardView.js",
+     "js/terminal/economiesView.js"
     ],
     "today": [
      "today.html"
@@ -1592,6 +1600,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/economiesView.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [
@@ -2202,7 +2211,8 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
-     "desk-terminal.html"
+     "desk-terminal.html",
+     "js/terminal/flagsView.js"
     ],
     "today": [
      "today.html"

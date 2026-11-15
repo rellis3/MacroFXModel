@@ -77,6 +77,8 @@ export const INSIGHT_WORDS = {
   fxmatrix: ['FXMATRIX', ['CURRENCYMATRIX', 'STRENGTHMATRIX', 'FXC'], 'The currency matrix: the eight currencies across four windows, and who has out-run whom.'],
   gold: ['GOLDBOARD', ['XAUBOARD', 'GOLDVIEW'], 'The gold board: gold against real yields, the dollar and its own implied vol, with positioning and ETF holdings.'],
   reach: ['REACH', ['TOUCH', 'LEVELCHANCE', 'CHANCE'], 'The level-reach calculator: type a price and get the chance price touches it by the end of the London day and over the whole session.'],
+  flags: ['FLAGS', ['RISKFLAGS', 'LIGHTS'], 'The risk flags: the six market-stress lights now, each beside what the Evidence Book found for it.'],
+  economies: ['ECONOMIES', ['ECONOMY', 'WORLD', 'COUNTRIES'], 'The eight economies side by side: growth, prices, jobs and spending, each with an arrow and a word.'],
   unusual: ['UNUSUAL', ['MOVERS', 'EXTREME', 'WHATSUNUSUAL'], 'What is unusual right now: every series ranked by how extreme it is against its own history, with the working and the odds it is just chance.'],
 };
 
