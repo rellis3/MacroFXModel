@@ -195,3 +195,13 @@ test('monitor and news commands: MONITOR [name], ADD <market>, NEWS [saved searc
   for (const id of ['tab.monitor', 'mon.add', 'tab.news']) { const c = cmds.find(x => x.id === id); assert.ok(c.help.length > 20 && c.example && c.opens, id); }
   assert.ok(!buildCommands({ now: () => NOW, isOn: id => id !== 'tab.monitor' }).some(c => c.id === 'tab.monitor' || c.id === 'mon.add'), 'switched off: no command');
 });
+
+test('EXPORT command: a CSV of the open tab by default, EXPORT PNG for the chart, a bad word says what to type, hidden when the switch is off', () => {
+  const cmds = buildCommands({ now: () => NOW });
+  const run = line => search(cmds, line)[0];
+  assert.deepEqual(run('export').action ?? plainAction(run('export').cmd).action, { kind: 'export', what: 'csv' });
+  assert.deepEqual(run('export png').action, { kind: 'export', what: 'png' });
+  assert.match(run('export zzz').error, /EXPORT PNG/);
+  const c = cmds.find(x => x.id === 'export'); assert.ok(c.help.length > 20 && c.example && c.opens);
+  assert.ok(!buildCommands({ now: () => NOW, isOn: id => id !== 'widget.export' }).some(x => x.id === 'export'));
+});
