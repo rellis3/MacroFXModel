@@ -242,7 +242,19 @@ co-movement (0.40) is conservative; if the real SD is smaller the cells gain pow
 
 ## Amendments
 
-(none yet)
+### A1 — 2026-11-15 — PRE-RESULTS (all changes made before any outcome was computed; written up after the run)
+
+Code and run mechanics only; no state definition, outcome, statistic, bar, gate or sample changed.
+1. **Selftest (iii) check.** The "every state column filled" check failed on the synthetic M1 because `N_W1` needs
+   20 + 100 weekly bars before its first code (§3.3), more than the 2-year synthetic history holds. The synthetic
+   history was lengthened (start 2015-09-01) and `N_W1` was exempted from that one emptiness check. Consequence on the
+   real data (stated, not changed): `N_W1` is undefined until ~2018-05, so the named chain cannot align in the first
+   months of the 2018 fold and is thinner in 2018-2019 than the HMM.
+2. **Thread pools.** The first real run (states only) took ~2.4 h per instrument on the shared, fully loaded CPU; a
+   profile showed hmmlearn's KMeans initialisation and the numpy pools spinning with 2 threads. Pools were set to 1
+   thread (`OMP/MKL/OPENBLAS_NUM_THREADS=1`, `threadpool_limits(1)`; same EM iterations, one H1 fold 290 s -> 109 s),
+   still 2 worker processes, and states were cached per instrument. The first attempt was stopped (by PID) before any
+   outcome was read and its states discarded; the full run restarted from scratch (`run_attempt1_slow.log`).
 
 ---
 
