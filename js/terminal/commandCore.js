@@ -18,6 +18,7 @@ import { MACRO_SUBS, ALL_BLOCKS, BLOCK_SUB, subById } from './macroSubtabs.js';
 import { THEMES } from './themes.js';
 import { TF_KEYS } from '../deskBarsCore.js';
 import { ASSET_WORDS } from './pairView.js';
+import { STARTERS as MON_STARTERS } from './monitorCore.js';
 import { STARTERS as WS_STARTERS, cleanName as wsCleanName } from './workspaceCore.js';
 import { KINDS as AL_KINDS, FEEDS as AL_FEEDS } from '../deskAlertRulesCore.js';
 import { INSTRUMENTS as REPLAY_INSTRUMENTS, validDate, londonDate, londonWall } from '../replayCore.js';
@@ -62,10 +63,20 @@ const TAB_WORDS = {
   news: ['NEWS', ['WIRE'], 'The News tab: the wire, with its reads.'],
   corr: ['CORRELATIONS', ['CORR', 'HEDGES'], 'The Correlations tab: the matrix, rolling correlations, factors and regimes.'],
   kchart: ['CHART', ['KLINE', 'CANDLES', 'PRO'], 'The Chart tab (preview): a candle chart with indicators (each with its own settings) and the day\'s lines. Add a market and a candle size: CHART NQ 15M.'],
+  monitor: ['MONITOR', ['MON', 'WATCHLIST', 'MONITORS'], 'The Monitor tab (preview): a table of the markets you pick with live columns. Add a name to open a saved monitor: MONITOR INDICES.'],
   workspace: ['WORKSPACE', ['WS', 'LAYOUT', 'WORKSPACES'], 'The Workspace tab (preview): drag and resize the terminal panels into a screen of your own. Add a name to load a saved layout: WORKSPACE RATES.'],
+  insight: ['INSIGHT', ['BOARDS'], 'The Insight tab (preview): boards that read what we already hold in a new way, starting with what is unusual right now.'],
   infomap: ['INFO', ['INFOMAP', 'SWITCHES'], 'The Info map tab (owner only): what data the repo holds, and the preview-feature switches.'],
 };
 export const TAB_WORD_IDS = Object.keys(TAB_WORDS);
+
+// ── the Insight boards (preview): name, aliases, one line of help; a board without a row here fails the Insight guard test ──
+export const INSIGHT_WORDS = {
+  matrix: ['MATRIX', ['CROSSASSET', 'CORRELATION', 'CROSS'], 'The cross-asset board: the 1, 5 and 20 session move of every market, and how markets have been moving together lately.'],
+  rotation: ['ROTATION', ['SECTORS', 'SECTOR'], 'US sector rotation: the 11 sectors against the S&P 500 over 20 sessions, on a map with a four-week trail.'],
+  fxmatrix: ['FXMATRIX', ['CURRENCYMATRIX', 'STRENGTHMATRIX', 'FXC'], 'The currency matrix: the eight currencies across four windows, and who has out-run whom.'],
+  unusual: ['UNUSUAL', ['MOVERS', 'EXTREME', 'WHATSUNUSUAL'], 'What is unusual right now: every series ranked by how extreme it is against its own history, with the working and the odds it is just chance.'],
+};
 
 // ── short names for the Macro boards people will actually type ──
 const BOARD_ALIASES = {
@@ -145,7 +156,7 @@ const INDICATORS = [
  * Every command the session may use. isOn(surfaceId) -> bool says which surfaces this session can see (the owner: all; a desk login: the switched-on ones).
  * A command whose surface is off is left out. now() is only used to resolve dates.
  */
-export function buildCommands({ isOn = () => true, now = () => Date.now(), workspaceNames = () => [] } = {}) {
+export function buildCommands({ isOn = () => true, now = () => Date.now(), workspaceNames = () => [], monitorNames = () => [], newsSearchNames = () => [] } = {}) {
   const out = [];
   const add = c => { if ([c.surface, ...(c.needs ?? [])].every(id => !id || isOn(id))) out.push({ aliases: [], ...c }); };
 
@@ -164,6 +175,16 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
       c.args = `[market] [${TF_KEYS.join('|')}]`;
       c.run = args => chartRun(args);
       c.example = 'chart nq 15m';
+    }
+    if (key === 'news') {
+      c.args = '[saved search]';
+      c.run = args => newsRun(args);
+      c.example = 'news';
+    }
+    if (key === 'monitor') {
+      c.args = '[name]';
+      c.run = args => monitorRun(args);
+      c.example = 'monitor indices';
     }
     if (key === 'workspace') {
       c.args = '[name]';
@@ -192,6 +213,11 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     add({ id: `board.${short}`, group: 'Macro boards', name, aliases: [`MACRO ${short.toUpperCase()}`, short.toUpperCase(), ...al.slice(1)].filter((x, i, a) => x !== name && a.indexOf(x) === i && !ALL_INSTRUMENTS.includes(x)),
       help: `${cap(firstSentence(row.note))}.`.replace(/\.\.+$/, '.'), example: name.toLowerCase(), opens: `Macro › ${sub?.label ?? ''} › ${row.label.replace(/^Macro:\s*/, '')}`, surface: b, needs: ['tab.macro'], action: { kind: 'macro', block: b } });
   }
+  // Insight boards (preview)
+  for (const [key, [name, aliases, help]] of Object.entries(INSIGHT_WORDS)) {
+    const id = `panel.insight.${key}`, row = surfaceById(id); if (!row) continue;
+    add({ id: `insight.${key}`, group: 'Insight boards', name, aliases, help, example: name.toLowerCase(), opens: `Insight > ${row.label.replace(/^Insight:\s*/, '')}`, surface: id, needs: ['tab.insight'], action: { kind: 'insight', panel: key } });
+  }
   // releases by country
   for (const [word, help] of INDICATORS) {
     add({ id: `ind.${word.toLowerCase()}`, group: 'Releases', name: word, args: '[country]', help, example: `${word.toLowerCase()} us`, opens: 'Macro › Economy › the macro engines heatmap, then the currency card if a country is named',
@@ -201,9 +227,11 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   add({ id: 'theme', group: 'Look and feel', name: 'THEME', args: '<name>', help: `Change the colour theme (${THEMES.map(t => t.id).join(', ')}). It is remembered in this browser.`, example: 'theme amber', opens: 'The whole terminal, in that theme', surface: 'widget.themepicker', run: themeRun });
   add({ id: 'tf', group: 'Look and feel', name: 'TF', aliases: ['TIMEFRAME'], args: `<${TF_KEYS.join('|')}>`, help: 'Set the candle size on every chart that offers one (Pair page and asset cards).', example: 'tf 15m', opens: 'The candle-size pills on the charts', surface: 'widget.linked', run: tfRun });
   add({ id: 'link', group: 'Look and feel', name: 'LINK', args: '<on|off>', help: 'Switch linked selection on or off: when on, picking a market in one place moves the Pair page, Replay, strength board and vol clock with it.', example: 'link off', opens: 'The linked chip in the top bar', surface: 'widget.linked', run: linkRun });
+  add({ id: 'mon.add', group: 'Look and feel', name: 'ADD', aliases: [], args: '<market>', help: 'Add a market to the open Monitor (the table of markets you picked). Save the monitor to keep it for the desk.', example: 'add eurusd',
+    opens: 'The Monitor tab, with that market added', surface: 'tab.monitor', run: args => monitorAddRun(args) });
   add({ id: 'ws.save', group: 'Look and feel', name: 'SAVE', aliases: ['SAVEWORKSPACE'], args: 'workspace <name>', help: 'Save the Workspace tab layout as it is now under a name, shared with the desk. A built-in starter name makes you pick your own.', example: 'save workspace my morning',
     opens: 'The Workspace tab, saved under that name', surface: 'tab.workspace', run: args => workspaceSaveRun(args) });
-  add({ id: 'alerts', group: 'Alerts', name: 'ALERTS', aliases: ['ALERT', 'BELL'], args: '[range <market> [%] | fed [bp] | stale [feed] | touch <market> | gap <market> [%]]', help: 'Open the alerts panel; or set one in a line: ALERT RANGE <market> 80, ALERT FED 5, ALERT STALE, ALERT TOUCH <market>, ALERT GAP <market> 0.3. A note goes to the desk Telegram once per episode.',
+  add({ id: 'alerts', group: 'Alerts', name: 'ALERTS', aliases: ['ALERT', 'BELL'], args: '[range <market> [%] | fed [bp] | stale [feed] | touch <market> | gap <market> [%] | news <words>]', help: 'Open the alerts panel; or set one in a line: ALERT RANGE <market> 80, ALERT FED 5, ALERT STALE, ALERT TOUCH <market>, ALERT GAP <market> 0.3, ALERT NEWS <words> (a new headline matching your words). A note goes to the desk Telegram once per episode.',
     example: 'alerts', opens: 'The alerts panel (the owner can add, mute and delete; the desk login sees the list)', surface: 'widget.alerts', run: args => alertRun(args) });
   add({ id: 'help', group: 'Help', name: 'HELP', aliases: ['?', 'COMMANDS'], help: 'List every command with what it does and an example.', example: '?', opens: 'This list', action: { kind: 'help' } });
   return out;
@@ -230,7 +258,8 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     if (w === 'stale') return build('data_stale', { feed: (t[1] ?? 'fed-zq').toLowerCase() });
     if (w === 'touch') return t[1] ? build('level_touch', { market: t[1], which: (t[2] ?? 'any').toLowerCase() }) : { error: 'Say which market: ALERT TOUCH NQ.' };
     if (w === 'gap') return t[1] ? build('gap_closed', { market: t[1], minPct: t[2] ?? 0.3 }) : { error: 'Say which market: ALERT GAP NQ 0.3.' };
-    return { error: `Say RANGE, FED, STALE, TOUCH or GAP (or nothing to open the panel). Feeds for STALE: ${Object.keys(AL_FEEDS).join(', ')}.` };
+    if (w === 'news') return t[1] ? build('news_keyword', { q: t.slice(1).join(' '), tier: 2 }) : { error: 'Say which words to watch for: ALERT NEWS ecb hawkish.' };
+    return { error: `Say RANGE, FED, STALE, TOUCH, GAP or NEWS (or nothing to open the panel). Feeds for STALE: ${Object.keys(AL_FEEDS).join(', ')}.` };
   }
   function chartRun(args) {
     const t = String(args ?? '').trim().split(/\s+/).filter(Boolean);
@@ -244,6 +273,29 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
       return { error: `"${w}" is not a market or a candle size I know. Try CHART NQ 15M (sizes: ${TF_KEYS.join(', ')}).` };
     }
     return { action: { kind: 'kchart', inst, tf }, summary: `Opens the Chart tab${inst ? ` on ${instLabel(inst)}` : ''}${tf ? ` at ${tf} candles` : ''}.` };
+  }
+  function newsRun(args) {
+    const a = String(args ?? '').trim();
+    if (!a) return { action: { kind: 'tab', t: 'news' }, summary: 'Opens the News tab.' };
+    const names = newsSearchNames();
+    const hit = names.find(n => n.toLowerCase() === a.toLowerCase()) ?? names.find(n => n.toLowerCase().startsWith(a.toLowerCase()));
+    if (!hit) return { error: names.length ? `No saved search called "${a}". Try ${names.join(', ')}.` : 'No saved searches yet. Save one on the News tab first.' };
+    return { action: { kind: 'news-search', name: hit }, summary: `Opens the News tab with the saved search "${hit}".` };
+  }
+  function monitorRun(args) {
+    const a = String(args ?? '').trim();
+    if (!a) return { action: { kind: 'monitor', name: null }, summary: 'Opens the Monitor tab.' };
+    const names = [...MON_STARTERS.map(s => s.name), ...monitorNames()];
+    const hit = names.find(n => n.toLowerCase() === a.toLowerCase()) ?? names.find(n => n.toLowerCase().startsWith(a.toLowerCase()));
+    if (!hit) return { error: `No monitor called "${a}". Try ${names.join(', ')}.` };
+    return { action: { kind: 'monitor', name: hit }, summary: `Opens the Monitor tab with "${hit}".` };
+  }
+  function monitorAddRun(args) {
+    const w = String(args ?? '').trim().replace(/^to\s+monitor\s*/i, '');
+    if (!w) return { error: 'Say which market to add: ADD EURUSD.' };
+    const inst = resolveInstrument(w.split(/\s+/)[0]);
+    if (!inst) return { error: `"${w}" is not a market on this terminal.` };
+    return { action: { kind: 'monitor-add', inst }, summary: `Adds ${instLabel(inst)} to the open Monitor.` };
   }
   function workspaceRun(args) {
     const a = String(args ?? '').trim();

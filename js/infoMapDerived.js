@@ -1385,6 +1385,7 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/biasEngineView.js",
      "js/terminal/fedPathYieldsView.js",
+     "js/terminal/insightSeries.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js",
      "js/terminal/ratesBoardCore.js",
@@ -2409,6 +2410,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/monitorCore.js",
+     "js/terminal/monitorView.js",
      "js/terminal/volClockView.js"
     ],
     "today": [
@@ -3020,6 +3023,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/monitorView.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
@@ -3657,6 +3661,9 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "js/terminal/chainBoard.js",
+     "js/terminal/insightData.js",
+     "js/terminal/insightSeries.js",
+     "js/terminal/matrixCore.js",
      "js/terminal/optionsView.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
@@ -3736,9 +3743,12 @@ export const DERIVED = {
      "js/terminal/bookPanels.js",
      "js/terminal/chainBoard.js",
      "js/terminal/commandCore.js",
+     "js/terminal/insightData.js",
+     "js/terminal/insightSeries.js",
      "js/terminal/links.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js",
+     "js/terminal/matrixCore.js",
      "js/terminal/moreBoards.js",
      "js/terminal/optionsView.js",
      "js/terminal/pairView.js",
@@ -3785,6 +3795,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "js/terminal/ccyStrengthView.js",
+     "js/terminal/fxMatrixCore.js",
+     "js/terminal/fxMatrixView.js",
      "js/terminal/liveLayerView.js",
      "js/terminal/moreBoards.js"
     ],
@@ -4499,6 +4511,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/monitorCore.js",
+     "js/terminal/monitorView.js",
      "js/terminal/volClockView.js"
     ],
     "today": [
