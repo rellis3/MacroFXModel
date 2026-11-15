@@ -13,7 +13,8 @@ export const COLS = 12, MAX_TILES = 24, MAX_H = 40, MAX_Y = 400, NAME_MAX = 40, 
 export const FILE_KIND = 'desk-workspace';
 
 /** Every panel surface a tile may show: id -> its registry row. */
-export const PANELS = new Map(SURFACES.filter(s => s.kind === 'panel').map(s => [s.id, s]));
+// The Insight boards (panel.insight.*) sit behind their own pills in one tab and draw only when their pill is open, so a tile cannot adopt them yet: left out.
+export const PANELS = new Map(SURFACES.filter(s => s.kind === 'panel' && !s.id.startsWith('panel.insight.')).map(s => [s.id, s]));
 export const isPanel = id => PANELS.has(id);
 
 /** The tab section a panel lives in (its home): panel.ov.* is on Overview, panel.macro.* on Macro, and so on. null when unknown. */

@@ -45,7 +45,7 @@ feed goes in js/infoMap.js with its status.
 ## 5a. Bloomberg gap review (2026-11-15, plans/BLOOMBERG_GAP_REVIEW.md)
 | Item | Status | Notes |
 |---|---|---|
-| What is unusual right now (percentile rank across held series) | TODO | Rank 1. No new data. |
+| What is unusual right now (percentile rank across held series) | DONE (preview, Insight tab > Unusual now) | Rank 1. 75 series from /api/drill-series ranked against their own history (1/5/20-day move, level where it is read by level), sky map, working per row, odds-by-chance line. Risk-flag history strip NOT built (the flags are served live only; the snapshot archive holds them point-in-time but there is no reader yet). |
 | Chance-of-reaching-a-level calculator on our IV and calibrated range | TODO | Rank 2. Range and reach validate. |
 | Release detail on the Calendar (actual, forecast, prior, revision, surprise history strip) | TODO | Rank 3. Paid consensus feed is an owner decision; US vintages only today. |
 | Gold board (ETF flows, real yields, dollar, COT, gold vol) | TODO | Rank 4. Data held. |

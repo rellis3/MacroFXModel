@@ -31,6 +31,12 @@ function addMonCss() {
   l.id = 'monCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/monitor.css';
   document.head.appendChild(l);
 }
+function addInCss() {
+  if (document.getElementById('inCss')) return;
+  const l = document.createElement('link');
+  l.id = 'inCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/insight.css';
+  document.head.appendChild(l);
+}
 function addWsCss() {
   if (document.getElementById('wsCss')) return;
   const l = document.createElement('link');
@@ -45,13 +51,16 @@ const hooksReady = () => new Promise(res => {
 });
 
 export async function start() {
-  const wantLinked = on('widget.linked'), wantCmd = on('widget.cmdline'), wantWs = on('tab.workspace'), wantAl = on('widget.alerts'), wantKc = on('tab.kchart'), wantMon = on('tab.monitor');
-  if (!wantLinked && !wantCmd && !wantWs && !wantAl && !wantKc && !wantMon) return { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false };
+  const wantLinked = on('widget.linked'), wantCmd = on('widget.cmdline'), wantWs = on('tab.workspace'), wantAl = on('widget.alerts'), wantKc = on('tab.kchart'), wantMon = on('tab.monitor'), wantIn = on('tab.insight');
+  if (!wantLinked && !wantCmd && !wantWs && !wantAl && !wantKc && !wantMon && !wantIn) return { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false };
   if (wantLinked || wantCmd) addCss();
-  let linked = false, cmdline = false, workspace = false, alerts = false, chart = false, monitor = false;
+  let linked = false, cmdline = false, workspace = false, alerts = false, chart = false, monitor = false, insight = false;
   try {
     if (wantKc) { addKcCss(); const m = await import('./kchartView.js'); chart = !!m.mountKChart(); }
   } catch (e) { console.warn('chart', e); }
+  try {
+    if (wantIn) { addInCss(); const m = await import('./insightView.js'); insight = !!m.mountInsight(); }
+  } catch (e) { console.warn('insight', e); }
   try {
     if (wantAl) { addAlCss(); const m = await import('./alertsView.js'); alerts = !!m.mountAlerts(); }
   } catch (e) { console.warn('alerts', e); }
@@ -67,7 +76,7 @@ export async function start() {
   try {
     if (wantCmd) { const m = await import('./commandLine.js'); cmdline = !!m.mountCommandLine(); }
   } catch (e) { console.warn('command line', e); }
-  return { linked, cmdline, workspace, alerts, chart, monitor };
+  return { linked, cmdline, workspace, alerts, chart, monitor, insight };
 }
 
 if (typeof document !== 'undefined' && !globalThis.__terminalFeelNoAutoStart) {

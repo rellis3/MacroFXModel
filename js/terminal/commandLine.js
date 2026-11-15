@@ -37,6 +37,7 @@ export function perform(a, doc = document, win = window) {
     case 'monitor': { const ok = tab('monitor'); if (ok && a.name) win.setTimeout(() => win.deskMonitor?.show?.(a.name), 60); return ok; }
     case 'monitor-add': { const ok = tab('monitor'); if (ok) win.setTimeout(() => win.deskMonitor?.add?.(a.inst), 60); return ok; }
     case 'kchart': { const ok = tab('kchart'); if (ok && (a.inst || a.tf)) win.setTimeout(() => win.deskKchart?.show?.(a.inst, a.tf), 60); return ok; }
+    case 'insight': { const ok = tab('insight'); if (ok) win.setTimeout(() => win.deskInsight?.show?.(a.panel), 60); return ok; }
     case 'alerts': return win.deskAlerts?.open ? (win.deskAlerts.open(), true) : false;
     case 'alert-add': return win.deskAlerts?.add ? (win.deskAlerts.add(a.body), true) : false;
     case 'workspace-save': return win.deskWorkspace?.saveAs ? (win.deskWorkspace.saveAs(a.name), true) : false;

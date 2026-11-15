@@ -65,9 +65,15 @@ const TAB_WORDS = {
   kchart: ['CHART', ['KLINE', 'CANDLES', 'PRO'], 'The Chart tab (preview): a candle chart with indicators (each with its own settings) and the day\'s lines. Add a market and a candle size: CHART NQ 15M.'],
   monitor: ['MONITOR', ['MON', 'WATCHLIST', 'MONITORS'], 'The Monitor tab (preview): a table of the markets you pick with live columns. Add a name to open a saved monitor: MONITOR INDICES.'],
   workspace: ['WORKSPACE', ['WS', 'LAYOUT', 'WORKSPACES'], 'The Workspace tab (preview): drag and resize the terminal panels into a screen of your own. Add a name to load a saved layout: WORKSPACE RATES.'],
+  insight: ['INSIGHT', ['BOARDS'], 'The Insight tab (preview): boards that read what we already hold in a new way, starting with what is unusual right now.'],
   infomap: ['INFO', ['INFOMAP', 'SWITCHES'], 'The Info map tab (owner only): what data the repo holds, and the preview-feature switches.'],
 };
 export const TAB_WORD_IDS = Object.keys(TAB_WORDS);
+
+// ── the Insight boards (preview): name, aliases, one line of help; a board without a row here fails the Insight guard test ──
+export const INSIGHT_WORDS = {
+  unusual: ['UNUSUAL', ['MOVERS', 'EXTREME', 'WHATSUNUSUAL'], 'What is unusual right now: every series ranked by how extreme it is against its own history, with the working and the odds it is just chance.'],
+};
 
 // ── short names for the Macro boards people will actually type ──
 const BOARD_ALIASES = {
@@ -198,6 +204,11 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     const name = al[0] ?? short.toUpperCase();
     add({ id: `board.${short}`, group: 'Macro boards', name, aliases: [`MACRO ${short.toUpperCase()}`, short.toUpperCase(), ...al.slice(1)].filter((x, i, a) => x !== name && a.indexOf(x) === i && !ALL_INSTRUMENTS.includes(x)),
       help: `${cap(firstSentence(row.note))}.`.replace(/\.\.+$/, '.'), example: name.toLowerCase(), opens: `Macro › ${sub?.label ?? ''} › ${row.label.replace(/^Macro:\s*/, '')}`, surface: b, needs: ['tab.macro'], action: { kind: 'macro', block: b } });
+  }
+  // Insight boards (preview)
+  for (const [key, [name, aliases, help]] of Object.entries(INSIGHT_WORDS)) {
+    const id = `panel.insight.${key}`, row = surfaceById(id); if (!row) continue;
+    add({ id: `insight.${key}`, group: 'Insight boards', name, aliases, help, example: name.toLowerCase(), opens: `Insight > ${row.label.replace(/^Insight:\s*/, '')}`, surface: id, needs: ['tab.insight'], action: { kind: 'insight', panel: key } });
   }
   // releases by country
   for (const [word, help] of INDICATORS) {
