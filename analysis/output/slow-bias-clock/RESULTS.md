@@ -109,7 +109,7 @@ EVIDENCE.md, placebo/buckets/breakdown/plants charts and 30 sample rows to check
 - R by group (SLOW / 4h / long): FX −0.050 / −0.037 / −0.030, gold −0.016 / −0.006 / −0.019, indices +0.025 /
   −0.006 / +0.040. On indices the slow side mostly says long (65% long overall), and long is better.
 - Book variants: always-long +0.48 [+0.08, +0.92]; costs ×2 +0.18; gross +0.30; spot only (no financing) +0.13.
-- Concentration: by year the book's Sharpe ranges −0.69 (2005) to +1.13 (2008). 12 of 22 years are positive.
+- Concentration: by year the book's Sharpe ranges −0.69 (2005) to +1.13 (2008). 14 of 22 years are positive.
 
 ## Deviations from the prereg
 
