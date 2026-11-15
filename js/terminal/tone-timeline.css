@@ -1,0 +1,24 @@
+/* Central-bank tone timeline (js/terminal/toneTimelineView.js). Theme tokens only. */
+.tt-wrap { margin-top: 10px; }
+.tt-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.tt-cov { font-size: 11px; }
+.tt { display: block; width: 100%; height: auto; max-height: 120px; overflow: visible; margin-top: 2px; }
+.tt .tt-zero { stroke: var(--line2); stroke-width: 1; stroke-dasharray: 2 4; }
+.tt .tt-d { fill: var(--tx3); font-size: 8.5px; font-family: var(--mono, ui-monospace, monospace); }
+.tt .tt-gap { fill: none; stroke: var(--tx3); stroke-width: 1.2; }
+.tt .tt-pulse { opacity: 0.0; }
+.tt .tt-ribbon { stroke-dasharray: 1; stroke-dashoffset: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .tt .tt-ribbon { animation: tt-draw 1.2s ease-out both; }
+  .tt .tt-pulse { animation: tt-pulse 2.6s ease-in-out 1.2s infinite; }
+}
+@keyframes tt-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes tt-pulse { 0% { opacity: 0.7; r: 4; } 100% { opacity: 0; r: 11; } }
+.tt-ph, .tt-th, .tt-bb { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 8px; font-size: 12px; }
+.tt-ph .lbl, .tt-th .lbl, .tt-bb .lbl { margin-right: 2px; }
+.tt-sw { display: inline-flex; align-items: baseline; gap: 5px; padding: 2px 8px; border-radius: 999px; background: var(--bg3); border: 1px solid var(--line); }
+.tt-sw s { color: var(--tx3); text-decoration-thickness: 1px; }
+.tt-sw i { color: var(--tx3); font-style: normal; }
+.tt-sw b { color: var(--gold); font-weight: 600; }
+.tt-note { margin: 8px 0 0; font-size: 12px; color: var(--tx2); }
+.tt-ctx { margin: 8px 0 0; font-size: 11px; color: var(--tx3); }

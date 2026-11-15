@@ -63,7 +63,7 @@ export function rowFor(rows, inst) {
 /** The retail book row (/api/oanda-book/history, keyed EUR_USD / XAU_USD): share long now and its 24h change. */
 export function crowdFor(book, inst) {
   const k = oandaOf(inst), v = k ? book?.instruments?.[k] : null;
-  return v?.latest ? { long: v.latest[2], d24: v.change24h?.delta ?? null } : null;
+  return v?.latest ? { long: v.latest[2], d24: v.change24h?.delta ?? null, at: v.latest[0] ?? null } : null;
 }
 
 /** The 2Y / short-rate gap for a pair from the rate-diff and real-yield boards (base minus quote). */

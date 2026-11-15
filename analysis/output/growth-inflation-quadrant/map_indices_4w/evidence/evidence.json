@@ -1,0 +1,303 @@
+{
+ "slug": "growth-inflation-quadrant/map_indices_4w",
+ "unit": "sigma of 4w return",
+ "bar": 0.08320502943378437,
+ "n_rows": 1792,
+ "n_clusters": 36,
+ "n_instruments": 2,
+ "span": [
+  "2009-05-29",
+  "2026-07-24"
+ ],
+ "estimate": 0.017959560188439434,
+ "ci": [
+  -0.07766836383840414,
+  0.12331297901425624
+ ],
+ "se": 0.05037222986829579,
+ "verdict_word": "underpowered",
+ "notes": "Rows = (instrument, Friday) where the map takes a side; outcome = forward z demeaned per instrument (B0). Cluster = calendar half-year. CAUTION: the pack's shuffled placebo permutes the side row by row, which breaks the quadrant's persistence and makes its band too narrow; the registered placebo is the circular shift in results.json (placebo_p97_5). Leak = side set to the sign of the realised outcome. Plants are added to the real rows AFTER removing the real estimate (prereg amendment A1).",
+ "placebo": {
+  "n": 500,
+  "mean": 0.0015551052816856336,
+  "p2_5": -0.04667213300061006,
+  "p97_5": 0.04848359803054117,
+  "real_percentile": 76.6
+ },
+ "buckets": [
+  {
+   "bucket": "deflation",
+   "n": 464,
+   "mean_outcome": -0.017660569028450965,
+   "lo": -0.0902289582206082,
+   "hi": 0.05490782016370627,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "goldilocks",
+   "n": 418,
+   "mean_outcome": -0.029421536382203885,
+   "lo": -0.11524702280105739,
+   "hi": 0.056403950036649615,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "reflation",
+   "n": 454,
+   "mean_outcome": 0.06253296946388288,
+   "lo": -0.05820820345195844,
+   "hi": 0.18327414237972423,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "stagflation",
+   "n": 456,
+   "mean_outcome": -0.017318556797457477,
+   "lo": -0.12402841243988524,
+   "hi": 0.0893912988449703,
+   "mean_side": -1.0
+  }
+ ],
+ "by_instrument": [
+  {
+   "inst": "nas100",
+   "n": 896,
+   "estimate": 0.03485986347685778,
+   "ci": [
+    -0.0792495335287338,
+    0.12840506596396897
+   ]
+  },
+  {
+   "inst": "spx500",
+   "n": 896,
+   "estimate": 0.0010592569000210741,
+   "ci": [
+    -0.11279651301809557,
+    0.11461400081194047
+   ]
+  }
+ ],
+ "by_year": [
+  {
+   "year": "2009",
+   "n": 62,
+   "estimate": 0.011838289932460219,
+   "ci": [
+    -0.02233673767889855,
+    0.18954843351152584
+   ]
+  },
+  {
+   "year": "2010",
+   "n": 106,
+   "estimate": -0.17927996645236158,
+   "ci": [
+    -0.37091968580474055,
+    0.005261985516596023
+   ]
+  },
+  {
+   "year": "2011",
+   "n": 104,
+   "estimate": 0.1357209715933496,
+   "ci": [
+    -0.12677673991323768,
+    0.37877440817352304
+   ]
+  },
+  {
+   "year": "2012",
+   "n": 104,
+   "estimate": -0.15245686041503978,
+   "ci": [
+    -0.3224123170111889,
+    0.01749859618110933
+   ]
+  },
+  {
+   "year": "2013",
+   "n": 104,
+   "estimate": -0.11503876515615653,
+   "ci": [
+    -0.28865612671428664,
+    0.0585785964019736
+   ]
+  },
+  {
+   "year": "2014",
+   "n": 104,
+   "estimate": -0.1286733225525368,
+   "ci": [
+    -0.29215374397963156,
+    0.03480709887455801
+   ]
+  },
+  {
+   "year": "2015",
+   "n": 104,
+   "estimate": 0.24406120503690734,
+   "ci": [
+    0.029510920442558566,
+    0.4586114896312561
+   ]
+  },
+  {
+   "year": "2016",
+   "n": 106,
+   "estimate": -0.00046280708616243995,
+   "ci": [
+    -0.016379717610348638,
+    0.014864588233424255
+   ]
+  },
+  {
+   "year": "2017",
+   "n": 104,
+   "estimate": -0.26627200290318875,
+   "ci": [
+    -0.8382164693335281,
+    0.3056724635271506
+   ]
+  },
+  {
+   "year": "2018",
+   "n": 104,
+   "estimate": 0.10686479094451619,
+   "ci": [
+    -0.0008643319965058951,
+    0.2145939138855382
+   ]
+  },
+  {
+   "year": "2019",
+   "n": 104,
+   "estimate": -0.1461728489487389,
+   "ci": [
+    -0.23526906308846218,
+    -0.057076634809015585
+   ]
+  },
+  {
+   "year": "2020",
+   "n": 104,
+   "estimate": -0.019768295367310743,
+   "ci": [
+    -0.13555957255456239,
+    0.09602298181994093
+   ]
+  },
+  {
+   "year": "2021",
+   "n": 106,
+   "estimate": 0.1638969222761785,
+   "ci": [
+    0.11851714814483698,
+    0.2075959640322851
+   ]
+  },
+  {
+   "year": "2022",
+   "n": 104,
+   "estimate": -0.005837628013380998,
+   "ci": [
+    -0.44080950456205004,
+    0.396914109531683
+   ]
+  },
+  {
+   "year": "2023",
+   "n": 104,
+   "estimate": 0.17966146252621648,
+   "ci": [
+    -0.23746632234562937,
+    0.5967892473980623
+   ]
+  },
+  {
+   "year": "2024",
+   "n": 104,
+   "estimate": 0.07482788978030701,
+   "ci": [
+    -0.05561194271271259,
+    0.2052677222733266
+   ]
+  },
+  {
+   "year": "2025",
+   "n": 104,
+   "estimate": 0.06392998803179777,
+   "ci": [
+    -0.05226930385645168,
+    0.18012927992004718
+   ]
+  },
+  {
+   "year": "2026",
+   "n": 60,
+   "estimate": 0.60268622202964,
+   "ci": [
+    0.18761298556382436,
+    0.6665436430243807
+   ]
+  }
+ ],
+ "by_half": [
+  {
+   "half": "H1",
+   "n": 898,
+   "estimate": -0.053135047390338704,
+   "ci": [
+    -0.19622756592365564,
+    0.06868230177760108
+   ]
+  },
+  {
+   "half": "H2",
+   "n": 894,
+   "estimate": 0.0893722644454224,
+   "ci": [
+    -0.031335163861317836,
+    0.22210941416477578
+   ]
+  }
+ ],
+ "without_top1pct": 0.014483936680396171,
+ "positive_control": [
+  {
+   "multiple_of_bar": 0.5,
+   "planted": 0.041602514716892185,
+   "detected_share": 0.0,
+   "mean_recovered": 0.04160251471689215
+  },
+  {
+   "multiple_of_bar": 1.0,
+   "planted": 0.08320502943378437,
+   "detected_share": 0.025,
+   "mean_recovered": 0.08320502943378434
+  },
+  {
+   "multiple_of_bar": 2.0,
+   "planted": 0.16641005886756874,
+   "detected_share": 1.0,
+   "mean_recovered": 0.16641005886756874
+  }
+ ],
+ "lookahead_canary": {
+  "estimate_with_leak": 0.7349731494559338,
+  "estimate_clean": 0.017959560188439434
+ },
+ "diagnosis": {
+  "checks": {
+   "ci_excludes_zero": false,
+   "ci_excludes_bar": false,
+   "beats_placebo_97_5": false,
+   "pipeline_finds_planted_bar": false,
+   "same_sign_both_halves": false,
+   "share_instruments_same_sign": 1.0,
+   "survives_top1pct_removed": true,
+   "survives_costs": null
+  },
+  "label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown"
+ }
+}

@@ -1,0 +1,12 @@
+12:36:55 selftest (i) planted: E +0.0634 [+0.0516, +0.0795] z +7.72
+12:36:56 selftest (i) null: E +0.0056 [-0.0078, +0.0216] z +0.73
+12:37:02 selftest (i) abstention planted: Delta +0.0622 [+0.0526, +0.0721], random band 97.5 +0.0091
+12:37:24 selftest (ii) forward filter vs hmmlearn posterior at the last obs: max diff 1.95e-13
+12:37:24 selftest (ii) future perturbation: filtered max change before t 0.0e+00; smoothed 0.36
+12:37:24 selftest (ii) next-obs direction accuracy: filtered 0.576, smoothed 0.627 (leak +0.051)
+12:41:22 selftest (iii) states on/before the perturbed date changed: none; smoothed changed: ['Hs_W1']; filled rows {'T_W1': 118, 'S_W1': 118, 'H_W1': 118, 'N_W1': 0, 'T_D1': 118, 'S_D1': 118, 'H_D1': 118, 'N_D1': 118, 'T_H4': 118, 'S_H4': 118, 'H_H4': 118, 'N_H4': 118, 'T_H1': 118, 'S_H1': 118, 'H_H1': 118, 'N_H1': 118}
+12:41:22 SELFTEST PASSED
+13:08:10 EURUSD: 3840908 M1 rows, 2756 sessions with a 07:00 bar of 2773 weekdays with data, 1603s
+13:08:10 GBPUSD: 3815842 M1 rows, 2756 sessions with a 07:00 bar of 2773 weekdays with data, 1428s
+15:26:32 USDJPY: 3874254 M1 rows, 2756 sessions with a 07:00 bar of 2773 weekdays with data, 8477s
+15:32:29 USDCAD: 3850955 M1 rows, 2756 sessions with a 07:00 bar of 2773 weekdays with data, 8659s

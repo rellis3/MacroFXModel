@@ -8,6 +8,7 @@
  * not (a signal) and why (the 15-minute lead is a banked null, no daily test exists).
  */
 import { fedPathYields, atlantaWindows } from '../fedPathYieldsCore.js';
+import { tileChip } from './dataAge.js';
 import { chipFor } from './corrEvidence.js';
 import { ownerLink, ownerOnly } from './links.js';
 import { pathRibbonSvg, curveSvg, flowSvg } from './fedPathYieldsViz.js';
@@ -66,7 +67,7 @@ export function boardHtml(fp, rb, tp, h = {}, now = Date.now()) {
     ? `<div class="muted" style="font-size:12px;margin-top:8px"><b>Two measures of policy priced in:</b> the 2Y less fed funds says ${p.proxy >= 0 ? '+' : '−'}${Math.abs(p.proxy).toFixed(1)} steps; the futures strip says ${p.strip >= 0 ? '+' : '−'}${Math.abs(p.strip).toFixed(1)} (${esc(p.stripLabel ?? '')}): ${p.diverges ? '<span class="chip gold">diverge</span> ' : ''}${esc(p.note)}.</div>` : '';
   const notes = res.notes.length ? `<div class="muted" style="font-size:12px;margin-top:6px">${res.notes.map(n => esc(n[0].toUpperCase() + n.slice(1))).join('. ')}.</div>` : '';
   const term = res.term?.chg20d != null ? ` The Kim-Wright 10-year term premium is ${res.term.value}% (${bp(res.term.chg20d)} in 20 days).` : '';
-  const card = `<div class="card"><div class="ch"><span class="lbl">Priced path and yields, same dates</span><span class="r muted">strip ${esc(res.asOf)}${res.stale ? ` <span class="chip gold">${res.ageDays}d old</span>` : ''}</span></div>
+  const card = `<div class="card"><div class="ch"><span class="lbl">Priced path and yields, same dates</span><span class="r muted">strip ${esc(res.asOf)} ${tileChip('fed-path-zq', { ageH: res.ageDays != null ? res.ageDays * 24 : null, asOf: res.ageDays == null ? res.asOf : null })}</span></div>
 ${avail.length ? `<div style="font-size:13.5px;line-height:1.5;margin-bottom:10px">${sentences}</div>` : ''}
 ${matrix(res, esc)}
 ${missing ? `<div class="muted" style="font-size:12px;margin-top:6px">Not shown: ${missing}.</div>` : ''}

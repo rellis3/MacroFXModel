@@ -1,0 +1,383 @@
+{
+ "atr": {
+  "estimate": -0.043012340135264386,
+  "ci": [
+   -0.06442548010441786,
+   -0.02053757356517319
+  ],
+  "label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown",
+  "checks": {
+   "ci_excludes_zero": true,
+   "ci_excludes_bar": true,
+   "beats_placebo_97_5": false,
+   "pipeline_finds_planted_bar": false,
+   "same_sign_both_halves": true,
+   "share_instruments_same_sign": 0.9230769230769231,
+   "survives_top1pct_removed": true,
+   "survives_costs": null
+  },
+  "placebo": {
+   "n": 200,
+   "mean": -0.04301234013526438,
+   "p2_5": -0.043012340135264386,
+   "p97_5": -0.043012340135264386,
+   "real_percentile": 0.0
+  },
+  "plant": [
+   {
+    "multiple_of_bar": 0.5,
+    "planted": 0.02,
+    "detected_share": 0.0,
+    "mean_recovered": -0.023012340135264396
+   },
+   {
+    "multiple_of_bar": 1.0,
+    "planted": 0.04,
+    "detected_share": 0.0,
+    "mean_recovered": -0.0030123401352643644
+   },
+   {
+    "multiple_of_bar": 2.0,
+    "planted": 0.08,
+    "detected_share": 1.0,
+    "mean_recovered": 0.03698765986473563
+   }
+  ],
+  "canary": {
+   "estimate_with_leak": 1.3095272814395755,
+   "estimate_clean": -0.043012340135264386
+  },
+  "by_half": [
+   {
+    "half": "H1",
+    "n": 10093,
+    "estimate": -0.04777418688416121,
+    "ci": [
+     -0.06762319116929916,
+     -0.02627823879054472
+    ]
+   },
+   {
+    "half": "H2",
+    "n": 10070,
+    "estimate": -0.03823961727164813,
+    "ci": [
+     -0.07398407700540142,
+     -0.0004489033815165156
+    ]
+   }
+  ],
+  "pick_changes": [
+   [
+    "2020-08-24",
+    {
+     "HIGH": "BREAK",
+     "LOW": "FADE",
+     "MID": "FADE"
+    }
+   ],
+   [
+    "2020-10-01",
+    {
+     "HIGH": "FADE",
+     "LOW": "FADE",
+     "MID": "FADE"
+    }
+   ],
+   [
+    "2021-01-04",
+    {
+     "HIGH": "FADE",
+     "LOW": "FADE",
+     "MID": "BREAK"
+    }
+   ],
+   [
+    "2022-07-01",
+    {
+     "HIGH": "BREAK",
+     "LOW": "FADE",
+     "MID": "BREAK"
+    }
+   ],
+   [
+    "2022-10-03",
+    {
+     "HIGH": "BREAK",
+     "LOW": "FADE",
+     "MID": "FADE"
+    }
+   ]
+  ]
+ },
+ "hmm": {
+  "estimate": -0.06260604277972336,
+  "ci": [
+   -0.09078854414063525,
+   -0.0356013399626347
+  ],
+  "label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown",
+  "checks": {
+   "ci_excludes_zero": true,
+   "ci_excludes_bar": true,
+   "beats_placebo_97_5": false,
+   "pipeline_finds_planted_bar": false,
+   "same_sign_both_halves": true,
+   "share_instruments_same_sign": 0.8461538461538461,
+   "survives_top1pct_removed": true,
+   "survives_costs": null
+  },
+  "placebo": {
+   "n": 200,
+   "mean": -0.06260604277972336,
+   "p2_5": -0.06260604277972336,
+   "p97_5": -0.06260604277972336,
+   "real_percentile": 0.0
+  },
+  "plant": [
+   {
+    "multiple_of_bar": 0.5,
+    "planted": 0.02,
+    "detected_share": 0.0,
+    "mean_recovered": -0.042606042779723366
+   },
+   {
+    "multiple_of_bar": 1.0,
+    "planted": 0.04,
+    "detected_share": 0.0,
+    "mean_recovered": -0.022606042779723334
+   },
+   {
+    "multiple_of_bar": 2.0,
+    "planted": 0.08,
+    "detected_share": 0.0,
+    "mean_recovered": 0.017393957220276656
+   }
+  ],
+  "canary": {
+   "estimate_with_leak": -0.00027725286216864233,
+   "estimate_clean": -0.06260604277972336
+  },
+  "by_half": [
+   {
+    "half": "H1",
+    "n": 10093,
+    "estimate": -0.05217813426151865,
+    "ci": [
+     -0.09998118846847631,
+     -0.01370526920575617
+    ]
+   },
+   {
+    "half": "H2",
+    "n": 10070,
+    "estimate": -0.07305776876524868,
+    "ci": [
+     -0.11477503121973723,
+     -0.04564974623475294
+    ]
+   }
+  ],
+  "pick_changes": [
+   [
+    "2020-08-24",
+    {
+     "HIGH": "BREAK",
+     "LOW": "FADE",
+     "MID": "FADE"
+    }
+   ],
+   [
+    "2020-10-01",
+    {
+     "HIGH": "FADE",
+     "LOW": "FADE",
+     "MID": "FADE"
+    }
+   ],
+   [
+    "2021-04-01",
+    {
+     "HIGH": "BREAK",
+     "LOW": "FADE",
+     "MID": "FADE"
+    }
+   ],
+   [
+    "2021-10-01",
+    {
+     "HIGH": "BREAK",
+     "LOW": "BREAK",
+     "MID": "FADE"
+    }
+   ],
+   [
+    "2022-01-03",
+    {
+     "HIGH": "BREAK",
+     "LOW": "FADE",
+     "MID": "FADE"
+    }
+   ],
+   [
+    "2023-01-02",
+    {
+     "HIGH": "BREAK",
+     "LOW": "BREAK",
+     "MID": "FADE"
+    }
+   ],
+   [
+    "2024-01-02",
+    {
+     "HIGH": "FADE",
+     "LOW": "FADE",
+     "MID": "FADE"
+    }
+   ]
+  ]
+ },
+ "chain": {
+  "estimate": -0.05791459486608121,
+  "ci": [
+   -0.09019524916538062,
+   -0.02666571614623939
+  ],
+  "label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown",
+  "checks": {
+   "ci_excludes_zero": true,
+   "ci_excludes_bar": true,
+   "beats_placebo_97_5": false,
+   "pipeline_finds_planted_bar": false,
+   "same_sign_both_halves": true,
+   "share_instruments_same_sign": 0.8461538461538461,
+   "survives_top1pct_removed": true,
+   "survives_costs": null
+  },
+  "placebo": {
+   "n": 200,
+   "mean": -0.05791459486608121,
+   "p2_5": -0.05791459486608121,
+   "p97_5": -0.05791459486608121,
+   "real_percentile": 0.0
+  },
+  "plant": [
+   {
+    "multiple_of_bar": 0.5,
+    "planted": 0.02,
+    "detected_share": 0.0,
+    "mean_recovered": -0.03791459486608123
+   },
+   {
+    "multiple_of_bar": 1.0,
+    "planted": 0.04,
+    "detected_share": 0.0,
+    "mean_recovered": -0.01791459486608119
+   },
+   {
+    "multiple_of_bar": 2.0,
+    "planted": 0.08,
+    "detected_share": 0.0,
+    "mean_recovered": 0.022085405133918806
+   }
+  ],
+  "canary": {
+   "estimate_with_leak": 1.3095272814395755,
+   "estimate_clean": -0.05791459486608121
+  },
+  "by_half": [
+   {
+    "half": "H1",
+    "n": 10093,
+    "estimate": -0.02618143547609017,
+    "ci": [
+     -0.07407034191286212,
+     0.01977882663482038
+    ]
+   },
+   {
+    "half": "H2",
+    "n": 10070,
+    "estimate": -0.08972023317026985,
+    "ci": [
+     -0.13165132392230924,
+     -0.053839546502377135
+    ]
+   }
+  ],
+  "pick_changes": [
+   [
+    "2020-08-24",
+    {
+     "DN-HI": "FADE",
+     "DN-LO": "FADE",
+     "UP-HI": "FADE",
+     "UP-LO": "BREAK"
+    }
+   ],
+   [
+    "2021-01-04",
+    {
+     "DN-HI": "FADE",
+     "DN-LO": "BREAK",
+     "UP-HI": "FADE",
+     "UP-LO": "BREAK"
+    }
+   ],
+   [
+    "2024-01-02",
+    {
+     "DN-HI": "FADE",
+     "DN-LO": "FADE",
+     "UP-HI": "FADE",
+     "UP-LO": "BREAK"
+    }
+   ],
+   [
+    "2024-04-01",
+    {
+     "DN-HI": "FADE",
+     "DN-LO": "FADE",
+     "UP-HI": "FADE",
+     "UP-LO": "FADE"
+    }
+   ],
+   [
+    "2025-07-01",
+    {
+     "DN-HI": "FADE",
+     "DN-LO": "FADE",
+     "UP-HI": "BREAK",
+     "UP-LO": "FADE"
+    }
+   ],
+   [
+    "2025-10-01",
+    {
+     "DN-HI": "FADE",
+     "DN-LO": "FADE",
+     "UP-HI": "FADE",
+     "UP-LO": "BREAK"
+    }
+   ],
+   [
+    "2026-04-01",
+    {
+     "DN-HI": "FADE",
+     "DN-LO": "FADE",
+     "UP-HI": "FADE",
+     "UP-LO": "FADE"
+    }
+   ],
+   [
+    "2026-07-01",
+    {
+     "DN-HI": "FADE",
+     "DN-LO": "FADE",
+     "UP-HI": "FADE",
+     "UP-LO": "BREAK"
+    }
+   ]
+  ]
+ }
+}

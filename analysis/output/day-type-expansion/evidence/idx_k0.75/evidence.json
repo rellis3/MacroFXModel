@@ -1,0 +1,234 @@
+{
+ "slug": "day-type-expansion:idx_k0.75",
+ "unit": "Brier skill vs sigma-only (fraction)",
+ "bar": 0.02,
+ "n_rows": 1894,
+ "n_clusters": 949,
+ "n_instruments": 2,
+ "span": [
+  "2022-09-06",
+  "2026-07-02"
+ ],
+ "estimate": 0.013620113688383895,
+ "ci": [
+  -0.0033100963207317756,
+  0.03149818603360166
+ ],
+ "se": 0.008883525113327054,
+ "verdict_word": "UNDERPOWERED",
+ "notes": "OOS predictions rebuilt with the runner's own functions (same seed/folds); the registered BSS_B1 for this cell was +0.0136. The pack bootstraps dates iid (the runner used 21-day moving blocks), so its CI can be a little narrower. Placebo = the model's lift (pm - p1) shuffled across dates within instrument.",
+ "placebo": {
+  "n": 500,
+  "mean": -0.019797895884205267,
+  "p2_5": -0.03314725121216956,
+  "p97_5": -0.007119417314197458,
+  "real_percentile": 100.0
+ },
+ "buckets": [
+  {
+   "bucket": "D1",
+   "n": 190,
+   "mean_outcome": -0.14568928224277972,
+   "lo": -0.20259947322602173,
+   "hi": -0.0887790912595377,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D2",
+   "n": 189,
+   "mean_outcome": -0.07259405787660995,
+   "lo": -0.13605070668612923,
+   "hi": -0.009137409067090693,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D3",
+   "n": 189,
+   "mean_outcome": -0.08523291431187173,
+   "lo": -0.14755349973565862,
+   "hi": -0.02291232888808485,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D4",
+   "n": 190,
+   "mean_outcome": -0.044517710459779467,
+   "lo": -0.11030234378930705,
+   "hi": 0.021266922869748114,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D5",
+   "n": 189,
+   "mean_outcome": 0.005636097757165756,
+   "lo": -0.06326318272234069,
+   "hi": 0.0745353782366722,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D6",
+   "n": 189,
+   "mean_outcome": -0.02574300345702925,
+   "lo": -0.09327284207899447,
+   "hi": 0.041786835164935976,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D7",
+   "n": 190,
+   "mean_outcome": -0.0040620109207287645,
+   "lo": -0.07214734677829869,
+   "hi": 0.06402332493684117,
+   "mean_side": 0.37894736842105264
+  },
+  {
+   "bucket": "D8",
+   "n": 189,
+   "mean_outcome": -0.041870737504173895,
+   "lo": -0.10843092534912513,
+   "hi": 0.024689450340777346,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D9",
+   "n": 189,
+   "mean_outcome": 0.10510683794008721,
+   "lo": 0.03441026345432835,
+   "hi": 0.17580341242584607,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D10",
+   "n": 190,
+   "mean_outcome": 0.01285346798596003,
+   "lo": -0.05633057660426982,
+   "hi": 0.08203751257618988,
+   "mean_side": 1.0
+  }
+ ],
+ "by_instrument": [
+  {
+   "inst": "NQ",
+   "n": 948,
+   "estimate": 0.020346353006343465,
+   "ci": [
+    0.005476466984608608,
+    0.04122117274880584
+   ]
+  },
+  {
+   "inst": "SPX500",
+   "n": 946,
+   "estimate": 0.006746488351004443,
+   "ci": [
+    -0.016154902053613234,
+    0.02777230488210013
+   ]
+  }
+ ],
+ "by_year": [
+  {
+   "year": "2022",
+   "n": 162,
+   "estimate": 0.0004948723631278407,
+   "ci": [
+    -0.05085296243320861,
+    0.06160567970764257
+   ]
+  },
+  {
+   "year": "2023",
+   "n": 495,
+   "estimate": -0.024734406633491357,
+   "ci": [
+    -0.054465999486462406,
+    0.008473103889454008
+   ]
+  },
+  {
+   "year": "2024",
+   "n": 494,
+   "estimate": 0.034076696023569664,
+   "ci": [
+    0.0017782500958604427,
+    0.07242517032939644
+   ]
+  },
+  {
+   "year": "2025",
+   "n": 494,
+   "estimate": 0.03947248695551997,
+   "ci": [
+    0.005267517956654997,
+    0.07272804536313694
+   ]
+  },
+  {
+   "year": "2026",
+   "n": 249,
+   "estimate": 0.023828175824371467,
+   "ci": [
+    -0.04202101269422655,
+    0.08727087048717179
+   ]
+  }
+ ],
+ "by_half": [
+  {
+   "half": "H1",
+   "n": 949,
+   "estimate": -0.010863475297895775,
+   "ci": [
+    -0.029099691637822087,
+    0.011231393870754785
+   ]
+  },
+  {
+   "half": "H2",
+   "n": 945,
+   "estimate": 0.04283900227520099,
+   "ci": [
+    0.014534230298546256,
+    0.06742057583191674
+   ]
+  }
+ ],
+ "without_top1pct": 0.01657739106586853,
+ "positive_control": [
+  {
+   "multiple_of_bar": 0.5,
+   "planted": 0.01,
+   "detected_share": 1.0,
+   "mean_recovered": 0.023620113688383904
+  },
+  {
+   "multiple_of_bar": 1.0,
+   "planted": 0.02,
+   "detected_share": 1.0,
+   "mean_recovered": 0.033620113688384023
+  },
+  {
+   "multiple_of_bar": 2.0,
+   "planted": 0.04,
+   "detected_share": 1.0,
+   "mean_recovered": 0.05362011368838395
+  }
+ ],
+ "lookahead_canary": {
+  "estimate_with_leak": 0.999999999995432,
+  "estimate_clean": 0.013620113688383895
+ },
+ "diagnosis": {
+  "checks": {
+   "ci_excludes_zero": false,
+   "ci_excludes_bar": false,
+   "beats_placebo_97_5": true,
+   "pipeline_finds_planted_bar": true,
+   "same_sign_both_halves": false,
+   "share_instruments_same_sign": 1.0,
+   "survives_top1pct_removed": true,
+   "survives_costs": null
+  },
+  "label": "INCONCLUSIVE: the interval includes both zero and the useful size"
+ }
+}

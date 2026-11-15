@@ -1,0 +1,41 @@
+/* Vol clock board, Assets tab (js/terminal/volClockView.js). Theme tokens only. */
+.vc-say p { margin: 0; font-size: 13.5px; line-height: 1.55; }
+.vc-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin: 14px 0 8px; font-size: 12px; }
+.vc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.vc-tile { background: var(--bg1); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px 12px; }
+.vc-h { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.vc-dial { display: block; width: 100%; max-width: 190px; height: auto; margin: 2px auto 0; overflow: visible; }
+.vc-dial .vc-track { stroke: var(--line2); }
+.vc-dial .vc-tk { stroke: var(--tx3); stroke-width: 1.2; }
+.vc-dial .vc-tl { fill: var(--tx3); font-size: 7.5px; font-family: var(--mono, ui-monospace, monospace); }
+.vc-dial .vc-hr { fill: var(--line3); }
+.vc-dial .vc-hr-on { fill: var(--gold); }
+.vc-dial .vc-hr-done { fill: var(--tx3); }
+.vc-dial .vc-pace { fill: var(--tx); stroke: var(--bg1); stroke-width: 1; }
+.vc-dial .vc-ratio { font-size: 19px; font-weight: 700; font-family: var(--mono, ui-monospace, monospace); }
+.vc-dial .vc-sub { fill: var(--tx3); font-size: 8.5px; letter-spacing: 0.08em; font-family: var(--mono, ui-monospace, monospace); }
+.vc-meta { display: flex; flex-wrap: wrap; gap: 2px 10px; justify-content: center; font-size: 11px; color: var(--tx2); margin-top: 4px; }
+.vc-cap { text-align: center; font-size: 12px; margin-top: 4px; }
+.vc-cap.muted { font-size: 11px; }
+@media (prefers-reduced-motion: no-preference) {
+  .vc-dial .vc-fill { stroke-dasharray: 1; animation: vc-sweep 1.1s ease-out both; }
+}
+@keyframes vc-sweep { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.vc-rank th .vc-sort { all: unset; cursor: pointer; text-decoration: underline dotted var(--tx3); text-underline-offset: 3px; }
+.vc-rank th .vc-sort:focus-visible { outline: 2px solid var(--pur2); outline-offset: 2px; }
+.vc-rank th .vc-sort[aria-sort]::after { content: ' ▾'; }
+.vc-rank th .vc-sort[aria-sort="ascending"]::after { content: ' ▴'; }
+.vc-rail { vertical-align: middle; overflow: visible; }
+.vc-rail .vc-rl { fill: var(--line); }
+.vc-rail .vc-rb { fill: var(--line3); opacity: 0.55; }
+.vc-rail .vc-rd { stroke: var(--bg1); stroke-width: 1; }
+.vc-vb { display: inline-block; width: 90px; height: 7px; border-radius: 4px; background: var(--line); vertical-align: middle; overflow: hidden; }
+.vc-vb i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--pur), var(--pur2)); }
+.vc-vb.hot i { background: linear-gradient(90deg, var(--pur2), var(--gold)); box-shadow: 0 0 8px var(--gold); }
+.vc-note { font-size: 12px; margin: 8px 0 0; }
+.vc-rec { display: block; width: 100%; max-width: 520px; height: auto; margin-top: 6px; }
+.vc-rec .vc-rt { fill: var(--tx); font-size: 10px; }
+.vc-rec .vc-rd2 { fill: var(--tx3); font-size: 8.5px; font-family: var(--mono, ui-monospace, monospace); }
+.vc-rec .vc-design { stroke: var(--tx3); stroke-width: 1; stroke-dasharray: 3 3; }
+.vc-rec .vc-ex { fill: none; stroke: var(--tx2); stroke-width: 1.2; }
+.vc-stamp { margin-top: 14px; }

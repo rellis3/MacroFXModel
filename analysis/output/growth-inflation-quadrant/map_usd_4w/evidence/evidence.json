@@ -1,0 +1,332 @@
+{
+ "slug": "growth-inflation-quadrant/map_usd_4w",
+ "unit": "sigma of 4w return",
+ "bar": 0.08320502943378437,
+ "n_rows": 3087,
+ "n_clusters": 35,
+ "n_instruments": 7,
+ "span": [
+  "2009-08-21",
+  "2026-07-24"
+ ],
+ "estimate": -0.06678100990951082,
+ "ci": [
+  -0.20447469975674737,
+  0.06120436148545023
+ ],
+ "se": 0.06844117710280892,
+ "verdict_word": "null",
+ "notes": "Rows = (instrument, Friday) where the map takes a side; outcome = forward z demeaned per instrument (B0). Cluster = calendar half-year. CAUTION: the pack's shuffled placebo permutes the side row by row, which breaks the quadrant's persistence and makes its band too narrow; the registered placebo is the circular shift in results.json (placebo_p97_5). Leak = side set to the sign of the realised outcome. Plants are added to the real rows AFTER removing the real estimate (prereg amendment A1).",
+ "placebo": {
+  "n": 500,
+  "mean": 0.00047114520696966424,
+  "p2_5": -0.030683956975428226,
+  "p97_5": 0.033186016257182184,
+  "real_percentile": 0.0
+ },
+ "buckets": [
+  {
+   "bucket": "deflation",
+   "n": 1624,
+   "mean_outcome": -0.07019691801226115,
+   "lo": -0.11583782320052147,
+   "hi": -0.02455601282400082,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "goldilocks",
+   "n": 1463,
+   "mean_outcome": 0.06298918847487887,
+   "lo": 0.01076331455297734,
+   "hi": 0.11521506239678041,
+   "mean_side": -1.0
+  }
+ ],
+ "by_instrument": [
+  {
+   "inst": "audusd",
+   "n": 441,
+   "estimate": -0.10775287654086113,
+   "ci": [
+    -0.2588520529537039,
+    0.034789433392994555
+   ]
+  },
+  {
+   "inst": "eurusd",
+   "n": 441,
+   "estimate": -0.11296338279505724,
+   "ci": [
+    -0.29421482763100104,
+    0.09843624927896703
+   ]
+  },
+  {
+   "inst": "gbpusd",
+   "n": 441,
+   "estimate": -0.03900145894709395,
+   "ci": [
+    -0.1685309405257165,
+    0.12103875171887304
+   ]
+  },
+  {
+   "inst": "nzdusd",
+   "n": 441,
+   "estimate": -0.07005258405311122,
+   "ci": [
+    -0.17725534443997193,
+    0.05045812147518616
+   ]
+  },
+  {
+   "inst": "usdcad",
+   "n": 441,
+   "estimate": -0.015349201674661412,
+   "ci": [
+    -0.14577511407724245,
+    0.1336701238138269
+   ]
+  },
+  {
+   "inst": "usdchf",
+   "n": 441,
+   "estimate": -0.07927632464644677,
+   "ci": [
+    -0.23575911454789394,
+    0.0873332008300702
+   ]
+  },
+  {
+   "inst": "usdjpy",
+   "n": 441,
+   "estimate": -0.04307124070934392,
+   "ci": [
+    -0.22707971622752693,
+    0.13529921593738717
+   ]
+  }
+ ],
+ "by_year": [
+  {
+   "year": "2009",
+   "n": 91,
+   "estimate": 0.2568148469819132,
+   "ci": [
+    0.2568148469819132,
+    0.2568148469819132
+   ]
+  },
+  {
+   "year": "2010",
+   "n": 175,
+   "estimate": -0.3048651231714718,
+   "ci": [
+    -0.591286089398268,
+    -0.04047653896212145
+   ]
+  },
+  {
+   "year": "2011",
+   "n": 105,
+   "estimate": 0.04477770465301931,
+   "ci": [
+    -0.4189338934137427,
+    0.11611795050944423
+   ]
+  },
+  {
+   "year": "2012",
+   "n": 189,
+   "estimate": -0.12434469214663213,
+   "ci": [
+    -0.13951269094041227,
+    -0.11903589256880909
+   ]
+  },
+  {
+   "year": "2013",
+   "n": 133,
+   "estimate": -0.21383693110142513,
+   "ci": [
+    -0.44219290537903577,
+    -0.08062927943948564
+   ]
+  },
+  {
+   "year": "2014",
+   "n": 196,
+   "estimate": -0.6503353657279081,
+   "ci": [
+    -1.0947991400766588,
+    0.03656319462925196
+   ]
+  },
+  {
+   "year": "2015",
+   "n": 196,
+   "estimate": -0.1570832029451661,
+   "ci": [
+    -0.43246669540598065,
+    0.049454416400444824
+   ]
+  },
+  {
+   "year": "2016",
+   "n": 203,
+   "estimate": -0.15758395544549264,
+   "ci": [
+    -0.20392560268205673,
+    0.020059025628003053
+   ]
+  },
+  {
+   "year": "2017",
+   "n": 147,
+   "estimate": 0.5069624138270818,
+   "ci": [
+    0.33893164915229573,
+    0.5741747196969962
+   ]
+  },
+  {
+   "year": "2018",
+   "n": 182,
+   "estimate": -0.05737291902616493,
+   "ci": [
+    -0.2648657055424895,
+    0.019071791795638893
+   ]
+  },
+  {
+   "year": "2019",
+   "n": 196,
+   "estimate": -0.03247286642021481,
+   "ci": [
+    -0.051878626119645416,
+    -0.010081605228564144
+   ]
+  },
+  {
+   "year": "2020",
+   "n": 189,
+   "estimate": -0.2099737363975482,
+   "ci": [
+    -0.2807093034493084,
+    -0.13379697188026798
+   ]
+  },
+  {
+   "year": "2021",
+   "n": 182,
+   "estimate": -0.276424730136469,
+   "ci": [
+    -0.3061291740942399,
+    -0.2203163359940128
+   ]
+  },
+  {
+   "year": "2022",
+   "n": 259,
+   "estimate": -0.19467648148882308,
+   "ci": [
+    -0.4617623925915105,
+    -0.09575577367301293
+   ]
+  },
+  {
+   "year": "2023",
+   "n": 259,
+   "estimate": 0.19887710067015024,
+   "ci": [
+    -0.15801901548608593,
+    0.5369892107129003
+   ]
+  },
+  {
+   "year": "2024",
+   "n": 133,
+   "estimate": 0.6410526199545037,
+   "ci": [
+    0.08708990992205178,
+    0.7887760092964909
+   ]
+  },
+  {
+   "year": "2025",
+   "n": 105,
+   "estimate": 0.036970015106086634,
+   "ci": [
+    -0.2520199631826917,
+    0.36724427600754767
+   ]
+  },
+  {
+   "year": "2026",
+   "n": 147,
+   "estimate": 0.022852073962261042,
+   "ci": [
+    -0.18684044988717782,
+    0.9140453003223763
+   ]
+  }
+ ],
+ "by_half": [
+  {
+   "half": "H1",
+   "n": 1547,
+   "estimate": -0.13414059242399412,
+   "ci": [
+    -0.3121372320209207,
+    0.03538573219746089
+   ]
+  },
+  {
+   "half": "H2",
+   "n": 1540,
+   "estimate": 0.0008847525254928805,
+   "ci": [
+    -0.12989538104454154,
+    0.20137488481878563
+   ]
+  }
+ ],
+ "without_top1pct": -0.056665964160944556,
+ "positive_control": [
+  {
+   "multiple_of_bar": 0.5,
+   "planted": 0.041602514716892185,
+   "detected_share": 0.0,
+   "mean_recovered": 0.041602514716892164
+  },
+  {
+   "multiple_of_bar": 1.0,
+   "planted": 0.08320502943378437,
+   "detected_share": 0.0,
+   "mean_recovered": 0.08320502943378436
+  },
+  {
+   "multiple_of_bar": 2.0,
+   "planted": 0.16641005886756874,
+   "detected_share": 1.0,
+   "mean_recovered": 0.16641005886756874
+  }
+ ],
+ "lookahead_canary": {
+  "estimate_with_leak": 0.7469910872057764,
+  "estimate_clean": -0.06678100990951082
+ },
+ "diagnosis": {
+  "checks": {
+   "ci_excludes_zero": false,
+   "ci_excludes_bar": true,
+   "beats_placebo_97_5": false,
+   "pipeline_finds_planted_bar": false,
+   "same_sign_both_halves": false,
+   "share_instruments_same_sign": 1.0,
+   "survives_top1pct_removed": true,
+   "survives_costs": null
+  },
+  "label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown"
+ }
+}

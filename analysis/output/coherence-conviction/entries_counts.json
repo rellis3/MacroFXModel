@@ -1,0 +1,93 @@
+{
+ "GOLD": {
+  "days": 2545,
+  "no_0700": 30,
+  "no_21": 179,
+  "no_daily": 0,
+  "entries": 2336
+ },
+ "EURUSD": {
+  "days": 2545,
+  "no_0700": 18,
+  "no_21": 34,
+  "no_daily": 0,
+  "entries": 2493
+ },
+ "GBPUSD": {
+  "days": 2545,
+  "no_0700": 18,
+  "no_21": 34,
+  "no_daily": 0,
+  "entries": 2493
+ },
+ "USDJPY": {
+  "days": 2545,
+  "no_0700": 18,
+  "no_21": 32,
+  "no_daily": 0,
+  "entries": 2495
+ },
+ "USDCAD": {
+  "days": 2545,
+  "no_0700": 18,
+  "no_21": 33,
+  "no_daily": 0,
+  "entries": 2494
+ },
+ "AUDUSD": {
+  "days": 2545,
+  "no_0700": 18,
+  "no_21": 34,
+  "no_daily": 0,
+  "entries": 2493
+ },
+ "NZDUSD": {
+  "days": 2545,
+  "no_0700": 18,
+  "no_21": 34,
+  "no_daily": 0,
+  "entries": 2493
+ },
+ "USDCHF": {
+  "days": 2545,
+  "no_0700": 18,
+  "no_21": 34,
+  "no_daily": 0,
+  "entries": 2493
+ },
+ "EURJPY": {
+  "days": 2545,
+  "no_0700": 18,
+  "no_21": 34,
+  "no_daily": 0,
+  "entries": 2493
+ },
+ "GBPJPY": {
+  "days": 2545,
+  "no_0700": 18,
+  "no_21": 34,
+  "no_daily": 0,
+  "entries": 2493
+ },
+ "NAS100": {
+  "days": 2545,
+  "no_0700": 32,
+  "no_21": 119,
+  "no_daily": 0,
+  "entries": 2394
+ },
+ "SPX500": {
+  "days": 2545,
+  "no_0700": 32,
+  "no_21": 118,
+  "no_daily": 0,
+  "entries": 2395
+ },
+ "US30": {
+  "days": 2545,
+  "no_0700": 32,
+  "no_21": 116,
+  "no_daily": 1,
+  "entries": 2396
+ }
+}

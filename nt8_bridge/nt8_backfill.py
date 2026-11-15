@@ -40,7 +40,8 @@ ROOTS = {
 }
 PRE_DAYS = 80      # days before the delivery month starts (covers the whole front-month life incl. the roll)
 POST_DAYS = 28     # into the delivery month
-CHUNK_DAYS = 40
+CHUNK_DAYS = 7     # was 40: NT8's BarsRequest sometimes returns only the first hour of a long chunk with NoError
+                   # (DATA_SPEC #24, found 2026-11-15). One-week requests come back complete.
 
 
 def keep_awake():

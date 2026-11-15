@@ -1,0 +1,52 @@
+/* "What drives this" in plain English (js/terminal/humanDriversView.js). Theme tokens only: every theme recolours it. */
+.hd-sum { margin: 2px 0 6px; padding: 12px 14px; border: 1px solid var(--line2); border-radius: 12px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--pur) 10%, transparent), transparent 70%); }
+.hd-lead { margin: 0; font-size: 15.5px; line-height: 1.5; color: var(--tx); text-wrap: pretty; }
+.hd-ch { margin: 6px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--tx3); }
+.hd-empty { margin: 4px 0; color: var(--tx2); font-size: 14px; line-height: 1.5; }
+
+.hd-an { padding: 14px 2px 10px; border-top: 1px solid var(--line); }
+.hd-sum + .hd-an { border-top: 0; }
+.hd-h { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.hd-name { margin: 0; font-size: 15.5px; font-weight: 650; letter-spacing: .005em; color: var(--tx); }
+.hd-chip { font-size: 11px; font-weight: 650; letter-spacing: .09em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--line2); color: var(--flat); background: color-mix(in srgb, var(--flat) 12%, transparent); }
+.hd-chip.up { color: var(--up); border-color: color-mix(in srgb, var(--up) 50%, transparent); background: color-mix(in srgb, var(--up) 13%, transparent); box-shadow: 0 0 14px color-mix(in srgb, var(--up) 22%, transparent); }
+.hd-chip.dn { color: var(--dn); border-color: color-mix(in srgb, var(--dn) 50%, transparent); background: color-mix(in srgb, var(--dn) 13%, transparent); box-shadow: 0 0 14px color-mix(in srgb, var(--dn) 22%, transparent); }
+.hd-bar { flex: 0 0 76px; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.hd-bar i { display: block; height: 100%; border-radius: 3px; background: var(--flat); transition: width .7s cubic-bezier(.2, .7, .2, 1); }
+.hd-bar.up i { background: var(--up); } .hd-bar.dn i { background: var(--dn); }
+
+.hd-take { margin: 5px 0 9px; font-size: 14px; color: var(--tx2); line-height: 1.45; }
+.hd-sub { margin-left: 8px; font-size: 12px; color: var(--tx3); white-space: nowrap; }
+.hd-gapn { color: var(--gold2); }
+
+.hd-pts { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.hd-pt { display: grid; grid-template-columns: 92px 1fr; gap: 4px 12px; padding: 2px 0 2px 12px; border-left: 2px solid var(--line2); }
+.hd-pt.up { border-left-color: var(--up); } .hd-pt.dn { border-left-color: var(--dn); }
+.hd-dir { font-size: 10.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; line-height: 1.7; white-space: nowrap; }
+.hd-dir.up { color: var(--up); } .hd-dir.dn { color: var(--dn); }
+.hd-dots { font-style: normal; letter-spacing: .12em; margin-right: 2px; opacity: .85; }
+.hd-txt { font-size: 14px; line-height: 1.55; color: var(--tx); min-width: 0; overflow-wrap: anywhere; }
+.hd-rest { color: var(--tx2); }
+.hd-n { font-weight: 650; color: var(--tx); font-variant-numeric: tabular-nums; }
+.hd-d { color: var(--tx2); white-space: nowrap; }
+.hd-old { display: inline-block; margin-left: 6px; padding: 1px 8px; font-size: 11px; color: var(--gold2); border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent); border-radius: 999px; }
+
+.hd-more, .hd-src { margin-top: 8px; }
+.hd-more > summary, .hd-src > summary { cursor: pointer; font-size: 12.5px; color: var(--pur2); list-style-position: inside; padding: 2px 0; }
+.hd-more > summary:focus-visible, .hd-src > summary:focus-visible { outline: 2px solid var(--pur2); outline-offset: 2px; border-radius: 4px; }
+.hd-more[open] > summary, .hd-src[open] > summary { margin-bottom: 8px; }
+.hd-srcl { margin: 0 0 6px; font-size: 13px; line-height: 1.55; color: var(--tx2); }
+.hd-note { color: var(--tx3); }
+.hd-gap { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--gold2); }
+
+.hd-when { margin-top: 12px; font-size: 12px; color: var(--tx3); }
+
+@media (max-width: 640px) {
+  .hd-pt { grid-template-columns: 1fr; }
+  .hd-bar { flex-basis: 56px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hd-bar i { transition: none; }
+}

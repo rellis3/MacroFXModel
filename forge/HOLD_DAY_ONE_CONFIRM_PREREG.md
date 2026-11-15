@@ -308,6 +308,10 @@ Runner details fixed while writing `scripts/hold-day-one-confirm/run.py`; no rea
 
 ---
 
+### A2 — 2026-11-14 — PRE-RESULTS
+
+Loader bug fix, no design change. On the laptop's real M1 caches (`VolRangeForecaster/data/m1`, `portfolioBacktest/cache`) the time column `datetime` is stored as the pandas index in the parquet metadata, so `to_table(...).to_pandas()` in `scripts/hold-day-one-confirm/run.py` (read_m1) restored it as the index and the column lookup raised `KeyError: 'datetime'` before any M1 was scored (the selftest's synthetic files carry no pandas index metadata, so it passed). Fix: `.to_pandas()` → `.to_pandas(ignore_metadata=True)` on that one line. Same rows, same values, same read-time lockbox filter and asserts; no pass bar, metric, window or design changed. No scored result had been printed when this was made.
+
 ## RESULTS — run <YYYY-MM-DD>
 
 *Written to `analysis/output/hold-day-one-confirm/RESULTS.md` and `results.json` (seed 20261114). Nothing above this

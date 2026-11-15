@@ -6,13 +6,14 @@ import { describeCurve } from '../curveBoardCore.js';
 import { ridgeCurves, pctRails, glowLine, stateStrip, esc, fin } from './boardViz.js';
 import { chipFor } from './corrEvidence.js';
 import { ownerLink, ownerOnly } from './links.js';
+import { dailyChip } from './timeframePills.js';
 
 const sg = (v, d = 0) => (!fin(v) ? '–' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(+v).toFixed(d)}`);
 
 function ridgeCard(cb) {
   const svg = ridgeCurves({ curves: cb.curves, tenors: cb.tenors, w: 560, h: 350 });
   const n = cb.curves.length;
-  return `<div class="card"><div class="ch"><span class="lbl">The curve through time</span><span class="r muted">${n - 1} month-ends back to ${esc(cb.curves[0]?.date ?? '')}, today in front</span></div>
+  return `<div class="card"><div class="ch"><span class="lbl">The curve through time</span><span class="r muted">${dailyChip('official daily prints')} ${n - 1} month-ends back to ${esc(cb.curves[0]?.date ?? '')}, today in front</span></div>
 ${svg || '<p class="muted">Not enough history to draw the curve through time.</p>'}
 <p class="muted bv-note">Each ridge is the Treasury curve (fed funds, 2y, 5y, 10y, 30y) on one month-end, the oldest at the back; today's is in front and glowing. Older curves are lifted up and back by their age so they stack like a mountain range: read the shape and the slope of each ridge, and take levels from the left axis against today's curve in front. It is a memory of the shape, not a path price will follow.</p></div>`;
 }
