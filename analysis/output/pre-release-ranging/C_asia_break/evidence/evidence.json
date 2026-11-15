@@ -1,0 +1,251 @@
+{
+ "slug": "pre-release-ranging/C_asia_break",
+ "unit": "probability",
+ "bar": 0.08,
+ "n_rows": 7023,
+ "n_clusters": 1229,
+ "n_instruments": 6,
+ "span": [
+  "2017-01-06",
+  "2026-08-13"
+ ],
+ "estimate": 0.014995988139289186,
+ "ci": [
+  0.0010351886578162306,
+  0.030164612515055197
+ ],
+ "se": 0.0075078091774114595,
+ "verdict_word": "NULL",
+ "notes": "Rows: event days (side +1) and pseudo-event non-release days (side -1); outcome = compression vs the row's own matched controls (control - row; positive = narrower / fewer breaks). Estimate = event mean - pseudo mean. Placebo = event/pseudo labels shuffled across dates. Leak canary: labels reassigned by the realised post-release range excess (top half = +1).",
+ "placebo": {
+  "n": 500,
+  "mean": 0.00010278361692056331,
+  "p2_5": -0.013660440822055163,
+  "p97_5": 0.013005238027676929,
+  "real_percentile": 99.4
+ },
+ "buckets": [
+  {
+   "bucket": "-1",
+   "n": 4664,
+   "mean_outcome": 0.0046097770154373925,
+   "lo": -0.0025369362705757086,
+   "hi": 0.011756490301450494,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "1",
+   "n": 2359,
+   "mean_outcome": 0.01960576515472658,
+   "lo": 0.008564207023923059,
+   "hi": 0.0306473232855301,
+   "mean_side": 1.0
+  }
+ ],
+ "by_instrument": [
+  {
+   "inst": "eurusd",
+   "n": 1220,
+   "estimate": -0.011086769707459363,
+   "ci": [
+    -0.028291862872525483,
+    0.004658845720176891
+   ]
+  },
+  {
+   "inst": "gbpusd",
+   "n": 1222,
+   "estimate": 0.0046027343573355846,
+   "ci": [
+    -0.0075942273881720495,
+    0.017929207220911587
+   ]
+  },
+  {
+   "inst": "gold",
+   "n": 1200,
+   "estimate": 0.016863401164237027,
+   "ci": [
+    -0.017853032062416983,
+    0.05007273264415692
+   ]
+  },
+  {
+   "inst": "nq",
+   "n": 1183,
+   "estimate": 0.031057898726597484,
+   "ci": [
+    -0.005216822748704782,
+    0.06835304225070399
+   ]
+  },
+  {
+   "inst": "spx500",
+   "n": 976,
+   "estimate": 0.01833910115403117,
+   "ci": [
+    -0.012623737858015651,
+    0.053626481132225616
+   ]
+  },
+  {
+   "inst": "usdjpy",
+   "n": 1222,
+   "estimate": 0.030724589620295145,
+   "ci": [
+    -0.013500730884876883,
+    0.08646110848840527
+   ]
+  }
+ ],
+ "by_year": [
+  {
+   "year": "2017",
+   "n": 644,
+   "estimate": -0.0050902373010792545,
+   "ci": [
+    -0.05263238042895822,
+    0.05107184116952667
+   ]
+  },
+  {
+   "year": "2018",
+   "n": 768,
+   "estimate": 0.011522952853598015,
+   "ci": [
+    -0.03300796986228239,
+    0.05505478110061197
+   ]
+  },
+  {
+   "year": "2019",
+   "n": 692,
+   "estimate": 0.042551622418879054,
+   "ci": [
+    -0.010629231788841901,
+    0.09184052363380027
+   ]
+  },
+  {
+   "year": "2020",
+   "n": 707,
+   "estimate": 0.0257201646090535,
+   "ci": [
+    -0.024209613048740076,
+    0.07134848459178393
+   ]
+  },
+  {
+   "year": "2021",
+   "n": 834,
+   "estimate": 0.01816914404926681,
+   "ci": [
+    -0.022465879950867424,
+    0.06640359616679252
+   ]
+  },
+  {
+   "year": "2022",
+   "n": 731,
+   "estimate": -0.02020371474964377,
+   "ci": [
+    -0.06135511201029868,
+    0.02372454129871095
+   ]
+  },
+  {
+   "year": "2023",
+   "n": 770,
+   "estimate": 0.02082610673018369,
+   "ci": [
+    -0.014774546222729466,
+    0.061778609516499335
+   ]
+  },
+  {
+   "year": "2024",
+   "n": 637,
+   "estimate": 0.027587249835958005,
+   "ci": [
+    -0.019746317266899245,
+    0.06992680575199066
+   ]
+  },
+  {
+   "year": "2025",
+   "n": 768,
+   "estimate": 0.014749484699540193,
+   "ci": [
+    -0.03176141890069757,
+    0.06904797297297298
+   ]
+  },
+  {
+   "year": "2026",
+   "n": 472,
+   "estimate": 0.006081094208389189,
+   "ci": [
+    -0.05312801374781984,
+    0.0664049499425568
+   ]
+  }
+ ],
+ "by_half": [
+  {
+   "half": "H1",
+   "n": 3513,
+   "estimate": 0.021999129092421858,
+   "ci": [
+    -0.0009313147964715506,
+    0.04705801060416648
+   ]
+  },
+  {
+   "half": "H2",
+   "n": 3510,
+   "estimate": 0.008202858032683828,
+   "ci": [
+    -0.010615397462630167,
+    0.028380487684806735
+   ]
+  }
+ ],
+ "without_top1pct": 0.014995988139289186,
+ "positive_control": [
+  {
+   "multiple_of_bar": 0.5,
+   "planted": 0.04,
+   "detected_share": 1.0,
+   "mean_recovered": 0.0549959881392892
+  },
+  {
+   "multiple_of_bar": 1.0,
+   "planted": 0.08,
+   "detected_share": 1.0,
+   "mean_recovered": 0.09499598813928921
+  },
+  {
+   "multiple_of_bar": 2.0,
+   "planted": 0.16,
+   "detected_share": 1.0,
+   "mean_recovered": 0.17499598813928918
+  }
+ ],
+ "lookahead_canary": {
+  "estimate_with_leak": 0.004203231432095289,
+  "estimate_clean": 0.014995988139289186
+ },
+ "diagnosis": {
+  "checks": {
+   "ci_excludes_zero": true,
+   "ci_excludes_bar": true,
+   "beats_placebo_97_5": true,
+   "pipeline_finds_planted_bar": true,
+   "same_sign_both_halves": true,
+   "share_instruments_same_sign": 0.8333333333333334,
+   "survives_top1pct_removed": true,
+   "survives_costs": null
+  },
+  "label": "SMALL BUT REAL: above zero, below the useful size"
+ }
+}

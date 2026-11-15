@@ -162,7 +162,19 @@ reassigned by the realised post-release range excess must move the estimate.
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-15 — POST-HOC (results seen)
+The §5 (ii) clause ("a cell whose pack fails the 1× plant is UNDERPOWERED whatever its CI says") was registered but
+not coded in `run.py`'s verdict function. Added (`apply_posctrl_rule`) and applied to the finished run. It changes
+one cell: D's code verdict NULL → **UNDERPOWERED** (1× plant detected 0/40, because the real estimate is −0.20, wrong
+sign, so a +0.15 plant lands at ~0). A demotion, allowed post-hoc. A, B, C unchanged (100% detection).
+
+### A2 — 2026-11-15 — POST-HOC (results seen), describe only
+Cell D's pooled Spearman mixes release clocks (13:30 vs 19:00): a longer pre window means a shorter post window, so
+pooling clocks builds in a negative pre/post rank relation whose size depends on each arm's clock mix and family mix
+(pseudo ρ −0.16, event ρ +0.04). The registered D statistic is therefore not a clean coiling measure. Within the
+08:30-ET clock only (descriptive): event ρ +0.055, pseudo ρ +0.076, Δ +0.02 [−0.05, +0.09] — no coiling. Cells A-C
+are unaffected (each row is compared with controls at its own clock). A re-test of coiling needs its own prereg
+with the statistic computed within clock.
 
 ---
 
