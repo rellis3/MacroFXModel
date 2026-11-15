@@ -43,7 +43,10 @@ function runOne(file) {
     const timer = setTimeout(() => { child.kill('SIGKILL'); }, TIMEOUT_MS);
     child.on('close', (code, signal) => {
       clearTimeout(timer);
-      resolve({ file, ok: code === 0, code, timedOut: signal === 'SIGKILL', ms: Date.now() - t0, tail: out.split('\n').slice(-25).join('\n') });
+      // the first failing assertion in the WHOLE output (Node 22 prints TAP when not on a terminal, so the failure sits far above the last lines)
+      const all = out.replace(/\r/g, '').split('\n'); const fi = all.findIndex(l => /^\s*not ok\b|\u2716|AssertionError|\bError:|\bFAIL\b/.test(l));
+      const firstFail = fi >= 0 ? all.slice(fi, fi + 4).map(l => l.trim()).filter(Boolean).join(' | ') : '';
+      resolve({ file, ok: code === 0, code, timedOut: signal === 'SIGKILL', ms: Date.now() - t0, tail: out.split('\n').slice(-25).join('\n'), firstFail });
     });
   });
 }
@@ -74,7 +77,7 @@ for (const r of unexpected) console.log(`\n✗ ${r.file} (${r.timedOut ? 'timed 
 if (process.env.GITHUB_ACTIONS) {
   for (const r of unexpected.slice(0, 10)) {
     const ls = String(r.tail ?? '').replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
-    const hit = ls.find(l => /AssertionError|Error:|✖|not ok|refusing|FAILED/.test(l)) ?? ls[ls.length - 1] ?? '';
+    const hit = r.firstFail || (ls.find(l => /AssertionError|Error:|✖|not ok|refusing|FAILED/.test(l)) ?? ls[ls.length - 1] ?? '');
     console.log(`::error title=Test failed: ${r.file}::${hit.slice(0, 400).replace(/%/g, '%25').replace(/\r|\n/g, ' ')}`);
   }
 }
