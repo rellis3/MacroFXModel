@@ -10,16 +10,16 @@ Generated 2026-11-15.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **339** |
-| validated | 51 |
-| null | 187 |
-| underpowered | 101 |
+| claims tested (validated + null + underpowered) | **353** |
+| validated | 53 |
+| null | 191 |
+| underpowered | 109 |
 | context (base rates, descriptions: not counted as tests) | 56 |
-| pre-registrations with no banked verdict (below) | 89 |
+| pre-registrations with no banked verdict (below) | 92 |
 
-**What the count says (Lesson 02 §05).** If none of the 339 claims were real, tests at the usual 5% size would still pass
-about **17** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
-**roughly 17 of the 51 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 353 claims were real, tests at the usual 5% size would still pass
+about **17.7** of them by luck. 53 passed, so most passes are unlikely to be luck alone, but
+**roughly 18 of the 53 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -411,17 +411,31 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-15 | bias-learner-fx | price | null | forge/BIAS_LEARNER_PREREG.md |
 | 2026-11-15 | bias-learner-gold | price | underpowered | forge/BIAS_LEARNER_PREREG.md |
 | 2026-11-15 | bias-learner-idx | price | underpowered | forge/BIAS_LEARNER_PREREG.md |
+| 2026-11-15 | coherence-conviction | macro | underpowered | forge/COHERENCE_CONVICTION_PREREG.md |
 | 2026-11-15 | day-type-expansion-fx | volatility | null | forge/DAY_TYPE_EXPANSION_PREREG.md |
 | 2026-11-15 | day-type-expansion-gold | volatility | null | forge/DAY_TYPE_EXPANSION_PREREG.md |
 | 2026-11-15 | day-type-expansion-idx | volatility | underpowered | forge/DAY_TYPE_EXPANSION_PREREG.md |
 | 2026-11-15 | exit-on-fixed-entries | execution | null | forge/EXIT_ON_FIXED_ENTRIES_PREREG.md |
 | 2026-11-15 | exit-on-fixed-entries-map | execution | context | forge/EXIT_ON_FIXED_ENTRIES_PREREG.md |
+| 2026-11-15 | growth-inflation-quadrant-gold | macro | underpowered | forge/GROWTH_INFLATION_QUADRANT_PREREG.md |
+| 2026-11-15 | growth-inflation-quadrant-idx | macro | underpowered | forge/GROWTH_INFLATION_QUADRANT_PREREG.md |
+| 2026-11-15 | growth-inflation-quadrant-usd | macro | underpowered | forge/GROWTH_INFLATION_QUADRANT_PREREG.md |
 | 2026-11-15 | hold-day-one-confirm-band | price | underpowered | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
 | 2026-11-15 | hold-day-one-confirm-close | price | underpowered | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
 | 2026-11-15 | hold-day-one-confirm-event | price | underpowered | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
 | 2026-11-15 | hold-day-one-confirm-hold-r | price | null | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
 | 2026-11-15 | hold-day-one-confirm-run | price | null | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
 | 2026-11-15 | hold-day-one-confirm-speed | price | underpowered | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
+| 2026-11-15 | pre-release-ranging | events | validated | forge/PRE_RELEASE_RANGING_PREREG.md |
+| 2026-11-15 | pre-release-ranging-asia | events | null | forge/PRE_RELEASE_RANGING_PREREG.md |
+| 2026-11-15 | pre-release-ranging-coil | events | underpowered | forge/PRE_RELEASE_RANGING_PREREG.md |
+| 2026-11-15 | pre-release-ranging-share | events | validated | forge/PRE_RELEASE_RANGING_PREREG.md |
+| 2026-11-15 | regime-picks-rule-atr | price | null | forge/REGIME_PICKS_RULE_PREREG.md |
+| 2026-11-15 | regime-picks-rule-chain | price | null | forge/REGIME_PICKS_RULE_PREREG.md |
+| 2026-11-15 | regime-picks-rule-hmm | price | underpowered | forge/REGIME_PICKS_RULE_PREREG.md |
+| 2026-11-15 | slow-bias-clock-book | price | underpowered | forge/SLOW_BIAS_CLOCK_PREREG.md |
+| 2026-11-15 | slow-bias-clock-dir | price | underpowered | forge/SLOW_BIAS_CLOCK_PREREG.md |
+| 2026-11-15 | slow-bias-clock-r | price | null | forge/SLOW_BIAS_CLOCK_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -483,8 +497,11 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/LINE_TOUCH_COST_PREREG.md`: Pre-registration: the line-touch fade with a per-instrument cost and a stop sized to it
 - `forge/LINE_TOUCH_WIDE_SCAN_PREREG.md`: Pre-registration: wide scan of candle shape / position / time / regime at the forecast lines
 - `forge/MACRO_TREND_WEEKDAY_PREREG.md`: Macro state, H1/H4 trend state and weekday at the vol lines — pre-registration
+- `forge/META_LABELLING_PREREG.md`: meta-labelling — Can a second model decide WHETHER to act on the bias-learner's daily call, and earn more per 
+- `forge/MTF_STRUCTURE_PREREG.md`: mtf-structure — Do multi-timeframe structure states (EMA trend, confirmed swings, filtered HMM states on W1/D1
 - `forge/NEWS_TOUCH_PREREG.md`: News at the vol lines — pre-registration
 - `forge/OI_WALL_BUILDING_FORWARD_PREREG.md`: oi-wall-building-forward — does a wall where open interest is being built bounce price more than a flat wall, 
+- `forge/POSITIONING_FLOW_INPUTS_PREREG.md`: positioning-flow-inputs — Do non-price, non-public-macro inputs (OANDA retail book, 25-delta risk reversals, t
 - `forge/RANGE_BOOK_EURUSD_PREREG.md`: EURUSD Range Book — pre-registration
 - `forge/REACTION_TRADES_PREREG.md`: Trading the reaction after the touch — pre-registration
 - `forge/REMAINING_TRAVEL_PREREG.md`: Layer 5 — REMAINING TRAVEL: from here, with the time left, how far can price still go?
