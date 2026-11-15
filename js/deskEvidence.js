@@ -365,6 +365,7 @@ export const DESK_EVIDENCE = [
   },
   {
     id: 'cot-crowding-va1', domain: 'positioning', verdict: 'null', date: '2026-10-24',
+    headline: { sign: -1 },   // grader: the claim is "do worse", so a positive pnl/trade is the wrong way
     doc: 'forge/COT_CROWDING_PROGRAMME_PREREG.md', also: ['analysis/output/cot-crowding-programme/RESULTS.md'],
     claim: 'Vote Atlas trades taken with a state-B/D crowd do worse than matched trades in non-crowded weeks',
     result: '12 instruments, 2022-05..2026-08: 904 trades with a B/D crowd vs matched non-crowded trades: pnl/trade +0.0024% [-0.0185, +0.0297]; IS +0.0184 / OOS +0.0066; Holm p 1.00.',
@@ -801,6 +802,7 @@ export const DESK_EVIDENCE = [
   },
   {
     id: 'hedge-finder-book', domain: 'execution', verdict: 'underpowered', date: '2026-11-06', doc: 'forge/HEDGE_FINDER_BOOK_PREREG.md', also: ['analysis/output/hedge-finder-book/RESULTS.md'],
+    headline: { sign: -1 },   // grader: the claim is a CUT in ES5 / drawdown, so negative is the claimed way
     instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GBPJPY', 'EURGBP', 'EURJPY', 'EURCHF', 'GBPCHF', 'AUDJPY', 'CADJPY'],
     claim: 'Owner 2026-11-06: hedging a book\'s biggest net currency exposure with the Desk Terminal Hedge finder\'s Book-hedge pick (bookHedges top row: no pair containing that currency, ranked by |corr| x sign stability, min-variance ratio, 60-day window, data to t-1, re-chosen daily, costs on) cuts max drawdown and the 5% expected shortfall by at least 5% without giving up more than 0.10 Sharpe',
     result: 'UNDERPOWERED (prereg rule 6). Proxy book: 60-day trend cards on the desk\'s 28 G10 pairs through the desk\'s own cap (capExposure, cap 4), FRED daily 2000-06-01 to 2026-08-21, 6,574 days, 19 of the panel\'s 26 candidates (no gold, silver, platinum, copper, S&P 500, Dow, Russell 2000), paired 21-day block bootstrap B 2000. ES5 -9.2% [-11.4, -7.0] (passes); max drawdown +0.5% [-18.1, +31.7] (one path, MDE 8-38pp vs a 5% bar: underpowered by design; planted hedges that cut ES 5.6% left it unchanged); Sharpe -0.056 [-0.141, +0.034] (non-inferiority at -0.10 not shown; gross of costs +0.014); annual return given up 0.030 units [-0.051, +0.113], about 3% of the book\'s vol; placebo (200 random eligible candidates) 0th percentile on ES. Naive own-USD-leg hedge (DXY for USD): ES -16.6% [-18.4, -14.7], 8.8pp more than the finder. By exposure: USD +1.0% [-3.2, +5.4] and JPY -0.5% [-8.9, +9.5], no cut. The desk\'s own book (3 days, from 2026-11-03, inside the lockbox) is untestable.',
@@ -840,6 +842,7 @@ export const DESK_EVIDENCE = [
   },
   {
     id: 'stress-filter-hold-direction', domain: 'volatility', verdict: 'underpowered', date: '2026-11-02', doc: 'forge/STRESS_FILTER_HOLD_PREREG.md', also: ['analysis/output/stress-filter-hold/RESULTS.md'], instruments: ['NQ', 'SPX500', 'GOLD'],
+    headline: { sign: -1 },   // grader: the claim is stressed LOWER than calm
     claim: 'C.OG (2026-11-01): a simple stress filter -- when VIX closes above the 80th percentile of its previous 252 sessions, NQ\'s next-day risk-adjusted return is lower than on calm days (the direction half of a stress stand-aside on a buy and hold)',
     result: 'Pre-registered, NQ OANDA D1 2004-03 to 2026-08-21, 5,795 days, 1,122 stressed (19%). Next-day return in sigma units, stressed minus calm: +0.022 sigma [-0.051, +0.089], label-shift placebo p 0.52, WRONG sign in both halves (+0.019 / +0.024). P(up) on stressed days 0.553 vs B0 0.551 and calm 0.554. Placebo MDE 0.086 sigma; planted -0.15 sigma found 200/200. UNDERPOWERED only because the CI\'s far end (-0.051) touches the pre-registered 0.05 sigma worthwhile size. Secondary (ES, gold; own 20-day RV and VIX >= VIX3M states): 0 of 40 cells survive BH q 0.10.',
     use: 'Do not describe a high-VIX day as bearish for the next day on NQ, ES or gold: stressed days were followed by the same or slightly better returns than calm days. Forward record: ledger forecaster stress-vix-p80.',
@@ -1052,6 +1055,7 @@ export const DESK_EVIDENCE = [
   },
   {
     id: 'nq-forecast-target-ev', domain: 'price', verdict: 'underpowered', date: '2026-11-02', doc: 'forge/NQ_FORECAST_TARGET_EV_PREREG.md', also: ['analysis/output/nq-forecast-target-ev/RESULTS.md'], instruments: ['NQ'],
+    headline: { est: 0.027, lo: -0.029, hi: 0.086, unit: '%', note: 'P1 +0.027%/trade [-0.029, +0.086] (the text interval sits after a bracketed $ figure)' },
     claim: 'Long NQ at the London open with a limit exit at open + the vol forecast’s O→C p75 (else out at 22:00) has positive net expectancy that the forecast explains, beyond open→close long, a trailing-quantile target, an ATR target of the same size and a same-quarter shuffled forecast',
     result: 'Underpowered by the frozen rule (paired MDE 0.024% > 0.020%); gate 0/4. 1,550 PIT sessions 2020-08 to 2026-08, 0.0068% round trip: P1 +0.027%/trade (+$86 per NQ contract) [-0.029, +0.086], t 0.9; open→close long +0.054%; P1 - no-target -0.026% [-0.050, -0.003] (the target cuts the right tail of the drift); P1 - trailing q75 +0.002 [-0.013, +0.020], P1 - ATR +0.001 [-0.011, +0.014]; shuffled-forecast placebo 81.5th percentile; halves flip vs trailing. Top 5% of trades > 100% of P&L; 2022 -$116k per contract; max DD $126k (36% of notional). Secondaries (O→C p50, O→H p75, O→L p75 stop) none pass Holm; mirror short loses the drift with no forecast value either side.',
     use: 'Say "reject as a trade construction: profit was NQ drift, the forecast target lowered it, and a forecast-specific advantage above ~0.02% per trade is excluded". Do not run variants (other rungs, stops, entry times). Use the levels for size and risk, not target placement.',
@@ -1226,6 +1230,7 @@ export const DESK_EVIDENCE = [
   },
   {
     id: 'wall-dte-style-h1', domain: 'positioning', verdict: 'underpowered', date: '2026-11-11', doc: 'oi_research_book/WALL_DTE_STYLE_PREREG.md', also: ['oi_research_book/WALL_DTE_STYLE_RESULTS.md', 'oi_research_book/data/results/wall_dte_style.json'],
+    headline: { sign: -1 },   // grader: the claim is walls break LESS than neighbours
     claim: 'Strong walls in the 0-7 DTE buckets on long-gamma days break less often than their listed neighbours (fade)',
     result: 'Basis- and swap-corrected walls, book used only once public, 0.25 sigma race by 22:00 London. FX/gold: walls 54.4% vs placebos 57.2% break, -2.8pp [-8.9, +3.8], 489 days, MDE 9pp against a 3pp bar, 3 of 7 instruments. NQ+SPX: +4.6pp [-4.3, +13.8] on 97 days (gate 400). The archive is monthlies (FX/gold) and quarterlies (NQ/SPX) only, so near-DTE OI exists on 27% / 9% of sessions. H4 (hour interaction) not scored because nothing passed.',
     use: 'No evidence that near-dated walls fade on long-gamma days; do not restrict or switch the OI bots on it. Power it from the forward record (weekly books with every wall DTE logged).',
@@ -1701,6 +1706,7 @@ export const DESK_EVIDENCE = [
   },
   {
     id: 'stir-residual-catchup', domain: 'macro', verdict: 'null', date: '2026-10-08', doc: 'forge/STIR_RESIDUAL_PREREG.md',
+    headline: { est: 0.186, lo: 0.037, hi: 0.342, note: 'R1 catch-up b +0.186 [+0.037, +0.342] over 1 h (failed only on the placebo rule)' },
     claim: "With the instrument on C.OG's screen (SOFR futures SR3Z6/SR3H7, Euribor IZ6, IBKR 15-min, Apr-Oct 2026) instead of bond CFDs: price catches up with the rates-implied move within 1 h (R1), rates move first (R2), and the previous day's rate-differential path draws the next day's NAS100 afternoon (R3)",
     result: 'R1 FAIL on its placebo rule only: catch-up b +0.186 [+0.037, +0.342] over 1 h, positive on all 5 targets (NAS100, SPX500, EURUSD, USDJPY, gold) and both halves (bond CFDs gave -0.001), but real b beats only 68.5% of day-shifted placebo runs (95% needed; that placebo is wide because shifted drivers make the implied move near zero). 4 h: b +0.169 [-0.182, +0.480], gap trade -9.5bp. R2: no lead either way at 15 min (NAS100 vs SR3H7 next bar +0.019 [-0.006, +0.046]; same bar +0.23). R3 passed its registered bar narrowly (mean corr +0.074 vs placebo 95th +0.068, 126 day pairs) but a post-hoc check shows it is the afternoon DIRECTION (agrees 56%), not the turn times: detrended -0.021.',
     use: 'Short-rate futures carry more than bond CFDs (the 1 h catch-up leans positive everywhere) but nothing clears its bar on 6 months; next test needs a longer history and a scale-free placebo. Turn-time matching across days (his Friday/Monday charts) does not hold. Not a signal.',
@@ -1962,6 +1968,7 @@ export const DESK_EVIDENCE = [
   },
   {
     id: 'bank-credit-dollar-dxy', domain: 'macro', verdict: 'underpowered', date: '2026-10-20', doc: 'forge/BANK_CREDIT_DOLLAR_PREREG.md', also: ['analysis/output/bank-credit-dollar/RESULTS.md'],
+    headline: { sign: -1 },   // grader: the claim is a WEAKER dollar
     claim: 'Bruno-Shin risk-taking channel, desk version: faster growth in cross-border US-dollar bank credit (BIS LBS, FX-adjusted, known two quarters after the quarter) is followed by a weaker dollar index the next quarter',
     result: '165 quarters 1985-Q2 to 2026-Q2, moving-block bootstrap (block 4, B 2000, seed 20261020): r -0.10 [-0.24, +0.02], Holm p 0.11, inside the circular-shift placebo band [-0.16, +0.16]; halves -0.09 / -0.02. MDE 0.24 vs a useful bar of 0.15, so the design could not have found a small effect. Latest-vintage BIS data (revision lookahead).',
     use: 'BIS cross-border credit growth is shown as a credit regime only; never as a dollar forecast. Reopen only with point-in-time BIS vintages or a cross-country panel.',
@@ -1976,6 +1983,7 @@ export const DESK_EVIDENCE = [
   },
   {
     id: 'bank-credit-panel-equity', domain: 'macro', verdict: 'underpowered', date: '2026-10-20', doc: 'forge/BANK_CREDIT_PANEL_PREREG.md', also: ['analysis/output/bank-credit-panel/RESULTS.md'],
+    headline: { sign: -1 },   // grader: the claim is WEAKER equity returns
     claim: 'Across countries, faster cross-border bank borrowing (BIS LBS, known two quarters after the quarter) is followed by weaker next-quarter equity returns relative to other countries (credit-boom literature; the cross-country retest of bank-credit-dollar-nasdaq)',
     result: '28 countries, 3,648 country-quarters 1988-Q1 to 2026-Q2, quarter-demeaned IC, quarter-block bootstrap (seed 20261020): IC -0.028 [-0.089, +0.027], Holm p 0.68, halves -0.052 / +0.017, inside the label-shuffle placebo [-0.037, +0.036]; no country flips it. MDE 0.08 vs a 0.05 useful bar. Descriptive: within-country time series -0.059 (23/28 negative) but that keeps the global cycle in.',
     use: 'No cross-country ranking on any page. Bank credit stays a regime description. Reopen only at a 2-3 year horizon with its own prereg.',
@@ -2061,6 +2069,7 @@ export const DESK_EVIDENCE = [
   },
   {
     id: 'quarter-end-funding-spike', domain: 'macro', verdict: 'underpowered', date: '2026-10-22', doc: 'forge/QUARTER_END_FUNDING_PREREG.md', also: ['analysis/output/quarter-end-funding/RESULTS.md'],
+    headline: { sign: -1 },   // grader: a THINNER buffer -> bigger spike, i.e. a negative rank correlation
     claim: 'C.OG: quarter-end balance-sheet shrinking widens funding spreads predictably; desk version: a thinner Fed overnight-RRP buffer, known 5 business days ahead, predicts a bigger quarter-end SOFR spike over its recent norm',
     result: '33 quarter-ends 2018-06 to 2026-06: Spearman -0.32 [-0.65, +0.07], halves -0.25 / -0.62, just outside the random-date placebo [-0.32, +0.36], Holm p 0.17. RRP near zero meant scarce liquidity in 2018-19/2025 (spikes 13-59bp) but flooded reserves in 2020 (no spikes). Descriptive: thin RRP AND below-median reserves 14.5bp mean (n 14) vs 3.8bp (n 19); quarter-ends average twice month-ends (8.3 vs 4.2bp).',
     use: 'Quarter-end SOFR spikes are a predictable calendar description, biggest when RRP is thin and reserves tight; not a validated forecast. Forward record: the fit implies about +15bp at 2026-12-31 at todays RRP.',
@@ -2162,6 +2171,7 @@ export const DESK_EVIDENCE = [
   },
   {
     id: 'basis-yearend-jpy', domain: 'events', verdict: 'underpowered', date: '2026-10-23', doc: 'forge/BASIS_STRESS_JPYCHF_PREREG.md', also: ['analysis/output/basis-stress-jpychf/RESULTS.md'],
+    headline: { sign: -1 },   // grader: year-end costs more = a negative basis premium, as in basis-yearend-premium
     claim: 'Dollars borrowed via the yen across 31 December cost more than across an ordinary quarter-end',
     result: '10 vs 32 contracts: -12.4bp [-24.1, +0.8], halves -12.7 / -14.2, Holm p 0.25. March contracts wide every year (-53 to -11bp) but the yen also widens at its other quarter-ends (mean -12bp) and its fiscal year-end (June contracts -13.7bp, descriptive).',
     use: 'The yen basis widens at quarter-ends generally, not specially at 31 December.',
