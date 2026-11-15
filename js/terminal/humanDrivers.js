@@ -13,6 +13,8 @@
  * old panel cut them at 200 characters at render time, which is where "the widest stru" and "(mean path ~431bp to ~46" came from.
  * Pure. Tested in js/terminal/humanDrivers.test.mjs.
  */
+import { FEED_LABEL } from '../feedLabels.js';
+
 
 /** One plain name per analyst id (the ids are the DESK_SKILLS in js/deskPack.js). */
 export const ANALYST_LABEL = {
@@ -33,41 +35,11 @@ const titleCase = s => String(s ?? '').replace(/[_-]+/g, ' ').trim().replace(/\s
 /** The analyst's plain name; an id this table has not met is title-cased (never shown as snake_case). */
 export const analystLabel = id => ANALYST_LABEL[id] ?? (titleCase(id) || 'Analyst');
 
-/** Friendly feed names, keyed by the route id the analysts cite in their evidence. Unknown ids fall back to prettyFeed(). */
-export const FEED_LABEL = {
-  'fed-path': 'Fed path', 'fomc/latest': 'FOMC statement', 'fomc-latest': 'FOMC statement', 'rate-diff': 'Rate differentials',
-  'rates': 'Policy rates', 'rates-regime': 'Rate regime', 'speech-drift': 'Central-bank speeches', 'fed-speakers': 'Fed speakers',
-  'ecb/latest': 'ECB statement', 'boe/latest': 'BoE statement', 'boj/latest': 'BoJ statement', 'boc/latest': 'BoC statement',
-  'rba/latest': 'RBA statement', 'rbnz/latest': 'RBNZ statement', 'rbnz/decisions': 'RBNZ decisions', 'snb/latest': 'SNB statement',
-  'beigebook/latest': 'Beige Book', 'cb-expectations': 'Rate expectations (futures)', 'world-rates': 'World policy rates',
-  'policy-rates': 'Policy rates', 'carry-vol': 'Carry against vol', 'treasury-auctions': 'Treasury auctions',
-  'macro-scorecard': 'Macro scorecard', 'macro-changes': 'Macro changes', 'nowcast': 'Cleveland nowcast', 'cpi': 'CPI',
-  'ppi': 'PPI', 'gdp': 'GDP', 'ism': 'ISM', 'retail-sales': 'Retail sales', 'trade-balance': 'Trade balance',
-  'consumer-confidence': 'Consumer confidence', 'labor-market': 'Labour market', 'econ-surprise': 'Economic surprises',
-  'econ-trend': 'Economic trend', 'gpr': 'Geopolitical risk', 'leading-indicators': 'Leading indicators',
-  'global-yields': 'Global yields', 'real-yield': 'Real yields', 'yield-curve': 'Yield curve', 'yield-context': 'Yield context',
-  'yield-coupling': 'Yield coupling', 'yield-spread/plan': 'Yield-spread signals', 'term-premium': 'Term premium',
-  'spread-episodes/live': 'Spread episodes', 'xccy-basis': 'Cross-currency basis',
-  'cot-state': 'CFTC positioning', 'cot-extremes': 'CFTC extremes', 'oanda-book': 'Retail positioning', 'oanda-book/history': 'Retail positioning',
-  'credit-stress': 'Credit stress', 'credit-quality': 'Credit quality', 'credit-board': 'Credit board', 'liquidity-pulse/data': 'Liquidity pulse',
-  'liquidity-gate/live': 'Liquidity gate', 'liquidity-board': 'Liquidity board', 'bank-credit': 'Bank credit', 'credit-leads-equities': 'Credit-leads-equities',
-  'chain-read': 'Chain read', 'chain-extra': 'Chain extras', 'regime': 'Growth and inflation regime', 'hmm/regimes': 'Volatility regimes',
-  'market-sense/last': 'Market-sense checks', 'world-stress': 'World stress', 'risk-flags': 'Risk flags', 'gold-etf-flow': 'Gold ETF flows',
-  'wider-market': 'Wider market', 'em-gauges': 'Emerging-market gauges', 'fair-value': 'Fair value', 'fx-fair-value': 'FX fair value',
-  'events': 'Economic calendar', 'event-day': 'Event-day context', 'release-calls': 'Release calls', 'news-outcome': 'News outcomes',
-  'earnings-ahead': 'Earnings ahead', 'fiscal/events': 'Fiscal events', 'desk-news': 'News wire', 'desk-weekly': 'Weekly strategist view',
-  'cvol': 'CME implied vol', 'daily-read': 'Daily read', 'today-reads': 'Daily reads', 'forecast-path': 'Forecast path',
-  'exhaustion-ladder': 'Exhaustion ladder', 'options-skew': 'Options skew', 'hedging-summary': 'Dealer hedging', 'oi-levels': 'Option-interest levels',
-  'oi-today': 'Option interest', 'levels': 'Level engine', 'asia-today': 'Asia session', 'daily-open-fib': 'Daily-open Fibonacci levels',
-  'weekmap': 'Week map', 'range-calls': 'Range calls', 'trade-decision/state': 'Market state', 'trade-state': 'Market state',
-  'swing-map': 'Swing map', 'ledger': 'Desk ledger', 'direction-ledger': 'Direction ledger', 'eod-review': 'End-of-day review',
-  'morning-brief': 'Morning brief', 'desk-memory': 'Desk memory', 'daily-snapshot': 'Daily snapshot', 'trend-basket': 'Trend basket',
-  'rates-nasdaq': 'Rates against Nasdaq',
-};
+export { FEED_LABEL };
 
 const PAIR6 = /^[A-Z]{6}$/;
 const prettyInst = s => { const t = String(s ?? '').trim(); return PAIR6.test(t) ? `${t.slice(0, 3)}/${t.slice(3)}` : titleCase(t.toLowerCase()); };
-/** "trade-decision/state:USDCAD" -> "Market state · USD/CAD"; an unknown id -> sentence case, never a route. */
+/** A feed id with an instrument suffix reads as a name plus the pair (Market state · USD/CAD); an unknown id is sentence-cased, never shown as a route. */
 export function prettyFeed(id) {
   const raw = String(id ?? '').trim(); if (!raw) return '';
   const [base, inst] = raw.split(':');

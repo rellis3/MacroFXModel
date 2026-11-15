@@ -1090,6 +1090,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/fedPathYieldsView.js",
+     "js/terminal/humanDrivers.js",
      "js/terminal/ratesBoardView.js",
      "js/terminal/terminalTabs.js"
     ],
@@ -4509,5 +4510,5 @@ export const DERIVED = {
  "unclassified": [],
  "rootPageCount": 263,
  "packFeeds": 115,
- "generatedAt": "2026-11-14"
+ "generatedAt": "2026-11-15"
 };
