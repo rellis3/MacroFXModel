@@ -19,6 +19,51 @@ committed.
   - `day-type-expansion`, `post-release-drift-pooled`, `hold-day-one-confirm`, `exit-on-fixed-entries`,
     `bias-learner` (pre-registered, banked 2026-11-15).
 
+## Results of the review tests (2026-11-15)
+
+Every test from §5 and the synthesis plan (merged order 0–8) was pre-registered, run with an evidence pack, and banked
+the same day. The full evidence (charts, planted controls, placebos, sample rows) is on
+[bias-evidence.html](../bias-evidence.html). Grades are from `js/evidenceGrade.js` (after fix 0). Effects are against
+each market's own base rate unless stated.
+
+| # | Test | Ledger id(s) | Verdict · grade | Headline effect [95% CI] | Evidence diagnosis | What it changes for the card |
+|---|---|---|---|---|---|---|
+| 0 | Evidence grader fix | — (code fix, `analysis/output/evidence-grader-fix/CHANGES.md`) | fixed | 20 of 395 grades changed; strong 23 → 25, against 62 → 70 | It read placebo / side-arm intervals, treated "positive" as the claimed way, and could not parse "% per trade [..]". Now reads the headline interval in the claimed direction. `positioning-into-release-direction` is now Strong | Grades in §2 and below can be weighted |
+| 1 | Multi-timeframe structure + HMM, conflict = "no view" | `mtf-structure-ema`, `-swing`, `-hmm`, `-pullback`, `-conflict-ema`, `-conflict-hmm` | all UNDERPOWERED by the family rule · ema / hmm / both conflict Against, swing Untested, pullback Faint | EMA 24h −0.34pp [−1.76, +1.00]; HMM 24h −0.38pp [−1.53, +0.63]; pullback 24h +0.75pp [−1.15, +2.54]; HMM conflict −0.26pp [−1.25, +0.54] (hit rate vs base rate) | 0/18 cells pass Holm, 16/18 negative; every powered cell NULL with the 3pp bar ruled out. Aligned days hit at or below the base rate. Conflict-as-no-view **lowers** kept-day accuracy (5d worse than 99.7% of random abstentions). The HMM's direction is the drift sign; no better than a named σ-chain. Swing alignment too rare (2% of days). Open: gold pullback 3d +9.4pp [+3.1, +15.9], n = 352 | No direction call from "timeframes aligned" or HMM state; never say aligned days are better days |
+| 2 | Slow bias clock (1/3/12-month trend + carry) | `slow-bias-clock-dir`, `-r`, `-book` | dir UNDERPOWERED · Against; R NULL · Untested; book UNDERPOWERED · Faint | FX +1 day Brier skill −0.050% [−0.089, −0.012]; vs 4h rule −0.0025R [−0.022, +0.018]; book Sharpe +0.24 [−0.15, +0.63] | FX daily call a powered NULL (0.4% bar ruled out); gold / indices could not be seen. Slow and 4h sides both lose ~0.03R a trade net. The book is uncorrelated with long (0.14) and held up in stress, but 4 of 9 FX pairs lose | Describe the slow trend state; never a daily call. Drop "fast vs slow disagree → half size". At most a small diversifying hold, forward record only |
+| 3 | Regime picks the rule (fade / follow / break) | `regime-picks-rule-atr`, `-hmm`, `-chain` | atr NULL, hmm UNDERPOWERED, chain NULL · all Untested | Every refit picked FLAT: 0.000R; always-fade −0.048R [−0.062, −0.034] | Every rule loses net of spread in every regime, so there was nothing for a regime to pick. Planted edges were found (100%) | Regime = how big the day is, not which rule to trade |
+| 4 | Positioning and flow inputs | `positioning-flow-book`, `-rr`, `-vrp`, `-monthend` | all UNDERPOWERED (per-input rule) · Untested | FX next day (BSS vs base): book −0.023% [−0.055, +0.004]; RR −0.037% [−0.282, +0.167]; VRP −0.012% [−0.104, +0.077]; month-end −0.190% [−0.960, +0.417] | Every powered FX next-day cell NULL (1.3pp hit gain ruled out); no Holm pass in 28 cells. VRP's out-of-sample tilt flipped sign. Month-end +5 day +1.9% [−1.3, +4.8] is large but unstable (halves +5.3 / −1.5). RR 5-day tilt +0.10% is small but consistent | Retail book, RR, VRP, month-end stay context, never a lean |
+| 5 | Pre-release ranging | `pre-release-ranging` (B), `-share` (A), `-asia` (C), `-coil` (D) | B VALIDATED · Leaning; A VALIDATED but mechanical; C NULL; D UNDERPOWERED | B: pre-release morning +0.104σ [0.074, 0.134] narrower (~12%), 6/6 instruments, every year 2017–2026 | B is real: big-US-release mornings are quieter. A (half the range comes after the print) mostly restates that the print adds range. C: Asia high/low still breaks before the print on 93% of days (vs 95%). D: no "coiling" | The one new validated morning fact (below). "Narrower", not "ranging" or "coiled" |
+| 6 | Growth × inflation quadrant | `growth-inflation-quadrant-usd`, `-gold`, `-idx` | all UNDERPOWERED · USD / idx Untested, gold Leaning | 4w: USD −0.067σ [−0.202, +0.070]; gold +0.132σ [+0.005, +0.256]; indices +0.018σ [−0.079, +0.114] | 0/21 Holm. A large USD / index tilt is ruled out; USD leans the wrong way. The old REGIME.md index table was revision plus drift. Gold right sign at every horizon, but fails Holm, second-half only, cross-fit negative | Quadrant = backdrop description. No USD / index tilt line. Gold: forward record only |
+| 7 | Cross-asset coherence as conviction / size | `coherence-conviction` | UNDERPOWERED · Untested | R coherent minus incoherent +0.0014R [−0.037, +0.040]; hit coherent vs all −0.21pp [−1.5, +1.1] | A 5pp hit lift and a 0.05R lift (coherent vs all days) are ruled out; packs FLAT ×6 | No conviction or size upgrade when rates, FX, equities and vol agree |
+| 8 | Meta-labelling the bias-learner call | `meta-labelling` | UNDERPOWERED · Against | R acted minus all +0.0029R [−0.0105, +0.0162]; vs act-when-strong −0.018R [−0.031, −0.003] | The filter picks days no better than a random stand-aside (20th pct) and worse than a plain strength rule; it learned "trade indices". The primary has no skill to filter | No fitted act / stand-aside tag |
+| — | Evidence-pack retrofit (diagnostics only) | `day-type-expansion`, `post-release-drift-pooled`, `hold-day-one-confirm`, `exit-on-fixed-entries`, `bias-learner`, `h4-trend-hold` | no banked verdict changed | e.g. bias-learner FX 21:00 BSS +0.045% [−0.020, +0.113] FLAT; exit E1 +0.012R [−0.000, +0.024] FLAT; h4 DAY −0.015R [−0.032, +0.003] FLAT | Planted controls are found, so most nulls are FLAT (a useful effect ruled out), not blind; drift h2 and hold-day-one run are genuinely UNDERPOWERED. h4-trend-hold's "holding overnight is worse" did **not** survive ten years (HOLD +0.010R [−0.028, +0.047], FLAT): it was a short-window result | None beyond what §4 already says; drop "hold is worse" as a reason |
+
+### What the morning card should now say
+
+- **The only validated morning fact:** on a big US release day (NFP, CPI; FOMC up to 19:00) the session before the
+  print usually runs about 10–12% narrower than a normal morning, and about half the day's range comes after the
+  print. Say "narrower", never "ranging": the Asia high or low still breaks before the release on ~93% of those days.
+  Size and timing only.
+- **No direction call** from multi-timeframe or HMM structure, the growth × inflation quadrant (USD, indices),
+  cross-asset coherence, positioning inputs (retail book, RR, VRP, month-end), a regime-picked rule, or a meta filter.
+- **The slow clock** is at most a small diversifying hold beside long exposure, judged on a forward record. It is
+  never a daily call.
+- **Forward record / candidate only, never a card line:** gold quadrant tilt, gold pullback-in-trend at 3 days,
+  the month-end USD flow at +5 days, the risk-reversal tilt at +5 days.
+- **"No view" stays rule-based** and is scored on the bias scoreboard. Do not claim that agreed or aligned days are
+  more accurate; both tests say they are not.
+
+### Where the nulls point
+
+- **Meta-label a primary with proven skill.** Filtering only helps a call that is already right more often than the
+  base rate. First get 300+ called days on the bias scoreboard; then test a filter on that call.
+- **Score within group.** Several "edges" were the index drift (indices go up). Score FX, gold and indices separately
+  so drift cannot pass for skill.
+- **Gold-only preregs on independent data.** Gold leaned the right way three times (quadrant, pullback 3d, HMM
+  slices). Test each as one pre-registered cell on data not used here (pre-2009 or forward).
+- **Forward records** for everything marked candidate above; no money until a forward record passes.
+
 ## 1. Where every source agrees
 
 1. **A 24-hour direction call from public data sits near the base rate.**
@@ -84,16 +129,22 @@ EURUSD 0.485). Every call is a move away from that.
 **Step 1. Size and conditions first (proven; C.OG's order).**
 - Range lines, event size and the stress dashboard set how much risk today deserves.
 - If three or more warnings flash, cut exposure whatever the direction view.
+- On a big US release day (NFP, CPI; FOMC to 19:00), expect a pre-release session ~10–12% narrower and about half the
+  range after the print (`pre-release-ranging`, VALIDATED). Narrower, not ranging: Asia still breaks first on ~93%.
 - This is where the desk's validated edge is.
 
 **Step 2. The slow thesis (weeks, not today).**
 - One US-dollar call, then each pair derived from it: one coherent view, not 20 opinions.
-- Inputs: carry, data-surprise momentum, the Fed path, and C.OG's growth × inflation quadrant (to be tested, §5).
+- Inputs: carry, data-surprise momentum, the Fed path. The growth × inflation quadrant is a backdrop description only:
+  tested, it carries no USD or index tilt (gold is a forward-record candidate).
+- The slow trend clock (1/3/12-month) is described, never called: no daily skill, at most a small diversifying hold.
 - Horizon is 1 to 8 weeks. Today inherits it as a lean; it is not re-forecast each morning.
 
 **Step 3. Validators that fire sparsely.**
 - COT state D, post-FOMC drift days 3–5, and the release-day positioning tilt.
 - Each moves P(up) by its measured, shrunk effect when it fires, and by nothing when it doesn't.
+- Tested and not added: retail book, risk reversals, VRP, month-end flow, multi-timeframe or HMM alignment. They stay
+  context.
 
 **Step 4. Combine by the recipe, not by debate.**
 - `js/globalReadCore.js` already does evidence-weighted combination. Make it the anchor P(up) and let the debate
@@ -106,7 +157,9 @@ EURUSD 0.485). Every call is a move away from that.
 **Step 5. Abstain unless the families agree.**
 - "No view" is a written output with fixed thresholds: |z| < 1, expected move below 2× cost, or no tested record
   behind the signals.
-- MUFG-style rule: a call needs the families to agree beyond a pre-set score.
+- MUFG-style rule: a call needs the families to agree beyond a pre-set score. This is a risk rule, not an accuracy
+  claim: cross-asset coherence and timeframe alignment did not raise the hit rate on kept days (conflict-as-no-view
+  lowered it). Score the rule on the bias scoreboard; no fitted meta filter.
 - Expect no view on 60 to 80% of instrument-days. Remove the desk rule that judges must commit.
 
 **Step 6. Timing and expression, never side.**
@@ -115,6 +168,7 @@ EURUSD 0.485). Every call is a move away from that.
 - Don't chase: after a strong day or a big surprise, the 1–3 day lean is slightly against continuation, so enter on
   pullbacks or stand aside.
 - Event days mean a bigger range, not a direction.
+- The regime (ATR, HMM or trend × vol state) does not pick fade, follow or break: every rule lost net in every regime.
 
 **Step 7. Score everything.**
 - Every call is stored as a probability and scored with Brier and calibration against the base rate, abstentions
@@ -131,9 +185,19 @@ EURUSD 0.485). Every call is a move away from that.
   stay on a forward record.
 - **No overnight hold or exit rule from direction.** `hold-day-one-confirm` and `exit-on-fixed-entries` are NULL;
   21:00 close is the default.
-- **Each call carries** its families' agreement score, the validators that fired, and its invalidation.
+- **Each call carries** its families' agreement score, the validators that fired, and its invalidation. The agreement
+  score is shown as state, not as conviction or size (`coherence-conviction`).
+- **Release-day line:** "pre-release session usually ~10–12% narrower; about half the range comes after the print".
+  Never "ranging", "fenced" or "coiled into the number".
+- **Not on the card as a lean:** timeframe alignment or HMM state, quadrant tilt for USD / indices, retail book, RR,
+  VRP, month-end flow, slow clock as tomorrow's call, a regime-picked rule.
+- **Overnight hold:** the old "holding is worse" reason is gone (10-year pack: HOLD flat); the 21:00 close stays the
+  default because no hold rule shows an edge.
 
 ## 5. Tests still worth running (ranked by what an answer changes)
+
+Tests 1–5 below and the synthesis P1–P5 were run on 2026-11-15; see "Results of the review tests" at the top. Still
+open: 6–10, plus the follow-ups under "Where the nulls point".
 
 1. **Fix the evidence grader** (`js/evidenceGrade.js`) before weighting anything on it. Today it:
    - reads the first interval in the text, sometimes a placebo or a side arm;
