@@ -59,4 +59,8 @@ Descriptive arms (GBM, rolling 3y, sigma-60 Asia, FX-IV, event days, concentrati
 
 ## What this changes
 
-(edit by hand: prereg §8)
+Per prereg §8; banked 2026-11-15 as `bias-learner-fx` (null), `bias-learner-gold` (underpowered), `bias-learner-idx` (underpowered).
+
+- **FX (NULL):** the card says FX direction on this morning information is not learnable at 0–5 days; it keeps day type and event-led context and abstains otherwise. No learner direction line and no analyst-scorecard weighting proposal.
+- **Gold, indices (UNDERPOWERED):** no learner direction line either. Top-confidence R here is the base-rate side's drift, not the readings. Testable only on a longer pooled history (pre-2016 M1, more instruments) or on the forward bias-scoreboard after 120+ days.
+- Reopens on: the forward bias-scoreboard record at 120+ shared days, or a longer history that powers gold/indices; not a re-cut of this sample.
