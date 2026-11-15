@@ -26,6 +26,8 @@ Outputs, in <out>/evidence/:
     sample_rows.csv      30 random scored rows to spot-check against a chart
 
 Nothing here decides a verdict on its own: the prereg's gate does. The pack explains it.
+Site: after writing packs run `node scripts/evidence_pack/build_manifest.mjs` and commit analysis/output/bias-evidence/manifest.json;
+bias-evidence.html (Research menu) then shows every pack with its checklist and charts.
 """
 from __future__ import annotations
 
