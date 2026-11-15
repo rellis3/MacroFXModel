@@ -2,5 +2,9 @@
   // ~100 git worktrees (Claude sessions, push helpers) are registered on this repo; VS Code was loading them as
   // extra repositories, which left the Source Control panel stale and Pull/Push greyed out. Only show the main repo.
   "git.detectWorktrees": false,
-  "git.repositoryScanIgnoredFolders": [".claude", "wt-m6", "node_modules"]
+  "git.repositoryScanIgnoredFolders": [".claude", "wt-m6", "node_modules"],
+  // The bots (oi_bot etc.) need MetaTrader5, which only the repo venv has (system Python 3.14 does not). Pin the venv so a
+  // reboot / restored terminal can't fall back to system python and silently run the bot in PAPER ("MetaTrader5 missing").
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+  "python.terminal.activateEnvironment": true
 }
