@@ -26,6 +26,7 @@ import { VISUALS as REPLAY_VISUALS, vizByWord } from '../replayVizCore.js';
 import { parseOffset as parseAsofOffset, parseAsofValue, formatClock as formatAsofClock } from '../asofCore.js';
 import { INSTRUMENTS as REPLAY_INSTRUMENTS, validDate, londonDate, londonWall } from '../replayCore.js';
 import { GHOST_MARKETS } from '../ghostWalkCore.js';
+import { PATH_MARKETS } from '../pathReplayCore.js';
 import { VIEWS as OIT_VIEWS, viewByWord as oitView } from './oiTime.js';
 
 // ── markets (a copy of the page's UNIVERSE and NAME; commandCore.test.mjs fails if desk-terminal.html drifts from it) ──
@@ -358,6 +359,7 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     const inst = toks[1] ? resolveInstrument(toks[1]) : 'NQ';
     if (!inst) return { error: `"${toks[1]}" is not a market I know. Try OITIME ${v.id.toUpperCase()} NQ.` };
     if (!GHOST_MARKETS.includes(inst)) return { error: `The OI replays cover ${GHOST_MARKETS.join(', ')}: the markets with an option-OI capture. ${inst} is not one of them.` };
+    if (v.id === 'path' && !PATH_MARKETS.includes(inst)) return { error: `The Path replay covers ${PATH_MARKETS.join(', ')}: the markets of the Path card. ${inst} is not one of them.` };
     const when = parseWhen(toks.slice(2), nowFn()); if (when?.error) return { error: when.error };
     return { action: { kind: 'oitime', id: v.id, inst, date: when?.date ?? null }, summary: `Replays ${v.name.toLowerCase()} for ${instLabel(inst)}.` };
   }

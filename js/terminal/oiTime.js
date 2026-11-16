@@ -8,6 +8,8 @@
  */
 import { openPlayer } from './replayPlayer.js';
 import { terrainStage, walkStage, gaugeStage } from './oiTimeDraw.js';
+import { pathStage } from './pathReplayDraw.js';
+import * as PR from '../pathReplayCore.js';
 import { INSTRUMENTS } from '../replayCore.js';
 import { recentSessions, londonDay, niceDate } from '../replayVizCore.js';
 import { DESK_EVIDENCE } from '../deskEvidence.js';
@@ -19,6 +21,7 @@ const label = k => INSTRUMENTS[k]?.label ?? k;
 export const VIEWS = [
   { id: 'terrain', words: ['terrain', 'profile', 'strikes'], name: 'OI terrain over time', short: 'OI over time', what: 'each day\'s option strike profile (calls right, puts left) with max pain, the gamma flip and price on one axis, day by day, or within a day by the 15-minute price path' },
   { id: 'walk', words: ['walk', 'level', 'expiry', 'dte'], name: 'Level walk', short: 'Level walk', what: 'one level (a big strike, max pain or the gamma flip) held fixed from a start day and followed as its expiry nears, with price over it, the touches and the real-against-mirrored tally' },
+  { id: 'path', words: ['path', 'pathwalk', 'expiries', 'swing'], name: 'The Path over time', short: 'Path replay', what: 'the Path card played through time: the real price on the left, the level of each option expiry at its days to expiry on the right, counting down night by night, then sliding into the past as a faded line with a ring where price came closest, with the touch tally against a mirrored placebo' },
   { id: 'gauge', words: ['gauge', 'speedometer', 'dial', 'putcall'], name: 'OI gauge', short: 'OI gauge', what: 'the calls-against-puts dial day by day, tinted by what price did that day, with a strip of daily moves (CME option open interest, not COT)' },
 ];
 export const viewByWord = w => { const k = String(w ?? '').toLowerCase(); return VIEWS.find(v => v.id === k || v.words.includes(k)) ?? null; };
@@ -38,7 +41,7 @@ async function daysOf(inst, fetchJson, now = Date.now()) {
   const p = fetchJson(`/api/replay/oi-days?inst=${encodeURIComponent(inst)}`); held.set(inst, { at: now, p });
   try { return await p; } catch (e) { held.delete(inst); throw e; }
 }
-const marketPick = first => ({ id: 'inst', label: 'Market', reload: true, values: [first, ...GHOST_MARKETS.filter(k => k !== first)].map(k => ({ v: k, label: label(k) })) });
+const marketPick = (first, list = GHOST_MARKETS) => ({ id: 'inst', label: 'Market', reload: true, values: [first, ...list.filter(k => k !== first)].map(k => ({ v: k, label: label(k) })) });
 const cov = (p, what) => { const c = coverage(p.days); return `${c.n} daily captures of option-OI for ${p.label}, ${niceDate(c.from)} to ${niceDate(c.to)} (${p.captureDates ?? c.n} capture dates filed; weekends skipped; ${c.withPrice} with a price candle). ${what}`; };
 const tooFew = (p, need) => { if ((p.days?.length ?? 0) < need) throw new Error(`only ${p.days?.length ?? 0} daily captures are held for ${p.label ?? 'this market'}, too few to replay`); };
 
@@ -108,6 +111,26 @@ export function defFor(id, inst0, date0, { fetchJson = J, now = () => Date.now()
       label: (f, i, n) => `${niceDate(String(f.t).slice(0, 10))} · ${i === 0 ? 'start' : `session ${i} of ${n - 1}`}`,
     };
   }
+  if (id === 'path') {
+    const pf = PR.PATH_MARKETS.includes(first) ? first : 'GOLD';
+    return {
+      id: 'oi-path', title: 'The Path through time: expiry levels counting down, then into the past',
+      note: 'Now sits in the middle. Left: the real price (15-minute bars) over the last three days. Right: the level of each live expiry, from the nightly record in force, at its days to expiry (compressed scale); the purple dots are the same expiry on earlier nights, and the shading is one and two expected moves. As the days pass the expiries count down (8d, 7d, 6d ... 0d); when one expires its final level slides into the past (-1d, -2d) as a faded line with a ring where price came closest. A record is used only from its capture session on. Beside the closest approach is the same distance mirrored through the price when the level was set: what chance gives. These levels were tested and are context, never a target.',
+      picks: [marketPick(pf, PR.PATH_MARKETS), { id: 'anchor', label: 'Level', reload: true, values: PR.ANCHORS.map(a => ({ v: a.v, label: a.label })) }, { id: 'small', label: 'Small books', reload: true, values: [{ v: 'show', label: 'Shown (near expiries too)' }, { v: 'hide', label: 'Hidden' }] }],
+      load: async picks => {
+        const p = await fetchJson(`/api/replay/path-days?inst=${encodeURIComponent(picks.inst)}`);
+        if ((p.records?.length ?? 0) < 2 || !(p.bars?.length)) throw new Error(`only ${p.records?.length ?? 0} nightly path record${p.records?.length === 1 ? '' : 's'} held for ${p.label ?? picks.inst}: the records began on 2026-11-03 and grow by one a night`);
+        const a = PR.ANCHORS.find(x => x.v === picks.anchor), frames = PR.makeFrames(p.records, p.bars); if (frames.length < 10) throw new Error('too few price bars since the first record to replay');
+        const key = picks.anchor + (picks.small === 'hide' ? '' : '+thin'), c = PR.coverage(p.records, p.bars), tl = PR.tally(p.records, p.bars, key);
+        return { frames, extra: { records: p.records, bars: p.bars, anchor: key, anchorLabel: a.label.toLowerCase(), verdict: a.verdict, range: PR.priceRange(p.records, p.bars, key), dp: p.dp, label: p.label, tallyText: PR.tallySentence(tl), evChips: evidenceChips() },
+          coverage: `${c.nights} nightly per-expiry records for ${p.label}, ${niceDate(c.from)} to ${niceDate(c.to)} (one a session, kept since 2026-11-03; a weekend re-save of Friday's book counts once), with ${c.bars} fifteen-minute bars. ${frames.length} steps of 15 minutes. It deepens by one night every day.` };
+      },
+      coverage: (frames, r) => r.coverage,
+      draw: (frames, i, { reduced, extra }) => pathStage(frames, i, extra, { reduced }),
+      caption: (frames, i, extra) => PR.captionFor(PR.stateAt(extra.records, extra.bars, extra.anchor, frames[i].t), frames[i].t, extra.bars[frames[i].data.i][4], { label: extra.label, dp: extra.dp, anchorLabel: extra.anchorLabel }),
+      label: (f, i, n) => `${PR.stamp(f.t)} · step ${i + 1} of ${n}`,
+    };
+  }
   if (id === 'gauge') {
     return {
       id: 'oi-gauge', title: 'The calls-against-puts gauge through time',
@@ -135,14 +158,19 @@ export function mountOiTime({ doc = document, win = window, fetchJson = J } = {}
     const t = String(doc.getElementById('tr-name')?.textContent ?? '').toLowerCase();
     return [['nq', 'NQ'], ['nasdaq', 'NQ'], ['s&p', 'SPX500'], ['(es)', 'SPX500'], ['russell', 'US2000'], ['dow', 'US30'], ['gold', 'GOLD'], ['eurusd', 'EURUSD'], ['gbpusd', 'GBPUSD'], ['usdjpy', 'USDJPY'], ['audusd', 'AUDUSD'], ['usdcad', 'USDCAD'], ['usdchf', 'USDCHF']].find(([w]) => t.includes(w))?.[1] ?? 'NQ';
   };
-  const onClick = e => { const b = e.target.closest?.('[data-oit-open]'); if (b) open(b.dataset.oitOpen, instOfCard(), null, b); };
+  const instOfPath = () => String(doc.getElementById('opt-path-inst')?.value ?? '').toUpperCase() || 'GOLD';
+  const onClick = e => { const b = e.target.closest?.('[data-oit-open]'); if (b) open(b.dataset.oitOpen, b.dataset.oitOpen === 'path' ? instOfPath() : instOfCard(), null, b); };
   let scheduled = false;
   function decorate() {
     scheduled = false;
+    for (const l of doc.querySelectorAll('.lbl')) {   // the Path card: a Replay button in its heading
+      if (!/^the path/i.test(String(l.textContent).trim())) continue; const head = l.closest('.ch'); if (!head || head.querySelector('[data-oit-open="path"]')) continue;
+      const t = doc.createElement('span'); t.innerHTML = `<button type="button" class="btn rpv-open gw-open" data-oit-open="path" data-noexport data-surface="widget.oitime" title="Replay ${VIEWS[3 - 1].what.replace(/"/g, '')}" aria-label="The Path over time">▶ Path replay</button>`; const b = t.querySelector('button'); if (b) (head.querySelector('.r') ?? head).appendChild(b);
+    }
     const card = doc.getElementById('tr-card'); if (!card || card.querySelector('[data-oit-open]')) return;
     const row = card.querySelector('#tr-name')?.parentElement ?? card.firstElementChild; if (!row) return;
     const tmp = doc.createElement('span');
-    tmp.innerHTML = VIEWS.map(v => `<button type="button" class="btn rpv-open gw-open" data-oit-open="${v.id}" data-noexport data-surface="widget.oitime" title="Replay ${v.what.replace(/"/g, '')}" aria-label="${v.name}">▶ ${v.short}</button>`).join('');
+    tmp.innerHTML = VIEWS.filter(v => v.id !== 'path').map(v => `<button type="button" class="btn rpv-open gw-open" data-oit-open="${v.id}" data-noexport data-surface="widget.oitime" title="Replay ${v.what.replace(/"/g, '')}" aria-label="${v.name}">▶ ${v.short}</button>`).join('');
     for (const b of [...tmp.querySelectorAll('button')]) row.appendChild(b);
   }
   const schedule = () => { if (!scheduled) { scheduled = true; (win.requestAnimationFrame ?? (f => win.setTimeout(f, 50)))(decorate); } };
@@ -150,6 +178,6 @@ export function mountOiTime({ doc = document, win = window, fetchJson = J } = {}
   obs?.observe?.(doc.body, { childList: true, subtree: true });
   doc.addEventListener('click', onClick);
   decorate();
-  win.deskOiTime = { open, views: () => VIEWS.map(v => v.id) };
+  win.deskOiTime = { open, views: () => VIEWS.map(v => v.id), decorate };
   return { open, decorate, destroy() { obs?.disconnect?.(); doc.removeEventListener('click', onClick); doc.querySelectorAll('[data-oit-open]').forEach(b => b.remove()); doc.getElementById('rpv-back')?.remove(); delete doc.body.dataset.oitMounted; delete win.deskOiTime; } };
 }

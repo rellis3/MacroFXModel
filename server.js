@@ -127,6 +127,7 @@ import { mountDeskBoards } from './js/deskBoardRoutes.js';              // the D
 import { mountReplay as _mountReplay } from './js/replayRoutes.js';                  // the Desk Terminal REPLAY (time machine, stage 1): a session as minutes, the option levels as known then, strength every 15 min (/api/replay/*)
 import { mountGhostWalk as _mountGhostWalk } from './js/ghostWalkRoutes.js';       // the ghost walk (preview): one market's days in units of the forecast median range, the OI levels in force, touches against a mirrored placebo (/api/replay/ghosts)
 import { mountOiTime as _mountOiTime } from './js/oiTimeRoutes.js';                 // OI over time (preview): the stored option-OI captures day by day with the daily candles (/api/replay/oi-days)
+import { mountPathReplay as _mountPathReplay } from './js/pathReplayRoutes.js';       // The Path replay (preview): the nightly per-expiry walk records with 15-minute bars (/api/replay/path-days)
 import { createStateRoutes } from './js/stateRoutes.js';                // Market State Engine: GET /api/state (plans/MARKET_STATE_ENGINE_PLAN.md)
 import { createSurfaceLab } from './js/surfaceLabRoutes.js';
 import { createVixCapture } from './js/vixCaptureRoutes.js';
@@ -36471,6 +36472,11 @@ _mountGhostWalk(app, {
 _mountOiTime(app, {
   fetchRange: (sym, gran, fromISO, toISO) => { if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not configured'); return fetchOandaCandleRange(_liqGateOandaSym(sym), gran, fromISO, toISO); },
   kvGet: key => kv.get(key),
+});
+// The Path replay (js/pathReplayRoutes.js): read-only, the R2 swing_walk records (one per capture session) + 15-minute bars; nothing is written, no model call.
+_mountPathReplay(app, {
+  fetchRange: (sym, gran, fromISO, toISO) => { if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not configured'); return fetchOandaCandleRange(_liqGateOandaSym(sym), gran, fromISO, toISO); },
+  walkHistory: (inst, n) => _swingWalkHistory(inst, n),
 });
 // The live layer (js/liveLayerRoutes.js): ONE OANDA pricing call for every EM and index price, the Chain Live window's own implied-yield functions, the vol-forecast session tracker's cache
 // and the strength feed's hourly bars. Cached 75 s while the FX week is open, 10 min while it is shut. Read-only: it writes nowhere.

@@ -74,7 +74,7 @@ test('the OITIME command: help, example, errors, no trade words', () => {
   assert.ok(c && c.help.length > 80 && c.example && c.opens && c.surface === 'widget.oitime'); assert.doesNotMatch(`${c.help} ${c.opens}`, /\b(buy|sell|entry|target|stop|signal)\b/i);
   assert.deepEqual(c.run('terrain nq').action, { kind: 'oitime', id: 'terrain', inst: 'NQ', date: null }); assert.equal(c.run('walk gold 12 nov').action.date, '2026-11-12'); assert.equal(c.run('gauge').action.inst, 'NQ');
   assert.match(c.run('').error, /Say which view/); assert.match(c.run('nope nq').error, /Say which view/); assert.match(c.run('terrain nzdusd').error, /covers|not one of them/); assert.match(c.run('terrain nq 32 nov').error, /real date|read/);
-  assert.equal(viewByWord('speedometer').id, 'gauge'); assert.equal(viewByWord('expiry').id, 'walk'); assert.equal(viewByWord('zzz'), null); assert.equal(VIEWS.length, 3);
+  assert.equal(viewByWord('speedometer').id, 'gauge'); assert.equal(viewByWord('expiry').id, 'walk'); assert.equal(viewByWord('zzz'), null); assert.equal(VIEWS.length, 4); assert.equal(viewByWord('pathwalk').id, 'path'); assert.match(c.run('path us30').error, /Path replay covers/); assert.equal(c.run('path gold').action.id, 'path');
 });
 
 test('it is a PREVIEW surface wired into the loader and the status panel', () => {

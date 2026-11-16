@@ -28,7 +28,8 @@ export const FEATURES = {
     surface: 'widget.oitime', name: 'OI over time',
     where: [
       'Options tab > the OI terrain card: three buttons in the card heading, "OI over time" (the strike profile day by day or within a day), "Level walk" (one level followed as its expiry nears) and "OI gauge" (the calls-against-puts dial through time).',
-      'Or type OITIME terrain NQ, OITIME walk GOLD or OITIME gauge EURUSD in the command line.',
+      'Options tab > the Path card ("The path · GOLD"): a "Path replay" button in its heading plays the Path through time from the nightly per-expiry records.',
+      'Or type OITIME terrain NQ, OITIME walk GOLD, OITIME path GOLD or OITIME gauge EURUSD in the command line.',
       'It only goes back as far as the option-OI capture; the window says from which date.',
     ],
   },
