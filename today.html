@@ -2129,6 +2129,7 @@ function pairImpactLine(e, name) {
 
 // State
 let brief = null;        // /api/daily-brief
+let deskCall = null;     // /api/desk-run?summary=1: the morning desk call, the one lean the cards show (plans/ONE_DESK_BIAS.md)
 let session = null;      // /api/vol-forecast/session (live range used, bias)
 let forecast = null;     // /api/vol-forecast (oc/vov extras)
 let analogml = null;     // /api/analogml/motif-state — live N-touches-of-a-level structural motif diagnostic per pair (research, not a validated signal — see AnalogML/README.md). Replaces the retired k-NN shape-match diagnostic (banked null 2026-08-12).
@@ -2559,7 +2560,7 @@ async function jget(url) {
 
 async function loadAll(manual) {
   try {
-    const [b, s, f, a, sr, xl] = await Promise.all([
+    const [b, s, f, a, sr, xl, dc] = await Promise.all([
       jget('/api/daily-brief').catch(e => ({ ok: false, error: e.message })),
       jget('/api/vol-forecast/session').catch(() => null),
       jget('/api/vol-forecast').catch(() => null),
@@ -2568,8 +2569,10 @@ async function loadAll(manual) {
       // Cached decade-scale fit; 404 until the first POST /api/exhaustion-ladder/run, and the
       // turn-zone strip simply doesn't render until then rather than blocking the page.
       jget('/api/exhaustion-ladder').catch(() => null),
+      jget('/api/desk-run?summary=1').catch(() => null),
     ]);
     brief = b; session = s; forecast = f;
+    deskCall = dc?.ok ? dc : null;
     invalidateRows();
     exhLadder = xl?.ok ? xl : null;
     analogml = a?.ok ? Object.fromEntries((a.pairs ?? []).map(p => [p.pair, p])) : null;
@@ -6129,12 +6132,12 @@ async function renderDrawerTimeline(r) {
   const dl = x => x ? `<span class="${x.pct >= 0 ? 'up' : 'dn'}">${x.pct >= 0 ? '+' : ''}${x.pct.toFixed(2)}%</span> <span class="muted" style="font-size:10px">${fmtN(x.from, d.dp)} → ${fmtN(x.to, d.dp)}</span>` : '—';
   const rowsL = (_ledgerRows[r.name] ?? []);
   const led = (fromAgo, toAgo) => { const rs = rowsL.filter(x => { const ago = _tlAgo(x.d); return ago >= fromAgo && ago < toAgo && x.out && (x.dir === 'up' || x.dir === 'down'); }); if (!rs.length) return ''; const h = rs.filter(x => x.out?.h1?.hit).length, n = rs.filter(x => x.out?.h1?.hit != null).length; return n ? `<div class="tl-l ${h / n >= 0.55 ? 'hit' : h / n <= 0.45 ? 'miss' : ''}"><span class="k">our calls</span><b class="r">${h} of ${n}</b> right at the next close (${rs.map(x => x.dir === 'up' ? '↑' : '↓').join('')})</div>` : ''; };
-  const w = pairOutlook(r, 'weekly'), m = pairOutlook(r, 'monthly'); const aim = bandAimFor(r); const wrong = wrongAtFor(r); const dir = directionFor(r);
+  const w = pairOutlook(r, 'weekly'), m = pairOutlook(r, 'monthly'); const aim = bandAimFor(r); const dir = deskCallFor(r); const wrong = wrongAtFor(r, dir);
   const col = (cls, head, big, body) => `<div class="tl-col ${cls}"><div class="tl-h"><span>${head}</span></div>${big ? `<div class="tl-lead">${big}</div>` : ''}${body}</div>`;
   // how big a move was, against this pair's own 20-day band
   const band20 = r.fc?.ladder_monthly?.oh?.p50 != null ? (r.fc.ladder_monthly.oh.p50 + r.fc.ladder_monthly.ol.p50) / 2 : null;
   const moveWord = (x, days) => { if (!x) return ''; const a = Math.abs(x.pct); const rel = band20 ? a / (band20 * (days === 5 ? 0.5 : 1)) : null; const size = rel == null ? '' : rel >= 1.3 ? 'a big move for it' : rel >= 0.6 ? 'an ordinary move' : 'a small move'; return `${dispName(r.name)} ${x.pct >= 0 ? 'rose' : 'fell'} <span class="${x.pct >= 0 ? 'up' : 'dn'}">${a.toFixed(2)}%</span>${size ? `, ${size}` : ''} <span class="muted" style="font-size:10px;font-weight:400">${fmtN(x.from, d.dp)} → ${fmtN(x.to, d.dp)}</span>`; };
-  const leanWord = dir?.direction === 'up' || dir?.direction === 'down' ? `Leaning ${dir.direction}, ${dir.agree} of ${dir.total} reads agree` : 'No lean today';
+  const leanWord = dir?.direction === 'up' || dir?.direction === 'down' ? `Desk call ${dir.rating.replace('_', ' ')}` : dir ? 'Desk call FLAT' : 'No desk call yet today';
   const biasWord = o => !o?.bias || o.noRead ? 'No read' : o.bias === 'NEUTRAL' ? 'No lean either way' : `${o.bias === 'BULLISH' ? 'Leans up' : 'Leans down'}${o.confidence != null ? `, agreement ${o.confidence}/100` : ''}`;
   const chainMine = (deskWatch?.log ?? []).filter(f => f.id.startsWith('chain-') && f.event === 'started').slice(0, 3).map(f => `<div class="tl-l"><span class="k">${f.at.slice(5, 10)}</span>${esc0(f.label)}</div>`).join('');
   box.innerHTML = _tlChart(closes, r.fc, d.dp) + `<div class="tl">
@@ -6144,7 +6147,7 @@ async function renderDrawerTimeline(r) {
     ${col('ahead', 'next week', biasWord(w), _tlAheadEvents(0, 5, ccys, r.name) + (r.fc?.ladder_weekly?.hl?.p50 != null ? `<div class="tl-l help" title="From the forecaster: the median week reaches +${r.fc.ladder_weekly.oh.p50}% above and −${r.fc.ladder_weekly.ol.p50}% below here; one week in four reaches ${r.fc.ladder_weekly.oh.p75}%"><span class="k">room</span>a normal week travels about ${Math.max(r.fc.ladder_weekly.oh.p50, r.fc.ladder_weekly.ol.p50).toFixed(1)}% either way from here</div>` : '') + (w?.drivers?.length ? `<div class="tl-l"><span class="k">because</span>${esc0(w.drivers.filter(x => Number.isFinite(x.score) && x.score !== 0).slice(0, 3).map(x => `${x.label} ${x.score > 0 ? 'up' : 'down'}`).join(', '))}</div>` : ''))}
     ${col('ahead', 'the month after', biasWord(m), _tlAheadEvents(5, 20, ccys, r.name) + _tlFomcAhead() + (r.fc?.ladder_monthly?.oh?.p50 != null ? `<div class="tl-l help" title="From the forecaster: the median month reaches +${r.fc.ladder_monthly.oh.p50}% above and −${r.fc.ladder_monthly.ol.p50}% below here; one month in four reaches ${r.fc.ladder_monthly.oh.p75}%"><span class="k">room</span>a normal month travels about ${Math.max(r.fc.ladder_monthly.oh.p50, r.fc.ladder_monthly.ol.p50).toFixed(1)}% either way</div>` : ''))}
   </div>
-  <div class="tl-foot">Path: the last twenty closes; shaded: the forecaster's expected bands at 5 and 20 sessions (median, lighter to the 75th). Releases show actual vs consensus, the surprise in sigma, and the size that release has produced on this pair. "Our calls" are this page's direction tags, scored at the next close. The plan columns are what the page thinks today; the daily snapshot keeps them so next month's look-back can grade them.</div>`;
+  <div class="tl-foot">Path: the last twenty closes; shaded: the forecaster's expected bands at 5 and 20 sessions (median, lighter to the 75th). Releases show actual vs consensus, the surprise in sigma, and the size that release has produced on this pair. "Our calls" are the old tape-based direction tags, still scored at the next close; today's lean is the desk call. The plan columns are what the page thinks today; the daily snapshot keeps them so next month's look-back can grade them.</div>`;
 }
 let _ledgerRows = {};
 async function loadLedgerRowsFor(pair) { if (_ledgerRows[pair]) return; try { const j = await jget(`/api/ledger?pair=${encodeURIComponent(pair)}`); if (j?.ok) _ledgerRows[pair] = j.rows ?? []; } catch { /* stays empty */ } }
@@ -8279,7 +8282,31 @@ function directionFor(r) {
   });
 }
 
+// ── The desk call (plans/ONE_DESK_BIAS.md) ─────────────────────────────────
+// One lean per market for the day: the morning desk run's rating, fixed once it is
+// issued. The old direction tag (directionFor) still runs and is still scored on its own
+// ledger (ledgerCallFor, the morning snapshot), but it no longer sets the card's lean:
+// it ran at about 42% at the next close. Shape matches directionFor for the callers.
+const _DESK_DIR = { STRONG_LONG: 'up', LONG: 'up', SHORT: 'down', STRONG_SHORT: 'down', FLAT: 'flat', NEUTRAL: 'flat' };
+function _londonToday() { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date()); }
+function deskCallFor(r) {
+  const rt = deskCall?.head?.ratings?.[r.name];
+  if (!rt || deskCall.date !== _londonToday()) return null;
+  const direction = _DESK_DIR[rt] ?? 'flat';
+  return { direction, rating: rt, strength: /STRONG/.test(rt) ? 'strong' : 'normal', agree: null, total: null, desk: true,
+           why: `Desk call ${rt.replace('_', ' ')} (morning desk run ${deskCall.date}, issued ${String(deskCall.finishedAt ?? '').slice(11, 16)} UTC)` };
+}
 function directionChip(r) {
+  const c = deskCallFor(r);
+  if (!deskCall || deskCall.date !== _londonToday()) return `<span class="chip neu" title="The desk run issues the day's call about 07:50 London; until then there is no lean on the cards.">desk call pending</span>`;
+  if (!c) return '';
+  const face = { up: '▲ LONG', down: '▼ SHORT', flat: '— FLAT' }[c.direction];
+  const cls = c.direction === 'up' ? 'bull' : c.direction === 'down' ? 'bear' : 'neu';
+  const tip = [`${c.why}.`, '', `Desk view: ${deskCall.head?.headline ?? ''}`, '', 'The one lean for the day: it does not change intraday. Scored every evening on the Desk Score record (interim, few days so far). The old tape-based direction tag is in All reads.'].join('\n').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  return `<span class="chip ${cls} dir-tag ${c.strength === 'strong' ? 'dir-strong' : ''}" title="${tip}">Desk ${face}</span>`;
+}
+// The old direction tag: kept for All reads and its own forward ledger, not the card face.
+function tapeTagChip(r) {
   const t = directionFor(r);
   if (!t || t.direction === 'flat') return '';
   const face = { up: '▲ BULL', down: '▼ BEAR', mixed: '◆ MIXED' }[t.direction];
@@ -8316,7 +8343,7 @@ function directionChip(r) {
   // rather than a genuine disagreement. The word carries it; the tooltip has
   // the detail.
   const count = t.direction === 'mixed' ? '' : (t.total ? ` ${t.agree}/${t.total}` : '');
-  return `<span class="chip ${cls} dir-tag ${t.strength === 'strong' ? 'dir-strong' : ''}" title="${attr}">${face}${count}${t.strength === 'lean' ? ' ·' : ''}</span>`;
+  return `<span class="chip ${cls}" title="${attr}">tape tag ${face}${count}${t.strength === 'lean' ? ' ·' : ''}</span>`;
 }
 
 // The ⚖ composite chip used to sit on the card face beside the direction tag, each
@@ -9015,8 +9042,8 @@ function nqDownWeekChip(r) {
 // an up lean, OH med for a down lean) -- the level a normal day reaches about
 // half the time, so a lean that survives to there has been wrong for a while.
 // Borrowed from a daily-bias sheet that prints "wrong below X" on every line.
-function wrongAtFor(r) {
-  const dir = directionFor(r); const d = r.d, L = d?.levels ?? {};
+function wrongAtFor(r, dir = directionFor(r)) {
+  const d = r.d, L = d?.levels ?? {};
   if (!dir || (dir.direction !== 'up' && dir.direction !== 'down')) return null;
   const lv = dir.direction === 'up' ? L.ol_med : L.oh_med;
   if (!lv?.price || d.current_price == null) return null;
@@ -9024,11 +9051,11 @@ function wrongAtFor(r) {
   return { side: dir.direction === 'up' ? 'below' : 'above', price: lv.price, tag: dir.direction === 'up' ? 'typical daily low' : 'typical daily high', breached: onWrongSide };
 }
 function wrongAtChip(r) {
-  const w = wrongAtFor(r); if (!w) return '';
+  const w = wrongAtFor(r, deskCallFor(r)); if (!w) return '';
   return `<span class="chip ${w.breached ? 'bear' : 'dim'}" title="The price that proves today's lean wrong: the ${w.tag} (OL/OH med), which an ordinary day reaches about half the time. ${w.breached ? 'Price is already through it -- the lean has been overrun.' : 'A lean that survives to here has been wrong for a while; size off this distance, not off hope.'}">${w.breached ? '⚠ overrun' : 'wrong'} ${w.side === 'below' ? '&lt;' : '&gt;'} ${fmtN(w.price, r.d.dp)}</span>`;
 }
 function _leanTier(r) {
-  const dir = _stampChip(directionChip(r), 'c') || `<span class="chip neu">— no lean</span>`;
+  const dir = _stampChip(directionChip(r), 'c') || `<span class="chip neu">— no call</span>`;
   return `<div class="tier"><span class="lbl">lean</span>${dir}${wrongAtChip(r)}${_supportChip(r)}${_threatChip(r)}${goldKindChip(r)}</div>`;
 }
 // The board's leans, grouped into the trades they actually are. Three pound
@@ -9041,7 +9068,7 @@ function leanGroupsHtml() {
   const exp = {};   // key -> [{name, dir}]
   const add = (k, name, dir) => (exp[k] ??= []).push({ name, dir });
   for (const r of rs) {
-    const dir = directionFor(r); if (!dir || (dir.direction !== 'up' && dir.direction !== 'down')) continue;
+    const dir = deskCallFor(r); if (!dir || (dir.direction !== 'up' && dir.direction !== 'down')) continue;
     const up = dir.direction === 'up';
     if (r.d.ac === 'index') { add(up ? 'long risk (indices)' : 'short risk (indices)', r.name, dir.direction); continue; }
     if (r.name === 'GOLD') { add(up ? 'long gold' : 'short gold', r.name, dir.direction); continue; }
@@ -9235,7 +9262,7 @@ function drStatusHtml(r) {
 // The old single row -- every chip, unranked -- for the drawer's "All reads".
 function allReadsHtml(r) {
   const d = r.d;
-  const row = `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${costChip(r)}${r.isProx ? `<span class="chip warn">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' && !divergenceFor(r) ? `<span class="chip neu" title="Speculators are at an extreme of their own history. The desk's tests found crowding on its own does not say which way price goes (cot-positioning-factor, cot-crowding-programme).">COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}">◎ ${r.oi.regime}</span>` : ''}${moveDecompChip(r)}${divergenceChip(r)}${ivRvChip(r)}${tapeSpeedChip(r)}${outlookChip(r)}${mveChip(r)}${commodityChip(r)}${goldKindChip(r)}${sessionResearchChip(r)}`;
+  const row = `${directionChip(r)} ${tapeTagChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${costChip(r)}${r.isProx ? `<span class="chip warn">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' && !divergenceFor(r) ? `<span class="chip neu" title="Speculators are at an extreme of their own history. The desk's tests found crowding on its own does not say which way price goes (cot-positioning-factor, cot-crowding-programme).">COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}">◎ ${r.oi.regime}</span>` : ''}${moveDecompChip(r)}${divergenceChip(r)}${ivRvChip(r)}${tapeSpeedChip(r)}${outlookChip(r)}${mveChip(r)}${commodityChip(r)}${goldKindChip(r)}${sessionResearchChip(r)}`;
   return `<div style="display:flex;flex-wrap:wrap;gap:4px">${row}</div>`;   // turn zones have their own full section under Levels
 }
 function pairStripsHtml(r) { return hmmCardStrip(r.name); }   // the ladder and motif strips live in the drawer (ladder → Levels, motif → Research); the card carries the thin hourly market-state strip
@@ -9359,7 +9386,7 @@ function cardHtml(r) {
   // Follow the DIRECTION TAG, not the raw tape: the tag weighs the HTF trend and
   // lets dissenting reads pull it to MIXED, so keying the accent off the tape
   // alone produced cards with a green edge and a "◆ MIXED" tag on them.
-  const _dt = directionFor(r);
+  const _dt = deskCallFor(r);
   const dirCls = _dt?.direction === 'up' ? 'dir-up' : _dt?.direction === 'down' ? 'dir-dn' : '';
   return `<div class="pcard ${dirCls} ${(r.used ?? 0) >= 0.8 || d.news_flag ? 'hot' : ''} ${r.isProx ? 'prox' : ''}" onclick="openDrawer('${r.name}')">
     <div class="pc-top">
@@ -14642,11 +14669,11 @@ function _mpLines() {
   const rs = (typeof allRows === 'function' ? allRows() : []) || [];
   const points = [], quiet = [];
   for (const r of rs) {
-    let d = null; try { d = directionFor(r); } catch (e) {}
+    let d = null; try { d = deskCallFor(r); } catch (e) {}
     const nm = (typeof dispName === 'function' ? dispName(r.name) : r.name);
     if (!d || !d.direction || d.direction === 'flat') { quiet.push(nm); continue; }
     let wrong = null, exp = null;
-    try { wrong = wrongAtFor(r); } catch (e) {}
+    try { wrong = wrongAtFor(r, d); } catch (e) {}
     const used = r.used != null ? `${Math.round(r.used)}% used` : null;
     const arrow = d.direction === 'up' ? '▲' : '▼';
     points.push(`${arrow} ${nm.padEnd(10)} ${String(d.direction).toUpperCase().padEnd(5)}`

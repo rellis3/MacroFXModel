@@ -25,7 +25,7 @@ test('labels and signs: "Bearish 7/10", Neutral without a strength, the ring on 
   assert.equal(V.ring5({}), null);
   assert.equal(V.sgn(-0.126), '−0.13'); assert.equal(V.sgn(0.004), '0.00'); assert.equal(V.sgn(null), '–');
   const chip = V.engineChip(m('BEARISH', 7, -1.4));
-  assert.match(chip, /class="chip dn be-chip"/); assert.match(chip, />Engine: Bearish 7\/10</); assert.match(chip, /not a trade signal/);
+  assert.match(chip, /class="chip dn be-chip"/); assert.match(chip, />Macro tilt: Bearish 7\/10</); assert.match(chip, /not a trade signal/);
   assert.equal(V.engineChip(null), '');
 });
 
@@ -37,7 +37,7 @@ test('split: engine and desk on different sides (Neutral is a side); nothing whe
   assert.equal(V.isSplit(m('NEUTRAL', 1, 0.1), 1), true);
   assert.equal(V.isSplit(m('BULLISH', 5, 1), null), false);
   assert.equal(V.isSplit(null, 1), false);
-  assert.match(V.splitChip(m('BEARISH', 7, -1.4), 1), />split</);
+  assert.match(V.splitChip(m('BEARISH', 7, -1.4), 1), />tilt differs</);
   assert.equal(V.splitChip(m('BEARISH', 7, -1.4), -1), '');
 });
 
@@ -64,7 +64,7 @@ test('the full block and the driver table: every column, the missing list, the c
   const r = rec(), usd = r.currencies.USD, h = V.fullBlockHtml(usd, { rec: r, desk: -1 });
   for (const col of ['Driver', 'Reading', '>d<', '>w<', 'contrib', 'Source', 'as of']) assert.ok(h.includes(col), col);
   assert.match(h, /coverage \d+% of the weight/); assert.match(h, /Missing \(\d+\)/);
-  assert.ok(h.includes(V.FOOTNOTE)); assert.ok(h.includes('split') === (V.engineSign(usd) !== -1));
+  assert.ok(h.includes(V.FOOTNOTE)); assert.ok(h.includes('tilt differs') === (V.engineSign(usd) !== -1));
   assert.equal(V.fullBlockHtml(null), '');
 });
 
@@ -103,7 +103,7 @@ test('the Pair card: any cross, both legs side by side; an asset shows its drive
   assert.match(V.pairCardHtml(V.marketView(r, 'GOLD')), /be-table/);
   assert.equal(V.pairCardHtml(null), '');
   const rp = V.replayHtml(V.marketView(r, 'EURUSD'), { date: '2026-11-13', asOf: ISSUE });
-  assert.match(rp, /Engine: /); assert.match(rp, /2026-11-13/); assert.ok(!rp.includes('panel.asset.beflip') && !rp.includes(r.markets.EURUSD.flip));
+  assert.match(rp, /Macro tilt: /); assert.match(rp, /2026-11-13/); assert.ok(!rp.includes('panel.asset.beflip') && !rp.includes(r.markets.EURUSD.flip));
   assert.equal(V.replayHtml(null), '');
 });
 

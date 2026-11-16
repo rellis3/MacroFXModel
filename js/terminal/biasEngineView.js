@@ -33,10 +33,11 @@ const pctTxt = x => (fin(x) ? `${Math.round(x * 100)}%` : '–');
 const day = s => String(s ?? '').slice(0, 10);
 const when = s => { const t = String(s ?? ''); return t ? `${t.slice(0, 10)} ${t.slice(11, 16)} UTC` : ''; };
 
-/** The engine chip: "Engine: Bearish 7/10", coloured by side. '' when there is no read. */
-export function engineChip(m, { prefix = 'Engine' } = {}) {
+/** The engine chip: "Macro tilt: Bearish 7/10", coloured by side. '' when there is no read. The engine is shown as the slow, data-driven
+ *  tilt beside the desk call (plans/ONE_DESK_BIAS.md): the desk call is the day's one lean, the tilt is the slower read next to it. */
+export function engineChip(m, { prefix = 'Macro tilt' } = {}) {
   const l = engineLabel(m); if (!l) return '';
-  const t = `Bias engine: score ${sgn(m.score)} of ±2, coverage ${pctTxt(m.coverage)}${m.neutral ? `; neutral because ${m.neutral}` : ''}. ${FOOTNOTE}`;
+  const t = `Macro tilt (the bias engine: rule-based, slow, it moves over weeks rather than hours): score ${sgn(m.score)} of ±2, coverage ${pctTxt(m.coverage)}${m.neutral ? `; neutral because ${m.neutral}` : ''}. ${FOOTNOTE}`;
   return `<span class="chip ${cls(engineSign(m))} be-chip" title="${esc(t)}">${esc(prefix)}: ${esc(l)}</span>`;
 }
 
@@ -51,7 +52,7 @@ export function isSplit(m, desk) {
   return e != null && desk != null && e !== desk;
 }
 export function splitChip(m, desk, who = 'the desk') {
-  return isSplit(m, desk) ? `<span class="chip gold be-split" title="${esc(`The bias engine reads ${engineLabel(m)}; ${who} reads ${desk > 0 ? 'bullish' : desk < 0 ? 'bearish' : 'neutral'}. Two different methods, shown side by side; neither is a trade signal.`)}">split</span>` : '';
+  return isSplit(m, desk) ? `<span class="chip gold be-split" title="${esc(`The macro tilt reads ${engineLabel(m)}; ${who} reads ${desk > 0 ? 'bullish' : desk < 0 ? 'bearish' : 'neutral'}. The desk call is the day's lean; the tilt is the slower data read, shown so the disagreement is visible.`)}">tilt differs</span>` : '';
 }
 
 /** The n largest contributions by size (ties: the driver order). */
