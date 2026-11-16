@@ -70,9 +70,15 @@ export function positioning(cot, now) {
  * and redemptions, so the change is shown twice: raw, and with gold's own move over the same dates taken out (the part that is not price).
  */
 export function etfFlows(etf, goldByDate = null) {
+  const r = etfFlowsDollars(etf, goldByDate), t = etf?.tonnes;
+  // tonnes held is the better read of a flow (dollars also move with the gold price): GLD's from SPDR's own archive, IAU's from its page, each with its as-of date
+  if (!t?.last?.gld && !t?.last?.iau) return r;
+  return { ...r, tonnes: { asOf: t.asOf, gld: t.last.gld ?? null, iau: t.last.iau ?? null, total: t.last.total ?? null, deltas: t.deltas ?? null, source: etf.fetch?.source ?? null } };
+}
+function etfFlowsDollars(etf, goldByDate = null) {
   if (!etf?.ok) return { state: 'error', note: etf?.error ?? 'the gold ETF feed is not available' };
   const s = (etf.series ?? []).filter(p => fin(p.value) && p.date);
-  if (!s.length) return { state: 'empty', days: 0, note: 'No history held yet: the daily capture of GLD and IAU assets has not recorded a day. The fix for the source (Yahoo asks for a cookie and a crumb) is in, but the live feed has held nothing so far.' };
+  if (!s.length) return { state: 'empty', days: 0, note: `No history held yet: the daily capture of GLD and IAU assets has not recorded a day together.${etf.fetch?.reason ? ` Last try: ${etf.fetch.reason}.` : ''}` };
   const last = s[s.length - 1];
   if (s.length < 2) return { state: 'one', days: 1, last: last.value, asOf: last.date, note: 'One day held so far. A change needs two.' };
   const out = { state: 'ok', days: s.length, last: last.value, asOf: last.date, from: s[0].date, deltas: {} };

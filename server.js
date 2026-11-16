@@ -424,7 +424,8 @@ import { analyzeCrossPair, portfolioIndependence } from './js/crossPairResearch.
 import { scanFeatures } from './js/forecastFeatureScan.js';
 import { bandCalcAB } from './js/bandCalcAB.js';
 import { fetchYahooFundAum as _fetchYahooFundAumAuth } from './js/yahooFundAum.js';
-import { todayUtc as _gefToday, cacheTtlMs as _gefTtl, reasonOf as _gefReason, fetchBlock as _gefFetchBlock, routeBody as _gefRouteBody, healthParts as _gefHealth } from './js/goldEtfFlowCore.js';
+import { todayUtc as _gefToday, cacheTtlMs as _gefTtl, reasonOf as _gefReason, fetchBlock as _gefFetchBlock, routeBody as _gefRouteBody, healthParts as _gefHealth, mergeTonnes as _gefMergeTonnes, tonnesBlock as _gefTonnesBlock } from './js/goldEtfFlowCore.js';
+import { fundPoint as _gefFundPoint } from './js/goldEtfSources.js';   // issuer files first (tonnes), Yahoo second (net assets only)
 import { saveCorrHistory as _corrSaveR2, restoreCorrHistory as _corrRestoreR2 } from './js/corrHistoryPersist.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, getBuffer as _r2GetBuffer, putBuffer as _r2PutBuffer, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
 import { INSTRUMENTS as _DL_INSTRUMENTS, HORIZONS as _DL_HORIZONS, closesFromCandles as _dlClosesFromCandles, issueRecord as _dlIssue, outcomeRecord as _dlOutcome, summarise as _dlSummarise } from './js/directionLedger.js';
@@ -23300,7 +23301,8 @@ const GOLD_ETF_FLOW_KV = 'gold_etf_flow_history';
 // js/goldEtfFlowCore.js: a good day (today's point held) is cached 6h because AUM does not move intraday; an empty or FAILED try is cached 2 minutes only
 // (2026-11-15: a failed Yahoo call used to be cached for 6h, so the board stayed empty for hours and nothing said why).
 const _goldEtfFlowCache = { data: null, fetchedAt: 0, ttlMs: 0 };
-const _goldEtfFlowStatus = { attemptedAt: null, okAt: null, lastError: null };
+const _goldEtfFlowStatus = { attemptedAt: null, okAt: null, lastError: null, source: null };
+const GOLD_ETF_TONNES_KV = 'gold_etf_flow_tonnes';   // [{ date, gld?, iau? }] tonnes held: GLD backfilled from SPDR's archive, IAU from the day it is first read (kv.js sends gold_etf_flow_* to Cloudflare KV, no expiry)
 let _goldEtfFlowInflight = null;   // one build at a time: a page that asks while a try is running waits for it instead of hitting Yahoo again
 
 // Yahoo's quoteSummary module carries a fund's total net assets under a few
@@ -23325,21 +23327,42 @@ async function _goldEtfFlowBuild() {
   // later" per kv.js). A swallowed backend failure reading back as "no
   // history" would truncate the whole series to today's single point.
   const raw = await kv.getStrict(GOLD_ETF_FLOW_KV);
-  let series = raw ? JSON.parse(raw) : [];         // [{date, value}] ascending, value = combined AUM USD
+  let series = raw ? JSON.parse(raw) : [];         // [{date, value, asOf}] ascending, value = combined AUM USD (GLD + IAU)
+  const rawT = await kv.getStrict(GOLD_ETF_TONNES_KV);
+  let tonnes = rawT ? JSON.parse(rawT) : [];       // [{date, gld?, iau?}] tonnes held
   const today = _gefToday();
+  let upToDate = series[series.length - 1]?.date === today && tonnes.length > 0;
 
-  if (series[series.length - 1]?.date !== today) {
+  if (!upToDate) {
     _goldEtfFlowStatus.attemptedAt = Date.now();
+    // Each fund by its own chain (js/goldEtfSources.js): the issuer's file first (tonnes + net assets + as-of), Yahoo second (net assets only). One fund failing
+    // does not lose the other's tonnes; the combined dollar point needs both.
+    const got = await Promise.allSettled(GOLD_ETF_TICKERS.map(t => _gefFundPoint(t, { loadXlsx: () => import('xlsx'), yahoo: _fetchYahooFundAum })));
+    const by = Object.fromEntries(GOLD_ETF_TICKERS.map((t, i) => [t, got[i]]));
+    const reasons = got.filter(g => g.status === 'rejected').map(g => _gefReason(g.reason));
+    const gld = by.GLD.status === 'fulfilled' ? by.GLD.value : null, iau = by.IAU.status === 'fulfilled' ? by.IAU.value : null;
     try {
-      const sums = await Promise.all(GOLD_ETF_TICKERS.map(t => _fetchYahooFundAum(t)));
-      const combined = sums.reduce((a, b) => a + b, 0);
-      series = [...series, { date: today, value: combined }];   // no cap (was 120): a day not kept is gone; ~30 bytes/day
-      _archive.mergeSeries('gold_etf', 'GLD_IAU_AUM', series, { unit: 'USD' }).catch(() => {});
-      await kv.put(GOLD_ETF_FLOW_KV, JSON.stringify(series));
-      _goldEtfFlowStatus.okAt = Date.now(); _goldEtfFlowStatus.lastError = null;
+      if (gld?.history || iau?.tonnes) {
+        tonnes = _gefMergeTonnes(tonnes, { gld: gld?.history ?? (gld?.tonnes ? [{ date: gld.asOf ?? today, tonnes: gld.tonnes }] : []), iau: iau?.tonnes ? { date: iau.asOf ?? today, tonnes: iau.tonnes } : null });
+        await kv.put(GOLD_ETF_TONNES_KV, JSON.stringify(tonnes));
+        if (gld?.history) _archive.mergeSeries('gold_etf', 'GLD_TONNES', gld.history.map(r => ({ date: r.date, value: r.tonnes })), { unit: 'tonnes' }).catch(() => {});
+      }
+      if (gld?.aum && iau?.aum) {
+        const asOf = [gld.asOf, iau.asOf].filter(Boolean).sort()[0] ?? null;   // the older of the two reads: the point is only as new as its stalest part
+        if (!(asOf && series[series.length - 1]?.asOf === asOf)) series = [...series, { date: today, value: gld.aum + iau.aum, asOf }];   // nothing newer than the last point: no duplicate (a weekend reads Friday twice)
+        _archive.mergeSeries('gold_etf', 'GLD_IAU_AUM', series, { unit: 'USD' }).catch(() => {});   // no cap (was 120): a day not kept is gone; ~30 bytes/day
+        await kv.put(GOLD_ETF_FLOW_KV, JSON.stringify(series));
+        upToDate = true;
+        _goldEtfFlowStatus.okAt = Date.now(); _goldEtfFlowStatus.lastError = reasons.length ? reasons.join(' | ') : null;
+        _goldEtfFlowStatus.source = { GLD: gld.source, IAU: iau.source };
+      } else {
+        _goldEtfFlowStatus.lastError = reasons.join(' | ') || 'a fund answered without net assets';
+        _goldEtfFlowStatus.source = { GLD: gld?.source ?? null, IAU: iau?.source ?? null };
+        console.warn('[gold-etf-flow] partial or failed, serving prior history only:', _goldEtfFlowStatus.lastError);
+      }
     } catch (e) {
       _goldEtfFlowStatus.lastError = _gefReason(e);
-      console.warn('[gold-etf-flow] fetch failed, serving prior history only:', _goldEtfFlowStatus.lastError);
+      console.warn('[gold-etf-flow] could not save, serving prior history only:', _goldEtfFlowStatus.lastError);
       // fall through with whatever history already exists: never crash the caller, and say why in the response
     }
   } else if (!_goldEtfFlowStatus.okAt) { _goldEtfFlowStatus.okAt = Date.now(); }   // today was already held (written by an earlier run)
@@ -23350,9 +23373,9 @@ async function _goldEtfFlowBuild() {
   // read (same reasoning macroChange.js applies via its own bps/pct convention).
   const pctDeltas = s ? Object.fromEntries(Object.entries(s.d).map(([n, v]) =>
     [n, (v == null || !s.last) ? null : +((v / s.last) * 100).toFixed(2)])) : null;
-  const haveToday = series[series.length - 1]?.date === today;
-  const fetch = _gefFetchBlock({ haveToday, reason: _goldEtfFlowStatus.lastError, attemptedAt: _goldEtfFlowStatus.attemptedAt, okAt: _goldEtfFlowStatus.okAt });
-  const data = { series, last: s?.last ?? null, asOf: s?.lastDate ?? null, deltas: pctDeltas, fetch };
+  const haveToday = upToDate;
+  const fetch = _gefFetchBlock({ haveToday, reason: _goldEtfFlowStatus.lastError, attemptedAt: _goldEtfFlowStatus.attemptedAt, okAt: _goldEtfFlowStatus.okAt, source: _goldEtfFlowStatus.source });
+  const data = { series, last: s?.last ?? null, asOf: s?.lastDate ?? null, deltas: pctDeltas, tonnes: _gefTonnesBlock(tonnes), fetch };
 
   _goldEtfFlowCache.data = data;
   _goldEtfFlowCache.fetchedAt = Date.now();

@@ -47,3 +47,10 @@ test('the page: four cards, the fit, positioning and ETF cards, the staleness an
   const b2 = goldBoard(bundle(), null, null, { now: 0 }); const h2 = goldHtml(b2); assert.match(h2, /Not available/); assert.match(h2, /feed is not available/);
   assert.match(goldHtml(goldBoard({ ok: true, dates: ['2026-11-13'], series: {} }, null, null)), /cannot be drawn/);
 });
+
+test('tonnes held reach the ETF card: GLD with its changes, IAU read daily, the flow worded as tonnes, and the last failed try is named when there are no dollars yet', () => {
+  const tonnes = { asOf: '2026-11-13', last: { gld: { date: '2026-11-13', tonnes: 1044.41 }, iau: { date: '2026-11-13', tonnes: 460.81 }, total: { date: '2026-11-13', total: 1505.22 } }, deltas: { gld: { 1: 3.71, 5: -2.4, 20: 12 }, total: { 1: null, 5: null, 20: null } } };
+  const f = etfFlows({ ok: true, series: [], tonnes, fetch: { ok: false, reason: 'SPDR HTTP 403 | Yahoo crumb HTTP 401' } });
+  assert.equal(f.state, 'empty'); assert.match(f.note, /Last try: SPDR HTTP 403/); assert.equal(f.tonnes.gld.tonnes, 1044.41); assert.equal(f.tonnes.deltas.gld[1], 3.71);
+  assert.equal(etfFlows({ ok: true, series: [] }).tonnes, undefined, 'no tonnes block when none came');
+});

@@ -35,12 +35,20 @@ function positioningHtml(b) {
 <p class="in-cap">${nth(p.pct / 100)} percentile of its own history (0 = the least net long it has been, 100 = the most). ${esc(p.line)}</p>
 <p class="in-cap">Report of ${esc(p.reportDate)}${p.ageDays != null ? `, ${p.ageDays} days ago${p.stale ? '. That is a week behind the latest the CFTC would have published, so it may be out of date' : ''}` : ''}. Context only: the desk's study found no measured effect on direction for this state.</p></div>`;
 }
+const t1 = v => (Number.isFinite(v) ? v.toLocaleString('en-GB', { maximumFractionDigits: 1 }) : 'n/a');
+const dt = (v, d) => (v == null ? 'n/a' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(d)}`);
+function tonnesHtml(t) {
+  if (!t) return '';
+  const g = t.deltas?.gld ?? {}, w = t.total ? ` · both ${t1(t.total.total)} t` : '';
+  return `<table class="in-tbl in-mini"><thead><tr><th>Tonnes of gold held</th><th>Now</th><th>1 day</th><th>5 days</th><th>20 days</th></tr></thead><tbody><tr><th scope="row">GLD${t.gld ? ` (${esc(t.gld.date)})` : ''}</th><td>${t.gld ? t1(t.gld.tonnes) : 'n/a'}</td><td>${dt(g[1], 1)}</td><td>${dt(g[5], 1)}</td><td>${dt(g[20], 1)}</td></tr>${t.iau ? `<tr><th scope="row">IAU (${esc(t.iau.date)})</th><td>${t1(t.iau.tonnes)}</td><td colspan="3">read daily from the iShares page, history building</td></tr>` : ''}</tbody></table>
+<p class="in-cap">Tonnes in the trusts${w}. A flow is the change in tonnes: the dollar value also moves with the gold price. GLD's history is SPDR's own daily archive; the change is shown for GLD alone until IAU has its own history.</p>`;
+}
 function etfHtml(b) {
-  const e = b.etf;
-  if (e.state !== 'ok') return `<div class="in-gcard"><div class="in-gh"><span class="in-gl">Gold ETF holdings (GLD + IAU)</span><b class="in-gv">${e.state === 'one' ? usd(e.last) : 'none yet'}</b></div><p class="in-cap">${esc(e.note)}</p></div>`;
+  const e = b.etf, tn = tonnesHtml(e.tonnes);
+  if (e.state !== 'ok') return `<div class="in-gcard"><div class="in-gh"><span class="in-gl">Gold ETF holdings (GLD + IAU)</span><b class="in-gv">${e.state === 'one' ? usd(e.last) : 'none yet'}</b></div>${tn}<p class="in-cap">${esc(e.note)}</p></div>`;
   const rows = Object.entries(e.deltas).map(([k, d]) => `<tr><th scope="row">${k} day${k === '1' ? '' : 's'}</th><td>${sgn(d.raw, 2)}</td><td>${d.flow == null ? 'n/a' : sgn(d.flow, 2)}</td></tr>`).join('');
   return `<div class="in-gcard"><div class="in-gh"><span class="in-gl">Gold ETF holdings (GLD + IAU)</span><b class="in-gv">${usd(e.last)}</b></div>
-<table class="in-tbl in-mini"><thead><tr><th>Change</th><th>Total assets</th><th>Without gold's own move</th></tr></thead><tbody>${rows}</tbody></table>
+${tn}<table class="in-tbl in-mini"><thead><tr><th>Change</th><th>Total assets</th><th>Without gold's own move</th></tr></thead><tbody>${rows}</tbody></table>
 <p class="in-cap">${e.days} days held (since ${esc(e.from)}). A fund's assets rise with the gold price as well as with new money, so the last column takes gold's own move over the same dates out: what is left is closer to money coming in or out. Short history: read it as a start, not a trend.</p></div>`;
 }
 
