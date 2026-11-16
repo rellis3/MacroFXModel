@@ -4604,6 +4604,7 @@ export const DERIVED = {
      "js/terminal/asofClock.js",
      "js/terminal/commandCore.js",
      "js/terminal/eventReplay.js",
+     "js/terminal/flagStrip.js",
      "js/terminal/ghostWalk.js",
      "js/terminal/kchartCore.js",
      "js/terminal/kchartView.js",
