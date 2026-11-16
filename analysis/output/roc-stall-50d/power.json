@@ -1,0 +1,135 @@
+{
+ "seed": 20261116,
+ "placeboDraws": 200,
+ "window": [
+  "2000-01-03",
+  "2012-12-31"
+ ],
+ "series": 30,
+ "counts": {
+  "C1": {
+   "disc": 548,
+   "hold": 798
+  },
+  "C2": {
+   "disc": 548,
+   "hold": 798
+  },
+  "C3": {
+   "disc": 548,
+   "hold": 798
+  },
+  "C4": {
+   "disc": 465,
+   "hold": 591
+  },
+  "C5": {
+   "disc": 912,
+   "hold": 1080
+  },
+  "C6": {
+   "disc": 912,
+   "hold": 1080
+  }
+ },
+ "power": {
+  "C1": {
+   "label": "top stall -> 20-session return (z)",
+   "nHold": 798,
+   "nDisc": 548,
+   "placeboMean": -0.0078,
+   "placeboSD": 0.0427,
+   "mde": 0.1196,
+   "bar": 0.15,
+   "verdict": "POWERED",
+   "draws": 200
+  },
+  "C2": {
+   "label": "top stall -> 60-session return (z)",
+   "nHold": 798,
+   "nDisc": 548,
+   "placeboMean": -0.0037,
+   "placeboSD": 0.05,
+   "mde": 0.1399,
+   "bar": 0.15,
+   "verdict": "POWERED",
+   "draws": 200
+  },
+  "C3": {
+   "label": "top stall -> next-20 realised vol vs trailing-60 (log ratio)",
+   "nHold": 798,
+   "nDisc": 548,
+   "placeboMean": -0.0002,
+   "placeboSD": 0.0159,
+   "mde": 0.0446,
+   "bar": 0.1,
+   "verdict": "POWERED",
+   "draws": 200
+  },
+  "C4": {
+   "label": "bottom stall (mirror) -> 20-session return (z)",
+   "nHold": 591,
+   "nDisc": 465,
+   "placeboMean": 0.0048,
+   "placeboSD": 0.0482,
+   "mde": 0.1349,
+   "bar": 0.15,
+   "verdict": "POWERED",
+   "draws": 200
+  },
+  "C5": {
+   "label": "ROC_50 accel bottom decile -> 20-session return (z)",
+   "nHold": 1080,
+   "nDisc": 912,
+   "placeboMean": 0.0054,
+   "placeboSD": 0.0346,
+   "mde": 0.0969,
+   "bar": 0.15,
+   "verdict": "POWERED",
+   "draws": 200
+  },
+  "C6": {
+   "label": "ROC_50 accel bottom decile -> next-20 realised vol (log ratio)",
+   "nHold": 1080,
+   "nDisc": 912,
+   "placeboMean": 0.0012,
+   "placeboSD": 0.0112,
+   "mde": 0.0313,
+   "bar": 0.1,
+   "verdict": "POWERED",
+   "draws": 200
+  }
+ },
+ "positiveControl": {
+  "C1": {
+   "planted0": -0.0068,
+   "plantedBar": -0.1568,
+   "plantedValue": -0.15
+  },
+  "C2": {
+   "planted0": -0.0295,
+   "plantedBar": -0.1795,
+   "plantedValue": -0.15
+  },
+  "C3": {
+   "planted0": -0.0109,
+   "plantedBar": 0.0891,
+   "plantedValue": 0.1
+  },
+  "C4": {
+   "planted0": 0.0167,
+   "plantedBar": 0.1667,
+   "plantedValue": 0.15
+  },
+  "C5": {
+   "planted0": 0.0114,
+   "plantedBar": -0.1386,
+   "plantedValue": -0.15
+  },
+  "C6": {
+   "planted0": -0.017,
+   "plantedBar": 0.083,
+   "plantedValue": 0.1
+  }
+ }
+}
