@@ -4450,6 +4450,11 @@ export const DERIVED = {
      "route": "/api/replay/curve",
      "exists": true,
      "pack": null
+    },
+    {
+     "route": "/api/replay/ghosts",
+     "exists": true,
+     "pack": null
     }
    ],
    "modules": [
@@ -4520,6 +4525,7 @@ export const DERIVED = {
      "js/terminal/asofBoot.js",
      "js/terminal/asofClock.js",
      "js/terminal/commandCore.js",
+     "js/terminal/ghostWalk.js",
      "js/terminal/kchartCore.js",
      "js/terminal/kchartView.js",
      "js/terminal/linkedSelection.js",
