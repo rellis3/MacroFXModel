@@ -297,7 +297,7 @@ const HAND_FEEDS = [
     hosts: ['export.arxiv.org', 'arxiv.org', 'api.openalex.org', 'api.semanticscholar.org', 'api.crossref.org', 'doi.org', 'papers.ssrn.com', 'ssrn.com', 'api.github.com', 'raw.githubusercontent.com', 'data.jsdelivr.com'] },
   { id: 'cb_rate_futures', name: 'Central-bank rate futures', provider: 'IBKR (laptop pull)', category: 'macro',
     purpose: 'What the short-rate futures price for every bank: SONIA, €STR, SARON, CORRA, ASX cash rate, NZ OCR and bank bills, fed funds.',
-    details: 'scripts/rates_line/refresh_cb_expectations.py on the laptop (IB Gateway), pushed to KV; read against the policy rates by js/cbExpectations.js.',
+    details: 'scripts/rates_line/refresh_cb_expectations.py on the laptop (IB Gateway), pushed to KV; read against the policy rates by js/cbExpectations.js; the ECB, BoE and BoJ strips are also solved meeting by meeting by js/cbMeetingPath.js (priced, not forecast). SONIA (ICE) was silently missing until 2026-11-16: its contract date string carried a time of day that IBKR refuses in a data request.',
     refresh: 'Laptop Task Scheduler (run_cb_expectations.bat), once or twice a day.', store: 'KV cb_rate_futures_v1', endpoints: ['/api/cb-expectations'], hosts: [] },
   { id: 'news_wire', name: 'Desk news wire', provider: 'Fed, ECB, BoE, BoJ, RBA, BoC, SNB, RBNZ, BEA, ForexLive, FXStreet, Finnhub, MarketWatch, Investing.com, Yahoo', category: 'macro',
     purpose: 'The headlines that can move a currency today, tagged by currency, topic and tier for the desk (agent 21), with the market reaction after each.',

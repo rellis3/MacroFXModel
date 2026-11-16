@@ -51,6 +51,19 @@ schtasks /Create /TN "MacroFX Release layer2 0800" /TR "`"$bat2`"" /SC DAILY /ST
 schtasks /Create /TN "MacroFX Release layer2 1800" /TR "`"$bat2`"" /SC DAILY /ST 18:00 /F
 ```
 
+## Central-bank futures: what changed on 2026-11-16 (ECB, BoE, BoJ meeting by meeting)
+
+- **SONIA (the BoE) had never arrived.** `refresh_cb_expectations.py` passed ICE Futures Europe contracts to IBKR with a last-trade string like `20261215 18:00:00 GB`;
+  IBKR refuses that in a data request (error 10372), the pull read it as "no prices" and the note in the script ("no ICE data in the account") was wrong: with just the
+  date the same contracts return prices (live check on the owner's Gateway). Fixed: GBP now comes back (SO3 on ICEEU), and the ICE €STR (ER3) and 3M Euribor also return data.
+- The pull now also stores each rung's 1-day, 1-week and 4-week closes, so the card shows how the priced path moved.
+- The ECB, BoE and BoJ are solved meeting by meeting from the same strip (`js/cbMeetingPath.js`), shown on the Macro > Policy "What the futures price" card.
+  Meeting calendars (ECB, BoE, BoJ official lists, 2026-12 to 2027-12) are hand-kept in that file with a stale guard (the card says "meeting calendar needs refreshing" within
+  120 days of the last date).
+- Scheduling: the single task above (`run_cb_expectations.bat`, 07:30 and 17:30 weekdays or daily) is the right cadence. Do not run it every 30 minutes: each rung is one historical
+  request at the IBKR pacing of one per 10.5 seconds (about 10 to 12 minutes a run for all banks), shared with the 30-minute CogLegs task. For only the three banks, `--only EUR,GBP,JPY`
+  takes about 3 to 4 minutes (the .bat passes extra arguments through).
+
 ## Not a laptop task, but needs you
 
 - **RBNZ statements**: the RBNZ site blocks the server's address, so `/api/rbnz/latest` has no analysis (decisions still come from the RSS feed). Either send the allowlist

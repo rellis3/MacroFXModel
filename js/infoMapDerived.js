@@ -1159,7 +1159,12 @@ export const DERIVED = {
      }
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/cbMeetingPath.js",
+     "exists": true
+    }
+   ],
    "names": {
     "terminal": [
      "desk-terminal.html",

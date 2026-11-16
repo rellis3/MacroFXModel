@@ -51,8 +51,8 @@ export function ageChip({ asOf = null, ageH = null, what = 'pulled', warnH = 36,
 /** The set of tiles this covers, with their thresholds, so a test can check every laptop-fed tile has one. */
 export const LAPTOP_TILES = {
   'fed-path-zq': { what: 'strip pulled', warnH: 36, badH: 96 },          // nightly 22:30 UK task
-  'cb-expectations': { what: 'futures pulled', warnH: 48, badH: 120 },    // manual push today: no scheduled task
-  'options-skew': { what: 'skew pulled', warnH: 48, badH: 120 },          // manual push today: no scheduled task
+  'cb-expectations': { what: 'futures pulled', warnH: 48, badH: 120 },    // pushed by run_cb_expectations.bat; no scheduled task existed until the owner creates one (plans/LAPTOP_TASKS.md)
+  'options-skew': { what: 'skew pulled', warnH: 48, badH: 120 },          // pushed by run_cb_expectations.bat; no scheduled task existed until the owner creates one (plans/LAPTOP_TASKS.md)
   'oi-store': { what: 'open interest saved', warnH: 36, badH: 96 },       // nightly QuikStrike capture
   'xccy-basis': { what: 'basis pulled', warnH: 48, badH: 120 },
 };

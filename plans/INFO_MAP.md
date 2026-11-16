@@ -54,7 +54,7 @@ Not included: backtests, bots, systems, shadows, research pages and the per-asse
 | RBNZ statement tone | DRAWN | macro | FEEDS | rbnz-sentiment.html | cb-tone-direction: null | already drawn: headline-only state with the frozen tone and its date |
 | Beige Book | DRAWN | macro | FEEDS | beige-book.html | none | already drawn: change chip with release date on the USD card |
 | Fed path odds | DRAWN | macro | FEEDS | fed-path.html | none | Add the hike-odds-over-time line and rate distribution under the existing table; join with 2Y change (display only) |
-| Policy rates and priced path | DRAWN | macro | FEEDS |  | none | already drawn; add priced-minus-policy gap per pair |
+| Policy rates and priced path | DRAWN | macro | FEEDS |  | none | drawn, including the meeting-by-meeting ladder for the ECB, BoE and BoJ; next: priced-minus-policy gap per pair |
 | World policy-rate cycle | DRAWN | macro | FEEDS |  | none | already drawn |
 | Fed speakers and speech drift | DRAWN | macro | FEEDS |  | none | already drawn |
 | Treasury auctions | DRAWN | macro | FEEDS |  | fiscal-reaction-us-size: null | next coupon auctions, and a results table with high yield and its change against the previous same-term auction, bid-to-cover bar and the indirect/direct/dealer split; no tail (TreasuryDirect has no when-issued yield) |
