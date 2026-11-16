@@ -122,7 +122,7 @@ export function priceReadHtml(pr, { closed = false } = {}) {
   }).join('');
   return `${head}<div class="card" data-mktboard><div class="ch"><span class="lbl">Dawn read (left) · price read (right)</span><span class="r">${closed ? `<span class="chip gold">${esc(closedLabel())}</span>` : ''}</span></div>
 <div class="ll-prh"><span></span><span>analyst bias</span><span></span><span>4H + 1D strength</span><span></span><span></span><span></span></div>${rows}
-<p class="cs-say">${esc(pr.line)}</p>
+<p class="cs-say">${esc(pr.line)}</p>${pr.partial ? `<p class="muted bv-note">${esc(pr.partial)}</p>` : ''}
 <p class="muted bv-note">${esc(pr.basis)} The dawn read is an analyst's daily view and the price read is a rule over recent prices: they measure different things and may disagree. Neither is a trade instruction, and the price read never changes the desk's book.</p></div>`;
 }
 

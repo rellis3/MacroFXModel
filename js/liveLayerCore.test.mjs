@@ -128,6 +128,15 @@ test('priceRead: firm / soft / mixed from 4H and 1D, compared with the dawn read
   assert.equal(none.rows[0].state, 'no-analyst'); assert.match(none.line, /No currency where/);
   assert.equal(priceRead({ strength: { ok: true, horizons: { '4H': { available: false } } } }).ok, false);
   assert.equal(priceRead({ strength: null }).ok, false);
+  // one window missing: say which and why, and read from the other alone
+  const only4 = priceRead({ strength: { ...s, horizons: { '4H': s.horizons['4H'], '1D': { available: false, reason: 'only 0 of 28 pairs had prices and a normal move for 1D' } } }, analyst: { USD: { bias: 2 }, EUR: { bias: 1 } } });
+  assert.equal(only4.ok, true); assert.match(only4.partial, /1D window is missing \(only 0 of 28 pairs/); assert.match(only4.partial, /4H window alone/);
+  const u = only4.rows.find(r => r.ccy === 'USD'); assert.equal(u.s1d, null); assert.equal(u.read, 'soft'); assert.equal(u.state, 'disagree'); assert.match(only4.line, /USD: the dawn read leans firm, but in prices it has been soft \(4H −0\.8σ\)/);
+  const only1 = priceRead({ strength: { ...s, horizons: { '1D': s.horizons['1D'], '4H': { available: false, reason: 'no hourly prices yet' } } }, analyst: {} });
+  assert.equal(only1.ok, true); assert.match(only1.partial, /4H window is missing \(no hourly prices yet\).*1D window alone/);
+  assert.equal(priceRead({ strength: s }).partial, null, 'both windows: no note');
+  const both = priceRead({ strength: { ok: true, horizons: { '4H': { available: false, reason: 'a' }, '1D': { available: false, reason: 'b' } } } });
+  assert.equal(both.ok, false); assert.match(both.error, /neither the 4H nor the 1D window has prices yet \(4H: a; 1D: b\)/);
 });
 
 test('pricingList: every instrument the overlay needs, in one call', () => {

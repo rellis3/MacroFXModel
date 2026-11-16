@@ -166,3 +166,48 @@ test('at the Sunday reopen the board returns to now by itself', () => {
   const q = buildStrength({ bars: barsFrom({ USD: 1, EUR: -1, GBP: 0, JPY: 0, CHF: 0, CAD: 0, AUD: 0, NZD: 0 }, { now: Date.parse('2026-11-13T22:00:00Z') }), now: SUN });
   assert.equal(q.anchored, true);
 });
+
+// ── Monday morning: a window that starts while the week is shut (found live 2026-11-16 09:12Z: 1D 'only 0 of 28 pairs had prices') ──
+import { weeklyWindow } from './marketClock.js';
+const MON = Date.parse('2026-11-16T09:12:00Z');
+function weekendBars(now) {
+  const w = weeklyWindow(now), shut = t => t >= w.close && t < w.open;
+  const out = {}, all = barsFrom({ USD: 1, EUR: -1, GBP: 0, JPY: 0, CHF: 0, CAD: 0, AUD: 0, NZD: 0 }, { now });
+  for (const [k, b] of Object.entries(all)) {
+    // the real feed holds days of 5-minute bars: rebuild them from the last 72 hourly closes so a window can reach back to the Friday close
+    const m5 = b.h1.slice(-72).flatMap(x => Array.from({ length: 12 }, (_, j) => ({ t: x.t + j * 300e3, c: x.c })));
+    out[k] = { m5: m5.filter(x => !shut(x.t) && x.t + 300e3 <= now), h1: b.h1.filter(x => !shut(x.t)), d: b.d };
+  }
+  return out;
+}
+test('Monday morning: the 1D (and 4H, 1H) window that starts inside the weekend closure is anchored to the Friday close, not dropped', () => {
+  const w = weeklyWindow(MON);
+  const p = buildStrength({ bars: weekendBars(MON), now: MON });
+  assert.ok(p.ok);
+  for (const k of ['1H', '4H', '1D', '1W']) assert.equal(p.horizons[k].available, true, `${k} is available on Monday morning`);
+  const d = p.horizons['1D'];
+  assert.equal(d.from, new Date(w.close).toISOString(), 'the 1D window runs from the Friday close');
+  assert.equal(d.sinceClose, true); assert.match(d.note, /since the (Friday|weekly) close/i);
+  assert.match(describeStrength(p, '1D'), /since the Friday close/);
+  assert.equal(p.horizons['1H'].sinceClose, undefined, 'a window that starts while the market is open is untouched');
+  assert.ok(Date.parse(d.from) < MON - 24 * H + 1, 'the anchor is never later than the 24h start (nothing newer than the window start is used)');
+});
+test('a window that starts inside the closure uses no price from after that start (point in time)', () => {
+  const bars = weekendBars(MON), w = weeklyWindow(MON);
+  const p = buildStrength({ bars, now: MON });
+  const lastBefore = bars.EUR_USD.h1.filter(x => x.t + H <= w.close).at(-1);
+  assert.ok(lastBefore && lastBefore.t + H <= w.close, 'the Friday close price is the last bar finished by the close');
+  assert.equal(p.horizons['1D'].pairs, 28);
+});
+test('Sunday open: 90 minutes after the reopen every window is available, anchored to the Friday close, and says so', () => {
+  const SUN = weeklyWindow(MON).open + 90 * 60e3, w = weeklyWindow(SUN);
+  const p = buildStrength({ bars: weekendBars(SUN), now: SUN });
+  assert.ok(p.ok);
+  for (const k of ['1H', '4H', '1D']) assert.equal(p.horizons[k].available, true, `${k} available`);
+  for (const k of ['4H', '1D']) { assert.equal(p.horizons[k].sinceClose, true, `${k} says since the close`); assert.equal(p.horizons[k].from, new Date(w.close).toISOString()); }
+  assert.equal(p.horizons['1H'].sinceClose, undefined, 'the 1H window starts after the reopen: untouched');
+});
+test('mid-week the windows are exactly as before (no anchor note)', () => {
+  const p = buildStrength({ bars: barsFrom({ USD: 1, EUR: -1, GBP: 0, JPY: 0, CHF: 0, CAD: 0, AUD: 0, NZD: 0 }), now: NOW });
+  for (const k of ['1H', '4H', '1D', '1W']) assert.equal(p.horizons[k].sinceClose, undefined);
+});

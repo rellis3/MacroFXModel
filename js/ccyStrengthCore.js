@@ -15,7 +15,7 @@
  * This is PRICE-based and LIVE (it moves with every bar); the desk's own strength strip is the Currency Manager's analyst read, once a day. They
  * measure different things and may disagree. Ordering only: nothing here is a direction call or a trade.
  */
-import { fxWeekOpen, clockState } from './marketClock.js';
+import { fxWeekOpen, clockState, lastCloseTs } from './marketClock.js';
 export const CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'NZD'];
 // the 28 pairs in OANDA's own orientation (base_quote)
 export const PAIRS = ['EUR_USD', 'GBP_USD', 'AUD_USD', 'NZD_USD', 'USD_JPY', 'USD_CAD', 'USD_CHF', 'EUR_GBP', 'EUR_JPY', 'EUR_CHF', 'EUR_AUD', 'EUR_CAD', 'EUR_NZD',
@@ -98,13 +98,20 @@ export function buildStrength({ bars, now = Date.now() } = {}) {
   const anchor = closed ? Math.min(now, latest) : now;
   const horizons = {};
   for (const hz of HORIZONS) {
-    const t0 = anchor - hz.hours * HOUR, obs = [];
+    // A window whose start falls inside the weekly closure (the 1D window on a Monday morning starts on Sunday, the 4H and 1H windows just after the reopen) has no
+    // price AT its start: nothing traded then. Where a pair has no price at the start, the price then is the last price before the close, so that window runs from the
+    // Friday close and says so (the weekend gap is part of the move, as it is in the daily bars the normal move is measured on). Nothing newer than the window start
+    // is ever used, and a window that starts while the market is open is untouched.
+    const t0 = anchor - hz.hours * HOUR, closeT = !fxWeekOpen(t0) ? lastCloseTs(t0) : null, obs = [];
+    let fellBack = 0;
     for (const p of Object.values(per)) {
       const sigma = p.sig[hz.key]; if (!fin(sigma) || sigma <= 0) continue;
       // the price at the start of the window; when the market has been shut since before that instant the last known price IS the price then (a flat window), not a gap
       const lastEnd = (a, step) => (a?.length ? a[a.length - 1].t + step : 0);
-      const look = (a, step) => { const v = priceAt(a ?? [], step, t0); return v != null ? v : (a?.length && t0 >= lastEnd(a, step) ? a[a.length - 1].c : null); };
-      const then = hz.hours <= 4 ? look(p.b.m5, 300e3) : look(p.b.h1, HOUR);
+      const look = (a, step, t) => { const v = priceAt(a ?? [], step, t); return v != null ? v : (a?.length && t >= lastEnd(a, step) ? a[a.length - 1].c : null); };
+      const at = t => (hz.hours <= 4 ? look(p.b.m5, 300e3, t) : look(p.b.h1, HOUR, t));
+      let then = at(t0);
+      if (!fin(then) && closeT != null) { then = at(closeT); if (fin(then)) fellBack++; }
       if (!fin(then) || !fin(p.last.c)) continue;
       obs.push({ base: p.base, quote: p.quote, raw: Math.log(p.last.c / then), sigma });
     }
@@ -112,7 +119,8 @@ export function buildStrength({ bars, now = Date.now() } = {}) {
     if (!fit) { horizons[hz.key] = { available: false, reason: `only ${obs.length} of 28 pairs had prices and a normal move for ${hz.key}`, pairs: obs.length }; continue; }
     const flat = obs.every(x => x.raw === 0);
     const sorted = [...fit.scores].sort((a, b) => b.score - a.score).map((s, i) => ({ ...s, rank: i + 1 }));
-    horizons[hz.key] = { available: true, flat, from: new Date(t0).toISOString(), to: new Date(anchor).toISOString(), pairs: fit.n, unitPct: r2(fit.unit * 100 * 1000) / 1000, concentration: fit.concentration,
+    const sinceClose = fellBack > 0 && fellBack >= obs.length / 2;
+    horizons[hz.key] = { available: true, flat, from: new Date(sinceClose ? closeT : t0).toISOString(), to: new Date(anchor).toISOString(), ...(sinceClose ? { sinceClose: true, note: `since the Friday close: the ${hz.key} window would have started while the market was shut` } : {}), pairs: fit.n, unitPct: r2(fit.unit * 100 * 1000) / 1000, concentration: fit.concentration,
       scores: sorted, leader: sorted[0].ccy, laggard: sorted[sorted.length - 1].ccy, spread: r2(sorted[0].score - sorted[sorted.length - 1].score) };
   }
   const ms = clockState(now);
@@ -125,7 +133,7 @@ export function describeStrength(payload, hz) {
   const h = payload?.horizons?.[hz];
   if (!payload?.ok || !h?.available) return null;
   if (h.flat) return `The market has not moved over ${hz}: every currency is at zero.`;
-  const when = payload.anchored ? ` (the last ${hz} of trading before the close)` : '';
+  const when = payload.anchored ? ` (the last ${hz} of trading before the close)` : h.sinceClose ? ' (since the Friday close: the window would have started while the market was shut)' : '';
   const lead = h.scores[0], lag = h.scores[h.scores.length - 1];
   let s = `Strongest vs weakest on ${hz}${when}: ${lead.ccy} vs ${lag.ccy} (${sg(lead.score)}σ and ${sg(lag.score)}σ, a ${h.spread.toFixed(1)}σ spread).`;
   if (h.concentration != null) s += h.concentration >= 0.4 ? ` One currency is doing most of the moving (${Math.round(h.concentration * 100)}% of the board's strength).` : ' The move is spread across currencies, not one story.';

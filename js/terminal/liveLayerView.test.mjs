@@ -51,6 +51,9 @@ test('the price read: dawn bias beside the price read, a disagreement framed in 
   const h = priceReadHtml(priceRead({ strength, analyst: { USD: { bias: 2 }, EUR: { bias: 1 } } }));
   assert.match(h, /Analyst read vs price read/); assert.match(h, /ll-pr dis/); assert.match(h, /disagree/); assert.match(h, /never changes the desk's book/);
   assert.match(priceReadHtml(null), /loading the price bars/);
+  // one window missing: the row shows a dash for it, and a plain note says which window and why
+  const one = priceReadHtml(priceRead({ strength: { ok: true, horizons: { '4H': strength.horizons['4H'], '1D': { available: false, reason: 'no start price yet' } } }, analyst: { USD: { bias: 2 } } }));
+  assert.match(one, /1D window is missing \(no start price yet\)/); assert.match(one, /1D –/); assert.doesNotMatch(one, /NaN|undefined|null/);
   assert.match(priceReadHtml({ ok: false, error: 'no strength data' }), /no strength data/);
   assert.match(priceReadSlot(), /data-surface="panel\.ov\.priceread"/);
   assert.match(priceReadHtml(priceRead({ strength, analyst: {} }), { closed: true }), /closed/i);

@@ -179,20 +179,24 @@ export const LEAN = 0.5;
 export function priceRead({ strength, analyst }) {
   if (!strength?.ok) return { ok: false, error: strength?.error ?? 'no strength data' };
   const h4 = strength.horizons?.['4H'], d1 = strength.horizons?.['1D'];
-  if (!h4?.available || !d1?.available) return { ok: false, error: 'the 4H and 1D windows are not both available' };
-  const sc = (h, c) => h.scores.find(s => s.ccy === c)?.score;
+  // one window missing is said in plain words and the read uses the other alone; both missing is the only case with nothing to show
+  const wins = [['4H', h4], ['1D', d1]], have = wins.filter(([, h]) => h?.available), miss = wins.filter(([, h]) => !h?.available);
+  const why = h => h?.reason ?? 'no prices for it yet';
+  if (!have.length) return { ok: false, error: `neither the 4H nor the 1D window has prices yet (${miss.map(([k, h]) => `${k}: ${why(h)}`).join('; ')})` };
+  const partial = miss.length ? `The ${miss[0][0]} window is missing (${why(miss[0][1])}), so this read uses the ${have[0][0]} window alone.` : null;
+  const sc = (h, c) => (h?.available ? h.scores.find(s => s.ccy === c)?.score : null);
   const rows = [];
-  for (const { ccy } of h4.scores) {
-    const a = sc(h4, ccy), b = sc(d1, ccy); if (!fin(a) || !fin(b)) continue;
-    const read = a >= LEAN && b >= LEAN ? 'firm' : a <= -LEAN && b <= -LEAN ? 'soft' : 'mixed';
+  for (const { ccy } of have[0][1].scores) {
+    const a = sc(h4, ccy), b = sc(d1, ccy), vals = [a, b].filter(fin); if (!vals.length) continue;
+    const read = vals.every(v => v >= LEAN) ? 'firm' : vals.every(v => v <= -LEAN) ? 'soft' : 'mixed';
     const bias = analyst?.[ccy]?.bias, bn = Number(bias), lean = fin(bn) && bn !== 0 ? Math.sign(bn) : 0;
     const dis = (lean > 0 && read === 'soft') || (lean < 0 && read === 'firm');
     const agree = (lean > 0 && read === 'firm') || (lean < 0 && read === 'soft');
     const state = !fin(bn) ? 'no-analyst' : dis ? 'disagree' : agree ? 'agree' : 'open';
-    rows.push({ ccy, s4h: r1(a), s1d: r1(b), read, analyst: fin(bn) ? bn : null, state });
+    rows.push({ ccy, s4h: fin(a) ? r1(a) : null, s1d: fin(b) ? r1(b) : null, read, analyst: fin(bn) ? bn : null, state });
   }
   const dis = rows.filter(r => r.state === 'disagree');
-  const say = c => `${c.ccy}: the dawn read leans ${c.analyst > 0 ? 'firm' : 'soft'}, but in prices it has been ${c.read === 'soft' ? 'soft' : 'firm'} (4H ${sgn(c.s4h, 1)}σ, 1D ${sgn(c.s1d, 1)}σ)`;
+  const say = c => `${c.ccy}: the dawn read leans ${c.analyst > 0 ? 'firm' : 'soft'}, but in prices it has been ${c.read === 'soft' ? 'soft' : 'firm'} (${[fin(c.s4h) ? `4H ${sgn(c.s4h, 1)}σ` : null, fin(c.s1d) ? `1D ${sgn(c.s1d, 1)}σ` : null].filter(Boolean).join(', ')})`;
   const line = dis.length ? `${dis.length === 1 ? 'One currency' : `${dis.length} currencies`} where the price read disagrees with the dawn read: ${dis.map(say).join('; ')}.` : 'No currency where the price read disagrees with the dawn read.';
-  return { ok: true, rows, disagree: dis.map(r => r.ccy), line, basis: 'FIRM / SOFT when both the 4H and 1D strength are at least 0.5σ the same way; compared with the dawn read by sign only. A description of recent price movement, not a forecast.' };
+  return { ok: true, rows, disagree: dis.map(r => r.ccy), line, partial, basis: 'FIRM / SOFT when both the 4H and 1D strength are at least 0.5σ the same way; compared with the dawn read by sign only. A description of recent price movement, not a forecast.' };
 }
