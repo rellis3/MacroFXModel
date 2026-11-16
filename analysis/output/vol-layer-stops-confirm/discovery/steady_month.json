@@ -1,0 +1,60 @@
+{
+ "window": [
+  "2017-01-01",
+  "2022-12-30"
+ ],
+ "confirm_months": 43.7,
+ "cells": {
+  "0.5": {
+   "months": 72,
+   "sd_pp": {
+    "plain": 2.838,
+    "fixed": 7.794,
+    "lag": 3.061
+   },
+   "delta_pp": {
+    "est": 4.95565,
+    "lo": 3.1712,
+    "hi": 6.95652,
+    "se": 0.99858
+   },
+   "delta_fixed_minus_lagplain_pp": 4.733,
+   "se_confirm_pp": 1.288,
+   "mde_pp": 3.607
+  },
+  "1.0": {
+   "months": 72,
+   "sd_pp": {
+    "plain": 2.345,
+    "fixed": 7.959,
+    "lag": 2.633
+   },
+   "delta_pp": {
+    "est": 5.61343,
+    "lo": 3.3086,
+    "hi": 8.06192,
+    "se": 1.35971
+   },
+   "delta_fixed_minus_lagplain_pp": 5.325,
+   "se_confirm_pp": 1.753,
+   "mde_pp": 4.912
+  },
+  "1.5": {
+   "months": 72,
+   "sd_pp": {
+    "plain": 1.545,
+    "fixed": 6.368,
+    "lag": 1.821
+   },
+   "delta_pp": {
+    "est": 4.82298,
+    "lo": 2.35777,
+    "hi": 7.43997,
+    "se": 1.47563
+   },
+   "delta_fixed_minus_lagplain_pp": 4.547,
+   "se_confirm_pp": 1.903,
+   "mde_pp": 5.331
+  }
+ }
+}
