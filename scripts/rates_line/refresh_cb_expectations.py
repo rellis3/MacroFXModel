@@ -67,11 +67,11 @@ def pace(s=10.5):
 
 
 def closes(ib, c):
-    """The last daily close and the close about a week before it, or (None, None)."""
+    """The last daily close and the closes about a day, a week and four weeks before it: (now, week_ago, day_ago, four_weeks_ago), each (close, 'YYYY-MM-DD') or None."""
     for what in ('MIDPOINT', 'TRADES'):
         pace()
         try:
-            bars = ib.reqHistoricalData(c, endDateTime='', durationStr='15 D', barSizeSetting='1 day', whatToShow=what, useRTH=False, formatDate=2, timeout=60)
+            bars = ib.reqHistoricalData(c, endDateTime='', durationStr='45 D', barSizeSetting='1 day', whatToShow=what, useRTH=False, formatDate=2, timeout=60)
         except Exception as e:
             print(f'    {c.localSymbol} {what}: {type(e).__name__} {e}')
             continue
@@ -79,9 +79,9 @@ def closes(ib, c):
             b = [x for x in bars if x.close and x.close > 0]
             if b:
                 last_bar = b[-1]
-                ago = [x for x in b if (last_bar.date - x.date).days >= 6]
-                return (last_bar.close, str(last_bar.date)[:10]), ((ago[-1].close, str(ago[-1].date)[:10]) if ago else None)
-    return None, None
+                pick = lambda days: next(((x.close, str(x.date)[:10]) for x in reversed(b) if (last_bar.date - x.date).days >= days), None)
+                return (last_bar.close, str(last_bar.date)[:10]), pick(6), pick(1), pick(27)
+    return None, None, None, None
 
 
 def strip(ib, sym, exch, ccy, n, now, discover=False, tc='', kind='1m'):
@@ -100,6 +100,10 @@ def strip(ib, sym, exch, ccy, n, now, discover=False, tc='', kind='1m'):
         exp = c.lastTradeDateOrContractMonth.split(' ')[0]
         if len(exp) == 8 and datetime.strptime(exp, '%Y%m%d').replace(tzinfo=timezone.utc) < now:
             continue
+        # ICE Futures Europe lists 'yyyymmdd hh:mm:ss GB'; IBKR refuses that string in a data request (error 10372) and the pull then read as "no
+        # prices", which is why SONIA never arrived (found 2026-11-16: with just the date the same contracts return prices). Date part only.
+        if c.lastTradeDateOrContractMonth != exp:
+            c.lastTradeDateOrContractMonth = exp
         cs.append((exp, c))
     cs.sort(key=lambda x: x[0])
     if kind != '1m':
@@ -110,12 +114,14 @@ def strip(ib, sym, exch, ccy, n, now, discover=False, tc='', kind='1m'):
         return [{'local': c.localSymbol, 'expiry': e, 'month': getattr(c, 'lastTradeDateOrContractMonth', '')[:6]} for e, c in cs], None
     rungs = []
     for exp, c in cs:
-        now_px, ago_px = closes(ib, c)
+        now_px, ago_px, day_px, w4_px = closes(ib, c)
         if not now_px:
             print(f'    {c.localSymbol}: no prices (no market-data subscription, or no trades)')
             continue
         rungs.append({'local': c.localSymbol, 'expiry': exp, 'month': exp[:6], 'price': now_px[0], 'rate': round(100 - now_px[0], 4), 'date': now_px[1],
-                      'rateWeekAgo': round(100 - ago_px[0], 4) if ago_px else None, 'dateWeekAgo': ago_px[1] if ago_px else None})
+                      'rateWeekAgo': round(100 - ago_px[0], 4) if ago_px else None, 'dateWeekAgo': ago_px[1] if ago_px else None,
+                      'rateDayAgo': round(100 - day_px[0], 4) if day_px else None, 'dateDayAgo': day_px[1] if day_px else None,
+                      'rate4wAgo': round(100 - w4_px[0], 4) if w4_px else None, 'date4wAgo': w4_px[1] if w4_px else None})
     return rungs, (None if rungs else 'no prices')
 
 

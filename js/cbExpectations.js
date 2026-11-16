@@ -9,6 +9,7 @@
  *
  * Pure. Tested in js/cbExpectations.test.mjs.
  */
+import { meetingPath, MEETINGS } from './cbMeetingPath.js';
 const ym = s => { const y = +String(s).slice(0, 4), m = +String(s).slice(4, 6); return y * 12 + (m - 1); };
 
 /** The rung nearest a horizon `months` ahead of `nowYm` (YYYYMM). */
@@ -34,6 +35,11 @@ export function bankView(b, policy, nowYm) {
 /** Every bank in the pull. rates: { CCY: policy rate }. */
 export function expectations(payload, rates, now = Date.now()) {
   const d = new Date(now), nowYm = `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}`, out = {};
-  for (const [c, b] of Object.entries(payload?.banks ?? {})) { const v = bankView(b, rates?.[c], nowYm); if (v) out[c] = v; }
+  for (const [c, b] of Object.entries(payload?.banks ?? {})) {
+    const v = bankView(b, rates?.[c], nowYm); if (!v) continue;
+    // the ECB, BoE and BoJ also get the meeting-by-meeting reading (js/cbMeetingPath.js): only for a compounded 3-month strip, never a bill strip
+    if (MEETINGS[c] && b.kind === '3m') { try { const p = meetingPath(b.rungs, c, rates?.[c], now); if (p) v.path = p; } catch { /* the month view still serves */ } }
+    out[c] = v;
+  }
   return { asOf: payload?.asOf ?? null, ageH: payload?.asOf ? +((now - Date.parse(payload.asOf)) / 3.6e6).toFixed(1) : null, banks: out, errors: payload?.errors ?? {} };
 }
