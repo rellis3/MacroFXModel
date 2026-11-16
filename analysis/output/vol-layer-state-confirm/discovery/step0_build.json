@@ -1,0 +1,49 @@
+{
+ "rows_disc": 54408,
+ "rows_new_le_2022": 54408,
+ "only_disc": 0,
+ "only_new": 0,
+ "fields": {
+  "rv5": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "F1": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "F2": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "F3": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "F4": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "F5": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "har1": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "garch_vt": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "rq": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "hl": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  }
+ },
+ "pass": true
+}

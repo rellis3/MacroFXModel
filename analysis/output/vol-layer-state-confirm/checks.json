@@ -1,0 +1,237 @@
+{
+ "over": {
+  "effect": 0.3165857798574485,
+  "lo": 0.23758011406214674,
+  "hi": 0.4051162704403963,
+  "min_effect": 0.17,
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "note": "lowest minus highest live-sigma fifth of range / sigma, within instrument",
+   "mde_80pct_alpha05_one_sided": 0.10627094794358673
+  },
+  "planted_large": {
+   "injected": 0.34,
+   "shift": 0.33999999999999986,
+   "how": "added 0.34 to range/sigma on the lowest sigma fifth"
+  },
+  "planted_min": {
+   "injected": 0.17,
+   "shift": 0.1699999999999997,
+   "how": "added 0.17 to range/sigma on the lowest sigma fifth"
+  },
+  "shuffle": {
+   "effect": 0.024537033492272764,
+   "lo": -0.008766648831931113,
+   "hi": 0.05596560587418714,
+   "how": "range/sigma replaced by its own ratios moved in whole calendar months (calibrated by construction)"
+  },
+  "rows": {
+   "used": 31996,
+   "dropped": 0
+  },
+  "gate_parts": {
+   "holm": true,
+   "plateau": true,
+   "lag1": true,
+   "years_3_of_4": true,
+   "placebo": true
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.3166 reaches the minimum +0.17"
+  ],
+  "power": 0.9901686339694145,
+  "banked_word": "VALIDATED"
+ },
+ "chosen": {
+  "effect": 0.04482346369108636,
+  "lo": -0.015042905294162495,
+  "hi": 0.11461773682175291,
+  "min_effect": 0.1,
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "note": "1 - pooled Mincer-Zarnowitz slope of log range on log chosen sigma, demeaned within instrument",
+   "mde_80pct_alpha05_one_sided": 0.08224588439001196
+  },
+  "planted_large": {
+   "injected": 0.2,
+   "shift": 0.20000000000000007,
+   "how": "log range tilted by -0.2 x demeaned log sigma (slope lowered by 0.2)"
+  },
+  "planted_min": {
+   "injected": 0.1,
+   "shift": 0.10000000000000009,
+   "how": "log range tilted by -0.1 x demeaned log sigma (slope lowered by 0.1)"
+  },
+  "shuffle": {
+   "effect": 0.0037852673932781133,
+   "lo": -0.013752653166461704,
+   "hi": 0.02043387616517285,
+   "how": "log(range / chosen sigma) moved in whole calendar months (calibrated by construction)"
+  },
+  "rows": {
+   "used": 31815,
+   "dropped": 181
+  },
+  "gate_parts": {
+   "holm": false,
+   "plateau": true,
+   "lag1": true,
+   "years_3_of_4": true,
+   "placebo": true
+  },
+  "verdict": "UNDERPOWERED",
+  "reasons": [
+   "interval [-0.01504, +0.1146] neither reaches nor rules out +0.1"
+  ],
+  "power": 0.9159550826431979,
+  "banked_word": "UNDERPOWERED"
+ },
+ "error": {
+  "effect": 0.18061226667360164,
+  "lo": 0.11541496039937187,
+  "hi": 0.23983160148229893,
+  "min_effect": 0.1,
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "note": "top minus bottom fifth of the chosen sigma's own error EWMA, range / chosen sigma",
+   "mde_80pct_alpha05_one_sided": 0.07891952802109402
+  },
+  "planted_large": {
+   "injected": 0.2,
+   "shift": 0.2000000000000004,
+   "how": "added 0.2 to range/chosen sigma on the top F5c fifth"
+  },
+  "planted_min": {
+   "injected": 0.1,
+   "shift": 0.10000000000000009,
+   "how": "added 0.1 to range/chosen sigma on the top F5c fifth"
+  },
+  "shuffle": {
+   "effect": 4.981474182685908e-05,
+   "lo": -0.031426648210895955,
+   "hi": 0.02674874561448554,
+   "how": "F5c moved in whole calendar months within instrument, fifths re-ranked"
+  },
+  "rows": {
+   "used": 31815,
+   "dropped": 181
+  },
+  "gate_parts": {
+   "holm": true,
+   "plateau": true,
+   "lag1": true,
+   "years_3_of_4": true,
+   "placebo": true
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.1806 reaches the minimum +0.1"
+  ],
+  "power": 0.9339397667482976,
+  "banked_word": "VALIDATED"
+ },
+ "dsigma": {
+  "effect": 0.09302420869402989,
+  "lo": 0.04310288180368523,
+  "hi": 0.13994889953920356,
+  "min_effect": 0.05,
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "note": "IC(F2, realised 5-session change) minus IC(MR5, same), demeaned within instrument",
+   "mde_80pct_alpha05_one_sided": 0.06143102678133959
+  },
+  "planted_large": {
+   "injected": 0.1,
+   "shift": 0.10000000000000014,
+   "added_c": 1.532131206824424,
+   "how": "added 1.532 x demeaned F2 to the realised change"
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.05000000000000021,
+   "added_c": 0.5881828209680121,
+   "how": "added 0.588 x demeaned F2 to the realised change"
+  },
+  "shuffle": {
+   "real_beats_all": true,
+   "effect": 0.03910047313405647,
+   "lo": 0.0202151610311603,
+   "hi": 0.05700879111873818,
+   "how": "placebo form (2026-11-16): the registered null is IC(F2) - IC(MR5) with F2 shuffled in whole calendar months; the real difference must sit above that shuffle's whole interval. The shuffled F2's own IC stays positive (shared RV5 denominator), so 'IC of shuffled F2 includes 0' is not a usable null here",
+   "dic_with_shuffled_F2": [
+    -0.3697792014615132,
+    -0.44430645503916066,
+    -0.295998382441364
+   ],
+   "ic_MR5": 0.4088796745955696
+  },
+  "rows": {
+   "used": 31860,
+   "dropped": 136
+  },
+  "gate_parts": {
+   "holm": true,
+   "plateau": true,
+   "lag1": false,
+   "years_3_of_4": true,
+   "placebo": true
+  },
+  "verdict": "CONTEXT",
+  "reasons": [
+   "interval above 0 and +0.09302 reaches the minimum +0.05; demoted, registered gate part(s) failed: lag1"
+  ],
+  "power": 0.6476339684615919,
+  "banked_word": "CONTEXT"
+ },
+ "nudge": {
+  "effect": 0.0016082907261425472,
+  "lo": 0.0002700820221905875,
+  "hi": 0.0029668986105330086,
+  "min_effect": 0.005,
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "note": "pinball gain of S+RV+H over S+RV, 1 - ratio, folds 2-5, 2023-01 to 2026-08-20",
+   "mde_80pct_alpha05_one_sided": 0.00171063525312167
+  },
+  "planted_large": {
+   "injected": 0.01,
+   "shift": 0.009983917092738714,
+   "how": "SRH pinball scaled by (1 - 0.01) on every row"
+  },
+  "planted_min": {
+   "injected": 0.005,
+   "shift": 0.004991958546369357,
+   "how": "SRH pinball scaled by (1 - 0.005) on every row"
+  },
+  "shuffle": {
+   "effect": -1.2647271269372595e-05,
+   "lo": -0.0001063462065209464,
+   "hi": 8.274143571429526e-05,
+   "one_sided": true,
+   "how": "rv22m and hq moved in whole calendar months within instrument, full fold refit (placebo draw 0)"
+  },
+  "rows": {
+   "used": 31815,
+   "dropped": 0
+  },
+  "gate_parts": {
+   "holm": true,
+   "plateau": false,
+   "lag1": false,
+   "years_3_of_4": true,
+   "placebo": true
+  },
+  "verdict": "CONTEXT",
+  "reasons": [
+   "interval above 0, but +0.001608 is below the minimum +0.005"
+  ],
+  "power": 0.9999999906078976,
+  "banked_word": "CONTEXT"
+ }
+}

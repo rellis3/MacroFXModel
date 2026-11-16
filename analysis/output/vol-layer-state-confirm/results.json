@@ -1,0 +1,151 @@
+{
+ "id": "vol-layer-state-confirm",
+ "verdict": "mixed: see cells",
+ "ranAt": "2026-11-16T19:03:10Z",
+ "seed": 20261116,
+ "B": 2000,
+ "prereg": "forge/VOL_LAYER_STATE_CONFIRM_PREREG.md",
+ "preregCommit": "2f63c51a",
+ "branch": "main",
+ "window": "2023-01-01 to 2026-08-20 (London dates); lockbox 2026-08-21 on not read",
+ "step0": {
+  "pass": true,
+  "build": true,
+  "reproduce": true,
+  "plants": true,
+  "nudge": true,
+  "B_power": {
+   "disc_ratio": 0.999653062685003,
+   "disc_ci": [
+    0.997943202270476,
+    1.0011783376436845
+   ],
+   "disc_se": 0.0008082716543045695,
+   "disc_dates": 520,
+   "se_confirm": 0.0006011669458000154,
+   "mde_alpha01": 0.001904496884294449,
+   "mde_alpha05": 0.0014951021942046384,
+   "status": "POWERED"
+  }
+ },
+ "cells": [
+  {
+   "name": "vol-layer-state-confirm-over",
+   "cell": "A1",
+   "n": 943,
+   "rows": 31996,
+   "est": 0.3165857798574485,
+   "lo": 0.23758011406214674,
+   "hi": 0.4051162704403963,
+   "mde": 0.14606044744057772,
+   "mde_alpha05": 0.11973862343057277,
+   "bar": 0.17,
+   "p": 0.0004997501249375312,
+   "holm_p": 0.002498750624687656,
+   "gate": {
+    "holm": true,
+    "sign_and_bar": true,
+    "plateau": true,
+    "lag1": true,
+    "years_3_of_4": true,
+    "placebo": true
+   },
+   "verdict": "validated"
+  },
+  {
+   "name": "vol-layer-state-confirm-chosen",
+   "cell": "A2",
+   "n": 943,
+   "rows": 31815,
+   "est": 0.04482346369108636,
+   "lo": -0.015042905294162495,
+   "hi": 0.11461773682175291,
+   "mde": 0.11304002558185638,
+   "mde_alpha05": 0.09266887301050349,
+   "bar": 0.1,
+   "p": 0.155,
+   "holm_p": 0.155,
+   "gate": {
+    "holm": false,
+    "sign_and_bar": false,
+    "plateau": true,
+    "lag1": true,
+    "years_3_of_4": true,
+    "placebo": true
+   },
+   "verdict": "underpowered"
+  },
+  {
+   "name": "vol-layer-state-confirm-nudge",
+   "cell": "B",
+   "n": 943,
+   "rows": 31815,
+   "est": 0.9983917092738575,
+   "lo": 0.997033101389467,
+   "hi": 0.9997299179778094,
+   "mde": 0.0021794868044909374,
+   "mde_alpha05": 0.00171063525312167,
+   "bar": 0.995,
+   "p": 0.011,
+   "holm_p": 0.022,
+   "gate": {
+    "holm": true,
+    "sign_and_bar": false,
+    "plateau": false,
+    "lag1": false,
+    "years_3_of_4": true,
+    "placebo": true,
+    "qlike_range2_below_1": true,
+    "no_class_worse_0.5pct": true,
+    "regime_miss_no_worse": true
+   },
+   "verdict": "context"
+  },
+  {
+   "name": "vol-layer-state-confirm-error",
+   "cell": "C",
+   "n": 943,
+   "rows": 31815,
+   "est": 0.18061226667360164,
+   "lo": 0.11541496039937187,
+   "hi": 0.23983160148229893,
+   "mde": 0.10846822953606522,
+   "mde_alpha05": 0.08892096880562914,
+   "bar": 0.1,
+   "p": 0.0004997501249375312,
+   "holm_p": 0.002498750624687656,
+   "gate": {
+    "holm": true,
+    "sign_and_bar": true,
+    "plateau": true,
+    "lag1": true,
+    "years_3_of_4": true,
+    "placebo": true
+   },
+   "verdict": "validated"
+  },
+  {
+   "name": "vol-layer-state-confirm-dsigma",
+   "cell": "D",
+   "n": 939,
+   "rows": 31860,
+   "est": 0.09302420869402989,
+   "lo": 0.04310288180368523,
+   "hi": 0.13994889953920356,
+   "mde": 0.08443176081556782,
+   "mde_alpha05": 0.06921615667368435,
+   "bar": 0.05,
+   "p": 0.0004997501249375312,
+   "holm_p": 0.002498750624687656,
+   "gate": {
+    "holm": true,
+    "sign_and_bar": true,
+    "plateau": true,
+    "lag1": false,
+    "years_3_of_4": true,
+    "placebo": true
+   },
+   "verdict": "context"
+  }
+ ]
+}

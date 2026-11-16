@@ -229,6 +229,16 @@ Nothing live changes on any verdict. Every pass becomes a side-by-side proposal,
 
 ## Amendments
 
+**2026-11-16, PRE-RESULTS** (made while running step 0 on discovery; no 2023+ outcome had been computed).
+
+1. **Reproduction tolerance.** "To 3 decimals" is read as: point estimate within 0.001 and the same number of dates. Five rows match exactly. Cell C gives +0.2084 against +0.209 (0.0006 off, 1/50 of an SE), using the F5c definition as written in §3; ten variants were tried and none gives 0.209 exactly. The stage 3 form on the same rows matches (+0.0388). The scratch script's bootstrap draws are not in the repo, so the interval ends differ by up to 0.006; the bootstrap SEs agree within 6%. They are reported, not gated.
+2. **Bug fixed: the A2 live-σ benchmark.** The first step 0 run demeaned the live-σ rows over the whole window before cutting to the chosen-σ rows. It gave +0.237. Demeaned on the same rows it gives +0.269, as in §2.
+3. **Plants and zero cases are the mean of 50 month-block draws.** One draw has noise (SD up to 0.019) as wide as the ±0.02 tolerance. The first single-draw run failed C (zero case −0.036; plant +0.362 against +0.404). With 50 draws: A1 calibrated +0.005, A2 calibrated +0.009, A2 plant 0.158 (target 0.15), C plant +0.4017 against +0.4017 planted, C zero −0.001, D zero IC +0.010. D plants: +0.055 (closed form +0.056) and −0.129 (−0.128). All pass.
+4. **Cell B plant scale.** The first grid (k = 0.02-0.06) did not reach a ratio of 0.995. The grid was widened. k = 0.10 gives 0.9957 [0.9930, 0.9985], interval below 1. The month-shuffled terms give 1.0000 [0.9999, 1.0002]. Fold ratios S+RV vs S reproduce exactly: 0.9877 and 0.9862.
+5. **Cell B power re-check (rule in §3): POWERED.** Discovery SRH ÷ SR = 0.9997 [0.9979, 1.0012], SE 0.00081 on 520 dates. Scaled to 940 dates: SE 0.00060, MDE at one-sided α 0.01 = 0.0019, below 0.005. So cell B can come back NULL.
+6. **σ.** The brief for this run asked for `pit_sig_used` as the primary σ. This prereg names `live_sig_used` for A1 (the claim is about the live σ) and the `--live` base for B, and step 0 reproduces on those. They stay as registered. `pit_sig_used` is reported beside A1 (fifths and slope) with its own interval. Note: `live_sig_used` is fold 5's spec applied to every day, so it is in-sample for 2023-01 → 2025-08.
+7. **Readings where the text left a choice.** A1's plateau gate uses the two neighbours named in its cell (terciles, deciles); past-only fifths are reported, not gated. D's horizon neighbours keep the last-5 RV denominator. B's QLIKE on range² scales each arm's σ² by the per-instrument training mean of range² ÷ σ². B's placebo is 200 full refits with both new terms month-shuffled; the real ratio must sit below their 2.5th percentile. B's year check: ratio below 1 in at least 3 of 4 years. A2's registered direction is over-reaction (positive 1 − b).
+
 ## RESULTS
 
 *Appended below this line, or written to `analysis/output/vol-layer-state-confirm/RESULTS.md`. Nothing above it changes after the run.*
@@ -237,3 +247,5 @@ Nothing live changes on any verdict. Every pass becomes a side-by-side proposal,
 - `scripts/vol-layer-state-confirm/build.py`: the session table 2016-10-24 → 2026-08-20 (state.py fields, `rq`, quarterly refits), with the discovery match check of step 0.1.
 - `scripts/vol-layer-state-confirm/run.py`: `--window discovery | confirm`; cells A1, A2, C, D with neighbours, lags, placebos, years, BH slices and the step 0 plants.
 - `scripts/vol-layer-state-confirm/nudge.py`: cell B on the `forecast_pick.py` fold loop (SR vs SRH, both boards, rolling window, lag, shuffle and plant modes), plus the standalone QLIKE race.
+
+**Run 2026-11-16.** Scripts written as listed (plus `report.py` for the gate and `proof.py` for the proof pack). Results in `analysis/output/vol-layer-state-confirm/RESULTS.md` and `results.json`: A1 VALIDATED, A2 UNDERPOWERED, B CONTEXT, C VALIDATED, D CONTEXT.

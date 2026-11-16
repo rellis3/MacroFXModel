@@ -1,0 +1,84 @@
+AUDUSD 2547 132s
+AUDCAD 2547 138s
+CADJPY 2547 138s
+EURAUD 2547 147s
+DE30 2494 154s
+AUDJPY 2547 157s
+CHFJPY 2547 164s
+AUDNZD 2547 152s
+CADCHF 2547 186s
+EURCAD 2547 176s
+DOW 2536 175s
+AUDCHF 2547 203s
+EURCHF 2547 196s
+EURJPY 2546 205s
+EURUSD 2547 220s
+GBPJPY 2547 237s
+GBPCAD 2547 244s
+GBPUSD 2547 265s
+EURGBP 2547 165s
+EURNZD 2547 204s
+GBPCHF 2547 210s
+GBPAUD 2547 240s
+GOLD 2535 180s
+GBPNZD 2547 218s
+NQ 2535 169s
+NZDJPY 2547 188s
+SPX500 2528 149s
+USDCHF 2547 159s
+US2000 2534 174s
+NZDCAD 2547 167s
+UK100 2474 134s
+NZDUSD 2547 161s
+USDJPY 2547 145s
+USDCAD 2547 146s
+rows 86404
+{
+ "rows_disc": 54408,
+ "rows_new_le_2022": 54408,
+ "only_disc": 0,
+ "only_new": 0,
+ "fields": {
+  "rv5": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "F1": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "F2": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "F3": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "F4": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "F5": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "har1": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "garch_vt": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "rq": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  },
+  "hl": {
+   "max_rel_diff": 0.0,
+   "nan_mismatch": 0
+  }
+ },
+ "pass": true
+}
