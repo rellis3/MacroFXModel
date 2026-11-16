@@ -74,45 +74,39 @@ const hooksReady = () => new Promise(res => {
   go();
 });
 
+/** The keys of the status object (and of what start() returns), in the order the features start. */
+export const FEEL_KEYS = ['chart', 'insight', 'alerts', 'workspace', 'linked', 'monitor', 'newsSearches', 'calendarDrills', 'replayViz', 'exporter', 'cmdline'];
+
 export async function start() {
-  const wantLinked = on('widget.linked'), wantCmd = on('widget.cmdline'), wantWs = on('tab.workspace'), wantAl = on('widget.alerts'), wantKc = on('tab.kchart'), wantMon = on('tab.monitor'), wantIn = on('tab.insight'), wantNs = on('panel.news.saved'), wantEx = on('widget.export'), wantCd = on('panel.cal.drills'), wantRp = on('widget.replayviz');
-  if (!wantLinked && !wantCmd && !wantWs && !wantAl && !wantKc && !wantMon && !wantIn && !wantNs && !wantEx && !wantCd && !wantRp) return { replayViz: false, linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false };
-  if (wantLinked || wantCmd) addCss();
-  let linked = false, cmdline = false, workspace = false, alerts = false, chart = false, monitor = false, insight = false, newsSearches = false, exporter = false, calendarDrills = false, replayViz = false;
-  try {
-    if (wantKc) { addKcCss(); const m = await import('./kchartView.js'); chart = !!m.mountKChart(); }
-  } catch (e) { console.warn('chart', e); }
-  try {
-    if (wantIn) { addInCss(); const m = await import('./insightView.js'); insight = !!m.mountInsight(); }
-  } catch (e) { console.warn('insight', e); }
-  try {
-    if (wantAl) { addAlCss(); const m = await import('./alertsView.js'); alerts = !!m.mountAlerts(); }
-  } catch (e) { console.warn('alerts', e); }
-  try {
-    if (wantWs) { addWsCss(); const m = await import('./workspaceView.js'); workspace = !!m.mountWorkspace(); }
-  } catch (e) { console.warn('workspace', e); }
-  try {
-    if (wantLinked) { await hooksReady(); const m = await import('./linkedSelection.js'); linked = !!m.mountLinked(); }
-  } catch (e) { console.warn('linked selection', e); }
-  try {
-    if (wantMon) { addMonCss(); const m = await import('./monitorView.js'); monitor = !!m.mountMonitor(); }   // after linked selection, so a picked row can be shared
-  } catch (e) { console.warn('monitor', e); }
-  try {
-    if (wantNs) { addNsCss(); const m = await import('./newsSearchView.js'); newsSearches = !!m.installNewsSearches(); }
-  } catch (e) { console.warn('news searches', e); }
-  try {
-    if (wantCd) { addCdCss(); const m = await import('./calendarDrillsView.js'); calendarDrills = !!m.mountCalendarDrills(); }
-  } catch (e) { console.warn('calendar drills', e); }
-  try {
-    if (wantRp) { addRpCss(); const m = await import('./replayViz.js'); replayViz = !!m.mountReplayViz(); }
-  } catch (e) { console.warn('replay on a visualisation', e); }
-  try {
-    if (wantEx) { addExCss(); const m = await import('./exportView.js'); exporter = !!m.mountExport(); }   // after the boards it decorates are mounted
-  } catch (e) { console.warn('export', e); }
-  try {
-    if (wantCmd) { const m = await import('./commandLine.js'); cmdline = !!m.mountCommandLine(); }
-  } catch (e) { console.warn('command line', e); }
-  return { replayViz, linked, cmdline, workspace, alerts, chart, monitor, insight, newsSearches, exporter, calendarDrills };
+  // globalThis.__deskFeel is what each feature did on THIS page (js/terminal/featureStatus.js words it; the Info map tab's Preview features panel and
+  // the command line read it), so a missing button can be explained without a console: { requested, loaded, error } per feature.
+  const feel = globalThis.__deskFeel = { startedAt: Date.now(), done: false, features: {} };
+  const rec = async (key, wanted, fn) => {
+    const r = feel.features[key] = { requested: !!wanted, loaded: false, error: null };
+    if (!wanted) return false;
+    try { const res = await fn(); r.loaded = res === true || (!!res && res !== 'later'); if (res === 'later') r.waiting = true; } catch (e) { r.error = e?.message ?? String(e); console.warn(key, e); }   // 'later' = installed, attaches when its tab is built
+    return r.loaded;
+  };
+  const finish = () => {
+    feel.done = true; feel.finishedAt = Date.now();
+    try { globalThis.dispatchEvent?.(new Event('deskfeel')); } catch { /* no events here */ }
+    return Object.fromEntries(FEEL_KEYS.map(k => [k, !!feel.features[k]?.loaded]));
+  };
+  const want = { linked: on('widget.linked'), cmdline: on('widget.cmdline'), workspace: on('tab.workspace'), alerts: on('widget.alerts'), chart: on('tab.kchart'), monitor: on('tab.monitor'), insight: on('tab.insight'), newsSearches: on('panel.news.saved'), exporter: on('widget.export'), calendarDrills: on('panel.cal.drills'), replayViz: on('widget.replayviz') };
+  if (!Object.values(want).some(Boolean)) { for (const k of FEEL_KEYS) feel.features[k] = { requested: false, loaded: false, error: null }; return finish(); }
+  if (want.linked || want.cmdline) addCss();
+  await rec('chart', want.chart, async () => { addKcCss(); const m = await import('./kchartView.js'); return m.mountKChart(); });
+  await rec('insight', want.insight, async () => { addInCss(); const m = await import('./insightView.js'); return m.mountInsight(); });
+  await rec('alerts', want.alerts, async () => { addAlCss(); const m = await import('./alertsView.js'); return m.mountAlerts(); });
+  await rec('workspace', want.workspace, async () => { addWsCss(); const m = await import('./workspaceView.js'); return m.mountWorkspace(); });
+  await rec('linked', want.linked, async () => { await hooksReady(); const m = await import('./linkedSelection.js'); return m.mountLinked(); });
+  await rec('monitor', want.monitor, async () => { addMonCss(); const m = await import('./monitorView.js'); return m.mountMonitor(); });   // after linked selection, so a picked row can be shared
+  await rec('newsSearches', want.newsSearches, async () => { addNsCss(); const m = await import('./newsSearchView.js'); return m.installNewsSearches() || (document.getElementById('nt-saved') ? false : 'later'); });   // the News tab is built on first visit: the install hook mounts the bar then
+  await rec('calendarDrills', want.calendarDrills, async () => { addCdCss(); const m = await import('./calendarDrillsView.js'); return m.mountCalendarDrills(); });
+  await rec('replayViz', want.replayViz, async () => { addRpCss(); const m = await import('./replayViz.js'); return m.mountReplayViz(); });
+  await rec('exporter', want.exporter, async () => { addExCss(); const m = await import('./exportView.js'); return m.mountExport(); });   // after the boards it decorates are mounted
+  await rec('cmdline', want.cmdline, async () => { const m = await import('./commandLine.js'); return m.mountCommandLine(); });
+  return finish();
 }
 
 if (typeof document !== 'undefined' && !globalThis.__terminalFeelNoAutoStart) {

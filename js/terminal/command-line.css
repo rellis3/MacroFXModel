@@ -54,6 +54,8 @@
 .cmdbar:focus-visible { outline: 2px solid var(--pur2); outline-offset: 1px; }
 @media (max-width: 700px) { .cmdbar { width: 110px; } }
 
+.cmdk-toast { position: fixed; left: 16px; bottom: 16px; z-index: 70; max-width: min(92vw, 460px); padding: 9px 13px; border-radius: 10px; background: var(--bg3); border: 1px solid var(--line2); color: var(--tx); font-size: 12.5px; line-height: 1.45; box-shadow: 0 8px 24px var(--scrim); }
+.cmdk-toast[hidden] { display: none; }
 
 /* the ? beside the linked chip and its help popover */
 .lk-help { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 1px solid var(--line2); background: var(--bg2); color: var(--tx2); font: 700 12px var(--mono); cursor: pointer; }

@@ -89,7 +89,9 @@ export function mountExport({ doc = document, win = window, scopes = SCOPES, now
         const t = tablesIn(card)[0], c = chartsIn(card)[0]; if (!t && !c) continue;
         const bar = doc.createElement('span'); bar.className = 'ex-bar'; bar.setAttribute('data-noexport', ''); bar.setAttribute('data-surface', 'widget.export');
         bar.innerHTML = `<span class="ex-in" data-surface="widget.export"><span class="ex-l">Export</span>${t ? '<button type="button" class="ex-b" data-ex="csv" title="Save this table as a CSV file (made in this browser)">CSV</button>' : ''}${c ? '<button type="button" class="ex-b" data-ex="png" title="Save this chart as a PNG image (made in this browser)">PNG</button>' : ''}</span>`;
-        const head = card.querySelector('.ch') ?? card.querySelector('.tt-head') ?? card; head.appendChild(bar);
+        const head = card.querySelector('.ch') ?? card.querySelector('.tt-head');
+        if (head) head.appendChild(bar);
+        else { bar.classList.add('ex-top'); card.insertBefore(bar, card.firstChild); }   // a card with no heading row: the bar goes on TOP (it used to sit under a long table, where nobody looked)
       }
     }
   }

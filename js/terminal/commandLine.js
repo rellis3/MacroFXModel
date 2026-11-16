@@ -7,6 +7,7 @@
 // login with the switch off gets no button, no key handler and no code. The owner always has it.
 import { buildCommands, search, plainAction, grouped } from './commandCore.js';
 import { hashFor } from './macroSubtabs.js';
+import { whyNot } from './featureStatus.js';
 
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const RECENT_KEY = 'deskCmdRecent';
@@ -107,7 +108,16 @@ export function mountCommandLine({ doc = document, win = window, isOn = id => wi
     if (a.kind === 'help') { mode = 'list'; input.value = '?'; render(); return; }
     saveRecent(line || item.cmd.name);
     close();
-    perform(a, doc, win);
+    // a command that does nothing says why in words (a feature that failed to start, a board not drawn yet, a tab this login cannot open)
+    if (perform(a, doc, win) === false) toast(whyNot(a.kind, win));
+  }
+  let toastT = null;
+  function toast(text) {
+    let t = doc.getElementById('cmdk-toast');
+    if (!t) { t = doc.createElement('div'); t.id = 'cmdk-toast'; t.className = 'cmdk-toast'; t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); doc.body.appendChild(t); }
+    t.textContent = text; t.hidden = false;
+    if (toastT && win.clearTimeout) win.clearTimeout(toastT);
+    toastT = win.setTimeout ? win.setTimeout(() => { t.hidden = true; }, 9000) : null;
   }
 
   input.addEventListener('input', () => { const v = input.value.trim(); mode = v === '?' ? 'list' : 'search'; idx = 0; render(); });
@@ -142,5 +152,5 @@ export function mountCommandLine({ doc = document, win = window, isOn = id => wi
     if (e.key.length === 1) { e.preventDefault(); open(e.key === '`' ? '' : e.key); }
   };
   if (btn) { btn.hidden = false; btn.addEventListener('click', onBtn); btn.addEventListener('keydown', onBarKey); }
-  return { open, close, destroy() { doc.removeEventListener('keydown', onKey); btn?.removeEventListener('click', onBtn); btn?.removeEventListener('keydown', onBarKey); if (btn) btn.hidden = true; back.remove(); } };
+  return { open, close, destroy() { doc.removeEventListener('keydown', onKey); btn?.removeEventListener('click', onBtn); btn?.removeEventListener('keydown', onBarKey); if (btn) btn.hidden = true; back.remove(); doc.getElementById('cmdk-toast')?.remove(); } };
 }

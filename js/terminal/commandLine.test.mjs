@@ -143,3 +143,13 @@ test('top-bar box: typing a letter into it opens the palette with that letter se
   doc.fire('keydown', input, { key: 'Escape' });
   press(doc, 'Tab', bar); assert.equal(back.hidden, true);
 });
+
+test('a command that does nothing says why (a toast), instead of staying silent: EXPORT and PLAY with nothing mounted', () => {
+  const { doc, win, input } = setup();
+  win.__deskFeel = { done: true, features: { exporter: { requested: true, loaded: false, error: 'import failed' }, replayViz: { requested: true, loaded: true } } };
+  press(doc, '/'); type(doc, input, 'export'); press(doc, 'Enter', input);
+  const t = doc.getElementById('cmdk-toast');
+  assert.ok(t && !t.hidden, 'a toast is shown'); assert.match(t.textContent, /did not start: import failed/);
+  press(doc, '/'); type(doc, input, 'play curve'); press(doc, 'Enter', input);
+  assert.match(doc.getElementById('cmdk-toast').textContent, /board has not drawn|Open the tab/i);
+});

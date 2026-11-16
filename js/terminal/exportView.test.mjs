@@ -42,3 +42,12 @@ test('saveBlob reports a blocked download instead of throwing', () => {
   assert.equal(saveBlob({}, 'x.csv', doc, win), false);
 });
 test('no scope on the page = nothing mounted', () => { assert.equal(mountExport({ doc: makePage(), win: makeWin(makePage()), scopes: ['zzz'] }), null); });
+
+test('a card with no heading row gets its Export bar on TOP (it used to sit under a long table where nobody looked)', () => {
+  const doc = makePage(), win = makeWin(doc);
+  doc.querySelector('main').innerHTML += `<section id="monitor"><div class="card" id="nohead"><table><thead><tr><th>Market</th><th>Last</th></tr></thead><tbody><tr><td>EURUSD</td><td>1.1</td></tr></tbody></table></div></section>`;
+  const m = mountExport({ doc, win, now: () => T0 });
+  const card = doc.getElementById('nohead'), bar = card.querySelector('.ex-bar');
+  assert.ok(bar, 'a bar was added'); assert.equal(card.firstChild, bar, 'it is the first thing in the card'); assert.match(bar.className, /ex-top/);
+  m?.destroy?.();
+});

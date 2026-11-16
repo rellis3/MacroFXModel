@@ -131,3 +131,17 @@ test('the Info map tab hosts the panel and the admin page knows the preview reas
   const admin = read('desk-admin.html');
   assert.match(admin, /preview: 'up'/); assert.match(admin, /Terminal features \(preview\)/);
 });
+
+test('start() records what each feature did on globalThis.__deskFeel (the Preview features panel and the command line read it): requested, loaded, error', async () => {
+  const { start, FEEL_KEYS } = await import('./terminalFeel.js');
+  const doc = makePage(), win = makeWin(doc);
+  const keep = { document: globalThis.document, window: globalThis.window, on: globalThis.deskSurfaceOn };
+  globalThis.document = doc; globalThis.window = win; globalThis.deskSurfaceOn = () => false;
+  try {
+    const r = await start();
+    assert.ok(Object.values(r).every(v => v === false));
+    const f = globalThis.__deskFeel;
+    assert.equal(f.done, true); assert.ok(typeof f.startedAt === 'number');
+    for (const k of FEEL_KEYS) assert.deepEqual(f.features[k], { requested: false, loaded: false, error: null }, `${k} was not requested`);
+  } finally { globalThis.document = keep.document; globalThis.window = keep.window; globalThis.deskSurfaceOn = keep.on; }
+});
