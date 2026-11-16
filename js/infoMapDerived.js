@@ -6,7 +6,7 @@ export const DERIVED = {
     {
      "file": "labor-market.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -62,7 +62,7 @@ export const DERIVED = {
     {
      "file": "cpi.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -126,7 +126,7 @@ export const DERIVED = {
     {
      "file": "gdp.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -185,7 +185,7 @@ export const DERIVED = {
     {
      "file": "ism.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -232,7 +232,7 @@ export const DERIVED = {
     {
      "file": "ppi.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -279,7 +279,7 @@ export const DERIVED = {
     {
      "file": "retail-sales.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -329,7 +329,7 @@ export const DERIVED = {
     {
      "file": "trade-balance.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -379,7 +379,7 @@ export const DERIVED = {
     {
      "file": "consumer-confidence.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-26",
      "hub": [
       "macro"
      ]
@@ -463,7 +463,7 @@ export const DERIVED = {
     {
      "file": "world-economies.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-11-01",
      "hub": [
       "macro"
      ]
@@ -560,7 +560,7 @@ export const DERIVED = {
     {
      "file": "state.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-11-01",
      "hub": [
       "live"
      ]
@@ -624,7 +624,7 @@ export const DERIVED = {
     {
      "file": "regime.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-09-20",
      "hub": [
       "macro"
      ]
@@ -700,7 +700,7 @@ export const DERIVED = {
     {
      "file": "state.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-11-01",
      "hub": [
       "live"
      ]
@@ -744,7 +744,7 @@ export const DERIVED = {
     {
      "file": "fomc-sentiment.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -813,7 +813,7 @@ export const DERIVED = {
     {
      "file": "ecb-sentiment.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -821,7 +821,7 @@ export const DERIVED = {
     {
      "file": "boe-sentiment.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -829,7 +829,7 @@ export const DERIVED = {
     {
      "file": "boj-sentiment.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -899,7 +899,7 @@ export const DERIVED = {
     {
      "file": "rba-sentiment.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -907,7 +907,7 @@ export const DERIVED = {
     {
      "file": "boc-sentiment.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -915,7 +915,7 @@ export const DERIVED = {
     {
      "file": "snb-sentiment.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -985,7 +985,7 @@ export const DERIVED = {
     {
      "file": "rbnz-sentiment.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-11-07",
      "hub": [
       "macro"
      ]
@@ -1047,7 +1047,7 @@ export const DERIVED = {
     {
      "file": "beige-book.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -1093,7 +1093,7 @@ export const DERIVED = {
     {
      "file": "fed-path.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-29",
      "hub": [
       "macro"
      ]
@@ -1305,7 +1305,7 @@ export const DERIVED = {
     {
      "file": "yield-curve.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -1357,7 +1357,7 @@ export const DERIVED = {
     {
      "file": "rates.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-15",
      "hub": [
       "macro"
      ]
@@ -1474,7 +1474,7 @@ export const DERIVED = {
     {
      "file": "flow-chain.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-24",
      "hub": [
       "macro"
      ]
@@ -1482,7 +1482,7 @@ export const DERIVED = {
     {
      "file": "market-view.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-26",
      "hub": [
       "macro"
      ]
@@ -1540,7 +1540,7 @@ export const DERIVED = {
     {
      "file": "rates.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-15",
      "hub": [
       "macro"
      ]
@@ -1581,7 +1581,7 @@ export const DERIVED = {
     {
      "file": "real-yield.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -1629,7 +1629,7 @@ export const DERIVED = {
     {
      "file": "yield-coupling.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-26",
      "hub": [
       "retired"
      ]
@@ -1684,7 +1684,7 @@ export const DERIVED = {
     {
      "file": "spread-episodes.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-20",
      "hub": [
       "null"
      ]
@@ -1783,7 +1783,7 @@ export const DERIVED = {
     {
      "file": "system-fx-carry-factor.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-07-17",
      "hub": [
       "retired"
      ]
@@ -1909,7 +1909,7 @@ export const DERIVED = {
     {
      "file": "credit-stress.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-26",
      "hub": [
       "null"
      ]
@@ -2016,7 +2016,7 @@ export const DERIVED = {
     {
      "file": "bank-credit.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-21",
      "hub": [
       "macro"
      ]
@@ -2083,7 +2083,7 @@ export const DERIVED = {
     {
      "file": "liquidity-pulse.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-26",
      "hub": [
       "retired"
      ]
@@ -2091,7 +2091,7 @@ export const DERIVED = {
     {
      "file": "global-liquidity.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-26",
      "hub": [
       "retired"
      ]
@@ -2303,7 +2303,7 @@ export const DERIVED = {
     {
      "file": "vol-forecast-v2.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-09-28",
      "hub": [
       "vol"
      ]
@@ -2311,7 +2311,7 @@ export const DERIVED = {
     {
      "file": "vol-forecast-v3.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-27",
      "hub": [
       "live"
      ]
@@ -2319,7 +2319,7 @@ export const DERIVED = {
     {
      "file": "volatility-intelligence.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-09-13",
      "hub": [
       "vol"
      ]
@@ -2327,7 +2327,7 @@ export const DERIVED = {
     {
      "file": "forecast-path.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-11-06",
      "hub": [
       "vol"
      ]
@@ -2335,7 +2335,7 @@ export const DERIVED = {
     {
      "file": "expected-moves.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-08-05",
      "hub": [
       "vol"
      ]
@@ -2343,7 +2343,7 @@ export const DERIVED = {
     {
      "file": "live-range.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-07",
      "hub": [
       "live"
      ]
@@ -2351,7 +2351,7 @@ export const DERIVED = {
     {
      "file": "forecaster.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-07",
      "hub": [
       "live"
      ]
@@ -2359,7 +2359,7 @@ export const DERIVED = {
     {
      "file": "exhaustion-surface.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-03",
      "hub": [
       "vol"
      ]
@@ -2367,7 +2367,7 @@ export const DERIVED = {
     {
      "file": "path-map.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-06",
      "hub": [
       "vol"
      ]
@@ -2495,7 +2495,7 @@ export const DERIVED = {
     {
      "file": "vix-calculus.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-26",
      "hub": [
       "vol"
      ]
@@ -2503,7 +2503,7 @@ export const DERIVED = {
     {
      "file": "surface-lab.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-26",
      "hub": [
       "vol"
      ]
@@ -2587,7 +2587,7 @@ export const DERIVED = {
     {
      "file": "index.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-11-05",
      "hub": []
     }
    ],
@@ -2694,7 +2694,7 @@ export const DERIVED = {
     {
      "file": "market-sense.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-09-18",
      "hub": [
       "research"
      ]
@@ -2744,7 +2744,7 @@ export const DERIVED = {
     {
      "file": "trend-basket.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-07-21",
      "hub": [
       "null"
      ]
@@ -2752,7 +2752,7 @@ export const DERIVED = {
     {
      "file": "econ-trend.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-07-17",
      "hub": [
       "null"
      ]
@@ -2808,7 +2808,7 @@ export const DERIVED = {
     {
      "file": "cot-extremes.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-26",
      "hub": [
       "macro"
      ]
@@ -2943,7 +2943,7 @@ export const DERIVED = {
     {
      "file": "event-response.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -3013,7 +3013,7 @@ export const DERIVED = {
     {
      "file": "market-view.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-26",
      "hub": [
       "macro"
      ]
@@ -3083,7 +3083,7 @@ export const DERIVED = {
     {
      "file": "release-reaction.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "live"
      ]
@@ -3091,7 +3091,7 @@ export const DERIVED = {
     {
      "file": "release-why.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-26",
      "hub": [
       "macro"
      ]
@@ -3157,7 +3157,7 @@ export const DERIVED = {
     {
      "file": "event-response.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -3337,7 +3337,7 @@ export const DERIVED = {
     {
      "file": "fiscal-events.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-28",
      "hub": [
       "macro"
      ]
@@ -3449,7 +3449,7 @@ export const DERIVED = {
     {
      "file": "levels.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-06-25",
      "hub": [
       "vol"
      ]
@@ -3494,7 +3494,7 @@ export const DERIVED = {
     {
      "file": "oi-all-lines.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-30",
      "hub": [
       "vol"
      ]
@@ -3502,7 +3502,7 @@ export const DERIVED = {
     {
      "file": "oi-level-lab.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-29",
      "hub": [
       "vol"
      ]
@@ -3510,7 +3510,7 @@ export const DERIVED = {
     {
      "file": "oi-dashboard.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-20",
      "hub": [
       "vol"
      ]
@@ -3665,7 +3665,7 @@ export const DERIVED = {
     {
      "file": "market-view.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-26",
      "hub": [
       "macro"
      ]
@@ -3742,7 +3742,7 @@ export const DERIVED = {
     {
      "file": "terminal.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-09-24",
      "hub": [
       "macro"
      ]
@@ -4025,7 +4025,7 @@ export const DERIVED = {
     {
      "file": "forecast-coverage.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-07-25",
      "hub": [
       "research"
      ]
@@ -4184,7 +4184,7 @@ export const DERIVED = {
     {
      "file": "chapters.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-26",
      "hub": [
       "macro"
      ]
@@ -4410,6 +4410,11 @@ export const DERIVED = {
      "route": "/api/replay/notable",
      "exists": true,
      "pack": null
+    },
+    {
+     "route": "/api/replay/curve",
+     "exists": true,
+     "pack": null
     }
    ],
    "modules": [
@@ -4436,6 +4441,18 @@ export const DERIVED = {
     {
      "file": "js/terminal/replayView.js",
      "exists": true
+    },
+    {
+     "file": "js/replayVizCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/replayPlayer.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/replayViz.js",
+     "exists": true
     }
    ],
    "names": {
@@ -4446,7 +4463,10 @@ export const DERIVED = {
      "js/terminal/kchartView.js",
      "js/terminal/linkedSelection.js",
      "js/terminal/replayLink.js",
+     "js/terminal/replayPlayer.js",
      "js/terminal/replayView.js",
+     "js/terminal/replayViz.js",
+     "js/terminal/terminalFeel.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [],
@@ -4515,7 +4535,7 @@ export const DERIVED = {
     {
      "file": "daily-read.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-10-03",
      "hub": [
       "vol"
      ]
@@ -4523,7 +4543,7 @@ export const DERIVED = {
     {
      "file": "weekmap.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-09-21",
      "hub": [
       "macro"
      ]
@@ -4631,5 +4651,5 @@ export const DERIVED = {
  "unclassified": [],
  "rootPageCount": 257,
  "packFeeds": 115,
- "generatedAt": "2026-11-15"
+ "generatedAt": "2026-11-16"
 };
