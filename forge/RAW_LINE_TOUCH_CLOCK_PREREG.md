@@ -127,3 +127,16 @@ outcome had been computed.
   sessions (as §3 says).
 
 ## RESULTS
+
+Run 2026-11-16, scored once (`analysis/output/raw-line-touch-clock/RESULTS.md`).
+
+- **H1 `raw-line-touch-clock-range`: NULL.** Primary EXT p75+p90: discovery −0.2% [−2.3, +1.8] (17,043 touches),
+  confirm +1.3% [−1.6, +4.2] (3,043). Gate +5% in both: missed. Every secondary cell is inside ±5%. p50 lines are
+  +2 to +3% and yesterday's low +3 to +4% in both periods; p90 lines are −4 to −5% and yesterday's high −2 to −4%.
+  The mirror (≤ −5% in both) was not met either.
+- **H2 `raw-line-touch-clock-hour`: NULL.** 220 eligible cells. BH passes: kind 4, harsh 22, both 3. Net positive
+  under both models: 0. No candidate, so the confirm check was not triggered. With kind fills, fade and follow are
+  mirror images within ±0.011 U in every block.
+- H2b (descriptive): MFE and MAE are equal in every block. They shrink from 0.62 U (00–01) to 0.05 U (20–21), and the
+  share of unresolved brackets rises from under 1% to 72%.
+

@@ -4,22 +4,22 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-15.
+Generated 2026-11-16.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **336** |
-| validated | 52 |
-| null | 185 |
-| underpowered | 99 |
-| context (base rates, descriptions: not counted as tests) | 56 |
-| pre-registrations with no banked verdict (below) | 94 |
+| claims tested (validated + null + underpowered) | **378** |
+| validated | 54 |
+| null | 198 |
+| underpowered | 126 |
+| context (base rates, descriptions: not counted as tests) | 57 |
+| pre-registrations with no banked verdict (below) | 89 |
 
-**What the count says (Lesson 02 §05).** If none of the 336 claims were real, tests at the usual 5% size would still pass
-about **16.8** of them by luck. 52 passed, so most passes are unlikely to be luck alone, but
-**roughly 17 of the 52 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 378 claims were real, tests at the usual 5% size would still pass
+about **18.9** of them by luck. 54 passed, so most passes are unlikely to be luck alone, but
+**roughly 19 of the 54 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -406,6 +406,12 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-13 | noise-area-momentum-book | price | underpowered | forge/NOISE_AREA_MOMENTUM_PREREG.md |
 | 2026-11-13 | noise-area-momentum-stop | execution | underpowered | forge/NOISE_AREA_MOMENTUM_PREREG.md |
 | 2026-11-13 | relationship-map | macro | underpowered | forge/RELATIONSHIP_MAP_PREREG.md |
+| 2026-11-14 | connectedness-range | volatility | null | forge/CONNECTEDNESS_RANGE_PREREG.md |
+| 2026-11-14 | event-vol-ramp | volatility | underpowered | forge/EVENT_VOL_RAMP_PREREG.md |
+| 2026-11-14 | fomc-range-share | events | context | forge/FOMC_RANGE_SHARE_PREREG.md |
+| 2026-11-14 | gex-range-iv-calm-es | positioning | null | forge/GEX_RANGE_IV_CALM_PREREG.md |
+| 2026-11-14 | gex-range-iv-calm-nq | positioning | underpowered | forge/GEX_RANGE_IV_CALM_PREREG.md |
+| 2026-11-14 | hl-spread-estimator | execution | null | forge/HL_SPREAD_ESTIMATOR_PREREG.md |
 | 2026-11-14 | post-release-drift-pooled | events | underpowered | forge/POST_RELEASE_DRIFT_POOLED_PREREG.md |
 | 2026-11-14 | post-release-momentum-pooled | events | null | forge/POST_RELEASE_DRIFT_POOLED_PREREG.md |
 | 2026-11-15 | bias-learner-fx | price | null | forge/BIAS_LEARNER_PREREG.md |
@@ -433,6 +439,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-15 | mtf-structure-hmm | price | underpowered | forge/MTF_STRUCTURE_PREREG.md |
 | 2026-11-15 | mtf-structure-pullback | price | underpowered | forge/MTF_STRUCTURE_PREREG.md |
 | 2026-11-15 | mtf-structure-swing | price | underpowered | forge/MTF_STRUCTURE_PREREG.md |
+| 2026-11-15 | noise-area-momentum-spy | price | validated | forge/NOISE_AREA_MOMENTUM_SPY_PREREG.md |
+| 2026-11-15 | noise-area-momentum-spy-post | price | underpowered | forge/NOISE_AREA_MOMENTUM_SPY_PREREG.md |
 | 2026-11-15 | positioning-flow-book | positioning | underpowered | forge/POSITIONING_FLOW_INPUTS_PREREG.md |
 | 2026-11-15 | positioning-flow-monthend | positioning | underpowered | forge/POSITIONING_FLOW_INPUTS_PREREG.md |
 | 2026-11-15 | positioning-flow-rr | positioning | underpowered | forge/POSITIONING_FLOW_INPUTS_PREREG.md |
@@ -447,19 +455,13 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-15 | slow-bias-clock-book | price | underpowered | forge/SLOW_BIAS_CLOCK_PREREG.md |
 | 2026-11-15 | slow-bias-clock-dir | price | underpowered | forge/SLOW_BIAS_CLOCK_PREREG.md |
 | 2026-11-15 | slow-bias-clock-r | price | null | forge/SLOW_BIAS_CLOCK_PREREG.md |
-| 2026-11-14 | connectedness-range | volatility | null | forge/CONNECTEDNESS_RANGE_PREREG.md |
-| 2026-11-14 | event-vol-ramp | volatility | underpowered | forge/EVENT_VOL_RAMP_PREREG.md |
-| 2026-11-14 | fomc-range-share | events | context | forge/FOMC_RANGE_SHARE_PREREG.md |
-| 2026-11-14 | gex-range-iv-calm-es | positioning | null | forge/GEX_RANGE_IV_CALM_PREREG.md |
-| 2026-11-14 | gex-range-iv-calm-nq | positioning | underpowered | forge/GEX_RANGE_IV_CALM_PREREG.md |
-| 2026-11-14 | hl-spread-estimator | execution | null | forge/HL_SPREAD_ESTIMATOR_PREREG.md |
-| 2026-11-15 | noise-area-momentum-spy | price | validated | forge/NOISE_AREA_MOMENTUM_SPY_PREREG.md |
-| 2026-11-15 | noise-area-momentum-spy-post | price | underpowered | forge/NOISE_AREA_MOMENTUM_SPY_PREREG.md |
 | 2026-11-15 | vol-layer-rule-a-confirm-k1 | execution | underpowered | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
 | 2026-11-15 | vol-layer-rule-a-confirm-s1 | execution | underpowered | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
 | 2026-11-15 | vol-layer-rule-a-confirm-s2 | execution | underpowered | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
 | 2026-11-15 | vol-layer-rule-a-confirm-s3 | execution | null | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
 | 2026-11-15 | vol-layer-rule-a-confirm-z1 | execution | null | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
+| 2026-11-16 | raw-line-touch-clock-hour | price | null | forge/RAW_LINE_TOUCH_CLOCK_PREREG.md |
+| 2026-11-16 | raw-line-touch-clock-range | volatility | null | forge/RAW_LINE_TOUCH_CLOCK_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -469,7 +471,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/APPROACH_BOOK_EURUSD_PREREG.md`: EURUSD Approach Book — pre-registration (how price arrives at a line)
 - `forge/ASYMMETRIC_TRADES_PREREG.md`: Tight stop, far target at the forecast levels — pre-registration
 - `forge/ATLAS_HONEST_GONOGO_PREREG.md`: atlas-honest-gonogo — With the known leaks removed, real bid/ask fills and the production settings, do the Vot
-- `forge/BIAS_LEARNER_PREREG.md`: bias-learner — Can a walk-forward, heavily regularised learner over ~13 point-in-time morning readings, pooled
 - `forge/BIAS_SCOREBOARD_PREREG.md`: bias-scoreboard — whose morning bias beats the shared public base on the same rows?
 - `forge/BREAK_IVRV_PREREG.md`: Break trades when implied vol is rich — pre-registration
 - `forge/CB_TONE_REACTION_PREREG.md`: cb-tone-reaction — does the ECB / BoE / BoJ statement's hawkish shift line up with the first-30-minute move in
@@ -494,7 +495,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/CONFIRMED_BREAK_INDICES_PREREG.md`: Confirmed break on the Close median — pre-registered confirmation on unseen indices
 - `forge/CONFLUENCE_LEVELS_PREREG.md`: Confluence levels at the Vol Forecast lines — pre-registration
 - `forge/CROSSPAIR_RANGE_BOOK_PREREG.md`: Cross-pair Range Book — pre-registration
-- `forge/DAY_TYPE_EXPANSION_PREREG.md`: day-type-expansion — Can a pre-open score built only from validated range inputs call expansion days vs range 
 - `forge/DE2Y_NQ_15M_LEAD_PREREG.md`: DE2Y-NQ-15M-LEAD: does a German 2-year yield move lead Nasdaq by one 15-minute bar? (one confirmation test)
 - `forge/DECISION_LAB_FILTERS_PREREG.md`: Decision Lab: filters on rule A (DRAFT, not registered; needs the owner's approval before any test runs)
 - `forge/DESK_ANALYST_PIPELINE_PREREG.md`: desk-analyst-pipeline — Does the desk's morning book call the day's direction better than chance, a single pro
@@ -505,7 +505,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/EURUSD_MODEL_PREREG.md`: EURUSD model step — pre-registration
 - `forge/EXHAUSTION_PLAYBOOK_EURUSD_PREREG.md`: The exhaustion playbook on EURUSD — pre-registration
 - `forge/EXITS_PREREG.md`: Study 1 — Exits driven by the range book (pre-registration)
-- `forge/EXIT_ON_FIXED_ENTRIES_PREREG.md`: exit-on-fixed-entries — on the same entries, which exit earns more R than it earns on random entries?
 - `forge/FED_PATH_LEAD_PREREG.md`: FED-PATH-LEAD: does the Fed-path slope lead EURUSD / AUD / silver / DAX? (one confirmation test)
 - `forge/FLOW_COLUMNS_PREREG.md`: Flow and positioning columns at the vol lines — pre-registration
 - `forge/FUTURES_COST_RESCORE_PREREG.md`: Futures-cost re-score of the line-touch fade (registered 2026-10-11, before the re-score is computed)
@@ -513,7 +512,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/HARNESS_REGISTRY_PREREG.md`: Unified study harness, and deflating the registry it will re-score
 - `forge/HEDGING_PLAN_OI_PREREG.md`: HEDGING PLAN, OI-LEVEL VERSION: do orders on the OI map's own levels do better than orders on the forecast lin
 - `forge/HEDGING_STATE_FORWARD_PREREG.md`: hedging-state-forward — On the full Cboe book, does the dealer-hedging state at the open tell us how the day b
-- `forge/HOLD_DAY_ONE_CONFIRM_PREREG.md`: hold-day-one-confirm — When a day closes ≥ 1σ one way, does the way it closed (at its extreme, fast, through t
 - `forge/IEP_TIME_PREREG.md`: IEP-TIME: time of day, trading session and day of week in band attainment, first touch and consolidation
 - `forge/INTRADAY_EXTREME_PATHS_PREREG.md`: INTRADAY-EXTREME-PATHS: after a dynamic intraday extreme, what is the probability of continuation, meaningful 
 - `forge/IVRV_COT_PREREG.md`: IV ÷ RV in the book, the rich-IV break rule on the indices, and COT positioning at the lines — pre-registratio
@@ -527,7 +525,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/MACRO_TREND_WEEKDAY_PREREG.md`: Macro state, H1/H4 trend state and weekday at the vol lines — pre-registration
 - `forge/NEWS_TOUCH_PREREG.md`: News at the vol lines — pre-registration
 - `forge/OI_WALL_BUILDING_FORWARD_PREREG.md`: oi-wall-building-forward — does a wall where open interest is being built bounce price more than a flat wall, 
-- `forge/POST_RELEASE_DRIFT_POOLED_PREREG.md`: post-release-drift-pooled — After a tier-1 US release, does price keep moving in the surprise direction after 
 - `forge/RANGE_BOOK_EURUSD_PREREG.md`: EURUSD Range Book — pre-registration
 - `forge/REACTION_TRADES_PREREG.md`: Trading the reaction after the touch — pre-registration
 - `forge/REMAINING_TRAVEL_PREREG.md`: Layer 5 — REMAINING TRAVEL: from here, with the time left, how far can price still go?
