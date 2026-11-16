@@ -66,6 +66,14 @@ export const FEATURES = {
       'Monitor > a "Density" button in the toolbar (or DENSE on the command line) tightens the rows of the Monitor and of every table in a card.',
     ],
   },
+  smile: {
+    surface: 'widget.smile', name: 'IV smile replay',
+    where: [
+      'Options tab > the OI terrain card: an "IV smile replay" button in the card heading, beside the market name and the other OI buttons.',
+      'Or type SMILE SPX, SMILE NDX INTRADAY or SMILE GLD in the command line.',
+      'Day by day it goes back to 16 Oct 2026 (end-of-day chains); within a day, 15-minute steps for SPX, NDX, SPY and QQQ from 1 Nov 2026. The window says how many chains it holds.',
+    ],
+  },
   oiTime: {
     surface: 'widget.oitime', name: 'OI over time',
     where: [

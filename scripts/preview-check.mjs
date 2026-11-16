@@ -18,6 +18,14 @@ const server = http.createServer(async (req, res) => {
   try {
     if (u.pathname === '/api/desk-session') { res.setHeader('content-type', 'application/json'); return res.end(JSON.stringify(owner)); }
     if (u.pathname === '/api/desk-access') { res.setHeader('content-type', 'application/json'); return res.end(JSON.stringify({ ok: true, role: 'owner', schema: 2, visible: [], saved: {} })); }
+    if (u.pathname === '/api/replay/smile' && process.env.LOCAL_SMILE) {
+      const S = await import(new URL('../js/smileCore.js', import.meta.url).href), q = u.searchParams, sym = (q.get('sym') || '').toUpperCase(), date = q.get('date'), mode = q.get('mode');
+      const j = async p => (await fetch(LIVE + p, { headers: { accept: 'application/json' } })).json(); res.setHeader('content-type', 'application/json');
+      if (!date) { const raw = await j('/api/cboe-raw'), it = await j('/api/cboe-intraday'); return res.end(JSON.stringify({ ok: true, sym, days: raw.days?.[sym] ?? [], intraday: Object.entries(it.snapshotsPerDay?.[sym] ?? {}).filter(([, n]) => n >= 3).map(([d]) => d).sort() })); }
+      if (mode === 'intraday') { const k = await j(`/api/cboe-intraday?sym=${sym}&date=${date}&rows=1`); return res.end(JSON.stringify({ ok: true, sym, date, mode, frames: (k.rows ?? []).map(x => { const r = S.reduceChain(x.rows, k.fields, x.spot, date); return { t: x.t, spot: r.spot, curves: r.curves }; }) })); }
+      const raw = await j(`/api/cboe-raw?sym=${sym}&date=${date}`); if (!raw.rows) { res.statusCode = 404; return res.end(JSON.stringify({ ok: false, error: 'none' })); }
+      const r = S.reduceChain(raw.rows, raw.fields, S.rawSpot(raw), date); return res.end(JSON.stringify({ ok: true, sym, date, mode: 'eod', frames: [{ t: raw.cboeTimestamp, spot: r.spot, curves: r.curves }] }));
+    }
     if (u.pathname.startsWith('/api/')) { const r = await fetch(LIVE + req.url, { headers: { accept: 'application/json' } }); res.statusCode = r.status; res.setHeader('content-type', r.headers.get('content-type') ?? 'application/json'); return res.end(Buffer.from(await r.arrayBuffer())); }
     const f = path.join(ROOT, decodeURIComponent(u.pathname === '/' ? '/desk-terminal.html' : u.pathname));
     if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.statusCode = 404; return res.end('nf'); }
@@ -43,6 +51,19 @@ const MEASURE = sel => {
 };
 
 const CASES = {
+  async smile(page, shot) {
+    await page.locator('button[data-t="options"]').first().click(); await page.waitForSelector('[data-smv-open]', { timeout: 45000 }).catch(() => {});
+    const btn = page.locator('[data-smv-open]').first(); if (!(await btn.count())) return { ok: false, why: 'no IV smile replay button on the OI terrain card' };
+    await btn.click(); await page.waitForSelector('#rpv-stage .smv-svg', { timeout: 120000 }).catch(() => {}); await page.waitForTimeout(800);
+    const out = { ok: true, dialog: '#rpv-back' };
+    out.svgs = await page.locator('#rpv-stage .smv-svg').count(); if (!out.svgs) return { ok: false, why: 'the smile did not draw: ' + (await page.locator('#rpv-stage').textContent().catch(() => '')).slice(0, 200) };
+    await shot('smile-first');
+    await page.locator('#rpv-scrub').evaluate(el => { el.value = String(Math.max(1, Math.floor(+el.max / 2))); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }).catch(() => {});
+    await page.waitForTimeout(500); await shot('smile-mid');
+    out.cap = await page.locator('#rpv-cap').textContent().catch(() => ''); out.cov = await page.locator('#rpv-cov').textContent().catch(() => '');
+    await page.locator('.rpv-picks[aria-label="Symbol"] button').nth(0).click().catch(() => {}); await page.waitForTimeout(1500);
+    return out;
+  },
   async bis(page, shot) {
     await page.locator('button[data-t="insight"]').first().click(); await page.waitForTimeout(1500);
     await page.locator('.in-tab[data-p="bis"]').first().click().catch(() => {}); await page.waitForSelector('.bis-card .bis-row', { timeout: 30000 }).catch(() => {});

@@ -30,6 +30,7 @@ import { PATH_MARKETS } from '../pathReplayCore.js';
 import { VIEWS as OIT_VIEWS, viewByWord as oitView } from './oiTime.js';
 import { familyFromWord as evFamily, marketFromWord as evMarket } from '../eventReplayCore.js';
 import { targetFromWord as oidTarget } from '../oiDrillCore.js';
+import { symFromWord as smileSym, INTRA_SYMS as SMILE_INTRA } from '../smileCore.js';
 import { ANA_GROUPS, densityFromWord } from './flowCore.js';
 
 // ── markets (a copy of the page's UNIVERSE and NAME; commandCore.test.mjs fails if desk-terminal.html drifts from it) ──
@@ -286,6 +287,9 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   add({ id: 'oidrill', group: 'Look and feel', name: 'OIDRILL', aliases: ['DRILLOI', 'LEVELDRILL'], args: '[callwall|putwall|maxpain|gammaflip] [market]',
     help: 'OI drill: follow one level of a market back through the stored option-OI captures (the biggest call strike, the biggest put strike, max pain or the gamma flip): how many captures it has held, its open interest and rank, how far price was from it each day in average daily ranges, and whether price traded through it, with buttons into the level walk and Path replays. It goes back only as far as the OI capture. It shows where a level was; the Evidence Book found walls no better than a mirrored placebo, so it never says price will go to a level.',
     example: 'oidrill callwall nq', opens: 'A window over the page: one option-OI level of a market, capture by capture', surface: 'widget.oidrill', run: args => oidrillRun(args) });
+  add({ id: 'smile', group: 'Look and feel', name: 'SMILE', aliases: ['IVSMILE', 'SMILEREPLAY'], args: '[symbol] [intraday]',
+    help: 'IV smile replay: the implied-vol smile of a symbol (SPX, NDX, SPY, QQQ, RUT, IWM, DJX, DIA, GLD, SLV, USO, TLT or HYG) for its nearest expiries from the Cboe option chains the server keeps, out-of-the-money options only (puts below spot, calls above), played with the shared player day by day from 16 Oct 2026, or within a day in 15-minute steps for SPX, NDX, SPY and QQQ from 1 Nov 2026. The at-the-money vol, a 5 percent skew and the same expiry one step earlier are shown. It describes the quoted smile and how it changed, not where price goes.',
+    example: 'smile spx', opens: 'A replay window over the page: the implied-vol smile of an option chain through time', surface: 'widget.smile', run: args => smileRun(args) });
   add({ id: 'oitime', group: 'Look and feel', name: 'OITIME', aliases: ['OIREPLAY'], args: `<${OIT_VIEWS.map(v => v.id).join('|')}> <market> [date]`,
     help: `Replay the stored option open interest through time with the shared player: ${OIT_VIEWS.map(v => `${v.id} is ${v.what}`).join('; ')}. It goes back only as far as the option-OI capture, and says from which date. It shows where price was against the levels, not where it will go.`,
     example: 'oitime terrain nq', opens: 'A replay window over the page: the stored option-OI day by day against price', surface: 'widget.oitime', run: args => oitimeRun(args, now) });
@@ -399,6 +403,12 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     for (const w of toks) { const t = oidTarget(w); if (t) target = t; else { const k = resolveInstrument(w); if (!k) return { error: `"${w}" is not a level or a market I know. Try OIDRILL CALLWALL NQ, OIDRILL MAXPAIN GOLD or OIDRILL GAMMAFLIP EURUSD.` }; inst = k; } }
     if (!GHOST_MARKETS.includes(inst)) return { error: `The OI drill covers ${GHOST_MARKETS.join(', ')}: the markets with an option-OI capture. ${inst} is not one of them.` };
     return { action: { kind: 'oidrill', inst, target }, summary: `Opens the OI drill on the ${target} of ${instLabel(inst)}.` };
+  }
+  function smileRun(args) {
+    const toks = String(args ?? '').trim().split(/\s+/).filter(Boolean); let sym = 'SPX', mode = 'eod';
+    for (const w of toks) { if (/^(intraday|day|today|15m|within)$/i.test(w)) { mode = 'intraday'; continue; } const k = smileSym(w); if (!k) return { error: `"${w}" is not a symbol I have a chain for. Try SMILE SPX, SMILE NDX INTRADAY or SMILE GLD.` }; sym = k; }
+    if (mode === 'intraday' && !SMILE_INTRA.includes(sym)) return { error: `15-minute chains are only kept for ${SMILE_INTRA.join(', ')}. ${sym} has end-of-day chains only: try SMILE ${sym}.` };
+    return { action: { kind: 'smile', sym, mode }, summary: `Replays the ${sym} implied-vol smile ${mode === 'intraday' ? 'in 15-minute steps' : 'day by day'}.` };
   }
   function oitimeRun(args, nowFn) {
     const toks = String(args ?? '').trim().split(/\s+/).filter(Boolean), v = oitView(toks[0]);

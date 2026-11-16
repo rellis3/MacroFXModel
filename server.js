@@ -127,6 +127,7 @@ import { mountDeskBoards } from './js/deskBoardRoutes.js';              // the D
 import { mountReplay as _mountReplay } from './js/replayRoutes.js';                  // the Desk Terminal REPLAY (time machine, stage 1): a session as minutes, the option levels as known then, strength every 15 min (/api/replay/*)
 import { mountGhostWalk as _mountGhostWalk } from './js/ghostWalkRoutes.js';       // the ghost walk (preview): one market's days in units of the forecast median range, the OI levels in force, touches against a mirrored placebo (/api/replay/ghosts)
 import { mountOiTime as _mountOiTime } from './js/oiTimeRoutes.js';                 // OI over time (preview): the stored option-OI captures day by day with the daily candles (/api/replay/oi-days)
+import { mountSmile as _mountSmile } from './js/smileRoutes.js';                       // IV smile replay (preview): the stored Cboe option chains reduced to implied-vol smiles by expiry; read-only, no model call
 import { mountPathReplay as _mountPathReplay } from './js/pathReplayRoutes.js';       // The Path replay (preview): the nightly per-expiry walk records with 15-minute bars (/api/replay/path-days)
 import { createStateRoutes } from './js/stateRoutes.js';                // Market State Engine: GET /api/state (plans/MARKET_STATE_ENGINE_PLAN.md)
 import { createSurfaceLab } from './js/surfaceLabRoutes.js';
@@ -36591,6 +36592,11 @@ _mountGhostWalk(app, {
 _mountOiTime(app, {
   fetchRange: (sym, gran, fromISO, toISO) => { if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not configured'); return fetchOandaCandleRange(_liqGateOandaSym(sym), gran, fromISO, toISO); },
   kvGet: key => kv.get(key),
+});
+// IV smile replay (js/smileRoutes.js): read-only, the R2 option chains already kept (cboe_raw/ end of day, cboe_intraday/ every 15 minutes) reduced to the smile of the nearest expiries; nothing is written, no model call.
+_mountSmile(app, {
+  r2Ok: () => _r2Ok(), r2List: prefix => _r2ListKeys(prefix), r2Get: key => _r2GetJSON(key),
+  rawPrefix: _CBOE_RAW_R2, rawRe: _CBOE_RAW_KEY_RE, intraPrefix: _CBOE_INTRA_R2, intraRe: _CBOE_INTRA_KEY_RE,
 });
 // The Path replay (js/pathReplayRoutes.js): read-only, the R2 swing_walk records (one per capture session) + 15-minute bars; nothing is written, no model call.
 _mountPathReplay(app, {
