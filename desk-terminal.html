@@ -200,12 +200,41 @@ html[data-role="owner"] .disclaimer{display:none}
 .sfc{display:contents}   /* a surface wrapper: invisible to layout; access.js hides the switched-off ones (js/terminal/tabRegistry.js) */
 .nolink{color:var(--tx3);cursor:default}
 [data-empty]{display:none!important}   /* access.js sweepEmpty: a card whose values are all blank for this session (its data is withheld) */
+/* the bias engine on the cards (js/terminal/biasEngineView.js): theme tokens only */
+.be-key{margin:8px 0 2px}
+.be-key ul{margin:4px 0 0;padding:0;list-style:none}
+.be-key li{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr) auto;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.be-key li b{font-weight:600;color:var(--tx);white-space:nowrap}
+.be-key li .muted{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px}
+.be-foot{font-size:11px;margin:6px 0 0}
+.be-why{font-size:13px;color:var(--tx2);margin:6px 0 10px}
+.be-table td,.be-table th{padding:5px 6px;vertical-align:top}
+.be-table tfoot td{border-top:1px solid var(--line2)}
+.be-miss{margin:6px 0;font-size:12px}
+.be-miss ul{margin:4px 0;padding-left:18px}
+.be-flip{border-left:3px solid var(--line2);background:var(--bg3);border-radius:0 8px 8px 0;padding:8px 12px;margin:10px 0}
+.be-flip p{margin:4px 0 0;font-size:13px}
+.be-ring{display:inline-flex;flex-direction:column;align-items:center;gap:0;margin-left:4px}
+.be-ring small{font:600 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)}
+.be-rank .sbox{position:relative}
+.be-rank .be-rk{position:absolute;top:6px;right:8px;font-size:10px}
+.be-legs{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
+.be-leg{background:var(--bg3);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.be-grid td{min-width:58px}
+.be-grid th{white-space:nowrap}
+.be-w .be-wr{display:grid;grid-template-columns:92px 1fr 40px;gap:8px;align-items:center;margin:4px 0;font-size:12px}
+.be-gaps{margin:0;padding-left:18px;font-size:12.5px}
+.be-gaps li{margin:3px 0}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <link rel="stylesheet" href="js/terminal/terminal-tabs.css">
+<link rel="stylesheet" href="js/terminal/macro-strip.css">
 <link rel="stylesheet" href="js/terminal/book-panels.css">
+<link rel="stylesheet" href="js/terminal/tone-timeline.css">
+<link rel="stylesheet" href="js/terminal/vol-clock.css">
+<link rel="stylesheet" href="js/terminal/favourites.css">
 <link rel="stylesheet" href="js/terminal/themes.css">
 <link rel="stylesheet" href="js/terminal/theme-picker.css">
 </head>
@@ -214,7 +243,7 @@ html[data-role="owner"] .disclaimer{display:none}
   <div class="topin">
     <div class="brand"><i></i>DESK <span>TERMINAL</span></div>
     <div class="clocks" id="clocks" data-surface="widget.clocks"></div>
-    <div class="tright"><span id="mktchip" class="chip mkt-chip" data-surface="widget.mktchip" hidden></span><span id="bookchip" class="chip" data-surface="widget.bookchip">book…</span><span id="dqchip" class="chip" data-surface="widget.dqchip">data…</span><button id="themebtn" class="btn" data-surface="widget.themepicker" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="themepop" title="Change the colour theme"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7" r="1"/></svg><span id="themename">Deep navy</span></button><button id="signout" class="btn" data-surface="widget.signout" type="button" style="display:none">Sign out</button><a class="btn" data-surface="nav.access" href="desk-admin.html" title="Which tabs, links and panels the desk login sees">Access</a><a class="btn" data-surface="nav.research" href="research.html">Research</a><a class="btn" data-surface="nav.deskoffice" href="desk-office.html">Desk Office</a><a class="btn" data-surface="nav.deskrun" href="desk-run.html">Desk Run</a><div id="themepop" class="tpop" role="menu" aria-label="Colour theme" hidden></div></div>
+    <div class="tright"><input type="text" id="cmdbtn" class="cmdbar" data-surface="widget.cmdline" placeholder="Command  /" aria-label="Command line: type a market, a board or a command. Press / anywhere." title="Command line: type a market, a board or a command. Press / anywhere." autocomplete="off" spellcheck="false" hidden><button type="button" id="alertsbtn" class="btn" data-surface="widget.alerts" title="Alerts: set a note for the desk when a number does something" hidden>Alerts</button><button type="button" id="linkchip" class="chip" data-surface="widget.linked" hidden></button><span id="mktchip" class="chip mkt-chip" data-surface="widget.mktchip" hidden></span><span id="bookchip" class="chip" data-surface="widget.bookchip">book…</span><span id="dqchip" class="chip" data-surface="widget.dqchip">data…</span><button id="themebtn" class="btn" data-surface="widget.themepicker" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="themepop" title="Change the colour theme"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7" r="1"/></svg><span id="themename">Deep navy</span></button><button id="signout" class="btn" data-surface="widget.signout" type="button" style="display:none">Sign out</button><a class="btn" data-surface="nav.access" href="desk-admin.html" title="Which tabs, links and panels the desk login sees">Access</a><a class="btn" data-surface="nav.research" href="research.html">Research</a><a class="btn" data-surface="nav.deskoffice" href="desk-office.html">Desk Office</a><a class="btn" data-surface="nav.deskrun" href="desk-run.html">Desk Run</a><div id="themepop" class="tpop" role="menu" aria-label="Colour theme" hidden></div></div>
   </div>
   <div class="ticker" aria-label="headlines"><div class="tk" id="tk"><span>Loading the desk…</span></div></div>
 </header>
@@ -227,12 +256,17 @@ html[data-role="owner"] .disclaimer{display:none}
     <button role="tab" aria-selected="false" data-t="pos" data-surface="tab.pos">Positioning</button>
     <button role="tab" aria-selected="false" data-t="cal" data-surface="tab.cal">Calendar</button>
     <button role="tab" aria-selected="false" data-t="ana" data-surface="tab.ana">Analytics</button>
-    <button role="tab" aria-selected="false" data-t="charts" data-surface="tab.charts">Charts</button>
+    <button role="tab" aria-selected="false" data-t="charts" data-surface="tab.charts">History</button>
     <button role="tab" aria-selected="false" data-t="today" data-surface="tab.today">Chain</button>
     <button role="tab" aria-selected="false" data-t="read" data-surface="tab.read">Trader's read</button>
     <button role="tab" aria-selected="false" data-t="pair" data-surface="tab.pair">Pair</button>
+    <button role="tab" aria-selected="false" data-t="deep" data-surface="tab.deep" title="The reference cards for one market, in four sections (preview)">Deep dive</button>
     <button role="tab" aria-selected="false" data-t="changed" data-surface="tab.changed">Changed</button>
     <button role="tab" aria-selected="false" data-t="replay" data-surface="tab.replay" title="Go back to a day and play it forward">Replay</button>
+    <button role="tab" aria-selected="false" data-t="monitor" data-surface="tab.monitor" title="A table of the markets you pick, with live columns (preview)">Monitor</button>
+    <button role="tab" aria-selected="false" data-t="workspace" data-surface="tab.workspace" title="Drag and resize the terminal panels into a screen of your own (preview)">Workspace</button>
+    <button role="tab" aria-selected="false" data-t="kchart" data-surface="tab.kchart" title="Candle chart with indicators (each with its own settings) and the day's lines (preview)">Chart</button>
+    <button role="tab" aria-selected="false" data-t="insight" data-surface="tab.insight" title="Boards that read the data we hold in a new way: what is unusual right now (preview)">Insight</button>
     <button role="tab" aria-selected="false" data-t="options" data-surface="tab.options">Options</button>
     <button role="tab" aria-selected="false" data-t="news" data-surface="tab.news">News</button>
     <a class="tablink" data-surface="nav.research-tab" href="research.html" title="Research has its own hub now: ideas, rooms, tests, verdicts">Research ↗</a>
@@ -246,14 +280,20 @@ html[data-role="owner"] .disclaimer{display:none}
   <section id="assets" hidden data-surface="tab.assets"></section>
   <section id="macro" hidden data-surface="tab.macro"></section>
   <section id="pos" hidden data-surface="tab.pos"></section>
+  <div id="cal-drills" hidden data-surface="panel.cal.drills"></div>
   <section id="cal" hidden data-surface="tab.cal"></section>
   <section id="ana" hidden data-surface="tab.ana"></section>
   <section id="charts" hidden data-surface="tab.charts"></section>
   <section id="today" hidden data-surface="tab.today"></section>
   <section id="read" hidden data-surface="tab.read"></section>
   <section id="pair" hidden data-surface="tab.pair"></section>
+  <section id="deep" hidden data-surface="tab.deep"></section>
   <section id="changed" hidden data-surface="tab.changed"></section>
   <section id="replay" hidden data-surface="tab.replay"></section>
+  <section id="monitor" hidden data-surface="tab.monitor"></section>
+  <section id="workspace" hidden data-surface="tab.workspace"></section>
+  <section id="kchart" hidden data-surface="tab.kchart"></section>
+  <section id="insight" hidden data-surface="tab.insight"></section>
   <section id="options" hidden data-surface="tab.options"></section>
   <section id="news" hidden data-surface="tab.news"></section>
   <section id="research" hidden></section>
@@ -554,26 +594,32 @@ async function sparkline(el, inst, c) {
   el.innerHTML = `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${inst} last three sessions"><defs><linearGradient id="${id}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".35"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
 <polygon points="0,${H} ${line} ${W},${H}" fill="url(#${id})"/>${L ? hl(L.open, 'var(--tx)', '2 3') + hl(d >= 0 ? L.up?.p50 : L.down?.p50, 'var(--gold)', '4 3') : ''}<polyline points="${line}" fill="none" stroke="${col}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`;
 }
-// the full chart in an asset card: H1 candles, today's forecast lines, the entry zone and the invalidation
+// the full chart in an asset card: candles in the chosen size (5m to 4h, js/terminal/timeframePills.js), today's forecast lines, the entry zone and the invalidation
 async function assetChart(el, inst, c) {
   if (!window.LightweightCharts) { el.remove(); return; }
-  const r = await bars(inst, 5); const b = r?.bars ?? []; if (!b.length) { el.innerHTML = '<p class="muted" style="padding:12px">No price bars.</p>'; return; }
-  const dp = b[0].close >= 1000 ? 1 : b[0].close >= 100 ? 2 : b[0].close >= 10 ? 3 : 5;
+  const { mountTfBar } = await import('./js/terminal/timeframePills.js');
   const chartOpts = () => ({ layout: { background: { color: themeColor('bg1') }, textColor: themeColor('chart-text') }, grid: { vertLines: { color: themeColor('chart-grid') }, horzLines: { color: themeColor('chart-grid') } }, rightPriceScale: { borderColor: themeColor('line2') }, timeScale: { borderColor: themeColor('line2') } });
   const seriesOpts = () => ({ upColor: themeColor('up'), downColor: themeColor('dn'), wickUpColor: themeColor('up'), wickDownColor: themeColor('dn') });
-  const ch = LightweightCharts.createChart(el, { height: 320, ...chartOpts(), layout: { ...chartOpts().layout, fontFamily: 'JetBrains Mono' }, timeScale: { ...chartOpts().timeScale, timeVisible: true }, crosshair: { mode: 0 } });
-  const s = ch.addCandlestickSeries({ ...seriesOpts(), borderVisible: false, priceFormat: { type: 'price', precision: dp, minMove: 1 / 10 ** dp } });
-  s.setData(b);
-  const plines = [], tcol = spec => (Array.isArray(spec) ? themeRgba(spec[0], spec[1]) : themeColor(spec));   // a line's colour is a token name, or [token, alpha]
-  const L = c.levels, pl = (price, spec, title, style = 2) => { if (!Number.isFinite(price)) return false; const ln = s.createPriceLine({ price, color: tcol(spec), lineWidth: 1, lineStyle: style, axisLabelVisible: true, title }); plines.push([ln, spec]); return ln; };
-  if (L) { pl(L.open, 'tx', 'open', 0); for (const q of ['p50', 'p75', 'p90']) { pl(L.up?.[q], ['up', .7], `up ${q}`); pl(L.down?.[q], ['dn', .7], `dn ${q}`); } }
-  const z = priceNums(c.plan?.zone).filter(v => L ? v > L.down.p90 * 0.97 && v < L.up.p90 * 1.03 : true);
-  if (z.length >= 1) { pl(Math.min(...z), 'pur2', 'entry', 0); if (z.length >= 2) pl(Math.max(...z), 'pur2', 'entry', 0); }
-  const inv = priceNums(c.plan?.invalidation ?? c.invalidation).find(v => !L || (v > L.down.p90 * 0.97 && v < L.up.p90 * 1.03)); if (inv && (!L || (+inv > L.down.p90 * 0.97 && +inv < L.up.p90 * 1.03))) pl(+inv, 'dn', 'invalid', 0);
-  ch.timeScale().fitContent();
-  new ResizeObserver(() => ch.applyOptions({ width: el.clientWidth })).observe(el);
-  const onTheme = () => { if (!el.isConnected) { window.removeEventListener('themechange', onTheme); return; } ch.applyOptions(chartOpts()); s.applyOptions(seriesOpts()); plines.forEach(([ln, spec]) => ln.applyOptions({ color: tcol(spec) })); };
-  window.addEventListener('themechange', onTheme);
+  let ch = null, s = null;
+  const build = b => {
+    const dp = b[0].close >= 1000 ? 1 : b[0].close >= 100 ? 2 : b[0].close >= 10 ? 3 : 5;
+    ch = LightweightCharts.createChart(el, { height: 320, ...chartOpts(), layout: { ...chartOpts().layout, fontFamily: 'JetBrains Mono' }, timeScale: { ...chartOpts().timeScale, timeVisible: true }, crosshair: { mode: 0 } });
+    s = ch.addCandlestickSeries({ ...seriesOpts(), borderVisible: false, priceFormat: { type: 'price', precision: dp, minMove: 1 / 10 ** dp } });
+    s.setData(b);
+    const plines = [], tcol = spec => (Array.isArray(spec) ? themeRgba(spec[0], spec[1]) : themeColor(spec));   // a line's colour is a token name, or [token, alpha]
+    const L = c.levels, pl = (price, spec, title, style = 2) => { if (!Number.isFinite(price)) return false; const ln = s.createPriceLine({ price, color: tcol(spec), lineWidth: 1, lineStyle: style, axisLabelVisible: true, title }); plines.push([ln, spec]); return ln; };
+    if (L) { pl(L.open, 'tx', 'open', 0); for (const q of ['p50', 'p75', 'p90']) { pl(L.up?.[q], ['up', .7], `up ${q}`); pl(L.down?.[q], ['dn', .7], `dn ${q}`); } }
+    const z = priceNums(c.plan?.zone).filter(v => L ? v > L.down.p90 * 0.97 && v < L.up.p90 * 1.03 : true);
+    if (z.length >= 1) { pl(Math.min(...z), 'pur2', 'entry', 0); if (z.length >= 2) pl(Math.max(...z), 'pur2', 'entry', 0); }
+    const inv = priceNums(c.plan?.invalidation ?? c.invalidation).find(v => !L || (v > L.down.p90 * 0.97 && v < L.up.p90 * 1.03)); if (inv && (!L || (+inv > L.down.p90 * 0.97 && +inv < L.up.p90 * 1.03))) pl(+inv, 'dn', 'invalid', 0);
+    ch.timeScale().fitContent();
+    new ResizeObserver(() => ch.applyOptions({ width: el.clientWidth })).observe(el);
+    const onTheme = () => { if (!el.isConnected) { window.removeEventListener('themechange', onTheme); return; } ch.applyOptions(chartOpts()); s.applyOptions(seriesOpts()); plines.forEach(([ln, spec]) => ln.applyOptions({ color: tcol(spec) })); };
+    window.addEventListener('themechange', onTheme);
+  };
+  mountTfBar(document.getElementById('achart-tf'), { family: 'asset', inst, days: { '1h': 5 }, fetchJson: getJson,
+    apply: (b, { fit }) => { if (!el.isConnected) return; if (!ch) { build(b); return; } s.setData(b); if (fit) ch.timeScale().fitContent(); },
+    onError: msg => { if (!ch && el.isConnected) el.innerHTML = `<p class="muted" style="padding:12px">${esc(msg)}</p>`; } });
 }
 // net currency exposure: before the cap (ghost) and after (solid)
 function exposureChart() {
@@ -623,11 +669,14 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 
 // ── data ──
 async function load() {
+  // the bias engine (GET /api/bias-engine: today's stored issue, else a live read). Asked for with the others but not waited on, since a live read can take
+  // a few seconds to gather; the cards that show it are drawn again when it lands. No answer, or not ok: nothing of the engine is drawn (fail soft).
+  getJson('/api/bias-engine').then(be => { D.be = be?.ok && be.currencies ? be : null; beArrived(); }).catch(() => {});
   const [run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev, tw, wk, news, pr, cbx, dfc, ps] = await Promise.all([
     getJson('/api/desk-run'), getJson('/api/desk-score/record'), getJson('/api/desk-update'), getJson('/api/desk-quality'),
     getJson('/api/macro-scorecard'), getJson('/api/rate-diff'), getJson('/api/real-yield'), getJson('/api/rates'),
     getJson('/api/cot-state'), getJson('/api/oanda-book/history'), getJson('/api/gpr'), getJson('/api/events'), getJson('/api/trade-watch'), getJson('/api/desk-weekly'), getJson('/api/desk-news?hours=24&tier=2'), getJson('/api/policy-rates'), getJson('/api/cb-expectations'), getJson('/api/desk-dayfc'), getJson('/api/pair-select')]);
-  D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, tw, wk, pr, cbx, dfc, ps, news: news?.ok ? news.items : [], ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
+  D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, tw, wk, pr, cbx, dfc, ps, be: D.be, news: news?.ok ? news.items : [], ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
   const ok = run?.ok && run.head?.ok;
   D.cards = ok ? run.head.book.instruments : {};
   D.ccy = ok ? (run.debate?.currency?.view?.currencies ?? Object.fromEntries(Object.entries(run.head.book.currencies ?? {}).map(([k, v]) => [k, { bias: v.bias, why: v.why }]))) : {};
@@ -655,7 +704,7 @@ async function loadEnrich() {
   for (const [x, v] of Object.entries(prev ?? {})) if (!(x in E)) E[x] = v;   // the lazily loaded feeds keep their last value until their section is next on screen
   enrichAll();
   // the newer boards (some build on first call in ~20 s): fetched after the first draw, each merged as it lands
-  for (const x of ['fair-value', 'session-heat', 'options-skew', 'desk-alerts', 'release-surprises', 'release-reactions', 'autocorrelation', 'lead-lag', 'cb-board', 'macro-engines-board']) getJson(`/api/${x}`).then(v => { E[x] = v; enrichAll(); });
+  for (const x of ['fair-value', 'session-heat', 'options-skew', 'desk-alerts', 'release-surprises', 'release-reactions', 'autocorrelation', 'lead-lag', 'cb-board', 'macro-engines-board', 'vol-clock']) getJson(`/api/${x}`).then(v => { E[x] = v; enrichAll(); });
 }
 function slot(sec, id) { const s = $(sec); if (!s) return null; let el = s.querySelector(`#${id}`); if (!el) { el = document.createElement('div'); el.id = id; s.appendChild(el); } return el; }
 function enrichAll() { if (!E) return; try { globalThis.redrawHero?.(); stressStrip(); enrichOverview(); enrichMacro(); enrichAssets(); enrichPos(); enrichCal(); } catch (e) { console.warn('enrich', e); } }
@@ -696,7 +745,7 @@ function boardBlocks() {
   B.creditspreads = cb?.ok ? `<div class="card"><div class="ch"><span class="lbl">Credit spreads</span><span class="r">${cb.state ? `<span class="chip ${CS[cb.state] ?? ''}">${esc(cb.state)}</span>` : ''}</span></div><table><thead><tr><th>Index</th><th class="n">Spread</th><th class="n">20d</th><th class="n">1y pct</th><th class="n">5y pct</th><th></th></tr></thead><tbody>${cb.rows.filter(r => r.oas != null).map(r => `<tr><td>${esc(r.label)}</td><td class="n mono">${r.oas}bp</td><td class="n mono" style="background:${heat(r.chg20d, 60)}">${bp(r.chg20d)}</td><td class="n mono">${r.pctile1y ?? '–'}</td><td class="n mono">${r.pctile5y ?? '–'}</td><td>${spk(r.spark, 90, 22, r.chg20d > 0 ? 'var(--dn)' : 'var(--up)')}</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px">Option-adjusted spreads over government bonds. Widening (red) = investors demanding more to lend to companies, usually risk-off for AUD, NZD, CAD and equities, supportive of JPY and CHF.</p></div>` : '';
   B.fedliq = lb?.ok ? `<div class="card"><div class="ch"><span class="lbl">Fed liquidity</span><span class="r">${lb.state ? `<span class="chip ${LS[lb.state] ?? ''}">${esc(lb.state)}</span>` : ''}</span></div><table><thead><tr><th></th><th class="n">$bn</th><th class="n">4 weeks</th><th class="n">13 weeks</th><th></th></tr></thead><tbody>${lb.items.map(i => `<tr><td>${esc(i.label)}</td><td class="n mono">${i.value != null ? Math.round(i.value).toLocaleString('en-GB') : '–'}</td><td class="n mono ${i.chg4w > 0 ? 'up' : i.chg4w < 0 ? 'dn' : ''}">${i.chg4w != null ? sgn(i.chg4w, 0) : '–'}</td><td class="n mono">${i.chg13w != null ? sgn(i.chg13w, 0) : '–'}</td><td>${spk(i.spark, 90, 22)}</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px">Net liquidity = the Fed's balance sheet minus the Treasury's cash and reverse repo. Falling net liquidity has tended to weigh on risk assets and support the dollar.</p></div>` : '';
   B.termprem = tp?.ok ? `<div class="card"><div class="ch"><span class="lbl">US 10-year term premium</span><span class="r muted">${esc(tp.asOf)}</span></div><div class="grid g4"><div><span class="lbl">Term premium</span><div class="mono" style="font-size:20px">${tp.value}%</div></div><div><span class="lbl">20 days</span><div class="mono" style="font-size:20px">${bp(tp.chg20d)}</div></div><div><span class="lbl">Expected rates part</span><div class="mono" style="font-size:20px">${tp.expectations ?? '–'}%</div></div><div><span class="lbl">5y percentile</span><div class="mono" style="font-size:20px">${tp.pctile5y ?? '–'}</div></div></div>${spk(tp.spark, 300, 40)}<p class="muted" style="font-size:12px">${esc(tp.label)}. A rising term premium lifts long yields without a hawkish Fed: fiscal or supply worries rather than rate expectations.</p></div>` : '';
-  B.xccy = `<div class="card"><div class="ch"><span class="lbl">Cross-currency basis</span><span class="r">${xb?.state ? `<span class="chip ${BS[xb.state] ?? ''}">${esc(xb.state)}</span>` : ''}${xb?.ageH != null ? ` <span class="muted">${xb.ageH}h old</span>` : ''}</span></div>${xb?.ok ? `<table><thead><tr><th></th><th class="n">Basis</th><th class="n">5 days</th><th>Contract</th><th></th></tr></thead><tbody>${xb.rows.map(r => `<tr><td><b>${esc(r.ccy)}</b>/USD <span class="muted" style="font-size:11px">${esc(r.rate)}</span></td><td class="n mono ${r.basis < -30 ? 'dn' : ''}">${r.basis != null ? sgn(r.basis, 1) + 'bp' : '–'}</td><td class="n mono">${r.chg5d != null ? sgn(r.chg5d, 1) : '–'}</td><td class="mono muted">${esc(r.contract ?? '')}${r.t ? ` · ${r.t}d` : ''}</td><td>${spk(r.spark, 90, 22)}</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px">${esc(xb.label)}. Below −30bp dollars are dear offshore; JPY usually carries the widest premium.</p>` : `<p class="muted">${esc(xb?.error ?? 'not available')}</p>`}</div>`;
+  B.xccy = `<div class="card"><div class="ch"><span class="lbl">Cross-currency basis</span><span class="r">${xb?.state ? `<span class="chip ${BS[xb.state] ?? ''}">${esc(xb.state)}</span>` : ''}${globalThis.dataAge?.tileChip('xccy-basis', { ageH: xb?.ageH, asOf: xb?.asOf }) ?? ''}</span></div>${xb?.ok ? `<table><thead><tr><th></th><th class="n">Basis</th><th class="n">5 days</th><th>Contract</th><th></th></tr></thead><tbody>${xb.rows.map(r => `<tr><td><b>${esc(r.ccy)}</b>/USD <span class="muted" style="font-size:11px">${esc(r.rate)}</span></td><td class="n mono ${r.basis < -30 ? 'dn' : ''}">${r.basis != null ? sgn(r.basis, 1) + 'bp' : '–'}</td><td class="n mono">${r.chg5d != null ? sgn(r.chg5d, 1) : '–'}</td><td class="mono muted">${esc(r.contract ?? '')}${r.t ? ` · ${r.t}d` : ''}</td><td>${spk(r.spark, 90, 22)}</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px">${esc(xb.label)}. Below −30bp dollars are dear offshore; JPY usually carries the widest premium.</p>` : `<p class="muted">${esc(xb?.error ?? 'not available')}</p>`}</div>`;
   return B;
 }
 // More world data (owner, 2026-11-04): fair value, leading indicators, commodity currencies, carry against vol, copper/gold.
@@ -723,7 +772,7 @@ function skewHtml() {
   if (!sk.ok) return `<div class="sec"><h2>Options skew</h2><span class="lbl">risk reversals, butterflies, at-the-money vol</span></div><div class="card muted">${esc(sk.error ?? 'No options pull yet.')}</div>`;
   const rrCell = v => `<td class="n mono" style="background:${v == null ? 'transparent' : v > 0 ? `rgba(var(--uprgb),${Math.min(0.5, 0.08 + Math.abs(v) / 4).toFixed(2)})` : `rgba(var(--dnrgb),${Math.min(0.5, 0.08 + Math.abs(v) / 4).toFixed(2)})`}">${sgn(v)}</td>`;
   const T = ['1w', '1m', '3m'];
-  return `<div class="sec"><h2>Options skew</h2><span class="lbl">25-delta risk reversals, butterflies and at-the-money vol · IBKR futures options · ${sk.ageH != null ? `${sk.ageH}h old` : ''}</span></div>
+  return `<div class="sec"><h2>Options skew</h2><span class="lbl">25-delta risk reversals, butterflies and at-the-money vol · IBKR futures options · ${globalThis.dataAge?.tileChip('options-skew', { ageH: sk.ageH, asOf: sk.asOf }) ?? ''}</span></div>
 <div class="card scroll"><table><thead><tr><th>Market</th>${T.map(t => `<th class="n">RR ${t}</th>`).join('')}<th class="n">ATM 1m</th><th class="n">Fly 1m</th><th class="n">1w − 1m</th><th class="n">RR 5d</th><th class="n">Pctl</th><th>Reading</th><th>RR, 60 days</th></tr></thead><tbody>${sk.rows.map(r => `<tr title="${esc(r.label)}${r.data ? ` · ${esc(r.data)} data` : ''}"><td><b>${esc(r.pair)}</b>${r.data && r.data !== 'live' ? ` <span class="muted" style="font-size:11px">${esc(r.data)}</span>` : ''}</td>${T.map(t => rrCell(r.tenors?.[t]?.rr25 != null ? +(r.tenors[t].rr25 * (r.sign ?? 1)).toFixed(2) : null)).join('')}<td class="n mono">${r.atm != null ? r.atm.toFixed(1) : '–'}</td><td class="n mono">${sgn(r.bf)}</td><td class="n mono ${r.slope >= 1 ? 'gold' : ''}">${sgn(r.slope)}</td><td class="n mono">${sgn(r.rr5d != null ? r.rr5d * (r.sign ?? 1) : null)}</td><td class="n mono">${r.rrPct ?? '–'}</td><td style="font-size:12px">${esc(r.lean)}${r.event ? `<br><span class="gold">${esc(r.event)}</span>` : ''}</td><td>${spk((r.spark ?? []).map(v => v * (r.sign ?? 1)), 100, 24)}</td></tr>`).join('')}</tbody></table>
 <p class="muted" style="font-size:12px">${esc(sk.label)} Every risk reversal here is shown for the pair as traded (USD/JPY, USD/CAD, USD/CHF flipped from the futures): positive = calls on the pair dearer. Pctl = where today's 1-month risk reversal sits in its own history (from 20 days of pulls).${Object.keys(sk.errors ?? {}).length ? ` Not read this time: ${Object.entries(sk.errors).map(([k, v]) => `${esc(k)} (${esc(v)})`).join('; ')}.` : ''}</p></div>`;
 }
@@ -796,6 +845,7 @@ function mxSection(sub) {
   if (sub === 'rates') return sf('panel.macro.ratesboard', globalThis.ratesBoardHtml?.(E['rates-board'], fp, E['global-yields']) ?? '') + (globalThis.fedYieldsHtml?.(fp, E['rates-board'], E['term-premium']) ?? '') + more('curve-board') + sf('panel.macro.globalyields', BB.globalyields) + grid(sf('panel.macro.termprem', BB.termprem)) + sf('panel.macro.jgb', paper('panel.macro.jgb')) + sf('panel.macro.inflation', paper('panel.macro.inflation')) + sf('panel.macro.fiscalauct', paper('panel.macro.fiscalauct'));
   if (sub === 'economy') return sf('panel.macro.engines', globalThis.ttMacroBoardHtml?.(E['macro-engines-board']) ?? '') + sf('panel.macro.scorecard', mxScorecard()) + grid(sf('panel.macro.cli', DB.cli) + sf('panel.macro.nowcasts', OB.nowcasts)) + more('releases-board');
   if (sub === 'credit') return more('credit-liquidity') + grid(sf('panel.macro.creditspreads', BB.creditspreads) + sf('panel.macro.fedliq', BB.fedliq) + sf('panel.macro.xccy', BB.xccy) + sf('panel.macro.plumbing', OB.plumbing) + sf('panel.macro.bankcredit', OB.bankcredit));
+  if (sub === 'engine') return sf('panel.macro.biasengine', beTry(() => BEV()?.macroSectionHtml(beRec())) || `<div class="card muted">${D.be === null ? 'The bias engine has no read right now.' : 'Loading the bias engine…'}</div>`);
   if (sub === 'markets') return more('regime-board') + more('vol-board') + more('live-layer') + sf('panel.macro.fairvalue', DB.fairvalue) + sf('panel.macro.fxfv', DB.fxfv) + grid(sf('panel.macro.carry', DB.carry) + sf('panel.macro.commodfx', DB.commodfx) + sf('panel.macro.copper', DB.copper)) + sf('panel.macro.gpr', mxGpr()) + sf('panel.macro.rangecoverage', paper('panel.macro.rangecoverage')) + sf('panel.macro.connected', paper('panel.macro.connected')) + sf('panel.macro.coupling', paper('panel.macro.coupling')) + sf('panel.macro.uncertainty', paper('panel.macro.uncertainty')) + sf('panel.macro.skewhist', paper('panel.macro.skewhist')) + sf('panel.macro.trendbasket', paper('panel.macro.trendbasket')) + sf('panel.macro.walls', paper('panel.macro.walls'));
   return '';
 }
@@ -847,10 +897,11 @@ function enrichAssets() {
   const el = slot('assets', 'xa'); if (!el) return;
   const wm = E['wider-market'], cx = E['chain-extra'], hs = E['hedging-summary'];
   const T = { concentration: 'Concentration', smallVsBig: 'Small vs big', dispersion: 'Dispersion', bondVol: 'Bond vol (MOVE)', impliedCorr: 'Implied corr', vixTerm: 'VIX term', spx: 'S&P 500', nq: 'Nasdaq', r2k: 'Russell 2000' };
-  el.innerHTML = `<div class="card" style="margin-top:14px"><span class="lbl">Options</span> <span>Skew, dealer hedging, put/call positioning, option lines and the VIX are on the <a href="#" data-goto-opt="1">Options tab</a>.</span></div>${sessionHeatHtml()}${globalThis.acBoardHtml?.(E['autocorrelation']) ?? ''}${globalThis.llGridHtml?.(E['lead-lag']) ?? ''}${wm?.ok ? `<div class="sec"><h2>The wider market</h2><span class="lbl">${esc(wm.state?.name ?? '')}${wm.state?.line ? ` · ${esc(wm.state.line)}` : ''}</span></div><div class="grid g4">${Object.entries(wm.tiles ?? {}).map(([k, t]) => `<div class="card"><span class="lbl">${esc(T[k] ?? t.label ?? k)}</span><div class="mono" style="font-size:18px">${t.last != null ? (+t.last).toLocaleString('en-GB', { maximumFractionDigits: 2 }) : '–'}</div><span class="mono ${t.change > 0 ? 'up' : t.change < 0 ? 'dn' : ''}">${sgn(t.change)}</span> <span class="muted mono">z ${sgn(t.z, 1)}</span>${globalThis.liveWiderChip?.(k) ?? ''}</div>`).join('')}</div>` : ''}
+  el.innerHTML = `<div class="card" style="margin-top:14px"><span class="lbl">Options</span> <span>Skew, dealer hedging, put/call positioning, option lines and the VIX are on the <a href="#" data-goto-opt="1">Options tab</a>.</span></div>${globalThis.volClockHtml?.(E['vol-clock']) ?? ''}${sessionHeatHtml()}${globalThis.acBoardHtml?.(E['autocorrelation']) ?? ''}${globalThis.llGridHtml?.(E['lead-lag']) ?? ''}${wm?.ok ? `<div class="sec"><h2>The wider market</h2><span class="lbl">${esc(wm.state?.name ?? '')}${wm.state?.line ? ` · ${esc(wm.state.line)}` : ''}</span></div><div class="grid g4">${Object.entries(wm.tiles ?? {}).map(([k, t]) => `<div class="card"><span class="lbl">${esc(T[k] ?? t.label ?? k)}</span><div class="mono" style="font-size:18px">${t.last != null ? (+t.last).toLocaleString('en-GB', { maximumFractionDigits: 2 }) : '–'}</div><span class="mono ${t.change > 0 ? 'up' : t.change < 0 ? 'dn' : ''}">${sgn(t.change)}</span> <span class="muted mono">z ${sgn(t.z, 1)}</span>${globalThis.liveWiderChip?.(k) ?? ''}</div>`).join('')}</div>` : ''}
 ${cx?.ok ? `<div class="sec"><h2>EM and credit</h2><span class="lbl">EM dollar index, EM corporate spreads, CCC credit, bond vol</span></div><div class="grid g4">${[['emdollar', 'EM dollar index'], ['emoas', 'EM corporate spread (%)'], ['ccc', 'CCC spread'], ['move', 'MOVE']].map(([k, l]) => { const s = cx.series?.[k] ?? []; const v = s.map(x => x.value), a = v.at(-1), b = v.at(-21); return s.length ? `<div class="card"><span class="lbl">${l}</span><div class="mono" style="font-size:18px">${a != null ? (+a).toFixed(2) : '–'}</div>${spk(v.slice(-60), 160, 32)}<span class="muted mono" style="font-size:12px">${b ? `${sgn(a - b)} over 20 obs` : ''}</span></div>` : ''; }).join('')}</div>` : ''}
 `;
   el.querySelectorAll('tr[data-pair]').forEach(r => (r.onclick = () => globalThis.openPairPage?.(r.dataset.pair)));
+  globalThis.volClockMount?.(el);
   el.querySelector('[data-goto-opt]')?.addEventListener('click', e => { e.preventDefault(); document.querySelector('#tabs [data-t="options"]')?.click(); });
 }
 function enrichPos() {
@@ -1047,16 +1098,17 @@ function mountHero() {
 function overviewNoBook() {
   const viewer = globalThis.deskAccessState?.role === 'viewer';
   if (HLAYER === 'bias') HLAYER = 'rates';
-  $('overview').innerHTML = `${viewer ? '' : `<div class="card"><p>No desk book yet today.</p><p class="muted">${esc(D.run?.error ?? '')} The book is written at 06:55 London when the Desk Run service is on, or from the Desk Run page.</p></div>`}<div class="sfc" data-surface="panel.ov.hero">${heroCard('The world', 'Policy, markets, economy, credit and value', false)}</div><div id="xo"></div><div class="sfc" data-surface="panel.ov.dayshape">${dayShape()}</div><div class="sec"><h2>News</h2></div><div class="sfc" data-surface="panel.ov.wire">${wireCard(D.news)}</div>`;
+  $('overview').innerHTML = `${viewer ? '' : `<div class="card"><p>No desk book yet today.</p><p class="muted">${esc(D.run?.error ?? '')} The book is written at 06:55 London when the Desk Run service is on, or from the Desk Run page.</p></div>`}<div class="sfc" data-surface="panel.ov.hero">${heroCard('The world', 'Policy, markets, economy, credit and value', false)}</div><div class="sfc" data-surface="panel.ov.engine"><div id="beov" style="margin-bottom:14px"></div></div><div id="xo"></div><div class="sfc" data-surface="panel.ov.dayshape">${dayShape()}</div><div class="sec"><h2>News</h2></div><div class="sfc" data-surface="panel.ov.wire">${wireCard(D.news)}</div>`;
   wire($('overview'));
   mountHero();
+  beOverview();
 }
 function overview() {
   if (!D.run?.ok) { overviewNoBook(); return; }
   const live = Object.entries(D.cards).filter(([, c]) => DIR[c.rating] && c.size > 0).sort((a, b) => b[1].size * (CONV[b[1].conviction] ?? .8) * Math.abs(DIR[b[1].rating]) - a[1].size * (CONV[a[1].conviction] ?? .8) * Math.abs(DIR[a[1].rating])).slice(0, 6);
   $('overview').innerHTML = `<div class="sfc" data-surface="panel.ov.hero">${heroCard(`The desk's world · ${esc(D.run.date)}`, `${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest`, true)}</div>
 <div class="sfc" data-surface="panel.ov.book">${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span class="lbl">Today's book</span><div class="thesis" style="font-size:16px">${esc(D.run.head.book.headline)}</div></div>` : ''}</div><div class="sfc" data-surface="panel.ov.bookintel"><div id="bkintel" style="margin-bottom:14px"></div></div>
-<div class="grid g2"><div class="sfc" data-surface="panel.ov.regime">${regimeCard()}</div><div class="grid" style="align-content:start"><div class="sfc" data-surface="panel.ov.strength">${strengthStrip()}</div><div class="sfc" data-surface="panel.ov.exposure">${sh(exposureChart)}</div><div class="sfc" data-surface="panel.ov.record">${sh(recordCard)}</div></div></div>
+<div class="grid g2"><div class="sfc" data-surface="panel.ov.regime">${regimeCard()}</div><div class="grid" style="align-content:start"><div class="sfc" data-surface="panel.ov.strength">${strengthStrip()}</div><div class="sfc" data-surface="panel.ov.engine"><div id="beov"></div></div><div class="sfc" data-surface="panel.ov.exposure">${sh(exposureChart)}</div><div class="sfc" data-surface="panel.ov.record">${sh(recordCard)}</div></div></div>
 <div class="sfc" data-surface="panel.ov.week">${sh(weekSection)}</div><div class="sfc" data-surface="panel.ov.bestpairs">${sh(bestPairs)}</div><div id="xo"></div><div class="sfc" data-surface="panel.ov.dayshape">${dayShape()}</div>
 <div class="sfc" data-surface="panel.ov.tradewatch"><div class="sec"><h2>Trade watch</h2><span class="lbl">the book against live prices, every 2 minutes</span></div>${sh(watchBoard)}</div>
 <div class="sfc" data-surface="panel.ov.playbooks"><div class="sec"><h2>Playbooks</h2><span class="lbl">the six largest cards · tap for the full analysis</span></div><div class="grid g3">${live.map(([n, c]) => playbookCard(n, c)).join('')}</div></div>
@@ -1064,8 +1116,32 @@ function overview() {
   wire($('overview'));
   if (globalThis.deskSurfaceOn('panel.ov.bookintel')) sh(() => globalThis.drawBookIntel?.($('bkintel')));   // js/terminal/bookPanels.js
   mountHero();
+  beOverview();
   $('overview').querySelectorAll('.spk').forEach(el => sparkline(el, el.dataset.spk, D.cards[el.dataset.spk]));
 }
+
+// ── the BIAS ENGINE on the cards (js/biasEngine.js via /api/bias-engine, drawn by js/terminal/biasEngineView.js). Every piece is a registered surface
+// (panel.ov.engine, panel.ccy.engine, panel.asset.engine, panel.macro.biasengine; the flip line is panel.asset.beflip, a 'trade' surface). No engine data, or
+// the module not loaded yet: each draws nothing. A rule-based macro checklist scored forward on the bias scoreboard; not a trade signal. ──
+const BEV = () => globalThis.biasEngineView ?? null;
+const beRec = () => (D.be?.currencies ? D.be : null);
+const beOf = n => { const V = BEV(), r = beRec(); if (!V || !r) return null; try { return V.marketView(r, n); } catch { return null; } };
+const beTry = fn => { try { return fn() ?? ''; } catch (e) { console.warn('bias engine', e); return ''; } };
+function beOverview() {
+  const box = $('beov'), V = BEV(), r = beRec(); if (!box) return;
+  box.innerHTML = V && r ? beTry(() => V.rankingStripHtml(r, { deskRanking: D.run?.ok ? D.ranking : null, agree: D.run?.ok ? V.agreement(r, { cards: D.cards, ccy: D.ccy }) : null, flag: FLAG })) : '';
+  wire(box);
+}
+function beCcyRing(c) {
+  const V = BEV(), m = beRec()?.currencies?.[c]; if (!V || !m) return '';
+  return `<span class="be-ring" title="${esc(`Bias engine: ${V.engineLabel(m)}, score ${V.sgn(m.score)} of ±2 (ring ×2.5, so −5..+5). ${V.FOOTNOTE}`)}">${ring(V.ring5(m), 40, `engine ${V.engineLabel(m)}`)}<small>engine</small></span>`;
+}
+// the engine has landed (or the module that draws it has): draw again only what shows it
+function beArrived() {
+  if (!BEV() || !D.run) return;
+  try { currencies(); assets(); beOverview(); if (MSUB === 'engine' && !$('macro').hidden) paintMacro(); } catch (e) { console.warn('bias engine', e); }
+}
+addEventListener('terminalmodule', () => { if (D.be) beArrived(); });
 
 // ── CURRENCIES ──
 function ccyDrivers(c) {
@@ -1097,8 +1173,11 @@ function ccyModal(c) {
 <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap"><div style="text-align:center">${ring(s, 84, ccyWord(v.bias))}<div class="muted" style="font-size:11px">${esc(ccyText(v.bias))}</div></div>${rateBars(c)}</div>
 <div class="synth">${esc(v.why ?? (['NOK', 'SEK'].includes(c) ? 'Traded, not debated: the desk reads NOK and SEK pairs from the EUR or USD view, the central bank, oil (NOK) and the risk tone.' : 'No ruling.'))}</div>
 <div class="drv">${cb ? `<span class="chip ${cb.regime === 'HAWKISH' ? 'gold' : cb.regime === 'DOVISH' ? 'pur' : ''}">${esc(cb.regime)} · hawk ${cb.score}</span><span>last meeting ${esc(cb.meetingDate)}</span>` : ''}${pol(c) ? `<span title="${esc(pol(c).source)}">policy ${pct(pol(c).rate)} · ${esc(pol(c).asOf)}</span>` : ''}${rate ? `<span>3m rate ${rate.latestRate}%</span>` : ''}${real ? `<span>real 10y ${f(real.latestReal)}%</span>` : ''}${exp?.after?.[c] != null ? `<span>book exposure ${f(exp.after[c])}${exp.before?.[c] !== exp.after?.[c] ? ` (was ${f(exp.before[c])})` : ''}</span>` : ''}<span title="The Currency Manager's conviction in this currency's bias (not the global ruling's, not a card's)">currency conviction ${esc(v.conviction ?? '–')}</span></div>
+${globalThis.cbToneStrip?.(E['cb-board'], c) ?? ''}
+${globalThis.ccyMacro?.stripHtml(c, E?.['macro-engines-board'], D.sc) ?? ''}
 <div class="sec" style="margin-top:14px"><h2>Key drivers</h2><span class="lbl">from today's analyst reports</span></div>
 ${drv.length ? drv.map(d => `<div style="display:flex;gap:10px;padding:8px 10px;margin:6px 0;border-radius:8px;background:var(--bg3);border-left:3px solid ${d.v > 0 ? 'var(--up)' : 'var(--dn)'}"><span class="mono" style="font-size:10.5px;white-space:nowrap;color:${d.v > 0 ? 'var(--up)' : 'var(--dn)'}">[${d.tier} ${d.sign}${d.type}]</span><span style="font-size:13px">${esc(d.claim)}</span></div>`).join('') : '<p class="muted">No analyst point scored this currency today.</p>'}
+${sf('panel.ccy.engine', beTry(() => { const V = BEV(), m = beRec()?.currencies?.[c]; return V && m ? V.fullBlockHtml(m, { title: `Bias engine · ${c}`, desk: V.deskSign({ bias: numOrNull(v.bias) }), who: 'the Currency Manager', rec: D.be }) : ''; }))}
 <div class="sfc" data-surface="panel.ccy.expressions"><div class="sec"><h2>Best expressions</h2><span class="lbl">the book's cards on this currency</span></div>
 ${best.length ? `<div class="grid g2">${best.map(e => `<div class="card click" tabindex="0" data-inst="${esc(e.n)}" style="padding:10px 12px"><div class="ch" style="margin:0"><b class="mono">${esc(nice(e.n))}</b>${rateChip(e.x.rating)}<span class="r">${e.agrees ? '<span class="chip gold">fits the bias</span>' : '<span class="chip">against the bias</span>'}</span></div><span class="muted">bias gap ${e.gap} · size ${e.x.size}</span></div>`).join('')}</div>` : '<p class="muted">No live card on this currency.</p>'}</div>
 ${v.flip ? `<div class="sec"><h2>What would flip it</h2></div><p>${esc(v.flip)}</p>` : ''}${(() => { const hs = D.news.filter(h => (h.touches ?? []).includes(c) || h.read?.impact?.[c]).slice(0, 5); return hs.length ? `<div class="sec"><h2>On the wire</h2><span class="lbl">the last 24 h</span></div>${hs.map(h => `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><span class="mono muted" style="font-size:11px">${new Date(h.ms).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</span> ${esc(h.title)} ${h.read?.impact?.[c] ? `<span class="chip ${h.read.impact[c] > 0 ? 'up' : 'dn'}">${c} ${h.read.impact[c] > 0 ? '▲' : '▼'}</span>` : ''}</div>`).join('')}` : ''; })()}
@@ -1107,7 +1186,7 @@ ${v.flip ? `<div class="sec"><h2>What would flip it</h2></div><p>${esc(v.flip)}<
 }
 function currencies() {
   $('ccy').innerHTML = `<div class="card hero" style="margin-bottom:14px"><div class="hhead"><span class="lbl">Currency bias by country</span></div><div class="map" id="ccymap"></div></div><div class="grid g4">${D.ranking.map(c => { const v = D.ccy[c] ?? {}, cb = D.sc?.cbSentiment?.[c];
-    return `<div class="card click" tabindex="0" data-ccy="${c}"><div class="ch"><span style="font-size:22px">${FLAG[c] ?? ''}</span><h3>${c}</h3>${biasChip(v.bias)}<span class="r">${ring(ccyScore(v.bias), 52, ccyWord(v.bias))}</span></div><div class="muted" style="margin-top:4px">${esc(firstSentence(v.why))}</div><div class="drv">${cb ? `<span>${BANKSHORT[c]} ${esc(cb.regime.toLowerCase())}</span>` : ''}${pol(c) ? `<span>policy ${pct(pol(c).rate)}</span>` : ''}</div></div>`; }).join('')}</div>`;
+    return `<div class="card click" tabindex="0" data-ccy="${c}"><div class="ch"><span style="font-size:22px">${FLAG[c] ?? ''}</span><h3>${c}</h3>${biasChip(v.bias)}<span class="r">${ring(ccyScore(v.bias), 52, ccyWord(v.bias))}${sf('panel.ccy.engine', beTry(() => beCcyRing(c)))}</span></div><div class="muted" style="margin-top:4px">${esc(firstSentence(v.why))}</div>${globalThis.ccyMacro?.miniHtml(c, D.sc) ?? ''}<div class="drv">${cb ? `<span>${BANKSHORT[c]} ${esc(cb.regime.toLowerCase())}</span>` : ''}${pol(c) ? `<span>policy ${pct(pol(c).rate)}</span>` : ''}</div></div>`; }).join('')}</div>`;
   wire($('ccy'));
   drawMap($('ccymap'), 'bias');
 }
@@ -1127,27 +1206,34 @@ function ladder(c) {
   return `<div class="ladder"><div class="rail"></div>${['p90', 'p75', 'p50'].flatMap(q => [L.down[q], L.up[q]]).map(v => `<i class="tick" style="left:${x(v)}%"></i>`).join('')}<i class="tick o" style="left:${x(L.open)}%"></i>${z ? `<i class="zone" style="left:${Math.max(0, x(z[0]))}%;width:${Math.max(1.5, Math.min(100, x(z[1])) - Math.max(0, x(z[0])))}%" title="entry zone"></i>` : ''}</div><div class="ladlab"><span>${lo}</span><span>open ${L.open}</span><span>${hi}</span></div>`;
 }
 function assetCard(n, c, full = false) {
-  const s = assetScore(c), live = D.live?.[n];
-  return `<div class="${full ? '' : 'card click'}" ${full ? '' : `tabindex="0" data-inst="${esc(n)}"`}><div class="ch"><span class="chip">${esc(GROUPS[groupOf(n)] ?? '')}</span><span class="chip">${esc(n)}</span><span class="r">${gradeChip(c)}${full ? '<button class="x" aria-label="Close">✕</button>' : ''}</span></div>
+  const s = assetScore(c), live = D.live?.[n], be = beOf(n);
+  return `<div class="${full ? '' : 'card click'}" ${full ? '' : `tabindex="0" data-inst="${esc(n)}"`}><div class="ch"><span class="chip">${esc(GROUPS[groupOf(n)] ?? '')}</span><span class="chip">${esc(n)}</span><span class="r">${full ? '' : (globalThis.assetFav?.starHtml(n, nice(n)) ?? '')}${gradeChip(c)}${full ? '<button class="x" aria-label="Close">✕</button>' : ''}</span></div>
 <h3 style="margin:0 0 8px;font-size:${full ? 22 : 17}px">Analysis of ${esc(nice(n))}</h3>
-<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${rateChip(c.rating)}${scoreBar(s, '220px', assetWordV(c))}${live && live.rating !== c.rating ? `<span class="chip gold" title="${esc(live.why ?? '')}">updated → ${esc(live.rating)}</span>` : ''}</div>
-<div class="thesis">“${esc(full ? firstSentence(c.why) : c.why)}”</div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${rateChip(c.rating)}${sf('panel.asset.engine', beTry(() => (be ? BEV().cardChipsHtml(be, BEV().deskSign({ rating: c.rating })) : '')))}${scoreBar(s, '220px', assetWordV(c))}${live && live.rating !== c.rating ? `<span class="chip gold" title="${esc(live.why ?? '')}">updated → ${esc(live.rating)}</span>` : ''}</div>
+<div class="thesis">“${esc(full ? firstSentence(c.why) : c.why)}”</div>${full ? '' : sf('panel.asset.engine', beTry(() => (be ? BEV().keyDriversHtml(be) + BEV().footnoteHtml(D.be) : '')))}
 <div class="drv">${sources(c.why).map(t => `<span>${t}</span>`).join('')}<span title="The card's own conviction (the Head's), not the global ruling's or a currency's">card conviction ${esc(c.conviction ?? '–')}</span><span class="sfc" data-surface="panel.asset.size"><span>size ${c.size ?? '–'}${c.sizeBeforeCap && c.sizeBeforeCap !== c.size ? ` (from ${c.sizeBeforeCap})` : ''}</span></span></div>
-${full ? `${c.levels ? '' : noLevels()}<div class="achart" id="achart"></div>` : (c.levels ? ladder(c) : noLevels()) + (globalThis.newsLatestLine?.(D.news, n, c.rating) ?? '')}
+${full ? `${c.levels ? '' : noLevels()}<div class="tfp-host" id="achart-tf"></div><div class="achart" id="achart"></div>` : (c.levels ? ladder(c) : noLevels()) + (globalThis.newsLatestLine?.(D.news, n, c.rating) ?? '')}
 ${full ? `<p>${esc(c.why)}</p><div class="sfc" data-surface="panel.asset.plan"><div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${esc(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Target</b><span class="mono">${Math.sign(DIR[c.rating] ?? 0) >= 0 ? `up p50 ${c.levels.up.p50} · p75 ${c.levels.up.p75} · p90 ${c.levels.up.p90}` : `down p50 ${c.levels.down.p50} · p75 ${c.levels.down.p75} · p90 ${c.levels.down.p90}`}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${esc(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${esc(c.plan.timing)}</span></div>` : ''}</div></div>
-${deskView(n)}${globalThis.analyseBoxHtml?.(n) ?? ''}${globalThis.whatDrivesHtml?.(n) ?? ''}<p class="muted">The ladder is today's forecast range (p50, p75, p90 each side of the open); the purple band is the entry zone where the plan names one. ${SCALE_NOTE} The grade is the card's conviction, not a hit rate.</p>` : `<div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="muted">Read full analysis →</span>${/LONG|SHORT/.test(c.rating ?? '') && (c.size > 0 || globalThis.deskIsViewer?.()) ? `<button class="btn" type="button" data-analyse="${esc(n)}" style="padding:3px 10px" title="A deep read of this market against its own drivers, on DeepSeek (about a cent)">✦ Analyse</button>` : ''}</div>`}</div>`;
+${sf('panel.asset.engine', beTry(() => (be ? BEV().fullBlockHtml(be, { title: `Bias engine · ${nice(n)}`, desk: BEV().deskSign({ rating: c.rating }), rec: D.be }) : '')))}${deskView(n)}${globalThis.analyseBoxHtml?.(n) ?? ''}${globalThis.whatDrivesHtml?.(n) ?? ''}<p class="muted">The ladder is today's forecast range (p50, p75, p90 each side of the open); the purple band is the entry zone where the plan names one. ${SCALE_NOTE} The grade is the card's conviction, not a hit rate.</p>` : `<div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="muted">Read full analysis →</span>${/LONG|SHORT/.test(c.rating ?? '') && (c.size > 0 || globalThis.deskIsViewer?.()) ? `<button class="btn" type="button" data-analyse="${esc(n)}" style="padding:3px 10px" title="A deep read of this market against its own drivers, on DeepSeek (about a cent)">✦ Analyse</button>` : ''}</div>`}</div>`;
 }
 function deskView(n) {
   const g = groupOf(n), a = D.run?.debate?.assets?.[g]?.view?.instruments?.[n];
   return a ? `<div class="sec"><h2>The ${esc(GROUPS[g])} desk said</h2></div><p>${rateChip(a.rating)} <span class="muted">desk conviction ${esc(a.conviction ?? '–')}</span></p><p class="muted">${esc(a.why ?? '')}</p>` : '';
 }
 function assets() {
-  const entries = Object.entries(D.cards).filter(([n]) => assetFilter === 'all' || groupOf(n) === assetFilter);
-  $('assets').innerHTML = `<div class="filters">${[['all', 'All'], ...Object.entries(GROUPS)].map(([k, l]) => `<button aria-pressed="${k === assetFilter}" data-g="${k}">${l}</button>`).join('')}</div>
-<div class="grid g3">${entries.sort((a, b) => Math.abs(assetScore(b[1]) ?? -1) - Math.abs(assetScore(a[1]) ?? -1)).map(([n, c]) => assetCard(n, c)).join('') || '<div class="card muted">No cards.</div>'}</div>`;
+  const AF = globalThis.assetFav;   // favourites (js/terminal/assetFavourites.js): absent until the module has loaded
+  const inGroup = Object.entries(D.cards).filter(([n]) => assetFilter === 'all' || groupOf(n) === assetFilter);
+  const entries = AF ? AF.filter(inGroup, D.cards) : inGroup;
+  const keepOpen = $('assets').querySelector('.fav-tools')?.open;
+  $('assets').innerHTML = `<div class="filters">${[['all', 'All'], ...Object.entries(GROUPS)].map(([k, l]) => `<button aria-pressed="${k === assetFilter}" data-g="${k}">${l}</button>`).join('')}${AF?.pillHtml(D.cards) ?? ''}</div>${AF?.toolsHtml() ?? ''}
+<div class="grid g3">${entries.sort((a, b) => Math.abs(assetScore(b[1]) ?? -1) - Math.abs(assetScore(a[1]) ?? -1)).map(([n, c]) => assetCard(n, c)).join('') || (AF?.on(D.cards) ? AF.emptyHtml(GROUPS[assetFilter]) : '<div class="card muted">No cards.</div>')}</div>`;
   $('assets').querySelectorAll('[data-g]').forEach(b => b.onclick = () => { assetFilter = b.dataset.g; assets(); });
   wire($('assets'));
+  AF?.wire($('assets'));
+  if (keepOpen) $('assets').querySelector('.fav-tools')?.setAttribute('open', '');
 }
+// a star on the Pair tab, a STAR / UNSTAR / FAV command or a Paste redraws this tab (the stars, the filter and the count)
+globalThis.assetFavRefresh = () => { if ($('assets').children.length) assets(); };
 
 // ── MACRO ──
 // ── MACRO: five sections behind a pill row (js/terminal/macroSubtabs.js). Only the open section is built; the others are built on first open. ──
@@ -1166,8 +1252,7 @@ function mxRateDiff() {
   return `<div style="margin-top:14px"><div class="card"><div class="ch"><span class="lbl">Policy-rate differential</span><span class="r muted">row minus column, percentage points</span></div><div class="scroll"><table class="heat"><thead><tr><th></th>${have.map(c => `<th style="text-align:center">${c}</th>`).join('')}</tr></thead><tbody>${have.map(a => `<tr><th>${a}</th>${have.map(b => { const v = pol(a).rate - pol(b).rate; return `<td style="background:${a === b ? 'transparent' : heat(v)}">${a === b ? '·' : f(v)}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div></div>`;
 }
 function mxScorecard() {
-  const sc = D.sc?.ranked ?? [];
-  return sc.length ? `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">Macro scorecard</span><span class="r muted">composite of rates, inflation, growth and labour by currency</span></div><div class="scroll"><table><thead><tr><th>Currency</th><th>Composite</th>${Object.values(sc[0].factors ?? {}).map(x => `<th>${esc(x.label)}</th>`).join('')}</tr></thead><tbody>${sc.map(r => `<tr><td class="n">${FLAG[r.ccy] ?? ''} ${r.ccy}</td><td class="n ${dirCls(r.composite)}">${f(r.composite)}</td>${Object.values(r.factors ?? {}).map(x => `<td class="n ${dirCls(x.score)}">${x.score == null ? '–' : f(x.score)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>` : '';
+  return globalThis.ccyMacro?.scorecardHtml(D.sc, { flag: FLAG }) ?? '';
 }
 function mxGpr() {
   return D.gpr?.ok ? `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">Geopolitical risk index</span><span class="r"><span class="chip ${D.gpr.trend === 'rising' ? 'gold' : ''}">${esc(D.gpr.trend)}</span></span></div><div class="score"><b>${D.gpr.level}</b><small>z ${f(D.gpr.z, 1)} · ${esc(D.gpr.asOfDate)}</small></div></div>` : '';
@@ -1202,12 +1287,20 @@ function cbExpectCard() {
   const banks = Object.entries(x.banks), mx = Math.max(25, ...banks.flatMap(([, b]) => [b.m3?.bp, b.m6?.bp, b.m12?.bp].filter(Number.isFinite).map(Math.abs)));
   const bar = h => { if (!h || !Number.isFinite(h.bp)) return '<td class="n muted">–</td>'; const w = Math.abs(h.bp) / mx * 50, col = h.bp > 0 ? 'var(--up)' : h.bp < 0 ? 'var(--dn)' : 'var(--flat)';
     return `<td style="min-width:120px"><div style="position:relative;height:12px;background:var(--bg3);border-radius:4px"><i style="position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--line2)"></i><i style="position:absolute;top:1px;height:10px;border-radius:3px;${h.bp >= 0 ? 'left:50%' : 'right:50%'};width:${w}%;background:${col}"></i></div><span class="mono" style="font-size:11px">${h.bp > 0 ? '+' : ''}${h.bp}bp ${h.steps != null ? `(${h.steps > 0 ? '+' : ''}${h.steps}×25)` : ''}</span></td>`; };
-  return `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">What the futures price</span><span class="r muted">change priced vs today's policy rate, by about 3, 6 and 12 months · pulled ${x.ageH != null ? `${x.ageH} h ago` : ''}</span></div>
+  return `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">What the futures price</span><span class="r muted">change priced vs today's policy rate, by about 3, 6 and 12 months · ${globalThis.dataAge?.tileChip('cb-expectations', { ageH: x.ageH, asOf: x.asOf }) ?? ''}</span></div>
 <div class="scroll"><table><thead><tr><th>Bank</th><th>Policy</th><th>~3 months</th><th>~6 months</th><th>~12 months</th><th>1 week</th><th>Contract</th></tr></thead><tbody>${banks.map(([c, b]) => `<tr><td class="n">${FLAG[c] ?? ''} ${BANKSHORT[c] ?? c}</td><td class="n">${b.policy != null ? pct(b.policy) : '–'}</td>${bar(b.m3)}${bar(b.m6)}${bar(b.m12)}<td class="n ${dirCls(b.m3?.weekBp)}">${b.m3?.weekBp != null ? `${b.m3.weekBp > 0 ? '+' : ''}${b.m3.weekBp}bp` : '–'}</td><td class="muted" style="font-size:11.5px">${esc(b.source)}${b.against === 'front contract' ? '<br>read against its front contract (bank bills carry a credit spread)' : ''}</td></tr>`).join('')}</tbody></table></div>
 ${Object.keys(x.errors ?? {}).length ? `<p class="muted">Not pulled: ${Object.entries(x.errors).map(([c, e]) => `${esc(c)} (${esc(e.join('; '))})`).join(' · ')}</p>` : ''}<p class="muted">Green = hikes priced, red = cuts; 25bp = one standard move. Futures pricing, not a forecast.</p></div>`;
 }
 
 // ── POSITIONING ──
+// Positioning history (moved from the History tab, 2026-11-16): speculators' net share of open interest, 3 years. Fetched when the Positioning tab opens.
+let COTH = null;
+function positioningHistory() {
+  const el = $('cotgrid'); if (!el) return;
+  if (COTH) { cotGrid(el, COTH); return; }
+  el.innerHTML = '<div class="card muted">Drawing…</div>';
+  getJson('/api/desk-cot-history?weeks=156').then(c => { COTH = c ?? { error: 'No COT history.' }; const e = $('cotgrid'); if (e) cotGrid(e, COTH); });
+}
 function positioning() {
   const cot = D.cot?.instruments ?? {}, bk = D.book?.instruments ?? {};
   const rows = Object.entries(bk).map(([k, v]) => ({ k, inst: k.replace('_', '').replace('XAUUSD', 'GOLD').replace('XAGUSD', 'SILVER'), long: v.latest?.[2], d24: v.change24h?.delta, lu: v.latest?.[4], su: v.latest?.[5] })).filter(r => Number.isFinite(r.long)).sort((a, b) => Math.abs(b.long - 50) - Math.abs(a.long - 50));
@@ -1216,7 +1309,9 @@ function positioning() {
 ${rows.map(r => `<div style="display:grid;grid-template-columns:84px 1fr 120px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)"><b class="mono">${esc(r.inst)}</b><div><div class="gauge"><i style="width:${r.long}%;background:var(--up)"></i><i style="width:${100 - r.long}%;background:var(--dn)"></i></div></div><span class="mono" style="font-size:12px">${r.long.toFixed(0)}% L ${r.d24 != null ? `<span class="${dirCls(r.d24)}">${f(r.d24, 1)}</span>` : ''}</span></div>`).join('') || '<p class="muted">No position-book data.</p>'}
 <p class="muted">Context, not a signal. The 24h change is in percentage points.</p></div>
 <div class="card"><div class="ch"><span class="lbl">COT: speculators against the trend</span><span class="r muted">report ${esc(D.cot?.reportDate ?? '–')}</span></div><div class="scroll"><table><thead><tr><th>Market</th><th>Side</th><th>Crowding</th><th>State</th><th>Tested?</th></tr></thead><tbody>${Object.entries(cot).map(([n, c]) => `<tr><td class="n">${esc(n)}</td><td class="${c.side === 'long' ? 'up' : c.side === 'short' ? 'dn' : ''}">${esc(c.side ?? '–')}</td><td><div class="bar"><i style="width:${c.posT ?? 0}%;background:${(c.posT ?? 0) > 80 ? 'var(--gold)' : 'var(--pur)'}"></i></div><span class="muted mono">${c.posT ?? '–'}</span></td><td>${esc(c.label ?? '')}</td><td><span class="chip ${c.verdict === 'validated' ? 'up' : ''}">${esc(c.verdict ?? 'untested')}</span></td></tr>`).join('')}</tbody></table></div>
-<p class="muted">${esc(D.cot?.note ?? '')}</p></div></div>`;
+<p class="muted">${esc(D.cot?.note ?? '')}</p></div></div>
+<div class="sfc" data-surface="panel.pos.history"><div class="sec"><h2>Positioning history</h2><span class="lbl">speculators' net share of open interest, 3 years · shaded = the top and bottom 10% · dot = latest week</span></div><div class="grid g4" id="cotgrid"></div></div>`;
+  positioningHistory();
 }
 
 // ── CALENDAR ──
@@ -1306,7 +1401,7 @@ ${edges.map(([i, j, v]) => { const [x1, y1] = pos[i], [x2, y2] = pos[j]; return 
 ${order.map(node).join('')}</svg>
 <div class="muted"><span style="color:var(--gold)">━</span> the same bet (they win and lose together) · <span style="color:var(--pur2)">━</span> a hedge (one offsets the other) · dot size = card size · ${r.effectiveBets} effective bets across ${r.cards} cards. Hover a card.</div>`;
   el.querySelectorAll('.wn').forEach(g => { g.onmouseenter = () => { const i = g.dataset.i; el.querySelectorAll('.we').forEach(p => p.style.opacity = (p.dataset.a === i || p.dataset.b === i) ? 1 : 0.04); };
-    g.onmouseleave = () => el.querySelectorAll('.we').forEach(p => p.style.opacity = ''); g.onclick = () => { const nm = c.names[g.dataset.i]; if (D.cards[nm]) { openModal(assetCard(nm, D.cards[nm], true)); assetChart($('achart'), nm, D.cards[nm]); } }; });
+    g.onmouseleave = () => el.querySelectorAll('.we').forEach(p => p.style.opacity = ''); g.onclick = () => { const nm = c.names[g.dataset.i]; if (D.cards[nm]) openAsset(nm); }; });
 }
 function strengthHeat(el, h) {
   const rows = (h?.rows ?? []).filter(r => r.biases);
@@ -1420,7 +1515,7 @@ ${m.hot ? `<circle cx="${300 + Math.sign(m.hot.m30) * sc(m.hot.m30, m.unit)}" cy
 }
 
 
-// ── CHARTS: the book's flow, the macro regime, data surprises, positioning history, seasonality ──
+// ── HISTORY (was Charts; surface ids keep 'charts'): the book's flow, the macro regime, data surprises, seasonality. Positioning history moved to the Positioning tab. ──
 let CH = null;
 const CC2 = { US: 'USD', EU: 'EUR', DE: 'EUR', FR: 'EUR', IT: 'EUR', ES: 'EUR', GB: 'GBP', JP: 'JPY', AU: 'AUD', NZ: 'NZD', CA: 'CAD', CH: 'CHF' };
 const SEASON_INSTS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX500', 'WTI', 'BTCUSD'];
@@ -1428,16 +1523,15 @@ async function charts() {
   if (!D.run) return;
   if (!CH) {
     $('charts').innerHTML = '<div class="card muted">Drawing…</div>';
-    const [reg, sur, cot] = await Promise.all([getJson('/api/regime'), getJson('/api/econ-surprise'), getJson('/api/desk-cot-history?weeks=156')]);
-    CH = { reg, sur, cot, season: {} };
+    const [reg, sur] = await Promise.all([getJson('/api/regime'), getJson('/api/econ-surprise')]);
+    CH = { reg, sur, season: {} };
   }
   $('charts').innerHTML = `<div class="sfc" data-surface="panel.charts.bookflow"><div class="card glow"><div class="ch"><span class="lbl">How today's book was built</span><span class="r muted">the global ruling → the currencies → every card · tap a currency or a card</span></div><div id="flow"></div></div></div>
 <div class="sfc" data-surface="panel.charts.ranking"><div class="sec"><h2>Currency ranking vs realised</h2><span class="lbl">the Currency Manager's morning order against how the currencies finished · descriptive, n shown</span></div><div id="rankreal"></div></div>
 <div class="grid g2" style="margin-top:14px"><div class="card"><div class="ch"><span class="lbl">Macro regime</span><span class="r muted">growth against inflation, the last 24 months</span></div><div id="quad"></div></div>
 <div class="card"><div class="ch"><span class="lbl">Data surprises</span><span class="r muted">each release against consensus (z), last 120 days, by currency</span></div><div id="surp"></div></div></div>
-<div class="sec"><h2>Positioning history</h2><span class="lbl">speculators' net share of open interest, 3 years · shaded = the top and bottom 10% · dot = latest week</span></div><div class="grid g4" id="cotgrid"></div>
 <div class="sec"><h2>Seasonality</h2><span class="lbl">mean return by calendar month over the history · this month outlined · tap a market for its weekdays</span></div><div class="card"><div id="season"><p class="muted">Reading up to 20 years of daily bars for ${SEASON_INSTS.length} markets…</p></div><div id="wkday"></div></div>`;
-  if (globalThis.deskSurfaceOn('panel.charts.bookflow')) sh(() => globalThis.drawBookFlow?.($('flow'))); globalThis.drawRankReality?.($('rankreal')); regimeQuad($('quad'), CH.reg); surprises($('surp'), CH.sur); cotGrid($('cotgrid'), CH.cot); seasonHeat($('season'));
+  if (globalThis.deskSurfaceOn('panel.charts.bookflow')) sh(() => globalThis.drawBookFlow?.($('flow'))); globalThis.drawRankReality?.($('rankreal')); regimeQuad($('quad'), CH.reg); surprises($('surp'), CH.sur); seasonHeat($('season'));
 }
 const REG_COL = { goldilocks: 'var(--up)', reflation: 'var(--gold)', stagflation: 'var(--dn)', deflation: 'var(--blue2)' };
 function regimeQuad(el, r) {
@@ -1495,12 +1589,21 @@ async function seasonHeat(el) {
 }
 
 // clicking a currency or an instrument anywhere opens its card
+// An asset card opens that market's Pair page (one deep view per market, reached by linked selection and the browser Back button).
+// The old pop-up is only the fallback for a page where the Pair module has not loaded.
+function openAsset(n) {
+  const c = D.cards[n]; if (!c) return;
+  if (typeof globalThis.openPairPage === 'function') { globalThis.openPairPage(n); return; }
+  openModal(assetCard(n, c, true)); assetChart($('achart'), n, c);
+}
+// the group desk's own line for a market: it was only in the pop-up, so the Pair page carries it now
+globalThis.deskViewHtml = deskView;
 function wire(root) {
   root.querySelectorAll('[data-ccy]').forEach(el => { const go = () => ccyModal(el.dataset.ccy); el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
-  root.querySelectorAll('[data-inst]').forEach(el => { const go = () => { const c = D.cards[el.dataset.inst]; if (c) { openModal(assetCard(el.dataset.inst, c, true)); assetChart($('achart'), el.dataset.inst, c); } }; el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
+  root.querySelectorAll('[data-inst]').forEach(el => { const go = () => openAsset(el.dataset.inst); el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
   root.querySelectorAll('[data-newsrec]').forEach(el => { el.onclick = newsRecord; });
   // ✦ Analyse on a live card: open the card and start its deep read (js/terminal/assetAnalysisView.js shows today's read if one exists)
-  root.querySelectorAll('[data-analyse]').forEach(b => { b.onclick = e => { e.stopPropagation(); const n = b.dataset.analyse, c = D.cards[n]; if (!c) return; globalThis.aaAutoRun = n; openModal(assetCard(n, c, true)); assetChart($('achart'), n, c); }; b.onkeydown = e => e.stopPropagation(); });
+  root.querySelectorAll('[data-analyse]').forEach(b => { b.onclick = e => { e.stopPropagation(); const n = b.dataset.analyse, c = D.cards[n]; if (!c) return; globalThis.aaAutoRun = n; openAsset(n); }; b.onkeydown = e => e.stopPropagation(); });
 }
 
 // ── Ask the desk ──
@@ -1522,10 +1625,13 @@ $('askbtn').onclick = () => {
 whenDeskAccess(load);
 setInterval(() => { if (!document.hidden) { ANA = null; ASC = null; load(); if (!$('ana').hidden) analytics(); } }, 5 * 60_000);   // the Charts tab's sources change daily at most: drawn once per visit
 </script>
+<script type="module" src="js/terminal/dataAge.js"></script>
+<script type="module" src="js/terminal/ccyMacroStrip.js"></script>
 <script type="module" src="js/terminal/access.js"></script>
 <script type="module" src="js/terminal/terminalTabs.js"></script>
 <script type="module" src="js/terminal/bookPanels.js"></script>
 <script type="module" src="js/terminal/themePicker.js"></script>
 <script type="module" src="js/terminal/marketStateView.js"></script>
+<script type="module" src="js/terminal/terminalFeel.js"></script>
 </body>
 </html>

@@ -8,7 +8,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -31,6 +31,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/ccyMacroStrip.js",
+     "js/terminal/economiesView.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -62,7 +64,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -85,6 +87,9 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/calendarDrillsCore.js",
+     "js/terminal/ccyMacroStrip.js",
+     "js/terminal/economiesView.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -123,7 +128,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -146,6 +151,9 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/calendarDrillsCore.js",
+     "js/terminal/ccyMacroStrip.js",
+     "js/terminal/economiesView.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -179,7 +187,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -202,6 +210,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -225,7 +234,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -248,6 +257,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/ccyMacroStrip.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -271,7 +281,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -294,6 +304,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/ccyMacroStrip.js",
+     "js/terminal/economiesView.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -319,7 +331,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -342,6 +354,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/ccyMacroStrip.js",
+     "js/terminal/economiesView.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -367,7 +381,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -390,6 +404,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/ccyMacroStrip.js",
+     "js/terminal/economiesView.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/mapLayers.js"
@@ -424,6 +440,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/ccyMacroStrip.js",
+     "js/terminal/economiesView.js",
      "js/terminal/macroEnginesCore.js"
     ],
     "today": [
@@ -446,7 +464,9 @@ export const DERIVED = {
      "file": "world-economies.html",
      "exists": true,
      "lastModified": "2026-11-01",
-     "hub": []
+     "hub": [
+      "macro"
+     ]
     }
    ],
    "routes": [],
@@ -478,6 +498,8 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
+     "js/terminal/calendarDrillsCore.js",
+     "js/terminal/calendarDrillsView.js",
      "js/terminal/macroSubtabs.js"
     ],
     "today": [
@@ -604,7 +626,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-09-20",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -643,6 +665,7 @@ export const DERIVED = {
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/regimeBoardView.js",
+     "js/terminal/replayViz.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [
@@ -724,7 +747,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -793,7 +816,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     },
     {
@@ -801,7 +824,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     },
     {
@@ -809,7 +832,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -879,7 +902,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     },
     {
@@ -887,7 +910,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     },
     {
@@ -895,7 +918,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -965,7 +988,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-11-07",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -1027,7 +1050,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -1072,7 +1095,9 @@ export const DERIVED = {
      "file": "fed-path.html",
      "exists": true,
      "lastModified": "2026-10-29",
-     "hub": []
+     "hub": [
+      "macro"
+     ]
     }
    ],
    "routes": [
@@ -1090,6 +1115,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/fedPathYieldsView.js",
+     "js/terminal/humanDrivers.js",
      "js/terminal/ratesBoardView.js",
      "js/terminal/terminalTabs.js"
     ],
@@ -1133,6 +1159,7 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/cbBoardCore.js",
      "js/terminal/cbBoardView.js",
+     "js/terminal/dataAge.js",
      "js/terminal/mapLayers.js",
      "js/terminal/terminalTabs.js"
     ],
@@ -1281,7 +1308,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -1298,7 +1325,8 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
-     "js/terminal/curveBoardView.js"
+     "js/terminal/curveBoardView.js",
+     "js/terminal/economiesView.js"
     ],
     "today": [
      "today.html"
@@ -1332,7 +1360,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-15",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -1368,7 +1396,10 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/biasEngineView.js",
+     "js/terminal/deepDive.js",
      "js/terminal/fedPathYieldsView.js",
+     "js/terminal/insightSeries.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js",
      "js/terminal/ratesBoardCore.js",
@@ -1447,7 +1478,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-24",
      "hub": [
-      "research"
+      "macro"
      ]
     },
     {
@@ -1455,7 +1486,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -1513,7 +1544,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-15",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -1554,7 +1585,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -1572,6 +1603,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/economiesView.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [
@@ -1656,7 +1688,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-20",
      "hub": [
-      "live"
+      "null"
      ]
     }
    ],
@@ -1711,7 +1743,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-11-11",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -1822,6 +1854,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/dataAge.js",
      "js/terminal/macroSubtabs.js"
     ],
     "today": [],
@@ -1880,7 +1913,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "retired"
+      "null"
      ]
     }
    ],
@@ -1987,7 +2020,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-21",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -2181,7 +2214,8 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
-     "desk-terminal.html"
+     "desk-terminal.html",
+     "js/terminal/flagsView.js"
     ],
     "today": [
      "today.html"
@@ -2273,7 +2307,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-09-28",
      "hub": [
-      "live"
+      "vol"
      ]
     },
     {
@@ -2288,14 +2322,16 @@ export const DERIVED = {
      "file": "volatility-intelligence.html",
      "exists": true,
      "lastModified": "2026-09-13",
-     "hub": []
+     "hub": [
+      "vol"
+     ]
     },
     {
      "file": "forecast-path.html",
      "exists": true,
      "lastModified": "2026-11-06",
      "hub": [
-      "live"
+      "vol"
      ]
     },
     {
@@ -2303,7 +2339,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-08-05",
      "hub": [
-      "live"
+      "vol"
      ]
     },
     {
@@ -2326,13 +2362,17 @@ export const DERIVED = {
      "file": "exhaustion-surface.html",
      "exists": true,
      "lastModified": "2026-10-03",
-     "hub": []
+     "hub": [
+      "vol"
+     ]
     },
     {
      "file": "path-map.html",
      "exists": true,
      "lastModified": "2026-10-06",
-     "hub": []
+     "hub": [
+      "vol"
+     ]
     }
    ],
    "routes": [
@@ -2343,6 +2383,19 @@ export const DERIVED = {
       "skill": "vol_iv",
       "maxAgeH": 24
      }
+    },
+    {
+     "route": "/api/vol-forecast/intelligence",
+     "exists": true,
+     "pack": {
+      "skill": "vol_iv",
+      "maxAgeH": 24
+     }
+    },
+    {
+     "route": "/api/vol-clock",
+     "exists": true,
+     "pack": null
     },
     {
      "route": "/api/forecast-path",
@@ -2371,7 +2424,14 @@ export const DERIVED = {
    ],
    "modules": [],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/monitorCore.js",
+     "js/terminal/monitorView.js",
+     "js/terminal/reachCore.js",
+     "js/terminal/reachView.js",
+     "js/terminal/volClockView.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -2439,7 +2499,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "live"
+      "vol"
      ]
     },
     {
@@ -2447,7 +2507,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "live"
+      "vol"
      ]
     }
    ],
@@ -2688,7 +2748,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-07-21",
      "hub": [
-      "vol"
+      "null"
      ]
     },
     {
@@ -2696,7 +2756,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-07-17",
      "hub": [
-      "retired"
+      "null"
      ]
     }
    ],
@@ -2752,7 +2812,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "research"
+      "macro"
      ]
     }
    ],
@@ -2783,6 +2843,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/goldCore.js",
+     "js/terminal/goldView.js",
      "js/terminal/releasesBoardView.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
@@ -2862,7 +2924,10 @@ export const DERIVED = {
    ],
    "modules": [],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "js/terminal/goldCore.js",
+     "js/terminal/goldView.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -2882,7 +2947,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "research"
+      "macro"
      ]
     }
    ],
@@ -2918,6 +2983,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/calendarDrillsCore.js",
+     "js/terminal/calendarDrillsView.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/releasesBoardView.js"
@@ -2950,7 +3017,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -2981,6 +3048,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/monitorView.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
@@ -3027,7 +3095,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -3093,7 +3161,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "research"
+      "macro"
      ]
     }
    ],
@@ -3119,6 +3187,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/calendarDrillsCore.js",
+     "js/terminal/calendarDrillsView.js",
      "js/terminal/releasesBoardView.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/traderReadView.js"
@@ -3213,7 +3283,10 @@ export const DERIVED = {
    ],
    "modules": [],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "js/terminal/calendarDrillsCore.js",
+     "js/terminal/calendarDrillsView.js"
+    ],
     "today": [],
     "atlas": [
      "atlas.html"
@@ -3228,7 +3301,16 @@ export const DERIVED = {
   },
   "release-scorecard": {
    "pages": [],
-   "routes": [],
+   "routes": [
+    {
+     "route": "/api/release-calls",
+     "exists": true,
+     "pack": {
+      "skill": "events_news",
+      "maxAgeH": 96
+     }
+    }
+   ],
    "modules": [
     {
      "file": "js/releaseScorecard.js",
@@ -3236,7 +3318,10 @@ export const DERIVED = {
     }
    ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "js/terminal/calendarDrillsCore.js",
+     "js/terminal/calendarDrillsView.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -3244,7 +3329,9 @@ export const DERIVED = {
     "newsletter": []
    },
    "evidence": [],
-   "packSkills": [],
+   "packSkills": [
+    "events_news"
+   ],
    "drift": []
   },
   "fiscal-events": {
@@ -3254,7 +3341,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-28",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -3308,9 +3395,9 @@ export const DERIVED = {
     {
      "file": "correlations.html",
      "exists": true,
-     "lastModified": "2026-11-06",
+     "lastModified": "2026-11-15",
      "hub": [
-      "research"
+      "retired"
      ]
     }
    ],
@@ -3366,7 +3453,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-06-25",
      "hub": [
-      "live"
+      "vol"
      ]
     }
    ],
@@ -3401,7 +3488,7 @@ export const DERIVED = {
     {
      "file": "oi-dashboard-v2.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-11-16",
      "hub": [
       "live"
      ]
@@ -3410,20 +3497,24 @@ export const DERIVED = {
      "file": "oi-all-lines.html",
      "exists": true,
      "lastModified": "2026-10-30",
-     "hub": []
+     "hub": [
+      "vol"
+     ]
     },
     {
      "file": "oi-level-lab.html",
      "exists": true,
      "lastModified": "2026-10-29",
-     "hub": []
+     "hub": [
+      "vol"
+     ]
     },
     {
      "file": "oi-dashboard.html",
      "exists": true,
      "lastModified": "2026-10-20",
      "hub": [
-      "live"
+      "vol"
      ]
     }
    ],
@@ -3543,6 +3634,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/dataAge.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/optionsView.js",
@@ -3577,7 +3669,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -3613,6 +3705,10 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "js/terminal/chainBoard.js",
+     "js/terminal/goldCore.js",
+     "js/terminal/insightData.js",
+     "js/terminal/insightSeries.js",
+     "js/terminal/matrixCore.js",
      "js/terminal/optionsView.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
@@ -3649,7 +3745,9 @@ export const DERIVED = {
      "file": "terminal.html",
      "exists": true,
      "lastModified": "2026-09-24",
-     "hub": []
+     "hub": [
+      "macro"
+     ]
     }
    ],
    "routes": [
@@ -3687,16 +3785,24 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/assetFavourites.js",
      "js/terminal/bookPanels.js",
+     "js/terminal/calendarDrillsView.js",
      "js/terminal/chainBoard.js",
+     "js/terminal/commandCore.js",
+     "js/terminal/goldCore.js",
+     "js/terminal/insightData.js",
+     "js/terminal/insightSeries.js",
      "js/terminal/links.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js",
+     "js/terminal/matrixCore.js",
      "js/terminal/moreBoards.js",
      "js/terminal/optionsView.js",
      "js/terminal/pairView.js",
      "js/terminal/paperBoardsView.js",
      "js/terminal/regimeBoardView.js",
+     "js/terminal/replayViz.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/themes.js",
@@ -3738,6 +3844,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "js/terminal/ccyStrengthView.js",
+     "js/terminal/fxMatrixCore.js",
+     "js/terminal/fxMatrixView.js",
      "js/terminal/liveLayerView.js",
      "js/terminal/moreBoards.js"
     ],
@@ -3923,7 +4031,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-07-25",
      "hub": [
-      "vol"
+      "research"
      ]
     }
    ],
@@ -4048,6 +4156,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/cbBoardView.js",
+     "js/terminal/dataAge.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js",
      "js/terminal/paperBoardsView.js",
@@ -4081,7 +4190,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-26",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -4182,7 +4291,7 @@ export const DERIVED = {
     {
      "file": "oi-dashboard-v2.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-11-16",
      "hub": [
       "live"
      ]
@@ -4216,7 +4325,9 @@ export const DERIVED = {
    ],
    "names": {
     "terminal": [
+     "js/terminal/dataAge.js",
      "js/terminal/macroSubtabs.js",
+     "js/terminal/optionsView.js",
      "js/terminal/paperBoardsView.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/terrainPanel.js"
@@ -4303,6 +4414,11 @@ export const DERIVED = {
      "route": "/api/replay/notable",
      "exists": true,
      "pack": null
+    },
+    {
+     "route": "/api/replay/curve",
+     "exists": true,
+     "pack": null
     }
    ],
    "modules": [
@@ -4329,12 +4445,60 @@ export const DERIVED = {
     {
      "file": "js/terminal/replayView.js",
      "exists": true
+    },
+    {
+     "file": "js/replayVizCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/replayPlayer.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/replayViz.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/replayCurveDraw.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/replayStrengthDraw.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/replayFedDraw.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/replayCorrDraw.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/replayRegimeDraw.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/replayRangeDraw.js",
+     "exists": true
     }
    ],
    "names": {
     "terminal": [
+     "js/terminal/alertsView.js",
+     "js/terminal/commandCore.js",
+     "js/terminal/kchartCore.js",
+     "js/terminal/kchartView.js",
+     "js/terminal/linkedSelection.js",
+     "js/terminal/replayFedDraw.js",
      "js/terminal/replayLink.js",
+     "js/terminal/replayPlayer.js",
+     "js/terminal/replayRangeDraw.js",
+     "js/terminal/replayRegimeDraw.js",
+     "js/terminal/replayStrengthDraw.js",
      "js/terminal/replayView.js",
+     "js/terminal/replayViz.js",
+     "js/terminal/terminalFeel.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [],
@@ -4405,7 +4569,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-10-03",
      "hub": [
-      "live"
+      "vol"
      ]
     },
     {
@@ -4413,7 +4577,7 @@ export const DERIVED = {
      "exists": true,
      "lastModified": "2026-09-21",
      "hub": [
-      "live"
+      "macro"
      ]
     }
    ],
@@ -4433,11 +4597,21 @@ export const DERIVED = {
       "skill": "levels_structure",
       "maxAgeH": 168
      }
+    },
+    {
+     "route": "/api/vol-clock",
+     "exists": true,
+     "pack": null
     }
    ],
    "modules": [],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/monitorCore.js",
+     "js/terminal/monitorView.js",
+     "js/terminal/volClockView.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -4507,7 +4681,7 @@ export const DERIVED = {
   }
  },
  "unclassified": [],
- "rootPageCount": 263,
+ "rootPageCount": 257,
  "packFeeds": 115,
- "generatedAt": "2026-11-14"
+ "generatedAt": "2026-11-16"
 };

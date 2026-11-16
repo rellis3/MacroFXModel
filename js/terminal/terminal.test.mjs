@@ -179,7 +179,7 @@ test('rowFor / crowdFor / rateGap', () => {
   assert.equal(rowFor([{ pair: 'EUR/USD', x: 1 }, { inst: 'GOLD', x: 2 }], 'EURUSD').x, 1);
   assert.equal(rowFor([{ inst: 'GOLD', x: 2 }], 'GOLD').x, 2);
   assert.equal(rowFor(null, 'GOLD'), null);
-  assert.deepEqual(crowdFor({ instruments: { EUR_USD: { latest: [0, 1.1, 62.3], change24h: { delta: -1 } } } }, 'EURUSD'), { long: 62.3, d24: -1 });
+  assert.deepEqual(crowdFor({ instruments: { EUR_USD: { latest: [1794602400000, 1.1, 62.3], change24h: { delta: -1 } } } }, 'EURUSD'), { long: 62.3, d24: -1, at: 1794602400000 });
   const g = rateGap('EURUSD', { rd: { byCcy: { EUR: { latestRate: 2.27, z: -0.08 }, USD: { latestRate: 4.3, z: 0.5 } } }, ry: { byCcy: { EUR: { latestReal: -0.28 }, USD: { latestReal: 1.1 } } }, policy: { EUR: { rate: 2.5 }, USD: { rate: 4 } } });
   assert.equal(g.short, -2.03); assert.equal(g.real, -1.38); assert.equal(g.policy, -1.5); assert.equal(g.y10, null);
   assert.equal(rateGap('GOLD', {}), null);

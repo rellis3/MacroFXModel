@@ -19,7 +19,8 @@ NY = "America/New_York"
 NBAR = 390
 CHECKS = np.arange(29, 360, 30)  # 0-based bar index of the bars ENDING 10:00, 10:30 ... 15:30
 # futures cost: 1 tick each side + $4.50 round trip (repo cost-verification rule), in index points per round trip
-COST_RT_PTS = {"ES": 0.59, "NQ": 0.725, "YM": 2.9, "RTY": 0.29}
+COST_RT_PTS = {"ES": 0.59, "NQ": 0.725, "YM": 2.9, "RTY": 0.29,
+               "SPY": 0.009}  # SPY: the paper's $0.0035 commission + $0.001 slippage per share per side (prereg -spy)
 INSTRUMENTS = ["ES", "NQ", "YM", "RTY"]
 
 
@@ -65,14 +66,70 @@ def _matrix(d, days):
     return out
 
 
+def _load_spy():
+    """IBKR SPY 1-min TRADES (fetch_spy_ib.py): bar START stamps in UTC; regular hours to 16:15 -> keep 09:30-15:59."""
+    files = sorted((DATA / "analysis/output/noise-area-momentum/_cache/spy_1m").glob("*.parquet"))
+    d = pd.concat([pd.read_parquet(f) for f in files]).reset_index()
+    d = d[~d["t"].duplicated()]
+    start = d["t"].dt.tz_convert(NY)
+    mins = start.dt.hour * 60 + start.dt.minute - (9 * 60 + 30)
+    keep = (mins >= 0) & (mins < NBAR) & (start.dt.dayofweek < 5)
+    d = d[keep].copy()
+    d["m"] = mins[keep].to_numpy()
+    d["day"] = start[keep].dt.tz_localize(None).dt.normalize().to_numpy()
+    d = d[d["day"] <= LOCKBOX_END]
+    # half-days: IB's ETF hours also run 15 min past the 13:00 close -> drop the last 15 bars of any short day (A1)
+    mx = d.groupby("day")["m"].transform("max")
+    return d[(mx >= NBAR - 1) | (d["m"] <= mx - 15)]
+
+
+def build_days_spy():
+    """SPY day matrices (prereg noise-area-momentum-spy): no CFD fill, half-days kept (no futures holiday rule)."""
+    CACHE.mkdir(parents=True, exist_ok=True)
+    f = CACHE / "SPY_days_v1.npz"
+    if f.exists():
+        z = np.load(f, allow_pickle=False)
+        return {k: z[k] for k in z.files}
+    d = _load_spy()
+    days = np.array(sorted(d["day"].unique()))
+    A = _matrix(d, days)
+    nbars = (~np.isnan(A["close"])).sum(1)
+    valid = ~np.isnan(A["open"][:, 0]) & (nbars >= 200)
+    days = days[valid]
+    C, O, H, L, V = (A[k][valid] for k in ("close", "open", "high", "low", "volume"))
+    last = np.array([np.max(np.nonzero(~np.isnan(r))[0]) for r in C])
+    Cf = pd.DataFrame(C).ffill(axis=1).to_numpy()
+    after = np.arange(NBAR)[None, :] > last[:, None]
+    miss = np.isnan(C) & ~after
+    H = np.where(miss, Cf, H)
+    L = np.where(miss, Cf, L)
+    V = np.where(miss, 0.0, V)
+    C = np.where(after, np.nan, Cf)
+    H[after] = L[after] = V[after] = np.nan
+    O0 = O[:, 0].copy()
+    dc = C[np.arange(len(last)), last]
+    prev = np.full(len(O0), np.nan)
+    prev[1:] = dc[:-1]
+    dd = days.astype("datetime64[D]").astype("int64")
+    gap = np.zeros(len(O0), bool)
+    gap[1:] = np.diff(dd) > 5
+    prev[gap] = np.nan
+    out = dict(days=dd, open=O0, close=C, high=H, low=L, vol=V, last=last, uopen=O0.copy(),
+               src=np.zeros(len(O0), int), prev=prev)
+    np.savez_compressed(f, **out)
+    return out
+
+
 def build_days(sym):
     """Return dict of arrays (D, 390) and per-day vectors. Cached as npz (gitignored).
 
     Amendment A1: NT8 holes (~6-week runs inside contracts, 2018/2024-26) are filled with the OANDA CFD's cash-session
     minutes, scaled to the futures level; exchange-holiday Globex sessions (last bar 13:00, cash market shut) dropped.
     """
+    if sym == "SPY":
+        return build_days_spy()
     CACHE.mkdir(parents=True, exist_ok=True)
-    f = CACHE / f"{sym}_days_v2.npz"
+    f = CACHE / f"{sym}_days_v3.npz"  # v3: NT8 holes re-pulled 2026-11-15 (CFD fill now only where NT8 still lacks a day)
     if f.exists():
         z = np.load(f, allow_pickle=False)
         return {k: z[k] for k in z.files}

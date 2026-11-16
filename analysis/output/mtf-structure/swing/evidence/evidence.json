@@ -1,0 +1,296 @@
+{
+ "slug": "mtf-structure-swing",
+ "unit": "hit-rate excess over B0",
+ "bar": 0.03,
+ "n_rows": 558,
+ "n_clusters": 99,
+ "n_instruments": 13,
+ "span": [
+  "2018-01-03",
+  "2026-08-18"
+ ],
+ "estimate": -0.025846458694231904,
+ "ci": [
+  -0.07637935235591076,
+  0.018815710148438917
+ ],
+ "se": 0.02500555015511589,
+ "verdict_word": "UNDERPOWERED",
+ "notes": "Family swing, horizon 24h (07:00 London to the next session 07:00). Outcome = y - B0 (point-in-time base rate), so the estimate is the hit-rate excess over B0 (called days). Cluster = 21-session date block. leak_fn = tomorrow's (the 24h outcome's) sign. The pack placebo shuffles rows within instrument (row-level); the registered noise test in RESULTS.md shuffles whole 21-session date blocks.",
+ "placebo": {
+  "n": 300,
+  "mean": -0.013471491625935368,
+  "p2_5": -0.04955550700821501,
+  "p97_5": 0.018474372253388084,
+  "real_percentile": 25.0
+ },
+ "buckets": [
+  {
+   "bucket": "-1.0",
+   "n": 172,
+   "mean_outcome": 0.028656355112833914,
+   "lo": -0.046684983644239356,
+   "hi": 0.10399769386990719,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "1.0",
+   "n": 386,
+   "mean_outcome": -0.024594380497341892,
+   "lo": -0.07465932148189697,
+   "hi": 0.02547056048721318,
+   "mean_side": 1.0
+  }
+ ],
+ "by_instrument": [
+  {
+   "inst": "EURJPY",
+   "n": 49,
+   "estimate": 0.03654334906686775,
+   "ci": [
+    -0.09041167364221644,
+    0.1749834335369058
+   ]
+  },
+  {
+   "inst": "EURUSD",
+   "n": 41,
+   "estimate": -0.011017021482173891,
+   "ci": [
+    -0.17541113638462374,
+    0.17080015891460712
+   ]
+  },
+  {
+   "inst": "GBPJPY",
+   "n": 67,
+   "estimate": -0.0698594725542516,
+   "ci": [
+    -0.16973166695171565,
+    0.0024910401238865615
+   ]
+  },
+  {
+   "inst": "GBPUSD",
+   "n": 35,
+   "estimate": -0.07359035539672815,
+   "ci": [
+    -0.2518338924177794,
+    0.0661116971554752
+   ]
+  },
+  {
+   "inst": "GOLD",
+   "n": 42,
+   "estimate": -0.14923887109133216,
+   "ci": [
+    -0.3103924359365835,
+    0.02698817371496967
+   ]
+  },
+  {
+   "inst": "NAS100",
+   "n": 66,
+   "estimate": -0.057066591035858476,
+   "ci": [
+    -0.19442447134984686,
+    0.06805246972767776
+   ]
+  },
+  {
+   "inst": "NZDUSD",
+   "n": 38,
+   "estimate": -0.0014938941976918526,
+   "ci": [
+    -0.1559505421725503,
+    0.11015183858391911
+   ]
+  },
+  {
+   "inst": "SPX500",
+   "n": 43,
+   "estimate": 0.03903591298755305,
+   "ci": [
+    -0.16050961076200543,
+    0.17880754951347627
+   ]
+  },
+  {
+   "inst": "US30",
+   "n": 34,
+   "estimate": 0.005238274453924666,
+   "ci": [
+    -0.1420399861267779,
+    0.15995013503124478
+   ]
+  },
+  {
+   "inst": "USDCAD",
+   "n": 40,
+   "estimate": 0.12453747875016155,
+   "ci": [
+    -0.0006697364528406372,
+    0.24793263637807944
+   ]
+  },
+  {
+   "inst": "USDCHF",
+   "n": 38,
+   "estimate": -0.07716412949117694,
+   "ci": [
+    -0.23888197486758478,
+    0.0853215557782964
+   ]
+  },
+  {
+   "inst": "USDJPY",
+   "n": 37,
+   "estimate": 0.04551985615626559,
+   "ci": [
+    -0.10235339917210165,
+    0.1624258459408005
+   ]
+  }
+ ],
+ "by_year": [
+  {
+   "year": "2018",
+   "n": 50,
+   "estimate": -0.1555060223212986,
+   "ci": [
+    -0.2826962041180306,
+    -0.023436741552052404
+   ]
+  },
+  {
+   "year": "2019",
+   "n": 52,
+   "estimate": 0.12266150642788161,
+   "ci": [
+    0.008352203442312373,
+    0.2034923175686507
+   ]
+  },
+  {
+   "year": "2020",
+   "n": 82,
+   "estimate": -0.0022083024491015317,
+   "ci": [
+    -0.1713599877092969,
+    0.1030524629573677
+   ]
+  },
+  {
+   "year": "2021",
+   "n": 73,
+   "estimate": -0.13560523943862993,
+   "ci": [
+    -0.29877807575749843,
+    0.011332457336887331
+   ]
+  },
+  {
+   "year": "2022",
+   "n": 81,
+   "estimate": 0.08537588689792594,
+   "ci": [
+    -0.07852992108816842,
+    0.20986973489489913
+   ]
+  },
+  {
+   "year": "2023",
+   "n": 64,
+   "estimate": -0.040806768040288086,
+   "ci": [
+    -0.19050963588713093,
+    0.06934011758758529
+   ]
+  },
+  {
+   "year": "2024",
+   "n": 55,
+   "estimate": -0.13653920666314479,
+   "ci": [
+    -0.25623590200837804,
+    -0.024610433918733066
+   ]
+  },
+  {
+   "year": "2025",
+   "n": 64,
+   "estimate": 0.008725015107511586,
+   "ci": [
+    -0.12393475370458586,
+    0.1439489398964829
+   ]
+  },
+  {
+   "year": "2026",
+   "n": 37,
+   "estimate": -0.008046383088685298,
+   "ci": [
+    -0.13385820455559522,
+    0.14429790259319705
+   ]
+  }
+ ],
+ "by_half": [
+  {
+   "half": "H1",
+   "n": 280,
+   "estimate": -0.029865050490178787,
+   "ci": [
+    -0.11241742207405334,
+    0.03760436611437299
+   ]
+  },
+  {
+   "half": "H2",
+   "n": 278,
+   "estimate": -0.021798956165940075,
+   "ci": [
+    -0.0767511940279095,
+    0.0465733042915041
+   ]
+  }
+ ],
+ "without_top1pct": -0.01984191343441044,
+ "positive_control": [
+  {
+   "multiple_of_bar": 0.5,
+   "planted": 0.015,
+   "detected_share": 0.0,
+   "mean_recovered": -0.010846458694231885
+  },
+  {
+   "multiple_of_bar": 1.0,
+   "planted": 0.03,
+   "detected_share": 0.0,
+   "mean_recovered": 0.004153541305768121
+  },
+  {
+   "multiple_of_bar": 2.0,
+   "planted": 0.06,
+   "detected_share": 0.0,
+   "mean_recovered": 0.0341535413057681
+  }
+ ],
+ "lookahead_canary": {
+  "estimate_with_leak": 0.5011998728489458,
+  "estimate_clean": -0.025846458694231904
+ },
+ "diagnosis": {
+  "checks": {
+   "ci_excludes_zero": false,
+   "ci_excludes_bar": true,
+   "beats_placebo_97_5": false,
+   "pipeline_finds_planted_bar": false,
+   "same_sign_both_halves": true,
+   "share_instruments_same_sign": 0.5833333333333334,
+   "survives_top1pct_removed": true,
+   "survives_costs": null
+  },
+  "label": "UNDERPOWERED: the test cannot reliably see an effect of the useful size, so 'no effect' is not shown"
+ }
+}

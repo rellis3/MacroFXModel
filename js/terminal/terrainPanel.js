@@ -5,6 +5,7 @@
  * Greeks stay in OI Lab: this panel is the one picture, not the whole instrument panel (link below the chart).
  */
 import { drawTerrain, terrainSmiles, SMILE_SYMS } from '../terrainChart.js';
+import { mountTerrainLive, DESK_OF_SYM, LIVE_COLOUR } from '../terrainLive.js';
 import { ownerLink, ownerOnly } from './links.js';
 
 const NAMES = { 'XAU/USD': 'Gold', NAS100_USD: 'Nasdaq (NQ)', SPX500_USD: 'S&P 500 (ES)', US2000_USD: 'Russell (RTY)', US30_USD: 'Dow (YM)', 'EUR/USD': 'EURUSD', 'GBP/USD': 'GBPUSD',
@@ -62,8 +63,12 @@ export async function mountTerrain(root, J, state = {}, { idOf = k => k, nameOf 
   if (nm) nm.textContent = nameOf(state.id);
   state.maxDte ??= 3;
   exp.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.d === state.maxDte));
+  // the live price line (js/terrainLive.js) is its own registry surface, so the Access page can switch it off
+  const liveOn = () => globalThis.deskSurfaceOn?.('widget.terrainlive') !== false;
+  const esc = t => String(t ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
   const draw = () => {
     if (!sym) {
+      state.liveCtl?.update(null, null);
       const g = cv.getContext('2d'); g.clearRect(0, 0, cv.width, cv.height); cv.style.display = 'none';
       leg.textContent = `No stored open interest for ${nameOf(state.id)}. The terrain covers ${keys.map(k => nameOf(idOf(k))).join(', ') || 'no market today'}.`;
       return;
@@ -71,8 +76,16 @@ export async function mountTerrain(root, J, state = {}, { idOf = k => k, nameOf 
     cv.style.display = 'block';
     state.sym = sym;
     const useSmile = SMILE_SYMS.includes(sym), smile = useSmile ? (SMILE[sym] ?? (loadSmile(sym, draw), { state: 'loading' })) : null;
-    const r = drawTerrain(cv, { e: store[sym], sym, maxDte: state.maxDte, smile, smileCover: useSmile, px: pxFor(sym), fmtBig, showTip, hideTip });
-    leg.innerHTML = r.legend || '';
+    const desk = liveOn() ? DESK_OF_SYM[sym] ?? null : null;
+    const r = drawTerrain(cv, { e: store[sym], sym, maxDte: state.maxDte, smile, smileCover: useSmile, px: pxFor(sym), fmtBig, showTip, hideTip, spotLabel: desk ? 'SNAPSHOT SPOT' : undefined });
+    const paintLeg = () => { leg.innerHTML = (r.legend || '') + (state.liveNote ? `<div style="margin-top:6px"><span style="color:${LIVE_COLOUR}">&#9632;</span> ${esc(state.liveNote)}</div>` : ''); };
+    state.liveNote = ''; paintLeg();
+    if (!state.liveCtl || state.liveCv !== cv) {
+      state.liveCtl?.stop(); state.liveCv = cv;
+      state.liveCtl = mountTerrainLive(cv, { px: v => pxFor(state.sym)(v), fetchJson: u => J(u), isOn: liveOn, setNote: t => { state.liveNote = t; state.paintLeg?.(); } });
+    }
+    state.paintLeg = paintLeg;
+    state.liveCtl.update(r.geom ?? null, desk);
     const lab = root.querySelector('#tr-lab'); if (lab && lab.dataset.ownerLink !== undefined) lab.href = `oi-dashboard-v2.html#${encodeURIComponent(sym)}`;   // only the owner's anchor exists; a viewer has nothing to point
   };
   state.draw = draw;

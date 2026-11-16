@@ -1,0 +1,279 @@
+{
+ "slug": "positioning-flow-inputs:vrp|idx|alone|21:00",
+ "unit": "Brier skill vs B0 (fraction)",
+ "bar": 0.00577537389824527,
+ "n_rows": 6426,
+ "n_clusters": 2146,
+ "n_instruments": 3,
+ "span": [
+  "2018-01-02",
+  "2026-08-20"
+ ],
+ "estimate": -2.6539481689389735e-05,
+ "ci": [
+  -0.0001187606566947181,
+  6.594475288880618e-05
+ ],
+ "se": 4.81662945607023e-05,
+ "verdict_word": "NULL",
+ "notes": "Runner: est -0.00003 [-0.00007, +0.00008] (21-date moving-block bootstrap); 200-refit block-shuffled-input placebo 95th pct +0.00030. The pack bootstraps dates iid and its placebo shuffles the fitted lean without refit, so the runner's numbers are the binding ones. Plant = labels flipped toward the lean until the statistic rises by the bar; canary = lean set to the realised direction.",
+ "placebo": {
+  "n": 500,
+  "mean": -1.9053837874155177e-06,
+  "p2_5": -7.308793386146164e-05,
+  "p97_5": 6.080200879748025e-05,
+  "real_percentile": 23.599999999999998
+ },
+ "buckets": [
+  {
+   "bucket": "D1",
+   "n": 643,
+   "mean_outcome": -1.5205434520472947e-05,
+   "lo": -0.00013424588197831532,
+   "hi": 0.00010383501293736942,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D2",
+   "n": 643,
+   "mean_outcome": 3.96791934242835e-07,
+   "lo": -1.8924109388712225e-06,
+   "hi": 2.6859948073568924e-06,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D3",
+   "n": 642,
+   "mean_outcome": -1.066180631715132e-06,
+   "lo": -2.065550784153159e-06,
+   "hi": -6.681047927710444e-08,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D4",
+   "n": 643,
+   "mean_outcome": -1.475920202759209e-07,
+   "lo": -4.510696397920743e-07,
+   "hi": 1.558855992402325e-07,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "D5",
+   "n": 642,
+   "mean_outcome": 1.1505969045861127e-07,
+   "lo": -6.073555511504752e-08,
+   "hi": 2.9085493603227005e-07,
+   "mean_side": 0.6666666666666666
+  },
+  {
+   "bucket": "D6",
+   "n": 643,
+   "mean_outcome": -1.3523595594278484e-07,
+   "lo": -7.497357264534764e-07,
+   "hi": 4.792638145679068e-07,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D7",
+   "n": 642,
+   "mean_outcome": 8.684259428652732e-07,
+   "lo": -4.897168029754779e-07,
+   "hi": 2.2265686887060243e-06,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D8",
+   "n": 643,
+   "mean_outcome": -1.3780984548447132e-06,
+   "lo": -4.38338292502982e-06,
+   "hi": 1.6271860153403936e-06,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D9",
+   "n": 642,
+   "mean_outcome": -1.2196796406867086e-05,
+   "lo": -1.8615972663042723e-05,
+   "hi": -5.777620150691448e-06,
+   "mean_side": 1.0
+  },
+  {
+   "bucket": "D10",
+   "n": 643,
+   "mean_outcome": -3.7096240381603794e-05,
+   "lo": -0.00015796123117569892,
+   "hi": 8.376875041249133e-05,
+   "mean_side": 1.0
+  }
+ ],
+ "by_instrument": [
+  {
+   "inst": "NAS100",
+   "n": 2145,
+   "estimate": -6.299351423390075e-05,
+   "ci": [
+    -0.00018933691942699284,
+    5.563337725100888e-05
+   ]
+  },
+  {
+   "inst": "SPX500",
+   "n": 2136,
+   "estimate": -2.387214099793917e-05,
+   "ci": [
+    -0.00014998605787744734,
+    0.00012289857700716313
+   ]
+  },
+  {
+   "inst": "US30",
+   "n": 2145,
+   "estimate": 7.13837435290563e-06,
+   "ci": [
+    -9.630495494807341e-05,
+    0.0001430286056593624
+   ]
+  }
+ ],
+ "by_year": [
+  {
+   "year": "2018",
+   "n": 739,
+   "estimate": -5.004844932204664e-05,
+   "ci": [
+    -0.0001016317305305347,
+    5.99819032527477e-06
+   ]
+  },
+  {
+   "year": "2019",
+   "n": 741,
+   "estimate": 2.0932853943268553e-06,
+   "ci": [
+    -3.305629867224153e-07,
+    4.423532930292506e-06
+   ]
+  },
+  {
+   "year": "2020",
+   "n": 741,
+   "estimate": -1.9836939424448738e-05,
+   "ci": [
+    -5.6680721183065394e-05,
+    1.822797113657272e-05
+   ]
+  },
+  {
+   "year": "2021",
+   "n": 753,
+   "estimate": 4.318269947520527e-06,
+   "ci": [
+    -5.5531998691780394e-06,
+    1.3152785512402191e-05
+   ]
+  },
+  {
+   "year": "2022",
+   "n": 744,
+   "estimate": -2.886443009162487e-05,
+   "ci": [
+    -5.558355791292751e-05,
+    -3.6888710132175457e-06
+   ]
+  },
+  {
+   "year": "2023",
+   "n": 744,
+   "estimate": -3.5526476251577903e-06,
+   "ci": [
+    -7.911051332443695e-06,
+    6.112732662274525e-08
+   ]
+  },
+  {
+   "year": "2024",
+   "n": 747,
+   "estimate": 1.1581625309688302e-06,
+   "ci": [
+    -6.92792630057323e-06,
+    9.171768610756586e-06
+   ]
+  },
+  {
+   "year": "2025",
+   "n": 741,
+   "estimate": 3.88510067207404e-06,
+   "ci": [
+    -1.610368808265449e-05,
+    2.2211347664465286e-05
+   ]
+  },
+  {
+   "year": "2026",
+   "n": 476,
+   "estimate": -0.00021743251329559037,
+   "ci": [
+    -0.0015002331261747338,
+    0.0010097860891829528
+   ]
+  }
+ ],
+ "by_half": [
+  {
+   "half": "H1",
+   "n": 3214,
+   "estimate": -1.5178808189088338e-05,
+   "ci": [
+    -3.3338722826681985e-05,
+    -2.6896592510114436e-07
+   ]
+  },
+  {
+   "half": "H2",
+   "n": 3212,
+   "estimate": -3.789643622576512e-05,
+   "ci": [
+    -0.00024482687078784707,
+    0.00015692301226922825
+   ]
+  }
+ ],
+ "without_top1pct": 1.5328052624743867e-05,
+ "positive_control": [
+  {
+   "multiple_of_bar": 0.5,
+   "planted": 0.002887686949122635,
+   "detected_share": 1.0,
+   "mean_recovered": 0.0007750777994248303
+  },
+  {
+   "multiple_of_bar": 1.0,
+   "planted": 0.00577537389824527,
+   "detected_share": 1.0,
+   "mean_recovered": 0.0007750777994248303
+  },
+  {
+   "multiple_of_bar": 2.0,
+   "planted": 0.01155074779649054,
+   "detected_share": 1.0,
+   "mean_recovered": 0.0007750777994248303
+  }
+ ],
+ "lookahead_canary": {
+  "estimate_with_leak": 0.9999999999959708,
+  "estimate_clean": -2.6539481689389735e-05
+ },
+ "diagnosis": {
+  "checks": {
+   "ci_excludes_zero": false,
+   "ci_excludes_bar": true,
+   "beats_placebo_97_5": false,
+   "pipeline_finds_planted_bar": true,
+   "same_sign_both_halves": true,
+   "share_instruments_same_sign": 0.6666666666666666,
+   "survives_top1pct_removed": false,
+   "survives_costs": null
+  },
+  "label": "FLAT: the test could see a useful effect (planted control found), and the interval rules it out"
+ }
+}

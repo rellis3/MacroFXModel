@@ -184,7 +184,7 @@ export const FULL_FEEDS = [
   'risk-flags', 'em-gauges', 'world-rates', 'fed-path', 'funding-read?spark=0', 'nowcast', 'bank-credit', 'wider-market', 'chain-extra', 'hedging-summary', 'cot-extremes', 'global-yields',
   'credit-board', 'liquidity-board', 'term-premium', 'xccy-basis', 'world-stress',
   'fair-value', 'leading-indicators', 'commodity-fx', 'carry-vol', 'copper-gold', 'session-heat', 'options-skew', 'speech-drift', 'desk-alerts', 'release-surprises',
-  'cb-board', 'macro-engines-board', 'rates-board', 'credit-liquidity', 'curve-board', 'regime-board', 'releases-board', 'vol-board', 'ccy-strength', 'desk-watch',
+  'cb-board', 'macro-engines-board', 'rates-board', 'credit-liquidity', 'curve-board', 'regime-board', 'releases-board', 'vol-board', 'vol-clock', 'ccy-strength', 'desk-watch',
 ];
 /** Long histories or whole books that are already stored somewhere durable, or can be rebuilt from stored prices. Each is left out of FULL, with the reason. */
 export const FULL_EXCLUDED = [
@@ -199,6 +199,7 @@ export const FULL_EXCLUDED = [
   { path: 'autocorrelation', why: 'about 55 KB of statistics recomputed from stored prices' },
   { path: 'desk-news', why: 'about 75 KB wire window; each headline and its reaction is kept in desk_news_record_v1' },
   { path: 'state', why: 'about 350 KB market-state document; its history is archived by the state engine (archive/oi_summary, archive/series) and it is rebuilt from them' },
+  { path: 'bias-engine', why: 'the bias engine issue is already kept for good, one write-once KV key a day (bias_engine_<date>, served by /api/bias-engine?date=), and scored forward on the bias scoreboard; an unstored live read is not a record' },
   { path: 'desk-run', why: 'about 275 KB; the morning book is already kept for good, one key a day (desk_run_<date>); CORE carries its ratings, convictions and exposure' },
 ];
 /** Feeds that carry trade levels or the owner's own record: stored in FULL for the owner, removed from a desk viewer's copy. */

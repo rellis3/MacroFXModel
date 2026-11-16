@@ -1,0 +1,9 @@
+/* Export bar and note (js/terminal/exportView.js). Theme tokens only (themeTokens.test.mjs). */
+.ex-bar { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding-left: 10px; }
+.ex-l { font: 600 9.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--tx3); }
+.ex-b { background: var(--bg2); color: var(--tx2); border: 1px solid var(--line2); border-radius: 6px; padding: 2px 8px; font: 600 10.5px var(--mono); letter-spacing: .06em; cursor: pointer; }
+.ex-b:hover { color: var(--tx); border-color: var(--pur2); }
+.ex-b:focus-visible { outline: 2px solid var(--pur2); outline-offset: 1px; }
+.ex-note { position: fixed; left: 16px; bottom: 16px; z-index: 60; max-width: min(90vw, 420px); padding: 8px 12px; border-radius: 10px; background: var(--bg3); border: 1px solid var(--line2); color: var(--tx); font-size: 12.5px; box-shadow: 0 8px 24px var(--scrim); }
+.ex-note[hidden] { display: none; }
+.ex-in { display: inline-flex; align-items: center; gap: 6px; }

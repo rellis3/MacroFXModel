@@ -4,7 +4,7 @@ Why: the paper (Zarattini, Aziz, Barbon 2024) trades SPY from 2007; our first ru
 This pulls the paper's own instrument and period so the replication can be run as written.
 
 Weekly requests ('1 W', 1 min, useRTH), resumable: each finished week is a parquet under
-analysis/output/noise-area-momentum/data/spy_1m/ (gitignored: vendor data, public repo). Pacing ~11 s/request
+analysis/output/noise-area-momentum/_cache/spy_1m/ (gitignored: vendor data, public repo). Pacing ~11 s/request
 (IB limit 60 per 10 min) -> ~1,000 weeks ~ 3 h. Timestamps stored as UTC, bar START (IB stamps the bar start).
 
 Usage: python scripts/noise-area-momentum/fetch_spy_ib.py [--start 2007-01-01] [--end 2026-11-14] [--symbol SPY]
@@ -22,7 +22,7 @@ ap.add_argument('--probe', action='store_true', help='pull one recent week and o
 a = ap.parse_args()
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-OUT = os.path.join(ROOT, 'analysis', 'output', 'noise-area-momentum', 'data', f'{a.symbol.lower()}_1m')
+OUT = os.path.join(ROOT, 'analysis', 'output', 'noise-area-momentum', '_cache', f'{a.symbol.lower()}_1m')
 os.makedirs(OUT, exist_ok=True)
 
 ib = IB()

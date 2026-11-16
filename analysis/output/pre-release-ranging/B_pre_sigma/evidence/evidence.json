@@ -1,0 +1,251 @@
+{
+ "slug": "pre-release-ranging/B_pre_sigma",
+ "unit": "daily sigma",
+ "bar": 0.085,
+ "n_rows": 7023,
+ "n_clusters": 1229,
+ "n_instruments": 6,
+ "span": [
+  "2017-01-06",
+  "2026-08-13"
+ ],
+ "estimate": 0.10364032651793498,
+ "ci": [
+  0.07376544075909869,
+  0.1351001932443469
+ ],
+ "se": 0.015435355431218671,
+ "verdict_word": "VALIDATED",
+ "notes": "Rows: event days (side +1) and pseudo-event non-release days (side -1); outcome = compression vs the row's own matched controls (control - row; positive = narrower / fewer breaks). Estimate = event mean - pseudo mean. Placebo = event/pseudo labels shuffled across dates. Leak canary: labels reassigned by the realised post-release range excess (top half = +1).",
+ "placebo": {
+  "n": 500,
+  "mean": 0.00025873302863725156,
+  "p2_5": -0.021533459153326894,
+  "p97_5": 0.019390401094670058,
+  "real_percentile": 100.0
+ },
+ "buckets": [
+  {
+   "bucket": "-1",
+   "n": 4664,
+   "mean_outcome": -0.00019503339771859797,
+   "lo": -0.012914068684959305,
+   "hi": 0.012524001889522109,
+   "mean_side": -1.0
+  },
+  {
+   "bucket": "1",
+   "n": 2359,
+   "mean_outcome": 0.10344529312021639,
+   "lo": 0.08800582098146058,
+   "hi": 0.1188847652589722,
+   "mean_side": 1.0
+  }
+ ],
+ "by_instrument": [
+  {
+   "inst": "eurusd",
+   "n": 1220,
+   "estimate": 0.12464911388023982,
+   "ci": [
+    0.07928096460655389,
+    0.1727472465347728
+   ]
+  },
+  {
+   "inst": "gbpusd",
+   "n": 1222,
+   "estimate": 0.11835413831157779,
+   "ci": [
+    0.0654181653556459,
+    0.1685839349199034
+   ]
+  },
+  {
+   "inst": "gold",
+   "n": 1200,
+   "estimate": 0.08153098099427855,
+   "ci": [
+    0.03589148885261767,
+    0.11525812995390616
+   ]
+  },
+  {
+   "inst": "nq",
+   "n": 1183,
+   "estimate": 0.08881419306563366,
+   "ci": [
+    0.056239953597332026,
+    0.12867397301626585
+   ]
+  },
+  {
+   "inst": "spx500",
+   "n": 976,
+   "estimate": 0.0872214127077109,
+   "ci": [
+    0.04096012654930487,
+    0.12759404689744958
+   ]
+  },
+  {
+   "inst": "usdjpy",
+   "n": 1222,
+   "estimate": 0.1181686487562313,
+   "ci": [
+    0.06614007816222518,
+    0.17111491506209797
+   ]
+  }
+ ],
+ "by_year": [
+  {
+   "year": "2017",
+   "n": 644,
+   "estimate": 0.16935148258698893,
+   "ci": [
+    0.10120909875974941,
+    0.22688008690654288
+   ]
+  },
+  {
+   "year": "2018",
+   "n": 768,
+   "estimate": 0.12402364037800215,
+   "ci": [
+    0.05123060641884348,
+    0.2152322483322459
+   ]
+  },
+  {
+   "year": "2019",
+   "n": 692,
+   "estimate": 0.0619126588348377,
+   "ci": [
+    -0.037172844038725755,
+    0.14430137487008277
+   ]
+  },
+  {
+   "year": "2020",
+   "n": 707,
+   "estimate": 0.09687631404405699,
+   "ci": [
+    -0.0011196024901374718,
+    0.19178400520968772
+   ]
+  },
+  {
+   "year": "2021",
+   "n": 834,
+   "estimate": 0.11111691531791748,
+   "ci": [
+    0.042068811957646925,
+    0.17524304209272465
+   ]
+  },
+  {
+   "year": "2022",
+   "n": 731,
+   "estimate": 0.09271341020757747,
+   "ci": [
+    0.013457538933094081,
+    0.1806744939876394
+   ]
+  },
+  {
+   "year": "2023",
+   "n": 770,
+   "estimate": 0.10254945832447727,
+   "ci": [
+    0.01152929496415644,
+    0.19563086742513863
+   ]
+  },
+  {
+   "year": "2024",
+   "n": 637,
+   "estimate": 0.091920142420276,
+   "ci": [
+    0.01148646283036689,
+    0.16268969057784383
+   ]
+  },
+  {
+   "year": "2025",
+   "n": 768,
+   "estimate": 0.09518363149720976,
+   "ci": [
+    -0.022901671225780934,
+    0.21073320056552053
+   ]
+  },
+  {
+   "year": "2026",
+   "n": 472,
+   "estimate": 0.08421639991974167,
+   "ci": [
+    -0.05307178114387184,
+    0.23593492888140583
+   ]
+  }
+ ],
+ "by_half": [
+  {
+   "half": "H1",
+   "n": 3513,
+   "estimate": 0.11188540570591006,
+   "ci": [
+    0.07076134645618118,
+    0.1461305768094241
+   ]
+  },
+  {
+   "half": "H2",
+   "n": 3510,
+   "estimate": 0.0952154631532394,
+   "ci": [
+    0.05141600366135347,
+    0.13551774919588144
+   ]
+  }
+ ],
+ "without_top1pct": 0.09620260842346504,
+ "positive_control": [
+  {
+   "multiple_of_bar": 0.5,
+   "planted": 0.0425,
+   "detected_share": 1.0,
+   "mean_recovered": 0.14614032651793496
+  },
+  {
+   "multiple_of_bar": 1.0,
+   "planted": 0.085,
+   "detected_share": 1.0,
+   "mean_recovered": 0.18864032651793497
+  },
+  {
+   "multiple_of_bar": 2.0,
+   "planted": 0.17,
+   "detected_share": 1.0,
+   "mean_recovered": 0.273640326517935
+  }
+ ],
+ "lookahead_canary": {
+  "estimate_with_leak": -0.08779428651686123,
+  "estimate_clean": 0.10364032651793498
+ },
+ "diagnosis": {
+  "checks": {
+   "ci_excludes_zero": true,
+   "ci_excludes_bar": false,
+   "beats_placebo_97_5": true,
+   "pipeline_finds_planted_bar": true,
+   "same_sign_both_halves": true,
+   "share_instruments_same_sign": 1.0,
+   "survives_top1pct_removed": true,
+   "survives_costs": null
+  },
+  "label": "REAL: check the prereg gate for the formal verdict"
+ }
+}

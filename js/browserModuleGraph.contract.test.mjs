@@ -37,15 +37,11 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 /**
  * Pages known to be broken this exact way, NOT approved exceptions.
  *
- * volatility-classifier-standalone.html imports js/volBacktestM1Engine.js, which
- * needs `fs`, `hyparquet` and `@aws-sdk/client-s3` for its parquet/R2 loading. It
- * is dead in a browser today (verified: same "Failed to resolve module specifier
- * fs" error). It is listed rather than fixed because CLAUDE.md marks the v1 M1
- * engine read-only and in production — unpicking its Node dependencies is a real
- * piece of work, not a drive-by. Delete the entry when that page is fixed; do not
- * add to this list to make a new failure go away.
+ * None today. The one entry, volatility-classifier-standalone.html (dead in a browser: it imported the Node-only
+ * js/volBacktestM1Engine.js), was deleted with the nav review of 2026-11-15 (plans/NAV_REVIEW_2026-11-15.md).
+ * Do not add to this list to make a new failure go away.
  */
-const KNOWN_BROKEN = new Set(['volatility-classifier-standalone.html']);
+const KNOWN_BROKEN = new Set([]);
 
 const FROM_RE = /(?:^|\n)\s*(?:import|export)\s[^;\n]*?from\s*['"]([^'"]+)['"]/g;
 const SIDE_RE = /(?:^|\n)\s*import\s*['"]([^'"]+)['"]/g;

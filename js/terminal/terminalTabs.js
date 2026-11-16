@@ -33,7 +33,14 @@ import { mountPathChart } from './pathChart.js';
 import * as NV from './newsView.js';
 import * as NCV from './newsChannelView.js';
 import { createLevelChart } from '../levelChart.js';
+import { mountTfBar } from './timeframePills.js';
+import { historyAction, backTarget, pairHash } from './pairHistory.js';
+import { DEEP_SECTIONS, PAIR_ORDER, CARD_LABELS, LOADING_WORDS, sectionOf, deepHash, parseDeepHash } from './deepDive.js';
+import { getFavourites } from './favourites.js';
+import * as FAVV from './favouritesView.js';
+import { mountAssetFavourites } from './assetFavourites.js';
 import { cardDrivers } from './cardExplain.js';
+import * as HDV from './humanDriversView.js';
 import { pineForCard, oandaOf } from '../deskBookPine.js';
 import * as AAV from './assetAnalysisView.js';
 import * as SR from './sharedRead.js';
@@ -42,12 +49,14 @@ import * as FYV from './fedPathYieldsView.js';
 import * as MacroSubs from './macroSubtabs.js';
 import { boardById as paperBoardById } from './paperBoardsView.js';
 import { macroMoreHtml, macroMoreBoard, overviewMoreHtml, mountOverview, mountLive, liveEmCell, liveWiderChip } from './moreBoards.js';
+import * as VCV from './volClockView.js';
 import { fedPathYields, chainLine as fedPathChainLine } from '../fedPathYieldsCore.js';
 import * as ML from './mapLayers.js';
 import { cellHtml as macroCellHtml } from './macroEngines.js';
 import { FAMILIES as MACRO_FAMILIES } from './macroEnginesCore.js';
 import { ownerLink, ownerOnly } from './links.js';
 import { installReplayLink } from './replayLink.js';
+import * as BEV from './biasEngineView.js';
 
 const el = id => document.getElementById(id);
 const h = CB.esc;
@@ -373,49 +382,110 @@ function drawWeek(ca, es) {
 const CHAIN_NODE_OF = { EURUSD: 'eurusd', GBPUSD: 'gbpusd', USDJPY: 'usdjpy', AUDUSD: 'audusd', USDCAD: 'usdcad', GOLD: 'gold', NQ: 'nq', SPX500: 'spx', BTCUSD: 'btc', COPPER: 'copper', WTI: 'oil' };
 function pairList() {
   const s = new Set([...Object.keys(D.cards ?? {})]);
+  // the bias engine reads every cross of the eight and its assets: those markets get a page too, even with no desk card
+  for (const k of Object.keys(D.be?.markets ?? {})) if (groupOf(k) !== 'other') s.add(k);
   return [...s].sort((a, b) => (groupOf(a) === groupOf(b) ? a.localeCompare(b) : Object.keys(UNIVERSE).indexOf(groupOf(a)) - Object.keys(UNIVERSE).indexOf(groupOf(b))));
 }
-function openPair(inst) {
+// A market the user picks adds a history entry, so Back returns to the previous market or to the tab it was opened from (js/terminal/pairHistory.js).
+// { replace } is for a market the page FOLLOWS (linked selection); { fromHistory } is for Back/Forward itself: neither adds an entry.
+function openPair(inst, { replace = false, fromHistory = false } = {}) {
   T.pair = String(inst).toUpperCase();
-  const want = `#pair=${T.pair}`; if (location.hash !== want) history.replaceState(null, '', want);
+  if (T.tab !== 'pair') T.pairFrom = T.tab ?? null;
+  const want = pairHash(T.pair), act = historyAction({ want, current: location.hash, replace, fromHistory });
+  try { if (act === 'push') history.pushState(null, '', want); else if (act === 'replace') history.replaceState(null, '', want); } catch { /* a sandboxed frame */ }
   const b = document.querySelector('#tabs [data-t="pair"]');
   if (b && b.getAttribute('aria-selected') !== 'true') b.click(); else renderPair();
   window.scrollTo?.({ top: 0 });
 }
+const FAV = getFavourites();
+mountAssetFavourites();   // the Assets tab's stars and Favourites filter: globalThis.assetFav, the same list as FAV
+const favEnabled = () => globalThis.deskSurfaceOn?.('panel.pair.favourites') ?? true;
+// the market row of the Pair tab: the selector, a star for this market, the Favourites pill and the quick chips (the strongest eight, or your starred markets with the filter on)
+function pickHtml(list, n, top) {
+  const on = favEnabled(), onlyFav = on && FAV.only, star = x => (on && FAV.has(x));
+  const shown = onlyFav ? list.filter(x => FAV.has(x) || x === n) : list;
+  const sel = `<select id="tt-sel">${Object.entries(GROUPS).map(([g, gl]) => { const xs = shown.filter(x => groupOf(x) === g); return xs.length ? `<optgroup label="${h(gl)}">${xs.map(x => `<option value="${x}"${x === n ? ' selected' : ''}>${star(x) ? '★ ' : ''}${h(nice(x))}</option>`).join('')}</optgroup>` : ''; }).join('')}</select>`;
+  const chips = onlyFav ? FAV.list().filter(x => D.cards?.[x]).map(x => [x, D.cards[x]]) : top;
+  const chipHtml = chips.map(([x, cx]) => { const d = DIR[cx.rating] ?? 0; return `<span class="tt-chipwrap"><button class="chip ${d > 0 ? 'up' : d < 0 ? 'dn' : ''}" data-p="${x}" style="cursor:pointer">${h(x)}</button>${on ? FAVV.starHtml(x, FAV.has(x)) : ''}</span>`; }).join('');
+  return `<div class="tt-pick"><label class="lbl" for="tt-sel">Market</label>${sel}${on ? FAVV.starHtml(n, FAV.has(n), nice(n)) + FAVV.pillHtml(FAV.count, onlyFav) : ''}${chipHtml}<span class="muted" style="margin-left:auto">link: <span class="mono">desk-terminal.html#pair=${h(n)}</span></span></div>`;
+}
+// The 13 reference cards of a market (flow review item 5). Each loader is the line the Pair page always ran for that card, moved here unchanged so the
+// Deep dive can load one section at a time. They find their card by id (tt-p-<key>), so they work wherever the card is drawn.
+const CARD_LOAD = {
+  gr: (n, c, legs, mine) => { J('/api/global-read').then(g => mine() && pairGR(n, g)); },
+  rates: (n, c, legs, mine) => { Promise.all([J('/api/global-read')]).then(([g]) => mine() && pairRates(n, g)); },
+  fv: (n, c, legs, mine) => { J('/api/fair-value').then(fv => mine() && pairFair(n, fv)); },
+  stfv: (n, c, legs, mine) => { if (legs?.[0]) J('/api/fx-fair-value').then(d => { const b = mine() && el('tt-p-stfv'); if (b) b.innerHTML = FVV.stfvPairCard(d, n); }); else el('tt-p-stfv')?.remove(); },
+  pos: (n, c, legs, mine) => { pairPos(n); },
+  ac: (n, c, legs, mine) => { J('/api/autocorrelation').then(d => { const b = mine() && el('tt-p-ac'); if (b) b.innerHTML = ACV.pairCard(d, n); }); },
+  ll: (n, c, legs, mine) => { J('/api/lead-lag').then(d => { const b = mine() && el('tt-p-ll'); if (b) b.innerHTML = LLV.pairCard(d, n); }); },
+  opt: (n, c, legs, mine) => { Promise.all([J('/api/oi-today'), J('/api/options-history'), J('/api/hedging-summary')]).then(([oi, hist, hs]) => { const b = mine() && el('tt-p-opt'); if (!b) return; b.innerHTML = OPV.pairCard(n, { oi, hist, hs }); b.querySelector('[data-goto-options]')?.addEventListener('click', e => { e.preventDefault(); document.querySelector('#tabs [data-t="options"]')?.click(); }); }); },
+  news: (n, c, legs, mine) => { newsFeed().then(() => { const b = mine() && el('tt-p-news'); if (!b) return; drawPairNews(b, n, c); }); },
+  carry: (n, c, legs, mine) => { Promise.all([J('/api/carry-vol'), J('/api/options-skew')]).then(([cv, sk]) => mine() && pairCarry(n, cv, sk)); },
+  hours: (n, c, legs, mine) => { Promise.all([J('/api/session-heat'), J(`/api/desk-season?inst=${n}`)]).then(([sh, ss]) => mine() && pairHours(n, sh, ss)); },
+  prec: (n, c, legs, mine) => { Promise.all([J('/api/macro-regime-fx'), loadChain()]).then(([m]) => mine() && pairPrec(n, m)); },
+  res: (n, c, legs, mine) => { Promise.all([J('/api/research-pod'), J('/api/research-pod/papers')]).then(([rp, pp]) => mine() && pairResearch(n, rp, pp)); },
+};
+function loadCards(n, c, legs, keys) {
+  const mine = () => T.pair === n;
+  for (const k of keys) { try { CARD_LOAD[k](n, c, legs, mine); } catch (e) { console.warn('market card', k, e); } }
+}
+// each card sits in a wrapper that names its own surface (panel.deep.<key>), so the Access page can switch it wherever it is drawn
+const DEEP_WRAP = {
+  gr: x => `<div class="sfc" data-surface="panel.deep.gr">${x}</div>`,
+  rates: x => `<div class="sfc" data-surface="panel.deep.rates">${x}</div>`,
+  fv: x => `<div class="sfc" data-surface="panel.deep.fv">${x}</div>`,
+  stfv: x => `<div class="sfc" data-surface="panel.deep.stfv">${x}</div>`,
+  pos: x => `<div class="sfc" data-surface="panel.deep.pos">${x}</div>`,
+  carry: x => `<div class="sfc" data-surface="panel.deep.carry">${x}</div>`,
+  hours: x => `<div class="sfc" data-surface="panel.deep.hours">${x}</div>`,
+  ac: x => `<div class="sfc" data-surface="panel.deep.ac">${x}</div>`,
+  ll: x => `<div class="sfc" data-surface="panel.deep.ll">${x}</div>`,
+  opt: x => `<div class="sfc" data-surface="panel.deep.opt">${x}</div>`,
+  news: x => `<div class="sfc" data-surface="panel.deep.news">${x}</div>`,
+  prec: x => `<div class="sfc" data-surface="panel.deep.prec">${x}</div>`,
+  res: x => `<div class="sfc" data-surface="panel.deep.res">${x}</div>`,
+};
+const deepCardsHtml = keys => keys.map(k => DEEP_WRAP[k](`<div class="card" id="tt-p-${k}">${loading(LOADING_WORDS[k])}</div>`)).join('');
+// While the Deep dive is a preview a desk login still gets every card on the Pair page; when the tab is on, the cards render there instead.
+// Unknown access state (the page is still loading it) shows the full Pair page: never hide something a viewer had.
+const deepOn = () => !!globalThis.deskAccessState && !!globalThis.deskSurfaceOn?.('tab.deep');
+const deepLinksHtml = n => `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">More on ${h(nice(n))}</span><span class="r muted">opens the Deep dive</span></div><div class="tt-pills" style="display:flex;flex-wrap:wrap;gap:8px">${DEEP_SECTIONS.map(x => `<button type="button" class="btn" data-deep="${x.key}">${h(x.label)}</button>`).join('')}</div><p class="tt-note">${DEEP_SECTIONS.map(x => h(x.cards.map(k => CARD_LABELS[k].toLowerCase()).join(', '))).join('; ')}.</p></div>`;
 async function renderPair() {
   const root = el('pair'); if (!root) return;
   await ready();
   const list = pairList();
   if (!T.pair || !list.includes(T.pair)) T.pair = (location.hash.match(/pair=([A-Z0-9]+)/i)?.[1] ?? '').toUpperCase() || Object.entries(D.cards ?? {}).sort((a, b) => (b[1].size ?? 0) - (a[1].size ?? 0))[0]?.[0] || 'EURUSD';
-  const n = T.pair, c = D.cards?.[n], legs = PV.legsOf(n);
+  const n = T.pair, c = D.cards?.[n], legs = PV.legsOf(n), deep = deepOn();
   const V = globalThis.deskIsViewer?.(), strength = x => (V ? Math.abs(assetScore(x) ?? 0) : (x.size ?? 0));   // the desk login has no sizes: order by the strength of the view
   const top = Object.entries(D.cards ?? {}).filter(([, x]) => (DIR[x.rating] ?? 0) !== 0 && (V || x.size > 0)).sort((a, b) => strength(b[1]) - strength(a[1])).slice(0, 8);
   T.pairChart?.destroy?.(); T.pairChart = null;
-  root.innerHTML = `<div class="tt-pick"><label class="lbl" for="tt-sel">Market</label><select id="tt-sel">${Object.entries(GROUPS).map(([g, gl]) => { const xs = list.filter(x => groupOf(x) === g); return xs.length ? `<optgroup label="${h(gl)}">${xs.map(x => `<option value="${x}"${x === n ? ' selected' : ''}>${h(nice(x))}</option>`).join('')}</optgroup>` : ''; }).join('')}</select>${top.map(([x, cx]) => `<button class="chip ${(DIR[cx.rating] ?? 0) > 0 ? 'up' : 'dn'}" data-p="${x}" style="cursor:pointer">${h(x)}</button>`).join('')}<span class="muted" style="margin-left:auto">link: <span class="mono">desk-terminal.html#pair=${h(n)}</span></span></div>
+  root.innerHTML = `${pickHtml(list, n, top)}${favEnabled() ? FAVV.toolsHtml(FAV) : ''}
 <div class="card glow"><div class="ch"><span class="chip">${h(GROUPS[groupOf(n)] ?? '')}</span><span class="chip">${h(n)}</span>${legs?.[0] ? `<span class="chip pur" data-ccy="${legs[0]}" style="cursor:pointer">${FLAG[legs[0]] ?? ''} ${legs[0]}</span><span class="chip pur" data-ccy="${legs[1]}" style="cursor:pointer">${FLAG[legs[1]] ?? ''} ${legs[1]}</span>` : ''}<span class="r">${c ? gradeChip(c) : ''}${c ? `<span class="sfc" data-surface="panel.asset.plan"><button type="button" class="chip" id="tt-p-tv" style="cursor:pointer;margin-left:6px" title="Copy a TradingView (Pine) script that draws this card's lines, entry zone, invalidation and first target for today">TradingView</button></span>` : ''}</span></div>
 <h2 style="margin:0 0 8px;font:700 24px var(--sans)">${h(nice(n))}</h2><div id="tt-p-tvmsg" class="muted" style="font-size:12px"></div>
 ${c ? `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${rateChip(c.rating)}${scoreBar(assetScore(c), '240px', assetWordV(c))}${D.live?.[n] && D.live[n].rating !== c.rating ? `<span class="chip gold" title="${h(D.live[n].why ?? '')}">updated → ${h(D.live[n].rating)}</span>` : ''}</div>
 <div class="thesis">“${h(c.why)}”</div><div class="drv">${sources(c.why).map(t => `<span>${t}</span>`).join('')}<span title="the card's own conviction, not the global ruling's or a currency's">card conviction ${h(c.conviction ?? '–')}</span><span class="sfc" data-surface="panel.asset.size"><span>size ${c.size ?? '–'}${c.sizeBeforeCap && c.sizeBeforeCap !== c.size ? ` (from ${c.sizeBeforeCap}, capped by ${h((c.cappedBy ?? []).join(', '))})` : ''}</span></span></div>` : '<div class="muted">The desk has no card for this market today.</div>'}
-<div class="tt-chart" id="tt-lc"></div>
+<div class="tfp-host" id="tt-tf"></div><div class="tt-chart" id="tt-lc"></div>
 ${c ? `${ladder(c)}<div class="sfc" data-surface="panel.asset.plan"><div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${h(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Lines</b><span class="mono">up ${c.levels.up.p50} / ${c.levels.up.p75} / ${c.levels.up.p90} · down ${c.levels.down.p50} / ${c.levels.down.p75} / ${c.levels.down.p90}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${h(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${h(c.plan.timing)}</span></div>` : ''}</div></div><details><summary>The whole thesis</summary><p>${h(c.why)}</p>${deskView(n)}</details>${whatDrivesHtml(n)}` : ''}
-<p class="tt-note">Chart: hourly candles, today's forecast lines (open, up and down p50 / p75 / p90), the entry zone and the invalidation where the plan names them.</p></div>
-${AAV.boxHtml(n)}
-<div class="tt-grid2" style="margin-top:14px">
-<div class="card" id="tt-p-gr">${loading('the Global Read for this market')}</div>
-<div class="card" id="tt-p-rates">${loading('rates')}</div>
-<div class="card" id="tt-p-fv">${loading('fair value')}</div>
-<div class="card" id="tt-p-stfv">${loading('short-term fair value')}</div>
-<div class="card" id="tt-p-pos">${loading('positioning')}</div>
-<div class="card" id="tt-p-carry">${loading('carry and options')}</div>
-<div class="card" id="tt-p-hours">${loading('session hours and seasonality')}</div>
-<div class="card" id="tt-p-ac">${loading('autocorrelation')}</div>
-<div class="card" id="tt-p-ll">${loading('lead-lag')}</div>
-<div class="card" id="tt-p-opt">${loading('options')}</div>
-<div class="card" id="tt-p-news">${loading('the news')}</div>
-<div class="card" id="tt-p-prec">${loading('precedent and the chain')}</div>
-<div class="card" id="tt-p-res">${loading('research')}</div></div>`;
-  root.querySelector('#tt-sel').onchange = e => openPair(e.target.value);
-  root.querySelectorAll('[data-p]').forEach(b => (b.onclick = () => openPair(b.dataset.p)));
+<p class="tt-note">Chart: candles in the size you pick (5m to 4h; the choice is remembered), today's forecast lines (open, up and down p50 / p75 / p90), the entry zone and the invalidation where the plan names them.</p></div>
+${AAV.boxHtml(n)}${globalThis.deskViewHtml?.(n) ?? ''}
+<div class="sfc" data-surface="panel.pair.engine"><div class="card" id="tt-p-be" style="margin-top:14px" hidden></div></div>
+${deep ? deepLinksHtml(n) : `<div class="tt-grid2" style="margin-top:14px">${deepCardsHtml(PAIR_ORDER)}</div>`}`;
+  const wirePick = () => {
+    root.querySelector('#tt-sel').onchange = e => openPair(e.target.value);
+    root.querySelectorAll('.tt-pick [data-p]').forEach(b => (b.onclick = () => openPair(b.dataset.p)));
+  };
+  wirePick();
+  root.querySelectorAll('[data-deep]').forEach(b => (b.onclick = () => openDeep(n, b.dataset.deep)));
+  // a star, the Favourites pill, or a STAR / UNSTAR / FAV command repaints only the market row and the tools line (not the chart and the cards)
+  const repaintPick = () => {
+    const row = root.querySelector('.tt-pick'); if (!row) return;
+    row.outerHTML = pickHtml(list, n, top); wirePick();
+    const sm = root.querySelector('.fav-tools summary span'); if (sm) sm.textContent = FAV.count ? `${FAV.count} starred` : 'none yet';
+    for (const b of root.querySelectorAll('.fav-tools [data-fav-act="copy"], .fav-tools [data-fav-act="clear"]')) b.disabled = !FAV.count;
+  };
+  FAVV.wireFavourites(root, FAV, { repaint: repaintPick });
+  window.deskFavouritesRefresh = () => { if (T.pair === n && el('pair')) repaintPick(); };
   const tv = el('tt-p-tv');
   if (tv) tv.onclick = async () => {
     // the morning card as written (desk-run.html exports the whole book); description, not the scored test (prereg H1)
@@ -428,41 +498,82 @@ ${AAV.boxHtml(n)}
   AAV.mount(root.querySelector('[data-aa]')).catch(e => console.warn('analyse', e));
   pairChart(n, c);
   const mine = () => T.pair === n;
-  J('/api/global-read').then(g => mine() && pairGR(n, g));
-  Promise.all([J('/api/global-read')]).then(([g]) => mine() && pairRates(n, g));
-  J('/api/fair-value').then(fv => mine() && pairFair(n, fv));
-  if (legs?.[0]) J('/api/fx-fair-value').then(d => { const b = mine() && el('tt-p-stfv'); if (b) b.innerHTML = FVV.stfvPairCard(d, n); }); else el('tt-p-stfv')?.remove();
-  pairPos(n);
-  J('/api/autocorrelation').then(d => { const b = mine() && el('tt-p-ac'); if (b) b.innerHTML = ACV.pairCard(d, n); });
-  J('/api/lead-lag').then(d => { const b = mine() && el('tt-p-ll'); if (b) b.innerHTML = LLV.pairCard(d, n); });
-  Promise.all([J('/api/oi-today'), J('/api/options-history'), J('/api/hedging-summary')]).then(([oi, hist, hs]) => { const b = mine() && el('tt-p-opt'); if (!b) return; b.innerHTML = OPV.pairCard(n, { oi, hist, hs }); b.querySelector('[data-goto-options]')?.addEventListener('click', e => { e.preventDefault(); document.querySelector('#tabs [data-t="options"]')?.click(); }); });
-  newsFeed().then(() => { const b = mine() && el('tt-p-news'); if (!b) return; drawPairNews(b, n, c); });
-  Promise.all([J('/api/carry-vol'), J('/api/options-skew')]).then(([cv, sk]) => mine() && pairCarry(n, cv, sk));
-  Promise.all([J('/api/session-heat'), J(`/api/desk-season?inst=${n}`)]).then(([sh, ss]) => mine() && pairHours(n, sh, ss));
-  Promise.all([J('/api/macro-regime-fx'), loadChain()]).then(([m]) => mine() && pairPrec(n, m));
-  Promise.all([J('/api/research-pod'), J('/api/research-pod/papers')]).then(([rp, pp]) => mine() && pairResearch(n, rp, pp));
+  if (!deep) loadCards(n, c, legs, PAIR_ORDER);
+  // the bias engine for this market (any cross of the eight, a currency or an asset); fetched fresh, not cached for the page's life. No read: the card stays hidden.
+  getJson(`/api/bias-engine?market=${encodeURIComponent(n)}`).then(r => {
+    const b = mine() && el('tt-p-be'); if (!b || !r?.ok || !r.market) return;
+    try { b.innerHTML = BEV.pairCardHtml(r.market, { ...r, desk: c ? BEV.deskSign({ rating: c.rating }) : null }); b.hidden = false; } catch (e) { console.warn('bias engine pair', e); }
+  }).catch(() => {});
 }
 async function pairChart(n, c) {
   const box = el('tt-lc'); if (!box) return;
   if (!window.LightweightCharts) { box.innerHTML = '<p class="muted" style="padding:12px">The chart library did not load.</p>'; return; }
-  const r = await J(`/api/desk-bars?inst=${n}&days=8`), b = r?.bars ?? [];
-  if (T.pair !== n || !el('tt-lc')) return;
-  if (!b.length) { box.innerHTML = `<p class="muted" style="padding:12px">${h(r?.error ?? 'No price bars for this market.')}</p>`; return; }
-  const dp = b[0].close >= 1000 ? 1 : b[0].close >= 100 ? 2 : b[0].close >= 10 ? 3 : 5;
-  const v = createLevelChart(box, { height: 340, priceDigits: dp, chartOptions: { layout: { background: { color: 'var(--bg1)' }, textColor: 'var(--tx2)', fontFamily: 'JetBrains Mono' }, grid: { vertLines: { color: 'rgba(var(--line2rgb),.35)' }, horzLines: { color: 'rgba(var(--line2rgb),.35)' } }, rightPriceScale: { borderColor: 'var(--line2)' }, timeScale: { borderColor: 'var(--line2)', timeVisible: true } },
-    candleColors: { upColor: 'var(--up)', downColor: 'var(--dn)', wickUpColor: 'var(--up)', wickDownColor: 'var(--dn)' } });
-  T.pairChart = v;
-  v.setCandles(b);
-  const L = c?.levels, lv = [];
-  if (L) { lv.push({ price: L.open, kind: 'daily_open', label: 'open' }); for (const q of ['p50', 'p75', 'p90']) { lv.push({ price: L.up?.[q], kind: 'pdl', label: `up ${q}` }); lv.push({ price: L.down?.[q], kind: 'pdh', label: `dn ${q}` }); } }
-  const inRange = x => !L?.down?.p90 || (x > L.down.p90 * 0.97 && x < L.up.p90 * 1.03);
-  const z = String(c?.plan?.zone ?? '').match(/\d+(?:\.\d+)?/g)?.map(Number).filter(inRange) ?? [];
-  if (z.length) { lv.push({ price: Math.min(...z), kind: 'zone', label: 'entry' }); if (z.length > 1) lv.push({ price: Math.max(...z), kind: 'zone', label: 'entry' }); }
-  const inv = Number(String(c?.plan?.invalidation ?? c?.invalidation ?? '').match(/\d+(?:\.\d+)?/)?.[0]); if (Number.isFinite(inv) && inRange(inv)) lv.push({ price: inv, kind: 'resistance', label: 'invalid' });
-  v.setLevels(lv.filter(x => Number.isFinite(x.price))).fit();
-  // the short-term fair value as a line (description only: its label carries the verdict word)
-  if (PV.isFx(n)) J('/api/fx-fair-value').then(d => { const f = FVV.fairLevel(d, n), lastC = b.at(-1)?.close; if (f && T.pairChart === v && lastC && Math.abs(f.price / lastC - 1) < 0.03) v.setLevels([...lv, f].filter(x => Number.isFinite(x.price))); });
+  T.pairTf?.stop();
+  let v = null;
+  // the candle size is the pills' (js/terminal/timeframePills.js); the chart is built from the first bars it gets, then only re-fed
+  const build = b => {
+    const dp = b[0].close >= 1000 ? 1 : b[0].close >= 100 ? 2 : b[0].close >= 10 ? 3 : 5;
+    // Lightweight-Charts parses colours itself and throws on a CSS var(): read the live theme values instead (the same way the other desk charts do)
+    const tc = k => (typeof themeColor === 'function' ? themeColor(k) : getComputedStyle(document.documentElement).getPropertyValue('--' + k).trim());
+    const up = tc('up'), dn = tc('dn'), grid = `rgba(${tc('line2rgb')},.35)`;
+    v = createLevelChart(box, { height: 340, priceDigits: dp, chartOptions: { layout: { background: { color: tc('bg1') }, textColor: tc('tx2'), fontFamily: 'JetBrains Mono' }, grid: { vertLines: { color: grid }, horzLines: { color: grid } }, rightPriceScale: { borderColor: tc('line2') }, timeScale: { borderColor: tc('line2'), timeVisible: true } },
+      candleColors: { upColor: up, downColor: dn, wickUpColor: up, wickDownColor: dn } });
+    T.pairChart = v;
+    v.setCandles(b);
+    const L = c?.levels, lv = [];
+    if (L) { lv.push({ price: L.open, kind: 'daily_open', label: 'open' }); for (const q of ['p50', 'p75', 'p90']) { lv.push({ price: L.up?.[q], kind: 'pdl', label: `up ${q}` }); lv.push({ price: L.down?.[q], kind: 'pdh', label: `dn ${q}` }); } }
+    const inRange = x => !L?.down?.p90 || (x > L.down.p90 * 0.97 && x < L.up.p90 * 1.03);
+    const z = String(c?.plan?.zone ?? '').match(/\d+(?:\.\d+)?/g)?.map(Number).filter(inRange) ?? [];
+    if (z.length) { lv.push({ price: Math.min(...z), kind: 'zone', label: 'entry' }); if (z.length > 1) lv.push({ price: Math.max(...z), kind: 'zone', label: 'entry' }); }
+    const inv = Number(String(c?.plan?.invalidation ?? c?.invalidation ?? '').match(/\d+(?:\.\d+)?/)?.[0]); if (Number.isFinite(inv) && inRange(inv)) lv.push({ price: inv, kind: 'resistance', label: 'invalid' });
+    v.setLevels(lv.filter(x => Number.isFinite(x.price))).fit();
+    // the short-term fair value as a line (description only: its label carries the verdict word)
+    if (PV.isFx(n)) J('/api/fx-fair-value').then(d => { const f = FVV.fairLevel(d, n), lastC = b.at(-1)?.close; if (f && T.pairChart === v && lastC && Math.abs(f.price / lastC - 1) < 0.03) v.setLevels([...lv, f].filter(x => Number.isFinite(x.price))); });
+  };
+  T.pairTf = mountTfBar(el('tt-tf'), { family: 'pair', inst: n, days: { '1h': 8 }, fetchJson: getJson,
+    apply: (b, { fit }) => { if (T.pair !== n || !el('tt-lc')) { T.pairTf?.stop(); return; } if (!v) { build(b); return; } v.setCandles(b); if (fit) v.fit(); },
+    onError: msg => { if (!v && el('tt-lc')) box.innerHTML = `<p class="muted" style="padding:12px">${h(msg)}</p>`; } });
 }
+// ── DEEP DIVE (preview tab.deep): the Pair page's reference cards, one section at a time ──
+const DEEP_LS = 'desk.deep.section.v1';
+const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* private window */ } };
+function openDeep(inst, section, { replace = false, fromHistory = false } = {}) {
+  if (!deepOn()) { openPair(inst ?? T.pair); return; }   // the tab is off for this login: land on the Pair page, which still carries every card
+  if (inst) T.pair = String(inst).toUpperCase();
+  const sec = sectionOf(section) ?? sectionOf(T.deepSection) ?? sectionOf(lsGet(DEEP_LS)) ?? DEEP_SECTIONS[0];
+  T.deepSection = sec.key; lsSet(DEEP_LS, sec.key);
+  if (T.tab !== 'deep') T.deepFrom = T.tab ?? null;
+  const want = deepHash(T.pair, sec.key), act = historyAction({ want, current: location.hash, replace, fromHistory });
+  try { if (act === 'push') history.pushState(null, '', want); else if (act === 'replace') history.replaceState(null, '', want); } catch { /* a sandboxed frame */ }
+  const b = document.querySelector('#tabs [data-t="deep"]');
+  if (b && b.getAttribute('aria-selected') !== 'true') b.click(); else renderDeep();
+  window.scrollTo?.({ top: 0 });
+}
+async function renderDeep() {
+  const root = el('deep'); if (!root) return;
+  await ready();
+  const list = pairList(), hashed = parseDeepHash(location.hash);
+  if (hashed?.inst && list.includes(hashed.inst)) T.pair = hashed.inst;
+  else if (!T.pair || !list.includes(T.pair)) T.pair = Object.entries(D.cards ?? {}).sort((a, b) => (b[1].size ?? 0) - (a[1].size ?? 0))[0]?.[0] || 'EURUSD';
+  const sec = sectionOf(hashed?.section) ?? sectionOf(T.deepSection) ?? sectionOf(lsGet(DEEP_LS)) ?? DEEP_SECTIONS[0];
+  T.deepSection = sec.key;
+  const n = T.pair, c = D.cards?.[n], legs = PV.legsOf(n);
+  const opts = Object.entries(GROUPS).map(([g, gl]) => { const xs = list.filter(x => groupOf(x) === g); return xs.length ? `<optgroup label="${h(gl)}">${xs.map(x => `<option value="${x}"${x === n ? ' selected' : ''}>${h(nice(x))}</option>`).join('')}</optgroup>` : ''; }).join('');
+  root.innerHTML = `<div class="tt-pick"><label class="lbl" for="dd-sel">Market</label><select id="dd-sel">${opts}</select><button type="button" class="btn" id="dd-pair">&larr; ${h(nice(n))} page</button><span class="muted" style="margin-left:auto">the reference cards for one market, one section at a time</span></div>
+<h2 style="margin:10px 0 8px;font:700 22px var(--sans)">${h(nice(n))} <span class="muted" style="font-weight:500;font-size:15px">deep dive</span></h2>
+<div class="tt-pills" role="tablist" aria-label="Deep dive sections" style="display:flex;flex-wrap:wrap;gap:8px">${DEEP_SECTIONS.map(x => `<button type="button" class="btn" role="tab" data-dsec="${x.key}" aria-selected="${x.key === sec.key}" aria-pressed="${x.key === sec.key}">${h(x.label)}</button>`).join('')}</div>
+<div class="tt-grid2" style="margin-top:14px">${deepCardsHtml(sec.cards)}</div>`;
+  root.querySelector('#dd-sel').onchange = e => openDeep(e.target.value, sec.key);
+  root.querySelector('#dd-pair').onclick = () => openPair(n);
+  root.querySelectorAll('[data-dsec]').forEach(b => (b.onclick = () => openDeep(n, b.dataset.dsec)));
+  wire(root);
+  loadCards(n, c, legs, sec.cards);
+}
+globalThis.openDeepPage = openDeep;
+globalThis.deskDeepInst = () => el('dd-sel')?.value ?? null;
+// the access state arrives after the first paint: a Pair page drawn before it must be drawn again if the Deep dive turns out to be on (or off)
+addEventListener('deskaccess', () => { if (T.tab === 'pair') renderPair(); else if (T.tab === 'deep' && !deepOn()) openPair(T.pair); else if (/^#deep/.test(location.hash) && deepOn()) fromHash(); });   // a #deep link opened before the access state arrived is followed now
 function pairGR(n, g) {
   const box = el('tt-p-gr'); if (!box) return;
   const k = g?.cards?.[n];
@@ -502,7 +613,7 @@ async function pairPos(n) {
   const key = { EURUSD: 'EUR', GBPUSD: 'GBP', USDJPY: 'JPY', AUDUSD: 'AUD', USDCAD: 'CAD', USDCHF: 'CHF', NZDUSD: 'NZD', GOLD: 'GOLD', NQ: 'NQ', SPX500: 'SPX' }[n], S = hist?.series?.[key];
   box.innerHTML = `<div class="lbl">Positioning</div>
 ${ct ? `<div class="tt-row"><b>COT speculators</b><span class="chip ${ct.side === 'long' ? 'up' : ct.side === 'short' ? 'dn' : ''}">${h(ct.label ?? ct.zone ?? '–')}</span><span class="mono">${ct.pct ?? '–'}th pct · share ${sg(ct.share, 1)}%</span><span class="muted" style="flex-basis:100%">${h(ct.line ?? '')} <span class="chip" style="font-size:9px">${h(ct.verdict ?? '')}</span> · report ${h(ct.reportDate ?? '')}</span></div>${S ? `<div>${spk(S.specShare.map(Number), 300, 40, 'var(--pur2)')}<div class="muted" style="font-size:11px">speculators' net share, ${h(S.dates[0])} → ${h(S.dates.at(-1))}${['USDJPY', 'USDCAD', 'USDCHF'].includes(n) ? ` (the ${key} future: inverted against the pair)` : ''}</div></div>` : ''}` : '<div class="muted">No COT row for this market.</div>'}
-${cr ? `<div class="tt-row"><b>Retail (OANDA)</b><span style="flex:1;min-width:120px"><span class="gauge" style="display:flex"><i style="width:${cr.long}%;background:var(--up)"></i><i style="width:${100 - cr.long}%;background:var(--dn)"></i></span></span><span class="mono">${cr.long.toFixed(0)}% long${cr.d24 != null ? ` <span class="${dirCls(cr.d24)}">${sg(cr.d24, 1)}</span>` : ''}</span></div>` : '<div class="muted">No retail book for this market.</div>'}
+${cr ? `<div class="tt-row"><b>Retail (OANDA)</b><span style="flex:1;min-width:120px"><span class="gauge" style="display:flex"><i style="width:${cr.long}%;background:var(--up)"></i><i style="width:${100 - cr.long}%;background:var(--dn)"></i></span></span><span class="mono">${cr.long.toFixed(0)}% long${cr.d24 != null ? ` <span class="${dirCls(cr.d24)}">${sg(cr.d24, 1)}</span>` : ''}</span>${globalThis.dataAge?.bookChip(cr.at) ?? ''}</div>` : '<div class="muted">No retail book for this market.</div>'}
 <p class="tt-note">Context, not a signal: the COT positioning factor tested null for direction here.</p>`;
 }
 function pairCarry(n, cv, sk) {
@@ -622,15 +733,14 @@ async function renderResearch() {
 const lt2 = iso => (iso ? new Date(iso).toLocaleString('en-GB', { timeZone: 'Europe/London', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '–');
 function whatDrivesHtml(n) {
   if (typeof D === 'undefined' || !D.run?.head?.ok) return '';
-  const x = cardDrivers(D.run, n); if (!x.rating) return '';
-  const sgnN = v => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v)}`;
-  const rows = x.analysts.map(a => `<div class="tt-row"><span class="chip ${a.net > 0 ? 'up' : a.net < 0 ? 'dn' : ''}" title="net push on ${h(n)}: + up, − down">${h(SRC[a.id] ?? a.id)} ${sgnN(a.net)}</span><b style="flex:1;min-width:0">${h(a.id)}</b><span class="w">${x.dir ? `${a.forN} for · ${a.againstN} against` : `${a.points.length} point${a.points.length === 1 ? '' : 's'}`}${a.gaps.length ? ` · <span class="gold">${a.gaps.length} feed gap${a.gaps.length === 1 ? '' : 's'}</span>` : ''}</span>
-<span class="muted" style="flex-basis:100%;font-size:12px">${a.points.slice(0, 3).map(p => `<span class="${p.push > 0 ? 'up' : 'dn'}">${p.push > 0 ? '▲' : '▼'}${Math.abs(p.push)}</span> ${h(String(p.claim).slice(0, 200))} <span class="mono" style="font-size:10.5px">[${h(p.via.join(', '))}${p.evidence ? ` · ${h(p.evidence)}` : ''}]</span>${p.staleFeeds.length ? ` <span class="chip gold" title="this point rests on a feed that was not fresh that morning">${h(p.staleFeeds.join(', '))}</span>` : ''}`).join('<br>')}${a.points.length > 3 ? `<br>+${a.points.length - 3} more` : ''}</span></div>`).join('');
-  const gaps = x.data.gaps.length ? x.data.gaps.map(g => `${h(g.id)} (${h(g.status)}${g.ageH != null ? `, ${Math.round(g.ageH)}h old` : ''})`).join(', ') : 'none';
-  return `<div class="sec"><h2>What drives this</h2><span class="lbl">from the stored run's analyst reports · not a tested signal</span></div>
-<div class="card" style="padding:10px 14px">${x.analysts.length ? `<div class="muted" style="font-size:12px;margin-bottom:4px">Points that move ${h(nice(n))} through ${h(x.channels.join(', '))}: ${x.dir ? `<b class="up">${x.forPush}</b> of push the card's way, <b class="dn">${x.againstPush}</b> against.` : 'the card is flat.'}</div>${rows}${x.more ? `<div class="muted">+${x.more} more analyst${x.more === 1 ? '' : 's'}</div>` : ''}` : '<div class="muted">No analyst point names this market or its currencies today: the card comes from the desks\' reading of the rulings and the levels.</div>'}
-<div class="drv" style="margin-top:8px"><span>Desk Pack built ${h(lt2(x.data.packBuiltAt))}</span><span>book written ${h(lt2(x.data.bookAt))} London</span><span>forecast lines for ${h(x.data.linesFor ?? '–')}</span></div>
-<div class="muted" style="font-size:12px;margin-top:6px">Stale or empty feeds behind these analysts that morning: <span class="${x.data.gaps.length ? 'gold' : ''}">${gaps}</span>.</div>
+  const x = cardDrivers(D.run, n, { cap: 12 }); if (!x.rating) return '';
+  HDV.ensureCss();
+  const mkt = typeof nice === 'function' ? nice(n) : n;
+  const body = x.analysts.length ? HDV.humanDriversHtml(x, { market: mkt, esc: h })
+    : `<p class="hd-empty">No analyst named ${h(mkt)} or its currencies this morning, so the card rests on the desks' reading of the rulings and the levels.</p>`;
+  return `<div class="sec"><h2>What drives this</h2><span class="lbl">how this morning's analysts read ${h(mkt)} · it explains their thinking, it is not a tested signal</span></div>
+<div class="card hd" style="padding:10px 14px">${body}
+<div class="drv hd-when"><span>Data gathered ${h(lt2(x.data.packBuiltAt))}</span><span>book written ${h(lt2(x.data.bookAt))} London</span><span>forecast lines for ${h(x.data.linesFor ?? '–')}</span></div>
 <div class="sfc" data-surface="panel.asset.plan"><div class="pb" style="margin-top:8px"><div class="iv"><b>Invalid</b><span>${h(x.invalidation ?? '–')}</span></div></div></div></div>`;
 }
 globalThis.whatDrivesHtml = whatDrivesHtml;
@@ -785,10 +895,11 @@ async function renderNews() {
   if (!root.dataset.built) {
     root.dataset.built = '1';
     root.innerHTML = `<div class="card glow"><div class="tt-head"><span class="lbl">News</span><h2 style="flex-basis:100%">The wire</h2><span class="r"><span class="muted" id="nt-upd"></span><button class="btn" data-newsch style="padding:3px 8px" title="Send these headlines to a Telegram channel">Share channel</button> <button class="btn" data-newsrec style="padding:3px 8px">Track record</button></span></div>
-<div id="nt-top"></div><div id="nt-f"></div><div id="nt-n" class="muted" style="margin-bottom:4px"></div><div id="nt-list">${loading('the wire')}</div>
+<div id="nt-top"></div><div id="nt-f"></div><div id="nt-saved" data-surface="panel.news.saved"></div><div id="nt-n" class="muted" style="margin-bottom:4px"></div><div id="nt-list">${loading('the wire')}</div>
 <p class="tt-note">Headlines from the last 72 hours, read by the news analyst. Arrows are the first move a headline implies (two arrows: a strong push); markets show base minus quote and whether that supports or goes against today's card. The reaction is the move 5 and 30 minutes later, once known. Context, never a signal.</p></div>`;
     root.querySelector('[data-newsrec]').onclick = () => globalThis.newsRecord?.();
     root.querySelector('[data-newsch]').onclick = () => NCV.mount({ open: openModal }).show();   // the shared Telegram channel settings (js/terminal/newsChannelView.js)
+    globalThis.deskNewsSavedMount?.(el('nt-saved'));   // the saved-searches bar (preview feature; js/terminal/newsSearchView.js)
     const f = el('nt-f');
     f.addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
@@ -808,6 +919,11 @@ async function renderNews() {
   clearInterval(NS.timer);
   NS.timer = setInterval(async () => { if (T.tab !== 'news' || document.hidden) return; await newsFeed(true); drawNews(); }, NEWS_EVERY_MS);
 }
+// the News filter, readable and settable from outside (saved searches, js/terminal/newsSearchView.js)
+globalThis.deskNews = {
+  state: () => ({ tier: NS.tier, keys: [...NS.keys], onlyBook: NS.onlyBook, q: NS.q }),
+  apply: st => { NS.market = null; NS.tier = [1, 2, 3].includes(+st?.tier) ? +st.tier : 2; NS.keys = (Array.isArray(st?.keys) ? st.keys : []).filter(k => NV.NEWS_KEYS.includes(k)); NS.onlyBook = !!st?.onlyBook; NS.q = String(st?.q ?? ''); drawNews(true); },
+};
 function drawNews(filters = false) {
   if (!el('nt-list')) return;
   const now = Date.now();
@@ -822,7 +938,7 @@ function drawNews(filters = false) {
 
 // the Assets cards were drawn before this module loaded: draw them again once so each gets its "latest:" line
 const assetsNews = () => { if (typeof assets === 'function' && D?.cards && D.news?.length && !document.querySelector('#assets .nt-latest')) assets(); };
-const RENDER = { today: renderToday, pair: renderPair, changed: renderChanged, research: renderResearch, options: renderOptions, news: renderNews, assets: assetsNews,
+const RENDER = { today: renderToday, pair: renderPair, deep: renderDeep, changed: renderChanged, research: renderResearch, options: renderOptions, news: renderNews, assets: assetsNews,
   // the Trader's Read: the podcast hosts' eight questions and checks on the desk's own chain (js/traderRead.js)
   read: () => import('./traderReadView.js').then(V => V.render(el('read'), { getJson, openModal })).catch(e => { el('read').innerHTML = `<div class="card"><p class="muted">The Trader's Read did not load: ${h(e.message)}</p></div>`; }),
   // the Info map: every information family the repo holds against what the terminal draws (js/infoMap.js, built by scripts/build_info_map.mjs)
@@ -830,7 +946,7 @@ const RENDER = { today: renderToday, pair: renderPair, changed: renderChanged, r
   // the Replay tab (the time machine): pick a London session and play it forward; the view loads on first use (js/terminal/replayView.js)
   replay: () => import('./replayView.js').then(V => V.mount(el('replay'))).catch(e => { el('replay').innerHTML = `<div class="card"><p class="muted">The Replay tab did not load: ${h(e.message)}</p></div>`; }),
   corr: () => import('./corrView.js').then(V => V.render(el('corr'), { getJson, book: () => D })).catch(e => { el('corr').innerHTML = `<div class="card"><p class="muted">Correlations &amp; hedges did not load: ${h(e.message)}</p></div>`; }) };
-globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'news') { clearInterval(NS.timer); NS.timer = null; } if (t !== 'pair' && /pair=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
+globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'news') { clearInterval(NS.timer); NS.timer = null; } if ((t !== 'pair' && /pair=/.test(location.hash)) || (t !== 'deep' && /^#deep/.test(location.hash))) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
 globalThis.openPairPage = openPair;
 installReplayLink();                               // globalThis.openReplay(inst, ts) and the #replay/NQ/2026-11-12T14:30 deep link
 // the asset card pop-up (desk-terminal.html assetCard) carries the same Analyse box
@@ -839,14 +955,20 @@ globalThis.mountAnalyse = box => AAV.mount(box).catch(e => console.warn('analyse
 globalThis.openNewsTab = openNews;
 // the Assets cards' one-line latest headline (desk-terminal.html assetCard reads it; D.news is tier 1-2, 24 h)
 globalThis.newsLatestLine = (items, inst, rating) => NV.latestLine(items, inst, rating);
-function fromHash() { const m = location.hash.match(/pair=([A-Za-z0-9]+)/); if (m) openPair(m[1]); }
+function fromHash() {
+  const go = backTarget({ hash: location.hash, tab: T.tab, from: T.tab === 'deep' ? T.deepFrom : T.pairFrom });
+  if (go?.pair) { if (go.pair !== T.pair || T.tab !== 'pair') openPair(go.pair, { fromHistory: true }); }
+  else if (go?.deep) { if (deepOn()) openDeep(go.deep.inst ?? T.pair, go.deep.section, { fromHistory: true }); }
+  else if (go?.tab) document.querySelector(`#tabs [data-t="${go.tab}"]`)?.click();
+}
 addEventListener('hashchange', fromHash);
-if (/pair=/.test(location.hash)) fromHash();
+if (/pair=|^#deep/.test(location.hash)) fromHash();
 else { const sel = document.querySelector('#tabs [aria-selected="true"]')?.dataset.t; if (RENDER[sel]) globalThis.onTerminalTab(sel); }
 // the Macro tab's short-term fair value table (desk-terminal.html driverBlocks(), a classic script) reads this
 globalThis.stfvHtml = FVV.stfvTable;
 // the Macro tab's central-bank statement board (desk-terminal.html enrichMacro, a classic script) reads this
 globalThis.cbBoardHtml = CBV.boardHtml;
+globalThis.cbToneStrip = CBV.toneStrip;   // the Currency modal's tone timeline (js/terminal/toneTimelineView.js)
 globalThis.acBoardHtml = ACV.boardHtml;
 globalThis.llGridHtml = LLV.gridHtml;
 // the Macro tab's Rates & policy board (desk-terminal.html enrichMacro): the curve, its slopes, the priced Fed path beside them
@@ -855,7 +977,10 @@ globalThis.ratesBoardHtml = (rb, fp, gy) => { try { return RBV.boardHtml(rb, fp,
 globalThis.macroMoreHtml = (E, extra) => macroMoreHtml(E, extra);
 globalThis.macroMoreBoard = (key, E, extra) => macroMoreBoard(key, E, extra);
 globalThis.macroSubs = MacroSubs;
+globalThis.biasEngineView = BEV;                                   // the bias engine on the Assets, Currencies, Overview and Macro cards (desk-terminal.html beOf / beOverview)
 globalThis.paperBoardById = (surface, E) => paperBoardById(surface, E);                // the paper-ideas boards (js/terminal/paperBoardsView.js): FOMC day, path gap, JGB, inflation, auctions, coverage, connectedness ...
+globalThis.volClockHtml = VCV.boardHtml;                           // the Assets tab's vol clock board (js/terminal/volClockView.js)
+globalThis.volClockMount = VCV.mount;
 globalThis.overviewMoreHtml = overviewMoreHtml;                   // the Overview's live currency strength slot
 globalThis.liveLayerMount = getAnalyst => { try { mountLive(getJson, getAnalyst); } catch (e) { console.warn('live layer', e); } };   // intraday overlay + the price read (js/terminal/liveLayerView.js)
 globalThis.liveEmCell = liveEmCell; globalThis.liveWiderChip = liveWiderChip;

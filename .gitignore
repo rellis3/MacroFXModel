@@ -782,3 +782,7 @@ analysis/output/vol-layer-deep/execution/wide/paths.json
 analysis/output/vol-layer-deep/views/wide/rows.parquet
 analysis/output/vol-layer-deep/views/wide/paths.pkl
 analysis/output/vol-layer-deep/sizing/wide/stops_bidask.parquet
+analysis/output/raw-level-revert-continue/trades.csv.gz
+analysis/output/raw-level-mfe-mae/touches.parquet
+analysis/output/raw-level-mfe-mae/grid_real.npy
+analysis/output/raw-level-mfe-mae/grid_placebo.npy

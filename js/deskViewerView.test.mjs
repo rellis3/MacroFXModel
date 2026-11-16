@@ -118,3 +118,13 @@ test('a read stored before the change loses its card and its plan-like lines', (
 test('sanitizerFor maps the routes whose copy has trade fields removed, and only those', () => {
   assert.ok(sanitizerFor('/api/desk-run')); assert.ok(sanitizerFor('/api/desk-run?date=x')); assert.ok(sanitizerFor('/api/desk-run/index/')); assert.equal(sanitizerFor('/api/desk-run/roles'), null); assert.equal(sanitizerFor('/api/rates'), null);
 });
+
+import { sanitizeBiasEngine } from './deskViewerView.js';
+test('the bias engine for the desk login: every flip line goes unless panel.asset.beflip is on; the analysis stays', () => {
+  const body = { ok: true, currencies: { USD: { score: 1, why: 'w', flip: 'Turns Neutral if ...', drivers: [{ label: 'x' }] } }, markets: { GOLD: { flip: 'f', why: 'g' } }, market: { flip: 'f', why: 'm' } };
+  const v = sanitizeBiasEngine(body, () => false);
+  assert.ok(!JSON.stringify(v).includes('"flip"'));
+  assert.equal(v.currencies.USD.why, 'w'); assert.equal(v.currencies.USD.drivers[0].label, 'x'); assert.equal(v.market.why, 'm');
+  assert.equal(sanitizeBiasEngine(body, id => id === 'panel.asset.beflip'), body);
+  assert.ok(sanitizerFor('/api/bias-engine?market=EURUSD'));
+});

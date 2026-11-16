@@ -53,6 +53,7 @@ const _CF_EXACT = new Set([
   'tg_config', 'ai_alert_cfg',
   'news_channel_v1',        // the shared news channel's OWN bot token + channel (js/newsChannel.js; Desk Terminal News tab). Owner-set: must survive redeploys. Also in _worker.js (both lists) and js/storeRegistry.js.
   'tg_master_all',          // the master kill switch for every Telegram message (js/telegramGuard.js; ⚙ Alerts). Owner-set: a reset would un-mute. Also in _worker.js (both lists).
+  'bias_engine_index',      // the bias engine's issue index (one row per stored day; js/biasEngine.js, plans/BIAS_ENGINE_SPEC.md). The dated issues bias_engine_<date> are kept by the prefix rule in isCfKey. Also in _worker.js (both lists) and js/storeRegistry.js.
   'kv_write_times_v1',      // the write-time ledger the Data Map reads (js/storeRegistry.js); see _noteWrite above. Also in _worker.js PERMANENT_KEYS.
   'cog_legs_live_v1',      // chart page legs: the laptop's latest IBKR 5-minute bars per futures contract, pushed by scripts/rates_line/refresh_leg_bars.py
   'cog_line_live_v1',       // C.OG rate-spread line: the laptop's latest IBKR bars, pushed by scripts/rates_line/refresh_cog_line.py (IBKR cannot be reached
@@ -148,6 +149,10 @@ const _CF_EXACT = new Set([
   'daily_snapshot_v1',       // one row per day of what the page THOUGHT: the brief's regime line, the chain
                              // verdicts, the watch states, the macro deltas, the leans. The look-back
                              // timeline's memory; not re-derivable. Must also be in _worker.js PERMANENT_KEYS.
+  'desk_alert_rules_v1',     // the alerts you set on the Desk Terminal (js/deskAlertRules.js): each rule, its own memory (armed / baseline / last touch) and the day's send count. Written only when something changes. Must also be in _worker.js PERMANENT_KEYS.
+  'desk_news_searches_v1',   // the News tab's SAVED SEARCHES (js/deskNewsSearches.js): named filters the owner saved, shared by the desk. Not re-derivable. Must also be in _worker.js PERMANENT_KEYS.
+  'desk_monitors_v1',        // the Desk Terminal's NAMED monitors (js/deskMonitors.js): market lists the owner saved, shared by the desk. Not re-derivable. Must also be in _worker.js PERMANENT_KEYS.
+  'desk_workspaces_v1',      // the Desk Terminal's NAMED workspaces (js/deskWorkspaces.js): layouts the desk saved, shared by everyone on the one login. Not re-derivable. Must also be in _worker.js PERMANENT_KEYS.
   'desk_tab_access_v1',      // the owner's switches for what the desk login sees on the Desk Terminal (admin page desk-admin.html). Not re-derivable:
                              // losing it silently hides every opt-in surface again. Must also be in _worker.js PERMANENT_KEYS.
   'chain_read_v1',           // the last trader's-voice chain read (+ the day's earlier ones). A paid
@@ -502,6 +507,9 @@ function isCfKey(key) {
   // desk_paper_<date>: the day's paper trades on the trade watcher's own rules (js/deskPaperTrades.js), stored once the
   // 21:00 London window has closed. Re-derivable from OANDA M1 while the book exists, kept so the history needs no refetch.
   if (key.startsWith('desk_paper_')) return true;
+  // bias_engine_<date> and bias_engine_index: the bias engine's write-once morning issue (js/biasEngine.js), scored forward on the
+  // bias scoreboard; a missed or lost day is never back-issued, so it must survive redeploys.
+  if (key.startsWith('bias_engine_')) return true;
   // vol_reference_* are user-pasted reference exports — cannot be auto-rebuilt
   if (key.startsWith('vol_reference_')) return true;
   // vmlog_* are the VuManChu forward-validation log (one key per UTC day) — the

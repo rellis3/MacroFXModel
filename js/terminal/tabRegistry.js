@@ -12,6 +12,7 @@
 //     'cost'      anything that costs money: Research, Ask the desk, every free-form or paid model button. (The shared once-a-day reads STAY.)
 //     'internal'  the owner's own tooling: Info map, Desk Office, Desk Run, Access, the data-quality chip, alerts, links to pages outside the desk zone.
 //     'pnl'       real P&L, accounts, bots, journal, paper trades, and the desk's track record. Hidden by default, switchable.
+//     'preview'   (2026-11-15) a NEW terminal feature the owner is still trying out (command line, linked selection). The owner always sees it; the desk login sees it only when the owner flips it on.
 //   EVERYTHING ELSE IS SHOWN, including the directional analysis and why (which currencies the desk leans bullish or bearish, the reasons),
 //   book intelligence, net currency exposure, scenarios, strength, scores, ratings, drivers, risk, regime, correlations.
 //   A surface with a `hidden` reason is OFF by default; a surface without one is ON by default. The guard test enforces both.
@@ -20,7 +21,7 @@
 //          'nav'    a link out to another page (top bar, or the tab bar). LOCKED hidden for the desk login (it would bounce to the main login).
 //          'widget' a fixed piece of the shell: a chip, the Ask pill, the clocks, the world-stress strip, a map layer
 //          'strip'  one kind of segment in the headline ticker
-//          'panel'  a block inside a tab (an Overview card, a Charts card)
+//          'panel'  a block inside a tab (an Overview card, a History card)
 //
 // How a surface is wired in the markup: put data-surface="<id>" on the element (for a tab, on both the nav button and its <section>), or wrap
 // generated HTML with sf('<id>', html) in desk-terminal.html (a display:contents wrapper). access.js hides the switched-off ids with one
@@ -32,19 +33,20 @@
 /** Bump when the defaults or the rules change: old saved switches are then ignored (the admin page says so). */
 export const SCHEMA = 2;
 
-export const HIDDEN_REASONS = ['trade', 'cost', 'internal', 'pnl'];
-export const REASON_LABEL = { trade: 'trade', cost: 'cost', internal: 'internal', pnl: 'P&L' };
+export const HIDDEN_REASONS = ['trade', 'cost', 'internal', 'pnl', 'preview'];
+export const REASON_LABEL = { trade: 'trade', cost: 'cost', internal: 'internal', pnl: 'P&L', preview: 'preview' };
 /** One line shown beside a switch when the owner turns a hidden-by-reason surface ON for the desk login. */
 export const REASON_WARNING = {
   trade: 'Reads as a trade instruction. Switching it on shows trade-level lines to the desk login.',
   cost: 'Costs money (paid model calls). Switching it on shows the control; the server still refuses paid calls from the desk login.',
   internal: 'Your own tooling. Switching it on shows it to the desk login; its data routes are still refused, so it may show empty.',
   pnl: 'Real or scored P&L, the desk\'s record. Switching it on shows it to the desk login.',
+  preview: 'A new feature you are still trying out. Switching it on shows it to everyone on the desk login.',
 };
 
 // mk(id, kind, label, group, hidden, note): hidden is null (shown) or one of HIDDEN_REASONS (off by default).
 const mk = (id, kind, label, group, hidden, note) => ({ id, kind, label, group, hidden, defaultVisible: !hidden, note });
-const T = 'trade', C = 'cost', I = 'internal', M = 'pnl';
+const T = 'trade', C = 'cost', I = 'internal', M = 'pnl', P = 'preview';
 
 export const SURFACES = [
   // ── tabs ──
@@ -52,12 +54,13 @@ export const SURFACES = [
   mk('tab.ccy', 'tab', 'Currencies', 'Tabs', null, 'the desk\'s bias per currency and its drivers; "best expressions" inside it is a separate switch'),
   mk('tab.assets', 'tab', 'Assets', 'Tabs', null, 'market boards and the bias on each market; entry, target, invalidation and size lines are separate switches'),
   mk('tab.macro', 'tab', 'Macro', 'Tabs', null, 'yields, credit, liquidity, central banks, macro engines, rates and policy'),
-  mk('tab.pos', 'tab', 'Positioning', 'Tabs', null, 'COT, futures positioning, options positioning'),
+  mk('tab.pos', 'tab', 'Positioning', 'Tabs', null, 'COT, futures positioning, options positioning, positioning history'),
   mk('tab.cal', 'tab', 'Calendar', 'Tabs', null, 'events, live surprises, expectations against reality'),
   mk('tab.ana', 'tab', 'Analytics', 'Tabs', null, 'the book\'s correlation web, factor risk and scenarios, currency strength over time, vol forecast vs realised, release reactions; the desk\'s record panels are separate switches'),
-  mk('tab.charts', 'tab', 'Charts', 'Tabs', null, 'macro regime, data surprises, positioning history, seasonality, how the book was built; ranking vs realised is a separate switch'),
+  mk('tab.charts', 'tab', 'History', 'Tabs', null, 'was Charts: macro regime, data surprises, seasonality, how the book was built; ranking vs realised is a separate switch. Positioning history moved to the Positioning tab'),
   mk('tab.today', 'tab', 'Chain', 'Tabs', null, 'the macro chain (Live/1D/5D/20D) and its read; reads are shared once a day'),
   mk('tab.read', 'tab', 'Trader\'s read', 'Tabs', T, 'the owner\'s own read of the day: marking up a trade'),
+  mk('tab.deep', 'tab', 'Deep dive', 'Tabs', P, 'the 13 reference cards that sit under a market on the Pair page (rates, fair value, positioning, options, hours, lead-lag, news, precedent, research), in four sections, one market at a time. While this is off, the Pair page keeps all 13 cards exactly as before; switched on, the Pair page is slim and the cards live here'),
   mk('tab.pair', 'tab', 'Pair', 'Tabs', null, 'one page per market; the research it pulls is shared once a day; entry, target and size lines are separate switches'),
   mk('tab.changed', 'tab', 'Changed', 'Tabs', null, 'what changed in the bias, the tone, world stress and the chain; the thesis check and the paper record are separate switches'),
   mk('tab.replay', 'tab', 'Replay', 'Tabs', null, 'play a past session forward: candles, the option levels as published then, touches of them, strength and the desk\'s book as of the moment; it describes, it never predicts'),
@@ -76,11 +79,32 @@ export const SURFACES = [
   mk('widget.worldstress', 'widget', 'World stress strip', 'Shell', null, 'every stress input green/amber/red, pinned above the tabs'),
   mk('widget.bookchip', 'widget', 'Analysis date chip', 'Shell', null, 'the date and time of the morning analysis'),
   mk('widget.mktchip', 'widget', 'Market-closed chip', 'Shell', null, 'top-bar chip while the FX week is shut ("closed · as at Fri 22:00 UTC"), and a note on a US/UK/euro holiday; the live boards show the close instead of going flat'),
+  mk('widget.terrainlive', 'widget', 'Terrain live price line', 'Options', null, 'on the OI terrain chart (Options tab): a violet line for the price now with its age ("at close" while the market is shut) and the distance to the nearest labelled level above and below, in points and in expected-move units; the white snapshot line is relabelled; where price is, not where it will go'),
   mk('widget.dqchip', 'widget', 'Data-quality chip', 'Shell', I, 'the desk\'s data health count (ops)'),
   mk('widget.ask', 'widget', 'Ask the desk (floating button)', 'Shell', C, 'free-form paid model calls'),
   mk('widget.disclaimer', 'widget', 'Educational notice (desk login only)', 'Shell', null, 'one line under the tabs for the desk login: educational and informational macro analysis, not advice and not a trade signal'),
   mk('widget.signout', 'widget', 'Sign out (top bar)', 'Shell', null, 'shows the session (owner or desk) and signs out; always shown, so a desk user can always leave'),
   mk('widget.themepicker', 'widget', 'Colour theme picker (top bar)', 'Shell', null, 'swatches that change the colours, the glow and the fonts; remembered in this browser; changes nothing else'),
+  // ── preview features: the owner always sees them, the desk login only once the owner switches them on (shortcut under the Info map tab) ──
+  mk('widget.cmdline', 'widget', 'Command line (press / or `)', 'Terminal features (preview)', P, 'type a market, a board or a command (EURUSD, FED, MACRO RATES, REPLAY NQ 12 NOV) and jump straight there; every command has its own help line and ? lists them all'),
+  mk('panel.cal.drills', 'panel', 'Calendar: drills', 'Terminal features (preview)', P, 'on the Calendar tab: the big earnings this week, the scorecards of the latest releases (how big each market moved against a normal half-hour), and on every release row a drill with what the release has done to markets before (size, not direction) and the nowcast gap for the matching US rows'),
+  mk('widget.export', 'widget', 'Export (CSV and PNG)', 'Terminal features (preview)', P, 'a CSV button on the tables and a PNG button on the charts of the Monitor, Insight, Calendar and Currencies tabs, and the EXPORT command; the file is made in this browser from what the page shows, nothing is sent anywhere'),
+  mk('panel.news.saved', 'panel', 'News: saved searches', 'Terminal features (preview)', P, 'keep the News tab filter (words, tier, currency or asset) under a name for the whole desk, apply it in one click, and turn its words into a keyword alert: one Telegram note per episode when a NEW headline matches'),
+  mk('tab.monitor', 'tab', 'Monitor', 'Tabs', P, 'a dense table of the markets you pick (add, remove, reorder, sort) with last price, 24h change, range used against the forecast, implied vol over sigma, the morning read, the next release and the quote age; named monitors are saved for the desk'),
+  mk('tab.workspace', 'tab', 'Workspace', 'Tabs', P, 'a grid of this terminal panels you drag and resize into a screen of your own, saved under a name (Morning, Rates, Event day) and shared by the desk; export and import as a file'),
+  mk('tab.kchart', 'tab', 'Chart', 'Tabs', P, 'a candle chart with built-in indicators (moving averages, Bollinger bands, RSI, MACD; each has settings you can change) on the terminal\'s own bars, with the day\'s forecast lines, option walls near price and the session range laid over it; beside the glow charts, replaces none'),
+  mk('tab.insight', 'tab', 'Insight', 'Tabs', P, 'boards that read the data the terminal already holds in a new way: what is unusual right now against its own history, and more as they are added; each says how far to trust it'),
+  mk('panel.insight.unusual', 'panel', 'Insight: what is unusual right now', 'Insight (preview)', null, 'every series in the daily market bundle ranked by how extreme its latest reading is against its own history (a percentile, not a size), with a sky map, the plain-words reason, the working and how many readings would be extreme by chance alone'),
+  mk('panel.insight.matrix', 'panel', 'Insight: cross-asset moves and correlations', 'Insight (preview)', null, 'every market in a basket of 23 with its 1, 5 and 20 session move (colour = direction, brightness = how unusual for that market), and a correlation matrix of daily moves over 20 and 120 sessions with the pairs whose link has changed by more than noise explains'),
+  mk('panel.insight.rotation', 'panel', 'Insight: US sector rotation', 'Insight (preview)', null, 'the 11 US sector ETFs against the S&P 500 over 20 sessions: relative strength and its momentum on a glowing map with a four-week trail, and which quadrant each sector sits in; describes what happened, not a forecast'),
+  mk('panel.insight.fxmatrix', 'panel', 'Insight: currency matrix', 'Insight (preview)', null, 'the eight currencies across the 1H, 4H, 1D and 1W windows (strength in sigma, rank, and whether each is stronger or weaker lately than over the longer windows) and an 8 by 8 grid of how far each has out-run each other; live from the price bars, anchored to the last close when the market is shut; ordering and size only'),
+  mk('panel.insight.gold', 'panel', 'Insight: gold board', 'Insight (preview)', null, 'gold with the things it is read against on one page: the 10-year real yield, the dollar index, gold implied vol against its own realised vol, speculative positioning, the gold ETF holdings, and how much of the recent move in gold the dollar and real yields usually account for; descriptive, not a forecast'),
+  mk('panel.insight.reach', 'panel', 'Insight: level reach', 'Insight (preview)', null, 'type a price level on a market and get the chance price touches it by the end of the London day (the remaining-travel model) and over the whole session (the forecast ladder), each with a likely range, the calibration note and the forecast lines the chance is read from; how likely price is to reach a level, never whether it holds or which way it goes'),
+  mk('panel.insight.flags', 'panel', 'Insight: risk flags with their evidence', 'Insight (preview)', null, 'the six market-stress lights as they stand now, each beside what the Evidence Book found for it: only a flag with a validated range finding is presented as one that says something (the next days or weeks run wider, never which way); the others are labelled as lights'),
+  mk('panel.insight.economies', 'panel', 'Insight: world economies', 'Insight (preview)', null, 'a tile for each of the eight economies with growth, prices, jobs and spending, each with an arrow and a word and the month it describes; the arrows compare a reading with its own anchor, they are levels not trends; missing feeds say so'),
+  mk('widget.replayviz', 'widget', 'Replay on a visualisation', 'Terminal features (preview)', P, 'a small Replay button on a chart or board that plays the history of that one chart back: the Treasury curve morphing day by day with ghosts of earlier shapes and the 2y to 10y slope, the eight currencies racing through a London session on the 1H, 4H or 1D window, the priced Fed path odds day by day, the cross-asset correlation matrix session by session, the growth and inflation regime month by month, and the range used through a London session (the vol clock played back); play, pause, step, x1 x4 x16, loop and a scrubber; it says plainly how much history is held and describes what happened, never what comes next'),
+  mk('widget.alerts', 'widget', 'Alerts (bell)', 'Terminal features (preview)', P, 'alerts you set on numbers the terminal already computes (range used, Fed path move, data gone stale, a level touched, a weekend gap closed); one Telegram note per episode. Only the owner can change them; the desk login sees the list'),
+  mk('widget.linked', 'widget', 'Linked selection', 'Terminal features (preview)', P, 'pick a market once and the Pair page, the Replay, the strength board, the vol clock and the asset cards follow it; one chip in the top bar shows it is linked and switches it off'),
   // ── ticker segments ──
   mk('strip.news', 'strip', 'Ticker: tier-1 headlines', 'Ticker', null, 'wire headlines'),
   mk('strip.events', 'strip', 'Ticker: high-impact releases', 'Ticker', null, 'the next 36 hours of high-impact events'),
@@ -111,6 +135,7 @@ export const SURFACES = [
   mk('panel.ov.wire', 'panel', 'Overview: the wire', 'Overview', null, 'tier 1-2 headlines with their reads'),
   mk('panel.ov.releases', 'panel', 'Overview: releases ahead', 'Overview', null, 'the economist\'s release briefs: typical move, what to watch'),
   mk('panel.ov.riskwarn', 'panel', 'Overview: risk warnings', 'Overview', null, 'the risks to the day\'s read'),
+  mk('panel.ov.engine', 'panel', 'Overview: bias engine currency ranking', 'Overview', null, 'the rule-based bias engine\'s eight-currency ranking (js/biasEngine.js, weights theory-v1) beside the desk\'s, and "engine vs desk agree on X of Y markets"; directional analysis, scored forward on the bias scoreboard, not a trade signal'),
   // ── Overview map layers (the pills on the world map and globe; js/terminal/mapLayers.js) ──
   mk('widget.ovl.bias', 'widget', 'Map layer: Desk bias', 'Overview map layers', null, 'the Currency Manager\'s ranking painted on the map: the desk\'s bias, an analysis layer'),
   mk('widget.ovl.rates', 'widget', 'Map layer: Rate cycle', 'Overview map layers', null, 'every BIS central bank by hiking / holding / cutting: market data'),
@@ -124,8 +149,31 @@ export const SURFACES = [
   mk('widget.ovl.value', 'widget', 'Map layer: Fair value', 'Overview map layers', null, 'BIS real effective exchange rates against their 20-year average: market data'),
   // ── Currencies, Assets, Pair: the trade-level lines inside an otherwise analytic card ──
   mk('panel.ccy.expressions', 'panel', 'Currency card: best expressions', 'Currencies', T, 'the book\'s cards on a currency, with size: how to trade the view'),
+  mk('panel.ccy.tone', 'panel', 'Currency card: central-bank tone timeline', 'Currencies', null, 'how the bank\'s statement tone has moved over its last ten meetings, and the wording that changed: context for tone and timing (cb-tone-direction NULL), not a signal'),
+  mk('panel.ccy.macrostrip', 'panel', 'Currency card: macro picture', 'Currencies', null, 'per-currency macro prints against expectations, the next release, a 12-month ribbon and the six scorecard factors behind the composite'),
   mk('panel.asset.plan', 'panel', 'Market card: entry, target, invalid, timing', 'Markets', T, 'the plan lines on a card, and the entry zone / invalidation lines on the charts'),
   mk('panel.asset.size', 'panel', 'Market card: size and grade', 'Markets', T, 'the position size and the conviction grade derived from it'),
+  mk('panel.ccy.engine', 'panel', 'Currency card: bias engine score and drivers', 'Currencies', null, 'the bias engine\'s score beside the desk\'s ring on each card, and its full driver table (reading, d, weight, contribution, source, as of, coverage) in the currency pop-up; a rule-based macro checklist, not a trade signal'),
+  mk('panel.asset.engine', 'panel', 'Market card: bias engine read and key drivers', 'Markets', null, 'the "Engine: Bearish 7/10" chip beside the desk rating, a "split" chip when they differ, the top three driver contributions on the card and the full driver table in the full view; directional analysis, not a trade signal'),
+  mk('panel.pair.engine', 'panel', 'Pair: bias engine pair score', 'Pair', null, 'the bias engine\'s score for any cross of the eight, (base minus quote) / 2, with both legs\' drivers side by side; or an asset\'s driver table'),
+  mk('panel.deep.gr', 'panel', 'Market reference: Global Read', 'Deep dive', null, 'the global read card for a market; on the Pair page until the Deep dive is switched on, then in the Deep dive'),
+  mk('panel.deep.rates', 'panel', 'Market reference: Rates', 'Deep dive', null, 'the rates card for a market; on the Pair page until the Deep dive is switched on, then in the Deep dive'),
+  mk('panel.deep.fv', 'panel', 'Market reference: Fair value', 'Deep dive', null, 'the fair value card for a market; on the Pair page until the Deep dive is switched on, then in the Deep dive'),
+  mk('panel.deep.stfv', 'panel', 'Market reference: Short-term fair value', 'Deep dive', null, 'the short-term fair value card for a market; on the Pair page until the Deep dive is switched on, then in the Deep dive'),
+  mk('panel.deep.pos', 'panel', 'Market reference: Positioning', 'Deep dive', null, 'the positioning card for a market; on the Pair page until the Deep dive is switched on, then in the Deep dive'),
+  mk('panel.deep.carry', 'panel', 'Market reference: Carry and options', 'Deep dive', null, 'the carry and options card for a market; on the Pair page until the Deep dive is switched on, then in the Deep dive'),
+  mk('panel.deep.hours', 'panel', 'Market reference: Session hours and seasonality', 'Deep dive', null, 'the session hours and seasonality card for a market; on the Pair page until the Deep dive is switched on, then in the Deep dive'),
+  mk('panel.deep.ac', 'panel', 'Market reference: Autocorrelation', 'Deep dive', null, 'the autocorrelation card for a market; on the Pair page until the Deep dive is switched on, then in the Deep dive'),
+  mk('panel.deep.ll', 'panel', 'Market reference: Lead-lag', 'Deep dive', null, 'the lead-lag card for a market; on the Pair page until the Deep dive is switched on, then in the Deep dive'),
+  mk('panel.deep.opt', 'panel', 'Market reference: Options', 'Deep dive', null, 'the options card for a market; on the Pair page until the Deep dive is switched on, then in the Deep dive'),
+  mk('panel.deep.news', 'panel', 'Market reference: News', 'Deep dive', null, 'the news card for a market; on the Pair page until the Deep dive is switched on, then in the Deep dive'),
+  mk('panel.deep.prec', 'panel', 'Market reference: Precedent and the chain', 'Deep dive', null, 'the precedent and the chain card for a market; on the Pair page until the Deep dive is switched on, then in the Deep dive'),
+  mk('panel.deep.res', 'panel', 'Market reference: Research', 'Deep dive', null, 'the research card for a market; on the Pair page until the Deep dive is switched on, then in the Deep dive'),
+  mk('panel.replay.engine', 'panel', 'Replay: the bias engine\'s read that day', 'Replay', null, 'the engine\'s stored morning issue for the replayed day and market, when one was written (never back-issued)'),
+  mk('panel.asset.beflip', 'panel', 'Bias engine: what would flip it', 'Markets', T, 'the engine\'s flip line (how far the score is from turning Neutral or the other side, and its largest support): reads as an invalidation line'),
+  mk('panel.pair.favourites', 'panel', 'Pair: favourites', 'Markets', null, 'a star on each market, a Favourites filter pill and copy / paste of your list; a display preference kept in this browser only'),
+  mk('panel.asset.favourites', 'panel', 'Assets: favourites', 'Markets', null, 'a star on each market card and a Favourites filter pill in the Assets tab, with copy / paste of your list; the same list as the Pair page, a display preference kept in this browser only'),
+  mk('panel.asset.volclock', 'panel', 'Assets: implied vol against the forecast (vol clock)', 'Markets', null, 'options-implied sigma over the forecast sigma per market, how much of the day\'s range is used, the vol ranking and the Daily Read\'s forward record: size, never direction'),
   // ── Analytics panels ──
   mk('panel.ana.web', 'panel', 'Analytics: correlation web of the book', 'Analytics', null, 'today\'s cards as held, joined by how they move together'),
   mk('panel.ana.strength', 'panel', 'Analytics: currency strength over time', 'Analytics', null, 'the Currency Manager\'s bias each morning'),
@@ -138,8 +186,9 @@ export const SURFACES = [
   mk('panel.ana.risk', 'panel', 'Analytics: factor risk and scenarios', 'Analytics', null, 'the book as dollar, carry, risk-on, commodity and US-rates bets, its VaR and what a shock does to it'),
   mk('panel.ana.scenmap', 'panel', 'Analytics: scenario map', 'Analytics', null, 'every scenario against every card'),
   // ── Charts, Changed, Correlations, Macro ──
-  mk('panel.charts.bookflow', 'panel', 'Charts: how today\'s book was built', 'Charts', null, 'the ruling to the currencies to every card'),
-  mk('panel.charts.ranking', 'panel', 'Charts: currency ranking vs realised', 'Charts', M, 'the Currency Manager\'s order against how currencies finished: the desk\'s accuracy record'),
+  mk('panel.pos.history', 'panel', 'Positioning: history', 'Positioning', null, 'speculators\' net share of open interest over 3 years, the top and bottom 10% shaded (moved here from the History tab; shown to the desk login as before)'),
+  mk('panel.charts.bookflow', 'panel', 'History: how today\'s book was built', 'History', null, 'the ruling to the currencies to every card'),
+  mk('panel.charts.ranking', 'panel', 'History: currency ranking vs realised', 'History', M, 'the Currency Manager\'s order against how currencies finished: the desk\'s accuracy record'),
   mk('panel.changed.cards', 'panel', 'Changed: card flips', 'Changed', null, 'a card added, removed or flipped: what changed in the lean'),
   mk('panel.changed.thesis', 'panel', 'Changed: thesis against reality', 'Changed', M, 'the book\'s claims laid against the evening score'),
   mk('panel.changed.paper', 'panel', 'Changed: paper trades', 'Changed', M, 'the paper-trade running total'),
@@ -188,6 +237,7 @@ export const SURFACES = [
   mk('panel.macro.commodfx', 'panel', 'Macro: commodity currencies against their exports', 'Macro', null, 'AUD, CAD, NOK, NZD and others against the commodity basket they earn from'),
   mk('panel.macro.copper', 'panel', 'Macro: growth against fear', 'Macro', null, 'the copper-gold ratio and the Brent-WTI spread'),
   mk('panel.macro.gpr', 'panel', 'Macro: geopolitical risk index', 'Macro', null, 'the geopolitical risk level, trend and z-score'),
+  mk('panel.macro.biasengine', 'panel', 'Macro: bias engine (currencies x drivers)', 'Macro', null, 'the bias engine\'s full grid of eight currencies by eight drivers as contribution heat, the assets by their drivers, the global risk score, the theory-v1 weights, coverage and the gaps list'),
   mk('panel.macro.carryside', 'panel', 'Macro: carry board "side" column', 'Macro', null, 'which side of a pair earns the carry'),
 ];
 

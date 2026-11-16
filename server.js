@@ -191,6 +191,10 @@ import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl a
 import { RBNZ_MEETINGS, pendingAsOf as rbnzPendingAsOf, allReleases as rbnzAllReleases } from './js/rbnzCalendar.js';
 import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote, fetchOcrDecisions as rbnzFetchOcrDecisions, ocrActualFor as rbnzOcrActualFor } from './js/rbnzFetch.js';
 import { sanitizerFor as _deskViewerSanitiser, sanitizeStoredRead as _deskSanitizeStored, validateSharedRead as _validateSharedRead } from './js/deskViewerView.js';   // what a viewer is shown of the desk's own outputs (the lens: analysis, not signals)
+import * as _deskNs from './js/deskNewsSearches.js';   // the News tab's saved searches (js/deskNewsSearches.js)
+import * as _deskMon from './js/deskMonitors.js';   // the Desk Terminal's named monitors (shared saved market lists; js/deskMonitors.js)
+import * as _deskWs from './js/deskWorkspaces.js';
+import * as _deskAr from './js/deskAlertRules.js';   // the alert rules you set (js/deskAlertRules.js); the older automatic board alerts are js/deskAlerts.js   // the Desk Terminal's named workspaces (shared saved layouts; js/deskWorkspaces.js)
 import { viewerMayCall as _deskViewerMayCall, deskLoginDecision as _deskLoginDecision } from './js/deskAccess.js';                       // what a desk-login VIEWER may call (js/deskAccess.js)
 import { deskLoginPage as _deskLoginPage } from './js/deskLoginPage.js';                  // the desk zone's sign-in page (js/deskLoginPage.js)
 import { logoutPlan as _logoutPlan, clearCookieHeader as _clearCookieHeader, sameSiteOk as _logoutSameSiteOk } from './js/deskLogout.js';   // what /logout clears and where it goes (desk, all, library, education, main)
@@ -419,11 +423,15 @@ import { evaluateIntradayAllHorizons } from './js/intradayForecastResearch.js';
 import { analyzeCrossPair, portfolioIndependence } from './js/crossPairResearch.js';
 import { scanFeatures } from './js/forecastFeatureScan.js';
 import { bandCalcAB } from './js/bandCalcAB.js';
+import { fetchYahooFundAum as _fetchYahooFundAumAuth } from './js/yahooFundAum.js';
+import { todayUtc as _gefToday, cacheTtlMs as _gefTtl, reasonOf as _gefReason, fetchBlock as _gefFetchBlock, routeBody as _gefRouteBody, healthParts as _gefHealth } from './js/goldEtfFlowCore.js';
+import { saveCorrHistory as _corrSaveR2, restoreCorrHistory as _corrRestoreR2 } from './js/corrHistoryPersist.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, getBuffer as _r2GetBuffer, putBuffer as _r2PutBuffer, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
 import { INSTRUMENTS as _DL_INSTRUMENTS, HORIZONS as _DL_HORIZONS, closesFromCandles as _dlClosesFromCandles, issueRecord as _dlIssue, outcomeRecord as _dlOutcome, summarise as _dlSummarise } from './js/directionLedger.js';
 import { RESEARCH as _DL_RESEARCH, volFlags as _dlVolFlags, FX_CARRY_EUR_OFFSET as _DL_EUR_OFFSET, FX_CARRY_MAX_AGE_DAYS as _DL_RATE_MAX_AGE_DAYS } from './js/directionResearch.js';
 import { SAMEDAY_INSTRUMENTS as _BS_INSTRUMENTS, SAMEDAY_TARGETS as _BS_TARGETS, issueSameDay as _bsIssue, outcomeSameDay as _bsOutcome, summariseSameDay as _bsSummarise, midAt as _bsMidAt, sigmaDay as _bsSigmaDay, londonMs as _bsLondonMs, targetEndMs as _bsEndMs, isWeekday as _bsIsWeekday, MID_LOOKBACK_MS as _BS_LOOKBACK } from './js/directionLedger.js';   // bias-scoreboard same-day rows (forge/BIAS_SCOREBOARD_PREREG.md)
-import { h4Trend as _bsH4Trend, deskRating as _bsDeskRating, deskCcy as _bsDeskCcy, maxSignals as _bsMaxSignals, surpriseRule as _bsSurpriseRule, fundabias as _bsFundabias, FUNDABIAS_ENABLED as _BS_FUNDABIAS_ON } from './js/biasForecasters.js';
+import { buildBiasRecord as _beBuild, marketView as _beMarket } from './js/biasEngine.js';   // bias engine v1 (plans/BIAS_ENGINE_SPEC.md)
+import { biasEngine as _bsBiasEngine, h4Trend as _bsH4Trend, deskRating as _bsDeskRating, deskCcy as _bsDeskCcy, maxSignals as _bsMaxSignals, surpriseRule as _bsSurpriseRule, fundabias as _bsFundabias, FUNDABIAS_ENABLED as _BS_FUNDABIAS_ON } from './js/biasForecasters.js';
 import { scoreTrack as _dlScoreTrack } from './js/directionScore.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
 import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
@@ -432,6 +440,7 @@ import { buildHedgePlanText as _hpText, orderStates as _hpStates, HEDGE_BLOCK as
 import { cmeBookContracts as _cmeBook, priceDigits as _priceDigits } from './js/hedgingBooks.js';
 import { buildOiProfile, buildProfileText, shiftProfilePrices, chunkText } from './js/oiProfile.js';   // OI Profile indicator export   // CME listed book → hedging contracts (FX, US30)
 import compression from 'compression';
+import { tfOf as _dbTfOf, clampDays as _dbClampDays, candlesUrl as _dbCandlesUrl, shapeCandles as _dbShape, describeBars as _dbDescribe } from './js/deskBarsCore.js';
 import { egressMiddleware, egressSnapshot, egressPersist } from './js/egressMeter.js';
 import { spreadProfileInit, spreadProfileSample, spreadProfileFlush, spreadProfileReport, MOTIF_UNIVERSE as _SPREAD_UNIVERSE } from './js/spreadProfile.js';
 import { loadM1Resampled as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
@@ -1784,6 +1793,9 @@ async function buildCorrHistoryJS() {
       _corrPanelMem = { body: JSON.stringify(res.panel), generated: res.panel.generated, src: 'build' };
       try { await kv.put(CORR_PANEL_KV, _corrPanelMem.body); } catch (kvErr) { console.warn('[CORR] corr panel KV write failed:', kvErr.message); }
     }
+    // keep the 12 MB history across deploys: gzipped in R2, restored at boot while it is still fresh (js/corrHistoryPersist.js)
+    _corrSaveR2({ readFile: () => fs.readFileSync(CORR_HISTORY_PATH, 'utf8'), putBuffer: _r2PutBuffer, configured: _r2Ok })
+      .then(r => console.log(r.ok ? `[CORR] history kept in R2 (${Math.round(r.bytes / 1024)} KB gz)` : `[CORR] history not kept in R2: ${r.reason}`));
     corrProgress = { pct: 100, msg: `Done — ${res.nRecords} snapshots · ${res.pairs.length} pairs · ${kb} KB`, step: 'done', error: null };
 
   } catch (e) {
@@ -2014,6 +2026,7 @@ const TG_SENDERS = {
   surpriseReader:    'Live surprise reader: a high-impact print, its surprise against consensus and the release playbook, within a minute (history, not a forecast)',
   forecastDrift:     'Forecast auditor: a forecast line set drifted out of its calibration band (only after opting in on the Forecast auditor card; a prompt to look, nothing is changed)',
   aiSpend:           'Model spend: a note at every £5 (or the step set on Bot Config → AI models) spent on model calls in a UTC day, with the dearest jobs and the last call',
+  deskAlertRules:    'Desk alert rules you set yourself: range used, Fed path move, data gone stale, a level touched, a weekend gap closed (one note per episode, at most 12 a day, descriptions not trade instructions)',
   deskAlerts:        'Desk alerts: world stress colour, options-skew extremes, fair value beyond 10%, carry/vol collapse, leading-indicator phase, speaker drift (context, not a signal)',
   // volatility_bot_v2 (the Python bot) checks this directly via ai_alert_cfg
   // (see its own tg_master_on doc) — unlike every other sender above, this
@@ -7754,21 +7767,31 @@ svcInterval('researchPod', async () => {
   if (s.some(x => !x.brief && _tdWeek(x.date) === _tdWeek(date))) return;
   _rpStart({});
 }, 30 * 60_000);
-// GET /api/desk-bars?inst=USDJPY&days=5: H1 candles for one desk instrument (Desk Terminal charts and sparklines).
-// The desk's names map to OANDA through the vol-forecast list. Cached 10 minutes per instrument and span.
-const _dbCache = new Map();
+// GET /api/desk-bars?inst=USDJPY&tf=1h&days=5: candles for one desk instrument (Desk Terminal charts and sparklines).
+// tf = 5m | 15m | 30m | 1h | 4h (default 1h, the old behaviour); each is OANDA's own granularity, so ONE call per instrument and timeframe,
+// shared by every viewer (pure rules: js/deskBarsCore.js). A bar's time is its OPEN (epoch s); the last bar may be forming (forming:true).
+// The desk's names map to OANDA through the vol-forecast list. Cached per instrument, timeframe and span (1 min for 5m up to 10 min for 1h and 4h);
+// concurrent identical requests share one OANDA call.
+const _dbCache = new Map(), _dbInflight = new Map();
 app.get('/api/desk-bars', async (req, res) => {
   try {
     const inst = String(req.query.inst ?? '').toUpperCase(), sym = _dsOanda[inst];
     if (!sym) return res.status(400).json({ ok: false, error: `unknown instrument ${inst}` });
-    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 5, 1), 20), key = `${inst}|${days}`, hit = _dbCache.get(key);
-    if (hit && Date.now() - hit.at < 10 * 60_000) return res.json(hit.data);
-    const to = new Date(), from = new Date(Date.now() - (days + 2) * 864e5);
-    const vals = await fetchOandaCandleRange(sym, 'H1', from.toISOString().slice(0, 10) + 'T00:00:00Z', to.toISOString().slice(0, 19) + 'Z');
-    const bars = vals.map(v => ({ time: v.t, open: +v.open, high: +v.high, low: +v.low, close: +v.close })).filter(b => Number.isFinite(b.close));
-    const cut = Date.now() / 1000 - days * 86400;
-    const data = { ok: true, inst, bars: bars.filter(b => b.time >= cut) };
-    if (_dbCache.size > 200) _dbCache.clear();
+    const tf = _dbTfOf(req.query.tf), days = _dbClampDays(tf, req.query.days), key = `${inst}|${tf.key}|${days}`, hit = _dbCache.get(key);
+    if (hit && Date.now() - hit.at < tf.ttlMs) return res.json(hit.data);
+    let job = _dbInflight.get(key);
+    if (!job) {
+      job = (async () => {
+        const url = _dbCandlesUrl(_oandaBaseMe(), sym, tf, days);
+        const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(30_000) });
+        if (!r.ok) throw new Error(`OANDA ${sym} ${tf.gran} HTTP ${r.status}`);
+        const now = Date.now(), bars = _dbShape((await r.json()).candles, now, days), d = _dbDescribe(bars, tf, now);
+        return { ok: true, inst, tf: tf.key, gran: tf.gran, sec: tf.sec, days, asOf: now, forming: d.forming, bars };
+      })().finally(() => _dbInflight.delete(key));
+      _dbInflight.set(key, job);
+    }
+    const data = await job;
+    if (_dbCache.size > 300) _dbCache.clear();
     _dbCache.set(key, { at: Date.now(), data });
     res.json(data);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -14311,6 +14334,11 @@ app.get('/api/rbnz/decisions', async (req, res) => {
 // decision headline from its news RSS (cached by /api/rbnz/decisions, 6 h) stands in and the tile says so. 10-minute cache.
 let _cbBoardCache = { at: 0, data: null };
 const _CB_BOARD_TTL_MS = 10 * 60_000;
+// The board reads ten past meetings a bank (the tone timeline). Only the newest two need the whole stored payload (the vote, the word-level diff,
+// the theme scores for the change); older meetings need their score, regime, headline and themes, and a past analysis does not change, so those
+// are kept compact in memory after the first read (the Beige Book payloads alone are ~350 KB each).
+const _cbBoardOld = new Map();
+const _cbBoardCompact = p => (p?.analysis ? { kind: p.kind ?? null, analysis: { hawkishScore: p.analysis.hawkishScore, regime: p.analysis.regime, confidence: p.analysis.confidence, headline: p.analysis.headline, dimensions: p.analysis.dimensions } } : null);
 const _CB_BOARD_MEETINGS = () => ({ fomc: FOMC_MEETINGS, ecb: ECB_MEETINGS, boe: BOE_MEETINGS, boj: BOJ_MEETINGS, rba: RBA_MEETINGS, rbnz: RBNZ_MEETINGS, boc: BOC_MEETINGS, snb: SNB_MEETINGS, beige: BEIGE_BOOK_RELEASES });
 async function _cbBoardRbnzHeadline(meetingDate) {
   try {
@@ -14329,7 +14357,11 @@ async function _cbBoardBuild() {
   const rbnzBlocked = /403|restricted|firewall/i.test((rbnzLog?.log ?? []).join(' · '));
   const banks = await Promise.all(_CB_BOARD_BANKS.map(async meta => {
     const meetings = M[meta.id] ?? [], dates = _cbbPastDates(meetings, now, _CB_BOARD_HISTORY), reads = {};
-    await Promise.all(dates.map(async d => { try { const raw = await kv.get(`${meta.prefix}${d}`); reads[d] = raw ? JSON.parse(raw) : null; } catch { reads[d] = null; } }));
+    await Promise.all(dates.map(async (d, i) => {
+      const key = `${meta.prefix}${d}`, old = i < dates.length - 2;
+      if (old && _cbBoardOld.has(key)) { reads[d] = _cbBoardOld.get(key); return; }
+      try { const raw = await kv.get(key); const p = raw ? JSON.parse(raw) : null; reads[d] = old ? _cbBoardCompact(p) : p; if (old && reads[d]) _cbBoardOld.set(key, reads[d]); } catch { reads[d] = null; }
+    }));
     const newest = dates.at(-1), noRead = newest && !reads[newest]?.analysis;
     const headline = meta.id === 'rbnz' && noRead ? await _cbBoardRbnzHeadline(newest) : null;
     return _cbbShape(meta, { meetings, reads, now, headline, blocked: rbnzBlocked, rate: meta.beige ? null : (pr.rates?.[meta.ccy] ?? null) });
@@ -21621,6 +21653,16 @@ async function _buildDataHealth() {
     // nothing asks for it until a terminal tab is open, so a never-built layer is 'waiting', not dead; once built it should stay inside minutes while a tab is open
     push('liveLayer', `Desk Terminal live layer (EM, indices, implied yields, range used)${s.lastError ? ` (${s.lastError.slice(0, 120)})` : ''}`, s.lastOkAt ? new Date(s.lastOkAt).toISOString() : null, 0.2, { market: true, refreshEveryH: 0.02 });
   } catch { /* best-effort */ }
+  // gold ETF flows: judged on the last day a point was recorded, with the reason the last try failed (js/goldEtfFlowCore.js)
+  try {
+    const h = _gefHealth(_goldEtfFlowStatus, _goldEtfFlowCache.data);
+    push('goldEtf', `Gold ETF flows (GLD + IAU assets)${h.suffix}`, h.lastIso, 1, { market: false, refreshEveryH: 26 });
+  } catch { /* best-effort */ }
+  // the vol clock board: judged on its last good build, and only once a tab has asked for it (nothing builds it until then, so never-built is 'waiting')
+  try {
+    const s = app.locals.volClockStatus;
+    if (s) push('volClock', `Desk Terminal vol clock (IV against the forecast sigma)${s.lastError ? ` (${String(s.lastError).slice(0, 120)})` : ''}`, s.lastOkAt ? new Date(s.lastOkAt).toISOString() : null, 0.5, { market: false, refreshEveryH: 0.05 });
+  } catch { /* best-effort */ }
   // the paper-ideas feeds: judged on the date the data itself runs to, so a server nobody has opened never reads as a dead feed (null = not built since boot, shown as waiting)
   try {
     const s = _paperBoards.status();
@@ -23254,56 +23296,52 @@ app.get('/api/spread-profile', (_req, res) => res.json(spreadProfileReport(_SPRE
 // engines' KV persistence, just for a number instead of a hawkish score.
 const GOLD_ETF_TICKERS = ['GLD', 'IAU'];
 const GOLD_ETF_FLOW_KV = 'gold_etf_flow_history';
-const GOLD_ETF_FLOW_TTL_MS = 6 * 3600 * 1000;   // AUM doesn't move intraday; limit external calls
-const _goldEtfFlowCache = { data: null, fetchedAt: 0 };
+// js/goldEtfFlowCore.js: a good day (today's point held) is cached 6h because AUM does not move intraday; an empty or FAILED try is cached 2 minutes only
+// (2026-11-15: a failed Yahoo call used to be cached for 6h, so the board stayed empty for hours and nothing said why).
+const _goldEtfFlowCache = { data: null, fetchedAt: 0, ttlMs: 0 };
+const _goldEtfFlowStatus = { attemptedAt: null, okAt: null, lastError: null };
+let _goldEtfFlowInflight = null;   // one build at a time: a page that asks while a try is running waits for it instead of hitting Yahoo again
 
 // Yahoo's quoteSummary module carries a fund's total net assets under a few
 // possible module/field names depending on ticker/module-set quirks — try each,
 // first one present wins, so a minor Yahoo schema drift degrades gracefully
 // instead of silently returning zero.
-async function _fetchYahooFundAum(ticker) {
-  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}`
-            + `?modules=defaultKeyStatistics,summaryDetail,price`;
-  const r = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX/1.0)' },
-    signal:  AbortSignal.timeout(20_000),
-  });
-  if (!r.ok) throw new Error(`Yahoo fund AUM ${ticker} HTTP ${r.status}`);
-  const json = await r.json();
-  const result = json?.quoteSummary?.result?.[0];
-  if (!result) throw new Error(`Yahoo fund AUM ${ticker}: unexpected response`);
-  const raw = result.defaultKeyStatistics?.totalAssets?.raw
-    ?? result.summaryDetail?.totalAssets?.raw
-    ?? result.price?.marketCap?.raw               // last-resort proxy: share market cap ≈ AUM for a physically-backed trust
-    ?? null;
-  if (raw == null || !Number.isFinite(raw)) throw new Error(`Yahoo fund AUM ${ticker}: no totalAssets/marketCap field found`);
-  return raw;
-}
+// Since 2026-11-15 this goes through js/yahooFundAum.js: quoteSummary needs Yahoo's cookie + crumb and returned HTTP 401 without them, which left the
+// gold ETF history empty (the daily archive job logged 'fetch failed' and moved on).
+async function _fetchYahooFundAum(ticker) { return _fetchYahooFundAumAuth(ticker); }
 
 async function _goldEtfFlowSeries() {
   const age = Date.now() - _goldEtfFlowCache.fetchedAt;
-  if (_goldEtfFlowCache.data && age < GOLD_ETF_FLOW_TTL_MS) return _goldEtfFlowCache.data;
+  if (_goldEtfFlowCache.data && age < _goldEtfFlowCache.ttlMs) return _goldEtfFlowCache.data;
+  if (_goldEtfFlowInflight) return _goldEtfFlowInflight;
+  _goldEtfFlowInflight = _goldEtfFlowBuild().finally(() => { _goldEtfFlowInflight = null; });
+  return _goldEtfFlowInflight;
+}
 
+async function _goldEtfFlowBuild() {
   // getStrict, not get: read-MODIFY-write over a point-in-time series that
   // cannot be recovered once overwritten ("a missed day cannot be recovered
   // later" per kv.js). A swallowed backend failure reading back as "no
   // history" would truncate the whole series to today's single point.
   const raw = await kv.getStrict(GOLD_ETF_FLOW_KV);
   let series = raw ? JSON.parse(raw) : [];         // [{date, value}] ascending, value = combined AUM USD
-  const today = new Date().toISOString().slice(0, 10);
+  const today = _gefToday();
 
   if (series[series.length - 1]?.date !== today) {
+    _goldEtfFlowStatus.attemptedAt = Date.now();
     try {
       const sums = await Promise.all(GOLD_ETF_TICKERS.map(t => _fetchYahooFundAum(t)));
       const combined = sums.reduce((a, b) => a + b, 0);
       series = [...series, { date: today, value: combined }];   // no cap (was 120): a day not kept is gone; ~30 bytes/day
       _archive.mergeSeries('gold_etf', 'GLD_IAU_AUM', series, { unit: 'USD' }).catch(() => {});
       await kv.put(GOLD_ETF_FLOW_KV, JSON.stringify(series));
+      _goldEtfFlowStatus.okAt = Date.now(); _goldEtfFlowStatus.lastError = null;
     } catch (e) {
-      console.warn('[gold-etf-flow] fetch failed, serving prior history only:', e.message);
-      // fall through with whatever history already exists — never crash the caller
+      _goldEtfFlowStatus.lastError = _gefReason(e);
+      console.warn('[gold-etf-flow] fetch failed, serving prior history only:', _goldEtfFlowStatus.lastError);
+      // fall through with whatever history already exists: never crash the caller, and say why in the response
     }
-  }
+  } else if (!_goldEtfFlowStatus.okAt) { _goldEtfFlowStatus.okAt = Date.now(); }   // today was already held (written by an earlier run)
 
   const s = _seriesDeltas(series, [1, 5, 20]);
   // Percent basis, not raw $ — a fund's AUM grows with price + share count over
@@ -23311,16 +23349,19 @@ async function _goldEtfFlowSeries() {
   // read (same reasoning macroChange.js applies via its own bps/pct convention).
   const pctDeltas = s ? Object.fromEntries(Object.entries(s.d).map(([n, v]) =>
     [n, (v == null || !s.last) ? null : +((v / s.last) * 100).toFixed(2)])) : null;
-  const data = { series, last: s?.last ?? null, asOf: s?.lastDate ?? null, deltas: pctDeltas };
+  const haveToday = series[series.length - 1]?.date === today;
+  const fetch = _gefFetchBlock({ haveToday, reason: _goldEtfFlowStatus.lastError, attemptedAt: _goldEtfFlowStatus.attemptedAt, okAt: _goldEtfFlowStatus.okAt });
+  const data = { series, last: s?.last ?? null, asOf: s?.lastDate ?? null, deltas: pctDeltas, fetch };
 
   _goldEtfFlowCache.data = data;
   _goldEtfFlowCache.fetchedAt = Date.now();
+  _goldEtfFlowCache.ttlMs = _gefTtl(haveToday);   // 6h after a good day, 2 minutes after an empty or failed try
   return data;
 }
 
 app.get('/api/gold-etf-flow', async (_req, res) => {
-  try { res.json({ ok: true, ...(await _goldEtfFlowSeries()) }); }
-  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try { res.json(_gefRouteBody(await _goldEtfFlowSeries())); }
+  catch (e) { _goldEtfFlowStatus.lastError = _gefReason(e); res.status(500).json({ ok: false, error: _gefReason(e), reason: _gefReason(e) }); }
 });
 
 // ── Diversification backtest data cache ───────────────────────────────────────
@@ -29825,6 +29866,7 @@ app.get('/api/direction-ledger', async (req, res) => {
 //   <D>_base.json  first tick in [07:00, 09:00) London: B0 + surprise-rule + h4-trend rows, 07:00 anchors, sigma_day
 //   <D>_desk.json  first tick after the eligible desk book exists (desk_run_elig_<D>, finished before 08:00), before 10:00
 //   <D>_max.json   first tick in [16:05, 20:00) London: Max's first posted side per instrument (instrument/side/time/style only)
+//   <D>_engine.json first tick after the stored bias-engine issue exists (bias_engine_<D>), before 10:00 (prereg amendment A3)
 //   out/<D>_<target>.json  once the target's end price exists (d21 after 21:05; n07 / d5 the mornings after)
 // Only today's London date is ever issued and only inside its window, so a missed window is a gap (no back-issue);
 // an existing key is never overwritten. A source that fails writes no rows for its models and says why in external_status.
@@ -29914,6 +29956,20 @@ async function _bsIssueMax(date) {
   const views = records ? _bsMaxSignals(records, date, { insts }) : [];
   await _bsPutOnce(key, _bsIssue({ date, source: 'max', views, baselines: _bsBaselines, sigma, issuedAt: new Date().toISOString(), code: _bsCode(), externalStatus: status, insts }));
 }
+// <D>_engine.json (prereg amendment A3): the bias engine's stored morning issue (KV bias_engine_<D>, written 07:00-07:30
+// London by _biasEngineTick), first tick after it exists and before 10:00. A live (unstored) read is never a row.
+async function _bsIssueEngine(date) {
+  const key = `${_BS_PREFIX}${date}_engine.json`;
+  if (_bsDone.has(key)) return;
+  let rec = null;
+  try { const raw = await kv.get(_BE_KEY(date)); rec = raw ? JSON.parse(raw) : null; } catch { rec = null; }
+  if (!rec?.markets || rec.date !== date) return;                 // no stored issue yet: try again until 10:00
+  const base = await _r2GetJSON(`${_BS_PREFIX}${date}_base.json`).catch(() => null);
+  const insts = base ? Object.keys(base.anchors_0700 ?? {}) : Object.keys(_BS_INSTRUMENTS);
+  const sigma = base ? Object.fromEntries(base.forecasts.filter(f => f.model_id === 'B0').map(f => [f.inst, f.sigma_day])) : await _bsSigma(date);
+  await _bsPutOnce(key, _bsIssue({ date, source: 'engine', views: _bsBiasEngine(rec, { knowableMs: Date.parse(rec.asOf), insts }), baselines: _bsBaselines, sigma,
+    issuedAt: new Date().toISOString(), code: _bsCode(), externalStatus: { engine: 'ok', engine_as_of: rec.asOf, engine_version: rec.version, weights: rec.weights }, insts }));
+}
 async function _biasScoreboardTick() {
   if (!_r2Ok() || !process.env.OANDA_KEY) return;
   const now = Date.now(), date = _dpLondonDate(now);
@@ -29921,9 +29977,10 @@ async function _biasScoreboardTick() {
     if (now >= _bsLondonMs(date, 7) + 60_000 && now < _bsLondonMs(date, 9)) await _bsIssueBase(date);
     if (now >= _bsLondonMs(date, 7) && now < _bsLondonMs(date, 10)) await _bsIssueDesk(date);
     if (now >= _bsLondonMs(date, 16, 5) && now < _bsLondonMs(date, 20)) await _bsIssueMax(date);
+    if (now >= _bsLondonMs(date, 7) && now < _bsLondonMs(date, 10)) await _bsIssueEngine(date);
   }
   // resolve: issue records from the last ~15 days with an unresolved target
-  const keys = (await _r2ListKeys(_BS_PREFIX)).filter(k => /sameday\/\d{4}-\d{2}-\d{2}_(base|desk|max)\.json$/.test(k));
+  const keys = (await _r2ListKeys(_BS_PREFIX)).filter(k => /sameday\/\d{4}-\d{2}-\d{2}_(base|desk|max|engine)\.json$/.test(k));
   const dates = [...new Set(keys.map(k => k.match(/(\d{4}-\d{2}-\d{2})_/)[1]))].sort().slice(-15);
   for (const d of dates) {
     for (const t of _BS_TARGETS) {
@@ -29932,7 +29989,7 @@ async function _biasScoreboardTick() {
       if (await _r2GetJSON(ok).catch(() => null)) { _bsDone.add(ok); continue; }
       // every source window for D must be closed before D is resolved, so no record can arrive after its outcome
       if (now < _bsLondonMs(d, 20)) continue;
-      const recs = (await Promise.all(['base', 'desk', 'max'].map(s => _r2GetJSON(`${_BS_PREFIX}${d}_${s}.json`).catch(() => null)))).filter(Boolean);
+      const recs = (await Promise.all(['base', 'desk', 'max', 'engine'].map(s => _r2GetJSON(`${_BS_PREFIX}${d}_${s}.json`).catch(() => null)))).filter(Boolean);
       if (!recs.length) continue;
       let fetchErr = false;                                       // a feed error is not a missing price: retry next tick
       const o = await _bsOutcome(recs, t, (inst, ms) => _bsMid(inst, ms).catch(() => { fetchErr = true; return null; }), { now, resolvedAt: new Date().toISOString() });
@@ -29943,11 +30000,11 @@ async function _biasScoreboardTick() {
 svcInterval('biasScoreboard', () => _biasScoreboardTick().catch(e => console.error('[bias-scoreboard]', e.message)), 5 * 60_000);
 async function _bsRoute(req, res) {
   const all = await _r2ListKeys(_BS_PREFIX);
-  const issues = all.filter(k => /sameday\/\d{4}-\d{2}-\d{2}_(base|desk|max)\.json$/.test(k)).sort(), outKeys = all.filter(k => /sameday\/out\//.test(k)).sort();
+  const issues = all.filter(k => /sameday\/\d{4}-\d{2}-\d{2}_(base|desk|max|engine)\.json$/.test(k)).sort(), outKeys = all.filter(k => /sameday\/out\//.test(k)).sort();
   const date = String(req.query.date || '');
   if (date) {
     const recs = {}, outs = {};
-    for (const s of ['base', 'desk', 'max']) recs[s] = await _r2GetJSON(`${_BS_PREFIX}${date}_${s}.json`).catch(() => null);
+    for (const s of ['base', 'desk', 'max', 'engine']) recs[s] = await _r2GetJSON(`${_BS_PREFIX}${date}_${s}.json`).catch(() => null);
     for (const t of _BS_TARGETS) outs[t] = await _r2GetJSON(`${_BS_PREFIX}out/${date}_${t}.json`).catch(() => null);
     return res.json({ ok: true, prereg: 'forge/BIAS_SCOREBOARD_PREREG.md', records: recs, outcomes: outs });
   }
@@ -29958,6 +30015,157 @@ async function _bsRoute(req, res) {
     outcomes: outKeys.length, note: 'interim, not judged: judged at 60 and 120 shared days by scripts/bias-scoreboard/score.mjs',
     summary: req.query.summary === '1' ? _bsSummarise(await load(issues.slice(-400)), await load(outKeys.slice(-1200))) : 'add &summary=1' });
 }
+
+// ── Bias engine (plans/BIAS_ENGINE_SPEC.md; logic in js/biasEngine.js, pure) ─────────────────────────────────────────
+// A rule-based macro checklist for every market: the eight currencies, the risk score, all 28 crosses and the assets.
+// Issued once per London weekday between 07:00 and 07:30 (after Asia), written once to KV bias_engine_<date> with an
+// index bias_engine_index; never overwritten, never back-issued (a missed window is a gap). Inputs are the stores the
+// routes already read, called in-process (no HTTP to itself): /api/cb-expectations (KV cb_rate_futures_v1 + policy
+// rates), /api/macro-scorecard (_buildMacroScorecard: factors and cbSentiment), /api/rate-diff (KV rate_diff_v1),
+// /api/real-yield (KV real_yield_v1), /api/cot-state (_buildCotState), CBOE VIX / VIX3M files (_cboeCsv; FRED cache as
+// fallback), FRED cache for HY OAS and the 10y TIPS yield, OANDA D/H4 candles (_fetchOandaCandles). Each driver carries
+// its asOf and source; the engine drops anything dated after the issue time. Scored forward as forecaster `bias-engine`
+// on the bias scoreboard (forge/BIAS_SCOREBOARD_PREREG.md amendment A3). NOT a trade signal.
+const _BE_KEY = date => `bias_engine_${date}`, _BE_INDEX_KV = 'bias_engine_index';
+const _BE_OANDA = { EURUSD: 'EUR_USD', GBPUSD: 'GBP_USD', AUDUSD: 'AUD_USD', NZDUSD: 'NZD_USD', USDJPY: 'USD_JPY', USDCAD: 'USD_CAD', USDCHF: 'USD_CHF',
+  GOLD: 'XAU_USD', SILVER: 'XAG_USD', WTI: 'WTICO_USD', COPPER: 'XCU_USD', NQ: 'NAS100_USD', SPX500: 'SPX500_USD', US30: 'US30_USD', US2000: 'US2000_USD', DE30: 'DE30_EUR', UK100: 'UK100_GBP' };
+const _BE_COT_CCY = { EURUSD: 'EUR', GBPUSD: 'GBP', AUDUSD: 'AUD', NZDUSD: 'NZD', USDJPY: 'JPY', USDCAD: 'CAD', USDCHF: 'CHF' };
+const _beDayEnd = d => `${d}T23:59:00.000Z`;
+/** Everything the engine reads, as of `issueMs`. Each source that fails is left out and named in `status`. */
+async function _beGather(issueMs) {
+  const asOf = new Date(issueMs).toISOString(), issueDate = _dpLondonDate(issueMs), status = {}, inputs = { asOf };
+  const step = async (name, fn) => { try { await fn(); status[name] = status[name] ?? 'ok'; } catch (e) { status[name] = `error: ${e.message}`; } };
+  const kvJson = async k => { const raw = await kv.get(k); if (!raw) return null; const p = JSON.parse(raw); return p?.data ?? p; };
+  await Promise.all([
+    step('policy', async () => {   // /api/cb-expectations: the priced change over the week at ~6 months (3 / 12 as fallbacks)
+      const payload = await kvJson('cb_rate_futures_v1');
+      if (!payload?.banks) { status.policy = 'no futures pull'; return; }
+      const pr = await _policyRatesNow().catch(() => ({ rates: {} }));
+      const ex = _cbExpect(payload, Object.fromEntries(Object.entries(pr.rates ?? {}).map(([k, v]) => [k, v.rate])), issueMs);
+      inputs.policy = {};
+      for (const [c, b] of Object.entries(ex.banks ?? {})) {
+        const h = ['m6', 'm3', 'm12'].find(k => Number.isFinite(b[k]?.weekBp));
+        if (h) inputs.policy[c] = { weekBp: b[h].weekBp, horizon: h.slice(1) + 'm', asOf: ex.asOf, source: `/api/cb-expectations (${b.source})` };
+      }
+    }),
+    step('scorecard', async () => {   // /api/macro-scorecard: data momentum (growth, inflation, labour, demand; rates excluded) and cbSentiment
+      const sc = await _buildMacroScorecard();
+      inputs.data = {}; inputs.stance = {};
+      for (const r of sc.ranked ?? []) {
+        const fs = ['growth', 'inflation', 'labour', 'demand'].map(k => r.factors?.[k]).filter(f => Number.isFinite(f?.score));
+        if (fs.length < 2) continue;
+        const dims = fs.flatMap(f => f.dims), dates = dims.map(d => r.asOf?.[d]).filter(x => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}/.test(x)).sort();
+        inputs.data[r.ccy] = { score: fs.reduce((s, f) => s + f.score, 0) / fs.length, asOf: dates.length ? _beDayEnd(dates.at(-1).slice(0, 10)) : sc.generatedAt, source: '/api/macro-scorecard', factors: fs.length };
+      }
+      for (const [c, v] of Object.entries(sc.cbSentiment ?? {})) if (Number.isFinite(v?.score)) inputs.stance[c] = { score: v.score, meetingDate: v.meetingDate, asOf: _beDayEnd(v.meetingDate), source: '/api/macro-scorecard cbSentiment' };
+    }),
+    step('rates', async () => {   // /api/rate-diff
+      const p = await kvJson(_RATE_DIFF_KV); inputs.rates = {};
+      for (const [c, v] of Object.entries(p?.byCcy ?? {})) if (v?.latestDate) inputs.rates[c] = { level: v.latestRate, z: v.z, asOf: _beDayEnd(v.latestDate), source: '/api/rate-diff' };
+    }),
+    step('realYield', async () => {   // /api/real-yield
+      const p = await kvJson(_REAL_YIELD_KV); inputs.realYield = {};
+      for (const [c, v] of Object.entries(p?.byCcy ?? {})) if (v?.latestDate && Number.isFinite(v.latestReal)) inputs.realYield[c] = { level: v.latestReal, z: v.z, asOf: _beDayEnd(v.latestDate), source: '/api/real-yield' };
+    }),
+    step('usReal', async () => {   // FRED DFII10 cache (fredhistory_series_tips), closes dated before the issue date
+      const pts = JSON.parse((await kv.get('fredhistory_series_tips')) || '[]').filter(p => p.date < issueDate && Number.isFinite(p.value));
+      if (pts.length < 21) { status.usReal = 'too few TIPS points'; return; }
+      inputs.usReal = { level: pts.at(-1).value, chg20bp: Math.round((pts.at(-1).value - pts.at(-21).value) * 100), asOf: _beDayEnd(pts.at(-1).date), source: 'FRED DFII10 (fredhistory cache)' };
+    }),
+    step('cot', async () => {   // /api/cot-state: currencies in "long the currency" terms, assets in their own
+      const st = await _buildCotState(); inputs.cot = {};
+      for (const [inst, v] of Object.entries(st.instruments ?? {})) {
+        if (!Number.isFinite(v?.pct) || !v.reportDate) continue;
+        const rel = new Date(Date.parse(`${v.reportDate}T20:30:00Z`) + 3 * 864e5).toISOString();   // Friday release, after the Tuesday report
+        const ccy = _BE_COT_CCY[inst], name = ccy ?? inst;
+        inputs.cot[name] = { pct: ccy ? _cotPctToCcy(v.sym, v.pct) : v.pct, share: ccy ? _cotToCcy(v.sym, v.share) : v.share, asOf: rel, source: `/api/cot-state (${v.sym}, report ${v.reportDate})` };
+      }
+    }),
+    step('risk', async () => {   // CBOE VIX / VIX3M daily files (FRED cache as fallback), HY OAS from the FRED cache
+      inputs.risk = {};
+      const before = xs => xs.filter(p => p.date < issueDate && Number.isFinite(p.value));
+      let vix = null, v3 = null;
+      try { [vix, v3] = await Promise.all([_cboeCsv('VIX'), _cboeCsv('VIX3M')]); status.vixSource = 'CBOE'; }
+      catch (e) { vix = JSON.parse((await kv.get('fredhistory_series_vix')) || '[]'); v3 = JSON.parse((await kv.get('fredhistory_series_vix3m')) || '[]'); status.vixSource = `FRED cache (CBOE: ${e.message})`; }
+      vix = before(vix ?? []); v3 = before(v3 ?? []);
+      if (vix.length) {
+        const yr = vix.slice(-252), last = vix.at(-1);
+        inputs.risk.vix = { level: last.value, pct1y: 100 * yr.filter(p => p.value <= last.value).length / yr.length, asOf: _beDayEnd(last.date), source: status.vixSource === 'CBOE' ? 'CBOE VIX daily' : 'FRED VIXCLS' };
+        const m = v3.find(p => p.date === last.date);
+        if (m?.value > 0) inputs.risk.vixTerm = { ratio: last.value / m.value, asOf: _beDayEnd(last.date), source: status.vixSource === 'CBOE' ? 'CBOE VIX / VIX3M daily' : 'FRED VIXCLS / VXVCLS' };
+      }
+      const hy = before(JSON.parse((await kv.get('fredhistory_series_hy')) || '[]'));
+      if (hy.length >= 21) inputs.risk.hy = { level: hy.at(-1).value, chg20bp: Math.round((hy.at(-1).value - hy.at(-21).value) * 100), asOf: _beDayEnd(hy.at(-1).date), source: 'FRED BAMLH0A0HYM2 (fredhistory cache)' };
+    }),
+    step('prices', async () => {   // OANDA D (London midnight) and H4 mid candles, complete bars only (the engine also cuts at the issue time)
+      inputs.prices = { d1: {}, h4: {} }; const errs = [];
+      const bars = xs => xs.map(b => ({ t: Date.parse(b.time), c: b.close, complete: b.complete }));
+      const names = Object.keys(_BE_OANDA);
+      for (let i = 0; i < names.length; i += 6) {   // six at a time: polite to OANDA
+        await Promise.all(names.slice(i, i + 6).map(async n => {
+          try { inputs.prices.d1[n] = bars(await _fetchOandaCandles(_BE_OANDA[n], 'D', 130)); } catch (e) { errs.push(`${n} D: ${e.message}`); }
+          try { inputs.prices.h4[n] = bars(await _fetchOandaCandles(_BE_OANDA[n], 'H4', 200)); } catch (e) { errs.push(`${n} H4: ${e.message}`); }
+        }));
+      }
+      if (errs.length) status.prices = `partial: ${errs.slice(0, 6).join('; ')}${errs.length > 6 ? ` (+${errs.length - 6})` : ''}`;
+    }),
+  ]);
+  return { inputs, status };
+}
+async function _beCompute(issueMs) {
+  const { inputs, status } = await _beGather(issueMs);
+  return { ..._beBuild(inputs), date: _dpLondonDate(issueMs), issuedAt: new Date().toISOString(), inputsStatus: status, code: process.env.RAILWAY_GIT_COMMIT_SHA || null };
+}
+async function _beLoadIndex() { try { const raw = await kv.get(_BE_INDEX_KV); const p = raw ? JSON.parse(raw) : []; return Array.isArray(p) ? p : []; } catch { return []; } }
+let _beIssuing = false;
+const _beDone = new Set();
+async function _biasEngineTick() {
+  const now = Date.now(), date = _dpLondonDate(now);
+  if (!_bsIsWeekday(date) || now < _bsLondonMs(date, 7) || now >= _bsLondonMs(date, 7, 30) || _beDone.has(date) || _beIssuing) return;
+  _beIssuing = true;
+  try {
+    if (await kv.get(_BE_KEY(date))) { _beDone.add(date); return; }   // write-once
+    const rec = await _beCompute(now);
+    if (Date.now() >= _bsLondonMs(date, 7, 30)) { console.warn(`[bias-engine] ${date}: gather finished after 07:30, not stored`); return; }
+    await kv.put(_BE_KEY(date), JSON.stringify(rec));
+    const idx = (await _beLoadIndex()).filter(r => r.date !== date);
+    idx.push({ date, asOf: rec.asOf, version: rec.version, weights: rec.weights, gaps: rec.gaps.length,
+      currencies: Object.fromEntries(Object.entries(rec.currencies).map(([c, v]) => [c, { score: v.score, dir: v.dir, strength: v.strength, coverage: v.coverage }])) });
+    idx.sort((a, b) => (a.date < b.date ? -1 : 1));
+    await kv.put(_BE_INDEX_KV, JSON.stringify(idx.slice(-500)));
+    _beDone.add(date);
+    console.log(`[bias-engine] ${date} issued at ${rec.asOf}: ${rec.ranking.join(' > ')}; ${rec.gaps.length} gap(s)`);
+  } finally { _beIssuing = false; }
+}
+svcInterval('biasEngine', () => _biasEngineTick().catch(e => console.error('[bias-engine]', e.message)), 5 * 60_000);
+// GET /api/bias-engine            today's stored issue, or (none yet) a live read marked live: true and not stored
+// GET /api/bias-engine?date=D     the stored issue for D (404 when none: nothing is back-issued)
+// GET /api/bias-engine?market=X   one market (any cross of the eight, e.g. NZDCHF / CHFNZD, a currency, or an asset)
+// GET /api/bias-engine?index=1    the issue index (one row per stored day)
+let _beLive = { at: 0, rec: null };
+app.get('/api/bias-engine', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    if (req.query.index === '1') return res.json({ ok: true, index: await _beLoadIndex() });
+    const qd = String(req.query.date ?? ''), today = _dpLondonDate(Date.now());
+    if (qd && !/^\d{4}-\d{2}-\d{2}$/.test(qd)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+    let rec = null, live = false;
+    const raw = await kv.get(_BE_KEY(qd || today)).catch(() => null);
+    if (raw) rec = JSON.parse(raw);
+    else if (qd && qd !== today) return res.status(404).json({ ok: false, error: `no stored bias-engine issue for ${qd} (issues are written 07:00-07:30 London on weekdays and never back-issued)` });
+    else {
+      if (!_beLive.rec || Date.now() - _beLive.at > 10 * 60_000 || req.query.fresh === '1') _beLive = { at: Date.now(), rec: await _beCompute(Date.now()) };
+      rec = _beLive.rec; live = true;
+    }
+    const head = { ok: true, live, date: rec.date, asOf: rec.asOf, version: rec.version, weights: rec.weights, footnote: rec.footnote,
+      ...(live ? { note: 'live read: computed now, not stored and not scored (the stored issue is written 07:00-07:30 London on weekdays)' } : {}) };
+    if (req.query.market) {
+      const m = _beMarket(rec, req.query.market);
+      return m ? res.json({ ...head, market: m }) : res.status(404).json({ ok: false, error: `unknown market ${req.query.market}: any cross of USD EUR GBP JPY AUD NZD CAD CHF, a currency, or one of ${Object.keys(rec.markets).filter(k => !/^[A-Z]{6}$/.test(k)).join(', ')}` });
+    }
+    res.json({ ...rec, ...head });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 app.get('/api/hedging-forward', async (req, res) => {
   try {
@@ -43347,6 +43555,9 @@ app.get('/api/beta-history', (req, res) => {
     }
     res.json({ records, total: lines.length, sampled: records.length });
   } catch (e) {
+    // The file is written by the LOCAL bot (bot/modules/beta_estimator.py, MT5), never by this server, and bot/data is wiped by every deploy, so on Railway
+    // it normally does not exist. That is an empty history, not a server error: say so (the correlations page then falls back or shows its empty state).
+    if (e && e.code === 'ENOENT') return res.json({ records: [], total: 0, sampled: 0, built: false, message: 'No live-bot beta history on this server: it is written by the local bot, not by Railway. The correlation history (/api/corr-history) and the Desk Terminal Correlations tab do not need it.' });
     res.status(500).json({ error: e.message });
   }
 });
@@ -45402,6 +45613,52 @@ app.post('/api/desk-access', async (req, res) => {
   _deskSwCache = { at: 0, stored: {} };
   res.json({ ok: true, saved, visible: _deskVisibleFor('viewer', saved) });
 });
+// GET /api/desk-workspaces -> { ok, layouts }; POST { action: 'save'|'delete'|'rename', name, newName?, layout? } -> the new list. The owner always; the desk login only once the owner
+// switched the Workspace tab on (tab.workspace). Registered before the global requireAuth, so the session check is explicit (js/deskWorkspaces.js handle()).
+async function _deskWsRoute(req, res) {
+  res.set('Cache-Control', 'no-store');
+  const vis = new Set(_deskVisibleFor('viewer', await _deskSwitches().catch(() => ({}))));
+  const r = await _deskWs.handle({ method: req.method, role: deskSessionRole(req), body: req.body, kv, on: id => vis.has(id) });
+  res.status(r.status).json(r.json);
+}
+app.get('/api/desk-workspaces', _deskWsRoute);
+app.post('/api/desk-workspaces', _deskWsRoute);
+// GET /api/desk-monitors -> { ok, lists }; POST { action: 'save'|'delete', name, items? } -> the new list. Reads: the owner always, the desk login once the owner switched the Monitor tab on
+// (tab.monitor); writes: the owner only. Registered before the global requireAuth, so the session check is explicit (js/deskMonitors.js handle()).
+async function _deskMonRoute(req, res) {
+  res.set('Cache-Control', 'no-store');
+  const vis = new Set(_deskVisibleFor('viewer', await _deskSwitches().catch(() => ({}))));
+  const r = await _deskMon.handle({ method: req.method, role: deskSessionRole(req), body: req.body, kv, on: id => vis.has(id) });
+  res.status(r.status).json(r.json);
+}
+app.get('/api/desk-monitors', _deskMonRoute);
+app.post('/api/desk-monitors', _deskMonRoute);
+// GET /api/desk-news-searches -> { ok, searches }; POST { action: 'save'|'delete', name, search? } -> the new list. Reads: the owner always, the desk login once the owner switched panel.news.saved
+// on; writes: the owner only (js/deskNewsSearches.js handle()).
+async function _deskNsRoute(req, res) {
+  res.set('Cache-Control', 'no-store');
+  const vis = new Set(_deskVisibleFor('viewer', await _deskSwitches().catch(() => ({}))));
+  const r = await _deskNs.handle({ method: req.method, role: deskSessionRole(req), body: req.body, kv, on: id => vis.has(id) });
+  res.status(r.status).json(r.json);
+}
+app.get('/api/desk-news-searches', _deskNsRoute);
+app.post('/api/desk-news-searches', _deskNsRoute);
+// GET /api/desk-alert-rules -> { ok, rules, sentToday }; POST { action: 'add'|'delete'|'mute'|'unmute'|'rename', ... } -> the new list. POST is the OWNER only: an alert sends a Telegram
+// message. The desk login reads the list once the owner switched widget.alerts on. The tick (every 2 min, only with an active rule) is below; it sends through sendTelegram, so the
+// master kill switch and tgMaster.deskAlertRules both apply.
+async function _deskArRoute(req, res) {
+  res.set('Cache-Control', 'no-store');
+  const vis = new Set(_deskVisibleFor('viewer', await _deskSwitches().catch(() => ({}))));
+  const r = await _deskAr.handle({ method: req.method, role: deskSessionRole(req), body: req.body, kv, on: id => vis.has(id) });
+  res.status(r.status).json(r.json);
+}
+app.get('/api/desk-alert-rules', _deskArRoute);
+app.post('/api/desk-alert-rules', _deskArRoute);
+svcInterval('deskAlertRules', () => _deskAr.tick({
+  kv, fetchFeed: p => _dpFetchFeed({ path: p, timeoutMs: 20_000 }),
+  canSend: () => tgOn('deskAlertRules') && !!state.tg?.token && !!state.tg?.chatId,
+  send: text => sendTelegram(state.tg.token, state.tg.chatId, String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')),
+}).catch(e => console.error('[desk-alert-rules]', e.message)), 2 * 60_000);
 
 // All other /api/* routes — call _worker.js and return the JSON response.
 app.all('/api/*', async (req, res) => {
@@ -46417,7 +46674,18 @@ setTimeout(() => {
 // Fetches 5y of H4 OANDA bars for all pairs, computes rolling Pearson correlations + factor betas.
 // ~3 min to build, ~500-900 KB output. Stored at bot/data/corr_history.json.
 // 6-hour cadence keeps z-scores fresh: each H4 bar advances the rolling window by one step.
-svcTimeout('corrHistory', () => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), 60_000);
+// A deploy wipes bot/data. Put the history back from R2 first (when it is fresh enough), and the terminal's daily panel from KV, so the refresh below
+// sees a fresh file and skips the 3-minute, few-hundred-call OANDA rebuild.
+async function _corrRestoreAtBoot() {
+  const r = await _corrRestoreR2({ exists: () => fs.existsSync(CORR_HISTORY_PATH), getBuffer: _r2GetBuffer, configured: _r2Ok, maxAgeMs: CORR_STALE_MS - CORR_STALE_MARGIN_MS,
+    writeFile: txt => { fs.mkdirSync(path.dirname(CORR_HISTORY_PATH), { recursive: true }); fs.writeFileSync(CORR_HISTORY_PATH, txt); },
+    touch: ms => fs.utimesSync(CORR_HISTORY_PATH, new Date(ms), new Date(ms)) });
+  console.log(r.restored ? `[CORR] history restored from R2 (${r.ageH}h old)` : `[CORR] history not restored: ${r.reason}`);
+  if (r.restored && !fs.existsSync(CORR_PANEL_PATH)) {
+    try { const raw = await kv.get(CORR_PANEL_KV); if (raw) fs.writeFileSync(CORR_PANEL_PATH, raw); } catch (e) { console.warn('[CORR] panel restore', e.message); }
+  }
+}
+svcTimeout('corrHistory', () => _corrRestoreAtBoot().catch(e => console.warn('[CORR] restore', e.message)).then(() => runCorrHistoryRefresh()).catch(e => console.error('[CORR]', e.message)), 60_000);
 svcInterval('corrHistory', () => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), CORR_CHECK_MS);   // rebuilds when ~6 h old
 
 // Beta estimation — runs every 2 hours; first run 90s after startup (after corr fetch begins)

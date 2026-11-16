@@ -4,7 +4,9 @@
  * oi-dashboard-v2.html (drawCog) so OI Lab and the Desk Terminal's Options tab draw the same chart from the same code.
  * Display only: it reads a stored OI entry and never changes a level.
  *
- *   drawTerrain(canvas, { e, sym, maxDte, smile, px, fmtBig, showTip, hideTip, smileCover })  ->  { legend, note }
+ *   drawTerrain(canvas, { e, sym, maxDte, smile, px, fmtBig, showTip, hideTip, smileCover, spotLabel })  ->  { legend, note, geom }
+ *     spotLabel  the label of the white snapshot-spot line (default 'SPOT PRICE'); pages that add the live line (js/terrainLive.js) pass 'SNAPSHOT SPOT'
+ *     geom       the drawn geometry (price window, plot box, the named levels), so a second canvas can draw on the same price axis without a redraw
  *     e          the stored OI entry (as /api/oi-store returns it): spot, refMove, maxPain, gexFlip, callWall, putWall, rawOI ...
  *     smile      null (CME book: gamma lines), or { state: 'loading' | 'err' | 'ok', err, curves } with curves from terrainSmiles()
  *     smileCover true when this instrument has a Cboe smile (so a missing smile means "loading"/"unavailable", not "n/a")
@@ -142,8 +144,8 @@ export function drawTerrain(cv, o) {
   g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 1; g.beginPath(); g.moveTo(cx, PT); g.lineTo(cx, PT + ph); g.stroke();
   // levels, labelled at the right end like a desk chart
   let bigK = null, bigV = 0; for (const [K, q] of oi) { if (q.c + q.p > bigV) { bigV = q.c + q.p; bigK = K; } }
-  const lv = [[spot, '#ffffff', 'SPOT PRICE', 'solid'], [D.flip, '#f0b04a', 'GEX FLIP (ZERO CROSSING)', 'dot'], [bigK, '#7fb0ff', 'MAJOR WALL', 'dash'], [D.mp, '#c9cdd2', 'MAX PAIN', 'dot'], [D.cw, '#ee6d66', 'CALL WALL', 'dash'], [D.pw, '#3fc583', 'PUT WALL', 'dash']]
-    .filter(l => Number.isFinite(l[0]) && l[0] > lo && l[0] < hi).sort((x, y) => yOf(x[0]) - yOf(y[0]));
+  const lvAll = [[spot, '#ffffff', o.spotLabel || 'SPOT PRICE', 'solid'], [D.flip, '#f0b04a', 'GEX FLIP (ZERO CROSSING)', 'dot'], [bigK, '#7fb0ff', 'MAJOR WALL', 'dash'], [D.mp, '#c9cdd2', 'MAX PAIN', 'dot'], [D.cw, '#ee6d66', 'CALL WALL', 'dash'], [D.pw, '#3fc583', 'PUT WALL', 'dash']];
+  const lv = lvAll.filter(l => Number.isFinite(l[0]) && l[0] > lo && l[0] < hi).sort((x, y) => yOf(x[0]) - yOf(y[0]));
   let lastY = -99;
   lv.forEach(([p, col, name, style]) => { const y = yOf(p); g.strokeStyle = col; g.lineWidth = style === 'solid' ? 1.5 : 1.1; g.setLineDash(style === 'dash' ? [7, 5] : style === 'dot' ? [2, 4] : []); g.globalAlpha = .9;
     g.beginPath(); g.moveTo(PL, y); g.lineTo(PL + pw, y); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
@@ -160,5 +162,7 @@ export function drawTerrain(cv, o) {
   cv.onmousemove = ev => { const r = cv.getBoundingClientRect(), y = ev.clientY - r.top, price = hi - (y - PT) / ph * (hi - lo); let best = null, bd = 1e18; for (const K of ks) { const d = Math.abs(K - price); if (d < bd) { bd = d; best = K; } }
     if (best == null || bd > step) return hideTip(); const q = oi.get(best); showTip(ev, `<b>${px(best)}</b><br>calls ${fmtBig(q.c)} · puts ${fmtBig(q.p)}<br><span style="color:#8a95a3">${maxDte >= 400 ? 'whole book' : 'expiries within ' + maxDte + ' days'}</span>`); };
   cv.onmouseleave = hideTip;
-  return { legend, note: null };
+  // the geometry a live-price overlay needs (js/terrainLive.js): the price window, the plot box, and every named level (also those outside the window, for the distances)
+  const geom = { lo, hi, PL, PT, pw, ph, cssW, cssH, spot, refMove: e.refMove ?? null, levels: lvAll.slice(1).filter(l => Number.isFinite(l[0])).map(([price, color, name]) => ({ price, color, name })) };
+  return { legend, note: null, geom };
 }

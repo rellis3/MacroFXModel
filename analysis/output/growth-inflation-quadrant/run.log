@@ -1,0 +1,45 @@
+map_usd_1w         est -0.034 [-0.102,+0.038] p_holm 1.000 MDE 0.154 bar 0.042 plant@MDE 1.00 @bar 0.00 -> null
+map_usd_2w         est -0.038 [-0.137,+0.070] p_holm 1.000 MDE 0.205 bar 0.059 plant@MDE 1.00 @bar 0.00 -> underpowered
+map_usd_4w         est -0.067 [-0.202,+0.070] p_holm 1.000 MDE 0.288 bar 0.083 plant@MDE 1.00 @bar 0.00 -> null
+map_usd_8w         est -0.073 [-0.227,+0.071] p_holm 1.000 MDE 0.381 bar 0.118 plant@MDE 1.00 @bar 0.00 -> null
+map_gold_1w        est +0.085 [+0.010,+0.155] p_holm 0.456 MDE 0.136 bar 0.042 plant@MDE 1.00 @bar 1.00 -> underpowered
+map_gold_2w        est +0.114 [+0.014,+0.205] p_holm 0.388 MDE 0.186 bar 0.059 plant@MDE 1.00 @bar 1.00 -> underpowered
+map_gold_4w        est +0.132 [+0.005,+0.256] p_holm 0.694 MDE 0.253 bar 0.083 plant@MDE 1.00 @bar 1.00 -> underpowered
+map_gold_8w        est +0.168 [+0.017,+0.321] p_holm 0.639 MDE 0.317 bar 0.118 plant@MDE 1.00 @bar 1.00 -> underpowered
+map_indices_1w     est -0.017 [-0.079,+0.040] p_holm 1.000 MDE 0.122 bar 0.042 plant@MDE 1.00 @bar 0.00 -> null
+map_indices_2w     est -0.011 [-0.084,+0.066] p_holm 1.000 MDE 0.172 bar 0.059 plant@MDE 1.00 @bar 0.00 -> underpowered
+map_indices_4w     est +0.018 [-0.079,+0.114] p_holm 1.000 MDE 0.236 bar 0.083 plant@MDE 1.00 @bar 0.55 -> underpowered
+map_indices_8w     est +0.095 [-0.042,+0.224] p_holm 1.000 MDE 0.316 bar 0.118 plant@MDE 1.00 @bar 1.00 -> underpowered
+trans_usd_4w       est -0.016 [-0.192,+0.129] p_holm 1.000 MDE 0.414 bar 0.083 plant@MDE 1.00 @bar 0.00 -> underpowered
+trans_gold_4w      est +0.193 [+0.002,+0.393] p_holm 0.907 MDE 0.497 bar 0.083 plant@MDE 1.00 @bar 1.00 -> underpowered
+trans_indices_4w   est -0.183 [-0.473,+0.068] p_holm 1.000 MDE 0.419 bar 0.083 plant@MDE 0.00 @bar 0.00 -> null
+xfit_usd_4w        est -0.030 [-0.129,+0.105] p_holm 1.000 MDE 0.226 bar 0.083 plant@MDE 0.00 @bar 0.00 -> underpowered
+xfit_gold_4w       est -0.085 [-0.224,+0.173] p_holm 1.000 MDE 0.246 bar 0.083 plant@MDE 0.00 @bar 0.00 -> underpowered
+xfit_indices_4w    est -0.050 [-0.156,+0.100] p_holm 1.000 MDE 0.253 bar 0.083 plant@MDE 0.30 @bar 0.00 -> underpowered
+s2map_usd_4w       est -0.113 [-0.219,-0.012] p_holm 0.639 MDE 0.210 bar 0.083 plant@MDE 0.03 @bar 0.00 -> null
+s2map_gold_4w      est +0.045 [-0.068,+0.161] p_holm 1.000 MDE 0.272 bar 0.083 plant@MDE 1.00 @bar 0.17 -> underpowered
+s2map_indices_4w   est -0.074 [-0.167,+0.019] p_holm 1.000 MDE 0.195 bar 0.083 plant@MDE 1.00 @bar 0.00 -> null
+{
+ "share_labels_same_if_released_35d_earlier": 0.5788888888888889,
+ "share_labels_same_with_revised_data_1m_lag": 0.6488888888888888,
+ "estimates": {
+  "released_35d_earlier": {
+   "usd": -0.0910757512225177,
+   "gold": 0.18739264766813893,
+   "indices": -0.036004259932120676
+  },
+  "revised_data": {
+   "usd": -0.06606766645064951,
+   "gold": 0.1638512191852502,
+   "indices": 0.0895268538387396
+  },
+  "point_in_time": {
+   "usd": -0.06678100990951082,
+   "gold": 0.13181375289877204,
+   "indices": 0.017959560188439434
+  }
+ },
+ "flag_revised_data_differs": true,
+ "flag_early_release_changes_labels": true
+}
+wrote C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output\growth-inflation-quadrant\results.json

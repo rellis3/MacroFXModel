@@ -66,7 +66,7 @@ p.sub{color:var(--tx2);margin:0 0 16px;max-width:70ch}
 <main>
   <h1>What the desk login can see</h1>
   <p class="sub">Every tab, link, widget, ticker segment and panel of the Desk Terminal is a switch. Anyone signed in with the desk password sees only what is switched on here. You, signed in with the main password, always see everything. The desk login is an education tool and a macro dashboard, so <b>everything is shown except four things</b>, each row says which:</p>
-  <p class="sub" style="margin-top:0"><span class="chip gold">trade</span> reads as a trade instruction (trade watch, playbooks, best pairs, entry / stop / target / size lines, the Trader's read, the hedge finder). <span class="chip dn">cost</span> costs money (Research, Ask the desk, paid model buttons). <span class="chip pur">internal</span> your own tooling (Info map, Desk Office, Desk Run, Access, alerts, the data-quality chip). <span class="chip gold">P&amp;L</span> real or scored P&amp;L: the desk's record. Those four are <b>off by default</b>; everything else is <span class="chip up">shown</span>. Links out to other pages are locked off (they would bounce a desk login to the main login).</p>
+  <p class="sub" style="margin-top:0"><span class="chip gold">trade</span> reads as a trade instruction (trade watch, playbooks, best pairs, entry / stop / target / size lines, the Trader's read, the hedge finder). <span class="chip dn">cost</span> costs money (Research, Ask the desk, paid model buttons). <span class="chip pur">internal</span> your own tooling (Info map, Desk Office, Desk Run, Access, alerts, the data-quality chip). <span class="chip gold">P&amp;L</span> real or scored P&amp;L: the desk's record. Those four are <b>off by default</b>; so is each <span class="chip up">preview</span> (a new feature you are trying out: you always see it, the desk login only when you switch it on); everything else is <span class="chip up">shown</span>. Links out to other pages are locked off (they would bounce a desk login to the main login).</p>
   <div id="root"><div class="card muted">Loading…</div></div>
 </main>
 <script type="module">
@@ -74,8 +74,8 @@ import { SURFACES, LOCKED_HIDDEN_IDS, ALWAYS_VISIBLE_IDS, REASON_LABEL, REASON_W
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const KIND_LABEL = { tab: 'Tab', nav: 'Link', widget: 'Widget', strip: 'Ticker', panel: 'Panel' };
-const GROUP_ORDER = ['Tabs', 'Links', 'Shell', 'Ticker', 'Overview', 'Overview map layers', 'Currencies', 'Markets', 'Analytics', 'Charts', 'Changed', 'Correlations', 'Macro'];
-const REASON_CHIP = { trade: 'gold', cost: 'dn', internal: 'pur', pnl: 'gold' };
+const GROUP_ORDER = ['Terminal features (preview)', 'Tabs', 'Links', 'Shell', 'Ticker', 'Overview', 'Overview map layers', 'Currencies', 'Markets', 'Analytics', 'Positioning', 'History', 'Deep dive', 'Changed', 'Correlations', 'Macro'];
+const REASON_CHIP = { trade: 'gold', cost: 'dn', internal: 'pur', pnl: 'gold', preview: 'up' };
 const locked = s => LOCKED_HIDDEN_IDS.includes(s.id), pinned = s => ALWAYS_VISIBLE_IDS.includes(s.id);
 let state = {};      // id -> boolean, the switches as drawn
 let saved = {};      // id -> boolean, as last saved (under the current schema)

@@ -4,22 +4,22 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-14.
+Generated 2026-11-15.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **329** |
-| validated | 51 |
-| null | 183 |
-| underpowered | 95 |
+| claims tested (validated + null + underpowered) | **336** |
+| validated | 52 |
+| null | 185 |
+| underpowered | 99 |
 | context (base rates, descriptions: not counted as tests) | 56 |
 | pre-registrations with no banked verdict (below) | 94 |
 
-**What the count says (Lesson 02 §05).** If none of the 329 claims were real, tests at the usual 5% size would still pass
-about **16.5** of them by luck. 51 passed, so most passes are unlikely to be luck alone, but
-**roughly 17 of the 51 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 336 claims were real, tests at the usual 5% size would still pass
+about **16.8** of them by luck. 52 passed, so most passes are unlikely to be luck alone, but
+**roughly 17 of the 52 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -406,12 +406,60 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-13 | noise-area-momentum-book | price | underpowered | forge/NOISE_AREA_MOMENTUM_PREREG.md |
 | 2026-11-13 | noise-area-momentum-stop | execution | underpowered | forge/NOISE_AREA_MOMENTUM_PREREG.md |
 | 2026-11-13 | relationship-map | macro | underpowered | forge/RELATIONSHIP_MAP_PREREG.md |
+| 2026-11-14 | post-release-drift-pooled | events | underpowered | forge/POST_RELEASE_DRIFT_POOLED_PREREG.md |
+| 2026-11-14 | post-release-momentum-pooled | events | null | forge/POST_RELEASE_DRIFT_POOLED_PREREG.md |
+| 2026-11-15 | bias-learner-fx | price | null | forge/BIAS_LEARNER_PREREG.md |
+| 2026-11-15 | bias-learner-gold | price | underpowered | forge/BIAS_LEARNER_PREREG.md |
+| 2026-11-15 | bias-learner-idx | price | underpowered | forge/BIAS_LEARNER_PREREG.md |
+| 2026-11-15 | coherence-conviction | macro | underpowered | forge/COHERENCE_CONVICTION_PREREG.md |
+| 2026-11-15 | day-type-expansion-fx | volatility | null | forge/DAY_TYPE_EXPANSION_PREREG.md |
+| 2026-11-15 | day-type-expansion-gold | volatility | null | forge/DAY_TYPE_EXPANSION_PREREG.md |
+| 2026-11-15 | day-type-expansion-idx | volatility | underpowered | forge/DAY_TYPE_EXPANSION_PREREG.md |
+| 2026-11-15 | exit-on-fixed-entries | execution | null | forge/EXIT_ON_FIXED_ENTRIES_PREREG.md |
+| 2026-11-15 | exit-on-fixed-entries-map | execution | context | forge/EXIT_ON_FIXED_ENTRIES_PREREG.md |
+| 2026-11-15 | growth-inflation-quadrant-gold | macro | underpowered | forge/GROWTH_INFLATION_QUADRANT_PREREG.md |
+| 2026-11-15 | growth-inflation-quadrant-idx | macro | underpowered | forge/GROWTH_INFLATION_QUADRANT_PREREG.md |
+| 2026-11-15 | growth-inflation-quadrant-usd | macro | underpowered | forge/GROWTH_INFLATION_QUADRANT_PREREG.md |
+| 2026-11-15 | hold-day-one-confirm-band | price | underpowered | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
+| 2026-11-15 | hold-day-one-confirm-close | price | underpowered | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
+| 2026-11-15 | hold-day-one-confirm-event | price | underpowered | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
+| 2026-11-15 | hold-day-one-confirm-hold-r | price | null | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
+| 2026-11-15 | hold-day-one-confirm-run | price | null | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
+| 2026-11-15 | hold-day-one-confirm-speed | price | underpowered | forge/HOLD_DAY_ONE_CONFIRM_PREREG.md |
+| 2026-11-15 | meta-labelling | price | underpowered | forge/META_LABELLING_PREREG.md |
+| 2026-11-15 | mtf-structure-conflict-ema | price | underpowered | forge/MTF_STRUCTURE_PREREG.md |
+| 2026-11-15 | mtf-structure-conflict-hmm | price | underpowered | forge/MTF_STRUCTURE_PREREG.md |
+| 2026-11-15 | mtf-structure-ema | price | underpowered | forge/MTF_STRUCTURE_PREREG.md |
+| 2026-11-15 | mtf-structure-hmm | price | underpowered | forge/MTF_STRUCTURE_PREREG.md |
+| 2026-11-15 | mtf-structure-pullback | price | underpowered | forge/MTF_STRUCTURE_PREREG.md |
+| 2026-11-15 | mtf-structure-swing | price | underpowered | forge/MTF_STRUCTURE_PREREG.md |
+| 2026-11-15 | positioning-flow-book | positioning | underpowered | forge/POSITIONING_FLOW_INPUTS_PREREG.md |
+| 2026-11-15 | positioning-flow-monthend | positioning | underpowered | forge/POSITIONING_FLOW_INPUTS_PREREG.md |
+| 2026-11-15 | positioning-flow-rr | positioning | underpowered | forge/POSITIONING_FLOW_INPUTS_PREREG.md |
+| 2026-11-15 | positioning-flow-vrp | positioning | underpowered | forge/POSITIONING_FLOW_INPUTS_PREREG.md |
+| 2026-11-15 | pre-release-ranging | events | validated | forge/PRE_RELEASE_RANGING_PREREG.md |
+| 2026-11-15 | pre-release-ranging-asia | events | null | forge/PRE_RELEASE_RANGING_PREREG.md |
+| 2026-11-15 | pre-release-ranging-coil | events | underpowered | forge/PRE_RELEASE_RANGING_PREREG.md |
+| 2026-11-15 | pre-release-ranging-share | events | validated | forge/PRE_RELEASE_RANGING_PREREG.md |
+| 2026-11-15 | regime-picks-rule-atr | price | null | forge/REGIME_PICKS_RULE_PREREG.md |
+| 2026-11-15 | regime-picks-rule-chain | price | null | forge/REGIME_PICKS_RULE_PREREG.md |
+| 2026-11-15 | regime-picks-rule-hmm | price | underpowered | forge/REGIME_PICKS_RULE_PREREG.md |
+| 2026-11-15 | slow-bias-clock-book | price | underpowered | forge/SLOW_BIAS_CLOCK_PREREG.md |
+| 2026-11-15 | slow-bias-clock-dir | price | underpowered | forge/SLOW_BIAS_CLOCK_PREREG.md |
+| 2026-11-15 | slow-bias-clock-r | price | null | forge/SLOW_BIAS_CLOCK_PREREG.md |
 | 2026-11-14 | connectedness-range | volatility | null | forge/CONNECTEDNESS_RANGE_PREREG.md |
 | 2026-11-14 | event-vol-ramp | volatility | underpowered | forge/EVENT_VOL_RAMP_PREREG.md |
 | 2026-11-14 | fomc-range-share | events | context | forge/FOMC_RANGE_SHARE_PREREG.md |
 | 2026-11-14 | gex-range-iv-calm-es | positioning | null | forge/GEX_RANGE_IV_CALM_PREREG.md |
 | 2026-11-14 | gex-range-iv-calm-nq | positioning | underpowered | forge/GEX_RANGE_IV_CALM_PREREG.md |
 | 2026-11-14 | hl-spread-estimator | execution | null | forge/HL_SPREAD_ESTIMATOR_PREREG.md |
+| 2026-11-15 | noise-area-momentum-spy | price | validated | forge/NOISE_AREA_MOMENTUM_SPY_PREREG.md |
+| 2026-11-15 | noise-area-momentum-spy-post | price | underpowered | forge/NOISE_AREA_MOMENTUM_SPY_PREREG.md |
+| 2026-11-15 | vol-layer-rule-a-confirm-k1 | execution | underpowered | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
+| 2026-11-15 | vol-layer-rule-a-confirm-s1 | execution | underpowered | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
+| 2026-11-15 | vol-layer-rule-a-confirm-s2 | execution | underpowered | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
+| 2026-11-15 | vol-layer-rule-a-confirm-s3 | execution | null | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
+| 2026-11-15 | vol-layer-rule-a-confirm-z1 | execution | null | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 

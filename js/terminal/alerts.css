@@ -1,0 +1,21 @@
+/* Alerts panel (js/terminal/alertsView.js). Theme tokens only (themeTokens.test.mjs). */
+.al-back { position: fixed; inset: 0; z-index: 70; background: var(--scrim); backdrop-filter: blur(4px); display: flex; align-items: flex-start; justify-content: center; padding: 8vh 16px 16px; }
+.al { width: 100%; max-width: 640px; max-height: 80vh; overflow-y: auto; background: var(--bg1); border: 1px solid var(--line2); border-radius: 14px; padding: 14px 16px; }
+.al-h { display: flex; align-items: baseline; gap: 10px; }
+.al-h b { font: 700 14px var(--mono); letter-spacing: .06em; color: var(--pur2); }
+.al-h .ws-x { margin-left: auto; font-size: 20px; }
+.al-msg { min-height: 18px; font-size: 12.5px; color: var(--gold); padding: 6px 0; }
+.al-list { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.al-r { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg2); }
+.al-r.off { opacity: .6; }
+.al-r div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.al-r b { font-size: 13px; color: var(--tx); }
+.al-r span { font-size: 12px; color: var(--tx2); }
+.al-b { display: flex; gap: 6px; flex: none; }
+.al-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: end; border-top: 1px solid var(--line); padding-top: 12px; }
+.al-form .al-help, .al-form .btn { grid-column: 1 / -1; }
+.al-f { display: flex; flex-direction: column; gap: 4px; }
+.al-f span { font: 600 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--tx3); }
+.al-f input, .al-f select { background: var(--bg2); color: var(--tx); border: 1px solid var(--line2); border-radius: 8px; padding: 7px 9px; font: 500 13px var(--mono); min-width: 0; }
+.al-help { margin: 0; font-size: 12px; }
+.al-foot { font-size: 11.5px; margin: 12px 0 0; }
