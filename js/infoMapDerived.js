@@ -3973,6 +3973,95 @@ export const DERIVED = {
    "packSkills": [],
    "drift": []
   },
+  "momentum-rate-of-change": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/drill-series",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/terminal/rocView.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/rocCore.js",
+     "exists": true
+    },
+    {
+     "file": "scripts/roc-stall/run.mjs",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "js/terminal/goldCore.js",
+     "js/terminal/insightData.js",
+     "js/terminal/insightSeries.js",
+     "js/terminal/insightView.js",
+     "js/terminal/matrixCore.js",
+     "js/terminal/rocCore.js",
+     "js/terminal/rocView.js",
+     "js/terminal/spreadsCore.js",
+     "js/terminal/spreadsDerived.js",
+     "js/terminal/spreadsLibrary.js"
+    ],
+    "today": [],
+    "atlas": [
+     "atlas.html"
+    ],
+    "newsletter": [
+     "js/newsletterTermV2.js"
+    ]
+   },
+   "evidence": [
+    {
+     "id": "roc-stall-50d-top20",
+     "known": true,
+     "verdict": "underpowered"
+    },
+    {
+     "id": "roc-stall-50d-top60",
+     "known": true,
+     "verdict": "null"
+    },
+    {
+     "id": "roc-stall-50d-topvol",
+     "known": true,
+     "verdict": "null"
+    },
+    {
+     "id": "roc-stall-50d-bottom20",
+     "known": true,
+     "verdict": "underpowered"
+    },
+    {
+     "id": "roc-accel-down-20",
+     "known": true,
+     "verdict": "underpowered"
+    },
+    {
+     "id": "roc-accel-down-vol",
+     "known": true,
+     "verdict": "underpowered"
+    },
+    {
+     "id": "live-range-features",
+     "known": true,
+     "verdict": "null"
+    },
+    {
+     "id": "vix-second-derivative",
+     "known": true,
+     "verdict": "validated"
+    }
+   ],
+   "packSkills": [],
+   "drift": []
+  },
   "original-terminal": {
    "pages": [
     {
@@ -5025,8 +5114,10 @@ export const DERIVED = {
    "drift": []
   }
  },
- "unclassified": [],
- "rootPageCount": 257,
+ "unclassified": [
+  "noise-area-build.html"
+ ],
+ "rootPageCount": 258,
  "packFeeds": 115,
  "generatedAt": "2026-11-16"
 };
