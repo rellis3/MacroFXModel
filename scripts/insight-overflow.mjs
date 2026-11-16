@@ -39,7 +39,7 @@ const MEASURE = whole => {
   const scrolls = el => { for (let e = el; e && e !== document.body; e = e.parentElement) { const o = getComputedStyle(e).overflowX; if (o === 'auto' || o === 'scroll') return true; if (e === sec) break; } return false; };
   const bad = [];
   for (const el of sec.querySelectorAll('*')) {
-    if (el.closest('svg') || el.closest('canvas')) continue;
+    if (el.closest('svg') || el.closest('canvas') || el.closest('.tk, #tk, .ticker, [data-surface="strip.news"], [data-surface="strip.events"]')) continue;   // the scrolling ticker is a marquee clipped by its own box
     const cs = getComputedStyle(el); if (cs.display === 'none' || cs.visibility === 'hidden') continue;
     const r = el.getBoundingClientRect(); if (!r.width) continue;
     const card = el.closest('.card, .in-li, .in-tblw');

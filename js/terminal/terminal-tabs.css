@@ -372,3 +372,5 @@ html[data-market="closed"] [data-mktboard],html[data-market="closed"] #tt-chain 
 .tfp-chip.err{color:var(--dn);border-color:var(--dn);white-space:normal}
 .tfp-chip.daily{border-style:dashed;font-weight:500}
 @media (prefers-reduced-motion:no-preference){.tfp-chip.forming{animation:tfpPulse 2.4s ease-in-out infinite}@keyframes tfpPulse{50%{opacity:.55}}}
+/* World stress strip: a chip wider than its card ("Global rate cycle 15 hiking, 4 cutting of 38") made the whole page 395px wide on a 390px phone. Chips here may wrap. */
+#wstrip{min-width:0}#wstrip .chip{max-width:100%;white-space:normal;overflow-wrap:anywhere}

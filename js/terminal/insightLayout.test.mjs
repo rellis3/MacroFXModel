@@ -48,3 +48,8 @@ test('boards cannot widen the page: the panel and its children may shrink, long 
   assert.match(css, /\.in-gcard[^{]*\{[^}]*overflow-wrap:\s*anywhere/);
   assert.match(css, /\.in-gcard\s*\{[^}]*min-width:\s*0/);
 });
+
+test('the world stress strip chips may wrap (a 390px phone was 5px too wide on every tab)', () => {
+  const tabs = rd('./terminal-tabs.css');
+  assert.match(tabs, /#wstrip \.chip\s*\{[^}]*white-space:\s*normal/);
+});
