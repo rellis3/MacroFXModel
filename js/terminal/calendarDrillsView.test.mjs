@@ -75,6 +75,7 @@ test('the past-prints drawer: a row per print, the surprise with its z, what is 
   assert.match(h, /Past prints of this release/); assert.match(h, /size, not direction/); assert.match(h, /Not available: a forecast range/);
   assert.match(h, /data-ev="surprise-size"/); assert.match(h, /8 prints held since/); assert.match(h, /above, \d+ in line, \d+ below/);
   assert.match(h, /<svg class="cd-z"/);
+  assert.match(h, /usual surprise of this release \(its median\)/, 'the z is explained');
   assert.ok(!/NaN|undefined/.test(h), 'no NaN or undefined');
   assert.ok(!/<img/.test(h) && /&lt;img src=x&gt;/.test(h), 'what comes from the store is escaped');
   assert.ok(!/\b(buy|sell|bullish|bearish)\b/i.test(h));
