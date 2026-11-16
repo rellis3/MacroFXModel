@@ -7,13 +7,14 @@
  * lazily (the Macro sections) still get theirs. REPLAY <visual> on the command line calls the same opener.
  */
 import { openPlayer } from './replayPlayer.js';
-import { VISUALS, vizByWord, curveBounds, curveCaption, niceDate, strengthFrames, strengthBound, strengthCaption, recentSessions, londonStamp, londonDay, STRENGTH_WINDOWS, fedFrames, fedCaption, corrFrames, corrCaption } from '../replayVizCore.js';
+import { VISUALS, vizByWord, curveBounds, curveCaption, niceDate, strengthFrames, strengthBound, strengthCaption, recentSessions, londonStamp, londonDay, STRENGTH_WINDOWS, fedFrames, fedCaption, corrFrames, corrCaption, regimeFrames, regimeCaption, REGIME_SPANS, monthLabel } from '../replayVizCore.js';
 import { getBundle } from './insightData.js';
 import { metaFor } from './insightSeries.js';
 import { curveStage } from './replayCurveDraw.js';
 import { strengthStage } from './replayStrengthDraw.js';
 import { fedStage } from './replayFedDraw.js';
 import { corrStage } from './replayCorrDraw.js';
+import { regimeStage } from './replayRegimeDraw.js';
 
 const J = async u => { const r = await fetch(u, { credentials: 'same-origin' }); const j = await r.json().catch(() => null); if (!r.ok || !j || j.ok === false) throw new Error(j?.error ?? `HTTP ${r.status}`); return j; };
 
@@ -59,6 +60,18 @@ export function defFor(id, { fetchJson = J, now = () => Date.now() } = {}) {
       draw: (frames, i, { reduced, extra }) => corrStage(frames, i, extra.keys, { reduced }),
       caption: (frames, i, extra) => corrCaption(frames, i, k => metaFor(k).label ?? k),
       label: (f, i, n) => `${niceDate(f.t)} · session ${i + 1} of ${n}`,
+    };
+  }
+  if (id === 'regime') {
+    let held = null;
+    return {
+      id, title: 'Growth and inflation, month by month', note: 'Each month is the regime as computed today from the macro series as they now stand (revised, with publication lags ignored), so this is the history of the regime, not what was known on the day. It describes where the economy has been in the cycle; it does not say what the next month or any market is going to do.',
+      picks: [{ id: 'span', label: 'Span', reload: true, values: REGIME_SPANS.map(x => ({ v: x.v, label: x.label })) }],
+      load: async picks => { held ??= await fetchJson(v.route); const r = regimeFrames(held, { months: +picks.span }); if (!r.ok) throw new Error(r.error); return { frames: r.frames, extra: { total: r.total, from: r.from } }; },
+      coverage: (frames, r) => `${frames.length} months, ${monthLabel(frames[0].data.m)} to ${monthLabel(frames[frames.length - 1].data.m)}, from a monthly series that starts ${monthLabel(r.extra.from)} (${r.extra.total} months held).`,
+      draw: (frames, i, { reduced }) => regimeStage(frames, i, { reduced }),
+      caption: (frames, i) => regimeCaption(frames, i),
+      label: (f, i, n) => `${monthLabel(f.data.m)} · month ${i + 1} of ${n}`,
     };
   }
   return null;

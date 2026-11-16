@@ -665,6 +665,7 @@ export const DERIVED = {
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/regimeBoardView.js",
+     "js/terminal/replayViz.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [
@@ -3799,6 +3800,7 @@ export const DERIVED = {
      "js/terminal/pairView.js",
      "js/terminal/paperBoardsView.js",
      "js/terminal/regimeBoardView.js",
+     "js/terminal/replayViz.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/themes.js",
@@ -4469,6 +4471,10 @@ export const DERIVED = {
     {
      "file": "js/terminal/replayCorrDraw.js",
      "exists": true
+    },
+    {
+     "file": "js/terminal/replayRegimeDraw.js",
+     "exists": true
     }
    ],
    "names": {
@@ -4481,6 +4487,7 @@ export const DERIVED = {
      "js/terminal/replayFedDraw.js",
      "js/terminal/replayLink.js",
      "js/terminal/replayPlayer.js",
+     "js/terminal/replayRegimeDraw.js",
      "js/terminal/replayStrengthDraw.js",
      "js/terminal/replayView.js",
      "js/terminal/replayViz.js",

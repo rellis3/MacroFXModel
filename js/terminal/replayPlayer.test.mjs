@@ -13,6 +13,8 @@ import { strengthStage } from './replayStrengthDraw.js';
 import { fedStage } from './replayFedDraw.js';
 import { fedFrames, corrFrames } from '../replayVizCore.js';
 import { corrStage } from './replayCorrDraw.js';
+import { regimeStage } from './replayRegimeDraw.js';
+import { regimeFrames } from '../replayVizCore.js';
 
 const mkSeries = (n, f) => Array.from({ length: n }, (_, k) => ({ date: new Date(Date.parse('2026-06-01T00:00:00Z') + k * 864e5).toISOString().slice(0, 10), value: f(k) }));
 const S = { effr: mkSeries(200, () => 3.6), us2y: mkSeries(200, k => 3.8 + k * 0.001), us5y: mkSeries(200, k => 3.9 + k * 0.001), us10y: mkSeries(200, k => 4.1 + k * 0.002), us30y: mkSeries(200, k => 4.6 + k * 0.001) };
@@ -216,4 +218,28 @@ test('the correlation replay reads the shared daily bundle, says each frame uses
   d2.body.appendChild(host);
   const m = mountReplayViz({ doc: d2, win: makeWin(d2, { matchMedia: () => ({ matches: false }), requestAnimationFrame: undefined }), fetchJson });
   assert.equal(d2.querySelectorAll('[data-rpviz="corr"]').length, 1, 'one button, under the right heading'); m.decorate(); assert.equal(d2.querySelectorAll('[data-rpviz="corr"]').length, 1); m.destroy();
+});
+
+const regimeDoc = { ok: true, history: Array.from({ length: 130 }, (_, k) => { const m = new Date(Date.UTC(2016, k, 1)).toISOString().slice(0, 7), ph = Math.floor(k / 10) % 4; return { m, growth: [0.4, 0.3, -0.3, -0.4][ph] + (k % 3) * 0.01, inflation: [-0.3, 0.4, 0.3, -0.2][ph], regime: ['goldilocks', 'reflation', 'stagflation', 'deflation'][ph] }; }) };
+
+test('regime drawing: four cells on one scale, a trail behind the current month, a month strip, theme tokens only, plain under reduced motion', () => {
+  const r = regimeFrames(regimeDoc, { months: 60 }), svg = regimeStage(r.frames, 40);
+  assert.match(svg, /^<svg/); assert.doesNotMatch(svg, /NaN|undefined|Infinity/); assert.match(svg, /Reflation/); assert.match(svg, /Slowdown/);
+  assert.equal((svg.match(/<line /g) ?? []).length >= 40, true, 'the trail'); assert.equal((svg.match(/<rect /g) ?? []).length, 4 + 60, 'four cells and a strip of 60 months');
+  assert.doesNotMatch(svg, /#[0-9a-fA-F]{3,8}["']/); assert.match(svg, /filter="url/); assert.doesNotMatch(regimeStage(r.frames, 40, { reduced: true }), /filter="url/);
+  assert.match(regimeStage([], 0), /Nothing to draw/);
+});
+
+test('the regime replay offers 3, 5 and 10 years, holds the fetched series (one request), says the history is as computed today, and its button sits on the Growth x inflation card', async () => {
+  const asked = [], fetchJson = async u => { asked.push(u); return regimeDoc; };
+  const def = defFor('regime', { fetchJson }), { doc, back } = setup(def); await flush();
+  assert.deepEqual(def.picks[0].values.map(v => v.v), ['36', '60', '120']); assert.match(doc.getElementById('rpv-cov').textContent, /36 months, .* to Oct 2026, from a monthly series that starts Jan 2016 \(130 months held\)/);
+  doc.fire('click', back.querySelector('[data-pick="span"][data-val="120"]')); await flush();
+  assert.deepEqual(asked, ['/api/regime'], 'a span change reloads from the held series, not the network'); assert.match(doc.getElementById('rpv-cov').textContent, /120 months/);
+  assert.match(def.note, /as computed today/); assert.doesNotMatch(def.note, /will |buy|sell/i);
+  const d2 = makePage(), host = d2.createElement('div');
+  host.innerHTML = '<div data-surface="panel.macro.regime"><div class="card"><div class="ch"><span class="lbl">Growth × inflation</span></div></div><div class="card"><div class="ch"><span class="lbl">Risk state</span></div></div></div>';
+  d2.body.appendChild(host);
+  const m = mountReplayViz({ doc: d2, win: makeWin(d2, { matchMedia: () => ({ matches: false }), requestAnimationFrame: undefined }), fetchJson });
+  assert.equal(d2.querySelectorAll('[data-rpviz="regime"]').length, 1); m.destroy();
 });

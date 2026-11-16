@@ -147,6 +147,7 @@ export const VISUALS = [
   { id: 'strength', name: 'Currency strength', words: ['strength', 'ccy', 'currencies', 'currency'], what: 'the eight currencies racing through one London session (15-minute steps), ranked by how far each moved in units of its own normal move, on the 1H, 4H or 1D window', surface: 'panel.ov.ccystrength', cardRe: ' window$', route: '/api/replay/strength?date=' },
   { id: 'fedpath', name: 'Fed path odds', words: ['fed', 'fedpath', 'path', 'atlanta', 'policy'], what: 'the odds of a rate above (and below) the current range for each of the next four 3-month windows, day by day over the months we hold, with the history of each window drawn under it', surface: 'panel.macro.fedyields', cardRe: '^Atlanta Fed window odds', route: '/api/fed-path' },
   { id: 'corr', name: 'Correlation matrix', words: ['corr', 'correlation', 'correlations', 'matrix', 'together'], what: 'how the 14 markets have been moving together (the 20 session correlation of daily moves), session by session over the last 90 sessions, with the pairs that moved further than noise explains ringed', surface: 'panel.insight.matrix', headSel: 'h3.in-h', headRe: '^How markets have been moving together', route: '/api/drill-series' },
+  { id: 'regime', name: 'Growth and inflation regime', words: ['regime', 'quadrant', 'growth', 'inflation', 'cycle'], what: 'the growth and inflation quadrant month by month with a trail behind the current month, over the last 3, 5 or 10 years', surface: 'panel.macro.regime', cardLabel: 'Growth × inflation', route: '/api/regime' },
 ];
 export const vizByWord = w => { const k = String(w ?? '').toLowerCase(); return VISUALS.find(v => v.id === k || v.words.includes(k)) ?? null; };
 
@@ -250,4 +251,33 @@ export function corrCaption(frames, i, labelOf = k => k) {
   const f = frames?.[i]; if (!f) return '';
   const d = f.data, t = d.top;
   return `${niceDate(f.t)}: ${d.nMoved} of ${d.nPairs} pairs have a ${WIN_SHORT} session correlation further from their ${WIN_LONG} session one than noise explains (about ${d.expected} would by chance).${t ? ` Biggest change: ${labelOf(t.a)} and ${labelOf(t.b)}, ${t.r20.toFixed(2)} over ${WIN_SHORT} sessions against ${t.r120.toFixed(2)} over ${WIN_LONG}.` : ''}`;
+}
+
+// ── the growth and inflation regime ────────────────────────────────────────────────────────────────────────────────────────
+export const REGIME_NAME = { goldilocks: 'Goldilocks', reflation: 'Reflation', stagflation: 'Stagflation', deflation: 'Slowdown' };
+export const REGIME_SPANS = [{ v: '36', label: '3 years' }, { v: '60', label: '5 years' }, { v: '120', label: '10 years' }];
+const MON = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', month: 'short', year: 'numeric' });
+export const monthLabel = m => MON.format(Date.parse(`${String(m).slice(0, 7)}-01T00:00:00Z`));
+
+/**
+ * /api/regime `history` ([{ m: 'YYYY-MM', growth, inflation, regime }], monthly) -> the last `months` frames. A frame is dated the first of its month.
+ * Each month's regime is as COMPUTED TODAY from the macro series as they now stand (revised, with the publication lags ignored), so a replay shows the
+ * history of the regime, not what was known on the day; the note says so. A month with a missing score is dropped, never filled.
+ */
+export function regimeFrames(doc, { months = 60 } = {}) {
+  const h = Array.isArray(doc?.history) ? doc.history : [];
+  const good = h.filter(x => x && /^\d{4}-\d{2}$/.test(String(x.m)) && fin(x.growth) && fin(x.inflation) && REGIME_NAME[x.regime]);
+  const frames = good.slice(-Math.max(2, months)).map(x => ({ t: `${x.m}-01`, data: { m: x.m, growth: +x.growth, inflation: +x.inflation, regime: x.regime } }));
+  return { ok: frames.length > 1, frames, total: good.length, from: good[0]?.m ?? null, error: frames.length > 1 ? null : 'the regime history is not loaded yet' };
+}
+/** The largest absolute score in the window, for one fixed scale (at least 0.2). */
+export const regimeBound = frames => Math.max(0.2, ...(frames ?? []).flatMap(f => [Math.abs(f.data.growth), Math.abs(f.data.inflation)]));
+/** Plain words for one month: the regime, the two scores in words, and how long it has lasted. Description only. */
+export function regimeCaption(frames, i) {
+  const f = frames?.[i]; if (!f) return '';
+  const d = f.data; let n = 1; while (i - n >= 0 && frames[i - n].data.regime === d.regime) n++;
+  const before = i - n >= 0 ? frames[i - n].data.regime : null;
+  const g = d.growth >= 0 ? 'growth above its trend' : 'growth below its trend', p = d.inflation >= 0 ? 'inflation above its trend' : 'inflation below its trend';
+  const lasted = i - n < 0 ? `at least ${n} month${n === 1 ? '' : 's'} (the window starts there)` : `${n} month${n === 1 ? '' : 's'}`;
+  return `${monthLabel(d.m)}: ${REGIME_NAME[d.regime]}: ${g} (${d.growth >= 0 ? '+' : '−'}${Math.abs(d.growth).toFixed(2)}), ${p} (${d.inflation >= 0 ? '+' : '−'}${Math.abs(d.inflation).toFixed(2)}). It has lasted ${lasted}${before ? `, after ${REGIME_NAME[before]}` : ''}.`;
 }

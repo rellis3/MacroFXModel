@@ -2,7 +2,7 @@
 // node --test js/replayVizCore.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SPEEDS, initState, advance, step, seek, toggle, setSpeed, act, keyAction, coverageOf, curveFrames, curveBounds, curveCaption, strengthFrames, strengthBound, strengthRows, strengthCaption, recentSessions, londonStamp, vizByWord, VISUALS, fedFrames, fedCaption, windowLabel, corrFrames, corrCaption } from './replayVizCore.js';
+import { SPEEDS, initState, advance, step, seek, toggle, setSpeed, act, keyAction, coverageOf, curveFrames, curveBounds, curveCaption, strengthFrames, strengthBound, strengthRows, strengthCaption, recentSessions, londonStamp, vizByWord, VISUALS, fedFrames, fedCaption, windowLabel, corrFrames, corrCaption, regimeFrames, regimeCaption, regimeBound, monthLabel, REGIME_NAME } from './replayVizCore.js';
 
 const mkS = (start, n, f) => Array.from({ length: n }, (_, k) => ({ date: new Date(Date.parse(`${start}T00:00:00Z`) + k * 864e5).toISOString().slice(0, 10), value: f(k) }));
 
@@ -169,4 +169,17 @@ test('corrCaption counts the ringed pairs against chance and names the biggest c
   const r = corrFrames(bundle(), { sessions: 30, keys: ['spx', 'nq', 'dxy', 'gold', 'oil', 'btc'] }), c = corrCaption(r.frames, 29, k => k.toUpperCase());
   assert.match(c, /of 15 pairs have a 20 session correlation further from their 120 session one than noise explains \(about 0\.8 would by chance\)/);
   assert.doesNotMatch(c, /will |forecast|buy|sell/i); assert.equal(corrCaption([], 0), '');
+});
+
+const regimeDoc = { ok: true, history: Array.from({ length: 80 }, (_, k) => {
+  const m = new Date(Date.UTC(2020, k, 1)).toISOString().slice(0, 7), phase = Math.floor(k / 10) % 4;
+  return { m, growth: [0.4, 0.3, -0.3, -0.4][phase] + (k % 3) * 0.01, inflation: [-0.3, 0.4, 0.3, -0.2][phase], regime: ['goldilocks', 'reflation', 'stagflation', 'deflation'][phase] };
+}) };
+
+test('regimeFrames: the last N months, dated the first of the month, a bad month dropped not filled; the caption says what the month is and how long it has lasted', () => {
+  const r = regimeFrames(regimeDoc, { months: 36 }); assert.equal(r.ok, true); assert.equal(r.frames.length, 36); assert.equal(r.total, 80); assert.equal(r.frames.at(-1).t, '2026-08-01');
+  const bad = regimeFrames({ history: [...regimeDoc.history.slice(0, 5), { m: '2020-06', growth: null, inflation: 0, regime: 'reflation' }, ...regimeDoc.history.slice(5)] }, { months: 200 }); assert.equal(bad.total, 80);
+  const c = regimeCaption(r.frames, 35); assert.match(c, /Aug 2026: (Goldilocks|Reflation|Stagflation|Slowdown): growth (above|below) its trend/); assert.match(c, /It has lasted/);
+  assert.match(regimeCaption(r.frames, 0), /at least \d+ months? \(the window starts there\)/); assert.doesNotMatch(c, /will |forecast|buy|sell/i);
+  assert.equal(regimeFrames({}).ok, false); assert.equal(regimeCaption([], 0), ''); assert.ok(regimeBound(r.frames) >= 0.2); assert.equal(monthLabel('2026-10'), 'Oct 2026'); assert.equal(REGIME_NAME.deflation, 'Slowdown');
 });
