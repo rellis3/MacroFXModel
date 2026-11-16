@@ -1,0 +1,16 @@
+/* Risk-flag history ribbons (Insight > Risk flags, and a slim card on the Overview). Tokens only. */
+.rfs-card, .rfs-compact { margin-top: 14px; }
+.rfs-head { margin: 4px 0 10px; }
+.rfs-row { padding: 8px 0; border-top: 1px solid var(--line2); min-width: 0; }
+.rfs-row:first-of-type { border-top: 0; }
+.rfs-h { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.rfs-svg { display: block; border-radius: 4px; }
+.rfs-s { margin: 5px 0 0; font-size: 12.5px; color: var(--tx2); overflow-wrap: anywhere; }
+.rfs-axis { position: relative; height: 16px; margin-top: 6px; }
+.rfs-axis span { position: absolute; transform: translateX(-50%); font: 600 10px var(--mono); color: var(--tx3); white-space: nowrap; }
+.rfs-depth { font-size: 12px; margin: 8px 0 0; overflow-wrap: anywhere; }
+.rfs-mini { display: grid; grid-template-columns: minmax(0, 190px) minmax(0, 1fr) 34px; gap: 10px; align-items: center; padding: 3px 0; }
+.rfs-ml { font-size: 12px; color: var(--tx2); overflow-wrap: anywhere; }
+.rfs-mn { font: 600 10.5px var(--mono); color: var(--tx3); text-align: right; }
+.rfs-mn.on { color: var(--dn); }
+@media (max-width: 560px) { .rfs-mini { grid-template-columns: minmax(0, 1fr) 30px; } .rfs-mini .rfs-ml { grid-column: 1 / -1; } }

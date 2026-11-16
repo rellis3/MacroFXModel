@@ -40,6 +40,7 @@ export function perform(a, doc = document, win = window) {
     case 'oitime': return typeof win.deskOiTime?.open === 'function' ? win.deskOiTime.open(a.id, a.inst, a.date) !== false : false;
     case 'eventreplay': return typeof win.deskEventReplay?.open === 'function' ? win.deskEventReplay.open(a.family, a.market) !== false : false;
     case 'since': return typeof win.deskSince?.open === 'function' ? win.deskSince.open(a.range) !== false : false;
+    case 'flaghistory': return typeof win.deskRiskStrip?.open === 'function' ? win.deskRiskStrip.open() !== false : false;
     case 'ghost': return typeof win.deskGhostWalk?.open === 'function' ? win.deskGhostWalk.open(a.inst, a.date) !== false : false;
     case 'replay-viz': return typeof win.deskReplayViz?.open === 'function' ? win.deskReplayViz.open(a.id) !== false : false;
     case 'page': return !!win.open?.(a.href, '_blank', 'noopener');

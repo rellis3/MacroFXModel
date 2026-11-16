@@ -51,6 +51,6 @@ export function flagsHtml(m) {
 export function mountFlags(host, ctx) {
   let alive = true;
   host.innerHTML = '<div class="in-empty">Reading the risk flags…</div>';
-  ctx.fetchJson('/api/risk-flags').then(j => { if (alive) host.innerHTML = flagsHtml(flagRows(j)); }).catch(e => { if (alive) host.innerHTML = `<div class="in-empty">Could not load the risk flags (${esc(e?.message ?? e)}).</div>`; });
+  ctx.fetchJson('/api/risk-flags').then(j => { if (alive) { host.innerHTML = flagsHtml(flagRows(j)); if (globalThis.deskSurfaceOn?.('panel.risk.strip')) import('./flagStrip.js').then(m => alive && m.mountStripInto(host, { fetchJson: ctx.fetchJson })).catch(() => {}); } }).catch(e => { if (alive) host.innerHTML = `<div class="in-empty">Could not load the risk flags (${esc(e?.message ?? e)}).</div>`; });
   return { destroy() { alive = false; } };
 }
