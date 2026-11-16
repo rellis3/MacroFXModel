@@ -7,7 +7,7 @@
  * lazily (the Macro sections) still get theirs. REPLAY <visual> on the command line calls the same opener.
  */
 import { openPlayer } from './replayPlayer.js';
-import { VISUALS, vizByWord, curveBounds, curveCaption, niceDate, strengthFrames, strengthBound, strengthCaption, recentSessions, londonStamp, londonDay, STRENGTH_WINDOWS, fedFrames, fedCaption, corrFrames, corrCaption, regimeFrames, regimeCaption, REGIME_SPANS, monthLabel } from '../replayVizCore.js';
+import { VISUALS, vizByWord, curveBounds, curveCaption, niceDate, strengthFrames, strengthBound, strengthCaption, recentSessions, londonStamp, londonDay, STRENGTH_WINDOWS, fedFrames, fedCaption, corrFrames, corrCaption, regimeFrames, regimeCaption, REGIME_SPANS, monthLabel, rangeFrames, rangeCaption, RANGE_MARKETS, rangeInstLabel } from '../replayVizCore.js';
 import { getBundle } from './insightData.js';
 import { metaFor } from './insightSeries.js';
 import { curveStage } from './replayCurveDraw.js';
@@ -15,6 +15,7 @@ import { strengthStage } from './replayStrengthDraw.js';
 import { fedStage } from './replayFedDraw.js';
 import { corrStage } from './replayCorrDraw.js';
 import { regimeStage } from './replayRegimeDraw.js';
+import { rangeStage } from './replayRangeDraw.js';
 
 const J = async u => { const r = await fetch(u, { credentials: 'same-origin' }); const j = await r.json().catch(() => null); if (!r.ok || !j || j.ok === false) throw new Error(j?.error ?? `HTTP ${r.status}`); return j; };
 
@@ -72,6 +73,18 @@ export function defFor(id, { fetchJson = J, now = () => Date.now() } = {}) {
       draw: (frames, i, { reduced }) => regimeStage(frames, i, { reduced }),
       caption: (frames, i) => regimeCaption(frames, i),
       label: (f, i, n) => `${monthLabel(f.data.m)} · month ${i + 1} of ${n}`,
+    };
+  }
+  if (id === 'range') {
+    const days = recentSessions(now(), 5);
+    return {
+      id, title: 'Range used through a London session', note: 'Each step uses only the one-minute bars that had finished by then, and the forecast lines appear from the time the forecast was computed. The gauges are how far the market has travelled from its London open, up and down, against the median and 75th percentile of the forecast: the size of the move, not which way it goes.',
+      picks: [{ id: 'inst', label: 'Market', reload: true, values: RANGE_MARKETS.map(k => ({ v: k, label: rangeInstLabel(k) })) }, { id: 'day', label: 'Session', reload: true, values: days.map(d => ({ v: d, label: londonDay(d) })) }],
+      load: async picks => { const r = rangeFrames(await fetchJson(`${v.route}${encodeURIComponent(picks.inst)}&date=${encodeURIComponent(picks.day)}`)); if (!r.ok) throw new Error(r.error); return { frames: r.frames, extra: { open: r.open, path: r.path, fc: r.fc, win: r.win, label: r.label } }; },
+      coverage: (frames, r) => `${frames.length} steps of 15 minutes, ${londonStamp(frames[0].t)} to ${londonStamp(frames[frames.length - 1].t)}, from the one-minute bars of that session.${r.extra.fc ? '' : ' No forecast was archived for this day, so there is no median to compare with.'}`,
+      draw: (frames, i, { reduced, extra }) => rangeStage(frames, i, extra, { reduced }),
+      caption: (frames, i, extra) => rangeCaption(frames, i, extra),
+      label: (f, i, n) => `${londonStamp(f.t)} · step ${i + 1} of ${n}`,
     };
   }
   return null;

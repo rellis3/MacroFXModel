@@ -77,7 +77,7 @@ One shared player (js/replayVizCore.js pure + js/terminal/replayPlayer.js), prev
 | 1c. Fed path strip | DONE (preview) | Atlanta Fed window odds (4 windows, last 180 trading days) from /api/fed-path; the per-meeting futures strip has only a few lookback copies so it is not replayed (said on screen). |
 | 1d. Correlation matrix (20 vs 120 sessions over time) | DONE (preview) | Last 90 sessions from the daily market bundle (/api/drill-series, the Insight boards' own fetch); each frame is the board's own corrMatrix on the bundle cut at that day, so no later data; ringed-pair count against chance. |
 | 1e. Regime quadrant trail | DONE (preview) | 3, 5 or 10 years of months from /api/regime history (240 months held); each month is the regime as computed today from revised series, said on screen; trail of the last 12 months and a regime-coloured month strip. |
-| 1f. Vol clock / range used across the London day | TODO | |
+| 1f. Vol clock / range used across the London day | DONE (preview) | Rebuilt from /api/replay/day (one-minute bars + archived forecast) at 15-minute steps for six markets and the last five sessions: price path to that step, forecast median and p75 lines from when the forecast was computed, up and down gauges against the median. Not from the 5-minute snapshots (they hold no range-used section). |
 | 2. Event replay: pick a release or meeting, replay the terminal from one hour before to two hours after, last five of the same type as ghosts | TODO | Reuse js/terminal/replayPlayer.js with a different `def`. Timing and size only, never direction. |
 | 3. Whole-terminal as-of clock: a time in the top bar, every board redraws as it was | TODO | Only back to when snapshots began (about 2026-11-14); say so on screen. Reuse the player. |
 

@@ -15,7 +15,7 @@
  * It says nothing about what any market will do next (the structure of the curve as a predictor is a tested null: Evidence Book rate-curve-structure).
  */
 
-import { londonDate, prevDate } from './replayCore.js';
+import { londonDate, prevDate, INSTRUMENTS } from './replayCore.js';
 import { corrMatrix, CORR_BASKET, WIN_SHORT, WIN_LONG } from './terminal/matrixCore.js';
 
 /** Frames per second at each speed. x1 is slow enough to read a curve change; x16 runs 90 days in under 2 seconds. */
@@ -148,6 +148,7 @@ export const VISUALS = [
   { id: 'fedpath', name: 'Fed path odds', words: ['fed', 'fedpath', 'path', 'atlanta', 'policy'], what: 'the odds of a rate above (and below) the current range for each of the next four 3-month windows, day by day over the months we hold, with the history of each window drawn under it', surface: 'panel.macro.fedyields', cardRe: '^Atlanta Fed window odds', route: '/api/fed-path' },
   { id: 'corr', name: 'Correlation matrix', words: ['corr', 'correlation', 'correlations', 'matrix', 'together'], what: 'how the 14 markets have been moving together (the 20 session correlation of daily moves), session by session over the last 90 sessions, with the pairs that moved further than noise explains ringed', surface: 'panel.insight.matrix', headSel: 'h3.in-h', headRe: '^How markets have been moving together', route: '/api/drill-series' },
   { id: 'regime', name: 'Growth and inflation regime', words: ['regime', 'quadrant', 'growth', 'inflation', 'cycle'], what: 'the growth and inflation quadrant month by month with a trail behind the current month, over the last 3, 5 or 10 years', surface: 'panel.macro.regime', cardLabel: 'Growth × inflation', route: '/api/regime' },
+  { id: 'range', name: 'Range used', words: ['range', 'volclock', 'vol', 'clock', 'used'], what: 'how far a market travelled from its London open, up and down, through one session in 15-minute steps, against the forecast median and 75th percentile (a replay of the vol clock)', surface: 'panel.asset.volclock', headSel: '.vc-bar .lbl', headRe: '^Vol clock$', route: '/api/replay/day?inst=' },
 ];
 export const vizByWord = w => { const k = String(w ?? '').toLowerCase(); return VISUALS.find(v => v.id === k || v.words.includes(k)) ?? null; };
 
@@ -281,3 +282,48 @@ export function regimeCaption(frames, i) {
   const lasted = i - n < 0 ? `at least ${n} month${n === 1 ? '' : 's'} (the window starts there)` : `${n} month${n === 1 ? '' : 's'}`;
   return `${monthLabel(d.m)}: ${REGIME_NAME[d.regime]}: ${g} (${d.growth >= 0 ? '+' : '−'}${Math.abs(d.growth).toFixed(2)}), ${p} (${d.inflation >= 0 ? '+' : '−'}${Math.abs(d.inflation).toFixed(2)}). It has lasted ${lasted}${before ? `, after ${REGIME_NAME[before]}` : ''}.`;
 }
+
+// ── range used through the London day (the vol clock) ───────────────────────────────────────────────────────────────────────
+export const RANGE_MARKETS = ['NQ', 'SPX500', 'GOLD', 'EURUSD', 'GBPUSD', 'USDJPY'];
+const PCT = v => `${Math.abs(v) < 10 ? Math.abs(v).toFixed(2) : Math.abs(v).toFixed(1)}%`;
+
+/**
+ * /api/replay/day (one market, one London session: one-minute bars [[t ms, o, h, l, c]], the session window and the archived forecast) -> one frame per
+ * `stepMs`. A frame at ts uses only bars that had FINISHED by ts (open + 1 minute <= ts): the high and low so far, as a percent of the session open, up and
+ * down. `known` is false until the archived forecast existed (computedAt), so a frame never shows a forecast that had not been made yet.
+ */
+export function rangeFrames(day, { stepMs = 15 * 60e3 } = {}) {
+  const bars = Array.isArray(day?.bars) ? day.bars : [], win = day?.win;
+  if (!bars.length || !win) return { ok: false, error: 'no price bars are held for that session', frames: [] };
+  const open = { price: bars[0][1], t: bars[0][0] };
+  if (!(open.price > 0)) return { ok: false, error: 'the session has no usable open', frames: [] };
+  const fc = day.forecast && fin(day.forecast.hl_median) ? day.forecast : null;
+  const frames = [], path = [];
+  let i = 0, hi = -Infinity, lo = Infinity, last = null, nextPath = open.t;
+  const lastT = bars[bars.length - 1][0] + 60e3, end = Math.min(win.end, lastT);
+  for (let ts = Math.ceil((open.t + 60e3) / stepMs) * stepMs; ts <= end; ts += stepMs) {
+    while (i < bars.length && bars[i][0] + 60e3 <= ts) { const b = bars[i++]; if (b[2] > hi) hi = b[2]; if (b[3] < lo) lo = b[3]; last = b; if (b[0] >= nextPath) { path.push([b[0], b[4]]); nextPath = b[0] + 5 * 60e3; } }
+    if (!last) continue;
+    frames.push({ t: ts, data: { price: last[4], hi, lo, up: (hi - open.price) / open.price * 100, dn: (open.price - lo) / open.price * 100, known: !!fc && (!fin(fc.knownFrom) || ts >= fc.knownFrom) } });
+  }
+  return { ok: frames.length > 1, error: frames.length > 1 ? null : 'too few finished bars to replay', frames, open, path, fc, win, inst: day.inst ?? null, label: day.label ?? day.inst ?? '', dp: day.dp ?? 2, date: day.date ?? null,
+    note: 'Each step uses only bars that had finished by then; the forecast appears from the time it was computed.' };
+}
+/** The largest share of the forecast median used (up or down) over every frame, and the p75 / median ratio: for one fixed scale. */
+export function rangeScale(frames, fc) {
+  const med = fc?.hl_median; if (!(med > 0)) return { max: 1.6, p75: null };
+  let m = 0; for (const f of frames ?? []) m = Math.max(m, f.data.up / med, f.data.dn / med);
+  const p75 = fin(fc.hl_75) && fc.hl_75 > med ? fc.hl_75 / med : null;
+  return { max: Math.max(1.6, (p75 ?? 1.6) * 1.15, Math.ceil(m * 5) / 5), p75 };
+}
+/** Plain words for one step: the excursions from the open against the forecast. Description only. */
+export function rangeCaption(frames, i, extra) {
+  const f = frames?.[i]; if (!f || !extra) return '';
+  const d = f.data, fc = extra.fc, who = extra.label;
+  const base = `${londonStamp(f.t)}: ${who} has travelled ${PCT(d.up)} above its London open and ${PCT(d.dn)} below it.`;
+  if (!fc) return `${base} No forecast was archived for this day.`;
+  if (!d.known) return `${base} The day's forecast had not been computed yet (it was made at ${londonStamp(fc.knownFrom)}).`;
+  const u = d.up / fc.hl_median, w = d.dn / fc.hl_median;
+  return `${base} The forecast median for a day's extreme from the open is ${PCT(fc.hl_median)}${fin(fc.hl_75) ? ` and the 75th percentile ${PCT(fc.hl_75)}` : ''}: the upside has used ${Math.round(u * 100)}% of the median and the downside ${Math.round(w * 100)}%.`;
+}
+export const rangeInstLabel = k => INSTRUMENTS[k]?.label ?? k;
