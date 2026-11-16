@@ -4671,7 +4671,7 @@ export const DERIVED = {
     {
      "file": "atlas.html",
      "exists": true,
-     "lastModified": "2026-11-09",
+     "lastModified": "2026-11-16",
      "hub": [
       "live"
      ]
