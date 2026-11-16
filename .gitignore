@@ -786,3 +786,4 @@ analysis/output/raw-level-revert-continue/trades.csv.gz
 analysis/output/raw-level-mfe-mae/touches.parquet
 analysis/output/raw-level-mfe-mae/grid_real.npy
 analysis/output/raw-level-mfe-mae/grid_placebo.npy
+analysis/output/raw-line-touch-clock/touches.parquet

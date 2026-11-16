@@ -994,6 +994,20 @@ export const DESK_EVIDENCE = [
     use: 'A Live Range line is not a barrier: from the bold p75, about 2 in 5 days reach p90. Use it for targets and expectations, not for fades.',
   },
   {
+    id: 'raw-line-touch-clock-range', domain: 'volatility', verdict: 'null', date: '2026-11-16', doc: 'forge/RAW_LINE_TOUCH_CLOCK_PREREG.md', also: ['analysis/output/raw-line-touch-clock/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDJPY', 'USDCAD', 'USDCHF', 'GOLD', 'XAGUSD', 'NQ', 'SPX500', 'DE30', 'BRENT'],
+    claim: 'A first touch of a raw historical-percentile line (trailing-250 p75/p90 of the move from the open) is followed by a rest-of-day range at least 5% wider than ordinary moments with the same London clock hour and the same range already used, in discovery (12 instruments 2019-2026-08-21) and confirm (NQ+EURUSD 2010-07 to 2018), 15-minute closes',
+    result: 'NULL, pre-registered (A1: MDE 1.9% discovery, 2.6% confirm, powered). Primary EXT p75+p90: discovery -0.2% [-2.3, +1.8] (17,043 touches), confirm +1.3% [-1.6, +4.2] (3,043). Secondary lines all within +/-5%: p50 lines +2 to +3% in both periods (BH pass), p90 lines -4 to -5% in discovery (confirm EXT p90 -2.0%, OC p90 +3.2%, not significant), prior-day high -2 to -4% and prior-day low +3 to +4% in both periods. Once clock and range used are held, the line itself adds nothing material.',
+    use: 'A raw percentile line is a range-used gauge, nothing more: say "the day has used X of a typical range at this hour", not "a line touch means more to come". The rest of the day comes from the clock and range used (live-range-clock, intraday-range). Size only, never direction.',
+  },
+  {
+    id: 'raw-line-touch-clock-hour', domain: 'price', verdict: 'null', date: '2026-11-16', doc: 'forge/RAW_LINE_TOUCH_CLOCK_PREREG.md', also: ['analysis/output/raw-line-touch-clock/RESULTS.md', 'analysis/output/raw-level-mfe-mae/RESULTS.md', 'analysis/output/raw-level-revert-continue/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDJPY', 'USDCAD', 'USDCHF', 'GOLD', 'XAGUSD', 'NQ', 'SPX500', 'DE30', 'BRENT'],
+    claim: 'For some raw line (EXT/HL/OC p50/p75/p90, prior-day high/low) and some 2-hour London block, fading or following the first touch with a 1:1 0.2 U bracket beats a same-time placebo after BH under both stop-fill models, is net positive after spread under both, and holds in the 2010-2018 NQ+EURUSD confirm period',
+    result: 'NULL, pre-registered. 220 eligible line x block x direction cells (n >= 200), 139,507 discovery touches: BH passes 4 (kind fills) and 22 (harsh), 3 in both, 0 net positive, so no candidate reached the confirm check. With kind fills the fade and follow edges are mirror images within +/-0.011 U in every block (no direction by hour); with harsh fills both lose to the placebo because touch bars move more, so stops slip further. Fade wins 48.5-53.8% by block, follow the complement. Post-hoc, describe only: EXT p75 fades at 10-11 London won 56% (edge vs placebo +0.026 U, net harsh -0.037) and 55% in 2010-18 (n 192, net harsh -0.027).',
+    use: 'No time of day makes fading or following a raw line pay; direction has to come from outside the lines. Fine to show MFE/MAE by hour of touch as description (excursions shrink through the day; unresolved brackets go from under 1% before 10:00 to 72% at 20-21). Exploratory parents: raw-level-revert-continue, raw-level-mfe-mae (2026-11-15).',
+  },
+  {
     id: 'live-range-line-race', domain: 'price', verdict: 'null', date: '2026-10-06', doc: 'forge/LIVE_RANGE_HISTORY_PREREG.md',
     claim: 'Price behaves differently at the Live Range page’s hourly-moving lines than at control lines: after a touch it continues or fades more than chance',
     result: 'PATH-NEUTRAL. Hourly lines replayed from M1 for 34 instruments (fidelity to the page’s JS exact), grids refit on the first 60% of dates, scored on 2022-06 to 2026-08: 92,914 real touches vs 96,912 placebo touches. Race from the touch bar’s close, next line out vs back level: real − placebo within ±1pp pooled in every rung/class (FX p50 25.2% vs 25.3%, p75 32.9% vs 32.8%, p90 48.5% vs 48.5%). 255 cells (rung, class, hour, side, used×pace cell, regime, jump-already-today, big line shift): 7 cleared the rule at the registered placebo (2.7%, below the 5% chance rate), 0 of 255 with a closer-matched placebo. Hour-limited race: the registered placebo flagged 42/196 cells at a common −2 to −4pp offset, which vanished (2/196) once the placebo’s distances were matched, so it was a baseline artefact. Net of spread (0.016σ FX, 0.024σ indices, 0/34 above 0.15) no cell is an edge; the best (FX p90, 08-14, high used/high pace, +8.3pp, n 374) is one of 255 picked on the test data.',
@@ -3049,6 +3063,8 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'raw-line-touch-clock-range': { n: '1,982 discovery dates (12 instruments) + 2,204 confirm dates (NQ, EURUSD), date-clustered bootstrap', note: 'A1 MDE 1.9% / 2.6% vs 5% bar' },
+  'raw-line-touch-clock-hour': { n: '1,982 discovery dates, 220 eligible cells (n >= 200 touches each), date-clustered bootstrap', note: 'detects about 0.1 U edges in the smallest eligible cells; BH q 0.10 under both fill models' },
   'vol-layer-rule-a-confirm-s1': { n: '943 book weekdays 2023-01 to 2026-08 (20-day block bootstrap)', note: 'MDE 0.31 Sharpe vs +0.15 bar' },
   'vol-layer-rule-a-confirm-s2': { n: '943 book weekdays 2023-01 to 2026-08 (20-day block bootstrap)', note: 'MDE 0.25 Sharpe vs +0.15 bar' },
   'vol-layer-rule-a-confirm-s3': { n: '943 book weekdays 2023-01 to 2026-08 (20-day block bootstrap)', note: 'MDE 0.27; CI upper +0.13 excludes the 0.15 bar' },
