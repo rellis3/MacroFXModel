@@ -308,7 +308,7 @@ import { QC as _RL_QC, parseQcTree as _rlParseQcTree, readingListItems as _rlRea
 import { currencyStrength as _evCcy, dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
 import { buildEveningDay as _evDayBuild } from './js/eveningDay.js';   // the evening's look-back pages (owner 2026-11-16)
 import { timelineText as _evTlText } from './js/eveningTimeline.js';
-import { EVENING_V2_ADDENDUM as _EV2_ADD, eveningV2On as _ev2On } from './js/eveningPromptV2.js';
+import { EVENING_V2_ADDENDUM as _EV2_ADD } from './js/eveningPromptV2.js';
 import { moveTiming as _efTiming, timingText as _efTimingText, releasesText as _efReleases, headlinesText as _efHeadlines, ratesText as _efRates, pastEvents as _efPast, RATE_SERIES as _EF_RATES } from './js/eveningFacts.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { COST_REPORT_URL as _AC_URL, costReportQuery as _acQuery, parseCostReport as _acParse, dayFlag as _acFlag } from './js/anthropicCost.js';   // Anthropic's own daily cost figures (Admin API)
@@ -5278,7 +5278,7 @@ async function _dsEvening(run, score, reflection, bars, idx) {
   } catch (e) { console.warn('[desk-score] evening look-back pages:', e.message); }
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
   const { system, prompt } = _deskStagePrompt({ role, pack: { date: run.date }, ledger: DESK_EVIDENCE, sections: [
-    ...(_ev2On() && day?.timeline ? [['THE DAY IN ORDER (rule-built, London time: the story you tell must follow this; a cause only where a headline or print here supports it)', _evTlText(day.timeline)]] : []),
+    ...(day?.timeline ? [['THE DAY IN ORDER (rule-built, London time: the story you tell must follow this; a cause only where a headline or print here supports it)', _evTlText(day.timeline)]] : []),
     ['What printed today: releases, actual against forecast, and the 30 minutes after (the day\'s main events)', facts.releases],
     ['The day\'s headlines, tier 1-2, oldest first, with the news analyst\'s read and the 30-minute reaction', facts.headlines],
     ['US rates, the dollar and volatility: today\'s closes and day changes', facts.rates],
@@ -5292,7 +5292,7 @@ async function _dsEvening(run, score, reflection, bars, idx) {
     ["The book's score", { dayScore: score.S, placebo: score.placebo, singleAnalyst: score.control?.unweighted ?? null, counts: score.eligible }],
     ['The evening review', reflection ?? '(no review today)'],
   ] });
-  const systemV = _ev2On() ? system + _EV2_ADD : system;   // EVENING_V2_PROMPT=1 only: the old brief stays until the owner approves a live run
+  const systemV = system + _EV2_ADD;   // the v2 brief is always on (no env flag, owner 2026-11-17)
   let issue = null;
   for (let i = 0; i < 2 && !issue; i++) {
     try { const r = await callModel({ task: 'desk-head', system: systemV, prompt, maxTokens: 16_000 }); const v = _dsValidateIssue(_parseModelJson(r.text ?? _antText(r), 'desk:evening')); if (v.ok) issue = v.value; }

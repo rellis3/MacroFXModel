@@ -1,12 +1,13 @@
-// Tests for js/eveningPromptV2.js: the evening writer's second brief is off unless asked for, and carries the no-invented-cause rule.   node js/eveningPromptV2.test.mjs
+// Tests for js/eveningPromptV2.js: the evening writer's second brief is always on (no env flag) and carries the no-invented-cause rule.   node js/eveningPromptV2.test.mjs
 import assert from 'node:assert/strict';
-import { eveningV2On, EVENING_V2_ADDENDUM, extraInputTokens } from './eveningPromptV2.js';
+import * as V2 from './eveningPromptV2.js';
+import { EVENING_V2_ADDENDUM, extraInputTokens } from './eveningPromptV2.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 
-t('off by default and for anything but "1"', () => {
-  assert.equal(eveningV2On({}), false); assert.equal(eveningV2On({ EVENING_V2_PROMPT: '' }), false); assert.equal(eveningV2On({ EVENING_V2_PROMPT: 'true' }), false); assert.equal(eveningV2On({ EVENING_V2_PROMPT: '0' }), false);
-  assert.equal(eveningV2On({ EVENING_V2_PROMPT: '1' }), true);
+t('there is no env flag: the v2 brief is always on, nothing reads EVENING_V2_PROMPT', () => {
+  assert.equal(V2.eveningV2On, undefined);
+  assert.ok(EVENING_V2_ADDENDUM.length > 300);
 });
 
 t('the addendum says: story in time order, a cause only from the timeline, "not captured" for a missing event, no direction, tomorrow in one line', () => {

@@ -1,12 +1,11 @@
 /**
  * The Evening writer's second brief (owner, 2026-11-16): open with the day's story in time order, using the rule-built
- * timeline as structured input. OFF by default: the old brief stays in force until the owner approves a live run (it changes
- * the model call's input, so it changes what each evening issue costs). Turn on with EVENING_V2_PROMPT=1.
+ * timeline as structured input. ON: no Railway variable (owner, 2026-11-17: 'why add a variable, build it without'). It adds about
+ * 1,100 input tokens to the one writer call a night (see extraInputTokens). Before the owner approved it the old brief ran (it changes
+ * the model call's input, so it changes what each evening issue costs).
  *
  * The model polishes; it does not invent. A cause may be stated only when a headline in the supplied timeline supports it.
  */
-export const eveningV2On = (env = process.env) => String(env?.EVENING_V2_PROMPT ?? '') === '1';
-
 export const EVENING_V2_ADDENDUM = `
 
 ## This issue opens with the day in order (evening brief, version 2)

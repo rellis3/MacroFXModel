@@ -221,4 +221,4 @@ Owner-only preview, registry surface `widget.ov.sections`. With it off a desk lo
 | Day in order (Asia / London / New York), speaker gap line, nearest headlines per burst | DONE (see plans/NEWSLETTER_EVENING_V2.md) | `js/eveningTimeline.js` |
 | Day shape chart, session heat strip, morning against the day, into tomorrow | DONE | `js/eveningDay.js`, wired in `js/newsletterEvening.js` |
 | Durable news wire (a deploy emptied it: root cause of 'no headline captured') | DONE | `desk_news_day_<date>`, kv.js isCfKey, server.js `_nwDayPersist` |
-| Writer brief v2 (story in time order, cause only from the timeline) | BUILT, OFF | `EVENING_V2_PROMPT=1`; owner approves a live run; cost note in the plan |
+| Writer brief v2 (story in time order, cause only from the timeline) | DONE, ON (no env flag, owner 2026-11-17) | read the first live run; cost note in the plan |

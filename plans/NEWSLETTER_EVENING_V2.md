@@ -31,10 +31,10 @@ Page order: headline and first two sections, the day in order, the rest of the n
 An issue stored before this change (no `ev.day`) renders exactly as before.
 
 ## The model brief (OFF by default)
-`js/eveningPromptV2.js`: with `EVENING_V2_PROMPT=1` the writer is given THE DAY IN ORDER and an addendum: open with the day's story in that order, state a cause
+`js/eveningPromptV2.js`: the writer is given THE DAY IN ORDER and an addendum: open with the day's story in that order, state a cause
 only if a headline or print in the timeline supports it, say "not captured" for a missing event, keep "Into tomorrow" to one line. **Not turned on:** it changes the
 model call's input. Estimated extra input per issue: about 1,100 tokens (addendum about 300 + timeline about 800); one writer call per evening, so on the order of
-1,100 extra input tokens a day. No live run was made. To approve: set `EVENING_V2_PROMPT=1` in Railway, then run the evening once by hand and read it.
+1,100 extra input tokens a day. No live run was made. Always on (no Railway variable, owner 2026-11-17). After the next deploy, run one evening by hand and read it.
 
 ## Dry run
 `node scripts/evening-dryrun.mjs 2026-11-16 <outDir>` builds the new issue for a past day from live routes with the stored (old-brief) narrative, no model call, and prints a PDF
