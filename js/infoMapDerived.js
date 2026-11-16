@@ -579,12 +579,18 @@ export const DERIVED = {
      "route": "/api/release-surprises",
      "exists": true,
      "pack": null
+    },
+    {
+     "route": "/api/release-history",
+     "exists": true,
+     "pack": null
     }
    ],
    "modules": [],
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/calendarDrillsView.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/regimeBoardView.js",
      "js/terminal/terminalTabs.js"

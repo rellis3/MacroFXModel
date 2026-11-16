@@ -185,6 +185,7 @@ export const FULL_FEEDS = [
   'credit-board', 'liquidity-board', 'term-premium', 'xccy-basis', 'world-stress',
   'fair-value', 'leading-indicators', 'commodity-fx', 'carry-vol', 'copper-gold', 'session-heat', 'options-skew', 'speech-drift', 'desk-alerts', 'release-surprises',
   'cb-board', 'macro-engines-board', 'rates-board', 'credit-liquidity', 'curve-board', 'regime-board', 'releases-board', 'vol-board', 'vol-clock', 'ccy-strength', 'desk-watch',
+  'cb-path/boe',   // the Bank of England priced Bank Rate path (about 3 KB): the Bank publishes it daily and the card is built from today's curve, so a past view needs the day's copy
 ];
 /** Long histories or whole books that are already stored somewhere durable, or can be rebuilt from stored prices. Each is left out of FULL, with the reason. */
 export const FULL_EXCLUDED = [
