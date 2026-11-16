@@ -31,3 +31,26 @@ The engine had never been back-tested when it shipped. A point-in-time back-test
 - **Context only:** keep it in the Macro section and the full card view; take it off the card face.
 - **Null:** hide it from the desk login (a tabRegistry `preview` reason). The owner still sees it, and forward scoring
   continues.
+
+## Outcome (2026-11-16): tilt hidden from the desk login
+
+bias-engine-backtest (forge/BIAS_ENGINE_BACKTEST_PREREG.md, analysis/output/bias-engine-backtest/RESULTS.md) rebuilt the
+engine point in time for 2010-2026, without data momentum, which has no point-in-time history. 0 of 9 cells passed. All
+three horizons are UNDERPOWERED by the prereg's power rule, but nothing is positive:
+
+| Horizon | Hit vs base rate | Net R per call |
+|---|---|---|
+| Same day | +0.7 pp [−0.4, +1.7] | −0.023 |
+| 5 days | −0.9 pp [−2.4, +0.6] | −0.074 |
+| 20 days | −2.4 pp [−4.7, +0.2] | −0.27 |
+
+- 20-day FX leans the wrong way: −3.1 pp, and higher strength is worse.
+- Neutral abstention adds nothing.
+
+So under the rule above:
+
+- **Hidden from the desk login.** The tilt's chip, ranking, pair score, currency score and replay surfaces now carry
+  the tabRegistry reason `preview`: the owner still sees them, and they can be switched on per desk user.
+- **Kept as context.** The Macro section's driver grid stays shown.
+- **Footnote.** The engine's footnote now states the back-test result.
+- **Scoring.** Forward scoring continues, as the only test that includes data momentum.

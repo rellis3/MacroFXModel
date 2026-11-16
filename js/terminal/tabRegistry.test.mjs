@@ -68,7 +68,10 @@ test('the owner\'s list: exactly these are hidden, each for its reason', () => {
     cost: ['widget.ask', 'nav.research', 'nav.research-tab'],
     internal: ['tab.infomap', 'nav.deskoffice', 'nav.deskrun', 'nav.access', 'widget.dqchip', 'panel.ov.alerts'],
     pnl: ['panel.ov.record', 'panel.ana.track', 'panel.ana.fall', 'panel.ana.days', 'panel.charts.ranking', 'panel.changed.thesis', 'panel.changed.paper'],
-    preview: ['tab.deep', 'widget.cmdline', 'widget.linked', 'panel.cal.drills', 'widget.export', 'panel.news.saved', 'tab.monitor', 'tab.workspace', 'tab.kchart', 'widget.alerts', 'tab.insight', 'widget.replayviz', 'widget.asof', 'widget.ghostwalk', 'widget.oitime'],
+    preview: ['tab.deep', 'widget.cmdline', 'widget.linked', 'panel.cal.drills', 'widget.export', 'panel.news.saved', 'tab.monitor', 'tab.workspace', 'tab.kchart', 'widget.alerts', 'tab.insight', 'widget.replayviz', 'widget.asof', 'widget.ghostwalk', 'widget.oitime',
+      // 2026-11-16 owner: a coin-flip direction read is hidden; bias-engine-backtest found no skill at 1, 5 or 20 days (plans/ONE_DESK_BIAS.md).
+      // The Macro section's driver grid (panel.macro.biasengine) stays shown as context.
+      'panel.ov.engine', 'panel.ccy.engine', 'panel.asset.engine', 'panel.pair.engine', 'panel.replay.engine'],
   };
   for (const [reason, ids] of Object.entries(want)) for (const id of ids) assert.equal(surfaceById(id)?.hidden, reason, `${id} is hidden as '${reason}'`);
   const listed = Object.values(want).flat();
@@ -79,7 +82,7 @@ test('the owner\'s complaint: the analysis is shown, including book intelligence
   for (const id of ['panel.ov.bookintel', 'panel.ov.exposure', 'panel.ov.regime', 'panel.ov.regime-lists', 'panel.ov.strength', 'panel.ana.risk', 'panel.ana.scenmap', 'panel.ana.web', 'panel.ana.analysts',
     'panel.ana.strength', 'panel.ana.volfc', 'panel.ana.fans', 'panel.charts.bookflow', 'panel.changed.cards', 'panel.macro.carryside', 'tab.ccy', 'tab.ana', 'tab.changed', 'tab.corr', 'tab.charts', 'tab.pair',
     'strip.regime', 'strip.update', 'strip.risk', 'widget.ovl.bias',
-    'panel.ov.engine', 'panel.ccy.engine', 'panel.asset.engine', 'panel.pair.engine', 'panel.macro.biasengine', 'panel.replay.engine']) {
+    'panel.macro.biasengine']) {
     assert.equal(surfaceById(id)?.hidden, null, `${id} is analysis and must be shown. ${RULES}`);
   }
 });

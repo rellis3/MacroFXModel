@@ -78,7 +78,7 @@ export const NEUTRAL_MAX_STRENGTH = 2, MIN_COVERAGE = 0.5, CONFLICT_GAP = 0.1;
  *  coverage measures temporary data failure, never a series we have never had (owner 2026-11-16: everything came out Neutral). */
 export const REAL_YIELD_UNIVERSE = ['USD', 'EUR', 'CHF'];
 export const COT_UNIVERSE_MISSING = ['USD', 'SILVER', 'WTI', 'COPPER', 'DE30', 'UK100'];
-export const FOOTNOTE = 'Rule-based macro checklist, weights theory-v1, scored forward on the bias scoreboard; not a trade signal.';
+export const FOOTNOTE = 'Rule-based macro checklist, weights theory-v1, scored forward on the bias scoreboard; not a trade signal. Back-test 2010-2026 (bias-engine-backtest): no direction skill at 1, 5 or 20 days.';
 
 const DAY = 864e5, H4 = 4 * 3600e3;
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
