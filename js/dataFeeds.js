@@ -53,7 +53,7 @@ export const IGNORE_HOSTS = [
   'telegram.org',             // alerts out
   'r2.cloudflarestorage.com', 'r2.dev', 'cloudflare.com',   // our own storage / KV
   'github.com', 'githubusercontent.com', 'tradingview.com', 'sheetjs.com', 'cdnjs.cloudflare.com', 'jsdelivr.net',
-  'localhost', '127.0.0.1', 'example.com', 'railway.app', 'macrofxmodel.com', 'claude.ai', 'w3.org',
+  'localhost', '127.0.0.1', 'x.invalid', 'example.com', 'railway.app', 'macrofxmodel.com', 'claude.ai', 'w3.org',
   'www.bis.org', 'databank.worldbank.org',   // citation links in the lesson question bank (js/questionBankWeb.js), not fetched
   'cftc.gov',                 // links to the COT archive in help text (the API host is claimed below)
   'drive.usercontent.google.com', 'google.com', 'googleapis.com',   // one-off M1 archive download in a backtest engine
@@ -385,12 +385,13 @@ const HAND_FEEDS = [
     store: 'KV fomc_*, ecb_*, boe_*, boj_*, beigebook_*',
     endpoints: ['/api/fomc/latest', '/api/ecb/latest', '/api/boe/latest', '/api/boj/latest', '/api/beigebook/latest', '/api/fomc/history'],
     hosts: ['federalreserve.gov', 'boj.or.jp', 'www.rbnz.govt.nz', 'www.snb.ch'] },   // RBNZ/SNB: js/rbnzFetch.js, js/snbFetch.js and their calendars
-  { id: 'gold_etf', name: 'Gold ETF flows', provider: 'Yahoo Finance', category: 'positioning',
+  { id: 'gold_etf', name: 'Gold ETF flows', provider: 'SPDR Gold Shares and iShares (the issuers), Yahoo Finance as the fallback', category: 'positioning',
     purpose: 'GLD + IAU assets — whether the gold move is backed by money coming in.',
-    details: 'quoteSummary total assets, one point appended per day.',
+    details: 'Tonnes of gold held, from the issuers own published files (GLD: the SPDR archive workbook, daily since 2004; IAU: the iShares page), then Yahoo quoteSummary total assets as the fallback; one dollar point appended per day. A flow is the change in tonnes.',
     refresh: 'On request, and once in the daily archive job. A good day is cached 6h; an empty or failed try only 2 minutes, and the reason it failed is in the response and the health row.',
     store: 'KV gold_etf_flow_history (Cloudflare KV, kept; R2 archive gold_etf/GLD_IAU_AUM)', endpoints: ['/api/gold-etf-flow'], health: ['goldEtf'],
-    kvStamp: { key: 'gold_etf_flow_history', cadenceDays: 1 } },
+    kvStamp: { key: 'gold_etf_flow_history', cadenceDays: 1 },
+    hosts: ['api.spdrgoldshares.com', 'www.spdrgoldshares.com', 'www.ishares.com'] },   // the issuers' own files (5c6b67d9); Yahoo is listed on the feeds that already use it
   { id: 'headlines', name: 'Market headlines', provider: 'Yahoo Finance RSS', category: 'positioning',
     purpose: 'Headlines for SPX, Nasdaq, gold, crude, the dollar and 10y — colour for the morning brief.',
     details: 'RSS per symbol, fetched while the brief is written.', refresh: 'On request, uncached.', store: 'none',
