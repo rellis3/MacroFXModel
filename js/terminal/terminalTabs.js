@@ -34,6 +34,8 @@ import * as NV from './newsView.js';
 import * as NCV from './newsChannelView.js';
 import { createLevelChart } from '../levelChart.js';
 import { mountTfBar } from './timeframePills.js';
+import { getFavourites } from './favourites.js';
+import * as FAVV from './favouritesView.js';
 import { cardDrivers } from './cardExplain.js';
 import * as HDV from './humanDriversView.js';
 import { pineForCard, oandaOf } from '../deskBookPine.js';
@@ -388,6 +390,17 @@ function openPair(inst) {
   if (b && b.getAttribute('aria-selected') !== 'true') b.click(); else renderPair();
   window.scrollTo?.({ top: 0 });
 }
+const FAV = getFavourites();
+const favEnabled = () => globalThis.deskSurfaceOn?.('panel.pair.favourites') ?? true;
+// the market row of the Pair tab: the selector, a star for this market, the Favourites pill and the quick chips (the strongest eight, or your starred markets with the filter on)
+function pickHtml(list, n, top) {
+  const on = favEnabled(), onlyFav = on && FAV.only, star = x => (on && FAV.has(x));
+  const shown = onlyFav ? list.filter(x => FAV.has(x) || x === n) : list;
+  const sel = `<select id="tt-sel">${Object.entries(GROUPS).map(([g, gl]) => { const xs = shown.filter(x => groupOf(x) === g); return xs.length ? `<optgroup label="${h(gl)}">${xs.map(x => `<option value="${x}"${x === n ? ' selected' : ''}>${star(x) ? '★ ' : ''}${h(nice(x))}</option>`).join('')}</optgroup>` : ''; }).join('')}</select>`;
+  const chips = onlyFav ? FAV.list().filter(x => D.cards?.[x]).map(x => [x, D.cards[x]]) : top;
+  const chipHtml = chips.map(([x, cx]) => { const d = DIR[cx.rating] ?? 0; return `<span class="tt-chipwrap"><button class="chip ${d > 0 ? 'up' : d < 0 ? 'dn' : ''}" data-p="${x}" style="cursor:pointer">${h(x)}</button>${on ? FAVV.starHtml(x, FAV.has(x)) : ''}</span>`; }).join('');
+  return `<div class="tt-pick"><label class="lbl" for="tt-sel">Market</label>${sel}${on ? FAVV.starHtml(n, FAV.has(n), nice(n)) + FAVV.pillHtml(FAV.count, onlyFav) : ''}${chipHtml}<span class="muted" style="margin-left:auto">link: <span class="mono">desk-terminal.html#pair=${h(n)}</span></span></div>`;
+}
 async function renderPair() {
   const root = el('pair'); if (!root) return;
   await ready();
@@ -397,7 +410,7 @@ async function renderPair() {
   const V = globalThis.deskIsViewer?.(), strength = x => (V ? Math.abs(assetScore(x) ?? 0) : (x.size ?? 0));   // the desk login has no sizes: order by the strength of the view
   const top = Object.entries(D.cards ?? {}).filter(([, x]) => (DIR[x.rating] ?? 0) !== 0 && (V || x.size > 0)).sort((a, b) => strength(b[1]) - strength(a[1])).slice(0, 8);
   T.pairChart?.destroy?.(); T.pairChart = null;
-  root.innerHTML = `<div class="tt-pick"><label class="lbl" for="tt-sel">Market</label><select id="tt-sel">${Object.entries(GROUPS).map(([g, gl]) => { const xs = list.filter(x => groupOf(x) === g); return xs.length ? `<optgroup label="${h(gl)}">${xs.map(x => `<option value="${x}"${x === n ? ' selected' : ''}>${h(nice(x))}</option>`).join('')}</optgroup>` : ''; }).join('')}</select>${top.map(([x, cx]) => `<button class="chip ${(DIR[cx.rating] ?? 0) > 0 ? 'up' : 'dn'}" data-p="${x}" style="cursor:pointer">${h(x)}</button>`).join('')}<span class="muted" style="margin-left:auto">link: <span class="mono">desk-terminal.html#pair=${h(n)}</span></span></div>
+  root.innerHTML = `${pickHtml(list, n, top)}${favEnabled() ? FAVV.toolsHtml(FAV) : ''}
 <div class="card glow"><div class="ch"><span class="chip">${h(GROUPS[groupOf(n)] ?? '')}</span><span class="chip">${h(n)}</span>${legs?.[0] ? `<span class="chip pur" data-ccy="${legs[0]}" style="cursor:pointer">${FLAG[legs[0]] ?? ''} ${legs[0]}</span><span class="chip pur" data-ccy="${legs[1]}" style="cursor:pointer">${FLAG[legs[1]] ?? ''} ${legs[1]}</span>` : ''}<span class="r">${c ? gradeChip(c) : ''}${c ? `<span class="sfc" data-surface="panel.asset.plan"><button type="button" class="chip" id="tt-p-tv" style="cursor:pointer;margin-left:6px" title="Copy a TradingView (Pine) script that draws this card's lines, entry zone, invalidation and first target for today">TradingView</button></span>` : ''}</span></div>
 <h2 style="margin:0 0 8px;font:700 24px var(--sans)">${h(nice(n))}</h2><div id="tt-p-tvmsg" class="muted" style="font-size:12px"></div>
 ${c ? `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${rateChip(c.rating)}${scoreBar(assetScore(c), '240px', assetWordV(c))}${D.live?.[n] && D.live[n].rating !== c.rating ? `<span class="chip gold" title="${h(D.live[n].why ?? '')}">updated → ${h(D.live[n].rating)}</span>` : ''}</div>
@@ -421,8 +434,20 @@ ${AAV.boxHtml(n)}
 <div class="card" id="tt-p-news">${loading('the news')}</div>
 <div class="card" id="tt-p-prec">${loading('precedent and the chain')}</div>
 <div class="card" id="tt-p-res">${loading('research')}</div></div>`;
-  root.querySelector('#tt-sel').onchange = e => openPair(e.target.value);
-  root.querySelectorAll('[data-p]').forEach(b => (b.onclick = () => openPair(b.dataset.p)));
+  const wirePick = () => {
+    root.querySelector('#tt-sel').onchange = e => openPair(e.target.value);
+    root.querySelectorAll('.tt-pick [data-p]').forEach(b => (b.onclick = () => openPair(b.dataset.p)));
+  };
+  wirePick();
+  // a star, the Favourites pill, or a STAR / UNSTAR / FAV command repaints only the market row and the tools line (not the chart and the cards)
+  const repaintPick = () => {
+    const row = root.querySelector('.tt-pick'); if (!row) return;
+    row.outerHTML = pickHtml(list, n, top); wirePick();
+    const sm = root.querySelector('.fav-tools summary span'); if (sm) sm.textContent = FAV.count ? `${FAV.count} starred` : 'none yet';
+    for (const b of root.querySelectorAll('.fav-tools [data-fav-act="copy"], .fav-tools [data-fav-act="clear"]')) b.disabled = !FAV.count;
+  };
+  FAVV.wireFavourites(root, FAV, { repaint: repaintPick });
+  window.deskFavouritesRefresh = () => { if (T.pair === n && el('pair')) repaintPick(); };
   const tv = el('tt-p-tv');
   if (tv) tv.onclick = async () => {
     // the morning card as written (desk-run.html exports the whole book); description, not the scored test (prereg H1)

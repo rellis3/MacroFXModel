@@ -75,6 +75,10 @@ export const INSIGHT_WORDS = {
   matrix: ['MATRIX', ['CROSSASSET', 'CORRELATION', 'CROSS'], 'The cross-asset board: the 1, 5 and 20 session move of every market, and how markets have been moving together lately.'],
   rotation: ['ROTATION', ['SECTORS', 'SECTOR'], 'US sector rotation: the 11 sectors against the S&P 500 over 20 sessions, on a map with a four-week trail.'],
   fxmatrix: ['FXMATRIX', ['CURRENCYMATRIX', 'STRENGTHMATRIX', 'FXC'], 'The currency matrix: the eight currencies across four windows, and who has out-run whom.'],
+  gold: ['GOLDBOARD', ['XAUBOARD', 'GOLDVIEW'], 'The gold board: gold against real yields, the dollar and its own implied vol, with positioning and ETF holdings.'],
+  reach: ['REACH', ['TOUCH', 'LEVELCHANCE', 'CHANCE'], 'The level-reach calculator: type a price and get the chance price touches it by the end of the London day and over the whole session.'],
+  flags: ['FLAGS', ['RISKFLAGS', 'LIGHTS'], 'The risk flags: the six market-stress lights now, each beside what the Evidence Book found for it.'],
+  economies: ['ECONOMIES', ['ECONOMY', 'WORLD', 'COUNTRIES'], 'The eight economies side by side: growth, prices, jobs and spending, each with an arrow and a word.'],
   unusual: ['UNUSUAL', ['MOVERS', 'EXTREME', 'WHATSUNUSUAL'], 'What is unusual right now: every series ranked by how extreme it is against its own history, with the working and the odds it is just chance.'],
 };
 
@@ -227,6 +231,14 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   add({ id: 'theme', group: 'Look and feel', name: 'THEME', args: '<name>', help: `Change the colour theme (${THEMES.map(t => t.id).join(', ')}). It is remembered in this browser.`, example: 'theme amber', opens: 'The whole terminal, in that theme', surface: 'widget.themepicker', run: themeRun });
   add({ id: 'tf', group: 'Look and feel', name: 'TF', aliases: ['TIMEFRAME'], args: `<${TF_KEYS.join('|')}>`, help: 'Set the candle size on every chart that offers one (Pair page and asset cards).', example: 'tf 15m', opens: 'The candle-size pills on the charts', surface: 'widget.linked', run: tfRun });
   add({ id: 'link', group: 'Look and feel', name: 'LINK', args: '<on|off>', help: 'Switch linked selection on or off: when on, picking a market in one place moves the Pair page, Replay, strength board and vol clock with it.', example: 'link off', opens: 'The linked chip in the top bar', surface: 'widget.linked', run: linkRun });
+  add({ id: 'export', group: 'Look and feel', name: 'EXPORT', aliases: ['CSV', 'DOWNLOAD'], args: '[png]', help: 'Save the biggest table on the open tab as a CSV file; EXPORT PNG saves its first chart as an image. Made in this browser from what the page shows.', example: 'export',
+    opens: 'A download of the open tab (nothing is sent anywhere)', surface: 'widget.export', run: args => exportRun(args) });
+  add({ id: 'fav.show', group: 'Look and feel', name: 'FAV', aliases: ['FAVS', 'FAVOURITES', 'FAVORITES'], help: 'Open the Pair page with only your starred markets (the Favourites filter). Star a market with the ☆ beside its name or with STAR. They are kept in this browser only.', example: 'fav',
+    opens: 'The Pair tab, filtered to your favourites', surface: 'panel.pair.favourites', needs: ['tab.pair'], action: { kind: 'fav', on: true }, summary: 'Opens the Pair page with the Favourites filter on.' });
+  add({ id: 'fav.star', group: 'Look and feel', name: 'STAR', aliases: [], args: '<market>', help: 'Star a market so it appears under Favourites on the Pair page and starts a new Monitor. Kept in this browser only.', example: 'star gold',
+    opens: 'Your favourites list (nothing opens)', surface: 'panel.pair.favourites', run: args => favRun(args, true) });
+  add({ id: 'fav.unstar', group: 'Look and feel', name: 'UNSTAR', aliases: [], args: '<market>', help: 'Take a market off your favourites.', example: 'unstar gold',
+    opens: 'Your favourites list (nothing opens)', surface: 'panel.pair.favourites', run: args => favRun(args, false) });
   add({ id: 'mon.add', group: 'Look and feel', name: 'ADD', aliases: [], args: '<market>', help: 'Add a market to the open Monitor (the table of markets you picked). Save the monitor to keep it for the desk.', example: 'add eurusd',
     opens: 'The Monitor tab, with that market added', surface: 'tab.monitor', run: args => monitorAddRun(args) });
   add({ id: 'ws.save', group: 'Look and feel', name: 'SAVE', aliases: ['SAVEWORKSPACE'], args: 'workspace <name>', help: 'Save the Workspace tab layout as it is now under a name, shared with the desk. A built-in starter name makes you pick your own.', example: 'save workspace my morning',
@@ -274,6 +286,12 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     }
     return { action: { kind: 'kchart', inst, tf }, summary: `Opens the Chart tab${inst ? ` on ${instLabel(inst)}` : ''}${tf ? ` at ${tf} candles` : ''}.` };
   }
+  function exportRun(args) {
+    const a = String(args ?? '').trim().toLowerCase();
+    if (!a || a === 'csv') return { action: { kind: 'export', what: 'csv' }, summary: 'Saves the biggest table on the open tab as a CSV file.' };
+    if (a === 'png' || a === 'image' || a === 'chart') return { action: { kind: 'export', what: 'png' }, summary: 'Saves the first chart on the open tab as a PNG image.' };
+    return { error: 'Say EXPORT for a CSV of the table, or EXPORT PNG for the chart.' };
+  }
   function newsRun(args) {
     const a = String(args ?? '').trim();
     if (!a) return { action: { kind: 'tab', t: 'news' }, summary: 'Opens the News tab.' };
@@ -289,6 +307,13 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     const hit = names.find(n => n.toLowerCase() === a.toLowerCase()) ?? names.find(n => n.toLowerCase().startsWith(a.toLowerCase()));
     if (!hit) return { error: `No monitor called "${a}". Try ${names.join(', ')}.` };
     return { action: { kind: 'monitor', name: hit }, summary: `Opens the Monitor tab with "${hit}".` };
+  }
+  function favRun(args, on) {
+    const w = String(args ?? '').trim();
+    if (!w) return { error: `Say which market to ${on ? 'star' : 'unstar'}: ${on ? 'STAR GOLD' : 'UNSTAR GOLD'}.` };
+    const inst = resolveInstrument(w.split(/\s+/)[0]);
+    if (!inst) return { error: `"${w}" is not a market on this terminal.` };
+    return { action: { kind: on ? 'star' : 'unstar', inst }, summary: `${on ? 'Adds' : 'Removes'} ${instLabel(inst)} ${on ? 'to' : 'from'} your favourites.` };
   }
   function monitorAddRun(args) {
     const w = String(args ?? '').trim().replace(/^to\s+monitor\s*/i, '');

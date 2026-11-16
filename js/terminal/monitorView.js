@@ -5,7 +5,7 @@
 //
 // A PREVIEW feature (registry id tab.monitor): js/terminal/terminalFeel.js only loads this file when the session may see that surface.
 import { COLUMNS, buildRows, sortRows, fmtPrice, fmtPct, rowsToTable } from './monitorCore.js';
-import { createMonitorState } from './monitorState.js';
+import { createMonitorState, FAV_MONITOR } from './monitorState.js';
 import { ALL_INSTRUMENTS, instLabel } from './commandCore.js';
 import { TAGS } from '../volClockCore.js';
 import { clockState } from '../marketClock.js';
@@ -37,7 +37,7 @@ export function mountMonitor({ doc = document, win = window, api = httpApi(win),
   const sec = doc.getElementById('monitor');
   if (!sec || sec.dataset.mounted) return null;
   sec.dataset.mounted = '1';
-  const state = createMonitorState({ api, store });
+  const state = createMonitorState({ api, store, favourites: () => win.deskFavourites?.list?.() ?? [] });
   const owner = !win.deskIsViewer?.();
   sec.innerHTML = `<div class="mon-bar" role="toolbar" aria-label="Monitor">
 <label class="mon-l" for="mon-pick">Monitor</label><select id="mon-pick"></select>
@@ -60,8 +60,9 @@ ${owner ? '<button type="button" class="btn" data-mon="save">Save</button><butto
   function drawBar() {
     const cur = state.current;
     pick.innerHTML = `<optgroup label="Built in">${state.allNames().slice(0, 2).map(n => `<option value="${esc(n)}"${n === cur.name && cur.source === 'starter' ? ' selected' : ''}>${esc(n)}</option>`).join('')}</optgroup>`
+      + (state.favouriteItems().length ? `<optgroup label="Your favourites"><option value="${esc(FAV_MONITOR)}"${cur.name === FAV_MONITOR && cur.source === 'new' ? ' selected' : ''}>${esc(FAV_MONITOR)}</option></optgroup>` : '')
       + (state.saved.length ? `<optgroup label="Saved by the desk">${state.saved.map(l => `<option value="${esc(l.name)}"${l.name === cur.name && cur.source === 'saved' ? ' selected' : ''}>${esc(l.name)}</option>`).join('')}</optgroup>` : '')
-      + (cur.source === 'new' ? `<optgroup label="Open now"><option value="" selected>${esc(cur.name)} (not saved)</option></optgroup>` : '');
+      + (cur.source === 'new' && !(cur.name === FAV_MONITOR && state.favouriteItems().length) ? `<optgroup label="Open now"><option value="" selected>${esc(cur.name)} (not saved)</option></optgroup>` : '');
     const del = sec.querySelector('[data-mon="delete"]'); if (del) del.disabled = cur.source !== 'saved';
     noteEl.textContent = flash || state.note || (state.dirty && owner ? 'Unsaved changes. Save keeps them for the whole desk.' : '');
   }

@@ -424,6 +424,7 @@ import { analyzeCrossPair, portfolioIndependence } from './js/crossPairResearch.
 import { scanFeatures } from './js/forecastFeatureScan.js';
 import { bandCalcAB } from './js/bandCalcAB.js';
 import { fetchYahooFundAum as _fetchYahooFundAumAuth } from './js/yahooFundAum.js';
+import { todayUtc as _gefToday, cacheTtlMs as _gefTtl, reasonOf as _gefReason, fetchBlock as _gefFetchBlock, routeBody as _gefRouteBody, healthParts as _gefHealth } from './js/goldEtfFlowCore.js';
 import { saveCorrHistory as _corrSaveR2, restoreCorrHistory as _corrRestoreR2 } from './js/corrHistoryPersist.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, getBuffer as _r2GetBuffer, putBuffer as _r2PutBuffer, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
 import { INSTRUMENTS as _DL_INSTRUMENTS, HORIZONS as _DL_HORIZONS, closesFromCandles as _dlClosesFromCandles, issueRecord as _dlIssue, outcomeRecord as _dlOutcome, summarise as _dlSummarise } from './js/directionLedger.js';
@@ -21652,6 +21653,11 @@ async function _buildDataHealth() {
     // nothing asks for it until a terminal tab is open, so a never-built layer is 'waiting', not dead; once built it should stay inside minutes while a tab is open
     push('liveLayer', `Desk Terminal live layer (EM, indices, implied yields, range used)${s.lastError ? ` (${s.lastError.slice(0, 120)})` : ''}`, s.lastOkAt ? new Date(s.lastOkAt).toISOString() : null, 0.2, { market: true, refreshEveryH: 0.02 });
   } catch { /* best-effort */ }
+  // gold ETF flows: judged on the last day a point was recorded, with the reason the last try failed (js/goldEtfFlowCore.js)
+  try {
+    const h = _gefHealth(_goldEtfFlowStatus, _goldEtfFlowCache.data);
+    push('goldEtf', `Gold ETF flows (GLD + IAU assets)${h.suffix}`, h.lastIso, 1, { market: false, refreshEveryH: 26 });
+  } catch { /* best-effort */ }
   // the vol clock board: judged on its last good build, and only once a tab has asked for it (nothing builds it until then, so never-built is 'waiting')
   try {
     const s = app.locals.volClockStatus;
@@ -23290,8 +23296,11 @@ app.get('/api/spread-profile', (_req, res) => res.json(spreadProfileReport(_SPRE
 // engines' KV persistence, just for a number instead of a hawkish score.
 const GOLD_ETF_TICKERS = ['GLD', 'IAU'];
 const GOLD_ETF_FLOW_KV = 'gold_etf_flow_history';
-const GOLD_ETF_FLOW_TTL_MS = 6 * 3600 * 1000;   // AUM doesn't move intraday; limit external calls
-const _goldEtfFlowCache = { data: null, fetchedAt: 0 };
+// js/goldEtfFlowCore.js: a good day (today's point held) is cached 6h because AUM does not move intraday; an empty or FAILED try is cached 2 minutes only
+// (2026-11-15: a failed Yahoo call used to be cached for 6h, so the board stayed empty for hours and nothing said why).
+const _goldEtfFlowCache = { data: null, fetchedAt: 0, ttlMs: 0 };
+const _goldEtfFlowStatus = { attemptedAt: null, okAt: null, lastError: null };
+let _goldEtfFlowInflight = null;   // one build at a time: a page that asks while a try is running waits for it instead of hitting Yahoo again
 
 // Yahoo's quoteSummary module carries a fund's total net assets under a few
 // possible module/field names depending on ticker/module-set quirks — try each,
@@ -23303,28 +23312,36 @@ async function _fetchYahooFundAum(ticker) { return _fetchYahooFundAumAuth(ticker
 
 async function _goldEtfFlowSeries() {
   const age = Date.now() - _goldEtfFlowCache.fetchedAt;
-  if (_goldEtfFlowCache.data && age < GOLD_ETF_FLOW_TTL_MS) return _goldEtfFlowCache.data;
+  if (_goldEtfFlowCache.data && age < _goldEtfFlowCache.ttlMs) return _goldEtfFlowCache.data;
+  if (_goldEtfFlowInflight) return _goldEtfFlowInflight;
+  _goldEtfFlowInflight = _goldEtfFlowBuild().finally(() => { _goldEtfFlowInflight = null; });
+  return _goldEtfFlowInflight;
+}
 
+async function _goldEtfFlowBuild() {
   // getStrict, not get: read-MODIFY-write over a point-in-time series that
   // cannot be recovered once overwritten ("a missed day cannot be recovered
   // later" per kv.js). A swallowed backend failure reading back as "no
   // history" would truncate the whole series to today's single point.
   const raw = await kv.getStrict(GOLD_ETF_FLOW_KV);
   let series = raw ? JSON.parse(raw) : [];         // [{date, value}] ascending, value = combined AUM USD
-  const today = new Date().toISOString().slice(0, 10);
+  const today = _gefToday();
 
   if (series[series.length - 1]?.date !== today) {
+    _goldEtfFlowStatus.attemptedAt = Date.now();
     try {
       const sums = await Promise.all(GOLD_ETF_TICKERS.map(t => _fetchYahooFundAum(t)));
       const combined = sums.reduce((a, b) => a + b, 0);
       series = [...series, { date: today, value: combined }];   // no cap (was 120): a day not kept is gone; ~30 bytes/day
       _archive.mergeSeries('gold_etf', 'GLD_IAU_AUM', series, { unit: 'USD' }).catch(() => {});
       await kv.put(GOLD_ETF_FLOW_KV, JSON.stringify(series));
+      _goldEtfFlowStatus.okAt = Date.now(); _goldEtfFlowStatus.lastError = null;
     } catch (e) {
-      console.warn('[gold-etf-flow] fetch failed, serving prior history only:', e.message);
-      // fall through with whatever history already exists — never crash the caller
+      _goldEtfFlowStatus.lastError = _gefReason(e);
+      console.warn('[gold-etf-flow] fetch failed, serving prior history only:', _goldEtfFlowStatus.lastError);
+      // fall through with whatever history already exists: never crash the caller, and say why in the response
     }
-  }
+  } else if (!_goldEtfFlowStatus.okAt) { _goldEtfFlowStatus.okAt = Date.now(); }   // today was already held (written by an earlier run)
 
   const s = _seriesDeltas(series, [1, 5, 20]);
   // Percent basis, not raw $ — a fund's AUM grows with price + share count over
@@ -23332,16 +23349,19 @@ async function _goldEtfFlowSeries() {
   // read (same reasoning macroChange.js applies via its own bps/pct convention).
   const pctDeltas = s ? Object.fromEntries(Object.entries(s.d).map(([n, v]) =>
     [n, (v == null || !s.last) ? null : +((v / s.last) * 100).toFixed(2)])) : null;
-  const data = { series, last: s?.last ?? null, asOf: s?.lastDate ?? null, deltas: pctDeltas };
+  const haveToday = series[series.length - 1]?.date === today;
+  const fetch = _gefFetchBlock({ haveToday, reason: _goldEtfFlowStatus.lastError, attemptedAt: _goldEtfFlowStatus.attemptedAt, okAt: _goldEtfFlowStatus.okAt });
+  const data = { series, last: s?.last ?? null, asOf: s?.lastDate ?? null, deltas: pctDeltas, fetch };
 
   _goldEtfFlowCache.data = data;
   _goldEtfFlowCache.fetchedAt = Date.now();
+  _goldEtfFlowCache.ttlMs = _gefTtl(haveToday);   // 6h after a good day, 2 minutes after an empty or failed try
   return data;
 }
 
 app.get('/api/gold-etf-flow', async (_req, res) => {
-  try { res.json({ ok: true, ...(await _goldEtfFlowSeries()) }); }
-  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try { res.json(_gefRouteBody(await _goldEtfFlowSeries())); }
+  catch (e) { _goldEtfFlowStatus.lastError = _gefReason(e); res.status(500).json({ ok: false, error: _gefReason(e), reason: _gefReason(e) }); }
 });
 
 // ── Diversification backtest data cache ───────────────────────────────────────
