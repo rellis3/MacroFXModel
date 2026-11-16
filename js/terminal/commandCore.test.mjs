@@ -164,7 +164,7 @@ test('alert commands: ALERTS opens the panel, ALERT <kind> ... adds a rule in on
   assert.deepEqual(top('alert gap nq').action.body, { kind: 'gap_closed', params: { market: 'NQ', minPct: 0.3 } });
   assert.match(top('alert touch zzz').error, /do not make a "Level touched" alert/);
   assert.match(top('alert range').error, /Say which market/);
-  assert.match(top('alert buy now').error, /Say RANGE, FED, STALE, TOUCH or GAP/);
+  assert.match(top('alert buy now').error, /Say RANGE, FED, STALE, TOUCH, GAP or NEWS/);
   assert.ok(!buildCommands({ now: () => NOW, isOn: id => id !== 'widget.alerts' }).some(c => c.id === 'alerts'), 'switched off: no command');
 });
 
@@ -176,4 +176,32 @@ test('chart command: CHART opens the Chart tab, CHART NQ 15M opens it on a marke
   assert.equal(top('charts').cmd.id, 'tab.charts', 'CHARTS still goes to the Charts tab');
   assert.equal(top('chart').cmd.id, 'tab.kchart');
   assert.ok(!buildCommands({ now: () => NOW, isOn: id => id !== 'tab.kchart' }).some(c => c.id === 'tab.kchart'), 'switched off: no command');
+});
+
+test('monitor and news commands: MONITOR [name], ADD <market>, NEWS [saved search], ALERT NEWS <words>', () => {
+  const cmds = buildCommands({ now: () => NOW, monitorNames: () => ['My desk'], newsSearchNames: () => ['ECB hawkish'] });
+  const run = (line) => search(cmds, line)[0];
+  assert.deepEqual(plainAction(run('monitor').cmd).action, { kind: 'tab', t: 'monitor' });
+  assert.deepEqual(run('monitor my').action, { kind: 'monitor', name: 'My desk' });
+  assert.deepEqual(run('monitor indices').action, { kind: 'monitor', name: 'Indices, gold and oil' });
+  assert.match(run('monitor zzz').error, /No monitor called/);
+  assert.deepEqual(run('add eurusd').action, { kind: 'monitor-add', inst: 'EURUSD' });
+  assert.match(run('add zzz').error, /not a market/);
+  assert.deepEqual(plainAction(run('news').cmd).action, { kind: 'tab', t: 'news' });
+  assert.deepEqual(run('news ecb').action, { kind: 'news-search', name: 'ECB hawkish' });
+  assert.match(run('news zzz').error, /No saved search/);
+  assert.deepEqual(run('alert news ecb hawkish').action.body, { kind: 'news_keyword', params: { q: 'ecb hawkish', tier: 2 } });
+  assert.match(run('alert news').error, /Say which words/);
+  for (const id of ['tab.monitor', 'mon.add', 'tab.news']) { const c = cmds.find(x => x.id === id); assert.ok(c.help.length > 20 && c.example && c.opens, id); }
+  assert.ok(!buildCommands({ now: () => NOW, isOn: id => id !== 'tab.monitor' }).some(c => c.id === 'tab.monitor' || c.id === 'mon.add'), 'switched off: no command');
+});
+
+test('EXPORT command: a CSV of the open tab by default, EXPORT PNG for the chart, a bad word says what to type, hidden when the switch is off', () => {
+  const cmds = buildCommands({ now: () => NOW });
+  const run = line => search(cmds, line)[0];
+  assert.deepEqual(run('export').action ?? plainAction(run('export').cmd).action, { kind: 'export', what: 'csv' });
+  assert.deepEqual(run('export png').action, { kind: 'export', what: 'png' });
+  assert.match(run('export zzz').error, /EXPORT PNG/);
+  const c = cmds.find(x => x.id === 'export'); assert.ok(c.help.length > 20 && c.example && c.opens);
+  assert.ok(!buildCommands({ now: () => NOW, isOn: id => id !== 'widget.export' }).some(x => x.id === 'export'));
 });

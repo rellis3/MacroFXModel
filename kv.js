@@ -149,6 +149,8 @@ const _CF_EXACT = new Set([
                              // verdicts, the watch states, the macro deltas, the leans. The look-back
                              // timeline's memory; not re-derivable. Must also be in _worker.js PERMANENT_KEYS.
   'desk_alert_rules_v1',     // the alerts you set on the Desk Terminal (js/deskAlertRules.js): each rule, its own memory (armed / baseline / last touch) and the day's send count. Written only when something changes. Must also be in _worker.js PERMANENT_KEYS.
+  'desk_news_searches_v1',   // the News tab's SAVED SEARCHES (js/deskNewsSearches.js): named filters the owner saved, shared by the desk. Not re-derivable. Must also be in _worker.js PERMANENT_KEYS.
+  'desk_monitors_v1',        // the Desk Terminal's NAMED monitors (js/deskMonitors.js): market lists the owner saved, shared by the desk. Not re-derivable. Must also be in _worker.js PERMANENT_KEYS.
   'desk_workspaces_v1',      // the Desk Terminal's NAMED workspaces (js/deskWorkspaces.js): layouts the desk saved, shared by everyone on the one login. Not re-derivable. Must also be in _worker.js PERMANENT_KEYS.
   'desk_tab_access_v1',      // the owner's switches for what the desk login sees on the Desk Terminal (admin page desk-admin.html). Not re-derivable:
                              // losing it silently hides every opt-in surface again. Must also be in _worker.js PERMANENT_KEYS.

@@ -134,7 +134,7 @@ export function filtersHtml(st = {}) {
   const kb = k => `<button type="button" data-nt-key="${k}" aria-pressed="${keys.has(k)}">${esc(keyLabel(k))}</button>`;
   return `<div class="filters nt-f"><span class="lbl">Tier</span>${tb(1, '1')}${tb(2, '1-2')}${tb(3, 'All')}</div>
 <div class="filters nt-f"><button type="button" data-nt-key="" aria-pressed="${!keys.size}">All</button>${NEWS_KEYS.map(kb).join('')}${st.market ? `<span class="chip pur" title="filtered to this market's currencies">${esc(st.market)} <button type="button" data-nt-clear aria-label="Clear market filter" style="all:unset;cursor:pointer">✕</button></span>` : ''}</div>
-<div class="nt-f2"><label class="nt-book"><input type="checkbox" data-nt-book${st.onlyBook ? ' checked' : ''}> Only headlines on today's book</label><input type="search" data-nt-q placeholder="Search headlines" value="${esc(st.q ?? '')}" aria-label="Search headlines"></div>`;
+<div class="nt-f2"><label class="nt-book"><input type="checkbox" data-nt-book${st.onlyBook ? ' checked' : ''}> Only headlines on today's book</label><input type="search" data-nt-q placeholder="Search headlines" value="${esc(st.q ?? '')}" aria-label="Search headlines"><span class="chip nt-ctx" title="The arrows are the news analyst's reading of the first move a headline implies. The Evidence Book holds no validated headline-direction rule (the bad-versus-good surprise test, news-asymmetry, is null), so they describe what the wire says. They are not a signal.">arrows: context only</span></div>`;
 }
 
 /** The Pair tab's card: the 3 latest headlines that bear on this market. */

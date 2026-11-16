@@ -38,9 +38,10 @@ export async function tick({ kv, fetchFeed, send, canSend = () => true, now = ()
   if (!live.length) return { ok: true, skipped: 'no active alerts' };
   if (!canSend()) return { ok: true, skipped: 'telegram is off or muted' };
   const kinds = new Set(live.map(r => r.kind)), get = async p => { try { const r = await fetchFeed(p); return r?.json?.ok === false ? null : r?.json ?? null; } catch { return null; } };
-  const ctx = { now: t, live: null, fed: null, touches: {} };
+  const ctx = { now: t, live: null, fed: null, news: null, touches: {} };
   if (kinds.has('range_used') || kinds.has('gap_closed')) ctx.live = await get('live-layer');
   if (kinds.has('fed_move') || kinds.has('data_stale')) ctx.fed = await get('fed-path');
+  if (kinds.has('news_keyword')) ctx.news = await get('desk-news?hours=3&tier=3');
   if (kinds.has('level_touch') && (ctx.live ?? await get('live-layer'))?.closed === false) {
     for (const m of new Set(live.filter(r => r.kind === 'level_touch').map(r => r.params.market))) {
       const day = await get(`replay/day?inst=${m}&date=${todayLondon(t)}`);

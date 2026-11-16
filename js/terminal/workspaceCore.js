@@ -12,13 +12,13 @@ import { SURFACES } from './tabRegistry.js';
 export const COLS = 12, MAX_TILES = 24, MAX_H = 40, MAX_Y = 400, NAME_MAX = 40, MAX_LAYOUTS = 30, MIN_W = 2, MIN_H = 3;
 export const FILE_KIND = 'desk-workspace';
 
-/** Every panel surface a tile may show: id -> its registry row. */
-export const PANELS = new Map(SURFACES.filter(s => s.kind === 'panel').map(s => [s.id, s]));
-export const isPanel = id => PANELS.has(id);
-
 /** The tab section a panel lives in (its home): panel.ov.* is on Overview, panel.macro.* on Macro, and so on. null when unknown. */
 const HOME = { ov: 'overview', ccy: 'ccy', asset: 'assets', ana: 'ana', charts: 'charts', changed: 'changed', corr: 'corr', macro: 'macro' };
 export const homeSection = id => HOME[String(id).split('.')[1]] ?? null;
+
+/** Every panel surface a tile may show: id -> its registry row. A panel with no home section is not a tile: the Insight boards (panel.insight.*) sit behind their own pills and draw only when their pill is open, and the saved-searches bar belongs to the News tab. */
+export const PANELS = new Map(SURFACES.filter(s => s.kind === 'panel' && HOME[s.id.split('.')[1]]).map(s => [s.id, s]));
+export const isPanel = id => PANELS.has(id);
 
 const int = (v, lo, hi, d) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
 export const cleanName = s => String(s ?? '').replace(/[\u0000-\u001f<>"`]/g, '').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX);

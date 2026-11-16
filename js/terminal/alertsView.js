@@ -6,14 +6,15 @@ import { KINDS, KIND_IDS, FEEDS, LIVE_INDICES, LIVE_EM, MAX_RULES, DAILY_CAP, de
 import { INSTRUMENTS as REPLAY_INSTRUMENTS } from '../replayCore.js';
 
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const LABEL = { market: 'Market', pct: 'Share of the median range, %', bp: 'Move, basis points', feed: 'Feed', which: 'Level', minPct: 'Gap at least, %' };
+const LABEL = { market: 'Market', pct: 'Share of the median range, %', bp: 'Move, basis points', feed: 'Feed', which: 'Level', minPct: 'Gap at least, %', q: 'Words in the headline (all must appear)', tier: 'Which headlines' };
 const optionsFor = (kind, f) => (f === 'feed' ? Object.entries(FEEDS).map(([v, x]) => [v, x.label])
   : f === 'which' ? [['any', 'Option wall or forecast line'], ['oi', 'Option wall'], ['fc', 'Forecast line']]
+    : f === 'tier' ? [['1', 'Tier 1 only'], ['2', 'Tier 1 and 2'], ['3', 'Any tier']]
     : kind === 'level_touch' && f === 'market' ? Object.keys(REPLAY_INSTRUMENTS).map(k => [k, k])
       : kind === 'gap_closed' && f === 'market' ? [...LIVE_INDICES, ...LIVE_EM].map(k => [k, k]) : null);
 export const fieldHtml = (kind, [name, type, def]) => {
   const o = optionsFor(kind, name), id = `al-f-${name}`;
-  return `<label class="al-f" for="${id}"><span>${esc(LABEL[name] ?? name)}</span>${o ? `<select id="${id}" data-f="${name}">${o.map(([v, l]) => `<option value="${esc(v)}"${v === def ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>` : `<input id="${id}" data-f="${name}" type="${type === 'number' ? 'number' : 'text'}" value="${esc(def)}"${type === 'number' ? ' step="any"' : ' maxlength="12"'}>`}</label>`;
+  return `<label class="al-f" for="${id}"><span>${esc(LABEL[name] ?? name)}</span>${o ? `<select id="${id}" data-f="${name}">${o.map(([v, l]) => `<option value="${esc(v)}"${String(v) === String(def) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>` : `<input id="${id}" data-f="${name}" type="${type === 'number' ? 'number' : 'text'}" value="${esc(def)}"${type === 'number' ? ' step="any"' : (name === 'q' ? ' maxlength="60"' : ' maxlength="12"')}>`}</label>`;
 };
 const when = iso => { const t = Date.parse(iso); return Number.isFinite(t) ? new Date(t).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : null; };
 
