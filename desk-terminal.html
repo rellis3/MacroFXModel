@@ -68,6 +68,9 @@ button{font:inherit}
 .tabs button{cursor:pointer;background:none;border:0;color:var(--tx3);padding:8px 14px;border-radius:8px;font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase}
 .tabs button[aria-selected="true"]{background:var(--purbg);color:var(--pur2);box-shadow:inset 0 0 0 1px rgba(var(--purrgb),.4)}
 .tabs button:focus-visible{outline:2px solid var(--pur)}
+.tabs .tabgrp{display:flex;gap:4px;flex-wrap:wrap}
+.tabs .tabgrp:not([data-first]){border-left:1px solid var(--line);padding-left:6px;margin-left:2px}
+@media (max-width:820px){.tabs{flex-wrap:nowrap;overflow-x:auto;width:100%;scrollbar-width:thin;-webkit-overflow-scrolling:touch}.tabs .tabgrp{flex-wrap:nowrap;flex:none}.tabs button,.tabs .tablink{white-space:nowrap;flex:none}}
 .tabs .tablink{color:var(--pur2);padding:8px 14px;border-radius:8px;font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;text-decoration:none;display:inline-flex;align-items:center}
 .tabs .tablink:hover,.tabs .tablink:focus-visible{background:var(--purbg);outline:none}
 /* cards */
@@ -249,29 +252,41 @@ html[data-role="owner"] .disclaimer{display:none}
 </header>
 <main class="wrap">
   <nav class="tabs" role="tablist" id="tabs">
-    <button role="tab" aria-selected="true" data-t="overview" data-surface="tab.overview">Overview</button>
-    <button role="tab" aria-selected="false" data-t="ccy" data-surface="tab.ccy">Currencies</button>
-    <button role="tab" aria-selected="false" data-t="assets" data-surface="tab.assets">Assets</button>
-    <button role="tab" aria-selected="false" data-t="macro" data-surface="tab.macro">Macro</button>
-    <button role="tab" aria-selected="false" data-t="pos" data-surface="tab.pos">Positioning</button>
-    <button role="tab" aria-selected="false" data-t="cal" data-surface="tab.cal">Calendar</button>
-    <button role="tab" aria-selected="false" data-t="ana" data-surface="tab.ana">Analytics</button>
-    <button role="tab" aria-selected="false" data-t="charts" data-surface="tab.charts">History</button>
-    <button role="tab" aria-selected="false" data-t="today" data-surface="tab.today">Chain</button>
-    <button role="tab" aria-selected="false" data-t="read" data-surface="tab.read">Trader's read</button>
-    <button role="tab" aria-selected="false" data-t="pair" data-surface="tab.pair">Pair</button>
-    <button role="tab" aria-selected="false" data-t="deep" data-surface="tab.deep" title="The reference cards for one market, in four sections (preview)">Deep dive</button>
-    <button role="tab" aria-selected="false" data-t="changed" data-surface="tab.changed">Changed</button>
-    <button role="tab" aria-selected="false" data-t="replay" data-surface="tab.replay" title="Go back to a day and play it forward">Replay</button>
-    <button role="tab" aria-selected="false" data-t="monitor" data-surface="tab.monitor" title="A table of the markets you pick, with live columns (preview)">Monitor</button>
-    <button role="tab" aria-selected="false" data-t="workspace" data-surface="tab.workspace" title="Drag and resize the terminal panels into a screen of your own (preview)">Workspace</button>
-    <button role="tab" aria-selected="false" data-t="kchart" data-surface="tab.kchart" title="Candle chart with indicators (each with its own settings) and the day's lines (preview)">Chart</button>
-    <button role="tab" aria-selected="false" data-t="insight" data-surface="tab.insight" title="Boards that read the data we hold in a new way: what is unusual right now (preview)">Insight</button>
-    <button role="tab" aria-selected="false" data-t="options" data-surface="tab.options">Options</button>
-    <button role="tab" aria-selected="false" data-t="news" data-surface="tab.news">News</button>
-    <a class="tablink" data-surface="nav.research-tab" href="research.html" title="Research has its own hub now: ideas, rooms, tests, verdicts">Research ↗</a>
-    <button role="tab" aria-selected="false" data-t="corr" data-surface="tab.corr">Correlations &amp; hedges</button>
-    <button role="tab" aria-selected="false" data-t="infomap" data-surface="tab.infomap" title="What information the repo holds and how much of it the terminal draws">Info map</button>
+    <div class="tabgrp" role="presentation" data-grp="today">
+      <button role="tab" aria-selected="true" data-t="overview" data-surface="tab.overview">Overview</button>
+      <button role="tab" aria-selected="false" data-t="changed" data-surface="tab.changed">Changed</button>
+    </div>
+    <div class="tabgrp" role="presentation" data-grp="markets">
+      <button role="tab" aria-selected="false" data-t="ccy" data-surface="tab.ccy">Currencies</button>
+      <button role="tab" aria-selected="false" data-t="assets" data-surface="tab.assets">Assets</button>
+      <button role="tab" aria-selected="false" data-t="monitor" data-surface="tab.monitor" title="A table of the markets you pick, with live columns (preview)">Monitor</button>
+      <button role="tab" aria-selected="false" data-t="pair" data-surface="tab.pair">Pair</button>
+      <button role="tab" aria-selected="false" data-t="deep" data-surface="tab.deep" title="The reference cards for one market, in four sections (preview)">Deep dive</button>
+      <button role="tab" aria-selected="false" data-t="options" data-surface="tab.options">Options</button>
+    </div>
+    <div class="tabgrp" role="presentation" data-grp="macro">
+      <button role="tab" aria-selected="false" data-t="macro" data-surface="tab.macro">Macro</button>
+      <button role="tab" aria-selected="false" data-t="cal" data-surface="tab.cal">Calendar</button>
+      <button role="tab" aria-selected="false" data-t="pos" data-surface="tab.pos">Positioning</button>
+      <button role="tab" aria-selected="false" data-t="today" data-surface="tab.today">Chain</button>
+      <button role="tab" aria-selected="false" data-t="news" data-surface="tab.news">News</button>
+    </div>
+    <div class="tabgrp" role="presentation" data-grp="analysis">
+      <button role="tab" aria-selected="false" data-t="ana" data-surface="tab.ana">Analytics</button>
+      <button role="tab" aria-selected="false" data-t="charts" data-surface="tab.charts">History</button>
+      <button role="tab" aria-selected="false" data-t="corr" data-surface="tab.corr">Correlations &amp; hedges</button>
+      <button role="tab" aria-selected="false" data-t="insight" data-surface="tab.insight" title="Boards that read the data we hold in a new way: what is unusual right now (preview)">Insight</button>
+    </div>
+    <div class="tabgrp" role="presentation" data-grp="charts">
+      <button role="tab" aria-selected="false" data-t="kchart" data-surface="tab.kchart" title="Candle chart with indicators (each with its own settings) and the day's lines (preview)">Chart</button>
+      <button role="tab" aria-selected="false" data-t="replay" data-surface="tab.replay" title="Go back to a day and play it forward">Replay</button>
+    </div>
+    <div class="tabgrp" role="presentation" data-grp="tools">
+      <button role="tab" aria-selected="false" data-t="read" data-surface="tab.read">Trader's read</button>
+      <button role="tab" aria-selected="false" data-t="workspace" data-surface="tab.workspace" title="Drag and resize the terminal panels into a screen of your own (preview)">Workspace</button>
+      <a class="tablink" data-surface="nav.research-tab" href="research.html" title="Research has its own hub now: ideas, rooms, tests, verdicts">Research ↗</a>
+      <button role="tab" aria-selected="false" data-t="infomap" data-surface="tab.infomap" title="What information the repo holds and how much of it the terminal draws">Info map</button>
+    </div>
   </nav>
   <div class="disclaimer" data-surface="widget.disclaimer">Educational and informational macro analysis. Not investment advice and not a trade signal.</div>
   <div id="wstrip" aria-live="polite" data-surface="widget.worldstress"></div>
@@ -656,8 +671,22 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
   if (b.dataset.t === 'macro') { try { macroShown(); } catch { /* the page is still starting (a #macro link clicks this before the script has finished): load() paints the section */ } }
   else if (/^#macro/.test(location.hash)) { try { history.replaceState(null, '', location.pathname + location.search); } catch { /* ignore */ } }
   globalThis.onTerminalTab?.(b.dataset.t);   // the Chain, Pair, Changed, Options and Research tabs (js/terminal/terminalTabs.js)
+  try { if (matchMedia('(max-width:820px)').matches) b.scrollIntoView({ inline: 'nearest', block: 'nearest' }); } catch { /* ignore */ }
   try { localStorage.setItem('deskTerminalTab', b.dataset.t); } catch { /* private window */ }
 });
+// The tab strip is grouped (Today, Markets, Macro, Analysis, Charts, Tools). A group whose tabs are all switched off for this login disappears, and the first
+// visible group carries no divider. Runs when the access rules arrive and whenever the page adds a stylesheet (the rules are applied as one).
+function tabGroups() {
+  let first = true;
+  for (const g of document.querySelectorAll('#tabs .tabgrp')) {
+    g.style.display = '';
+    const any = [...g.children].some(c => !c.hidden && getComputedStyle(c).display !== 'none');
+    g.style.display = any ? '' : 'none';
+    if (any && first) { g.setAttribute('data-first', ''); first = false; } else g.removeAttribute('data-first');
+  }
+}
+tabGroups(); addEventListener('deskaccess', tabGroups); setTimeout(tabGroups, 800); setTimeout(tabGroups, 3000);
+try { let q = 0; new MutationObserver(() => { clearTimeout(q); q = setTimeout(tabGroups, 120); }).observe(document.head, { childList: true, subtree: true, characterData: true }); } catch { /* old browser: the timers above cover it */ }
 try { const t = localStorage.getItem('deskTerminalTab'); if (t) document.querySelector(`#tabs [data-t="${t}"]`)?.click(); } catch { /* ignore */ }
 if (/^#macro/.test(location.hash)) document.querySelector('#tabs [data-t="macro"]')?.click();   // a shared #macro/rates link lands on that section
 
