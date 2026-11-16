@@ -132,6 +132,7 @@ export const SURFACES = [
   mk('panel.ov.wire', 'panel', 'Overview: the wire', 'Overview', null, 'tier 1-2 headlines with their reads'),
   mk('panel.ov.releases', 'panel', 'Overview: releases ahead', 'Overview', null, 'the economist\'s release briefs: typical move, what to watch'),
   mk('panel.ov.riskwarn', 'panel', 'Overview: risk warnings', 'Overview', null, 'the risks to the day\'s read'),
+  mk('panel.ov.engine', 'panel', 'Overview: bias engine currency ranking', 'Overview', null, 'the rule-based bias engine\'s eight-currency ranking (js/biasEngine.js, weights theory-v1) beside the desk\'s, and "engine vs desk agree on X of Y markets"; directional analysis, scored forward on the bias scoreboard, not a trade signal'),
   // ── Overview map layers (the pills on the world map and globe; js/terminal/mapLayers.js) ──
   mk('widget.ovl.bias', 'widget', 'Map layer: Desk bias', 'Overview map layers', null, 'the Currency Manager\'s ranking painted on the map: the desk\'s bias, an analysis layer'),
   mk('widget.ovl.rates', 'widget', 'Map layer: Rate cycle', 'Overview map layers', null, 'every BIS central bank by hiking / holding / cutting: market data'),
@@ -149,6 +150,11 @@ export const SURFACES = [
   mk('panel.ccy.macrostrip', 'panel', 'Currency card: macro picture', 'Currencies', null, 'per-currency macro prints against expectations, the next release, a 12-month ribbon and the six scorecard factors behind the composite'),
   mk('panel.asset.plan', 'panel', 'Market card: entry, target, invalid, timing', 'Markets', T, 'the plan lines on a card, and the entry zone / invalidation lines on the charts'),
   mk('panel.asset.size', 'panel', 'Market card: size and grade', 'Markets', T, 'the position size and the conviction grade derived from it'),
+  mk('panel.ccy.engine', 'panel', 'Currency card: bias engine score and drivers', 'Currencies', null, 'the bias engine\'s score beside the desk\'s ring on each card, and its full driver table (reading, d, weight, contribution, source, as of, coverage) in the currency pop-up; a rule-based macro checklist, not a trade signal'),
+  mk('panel.asset.engine', 'panel', 'Market card: bias engine read and key drivers', 'Markets', null, 'the "Engine: Bearish 7/10" chip beside the desk rating, a "split" chip when they differ, the top three driver contributions on the card and the full driver table in the full view; directional analysis, not a trade signal'),
+  mk('panel.pair.engine', 'panel', 'Pair: bias engine pair score', 'Pair', null, 'the bias engine\'s score for any cross of the eight, (base minus quote) / 2, with both legs\' drivers side by side; or an asset\'s driver table'),
+  mk('panel.replay.engine', 'panel', 'Replay: the bias engine\'s read that day', 'Replay', null, 'the engine\'s stored morning issue for the replayed day and market, when one was written (never back-issued)'),
+  mk('panel.asset.beflip', 'panel', 'Bias engine: what would flip it', 'Markets', T, 'the engine\'s flip line (how far the score is from turning Neutral or the other side, and its largest support): reads as an invalidation line'),
   mk('panel.pair.favourites', 'panel', 'Pair: favourites', 'Markets', null, 'a star on each market, a Favourites filter pill and copy / paste of your list; a display preference kept in this browser only'),
   mk('panel.asset.volclock', 'panel', 'Assets: implied vol against the forecast (vol clock)', 'Markets', null, 'options-implied sigma over the forecast sigma per market, how much of the day\'s range is used, the vol ranking and the Daily Read\'s forward record: size, never direction'),
   // ── Analytics panels ──
@@ -213,6 +219,7 @@ export const SURFACES = [
   mk('panel.macro.commodfx', 'panel', 'Macro: commodity currencies against their exports', 'Macro', null, 'AUD, CAD, NOK, NZD and others against the commodity basket they earn from'),
   mk('panel.macro.copper', 'panel', 'Macro: growth against fear', 'Macro', null, 'the copper-gold ratio and the Brent-WTI spread'),
   mk('panel.macro.gpr', 'panel', 'Macro: geopolitical risk index', 'Macro', null, 'the geopolitical risk level, trend and z-score'),
+  mk('panel.macro.biasengine', 'panel', 'Macro: bias engine (currencies x drivers)', 'Macro', null, 'the bias engine\'s full grid of eight currencies by eight drivers as contribution heat, the assets by their drivers, the global risk score, the theory-v1 weights, coverage and the gaps list'),
   mk('panel.macro.carryside', 'panel', 'Macro: carry board "side" column', 'Macro', null, 'which side of a pair earns the carry'),
 ];
 

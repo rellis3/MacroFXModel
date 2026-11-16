@@ -162,3 +162,20 @@ export function h4Trend(h1ByInst, date, { insts = Object.keys(SAMEDAY_INSTRUMENT
 // ── fundabias: disabled until the owner confirms its terms allow storing readings (prereg §3.3). ──────────────────
 export const FUNDABIAS_ENABLED = false;
 export function fundabias() { return []; }
+
+// ── bias-engine (plans/BIAS_ENGINE_SPEC.md; prereg amendment A3: added forward from its first issue date, no back-issue) ──
+// The stored morning issue of js/biasEngine.js (KV bias_engine_<D>, written 07:00-07:30 London). Side = the market's
+// direction (BULLISH +1, BEARISH -1); NEUTRAL or a missing market = no view. p_up = clip(p0 ± 0.01 × strength), so the
+// shift runs 0.03 (strength 3, the weakest that is not Neutral) to 0.10. Knowable at the record's issue time.
+export const ENGINE_SHIFT_PER_STRENGTH = 0.01;
+const ENGINE_SIDE = { BULLISH: 1, BEARISH: -1 };
+/** `rec` = a stored bias-engine record ({ asOf, version, weights, markets }). Markets by the desk's names (DESK_NAME). */
+export function biasEngine(rec, { knowableMs = Date.parse(rec?.asOf ?? ''), insts = Object.keys(SAMEDAY_INSTRUMENTS) } = {}) {
+  return insts.map(inst => {
+    const m = rec?.markets?.[DESK_NAME[inst]], side = ENGINE_SIDE[m?.dir] ?? 0, strength = Number.isFinite(m?.strength) ? m.strength : 0;
+    const speaks = !!side && strength > 0;
+    return { model_id: 'bias-engine', model_version: V('bias-engine'), inst, speaks, side: speaks ? side : 0, shift: speaks ? +(ENGINE_SHIFT_PER_STRENGTH * strength).toFixed(4) : 0,
+      knowable_ms: knowableMs, conviction: m ? strength : null,
+      inputs: { dir: m?.dir ?? null, strength: m ? strength : null, score: m?.score ?? null, coverage: m?.coverage ?? null, engine: rec?.version ?? null, weights: rec?.weights ?? null, missing: !m } };
+  });
+}

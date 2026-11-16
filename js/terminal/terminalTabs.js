@@ -53,6 +53,7 @@ import { cellHtml as macroCellHtml } from './macroEngines.js';
 import { FAMILIES as MACRO_FAMILIES } from './macroEnginesCore.js';
 import { ownerLink, ownerOnly } from './links.js';
 import { installReplayLink } from './replayLink.js';
+import * as BEV from './biasEngineView.js';
 
 const el = id => document.getElementById(id);
 const h = CB.esc;
@@ -378,6 +379,8 @@ function drawWeek(ca, es) {
 const CHAIN_NODE_OF = { EURUSD: 'eurusd', GBPUSD: 'gbpusd', USDJPY: 'usdjpy', AUDUSD: 'audusd', USDCAD: 'usdcad', GOLD: 'gold', NQ: 'nq', SPX500: 'spx', BTCUSD: 'btc', COPPER: 'copper', WTI: 'oil' };
 function pairList() {
   const s = new Set([...Object.keys(D.cards ?? {})]);
+  // the bias engine reads every cross of the eight and its assets: those markets get a page too, even with no desk card
+  for (const k of Object.keys(D.be?.markets ?? {})) if (groupOf(k) !== 'other') s.add(k);
   return [...s].sort((a, b) => (groupOf(a) === groupOf(b) ? a.localeCompare(b) : Object.keys(UNIVERSE).indexOf(groupOf(a)) - Object.keys(UNIVERSE).indexOf(groupOf(b))));
 }
 function openPair(inst) {
@@ -416,6 +419,7 @@ ${c ? `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${ra
 ${c ? `${ladder(c)}<div class="sfc" data-surface="panel.asset.plan"><div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${h(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Lines</b><span class="mono">up ${c.levels.up.p50} / ${c.levels.up.p75} / ${c.levels.up.p90} · down ${c.levels.down.p50} / ${c.levels.down.p75} / ${c.levels.down.p90}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${h(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${h(c.plan.timing)}</span></div>` : ''}</div></div><details><summary>The whole thesis</summary><p>${h(c.why)}</p>${deskView(n)}</details>${whatDrivesHtml(n)}` : ''}
 <p class="tt-note">Chart: candles in the size you pick (5m to 4h; the choice is remembered), today's forecast lines (open, up and down p50 / p75 / p90), the entry zone and the invalidation where the plan names them.</p></div>
 ${AAV.boxHtml(n)}
+<div class="sfc" data-surface="panel.pair.engine"><div class="card" id="tt-p-be" style="margin-top:14px" hidden></div></div>
 <div class="tt-grid2" style="margin-top:14px">
 <div class="card" id="tt-p-gr">${loading('the Global Read for this market')}</div>
 <div class="card" id="tt-p-rates">${loading('rates')}</div>
@@ -469,6 +473,11 @@ ${AAV.boxHtml(n)}
   Promise.all([J('/api/session-heat'), J(`/api/desk-season?inst=${n}`)]).then(([sh, ss]) => mine() && pairHours(n, sh, ss));
   Promise.all([J('/api/macro-regime-fx'), loadChain()]).then(([m]) => mine() && pairPrec(n, m));
   Promise.all([J('/api/research-pod'), J('/api/research-pod/papers')]).then(([rp, pp]) => mine() && pairResearch(n, rp, pp));
+  // the bias engine for this market (any cross of the eight, a currency or an asset); fetched fresh, not cached for the page's life. No read: the card stays hidden.
+  getJson(`/api/bias-engine?market=${encodeURIComponent(n)}`).then(r => {
+    const b = mine() && el('tt-p-be'); if (!b || !r?.ok || !r.market) return;
+    try { b.innerHTML = BEV.pairCardHtml(r.market, { ...r, desk: c ? BEV.deskSign({ rating: c.rating }) : null }); b.hidden = false; } catch (e) { console.warn('bias engine pair', e); }
+  }).catch(() => {});
 }
 async function pairChart(n, c) {
   const box = el('tt-lc'); if (!box) return;
@@ -897,6 +906,7 @@ globalThis.ratesBoardHtml = (rb, fp, gy) => { try { return RBV.boardHtml(rb, fp,
 globalThis.macroMoreHtml = (E, extra) => macroMoreHtml(E, extra);
 globalThis.macroMoreBoard = (key, E, extra) => macroMoreBoard(key, E, extra);
 globalThis.macroSubs = MacroSubs;
+globalThis.biasEngineView = BEV;                                   // the bias engine on the Assets, Currencies, Overview and Macro cards (desk-terminal.html beOf / beOverview)
 globalThis.paperBoardById = (surface, E) => paperBoardById(surface, E);                // the paper-ideas boards (js/terminal/paperBoardsView.js): FOMC day, path gap, JGB, inflation, auctions, coverage, connectedness ...
 globalThis.volClockHtml = VCV.boardHtml;                           // the Assets tab's vol clock board (js/terminal/volClockView.js)
 globalThis.volClockMount = VCV.mount;

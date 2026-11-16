@@ -1,4 +1,4 @@
-// js/terminal/macroSubtabs.js: the Macro tab's five sections (Policy / Rates & curve / Economy / Credit & liquidity / Markets & FX).
+// js/terminal/macroSubtabs.js: the Macro tab's six sections (Policy / Rates & curve / Economy / Credit & liquidity / Markets & FX / Bias engine).
 // Pure: no DOM, no fetch. desk-terminal.html draws ONLY the open section (the others are built on first open), and fetches the feeds only
 // one section reads (SUB_FEEDS) when that section is first opened. Every Macro block is a registered surface (panel.macro.*, js/terminal/tabRegistry.js)
 // and sits in exactly one section here; macroSubtabs.test.mjs fails if a block has no section, a section names a block that is not registered,
@@ -16,6 +16,8 @@ export const MACRO_SUBS = [
     blocks: ['panel.macro.creditliq', 'panel.macro.creditspreads', 'panel.macro.fedliq', 'panel.macro.plumbing', 'panel.macro.xccy', 'panel.macro.bankcredit'] },
   { id: 'markets', alias: 'markets', label: 'Markets & FX',
     blocks: ['panel.macro.regime', 'panel.macro.vol', 'panel.macro.livelayer', 'panel.macro.fairvalue', 'panel.macro.fxfv', 'panel.macro.carry', 'panel.macro.commodfx', 'panel.macro.copper', 'panel.macro.gpr', 'panel.macro.rangecoverage', 'panel.macro.connected', 'panel.macro.coupling', 'panel.macro.uncertainty', 'panel.macro.skewhist', 'panel.macro.trendbasket', 'panel.macro.walls'] },
+  // the bias engine (js/biasEngine.js, plans/BIAS_ENGINE_SPEC.md): currencies x drivers, the weights, coverage and the gaps. Its data is loaded with the page (load()).
+  { id: 'engine', alias: 'engine', label: 'Bias engine', blocks: ['panel.macro.biasengine'] },
 ];
 
 /** panel.macro.carryside is a column inside the carry block, not a block of its own. */
@@ -34,6 +36,7 @@ export const SUB_FEEDS = {
   economy: ['nowcast', 'leading-indicators', 'releases-board'],
   credit: ['credit-board', 'liquidity-board', 'xccy-basis', 'funding-read?spark=0', 'credit-liquidity'],
   markets: ['regime-board', 'vol-board', 'live-layer', 'fx-fair-value', 'carry-vol', 'commodity-fx', 'copper-gold', 'markets-extra'],
+  engine: [],   // /api/bias-engine is fetched by load() (the Assets, Currencies and Overview cards read it too)
 };
 
 export const subById = id => MACRO_SUBS.find(s => s.id === id) ?? null;

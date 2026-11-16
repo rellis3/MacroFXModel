@@ -4,7 +4,7 @@
 //   node scripts/bias-scoreboard/score.mjs --api <server base url> --look 60|120 [--write]
 //   node scripts/bias-scoreboard/score.mjs --positive-control          (§3.9; also run by score.test.mjs)
 //
-// Reads the same-day issue records (<D>_base|desk|max.json) and outcomes (out/<D>_<target>.json) as written, never
+// Reads the same-day issue records (<D>_base|desk|max|engine.json) and outcomes (out/<D>_<target>.json) as written, never
 // re-issues anything. --write puts RESULTS.md and results.json in analysis/output/bias-scoreboard/.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -185,7 +185,7 @@ export async function coinUniformity({ reps = 200, seed = SEED } = {}) {
 // ── CLI ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 function readDir(dir) {
   const recs = [], outs = [];
-  for (const f of fs.readdirSync(dir)) if (/^\d{4}-\d{2}-\d{2}_(base|desk|max)\.json$/.test(f)) recs.push(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')));
+  for (const f of fs.readdirSync(dir)) if (/^\d{4}-\d{2}-\d{2}_(base|desk|max|engine)\.json$/.test(f)) recs.push(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')));
   const od = path.join(dir, 'out');
   if (fs.existsSync(od)) for (const f of fs.readdirSync(od)) if (/^\d{4}-\d{2}-\d{2}_(d21|n07|d5)\.json$/.test(f)) outs.push(JSON.parse(fs.readFileSync(path.join(od, f), 'utf8')));
   return { recs, outs };

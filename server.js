@@ -430,7 +430,8 @@ import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, getBuffer as _r2GetBuffer
 import { INSTRUMENTS as _DL_INSTRUMENTS, HORIZONS as _DL_HORIZONS, closesFromCandles as _dlClosesFromCandles, issueRecord as _dlIssue, outcomeRecord as _dlOutcome, summarise as _dlSummarise } from './js/directionLedger.js';
 import { RESEARCH as _DL_RESEARCH, volFlags as _dlVolFlags, FX_CARRY_EUR_OFFSET as _DL_EUR_OFFSET, FX_CARRY_MAX_AGE_DAYS as _DL_RATE_MAX_AGE_DAYS } from './js/directionResearch.js';
 import { SAMEDAY_INSTRUMENTS as _BS_INSTRUMENTS, SAMEDAY_TARGETS as _BS_TARGETS, issueSameDay as _bsIssue, outcomeSameDay as _bsOutcome, summariseSameDay as _bsSummarise, midAt as _bsMidAt, sigmaDay as _bsSigmaDay, londonMs as _bsLondonMs, targetEndMs as _bsEndMs, isWeekday as _bsIsWeekday, MID_LOOKBACK_MS as _BS_LOOKBACK } from './js/directionLedger.js';   // bias-scoreboard same-day rows (forge/BIAS_SCOREBOARD_PREREG.md)
-import { h4Trend as _bsH4Trend, deskRating as _bsDeskRating, deskCcy as _bsDeskCcy, maxSignals as _bsMaxSignals, surpriseRule as _bsSurpriseRule, fundabias as _bsFundabias, FUNDABIAS_ENABLED as _BS_FUNDABIAS_ON } from './js/biasForecasters.js';
+import { buildBiasRecord as _beBuild, marketView as _beMarket } from './js/biasEngine.js';   // bias engine v1 (plans/BIAS_ENGINE_SPEC.md)
+import { biasEngine as _bsBiasEngine, h4Trend as _bsH4Trend, deskRating as _bsDeskRating, deskCcy as _bsDeskCcy, maxSignals as _bsMaxSignals, surpriseRule as _bsSurpriseRule, fundabias as _bsFundabias, FUNDABIAS_ENABLED as _BS_FUNDABIAS_ON } from './js/biasForecasters.js';
 import { scoreTrack as _dlScoreTrack } from './js/directionScore.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
 import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
@@ -29865,6 +29866,7 @@ app.get('/api/direction-ledger', async (req, res) => {
 //   <D>_base.json  first tick in [07:00, 09:00) London: B0 + surprise-rule + h4-trend rows, 07:00 anchors, sigma_day
 //   <D>_desk.json  first tick after the eligible desk book exists (desk_run_elig_<D>, finished before 08:00), before 10:00
 //   <D>_max.json   first tick in [16:05, 20:00) London: Max's first posted side per instrument (instrument/side/time/style only)
+//   <D>_engine.json first tick after the stored bias-engine issue exists (bias_engine_<D>), before 10:00 (prereg amendment A3)
 //   out/<D>_<target>.json  once the target's end price exists (d21 after 21:05; n07 / d5 the mornings after)
 // Only today's London date is ever issued and only inside its window, so a missed window is a gap (no back-issue);
 // an existing key is never overwritten. A source that fails writes no rows for its models and says why in external_status.
@@ -29954,6 +29956,20 @@ async function _bsIssueMax(date) {
   const views = records ? _bsMaxSignals(records, date, { insts }) : [];
   await _bsPutOnce(key, _bsIssue({ date, source: 'max', views, baselines: _bsBaselines, sigma, issuedAt: new Date().toISOString(), code: _bsCode(), externalStatus: status, insts }));
 }
+// <D>_engine.json (prereg amendment A3): the bias engine's stored morning issue (KV bias_engine_<D>, written 07:00-07:30
+// London by _biasEngineTick), first tick after it exists and before 10:00. A live (unstored) read is never a row.
+async function _bsIssueEngine(date) {
+  const key = `${_BS_PREFIX}${date}_engine.json`;
+  if (_bsDone.has(key)) return;
+  let rec = null;
+  try { const raw = await kv.get(_BE_KEY(date)); rec = raw ? JSON.parse(raw) : null; } catch { rec = null; }
+  if (!rec?.markets || rec.date !== date) return;                 // no stored issue yet: try again until 10:00
+  const base = await _r2GetJSON(`${_BS_PREFIX}${date}_base.json`).catch(() => null);
+  const insts = base ? Object.keys(base.anchors_0700 ?? {}) : Object.keys(_BS_INSTRUMENTS);
+  const sigma = base ? Object.fromEntries(base.forecasts.filter(f => f.model_id === 'B0').map(f => [f.inst, f.sigma_day])) : await _bsSigma(date);
+  await _bsPutOnce(key, _bsIssue({ date, source: 'engine', views: _bsBiasEngine(rec, { knowableMs: Date.parse(rec.asOf), insts }), baselines: _bsBaselines, sigma,
+    issuedAt: new Date().toISOString(), code: _bsCode(), externalStatus: { engine: 'ok', engine_as_of: rec.asOf, engine_version: rec.version, weights: rec.weights }, insts }));
+}
 async function _biasScoreboardTick() {
   if (!_r2Ok() || !process.env.OANDA_KEY) return;
   const now = Date.now(), date = _dpLondonDate(now);
@@ -29961,9 +29977,10 @@ async function _biasScoreboardTick() {
     if (now >= _bsLondonMs(date, 7) + 60_000 && now < _bsLondonMs(date, 9)) await _bsIssueBase(date);
     if (now >= _bsLondonMs(date, 7) && now < _bsLondonMs(date, 10)) await _bsIssueDesk(date);
     if (now >= _bsLondonMs(date, 16, 5) && now < _bsLondonMs(date, 20)) await _bsIssueMax(date);
+    if (now >= _bsLondonMs(date, 7) && now < _bsLondonMs(date, 10)) await _bsIssueEngine(date);
   }
   // resolve: issue records from the last ~15 days with an unresolved target
-  const keys = (await _r2ListKeys(_BS_PREFIX)).filter(k => /sameday\/\d{4}-\d{2}-\d{2}_(base|desk|max)\.json$/.test(k));
+  const keys = (await _r2ListKeys(_BS_PREFIX)).filter(k => /sameday\/\d{4}-\d{2}-\d{2}_(base|desk|max|engine)\.json$/.test(k));
   const dates = [...new Set(keys.map(k => k.match(/(\d{4}-\d{2}-\d{2})_/)[1]))].sort().slice(-15);
   for (const d of dates) {
     for (const t of _BS_TARGETS) {
@@ -29972,7 +29989,7 @@ async function _biasScoreboardTick() {
       if (await _r2GetJSON(ok).catch(() => null)) { _bsDone.add(ok); continue; }
       // every source window for D must be closed before D is resolved, so no record can arrive after its outcome
       if (now < _bsLondonMs(d, 20)) continue;
-      const recs = (await Promise.all(['base', 'desk', 'max'].map(s => _r2GetJSON(`${_BS_PREFIX}${d}_${s}.json`).catch(() => null)))).filter(Boolean);
+      const recs = (await Promise.all(['base', 'desk', 'max', 'engine'].map(s => _r2GetJSON(`${_BS_PREFIX}${d}_${s}.json`).catch(() => null)))).filter(Boolean);
       if (!recs.length) continue;
       let fetchErr = false;                                       // a feed error is not a missing price: retry next tick
       const o = await _bsOutcome(recs, t, (inst, ms) => _bsMid(inst, ms).catch(() => { fetchErr = true; return null; }), { now, resolvedAt: new Date().toISOString() });
@@ -29983,11 +30000,11 @@ async function _biasScoreboardTick() {
 svcInterval('biasScoreboard', () => _biasScoreboardTick().catch(e => console.error('[bias-scoreboard]', e.message)), 5 * 60_000);
 async function _bsRoute(req, res) {
   const all = await _r2ListKeys(_BS_PREFIX);
-  const issues = all.filter(k => /sameday\/\d{4}-\d{2}-\d{2}_(base|desk|max)\.json$/.test(k)).sort(), outKeys = all.filter(k => /sameday\/out\//.test(k)).sort();
+  const issues = all.filter(k => /sameday\/\d{4}-\d{2}-\d{2}_(base|desk|max|engine)\.json$/.test(k)).sort(), outKeys = all.filter(k => /sameday\/out\//.test(k)).sort();
   const date = String(req.query.date || '');
   if (date) {
     const recs = {}, outs = {};
-    for (const s of ['base', 'desk', 'max']) recs[s] = await _r2GetJSON(`${_BS_PREFIX}${date}_${s}.json`).catch(() => null);
+    for (const s of ['base', 'desk', 'max', 'engine']) recs[s] = await _r2GetJSON(`${_BS_PREFIX}${date}_${s}.json`).catch(() => null);
     for (const t of _BS_TARGETS) outs[t] = await _r2GetJSON(`${_BS_PREFIX}out/${date}_${t}.json`).catch(() => null);
     return res.json({ ok: true, prereg: 'forge/BIAS_SCOREBOARD_PREREG.md', records: recs, outcomes: outs });
   }
@@ -29998,6 +30015,157 @@ async function _bsRoute(req, res) {
     outcomes: outKeys.length, note: 'interim, not judged: judged at 60 and 120 shared days by scripts/bias-scoreboard/score.mjs',
     summary: req.query.summary === '1' ? _bsSummarise(await load(issues.slice(-400)), await load(outKeys.slice(-1200))) : 'add &summary=1' });
 }
+
+// ── Bias engine (plans/BIAS_ENGINE_SPEC.md; logic in js/biasEngine.js, pure) ─────────────────────────────────────────
+// A rule-based macro checklist for every market: the eight currencies, the risk score, all 28 crosses and the assets.
+// Issued once per London weekday between 07:00 and 07:30 (after Asia), written once to KV bias_engine_<date> with an
+// index bias_engine_index; never overwritten, never back-issued (a missed window is a gap). Inputs are the stores the
+// routes already read, called in-process (no HTTP to itself): /api/cb-expectations (KV cb_rate_futures_v1 + policy
+// rates), /api/macro-scorecard (_buildMacroScorecard: factors and cbSentiment), /api/rate-diff (KV rate_diff_v1),
+// /api/real-yield (KV real_yield_v1), /api/cot-state (_buildCotState), CBOE VIX / VIX3M files (_cboeCsv; FRED cache as
+// fallback), FRED cache for HY OAS and the 10y TIPS yield, OANDA D/H4 candles (_fetchOandaCandles). Each driver carries
+// its asOf and source; the engine drops anything dated after the issue time. Scored forward as forecaster `bias-engine`
+// on the bias scoreboard (forge/BIAS_SCOREBOARD_PREREG.md amendment A3). NOT a trade signal.
+const _BE_KEY = date => `bias_engine_${date}`, _BE_INDEX_KV = 'bias_engine_index';
+const _BE_OANDA = { EURUSD: 'EUR_USD', GBPUSD: 'GBP_USD', AUDUSD: 'AUD_USD', NZDUSD: 'NZD_USD', USDJPY: 'USD_JPY', USDCAD: 'USD_CAD', USDCHF: 'USD_CHF',
+  GOLD: 'XAU_USD', SILVER: 'XAG_USD', WTI: 'WTICO_USD', COPPER: 'XCU_USD', NQ: 'NAS100_USD', SPX500: 'SPX500_USD', US30: 'US30_USD', US2000: 'US2000_USD', DE30: 'DE30_EUR', UK100: 'UK100_GBP' };
+const _BE_COT_CCY = { EURUSD: 'EUR', GBPUSD: 'GBP', AUDUSD: 'AUD', NZDUSD: 'NZD', USDJPY: 'JPY', USDCAD: 'CAD', USDCHF: 'CHF' };
+const _beDayEnd = d => `${d}T23:59:00.000Z`;
+/** Everything the engine reads, as of `issueMs`. Each source that fails is left out and named in `status`. */
+async function _beGather(issueMs) {
+  const asOf = new Date(issueMs).toISOString(), issueDate = _dpLondonDate(issueMs), status = {}, inputs = { asOf };
+  const step = async (name, fn) => { try { await fn(); status[name] = status[name] ?? 'ok'; } catch (e) { status[name] = `error: ${e.message}`; } };
+  const kvJson = async k => { const raw = await kv.get(k); if (!raw) return null; const p = JSON.parse(raw); return p?.data ?? p; };
+  await Promise.all([
+    step('policy', async () => {   // /api/cb-expectations: the priced change over the week at ~6 months (3 / 12 as fallbacks)
+      const payload = await kvJson('cb_rate_futures_v1');
+      if (!payload?.banks) { status.policy = 'no futures pull'; return; }
+      const pr = await _policyRatesNow().catch(() => ({ rates: {} }));
+      const ex = _cbExpect(payload, Object.fromEntries(Object.entries(pr.rates ?? {}).map(([k, v]) => [k, v.rate])), issueMs);
+      inputs.policy = {};
+      for (const [c, b] of Object.entries(ex.banks ?? {})) {
+        const h = ['m6', 'm3', 'm12'].find(k => Number.isFinite(b[k]?.weekBp));
+        if (h) inputs.policy[c] = { weekBp: b[h].weekBp, horizon: h.slice(1) + 'm', asOf: ex.asOf, source: `/api/cb-expectations (${b.source})` };
+      }
+    }),
+    step('scorecard', async () => {   // /api/macro-scorecard: data momentum (growth, inflation, labour, demand; rates excluded) and cbSentiment
+      const sc = await _buildMacroScorecard();
+      inputs.data = {}; inputs.stance = {};
+      for (const r of sc.ranked ?? []) {
+        const fs = ['growth', 'inflation', 'labour', 'demand'].map(k => r.factors?.[k]).filter(f => Number.isFinite(f?.score));
+        if (fs.length < 2) continue;
+        const dims = fs.flatMap(f => f.dims), dates = dims.map(d => r.asOf?.[d]).filter(x => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}/.test(x)).sort();
+        inputs.data[r.ccy] = { score: fs.reduce((s, f) => s + f.score, 0) / fs.length, asOf: dates.length ? _beDayEnd(dates.at(-1).slice(0, 10)) : sc.generatedAt, source: '/api/macro-scorecard', factors: fs.length };
+      }
+      for (const [c, v] of Object.entries(sc.cbSentiment ?? {})) if (Number.isFinite(v?.score)) inputs.stance[c] = { score: v.score, meetingDate: v.meetingDate, asOf: _beDayEnd(v.meetingDate), source: '/api/macro-scorecard cbSentiment' };
+    }),
+    step('rates', async () => {   // /api/rate-diff
+      const p = await kvJson(_RATE_DIFF_KV); inputs.rates = {};
+      for (const [c, v] of Object.entries(p?.byCcy ?? {})) if (v?.latestDate) inputs.rates[c] = { level: v.latestRate, z: v.z, asOf: _beDayEnd(v.latestDate), source: '/api/rate-diff' };
+    }),
+    step('realYield', async () => {   // /api/real-yield
+      const p = await kvJson(_REAL_YIELD_KV); inputs.realYield = {};
+      for (const [c, v] of Object.entries(p?.byCcy ?? {})) if (v?.latestDate && Number.isFinite(v.latestReal)) inputs.realYield[c] = { level: v.latestReal, z: v.z, asOf: _beDayEnd(v.latestDate), source: '/api/real-yield' };
+    }),
+    step('usReal', async () => {   // FRED DFII10 cache (fredhistory_series_tips), closes dated before the issue date
+      const pts = JSON.parse((await kv.get('fredhistory_series_tips')) || '[]').filter(p => p.date < issueDate && Number.isFinite(p.value));
+      if (pts.length < 21) { status.usReal = 'too few TIPS points'; return; }
+      inputs.usReal = { level: pts.at(-1).value, chg20bp: Math.round((pts.at(-1).value - pts.at(-21).value) * 100), asOf: _beDayEnd(pts.at(-1).date), source: 'FRED DFII10 (fredhistory cache)' };
+    }),
+    step('cot', async () => {   // /api/cot-state: currencies in "long the currency" terms, assets in their own
+      const st = await _buildCotState(); inputs.cot = {};
+      for (const [inst, v] of Object.entries(st.instruments ?? {})) {
+        if (!Number.isFinite(v?.pct) || !v.reportDate) continue;
+        const rel = new Date(Date.parse(`${v.reportDate}T20:30:00Z`) + 3 * 864e5).toISOString();   // Friday release, after the Tuesday report
+        const ccy = _BE_COT_CCY[inst], name = ccy ?? inst;
+        inputs.cot[name] = { pct: ccy ? _cotPctToCcy(v.sym, v.pct) : v.pct, share: ccy ? _cotToCcy(v.sym, v.share) : v.share, asOf: rel, source: `/api/cot-state (${v.sym}, report ${v.reportDate})` };
+      }
+    }),
+    step('risk', async () => {   // CBOE VIX / VIX3M daily files (FRED cache as fallback), HY OAS from the FRED cache
+      inputs.risk = {};
+      const before = xs => xs.filter(p => p.date < issueDate && Number.isFinite(p.value));
+      let vix = null, v3 = null;
+      try { [vix, v3] = await Promise.all([_cboeCsv('VIX'), _cboeCsv('VIX3M')]); status.vixSource = 'CBOE'; }
+      catch (e) { vix = JSON.parse((await kv.get('fredhistory_series_vix')) || '[]'); v3 = JSON.parse((await kv.get('fredhistory_series_vix3m')) || '[]'); status.vixSource = `FRED cache (CBOE: ${e.message})`; }
+      vix = before(vix ?? []); v3 = before(v3 ?? []);
+      if (vix.length) {
+        const yr = vix.slice(-252), last = vix.at(-1);
+        inputs.risk.vix = { level: last.value, pct1y: 100 * yr.filter(p => p.value <= last.value).length / yr.length, asOf: _beDayEnd(last.date), source: status.vixSource === 'CBOE' ? 'CBOE VIX daily' : 'FRED VIXCLS' };
+        const m = v3.find(p => p.date === last.date);
+        if (m?.value > 0) inputs.risk.vixTerm = { ratio: last.value / m.value, asOf: _beDayEnd(last.date), source: status.vixSource === 'CBOE' ? 'CBOE VIX / VIX3M daily' : 'FRED VIXCLS / VXVCLS' };
+      }
+      const hy = before(JSON.parse((await kv.get('fredhistory_series_hy')) || '[]'));
+      if (hy.length >= 21) inputs.risk.hy = { level: hy.at(-1).value, chg20bp: Math.round((hy.at(-1).value - hy.at(-21).value) * 100), asOf: _beDayEnd(hy.at(-1).date), source: 'FRED BAMLH0A0HYM2 (fredhistory cache)' };
+    }),
+    step('prices', async () => {   // OANDA D (London midnight) and H4 mid candles, complete bars only (the engine also cuts at the issue time)
+      inputs.prices = { d1: {}, h4: {} }; const errs = [];
+      const bars = xs => xs.map(b => ({ t: Date.parse(b.time), c: b.close, complete: b.complete }));
+      const names = Object.keys(_BE_OANDA);
+      for (let i = 0; i < names.length; i += 6) {   // six at a time: polite to OANDA
+        await Promise.all(names.slice(i, i + 6).map(async n => {
+          try { inputs.prices.d1[n] = bars(await _fetchOandaCandles(_BE_OANDA[n], 'D', 130)); } catch (e) { errs.push(`${n} D: ${e.message}`); }
+          try { inputs.prices.h4[n] = bars(await _fetchOandaCandles(_BE_OANDA[n], 'H4', 200)); } catch (e) { errs.push(`${n} H4: ${e.message}`); }
+        }));
+      }
+      if (errs.length) status.prices = `partial: ${errs.slice(0, 6).join('; ')}${errs.length > 6 ? ` (+${errs.length - 6})` : ''}`;
+    }),
+  ]);
+  return { inputs, status };
+}
+async function _beCompute(issueMs) {
+  const { inputs, status } = await _beGather(issueMs);
+  return { ..._beBuild(inputs), date: _dpLondonDate(issueMs), issuedAt: new Date().toISOString(), inputsStatus: status, code: process.env.RAILWAY_GIT_COMMIT_SHA || null };
+}
+async function _beLoadIndex() { try { const raw = await kv.get(_BE_INDEX_KV); const p = raw ? JSON.parse(raw) : []; return Array.isArray(p) ? p : []; } catch { return []; } }
+let _beIssuing = false;
+const _beDone = new Set();
+async function _biasEngineTick() {
+  const now = Date.now(), date = _dpLondonDate(now);
+  if (!_bsIsWeekday(date) || now < _bsLondonMs(date, 7) || now >= _bsLondonMs(date, 7, 30) || _beDone.has(date) || _beIssuing) return;
+  _beIssuing = true;
+  try {
+    if (await kv.get(_BE_KEY(date))) { _beDone.add(date); return; }   // write-once
+    const rec = await _beCompute(now);
+    if (Date.now() >= _bsLondonMs(date, 7, 30)) { console.warn(`[bias-engine] ${date}: gather finished after 07:30, not stored`); return; }
+    await kv.put(_BE_KEY(date), JSON.stringify(rec));
+    const idx = (await _beLoadIndex()).filter(r => r.date !== date);
+    idx.push({ date, asOf: rec.asOf, version: rec.version, weights: rec.weights, gaps: rec.gaps.length,
+      currencies: Object.fromEntries(Object.entries(rec.currencies).map(([c, v]) => [c, { score: v.score, dir: v.dir, strength: v.strength, coverage: v.coverage }])) });
+    idx.sort((a, b) => (a.date < b.date ? -1 : 1));
+    await kv.put(_BE_INDEX_KV, JSON.stringify(idx.slice(-500)));
+    _beDone.add(date);
+    console.log(`[bias-engine] ${date} issued at ${rec.asOf}: ${rec.ranking.join(' > ')}; ${rec.gaps.length} gap(s)`);
+  } finally { _beIssuing = false; }
+}
+svcInterval('biasEngine', () => _biasEngineTick().catch(e => console.error('[bias-engine]', e.message)), 5 * 60_000);
+// GET /api/bias-engine            today's stored issue, or (none yet) a live read marked live: true and not stored
+// GET /api/bias-engine?date=D     the stored issue for D (404 when none: nothing is back-issued)
+// GET /api/bias-engine?market=X   one market (any cross of the eight, e.g. NZDCHF / CHFNZD, a currency, or an asset)
+// GET /api/bias-engine?index=1    the issue index (one row per stored day)
+let _beLive = { at: 0, rec: null };
+app.get('/api/bias-engine', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    if (req.query.index === '1') return res.json({ ok: true, index: await _beLoadIndex() });
+    const qd = String(req.query.date ?? ''), today = _dpLondonDate(Date.now());
+    if (qd && !/^\d{4}-\d{2}-\d{2}$/.test(qd)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+    let rec = null, live = false;
+    const raw = await kv.get(_BE_KEY(qd || today)).catch(() => null);
+    if (raw) rec = JSON.parse(raw);
+    else if (qd && qd !== today) return res.status(404).json({ ok: false, error: `no stored bias-engine issue for ${qd} (issues are written 07:00-07:30 London on weekdays and never back-issued)` });
+    else {
+      if (!_beLive.rec || Date.now() - _beLive.at > 10 * 60_000 || req.query.fresh === '1') _beLive = { at: Date.now(), rec: await _beCompute(Date.now()) };
+      rec = _beLive.rec; live = true;
+    }
+    const head = { ok: true, live, date: rec.date, asOf: rec.asOf, version: rec.version, weights: rec.weights, footnote: rec.footnote,
+      ...(live ? { note: 'live read: computed now, not stored and not scored (the stored issue is written 07:00-07:30 London on weekdays)' } : {}) };
+    if (req.query.market) {
+      const m = _beMarket(rec, req.query.market);
+      return m ? res.json({ ...head, market: m }) : res.status(404).json({ ok: false, error: `unknown market ${req.query.market}: any cross of USD EUR GBP JPY AUD NZD CAD CHF, a currency, or one of ${Object.keys(rec.markets).filter(k => !/^[A-Z]{6}$/.test(k)).join(', ')}` });
+    }
+    res.json({ ...rec, ...head });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 app.get('/api/hedging-forward', async (req, res) => {
   try {
