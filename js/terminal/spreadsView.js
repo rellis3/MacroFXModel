@@ -215,12 +215,14 @@ export function scatterDef(c, st) {
 }
 
 // ── mount ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-const ensureCss = (doc, id, href) => { if (doc.getElementById(id)) return; const l = doc.createElement('link'); l.id = id; l.rel = 'stylesheet'; l.href = href; doc.head.appendChild(l); };
+// literal hrefs (js/terminal/links.test.mjs allows a stylesheet under js/ and rejects a link built from a variable)
+const ensureSpCss = doc => { if (doc.getElementById('spCss')) return; const l = doc.createElement('link'); l.id = 'spCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/spreads.css'; doc.head.appendChild(l); };
+const ensureRpvCss = doc => { if (doc.getElementById('rpvCss')) return; const l = doc.createElement('link'); l.id = 'rpvCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/replay-viz.css'; doc.head.appendChild(l); };
 
 /** Mount the board into host. ctx: { getBundle(), go(target), win, doc }. Returns { destroy }. */
 export function mountSpreads(host, ctx) {
   const win = ctx.win ?? window, doc = ctx.doc ?? document;
-  ensureCss(doc, 'spCss', 'js/terminal/spreads.css');
+  ensureSpCss(doc);
   const store = () => { try { return win.localStorage ?? null; } catch { return null; } };
   const st = { view: 'ladder', group: 'all', sort: 'stretch', open: null, hw: '3y', px: 'rsp', py: 'spy', pop: 'ratio', pw: '3y' };
   try { Object.assign(st, JSON.parse(store()?.getItem(LS) ?? '{}')); } catch { /* private window */ }
@@ -242,7 +244,7 @@ export function mountSpreads(host, ctx) {
   };
   const play = async () => {
     if (!custom) return;
-    ensureCss(doc, 'rpvCss', 'js/terminal/replay-viz.css');
+    ensureRpvCss(doc);
     try { const m = await import('./replayPlayer.js'); m.openPlayer(scatterDef(custom, st), { doc, win, opener: host.querySelector('[data-play]') }); } catch (e) { host.querySelector('.sp-found-row')?.insertAdjacentHTML('beforebegin', `<p class="in-empty">The replay window could not open (${esc(e?.message ?? e)}).</p>`); }
   };
   const onClick = e => {
