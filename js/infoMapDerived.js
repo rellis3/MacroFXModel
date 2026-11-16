@@ -3648,12 +3648,28 @@ export const DERIVED = {
      "route": "/api/cboe-snapshots",
      "exists": true,
      "pack": null
+    },
+    {
+     "route": "/api/replay/smile",
+     "exists": true,
+     "pack": null
     }
    ],
-   "modules": [],
+   "modules": [
+    {
+     "file": "js/terminal/smileView.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/oiDrill.js",
+     "exists": true
+    }
+   ],
    "names": {
     "terminal": [
      "js/terminal/optionsView.js",
+     "js/terminal/smileView.js",
+     "js/terminal/terminalFeel.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/terrainPanel.js"
     ],
@@ -4629,6 +4645,7 @@ export const DERIVED = {
      "js/terminal/replayView.js",
      "js/terminal/replayViz.js",
      "js/terminal/sinceLast.js",
+     "js/terminal/smileView.js",
      "js/terminal/terminalFeel.js",
      "js/terminal/terminalTabs.js"
     ],
