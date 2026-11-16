@@ -1,0 +1,2425 @@
+{
+ "id": "vol-layer-features-confirm",
+ "seed": 20261116,
+ "B": 2000,
+ "window": [
+  "2023-01-02",
+  "2026-08-20"
+ ],
+ "warmup_from": "2022-10-07",
+ "sessions_scored": 949,
+ "sessions_complete": 942,
+ "sessions_by_year": {
+  "2023": 258,
+  "2024": 260,
+  "2025": 259,
+  "2026": 165
+ },
+ "share_by_pair_bucket_5m": {
+  "EURUSD": {
+   "pooled": [
+    0.6714,
+    0.6444,
+    0.6977
+   ],
+   "Asia 00-07": [
+    0.587,
+    0.5401,
+    0.6232
+   ],
+   "London open 07-10": [
+    0.5575,
+    0.5144,
+    0.5954
+   ],
+   "London mid 10-13": [
+    0.6005,
+    0.5544,
+    0.6471
+   ],
+   "Overlap 13-16": [
+    0.7469,
+    0.7236,
+    0.7685
+   ],
+   "NY afternoon 16-22": [
+    0.7296,
+    0.6886,
+    0.7644
+   ]
+  },
+  "GBPUSD": {
+   "pooled": [
+    0.6334,
+    0.6075,
+    0.6571
+   ],
+   "Asia 00-07": [
+    0.5952,
+    0.5455,
+    0.6374
+   ],
+   "London open 07-10": [
+    0.5265,
+    0.4916,
+    0.5582
+   ],
+   "London mid 10-13": [
+    0.5033,
+    0.4512,
+    0.558
+   ],
+   "Overlap 13-16": [
+    0.7206,
+    0.6893,
+    0.7474
+   ],
+   "NY afternoon 16-22": [
+    0.6987,
+    0.6755,
+    0.719
+   ]
+  },
+  "AUDUSD": {
+   "pooled": [
+    0.6248,
+    0.5529,
+    0.6836
+   ],
+   "Asia 00-07": [
+    0.4969,
+    0.4453,
+    0.5401
+   ],
+   "London open 07-10": [
+    0.5764,
+    0.5151,
+    0.6286
+   ],
+   "London mid 10-13": [
+    0.6163,
+    0.5258,
+    0.6928
+   ],
+   "Overlap 13-16": [
+    0.7373,
+    0.6679,
+    0.7924
+   ],
+   "NY afternoon 16-22": [
+    0.6499,
+    0.5359,
+    0.7469
+   ]
+  },
+  "NZDUSD": {
+   "pooled": [
+    0.679,
+    0.6394,
+    0.7118
+   ],
+   "Asia 00-07": [
+    0.5407,
+    0.4968,
+    0.5769
+   ],
+   "London open 07-10": [
+    0.6256,
+    0.5899,
+    0.6558
+   ],
+   "London mid 10-13": [
+    0.6741,
+    0.6259,
+    0.723
+   ],
+   "Overlap 13-16": [
+    0.8012,
+    0.7679,
+    0.8271
+   ],
+   "NY afternoon 16-22": [
+    0.704,
+    0.6468,
+    0.7509
+   ]
+  },
+  "USDCAD": {
+   "pooled": [
+    0.4565,
+    0.42,
+    0.4919
+   ],
+   "Asia 00-07": [
+    0.5429,
+    0.5072,
+    0.5812
+   ],
+   "London open 07-10": [
+    0.4775,
+    0.4471,
+    0.5066
+   ],
+   "London mid 10-13": [
+    0.4146,
+    0.3844,
+    0.4445
+   ],
+   "Overlap 13-16": [
+    0.4413,
+    0.3868,
+    0.4911
+   ],
+   "NY afternoon 16-22": [
+    0.4413,
+    0.4028,
+    0.4815
+   ]
+  },
+  "USDCHF": {
+   "pooled": [
+    0.51,
+    0.4587,
+    0.5601
+   ],
+   "Asia 00-07": [
+    0.4562,
+    0.393,
+    0.514
+   ],
+   "London open 07-10": [
+    0.3796,
+    0.3278,
+    0.4298
+   ],
+   "London mid 10-13": [
+    0.4271,
+    0.3788,
+    0.477
+   ],
+   "Overlap 13-16": [
+    0.6145,
+    0.5645,
+    0.6581
+   ],
+   "NY afternoon 16-22": [
+    0.5342,
+    0.4476,
+    0.6123
+   ]
+  },
+  "USDJPY": {
+   "pooled": [
+    0.2774,
+    0.2233,
+    0.3344
+   ],
+   "Asia 00-07": [
+    0.1827,
+    0.1393,
+    0.229
+   ],
+   "London open 07-10": [
+    0.1855,
+    0.1359,
+    0.2437
+   ],
+   "London mid 10-13": [
+    0.2385,
+    0.1852,
+    0.2953
+   ],
+   "Overlap 13-16": [
+    0.4195,
+    0.3502,
+    0.4912
+   ],
+   "NY afternoon 16-22": [
+    0.2924,
+    0.2161,
+    0.3743
+   ]
+  }
+ },
+ "absorption": {
+  "n_days": 945,
+  "all": {
+   "top1": 0.6676,
+   "npr": 2.1276,
+   "top1_shuffled": 0.149,
+   "npr_shuffled": 6.9946,
+   "pc1_angle_deg": 3.5353
+  },
+  "by_year": {
+   "2023": {
+    "top1": 0.6803,
+    "npr": 2.0707,
+    "top1_shuffled": 0.1498,
+    "npr_shuffled": 6.9936,
+    "pc1_angle_deg": 2.1566
+   },
+   "2024": {
+    "top1": 0.6507,
+    "npr": 2.2121,
+    "top1_shuffled": 0.1487,
+    "npr_shuffled": 6.9954,
+    "pc1_angle_deg": 4.1703
+   },
+   "2025": {
+    "top1": 0.6526,
+    "npr": 2.1947,
+    "top1_shuffled": 0.1485,
+    "npr_shuffled": 6.9948,
+    "pc1_angle_deg": 4.6183
+   },
+   "2026": {
+    "top1": 0.6983,
+    "npr": 1.9764,
+    "top1_shuffled": 0.1491,
+    "npr_shuffled": 6.9946,
+    "pc1_angle_deg": 2.4333
+   }
+  },
+  "top1_range": [
+   0.5523,
+   0.7441
+  ],
+  "angle_median": 2.9476
+ },
+ "joint_worst": {
+  "pairs": {
+   "EURUSD": {
+    "n_days": 928,
+    "abs_0.05": {
+     "observed": 6,
+     "shuffled_mean": 2.41,
+     "shuffled_97.5": 6.0,
+     "p": 0.061,
+     "bh": false
+    },
+    "same_dir_0.05": {
+     "observed": 3,
+     "shuffled_mean": 1.26,
+     "shuffled_97.5": 4.0,
+     "p": 0.263,
+     "bh": false
+    },
+    "abs_0.1": {
+     "observed": 18,
+     "shuffled_mean": 9.41,
+     "shuffled_97.5": 15.0,
+     "p": 0.005,
+     "bh": true
+    },
+    "same_dir_0.1": {
+     "observed": 10,
+     "shuffled_mean": 4.8,
+     "shuffled_97.5": 9.0,
+     "p": 0.041,
+     "bh": false
+    }
+   },
+   "GBPUSD": {
+    "n_days": 928,
+    "abs_0.05": {
+     "observed": 3,
+     "shuffled_mean": 2.34,
+     "shuffled_97.5": 6.0,
+     "p": 0.842,
+     "bh": false
+    },
+    "same_dir_0.05": {
+     "observed": 1,
+     "shuffled_mean": 1.2,
+     "shuffled_97.5": 4.0,
+     "p": 1.0,
+     "bh": false
+    },
+    "abs_0.1": {
+     "observed": 5,
+     "shuffled_mean": 9.13,
+     "shuffled_97.5": 15.0,
+     "p": 0.167,
+     "bh": false
+    },
+    "same_dir_0.1": {
+     "observed": 2,
+     "shuffled_mean": 4.65,
+     "shuffled_97.5": 9.0,
+     "p": 0.278,
+     "bh": false
+    }
+   },
+   "AUDUSD": {
+    "n_days": 928,
+    "abs_0.05": {
+     "observed": 5,
+     "shuffled_mean": 2.39,
+     "shuffled_97.5": 6.0,
+     "p": 0.181,
+     "bh": false
+    },
+    "same_dir_0.05": {
+     "observed": 2,
+     "shuffled_mean": 1.24,
+     "shuffled_97.5": 4.0,
+     "p": 0.69,
+     "bh": false
+    },
+    "abs_0.1": {
+     "observed": 15,
+     "shuffled_mean": 9.32,
+     "shuffled_97.5": 15.0,
+     "p": 0.073,
+     "bh": false
+    },
+    "same_dir_0.1": {
+     "observed": 3,
+     "shuffled_mean": 4.74,
+     "shuffled_97.5": 9.0,
+     "p": 0.567,
+     "bh": false
+    }
+   },
+   "NZDUSD": {
+    "n_days": 926,
+    "abs_0.05": {
+     "observed": 8,
+     "shuffled_mean": 2.44,
+     "shuffled_97.5": 6.0,
+     "p": 0.007,
+     "bh": true
+    },
+    "same_dir_0.05": {
+     "observed": 4,
+     "shuffled_mean": 1.24,
+     "shuffled_97.5": 4.0,
+     "p": 0.069,
+     "bh": false
+    },
+    "abs_0.1": {
+     "observed": 11,
+     "shuffled_mean": 9.31,
+     "shuffled_97.5": 15.0,
+     "p": 0.651,
+     "bh": false
+    },
+    "same_dir_0.1": {
+     "observed": 5,
+     "shuffled_mean": 4.73,
+     "shuffled_97.5": 9.0,
+     "p": 1.0,
+     "bh": false
+    }
+   },
+   "USDCAD": {
+    "n_days": 928,
+    "abs_0.05": {
+     "observed": 6,
+     "shuffled_mean": 2.38,
+     "shuffled_97.5": 5.0,
+     "p": 0.047,
+     "bh": false
+    },
+    "same_dir_0.05": {
+     "observed": 2,
+     "shuffled_mean": 1.23,
+     "shuffled_97.5": 4.0,
+     "p": 0.68,
+     "bh": false
+    },
+    "abs_0.1": {
+     "observed": 17,
+     "shuffled_mean": 9.29,
+     "shuffled_97.5": 15.0,
+     "p": 0.013,
+     "bh": true
+    },
+    "same_dir_0.1": {
+     "observed": 6,
+     "shuffled_mean": 4.74,
+     "shuffled_97.5": 9.0,
+     "p": 0.661,
+     "bh": false
+    }
+   },
+   "USDCHF": {
+    "n_days": 920,
+    "abs_0.05": {
+     "observed": 7,
+     "shuffled_mean": 2.24,
+     "shuffled_97.5": 5.0,
+     "p": 0.009,
+     "bh": true
+    },
+    "same_dir_0.05": {
+     "observed": 5,
+     "shuffled_mean": 1.11,
+     "shuffled_97.5": 3.0,
+     "p": 0.008,
+     "bh": true
+    },
+    "abs_0.1": {
+     "observed": 14,
+     "shuffled_mean": 9.26,
+     "shuffled_97.5": 15.0,
+     "p": 0.144,
+     "bh": false
+    },
+    "same_dir_0.1": {
+     "observed": 10,
+     "shuffled_mean": 4.51,
+     "shuffled_97.5": 9.0,
+     "p": 0.025,
+     "bh": true
+    }
+   },
+   "USDJPY": {
+    "n_days": 928,
+    "abs_0.05": {
+     "observed": 7,
+     "shuffled_mean": 2.35,
+     "shuffled_97.5": 5.0,
+     "p": 0.012,
+     "bh": true
+    },
+    "same_dir_0.05": {
+     "observed": 6,
+     "shuffled_mean": 1.22,
+     "shuffled_97.5": 4.0,
+     "p": 0.002,
+     "bh": true
+    },
+    "abs_0.1": {
+     "observed": 18,
+     "shuffled_mean": 9.28,
+     "shuffled_97.5": 15.0,
+     "p": 0.003,
+     "bh": true
+    },
+    "same_dir_0.1": {
+     "observed": 8,
+     "shuffled_mean": 4.75,
+     "shuffled_97.5": 9.0,
+     "p": 0.201,
+     "bh": false
+    }
+   }
+  },
+  "bh_pass": 9,
+  "chance": {
+   "tests": 28,
+   "passes": 11,
+   "alpha": 0.05,
+   "expected": 1.4,
+   "pAtLeastObserved": 0.0
+  }
+ },
+ "proxy_15m": {
+  "share": {
+   "EURUSD": {
+    "Asia 00-07": {
+     "2023": 0.5238,
+     "2024": 0.5101,
+     "2025": 0.6461,
+     "2026": 0.7599,
+     "all": 0.6104
+    },
+    "London open 07-10": {
+     "2023": 0.4983,
+     "2024": 0.4447,
+     "2025": 0.6284,
+     "2026": 0.7378,
+     "all": 0.5561
+    },
+    "London mid 10-13": {
+     "2023": 0.5102,
+     "2024": 0.5272,
+     "2025": 0.6182,
+     "2026": 0.7937,
+     "all": 0.5949
+    },
+    "Overlap 13-16": {
+     "2023": 0.7308,
+     "2024": 0.7256,
+     "2025": 0.7519,
+     "2026": 0.8,
+     "all": 0.7434
+    },
+    "NY afternoon 16-22": {
+     "2023": 0.7443,
+     "2024": 0.7361,
+     "2025": 0.7334,
+     "2026": 0.8342,
+     "all": 0.7515
+    }
+   },
+   "GBPUSD": {
+    "Asia 00-07": {
+     "2023": 0.5628,
+     "2024": 0.4794,
+     "2025": 0.6713,
+     "2026": 0.7686,
+     "all": 0.6139
+    },
+    "London open 07-10": {
+     "2023": 0.5256,
+     "2024": 0.4111,
+     "2025": 0.5431,
+     "2026": 0.6627,
+     "all": 0.5239
+    },
+    "London mid 10-13": {
+     "2023": 0.4568,
+     "2024": 0.4194,
+     "2025": 0.4941,
+     "2026": 0.6892,
+     "all": 0.4934
+    },
+    "Overlap 13-16": {
+     "2023": 0.7619,
+     "2024": 0.6958,
+     "2025": 0.6787,
+     "2026": 0.72,
+     "all": 0.7216
+    },
+    "NY afternoon 16-22": {
+     "2023": 0.7099,
+     "2024": 0.6814,
+     "2025": 0.7239,
+     "2026": 0.7714,
+     "all": 0.718
+    }
+   },
+   "AUDUSD": {
+    "Asia 00-07": {
+     "2023": 0.5551,
+     "2024": 0.4319,
+     "2025": 0.4542,
+     "2026": 0.5524,
+     "all": 0.4971
+    },
+    "London open 07-10": {
+     "2023": 0.6703,
+     "2024": 0.4931,
+     "2025": 0.4985,
+     "2026": 0.6665,
+     "all": 0.5854
+    },
+    "London mid 10-13": {
+     "2023": 0.6484,
+     "2024": 0.5987,
+     "2025": 0.4832,
+     "2026": 0.7561,
+     "all": 0.6127
+    },
+    "Overlap 13-16": {
+     "2023": 0.8041,
+     "2024": 0.7295,
+     "2025": 0.5978,
+     "2026": 0.7195,
+     "all": 0.7287
+    },
+    "NY afternoon 16-22": {
+     "2023": 0.7798,
+     "2024": 0.6907,
+     "2025": 0.4765,
+     "2026": 0.774,
+     "all": 0.662
+    }
+   },
+   "NZDUSD": {
+    "Asia 00-07": {
+     "2023": 0.5804,
+     "2024": 0.4645,
+     "2025": 0.5351,
+     "2026": 0.6229,
+     "all": 0.5454
+    },
+    "London open 07-10": {
+     "2023": 0.6431,
+     "2024": 0.5316,
+     "2025": 0.6188,
+     "2026": 0.7311,
+     "all": 0.6274
+    },
+    "London mid 10-13": {
+     "2023": 0.6318,
+     "2024": 0.6625,
+     "2025": 0.6635,
+     "2026": 0.7896,
+     "all": 0.6758
+    },
+    "Overlap 13-16": {
+     "2023": 0.8368,
+     "2024": 0.8065,
+     "2025": 0.7293,
+     "2026": 0.8044,
+     "all": 0.8024
+    },
+    "NY afternoon 16-22": {
+     "2023": 0.7327,
+     "2024": 0.7303,
+     "2025": 0.6528,
+     "2026": 0.8201,
+     "all": 0.7246
+    }
+   },
+   "USDCAD": {
+    "Asia 00-07": {
+     "2023": 0.5942,
+     "2024": 0.5342,
+     "2025": 0.5539,
+     "2026": 0.6482,
+     "all": 0.5729
+    },
+    "London open 07-10": {
+     "2023": 0.5268,
+     "2024": 0.4468,
+     "2025": 0.4568,
+     "2026": 0.4914,
+     "all": 0.4873
+    },
+    "London mid 10-13": {
+     "2023": 0.403,
+     "2024": 0.4322,
+     "2025": 0.396,
+     "2026": 0.4088,
+     "all": 0.4075
+    },
+    "Overlap 13-16": {
+     "2023": 0.4312,
+     "2024": 0.4592,
+     "2025": 0.3415,
+     "2026": 0.5186,
+     "all": 0.424
+    },
+    "NY afternoon 16-22": {
+     "2023": 0.461,
+     "2024": 0.4911,
+     "2025": 0.3975,
+     "2026": 0.5348,
+     "all": 0.4499
+    }
+   },
+   "USDCHF": {
+    "Asia 00-07": {
+     "2023": 0.4686,
+     "2024": 0.3092,
+     "2025": 0.4615,
+     "2026": 0.6552,
+     "all": 0.4606
+    },
+    "London open 07-10": {
+     "2023": 0.3966,
+     "2024": 0.2217,
+     "2025": 0.4254,
+     "2026": 0.563,
+     "all": 0.3811
+    },
+    "London mid 10-13": {
+     "2023": 0.3782,
+     "2024": 0.3509,
+     "2025": 0.4186,
+     "2026": 0.6419,
+     "all": 0.4289
+    },
+    "Overlap 13-16": {
+     "2023": 0.6535,
+     "2024": 0.5843,
+     "2025": 0.5434,
+     "2026": 0.7016,
+     "all": 0.6151
+    },
+    "NY afternoon 16-22": {
+     "2023": 0.588,
+     "2024": 0.512,
+     "2025": 0.4417,
+     "2026": 0.7349,
+     "all": 0.5469
+    }
+   },
+   "USDJPY": {
+    "Asia 00-07": {
+     "2023": 0.1615,
+     "2024": 0.1113,
+     "2025": 0.2588,
+     "2026": 0.2475,
+     "all": 0.1789
+    },
+    "London open 07-10": {
+     "2023": 0.1795,
+     "2024": 0.076,
+     "2025": 0.2811,
+     "2026": 0.2763,
+     "all": 0.1801
+    },
+    "London mid 10-13": {
+     "2023": 0.1838,
+     "2024": 0.2129,
+     "2025": 0.2835,
+     "2026": 0.3423,
+     "all": 0.2431
+    },
+    "Overlap 13-16": {
+     "2023": 0.5151,
+     "2024": 0.3479,
+     "2025": 0.3922,
+     "2026": 0.392,
+     "all": 0.4205
+    },
+    "NY afternoon 16-22": {
+     "2023": 0.3177,
+     "2024": 0.2527,
+     "2025": 0.2564,
+     "2026": 0.4306,
+     "all": 0.2909
+    }
+   }
+  },
+  "tod_15m": [
+   0.182,
+   0.1492,
+   0.2168
+  ],
+  "tod_15m_per_pair": {
+   "EURUSD": 0.133,
+   "GBPUSD": 0.1077,
+   "AUDUSD": 0.2316,
+   "NZDUSD": 0.257,
+   "USDCAD": 0.1489,
+   "USDCHF": 0.1545,
+   "USDJPY": 0.2416
+  }
+ },
+ "disaggregation": {
+  "cells": [
+   {
+    "family": "TOD per pair",
+    "cell": "EURUSD",
+    "est": 0.1599,
+    "ci": [
+     0.1242,
+     0.2073
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "TOD per pair",
+    "cell": "GBPUSD",
+    "est": 0.1255,
+    "ci": [
+     0.0749,
+     0.1769
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "TOD per pair",
+    "cell": "AUDUSD",
+    "est": 0.2405,
+    "ci": [
+     0.1971,
+     0.2787
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "TOD per pair",
+    "cell": "NZDUSD",
+    "est": 0.2605,
+    "ci": [
+     0.23,
+     0.2928
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "TOD per pair",
+    "cell": "USDCAD",
+    "est": 0.1016,
+    "ci": [
+     0.0506,
+     0.1572
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "TOD per pair",
+    "cell": "USDCHF",
+    "est": 0.1582,
+    "ci": [
+     0.1122,
+     0.217
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "TOD per pair",
+    "cell": "USDJPY",
+    "est": 0.2368,
+    "ci": [
+     0.1801,
+     0.2918
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "EURUSD Asia 00-07",
+    "est": -0.0844,
+    "ci": [
+     -0.1219,
+     -0.0571
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "EURUSD London open 07-10",
+    "est": -0.1138,
+    "ci": [
+     -0.1457,
+     -0.0866
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "EURUSD London mid 10-13",
+    "est": -0.0709,
+    "ci": [
+     -0.1045,
+     -0.04
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "EURUSD Overlap 13-16",
+    "est": 0.0755,
+    "ci": [
+     0.0606,
+     0.0899
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "EURUSD NY afternoon 16-22",
+    "est": 0.0583,
+    "ci": [
+     0.0345,
+     0.0818
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "GBPUSD Asia 00-07",
+    "est": -0.0382,
+    "ci": [
+     -0.0718,
+     -0.0081
+    ],
+    "p": 0.011,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "GBPUSD London open 07-10",
+    "est": -0.1068,
+    "ci": [
+     -0.1259,
+     -0.0888
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "GBPUSD London mid 10-13",
+    "est": -0.13,
+    "ci": [
+     -0.1712,
+     -0.0877
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "GBPUSD Overlap 13-16",
+    "est": 0.0873,
+    "ci": [
+     0.0643,
+     0.1073
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "GBPUSD NY afternoon 16-22",
+    "est": 0.0654,
+    "ci": [
+     0.0517,
+     0.0796
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "AUDUSD Asia 00-07",
+    "est": -0.128,
+    "ci": [
+     -0.1613,
+     -0.0901
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "AUDUSD London open 07-10",
+    "est": -0.0485,
+    "ci": [
+     -0.0754,
+     -0.0214
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "AUDUSD London mid 10-13",
+    "est": -0.0085,
+    "ci": [
+     -0.05,
+     0.0328
+    ],
+    "p": 0.648,
+    "bh": false
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "AUDUSD Overlap 13-16",
+    "est": 0.1125,
+    "ci": [
+     0.0897,
+     0.1318
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "AUDUSD NY afternoon 16-22",
+    "est": 0.0251,
+    "ci": [
+     -0.0252,
+     0.0747
+    ],
+    "p": 0.355,
+    "bh": false
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "NZDUSD Asia 00-07",
+    "est": -0.1383,
+    "ci": [
+     -0.1609,
+     -0.1171
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "NZDUSD London open 07-10",
+    "est": -0.0534,
+    "ci": [
+     -0.0747,
+     -0.0337
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "NZDUSD London mid 10-13",
+    "est": -0.0049,
+    "ci": [
+     -0.0423,
+     0.0313
+    ],
+    "p": 0.742,
+    "bh": false
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "NZDUSD Overlap 13-16",
+    "est": 0.1222,
+    "ci": [
+     0.1051,
+     0.1375
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "NZDUSD NY afternoon 16-22",
+    "est": 0.025,
+    "ci": [
+     -0.0061,
+     0.056
+    ],
+    "p": 0.112,
+    "bh": false
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "USDCAD Asia 00-07",
+    "est": 0.0864,
+    "ci": [
+     0.0507,
+     0.1247
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "USDCAD London open 07-10",
+    "est": 0.021,
+    "ci": [
+     0.0001,
+     0.0398
+    ],
+    "p": 0.05,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "USDCAD London mid 10-13",
+    "est": -0.0418,
+    "ci": [
+     -0.0694,
+     -0.0176
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "USDCAD Overlap 13-16",
+    "est": -0.0152,
+    "ci": [
+     -0.037,
+     0.0034
+    ],
+    "p": 0.107,
+    "bh": false
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "USDCAD NY afternoon 16-22",
+    "est": -0.0152,
+    "ci": [
+     -0.0294,
+     -0.0004
+    ],
+    "p": 0.047,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "USDCHF Asia 00-07",
+    "est": -0.0538,
+    "ci": [
+     -0.0955,
+     -0.0211
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "USDCHF London open 07-10",
+    "est": -0.1304,
+    "ci": [
+     -0.1691,
+     -0.0947
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "USDCHF London mid 10-13",
+    "est": -0.0829,
+    "ci": [
+     -0.1147,
+     -0.0535
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "USDCHF Overlap 13-16",
+    "est": 0.1044,
+    "ci": [
+     0.0823,
+     0.1256
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "USDCHF NY afternoon 16-22",
+    "est": 0.0242,
+    "ci": [
+     -0.0163,
+     0.0613
+    ],
+    "p": 0.243,
+    "bh": false
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "USDJPY Asia 00-07",
+    "est": -0.0947,
+    "ci": [
+     -0.1233,
+     -0.0658
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "USDJPY London open 07-10",
+    "est": -0.0919,
+    "ci": [
+     -0.1262,
+     -0.0579
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "USDJPY London mid 10-13",
+    "est": -0.0388,
+    "ci": [
+     -0.0703,
+     -0.0073
+    ],
+    "p": 0.023,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "USDJPY Overlap 13-16",
+    "est": 0.1421,
+    "ci": [
+     0.1109,
+     0.1731
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "share bucket minus pooled",
+    "cell": "USDJPY NY afternoon 16-22",
+    "est": 0.0151,
+    "ci": [
+     -0.0252,
+     0.0574
+    ],
+    "p": 0.447,
+    "bh": false
+   },
+   {
+    "family": "SIG per pair",
+    "cell": "EURUSD",
+    "est": 0.0478,
+    "ci": [
+     -0.0037,
+     0.1033
+    ],
+    "p": 0.074,
+    "bh": false
+   },
+   {
+    "family": "SIG per pair",
+    "cell": "GBPUSD",
+    "est": 0.0692,
+    "ci": [
+     0.0178,
+     0.1171
+    ],
+    "p": 0.009,
+    "bh": true
+   },
+   {
+    "family": "SIG per pair",
+    "cell": "AUDUSD",
+    "est": 0.0586,
+    "ci": [
+     -0.063,
+     0.1594
+    ],
+    "p": 0.309,
+    "bh": false
+   },
+   {
+    "family": "SIG per pair",
+    "cell": "NZDUSD",
+    "est": 0.0766,
+    "ci": [
+     0.0115,
+     0.1356
+    ],
+    "p": 0.019,
+    "bh": true
+   },
+   {
+    "family": "SIG per pair",
+    "cell": "USDCAD",
+    "est": 0.0188,
+    "ci": [
+     -0.038,
+     0.0778
+    ],
+    "p": 0.532,
+    "bh": false
+   },
+   {
+    "family": "SIG per pair",
+    "cell": "USDCHF",
+    "est": 0.0217,
+    "ci": [
+     -0.0595,
+     0.1028
+    ],
+    "p": 0.553,
+    "bh": false
+   },
+   {
+    "family": "SIG per pair",
+    "cell": "USDJPY",
+    "est": 0.0221,
+    "ci": [
+     -0.0702,
+     0.1154
+    ],
+    "p": 0.635,
+    "bh": false
+   },
+   {
+    "family": "FR per year",
+    "cell": "2023",
+    "est": -0.0724,
+    "ci": [
+     -0.1045,
+     -0.0351
+    ],
+    "p": 0.001,
+    "bh": true
+   },
+   {
+    "family": "FR per year",
+    "cell": "2024",
+    "est": -0.1218,
+    "ci": [
+     -0.1829,
+     -0.0542
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "FR per year",
+    "cell": "2025",
+    "est": -0.213,
+    "ci": [
+     -0.2875,
+     -0.068
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "FR per year",
+    "cell": "2026",
+    "est": -0.1742,
+    "ci": [
+     -0.1963,
+     -0.109
+    ],
+    "p": 0.001,
+    "bh": true
+   },
+   {
+    "family": "EQ 1h per year",
+    "cell": "2023",
+    "est": -0.0013,
+    "ci": [
+     -0.0194,
+     0.0196
+    ],
+    "p": 0.856,
+    "bh": false
+   },
+   {
+    "family": "EQ rest per year",
+    "cell": "2023",
+    "est": -0.0148,
+    "ci": [
+     -0.0455,
+     0.0173
+    ],
+    "p": 0.369,
+    "bh": false
+   },
+   {
+    "family": "EQ 1h per year",
+    "cell": "2024",
+    "est": 0.0102,
+    "ci": [
+     -0.0051,
+     0.0244
+    ],
+    "p": 0.182,
+    "bh": false
+   },
+   {
+    "family": "EQ rest per year",
+    "cell": "2024",
+    "est": -0.0044,
+    "ci": [
+     -0.0269,
+     0.017
+    ],
+    "p": 0.645,
+    "bh": false
+   },
+   {
+    "family": "EQ 1h per year",
+    "cell": "2025",
+    "est": 0.005,
+    "ci": [
+     -0.0129,
+     0.0209
+    ],
+    "p": 0.574,
+    "bh": false
+   },
+   {
+    "family": "EQ rest per year",
+    "cell": "2025",
+    "est": 0.0246,
+    "ci": [
+     -0.0282,
+     0.0675
+    ],
+    "p": 0.297,
+    "bh": false
+   },
+   {
+    "family": "EQ 1h per year",
+    "cell": "2026",
+    "est": -0.0149,
+    "ci": [
+     -0.0381,
+     0.0095
+    ],
+    "p": 0.174,
+    "bh": false
+   },
+   {
+    "family": "EQ rest per year",
+    "cell": "2026",
+    "est": -0.0338,
+    "ci": [
+     -0.0798,
+     0.0186
+    ],
+    "p": 0.179,
+    "bh": false
+   },
+   {
+    "family": "EQ 1h per pair",
+    "cell": "EURUSD",
+    "est": -0.0102,
+    "ci": [
+     -0.0277,
+     0.0062
+    ],
+    "p": 0.233,
+    "bh": false
+   },
+   {
+    "family": "EQ 1h per pair",
+    "cell": "GBPUSD",
+    "est": 0.0077,
+    "ci": [
+     -0.009,
+     0.0236
+    ],
+    "p": 0.376,
+    "bh": false
+   },
+   {
+    "family": "EQ 1h per pair",
+    "cell": "AUDUSD",
+    "est": -0.0015,
+    "ci": [
+     -0.017,
+     0.0126
+    ],
+    "p": 0.823,
+    "bh": false
+   },
+   {
+    "family": "EQ 1h per pair",
+    "cell": "NZDUSD",
+    "est": 0.0122,
+    "ci": [
+     -0.0001,
+     0.025
+    ],
+    "p": 0.056,
+    "bh": true
+   },
+   {
+    "family": "EQ 1h per pair",
+    "cell": "USDCAD",
+    "est": -0.0018,
+    "ci": [
+     -0.0161,
+     0.0136
+    ],
+    "p": 0.799,
+    "bh": false
+   },
+   {
+    "family": "EQ 1h per pair",
+    "cell": "USDCHF",
+    "est": 0.0111,
+    "ci": [
+     -0.005,
+     0.028
+    ],
+    "p": 0.187,
+    "bh": false
+   },
+   {
+    "family": "EQ 1h per pair",
+    "cell": "USDJPY",
+    "est": 0.005,
+    "ci": [
+     -0.0091,
+     0.0201
+    ],
+    "p": 0.46,
+    "bh": false
+   },
+   {
+    "family": "TOD 15m per pair",
+    "cell": "EURUSD",
+    "est": 0.133,
+    "ci": [
+     0.0991,
+     0.1797
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "TOD 15m per pair",
+    "cell": "GBPUSD",
+    "est": 0.1077,
+    "ci": [
+     0.0508,
+     0.1694
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "TOD 15m per pair",
+    "cell": "AUDUSD",
+    "est": 0.2316,
+    "ci": [
+     0.1904,
+     0.2716
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "TOD 15m per pair",
+    "cell": "NZDUSD",
+    "est": 0.257,
+    "ci": [
+     0.2231,
+     0.2936
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "TOD 15m per pair",
+    "cell": "USDCAD",
+    "est": 0.1489,
+    "ci": [
+     0.1036,
+     0.1974
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "TOD 15m per pair",
+    "cell": "USDCHF",
+    "est": 0.1545,
+    "ci": [
+     0.1034,
+     0.2228
+    ],
+    "p": 0.0,
+    "bh": true
+   },
+   {
+    "family": "TOD 15m per pair",
+    "cell": "USDJPY",
+    "est": 0.2416,
+    "ci": [
+     0.1794,
+     0.3047
+    ],
+    "p": 0.0,
+    "bh": true
+   }
+  ],
+  "bh_pass": 49,
+  "chance": {
+   "tests": 75,
+   "passes": 47,
+   "alpha": 0.05,
+   "expected": 3.75,
+   "pAtLeastObserved": 0.0
+  }
+ },
+ "cells_detail": {
+  "TOD": {
+   "est": 0.18327,
+   "per_pair": {
+    "EURUSD": 0.1599,
+    "GBPUSD": 0.1255,
+    "AUDUSD": 0.2405,
+    "NZDUSD": 0.2605,
+    "USDCAD": 0.1016,
+    "USDCHF": 0.1582,
+    "USDJPY": 0.2368
+   },
+   "neighbours": {
+    "beta10": 0.18249,
+    "beta40": 0.18306,
+    "edges -1h": 0.18039,
+    "edges +1h": 0.13599
+   },
+   "lag1": 0.18318,
+   "years": {
+    "2023": 0.22656,
+    "2024": 0.24245,
+    "2025": 0.12733,
+    "2026": 0.09258
+   },
+   "per_pair_ok": 7,
+   "mirror_wrong_day": {
+    "EURUSD": {
+     "oos_share": -0.6609,
+     "in_sample_r2": 0.0061
+    },
+    "GBPUSD": {
+     "oos_share": -0.6402,
+     "in_sample_r2": 0.0059
+    },
+    "AUDUSD": {
+     "oos_share": -0.633,
+     "in_sample_r2": 0.006
+    },
+    "NZDUSD": {
+     "oos_share": -0.6865,
+     "in_sample_r2": 0.0061
+    },
+    "USDCAD": {
+     "oos_share": -0.4597,
+     "in_sample_r2": 0.0061
+    },
+    "USDCHF": {
+     "oos_share": -0.526,
+     "in_sample_r2": 0.0059
+    },
+    "USDJPY": {
+     "oos_share": -0.2925,
+     "in_sample_r2": 0.0057
+    }
+   }
+  },
+  "SIG": {
+   "est": 0.04497,
+   "per_pair": {
+    "EURUSD": 0.0478,
+    "GBPUSD": 0.0692,
+    "AUDUSD": 0.0586,
+    "NZDUSD": 0.0766,
+    "USDCAD": 0.0188,
+    "USDCHF": 0.0217,
+    "USDJPY": 0.0221
+   },
+   "neighbours": {
+    "quartiles": 0.04852,
+    "quintiles": 0.04944,
+    "beta10": 0.04504,
+    "beta40": 0.04416
+   },
+   "lag1": 0.01845,
+   "years": {
+    "2023": 0.08772,
+    "2024": 0.06483,
+    "2025": 0.00211,
+    "2026": 0.05068
+   },
+   "per_pair_ok": 7,
+   "ladder": {
+    "window_3": {
+     "mean_of_7": [
+      0.5142,
+      0.5587,
+      0.5592
+     ],
+     "per_pair": {
+      "EURUSD": [
+       0.6367,
+       0.668,
+       0.6846
+      ],
+      "GBPUSD": [
+       0.5853,
+       0.6334,
+       0.6544
+      ],
+      "AUDUSD": [
+       0.5749,
+       0.639,
+       0.6335
+      ],
+      "NZDUSD": [
+       0.6202,
+       0.6901,
+       0.6968
+      ],
+      "USDCAD": [
+       0.4452,
+       0.448,
+       0.4641
+      ],
+      "USDCHF": [
+       0.4873,
+       0.5306,
+       0.509
+      ],
+      "USDJPY": [
+       0.2499,
+       0.3021,
+       0.272
+      ]
+     }
+    },
+    "window_5": {
+     "mean_of_7": [
+      0.5014,
+      0.539,
+      0.5514,
+      0.578,
+      0.5508
+     ],
+     "per_pair": {
+      "EURUSD": [
+       0.6222,
+       0.655,
+       0.6643,
+       0.681,
+       0.6855
+      ],
+      "GBPUSD": [
+       0.5641,
+       0.6093,
+       0.635,
+       0.6199,
+       0.6737
+      ],
+      "AUDUSD": [
+       0.5577,
+       0.6161,
+       0.608,
+       0.7002,
+       0.6061
+      ],
+      "NZDUSD": [
+       0.6054,
+       0.6472,
+       0.6981,
+       0.7243,
+       0.6744
+      ],
+      "USDCAD": [
+       0.4319,
+       0.4777,
+       0.4341,
+       0.4818,
+       0.4512
+      ],
+      "USDCHF": [
+       0.4691,
+       0.5129,
+       0.5248,
+       0.5709,
+       0.4808
+      ],
+      "USDJPY": [
+       0.259,
+       0.2549,
+       0.2956,
+       0.2681,
+       0.2839
+      ]
+     }
+    },
+    "trailing252_rank_thirds": {
+     "mean_of_7": [
+      0.5434,
+      0.5753,
+      0.5397
+     ],
+     "high_minus_low": -0.0038
+    }
+   },
+   "mirror_low_third": 0.5142
+  },
+  "FR": {
+   "est": -0.1498,
+   "raw": 0.066,
+   "raw_ci": [
+    0.0174,
+    0.1146
+   ],
+   "forward_map": 0.2174,
+   "rho_bottom": 0.5462,
+   "rho_top_raw": 0.6123,
+   "rho_top_corrected": 0.3964,
+   "rho_top_forward": 0.7637,
+   "delta": 2.6596,
+   "neighbours": {
+    "top2_vs_bottom2": -0.18903,
+    "top4_vs_bottom4": -0.12995
+   },
+   "lag1": -0.14108,
+   "lag1_ci": [
+    -0.2052,
+    -0.072
+   ],
+   "years": {
+    "2023": -0.07244,
+    "2024": -0.12183,
+    "2025": -0.21297,
+    "2026": -0.17416
+   },
+   "decile_ladder": [
+    {
+     "decile": 1,
+     "raw": 0.5392,
+     "corrected": 0.5392,
+     "forward": 0.5392
+    },
+    {
+     "decile": 2,
+     "raw": 0.5537,
+     "corrected": 0.5071,
+     "forward": 0.586
+    },
+    {
+     "decile": 3,
+     "raw": 0.5453,
+     "corrected": 0.4746,
+     "forward": 0.6122
+    },
+    {
+     "decile": 4,
+     "raw": 0.5767,
+     "corrected": 0.4794,
+     "forward": 0.6376
+    },
+    {
+     "decile": 5,
+     "raw": 0.5887,
+     "corrected": 0.4708,
+     "forward": 0.6578
+    },
+    {
+     "decile": 6,
+     "raw": 0.5802,
+     "corrected": 0.4427,
+     "forward": 0.6807
+    },
+    {
+     "decile": 7,
+     "raw": 0.5943,
+     "corrected": 0.4352,
+     "forward": 0.6997
+    },
+    {
+     "decile": 8,
+     "raw": 0.6154,
+     "corrected": 0.4259,
+     "forward": 0.7291
+    },
+    {
+     "decile": 9,
+     "raw": 0.6209,
+     "corrected": 0.3957,
+     "forward": 0.764
+    },
+    {
+     "decile": 10,
+     "raw": 0.6076,
+     "corrected": 0.3026,
+     "forward": 0.8474
+    }
+   ]
+  },
+  "EQ": {
+   "1h": {
+    "est": 0.00135,
+    "ci": [
+     -0.0072,
+     0.0096
+    ],
+    "ci90": [
+     -0.006,
+     0.0085
+    ],
+    "p_tost": 0.0,
+    "p_upper": 0.0,
+    "p_lower": 0.0,
+    "p_vs0": 0.781,
+    "dollar": [
+     -0.0016,
+     -0.0085,
+     0.0052
+    ],
+    "own": [
+     -0.0029,
+     -0.0077,
+     0.0024
+    ],
+    "mirror_all_big": [
+     -0.0022,
+     -0.0063,
+     0.0021
+    ],
+    "n_dollar": 26142,
+    "n_own": 20454,
+    "n_big": 59728,
+    "round_trip": 0.0365
+   },
+   "rest": {
+    "est": -0.00233,
+    "ci": [
+     -0.021,
+     0.0179
+    ],
+    "ci90": [
+     -0.0178,
+     0.014
+    ],
+    "p_tost": 0.0,
+    "p_upper": 0.0,
+    "p_lower": 0.0,
+    "p_vs0": 0.792,
+    "dollar": [
+     -0.0066,
+     -0.0214,
+     0.0073
+    ],
+    "own": [
+     -0.0042,
+     -0.0159,
+     0.0073
+    ],
+    "mirror_all_big": [
+     -0.0028,
+     -0.0118,
+     0.0048
+    ],
+    "n_dollar": 26096,
+    "n_own": 20540,
+    "n_big": 59739,
+    "round_trip": 0.0533
+   },
+   "p": 0.0,
+   "lag1": {
+    "1h": 0.00313,
+    "rest": 0.00738
+   },
+   "years": {
+    "2023": {
+     "1h": -0.00126,
+     "rest": -0.01483
+    },
+    "2024": {
+     "1h": 0.01022,
+     "rest": -0.00438
+    },
+    "2025": {
+     "1h": 0.00495,
+     "rest": 0.0246
+    },
+    "2026": {
+     "1h": -0.01487,
+     "rest": -0.03377
+    }
+   },
+   "stop_through_0.25": {
+    "dollar": 0.5716,
+    "own": 0.5759,
+    "all_big": 0.573
+   },
+   "neighbours": [
+    {
+     "h": 5,
+     "pct": 80,
+     "cut": 0.6,
+     "diff_1h": -0.00077,
+     "n_dollar": 166511,
+     "n_own": 137632
+    },
+    {
+     "h": 5,
+     "pct": 80,
+     "cut": 0.7,
+     "diff_1h": -0.0009,
+     "n_dollar": 147606,
+     "n_own": 119956
+    },
+    {
+     "h": 5,
+     "pct": 80,
+     "cut": 0.8,
+     "diff_1h": -0.00129,
+     "n_dollar": 125650,
+     "n_own": 100102
+    },
+    {
+     "h": 5,
+     "pct": 90,
+     "cut": 0.6,
+     "diff_1h": -0.00053,
+     "n_dollar": 85497,
+     "n_own": 72030
+    },
+    {
+     "h": 5,
+     "pct": 90,
+     "cut": 0.7,
+     "diff_1h": -0.00025,
+     "n_dollar": 75073,
+     "n_own": 62346
+    },
+    {
+     "h": 5,
+     "pct": 90,
+     "cut": 0.8,
+     "diff_1h": 7e-05,
+     "n_dollar": 63189,
+     "n_own": 51352
+    },
+    {
+     "h": 5,
+     "pct": 95,
+     "cut": 0.6,
+     "diff_1h": 0.00036,
+     "n_dollar": 44946,
+     "n_own": 38202
+    },
+    {
+     "h": 5,
+     "pct": 95,
+     "cut": 0.7,
+     "diff_1h": 0.00069,
+     "n_dollar": 39324,
+     "n_own": 33013
+    },
+    {
+     "h": 5,
+     "pct": 95,
+     "cut": 0.8,
+     "diff_1h": 0.00107,
+     "n_dollar": 33055,
+     "n_own": 27089
+    },
+    {
+     "h": 15,
+     "pct": 80,
+     "cut": 0.6,
+     "diff_1h": 0.00142,
+     "n_dollar": 56765,
+     "n_own": 44716
+    },
+    {
+     "h": 15,
+     "pct": 80,
+     "cut": 0.7,
+     "diff_1h": 0.00066,
+     "n_dollar": 50436,
+     "n_own": 38951
+    },
+    {
+     "h": 15,
+     "pct": 80,
+     "cut": 0.8,
+     "diff_1h": 0.00093,
+     "n_dollar": 42964,
+     "n_own": 32534
+    },
+    {
+     "h": 15,
+     "pct": 90,
+     "cut": 0.6,
+     "diff_1h": 0.00168,
+     "n_dollar": 29681,
+     "n_own": 23628
+    },
+    {
+     "h": 15,
+     "pct": 90,
+     "cut": 0.8,
+     "diff_1h": 0.00214,
+     "n_dollar": 22041,
+     "n_own": 16896
+    },
+    {
+     "h": 15,
+     "pct": 95,
+     "cut": 0.6,
+     "diff_1h": -0.00249,
+     "n_dollar": 15915,
+     "n_own": 12761
+    },
+    {
+     "h": 15,
+     "pct": 95,
+     "cut": 0.7,
+     "diff_1h": -0.00286,
+     "n_dollar": 13995,
+     "n_own": 11030
+    },
+    {
+     "h": 15,
+     "pct": 95,
+     "cut": 0.8,
+     "diff_1h": -0.00369,
+     "n_dollar": 11789,
+     "n_own": 9090
+    },
+    {
+     "h": 30,
+     "pct": 80,
+     "cut": 0.6,
+     "diff_1h": 0.0003,
+     "n_dollar": 28304,
+     "n_own": 22180
+    },
+    {
+     "h": 30,
+     "pct": 80,
+     "cut": 0.7,
+     "diff_1h": -0.00022,
+     "n_dollar": 25232,
+     "n_own": 19347
+    },
+    {
+     "h": 30,
+     "pct": 80,
+     "cut": 0.8,
+     "diff_1h": -0.0013,
+     "n_dollar": 21468,
+     "n_own": 16174
+    },
+    {
+     "h": 30,
+     "pct": 90,
+     "cut": 0.6,
+     "diff_1h": 0.0008,
+     "n_dollar": 15134,
+     "n_own": 12029
+    },
+    {
+     "h": 30,
+     "pct": 90,
+     "cut": 0.7,
+     "diff_1h": 0.00012,
+     "n_dollar": 13374,
+     "n_own": 10408
+    },
+    {
+     "h": 30,
+     "pct": 90,
+     "cut": 0.8,
+     "diff_1h": 0.00137,
+     "n_dollar": 11260,
+     "n_own": 8611
+    },
+    {
+     "h": 30,
+     "pct": 95,
+     "cut": 0.6,
+     "diff_1h": 0.00296,
+     "n_dollar": 8584,
+     "n_own": 6760
+    },
+    {
+     "h": 30,
+     "pct": 95,
+     "cut": 0.7,
+     "diff_1h": 0.0024,
+     "n_dollar": 7577,
+     "n_own": 5879
+    },
+    {
+     "h": 30,
+     "pct": 95,
+     "cut": 0.8,
+     "diff_1h": 0.00402,
+     "n_dollar": 6362,
+     "n_own": 4873
+    }
+   ]
+  }
+ },
+ "scored": [
+  {
+   "name": "TOD",
+   "n": 942,
+   "est": 0.1833,
+   "lo": 0.1548,
+   "hi": 0.2146,
+   "mde": 0.0509,
+   "mde_a05": 0.0427,
+   "bar": 0.1,
+   "p": 0.0,
+   "p_holm": 0.0,
+   "p_from_ci": 0.0,
+   "gate": {
+    "holm": true,
+    "bar": true,
+    "plateau": true,
+    "lag1": true,
+    "years": true,
+    "per_pair": true
+   },
+   "verdict": "validated",
+   "lag1": 0.1832,
+   "neighbours": {
+    "beta10": 0.1825,
+    "beta40": 0.1831,
+    "edges -1h": 0.1804,
+    "edges +1h": 0.136
+   },
+   "years": {
+    "2023": 0.2266,
+    "2024": 0.2425,
+    "2025": 0.1273,
+    "2026": 0.0926
+   },
+   "per_pair": {
+    "EURUSD": 0.1599,
+    "GBPUSD": 0.1255,
+    "AUDUSD": 0.2405,
+    "NZDUSD": 0.2605,
+    "USDCAD": 0.1016,
+    "USDCHF": 0.1582,
+    "USDJPY": 0.2368
+   }
+  },
+  {
+   "name": "SIG",
+   "n": 942,
+   "est": 0.045,
+   "lo": -0.0089,
+   "hi": 0.0956,
+   "mde": 0.089,
+   "mde_a05": 0.0747,
+   "bar": 0.1,
+   "p": 0.107,
+   "p_holm": 0.107,
+   "p_from_ci": 0.0916,
+   "gate": {
+    "holm": false,
+    "bar": false,
+    "plateau": true,
+    "lag1": false,
+    "years": true,
+    "per_pair": true
+   },
+   "verdict": "null",
+   "lag1": 0.0184,
+   "neighbours": {
+    "quartiles": 0.0485,
+    "quintiles": 0.0494,
+    "beta10": 0.045,
+    "beta40": 0.0442
+   },
+   "years": {
+    "2023": 0.0877,
+    "2024": 0.0648,
+    "2025": 0.0021,
+    "2026": 0.0507
+   },
+   "per_pair": {
+    "EURUSD": 0.0478,
+    "GBPUSD": 0.0692,
+    "AUDUSD": 0.0586,
+    "NZDUSD": 0.0766,
+    "USDCAD": 0.0188,
+    "USDCHF": 0.0217,
+    "USDJPY": 0.0221
+   }
+  },
+  {
+   "name": "FR",
+   "n": 942,
+   "est": -0.1498,
+   "lo": -0.2025,
+   "hi": -0.093,
+   "mde": 0.0933,
+   "mde_a05": 0.0783,
+   "bar": -0.05,
+   "p": 0.0,
+   "p_holm": 0.0,
+   "p_from_ci": 0.0,
+   "gate": {
+    "holm": true,
+    "bar": true,
+    "plateau": true,
+    "lag1": true,
+    "years": true,
+    "per_pair": true
+   },
+   "verdict": "validated",
+   "lag1": -0.1411,
+   "neighbours": {
+    "top2_vs_bottom2": -0.189,
+    "top4_vs_bottom4": -0.1299
+   },
+   "years": {
+    "2023": -0.0724,
+    "2024": -0.1218,
+    "2025": -0.213,
+    "2026": -0.1742
+   },
+   "per_pair": null
+  },
+  {
+   "name": "EQ",
+   "n": 942,
+   "horizons": {
+    "1h": {
+     "est": 0.00135,
+     "lo": -0.0072,
+     "hi": 0.0096,
+     "ci90": [
+      -0.006,
+      0.0085
+     ],
+     "margin": 0.018,
+     "p_tost": 0.0,
+     "min_margin_tost": 0.0151,
+     "inside": true,
+     "ci_wholly_outside": false
+    },
+    "rest": {
+     "est": -0.00233,
+     "lo": -0.021,
+     "hi": 0.0179,
+     "ci90": [
+      -0.0178,
+      0.014
+     ],
+     "margin": 0.042,
+     "p_tost": 0.0,
+     "min_margin_tost": 0.03496,
+     "inside": true,
+     "ci_wholly_outside": false
+    }
+   },
+   "p": 0.0,
+   "p_holm": 0.0,
+   "gate": {
+    "holm": true,
+    "plateau": true,
+    "lag1": true,
+    "years": true
+   },
+   "verdict": "validated",
+   "lag1": {
+    "1h": 0.00313,
+    "rest": 0.00738
+   },
+   "years": {
+    "2023": {
+     "1h": -0.00126,
+     "rest": -0.01483
+    },
+    "2024": {
+     "1h": 0.01022,
+     "rest": -0.00438
+    },
+    "2025": {
+     "1h": 0.00495,
+     "rest": 0.0246
+    },
+    "2026": {
+     "1h": -0.01487,
+     "rest": -0.03377
+    }
+   },
+   "neighbours_outside": [],
+   "est": 0.00135,
+   "lo": -0.0072,
+   "hi": 0.0096,
+   "mde": 0.0151
+  }
+ ],
+ "ranAt": "2026-11-16T18:01:32Z"
+}

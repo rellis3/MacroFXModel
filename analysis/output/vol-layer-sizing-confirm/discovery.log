@@ -1,0 +1,4 @@
+reproduction {'got': {'U': 0.263, 'F': 0.1524, 'F-U': -0.1106, 'MM-F': 0.1152, 'T20-F': -0.0013}, 'want': {'U': 0.263, 'F': 0.1524, 'F-U': -0.1106, 'MM-F': 0.1152, 'T20-F': -0.0013}, 'pass': True, 'rows': 54433, 'inst': 34}
+controls {'positive_F_minus_U': [-0.1265, -0.1715, -0.0961], 'positive_pass': True, 'null_F_minus_U': [0.1193, 0.0939, 0.1477], 'null_pass': True}
+mirror {'real': -0.1086, 'shuffle_mean': 0.0551, 'shuffle_p2.5': 0.0476, 'shuffle_min': 0.0451, 'share_below_real': 0.0, 'pass': True, 'n': 200}
+step0 True secs 65

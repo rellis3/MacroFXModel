@@ -61,7 +61,10 @@ PROVEN = {"vol-layer-rv5-increment": "vol-layer-rv5-increment", "vol-layer-react
           "vol-layer-round-numbers": "vol-layer-round-numbers", "round-break-follow": "round-break-follow",
           # the five scored cells of vol-layer-rule-a-confirm share one proof pack (scripts/vol-layer-rule-a-confirm/proof.py writes
           # analysis/output/vol-layer-rule-a-confirm/checks.json with one question per cell); the test still fails if that file is missing or any question is INVALID/INCOMPLETE
-          **{f"vol-layer-rule-a-confirm-{c}": "vol-layer-rule-a-confirm" for c in ("s1", "s2", "s3", "z1", "k1")}}
+          **{f"vol-layer-rule-a-confirm-{c}": "vol-layer-rule-a-confirm" for c in ("s1", "s2", "s3", "z1", "k1")},
+          **{f"vol-layer-sizing-confirm-{c}": "vol-layer-sizing-confirm" for c in ('a', 'b', 'c', 'e')},
+          **{f"vol-layer-feedback-confirm-{c}": "vol-layer-feedback-confirm" for c in ('persist', 'morning', 'qlike-plain', 'qlike-chosen', 'cov75')},
+          **{f"vol-layer-features-confirm-{c}": "vol-layer-features-confirm" for c in ('tod', 'sig', 'fr', 'eq')}}
 
 
 def test_banked_vol_layer_studies_have_passing_proofs():

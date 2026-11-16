@@ -1,0 +1,1672 @@
+{
+ "mode": "confirm",
+ "window": [
+  "2023-01-01",
+  "2026-08-20"
+ ],
+ "seed": 20261116,
+ "B": 2000,
+ "ranAt": "2026-11-16T17:39:23Z",
+ "controls": {
+  "positive_F_minus_U": [
+   -0.0881,
+   -0.1104,
+   -0.0699
+  ],
+  "positive_pass": true,
+  "null_F_minus_U": [
+   0.0964,
+   0.0781,
+   0.1177
+  ],
+  "null_pass": true
+ },
+ "mirror": {
+  "real": -0.0753,
+  "shuffle_mean": 0.048,
+  "shuffle_p2.5": 0.038,
+  "shuffle_min": 0.0354,
+  "share_below_real": 0.0,
+  "pass": true,
+  "n": 200
+ },
+ "rows": 32000,
+ "inst": 34,
+ "months": 44,
+ "verdicts": {
+  "a": {
+   "verdict": "VALIDATED",
+   "p_ok": true,
+   "gates": {
+    "plateau": true,
+    "mirror": true,
+    "lag": true,
+    "years_n": 4,
+    "years": true
+   }
+  },
+  "b": {
+   "verdict": "VALIDATED",
+   "p_ok": true,
+   "gates": {
+    "lag": true,
+    "years": true,
+    "years_n": 4
+   }
+  },
+  "c": {
+   "verdict": "VALIDATED",
+   "p_ok": true,
+   "gates": {
+    "plateau": true,
+    "all_days": true,
+    "lag": true,
+    "years_n": 4,
+    "years": true
+   }
+  },
+  "e": {
+   "verdict": "VALIDATED",
+   "p_ok": true,
+   "gates": {
+    "plateau": true,
+    "lag": true,
+    "years_n": 4,
+    "years": true
+   }
+  }
+ },
+ "pit": {
+  "a": {
+   "est": -0.0753,
+   "lo": -0.1055,
+   "hi": -0.0529,
+   "p": 0.0,
+   "n": 44,
+   "unit": "months",
+   "dev": {
+    "U": 0.2317,
+    "F": 0.1564
+   },
+   "plateau": {
+    "P75-U": -0.075,
+    "P125-U": -0.0636
+   },
+   "years": {
+    "2023": [
+     -0.0645,
+     -0.0902,
+     -0.0406
+    ],
+    "2024": [
+     -0.0587,
+     -0.0874,
+     -0.0291
+    ],
+    "2025": [
+     -0.116,
+     -0.2096,
+     -0.0482
+    ],
+    "2026": [
+     -0.0554,
+     -0.0848,
+     -0.0262
+    ]
+   },
+   "mde": 0.0448,
+   "se": 0.01342,
+   "holm_p": 0.0
+  },
+  "b": {
+   "est": 0.0039,
+   "lo": -0.0046,
+   "hi": 0.0137,
+   "p": 0.0015,
+   "p_diff": 0.411,
+   "n": 44,
+   "unit": "months",
+   "dev": {
+    "T20": 0.1603,
+    "F": 0.1564
+   },
+   "neighbours": {
+    "T10-F": -0.0102,
+    "T40-F": 0.0413
+   },
+   "years": {
+    "2023": [
+     -0.0023,
+     -0.0105,
+     0.0053
+    ],
+    "2024": [
+     -0.0057,
+     -0.0136,
+     0.0025
+    ],
+    "2025": [
+     0.0154,
+     -0.0058,
+     0.0359
+    ],
+    "2026": [
+     0.0106,
+     -0.0052,
+     0.0253
+    ]
+   },
+   "mde": 0.0164,
+   "se": 0.00466,
+   "holm_p": 0.0015
+  },
+  "c": {
+   "est": -0.2323,
+   "lo": -0.3066,
+   "hi": -0.1627,
+   "p": 0.0,
+   "n": 931,
+   "unit": "quiet-day dates",
+   "rate": {
+    "F": 1.278,
+    "FA": 1.045,
+    "U": 0.54
+   },
+   "quiet_share": 0.457,
+   "plateau": {
+    "FA10-F": -0.116,
+    "FA50-F": -0.342
+   },
+   "all_days": [
+    -0.022,
+    -0.097,
+    0.063
+   ],
+   "all_days_pass": true,
+   "loud_mirror": [
+    0.273,
+    0.101,
+    0.463
+   ],
+   "years": {
+    "2023": [
+     -0.202,
+     -0.312,
+     -0.105
+    ],
+    "2024": [
+     -0.216,
+     -0.364,
+     -0.099
+    ],
+    "2025": [
+     -0.258,
+     -0.428,
+     -0.045
+    ],
+    "2026": [
+     -0.303,
+     -0.472,
+     -0.138
+    ]
+   },
+   "mde": 0.1226,
+   "se": 0.03671,
+   "holm_p": 0.0
+  },
+  "e": {
+   "est": 0.0967,
+   "lo": 0.0771,
+   "hi": 0.119,
+   "p": 0.0,
+   "n": 44,
+   "unit": "months",
+   "dev": {
+    "MM": 0.2531
+   },
+   "plateau": {
+    "P175-F": 0.0635,
+    "P225-F": 0.1314
+   },
+   "years": {
+    "2023": [
+     0.1064,
+     0.0638,
+     0.1537
+    ],
+    "2024": [
+     0.1002,
+     0.0793,
+     0.1207
+    ],
+    "2025": [
+     0.0681,
+     0.0357,
+     0.0978
+    ],
+    "2026": [
+     0.1199,
+     0.0828,
+     0.1596
+    ]
+   },
+   "mde": 0.0357,
+   "se": 0.01069,
+   "holm_p": 0.0
+  },
+  "lag": {
+   "a": [
+    -0.0634,
+    -0.0876,
+    -0.0442
+   ],
+   "b": [
+    0.0043,
+    -0.003,
+    0.0126
+   ],
+   "c": [
+    -0.232,
+    -0.318,
+    -0.154
+   ],
+   "e": [
+    0.0964,
+    0.0736,
+    0.1206
+   ],
+   "rows": 32000
+  }
+ },
+ "slices": {
+  "a": {
+   "rows": [
+    {
+     "kind": "class",
+     "name": "FX majors",
+     "est": -0.0549,
+     "lo": -0.0883,
+     "hi": -0.0266,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "class",
+     "name": "FX crosses",
+     "est": -0.0636,
+     "lo": -0.0882,
+     "hi": -0.0413,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "class",
+     "name": "metals",
+     "est": -0.165,
+     "lo": -0.2523,
+     "hi": -0.0852,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "class",
+     "name": "indices",
+     "est": -0.1233,
+     "lo": -0.1975,
+     "hi": -0.0711,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "AUDCAD",
+     "est": -0.0667,
+     "lo": -0.1201,
+     "hi": -0.0222,
+     "p": 0.002,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "AUDCHF",
+     "est": -0.0768,
+     "lo": -0.146,
+     "hi": -0.0183,
+     "p": 0.01,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "AUDJPY",
+     "est": -0.0895,
+     "lo": -0.1434,
+     "hi": -0.042,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "AUDNZD",
+     "est": -0.066,
+     "lo": -0.1286,
+     "hi": -0.0091,
+     "p": 0.016,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "AUDUSD",
+     "est": -0.107,
+     "lo": -0.1627,
+     "hi": -0.0565,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "CADCHF",
+     "est": -0.062,
+     "lo": -0.1171,
+     "hi": -0.0196,
+     "p": 0.006,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "CADJPY",
+     "est": -0.0559,
+     "lo": -0.0998,
+     "hi": -0.0094,
+     "p": 0.021,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "CHFJPY",
+     "est": -0.022,
+     "lo": -0.0584,
+     "hi": 0.013,
+     "p": 0.237,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "DE30",
+     "est": -0.1678,
+     "lo": -0.2464,
+     "hi": -0.0997,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "DOW",
+     "est": -0.1363,
+     "lo": -0.2298,
+     "hi": -0.0605,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURAUD",
+     "est": -0.0858,
+     "lo": -0.1354,
+     "hi": -0.041,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURCAD",
+     "est": -0.1092,
+     "lo": -0.165,
+     "hi": -0.0546,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURCHF",
+     "est": -0.0728,
+     "lo": -0.1259,
+     "hi": -0.0226,
+     "p": 0.002,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURGBP",
+     "est": -0.1022,
+     "lo": -0.1555,
+     "hi": -0.0555,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURJPY",
+     "est": -0.0363,
+     "lo": -0.093,
+     "hi": 0.0161,
+     "p": 0.176,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURNZD",
+     "est": -0.0682,
+     "lo": -0.1088,
+     "hi": -0.0281,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURUSD",
+     "est": -0.0538,
+     "lo": -0.1028,
+     "hi": -0.008,
+     "p": 0.019,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GBPAUD",
+     "est": -0.0032,
+     "lo": -0.0582,
+     "hi": 0.0556,
+     "p": 0.895,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GBPCAD",
+     "est": -0.0642,
+     "lo": -0.1124,
+     "hi": -0.0231,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GBPCHF",
+     "est": -0.068,
+     "lo": -0.1187,
+     "hi": -0.0211,
+     "p": 0.007,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GBPJPY",
+     "est": -0.053,
+     "lo": -0.1075,
+     "hi": -0.003,
+     "p": 0.038,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GBPNZD",
+     "est": -0.0584,
+     "lo": -0.094,
+     "hi": -0.0245,
+     "p": 0.001,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GBPUSD",
+     "est": -0.0532,
+     "lo": -0.0923,
+     "hi": -0.0193,
+     "p": 0.002,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GOLD",
+     "est": -0.165,
+     "lo": -0.2523,
+     "hi": -0.0852,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "NQ",
+     "est": -0.1006,
+     "lo": -0.1848,
+     "hi": -0.0354,
+     "p": 0.002,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "NZDCAD",
+     "est": -0.0508,
+     "lo": -0.0878,
+     "hi": -0.0177,
+     "p": 0.003,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "NZDJPY",
+     "est": -0.0606,
+     "lo": -0.0983,
+     "hi": -0.0259,
+     "p": 0.001,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "NZDUSD",
+     "est": -0.0466,
+     "lo": -0.0827,
+     "hi": -0.016,
+     "p": 0.001,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "SPX500",
+     "est": -0.1281,
+     "lo": -0.2305,
+     "hi": -0.0575,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "UK100",
+     "est": -0.1205,
+     "lo": -0.1919,
+     "hi": -0.0639,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "US2000",
+     "est": -0.0863,
+     "lo": -0.1298,
+     "hi": -0.0456,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "USDCAD",
+     "est": -0.0772,
+     "lo": -0.1352,
+     "hi": -0.0273,
+     "p": 0.004,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "USDCHF",
+     "est": -0.0446,
+     "lo": -0.0932,
+     "hi": -0.005,
+     "p": 0.027,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "USDJPY",
+     "est": -0.0022,
+     "lo": -0.0587,
+     "hi": 0.0579,
+     "p": 0.906,
+     "bh": false,
+     "right_sign": true
+    }
+   ],
+   "inst_right_sign": 34,
+   "inst_bh_right_sign": 30,
+   "chance": {
+    "tests": 38,
+    "passes": 34,
+    "expected": 1.9,
+    "pAtLeastObserved": 0.0
+   }
+  },
+  "c": {
+   "rows": [
+    {
+     "kind": "class",
+     "name": "FX majors",
+     "est": -0.1865,
+     "lo": -0.3242,
+     "hi": -0.0645,
+     "p": 0.001,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "class",
+     "name": "FX crosses",
+     "est": -0.2463,
+     "lo": -0.3483,
+     "hi": -0.1548,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "class",
+     "name": "metals",
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "p": 1.0,
+     "bh": false,
+     "right_sign": false
+    },
+    {
+     "kind": "class",
+     "name": "indices",
+     "est": -0.2664,
+     "lo": -0.4852,
+     "hi": -0.0899,
+     "p": 0.004,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "AUDCAD",
+     "est": -0.2336,
+     "lo": -0.7009,
+     "hi": 0.0,
+     "p": 0.69,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "AUDCHF",
+     "est": -0.2252,
+     "lo": -0.6757,
+     "hi": 0.0,
+     "p": 0.669,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "AUDJPY",
+     "est": -0.4785,
+     "lo": -1.1962,
+     "hi": 0.0,
+     "p": 0.194,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "AUDNZD",
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "p": 1.0,
+     "bh": false,
+     "right_sign": false
+    },
+    {
+     "kind": "inst",
+     "name": "AUDUSD",
+     "est": -0.2092,
+     "lo": -0.6276,
+     "hi": 0.0,
+     "p": 0.685,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "CADCHF",
+     "est": -0.2227,
+     "lo": -0.6682,
+     "hi": 0.0,
+     "p": 0.717,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "CADJPY",
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "p": 1.0,
+     "bh": false,
+     "right_sign": false
+    },
+    {
+     "kind": "inst",
+     "name": "CHFJPY",
+     "est": -0.2342,
+     "lo": -0.7026,
+     "hi": 0.0,
+     "p": 0.711,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "DE30",
+     "est": -0.5479,
+     "lo": -1.3699,
+     "hi": 0.0,
+     "p": 0.202,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "DOW",
+     "est": -0.5391,
+     "lo": -1.3477,
+     "hi": 0.0,
+     "p": 0.195,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURAUD",
+     "est": -0.2041,
+     "lo": -0.6122,
+     "hi": 0.0,
+     "p": 0.693,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURCAD",
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "p": 1.0,
+     "bh": false,
+     "right_sign": false
+    },
+    {
+     "kind": "inst",
+     "name": "EURCHF",
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "p": 1.0,
+     "bh": false,
+     "right_sign": false
+    },
+    {
+     "kind": "inst",
+     "name": "EURGBP",
+     "est": -0.7366,
+     "lo": -1.6575,
+     "hi": 0.0,
+     "p": 0.051,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURJPY",
+     "est": -0.381,
+     "lo": -0.9524,
+     "hi": 0.0,
+     "p": 0.224,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURNZD",
+     "est": -0.4525,
+     "lo": -1.1312,
+     "hi": 0.0,
+     "p": 0.233,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURUSD",
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "p": 1.0,
+     "bh": false,
+     "right_sign": false
+    },
+    {
+     "kind": "inst",
+     "name": "GBPAUD",
+     "est": -0.2358,
+     "lo": -0.7075,
+     "hi": 0.0,
+     "p": 0.698,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GBPCAD",
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "p": 1.0,
+     "bh": false,
+     "right_sign": false
+    },
+    {
+     "kind": "inst",
+     "name": "GBPCHF",
+     "est": -0.6536,
+     "lo": -1.3072,
+     "hi": 0.0,
+     "p": 0.063,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GBPJPY",
+     "est": -0.2004,
+     "lo": -0.6012,
+     "hi": 0.0,
+     "p": 0.706,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GBPNZD",
+     "est": -0.2747,
+     "lo": -0.8242,
+     "hi": 0.0,
+     "p": 0.667,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GBPUSD",
+     "est": -0.2188,
+     "lo": -0.6565,
+     "hi": 0.0,
+     "p": 0.687,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GOLD",
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "p": 1.0,
+     "bh": false,
+     "right_sign": false
+    },
+    {
+     "kind": "inst",
+     "name": "NQ",
+     "est": -0.2519,
+     "lo": -0.7557,
+     "hi": 0.0,
+     "p": 0.701,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "NZDCAD",
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "p": 1.0,
+     "bh": false,
+     "right_sign": false
+    },
+    {
+     "kind": "inst",
+     "name": "NZDJPY",
+     "est": -0.2481,
+     "lo": -0.7444,
+     "hi": 0.0,
+     "p": 0.701,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "NZDUSD",
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "p": 1.0,
+     "bh": false,
+     "right_sign": false
+    },
+    {
+     "kind": "inst",
+     "name": "SPX500",
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "p": 1.0,
+     "bh": false,
+     "right_sign": false
+    },
+    {
+     "kind": "inst",
+     "name": "UK100",
+     "est": -0.3257,
+     "lo": -0.9772,
+     "hi": 0.0,
+     "p": 0.672,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "US2000",
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "p": 1.0,
+     "bh": false,
+     "right_sign": false
+    },
+    {
+     "kind": "inst",
+     "name": "USDCAD",
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "p": 1.0,
+     "bh": false,
+     "right_sign": false
+    },
+    {
+     "kind": "inst",
+     "name": "USDCHF",
+     "est": -0.5208,
+     "lo": -1.3021,
+     "hi": 0.0,
+     "p": 0.236,
+     "bh": false,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "USDJPY",
+     "est": -0.4566,
+     "lo": -1.1416,
+     "hi": 0.0,
+     "p": 0.226,
+     "bh": false,
+     "right_sign": true
+    }
+   ],
+   "inst_right_sign": 22,
+   "inst_bh_right_sign": 0,
+   "chance": {
+    "tests": 38,
+    "passes": 3,
+    "expected": 1.9,
+    "pAtLeastObserved": 0.2955
+   }
+  },
+  "e": {
+   "rows": [
+    {
+     "kind": "class",
+     "name": "FX majors",
+     "est": 0.0896,
+     "lo": 0.0639,
+     "hi": 0.1181,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "class",
+     "name": "FX crosses",
+     "est": 0.0982,
+     "lo": 0.0732,
+     "hi": 0.1259,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "class",
+     "name": "metals",
+     "est": 0.127,
+     "lo": 0.0738,
+     "hi": 0.1929,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "class",
+     "name": "indices",
+     "est": 0.095,
+     "lo": 0.0708,
+     "hi": 0.1178,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "AUDCAD",
+     "est": 0.0606,
+     "lo": 0.0213,
+     "hi": 0.0958,
+     "p": 0.005,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "AUDCHF",
+     "est": 0.1199,
+     "lo": 0.0548,
+     "hi": 0.1932,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "AUDJPY",
+     "est": 0.1054,
+     "lo": 0.0624,
+     "hi": 0.1479,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "AUDNZD",
+     "est": 0.0998,
+     "lo": 0.0551,
+     "hi": 0.1484,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "AUDUSD",
+     "est": 0.0683,
+     "lo": 0.0211,
+     "hi": 0.1171,
+     "p": 0.005,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "CADCHF",
+     "est": 0.094,
+     "lo": 0.0554,
+     "hi": 0.133,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "CADJPY",
+     "est": 0.1449,
+     "lo": 0.0914,
+     "hi": 0.206,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "CHFJPY",
+     "est": 0.0676,
+     "lo": 0.0313,
+     "hi": 0.1095,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "DE30",
+     "est": 0.1109,
+     "lo": 0.0623,
+     "hi": 0.1677,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "DOW",
+     "est": 0.0954,
+     "lo": 0.0513,
+     "hi": 0.1388,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURAUD",
+     "est": 0.0817,
+     "lo": 0.0328,
+     "hi": 0.1274,
+     "p": 0.001,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURCAD",
+     "est": 0.0825,
+     "lo": 0.0409,
+     "hi": 0.1233,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURCHF",
+     "est": 0.1121,
+     "lo": 0.0671,
+     "hi": 0.1634,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURGBP",
+     "est": 0.1124,
+     "lo": 0.0536,
+     "hi": 0.1763,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURJPY",
+     "est": 0.1372,
+     "lo": 0.0811,
+     "hi": 0.1995,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURNZD",
+     "est": 0.0576,
+     "lo": 0.027,
+     "hi": 0.0855,
+     "p": 0.001,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "EURUSD",
+     "est": 0.0751,
+     "lo": 0.0222,
+     "hi": 0.1247,
+     "p": 0.002,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GBPAUD",
+     "est": 0.141,
+     "lo": 0.094,
+     "hi": 0.1869,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GBPCAD",
+     "est": 0.0636,
+     "lo": 0.0237,
+     "hi": 0.108,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GBPCHF",
+     "est": 0.0933,
+     "lo": 0.0436,
+     "hi": 0.1468,
+     "p": 0.001,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GBPJPY",
+     "est": 0.1353,
+     "lo": 0.089,
+     "hi": 0.1822,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GBPNZD",
+     "est": 0.104,
+     "lo": 0.0505,
+     "hi": 0.1646,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GBPUSD",
+     "est": 0.0579,
+     "lo": 0.0199,
+     "hi": 0.0991,
+     "p": 0.005,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "GOLD",
+     "est": 0.127,
+     "lo": 0.0738,
+     "hi": 0.1929,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "NQ",
+     "est": 0.0887,
+     "lo": 0.0453,
+     "hi": 0.1318,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "NZDCAD",
+     "est": 0.0749,
+     "lo": 0.0429,
+     "hi": 0.1127,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "NZDJPY",
+     "est": 0.0754,
+     "lo": 0.0419,
+     "hi": 0.1113,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "NZDUSD",
+     "est": 0.0742,
+     "lo": 0.0368,
+     "hi": 0.1131,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "SPX500",
+     "est": 0.1205,
+     "lo": 0.0822,
+     "hi": 0.1595,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "UK100",
+     "est": 0.083,
+     "lo": 0.0426,
+     "hi": 0.122,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "US2000",
+     "est": 0.0714,
+     "lo": 0.0337,
+     "hi": 0.1097,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "USDCAD",
+     "est": 0.1071,
+     "lo": 0.0675,
+     "hi": 0.1444,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "USDCHF",
+     "est": 0.0627,
+     "lo": 0.0311,
+     "hi": 0.0941,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    },
+    {
+     "kind": "inst",
+     "name": "USDJPY",
+     "est": 0.1819,
+     "lo": 0.1286,
+     "hi": 0.2417,
+     "p": 0.0,
+     "bh": true,
+     "right_sign": true
+    }
+   ],
+   "inst_right_sign": 34,
+   "inst_bh_right_sign": 34,
+   "chance": {
+    "tests": 38,
+    "passes": 38,
+    "expected": 1.9,
+    "pAtLeastObserved": 0.0
+   }
+  }
+ },
+ "descriptive": {
+  "U": {
+   "dev": 0.2317,
+   "es1": -3.315,
+   "p1": -2.522,
+   "exc3_all": 1.0,
+   "turnover": 0.0
+  },
+  "F": {
+   "dev": 0.1564,
+   "es1": -3.374,
+   "p1": -2.599,
+   "exc3_all": 0.916,
+   "turnover": 0.0647
+  },
+  "T20": {
+   "dev": 0.1603,
+   "es1": -3.539,
+   "p1": -2.645,
+   "exc3_all": 1.081,
+   "turnover": 0.039
+  },
+  "FA": {
+   "dev": 0.1593,
+   "es1": -3.349,
+   "p1": -2.563,
+   "exc3_all": 0.894,
+   "turnover": 0.0496
+  },
+  "MM": {
+   "dev": 0.2531,
+   "es1": -3.817,
+   "p1": -2.727,
+   "exc3_all": 1.341,
+   "turnover": 0.1285
+  },
+  "D3": {
+   "dev_O": 0.1127,
+   "share_F": 0.633,
+   "share_T20": 0.6
+  }
+ },
+ "sens_random_sign": {
+  "a": [
+   -0.0714,
+   -0.1016,
+   -0.0492
+  ],
+  "b": [
+   0.0037,
+   -0.0052,
+   0.0136
+  ],
+  "c": [
+   -0.2255,
+   -0.2979,
+   -0.1508
+  ],
+  "e": [
+   0.0989,
+   0.0801,
+   0.1208
+  ]
+ },
+ "sens_frozen_scale": {
+  "a": [
+   -0.1199,
+   -0.1424,
+   -0.0978
+  ],
+  "b": [
+   -0.0012,
+   -0.0096,
+   0.0084
+  ],
+  "c": [
+   -0.2528,
+   -0.3465,
+   -0.1664
+  ],
+  "e": [
+   0.1497,
+   0.1264,
+   0.1726
+  ],
+  "dev_U_F": [
+   0.2818,
+   0.1619
+  ]
+ },
+ "sens_live": {
+  "a": [
+   -0.0799,
+   -0.113,
+   -0.0567
+  ],
+  "b": [
+   0.0085,
+   -0.0004,
+   0.0188
+  ],
+  "c": [
+   -0.2877,
+   -0.3722,
+   -0.2056
+  ],
+  "e": [
+   0.0924,
+   0.0736,
+   0.1143
+  ],
+  "oos_share_pit": 1.0
+ },
+ "book": {
+  "D1": {
+   "overall": 0.719,
+   "shuffled": 0.493,
+   "year": {
+    "2023": [
+     0.753,
+     0.717,
+     0.794,
+     259
+    ],
+    "2024": [
+     0.739,
+     0.677,
+     0.793,
+     260
+    ],
+    "2025": [
+     0.637,
+     0.604,
+     0.673,
+     259
+    ],
+    "2026": [
+     0.762,
+     0.707,
+     0.819,
+     165
+    ]
+   },
+   "dollar_vol_tercile": {
+    "low": [
+     0.72,
+     0.681,
+     0.755,
+     486
+    ],
+    "mid": [
+     0.777,
+     0.729,
+     0.819,
+     208
+    ],
+    "high": [
+     0.669,
+     0.618,
+     0.721,
+     249
+    ]
+   }
+  },
+  "D2": {
+   "binds": {
+    "1.5": 0.568,
+    "2.0": 0.0,
+    "3.0": 0.0
+   },
+   "es_diff": {
+    "1.5": [
+     0.038,
+     -0.142,
+     0.308
+    ],
+    "2.0": [
+     0.0,
+     -0.0,
+     0.0
+    ],
+    "3.0": [
+     0.0,
+     -0.0,
+     0.0
+    ]
+   },
+   "steady": {
+    "uncapped": 0.1241,
+    "unlevered": 0.1131,
+    "cap 1.5": 0.1106,
+    "cap 2.0": 0.1241,
+    "cap 3.0": 0.1241
+   },
+   "es": {
+    "1.5": -3.255,
+    "2.0": -3.293,
+    "3.0": -3.293,
+    "uncapped": -3.293
+   },
+   "var99_breach_pct": {
+    "model": 1.27,
+    "stress": 0.21
+   },
+   "one_over_bv": [
+    1.54,
+    1.27,
+    1.72
+   ]
+  },
+  "sessions": 943
+ },
+ "seconds": 445
+}

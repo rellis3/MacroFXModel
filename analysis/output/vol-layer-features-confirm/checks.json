@@ -1,0 +1,301 @@
+{
+ "vol-layer-features-confirm-tod": {
+  "effect": 0.18327297842609472,
+  "lo": 0.1548434398748028,
+  "hi": 0.2146211782138708,
+  "min_effect": 0.1,
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "reproduced": true,
+   "banked": [
+    0.1833,
+    0.1548,
+    0.2146
+   ],
+   "mde_80pct_alpha0.0125": 0.0509
+  },
+  "planted_large": {
+   "injected": 0.2,
+   "shift": 0.2000000000000001,
+   "lo_after": 0.3548434398748028,
+   "hi_after": 0.41462117821387084,
+   "how": "added s_i*0.20*den to each pair's overlap numerator per session"
+  },
+  "planted_min": {
+   "injected": 0.1,
+   "shift": 0.10000000000000012,
+   "lo_after": 0.25484343987480285,
+   "hi_after": 0.3146211782138708,
+   "how": "added s_i*0.10*den to each pair's overlap numerator per session"
+  },
+  "shuffle": {
+   "effect": -0.002475917471785112,
+   "lo": -0.025236621778883712,
+   "hi": 0.02023487214948309,
+   "each": [
+    -0.02163,
+    0.00831,
+    0.00602,
+    -0.02331,
+    0.01388,
+    -0.01629,
+    -0.00252,
+    0.00937,
+    -0.00886,
+    0.0145,
+    -0.02108,
+    -0.0077,
+    0.00268,
+    -0.01486,
+    0.01268,
+    0.00405,
+    0.00139,
+    0.01117,
+    -0.01789,
+    0.00059
+   ],
+   "how": "swapped each session's overlap and Asia sums with probability 1/2, 20 times (truth zero)"
+  },
+  "rows": {
+   "used": 942,
+   "dropped": 7,
+   "note": "complete sessions (all 7 majors >= 900 M1 bars); dropped = incomplete scored weekdays"
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.1833 reaches the minimum +0.1"
+  ],
+  "power": 0.999999550734494
+ },
+ "vol-layer-features-confirm-sig": {
+  "effect": 0.04496921413001934,
+  "lo": -0.008867220302756069,
+  "hi": 0.09564349229027846,
+  "min_effect": 0.1,
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "reproduced": true,
+   "banked": [
+    0.045,
+    -0.0089,
+    0.0956
+   ],
+   "mde_80pct_alpha0.0125": 0.089
+  },
+  "planted_large": {
+   "injected": 0.2,
+   "shift": 0.19999999999999998,
+   "lo_after": 0.19113277969724396,
+   "hi_after": 0.2956434922902785,
+   "how": "added 0.20*den to the high-third numerator per session"
+  },
+  "planted_min": {
+   "injected": 0.1,
+   "shift": 0.10000000000000003,
+   "lo_after": 0.09113277969724394,
+   "hi_after": 0.19564349229027844,
+   "how": "added 0.10*den to the high-third numerator per session"
+  },
+  "shuffle": {
+   "effect": 0.004099963975302426,
+   "lo": -0.012456970027383813,
+   "hi": 0.02015245221372705,
+   "each": [
+    0.01239,
+    0.01629,
+    0.02684,
+    -0.01453,
+    0.01784,
+    -0.0091,
+    0.0058,
+    -0.01076,
+    -0.00522,
+    0.0047,
+    0.01456,
+    0.00606,
+    0.02131,
+    0.00923,
+    -0.00195,
+    -0.01048,
+    0.0115,
+    -0.01983,
+    0.00436,
+    0.00297
+   ],
+   "how": "permuted sigma across the scored complete sessions per pair, 20 times (truth zero)"
+  },
+  "rows": {
+   "used": 942,
+   "dropped": 7,
+   "note": "complete sessions (all 7 majors >= 900 M1 bars); dropped = incomplete scored weekdays"
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.1, so that size is ruled out"
+  ],
+  "power": 0.9823930086607047
+ },
+ "vol-layer-features-confirm-fr": {
+  "effect": 0.1498021272457078,
+  "lo": 0.09296335770937136,
+  "hi": 0.2025317468772624,
+  "min_effect": 0.05,
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "reproduced": true,
+   "banked_F": [
+    -0.1498,
+    -0.2025,
+    -0.093
+   ],
+   "mde_80pct_alpha0.0125": 0.0933,
+   "orientation": "effect = -F (F = corrected rho loud minus raw rho quiet); A1: F = 0 is not the dollar-only benchmark (that is about +0.18), so the bar is conservative"
+  },
+  "planted_large": {
+   "injected": 0.1,
+   "shift": 0.10000000000000003,
+   "lo_after": 0.2062221666683699,
+   "hi_after": 0.2910778429269546,
+   "shrink": 0.1888922560277732,
+   "how": "multiplied the off-diagonal 5-min second moments of top-pool sessions by 0.811 so -F rises by exactly 0.1"
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.050000000000000044,
+   "lo_after": 0.15055201655760392,
+   "hi_after": 0.24695998008529696,
+   "shrink": 0.0882559534494763,
+   "how": "multiplied the off-diagonal 5-min second moments of top-pool sessions by 0.912 so -F rises by exactly 0.05"
+  },
+  "shuffle": {
+   "effect": -0.0032751570407198783,
+   "lo": -0.04405579482869687,
+   "hi": 0.037611322222444295,
+   "each": [
+    0.01554,
+    -0.00244,
+    0.00432,
+    -0.0099,
+    0.05638,
+    -0.00756,
+    -0.04372,
+    -0.00243,
+    0.01064,
+    0.01551,
+    -0.01697,
+    0.01877,
+    -0.01139,
+    0.00113,
+    -0.03663,
+    0.03498,
+    -0.00657,
+    -0.06861,
+    -0.02692,
+    0.01035
+   ],
+   "how": "shuffled the loud (deciles 8-10) / quiet (1-3) labels within each year, 20 times (truth zero)"
+  },
+  "rows": {
+   "used": 568,
+   "dropped": 374,
+   "note": "sessions in deciles 8-10 and 1-3; dropped = deciles 4-7 (not in the statistic) and sessions with < 200 all-7 bars"
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.1498 reaches the minimum +0.05"
+  ],
+  "power": 0.5572302689845792
+ },
+ "vol-layer-features-confirm-eq": {
+  "effect": 0.9252446925812371,
+  "lo": 0.3896230750432596,
+  "hi": 0.954606876359258,
+  "min_effect": 0.0,
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "reproduced": true,
+   "raw": {
+    "1h": [
+     0.00135,
+     -0.0072,
+     0.00965
+    ],
+    "rest": [
+     -0.00233,
+     -0.02104,
+     0.01795
+    ]
+   },
+   "tost_p": 0.0,
+   "tost_min_margin": {
+    "1h": 0.0151,
+    "rest": 0.03496
+   },
+   "orientation": "effect = min over 1h / rest of 1 - |delta|/margin; min_effect 0, so VALIDATED = whole interval inside both margins; the gate's power figure is not meaningful at min_effect 0 (see tost_min_margin)"
+  },
+  "planted_large": {
+   "injected": 2.0,
+   "shift": 2.0,
+   "equiv_lo_after": -1.5546895085534076,
+   "equiv_hi_after": -0.6697906731283129,
+   "raw_after": {
+    "1h": 0.03735,
+    "rest": 0.08167
+   },
+   "how": "added 2.0 x margin to every dollar-led follow at both horizons (equivalence-breaking); shift = how far min(1 - |delta|/margin) FELL"
+  },
+  "planted_min": {
+   "injected": 1.0,
+   "shift": 1.0000000000000004,
+   "equiv_lo_after": -0.5546895085534069,
+   "equiv_hi_after": 0.33020932687168675,
+   "raw_after": {
+    "1h": 0.01935,
+    "rest": 0.03967
+   },
+   "how": "added 1.0 x margin to every dollar-led follow at both horizons (equivalence-breaking); shift = how far min(1 - |delta|/margin) FELL"
+  },
+  "shuffle": {
+   "effect": -4.119155161721327e-05,
+   "lo": -0.005589208800522553,
+   "hi": 0.005529416181693521,
+   "each": [
+    -0.00013,
+    0.00055,
+    0.00072,
+    -0.0006,
+    0.00024,
+    -0.00449,
+    -0.0048,
+    -0.00287,
+    0.00119,
+    0.00244,
+    0.00423,
+    -0.00057,
+    0.00283,
+    0.0015,
+    0.00254,
+    0.00171,
+    0.00181,
+    -0.00029,
+    -0.00423,
+    -0.00262
+   ],
+   "how": "swapped each big move's dollar-led / own-led label with probability 1/2, 20 times; on the raw 1h difference (truth zero)"
+  },
+  "rows": {
+   "used": 46596,
+   "dropped": 13852,
+   "note": "1h events with a finite outcome: 26142 dollar-led, 20454 own-led; dropped = big moves in neither group or no 1h outcome"
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.9252 reaches the minimum +0"
+  ],
+  "power": 0.05000000000000013
+ }
+}

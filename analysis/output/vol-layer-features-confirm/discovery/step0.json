@@ -1,0 +1,376 @@
+{
+ "ranAt": "2026-11-16T17:52:16.731705+00:00",
+ "seed": 20261116,
+ "B": 2000,
+ "window": [
+  "2016-10-24",
+  "2022-12-30"
+ ],
+ "reproduction": {
+  "tod": {
+   "target": 0.163,
+   "got": 0.16339,
+   "got_3dp": 0.163,
+   "se_B2000": 0.0165,
+   "match": true
+  },
+  "sig": {
+   "target": 0.118,
+   "got": 0.11824,
+   "got_3dp": 0.118,
+   "se_B2000": 0.0317,
+   "match": true
+  },
+  "fr": {
+   "target": -0.1,
+   "got": -0.10027,
+   "got_3dp": -0.1,
+   "se_B2000": 0.0286,
+   "match": true
+  },
+  "eq_1h": {
+   "target": -0.001,
+   "got": -0.00061,
+   "got_3dp": -0.001,
+   "se_B2000": 0.0031,
+   "match": true
+  },
+  "eq_rest": {
+   "target": -0.01,
+   "got": -0.01012,
+   "got_3dp": -0.01,
+   "se_B2000": 0.0067,
+   "match": true
+  },
+  "n_events": {
+   "dollar_1h": 29696,
+   "own_1h": 48711
+  }
+ },
+ "positive_control": {
+  "nS": 800,
+  "planted": {
+   "beta": [
+    1.0,
+    0.8,
+    0.9,
+    0.9,
+    0.5,
+    0.9,
+    0.6
+   ],
+   "ve": [
+    0.8,
+    1.5,
+    1.0,
+    1.2,
+    1.0,
+    1.0,
+    1.5
+   ],
+   "loud_frac": 0.1,
+   "loud_x": 3.0
+  },
+  "share_by_bucket": [
+   {
+    "pair": "EURUSD",
+    "bucket": "Asia 00-07",
+    "sim": 0.2225,
+    "planted": 0.2214,
+    "err": 0.0012
+   },
+   {
+    "pair": "EURUSD",
+    "bucket": "London open 07-10",
+    "sim": 0.4948,
+    "planted": 0.4884,
+    "err": 0.0064
+   },
+   {
+    "pair": "EURUSD",
+    "bucket": "London mid 10-13",
+    "sim": 0.4887,
+    "planted": 0.4898,
+    "err": -0.0011
+   },
+   {
+    "pair": "EURUSD",
+    "bucket": "Overlap 13-16",
+    "sim": 0.6445,
+    "planted": 0.6452,
+    "err": -0.0007
+   },
+   {
+    "pair": "EURUSD",
+    "bucket": "NY afternoon 16-22",
+    "sim": 0.4174,
+    "planted": 0.4243,
+    "err": -0.0069
+   },
+   {
+    "pair": "GBPUSD",
+    "bucket": "Asia 00-07",
+    "sim": 0.1108,
+    "planted": 0.1116,
+    "err": -0.0008
+   },
+   {
+    "pair": "GBPUSD",
+    "bucket": "London open 07-10",
+    "sim": 0.2902,
+    "planted": 0.2917,
+    "err": -0.0015
+   },
+   {
+    "pair": "GBPUSD",
+    "bucket": "London mid 10-13",
+    "sim": 0.2963,
+    "planted": 0.2929,
+    "err": 0.0034
+   },
+   {
+    "pair": "GBPUSD",
+    "bucket": "Overlap 13-16",
+    "sim": 0.4502,
+    "planted": 0.4545,
+    "err": -0.0042
+   },
+   {
+    "pair": "GBPUSD",
+    "bucket": "NY afternoon 16-22",
+    "sim": 0.2374,
+    "planted": 0.2407,
+    "err": -0.0033
+   },
+   {
+    "pair": "AUDUSD",
+    "bucket": "Asia 00-07",
+    "sim": 0.1738,
+    "planted": 0.1726,
+    "err": 0.0012
+   },
+   {
+    "pair": "AUDUSD",
+    "bucket": "London open 07-10",
+    "sim": 0.4067,
+    "planted": 0.4104,
+    "err": -0.0037
+   },
+   {
+    "pair": "AUDUSD",
+    "bucket": "London mid 10-13",
+    "sim": 0.4087,
+    "planted": 0.4119,
+    "err": -0.0032
+   },
+   {
+    "pair": "AUDUSD",
+    "bucket": "Overlap 13-16",
+    "sim": 0.5754,
+    "planted": 0.5778,
+    "err": -0.0024
+   },
+   {
+    "pair": "AUDUSD",
+    "bucket": "NY afternoon 16-22",
+    "sim": 0.3441,
+    "planted": 0.349,
+    "err": -0.0049
+   },
+   {
+    "pair": "NZDUSD",
+    "bucket": "Asia 00-07",
+    "sim": 0.1543,
+    "planted": 0.1534,
+    "err": 0.0009
+   },
+   {
+    "pair": "NZDUSD",
+    "bucket": "London open 07-10",
+    "sim": 0.382,
+    "planted": 0.3761,
+    "err": 0.0059
+   },
+   {
+    "pair": "NZDUSD",
+    "bucket": "London mid 10-13",
+    "sim": 0.3697,
+    "planted": 0.3775,
+    "err": -0.0077
+   },
+   {
+    "pair": "NZDUSD",
+    "bucket": "Overlap 13-16",
+    "sim": 0.5426,
+    "planted": 0.5446,
+    "err": -0.002
+   },
+   {
+    "pair": "NZDUSD",
+    "bucket": "NY afternoon 16-22",
+    "sim": 0.3103,
+    "planted": 0.3169,
+    "err": -0.0066
+   },
+   {
+    "pair": "USDCAD",
+    "bucket": "Asia 00-07",
+    "sim": 0.0716,
+    "planted": 0.0718,
+    "err": -0.0002
+   },
+   {
+    "pair": "USDCAD",
+    "bucket": "London open 07-10",
+    "sim": 0.2027,
+    "planted": 0.2023,
+    "err": 0.0004
+   },
+   {
+    "pair": "USDCAD",
+    "bucket": "London mid 10-13",
+    "sim": 0.2026,
+    "planted": 0.2016,
+    "err": 0.001
+   },
+   {
+    "pair": "USDCAD",
+    "bucket": "Overlap 13-16",
+    "sim": 0.1582,
+    "planted": 0.1589,
+    "err": -0.0007
+   },
+   {
+    "pair": "USDCAD",
+    "bucket": "NY afternoon 16-22",
+    "sim": 0.1587,
+    "planted": 0.1631,
+    "err": -0.0044
+   },
+   {
+    "pair": "USDCHF",
+    "bucket": "Asia 00-07",
+    "sim": 0.1694,
+    "planted": 0.1726,
+    "err": -0.0032
+   },
+   {
+    "pair": "USDCHF",
+    "bucket": "London open 07-10",
+    "sim": 0.4153,
+    "planted": 0.4104,
+    "err": 0.0048
+   },
+   {
+    "pair": "USDCHF",
+    "bucket": "London mid 10-13",
+    "sim": 0.4113,
+    "planted": 0.4119,
+    "err": -0.0006
+   },
+   {
+    "pair": "USDCHF",
+    "bucket": "Overlap 13-16",
+    "sim": 0.582,
+    "planted": 0.5778,
+    "err": 0.0042
+   },
+   {
+    "pair": "USDCHF",
+    "bucket": "NY afternoon 16-22",
+    "sim": 0.3427,
+    "planted": 0.349,
+    "err": -0.0064
+   },
+   {
+    "pair": "USDJPY",
+    "bucket": "Asia 00-07",
+    "sim": 0.0693,
+    "planted": 0.0706,
+    "err": -0.0013
+   },
+   {
+    "pair": "USDJPY",
+    "bucket": "London open 07-10",
+    "sim": 0.1998,
+    "planted": 0.1972,
+    "err": 0.0027
+   },
+   {
+    "pair": "USDJPY",
+    "bucket": "London mid 10-13",
+    "sim": 0.1989,
+    "planted": 0.1981,
+    "err": 0.0008
+   },
+   {
+    "pair": "USDJPY",
+    "bucket": "Overlap 13-16",
+    "sim": 0.3401,
+    "planted": 0.3353,
+    "err": 0.0047
+   },
+   {
+    "pair": "USDJPY",
+    "bucket": "NY afternoon 16-22",
+    "sim": 0.1544,
+    "planted": 0.1591,
+    "err": -0.0047
+   }
+  ],
+  "share_max_err": 0.0077,
+  "tod": {
+   "sim": 0.3069,
+   "planted": 0.3066,
+   "err": 0.0003
+  },
+  "sig": {
+   "sim": 0.2239,
+   "planted": 0.229,
+   "err": -0.0052
+  },
+  "fr_literal": {
+   "corrected_loud_minus_calm_sim": 0.1485,
+   "corrected_loud_minus_calm_population": 0.1506,
+   "raw_loud_minus_calm_sim": 0.2403,
+   "forward_map_minus_calm_population": 0.0809,
+   "pass": false
+  },
+  "fr_pipeline": {
+   "sim": 0.1478,
+   "planted": 0.1515,
+   "err": -0.0037,
+   "pass": true
+  },
+  "eq_coverage": {
+   "covers_0_of_100": {
+    "1h": 88,
+    "rest": 86
+   },
+   "mean_diff": {
+    "1h": 0.0004,
+    "rest": -0.0002
+   },
+   "pass": true
+  },
+  "checks": {
+   "share_by_bucket": true,
+   "tod": true,
+   "sig": true,
+   "fr_literal": false,
+   "fr_pipeline": true,
+   "eq": true
+  },
+  "pass": false,
+  "checks_after_A1": {
+   "share_by_bucket": true,
+   "tod": true,
+   "sig": true,
+   "fr_pipeline": true,
+   "eq": true
+  }
+ },
+ "pass": true,
+ "pass_original": false,
+ "amendment": "A1 2026-11-16 PRE-RESULTS: FR control part replaced by fr_pipeline (pipeline recovers the population value of its own statistic, error -0.0037, pass). fr_literal kept for the record (prereg claim false when both legs load on the factor)."
+}

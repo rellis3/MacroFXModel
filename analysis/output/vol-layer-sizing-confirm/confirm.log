@@ -1,0 +1,6 @@
+controls {'positive_F_minus_U': [-0.0881, -0.1104, -0.0699], 'positive_pass': True, 'null_F_minus_U': [0.0964, 0.0781, 0.1177], 'null_pass': True}
+{"a": {"verdict": "VALIDATED", "p_ok": true, "gates": {"plateau": true, "mirror": true, "lag": true, "years_n": 4, "years": true}}, "b": {"verdict": "VALIDATED", "p_ok": true, "gates": {"lag": true, "years": true, "years_n": 4}}, "c": {"verdict": "VALIDATED", "p_ok": true, "gates": {"plateau": true, "all_days": true, "lag": true, "years_n": 4, "years": true}}, "e": {"verdict": "VALIDATED", "p_ok": true, "gates": {"plateau": true, "lag": true, "years_n": 4, "years": true}}}
+sens done 401
+C:\Users\relli\AppData\Local\Temp\claude\181f22e54fe44b96\aacf33a2-90d0-431d-ae4c-0004f3d87485\scratchpad\wt2\scripts\vol-layer-sizing-confirm\run.py:433: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  f_raw = R[list(USD_LEGS)].mean(1)
+done 445

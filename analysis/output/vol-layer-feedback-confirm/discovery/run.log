@@ -1,0 +1,43 @@
+[    17s] discovery rows 54177 insts 34
+[    38s] reproduced (no M1) {'persist_p': 0.4949, 'persist_c': 0.2453, 'cov75_c': 25.5866, 'plateau_p': 0.7002, 'plateau_c': 0.9137}
+[    62s] m1 AUDCAD 1625 2016-10-24 2022-12-30
+[    78s] m1 AUDCHF 1625 2016-10-24 2022-12-30
+[    87s] m1 AUDJPY 1629 2016-10-24 2022-12-30
+[   101s] m1 AUDNZD 1625 2016-10-24 2022-12-30
+[   110s] m1 AUDUSD 1625 2016-10-24 2022-12-30
+[   118s] m1 CADCHF 1625 2016-10-24 2022-12-30
+[   136s] m1 CADJPY 1625 2016-10-24 2022-12-30
+[   155s] m1 CHFJPY 1625 2016-10-24 2022-12-30
+[   166s] m1 DE30 1572 2016-10-24 2022-12-30
+[   185s] m1 DOW 1598 2016-10-24 2022-12-30
+[   206s] m1 EURAUD 1625 2016-10-24 2022-12-30
+[   225s] m1 EURCAD 1625 2016-10-24 2022-12-30
+[   248s] m1 EURCHF 1625 2016-10-24 2022-12-30
+[   264s] m1 EURGBP 1625 2016-10-24 2022-12-30
+[   276s] m1 EURJPY 1625 2016-10-24 2022-12-30
+[   297s] m1 EURNZD 1625 2016-10-24 2022-12-30
+[   321s] m1 EURUSD 1625 2016-10-24 2022-12-30
+[   344s] m1 GBPAUD 1625 2016-10-24 2022-12-30
+[   366s] m1 GBPCAD 1625 2016-10-24 2022-12-30
+[   379s] m1 GBPCHF 1625 2016-10-24 2022-12-30
+[   404s] m1 GBPJPY 1625 2016-10-24 2022-12-30
+[   422s] m1 GBPNZD 1625 2016-10-24 2022-12-30
+[   443s] m1 GBPUSD 1625 2016-10-24 2022-12-30
+[   472s] m1 GOLD 1597 2016-10-24 2022-12-30
+[   495s] m1 NQ 1598 2016-10-24 2022-12-30
+[   504s] m1 NZDCAD 1625 2016-10-24 2022-12-30
+[   513s] m1 NZDJPY 1625 2016-10-24 2022-12-30
+[   539s] m1 NZDUSD 1627 2016-10-24 2022-12-30
+[   553s] m1 SPX500 1598 2016-10-24 2022-12-30
+[   571s] m1 UK100 1563 2016-10-24 2022-12-30
+[   585s] m1 US2000 1598 2016-10-24 2022-12-30
+[   615s] m1 USDCAD 1625 2016-10-24 2022-12-30
+[   634s] m1 USDCHF 1625 2016-10-24 2022-12-30
+[   649s] m1 USDJPY 1625 2016-10-24 2022-12-30
+  rv = lambda a, b: X[[f"rv_{h}" for h in range(a, b)]].sum(1, min_count=1)
+  rv = lambda a, b: X[[f"rv_{h}" for h in range(a, b)]].sum(1, min_count=1)
+  rv = lambda a, b: X[[f"rv_{h}" for h in range(a, b)]].sum(1, min_count=1)
+  rv = lambda a, b: X[[f"rv_{h}" for h in range(a, b)]].sum(1, min_count=1)
+  rv = lambda a, b: X[[f"rv_{h}" for h in range(a, b)]].sum(1, min_count=1)
+  rv = lambda a, b: X[[f"rv_{h}" for h in range(a, b)]].sum(1, min_count=1)
+[   659s] reproduce {"persist_p": {"stage3": 0.4949, "now": 0.4949, "ok": true}, "persist_c": {"stage3": 0.2453, "now": 0.2453, "ok": true}, "morning": {"stage3": 0.5637, "now": 0.5637, "ok": true}, "plateau_p": {"stage3": 0.7002, "now": 0.7002, "ok": true}, "plateau_c": {"stage3": 0.9137, "now": 0.9137, "ok": true}, "cov75_c": {"stage3": 25.5866, "now": 25.5866, "ok": true}, "b1_p": {"prereg": 0.67559, "now": 0.675588, "n_rows": 49927, "first": "2017-04-19", "ok": true}, "b1_c": {"prereg": 0.42989, "now": 0.429893, "n_rows": 19141, "first": "2020-10-22", "ok": true}, "insample_p": {"prereg": 0.696, "now": 0.6958, "ok": true}, "insample_c": {"prereg": 0.903, "now": 0.903, "ok": true}}

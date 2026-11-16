@@ -10,16 +10,16 @@ Generated 2026-11-16.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **381** |
-| validated | 54 |
-| null | 198 |
+| claims tested (validated + null + underpowered) | **393** |
+| validated | 65 |
+| null | 199 |
 | underpowered | 129 |
-| context (base rates, descriptions: not counted as tests) | 58 |
-| pre-registrations with no banked verdict (below) | 89 |
+| context (base rates, descriptions: not counted as tests) | 59 |
+| pre-registrations with no banked verdict (below) | 92 |
 
-**What the count says (Lesson 02 §05).** If none of the 381 claims were real, tests at the usual 5% size would still pass
-about **19.1** of them by luck. 54 passed, so most passes are unlikely to be luck alone, but
-**roughly 19 of the 54 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 393 claims were real, tests at the usual 5% size would still pass
+about **19.7** of them by luck. 65 passed, so most passes are unlikely to be luck alone, but
+**roughly 20 of the 65 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -466,6 +466,19 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-16 | bias-engine-backtest-sameday | macro | underpowered | forge/BIAS_ENGINE_BACKTEST_PREREG.md |
 | 2026-11-16 | raw-line-touch-clock-hour | price | null | forge/RAW_LINE_TOUCH_CLOCK_PREREG.md |
 | 2026-11-16 | raw-line-touch-clock-range | volatility | null | forge/RAW_LINE_TOUCH_CLOCK_PREREG.md |
+| 2026-11-16 | vol-layer-features-confirm-eq | volatility | validated | forge/VOL_LAYER_FEATURES_CONFIRM_PREREG.md |
+| 2026-11-16 | vol-layer-features-confirm-fr | volatility | validated | forge/VOL_LAYER_FEATURES_CONFIRM_PREREG.md |
+| 2026-11-16 | vol-layer-features-confirm-sig | volatility | null | forge/VOL_LAYER_FEATURES_CONFIRM_PREREG.md |
+| 2026-11-16 | vol-layer-features-confirm-tod | volatility | validated | forge/VOL_LAYER_FEATURES_CONFIRM_PREREG.md |
+| 2026-11-16 | vol-layer-feedback-confirm-cov75 | volatility | validated | forge/VOL_LAYER_FEEDBACK_CONFIRM_PREREG.md |
+| 2026-11-16 | vol-layer-feedback-confirm-morning | volatility | validated | forge/VOL_LAYER_FEEDBACK_CONFIRM_PREREG.md |
+| 2026-11-16 | vol-layer-feedback-confirm-persist | volatility | validated | forge/VOL_LAYER_FEEDBACK_CONFIRM_PREREG.md |
+| 2026-11-16 | vol-layer-feedback-confirm-qlike-chosen | volatility | validated | forge/VOL_LAYER_FEEDBACK_CONFIRM_PREREG.md |
+| 2026-11-16 | vol-layer-feedback-confirm-qlike-plain | volatility | validated | forge/VOL_LAYER_FEEDBACK_CONFIRM_PREREG.md |
+| 2026-11-16 | vol-layer-sizing-confirm-a | execution | validated | forge/VOL_LAYER_SIZING_CONFIRM_PREREG.md |
+| 2026-11-16 | vol-layer-sizing-confirm-b | execution | validated | forge/VOL_LAYER_SIZING_CONFIRM_PREREG.md |
+| 2026-11-16 | vol-layer-sizing-confirm-c | execution | context | forge/VOL_LAYER_SIZING_CONFIRM_PREREG.md |
+| 2026-11-16 | vol-layer-sizing-confirm-e | execution | validated | forge/VOL_LAYER_SIZING_CONFIRM_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -555,6 +568,9 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VIX_DIVERGENCE_PREREG.md`: VIX vs Nasdaq divergence at the vol lines (hourly) — pre-registration
 - `forge/VIX_SIGNALS_FORWARD_PREREG.md`: vix-signals-forward: forward record of the four VIX/Nasdaq signals banked 2026-10-23
 - `forge/VMC_DIVERGENCE_INDICES_PREREG.md`: VuManChu Cipher B divergence at the vol lines (NQ first) — pre-registration
+- `forge/VOL_LAYER_JUMPS_CONFIRM_PREREG.md`: vol-layer-jumps-confirm: after a burst, does a σ stop get hit more often, and lose more past the stop, than th
+- `forge/VOL_LAYER_STATE_CONFIRM_PREREG.md`: vol-layer-state-confirm: do the stage 3 vol-state effects hold on unseen 2023-26 data, judged on their own mea
+- `forge/VOL_LAYER_STOPS_CONFIRM_PREREG.md`: vol-layer-stops-confirm: does the stage 3 stop model hold on unseen 2023-26 bid/ask data, judged on its own me
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
 - `forge/VRP_FORECAST_PREREG.md`: Your vol forecast vs the market's — variance risk premium (pre-registration)
 - `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?

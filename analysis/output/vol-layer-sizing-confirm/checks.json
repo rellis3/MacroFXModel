@@ -1,0 +1,257 @@
+{
+ "vol-layer-sizing-confirm-a": {
+  "effect": 0.07531581808222469,
+  "lo": 0.05290926461346028,
+  "hi": 0.10551273996486946,
+  "min_effect": 0.05,
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "note": "run.py re-run reproduces all 12 scored numbers in results.json; step 0 passed (exact stage 3 reproduction, positive control -0.1265, null control 0.1193, discovery mirror pass); confirm-path controls -0.0881 / 0.0964",
+   "mde_80pct_alpha0.0125": 0.0448
+  },
+  "planted_large": {
+   "injected": 0.1,
+   "shift": 0.09999999999999999,
+   "lo_after": 0.1529092646134603,
+   "how": "pushed the unscaled arm's realised SD in every instrument-month 0.1 further from 1 (z rescaled in that month), rebuilt the month table and re-bootstrapped"
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.05000000000000003,
+   "lo_after": 0.10290926461346032,
+   "how": "pushed the unscaled arm's realised SD in every instrument-month 0.05 further from 1 (z rescaled in that month), rebuilt the month table and re-bootstrapped"
+  },
+  "shuffle": {
+   "real_beats_all": true,
+   "real": -0.0753,
+   "shuffle_min": 0.0354,
+   "shuffle_p2.5": 0.038,
+   "n": 200,
+   "how": "each instrument's sigma path shuffled in whole calendar months (200); real F - U must be below every shuffle"
+  },
+  "rows": {
+   "used": 32000,
+   "dropped": 0,
+   "months": 44,
+   "note": "dropped = confirm-window rows removed by sigma>0 / missing r_ocs / trailing-input filters"
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.07532 reaches the minimum +0.05"
+  ],
+  "power": 0.9812861358014835
+ },
+ "vol-layer-sizing-confirm-b": {
+  "effect": 0.016064729690369824,
+  "lo": 0.006297356283515579,
+  "hi": 0.01979142143477802,
+  "min_effect": 0.0,
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "note": "run.py re-run reproduces all 12 scored numbers in results.json; step 0 passed (exact stage 3 reproduction, positive control -0.1265, null control 0.1193, discovery mirror pass); confirm-path controls -0.0881 / 0.0964",
+   "raw_diff": [
+    0.0039,
+    -0.0046,
+    0.0137
+   ],
+   "tost_holm_p": 0.0015,
+   "tost_mde": 0.0164,
+   "orientation": "effect = 0.02 - |dev_T20 - dev_F|; min_effect 0, so VALIDATED = whole interval inside the margin, NULL = whole interval outside it; the gate's power figure is not meaningful at min_effect 0 (see tost_mde)"
+  },
+  "planted_large": {
+   "injected": 0.04,
+   "shift": 0.04000000000000002,
+   "raw_diff_after": [
+    0.0439,
+    0.0354,
+    0.0537
+   ],
+   "equiv_lo_after": -0.03370264371648445,
+   "equiv_hi_after": -0.015447989408525514,
+   "how": "pushed T20's monthly SD 0.04 further from 1 (equivalence-breaking); shift = how far 0.02 - |d| FELL"
+  },
+  "planted_min": {
+   "injected": 0.02,
+   "shift": 0.02000000000000002,
+   "raw_diff_after": [
+    0.0239,
+    0.0154,
+    0.0337
+   ],
+   "equiv_lo_after": -0.013702643716484438,
+   "equiv_hi_after": 0.0045520105914744965,
+   "how": "pushed T20's monthly SD 0.02 further from 1 (equivalence-breaking); shift = how far 0.02 - |d| FELL"
+  },
+  "shuffle": {
+   "effect": -0.0007398623835769035,
+   "lo": -0.006210701894861005,
+   "hi": 0.004664161395655275,
+   "each": [
+    -0.0006,
+    0.0053,
+    0.0001,
+    -0.0008,
+    0.0024,
+    0.0018,
+    -0.0023,
+    -0.007,
+    -0.0024,
+    -0.0024,
+    0.0038,
+    -0.0054,
+    -0.0022,
+    -0.0047,
+    0.0033,
+    -0.001,
+    0.0022,
+    -0.0019,
+    -0.0017,
+    -0.0013
+   ],
+   "how": "swapped T20 / sigma monthly deviations per instrument-month with probability 1/2, 20 times; on the raw difference d"
+  },
+  "rows": {
+   "used": 32000,
+   "dropped": 0,
+   "months": 44,
+   "note": "dropped = confirm-window rows removed by sigma>0 / missing r_ocs / trailing-input filters"
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.01606 reaches the minimum +0"
+  ],
+  "power": 0.05000000000000013
+ },
+ "vol-layer-sizing-confirm-c": {
+  "effect": 0.23228803716608595,
+  "lo": 0.1626638850449751,
+  "hi": 0.30657452129294455,
+  "min_effect": 0.25,
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "note": "run.py re-run reproduces all 12 scored numbers in results.json; step 0 passed (exact stage 3 reproduction, positive control -0.1265, null control 0.1193, discovery mirror pass); confirm-path controls -0.0881 / 0.0964",
+   "mde_80pct_alpha0.0125": 0.1226
+  },
+  "planted_large": {
+   "injected": 0.5,
+   "shift": 0.4987360797977728,
+   "lo_after": 0.5787637512560795,
+   "sessions_set": 73,
+   "how": "set z_F to 3.5 on 73 random quiet-day sessions inside +/-3 under both sizings (FA untouched): +0.5pp on F's quiet-day tail rate"
+  },
+  "planted_min": {
+   "injected": 0.25,
+   "shift": 0.25278404044544645,
+   "lo_after": 0.38841454902316574,
+   "sessions_set": 37,
+   "how": "set z_F to 3.5 on 37 random quiet-day sessions inside +/-3 under both sizings (FA untouched): +0.25pp on F's quiet-day tail rate"
+  },
+  "shuffle": {
+   "effect": 0.012297601967616313,
+   "lo": -0.0605682487593992,
+   "hi": 0.08571286196210573,
+   "each": [
+    0.0,
+    0.0,
+    0.0547,
+    0.1093,
+    -0.0273,
+    0.0137,
+    0.0,
+    -0.0137,
+    -0.0273,
+    0.1093,
+    0.0,
+    0.0547,
+    -0.0683,
+    0.0137,
+    0.0273,
+    -0.0137,
+    0.082,
+    0.0,
+    -0.0547,
+    -0.0137
+   ],
+   "how": "swapped z_F / z_FA per session with probability 1/2, 20 times"
+  },
+  "rows": {
+   "used": 32000,
+   "dropped": 0,
+   "months": 44,
+   "note": "dropped = confirm-window rows removed by sigma>0 / missing r_ocs / trailing-input filters",
+   "quiet_day_dates": 931,
+   "quiet_sessions": 14637
+  },
+  "verdict": "CONTEXT",
+  "reasons": [
+   "interval above 0, but +0.2323 is below the minimum +0.25"
+  ],
+  "power": 0.9999998796537779
+ },
+ "vol-layer-sizing-confirm-e": {
+  "effect": 0.09669381709156612,
+  "lo": 0.0770992504445923,
+  "hi": 0.11898550359989848,
+  "min_effect": 0.05,
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "note": "run.py re-run reproduces all 12 scored numbers in results.json; step 0 passed (exact stage 3 reproduction, positive control -0.1265, null control 0.1193, discovery mirror pass); confirm-path controls -0.0881 / 0.0964",
+   "mde_80pct_alpha0.0125": 0.0357
+  },
+  "planted_large": {
+   "injected": 0.1,
+   "shift": 0.10000000000000002,
+   "lo_after": 0.17709925044459232,
+   "how": "pushed the 1/sigma^2 arm's realised SD in every instrument-month 0.1 further from 1 (z rescaled in that month), rebuilt the month table and re-bootstrapped"
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.05000000000000006,
+   "lo_after": 0.1270992504445923,
+   "how": "pushed the 1/sigma^2 arm's realised SD in every instrument-month 0.05 further from 1 (z rescaled in that month), rebuilt the month table and re-bootstrapped"
+  },
+  "shuffle": {
+   "effect": -0.001277915330987697,
+   "lo": -0.010407280255704032,
+   "hi": 0.007787639373243824,
+   "each": [
+    -0.0005,
+    -0.009,
+    0.0021,
+    -0.0007,
+    0.0029,
+    -0.0034,
+    -0.0022,
+    -0.0035,
+    -0.0017,
+    -0.0087,
+    -0.0025,
+    -0.0023,
+    -0.001,
+    0.0114,
+    0.0028,
+    -0.0039,
+    -0.0053,
+    -0.0,
+    -0.0039,
+    0.0037
+   ],
+   "how": "swapped the 1/sigma^2 and sigma monthly deviations per instrument-month with probability 1/2, 20 times"
+  },
+  "rows": {
+   "used": 32000,
+   "dropped": 0,
+   "months": 44,
+   "note": "dropped = confirm-window rows removed by sigma>0 / missing r_ocs / trailing-input filters"
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.09669 reaches the minimum +0.05"
+  ],
+  "power": 0.9987949266001956
+ }
+}

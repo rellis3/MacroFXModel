@@ -235,8 +235,24 @@ Reproduce: `node -e "import('./js/preregStats.js').then(m => { const k = Math.sq
 - **CONTEXT:**
   - The effect is real but local or too small. Example: C2 only in busy markets. The local slice goes to the research-director as a candidate prereg (a busy-tercile feedback term). It never becomes a rule from this study.
 
+## Amendments
+
+**2026-11-16, PRE-RESULTS (step 0 passed; no 2023+ outcome read yet).** These record how the script reads parts of §3-§6 that the text leaves open. None changes a pass bar, a frozen slope or the window.
+
+1. **Step 0 passed.** Stage 3 reproduced exactly: persistence 0.4949 / 0.2453, morning 0.5637, plateau hl 1 0.7002 / 0.9137, chosen p75 25.5866%. Refit b₁ 0.675588 / 0.429893 (within 1e-4 of the frozen 0.67559 / 0.42989). In-sample frozen ratios 0.6958 / 0.9030. `discovery/reproduce.json`, `discovery/frozen.json`.
+2. **Hourly RV.** The stage 3 cache was not reused. The script rebuilds it from M1 in two parts: discovery (M1 before 2022-12-31 00:00 UTC, built in step 0 and used to reproduce 0.564) and confirm (M1 from 2022-12-30 to before 2026-08-20 23:00 UTC, London dates 2023-01-01 → 2026-08-20). 5-minute returns never span two London dates, so the split changes nothing.
+3. **Cell A verdict.** A is conjunctive, so the cell takes the weaker of the two forecasts' verdicts (order NULL < UNDERPOWERED < CONTEXT < VALIDATED).
+4. **C rows.** C1 and C2 are scored on rows where the base, hl 1, hl 2, hl 3 and the +1 lag forecasts all exist, so every C comparison uses the same rows.
+5. **Month placebos.** A month permutation puts an instrument's calendar-month blocks (scored rows only) in a random order. For C the EWMA input is permuted inside 2023-26 only; discovery history stays real, and the past-only scale is recomputed for each draw.
+6. **Placebo-SD rule.** When the month-placebo SD exceeds 1.25 × the bootstrap SE, p = two-sided normal p of (estimate − no-effect value) ÷ placebo SD, floored at 1/2000.
+7. **Event split.** Event days = `event` in {high, NFP, CPI, FOMC}; non-event = `none`; `unknown` is in neither.
+8. **Concentration.** "Pooled miss" = the date's mean miss across instruments (plain σ for A-plain, B and C1; chosen σ for A-chosen, C2 and D).
+9. **Disaggregation.** BH at q = 0.10 over the class, tercile, year and event slices of A, B and C plus C by instrument. In place of the JS `chanceBaseline` the script reports the expected number of false passes (0.10 × passes).
+10. **Dropped descriptive item.** The turbulent-onset lag event study (§6, descriptive) is not run. It needs the Lesson 05 spell label and is not part of any gate.
+11. **D TOST p.** p = the larger of the share of bootstrap draws at or below 22.5 and at or above 27.5, floored at 1/2000.
+
 ---
 
-## RESULTS — run <YYYY-MM-DD>
+## RESULTS — run 2026-11-16
 
 *Written to `analysis/output/vol-layer-feedback-confirm/RESULTS.md`. Nothing above this line changes after the run. Amendments go in an `## Amendments` section above this one, dated and tagged `PRE-RESULTS` or `POST-HOC (results seen)`.*

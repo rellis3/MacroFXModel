@@ -1,0 +1,9 @@
+tod +0.1833 [+0.1548, +0.2146] repro True  planted +0.2000/+0.1000  shuffle [-0.0252, +0.0202]
+sig +0.0450 [-0.0089, +0.0956] repro True  planted +0.2000/+0.1000  shuffle [-0.0125, +0.0202]
+fr  +0.1498 [+0.0930, +0.2025] repro True  planted +0.1000/+0.0500  shuffle [-0.0441, +0.0376]
+eq  +0.9252 [+0.3896, +0.9546] repro True  planted +2.0000/+1.0000  shuffle [-0.00559, +0.00553]
+  vol-layer-features-confirm-tod: VALIDATED     power 1.0  interval above 0 and +0.1833 reaches the minimum +0.1
+  vol-layer-features-confirm-sig: NULL          power 0.982  whole interval is below the minimum +0.1, so that size is ruled out
+  vol-layer-features-confirm-fr: VALIDATED     power 0.557  interval above 0 and +0.1498 reaches the minimum +0.05
+  vol-layer-features-confirm-eq: VALIDATED     power 0.05  interval above 0 and +0.9252 reaches the minimum +0
+checks.json written: every gate word equals the banked word

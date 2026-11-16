@@ -1,0 +1,60 @@
+{
+ "ok": true,
+ "checks": {
+  "persist_p": {
+   "stage3": 0.4949,
+   "now": 0.4949,
+   "ok": true
+  },
+  "persist_c": {
+   "stage3": 0.2453,
+   "now": 0.2453,
+   "ok": true
+  },
+  "morning": {
+   "stage3": 0.5637,
+   "now": 0.5637,
+   "ok": true
+  },
+  "plateau_p": {
+   "stage3": 0.7002,
+   "now": 0.7002,
+   "ok": true
+  },
+  "plateau_c": {
+   "stage3": 0.9137,
+   "now": 0.9137,
+   "ok": true
+  },
+  "cov75_c": {
+   "stage3": 25.5866,
+   "now": 25.5866,
+   "ok": true
+  },
+  "b1_p": {
+   "prereg": 0.67559,
+   "now": 0.675588,
+   "n_rows": 49927,
+   "first": "2017-04-19",
+   "ok": true
+  },
+  "b1_c": {
+   "prereg": 0.42989,
+   "now": 0.429893,
+   "n_rows": 19141,
+   "first": "2020-10-22",
+   "ok": true
+  },
+  "insample_p": {
+   "prereg": 0.696,
+   "now": 0.6958,
+   "ok": true
+  },
+  "insample_c": {
+   "prereg": 0.903,
+   "now": 0.903,
+   "ok": true
+  }
+ },
+ "ranAt": "2026-11-16T17:46:55+00:00"
+}

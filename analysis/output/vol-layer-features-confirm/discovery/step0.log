@@ -1,0 +1,15 @@
+grid EURUSD 26s
+grid GBPUSD 19s
+grid AUDUSD 25s
+grid NZDUSD 22s
+grid USDCAD 30s
+grid USDCHF 29s
+grid USDJPY 19s
+grid ready 174s
+discovery sessions 1615 complete 1584
+reproduction {"tod": {"target": 0.163, "got": 0.16339, "got_3dp": 0.163, "se_B2000": 0.0165, "match": true}, "sig": {"target": 0.118, "got": 0.11824, "got_3dp": 0.118, "se_B2000": 0.0317, "match": true}, "fr": {"target": -0.1, "got": -0.10027, "got_3dp": -0.1, "se_B2000": 0.0286, "match": true}, "eq_1h": {"target": -0.001, "got": -0.00061, "got_3dp": -0.001, "se_B2000": 0.0031, "match": true}, "eq_rest": {"target": -0.01, "got": -0.01012, "got_3dp": -0.01, "se_B2000": 0.0067, "match": true}, "n_events": {"dollar_1h": 29696, "own_1h": 48711}} 220s
+control share/tod/sig/fr 0.0077 {'sim': 0.3069, 'planted': 0.3066, 'err': 0.0003} {'sim': 0.2239, 'planted': 0.229, 'err': -0.0052} {'corrected_loud_minus_calm_sim': 0.1485, 'corrected_loud_minus_calm_population': 0.1506, 'raw_loud_minus_calm_sim': 0.2403, 'forward_map_minus_calm_population': 0.0809, 'pass': False} {'sim': 0.1478, 'planted': 0.1515, 'err': -0.0037, 'pass': True} 8s
+control EQ coverage {'covers_0_of_100': {'1h': 88, 'rest': 86}, 'mean_diff': {'1h': 0.0004, 'rest': -0.0002}, 'pass': True} 642s
+C:\Users\relli\AppData\Local\Temp\claude\181f22e54fe44b96\aacf33a2-90d0-431d-ae4c-0004f3d87485\scratchpad\wt2\scripts\vol-layer-features-confirm\run.py:468: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  pc = positive_control()
+STEP 0 FAIL 863s

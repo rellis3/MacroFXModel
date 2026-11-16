@@ -1,0 +1,90 @@
+{
+ "id": "vol-layer-features-confirm",
+ "verdict": "split",
+ "ranAt": "2026-11-16T18:01:32Z",
+ "seed": 20261116,
+ "B": 2000,
+ "prereg": "forge/VOL_LAYER_FEATURES_CONFIRM_PREREG.md",
+ "branch": "main",
+ "window": [
+  "2023-01-02",
+  "2026-08-20"
+ ],
+ "sessions_complete": 942,
+ "cells": [
+  {
+   "name": "vol-layer-features-confirm-tod",
+   "n": 942,
+   "est": 0.1833,
+   "lo": 0.1548,
+   "hi": 0.2146,
+   "mde": 0.0509,
+   "p": 0.0,
+   "p_holm": 0.0,
+   "verdict": "validated",
+   "gate": {
+    "holm": true,
+    "bar": true,
+    "plateau": true,
+    "lag1": true,
+    "years": true,
+    "per_pair": true
+   }
+  },
+  {
+   "name": "vol-layer-features-confirm-sig",
+   "n": 942,
+   "est": 0.045,
+   "lo": -0.0089,
+   "hi": 0.0956,
+   "mde": 0.089,
+   "p": 0.107,
+   "p_holm": 0.107,
+   "verdict": "null",
+   "gate": {
+    "holm": false,
+    "bar": false,
+    "plateau": true,
+    "lag1": false,
+    "years": true,
+    "per_pair": true
+   }
+  },
+  {
+   "name": "vol-layer-features-confirm-fr",
+   "n": 942,
+   "est": -0.1498,
+   "lo": -0.2025,
+   "hi": -0.093,
+   "mde": 0.0933,
+   "p": 0.0,
+   "p_holm": 0.0,
+   "verdict": "validated",
+   "gate": {
+    "holm": true,
+    "bar": true,
+    "plateau": true,
+    "lag1": true,
+    "years": true,
+    "per_pair": true
+   }
+  },
+  {
+   "name": "vol-layer-features-confirm-eq",
+   "n": 942,
+   "est": 0.00135,
+   "lo": -0.0072,
+   "hi": 0.0096,
+   "mde": 0.0151,
+   "p": 0.0,
+   "p_holm": 0.0,
+   "verdict": "validated",
+   "gate": {
+    "holm": true,
+    "plateau": true,
+    "lag1": true,
+    "years": true
+   }
+  }
+ ]
+}

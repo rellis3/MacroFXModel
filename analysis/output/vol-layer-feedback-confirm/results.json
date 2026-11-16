@@ -1,0 +1,168 @@
+{
+ "id": "vol-layer-feedback-confirm",
+ "verdict": "validated",
+ "ranAt": "2026-11-16T17:58:20+00:00",
+ "seed": 20261116,
+ "B": 2000,
+ "prereg": "forge/VOL_LAYER_FEEDBACK_CONFIRM_PREREG.md",
+ "preregCommit": "2f63c51a",
+ "branch": "main (run in worktree branch vol-layer-stage4-run off origin/main 9f998208)",
+ "window": [
+  "2023-01-01",
+  "2026-08-20"
+ ],
+ "scored_dates": 943,
+ "scored_rows": 31815,
+ "step0": "reproduced",
+ "gates": {
+  "persist_p": {
+   "1_holm": true,
+   "2_bar": true,
+   "3_lag": true,
+   "4_plateau": true,
+   "5_years": true,
+   "6_breadth": true,
+   "7_placebo": true
+  },
+  "persist_c": {
+   "1_holm": true,
+   "2_bar": true,
+   "3_lag": true,
+   "4_plateau": true,
+   "5_years": true,
+   "6_breadth": true,
+   "7_placebo": true
+  },
+  "morning": {
+   "1_holm": true,
+   "2_bar": true,
+   "3_lag": true,
+   "4_plateau": true,
+   "5_years": true,
+   "6_breadth": true,
+   "7_placebo": true,
+   "8_nonevent": true
+  },
+  "qlike_p": {
+   "1_holm": true,
+   "2_bar": true,
+   "3_lag": true,
+   "4_plateau": true,
+   "5_years": true,
+   "6_breadth": true,
+   "7_placebo": true
+  },
+  "qlike_c": {
+   "1_holm": true,
+   "2_bar": true,
+   "3_lag": true,
+   "4_plateau": true,
+   "5_years": true,
+   "6_breadth": true,
+   "7_placebo": true
+  },
+  "cov75": {
+   "1_holm": true,
+   "2_bar": true,
+   "5_years": true,
+   "6_breadth": true
+  }
+ },
+ "cells": [
+  {
+   "name": "vol-layer-feedback-confirm-persist",
+   "n": 31815,
+   "dates": 943,
+   "est": 0.4648,
+   "lo": 0.397,
+   "hi": 0.5335,
+   "mde_registered": {
+    "plain": 0.07,
+    "chosen": 0.057
+   },
+   "mde_realised": {
+    "plain": 0.0976,
+    "chosen": 0.0845
+   },
+   "bar": 0.1,
+   "unit": "slope",
+   "p_raw": 0.0005,
+   "p_holm": 0.0025,
+   "verdict": "validated",
+   "plain": {
+    "value": 0.4648,
+    "lo": 0.397,
+    "hi": 0.5335
+   },
+   "chosen": {
+    "value": 0.217,
+    "lo": 0.1602,
+    "hi": 0.2785
+   },
+   "note": "conjunctive: est/lo/hi = plain sigma; chosen in its own field"
+  },
+  {
+   "name": "vol-layer-feedback-confirm-morning",
+   "n": 31815,
+   "dates": 943,
+   "est": 0.4872,
+   "lo": 0.4124,
+   "hi": 0.5744,
+   "mde_registered": 0.083,
+   "mde_realised": 0.1158,
+   "bar": 0.1,
+   "unit": "slope",
+   "p_raw": 0.0005,
+   "p_holm": 0.0025,
+   "verdict": "validated"
+  },
+  {
+   "name": "vol-layer-feedback-confirm-qlike-plain",
+   "n": 31815,
+   "dates": 943,
+   "est": 0.7578,
+   "lo": 0.6827,
+   "hi": 0.8258,
+   "mde_registered": 0.09,
+   "mde_realised": 0.1023,
+   "bar": 0.95,
+   "unit": "QLIKE ratio",
+   "p_raw": 0.0005,
+   "p_holm": 0.0025,
+   "verdict": "validated"
+  },
+  {
+   "name": "vol-layer-feedback-confirm-qlike-chosen",
+   "n": 31815,
+   "dates": 943,
+   "est": 0.9025,
+   "lo": 0.8639,
+   "hi": 0.9365,
+   "mde_registered": 0.043,
+   "mde_realised": 0.0519,
+   "bar": 0.95,
+   "unit": "QLIKE ratio",
+   "p_raw": 0.0005,
+   "p_holm": 0.0025,
+   "verdict": "validated"
+  },
+  {
+   "name": "vol-layer-feedback-confirm-cov75",
+   "n": 63630,
+   "dates": 943,
+   "est": 24.0767,
+   "lo": 23.3142,
+   "hi": 24.9262,
+   "mde_registered": 1.34,
+   "mde_realised": 1.1521,
+   "bar": [
+    22.5,
+    27.5
+   ],
+   "unit": "% of sides beyond chosen p75",
+   "p_raw": 0.0005,
+   "p_holm": 0.0025,
+   "verdict": "validated"
+  }
+ ]
+}

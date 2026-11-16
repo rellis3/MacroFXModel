@@ -1,0 +1,10 @@
+reproduction: OK | step 0 + confirm controls: True
+a: +0.0753 [+0.0529, +0.1055] planted large +0.1000 min +0.0500
+e: +0.0967 [+0.0771, +0.1190] planted large +0.1000 min +0.0500
+c: +0.2323 [+0.1627, +0.3066] planted large +0.4987 min +0.2528
+b: equiv effect +0.0161 [+0.0063, +0.0198] planted large +0.0400 min +0.0200
+  vol-layer-sizing-confirm-a: VALIDATED     power 0.981  interval above 0 and +0.07532 reaches the minimum +0.05
+  vol-layer-sizing-confirm-b: VALIDATED     power 0.05  interval above 0 and +0.01606 reaches the minimum +0
+  vol-layer-sizing-confirm-c: CONTEXT       power 1.0  interval above 0, but +0.2323 is below the minimum +0.25   <-- banked VALIDATED
+  vol-layer-sizing-confirm-e: VALIDATED     power 0.999  interval above 0 and +0.09669 reaches the minimum +0.05
+MISMATCH: ['vol-layer-sizing-confirm-c'] -> C:\Users\relli\AppData\Local\Temp\claude\181f22e54fe44b96\aacf33a2-90d0-431d-ae4c-0004f3d87485\scratchpad\wt2\analysis\output\vol-layer-sizing-confirm\checks_MISMATCH_do_not_commit.json

@@ -1,0 +1,496 @@
+{
+ "id": "vol-layer-sizing-confirm",
+ "verdict": "validated",
+ "verdictNote": "all four scored cells validated; cell d descriptive Cell c demoted to context by A2 (post-hoc).",
+ "ranAt": "2026-11-16T17:39:23Z",
+ "seed": 20261116,
+ "B": 2000,
+ "prereg": "forge/VOL_LAYER_SIZING_CONFIRM_PREREG.md",
+ "preregCommit": "2f63c51a",
+ "branch": "main (worktree at 9f998208)",
+ "window": [
+  "2023-01-01",
+  "2026-08-20"
+ ],
+ "rows": 32000,
+ "instruments": 34,
+ "months": 44,
+ "step0": "passed (exact reproduction, controls, mirror)",
+ "cells": [
+  {
+   "name": "vol-layer-sizing-confirm-a",
+   "question": "sigma sizing steadies monthly risk vs unscaled (dev_F - dev_U)",
+   "n": 44,
+   "unit": "months",
+   "est": -0.0753,
+   "lo": -0.1055,
+   "hi": -0.0529,
+   "mde": 0.0448,
+   "bar": -0.05,
+   "p": 0.0,
+   "holmP": 0.0,
+   "verdict": "validated",
+   "gates": {
+    "plateau": true,
+    "mirror": true,
+    "lag": true,
+    "years_n": 4,
+    "years": true
+   },
+   "lag": [
+    -0.0634,
+    -0.0876,
+    -0.0442
+   ],
+   "years": {
+    "2023": [
+     -0.0645,
+     -0.0902,
+     -0.0406
+    ],
+    "2024": [
+     -0.0587,
+     -0.0874,
+     -0.0291
+    ],
+    "2025": [
+     -0.116,
+     -0.2096,
+     -0.0482
+    ],
+    "2026": [
+     -0.0554,
+     -0.0848,
+     -0.0262
+    ]
+   }
+  },
+  {
+   "name": "vol-layer-sizing-confirm-b",
+   "question": "RV20 equivalent to sigma within +/-0.02 (dev_T20 - dev_F, TOST)",
+   "n": 44,
+   "unit": "months",
+   "est": 0.0039,
+   "lo": -0.0046,
+   "hi": 0.0137,
+   "mde": 0.0164,
+   "bar": 0.02,
+   "p": 0.0015,
+   "holmP": 0.0015,
+   "verdict": "validated",
+   "gates": {
+    "lag": true,
+    "years": true,
+    "years_n": 4
+   },
+   "lag": [
+    0.0043,
+    -0.003,
+    0.0126
+   ],
+   "years": {
+    "2023": [
+     -0.0023,
+     -0.0105,
+     0.0053
+    ],
+    "2024": [
+     -0.0057,
+     -0.0136,
+     0.0025
+    ],
+    "2025": [
+     0.0154,
+     -0.0058,
+     0.0359
+    ],
+    "2026": [
+     0.0106,
+     -0.0052,
+     0.0253
+    ]
+   }
+  },
+  {
+   "name": "vol-layer-sizing-confirm-c",
+   "question": "level floor cuts quiet-day 3-sd days (tail%_FA - tail%_F, pp)",
+   "n": 931,
+   "unit": "quiet-day dates",
+   "est": -0.2323,
+   "lo": -0.3066,
+   "hi": -0.1627,
+   "mde": 0.1226,
+   "bar": -0.25,
+   "p": 0.0,
+   "holmP": 0.0,
+   "verdict": "context",
+   "gates": {
+    "plateau": true,
+    "all_days": true,
+    "lag": true,
+    "years_n": 4,
+    "years": true
+   },
+   "lag": [
+    -0.232,
+    -0.318,
+    -0.154
+   ],
+   "years": {
+    "2023": [
+     -0.202,
+     -0.312,
+     -0.105
+    ],
+    "2024": [
+     -0.216,
+     -0.364,
+     -0.099
+    ],
+    "2025": [
+     -0.258,
+     -0.428,
+     -0.045
+    ],
+    "2026": [
+     -0.303,
+     -0.472,
+     -0.138
+    ]
+   },
+   "amendment": "A2 POST-HOC: short of its own 0.25pp bar (shared gate); demoted from validated"
+  },
+  {
+   "name": "vol-layer-sizing-confirm-e",
+   "question": "1/sigma^2 less steady than 1/sigma (dev_MM - dev_F)",
+   "n": 44,
+   "unit": "months",
+   "est": 0.0967,
+   "lo": 0.0771,
+   "hi": 0.119,
+   "mde": 0.0357,
+   "bar": 0.05,
+   "p": 0.0,
+   "holmP": 0.0,
+   "verdict": "validated",
+   "gates": {
+    "plateau": true,
+    "lag": true,
+    "years_n": 4,
+    "years": true
+   },
+   "lag": [
+    0.0964,
+    0.0736,
+    0.1206
+   ],
+   "years": {
+    "2023": [
+     0.1064,
+     0.0638,
+     0.1537
+    ],
+    "2024": [
+     0.1002,
+     0.0793,
+     0.1207
+    ],
+    "2025": [
+     0.0681,
+     0.0357,
+     0.0978
+    ],
+    "2026": [
+     0.1199,
+     0.0828,
+     0.1596
+    ]
+   }
+  }
+ ],
+ "mirror_a": {
+  "real": -0.0753,
+  "shuffle_mean": 0.048,
+  "shuffle_p2.5": 0.038,
+  "shuffle_min": 0.0354,
+  "share_below_real": 0.0,
+  "pass": true,
+  "n": 200
+ },
+ "controls_confirm_sigma_path": {
+  "positive_F_minus_U": [
+   -0.0881,
+   -0.1104,
+   -0.0699
+  ],
+  "positive_pass": true,
+  "null_F_minus_U": [
+   0.0964,
+   0.0781,
+   0.1177
+  ],
+  "null_pass": true
+ },
+ "sensitivity": {
+  "live_sigma": {
+   "a": [
+    -0.0799,
+    -0.113,
+    -0.0567
+   ],
+   "b": [
+    0.0085,
+    -0.0004,
+    0.0188
+   ],
+   "c": [
+    -0.2877,
+    -0.3722,
+    -0.2056
+   ],
+   "e": [
+    0.0924,
+    0.0736,
+    0.1143
+   ],
+   "oos_share_pit": 1.0
+  },
+  "discovery_frozen_scale": {
+   "a": [
+    -0.1199,
+    -0.1424,
+    -0.0978
+   ],
+   "b": [
+    -0.0012,
+    -0.0096,
+    0.0084
+   ],
+   "c": [
+    -0.2528,
+    -0.3465,
+    -0.1664
+   ],
+   "e": [
+    0.1497,
+    0.1264,
+    0.1726
+   ],
+   "dev_U_F": [
+    0.2818,
+    0.1619
+   ]
+  },
+  "random_sign": {
+   "a": [
+    -0.0714,
+    -0.1016,
+    -0.0492
+   ],
+   "b": [
+    0.0037,
+    -0.0052,
+    0.0136
+   ],
+   "c": [
+    -0.2255,
+    -0.2979,
+    -0.1508
+   ],
+   "e": [
+    0.0989,
+    0.0801,
+    0.1208
+   ]
+  }
+ },
+ "descriptive": {
+  "sizings": {
+   "U": {
+    "dev": 0.2317,
+    "es1": -3.315,
+    "p1": -2.522,
+    "exc3_all": 1.0,
+    "turnover": 0.0
+   },
+   "F": {
+    "dev": 0.1564,
+    "es1": -3.374,
+    "p1": -2.599,
+    "exc3_all": 0.916,
+    "turnover": 0.0647
+   },
+   "T20": {
+    "dev": 0.1603,
+    "es1": -3.539,
+    "p1": -2.645,
+    "exc3_all": 1.081,
+    "turnover": 0.039
+   },
+   "FA": {
+    "dev": 0.1593,
+    "es1": -3.349,
+    "p1": -2.563,
+    "exc3_all": 0.894,
+    "turnover": 0.0496
+   },
+   "MM": {
+    "dev": 0.2531,
+    "es1": -3.817,
+    "p1": -2.727,
+    "exc3_all": 1.341,
+    "turnover": 0.1285
+   },
+   "D3": {
+    "dev_O": 0.1127,
+    "share_F": 0.633,
+    "share_T20": 0.6
+   }
+  },
+  "book": {
+   "D1": {
+    "overall": 0.719,
+    "shuffled": 0.493,
+    "year": {
+     "2023": [
+      0.753,
+      0.717,
+      0.794,
+      259
+     ],
+     "2024": [
+      0.739,
+      0.677,
+      0.793,
+      260
+     ],
+     "2025": [
+      0.637,
+      0.604,
+      0.673,
+      259
+     ],
+     "2026": [
+      0.762,
+      0.707,
+      0.819,
+      165
+     ]
+    },
+    "dollar_vol_tercile": {
+     "low": [
+      0.72,
+      0.681,
+      0.755,
+      486
+     ],
+     "mid": [
+      0.777,
+      0.729,
+      0.819,
+      208
+     ],
+     "high": [
+      0.669,
+      0.618,
+      0.721,
+      249
+     ]
+    }
+   },
+   "D2": {
+    "binds": {
+     "1.5": 0.568,
+     "2.0": 0.0,
+     "3.0": 0.0
+    },
+    "es_diff": {
+     "1.5": [
+      0.038,
+      -0.142,
+      0.308
+     ],
+     "2.0": [
+      0.0,
+      -0.0,
+      0.0
+     ],
+     "3.0": [
+      0.0,
+      -0.0,
+      0.0
+     ]
+    },
+    "steady": {
+     "uncapped": 0.1241,
+     "unlevered": 0.1131,
+     "cap 1.5": 0.1106,
+     "cap 2.0": 0.1241,
+     "cap 3.0": 0.1241
+    },
+    "es": {
+     "1.5": -3.255,
+     "2.0": -3.293,
+     "3.0": -3.293,
+     "uncapped": -3.293
+    },
+    "var99_breach_pct": {
+     "model": 1.27,
+     "stress": 0.21
+    },
+    "one_over_bv": [
+     1.54,
+     1.27,
+     1.72
+    ]
+   },
+   "sessions": 943
+  },
+  "loud_day_mirror_c": [
+   0.273,
+   0.101,
+   0.463
+  ],
+  "all_days_c": [
+   -0.022,
+   -0.097,
+   0.063
+  ],
+  "rv_neighbours_b": {
+   "T10-F": -0.0102,
+   "T40-F": 0.0413
+  },
+  "slices": {
+   "a": {
+    "inst_right_sign": 34,
+    "inst_bh_right_sign": 30,
+    "chance": {
+     "tests": 38,
+     "passes": 34,
+     "expected": 1.9,
+     "pAtLeastObserved": 0.0
+    }
+   },
+   "c": {
+    "inst_right_sign": 22,
+    "inst_bh_right_sign": 0,
+    "chance": {
+     "tests": 38,
+     "passes": 3,
+     "expected": 1.9,
+     "pAtLeastObserved": 0.2955
+    }
+   },
+   "e": {
+    "inst_right_sign": 34,
+    "inst_bh_right_sign": 34,
+    "chance": {
+     "tests": 38,
+     "passes": 38,
+     "expected": 1.9,
+     "pAtLeastObserved": 0.0
+    }
+   }
+  }
+ }
+}

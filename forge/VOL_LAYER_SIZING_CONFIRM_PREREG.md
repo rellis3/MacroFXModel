@@ -160,4 +160,18 @@ SEs come from the stage 3 pipeline with `pit` σ and causal quiet-day labels on 
 
 ## Amendments
 
-(none)
+**2026-11-16, PRE-RESULTS (fixed in the scoring script before confirm was opened; discovery only had been run).** These read the text more exactly. None is a new test.
+- (b) +1 lag gate: read as "the lagged estimate is inside ±0.02". The same-sign, half-size rule is not applied to (b). (b) claims a difference near zero, so its sign is noise.
+- (a) mirror: the whole-month σ shuffle (200 shuffles) is run on discovery as control 3. It is run again on the confirm window, and the gate uses that confirm run.
+- Sample rows: the scored rows keep the stage 3 and power-script filters (σ > 0; RV20, the 250-session median, the quiet-day quantile, the 60-session jump average and the previous σ all present). In confirm this drops no rows, because the trailing inputs read 2022 rows.
+- Turnover (descriptive only): the mean absolute session-to-session change in position (1/size divided by its instrument mean).
+- p-values: two-sided p = 2 × the smaller share of bootstrap replicates on either side of 0. The TOST p for (b) = the larger of the share of replicates ≤ −0.02 and the share ≥ +0.02.
+- MDE: `mdeFromCI` on the confirm 95% CI, 80% power, α = 0.0125 two-sided. For (b) it is (z0.9875 + z0.9) × SE.
+- A cell significant after Holm with the wrong sign is NULL. A cell whose CI misses 0 but fails Holm, and meets no NULL rule, is UNDERPOWERED.
+
+**Step 0 (discovery, 2026-11-16): passed.** Reproduction exact: U 0.2630, F 0.1524, F − U −0.1106, MM − F +0.1152, T20 − F −0.0013 (54,433 rows, 34 instruments). Positive control F − U −0.127 [−0.172, −0.096]. Null control +0.119 [+0.094, +0.148]. Mirror: real F − U −0.109 (pit) against shuffles 2.5th percentile +0.048 (min +0.045).
+
+### A2 — 2026-11-16 — POST-HOC (results seen; demotes only)
+
+Cell c is banked CONTEXT, not VALIDATED. Its estimate, −0.232pp [−0.307, −0.163], is clearly below 0 and passes Holm, plateau, lag, 4/4 years and the all-day check, but it does not reach the cell's own 0.25pp pass bar. This prereg's VALIDATED rule did not require reaching the bar; the shared verdict gate (forge/verdict_gate.py) does, and the proof pack uses it. The stricter reading is taken. Cells a, b and e are unchanged (VALIDATED in both readings).
+

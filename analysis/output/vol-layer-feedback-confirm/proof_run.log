@@ -1,0 +1,12 @@
+[    18s] frame 31815 rows 943 dates
+[    32s] persist {'effect': 0.217, 'lo': 0.1602, 'hi': 0.2785} planted 0.3 0.1 shuffle -0.0118 0.0114 repro True
+[    39s] morning {'effect': 0.4872, 'lo': 0.4124, 'hi': 0.5744} planted 0.3 0.1 shuffle -0.0109 0.013 repro True
+[    67s] qlike-plain {'effect': 0.24219999999999997, 'lo': 0.17420000000000002, 'hi': 0.3173} planted 0.15 0.05 shuffle -0.2526 -0.184 repro True
+[    92s] qlike-chosen {'effect': 0.09750000000000003, 'lo': 0.0635, 'hi': 0.1361} planted 0.15 0.05 shuffle -0.0593 -0.027 repro True
+[   107s] cov75 {'effect': 1.5766999999999989, 'lo': 0.8141999999999996, 'hi': 2.4262000000000015} planted 0.9005 0.4998 shuffle -8.4072 -2.8921 repro True
+[   107s]   persist: VALIDATED     power 0.952  interval above 0 and +0.217 reaches the minimum +0.1
+[   107s]   morning: VALIDATED     power 0.781  interval above 0 and +0.4872 reaches the minimum +0.1
+[   107s]   qlike-plain: VALIDATED     power 0.392  interval above 0 and +0.2422 reaches the minimum +0.05
+[   107s]   qlike-chosen: VALIDATED     power 0.854  interval above 0 and +0.0975 reaches the minimum +0.05
+[   107s]   cov75: VALIDATED     power 0.334  interval above 0 and +1.577 reaches the minimum +0.5
+[   107s] PASS: wrote C:\Users\relli\AppData\Local\Temp\claude\181f22e54fe44b96\aacf33a2-90d0-431d-ae4c-0004f3d87485\scratchpad\wt2\analysis\output\vol-layer-feedback-confirm\checks.json

@@ -1,0 +1,3452 @@
+{
+ "N": {
+  "scored_rows": 31815,
+  "scored_dates": 943,
+  "window": [
+   "2023-01-02",
+   "2026-08-20"
+  ],
+  "bh": {
+   "slices": 133,
+   "pass": 128,
+   "expected_false_at_q10_if_all_null": 12.8
+  }
+ },
+ "res": {
+  "A_p": {
+   "main": {
+    "group": "A persistence",
+    "cell": "plain | All",
+    "value": 0.4648,
+    "lo": 0.397,
+    "hi": 0.5335,
+    "n": 31815,
+    "p": 0.0005,
+    "se": 0.0351397765546754,
+    "dates": 943
+   },
+   "block60": {
+    "group": "A persistence",
+    "cell": "plain | All, block 60",
+    "value": 0.4648,
+    "lo": 0.3964,
+    "hi": 0.5346,
+    "n": 31815,
+    "p": null
+   },
+   "lag": {
+    "2": {
+     "group": "A persistence lag",
+     "cell": "plain | lag 2",
+     "value": 0.3628,
+     "lo": 0.2915,
+     "hi": 0.4378,
+     "n": null,
+     "p": 0.0005
+    },
+    "5": {
+     "group": "A persistence lag",
+     "cell": "plain | lag 5",
+     "value": 0.1761,
+     "lo": 0.1328,
+     "hi": 0.2187,
+     "n": null,
+     "p": 0.0005
+    },
+    "10": {
+     "group": "A persistence lag",
+     "cell": "plain | lag 10",
+     "value": 0.0061,
+     "lo": -0.0602,
+     "hi": 0.0655,
+     "n": null,
+     "p": 0.826
+    }
+   },
+   "years": {
+    "2023": {
+     "group": "A persistence year",
+     "cell": "plain | 2023",
+     "value": 0.3938,
+     "lo": 0.3041,
+     "hi": 0.4833,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "2024": {
+     "group": "A persistence year",
+     "cell": "plain | 2024",
+     "value": 0.422,
+     "lo": 0.3185,
+     "hi": 0.5308,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "2025": {
+     "group": "A persistence year",
+     "cell": "plain | 2025",
+     "value": 0.5112,
+     "lo": 0.3186,
+     "hi": 0.654,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "2026": {
+     "group": "A persistence year",
+     "cell": "plain | 2026",
+     "value": 0.4743,
+     "lo": 0.3876,
+     "hi": 0.5505,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "inst": {
+    "AUDCAD": 0.3412996737711769,
+    "AUDCHF": 0.4988760911687323,
+    "AUDJPY": 0.48945939094800606,
+    "AUDNZD": 0.2836937448679729,
+    "AUDUSD": 0.36570081438819385,
+    "CADCHF": 0.4040202428145643,
+    "CADJPY": 0.48674358106883403,
+    "CHFJPY": 0.49697151414563173,
+    "DE30": 0.5743842621480147,
+    "DOW": 0.5432760068630461,
+    "EURAUD": 0.4777923336092691,
+    "EURCAD": 0.4168568874664939,
+    "EURCHF": 0.5010002274760837,
+    "EURGBP": 0.49053791132930447,
+    "EURJPY": 0.5088271676314119,
+    "EURNZD": 0.4512535206031843,
+    "EURUSD": 0.31291825135039986,
+    "GBPAUD": 0.5910369841646255,
+    "GBPCAD": 0.4181252700737173,
+    "GBPCHF": 0.5318246396334472,
+    "GBPJPY": 0.5045656008808453,
+    "GBPNZD": 0.4937646823442326,
+    "GBPUSD": 0.3149007663805194,
+    "GOLD": 0.48116851981657627,
+    "NQ": 0.5228146494695126,
+    "NZDCAD": 0.33328176871956283,
+    "NZDJPY": 0.48902787713440915,
+    "NZDUSD": 0.35251487135166293,
+    "SPX500": 0.5577609899650111,
+    "UK100": 0.6158690336980382,
+    "US2000": 0.4915449706067205,
+    "USDCAD": 0.37023414568192414,
+    "USDCHF": 0.32118392778061877,
+    "USDJPY": 0.4389989624791946
+   },
+   "inst_cells": {
+    "AUDCAD": {
+     "group": "A persistence inst",
+     "cell": "plain | AUDCAD",
+     "value": 0.3413,
+     "lo": 0.2183,
+     "hi": 0.4525,
+     "n": null,
+     "p": 0.0005
+    },
+    "AUDCHF": {
+     "group": "A persistence inst",
+     "cell": "plain | AUDCHF",
+     "value": 0.4989,
+     "lo": 0.3449,
+     "hi": 0.6233,
+     "n": null,
+     "p": 0.0005
+    },
+    "AUDJPY": {
+     "group": "A persistence inst",
+     "cell": "plain | AUDJPY",
+     "value": 0.4895,
+     "lo": 0.3879,
+     "hi": 0.5751,
+     "n": null,
+     "p": 0.0005
+    },
+    "AUDNZD": {
+     "group": "A persistence inst",
+     "cell": "plain | AUDNZD",
+     "value": 0.2837,
+     "lo": 0.1746,
+     "hi": 0.4048,
+     "n": null,
+     "p": 0.0005
+    },
+    "AUDUSD": {
+     "group": "A persistence inst",
+     "cell": "plain | AUDUSD",
+     "value": 0.3657,
+     "lo": 0.2419,
+     "hi": 0.4802,
+     "n": null,
+     "p": 0.0005
+    },
+    "CADCHF": {
+     "group": "A persistence inst",
+     "cell": "plain | CADCHF",
+     "value": 0.404,
+     "lo": 0.3064,
+     "hi": 0.4949,
+     "n": null,
+     "p": 0.0005
+    },
+    "CADJPY": {
+     "group": "A persistence inst",
+     "cell": "plain | CADJPY",
+     "value": 0.4867,
+     "lo": 0.3952,
+     "hi": 0.5737,
+     "n": null,
+     "p": 0.0005
+    },
+    "CHFJPY": {
+     "group": "A persistence inst",
+     "cell": "plain | CHFJPY",
+     "value": 0.497,
+     "lo": 0.4029,
+     "hi": 0.5763,
+     "n": null,
+     "p": 0.0005
+    },
+    "DE30": {
+     "group": "A persistence inst",
+     "cell": "plain | DE30",
+     "value": 0.5744,
+     "lo": 0.4703,
+     "hi": 0.6548,
+     "n": null,
+     "p": 0.0005
+    },
+    "DOW": {
+     "group": "A persistence inst",
+     "cell": "plain | DOW",
+     "value": 0.5433,
+     "lo": 0.4474,
+     "hi": 0.6216,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURAUD": {
+     "group": "A persistence inst",
+     "cell": "plain | EURAUD",
+     "value": 0.4778,
+     "lo": 0.3486,
+     "hi": 0.5819,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURCAD": {
+     "group": "A persistence inst",
+     "cell": "plain | EURCAD",
+     "value": 0.4169,
+     "lo": 0.3161,
+     "hi": 0.5126,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURCHF": {
+     "group": "A persistence inst",
+     "cell": "plain | EURCHF",
+     "value": 0.501,
+     "lo": 0.4127,
+     "hi": 0.5813,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURGBP": {
+     "group": "A persistence inst",
+     "cell": "plain | EURGBP",
+     "value": 0.4905,
+     "lo": 0.4,
+     "hi": 0.5704,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURJPY": {
+     "group": "A persistence inst",
+     "cell": "plain | EURJPY",
+     "value": 0.5088,
+     "lo": 0.4278,
+     "hi": 0.58,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURNZD": {
+     "group": "A persistence inst",
+     "cell": "plain | EURNZD",
+     "value": 0.4513,
+     "lo": 0.3658,
+     "hi": 0.5322,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURUSD": {
+     "group": "A persistence inst",
+     "cell": "plain | EURUSD",
+     "value": 0.3129,
+     "lo": 0.2334,
+     "hi": 0.3945,
+     "n": null,
+     "p": 0.0005
+    },
+    "GBPAUD": {
+     "group": "A persistence inst",
+     "cell": "plain | GBPAUD",
+     "value": 0.591,
+     "lo": 0.4843,
+     "hi": 0.6681,
+     "n": null,
+     "p": 0.0005
+    },
+    "GBPCAD": {
+     "group": "A persistence inst",
+     "cell": "plain | GBPCAD",
+     "value": 0.4181,
+     "lo": 0.327,
+     "hi": 0.505,
+     "n": null,
+     "p": 0.0005
+    },
+    "GBPCHF": {
+     "group": "A persistence inst",
+     "cell": "plain | GBPCHF",
+     "value": 0.5318,
+     "lo": 0.4246,
+     "hi": 0.621,
+     "n": null,
+     "p": 0.0005
+    },
+    "GBPJPY": {
+     "group": "A persistence inst",
+     "cell": "plain | GBPJPY",
+     "value": 0.5046,
+     "lo": 0.4215,
+     "hi": 0.5783,
+     "n": null,
+     "p": 0.0005
+    },
+    "GBPNZD": {
+     "group": "A persistence inst",
+     "cell": "plain | GBPNZD",
+     "value": 0.4938,
+     "lo": 0.3999,
+     "hi": 0.5687,
+     "n": null,
+     "p": 0.0005
+    },
+    "GBPUSD": {
+     "group": "A persistence inst",
+     "cell": "plain | GBPUSD",
+     "value": 0.3149,
+     "lo": 0.2345,
+     "hi": 0.3933,
+     "n": null,
+     "p": 0.0005
+    },
+    "GOLD": {
+     "group": "A persistence inst",
+     "cell": "plain | GOLD",
+     "value": 0.4812,
+     "lo": 0.3795,
+     "hi": 0.5547,
+     "n": null,
+     "p": 0.0005
+    },
+    "NQ": {
+     "group": "A persistence inst",
+     "cell": "plain | NQ",
+     "value": 0.5228,
+     "lo": 0.4385,
+     "hi": 0.5958,
+     "n": null,
+     "p": 0.0005
+    },
+    "NZDCAD": {
+     "group": "A persistence inst",
+     "cell": "plain | NZDCAD",
+     "value": 0.3333,
+     "lo": 0.2349,
+     "hi": 0.4302,
+     "n": null,
+     "p": 0.0005
+    },
+    "NZDJPY": {
+     "group": "A persistence inst",
+     "cell": "plain | NZDJPY",
+     "value": 0.489,
+     "lo": 0.3927,
+     "hi": 0.5748,
+     "n": null,
+     "p": 0.0005
+    },
+    "NZDUSD": {
+     "group": "A persistence inst",
+     "cell": "plain | NZDUSD",
+     "value": 0.3525,
+     "lo": 0.2541,
+     "hi": 0.4565,
+     "n": null,
+     "p": 0.0005
+    },
+    "SPX500": {
+     "group": "A persistence inst",
+     "cell": "plain | SPX500",
+     "value": 0.5578,
+     "lo": 0.482,
+     "hi": 0.625,
+     "n": null,
+     "p": 0.0005
+    },
+    "UK100": {
+     "group": "A persistence inst",
+     "cell": "plain | UK100",
+     "value": 0.6159,
+     "lo": 0.4965,
+     "hi": 0.7051,
+     "n": null,
+     "p": 0.0005
+    },
+    "US2000": {
+     "group": "A persistence inst",
+     "cell": "plain | US2000",
+     "value": 0.4915,
+     "lo": 0.3856,
+     "hi": 0.5855,
+     "n": null,
+     "p": 0.0005
+    },
+    "USDCAD": {
+     "group": "A persistence inst",
+     "cell": "plain | USDCAD",
+     "value": 0.3702,
+     "lo": 0.2127,
+     "hi": 0.4984,
+     "n": null,
+     "p": 0.0005
+    },
+    "USDCHF": {
+     "group": "A persistence inst",
+     "cell": "plain | USDCHF",
+     "value": 0.3212,
+     "lo": 0.246,
+     "hi": 0.3976,
+     "n": null,
+     "p": 0.0005
+    },
+    "USDJPY": {
+     "group": "A persistence inst",
+     "cell": "plain | USDJPY",
+     "value": 0.439,
+     "lo": 0.3564,
+     "hi": 0.5108,
+     "n": null,
+     "p": 0.0005
+    }
+   },
+   "class": {
+    "FX majors": {
+     "group": "A persistence class",
+     "cell": "plain | FX majors",
+     "value": 0.3644,
+     "lo": 0.2909,
+     "hi": 0.4394,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "FX crosses": {
+     "group": "A persistence class",
+     "cell": "plain | FX crosses",
+     "value": 0.4685,
+     "lo": 0.4008,
+     "hi": 0.5373,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "Indices": {
+     "group": "A persistence class",
+     "cell": "plain | Indices",
+     "value": 0.5479,
+     "lo": 0.4649,
+     "hi": 0.6224,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "Gold": {
+     "group": "A persistence class",
+     "cell": "plain | Gold",
+     "value": 0.4812,
+     "lo": 0.3795,
+     "hi": 0.5547,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "tercile": {
+    "quiet": {
+     "group": "A persistence tercile",
+     "cell": "plain | \u03c3 quiet",
+     "value": 0.366,
+     "lo": 0.3145,
+     "hi": 0.4252,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "normal": {
+     "group": "A persistence tercile",
+     "cell": "plain | \u03c3 normal",
+     "value": 0.4117,
+     "lo": 0.3477,
+     "hi": 0.4789,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "busy": {
+     "group": "A persistence tercile",
+     "cell": "plain | \u03c3 busy",
+     "value": 0.5241,
+     "lo": 0.4106,
+     "hi": 0.6058,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "event": {
+    "event": {
+     "group": "A persistence event",
+     "cell": "plain | event days",
+     "value": 0.4878,
+     "lo": 0.412,
+     "hi": 0.57,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "none": {
+     "group": "A persistence event",
+     "cell": "plain | non-event days",
+     "value": 0.4303,
+     "lo": 0.3566,
+     "hi": 0.5051,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "mirror": {
+    "above": {
+     "group": "A mirror",
+     "cell": "plain | yesterday above forecast",
+     "value": 0.3217,
+     "lo": 0.1813,
+     "hi": 0.4473,
+     "n": null,
+     "p": 0.0005
+    },
+    "below": {
+     "group": "A mirror",
+     "cell": "plain | yesterday below forecast",
+     "value": 0.5833,
+     "lo": 0.5196,
+     "hi": 0.6457,
+     "n": null,
+     "p": 0.0005
+    }
+   },
+   "conc": {
+    "group": "A concentration",
+    "cell": "plain | without top 1% dates",
+    "value": 0.4378,
+    "lo": 0.3884,
+    "hi": 0.4883,
+    "n": null,
+    "p": null
+   },
+   "shuffle": {
+    "max": 0.0174111482314858,
+    "mean": 0.0005823390283368526,
+    "sd": 0.005754354928150911,
+    "beats_all": true
+   },
+   "month": {
+    "max": 0.028077453358695447,
+    "mean": 0.004869625925136637,
+    "sd": 0.008112458089475508,
+    "beats_all": true
+   }
+  },
+  "A_c": {
+   "main": {
+    "group": "A persistence",
+    "cell": "chosen | All",
+    "value": 0.217,
+    "lo": 0.1602,
+    "hi": 0.2785,
+    "n": 31815,
+    "p": 0.0005,
+    "se": 0.0312232007406316,
+    "dates": 943
+   },
+   "block60": {
+    "group": "A persistence",
+    "cell": "chosen | All, block 60",
+    "value": 0.217,
+    "lo": 0.1611,
+    "hi": 0.2762,
+    "n": 31815,
+    "p": null
+   },
+   "lag": {
+    "2": {
+     "group": "A persistence lag",
+     "cell": "chosen | lag 2",
+     "value": 0.1976,
+     "lo": 0.1447,
+     "hi": 0.2571,
+     "n": null,
+     "p": 0.0005
+    },
+    "5": {
+     "group": "A persistence lag",
+     "cell": "chosen | lag 5",
+     "value": 0.0491,
+     "lo": 0.0072,
+     "hi": 0.0938,
+     "n": null,
+     "p": 0.025
+    },
+    "10": {
+     "group": "A persistence lag",
+     "cell": "chosen | lag 10",
+     "value": 0.0374,
+     "lo": -0.001,
+     "hi": 0.0768,
+     "n": null,
+     "p": 0.057
+    }
+   },
+   "years": {
+    "2023": {
+     "group": "A persistence year",
+     "cell": "chosen | 2023",
+     "value": 0.1484,
+     "lo": 0.0769,
+     "hi": 0.2217,
+     "n": null,
+     "p": 0.002,
+     "bh_q10": true
+    },
+    "2024": {
+     "group": "A persistence year",
+     "cell": "chosen | 2024",
+     "value": 0.1793,
+     "lo": 0.082,
+     "hi": 0.2878,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "2025": {
+     "group": "A persistence year",
+     "cell": "chosen | 2025",
+     "value": 0.2176,
+     "lo": 0.0715,
+     "hi": 0.3738,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "2026": {
+     "group": "A persistence year",
+     "cell": "chosen | 2026",
+     "value": 0.2412,
+     "lo": 0.1391,
+     "hi": 0.3262,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "inst": {
+    "AUDCAD": 0.1247968892849366,
+    "AUDCHF": 0.1799198748990946,
+    "AUDJPY": 0.2538635816896812,
+    "AUDNZD": 0.05907354432926942,
+    "AUDUSD": 0.14580621894029952,
+    "CADCHF": 0.1495869218167021,
+    "CADJPY": 0.2505010523424496,
+    "CHFJPY": 0.2510219813608543,
+    "DE30": 0.24020932177794546,
+    "DOW": 0.1940934907742222,
+    "EURAUD": 0.21040409122419587,
+    "EURCAD": 0.2134979535161737,
+    "EURCHF": 0.18487808488694,
+    "EURGBP": 0.22097930777896505,
+    "EURJPY": 0.2814974937850169,
+    "EURNZD": 0.17550524086976585,
+    "EURUSD": 0.12856161458039161,
+    "GBPAUD": 0.2638365801055757,
+    "GBPCAD": 0.1707799909495452,
+    "GBPCHF": 0.16976657056009722,
+    "GBPJPY": 0.2676880752840661,
+    "GBPNZD": 0.19958293131375843,
+    "GBPUSD": 0.1292160487871747,
+    "GOLD": 0.32606553925303455,
+    "NQ": 0.24043173249046237,
+    "NZDCAD": 0.10998065349534315,
+    "NZDJPY": 0.26327138364122166,
+    "NZDUSD": 0.15574531694211421,
+    "SPX500": 0.27022448480095057,
+    "UK100": 0.400639562390764,
+    "US2000": 0.24633775183560214,
+    "USDCAD": 0.15748719864377445,
+    "USDCHF": 0.1680834930667208,
+    "USDJPY": 0.3199175830969231
+   },
+   "inst_cells": {
+    "AUDCAD": {
+     "group": "A persistence inst",
+     "cell": "chosen | AUDCAD",
+     "value": 0.1248,
+     "lo": 0.0331,
+     "hi": 0.2169,
+     "n": null,
+     "p": 0.005
+    },
+    "AUDCHF": {
+     "group": "A persistence inst",
+     "cell": "chosen | AUDCHF",
+     "value": 0.1799,
+     "lo": 0.0731,
+     "hi": 0.2876,
+     "n": null,
+     "p": 0.0005
+    },
+    "AUDJPY": {
+     "group": "A persistence inst",
+     "cell": "chosen | AUDJPY",
+     "value": 0.2539,
+     "lo": 0.1449,
+     "hi": 0.3511,
+     "n": null,
+     "p": 0.0005
+    },
+    "AUDNZD": {
+     "group": "A persistence inst",
+     "cell": "chosen | AUDNZD",
+     "value": 0.0591,
+     "lo": -0.0265,
+     "hi": 0.1609,
+     "n": null,
+     "p": 0.212
+    },
+    "AUDUSD": {
+     "group": "A persistence inst",
+     "cell": "chosen | AUDUSD",
+     "value": 0.1458,
+     "lo": 0.0546,
+     "hi": 0.236,
+     "n": null,
+     "p": 0.0005
+    },
+    "CADCHF": {
+     "group": "A persistence inst",
+     "cell": "chosen | CADCHF",
+     "value": 0.1496,
+     "lo": 0.0558,
+     "hi": 0.2405,
+     "n": null,
+     "p": 0.002
+    },
+    "CADJPY": {
+     "group": "A persistence inst",
+     "cell": "chosen | CADJPY",
+     "value": 0.2505,
+     "lo": 0.1434,
+     "hi": 0.3569,
+     "n": null,
+     "p": 0.0005
+    },
+    "CHFJPY": {
+     "group": "A persistence inst",
+     "cell": "chosen | CHFJPY",
+     "value": 0.251,
+     "lo": 0.1543,
+     "hi": 0.345,
+     "n": null,
+     "p": 0.0005
+    },
+    "DE30": {
+     "group": "A persistence inst",
+     "cell": "chosen | DE30",
+     "value": 0.2402,
+     "lo": 0.1376,
+     "hi": 0.3358,
+     "n": null,
+     "p": 0.0005
+    },
+    "DOW": {
+     "group": "A persistence inst",
+     "cell": "chosen | DOW",
+     "value": 0.1941,
+     "lo": 0.1144,
+     "hi": 0.2733,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURAUD": {
+     "group": "A persistence inst",
+     "cell": "chosen | EURAUD",
+     "value": 0.2104,
+     "lo": 0.1176,
+     "hi": 0.2934,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURCAD": {
+     "group": "A persistence inst",
+     "cell": "chosen | EURCAD",
+     "value": 0.2135,
+     "lo": 0.0993,
+     "hi": 0.327,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURCHF": {
+     "group": "A persistence inst",
+     "cell": "chosen | EURCHF",
+     "value": 0.1849,
+     "lo": 0.095,
+     "hi": 0.2787,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURGBP": {
+     "group": "A persistence inst",
+     "cell": "chosen | EURGBP",
+     "value": 0.221,
+     "lo": 0.1295,
+     "hi": 0.3061,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURJPY": {
+     "group": "A persistence inst",
+     "cell": "chosen | EURJPY",
+     "value": 0.2815,
+     "lo": 0.186,
+     "hi": 0.3734,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURNZD": {
+     "group": "A persistence inst",
+     "cell": "chosen | EURNZD",
+     "value": 0.1755,
+     "lo": 0.0927,
+     "hi": 0.2658,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURUSD": {
+     "group": "A persistence inst",
+     "cell": "chosen | EURUSD",
+     "value": 0.1286,
+     "lo": 0.0419,
+     "hi": 0.2122,
+     "n": null,
+     "p": 0.004
+    },
+    "GBPAUD": {
+     "group": "A persistence inst",
+     "cell": "chosen | GBPAUD",
+     "value": 0.2638,
+     "lo": 0.1596,
+     "hi": 0.3493,
+     "n": null,
+     "p": 0.0005
+    },
+    "GBPCAD": {
+     "group": "A persistence inst",
+     "cell": "chosen | GBPCAD",
+     "value": 0.1708,
+     "lo": 0.0799,
+     "hi": 0.2603,
+     "n": null,
+     "p": 0.0005
+    },
+    "GBPCHF": {
+     "group": "A persistence inst",
+     "cell": "chosen | GBPCHF",
+     "value": 0.1698,
+     "lo": 0.0937,
+     "hi": 0.2458,
+     "n": null,
+     "p": 0.0005
+    },
+    "GBPJPY": {
+     "group": "A persistence inst",
+     "cell": "chosen | GBPJPY",
+     "value": 0.2677,
+     "lo": 0.1733,
+     "hi": 0.3616,
+     "n": null,
+     "p": 0.0005
+    },
+    "GBPNZD": {
+     "group": "A persistence inst",
+     "cell": "chosen | GBPNZD",
+     "value": 0.1996,
+     "lo": 0.1131,
+     "hi": 0.2841,
+     "n": null,
+     "p": 0.0005
+    },
+    "GBPUSD": {
+     "group": "A persistence inst",
+     "cell": "chosen | GBPUSD",
+     "value": 0.1292,
+     "lo": 0.0501,
+     "hi": 0.2085,
+     "n": null,
+     "p": 0.0005
+    },
+    "GOLD": {
+     "group": "A persistence inst",
+     "cell": "chosen | GOLD",
+     "value": 0.3261,
+     "lo": 0.2346,
+     "hi": 0.4003,
+     "n": null,
+     "p": 0.0005
+    },
+    "NQ": {
+     "group": "A persistence inst",
+     "cell": "chosen | NQ",
+     "value": 0.2404,
+     "lo": 0.1622,
+     "hi": 0.3066,
+     "n": null,
+     "p": 0.0005
+    },
+    "NZDCAD": {
+     "group": "A persistence inst",
+     "cell": "chosen | NZDCAD",
+     "value": 0.11,
+     "lo": 0.0245,
+     "hi": 0.2006,
+     "n": null,
+     "p": 0.004
+    },
+    "NZDJPY": {
+     "group": "A persistence inst",
+     "cell": "chosen | NZDJPY",
+     "value": 0.2633,
+     "lo": 0.1468,
+     "hi": 0.3681,
+     "n": null,
+     "p": 0.0005
+    },
+    "NZDUSD": {
+     "group": "A persistence inst",
+     "cell": "chosen | NZDUSD",
+     "value": 0.1557,
+     "lo": 0.0808,
+     "hi": 0.234,
+     "n": null,
+     "p": 0.0005
+    },
+    "SPX500": {
+     "group": "A persistence inst",
+     "cell": "chosen | SPX500",
+     "value": 0.2702,
+     "lo": 0.1874,
+     "hi": 0.3485,
+     "n": null,
+     "p": 0.0005
+    },
+    "UK100": {
+     "group": "A persistence inst",
+     "cell": "chosen | UK100",
+     "value": 0.4006,
+     "lo": 0.3116,
+     "hi": 0.4844,
+     "n": null,
+     "p": 0.0005
+    },
+    "US2000": {
+     "group": "A persistence inst",
+     "cell": "chosen | US2000",
+     "value": 0.2463,
+     "lo": 0.1504,
+     "hi": 0.3376,
+     "n": null,
+     "p": 0.0005
+    },
+    "USDCAD": {
+     "group": "A persistence inst",
+     "cell": "chosen | USDCAD",
+     "value": 0.1575,
+     "lo": 0.0448,
+     "hi": 0.2565,
+     "n": null,
+     "p": 0.008
+    },
+    "USDCHF": {
+     "group": "A persistence inst",
+     "cell": "chosen | USDCHF",
+     "value": 0.1681,
+     "lo": 0.1031,
+     "hi": 0.2324,
+     "n": null,
+     "p": 0.0005
+    },
+    "USDJPY": {
+     "group": "A persistence inst",
+     "cell": "chosen | USDJPY",
+     "value": 0.3199,
+     "lo": 0.2373,
+     "hi": 0.3965,
+     "n": null,
+     "p": 0.0005
+    }
+   },
+   "class": {
+    "FX majors": {
+     "group": "A persistence class",
+     "cell": "chosen | FX majors",
+     "value": 0.1935,
+     "lo": 0.1341,
+     "hi": 0.2528,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "FX crosses": {
+     "group": "A persistence class",
+     "cell": "chosen | FX crosses",
+     "value": 0.2068,
+     "lo": 0.1354,
+     "hi": 0.2823,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "Indices": {
+     "group": "A persistence class",
+     "cell": "chosen | Indices",
+     "value": 0.2622,
+     "lo": 0.1981,
+     "hi": 0.327,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "Gold": {
+     "group": "A persistence class",
+     "cell": "chosen | Gold",
+     "value": 0.3261,
+     "lo": 0.2346,
+     "hi": 0.4003,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "tercile": {
+    "quiet": {
+     "group": "A persistence tercile",
+     "cell": "chosen | \u03c3 quiet",
+     "value": 0.1519,
+     "lo": 0.1022,
+     "hi": 0.2084,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "normal": {
+     "group": "A persistence tercile",
+     "cell": "chosen | \u03c3 normal",
+     "value": 0.2251,
+     "lo": 0.1698,
+     "hi": 0.2843,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "busy": {
+     "group": "A persistence tercile",
+     "cell": "chosen | \u03c3 busy",
+     "value": 0.2681,
+     "lo": 0.1724,
+     "hi": 0.3539,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "event": {
+    "event": {
+     "group": "A persistence event",
+     "cell": "chosen | event days",
+     "value": 0.2249,
+     "lo": 0.1568,
+     "hi": 0.2961,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "none": {
+     "group": "A persistence event",
+     "cell": "chosen | non-event days",
+     "value": 0.1946,
+     "lo": 0.129,
+     "hi": 0.2657,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "mirror": {
+    "above": {
+     "group": "A mirror",
+     "cell": "chosen | yesterday above forecast",
+     "value": 0.1673,
+     "lo": 0.0446,
+     "hi": 0.2781,
+     "n": null,
+     "p": 0.006
+    },
+    "below": {
+     "group": "A mirror",
+     "cell": "chosen | yesterday below forecast",
+     "value": 0.2526,
+     "lo": 0.203,
+     "hi": 0.3014,
+     "n": null,
+     "p": 0.0005
+    }
+   },
+   "conc": {
+    "group": "A concentration",
+    "cell": "chosen | without top 1% dates",
+    "value": 0.1856,
+    "lo": 0.1436,
+    "hi": 0.2304,
+    "n": null,
+    "p": null
+   },
+   "shuffle": {
+    "max": 0.01008005538553167,
+    "mean": -0.0004460321415333217,
+    "sd": 0.00515032143507146,
+    "beats_all": true
+   },
+   "month": {
+    "max": 0.018214531094131212,
+    "mean": 0.002232136227928259,
+    "sd": 0.0067799168346535195,
+    "beats_all": true
+   }
+  },
+  "A_har": {
+   "group": "A descriptive",
+   "cell": "log-HAR | All",
+   "value": -0.0257,
+   "lo": -0.0886,
+   "hi": 0.0428,
+   "n": 31815,
+   "p": 0.468
+  },
+  "B": {
+   "main": {
+    "group": "B morning",
+    "cell": "plain | 00-13 -> 13-22",
+    "value": 0.4872,
+    "lo": 0.4124,
+    "hi": 0.5744,
+    "n": 31815,
+    "p": 0.0005,
+    "se": 0.04249713896783154,
+    "dates": 943
+   },
+   "block60": {
+    "group": "B morning",
+    "cell": "plain | block 60",
+    "value": 0.4872,
+    "lo": 0.4077,
+    "hi": 0.5807,
+    "n": 31815,
+    "p": null
+   },
+   "skip1314": {
+    "group": "B lag",
+    "cell": "plain | 00-13 -> 14-22",
+    "value": 0.5103,
+    "lo": 0.4333,
+    "hi": 0.5984,
+    "n": null,
+    "p": 0.0005
+   },
+   "cut12": {
+    "group": "B plateau",
+    "cell": "plain | 00-12 -> 12-22",
+    "value": 0.4846,
+    "lo": 0.4133,
+    "hi": 0.569,
+    "n": null,
+    "p": 0.0005
+   },
+   "cut14": {
+    "group": "B plateau",
+    "cell": "plain | 00-14 -> 14-22",
+    "value": 0.567,
+    "lo": 0.4932,
+    "hi": 0.6493,
+    "n": null,
+    "p": 0.0005
+   },
+   "years": {
+    "2023": {
+     "group": "B year",
+     "cell": "plain | 2023",
+     "value": 0.4378,
+     "lo": 0.3551,
+     "hi": 0.5238,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "2024": {
+     "group": "B year",
+     "cell": "plain | 2024",
+     "value": 0.397,
+     "lo": 0.2989,
+     "hi": 0.5068,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "2025": {
+     "group": "B year",
+     "cell": "plain | 2025",
+     "value": 0.6084,
+     "lo": 0.383,
+     "hi": 0.8184,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "2026": {
+     "group": "B year",
+     "cell": "plain | 2026",
+     "value": 0.5124,
+     "lo": 0.4194,
+     "hi": 0.6108,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "inst": {
+    "AUDCAD": 0.38405309740695126,
+    "AUDCHF": 0.5553627837422466,
+    "AUDJPY": 0.5625282684752019,
+    "AUDNZD": 0.3440287984566879,
+    "AUDUSD": 0.39975727839285397,
+    "CADCHF": 0.47497022772243164,
+    "CADJPY": 0.48841845572939974,
+    "CHFJPY": 0.5026290073308337,
+    "DE30": 0.732094652045726,
+    "DOW": 0.4222705994984176,
+    "EURAUD": 0.5336008519999567,
+    "EURCAD": 0.44396791862666546,
+    "EURCHF": 0.5629147877069648,
+    "EURGBP": 0.5162936151407174,
+    "EURJPY": 0.5461380728918378,
+    "EURNZD": 0.47653968671932573,
+    "EURUSD": 0.30870956083090373,
+    "GBPAUD": 0.6251465616724423,
+    "GBPCAD": 0.45128618601950027,
+    "GBPCHF": 0.5531923412205294,
+    "GBPJPY": 0.5772090437602995,
+    "GBPNZD": 0.5173782211485145,
+    "GBPUSD": 0.3728112399646201,
+    "GOLD": 0.46128990832820954,
+    "NQ": 0.5135728158351225,
+    "NZDCAD": 0.24981939279817086,
+    "NZDJPY": 0.5262432639810225,
+    "NZDUSD": 0.33183327746350866,
+    "SPX500": 0.5248462241240442,
+    "UK100": 0.6700284252846577,
+    "US2000": 0.40616128295054404,
+    "USDCAD": 0.4539518127567702,
+    "USDCHF": 0.375078787921807,
+    "USDJPY": 0.4570912169495017
+   },
+   "inst_cells": {
+    "AUDCAD": {
+     "group": "B inst",
+     "cell": "plain | AUDCAD",
+     "value": 0.3841,
+     "lo": 0.2465,
+     "hi": 0.5157,
+     "n": null,
+     "p": 0.0005
+    },
+    "AUDCHF": {
+     "group": "B inst",
+     "cell": "plain | AUDCHF",
+     "value": 0.5554,
+     "lo": 0.4121,
+     "hi": 0.6878,
+     "n": null,
+     "p": 0.0005
+    },
+    "AUDJPY": {
+     "group": "B inst",
+     "cell": "plain | AUDJPY",
+     "value": 0.5625,
+     "lo": 0.4349,
+     "hi": 0.6906,
+     "n": null,
+     "p": 0.0005
+    },
+    "AUDNZD": {
+     "group": "B inst",
+     "cell": "plain | AUDNZD",
+     "value": 0.344,
+     "lo": 0.246,
+     "hi": 0.4602,
+     "n": null,
+     "p": 0.0005
+    },
+    "AUDUSD": {
+     "group": "B inst",
+     "cell": "plain | AUDUSD",
+     "value": 0.3998,
+     "lo": 0.2349,
+     "hi": 0.5618,
+     "n": null,
+     "p": 0.0005
+    },
+    "CADCHF": {
+     "group": "B inst",
+     "cell": "plain | CADCHF",
+     "value": 0.475,
+     "lo": 0.3806,
+     "hi": 0.5781,
+     "n": null,
+     "p": 0.0005
+    },
+    "CADJPY": {
+     "group": "B inst",
+     "cell": "plain | CADJPY",
+     "value": 0.4884,
+     "lo": 0.3914,
+     "hi": 0.6058,
+     "n": null,
+     "p": 0.0005
+    },
+    "CHFJPY": {
+     "group": "B inst",
+     "cell": "plain | CHFJPY",
+     "value": 0.5026,
+     "lo": 0.4194,
+     "hi": 0.5899,
+     "n": null,
+     "p": 0.0005
+    },
+    "DE30": {
+     "group": "B inst",
+     "cell": "plain | DE30",
+     "value": 0.7321,
+     "lo": 0.6218,
+     "hi": 0.8277,
+     "n": null,
+     "p": 0.0005
+    },
+    "DOW": {
+     "group": "B inst",
+     "cell": "plain | DOW",
+     "value": 0.4223,
+     "lo": 0.3144,
+     "hi": 0.5415,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURAUD": {
+     "group": "B inst",
+     "cell": "plain | EURAUD",
+     "value": 0.5336,
+     "lo": 0.3935,
+     "hi": 0.6543,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURCAD": {
+     "group": "B inst",
+     "cell": "plain | EURCAD",
+     "value": 0.444,
+     "lo": 0.3442,
+     "hi": 0.5403,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURCHF": {
+     "group": "B inst",
+     "cell": "plain | EURCHF",
+     "value": 0.5629,
+     "lo": 0.4924,
+     "hi": 0.6398,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURGBP": {
+     "group": "B inst",
+     "cell": "plain | EURGBP",
+     "value": 0.5163,
+     "lo": 0.4496,
+     "hi": 0.5854,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURJPY": {
+     "group": "B inst",
+     "cell": "plain | EURJPY",
+     "value": 0.5461,
+     "lo": 0.462,
+     "hi": 0.6379,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURNZD": {
+     "group": "B inst",
+     "cell": "plain | EURNZD",
+     "value": 0.4765,
+     "lo": 0.3739,
+     "hi": 0.5797,
+     "n": null,
+     "p": 0.0005
+    },
+    "EURUSD": {
+     "group": "B inst",
+     "cell": "plain | EURUSD",
+     "value": 0.3087,
+     "lo": 0.1912,
+     "hi": 0.4193,
+     "n": null,
+     "p": 0.0005
+    },
+    "GBPAUD": {
+     "group": "B inst",
+     "cell": "plain | GBPAUD",
+     "value": 0.6251,
+     "lo": 0.5184,
+     "hi": 0.7277,
+     "n": null,
+     "p": 0.0005
+    },
+    "GBPCAD": {
+     "group": "B inst",
+     "cell": "plain | GBPCAD",
+     "value": 0.4513,
+     "lo": 0.3695,
+     "hi": 0.5299,
+     "n": null,
+     "p": 0.0005
+    },
+    "GBPCHF": {
+     "group": "B inst",
+     "cell": "plain | GBPCHF",
+     "value": 0.5532,
+     "lo": 0.4628,
+     "hi": 0.6473,
+     "n": null,
+     "p": 0.0005
+    },
+    "GBPJPY": {
+     "group": "B inst",
+     "cell": "plain | GBPJPY",
+     "value": 0.5772,
+     "lo": 0.49,
+     "hi": 0.679,
+     "n": null,
+     "p": 0.0005
+    },
+    "GBPNZD": {
+     "group": "B inst",
+     "cell": "plain | GBPNZD",
+     "value": 0.5174,
+     "lo": 0.429,
+     "hi": 0.6039,
+     "n": null,
+     "p": 0.0005
+    },
+    "GBPUSD": {
+     "group": "B inst",
+     "cell": "plain | GBPUSD",
+     "value": 0.3728,
+     "lo": 0.2689,
+     "hi": 0.4721,
+     "n": null,
+     "p": 0.0005
+    },
+    "GOLD": {
+     "group": "B inst",
+     "cell": "plain | GOLD",
+     "value": 0.4613,
+     "lo": 0.3113,
+     "hi": 0.5887,
+     "n": null,
+     "p": 0.0005
+    },
+    "NQ": {
+     "group": "B inst",
+     "cell": "plain | NQ",
+     "value": 0.5136,
+     "lo": 0.4074,
+     "hi": 0.6165,
+     "n": null,
+     "p": 0.0005
+    },
+    "NZDCAD": {
+     "group": "B inst",
+     "cell": "plain | NZDCAD",
+     "value": 0.2498,
+     "lo": 0.1362,
+     "hi": 0.3721,
+     "n": null,
+     "p": 0.0005
+    },
+    "NZDJPY": {
+     "group": "B inst",
+     "cell": "plain | NZDJPY",
+     "value": 0.5262,
+     "lo": 0.4183,
+     "hi": 0.6521,
+     "n": null,
+     "p": 0.0005
+    },
+    "NZDUSD": {
+     "group": "B inst",
+     "cell": "plain | NZDUSD",
+     "value": 0.3318,
+     "lo": 0.1968,
+     "hi": 0.4848,
+     "n": null,
+     "p": 0.0005
+    },
+    "SPX500": {
+     "group": "B inst",
+     "cell": "plain | SPX500",
+     "value": 0.5248,
+     "lo": 0.4275,
+     "hi": 0.6229,
+     "n": null,
+     "p": 0.0005
+    },
+    "UK100": {
+     "group": "B inst",
+     "cell": "plain | UK100",
+     "value": 0.67,
+     "lo": 0.5525,
+     "hi": 0.7731,
+     "n": null,
+     "p": 0.0005
+    },
+    "US2000": {
+     "group": "B inst",
+     "cell": "plain | US2000",
+     "value": 0.4062,
+     "lo": 0.2951,
+     "hi": 0.5232,
+     "n": null,
+     "p": 0.0005
+    },
+    "USDCAD": {
+     "group": "B inst",
+     "cell": "plain | USDCAD",
+     "value": 0.454,
+     "lo": 0.3044,
+     "hi": 0.5912,
+     "n": null,
+     "p": 0.0005
+    },
+    "USDCHF": {
+     "group": "B inst",
+     "cell": "plain | USDCHF",
+     "value": 0.3751,
+     "lo": 0.2753,
+     "hi": 0.4777,
+     "n": null,
+     "p": 0.0005
+    },
+    "USDJPY": {
+     "group": "B inst",
+     "cell": "plain | USDJPY",
+     "value": 0.4571,
+     "lo": 0.3666,
+     "hi": 0.5447,
+     "n": null,
+     "p": 0.0005
+    }
+   },
+   "class": {
+    "FX majors": {
+     "group": "B class",
+     "cell": "plain | FX majors",
+     "value": 0.3956,
+     "lo": 0.3014,
+     "hi": 0.4937,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "FX crosses": {
+     "group": "B class",
+     "cell": "plain | FX crosses",
+     "value": 0.5021,
+     "lo": 0.427,
+     "hi": 0.5874,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "Indices": {
+     "group": "B class",
+     "cell": "plain | Indices",
+     "value": 0.529,
+     "lo": 0.4335,
+     "hi": 0.6337,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "Gold": {
+     "group": "B class",
+     "cell": "plain | Gold",
+     "value": 0.4613,
+     "lo": 0.3113,
+     "hi": 0.5887,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "tercile": {
+    "quiet": {
+     "group": "B tercile",
+     "cell": "plain | \u03c3 quiet",
+     "value": 0.4067,
+     "lo": 0.3527,
+     "hi": 0.4666,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "normal": {
+     "group": "B tercile",
+     "cell": "plain | \u03c3 normal",
+     "value": 0.426,
+     "lo": 0.3583,
+     "hi": 0.5009,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "busy": {
+     "group": "B tercile",
+     "cell": "plain | \u03c3 busy",
+     "value": 0.5593,
+     "lo": 0.3919,
+     "hi": 0.702,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "event": {
+    "event": {
+     "group": "B event",
+     "cell": "plain | event days",
+     "value": 0.4258,
+     "lo": 0.3337,
+     "hi": 0.5214,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "none": {
+     "group": "B event",
+     "cell": "plain | non-event days",
+     "value": 0.6139,
+     "lo": 0.5382,
+     "hi": 0.7025,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "mirror": {
+    "quiet_am": {
+     "group": "B mirror",
+     "cell": "plain | below-median mornings",
+     "value": 0.5301,
+     "lo": 0.4053,
+     "hi": 0.6792,
+     "n": null,
+     "p": 0.0005
+    },
+    "busy_am": {
+     "group": "B mirror",
+     "cell": "plain | above-median mornings",
+     "value": 0.4489,
+     "lo": 0.3387,
+     "hi": 0.5734,
+     "n": null,
+     "p": 0.0005
+    }
+   },
+   "conc": {
+    "group": "B concentration",
+    "cell": "plain | without top 1% dates",
+    "value": 0.455,
+    "lo": 0.401,
+    "hi": 0.5132,
+    "n": null,
+    "p": null
+   },
+   "chosen": {
+    "group": "B descriptive",
+    "cell": "chosen \u03c3 | 00-13 -> 13-22",
+    "value": 0.3335,
+    "lo": 0.2735,
+    "hi": 0.4008,
+    "n": null,
+    "p": 0.0005
+   },
+   "month": {
+    "max": 0.015749871978828333,
+    "mean": -0.0013116487768153084,
+    "sd": 0.008154083906628739,
+    "beats_all": true
+   }
+  },
+  "C_p": {
+   "main": {
+    "group": "C QLIKE",
+    "cell": "plain | hl 1 frozen",
+    "value": 0.7578,
+    "lo": 0.6827,
+    "hi": 0.8258,
+    "n": 31815,
+    "p": 0.0005,
+    "se": 0.037134541145665036,
+    "dates": 943
+   },
+   "block60": {
+    "group": "C QLIKE",
+    "cell": "plain | block 60",
+    "value": 0.7578,
+    "lo": 0.6776,
+    "hi": 0.8247,
+    "n": 31815,
+    "p": null
+   },
+   "lag2": {
+    "group": "C lag",
+    "cell": "plain | misses delayed one more session",
+    "value": 0.8547,
+    "lo": 0.7904,
+    "hi": 0.9138,
+    "n": null,
+    "p": 0.0005
+   },
+   "hl2": {
+    "group": "C plateau",
+    "cell": "plain | hl 2",
+    "value": 0.7896,
+    "lo": 0.7255,
+    "hi": 0.8475,
+    "n": null,
+    "p": 0.0005
+   },
+   "hl3": {
+    "group": "C plateau",
+    "cell": "plain | hl 3",
+    "value": 0.8196,
+    "lo": 0.7666,
+    "hi": 0.8696,
+    "n": null,
+    "p": 0.0005
+   },
+   "years": {
+    "2023": {
+     "group": "C year",
+     "cell": "plain | 2023",
+     "value": 0.769,
+     "lo": 0.7046,
+     "hi": 0.8307,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "2024": {
+     "group": "C year",
+     "cell": "plain | 2024",
+     "value": 0.7983,
+     "lo": 0.7066,
+     "hi": 0.8861,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "2025": {
+     "group": "C year",
+     "cell": "plain | 2025",
+     "value": 0.6798,
+     "lo": 0.533,
+     "hi": 0.8803,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "2026": {
+     "group": "C year",
+     "cell": "plain | 2026",
+     "value": 0.8052,
+     "lo": 0.719,
+     "hi": 0.8759,
+     "n": null,
+     "p": 0.002,
+     "bh_q10": true
+    }
+   },
+   "inst": {
+    "AUDCAD": 0.8655170757830843,
+    "AUDCHF": 0.6966143888024029,
+    "AUDJPY": 0.7058715600378104,
+    "AUDNZD": 0.9433492141891544,
+    "AUDUSD": 0.8896073404660871,
+    "CADCHF": 0.7991443119825812,
+    "CADJPY": 0.7251296248932978,
+    "CHFJPY": 0.708485591036155,
+    "DE30": 0.7113389064992758,
+    "DOW": 0.7152426862540069,
+    "EURAUD": 0.6848090603575665,
+    "EURCAD": 0.7408418335050976,
+    "EURCHF": 0.7505842441246531,
+    "EURGBP": 0.7223426274143594,
+    "EURJPY": 0.724425044678043,
+    "EURNZD": 0.7290261353956545,
+    "EURUSD": 0.8742392958955089,
+    "GBPAUD": 0.5692885147613882,
+    "GBPCAD": 0.8351920810950101,
+    "GBPCHF": 0.6874225369224022,
+    "GBPJPY": 0.7023966222081168,
+    "GBPNZD": 0.6659362066059307,
+    "GBPUSD": 0.8734911436347671,
+    "GOLD": 0.7533703313760909,
+    "NQ": 0.7742648989528054,
+    "NZDCAD": 0.8889422178482016,
+    "NZDJPY": 0.6621829648409965,
+    "NZDUSD": 0.8767310319754223,
+    "SPX500": 0.7468938656250879,
+    "UK100": 0.6667749568608384,
+    "US2000": 0.7378729974297499,
+    "USDCAD": 0.8628512852820527,
+    "USDCHF": 0.8889574538339399,
+    "USDJPY": 0.809141193162372
+   },
+   "inst_cells": {
+    "AUDCAD": {
+     "group": "C inst",
+     "cell": "plain | AUDCAD",
+     "value": 0.8655,
+     "lo": 0.7728,
+     "hi": 0.9647,
+     "n": null,
+     "p": 0.004,
+     "bh_q10": true
+    },
+    "AUDCHF": {
+     "group": "C inst",
+     "cell": "plain | AUDCHF",
+     "value": 0.6966,
+     "lo": 0.5729,
+     "hi": 0.8451,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "AUDJPY": {
+     "group": "C inst",
+     "cell": "plain | AUDJPY",
+     "value": 0.7059,
+     "lo": 0.6204,
+     "hi": 0.8023,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "AUDNZD": {
+     "group": "C inst",
+     "cell": "plain | AUDNZD",
+     "value": 0.9433,
+     "lo": 0.7984,
+     "hi": 1.0656,
+     "n": null,
+     "p": 0.44,
+     "bh_q10": false
+    },
+    "AUDUSD": {
+     "group": "C inst",
+     "cell": "plain | AUDUSD",
+     "value": 0.8896,
+     "lo": 0.7957,
+     "hi": 0.9884,
+     "n": null,
+     "p": 0.023,
+     "bh_q10": true
+    },
+    "CADCHF": {
+     "group": "C inst",
+     "cell": "plain | CADCHF",
+     "value": 0.7991,
+     "lo": 0.715,
+     "hi": 0.8809,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "CADJPY": {
+     "group": "C inst",
+     "cell": "plain | CADJPY",
+     "value": 0.7251,
+     "lo": 0.601,
+     "hi": 0.8373,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "CHFJPY": {
+     "group": "C inst",
+     "cell": "plain | CHFJPY",
+     "value": 0.7085,
+     "lo": 0.62,
+     "hi": 0.7903,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "DE30": {
+     "group": "C inst",
+     "cell": "plain | DE30",
+     "value": 0.7113,
+     "lo": 0.6128,
+     "hi": 0.8326,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "DOW": {
+     "group": "C inst",
+     "cell": "plain | DOW",
+     "value": 0.7152,
+     "lo": 0.6022,
+     "hi": 0.8512,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "EURAUD": {
+     "group": "C inst",
+     "cell": "plain | EURAUD",
+     "value": 0.6848,
+     "lo": 0.5901,
+     "hi": 0.8016,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "EURCAD": {
+     "group": "C inst",
+     "cell": "plain | EURCAD",
+     "value": 0.7408,
+     "lo": 0.6438,
+     "hi": 0.8451,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "EURCHF": {
+     "group": "C inst",
+     "cell": "plain | EURCHF",
+     "value": 0.7506,
+     "lo": 0.6412,
+     "hi": 0.8674,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "EURGBP": {
+     "group": "C inst",
+     "cell": "plain | EURGBP",
+     "value": 0.7223,
+     "lo": 0.6376,
+     "hi": 0.82,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "EURJPY": {
+     "group": "C inst",
+     "cell": "plain | EURJPY",
+     "value": 0.7244,
+     "lo": 0.6251,
+     "hi": 0.8173,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "EURNZD": {
+     "group": "C inst",
+     "cell": "plain | EURNZD",
+     "value": 0.729,
+     "lo": 0.6384,
+     "hi": 0.8298,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "EURUSD": {
+     "group": "C inst",
+     "cell": "plain | EURUSD",
+     "value": 0.8742,
+     "lo": 0.8039,
+     "hi": 0.939,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "GBPAUD": {
+     "group": "C inst",
+     "cell": "plain | GBPAUD",
+     "value": 0.5693,
+     "lo": 0.4672,
+     "hi": 0.7128,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "GBPCAD": {
+     "group": "C inst",
+     "cell": "plain | GBPCAD",
+     "value": 0.8352,
+     "lo": 0.7253,
+     "hi": 0.9555,
+     "n": null,
+     "p": 0.006,
+     "bh_q10": true
+    },
+    "GBPCHF": {
+     "group": "C inst",
+     "cell": "plain | GBPCHF",
+     "value": 0.6874,
+     "lo": 0.5786,
+     "hi": 0.8071,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "GBPJPY": {
+     "group": "C inst",
+     "cell": "plain | GBPJPY",
+     "value": 0.7024,
+     "lo": 0.6099,
+     "hi": 0.7971,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "GBPNZD": {
+     "group": "C inst",
+     "cell": "plain | GBPNZD",
+     "value": 0.6659,
+     "lo": 0.5699,
+     "hi": 0.7828,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "GBPUSD": {
+     "group": "C inst",
+     "cell": "plain | GBPUSD",
+     "value": 0.8735,
+     "lo": 0.7938,
+     "hi": 0.953,
+     "n": null,
+     "p": 0.001,
+     "bh_q10": true
+    },
+    "GOLD": {
+     "group": "C inst",
+     "cell": "plain | GOLD",
+     "value": 0.7534,
+     "lo": 0.6884,
+     "hi": 0.8427,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "NQ": {
+     "group": "C inst",
+     "cell": "plain | NQ",
+     "value": 0.7743,
+     "lo": 0.6571,
+     "hi": 0.9046,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "NZDCAD": {
+     "group": "C inst",
+     "cell": "plain | NZDCAD",
+     "value": 0.8889,
+     "lo": 0.7936,
+     "hi": 0.9759,
+     "n": null,
+     "p": 0.012,
+     "bh_q10": true
+    },
+    "NZDJPY": {
+     "group": "C inst",
+     "cell": "plain | NZDJPY",
+     "value": 0.6622,
+     "lo": 0.5883,
+     "hi": 0.7376,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "NZDUSD": {
+     "group": "C inst",
+     "cell": "plain | NZDUSD",
+     "value": 0.8767,
+     "lo": 0.7784,
+     "hi": 0.9621,
+     "n": null,
+     "p": 0.003,
+     "bh_q10": true
+    },
+    "SPX500": {
+     "group": "C inst",
+     "cell": "plain | SPX500",
+     "value": 0.7469,
+     "lo": 0.6408,
+     "hi": 0.8628,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "UK100": {
+     "group": "C inst",
+     "cell": "plain | UK100",
+     "value": 0.6668,
+     "lo": 0.5691,
+     "hi": 0.7942,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "US2000": {
+     "group": "C inst",
+     "cell": "plain | US2000",
+     "value": 0.7379,
+     "lo": 0.6074,
+     "hi": 0.883,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "USDCAD": {
+     "group": "C inst",
+     "cell": "plain | USDCAD",
+     "value": 0.8629,
+     "lo": 0.7673,
+     "hi": 0.9708,
+     "n": null,
+     "p": 0.008,
+     "bh_q10": true
+    },
+    "USDCHF": {
+     "group": "C inst",
+     "cell": "plain | USDCHF",
+     "value": 0.889,
+     "lo": 0.8228,
+     "hi": 0.9537,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "USDJPY": {
+     "group": "C inst",
+     "cell": "plain | USDJPY",
+     "value": 0.8091,
+     "lo": 0.7007,
+     "hi": 0.9093,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "class": {
+    "FX majors": {
+     "group": "C class",
+     "cell": "plain | FX majors",
+     "value": 0.8585,
+     "lo": 0.7962,
+     "hi": 0.9156,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "FX crosses": {
+     "group": "C class",
+     "cell": "plain | FX crosses",
+     "value": 0.7334,
+     "lo": 0.6636,
+     "hi": 0.7979,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "Indices": {
+     "group": "C class",
+     "cell": "plain | Indices",
+     "value": 0.7299,
+     "lo": 0.6196,
+     "hi": 0.8497,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "Gold": {
+     "group": "C class",
+     "cell": "plain | Gold",
+     "value": 0.7534,
+     "lo": 0.6884,
+     "hi": 0.8427,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "tercile": {
+    "quiet": {
+     "group": "C tercile",
+     "cell": "plain | \u03c3 quiet",
+     "value": 0.8912,
+     "lo": 0.8259,
+     "hi": 0.9506,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "normal": {
+     "group": "C tercile",
+     "cell": "plain | \u03c3 normal",
+     "value": 0.7447,
+     "lo": 0.6889,
+     "hi": 0.8047,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "busy": {
+     "group": "C tercile",
+     "cell": "plain | \u03c3 busy",
+     "value": 0.6147,
+     "lo": 0.5331,
+     "hi": 0.7223,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "event": {
+    "event": {
+     "group": "C event",
+     "cell": "plain | event days",
+     "value": 0.7601,
+     "lo": 0.6791,
+     "hi": 0.8362,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "none": {
+     "group": "C event",
+     "cell": "plain | non-event days",
+     "value": 0.7421,
+     "lo": 0.6609,
+     "hi": 0.8194,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "conc": {
+    "group": "C concentration",
+    "cell": "plain | without top 1% dates",
+    "value": 0.7917,
+    "lo": 0.7426,
+    "hi": 0.8358,
+    "n": null,
+    "p": null
+   },
+   "3feat": {
+    "group": "C descriptive",
+    "cell": "plain | stage 2 three-feature rule, frozen",
+    "value": 0.7609,
+    "lo": 0.6873,
+    "hi": 0.8261,
+    "n": null,
+    "p": 0.0005
+   },
+   "har": {
+    "group": "C descriptive",
+    "cell": "log-HAR \u00f7 plain",
+    "value": 0.7691,
+    "lo": 0.6977,
+    "hi": 0.8351,
+    "n": null,
+    "p": 0.0005
+   },
+   "frozen_scale": {
+    "group": "C descriptive",
+    "cell": "plain | scale frozen at 2022-12-30",
+    "value": 0.7545,
+    "lo": 0.6816,
+    "hi": 0.8198,
+    "n": null,
+    "p": 0.0005
+   },
+   "month": {
+    "min": 1.1807204212129048,
+    "mean": 1.2104361400306167,
+    "sd": 0.01224407957715579,
+    "beats_all": true,
+    "numpy_check": 0.75779
+   }
+  },
+  "C_c": {
+   "main": {
+    "group": "C QLIKE",
+    "cell": "chosen | hl 1 frozen",
+    "value": 0.9025,
+    "lo": 0.8639,
+    "hi": 0.9365,
+    "n": 31815,
+    "p": 0.0005,
+    "se": 0.019506020060170538,
+    "dates": 943
+   },
+   "block60": {
+    "group": "C QLIKE",
+    "cell": "chosen | block 60",
+    "value": 0.9025,
+    "lo": 0.8644,
+    "hi": 0.9345,
+    "n": 31815,
+    "p": null
+   },
+   "lag2": {
+    "group": "C lag",
+    "cell": "chosen | misses delayed one more session",
+    "value": 0.9374,
+    "lo": 0.9062,
+    "hi": 0.9658,
+    "n": null,
+    "p": 0.0005
+   },
+   "hl2": {
+    "group": "C plateau",
+    "cell": "chosen | hl 2",
+    "value": 0.9048,
+    "lo": 0.8685,
+    "hi": 0.9373,
+    "n": null,
+    "p": 0.0005
+   },
+   "hl3": {
+    "group": "C plateau",
+    "cell": "chosen | hl 3",
+    "value": 0.9107,
+    "lo": 0.8775,
+    "hi": 0.9415,
+    "n": null,
+    "p": 0.0005
+   },
+   "years": {
+    "2023": {
+     "group": "C year",
+     "cell": "chosen | 2023",
+     "value": 0.8794,
+     "lo": 0.842,
+     "hi": 0.9219,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "2024": {
+     "group": "C year",
+     "cell": "chosen | 2024",
+     "value": 0.9253,
+     "lo": 0.8563,
+     "hi": 0.9844,
+     "n": null,
+     "p": 0.013,
+     "bh_q10": true
+    },
+    "2025": {
+     "group": "C year",
+     "cell": "chosen | 2025",
+     "value": 0.8782,
+     "lo": 0.7746,
+     "hi": 0.9705,
+     "n": null,
+     "p": 0.004,
+     "bh_q10": true
+    },
+    "2026": {
+     "group": "C year",
+     "cell": "chosen | 2026",
+     "value": 0.9247,
+     "lo": 0.889,
+     "hi": 0.9578,
+     "n": null,
+     "p": 0.003,
+     "bh_q10": true
+    }
+   },
+   "inst": {
+    "AUDCAD": 0.9389704733243549,
+    "AUDCHF": 0.889153253723828,
+    "AUDJPY": 0.8709052179282871,
+    "AUDNZD": 1.0068929227749588,
+    "AUDUSD": 0.9403397238927557,
+    "CADCHF": 0.9398227176662143,
+    "CADJPY": 0.8876966759135868,
+    "CHFJPY": 0.8744281509853862,
+    "DE30": 0.9033789206185895,
+    "DOW": 0.9444828579646658,
+    "EURAUD": 0.886001516542522,
+    "EURCAD": 0.8771262798152677,
+    "EURCHF": 0.9429011627859551,
+    "EURGBP": 0.9023274602249981,
+    "EURJPY": 0.8604449423861168,
+    "EURNZD": 0.918714666872256,
+    "EURUSD": 0.8840712828936466,
+    "GBPAUD": 0.8303029201714265,
+    "GBPCAD": 0.9323419680031934,
+    "GBPCHF": 0.9346353519881332,
+    "GBPJPY": 0.8613532371406272,
+    "GBPNZD": 0.8535083171866146,
+    "GBPUSD": 0.8998593403123085,
+    "GOLD": 0.8585369850851742,
+    "NQ": 0.9295755003682415,
+    "NZDCAD": 0.9747568324973684,
+    "NZDJPY": 0.8373069403775204,
+    "NZDUSD": 0.9517992045016473,
+    "SPX500": 0.9278438387231058,
+    "UK100": 0.8064380890073782,
+    "US2000": 0.9232836373331291,
+    "USDCAD": 0.9517140344407888,
+    "USDCHF": 0.933420031896776,
+    "USDJPY": 0.8939397164474111
+   },
+   "inst_cells": {
+    "AUDCAD": {
+     "group": "C inst",
+     "cell": "chosen | AUDCAD",
+     "value": 0.939,
+     "lo": 0.8789,
+     "hi": 0.9969,
+     "n": null,
+     "p": 0.038,
+     "bh_q10": true
+    },
+    "AUDCHF": {
+     "group": "C inst",
+     "cell": "chosen | AUDCHF",
+     "value": 0.8892,
+     "lo": 0.819,
+     "hi": 0.9662,
+     "n": null,
+     "p": 0.001,
+     "bh_q10": true
+    },
+    "AUDJPY": {
+     "group": "C inst",
+     "cell": "chosen | AUDJPY",
+     "value": 0.8709,
+     "lo": 0.8111,
+     "hi": 0.9349,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "AUDNZD": {
+     "group": "C inst",
+     "cell": "chosen | AUDNZD",
+     "value": 1.0069,
+     "lo": 0.9337,
+     "hi": 1.0641,
+     "n": null,
+     "p": 0.874,
+     "bh_q10": false
+    },
+    "AUDUSD": {
+     "group": "C inst",
+     "cell": "chosen | AUDUSD",
+     "value": 0.9403,
+     "lo": 0.8897,
+     "hi": 0.992,
+     "n": null,
+     "p": 0.026,
+     "bh_q10": true
+    },
+    "CADCHF": {
+     "group": "C inst",
+     "cell": "chosen | CADCHF",
+     "value": 0.9398,
+     "lo": 0.8742,
+     "hi": 1.0025,
+     "n": null,
+     "p": 0.059,
+     "bh_q10": true
+    },
+    "CADJPY": {
+     "group": "C inst",
+     "cell": "chosen | CADJPY",
+     "value": 0.8877,
+     "lo": 0.8094,
+     "hi": 0.9517,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "CHFJPY": {
+     "group": "C inst",
+     "cell": "chosen | CHFJPY",
+     "value": 0.8744,
+     "lo": 0.811,
+     "hi": 0.9361,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "DE30": {
+     "group": "C inst",
+     "cell": "chosen | DE30",
+     "value": 0.9034,
+     "lo": 0.8268,
+     "hi": 0.9847,
+     "n": null,
+     "p": 0.014,
+     "bh_q10": true
+    },
+    "DOW": {
+     "group": "C inst",
+     "cell": "chosen | DOW",
+     "value": 0.9445,
+     "lo": 0.8761,
+     "hi": 1.008,
+     "n": null,
+     "p": 0.107,
+     "bh_q10": false
+    },
+    "EURAUD": {
+     "group": "C inst",
+     "cell": "chosen | EURAUD",
+     "value": 0.886,
+     "lo": 0.8335,
+     "hi": 0.9459,
+     "n": null,
+     "p": 0.001,
+     "bh_q10": true
+    },
+    "EURCAD": {
+     "group": "C inst",
+     "cell": "chosen | EURCAD",
+     "value": 0.8771,
+     "lo": 0.7969,
+     "hi": 0.9571,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "EURCHF": {
+     "group": "C inst",
+     "cell": "chosen | EURCHF",
+     "value": 0.9429,
+     "lo": 0.8671,
+     "hi": 1.011,
+     "n": null,
+     "p": 0.108,
+     "bh_q10": false
+    },
+    "EURGBP": {
+     "group": "C inst",
+     "cell": "chosen | EURGBP",
+     "value": 0.9023,
+     "lo": 0.8443,
+     "hi": 0.9599,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "EURJPY": {
+     "group": "C inst",
+     "cell": "chosen | EURJPY",
+     "value": 0.8604,
+     "lo": 0.8024,
+     "hi": 0.9134,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "EURNZD": {
+     "group": "C inst",
+     "cell": "chosen | EURNZD",
+     "value": 0.9187,
+     "lo": 0.8664,
+     "hi": 0.9683,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "EURUSD": {
+     "group": "C inst",
+     "cell": "chosen | EURUSD",
+     "value": 0.8841,
+     "lo": 0.827,
+     "hi": 0.9422,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "GBPAUD": {
+     "group": "C inst",
+     "cell": "chosen | GBPAUD",
+     "value": 0.8303,
+     "lo": 0.7683,
+     "hi": 0.9027,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "GBPCAD": {
+     "group": "C inst",
+     "cell": "chosen | GBPCAD",
+     "value": 0.9323,
+     "lo": 0.868,
+     "hi": 1.0001,
+     "n": null,
+     "p": 0.051,
+     "bh_q10": true
+    },
+    "GBPCHF": {
+     "group": "C inst",
+     "cell": "chosen | GBPCHF",
+     "value": 0.9346,
+     "lo": 0.8713,
+     "hi": 0.9932,
+     "n": null,
+     "p": 0.03,
+     "bh_q10": true
+    },
+    "GBPJPY": {
+     "group": "C inst",
+     "cell": "chosen | GBPJPY",
+     "value": 0.8614,
+     "lo": 0.8105,
+     "hi": 0.9049,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "GBPNZD": {
+     "group": "C inst",
+     "cell": "chosen | GBPNZD",
+     "value": 0.8535,
+     "lo": 0.7826,
+     "hi": 0.9242,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "GBPUSD": {
+     "group": "C inst",
+     "cell": "chosen | GBPUSD",
+     "value": 0.8999,
+     "lo": 0.8507,
+     "hi": 0.9521,
+     "n": null,
+     "p": 0.001,
+     "bh_q10": true
+    },
+    "GOLD": {
+     "group": "C inst",
+     "cell": "chosen | GOLD",
+     "value": 0.8585,
+     "lo": 0.7981,
+     "hi": 0.9397,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "NQ": {
+     "group": "C inst",
+     "cell": "chosen | NQ",
+     "value": 0.9296,
+     "lo": 0.8519,
+     "hi": 1.0045,
+     "n": null,
+     "p": 0.07,
+     "bh_q10": true
+    },
+    "NZDCAD": {
+     "group": "C inst",
+     "cell": "chosen | NZDCAD",
+     "value": 0.9748,
+     "lo": 0.9146,
+     "hi": 1.0269,
+     "n": null,
+     "p": 0.379,
+     "bh_q10": false
+    },
+    "NZDJPY": {
+     "group": "C inst",
+     "cell": "chosen | NZDJPY",
+     "value": 0.8373,
+     "lo": 0.7762,
+     "hi": 0.9028,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "NZDUSD": {
+     "group": "C inst",
+     "cell": "chosen | NZDUSD",
+     "value": 0.9518,
+     "lo": 0.9024,
+     "hi": 0.9945,
+     "n": null,
+     "p": 0.021,
+     "bh_q10": true
+    },
+    "SPX500": {
+     "group": "C inst",
+     "cell": "chosen | SPX500",
+     "value": 0.9278,
+     "lo": 0.859,
+     "hi": 0.9954,
+     "n": null,
+     "p": 0.038,
+     "bh_q10": true
+    },
+    "UK100": {
+     "group": "C inst",
+     "cell": "chosen | UK100",
+     "value": 0.8064,
+     "lo": 0.7502,
+     "hi": 0.8689,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "US2000": {
+     "group": "C inst",
+     "cell": "chosen | US2000",
+     "value": 0.9233,
+     "lo": 0.8551,
+     "hi": 0.9909,
+     "n": null,
+     "p": 0.027,
+     "bh_q10": true
+    },
+    "USDCAD": {
+     "group": "C inst",
+     "cell": "chosen | USDCAD",
+     "value": 0.9517,
+     "lo": 0.9005,
+     "hi": 1.0076,
+     "n": null,
+     "p": 0.096,
+     "bh_q10": true
+    },
+    "USDCHF": {
+     "group": "C inst",
+     "cell": "chosen | USDCHF",
+     "value": 0.9334,
+     "lo": 0.8807,
+     "hi": 0.985,
+     "n": null,
+     "p": 0.008,
+     "bh_q10": true
+    },
+    "USDJPY": {
+     "group": "C inst",
+     "cell": "chosen | USDJPY",
+     "value": 0.8939,
+     "lo": 0.8135,
+     "hi": 0.9689,
+     "n": null,
+     "p": 0.005,
+     "bh_q10": true
+    }
+   },
+   "class": {
+    "FX majors": {
+     "group": "C class",
+     "cell": "chosen | FX majors",
+     "value": 0.9167,
+     "lo": 0.8781,
+     "hi": 0.9554,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "FX crosses": {
+     "group": "C class",
+     "cell": "chosen | FX crosses",
+     "value": 0.8973,
+     "lo": 0.8544,
+     "hi": 0.9381,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "Indices": {
+     "group": "C class",
+     "cell": "chosen | Indices",
+     "value": 0.9108,
+     "lo": 0.8536,
+     "hi": 0.9652,
+     "n": null,
+     "p": 0.002,
+     "bh_q10": true
+    },
+    "Gold": {
+     "group": "C class",
+     "cell": "chosen | Gold",
+     "value": 0.8585,
+     "lo": 0.7981,
+     "hi": 0.9397,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "tercile": {
+    "quiet": {
+     "group": "C tercile",
+     "cell": "chosen | \u03c3 quiet",
+     "value": 0.9442,
+     "lo": 0.9051,
+     "hi": 0.9808,
+     "n": null,
+     "p": 0.004,
+     "bh_q10": true
+    },
+    "normal": {
+     "group": "C tercile",
+     "cell": "chosen | \u03c3 normal",
+     "value": 0.8958,
+     "lo": 0.8612,
+     "hi": 0.9285,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "busy": {
+     "group": "C tercile",
+     "cell": "chosen | \u03c3 busy",
+     "value": 0.8459,
+     "lo": 0.7789,
+     "hi": 0.9239,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "event": {
+    "event": {
+     "group": "C event",
+     "cell": "chosen | event days",
+     "value": 0.9033,
+     "lo": 0.8564,
+     "hi": 0.9453,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    },
+    "none": {
+     "group": "C event",
+     "cell": "chosen | non-event days",
+     "value": 0.8986,
+     "lo": 0.8507,
+     "hi": 0.9402,
+     "n": null,
+     "p": 0.0005,
+     "bh_q10": true
+    }
+   },
+   "conc": {
+    "group": "C concentration",
+    "cell": "chosen | without top 1% dates",
+    "value": 0.9265,
+    "lo": 0.9019,
+    "hi": 0.9512,
+    "n": null,
+    "p": null
+   },
+   "3feat": {
+    "group": "C descriptive",
+    "cell": "chosen | stage 2 three-feature rule, frozen",
+    "value": 0.9087,
+    "lo": 0.877,
+    "hi": 0.9393,
+    "n": null,
+    "p": 0.0005
+   },
+   "frozen_scale": {
+    "group": "C descriptive",
+    "cell": "chosen | scale frozen at 2022-12-30",
+    "value": 0.8811,
+    "lo": 0.8469,
+    "hi": 0.9129,
+    "n": null,
+    "p": 0.0005
+   },
+   "month": {
+    "min": 1.0286960468233541,
+    "mean": 1.042776589574114,
+    "sd": 0.005329362832296978,
+    "beats_all": true,
+    "numpy_check": 0.9025
+   }
+  },
+  "D": {
+   "main": {
+    "group": "D coverage",
+    "cell": "chosen p75 | All",
+    "value": 24.0767,
+    "lo": 23.3142,
+    "hi": 24.9262,
+    "n": 63630,
+    "p": 0.0005,
+    "se": 0.4179126141267984,
+    "dates": 943
+   },
+   "block60": {
+    "group": "D coverage",
+    "cell": "chosen p75 | block 60",
+    "value": 24.0767,
+    "lo": 23.2556,
+    "hi": 24.9711,
+    "n": 63630,
+    "p": null
+   },
+   "years": {
+    "2023": {
+     "group": "D year",
+     "cell": "chosen p75 | 2023",
+     "value": 23.9128,
+     "lo": 22.7724,
+     "hi": 25.2275,
+     "n": 17476,
+     "p": null
+    },
+    "2024": {
+     "group": "D year",
+     "cell": "chosen p75 | 2024",
+     "value": 24.3473,
+     "lo": 22.7952,
+     "hi": 25.9993,
+     "n": 17542,
+     "p": null
+    },
+    "2025": {
+     "group": "D year",
+     "cell": "chosen p75 | 2025",
+     "value": 23.9554,
+     "lo": 21.9824,
+     "hi": 26.4652,
+     "n": 17470,
+     "p": null
+    },
+    "2026": {
+     "group": "D year",
+     "cell": "chosen p75 | 2026",
+     "value": 24.098,
+     "lo": 22.4455,
+     "hi": 26.1245,
+     "n": 11142,
+     "p": null
+    }
+   },
+   "tercile": {
+    "quiet": {
+     "group": "D tercile",
+     "cell": "chosen p75 | \u03c3 quiet",
+     "value": 23.9446,
+     "lo": 23.1361,
+     "hi": 24.8794,
+     "n": 31456,
+     "p": null
+    },
+    "normal": {
+     "group": "D tercile",
+     "cell": "chosen p75 | \u03c3 normal",
+     "value": 24.2737,
+     "lo": 23.1926,
+     "hi": 25.4104,
+     "n": 16936,
+     "p": null
+    },
+    "busy": {
+     "group": "D tercile",
+     "cell": "chosen p75 | \u03c3 busy",
+     "value": 24.1305,
+     "lo": 22.7319,
+     "hi": 25.4078,
+     "n": 15238,
+     "p": null
+    }
+   },
+   "class": {
+    "FX majors": {
+     "group": "D class",
+     "cell": "chosen p75 | FX majors",
+     "value": 23.5267,
+     "lo": 22.6555,
+     "hi": 24.413,
+     "n": 13202,
+     "p": null
+    },
+    "FX crosses": {
+     "group": "D class",
+     "cell": "chosen p75 | FX crosses",
+     "value": 23.7234,
+     "lo": 22.6988,
+     "hi": 24.8316,
+     "n": 37718,
+     "p": null
+    },
+    "Indices": {
+     "group": "D class",
+     "cell": "chosen p75 | Indices",
+     "value": 25.6563,
+     "lo": 24.2605,
+     "hi": 26.9815,
+     "n": 10894,
+     "p": null
+    },
+    "Gold": {
+     "group": "D class",
+     "cell": "chosen p75 | Gold",
+     "value": 25.9361,
+     "lo": 24.115,
+     "hi": 27.8509,
+     "n": 1816,
+     "p": null
+    }
+   },
+   "side": {
+    "oh": {
+     "group": "D mirror",
+     "cell": "chosen p75 | OH side",
+     "value": 24.5733,
+     "lo": 23.7467,
+     "hi": 25.4788,
+     "n": 31815,
+     "p": null
+    },
+    "ol": {
+     "group": "D mirror",
+     "cell": "chosen p75 | OL side",
+     "value": 23.5801,
+     "lo": 22.5156,
+     "hi": 24.7426,
+     "n": 31815,
+     "p": null
+    }
+   },
+   "event": {
+    "event": {
+     "group": "D event",
+     "cell": "chosen p75 | event days",
+     "value": 24.725,
+     "lo": 23.6299,
+     "hi": 25.8262,
+     "n": 34540,
+     "p": null
+    },
+    "none": {
+     "group": "D event",
+     "cell": "chosen p75 | non-event days",
+     "value": 23.3124,
+     "lo": 22.1507,
+     "hi": 24.5576,
+     "n": 26724,
+     "p": null
+    }
+   },
+   "rungs": {
+    "p50": {
+     "group": "D rungs",
+     "cell": "chosen p50 | All",
+     "value": 48.7443,
+     "lo": 48.144,
+     "hi": 49.3919,
+     "n": 63630,
+     "p": null
+    },
+    "p90": {
+     "group": "D rungs",
+     "cell": "chosen p90 | All",
+     "value": 9.4327,
+     "lo": 8.8369,
+     "hi": 10.0757,
+     "n": 63630,
+     "p": null
+    }
+   },
+   "conc": {
+    "group": "D concentration",
+    "cell": "chosen p75 | without top 1% dates",
+    "value": 23.9904,
+    "lo": 23.2558,
+    "hi": 24.7591,
+    "n": 62996,
+    "p": null
+   },
+   "inst": {
+    "AUDCAD": 23.54188759278897,
+    "AUDCHF": 23.117709437963946,
+    "AUDJPY": 24.284199363732768,
+    "AUDNZD": 24.973488865323436,
+    "AUDUSD": 23.329798515376456,
+    "CADCHF": 22.852598091198303,
+    "CADJPY": 23.435843054082714,
+    "CHFJPY": 23.647932131495228,
+    "DE30": 24.593716143011918,
+    "DOW": 26.356589147286822,
+    "EURAUD": 22.64050901378579,
+    "EURCAD": 22.852598091198303,
+    "EURCHF": 23.700954400848357,
+    "EURGBP": 23.54188759278897,
+    "EURJPY": 22.693531283138917,
+    "EURNZD": 22.216330858960763,
+    "EURUSD": 23.54188759278897,
+    "GBPAUD": 26.511134676564158,
+    "GBPCAD": 28.207847295864262,
+    "GBPCHF": 23.488865323435842,
+    "GBPJPY": 22.799575821845174,
+    "GBPNZD": 23.301486199575372,
+    "GBPUSD": 23.753976670201485,
+    "GOLD": 25.93612334801762,
+    "NQ": 26.910299003322258,
+    "NZDCAD": 24.12513255567338,
+    "NZDJPY": 22.534464475079535,
+    "NZDUSD": 23.064687168610817,
+    "SPX500": 26.578073089700997,
+    "UK100": 21.765350877192983,
+    "US2000": 27.79623477297896,
+    "USDCAD": 23.01166489925769,
+    "USDCHF": 25.13255567338282,
+    "USDJPY": 22.852598091198303
+   }
+  }
+ },
+ "p": {
+  "persist": {
+   "p": {
+    "p_boot": 0.0005,
+    "boot_se": 0.03514,
+    "placebo_sd": 0.00811,
+    "uses_placebo_sd": false,
+    "p_used": 0.0005
+   },
+   "c": {
+    "p_boot": 0.0005,
+    "boot_se": 0.03122,
+    "placebo_sd": 0.00678,
+    "uses_placebo_sd": false,
+    "p_used": 0.0005
+   }
+  },
+  "morning": {
+   "p_boot": 0.0005,
+   "boot_se": 0.0425,
+   "placebo_sd": 0.00815,
+   "uses_placebo_sd": false,
+   "p_used": 0.0005
+  },
+  "qlike-plain": {
+   "p_boot": 0.0005,
+   "boot_se": 0.03713,
+   "placebo_sd": 0.01224,
+   "uses_placebo_sd": false,
+   "p_used": 0.0005
+  },
+  "qlike-chosen": {
+   "p_boot": 0.0005,
+   "boot_se": 0.01951,
+   "placebo_sd": 0.00533,
+   "uses_placebo_sd": false,
+   "p_used": 0.0005
+  },
+  "cov75": {
+   "p_tost": 0.0005
+  }
+ },
+ "raw_p": {
+  "persist": 0.0005,
+  "morning": 0.0005,
+  "qlike-plain": 0.0005,
+  "qlike-chosen": 0.0005,
+  "cov75": 0.0005
+ },
+ "holm": {
+  "persist": 0.0025,
+  "morning": 0.0025,
+  "qlike-plain": 0.0025,
+  "qlike-chosen": 0.0025,
+  "cov75": 0.0025
+ },
+ "gates": {
+  "persist_p": {
+   "1_holm": true,
+   "2_bar": true,
+   "3_lag": true,
+   "4_plateau": true,
+   "5_years": true,
+   "6_breadth": true,
+   "7_placebo": true
+  },
+  "persist_c": {
+   "1_holm": true,
+   "2_bar": true,
+   "3_lag": true,
+   "4_plateau": true,
+   "5_years": true,
+   "6_breadth": true,
+   "7_placebo": true
+  },
+  "morning": {
+   "1_holm": true,
+   "2_bar": true,
+   "3_lag": true,
+   "4_plateau": true,
+   "5_years": true,
+   "6_breadth": true,
+   "7_placebo": true,
+   "8_nonevent": true
+  },
+  "qlike_p": {
+   "1_holm": true,
+   "2_bar": true,
+   "3_lag": true,
+   "4_plateau": true,
+   "5_years": true,
+   "6_breadth": true,
+   "7_placebo": true
+  },
+  "qlike_c": {
+   "1_holm": true,
+   "2_bar": true,
+   "3_lag": true,
+   "4_plateau": true,
+   "5_years": true,
+   "6_breadth": true,
+   "7_placebo": true
+  },
+  "cov75": {
+   "1_holm": true,
+   "2_bar": true,
+   "5_years": true,
+   "6_breadth": true
+  }
+ },
+ "verdicts": {
+  "persist_p": "VALIDATED",
+  "persist_c": "VALIDATED",
+  "morning": "VALIDATED",
+  "qlike_p": "VALIDATED",
+  "qlike_c": "VALIDATED",
+  "cov75": "VALIDATED",
+  "persist": "VALIDATED"
+ },
+ "frozen": {
+  "p_hl1": {
+   "b": [
+    -0.0555339441066488,
+    0.67559
+   ],
+   "n": 49927,
+   "first": "2017-04-19",
+   "refit_b1": 0.6755882802910109
+  },
+  "p_hl2": {
+   "b": [
+    -0.04390858604325211,
+    0.7444792118413543
+   ],
+   "n": 49927,
+   "first": "2017-04-19"
+  },
+  "p_hl3": {
+   "b": [
+    -0.03896117340879563,
+    0.773833908917232
+   ],
+   "n": 49927,
+   "first": "2017-04-19"
+  },
+  "p_hl1_lag2": {
+   "b": [
+    -0.08173139729869301,
+    0.522203568912629
+   ],
+   "n": 49893,
+   "first": "2017-04-20"
+  },
+  "p_3feat": {
+   "b": [
+    -0.055101150543874246,
+    0.3478795983949534,
+    0.3127867256827616,
+    0.01588506785013294
+   ],
+   "n": 49757,
+   "first": "2017-04-26"
+  },
+  "c_hl1": {
+   "b": [
+    -0.028150304133596638,
+    0.42989
+   ],
+   "n": 19141,
+   "first": "2020-10-22",
+   "refit_b1": 0.42989319029831563
+  },
+  "c_hl2": {
+   "b": [
+    -0.02356553700076372,
+    0.5233334341864757
+   ],
+   "n": 19141,
+   "first": "2020-10-22"
+  },
+  "c_hl3": {
+   "b": [
+    -0.020763763085353618,
+    0.5801468050836595
+   ],
+   "n": 19141,
+   "first": "2020-10-22"
+  },
+  "c_hl1_lag2": {
+   "b": [
+    -0.033790170131932015,
+    0.3160338005981525
+   ],
+   "n": 19107,
+   "first": "2020-10-23"
+  },
+  "c_3feat": {
+   "b": [
+    -0.016876460901606466,
+    0.1774223951244177,
+    0.06502133752801847,
+    0.4236404308110895
+   ],
+   "n": 18971,
+   "first": "2020-10-29"
+  }
+ },
+ "reproduce": {
+  "persist_p": {
+   "stage3": 0.4949,
+   "now": 0.4949,
+   "ok": true
+  },
+  "persist_c": {
+   "stage3": 0.2453,
+   "now": 0.2453,
+   "ok": true
+  },
+  "morning": {
+   "stage3": 0.5637,
+   "now": 0.5637,
+   "ok": true
+  },
+  "plateau_p": {
+   "stage3": 0.7002,
+   "now": 0.7002,
+   "ok": true
+  },
+  "plateau_c": {
+   "stage3": 0.9137,
+   "now": 0.9137,
+   "ok": true
+  },
+  "cov75_c": {
+   "stage3": 25.5866,
+   "now": 25.5866,
+   "ok": true
+  },
+  "b1_p": {
+   "prereg": 0.67559,
+   "now": 0.675588,
+   "n_rows": 49927,
+   "first": "2017-04-19",
+   "ok": true
+  },
+  "b1_c": {
+   "prereg": 0.42989,
+   "now": 0.429893,
+   "n_rows": 19141,
+   "first": "2020-10-22",
+   "ok": true
+  },
+  "insample_p": {
+   "prereg": 0.696,
+   "now": 0.6958,
+   "ok": true
+  },
+  "insample_c": {
+   "prereg": 0.903,
+   "now": 0.903,
+   "ok": true
+  }
+ },
+ "ranAt": "2026-11-16T17:58:20+00:00"
+}

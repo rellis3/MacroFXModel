@@ -1,0 +1,370 @@
+{
+ "persist": {
+  "effect": 0.217,
+  "lo": 0.1602,
+  "hi": 0.2785,
+  "min_effect": 0.1,
+  "planted_large": {
+   "injected": 0.3,
+   "shift": 0.30000000000000004,
+   "lo_after": 0.4602,
+   "how": "added 0.3 \u00d7 the demeaned regressor to the outcome; shift = how far the measured slope moved"
+  },
+  "planted_min": {
+   "injected": 0.1,
+   "shift": 0.1,
+   "lo_after": 0.2602,
+   "how": "added 0.1 \u00d7 the demeaned regressor to the outcome; shift = how far the measured slope moved"
+  },
+  "shuffle": {
+   "effect": -0.00017499999999999994,
+   "lo": -0.011795,
+   "hi": 0.011399999999999999,
+   "each": [
+    0.0027,
+    -0.0013,
+    0.0039,
+    -0.0041,
+    0.0061,
+    -0.0062,
+    -0.0052,
+    0.0002,
+    0.0126,
+    -0.0008,
+    -0.0053,
+    -0.0066,
+    0.0045,
+    0.0019,
+    -0.0087,
+    -0.0053,
+    0.0064,
+    0.0045,
+    0.0011,
+    -0.0039
+   ],
+   "how": "shuffled the regressor's rows within instrument, 20 times; mean interval"
+  },
+  "diagnostics": {
+   "ok": true,
+   "why": "plain \u03c3 proof gives VALIDATED",
+   "note": "Conjunctive cell: the chosen \u03c3 (the weaker slope) is the question; the plain \u03c3 must pass the same proofs.",
+   "reproduced": true,
+   "mde_80pct_realised": 0.0845,
+   "plain": {
+    "effect": 0.4648,
+    "lo": 0.397,
+    "hi": 0.5335
+   },
+   "plain_verdict": "VALIDATED",
+   "plain_planted_large": {
+    "injected": 0.3,
+    "shift": 0.30000000000000004,
+    "lo_after": 0.697,
+    "how": "added 0.3 \u00d7 the demeaned regressor to the outcome; shift = how far the measured slope moved"
+   },
+   "plain_planted_min": {
+    "injected": 0.1,
+    "shift": 0.09999999999999998,
+    "lo_after": 0.497,
+    "how": "added 0.1 \u00d7 the demeaned regressor to the outcome; shift = how far the measured slope moved"
+   },
+   "plain_shuffle": {
+    "effect": 0.001955,
+    "lo": -0.00925,
+    "hi": 0.01278,
+    "each": [
+     0.0024,
+     0.0076,
+     0.001,
+     -0.0034,
+     0.0024,
+     0.0099,
+     -0.0018,
+     0.0098,
+     -0.0043,
+     0.002,
+     0.0091,
+     -0.001,
+     -0.0018,
+     0.0081,
+     0.0004,
+     -0.0045,
+     0.0007,
+     0.0049,
+     -0.0021,
+     -0.0003
+    ],
+    "how": "shuffled the regressor's rows within instrument, 20 times; mean interval"
+   }
+  },
+  "rows": {
+   "used": 31815,
+   "dropped": 0,
+   "note": "scored-window rows without the inputs this cell needs are dropped; 943 London dates"
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.217 reaches the minimum +0.1"
+  ],
+  "power": 0.9524110775652055
+ },
+ "morning": {
+  "effect": 0.4872,
+  "lo": 0.4124,
+  "hi": 0.5744,
+  "min_effect": 0.1,
+  "planted_large": {
+   "injected": 0.3,
+   "shift": 0.3,
+   "lo_after": 0.7124,
+   "how": "added 0.3 \u00d7 the demeaned regressor to the outcome; shift = how far the measured slope moved"
+  },
+  "planted_min": {
+   "injected": 0.1,
+   "shift": 0.10000000000000003,
+   "lo_after": 0.5124,
+   "how": "added 0.1 \u00d7 the demeaned regressor to the outcome; shift = how far the measured slope moved"
+  },
+  "shuffle": {
+   "effect": 0.0009399999999999999,
+   "lo": -0.010915,
+   "hi": 0.01296,
+   "each": [
+    0.0086,
+    -0.0023,
+    0.0145,
+    -0.0036,
+    -0.0003,
+    -0.0043,
+    0.0,
+    0.0092,
+    -0.009,
+    -0.0138,
+    0.0024,
+    -0.0008,
+    0.0118,
+    -0.0001,
+    -0.0001,
+    0.0065,
+    -0.0018,
+    -0.0016,
+    0.0066,
+    -0.0031
+   ],
+   "how": "shuffled the regressor's rows within instrument, 20 times; mean interval"
+  },
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "note": "Slope of the 13-22 London RV miss on the 00-13 miss, plain \u03c3, within instrument.",
+   "reproduced": true,
+   "mde_80pct_realised": 0.1158
+  },
+  "rows": {
+   "used": 31815,
+   "dropped": 0,
+   "note": "scored-window rows without the inputs this cell needs are dropped; 943 London dates"
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.4872 reaches the minimum +0.1"
+  ],
+  "power": 0.7807873317906323
+ },
+ "qlike-plain": {
+  "effect": 0.24219999999999997,
+  "lo": 0.17420000000000002,
+  "hi": 0.3173,
+  "min_effect": 0.05,
+  "planted_large": {
+   "injected": 0.15,
+   "shift": 0.15000000000000002,
+   "w": 0.09514134878506297,
+   "lo_after": 0.3396,
+   "how": "moved the feedback forecast toward realised variance, h^(1-w)\u00b7RV^w with w = 0.0951, sized so the point loss cut rises by 0.15"
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.050000000000000044,
+   "w": 0.030191761690356422,
+   "lo_after": 0.22970000000000002,
+   "how": "moved the feedback forecast toward realised variance, h^(1-w)\u00b7RV^w with w = 0.0302, sized so the point loss cut rises by 0.05"
+  },
+  "shuffle": {
+   "effect": -0.21771000000000001,
+   "lo": -0.25258499999999995,
+   "hi": -0.18396,
+   "one_sided": true,
+   "each": [
+    -0.2182,
+    -0.2296,
+    -0.2087,
+    -0.2167,
+    -0.2152,
+    -0.2238,
+    -0.2225,
+    -0.2176,
+    -0.234,
+    -0.2166,
+    -0.2323,
+    -0.2123,
+    -0.2131,
+    -0.2211,
+    -0.2239,
+    -0.223,
+    -0.213,
+    -0.2035,
+    -0.2122,
+    -0.1969
+   ],
+   "how": "shuffled the EWMA feedback input's rows within instrument inside 2023-26 (frozen b1, past-only scale), 20 times; only a false gain fails"
+  },
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "note": "Effect = 1 \u2212 QLIKE ratio of plain \u03c3 + frozen hl-1 feedback against the same \u03c3. Month-placebo minimum ratio in the run: 1.181.",
+   "reproduced": true,
+   "mde_80pct_realised": 0.1023
+  },
+  "rows": {
+   "used": 31815,
+   "dropped": 0,
+   "note": "scored-window rows without the inputs this cell needs are dropped; 943 London dates"
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.2422 reaches the minimum +0.05"
+  ],
+  "power": 0.3915785179154635
+ },
+ "qlike-chosen": {
+  "effect": 0.09750000000000003,
+  "lo": 0.0635,
+  "hi": 0.1361,
+  "min_effect": 0.05,
+  "planted_large": {
+   "injected": 0.15,
+   "shift": 0.15000000000000002,
+   "w": 0.07961480731752513,
+   "lo_after": 0.21919999999999995,
+   "how": "moved the feedback forecast toward realised variance, h^(1-w)\u00b7RV^w with w = 0.0796, sized so the point loss cut rises by 0.15"
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.04999999999999993,
+   "w": 0.025512692032576112,
+   "lo_after": 0.11560000000000004,
+   "how": "moved the feedback forecast toward realised variance, h^(1-w)\u00b7RV^w with w = 0.0255, sized so the point loss cut rises by 0.05"
+  },
+  "shuffle": {
+   "effect": -0.04371499999999998,
+   "lo": -0.059344999999999995,
+   "hi": -0.02699499999999999,
+   "one_sided": true,
+   "each": [
+    -0.0368,
+    -0.0382,
+    -0.044,
+    -0.0492,
+    -0.0513,
+    -0.0397,
+    -0.0503,
+    -0.0451,
+    -0.0442,
+    -0.042,
+    -0.0389,
+    -0.0409,
+    -0.0442,
+    -0.0367,
+    -0.0444,
+    -0.0524,
+    -0.0457,
+    -0.0483,
+    -0.0433,
+    -0.0387
+   ],
+   "how": "shuffled the EWMA feedback input's rows within instrument inside 2023-26 (frozen b1, past-only scale), 20 times; only a false gain fails"
+  },
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "note": "Effect = 1 \u2212 QLIKE ratio of chosen \u03c3 + frozen hl-1 feedback against the same \u03c3. Month-placebo minimum ratio in the run: 1.029.",
+   "reproduced": true,
+   "mde_80pct_realised": 0.0519
+  },
+  "rows": {
+   "used": 31815,
+   "dropped": 0,
+   "note": "scored-window rows without the inputs this cell needs are dropped; 943 London dates"
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.0975 reaches the minimum +0.05"
+  ],
+  "power": 0.8542464704075552
+ },
+ "cov75": {
+  "effect": 1.5766999999999989,
+  "lo": 0.8141999999999996,
+  "hi": 2.4262000000000015,
+  "min_effect": 0.5,
+  "planted_large": {
+   "injected": 0.9,
+   "shift": 0.900500000000001,
+   "lo_after": 1.6819999999999986,
+   "how": "flipped 573 random misses to hits (coverage +0.9 pp toward 25%)"
+  },
+  "planted_min": {
+   "injected": 0.5,
+   "shift": 0.49980000000000047,
+   "lo_after": 1.2988,
+   "how": "flipped 318 random misses to hits (coverage +0.5 pp toward 25%)"
+  },
+  "shuffle": {
+   "effect": -5.567665,
+   "lo": -8.407235,
+   "hi": -2.8921,
+   "one_sided": true,
+   "each": [
+    -4.998,
+    -5.949,
+    -5.739,
+    -6.035,
+    -5.772,
+    -5.483,
+    -5.536,
+    -5.385,
+    -5.457,
+    -5.713,
+    -5.385,
+    -5.457,
+    -6.153,
+    -5.286,
+    -5.7,
+    -5.916,
+    -5.562,
+    -4.925,
+    -5.28,
+    -5.621
+   ],
+   "how": "paired each day with the chosen p75 lines of another month (month blocks permuted within instrument and side), 20 times; statistic = the worst \u03c3 tercile's margin inside the band; a shuffled line set must not look calibrated in every tercile"
+  },
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "note": "Coverage 24.0767% [23.3142, 24.9262] mapped to its margin inside 22.5-27.5. Per \u03c3 tercile (run): quiet 23.9446%, normal 24.2737%, busy 24.1305%.",
+   "reproduced": true,
+   "mde_80pct_realised": 1.1521
+  },
+  "rows": {
+   "used": 63630,
+   "dropped": 0,
+   "note": "scored-window rows without the inputs this cell needs are dropped; 943 London dates"
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +1.577 reaches the minimum +0.5"
+  ],
+  "power": 0.3339634076232778
+ }
+}
