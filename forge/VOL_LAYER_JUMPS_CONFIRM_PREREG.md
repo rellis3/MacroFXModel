@@ -191,3 +191,20 @@ So (a) can't be settled on any data we hold: at the 0.03σ bar it needs about 5,
 - **(b) and (c):** their banked words stand. A true confirm needs data none of us has seen: a forward record of own bursts from the commit date. One-sided, at the banked 0.025σ, it needs about 560 own bursts, about 3 years. Proposed, not registered here.
 
 ## Amendments
+
+### A1 — 2026-11-16, PRE-RESULTS (written before any 2023+ stop outcome was computed)
+
+Choices the prereg left open, fixed in `scripts/vol-layer-jumps-confirm/run.py` before the confirm window was read:
+
+- **Shuffle stratum.** A cojump moment spans several instruments, so its rows cannot stay inside one instrument × hour stratum. Labels are reassigned among units (burst moments, single controls) within each London hour, keeping each hour's count of burst units. Instrument × hour post-stratification weights are recomputed inside every draw. Each draw also gets its own date-block bootstrap (B = 2000) for the "share of draws whose interval excludes 0".
+- **Step-0 pass rule.** Counts 4,951 bursts and 45,407 controls (±5); raw touch rates and raw Δ within 0.3pp of §2 at each d; overshoot Δ within 0.002R. Raw (not excess) rates, because §2 printed raw rates.
+- **Positive controls.** Simulated on the discovery event grid (all 4,9xx bursts with σ, plus a fixed sample of 15,000 controls, seed 20261116). Arithmetic Brownian mid, zero spread, 30 steps per minute, M1 bars built from the steps, 5-minute variance = σ² × the discovery profile. Overshoot control: on each burst whose long stop is first crossed within 60 minutes, with probability 0.3 the crossing bar opens X below the stop, X ~ Exp(mean 0.05σ); the planted truth is the mean planted X ÷ d over all burst hits. GPD control: 4,000 draws from a GPD with ξ = 0.3.
+- **Vol-clock profile.** A slot with no M1 bar carries its move into the next slot that has one (previous close carried forward); a slot never seen gets weight 0.
+- **Bootstrap.** Stationary bootstrap, mean block 20, B = 2000, seeded with 20261116 (the `forecast_record.boot_weights` scheme, re-implemented in the script so it stands alone).
+- **σ.** `live_sig_used` as registered (known at the session open; the point-in-time σ the live page used).
+
+### A2 — 2026-11-16, POST-HOC (after the confirm run; changes no verdict)
+
+- **T2's bootstrap interval is too narrow.** In the 200 per-moment shuffles, 20% of draws had a bootstrap interval excluding 0 (it should be near 5%; T1's was 4.5%). The T2 interval [−0.0012, +0.0098]R understates the noise. The verdict does not move: the shuffle spread itself, [−0.0062, +0.0099]R, is also far below the +0.05R bar, so NULL stands. Read T2's interval as indicative only.
+- **T2 strata without a control hit.** 366 of 1,891 burst hits sit in instrument × hour strata with no control hit at d = 0.5. They count in the burst mean but have no matched control. Recorded, not corrected (the registered statistic).
+- **Drops.** 1 burst and 1 control (of 34,073) had no σ or no bid/ask bar; the 1% stop was not reached. The asserted counts (3,431 / 30,642) held before scoring.

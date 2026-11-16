@@ -1,0 +1,129 @@
+{
+ "t1": {
+  "effect": 0.1947,
+  "lo": 0.17205,
+  "hi": 0.21586,
+  "min_effect": 0.05,
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "note": "positive controls pass True, discovery reproduction pass True; re-run of t-cell matches confirm.json",
+   "mde_prereg": 0.032,
+   "mde_realised": 0.03445
+  },
+  "planted_large": {
+   "injected": 0.15,
+   "shift": 0.15029,
+   "lo_after": 0.32403,
+   "how": "flipped untouched burst sides to touched so the burst touch rate rises by 0.15"
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.05174999999999999,
+   "lo_after": 0.22509,
+   "how": "flipped untouched burst sides to touched so the burst touch rate rises by 0.05"
+  },
+  "shuffle": {
+   "lo": -0.02995,
+   "hi": 0.02662,
+   "mean": -0.00234,
+   "draws": 200,
+   "false_positive_rate": 0.045,
+   "how": "per-moment label shuffle within London hour, 200 draws (run.py)"
+  },
+  "rows": {
+   "used": 34071,
+   "dropped": 2,
+   "note": "3430 bursts, 30641 controls; dropped = events with no sigma / entry bar / path"
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +0.1947 reaches the minimum +0.05"
+  ],
+  "power": 0.9976647942389247
+ },
+ "t2": {
+  "effect": 0.00381,
+  "lo": -0.00115,
+  "hi": 0.00976,
+  "min_effect": 0.05,
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "note": "positive controls pass True, discovery reproduction pass True; re-run of t-cell matches confirm.json",
+   "mde_prereg": 0.0048,
+   "mde_realised": 0.00858
+  },
+  "planted_large": {
+   "injected": 0.15,
+   "shift": 0.14951,
+   "lo_after": 0.14561,
+   "how": "added an exponential extra loss (mean 0.15R) to every burst stop hit"
+  },
+  "planted_min": {
+   "injected": 0.05,
+   "shift": 0.0504,
+   "lo_after": 0.04866,
+   "how": "added an exponential extra loss (mean 0.05R) to every burst stop hit"
+  },
+  "shuffle": {
+   "lo": -0.0062,
+   "hi": 0.00992,
+   "mean": -0.0001,
+   "draws": 200,
+   "false_positive_rate": 0.2,
+   "how": "per-moment label shuffle within London hour, 200 draws (run.py)"
+  },
+  "rows": {
+   "used": 4827,
+   "dropped": 2,
+   "note": "3430 bursts, 30641 controls; dropped = events with no sigma / entry bar / path"
+  },
+  "verdict": "NULL",
+  "reasons": [
+   "whole interval is below the minimum +0.05, so that size is ruled out"
+  ],
+  "power": 1.0
+ },
+ "a": {
+  "effect": 0.04042862881575541,
+  "lo": -0.03969689245741754,
+  "hi": 0.12227717686912715,
+  "min_effect": 0.03,
+  "diagnostics": {
+   "ok": true,
+   "why": null,
+   "note": "discovery sessions only (< 2023-01-01). Net follow +0.040 sigma [-0.040, +0.122], gross +0.094 [+0.015, +0.175], 1496 bursts in 330 moments. Prereg \u00a75: on 2023-26 the MDE is 0.141 sigma (228 moments), on 2017-26 0.090 sigma (558 moments), against a 0.03 sigma bar: UNDERPOWERED by design on any data we hold. 2023+ outcomes not read.",
+   "mde_prereg_2023_26": 0.141,
+   "mde_prereg_2017_26": 0.09
+  },
+  "planted_large": {
+   "injected": 0.2,
+   "shift": 0.20000000000000046,
+   "how": "jump-after tape plant: every close after the burst moved by sign x delta x sigma"
+  },
+  "planted_min": {
+   "injected": 0.03,
+   "shift": 0.02999999999999907,
+   "how": "jump-after tape plant: every close after the burst moved by sign x delta x sigma"
+  },
+  "shuffle": {
+   "lo": -0.08538225285809639,
+   "hi": 0.08020424787218279,
+   "mean": -0.0006730467212067823,
+   "draws": 200,
+   "false_positive_rate": 0.075,
+   "how": "one random sign per 5-minute moment on the gross 60-minute follow, 200 draws"
+  },
+  "rows": {
+   "used": 1496,
+   "dropped": 3,
+   "note": "330 distinct moments"
+  },
+  "verdict": "UNDERPOWERED",
+  "reasons": [
+   "interval [-0.0397, +0.1223] neither reaches nor rules out +0.03"
+  ],
+  "power": 0.1790936035285077
+ }
+}

@@ -65,7 +65,8 @@ PROVEN = {"vol-layer-rv5-increment": "vol-layer-rv5-increment", "vol-layer-react
           **{f"vol-layer-sizing-confirm-{c}": "vol-layer-sizing-confirm" for c in ('a', 'b', 'c', 'e')},
           **{f"vol-layer-feedback-confirm-{c}": "vol-layer-feedback-confirm" for c in ('persist', 'morning', 'qlike-plain', 'qlike-chosen', 'cov75')},
           **{f"vol-layer-features-confirm-{c}": "vol-layer-features-confirm" for c in ('tod', 'sig', 'fr', 'eq')},
-          **{f"vol-layer-stops-confirm-{c}": "vol-layer-stops-confirm" for c in ('cal', 'skill', 'steady', 'noise', 'weekend')}}
+          **{f"vol-layer-stops-confirm-{c}": "vol-layer-stops-confirm" for c in ('cal', 'skill', 'steady', 'noise', 'weekend')},
+          **{f"vol-layer-jumps-confirm-{c}": "vol-layer-jumps-confirm" for c in ('touch', 'overshoot', 'large-follow')}}
 
 
 def test_failed_gate_part_demotes_validated_only():

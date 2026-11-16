@@ -1,0 +1,118 @@
+[conf] AUDCAD events 987 scored 987 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 5s
+[conf] AUDCHF events 977 scored 977 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[conf] AUDJPY events 990 scored 990 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 5s
+[conf] AUDNZD events 980 scored 980 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[conf] AUDUSD events 972 scored 972 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 4s
+[conf] CADCHF events 1018 scored 1018 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 4s
+[conf] CADJPY events 1010 scored 1010 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 5s
+[conf] CHFJPY events 1015 scored 1015 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 5s
+[conf] DE30 events 1024 scored 1024 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 4s
+[conf] DOW events 1013 scored 1012 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 1} 5s
+[conf] EURAUD events 979 scored 978 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 1} 4s
+[conf] EURCAD events 1027 scored 1027 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[conf] EURCHF events 1020 scored 1020 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 5s
+[conf] EURGBP events 1023 scored 1023 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 5s
+[conf] EURJPY events 1008 scored 1008 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[conf] EURNZD events 992 scored 992 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[conf] EURUSD events 1010 scored 1010 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 7s
+[conf] GBPAUD events 990 scored 990 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 7s
+[conf] GBPCAD events 1015 scored 1015 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[conf] GBPCHF events 1017 scored 1017 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[conf] GBPJPY events 1013 scored 1013 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 7s
+[conf] GBPNZD events 996 scored 996 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 5s
+[conf] GBPUSD events 1007 scored 1007 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 5s
+[conf] GOLD events 1009 scored 1009 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 5s
+[conf] NQ events 972 scored 972 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 5s
+[conf] NZDCAD events 1005 scored 1005 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 5s
+[conf] NZDJPY events 991 scored 991 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 7s
+[conf] NZDUSD events 993 scored 993 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 5s
+[conf] SPX500 events 982 scored 982 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 5s
+[conf] UK100 events 1008 scored 1008 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 4s
+[conf] US2000 events 1007 scored 1007 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 4s
+[conf] USDCAD events 1001 scored 1001 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 4s
+[conf] USDCHF events 1009 scored 1009 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 4s
+[conf] USDJPY events 1013 scored 1013 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 4s
+{
+ "T1": {
+  "verdict": "VALIDATED",
+  "base": {
+   "est": 0.1947,
+   "lo": 0.17205,
+   "hi": 0.21586,
+   "se": 0.01118,
+   "p": 0.0,
+   "mde": 0.03445,
+   "burst": 0.24321,
+   "control_ps": 0.04851,
+   "n_burst": 3430,
+   "n_control": 30641,
+   "n_burst_no_control_stratum": 6,
+   "burst_raw_touch": 0.27566,
+   "control_raw_touch": 0.04791,
+   "burst_excess_over_rw": 0.24321,
+   "control_excess_over_rw_unweighted": 0.02975,
+   "burst_pred_rw": 0.03244,
+   "control_pred_rw": 0.01816
+  },
+  "gate": {
+   "holm_p": 0.0,
+   "p_ok": true,
+   "size_ok": true,
+   "shuffle_ok": true,
+   "plateau_ok": true,
+   "lag_ok": true,
+   "years_ok": true,
+   "powered_prereg_mde": 0.032
+  },
+  "shuffle": {
+   "lo": -0.02995,
+   "hi": 0.02662,
+   "mean": -0.00234,
+   "draws": 200,
+   "real_percentile": 100.0,
+   "share_draws_ci_excludes_0": 0.045,
+   "includes_0": true
+  }
+ },
+ "T2": {
+  "verdict": "NULL",
+  "base": {
+   "est": 0.00381,
+   "lo": -0.00115,
+   "hi": 0.00976,
+   "se": 0.00278,
+   "p": 0.171096,
+   "mde": 0.00858,
+   "burst": 0.00632,
+   "control_ps": 0.00252,
+   "n_burst": 1891,
+   "n_control": 2936,
+   "n_burst_no_control_stratum": 366,
+   "hits_burst": 1891,
+   "hits_control": 2936,
+   "gapped_burst": 41,
+   "gapped_control": 42,
+   "p99_sigma_burst": 0.08638,
+   "p99_sigma_control": 0.01407
+  },
+  "gate": {
+   "holm_p": 0.171096,
+   "p_ok": false,
+   "size_ok": false,
+   "shuffle_ok": false,
+   "plateau_ok": false,
+   "lag_ok": true,
+   "years_ok": true,
+   "powered_prereg_mde": 0.0048
+  },
+  "shuffle": {
+   "lo": -0.0062,
+   "hi": 0.00992,
+   "mean": -0.0001,
+   "draws": 200,
+   "real_percentile": 83.0,
+   "share_draws_ci_excludes_0": 0.2,
+   "includes_0": true
+  }
+ }
+}

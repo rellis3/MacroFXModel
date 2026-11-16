@@ -1,0 +1,44 @@
+profile AUDCAD sessions 1604
+profile AUDCHF sessions 1604
+profile AUDJPY sessions 1604
+profile AUDNZD sessions 1604
+profile AUDUSD sessions 1604
+profile CADCHF sessions 1604
+profile CADJPY sessions 1604
+profile CHFJPY sessions 1604
+profile DE30 sessions 1572
+profile DOW sessions 1598
+profile EURAUD sessions 1604
+profile EURCAD sessions 1604
+profile EURCHF sessions 1604
+profile EURGBP sessions 1604
+profile EURJPY sessions 1604
+profile EURNZD sessions 1604
+profile EURUSD sessions 1604
+profile GBPAUD sessions 1604
+profile GBPCAD sessions 1604
+profile GBPCHF sessions 1604
+profile GBPJPY sessions 1604
+profile GBPNZD sessions 1604
+profile GBPUSD sessions 1604
+profile GOLD sessions 1597
+profile NQ sessions 1598
+profile NZDCAD sessions 1604
+profile NZDJPY sessions 1604
+profile NZDUSD sessions 1605
+profile SPX500 sessions 1598
+profile UK100 sessions 1563
+profile US2000 sessions 1598
+profile USDCAD sessions 1604
+profile USDCHF sessions 1604
+profile USDJPY sessions 1604
+{
+ "vol_profile_sessions": null,
+ "grid": null,
+ "known_zero": true,
+ "known_effect": true,
+ "overshoot_plant": true,
+ "gpd_recovery": true,
+ "pass": true,
+ "ranAt": "2026-11-16T18:54:10+00:00"
+}

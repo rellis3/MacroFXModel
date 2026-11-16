@@ -1,0 +1,223 @@
+[disc] AUDCAD events 1472 scored 1472 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[disc] AUDCHF events 1471 scored 1471 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 7s
+[disc] AUDJPY events 1481 scored 1481 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 7s
+[disc] AUDNZD events 1443 scored 1443 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 8s
+[disc] AUDUSD events 1478 scored 1478 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[disc] CADCHF events 1489 scored 1489 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 7s
+[disc] CADJPY events 1506 scored 1506 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 8s
+[disc] CHFJPY events 1482 scored 1482 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 5s
+[disc] DE30 events 1448 scored 1447 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 1} 6s
+[disc] DOW events 1489 scored 1489 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 5s
+[disc] EURAUD events 1462 scored 1462 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 8s
+[disc] EURCAD events 1490 scored 1490 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[disc] EURCHF events 1479 scored 1479 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[disc] EURGBP events 1486 scored 1486 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[disc] EURJPY events 1494 scored 1494 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[disc] EURNZD events 1471 scored 1471 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 7s
+[disc] EURUSD events 1492 scored 1492 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 9s
+[disc] GBPAUD events 1470 scored 1470 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[disc] GBPCAD events 1497 scored 1497 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 9s
+[disc] GBPCHF events 1484 scored 1484 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 9s
+[disc] GBPJPY events 1499 scored 1499 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 10s
+[disc] GBPNZD events 1469 scored 1467 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 2} 8s
+[disc] GBPUSD events 1504 scored 1504 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 11s
+[disc] GOLD events 1493 scored 1493 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[disc] NQ events 1482 scored 1482 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 10s
+[disc] NZDCAD events 1472 scored 1471 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 1} 7s
+[disc] NZDJPY events 1475 scored 1475 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[disc] NZDUSD events 1458 scored 1458 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[disc] SPX500 events 1478 scored 1478 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 8s
+[disc] UK100 events 1456 scored 1455 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 1} 7s
+[disc] US2000 events 1498 scored 1498 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 8s
+[disc] USDCAD events 1505 scored 1505 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[disc] USDCHF events 1487 scored 1487 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 6s
+[disc] USDJPY events 1503 scored 1503 drops {'no_sigma': 0, 'no_entry_bar': 0, 'no_path': 0} 7s
+{
+ "n_burst": 4951,
+ "n_control": 45407,
+ "cells": {
+  "0.25": {
+   "touch_raw": {
+    "est": 0.25803,
+    "lo": 0.2406,
+    "hi": 0.27543,
+    "se": 0.00889,
+    "p": 0.0,
+    "mde": 0.0274,
+    "burst": 0.56726,
+    "control_ps": 0.30923,
+    "n_burst": 4951,
+    "n_control": 45407,
+    "n_burst_no_control_stratum": 0
+   },
+   "touch_excess": {
+    "est": 0.25713,
+    "lo": 0.2404,
+    "hi": 0.27411,
+    "se": 0.0086,
+    "p": 0.0,
+    "mde": 0.02651,
+    "burst": 0.34251,
+    "control_ps": 0.08538,
+    "n_burst": 4951,
+    "n_control": 45407,
+    "n_burst_no_control_stratum": 0,
+    "burst_raw_touch": 0.56726,
+    "control_raw_touch": 0.25134,
+    "burst_excess_over_rw": 0.34251,
+    "control_excess_over_rw_unweighted": 0.07287,
+    "burst_pred_rw": 0.22475,
+    "control_pred_rw": 0.17847
+   },
+   "overshoot_R": {
+    "est": 0.0073,
+    "lo": -0.00104,
+    "hi": 0.01607,
+    "se": 0.00437,
+    "p": 0.094327,
+    "mde": 0.01346,
+    "burst": 0.0139,
+    "control_ps": 0.0066,
+    "n_burst": 5617,
+    "n_control": 22825,
+    "n_burst_no_control_stratum": 141,
+    "hits_burst": 5617,
+    "hits_control": 22825,
+    "gapped_burst": 166,
+    "gapped_control": 851,
+    "p99_sigma_burst": 0.13692,
+    "p99_sigma_control": 0.00833
+   },
+   "prereg": {
+    "burst": 0.567,
+    "control": 0.309,
+    "delta": 0.258,
+    "over_delta_R": 0.007
+   },
+   "match": true
+  },
+  "0.5": {
+   "touch_raw": {
+    "est": 0.18886,
+    "lo": 0.1736,
+    "hi": 0.20469,
+    "se": 0.00793,
+    "p": 0.0,
+    "mde": 0.02446,
+    "burst": 0.26914,
+    "control_ps": 0.08028,
+    "n_burst": 4951,
+    "n_control": 45407,
+    "n_burst_no_control_stratum": 0
+   },
+   "touch_excess": {
+    "est": 0.18898,
+    "lo": 0.17426,
+    "hi": 0.20408,
+    "se": 0.00761,
+    "p": 0.0,
+    "mde": 0.02346,
+    "burst": 0.23858,
+    "control_ps": 0.0496,
+    "n_burst": 4951,
+    "n_control": 45407,
+    "n_burst_no_control_stratum": 0,
+    "burst_raw_touch": 0.26914,
+    "control_raw_touch": 0.05059,
+    "burst_excess_over_rw": 0.23858,
+    "control_excess_over_rw_unweighted": 0.03288,
+    "burst_pred_rw": 0.03056,
+    "control_pred_rw": 0.0177
+   },
+   "overshoot_R": {
+    "est": 0.00144,
+    "lo": -0.00072,
+    "hi": 0.00418,
+    "se": 0.00125,
+    "p": 0.25,
+    "mde": 0.00385,
+    "burst": 0.00305,
+    "control_ps": 0.00162,
+    "n_burst": 2665,
+    "n_control": 4594,
+    "n_burst_no_control_stratum": 419,
+    "hits_burst": 2665,
+    "hits_control": 4594,
+    "gapped_burst": 45,
+    "gapped_control": 72,
+    "p99_sigma_burst": 0.01159,
+    "p99_sigma_control": 0.00353
+   },
+   "prereg": {
+    "burst": 0.269,
+    "control": 0.08,
+    "delta": 0.189,
+    "over_delta_R": 0.0014
+   },
+   "match": true
+  },
+  "1.0": {
+   "touch_raw": {
+    "est": 0.05731,
+    "lo": 0.0444,
+    "hi": 0.07047,
+    "se": 0.00665,
+    "p": 0.0,
+    "mde": 0.0205,
+    "burst": 0.06817,
+    "control_ps": 0.01086,
+    "n_burst": 4951,
+    "n_control": 45407,
+    "n_burst_no_control_stratum": 0
+   },
+   "touch_excess": {
+    "est": 0.05733,
+    "lo": 0.04443,
+    "hi": 0.07048,
+    "se": 0.00665,
+    "p": 0.0,
+    "mde": 0.02049,
+    "burst": 0.0679,
+    "control_ps": 0.01057,
+    "n_burst": 4951,
+    "n_control": 45407,
+    "n_burst_no_control_stratum": 0,
+    "burst_raw_touch": 0.06817,
+    "control_raw_touch": 0.00578,
+    "burst_excess_over_rw": 0.0679,
+    "control_excess_over_rw_unweighted": 0.0057,
+    "burst_pred_rw": 0.00027,
+    "control_pred_rw": 8e-05
+   },
+   "overshoot_R": {
+    "est": 0.00064,
+    "lo": 1e-05,
+    "hi": 0.00187,
+    "se": 0.00047,
+    "p": 0.179929,
+    "mde": 0.00146,
+    "burst": 0.00068,
+    "control_ps": 4e-05,
+    "n_burst": 675,
+    "n_control": 525,
+    "n_burst_no_control_stratum": 369,
+    "hits_burst": 675,
+    "hits_control": 525,
+    "gapped_burst": 7,
+    "gapped_control": 6,
+    "p99_sigma_burst": 0.00064,
+    "p99_sigma_control": 0.0021
+   },
+   "prereg": {
+    "burst": 0.068,
+    "control": 0.011,
+    "delta": 0.057,
+    "over_delta_R": 0.0006
+   },
+   "match": true
+  }
+ },
+ "rule": "counts 4,951 bursts / 45,407 controls (+-5); raw touch rates and delta within 0.3pp; overshoot delta within 0.002R, each d",
+ "pass": true,
+ "ranAt": "2026-11-16T18:59:28+00:00"
+}
