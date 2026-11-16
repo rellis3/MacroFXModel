@@ -1,7 +1,8 @@
 /* Desk Terminal: the Chain, Pair, Changed and Research tabs (js/terminal/terminalTabs.js). Uses the page's own tokens
    (--bg*, --pur, --gold, --up, --dn, --mono): purple = structure and what you can press, gold = attention and theses,
    green / red = direction only. */
-.tt-pills{display:inline-flex;gap:3px;padding:3px;background:var(--bg1);border:1px solid var(--line);border-radius:999px}
+.tt-pills{display:inline-flex;gap:3px;padding:3px;background:var(--bg1);border:1px solid var(--line);border-radius:999px;max-width:100%;overflow-x:auto;scrollbar-width:none}   /* a five-pill row was 373px in a 357px phone card (Correlations at 390): scroll inside itself, never widen the page */
+.tt-pills button{flex:none}
 .tt-pills button{cursor:pointer;background:none;border:0;color:var(--tx3);padding:4px 11px;border-radius:999px;font:600 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase}
 .tt-pills button[aria-pressed="true"]{background:var(--purbg);color:var(--pur2);box-shadow:inset 0 0 0 1px rgba(var(--purrgb),.45)}
 .tt-pills button:focus-visible{outline:2px solid var(--pur)}

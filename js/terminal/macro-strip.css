@@ -1,7 +1,7 @@
 /* the factor bar (scorecardView.js) and the per-currency macro strip (ccyMacroStrip.js). Tokens only; motion off under prefers-reduced-motion. */
 .msc-head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
-.msc-line{display:flex;align-items:center;gap:8px;margin-top:6px}
-.msc-track{display:flex;align-items:center;height:18px;background:var(--bg3);border-radius:9px;overflow:hidden;position:relative;flex:1;min-width:120px}
+.msc-line{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;min-width:0}   /* the coverage text was pushed past a narrow currency card (page 1109px wide at 1100) */
+.msc-track{display:flex;align-items:center;height:18px;background:var(--bg3);border-radius:9px;overflow:hidden;position:relative;flex:1;min-width:min(120px,100%)}
 .msc-track.mini{height:8px;border-radius:4px}
 .msc-half{display:flex;flex:1 1 0;height:100%;min-width:0}
 .msc-half.l{justify-content:flex-end}
@@ -10,7 +10,7 @@
 .msc-seg.p{background:var(--up)}
 .msc-seg.n{background:var(--dn)}
 .msc-seg b{font:600 9.5px var(--mono);color:var(--on-acc);letter-spacing:.04em;white-space:nowrap;text-transform:uppercase}
-.msc-cov{flex:0 0 auto}
+.msc-cov{flex:0 1 auto;min-width:0;overflow-wrap:anywhere}
 .msc-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .msc-pill{display:inline-flex;gap:6px;align-items:baseline;padding:3px 9px;border-radius:999px;border:1px solid var(--line2);background:var(--bg2);font:11px var(--sans);color:var(--tx2)}
 .msc-pill b{font:600 11px var(--mono);color:var(--tx)}
