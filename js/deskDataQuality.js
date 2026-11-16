@@ -24,8 +24,13 @@ const KNOWN = [
   [/^rate-diff$/, 'Rebuilt after a deploy; it refills within a few minutes.', 'Open the rates page or wait, then rebuild the pack.'],
   [/^fed-path$/, 'The Atlanta Fed tracker publishes with a lag; the futures read (zq) is the live one.', 'Nothing to fix when zq is fresh.'],
   [/^funding-read$/, 'Built on its first call after a deploy.', 'Open the funding page once, then rebuild the pack.'],
-  [/^(eod-review|morning-brief)$/, 'Written by its own daily job; stale on the morning after a missed run.', 'Check that job ran yesterday.'],
+  // Who updates each of these, so a gap says what to do (owner's question 2026-11-16: "why is so much out of date?").
+  [/^(cb-expectations|options-skew|xccy-basis)$/, g => `Pulled from IBKR by a task on your laptop (scripts/rates_line/run_cb_expectations.bat).${g.ageH != null ? ` The last good pull was ${ageText(g.ageH)} ago:` : ''} the task is not scheduled, or the laptop was off or IB Gateway was closed.`, 'Schedule that task on the laptop (plans/LAPTOP_TASKS.md has the command), keep IB Gateway logged in.'],
+  [/^(eod-review|morning-brief|chain-read)$/, g => `Written only when you press its button: a paid model call, so no job runs it by design.${g.ageH != null ? ` The last one is ${ageText(g.ageH)} old.` : ''}`, 'Press the button when you want a fresh one.'],
+  [/^desk-weekly$/, 'The Sunday week view is a paid model run started from the Weekly page; none has been run for this week.', 'Run it from the Weekly page when you want one.'],
+  [/^term-premium$/, g => `The New York Fed term-premium series (FRED THREEFYTP10) is published about a week late, so a newest value${g.ageH != null ? ` ${ageText(g.ageH)} old` : ''} is the source's own lag.`, 'Nothing to fix.'],
 ];
+const ageText = h => (h >= 48 ? `${Math.round(h / 24)} days` : `${Math.round(h)} hours`);
 const GENERIC = {
   timeout: ['The route took longer than the pack allows.', 'Retried once with a longer wait; if it still times out, the route needs a cache.'],
   error: ['The route returned an error.', 'Open the route and read its error.'],
@@ -33,7 +38,7 @@ const GENERIC = {
   stale: ['The data is older than this feed allows.', 'Check the job that refreshes it.'],
   oversize: ['The payload is too big to hand to an analyst.', 'Give the feed a slicer or a larger byte cap.'],
 };
-const causeOf = g => { const hit = KNOWN.find(([re]) => re.test(g.id)); return hit ? { cause: hit[1], fix: hit[2] } : { cause: GENERIC[g.status]?.[0] ?? 'Unknown.', fix: GENERIC[g.status]?.[1] ?? '' }; };
+const causeOf = g => { const hit = KNOWN.find(([re]) => re.test(g.id)); return hit ? { cause: typeof hit[1] === 'function' ? hit[1](g) : hit[1], fix: hit[2] } : { cause: GENERIC[g.status]?.[0] ?? 'Unknown.', fix: GENERIC[g.status]?.[1] ?? '' }; };
 const base = id => id.replace(/:.*$/, '');
 
 /** The morning assessment from a pack's health. */

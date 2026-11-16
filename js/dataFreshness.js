@@ -8,7 +8,7 @@
  *   live   : fetched when the issue is built, so its date is the fetch; shown, never flagged.
  *   hourly : the hourly volatility log only moves while markets trade, so its date is shown and never flagged.
  *   irregular : central-bank tone and the like have no fixed rhythm; shown, never flagged.
- * A feed that did not load at all is "missing" whatever its rhythm.
+ * A feed that did not load at all is "missing" whatever its rhythm. 'source-late' means the publisher has not released what was due (our copy is current).
  *
  * Pure: the caller passes the issue date 'YYYY-MM-DD'. Tested in js/dataFreshness.test.mjs.
  */
@@ -29,7 +29,7 @@ export function lastBusinessDayBefore(iso) {
 }
 const nice = d => { const t = Date.parse(d + 'T00:00:00Z'); return Number.isFinite(t) ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : d; };
 
-/** sources: [{ label, source, asOf, cadence }]. Returns rows with a status of 'ok' | 'stale' | 'missing' and a plain note for the ones that are not ok. */
+/** sources: [{ label, source, asOf, cadence }]. Returns rows with a status of 'ok' | 'stale' | 'source-late' | 'missing' and a plain note for the ones that are not ok. */
 export function freshness(sources, isoDate) {
   const iso = dayOf(isoDate);
   return (sources ?? []).map(s => {
@@ -41,7 +41,12 @@ export function freshness(sources, isoDate) {
       if (asOf < want) { row.status = 'stale'; row.note = `${s.label} stops at ${nice(asOf)}, ${nice(want)} was expected`; }
     } else if (s.cadence === 'cftc') {
       const want = expectedReportDate(Date.parse(iso + 'T12:00:00Z'));
-      if (asOf < want) { row.status = 'stale'; row.note = `${s.label} is the report for ${nice(asOf)}, but the one for ${nice(want)} is out`; }
+      if (asOf < want) {
+        // Is the gap ours or the CFTC's? s.sourceLatest is the newest report the CFTC itself lists (js/cotSource.js, /api/cot-source).
+        const src = dayOf(s.sourceLatest);
+        if (src && src <= asOf) { row.status = 'source-late'; row.note = `${s.label} is the report for ${nice(asOf)}: the CFTC has not published the report for ${nice(want)} yet`; }
+        else { row.status = 'stale'; row.note = `${s.label} is the report for ${nice(asOf)}, but the one for ${nice(want)} is out${src ? ' at the CFTC' : ''}`; }
+      }
     }
     return row;
   });

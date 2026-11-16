@@ -99,6 +99,12 @@ export const DESK_SKILLS = [
 // are allowed weeks; intraday reads a few hours. null = the payload carries no usable date, so freshness is not
 // judged (the status stays ok and asOf stays null -- "undated", which the skills are told).
 const H = 1, D = 24 * H;
+/** /api/daily-read: keep the tags, tally and the newest `n` scored days (the 'days' dict is ~240 KB of history, which made the feed 'oversize' and the analyst saw a gap). */
+export function dailyReadSlice(j, n = 10) {
+  if (!j || typeof j !== 'object' || !j.days || typeof j.days !== 'object') return j;
+  const keys = Object.keys(j.days).sort().slice(-n);
+  return { ...j, days: Object.fromEntries(keys.map(k => [k, j.days[k]])), daysKept: keys.length, daysTotal: Object.keys(j.days).length };
+}
 const F = (skill, path, maxAgeH, extra = {}) => ({ id: path.replace(/\?.*$/, ''), skill, path, maxAgeH, ...extra });
 
 export const DESK_FEEDS = [
@@ -162,7 +168,7 @@ export const DESK_FEEDS = [
   F('yields_curve', 'yield-curve', 4 * D),
   F('yields_curve', 'intl-yields', 4 * D),
   F('yields_curve', 'global-yields', 4 * D),     // §9ag: 2y/10y for US, DE, UK (5y), JP, CA, AU; 2y gap to the US and its link to each currency
-  F('yields_curve', 'term-premium', 7 * D),      // §9ag: Kim-Wright 10y term premium vs the expectations part of the 10y
+  F('yields_curve', 'term-premium', 12 * D),      // §9ag: Kim-Wright 10y term premium vs the expectations part of the 10y
   F('yields_curve', 'real-yield', 4 * D),
   F('yields_curve', 'yield-context', 4 * D),
   F('yields_curve', 'yield-coupling', 4 * D),
@@ -187,7 +193,7 @@ export const DESK_FEEDS = [
   F('vol_iv', 'forecast-path/iv', 3 * D),
   F('vol_iv', 'exhaustion-ladder', 8 * D),
   F('vol_iv', 'options-skew', 4 * D),           // risk reversals, butterflies, ATM vol (laptop IBKR pull, js/optionsSkew.js)   // a weekly refit (serviceFlags exhaustionLadder)
-  F('vol_iv', 'daily-read', 3 * D),
+  F('vol_iv', 'daily-read', 3 * D, { trim: dailyReadSlice }),   // the payload carries every scored day since September (240 KB): the analyst gets the newest 10
   F('vol_iv', 'today-reads', 1 * D),
   F('options_oi', 'oi-today', 3 * D),
   F('options_oi', 'oi-levels', 3 * D),
@@ -338,7 +344,7 @@ export function packEntry(feed, result, now, { maxBytes = feed.maxBytes ?? 150_0
     const err = result.error ?? (typeof result.json?.error === 'string' ? result.json.error : `HTTP ${result.httpStatus}`);
     return { ...base, status: 'error', httpStatus: result.httpStatus ?? null, error: String(err).slice(0, 300), asOf: null, data: null };
   }
-  const json = result.json;
+  const json = feed.trim ? feed.trim(result.json) : result.json;
   if (isEmptyPayload(json)) {
     const why = ['error', 'message', 'reason', 'note'].map(k => json?.[k]).find(v => typeof v === 'string' && v) ?? null;
     return { ...base, status: 'empty', ...(why ? { error: why.slice(0, 300) } : {}), asOf: null, data: null };

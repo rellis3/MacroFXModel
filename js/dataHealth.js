@@ -49,6 +49,8 @@ export function businessDaysBetween(fromMs, toMs) {
  * @param {string|number} s.last        ISO date/instant, or ms, of the last real update
  * @param {number} [s.cadenceDays=1]    how often it is SUPPOSED to update
  * @param {string} [s.kind='feed']      'feed' | 'snapshot' | 'manual'
+ * @param {string} [s.manualNote]      for kind 'manual': why it is only updated by hand (shown in the row)
+ * @param {string} [s.updatedBy]       who refreshes it, e.g. 'a task on your laptop' (shown when it is stale)
  * @param {boolean} [s.market=true]     market data (count business days) vs wall-clock
  * @param {number} [now=Date.now()]
  */
@@ -80,7 +82,7 @@ export function classify(s, now = Date.now()) {
 
   if (base.kind === 'snapshot' || base.kind === 'manual') {
     return { ...base, state: 'snapshot', ageDays: ageExact, overdue,
-      why: `a manual export, ${Math.round(ageExact)} days old. Not failing — it updates when someone refreshes it.` };
+      why: s?.manualNote ? `${s.manualNote} The last one is ${Math.round(ageExact)} days old. Not failing.` : `a manual export, ${Math.round(ageExact)} days old. Not failing — it updates when someone refreshes it.` };
   }
   // THE BANDS ARE DELIBERATELY FORGIVING. Several "daily" FRED series are published on a
   // lag -- the H.10 FX fixings (DEXUSEU and friends) routinely sit five business days
@@ -94,7 +96,7 @@ export function classify(s, now = Date.now()) {
   const n = cad >= 25 ? (ageDays / 30).toFixed(1) : cad >= 6 ? (ageDays / 5).toFixed(1) : Math.round(ageDays);
   const why = state === 'fresh' ? `current — ${n} ${unit} behind on a ${cad}-day cadence`
     : state === 'lagging' ? `${n} ${unit} behind where a ${cad}-day cadence should be. Usually a holiday or a slow publisher.`
-    : state === 'stale' ? `${n} ${unit} behind. Past what a holiday explains — check the job.`
+    : state === 'stale' ? `${n} ${unit} behind. ${s?.updatedBy ? `Updated by ${s.updatedBy}: it has not pushed since the last good run (plans/LAPTOP_TASKS.md).` : 'Past what a holiday explains — check the job.'}`
     : `${n} ${unit} behind. This looks discontinued, not late.`;
   return { ...base, state, ageDays: ageExact, overdue, why };
 }

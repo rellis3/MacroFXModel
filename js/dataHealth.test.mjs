@@ -118,3 +118,16 @@ test('nothing in, nothing claimed', () => {
     assert.deepEqual(h.rows, []);
   }
 });
+
+// owner 2026-11-16: a stale chip must say WHO refreshes it (laptop task) or that it is written by hand (paid model call), not just 'check the job'
+{
+  const { classify } = await import('./dataHealth.js');
+  const now = Date.parse('2026-11-16T15:00:00Z');
+  const lap = classify({ id: 'kv:options_skew_v1', label: 'Options skew', last: '2026-11-04T17:00:00Z', cadenceDays: 1, updatedBy: 'a task on your laptop (IBKR)' }, now);
+  if (lap.state !== 'stale' || !/laptop/.test(lap.why)) throw new Error('laptop-fed stale row names the laptop: ' + lap.why);
+  const man = classify({ id: 'eodReview', label: 'Evening review', last: '2026-10-30T09:00:00Z', cadenceDays: 1, kind: 'manual', manualNote: 'Written only when you press its button (a paid model call).' }, now);
+  if (man.state !== 'snapshot' || !/button/.test(man.why) || /export/.test(man.why)) throw new Error('manual row says button, not export: ' + man.why);
+  const plain = classify({ id: 'x', label: 'x', last: '2026-11-04T17:00:00Z', cadenceDays: 1 }, now);
+  if (!/check the job/.test(plain.why)) throw new Error('unchanged for the rest');
+  console.log('dataHealth: who-updates wording ok');
+}

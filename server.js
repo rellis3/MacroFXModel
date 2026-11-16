@@ -213,6 +213,8 @@ import { FISCAL_EVENTS, previousEvent as fiscalPrevious, htmlToText as fiscalHtm
 import { eventDay as _evdBuild, frontEnds as _evdFrontEnds, scheduleFromCalendars as _evdSchedule, FRONT_LEGS as _EVD_LEGS } from './js/eventDayContext.js';
 import { shouldReplaceLatest as cbShouldReplaceLatest, pickLatest as cbPickLatest } from './js/cbLatest.js';
 import { latestAnalysisByMeeting as cbLatestByMeeting } from './js/cbLatestMeeting.js';
+import { cotSourceState as _cotSourceState } from './js/cotSource.js';
+import { expectedReportDate as _cotExpectedReportDate } from './js/cotFreshness.js';
 import { FETCHERS as BOC_FETCHERS } from './js/bocFetch.js';
 import { BEIGE_BOOK_RELEASES, pendingAsOf as beigeBookPendingAsOf } from './js/beigeBookCalendar.js';
 import { fetchBeigeBook, beigeBookPdfUrl } from './js/beigeBookFetch.js';
@@ -8860,6 +8862,26 @@ app.get('/api/desk-history', async (req, res) => {
     }
     const data = { ok: true, days: rows.length, rows };
     _dhCache = { at: Date.now(), key: days, data };
+    res.json(data);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/cot-source: is a stale COT report ours or the CFTC's? What the CFTC's own public API lists as its newest report, against the report that
+// should be out by now (js/cotFreshness.js) and the one we serve (cot_extremes_v3). Cached 3h; a failed probe says why, never a guess (js/cotSource.js).
+let _cotSrcCache = { at: 0, data: null };
+app.get('/api/cot-source', async (_req, res) => {
+  try {
+    if (_cotSrcCache.data && Date.now() - _cotSrcCache.at < 3 * 3.6e6) return res.json(_cotSrcCache.data);
+    let atSource = null, reason = null;
+    try {
+      const r = await fetch('https://publicreporting.cftc.gov/resource/gpe5-46if.json?$select=report_date_as_yyyy_mm_dd&$order=report_date_as_yyyy_mm_dd%20DESC&$limit=1', { signal: AbortSignal.timeout(20_000), headers: { 'User-Agent': 'MacroFX/1.0' } });
+      if (!r.ok) reason = `CFTC API HTTP ${r.status}`;
+      else { const j = await r.json(); atSource = String(j?.[0]?.report_date_as_yyyy_mm_dd ?? '').slice(0, 10) || null; if (!atSource) reason = 'CFTC API returned no report date'; }
+    } catch (e) { reason = `CFTC API unreachable: ${e.message}`; }
+    let held = null;
+    try { const raw = await kv.get('cot_extremes_v3'); held = raw ? (JSON.parse(raw)?.data?.reportDate ?? null) : null; } catch { /* leave null */ }
+    const expected = _cotExpectedReportDate(Date.now());
+    const data = { ok: true, checkedAt: new Date().toISOString(), expected, atSource, held, ..._cotSourceState({ expected, atSource, held }), ...(reason ? { reason } : {}) };
+    if (atSource) _cotSrcCache = { at: Date.now(), data };      // a failed probe is not cached, so the next request tries again
     res.json(data);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -21724,6 +21746,16 @@ async function _buildDataHealth() {
     push('policyUncert', `Economic policy uncertainty (FRED)${s.errors?.epu && Object.keys(s.errors.epu).length ? ` (${Object.entries(s.errors.epu).map(([k, v]) => `${k}: ${v}`).join('; ').slice(0, 120)})` : ''}`, s.epu, 6, { market: false, refreshEveryH: 6 });
     push('auctionResults', 'Treasury auction results (TreasuryDirect)', s.auctions, 14, { market: false, refreshEveryH: 1 });
   } catch { /* best-effort */ }
+  // Rows that are not failing when old (written only when someone presses a button, a paid model call), and rows a laptop task refreshes: say so in the row,
+  // so a stale chip reads as 'press the button' or 'the laptop task has not run' instead of 'check the job' (owner 2026-11-16: why is so much out of date?).
+  const _MANUAL_BY_DESIGN = { eodReview: 'Written only when you press its button (a paid model call).', 'kv:eod_review_v1': 'Written only when you press its button (a paid model call).',
+    'kv:morning_brief_v1': 'The morning brief is written by hand, by design (a paid model call).', 'kv:morning_brief_intel_v1': 'The market intelligence brief is written by hand, by design (a paid model call).',
+    'kv:chain_read_v1': 'The chain read is written only when you press its button (a paid model call).' };
+  const _LAPTOP_FED = ['kv:cb_rate_futures_v1', 'kv:options_skew_v1', 'kv:xccy_basis_v1', 'kv:xccy_basis_hist', 'kv:release_layer2_v1', 'kv:zq_path_v1', 'kv:cog_line_live_v1'];
+  for (const s of srcs) {
+    if (_MANUAL_BY_DESIGN[s.id]) { s.kind = 'manual'; s.manualNote = _MANUAL_BY_DESIGN[s.id]; }
+    else if (_LAPTOP_FED.includes(s.id)) s.updatedBy = 'a task on your laptop (IBKR)';
+  }
   const out = { ..._dataHealth(srcs), bootedAt: new Date(_BOOTED_AT).toISOString() };
   _dataHealthCache = { at: Date.now(), data: out };
   return out;

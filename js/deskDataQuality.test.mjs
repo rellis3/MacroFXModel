@@ -44,3 +44,18 @@ t('after the run: a gap matters when its analyst or the Head named it', () => {
 });
 
 console.log(`deskDataQuality: ${n} tests passed`);
+
+// who updates it, in the gap's own words (owner 2026-11-16: "why is so much out of date?")
+{
+  const { assess } = await import('./deskDataQuality.js');
+  const a = assess({ total: 3, usable: 3, gaps: [
+    { id: 'options-skew', skill: 'vol_iv', status: 'stale', ageH: 276.7 },
+    { id: 'eod-review', skill: 'evidence_memory', status: 'stale', ageH: 393.6 },
+    { id: 'term-premium', skill: 'yields_curve', status: 'stale', ageH: 246.8 },
+  ], bySkill: {} });
+  const by = id => a.gaps.find(g => g.id === id);
+  if (!/laptop/.test(by('options-skew').cause) || !/12 days/.test(by('options-skew').cause)) throw new Error('laptop feed names the laptop and the age');
+  if (!/button/.test(by('eod-review').cause) || /daily job/.test(by('eod-review').cause)) throw new Error('eod-review is click-only, not a daily job');
+  if (!/week late/.test(by('term-premium').cause)) throw new Error('term premium is the source lag');
+  console.log('deskDataQuality: cause wording ok');
+}

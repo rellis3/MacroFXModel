@@ -179,3 +179,13 @@ t('packFresh: rebuild a pack that is old, from another day, or from an older fee
 });
 
 console.log(`deskPack: ${n} tests passed`);
+
+// daily-read was 'oversize' (240 KB, default cap 150 KB) so the vol analyst saw a gap: the pack now hands over the newest 10 scored days
+{
+  const { dailyReadSlice, packEntry, DESK_FEEDS } = await import('./deskPack.js').then(m => ({ dailyReadSlice: m.dailyReadSlice, packEntry: m.packEntry, DESK_FEEDS: m.DESK_FEEDS ?? m.FEEDS }));
+  const days = Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`2026-10-${String(i + 1).padStart(2, '0')}`, { tags: 'x'.repeat(8000) }]));
+  const s = dailyReadSlice({ days, tags: { a: 1 }, tally: { b: 2 } });
+  if (Object.keys(s.days).length !== 10 || s.daysTotal !== 40 || s.tags.a !== 1) throw new Error('dailyReadSlice keeps tags and the newest 10 days');
+  if (Object.keys(s.days).at(-1) !== '2026-10-40') throw new Error('keeps the newest');
+  console.log('deskPack: daily-read slice ok');
+}
