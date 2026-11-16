@@ -43,6 +43,16 @@ const MEASURE = sel => {
 };
 
 const CASES = {
+  async bis(page, shot) {
+    await page.locator('button[data-t="insight"]').first().click(); await page.waitForTimeout(1500);
+    await page.locator('.in-tab[data-p="bis"]').first().click().catch(() => {}); await page.waitForSelector('.bis-card .bis-row', { timeout: 30000 }).catch(() => {});
+    const out = { ok: true, dialog: '.bis-card' };
+    out.rows = await page.locator('.bis-card .bis-row').count(); if (!out.rows) return { ok: false, why: 'no BIS strips on the Insight > Bank credit pill' };
+    out.cap = await page.locator('.bis-card .bis-line').first().textContent().catch(() => ''); out.cov = await page.locator('.bis-card .bis-depth').first().textContent().catch(() => '');
+    out.countries = await page.locator('.bis-card .oit-tbl tbody tr').count();
+    await page.locator('.bis-card').first().scrollIntoViewIfNeeded().catch(() => {}); await shot('bis');
+    return out;
+  },
   async oidrill(page, shot) {
     await page.locator('button[data-t="options"]').first().click(); await page.waitForSelector('[data-oid-open]', { timeout: 45000 }).catch(() => {});
     const btn = page.locator('[data-oid-open]').first(); if (!(await btn.count())) return { ok: false, why: 'no Drill a level button on the OI terrain card' };

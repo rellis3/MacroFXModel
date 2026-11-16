@@ -88,6 +88,7 @@ export const INSIGHT_WORDS = {
   gold: ['GOLDBOARD', ['XAUBOARD', 'GOLDVIEW'], 'The gold board: gold against real yields, the dollar and its own implied vol, with positioning and ETF holdings.'],
   reach: ['REACH', ['TOUCH', 'LEVELCHANCE', 'CHANCE'], 'The level-reach calculator: type a price and get the chance price touches it by the end of the London day and over the whole session.'],
   flags: ['FLAGS', ['RISKFLAGS', 'LIGHTS'], 'The risk flags: the six market-stress lights now, each beside what the Evidence Book found for it.'],
+  bis: ['BISSTRIP', ['BISHEAT', 'CREDITSTRIP', 'CREDITHEAT'], 'The bank-credit heat strip: five series of cross-border bank-claim growth from 1999 against the bank-credit study bands, the 2000-02 and 2008-09 busts shaded, and 14 borrowers. Context only.'],
   economies: ['ECONOMIES', ['ECONOMY', 'WORLD', 'COUNTRIES'], 'The eight economies side by side: growth, prices, jobs and spending, each with an arrow and a word.'],
   unusual: ['UNUSUAL', ['MOVERS', 'EXTREME', 'WHATSUNUSUAL'], 'What is unusual right now: every series ranked by how extreme it is against its own history, with the working and the odds it is just chance.'],
 };
@@ -553,3 +554,4 @@ export function grouped(commands) {
   for (const c of commands) { if (!by.has(c.group)) by.set(c.group, []); by.get(c.group).push(c); }
   return [...by.entries()].sort((a, b) => (GROUP_RANK[a[0]] ?? 9) - (GROUP_RANK[b[0]] ?? 9)).map(([group, items]) => ({ group, items }));
 }
+ 

@@ -147,3 +147,20 @@ p.in-cap { font-size: 11.5px; color: var(--tx2); }
 .in-mini th, .in-mini td { white-space: normal; overflow-wrap: anywhere; }
 .in-gcard, .in-chance, .in-asof, .in-foot, .in-intro { overflow-wrap: anywhere; }
 .in-tools { max-width: 100%; }
+
+/* BIS heat strip (Insight > Bank credit). Tokens only. */
+.bis-card { margin-top: 4px; }
+.bis-line { margin: 4px 0 10px; overflow-wrap: anywhere; }
+.bis-row { padding: 6px 0; border-top: 1px solid var(--line2); min-width: 0; }
+.bis-row:first-of-type { border-top: 0; }
+.bis-h { margin-bottom: 4px; }
+.bis-svg { display: block; border-radius: 4px; }
+.bis-s { margin: 4px 0 0; font-size: 12.5px; color: var(--tx2); overflow-wrap: anywhere; }
+.bis-axis { position: relative; height: 18px; margin-top: 6px; }
+.bis-axis span { position: absolute; transform: translateX(-50%); font: 600 10px var(--mono); color: var(--tx3); white-space: nowrap; }
+.bis-axis .bis-bust { top: 0; color: var(--tx2); }
+.bis-key { font-size: 12px; margin: 10px 0 0; overflow-wrap: anywhere; }
+.bis-sw { display: inline-block; width: 12px; height: 10px; border-radius: 2px; vertical-align: -1px; margin: 0 2px 0 8px; }
+.bis-sw.fast { background: var(--gold); } .bis-sw.slow { background: var(--pur2); } .bis-sw.norm { background: var(--line2); } .bis-sw.gap { background: var(--bg2); border: 1px dashed var(--tx3); }
+.bis-cap, .bis-depth { font-size: 12px; margin: 6px 0; overflow-wrap: anywhere; }
+.bis-c { white-space: nowrap; }
