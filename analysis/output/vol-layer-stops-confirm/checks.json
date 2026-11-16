@@ -1,0 +1,279 @@
+{
+ "vol-layer-stops-confirm-cal": {
+  "effect": 0.1257141686854819,
+  "lo": -0.28054539425942554,
+  "hi": 0.5467835281503662,
+  "min_effect": 0.0,
+  "diagnostics": {
+   "ok": true,
+   "control": {
+    "zero_citl_within_0.3pp": true,
+    "zero_slope_in_[0.97,1.03]": true,
+    "zero_noise_within_0.005": true,
+    "planted_sigma_citl_outside_1pp": true,
+    "planted_noise_outside_margin": true
+   },
+   "why": "",
+   "reproduction": {
+    "citl": [
+     -0.874286,
+     -0.87429
+    ],
+    "slope": [
+     1.018231,
+     1.01823
+    ],
+    "skill": [
+     4.728547,
+     4.72855
+    ],
+    "steady": [
+     3.859975,
+     3.85997
+    ],
+    "noise_0.25": [
+     -0.002727,
+     -0.00273
+    ],
+    "noise_0.5": [
+     -0.003203,
+     -0.0032
+    ]
+   }
+  },
+  "planted_large": {
+   "injected": 2.0,
+   "shift": 1.99994947681127,
+   "how": "predictions moved by 2.0pp in the direction of the observed CITL"
+  },
+  "planted_min": {
+   "injected": 0.67,
+   "shift": 0.6699930865958974,
+   "how": "predictions moved by 0.67pp in the direction of the observed CITL"
+  },
+  "shuffle": {
+   "lo": -0.29674179061379535,
+   "hi": 0.3157230858937543,
+   "what": "CITL with date residual signs flipped"
+  },
+  "rows": {
+   "used": 13803792,
+   "dates": 943,
+   "dropped": null
+  },
+  "units": "pp headroom inside \u00b11pp CITL / \u00b10.10 slope",
+  "gate_parts": {
+   "plateau_each_d": true,
+   "each_class": true,
+   "each_year": true,
+   "lag": true
+  },
+  "verdict": "UNDERPOWERED",
+  "reasons": [
+   "interval [-0.2805, +0.5468] neither reaches nor rules out +0"
+  ],
+  "power": 0.05000000000000013,
+  "study_word": "UNDERPOWERED"
+ },
+ "vol-layer-stops-confirm-skill": {
+  "effect": 4.728547301526431,
+  "lo": 4.459714042653387,
+  "hi": 4.982627055039481,
+  "min_effect": 2.0,
+  "diagnostics": {
+   "ok": true,
+   "reproduction": {
+    "citl": [
+     -0.874286,
+     -0.87429
+    ],
+    "slope": [
+     1.018231,
+     1.01823
+    ],
+    "skill": [
+     4.728547,
+     4.72855
+    ],
+    "steady": [
+     3.859975,
+     3.85997
+    ],
+    "noise_0.25": [
+     -0.002727,
+     -0.00273
+    ],
+    "noise_0.5": [
+     -0.003203,
+     -0.0032
+    ]
+   }
+  },
+  "planted_large": {
+   "injected": 5.0,
+   "shift": 5.000000000000016,
+   "lambda": 0.026594441221067897,
+   "how": "M_full pulled toward the outcome by lambda"
+  },
+  "planted_min": {
+   "injected": 2.0,
+   "shift": 2.0000000000000018,
+   "lambda": 0.010551995936779995,
+   "how": "M_full pulled toward the outcome by lambda"
+  },
+  "shuffle": {
+   "est": -0.0779473357241045,
+   "lo": -0.4137948908382161,
+   "hi": 0.27351679322956873,
+   "what": "M_full and M_sigma swapped on a random half of dates"
+  },
+  "rows": {
+   "used": 13803792,
+   "dates": 943
+  },
+  "units": "% Brier skill",
+  "gate_parts": {
+   "each_d_positive": true,
+   "years_positive_3of4": true,
+   "lag_half": true
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +4.729 reaches the minimum +2"
+  ],
+  "power": 1.0,
+  "study_word": "VALIDATED"
+ },
+ "vol-layer-stops-confirm-steady": {
+  "effect": 3.8599746394216,
+  "lo": 1.858679366027841,
+  "hi": 5.724878672693653,
+  "min_effect": 2.0,
+  "diagnostics": {
+   "ok": true,
+   "reproduction": {
+    "citl": [
+     -0.874286,
+     -0.87429
+    ],
+    "slope": [
+     1.018231,
+     1.01823
+    ],
+    "skill": [
+     4.728547,
+     4.72855
+    ],
+    "steady": [
+     3.859975,
+     3.85997
+    ],
+    "noise_0.25": [
+     -0.002727,
+     -0.00273
+    ],
+    "noise_0.5": [
+     -0.003203,
+     -0.0032
+    ]
+   }
+  },
+  "planted_large": {
+   "injected": 5.0,
+   "shift": 4.999999999999998,
+   "stretch": 0.8094077142188059
+  },
+  "planted_min": {
+   "injected": 2.0,
+   "shift": 1.9999999999999996,
+   "stretch": 0.32376308568752254
+  },
+  "shuffle": {
+   "lo": -3.635800539456482,
+   "hi": 1.0799846297553848,
+   "what": "plain/fixed swapped per month"
+  },
+  "rows": {
+   "used": 191914,
+   "months": 44
+  },
+  "units": "pp",
+  "gate_parts": {
+   "neighbour_0.5": true,
+   "neighbour_1.5": true,
+   "lag_half": true
+  },
+  "verdict": "VALIDATED",
+  "reasons": [
+   "interval above 0 and +3.86 reaches the minimum +2"
+  ],
+  "power": 0.6491180355639692,
+  "study_word": "VALIDATED"
+ },
+ "vol-layer-stops-confirm-noise": {
+  "effect": 0.012797257087591687,
+  "lo": 0.0023955597957592903,
+  "hi": 0.015310528969132802,
+  "min_effect": 0.0,
+  "diagnostics": {
+   "ok": true,
+   "reproduction": {
+    "citl": [
+     -0.874286,
+     -0.87429
+    ],
+    "slope": [
+     1.018231,
+     1.01823
+    ],
+    "skill": [
+     4.728547,
+     4.72855
+    ],
+    "steady": [
+     3.859975,
+     3.85997
+    ],
+    "noise_0.25": [
+     -0.002727,
+     -0.00273
+    ],
+    "noise_0.5": [
+     -0.003203,
+     -0.0032
+    ]
+   }
+  },
+  "planted_large": {
+   "injected": 0.03,
+   "shift": 0.03000000000000001,
+   "how": "final + delta on hit rows, in the direction of the lean"
+  },
+  "planted_min": {
+   "injected": 0.008,
+   "shift": 0.008,
+   "how": "final + delta on hit rows, in the direction of the lean"
+  },
+  "shuffle": {
+   "lo": -0.008377043844466005,
+   "hi": 0.008030781322785214,
+   "what": "excess(0.25) with date signs flipped"
+  },
+  "rows": {
+   "used": 255904,
+   "dates": 943
+  },
+  "units": "\u03c3 headroom inside \u00b10.016\u03c3",
+  "gate_parts": {
+   "neighbours": true,
+   "each_year": false,
+   "lag_unit": true
+  },
+  "verdict": "CONTEXT",
+  "reasons": [
+   "interval above 0 and +0.0128 reaches the minimum +0; demoted, registered gate part(s) failed: each_year"
+  ],
+  "power": 0.05000000000000013,
+  "study_word": "CONTEXT"
+ }
+}

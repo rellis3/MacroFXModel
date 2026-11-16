@@ -64,7 +64,18 @@ PROVEN = {"vol-layer-rv5-increment": "vol-layer-rv5-increment", "vol-layer-react
           **{f"vol-layer-rule-a-confirm-{c}": "vol-layer-rule-a-confirm" for c in ("s1", "s2", "s3", "z1", "k1")},
           **{f"vol-layer-sizing-confirm-{c}": "vol-layer-sizing-confirm" for c in ('a', 'b', 'c', 'e')},
           **{f"vol-layer-feedback-confirm-{c}": "vol-layer-feedback-confirm" for c in ('persist', 'morning', 'qlike-plain', 'qlike-chosen', 'cov75')},
-          **{f"vol-layer-features-confirm-{c}": "vol-layer-features-confirm" for c in ('tod', 'sig', 'fr', 'eq')}}
+          **{f"vol-layer-features-confirm-{c}": "vol-layer-features-confirm" for c in ('tod', 'sig', 'fr', 'eq')},
+          **{f"vol-layer-stops-confirm-{c}": "vol-layer-stops-confirm" for c in ('cal', 'skill', 'steady', 'noise', 'weekend')}}
+
+
+def test_failed_gate_part_demotes_validated_only():
+    win = _ok(effect=0.05, lo=0.03, hi=0.07)
+    assert G.decide(win)["verdict"] == "VALIDATED"
+    assert G.decide({**win, "gate_parts": {"years": True}})["verdict"] == "VALIDATED"
+    d = G.decide({**win, "gate_parts": {"years": False, "lag": True}})
+    assert d["verdict"] == "CONTEXT" and "years" in d["reasons"][0]
+    under = _ok(lo=-1.0, hi=1.0)
+    assert G.decide({**under, "gate_parts": {"years": False}})["verdict"] == G.decide(under)["verdict"]  # never promotes
 
 
 def test_banked_vol_layer_studies_have_passing_proofs():

@@ -1,0 +1,132 @@
+frame 13803792 943 25s
+main {'est': -0.8742858313145181, 'lo': -1.2805453942594256, 'hi': -0.4532164718496339, 'lo90': -1.2236474727423294, 'hi90': -0.531135975844017, 'se': 0.20653512847225056} {'est': 1.0182306382855517, 'lo': 1.011812348026461, 'hi': 1.0243852686841526, 'lo90': 1.0127798134768566, 'hi90': 1.0231961389900832, 'se': 0.003197343232791947} {'est': 4.728547301526431, 'lo': 4.459714042653387, 'hi': 4.982627055039481, 'lo90': 4.503520737253821, 'hi90': 4.9393081994102515, 'se': 0.13382421252260449}
+lag -0.85022248634992 4.76460033498145 232s
+noise {'0.2': -0.00267, '0.25': -0.00273, '0.3': -0.00222, '0.4': -0.00248, '0.5': -0.0032, '0.75': -0.00558, '1.0': -0.00598} 240s
+{
+ "id": "vol-layer-stops-confirm",
+ "ranAt": "2026-11-16T18:30:55.239776+00:00",
+ "seed": 20261116,
+ "B": 2000,
+ "prereg": "forge/VOL_LAYER_STOPS_CONFIRM_PREREG.md",
+ "preregCommit": "93478dc9",
+ "branch": "main",
+ "verdict": {
+  "vol-layer-stops-confirm-cal": "underpowered",
+  "vol-layer-stops-confirm-skill": "validated",
+  "vol-layer-stops-confirm-steady": "validated",
+  "vol-layer-stops-confirm-noise": "context"
+ },
+ "cells": [
+  {
+   "name": "vol-layer-stops-confirm-cal",
+   "n_dates": 943,
+   "n_rows": 13803792,
+   "est": -0.8743,
+   "lo": -1.2805,
+   "hi": -0.4532,
+   "lo90": -1.2236,
+   "hi90": -0.5311,
+   "unit": "pp (CITL)",
+   "slope": {
+    "est": 1.0182,
+    "lo": 1.0118,
+    "hi": 1.0244,
+    "lo90": 1.0128,
+    "hi90": 1.0232,
+    "se": 0.0032
+   },
+   "mde": 0.6051,
+   "mde_slope": 0.0094,
+   "mde_prereg": 0.67,
+   "bar": "90% CI of CITL in \u00b11.0pp and MZ slope in [0.90, 1.10]",
+   "p": 0.2714,
+   "p_holm": 0.2714,
+   "core": false,
+   "verdict": "underpowered",
+   "gates": {
+    "plateau_each_d": true,
+    "each_class": true,
+    "each_year": true,
+    "lag": true
+   }
+  },
+  {
+   "name": "vol-layer-stops-confirm-skill",
+   "n_dates": 943,
+   "n_rows": 13803792,
+   "est": 4.7285,
+   "lo": 4.4597,
+   "hi": 4.9826,
+   "unit": "% Brier skill vs M_sigma",
+   "mde": 0.3749,
+   "mde_prereg": 0.25,
+   "bar": "\u2265 +2.0%, 95% CI > 0",
+   "p": 0.0,
+   "p_holm": 0.0,
+   "core": true,
+   "verdict": "validated",
+   "gates": {
+    "each_d_positive": true,
+    "years_positive_3of4": true,
+    "lag_half": true
+   }
+  },
+  {
+   "name": "vol-layer-stops-confirm-steady",
+   "n_months": 44,
+   "est": 3.86,
+   "lo": 1.8548,
+   "hi": 5.781,
+   "unit": "pp (SD fixed \u2212 SD plain, by month)",
+   "sd_pp": {
+    "plain": 2.3174,
+    "fixed": 6.1774,
+    "lag": 2.5962
+   },
+   "mde": 2.8431,
+   "mde_prereg": 4.9,
+   "bar": "\u2265 +2.0pp, 95% CI > 0",
+   "p": 0.0001,
+   "p_holm": 0.0004,
+   "core": true,
+   "verdict": "validated",
+   "gates": {
+    "neighbour_0.5": true,
+    "neighbour_1.5": true,
+    "lag_half": true
+   }
+  },
+  {
+   "name": "vol-layer-stops-confirm-noise",
+   "n_dates": 943,
+   "est": -0.0027,
+   "lo": -0.0088,
+   "hi": 0.0038,
+   "est_0.5": -0.0032,
+   "lo_0.5": -0.0136,
+   "hi_0.5": 0.0077,
+   "lo90": -0.0078,
+   "hi90": 0.0027,
+   "lo90_0.5": -0.0118,
+   "hi90_0.5": 0.0057,
+   "unit": "\u03c3 (excess at 0.25\u03c3; 0.5\u03c3 alongside)",
+   "mde": 0.0079,
+   "mde_0.5": 0.0133,
+   "mde_prereg": [
+    0.008,
+    0.014
+   ],
+   "bar": "90% CI in \u00b10.016\u03c3 at 0.25\u03c3 and 0.5\u03c3",
+   "p": 0.0086,
+   "p_holm": 0.0171,
+   "core": true,
+   "verdict": "context",
+   "gates": {
+    "neighbours": true,
+    "each_year": false,
+    "lag_unit": true
+   }
+  }
+ ]
+}
+done 253s

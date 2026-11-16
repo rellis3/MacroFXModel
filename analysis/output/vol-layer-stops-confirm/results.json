@@ -1,0 +1,127 @@
+{
+ "id": "vol-layer-stops-confirm",
+ "ranAt": "2026-11-16T18:30:55.239776+00:00",
+ "seed": 20261116,
+ "B": 2000,
+ "prereg": "forge/VOL_LAYER_STOPS_CONFIRM_PREREG.md",
+ "preregCommit": "93478dc9",
+ "branch": "main",
+ "verdict": {
+  "vol-layer-stops-confirm-cal": "underpowered",
+  "vol-layer-stops-confirm-skill": "validated",
+  "vol-layer-stops-confirm-steady": "validated",
+  "vol-layer-stops-confirm-noise": "context"
+ },
+ "cells": [
+  {
+   "name": "vol-layer-stops-confirm-cal",
+   "n_dates": 943,
+   "n_rows": 13803792,
+   "est": -0.87429,
+   "lo": -1.28055,
+   "hi": -0.45322,
+   "lo90": -1.22365,
+   "hi90": -0.53114,
+   "unit": "pp (CITL)",
+   "slope": {
+    "est": 1.01823,
+    "lo": 1.01181,
+    "hi": 1.02439,
+    "lo90": 1.01278,
+    "hi90": 1.0232,
+    "se": 0.0032
+   },
+   "mde": 0.60515,
+   "mde_slope": 0.00937,
+   "mde_prereg": 0.67,
+   "bar": "90% CI of CITL in \u00b11.0pp and MZ slope in [0.90, 1.10]",
+   "p": 0.27137,
+   "p_holm": 0.27137,
+   "core": false,
+   "verdict": "underpowered",
+   "gates": {
+    "plateau_each_d": true,
+    "each_class": true,
+    "each_year": true,
+    "lag": true
+   }
+  },
+  {
+   "name": "vol-layer-stops-confirm-skill",
+   "n_dates": 943,
+   "n_rows": 13803792,
+   "est": 4.72855,
+   "lo": 4.45971,
+   "hi": 4.98263,
+   "unit": "% Brier skill vs M_sigma",
+   "mde": 0.37492,
+   "mde_prereg": 0.25,
+   "bar": "\u2265 +2.0%, 95% CI > 0",
+   "p": 0.0,
+   "p_holm": 0.0,
+   "core": true,
+   "verdict": "validated",
+   "gates": {
+    "each_d_positive": true,
+    "years_positive_3of4": true,
+    "lag_half": true
+   }
+  },
+  {
+   "name": "vol-layer-stops-confirm-steady",
+   "n_months": 44,
+   "est": 3.85997,
+   "lo": 1.85482,
+   "hi": 5.78104,
+   "unit": "pp (SD fixed \u2212 SD plain, by month)",
+   "sd_pp": {
+    "plain": 2.31738,
+    "fixed": 6.17736,
+    "lag": 2.59617
+   },
+   "mde": 2.8431,
+   "mde_prereg": 4.9,
+   "bar": "\u2265 +2.0pp, 95% CI > 0",
+   "p": 0.00014,
+   "p_holm": 0.00043,
+   "core": true,
+   "verdict": "validated",
+   "gates": {
+    "neighbour_0.5": true,
+    "neighbour_1.5": true,
+    "lag_half": true
+   }
+  },
+  {
+   "name": "vol-layer-stops-confirm-noise",
+   "n_dates": 943,
+   "est": -0.00273,
+   "lo": -0.00881,
+   "hi": 0.00382,
+   "est_0.5": -0.0032,
+   "lo_0.5": -0.01355,
+   "hi_0.5": 0.00769,
+   "lo90": -0.00776,
+   "hi90": 0.00268,
+   "lo90_0.5": -0.01177,
+   "hi90_0.5": 0.00575,
+   "unit": "\u03c3 (excess at 0.25\u03c3; 0.5\u03c3 alongside)",
+   "mde": 0.00789,
+   "mde_0.5": 0.01335,
+   "mde_prereg": [
+    0.008,
+    0.014
+   ],
+   "bar": "90% CI in \u00b10.016\u03c3 at 0.25\u03c3 and 0.5\u03c3",
+   "p": 0.00857,
+   "p_holm": 0.01713,
+   "core": true,
+   "verdict": "context",
+   "gates": {
+    "neighbours": true,
+    "each_year": false,
+    "lag_unit": true
+   }
+  }
+ ]
+}

@@ -9,6 +9,8 @@ Each scored question is written to analysis/output/<slug>/checks.json. `decide` 
     NULL          the whole interval falls short of the minimum effect, so that size is ruled out
     UNDERPOWERED  anything else, or power below 0.8 without the effect being ruled out
 
+Optional `gate_parts` ({name: bool}, the study's registered gate parts such as years or plateau): any False demotes a
+VALIDATED to CONTEXT. It never promotes.
 Effects are given so that "better" is positive (pass direction=-1 for a loss ratio or a lower-is-better rate).
 INCOMPLETE and INVALID cannot be banked. Power is computed from the realised date-block interval, not from row counts,
 because instruments move together and rows are not independent.
@@ -74,6 +76,10 @@ def decide(c: dict) -> dict:
         v, why = "NULL", f"whole interval is below the minimum {m:+.4g}, so that size is ruled out"
     else:
         v, why = "UNDERPOWERED", f"interval [{lo:+.4g}, {hi:+.4g}] neither reaches nor rules out {m:+.4g}"
+    gp = c.get("gate_parts") or {}
+    failed = sorted(k for k, ok in gp.items() if not ok)
+    if v == "VALIDATED" and failed:                            # a registered gate part failed: demote only, never promote
+        v, why = "CONTEXT", why + f"; demoted, registered gate part(s) failed: {', '.join(failed)}"
     return {"verdict": v, "reasons": [why], "power": pw}
 
 

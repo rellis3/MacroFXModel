@@ -1,0 +1,10 @@
+cal 0.1257 -0.28054539425942554 0.5467835281503662 1.99994947681127 0.6699930865958974
+skill 4.728547301526431 5.000000000000016 2.0000000000000018 {'est': -0.0779473357241045, 'lo': -0.4137948908382161, 'hi': 0.27351679322956873, 'what': 'M_full and M_sigma swapped on a random half of dates'}
+steady 3.8599746394216 4.999999999999998 {'lo': -3.635800539456482, 'hi': 1.0799846297553848, 'what': 'plain/fixed swapped per month'}
+noise 0.012797257087591687 {'injected': 0.03, 'shift': 0.03000000000000001, 'how': 'final + delta on hit rows, in the direction of the lean'} {'injected': 0.008, 'shift': 0.008, 'how': 'final + delta on hit rows, in the direction of the lean'}
+reproduction OK
+vol-layer-stops-confirm-cal: gate UNDERPOWERED vs study UNDERPOWERED  power 0.05000000000000013  ['interval [-0.2805, +0.5468] neither reaches nor rules out +0']
+vol-layer-stops-confirm-skill: gate VALIDATED vs study VALIDATED  power 1.0  ['interval above 0 and +4.729 reaches the minimum +2']
+vol-layer-stops-confirm-steady: gate VALIDATED vs study VALIDATED  power 0.6491180355639692  ['interval above 0 and +3.86 reaches the minimum +2']
+vol-layer-stops-confirm-noise: gate VALIDATED vs study CONTEXT  power 0.05000000000000013  ['interval above 0 and +0.0128 reaches the minimum +0']
+STOP: ['vol-layer-stops-confirm-noise'] disagree with the study's words; wrote checks_MISMATCH_do_not_commit.json

@@ -211,8 +211,25 @@ Source: `analysis/output/vol-layer-stops-confirm/discovery/frozen_model.json`, w
 
 ## Amendments
 
-(none)
+**2026-11-16, PRE-RESULTS** (written with `score.py`, before any 2023+ outcome was computed). How the code meets §3 and Appendix B where the text left a choice. None changes a gate.
+1. **The cut.** M1 is cut at 2026-08-20 22:00 London before any builder sees it. `execution_wide.build_one` is called unchanged: its window globals are set to the confirm window and its `pd.read_parquet` returns the cut frame (a pandas proxy). Its own midnight cut is then redundant. The noise builder `build_one` is copied line for line; its hard-coded discovery guard (`date < 2023-01-01`) becomes `date <= 2026-08-20`.
+2. **Error-scaled overshoot rows are not built.** The F5 error EWMA comes from a discovery-only state file. Those rows were never part of this study. Only plain σ overshoots (`scale = p`) are built.
+3. **Positive control.** σ is held at each instrument's median confirm σ, and the spread at its median confirm spread, so the closed form is exact. Paths run on the real confirm timestamps with a trading clock: each weekday London date carries one day of variance, spread by the frozen discovery profile; weekends carry none (as V does). Bar highs and lows are drawn exactly from the Brownian bridge between closes. The σ × 1.10 run uses the same timestamps. The planted noise check passes if both 90% CIs lie wholly above +0.016σ.
+4. **Step 0 check.** On discovery data, `score.py` must reproduce the frozen in-sample numbers: same row count, CITL within 0.02pp, slope within 0.001, skill within 0.02%; the 1σ steadiness Δ within 0.01pp; the noise excess at 0.25σ and 0.5σ within 0.0001σ.
+5. **Gate details.** `-cal` lag check: |CITL| ≤ 2pp and slope in [0.90, 1.10] (points). `-steady` p: two-sided normal p from the whole-month bootstrap SE against 0; its lag check is SD(fixed) − SD(plain stop with σ delayed one session). `-noise` lag check: both MAE and final re-expressed in the delayed σ. The σ tercile for disaggregation is taken within each instrument over the confirm sessions (the stage 3 F3 tercile came from a discovery-only file); it is a slicing label only.
+6. **Weekend open-bar probability.** Entries with a 5-session path. "Open at Friday's close" = no 1σ plain-stop hit before the Saturday after entry. "Hit on the open bar" = the first hit is on a bar after a gap > 36 h, within Saturday-Monday. Same code on both windows.
 
 ---
 
 ## RESULTS
+
+Run 2026-11-16, seed 20261116, once, with the frozen model (no refit). Full numbers: `analysis/output/vol-layer-stops-confirm/RESULTS.md`, `results.json`.
+Step 0 passed: the scoring code reproduced the frozen discovery numbers exactly, and the random-walk control read CITL +0.009pp and slope 1.001, with the planted σ × 1.10 at +2.03pp.
+
+| Cell | Estimate | 95% CI | Holm p | Verdict |
+|---|---|---|---|---|
+| `-cal` | CITL −0.87pp (90% CI [−1.22, −0.53]); slope 1.018 | [−1.28, −0.45] | 0.27 | UNDERPOWERED (90% CI straddles −1pp) |
+| `-skill` | Brier skill +4.73% | [+4.46, +4.98] | < 0.001 | VALIDATED |
+| `-steady` | Δ SD +3.86pp (2.32 vs 6.18pp) | [+1.85, +5.78] | < 0.001 | VALIDATED |
+| `-noise` | −0.0027σ (0.25σ), −0.0032σ (0.5σ) | [−0.0088, +0.0038]; [−0.0136, +0.0077] | 0.017 | CONTEXT (2026 at 0.5σ: −0.019σ) |
+| `-weekend` | 1σ loss 1.38R; gap rate 96% | [1.26, 1.51] | — | CONTEXT (described) |
