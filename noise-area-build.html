@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Noise-Area Strategy Builder</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+        --blue:#3987e5;--orange:#d95926;--amber:#d29922;--red:#f85149;--green:#3fb950;--grid:#21262d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--blue);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700}
+  .chip{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .chip.ok{color:var(--green);border-color:var(--green)} .chip.warn{color:var(--amber);border-color:var(--amber)} .chip.bad{color:var(--red);border-color:var(--red)}
+  .wrap{max-width:1500px;margin:0 auto;padding:12px 16px 48px;display:flex;flex-direction:column;gap:14px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:0}
+  .box h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .note{font-size:12px;color:var(--text2);line-height:1.6;max-width:130ch} .note b{color:var(--text)}
+  .ctrl{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+  .ctrl label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+  select{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font:inherit;font-size:12.5px;max-width:100%}
+  .btn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+  .btn:hover{color:var(--text)} .btn.on{background:#22304d;color:#fff;border-color:var(--blue)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px}
+  .kpi{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+  .kpi .l{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+  .kpi .v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .kpi .s{font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px} @media (max-width:950px){.grid2{grid-template-columns:1fr}}
+  table{border-collapse:collapse;width:100%;font-size:11.5px;font-variant-numeric:tabular-nums}
+  th,td{padding:4px 7px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap}
+  th{color:var(--text3);font-weight:600;background:var(--card);position:sticky;top:0;z-index:1}
+  td:first-child,th:first-child{text-align:left}
+  .xscroll{overflow-x:auto;max-width:100%}
+  .pos{color:#5fb4ff} .neg{color:#ff8a5c} .mut{color:var(--text3)}
+  .chart{height:360px} @media (max-width:700px){.chart{height:280px}}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--text2);margin:2px 0 6px}
+  .sw{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+  .verdict{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+  .vcard{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text2)}
+  .vcard b{color:var(--text)} .vword{font-weight:800;letter-spacing:.04em}
+  .vword.VALIDATED{color:var(--green)} .vword.NULL{color:var(--red)} .vword.UNDERPOWERED{color:var(--amber)}
+  .hm td{text-align:center;min-width:54px;cursor:pointer} .hm td.cur{outline:2px solid #fff;outline-offset:-2px}
+  .tip{position:fixed;pointer-events:none;background:#0b0f14;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11.5px;color:var(--text);z-index:99;display:none;font-variant-numeric:tabular-nums}
+  svg text{fill:var(--text2);font-size:10.5px}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>Noise-Area Strategy Builder</h1>
+  <span class="chip">built from Zarattini, Aziz &amp; Barbon (2024)</span>
+  <a class="chip" href="noise-area-momentum.html" target="_blank">The paper's rule, tested →</a>
+  <span id="vchips"></span>
+</div>
+<div class="tip" id="tip"></div>
+<div class="wrap">
+
+  <div class="box">
+    <h2>What this is</h2>
+    <div class="note" id="intro">Loading…</div>
+  </div>
+
+  <div class="box">
+    <h2>The honest backtest: walk-forward</h2>
+    <div class="note" style="margin-bottom:8px">Each January the builder looks only at the years before, picks the design in the middle of the best region of the 1,440 (the <b>plateau</b>: the median of a design and its neighbours in band width, band days and check interval, so a lucky spike can't win), and trades it for that year. Chaining those years gives a record no design ever saw in advance. Grey is the paper's fixed rule on the same days and costs. Compare the Sharpe ratios, not the end balances: when the build picks the vol-targeted size it runs with more leverage than the 1x paper rule.</div>
+    <div class="ctrl" style="margin-bottom:8px"><label>Instrument<select id="wfInst"></select></label><label>Scale<span><button class="btn on" id="wfLog">log</button> <button class="btn" id="wfLin">linear</button></span></label></div>
+    <div class="kpis" id="wfKpis"></div>
+    <div class="legend" id="wfLegend" style="margin-top:8px"></div>
+    <div class="chart" id="wfChart"></div>
+    <h2 style="margin-top:12px">What it chose each year</h2>
+    <div class="xscroll"><table id="wfTable"></table></div>
+  </div>
+
+  <div class="box">
+    <h2>Scored verdicts (pre-registered, realistic costs)</h2>
+    <div class="verdict" id="verdicts"></div>
+  </div>
+
+  <div class="box">
+    <h2>Build your own</h2>
+    <div class="note" style="margin-bottom:8px">Pick any of the 1,440 designs. The blue line is your design, grey is the paper's rule. Everything left of the dashed line (to April 2024) is the paper's own sample, where the builder was free to look; after it is the post-publication period. A design picked because it looks best here is <b>in-sample</b>: the walk-forward above is the fair test.</div>
+    <div class="ctrl" style="margin-bottom:10px">
+      <label>Instrument<select id="bInst"></select></label>
+      <label>Band width<select id="kvm"></select></label>
+      <label>Band days<select id="klb"></select></label>
+      <label>Check every<select id="kck"></select></label>
+      <label>Exit<select id="kexit"></select></label>
+      <label>Day filter<select id="kfilter"></select></label>
+      <label>Sizing<select id="ksizing"></select></label>
+      <label>Load<span><button class="btn" id="ldPaper">paper rule</button> <button class="btn" id="ldPlat">plateau pick</button> <button class="btn" id="ldBest">best in-sample</button></span></label>
+    </div>
+    <div class="kpis" id="bKpis"></div>
+    <div class="legend" id="bLegend" style="margin-top:8px"></div>
+    <div class="chart" id="bChart"></div>
+    <div class="note" id="knobHelp" style="margin-top:8px"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="box">
+      <h2 id="hmTitle">Band width × band days (Sharpe, paper window)</h2>
+      <div class="note" style="margin-bottom:6px">Your other four knobs held fixed; click a cell to load it. A real effect shows as a broad warm patch, not one hot cell.</div>
+      <div class="xscroll"><table class="hm" id="hm"></table></div>
+      <h2 style="margin-top:12px">Exit × day filter (Sharpe, paper window)</h2>
+      <div class="xscroll"><table class="hm" id="hm2"></table></div>
+    </div>
+    <div class="box">
+      <h2>All 1,440 designs: Sharpe in the paper window</h2>
+      <svg id="dist" width="100%" height="220"></svg>
+      <div class="note" id="distNote"></div>
+      <h2 style="margin-top:12px">Each knob on its own (median Sharpe of every design with that setting · best)</h2>
+      <div class="xscroll"><table id="marg"></table></div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>Notes</h2>
+    <div class="note" id="notes"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const BASE = 'analysis/output/noise-area-build/';
+let R, D = {}, wfChart, wfS, wfP, bChart, bS, bP, wfLog = true;
+const st = {inst: 'SPY', k: {vm: 1, lb: 14, ck: 30, exit: 'vwap', filter: 'none', sizing: '1x'}};
+const NAMES = {SPY: 'SPY ETF (2007 →)', ES: 'S&P 500 futures', NQ: 'Nasdaq 100 futures', YM: 'Dow futures', RTY: 'Russell 2000 futures'};
+const KL = {
+  exit: {vwap: 'VWAP stop (paper)', band: 'back inside band', trail: 'trail VWAP, no re-check', hold: 'hold to close', flip: 'always in, flip'},
+  filter: {none: 'every day', vix_hi: 'VIX above its 1-yr median', vix_lo: 'VIX below its 1-yr median', nr4: 'after a narrow-range day (NR4)'},
+  sizing: {'1x': '1x', vt: 'vol target 2%/day, cap 4x'}};
+const fmtN = (v, d = 2) => v == null || !isFinite(v) ? '—' : v.toFixed(d);
+const fmtP = (v, d = 1) => v == null || !isFinite(v) ? '—' : (v * 100).toFixed(d) + '%';
+const cls = v => v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+const tile = (l, v, s, c = '') => `<div class="kpi"><div class="l">${l}</div><div class="v ${c}">${v}</div><div class="s">${s}</div></div>`;
+const tip = $('tip');
+document.addEventListener('mousemove', e => { const t = e.target.closest('[data-t]'); if (t) { tip.innerHTML = t.dataset.t; tip.style.display = 'block'; tip.style.left = Math.min(e.clientX + 12, innerWidth - 240) + 'px'; tip.style.top = (e.clientY + 12) + 'px'; } else tip.style.display = 'none'; });
+
+function idxOf(k){ const g = R.grid; const a = [g.vm.indexOf(+k.vm), g.lb.indexOf(+k.lb), g.ck.indexOf(+k.ck), g.exit.indexOf(k.exit), g.filter.indexOf(k.filter), g.sizing.indexOf(k.sizing)];
+  const sh = [g.vm.length, g.lb.length, g.ck.length, g.exit.length, g.filter.length, g.sizing.length]; let i = 0; for (let j = 0; j < 6; j++) i = i*sh[j] + a[j]; return i; }
+const PAPER = {vm: 1, lb: 14, ck: 30, exit: 'vwap', filter: 'none', sizing: '1x'};
+const name = k => `${k.vm}× · ${k.lb}d · ${k.ck}m · ${k.exit} · ${k.filter} · ${k.sizing}`;
+async function load(s){ if (!D[s]) D[s] = await (await fetch(BASE + `build_${s}.json`, {cache: 'no-store'})).json(); return D[s]; }
+function chartOpts(){ return {layout:{background:{color:'#161b22'}, textColor:'#9da7b3'}, grid:{vertLines:{color:'#21262d'}, horzLines:{color:'#21262d'}}, rightPriceScale:{borderColor:'#30363d'}, timeScale:{borderColor:'#30363d', minBarSpacing:0.05}, crosshair:{mode:0}}; }
+function heatBg(v, s = 1.5){ if (v == null) return ''; const a = Math.min(Math.abs(v)/s, 1)*.6; return `background:${v >= 0 ? `rgba(57,135,229,${a})` : `rgba(217,89,38,${a})`}`; }
+
+// ------------------------------------------------------------- walk-forward
+function drawWF(){
+  const I = R.instruments[st.wfInst], W = I.wf;
+  $('wfKpis').innerHTML = [
+    tile('Walk-forward Sharpe', fmtN(W.sharpe), `95% CI [${fmtN(W.sharpe_ci[0])}, ${fmtN(W.sharpe_ci[1])}]`, cls(W.sharpe)),
+    tile('Paper rule, same days', fmtN(W.paper_sharpe), 'fixed 1.0×/14d/30m/VWAP/1x', cls(W.paper_sharpe)),
+    tile('Build − paper', (W.diff > 0 ? '+' : '') + fmtN(W.diff), `CI [${fmtN(W.diff_ci[0])}, ${fmtN(W.diff_ci[1])}] · halves ${fmtN(W.diff_halves[0])} / ${fmtN(W.diff_halves[1])}`, cls(W.diff)),
+    tile('CAGR', W.cagr + '%', 'paper rule ' + W.paper_cagr + '%', cls(W.cagr)),
+    tile('Max drawdown', W.mdd + '%', 'paper rule ' + W.paper_mdd + '%'),
+    tile('Avg day', fmtN(W.mean_bp, 1) + ' bp', `CI [${fmtN(W.mean_bp_ci[0],1)}, ${fmtN(W.mean_bp_ci[1],1)}]`, cls(W.mean_bp)),
+    tile('Out-of-sample', W.start.slice(0,4) + ' → ' + W.end.slice(0,7), W.days.toLocaleString() + ' sessions'),
+  ].join('');
+  if (!wfChart) {
+    wfChart = LightweightCharts.createChart($('wfChart'), chartOpts());
+    const pf = {type:'price', precision:0, minMove:1};
+    wfP = wfChart.addLineSeries({color:'#6e7681', lineWidth:2, priceLineVisible:false, priceFormat:pf});
+    wfS = wfChart.addLineSeries({color:'#3987e5', lineWidth:2, priceLineVisible:false, priceFormat:pf});
+  }
+  wfChart.applyOptions({rightPriceScale:{mode: wfLog ? 1 : 0}});
+  wfS.setData(W.eq_dates.map((d, i) => ({time: d, value: 1e5*W.eq_wf[i]})));
+  wfP.setData(W.eq_dates.map((d, i) => ({time: d, value: 1e5*W.eq_paper[i]})));
+  wfChart.timeScale().fitContent();
+  $('wfLegend').innerHTML = `<span><i class="sw" style="background:#3987e5"></i>Walk-forward build <b>$${Math.round(1e5*W.eq_wf.at(-1)).toLocaleString()}</b></span><span><i class="sw" style="background:#6e7681"></i>Paper's fixed rule <b>$${Math.round(1e5*W.eq_paper.at(-1)).toLocaleString()}</b></span><span class="mut">$100,000 start, net of costs</span>`;
+  $('wfTable').innerHTML = '<tr><th>Year</th><th>Design chosen (from earlier years only)</th><th>Plateau score</th><th>Its Sharpe before</th><th>That year</th><th>Paper rule that year</th><th>Days</th></tr>' +
+    W.choices.map(c => `<tr><td><b>${c.year}</b></td><td style="text-align:left">${name(c.spec)}</td><td>${fmtN(c.plateau)}</td><td>${fmtN(c.insample)}</td><td class="${cls(c.oos)}"><b>${fmtN(c.oos)}</b></td><td class="${cls(c.paper_oos)}">${fmtN(c.paper_oos)}</td><td class="mut">${c.days}</td></tr>`).join('');
+}
+
+function drawVerdicts(){
+  const out = [];
+  for (const s of Object.keys(R.instruments)) {
+    const W = R.instruments[s].wf;
+    out.push(`<div class="vcard"><b>${s}</b> · ${NAMES[s]}<br>
+      B1 tuning beats the paper rule: <span class="vword ${W.B1}">${W.B1}</span> (${W.diff > 0 ? '+' : ''}${fmtN(W.diff)} Sharpe, CI [${fmtN(W.diff_ci[0])}, ${fmtN(W.diff_ci[1])}], halves ${fmtN(W.diff_halves[0])} / ${fmtN(W.diff_halves[1])})<br>
+      B2 the build makes money: <span class="vword ${W.B2}">${W.B2}</span> (Sharpe ${fmtN(W.sharpe)} [${fmtN(W.sharpe_ci[0])}, ${fmtN(W.sharpe_ci[1])}], halves ${fmtN(W.halves[0])} / ${fmtN(W.halves[1])})</div>`);
+  }
+  const b = R.book;
+  out.push(`<div class="vcard"><b>Book</b> · the five walk-forward streams, 10% vol each (described, not scored)<br>Sharpe <b>${fmtN(b.sharpe)}</b> [${fmtN(b.sharpe_ci[0])}, ${fmtN(b.sharpe_ci[1])}], halves ${fmtN(b.halves[0])} / ${fmtN(b.halves[1])}, ${b.start} → ${b.end}</div>`);
+  $('verdicts').innerHTML = out.join('');
+  $('vchips').innerHTML = Object.entries(R.instruments).map(([s, I]) => { const v = I.wf.B2; return `<span class="chip ${v === 'VALIDATED' ? 'ok' : v === 'NULL' ? 'bad' : 'warn'}" title="B2: walk-forward build profitable">${s} ${v}</span>`; }).join(' ');
+}
+
+// ------------------------------------------------------------- build your own
+function sharpeOf(x){ const n = x.length; if (n < 3) return null; const m = x.reduce((a, b) => a + b, 0)/n; let v = 0; for (const y of x) v += (y - m)**2; v = Math.sqrt(v/(n-1)); return v ? m/v*Math.sqrt(12) : null; }
+function eqFrom(bp){ let e = 1; return bp.map(v => (e *= 1 + v/1e4)); }
+async function drawBuild(){
+  const d = await load(st.inst), i = idxOf(st.k), ip = idxOf(PAPER);
+  const rank = d.sharpe_pw.filter(v => v < d.sharpe_pw[i]).length;
+  const months = d.months, split = months.indexOf('2024-05');
+  const eq = eqFrom(d.monthly_bp[i]), ep = eqFrom(d.monthly_bp[ip]);
+  $('bKpis').innerHTML = [
+    tile('Sharpe, paper window', fmtN(d.sharpe_pw[i]), `rank ${rank+1 > 0 ? (1440 - rank) : '—'} of 1,440 · paper rule ${fmtN(d.sharpe_pw[ip])}`, cls(d.sharpe_pw[i])),
+    tile('Sharpe after Apr 2024', fmtN(d.sharpe_ho[i]), `paper rule ${fmtN(d.sharpe_ho[ip])} · ~2.3 yrs, very noisy`, cls(d.sharpe_ho[i])),
+    tile('Sharpe, all days', fmtN(d.sharpe_all[i]), 'daily, annualised', cls(d.sharpe_all[i])),
+    tile('CAGR', d.cagr[i] + '%', 'paper rule ' + d.cagr[ip] + '%', cls(d.cagr[i])),
+    tile('Max drawdown', d.mdd[i] + '%', 'paper rule ' + d.mdd[ip] + '%'),
+    tile('Round trips / day', fmtN(d.trades_day[i]), 'paper rule ' + fmtN(d.trades_day[ip])),
+    tile('Plateau score', fmtN(d.plateau_pw[i]), 'median of it + neighbours'),
+  ].join('');
+  if (!bChart) {
+    bChart = LightweightCharts.createChart($('bChart'), chartOpts());
+    const pf = {type:'price', precision:0, minMove:1};
+    bP = bChart.addLineSeries({color:'#6e7681', lineWidth:2, priceLineVisible:false, priceFormat:pf});
+    bS = bChart.addLineSeries({color:'#3987e5', lineWidth:2, priceLineVisible:false, priceFormat:pf});
+    new ResizeObserver(() => { bChart.applyOptions({width: $('bChart').clientWidth}); wfChart && wfChart.applyOptions({width: $('wfChart').clientWidth}); }).observe(document.body);
+  }
+  bChart.applyOptions({rightPriceScale:{mode: 1}});
+  const t = m => m + '-28';
+  bS.setData(months.map((m, j) => ({time: t(m), value: 1e5*eq[j]})));
+  bP.setData(months.map((m, j) => ({time: t(m), value: 1e5*ep[j]})));
+  bS.setMarkers(split > 0 ? [{time: t(months[split]), position: 'aboveBar', color: '#d29922', shape: 'arrowDown', text: 'paper published'}] : []);
+  bChart.timeScale().fitContent();
+  $('bLegend').innerHTML = `<span><i class="sw" style="background:#3987e5"></i>${name(st.k)} <b>$${Math.round(1e5*eq.at(-1)).toLocaleString()}</b></span><span><i class="sw" style="background:#6e7681"></i>Paper rule <b>$${Math.round(1e5*ep.at(-1)).toLocaleString()}</b></span><span class="mut">monthly, net of costs, log scale</span>`;
+  drawHeat(d); drawDist(d, i, ip);
+}
+function setK(k){ Object.assign(st.k, k); for (const n of ['vm','lb','ck','exit','filter','sizing']) $('k' + n).value = st.k[n]; drawBuild(); }
+function fromIdx(i){ const g = R.grid, sh = [g.vm, g.lb, g.ck, g.exit, g.filter, g.sizing]; const k = {}; const keys = ['vm','lb','ck','exit','filter','sizing'];
+  for (let j = 5; j >= 0; j--) { const L = sh[j].length; k[keys[j]] = sh[j][i % L]; i = Math.floor(i / L); } return k; }
+
+function drawHeat(d){
+  const g = R.grid;
+  let h = '<tr><th>Width \\ days</th>' + g.lb.map(l => `<th>${l}d</th>`).join('') + '</tr>';
+  for (const vm of g.vm) { h += `<tr><td><b>${vm}×</b></td>` + g.lb.map(lb => { const k = {...st.k, vm, lb}, v = d.sharpe_pw[idxOf(k)], cur = +st.k.vm === vm && +st.k.lb === lb;
+      return `<td class="${cur ? 'cur' : ''}" style="${heatBg(v)}" data-k='${JSON.stringify({vm, lb})}' data-t="${name(k)}<br>Sharpe ${fmtN(v)} (paper window) · ${fmtN(d.sharpe_ho[idxOf(k)])} after">${fmtN(v)}</td>`; }).join('') + '</tr>'; }
+  $('hm').innerHTML = h;
+  let h2 = '<tr><th>Exit \\ filter</th>' + g.filter.map(f => `<th>${f}</th>`).join('') + '</tr>';
+  for (const ex of g.exit) { h2 += `<tr><td><b>${ex}</b></td>` + g.filter.map(f => { const k = {...st.k, exit: ex, filter: f}, v = d.sharpe_pw[idxOf(k)], cur = st.k.exit === ex && st.k.filter === f;
+      return `<td class="${cur ? 'cur' : ''}" style="${heatBg(v)}" data-k='${JSON.stringify({exit: ex, filter: f})}' data-t="${name(k)}<br>Sharpe ${fmtN(v)} (paper window) · ${fmtN(d.sharpe_ho[idxOf(k)])} after">${fmtN(v)}</td>`; }).join('') + '</tr>'; }
+  $('hm2').innerHTML = h2;
+  document.querySelectorAll('.hm td[data-k]').forEach(td => td.onclick = () => setK(JSON.parse(td.dataset.k)));
+  $('hmTitle').textContent = `Band width × band days (Sharpe ${st.inst}, paper window)`;
+}
+
+function drawDist(d, i, ip){
+  const svg = $('dist'), W = svg.clientWidth || 600, H = 220, pad = 30;
+  const v = d.sharpe_pw, lo = Math.min(...v, -0.5), hi = Math.max(...v, 1.5), nb = 40, bw = (hi - lo)/nb;
+  const c = new Array(nb).fill(0); for (const x of v) c[Math.min(nb-1, Math.floor((x - lo)/bw))]++;
+  const mx = Math.max(...c), X = x => pad + (x - lo)/(hi - lo)*(W - 2*pad), Y = n => H - 22 - n/mx*(H - 50);
+  const M = R.instruments[st.inst].map;
+  let s = '';
+  c.forEach((n, j) => { const x0 = X(lo + j*bw); s += `<rect x="${x0+1}" y="${Y(n)}" width="${Math.max(1, X(lo+(j+1)*bw)-x0-2)}" height="${H-22-Y(n)}" fill="#3987e5" opacity=".55" rx="2" data-t="Sharpe ${(lo+j*bw).toFixed(2)} to ${(lo+(j+1)*bw).toFixed(2)}: ${n} designs"></rect>`; });
+  const mark = (x, col, lab, yy) => `<line x1="${X(x)}" x2="${X(x)}" y1="16" y2="${H-22}" stroke="${col}" stroke-width="2" ${col === '#d29922' ? 'stroke-dasharray="4 3"' : ''}/><text x="${X(x)+4}" y="${yy}" style="fill:${col}">${lab}</text>`;
+  s += mark(0, '#6e7681', '0', 12);
+  s += mark(M.sr0_expected_max_null, '#d29922', 'best of 1,440 if none had an edge ' + fmtN(M.sr0_expected_max_null), 26);
+  s += mark(v[ip], '#9da7b3', 'paper ' + fmtN(v[ip]), 40);
+  s += mark(v[i], '#ffffff', 'yours ' + fmtN(v[i]), 54);
+  for (let t = Math.ceil(lo*2)/2; t <= hi; t += 0.5) s += `<text x="${X(t)}" y="${H-6}" text-anchor="middle">${t.toFixed(1)}</text>`;
+  svg.innerHTML = s;
+  $('distNote').innerHTML = `${st.inst}: ${(M.share_positive_pw*100).toFixed(0)}% of designs are positive after costs over the paper window. Best single design <b>${fmtN(M.best_sharpe_pw)}</b> (${M.best_name}); with 1,440 tries the best of pure noise would land near <b>${fmtN(M.sr0_expected_max_null)}</b>, so its deflated probability of a real edge is <b>${fmtN(M.deflated_p, 3)}</b>. After April 2024 that best design made ${fmtN(M.best_sharpe_ho)}.`;
+  const mg = M.marginals, keys = ['vm','lb','ck','exit','filter','sizing'], lab = {vm:'Band width', lb:'Band days', ck:'Check every (min)', exit:'Exit', filter:'Day filter', sizing:'Sizing'};
+  $('marg').innerHTML = '<tr><th>Knob</th><th>Setting: median · best</th></tr>' + keys.map(k => `<tr><td><b>${lab[k]}</b></td><td style="text-align:left">${Object.entries(mg[k]).map(([o, m]) => `<span style="margin-right:14px">${o}: <b class="${cls(m)}">${fmtN(m)}</b> · <span class="mut">${fmtN(mg[k + '_best'][o])}</span></span>`).join('')}</td></tr>`).join('');
+}
+
+// ------------------------------------------------------------- wiring
+(async () => {
+  R = await (await fetch(BASE + 'results.json', {cache: 'no-store'})).json();
+  const insts = Object.keys(R.instruments), opt = s => `<option value="${s}">${s} · ${NAMES[s]}</option>`;
+  $('wfInst').innerHTML = insts.map(opt).join(''); $('bInst').innerHTML = insts.map(opt).join('');
+  st.wfInst = 'SPY';
+  const g = R.grid;
+  $('kvm').innerHTML = g.vm.map(v => `<option value="${v}">${v}×</option>`).join('');
+  $('klb').innerHTML = g.lb.map(v => `<option value="${v}">${v} days</option>`).join('');
+  $('kck').innerHTML = g.ck.map(v => `<option value="${v}">${v} min</option>`).join('');
+  for (const n of ['exit','filter','sizing']) $('k' + n).innerHTML = g[n].map(v => `<option value="${v}">${KL[n][v]}</option>`).join('');
+  for (const n of ['vm','lb','ck','exit','filter','sizing']) $('k' + n).onchange = e => { st.k[n] = ['vm','lb','ck'].includes(n) ? +e.target.value : e.target.value; drawBuild(); };
+  $('bInst').onchange = e => { st.inst = e.target.value; drawBuild(); };
+  $('wfInst').onchange = e => { st.wfInst = e.target.value; drawWF(); };
+  $('wfLog').onclick = () => { wfLog = true; $('wfLog').classList.add('on'); $('wfLin').classList.remove('on'); drawWF(); };
+  $('wfLin').onclick = () => { wfLog = false; $('wfLin').classList.add('on'); $('wfLog').classList.remove('on'); drawWF(); };
+  $('ldPaper').onclick = () => setK(PAPER);
+  $('ldPlat').onclick = () => setK(R.instruments[st.inst].map.plateau);
+  $('ldBest').onclick = () => setK(R.instruments[st.inst].map.best);
+  const c = R.costs;
+  $('intro').innerHTML = `Instead of re-checking the paper's one rule, this page treats its idea as a design space. <b>The idea:</b> each minute of the day has a normal distance from the open (the noise area); once price is outside it, someone is pushing the market and the move tends to run into the close. <b>The knobs</b> the paper fixed: band width (0.75–1.5× the average move), how many days set the band (7/14/28), how often to check (15/30/60 min), the exit (paper's VWAP stop, back inside the band, trail VWAP, hold to the close, or always-in), a pre-open day filter (VIX above/below its one-year median, or after a narrow-range day, the paper's conditioners) and sizing (1x or the paper's 2% vol target). That is <b>${R.nspec.toLocaleString()} designs</b> on each of SPY, ES, NQ, YM and RTY. <b>Costs are realistic, not the paper's:</b> SPY $${c.SPY}/share round trip (the paper's $0.009 plus half a cent of spread each side), futures one tick each side plus $4.50. Rules fixed before any number was computed: <a href="https://github.com/rellis3/MacroFXModel/blob/main/forge/NOISE_AREA_BUILD_PREREG.md" target="_blank">prereg</a>.<br><br><b>What we found: building our own did not beat the paper.</b> On SPY the walk-forward kept choosing a wider, slower version (1.5× band, 28 days, hourly checks, vol-targeted). It made Sharpe <b>0.69</b> out of sample, 2010 → Aug 2026, after realistic costs, which is real money (B2 VALIDATED), but no better than the paper's own rule on the same days (0.67). On the futures, picking from only 3–7 years of history chased noise: on NQ the build made 0.60 where the plain paper rule made 1.24. The paper's rule already sits near the top of the map (better than 93% of the 1,440 on SPY, 97% on NQ), so there was little left to find. On RTY, where the paper's rule loses badly (−1.27), the builder cut the loss to −0.15. That is less bad, not a strategy.`;
+  $('knobHelp').innerHTML = `<b>Exits:</b> <i>VWAP stop</i> = the paper's: flat at a check when price is back inside the band or across VWAP, re-enter on a new break. <i>Back inside band</i> = ignore VWAP. <i>Trail VWAP</i> = once in, stay in while price is on the right side of VWAP. <i>Hold to close</i> = first break of the day, no stop. <i>Always in</i> = after the first break, flip only at the opposite band. <b>Filters</b> use only what was known before the open (prior VIX close; prior day's range).`;
+  $('notes').innerHTML = `Data: SPY IBKR 1-minute bars 2007 →; ES/NQ/YM/RTY NT8 1-minute 2016 → (repaired 15 Nov 2026; CFD-filled only on the 36–43 days NT8 lacks). Sessions after 21 Aug 2026 are the held-out lockbox and are not here. Fills at the check bar's close; costs on every entry, exit and reversal, scaled by leverage. Sharpe is daily, annualised (√252) except the "build your own" chart, which is drawn from monthly returns. Walk-forward starts once three years of history exist (SPY 2010, ES/NQ/YM 2019, RTY 2020). Confidence intervals: ISO-week-clustered bootstrap, 2,000 draws, seed ${R.seed}. Verdicts: B1 and B2, five instruments each, Benjamini–Hochberg q = 0.10.`;
+  drawVerdicts(); drawWF(); setK(PAPER);
+  addEventListener('resize', () => drawBuild());
+})();
+</script>
+</body>
+</html>

@@ -83,3 +83,5 @@ two return streams correlate.
 ## Amendments
 
 ## RESULTS
+
+Run 2026-11-16 (`analysis/output/noise-area-build/RESULTS.md`). B1 `noise-area-build`: SPY UNDERPOWERED (+0.02 [-0.37, 0.39]), ES NULL (-0.48), NQ NULL (-0.64), YM UNDERPOWERED (+0.26), RTY VALIDATED (+1.11, but build -0.15 vs paper -1.27): headline NULL, tuning does not beat the paper's rule. B2 `noise-area-build-wf`: SPY VALIDATED (0.69 [0.20, 1.12], halves 0.82/0.57), ES/NQ/YM/RTY UNDERPOWERED. No amendments.

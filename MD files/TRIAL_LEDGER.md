@@ -10,16 +10,16 @@ Generated 2026-11-16.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **408** |
-| validated | 70 |
-| null | 202 |
+| claims tested (validated + null + underpowered) | **410** |
+| validated | 71 |
+| null | 203 |
 | underpowered | 136 |
 | context (base rates, descriptions: not counted as tests) | 63 |
-| pre-registrations with no banked verdict (below) | 87 |
+| pre-registrations with no banked verdict (below) | 89 |
 
-**What the count says (Lesson 02 §05).** If none of the 408 claims were real, tests at the usual 5% size would still pass
-about **20.4** of them by luck. 70 passed, so most passes are unlikely to be luck alone, but
-**roughly 20 of the 70 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 410 claims were real, tests at the usual 5% size would still pass
+about **20.5** of them by luck. 71 passed, so most passes are unlikely to be luck alone, but
+**roughly 21 of the 71 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -464,6 +464,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-16 | bias-engine-backtest-5d | macro | underpowered | forge/BIAS_ENGINE_BACKTEST_PREREG.md |
 | 2026-11-16 | bias-engine-backtest-components | macro | context | forge/BIAS_ENGINE_BACKTEST_PREREG.md |
 | 2026-11-16 | bias-engine-backtest-sameday | macro | underpowered | forge/BIAS_ENGINE_BACKTEST_PREREG.md |
+| 2026-11-16 | noise-area-build | price | null | forge/NOISE_AREA_BUILD_PREREG.md |
+| 2026-11-16 | noise-area-build-wf | price | validated | forge/NOISE_AREA_BUILD_PREREG.md |
 | 2026-11-16 | raw-line-touch-clock-hour | price | null | forge/RAW_LINE_TOUCH_CLOCK_PREREG.md |
 | 2026-11-16 | raw-line-touch-clock-range | volatility | null | forge/RAW_LINE_TOUCH_CLOCK_PREREG.md |
 | 2026-11-16 | roc-accel-down-20 | price | underpowered | forge/ROC_STALL_50D_PREREG.md |
@@ -560,7 +562,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/LINE_TOUCH_WIDE_SCAN_PREREG.md`: Pre-registration: wide scan of candle shape / position / time / regime at the forecast lines
 - `forge/MACRO_TREND_WEEKDAY_PREREG.md`: Macro state, H1/H4 trend state and weekday at the vol lines — pre-registration
 - `forge/NEWS_TOUCH_PREREG.md`: News at the vol lines — pre-registration
-- `forge/NOISE_AREA_BUILD_PREREG.md`: noise-area-build: build our own strategy from the "Beat the Market" theory, choose it walk-forward, and test i
 - `forge/OI_WALL_BUILDING_FORWARD_PREREG.md`: oi-wall-building-forward — does a wall where open interest is being built bounce price more than a flat wall, 
 - `forge/RANGE_BOOK_EURUSD_PREREG.md`: EURUSD Range Book — pre-registration
 - `forge/REACTION_TRADES_PREREG.md`: Trading the reaction after the touch — pre-registration
@@ -590,3 +591,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VMC_DIVERGENCE_INDICES_PREREG.md`: VuManChu Cipher B divergence at the vol lines (NQ first) — pre-registration
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
 - `forge/VRP_FORECAST_PREREG.md`: Your vol forecast vs the market's — variance risk premium (pre-registration)
+- `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?
+- `oi_research_book/LEVEL_TYPES_PLACEBO_PREREG.md`: Pre-registration: do the OTHER level types beat placebo, and how long does a level last?
+- `oi_research_book/RIPPLE_BOOK_PREREG.md`: Pre-registration — does the gamma-weighted full book (the "ripple") read the tape better than the book the bot
