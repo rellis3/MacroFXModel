@@ -3868,6 +3868,7 @@ export const DERIVED = {
    ],
    "names": {
     "terminal": [
+     "js/terminal/asofClock.js",
      "js/terminal/ccyStrengthView.js",
      "js/terminal/fxMatrixCore.js",
      "js/terminal/fxMatrixView.js",
@@ -4516,6 +4517,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "js/terminal/alertsView.js",
+     "js/terminal/asofBoot.js",
+     "js/terminal/asofClock.js",
      "js/terminal/commandCore.js",
      "js/terminal/kchartCore.js",
      "js/terminal/kchartView.js",
