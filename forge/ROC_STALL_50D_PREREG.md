@@ -110,3 +110,10 @@ From design numbers only (no outcome at a real event was read). Event counts are
 
 ### A0 — 2026-11-16 — PRE-RESULTS
 The first design draft excluded control sessions within 20 sessions **before and after** a flag. The synthetic random-walk check (no outcome at a real event was read) showed that selecting controls with no flag in their own future biased the effect (C5 −0.23 on one synthetic world). The control exclusion was changed to look backwards only (the flag session and the 20 after it), the eight-world check then averaged within ±0.013 of zero in every cell, and the design numbers in section 5 were recomputed. No outcome at a real event had been computed.
+
+### A1 — 2026-11-16 — POST-HOC (results seen); describes only, changes no verdict
+Section 4 states the gate for VALIDATED but does not spell out the NULL / UNDERPOWERED split. The rule that was used is the one in `scripts/roc-stall/run.mjs`, committed in 65e04ba6 **before** the run: if the gate fails, the cell is NULL when the whole 95% holdout interval lies inside (-bar, +bar), otherwise UNDERPOWERED. Applied as written, C1's interval upper edge (+0.1507) is 0.0007 above its 0.15 bar, so C1 is UNDERPOWERED; a one-sided reading (the claim only needs a fall, and the lower edge -0.046 rules a fall of the bar's size out) would call it NULL. Nothing was changed after the results: the registered rule stands, the point is recorded here so a reader does not mistake it for a clean null.
+
+## RESULTS
+
+See `analysis/output/roc-stall-50d/RESULTS.md` (run 2026-11-16, holdout opened once). Zero of six cells VALIDATED: C2 and C3 NULL; C1, C4, C5, C6 UNDERPOWERED by the registered rule. Banked as `roc-stall-50d-top20`, `-top60`, `-topvol`, `-bottom20`, `roc-accel-down-20`, `roc-accel-down-vol`.

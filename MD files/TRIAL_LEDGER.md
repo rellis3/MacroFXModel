@@ -10,15 +10,15 @@ Generated 2026-11-16.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **402** |
+| claims tested (validated + null + underpowered) | **408** |
 | validated | 70 |
-| null | 200 |
-| underpowered | 132 |
+| null | 202 |
+| underpowered | 136 |
 | context (base rates, descriptions: not counted as tests) | 63 |
-| pre-registrations with no banked verdict (below) | 89 |
+| pre-registrations with no banked verdict (below) | 86 |
 
-**What the count says (Lesson 02 §05).** If none of the 402 claims were real, tests at the usual 5% size would still pass
-about **20.1** of them by luck. 70 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 408 claims were real, tests at the usual 5% size would still pass
+about **20.4** of them by luck. 70 passed, so most passes are unlikely to be luck alone, but
 **roughly 20 of the 70 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -466,6 +466,12 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-16 | bias-engine-backtest-sameday | macro | underpowered | forge/BIAS_ENGINE_BACKTEST_PREREG.md |
 | 2026-11-16 | raw-line-touch-clock-hour | price | null | forge/RAW_LINE_TOUCH_CLOCK_PREREG.md |
 | 2026-11-16 | raw-line-touch-clock-range | volatility | null | forge/RAW_LINE_TOUCH_CLOCK_PREREG.md |
+| 2026-11-16 | roc-accel-down-20 | price | underpowered | forge/ROC_STALL_50D_PREREG.md |
+| 2026-11-16 | roc-accel-down-vol | price | underpowered | forge/ROC_STALL_50D_PREREG.md |
+| 2026-11-16 | roc-stall-50d-bottom20 | price | underpowered | forge/ROC_STALL_50D_PREREG.md |
+| 2026-11-16 | roc-stall-50d-top20 | price | underpowered | forge/ROC_STALL_50D_PREREG.md |
+| 2026-11-16 | roc-stall-50d-top60 | price | null | forge/ROC_STALL_50D_PREREG.md |
+| 2026-11-16 | roc-stall-50d-topvol | price | null | forge/ROC_STALL_50D_PREREG.md |
 | 2026-11-16 | vol-layer-features-confirm-eq | volatility | validated | forge/VOL_LAYER_FEATURES_CONFIRM_PREREG.md |
 | 2026-11-16 | vol-layer-features-confirm-fr | volatility | validated | forge/VOL_LAYER_FEATURES_CONFIRM_PREREG.md |
 | 2026-11-16 | vol-layer-features-confirm-sig | volatility | null | forge/VOL_LAYER_FEATURES_CONFIRM_PREREG.md |
@@ -583,6 +589,3 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VMC_DIVERGENCE_INDICES_PREREG.md`: VuManChu Cipher B divergence at the vol lines (NQ first) — pre-registration
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
 - `forge/VRP_FORECAST_PREREG.md`: Your vol forecast vs the market's — variance risk premium (pre-registration)
-- `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?
-- `oi_research_book/LEVEL_TYPES_PLACEBO_PREREG.md`: Pre-registration: do the OTHER level types beat placebo, and how long does a level last?
-- `oi_research_book/RIPPLE_BOOK_PREREG.md`: Pre-registration — does the gamma-weighted full book (the "ripple") read the tape better than the book the bot
