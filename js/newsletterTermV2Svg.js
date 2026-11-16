@@ -93,21 +93,26 @@ export function curveChart(k, cur, ghosts = [], width = 360, height = 214, id = 
 /** winds = /api/fed-path windows [{ ref: 'YYYY-MM-DD', hike: %, hikeAgo: { d1, w1, m1 } }]. */
 export function fedBars(k, winds, width = 360, id = 'fd') {
   if (!winds?.length) return '';
-  const rh = 46, Ht = rh * winds.length + 6, l = 56, r = 44, bw = width - l - r;
-  const o = [svgOpen(width, Ht, 'Probability of a Fed rate rise priced by each meeting, with earlier readings as ticks'), `<defs>${glow(id, 2.4, '-10%" y="-80%" width="120%" height="260%')}</defs>`];
+  const rh = 40, legendH = 26, Ht = rh * winds.length + legendH + 6, l = 56, r = 44, bw = width - l - r;
+  const o = [svgOpen(width, Ht, 'Probability of a Fed rate rise priced by each meeting, with the readings 1 day, 1 week and 1 month ago as marks'), `<defs>${glow(id, 2.4, '-10%" y="-80%" width="120%" height="260%')}</defs>`];
+  // marks, not labels, so they can never collide: a triangle above the bar (1 day ago), a ring on it (1 week), a diamond below it (1 month); a legend names them once
+  const mark = (kind, x, y, op) => (kind === 'd1' ? `<polygon points="${f1(x - 5)},${f1(y)} ${f1(x + 5)},${f1(y)} ${f1(x)},${f1(y + 8)}" fill="${k.pur2}" fill-opacity="${op}"/>`
+    : kind === 'w1' ? `<circle cx="${f1(x)}" cy="${f1(y)}" r="4.5" fill="none" stroke="${k.pur2}" stroke-width="2" stroke-opacity="${op}"/>`
+      : `<polygon points="${f1(x)},${f1(y - 5)} ${f1(x + 5)},${f1(y)} ${f1(x)},${f1(y + 5)} ${f1(x - 5)},${f1(y)}" fill="${k.pur2}" fill-opacity="${op}"/>`);
   winds.forEach((w, i) => {
     const y = 6 + i * rh, d = new Date(`${w.ref}T00:00:00Z`), ref = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' });
-    o.push(T(0, y + 15, ref, { size: 11, weight: 700, fill: k.tx }));
-    o.push(`<rect x="${l}" y="${y + 4}" width="${bw}" height="14" rx="7" fill="${k.bg3}"/>`);
-    o.push(`<rect x="${l}" y="${y + 4}" width="${f1(Math.max(2, bw * (w.hike ?? 0) / 100))}" height="14" rx="7" fill="${k.gold}" fill-opacity=".85" filter="url(#${id})"/>`);
-    o.push(T(width, y + 16, `${Math.round(w.hike ?? 0)}%`, { anchor: 'end', size: 12, weight: 800, fill: k.tx }));
-    [['d1', '1d', 0.9], ['w1', '1w', 0.65], ['m1', '1m', 0.4]].forEach(([key, lb, op]) => {
-      const v = w.hikeAgo?.[key]; if (!fin(v)) return;
-      const x = l + bw * v / 100;
-      o.push(`<line x1="${f1(x)}" x2="${f1(x)}" y1="${y + 1}" y2="${y + 21}" stroke="${k.pur2}" stroke-width="1.6" stroke-opacity="${op}"/>`);
-      o.push(T(x, y + 32, lb, { anchor: 'middle', size: 8, fill: k.pur2, op: f1(op + 0.1, 2) }));
-    });
+    o.push(T(0, y + 22, ref, { size: 11, weight: 700, fill: k.tx }));
+    o.push(`<rect x="${l}" y="${y + 12}" width="${bw}" height="14" rx="7" fill="${k.bg3}"/>`);
+    o.push(`<rect x="${l}" y="${y + 12}" width="${f1(Math.max(2, bw * (w.hike ?? 0) / 100))}" height="14" rx="7" fill="${k.gold}" fill-opacity=".85" filter="url(#${id})"/>`);
+    o.push(T(width, y + 24, `${Math.round(w.hike ?? 0)}%`, { anchor: 'end', size: 12, weight: 800, fill: k.tx }));
+    for (const [key, op, dy] of [['d1', 0.95, 0], ['w1', 0.8, 19], ['m1', 0.7, 36]]) {
+      const v = w.hikeAgo?.[key]; if (!fin(v)) continue;
+      const x = l + bw * Math.max(0, Math.min(100, v)) / 100;
+      o.push(mark(key, x, key === 'd1' ? y + 1 : key === 'w1' ? y + 19 : y + 33, op));
+    }
   });
+  const ly = rh * winds.length + 20;
+  [['d1', '1 day ago', 0], ['w1', '1 week ago', 112], ['m1', '1 month ago', 236]].forEach(([key, label, dx]) => { o.push(mark(key, l + dx + 6, ly - 4, 0.9)); o.push(T(l + dx + 18, ly, label, { size: 9, fill: k.tx2 })); });
   return o.join('') + '</svg>';
 }
 
@@ -251,5 +256,11 @@ export function eventStrip(k, items, width = 360, height = 96) {
   for (const h of [0, 6, 12, 18, 24, 30]) { o.push(`<line x1="${f1(X(h))}" x2="${f1(X(h))}" y1="30" y2="38" stroke="${k.tx3}"/>`); o.push(T(X(h), 52, h === 0 ? 'now' : `+${h}h`, { anchor: 'middle', size: 8.5, fill: k.tx3 })); }
   list.slice(0, 4).forEach((i, n) => { const x = X(i.hours); o.push(`<circle cx="${f1(x)}" cy="34" r="6" fill="${k.gold}"/>`); o.push(T(Math.min(Math.max(x, 40), width - 40), 72 + (n % 2) * 12, i.label, { anchor: 'middle', size: 9.5, weight: 700, fill: k.tx })); });
   return o.join('') + '</svg>';
+}
+
+/** A bias bar from -2 to +2: a track, a centre tick and a filled segment from the centre to the bias (green firm, red weak). */
+export function biasBar(k, bias, width = 110, height = 14) {
+  const v = Math.max(-2, Math.min(2, Number(bias) || 0)), mid = width / 2, w = Math.abs(v) / 2 * (width / 2 - 3), col = v >= 0 ? k.up : k.dn;
+  return `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="Desk bias ${v} on a scale from -2 to +2" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="4" width="${width - 2}" height="6" rx="3" fill="${k.bg3}"/>${v !== 0 ? `<rect x="${(v >= 0 ? mid : mid - w).toFixed(1)}" y="4" width="${Math.max(2, w).toFixed(1)}" height="6" rx="3" fill="${col}" fill-opacity=".9"/>` : ''}<line x1="${mid}" x2="${mid}" y1="1" y2="13" stroke="${k.tx3}"/></svg>`;
 }
 export { glow, glowU, svgOpen, T, fin };

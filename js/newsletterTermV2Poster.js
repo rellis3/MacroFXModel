@@ -135,7 +135,7 @@ export function renderPosterV2(model, { palette = G.HEX_PAL, setups = null } = {
     const vy = ly + eh + 14, vh = ladBottom - vy; o.push(label(k, rx + 10, vy - 4 + 0, ''));
     o.push(panel(k, rx, vy, rw, vh)); o.push(G.T(rx + 22, vy + 30, 'YESTERDAY\'S REVIEW', { size: 13, weight: 800, fill: k.gold, ls: 3 }));
     if (fin(p.S)) { o.push(G.T(rx + 22, vy + 84, `${fmt(p.S, 2)}u`, { size: 42, weight: 800, fill: p.S > (p.p95 ?? 99) ? k.up : k.tx, font: SANS })); }
-    const rl = [p.review?.scored && `${p.review.scored} markets scored`, p.review?.race && `${p.review.race} lean side reached p50 first`, p.review?.band].filter(Boolean);
+    const rl = [p.review?.scored && `${p.review.scored} markets scored`, p.review?.race && `${p.review.race} reached p50 first`, p.review?.band].filter(Boolean);
     rl.slice(0, 3).forEach((t, i) => put(t, rx + 190, vy + 62 + i * 26, { chars: 31, lines: 1, size: 14, fill: k.tx, font: SANS }));
     o.push(`<rect x="${rx + 22}" y="${vy + vh - 44}" width="${rw - 44}" height="30" rx="15" fill="none" stroke="${k.tx3}"/>${G.T(rx + rw / 2, vy + vh - 24, 'HISTORICAL REVIEW, NOT PROOF OF EDGE', { anchor: 'middle', size: 12, fill: k.tx2 })}`);
   }

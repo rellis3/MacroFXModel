@@ -2,6 +2,14 @@
 
 Dated 2026-11-16. Hand-kept. Review and design only: nothing on the live site changes with this document. The prototype files live in the owner's scratchpad, not in the repo (see "What was built").
 
+## ROUND 2 STATUS 2026-11-16 (owner compared this issue with the 20-page desk magazine)
+
+Fixed: leaked attribution tails and slash joins (the desk's " - credit_funding, /" tails are split into clean bullets; a test fails on them), repeated content by paraphrase (6-word overlap guard over every paragraph, bullet and teaching box; the ruling, the flip conditions and the gaps are each printed once), "its 20-day move", the Fed odds marks (shapes and one legend, a bounding-box test over every chart and the poster), trade wording from the desk's own notes (fade, small, spent, tactical, plan, structure blocks, first-person fragments), page layout (full-bleed, content flows, pairs of small exhibits, two-column currency and market cards).
+
+Changed: currencies lead with the manager's ruling and a bias bar, then the two advocates' cases (an empty side becomes one muted line); markets lead with a tailwind/headwind chip. New: Desk read against what price did (priceRead logic), the 4-box teaching strip on eight exhibits, the backdrop table with What it measures, what the move in yields is made of (shared-date rule), the masthead strip (14 markets, multiple of the forecast median day), helped/hurt contribution bars (market names only), today's range lines for every group the desk covers (no lean shading, no sizes or zones), the economist's brief, question of the day, and Where this comes from with data-age dots.
+
+Result on 2026-11-16 live data: about 4,300 words, 13 A4 pages (page 1 the pictogram), no page more than 9% empty except the last (dark; light is the same), 0 repeated sentences. The target of 9 to 11 pages was not met: the added exhibits and 51 range lines take the rest. Check the PDF with: python scripts/newsletter_term_v2_pagecheck.py <issue.pdf>.
+
 ## STATUS 2026-11-16: BUILT (supersedes sections 4, 5 and 7 below)
 
 The terminal edition is now a real written newsletter, the same kind as the daily and the brief, modernised. Built and pushed (stages 1 to 4), preview-free but owner-only on Atlas:

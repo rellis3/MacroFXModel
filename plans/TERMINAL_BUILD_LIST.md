@@ -135,4 +135,5 @@ Decisions needed from the owner are listed at the end of that document (new tab 
 | Gold board running past its cards | DONE 8ab440fe | The Gold ETF card's two tables were nowrap and not in a scroll box (527px of content in a 293px card; 544px page at phone width). Now in .in-scrollx and wrapping; panel and children can shrink. |
 | World stress strip 5px too wide at 390px (every tab) | DONE | Its nowrap chip ('Global rate cycle...') pushed the page to 395px. Chips there may wrap. |
 | Overflow checks | DONE | js/terminal/insightLayout.test.mjs (static, CI) and scripts/insight-overflow.mjs (headless Chromium as owner against live data; not CI). After the fixes: 0 offenders on all 8 Insight boards at 1440/1100/390 in Deep navy, Daylight and High contrast; Monitor, Chart, Workspace, Deep dive, Replay and Calendar also 0 offenders at 1440/1100/390 in navy and Daylight. |
-
+| Round 2: leaks, repeats, labels, trade wording, currency/market clarity, desk read vs price, layout | DONE | 13 pages, tests in js/newsletterTermV2.test.mjs |
+| Round 2 content: teaching strips, backdrop table, yields made of, masthead strip, contribution bars, range lines, economist brief, question of the day, sources | DONE | all from existing routes and the desk run, no model call |
