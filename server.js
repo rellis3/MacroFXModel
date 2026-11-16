@@ -212,6 +212,7 @@ import { FISCAL_EVENTS, previousEvent as fiscalPrevious, htmlToText as fiscalHtm
   numberRows as fiscalRows, buildFiscalPrompt as fiscalPrompt, readiness as fiscalReadiness, shouldPoll as fiscalShouldPoll } from './js/fiscalEvents.js';
 import { eventDay as _evdBuild, frontEnds as _evdFrontEnds, scheduleFromCalendars as _evdSchedule, FRONT_LEGS as _EVD_LEGS } from './js/eventDayContext.js';
 import { shouldReplaceLatest as cbShouldReplaceLatest, pickLatest as cbPickLatest } from './js/cbLatest.js';
+import { latestAnalysisByMeeting as cbLatestByMeeting } from './js/cbLatestMeeting.js';
 import { FETCHERS as BOC_FETCHERS } from './js/bocFetch.js';
 import { BEIGE_BOOK_RELEASES, pendingAsOf as beigeBookPendingAsOf } from './js/beigeBookCalendar.js';
 import { fetchBeigeBook, beigeBookPdfUrl } from './js/beigeBookFetch.js';
@@ -12754,6 +12755,9 @@ app.get('/api/ecb/calendar', (_req, res) => {
 });
 app.get('/api/ecb/latest', async (_req, res) => {
   try {
+    // The NEWEST meeting with an analysis, not whatever was analysed last (js/cbLatestMeeting.js): a re-analysis of an older meeting moved the pointer back.
+    const hit = await cbLatestByMeeting({ meetings: ECB_MEETINGS, kindsOrder: ['statement', 'projections', 'accounts'], get: async (kind, date) => { const r = await kv.get(`ecb_analysis_${kind}_${date}`).catch(() => null); return r ? JSON.parse(r) : null; } });
+    if (hit) return res.json({ ok: true, ...hit });
     const ptr = await kv.get('ecb_latest');
     if (!ptr) return res.json({ ok: false, error: 'No ECB analysis yet — click Fetch now.' });
     const { kind, meetingDate } = JSON.parse(ptr);
@@ -12944,6 +12948,9 @@ app.get('/api/boe/calendar', (_req, res) => {
 });
 app.get('/api/boe/latest', async (_req, res) => {
   try {
+    // The NEWEST meeting with an analysis, not whatever was analysed last (js/cbLatestMeeting.js): a re-analysis of an older meeting moved the pointer back.
+    const hit = await cbLatestByMeeting({ meetings: BOE_MEETINGS, kindsOrder: ['summary', 'report', 'transcript'], get: async (kind, date) => { const r = await kv.get(`boe_analysis_${kind}_${date}`).catch(() => null); return r ? JSON.parse(r) : null; } });
+    if (hit) return res.json({ ok: true, ...hit });
     const ptr = await kv.get('boe_latest');
     if (!ptr) return res.json({ ok: false, error: 'No BoE analysis yet — click Fetch now.' });
     const { kind, meetingDate } = JSON.parse(ptr);
@@ -13110,6 +13117,9 @@ app.get('/api/boj/calendar', (_req, res) => {
 });
 app.get('/api/boj/latest', async (_req, res) => {
   try {
+    // The NEWEST meeting with an analysis, not whatever was analysed last (js/cbLatestMeeting.js): a re-analysis of an older meeting moved the pointer back.
+    const hit = await cbLatestByMeeting({ meetings: BOJ_MEETINGS, kindsOrder: ['statement', 'outlook', 'opinions', 'minutes'], get: async (kind, date) => { const r = await kv.get(`boj_analysis_${kind}_${date}`).catch(() => null); return r ? JSON.parse(r) : null; } });
+    if (hit) return res.json({ ok: true, ...hit });
     const ptr = await kv.get('boj_latest');
     if (!ptr) return res.json({ ok: false, error: 'No BoJ analysis yet — click Fetch now.' });
     const { kind, meetingDate } = JSON.parse(ptr);
