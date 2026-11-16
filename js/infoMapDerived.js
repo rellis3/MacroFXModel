@@ -3136,21 +3136,32 @@ export const DERIVED = {
      "route": "/api/releases-board",
      "exists": true,
      "pack": null
+    },
+    {
+     "route": "/api/release-layer1",
+     "exists": true,
+     "pack": null
     }
    ],
    "modules": [
     {
      "file": "js/terminal/releasesBoardView.js",
      "exists": true
+    },
+    {
+     "file": "js/terminal/eventReplay.js",
+     "exists": true
     }
    ],
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/eventReplay.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/reactionPanel.js",
      "js/terminal/releasesBoardView.js",
+     "js/terminal/terminalFeel.js",
      "js/terminal/traderReadView.js"
     ],
     "today": [
@@ -4542,6 +4553,7 @@ export const DERIVED = {
      "js/terminal/asofBoot.js",
      "js/terminal/asofClock.js",
      "js/terminal/commandCore.js",
+     "js/terminal/eventReplay.js",
      "js/terminal/ghostWalk.js",
      "js/terminal/kchartCore.js",
      "js/terminal/kchartView.js",
