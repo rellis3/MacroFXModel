@@ -4412,7 +4412,9 @@ export const DERIVED = {
     ],
     "today": [],
     "atlas": [],
-    "newsletter": []
+    "newsletter": [
+     "js/newsletterTermV2More.js"
+    ]
    },
    "evidence": [],
    "packSkills": [],
@@ -4717,6 +4719,7 @@ export const DERIVED = {
     ],
     "newsletter": [
      "js/newsletterTermV2.js",
+     "js/newsletterTermV2More.js",
      "js/newsletterTermV2Poster.js",
      "js/newsletterTermV2Prose.js",
      "js/newsletterTermV2Svg.js"
