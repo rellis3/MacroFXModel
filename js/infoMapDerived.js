@@ -672,6 +672,7 @@ export const DERIVED = {
      "js/terminal/moreBoards.js",
      "js/terminal/regimeBoardView.js",
      "js/terminal/replayViz.js",
+     "js/terminal/sinceLast.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [
@@ -3207,6 +3208,7 @@ export const DERIVED = {
      "js/terminal/moreBoards.js",
      "js/terminal/reactionPanel.js",
      "js/terminal/releasesBoardView.js",
+     "js/terminal/sinceLast.js",
      "js/terminal/terminalFeel.js",
      "js/terminal/traderReadView.js"
     ],
@@ -3890,6 +3892,7 @@ export const DERIVED = {
      "js/terminal/paperBoardsView.js",
      "js/terminal/regimeBoardView.js",
      "js/terminal/replayViz.js",
+     "js/terminal/sinceLast.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/themes.js",
@@ -4614,6 +4617,7 @@ export const DERIVED = {
      "js/terminal/replayStrengthDraw.js",
      "js/terminal/replayView.js",
      "js/terminal/replayViz.js",
+     "js/terminal/sinceLast.js",
      "js/terminal/terminalFeel.js",
      "js/terminal/terminalTabs.js"
     ],
