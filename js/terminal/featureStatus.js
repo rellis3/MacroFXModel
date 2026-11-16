@@ -40,6 +40,15 @@ export const FEATURES = {
       'It compares saved snapshots of the terminal, so it only goes back to 14 Nov 2026; it says which two snapshots it compared.',
     ],
   },
+  riskStrip: {
+    surface: 'panel.risk.strip', name: 'Risk flags over time',
+    where: [
+      'Overview tab: a slim card at the very top with six thin ribbons, one per stress light.',
+      'Insight tab > Risk flags: "The lights over time" under the flag cards, with how often each was on and its Evidence Book verdict.',
+      'Or type FLAGHISTORY in the command line.',
+      'It goes back only as far as the saved snapshots (14 Nov 2026); a hatched block means the flag could not be read.',
+    ],
+  },
   oiTime: {
     surface: 'widget.oitime', name: 'OI over time',
     where: [

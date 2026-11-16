@@ -43,6 +43,19 @@ const MEASURE = sel => {
 };
 
 const CASES = {
+  async flags(page, shot) {
+    await page.waitForSelector('[data-rfs-compact]', { timeout: 20000 }).catch(() => {});
+    const out = { ok: true, dialog: null };
+    out.mini = await page.locator('[data-rfs-compact] .rfs-mini').count(); await shot('flags-overview');
+    if (!out.mini) return { ok: false, why: 'no risk-flag strip on the Overview' };
+    await page.locator('button[data-t="insight"]').first().click(); await page.waitForTimeout(1500);
+    await page.locator('.in-tab[data-p="flags"]').first().click(); await page.waitForSelector('[data-rfs-board] .rfs-row', { timeout: 30000 }).catch(() => {});
+    out.rows = await page.locator('[data-rfs-board] .rfs-row').count(); out.cap = await page.locator('[data-rfs-board] .rfs-head').first().textContent().catch(() => '');
+    out.cov = await page.locator('[data-rfs-board] .rfs-depth').first().textContent().catch(() => '');
+    await page.locator('[data-rfs-board]').first().scrollIntoViewIfNeeded().catch(() => {}); await shot('flags-board');
+    out.dialog = '[data-rfs-board]';
+    return out;
+  },
   async changed(page, shot) {
     await page.locator('button[data-t="changed"]').first().click(); await page.waitForSelector('[data-sl-card] .sl-span, [data-sl-card] .muted', { timeout: 30000 }).catch(() => {}); await page.waitForTimeout(1500);
     if (!(await page.locator('[data-sl-card]').count())) return { ok: false, why: 'no since-you-last-looked card on the Changed tab' };
