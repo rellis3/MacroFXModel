@@ -30218,7 +30218,9 @@ app.get('/api/bias-engine', async (req, res) => {
     const qd = String(req.query.date ?? ''), today = _dpLondonDate(Date.now());
     if (qd && !/^\d{4}-\d{2}-\d{2}$/.test(qd)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
     let rec = null, live = false;
-    const raw = await kv.get(_BE_KEY(qd || today)).catch(() => null);
+    // ?live=1: a preview computed now from the current code and inputs, even when today's issue is stored. It is labelled
+    // live, never stored and never scored (the stored issue stays the record).
+    const raw = req.query.live === '1' && !qd ? null : await kv.get(_BE_KEY(qd || today)).catch(() => null);
     if (raw) rec = JSON.parse(raw);
     else if (qd && qd !== today) return res.status(404).json({ ok: false, error: `no stored bias-engine issue for ${qd} (issues are written 07:00-07:30 London on weekdays and never back-issued)` });
     else {
