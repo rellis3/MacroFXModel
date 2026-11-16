@@ -3487,7 +3487,7 @@ export const DERIVED = {
     {
      "file": "oi-dashboard-v2.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-11-16",
      "hub": [
       "live"
      ]
@@ -4290,7 +4290,7 @@ export const DERIVED = {
     {
      "file": "oi-dashboard-v2.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-11-16",
      "hub": [
       "live"
      ]

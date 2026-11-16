@@ -96,3 +96,8 @@ Decisions needed from the owner are listed at the end of that document (new tab 
 | F8. Currency strength: one home, four compact views linking to it | TODO | M. |
 | F9. Analytics split into 'Market behaviour' and 'The desk's record' pills | TODO | S to M. |
 | F10. Spread the Insight boards when promoted (Unusual now to Overview, Gold to Assets, Level reach to Chart) | TODO | M. |
+
+## 8. Terrain live price line (2026-11-16, owner request)
+| Item | Status | Notes |
+|---|---|---|
+| Live price line on the OI terrain chart (Options tab and OI Lab) | DONE 89c8d290 | js/terrainLive.js over js/terrainChart.js. Violet line for the price now with its age; 'at close' with the time while the week is shut; 'last ... old' if the last bar is over 15 minutes old in an open week; distance to the nearest labelled level above and below in points or pips and in the snapshot's expected-move units (description only; walls as targets are null or context). The white snapshot line is relabelled SNAPSHOT SPOT. Only an overlay canvas repaints (30 s read, 15 s age repaint). Own registry switch widget.terrainlive. PNG export composites the overlay. Price scale checked live on 2026-11-16: the stored spot and levels are already in OANDA terms (spot within 0.03% of the OANDA 5m bar at the entry's basisAt on 12 of 13 markets, silver 0.17%), so no offset. No live line for corn, wheat, soybeans, palladium, platinum (no desk bars). Not seen in a real browser. |
