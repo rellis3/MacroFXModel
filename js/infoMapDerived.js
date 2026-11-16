@@ -676,7 +676,8 @@ export const DERIVED = {
     ],
     "newsletter": [
      "js/newsletterRecord.js",
-     "js/newsletterTerminal.js"
+     "js/newsletterTerminal.js",
+     "js/newsletterTermV2.js"
     ]
    },
    "evidence": [
@@ -734,7 +735,9 @@ export const DERIVED = {
     ],
     "today": [],
     "atlas": [],
-    "newsletter": []
+    "newsletter": [
+     "js/newsletterTermV2.js"
+    ]
    },
    "evidence": [],
    "packSkills": [],
@@ -1125,7 +1128,10 @@ export const DERIVED = {
     "atlas": [
      "atlas.html"
     ],
-    "newsletter": []
+    "newsletter": [
+     "js/newsletterTermV2.js",
+     "js/newsletterTermV2Svg.js"
+    ]
    },
    "evidence": [],
    "packSkills": [
@@ -1412,7 +1418,9 @@ export const DERIVED = {
     "atlas": [
      "atlas.html"
     ],
-    "newsletter": []
+    "newsletter": [
+     "js/newsletterTermV2.js"
+    ]
    },
    "evidence": [
     {
@@ -1887,7 +1895,9 @@ export const DERIVED = {
     ],
     "today": [],
     "atlas": [],
-    "newsletter": []
+    "newsletter": [
+     "js/newsletterTermV2.js"
+    ]
    },
    "evidence": [
     {
@@ -2056,7 +2066,9 @@ export const DERIVED = {
     "atlas": [
      "atlas.html"
     ],
-    "newsletter": []
+    "newsletter": [
+     "js/newsletterTermV2.js"
+    ]
    },
    "evidence": [
     {
@@ -2256,7 +2268,8 @@ export const DERIVED = {
     ],
     "newsletter": [
      "js/newsletterPicto.js",
-     "js/newsletterTerminal.js"
+     "js/newsletterTerminal.js",
+     "js/newsletterTermV2.js"
     ]
    },
    "evidence": [],
@@ -2438,7 +2451,10 @@ export const DERIVED = {
     "atlas": [
      "atlas.html"
     ],
-    "newsletter": []
+    "newsletter": [
+     "js/newsletterTermV2.js",
+     "js/newsletterTermV2Svg.js"
+    ]
    },
    "evidence": [
     {
@@ -2632,7 +2648,9 @@ export const DERIVED = {
     "atlas": [
      "atlas.html"
     ],
-    "newsletter": []
+    "newsletter": [
+     "js/newsletterTermV2.js"
+    ]
    },
    "evidence": [],
    "packSkills": [
@@ -3060,7 +3078,8 @@ export const DERIVED = {
      "atlas.html"
     ],
     "newsletter": [
-     "js/newsletter.js"
+     "js/newsletter.js",
+     "js/newsletterTermV2.js"
     ]
    },
    "evidence": [
@@ -3135,7 +3154,9 @@ export const DERIVED = {
     "atlas": [
      "atlas.html"
     ],
-    "newsletter": []
+    "newsletter": [
+     "js/newsletterTermV2.js"
+    ]
    },
    "evidence": [
     {
@@ -3200,7 +3221,8 @@ export const DERIVED = {
      "atlas.html"
     ],
     "newsletter": [
-     "js/newsletter.js"
+     "js/newsletter.js",
+     "js/newsletterTermV2.js"
     ]
    },
    "evidence": [
@@ -3719,7 +3741,9 @@ export const DERIVED = {
     "atlas": [
      "atlas.html"
     ],
-    "newsletter": []
+    "newsletter": [
+     "js/newsletterTermV2.js"
+    ]
    },
    "evidence": [
     {
@@ -3816,7 +3840,8 @@ export const DERIVED = {
     ],
     "newsletter": [
      "js/newsletterRecord.js",
-     "js/newsletterTerminal.js"
+     "js/newsletterTerminal.js",
+     "js/newsletterTermV2.js"
     ]
    },
    "evidence": [],
@@ -3851,7 +3876,10 @@ export const DERIVED = {
     ],
     "today": [],
     "atlas": [],
-    "newsletter": []
+    "newsletter": [
+     "js/newsletterTermV2.js",
+     "js/newsletterTermV2Svg.js"
+    ]
    },
    "evidence": [],
    "packSkills": [],
@@ -4336,7 +4364,9 @@ export const DERIVED = {
      "today.html"
     ],
     "atlas": [],
-    "newsletter": []
+    "newsletter": [
+     "js/newsletterTermV2.js"
+    ]
    },
    "evidence": [
     {
@@ -4503,7 +4533,9 @@ export const DERIVED = {
     ],
     "today": [],
     "atlas": [],
-    "newsletter": []
+    "newsletter": [
+     "js/newsletterTermV2.js"
+    ]
    },
    "evidence": [
     {
@@ -4616,7 +4648,10 @@ export const DERIVED = {
      "today.html"
     ],
     "atlas": [],
-    "newsletter": []
+    "newsletter": [
+     "js/newsletterTermV2.js",
+     "js/newsletterTermV2Svg.js"
+    ]
    },
    "evidence": [
     {
@@ -4629,6 +4664,68 @@ export const DERIVED = {
     "vol_iv",
     "levels_structure"
    ],
+   "drift": []
+  },
+  "terminal-newsletter-v2": {
+   "pages": [
+    {
+     "file": "atlas.html",
+     "exists": true,
+     "lastModified": "2026-11-09",
+     "hub": [
+      "live"
+     ]
+    }
+   ],
+   "routes": [
+    {
+     "route": "/api/newsletter/telegram-file",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/newsletterTermV2.js",
+     "exists": true
+    },
+    {
+     "file": "js/newsletterTermV2Prose.js",
+     "exists": true
+    },
+    {
+     "file": "js/newsletterTermV2Svg.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "js/terminal/commandCore.js"
+    ],
+    "today": [],
+    "atlas": [
+     "atlas.html"
+    ],
+    "newsletter": [
+     "js/newsletterTermV2.js",
+     "js/newsletterTermV2Poster.js",
+     "js/newsletterTermV2Prose.js",
+     "js/newsletterTermV2Svg.js"
+    ]
+   },
+   "evidence": [
+    {
+     "id": "band-reach-from-here",
+     "known": true,
+     "verdict": "validated"
+    },
+    {
+     "id": "surprise-size",
+     "known": true,
+     "verdict": "validated"
+    }
+   ],
+   "packSkills": [],
    "drift": []
   },
   "commodity-fx-copper-gold-session-heat": {

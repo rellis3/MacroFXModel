@@ -305,6 +305,7 @@ import { releaseNewsletterV3 } from './js/newsletterV3.js';
 import { isoWeek } from './js/weeklyDesk.js';
 import { composeTerminal, worldPaths } from './js/newsletterTerminal.js';
 import { composePicto, withTitle } from './js/newsletterPicto.js';
+import { fetchTerminalData, composeTerminalV2 } from './js/newsletterTermV2.js';
 import { worldEconomies } from './js/worldEconomies.js';
 import { policyWeek } from './js/policyWeek.js';
 import { closeMove, dayWord } from './js/closeBasis.js';
@@ -682,10 +683,48 @@ function drawNl() {
   const box = $('nlbox'); if (!box || $('nlBuild')) return;   // built once; a redraw of the page must not wipe a finished issue
   box.innerHTML = `<div class="card"><h2>${ic('cal')}Newsletter</h2>
     <p class="note" style="margin-bottom:8px"><b>Daily</b> for the day, <b>weekly</b> best generated on Sunday after 16:00 London for a Monday read: it opens with the desk strategist's week ahead (written then; the button offers to write it if it is missing) and the Saturday market review across 40 markets, and the weekly forecast refreshes after Friday 22:00 UTC. Each issue opens with a 30-second strip and what changed since the last one, covers the world, each currency and each market, and ends with a not-financial-advice footer that cannot be removed. Every build is saved, and the next issue marks how the previous one's day sizes came out. If today's brief is missing or older than 8 hours it generates one first.</p>
-    <p style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0"><button class="btn" id="nlBuild">${icS('cal')}Build daily newsletter</button><button class="btn" id="nlBuildW">${icS('cal')}Build weekly newsletter</button><button class="btn" id="nlEvening">🌙 Evening edition</button><span class="note" id="nlStatus"></span></p><div id="nlOut"></div><h3 style="margin-top:14px">Past issues</h3><div id="nlPast" class="rows"><p class="note">Loading the archive…</p></div></div>`;
+    <p style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0"><button class="btn" id="nlBuild">${icS('cal')}Build daily newsletter</button><button class="btn" id="nlBuildW">${icS('cal')}Build weekly newsletter</button><button class="btn" id="nlEvening">🌙 Evening edition</button><span style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;border-left:1px solid #2a3158;padding-left:12px"><b style="font-size:12px">Terminal edition v2</b><select id="nlTv2Th" class="btn" title="Dark is the terminal look; light is easier on paper"><option value="dark">Dark</option><option value="light">Light (print-friendly)</option></select><button class="btn" id="nlTv2" title="A written issue built from the desk terminal, page 1 the pictogram. Choose Save as PDF in the print window.">Issue as PDF</button><button class="btn" id="nlTv2P" title="The one-page pictogram of the key points, as a PNG">Pictogram (PNG)</button><button class="btn" id="nlTv2T" title="Sends the pictogram PNG to the newsletter Telegram chat (owner only)">Send pictogram to Telegram</button><button class="btn" id="nlTv2F" title="Choose the PDF you saved and send it to the newsletter Telegram chat (owner only)">Send a saved PDF to Telegram</button><input type="file" id="nlTv2Pdf" accept="application/pdf" hidden></span><span class="note" id="nlStatus"></span></p><div id="nlOut"></div><h3 style="margin-top:14px">Past issues</h3><div id="nlPast" class="rows"><p class="note">Loading the archive…</p></div></div>`;
   $('nlBuild').onclick = () => buildIssue('daily'); $('nlBuildW').onclick = () => buildIssue('weekly');
   $('nlEvening').onclick = () => showEvening();
+  wireTv2();
   drawPast();
+}
+
+// The terminal newsletter v2 (owner, 2026-11-16): a written issue built from the desk terminal's own routes and the desk run, always read as a PDF (print to PDF),
+// plus a one-page pictogram of its key points. Click-only. The classic terminal edition stays reachable beside the desk editions for a few weeks.
+let TV2 = null;
+const nlSay = t => { const e = $('nlStatus'); if (e) e.textContent = t; };
+async function tv2Build() {
+  if (TV2 && Date.now() - TV2.at < 600000) return TV2;
+  nlSay('Building the terminal edition from the terminal routes...');
+  const { data, failed } = await fetchTerminalData(u => J(u).then(j => j ?? Promise.reject(new Error('no response'))));
+  const c = composeTerminalV2(data); TV2 = { ...c, at: Date.now(), failed };
+  nlSay(`Built ${c.words.toLocaleString('en-GB')} words${failed.length ? `; not available: ${failed.join(', ')}` : ''}.`);
+  J('/api/newsletter/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject: c.subject, html: c.html, text: '', snapshot: { date: ukDate(new Date()), kind: 'desk-terminal2' } }) }).catch(() => null);
+  return TV2;
+}
+async function tv2PosterPng(svg) {
+  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })), img = new Image();
+  await new Promise((ok, no) => { img.onload = ok; img.onerror = () => no(new Error('the pictogram could not be drawn here')); img.src = url; });
+  const cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1500; cv.getContext('2d').drawImage(img, 0, 0, 1080, 1500); URL.revokeObjectURL(url);
+  return new Promise(r => cv.toBlob(r, 'image/png'));
+}
+const tv2B64 = blob => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); });
+async function tv2Send(kind, blob, filename, caption) {
+  const r = await J('/api/newsletter/telegram-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, filename, caption, b64: await tv2B64(blob) }) });
+  nlSay(r?.ok ? `Sent to Telegram (${kind}, ${Math.round(r.bytes / 1024)} KB).` : `Not sent: ${r?.error ?? 'no response'}`);
+}
+function wireTv2() {
+  $('nlTv2').onclick = async () => { try {
+    const c = await tv2Build(), html = $('nlTv2Th').value === 'light' ? c.htmlLight : c.html, w = window.open(URL.createObjectURL(new Blob([html], { type: 'text/html' })), '_blank');
+    if (!w) { nlSay('Pop-up blocked: allow pop-ups for this page.'); return; }
+    w.addEventListener('load', () => setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 800));
+    nlSay('In the print window choose Save as PDF, paper A4, and turn on Background graphics.');
+  } catch (e) { nlSay('Could not build the terminal edition: ' + e.message); } };
+  $('nlTv2P').onclick = async () => { try { const c = await tv2Build(), b = await tv2PosterPng(c.posterSvg), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `terminal-pictogram-${ukDate(new Date())}.png`; a.click(); nlSay('Saved the pictogram as a PNG.'); } catch (e) { nlSay('Could not make the pictogram: ' + e.message); } };
+  $('nlTv2T').onclick = async () => { try { const c = await tv2Build(); await tv2Send('photo', await tv2PosterPng(c.posterSvg), `terminal-pictogram-${ukDate(new Date())}.png`, `${c.subject}. Not financial advice.`); } catch (e) { nlSay('Could not send: ' + e.message); } };
+  $('nlTv2F').onclick = () => $('nlTv2Pdf').click();
+  $('nlTv2Pdf').onchange = async ev => { const f = ev.target.files?.[0]; ev.target.value = ''; if (!f) return; try { await tv2Send('document', f, f.name, 'The Chain // Terminal. Not financial advice.'); } catch (e) { nlSay('Could not send: ' + e.message); } };
 }
 
 // The desk's evening edition (written after 21:10 London once the day is scored): show the latest one, or score the day now.
@@ -840,7 +879,7 @@ function showDeskButtons(mag, brief, term = null, picto = null) {
   const open = (o, print) => { const u = URL.createObjectURL(new Blob([o.html], { type: 'text/html' })), w = window.open(u, '_blank');
     if (!w) { $('nlStatus').textContent = 'Pop-up blocked: allow pop-ups for this page.'; return; }
     if (print) w.addEventListener('load', () => setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 600)); };
-  $('nlOut').insertAdjacentHTML('afterbegin', `<div class="chips" style="margin:12px 0 4px;align-items:center"><b style="font-size:12px;margin-right:4px">Desk editions</b><button class="btn" id="dkMag">📰 Desk magazine</button><button class="btn" id="dkMagP">PDF</button>${brief ? '<button class="btn" id="dkBr">⚡ Desk brief</button><button class="btn" id="dkBrP">PDF</button>' : ''}${term ? '<button class="btn" id="dkTm">🛰 Terminal edition</button><button class="btn" id="dkTmP">PDF</button>' : ''}${picto ? '<button class="btn" id="dkPc">✏️ Pictograph</button><button class="btn" id="dkPcP">PDF</button>' : ''}</div>`);
+  $('nlOut').insertAdjacentHTML('afterbegin', `<div class="chips" style="margin:12px 0 4px;align-items:center"><b style="font-size:12px;margin-right:4px">Desk editions</b><button class="btn" id="dkMag">📰 Desk magazine</button><button class="btn" id="dkMagP">PDF</button>${brief ? '<button class="btn" id="dkBr">⚡ Desk brief</button><button class="btn" id="dkBrP">PDF</button>' : ''}${term ? '<button class="btn" id="dkTm">🛰 Terminal edition (classic)</button><button class="btn" id="dkTmP">PDF</button>' : ''}${picto ? '<button class="btn" id="dkPc">✏️ Pictograph</button><button class="btn" id="dkPcP">PDF</button>' : ''}</div>`);
   $('dkMag').onclick = () => open(mag, false); $('dkMagP').onclick = () => open(mag, true);
   if (brief) { $('dkBr').onclick = () => open(brief, false); $('dkBrP').onclick = () => open(brief, true); }
   if (term) { $('dkTm').onclick = () => open(term, false); $('dkTmP').onclick = () => open(term, true); }
