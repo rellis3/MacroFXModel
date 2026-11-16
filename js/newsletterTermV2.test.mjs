@@ -31,12 +31,16 @@ const fx = () => {
       ok: true, date: '2026-11-16', newsletter: { issue: { subject: 'Credit cracks at the tail, but the ladder reads calm', standfirst: 'Credit is cracking at the tail while the liquidity gate is blocked on six indices. The desk\'s ruling is risk-off at medium conviction. Today\'s main event is the US CPI print.',
         sections: [{ title: 'The global backdrop', label: 'Model output', body: 'The global ruling is risk-off at medium conviction on credit deterioration at the tail. The liquidity gate is blocked on six indices. VIX is 18.7 with no warning flags.' }, { title: 'The currencies', label: 'Model output', body: 'The ranking runs USD first and NZD last. The dollar matters most because of the hawkish Fed hold. The weak side is the high-beta currencies.' },
           { title: 'Where the desk leans', label: 'Untested interpretation', body: 'The book is short AUDJPY at full size 1.00 with a zone of 108.30 and invalidation above 108.63. The cards are capped.' }, { title: 'What could break the day', label: 'Context, not a signal', body: 'US CPI is the only tier-1 print at 14:00. The risk desk sized the book against a VIX shock. Fed speakers matter more than the print.' }, { title: 'What the desk could not see', label: 'Hypothesis', body: 'The daily read feed is a gap. The RBNZ statement is blocked so the hold cannot be read. NOK has no ruling of its own.' }], ideas: [{ instrument: 'AUDJPY', view: 'SHORT', size: 1, level: '108.30', invalidation: '108.63', why: 'carry' }] } },
-      debate: { global: { view: { tone: 'risk_off', conviction: 'medium', drivers: ['Credit stress at the 98th percentile of five years.'], flip: ['A dovish Fed chair against the hikes already priced.'] } }, currency: { view: { ranking: CCY, currencies: {} }, debate: { ccy_strengthen: { view: { headline: 'The strengthen case is concentrated in USD and CAD.', cases: Object.fromEntries(CCY.map(c => [c, { argument: `${c} could hold up because rate pricing and risk flows favour it today. The next print matters for it.` }])) } }, ccy_weaken: { view: { headline: 'The weaken case rests on supply and risk-off drags.', cases: Object.fromEntries(CCY.map(c => [c, { argument: `${c} could struggle because supply and risk-off flows weigh on it. It has been weak against the dollar.` }])) } } } } },
+      debate: { bookRisk: { summary: { effectiveBets: 3.21, factors: [{ key: 'USD', share: 0.333 }, { key: 'RISK', share: 0.324 }, { key: 'CARRY', share: 0.179 }, { key: 'COMMOD', share: 0.101 }] } }, global: { view: { tone: 'risk_off', conviction: 'medium', drivers: ['Credit stress at the 98th percentile of five years.'], flip: ['A dovish Fed chair against the hikes already priced.', 'CCC spreads reversing sharply lower (e.g. back inside the one-year range) or the score turning positive.', 'The liquidity gate unblocking on those six indices (creditZ -1.47, curveZ -1.69).'] } }, currency: { view: { ranking: CCY, currencies: {} }, debate: { ccy_strengthen: { view: { headline: 'The strengthen case is concentrated in USD and CAD.', cases: Object.fromEntries(CCY.map(c => [c, { argument: `${c} could hold up because rate pricing and risk flows favour it today. The next print matters for it.` }])) } }, ccy_weaken: { view: { headline: 'The weaken case rests on supply and risk-off drags.', cases: Object.fromEntries(CCY.map(c => [c, { argument: `${c} could struggle because supply and risk-off flows weigh on it. It has been weak against the dollar.` }])) } } } } },
       head: { book: { headline: 'Risk-off at medium conviction: credit stress says be cautious, so it is signed small.', global: { tone: 'risk_off' }, currencies: Object.fromEntries(CCY.map(c => [c, { bias: 1, why: `${c} read: the analysts see rate pricing supporting it, with supply as the main headwind.` }])), instruments: { NQ: { rating: 'SHORT', why: 'Credit stress and a blocked gate weigh on the index.' }, GOLD: { rating: 'LONG', why: 'Real yields have eased.' }, EURUSD: { rating: 'SHORT', why: 'EUR is weaker than USD on rates.' } }, gaps: ['The daily read feed is a gap and the liquidity pulse carries little signal.'] } },
+      debate_extra: null,
       analysts: Object.fromEntries([['rates_cb', 'USD', 'EURUSD'], ['yields_curve', 'USD', 'EURUSD'], ['credit_funding', 'USD', 'GOLD'], ['vol_iv', 'USD', 'NQ']].map(([id, c, i]) => [id, analyst(c, i)])), dataQuality: { gaps: [] },
     },
     FC: { session_date: '2026-11-16', instruments: { NQ: { hl_median: 1.6, ladder: { sigma_daily_pct: 1.8, oh: { p50: 1.38, p75: 2.4, p90: 3.43 }, ol: { p50: 1.24, p75: 2.4, p90: 3.97 } } } } },
     OI: { data: { NAS100_USD: { spot: 27739, refMove: { move: 867 }, maxPain: 28785, gexFlip: 28108, callWall: 29335, putWall: 25935, savedAt: '16/11/2026, 06:47' } } },
+    CRED: { rows: [{ id: 'BAMLH0A3HYC', label: 'US CCC', oas: 1314, chg20d: 32, pctile5y: 98, pctile1y: 95 }, { id: 'BAMLC0A0CM', label: 'US investment grade', oas: 89, chg20d: 5, pctile5y: 63, pctile1y: 92 }] },
+    FUND: { items: [{ id: 'rrp', stat: { value: 0.325, pctile: 9, change: 0.2 } }, { id: 'reserves', stat: { value: 2960.6, pctile: 70, change: -61.5 } }, { id: 'basisTrade', stat: { value: -764.6, pctile: 11, change: -67 } }] },
+    GATE: { instruments: Object.fromEntries(['NAS100_USD', 'SPX500_USD', 'US30_USD', 'US2000_USD', 'DE30_USD', 'UK100_GBP'].map(k => [k, { composite: 'BLOCKED', creditZ: -1.47, curveZ: -1.69 }])) },
     BARS5: { bars: bars(1, 5) }, BARS15: { bars: bars(13, 15) }, RR: { live: [] },
   };
 };
@@ -94,17 +98,28 @@ test('print: A4 portrait, @page, colour printing kept, the poster is page 1, pag
   assert.ok(!/<script/.test(html) && !/<link /.test(html) && !/@import/.test(html), 'self-contained: no scripts, no fetched files');
   assert.match(N.renderIssue(m, { theme: 'light' }), /class="light"/); assert.match(N.renderIssue(m, { theme: 'light' }), /--bg:#f4f5fb/);
 });
-test('the poster is the issue\'s own takeaways, and no text runs outside its box or is cut', () => {
+test('the poster explains the issue: headline, big picture, three warning lights, strength ladder, events, review, triggers; every number matches the issue; no text is clipped', async () => {
+  const PO = await import('./newsletterTermV2Poster.js'), m = model(), { svg, placed } = PO.renderPosterV2(m), txt = svg.replace(/<[^>]+>/g, ' ');
+  assert.match(svg, /viewBox="0 0 1080 1500"/); assert.match(txt, /RISK-OFF/); assert.match(txt, /MEDIUM CONVICTION/); assert.match(txt, /THREE WARNING LIGHTS/); assert.match(txt, /CURRENCY STRENGTH LADDER/); assert.match(txt, /TODAY'S EVENTS/); assert.match(txt, /YESTERDAY'S REVIEW/); assert.match(txt, /WHAT COULD CHANGE THE VIEW/); assert.match(txt, /RISK CONCENTRATION/);
+  assert.match(txt, /1,314 bp/); assert.match(txt, /98th percentile of five years/); assert.match(txt, /BLOCKED/); assert.match(txt, /\$765bn/); assert.match(txt, /3\.21 effective bets/); assert.match(txt, /\+0\.32u/); assert.match(txt, /HISTORICAL REVIEW, NOT PROOF OF EDGE/);
+  assert.ok(m.poster.headline === m.headline && txt.includes('Credit cracks at the tail'), 'the poster headline is the issue headline');
+  assert.ok(placed.length > 20 && !placed.some(l => l.overflow), 'no wrapped block overflows its lines: ' + JSON.stringify(placed.find(l => l.overflow)));
+  for (const l of placed) { const left = l.anchor === 'middle' ? l.x - l.w / 2 : l.anchor === 'end' ? l.x - l.w : l.x, right = left + l.w; assert.ok(left >= 8 && right <= 1072, `inside the canvas: ${l.text}`); assert.ok(l.w <= l.maxW + 1, `fits its wrap width: ${l.text}`); }
+  assert.ok(!/…|\.\.\./.test(txt), 'no ellipsis'); assert.ok(/<circle/.test(svg) && /clip-path/.test(svg), 'drawn flags and the hero are real shapes');
+  assert.equal((txt.match(/CCC spreads reversing/g) ?? []).length, 1); assert.ok(!/\(creditZ|e\.g/.test(txt), 'the trigger clauses are clean');
+  assert.ok(P.tradeHit(txt.replace(/RISK CONCENTRATION|effective bets|Funds net short|Treasury futures|NEWSLETTER SETUPS[^.]*/g, ' ')) === null, 'no trade wording on the poster by default');
+});
+test('the desk\'s setups panel is OFF by default and only appears when the option is passed (a setups table is a trade plan: owner decision pending)', async () => {
+  const PO = await import('./newsletterTermV2Poster.js'), m = model(), off = PO.posterSvg(m), on = PO.posterSvg(m, { setups: [{ name: 'AUD/JPY', dir: 'SHORT', entry: '108.30 - 108.50', invalid: '108.63' }] });
+  assert.ok(!/NEWSLETTER SETUPS|108\.63/.test(off.replace(/<[^>]+>/g, ' '))); assert.match(on.replace(/<[^>]+>/g, ' '), /NEWSLETTER SETUPS, NOT RECOMMENDATIONS/);
+  assert.equal(N.shortClause('The liquidity gate unblocking on those six indices (creditZ -1.47, curveZ -1.69).', 66), 'The liquidity gate unblocking on those six indices');
+  assert.equal(PO.flagDisc('USD', 10, 10, 10, 'x').includes('clipPath'), true);
+});
+test('the takeaways of the issue (5 to 7) carry a headline and a caption that fit, and the helpers behave', () => {
   const m = model(), tk = m.takeaways; assert.ok(tk.length >= 5 && tk.length <= 7, `5 to 7 takeaways (${tk.length})`);
   for (const id of ['yesterday', 'setup', 'ccy', 'rates', 'could']) assert.ok(tk.find(t => t.id === id), `${id} is a takeaway`);
-  const { head, cap, panelW } = N.POSTER;
-  for (const t of tk.slice(0, 6)) {
-    const hl = N.wrapLines(t.head, head.chars), cl = N.wrapLines(N.capFit(t.cap, cap.chars, cap.lines), cap.chars);
-    assert.ok(hl.length <= head.lines, `headline fits ${head.lines} lines: ${t.head}`); assert.ok(cl.length <= cap.lines, `caption fits ${cap.lines} lines: ${t.cap}`);
-    for (const ln of hl) assert.ok(G.textWidth(ln, head.size) * 0.96 <= panelW - 48, `headline line fits the panel: ${ln}`); for (const ln of cl) assert.ok(G.textWidth(ln, cap.size) <= panelW - 48, `caption line fits the panel: ${ln}`);
-    assert.ok(!/…|\.\.\./.test(t.head + t.cap)); }
-  const svg = N.renderPoster(m); assert.match(svg, /viewBox="0 0 1080 1500"/); assert.ok(!/…|\.\.\./.test(svg.replace(/<[^>]+>/g, ' ')), 'no ellipsis on the poster');
   assert.equal(N.capFit('One short sentence. And a second one that is a little longer than the first.', 30, 1), 'One short sentence.');
+  assert.deepEqual(N.wrapLines('alpha beta gamma delta', 11), ['alpha beta', 'gamma delta']);
 });
 test('the figures are rule-built from the data: a changed input changes the sentence; word count and caption helpers behave', () => {
   const a = N.buildModel(fx(), NOW), b = (() => { const d = fx(); d.SCORE.score.S = 0.9; return N.buildModel(d, NOW); })();

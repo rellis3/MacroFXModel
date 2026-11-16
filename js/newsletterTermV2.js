@@ -19,6 +19,8 @@ import { rankBundle, expectedByChance } from './terminal/unusualCore.js';
 import { ladderRows } from './terminal/reachCore.js';
 import { similarReleases } from './terminal/calendarDrillsCore.js';
 import { DESK_EVIDENCE } from './deskEvidence.js';
+import { renderPosterV2 } from './newsletterTermV2Poster.js';
+import { wrapLines } from './newsletterTermV2Wrap.js';
 
 const { esc, fmt, CSS_PAL, HEX_PAL, LIGHT_PAL, MONO, SANS } = G;
 const { clean, fit, safeProse, sentencesUpTo, Dedupe } = P;
@@ -51,13 +53,6 @@ export function shortReason(t, max = 96) {
   const first = P.sentences(s)[0] ?? s;
   return P.fit(first, max).replace(/\.$/, '');
 }
-/** Whole sentences that fit `lines` wrapped lines of `chars` characters; a first sentence that is too long is trimmed at a clause. Never clipped mid word. */
-export function capFit(text, chars, lines) {
-  const out = []; for (const sn of P.sentences(text)) { const cand = [...out, sn].join(' '); if (wrapLines(cand, chars).length > lines) break; out.push(sn); }
-  if (out.length) return out.join(' ');
-  const one = P.sentences(text)[0] ?? ''; return P.fit(one, chars * lines - 6);
-}
-
 /**
  * data: { S, CV, VC, FED, WS, REG, CAL, BUNDLE, SCORE, RUN, FC, OI, BARS5, BARS15, RR } as the terminal's routes return them (any may be null).
  * Returns { date, asOf, headline, standfirst, stories: [...], takeaways: [...], poster: {...}, words }. A story with `na` is a "not available" note, never blank.
@@ -144,7 +139,7 @@ export function buildModel(data, nowMs = Date.now()) {
     if (r.impact !== 'High' || !(r.ms >= nowMs - 3600e3) || r.ms > nowMs + 36 * 3600e3) continue;
     const kk = `${r.time}|${r.event}|${r.country}`; if (seen.has(kk)) continue; seen.add(kk);
     const sim = (() => { try { return similarReleases({ country: r.country, event: r.event }); } catch { return null; } })();
-    calRows.push({ time: hhmm(r.ms), hours: (r.ms - nowMs) / 3600e3, ccy: r.country, name: clean(r.event), text: `estimate ${r.estimate ?? 'n/a'}, previous ${r.prev ?? 'n/a'}`, drill: sim ? `In past prints the 30-minute move has typically been ${sim.medSpike} times an ordinary half-hour (${sim.events} prints); next-day direction was close to a coin flip.` : '' });
+    calRows.push({ ms: r.ms, time: hhmm(r.ms), hours: (r.ms - nowMs) / 3600e3, ccy: r.country, name: clean(r.event), text: `estimate ${r.estimate ?? 'n/a'}, previous ${r.prev ?? 'n/a'}`, drill: sim ? `In past prints the 30-minute move has typically been ${sim.medSpike} times an ordinary half-hour (${sim.events} prints); next-day direction was close to a coin flip.` : '' });
     if (calRows.length >= 6) break;
   }
   if (calRows.length) add({ id: 'calendar', beat: 'Today', title: 'Coming up, and what each release did before', paras: [para(`These are the high-impact releases in the next day and a half. Under each is what that release has done to markets in the past, as a multiple of an ordinary half-hour and not as a direction, which has not been predictable from the release alone.${calRows.some(r => !r.drill) ? " A release with no line under it has rarely moved markets more than an ordinary half-hour." : ''}`)].filter(Boolean), rows: calRows, svg: G.eventStrip(CSS_PAL, uniqEvents(calRows)), how: 'Times are UTC; the dots show how far away each release is.', chips: [ev('surprise-size', 'Surprise size')].filter(Boolean), asOf });
@@ -175,11 +170,47 @@ export function buildModel(data, nowMs = Date.now()) {
   const lead = order[0], lag = order.at(-1), headline = di?.subject || (lead ? `${lead} leads the week, ${lag} trails` : 'The terminal today');
   const stand2 = standDone || stories.find(s => s.id === 'strength')?.paras?.[0] || '';
   const push = run && lead ? { [lead]: P.ccyPhrase(run, lead, 'firm'), [lag]: P.ccyPhrase(run, lag, 'weak') } : {}, takeaways = buildTakeaways({ push, sc, rank, q, ws, lead, lag, sc1w, cc, cur, ghosts, winds, lad, price, one: null, calRows, tiles, busy, fc, bars5, nowMs, asOf });
-  const model = { date: longDate(asOfMs), asOf, asOfMs, headline, standfirst: stand2, stories, takeaways, stress: d.WS?.overall ?? null, regime: q ? String(q.name).toUpperCase() : null, poster: { S, sc1w, sc4h, order, cur, ghosts, winds, tiles, lights: ws, q, asOf, date: longDate(asOfMs), takeaways } };
+  const model = { date: longDate(asOfMs), asOf, asOfMs, headline, standfirst: stand2, stories, takeaways, stress: d.WS?.overall ?? null, regime: q ? String(q.name).toUpperCase() : null,
+    poster: { S, sc1w, sc4h, order, cur, ghosts, winds, tiles, lights: ws, q, asOf, date: longDate(asOfMs), takeaways, ...posterFacts({ d, run, rul, sc, rank, order, sc1w, sc4h, calRows, winds, ws, headline, nowMs }) } };
   model.words = proseWords(model);
   return model;
 }
 
+/** A short, clean clause of a longer sentence for the poster: brackets and "e.g." removed, cut at a clause or a word, never ending on a dangling word. */
+export function shortClause(t, max = 66) {
+  let x = P.clean(t).replace(/\([^)]*\)?/g, '').replace(/\be\.g\.?,?/gi, '').replace(/\s{2,}/g, ' ').trim();
+  x = (P.sentences(x)[0] ?? x).split(/\s[\u2014\u2013-]\s/)[0].replace(/[.;:,]$/, '');
+  if (x.length <= max) return x;
+  const cut = x.slice(0, max), c = Math.max(cut.lastIndexOf(', '), cut.lastIndexOf(' and '), cut.lastIndexOf(' or '));
+  const y = c > max * 0.55 ? cut.slice(0, c) : cut.replace(/\s+\S*$/, '');
+  return y.replace(/[,;:\s]+$/, '').replace(/\b(a|an|the|of|to|in|on|at|by|with|and|or|into|against|than)$/i, '').trim();
+}
+const GATE_NAME = { NAS100_USD: 'Nasdaq', SPX500_USD: 'S&P 500', US30_USD: 'Dow', US2000_USD: 'Russell 2000', DE30_USD: 'DAX', UK100_GBP: 'FTSE 100', JP225_USD: 'Nikkei' };
+const RISK_LABEL = { USD: 'Dollar', RISK: 'Risk-on', CARRY: 'Carry', COMMOD: 'Commodities', RATES: 'Rates' };
+const lonHm = ms => new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London', hour12: false });
+/** The facts the poster draws, from the same routes and the same desk run as the written issue (nothing invented; a missing source leaves its field null). */
+function posterFacts({ d, run, rul, sc, rank, order, sc1w, sc4h, calRows, winds, ws, headline, nowMs }) {
+  const tone = rul?.tone || null, verdict = evidenceChip('credit-leads-equities', 'x')?.verdict ?? null;
+  const rf = ws.find(t => /risk flags/i.test(t.label)), cr = d.CRED?.rows ?? [], ccc = cr.find(r => r.id === 'BAMLH0A3HYC'), ig = cr.find(r => r.id === 'BAMLC0A0CM');
+  const lvl = (x, hi, mid) => (x >= hi ? 'stress' : x >= mid ? 'watch' : 'ok');
+  const foundation = ccc ? { level: lvl(ccc.pctile5y, 95, 80), word: ccc.pctile5y >= 95 ? 'Credit stress' : ccc.pctile5y >= 80 ? 'Credit strained' : 'Credit sound' } : null;
+  const surface = rf ? { level: rf.level, word: rf.level === 'ok' ? 'Calm' : rf.level === 'watch' ? 'Edgy' : 'Stressed' } : null;
+  const gi = d.GATE?.instruments ? Object.entries(d.GATE.instruments) : [], blocked = gi.filter(([, v]) => v.composite === 'BLOCKED'), g0 = blocked[0]?.[1] ?? gi[0]?.[1];
+  const gate = gi.length ? { level: blocked.length >= 3 ? 'stress' : blocked.length ? 'watch' : 'ok', word: blocked.length === gi.length ? 'BLOCKED' : blocked.length ? 'PARTLY BLOCKED' : 'OPEN', n: blocked.length || gi.length, names: (blocked.length ? blocked : gi).map(([k]) => GATE_NAME[k] ?? k.replace(/_.*/, '')).join(', '), creditZ: g0?.creditZ ?? null, curveZ: g0?.curveZ ?? null } : null;
+  const fi = Object.fromEntries((d.FUND?.items ?? []).map(i => [i.id, i.stat])), rrp = fi.rrp, res = fi.reserves, bas = fi.basisTrade;
+  const hits = [rrp && rrp.pctile <= 10, res && res.change < -50, bas && bas.pctile <= 10].filter(Boolean).length;
+  const funding = rrp || res || bas ? { level: hits >= 2 ? 'stress' : hits === 1 ? 'watch' : 'ok', rrp: rrp?.value ?? null, rrpPct: rrp?.pctile ?? null, res: res?.value ?? null, resChg: res?.change ?? null, basis: bas?.value ?? null } : null;
+  const credit = ccc ? { level: foundation.level, ccc: ccc.oas, chg: ccc.chg20d, pct5: ccc.pctile5y, ig: ig?.oas ?? null, igPct: ig?.pctile1y ?? null } : null;
+  const ladder = order.map(c => ({ ccy: c, w1: sc1w[c], w4: sc4h?.[c] ?? null, word: sc1w[c] >= 1 ? 'Firm' : sc1w[c] <= -1 ? 'Weak' : 'Neutral' }));
+  const seen = new Set(), events = []; for (const r of calRows) { const kk = r.time + '|' + r.ccy; if (seen.has(kk)) continue; seen.add(kk); events.push({ name: r.name, ccy: r.ccy, time: lonHm(r.ms) }); if (events.length >= 3) break; }
+  const br = run?.debate?.bookRisk?.summary, risk = br?.factors?.length ? { enb: br.effectiveBets ?? null, factors: br.factors.filter(f => f.share >= 0.03).sort((a, b) => b.share - a.share).map(f => ({ label: RISK_LABEL[f.key] ?? f.key, share: f.share })) } : null;
+  const w0 = winds?.[0], fedLine = w0 ? `Fed futures price ${Math.round(w0.hike)}% for a rise by ${new Date(w0.ref + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })}.` : null;
+  const caution = !tone ? 'The desk run was not available, so there is no ruling to show.' : /off/.test(tone) ? `Means caution, not a directional equity call${verdict === 'NULL' ? `: credit stress has not led equities in the desk's tests` : ''}.` : /on/.test(tone) ? 'The desk reads conditions as supportive of risk. That is context, not a tested signal.' : 'The desk has no strong lean today.';
+  const where = sc ? (sc.S > sc.placebo?.p95 ? 'above the random-coin band' : 'inside the random-coin band') : null;
+  return { headline, tone, conviction: rul?.conviction || null, caution, surface, foundation, credit, gate, funding, ladder, events, fedLine, risk, S: sc?.S ?? null, p95: sc?.placebo?.p95 ?? null,
+    review: sc ? { scored: sc.live ? `${sc.scored} of ${sc.live}` : `${sc.scored}`, race: sc.race?.resolved ? `${sc.race.leanFirst} of ${sc.race.resolved}` : null, band: where } : null,
+    flips: (rul?.flips ?? []).slice(0, 3).map(t => shortClause(t, 66)).filter(Boolean), tested: verdict ? `The desk's tested result: credit stress leading equities is ${verdict}. Use it as context for caution, not as a call.` : '' };
+}
 const uniqEvents = rows => { const seen = new Set(), out = []; for (const c of rows) { const l = `${c.time} ${c.ccy}`; if (seen.has(l)) continue; seen.add(l); out.push({ hours: c.hours, label: l }); } return out.slice(0, 4); };
 /** The 5 to 7 takeaways of the issue, each a short headline plus a visual: the poster is built from these, not from decoration. */
 function buildTakeaways(x) {
@@ -280,42 +311,19 @@ export function renderIssue(model, { theme = 'dark', posterSvg = null } = {}) {
   return `<!doctype html><html lang="en" class="${light ? 'light' : 'dark'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${PAGE_CSS(pal, light)}</style></head><body><div class="doc">${poster}${head}${body}<div class="foot"><b>NOT FINANCIAL ADVICE</b> ${esc(DISCLAIMER_V2)}</div></div></body></html>`;
 }
 
-// ── the poster: the issue's own takeaways, a headline and a visual for each ──────────────────────────────────────────
-/** Wrap text to lines of at most n characters at a word boundary (never cuts a word). */
-export function wrapLines(s, n) { const w = String(s ?? '').split(/\s+/).filter(Boolean), L = []; let c = ''; for (const x of w) { if ((c + ' ' + x).trim().length > n && c) { L.push(c); c = x; } else c = (c + ' ' + x).trim(); } if (c) L.push(c); return L; }
-export const POSTER = { W: 1080, H: 1500, panelW: 500, panelH: 396, head: { chars: 27, lines: 3, size: 25 }, cap: { chars: 44, lines: 3, size: 15 } };
-export function renderPoster(model, { palette = HEX_PAL } = {}) {
-  const k = palette, { W, H, panelW, panelH } = POSTER, p = model.poster, o = [];
-  o.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="${MONO}">`);
-  o.push(`<defs><radialGradient id="pg1" cx="85%" cy="0%" r="80%"><stop offset="0" stop-color="${k.pur}" stop-opacity=".30"/><stop offset="1" stop-color="${k.pur}" stop-opacity="0"/></radialGradient><radialGradient id="pg2" cx="10%" cy="60%" r="60%"><stop offset="0" stop-color="${k.gold}" stop-opacity=".10"/><stop offset="1" stop-color="${k.gold}" stop-opacity="0"/></radialGradient><linearGradient id="pbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${k.bg1}"/><stop offset="1" stop-color="${k.bg}"/></linearGradient>${G.glowU('pgl', W, H, 5)}${G.glowU('pgs', W, H, 2.4)}</defs>`);
-  o.push(`<rect width="${W}" height="${H}" fill="url(#pbg)"/><rect width="${W}" height="${H}" fill="url(#pg1)"/><rect width="${W}" height="${H}" fill="url(#pg2)"/>`);
-  o.push(`<circle cx="64" cy="66" r="7" fill="${k.pur}" filter="url(#pgl)"/>${G.T(84, 72, 'THE CHAIN', { size: 22, weight: 700, fill: k.tx, ls: 5 })}${G.T(262, 72, '// TERMINAL', { size: 22, weight: 700, fill: k.gold, ls: 5 })}${G.T(W - 56, 72, `${p?.date ?? model.date} · ${p?.asOf ?? model.asOf}`, { anchor: 'end', size: 18, fill: k.tx3 })}`);
-  o.push(G.T(56, 140, 'The key points, at a glance', { size: 44, weight: 800, fill: k.tx, font: SANS }));
-  const sub = wrapLines(model.headline, 78)[0] ?? ''; o.push(G.T(56, 178, sub, { size: 20, fill: k.tx2 }));
-  const panel = (x, y, tag) => `<rect x="${x}" y="${y}" width="${panelW}" height="${panelH}" rx="22" fill="${k.bg2}" fill-opacity=".72" stroke="${k.line}"/>${G.T(x + 24, y + 32, tag, { size: 13, fill: k.gold, ls: 4, weight: 700 })}`;
-  (p?.takeaways ?? model.takeaways).slice(0, 6).forEach((t, i) => {
-    const x = 40 + (i % 2) * (panelW + 20), y = 206 + Math.floor(i / 2) * (panelH + 16);
-    o.push(panel(x, y, t.tag));
-    wrapLines(t.head, POSTER.head.chars).slice(0, POSTER.head.lines).forEach((ln, j) => o.push(G.T(x + 24, y + 66 + j * 30, ln, { size: POSTER.head.size, weight: 800, fill: k.tx, font: SANS })));
-    const vy = y + 138, V = t.vis ?? {}, fitInner = (svg, w, h) => { const sc = Math.min(452 / w, 156 / h); return `<g transform="translate(${x + 24},${vy}) scale(${sc.toFixed(3)})">${svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g>`; };
-    if (V.type === 'score') o.push(fitInner(G.scoreBand(k, V), 360, 76));
-    else if (V.type === 'lights') (V.lights ?? []).slice(0, 7).forEach((l, j) => { const col = l.level === 'ok' ? k.up : l.level === 'watch' ? k.gold : k.dn, cx = x + 40 + (j % 4) * 118, cy = vy + 30 + Math.floor(j / 4) * 52; o.push(`<circle cx="${cx}" cy="${cy}" r="9" fill="${col}" filter="url(#pgs)"/>${G.T(cx + 16, cy + 5, String(l.label).replace('Dollar funding', 'Funding').replace('Global rate cycle', 'Rate cycle').replace('Fed liquidity', 'Fed liq.').replace('Term premium', 'Term prem.'), { size: 11, fill: k.tx2 })}`); });
-    else if (V.type === 'duo') o.push(fitInner(G.rankedBars(k, V.items.map(it => ({ label: it.label, value: Math.max(-1, Math.min(1, it.v / 4)), text: `${fmt(it.v)}σ`, signed: true })), { width: 360, labelW: 50, textW: 60 }), 360, 56));
-    else if (V.type === 'curve' && p?.cur) o.push(fitInner(G.curveChart(k, p.cur, p.ghosts, 360, 150, 'pcv'), 360, 150));
-    else if (V.type === 'range') { const rs = model.stories.find(s => s.id === 'range')?.svg; if (rs) o.push(fitInner(rs.replace(/var\(--(\w+)\)/g, (m, n) => k[n] ?? m), 360, 150)); }
-    else if (V.type === 'events') o.push(fitInner(G.eventStrip(k, V.items), 360, 96));
-    else if (V.type === 'dial') o.push(G.dialShape(k, V.tile, x + 130, vy + 56, 50, 'pgs', false));
-    wrapLines(capFit(t.cap, POSTER.cap.chars, POSTER.cap.lines), POSTER.cap.chars).slice(0, POSTER.cap.lines).forEach((ln, j) => o.push(G.T(x + 24, y + panelH - 62 + j * 20, ln, { size: POSTER.cap.size, fill: k.tx2 })));
-  });
-  o.push(G.T(W / 2, H - 16, `Not financial advice · private research summary · drawn from the desk terminal as at ${p?.asOf ?? model.asOf} · no figure is a trade instruction`, { anchor: 'middle', size: 12, fill: k.tx3 }));
-  return o.join('') + '</svg>';
-}
+// ── the poster: the pictogram of the issue's key points (js/newsletterTermV2Poster.js) ─────────────────────────────────
+export { wrapLines };
+export const POSTER = { W: 1080, H: 1500 };
+/** The poster SVG string (hard colours: it is an image). options.setups switches the desk's setups panel on (default off: it is a trade plan). */
+export function renderPoster(model, { palette = HEX_PAL, setups = null } = {}) { return renderPosterV2(model, { palette, setups }).svg; }
+export { renderPosterV2 };
+export const capFit = (text, chars, lines) => { const out = []; for (const sn of P.sentences(text)) { const cand = [...out, sn].join(' '); if (wrapLines(cand, chars).length > lines) break; out.push(sn); } return out.length ? out.join(' ') : P.fit(P.sentences(text)[0] ?? '', chars * lines - 6); };
 
 // ── the network part (the only one): the routes the terminal's own boards use ─────────────────────────────────────────
 export const ROUTES = {
   S: '/api/ccy-strength', CV: '/api/replay/curve', VC: '/api/vol-clock', FED: '/api/fed-path', WS: '/api/world-stress', REG: '/api/regime-board', CAL: '/api/calendar-ahead',
   BUNDLE: '/api/drill-series', SCORE: '/api/desk-score', RUN: '/api/desk-run', FC: '/api/vol-forecast', OI: '/api/oi-store', RR: '/api/release-reactions',
-  BARS5: '/api/desk-bars?inst=NQ&tf=5m&days=2', BARS15: '/api/desk-bars?inst=NQ&tf=15m&days=14',
+  CRED: '/api/credit-board', FUND: '/api/funding-read?spark=0', GATE: '/api/liquidity-gate/live', BARS5: '/api/desk-bars?inst=NQ&tf=5m&days=2', BARS15: '/api/desk-bars?inst=NQ&tf=15m&days=14',
 };
 /** getJson(url) resolves to parsed JSON or throws; a failed route is null and its story says "not available". Returns { data, failed }. */
 export async function fetchTerminalData(getJson) {
