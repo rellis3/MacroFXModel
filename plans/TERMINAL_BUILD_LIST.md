@@ -108,3 +108,11 @@ Decisions needed from the owner are listed at the end of that document (new tab 
 | Linked selection: a ? popover beside the chip, a clear label ('Linked: GOLD', 'Link off'), hover titles on the glow rings, fuller LINK help | DONE (preview) | js/terminal/linkedSelection.js. The popover was checked in a headless browser at phone width. |
 | Replay and Export buttons 'not there': diagnosed in a headless browser as the owner. The buttons DO mount (Overview strength board, Macro > Rates & curve curve and Fed odds, Assets vol clock; Export on Monitor, Insight, Calendar, Currencies). No code fault found. Causes found: Export sat at the BOTTOM of cards with no heading row (now on top), both appear only after their board has drawn, and nothing told you where to look | DONE | js/terminal/featureStatus.js, previewSwitches.js, exportView.js. |
 | Preview features panel (Info map tab): per feature 'On this page: loaded / failed: reason / waiting' fed by globalThis.__deskFeel, and a 'Where do I see it?' list; the command line says why PLAY or EXPORT did nothing | DONE | js/terminal/terminalFeel.js records start() per feature and fires 'deskfeel'. |
+
+## 8. Owner-reported fixes (2026-11-16)
+| Item | Status | Notes |
+|---|---|---|
+| Alerts are the owner's alone; a desk login's saved searches stay in its own browser | DONE 99594ce6 | Server already refused a desk login's alert writes (403); now tested for add, mute, rename, and the manual /api/desk-alerts/run needs the owner. A desk login saves and deletes its own news searches in localStorage (never sent, never shared) and is no longer sent the owner's list. |
+| Strength 1D window on Monday morning | DONE 434202af | A window that starts inside the weekend closure runs from the Friday close and says so, only where a pair has no price at the start. Overview's price read now names the missing window and why, and reads from the other one. Live check after deploy: /api/ccy-strength 1D should be available at Monday 09:12Z. |
+| Gold ETF source when Yahoo refuses Railway | DONE 5c6b67d9 | Issuers first (SPDR archive for GLD, iShares page for IAU), Yahoo second; tonnes held is the series (a flow is the change in tonnes); response and data-health row name the source. First live check: /api/gold-etf-flow, fetch.source and tonnes.last. If an issuer also refuses Railway, fetch.reason says which. |
+
