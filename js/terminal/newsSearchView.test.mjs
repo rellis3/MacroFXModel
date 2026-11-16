@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { makePage, makeWin } from './feelFakeDom.fixtures.mjs';
-import { mountNewsSearches, installNewsSearches } from './newsSearchView.js';
+import { mountNewsSearches, installNewsSearches, LOCAL_KEY } from './newsSearchView.js';
 
 async function setup({ viewer = false, searches = [{ name: 'ECB', q: 'ecb', tier: 1, keys: [], onlyBook: false }] } = {}) {
   const doc = makePage();
@@ -42,9 +42,33 @@ test('an alert needs words: a filter with only a currency says so and sends noth
   host.querySelector('[data-ns="alert"]').click(); await new Promise(r => setTimeout(r, 5));
   assert.equal(alerts.length, 0); assert.match(host.innerHTML, /needs words/);
 });
-test('a desk login gets the list and the picker, never the save, delete or alert buttons', async () => {
+test('a desk login can save and delete its own searches but never sees the alert button', async () => {
   const { host } = await setup({ viewer: true });
-  assert.ok(host.innerHTML.includes('ns-pick')); assert.ok(!host.innerHTML.includes('data-ns='));
+  assert.ok(host.innerHTML.includes('ns-pick')); assert.ok(host.innerHTML.includes('data-ns="save"')); assert.ok(host.innerHTML.includes('data-ns="delete"'));
+  assert.ok(!host.innerHTML.includes('data-ns="alert"'), 'the alert button is the owner only');
+});
+test('a desk login keeps its searches in THIS browser only: localStorage, never the server, never the owner list', async () => {
+  const doc = makePage(); doc.querySelector('main').innerHTML += '<div id="nt-saved"></div>';
+  const store = new Map(); let cur = { q: 'boe cut', tier: 2, keys: [], onlyBook: false }; const fetched = [];
+  const win = makeWin(doc, { deskIsViewer: () => true, deskNews: { state: () => cur, apply: s => { cur = { ...s }; } },
+    localStorage: { getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)) }, fetch: async u => { fetched.push(u); return { status: 200, json: async () => ({ ok: true, searches: [{ name: 'OWNERS', q: 'secret', tier: 1, keys: [], onlyBook: false }] }) }; } });
+  const host = doc.getElementById('nt-saved');
+  mountNewsSearches({ host, win, ask: () => 'Mine', sure: () => true });
+  await new Promise(r => setTimeout(r, 5));
+  host.querySelector('[data-ns="save"]').click(); await new Promise(r => setTimeout(r, 5));
+  assert.ok(host.innerHTML.includes('value="Mine"')); assert.equal(fetched.length, 0, 'nothing is sent to the server');
+  assert.ok(!host.innerHTML.includes('OWNERS'), "the owner's list is not shown");
+  assert.match(store.get(LOCAL_KEY), /"name":"Mine"/);
+  const pick = doc.getElementById('ns-pick'); pick.value = 'Mine'; doc.fire('change', pick);
+  host.querySelector('[data-ns="delete"]').click(); await new Promise(r => setTimeout(r, 5));
+  assert.ok(!host.innerHTML.includes('value="Mine"')); assert.deepEqual(JSON.parse(store.get(LOCAL_KEY)).searches, []);
+});
+test('a browser that will not keep it says so instead of pretending', async () => {
+  const doc = makePage(); doc.querySelector('main').innerHTML += '<div id="nt-saved"></div>';
+  const win = makeWin(doc, { deskIsViewer: () => true, deskNews: { state: () => ({ q: 'boe cut', tier: 2, keys: [], onlyBook: false }), apply() {} }, localStorage: { getItem: () => null, setItem: () => { throw new Error('blocked'); } } });
+  const host = doc.getElementById('nt-saved'); mountNewsSearches({ host, win, ask: () => 'Mine', sure: () => true }); await new Promise(r => setTimeout(r, 5));
+  host.querySelector('[data-ns="save"]').click(); await new Promise(r => setTimeout(r, 5));
+  assert.match(host.innerHTML, /would not keep it/);
 });
 test('the loader hook mounts on a bar that already exists and on one the tab builds later', async () => {
   const doc = makePage(); doc.querySelector('main').innerHTML += '<div id="nt-saved"></div>';

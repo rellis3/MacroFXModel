@@ -38680,7 +38680,7 @@ app.get('/api/desk-alerts', async (req, res) => {
       log: st.log.slice(0, Math.min(300, parseInt(req.query.n) || 40)), note: 'one message per state change, deduped (6 h per alert) and rate-limited (6 an hour); context, not a signal' });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-app.post('/api/desk-alerts/run', async (_req, res) => { try { res.json(await _dalTick('manual')); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+app.post('/api/desk-alerts/run', async (req, res) => { if (deskSessionRole(req) !== 'owner') return res.status(403).json({ ok: false, error: 'owner only: a run can send Telegram notes' }); try { res.json(await _dalTick('manual')); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
 // ══ end of speeches, surprises and desk alerts ══════════════════════════════════════════════════════════════════════════
 
 // ══ Expectations vs reality, and transmission statistics on the Chain (owner, 2026-11-04, build list items 2 and 3) ═══════════════

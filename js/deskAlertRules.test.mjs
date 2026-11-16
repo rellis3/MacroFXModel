@@ -12,6 +12,8 @@ ok((await handle({ method: 'GET', role: 'viewer', kv, on: () => false })).status
 const w = await add(kv, { kind: 'range_used', params: { market: 'EURUSD', pct: 80 } });
 ok(w.status === 200 && w.json.rules.length === 1 && !('state' in w.json.rules[0]), 'owner adds; the list does not leak the rule memory');
 ok((await handle({ method: 'GET', role: 'viewer', kv, on: id => id === 'widget.alerts' })).json.rules.length === 1, 'desk login reads the list once the switch is on');
+ok((await handle({ method: 'POST', role: 'viewer', kv, on: () => true, body: { action: 'add', kind: 'news_keyword', params: { q: 'ecb', tier: 2 } } })).status === 403, 'a desk login can never ADD an alert (it sends the one shared Telegram chat a note), switch on or off');
+ok((await handle({ method: 'POST', role: 'viewer', kv, on: () => true, body: { action: 'mute', id: 'x' } })).status === 403 && (await handle({ method: 'POST', role: 'viewer', kv, on: () => true, body: { action: 'rename', id: 'x', name: 'y' } })).status === 403, 'nor mute or rename');
 ok((await handle({ method: 'POST', role: 'viewer', kv, on: () => true, body: { action: 'delete', id: w.json.rules[0].id } })).status === 403, 'but never changes it, switch or not');
 ok((await add(kv, { kind: 'range_used', params: { market: 'EURUSD', pct: 80 } })).status === 400 && (await add(kv, { kind: 'bogus', params: {} })).status === 400, 'duplicates and bad kinds refused');
 

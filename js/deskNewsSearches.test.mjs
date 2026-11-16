@@ -9,7 +9,8 @@ ok((await handle({ method: 'GET', role: 'viewer', kv, on: () => false })).status
 ok((await handle({ method: 'POST', role: 'viewer', kv, on: () => true, body: { action: 'save', name: 'x', search: { q: 'ecb' } } })).status === 403, 'desk login never writes');
 ok((await handle({ method: 'POST', role: 'owner', kv, body: { action: 'save', name: 'ECB', search: { q: 'ecb', tier: 1 } } })).status === 200 && kv.m.has(KEY), 'owner saves');
 ok((await handle({ method: 'POST', role: 'owner', kv, body: { action: 'save', name: 'Empty', search: { q: '' } } })).status === 400, 'empty search refused');
-ok((await handle({ method: 'GET', role: 'viewer', kv, on: id => id === 'panel.news.saved' })).json.searches.length === 1, 'desk login reads once switched on');
+ok((await handle({ method: 'GET', role: 'viewer', kv, on: id => id === 'panel.news.saved' })).json.searches.length === 0, "a desk login is never sent the owner's list (its own searches live in its browser)");
+ok((await handle({ method: 'GET', role: 'owner', kv })).json.searches.length === 1, 'the owner still reads the shared list');
 ok((await handle({ method: 'POST', role: 'owner', kv, body: { action: 'delete', name: 'ECB' } })).json.searches.length === 0, 'delete');
 ok((await handle({ method: 'PUT', role: 'owner', kv })).status === 405, 'other methods refused');
 kv.m.set(KEY, 'not json');

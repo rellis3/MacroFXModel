@@ -14,4 +14,8 @@ ok(/<input[^>]*type="text"[^>]*maxlength="12"/.test(fieldHtml('range_used', ['ma
 // every default the form starts with makes a valid rule
 for (const k of KIND_IDS) { const params = Object.fromEntries(KINDS[k].fields.map(([name, , def]) => [name, def])); ok(makeRule({ kind: k, params }).ok, `the form's defaults for ${k} make a valid alert`); }
 ok(!fieldHtml('range_used', ['market', 'text', '"><script>']).includes('<script>'), 'a default value is escaped');
+// the command line's ALERT <...> goes through win.deskAlerts.add: it must refuse a desk login before it posts anything (the server refuses too: deskAlertRules.test.mjs)
+import fs from 'node:fs';
+const src = fs.readFileSync(new URL('./alertsView.js', import.meta.url), 'utf8');
+ok(/add: async b => \{ if \(!canEdit\(\)\)/.test(src), 'deskAlerts.add checks canEdit() first');
 console.log(`alertsView: ${n} checks OK`);

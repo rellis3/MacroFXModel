@@ -55,6 +55,6 @@ export function mountAlerts({ doc = document, win = window, canEdit = () => !(wi
   back.addEventListener('click', e => { if (e.target === back || e.target.id === 'al-x') close(); });
   back.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); close(); } });
   btn.hidden = false; btn.addEventListener('click', open);
-  win.deskAlerts = { open, close, add: async b => { open(); const r = await post({ action: 'add', ...b }); say(r.ok ? 'Alert added.' : (r.error ?? '')); return r; } };
+  win.deskAlerts = { open, close, add: async b => { if (!canEdit()) { open(); say('Only the owner can add alerts: each one sends a Telegram note to the one shared chat.'); return { ok: false, error: 'owner only' }; } open(); const r = await post({ action: 'add', ...b }); say(r.ok ? 'Alert added.' : (r.error ?? '')); return r; } };
   return { open, close, destroy() { btn.hidden = true; btn.removeEventListener('click', open); back.remove(); delete win.deskAlerts; } };
 }
