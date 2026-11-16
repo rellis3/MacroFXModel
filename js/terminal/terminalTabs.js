@@ -34,6 +34,8 @@ import * as NV from './newsView.js';
 import * as NCV from './newsChannelView.js';
 import { createLevelChart } from '../levelChart.js';
 import { mountTfBar } from './timeframePills.js';
+import { getFavourites } from './favourites.js';
+import * as FAVV from './favouritesView.js';
 import { cardDrivers } from './cardExplain.js';
 import * as HDV from './humanDriversView.js';
 import { pineForCard, oandaOf } from '../deskBookPine.js';
@@ -385,6 +387,17 @@ function openPair(inst) {
   if (b && b.getAttribute('aria-selected') !== 'true') b.click(); else renderPair();
   window.scrollTo?.({ top: 0 });
 }
+const FAV = getFavourites();
+const favEnabled = () => globalThis.deskSurfaceOn?.('panel.pair.favourites') ?? true;
+// the market row of the Pair tab: the selector, a star for this market, the Favourites pill and the quick chips (the strongest eight, or your starred markets with the filter on)
+function pickHtml(list, n, top) {
+  const on = favEnabled(), onlyFav = on && FAV.only, star = x => (on && FAV.has(x));
+  const shown = onlyFav ? list.filter(x => FAV.has(x) || x === n) : list;
+  const sel = `<select id="tt-sel">${Object.entries(GROUPS).map(([g, gl]) => { const xs = shown.filter(x => groupOf(x) === g); return xs.length ? `<optgroup label="${h(gl)}">${xs.map(x => `<option value="${x}"${x === n ? ' selected' : ''}>${star(x) ? '★ ' : ''}${h(nice(x))}</option>`).join('')}</optgroup>` : ''; }).join('')}</select>`;
+  const chips = onlyFav ? FAV.list().filter(x => D.cards?.[x]).map(x => [x, D.cards[x]]) : top;
+  const chipHtml = chips.map(([x, cx]) => { const d = DIR[cx.rating] ?? 0; return `<span class="tt-chipwrap"><button class="chip ${d > 0 ? 'up' : d < 0 ? 'dn' : ''}" data-p="${x}" style="cursor:pointer">${h(x)}</button>${on ? FAVV.starHtml(x, FAV.has(x)) : ''}</span>`; }).join('');
+  return `<div class="tt-pick"><label class="lbl" for="tt-sel">Market</label>${sel}${on ? FAVV.starHtml(n, FAV.has(n), nice(n)) + FAVV.pillHtml(FAV.count, onlyFav) : ''}${chipHtml}<span class="muted" style="margin-left:auto">link: <span class="mono">desk-terminal.html#pair=${h(n)}</span></span></div>`;
+}
 async function renderPair() {
   const root = el('pair'); if (!root) return;
   await ready();
@@ -394,7 +407,7 @@ async function renderPair() {
   const V = globalThis.deskIsViewer?.(), strength = x => (V ? Math.abs(assetScore(x) ?? 0) : (x.size ?? 0));   // the desk login has no sizes: order by the strength of the view
   const top = Object.entries(D.cards ?? {}).filter(([, x]) => (DIR[x.rating] ?? 0) !== 0 && (V || x.size > 0)).sort((a, b) => strength(b[1]) - strength(a[1])).slice(0, 8);
   T.pairChart?.destroy?.(); T.pairChart = null;
-  root.innerHTML = `<div class="tt-pick"><label class="lbl" for="tt-sel">Market</label><select id="tt-sel">${Object.entries(GROUPS).map(([g, gl]) => { const xs = list.filter(x => groupOf(x) === g); return xs.length ? `<optgroup label="${h(gl)}">${xs.map(x => `<option value="${x}"${x === n ? ' selected' : ''}>${h(nice(x))}</option>`).join('')}</optgroup>` : ''; }).join('')}</select>${top.map(([x, cx]) => `<button class="chip ${(DIR[cx.rating] ?? 0) > 0 ? 'up' : 'dn'}" data-p="${x}" style="cursor:pointer">${h(x)}</button>`).join('')}<span class="muted" style="margin-left:auto">link: <span class="mono">desk-terminal.html#pair=${h(n)}</span></span></div>
+  root.innerHTML = `${pickHtml(list, n, top)}${favEnabled() ? FAVV.toolsHtml(FAV) : ''}
 <div class="card glow"><div class="ch"><span class="chip">${h(GROUPS[groupOf(n)] ?? '')}</span><span class="chip">${h(n)}</span>${legs?.[0] ? `<span class="chip pur" data-ccy="${legs[0]}" style="cursor:pointer">${FLAG[legs[0]] ?? ''} ${legs[0]}</span><span class="chip pur" data-ccy="${legs[1]}" style="cursor:pointer">${FLAG[legs[1]] ?? ''} ${legs[1]}</span>` : ''}<span class="r">${c ? gradeChip(c) : ''}${c ? `<span class="sfc" data-surface="panel.asset.plan"><button type="button" class="chip" id="tt-p-tv" style="cursor:pointer;margin-left:6px" title="Copy a TradingView (Pine) script that draws this card's lines, entry zone, invalidation and first target for today">TradingView</button></span>` : ''}</span></div>
 <h2 style="margin:0 0 8px;font:700 24px var(--sans)">${h(nice(n))}</h2><div id="tt-p-tvmsg" class="muted" style="font-size:12px"></div>
 ${c ? `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${rateChip(c.rating)}${scoreBar(assetScore(c), '240px', assetWordV(c))}${D.live?.[n] && D.live[n].rating !== c.rating ? `<span class="chip gold" title="${h(D.live[n].why ?? '')}">updated → ${h(D.live[n].rating)}</span>` : ''}</div>
@@ -417,8 +430,20 @@ ${AAV.boxHtml(n)}
 <div class="card" id="tt-p-news">${loading('the news')}</div>
 <div class="card" id="tt-p-prec">${loading('precedent and the chain')}</div>
 <div class="card" id="tt-p-res">${loading('research')}</div></div>`;
-  root.querySelector('#tt-sel').onchange = e => openPair(e.target.value);
-  root.querySelectorAll('[data-p]').forEach(b => (b.onclick = () => openPair(b.dataset.p)));
+  const wirePick = () => {
+    root.querySelector('#tt-sel').onchange = e => openPair(e.target.value);
+    root.querySelectorAll('.tt-pick [data-p]').forEach(b => (b.onclick = () => openPair(b.dataset.p)));
+  };
+  wirePick();
+  // a star, the Favourites pill, or a STAR / UNSTAR / FAV command repaints only the market row and the tools line (not the chart and the cards)
+  const repaintPick = () => {
+    const row = root.querySelector('.tt-pick'); if (!row) return;
+    row.outerHTML = pickHtml(list, n, top); wirePick();
+    const sm = root.querySelector('.fav-tools summary span'); if (sm) sm.textContent = FAV.count ? `${FAV.count} starred` : 'none yet';
+    for (const b of root.querySelectorAll('.fav-tools [data-fav-act="copy"], .fav-tools [data-fav-act="clear"]')) b.disabled = !FAV.count;
+  };
+  FAVV.wireFavourites(root, FAV, { repaint: repaintPick });
+  window.deskFavouritesRefresh = () => { if (T.pair === n && el('pair')) repaintPick(); };
   const tv = el('tt-p-tv');
   if (tv) tv.onclick = async () => {
     // the morning card as written (desk-run.html exports the whole book); description, not the scored test (prereg H1)
@@ -453,8 +478,11 @@ async function pairChart(n, c) {
   // the candle size is the pills' (js/terminal/timeframePills.js); the chart is built from the first bars it gets, then only re-fed
   const build = b => {
     const dp = b[0].close >= 1000 ? 1 : b[0].close >= 100 ? 2 : b[0].close >= 10 ? 3 : 5;
-    v = createLevelChart(box, { height: 340, priceDigits: dp, chartOptions: { layout: { background: { color: 'var(--bg1)' }, textColor: 'var(--tx2)', fontFamily: 'JetBrains Mono' }, grid: { vertLines: { color: 'rgba(var(--line2rgb),.35)' }, horzLines: { color: 'rgba(var(--line2rgb),.35)' } }, rightPriceScale: { borderColor: 'var(--line2)' }, timeScale: { borderColor: 'var(--line2)', timeVisible: true } },
-      candleColors: { upColor: 'var(--up)', downColor: 'var(--dn)', wickUpColor: 'var(--up)', wickDownColor: 'var(--dn)' } });
+    // Lightweight-Charts parses colours itself and throws on a CSS var(): read the live theme values instead (the same way the other desk charts do)
+    const tc = k => (typeof themeColor === 'function' ? themeColor(k) : getComputedStyle(document.documentElement).getPropertyValue('--' + k).trim());
+    const up = tc('up'), dn = tc('dn'), grid = `rgba(${tc('line2rgb')},.35)`;
+    v = createLevelChart(box, { height: 340, priceDigits: dp, chartOptions: { layout: { background: { color: tc('bg1') }, textColor: tc('tx2'), fontFamily: 'JetBrains Mono' }, grid: { vertLines: { color: grid }, horzLines: { color: grid } }, rightPriceScale: { borderColor: tc('line2') }, timeScale: { borderColor: tc('line2'), timeVisible: true } },
+      candleColors: { upColor: up, downColor: dn, wickUpColor: up, wickDownColor: dn } });
     T.pairChart = v;
     v.setCandles(b);
     const L = c?.levels, lv = [];
@@ -792,10 +820,11 @@ async function renderNews() {
   if (!root.dataset.built) {
     root.dataset.built = '1';
     root.innerHTML = `<div class="card glow"><div class="tt-head"><span class="lbl">News</span><h2 style="flex-basis:100%">The wire</h2><span class="r"><span class="muted" id="nt-upd"></span><button class="btn" data-newsch style="padding:3px 8px" title="Send these headlines to a Telegram channel">Share channel</button> <button class="btn" data-newsrec style="padding:3px 8px">Track record</button></span></div>
-<div id="nt-top"></div><div id="nt-f"></div><div id="nt-n" class="muted" style="margin-bottom:4px"></div><div id="nt-list">${loading('the wire')}</div>
+<div id="nt-top"></div><div id="nt-f"></div><div id="nt-saved" data-surface="panel.news.saved"></div><div id="nt-n" class="muted" style="margin-bottom:4px"></div><div id="nt-list">${loading('the wire')}</div>
 <p class="tt-note">Headlines from the last 72 hours, read by the news analyst. Arrows are the first move a headline implies (two arrows: a strong push); markets show base minus quote and whether that supports or goes against today's card. The reaction is the move 5 and 30 minutes later, once known. Context, never a signal.</p></div>`;
     root.querySelector('[data-newsrec]').onclick = () => globalThis.newsRecord?.();
     root.querySelector('[data-newsch]').onclick = () => NCV.mount({ open: openModal }).show();   // the shared Telegram channel settings (js/terminal/newsChannelView.js)
+    globalThis.deskNewsSavedMount?.(el('nt-saved'));   // the saved-searches bar (preview feature; js/terminal/newsSearchView.js)
     const f = el('nt-f');
     f.addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
@@ -815,6 +844,11 @@ async function renderNews() {
   clearInterval(NS.timer);
   NS.timer = setInterval(async () => { if (T.tab !== 'news' || document.hidden) return; await newsFeed(true); drawNews(); }, NEWS_EVERY_MS);
 }
+// the News filter, readable and settable from outside (saved searches, js/terminal/newsSearchView.js)
+globalThis.deskNews = {
+  state: () => ({ tier: NS.tier, keys: [...NS.keys], onlyBook: NS.onlyBook, q: NS.q }),
+  apply: st => { NS.market = null; NS.tier = [1, 2, 3].includes(+st?.tier) ? +st.tier : 2; NS.keys = (Array.isArray(st?.keys) ? st.keys : []).filter(k => NV.NEWS_KEYS.includes(k)); NS.onlyBook = !!st?.onlyBook; NS.q = String(st?.q ?? ''); drawNews(true); },
+};
 function drawNews(filters = false) {
   if (!el('nt-list')) return;
   const now = Date.now();

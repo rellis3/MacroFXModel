@@ -64,6 +64,30 @@ earns its place as a gate rather than as a direction call (lesson #24; QG: discr
 systematic engine) · screening: 0 Evidence Book entries; the ledger and lean record score direction calls, not gating ·
 needs the owner to keep the log; months before any power. Source: QG quant vs discretionary.
 
+### Q5. Which hedge ratio stays neutral after you set it? — score 9/15
+
+> For each pair, set the hedge ratio four ways on data to t−1 (dollar 1:1, vol ratio, beta ratio on 60 and 250 days,
+> the Hedge finder's min-variance ratio), then measure the spread's *next* 20 sessions: realised beta and correlation to
+> the market, spread vol, and the same in named stress windows. Which one is still neutral a month later?
+
+| | |
+|---|---|
+| Construct | spread return = r_X − h·r_Y, h fixed at t−1 by each rule, held 20 sessions, re-set monthly |
+| Universe | RSP/SPY, NDX/SPX, sector ETFs vs SPY and vs each other (drill bundle, ~6 years), gold/silver, FX crosses vs their USD legs |
+| Horizons | 5 / 20 / 60 sessions held before re-setting |
+| Noise threshold | 21-session block bootstrap on the difference in |residual beta| between rules; a shuffled-date control for the estimation window |
+| Outcome distribution | |residual beta|, correlation with the market, spread vol, worst 5% day of the spread, by calm vs stress (VIX top decile at t−1) |
+| Benchmark | dollar-neutral (what Crown's clip says) and the finder's min-variance ratio (what the desk uses) |
+| Mechanism | betas drift and jump in stress; a ratio fitted on calm data under-hedges in a sell-off |
+| Builds on | `hedge-finder-book-es` VALIDATED (the finder's pick cuts ES 9.2%); CROWN_WATCH 2026-11-03 (in-sample NVDA/MSFT: dollar-neutral residual beta +1.10); Q1 here (stress correlation) |
+| Data & power | daily closes on hand; many pair-months, so powered for the ratio comparison; stress windows few |
+| If yes → | the pair builder and the Hedge finder show the ratio that stays neutral, with its expected drift |
+| If no → | all ratios drift alike: show the residual beta live instead of trusting any ratio |
+| Falsifier | no rule's next-month |residual beta| beats dollar-neutral outside its CI |
+
+Not a direction or reversion test (the spread-reversion record is weak: `hedge-residual-mr` NULL). It's a hedging-mechanics
+question: what "neutral" is still worth a month later. Source: Crown 2026-11-15 relative-value clip (owner: "take it further").
+
 ## Not carded
 
 - Black-Litterman: no validated mean view to feed it; `L6_LITERATURE_SPEC.md` already covers it.
