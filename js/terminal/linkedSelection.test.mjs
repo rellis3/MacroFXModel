@@ -20,9 +20,9 @@ const click = (doc, el) => doc.fire('click', el);
 
 test('the chip appears, says "linked", and shows what is picked', () => {
   const { chip, sel } = setup();
-  assert.equal(chip.hidden, false); assert.equal(chip.dataset.linked, 'on'); assert.match(chip.textContent, /nothing picked yet/);
+  assert.equal(chip.hidden, false); assert.equal(chip.dataset.linked, 'on'); assert.match(chip.textContent, /Linked · nothing picked yet/);
   sel.set({ inst: 'NQ', tf: '15m' }, 'command');
-  assert.match(chip.textContent, /NQ · 15m/);
+  assert.match(chip.textContent, /Linked: NQ · 15m/);
 });
 
 test('picking a market on a card, a vol tile, the pair selector or a pair row is written; the pick rings that market\'s cards', () => {
@@ -113,7 +113,7 @@ test('unlinked: the chip says so, picks are not written, rings go, and nothing m
   const { doc, win, sel, chip } = setup({ tab: 'pair' });
   sel.set({ inst: 'NQ' }, 'command'); doc.getElementById('tt-sel').value = 'NQ'; win.calls.pair.length = 0;
   click(doc, chip);
-  assert.equal(sel.linked(), false); assert.equal(chip.dataset.linked, 'off'); assert.match(chip.textContent, /unlinked/);
+  assert.equal(sel.linked(), false); assert.equal(chip.dataset.linked, 'off'); assert.match(chip.textContent, /Link off/);
   click(doc, doc.getElementById('pq-gbp')); assert.equal(sel.get().inst, 'NQ', 'an unlinked pick is not shared');
   sel.set({ inst: 'GOLD' }, 'command'); assert.deepEqual(win.calls.pair, [], 'an unlinked Pair page does not follow');
   assert.equal(doc.querySelectorAll('[data-lk-hit]').length, 0);
@@ -128,4 +128,43 @@ test('destroy puts the page back: wrappers, chip, rings, listeners', () => {
   assert.notEqual(win.openPairPage, wrappedPair); assert.equal(doc.getElementById('linkchip').hidden, true);
   assert.equal(doc.querySelectorAll('[data-lk-hit]').length, 0); assert.equal(win.deskSelection, undefined);
   click(doc, doc.getElementById('card-gold')); assert.equal(sel.get().inst, 'NQ', 'no longer listening');
+});
+
+test('a ? button sits beside the chip and opens a plain-words popover: what it does, what the chip shows, how to unlink, where it is kept; Esc closes it', () => {
+  const { doc, chip } = setup();
+  const help = doc.getElementById('linkhelp'), pop = doc.getElementById('lk-pop');
+  assert.ok(help && pop, 'the ? and its popover are mounted'); assert.equal(help.nextSibling === null || true, true);
+  assert.equal(chip.nextSibling, help, 'the ? sits right after the chip');
+  assert.equal(pop.hidden, true); assert.equal(help.getAttribute('aria-expanded'), 'false'); assert.equal(help.getAttribute('aria-controls'), 'lk-pop');
+  assert.ok(help.getAttribute('aria-label') && help.title, 'a label and a hover title');
+  click(doc, help);
+  assert.equal(pop.hidden, false); assert.equal(help.getAttribute('aria-expanded'), 'true');
+  const t = pop.textContent;
+  for (const w of ['What it does', 'What the chip shows', 'Turning it off', 'Where it is kept', 'LINK OFF', 'LINK ON', 'only in this browser', 'Pair page', 'strength board', 'candle-size', 'vol clock', 'each panel keeps the market']) assert.ok(t.toLowerCase().includes(w.toLowerCase()), `the help says "${w}"`);
+  assert.match(t, /Linked, but no market has been picked yet/);
+  doc.fire('keydown', doc.body, { key: 'Escape' });
+  assert.equal(pop.hidden, true); assert.equal(help.getAttribute('aria-expanded'), 'false'); assert.equal(help.focused, true, 'focus goes back to the ?');
+});
+
+test('the popover follows the state, its button turns the link off and on, a click elsewhere closes it, and it is removed on destroy', () => {
+  const { doc, sel, m } = setup();
+  const help = doc.getElementById('linkhelp'), pop = doc.getElementById('lk-pop');
+  sel.set({ inst: 'GOLD' }, 'command'); click(doc, help);
+  assert.match(pop.textContent, /Linked, sharing GOLD/);
+  click(doc, pop.querySelector('[data-lk-toggle]'));
+  assert.equal(sel.linked(), false); assert.match(pop.textContent, /Link off: every panel uses its own market/); assert.match(pop.textContent, /Turn the link on/);
+  click(doc, pop.querySelector('[data-lk-toggle]')); assert.equal(sel.linked(), true);
+  click(doc, doc.body); assert.equal(pop.hidden, true, 'a click outside closes it');
+  m.destroy(); assert.equal(doc.getElementById('linkhelp'), null); assert.equal(doc.getElementById('lk-pop'), null);
+});
+
+test('the glow rings say what they are on hover ("Linked to GOLD") and the titles go when the link goes', () => {
+  const { doc, sel, chip } = setup({ tab: 'assets' });
+  click(doc, doc.getElementById('card-gold'));
+  assert.equal(doc.getElementById('card-gold').getAttribute('title'), 'Linked to GOLD');
+  sel.set({ inst: 'NQ' }, 'command');
+  assert.equal(doc.getElementById('card-gold').getAttribute('title'), null, 'the old ring loses its title');
+  assert.equal(doc.getElementById('card-nq').getAttribute('title'), 'Linked to NQ');
+  click(doc, chip);
+  assert.equal(doc.getElementById('card-nq').getAttribute('title'), null, 'unlinking takes the titles away');
 });

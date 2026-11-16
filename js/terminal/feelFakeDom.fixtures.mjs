@@ -55,6 +55,10 @@ export class El {
   querySelectorAll(sel) { const g = parseSel(sel), out = []; const walk = n => { for (const k of n.kids) { if (matchesSel(k, g)) out.push(k); walk(k); } }; walk(this); return out; }
   querySelector(sel) { return this.querySelectorAll(sel)[0] ?? null; }
   appendChild(k) { k.parent = this; this.kids.push(k); return k; }
+  insertBefore(k, ref) { if (k.parent) k.remove(); k.parent = this; const i = ref ? this.kids.indexOf(ref) : -1; if (i < 0) this.kids.push(k); else this.kids.splice(i, 0, k); return k; }
+  get parentNode() { return this.parent; }
+  get firstChild() { return this.kids[0] ?? null; }
+  get nextSibling() { const p = this.parent; if (!p) return null; const i = p.kids.indexOf(this); return p.kids[i + 1] ?? null; }
   remove() { if (this.parent) this.parent.kids = this.parent.kids.filter(k => k !== this); this.parent = null; }
   addEventListener(t, fn, cap) { (this.listeners[t] ??= []).push({ fn, cap: cap === true || cap?.capture === true }); }
   removeEventListener(t, fn) { this.listeners[t] = (this.listeners[t] ?? []).filter(l => l.fn !== fn); }

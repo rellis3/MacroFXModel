@@ -34,23 +34,73 @@ export function mountLinked({ doc = document, win = window, sel = createSelectio
     const on = sel.linked(), s = sel.get();
     chip.hidden = false;
     chip.dataset.linked = on ? 'on' : 'off';
-    chip.textContent = on ? `⛓ ${describeSel(s, { londonHM })}` : '⛓ unlinked';
-    chip.title = on ? 'Linked: picking a market in one place moves the Pair page, Replay, strength board and vol clock with it. Click to unlink.' : 'Unlinked: each panel keeps its own market. Click to link and follow the shared selection.';
+    chip.textContent = on ? `⛓ Linked${s.inst ? ': ' : ' · '}${describeSel(s, { londonHM })}` : '⛓ Link off';
+    chip.title = on ? 'Linked: picking a market in one place moves the Pair page, Replay, strength board and vol clock with it. Click to unlink. Click the ? for how it works.' : 'Link off: each panel keeps its own market. Click to link and follow the shared selection. Click the ? for how it works.';
     chip.setAttribute('aria-pressed', String(on));
+    paintHelp();
   };
+
+  // ── the ? beside the chip: how linking works, in words (it is a preview feature and nobody should have to guess what the chip does) ──
+  let help = null, pop = null;
+  const helpHtml = () => {
+    const on = sel.linked(), s = sel.get();
+    const now = on ? (s.inst ? `Linked, sharing ${describeSel(s, { londonHM })}.` : 'Linked, but no market has been picked yet.') : 'Link off: every panel uses its own market.';
+    return `<div class="lk-pop-h"><b>Linked selection</b><button type="button" class="lk-pop-x" aria-label="Close this help" data-lk-close>×</button></div>
+<p class="lk-now">${now}</p>
+<dl>
+<dt>What it does</dt><dd>With the link on, a market you pick in one place is picked everywhere. Click an asset card, a vol-clock tile or row, a market on the Pair page or in the Replay, and the Pair page, the Replay, the strength board, the candle-size buttons and the vol clock all follow it. That market's cards glow purple.</dd>
+<dt>What the chip shows</dt><dd>"Linked: GOLD · 12 Nov 14:30 · 1h" is the shared market, then the Replay moment if you picked one, then the candle size. "Linked · nothing picked yet" means the link is on and waiting for your first pick. "Link off" means it is switched off.</dd>
+<dt>Turning it off</dt><dd>Click the chip, or type LINK OFF in the command line. Each panel keeps the market it shows now and goes back to using its own; picking in one place stops moving the others. Click again, or type LINK ON, to link: the panels then follow the shared market.</dd>
+<dt>Where it is kept</dt><dd>Only in this browser. Nobody else sees your picks, and clearing site data resets it. It changes which market a panel shows, never a number.</dd>
+</dl>
+<button type="button" class="btn lk-pop-t" data-lk-toggle>${on ? 'Turn the link off' : 'Turn the link on'}</button>`;
+  };
+  const placePop = () => {
+    if (!help || !pop) return;
+    const r = help.getBoundingClientRect?.() ?? { bottom: 40 };
+    if (pop.style) pop.style.top = `${Math.max(8, Math.round(r.bottom + 8))}px`;
+  };
+  const closeHelp = (back = true) => {
+    if (!pop || pop.hidden) return;
+    pop.hidden = true; help?.setAttribute('aria-expanded', 'false');
+    if (back) help?.focus?.();
+  };
+  const openHelp = () => {
+    if (!pop) return;
+    pop.innerHTML = helpHtml(); placePop(); pop.hidden = false; help?.setAttribute('aria-expanded', 'true');
+    pop.querySelector('[data-lk-close]')?.focus?.();
+  };
+  function paintHelp() { if (pop && !pop.hidden) pop.innerHTML = helpHtml(); }
+  if (chip?.parentNode) {
+    help = doc.createElement('button'); help.type = 'button'; help.id = 'linkhelp'; help.className = 'lk-help';
+    help.setAttribute('data-surface', 'widget.linked'); help.setAttribute('aria-label', 'How linked selection works'); help.setAttribute('aria-expanded', 'false'); help.setAttribute('aria-controls', 'lk-pop');
+    help.title = 'How linking works'; help.textContent = '?';
+    chip.parentNode.insertBefore(help, chip.nextSibling);
+    pop = doc.createElement('div'); pop.id = 'lk-pop'; pop.className = 'lk-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'How linked selection works'); pop.setAttribute('data-surface', 'widget.linked'); pop.hidden = true;
+    doc.body.appendChild(pop);
+  }
+  const onHelp = () => (pop?.hidden === false ? closeHelp() : openHelp());
+  const onPopClick = e => {
+    if (e.target?.closest?.('[data-lk-close]')) { closeHelp(); return; }
+    if (e.target?.closest?.('[data-lk-toggle]')) { sel.setLinked(!sel.linked(), 'chip'); return; }
+  };
+  const onHelpKey = e => { if (e.key === 'Escape' && pop && !pop.hidden) { e.preventDefault(); closeHelp(); } };
+  const onOutside = e => { if (pop && !pop.hidden && !e.target?.closest?.('#lk-pop') && !e.target?.closest?.('#linkhelp')) closeHelp(false); };
+  help?.addEventListener('click', onHelp); pop?.addEventListener('click', onPopClick); doc.addEventListener('keydown', onHelpKey); doc.addEventListener('click', onOutside);
+
   const onChip = () => sel.setLinked(!sel.linked(), 'chip');
   if (chip) { chip.classList.add('lk-chip'); chip.addEventListener('click', onChip); }
 
   // ── marks on the page: the market's cards and tiles, the strength board's two currencies ──
   const mark = () => {
-    doc.querySelectorAll('[data-lk-hit]').forEach(e => e.removeAttribute('data-lk-hit'));
-    doc.querySelectorAll('[data-lk-leg]').forEach(e => e.removeAttribute('data-lk-leg'));
+    doc.querySelectorAll('[data-lk-hit],[data-lk-leg]').forEach(e => { e.removeAttribute('data-lk-hit'); e.removeAttribute('data-lk-leg'); if (e.hasAttribute('data-lk-title')) { e.removeAttribute('title'); e.removeAttribute('data-lk-title'); } });
     const { inst } = sel.get();
     if (!sel.linked() || !inst) return;
     const q = esc(inst);
-    doc.querySelectorAll(`[data-inst="${q}"],[data-lk-inst="${q}"]`).forEach(e => e.setAttribute('data-lk-hit', ''));
+    const tag = (e, text) => { if (!e.hasAttribute('title')) { e.setAttribute('title', text); e.setAttribute('data-lk-title', ''); } };
+    doc.querySelectorAll(`[data-inst="${q}"],[data-lk-inst="${q}"]`).forEach(e => { e.setAttribute('data-lk-hit', ''); tag(e, `Linked to ${inst}`); });
     const legs = ccyLegs(inst);
-    if (legs.length) doc.querySelectorAll('.cs-row[data-ccy]').forEach(e => { if (legs.includes(e.dataset.ccy)) e.setAttribute('data-lk-leg', ''); });
+    if (legs.length) doc.querySelectorAll('.cs-row[data-ccy]').forEach(e => { if (legs.includes(e.dataset.ccy)) { e.setAttribute('data-lk-leg', ''); tag(e, `Linked to ${inst}: ${e.dataset.ccy} is one of its two currencies`); } });
   };
   let raf = 0;
   const markSoon = () => { if (!raf) raf = win.requestAnimationFrame(() => { raf = 0; mark(); }); };
@@ -153,10 +203,11 @@ export function mountLinked({ doc = document, win = window, sel = createSelectio
     destroy() {
       unsub(); mo.disconnect(); doc.removeEventListener('click', onClick, true); doc.removeEventListener('change', onChange, true);
       chip?.removeEventListener('click', onChip); if (chip) chip.hidden = true;
+      help?.removeEventListener('click', onHelp); pop?.removeEventListener('click', onPopClick); doc.removeEventListener('keydown', onHelpKey); doc.removeEventListener('click', onOutside); help?.remove(); pop?.remove();
       if (typeof origReplay === 'function') win.openReplay = origReplay;
       if (typeof origPair === 'function') win.openPairPage = origPair;
       if (typeof origDeep === 'function') win.openDeepPage = origDeep;
-      doc.querySelectorAll('[data-lk-hit],[data-lk-leg]').forEach(e => { e.removeAttribute('data-lk-hit'); e.removeAttribute('data-lk-leg'); });
+      doc.querySelectorAll('[data-lk-hit],[data-lk-leg]').forEach(e => { e.removeAttribute('data-lk-hit'); e.removeAttribute('data-lk-leg'); if (e.hasAttribute('data-lk-title')) { e.removeAttribute('title'); e.removeAttribute('data-lk-title'); } });
       delete win.deskSelection;
     },
   };
