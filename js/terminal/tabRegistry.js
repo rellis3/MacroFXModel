@@ -78,6 +78,7 @@ export const SURFACES = [
   mk('widget.worldstress', 'widget', 'World stress strip', 'Shell', null, 'every stress input green/amber/red, pinned above the tabs'),
   mk('widget.bookchip', 'widget', 'Analysis date chip', 'Shell', null, 'the date and time of the morning analysis'),
   mk('widget.mktchip', 'widget', 'Market-closed chip', 'Shell', null, 'top-bar chip while the FX week is shut ("closed · as at Fri 22:00 UTC"), and a note on a US/UK/euro holiday; the live boards show the close instead of going flat'),
+  mk('widget.terrainlive', 'widget', 'Terrain live price line', 'Options', null, 'on the OI terrain chart (Options tab): a violet line for the price now with its age ("at close" while the market is shut) and the distance to the nearest labelled level above and below, in points and in expected-move units; the white snapshot line is relabelled; where price is, not where it will go'),
   mk('widget.dqchip', 'widget', 'Data-quality chip', 'Shell', I, 'the desk\'s data health count (ops)'),
   mk('widget.ask', 'widget', 'Ask the desk (floating button)', 'Shell', C, 'free-form paid model calls'),
   mk('widget.disclaimer', 'widget', 'Educational notice (desk login only)', 'Shell', null, 'one line under the tabs for the desk login: educational and informational macro analysis, not advice and not a trade signal'),

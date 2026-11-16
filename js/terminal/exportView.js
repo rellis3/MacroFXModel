@@ -37,7 +37,11 @@ export async function chartToPng(el, win = window, doc = document) {
     c.toBlob(b => res(b), 'image/png');
   });
   try {
-    if (el.tagName?.toLowerCase() === 'canvas') return await paint(el, el.width / (win.devicePixelRatio || 1) || w0, el.height / (win.devicePixelRatio || 1) || h0);
+    if (el.tagName?.toLowerCase() === 'canvas') {
+      let src = el;
+      if (el._overlayCv) { const t = doc.createElement('canvas'); t.width = el.width; t.height = el.height; const tg = t.getContext('2d'); tg.drawImage(el, 0, 0); tg.drawImage(el._overlayCv, 0, 0, el.width, el.height); src = t; }   // a canvas with a live overlay (the terrain's price line) exports as one picture
+      return await paint(src, el.width / (win.devicePixelRatio || 1) || w0, el.height / (win.devicePixelRatio || 1) || h0);
+    }
     const clone = el.cloneNode(true); clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); clone.setAttribute('width', w0); clone.setAttribute('height', h0);
     const color = win.getComputedStyle(el).color || css('--tx');
     const text = resolveCssVars(new win.XMLSerializer().serializeToString(clone), css).replace(/currentColor/g, color || 'gray');

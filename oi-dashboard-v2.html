@@ -275,6 +275,7 @@ import { oiMatrixExpiryLegs, oiContractSize, oiFlatVol, parseOIMatrix, oiRippleB
 import { greekLayers, hedgeFlow, GREEKS } from './js/greekLayers.js';
 import { bsGamma, bsCharm } from './js/gammaGreeks.js';
 import { drawTerrain as drawTerrainChart, terrainSmiles } from './js/terrainChart.js';
+import { mountTerrainLive, DESK_OF_SYM as TERRAIN_DESK, LIVE_COLOUR } from './js/terrainLive.js';
 import { smilePanelHtml, mountSmile, SMILE_SYMS as SMILEP_SYMS } from './js/smileChart.js';
 import { hedgingScenario, hedgingRead, bookAt } from './js/hedgingScenario.js';
 import { cmeBookContracts } from './js/hedgingBooks.js';
@@ -1388,8 +1389,13 @@ function drawCog(){
   const useSmile = GK_SMILE_SYMS.includes(SYM);
   let smile = null;
   if (useSmile) { const sm = GK.smile[SYM]; if (!sm || sm.loading) { gkLoadSmile(SYM); smile = { state: 'loading' }; } else if (sm.err) smile = { state: 'err', err: sm.err }; else smile = { state: 'ok', curves: terrainSmiles(sm.j) }; }
-  const r = drawTerrainChart(cv, { e: CUR && CUR.e, sym: SYM, maxDte: COGX.maxDte, smile, smileCover: useSmile, px, fmtBig, showTip, hideTip });
-  $('#cogLeg').innerHTML = r.legend || '';
+  const desk = TERRAIN_DESK[SYM] ?? null;
+  const r = drawTerrainChart(cv, { e: CUR && CUR.e, sym: SYM, maxDte: COGX.maxDte, smile, smileCover: useSmile, px, fmtBig, showTip, hideTip, spotLabel: desk ? 'SNAPSHOT SPOT' : undefined });
+  // the live price line (js/terrainLive.js): the price now over the stored levels, with its age and the nearest levels either side
+  const paintLeg = () => { const n = COGX.note ? String(COGX.note).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]) : ''; $('#cogLeg').innerHTML = (r.legend || '') + (n ? `<div style="margin-top:6px"><span style="color:${LIVE_COLOUR}">&#9632;</span> ${n}</div>` : ''); };
+  COGX.note = ''; paintLeg(); COGX.paintLeg = paintLeg;
+  if (!COGX.live || COGX.liveCv !== cv) { COGX.live?.stop(); COGX.liveCv = cv; COGX.live = mountTerrainLive(cv, { px: v => px(v), fetchJson: u => fetch(u).then(x => x.json()), setNote: t => { COGX.note = t; COGX.paintLeg?.(); } }); }
+  COGX.live.update(r.geom ?? null, desk);
 }
 $('#cogExp').querySelectorAll('[data-cexp]').forEach(el => el.onclick = () => { COGX.maxDte = +el.dataset.cexp; $('#cogExp').querySelectorAll('[data-cexp]').forEach(x => x.classList.toggle('on', x === el)); drawCog(); });
 // the IV smile card (js/smileChart.js): follows the instrument on screen when it has a Cboe chain
