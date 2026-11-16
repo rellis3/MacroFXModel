@@ -57,6 +57,15 @@ export const FEATURES = {
       'It follows one level back through the stored option-OI captures (from 20 Aug 2026); the window says how many it holds.',
     ],
   },
+  flow: {
+    surface: 'panel.ov.glance', name: 'Flow features (at a glance, links, short drivers, dense mode)',
+    where: [
+      'Overview > the "At a glance" block at the very top (regime, stress lights, strongest and weakest currency, the most unusual reading, the next release); each tile opens the board behind it.',
+      'Small dashed links that open an Insight board from where it belongs: the gold board on Assets, level reach on the Pair page, the risk-flag evidence on the stress strip, the currency matrix on the strength card, world economies on Macro.',
+      'Pair > "What drives this" shows the net push, a one-line summary and the two strongest tailwinds and headwinds first; a "Read the full analysis" button shows the rest.',
+      'Monitor > a "Density" button in the toolbar (or DENSE on the command line) tightens the rows of the Monitor and of every table in a card.',
+    ],
+  },
   oiTime: {
     surface: 'widget.oitime', name: 'OI over time',
     where: [

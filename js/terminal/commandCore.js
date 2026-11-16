@@ -30,6 +30,7 @@ import { PATH_MARKETS } from '../pathReplayCore.js';
 import { VIEWS as OIT_VIEWS, viewByWord as oitView } from './oiTime.js';
 import { familyFromWord as evFamily, marketFromWord as evMarket } from '../eventReplayCore.js';
 import { targetFromWord as oidTarget } from '../oiDrillCore.js';
+import { ANA_GROUPS, densityFromWord } from './flowCore.js';
 
 // ── markets (a copy of the page's UNIVERSE and NAME; commandCore.test.mjs fails if desk-terminal.html drifts from it) ──
 export const UNIVERSE = {
@@ -287,6 +288,20 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   add({ id: 'oitime', group: 'Look and feel', name: 'OITIME', aliases: ['OIREPLAY'], args: `<${OIT_VIEWS.map(v => v.id).join('|')}> <market> [date]`,
     help: `Replay the stored option open interest through time with the shared player: ${OIT_VIEWS.map(v => `${v.id} is ${v.what}`).join('; ')}. It goes back only as far as the option-OI capture, and says from which date. It shows where price was against the levels, not where it will go.`,
     example: 'oitime terrain nq', opens: 'A replay window over the page: the stored option-OI day by day against price', surface: 'widget.oitime', run: args => oitimeRun(args, now) });
+  add({ id: 'glance', group: 'Go to a tab', name: 'GLANCE', aliases: ['ATAGLANCE', 'TODAY'], help: 'Open Overview at the "At a glance" block: the regime, the stress lights, the strongest and weakest currency, the most unusual reading and the next release, each tile opening the board behind it.',
+    example: 'glance', opens: 'Overview, at the top', surface: 'panel.ov.glance', needs: ['tab.overview'], action: { kind: 'glance' }, summary: 'Opens Overview at the at-a-glance block.' });
+  add({ id: 'dense', group: 'Look and feel', name: 'DENSE', aliases: ['DENSITY', 'COMFORTABLE'], args: '[on|off|toggle]', help: 'Tighten the rows and shrink the type of the Monitor and of every table in a card (DENSE ON), or go back to roomy rows (DENSE OFF). Remembered in this browser.',
+    example: 'dense on', opens: 'The Monitor and the tables, in dense or comfortable rows', surface: 'widget.density', run: args => {
+      const w = String(args ?? '').trim().toLowerCase(), v = densityFromWord(w || 'toggle', 'comfortable');
+      if (!v) return { error: 'Say DENSE ON, DENSE OFF or DENSE.' };
+      return { action: { kind: 'density', word: w || 'toggle' }, summary: w ? `Density ${v}.` : 'Density toggled.' };
+    } });
+  add({ id: 'analytics.split', group: 'Go to a tab', name: 'ANASECTION', aliases: [], args: `<${ANA_GROUPS.map(g => g.alias).join('|')}>`, help: `Open the Analytics tab on one of its two sections: market (${ANA_GROUPS[0].blurb.split(':')[0]}) or desk (${ANA_GROUPS[1].blurb.split(':')[0]}).`,
+    example: 'anasection desk', opens: 'Analytics, on that section', surface: 'panel.ana.pills', needs: ['tab.ana'], run: args => {
+      const w = String(args ?? '').trim().toLowerCase(), g = ANA_GROUPS.find(x => x.alias === w || x.id === w);
+      if (!g) return { error: `Say ANASECTION ${ANA_GROUPS.map(x => x.alias.toUpperCase()).join(' or ANASECTION ')}.` };
+      return { action: { kind: 'ana', id: g.id }, summary: `Opens Analytics: ${g.label}.` };
+    } });
   add({ id: 'fav.show', group: 'Look and feel', name: 'FAV', aliases: ['FAVS', 'FAVOURITES', 'FAVORITES'], help: 'Open the Assets tab with only your starred markets (the Favourites filter). Star a market with the ☆ on its card, beside its name on the Pair page, or with STAR. They are kept in this browser only.', example: 'fav',
     opens: 'The Assets tab, filtered to your favourites', surface: 'panel.asset.favourites', needs: ['tab.assets'], action: { kind: 'fav', on: true }, summary: 'Opens the Assets tab with the Favourites filter on.' });
   add({ id: 'fav.star', group: 'Look and feel', name: 'STAR', aliases: [], args: '<market>', help: 'Star a market so it appears under Favourites on the Pair page and starts a new Monitor. Kept in this browser only.', example: 'star gold',

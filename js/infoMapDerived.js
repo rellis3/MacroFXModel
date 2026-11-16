@@ -2312,6 +2312,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/flowView.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/whatChanged.js"
     ],
@@ -3876,6 +3877,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/analyticsSplit.js",
      "js/terminal/assetFavourites.js",
      "js/terminal/boePathView.js",
      "js/terminal/bookPanels.js",
@@ -3941,6 +3943,7 @@ export const DERIVED = {
     "terminal": [
      "js/terminal/asofClock.js",
      "js/terminal/ccyStrengthView.js",
+     "js/terminal/flowView.js",
      "js/terminal/fxMatrixCore.js",
      "js/terminal/fxMatrixView.js",
      "js/terminal/liveLayerView.js",
