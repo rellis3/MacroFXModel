@@ -375,6 +375,7 @@ import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _pars
 import { meetingProbabilities as _zqMeetingProbs } from './js/fedPathZq.js';
 import { buildDocument as _boeBuildDoc, mergeHistory as _boeMergeHist, snapOnOrBefore as _boeSnapBefore, compactRates as _boeCompactRates, fetchLatestCurve as _boeFetchCurve, fetchArchiveSince as _boeFetchArchive, fetchBankRates as _boeFetchRates, fetchMpcDates as _boeFetchMpc, MPC_DATES as _BOE_MPC_DATES } from './js/boePath.js';   // the Bank of England OIS path (route /api/cb-path/boe)
 import { readEntry as _zipReadEntry, readRemoteEntry as _zipReadRemote } from './js/zipRead.js';
+import { releaseHistory as _relHistory } from './js/releaseHistory.js';   // the Calendar drill's past prints of one release (route /api/release-history)
 import { SHARED_KV as _SR_KV, SHARED_KINDS as _SR_KINDS, dayKey as _srDayKey, rollStore as _srRoll, readToday as _srReadToday, readLatest as _srReadLatest, putRead as _srPutRead, countCall as _srCountCall, callsToday as _srCallsToday, decideRead as _srDecide, createSingleFlight as _srCreateSingleFlight, normInst as _srNormInst, CHAIN_WINDOWS as _SR_CHAIN_WINDOWS } from './js/deskSharedReads.js';
 import { CB_BANKS as _CB_BOARD_BANKS, CB_HISTORY as _CB_BOARD_HISTORY, pastDates as _cbbPastDates, shapeBank as _cbbShape, boardPayload as _cbbPayload } from './js/terminal/cbBoardCore.js';
 import { buildRatesBoard as _buildRatesBoard } from './js/terminal/ratesBoardCore.js';
@@ -23426,6 +23427,19 @@ app.get('/api/econ-surprise', async (req, res) => {
     const latest = live.length ? live.reduce((m, x) => x.ms > m ? x.ms : m, 0) : null;
     const health = { livePrints: live.length, last30d: live.filter(x => x.ms > Date.now() - 30 * 864e5).length, latestPrintAt: latest ? new Date(latest).toISOString() : null, source: 'ForexFactory consensus + FRED vintage actuals (US only)' };
     res.json({ ok: true, storedReleases: rows.length, ...idx, series, health, generatedAt: new Date().toISOString() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/release-history?country=US&event=Core%20CPI%20m/m&n=12: the last prints of ONE release from the surprise store, for the Calendar drill (js/releaseHistory.js).
+// Forecast, actual, previous, the raw surprise, its z on that series' own scale and a revision where the store has one. Read-only. The store is ~13,000 rows, so the parsed rows
+// are held in memory for 10 minutes: a drill click must not re-read the whole KV value each time.
+let _relHistCache = { at: 0, rows: null };
+app.get('/api/release-history', async (req, res) => {
+  try {
+    const country = String(req.query.country ?? '').trim().slice(0, 4), event = String(req.query.event ?? '').trim().slice(0, 120);
+    if (!country || !event) return res.status(400).json({ ok: false, error: 'country and event are needed' });
+    if (!_relHistCache.rows || Date.now() - _relHistCache.at > 10 * 60_000) _relHistCache = { at: Date.now(), rows: await _readSurpriseStore() };
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json({ ..._relHistory(_relHistCache.rows, { country, event, n: parseInt(req.query.n) || 12 }), storedReleases: _relHistCache.rows.length });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/econ-surprise/refresh', async (_req, res) => {

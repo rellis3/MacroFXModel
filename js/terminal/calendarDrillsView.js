@@ -7,6 +7,7 @@
 //
 // A PREVIEW feature (registry id panel.cal.drills): js/terminal/terminalFeel.js only loads this file when the session may see that surface.
 import { earningsByDay, recentScorecards, scorecardLines, nowcastGap, similarReleases, rowSignature, sameRow } from './calendarDrillsCore.js';
+import { chipFor } from './corrEvidence.js';
 
 export const REFRESH_MS = 10 * 60_000;
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -29,6 +30,27 @@ export function scorecardsCardHtml(cards, { owner = false } = {}) {
     const l = scorecardLines(c, { owner });
     return `<div class="cd-sc"><div class="cd-h">${esc(l.head)}</div>${l.lines.map(x => `<div class="cd-l">${esc(x)}</div>`).join('') || '<div class="cd-l muted">no market reaction measured</div>'}${l.call ? `<div class="cd-l muted">${esc(l.call)}</div>` : ''}</div>`;
   }).join('')}`;
+}
+const sgn = v => (v == null || !Number.isFinite(+v) ? '–' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(+v)}`);
+const dayWord = iso => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit', timeZone: 'UTC' });
+/** A strip of the surprises' z, oldest to newest: up for above forecast, down for below, height = how big against that release's own typical surprise (capped at 3). Neutral colour: which way it went is not a signal. */
+export function zStripSvg(rows) {
+  const zs = [...rows].reverse().map(r => r.z).filter(z => z != null && Number.isFinite(z));
+  if (zs.length < 2) return '';
+  const W = Math.max(120, zs.length * 22), H = 46, mid = H / 2, bw = 14;
+  const bars = zs.map((z, i) => { const h = Math.min(3, Math.abs(z)) / 3 * (mid - 3), x = 6 + i * 22; return `<rect x="${x}" y="${(z >= 0 ? mid - h : mid).toFixed(1)}" width="${bw}" height="${Math.max(1.5, h).toFixed(1)}" rx="2" fill="var(--pur2)" opacity="${(0.45 + Math.min(1, Math.abs(z) / 3) * 0.55).toFixed(2)}"><title>${esc(sgn(z))}σ</title></rect>`; }).join('');
+  return `<svg class="cd-z" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Surprise size of the last ${zs.length} prints, oldest to newest"><line x1="0" x2="${W}" y1="${mid}" y2="${mid}" stroke="var(--line2)" stroke-dasharray="3 3"/>${bars}</svg>`;
+}
+/** The "past prints" drawer for one release (js/releaseHistory.js -> /api/release-history). Always says what it is missing; never a lean. */
+export function historyHtml(h) {
+  const head = '<div class="cd-h">Past prints of this release <span class="chip" title="The size of a surprise is validated; which way the next one lands is not predictable from the series.">size, not direction</span></div>';
+  if (!h || h.ok === false || !h.found || !Array.isArray(h.rows) || !h.rows.length) return `${head}<div class="cd-l muted">${esc(h?.note ?? 'No past prints of this release are held yet, so there is nothing to show.')}</div>`;
+  const sm = h.summary ?? {};
+  const line = `${h.printed} prints held since ${esc(dayWord(h.first))}${h.matched === 'normalised' ? ' (matched by title without its period tag)' : ''}. ${sm.withForecast ? `Against the forecast: ${sm.above} above, ${sm.inline} in line, ${sm.below} below. ` : 'No forecast is stored for these prints. '}${sm.medianAbsZ != null ? `A typical surprise is ${esc(sm.medianAbsZ)}σ of this release's own surprises, the largest ${esc(sm.maxAbsZ)}σ.` : esc(sm.zNote ?? '')}`;
+  const rows = h.rows.map(r => `<tr><td class="mono">${esc(dayWord(r.date))}</td><td class="n mono">${esc(r.forecast ?? '–')}</td><td class="n mono">${esc(r.actual)}</td><td class="n mono muted">${esc(r.previous ?? '–')}</td><td class="n mono">${r.beat ? `${r.beat === 'above' ? '▲' : r.beat === 'below' ? '▼' : '='} ${esc(sgn(r.surprise))}` : '–'}</td><td class="n mono">${r.z != null ? `${esc(sgn(r.z))}σ` : '–'}</td><td class="n mono muted">${r.revised != null ? esc(r.revised) : r.revision ? esc(`${r.revision.was ?? '?'} → ${r.revision.now ?? '?'}`) : '–'}</td></tr>`).join('');
+  const miss = Array.isArray(h.missing) && h.missing.length ? `<div class="cd-l muted">Not available: ${h.missing.map(esc).join('; ')}.</div>` : '';
+  const ev = h.evidence ? `<div class="cd-l" style="margin-top:6px">${chipFor(h.evidence.id, '')} <span class="muted">${esc(h.evidence.say)}</span></div>` : '';
+  return `${head}<div class="cd-l">${line}</div>${zStripSvg(h.rows)}<table class="cd-t"><thead><tr><th>Date</th><th>Forecast</th><th>Actual</th><th>Previous</th><th>Surprise</th><th>vs its own history</th><th>Revised</th></tr></thead><tbody>${rows}</tbody></table>${miss}${ev}`;
 }
 export function drillHtml(event, nowcast) {
   const g = nowcastGap(event, nowcast), s = similarReleases(event);
@@ -68,6 +90,10 @@ export function mountCalendarDrills({ doc = document, win = window, getEvents = 
     const ev = getEvents().filter(x => !/holiday/i.test(x.impact ?? ''))[+b.dataset.cd]; if (!ev) return;
     const d = doc.createElement('div'); d.className = 'cd-det'; d.setAttribute('data-noexport', ''); d.innerHTML = drillHtml(ev, data.nowcast);
     cell.appendChild(d); b.setAttribute('aria-expanded', 'true'); b.textContent = '▾';
+    // the past prints of this release: fetched on click (one small route), never with the page
+    const hist = doc.createElement('div'); hist.className = 'cd-sec cd-hist'; hist.innerHTML = '<div class="cd-h">Past prints of this release</div><div class="cd-l muted">Loading the past prints…</div>'; d.appendChild(hist);
+    if (ev.country && ev.event) getJson(win, `/api/release-history?country=${encodeURIComponent(ev.country)}&event=${encodeURIComponent(squash(ev.event))}&n=12`).then(h => { if (hist.isConnected !== false) hist.innerHTML = historyHtml(h); });
+    else hist.innerHTML = historyHtml(null);
   });
   async function load() {
     const [earn, cards, nowcast] = await Promise.all([getJson(win, '/api/earnings-ahead'), getJson(win, '/api/release-calls?days=30'), getJson(win, '/api/nowcast')]);

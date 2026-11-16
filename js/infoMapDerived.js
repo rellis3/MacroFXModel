@@ -1092,6 +1092,46 @@ export const DERIVED = {
    ],
    "drift": []
   },
+  "boe-priced-path": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/cb-path/boe",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/boePath.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/boePathView.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/boePathView.js",
+     "js/terminal/macroSubtabs.js",
+     "js/terminal/terminalTabs.js"
+    ],
+    "today": [],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [
+    {
+     "id": "stir-wide-scan",
+     "known": true,
+     "verdict": "null"
+    }
+   ],
+   "packSkills": [],
+   "drift": []
+  },
   "fed-path-odds": {
    "pages": [
     {
@@ -3826,6 +3866,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/assetFavourites.js",
+     "js/terminal/boePathView.js",
      "js/terminal/bookPanels.js",
      "js/terminal/calendarDrillsView.js",
      "js/terminal/chainBoard.js",

@@ -3,7 +3,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { makePage, makeWin } from './feelFakeDom.fixtures.mjs';
-import { mountCalendarDrills, earningsCardHtml, scorecardsCardHtml, drillHtml } from './calendarDrillsView.js';
+import { mountCalendarDrills, earningsCardHtml, scorecardsCardHtml, drillHtml, historyHtml, zStripSvg } from './calendarDrillsView.js';
+import { releaseHistory } from '../releaseHistory.js';
 
 const NOW = Date.parse('2026-11-16T09:00:00Z');
 const EV = [
@@ -14,7 +15,7 @@ const earn = { ok: true, rows: [{ date: '2026-11-16', symbol: 'NVDA', name: 'Nvi
 const cards = { ok: true, scorecards: [{ key: 'US|1', country: 'US', ms: 1, prints: [{ event: 'Core CPI MoM', actual: '0.4%', estimate: '0.3%' }], reactions: [{ name: 'EURUSD', move: 18, unit: 'pips', dir: 'down', ratio: 2.1, book: { spike: 2.9, n: 124 } }], call: { call: 'higher', result: 'hit' } }] };
 const nowcast = { ok: true, cleveland: { month: '2026-11', asOf: '2026-11-14', cpi: 0.31, core: 0.27 }, gdpnow: null };
 
-function setup({ viewer = false, fail = false } = {}) {
+function setup({ viewer = false, fail = false, hist = null } = {}) {
   const doc = makePage();
   const wrap = doc.createElement('div'); doc.querySelector('main').appendChild(wrap);
   wrap.innerHTML = '<div id="cal-drills" hidden></div><section id="cal" hidden><table><tbody>'
@@ -23,7 +24,7 @@ function setup({ viewer = false, fail = false } = {}) {
   const nav = doc.getElementById('tabs'), tab = doc.createElement('button'); tab.setAttribute('data-t', 'cal'); tab.setAttribute('aria-selected', 'false'); nav.appendChild(tab);
   tab.addEventListener('click', () => { for (const x of doc.querySelectorAll('#tabs [data-t]')) x.attrs['aria-selected'] = String(x === tab); });
   const fetched = [];
-  const win = makeWin(doc, { setInterval: () => 1, clearInterval() {}, deskIsViewer: () => viewer, fetch: async u => { fetched.push(u); if (fail) throw new Error('down'); const j = u.startsWith('/api/earnings') ? earn : u.startsWith('/api/release-calls') ? cards : nowcast; return { ok: true, json: async () => j }; } });
+  const win = makeWin(doc, { setInterval: () => 1, clearInterval() {}, deskIsViewer: () => viewer, fetch: async u => { fetched.push(u); if (fail) throw new Error('down'); const j = u.startsWith('/api/earnings') ? earn : u.startsWith('/api/release-calls') ? cards : u.startsWith('/api/release-history') ? (hist ?? { ok: true, found: false, note: 'No past print of this release is held in the surprise store.' }) : nowcast; return { ok: true, json: async () => j }; } });
   const m = mountCalendarDrills({ doc, win, getEvents: () => EV, now: () => NOW });
   return { doc, win, m, fetched };
 }
@@ -62,3 +63,50 @@ test('the card builders escape what comes from outside and say nothing about dir
   assert.ok(!/<img|<b>/.test(html)); assert.ok(!/\b(buy|sell|bullish|bearish)\b/i.test(html));
 });
 test('no cal-drills container = nothing mounted', () => { assert.equal(mountCalendarDrills({ doc: makePage(), win: makeWin(makePage()) }), null); });
+
+// ── the past-prints drawer (js/releaseHistory.js -> /api/release-history) ──
+const row = (date, estimate, actual, prev, extra = {}) => ({ country: 'US', event: 'Core Inflation Rate MoM', ms: Date.parse(`${date}T13:30:00Z`), time: `${date}T13:30:00Z`, impact: 'high', estimate, actual, prev, ...extra });
+const STORE = ['2026-01-14', '2026-02-11', '2026-03-11', '2026-04-14', '2026-05-12', '2026-06-10', '2026-07-14', '2026-08-12'].map((d, i) => row(d, ['0.3%', '0.3%', '0.2%', '0.3%', '0.4%', '0.3%', '0.3%', '0.2%'][i], ['0.3%', '0.4%', '0.2%', '0.2%', '0.5%', '0.3%', '0.4%', '<img src=x>'][i], '0.3%'));
+const HIST = releaseHistory(STORE, { country: 'US', event: 'Core Inflation Rate MoM', n: 12, now: NOW });
+
+test('the past-prints drawer: a row per print, the surprise with its z, what is missing, the size-not-direction chip and the Evidence Book verdict', () => {
+  const h = historyHtml(HIST);
+  assert.equal((h.match(/<tr><td class="mono">/g) ?? []).length, HIST.rows.length);
+  assert.match(h, /Past prints of this release/); assert.match(h, /size, not direction/); assert.match(h, /Not available: a forecast range/);
+  assert.match(h, /data-ev="surprise-size"/); assert.match(h, /8 prints held since/); assert.match(h, /above, \d+ in line, \d+ below/);
+  assert.match(h, /<svg class="cd-z"/);
+  assert.ok(!/NaN|undefined/.test(h), 'no NaN or undefined');
+  assert.ok(!/<img/.test(h) && /&lt;img src=x&gt;/.test(h), 'what comes from the store is escaped');
+  assert.ok(!/\b(buy|sell|bullish|bearish)\b/i.test(h));
+});
+
+test('the past-prints drawer says so when nothing is held or the route failed', () => {
+  assert.match(historyHtml({ ok: true, found: false, note: 'No past print of this release is held in the surprise store.' }), /No past print of this release is held/);
+  assert.match(historyHtml(null), /nothing to show/);
+  assert.match(historyHtml({ ok: false, error: 'x' }), /nothing to show/);
+});
+
+test('the z strip: needs two prints, one bar each, theme tokens only', () => {
+  assert.equal(zStripSvg([{ z: 1 }]), '');
+  const svg = zStripSvg(HIST.rows);
+  assert.equal((svg.match(/<rect /g) ?? []).length, HIST.rows.filter(r => r.z != null).length);
+  assert.ok(!/#[0-9a-fA-F]{3,8}\b|rgba?\(/.test(svg));
+});
+
+test('opening a drill fetches that release\'s past prints and draws them in the drill, after a loading line', async () => {
+  const c = setup({ hist: HIST }); await open(c); c.m.decorate();
+  c.doc.querySelectorAll('.cd-btn')[0].click();
+  assert.match(c.doc.querySelector('.cd-hist').innerHTML, /Loading the past prints/);
+  await new Promise(r => setTimeout(r, 20));
+  assert.ok(c.fetched.some(u => u.startsWith('/api/release-history?country=US&event=Core%20Inflation%20Rate%20MoM&n=12')), c.fetched.join(' | '));
+  assert.match(c.doc.querySelector('.cd-hist').innerHTML, /8 prints held since/); assert.match(c.doc.querySelector('.cd-det').innerHTML, /What this release has done before/, 'the earlier drill content is still there');
+});
+
+test('a release with no stored history says nothing is held, and a failing route does not break the drill', async () => {
+  const c = setup(); await open(c); c.m.decorate();
+  c.doc.querySelectorAll('.cd-btn')[0].click(); await new Promise(r => setTimeout(r, 20));
+  assert.match(c.doc.querySelector('.cd-hist').innerHTML, /No past print of this release is held/);
+  const f = setup({ fail: true }); await open(f); f.m.decorate();
+  f.doc.querySelectorAll('.cd-btn')[0].click(); await new Promise(r => setTimeout(r, 20));
+  assert.match(f.doc.querySelector('.cd-hist').innerHTML, /nothing to show/);
+});

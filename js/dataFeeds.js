@@ -174,7 +174,7 @@ const HAND_FEEDS = [
     purpose: 'Every release’s surprise, first print — the history behind news sizing and the event-response book.',
     details: '~26k rows: calendar consensus, first-print actuals from FRED realtime vintages, policy-rate actuals from the BoE, BoC and RBA.',
     refresh: 'Backfill + refresh at boot, then hourly. KV persists.', store: 'KV econ_surprise_v1',
-    endpoints: ['/api/econ-surprise', '/api/surprise'], kvStamp: { key: 'econ_surprise_v1', cadenceDays: 1 },
+    endpoints: ['/api/econ-surprise', '/api/surprise', '/api/release-history'], kvStamp: { key: 'econ_surprise_v1', cadenceDays: 1 },
     hosts: ['bankofcanada.ca', 'rba.gov.au'] },
   { id: 'ff_calendar', name: 'Economic calendar (this week)', provider: 'ForexFactory (Finnhub fallback)', category: 'macro',
     purpose: 'What prints when, and how big — the news gate the bots trade around and the brief’s event list.',
