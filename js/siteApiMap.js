@@ -682,7 +682,7 @@
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-backtest/m1-status</span><span class="am-desc">How many M1 parquet pairs are cached locally + Drive IDs</span><span class="am-consumers">none found</span></div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-backtest/diagnose</span><span class="am-desc">Env vars, R2 connectivity and OANDA connectivity diagnostic</span><span class="am-consumers">forecaster-backtest.html, regime-backtest.html (linked)</span></div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-backtest/candles/:pair</span><span class="am-desc">M1 candles for a pair/date range (chart rendering)</span><span class="am-consumers">forecaster-backtest.html, gold-zones.html, backtest-viewer.html, asia-range-backtest.html, range-fib-backtest.html, regime-viewer.html, regime-backtest.html, vol-backtest.html</span></div>
-          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/version</span><span class="am-desc">Deployed version tag, deploy timestamp, R2-configured flag</span><span class="am-consumers">none found</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/version</span><span class="am-desc">Which build is running: commit, branch, build and start time (js/buildInfo.js), plus the older version tag and R2 flag</span><span class="am-consumers">Desk Terminal Info map tab</span></div>
         </div>
         <div class="am-feat">
           <div class="am-feat-hd">Market-Sense Studies</div>

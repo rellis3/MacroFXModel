@@ -33,6 +33,7 @@ import { crossSourceRead } from './js/sourceConflict.js';
 import { loadCvolSeries as cvolSeriesFor, cvolMeta as _cvolMeta } from './js/impliedVolCore.js';
 import { constantMaturityIV } from './js/ivMetrics.js';
 import { health as _dataHealth } from './js/dataHealth.js';
+import { buildInfo as _buildInfo } from './js/buildInfo.js';
 import { FEEDS as _DATA_FEEDS, FEED_CATEGORIES as _DATA_FEED_CATEGORIES, IGNORE_HOSTS as _DATA_IGNORE_HOSTS } from './js/dataFeeds.js';
 import { CATALOGUE as _SERIES_CATALOGUE } from './js/dataCatalogue.js';
 import { scanUsage as _dcScanUsage, pageTitle as _dcPageTitle, uncataloguedHosts as _dcUncatalogued, buildCatalogue as _dcBuild, stampOf as _dcStampOf } from './js/dataCatalogueCore.js';
@@ -5140,6 +5141,18 @@ app.get('/api/desk-snapshots/full', async (req, res) => {
 });
 app.get('/api/desk-snapshots/index', async (_req, res) => { try { res.set('Cache-Control', 'no-store'); res.json(await _deskSnap.index()); } catch (e) { res.status(502).json({ ok: false, error: e.message }); } });
 app.get('/api/desk-snapshots/status', (_req, res) => { res.set('Cache-Control', 'no-store'); res.json(_deskSnap.status()); });
+// GET /api/version: which commit this process is running (js/buildInfo.js). Not sensitive (a commit id and two dates), so owner and desk login may both read it.
+// Railway gives the commit/branch/deployment in env; the build time is the mtime of this file; on a local run the commit comes from git once at boot.
+const _BUILD_STARTED_MS = Date.now();
+const _BUILD_INFO = (() => {
+  const git = args => { try { return execFileSync('git', args, { cwd: __dirname, timeout: 2000, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch { return null; } };
+  let filesAtMs = null; try { filesAtMs = fs.statSync(fileURLToPath(import.meta.url)).mtimeMs; } catch { /* unknown */ }
+  const onRailway = !!process.env.RAILWAY_GIT_COMMIT_SHA;
+  return _buildInfo({ env: process.env, startedAtMs: _BUILD_STARTED_MS, filesAtMs,
+    gitSha: onRailway ? null : git(['rev-parse', 'HEAD']), gitBranch: onRailway ? null : git(['rev-parse', '--abbrev-ref', 'HEAD']) });
+})();
+// The older keys are kept for anything that still reads them (version tag, r2 flag); deployedAt used to be the time of the request, it is now this process's start.
+app.get('/api/version', (_req, res) => { res.set('Cache-Control', 'public, max-age=60'); res.json({ ..._BUILD_INFO, version: 'r2-m1-engine', deployedAt: _BUILD_INFO.startedAt, r2: !!process.env.R2_ACCESS_KEY }); });
 // owner only (a POST is refused to a desk viewer): take a point now, or the day's FULL snapshot with ?full=1
 app.post('/api/desk-snapshots/capture', async (req, res) => {
   try {
@@ -36514,8 +36527,6 @@ app.get('/api/vol-backtest/diagnose', async (_req, res) => {
 
   res.json(report);
 });
-
-app.get('/api/version', (_req, res) => res.json({ version: 'r2-m1-engine', deployedAt: new Date().toISOString(), r2: !!process.env.R2_ACCESS_KEY }));
 
 // ── Weekly Vol Backtest API ───────────────────────────────────────────────────
 

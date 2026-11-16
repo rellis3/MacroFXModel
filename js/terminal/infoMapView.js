@@ -101,8 +101,9 @@ const NOTE = 'Status was traced by reading the code, not by matching names; the 
 export function mount(root, { openTab = id => document.querySelector(`#tabs [data-t="${id}"]`)?.click() } = {}) {
   if (!root) return;
   const st = { status: '', group: '', flag: false, q: '' };
-  root.innerHTML = `<div id="im-sw"></div><div class="card glow">${headerHtml()}${staleHtml()}<div id="im-f"></div><div id="im-n" class="muted" style="margin-bottom:4px"></div><div id="im-list"></div><p class="tt-note">${esc(NOTE)}</p></div>`;
+  root.innerHTML = `<div id="im-sw"></div><div id="im-ver" class="muted" style="font-size:12px;margin:2px 2px 8px"></div><div class="card glow">${headerHtml()}${staleHtml()}<div id="im-f"></div><div id="im-n" class="muted" style="margin-bottom:4px"></div><div id="im-list"></div><p class="tt-note">${esc(NOTE)}</p></div>`;
   import('./previewSwitches.js').then(m => m.mountSwitches(root.querySelector('#im-sw'))).catch(() => { /* a convenience: the Info map works without it */ });
+  import('./buildVersion.js').then(m => m.mountVersion(root.querySelector('#im-ver'))).catch(() => { /* a convenience */ });
   const f = root.querySelector('#im-f'), list = root.querySelector('#im-list'), n = root.querySelector('#im-n');
   const draw = (filters = false) => {
     if (filters) f.innerHTML = filtersHtml(st);

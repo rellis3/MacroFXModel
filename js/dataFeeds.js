@@ -392,6 +392,11 @@ const HAND_FEEDS = [
     store: 'KV gold_etf_flow_history (Cloudflare KV, kept; R2 archive gold_etf/GLD_IAU_AUM)', endpoints: ['/api/gold-etf-flow'], health: ['goldEtf'],
     kvStamp: { key: 'gold_etf_flow_history', cadenceDays: 1 },
     hosts: ['api.spdrgoldshares.com', 'www.spdrgoldshares.com', 'www.ishares.com'] },   // the issuers' own files (5c6b67d9); Yahoo is listed on the feeds that already use it
+  { id: 'build_version', name: 'Running build (which commit Railway is serving)', provider: 'Desk (this server), from the Railway deploy variables', category: 'desk',
+    purpose: 'Answers "is the thing I am looking at the latest push?": the commit, branch, build time and start time of the running server.',
+    details: 'RAILWAY_GIT_COMMIT_SHA, RAILWAY_GIT_BRANCH and RAILWAY_DEPLOYMENT_ID (nothing else is read); the build time is the modified time of server.js; a local run reads git once at boot.',
+    refresh: 'Fixed at boot, so it changes only when a new deploy starts.', store: 'memory only', endpoints: ['/api/version'],
+    consumers: 'the Desk Terminal Info map tab (Running build line)' },
   { id: 'headlines', name: 'Market headlines', provider: 'Yahoo Finance RSS', category: 'positioning',
     purpose: 'Headlines for SPX, Nasdaq, gold, crude, the dollar and 10y — colour for the morning brief.',
     details: 'RSS per symbol, fetched while the brief is written.', refresh: 'On request, uncached.', store: 'none',
