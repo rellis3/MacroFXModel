@@ -124,6 +124,7 @@ import { mountPaperBoards } from './js/paperBoardsRoutes.js';                  /
 import { mountDeskBoards } from './js/deskBoardRoutes.js';              // the Desk Terminal's newer Macro boards (credit & liquidity, curve, regime, releases, strength, vol)
 import { mountReplay as _mountReplay } from './js/replayRoutes.js';                  // the Desk Terminal REPLAY (time machine, stage 1): a session as minutes, the option levels as known then, strength every 15 min (/api/replay/*)
 import { mountGhostWalk as _mountGhostWalk } from './js/ghostWalkRoutes.js';       // the ghost walk (preview): one market's days in units of the forecast median range, the OI levels in force, touches against a mirrored placebo (/api/replay/ghosts)
+import { mountOiTime as _mountOiTime } from './js/oiTimeRoutes.js';                 // OI over time (preview): the stored option-OI captures day by day with the daily candles (/api/replay/oi-days)
 import { createStateRoutes } from './js/stateRoutes.js';                // Market State Engine: GET /api/state (plans/MARKET_STATE_ENGINE_PLAN.md)
 import { createSurfaceLab } from './js/surfaceLabRoutes.js';
 import { createVixCapture } from './js/vixCaptureRoutes.js';
@@ -36391,6 +36392,11 @@ _mountReplay(app, {
 });
 // Ghost walk (js/ghostWalkRoutes.js): read-only, same deps as the Replay routes (OANDA bars, the option-OI history and the archived forecasts); no model call, nothing is written.
 _mountGhostWalk(app, {
+  fetchRange: (sym, gran, fromISO, toISO) => { if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not configured'); return fetchOandaCandleRange(_liqGateOandaSym(sym), gran, fromISO, toISO); },
+  kvGet: key => kv.get(key),
+});
+// OI over time (js/oiTimeRoutes.js): read-only, daily candles + the option-OI history; no model call, nothing is written.
+_mountOiTime(app, {
   fetchRange: (sym, gran, fromISO, toISO) => { if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not configured'); return fetchOandaCandleRange(_liqGateOandaSym(sym), gran, fromISO, toISO); },
   kvGet: key => kv.get(key),
 });

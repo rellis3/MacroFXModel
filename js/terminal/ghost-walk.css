@@ -9,3 +9,18 @@
 @keyframes gw-pulse { from { transform: scale(.6); opacity: 1; } to { transform: scale(1.9); opacity: 0; } }
 .rpv-reduced .gw-ring { animation: none; }
 @media (prefers-reduced-motion: reduce) { .gw-ring { animation: none; } }
+
+/* OI over time (preview): the real-against-mirror bars and the gauge frame */
+.oit-svg { max-width: 100%; }
+.oit-tally { display: grid; gap: 4px; margin-top: 8px; }
+.oit-bar { display: grid; grid-template-columns: 110px 1fr 120px; gap: 8px; align-items: center; font-size: 12px; }
+.oit-bar i { position: relative; display: block; height: 10px; border-radius: 5px; background: var(--bg3); }
+.oit-bar i b { position: absolute; left: var(--a); width: calc(var(--b) - var(--a)); top: 0; bottom: 0; border-radius: 5px; background: var(--pur2); opacity: .45; }
+.oit-bar i::after { content: ""; position: absolute; left: var(--p); top: -2px; bottom: -2px; width: 2px; background: var(--tx); }
+.oit-bar em { font-style: normal; font-family: var(--mono); color: var(--tx); }
+.oit-bar small { color: var(--tx3); }
+.oit-gauge { border: 2px solid var(--line2); border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; justify-items: center; background: var(--bg2); }
+.oit-g-read { text-align: center; font-size: 13px; line-height: 1.5; }
+.oit-g-dial svg { max-width: 100%; height: auto; }
+.oit-strip { max-width: 100%; height: auto; }
+.oit-g-note { margin: 0; font-size: 12px; text-align: center; max-width: 36em; }

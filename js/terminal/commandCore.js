@@ -26,6 +26,7 @@ import { VISUALS as REPLAY_VISUALS, vizByWord } from '../replayVizCore.js';
 import { parseOffset as parseAsofOffset, parseAsofValue, formatClock as formatAsofClock } from '../asofCore.js';
 import { INSTRUMENTS as REPLAY_INSTRUMENTS, validDate, londonDate, londonWall } from '../replayCore.js';
 import { GHOST_MARKETS } from '../ghostWalkCore.js';
+import { VIEWS as OIT_VIEWS, viewByWord as oitView } from './oiTime.js';
 
 // ── markets (a copy of the page's UNIVERSE and NAME; commandCore.test.mjs fails if desk-terminal.html drifts from it) ──
 export const UNIVERSE = {
@@ -268,6 +269,9 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   add({ id: 'ghost', group: 'Look and feel', name: 'GHOST', aliases: ['GHOSTWALK'], args: '<market> [date]',
     help: `Ghost walk: one day of a market drawn in units of its own forecast median range from the open, over the faint paths of earlier days, with that day's option levels from the time they were saved and a ring where price touched one. Play it forward with the shared player. Only the markets with an option-OI capture (the ones on the OI terrain); it goes back as far as that capture. It shows where price was against the levels, not where it will go.`,
     example: 'ghost nq', opens: 'A replay window over the page: the day against its own expected range and the earlier days', surface: 'widget.ghostwalk', run: args => ghostRun(args, now) });
+  add({ id: 'oitime', group: 'Look and feel', name: 'OITIME', aliases: ['OIREPLAY'], args: `<${OIT_VIEWS.map(v => v.id).join('|')}> <market> [date]`,
+    help: `Replay the stored option open interest through time with the shared player: ${OIT_VIEWS.map(v => `${v.id} is ${v.what}`).join('; ')}. It goes back only as far as the option-OI capture, and says from which date. It shows where price was against the levels, not where it will go.`,
+    example: 'oitime terrain nq', opens: 'A replay window over the page: the stored option-OI day by day against price', surface: 'widget.oitime', run: args => oitimeRun(args, now) });
   add({ id: 'fav.show', group: 'Look and feel', name: 'FAV', aliases: ['FAVS', 'FAVOURITES', 'FAVORITES'], help: 'Open the Assets tab with only your starred markets (the Favourites filter). Star a market with the ☆ on its card, beside its name on the Pair page, or with STAR. They are kept in this browser only.', example: 'fav',
     opens: 'The Assets tab, filtered to your favourites', surface: 'panel.asset.favourites', needs: ['tab.assets'], action: { kind: 'fav', on: true }, summary: 'Opens the Assets tab with the Favourites filter on.' });
   add({ id: 'fav.star', group: 'Look and feel', name: 'STAR', aliases: [], args: '<market>', help: 'Star a market so it appears under Favourites on the Pair page and starts a new Monitor. Kept in this browser only.', example: 'star gold',
@@ -347,6 +351,15 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     const when = parseWhen(toks.slice(1), nowFn());
     if (when?.error) return { error: when.error };
     return { action: { kind: 'ghost', inst, date: when?.date ?? null }, summary: `Opens the ghost walk on ${instLabel(inst)}, ${when?.date ?? 'today so far'}.` };
+  }
+  function oitimeRun(args, nowFn) {
+    const toks = String(args ?? '').trim().split(/\s+/).filter(Boolean), v = oitView(toks[0]);
+    if (!toks.length || !v) return { error: `Say which view: ${OIT_VIEWS.map(x => x.id).join(', ')}. For example OITIME TERRAIN NQ, or OITIME WALK GOLD.` };
+    const inst = toks[1] ? resolveInstrument(toks[1]) : 'NQ';
+    if (!inst) return { error: `"${toks[1]}" is not a market I know. Try OITIME ${v.id.toUpperCase()} NQ.` };
+    if (!GHOST_MARKETS.includes(inst)) return { error: `The OI replays cover ${GHOST_MARKETS.join(', ')}: the markets with an option-OI capture. ${inst} is not one of them.` };
+    const when = parseWhen(toks.slice(2), nowFn()); if (when?.error) return { error: when.error };
+    return { action: { kind: 'oitime', id: v.id, inst, date: when?.date ?? null }, summary: `Replays ${v.name.toLowerCase()} for ${instLabel(inst)}.` };
   }
   function exportRun(args) {
     const a = String(args ?? '').trim().toLowerCase();
