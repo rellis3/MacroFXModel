@@ -1205,7 +1205,7 @@ function ladder(c) {
 }
 function assetCard(n, c, full = false) {
   const s = assetScore(c), live = D.live?.[n], be = beOf(n);
-  return `<div class="${full ? '' : 'card click'}" ${full ? '' : `tabindex="0" data-inst="${esc(n)}"`}><div class="ch"><span class="chip">${esc(GROUPS[groupOf(n)] ?? '')}</span><span class="chip">${esc(n)}</span><span class="r">${gradeChip(c)}${full ? '<button class="x" aria-label="Close">✕</button>' : ''}</span></div>
+  return `<div class="${full ? '' : 'card click'}" ${full ? '' : `tabindex="0" data-inst="${esc(n)}"`}><div class="ch"><span class="chip">${esc(GROUPS[groupOf(n)] ?? '')}</span><span class="chip">${esc(n)}</span><span class="r">${full ? '' : (globalThis.assetFav?.starHtml(n, nice(n)) ?? '')}${gradeChip(c)}${full ? '<button class="x" aria-label="Close">✕</button>' : ''}</span></div>
 <h3 style="margin:0 0 8px;font-size:${full ? 22 : 17}px">Analysis of ${esc(nice(n))}</h3>
 <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${rateChip(c.rating)}${sf('panel.asset.engine', beTry(() => (be ? BEV().cardChipsHtml(be, BEV().deskSign({ rating: c.rating })) : '')))}${scoreBar(s, '220px', assetWordV(c))}${live && live.rating !== c.rating ? `<span class="chip gold" title="${esc(live.why ?? '')}">updated → ${esc(live.rating)}</span>` : ''}</div>
 <div class="thesis">“${esc(full ? firstSentence(c.why) : c.why)}”</div>${full ? '' : sf('panel.asset.engine', beTry(() => (be ? BEV().keyDriversHtml(be) + BEV().footnoteHtml(D.be) : '')))}
@@ -1219,12 +1219,19 @@ function deskView(n) {
   return a ? `<div class="sec"><h2>The ${esc(GROUPS[g])} desk said</h2></div><p>${rateChip(a.rating)} <span class="muted">desk conviction ${esc(a.conviction ?? '–')}</span></p><p class="muted">${esc(a.why ?? '')}</p>` : '';
 }
 function assets() {
-  const entries = Object.entries(D.cards).filter(([n]) => assetFilter === 'all' || groupOf(n) === assetFilter);
-  $('assets').innerHTML = `<div class="filters">${[['all', 'All'], ...Object.entries(GROUPS)].map(([k, l]) => `<button aria-pressed="${k === assetFilter}" data-g="${k}">${l}</button>`).join('')}</div>
-<div class="grid g3">${entries.sort((a, b) => Math.abs(assetScore(b[1]) ?? -1) - Math.abs(assetScore(a[1]) ?? -1)).map(([n, c]) => assetCard(n, c)).join('') || '<div class="card muted">No cards.</div>'}</div>`;
+  const AF = globalThis.assetFav;   // favourites (js/terminal/assetFavourites.js): absent until the module has loaded
+  const inGroup = Object.entries(D.cards).filter(([n]) => assetFilter === 'all' || groupOf(n) === assetFilter);
+  const entries = AF ? AF.filter(inGroup, D.cards) : inGroup;
+  const keepOpen = $('assets').querySelector('.fav-tools')?.open;
+  $('assets').innerHTML = `<div class="filters">${[['all', 'All'], ...Object.entries(GROUPS)].map(([k, l]) => `<button aria-pressed="${k === assetFilter}" data-g="${k}">${l}</button>`).join('')}${AF?.pillHtml(D.cards) ?? ''}</div>${AF?.toolsHtml() ?? ''}
+<div class="grid g3">${entries.sort((a, b) => Math.abs(assetScore(b[1]) ?? -1) - Math.abs(assetScore(a[1]) ?? -1)).map(([n, c]) => assetCard(n, c)).join('') || (AF?.on(D.cards) ? AF.emptyHtml(GROUPS[assetFilter]) : '<div class="card muted">No cards.</div>')}</div>`;
   $('assets').querySelectorAll('[data-g]').forEach(b => b.onclick = () => { assetFilter = b.dataset.g; assets(); });
   wire($('assets'));
+  AF?.wire($('assets'));
+  if (keepOpen) $('assets').querySelector('.fav-tools')?.setAttribute('open', '');
 }
+// a star on the Pair tab, a STAR / UNSTAR / FAV command or a Paste redraws this tab (the stars, the filter and the count)
+globalThis.assetFavRefresh = () => { if ($('assets').children.length) assets(); };
 
 // ── MACRO ──
 // ── MACRO: five sections behind a pill row (js/terminal/macroSubtabs.js). Only the open section is built; the others are built on first open. ──

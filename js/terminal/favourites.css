@@ -18,3 +18,8 @@
 .fav-paste textarea { flex: 1 1 220px; min-width: 0; background: var(--bg2); color: var(--tx); border: 1px solid var(--line2); border-radius: 8px; padding: 6px 8px; font: 600 12px var(--mono); }
 .fav-msg { min-height: 1.2em; margin: 2px 0; }
 @media (max-width: 700px) { .fav-star { min-width: 36px; min-height: 36px; } }
+/* Assets tab: the star in a card header, and the Favourites pill sitting in the same filter row as the group buttons */
+.fav-card-star { margin: 0 2px 0 0; }
+.card .fav-star { position: relative; z-index: 1; }
+.filters .fav-pill { display: inline-flex; align-items: center; gap: 4px; }
+.filters .fav-pill.on { color: var(--gold, var(--pur2)); border-color: var(--gold, var(--pur2)); }

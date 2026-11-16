@@ -157,6 +157,7 @@ export const SURFACES = [
   mk('panel.replay.engine', 'panel', 'Replay: the bias engine\'s read that day', 'Replay', null, 'the engine\'s stored morning issue for the replayed day and market, when one was written (never back-issued)'),
   mk('panel.asset.beflip', 'panel', 'Bias engine: what would flip it', 'Markets', T, 'the engine\'s flip line (how far the score is from turning Neutral or the other side, and its largest support): reads as an invalidation line'),
   mk('panel.pair.favourites', 'panel', 'Pair: favourites', 'Markets', null, 'a star on each market, a Favourites filter pill and copy / paste of your list; a display preference kept in this browser only'),
+  mk('panel.asset.favourites', 'panel', 'Assets: favourites', 'Markets', null, 'a star on each market card and a Favourites filter pill in the Assets tab, with copy / paste of your list; the same list as the Pair page, a display preference kept in this browser only'),
   mk('panel.asset.volclock', 'panel', 'Assets: implied vol against the forecast (vol clock)', 'Markets', null, 'options-implied sigma over the forecast sigma per market, how much of the day\'s range is used, the vol ranking and the Daily Read\'s forward record: size, never direction'),
   // ── Analytics panels ──
   mk('panel.ana.web', 'panel', 'Analytics: correlation web of the book', 'Analytics', null, 'today\'s cards as held, joined by how they move together'),

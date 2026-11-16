@@ -98,7 +98,7 @@ test('wiring: Clear all does nothing when the person says no', async () => {
 
 test('commands: FAV, STAR and UNSTAR have help, an example and a registered surface; they act on the shared list', () => {
   const cmds = buildCommands({}); const by = id => cmds.find(c => c.id === id);
-  for (const id of ['fav.show', 'fav.star', 'fav.unstar']) { const c = by(id); assert.ok(c, id); assert.ok(c.help.length > 20 && c.example && c.opens, `${id} has its words`); assert.equal(c.surface, 'panel.pair.favourites'); }
+  for (const id of ['fav.show', 'fav.star', 'fav.unstar']) { const c = by(id); assert.ok(c, id); assert.ok(c.help.length > 20 && c.example && c.opens, `${id} has its words`); assert.equal(c.surface, id === 'fav.show' ? 'panel.asset.favourites' : 'panel.pair.favourites'); }
   const star = by('fav.star').run('gold'); assert.deepEqual(star.action, { kind: 'star', inst: 'GOLD' });
   assert.match(by('fav.star').run('').error, /Say which market/); assert.match(by('fav.unstar').run('zzz').error, /not a market/);
   const f = createFavourites({ store: mem() }); let refreshed = 0;
@@ -106,11 +106,11 @@ test('commands: FAV, STAR and UNSTAR have help, an example and a registered surf
   const doc = { querySelector: () => ({ hidden: false, getAttribute: () => 'true', click() {} }) };
   assert.equal(perform(star.action, doc, win), true); assert.deepEqual(f.list(), ['GOLD']);
   assert.equal(perform({ kind: 'unstar', inst: 'GOLD' }, doc, win), true); assert.deepEqual(f.list(), []);
-  f.add('nq'); assert.equal(perform({ kind: 'fav', on: true }, doc, win), true); assert.equal(f.only, true); assert.ok(refreshed >= 3);
+  f.add('nq'); assert.equal(perform({ kind: 'fav', on: true }, doc, win), true); assert.equal(f.assetsOnly, true, 'FAV turns on the Assets tab filter'); assert.equal(f.only, false, 'and leaves the Pair filter alone'); assert.ok(refreshed >= 2);
   assert.equal(perform({ kind: 'star', inst: 'GOLD' }, doc, {}), false, 'no list on the page: reports it did nothing');
 });
 test('commands: with the surface switched off the three words are gone (a registry switch hides the whole feature)', () => {
-  const cmds = buildCommands({ isOn: id => id !== 'panel.pair.favourites' });
+  const cmds = buildCommands({ isOn: id => id !== 'panel.pair.favourites' && id !== 'panel.asset.favourites' });
   assert.ok(!cmds.some(c => c.id.startsWith('fav.')));
 });
 

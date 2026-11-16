@@ -38,7 +38,7 @@ export function perform(a, doc = document, win = window) {
     case 'export': return win.deskExport ? (a.what === 'png' ? win.deskExport.png() : win.deskExport.csv(), true) : false;
     case 'news-search': { const ok = tab('news'); if (ok && a.name) win.setTimeout(() => win.deskNewsSearches?.apply?.(a.name), 120); return ok; }
     case 'monitor': { const ok = tab('monitor'); if (ok && a.name) win.setTimeout(() => win.deskMonitor?.show?.(a.name), 60); return ok; }
-    case 'fav': { const ok = tab('pair'); if (ok && win.deskFavourites) { win.deskFavourites.setOnly(!!a.on); win.setTimeout(() => win.deskFavouritesRefresh?.(), 80); } return ok; }
+    case 'fav': { const ok = tab('assets'); if (ok && win.deskFavourites) win.deskFavourites.setAssetsOnly(!!a.on); return ok; }   // the list repaints the Assets tab itself
     case 'star': case 'unstar': { const f = win.deskFavourites; if (!f) return false; const r = a.kind === 'star' ? f.add(a.inst) : f.remove(a.inst); win.deskFavouritesRefresh?.(); return !!r.ok; }
     case 'monitor-add': { const ok = tab('monitor'); if (ok) win.setTimeout(() => win.deskMonitor?.add?.(a.inst), 60); return ok; }
     case 'kchart': { const ok = tab('kchart'); if (ok && (a.inst || a.tf)) win.setTimeout(() => win.deskKchart?.show?.(a.inst, a.tf), 60); return ok; }

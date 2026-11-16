@@ -8,11 +8,11 @@ export const starHtml = (inst, on, label = inst) => `<button type="button" data-
 
 export const pillHtml = (count, only) => `<button type="button" data-surface="panel.pair.favourites" class="chip fav-pill${only ? ' on' : ''}" data-fav-filter aria-pressed="${only ? 'true' : 'false'}"${count ? '' : ' aria-disabled="true"'} title="${count ? 'Show only the markets you have starred' : 'Star a market first (the ☆ beside the market name)'}"><span aria-hidden="true">★</span> Favourites <b>${count}</b></button>`;
 
-export function toolsHtml(fav) {
+export function toolsHtml(fav, { surface = 'panel.pair.favourites', textId = 'fav-text' } = {}) {
   const n = fav.count;
-  return `<details class="fav-tools" data-surface="panel.pair.favourites"><summary>Your favourites <span class="muted">${n ? `${n} starred` : 'none yet'}</span></summary>
+  return `<details class="fav-tools" data-surface="${surface}"><summary>Your favourites <span class="muted">${n ? `${n} starred` : 'none yet'}</span></summary>
 <div class="fav-row"><button type="button" class="btn" data-fav-act="copy"${n ? '' : ' disabled'}>Copy my favourites</button><button type="button" class="btn" data-fav-act="paste">Paste favourites</button><button type="button" class="btn" data-fav-act="clear"${n ? '' : ' disabled'}>Clear all</button></div>
-<div class="fav-paste" hidden><label class="lbl" for="fav-text">Paste the copied text (it looks like FAVOURITES: EURUSD,GOLD)</label><textarea id="fav-text" rows="2" spellcheck="false" autocomplete="off"></textarea><button type="button" class="btn" data-fav-act="load">Load</button></div>
+<div class="fav-paste" hidden><label class="lbl" for="${textId}">Paste the copied text (it looks like FAVOURITES: EURUSD,GOLD)</label><textarea id="${textId}" rows="2" spellcheck="false" autocomplete="off"></textarea><button type="button" class="btn" data-fav-act="load">Load</button></div>
 <div class="fav-msg muted" role="status" aria-live="polite"></div>
 <p class="tt-note">Saved in this browser only, so a list you star here is not shown to anyone else on the desk. Copy it to carry it to another device.</p></details>`;
 }
@@ -21,7 +21,7 @@ export function toolsHtml(fav) {
  * Wire the controls inside `root`. repaint() redraws the market row and tools; open(inst) opens a pair page.
  * Event delegation on root, so repainting the row never needs a re-wire.
  */
-export function wireFavourites(root, fav, { repaint, win = globalThis } = {}) {
+export function wireFavourites(root, fav, { repaint, win = globalThis, textId = 'fav-text' } = {}) {
   if (!root) return;
   root._favRepaint = repaint;   // the Pair page is rebuilt for each market but this root stays: the handlers below always use the latest repaint
   if (root.dataset.favWired) return;
@@ -39,11 +39,11 @@ export function wireFavourites(root, fav, { repaint, win = globalThis } = {}) {
       const text = fav.copyText();
       let ok = false; try { await win.navigator?.clipboard?.writeText(text); ok = true; } catch { /* blocked: show it instead */ }
       if (ok) msg('Copied. Paste it into "Paste favourites" on the other device.');
-      else { const p = root.querySelector('.fav-paste'), t = root.querySelector('#fav-text'); if (p && t) { p.hidden = false; t.value = text; t.select?.(); } msg('The clipboard is blocked here: select the text in the box and copy it.'); }
+      else { const p = root.querySelector('.fav-paste'), t = root.querySelector(`#${textId}`); if (p && t) { p.hidden = false; t.value = text; t.select?.(); } msg('The clipboard is blocked here: select the text in the box and copy it.'); }
     } else if (act === 'paste') {
-      const p = root.querySelector('.fav-paste'); if (p) { p.hidden = !p.hidden; if (!p.hidden) root.querySelector('#fav-text')?.focus?.(); }
+      const p = root.querySelector('.fav-paste'); if (p) { p.hidden = !p.hidden; if (!p.hidden) root.querySelector(`#${textId}`)?.focus?.(); }
     } else if (act === 'load') {
-      const r = fav.paste(root.querySelector('#fav-text')?.value ?? ''); redo(); msg(r.ok ? r.message : r.error);
+      const r = fav.paste(root.querySelector(`#${textId}`)?.value ?? ''); redo(); msg(r.ok ? r.message : r.error);
     } else if (act === 'clear') {
       if (win.confirm && !win.confirm('Remove every favourite from this browser?')) return;
       fav.clear(); redo(); msg('Favourites cleared.');

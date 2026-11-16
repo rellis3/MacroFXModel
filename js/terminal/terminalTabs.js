@@ -36,6 +36,7 @@ import { createLevelChart } from '../levelChart.js';
 import { mountTfBar } from './timeframePills.js';
 import { getFavourites } from './favourites.js';
 import * as FAVV from './favouritesView.js';
+import { mountAssetFavourites } from './assetFavourites.js';
 import { cardDrivers } from './cardExplain.js';
 import * as HDV from './humanDriversView.js';
 import { pineForCard, oandaOf } from '../deskBookPine.js';
@@ -391,6 +392,7 @@ function openPair(inst) {
   window.scrollTo?.({ top: 0 });
 }
 const FAV = getFavourites();
+mountAssetFavourites();   // the Assets tab's stars and Favourites filter: globalThis.assetFav, the same list as FAV
 const favEnabled = () => globalThis.deskSurfaceOn?.('panel.pair.favourites') ?? true;
 // the market row of the Pair tab: the selector, a star for this market, the Favourites pill and the quick chips (the strongest eight, or your starred markets with the filter on)
 function pickHtml(list, n, top) {

@@ -7,6 +7,7 @@ import { isKnown } from './monitorCore.js';
 
 export const KEY = 'deskFavourites:v1';
 export const FILTER_KEY = 'deskFavouritesOnly:v1';
+export const ASSETS_FILTER_KEY = 'deskFavouritesAssetsOnly:v1';   // the Assets tab's own Favourites filter: same list, its own on/off
 export const MAX = 60;
 export const FAV_NAME = 'My favourites';
 
@@ -37,8 +38,9 @@ export function createFavourites({ store = null, known = isKnown } = {}) {
   const safe = (fn, d = null) => { try { return fn(); } catch { return d; } };
   let items = cleanList(safe(() => JSON.parse(store?.getItem(KEY) ?? '[]'), []), known).items;
   let only = safe(() => store?.getItem(FILTER_KEY), null) === '1';
+  let assetsOnly = safe(() => store?.getItem(ASSETS_FILTER_KEY), null) === '1';
   const subs = new Set();
-  const persist = () => safe(() => { store?.setItem(KEY, JSON.stringify(items)); store?.setItem(FILTER_KEY, only ? '1' : '0'); });
+  const persist = () => safe(() => { store?.setItem(KEY, JSON.stringify(items)); store?.setItem(FILTER_KEY, only ? '1' : '0'); store?.setItem(ASSETS_FILTER_KEY, assetsOnly ? '1' : '0'); });
   const emit = () => { for (const f of subs) safe(() => f()); };
   const norm = w => String(w ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
@@ -47,6 +49,7 @@ export function createFavourites({ store = null, known = isKnown } = {}) {
     has: w => items.includes(norm(w)),
     get count() { return items.length; },
     get only() { return only && items.length > 0; },   // a filter on an empty list would show nothing: treat it as off
+    get assetsOnly() { return assetsOnly && items.length > 0; },   // the same rule for the Assets tab's filter
     subscribe(f) { subs.add(f); return () => subs.delete(f); },
 
     add(word) {
@@ -62,8 +65,9 @@ export function createFavourites({ store = null, known = isKnown } = {}) {
       items = items.filter(x => x !== w); persist(); emit(); return { ok: true, inst: w };
     },
     toggle(word) { return api.has(word) ? api.remove(word) : api.add(word); },
-    clear() { const n = items.length; items = []; only = false; persist(); emit(); return { ok: true, removed: n }; },
+    clear() { const n = items.length; items = []; only = false; assetsOnly = false; persist(); emit(); return { ok: true, removed: n }; },
     setOnly(on) { only = !!on; persist(); emit(); return api.only; },
+    setAssetsOnly(on) { assetsOnly = !!on; persist(); emit(); return api.assetsOnly; },
 
     copyText: () => copyText(items),
     /** Replace the list with pasted text. Nothing valid in it leaves the list as it was. */
