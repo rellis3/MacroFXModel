@@ -3848,6 +3848,89 @@ export const DERIVED = {
    ],
    "drift": []
   },
+  "spreads-and-ratios": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/drill-series",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/terminal/spreadsView.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/spreadsCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/spreadsLibrary.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "js/terminal/commandCore.js",
+     "js/terminal/goldCore.js",
+     "js/terminal/insightData.js",
+     "js/terminal/insightSeries.js",
+     "js/terminal/insightView.js",
+     "js/terminal/matrixCore.js",
+     "js/terminal/spreadsCore.js",
+     "js/terminal/spreadsLibrary.js",
+     "js/terminal/spreadsView.js"
+    ],
+    "today": [],
+    "atlas": [
+     "atlas.html"
+    ],
+    "newsletter": [
+     "js/newsletterTermV2.js"
+    ]
+   },
+   "evidence": [
+    {
+     "id": "breadth-narrowing",
+     "known": true,
+     "verdict": "null"
+    },
+    {
+     "id": "dr-copper",
+     "known": true,
+     "verdict": "null"
+    },
+    {
+     "id": "curve-inversion",
+     "known": true,
+     "verdict": "null"
+    },
+    {
+     "id": "credit-leads-equities",
+     "known": true,
+     "verdict": "null"
+    },
+    {
+     "id": "vix-inversion",
+     "known": true,
+     "verdict": "validated"
+    },
+    {
+     "id": "mv-extreme-forward",
+     "known": true,
+     "verdict": "null"
+    },
+    {
+     "id": "mv-dislocation-forward",
+     "known": true,
+     "verdict": "null"
+    }
+   ],
+   "packSkills": [],
+   "drift": []
+  },
   "original-terminal": {
    "pages": [
     {
@@ -4646,6 +4729,7 @@ export const DERIVED = {
      "js/terminal/replayViz.js",
      "js/terminal/sinceLast.js",
      "js/terminal/smileView.js",
+     "js/terminal/spreadsView.js",
      "js/terminal/terminalFeel.js",
      "js/terminal/terminalTabs.js"
     ],
