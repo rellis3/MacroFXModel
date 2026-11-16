@@ -67,7 +67,7 @@ export function mountLinked({ doc = document, win = window, sel = createSelectio
     let tries = 0;
     const tick = () => {
       const s = doc.getElementById('tt-sel');
-      if (s) { if (s.value !== want && typeof win.openPairPage === 'function') { applying = true; try { win.openPairPage(want); } finally { applying = false; } } return; }
+      if (s) { if (s.value !== want && typeof win.openPairPage === 'function') { applying = true; try { win.openPairPage(want, { replace: true }); } finally { applying = false; } } return; }
       if (++tries < 25) win.setTimeout(tick, 150);
     };
     tick();
@@ -133,7 +133,7 @@ export function mountLinked({ doc = document, win = window, sel = createSelectio
 
   // the Pair page's opener (a command, an Overview row, any link): remember the market it was asked for
   const origPair = win.openPairPage;
-  if (typeof origPair === 'function') win.openPairPage = inst => { writeSel({ inst }, 'ui'); return origPair(inst); };
+  if (typeof origPair === 'function') win.openPairPage = (inst, o) => { writeSel({ inst }, 'ui'); return origPair(inst, o); };
 
   win.deskSelection = sel;
   paintChip();

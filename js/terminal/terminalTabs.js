@@ -34,6 +34,7 @@ import * as NV from './newsView.js';
 import * as NCV from './newsChannelView.js';
 import { createLevelChart } from '../levelChart.js';
 import { mountTfBar } from './timeframePills.js';
+import { historyAction, backTarget, pairHash } from './pairHistory.js';
 import { getFavourites } from './favourites.js';
 import * as FAVV from './favouritesView.js';
 import { mountAssetFavourites } from './assetFavourites.js';
@@ -384,9 +385,13 @@ function pairList() {
   for (const k of Object.keys(D.be?.markets ?? {})) if (groupOf(k) !== 'other') s.add(k);
   return [...s].sort((a, b) => (groupOf(a) === groupOf(b) ? a.localeCompare(b) : Object.keys(UNIVERSE).indexOf(groupOf(a)) - Object.keys(UNIVERSE).indexOf(groupOf(b))));
 }
-function openPair(inst) {
+// A market the user picks adds a history entry, so Back returns to the previous market or to the tab it was opened from (js/terminal/pairHistory.js).
+// { replace } is for a market the page FOLLOWS (linked selection); { fromHistory } is for Back/Forward itself: neither adds an entry.
+function openPair(inst, { replace = false, fromHistory = false } = {}) {
   T.pair = String(inst).toUpperCase();
-  const want = `#pair=${T.pair}`; if (location.hash !== want) history.replaceState(null, '', want);
+  if (T.tab !== 'pair') T.pairFrom = T.tab ?? null;
+  const want = pairHash(T.pair), act = historyAction({ want, current: location.hash, replace, fromHistory });
+  try { if (act === 'push') history.pushState(null, '', want); else if (act === 'replace') history.replaceState(null, '', want); } catch { /* a sandboxed frame */ }
   const b = document.querySelector('#tabs [data-t="pair"]');
   if (b && b.getAttribute('aria-selected') !== 'true') b.click(); else renderPair();
   window.scrollTo?.({ top: 0 });
@@ -891,7 +896,11 @@ globalThis.mountAnalyse = box => AAV.mount(box).catch(e => console.warn('analyse
 globalThis.openNewsTab = openNews;
 // the Assets cards' one-line latest headline (desk-terminal.html assetCard reads it; D.news is tier 1-2, 24 h)
 globalThis.newsLatestLine = (items, inst, rating) => NV.latestLine(items, inst, rating);
-function fromHash() { const m = location.hash.match(/pair=([A-Za-z0-9]+)/); if (m) openPair(m[1]); }
+function fromHash() {
+  const go = backTarget({ hash: location.hash, tab: T.tab, from: T.pairFrom });
+  if (go?.pair) { if (go.pair !== T.pair || T.tab !== 'pair') openPair(go.pair, { fromHistory: true }); }
+  else if (go?.tab) document.querySelector(`#tabs [data-t="${go.tab}"]`)?.click();
+}
 addEventListener('hashchange', fromHash);
 if (/pair=/.test(location.hash)) fromHash();
 else { const sel = document.querySelector('#tabs [aria-selected="true"]')?.dataset.t; if (RENDER[sel]) globalThis.onTerminalTab(sel); }
