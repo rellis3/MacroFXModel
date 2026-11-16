@@ -1,4 +1,5 @@
 /* js/terminal/asof.css: the whole-terminal as-of clock (preview feature widget.asof). Theme tokens only. */
+:root { --asof-dock-h: 96px; }   /* the docked bar's height; the script sets the real one while the bar is open */
 #asofbtn.asof-live { border-color: var(--pur2); color: var(--pur2); }
 .asof-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 8px 16px; background: var(--bg2); border-bottom: 2px solid var(--pur2); color: var(--tx); font: 600 12.5px var(--mono); position: sticky; top: 0; z-index: 40; }
 .asof-bar[hidden] { display: none; }
@@ -30,3 +31,65 @@ html.asof-on body { box-shadow: inset 0 0 0 2px var(--pur2); }
 .asof-pop button:focus-visible, .asof-bar button:focus-visible, #asofbtn:focus-visible { outline: 2px solid var(--pur2); outline-offset: 1px; }
 @media (max-width: 700px) { .asof-pop { top: 48px; right: 8px; left: 8px; width: auto; } #asofbtn { max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
 @media (prefers-reduced-motion: reduce) { .asof-pop, .asof-bar { transition: none; } }
+
+/* ── the docked time bar ── */
+.asof-bar { top: 0; z-index: 19; }   /* under the sticky top bar (z 20); the script sets top to the top bar's height */
+.asof-chip { cursor: pointer; font: inherit; }
+.asof-chip.up i, .ad-isLive i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--up); box-shadow: 0 0 8px var(--up); margin-right: 6px; animation: asofpulse 1.6s ease-in-out infinite; }
+@keyframes asofpulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.8); } }
+.asof-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 35; box-sizing: border-box; padding: 8px 16px 10px; background: rgba(var(--bgrgb), .94); backdrop-filter: blur(10px); border-top: 1px solid var(--line2); color: var(--tx); display: flex; flex-direction: column; gap: 6px; }
+.asof-dock[hidden] { display: none; }
+.asof-dock.ad-pastmode { border-top: 2px solid var(--gold); }
+.ad-main { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+.ad-live { font: 700 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(var(--uprgb), .5); background: var(--upbg); color: var(--up); display: inline-flex; align-items: center; }
+.ad-live.ad-past { cursor: pointer; border-color: var(--gold); background: var(--goldbg); color: var(--gold); padding: 9px 18px; font-size: 13px; box-shadow: 0 0 14px rgba(var(--goldrgb), .35); }
+.ad-live.ad-past:hover { background: rgba(var(--goldrgb), .22); }
+.ad-steps, .ad-play { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.ad-steps .btn, .ad-play .btn { padding: 6px 9px; min-width: 38px; }
+.ad-play .btn[aria-pressed="true"] { border-color: var(--pur2); color: var(--pur2); }
+.ad-read { margin-left: auto; background: none; border: 0; color: var(--tx); font: 600 12.5px var(--mono); cursor: pointer; padding: 6px 4px; text-decoration: underline dotted var(--tx3); text-underline-offset: 4px; }
+.asof-dock.ad-loading .ad-read { color: var(--gold); }
+.ad-trackwrap { position: relative; min-width: 0; padding: 0 8px; }
+.ad-track { position: relative; height: 26px; border-radius: 6px; background: var(--bg2); border: 1px solid var(--line2); cursor: ew-resize; touch-action: none; overflow: visible; }
+.ad-track:focus-visible { outline: 2px solid var(--pur2); outline-offset: 2px; }
+.ad-heat { position: absolute; inset: 2px; width: calc(100% - 4px); height: calc(100% - 4px); display: block; }
+.ad-heat .hl { fill: var(--line2); }
+.ad-heat .hln { fill: transparent; }
+.ad-heat .hl0 { fill: rgba(var(--dnrgb), .45); }
+.ad-heat .hl1 { fill: rgba(var(--purrgb), .35); }
+.ad-heat .hl2 { fill: rgba(var(--purrgb), .6); }
+.ad-heat .hl3 { fill: var(--pur2); }
+.ad-marks { position: absolute; inset: 0; pointer-events: none; }
+.ad-marks i { position: absolute; top: -5px; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid var(--gold); transform: translateX(-50%); }
+.ad-handle { position: absolute; top: -6px; bottom: -6px; width: 4px; margin-left: -2px; border-radius: 2px; background: var(--tx); box-shadow: 0 0 0 2px var(--bg1), 0 0 10px var(--pur2); pointer-events: none; }
+.ad-ticks { position: relative; height: 16px; margin-top: 4px; font: 500 10.5px var(--mono); color: var(--tx3); }
+.ad-ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.ad-cov { font-size: 11.5px; color: var(--tx3); overflow-wrap: anywhere; line-height: 1.4; }
+.asof-tab { position: fixed; left: 12px; bottom: 12px; z-index: 35; font: 700 11.5px var(--mono); letter-spacing: .08em; text-transform: uppercase; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(var(--uprgb), .5); background: var(--bg1); color: var(--up); cursor: pointer; box-shadow: 0 6px 20px rgba(0, 0, 0, .4); }
+.asof-tab[hidden] { display: none; }
+.asof-tab.ad-pastmode { border-color: var(--gold); color: var(--gold); }
+.asof-tab:focus-visible, .asof-dock button:focus-visible, .asof-chip:focus-visible { outline: 2px solid var(--pur2); outline-offset: 2px; }
+/* the Ask the desk button and the page make room while the bar is open */
+html.asof-dock-open .fab { bottom: calc(var(--asof-dock-h, 96px) + 14px); }
+html.asof-dock-open body { padding-bottom: var(--asof-dock-h, 96px); }
+.asof-livebtn { border-color: var(--gold); color: var(--gold); }
+.asof-livebtn[disabled] { border-color: var(--line2); color: var(--tx3); opacity: .7; cursor: default; }
+@media (max-width: 700px) {
+  /* phone: row 1 = Back to live / LIVE pill, the time, the fold arrow; row 2 = steps, play and one speed button that cycles; then the track */
+  .asof-dock { padding: 6px 10px 8px; gap: 4px; }
+  .ad-main { gap: 5px 6px; }
+  .ad-livewrap { order: 0; flex: 1 1 auto; }
+  .ad-read { order: 1; margin-left: 0; flex: 0 1 auto; text-align: right; font-size: 11.5px; }
+  .ad-x { order: 2; }
+  .ad-steps { order: 3; }
+  .ad-play { order: 4; }
+  .ad-live.ad-past, .ad-live { padding: 7px 12px; font-size: 12px; }
+  .ad-steps, .ad-play { gap: 3px; }
+  .ad-steps .btn, .ad-play .btn { padding: 6px 5px; min-width: 0; min-height: 34px; font-size: 11px; }
+  .ad-play [data-asof-speed][aria-pressed="false"] { display: none; }
+  .ad-cov { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .asof-tab { left: 8px; bottom: 8px; }
+}
+}
+@media (prefers-reduced-motion: reduce) { .asof-chip.up i, .ad-isLive i { animation: none; } }
+@media (forced-colors: active) { .ad-track, .ad-live, .asof-tab { border: 2px solid CanvasText; } .ad-handle { background: Highlight; } .ad-heat .hl3 { fill: Highlight; } }
