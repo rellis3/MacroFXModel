@@ -13,7 +13,7 @@ export const FEATURES = {
   chart:           { surface: 'tab.kchart', name: 'Chart', where: ['The Chart tab.'] },
   monitor:         { surface: 'tab.monitor', name: 'Monitor', where: ['The Monitor tab, beside Assets.'] },
   asof: { surface: 'widget.asof', name: 'Time machine', where: ['A LIVE / PAST chip and a "Time machine" button in the top bar (the button shows or hides the bar).', 'A slim time bar docked at the bottom of the page: a green LIVE pill (a big amber "Back to live" button in a past view), step buttons, play with speeds, and a track that shows what is recorded; drag it to go back or forward. Fold it to a small tab with the arrow. Keys on the track: arrows step, Home is the first record, End is back to live, Space plays.', 'In a past view a purple banner under the top bar says "Viewing ..., not live" with a Back to live button. Or type ASOF 12 nov 14:30 (or ASOF live) in the command line.'] },
-  insight:         { surface: 'tab.insight', name: 'Insight', where: ['The Insight tab (pills: Unusual now, Cross-asset, Sector rotation, Currency matrix, Gold, Level reach, Risk flags, Economies).'] },
+  insight:         { surface: 'tab.insight', name: 'Insight', where: ['The Insight tab (pills: Unusual now, Cross-asset, Sector rotation, Currency matrix, Gold, Level reach, Risk flags, Economies, Spreads & ratios).'] },
   newsSearches:    { surface: 'panel.news.saved', name: 'News saved searches', where: ['News tab: the saved-searches bar above the headlines.'] },
   calendarDrills:  { surface: 'panel.cal.drills', name: 'Calendar drills', where: ['Calendar tab: two cards above the table (earnings, scorecards) and a small ▸ button at the end of every release row.'] },
   exporter: {

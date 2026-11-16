@@ -19,6 +19,7 @@ import { MACRO_SUBS, ALL_BLOCKS, BLOCK_SUB, subById } from './macroSubtabs.js';
 import { THEMES } from './themes.js';
 import { TF_KEYS } from '../deskBarsCore.js';
 import { ASSET_WORDS } from './pairView.js';
+import { PAIRS as SPREAD_PAIRS, AKA as SPREAD_AKA } from './spreadsLibrary.js';
 import { STARTERS as MON_STARTERS } from './monitorCore.js';
 import { STARTERS as WS_STARTERS, cleanName as wsCleanName } from './workspaceCore.js';
 import { KINDS as AL_KINDS, FEEDS as AL_FEEDS } from '../deskAlertRulesCore.js';
@@ -91,6 +92,7 @@ export const INSIGHT_WORDS = {
   flags: ['FLAGS', ['RISKFLAGS', 'LIGHTS'], 'The risk flags: the six market-stress lights now, each beside what the Evidence Book found for it.'],
   bis: ['BISSTRIP', ['BISHEAT', 'CREDITSTRIP', 'CREDITHEAT'], 'The bank-credit heat strip: five series of cross-border bank-claim growth from 1999 against the bank-credit study bands, the 2000-02 and 2008-09 busts shaded, and 14 borrowers. Context only.'],
   economies: ['ECONOMIES', ['ECONOMY', 'WORLD', 'COUNTRIES'], 'The eight economies side by side: growth, prices, jobs and spending, each with an arrow and a word.'],
+  spreads: ['RATIOS', ['XY', 'RELATIVEVALUE', 'RV', 'SPREADSRATIOS'], 'Spreads and ratios: the X-versus-Y pairs the educators use (RSP/SPY, small against large caps, credit, the curve, VIX against its 3-month, copper/gold...) ranked by how stretched each is against its own history, with what they said beside what our tests found. Add a pair name to open it.'],
   unusual: ['UNUSUAL', ['MOVERS', 'EXTREME', 'WHATSUNUSUAL'], 'What is unusual right now: every series ranked by how extreme it is against its own history, with the working and the odds it is just chance.'],
 };
 
@@ -251,7 +253,8 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   // Insight boards (preview)
   for (const [key, [name, aliases, help]] of Object.entries(INSIGHT_WORDS)) {
     const id = `panel.insight.${key}`, row = surfaceById(id); if (!row) continue;
-    add({ id: `insight.${key}`, group: 'Insight boards', name, aliases, help, example: name.toLowerCase(), opens: `Insight > ${row.label.replace(/^Insight:\s*/, '')}`, surface: id, needs: ['tab.insight'], action: { kind: 'insight', panel: key } });
+    const more = key === 'spreads' ? { args: '[pair]', example: 'ratios rsp-spy', run: args => spreadsRun(args) } : {};
+    add({ id: `insight.${key}`, group: 'Insight boards', name, aliases, help, example: name.toLowerCase(), opens: `Insight > ${row.label.replace(/^Insight:\s*/, '')}`, surface: id, needs: ['tab.insight'], action: { kind: 'insight', panel: key }, ...more });
   }
   // releases by country
   for (const [word, help] of INDICATORS) {
@@ -433,6 +436,15 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     const hit = names.find(n => n.toLowerCase() === a.toLowerCase()) ?? names.find(n => n.toLowerCase().startsWith(a.toLowerCase()));
     if (!hit) return { error: names.length ? `No saved search called "${a}". Try ${names.join(', ')}.` : 'No saved searches yet. Save one on the News tab first.' };
     return { action: { kind: 'news-search', name: hit }, summary: `Opens the News tab with the saved search "${hit}".` };
+  }
+  function spreadsRun(args) {
+    const a = String(args ?? '').trim().toLowerCase().replace(/[\s/]+/g, '-');
+    if (!a) return { action: { kind: 'spreads', id: null }, summary: 'Opens the Spreads & ratios board on the Insight tab.' };
+    const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const hit = SPREAD_PAIRS.find(p => p.id === a) ?? SPREAD_PAIRS.find(p => norm(p.short) === a) ?? SPREAD_PAIRS.find(p => (SPREAD_AKA[p.id] ?? []).some(w => norm(w) === a))
+      ?? SPREAD_PAIRS.find(p => p.id.startsWith(a) || norm(p.short).includes(a) || norm(p.label).includes(a));
+    if (!hit) return { error: `No pair called "${args.trim()}". Try ${SPREAD_PAIRS.slice(0, 6).map(p => p.id).join(', ')}.` };
+    return { action: { kind: 'spreads', id: hit.id }, summary: `Opens ${hit.short} on the Spreads & ratios board.` };
   }
   function monitorRun(args) {
     const a = String(args ?? '').trim();

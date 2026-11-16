@@ -17,6 +17,7 @@ export const PANELS = [
   { key: 'flags', surface: 'panel.insight.flags', pill: '<button type="button" class="in-tab" data-p="flags" data-surface="panel.insight.flags">Risk flags</button>', load: () => import('./flagsView.js').then(m => m.mountFlags) },
   { key: 'bis', surface: 'panel.insight.bis', pill: '<button type="button" class="in-tab" data-p="bis" data-surface="panel.insight.bis">Bank credit</button>', load: () => import('./bisView.js').then(m => m.mountBis) },
   { key: 'economies', surface: 'panel.insight.economies', pill: '<button type="button" class="in-tab" data-p="economies" data-surface="panel.insight.economies">Economies</button>', load: () => import('./economiesView.js').then(m => m.mountEconomies) },
+  { key: 'spreads', surface: 'panel.insight.spreads', pill: '<button type="button" class="in-tab" data-p="spreads" data-surface="panel.insight.spreads">Spreads &amp; ratios</button>', load: () => import('./spreadsView.js').then(m => m.mountSpreads) },
 ];
 const LS = 'deskInsight:v1';
 

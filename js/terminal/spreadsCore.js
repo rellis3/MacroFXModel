@@ -21,12 +21,14 @@ const sig = (v, n) => { const s = Number(v).toPrecision(n); return s.includes('e
 /** How a value of this pair reads on a tile. diff = basis points; ratio and level = three significant figures. */
 export function fmtValue(pair, v) {
   if (!fin(v)) return '–';
+  if (pair.rebased) return `${v < 0 ? MINUS : '+'}${Math.abs(v).toFixed(1)} pts`;   // two prices each rebased to 100: the gap in index points
   if (pair.op === 'diff') return `${v < 0 ? MINUS : '+'}${Math.abs(v).toFixed(0)}bp`;
   return pair.op === 'level' ? v.toFixed(2) : sig(v, 3);
 }
 /** A change over a window: a ratio moves in percent, a spread in basis points, a level in percent. */
 export function changeOf(pair, now, then) {
   if (!fin(now) || !fin(then)) return null;
+  if (pair.rebased) return { v: now - then, text: `${now - then < 0 ? MINUS : '+'}${Math.abs(now - then).toFixed(1)} pts`, unit: 'pts' };
   if (pair.op === 'diff') return { v: now - then, text: `${now - then < 0 ? MINUS : '+'}${Math.abs(now - then).toFixed(0)}bp`, unit: 'bp' };
   if (!(then !== 0)) return null;
   const p = (now / then - 1) * 100;
@@ -161,7 +163,7 @@ export function customSeries(bundle, xKey, yKey, op, sessions = 0) {
   else { vals = X.map((p, i) => (p / X[0]) * 100 - (Y[i] / Y[0]) * 100); pair = { op: 'diff', rebased: true, short: `${labelOf(xKey)} minus ${labelOf(yKey)} (rebased)`, up: `${labelOf(xKey)} is out-running ${labelOf(yKey)} since the start`, down: `${labelOf(yKey)} is out-running ${labelOf(xKey)} since the start` }; }
   const keep = vals.map((v, i) => i).filter(i => fin(vals[i]));
   const series = { dates: keep.map(i => D[i]), vals: keep.map(i => vals[i]) };
-  return { ok: true, series, pair, xs: keep.map(i => X[i]), ys: keep.map(i => Y[i]), dates: series.dates };
+  return { ok: true, series, pair, windowed: from > 0, xs: keep.map(i => X[i]), ys: keep.map(i => Y[i]), dates: series.dates };
 }
 /** Correlation of the DAILY moves of two aligned arrays (a change for yields and spreads, a log change for prices). null under 20 pairs. */
 export function moveCorr(xs, ys, xKey, yKey, last = 0) {
@@ -175,7 +177,7 @@ export function moveCorr(xs, ys, xKey, yKey, last = 0) {
 /** A custom line described like a library row (percentile, z, windows), or null when it is too short. */
 export function customRow(c) {
   const d = describe(c.series, 30); if (!d) return null;
-  return { ...d, pair: c.pair, series: c.series, side: d.pct >= 0.9 ? 'high' : d.pct <= 0.1 ? 'low' : 'mid', short: d.n < SHORT_SESSIONS, lastFmt: fmtValue(c.pair, d.last), c21: changeOf(c.pair, d.last, d.v1m), c5: changeOf(c.pair, d.last, d.v1w), c63: changeOf(c.pair, d.last, d.v3m) };
+  return { ...d, pair: c.pair, series: c.series, side: d.pct >= 0.9 ? 'high' : d.pct <= 0.1 ? 'low' : 'mid', short: !c.windowed && d.n < SHORT_SESSIONS, lastFmt: fmtValue(c.pair, d.last), c21: changeOf(c.pair, d.last, d.v1m), c5: changeOf(c.pair, d.last, d.v1w), c63: changeOf(c.pair, d.last, d.v3m) };
 }
 /** Caption for a custom pair: where it sits, how the two legs have moved together, and what we have (or have not) tested. */
 export function customCaption(info, xKey, yKey, all, recent, ev) {

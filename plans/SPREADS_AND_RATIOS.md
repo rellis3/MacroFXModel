@@ -113,7 +113,7 @@ None of these is a promise that anything will be found. The board shows each as 
 ## The board (what shipped)
 
 Insight tab, pill "Spreads & ratios" (`panel.insight.spreads`, a preview surface: the owner always sees it, the desk login only when switched on;
-command `SPREADS [pair]`):
+command `RATIOS [pair]`, for example `ratios rsp-spy` or `ratios curve`; the word `SPREADS` already opens the Macro credit-spreads board, so it was left alone):
 
 1. Heat ladder: every pair ranked by how extreme its percentile is against its own history, with a glowing marker for now and fainter ticks for one
    week and one month ago, the window and n stated, "short record" and "stale" flagged, and each pair's Evidence Book chips.

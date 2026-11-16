@@ -56,6 +56,7 @@ export function perform(a, doc = document, win = window) {
     case 'star': case 'unstar': { const f = win.deskFavourites; if (!f) return false; const r = a.kind === 'star' ? f.add(a.inst) : f.remove(a.inst); win.deskFavouritesRefresh?.(); return !!r.ok; }
     case 'monitor-add': { const ok = tab('monitor'); if (ok) win.setTimeout(() => win.deskMonitor?.add?.(a.inst), 60); return ok; }
     case 'kchart': { const ok = tab('kchart'); if (ok && (a.inst || a.tf)) win.setTimeout(() => win.deskKchart?.show?.(a.inst, a.tf), 60); return ok; }
+    case 'spreads': { const ok = tab('insight'); if (ok) { win.deskSpreadsWant = a.id ?? null; win.setTimeout(() => { win.deskInsight?.show?.('spreads'); if (a.id) win.deskSpreads?.open?.(a.id); }, 60); } return ok; }
     case 'insight': { const ok = tab('insight'); if (ok) win.setTimeout(() => win.deskInsight?.show?.(a.panel), 60); return ok; }
     case 'alerts': return win.deskAlerts?.open ? (win.deskAlerts.open(), true) : false;
     case 'alert-add': return win.deskAlerts?.add ? (win.deskAlerts.add(a.body), true) : false;

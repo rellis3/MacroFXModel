@@ -149,6 +149,14 @@ export const PAIRS = [
 
 export const BY_ID = Object.fromEntries(PAIRS.map(p => [p.id, p]));
 
+/** Words people type for a pair (the RATIOS command): an exact word wins over a partial match. */
+export const AKA = {
+  'rsp-spy': ['breadth', 'equal weight', 'equalweight', 'rsp'], 'smh-spy': ['semis', 'chips', 'semiconductors', 'smh'], 'nvda-smh': ['nvidia'], 'nvda-spy': ['nvda'], 'r2k-spx': ['small caps', 'smallcaps', 'iwm', 'russell'],
+  'nq-spx': ['growth', 'qqq', 'nasdaq'], 'xly-xlp': ['cyclicals', 'defensives', 'staples', 'discretionary'], 'xle-oil': ['energy', 'xle'], 'curve-2s10s': ['2s10s', '10s2s', 'curve', 'yield curve'], 'curve-5s30s': ['5s30s', 'long end', 'term premium'],
+  'real-bei': ['real yield', 'real yields', 'tips', 'breakeven', 'breakevens'], 'hy-ig': ['credit', 'hyg', 'junk', 'hy'], 'ccc-hy': ['ccc'], 'vix-vix3m': ['vix3m', 'term structure', 'vix', 'inversion'], 'vix9d-vix': ['vix9d', 'front'],
+  'move-vix': ['move', 'bond vol'], 'vvix-vix': ['vvix'], 'copper-gold': ['copper', 'dr copper'], 'gold-silver': ['silver'], 'gold-dxy': ['dollar', 'dxy'], 'btc-gold': ['bitcoin', 'btc'], audjpy: ['risk', 'audjpy', 'aud jpy', 'carry'],
+};
+
 /** Evidence ids that speak for the whole idea of "a relationship at an extreme": shown above the ladder, not on one row. */
 export const GENERAL_EV = [
   { id: 'mv-extreme-forward', about: 'a market making a rare move against its own history' },
