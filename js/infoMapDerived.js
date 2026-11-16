@@ -1462,6 +1462,7 @@ export const DERIVED = {
      "js/terminal/mapLayers.js",
      "js/terminal/ratesBoardCore.js",
      "js/terminal/ratesBoardView.js",
+     "js/terminal/spreadsLibrary.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [
@@ -3796,6 +3797,8 @@ export const DERIVED = {
      "js/terminal/insightSeries.js",
      "js/terminal/matrixCore.js",
      "js/terminal/optionsView.js",
+     "js/terminal/spreadsCore.js",
+     "js/terminal/spreadsLibrary.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
     ],
@@ -3893,6 +3896,8 @@ export const DERIVED = {
      "js/terminal/regimeBoardView.js",
      "js/terminal/replayViz.js",
      "js/terminal/sinceLast.js",
+     "js/terminal/spreadsCore.js",
+     "js/terminal/spreadsLibrary.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/themes.js",
@@ -4851,6 +4856,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/macroSubtabs.js",
+     "js/terminal/spreadsLibrary.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [],
