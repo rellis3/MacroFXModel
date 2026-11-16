@@ -4457,6 +4457,11 @@ export const DERIVED = {
      "route": "/api/replay/ghosts",
      "exists": true,
      "pack": null
+    },
+    {
+     "route": "/api/replay/oi-days",
+     "exists": true,
+     "pack": null
     }
    ],
    "modules": [
@@ -4531,6 +4536,7 @@ export const DERIVED = {
      "js/terminal/kchartCore.js",
      "js/terminal/kchartView.js",
      "js/terminal/linkedSelection.js",
+     "js/terminal/oiTime.js",
      "js/terminal/replayFedDraw.js",
      "js/terminal/replayLink.js",
      "js/terminal/replayPlayer.js",
