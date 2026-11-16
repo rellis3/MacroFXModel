@@ -1562,7 +1562,7 @@ export const DERIVED = {
      "exists": true,
      "pack": {
       "skill": "yields_curve",
-      "maxAgeH": 168
+      "maxAgeH": 288
      }
     }
    ],
