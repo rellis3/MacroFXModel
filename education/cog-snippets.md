@@ -518,3 +518,21 @@ can lead the index. That last step is ours.
   Course text: `education/bank-verbatim/Cross-Asset-Synthesis/PAGE_TEXT.md`, `education/bank-verbatim/Fixed-Income/PAGE_TEXT.md`.
 - Cut off (ask Rich for the rest): "information hierarchy means that in …", "What do the returns look like relative
   to …" (§9), and the two pinned endings (§10).
+
+## 12. EV modeler video: prop challenges as short-term ROI (course video, Nov 2026)
+
+**Context:** a C.OG walkthrough video, transcript pasted by Rich on 2026-11-15. Full note:
+`education/intake/cog/2026-11-16-ev-modeler-roi.md` (raw text gitignored).
+
+> "We know that 81% of the accounts we buy with this example system will reach the funded stage. 78% actually cover
+> the fee of the account bought."
+
+**Explanation (ours).** The long-term aim is a validated system; the short-term aim is "EV modeling": buy prop
+challenges only when the simulated payouts exceed the fees. His upgraded toolkit now reports EV per challenge bought,
+P(any withdrawal), days from pass to first withdrawal and payouts by week. The catch we found earlier: a zero-edge copy
+of the same trades also clears the FTMO fee, so EV must be read against that copy.
+
+### How it maps to this repo
+
+- Already run: `overnight-hold-toolkit`, `portfolio-book-prop` (both CONTEXT). Check pack for his tool:
+  `analysis/output/prop-toolkit-check/COMPARE.md`. Questions: `research-director/agendas/prop-ev.md`.

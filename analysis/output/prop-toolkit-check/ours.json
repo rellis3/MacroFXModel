@@ -1,0 +1,53 @@
+{
+ "upload_overnight_nq_net.csv": {
+  "source": "overnight-hold-toolkit, nq, net, 1x",
+  "rows": 1949,
+  "first": "2016-10-24",
+  "last": "2026-08-19",
+  "funded": 0.3874,
+  "cleared_step1": 0.5458,
+  "median_days_to_funded": 159.0,
+  "payout_12m_pct_of_account": 8.02575093796267,
+  "funded_blown_12m": 0.6794011357769747,
+  "breakeven_fee_pct_of_account": 3.1091759133667383,
+  "zero_edge_funded": 0.211
+ },
+ "upload_overnight_gold_net.csv": {
+  "source": "overnight-hold-toolkit, gold, net, 1x",
+  "rows": 1962,
+  "first": "2016-10-24",
+  "last": "2026-08-19",
+  "funded": 0.416,
+  "cleared_step1": 0.5726,
+  "median_days_to_funded": 200.0,
+  "payout_12m_pct_of_account": 6.97686567624856,
+  "funded_blown_12m": 0.5740384615384615,
+  "breakeven_fee_pct_of_account": 2.902376121319401,
+  "zero_edge_funded": 0.239
+ },
+ "upload_overnight_combined_net.csv": {
+  "source": "overnight-hold-toolkit, combined, net, 1x",
+  "rows": 1965,
+  "first": "2016-10-24",
+  "last": "2026-08-19",
+  "funded": 0.5564,
+  "cleared_step1": 0.6838,
+  "median_days_to_funded": 261.0,
+  "payout_12m_pct_of_account": 7.747853744601183,
+  "funded_blown_12m": 0.31560028756290437,
+  "breakeven_fee_pct_of_account": 4.310905823496098,
+  "zero_edge_funded": 0.2282
+ },
+ "upload_portfolio_book_A.csv": {
+  "source": "portfolio-book-prop, Book A, 1x",
+  "rows": 2763,
+  "first": "2016-01-04",
+  "last": "2026-08-21",
+  "funded": 0.3312,
+  "median_days_to_funded": 205.0,
+  "payout_12m_pct_of_account": 6.21,
+  "ev_pct_of_account_fee_0_54": 1.517,
+  "zero_edge_funded": 0.163,
+  "zero_edge_ev": 0.12
+ }
+}

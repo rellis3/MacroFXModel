@@ -99,6 +99,13 @@ and `evidence.md`), the case study (`education/forecaster-portfolio-case-study/L
 - "Always ask: is this effect large enough to matter after costs?"
 - "you stop asking 'What is the market doing now?' and start asking 'Why is it moving, and what is next?'"
 
+**Video: EV modeler (Nov 2026, `education/intake/cog/2026-11-16-ev-modeler-roi.md`)**
+- "Go back to the overnight buy and hold task and go through that … have this into the terminal … export to the
+  upgraded software, upload that, and then run a simulation to where you're able to then understand all of your funded
+  rates, your EV, your expected account balances over time."
+- "Is there consistencies between my losing months?" / "How does this look year on year?"
+- "If this was 0%, we know, okay, it's back to the drawing board." (share of accounts that cover the fee)
+
 ## The structure under them
 
 | Element | What it does | His example |
