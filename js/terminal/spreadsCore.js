@@ -6,30 +6,44 @@
 //
 // As-of rule for the replay: scatterFrames() builds each frame from the points up to that date only, and scatterBounds() expands the axes from the
 // frames already shown, so a past frame is never drawn with knowledge of what came after it.
-import { BY_KEY } from './insightSeries.js';
+import { seriesMeta, zgapSeries } from './spreadsDerived.js';
 import { DESK_EVIDENCE } from '../deskEvidence.js';
 import { PAIRS, GENERAL_EV } from './spreadsLibrary.js';
 
 export const fin = v => typeof v === 'number' && Number.isFinite(v);
 export const SHORT_SESSIONS = 1000;         // under about four years of closes is a short record
+export const Z_MIN = 534;                    // a divergence needs a full two-year window plus a month of closes to rank
 export const STALE_SESSIONS = 3;            // a pair whose last common close is this many sessions behind the bundle is "stale"
 const MINUS = '−';
 export const nth = p => { const n = Math.round(p * 100), t = n % 100; return `${n}${t >= 11 && t <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] ?? 'th')}`; };
 export const niceDate = iso => { const d = new Date(`${iso}T00:00:00Z`); return Number.isNaN(+d) ? String(iso) : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); };
 const sig = (v, n) => { const s = Number(v).toPrecision(n); return s.includes('e') ? String(Number(s)) : s; };
 
+const LEVEL_FMT = { pct: v => `${v.toFixed(2)}%`, bn: v => `$${Math.round(v).toLocaleString('en-GB')}bn`, corr: v => v.toFixed(2), pts: v => `${v.toFixed(1)} pts` };
+/** diff = x minus y in basis points; zgap = a divergence in standard deviations; usd = x minus y in dollars; a level with a `fmt` is a number with its own unit (a %, $bn, a correlation, vol points), compared by difference. */
+export const diffLike = p => p.op === 'diff' || p.op === 'zgap' || p.op === 'usd' || (p.op === 'level' && !!p.fmt);
+const gapish = p => p.op === 'diff' || p.op === 'zgap' || p.op === 'usd';
+export function unitOf(p) {
+  if (p.rebased) return 'pts'; if (p.op === 'diff') return 'bp'; if (p.op === 'zgap') return 'σ'; if (p.op === 'usd') return '$';
+  if (p.op === 'level' && p.fmt) return { pct: 'pp', bn: '$bn', corr: '', pts: 'pts' }[p.fmt] ?? '';
+  return '%';
+}
 /** How a value of this pair reads on a tile. diff = basis points; ratio and level = three significant figures. */
 export function fmtValue(pair, v) {
   if (!fin(v)) return '–';
   if (pair.rebased) return `${v < 0 ? MINUS : '+'}${Math.abs(v).toFixed(1)} pts`;   // two prices each rebased to 100: the gap in index points
   if (pair.op === 'diff') return `${v < 0 ? MINUS : '+'}${Math.abs(v).toFixed(0)}bp`;
-  return pair.op === 'level' ? v.toFixed(2) : sig(v, 3);
+  if (pair.op === 'zgap') return `${v < 0 ? MINUS : '+'}${Math.abs(v).toFixed(1)}σ`;
+  if (pair.op === 'usd') return `${v < 0 ? MINUS : '+'}$${Math.abs(v).toFixed(2)}`;
+  if (pair.op === 'level') return LEVEL_FMT[pair.fmt]?.(v) ?? v.toFixed(2);
+  return sig(v, 3);
 }
 /** A change over a window: a ratio moves in percent, a spread in basis points, a level in percent. */
 export function changeOf(pair, now, then) {
   if (!fin(now) || !fin(then)) return null;
   if (pair.rebased) return { v: now - then, text: `${now - then < 0 ? MINUS : '+'}${Math.abs(now - then).toFixed(1)} pts`, unit: 'pts' };
   if (pair.op === 'diff') return { v: now - then, text: `${now - then < 0 ? MINUS : '+'}${Math.abs(now - then).toFixed(0)}bp`, unit: 'bp' };
+  if (diffLike(pair)) { const dv = now - then, a = Math.abs(dv), u = unitOf(pair), sg = dv < 0 ? MINUS : '+'; return { v: dv, unit: u, text: pair.fmt === 'bn' ? `${sg}$${a.toFixed(0)}bn` : pair.op === 'usd' ? `${sg}$${a.toFixed(2)}` : pair.fmt === 'pts' ? `${sg}${a.toFixed(1)} pts` : `${sg}${a.toFixed(pair.op === 'zgap' ? 1 : 2)}${u}` }; }
   if (!(then !== 0)) return null;
   const p = (now / then - 1) * 100;
   return { v: p, text: `${p < 0 ? MINUS : '+'}${Math.abs(p).toFixed(Math.abs(p) < 10 ? 1 : 0)}%`, unit: '%' };
@@ -38,6 +52,7 @@ export function changeOf(pair, now, then) {
 /** The line for a pair from the bundle, on the dates where every leg exists. null when a leg is not in the bundle. */
 export function buildSeries(bundle, def) {
   const S = bundle?.series, dates = bundle?.dates; if (!S || !Array.isArray(dates)) return null;
+  if (def.op === 'zgap') return zgapSeries(bundle, def);
   const X = S[def.x], Y = def.y ? S[def.y] : null;
   if (!X || (def.y && !Y)) return null;
   const d = [], v = [];
@@ -45,7 +60,7 @@ export function buildSeries(bundle, def) {
     const a = X[i]; if (!fin(a)) continue;
     let val;
     if (def.op === 'level') val = a;
-    else { const b = Y[i]; if (!fin(b)) continue; if (def.op === 'ratio') { if (!(b > 0)) continue; val = a / b; } else val = (a - b) * 100; }
+    else { const b = Y[i]; if (!fin(b)) continue; if (def.op === 'ratio') { if (!(b > 0)) continue; val = a / b; } else if (def.op === 'usd') val = a - b; else val = (a - b) * 100; }
     d.push(dates[i]); v.push(val);
   }
   return { dates: d, vals: v };
@@ -90,10 +105,10 @@ export function rankPairs(bundle, pairs = PAIRS, book = DESK_EVIDENCE) {
   const rows = [], missing = [], allLast = [];
   for (const pair of pairs) {
     const series = buildSeries(bundle, pair);
-    if (!series) { missing.push({ pair, why: 'A leg of this pair is not in the daily bundle.' }); continue; }
+    if (!series) { missing.push({ pair, why: pair.needs === 'extras' && bundle?.extrasOk === false ? 'The extra FRED series (/api/spread-extras) did not answer, and this pair needs one.' : pair.op === 'zgap' ? `A leg is missing or there are under ${Z_MIN} common closes to measure a divergence.` : 'A leg of this pair is not in the daily bundle.' }); continue; }
     const d = describe(series); if (!d) { missing.push({ pair, why: `Under 120 common closes (${series.vals.length}).` }); continue; }
     allLast.push(d.lastDate);
-    rows.push({ id: pair.id, pair, label: pair.label, group: pair.group, series, ...d, score: extremeness(d.pct), side: d.pct >= 0.9 ? 'high' : d.pct <= 0.1 ? 'low' : 'mid',
+    rows.push({ id: pair.id, pair, label: pair.label, group: pair.group, story: pair.story ?? 'Other', series, ...d, score: extremeness(d.pct), side: d.pct >= 0.9 ? 'high' : d.pct <= 0.1 ? 'low' : 'mid',
       lastFmt: fmtValue(pair, d.last), c5: changeOf(pair, d.last, d.v1w), c21: changeOf(pair, d.last, d.v1m), c63: changeOf(pair, d.last, d.v3m),
       short: d.n < SHORT_SESSIONS, ev: evidenceFor(pair.ev, book) });
   }
@@ -111,11 +126,12 @@ const years = n => (n >= 500 ? `${(n / 252).toFixed(n >= 1260 ? 0 : 1)} years` :
 /** Plain-English caption from the numbers. Describes state; the last sentence is the Evidence Book's own word, never a view. */
 export function caption(row) {
   const p = row.pair;
-  const first = `${p.short} is at the ${nth(row.pct)} percentile of its ${years(row.n)} of history (since ${niceDate(row.from)}), ${mark(row.side)}${row.short ? ' (a short record, so read it with care)' : ''}.`;
+  let first = `${p.short} is at the ${nth(row.pct)} percentile of its ${years(row.n)} of history (since ${niceDate(row.from)}), ${mark(row.side)}${row.short ? ' (a short record, so read it with care)' : ''}.`;
+  if (p.op === 'zgap') first = `${p.short}: the gap between ${p.xname} and ${p.yname} is at the ${nth(row.pct)} percentile of its ${years(row.n)} (since ${niceDate(row.from)}), ${mark(row.side)}. Right now ${p.xname} is ${Math.abs(row.last).toFixed(1)}σ ${row.last >= 0 ? 'higher' : 'lower'} than ${p.yname} would suggest, each measured against its own last two years (${p.rel}).`;
   let move = '';
   if (row.c21) {
     const up = row.c21.v > 0;
-    move = p.op === 'diff' ? ` Over the last month the gap has ${up ? 'widened' : 'narrowed'} by ${row.c21.text.replace(/^[+−]/, '')}: ${up ? p.up : p.down}.`
+    move = gapish(p) ? ` Over the last month the gap has ${up ? 'widened' : 'narrowed'} by ${row.c21.text.replace(/^[+−]/, '')}: ${up ? p.up : p.down}.`
       : ` Over the last month it has ${up ? 'risen' : 'fallen'} ${row.c21.text.replace(/^[+−]/, '')}: ${up ? p.up : p.down}.`;
   }
   let ev;
@@ -129,25 +145,25 @@ export const trustNote = row => `${row.n.toLocaleString('en-GB')} common closes 
 export function ghosts(series, pair, len = 21) {
   const v = series.vals, n = v.length;
   const win = (end) => v.slice(Math.max(0, end - len), end);
-  const rebase = w => { const s = w[0]; return w.map(x => (pair.op === 'diff' ? x - s : (x / s - 1) * 100)); };
+  const rebase = w => { const s = w[0]; return w.map(x => (diffLike(pair) ? x - s : (x / s - 1) * 100)); };
   const sets = [{ label: 'last month', end: n, tone: 'now' }, { label: 'the month before', end: n - len, tone: 'm1' }, { label: 'a quarter ago', end: n - 63, tone: 'm3' }]
     .map(s => ({ ...s, w: win(s.end) })).filter(s => s.w.length >= len * 0.8 && s.end > 0);
-  return { unit: pair.op === 'diff' ? 'bp' : '%', paths: sets.map(s => ({ label: s.label, tone: s.tone, pts: rebase(s.w), from: series.dates[Math.max(0, s.end - len)], to: series.dates[s.end - 1] })) };
+  return { unit: unitOf(pair), paths: sets.map(s => ({ label: s.label, tone: s.tone, pts: rebase(s.w), from: series.dates[Math.max(0, s.end - len)], to: series.dates[s.end - 1] })) };
 }
 
 /** The slice of a line to draw: the last `sessions` points, or all of them. */
-export const slice = (series, sessions) => (sessions && sessions < series.vals.length ? { dates: series.dates.slice(-sessions), vals: series.vals.slice(-sessions) } : series);
+export const slice = (series, sessions) => (sessions && sessions < series.vals.length ? { dates: series.dates.slice(-sessions), vals: series.vals.slice(-sessions), ...(series.xz ? { xz: series.xz.slice(-sessions), yz: series.yz.slice(-sessions), sign: series.sign } : {}) } : series);
 
 // ── the X-versus-Y picker ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 export const OPS = [{ id: 'ratio', label: 'X / Y (relative strength)' }, { id: 'rebased', label: 'X minus Y, both rebased to 100' }, { id: 'minus', label: 'X minus Y (yields and spreads only)' }];
-const isRate = k => BY_KEY[k]?.kind === 'rate';
+const isRate = k => seriesMeta(k)?.kind === 'rate';
 /** Is this operation allowed for these two series? X minus Y of two prices has no meaning, so it is refused with the reason. */
 export function opAllowed(op, xKey, yKey) {
   if (xKey === yKey) return { ok: false, why: 'Pick two different series.' };
   if (op === 'minus' && !(isRate(xKey) && isRate(yKey))) return { ok: false, why: 'X minus Y only makes sense when both are yields or spreads (the same units). Use X / Y or the rebased version for prices.' };
   return { ok: true };
 }
-const labelOf = k => BY_KEY[k]?.label ?? k;
+const labelOf = k => seriesMeta(k)?.label ?? k;
 /** A custom pair as a line, over the last `sessions` closes (0 = all). rebased: both legs start at 100 on the first common date of the window. */
 export function customSeries(bundle, xKey, yKey, op, sessions = 0) {
   const a = opAllowed(op, xKey, yKey); if (!a.ok) return { ok: false, error: a.why };
@@ -189,6 +205,18 @@ export function customCaption(info, xKey, yKey, all, recent, ev) {
 /** The library pair that matches two chosen series (either order), or null. */
 export function libraryMatch(xKey, yKey, op) { return PAIRS.find(p => (p.x === xKey && p.y === yKey && ((op === 'ratio' && p.op === 'ratio') || (op === 'minus' && p.op === 'diff'))) || (op === 'ratio' && p.op === 'ratio' && p.x === yKey && p.y === xKey)) ?? null; }
 export const generalEvidence = (book = DESK_EVIDENCE) => evidenceFor(GENERAL_EV, book);
+
+// ── the stories strip ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/** The most stretched readings across the stories, at most `perStory` from any one story so a single theme cannot fill the strip. Never a pair whose data is stale. */
+export function storiesNow(rank, n = 6, perStory = 2) {
+  const seen = {}, out = [], used = new Set();
+  const line = r => `${r.pair.short} is at the ${nth(r.pct)} percentile of its ${years(r.n)}, ${mark(r.side)}${r.short ? ' (a short record)' : ''}.`;
+  const add = r => { out.push({ id: r.id, story: r.story, row: r, text: line(r) }); used.add(r.id); seen[r.story] = (seen[r.story] ?? 0) + 1; };
+  for (const r of rank.rows) { if (out.length >= n) break; if (r.stale || r.side === 'mid' || (seen[r.story] ?? 0) >= perStory) continue; add(r); }
+  for (const r of rank.rows) { if (out.length >= Math.min(3, n)) break; if (!r.stale && !used.has(r.id)) add(r); }
+  const live = rank.rows.filter(r => !r.stale), outer = live.filter(r => r.side !== 'mid').length;
+  return { items: out, outer, total: live.length, chance: Math.round(live.length * 0.2) };
+}
 
 // ── the scatter and its replay ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 /** Frames for the shared replay player: each is the trail of (x, y) ending on that date, built from points up to that date only. */

@@ -129,6 +129,7 @@ import { mountGhostWalk as _mountGhostWalk } from './js/ghostWalkRoutes.js';    
 import { mountOiTime as _mountOiTime } from './js/oiTimeRoutes.js';                 // OI over time (preview): the stored option-OI captures day by day with the daily candles (/api/replay/oi-days)
 import { mountSmile as _mountSmile } from './js/smileRoutes.js';                       // IV smile replay (preview): the stored Cboe option chains reduced to implied-vol smiles by expiry; read-only, no model call
 import { mountPathReplay as _mountPathReplay } from './js/pathReplayRoutes.js';       // The Path replay (preview): the nightly per-expiry walk records with 15-minute bars (/api/replay/path-days)
+import { mountSpreadExtras as _mountSpreadExtras } from './js/spreadExtrasRoutes.js';       // Spreads & ratios board: eight extra daily FRED series (3m bill, fed funds, term premium, SOFR, IORB, reverse repo, balance sheet, TGA); read-only, no model call
 import { createStateRoutes } from './js/stateRoutes.js';                // Market State Engine: GET /api/state (plans/MARKET_STATE_ENGINE_PLAN.md)
 import { createSurfaceLab } from './js/surfaceLabRoutes.js';
 import { createVixCapture } from './js/vixCaptureRoutes.js';
@@ -22880,6 +22881,8 @@ svcInterval('drill', () => _refreshDrillBundle().catch(e => console.error('[dril
 // boot runs, as rates above: the bundle first, then the chapters, which are built from it
 svcTimeout('drill', () => _refreshDrillBundle().catch(e => console.error('[drill] boot run:', e.message)), 9 * 60_000);
 svcTimeout('drill', () => _refreshChapters().catch(e => console.error('[chapters] boot run:', e.message)), 12 * 60_000);
+// Spreads & ratios board (js/spreadExtrasRoutes.js): the FRED series the daily bundle does not carry, read on demand through the same keyless FRED CSV helper and held six hours in memory
+_mountSpreadExtras(app, { fredCsv: _fredCsv });
 
 // ── The week map: every series scored against its own history ────────────────
 // Weekly changes of ~25 macro series, each as a z against the series' full

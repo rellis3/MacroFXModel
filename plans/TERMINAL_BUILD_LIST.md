@@ -184,6 +184,10 @@ Plan and audit: plans/SPREADS_AND_RATIOS.md. Insight tab pill "Spreads & ratios"
 | Pairs we cannot draw from the bundle (HYG/IEF, IWM/SPY, CRWV/SOXX, 3m10y, SOFR-IORB) | NOT HELD | Listed on the board with the reason; 3m10y could come from FRED DTB3 without a new vendor |
 | Preregistrations for the untested pairs (NVDA ratios, gold/silver, BTC/gold, XLE/WTI, XLY/XLP) | TODO | Stubs only in the plan; none has been run |
 
+Wave 2 (2026-11-17, preview, same surface): 33 more pairs from general market knowledge (55 in all), seven stories with a Story filter, a "Stories now" strip, divergence heroes
+(two lines against their own last two years and the gap), the eight extra FRED series (`/api/spread-extras`) and the derived series behind them, the picker offering all of them.
+Prereg stubs for the 26 untested drawable pairs and a list of what we cannot draw are in plans/SPREADS_AND_RATIOS.md. DONE (commit ids in the git log: "Spreads and ratios, wave 2").
+
 ## 13. Overview sections (2026-11-17, owner question: "should we create sub tabs on Overview like we did for Macro?")
 Owner-only preview, registry surface `widget.ov.sections`. With it off a desk login sees the Overview exactly as before (one long page); with it on, a pill row sits right under the At a glance block and shows one section at a time. Files: js/terminal/overviewSubtabs.js (pure rules), overviewSections.js (the DOM part), overview-sections.css, scripts/overview-sections-check.mjs (headless check). Command `OVERVIEW <today|currencies|risk|news|desk>`; address `#overview/currencies`; hook `openOverviewSection(id)`.
 | Item | Status | Notes |

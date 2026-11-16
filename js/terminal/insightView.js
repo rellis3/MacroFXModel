@@ -5,7 +5,7 @@
 // To add a board: write js/terminal/<name>View.js exporting mount<Name>(host, ctx) -> { destroy }, add a row to PANELS below (the literal
 // data-surface="panel.insight.<key>" in `pill` is what the registry guard reads), register the surface in tabRegistry.js and give it a command
 // in commandCore.js (INSIGHT_WORDS). ctx: { getBundle(), fetchJson(url), go(target), win, doc }.
-import { getBundle } from './insightData.js';
+import { getBundle, getExtras } from './insightData.js';
 
 export const PANELS = [
   { key: 'unusual', surface: 'panel.insight.unusual', pill: '<button type="button" class="in-tab" data-p="unusual" data-surface="panel.insight.unusual">Unusual now</button>', load: () => import('./unusualView.js').then(m => m.mountUnusual) },
@@ -39,7 +39,7 @@ ${PANELS.map(p => `<div class="in-panel" id="in-p-${p.key}" data-p="${p.key}" da
   const tabs = [...sec.querySelectorAll('.in-tab')];
   const mounted = {};
   const ctx = {
-    win, doc, fetchJson: getJson, getBundle: () => getBundle({ fetchJson: getJson }),
+    win, doc, fetchJson: getJson, getBundle: () => getBundle({ fetchJson: getJson }), getExtras: () => getExtras({ fetchJson: getJson }),
     go(target) {
       if (!target) return false;
       if (String(target).startsWith('panel.macro.')) return typeof win.openMacroBoard === 'function' ? win.openMacroBoard(target) !== false : false;

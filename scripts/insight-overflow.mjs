@@ -19,12 +19,24 @@ const ALLTABS = PAGEWIDTH && !process.argv.some(a => a.startsWith('--tabs='));
 const LIVE = process.env.LIVE || 'https://macrofxmodel-production.up.railway.app';
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png' };
 const owner = { ok: true, role: 'owner', auth: true };
+let extrasHeld = null;
+async function localExtras() {
+  if (extrasHeld) return extrasHeld;
+  const { createSpreadExtras } = await import('../js/spreadExtrasRoutes.js');
+  const fredCsv = async id => { const r = await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}`, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(30000) }); if (!r.ok) throw new Error(`FRED ${id} HTTP ${r.status}`); return (await r.text()).trim().split('\n').slice(1).map(l => { const [d, v] = l.split(','); return { date: d, value: parseFloat(v) }; }).filter(o => Number.isFinite(o.value)); };
+  extrasHeld = await createSpreadExtras({ fredCsv }).get(); return extrasHeld;
+}
 
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   try {
     if (u.pathname === '/api/desk-session') { res.setHeader('content-type', 'application/json'); return res.end(JSON.stringify(owner)); }
     if (u.pathname === '/api/desk-access') { res.setHeader('content-type', 'application/json'); return res.end(JSON.stringify({ ok: true, role: 'owner', schema: 2, visible: [], saved: {} })); }
+    if (u.pathname === '/api/spread-extras') {   // not deployed yet on the live site: build it here from FRED with the same module the server mounts (js/spreadExtrasRoutes.js)
+      const lr = await fetch(LIVE + req.url, { headers: { accept: 'application/json' } }).catch(() => null);
+      if (!lr?.ok) { res.setHeader('content-type', 'application/json'); return res.end(JSON.stringify(await localExtras())); }
+      res.statusCode = lr.status; res.setHeader('content-type', 'application/json'); return res.end(Buffer.from(await lr.arrayBuffer()));
+    }
     if (u.pathname.startsWith('/api/')) {
       const r = await fetch(LIVE + req.url, { headers: { accept: 'application/json' } });
       res.statusCode = r.status; res.setHeader('content-type', r.headers.get('content-type') ?? 'application/json'); return res.end(Buffer.from(await r.arrayBuffer()));

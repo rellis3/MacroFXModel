@@ -22,3 +22,21 @@ export async function getBundle({ fetchJson, now = () => Date.now(), force = fal
 }
 /** Forget the held copy (tests, and a manual refresh). */
 export const forgetBundle = () => { held = null; inflight = null; };
+
+// The eight extra FRED series the Spreads & ratios board lays beside the bundle (/api/spread-extras, js/spreadExtrasRoutes.js). A few KB per series, held for ten
+// minutes like the bundle; a failure is not held and comes back as { ok: false } so the board still draws every pair that does not need an extra.
+let heldX = null, inflightX = null;
+export async function getExtras({ fetchJson, now = () => Date.now(), force = false } = {}) {
+  if (!force && heldX && now() - heldX.at < TTL) return heldX.data;
+  if (inflightX) return inflightX;
+  inflightX = (async () => {
+    try {
+      const j = await fetchJson('/api/spread-extras');
+      if (!j?.ok || !j.series) return { ok: false, error: j?.error ? String(j.error) : 'The extra series came back empty.' };
+      heldX = { at: now(), data: j }; return j;
+    } catch (e) { return { ok: false, error: `Could not load the extra series (${e?.message ?? e}).` }; }
+    finally { inflightX = null; }
+  })();
+  return inflightX;
+}
+export const forgetExtras = () => { heldX = null; inflightX = null; };

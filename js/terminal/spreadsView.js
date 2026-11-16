@@ -6,9 +6,10 @@
 // Presentation only. A spread or ratio describes state; every tile carries its Evidence Book verdict (read live from the book), and nothing is worded as a
 // view on direction. Theme tokens only (spreads.css); SVG uses CSS variables, so a theme change repaints it without a redraw. Motion is the shared
 // .bv-sweep / glow CSS and is off under prefers-reduced-motion.
-import { PAIRS, BY_ID, WALL_IDS, NOT_HELD, GENERAL_EV, EDUCATORS } from './spreadsLibrary.js';
-import { rankPairs, caption, trustNote, ghosts, slice, nth, niceDate, fmtValue, customSeries, customRow, customCaption, moveCorr, opAllowed, OPS, libraryMatch, evidenceFor, generalEvidence, scatterFrames, scatterBounds } from './spreadsCore.js';
-import { SERIES, GROUPS as SERIES_GROUPS, BY_KEY } from './insightSeries.js';
+import { PAIRS, BY_ID, WALL_IDS, NOT_HELD, GENERAL_EV, EDUCATORS, STORIES } from './spreadsLibrary.js';
+import { rankPairs, caption, trustNote, ghosts, slice, nth, niceDate, fmtValue, customSeries, customRow, customCaption, moveCorr, opAllowed, OPS, libraryMatch, evidenceFor, generalEvidence, scatterFrames, scatterBounds, storiesNow } from './spreadsCore.js';
+import { SERIES, GROUPS as SERIES_GROUPS } from './insightSeries.js';
+import { DERIVED, seriesMeta, augmentBundle } from './spreadsDerived.js';
 import { esc } from './boardViz.js';
 import { DESK_EVIDENCE } from '../deskEvidence.js';
 
@@ -107,15 +108,43 @@ const evChips = (row, max = 2) => {
   const shown = row.ev.slice(0, max).map(e => chipHtml(e, true)).join('');
   return `${shown}${row.ev.length > max ? `<span class="chip sp-v sp-v-more" title="${esc(row.ev.slice(max).map(e => `${e.id}: ${e.word}`).join('; '))}">+${row.ev.length - max}</span>` : ''}`;
 };
-const mentionsText = p => `${p.mentions.n} line${p.mentions.n === 1 ? '' : 's'} in the stored notes${p.mentions.shared ? ` (shared with the ${p.mentions.shared} pairs)` : ''}`;
+const mentionsText = p => (p.mentions.n === 0 ? 'Added from general market knowledge: no line about it in the stored educator notes' : `${p.mentions.n} line${p.mentions.n === 1 ? '' : 's'} in the stored notes${p.mentions.shared ? ` (shared with the ${p.mentions.shared} pairs)` : ''}`);
 
 function quotesHtml(p) {
-  if (!p.say.length) return `<p class="muted sp-none">No quote from the stored notes for this one. ${esc(mentionsText(p))}; the raw transcripts were not mined.</p>`;
+  if (!p.say.length) return `<p class="muted sp-none">${p.mentions.n === 0 ? 'No educator quote: this pair comes from general market knowledge, not the stored notes.' : `No quote from the stored notes for this one. ${esc(mentionsText(p))}; the raw transcripts were not mined.`}</p>`;
   return p.say.map(s => `<blockquote class="sp-q"><p>${esc(s.text)}</p><footer><b>${esc(s.who)}</b> &middot; ${esc(s.src)}${s.verbatim ? '' : ' <i>(the desk\'s note on the clip, not his exact words)</i>'}</footer></blockquote>`).join('');
 }
 function foundHtml(row) {
   if (!row.ev.length) return '<p class="muted sp-none">Not tested here yet. The general tests of a rare move or two markets coming apart found nothing that follows (above). A preregistration stub is proposed in plans/SPREADS_AND_RATIOS.md.</p>';
   return `<ul class="sp-found">${row.ev.map(e => `<li>${chipHtml(e)}<p class="muted">${esc(e.say)}. <span>${esc(e.doc ?? '')}</span></p></li>`).join('')}</ul>`;
+}
+
+/** The "Stories now" strip: the most stretched readings across the seven stories, in plain English, each with its Evidence Book chip or "not tested here". */
+export function storiesStripHtml(rank) {
+  const S = storiesNow(rank); if (!S.items.length) return '';
+  const lab = id => STORIES.find(x => x.id === id)?.label ?? id;
+  return `<section class="sp-stories" aria-label="Stories now"><div class="sp-stories-h"><b>Stories now</b><span class="muted">${S.outer} of ${S.total} pairs sit in the outer tenth at either end of their own history; about ${S.chance} would by chance alone, so the longer this list runs past that, the more the market is stretched.</span></div>
+<ul class="sp-stories-l">${S.items.map(it => `<li><button type="button" class="sp-story-card" data-open="${esc(it.id)}" aria-label="Open ${esc(it.row.pair.short)}"><span class="sp-story-tag sp-story-${esc(it.story)}">${esc(lab(it.story))}</span><span class="sp-story-t">${esc(it.text)}</span><span class="sp-chips">${evChips(it.row, 1)}</span></button></li>`).join('')}</ul></section>`;
+}
+
+/** The divergence panel: the two lines as z-scores against their own last two years (the second flipped when they usually move opposite ways), the gap shaded. `s` is a zgap slice. */
+export function divergenceSvg(row, s) {
+  const n = s.vals.length; if (n < 2 || !s.xz) return '<div class="in-empty">Too few closes to draw.</div>';
+  const p = row.pair, sign = s.sign ?? 1, xs = s.xz, ys = s.yz.map(v => sign * v);
+  const all = xs.concat(ys); let lo = Math.min(...all), hi = Math.max(...all); const pad = (hi - lo) * 0.08 || 1; lo -= pad; hi += pad;
+  const X = i => M.l + (i / (n - 1)) * (W - M.l - M.r), Y = a => M.t + (1 - (a - lo) / (hi - lo)) * (H - M.t - M.b);
+  const stride = Math.max(1, Math.floor(n / 360)), idx = []; for (let i = 0; i < n; i += stride) idx.push(i); if (idx.at(-1) !== n - 1) idx.push(n - 1);
+  const line = a => idx.map((i, k) => `${k ? 'L' : 'M'}${f1(X(i))},${f1(Y(a[i]))}`).join('');
+  const area = `${idx.map((i, k) => `${k ? 'L' : 'M'}${f1(X(i))},${f1(Y(xs[i]))}`).join('')}${[...idx].reverse().map(i => `L${f1(X(i))},${f1(Y(ys[i]))}`).join('')}Z`;
+  const yt = Array.from({ length: 5 }, (_, k) => lo + ((hi - lo) * k) / 4), xt = []; let yr = ''; s.dates.forEach((dt, i) => { const y = dt.slice(0, 4); if (y !== yr) { yr = y; if (i > 0 && i < n - 8) xt.push([i, y]); } });
+  const ex = X(n - 1), ey = Y(xs[n - 1]), ey2 = Y(ys[n - 1]), left = ex > W - 120;
+  return `<svg class="sp-chart sp-div" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${p.xname} against ${p.yname}, each as standard deviations from its own last two years; the gap now is ${fmtValue(p, row.last)}`)}">
+${yt.map(a => `<line class="sp-grid" x1="${M.l}" x2="${W - M.r}" y1="${f1(Y(a))}" y2="${f1(Y(a))}"/><text class="sp-ax" x="${M.l - 8}" y="${f1(Y(a) + 3)}" text-anchor="end">${a >= 0 ? '+' : '−'}${Math.abs(a).toFixed(1)}σ</text>`).join('')}
+${lo < 0 && hi > 0 ? `<line class="sp-med" x1="${M.l}" x2="${W - M.r}" y1="${f1(Y(0))}" y2="${f1(Y(0))}"/>` : ''}
+${xt.map(([i, y]) => `<text class="sp-ax" x="${f1(X(i))}" y="${H - 8}" text-anchor="middle">${y}</text>`).join('')}
+<path class="sp-gap" d="${area}"/><path class="sp-line sp-glow bv-sweep" pathLength="1" d="${line(xs)}"/><path class="sp-line2" d="${line(ys)}"/>
+<circle class="sp-end sp-glow" cx="${f1(ex)}" cy="${f1(ey)}" r="4.5"/><circle class="sp-end2" cx="${f1(ex)}" cy="${f1(ey2)}" r="4"/>
+<text class="sp-endv" x="${f1(ex + (left ? -9 : 9))}" y="${f1(ey - 8)}" text-anchor="${left ? 'end' : 'start'}">${esc(p.xname)}</text><text class="sp-endv sp-endv2" x="${f1(ex + (left ? -9 : 9))}" y="${f1(ey2 + 15)}" text-anchor="${left ? 'end' : 'start'}">${esc(p.yname)}${sign < 0 ? ' (flipped)' : ''}</text></svg>`;
 }
 
 /** The hero view for one ranked row, as HTML. `win` is a key of WINDOWS. */
@@ -125,7 +154,8 @@ export function heroHtml(row, win = '3y') {
   const canPick = row.pair.op !== 'level';
   return `<div class="sp-hero" role="region" aria-label="${esc(row.pair.short)} in detail">
 <p class="sp-cap">${esc(caption(row))}</p>
-<div class="sp-hero-grid"><div class="card sp-card"><div class="ch"><span class="lbl">${esc(row.pair.short)} over time</span><span class="r in-pills" role="group" aria-label="Window">${pills}</span></div>${heroSvg(row, s)}
+<div class="sp-hero-grid">${row.pair.op === 'zgap' ? `<div class="card sp-card sp-divcard"><div class="ch"><span class="lbl">${esc(row.pair.xname)} against ${esc(row.pair.yname)}</span><span class="r in-pills" role="group" aria-label="Window">${pills}</span></div>${divergenceSvg(row, s)}
+<p class="sp-key muted">Each line is measured as a z-score against its own last two years${(row.series.sign ?? 1) < 0 ? ' (the second is flipped because they usually move opposite ways)' : ''}. The shaded gap between them is the line below. A wide gap says they are out of line with each other, not which one gives way.</p></div>` : ''}<div class="card sp-card"><div class="ch"><span class="lbl">${esc(row.pair.short)} over time</span>${row.pair.op === 'zgap' ? '' : `<span class="r in-pills" role="group" aria-label="Window">${pills}</span>`}</div>${heroSvg(row, s)}
 <p class="sp-key muted">Shaded: the middle 80% and middle 50% of the whole record. A line at the edge says it is stretched, not that it turns.</p></div>
 <div class="card sp-card"><div class="ch"><span class="lbl">The last month against the months before</span></div>${ghostSvg(g)}</div></div>
 <div class="sp-two"><div class="sp-said"><h4>What they said</h4>${quotesHtml(row.pair)}</div><div class="sp-foundbox"><h4>What we found</h4>${foundHtml(row)}</div></div>
@@ -141,17 +171,21 @@ ${trackHtml(r)}<span class="sp-pc">${nth(r.pct)}</span>
 <span class="sp-chips">${evChips(r)}</span></button>${open ? heroHtml(r, win) : ''}</li>`;
 }
 
-const GROUP_ORDER = ['Breadth and style', 'Rates', 'Credit', 'Volatility', 'Commodities', 'Currencies'];
+const GROUP_ORDER = ['Breadth and style', 'Rates', 'Credit', 'Volatility', 'Commodities', 'Currencies', 'Cross-asset', 'Funding and liquidity', 'Divergences'];
 /** The ladder view as HTML for a ranking (rankPairs) and view state. Pure. */
 export function ladderHtml(rank, st) {
   const rows = rank.rows; if (!rows.length) return '<div class="in-empty">No pair had enough common history to rank.</div>';
   const groups = GROUP_ORDER.filter(g => rows.some(r => r.group === g));
-  let list = st.group === 'all' ? [...rows] : rows.filter(r => r.group === st.group);
+  let list = rows.filter(r => (st.group === 'all' || r.group === st.group) && (!st.story || st.story === 'all' || r.story === st.story));
   if (st.sort === 'mentioned') list.sort((a, b) => b.pair.mentions.n - a.pair.mentions.n || b.score - a.score);
   const pills = [`<button type="button" class="in-pill" data-group="all" aria-pressed="${st.group === 'all'}">All <b>${rows.length}</b></button>`,
     ...groups.map(g => `<button type="button" class="in-pill" data-group="${esc(g)}" aria-pressed="${st.group === g}">${esc(g)} <b>${rows.filter(r => r.group === g).length}</b></button>`)].join('');
+  const stories = STORIES.filter(x => rows.some(r => r.story === x.id));
+  const storyPills = [`<button type="button" class="in-pill" data-story="all" aria-pressed="${!st.story || st.story === 'all'}">All stories <b>${rows.length}</b></button>`,
+    ...stories.map(x => `<button type="button" class="in-pill sp-story sp-story-${esc(x.id)}" data-story="${esc(x.id)}" aria-pressed="${st.story === x.id}" title="${esc(x.blurb)}">${esc(x.label)} <b>${rows.filter(r => r.story === x.id).length}</b></button>`)].join('');
   const sorts = [['stretch', 'Most stretched'], ['mentioned', 'Most mentioned']].map(([k, t]) => `<button type="button" class="in-pill" data-sort="${k}" aria-pressed="${st.sort === k}">${t}</button>`).join('');
-  return `<div class="sp-tools"><div class="in-pills" role="group" aria-label="Filter by group">${pills}</div><div class="in-pills" role="group" aria-label="Order">${sorts}</div></div>
+  const blurb = STORIES.find(x => x.id === st.story)?.blurb;
+  return `<div class="sp-tools"><div class="in-pills" role="group" aria-label="Filter by story">${storyPills}</div>${blurb ? `<p class="sp-storyblurb muted">${esc(blurb)}.</p>` : ''}<div class="in-pills" role="group" aria-label="Filter by group">${pills}</div><div class="in-pills" role="group" aria-label="Order">${sorts}</div></div>
 <div class="sp-scale muted" aria-hidden="true"><span>marker at the left: bottom of its own history</span><span>right: top of its own history</span></div>
 <ol class="in-list sp-list">${list.map(r => rowHtml(r, st.open === r.id, st.hw)).join('')}</ol>
 ${rank.missing.length ? `<p class="in-foot muted">Not drawn (a leg is missing or the record is too short): ${esc(rank.missing.map(m => m.pair.short).join(', '))}.</p>` : ''}
@@ -174,12 +208,13 @@ export function wallHtml(rank) {
 // ── the picker ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 const selectHtml = (id, label, val, bundleKeys) => {
   const groups = Object.keys(SERIES_GROUPS);
-  const opts = groups.map(g => { const items = SERIES.filter(s => s.group === g && bundleKeys.has(s.key)); return items.length ? `<optgroup label="${esc(SERIES_GROUPS[g])}">${items.map(s => `<option value="${esc(s.key)}"${s.key === val ? ' selected' : ''}>${esc(s.label)}</option>`).join('')}</optgroup>` : ''; }).join('');
+  const ALL = SERIES.concat(DERIVED);
+  const opts = groups.map(g => { const items = ALL.filter(s => s.group === g && bundleKeys.has(s.key)); return items.length ? `<optgroup label="${esc(SERIES_GROUPS[g])}">${items.map(s => `<option value="${esc(s.key)}"${s.key === val ? ' selected' : ''}>${esc(s.label)}</option>`).join('')}</optgroup>` : ''; }).join('');
   return `<label class="sp-sel"><span>${esc(label)}</span><select id="${id}" aria-label="${esc(label)}">${opts}</select></label>`;
 };
 /** The picker view. Returns { html, custom } where custom = the computed pair (or null) so the caller can play its scatter. */
 export function pickerHtml(bundle, st) {
-  const keys = new Set(Object.keys(bundle.series).filter(k => BY_KEY[k]));
+  const keys = new Set(Object.keys(bundle.series).filter(k => seriesMeta(k)));
   const ops = OPS.map(o => `<option value="${o.id}"${st.pop === o.id ? ' selected' : ''}>${esc(o.label)}</option>`).join('');
   const wins = Object.keys(WINDOWS).map(k => `<option value="${k}"${st.pw === k ? ' selected' : ''}>${esc(WIN_LABEL[k])}</option>`).join('');
   const controls = `<div class="sp-controls">${selectHtml('sp-x', 'X', st.px, keys)}${selectHtml('sp-y', 'Y', st.py, keys)}<label class="sp-sel"><span>Show</span><select id="sp-op" aria-label="Operation">${ops}</select></label><label class="sp-sel"><span>Window</span><select id="sp-pw" aria-label="Window">${wins}</select></label></div>`;
@@ -191,7 +226,7 @@ export function pickerHtml(bundle, st) {
   const all = moveCorr(c.xs, c.ys, st.px, st.py), recent = moveCorr(c.xs, c.ys, st.px, st.py, 60);
   const lib = libraryMatch(st.px, st.py, st.pop), ev = lib ? evidenceFor(lib.ev) : [];
   const chips = (ev.length ? ev : generalEvidence()).map(e => chipHtml(e)).join('');
-  const xl = BY_KEY[st.px]?.label ?? st.px, yl = BY_KEY[st.py]?.label ?? st.py;
+  const xl = seriesMeta(st.px)?.label ?? st.px, yl = seriesMeta(st.py)?.label ?? st.py;
   const trail = c.xs.slice(-40).map((x, i) => [x, c.ys.slice(-40)[i]]), sample = c.xs.map((x, i) => [x, c.ys[i]]).filter((_, i) => i % 3 === 0);
   const b = fullBounds(c.xs, c.ys), s = slice(c.series, 0);
   const stat = (k, v, t = '') => `<div class="sp-stat" title="${esc(t)}"><span>${k}</span><b>${v}</b></div>`;
@@ -205,7 +240,7 @@ export function pickerHtml(bundle, st) {
 
 /** The replay-player definition for a custom pair's scatter (frames hold only points up to their own date). */
 export function scatterDef(c, st) {
-  const xl = BY_KEY[st.px]?.label ?? st.px, yl = BY_KEY[st.py]?.label ?? st.py;
+  const xl = seriesMeta(st.px)?.label ?? st.px, yl = seriesMeta(st.py)?.label ?? st.py;
   return { id: 'spreads-scatter', title: `${yl} against ${xl}`, note: 'The trail is the last 40 closes up to each date. The axes only widen as the replay goes on, so no frame is drawn with knowledge of the later ones. A description of how the pair has moved, not a forecast.',
     load: async () => { const frames = scatterFrames(c.xs, c.ys, c.dates, { span: 504, trail: 40, step: 3 }); return { frames, extra: { frames } }; },
     draw: (frames, i) => scatterSvg({ pts: frames[i].pts, all: frames.slice(0, i + 1).map(f => f.pts.at(-1)), bounds: scatterBounds(frames, i), xl, yl, nowLabel: niceDate(frames[i].t) }),
@@ -224,15 +259,15 @@ export function mountSpreads(host, ctx) {
   const win = ctx.win ?? window, doc = ctx.doc ?? document;
   ensureSpCss(doc);
   const store = () => { try { return win.localStorage ?? null; } catch { return null; } };
-  const st = { view: 'ladder', group: 'all', sort: 'stretch', open: null, hw: '3y', px: 'rsp', py: 'spy', pop: 'ratio', pw: '3y' };
+  const st = { view: 'ladder', group: 'all', story: 'all', sort: 'stretch', open: null, hw: '3y', px: 'rsp', py: 'spy', pop: 'ratio', pw: '3y' };
   try { Object.assign(st, JSON.parse(store()?.getItem(LS) ?? '{}')); } catch { /* private window */ }
   if (!['ladder', 'wall', 'pick'].includes(st.view)) st.view = 'ladder';
   if (!WINDOWS[st.hw] && st.hw !== '6y') st.hw = '3y';
-  const save = () => { try { store()?.setItem(LS, JSON.stringify({ view: st.view, group: st.group, sort: st.sort, hw: st.hw, px: st.px, py: st.py, pop: st.pop, pw: st.pw })); } catch { /* private window */ } };
+  const save = () => { try { store()?.setItem(LS, JSON.stringify({ view: st.view, group: st.group, story: st.story, sort: st.sort, hw: st.hw, px: st.px, py: st.py, pop: st.pop, pw: st.pw })); } catch { /* private window */ } };
   let bundle = null, rank = null, custom = null, alive = true;
   const gen = generalEvidence(DESK_EVIDENCE).map(e => chipHtml(e)).join('');
   const frame = body => `<div class="sp-head"><p class="in-asof">${rank ? `Where each educator pair sits against its own history, as at the close of <b>${esc(niceDate(rank.refDate))}</b>. ${rank.rows.length} pairs from the daily market bundle (about six years; shorter for credit and single names). ` : ''}Each shows what the educators said and what our own tests found. <b>These describe state, not direction.</b></p>
-<div class="sp-gen"><span class="muted">In general:</span> ${gen}</div></div>
+<div class="sp-gen"><span class="muted">In general:</span> ${gen}</div></div>${rank && st.view === 'ladder' ? storiesStripHtml(rank) : ''}
 <div class="in-pills sp-views" role="tablist" aria-label="Spreads and ratios views">${[['ladder', 'Ladder'], ['wall', 'The wall'], ['pick', 'Pick your own']].map(([k, t]) => `<button type="button" role="tab" class="in-tab" data-view="${k}" aria-selected="${st.view === k}">${t}</button>`).join('')}</div>${body}`;
   const draw = () => {
     if (!bundle) return;
@@ -251,6 +286,8 @@ export function mountSpreads(host, ctx) {
     const t = e.target.closest?.('button'); if (!t || !host.contains(t)) return;
     const d = t.dataset;
     if (d.view) { st.view = d.view; save(); draw(); return; }
+    if (d.story) { st.story = d.story; st.open = null; save(); draw(); return; }
+    if (d.open) { st.view = 'ladder'; st.group = 'all'; st.story = 'all'; st.open = d.open; save(); draw(); host.querySelector(`.sp-row[data-id="${d.open}"]`)?.scrollIntoView?.({ block: 'nearest' }); return; }
     if (d.group) { st.group = d.group; st.open = null; save(); draw(); return; }
     if (d.sort) { st.sort = d.sort; save(); draw(); return; }
     if (d.win) { st.hw = d.win; save(); draw(); return; }
@@ -269,10 +306,10 @@ export function mountSpreads(host, ctx) {
   };
   host.addEventListener('click', onClick); host.addEventListener('change', onChange);
   host.innerHTML = '<div class="in-empty">Reading the daily market bundle…</div>';
-  ctx.getBundle().then(b => {
+  Promise.all([ctx.getBundle(), ctx.getExtras ? ctx.getExtras().catch(() => ({ ok: false })) : Promise.resolve(null)]).then(([b, x]) => {
     if (!alive) return;
     if (!b?.ok) { host.innerHTML = `<div class="in-empty">${esc(b?.error || 'The daily market bundle is not available.')}</div>`; return; }
-    bundle = b; rank = rankPairs(b, PAIRS, DESK_EVIDENCE); draw(); wantOpen();
+    bundle = augmentBundle(b, x); rank = rankPairs(bundle, PAIRS, DESK_EVIDENCE); draw(); wantOpen();
   });
   const wantOpen = () => { const id = win.deskSpreadsWant; if (id && BY_ID[id]) { delete win.deskSpreadsWant; st.view = 'ladder'; st.group = 'all'; st.open = id; save(); draw(); host.querySelector(`.sp-row[data-id="${id}"]`)?.scrollIntoView?.({ block: 'nearest' }); } };
   win.deskSpreads = { open(id) { if (!BY_ID[id]) return false; st.view = 'ladder'; st.group = 'all'; st.open = id; save(); draw(); host.querySelector(`.sp-row[data-id="${id}"]`)?.scrollIntoView?.({ block: 'nearest' }); return true; }, ids: () => PAIRS.map(p => p.id) };

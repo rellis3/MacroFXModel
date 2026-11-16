@@ -36,7 +36,7 @@ test('nowrap and wide minimums are only on table parts and the correlation grid,
   const rules = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}@]+)\{([^}]*)\}/g)].map(m => ({ sel: m[1].trim(), body: m[2] }));
   const tableSel = /^(\.in-tbl|\.in-corr|\.in-grp|\.in-mini|\.in-cc|\.in-pmx)/;
   for (const r of rules) {
-    if (/white-space:\s*nowrap/.test(r.body)) for (const s of r.sel.split(',').map(x => x.trim())) assert.ok(tableSel.test(s) || /^\.in-(tab|pill|chip|pc|rk|val|gr|mv)\b/.test(s), `nowrap on ${s}`);
+    if (/white-space:\s*nowrap/.test(r.body)) for (const s of r.sel.split(',').map(x => x.trim())) assert.ok(tableSel.test(s) || /^\.in-(tab|pill|chip|pc|rk|val|gr|mv)\b/.test(s) || /^\.bis-(axis|c)\b/.test(s), `nowrap on ${s}`);   // .bis-axis: the BIS strip's absolutely placed axis tick labels (a few characters each); .bis-c: a cell of its table (inside a scroll box)
     const mw = /min-width:\s*(\d+)px/.exec(r.body);
     if (mw && +mw[1] > 160) for (const s of r.sel.split(',').map(x => x.trim())) assert.ok(/^\.in-corr/.test(s), `min-width ${mw[1]}px on ${s} (only the correlation grid, which scrolls inside in-tblw, may be that wide)`);
   }

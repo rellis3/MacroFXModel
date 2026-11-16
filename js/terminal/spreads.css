@@ -106,3 +106,26 @@
   .sp-row .sp-track { grid-area: tr; } .sp-row .in-val { grid-area: va; } .sp-row .sp-ch { grid-area: ch; } .sp-row .sp-chips { grid-area: cp; }
 }
 @media (prefers-reduced-motion: reduce) { .sp-glow { filter: none; } .sp-line.bv-sweep, .sp-gh.bv-sweep { animation: none; } }
+
+/* wave 2 (2026-11-17): the story filter, the "Stories now" strip and the divergence panel */
+.sp-storyblurb { margin: 0; font-size: 12px; max-width: 90ch; overflow-wrap: anywhere; }
+.in-pill.sp-story { font-weight: 600; }
+.sp-stories { margin: 0 0 12px; padding: 10px 12px; background: var(--bg1); border: 1px solid var(--line2); border-radius: 12px; box-shadow: 0 0 18px rgba(var(--purrgb), .18); min-width: 0; }
+.sp-stories-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 8px; font-size: 12.5px; }
+.sp-stories-h b { font: 700 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--pur2); }
+.sp-stories-h span { min-width: 0; overflow-wrap: anywhere; }
+.sp-stories-l { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 8px; }
+.sp-stories-l li { min-width: 0; }
+.sp-story-card { display: grid; gap: 5px; width: 100%; text-align: left; font: inherit; color: var(--tx); padding: 8px 10px; cursor: pointer; background: var(--bg2); border: 1px solid var(--line2); border-radius: 10px; min-width: 0; }
+.sp-story-card:hover { border-color: rgba(var(--purrgb), .7); }
+.sp-story-card:focus-visible { outline: 2px solid var(--pur2); outline-offset: 2px; }
+.sp-story-tag { justify-self: start; font: 700 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; padding: 1px 7px; border-radius: 99px; border: 1px solid var(--line2); color: var(--tx2); }
+.sp-story-tag.sp-story-Risk, .sp-story-tag.sp-story-Inflation { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 55%, transparent); }
+.sp-story-tag.sp-story-Rates, .sp-story-tag.sp-story-Breadth { color: var(--pur2); border-color: rgba(var(--purrgb), .55); }
+.sp-story-tag.sp-story-FX, .sp-story-tag.sp-story-Liquidity { color: var(--teal); border-color: color-mix(in srgb, var(--teal) 55%, transparent); }
+.sp-story-t { font-size: 12.5px; line-height: 1.4; overflow-wrap: anywhere; }
+.sp-divcard { grid-column: 1 / -1; }
+.sp-div .sp-gap { fill: rgba(var(--purrgb), .16); stroke: none; }
+.sp-line2 { fill: none; stroke: var(--teal); stroke-width: 1.8; stroke-dasharray: 5 3; stroke-linejoin: round; stroke-linecap: round; }
+.sp-end2 { fill: var(--teal); }
+.sp-endv2 { fill: var(--teal); }
