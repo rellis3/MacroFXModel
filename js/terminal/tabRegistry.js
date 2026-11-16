@@ -197,6 +197,7 @@ export const SURFACES = [
   mk('panel.changed.thesis', 'panel', 'Changed: thesis against reality', 'Changed', M, 'the book\'s claims laid against the evening score'),
   mk('panel.changed.paper', 'panel', 'Changed: paper trades', 'Changed', M, 'the paper-trade running total'),
   mk('panel.corr.hedges', 'panel', 'Correlations: the hedge finder', 'Correlations', T, 'ranked hedges for a market or a book card: what to put on'),
+  mk('panel.macro.boepath', 'panel', 'Macro: the Bank of England priced path', 'Macro', null, 'what the market has priced for Bank Rate at each coming MPC meeting, from the Bank of England\'s own OIS curve: the running Bank Rate, the chance of a 25bp step, and how the pricing moved over a day, a week and a month'),
   mk('panel.macro.fedyields', 'panel', 'Macro: the Fed path against the yields', 'Macro', null, 'the priced fed funds path (December, June) beside the 2Y, 2s10s and 10Y over the same 1D/5D/20D dates, how much of the 2Y the futures path accounts for, and the Atlanta Fed window odds'),
   mk('panel.macro.creditliq', 'panel', 'Macro: credit & liquidity', 'Macro', null, 'the Credit Stress Index, the long-history Baa-10Y spread against 5 and 20 years, global central-bank liquidity (level, impulse, by bank) and the liquidity conditions z-scores'),
   mk('panel.macro.curve', 'panel', 'Macro: the curve through time', 'Macro', null, 'the Treasury curve drawn through 36 month-ends, six slopes against their 3y and 5y history, three years of curve shape, the yield-to-EURUSD coupling and the SOFR-Euribor spread-turn log'),

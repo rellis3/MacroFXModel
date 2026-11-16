@@ -46,6 +46,7 @@ import * as AAV from './assetAnalysisView.js';
 import * as SR from './sharedRead.js';
 import * as RBV from './ratesBoardView.js';
 import * as FYV from './fedPathYieldsView.js';
+import * as BOEV from './boePathView.js';
 import * as MacroSubs from './macroSubtabs.js';
 import { boardById as paperBoardById } from './paperBoardsView.js';
 import { macroMoreHtml, macroMoreBoard, overviewMoreHtml, mountOverview, mountLive, liveEmCell, liveWiderChip } from './moreBoards.js';
@@ -985,5 +986,6 @@ globalThis.overviewMoreHtml = overviewMoreHtml;                   // the Overvie
 globalThis.liveLayerMount = getAnalyst => { try { mountLive(getJson, getAnalyst); } catch (e) { console.warn('live layer', e); } };   // intraday overlay + the price read (js/terminal/liveLayerView.js)
 globalThis.liveEmCell = liveEmCell; globalThis.liveWiderChip = liveWiderChip;
 globalThis.ccyStrengthMount = () => { try { mountOverview(getJson); } catch (e) { console.warn('ccy strength', e); } };   // the newer Macro boards (js/terminal/moreBoards.js)
+globalThis.boePathHtml = doc => { try { return BOEV.boePathHtml(doc, { esc }); } catch (e) { console.warn('boe path', e); return ''; } };
 globalThis.fedYieldsHtml = (fp, rb, tp) => { try { return FYV.boardHtml(fp, rb, tp, { esc }); } catch (e) { console.warn('fed path yields', e); return ''; } };
 dispatchEvent(new Event('terminalmodule'));   // every hook above now exists: the classic page repaints what it drew before they did (the Macro sections need macroSubs)

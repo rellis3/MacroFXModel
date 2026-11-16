@@ -92,7 +92,7 @@ export const INSIGHT_WORDS = {
 
 // ── short names for the Macro boards people will actually type ──
 const BOARD_ALIASES = {
-  'panel.macro.fedyields': ['FED', 'FEDPATH', 'FEDWATCH'], 'panel.macro.globalyields': ['YIELDS', 'GLOBALYIELDS'], 'panel.macro.curve': ['CURVE'],
+  'panel.macro.fedyields': ['FED', 'FEDPATH', 'FEDWATCH'], 'panel.macro.boepath': ['BOEPATH', 'BOE', 'BANKRATE'], 'panel.macro.globalyields': ['YIELDS', 'GLOBALYIELDS'], 'panel.macro.curve': ['CURVE'],
   'panel.macro.vol': ['VIX', 'FEAR'], 'panel.macro.skewhist': ['SKEW'], 'panel.macro.jgb': ['JGB', 'JAPAN'], 'panel.macro.inflation': ['INFLATION', 'PCE'],
   'panel.macro.fedliq': ['LIQUIDITY', 'RESERVES'], 'panel.macro.nowcasts': ['NOWCAST', 'GDPNOW'], 'panel.macro.carry': ['CARRY'], 'panel.macro.gpr': ['GPR', 'GEOPOLITICS'],
   'panel.macro.fomcstrip': ['FOMC'], 'panel.macro.fiscalauct': ['AUCTIONS', 'FISCAL'], 'panel.macro.creditspreads': ['CREDIT', 'SPREADS'], 'panel.macro.cbboard': ['CBS', 'BANKS'],

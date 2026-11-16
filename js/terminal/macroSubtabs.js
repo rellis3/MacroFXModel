@@ -9,7 +9,7 @@ export const MACRO_SUBS = [
   { id: 'policy', alias: 'policy', label: 'Policy',
     blocks: ['panel.macro.cbcards', 'panel.macro.cbboard', 'panel.macro.cbfutures', 'panel.macro.ratediff', 'panel.macro.speakers', 'panel.macro.speechdrift', 'panel.macro.ratecycle', 'panel.macro.fomcstrip', 'panel.macro.pathdiff'] },
   { id: 'rates', alias: 'rates', label: 'Rates & curve',
-    blocks: ['panel.macro.ratesboard', 'panel.macro.fedyields', 'panel.macro.curve', 'panel.macro.globalyields', 'panel.macro.termprem', 'panel.macro.jgb', 'panel.macro.inflation', 'panel.macro.fiscalauct'] },
+    blocks: ['panel.macro.ratesboard', 'panel.macro.fedyields', 'panel.macro.boepath', 'panel.macro.curve', 'panel.macro.globalyields', 'panel.macro.termprem', 'panel.macro.jgb', 'panel.macro.inflation', 'panel.macro.fiscalauct'] },
   { id: 'economy', alias: 'economy', label: 'Economy',
     blocks: ['panel.macro.engines', 'panel.macro.scorecard', 'panel.macro.nowcasts', 'panel.macro.cli', 'panel.macro.releases'] },
   { id: 'credit', alias: 'credit', label: 'Credit & liquidity',
@@ -32,7 +32,7 @@ const shortOf = b => b.replace(/^panel\.macro\./, '');
  *  or another tab reads (world-rates, fed-path, global-yields, bank-credit, fair-value, cb-board, macro-engines-board) stays on the page-load list. */
 export const SUB_FEEDS = {
   policy: ['speech-drift', 'policy-extra'],
-  rates: ['rates-board', 'curve-board', 'term-premium', 'rates-extra'],
+  rates: ['rates-board', 'curve-board', 'term-premium', 'rates-extra', 'cb-path/boe'],
   economy: ['nowcast', 'leading-indicators', 'releases-board'],
   credit: ['credit-board', 'liquidity-board', 'xccy-basis', 'funding-read?spark=0', 'credit-liquidity'],
   markets: ['regime-board', 'vol-board', 'live-layer', 'fx-fair-value', 'carry-vol', 'commodity-fx', 'copper-gold', 'markets-extra'],

@@ -373,6 +373,8 @@ import { emptyBook as _oiShadowEmptyBook, syncPlan as _oiShadowSyncPlan, stepBar
 import { INTRADAY_SYMS as _CBOE_INTRA_SYMS, INTRADAY_FIELDS as _CBOE_INTRA_FIELDS, slimSnapshot as _cboeSlimSnapshot, volumeBetween as _cboeVolumeBetween, flowByStrike as _cboeFlowByStrike } from './js/cboeIntraday.js';
 import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _parseCboeChain, cboeLadder as _cboeLadder, cboeSnapshotRow as _cboeSnapshotRow, cboeOverlayInst as _cboeOverlayInst, cfdCashOffset as _cfdCashOffset, cboeShift as _cboeShift, cashRefTime as _cashRefTime } from './js/cboeChain.js';   // free delayed Cboe index-options chain (additive to CME; dashboard toggle + tracking)   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
 import { meetingProbabilities as _zqMeetingProbs } from './js/fedPathZq.js';
+import { buildDocument as _boeBuildDoc, mergeHistory as _boeMergeHist, snapOnOrBefore as _boeSnapBefore, compactRates as _boeCompactRates, fetchLatestCurve as _boeFetchCurve, fetchArchiveSince as _boeFetchArchive, fetchBankRates as _boeFetchRates, fetchMpcDates as _boeFetchMpc, MPC_DATES as _BOE_MPC_DATES } from './js/boePath.js';   // the Bank of England OIS path (route /api/cb-path/boe)
+import { readEntry as _zipReadEntry, readRemoteEntry as _zipReadRemote } from './js/zipRead.js';
 import { SHARED_KV as _SR_KV, SHARED_KINDS as _SR_KINDS, dayKey as _srDayKey, rollStore as _srRoll, readToday as _srReadToday, readLatest as _srReadLatest, putRead as _srPutRead, countCall as _srCountCall, callsToday as _srCallsToday, decideRead as _srDecide, createSingleFlight as _srCreateSingleFlight, normInst as _srNormInst, CHAIN_WINDOWS as _SR_CHAIN_WINDOWS } from './js/deskSharedReads.js';
 import { CB_BANKS as _CB_BOARD_BANKS, CB_HISTORY as _CB_BOARD_HISTORY, pastDates as _cbbPastDates, shapeBank as _cbbShape, boardPayload as _cbbPayload } from './js/terminal/cbBoardCore.js';
 import { buildRatesBoard as _buildRatesBoard } from './js/terminal/ratesBoardCore.js';
@@ -21571,6 +21573,105 @@ app.get('/api/fed-path', async (_req, res) => {
   }
 });
 
+// ── /api/cb-path/boe — the Bank of England's market-implied Bank Rate path (js/boePath.js) ──────────────
+//
+// WHAT IT IS: the Bank's own free OIS forward curve (SONIA swaps) turned into meeting-by-meeting priced moves, with the running level anchored to the official Bank
+// Rate, and the same path as it stood 1 day, 1 week and 1 month ago. The method is stated in the response (`method`) and on the card: priced, not forecast.
+// WHERE IT COMES FROM: bankofengland.co.uk only (curve zip, history archive by range request, database CSV for the official rate, the MPC dates page). No account, no key.
+// HOW OFTEN: every 3 hours the tick asks for the curve zip with If-Modified-Since; the Bank answers 304 with no body until it publishes the next business day's file, so the
+// egress is a few hundred bytes per tick and one 300 KB download a day. When no month-old curve is held (a fresh start, or early in a month) the tick also reads 1.4 MB of the
+// 2025-to-present archive by byte range, once a day at most, so the 1-month tick exists on day one; after that our own daily copies (boe_ois_hist_v1) carry it.
+// STORAGE: boe_ois_path_v1 (latest curve, official rate rows, meeting list) and boe_ois_hist_v1 (our daily copies). kv.js sends every boe_* key to Cloudflare KV with no expiry,
+// and these are written from this server (not through the worker's generic /api/kv/set route), so the worker's PERMANENT_KEYS gate is not involved.
+const BOE_PATH_KV = 'boe_ois_path_v1';   // { v, months, snap:{d,f}, lastModified, fetchedAt, rates:[{date,rate}] (change points + last row), ratesAt, meetings:{dates,source,readAt,triedAt} }
+const BOE_HIST_KV = 'boe_ois_hist_v1';   // [{ d, f:[60 forward rates] }] ascending, one per business day
+const _boeStatus = { attemptedAt: null, okAt: null, lastError: null, lastModified: null, asOf: null, archiveTriedOn: null, notes: [] };
+let _boeInflight = null;
+let _boeDocCache = { at: 0, doc: null };
+const _boeAddDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+const _boeReason = e => String(e?.message ?? e).slice(0, 160);
+
+async function _boePathTick({ force = false } = {}) {
+  if (_boeInflight) return _boeInflight;
+  _boeInflight = (async () => {
+    _boeStatus.attemptedAt = Date.now();
+    try {
+      // getStrict: read-modify-write over our own history, so a swallowed backend failure must not read back as "no history" and truncate it
+      const rawS = await kv.getStrict(BOE_PATH_KV);
+      let st = rawS ? JSON.parse(rawS) : null;
+      const rawH = await kv.getStrict(BOE_HIST_KV);
+      let hist = rawH ? JSON.parse(rawH) : [];
+      const notes = [];
+      let changed = false, histChanged = false;
+      const today = new Date().toISOString().slice(0, 10);
+
+      // 1. the curve (conditional: almost every tick is a 304 with no body)
+      let cur = await _boeFetchCurve({ readEntry: _zipReadEntry, ifModifiedSince: force || !st?.snap ? null : (st?.lastModified ?? null) });
+      if (cur.notModified && !st?.snap) cur = await _boeFetchCurve({ readEntry: _zipReadEntry });
+      if (!cur.notModified) {
+        hist = _boeMergeHist(hist, cur.snaps); histChanged = true;
+        st = { ...(st ?? {}), v: 1, months: cur.months, snap: cur.snaps.at(-1), lastModified: cur.lastModified, fetchedAt: new Date().toISOString() };
+        changed = true;
+        notes.push(`curve ${cur.snaps.at(-1).d} (${Math.round(cur.bytes / 1024)} KB)`);
+      }
+      if (!st?.snap) throw new Error('no curve held and none returned');
+
+      // 2. a month-old curve for the 1-month tick: the current-month file starts on the 1st, so on a fresh start (or early in a month) read the archive's 2025-to-present entry by range, once a day at most
+      if (!_boeSnapBefore(hist, _boeAddDays(st.snap.d, -28), 4) && _boeStatus.archiveTriedOn !== today) {
+        _boeStatus.archiveTriedOn = today;
+        try {
+          const a = await _boeFetchArchive(_boeAddDays(st.snap.d, -75), { readRemoteEntry: _zipReadRemote });
+          hist = _boeMergeHist(hist, a.snaps); histChanged = true;
+          notes.push(`backfilled ${a.snaps.length} earlier curves (${Math.round(a.bytes / 1024)} KB by range)`);
+        } catch (e) { notes.push(`backfill skipped: ${_boeReason(e)}`); }
+      }
+
+      // 3. the official Bank Rate (a few KB; refreshed with a new curve and at least daily)
+      if (changed || !st.rates?.length || Date.now() - Date.parse(st.ratesAt ?? 0) > 20 * 3600_000) {
+        try { st.rates = _boeCompactRates(await _boeFetchRates('2025-01-01')); st.ratesAt = new Date().toISOString(); changed = true; }
+        catch (e) { notes.push(`Bank Rate read failed: ${_boeReason(e)}`); if (!st.rates?.length) throw e; }
+      }
+
+      // 4. the MPC dates (page weekly; the hand-kept list in js/boePath.js is the fallback and is always present)
+      const m = st.meetings, mAge = Date.now() - Date.parse(m?.readAt ?? 0), tried = Date.now() - Date.parse(m?.triedAt ?? 0);
+      const remaining = (m?.dates ?? _BOE_MPC_DATES).filter(d => d > today).length;
+      if (!m || ((mAge > 7 * 86400000 || remaining < 2) && tried > 6 * 3600_000)) {
+        try { st.meetings = { dates: await _boeFetchMpc(), source: 'page', readAt: new Date().toISOString() }; }
+        catch (e) { st.meetings = { dates: m?.dates ?? _BOE_MPC_DATES, source: m?.source ?? 'list', readAt: m?.readAt ?? null, triedAt: new Date().toISOString(), lastError: _boeReason(e) }; notes.push(`MPC page: ${_boeReason(e)}`); }
+        changed = true;
+      }
+
+      if (changed) await kv.put(BOE_PATH_KV, JSON.stringify(st));
+      if (histChanged) await kv.put(BOE_HIST_KV, JSON.stringify(hist));
+      _boeDocCache = { at: 0, doc: null };
+      _boeStatus.okAt = Date.now(); _boeStatus.lastError = null; _boeStatus.lastModified = st.lastModified ?? null; _boeStatus.asOf = st.snap.d; _boeStatus.notes = notes;
+    } catch (e) {
+      _boeStatus.lastError = _boeReason(e);
+      console.warn('[boe-path] tick failed:', _boeStatus.lastError);
+    }
+  })().finally(() => { _boeInflight = null; });
+  return _boeInflight;
+}
+const _boeFetchBlock = () => ({ ok: !_boeStatus.lastError && !!_boeStatus.okAt, reason: _boeStatus.lastError, attemptedAt: _boeStatus.attemptedAt ? new Date(_boeStatus.attemptedAt).toISOString() : null, okAt: _boeStatus.okAt ? new Date(_boeStatus.okAt).toISOString() : null, lastModified: _boeStatus.lastModified, notes: _boeStatus.notes });
+
+app.get('/api/cb-path/boe', async (_req, res) => {
+  try {
+    if (_boeDocCache.doc && Date.now() - _boeDocCache.at < 60_000) return res.json(_boeDocCache.doc);
+    let raw = await kv.get(BOE_PATH_KV);
+    // nothing stored yet (first deploy): run one tick now instead of waiting for the boot timer, at most once every two minutes
+    if (!raw && !_boeInflight && (!_boeStatus.attemptedAt || Date.now() - _boeStatus.attemptedAt > 120_000)) { await _boePathTick(); raw = await kv.get(BOE_PATH_KV); }
+    if (!raw) return res.json({ ok: false, error: 'no Bank of England curve held yet', fetch: _boeFetchBlock() });
+    const st = JSON.parse(raw), hist = JSON.parse((await kv.get(BOE_HIST_KV)) ?? '[]');
+    const doc = _boeBuildDoc({ latest: { months: st.months, snap: st.snap }, hist, rates: st.rates ?? [], meetings: st.meetings ?? undefined, fetched: { lastModified: st.lastModified ?? null, fetchedAt: st.fetchedAt ?? null } });
+    const out = { ...doc, fetch: _boeFetchBlock() };
+    _boeStatus.asOf = doc.asOf ?? _boeStatus.asOf;
+    _boeDocCache = { at: Date.now(), doc: out };
+    res.json(out);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('boePath', () => _boePathTick().catch(e => console.error('[boe-path]', e.message)), 3 * 3600_000);
+svcBoot('boePath', () => _boePathTick().catch(e => console.error('[boe-path]', e.message)), 100_000, 2 * 3600_000);
+
 // ── /api/data-health — when did each feed last actually update? ──────────────
 // Reads what is ALREADY cached rather than re-fetching anything: every number below is a
 // timestamp some other job has already written. The point is not new data, it is that
@@ -21750,6 +21851,10 @@ async function _buildDataHealth() {
   try {
     const h = _gefHealth(_goldEtfFlowStatus, _goldEtfFlowCache.data);
     push('goldEtf', `Gold ETF flows (GLD + IAU assets)${h.suffix}`, h.lastIso, 1, { market: false, refreshEveryH: 26 });
+  } catch { /* best-effort */ }
+  // the Bank of England priced path: judged on the date of the curve itself (the Bank publishes the previous business day's curve by noon), with the reason the last try failed
+  try {
+    push('boePath', `Bank of England OIS path (priced Bank Rate)${_boeStatus.lastError ? ` (${_boeStatus.lastError.slice(0, 120)})` : ''}`, _boeStatus.asOf ?? null, 2, { market: false, refreshEveryH: 24 });
   } catch { /* best-effort */ }
   // the vol clock board: judged on its last good build, and only once a tab has asked for it (nothing builds it until then, so never-built is 'waiting')
   try {
