@@ -1,0 +1,13 @@
+/* "Since you last looked": a card at the top of the Changed tab. Tokens only. */
+.sl-card { margin-bottom: 14px; }
+.sl-pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 10px; }
+.sl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.sl-list li { display: grid; grid-template-columns: 78px 1fr; gap: 10px; align-items: start; padding: 7px 0; border-top: 1px solid var(--line2); min-width: 0; }
+.sl-list li:first-child { border-top: 0; }
+.sl-k { font: 600 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--tx3); padding-top: 2px; overflow-wrap: anywhere; }
+.sl-t { min-width: 0; overflow-wrap: anywhere; }
+.sl-t b { font-weight: 600; }
+.sl-d { color: var(--tx2); font-size: 12.5px; }
+.sl-span { color: var(--tx3); font-size: 12px; margin-top: 8px; overflow-wrap: anywhere; }
+.sl-rel .sl-k { color: var(--gold); }
+@media (max-width: 560px) { .sl-list li { grid-template-columns: 1fr; gap: 2px; } }

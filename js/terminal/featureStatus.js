@@ -32,6 +32,14 @@ export const FEATURES = {
       'It replays a past release minute by minute against the last five of its kind; the window says how many releases are held and from when.',
     ],
   },
+  sinceLast: {
+    surface: 'panel.changed.since', name: 'Since you last looked',
+    where: [
+      'Changed tab: a card at the very top, "Since you last looked", with pills for your last visit, the last hour, 4 hours and 24 hours.',
+      'Or type SINCE LAST, SINCE 4H or SINCE 24H in the command line.',
+      'It compares saved snapshots of the terminal, so it only goes back to 14 Nov 2026; it says which two snapshots it compared.',
+    ],
+  },
   oiTime: {
     surface: 'widget.oitime', name: 'OI over time',
     where: [

@@ -274,6 +274,9 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   add({ id: 'eventreplay', group: 'Look and feel', name: 'EVENTREPLAY', aliases: ['EVENT', 'RELEASEREPLAY'], args: '[cpi|nfp|fomc|ecb|boe|boj|pce|retail|gdp] [market]',
     help: 'Event replay: a past release (US CPI, payrolls, a Fed, ECB, BoE or BoJ decision) played minute by minute from 30 minutes before to 4 hours after, in units of the typical 30-minute reaction of that market to that kind of release, over the faint paths of the last five releases of the same kind, with the share of the move done so far. It shows how big and how fast past releases moved markets; which way a release moves a market is not predictable from the release alone, so it never says where the next one will go.',
     example: 'eventreplay cpi nq', opens: 'A replay window over the page: a past release minute by minute against the last five of its kind', surface: 'widget.eventreplay', run: args => eventReplayRun(args) });
+  add({ id: 'since', group: 'Look and feel', name: 'SINCE', aliases: ['WHATMOVED', 'SINCELAST'], args: '[last|1h|4h|24h]',
+    help: 'Open the Changed tab with the "Since you last looked" card: what moved in the terminal between the saved snapshot at your last visit (or one hour, four hours or a day ago) and the latest, ranked, in plain sentences: stress lights, risk flags, currency strength leaders, the Fed path, the regime, central-bank statements, the curve, vol gauges, feeds that went missing and the releases that printed in between. It describes changes and never says what they mean for direction. The record only begins on 14 Nov 2026.',
+    example: 'since 4h', opens: 'The Changed tab, with the since-you-last-looked card at the top', surface: 'panel.changed.since', run: args => sinceRun(args) });
   add({ id: 'oitime', group: 'Look and feel', name: 'OITIME', aliases: ['OIREPLAY'], args: `<${OIT_VIEWS.map(v => v.id).join('|')}> <market> [date]`,
     help: `Replay the stored option open interest through time with the shared player: ${OIT_VIEWS.map(v => `${v.id} is ${v.what}`).join('; ')}. It goes back only as far as the option-OI capture, and says from which date. It shows where price was against the levels, not where it will go.`,
     example: 'oitime terrain nq', opens: 'A replay window over the page: the stored option-OI day by day against price', surface: 'widget.oitime', run: args => oitimeRun(args, now) });
@@ -362,6 +365,11 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     if (toks[0] && !fam) return { error: `"${toks[0]}" is not a release family I know. Try EVENTREPLAY CPI, NFP, FOMC, ECB, BOE or BOJ.` };
     if (toks[1] && !mk) return { error: `"${toks[1]}" is not a market the release record covers. Try nq, es, eurusd, gbpusd, usdjpy, gold, dx, vix, gilt or bund.` };
     return { action: { kind: 'eventreplay', family: fam, market: mk }, summary: `Opens the event replay${fam ? ` on the latest ${fam} release` : ''}${mk ? `, ${mk}` : ''}.` };
+  }
+  function sinceRun(args) {
+    const t = String(args ?? '').trim().toLowerCase(), map = { '': null, last: 'last', visit: 'last', '1h': '1h', hour: '1h', '4h': '4h', '24h': '24h', day: '24h', today: '24h' };
+    if (!(t in map)) return { error: `"${t}" is not a span I know. Try SINCE LAST, SINCE 1H, SINCE 4H or SINCE 24H.` };
+    return { action: { kind: 'since', range: map[t] }, summary: `Opens the Changed tab with what moved ${map[t] === 'last' ? 'since your last visit' : map[t] ? `in the last ${map[t]}` : 'since your last visit (or the last hour)'}.` };
   }
   function oitimeRun(args, nowFn) {
     const toks = String(args ?? '').trim().split(/\s+/).filter(Boolean), v = oitView(toks[0]);

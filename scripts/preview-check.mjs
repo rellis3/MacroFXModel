@@ -43,6 +43,19 @@ const MEASURE = sel => {
 };
 
 const CASES = {
+  async changed(page, shot) {
+    await page.locator('button[data-t="changed"]').first().click(); await page.waitForSelector('[data-sl-card] .sl-span, [data-sl-card] .muted', { timeout: 30000 }).catch(() => {}); await page.waitForTimeout(1500);
+    if (!(await page.locator('[data-sl-card]').count())) return { ok: false, why: 'no since-you-last-looked card on the Changed tab' };
+    await shot('changed-default');
+    const out = { ok: true, dialog: '[data-sl-card]' };
+    out.cap = await page.locator('[data-sl-card] .sl-span').first().textContent().catch(() => '');
+    out.items = await page.locator('[data-sl-card] .sl-list li').count();
+    out.first = await page.locator('[data-sl-card] .sl-list li').first().textContent().catch(() => '');
+    await page.locator('[data-sl-r="24h"]').first().click().catch(() => {}); await page.waitForTimeout(4000); await shot('changed-24h');
+    out.cov = await page.locator('[data-sl-card] .sl-span').first().textContent().catch(() => '');
+    out.items24 = await page.locator('[data-sl-card] .sl-list li').count();
+    return out;
+  },
   async event(page, shot) {
     await page.locator('button[data-t="cal"]').first().click(); await page.waitForSelector('[data-evr-open]', { timeout: 20000 }).catch(() => {});
     const btn = page.locator('[data-evr-open]').first(); if (!(await btn.count())) return { ok: false, why: 'no Event replay button on the Calendar tab' };

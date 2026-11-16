@@ -164,7 +164,7 @@ Read-only audit of what was reported shipped against what is live and what the d
 | Item | Status | Notes |
 |---|---|---|
 | Event replay: a past release (CPI, payrolls, Fed, ECB, BoE, BoJ) minute by minute, -30 to +240 min, over the last five of its kind, in units of the typical 30-minute reaction | DONE (preview) | Button at the top of the Calendar tab and EVENTREPLAY. Data: /api/release-layer1 + /paths (existing). Size and timing only; surprise-size VALIDATED, news-asymmetry NULL. Depth: 26 CPI releases from 15 May 2024, 159 releases in all. |
-| What changed since I last looked (extends the Changed tab) | TODO | |
+| What changed since I last looked (extends the Changed tab) | DONE (preview) | A card at the top of the Changed tab and SINCE [last|1h|4h|24h]: two saved snapshots compared (your last visit, kept per browser, or 1h/4h/24h ago against the latest), ranked plain sentences for stress lights, risk flags and VIX, currency strength, the Fed path's next meeting, regime, central-bank statements, curve, vol gauges, term premium, wider market, missing feeds, and the releases printed in between with the move in the next 30 minutes against the typical size. Depth: snapshots since 14 Nov 2026 (about 312 points). Describes changes; no direction meaning. |
 | Risk-flag history strip (Insight > Risk flags and Overview) | TODO | |
 | OI drills (strike, expiry, wall) | TODO | |
 | BIS heat strip (country by quarter) | TODO | |
