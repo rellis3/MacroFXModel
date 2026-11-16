@@ -1389,7 +1389,7 @@ ${edges.map(([i, j, v]) => { const [x1, y1] = pos[i], [x2, y2] = pos[j]; return 
 ${order.map(node).join('')}</svg>
 <div class="muted"><span style="color:var(--gold)">━</span> the same bet (they win and lose together) · <span style="color:var(--pur2)">━</span> a hedge (one offsets the other) · dot size = card size · ${r.effectiveBets} effective bets across ${r.cards} cards. Hover a card.</div>`;
   el.querySelectorAll('.wn').forEach(g => { g.onmouseenter = () => { const i = g.dataset.i; el.querySelectorAll('.we').forEach(p => p.style.opacity = (p.dataset.a === i || p.dataset.b === i) ? 1 : 0.04); };
-    g.onmouseleave = () => el.querySelectorAll('.we').forEach(p => p.style.opacity = ''); g.onclick = () => { const nm = c.names[g.dataset.i]; if (D.cards[nm]) { openModal(assetCard(nm, D.cards[nm], true)); assetChart($('achart'), nm, D.cards[nm]); } }; });
+    g.onmouseleave = () => el.querySelectorAll('.we').forEach(p => p.style.opacity = ''); g.onclick = () => { const nm = c.names[g.dataset.i]; if (D.cards[nm]) openAsset(nm); }; });
 }
 function strengthHeat(el, h) {
   const rows = (h?.rows ?? []).filter(r => r.biases);
@@ -1578,12 +1578,21 @@ async function seasonHeat(el) {
 }
 
 // clicking a currency or an instrument anywhere opens its card
+// An asset card opens that market's Pair page (one deep view per market, reached by linked selection and the browser Back button).
+// The old pop-up is only the fallback for a page where the Pair module has not loaded.
+function openAsset(n) {
+  const c = D.cards[n]; if (!c) return;
+  if (typeof globalThis.openPairPage === 'function') { globalThis.openPairPage(n); return; }
+  openModal(assetCard(n, c, true)); assetChart($('achart'), n, c);
+}
+// the group desk's own line for a market: it was only in the pop-up, so the Pair page carries it now
+globalThis.deskViewHtml = deskView;
 function wire(root) {
   root.querySelectorAll('[data-ccy]').forEach(el => { const go = () => ccyModal(el.dataset.ccy); el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
-  root.querySelectorAll('[data-inst]').forEach(el => { const go = () => { const c = D.cards[el.dataset.inst]; if (c) { openModal(assetCard(el.dataset.inst, c, true)); assetChart($('achart'), el.dataset.inst, c); } }; el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
+  root.querySelectorAll('[data-inst]').forEach(el => { const go = () => openAsset(el.dataset.inst); el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
   root.querySelectorAll('[data-newsrec]').forEach(el => { el.onclick = newsRecord; });
   // ✦ Analyse on a live card: open the card and start its deep read (js/terminal/assetAnalysisView.js shows today's read if one exists)
-  root.querySelectorAll('[data-analyse]').forEach(b => { b.onclick = e => { e.stopPropagation(); const n = b.dataset.analyse, c = D.cards[n]; if (!c) return; globalThis.aaAutoRun = n; openModal(assetCard(n, c, true)); assetChart($('achart'), n, c); }; b.onkeydown = e => e.stopPropagation(); });
+  root.querySelectorAll('[data-analyse]').forEach(b => { b.onclick = e => { e.stopPropagation(); const n = b.dataset.analyse, c = D.cards[n]; if (!c) return; globalThis.aaAutoRun = n; openAsset(n); }; b.onkeydown = e => e.stopPropagation(); });
 }
 
 // ── Ask the desk ──
