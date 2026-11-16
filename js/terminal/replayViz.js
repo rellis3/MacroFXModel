@@ -7,10 +7,13 @@
  * lazily (the Macro sections) still get theirs. REPLAY <visual> on the command line calls the same opener.
  */
 import { openPlayer } from './replayPlayer.js';
-import { VISUALS, vizByWord, curveBounds, curveCaption, niceDate, strengthFrames, strengthBound, strengthCaption, recentSessions, londonStamp, londonDay, STRENGTH_WINDOWS, fedFrames, fedCaption } from '../replayVizCore.js';
+import { VISUALS, vizByWord, curveBounds, curveCaption, niceDate, strengthFrames, strengthBound, strengthCaption, recentSessions, londonStamp, londonDay, STRENGTH_WINDOWS, fedFrames, fedCaption, corrFrames, corrCaption } from '../replayVizCore.js';
+import { getBundle } from './insightData.js';
+import { metaFor } from './insightSeries.js';
 import { curveStage } from './replayCurveDraw.js';
 import { strengthStage } from './replayStrengthDraw.js';
 import { fedStage } from './replayFedDraw.js';
+import { corrStage } from './replayCorrDraw.js';
 
 const J = async u => { const r = await fetch(u, { credentials: 'same-origin' }); const j = await r.json().catch(() => null); if (!r.ok || !j || j.ok === false) throw new Error(j?.error ?? `HTTP ${r.status}`); return j; };
 
@@ -48,6 +51,16 @@ export function defFor(id, { fetchJson = J, now = () => Date.now() } = {}) {
       label: (f, i, n) => `${niceDate(f.t)} · day ${i + 1} of ${n}`,
     };
   }
+  if (id === 'corr') {
+    return {
+      id, title: 'How markets have been moving together', note: 'Correlation of daily moves between 14 markets over the last 20 sessions, as it stood on each of the last 90 sessions; each frame uses only the sessions up to that day. Ringed pairs sit further from their 120 session correlation than noise explains, and the count of such pairs is set against how many would be ringed by chance. It describes the link; it does not say which way either market goes next.',
+      load: async () => { const b = await getBundle({ fetchJson }); if (!b?.ok) throw new Error(b?.error ?? 'the daily market bundle is not available'); const r = corrFrames(b); if (!r.ok) throw new Error(r.error); return { frames: r.frames, extra: { keys: r.keys, noise: r.noise } }; },
+      coverage: frames => `${frames.length} sessions, ${niceDate(frames[0].t)} to ${niceDate(frames[frames.length - 1].t)}: the daily market bundle, each frame using only the sessions up to its own day.`,
+      draw: (frames, i, { reduced, extra }) => corrStage(frames, i, extra.keys, { reduced }),
+      caption: (frames, i, extra) => corrCaption(frames, i, k => metaFor(k).label ?? k),
+      label: (f, i, n) => `${niceDate(f.t)} · session ${i + 1} of ${n}`,
+    };
+  }
   return null;
 }
 
@@ -63,6 +76,15 @@ export function mountReplayViz({ doc = document, win = window, fetchJson = J } =
     scheduled = false;
     for (const v of VISUALS) {
       for (const root of doc.querySelectorAll(`[data-surface="${v.surface}"]`)) {
+        if (v.headSel) {   // a visual whose heading is a plain heading, not a card header (the Insight panels)
+          for (const h of root.querySelectorAll(v.headSel)) {
+            if (h.querySelector('[data-rpviz]') || !new RegExp(v.headRe).test(String(h.textContent).trim())) continue;
+            const tmp = doc.createElement('span');
+            tmp.innerHTML = `<button type="button" class="btn rpv-open" data-rpviz="${v.id}" data-noexport data-surface="widget.replayviz" title="Replay ${v.what.replace(/"/g, '')}" aria-label="Replay: ${v.name}">▶ Replay</button>`;
+            const b = tmp.querySelector('button'); if (b) h.appendChild(b);
+          }
+          continue;
+        }
         for (const card of root.querySelectorAll('.card')) {
           if (card.querySelector('[data-rpviz]')) continue;
           const lbl = card.querySelector('.ch .lbl'); if (!lbl) continue;

@@ -4465,6 +4465,10 @@ export const DERIVED = {
     {
      "file": "js/terminal/replayFedDraw.js",
      "exists": true
+    },
+    {
+     "file": "js/terminal/replayCorrDraw.js",
+     "exists": true
     }
    ],
    "names": {

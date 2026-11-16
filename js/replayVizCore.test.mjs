@@ -2,7 +2,7 @@
 // node --test js/replayVizCore.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SPEEDS, initState, advance, step, seek, toggle, setSpeed, act, keyAction, coverageOf, curveFrames, curveBounds, curveCaption, strengthFrames, strengthBound, strengthRows, strengthCaption, recentSessions, londonStamp, vizByWord, VISUALS, fedFrames, fedCaption, windowLabel } from './replayVizCore.js';
+import { SPEEDS, initState, advance, step, seek, toggle, setSpeed, act, keyAction, coverageOf, curveFrames, curveBounds, curveCaption, strengthFrames, strengthBound, strengthRows, strengthCaption, recentSessions, londonStamp, vizByWord, VISUALS, fedFrames, fedCaption, windowLabel, corrFrames, corrCaption } from './replayVizCore.js';
 
 const mkS = (start, n, f) => Array.from({ length: n }, (_, k) => ({ date: new Date(Date.parse(`${start}T00:00:00Z`) + k * 864e5).toISOString().slice(0, 10), value: f(k) }));
 
@@ -116,7 +116,7 @@ test('recentSessions: the last n weekday London dates before today, newest first
 });
 
 test('every replayable visual has words, a what-line, a surface and a card match; the words find it', () => {
-  for (const v of VISUALS) { assert.ok(v.words.length && v.what.length > 30 && v.surface && (v.cardLabel || v.cardRe) && v.route, v.id); assert.equal(vizByWord(v.id).id, v.id); for (const w of v.words) assert.equal(vizByWord(w).id, v.id, w); }
+  for (const v of VISUALS) { assert.ok(v.words.length && v.what.length > 30 && v.surface && (v.cardLabel || v.cardRe || v.headRe) && v.route, v.id); assert.equal(vizByWord(v.id).id, v.id); for (const w of v.words) assert.equal(vizByWord(w).id, v.id, w); }
   assert.equal(vizByWord('nothing'), null);
 });
 
@@ -138,4 +138,35 @@ test('fedCaption describes the nearest window and the biggest mover since the fi
   const r = fedFrames(fp), c = fedCaption(r.frames, 2);
   assert.match(c, /window starting Dec 2026/); assert.match(c, /above the current range are 98%/); assert.match(c, /below it 1%/); assert.match(c, /Mar 2027 window.s hike odds are up 27 points/);
   assert.doesNotMatch(c, /will |forecast|buy|sell/i); assert.doesNotMatch(fedCaption(r.frames, 0), /Since the first day/); assert.equal(fedCaption([], 0), '');
+});
+
+// a deterministic bundle: 6 markets over 260 sessions; spx and nq share a driver, dxy trades against it, the rest are independent noise
+function bundle(n = 260) {
+  let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647 - 0.5; };
+  const dates = Array.from({ length: n }, (_, k) => new Date(Date.parse('2026-01-01T00:00:00Z') + k * 864e5).toISOString().slice(0, 10));
+  const walk = (f) => { let v = 100; return Array.from({ length: n }, (_, k) => (v *= 1 + f(k))); };
+  const common = Array.from({ length: n }, () => rnd() * 0.02);
+  return { ok: true, dates, series: { spx: walk(k => common[k]), nq: walk(k => common[k] * 1.2 + rnd() * 0.004), dxy: walk(k => -common[k] * 0.8 + rnd() * 0.004), gold: walk(() => rnd() * 0.02), oil: walk(() => rnd() * 0.02), btc: walk(() => rnd() * 0.02) } };
+}
+
+test('corrFrames: one frame per session over the window, each from the bundle cut at that day (no later data), compact cells, a count against chance', () => {
+  const b = bundle(), r = corrFrames(b, { sessions: 30, keys: ['spx', 'nq', 'dxy', 'gold', 'oil', 'btc'] });
+  assert.equal(r.ok, true); assert.equal(r.frames.length, 30); assert.equal(r.frames.at(-1).t, b.dates.at(-1)); assert.equal(r.keys.length, 6);
+  const f = r.frames[29]; assert.equal(f.data.r.length, 6); assert.ok(f.data.r[0][1] > 0.5, 'spx and nq move together'); assert.ok(f.data.r[0][2] < -0.3, 'spx and dxy move opposite ways');
+  assert.equal(f.data.nPairs, 15); assert.equal(f.data.expected, 0.8); assert.equal(f.data.r[0][0], 1);
+  // no lookahead: the last-but-one frame is identical whether or not the final session exists
+  const cut = { dates: b.dates.slice(0, -1), series: Object.fromEntries(Object.entries(b.series).map(([k, v]) => [k, v.slice(0, -1)])) };
+  const r2 = corrFrames(cut, { sessions: 30, keys: ['spx', 'nq', 'dxy', 'gold', 'oil', 'btc'] });
+  assert.equal(r2.frames.at(-1).t, r.frames[28].t); assert.deepEqual(r.frames[28].data, r2.frames.at(-1).data, 'a frame does not change when later sessions exist');
+});
+
+test('corrFrames answers honestly when the bundle is too short or lacks the basket', () => {
+  assert.equal(corrFrames({ dates: ['2026-01-01'], series: {} }).ok, false); assert.match(corrFrames(bundle(60)).error, /too short/);
+  assert.match(corrFrames({ dates: bundle().dates, series: { spx: bundle().series.spx } }).error, /lacks the basket/); assert.equal(corrFrames(null).ok, false);
+});
+
+test('corrCaption counts the ringed pairs against chance and names the biggest change; description only', () => {
+  const r = corrFrames(bundle(), { sessions: 30, keys: ['spx', 'nq', 'dxy', 'gold', 'oil', 'btc'] }), c = corrCaption(r.frames, 29, k => k.toUpperCase());
+  assert.match(c, /of 15 pairs have a 20 session correlation further from their 120 session one than noise explains \(about 0\.8 would by chance\)/);
+  assert.doesNotMatch(c, /will |forecast|buy|sell/i); assert.equal(corrCaption([], 0), '');
 });

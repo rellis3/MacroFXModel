@@ -11,7 +11,8 @@ import { curveStage } from './replayCurveDraw.js';
 import { curveFrames, curveBounds, strengthFrames } from '../replayVizCore.js';
 import { strengthStage } from './replayStrengthDraw.js';
 import { fedStage } from './replayFedDraw.js';
-import { fedFrames } from '../replayVizCore.js';
+import { fedFrames, corrFrames } from '../replayVizCore.js';
+import { corrStage } from './replayCorrDraw.js';
 
 const mkSeries = (n, f) => Array.from({ length: n }, (_, k) => ({ date: new Date(Date.parse('2026-06-01T00:00:00Z') + k * 864e5).toISOString().slice(0, 10), value: f(k) }));
 const S = { effr: mkSeries(200, () => 3.6), us2y: mkSeries(200, k => 3.8 + k * 0.001), us5y: mkSeries(200, k => 3.9 + k * 0.001), us10y: mkSeries(200, k => 4.1 + k * 0.002), us30y: mkSeries(200, k => 4.6 + k * 0.001) };
@@ -188,4 +189,31 @@ test('the Fed path replay reads /api/fed-path, says how many days are held and w
   d2.body.appendChild(host);
   const m = mountReplayViz({ doc: d2, win: makeWin(d2, { matchMedia: () => ({ matches: false }), requestAnimationFrame: undefined }), fetchJson });
   assert.equal(d2.querySelectorAll('[data-rpviz="fedpath"]').length, 1); m.destroy();
+});
+
+function corrBundle(n = 260) {
+  let seed = 11; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647 - 0.5; };
+  const dates = Array.from({ length: n }, (_, k) => new Date(Date.parse('2026-01-01T00:00:00Z') + k * 864e5).toISOString().slice(0, 10));
+  const walk = f => { let v = 100; return Array.from({ length: n }, (_, k) => (v *= 1 + f(k))); }, common = Array.from({ length: n }, () => rnd() * 0.02);
+  return { ok: true, dates, series: { spx: walk(k => common[k]), nq: walk(k => common[k] + rnd() * 0.004), dxy: walk(k => -common[k] + rnd() * 0.004), gold: walk(() => rnd() * 0.02), oil: walk(() => rnd() * 0.02), btc: walk(() => rnd() * 0.02) } };
+}
+
+test('correlation drawing: a keyed grid with the diagonal blank, ringed pairs, the count strip with the current session marked, theme tokens only', () => {
+  const r = corrFrames(corrBundle(), { sessions: 20, keys: ['spx', 'nq', 'dxy', 'gold', 'oil', 'btc'] }), svg = corrStage(r.frames, 10, r.keys);
+  assert.match(svg, /^<svg/); assert.doesNotMatch(svg, /NaN|undefined|Infinity/); assert.equal((svg.match(/<rect /g) ?? []).length, 36);
+  assert.match(svg, /var\(--blue\)/); assert.match(svg, /stroke-dasharray="3 3"/); assert.doesNotMatch(svg, /#[0-9a-fA-F]{3,8}["']/); assert.match(svg, /SPX/);
+  assert.match(corrStage([], 0, []), /Nothing to draw/);
+});
+
+test('the correlation replay reads the shared daily bundle, says each frame uses only the sessions up to its day, and its button sits under the matrix heading', async () => {
+  const { forgetBundle } = await import('./insightData.js'); forgetBundle();
+  const asked = [], fetchJson = async u => { asked.push(u); return corrBundle(); };
+  const def = defFor('corr', { fetchJson }), { doc } = setup(def); await flush(); await flush();
+  assert.deepEqual(asked, ['/api/drill-series']); assert.match(doc.getElementById('rpv-cov').textContent, /90 sessions, .*each frame using only the sessions up to its own day/);
+  assert.match(def.note, /uses only the sessions up to that day/); assert.doesNotMatch(def.note, /will |buy|sell/i); assert.match(doc.getElementById('rpv-cap').textContent, /pairs have a 20 session correlation/);
+  const d2 = makePage(), host = d2.createElement('div');
+  host.innerHTML = '<div class="in-panel" data-surface="panel.insight.matrix"><h3 class="in-h">Moves across markets</h3><h3 class="in-h">How markets have been moving together</h3></div>';
+  d2.body.appendChild(host);
+  const m = mountReplayViz({ doc: d2, win: makeWin(d2, { matchMedia: () => ({ matches: false }), requestAnimationFrame: undefined }), fetchJson });
+  assert.equal(d2.querySelectorAll('[data-rpviz="corr"]').length, 1, 'one button, under the right heading'); m.decorate(); assert.equal(d2.querySelectorAll('[data-rpviz="corr"]').length, 1); m.destroy();
 });

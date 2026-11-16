@@ -16,6 +16,7 @@
  */
 
 import { londonDate, prevDate } from './replayCore.js';
+import { corrMatrix, CORR_BASKET, WIN_SHORT, WIN_LONG } from './terminal/matrixCore.js';
 
 /** Frames per second at each speed. x1 is slow enough to read a curve change; x16 runs 90 days in under 2 seconds. */
 export const SPEEDS = { 1: 3, 4: 12, 16: 48 };
@@ -145,6 +146,7 @@ export const VISUALS = [
   { id: 'curve', name: 'Yield curve', words: ['curve', 'yields', 'yield', 'treasury', 'curvethroughtime'], what: 'the Treasury curve morphing day by day over the last 90 days, with ghosts of earlier shapes and the 2y to 10y slope', surface: 'panel.macro.curve', cardLabel: 'The curve through time', route: '/api/replay/curve?days=90' },
   { id: 'strength', name: 'Currency strength', words: ['strength', 'ccy', 'currencies', 'currency'], what: 'the eight currencies racing through one London session (15-minute steps), ranked by how far each moved in units of its own normal move, on the 1H, 4H or 1D window', surface: 'panel.ov.ccystrength', cardRe: ' window$', route: '/api/replay/strength?date=' },
   { id: 'fedpath', name: 'Fed path odds', words: ['fed', 'fedpath', 'path', 'atlanta', 'policy'], what: 'the odds of a rate above (and below) the current range for each of the next four 3-month windows, day by day over the months we hold, with the history of each window drawn under it', surface: 'panel.macro.fedyields', cardRe: '^Atlanta Fed window odds', route: '/api/fed-path' },
+  { id: 'corr', name: 'Correlation matrix', words: ['corr', 'correlation', 'correlations', 'matrix', 'together'], what: 'how the 14 markets have been moving together (the 20 session correlation of daily moves), session by session over the last 90 sessions, with the pairs that moved further than noise explains ringed', surface: 'panel.insight.matrix', headSel: 'h3.in-h', headRe: '^How markets have been moving together', route: '/api/drill-series' },
 ];
 export const vizByWord = w => { const k = String(w ?? '').toLowerCase(); return VISUALS.find(v => v.id === k || v.words.includes(k)) ?? null; };
 
@@ -221,4 +223,31 @@ export function fedCaption(frames, i) {
     if (d && Math.abs(d.d) >= 5) move = ` Since the first day the ${windowLabel(d.ref)} window's hike odds are ${d.d > 0 ? 'up' : 'down'} ${Math.abs(Math.round(d.d))} points.`;
   }
   return `${niceDate(f.t)}: for the 3-month window starting ${windowLabel(w.ref)}, the odds of a rate above the current range are ${pc(w.hike)} and below it ${pc(w.cut)}.${move}`;
+}
+
+// ── the correlation matrix (Insight, cross-asset) ──────────────────────────────────────────────────────────────────────────
+/**
+ * The cross-asset correlation matrix as it stood on each of the last `sessions` sessions, from the daily market bundle ({ dates, series }). Each frame is
+ * the SAME corrMatrix the board draws, run on the bundle cut at that session, so a frame uses only rows up to its own day (20 and 120 session windows):
+ * nothing later leaks in. Cells are rounded to 3 places; `moved` marks a 20 session value further from its 120 session one than noise explains.
+ */
+export function corrFrames(bundle, { sessions = 90, keys = CORR_BASKET } = {}) {
+  const dates = bundle?.dates ?? [], series = bundle?.series ?? {};
+  if (dates.length < WIN_LONG + 12) return { ok: false, error: 'the daily market bundle is too short for a 120 session correlation', frames: [], keys: [] };
+  const have = keys.filter(k => Array.isArray(series[k]));
+  if (have.length < 4) return { ok: false, error: 'the daily market bundle lacks the basket', frames: [], keys: [] };
+  const frames = []; let noise = null;
+  for (let e = Math.max(WIN_LONG + 8, dates.length - sessions); e < dates.length; e++) {
+    const cut = { dates: dates.slice(0, e + 1), series: Object.fromEntries(have.map(k => [k, series[k].slice(0, e + 1)])) };
+    const m = corrMatrix(cut, have); noise = m.noise;
+    const r = x => (x ? Math.round(x.r20 * 1000) / 1000 : null);
+    const top = m.flagged[0] ? { a: m.flagged[0].a, b: m.flagged[0].b, r20: Math.round(m.flagged[0].r20 * 100) / 100, r120: Math.round(m.flagged[0].r120 * 100) / 100 } : null;
+    frames.push({ t: dates[e], data: { r: m.cells.map(row => row.map(r)), moved: m.cells.map(row => row.map(c => !!c?.moved)), nMoved: m.flagged.length, nPairs: m.pairs.length, expected: Math.round(m.expectedByChance * 10) / 10, top } });
+  }
+  return { ok: frames.length > 1, keys: have, frames, noise, short: WIN_SHORT, long: WIN_LONG, asOf: dates[dates.length - 1] };
+}
+export function corrCaption(frames, i, labelOf = k => k) {
+  const f = frames?.[i]; if (!f) return '';
+  const d = f.data, t = d.top;
+  return `${niceDate(f.t)}: ${d.nMoved} of ${d.nPairs} pairs have a ${WIN_SHORT} session correlation further from their ${WIN_LONG} session one than noise explains (about ${d.expected} would by chance).${t ? ` Biggest change: ${labelOf(t.a)} and ${labelOf(t.b)}, ${t.r20.toFixed(2)} over ${WIN_SHORT} sessions against ${t.r120.toFixed(2)} over ${WIN_LONG}.` : ''}`;
 }
