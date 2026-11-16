@@ -67,6 +67,7 @@ export const STORES = {
   terminal_stress_snaps_v1: R('Desk Terminal: first world-stress reading of each London day (Changed tab)', 1, { market: false }),
   analyst_scorecard_v1: L('Desk analyst scorecard: each analyst\'s calls scored per morning (written after the evening score on days with a desk run)', 5),
   desk_paper_record_v1: L('Desk paper trades: the trade watcher\'s alerts traded on their own rules, one summary per day (written after the evening score; description, not the scored test)', 5),
+  yield2y_daily_v1: R('2y government yields, 8 currencies, daily from FRED / ECB / BoE / MoF / SNB / BoC / RBA / RBNZ (js/yield2y.js): the bias engine\'s policy fallback', 1),
   bias_engine_index: R('Bias engine: index of the write-once morning issues bias_engine_<date> (07:00-07:30 London, weekdays; js/biasEngine.js, plans/BIAS_ENGINE_SPEC.md)', 1),
   thesis_reality_v1: L('Morning thesis vs evening reality: the book\'s claims laid against the day (written after the evening score on days with a desk run)', 5),
   cb_speech_log_v1: L('Central-bank speech log: each speech scored on the statement scale (js/cbSpeeches.js)', 7, { market: false }),

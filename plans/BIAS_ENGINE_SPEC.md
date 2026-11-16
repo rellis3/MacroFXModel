@@ -48,7 +48,7 @@ The weights follow the banks' layering (synthesis §1): macro dominant, trend a 
 
 | Driver | w | Reading → d | Source |
 |---|---|---|---|
-| Policy path | 0.25 | Change in priced policy over the last 5 sessions (hawkish +) and the bank's stance | `/api/cb-expectations`, `/api/macro-scorecard` cbSentiment. GBP and NZD have no expectations yet: missing |
+| Policy path | 0.25 | Change in priced policy over the last 5 sessions (hawkish +) and the bank's stance | `/api/cb-expectations`, `/api/macro-scorecard` cbSentiment. Fallback (2026-11-16): where a currency's futures input is missing or older than 10 days, the 2y government yield's change over the last 5 business days stands in, same thresholds, marked `proxy: true` and read as "2y yield +9bp over the week (proxy, futures stale)" (KV `yield2y_daily_v1`, js/yield2y.js; selection `fillPolicyFallback`). GBP and NZD have no futures, so they are always on the proxy |
 | Rate differential trend | 0.20 | The currency's 3m / 2y rate vs the 8-currency average, 20-day change | `/api/rate-diff`, rate store |
 | Data momentum | 0.20 | Macro scorecard composite (growth, inflation, labour, demand) | `/api/macro-scorecard` ranked[].composite |
 | Real yield | 0.10 | 10y real yield level vs peers and its 20-day change | `/api/real-yield` (USD, EUR, CHF only) |
