@@ -9,6 +9,7 @@
  */
 import { buildCreditLiquidity } from './creditLiquidityCore.js';
 import { buildCurveBoard } from './curveBoardCore.js';
+import { curveFrames } from './replayVizCore.js';
 import { buildRegimeBoard } from './regimeBoardCore.js';
 import { buildReleasesBoard } from './releasesBoardCore.js';
 import { buildStrength, PAIRS } from './ccyStrengthCore.js';
@@ -58,6 +59,18 @@ export function mountDeskBoards(app, d) {
     if (!S) throw new Error('no rates yet');
     const [coupling, episodes] = await Promise.all([d.selfJson('/api/yield-coupling').catch(() => null), d.selfJson('/api/spread-episodes/live').catch(() => null)]);
     return buildCurveBoard({ S, coupling, episodes });
+  });
+
+  // Replay on one visualisation: the Treasury curve, one frame per day, from the same in-memory daily series (read-only; js/replayVizCore.js)
+  app.get('/api/replay/curve', async (req, res) => {
+    const days = Math.min(365, Math.max(20, Math.round(+req.query.days) || 90));
+    try {
+      res.set('Cache-Control', 'no-store');
+      res.json(await d.mbCached(`replaycurve${days}`, 1, async () => {
+        const S = await d.ratesSeries(); if (!S) throw new Error('no rates yet');
+        const out = curveFrames(S, { days }); if (!out.ok) throw new Error(out.error); return out;
+      }));
+    } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
   });
 
   // Where the market is: the state document's regime lenses, risk flags, vol and registered edges, the daily two-state HMM, the pair-correlation regime

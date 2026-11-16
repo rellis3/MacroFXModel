@@ -67,3 +67,16 @@ feed goes in js/infoMap.js with its status.
 | Info map guard goes red when parallel builds land between a regeneration and its push (CI or the test should regenerate) | TODO |
 | Move the Atlanta Fed pull to Railway (with a stale guard); laptop task for central-bank futures and skew | PARKED, see memory project_laptop_dependencies |
 | Gold ETF flow: an empty or failed try is no longer cached 6h; the failure reason is in the response and the health row. First live check after deploy: /api/gold-etf-flow fetch.reason shows whether Railway can reach Yahoo | DONE 1b9ffcbc |
+
+## 6. Replay: visuals / event / whole terminal (2026-11-16, agreed order)
+One shared player (js/replayVizCore.js pure + js/terminal/replayPlayer.js), preview switch `widget.replayviz`, command `PLAY <visual>` / `REPLAY <visual>`, route `/api/replay/<visual>`. Each frame is from a series we already hold; the player says how many frames exist and from when; description of history only, never a forecast.
+| Item | Status | Notes |
+|---|---|---|
+| 1. Replay on one visualisation: shared player + yield curve (90 days, ghosts, 2s10s strip) | DONE (preview) | Daily Treasury series from the curve board's in-memory store; dated by the print (H.15 publishes next business day). |
+| 1b. Currency strength board (bars race) | TODO | |
+| 1c. Fed path strip | TODO | |
+| 1d. Correlation matrix (20 vs 120 sessions over time) | TODO | |
+| 1e. Regime quadrant trail | TODO | |
+| 1f. Vol clock / range used across the London day | TODO | |
+| 2. Event replay: pick a release or meeting, replay the terminal from one hour before to two hours after, last five of the same type as ghosts | TODO | Reuse js/terminal/replayPlayer.js with a different `def`. Timing and size only, never direction. |
+| 3. Whole-terminal as-of clock: a time in the top bar, every board redraws as it was | TODO | Only back to when snapshots began (about 2026-11-14); say so on screen. Reuse the player. |

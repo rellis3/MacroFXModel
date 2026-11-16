@@ -61,6 +61,12 @@ function addWsCss() {
   l.id = 'wsCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/workspace.css';
   document.head.appendChild(l);
 }
+function addRpCss() {
+  if (document.getElementById('rpvCss')) return;
+  const l = document.createElement('link');
+  l.id = 'rpvCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/replay-viz.css';
+  document.head.appendChild(l);
+}
 /** The Pair page's and the Replay's opener hooks are set by terminalTabs.js; wait (up to 6 s) so linked selection can wrap them. */
 const hooksReady = () => new Promise(res => {
   const t0 = Date.now();
@@ -69,10 +75,10 @@ const hooksReady = () => new Promise(res => {
 });
 
 export async function start() {
-  const wantLinked = on('widget.linked'), wantCmd = on('widget.cmdline'), wantWs = on('tab.workspace'), wantAl = on('widget.alerts'), wantKc = on('tab.kchart'), wantMon = on('tab.monitor'), wantIn = on('tab.insight'), wantNs = on('panel.news.saved'), wantEx = on('widget.export'), wantCd = on('panel.cal.drills');
-  if (!wantLinked && !wantCmd && !wantWs && !wantAl && !wantKc && !wantMon && !wantIn && !wantNs && !wantEx && !wantCd) return { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false };
+  const wantLinked = on('widget.linked'), wantCmd = on('widget.cmdline'), wantWs = on('tab.workspace'), wantAl = on('widget.alerts'), wantKc = on('tab.kchart'), wantMon = on('tab.monitor'), wantIn = on('tab.insight'), wantNs = on('panel.news.saved'), wantEx = on('widget.export'), wantCd = on('panel.cal.drills'), wantRp = on('widget.replayviz');
+  if (!wantLinked && !wantCmd && !wantWs && !wantAl && !wantKc && !wantMon && !wantIn && !wantNs && !wantEx && !wantCd && !wantRp) return { replayViz: false, linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false };
   if (wantLinked || wantCmd) addCss();
-  let linked = false, cmdline = false, workspace = false, alerts = false, chart = false, monitor = false, insight = false, newsSearches = false, exporter = false, calendarDrills = false;
+  let linked = false, cmdline = false, workspace = false, alerts = false, chart = false, monitor = false, insight = false, newsSearches = false, exporter = false, calendarDrills = false, replayViz = false;
   try {
     if (wantKc) { addKcCss(); const m = await import('./kchartView.js'); chart = !!m.mountKChart(); }
   } catch (e) { console.warn('chart', e); }
@@ -98,12 +104,15 @@ export async function start() {
     if (wantCd) { addCdCss(); const m = await import('./calendarDrillsView.js'); calendarDrills = !!m.mountCalendarDrills(); }
   } catch (e) { console.warn('calendar drills', e); }
   try {
+    if (wantRp) { addRpCss(); const m = await import('./replayViz.js'); replayViz = !!m.mountReplayViz(); }
+  } catch (e) { console.warn('replay on a visualisation', e); }
+  try {
     if (wantEx) { addExCss(); const m = await import('./exportView.js'); exporter = !!m.mountExport(); }   // after the boards it decorates are mounted
   } catch (e) { console.warn('export', e); }
   try {
     if (wantCmd) { const m = await import('./commandLine.js'); cmdline = !!m.mountCommandLine(); }
   } catch (e) { console.warn('command line', e); }
-  return { linked, cmdline, workspace, alerts, chart, monitor, insight, newsSearches, exporter, calendarDrills };
+  return { replayViz, linked, cmdline, workspace, alerts, chart, monitor, insight, newsSearches, exporter, calendarDrills };
 }
 
 if (typeof document !== 'undefined' && !globalThis.__terminalFeelNoAutoStart) {

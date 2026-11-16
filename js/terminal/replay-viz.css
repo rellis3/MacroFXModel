@@ -1,0 +1,22 @@
+/* Replay on one visualisation (preview). Theme tokens only. */
+.rpv-open { margin-left: 8px; font: 600 11px var(--mono); }
+.rpv-back { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--scrim); backdrop-filter: blur(3px); }
+.rpv { width: min(720px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; background: var(--bg1); border: 1px solid var(--line2); border-radius: 12px; padding: 14px 16px 16px; box-shadow: 0 18px 60px rgba(0, 0, 0, .55); }
+.rpv-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rpv-title { flex: 1; min-width: 160px; font-size: 14px; color: var(--tx); }
+.rpv-chip { color: var(--gold); border-color: var(--gold); }
+.rpv-date { margin-top: 8px; font: 700 15px var(--mono); color: var(--tx); letter-spacing: .02em; }
+.rpv-stage { margin-top: 6px; min-height: 120px; }
+.rpv-svg { display: block; max-width: 100%; }
+.rpv-cap { min-height: 2.6em; font-size: 13px; color: var(--tx2); margin-top: 4px; }
+.rpv-ctl { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.rpv-ctl .btn { min-width: 40px; }
+.rpv-sp { display: inline-flex; gap: 4px; margin-left: 6px; }
+.rpv-ctl [aria-pressed="true"] { border-color: var(--pur2); color: var(--pur2); }
+.rpv-scrub { width: 100%; margin-top: 10px; accent-color: var(--pur2); }
+.rpv-cov { margin-top: 6px; font: 11.5px var(--mono); }
+.rpv-note { margin: 6px 0 0; font-size: 12px; line-height: 1.45; }
+.rpv-svg path { transition: none; }
+.rpv-back button:focus-visible, .rpv-scrub:focus-visible { outline: 2px solid var(--pur2); outline-offset: 2px; }
+@media (max-width: 600px) { .rpv { padding: 12px; } .rpv-ctl { gap: 4px; } .rpv-ctl .btn { min-width: 36px; padding: 6px 8px; } }
+@media (prefers-reduced-motion: reduce) { .rpv-back { backdrop-filter: none; } }

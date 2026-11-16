@@ -21,6 +21,7 @@ import { ASSET_WORDS } from './pairView.js';
 import { STARTERS as MON_STARTERS } from './monitorCore.js';
 import { STARTERS as WS_STARTERS, cleanName as wsCleanName } from './workspaceCore.js';
 import { KINDS as AL_KINDS, FEEDS as AL_FEEDS } from '../deskAlertRulesCore.js';
+import { VISUALS as REPLAY_VISUALS, vizByWord } from '../replayVizCore.js';
 import { INSTRUMENTS as REPLAY_INSTRUMENTS, validDate, londonDate, londonWall } from '../replayCore.js';
 
 // ── markets (a copy of the page's UNIVERSE and NAME; commandCore.test.mjs fails if desk-terminal.html drifts from it) ──
@@ -233,6 +234,9 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   add({ id: 'link', group: 'Look and feel', name: 'LINK', args: '<on|off>', help: 'Switch linked selection on or off: when on, picking a market in one place moves the Pair page, Replay, strength board and vol clock with it.', example: 'link off', opens: 'The linked chip in the top bar', surface: 'widget.linked', run: linkRun });
   add({ id: 'export', group: 'Look and feel', name: 'EXPORT', aliases: ['CSV', 'DOWNLOAD'], args: '[png]', help: 'Save the biggest table on the open tab as a CSV file; EXPORT PNG saves its first chart as an image. Made in this browser from what the page shows.', example: 'export',
     opens: 'A download of the open tab (nothing is sent anywhere)', surface: 'widget.export', run: args => exportRun(args) });
+  add({ id: 'replay.viz', group: 'Look and feel', name: 'PLAY', aliases: ['PLAYBACK'], args: `<${REPLAY_VISUALS.map(v => v.id).join('|')}>`,
+    help: `Replay one visualisation's own history in a window over the page: ${REPLAY_VISUALS.map(v => `${v.id} is ${v.what}`).join('; ')}. Play, pause, step, x1 x4 x16, loop and a scrubber; it says how much history is held. Also works as REPLAY <visual>.`,
+    example: `play ${REPLAY_VISUALS[0].id}`, opens: 'A replay window over the page (a description of the history, not a forecast)', surface: 'widget.replayviz', run: args => vizRun(args) });
   add({ id: 'fav.show', group: 'Look and feel', name: 'FAV', aliases: ['FAVS', 'FAVOURITES', 'FAVORITES'], help: 'Open the Pair page with only your starred markets (the Favourites filter). Star a market with the ☆ beside its name or with STAR. They are kept in this browser only.', example: 'fav',
     opens: 'The Pair tab, filtered to your favourites', surface: 'panel.pair.favourites', needs: ['tab.pair'], action: { kind: 'fav', on: true }, summary: 'Opens the Pair page with the Favourites filter on.' });
   add({ id: 'fav.star', group: 'Look and feel', name: 'STAR', aliases: [], args: '<market>', help: 'Star a market so it appears under Favourites on the Pair page and starts a new Monitor. Kept in this browser only.', example: 'star gold',
@@ -251,6 +255,7 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   // ── commands with arguments ──
   function replayRun(args, nowFn) {
     const toks = String(args ?? '').trim().split(/\s+/).filter(Boolean);
+    if (toks.length && vizByWord(toks[0]) && isOn('widget.replayviz')) return vizRun(toks[0]);   // REPLAY CURVE: one visual's own history (preview)
     if (!toks.length) return { action: { kind: 'tab', t: 'replay' }, summary: 'Opens the Replay tab.' };
     const inst = resolveInstrument(toks[0]);
     if (!inst) return { error: `"${toks[0]}" is not a market I know. Try NQ, EURUSD or GOLD.` };
@@ -285,6 +290,12 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
       return { error: `"${w}" is not a market or a candle size I know. Try CHART NQ 15M (sizes: ${TF_KEYS.join(', ')}).` };
     }
     return { action: { kind: 'kchart', inst, tf }, summary: `Opens the Chart tab${inst ? ` on ${instLabel(inst)}` : ''}${tf ? ` at ${tf} candles` : ''}.` };
+  }
+  function vizRun(args) {
+    const w = String(args ?? '').trim().split(/\s+/)[0], v = vizByWord(w);
+    if (!w) return { error: `Say which visual: ${REPLAY_VISUALS.map(x => x.id).join(', ')}. For example PLAY ${REPLAY_VISUALS[0].id}.` };
+    if (!v) return { error: `"${w}" is not a visual I can replay yet. Try ${REPLAY_VISUALS.map(x => x.id).join(', ')}.` };
+    return { action: { kind: 'replay-viz', id: v.id }, summary: `Replays ${v.name.toLowerCase()}: ${v.what}.` };
   }
   function exportRun(args) {
     const a = String(args ?? '').trim().toLowerCase();
