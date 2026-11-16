@@ -31,7 +31,7 @@ wf_streams, p_b1, p_b2 = {}, {}, {}
 t0 = time.time()
 
 for sym in S.INSTR:
-    Z, NET, UNITS = S.scan(sym)
+    Z, NET, UNITS, UD, ctx = S.scan(sym)
     days = Z["days"].astype("datetime64[D]")
     D = len(days)
     pw = days <= S.PAPER_END
@@ -99,7 +99,46 @@ for sym in S.INSTR:
     eqv = np.cumprod(1 + NET.astype(np.float64), axis=1)
     mdd = (eqv / np.maximum.accumulate(eqv, axis=1) - 1).min(1)
     cg = eqv[:, -1] ** (252 / D) - 1
-    page = dict(sym=sym, months=[str(m) for m in um], monthly_bp=np.round(M * 1e4).astype(int).tolist(),
+    Xa = NET.astype(np.float64)
+    traded = UD > 0
+    ntr = traded.sum(1)
+    rt = UD.sum(1) / 2.0
+    hit = np.where(ntr > 0, ((Xa > 0) & traded).sum(1) / np.maximum(ntr, 1), np.nan)
+    vol = Xa.std(1, ddof=1) * np.sqrt(252)
+    mu_a = Xa.mean(1)
+    skew = ((Xa - mu_a[:, None]) ** 3).mean(1) / np.maximum(Xa.std(1), 1e-12) ** 3
+    extra = dict(vol=np.round(vol * 100, 1).tolist(), hit=np.round(np.nan_to_num(hit) * 100, 1).tolist(),
+                 exposure=np.round(ntr / D * 100, 1).tolist(), trades=np.round(rt).astype(int).tolist(),
+                 avg_trade_bp=np.round(np.where(rt > 0, Xa.sum(1) / np.maximum(rt, 1) * 1e4, 0), 2).tolist(),
+                 skew=np.round(skew, 2).tolist(), worst=np.round(Xa.min(1) * 100, 2).tolist(),
+                 best=np.round(Xa.max(1) * 100, 2).tolist())
+    # walk-forward daily record + trade list (standard backtest output)
+    _, bhr = S.E.daily_sigma(Z["close"], Z["last"], Z["prev"])
+    bhr = np.nan_to_num(bhr)
+    oi = np.nonzero(oos)[0]
+    wtr = []
+    for ch in choices:
+        rows = np.nonzero(yrs == ch["year"])[0]
+        ci_ = int(np.ravel_multi_index(tuple([S.VM.index(ch["spec"]["vm"]), S.LB.index(ch["spec"]["lb"]),
+                                              S.CK.index(ch["spec"]["ck"]), S.EXITS.index(ch["spec"]["exit"]),
+                                              S.FILTERS.index(ch["spec"]["filter"]), S.SIZING.index(ch["spec"]["sizing"])]), S.SHAPE))
+        wtr += S.spec_trades(Z, ctx, ci_, rows, S.COST[sym])
+    tday = np.zeros(D, int)
+    tsum = np.zeros(D)
+    for t in wtr:
+        tday[t[0]] += 1
+        tsum[t[0]] += t[6]
+    chk = np.max(np.abs(tsum[oos] - wf[oos] * 1e4))
+    print(f"{sym}: {len(wtr)} WF trades; trade list vs daily P&L max gap {chk:.3f} bp", flush=True)
+    assert chk < 0.5, "trade list does not add up to the daily P&L"
+    hm = lambda b: f"{(9 * 60 + 30 + b + 1) // 60:02d}:{(9 * 60 + 30 + b + 1) % 60:02d}"
+    wfd = dict(sym=sym, dates=[str(days[k]) for k in oi], r=np.round(wf[oi], 6).tolist(),
+               rp=np.round(fx[oi], 6).tolist(), rb=np.round(bhr[oi], 6).tolist(), ntr=tday[oi].tolist(),
+               year_spec={str(c["year"]): c["name"] for c in choices},
+               trades=[[str(days[t[0]]), hm(t[1]), hm(t[2]), t[3], t[4], t[5], t[6]] for t in wtr],
+               trade_cols=["date", "entry (NY)", "exit (NY)", "side", "lev", "gross bp 1x", "net bp on equity"])
+    (S.OUT / f"wf_{sym}.json").write_text(json.dumps(wfd, separators=(",", ":")))
+    page = dict(sym=sym, months=[str(m) for m in um], monthly_bp=np.round(M * 1e4).astype(int).tolist(), **extra,
                 sharpe_pw=np.round(Spw, 2).tolist(), sharpe_ho=np.round(Sho, 2).tolist(),
                 sharpe_all=np.round(Sall, 2).tolist(), cagr=np.round(cg * 100, 1).tolist(),
                 mdd=np.round(mdd * 100, 1).tolist(), trades_day=np.round(UNITS / 2, 2).tolist(),

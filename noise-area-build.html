@@ -66,13 +66,36 @@
 
   <div class="box">
     <h2>The honest backtest: walk-forward</h2>
-    <div class="note" style="margin-bottom:8px">Each January the builder looks only at the years before, picks the design in the middle of the best region of the 1,440 (the <b>plateau</b>: the median of a design and its neighbours in band width, band days and check interval, so a lucky spike can't win), and trades it for that year. Chaining those years gives a record no design ever saw in advance. Grey is the paper's fixed rule on the same days and costs. Compare the Sharpe ratios, not the end balances: when the build picks the vol-targeted size it runs with more leverage than the 1x paper rule.</div>
+    <div class="note" style="margin-bottom:8px">Each January the builder looks only at the years before, picks the design in the middle of the best region of the 1,440 (the <b>plateau</b>: the median of a design and its neighbours in band width, band days and check interval, so a lucky spike can't win), and trades it for that year. Chaining those years gives a record no design ever saw in advance. Orange is the paper's fixed rule on the same days and costs, grey is buy &amp; hold. Compare the Sharpe ratios, not the end balances: when the build picks the vol-targeted size it runs with more leverage than the 1x paper rule.</div>
     <div class="ctrl" style="margin-bottom:8px"><label>Instrument<select id="wfInst"></select></label><label>Scale<span><button class="btn on" id="wfLog">log</button> <button class="btn" id="wfLin">linear</button></span></label></div>
     <div class="kpis" id="wfKpis"></div>
-    <div class="legend" id="wfLegend" style="margin-top:8px"></div>
+    <h2 style="margin-top:12px">Equity curve ($100,000 start, net of costs)</h2>
+    <div class="legend" id="wfLegend"></div>
     <div class="chart" id="wfChart"></div>
-    <h2 style="margin-top:12px">What it chose each year</h2>
+    <h2 style="margin-top:10px">Drawdown</h2>
+    <div id="wfDD" style="height:130px"></div>
+  </div>
+
+  <div class="box">
+    <h2>Compared with</h2>
+    <div class="xscroll"><table id="wfCmp"></table></div>
+  </div>
+
+  <div class="box">
+    <h2>Monthly returns (%) · walk-forward build</h2>
+    <div class="xscroll"><table id="wfMon"></table></div>
+  </div>
+
+  <div class="box">
+    <h2>What it chose each year</h2>
     <div class="xscroll"><table id="wfTable"></table></div>
+  </div>
+
+  <div class="box">
+    <h2 id="trTitle">Trade list</h2>
+    <div class="ctrl" style="margin-bottom:6px"><label>Year<select id="trYear"></select></label><label>Side<select id="trSide"><option value="">both</option><option value="1">long</option><option value="-1">short</option></select></label><label>&nbsp;<button class="btn" id="trCsv">Download CSV</button></label><span class="note" id="trNote"></span></div>
+    <div style="overflow:auto;max-height:420px"><table id="trTable"></table></div>
+    <div class="note" id="trPager" style="margin-top:6px"></div>
   </div>
 
   <div class="box">
@@ -82,7 +105,7 @@
 
   <div class="box">
     <h2>Build your own</h2>
-    <div class="note" style="margin-bottom:8px">Pick any of the 1,440 designs. The blue line is your design, grey is the paper's rule. Everything left of the dashed line (to April 2024) is the paper's own sample, where the builder was free to look; after it is the post-publication period. A design picked because it looks best here is <b>in-sample</b>: the walk-forward above is the fair test.</div>
+    <div class="note" style="margin-bottom:8px">Pick any of the 1,440 designs. The blue line is your design, orange is the paper's rule. Everything left of the dashed line (to April 2024) is the paper's own sample, where the builder was free to look; after it is the post-publication period. A design picked because it looks best here is <b>in-sample</b>: the walk-forward above is the fair test.</div>
     <div class="ctrl" style="margin-bottom:10px">
       <label>Instrument<select id="bInst"></select></label>
       <label>Band width<select id="kvm"></select></label>
@@ -96,7 +119,11 @@
     <div class="kpis" id="bKpis"></div>
     <div class="legend" id="bLegend" style="margin-top:8px"></div>
     <div class="chart" id="bChart"></div>
+    <h2 style="margin-top:10px">Drawdown (month-end)</h2>
+    <div id="bDD" style="height:120px"></div>
     <div class="note" id="knobHelp" style="margin-top:8px"></div>
+    <h2 style="margin-top:12px">Monthly returns (%) · this design</h2>
+    <div class="xscroll"><table id="bMon"></table></div>
   </div>
 
   <div class="grid2">
@@ -148,30 +175,89 @@ function chartOpts(){ return {layout:{background:{color:'#161b22'}, textColor:'#
 function heatBg(v, s = 1.5){ if (v == null) return ''; const a = Math.min(Math.abs(v)/s, 1)*.6; return `background:${v >= 0 ? `rgba(57,135,229,${a})` : `rgba(217,89,38,${a})`}`; }
 
 // ------------------------------------------------------------- walk-forward
-function drawWF(){
-  const I = R.instruments[st.wfInst], W = I.wf;
+let WFD = {}, wfDD, wfB, trYear = '', trSide = '', trPage = 0;
+async function loadWF(s){ if (!WFD[s]) WFD[s] = await (await fetch(BASE + `wf_${s}.json`, {cache: 'no-store'})).json(); return WFD[s]; }
+function stats(r, ntr){
+  const n = r.length; let eq = 1, pk = 1, mdd = 0, s = 0, w = Infinity, b = -Infinity, hit = 0, td = 0;
+  const curve = [], dd = [];
+  for (let i = 0; i < n; i++) { eq *= 1 + r[i]; pk = Math.max(pk, eq); const d = eq/pk - 1; mdd = Math.min(mdd, d); curve.push(eq); dd.push(d);
+    s += r[i]; w = Math.min(w, r[i]); b = Math.max(b, r[i]); if (ntr && ntr[i] > 0) { td++; if (r[i] > 0) hit++; } }
+  const mu = s/n; let s2 = 0, s3 = 0; for (const v of r) { s2 += (v-mu)**2; s3 += (v-mu)**3; }
+  const sd = Math.sqrt(s2/(n-1)), trades = ntr ? ntr.reduce((a, c) => a + c, 0) : 0;
+  return {total: eq-1, cagr: Math.pow(eq, 252/n) - 1, vol: sd*Math.sqrt(252), sharpe: sd ? mu/sd*Math.sqrt(252) : 0, mdd: -mdd,
+    worst: w, best: b, skew: sd ? (s3/n)/sd**3 : 0, hit: td ? hit/td : null, exposure: ntr ? td/n : null, trades, avgTrade: trades ? s/trades*1e4 : null, curve, dd};
+}
+function monthTable(dates, r, cmp){ // dates 'YYYY-MM-DD' or 'YYYY-MM'
+  const by = {}, cy = {}, M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  dates.forEach((d, i) => { const y = d.slice(0,4), m = +d.slice(5,7); (by[y] ??= {}); by[y][m] = (by[y][m] ?? 1) * (1 + r[i]);
+    if (cmp) for (const c of cmp) { (cy[c.k] ??= {}); cy[c.k][y] = (cy[c.k][y] ?? 1) * (1 + c.r[i]); } });
+  const hb = v => { const a = Math.min(Math.abs(v)/6, 1)*.55; return `background:${v >= 0 ? `rgba(57,135,229,${a})` : `rgba(217,89,38,${a})`}`; };
+  let h = '<tr><th>Year</th>' + M.map(m => `<th>${m}</th>`).join('') + '<th>Year</th>' + (cmp ? cmp.map(c => `<th>${c.k}</th>`).join('') : '') + '</tr>';
+  for (const y of Object.keys(by).sort()) { let yr = 1;
+    h += `<tr><td><b>${y}</b></td>` + M.map((_, i) => { const v = by[y][i+1]; if (v == null) return '<td class="mut">·</td>'; yr *= v; const p = (v-1)*100;
+      return `<td style="${hb(p)}" data-t="${M[i]} ${y}: ${p.toFixed(2)}%">${p.toFixed(1)}</td>`; }).join('')
+      + `<td style="${hb((yr-1)*100/3)}"><b>${((yr-1)*100).toFixed(1)}</b></td>` + (cmp ? cmp.map(c => `<td class="mut">${((cy[c.k][y]-1)*100).toFixed(1)}</td>`).join('') : '') + '</tr>'; }
+  return h;
+}
+async function drawWF(){
+  const I = R.instruments[st.wfInst], W = I.wf, d = await loadWF(st.wfInst);
+  const k = stats(d.r, d.ntr), p = stats(d.rp), b = stats(d.rb);
   $('wfKpis').innerHTML = [
-    tile('Walk-forward Sharpe', fmtN(W.sharpe), `95% CI [${fmtN(W.sharpe_ci[0])}, ${fmtN(W.sharpe_ci[1])}]`, cls(W.sharpe)),
-    tile('Paper rule, same days', fmtN(W.paper_sharpe), 'fixed 1.0×/14d/30m/VWAP/1x', cls(W.paper_sharpe)),
-    tile('Build − paper', (W.diff > 0 ? '+' : '') + fmtN(W.diff), `CI [${fmtN(W.diff_ci[0])}, ${fmtN(W.diff_ci[1])}] · halves ${fmtN(W.diff_halves[0])} / ${fmtN(W.diff_halves[1])}`, cls(W.diff)),
-    tile('CAGR', W.cagr + '%', 'paper rule ' + W.paper_cagr + '%', cls(W.cagr)),
-    tile('Max drawdown', W.mdd + '%', 'paper rule ' + W.paper_mdd + '%'),
-    tile('Avg day', fmtN(W.mean_bp, 1) + ' bp', `CI [${fmtN(W.mean_bp_ci[0],1)}, ${fmtN(W.mean_bp_ci[1],1)}]`, cls(W.mean_bp)),
-    tile('Out-of-sample', W.start.slice(0,4) + ' → ' + W.end.slice(0,7), W.days.toLocaleString() + ' sessions'),
+    tile('Total return', fmtP(k.total, 0), `paper rule ${fmtP(p.total, 0)} · B&amp;H ${fmtP(b.total, 0)}`, cls(k.total)),
+    tile('CAGR', fmtP(k.cagr), `paper rule ${fmtP(p.cagr)} · B&amp;H ${fmtP(b.cagr)}`, cls(k.cagr)),
+    tile('Sharpe', fmtN(W.sharpe), `95% CI [${fmtN(W.sharpe_ci[0])}, ${fmtN(W.sharpe_ci[1])}] · paper ${fmtN(W.paper_sharpe)}`, cls(W.sharpe)),
+    tile('Build − paper', (W.diff > 0 ? '+' : '') + fmtN(W.diff), `Sharpe · CI [${fmtN(W.diff_ci[0])}, ${fmtN(W.diff_ci[1])}]`, cls(W.diff)),
+    tile('Max drawdown', fmtP(k.mdd, 0), `paper rule ${fmtP(p.mdd, 0)} · B&amp;H ${fmtP(b.mdd, 0)}`),
+    tile('Volatility', fmtP(k.vol), 'annualised'),
+    tile('Hit ratio', fmtP(k.hit, 0), 'of days with a trade'),
+    tile('Trades', k.trades.toLocaleString(), fmtN(k.trades/d.r.length) + ' per day'),
+    tile('Avg trade', fmtN(k.avgTrade, 1) + ' bp', 'net, on equity', cls(k.avgTrade)),
+    tile('In market', fmtP(k.exposure, 0), 'of days'),
+    tile('Skew', fmtN(k.skew), `worst ${fmtP(k.worst)} · best ${fmtP(k.best)}`),
+    tile('Out of sample', d.dates[0].slice(0,7) + ' →', d.dates.at(-1) + ' · ' + d.dates.length.toLocaleString() + ' days'),
   ].join('');
   if (!wfChart) {
     wfChart = LightweightCharts.createChart($('wfChart'), chartOpts());
     const pf = {type:'price', precision:0, minMove:1};
-    wfP = wfChart.addLineSeries({color:'#6e7681', lineWidth:2, priceLineVisible:false, priceFormat:pf});
+    wfB = wfChart.addLineSeries({color:'#6e7681', lineWidth:2, priceLineVisible:false, priceFormat:pf});
+    wfP = wfChart.addLineSeries({color:'#d95926', lineWidth:2, priceLineVisible:false, priceFormat:pf});
     wfS = wfChart.addLineSeries({color:'#3987e5', lineWidth:2, priceLineVisible:false, priceFormat:pf});
+    wfDD = LightweightCharts.createChart($('wfDD'), chartOpts());
+    wfDD.s = wfDD.addAreaSeries({lineColor:'#d95926', topColor:'rgba(217,89,38,.05)', bottomColor:'rgba(217,89,38,.35)', lineWidth:1, priceLineVisible:false, priceFormat:{type:'percent'}});
+    wfChart.timeScale().subscribeVisibleLogicalRangeChange(x => x && wfDD.timeScale().setVisibleLogicalRange(x));
   }
   wfChart.applyOptions({rightPriceScale:{mode: wfLog ? 1 : 0}});
-  wfS.setData(W.eq_dates.map((d, i) => ({time: d, value: 1e5*W.eq_wf[i]})));
-  wfP.setData(W.eq_dates.map((d, i) => ({time: d, value: 1e5*W.eq_paper[i]})));
-  wfChart.timeScale().fitContent();
-  $('wfLegend').innerHTML = `<span><i class="sw" style="background:#3987e5"></i>Walk-forward build <b>$${Math.round(1e5*W.eq_wf.at(-1)).toLocaleString()}</b></span><span><i class="sw" style="background:#6e7681"></i>Paper's fixed rule <b>$${Math.round(1e5*W.eq_paper.at(-1)).toLocaleString()}</b></span><span class="mut">$100,000 start, net of costs</span>`;
+  const pts = c => c.map((v, i) => ({time: d.dates[i], value: 1e5*v}));
+  wfS.setData(pts(k.curve)); wfP.setData(pts(p.curve)); wfB.setData(pts(b.curve));
+  wfDD.s.setData(k.dd.map((v, i) => ({time: d.dates[i], value: 100*v})));
+  wfChart.timeScale().fitContent(); wfDD.timeScale().fitContent();
+  const m = v => '$' + Math.round(1e5*v).toLocaleString();
+  $('wfLegend').innerHTML = `<span><i class="sw" style="background:#3987e5"></i>Walk-forward build <b>${m(k.curve.at(-1))}</b></span><span><i class="sw" style="background:#d95926"></i>Paper's fixed rule <b>${m(p.curve.at(-1))}</b></span><span><i class="sw" style="background:#6e7681"></i>Buy &amp; hold ${st.wfInst} (1x) <b>${m(b.curve.at(-1))}</b></span>`;
+  const row = (l, x, sh) => `<tr><td>${l}</td><td class="${cls(x.total)}">${fmtP(x.total, 0)}</td><td>${fmtP(x.cagr)}</td><td>${fmtP(x.vol)}</td><td class="${cls(sh)}"><b>${fmtN(sh)}</b></td><td>${fmtP(x.mdd, 0)}</td><td>${fmtN(x.skew)}</td><td>${fmtP(x.worst)}</td></tr>`;
+  $('wfCmp').innerHTML = '<tr><th>Same days, net of costs</th><th>Total</th><th>CAGR</th><th>Vol</th><th>Sharpe</th><th>Max DD</th><th>Skew</th><th>Worst day</th></tr>'
+    + row('<b>Walk-forward build</b>', k, k.sharpe) + row("Paper's fixed rule (1.0× · 14d · 30m · VWAP · 1x)", p, p.sharpe) + row(`Buy &amp; hold ${st.wfInst}, close to close`, b, b.sharpe);
+  $('wfMon').innerHTML = monthTable(d.dates, d.r, [{k: 'Paper rule', r: d.rp}, {k: 'B&H', r: d.rb}]);
   $('wfTable').innerHTML = '<tr><th>Year</th><th>Design chosen (from earlier years only)</th><th>Plateau score</th><th>Its Sharpe before</th><th>That year</th><th>Paper rule that year</th><th>Days</th></tr>' +
     W.choices.map(c => `<tr><td><b>${c.year}</b></td><td style="text-align:left">${name(c.spec)}</td><td>${fmtN(c.plateau)}</td><td>${fmtN(c.insample)}</td><td class="${cls(c.oos)}"><b>${fmtN(c.oos)}</b></td><td class="${cls(c.paper_oos)}">${fmtN(c.paper_oos)}</td><td class="mut">${c.days}</td></tr>`).join('');
+  $('trYear').innerHTML = '<option value="">all years</option>' + W.choices.map(c => `<option value="${c.year}">${c.year}</option>`).join('');
+  $('trYear').value = trYear; trPage = 0; drawTrades();
+}
+function tradeRows(){ const d = WFD[st.wfInst]; return d.trades.filter(t => (!trYear || t[0].startsWith(trYear)) && (!trSide || String(t[3]) === trSide)); }
+function drawTrades(){
+  const d = WFD[st.wfInst], rows = tradeRows(), per = 200, pages = Math.max(1, Math.ceil(rows.length/per));
+  trPage = Math.min(trPage, pages - 1);
+  const net = rows.reduce((a, t) => a + t[6], 0), win = rows.filter(t => t[6] > 0).length, lg = rows.filter(t => t[3] > 0);
+  $('trTitle').textContent = `Trade list · ${st.wfInst} walk-forward build · ${rows.length.toLocaleString()} trades`;
+  $('trNote').innerHTML = rows.length ? `win rate <b>${(win/rows.length*100).toFixed(0)}%</b> · avg <b class="${cls(net)}">${(net/rows.length).toFixed(1)} bp</b> net on equity · ${lg.length} long / ${rows.length - lg.length} short` : '';
+  $('trTable').innerHTML = '<tr><th>Date</th><th>Design that year</th><th>Side</th><th>Entry (NY)</th><th>Exit (NY)</th><th>Leverage</th><th>Gross bp (1x)</th><th>Net bp on equity</th></tr>'
+    + rows.slice(trPage*per, (trPage+1)*per).map(t => `<tr><td>${t[0]}</td><td class="mut" style="text-align:left">${d.year_spec[t[0].slice(0,4)]}</td><td class="${t[3] > 0 ? 'pos' : 'neg'}">${t[3] > 0 ? 'long' : 'short'}</td><td>${t[1]}</td><td>${t[2] === '16:00' || t[2] === '13:00' ? t[2] + ' close' : t[2]}</td><td>${t[4].toFixed(2)}×</td><td class="${cls(t[5])}">${t[5].toFixed(1)}</td><td class="${cls(t[6])}"><b>${t[6].toFixed(1)}</b></td></tr>`).join('');
+  $('trPager').innerHTML = pages > 1 ? `<button class="btn" id="tp">‹</button> page ${trPage+1} / ${pages} <button class="btn" id="tn">›</button>` : '';
+  if (pages > 1) { $('tp').onclick = () => { trPage = Math.max(0, trPage-1); drawTrades(); }; $('tn').onclick = () => { trPage = Math.min(pages-1, trPage+1); drawTrades(); }; }
+}
+function tradesCsv(){
+  const d = WFD[st.wfInst], rows = tradeRows();
+  const csv = ['date,design,side,entry_ny,exit_ny,leverage,gross_bp_1x,net_bp_equity'].concat(rows.map(t => [t[0], d.year_spec[t[0].slice(0,4)], t[3] > 0 ? 'long' : 'short', t[1], t[2], t[4], t[5], t[6]].join(','))).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv'})); a.download = `noise-area-build_${st.wfInst}_walkforward_trades.csv`; a.click();
 }
 
 function drawVerdicts(){
@@ -193,32 +279,45 @@ function sharpeOf(x){ const n = x.length; if (n < 3) return null; const m = x.re
 function eqFrom(bp){ let e = 1; return bp.map(v => (e *= 1 + v/1e4)); }
 async function drawBuild(){
   const d = await load(st.inst), i = idxOf(st.k), ip = idxOf(PAPER);
-  const rank = d.sharpe_pw.filter(v => v < d.sharpe_pw[i]).length;
+  const rank = d.sharpe_pw.filter(v => v > d.sharpe_pw[i]).length + 1;
   const months = d.months, split = months.indexOf('2024-05');
-  const eq = eqFrom(d.monthly_bp[i]), ep = eqFrom(d.monthly_bp[ip]);
+  const r = d.monthly_bp[i].map(v => v/1e4), rp = d.monthly_bp[ip].map(v => v/1e4);
+  const eq = [], dd = []; let e = 1, pk = 1; for (const v of r) { e *= 1 + v; pk = Math.max(pk, e); eq.push(e); dd.push(e/pk - 1); }
+  const ep = []; e = 1; for (const v of rp) { e *= 1 + v; ep.push(e); }
+  const pp = (a, j) => a[j] + '%';
   $('bKpis').innerHTML = [
-    tile('Sharpe, paper window', fmtN(d.sharpe_pw[i]), `rank ${rank+1 > 0 ? (1440 - rank) : '—'} of 1,440 · paper rule ${fmtN(d.sharpe_pw[ip])}`, cls(d.sharpe_pw[i])),
+    tile('Total return', fmtP(eq.at(-1) - 1, 0), 'paper rule ' + fmtP(ep.at(-1) - 1, 0), cls(eq.at(-1) - 1)),
+    tile('CAGR', pp(d.cagr, i), 'paper rule ' + pp(d.cagr, ip), cls(d.cagr[i])),
+    tile('Sharpe, paper window', fmtN(d.sharpe_pw[i]), `rank ${rank.toLocaleString()} of 1,440 · paper rule ${fmtN(d.sharpe_pw[ip])}`, cls(d.sharpe_pw[i])),
     tile('Sharpe after Apr 2024', fmtN(d.sharpe_ho[i]), `paper rule ${fmtN(d.sharpe_ho[ip])} · ~2.3 yrs, very noisy`, cls(d.sharpe_ho[i])),
-    tile('Sharpe, all days', fmtN(d.sharpe_all[i]), 'daily, annualised', cls(d.sharpe_all[i])),
-    tile('CAGR', d.cagr[i] + '%', 'paper rule ' + d.cagr[ip] + '%', cls(d.cagr[i])),
-    tile('Max drawdown', d.mdd[i] + '%', 'paper rule ' + d.mdd[ip] + '%'),
-    tile('Round trips / day', fmtN(d.trades_day[i]), 'paper rule ' + fmtN(d.trades_day[ip])),
-    tile('Plateau score', fmtN(d.plateau_pw[i]), 'median of it + neighbours'),
+    tile('Sharpe, all days', fmtN(d.sharpe_all[i]), 'paper rule ' + fmtN(d.sharpe_all[ip]), cls(d.sharpe_all[i])),
+    tile('Max drawdown', pp(d.mdd, i), 'daily · paper rule ' + pp(d.mdd, ip)),
+    tile('Volatility', pp(d.vol, i), 'annualised · paper rule ' + pp(d.vol, ip)),
+    tile('Hit ratio', pp(d.hit, i), 'of days with a trade'),
+    tile('Trades', d.trades[i].toLocaleString(), fmtN(d.trades_day[i]) + ' per day · paper ' + fmtN(d.trades_day[ip])),
+    tile('Avg trade', fmtN(d.avg_trade_bp[i], 1) + ' bp', 'net, on equity', cls(d.avg_trade_bp[i])),
+    tile('In market', pp(d.exposure, i), 'of days'),
+    tile('Skew', fmtN(d.skew[i]), `worst day ${d.worst[i]}% · best ${d.best[i]}%`),
   ].join('');
   if (!bChart) {
     bChart = LightweightCharts.createChart($('bChart'), chartOpts());
     const pf = {type:'price', precision:0, minMove:1};
-    bP = bChart.addLineSeries({color:'#6e7681', lineWidth:2, priceLineVisible:false, priceFormat:pf});
+    bP = bChart.addLineSeries({color:'#d95926', lineWidth:2, priceLineVisible:false, priceFormat:pf});
     bS = bChart.addLineSeries({color:'#3987e5', lineWidth:2, priceLineVisible:false, priceFormat:pf});
-    new ResizeObserver(() => { bChart.applyOptions({width: $('bChart').clientWidth}); wfChart && wfChart.applyOptions({width: $('wfChart').clientWidth}); }).observe(document.body);
+    bChart.dd = LightweightCharts.createChart($('bDD'), chartOpts());
+    bChart.ddS = bChart.dd.addAreaSeries({lineColor:'#d95926', topColor:'rgba(217,89,38,.05)', bottomColor:'rgba(217,89,38,.35)', lineWidth:1, priceLineVisible:false, priceFormat:{type:'percent'}});
+    bChart.timeScale().subscribeVisibleLogicalRangeChange(x => x && bChart.dd.timeScale().setVisibleLogicalRange(x));
+    new ResizeObserver(() => { for (const [c, el] of [[bChart, 'bChart'], [bChart.dd, 'bDD'], [wfChart, 'wfChart'], [wfDD, 'wfDD']]) c && c.applyOptions({width: $(el).clientWidth}); }).observe(document.body);
   }
   bChart.applyOptions({rightPriceScale:{mode: 1}});
   const t = m => m + '-28';
   bS.setData(months.map((m, j) => ({time: t(m), value: 1e5*eq[j]})));
   bP.setData(months.map((m, j) => ({time: t(m), value: 1e5*ep[j]})));
+  bChart.ddS.setData(months.map((m, j) => ({time: t(m), value: 100*dd[j]})));
   bS.setMarkers(split > 0 ? [{time: t(months[split]), position: 'aboveBar', color: '#d29922', shape: 'arrowDown', text: 'paper published'}] : []);
-  bChart.timeScale().fitContent();
-  $('bLegend').innerHTML = `<span><i class="sw" style="background:#3987e5"></i>${name(st.k)} <b>$${Math.round(1e5*eq.at(-1)).toLocaleString()}</b></span><span><i class="sw" style="background:#6e7681"></i>Paper rule <b>$${Math.round(1e5*ep.at(-1)).toLocaleString()}</b></span><span class="mut">monthly, net of costs, log scale</span>`;
+  bChart.timeScale().fitContent(); bChart.dd.timeScale().fitContent();
+  $('bLegend').innerHTML = `<span><i class="sw" style="background:#3987e5"></i>${name(st.k)} <b>$${Math.round(1e5*eq.at(-1)).toLocaleString()}</b></span><span><i class="sw" style="background:#d95926"></i>Paper rule <b>$${Math.round(1e5*ep.at(-1)).toLocaleString()}</b></span><span class="mut">month-end, net of costs, log scale · tile stats are from daily returns</span>`;
+  $('bMon').innerHTML = monthTable(months, r, [{k: 'Paper rule', r: rp}]);
   drawHeat(d); drawDist(d, i, ip);
 }
 function setK(k){ Object.assign(st.k, k); for (const n of ['vm','lb','ck','exit','filter','sizing']) $('k' + n).value = st.k[n]; drawBuild(); }
@@ -274,6 +373,9 @@ function drawDist(d, i, ip){
   $('bInst').onchange = e => { st.inst = e.target.value; drawBuild(); };
   $('wfInst').onchange = e => { st.wfInst = e.target.value; drawWF(); };
   $('wfLog').onclick = () => { wfLog = true; $('wfLog').classList.add('on'); $('wfLin').classList.remove('on'); drawWF(); };
+  $('trYear').onchange = e => { trYear = e.target.value; trPage = 0; drawTrades(); };
+  $('trSide').onchange = e => { trSide = e.target.value; trPage = 0; drawTrades(); };
+  $('trCsv').onclick = tradesCsv;
   $('wfLin').onclick = () => { wfLog = false; $('wfLin').classList.add('on'); $('wfLog').classList.remove('on'); drawWF(); };
   $('ldPaper').onclick = () => setK(PAPER);
   $('ldPlat').onclick = () => setK(R.instruments[st.inst].map.plateau);

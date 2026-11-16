@@ -126,9 +126,12 @@ def scan(sym):
     hi_ref, lo_ref = np.fmax(O, Z["prev"]), np.fmin(O, Z["prev"])
     NET = np.zeros((NSPEC, D), np.float32)
     UNITS = np.zeros(NSPEC, np.float32)
+    UD = np.zeros((NSPEC, D), np.uint8)  # position changes per day (2 = one round trip)
+    ctx = dict(vw=vw, lev=lev, filt=filt, hi_ref=hi_ref, lo_ref=lo_ref, sig={})
     ck_arr = {c: checks_for(c) for c in CK}
     for il, lbk in enumerate(LB):
         sig = E.sigma_open(C, O, last, lbk)
+        ctx["sig"][lbk] = sig
         for iv, vm in enumerate(VM):
             ub = hi_ref[:, None] * (1 + vm * sig)
             lb = lo_ref[:, None] * (1 - vm * sig)
@@ -143,8 +146,44 @@ def scan(sym):
                             idx = np.ravel_multi_index((iv, il, ic, ie, jf, js), SHAPE)
                             NET[idx] = np.where(m, n1 * (lev if sz == "vt" else 1.0), 0.0)
                             UNITS[idx] = float(np.mean(np.where(m, u, 0.0)))
+                            UD[idx] = np.where(m, u, 0).astype(np.uint8)
     print(f"{sym}: {D} days, {NSPEC} designs, {time.time() - t0:.0f}s", flush=True)
-    return Z, NET, UNITS
+    return Z, NET, UNITS, UD, ctx
+
+
+def spec_trades(Z, ctx, i, rows, cost_pts):
+    """Trade list for design i on day indices `rows`: (day, entry bar, exit bar, side, lev, gross bp 1x, net bp on equity)."""
+    iv, il, ic, ie, jf, js = np.unravel_index(i, SHAPE)
+    C, O, last, uo = Z["close"], Z["open"], Z["last"], Z["uopen"]
+    sig = ctx["sig"][LB[il]]
+    ub = ctx["hi_ref"][:, None] * (1 + VM[iv] * sig)
+    lb = ctx["lo_ref"][:, None] * (1 - VM[iv] * sig)
+    ck = checks_for(CK[ic])
+    P = positions(C, ub, lb, ctx["vw"], last, ck, EXITS[ie])
+    keep = ctx["filt"][FILTERS[jf]]
+    lev = ctx["lev"] if SIZING[js] == "vt" else np.ones(len(O))
+    out = []
+    K = len(ck)
+    for d in rows:
+        if not keep[d]:
+            continue
+        row = P[d]
+        k = 0
+        while k < K:
+            if row[k] == 0:
+                k += 1
+                continue
+            side = row[k]
+            j = k + 1
+            while j < K and row[j] == side and ck[j] < last[d]:
+                j += 1
+            closed = j < K and ck[j] < last[d]
+            ex_bar = int(ck[j]) if closed else int(last[d])
+            g = side * (C[d, ex_bar] - C[d, ck[k]]) / O[d] * 1e4
+            n = (g - cost_pts / uo[d] * 1e4) * lev[d]
+            out.append((int(d), int(ck[k]), ex_bar, int(side), round(float(lev[d]), 2), round(float(g), 2), round(float(n), 2)))
+            k = j if closed else K
+    return out
 
 
 def sharpe_all(NET, mask):
