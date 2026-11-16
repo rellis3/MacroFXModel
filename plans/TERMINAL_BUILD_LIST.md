@@ -80,3 +80,18 @@ One shared player (js/replayVizCore.js pure + js/terminal/replayPlayer.js), prev
 | 1f. Vol clock / range used across the London day | TODO | |
 | 2. Event replay: pick a release or meeting, replay the terminal from one hour before to two hours after, last five of the same type as ghosts | TODO | Reuse js/terminal/replayPlayer.js with a different `def`. Timing and size only, never direction. |
 | 3. Whole-terminal as-of clock: a time in the top bar, every board redraws as it was | TODO | Only back to when snapshots began (about 2026-11-14); say so on screen. Reuse the player. |
+
+## 7. Flow review (2026-11-16, plans/TERMINAL_FLOW_REVIEW.md)
+Decisions needed from the owner are listed at the end of that document (new tab name, asset card click, preview first, how far to take the tab strip, keep Pair favourites).
+| Item | Status | Notes |
+|---|---|---|
+| F1. Star and Favourites pill on the Assets cards, sharing the Pair favourites store | TODO | S. Owner asked 2026-11-16. Pair chip row defaults to starred markets when any exist. |
+| F2. Asset card opens the Pair page (or a slim modal with Open pair page and Deep dive buttons) | TODO | S. Owner decision on modal versus straight to Pair. |
+| F3. Browser Back works for Pair and the Deep dive (pushState, not replaceState) | TODO | S, medium risk: linkedSelection writes the hash. |
+| F4. Rename Charts to History; move Positioning history to the Positioning tab | TODO | S. |
+| F5. Slim the Pair page and add the Deep dive tab (name to be chosen; preview first) holding the 13 reference cards behind a pill row, each card with its own panel.deep.* surface row; #deep=GOLD hash; command DEEP | TODO | M to L. Tests naming tt-p ids and panel.pair rows must be updated. |
+| F6. Reorder and group the tab strip (Today, Markets, Macro, Research, Tools); Changed next to Overview, Monitor next to Assets, Replay next to Chart | TODO | M. Surface ids stay, so Access switches are safe. |
+| F7. Overview: a 'today at a glance' first screen, fold the rest | TODO | M. |
+| F8. Currency strength: one home, four compact views linking to it | TODO | M. |
+| F9. Analytics split into 'Market behaviour' and 'The desk's record' pills | TODO | S to M. |
+| F10. Spread the Insight boards when promoted (Unusual now to Overview, Gold to Assets, Level reach to Chart) | TODO | M. |
