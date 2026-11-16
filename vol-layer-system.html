@@ -148,9 +148,9 @@ function whatsLeftHtml() {
   const W = WHATS_LEFT;
   const conf = c => c.startsWith('vol-layer-') ? `<code>${esc(c)}</code><div class="muted" style="font-size:10.5px">forge/${esc(c.toUpperCase().replace(/-/g, '_'))}_PREREG.md</div>` : `<span class="muted">${esc(c)}</span>`;
   const rows = W.rows.map(r => `<tr><td class="num">${r.n}</td><td><a href="#${esc(LAYERS.find(x => x.n === r.n)?.id ?? '')}"><b>${esc(r.layer)}</b></a></td><td>${esc(r.stage)}</td>
-    <td>${esc(r.holds)}</td><td class="muted">${esc(r.blocking)}</td><td>${conf(r.confirm)}</td><td><b>${esc(r.you)}</b></td></tr>`).join('');
+    <td>${esc(r.holds)}</td><td class="muted">${esc(r.blocking)}</td><td>${conf(r.confirm)}</td></tr>`).join('');
   return `<ul>${W.headline.map(h => `<li>${esc(h)}</li>`).join('')}</ul>
-    <div class="scroll"><table class="t"><thead><tr><th>#</th><th>Layer</th><th>Stage</th><th>What holds</th><th>What stops it being trusted</th><th>Stage 4 (own measure)</th><th>Your step</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="scroll"><table class="t"><thead><tr><th>#</th><th>Layer</th><th>Stage</th><th>What holds</th><th>What stops it being trusted</th><th>Stage 4 (own measure)</th></tr></thead><tbody>${rows}</tbody></table></div>
     <p class="muted" style="margin-top:8px;font-size:11px">${W.housekeeping.map(esc).join(' ')}</p>`;
 }
 
