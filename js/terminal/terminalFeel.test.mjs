@@ -16,7 +16,7 @@ const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 globalThis.__terminalFeelNoAutoStart = true;
 globalThis.localStorage = memStore();
 const { start } = await import('./terminalFeel.js');
-const PREVIEW = ['widget.cmdline', 'panel.cal.drills', 'widget.export', 'panel.news.saved', 'tab.monitor', 'tab.workspace', 'tab.kchart', 'tab.insight', 'widget.replayviz', 'widget.alerts', 'widget.linked'];   // registry order
+const PREVIEW = ['tab.deep', 'widget.cmdline', 'panel.cal.drills', 'widget.export', 'panel.news.saved', 'tab.monitor', 'tab.workspace', 'tab.kchart', 'tab.insight', 'widget.replayviz', 'widget.alerts', 'widget.linked'];   // registry order
 
 test('the preview features are registry surfaces, hidden from the desk login by default, with a reason and a note', () => {
   assert.ok(HIDDEN_REASONS.includes('preview'));

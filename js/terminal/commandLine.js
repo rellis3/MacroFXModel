@@ -24,6 +24,7 @@ export function perform(a, doc = document, win = window) {
   const tab = t => { const b = doc.querySelector(`#tabs [data-t="${t}"]`); if (!b || b.hidden) return false; if (b.getAttribute('aria-selected') !== 'true') b.click(); return true; };
   switch (a.kind) {
     case 'tab': return tab(a.t);
+    case 'deep': return typeof win.openDeepPage === 'function' ? (win.openDeepPage(a.inst, a.section), true) : tab('deep');
     case 'pair': return typeof win.openPairPage === 'function' ? (win.openPairPage(a.inst), true) : false;
     case 'replay': return typeof win.openReplay === 'function' ? win.openReplay(a.inst, a.ts) !== false : false;
     case 'macro': {

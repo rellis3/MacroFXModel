@@ -35,6 +35,7 @@ import * as NCV from './newsChannelView.js';
 import { createLevelChart } from '../levelChart.js';
 import { mountTfBar } from './timeframePills.js';
 import { historyAction, backTarget, pairHash } from './pairHistory.js';
+import { DEEP_SECTIONS, PAIR_ORDER, CARD_LABELS, LOADING_WORDS, sectionOf, deepHash, parseDeepHash } from './deepDive.js';
 import { getFavourites } from './favourites.js';
 import * as FAVV from './favouritesView.js';
 import { mountAssetFavourites } from './assetFavourites.js';
@@ -408,12 +409,54 @@ function pickHtml(list, n, top) {
   const chipHtml = chips.map(([x, cx]) => { const d = DIR[cx.rating] ?? 0; return `<span class="tt-chipwrap"><button class="chip ${d > 0 ? 'up' : d < 0 ? 'dn' : ''}" data-p="${x}" style="cursor:pointer">${h(x)}</button>${on ? FAVV.starHtml(x, FAV.has(x)) : ''}</span>`; }).join('');
   return `<div class="tt-pick"><label class="lbl" for="tt-sel">Market</label>${sel}${on ? FAVV.starHtml(n, FAV.has(n), nice(n)) + FAVV.pillHtml(FAV.count, onlyFav) : ''}${chipHtml}<span class="muted" style="margin-left:auto">link: <span class="mono">desk-terminal.html#pair=${h(n)}</span></span></div>`;
 }
+// The 13 reference cards of a market (flow review item 5). Each loader is the line the Pair page always ran for that card, moved here unchanged so the
+// Deep dive can load one section at a time. They find their card by id (tt-p-<key>), so they work wherever the card is drawn.
+const CARD_LOAD = {
+  gr: (n, c, legs, mine) => { J('/api/global-read').then(g => mine() && pairGR(n, g)); },
+  rates: (n, c, legs, mine) => { Promise.all([J('/api/global-read')]).then(([g]) => mine() && pairRates(n, g)); },
+  fv: (n, c, legs, mine) => { J('/api/fair-value').then(fv => mine() && pairFair(n, fv)); },
+  stfv: (n, c, legs, mine) => { if (legs?.[0]) J('/api/fx-fair-value').then(d => { const b = mine() && el('tt-p-stfv'); if (b) b.innerHTML = FVV.stfvPairCard(d, n); }); else el('tt-p-stfv')?.remove(); },
+  pos: (n, c, legs, mine) => { pairPos(n); },
+  ac: (n, c, legs, mine) => { J('/api/autocorrelation').then(d => { const b = mine() && el('tt-p-ac'); if (b) b.innerHTML = ACV.pairCard(d, n); }); },
+  ll: (n, c, legs, mine) => { J('/api/lead-lag').then(d => { const b = mine() && el('tt-p-ll'); if (b) b.innerHTML = LLV.pairCard(d, n); }); },
+  opt: (n, c, legs, mine) => { Promise.all([J('/api/oi-today'), J('/api/options-history'), J('/api/hedging-summary')]).then(([oi, hist, hs]) => { const b = mine() && el('tt-p-opt'); if (!b) return; b.innerHTML = OPV.pairCard(n, { oi, hist, hs }); b.querySelector('[data-goto-options]')?.addEventListener('click', e => { e.preventDefault(); document.querySelector('#tabs [data-t="options"]')?.click(); }); }); },
+  news: (n, c, legs, mine) => { newsFeed().then(() => { const b = mine() && el('tt-p-news'); if (!b) return; drawPairNews(b, n, c); }); },
+  carry: (n, c, legs, mine) => { Promise.all([J('/api/carry-vol'), J('/api/options-skew')]).then(([cv, sk]) => mine() && pairCarry(n, cv, sk)); },
+  hours: (n, c, legs, mine) => { Promise.all([J('/api/session-heat'), J(`/api/desk-season?inst=${n}`)]).then(([sh, ss]) => mine() && pairHours(n, sh, ss)); },
+  prec: (n, c, legs, mine) => { Promise.all([J('/api/macro-regime-fx'), loadChain()]).then(([m]) => mine() && pairPrec(n, m)); },
+  res: (n, c, legs, mine) => { Promise.all([J('/api/research-pod'), J('/api/research-pod/papers')]).then(([rp, pp]) => mine() && pairResearch(n, rp, pp)); },
+};
+function loadCards(n, c, legs, keys) {
+  const mine = () => T.pair === n;
+  for (const k of keys) { try { CARD_LOAD[k](n, c, legs, mine); } catch (e) { console.warn('market card', k, e); } }
+}
+// each card sits in a wrapper that names its own surface (panel.deep.<key>), so the Access page can switch it wherever it is drawn
+const DEEP_WRAP = {
+  gr: x => `<div class="sfc" data-surface="panel.deep.gr">${x}</div>`,
+  rates: x => `<div class="sfc" data-surface="panel.deep.rates">${x}</div>`,
+  fv: x => `<div class="sfc" data-surface="panel.deep.fv">${x}</div>`,
+  stfv: x => `<div class="sfc" data-surface="panel.deep.stfv">${x}</div>`,
+  pos: x => `<div class="sfc" data-surface="panel.deep.pos">${x}</div>`,
+  carry: x => `<div class="sfc" data-surface="panel.deep.carry">${x}</div>`,
+  hours: x => `<div class="sfc" data-surface="panel.deep.hours">${x}</div>`,
+  ac: x => `<div class="sfc" data-surface="panel.deep.ac">${x}</div>`,
+  ll: x => `<div class="sfc" data-surface="panel.deep.ll">${x}</div>`,
+  opt: x => `<div class="sfc" data-surface="panel.deep.opt">${x}</div>`,
+  news: x => `<div class="sfc" data-surface="panel.deep.news">${x}</div>`,
+  prec: x => `<div class="sfc" data-surface="panel.deep.prec">${x}</div>`,
+  res: x => `<div class="sfc" data-surface="panel.deep.res">${x}</div>`,
+};
+const deepCardsHtml = keys => keys.map(k => DEEP_WRAP[k](`<div class="card" id="tt-p-${k}">${loading(LOADING_WORDS[k])}</div>`)).join('');
+// While the Deep dive is a preview a desk login still gets every card on the Pair page; when the tab is on, the cards render there instead.
+// Unknown access state (the page is still loading it) shows the full Pair page: never hide something a viewer had.
+const deepOn = () => !!globalThis.deskAccessState && !!globalThis.deskSurfaceOn?.('tab.deep');
+const deepLinksHtml = n => `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">More on ${h(nice(n))}</span><span class="r muted">opens the Deep dive</span></div><div class="tt-pills" style="display:flex;flex-wrap:wrap;gap:8px">${DEEP_SECTIONS.map(x => `<button type="button" class="btn" data-deep="${x.key}">${h(x.label)}</button>`).join('')}</div><p class="tt-note">${DEEP_SECTIONS.map(x => h(x.cards.map(k => CARD_LABELS[k].toLowerCase()).join(', '))).join('; ')}.</p></div>`;
 async function renderPair() {
   const root = el('pair'); if (!root) return;
   await ready();
   const list = pairList();
   if (!T.pair || !list.includes(T.pair)) T.pair = (location.hash.match(/pair=([A-Z0-9]+)/i)?.[1] ?? '').toUpperCase() || Object.entries(D.cards ?? {}).sort((a, b) => (b[1].size ?? 0) - (a[1].size ?? 0))[0]?.[0] || 'EURUSD';
-  const n = T.pair, c = D.cards?.[n], legs = PV.legsOf(n);
+  const n = T.pair, c = D.cards?.[n], legs = PV.legsOf(n), deep = deepOn();
   const V = globalThis.deskIsViewer?.(), strength = x => (V ? Math.abs(assetScore(x) ?? 0) : (x.size ?? 0));   // the desk login has no sizes: order by the strength of the view
   const top = Object.entries(D.cards ?? {}).filter(([, x]) => (DIR[x.rating] ?? 0) !== 0 && (V || x.size > 0)).sort((a, b) => strength(b[1]) - strength(a[1])).slice(0, 8);
   T.pairChart?.destroy?.(); T.pairChart = null;
@@ -427,25 +470,13 @@ ${c ? `${ladder(c)}<div class="sfc" data-surface="panel.asset.plan"><div class="
 <p class="tt-note">Chart: candles in the size you pick (5m to 4h; the choice is remembered), today's forecast lines (open, up and down p50 / p75 / p90), the entry zone and the invalidation where the plan names them.</p></div>
 ${AAV.boxHtml(n)}${globalThis.deskViewHtml?.(n) ?? ''}
 <div class="sfc" data-surface="panel.pair.engine"><div class="card" id="tt-p-be" style="margin-top:14px" hidden></div></div>
-<div class="tt-grid2" style="margin-top:14px">
-<div class="card" id="tt-p-gr">${loading('the Global Read for this market')}</div>
-<div class="card" id="tt-p-rates">${loading('rates')}</div>
-<div class="card" id="tt-p-fv">${loading('fair value')}</div>
-<div class="card" id="tt-p-stfv">${loading('short-term fair value')}</div>
-<div class="card" id="tt-p-pos">${loading('positioning')}</div>
-<div class="card" id="tt-p-carry">${loading('carry and options')}</div>
-<div class="card" id="tt-p-hours">${loading('session hours and seasonality')}</div>
-<div class="card" id="tt-p-ac">${loading('autocorrelation')}</div>
-<div class="card" id="tt-p-ll">${loading('lead-lag')}</div>
-<div class="card" id="tt-p-opt">${loading('options')}</div>
-<div class="card" id="tt-p-news">${loading('the news')}</div>
-<div class="card" id="tt-p-prec">${loading('precedent and the chain')}</div>
-<div class="card" id="tt-p-res">${loading('research')}</div></div>`;
+${deep ? deepLinksHtml(n) : `<div class="tt-grid2" style="margin-top:14px">${deepCardsHtml(PAIR_ORDER)}</div>`}`;
   const wirePick = () => {
     root.querySelector('#tt-sel').onchange = e => openPair(e.target.value);
     root.querySelectorAll('.tt-pick [data-p]').forEach(b => (b.onclick = () => openPair(b.dataset.p)));
   };
   wirePick();
+  root.querySelectorAll('[data-deep]').forEach(b => (b.onclick = () => openDeep(n, b.dataset.deep)));
   // a star, the Favourites pill, or a STAR / UNSTAR / FAV command repaints only the market row and the tools line (not the chart and the cards)
   const repaintPick = () => {
     const row = root.querySelector('.tt-pick'); if (!row) return;
@@ -467,19 +498,7 @@ ${AAV.boxHtml(n)}${globalThis.deskViewHtml?.(n) ?? ''}
   AAV.mount(root.querySelector('[data-aa]')).catch(e => console.warn('analyse', e));
   pairChart(n, c);
   const mine = () => T.pair === n;
-  J('/api/global-read').then(g => mine() && pairGR(n, g));
-  Promise.all([J('/api/global-read')]).then(([g]) => mine() && pairRates(n, g));
-  J('/api/fair-value').then(fv => mine() && pairFair(n, fv));
-  if (legs?.[0]) J('/api/fx-fair-value').then(d => { const b = mine() && el('tt-p-stfv'); if (b) b.innerHTML = FVV.stfvPairCard(d, n); }); else el('tt-p-stfv')?.remove();
-  pairPos(n);
-  J('/api/autocorrelation').then(d => { const b = mine() && el('tt-p-ac'); if (b) b.innerHTML = ACV.pairCard(d, n); });
-  J('/api/lead-lag').then(d => { const b = mine() && el('tt-p-ll'); if (b) b.innerHTML = LLV.pairCard(d, n); });
-  Promise.all([J('/api/oi-today'), J('/api/options-history'), J('/api/hedging-summary')]).then(([oi, hist, hs]) => { const b = mine() && el('tt-p-opt'); if (!b) return; b.innerHTML = OPV.pairCard(n, { oi, hist, hs }); b.querySelector('[data-goto-options]')?.addEventListener('click', e => { e.preventDefault(); document.querySelector('#tabs [data-t="options"]')?.click(); }); });
-  newsFeed().then(() => { const b = mine() && el('tt-p-news'); if (!b) return; drawPairNews(b, n, c); });
-  Promise.all([J('/api/carry-vol'), J('/api/options-skew')]).then(([cv, sk]) => mine() && pairCarry(n, cv, sk));
-  Promise.all([J('/api/session-heat'), J(`/api/desk-season?inst=${n}`)]).then(([sh, ss]) => mine() && pairHours(n, sh, ss));
-  Promise.all([J('/api/macro-regime-fx'), loadChain()]).then(([m]) => mine() && pairPrec(n, m));
-  Promise.all([J('/api/research-pod'), J('/api/research-pod/papers')]).then(([rp, pp]) => mine() && pairResearch(n, rp, pp));
+  if (!deep) loadCards(n, c, legs, PAIR_ORDER);
   // the bias engine for this market (any cross of the eight, a currency or an asset); fetched fresh, not cached for the page's life. No read: the card stays hidden.
   getJson(`/api/bias-engine?market=${encodeURIComponent(n)}`).then(r => {
     const b = mine() && el('tt-p-be'); if (!b || !r?.ok || !r.market) return;
@@ -515,6 +534,46 @@ async function pairChart(n, c) {
     apply: (b, { fit }) => { if (T.pair !== n || !el('tt-lc')) { T.pairTf?.stop(); return; } if (!v) { build(b); return; } v.setCandles(b); if (fit) v.fit(); },
     onError: msg => { if (!v && el('tt-lc')) box.innerHTML = `<p class="muted" style="padding:12px">${h(msg)}</p>`; } });
 }
+// ── DEEP DIVE (preview tab.deep): the Pair page's reference cards, one section at a time ──
+const DEEP_LS = 'desk.deep.section.v1';
+const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* private window */ } };
+function openDeep(inst, section, { replace = false, fromHistory = false } = {}) {
+  if (!deepOn()) { openPair(inst ?? T.pair); return; }   // the tab is off for this login: land on the Pair page, which still carries every card
+  if (inst) T.pair = String(inst).toUpperCase();
+  const sec = sectionOf(section) ?? sectionOf(T.deepSection) ?? sectionOf(lsGet(DEEP_LS)) ?? DEEP_SECTIONS[0];
+  T.deepSection = sec.key; lsSet(DEEP_LS, sec.key);
+  if (T.tab !== 'deep') T.deepFrom = T.tab ?? null;
+  const want = deepHash(T.pair, sec.key), act = historyAction({ want, current: location.hash, replace, fromHistory });
+  try { if (act === 'push') history.pushState(null, '', want); else if (act === 'replace') history.replaceState(null, '', want); } catch { /* a sandboxed frame */ }
+  const b = document.querySelector('#tabs [data-t="deep"]');
+  if (b && b.getAttribute('aria-selected') !== 'true') b.click(); else renderDeep();
+  window.scrollTo?.({ top: 0 });
+}
+async function renderDeep() {
+  const root = el('deep'); if (!root) return;
+  await ready();
+  const list = pairList(), hashed = parseDeepHash(location.hash);
+  if (hashed?.inst && list.includes(hashed.inst)) T.pair = hashed.inst;
+  else if (!T.pair || !list.includes(T.pair)) T.pair = Object.entries(D.cards ?? {}).sort((a, b) => (b[1].size ?? 0) - (a[1].size ?? 0))[0]?.[0] || 'EURUSD';
+  const sec = sectionOf(hashed?.section) ?? sectionOf(T.deepSection) ?? sectionOf(lsGet(DEEP_LS)) ?? DEEP_SECTIONS[0];
+  T.deepSection = sec.key;
+  const n = T.pair, c = D.cards?.[n], legs = PV.legsOf(n);
+  const opts = Object.entries(GROUPS).map(([g, gl]) => { const xs = list.filter(x => groupOf(x) === g); return xs.length ? `<optgroup label="${h(gl)}">${xs.map(x => `<option value="${x}"${x === n ? ' selected' : ''}>${h(nice(x))}</option>`).join('')}</optgroup>` : ''; }).join('');
+  root.innerHTML = `<div class="tt-pick"><label class="lbl" for="dd-sel">Market</label><select id="dd-sel">${opts}</select><button type="button" class="btn" id="dd-pair">&larr; ${h(nice(n))} page</button><span class="muted" style="margin-left:auto">the reference cards for one market, one section at a time</span></div>
+<h2 style="margin:10px 0 8px;font:700 22px var(--sans)">${h(nice(n))} <span class="muted" style="font-weight:500;font-size:15px">deep dive</span></h2>
+<div class="tt-pills" role="tablist" aria-label="Deep dive sections" style="display:flex;flex-wrap:wrap;gap:8px">${DEEP_SECTIONS.map(x => `<button type="button" class="btn" role="tab" data-dsec="${x.key}" aria-selected="${x.key === sec.key}" aria-pressed="${x.key === sec.key}">${h(x.label)}</button>`).join('')}</div>
+<div class="tt-grid2" style="margin-top:14px">${deepCardsHtml(sec.cards)}</div>`;
+  root.querySelector('#dd-sel').onchange = e => openDeep(e.target.value, sec.key);
+  root.querySelector('#dd-pair').onclick = () => openPair(n);
+  root.querySelectorAll('[data-dsec]').forEach(b => (b.onclick = () => openDeep(n, b.dataset.dsec)));
+  wire(root);
+  loadCards(n, c, legs, sec.cards);
+}
+globalThis.openDeepPage = openDeep;
+globalThis.deskDeepInst = () => el('dd-sel')?.value ?? null;
+// the access state arrives after the first paint: a Pair page drawn before it must be drawn again if the Deep dive turns out to be on (or off)
+addEventListener('deskaccess', () => { if (T.tab === 'pair') renderPair(); else if (T.tab === 'deep' && !deepOn()) openPair(T.pair); else if (/^#deep/.test(location.hash) && deepOn()) fromHash(); });   // a #deep link opened before the access state arrived is followed now
 function pairGR(n, g) {
   const box = el('tt-p-gr'); if (!box) return;
   const k = g?.cards?.[n];
@@ -879,7 +938,7 @@ function drawNews(filters = false) {
 
 // the Assets cards were drawn before this module loaded: draw them again once so each gets its "latest:" line
 const assetsNews = () => { if (typeof assets === 'function' && D?.cards && D.news?.length && !document.querySelector('#assets .nt-latest')) assets(); };
-const RENDER = { today: renderToday, pair: renderPair, changed: renderChanged, research: renderResearch, options: renderOptions, news: renderNews, assets: assetsNews,
+const RENDER = { today: renderToday, pair: renderPair, deep: renderDeep, changed: renderChanged, research: renderResearch, options: renderOptions, news: renderNews, assets: assetsNews,
   // the Trader's Read: the podcast hosts' eight questions and checks on the desk's own chain (js/traderRead.js)
   read: () => import('./traderReadView.js').then(V => V.render(el('read'), { getJson, openModal })).catch(e => { el('read').innerHTML = `<div class="card"><p class="muted">The Trader's Read did not load: ${h(e.message)}</p></div>`; }),
   // the Info map: every information family the repo holds against what the terminal draws (js/infoMap.js, built by scripts/build_info_map.mjs)
@@ -887,7 +946,7 @@ const RENDER = { today: renderToday, pair: renderPair, changed: renderChanged, r
   // the Replay tab (the time machine): pick a London session and play it forward; the view loads on first use (js/terminal/replayView.js)
   replay: () => import('./replayView.js').then(V => V.mount(el('replay'))).catch(e => { el('replay').innerHTML = `<div class="card"><p class="muted">The Replay tab did not load: ${h(e.message)}</p></div>`; }),
   corr: () => import('./corrView.js').then(V => V.render(el('corr'), { getJson, book: () => D })).catch(e => { el('corr').innerHTML = `<div class="card"><p class="muted">Correlations &amp; hedges did not load: ${h(e.message)}</p></div>`; }) };
-globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'news') { clearInterval(NS.timer); NS.timer = null; } if (t !== 'pair' && /pair=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
+globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'news') { clearInterval(NS.timer); NS.timer = null; } if ((t !== 'pair' && /pair=/.test(location.hash)) || (t !== 'deep' && /^#deep/.test(location.hash))) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
 globalThis.openPairPage = openPair;
 installReplayLink();                               // globalThis.openReplay(inst, ts) and the #replay/NQ/2026-11-12T14:30 deep link
 // the asset card pop-up (desk-terminal.html assetCard) carries the same Analyse box
@@ -897,12 +956,13 @@ globalThis.openNewsTab = openNews;
 // the Assets cards' one-line latest headline (desk-terminal.html assetCard reads it; D.news is tier 1-2, 24 h)
 globalThis.newsLatestLine = (items, inst, rating) => NV.latestLine(items, inst, rating);
 function fromHash() {
-  const go = backTarget({ hash: location.hash, tab: T.tab, from: T.pairFrom });
+  const go = backTarget({ hash: location.hash, tab: T.tab, from: T.tab === 'deep' ? T.deepFrom : T.pairFrom });
   if (go?.pair) { if (go.pair !== T.pair || T.tab !== 'pair') openPair(go.pair, { fromHistory: true }); }
+  else if (go?.deep) { if (deepOn()) openDeep(go.deep.inst ?? T.pair, go.deep.section, { fromHistory: true }); }
   else if (go?.tab) document.querySelector(`#tabs [data-t="${go.tab}"]`)?.click();
 }
 addEventListener('hashchange', fromHash);
-if (/pair=/.test(location.hash)) fromHash();
+if (/pair=|^#deep/.test(location.hash)) fromHash();
 else { const sel = document.querySelector('#tabs [aria-selected="true"]')?.dataset.t; if (RENDER[sel]) globalThis.onTerminalTab(sel); }
 // the Macro tab's short-term fair value table (desk-terminal.html driverBlocks(), a classic script) reads this
 globalThis.stfvHtml = FVV.stfvTable;

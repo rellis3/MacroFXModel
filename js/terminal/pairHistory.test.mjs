@@ -37,7 +37,15 @@ test('wiring: openPair uses historyAction, fromHash uses backTarget, linked sele
   assert.match(t, /import \{[^}]*historyAction[^}]*\} from '\.\/pairHistory\.js'/);
   assert.match(t, /function openPair\(inst, \{ replace = false, fromHistory = false \} = \{\}\)/);
   assert.ok(!/if \(location\.hash !== want\) history\.replaceState/.test(t), 'the unconditional replaceState is gone');
-  assert.match(t, /backTarget\(\{ hash: location\.hash, tab: T\.tab, from: T\.pairFrom \}\)/);
+  assert.match(t, /backTarget\(\{ hash: location\.hash, tab: T\.tab, from: T\.tab === 'deep' \? T\.deepFrom : T\.pairFrom \}\)/);
   assert.match(l, /win\.openPairPage\(want, \{ replace: true \}\)/);
   assert.match(l, /win\.openPairPage = \(inst, o\) => \{ writeSel\(\{ inst \}, 'ui'\); return origPair\(inst, o\); \}/);
+});
+
+test('Back and the Deep dive: a #deep hash shows the Deep dive; an empty hash on the Deep dive returns to where it was opened (the Pair page by default)', () => {
+  assert.deepEqual(backTarget({ hash: '#deep=GOLD/rates', tab: 'pair' }), { deep: { inst: 'GOLD', section: 'rates' } });
+  assert.deepEqual(backTarget({ hash: '#deep/context', tab: 'deep' }), { deep: { inst: null, section: 'context' } });
+  assert.deepEqual(backTarget({ hash: '', tab: 'deep', from: 'assets' }), { tab: 'assets' });
+  assert.deepEqual(backTarget({ hash: '', tab: 'deep' }), { tab: 'pair' });
+  assert.equal(backTarget({ hash: '#macro/rates', tab: 'deep' }), null);
 });

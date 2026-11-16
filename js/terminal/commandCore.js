@@ -14,6 +14,7 @@
 //   { kind:'tf', tf }  { kind:'link', on }  { kind:'help' }
 // js/terminal/commandLine.js is the DOM half: the box, the keys and doing the action. Tested by commandCore.test.mjs.
 import { SURFACES, surfaceById } from './tabRegistry.js';
+import { DEEP_SECTIONS, sectionOf } from './deepDive.js';
 import { MACRO_SUBS, ALL_BLOCKS, BLOCK_SUB, subById } from './macroSubtabs.js';
 import { THEMES } from './themes.js';
 import { TF_KEYS } from '../deskBarsCore.js';
@@ -65,6 +66,7 @@ const TAB_WORDS = {
   corr: ['CORRELATIONS', ['CORR', 'HEDGES'], 'The Correlations tab: the matrix, rolling correlations, factors and regimes.'],
   kchart: ['CHART', ['KLINE', 'CANDLES', 'PRO'], 'The Chart tab (preview): a candle chart with indicators (each with its own settings) and the day\'s lines. Add a market and a candle size: CHART NQ 15M.'],
   monitor: ['MONITOR', ['MON', 'WATCHLIST', 'MONITORS'], 'The Monitor tab (preview): a table of the markets you pick with live columns. Add a name to open a saved monitor: MONITOR INDICES.'],
+  deep: ['DEEP', ['DEEPDIVE', 'DIVE'], 'The Deep dive tab (preview): the reference cards for one market (rates, positioning, behaviour, context). DEEP GOLD RATES opens it on that market and section.'],
   workspace: ['WORKSPACE', ['WS', 'LAYOUT', 'WORKSPACES'], 'The Workspace tab (preview): drag and resize the terminal panels into a screen of your own. Add a name to load a saved layout: WORKSPACE RATES.'],
   insight: ['INSIGHT', ['BOARDS'], 'The Insight tab (preview): boards that read what we already hold in a new way, starting with what is unusual right now.'],
   infomap: ['INFO', ['INFOMAP', 'SWITCHES'], 'The Info map tab (owner only): what data the repo holds, and the preview-feature switches.'],
@@ -190,6 +192,11 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
       c.args = '[name]';
       c.run = args => monitorRun(args);
       c.example = 'monitor indices';
+    }
+    if (key === 'deep') {
+      c.args = `[market] [${DEEP_SECTIONS.map(x => x.key).join('|')}]`;
+      c.run = args => deepRun(args);
+      c.example = 'deep gold rates';
     }
     if (key === 'workspace') {
       c.args = '[name]';
@@ -332,6 +339,14 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     const inst = resolveInstrument(w.split(/\s+/)[0]);
     if (!inst) return { error: `"${w}" is not a market on this terminal.` };
     return { action: { kind: 'monitor-add', inst }, summary: `Adds ${instLabel(inst)} to the open Monitor.` };
+  }
+  function deepRun(args) {
+    const toks = String(args ?? '').trim().split(/\s+/).filter(Boolean);
+    if (!toks.length) return { action: { kind: 'tab', t: 'deep' }, summary: 'Opens the Deep dive tab.' };
+    let inst = null, section = null;
+    for (const t of toks) { const sec = sectionOf(t); if (sec && !section) { section = sec.key; continue; } const i = resolveInstrument(t); if (i && !inst) inst = i; else return { error: `"${t}" is not a market or a section. Sections: ${DEEP_SECTIONS.map(x => x.key).join(', ')}.` }; }
+    const label = inst ? instLabel(inst) : 'the current market', sec = DEEP_SECTIONS.find(x => x.key === section);
+    return { action: { kind: 'deep', inst, section }, summary: `Opens the Deep dive on ${label}${sec ? `, ${sec.label}` : ''}.` };
   }
   function workspaceRun(args) {
     const a = String(args ?? '').trim();

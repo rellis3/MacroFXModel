@@ -1397,6 +1397,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/biasEngineView.js",
+     "js/terminal/deepDive.js",
      "js/terminal/fedPathYieldsView.js",
      "js/terminal/insightSeries.js",
      "js/terminal/macroSubtabs.js",

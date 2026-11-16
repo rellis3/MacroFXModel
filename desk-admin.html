@@ -74,7 +74,7 @@ import { SURFACES, LOCKED_HIDDEN_IDS, ALWAYS_VISIBLE_IDS, REASON_LABEL, REASON_W
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const KIND_LABEL = { tab: 'Tab', nav: 'Link', widget: 'Widget', strip: 'Ticker', panel: 'Panel' };
-const GROUP_ORDER = ['Terminal features (preview)', 'Tabs', 'Links', 'Shell', 'Ticker', 'Overview', 'Overview map layers', 'Currencies', 'Markets', 'Analytics', 'Positioning', 'History', 'Changed', 'Correlations', 'Macro'];
+const GROUP_ORDER = ['Terminal features (preview)', 'Tabs', 'Links', 'Shell', 'Ticker', 'Overview', 'Overview map layers', 'Currencies', 'Markets', 'Analytics', 'Positioning', 'History', 'Deep dive', 'Changed', 'Correlations', 'Macro'];
 const REASON_CHIP = { trade: 'gold', cost: 'dn', internal: 'pur', pnl: 'gold', preview: 'up' };
 const locked = s => LOCKED_HIDDEN_IDS.includes(s.id), pinned = s => ALWAYS_VISIBLE_IDS.includes(s.id);
 let state = {};      // id -> boolean, the switches as drawn

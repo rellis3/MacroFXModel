@@ -8,6 +8,7 @@
  *   historyAction({ want, current, replace, fromHistory })  'push' | 'replace' | 'none'
  *   backTarget({ hash, tab, from })                         what to show when the hash changed under us: { pair } | { tab } | null
  */
+import { parseDeepHash } from './deepDive.js';
 export const pairHash = inst => `#pair=${String(inst).toUpperCase()}`;
 export const pairOf = hash => (String(hash ?? '').match(/pair=([A-Za-z0-9]+)/)?.[1] ?? '').toUpperCase() || null;
 
@@ -21,6 +22,9 @@ export function historyAction({ want, current, replace = false, fromHistory = fa
 export function backTarget({ hash, tab, from = null }) {
   const p = pairOf(hash);
   if (p) return { pair: p };
+  const d = parseDeepHash(hash);
+  if (d) return { deep: d };
   if ((hash === '' || hash === '#') && tab === 'pair') return { tab: from || 'assets' };
+  if ((hash === '' || hash === '#') && tab === 'deep') return { tab: from || 'pair' };
   return null;
 }

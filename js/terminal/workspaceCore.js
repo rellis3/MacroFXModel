@@ -13,7 +13,7 @@ export const COLS = 12, MAX_TILES = 24, MAX_H = 40, MAX_Y = 400, NAME_MAX = 40, 
 export const FILE_KIND = 'desk-workspace';
 
 /** The tab section a panel lives in (its home): panel.ov.* is on Overview, panel.macro.* on Macro, and so on. null when unknown. */
-const HOME = { ov: 'overview', ccy: 'ccy', asset: 'assets', ana: 'ana', charts: 'charts', changed: 'changed', corr: 'corr', macro: 'macro', pair: 'pair', replay: 'replay' };
+const HOME = { ov: 'overview', ccy: 'ccy', asset: 'assets', ana: 'ana', charts: 'charts', changed: 'changed', corr: 'corr', macro: 'macro', pair: 'pair', deep: 'deep', replay: 'replay' };
 export const homeSection = id => HOME[String(id).split('.')[1]] ?? null;
 
 /** Every panel surface a tile may show: id -> its registry row. A panel with no home section is not a tile: the Insight boards (panel.insight.*) sit behind their own pills and draw only when their pill is open, and the saved-searches bar belongs to the News tab. */

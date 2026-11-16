@@ -72,6 +72,12 @@ export function mountLinked({ doc = document, win = window, sel = createSelectio
     };
     tick();
   }
+  // the Deep dive tab reads the shared market too: when the pick moved elsewhere, redraw it for that market (a follow replaces the history entry)
+  function followDeep() {
+    const want = sel.get().inst; if (!want || typeof win.openDeepPage !== 'function') return;
+    const cur = win.deskDeepInst?.(); if (cur === want) return;
+    applying = true; try { win.openDeepPage(want, undefined, { replace: true }); } finally { applying = false; }
+  }
   function followReplay() {
     const { inst, ts } = sel.get(); if (!inst || !REPLAY_INSTS[inst]) return;   // the Replay covers 12 markets, not all of them
     const root = doc.getElementById('replay');
@@ -90,6 +96,7 @@ export function mountLinked({ doc = document, win = window, sel = createSelectio
     if (!sel.linked()) return;
     mark();
     if (tab === 'pair') followPair();
+    else if (tab === 'deep') followDeep();
     else if (tab === 'replay') followReplay();
     else if (scroll && (tab === 'assets' || tab === 'overview')) scrollToHit();
   }
@@ -119,7 +126,7 @@ export function mountLinked({ doc = document, win = window, sel = createSelectio
   };
   const onChange = e => {
     const id = e.target?.id;
-    if (id === 'tt-sel' || id === 'rp-inst') writeSel({ inst: e.target.value });
+    if (id === 'tt-sel' || id === 'dd-sel' || id === 'rp-inst') writeSel({ inst: e.target.value });
     else if (id === 'rp-date') writeSel({ date: e.target.value });
   };
   doc.addEventListener('click', onClick, true);
@@ -135,6 +142,9 @@ export function mountLinked({ doc = document, win = window, sel = createSelectio
   const origPair = win.openPairPage;
   if (typeof origPair === 'function') win.openPairPage = (inst, o) => { writeSel({ inst }, 'ui'); return origPair(inst, o); };
 
+  // the Deep dive's opener: remember the market it was asked for
+  const origDeep = win.openDeepPage;
+  if (typeof origDeep === 'function') win.openDeepPage = (inst, section, o) => { if (inst) writeSel({ inst }, 'ui'); return origDeep(inst, section, o); };
   win.deskSelection = sel;
   paintChip();
   mark();
@@ -145,6 +155,7 @@ export function mountLinked({ doc = document, win = window, sel = createSelectio
       chip?.removeEventListener('click', onChip); if (chip) chip.hidden = true;
       if (typeof origReplay === 'function') win.openReplay = origReplay;
       if (typeof origPair === 'function') win.openPairPage = origPair;
+      if (typeof origDeep === 'function') win.openDeepPage = origDeep;
       doc.querySelectorAll('[data-lk-hit],[data-lk-leg]').forEach(e => { e.removeAttribute('data-lk-hit'); e.removeAttribute('data-lk-leg'); });
       delete win.deskSelection;
     },
