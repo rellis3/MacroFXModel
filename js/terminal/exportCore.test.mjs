@@ -36,6 +36,7 @@ test('file names carry the board and the UTC minute; the slug is plain', () => {
 });
 test('theme variables are filled in for a standalone SVG image, with the fallback when a variable is missing', () => {
   const vars = { '--tx': '#e8ecf5', '--up': '' };
+  assert.equal(resolveCssVars('<text font-family="var(--mono)"/>', () => '"JetBrains Mono", monospace'), `<text font-family="'JetBrains Mono', monospace"/>`, 'double quotes in a resolved font stack become single quotes so the attribute stays valid');
   assert.equal(resolveCssVars('<path stroke="var(--tx)" fill="var(--up, #0f0)"/><g fill="var(--nope)"/>', n => vars[n]), '<path stroke="#e8ecf5" fill="#0f0"/><g fill="gray"/>');
 });
 test('chart size: icons are not charts', () => { assert.ok(isChart(300, 160)); assert.ok(!isChart(16, 16)); assert.ok(!isChart(400, 20)); });

@@ -24,6 +24,14 @@ export const FEATURES = {
       'It is not on Overview, Assets, Pair, Macro or the other tabs. Anywhere else, type EXPORT in the command line for the biggest table on the open tab.',
     ],
   },
+  ghostWalk: {
+    surface: 'widget.ghostwalk', name: 'Ghost walk',
+    where: [
+      'Options tab > the OI terrain card: a "▶ Ghost walk" button in the card heading, beside the market name (it opens that market).',
+      'Or type GHOST NQ, GHOST GOLD or GHOST EURUSD 12 NOV in the command line.',
+      'It only goes back as far as the option-OI capture; the window says from which date.',
+    ],
+  },
   replayViz: {
     surface: 'widget.replayviz', name: 'Replay on a visualisation',
     where: [

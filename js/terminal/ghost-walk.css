@@ -1,0 +1,11 @@
+/* Ghost walk (preview): small extras around the shared replay player's stage. Theme tokens only. */
+.gw-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.gw-meta .chip { font-size: 11px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.gw-touch { margin: 8px 0 0; font-size: 12.5px; max-width: none; overflow-wrap: anywhere; }
+.gw-ex { display: flex; gap: 6px; margin-top: 8px; }
+.gw-open { margin-left: 8px; }
+.gw-svg { max-width: 100%; }
+.gw-ring { transform-box: fill-box; transform-origin: center; animation: gw-pulse 1.1s ease-out infinite; }
+@keyframes gw-pulse { from { transform: scale(.6); opacity: 1; } to { transform: scale(1.9); opacity: 0; } }
+.rpv-reduced .gw-ring { animation: none; }
+@media (prefers-reduced-motion: reduce) { .gw-ring { animation: none; } }

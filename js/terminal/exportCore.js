@@ -53,7 +53,7 @@ export function exportName(title, ext, now = Date.now()) {
 
 /** Replace var(--token) (and a fallback form var(--token, x)) in serialised SVG with the colours the page resolves them to, so a standalone image keeps its colours. */
 export function resolveCssVars(text, getVar, fallback = 'gray') {
-  return String(text).replace(/var\(\s*(--[\w-]+)\s*(?:,\s*([^)]+))?\)/g, (m, name, fb) => { const v = String(getVar(name) ?? '').trim(); return v || (fb ? fb.trim() : fallback); });
+  return String(text).replace(/var\(\s*(--[\w-]+)\s*(?:,\s*([^)]+))?\)/g, (m, name, fb) => { const v = String(getVar(name) ?? '').trim().replace(/"/g, "'"); return v || (fb ? fb.trim() : fallback); });   // a font stack like "JetBrains Mono", monospace sits inside a double-quoted attribute: single quotes keep the SVG valid
 }
 
 /** Is this canvas or svg a board chart (not an icon)? w and h are its drawn size in px. */

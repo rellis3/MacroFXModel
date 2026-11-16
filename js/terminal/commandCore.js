@@ -25,6 +25,7 @@ import { KINDS as AL_KINDS, FEEDS as AL_FEEDS } from '../deskAlertRulesCore.js';
 import { VISUALS as REPLAY_VISUALS, vizByWord } from '../replayVizCore.js';
 import { parseOffset as parseAsofOffset, parseAsofValue, formatClock as formatAsofClock } from '../asofCore.js';
 import { INSTRUMENTS as REPLAY_INSTRUMENTS, validDate, londonDate, londonWall } from '../replayCore.js';
+import { GHOST_MARKETS } from '../ghostWalkCore.js';
 
 // ── markets (a copy of the page's UNIVERSE and NAME; commandCore.test.mjs fails if desk-terminal.html drifts from it) ──
 export const UNIVERSE = {
@@ -264,6 +265,9 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   add({ id: 'replay.viz', group: 'Look and feel', name: 'PLAY', aliases: ['PLAYBACK'], args: `<${REPLAY_VISUALS.map(v => v.id).join('|')}>`,
     help: `Replay one visualisation's own history in a window over the page: ${REPLAY_VISUALS.map(v => `${v.id} is ${v.what}`).join('; ')}. Play, pause, step, x1 x4 x16, loop and a scrubber; it says how much history is held. Also works as REPLAY <visual>.`,
     example: `play ${REPLAY_VISUALS[0].id}`, opens: 'A replay window over the page (a description of the history, not a forecast)', surface: 'widget.replayviz', run: args => vizRun(args) });
+  add({ id: 'ghost', group: 'Look and feel', name: 'GHOST', aliases: ['GHOSTWALK'], args: '<market> [date]',
+    help: `Ghost walk: one day of a market drawn in units of its own forecast median range from the open, over the faint paths of earlier days, with that day's option levels from the time they were saved and a ring where price touched one. Play it forward with the shared player. Only the markets with an option-OI capture (the ones on the OI terrain); it goes back as far as that capture. It shows where price was against the levels, not where it will go.`,
+    example: 'ghost nq', opens: 'A replay window over the page: the day against its own expected range and the earlier days', surface: 'widget.ghostwalk', run: args => ghostRun(args, now) });
   add({ id: 'fav.show', group: 'Look and feel', name: 'FAV', aliases: ['FAVS', 'FAVOURITES', 'FAVORITES'], help: 'Open the Assets tab with only your starred markets (the Favourites filter). Star a market with the ☆ on its card, beside its name on the Pair page, or with STAR. They are kept in this browser only.', example: 'fav',
     opens: 'The Assets tab, filtered to your favourites', surface: 'panel.asset.favourites', needs: ['tab.assets'], action: { kind: 'fav', on: true }, summary: 'Opens the Assets tab with the Favourites filter on.' });
   add({ id: 'fav.star', group: 'Look and feel', name: 'STAR', aliases: [], args: '<market>', help: 'Star a market so it appears under Favourites on the Pair page and starts a new Monitor. Kept in this browser only.', example: 'star gold',
@@ -333,6 +337,16 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     if (!w) return { error: `Say which visual: ${REPLAY_VISUALS.map(x => x.id).join(', ')}. For example PLAY ${REPLAY_VISUALS[0].id}.` };
     if (!v) return { error: `"${w}" is not a visual I can replay yet. Try ${REPLAY_VISUALS.map(x => x.id).join(', ')}.` };
     return { action: { kind: 'replay-viz', id: v.id }, summary: `Replays ${v.name.toLowerCase()}: ${v.what}.` };
+  }
+  function ghostRun(args, nowFn) {
+    const toks = String(args ?? '').trim().split(/\s+/).filter(Boolean);
+    if (!toks.length) return { error: `Say which market: ${GHOST_MARKETS.join(', ')}. For example GHOST NQ, or GHOST GOLD 12 NOV.` };
+    const inst = resolveInstrument(toks[0]);
+    if (!inst) return { error: `"${toks[0]}" is not a market I know. Try GHOST NQ or GHOST GOLD.` };
+    if (!GHOST_MARKETS.includes(inst)) return { error: `The ghost walk covers ${GHOST_MARKETS.join(', ')}: the markets with an option-OI capture. ${inst} is not one of them.` };
+    const when = parseWhen(toks.slice(1), nowFn());
+    if (when?.error) return { error: when.error };
+    return { action: { kind: 'ghost', inst, date: when?.date ?? null }, summary: `Opens the ghost walk on ${instLabel(inst)}, ${when?.date ?? 'today so far'}.` };
   }
   function exportRun(args) {
     const a = String(args ?? '').trim().toLowerCase();

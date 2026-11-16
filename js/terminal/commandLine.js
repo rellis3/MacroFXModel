@@ -37,6 +37,7 @@ export function perform(a, doc = document, win = window) {
     }
     case 'workspace': { const ok = tab('workspace'); if (ok && a.name) win.setTimeout(() => win.deskWorkspace?.load?.(a.name), 60); return ok; }
     case 'asof': return win.deskAsof?.act ? win.deskAsof.act(a) !== false : false;
+    case 'ghost': return typeof win.deskGhostWalk?.open === 'function' ? win.deskGhostWalk.open(a.inst, a.date) !== false : false;
     case 'replay-viz': return typeof win.deskReplayViz?.open === 'function' ? win.deskReplayViz.open(a.id) !== false : false;
     case 'page': return !!win.open?.(a.href, '_blank', 'noopener');
     case 'export': return win.deskExport ? (a.what === 'png' ? win.deskExport.png() : win.deskExport.csv(), true) : false;
