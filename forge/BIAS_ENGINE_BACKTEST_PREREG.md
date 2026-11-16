@@ -212,10 +212,18 @@ when the verdict word is UNDERPOWERED. Same-day intervals use 98 clusters (2016-
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-16 — POST-HOC (results seen)
+S3 (driver decomposition, descriptive) code fix: FX and asset driver sides shared column names, so the FX risk /
+positioning / trend cells were silently skipped, and a missing currency leg was NaN instead of 0 (the engine treats it
+as contributing 0). Fixed and S3 alone recomputed (`run.py --drivers-only`). The primary cells, S1, S2, S4 and the
+evidence packs did not read those columns. Describes only; changes no verdict. Also: NZDCHF (no bid/ask file) is
+charged NZDCAD's measured spread at 5 / 20 d.
 
 ---
 
-## RESULTS — run <YYYY-MM-DD>
+## RESULTS — run 2026-11-16
+
+UNDERPOWERED at all three horizons (0/9 cells pass the gate); 20-day FX leans the wrong way (hit excess −3.1 pp
+[−6.5, +0.1], net −0.37 R per call). Full write-up: `analysis/output/bias-engine-backtest/RESULTS.md`.
 
 *Written to `analysis/output/bias-engine-backtest/RESULTS.md`. Nothing above this line changes after the run.*

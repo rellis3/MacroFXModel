@@ -2998,6 +2998,34 @@ export const DESK_EVIDENCE = [
     result: 'NULL. Ten markets (EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD, USDCHF, NZDUSD, gold, NAS100, SPX500), London-session log ranges, 1800 sessions 2019-01-04 to 2026-08-19 (lockbox respected; start limited by the all-ten VAR). Diebold-Yilmaz total connectedness (VAR(1), W 250, H 10; mean 62%, SD 6.5) added to HAR terms, ln VIX, mean |rho| and weekday: b_C +0.003 log points per SD [-0.011, +0.017], t 0.43; MDE 0.029-0.038 vs +0.02 gate and +0.05 bar; real at the 65th percentile of shift placebos; R2 gain 0.012%. Sensitivities (no VIX, 5-day change, W 120/500, H 5) all within +/-0.02; halves -0.033 / +0.012. C is not a proxy for VIX or correlation (rank corr -0.08 / +0.26) and still does not predict.',
     use: 'Say "connectedness did not predict the next day\'s range once VIX, correlation and range persistence are in: a more connected state goes with a range at most about 2% wider per SD, and probably none". A connectedness dial or network may be drawn as a description of the volatility web; it is not a range input or a risk-state trigger. TVP-VAR, implied-vol or commodity versions are untested.',
   },
+  {
+    id: 'bias-engine-backtest-sameday', domain: 'macro', verdict: 'underpowered', date: '2026-11-16', doc: 'forge/BIAS_ENGINE_BACKTEST_PREREG.md', also: ['analysis/output/bias-engine-backtest/RESULTS.md'],
+    claim: "The live bias engine (js/biasEngine.js, theory-v1), rebuilt point in time without data momentum, calls the London 07:00-21:00 direction of the 28 crosses, gold and six indices better than the point-in-time base rate (B0), net of the real spread",
+    result: "UNDERPOWERED (0/3 group cells pass; MDE 2.9 / 6.7 / 3.5 pp vs a 2 pp bar). 2016-10 to 2024-08 discovery, 98 21-session clusters. Hit excess vs B0: FX +0.9 pp [-0.8, +2.6] (hit 50.9%, n 9,268), gold +4.0 pp [+0.3, +7.3] (n 791, Holm 0.24, placebo 98th pct), indices +0.2 pp [-1.5, +2.1]. Net R per call FX -0.036 [-0.062, -0.010] (spread eats it), gold +0.028 [-0.053, +0.098], idx +0.005. All markets 2016-2026: hit 51.1%, +0.7 pp [-0.4, +1.7], net -0.023 R/day [-0.041, -0.006]; holdout 2024-08 to 2026-08 +0.3 pp, net -0.047 R/day.",
+    use: "Do not show the engine's Bullish/Bearish word or strength as a same-day call. No same-day skill was found and the FX calls lose the spread. Gold +4 pp is a lone unconfirmed cell.",
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF', 'EURJPY', 'GBPJPY', 'EURGBP', 'AUDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
+  },
+  {
+    id: 'bias-engine-backtest-5d', domain: 'macro', verdict: 'underpowered', date: '2026-11-16', doc: 'forge/BIAS_ENGINE_BACKTEST_PREREG.md', also: ['analysis/output/bias-engine-backtest/RESULTS.md'],
+    claim: "The bias engine's daily side is right more often than B0 over the next 5 trading days (NY close after the issue to 5 closes later), net of spread",
+    result: "UNDERPOWERED (0/3; MDE 3.6 / 8.5 / 6.3 pp vs a 3 pp bar). Discovery 2010-01 to 2024-08, 182 clusters. Hit excess FX -0.7 pp [-2.7, +1.4] (hit 49.9%, n 20,552), gold +1.9 pp [-2.2, +5.8], idx -0.2 pp [-3.1, +2.6]. Holdout FX -4.8 pp [-9.2, -0.8]. All markets 2010-2026: hit 50.4%, -0.9 pp [-2.4, +0.6], net -0.074 R per call (-0.015 R/day). FX +3 pp ruled out by the interval.",
+    use: "No 5-day direction claim from the engine. For FX a useful edge is ruled out; gold and indices are too thin to say.",
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF', 'EURJPY', 'GBPJPY', 'EURGBP', 'AUDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
+  },
+  {
+    id: 'bias-engine-backtest-20d', domain: 'macro', verdict: 'underpowered', date: '2026-11-16', doc: 'forge/BIAS_ENGINE_BACKTEST_PREREG.md', also: ['analysis/output/bias-engine-backtest/RESULTS.md'],
+    claim: "The bias engine's daily side is right more often than B0 over the next 20 trading days, net of spread (the horizon it is designed for)",
+    result: "UNDERPOWERED by the power rule (0/3; MDE 5.5 / 11.5 / 8.2 pp vs a 5 pp bar), leaning WRONG SIGN on FX. Hit excess FX -3.1 pp [-6.5, +0.1] (hit 47.9%, n 20,553; both halves and holdout negative; block placebo 3rd pct; net -0.37 R per call [-0.74, -0.04]), gold -0.1 pp [-6.3, +6.6], idx -1.1 pp [-5.8, +3.7]. All markets 2010-2026: hit 49.7%, -2.4 pp [-4.7, +0.2], net -0.27 R per call [-0.51, -0.01] (-0.013 R/day). Evidence pack: planted bar-sized effect found 100%, lookahead canary +3.5 sigma.",
+    use: "Hide the engine's direction and strength on the desk. At its own horizon its FX calls have been right less often than the base rate; never describe them as a slow bias that tends to play out.",
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF', 'EURJPY', 'GBPJPY', 'EURGBP', 'AUDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
+  },
+  {
+    id: 'bias-engine-backtest-components', domain: 'macro', verdict: 'context', date: '2026-11-16', doc: 'forge/BIAS_ENGINE_BACKTEST_PREREG.md', also: ['analysis/output/bias-engine-backtest/RESULTS.md'],
+    claim: "Within the bias engine: higher strength means a higher hit rate, Neutral abstention removes worse calls, and individual drivers carry direction",
+    result: "Descriptive, BH q 0.10. Strength does not grade: pooled hit excess 3-4 / 5-6 / 7-10 = +0.5/+0.3/+6.6 pp same day, -0.8/-1.2/+1.2 at 5d, -2.2/-3.2/-0.6 at 20d; FX 20d worsens with strength (-3.0/-4.3/-10.8). Neutral-signed days score like called days (abstention value +0.7 [-0.3, +1.7] / -0.4 / -1.2 pp). Drivers alone: FX risk role x R -4.4 pp at 20d [-6.3, -2.4] (q 0.001) and -2.0 at 5d (q 0.04), FX trend -2.7 pp at 20d (q 0.04): both wrong sign; policy 2y proxy, rate differential and COT within +/-1.6 pp; index Fed-path same day +2.6 pp [+0.7, +4.6] (q 0.099). Data momentum, stance, EUR/CHF real yield and NZD policy could not be rebuilt.",
+    use: "Do not show the strength number as confidence. The FX risk-role and trend drivers point the wrong way at 1-4 weeks; a weight change needs its own prereg and a forward record, not a refit on this history.",
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF', 'EURJPY', 'GBPJPY', 'EURGBP', 'AUDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -3063,6 +3091,10 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'bias-engine-backtest-sameday': { n: '98 21-session clusters 2016-10 to 2024-08 (16,826 called rows)', note: 'MDE 2.9 pp (FX), 6.7 (gold), 3.5 (idx) vs a 2 pp bar' },
+  'bias-engine-backtest-5d': { n: '182 21-session clusters 2010-01 to 2024-08 (31,144 called rows)', note: 'MDE 3.6 / 8.5 / 6.3 pp vs a 3 pp bar' },
+  'bias-engine-backtest-20d': { n: '182 21-session clusters 2010-01 to 2024-08 (31,155 called rows)', note: 'MDE 5.5 / 11.5 / 8.2 pp vs a 5 pp bar; FX CI upper +0.1 pp excludes the bar' },
+  'bias-engine-backtest-components': { n: 'same clusters; disaggregation cells under BH q 0.10', note: 'descriptive; no MDE registered' },
   'raw-line-touch-clock-range': { n: '1,982 discovery dates (12 instruments) + 2,204 confirm dates (NQ, EURUSD), date-clustered bootstrap', note: 'A1 MDE 1.9% / 2.6% vs 5% bar' },
   'raw-line-touch-clock-hour': { n: '1,982 discovery dates, 220 eligible cells (n >= 200 touches each), date-clustered bootstrap', note: 'detects about 0.1 U edges in the smallest eligible cells; BH q 0.10 under both fill models' },
   'vol-layer-rule-a-confirm-s1': { n: '943 book weekdays 2023-01 to 2026-08 (20-day block bootstrap)', note: 'MDE 0.31 Sharpe vs +0.15 bar' },

@@ -10,15 +10,15 @@ Generated 2026-11-16.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **378** |
+| claims tested (validated + null + underpowered) | **381** |
 | validated | 54 |
 | null | 198 |
-| underpowered | 126 |
-| context (base rates, descriptions: not counted as tests) | 57 |
+| underpowered | 129 |
+| context (base rates, descriptions: not counted as tests) | 58 |
 | pre-registrations with no banked verdict (below) | 89 |
 
-**What the count says (Lesson 02 §05).** If none of the 378 claims were real, tests at the usual 5% size would still pass
-about **18.9** of them by luck. 54 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 381 claims were real, tests at the usual 5% size would still pass
+about **19.1** of them by luck. 54 passed, so most passes are unlikely to be luck alone, but
 **roughly 19 of the 54 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -460,6 +460,10 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-15 | vol-layer-rule-a-confirm-s2 | execution | underpowered | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
 | 2026-11-15 | vol-layer-rule-a-confirm-s3 | execution | null | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
 | 2026-11-15 | vol-layer-rule-a-confirm-z1 | execution | null | forge/VOL_LAYER_RULE_A_CONFIRM_PREREG.md |
+| 2026-11-16 | bias-engine-backtest-20d | macro | underpowered | forge/BIAS_ENGINE_BACKTEST_PREREG.md |
+| 2026-11-16 | bias-engine-backtest-5d | macro | underpowered | forge/BIAS_ENGINE_BACKTEST_PREREG.md |
+| 2026-11-16 | bias-engine-backtest-components | macro | context | forge/BIAS_ENGINE_BACKTEST_PREREG.md |
+| 2026-11-16 | bias-engine-backtest-sameday | macro | underpowered | forge/BIAS_ENGINE_BACKTEST_PREREG.md |
 | 2026-11-16 | raw-line-touch-clock-hour | price | null | forge/RAW_LINE_TOUCH_CLOCK_PREREG.md |
 | 2026-11-16 | raw-line-touch-clock-range | volatility | null | forge/RAW_LINE_TOUCH_CLOCK_PREREG.md |
 
