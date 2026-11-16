@@ -220,4 +220,6 @@ The SEs come from the discovery bootstrap (§2), scaled to about 925 complete co
 
 ## Amendments
 
-*(none)*
+### A1 — 2026-11-16 — PRE-RESULTS (before any 2023+ outcome; approved by the coordinator under the owner's standing go-ahead)
+
+Step 0 positive control, FR part. This prereg said the corrected correlation on factor-only loud days equals the calm correlation. That is false when both legs load on the factor: under the planted model the corrected statistic is +0.151 (population) and the code recovers +0.148. The FR control is replaced by "the pipeline recovers the population value of its own statistic under the planted model, within ±0.02" (passes: error −0.004). The FR cell's statistic, pass bar (−0.05), neighbours, lag and gate are unchanged. The reading changes: F < 0 means loud days are less correlated than calm days after the correction. A dollar-only variance rise would give F > 0 (+0.18 on discovery's own covariance), so the bar is conservative for "not a dollar takeover". The forward-map mirror is reported as a description, not as an equivalent test. This amendment changes no scored number. Detail: analysis/output/vol-layer-features-confirm/STEP0_FAILED.md.
