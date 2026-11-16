@@ -29,3 +29,7 @@
 .oit-tbl th, .oit-tbl td { padding: 3px 8px; text-align: left; border-bottom: 1px solid var(--line2); white-space: nowrap; }
 .oit-tbl th { color: var(--tx3); font-weight: 600; }
 .oit-tbl .n { text-align: right; font-family: var(--mono); }
+
+/* Event replay: the button bar at the top of the Calendar tab */
+.evr-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 12px; font-size: 12.5px; }
+.evr-bar .muted { min-width: 0; overflow-wrap: anywhere; }

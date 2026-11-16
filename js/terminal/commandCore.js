@@ -28,6 +28,7 @@ import { INSTRUMENTS as REPLAY_INSTRUMENTS, validDate, londonDate, londonWall } 
 import { GHOST_MARKETS } from '../ghostWalkCore.js';
 import { PATH_MARKETS } from '../pathReplayCore.js';
 import { VIEWS as OIT_VIEWS, viewByWord as oitView } from './oiTime.js';
+import { familyFromWord as evFamily, marketFromWord as evMarket } from '../eventReplayCore.js';
 
 // ── markets (a copy of the page's UNIVERSE and NAME; commandCore.test.mjs fails if desk-terminal.html drifts from it) ──
 export const UNIVERSE = {
@@ -270,6 +271,9 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   add({ id: 'ghost', group: 'Look and feel', name: 'GHOST', aliases: ['GHOSTWALK'], args: '<market> [date]',
     help: `Ghost walk: one day of a market drawn in units of its own forecast median range from the open, over the faint paths of earlier days, with that day's option levels from the time they were saved and a ring where price touched one. Play it forward with the shared player. Only the markets with an option-OI capture (the ones on the OI terrain); it goes back as far as that capture. It shows where price was against the levels, not where it will go.`,
     example: 'ghost nq', opens: 'A replay window over the page: the day against its own expected range and the earlier days', surface: 'widget.ghostwalk', run: args => ghostRun(args, now) });
+  add({ id: 'eventreplay', group: 'Look and feel', name: 'EVENTREPLAY', aliases: ['EVENT', 'RELEASEREPLAY'], args: '[cpi|nfp|fomc|ecb|boe|boj|pce|retail|gdp] [market]',
+    help: 'Event replay: a past release (US CPI, payrolls, a Fed, ECB, BoE or BoJ decision) played minute by minute from 30 minutes before to 4 hours after, in units of the typical 30-minute reaction of that market to that kind of release, over the faint paths of the last five releases of the same kind, with the share of the move done so far. It shows how big and how fast past releases moved markets; which way a release moves a market is not predictable from the release alone, so it never says where the next one will go.',
+    example: 'eventreplay cpi nq', opens: 'A replay window over the page: a past release minute by minute against the last five of its kind', surface: 'widget.eventreplay', run: args => eventReplayRun(args) });
   add({ id: 'oitime', group: 'Look and feel', name: 'OITIME', aliases: ['OIREPLAY'], args: `<${OIT_VIEWS.map(v => v.id).join('|')}> <market> [date]`,
     help: `Replay the stored option open interest through time with the shared player: ${OIT_VIEWS.map(v => `${v.id} is ${v.what}`).join('; ')}. It goes back only as far as the option-OI capture, and says from which date. It shows where price was against the levels, not where it will go.`,
     example: 'oitime terrain nq', opens: 'A replay window over the page: the stored option-OI day by day against price', surface: 'widget.oitime', run: args => oitimeRun(args, now) });
@@ -352,6 +356,12 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     const when = parseWhen(toks.slice(1), nowFn());
     if (when?.error) return { error: when.error };
     return { action: { kind: 'ghost', inst, date: when?.date ?? null }, summary: `Opens the ghost walk on ${instLabel(inst)}, ${when?.date ?? 'today so far'}.` };
+  }
+  function eventReplayRun(args) {
+    const toks = String(args ?? '').trim().split(/\s+/).filter(Boolean), fam = toks[0] ? evFamily(toks[0]) : null, mk = toks[1] ? evMarket(toks[1]) : null;
+    if (toks[0] && !fam) return { error: `"${toks[0]}" is not a release family I know. Try EVENTREPLAY CPI, NFP, FOMC, ECB, BOE or BOJ.` };
+    if (toks[1] && !mk) return { error: `"${toks[1]}" is not a market the release record covers. Try nq, es, eurusd, gbpusd, usdjpy, gold, dx, vix, gilt or bund.` };
+    return { action: { kind: 'eventreplay', family: fam, market: mk }, summary: `Opens the event replay${fam ? ` on the latest ${fam} release` : ''}${mk ? `, ${mk}` : ''}.` };
   }
   function oitimeRun(args, nowFn) {
     const toks = String(args ?? '').trim().split(/\s+/).filter(Boolean), v = oitView(toks[0]);

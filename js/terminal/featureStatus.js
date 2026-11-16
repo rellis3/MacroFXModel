@@ -24,6 +24,14 @@ export const FEATURES = {
       'It is not on Overview, Assets, Pair, Macro or the other tabs. Anywhere else, type EXPORT in the command line for the biggest table on the open tab.',
     ],
   },
+  eventReplay: {
+    surface: 'widget.eventreplay', name: 'Event replay',
+    where: [
+      'Calendar tab: an "▶ Event replay" button at the very top of the tab, above the calendar table.',
+      'Or type EVENTREPLAY CPI NQ, EVENTREPLAY ECB EURUSD or EVENTREPLAY NFP in the command line.',
+      'It replays a past release minute by minute against the last five of its kind; the window says how many releases are held and from when.',
+    ],
+  },
   oiTime: {
     surface: 'widget.oitime', name: 'OI over time',
     where: [

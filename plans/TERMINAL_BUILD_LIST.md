@@ -159,3 +159,13 @@ Read-only audit of what was reported shipped against what is live and what the d
 | Overview page wider than the viewport (1477px on 1440, 414px on 390) | DOING | A fork was assigned 2026-11-16; no commit at b925e89e. |
 | Fed path laptop pull stale since 2026-11-13 evening (/api/fed-path fetchedAt) | CHECK | Confirm the nightly 22:30 UK task runs. |
 | Ideas ranked in section 7 of the audit: OI terrain replay, call/put speedometer replay, IV smile replay, bias and macro replay over time, ghost walk for FX and gold | TODO | None needs a decision except the paid or blocked items (consensus, ECB/BoE/BoJ, sector). |
+
+## 11. Remaining data features (2026-11-16, owner approved, one fork, preview unless stated)
+| Item | Status | Notes |
+|---|---|---|
+| Event replay: a past release (CPI, payrolls, Fed, ECB, BoE, BoJ) minute by minute, -30 to +240 min, over the last five of its kind, in units of the typical 30-minute reaction | DONE (preview) | Button at the top of the Calendar tab and EVENTREPLAY. Data: /api/release-layer1 + /paths (existing). Size and timing only; surprise-size VALIDATED, news-asymmetry NULL. Depth: 26 CPI releases from 15 May 2024, 159 releases in all. |
+| What changed since I last looked (extends the Changed tab) | TODO | |
+| Risk-flag history strip (Insight > Risk flags and Overview) | TODO | |
+| OI drills (strike, expiry, wall) | TODO | |
+| BIS heat strip (country by quarter) | TODO | |
+| IV smile replay (Cboe chain history) | TODO | |

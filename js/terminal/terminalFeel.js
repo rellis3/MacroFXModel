@@ -87,7 +87,7 @@ const hooksReady = () => new Promise(res => {
 });
 
 /** The keys of the status object (and of what start() returns), in the order the features start. */
-export const FEEL_KEYS = ['asof', 'chart', 'insight', 'alerts', 'workspace', 'linked', 'monitor', 'newsSearches', 'calendarDrills', 'replayViz', 'ghostWalk', 'oiTime', 'exporter', 'cmdline'];
+export const FEEL_KEYS = ['asof', 'chart', 'insight', 'alerts', 'workspace', 'linked', 'monitor', 'newsSearches', 'calendarDrills', 'replayViz', 'ghostWalk', 'oiTime', 'eventReplay', 'exporter', 'cmdline'];
 
 export async function start() {
   // globalThis.__deskFeel is what each feature did on THIS page (js/terminal/featureStatus.js words it; the Info map tab's Preview features panel and
@@ -104,7 +104,7 @@ export async function start() {
     try { globalThis.dispatchEvent?.(new Event('deskfeel')); } catch { /* no events here */ }
     return Object.fromEntries(FEEL_KEYS.map(k => [k, !!feel.features[k]?.loaded]));
   };
-  const want = { linked: on('widget.linked'), cmdline: on('widget.cmdline'), workspace: on('tab.workspace'), alerts: on('widget.alerts'), chart: on('tab.kchart'), monitor: on('tab.monitor'), insight: on('tab.insight'), newsSearches: on('panel.news.saved'), exporter: on('widget.export'), calendarDrills: on('panel.cal.drills'), replayViz: on('widget.replayviz'), asof: on('widget.asof'), ghostWalk: on('widget.ghostwalk'), oiTime: on('widget.oitime') };
+  const want = { linked: on('widget.linked'), cmdline: on('widget.cmdline'), workspace: on('tab.workspace'), alerts: on('widget.alerts'), chart: on('tab.kchart'), monitor: on('tab.monitor'), insight: on('tab.insight'), newsSearches: on('panel.news.saved'), exporter: on('widget.export'), calendarDrills: on('panel.cal.drills'), replayViz: on('widget.replayviz'), asof: on('widget.asof'), ghostWalk: on('widget.ghostwalk'), oiTime: on('widget.oitime'), eventReplay: on('widget.eventreplay') };
   // the as-of gate (js/terminal/asofBoot.js) holds market-data reads when the page was opened with ?asof=: a session that may not use the clock lets it go at once
   if (!want.asof && globalThis.__deskAsof?.requested) globalThis.__deskAsof.abandon('not available to this session');
   if (!Object.values(want).some(Boolean)) { for (const k of FEEL_KEYS) feel.features[k] = { requested: false, loaded: false, error: null }; return finish(); }
@@ -120,6 +120,7 @@ export async function start() {
   await rec('calendarDrills', want.calendarDrills, async () => { addCdCss(); const m = await import('./calendarDrillsView.js'); return m.mountCalendarDrills(); });
   await rec('replayViz', want.replayViz, async () => { addRpCss(); const m = await import('./replayViz.js'); return m.mountReplayViz(); });
   await rec('oiTime', want.oiTime, async () => { addRpCss(); addGwCss(); const m = await import('./oiTime.js'); return m.mountOiTime(); });   // the three OI-over-time buttons sit beside the ghost walk button on the OI terrain card
+  await rec('eventReplay', want.eventReplay, async () => { addRpCss(); addGwCss(); const m = await import('./eventReplay.js'); return m.mountEventReplay(); });   // a button at the top of the Calendar tab and the EVENTREPLAY command
   await rec('ghostWalk', want.ghostWalk, async () => { addRpCss(); addGwCss(); const m = await import('./ghostWalk.js'); return m.mountGhostWalk(); });   // after the player's own css; the button sits on the OI terrain card
   await rec('exporter', want.exporter, async () => { addExCss(); const m = await import('./exportView.js'); return m.mountExport(); });   // after the boards it decorates are mounted
   await rec('cmdline', want.cmdline, async () => { const m = await import('./commandLine.js'); return m.mountCommandLine(); });
