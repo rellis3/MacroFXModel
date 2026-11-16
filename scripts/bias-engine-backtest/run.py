@@ -64,12 +64,12 @@ def load(variant='adj'):
     d['period'] = np.where(d['date'] >= HOLDOUT_START, 'holdout', 'discovery')
     # driver sides
     for k in FX_DRIVERS:
-        cc = ccy[f'd_{k}'].apply(pd.to_numeric, errors='coerce')
+        cc = ccy[f'd_{k}'].apply(pd.to_numeric, errors='coerce').fillna(0)   # a missing / n/a leg contributes 0, as in the engine
         b = cc.reindex(pd.MultiIndex.from_arrays([d['date'], d['market'].str[:3]])).to_numpy()
         q = cc.reindex(pd.MultiIndex.from_arrays([d['date'], d['market'].str[3:6]])).to_numpy()
         d[f'drv_{k}'] = np.where(d['group'] == 'fx', np.sign(b - q), np.nan)
     for k, col in ASSET_DRIVERS.items():
-        d[f'drv_{k}'] = np.where(d['group'] != 'fx', np.sign(pd.to_numeric(d[col], errors='coerce')), np.nan)
+        d[f'adrv_{k}'] = np.where(d['group'] != 'fx', np.sign(pd.to_numeric(d[col], errors='coerce')), np.nan)   # own prefix: FX and asset driver names overlap (risk, positioning, trend)
     return d
 
 
@@ -267,6 +267,29 @@ def verdict_cell(c, mde, bar):
     return 'underpowered'
 
 
+def drivers_section(d, rng):
+    """S3 driver decomposition (each driver alone, as the engine signs it), BH across all cells."""
+    out, dp = {}, []
+    for h in HORIZONS:
+        X = rows_h(d, h)
+        for g in GROUPS:
+            x = X[X['group'] == g]
+            names = FX_DRIVERS if g == 'fx' else list(ASSET_DRIVERS)
+            for k in names:
+                s = x[f'drv_{k}' if g == 'fx' else f'adrv_{k}'].fillna(0).to_numpy().astype(int)
+                if (s != 0).sum() < 100:
+                    continue
+                _, p = cell_parts(x, s)
+                r = summarise(p, rng, h)
+                r['active_share'] = float((s != 0).mean())
+                out[f'{HNAME[h]}|{g}|{k}'] = r
+                dp.append((f'{HNAME[h]}|{g}|{k}', r['p_hx']))
+    q = bh([p for _, p in dp])
+    for (k, _), qq in zip(dp, q):
+        out[k]['bh_q'] = float(qq)
+    return out
+
+
 def main_run():
     rng = np.random.default_rng(SEED)
     d = load('adj')
@@ -382,25 +405,7 @@ def main_run():
     q = bh([results['neutral'][HNAME[h]]['abstention_value_hx']['p'] for h in HORIZONS])
     for h, qq in zip(HORIZONS, q):
         results['neutral'][HNAME[h]]['abstention_value_hx']['bh_q'] = float(qq)
-    # ── S3 driver decomposition (each driver alone, as the engine signs it), BH across all cells
-    dp = []
-    for h in HORIZONS:
-        X = rows_h(d, h)
-        for g in GROUPS:
-            x = X[X['group'] == g]
-            names = FX_DRIVERS if g == 'fx' else list(ASSET_DRIVERS)
-            for k in names:
-                s = x[f'drv_{k}'].fillna(0).to_numpy().astype(int)
-                if (s != 0).sum() < 100:
-                    continue
-                _, p = cell_parts(x, s)
-                r = summarise(p, rng, h)
-                r['active_share'] = float((s != 0).mean())
-                results['drivers'][f'{HNAME[h]}|{g}|{k}'] = r
-                dp.append((f'{HNAME[h]}|{g}|{k}', r['p_hx']))
-    q = bh([p for _, p in dp])
-    for (k, _), qq in zip(dp, q):
-        results['drivers'][k]['bh_q'] = float(qq)
+    results['drivers'] = drivers_section(d, rng)
     # ── S4 sensitivity: the engine's labels exactly as built (data momentum counted as missing)
     da = load('asbuilt')
     for h in HORIZONS:
@@ -448,6 +453,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--selftest', action='store_true')
     ap.add_argument('--power', action='store_true')
+    ap.add_argument('--drivers-only', action='store_true', help='recompute S3 only and patch results_full.json (A1 bug fix)')
     a = ap.parse_args()
     selftest()
     if a.selftest:
@@ -455,6 +461,12 @@ def main():
     if a.power:
         d = load('adj')
         power_table(d, np.random.default_rng(SEED))
+        return
+    if a.drivers_only:
+        r = json.loads((OUT / 'results_full.json').read_text())
+        r['drivers'] = drivers_section(load('adj'), np.random.default_rng(SEED + 3))
+        (OUT / 'results_full.json').write_text(json.dumps(r, indent=1, default=float))
+        log('drivers section recomputed')
         return
     main_run()
 
