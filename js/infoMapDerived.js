@@ -1462,6 +1462,7 @@ export const DERIVED = {
      "js/terminal/mapLayers.js",
      "js/terminal/ratesBoardCore.js",
      "js/terminal/ratesBoardView.js",
+     "js/terminal/spreadsDerived.js",
      "js/terminal/spreadsLibrary.js",
      "js/terminal/terminalTabs.js"
     ],
@@ -1916,7 +1917,8 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/dataAge.js",
-     "js/terminal/macroSubtabs.js"
+     "js/terminal/macroSubtabs.js",
+     "js/terminal/spreadsLibrary.js"
     ],
     "today": [],
     "atlas": [],
@@ -3816,6 +3818,7 @@ export const DERIVED = {
      "js/terminal/matrixCore.js",
      "js/terminal/optionsView.js",
      "js/terminal/spreadsCore.js",
+     "js/terminal/spreadsDerived.js",
      "js/terminal/spreadsLibrary.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
@@ -3855,6 +3858,11 @@ export const DERIVED = {
      "route": "/api/drill-series",
      "exists": true,
      "pack": null
+    },
+    {
+     "route": "/api/spread-extras",
+     "exists": true,
+     "pack": null
     }
    ],
    "modules": [
@@ -3869,6 +3877,14 @@ export const DERIVED = {
     {
      "file": "js/terminal/spreadsLibrary.js",
      "exists": true
+    },
+    {
+     "file": "js/terminal/spreadsDerived.js",
+     "exists": true
+    },
+    {
+     "file": "js/spreadExtrasRoutes.js",
+     "exists": true
     }
    ],
    "names": {
@@ -3880,6 +3896,7 @@ export const DERIVED = {
      "js/terminal/insightView.js",
      "js/terminal/matrixCore.js",
      "js/terminal/spreadsCore.js",
+     "js/terminal/spreadsDerived.js",
      "js/terminal/spreadsLibrary.js",
      "js/terminal/spreadsView.js"
     ],
@@ -3924,6 +3941,31 @@ export const DERIVED = {
     },
     {
      "id": "mv-dislocation-forward",
+     "known": true,
+     "verdict": "null"
+    },
+    {
+     "id": "funding-stress",
+     "known": true,
+     "verdict": "null"
+    },
+    {
+     "id": "repo-stress-range",
+     "known": true,
+     "verdict": "context"
+    },
+    {
+     "id": "stock-bond-flip",
+     "known": true,
+     "verdict": "context"
+    },
+    {
+     "id": "relationship-map",
+     "known": true,
+     "verdict": "underpowered"
+    },
+    {
+     "id": "rates-spread-asset-lead",
      "known": true,
      "verdict": "null"
     }
@@ -4000,6 +4042,7 @@ export const DERIVED = {
      "js/terminal/replayViz.js",
      "js/terminal/sinceLast.js",
      "js/terminal/spreadsCore.js",
+     "js/terminal/spreadsDerived.js",
      "js/terminal/spreadsLibrary.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
