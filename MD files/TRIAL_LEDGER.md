@@ -15,7 +15,7 @@ Generated 2026-11-16.
 | null | 202 |
 | underpowered | 136 |
 | context (base rates, descriptions: not counted as tests) | 63 |
-| pre-registrations with no banked verdict (below) | 86 |
+| pre-registrations with no banked verdict (below) | 87 |
 
 **What the count says (Lesson 02 §05).** If none of the 408 claims were real, tests at the usual 5% size would still pass
 about **20.4** of them by luck. 70 passed, so most passes are unlikely to be luck alone, but
@@ -560,6 +560,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/LINE_TOUCH_WIDE_SCAN_PREREG.md`: Pre-registration: wide scan of candle shape / position / time / regime at the forecast lines
 - `forge/MACRO_TREND_WEEKDAY_PREREG.md`: Macro state, H1/H4 trend state and weekday at the vol lines — pre-registration
 - `forge/NEWS_TOUCH_PREREG.md`: News at the vol lines — pre-registration
+- `forge/NOISE_AREA_BUILD_PREREG.md`: noise-area-build: build our own strategy from the "Beat the Market" theory, choose it walk-forward, and test i
 - `forge/OI_WALL_BUILDING_FORWARD_PREREG.md`: oi-wall-building-forward — does a wall where open interest is being built bounce price more than a flat wall, 
 - `forge/RANGE_BOOK_EURUSD_PREREG.md`: EURUSD Range Book — pre-registration
 - `forge/REACTION_TRADES_PREREG.md`: Trading the reaction after the touch — pre-registration
