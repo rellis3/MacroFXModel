@@ -21,7 +21,7 @@
 //          'nav'    a link out to another page (top bar, or the tab bar). LOCKED hidden for the desk login (it would bounce to the main login).
 //          'widget' a fixed piece of the shell: a chip, the Ask pill, the clocks, the world-stress strip, a map layer
 //          'strip'  one kind of segment in the headline ticker
-//          'panel'  a block inside a tab (an Overview card, a Charts card)
+//          'panel'  a block inside a tab (an Overview card, a History card)
 //
 // How a surface is wired in the markup: put data-surface="<id>" on the element (for a tab, on both the nav button and its <section>), or wrap
 // generated HTML with sf('<id>', html) in desk-terminal.html (a display:contents wrapper). access.js hides the switched-off ids with one
@@ -54,10 +54,10 @@ export const SURFACES = [
   mk('tab.ccy', 'tab', 'Currencies', 'Tabs', null, 'the desk\'s bias per currency and its drivers; "best expressions" inside it is a separate switch'),
   mk('tab.assets', 'tab', 'Assets', 'Tabs', null, 'market boards and the bias on each market; entry, target, invalidation and size lines are separate switches'),
   mk('tab.macro', 'tab', 'Macro', 'Tabs', null, 'yields, credit, liquidity, central banks, macro engines, rates and policy'),
-  mk('tab.pos', 'tab', 'Positioning', 'Tabs', null, 'COT, futures positioning, options positioning'),
+  mk('tab.pos', 'tab', 'Positioning', 'Tabs', null, 'COT, futures positioning, options positioning, positioning history'),
   mk('tab.cal', 'tab', 'Calendar', 'Tabs', null, 'events, live surprises, expectations against reality'),
   mk('tab.ana', 'tab', 'Analytics', 'Tabs', null, 'the book\'s correlation web, factor risk and scenarios, currency strength over time, vol forecast vs realised, release reactions; the desk\'s record panels are separate switches'),
-  mk('tab.charts', 'tab', 'Charts', 'Tabs', null, 'macro regime, data surprises, positioning history, seasonality, how the book was built; ranking vs realised is a separate switch'),
+  mk('tab.charts', 'tab', 'History', 'Tabs', null, 'was Charts: macro regime, data surprises, seasonality, how the book was built; ranking vs realised is a separate switch. Positioning history moved to the Positioning tab'),
   mk('tab.today', 'tab', 'Chain', 'Tabs', null, 'the macro chain (Live/1D/5D/20D) and its read; reads are shared once a day'),
   mk('tab.read', 'tab', 'Trader\'s read', 'Tabs', T, 'the owner\'s own read of the day: marking up a trade'),
   mk('tab.pair', 'tab', 'Pair', 'Tabs', null, 'one page per market; the research it pulls is shared once a day; entry, target and size lines are separate switches'),
@@ -171,8 +171,9 @@ export const SURFACES = [
   mk('panel.ana.risk', 'panel', 'Analytics: factor risk and scenarios', 'Analytics', null, 'the book as dollar, carry, risk-on, commodity and US-rates bets, its VaR and what a shock does to it'),
   mk('panel.ana.scenmap', 'panel', 'Analytics: scenario map', 'Analytics', null, 'every scenario against every card'),
   // ── Charts, Changed, Correlations, Macro ──
-  mk('panel.charts.bookflow', 'panel', 'Charts: how today\'s book was built', 'Charts', null, 'the ruling to the currencies to every card'),
-  mk('panel.charts.ranking', 'panel', 'Charts: currency ranking vs realised', 'Charts', M, 'the Currency Manager\'s order against how currencies finished: the desk\'s accuracy record'),
+  mk('panel.pos.history', 'panel', 'Positioning: history', 'Positioning', null, 'speculators\' net share of open interest over 3 years, the top and bottom 10% shaded (moved here from the History tab; shown to the desk login as before)'),
+  mk('panel.charts.bookflow', 'panel', 'History: how today\'s book was built', 'History', null, 'the ruling to the currencies to every card'),
+  mk('panel.charts.ranking', 'panel', 'History: currency ranking vs realised', 'History', M, 'the Currency Manager\'s order against how currencies finished: the desk\'s accuracy record'),
   mk('panel.changed.cards', 'panel', 'Changed: card flips', 'Changed', null, 'a card added, removed or flipped: what changed in the lean'),
   mk('panel.changed.thesis', 'panel', 'Changed: thesis against reality', 'Changed', M, 'the book\'s claims laid against the evening score'),
   mk('panel.changed.paper', 'panel', 'Changed: paper trades', 'Changed', M, 'the paper-trade running total'),

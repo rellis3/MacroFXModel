@@ -54,7 +54,7 @@ const TAB_WORDS = {
   pos: ['POSITIONING', ['POS', 'COT'], 'The Positioning tab: COT, futures positioning and options positioning.'],
   cal: ['CALENDAR', ['CAL', 'EVENTS'], 'The Calendar tab: this week\'s events, live surprises and expectations against reality.'],
   ana: ['ANALYTICS', ['ANA'], 'The Analytics tab: the book\'s correlation web, factor risk, scenarios and release reactions.'],
-  charts: ['CHARTS', [], 'The Charts tab: macro regime, data surprises, positioning history and seasonality.'],
+  charts: ['HISTORY', ['CHARTS'], 'The History tab (it was called Charts, and CHARTS still works): macro regime, data surprises, seasonality and how the book was built. Positioning history is on the Positioning tab.'],
   today: ['CHAIN', ['TODAY'], 'The Chain tab: the macro chain (live, 1, 5 or 20 days) and its read.'],
   read: ['READ', ['TRADERS'], 'The Trader\'s read tab (owner only unless switched on).'],
   pair: ['PAIR', [], 'The Pair tab: one page per market. Type a market name instead to open that one.'],

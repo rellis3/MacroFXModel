@@ -256,7 +256,7 @@ html[data-role="owner"] .disclaimer{display:none}
     <button role="tab" aria-selected="false" data-t="pos" data-surface="tab.pos">Positioning</button>
     <button role="tab" aria-selected="false" data-t="cal" data-surface="tab.cal">Calendar</button>
     <button role="tab" aria-selected="false" data-t="ana" data-surface="tab.ana">Analytics</button>
-    <button role="tab" aria-selected="false" data-t="charts" data-surface="tab.charts">Charts</button>
+    <button role="tab" aria-selected="false" data-t="charts" data-surface="tab.charts">History</button>
     <button role="tab" aria-selected="false" data-t="today" data-surface="tab.today">Chain</button>
     <button role="tab" aria-selected="false" data-t="read" data-surface="tab.read">Trader's read</button>
     <button role="tab" aria-selected="false" data-t="pair" data-surface="tab.pair">Pair</button>
@@ -1291,6 +1291,14 @@ ${Object.keys(x.errors ?? {}).length ? `<p class="muted">Not pulled: ${Object.en
 }
 
 // ── POSITIONING ──
+// Positioning history (moved from the History tab, 2026-11-16): speculators' net share of open interest, 3 years. Fetched when the Positioning tab opens.
+let COTH = null;
+function positioningHistory() {
+  const el = $('cotgrid'); if (!el) return;
+  if (COTH) { cotGrid(el, COTH); return; }
+  el.innerHTML = '<div class="card muted">Drawing…</div>';
+  getJson('/api/desk-cot-history?weeks=156').then(c => { COTH = c ?? { error: 'No COT history.' }; const e = $('cotgrid'); if (e) cotGrid(e, COTH); });
+}
 function positioning() {
   const cot = D.cot?.instruments ?? {}, bk = D.book?.instruments ?? {};
   const rows = Object.entries(bk).map(([k, v]) => ({ k, inst: k.replace('_', '').replace('XAUUSD', 'GOLD').replace('XAGUSD', 'SILVER'), long: v.latest?.[2], d24: v.change24h?.delta, lu: v.latest?.[4], su: v.latest?.[5] })).filter(r => Number.isFinite(r.long)).sort((a, b) => Math.abs(b.long - 50) - Math.abs(a.long - 50));
@@ -1299,7 +1307,9 @@ function positioning() {
 ${rows.map(r => `<div style="display:grid;grid-template-columns:84px 1fr 120px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)"><b class="mono">${esc(r.inst)}</b><div><div class="gauge"><i style="width:${r.long}%;background:var(--up)"></i><i style="width:${100 - r.long}%;background:var(--dn)"></i></div></div><span class="mono" style="font-size:12px">${r.long.toFixed(0)}% L ${r.d24 != null ? `<span class="${dirCls(r.d24)}">${f(r.d24, 1)}</span>` : ''}</span></div>`).join('') || '<p class="muted">No position-book data.</p>'}
 <p class="muted">Context, not a signal. The 24h change is in percentage points.</p></div>
 <div class="card"><div class="ch"><span class="lbl">COT: speculators against the trend</span><span class="r muted">report ${esc(D.cot?.reportDate ?? '–')}</span></div><div class="scroll"><table><thead><tr><th>Market</th><th>Side</th><th>Crowding</th><th>State</th><th>Tested?</th></tr></thead><tbody>${Object.entries(cot).map(([n, c]) => `<tr><td class="n">${esc(n)}</td><td class="${c.side === 'long' ? 'up' : c.side === 'short' ? 'dn' : ''}">${esc(c.side ?? '–')}</td><td><div class="bar"><i style="width:${c.posT ?? 0}%;background:${(c.posT ?? 0) > 80 ? 'var(--gold)' : 'var(--pur)'}"></i></div><span class="muted mono">${c.posT ?? '–'}</span></td><td>${esc(c.label ?? '')}</td><td><span class="chip ${c.verdict === 'validated' ? 'up' : ''}">${esc(c.verdict ?? 'untested')}</span></td></tr>`).join('')}</tbody></table></div>
-<p class="muted">${esc(D.cot?.note ?? '')}</p></div></div>`;
+<p class="muted">${esc(D.cot?.note ?? '')}</p></div></div>
+<div class="sfc" data-surface="panel.pos.history"><div class="sec"><h2>Positioning history</h2><span class="lbl">speculators' net share of open interest, 3 years · shaded = the top and bottom 10% · dot = latest week</span></div><div class="grid g4" id="cotgrid"></div></div>`;
+  positioningHistory();
 }
 
 // ── CALENDAR ──
@@ -1503,7 +1513,7 @@ ${m.hot ? `<circle cx="${300 + Math.sign(m.hot.m30) * sc(m.hot.m30, m.unit)}" cy
 }
 
 
-// ── CHARTS: the book's flow, the macro regime, data surprises, positioning history, seasonality ──
+// ── HISTORY (was Charts; surface ids keep 'charts'): the book's flow, the macro regime, data surprises, seasonality. Positioning history moved to the Positioning tab. ──
 let CH = null;
 const CC2 = { US: 'USD', EU: 'EUR', DE: 'EUR', FR: 'EUR', IT: 'EUR', ES: 'EUR', GB: 'GBP', JP: 'JPY', AU: 'AUD', NZ: 'NZD', CA: 'CAD', CH: 'CHF' };
 const SEASON_INSTS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX500', 'WTI', 'BTCUSD'];
@@ -1511,16 +1521,15 @@ async function charts() {
   if (!D.run) return;
   if (!CH) {
     $('charts').innerHTML = '<div class="card muted">Drawing…</div>';
-    const [reg, sur, cot] = await Promise.all([getJson('/api/regime'), getJson('/api/econ-surprise'), getJson('/api/desk-cot-history?weeks=156')]);
-    CH = { reg, sur, cot, season: {} };
+    const [reg, sur] = await Promise.all([getJson('/api/regime'), getJson('/api/econ-surprise')]);
+    CH = { reg, sur, season: {} };
   }
   $('charts').innerHTML = `<div class="sfc" data-surface="panel.charts.bookflow"><div class="card glow"><div class="ch"><span class="lbl">How today's book was built</span><span class="r muted">the global ruling → the currencies → every card · tap a currency or a card</span></div><div id="flow"></div></div></div>
 <div class="sfc" data-surface="panel.charts.ranking"><div class="sec"><h2>Currency ranking vs realised</h2><span class="lbl">the Currency Manager's morning order against how the currencies finished · descriptive, n shown</span></div><div id="rankreal"></div></div>
 <div class="grid g2" style="margin-top:14px"><div class="card"><div class="ch"><span class="lbl">Macro regime</span><span class="r muted">growth against inflation, the last 24 months</span></div><div id="quad"></div></div>
 <div class="card"><div class="ch"><span class="lbl">Data surprises</span><span class="r muted">each release against consensus (z), last 120 days, by currency</span></div><div id="surp"></div></div></div>
-<div class="sec"><h2>Positioning history</h2><span class="lbl">speculators' net share of open interest, 3 years · shaded = the top and bottom 10% · dot = latest week</span></div><div class="grid g4" id="cotgrid"></div>
 <div class="sec"><h2>Seasonality</h2><span class="lbl">mean return by calendar month over the history · this month outlined · tap a market for its weekdays</span></div><div class="card"><div id="season"><p class="muted">Reading up to 20 years of daily bars for ${SEASON_INSTS.length} markets…</p></div><div id="wkday"></div></div>`;
-  if (globalThis.deskSurfaceOn('panel.charts.bookflow')) sh(() => globalThis.drawBookFlow?.($('flow'))); globalThis.drawRankReality?.($('rankreal')); regimeQuad($('quad'), CH.reg); surprises($('surp'), CH.sur); cotGrid($('cotgrid'), CH.cot); seasonHeat($('season'));
+  if (globalThis.deskSurfaceOn('panel.charts.bookflow')) sh(() => globalThis.drawBookFlow?.($('flow'))); globalThis.drawRankReality?.($('rankreal')); regimeQuad($('quad'), CH.reg); surprises($('surp'), CH.sur); seasonHeat($('season'));
 }
 const REG_COL = { goldilocks: 'var(--up)', reflation: 'var(--gold)', stagflation: 'var(--dn)', deflation: 'var(--blue2)' };
 function regimeQuad(el, r) {
