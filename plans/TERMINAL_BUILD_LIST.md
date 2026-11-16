@@ -65,7 +65,7 @@ feed goes in js/infoMap.js with its status.
 | Item | Status |
 |---|---|
 | Python test job red: forge proof gate has no checks.json for the five vol-layer-rule-a-confirm entries | PARKED, needs owner decision |
-| Info map guard goes red when parallel builds land between a regeneration and its push (CI or the test should regenerate) | TODO |
+| Info map guard goes red when parallel builds land between a regeneration and its push (CI or the test should regenerate) | DONE 2026-11-16: root cause was Windows vs Linux directory order in the generator (sorted now, js/infoMapOrder.test.mjs guards it); a stale cache is a warning; nightly workflow `Info map refresh` commits the fresh copy; `node scripts/prepush_check.mjs` before every push; CI line on the Info map tab (/api/ci-status, owner only); terminalFeel.test derives its preview list from the registry |
 | Move the Atlanta Fed pull to Railway (with a stale guard); laptop task for central-bank futures and skew | PARKED, see memory project_laptop_dependencies |
 | Gold ETF flow: an empty or failed try is no longer cached 6h; the failure reason is in the response and the health row. First live check after deploy: /api/gold-etf-flow fetch.reason shows whether Railway can reach Yahoo | DONE 1b9ffcbc |
 

@@ -676,8 +676,8 @@ export const DERIVED = {
     ],
     "newsletter": [
      "js/newsletterRecord.js",
-     "js/newsletterTerminal.js",
-     "js/newsletterTermV2.js"
+     "js/newsletterTermV2.js",
+     "js/newsletterTerminal.js"
     ]
    },
    "evidence": [
@@ -2273,8 +2273,8 @@ export const DERIVED = {
     ],
     "newsletter": [
      "js/newsletterPicto.js",
-     "js/newsletterTerminal.js",
-     "js/newsletterTermV2.js"
+     "js/newsletterTermV2.js",
+     "js/newsletterTerminal.js"
     ]
    },
    "evidence": [],
@@ -3845,8 +3845,8 @@ export const DERIVED = {
     ],
     "newsletter": [
      "js/newsletterRecord.js",
-     "js/newsletterTerminal.js",
-     "js/newsletterTermV2.js"
+     "js/newsletterTermV2.js",
+     "js/newsletterTerminal.js"
     ]
    },
    "evidence": [],

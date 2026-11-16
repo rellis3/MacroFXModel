@@ -45,7 +45,10 @@ function runOne(file) {
       clearTimeout(timer);
       // the first failing assertion in the WHOLE output (Node 22 prints TAP when not on a terminal, so the failure sits far above the last lines)
       const all = out.replace(/\r/g, '').split('\n'); const fi = all.findIndex(l => /^\s*not ok\b|\u2716|AssertionError|\bError:|\bFAIL\b/.test(l));
-      const firstFail = fi >= 0 ? all.slice(fi, fi + 4).map(l => l.trim()).filter(Boolean).join(' | ') : '';
+      let firstFail = fi >= 0 ? all.slice(fi, fi + 4).map(l => l.trim()).filter(Boolean).join(' | ') : '';
+      // guard scripts print 'FAILED, N problem(s):' then one '  - reason' line each: put the reasons in the annotation (2026-11-16: 'FAILED, 1 problem:' alone hid which problem)
+      const fp = all.findIndex(l => l.trim().startsWith('FAILED'));
+      if (fp >= 0) { const reasons = all.slice(fp + 1, fp + 6).map(l => l.trim()).filter(l => l.startsWith('- ')); if (reasons.length) firstFail = `${all[fp].trim()} ${reasons.join(' ')}`; }
       resolve({ file, ok: code === 0, code, timedOut: signal === 'SIGKILL', ms: Date.now() - t0, tail: out.split('\n').slice(-25).join('\n'), firstFail });
     });
   });

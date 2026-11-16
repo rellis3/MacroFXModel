@@ -662,6 +662,20 @@ Report the green honestly and the red honestly.
   `hub.html`, see the house-conventions note above.
 - Keep commits scoped and messages descriptive.
 
+### Before every push (agents and the owner): `node scripts/prepush_check.mjs`
+
+Takes about 2-3 minutes. It regenerates the Info map (`js/infoMapDerived.js`, `plans/INFO_MAP.md`; `git add` them if it says they changed), runs the guards
+that have actually turned main red (Info map and its directory-order test, feed registry hosts, tab registry / preview features / theme tokens / viewer rules,
+links, newsletter rules, snapshot and access tests) plus every test file you changed, and prints `SAFE TO PUSH` or the first failing reason. `--py` also runs the
+Python suite, `--all` runs every JS test file like CI. The one Python gate that is the owner's decision (`forge.verdict_gate_test`, the vol-layer proofs) is
+shown as INFO, not as your failure. Why this exists: main's Tests workflow was red on 34 of the last 40 runs (2026-11-16): a Python proof gate waiting for
+the owner, an Info map file that differed between Windows and Linux directory order, a hand-typed list of preview features in a test, and feed-registry hosts
+nobody had listed. Rules that came out of it:
+- Never write a hand-kept copy of a registry into a test (derive it from the registry and assert the invariants for every row).
+- Generated files must not depend on the machine: sort with a plain code-unit comparator, never rely on `fs.readdirSync` order.
+- A test may only fail for a real defect. Staleness of a generated cache is a warning (the nightly `Info map refresh` workflow commits the fresh copy).
+- The owner can see main's state without GitHub: Info map tab, "CI" line (`/api/ci-status`, owner only).
+
 ## Live deployment
 
 > **The five HMM services default OFF (owner, 2026-09-16).** If you are looking

@@ -122,6 +122,7 @@ import { createTradePlan } from './js/tradePlanRoutes.js';           // trade-pl
 import { mountLiveLayer as _mountLiveLayer } from './js/liveLayerRoutes.js';   // intraday overlay for the daily boards: EM, indices, implied yields, range used, correlation regime (/api/live-layer)
 import { fxWeekOpen as _llIsFxOpen } from './js/marketClock.js';   // the PRECISE FX-week rule (Friday 17:00 to Sunday 17:00 New York)
 import { mountPaperBoards } from './js/paperBoardsRoutes.js';                  // the paper-ideas boards' routes (FOMC day, path gap, JGB, inflation, auctions, range coverage, connectedness, coupling, SKEW, trend, walls)
+import { fetchCiStatus, githubGetter } from './js/ciStatusCore.js';       // GET /api/ci-status: is main's Tests workflow green (owner only, cached 10 minutes)
 import { mountDeskBoards } from './js/deskBoardRoutes.js';              // the Desk Terminal's newer Macro boards (credit & liquidity, curve, regime, releases, strength, vol)
 import { mountReplay as _mountReplay } from './js/replayRoutes.js';                  // the Desk Terminal REPLAY (time machine, stage 1): a session as minutes, the option levels as known then, strength every 15 min (/api/replay/*)
 import { mountGhostWalk as _mountGhostWalk } from './js/ghostWalkRoutes.js';       // the ghost walk (preview): one market's days in units of the forecast median range, the OI levels in force, touches against a mirrored placebo (/api/replay/ghosts)
@@ -5155,6 +5156,22 @@ const _BUILD_INFO = (() => {
     gitSha: onRailway ? null : git(['rev-parse', 'HEAD']), gitBranch: onRailway ? null : git(['rev-parse', '--abbrev-ref', 'HEAD']) });
 })();
 // The older keys are kept for anything that still reads them (version tag, r2 flag); deployedAt used to be the time of the request, it is now this process's start.
+// GET /api/ci-status: is main's Tests workflow green, when it last finished and which test is failing (public GitHub Actions API, js/ciStatusCore.js). OWNER ONLY (it
+// names failing tests), cached 10 minutes so it costs about 24 GitHub calls an hour of the 60 an hour a token-less client gets; GITHUB_TOKEN lifts that if set.
+let _ciCache = { at: 0, body: null };
+app.get('/api/ci-status', _ownerOnly, async (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  if (_ciCache.body && Date.now() - _ciCache.at < 10 * 60e3) return res.json(_ciCache.body);
+  try {
+    const body = await fetchCiStatus(githubGetter(fetch, process.env.GITHUB_TOKEN || null));
+    _ciCache = { at: Date.now(), body: { ...body, checkedAt: new Date().toISOString() } };
+    res.json(_ciCache.body);
+  } catch (e) {
+    // a rate limit or an outage must not read as 'green': serve the last good answer marked stale, else say unknown
+    if (_ciCache.body) return res.json({ ..._ciCache.body, stale: true, staleReason: e.message });
+    res.status(502).json({ ok: false, error: `GitHub did not answer (${e.message})` });
+  }
+});
 app.get('/api/version', (_req, res) => { res.set('Cache-Control', 'public, max-age=60'); res.json({ ..._BUILD_INFO, version: 'r2-m1-engine', deployedAt: _BUILD_INFO.startedAt, r2: !!process.env.R2_ACCESS_KEY }); });
 // owner only (a POST is refused to a desk viewer): take a point now, or the day's FULL snapshot with ?full=1
 app.post('/api/desk-snapshots/capture', async (req, res) => {

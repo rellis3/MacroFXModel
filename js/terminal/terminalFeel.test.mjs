@@ -16,11 +16,16 @@ const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 globalThis.__terminalFeelNoAutoStart = true;
 globalThis.localStorage = memStore();
 const { start } = await import('./terminalFeel.js');
-const PREVIEW = ['tab.deep', 'widget.cmdline', 'panel.cal.drills', 'widget.export', 'panel.news.saved', 'tab.monitor', 'tab.workspace', 'tab.kchart', 'tab.insight', 'widget.asof', 'widget.replayviz', 'widget.ghostwalk', 'widget.oitime', 'widget.alerts', 'widget.linked'];   // registry order
+// The preview rows come FROM THE REGISTRY, not from a hand-kept copy: this list used to be typed out here, so every new preview feature (replay, ghost walk,
+// time machine, OI over time ...) turned this file red until someone remembered to edit it (2026-11-16: five features added, main red on every push). The
+// checks below run for EVERY preview surface, so a new one is covered the moment it is registered. CORE is the floor: removing one of these needs a decision.
+const PREVIEW = previewRows().map(r => r.id);
+const CORE_PREVIEW = ['widget.cmdline', 'widget.linked', 'widget.alerts', 'widget.export', 'widget.asof', 'tab.monitor', 'tab.workspace', 'tab.kchart', 'tab.insight', 'tab.deep'];
 
 test('the preview features are registry surfaces, hidden from the desk login by default, with a reason and a note', () => {
   assert.ok(HIDDEN_REASONS.includes('preview'));
-  assert.deepEqual(previewRows().map(r => r.id), PREVIEW);
+  for (const id of CORE_PREVIEW) assert.ok(PREVIEW.includes(id), `${id} is a core preview feature and must stay a registered preview surface`);
+  assert.equal(new Set(PREVIEW).size, PREVIEW.length, 'no preview id is registered twice');
   for (const id of PREVIEW) { const s = surfaceById(id); assert.equal(s.hidden, 'preview'); assert.equal(s.defaultVisible, false); assert.ok(s.note.length > 30); }
   const viewer = visibleFor('viewer', null), owner = visibleFor('owner', {});
   for (const id of PREVIEW) { assert.ok(!viewer.includes(id), `${id} must not be visible to a desk login by default`); assert.ok(owner.includes(id), `${id}: the owner always sees it`); }
