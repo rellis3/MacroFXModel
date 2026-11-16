@@ -4467,6 +4467,11 @@ export const DERIVED = {
      "route": "/api/replay/oi-days",
      "exists": true,
      "pack": null
+    },
+    {
+     "route": "/api/replay/path-days",
+     "exists": true,
+     "pack": null
     }
    ],
    "modules": [
