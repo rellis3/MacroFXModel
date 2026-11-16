@@ -32,7 +32,10 @@ const boundRe = s => new RegExp(esc(s) + '(?![A-Za-z0-9_-])');
 const quotedRe = ep => new RegExp('[\'"`]' + esc(ep.replace(/^\/api\//, '')) + '(?![A-Za-z0-9_-])');
 const hits = (corpus, needles) => {
   const res = needles.flatMap(n => (/^\/api\//.test(n) ? [boundRe(n), quotedRe(n)] : [boundRe(n)]));
-  return TEXT[corpus].filter(([, t]) => res.some(r => r.test(t))).map(([f]) => f);
+  // sorted by plain code-unit order on purpose: fs.readdirSync is case-insensitive-alphabetical on Windows and byte-order on Linux, so the
+  // corpus order differed between the machines that write this file (Windows) and the CI runner (Linux). 2026-11-16: that alone made
+  // js/infoMap.test.mjs red on every run from the day newsletterTermV2.js was added next to newsletterTerminal.js ('V' sorts before 'i' on Linux).
+  return TEXT[corpus].filter(([, t]) => res.some(r => r.test(t))).map(([f]) => f).sort((x, y) => (x < y ? -1 : x > y ? 1 : 0));
 };
 
 // ── routes ──
