@@ -64,7 +64,7 @@ table.t th.num { text-align: right; }
 </div>
 
 <script type="module">
-import { LAYERS, BUILD_ORDER, DEEP_DIVE, SOURCE_NOTE, COMBINED, TESTS, NAMED, PROOF, STAGES, STAGE1, ASSEMBLY, COG_LESSONS } from './js/volLayerResearch.js';
+import { LAYERS, BUILD_ORDER, DEEP_DIVE, SOURCE_NOTE, COMBINED, TESTS, NAMED, PROOF, STAGES, STAGE1, ASSEMBLY, COG_LESSONS, WHATS_LEFT } from './js/volLayerResearch.js';
 import { PROOF_CSS, proofListHtml, proofHtml, cogReviewHtml, jumpLookHtml, lookChartsHtml } from './js/volLayerProof.js';
 
 document.head.insertAdjacentHTML('beforeend', `<style>${PROOF_CSS}</style>`);
@@ -144,6 +144,16 @@ function assemblyHtml() {
     That is the order C.OG's own lesson 03 gives: forecast risk because it is forecastable, then act on a separate signal. The next step is one base system run through every row.</p>`;
 }
 
+function whatsLeftHtml() {
+  const W = WHATS_LEFT;
+  const conf = c => c.startsWith('vol-layer-') ? `<code>${esc(c)}</code><div class="muted" style="font-size:10.5px">forge/${esc(c.toUpperCase().replace(/-/g, '_'))}_PREREG.md</div>` : `<span class="muted">${esc(c)}</span>`;
+  const rows = W.rows.map(r => `<tr><td class="num">${r.n}</td><td><a href="#${esc(LAYERS.find(x => x.n === r.n)?.id ?? '')}"><b>${esc(r.layer)}</b></a></td><td>${esc(r.stage)}</td>
+    <td>${esc(r.holds)}</td><td class="muted">${esc(r.blocking)}</td><td>${conf(r.confirm)}</td><td><b>${esc(r.you)}</b></td></tr>`).join('');
+  return `<ul>${W.headline.map(h => `<li>${esc(h)}</li>`).join('')}</ul>
+    <div class="scroll"><table class="t"><thead><tr><th>#</th><th>Layer</th><th>Stage</th><th>What holds</th><th>What stops it being trusted</th><th>Stage 4 (own measure)</th><th>Your step</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="muted" style="margin-top:8px;font-size:11px">${W.housekeeping.map(esc).join(' ')}</p>`;
+}
+
 function lessonsHtml() {
   const lab = { yes: 'already in our work', no: 'not yet used', fix: 'we do it differently' };
   const col = { yes: 'var(--green)', no: '#e0a32e', fix: '#f87171' };
@@ -163,6 +173,7 @@ function systemHtml() {
   "every single position is different" because every position is the product of all the layers. This page researches each layer on its own tab,
   then brings them together here and tests them combined. <b>No layer is assumed in or out</b>: every candidate stays open until our own
   pre-registered test decides it.</div>
+  <div class="card" style="margin-top:12px"><h3>What is left before every layer can be trusted (review 2026-11-16)</h3>${whatsLeftHtml()}</div>
   <div class="card" style="margin-top:12px"><h3>System assembly: what each layer feeds into a trade</h3>${assemblyHtml()}</div>
   ${wideHtml('system')}
   <div class="card" style="margin-top:12px"><h3>C.OG's six Forecaster Portfolio lessons: what they add to the layer research</h3>${lessonsHtml()}</div>
