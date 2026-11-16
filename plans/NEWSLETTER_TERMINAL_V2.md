@@ -2,6 +2,18 @@
 
 Dated 2026-11-16. Hand-kept. Review and design only: nothing on the live site changes with this document. The prototype files live in the owner's scratchpad, not in the repo (see "What was built").
 
+## STATUS 2026-11-16: BUILT (supersedes sections 4, 5 and 7 below)
+
+The terminal edition is now a real written newsletter, the same kind as the daily and the brief, modernised. Built and pushed (stages 1 to 4), preview-free but owner-only on Atlas:
+
+- **Modules:** js/newsletterTermV2.js (model, HTML, routes), ...Prose.js (the desk run's writing, trade-free), ...Svg.js (charts), ...Poster.js (the pictogram), ...Wrap.js. Tests: js/newsletterTermV2.test.mjs. Sample from the live site: node scripts/newsletter-term-v2-sample.mjs <outDir>.
+- **Content:** three beats, Yesterday / Today / What could happen. The spine is the desk writer's issue and the desk run's own text (currency debate: reasons each currency could be firm or weak; analysts' tailwinds and headwinds for each market, labelled as their thinking), with the terminal's rule-built sentences and charts beside the paragraphs. About 4,600 words on 2026-11-16, 14 A4 pages, 0 repeated sentences. No model is called.
+- **Safety rules, tested:** any sentence with entry, target, stop, size or zone wording is dropped; the desk writer's "where the desk leans" section and ideas list are never printed; internal ids and route tags are stripped; direction is shown as context with the Evidence Book verdict word.
+- **Output:** always a PDF. Atlas > Newsletter > Terminal edition v2: Issue as PDF (print to PDF, dark or light, A4 portrait, background graphics on), Pictogram (PNG), Send pictogram to Telegram, Send a saved PDF to Telegram (a PDF is made in the owner's browser, so the owner saves it and the server forwards it). The classic terminal edition stays as "Terminal edition (classic)" for a few weeks, then can be deleted.
+- **Archive and access:** the issue is saved as kind desk-terminal2 and only the owner login can list or open it. The daily, brief and classic kinds were left as they were: they are readable without a login and the classic terminal edition prints entry, target and size (reported to the owner, not changed).
+- **Pictogram:** one vector poster of the issue's key points (headline, big picture with a drawn calm-surface-over-cracked-foundation hero when the surface is calm and credit is stressed, three warning lights, currency ladder with drawn flags, events in UK time, yesterday's review, risk concentration, three triggers, the tested-result line). The desk's setups table is off by default; renderPosterV2(model, { setups }) switches it on (owner decision pending).
+- **Not verified:** a real Atlas click, the print dialog in the owner's browser, a live Telegram send, a Discord preview.
+
 ## 1. What the terminal newsletter is today
 
 - **What it is.** "The Chain, Terminal edition" (js/newsletterTerminal.js, built 2026-11-03). It is the desk run (the AI analysts, the debate, the manager's ruling) and yesterday's review, drawn in the Desk Terminal's colours: deep navy, purple structure, gold theses, green and red for direction, mono labels.

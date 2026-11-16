@@ -137,13 +137,14 @@ export function dialsGrid(k, tiles, width = 360, id = 'dl') {
 
 // ── ranked bars (unusual now, yesterday's biggest moves) ───────────────────────────────────────────────────────
 /** rows = [{ label, value (0..1 percentile or signed share), text, hot?, signed? }]. Left label, bar, right text: nothing is cut. */
-export function rankedBars(k, rows, { width = 360, labelW = 108, textW = 70, ariaLabel = 'Ranked bars' } = {}) {
+export function rankedBars(k, rows, { width = 360, labelW = 150, textW = 62, ariaLabel = 'Ranked bars' } = {}) {
   if (!rows?.length) return '';
   const rh = 24, Ht = rows.length * rh + 6, bx = labelW, bw = width - labelW - textW, mid = bx + bw / 2;
   const o = [svgOpen(width, Ht, ariaLabel)];
   rows.forEach((r, i) => {
     const y = 4 + i * rh, v = Math.max(-1, Math.min(1, r.value));
-    o.push(T(0, y + 14, r.label, { size: 10.5, weight: 700, fill: k.tx }));
+    let lab = String(r.label); while (textWidth(lab, 10.5) > labelW - 6 && lab.includes(' ')) lab = lab.replace(/\s+\S+$/, '');   // shorten by whole words, never clip or ellipsis
+    o.push(T(0, y + 14, lab, { size: 10.5, weight: 700, fill: k.tx }));
     o.push(`<rect x="${bx}" y="${y + 4}" width="${bw}" height="11" rx="5.5" fill="${k.bg3}"/>`);
     if (r.signed) {
       const w = Math.abs(v) * bw / 2, col = v >= 0 ? k.up : k.dn;

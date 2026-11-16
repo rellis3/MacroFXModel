@@ -116,3 +116,13 @@ Decisions needed from the owner are listed at the end of that document (new tab 
 | Strength 1D window on Monday morning | DONE 434202af | A window that starts inside the weekend closure runs from the Friday close and says so, only where a pair has no price at the start. Overview's price read now names the missing window and why, and reads from the other one. Live check after deploy: /api/ccy-strength 1D should be available at Monday 09:12Z. |
 | Gold ETF source when Yahoo refuses Railway | DONE 5c6b67d9 | Issuers first (SPDR archive for GLD, iShares page for IAU), Yahoo second; tonnes held is the series (a flow is the change in tonnes); response and data-health row name the source. First live check: /api/gold-etf-flow, fetch.source and tonnes.last. If an issuer also refuses Railway, fetch.reason says which. |
 
+## 9. Terminal newsletter v2 (2026-11-16)
+| Item | Status | Notes |
+|---|---|---|
+| Written terminal edition (yesterday, today, what could happen) from the desk run and the terminal boards | DONE afc0a8ab | about 4,600 words, no model call, plans/NEWSLETTER_TERMINAL_V2.md |
+| PDF output and Atlas buttons (Issue as PDF, dark or light) | DONE 7c68d5c6 | print to PDF; A4 portrait |
+| Terminal pictogram (vector poster of the key points) | DONE c14872a2 | PNG download and Telegram photo |
+| Send a PDF or the pictogram to Telegram | DONE 7c68d5c6 | owner only, one try, no retry; a PDF is saved by the owner first |
+| Pictogram setups panel (the desk's setups, labelled not recommendations) | PARKED | switch exists (options.setups), default off; owner decision on trade content in a shared document |
+| Delete the classic terminal edition | TODO | after a few weeks of the v2 being used |
+| Archive access for the daily and brief kinds (open without a login; classic terminal edition prints trade plans) | DECISION | reported, not changed |
