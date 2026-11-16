@@ -74,6 +74,10 @@ export const TH = {
 /** Age budget per input, days (older -> dropped as stale). Monthly series (rates, real yield, data) get 120. */
 export const MAX_AGE_DAYS = { policy: 10, stance: 120, rates: 120, data: 120, realYield: 120, usReal: 7, cot: 14, risk: 7, prices: 7 };
 export const NEUTRAL_MAX_STRENGTH = 2, MIN_COVERAGE = 0.5, CONFLICT_GAP = 0.1;
+/** What the desk's data universe holds at all. A driver outside it is NOT APPLICABLE (out of the weight base), not missing:
+ *  coverage measures temporary data failure, never a series we have never had (owner 2026-11-16: everything came out Neutral). */
+export const REAL_YIELD_UNIVERSE = ['USD', 'EUR', 'CHF'];
+export const COT_UNIVERSE_MISSING = ['USD', 'SILVER', 'WTI', 'COPPER', 'DE30', 'UK100'];
 export const FOOTNOTE = 'Rule-based macro checklist, weights theory-v1, scored forward on the bias scoreboard; not a trade signal.';
 
 const DAY = 864e5, H4 = 4 * 3600e3;
@@ -276,6 +280,7 @@ function dataDriver(c, inputs, issueMs, w = CCY_WEIGHTS.data, key = 'data', labe
 }
 function realYieldDriver(c, inputs, issueMs, avg) {
   const x = inputs?.realYield?.[c], base = { key: 'realYield', label: 'Real yield', w: CCY_WEIGHTS.realYield, source: '/api/real-yield' };
+  if (!x && !REAL_YIELD_UNIVERSE.includes(c)) return { ...base, d: null, na: true, why: 'no real-yield series for this currency (not held)' };
   const bad = x ? unusable(x.asOf, issueMs, MAX_AGE_DAYS.realYield) : 'no real yield';
   if (bad || !fin(x.level)) return { ...base, d: null, why: bad ?? 'no level' };
   const gap = fin(avg) ? x.level - avg : null;
@@ -290,6 +295,7 @@ function roleDriver(name, R, w, label = 'Risk role × R') {
 }
 function cotDriver(name, inputs, issueMs, w) {
   const x = inputs?.cot?.[name], base = { key: 'positioning', label: 'Positioning (COT, contrarian)', w, source: '/api/cot-state' };
+  if (!x && COT_UNIVERSE_MISSING.includes(name)) return { ...base, d: null, na: true, why: 'no COT contract tracked for this market (not held)' };
   const bad = x ? unusable(x.asOf, issueMs, MAX_AGE_DAYS.cot) : 'no COT row';
   if (bad || !fin(x.pct)) return { ...base, d: null, why: bad ?? 'no percentile' };
   const { crowded, leaning } = TH.cotPct, p = x.pct, long = !fin(x.share) || x.share > 0, short = !fin(x.share) || x.share < 0;
@@ -318,7 +324,8 @@ function usRealDriver(inputs, issueMs, w, key, label) {
 function usdDriver(usd, w, label = 'USD (inverted)') {
   const base = { key: 'usd', label, w, source: 'bias-engine USD score' };
   if (!usd || !fin(usd.score) || usd.coverage < MIN_COVERAGE) return { ...base, d: null, why: 'USD score unavailable' };
-  return { ...base, d: -band(usd.score, TH.usdScore) || 0, asOf: usd.asOf, reading: `USD score ${sgn(usd.score)} (${dirWord(usd.dir)} ${usd.strength}/10)` };
+  // the USD SCORE drives this, never its Neutral-gated label (a Neutral USD with score +0.67 still pushes gold down)
+  return { ...base, d: -band(usd.score, TH.usdScore) || 0, asOf: usd.asOf, reading: `USD score ${sgn(usd.score)} (${usd.dir === 'NEUTRAL' ? `below its own call threshold, ${usd.strength}/10` : `${dirWord(usd.dir)} ${usd.strength}/10`})` };
 }
 function pathDriver(ccy, ccyRec, w, label) {
   const p = ccyRec?._policyD, base = { key: ccy === 'USD' ? 'fedPath' : 'ratesPath', label, w, source: '/api/cb-expectations' };

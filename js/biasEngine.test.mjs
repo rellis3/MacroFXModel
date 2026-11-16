@@ -69,13 +69,15 @@ ok('renormalisation: missing drivers drop out, weights rescale, coverage = weigh
   close(c.score, (0.25 * 2 - 0.20) / 0.45, 1e-4); assert.equal(c.coverage, 0.45);
   close(c.drivers.reduce((s, x) => s + x.contrib, 0), c.score, 1e-3);
   assert.deepEqual(c.missing, [{ key: 'c', label: 'C', w: 0.55, why: 'gone' }]);
-  // a currency with only policy and data: exactly their weighted mean; USD has no commodity link, so its base is 0.95
+  // a currency with only policy and data: exactly their weighted mean. NZD has no real-yield series at all (not held:
+  // n/a, out of the base 0.90), so coverage = 0.45 / 0.90; dairy is held-but-missing, so it stays in the base
   const inp = { asOf: ISSUE, policy: { NZD: { weekBp: 20, asOf: ago(1) } }, data: { NZD: { score: -0.2, asOf: ago(1) } } };
   const nz = buildBiasRecord(inp).currencies.NZD;
-  close(nz.score, (0.25 * 2 + 0.20 * -1) / 0.45, 1e-4); assert.equal(nz.coverage, 0.45);
+  close(nz.score, (0.25 * 2 + 0.20 * -1) / 0.45, 1e-4); assert.equal(nz.coverage, 0.5);
   assert.ok(nz.missing.some(m => m.key === 'commodity' && /dairy/.test(m.why)));
   const usd = buildBiasRecord({ asOf: ISSUE, policy: { USD: { weekBp: 20, asOf: ago(1) } } }).currencies.USD;
-  close(usd.coverage, rnd(0.25 / 0.95, 3)); assert.equal(usd.score, 2);
+  // USD: no commodity link and no COT contract tracked, both n/a, so its base is 0.90
+  close(usd.coverage, rnd(0.25 / 0.90, 3)); assert.equal(usd.score, 2);
   const full = buildBiasRecord(fixture()).currencies;
   for (const k of CCYS) { const s = full[k].drivers.reduce((a, x) => a + x.contrib, 0); close(s, full[k].score, 2e-3); assert.ok(full[k].coverage > 0 && full[k].coverage <= 1); }
   assert.equal(Object.values(CCY_WEIGHTS).reduce((a, b) => a + b, 0).toFixed(10), '1.0000000000');
@@ -223,3 +225,15 @@ ok('policy fallback: futures fresh -> futures; futures stale -> 2y proxy; both u
 });
 
 console.log(`biasEngine: ${passed} tests passed`);
+
+ok('not-held series are n/a (out of the coverage base), and dependants read the USD score, not its Neutral label', () => {
+  const r = buildBiasRecord({ asOf: ISSUE, policy: { GBP: { weekBp: 20, asOf: ago(1) } } }).currencies.GBP;
+  assert.ok(!r.missing.some(m => m.key === 'realYield'), 'GBP real yield is not held: n/a, not missing');
+  const u = buildBiasRecord({ asOf: ISSUE }).currencies.USD;
+  assert.ok(!u.missing.some(m => m.key === 'positioning'), 'USD has no COT contract tracked: n/a');
+  // a USD score below its own call threshold (Neutral label) must still push gold the other way
+  const rec = buildBiasRecord(fixture());
+  const usd = rec.currencies.USD, gold = rec.markets.GOLD, dUsd = gold.drivers.find(x => x.key === 'usd');
+  if (usd.dir === 'NEUTRAL' && Math.abs(usd.score) >= 0.3) assert.ok(dUsd && dUsd.d !== 0, 'gold uses the USD score even when USD is labelled Neutral');
+  if (dUsd) assert.equal(Math.sign(dUsd.d), -Math.sign(usd.score) || 0);
+});

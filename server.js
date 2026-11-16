@@ -30081,7 +30081,8 @@ const _beDayEnd = d => `${d}T23:59:00.000Z`;
 async function _beGather(issueMs) {
   const asOf = new Date(issueMs).toISOString(), issueDate = _dpLondonDate(issueMs), status = {}, inputs = { asOf };
   const step = async (name, fn) => { try { await fn(); status[name] = status[name] ?? 'ok'; } catch (e) { status[name] = `error: ${e.message}`; } };
-  const kvJson = async k => { const raw = await kv.get(k); if (!raw) return null; const p = JSON.parse(raw); return p?.data ?? p; };
+  // one retry: a transient KV miss must not turn into a silently empty driver (2026-11-16: every rate driver vanished on one read)
+  const kvJson = async k => { let raw = await kv.get(k).catch(() => null); if (!raw) { await new Promise(r => setTimeout(r, 400)); raw = await kv.get(k).catch(() => null); } if (!raw) return null; const p = JSON.parse(raw); return p?.data ?? p; };
   await Promise.all([
     step('policy', async () => {   // /api/cb-expectations: the priced change over the week at ~6 months (3 / 12 as fallbacks)
       // Futures first; where a currency's futures input is missing or older than MAX_AGE_DAYS.policy, the 2y government
@@ -30127,10 +30128,12 @@ async function _beGather(issueMs) {
     step('rates', async () => {   // /api/rate-diff
       const p = await kvJson(_RATE_DIFF_KV); inputs.rates = {};
       for (const [c, v] of Object.entries(p?.byCcy ?? {})) if (v?.latestDate) inputs.rates[c] = { level: v.latestRate, z: v.z, asOf: _beDayEnd(v.latestDate), source: '/api/rate-diff' };
+      if (!Object.keys(inputs.rates).length) status.rates = 'error: rate_diff_v1 empty or unreadable';
     }),
     step('realYield', async () => {   // /api/real-yield
       const p = await kvJson(_REAL_YIELD_KV); inputs.realYield = {};
       for (const [c, v] of Object.entries(p?.byCcy ?? {})) if (v?.latestDate && Number.isFinite(v.latestReal)) inputs.realYield[c] = { level: v.latestReal, z: v.z, asOf: _beDayEnd(v.latestDate), source: '/api/real-yield' };
+      if (!Object.keys(inputs.realYield).length) status.realYield = 'error: real-yield store empty or unreadable';
     }),
     step('usReal', async () => {   // FRED DFII10 cache (fredhistory_series_tips), closes dated before the issue date
       const pts = JSON.parse((await kv.get('fredhistory_series_tips')) || '[]').filter(p => p.date < issueDate && Number.isFinite(p.value));
