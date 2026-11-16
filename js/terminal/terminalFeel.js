@@ -79,6 +79,12 @@ function addSlCss() {
   l.id = 'slCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/since-last.css';
   document.head.appendChild(l);
 }
+function addOvCss() {
+  if (document.getElementById('ovsCss')) return;
+  const l = document.createElement('link');
+  l.id = 'ovsCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/overview-sections.css';
+  document.head.appendChild(l);
+}
 function addFlCss() {
   if (document.getElementById('flCss')) return;
   const l = document.createElement('link');
@@ -99,7 +105,7 @@ const hooksReady = () => new Promise(res => {
 });
 
 /** The keys of the status object (and of what start() returns), in the order the features start. */
-export const FEEL_KEYS = ['asof', 'chart', 'insight', 'alerts', 'workspace', 'linked', 'monitor', 'newsSearches', 'calendarDrills', 'replayViz', 'ghostWalk', 'oiTime', 'eventReplay', 'sinceLast', 'riskStrip', 'oiDrill', 'smile', 'flow', 'exporter', 'cmdline'];
+export const FEEL_KEYS = ['asof', 'chart', 'insight', 'alerts', 'workspace', 'linked', 'monitor', 'newsSearches', 'calendarDrills', 'replayViz', 'ghostWalk', 'oiTime', 'eventReplay', 'sinceLast', 'riskStrip', 'oiDrill', 'smile', 'flow', 'ovSections', 'exporter', 'cmdline'];
 
 export async function start() {
   // globalThis.__deskFeel is what each feature did on THIS page (js/terminal/featureStatus.js words it; the Info map tab's Preview features panel and
@@ -116,7 +122,7 @@ export async function start() {
     try { globalThis.dispatchEvent?.(new Event('deskfeel')); } catch { /* no events here */ }
     return Object.fromEntries(FEEL_KEYS.map(k => [k, !!feel.features[k]?.loaded]));
   };
-  const want = { linked: on('widget.linked'), cmdline: on('widget.cmdline'), workspace: on('tab.workspace'), alerts: on('widget.alerts'), chart: on('tab.kchart'), monitor: on('tab.monitor'), insight: on('tab.insight'), newsSearches: on('panel.news.saved'), exporter: on('widget.export'), calendarDrills: on('panel.cal.drills'), replayViz: on('widget.replayviz'), asof: on('widget.asof'), ghostWalk: on('widget.ghostwalk'), oiTime: on('widget.oitime'), eventReplay: on('widget.eventreplay'), sinceLast: on('panel.changed.since'), riskStrip: on('panel.risk.strip'), oiDrill: on('widget.oidrill'), smile: on('widget.smile'), flow: ['panel.ov.glance', 'panel.flow.promos', 'panel.pair.driveshort', 'widget.density'].some(on) };
+  const want = { linked: on('widget.linked'), cmdline: on('widget.cmdline'), workspace: on('tab.workspace'), alerts: on('widget.alerts'), chart: on('tab.kchart'), monitor: on('tab.monitor'), insight: on('tab.insight'), newsSearches: on('panel.news.saved'), exporter: on('widget.export'), calendarDrills: on('panel.cal.drills'), replayViz: on('widget.replayviz'), asof: on('widget.asof'), ghostWalk: on('widget.ghostwalk'), oiTime: on('widget.oitime'), eventReplay: on('widget.eventreplay'), sinceLast: on('panel.changed.since'), riskStrip: on('panel.risk.strip'), oiDrill: on('widget.oidrill'), smile: on('widget.smile'), ovSections: on('widget.ov.sections'), flow: ['panel.ov.glance', 'panel.flow.promos', 'panel.pair.driveshort', 'widget.density'].some(on) };
   // the as-of gate (js/terminal/asofBoot.js) holds market-data reads when the page was opened with ?asof=: a session that may not use the clock lets it go at once
   if (!want.asof && globalThis.__deskAsof?.requested) globalThis.__deskAsof.abandon('not available to this session');
   if (!Object.values(want).some(Boolean)) { for (const k of FEEL_KEYS) feel.features[k] = { requested: false, loaded: false, error: null }; return finish(); }
@@ -139,6 +145,7 @@ export async function start() {
   await rec('smile', want.smile, async () => { addRpCss(); addGwCss(); const m = await import('./smileView.js'); return m.mountSmile(); });   // an IV smile replay button beside the OI terrain card buttons
   await rec('ghostWalk', want.ghostWalk, async () => { addRpCss(); addGwCss(); const m = await import('./ghostWalk.js'); return m.mountGhostWalk(); });   // after the player's own css; the button sits on the OI terrain card
   await rec('flow', want.flow, async () => { addFlCss(); const m = await import('./flowView.js'); return m.mountFlow(); });   // the glance, the links, the short drivers and dense mode: each part gated by its own surface
+  await rec('ovSections', want.ovSections, async () => { addOvCss(); const m = await import('./overviewSections.js'); return m.mountOverview(); });   // the Overview pill row, under the glance block
   await rec('exporter', want.exporter, async () => { addExCss(); const m = await import('./exportView.js'); return m.mountExport(); });   // after the boards it decorates are mounted
   await rec('cmdline', want.cmdline, async () => { const m = await import('./commandLine.js'); return m.mountCommandLine(); });
   return finish();

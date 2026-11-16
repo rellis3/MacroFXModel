@@ -66,6 +66,14 @@ export const FEATURES = {
       'Monitor > a "Density" button in the toolbar (or DENSE on the command line) tightens the rows of the Monitor and of every table in a card.',
     ],
   },
+  ovSections: {
+    surface: 'widget.ov.sections', name: 'Overview sections (pill row)',
+    where: [
+      'Overview > a pill row right under the "At a glance" block: Today, Currencies, Risk & markets, News & events, The desk. Each pill shows only the blocks of that section.',
+      'A section with nothing switched on for the login is not offered; your choice is remembered in this browser.',
+      'Share a section with an address like #overview/currencies, or type OVERVIEW CURRENCIES (or RISK, NEWS, DESK, TODAY) in the command line.',
+    ],
+  },
   smile: {
     surface: 'widget.smile', name: 'IV smile replay',
     where: [

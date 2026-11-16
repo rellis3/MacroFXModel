@@ -38,6 +38,7 @@ export function perform(a, doc = document, win = window) {
     case 'workspace': { const ok = tab('workspace'); if (ok && a.name) win.setTimeout(() => win.deskWorkspace?.load?.(a.name), 60); return ok; }
     case 'glance': { const ok = tab('overview'); if (ok) win.setTimeout(() => win.document?.querySelector?.('.fl-glance')?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }), 80); return ok; }
     case 'density': return typeof win.deskFlow?.density?.set === 'function' ? (win.deskFlow.density.set(a.word === 'toggle' || !a.word ? win.deskFlow.density.get() === 'dense' ? 'comfortable' : 'dense' : (a.word === 'off' || a.word === 'comfortable' || a.word === 'normal') ? 'comfortable' : 'dense'), true) : false;
+    case 'ovsec': { const ok = tab('overview'); if (ok) win.setTimeout(() => win.openOverviewSection?.(a.id), 120); return ok; }
     case 'ana': { const ok = tab('ana'); if (ok) win.setTimeout(() => win.deskAnalyticsSplit?.show?.(a.id), 120); return ok; }
     case 'asof': return win.deskAsof?.act ? win.deskAsof.act(a) !== false : false;
     case 'oitime': return typeof win.deskOiTime?.open === 'function' ? win.deskOiTime.open(a.id, a.inst, a.date) !== false : false;

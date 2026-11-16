@@ -1,0 +1,12 @@
+/* js/terminal/overview-sections.css: the Overview section pills (overviewSections.js, an owner-only preview). Tokens only (themes.css); phone: the row scrolls sideways. */
+.ovs-pills { display: flex; flex-wrap: nowrap; gap: 8px; margin: 0 0 14px; padding: 0 0 6px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; min-width: 0; }
+.ovs-pills::-webkit-scrollbar { display: none; }
+.ovs-pills button { flex: 0 0 auto; white-space: nowrap; cursor: pointer; background: var(--bg1); border: 1px solid var(--line); color: var(--tx3); padding: 8px 14px; border-radius: 999px; font: 600 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.ovs-pills button:hover { border-color: var(--pur2); color: var(--tx2); }
+.ovs-pills button[aria-pressed="true"] { border-color: var(--pur); color: var(--pur2); background: var(--purbg); }
+.ovs-pills button:focus-visible { outline: 2px solid var(--pur2); outline-offset: 2px; }
+/* the blocks and grids of the sections that are not open: scoped to #overview, so a block the Workspace tab has moved into a tile is never hidden there */
+#overview .sfc.ovs-off, #overview .grid.ovs-off, #overview .sec.ovs-off { display: none !important; }
+/* a two-column grid left with a single visible block takes the whole row */
+#overview .grid.ovs-solo { grid-template-columns: minmax(0, 1fr) !important; }
+@media (prefers-reduced-motion: reduce) { .ovs-pills { scroll-behavior: auto; } }

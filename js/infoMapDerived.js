@@ -3993,6 +3993,7 @@ export const DERIVED = {
      "js/terminal/matrixCore.js",
      "js/terminal/moreBoards.js",
      "js/terminal/optionsView.js",
+     "js/terminal/overviewSections.js",
      "js/terminal/pairView.js",
      "js/terminal/paperBoardsView.js",
      "js/terminal/regimeBoardView.js",

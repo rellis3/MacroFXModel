@@ -33,6 +33,7 @@ import { familyFromWord as evFamily, marketFromWord as evMarket } from '../event
 import { targetFromWord as oidTarget } from '../oiDrillCore.js';
 import { symFromWord as smileSym, INTRA_SYMS as SMILE_INTRA } from '../smileCore.js';
 import { ANA_GROUPS, densityFromWord } from './flowCore.js';
+import { OV_SUBS } from './overviewSubtabs.js';
 
 // ── markets (a copy of the page's UNIVERSE and NAME; commandCore.test.mjs fails if desk-terminal.html drifts from it) ──
 export const UNIVERSE = {
@@ -208,6 +209,11 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
       c.run = args => chartRun(args);
       c.example = 'chart nq 15m';
     }
+    if (key === 'overview' && isOn('widget.ov.sections')) {
+      c.args = `[${OV_SUBS.map(x => x.alias).join('|')}]`;
+      c.run = args => ovsecRun(args);
+      c.example = 'overview currencies';
+    }
     if (key === 'news') {
       c.args = '[saved search]';
       c.run = args => newsRun(args);
@@ -326,6 +332,14 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   return out;
 
   // ── commands with arguments ──
+  function ovsecRun(args) {
+    const w = String(args ?? '').trim().toLowerCase();
+    if (!w) return { action: { kind: 'tab', t: 'overview' }, summary: 'Opens the Overview tab.' };
+    const word = { ccy: 'currencies', currency: 'currencies', fx: 'currencies', markets: 'risk', events: 'news', wire: 'news', book: 'desk', trades: 'desk' }[w] ?? w;
+    const g = OV_SUBS.find(x => x.alias === word || x.id === word);
+    if (!g) return { error: `Say OVERVIEW ${OV_SUBS.map(x => x.alias.toUpperCase()).join(', OVERVIEW ')}.` };
+    return { action: { kind: 'ovsec', id: g.id }, summary: `Opens Overview: ${g.label}.` };
+  }
   function replayRun(args, nowFn) {
     const toks = String(args ?? '').trim().split(/\s+/).filter(Boolean);
     if (toks.length && vizByWord(toks[0]) && isOn('widget.replayviz')) return vizRun(toks[0]);   // REPLAY CURVE: one visual's own history (preview)

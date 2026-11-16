@@ -183,3 +183,14 @@ Plan and audit: plans/SPREADS_AND_RATIOS.md. Insight tab pill "Spreads & ratios"
 | X-versus-Y picker, scatter with a replayable trail, wall of the twelve most-mentioned pairs | DONE (stage 2) | The replay uses the shared player; a frame only holds points up to its date |
 | Pairs we cannot draw from the bundle (HYG/IEF, IWM/SPY, CRWV/SOXX, 3m10y, SOFR-IORB) | NOT HELD | Listed on the board with the reason; 3m10y could come from FRED DTB3 without a new vendor |
 | Preregistrations for the untested pairs (NVDA ratios, gold/silver, BTC/gold, XLE/WTI, XLY/XLP) | TODO | Stubs only in the plan; none has been run |
+
+## 13. Overview sections (2026-11-17, owner question: "should we create sub tabs on Overview like we did for Macro?")
+Owner-only preview, registry surface `widget.ov.sections`. With it off a desk login sees the Overview exactly as before (one long page); with it on, a pill row sits right under the At a glance block and shows one section at a time. Files: js/terminal/overviewSubtabs.js (pure rules), overviewSections.js (the DOM part), overview-sections.css, scripts/overview-sections-check.mjs (headless check). Command `OVERVIEW <today|currencies|risk|news|desk>`; address `#overview/currencies`; hook `openOverviewSection(id)`.
+| Item | Status | Notes |
+|---|---|---|
+| Today: map, headline, regime, week, risk warnings | DONE (preview) | The globe and map stay with Today (the first thing the page has always shown), not Risk and markets as first proposed. |
+| Currencies: desk strength ranking, price-based sigma strength, analyst read vs price read, net exposure, bias engine ranking | DONE (preview) | |
+| Risk and markets: risk state, EM gauges, the day's shape | DONE (preview) | |
+| News and events: the wire, releases ahead | DONE (preview) | Both also exist on the News and Calendar tabs; they stay here as the Overview's own cards. |
+| The desk: book intelligence, record, best pairs, trade watch, playbooks, alerts | DONE (preview) | The trade, P&L and internal blocks (record, best pairs, trade watch, playbooks, alerts) stay hidden for a desk login by the registry: a section only chooses which allowed blocks are on screen. |
+| Not done: building a section lazily (Macro does) | NOT DONE | Overview draws every block once at page load from feeds it already loads, so a section only shows or hides blocks that are already there. |
