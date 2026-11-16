@@ -142,6 +142,7 @@ export const EXCLUDED_PAGES = {
   'daily-open-fib.html': 'tool: fib tracker',
   'bias-evidence.html': 'research view: the evidence behind the bias card (built from analysis/output/bias-evidence/manifest.json)',
   'drift.html': 'research view',
+  'noise-area-build.html': 'research tool: the noise-area strategy builder (study noise-area-build); not an information feed',
   'forecast-analysis.html': 'research view: what price does at each vol-forecast line',
   'gold-zones.html': 'bot verifier',
   'gold.html': 'system: gold macro model',

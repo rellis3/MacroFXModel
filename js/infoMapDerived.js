@@ -5114,9 +5114,7 @@ export const DERIVED = {
    "drift": []
   }
  },
- "unclassified": [
-  "noise-area-build.html"
- ],
+ "unclassified": [],
  "rootPageCount": 258,
  "packFeeds": 115,
  "generatedAt": "2026-11-16"
