@@ -7,9 +7,10 @@
  * lazily (the Macro sections) still get theirs. REPLAY <visual> on the command line calls the same opener.
  */
 import { openPlayer } from './replayPlayer.js';
-import { VISUALS, vizByWord, curveBounds, curveCaption, niceDate, strengthFrames, strengthBound, strengthCaption, recentSessions, londonStamp, londonDay, STRENGTH_WINDOWS } from '../replayVizCore.js';
+import { VISUALS, vizByWord, curveBounds, curveCaption, niceDate, strengthFrames, strengthBound, strengthCaption, recentSessions, londonStamp, londonDay, STRENGTH_WINDOWS, fedFrames, fedCaption } from '../replayVizCore.js';
 import { curveStage } from './replayCurveDraw.js';
 import { strengthStage } from './replayStrengthDraw.js';
+import { fedStage } from './replayFedDraw.js';
 
 const J = async u => { const r = await fetch(u, { credentials: 'same-origin' }); const j = await r.json().catch(() => null); if (!r.ok || !j || j.ok === false) throw new Error(j?.error ?? `HTTP ${r.status}`); return j; };
 
@@ -35,6 +36,16 @@ export function defFor(id, { fetchJson = J, now = () => Date.now() } = {}) {
       draw: (frames, i, { reduced, extra, picks }) => strengthStage(frames, i, picks.hz, extra.ccys, { reduced, bound: strengthBound(frames, picks.hz) }),
       caption: (frames, i, extra, picks) => strengthCaption(frames, i, picks.hz, extra.ccys),
       label: (f, i, n, picks) => `${londonStamp(f.t)} · step ${i + 1} of ${n} · ${picks.hz}`,
+    };
+  }
+  if (id === 'fedpath') {
+    return {
+      id, title: 'The priced Fed path, day by day', note: 'Odds for the 3-month average rate over a forward window (Atlanta Fed tracker, CME 3-month SOFR options), not for a meeting, and not the same instrument as CME FedWatch. The store keeps the last 180 trading days of four windows; the per-meeting strip from the futures has only a few lookback copies, so it is not replayed. It describes how the priced path moved; the 15-minute lead of the Fed path is a banked null.',
+      load: async () => { const r = fedFrames(await fetchJson(v.route)); if (!r.ok) throw new Error(r.error); return { frames: r.frames, extra: { windows: r.windows } }; },
+      coverage: frames => `${frames.length} trading days, ${niceDate(frames[0].t)} to ${niceDate(frames[frames.length - 1].t)}: four windows from the Atlanta Fed store (it keeps the most recent 180 days, so nothing earlier is held here).`,
+      draw: (frames, i, { reduced }) => fedStage(frames, i, { reduced }),
+      caption: (frames, i) => fedCaption(frames, i),
+      label: (f, i, n) => `${niceDate(f.t)} · day ${i + 1} of ${n}`,
     };
   }
   return null;

@@ -4461,6 +4461,10 @@ export const DERIVED = {
     {
      "file": "js/terminal/replayStrengthDraw.js",
      "exists": true
+    },
+    {
+     "file": "js/terminal/replayFedDraw.js",
+     "exists": true
     }
    ],
    "names": {
@@ -4470,6 +4474,7 @@ export const DERIVED = {
      "js/terminal/kchartCore.js",
      "js/terminal/kchartView.js",
      "js/terminal/linkedSelection.js",
+     "js/terminal/replayFedDraw.js",
      "js/terminal/replayLink.js",
      "js/terminal/replayPlayer.js",
      "js/terminal/replayStrengthDraw.js",

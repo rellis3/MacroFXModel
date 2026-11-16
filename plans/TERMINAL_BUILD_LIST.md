@@ -74,7 +74,7 @@ One shared player (js/replayVizCore.js pure + js/terminal/replayPlayer.js), prev
 |---|---|---|
 | 1. Replay on one visualisation: shared player + yield curve (90 days, ghosts, 2s10s strip) | DONE (preview) | Daily Treasury series from the curve board's in-memory store; dated by the print (H.15 publishes next business day). |
 | 1b. Currency strength board (bars race) | DONE (preview) | One London session at a time (last five weekdays), 15-minute steps from /api/replay/strength, 1H/4H/1D window; each step rebuilt from only the bars finished by then. |
-| 1c. Fed path strip | TODO | |
+| 1c. Fed path strip | DONE (preview) | Atlanta Fed window odds (4 windows, last 180 trading days) from /api/fed-path; the per-meeting futures strip has only a few lookback copies so it is not replayed (said on screen). |
 | 1d. Correlation matrix (20 vs 120 sessions over time) | TODO | |
 | 1e. Regime quadrant trail | TODO | |
 | 1f. Vol clock / range used across the London day | TODO | |

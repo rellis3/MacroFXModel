@@ -10,6 +10,8 @@ import { mountReplayViz, defFor } from './replayViz.js';
 import { curveStage } from './replayCurveDraw.js';
 import { curveFrames, curveBounds, strengthFrames } from '../replayVizCore.js';
 import { strengthStage } from './replayStrengthDraw.js';
+import { fedStage } from './replayFedDraw.js';
+import { fedFrames } from '../replayVizCore.js';
 
 const mkSeries = (n, f) => Array.from({ length: n }, (_, k) => ({ date: new Date(Date.parse('2026-06-01T00:00:00Z') + k * 864e5).toISOString().slice(0, 10), value: f(k) }));
 const S = { effr: mkSeries(200, () => 3.6), us2y: mkSeries(200, k => 3.8 + k * 0.001), us5y: mkSeries(200, k => 3.9 + k * 0.001), us10y: mkSeries(200, k => 4.1 + k * 0.002), us30y: mkSeries(200, k => 4.6 + k * 0.001) };
@@ -163,4 +165,27 @@ test('the strength Replay button sits on the strength board card whatever window
   const win = makeWin(doc, { matchMedia: () => ({ matches: false }), requestAnimationFrame: undefined });
   const m = mountReplayViz({ doc, win, fetchJson: async () => strengthSeries('2026-11-13') });
   assert.equal(doc.querySelectorAll('[data-rpviz="strength"]').length, 1); m.destroy();
+});
+
+const fedDoc = { ok: true, asOf: '2026-11-12', series: Object.fromEntries(['2026-12-16', '2027-03-17', '2027-06-16', '2027-09-15'].map((r, c) => [r, Array.from({ length: 30 }, (_, k) => [new Date(Date.parse('2026-10-01T00:00:00Z') + k * 864e5).toISOString().slice(0, 10), 20 + c * 10 + k, 5 + c])])) };
+
+test('Fed path drawing: four windows with a bar up and a bar down, the history under them with the current date marked, theme tokens only, plain under reduced motion', () => {
+  const r = fedFrames(fedDoc), svg = fedStage(r.frames, 10);
+  assert.match(svg, /^<svg/); assert.doesNotMatch(svg, /NaN|undefined|Infinity/); assert.equal((svg.match(/<rect /g) ?? []).length, 8);
+  assert.equal((svg.match(/<path /g) ?? []).length, 4, 'a history line per window'); assert.match(svg, /stroke-dasharray="3 3"/, 'the current date is marked');
+  assert.doesNotMatch(svg, /#[0-9a-fA-F]{3,8}["']/); assert.match(svg, /filter="url/); assert.doesNotMatch(fedStage(r.frames, 10, { reduced: true }), /filter="url/);
+  assert.match(fedStage([], 0), /Nothing to draw/);
+});
+
+test('the Fed path replay reads /api/fed-path, says how many days are held and why the meeting strip is not replayed, and its button sits on the Atlanta Fed card', async () => {
+  const asked = [], fetchJson = async u => { asked.push(u); return fedDoc; };
+  const def = defFor('fedpath', { fetchJson });
+  const { doc } = setup(def); await flush();
+  assert.deepEqual(asked, ['/api/fed-path']); assert.match(doc.getElementById('rpv-cov').textContent, /30 trading days, .*1 Oct 2026 to .*30 Oct 2026: four windows/);
+  assert.match(def.note, /not for a meeting/); assert.match(def.note, /only a few lookback copies/); assert.doesNotMatch(def.note, /will |buy|sell/i);
+  const d2 = makePage(), host = d2.createElement('div');
+  host.innerHTML = '<div data-surface="panel.macro.fedyields"><div class="card"><div class="ch"><span class="lbl">Atlanta Fed window odds · rate above the current range</span></div></div></div>';
+  d2.body.appendChild(host);
+  const m = mountReplayViz({ doc: d2, win: makeWin(d2, { matchMedia: () => ({ matches: false }), requestAnimationFrame: undefined }), fetchJson });
+  assert.equal(d2.querySelectorAll('[data-rpviz="fedpath"]').length, 1); m.destroy();
 });

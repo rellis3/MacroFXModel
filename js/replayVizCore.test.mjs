@@ -2,7 +2,7 @@
 // node --test js/replayVizCore.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SPEEDS, initState, advance, step, seek, toggle, setSpeed, act, keyAction, coverageOf, curveFrames, curveBounds, curveCaption, strengthFrames, strengthBound, strengthRows, strengthCaption, recentSessions, londonStamp, vizByWord, VISUALS } from './replayVizCore.js';
+import { SPEEDS, initState, advance, step, seek, toggle, setSpeed, act, keyAction, coverageOf, curveFrames, curveBounds, curveCaption, strengthFrames, strengthBound, strengthRows, strengthCaption, recentSessions, londonStamp, vizByWord, VISUALS, fedFrames, fedCaption, windowLabel } from './replayVizCore.js';
 
 const mkS = (start, n, f) => Array.from({ length: n }, (_, k) => ({ date: new Date(Date.parse(`${start}T00:00:00Z`) + k * 864e5).toISOString().slice(0, 10), value: f(k) }));
 
@@ -118,4 +118,24 @@ test('recentSessions: the last n weekday London dates before today, newest first
 test('every replayable visual has words, a what-line, a surface and a card match; the words find it', () => {
   for (const v of VISUALS) { assert.ok(v.words.length && v.what.length > 30 && v.surface && (v.cardLabel || v.cardRe) && v.route, v.id); assert.equal(vizByWord(v.id).id, v.id); for (const w of v.words) assert.equal(vizByWord(w).id, v.id, w); }
   assert.equal(vizByWord('nothing'), null);
+});
+
+const fp = { asOf: '2026-11-12', series: {
+  '2026-12-16': [['2026-11-10', 80, 2], ['2026-11-11', 90, 1], ['2026-11-12', 98.4, 0.5]],
+  '2027-03-17': [['2026-11-10', 60, 5], ['2026-11-12', 87, 2]],
+} };
+
+test('fedFrames: one frame per tracker date, a window without that date is null (never filled), windows labelled by month, never as a meeting', () => {
+  const r = fedFrames(fp); assert.equal(r.ok, true); assert.equal(r.frames.length, 3);
+  assert.deepEqual(r.frames.map(f => f.t), ['2026-11-10', '2026-11-11', '2026-11-12']);
+  assert.equal(r.frames[1].data.w[1].hike, null, 'the second window has no 11 Nov row'); assert.equal(r.frames[2].data.w[0].hike, 98.4);
+  assert.deepEqual(r.windows.map(w => w.label), ['Dec 2026', 'Mar 2027']); assert.match(r.note, /not for a meeting/);
+  assert.equal(windowLabel('2026-12-16'), 'Dec 2026');
+  assert.equal(fedFrames({}).ok, false); assert.equal(fedFrames({ series: {} }).frames.length, 0);
+});
+
+test('fedCaption describes the nearest window and the biggest mover since the first day; it never forecasts', () => {
+  const r = fedFrames(fp), c = fedCaption(r.frames, 2);
+  assert.match(c, /window starting Dec 2026/); assert.match(c, /above the current range are 98%/); assert.match(c, /below it 1%/); assert.match(c, /Mar 2027 window.s hike odds are up 27 points/);
+  assert.doesNotMatch(c, /will |forecast|buy|sell/i); assert.doesNotMatch(fedCaption(r.frames, 0), /Since the first day/); assert.equal(fedCaption([], 0), '');
 });

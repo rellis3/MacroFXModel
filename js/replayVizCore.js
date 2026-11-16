@@ -144,6 +144,7 @@ export function curveCaption(frames, i) {
 export const VISUALS = [
   { id: 'curve', name: 'Yield curve', words: ['curve', 'yields', 'yield', 'treasury', 'curvethroughtime'], what: 'the Treasury curve morphing day by day over the last 90 days, with ghosts of earlier shapes and the 2y to 10y slope', surface: 'panel.macro.curve', cardLabel: 'The curve through time', route: '/api/replay/curve?days=90' },
   { id: 'strength', name: 'Currency strength', words: ['strength', 'ccy', 'currencies', 'currency'], what: 'the eight currencies racing through one London session (15-minute steps), ranked by how far each moved in units of its own normal move, on the 1H, 4H or 1D window', surface: 'panel.ov.ccystrength', cardRe: ' window$', route: '/api/replay/strength?date=' },
+  { id: 'fedpath', name: 'Fed path odds', words: ['fed', 'fedpath', 'path', 'atlanta', 'policy'], what: 'the odds of a rate above (and below) the current range for each of the next four 3-month windows, day by day over the months we hold, with the history of each window drawn under it', surface: 'panel.macro.fedyields', cardRe: '^Atlanta Fed window odds', route: '/api/fed-path' },
 ];
 export const vizByWord = w => { const k = String(w ?? '').toLowerCase(); return VISUALS.find(v => v.id === k || v.words.includes(k)) ?? null; };
 
@@ -191,4 +192,33 @@ export function strengthCaption(frames, i, hz, ccys) {
     if (climb && climb.d >= 2) move = ` ${climb.ccy} has climbed ${climb.d} places since the session began.`;
   }
   return `${londonStamp(f.t)}: on the ${hz} window ${top.ccy} is strongest (${sgn1(top.score)}σ) and ${bot.ccy} weakest (${sgn1(bot.score)}σ).${move}${f.data.closed ? ' The market is shut, so the windows end at the last price.' : ''}`;
+}
+
+// ── the Fed path (Atlanta Fed window odds) ─────────────────────────────────────────────────────────────────────────────────
+const MONTH = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', month: 'short', year: 'numeric' });
+export const windowLabel = ref => MONTH.format(Date.parse(`${String(ref).slice(0, 10)}T00:00:00Z`));
+
+/**
+ * /api/fed-path -> frames, one per tracker date. `series` is { [window start]: [[date, hike %, cut %], ...] } (the store keeps the last 180 observations of
+ * four windows, written daily). Odds are for the 3-month AVERAGE rate over a forward window, not for a meeting: a window is never labelled as one.
+ * A date a window lacks is null for that window, never filled. The per-meeting ZQ strip is not replayed here: only a handful of lookback strips exist.
+ */
+export function fedFrames(fp) {
+  const series = fp?.series; if (!series || typeof series !== 'object') return { ok: false, error: 'the Fed path store has no daily series yet', frames: [], windows: [] };
+  const refs = Object.keys(series).sort(), by = {};
+  const dates = new Set();
+  for (const r of refs) { by[r] = new Map(); for (const row of Array.isArray(series[r]) ? series[r] : []) { if (!row?.[0] || !fin(row[1])) continue; by[r].set(row[0], { hike: +row[1], cut: fin(row[2]) ? +row[2] : null }); dates.add(row[0]); } }
+  const frames = [...dates].sort().map(d => ({ t: d, data: { w: refs.map(r => ({ ref: r, ...(by[r].get(d) ?? { hike: null, cut: null }) })) } }));
+  return { ok: frames.length > 0, asOf: fp.asOf ?? null, windows: refs.map(r => ({ ref: r, label: windowLabel(r) })), frames, note: 'Odds for the 3-month average rate over a forward window (Atlanta Fed Market Probability Tracker, CME 3-month SOFR options), not for a meeting.' };
+}
+const pc = v => (fin(v) ? `${Math.round(v)}%` : 'n/a');
+/** Plain words for one date: the nearest window's hike and cut odds, and which window's hike odds moved most since the first day. */
+export function fedCaption(frames, i) {
+  const f = frames?.[i], f0 = frames?.[0]; if (!f) return '';
+  const w = f.data.w[0]; let move = '';
+  if (i > 0 && f0) {
+    const d = f.data.w.map((x, k) => ({ ref: x.ref, d: fin(x.hike) && fin(f0.data.w[k]?.hike) ? x.hike - f0.data.w[k].hike : null })).filter(x => x.d != null).sort((a, b) => Math.abs(b.d) - Math.abs(a.d))[0];
+    if (d && Math.abs(d.d) >= 5) move = ` Since the first day the ${windowLabel(d.ref)} window's hike odds are ${d.d > 0 ? 'up' : 'down'} ${Math.abs(Math.round(d.d))} points.`;
+  }
+  return `${niceDate(f.t)}: for the 3-month window starting ${windowLabel(w.ref)}, the odds of a rate above the current range are ${pc(w.hike)} and below it ${pc(w.cut)}.${move}`;
 }
