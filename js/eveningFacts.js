@@ -38,7 +38,7 @@ export function moveTiming(barsByInst, moves, date, { minU = 1, top = 14, spanMi
       if (!best || Math.abs(mv) > Math.abs(best.mv)) best = { mv, from: t0, to: w[j].time * 1000 + 60_000 };
     }
     if (!best) continue;
-    out.push({ inst: n, u: moves[n].u, from: londonHM(best.from), to: londonHM(best.to), share: Math.round((best.mv / day) * 100) });
+    out.push({ inst: n, u: moves[n].u, from: londonHM(best.from), to: londonHM(best.to), fromMs: best.from, toMs: best.to, share: Math.round((best.mv / day) * 100) });
   }
   return out;
 }

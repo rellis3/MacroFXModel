@@ -214,3 +214,11 @@ Owner-only preview, registry surface `widget.ov.sections`. With it off a desk lo
 | BH leads for their own prereg (never results): after a fall then 50 flat sessions, the next 1 to 3 months are calmer (-0.10 to -0.15 log vol ratio); after a hard deceleration, 10-session vol higher and 60-session returns higher (+0.14 z) | OPEN | analysis/output/roc-stall-50d/RESULTS.md |
 | Insight pill "Momentum": heat ladder of the 50-session ROC percentile with a ghost tick for 50 sessions ago, acceleration arrows, stalled / decelerating lists, hero chart with the stall episodes shaded, the six verdict chips beside the educator's words; command ROC [market] | DONE (preview, `panel.insight.roc`) | js/terminal/rocCore.js (as-of safe, same definitions as the test), rocView.js, roc.css; 22 tests; scripts/roc-check.mjs (headless) |
 | Not done | OPEN | Replay of ROC over time with the shared player; a forward record of the two BH leads; the educator's source clip is not in the stored notes (attribution unverified) |
+
+## Evening edition: look-back (2026-11-17)
+| Item | Status | Notes |
+|---|---|---|
+| Day in order (Asia / London / New York), speaker gap line, nearest headlines per burst | DONE (see plans/NEWSLETTER_EVENING_V2.md) | `js/eveningTimeline.js` |
+| Day shape chart, session heat strip, morning against the day, into tomorrow | DONE | `js/eveningDay.js`, wired in `js/newsletterEvening.js` |
+| Durable news wire (a deploy emptied it: root cause of 'no headline captured') | DONE | `desk_news_day_<date>`, kv.js isCfKey, server.js `_nwDayPersist` |
+| Writer brief v2 (story in time order, cause only from the timeline) | BUILT, OFF | `EVENING_V2_PROMPT=1`; owner approves a live run; cost note in the plan |

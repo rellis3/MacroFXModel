@@ -306,6 +306,9 @@ import { upcoming as _rpUpcoming, playbookText as _rpPlaybookText } from './js/r
 import { searchUrls as _litSearchUrls, PARSERS as _LIT_PARSERS, LIT_SOURCES as _LIT_SOURCES, apiError as _litApiError, dedupe as _litDedupe, titleMatch as _litTitleMatch, isBlockedPage as _litBlocked, arxivHtml as _litArxivHtml, pageMeta as _litPageMeta, htmlToText as _litHtmlToText, cleanPdfText as _litCleanPdf, identifyRef as _litIdentify, lookupUrls as _litLookup, parseOpenAlex as _litParseOpenAlex, parseCrossref as _litParseCrossref, parseArxiv as _litParseArxiv, urlRecord as _litUrlRecord, textRecord as _litTextRecord, libraryIndex as _litLibIndex, libraryText as _litLibText, paperForReader as _litForReader, excerpt as _litExcerpt, validatePaperNotes as _litValidateNotes, noteLine as _litNoteLine, validateDossier as _litValidateDossier, validateQueries as _litValidateQueries, rankPapers as _litRank, readingPlan as _litPlan, findPaper as _litFind, mergePapers as _litMerge, addCitations as _litCite, relevance as _litRelevance, feedRecords as _litFeedRecords, weeklyTopic as _litWeeklyTopic, LENS_INTERESTS as _litInterests, dossierSummary as _litDossierSummary, LIT_API as _LIT_API, hash as _litHash, firstTitleLine as _litTitleLine } from './js/literature.js';
 import { QC as _RL_QC, parseQcTree as _rlParseQcTree, readingListItems as _rlReadingList, manifestItems as _rlManifest, items151 as _rl151Items, record151 as _rlRecord151, qcItems as _rlQcItems, qcRawUrl as _rlQcRaw, qcRecord as _rlQcRecord, matchUpload as _rlMatchUpload, alreadyHeld as _rlAlreadyHeld, dedupeUploads as _rlDedupeUploads, uploadKey as _rlUploadKey, seedQueue as _rlSeedQueue, upsertItem as _rlUpsert, nextItems as _rlNext, markItems as _rlMark, queueSummary as _rlSummary, batchPlan as _rlBatchPlan, searchLocal as _rlSearchLocal, paperFeedRecords as _rlPaperFeedRecords, kindOf as _rlKindOf } from './js/researchLibrary.js';   // §9ai the reading backlog   // §9ah the literature desk
 import { currencyStrength as _evCcy, dayMoves as _evDayMoves, movesText as _evMovesText, renderEvening as _evRender } from './js/newsletterEvening.js';
+import { buildEveningDay as _evDayBuild } from './js/eveningDay.js';   // the evening's look-back pages (owner 2026-11-16)
+import { timelineText as _evTlText } from './js/eveningTimeline.js';
+import { EVENING_V2_ADDENDUM as _EV2_ADD, eveningV2On as _ev2On } from './js/eveningPromptV2.js';
 import { moveTiming as _efTiming, timingText as _efTimingText, releasesText as _efReleases, headlinesText as _efHeadlines, ratesText as _efRates, pastEvents as _efPast, RATE_SERIES as _EF_RATES } from './js/eveningFacts.js';
 import { runDesk as _runDesk, runSummary as _deskRunSummary } from './js/deskRun.js';
 import { COST_REPORT_URL as _AC_URL, costReportQuery as _acQuery, parseCostReport as _acParse, dayFlag as _acFlag } from './js/anthropicCost.js';   // Anthropic's own daily cost figures (Admin API)
@@ -5236,7 +5239,8 @@ async function _dsReflect(run, score) {
 // the day's headlines and their reactions, US yields / DXY / VIX / MOVE closes, and when each big move happened. Each
 // input fails on its own and is then named as missing; none is filled in.
 async function _evFacts(run, bars, moves) {
-  const { entryMs, exitMs } = _dsWindow(run.date), out = {};
+  const { entryMs, exitMs } = _dsWindow(run.date), out = {}, struct = { events: [], nextEvents: [], scorecards: [], wire: [], bursts: [] };
+  out.struct = struct;   // the same facts as data, for the look-back pages (js/eveningDay.js); the prompt sections below use the text versions
   try {
     const feed = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
     const evs = (feed.events ?? []).filter(e => e.ms >= entryMs - 8 * 3600e3 && e.ms < exitMs).map(e => ({ ...e }));
@@ -5245,14 +5249,15 @@ async function _evFacts(run, bars, moves) {
     for (const e of evs) if (e.actual == null) e.actual = seen.get(`${String(e.country).toUpperCase()}|${String(e.event).trim().toLowerCase()}|${e.ms}`) ?? null;
     try { await _fillActualsFromFred(evs.filter(e => e.actual == null && e.ms <= exitMs), stored); } catch { /* the line then says "actual not on the feed" */ }
     const snap = await _loadSnapStore().catch(() => null), day = (snap?.days ?? []).find(d => d.day === run.date);
+    struct.events = evs; struct.nextEvents = feed.events ?? []; struct.scorecards = day?.scorecards ?? [];
     out.releases = _efReleases(evs, day?.scorecards ?? [], { now: exitMs });
   } catch (e) { out.releases = `(the calendar was not available: ${e.message})`; }
-  try { const st = await _nwLoad(); out.headlines = _efHeadlines(st.wire ?? [], { sinceMs: entryMs - 3600e3, untilMs: exitMs }); }
+  try { const st = await _nwLoad(); struct.wire = st.wire ?? []; out.headlines = _efHeadlines(st.wire ?? [], { sinceMs: entryMs - 3600e3, untilMs: exitMs }); }
   catch (e) { out.headlines = `(the news wire was not available: ${e.message})`; }
   const series = {};
   for (const r of _EF_RATES) { try { series[r.key] = await _yahooDaily(r.ticker, '5d'); } catch (e) { console.warn('[evening] rates', r.ticker, e.message); } }
   out.rates = _efRates(series, run.date);
-  try { out.timing = _efTimingText(_efTiming(bars, moves, run.date)); } catch (e) { out.timing = `(timing not worked out: ${e.message})`; }
+  try { struct.bursts = _efTiming(bars, moves, run.date); out.timing = _efTimingText(struct.bursts); } catch (e) { out.timing = `(timing not worked out: ${e.message})`; }
   out.past = _efPast(run.head.book.risks ?? [], run.date);
   return out;
 }
@@ -5263,8 +5268,17 @@ async function _dsEvening(run, score, reflection, bars, idx) {
   if (!role || !_aiAnyKey()) return null;
   const cards = run.head.book.instruments ?? {}, moves = _evDayMoves(bars, cards, run.date), d = run.debate ?? {};
   const facts = await _evFacts(run, bars, moves);
+  // the look-back pages: the day in order, how it unfolded, the morning against the day, tomorrow. Rule-built from stored data, no model call; a failure leaves them out and the issue prints as before.
+  let day = null;
+  try {
+    const trRaw = await kv.get(_TR_DAY_KEY(run.date)).catch(() => null), tr = trRaw ? JSON.parse(trRaw) : null, { eventNote } = await import('./js/newsletter.js'), st = facts.struct ?? {};
+    const CCY = { US: 'USD', EU: 'EUR', GB: 'GBP', JP: 'JPY', AU: 'AUD', NZ: 'NZD', CA: 'CAD', CH: 'CHF' }, keys = Object.keys(cards);
+    day = _evDayBuild({ date: run.date, wire: st.wire, events: st.events, scorecards: st.scorecards, bursts: st.bursts, bars, cards, tr, nextEvents: st.nextEvents,
+      noteFn: e => { const n = eventNote({ event: e.event, ccy: CCY[String(e.country ?? '').toUpperCase()] }, null, keys); return n?.measured ? n : null; }, now: Date.now() });
+  } catch (e) { console.warn('[desk-score] evening look-back pages:', e.message); }
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
   const { system, prompt } = _deskStagePrompt({ role, pack: { date: run.date }, ledger: DESK_EVIDENCE, sections: [
+    ...(_ev2On() && day?.timeline ? [['THE DAY IN ORDER (rule-built, London time: the story you tell must follow this; a cause only where a headline or print here supports it)', _evTlText(day.timeline)]] : []),
     ['What printed today: releases, actual against forecast, and the 30 minutes after (the day\'s main events)', facts.releases],
     ['The day\'s headlines, tier 1-2, oldest first, with the news analyst\'s read and the 30-minute reaction', facts.headlines],
     ['US rates, the dollar and volatility: today\'s closes and day changes', facts.rates],
@@ -5278,13 +5292,14 @@ async function _dsEvening(run, score, reflection, bars, idx) {
     ["The book's score", { dayScore: score.S, placebo: score.placebo, singleAnalyst: score.control?.unweighted ?? null, counts: score.eligible }],
     ['The evening review', reflection ?? '(no review today)'],
   ] });
+  const systemV = _ev2On() ? system + _EV2_ADD : system;   // EVENING_V2_PROMPT=1 only: the old brief stays until the owner approves a live run
   let issue = null;
   for (let i = 0; i < 2 && !issue; i++) {
-    try { const r = await callModel({ task: 'desk-head', system, prompt, maxTokens: 16_000 }); const v = _dsValidateIssue(_parseModelJson(r.text ?? _antText(r), 'desk:evening')); if (v.ok) issue = v.value; }
+    try { const r = await callModel({ task: 'desk-head', system: systemV, prompt, maxTokens: 16_000 }); const v = _dsValidateIssue(_parseModelJson(r.text ?? _antText(r), 'desk:evening')); if (v.ok) issue = v.value; }
     catch (e) { console.warn('[desk-score] evening writer:', e.message); }
   }
   if (!issue) return null;
-  const { html, text, subject } = _evRender({ date: run.date, issue, score, reflection, movers: _dsMovers(run, score), record: _dsRecord(idx, { seed: _DS_SEED }), moves, cards }, { esc: s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') });
+  const { html, text, subject } = _evRender({ date: run.date, issue, score, reflection, movers: _dsMovers(run, score), record: _dsRecord(idx, { seed: _DS_SEED }), moves, cards, day }, { esc: s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') });
   const issues = await _nlLoad();
   if (issues === null) return null;
   const id = `desk-evening-${run.date}`;
@@ -7957,7 +7972,21 @@ svcInterval('deskWeekly', async () => {
 const _NW_KEY = 'desk_news_wire', _NW_REC_KEY = 'desk_news_record_v1';
 let _nwState = { at: 0, health: {}, src: {}, running: false, recAt: 0, recDirty: false };
 let _nwRec = null, _nwBookCache = { at: 0, date: null, book: {}, sized: {} };
-async function _nwLoad() { try { const raw = await kv.get(_NW_KEY); return raw ? JSON.parse(raw) : { wire: [] }; } catch { return { wire: [] }; } }
+// The wire above is a local-file key: a deploy empties it. On 2026-11-16 a day of deploys left the evening edition with no headlines ("the 17:00
+// speech did not print on the feed", "no cause in the data"). So today's tier 1-2 headlines are also kept, throttled, under a dated permanent key
+// (kv.js isCfKey desk_news_day_*), and a load that finds the wire empty seeds it from that record (their reads and reactions come with them, so a
+// restart does not pay to read the same headlines again).
+const _NW_DAY_KEY = d => `desk_news_day_${d}`;
+let _nwDayAt = 0;
+async function _nwRehydrate() { try { const raw = await kv.get(_NW_DAY_KEY(_dpLondonDate(Date.now()))); const rec = raw ? JSON.parse(raw) : null; return { wire: Array.isArray(rec?.items) ? rec.items : [] }; } catch { return { wire: [] }; } }
+async function _nwLoad() { let st = null; try { const raw = await kv.get(_NW_KEY); st = raw ? JSON.parse(raw) : null; } catch { st = null; } if (st?.wire?.length) return st; const re = await _nwRehydrate(); return st ? { ...st, wire: re.wire } : re; }   // empty live wire: fall back to the day record (keeping the live key's health and backoff)
+async function _nwDayPersist(wire, now, force = false) {
+  if (!force && now - _nwDayAt < 15 * 60_000) return;
+  const date = _dpLondonDate(now), items = (wire ?? []).filter(h => (h.read?.tier ?? h.tier) <= 2 && _dpLondonDate(h.ms) === date).map(({ summary, ...h }) => h).slice(0, 150);
+  if (!items.length) return;
+  _nwDayAt = now;
+  await kv.put(_NW_DAY_KEY(date), JSON.stringify({ date, savedAt: new Date(now).toISOString(), items })).catch(e => console.warn('[news] day record:', e.message));
+}
 async function _nwRecLoad() {
   if (!_nwRec) { try { const raw = await kv.get(_NW_REC_KEY); _nwRec = raw ? JSON.parse(raw) : null; } catch { /* starts empty */ } }
   _nwRec ??= { rows: [], alerts: { sent: {}, times: [] } };
@@ -8071,6 +8100,7 @@ async function _nwTick() {
     if (sent || chSent || (_nwState.recDirty && now - _nwState.recAt >= 10 * 60_000)) await _nwRecSave();
     const backoff = Object.fromEntries(Object.entries(_nwState.src).filter(([, s]) => s.fails).map(([k, s]) => [k, { fails: s.fails, retryAt: new Date(s.nextAt).toISOString(), error: s.lastError }]));
     await kv.put(_NW_KEY, JSON.stringify({ wire, updatedAt: new Date().toISOString(), health, backoff }));
+    await _nwDayPersist(wire, now);
     _nwState = { ..._nwState, at: Date.now(), health };
     return { ok: true, polled: due.map(([s]) => s), fetched: incoming.length, added: added.length, read: toRead.length, readModel, reactFetches: react.fetches, scored: react.final.length, sent, health, backoff };
   } finally { _nwState.running = false; }

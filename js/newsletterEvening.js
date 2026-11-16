@@ -13,6 +13,8 @@ import { BASE_CSS, DISCLAIMER } from './newsletter.js';
 import { instName, prose, reviewPage, moveText } from './newsletterDesk.js';
 import { DESK_UNIVERSE } from './deskPack.js';
 import { windowFor, unitOf } from './deskScore.js';
+import { timelineHtml, timelineText, TIMELINE_CSS } from './eveningTimeline.js';
+import { dayShapeSvg, sessionHeatSvg, morningVsDay, DAY_CSS } from './eveningDay.js';
 
 const GROUP_LABEL = { fx_majors: 'FX majors', fx_crosses: 'FX crosses', indices: 'Stock indices', metals: 'Metals', energy: 'Energy', ags: 'Agriculture', crypto: 'Crypto' };
 
@@ -93,13 +95,21 @@ export function renderEvening(ev, H) {
   const secs = is.sections ?? [], sections = secs.slice(0, 2).map(secHtml).join(''), rest = secs.slice(2).map(secHtml).join('');
   const rv = reviewPage({ score: ev.score, reflection: ev.reflection, movers: ev.movers, record: ev.record }, H, { title: 'The book against the day', compact: true });
   const subject = is.subject ? `Evening: ${is.subject}` : `Evening: the day in ${all.length} markets`;
+  // the look-back pages (owner, 2026-11-16): the day in order, how it unfolded, the morning against the day, and tomorrow. Absent ev.day (an older stored record) the issue is as it was.
+  const dy = ev.day ?? null, hasPaths = dy?.paths && Object.keys(dy.paths).length;
+  const shape = hasPaths ? dayShapeSvg(dy.paths, { book: dy.book, clusters: dy.timeline?.bursts ?? [], beats: (dy.timeline?.sessions ?? []).flatMap(x => x.beats), date: ev.date }) : null;
+  const heat = hasPaths ? sessionHeatSvg(dy.paths, { date: ev.date }) : null;
+  const shapeNote = shape?.legend?.length ? `<p class="evd-leg">Shaded bands are the busiest half hours: ${shape.legend.map(l => `<b>${esc(l.ch)}</b> ${esc(l.hm)}, ${esc(l.label.charAt(0).toLowerCase() + l.label.slice(1))}`).join('; ')}. Diamonds on the time axis are scheduled releases; the dashed line is the morning book.</p>` : '';
+  const pDay = dy && (dy.timeline?.sessions?.length || dy.timeline?.gaps?.length || shape?.svg) ? `<div class="pg pgflow">${mh('The day in order')}<div class="kick">The day in order</div><h2 class="sh">What happened, hour by hour</h2><p class="evl">${evBadge('observed')}<span style="font:11px var(--sans,system-ui);color:#5b6b82">London time. Prints, headlines from the news wire and the busiest half hour of each big mover, in the order they came. A cause is named only when a headline within 30 minutes supports it.</span></p>${timelineHtml(dy.timeline, H)}${shape?.svg ? `<div class="kick" style="margin-top:14px">How the day unfolded</div>${shape.svg}${shapeNote}` : ''}${heat?.svg ? `<div class="kick" style="margin-top:10px">When the moves came</div>${heat.svg}` : ''}</div>` : '';
+  const mvd = dy?.tr ? morningVsDay(dy.tr, ev.score, H) : '', tom = dy?.tomorrow?.html ?? '';
+  const pLook = mvd || tom ? `<div class="pg pgflow">${mh('Looking back and ahead')}${mvd ? `<div class="kick">This morning against the day</div><p class="evl">${evBadge('observed')}${evBadge('model')}</p>${mvd}` : ''}${tom ? `<div class="kick" style="margin-top:12px">Into tomorrow</div><h2 class="sh" style="font-size:20px">${esc(new Date(dy.tomorrow.date + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }))}: the calendar</h2><p class="evl">${evBadge('context')}</p>${tom}` : ''}</div>` : '';
   const p1 = `<div class="pg p1">${mh('The day')}<div class="kick">Evening edition · ${esc(M.date)}</div><h1 class="hd">${esc(is.subject ?? 'The day, in the markets')}</h1>
 ${is.standfirst ? `<p class="ld">${esc(prose(is.standfirst, { sentences: 2, chars: 380 }))}</p>` : ''}<p class="small3">Written by the desk pipeline at the close from the day's prices, the morning book and the evening review. Moves run 08:00 to 21:00 London; u is the morning forecast's p50 distance, so 1 u is a typical half-day move.</p>
-${tiles}${sections ? `<div class="kick" style="margin-top:12px">What happened</div>${sections}` : ''}${ccyFig}</div>${rest ? `<div class="pg pgflow">${mh('Across markets')}<div class="kick">Across markets</div>${rest}</div>` : ''}`;
+${tiles}${sections ? `<div class="kick" style="margin-top:12px">What happened</div>${sections}` : ''}${ccyFig}</div>${pDay}${rest ? `<div class="pg pgflow">${mh('Across markets')}<div class="kick">Across markets</div>${rest}</div>` : ''}`;
   const p2 = `<div class="pg pgflow">${mh('Every market')}<div class="kick">The day in every market</div><h2 class="sh">Where the moves were</h2><p class="evl">${evBadge('observed')}<span style="font:11px var(--sans,system-ui);color:#5b6b82">08:00 to 21:00 London, in u (1 u = that market's typical half-day move), with the move in pips (FX) or points and in percent. Green rose, red fell; the label is the morning book's view.</span></p>${moveGrid(moves, cards, H)}</div>`;
   const p3 = rv ? `<div class="pg pgflow">${mh(rv.section)}${rv.html}</div>` : '';
   const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">The Chain · evening ${esc(ev.date)}</div></div>`;
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${BASE_CSS}${MAG_CSS}</style></head><body><div class="wrap mgw"><div class="mg">${p1}${p2}${p3}</div>${foot}</div></body></html>`;
-  const text = [subject, '', is.standfirst ?? '', '', ...(is.sections ?? []).flatMap(s => [s.title.toUpperCase(), s.body, '']), ev.reflection?.headline ? `The book against the day: ${ev.reflection.headline}` : '', '', '---', ...DISCLAIMER].join('\n');
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${BASE_CSS}${MAG_CSS}${dy ? TIMELINE_CSS + DAY_CSS : ''}</style></head><body><div class="wrap mgw"><div class="mg">${p1}${pLook}${p2}${p3}</div>${foot}</div></body></html>`;
+  const text = [subject, '', is.standfirst ?? '', '', ...(is.sections ?? []).flatMap(s => [s.title.toUpperCase(), s.body, '']), ...(dy?.timeline ? ['THE DAY IN ORDER (London time)', timelineText(dy.timeline), ''] : []), ev.reflection?.headline ? `The book against the day: ${ev.reflection.headline}` : '', '', '---', ...DISCLAIMER].join('\n');
   return { subject: subject.slice(0, 120), html, text };
 }
