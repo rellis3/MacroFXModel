@@ -2109,6 +2109,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/bisView.js",
      "js/terminal/links.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js"
