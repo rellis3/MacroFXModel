@@ -12,6 +12,7 @@ export const FEATURES = {
   workspace:       { surface: 'tab.workspace', name: 'Workspace', where: ['The Workspace tab (Tools group of the tab strip).'] },
   chart:           { surface: 'tab.kchart', name: 'Chart', where: ['The Chart tab.'] },
   monitor:         { surface: 'tab.monitor', name: 'Monitor', where: ['The Monitor tab, beside Assets.'] },
+  asof: { surface: 'widget.asof', name: 'Time machine', where: ['A "Time machine" button in the top bar, beside the clocks and chips. Click it for the date and time box, the scrubber and play. In a past view a purple banner under the top bar says "Viewing ..., not live" with a Back to live button.', 'Or type ASOF 12 nov 14:30 (or ASOF live) in the command line.'] },
   insight:         { surface: 'tab.insight', name: 'Insight', where: ['The Insight tab (pills: Unusual now, Cross-asset, Sector rotation, Currency matrix, Gold, Level reach, Risk flags, Economies).'] },
   newsSearches:    { surface: 'panel.news.saved', name: 'News saved searches', where: ['News tab: the saved-searches bar above the headlines.'] },
   calendarDrills:  { surface: 'panel.cal.drills', name: 'Calendar drills', where: ['Calendar tab: two cards above the table (earnings, scorecards) and a small ▸ button at the end of every release row.'] },
@@ -58,7 +59,7 @@ export function statusLine(feel, key) {
   return s.state === 'loaded' ? 'loaded' : s.state === 'failed' ? `failed: ${s.reason}` : s.state === 'not-requested' ? `not requested: ${s.reason}` : `waiting: ${s.reason}`;
 }
 
-const KIND_KEY = { 'replay-viz': 'replayViz', export: 'exporter', link: 'linked', workspace: 'workspace', monitor: 'monitor', kchart: 'chart', 'news-search': 'newsSearches' };
+const KIND_KEY = { asof: 'asof', 'replay-viz': 'replayViz', export: 'exporter', link: 'linked', workspace: 'workspace', monitor: 'monitor', kchart: 'chart', 'news-search': 'newsSearches' };
 
 /** Why a command that depends on a feature did nothing, in words (the command line shows this instead of staying silent). */
 export function whyNot(kind, win = globalThis) {

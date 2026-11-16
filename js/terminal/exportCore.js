@@ -46,8 +46,9 @@ export const slug = s => String(s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-
 
 /** desk-monitor-2026-11-16-1030.csv (UTC, so a file name means the same thing wherever it was saved). */
 export function exportName(title, ext, now = Date.now()) {
-  const d = new Date(now), p = n => String(n).padStart(2, '0');
-  return `desk-${slug(title)}-${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}-${p(d.getUTCHours())}${p(d.getUTCMinutes())}.${ext}`;
+  const asof = globalThis.__deskAsof?.active && Number.isFinite(globalThis.__deskAsof.t) ? globalThis.__deskAsof.t : null;   // a past view says so in the file name
+  const d = new Date(asof ?? now), p = n => String(n).padStart(2, '0');
+  return `desk-${slug(title)}${asof != null ? '-asof' : ''}-${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}-${p(d.getUTCHours())}${p(d.getUTCMinutes())}.${ext}`;
 }
 
 /** Replace var(--token) (and a fallback form var(--token, x)) in serialised SVG with the colours the page resolves them to, so a standalone image keeps its colours. */

@@ -61,6 +61,12 @@ function addWsCss() {
   l.id = 'wsCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/workspace.css';
   document.head.appendChild(l);
 }
+function addAsCss() {
+  if (document.getElementById('asCss')) return;
+  const l = document.createElement('link');
+  l.id = 'asCss'; l.rel = 'stylesheet'; l.href = 'js/terminal/asof.css';
+  document.head.appendChild(l);
+}
 function addRpCss() {
   if (document.getElementById('rpvCss')) return;
   const l = document.createElement('link');
@@ -75,7 +81,7 @@ const hooksReady = () => new Promise(res => {
 });
 
 /** The keys of the status object (and of what start() returns), in the order the features start. */
-export const FEEL_KEYS = ['chart', 'insight', 'alerts', 'workspace', 'linked', 'monitor', 'newsSearches', 'calendarDrills', 'replayViz', 'exporter', 'cmdline'];
+export const FEEL_KEYS = ['asof', 'chart', 'insight', 'alerts', 'workspace', 'linked', 'monitor', 'newsSearches', 'calendarDrills', 'replayViz', 'exporter', 'cmdline'];
 
 export async function start() {
   // globalThis.__deskFeel is what each feature did on THIS page (js/terminal/featureStatus.js words it; the Info map tab's Preview features panel and
@@ -92,9 +98,12 @@ export async function start() {
     try { globalThis.dispatchEvent?.(new Event('deskfeel')); } catch { /* no events here */ }
     return Object.fromEntries(FEEL_KEYS.map(k => [k, !!feel.features[k]?.loaded]));
   };
-  const want = { linked: on('widget.linked'), cmdline: on('widget.cmdline'), workspace: on('tab.workspace'), alerts: on('widget.alerts'), chart: on('tab.kchart'), monitor: on('tab.monitor'), insight: on('tab.insight'), newsSearches: on('panel.news.saved'), exporter: on('widget.export'), calendarDrills: on('panel.cal.drills'), replayViz: on('widget.replayviz') };
+  const want = { linked: on('widget.linked'), cmdline: on('widget.cmdline'), workspace: on('tab.workspace'), alerts: on('widget.alerts'), chart: on('tab.kchart'), monitor: on('tab.monitor'), insight: on('tab.insight'), newsSearches: on('panel.news.saved'), exporter: on('widget.export'), calendarDrills: on('panel.cal.drills'), replayViz: on('widget.replayviz'), asof: on('widget.asof') };
+  // the as-of gate (js/terminal/asofBoot.js) holds market-data reads when the page was opened with ?asof=: a session that may not use the clock lets it go at once
+  if (!want.asof && globalThis.__deskAsof?.requested) globalThis.__deskAsof.abandon('not available to this session');
   if (!Object.values(want).some(Boolean)) { for (const k of FEEL_KEYS) feel.features[k] = { requested: false, loaded: false, error: null }; return finish(); }
   if (want.linked || want.cmdline) addCss();
+  await rec('asof', want.asof, async () => { addAsCss(); const m = await import('./asofClock.js'); return m.mountAsof(); });   // first: it may be holding the page's reads
   await rec('chart', want.chart, async () => { addKcCss(); const m = await import('./kchartView.js'); return m.mountKChart(); });
   await rec('insight', want.insight, async () => { addInCss(); const m = await import('./insightView.js'); return m.mountInsight(); });
   await rec('alerts', want.alerts, async () => { addAlCss(); const m = await import('./alertsView.js'); return m.mountAlerts(); });

@@ -68,7 +68,7 @@ test('the owner\'s list: exactly these are hidden, each for its reason', () => {
     cost: ['widget.ask', 'nav.research', 'nav.research-tab'],
     internal: ['tab.infomap', 'nav.deskoffice', 'nav.deskrun', 'nav.access', 'widget.dqchip', 'panel.ov.alerts'],
     pnl: ['panel.ov.record', 'panel.ana.track', 'panel.ana.fall', 'panel.ana.days', 'panel.charts.ranking', 'panel.changed.thesis', 'panel.changed.paper'],
-    preview: ['tab.deep', 'widget.cmdline', 'widget.linked', 'panel.cal.drills', 'widget.export', 'panel.news.saved', 'tab.monitor', 'tab.workspace', 'tab.kchart', 'widget.alerts', 'tab.insight', 'widget.replayviz'],
+    preview: ['tab.deep', 'widget.cmdline', 'widget.linked', 'panel.cal.drills', 'widget.export', 'panel.news.saved', 'tab.monitor', 'tab.workspace', 'tab.kchart', 'widget.alerts', 'tab.insight', 'widget.replayviz', 'widget.asof'],
   };
   for (const [reason, ids] of Object.entries(want)) for (const id of ids) assert.equal(surfaceById(id)?.hidden, reason, `${id} is hidden as '${reason}'`);
   const listed = Object.values(want).flat();

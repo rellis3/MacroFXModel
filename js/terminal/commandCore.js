@@ -23,6 +23,7 @@ import { STARTERS as MON_STARTERS } from './monitorCore.js';
 import { STARTERS as WS_STARTERS, cleanName as wsCleanName } from './workspaceCore.js';
 import { KINDS as AL_KINDS, FEEDS as AL_FEEDS } from '../deskAlertRulesCore.js';
 import { VISUALS as REPLAY_VISUALS, vizByWord } from '../replayVizCore.js';
+import { parseOffset as parseAsofOffset, parseAsofValue, formatClock as formatAsofClock } from '../asofCore.js';
 import { INSTRUMENTS as REPLAY_INSTRUMENTS, validDate, londonDate, londonWall } from '../replayCore.js';
 
 // ── markets (a copy of the page's UNIVERSE and NAME; commandCore.test.mjs fails if desk-terminal.html drifts from it) ──
@@ -159,6 +160,20 @@ const INDICATORS = [
 ];
 
 // ── building the list ──
+const ASOF_MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+/** "12 nov 14:30", "12 nov", "2026-11-12 14:30", "2026-11-12" -> UTC ms (a date alone is 12:00; no year means the year of now). null when unreadable. */
+export function parseAsofText(text, nowMs = Date.now()) {
+  const s = String(text ?? '').trim().toLowerCase();
+  const iso = parseAsofValue((s.replace(/\s+/, 't').replace(/z$/, '') + (/\d:\d\d/.test(s) ? 'Z' : '')).toUpperCase());
+  if (iso != null && /^\d{4}-/.test(s)) return iso;
+  const m = /^(\d{1,2})\s+([a-z]{3})[a-z]*(?:\s+(\d{4}))?(?:\s+(\d{1,2}):(\d{2}))?$/.exec(s);
+  if (!m) return null;
+  const mon = ASOF_MONTHS.indexOf(m[2]); if (mon < 0) return null;
+  const y = m[3] ? Number(m[3]) : new Date(nowMs).getUTCFullYear();
+  const t = Date.UTC(y, mon, Number(m[1]), m[4] ? Number(m[4]) : 12, m[5] ? Number(m[5]) : 0);
+  return Number.isFinite(t) && new Date(t).getUTCMonth() === mon ? t : null;
+}
+
 /**
  * Every command the session may use. isOn(surfaceId) -> bool says which surfaces this session can see (the owner: all; a desk login: the switched-on ones).
  * A command whose surface is off is left out. now() is only used to resolve dates.
@@ -243,6 +258,9 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     opens: 'A download of the open tab (nothing is sent anywhere)', surface: 'widget.export', run: args => exportRun(args) });
   add({ id: 'newsletter', group: 'Owner tools', name: 'NEWSLETTER', aliases: ['NEWS-PDF', 'ISSUE'], help: 'Open the Atlas page where the terminal newsletter is built: a written issue (yesterday, today, what could happen) with the terminal charts beside the paragraphs, saved as a PDF, plus a one-page pictogram of the key points. Owner only.',
     example: 'newsletter', opens: 'The Atlas page, Newsletter section (a new tab)', surface: 'nav.deskoffice', action: { kind: 'page', href: 'atlas.html#newsletter' }, summary: 'Opens the Atlas newsletter page in a new tab.' });
+  add({ id: 'asof', group: 'Look and feel', name: 'ASOF', aliases: ['TIMEMACHINE', 'WAYBACK'], args: '<date time | live | +1h | -1d>',
+    help: 'See the whole terminal as the saved snapshots showed it at an earlier moment (UTC). ASOF 12 nov 14:30 jumps there, ASOF +1h or ASOF -1d moves from where you are, ASOF live comes back, bare ASOF opens the time controls. A board with no record at that time says so; nothing live is shown in a past view. Snapshots start on 14 Nov 2026.',
+    example: 'asof 15 nov 09:30', opens: 'The whole page, redrawn as it was then (a banner says so; Back to live returns)', surface: 'widget.asof', action: { kind: 'asof', op: 'open' }, run: args => asofRun(args) });
   add({ id: 'replay.viz', group: 'Look and feel', name: 'PLAY', aliases: ['PLAYBACK'], args: `<${REPLAY_VISUALS.map(v => v.id).join('|')}>`,
     help: `Replay one visualisation's own history in a window over the page: ${REPLAY_VISUALS.map(v => `${v.id} is ${v.what}`).join('; ')}. Play, pause, step, x1 x4 x16, loop and a scrubber; it says how much history is held. Also works as REPLAY <visual>.`,
     example: `play ${REPLAY_VISUALS[0].id}`, opens: 'A replay window over the page (a description of the history, not a forecast)', surface: 'widget.replayviz', run: args => vizRun(args) });
@@ -299,6 +317,16 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
       return { error: `"${w}" is not a market or a candle size I know. Try CHART NQ 15M (sizes: ${TF_KEYS.join(', ')}).` };
     }
     return { action: { kind: 'kchart', inst, tf }, summary: `Opens the Chart tab${inst ? ` on ${instLabel(inst)}` : ''}${tf ? ` at ${tf} candles` : ''}.` };
+  }
+  function asofRun(args) {
+    const a = String(args ?? '').trim();
+    if (!a) return { action: { kind: 'asof', op: 'open' }, summary: 'Opens the time controls.' };
+    if (/^(live|now|off|back)$/i.test(a)) return { action: { kind: 'asof', op: 'live' }, summary: 'Goes back to the live terminal.' };
+    const off = parseAsofOffset(a);
+    if (off != null) return { action: { kind: 'asof', op: 'step', ms: off }, summary: `Moves the time ${a} ${a.startsWith('-') ? 'earlier' : 'later'}.` };
+    const t = parseAsofText(a, now());
+    if (t == null) return { error: `I could not read "${a}" as a time. Try ASOF 12 nov 14:30, ASOF 2026-11-12 14:30, ASOF +1h, ASOF -1d or ASOF live (times are UTC).` };
+    return { action: { kind: 'asof', op: 'set', t }, summary: `Shows the terminal as it was at ${formatAsofClock(t)}.` };
   }
   function vizRun(args) {
     const w = String(args ?? '').trim().split(/\s+/)[0], v = vizByWord(w);

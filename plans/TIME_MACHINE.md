@@ -159,3 +159,24 @@ Pick a market and a London session day, go back, and play it forward at 1x, 2x, 
 | Touches | with the levels | `scanTouches` over the minutes | a touch is price within 0.02% of a line that was on the chart; once until price has gone away by three tolerances |
 
 It describes. A touch is shown, never traded: the Evidence Book has the line-touch book failing net. Not drawn yet: intraday option levels (only the S&P and Nasdaq have a 15-minute Cboe log, since 2026-11-01), release-day markers on the chart, the full-day bias strip before 2026-11-14.
+
+## The whole-terminal as-of clock (stage 3, 2026-11-16, preview `widget.asof`)
+
+Code: `js/asofCore.js` (pure rules, tested in `js/asofCore.test.mjs`), `js/terminal/asofBoot.js` (a classic script in the page head: the fetch gate, tested in `asofBoot.test.mjs`), `js/terminal/asofClock.js` (the control, the banner and the answerer, tested in `asofClock.test.mjs`), `asof.css`, command `ASOF` (`asofCommand.test.mjs`), real-browser check `scripts/asof-check.mjs` (not part of CI).
+
+**What it does.** A Time machine button in the top bar. Pick a date and time (UTC), drag the scrubber, step by an hour or a day, or press play at x2, x10, x60 or x300. The whole terminal redraws as the saved records showed it then, under a purple banner "Viewing Thu 12 Nov 14:30 UTC, not live" with Back to live. The address carries the time (`?asof=2026-11-12T14:30Z`; `#asof=` is read too), so a view can be shared. Command line: `ASOF 12 nov 14:30`, `ASOF +1h`, `ASOF -1d`, `ASOF live`, bare `ASOF` opens the controls.
+
+**How (no per-board rewrite).** `asofBoot.js` wraps `fetch` once. With no as-of time it is a plain pass-through (a desk login, or anyone with the feature off, never goes any other way). With `?asof=` it HOLDS every market-data read until the clock is up, then every `/api` GET is answered or refused:
+
+| Read | Answer |
+|---|---|
+| a feed in the daily FULL record (about 50 feeds) | the FULL record taken at or before the time (a record taken after it is never used; before the day's 10:00 London record the previous day's is used) |
+| `/api/ccy-strength` | the same record with the scores replaced by the nearest five-minute CORE point at or before the time (the route's own shape is kept) |
+| `/api/desk-bars` | candles that had finished by the time, no forming candle |
+| `/api/desk-run` | that London morning's book by date (before 08:00 London, the previous morning) |
+| replay routes, the person's own settings (alerts, monitors, saved searches, workspaces, access) | pass through: they carry their own date, or are settings, not market data |
+| everything else (live layer, news wire, chain live, a feed that failed in the record, ...) | REFUSED with a normal not-ok body: "No record of this at ..., Nothing live is shown in a past view." The board shows its own empty state. |
+
+There is no fourth path: an answerer that throws refuses, and the gate never falls through to the live server. A session that may not use the clock (feature off, desk login) lets the gate go at once and the address forgets the time.
+
+**Honest limits (also on screen).** Snapshots exist only since capture began (first point Sat 14 Nov 2026 17:49 UTC), so earlier dates say "no record". Boards built from a feed show it as the day's record had it (taken about 10:00 London), not minute by minute; only the currency strength scores are laid over at five-minute detail (the other CORE sections are compact and are not rebuilt into route shape). Boards that load lazily are built under the clock when the page loads with `?asof=`; while playing or scrubbing the boards `load()` builds redraw in place and lazily built tabs refresh when reopened. Refresh timers keep ticking but see the same frozen record, so nothing changes. The person's own settings stay live and keep working in a past view.

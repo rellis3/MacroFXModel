@@ -16,7 +16,7 @@ const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 globalThis.__terminalFeelNoAutoStart = true;
 globalThis.localStorage = memStore();
 const { start } = await import('./terminalFeel.js');
-const PREVIEW = ['tab.deep', 'widget.cmdline', 'panel.cal.drills', 'widget.export', 'panel.news.saved', 'tab.monitor', 'tab.workspace', 'tab.kchart', 'tab.insight', 'widget.replayviz', 'widget.alerts', 'widget.linked'];   // registry order
+const PREVIEW = ['tab.deep', 'widget.cmdline', 'panel.cal.drills', 'widget.export', 'panel.news.saved', 'tab.monitor', 'tab.workspace', 'tab.kchart', 'tab.insight', 'widget.asof', 'widget.replayviz', 'widget.alerts', 'widget.linked'];   // registry order
 
 test('the preview features are registry surfaces, hidden from the desk login by default, with a reason and a note', () => {
   assert.ok(HIDDEN_REASONS.includes('preview'));
@@ -58,19 +58,19 @@ test('start(): a desk login with the switches off loads nothing and adds nothing
   const win = makeWin(doc); globalThis.document = doc; globalThis.window = win;
   try {
     globalThis.deskSurfaceOn = () => false;
-    assert.deepEqual(await start(), { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false, replayViz: false });
+    assert.deepEqual(await start(), { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false, replayViz: false, asof: false });
     assert.equal(doc.getElementById('feelCss'), null); assert.equal(doc.getElementById('cmdk-back'), null); assert.equal(doc.getElementById('cmdbtn').hidden, true); assert.equal(doc.getElementById('linkchip').hidden, true);
     assert.equal(win.deskSelection, undefined);
     delete globalThis.deskSurfaceOn;
-    assert.deepEqual(await start(), { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false, replayViz: false }, 'deskSurfaceOn missing = not allowed');
+    assert.deepEqual(await start(), { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false, replayViz: false, asof: false }, 'deskSurfaceOn missing = not allowed');
     globalThis.deskSurfaceOn = id => id !== 'widget.linked' && id !== 'widget.cmdline';
-    assert.deepEqual(await start(), { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false, replayViz: true });   // the replay buttons mount on any page: that one is on here
+    assert.deepEqual(await start(), { linked: false, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false, replayViz: true, asof: false });   // the replay buttons mount on any page: that one is on here
   } finally { delete globalThis.deskSurfaceOn; delete globalThis.document; delete globalThis.window; }
 });
 
 test('start(): the owner gets both (button, chip, stylesheet, key handler); one switched on gives only that one', async () => {
   // workspace is false below: this stand-in page has no #workspace section to mount into (workspaceState/Core tests cover the feature)
-  for (const [on, want] of [[() => true, { linked: true, cmdline: true, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false, replayViz: true }], [id => id === 'widget.cmdline', { linked: false, cmdline: true, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false, replayViz: false }], [id => id === 'widget.linked', { linked: true, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false, replayViz: false }]]) {
+  for (const [on, want] of [[() => true, { linked: true, cmdline: true, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false, replayViz: true, asof: false }], [id => id === 'widget.cmdline', { linked: false, cmdline: true, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false, replayViz: false, asof: false }], [id => id === 'widget.linked', { linked: true, cmdline: false, workspace: false, alerts: false, chart: false, monitor: false, insight: false, newsSearches: false, exporter: false, calendarDrills: false, replayViz: false, asof: false }]]) {
     const doc = makePage(); doc.head = new El('head'); doc.root.appendChild(doc.head);
     const win = makeWin(doc); globalThis.document = doc; globalThis.window = win; globalThis.deskSurfaceOn = on;
     globalThis.openPairPage = win.openPairPage; globalThis.openReplay = win.openReplay;   // the hooks terminalTabs.js sets (the loader waits for them)
