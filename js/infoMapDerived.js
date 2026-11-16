@@ -4453,6 +4453,14 @@ export const DERIVED = {
     {
      "file": "js/terminal/replayViz.js",
      "exists": true
+    },
+    {
+     "file": "js/terminal/replayCurveDraw.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/replayStrengthDraw.js",
+     "exists": true
     }
    ],
    "names": {
@@ -4464,6 +4472,7 @@ export const DERIVED = {
      "js/terminal/linkedSelection.js",
      "js/terminal/replayLink.js",
      "js/terminal/replayPlayer.js",
+     "js/terminal/replayStrengthDraw.js",
      "js/terminal/replayView.js",
      "js/terminal/replayViz.js",
      "js/terminal/terminalFeel.js",

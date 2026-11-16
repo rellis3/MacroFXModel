@@ -2,7 +2,7 @@
 // node --test js/replayVizCore.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SPEEDS, initState, advance, step, seek, toggle, setSpeed, act, keyAction, coverageOf, curveFrames, curveBounds, curveCaption } from './replayVizCore.js';
+import { SPEEDS, initState, advance, step, seek, toggle, setSpeed, act, keyAction, coverageOf, curveFrames, curveBounds, curveCaption, strengthFrames, strengthBound, strengthRows, strengthCaption, recentSessions, londonStamp, vizByWord, VISUALS } from './replayVizCore.js';
 
 const mkS = (start, n, f) => Array.from({ length: n }, (_, k) => ({ date: new Date(Date.parse(`${start}T00:00:00Z`) + k * 864e5).toISOString().slice(0, 10), value: f(k) }));
 
@@ -81,4 +81,41 @@ test('curveBounds covers every frame, curveCaption describes the day in plain wo
   const c = curveCaption(r.frames, r.frames.length - 1); assert.match(c, /upward-sloping|flat|inverted/); assert.match(c, /bp/);
   assert.doesNotMatch(c, /will|forecast|buy|sell/i, 'description only');
   assert.equal(curveCaption([], 0), ''); assert.equal(curveBounds([]), null);
+});
+
+const CC = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'NZD'];
+const series = { ccys: CC, stepMs: 900000, steps: [
+  { t: Date.parse('2026-11-12T07:00:00Z'), closed: false, h: { '1H': [0.1, -0.2, 0.3, 0.0, -0.1, 0.2, 0.4, -0.5], '4H': null, '1D': [0, 0, 0, 0, 0, 0, 0, 0] } },
+  { t: Date.parse('2026-11-12T07:15:00Z'), ok: false },
+  { t: Date.parse('2026-11-12T07:30:00Z'), closed: false, h: { '1H': [1.2, -0.2, 0.3, 0.0, -0.1, 0.2, 0.4, -1.4], '4H': [0, 0, 0, 0, 0, 0, 0, 0], '1D': null } },
+  { t: Date.parse('2026-11-12T07:45:00Z'), closed: false, h: { '1H': [-0.8, 0.9, 0.3, 0.0, -0.1, 0.2, 2.6, -1.4], '4H': [0, 0, 0, 0, 0, 0, 0, 0], '1D': null } },
+] };
+
+test('strengthFrames drops (and counts) a step the engine could not build; strengthRows ranks strongest first; null when the window has no reading', () => {
+  const x = strengthFrames(series); assert.equal(x.frames.length, 3); assert.equal(x.dropped, 1); assert.equal(x.ccys.length, 8);
+  const r = strengthRows(x.frames[2], '1H', CC); assert.equal(r[0].ccy, 'AUD'); assert.equal(r[0].rank, 1); assert.equal(r.at(-1).ccy, 'NZD'); assert.equal(r.length, 8);
+  assert.equal(strengthRows(x.frames[0], '4H', CC), null); assert.equal(strengthRows(x.frames[0], '1M', CC), null);
+  assert.equal(strengthFrames(null).frames.length, 0);
+});
+
+test('strengthBound is one scale for the whole replay, at least 1 sigma, rounded up to a half', () => {
+  const x = strengthFrames(series); assert.equal(strengthBound(x.frames, '1H'), 3); assert.equal(strengthBound(x.frames, '4H'), 1); assert.equal(strengthBound([], '1H'), 1);
+});
+
+test('strengthCaption names the leader and laggard, who climbed, and says when there is no reading; it never forecasts', () => {
+  const x = strengthFrames(series);
+  const c = strengthCaption(x.frames, 2, '1H', CC); assert.match(c, /AUD is strongest \(\+2\.6σ\) and NZD weakest \(−1\.4σ\)/); assert.match(c, /climbed \d places/); assert.match(c, /London/);
+  assert.match(strengthCaption(x.frames, 0, '4H', CC), /no 4H reading at this step/); assert.equal(strengthCaption([], 0, '1H', CC), '');
+  assert.doesNotMatch(c, /will |forecast|buy|sell/i);
+});
+
+test('recentSessions: the last n weekday London dates before today, newest first, no weekends', () => {
+  const d = recentSessions(Date.parse('2026-11-16T10:00:00Z'), 5); assert.deepEqual(d, ['2026-11-13', '2026-11-12', '2026-11-11', '2026-11-10', '2026-11-09']);
+  const w = recentSessions(Date.parse('2026-11-15T10:00:00Z'), 2); assert.deepEqual(w, ['2026-11-13', '2026-11-12']);
+  assert.match(londonStamp(Date.parse('2026-11-12T09:15:00Z')), /^Thu 12 Nov 09:15 London$/);
+});
+
+test('every replayable visual has words, a what-line, a surface and a card match; the words find it', () => {
+  for (const v of VISUALS) { assert.ok(v.words.length && v.what.length > 30 && v.surface && (v.cardLabel || v.cardRe) && v.route, v.id); assert.equal(vizByWord(v.id).id, v.id); for (const w of v.words) assert.equal(vizByWord(w).id, v.id, w); }
+  assert.equal(vizByWord('nothing'), null);
 });

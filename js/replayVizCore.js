@@ -15,6 +15,8 @@
  * It says nothing about what any market will do next (the structure of the curve as a predictor is a tested null: Evidence Book rate-curve-structure).
  */
 
+import { londonDate, prevDate } from './replayCore.js';
+
 /** Frames per second at each speed. x1 is slow enough to read a curve change; x16 runs 90 days in under 2 seconds. */
 export const SPEEDS = { 1: 3, 4: 12, 16: 48 };
 export const DEFAULT_SPEED = 1;
@@ -141,5 +143,52 @@ export function curveCaption(frames, i) {
 /** id, the words that name it on the command line, what it is called, and the registry surface of the board whose card gets the Replay button. */
 export const VISUALS = [
   { id: 'curve', name: 'Yield curve', words: ['curve', 'yields', 'yield', 'treasury', 'curvethroughtime'], what: 'the Treasury curve morphing day by day over the last 90 days, with ghosts of earlier shapes and the 2y to 10y slope', surface: 'panel.macro.curve', cardLabel: 'The curve through time', route: '/api/replay/curve?days=90' },
+  { id: 'strength', name: 'Currency strength', words: ['strength', 'ccy', 'currencies', 'currency'], what: 'the eight currencies racing through one London session (15-minute steps), ranked by how far each moved in units of its own normal move, on the 1H, 4H or 1D window', surface: 'panel.ov.ccystrength', cardRe: ' window$', route: '/api/replay/strength?date=' },
 ];
 export const vizByWord = w => { const k = String(w ?? '').toLowerCase(); return VISUALS.find(v => v.id === k || v.words.includes(k)) ?? null; };
+
+// ── currency strength ───────────────────────────────────────────────────────────────────────────────────────────────────────
+const LHM = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false });
+const LDAY = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short' });
+/** "Thu 12 Nov 09:15 London" for a millisecond time. */
+export const londonStamp = ms => `${LDAY.format(ms)} ${LHM.format(ms)} London`;
+export const londonDay = d => LDAY.format(Date.parse(`${d}T12:00:00Z`));
+export const STRENGTH_WINDOWS = ['1H', '4H', '1D'];
+
+/** The last n weekday London dates before today, newest first (the sessions a strength replay can be asked for). */
+export function recentSessions(now, n = 5) {
+  const out = []; let d = prevDate(londonDate(now));
+  for (let guard = 0; out.length < n && guard < 20; guard++) { const dow = new Date(`${d}T12:00:00Z`).getUTCDay(); if (dow !== 0 && dow !== 6) out.push(d); d = prevDate(d); }
+  return out;
+}
+
+/** /api/replay/strength -> frames. A step the engine could not build (ok:false, no `h`) is dropped and counted, never filled. */
+export function strengthFrames(series) {
+  const ccys = series?.ccys ?? [], steps = Array.isArray(series?.steps) ? series.steps : [];
+  const frames = steps.filter(x => x && x.h && typeof x.t === 'number').map(x => ({ t: x.t, data: { h: x.h, closed: !!x.closed } }));
+  return { frames, ccys, dropped: steps.length - frames.length, stepMs: series?.stepMs ?? 15 * 60e3 };
+}
+/** One scale for the whole replay of a window: the biggest absolute score seen, at least 1 sigma, rounded up to a half. */
+export function strengthBound(frames, hz) {
+  let m = 0; for (const f of frames ?? []) for (const v of f.data?.h?.[hz] ?? []) if (fin(v) && Math.abs(v) > m) m = Math.abs(v);
+  return Math.max(1, Math.ceil(m * 2) / 2);
+}
+/** The eight rows for one frame and window, strongest first: [{ ccy, score, rank (1 = strongest) }], or null when that window has no reading then. */
+export function strengthRows(frame, hz, ccys) {
+  const v = frame?.data?.h?.[hz]; if (!Array.isArray(v) || v.length !== ccys.length) return null;
+  return ccys.map((ccy, k) => ({ ccy, score: v[k] })).filter(r => fin(r.score)).sort((a, b) => b.score - a.score).map((r, k) => ({ ...r, rank: k + 1 }));
+}
+const sgn1 = v => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(1)}`;
+/** Plain words for one step: who leads and trails, and who has climbed furthest since the first step. Description only. */
+export function strengthCaption(frames, i, hz, ccys) {
+  const f = frames?.[i], rows = strengthRows(f, hz, ccys), first = strengthRows(frames?.[0], hz, ccys);
+  if (!f) return '';
+  if (!rows) return `${londonStamp(f.t)}: no ${hz} reading at this step (the window needs more finished bars).`;
+  const top = rows[0], bot = rows[rows.length - 1];
+  let move = '';
+  if (first && i > 0) {
+    const climb = rows.map(r => ({ ccy: r.ccy, d: first.find(x => x.ccy === r.ccy).rank - r.rank })).sort((a, b) => b.d - a.d)[0];
+    if (climb && climb.d >= 2) move = ` ${climb.ccy} has climbed ${climb.d} places since the session began.`;
+  }
+  return `${londonStamp(f.t)}: on the ${hz} window ${top.ccy} is strongest (${sgn1(top.score)}σ) and ${bot.ccy} weakest (${sgn1(bot.score)}σ).${move}${f.data.closed ? ' The market is shut, so the windows end at the last price.' : ''}`;
+}

@@ -8,7 +8,10 @@
  *           load: async () => ({ frames: [{ t, data }], wanted?: { from }, extra?: any }),     the history we hold; never invented
  *           draw: (frames, i, { reduced, extra }) => html string,                              one frame (SVG or HTML), theme tokens only
  *           caption?: (frames, i, extra) => plain-words sentence for the frame (description only),
- *           label?: (frame) => the clock text }
+ *           label?: (frame, i, n, picks) => the clock text,
+ *           picks?: [{ id, label, reload?, values: [{ v, label }] }]    choices shown above the stage (a window, a day); `reload` re-runs load(picks)
+ *           coverage?: (frames, result, picks) => the coverage sentence (default: the date-range line from js/replayVizCore.js) }
+ * load(picks), draw(frames, i, { reduced, extra, picks }) and caption(frames, i, extra, picks) all receive the current picks ({ [id]: value }).
  *
  * Keyboard: Space play/pause, arrows step, Home/End jump, + and - change speed, L loop, Esc close. Reduced motion: no fades or glow, and the same
  * controls step through the frames. The pure state machine and the coverage line are in js/replayVizCore.js (tested).
@@ -23,6 +26,7 @@ export function openPlayer(def, { doc = document, win = window, raf = win.reques
   const back = doc.createElement('div');
   back.id = 'rpv-back'; back.className = 'rpv-back'; back.setAttribute('role', 'dialog'); back.setAttribute('aria-modal', 'true'); back.setAttribute('aria-label', `Replay: ${def.title}`);
   back.innerHTML = `<div class="rpv"><div class="rpv-head"><b class="rpv-title">${esc(def.title)}</b><span class="chip rpv-chip">Replaying history, not live</span><button type="button" class="btn rpv-x" data-rpv="close" aria-label="Close the replay">Close</button></div>
+${(def.picks ?? []).map(k => `<div class="rpv-picks" role="group" aria-label="${esc(k.label)}"><span class="rpv-pl">${esc(k.label)}</span>${k.values.map((o, j) => `<button type="button" class="btn" data-pick="${esc(k.id)}" data-val="${esc(o.v)}" aria-pressed="${j === 0}">${esc(o.label)}</button>`).join('')}</div>`).join('')}
 <div class="rpv-date" id="rpv-date" aria-live="off"></div>
 <div class="rpv-stage" id="rpv-stage"><p class="muted">Loading the history we hold…</p></div>
 <div class="rpv-cap" id="rpv-cap" aria-live="polite"></div>
@@ -35,17 +39,19 @@ export function openPlayer(def, { doc = document, win = window, raf = win.reques
   doc.body.appendChild(back);
   const q = s => back.querySelector(s);
   const stage = q('#rpv-stage'), dateEl = q('#rpv-date'), capEl = q('#rpv-cap'), play = q('#rpv-play'), scrub = q('#rpv-scrub'), covEl = q('#rpv-cov'), loopB = q('#rpv-loop');
-  let frames = [], extra = null, st = C.initState(0), raf0 = null, last = 0, closed = false;
+  let frames = [], extra = null, st = C.initState(0), raf0 = null, last = 0, closed = false, loadSeq = 0;
+  const picks = Object.fromEntries((def.picks ?? []).map(k => [k.id, k.values[0].v]));
 
   function paint() {
     if (!frames.length) return;
     const f = frames[st.i];
-    stage.innerHTML = def.draw(frames, st.i, { reduced: reduced(), extra });
-    dateEl.textContent = def.label ? def.label(f, st.i, frames.length) : `${C.niceDate(String(f.t).slice(0, 10))} · frame ${st.i + 1} of ${frames.length}`;
-    capEl.textContent = def.caption ? def.caption(frames, st.i, extra) : '';
+    stage.innerHTML = def.draw(frames, st.i, { reduced: reduced(), extra, picks });
+    dateEl.textContent = def.label ? def.label(f, st.i, frames.length, picks) : `${C.niceDate(String(f.t).slice(0, 10))} · frame ${st.i + 1} of ${frames.length}`;
+    capEl.textContent = def.caption ? def.caption(frames, st.i, extra, picks) : '';
     scrub.value = String(st.i);
     play.textContent = st.playing ? '⏸ Pause' : '▶ Play'; play.setAttribute('aria-label', st.playing ? 'Pause' : 'Play');
     for (const b of back.querySelectorAll('[data-speed]')) b.setAttribute('aria-pressed', String(+b.dataset.speed === st.speed));
+    for (const b of back.querySelectorAll('[data-pick]')) b.setAttribute('aria-pressed', String(picks[b.dataset.pick] === b.dataset.val));
     loopB.setAttribute('aria-pressed', String(st.loop));
   }
   function frameLoop() {
@@ -62,7 +68,13 @@ export function openPlayer(def, { doc = document, win = window, raf = win.reques
     st = C.act(st, action); paint(); startLoop();
   }
   function onClick(e) {
-    const b = e.target.closest?.('[data-rpv],[data-speed]'); if (!b) return;
+    const b = e.target.closest?.('[data-rpv],[data-speed],[data-pick]'); if (!b) return;
+    if (b.dataset.pick) {
+      const k = (def.picks ?? []).find(x => x.id === b.dataset.pick); if (!k || picks[k.id] === b.dataset.val) return;
+      picks[k.id] = b.dataset.val;
+      if (k.reload) { st = { ...st, playing: false }; for (const x of back.querySelectorAll('[data-pick]')) x.setAttribute('aria-pressed', String(picks[x.dataset.pick] === x.dataset.val)); load(); } else paint();
+      return;
+    }
     if (b.dataset.speed) { st = C.setSpeed(st, +b.dataset.speed); paint(); return; }
     dispatch(b.dataset.rpv);
   }
@@ -86,20 +98,23 @@ export function openPlayer(def, { doc = document, win = window, raf = win.reques
     if (opener?.focus) { try { opener.focus(); } catch { /* gone */ } }
   }
 
-  (async () => {
+  async function load() {
+    const my = ++loadSeq;
+    stage.innerHTML = '<p class="muted">Loading the history we hold…</p>'; capEl.textContent = ''; dateEl.textContent = '';
     try {
-      const r = await def.load();
-      if (closed) return;
+      const r = await def.load(picks);
+      if (closed || my !== loadSeq) return;
       frames = Array.isArray(r?.frames) ? r.frames : []; extra = r?.extra ?? null;
       const cov = C.coverageOf(frames, r?.wanted ?? null);
-      covEl.textContent = cov.text;
-      if (cov.n < 2) { stage.innerHTML = `<p class="muted">${esc(cov.n ? 'Only one day is held, so there is nothing to play.' : cov.text)}</p>`; return; }
+      covEl.textContent = def.coverage ? def.coverage(frames, r, picks) : cov.text;
+      if (cov.n < 2) { scrub.disabled = true; scrub.setAttribute('disabled', ''); stage.innerHTML = `<p class="muted">${esc(cov.n ? 'Only one frame is held, so there is nothing to play.' : cov.text)}</p>`; return; }
       st = C.initState(frames.length, { i: 0 });
-      scrub.max = String(frames.length - 1); scrub.disabled = false;
+      scrub.max = String(frames.length - 1); scrub.disabled = false; scrub.removeAttribute?.('disabled');
       paint(); q('#rpv-play')?.focus?.();
     } catch (e) {
-      if (!closed) { stage.innerHTML = `<p class="muted">The replay could not load: ${esc(e?.message ?? 'unknown error')}.</p>`; covEl.textContent = ''; }
+      if (!closed && my === loadSeq) { frames = []; stage.innerHTML = `<p class="muted">The replay could not load: ${esc(e?.message ?? 'unknown error')}.</p>`; covEl.textContent = ''; }
     }
-  })();
+  }
+  load();
   return { close, state: () => st, frames: () => frames };
 }

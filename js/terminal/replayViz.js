@@ -7,13 +7,14 @@
  * lazily (the Macro sections) still get theirs. REPLAY <visual> on the command line calls the same opener.
  */
 import { openPlayer } from './replayPlayer.js';
-import { VISUALS, vizByWord, curveBounds, curveCaption, niceDate } from '../replayVizCore.js';
+import { VISUALS, vizByWord, curveBounds, curveCaption, niceDate, strengthFrames, strengthBound, strengthCaption, recentSessions, londonStamp, londonDay, STRENGTH_WINDOWS } from '../replayVizCore.js';
 import { curveStage } from './replayCurveDraw.js';
+import { strengthStage } from './replayStrengthDraw.js';
 
 const J = async u => { const r = await fetch(u, { credentials: 'same-origin' }); const j = await r.json().catch(() => null); if (!r.ok || !j || j.ok === false) throw new Error(j?.error ?? `HTTP ${r.status}`); return j; };
 
 /** The player definition for one visual. `fetchJson` is injectable for tests. */
-export function defFor(id, { fetchJson = J } = {}) {
+export function defFor(id, { fetchJson = J, now = () => Date.now() } = {}) {
   const v = VISUALS.find(x => x.id === id); if (!v) return null;
   if (id === 'curve') {
     return {
@@ -22,6 +23,18 @@ export function defFor(id, { fetchJson = J } = {}) {
       draw: (frames, i, { reduced, extra }) => curveStage(frames, i, { bounds: extra.bounds, reduced }),
       caption: (frames, i) => curveCaption(frames, i),
       label: (f, i, n) => `${niceDate(f.t)} · day ${i + 1} of ${n}`,
+    };
+  }
+  if (id === 'strength') {
+    const days = recentSessions(now(), 5);
+    return {
+      id, title: 'Currency strength through a London session', note: 'Each step is rebuilt with the engine of the live board from only the bars that had finished by then, so nothing from later leaks into an earlier step. It describes how the currencies moved; it does not say which way any pair goes next.',
+      picks: [{ id: 'day', label: 'Session', reload: true, values: days.map(d => ({ v: d, label: londonDay(d) })) }, { id: 'hz', label: 'Window', values: STRENGTH_WINDOWS.map(w => ({ v: w, label: w })) }],
+      load: async picks => { const r = await fetchJson(v.route + encodeURIComponent(picks.day)); const x = strengthFrames(r); return { frames: x.frames, extra: { ccys: x.ccys, dropped: x.dropped, stepMs: x.stepMs, day: picks.day } }; },
+      coverage: (frames, r) => `${frames.length} steps of ${Math.round((r.extra.stepMs ?? 9e5) / 60e3)} minutes, ${londonStamp(frames[0].t)} to ${londonStamp(frames[frames.length - 1].t)}.${r.extra.dropped ? ` ${r.extra.dropped} step${r.extra.dropped === 1 ? '' : 's'} could not be built and ${r.extra.dropped === 1 ? 'is' : 'are'} skipped, not filled.` : ''}`,
+      draw: (frames, i, { reduced, extra, picks }) => strengthStage(frames, i, picks.hz, extra.ccys, { reduced, bound: strengthBound(frames, picks.hz) }),
+      caption: (frames, i, extra, picks) => strengthCaption(frames, i, picks.hz, extra.ccys),
+      label: (f, i, n, picks) => `${londonStamp(f.t)} · step ${i + 1} of ${n} · ${picks.hz}`,
     };
   }
   return null;
@@ -41,7 +54,8 @@ export function mountReplayViz({ doc = document, win = window, fetchJson = J } =
       for (const root of doc.querySelectorAll(`[data-surface="${v.surface}"]`)) {
         for (const card of root.querySelectorAll('.card')) {
           if (card.querySelector('[data-rpviz]')) continue;
-          const lbl = card.querySelector('.ch .lbl'); if (!lbl || String(lbl.textContent).trim() !== v.cardLabel) continue;
+          const lbl = card.querySelector('.ch .lbl'); if (!lbl) continue;
+          const lt = String(lbl.textContent).trim(); if (v.cardLabel ? lt !== v.cardLabel : !new RegExp(v.cardRe).test(lt)) continue;
           const head = card.querySelector('.ch'); if (!head) continue;
           const tmp = doc.createElement('span');
           tmp.innerHTML = `<button type="button" class="btn rpv-open" data-rpviz="${v.id}" data-noexport data-surface="widget.replayviz" title="Replay ${v.what.replace(/"/g, '')}" aria-label="Replay: ${v.name}">▶ Replay</button>`;

@@ -8,7 +8,8 @@ import { makePage, makeWin } from './feelFakeDom.fixtures.mjs';
 import { openPlayer } from './replayPlayer.js';
 import { mountReplayViz, defFor } from './replayViz.js';
 import { curveStage } from './replayCurveDraw.js';
-import { curveFrames, curveBounds } from '../replayVizCore.js';
+import { curveFrames, curveBounds, strengthFrames } from '../replayVizCore.js';
+import { strengthStage } from './replayStrengthDraw.js';
 
 const mkSeries = (n, f) => Array.from({ length: n }, (_, k) => ({ date: new Date(Date.parse('2026-06-01T00:00:00Z') + k * 864e5).toISOString().slice(0, 10), value: f(k) }));
 const S = { effr: mkSeries(200, () => 3.6), us2y: mkSeries(200, k => 3.8 + k * 0.001), us5y: mkSeries(200, k => 3.9 + k * 0.001), us10y: mkSeries(200, k => 4.1 + k * 0.002), us30y: mkSeries(200, k => 4.6 + k * 0.001) };
@@ -70,7 +71,7 @@ test('honest when there is no history: none, one day, a load error, or less than
   assert.match(s.doc.getElementById('rpv-stage').innerHTML, /nothing to replay/); assert.notEqual(s.doc.getElementById('rpv-scrub').attrs.disabled, undefined, 'the scrubber stays disabled');
   s.p.close();
   s = setup(defOf({ load: async () => ({ frames: frames5.slice(0, 1) }) })); await flush();
-  assert.match(s.doc.getElementById('rpv-stage').innerHTML, /Only one day is held/); s.p.close();
+  assert.match(s.doc.getElementById('rpv-stage').innerHTML, /Only one frame is held/); s.p.close();
   s = setup(defOf({ load: async () => { throw new Error('HTTP 502'); } })); await flush();
   assert.match(s.doc.getElementById('rpv-stage').innerHTML, /could not load: HTTP 502/); s.p.close();
   s = setup(defOf({ load: async () => ({ frames: frames5, wanted: { from: '2026-08-01' } }) })); await flush();
@@ -128,4 +129,38 @@ test('the curve definition asks for 90 days, passes the window it asked for, and
   const r = await def.load(); assert.equal(r.frames.length, curve.frames.length); assert.ok(r.wanted.from <= curve.frames[0].t);
   assert.match(def.note, /does not say where it goes next/); assert.doesNotMatch(def.note + def.title, /will |forecast |buy|sell/i);
   assert.equal(defFor('nope'), null);
+});
+
+const CC = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'NZD'];
+const strengthSeries = day => ({ ok: true, date: day, ccys: CC, stepMs: 900000, steps: Array.from({ length: 12 }, (_, k) => ({ t: Date.parse(`${day}T07:00:00Z`) + k * 900000, closed: false, h: { '1H': CC.map((_, j) => Math.sin(k / 3 + j) * 1.5), '4H': CC.map((_, j) => (j - 3.5) / 3), '1D': k < 2 ? null : CC.map(() => 0.2) } })) });
+
+test('currency strength drawing: eight ranked bars on one scale, the leader glows, a dashed tick per row, no hard-coded colours, plain under reduced motion', () => {
+  const x = strengthFrames(strengthSeries('2026-11-12')), svg = strengthStage(x.frames, 5, '1H', CC);
+  assert.match(svg, /^<svg/); assert.doesNotMatch(svg, /NaN|undefined|Infinity/); assert.equal((svg.match(/<rect /g) ?? []).length, 8);
+  assert.match(svg, /filter="url\(#rsg\d+\)"/); assert.equal((svg.match(/stroke-dasharray="2 2"/g) ?? []).length, 8);
+  assert.doesNotMatch(svg, /#[0-9a-fA-F]{3,8}["']/); assert.doesNotMatch(strengthStage(x.frames, 5, '1H', CC, { reduced: true }), /filter="url/);
+  assert.match(strengthStage(x.frames, 0, '1D', CC), /No 1D reading at this step/);
+});
+
+test('the strength replay asks for the chosen session, reloads when the session changes, redraws (no reload) when the window changes, and says what it holds', async () => {
+  const asked = []; const def = defFor('strength', { fetchJson: async u => { asked.push(u); return strengthSeries(u.split('=')[1]); }, now: () => Date.parse('2026-11-16T10:00:00Z') });
+  assert.equal(def.picks[0].values.length, 5); assert.equal(def.picks[0].values[0].v, '2026-11-13'); assert.deepEqual(def.picks[1].values.map(v => v.v), ['1H', '4H', '1D']);
+  const { doc, back } = setup(def); await flush();
+  assert.deepEqual(asked, ['/api/replay/strength?date=2026-11-13']);
+  assert.match(doc.getElementById('rpv-cov').textContent, /12 steps of 15 minutes, Fri 13 Nov 07:00 London to Fri 13 Nov 09:45 London/);
+  assert.match(doc.getElementById('rpv-date').textContent, /step 1 of 12 · 1H/); assert.match(doc.getElementById('rpv-stage').innerHTML, /<svg/);
+  doc.fire('click', back.querySelector('[data-pick="hz"][data-val="4H"]')); assert.match(doc.getElementById('rpv-date').textContent, /· 4H/); assert.equal(asked.length, 1, 'a window change does not refetch');
+  assert.equal(back.querySelector('[data-pick="hz"][data-val="4H"]').getAttribute('aria-pressed'), 'true');
+  doc.fire('click', back.querySelector('[data-pick="day"][data-val="2026-11-12"]')); await flush();
+  assert.deepEqual(asked, ['/api/replay/strength?date=2026-11-13', '/api/replay/strength?date=2026-11-12']); assert.match(doc.getElementById('rpv-date').textContent, /Thu 12 Nov/);
+  assert.match(def.note, /only the bars that had finished by then/); assert.doesNotMatch(def.note, /will |forecast|buy|sell/i);
+});
+
+test('the strength Replay button sits on the strength board card whatever window it shows', async () => {
+  const doc = makePage(), host = doc.createElement('div');
+  host.innerHTML = '<div data-surface="panel.ov.ccystrength"><div class="card" data-csroot><div class="ch"><span class="lbl">4H window</span></div></div></div>';
+  doc.body.appendChild(host);
+  const win = makeWin(doc, { matchMedia: () => ({ matches: false }), requestAnimationFrame: undefined });
+  const m = mountReplayViz({ doc, win, fetchJson: async () => strengthSeries('2026-11-13') });
+  assert.equal(doc.querySelectorAll('[data-rpviz="strength"]').length, 1); m.destroy();
 });

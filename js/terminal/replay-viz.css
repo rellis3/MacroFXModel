@@ -20,3 +20,7 @@
 .rpv-back button:focus-visible, .rpv-scrub:focus-visible { outline: 2px solid var(--pur2); outline-offset: 2px; }
 @media (max-width: 600px) { .rpv { padding: 12px; } .rpv-ctl { gap: 4px; } .rpv-ctl .btn { min-width: 36px; padding: 6px 8px; } }
 @media (prefers-reduced-motion: reduce) { .rpv-back { backdrop-filter: none; } }
+
+.rpv-picks { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+.rpv-pl { font: 600 10.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--tx3); margin-right: 4px; }
+.rpv-picks [aria-pressed="true"] { border-color: var(--pur2); color: var(--pur2); }
