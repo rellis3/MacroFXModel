@@ -87,11 +87,11 @@ Decisions needed from the owner are listed at the end of that document (new tab 
 | Item | Status | Notes |
 |---|---|---|
 | F1. Star and Favourites pill on the Assets cards, sharing the Pair favourites store | TODO | S. Owner asked 2026-11-16. Pair chip row defaults to starred markets when any exist. |
-| F2. Asset card opens the Pair page (or a slim modal with Open pair page and Deep dive buttons) | TODO | S. Owner decision on modal versus straight to Pair. |
-| F3. Browser Back works for Pair and the Deep dive (pushState, not replaceState) | TODO | S, medium risk: linkedSelection writes the hash. |
-| F4. Rename Charts to History; move Positioning history to the Positioning tab | TODO | S. |
-| F5. Slim the Pair page and add the Deep dive tab (name to be chosen; preview first) holding the 13 reference cards behind a pill row, each card with its own panel.deep.* surface row; #deep=GOLD hash; command DEEP | TODO | M to L. Tests naming tt-p ids and panel.pair rows must be updated. |
-| F6. Reorder and group the tab strip (Today, Markets, Macro, Research, Tools); Changed next to Overview, Monitor next to Assets, Replay next to Chart | TODO | M. Surface ids stay, so Access switches are safe. |
+| F2. Asset card opens the Pair page (the pop-up stays only as a fallback if the Pair module has not loaded) | DONE e42e00c1 | The group desk line that only the pop-up had now sits on the Pair page. Source-level test; the click is an owner click-through. |
+| F3. Browser Back works for Pair and the Deep dive (pushState, not replaceState) | DONE 2c10a383 (Deep dive in 8dc165ef) | js/terminal/pairHistory.js: a market you pick adds an entry; a market the page only follows (linked selection) replaces it; Back returns to the previous market or the tab it was opened from. Real Back button: owner click-through. |
+| F4. Rename Charts to History; move Positioning history to the Positioning tab | DONE 0e9747c8 | Ids and surface ids unchanged; CHARTS still works as a command. Positioning history is panel.pos.history (shown to the desk login as before). Seasonality stays on History (it is the 12-market grid; the per-market hours card is in the Deep dive). |
+| F5. Slim the Pair page and add the Deep dive tab holding the 13 reference cards in four sections, each card with its own panel.deep.* surface row; #deep=GOLD hash; command DEEP | DONE (preview) 8dc165ef | Owner-only preview (tab.deep). With it off a desk login keeps all 13 cards on the Pair page; with it on, Pair carries links and the cards live in the Deep dive. NOT done: collapsing the detail of 'What drives this' to its short form on Pair (it still shows in full). |
+| F6. Reorder and group the tab strip (Today, Markets, Macro, Analysis, Charts, Tools); Changed next to Overview, Monitor next to Assets, Replay next to Chart | DONE af5efa7e | Ids and surface ids unchanged; a group with every tab switched off disappears; the phone gets one scrolling row. The strip is not governed by the saved nav layout (that is the site menu). Look: owner click-through. |
 | F7. Overview: a 'today at a glance' first screen, fold the rest | TODO | M. |
 | F8. Currency strength: one home, four compact views linking to it | TODO | M. |
 | F9. Analytics split into 'Market behaviour' and 'The desk's record' pills | TODO | S to M. |
