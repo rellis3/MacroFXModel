@@ -20,6 +20,7 @@ import { THEMES } from './themes.js';
 import { TF_KEYS } from '../deskBarsCore.js';
 import { ASSET_WORDS } from './pairView.js';
 import { PAIRS as SPREAD_PAIRS, AKA as SPREAD_AKA } from './spreadsLibrary.js';
+import { SERIES as ROC_SERIES } from './insightSeries.js';
 import { STARTERS as MON_STARTERS } from './monitorCore.js';
 import { STARTERS as WS_STARTERS, cleanName as wsCleanName } from './workspaceCore.js';
 import { KINDS as AL_KINDS, FEEDS as AL_FEEDS } from '../deskAlertRulesCore.js';
@@ -94,6 +95,7 @@ export const INSIGHT_WORDS = {
   bis: ['BISSTRIP', ['BISHEAT', 'CREDITSTRIP', 'CREDITHEAT'], 'The bank-credit heat strip: five series of cross-border bank-claim growth from 1999 against the bank-credit study bands, the 2000-02 and 2008-09 busts shaded, and 14 borrowers. Context only.'],
   economies: ['ECONOMIES', ['ECONOMY', 'WORLD', 'COUNTRIES'], 'The eight economies side by side: growth, prices, jobs and spending, each with an arrow and a word.'],
   spreads: ['RATIOS', ['XY', 'RELATIVEVALUE', 'RV', 'SPREADSRATIOS'], 'Spreads and ratios: the X-versus-Y pairs the educators use (RSP/SPY, small against large caps, credit, the curve, VIX against its 3-month, copper/gold...) ranked by how stretched each is against its own history, with what they said beside what our tests found. Add a pair name to open it.'],
+  roc: ['ROC', ['MOMENTUM', 'RATEOFCHANGE', 'STALL', 'ACCEL'], 'Momentum and rate of change: where the 50-session rate of change of each price series sits in its own history, which runs have stalled, what is decelerating hardest, and what we found when the educator idea was tested. Add a market name to open it.'],
   unusual: ['UNUSUAL', ['MOVERS', 'EXTREME', 'WHATSUNUSUAL'], 'What is unusual right now: every series ranked by how extreme it is against its own history, with the working and the odds it is just chance.'],
 };
 
@@ -259,7 +261,7 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   // Insight boards (preview)
   for (const [key, [name, aliases, help]] of Object.entries(INSIGHT_WORDS)) {
     const id = `panel.insight.${key}`, row = surfaceById(id); if (!row) continue;
-    const more = key === 'spreads' ? { args: '[pair]', example: 'ratios rsp-spy', run: args => spreadsRun(args) } : {};
+    const more = key === 'spreads' ? { args: '[pair]', example: 'ratios rsp-spy', run: args => spreadsRun(args) } : key === 'roc' ? { args: '[market]', example: 'roc spx', run: args => rocRun(args) } : {};
     add({ id: `insight.${key}`, group: 'Insight boards', name, aliases, help, example: name.toLowerCase(), opens: `Insight > ${row.label.replace(/^Insight:\s*/, '')}`, surface: id, needs: ['tab.insight'], action: { kind: 'insight', panel: key }, ...more });
   }
   // releases by country
@@ -450,6 +452,14 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     const hit = names.find(n => n.toLowerCase() === a.toLowerCase()) ?? names.find(n => n.toLowerCase().startsWith(a.toLowerCase()));
     if (!hit) return { error: names.length ? `No saved search called "${a}". Try ${names.join(', ')}.` : 'No saved searches yet. Save one on the News tab first.' };
     return { action: { kind: 'news-search', name: hit }, summary: `Opens the News tab with the saved search "${hit}".` };
+  }
+  function rocRun(args) {
+    const a = String(args ?? '').trim().toLowerCase(), norm = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const prices = ROC_SERIES.filter(s => s.level === false);
+    if (!a) return { action: { kind: 'roc', key: null }, summary: 'Opens the Momentum & rate of change board on the Insight tab.' };
+    const hit = prices.find(s => norm(s.key) === norm(a)) ?? prices.find(s => norm(s.label) === norm(a)) ?? prices.find(s => norm(s.label).includes(norm(a)) || norm(s.key).startsWith(norm(a)));
+    if (!hit) return { error: `No price series called "${args.trim()}". Try ${prices.slice(0, 6).map(s => s.key).join(', ')}.` };
+    return { action: { kind: 'roc', key: hit.key }, summary: `Opens ${hit.label} on the Momentum & rate of change board.` };
   }
   function spreadsRun(args) {
     const a = String(args ?? '').trim().toLowerCase().replace(/[\s/]+/g, '-');

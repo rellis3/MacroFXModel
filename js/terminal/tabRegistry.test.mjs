@@ -71,7 +71,7 @@ test('the owner\'s list: exactly these are hidden, each for its reason', () => {
     preview: ['tab.deep', 'widget.cmdline', 'widget.linked', 'panel.cal.drills', 'widget.export', 'panel.news.saved', 'tab.monitor', 'tab.workspace', 'tab.kchart', 'widget.alerts', 'tab.insight', 'widget.replayviz', 'widget.asof', 'widget.ghostwalk', 'widget.oitime', 'panel.ov.glance', 'panel.flow.promos', 'panel.pair.driveshort', 'widget.density', 'widget.eventreplay', 'panel.changed.since', 'panel.risk.strip', 'widget.oidrill', 'widget.smile', 'panel.insight.bis', 'widget.ov.sections',
       // 2026-11-16 owner: a coin-flip direction read is hidden; bias-engine-backtest found no skill at 1, 5 or 20 days (plans/ONE_DESK_BIAS.md).
       // The Macro section's driver grid (panel.macro.biasengine) stays shown as context.
-      'panel.ov.engine', 'panel.ccy.engine', 'panel.asset.engine', 'panel.pair.engine', 'panel.replay.engine', 'panel.insight.spreads'],
+      'panel.ov.engine', 'panel.ccy.engine', 'panel.asset.engine', 'panel.pair.engine', 'panel.replay.engine', 'panel.insight.spreads', 'panel.insight.roc'],
   };
   for (const [reason, ids] of Object.entries(want)) for (const id of ids) assert.equal(surfaceById(id)?.hidden, reason, `${id} is hidden as '${reason}'`);
   const listed = Object.values(want).flat();
