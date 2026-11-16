@@ -14,6 +14,9 @@
  * Input shape (every block optional; the server's gatherer fills it, server.js _beGather):
  *   asOf          ISO issue time
  *   policy        { CCY: { weekBp, horizon, asOf, source } }      priced policy change over ~5 sessions (rate up = hawkish)
+ *                 (or, when the futures are missing or stale, the 2y yield proxy: { weekBp, asOf, source, proxy: true, futuresWhy };
+ *                 see fillPolicyFallback)
+ *   policyWhy     { CCY: reason }                                 why a currency has no policy input (both paths unusable)
  *   stance        { CCY: { score (-1..1 hawkish), meetingDate, asOf, source } }
  *   rates         { CCY: { level (%), z (vs own history), asOf, source } }
  *   data          { CCY: { score (-1..1), asOf, source } }      growth / inflation / labour / demand, rates excluded
@@ -71,6 +74,10 @@ export const TH = {
 /** Age budget per input, days (older -> dropped as stale). Monthly series (rates, real yield, data) get 120. */
 export const MAX_AGE_DAYS = { policy: 10, stance: 120, rates: 120, data: 120, realYield: 120, usReal: 7, cot: 14, risk: 7, prices: 7 };
 export const NEUTRAL_MAX_STRENGTH = 2, MIN_COVERAGE = 0.5, CONFLICT_GAP = 0.1;
+/** What the desk's data universe holds at all. A driver outside it is NOT APPLICABLE (out of the weight base), not missing:
+ *  coverage measures temporary data failure, never a series we have never had (owner 2026-11-16: everything came out Neutral). */
+export const REAL_YIELD_UNIVERSE = ['USD', 'EUR', 'CHF'];
+export const COT_UNIVERSE_MISSING = ['USD', 'SILVER', 'WTI', 'COPPER', 'DE30', 'UK100'];
 export const FOOTNOTE = 'Rule-based macro checklist, weights theory-v1, scored forward on the bias scoreboard; not a trade signal.';
 
 const DAY = 864e5, H4 = 4 * 3600e3;
@@ -94,6 +101,28 @@ export function unusable(asOf, issueMs, maxAgeDays) {
   if (t > issueMs) return 'published after the issue time';
   if (maxAgeDays != null && issueMs - t > maxAgeDays * DAY) return `stale (${Math.floor((issueMs - t) / DAY)} days old)`;
   return null;
+}
+
+// ── policy path: futures first, the 2y government yield as the fallback ────────────────────────────────────────
+/**
+ * Per currency: the futures-based priced change when it is usable (dated, not after the issue, within
+ * MAX_AGE_DAYS.policy, with a week change); otherwise the 2y government yield's change over the last 5 business days
+ * (js/yield2y.js), marked proxy: true; otherwise nothing, with both reasons in `why`.
+ *   futures  { CCY: { weekBp, horizon, asOf, source } }
+ *   proxy    { CCY: { weekBp, asOf, source, level? } }      (or { why } when the 2y series could not give a change)
+ * Returns { policy, why, used: { CCY: 'futures' | 'proxy' } }. Pure.
+ */
+export function fillPolicyFallback(futures, proxy, issueMs, ccys = CCYS) {
+  const policy = {}, why = {}, used = {};
+  const reason = (x, what) => (!x ? 'no data' : x.why && !fin(x.weekBp) ? x.why : unusable(x.asOf, issueMs, MAX_AGE_DAYS.policy) ?? (fin(x.weekBp) ? null : `no week change in the ${what}`));
+  for (const c of ccys) {
+    const f = futures?.[c], fWhy = reason(f, 'futures pull');
+    if (!fWhy) { policy[c] = f; used[c] = 'futures'; continue; }
+    const p = proxy?.[c], pWhy = reason(p, '2y series');
+    if (!pWhy) { policy[c] = { ...p, proxy: true, futuresWhy: f ? fWhy : 'no futures' }; used[c] = 'proxy'; continue; }
+    why[c] = `no policy expectations (futures: ${f ? fWhy : 'none'}; 2y proxy: ${pWhy})`;
+  }
+  return { policy, why, used };
 }
 
 // ── trend from candles ──────────────────────────────────────────────────────────────────────────────────────────
@@ -147,7 +176,7 @@ export function basketIndex(byPair, issueMs, durMs) {
  */
 export function combine(drivers) {
   const app = drivers.filter(x => !x.na), used = app.filter(x => fin(x.d)), wAll = app.reduce((s, x) => s + x.w, 0), wUsed = used.reduce((s, x) => s + x.w, 0);
-  const out = used.map(x => { const wNorm = x.w / wUsed; return { key: x.key, label: x.label, reading: x.reading, d: x.d, w: x.w, wNorm: rnd(wNorm, 4), contrib: rnd(wNorm * x.d, 4), source: x.source, asOf: x.asOf ?? null }; });
+  const out = used.map(x => { const wNorm = x.w / wUsed; return { key: x.key, label: x.label, reading: x.reading, d: x.d, w: x.w, wNorm: rnd(wNorm, 4), contrib: rnd(wNorm * x.d, 4), source: x.source, asOf: x.asOf ?? null, ...(x.proxy ? { proxy: true } : {}) }; });
   const score = wUsed > 0 ? used.reduce((s, x) => s + (x.w / wUsed) * x.d, 0) : null;
   return { score: score == null ? null : rnd(score, 4), coverage: wAll > 0 ? rnd(wUsed / wAll, 3) : 0, drivers: out,
     missing: app.filter(x => !fin(x.d)).map(x => ({ key: x.key, label: x.label, w: x.w, why: x.why ?? 'no data' })) };
@@ -227,12 +256,13 @@ export function riskScore(inputs, issueMs, spx) {
 // ── building blocks per driver ──────────────────────────────────────────────────────────────────────────────────
 function policyDriver(c, inputs, issueMs) {
   const p = inputs?.policy?.[c], st = inputs?.stance?.[c], base = { key: 'policy', label: 'Policy path', w: CCY_WEIGHTS.policy, source: '/api/cb-expectations + /api/macro-scorecard cbSentiment' };
-  const bad = p ? unusable(p.asOf, issueMs, MAX_AGE_DAYS.policy) : 'no policy expectations';
-  if (bad || !fin(p.weekBp)) return { ...base, d: null, why: bad ?? 'no week change in the futures pull' };
+  const bad = p ? unusable(p.asOf, issueMs, MAX_AGE_DAYS.policy) : (inputs?.policyWhy?.[c] ?? 'no policy expectations');
+  if (bad || !fin(p.weekBp)) return { ...base, d: null, why: bad ?? `no week change in the ${p.proxy ? '2y series' : 'futures pull'}` };
   const stOk = st && fin(st.score) && !unusable(st.asOf ?? st.meetingDate, issueMs, MAX_AGE_DAYS.stance);
   const dSt = stOk ? (st.score >= TH.stance ? 1 : st.score <= -TH.stance ? -1 : 0) : 0;
   const d = clamp(band(p.weekBp, TH.policyWeekBp) + dSt, -2, 2);
-  return { ...base, d, asOf: p.asOf, reading: `${p.horizon ?? '6m'} priced ${sgn(p.weekBp, 0)}bp over the week${stOk ? `; stance ${st.score >= TH.stance ? 'hawkish' : st.score <= -TH.stance ? 'dovish' : 'neutral'} (${sgn(st.score)}, ${st.meetingDate ?? ''})` : ''}`, policyD: d };
+  const what = p.proxy ? `2y yield ${sgn(p.weekBp, 0)}bp over the week (proxy, futures ${/stale/.test(p.futuresWhy ?? '') ? 'stale' : 'missing'})` : `${p.horizon ?? '6m'} priced ${sgn(p.weekBp, 0)}bp over the week`;
+  return { ...base, ...(p.proxy ? { source: `${p.source ?? '2y government yield'} + /api/macro-scorecard cbSentiment`, proxy: true } : {}), d, asOf: p.asOf, reading: `${what}${stOk ? `; stance ${st.score >= TH.stance ? 'hawkish' : st.score <= -TH.stance ? 'dovish' : 'neutral'} (${sgn(st.score)}, ${st.meetingDate ?? ''})` : ''}`, policyD: d };
 }
 function ratesDriver(c, inputs, issueMs, avg) {
   const r = inputs?.rates?.[c], base = { key: 'rates', label: 'Rate differential trend', w: CCY_WEIGHTS.rates, source: '/api/rate-diff' };
@@ -250,6 +280,7 @@ function dataDriver(c, inputs, issueMs, w = CCY_WEIGHTS.data, key = 'data', labe
 }
 function realYieldDriver(c, inputs, issueMs, avg) {
   const x = inputs?.realYield?.[c], base = { key: 'realYield', label: 'Real yield', w: CCY_WEIGHTS.realYield, source: '/api/real-yield' };
+  if (!x && !REAL_YIELD_UNIVERSE.includes(c)) return { ...base, d: null, na: true, why: 'no real-yield series for this currency (not held)' };
   const bad = x ? unusable(x.asOf, issueMs, MAX_AGE_DAYS.realYield) : 'no real yield';
   if (bad || !fin(x.level)) return { ...base, d: null, why: bad ?? 'no level' };
   const gap = fin(avg) ? x.level - avg : null;
@@ -264,6 +295,7 @@ function roleDriver(name, R, w, label = 'Risk role × R') {
 }
 function cotDriver(name, inputs, issueMs, w) {
   const x = inputs?.cot?.[name], base = { key: 'positioning', label: 'Positioning (COT, contrarian)', w, source: '/api/cot-state' };
+  if (!x && COT_UNIVERSE_MISSING.includes(name)) return { ...base, d: null, na: true, why: 'no COT contract tracked for this market (not held)' };
   const bad = x ? unusable(x.asOf, issueMs, MAX_AGE_DAYS.cot) : 'no COT row';
   if (bad || !fin(x.pct)) return { ...base, d: null, why: bad ?? 'no percentile' };
   const { crowded, leaning } = TH.cotPct, p = x.pct, long = !fin(x.share) || x.share > 0, short = !fin(x.share) || x.share < 0;
@@ -292,12 +324,13 @@ function usRealDriver(inputs, issueMs, w, key, label) {
 function usdDriver(usd, w, label = 'USD (inverted)') {
   const base = { key: 'usd', label, w, source: 'bias-engine USD score' };
   if (!usd || !fin(usd.score) || usd.coverage < MIN_COVERAGE) return { ...base, d: null, why: 'USD score unavailable' };
-  return { ...base, d: -band(usd.score, TH.usdScore) || 0, asOf: usd.asOf, reading: `USD score ${sgn(usd.score)} (${dirWord(usd.dir)} ${usd.strength}/10)` };
+  // the USD SCORE drives this, never its Neutral-gated label (a Neutral USD with score +0.67 still pushes gold down)
+  return { ...base, d: -band(usd.score, TH.usdScore) || 0, asOf: usd.asOf, reading: `USD score ${sgn(usd.score)} (${usd.dir === 'NEUTRAL' ? `below its own call threshold, ${usd.strength}/10` : `${dirWord(usd.dir)} ${usd.strength}/10`})` };
 }
 function pathDriver(ccy, ccyRec, w, label) {
   const p = ccyRec?._policyD, base = { key: ccy === 'USD' ? 'fedPath' : 'ratesPath', label, w, source: '/api/cb-expectations' };
   if (!fin(p)) return { ...base, d: null, why: `no ${ccy} policy expectations` };
-  return { ...base, d: -p || 0, asOf: ccyRec._policyAsOf, reading: `${ccy} policy ${sgn(p, 0)}: ${ccyRec._policyReading}` };
+  return { ...base, ...(ccyRec._policyProxy ? { source: ccyRec._policySource, proxy: true } : {}), d: -p || 0, asOf: ccyRec._policyAsOf, reading: `${ccy} policy ${sgn(p, 0)}: ${ccyRec._policyReading}` };
 }
 
 // ── the record ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -349,7 +382,7 @@ export function buildBiasRecord(inputs) {
     dr.push(bFresh ? trendDriver(c, slopeZ(bD1.index[c]), bH4 ? slopeZ(bH4.index[c]) : null, CCY_WEIGHTS.trend, new Date(bD1.lastT + DAY).toISOString(), 'OANDA D1/H4, 7 USD majors → 8-currency basket')
       : { key: 'trend', label: 'Trend (D1/H4 EMA20)', w: CCY_WEIGHTS.trend, d: null, why: 'no basket candles' });
     const m = finish(c, combine(dr), { riskRole: RISK_ROLE[c] });
-    Object.defineProperties(m, { _policyD: { value: pol.policyD ?? null }, _policyAsOf: { value: pol.asOf ?? null }, _policyReading: { value: pol.reading ?? null } });
+    Object.defineProperties(m, { _policyD: { value: pol.policyD ?? null }, _policyAsOf: { value: pol.asOf ?? null }, _policyReading: { value: pol.reading ?? null }, _policyProxy: { value: !!pol.proxy }, _policySource: { value: pol.source } });
     m.asOf = asOf;
     currencies[c] = m;
   }

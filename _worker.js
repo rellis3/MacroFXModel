@@ -99,6 +99,7 @@ function isAllowedKVKey(key) {
     'research_room_talk_v1',   // Research rooms (js/researchRoom.js): short-remark model calls used against the cap
     'desk_shared_reads_v1',   // Desk shared daily reads (js/deskSharedReads.js): one market deep read per market per London day, written by the first desk user to press the button. Also in kv.js, _worker.js (both lists) and js/storeRegistry.js.
     'research_intake_queue_v1',   // Research hub drop box (js/researchHub.js): items waiting for the learn-intake skill
+    'yield2y_daily_v1',   // 2y government yields, daily (js/yield2y.js): the bias engine's policy fallback
     'research_brief_v1',   // Research brief translator (js/researchBrief.js): model calls used against the cap
     'library_concepts_v1',   // Paper Library concept cards (js/libraryConcepts.js): model calls used against the 400 cap, content hashes sent
     'library_figs_v1',   // Paper Library figure/table notes (js/libraryFigs.js): model calls used against the 600 cap, papers done
@@ -1171,6 +1172,8 @@ export default {
             'research_room_talk_v1',   // Research rooms (js/researchRoom.js): short-remark model calls used against the cap
             'desk_shared_reads_v1',   // Desk shared daily reads (js/deskSharedReads.js): one market deep read per market per London day, written by the first desk user to press the button. Also in kv.js, _worker.js (both lists) and js/storeRegistry.js.
             'research_intake_queue_v1',   // Research hub drop box (js/researchHub.js): items waiting for the learn-intake skill
+            // yield2y_daily_v1: the eight currencies' 2y government yields (js/yield2y.js), the bias engine's policy fallback.
+            'yield2y_daily_v1',
             'research_brief_v1',   // Research brief translator (js/researchBrief.js): model calls used against the cap
             'library_concepts_v1',   // Paper Library concept cards (js/libraryConcepts.js): model calls used against the 400 cap, content hashes sent
     'library_figs_v1',   // Paper Library figure/table notes (js/libraryFigs.js): model calls used against the 600 cap, papers done

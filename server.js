@@ -430,7 +430,8 @@ import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, getBuffer as _r2GetBuffer
 import { INSTRUMENTS as _DL_INSTRUMENTS, HORIZONS as _DL_HORIZONS, closesFromCandles as _dlClosesFromCandles, issueRecord as _dlIssue, outcomeRecord as _dlOutcome, summarise as _dlSummarise } from './js/directionLedger.js';
 import { RESEARCH as _DL_RESEARCH, volFlags as _dlVolFlags, FX_CARRY_EUR_OFFSET as _DL_EUR_OFFSET, FX_CARRY_MAX_AGE_DAYS as _DL_RATE_MAX_AGE_DAYS } from './js/directionResearch.js';
 import { SAMEDAY_INSTRUMENTS as _BS_INSTRUMENTS, SAMEDAY_TARGETS as _BS_TARGETS, issueSameDay as _bsIssue, outcomeSameDay as _bsOutcome, summariseSameDay as _bsSummarise, midAt as _bsMidAt, sigmaDay as _bsSigmaDay, londonMs as _bsLondonMs, targetEndMs as _bsEndMs, isWeekday as _bsIsWeekday, MID_LOOKBACK_MS as _BS_LOOKBACK } from './js/directionLedger.js';   // bias-scoreboard same-day rows (forge/BIAS_SCOREBOARD_PREREG.md)
-import { buildBiasRecord as _beBuild, marketView as _beMarket } from './js/biasEngine.js';   // bias engine v1 (plans/BIAS_ENGINE_SPEC.md)
+import { buildBiasRecord as _beBuild, marketView as _beMarket, fillPolicyFallback as _beFillPolicy } from './js/biasEngine.js';   // bias engine v1 (plans/BIAS_ENGINE_SPEC.md)
+import { YIELD2Y_KV as _Y2_KV, buildYield2yPayload as _y2Payload, yieldWeekChange as _y2Week } from './js/yield2y.js';   // 2y government yields: the bias engine's policy fallback
 import { biasEngine as _bsBiasEngine, h4Trend as _bsH4Trend, deskRating as _bsDeskRating, deskCcy as _bsDeskCcy, maxSignals as _bsMaxSignals, surpriseRule as _bsSurpriseRule, fundabias as _bsFundabias, FUNDABIAS_ENABLED as _BS_FUNDABIAS_ON } from './js/biasForecasters.js';
 import { scoreTrack as _dlScoreTrack } from './js/directionScore.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
@@ -30016,6 +30017,51 @@ async function _bsRoute(req, res) {
     summary: req.query.summary === '1' ? _bsSummarise(await load(issues.slice(-400)), await load(outKeys.slice(-1200))) : 'add &summary=1' });
 }
 
+// ── 2y government yields, daily (js/yield2y.js) ─────────────────────────────────────────────────────────────────
+// The bias engine's laptop-independent policy fallback: each currency's 2y government yield from its official free
+// source (FRED DGS2, ECB YC, BoE IADB IUDSNPY, MoF JGB, SNB rendoeid, BoC Valet, RBA F2, RBNZ B2), the last ~60
+// business days, in KV yield2y_daily_v1 with a per-currency status. Fetched once per London weekday from 05:30 (before
+// the 07:00 issue) and on demand by the bias engine's gather when the store is older than 20 hours.
+let _y2Inflight = null;
+async function _y2Read() { try { const raw = await kv.get(_Y2_KV); return raw ? JSON.parse(raw) : null; } catch { return null; } }
+function _y2Build() {
+  if (_y2Inflight) return _y2Inflight;
+  _y2Inflight = (async () => {
+    const prev = await _y2Read();
+    const fredObs = process.env.FRED_KEY ? (id, from) => fetchFredObservations(id, from, process.env.FRED_KEY) : null;
+    const payload = await _y2Payload(prev, { fredObs });
+    await kv.put(_Y2_KV, JSON.stringify(payload));
+    console.log(`[yield2y] ${Object.entries(payload.byCcy).map(([c, v]) => `${c} ${v.ok ? `${v.last?.date} ${v.last?.value}` : `FAIL ${v.error}`}`).join('; ')}`);
+    return payload;
+  })().finally(() => { _y2Inflight = null; });
+  return _y2Inflight;
+}
+/** The stored payload, rebuilt first when it is missing or older than 20 hours (a failed rebuild falls back to what is stored). */
+async function _y2Ensure(maxAgeMs = 20 * 3600e3) {
+  const cur = await _y2Read();
+  if (cur && Date.now() - Date.parse(cur.generatedAt ?? 0) < maxAgeMs) return cur;
+  try { return await _y2Build(); } catch (e) { console.warn('[yield2y]', e.message); return cur; }
+}
+async function _y2Tick() {
+  const now = Date.now(), date = _dpLondonDate(now);
+  if (!_bsIsWeekday(date) || now < _bsLondonMs(date, 5, 30)) return;
+  const cur = await _y2Read();
+  if (cur?.generatedAt && _dpLondonDate(Date.parse(cur.generatedAt)) === date && Date.parse(cur.generatedAt) >= _bsLondonMs(date, 5, 30)) return;   // once per London weekday
+  await _y2Build();
+}
+svcInterval('yield2y', () => _y2Tick().catch(e => console.error('[yield2y]', e.message)), 15 * 60_000);
+svcTimeout('yield2y', () => _y2Ensure().catch(e => console.error('[yield2y]', e.message)), 150 * 1000);
+// GET /api/yield2y: the stored 2y series with each currency's source status; ?refresh=1 refetches first.
+app.get('/api/yield2y', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const p = req.query.refresh === '1' ? await _y2Build() : await _y2Read();
+    if (!p) return res.json({ ok: false, error: 'not fetched yet: add ?refresh=1' });
+    const week = Object.fromEntries(Object.entries(p.byCcy ?? {}).map(([c, v]) => [c, _y2Week(v.points, _dpLondonDate(Date.now()))]));
+    res.json({ ok: true, ...p, week });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // ── Bias engine (plans/BIAS_ENGINE_SPEC.md; logic in js/biasEngine.js, pure) ─────────────────────────────────────────
 // A rule-based macro checklist for every market: the eight currencies, the risk score, all 28 crosses and the assets.
 // Issued once per London weekday between 07:00 and 07:30 (after Asia), written once to KV bias_engine_<date> with an
@@ -30035,18 +30081,38 @@ const _beDayEnd = d => `${d}T23:59:00.000Z`;
 async function _beGather(issueMs) {
   const asOf = new Date(issueMs).toISOString(), issueDate = _dpLondonDate(issueMs), status = {}, inputs = { asOf };
   const step = async (name, fn) => { try { await fn(); status[name] = status[name] ?? 'ok'; } catch (e) { status[name] = `error: ${e.message}`; } };
-  const kvJson = async k => { const raw = await kv.get(k); if (!raw) return null; const p = JSON.parse(raw); return p?.data ?? p; };
+  // one retry: a transient KV miss must not turn into a silently empty driver (2026-11-16: every rate driver vanished on one read)
+  const kvJson = async k => { let raw = await kv.get(k).catch(() => null); if (!raw) { await new Promise(r => setTimeout(r, 400)); raw = await kv.get(k).catch(() => null); } if (!raw) return null; const p = JSON.parse(raw); return p?.data ?? p; };
   await Promise.all([
     step('policy', async () => {   // /api/cb-expectations: the priced change over the week at ~6 months (3 / 12 as fallbacks)
-      const payload = await kvJson('cb_rate_futures_v1');
-      if (!payload?.banks) { status.policy = 'no futures pull'; return; }
-      const pr = await _policyRatesNow().catch(() => ({ rates: {} }));
-      const ex = _cbExpect(payload, Object.fromEntries(Object.entries(pr.rates ?? {}).map(([k, v]) => [k, v.rate])), issueMs);
-      inputs.policy = {};
-      for (const [c, b] of Object.entries(ex.banks ?? {})) {
-        const h = ['m6', 'm3', 'm12'].find(k => Number.isFinite(b[k]?.weekBp));
-        if (h) inputs.policy[c] = { weekBp: b[h].weekBp, horizon: h.slice(1) + 'm', asOf: ex.asOf, source: `/api/cb-expectations (${b.source})` };
-      }
+      // Futures first; where a currency's futures input is missing or older than MAX_AGE_DAYS.policy, the 2y government
+      // yield's change over the last 5 business days stands in (KV yield2y_daily_v1, js/yield2y.js), marked proxy: true.
+      const futures = {}, proxy = {};
+      try {
+        const payload = await kvJson('cb_rate_futures_v1');
+        if (!payload?.banks) status.policyFutures = 'no futures pull';
+        else {
+          const pr = await _policyRatesNow().catch(() => ({ rates: {} }));
+          const ex = _cbExpect(payload, Object.fromEntries(Object.entries(pr.rates ?? {}).map(([k, v]) => [k, v.rate])), issueMs);
+          for (const [c, b] of Object.entries(ex.banks ?? {})) {
+            const h = ['m6', 'm3', 'm12'].find(k => Number.isFinite(b[k]?.weekBp));
+            if (h) futures[c] = { weekBp: b[h].weekBp, horizon: h.slice(1) + 'm', asOf: ex.asOf, source: `/api/cb-expectations (${b.source})` };
+          }
+          status.policyFutures = `ok, as of ${ex.asOf}`;
+        }
+      } catch (e) { status.policyFutures = `error: ${e.message}`; }
+      try {
+        const y2 = await _y2Ensure();
+        for (const [c, v] of Object.entries(y2?.byCcy ?? {})) {
+          const w = _y2Week(v.points, issueDate);
+          proxy[c] = w.ok ? { weekBp: w.weekBp, level: w.level, asOf: _beDayEnd(w.date), source: `2y government yield (proxy: ${v.source})` }
+            : { why: v.points?.length ? w.why : `no 2y series (${v.error ?? 'not fetched'})` };
+        }
+      } catch (e) { status.policyProxy = `error: ${e.message}`; }
+      const f = _beFillPolicy(futures, proxy, issueMs);
+      inputs.policy = f.policy; inputs.policyWhy = f.why;
+      status.policyUsed = Object.entries(f.used).map(([c, u]) => `${c} ${u}`).join(', ') || 'none';
+      if (!Object.keys(f.policy).length) status.policy = 'no usable futures or 2y proxy';
     }),
     step('scorecard', async () => {   // /api/macro-scorecard: data momentum (growth, inflation, labour, demand; rates excluded) and cbSentiment
       const sc = await _buildMacroScorecard();
@@ -30062,10 +30128,12 @@ async function _beGather(issueMs) {
     step('rates', async () => {   // /api/rate-diff
       const p = await kvJson(_RATE_DIFF_KV); inputs.rates = {};
       for (const [c, v] of Object.entries(p?.byCcy ?? {})) if (v?.latestDate) inputs.rates[c] = { level: v.latestRate, z: v.z, asOf: _beDayEnd(v.latestDate), source: '/api/rate-diff' };
+      if (!Object.keys(inputs.rates).length) status.rates = 'error: rate_diff_v1 empty or unreadable';
     }),
     step('realYield', async () => {   // /api/real-yield
       const p = await kvJson(_REAL_YIELD_KV); inputs.realYield = {};
       for (const [c, v] of Object.entries(p?.byCcy ?? {})) if (v?.latestDate && Number.isFinite(v.latestReal)) inputs.realYield[c] = { level: v.latestReal, z: v.z, asOf: _beDayEnd(v.latestDate), source: '/api/real-yield' };
+      if (!Object.keys(inputs.realYield).length) status.realYield = 'error: real-yield store empty or unreadable';
     }),
     step('usReal', async () => {   // FRED DFII10 cache (fredhistory_series_tips), closes dated before the issue date
       const pts = JSON.parse((await kv.get('fredhistory_series_tips')) || '[]').filter(p => p.date < issueDate && Number.isFinite(p.value));
