@@ -10,7 +10,7 @@ test('PLAY has help, an example and an opens note, and runs each visual by its w
   assert.ok(c, 'the command is offered when the surface is on'); assert.ok(c.help.length > 40); assert.match(c.example, /^play /); assert.ok(c.opens.length > 10);
   for (const v of VISUALS) for (const w of [v.id, ...v.words]) {
     const r = search(cmds, `play ${w}`)[0]; assert.equal(r.cmd.id, 'replay.viz', w); assert.deepEqual(r.action, { kind: 'replay-viz', id: v.id }, w);
-    assert.doesNotMatch(r.summary, /will |forecast|buy|sell/i);
+    assert.doesNotMatch(r.summary, /will |forecast to|going to|buy|sell/i);   // the forecast median is data the replay compares with, not a call
   }
   const bad = search(cmds, 'play zzz')[0]; assert.match(bad.error, /not a visual I can replay yet/); assert.match(search(cmds, 'play')[0]?.cmd.name ?? 'PLAY', /PLAY/);
 });

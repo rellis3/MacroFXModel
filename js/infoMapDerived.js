@@ -4475,6 +4475,10 @@ export const DERIVED = {
     {
      "file": "js/terminal/replayRegimeDraw.js",
      "exists": true
+    },
+    {
+     "file": "js/terminal/replayRangeDraw.js",
+     "exists": true
     }
    ],
    "names": {
@@ -4487,6 +4491,7 @@ export const DERIVED = {
      "js/terminal/replayFedDraw.js",
      "js/terminal/replayLink.js",
      "js/terminal/replayPlayer.js",
+     "js/terminal/replayRangeDraw.js",
      "js/terminal/replayRegimeDraw.js",
      "js/terminal/replayStrengthDraw.js",
      "js/terminal/replayView.js",
