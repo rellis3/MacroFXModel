@@ -85,6 +85,7 @@ export const SURFACES = [
   mk('widget.disclaimer', 'widget', 'Educational notice (desk login only)', 'Shell', null, 'one line under the tabs for the desk login: educational and informational macro analysis, not advice and not a trade signal'),
   mk('widget.signout', 'widget', 'Sign out (top bar)', 'Shell', null, 'shows the session (owner or desk) and signs out; always shown, so a desk user can always leave'),
   mk('widget.themepicker', 'widget', 'Colour theme picker (top bar)', 'Shell', null, 'swatches that change the colours, the glow and the fonts; remembered in this browser; changes nothing else'),
+  mk('widget.phonemenu', 'widget', 'Phone menu button (top bar)', 'Shell', null, 'on a phone the top bar is one slim bar and this More button opens the rest (theme, status chips, links); always shown, so no control is left unreachable'),
   // ── preview features: the owner always sees them, the desk login only once the owner switches them on (shortcut under the Info map tab) ──
   mk('widget.cmdline', 'widget', 'Command line (press / or `)', 'Terminal features (preview)', P, 'type a market, a board or a command (EURUSD, FED, MACRO RATES, REPLAY NQ 12 NOV) and jump straight there; every command has its own help line and ? lists them all'),
   mk('panel.cal.drills', 'panel', 'Calendar: drills', 'Terminal features (preview)', P, 'on the Calendar tab: the big earnings this week, the scorecards of the latest releases (how big each market moved against a normal half-hour), and on every release row a drill with what the release has done to markets before (size, not direction) and the nowcast gap for the matching US rows'),
@@ -265,7 +266,7 @@ export const DEFAULT_VISIBLE_IDS = SURFACES.filter(s => s.defaultVisible).map(s 
     login). They ARE listed in the admin panel, with a lock. Derived from the registry, so a new link is covered automatically. */
 export const LOCKED_HIDDEN_IDS = SURFACES.filter(s => s.kind === 'nav').map(s => s.id);
 /** Surfaces every session always sees, whatever the saved switches say (Sign out: a desk user must always be able to leave). */
-export const ALWAYS_VISIBLE_IDS = ['widget.signout'];
+export const ALWAYS_VISIBLE_IDS = ['widget.signout', 'widget.phonemenu'];
 
 export const surfaceById = id => SURFACES.find(s => s.id === id) ?? null;
 

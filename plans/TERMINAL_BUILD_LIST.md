@@ -198,3 +198,10 @@ Owner-only preview, registry surface `widget.ov.sections`. With it off a desk lo
 | News and events: the wire, releases ahead | DONE (preview) | Both also exist on the News and Calendar tabs; they stay here as the Overview's own cards. |
 | The desk: book intelligence, record, best pairs, trade watch, playbooks, alerts | DONE (preview) | The trade, P&L and internal blocks (record, best pairs, trade watch, playbooks, alerts) stay hidden for a desk login by the registry: a section only chooses which allowed blocks are on screen. |
 | Not done: building a section lazily (Macro does) | NOT DONE | Overview draws every block once at page load from feeds it already loads, so a section only shows or hides blocks that are already there. |
+
+## 14. Phone header (2026-11-17, owner screenshot: 'the header bar kills half the screen')
+| Item | Status | Notes |
+|---|---|---|
+| Phone header: one slim bar (title, magnifier for the command line, LIVE chip, More button) with the four clocks as SYD/TYO/LON/NYC on a second line; Alerts, Linked, Time machine, Book, Data, theme, Owner and the page links sit in the sheet More opens; the header scrolls away (not sticky) on a phone | DONE | js/terminal/phone-header.css, js/terminal/phoneHeader.js, scripts/phone-header-check.mjs. Header 329px to 106px at 390 wide (of 844), 365px to 106px at 360. Desktop (1440) and tablet (768) layout rectangles identical before and after. Viewer-visible change, not a preview |
+| Bottom: the time bar starts folded (a small LIVE tab) on a phone until opened; Ask the desk is a 44px round button; the page keeps bottom padding so the last content is clear of both | DONE | A saved open/closed choice still wins |
+| Not checked | OPEN | A real phone, and the Amber, Green console, Colour-blind and High-contrast themes. Known, not mine: js/terminal/insightLayout.test.mjs fails on `.bis-axis span` nowrap at the base commit (the BIS strip) |

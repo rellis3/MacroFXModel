@@ -123,7 +123,7 @@ test('visibleFor: owner sees all; a viewer sees the defaults plus what the owner
 
 test('LOCKED_HIDDEN_IDS is every link out to another page and nothing else', () => {
   assert.deepEqual([...LOCKED_HIDDEN_IDS], SURFACES.filter(s => s.kind === 'nav').map(s => s.id));
-  assert.deepEqual([...ALWAYS_VISIBLE_IDS], ['widget.signout']);
+  assert.deepEqual([...ALWAYS_VISIBLE_IDS], ['widget.signout', 'widget.phonemenu']);   // Sign out, and the phone More button (no control may be left unreachable)
 });
 
 test('schema: switches saved under another schema are ignored whole, and the owner is told', () => {

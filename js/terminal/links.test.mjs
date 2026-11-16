@@ -145,7 +145,7 @@ test('resolveSession carries auth; Sign out is a surface every session always se
   assert.equal(resolveSession({ ok: true, role: 'owner', auth: false }, { ok: true, role: 'owner', visible: [] }).auth, false);
   assert.equal(resolveSession({ ok: true, role: 'viewer', auth: true }, { ok: true, role: 'viewer', visible: [] }).auth, true);
   assert.equal(resolveSession(null, null).auth, true, 'unknown: keep the way out');
-  assert.deepEqual(ALWAYS_VISIBLE_IDS, ['widget.signout']);
+  assert.deepEqual(ALWAYS_VISIBLE_IDS, ['widget.signout', 'widget.phonemenu']);   // and the phone More button: no control may be left unreachable
   assert.ok(SURFACE_IDS.includes('widget.signout'));
   assert.ok(visibleFor('viewer', { 'widget.signout': false }).includes('widget.signout'));
   assert.ok(visibleFor('viewer', null).includes('widget.signout'));

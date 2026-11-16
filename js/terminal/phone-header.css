@@ -1,0 +1,46 @@
+/* js/terminal/phone-header.css: the PHONE header (2026-11-17). At 700px and under the header is one slim bar (title, a magnifier for the command line, the LIVE
+   chip, a More button) with the four market clocks on a second line; everything else (Alerts, Linked, Time machine, Book, Data, theme, Owner, Access, ...)
+   sits in the sheet the More button opens. The header scrolls away with the page (it is not sticky on a phone). Desktop and tablet are untouched: every rule
+   below is inside the media query. The controls keep their ids and data-surface attributes; js/terminal/phoneHeader.js only moves #cmdbtn and #asofchip next
+   to the bar and back. */
+.hm-more { display: none; }
+@media (max-width: 700px) {
+  .top { position: relative; }   /* scrolls away: reading space is the page, not a 330px bar */
+  .topin { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; grid-template-areas: "brand cmd live more" "clocks clocks clocks clocks"; gap: 5px 8px; padding: 8px 12px 6px; align-items: center; }
+  .topin > .brand { grid-area: brand; font-size: 12.5px; letter-spacing: .12em; gap: 7px; min-width: 0; white-space: nowrap; }
+  .topin > .brand i { width: 8px; height: 8px; }
+  .topin > #cmdbtn { grid-area: cmd; }
+  .topin > #asofchip { grid-area: live; }
+  .topin > .hm-more { grid-area: more; display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 36px; padding: 0 10px; }
+  .topin > .hm-more svg { display: block; }
+  .topin > .clocks { grid-area: clocks; flex-wrap: nowrap; gap: 5px; min-width: 0; overflow: hidden; }
+  .clk { padding: 3px 8px; gap: 5px; font-size: 10.5px; letter-spacing: .04em; flex: 1 1 0; min-width: 0; justify-content: center; }
+  .clk b { font-size: 0; }
+  .clk b::after { content: attr(data-ab); font-size: 10px; color: var(--tx2); }
+  .ticker .tk { padding: 6px 0; font-size: 11px; }
+
+  /* the magnifier: the same input the command line loads into, shown as a 40px icon button (a tap opens the palette) */
+  #cmdbtn.cmdbar { width: 40px; max-width: 40px; height: 36px; padding: 0; font-size: 0; color: transparent; caret-color: transparent; cursor: pointer;
+    background: var(--bg2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%239aa3c7' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E") center / 18px 18px no-repeat; }
+  #cmdbtn.cmdbar::placeholder { color: transparent; }
+  .topin > #asofchip { min-height: 30px; }
+
+  /* the sheet: the old right-hand controls, closed by default */
+  .top > .topin > .tright { display: none; }
+  .top.hm-open > .topin > .tright { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; position: absolute; left: 8px; right: 8px; top: 100%; margin: 6px 0 0; padding: 10px; max-height: min(72vh, 560px); overflow: auto; z-index: 50;
+    background: var(--bg1); border: 1px solid var(--line2); border-radius: 12px; box-shadow: 0 18px 48px rgba(0, 0, 0, .45); }
+  .top.hm-open > .topin > .tright > .btn, .top.hm-open > .topin > .tright > .chip { min-height: 38px; }
+  .top.hm-open > .topin > .tright > .chip { white-space: normal; border-radius: 12px; }
+  .top.hm-open .tpop { position: static; width: 100%; margin-top: 4px; box-shadow: none; }
+
+  /* the whole-page banner and the bottom: the header is not sticky now, so the banner sticks to the very top */
+  #asofbar.asof-bar { top: 0 !important; }
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  :root.asof-dock-open body { padding-bottom: calc(var(--asof-dock-h, 96px) + 64px); }
+  /* Ask the desk: a 44px round button (the label is kept for screen readers through aria-label) */
+  .fab#askbtn { right: 12px; bottom: 12px; width: 44px; height: 44px; padding: 0; font-size: 0; letter-spacing: 0; display: inline-flex; align-items: center; justify-content: center; opacity: .94; }
+  .fab#askbtn::before { content: "\2726"; font-size: 18px; line-height: 1; }
+  :root.asof-dock-open .fab#askbtn { bottom: calc(var(--asof-dock-h, 96px) + 12px); }
+}
+@media (max-width: 700px) and (prefers-reduced-motion: no-preference) { .top.hm-open > .topin > .tright { animation: hm-in .14s ease-out; } @keyframes hm-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } } }
+.hm-more:focus-visible { outline: 2px solid var(--pur2); outline-offset: 2px; }
