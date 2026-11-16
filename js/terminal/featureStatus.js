@@ -49,6 +49,14 @@ export const FEATURES = {
       'It goes back only as far as the saved snapshots (14 Nov 2026); a hatched block means the flag could not be read.',
     ],
   },
+  oiDrill: {
+    surface: 'widget.oidrill', name: 'OI drills',
+    where: [
+      'Options tab > the OI terrain card: a "Drill a level" button in the card heading, beside the market name and the other OI buttons.',
+      'Or type OIDRILL CALLWALL NQ, OIDRILL MAXPAIN GOLD or OIDRILL GAMMAFLIP EURUSD in the command line.',
+      'It follows one level back through the stored option-OI captures (from 20 Aug 2026); the window says how many it holds.',
+    ],
+  },
   oiTime: {
     surface: 'widget.oitime', name: 'OI over time',
     where: [

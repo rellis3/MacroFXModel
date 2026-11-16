@@ -43,6 +43,17 @@ const MEASURE = sel => {
 };
 
 const CASES = {
+  async oidrill(page, shot) {
+    await page.locator('button[data-t="options"]').first().click(); await page.waitForSelector('[data-oid-open]', { timeout: 45000 }).catch(() => {});
+    const btn = page.locator('[data-oid-open]').first(); if (!(await btn.count())) return { ok: false, why: 'no Drill a level button on the OI terrain card' };
+    await btn.click(); await page.waitForSelector('#oid-back .oid-words', { timeout: 30000 }).catch(() => {}); await page.waitForTimeout(600); await shot('oidrill-callwall');
+    const out = { ok: true, dialog: '#oid-back' };
+    out.cap = await page.locator('#oid-back .oid-words').first().textContent().catch(() => '');
+    out.rows = await page.locator('#oid-back .oit-tbl tbody tr').count();
+    await page.locator('[data-oid-t="maxpain"]').first().click().catch(() => {}); await page.waitForTimeout(1200); await shot('oidrill-maxpain');
+    out.cov = await page.locator('#oid-back .oid-words').first().textContent().catch(() => '');
+    return out;
+  },
   async flags(page, shot) {
     await page.waitForSelector('[data-rfs-compact]', { timeout: 20000 }).catch(() => {});
     const out = { ok: true, dialog: null };

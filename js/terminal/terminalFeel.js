@@ -93,7 +93,7 @@ const hooksReady = () => new Promise(res => {
 });
 
 /** The keys of the status object (and of what start() returns), in the order the features start. */
-export const FEEL_KEYS = ['asof', 'chart', 'insight', 'alerts', 'workspace', 'linked', 'monitor', 'newsSearches', 'calendarDrills', 'replayViz', 'ghostWalk', 'oiTime', 'eventReplay', 'sinceLast', 'riskStrip', 'exporter', 'cmdline'];
+export const FEEL_KEYS = ['asof', 'chart', 'insight', 'alerts', 'workspace', 'linked', 'monitor', 'newsSearches', 'calendarDrills', 'replayViz', 'ghostWalk', 'oiTime', 'eventReplay', 'sinceLast', 'riskStrip', 'oiDrill', 'exporter', 'cmdline'];
 
 export async function start() {
   // globalThis.__deskFeel is what each feature did on THIS page (js/terminal/featureStatus.js words it; the Info map tab's Preview features panel and
@@ -110,7 +110,7 @@ export async function start() {
     try { globalThis.dispatchEvent?.(new Event('deskfeel')); } catch { /* no events here */ }
     return Object.fromEntries(FEEL_KEYS.map(k => [k, !!feel.features[k]?.loaded]));
   };
-  const want = { linked: on('widget.linked'), cmdline: on('widget.cmdline'), workspace: on('tab.workspace'), alerts: on('widget.alerts'), chart: on('tab.kchart'), monitor: on('tab.monitor'), insight: on('tab.insight'), newsSearches: on('panel.news.saved'), exporter: on('widget.export'), calendarDrills: on('panel.cal.drills'), replayViz: on('widget.replayviz'), asof: on('widget.asof'), ghostWalk: on('widget.ghostwalk'), oiTime: on('widget.oitime'), eventReplay: on('widget.eventreplay'), sinceLast: on('panel.changed.since'), riskStrip: on('panel.risk.strip') };
+  const want = { linked: on('widget.linked'), cmdline: on('widget.cmdline'), workspace: on('tab.workspace'), alerts: on('widget.alerts'), chart: on('tab.kchart'), monitor: on('tab.monitor'), insight: on('tab.insight'), newsSearches: on('panel.news.saved'), exporter: on('widget.export'), calendarDrills: on('panel.cal.drills'), replayViz: on('widget.replayviz'), asof: on('widget.asof'), ghostWalk: on('widget.ghostwalk'), oiTime: on('widget.oitime'), eventReplay: on('widget.eventreplay'), sinceLast: on('panel.changed.since'), riskStrip: on('panel.risk.strip'), oiDrill: on('widget.oidrill') };
   // the as-of gate (js/terminal/asofBoot.js) holds market-data reads when the page was opened with ?asof=: a session that may not use the clock lets it go at once
   if (!want.asof && globalThis.__deskAsof?.requested) globalThis.__deskAsof.abandon('not available to this session');
   if (!Object.values(want).some(Boolean)) { for (const k of FEEL_KEYS) feel.features[k] = { requested: false, loaded: false, error: null }; return finish(); }
@@ -129,6 +129,7 @@ export async function start() {
   await rec('eventReplay', want.eventReplay, async () => { addRpCss(); addGwCss(); const m = await import('./eventReplay.js'); return m.mountEventReplay(); });   // a button at the top of the Calendar tab and the EVENTREPLAY command
   await rec('sinceLast', want.sinceLast, async () => { addSlCss(); const m = await import('./sinceLast.js'); return m.mountSinceLast(); });   // a card at the top of the Changed tab
   await rec('riskStrip', want.riskStrip, async () => { const m = await import('./flagStrip.js'); return m.mountRiskStrip(); });   // a slim card at the top of the Overview; the Insight > Risk flags ribbons load from flagsView.js
+  await rec('oiDrill', want.oiDrill, async () => { addRpCss(); addGwCss(); const m = await import('./oiDrill.js'); return m.mountOiDrill(); });   // a Drill a level button beside the OI terrain card buttons
   await rec('ghostWalk', want.ghostWalk, async () => { addRpCss(); addGwCss(); const m = await import('./ghostWalk.js'); return m.mountGhostWalk(); });   // after the player's own css; the button sits on the OI terrain card
   await rec('exporter', want.exporter, async () => { addExCss(); const m = await import('./exportView.js'); return m.mountExport(); });   // after the boards it decorates are mounted
   await rec('cmdline', want.cmdline, async () => { const m = await import('./commandLine.js'); return m.mountCommandLine(); });

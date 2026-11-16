@@ -29,6 +29,7 @@ import { GHOST_MARKETS } from '../ghostWalkCore.js';
 import { PATH_MARKETS } from '../pathReplayCore.js';
 import { VIEWS as OIT_VIEWS, viewByWord as oitView } from './oiTime.js';
 import { familyFromWord as evFamily, marketFromWord as evMarket } from '../eventReplayCore.js';
+import { targetFromWord as oidTarget } from '../oiDrillCore.js';
 
 // ── markets (a copy of the page's UNIVERSE and NAME; commandCore.test.mjs fails if desk-terminal.html drifts from it) ──
 export const UNIVERSE = {
@@ -280,6 +281,9 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   add({ id: 'flaghistory', group: 'Look and feel', name: 'FLAGHISTORY', aliases: ['FLAGSOVERTIME', 'RISKHISTORY'], args: '',
     help: 'Open the Insight tab on Risk flags, where the six stress lights are drawn as ribbons over the days of saved snapshots: how often each was on, how many separate episodes, when it last changed, and what the Evidence Book found for it. A flag that could not be read is hatched, never shown as off. Only a flag with a validated range finding says the days ahead run wider, never which way. The record begins on 14 Nov 2026.',
     example: 'flaghistory', opens: 'Insight tab, Risk flags: the lights over time', surface: 'panel.risk.strip', run: () => ({ action: { kind: 'flaghistory' }, summary: 'Opens the Risk flags history ribbons.' }) });
+  add({ id: 'oidrill', group: 'Look and feel', name: 'OIDRILL', aliases: ['DRILLOI', 'LEVELDRILL'], args: '[callwall|putwall|maxpain|gammaflip] [market]',
+    help: 'OI drill: follow one level of a market back through the stored option-OI captures (the biggest call strike, the biggest put strike, max pain or the gamma flip): how many captures it has held, its open interest and rank, how far price was from it each day in average daily ranges, and whether price traded through it, with buttons into the level walk and Path replays. It goes back only as far as the OI capture. It shows where a level was; the Evidence Book found walls no better than a mirrored placebo, so it never says price will go to a level.',
+    example: 'oidrill callwall nq', opens: 'A window over the page: one option-OI level of a market, capture by capture', surface: 'widget.oidrill', run: args => oidrillRun(args) });
   add({ id: 'oitime', group: 'Look and feel', name: 'OITIME', aliases: ['OIREPLAY'], args: `<${OIT_VIEWS.map(v => v.id).join('|')}> <market> [date]`,
     help: `Replay the stored option open interest through time with the shared player: ${OIT_VIEWS.map(v => `${v.id} is ${v.what}`).join('; ')}. It goes back only as far as the option-OI capture, and says from which date. It shows where price was against the levels, not where it will go.`,
     example: 'oitime terrain nq', opens: 'A replay window over the page: the stored option-OI day by day against price', surface: 'widget.oitime', run: args => oitimeRun(args, now) });
@@ -373,6 +377,12 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     const t = String(args ?? '').trim().toLowerCase(), map = { '': null, last: 'last', visit: 'last', '1h': '1h', hour: '1h', '4h': '4h', '24h': '24h', day: '24h', today: '24h' };
     if (!(t in map)) return { error: `"${t}" is not a span I know. Try SINCE LAST, SINCE 1H, SINCE 4H or SINCE 24H.` };
     return { action: { kind: 'since', range: map[t] }, summary: `Opens the Changed tab with what moved ${map[t] === 'last' ? 'since your last visit' : map[t] ? `in the last ${map[t]}` : 'since your last visit (or the last hour)'}.` };
+  }
+  function oidrillRun(args) {
+    const toks = String(args ?? '').trim().split(/\s+/).filter(Boolean); let target = 'callwall', inst = 'NQ';
+    for (const w of toks) { const t = oidTarget(w); if (t) target = t; else { const k = resolveInstrument(w); if (!k) return { error: `"${w}" is not a level or a market I know. Try OIDRILL CALLWALL NQ, OIDRILL MAXPAIN GOLD or OIDRILL GAMMAFLIP EURUSD.` }; inst = k; } }
+    if (!GHOST_MARKETS.includes(inst)) return { error: `The OI drill covers ${GHOST_MARKETS.join(', ')}: the markets with an option-OI capture. ${inst} is not one of them.` };
+    return { action: { kind: 'oidrill', inst, target }, summary: `Opens the OI drill on the ${target} of ${instLabel(inst)}.` };
   }
   function oitimeRun(args, nowFn) {
     const toks = String(args ?? '').trim().split(/\s+/).filter(Boolean), v = oitView(toks[0]);
