@@ -111,4 +111,19 @@ M1 wicks and tight stops (< 0.2 U) are not tested; that needs the laptop M1. Nor
 
 ## Amendments
 
+### A1 — 2026-11-16 — PRE-RESULTS
+Power measured on ordinary bars only (`--stage power`: one random bar per session, residual of log remaining range
+against its own clock-hour × range-used-decile cell; `analysis/output/raw-line-touch-clock/power.json`). No touch
+outcome had been computed.
+- Discovery: bar sd 0.525; sd of a date's mean (12 instruments) 0.297 over 1,982 dates → clustered SE ≈ 0.007,
+  MDE (80%, 5% two-sided) ≈ **1.9%**. Below the 5% bar; powered.
+- Confirm (NQ + EURUSD 2010-07 → 2018-12): bar sd 0.539; date-mean sd 0.420 over 2,204 dates → SE ≈ 0.009,
+  MDE ≈ **2.6%**. Below the 5% bar; powered, so a confirm miss is NULL, not UNDERPOWERED.
+- Both overstate power a little for the primary cell, because a p90 touch implies a p75 touch the same day. Even at
+  half the effective dates the MDEs (2.7% / 3.7%) stay under 5%.
+- Costs before 2016 (confirm period) use the earliest year in the OANDA spread archive (2016). No spread history
+  exists before that. Costs affect only H2 net cells.
+- Implementation note: the H1 baseline is per instrument and per period, built from all bars of that period's scored
+  sessions (as §3 says).
+
 ## RESULTS
