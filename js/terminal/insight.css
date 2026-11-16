@@ -1,5 +1,6 @@
 /* Insight tab (js/terminal/insightView.js and the boards under it). Theme tokens only (themeTokens.test.mjs); motion off under prefers-reduced-motion. */
-.in-bar { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 0 4px; }
+/* the toolbar row (pills, reach inputs). NOT .in-bar: that name is the percentile bar below (8px tall, overflow hidden) and clipped the pills to a strip */
+.in-tools { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 0 4px; min-width: 0; }
 .in-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
 .in-tab { font: 600 12px var(--mono); letter-spacing: .04em; color: var(--tx2); background: var(--bg2); border: 1px solid var(--line2); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
 .in-tab:hover { border-color: rgba(var(--purrgb), .6); color: var(--tx); }
@@ -138,3 +139,11 @@ p.in-cap { font-size: 11.5px; color: var(--tx2); }
 .in-rl { font: 600 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--tx3); }
 .in-ar { font-size: 11px; color: var(--tx2); }
 .in-ar.up { color: var(--up); } .in-ar.down { color: var(--dn); } .in-ar.flat { color: var(--tx2); }
+
+/* overflow guards (2026-11-16): a board never makes the page wider than the screen; a table that cannot shrink scrolls inside its own box */
+.in-panel { min-width: 0; max-width: 100%; }
+.in-panel > * { min-width: 0; }
+.in-scrollx { max-width: 100%; overflow-x: auto; }
+.in-mini th, .in-mini td { white-space: normal; overflow-wrap: anywhere; }
+.in-gcard, .in-chance, .in-asof, .in-foot, .in-intro { overflow-wrap: anywhere; }
+.in-tools { max-width: 100%; }

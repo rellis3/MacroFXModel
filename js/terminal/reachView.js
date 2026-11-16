@@ -15,7 +15,7 @@ function chanceCard(title, m, sym, kind) {
   return `<div class="in-gcard"><div class="in-gh"><span class="in-gl">${esc(title)}</span><b class="in-gv">${pc(m.p)}</b></div>
 <div class="in-rail in-reach" role="img" aria-label="${esc(`${title}: ${pc(m.p)}, likely ${range(m.band)}`)}"><i class="in-rb" style="left:${(m.band.lo * 100).toFixed(1)}%;width:${((m.band.hi - m.band.lo) * 100).toFixed(1)}%"></i><i class="in-rm" style="left:${(m.p * 100).toFixed(1)}%"></i></div>
 <p class="in-cap">Likely between ${range(m.band)}${m.tail ? '. Beyond the farthest forecast line, so extrapolated: rough' : ''}${kind === 'rest' && m.flagged ? '. This London hour is one the research flagged as unreliable' : ''}.</p>
-<table class="in-tbl in-mini"><tbody>${rungs}</tbody></table></div>`;
+<div class="in-scrollx"><table class="in-tbl in-mini"><tbody>${rungs}</tbody></table></div></div>`;
 }
 
 /** The result block for one reach() answer. Pure. */
@@ -38,7 +38,7 @@ export const footHtml = () => `<p class="in-foot muted">${esc(MODEL_NOTE.rest)} 
 export function mountReach(host, ctx) {
   const win = ctx.win ?? window, state = { sym: null, level: '', fc: null, sessionDate: null, bars: null, syms: [], err: null }; let alive = true, seq = 0;
   const sel = () => win.deskSelection?.get?.()?.inst ?? null;
-  const shell = () => `<div class="in-bar"><label class="kc-l" for="rc-sym">Market</label><input id="rc-sym" class="in-input" list="rc-syms" autocomplete="off" spellcheck="false" maxlength="12" value="${esc(state.sym ?? '')}"><datalist id="rc-syms">${state.syms.map(s => `<option value="${esc(s)}"></option>`).join('')}</datalist>
+  const shell = () => `<div class="in-tools"><label class="kc-l" for="rc-sym">Market</label><input id="rc-sym" class="in-input" list="rc-syms" autocomplete="off" spellcheck="false" maxlength="12" value="${esc(state.sym ?? '')}"><datalist id="rc-syms">${state.syms.map(s => `<option value="${esc(s)}"></option>`).join('')}</datalist>
 <label class="kc-l" for="rc-level">Level</label><input id="rc-level" class="in-input" inputmode="decimal" autocomplete="off" placeholder="a price" value="${esc(state.level)}">
 <span class="in-presets" role="group" aria-label="Set the level in units of the day's sigma">${[-1, -0.5, 0.5, 1].map(k => `<button type="button" class="btn" data-k="${k}">${k > 0 ? '+' : ''}${k} sigma</button>`).join('')}</span></div>
 <div id="rc-out"></div>`;

@@ -31,7 +31,7 @@ export function mountInsight({ doc = document, win = window, fetchJson = null } 
   const on = id => win.deskSurfaceOn?.(id) ?? true;
   const first = () => PANELS.find(p => on(p.surface)) ?? null;
 
-  sec.innerHTML = `<div class="in-bar"><div class="in-tabs" role="tablist" aria-label="Insight boards">${PANELS.map(p => p.pill).join('')}</div></div>
+  sec.innerHTML = `<div class="in-tools"><div class="in-tabs" role="tablist" aria-label="Insight boards">${PANELS.map(p => p.pill).join('')}</div></div>
 <p class="in-intro muted">Boards that read the data the terminal already holds in a new way. Each says how far to trust it. Context for the day, not trade signals.</p>
 ${PANELS.map(p => `<div class="in-panel" id="in-p-${p.key}" data-p="${p.key}" data-surface="${p.surface}" hidden></div>`).join('')}`;
   const tabs = [...sec.querySelectorAll('.in-tab')];
