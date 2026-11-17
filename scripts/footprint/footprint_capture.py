@@ -222,6 +222,14 @@ def bridge(req, port=5557, timeout=15000):
         s.close()
 
 
+def _size(f):
+    """File size, or 0 if it vanished: the gzip thread renames its .gz.tmp while the status line is adding sizes up (2026-11-17)."""
+    try:
+        return f.stat().st_size if f.is_file() else 0
+    except OSError:
+        return 0
+
+
 def gzip_file(f):
     gz, tmp = f.with_name(f.name + ".gz"), f.with_name(f.name + ".gz.tmp")
     try:
@@ -376,7 +384,7 @@ class Capture:
         self.tidy(today)
         if time.time() - self.last_log > 300:
             self.last_log = time.time()
-            size = sum(f.stat().st_size for f in LIVE_DIR.glob("*/*") if f.is_file()) / 1e9 if LIVE_DIR.exists() else 0
+            size = sum(_size(f) for f in LIVE_DIR.glob("*/*")) / 1e9 if LIVE_DIR.exists() else 0
             parts = [f"{k.split(' ')[0]} {v.get('ticks', 0):,}t/{v.get('book_events', 0):,}b" for k, v in (status or {}).items()]
             self.log(f"recording: {', '.join(parts) or 'nothing'} | store {size:.2f} GB, {free:.0f} GB free")
 
