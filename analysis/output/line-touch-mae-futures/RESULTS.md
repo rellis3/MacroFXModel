@@ -100,6 +100,8 @@ on 56% of NQ days. A move into a stack counts as a touch on each line, so pooled
 
 - Every family splits close to 50/50. OC and HL behave like OH/OL.
 - Stacked touches travel about half as far both ways (smaller in both MFE and MAE), not more one way than the other.
-  Stacks sit mostly at the inner rungs, which are touched earlier on quieter paths.
+  Reason: a fixed 5-tick gap catches more lines on quiet days, because the lines spread in proportion to σ. Median day
+  σ on stacked vs lone touches: NQ 76 vs 152 pts, GC $13.1 vs $20.7, 6E 47 vs 49 pips. Stacked = quiet day, so the
+  smaller moves are the day's vol, not the stack. In σ units the stack split would need re-reading.
 - Counting each stacked minute once (de-duplicated by date, minute and side): back wins NQ 49.4%, 6E 50.2%, GC 50.8%.
 - Thin cells drift (NQ HL stacked 44.5%, n 636; 6E OH/OL lone 45.9%, n 418): with 54 cells this is what chance gives.
