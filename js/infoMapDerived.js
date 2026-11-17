@@ -4008,6 +4008,14 @@ export const DERIVED = {
      "exists": true
     },
     {
+     "file": "js/terminal/spreadsTemplates.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/spreadsExplain.js",
+     "exists": true
+    },
+    {
      "file": "js/terminal/spreadsDerived.js",
      "exists": true
     },
@@ -4026,7 +4034,9 @@ export const DERIVED = {
      "js/terminal/matrixCore.js",
      "js/terminal/spreadsCore.js",
      "js/terminal/spreadsDerived.js",
+     "js/terminal/spreadsExplain.js",
      "js/terminal/spreadsLibrary.js",
+     "js/terminal/spreadsTemplates.js",
      "js/terminal/spreadsView.js"
     ],
     "today": [],
@@ -5380,6 +5390,7 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/macroSubtabs.js",
      "js/terminal/spreadsLibrary.js",
+     "js/terminal/spreadsTemplates.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [],
