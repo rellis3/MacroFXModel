@@ -105,3 +105,30 @@ on 56% of NQ days. A move into a stack counts as a touch on each line, so pooled
   smaller moves are the day's vol, not the stack. In σ units the stack split would need re-reading.
 - Counting each stacked minute once (de-duplicated by date, minute and side): back wins NQ 49.4%, 6E 50.2%, GC 50.8%.
 - Thin cells drift (NQ HL stacked 44.5%, n 636; 6E OH/OL lone 45.9%, n 418): with 54 cells this is what chance gives.
+
+## v3 (2026-11-17): better level in stacks + median stop/target race
+
+`race.py` (→ `touches_better.parquet` gitignored, `tables/race.csv`, `race.json`). Same touches as build.py (asserted
+in page_data.py).
+
+**Better level** (Jordan: "when several are close, take the one further from price"): keep a touch only if no other line
+sits within 5 ticks *beyond* it at the touch minute; if price never reaches the outer line, no entry. Touches kept: NQ
+97.0% (35,881), 6E 71.8% (22,499), GC 71.4% (21,149). Medians move a tick or two, splits do not change.
+
+**Race:** stop = median MAE, target = median MFE of the same set, then walk each touch minute by minute.
+Fade, 60 min, all lines (target first / stop first / same minute / neither; target-first share of resolved):
+
+| | all touches | better level only |
+|---|---|---|
+| NQ (stop 103 t, target 94 t) | 37.4 / 37.6 / 0.2 / 24.7 → 49.7% | 37.5 / 37.8 / 0.2 / 24.5 → 49.7% |
+| 6E (stop 18 t, target 17 t) | 40.3 / 41.8 / 0.2 / 17.7 → 49.0% | 40.3 / 41.8 / 0.1 / 17.7 → 49.0% |
+| GC (stop 28 t, target 27 t) | 36.9 / 39.2 / 0.4 / 23.5 → 48.2% | 36.7 / 39.3 / 0.4 / 23.6 → 48.0% |
+
+Same at 240 min and to 22:00 (49.4-50.2% resolved), every line group (47.9-49.7%), first touch only, and for the
+continuation (the mirror). Order-free "target reached at any point if the stop held all window": NQ 51%, GC 53%,
+6E 64%. The 6E figure is not an edge: it only covers the half of touches whose stop held, and on 6E price chops both
+ways inside the hour; counted in order (what a stop actually does) 6E is 49%.
+
+Reading: with stop and target at the median excursions, the target comes first about half the time on every market,
+line family, touch number and window, with or without the better-level rule. Before costs this is break-even; after
+spread it loses.

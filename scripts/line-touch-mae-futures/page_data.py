@@ -41,11 +41,15 @@ def tick_cell(g, inst):
 
 
 def expand(t):
-    """Duplicate rows into the ALL group and the 'all' cluster bucket so every combination is a plain groupby."""
+    """Duplicate rows into the ALL group and the 'all' / 'better' cluster buckets so every combination is a groupby.
+    better = the touched line is the outermost of its stack (no other line within 5 ticks beyond it; race.py)."""
     t = t.copy()
     t["cl"] = (t["n_within_5t"] > 0).map({True: "stack", False: "lone"})
     a = pd.concat([t, t.assign(group="ALL")], ignore_index=True)
-    return pd.concat([a, a.assign(cl="all")], ignore_index=True)
+    parts = [a, a.assign(cl="all")]
+    if "better" in a:
+        parts.append(a[a.better.fillna(False).astype(bool)].assign(cl="better"))
+    return pd.concat(parts, ignore_index=True)
 
 
 def records(df, by, fn):
@@ -61,6 +65,9 @@ def records(df, by, fn):
 def main(dest):
     t = pd.read_parquet(OUT / "touches.parquet")
     t["touch"] = t["touch_n"].clip(upper=4)
+    b = pd.read_parquet(OUT / "touches_better.parquet", columns=["instrument", "date", "line", "touch_n", "better"])
+    t = t.merge(b.assign(kind="line"), on=["instrument", "date", "line", "touch_n", "kind"], how="left")
+    assert t.loc[t.kind == "line", "better"].notna().all(), "race.py touches do not match build.py touches"
     L = expand(t[t.kind == "line"])
     lines = t[t.kind == "line"]
     data = {
@@ -78,6 +85,9 @@ def main(dest):
         "sigma": {k: round(float(v), 1) for k, v in lines.groupby("instrument").sigma_pts.median().items()},
         "meta": json.loads((OUT / "meta.json").read_text()),
         "clusterTicks": CLUSTER_TICKS,
+        "race": json.loads((OUT / "race.json").read_text()),
+        "betterShare": records(L[L.cl == "all"], ["instrument", "group"],
+                               lambda g: {"pct": round(float(g.better.mean() * 100), 1), "n": int(g.better.sum())}),
     }
     st = lines[lines.n_within_5t > 0]
     for inst, g in st.groupby("instrument"):
