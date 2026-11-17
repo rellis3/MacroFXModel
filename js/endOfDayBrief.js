@@ -122,6 +122,13 @@ export function dollarRead(rows = []) {
  * that. No composite score, for the same reason the terminal has none: the weights
  * would be invented.
  */
+const INDEX_NAME = { NQ: 'Nasdaq', NAS100: 'Nasdaq', NAS100_USD: 'Nasdaq', SPX500: 'S&P 500', SPX500_USD: 'S&P 500', US30: 'Dow', US30_USD: 'Dow', DJ30: 'Dow', US2000: 'Russell 2000', DE30: 'DAX', DE30_EUR: 'DAX', UK100: 'FTSE', UK100_GBP: 'FTSE', JP225: 'Nikkei', JP225_USD: 'Nikkei' };
+/** "Nasdaq -0.90%, S&P 500 -0.60%, Dow -0.30%": each index on its own, biggest move first, so "equities" says which ones. '' when fewer than two priced. */
+export function indexDetail(rows = []) {
+  const l = (Array.isArray(rows) ? rows : []).filter(r => r.ac === 'index' && r.movedPct != null)
+    .map(r => ({ n: INDEX_NAME[r.name] ?? String(r.name), p: r.movedPct })).sort((a, b) => Math.abs(b.p) - Math.abs(a.p));
+  return l.length < 2 ? '' : l.slice(0, 4).map(x => `${x.n} ${pct2(x.p)}`).join(', ');
+}
 export function riskRead(rows = []) {
   const by = name => (Array.isArray(rows) ? rows : []).find(r => r.name === name);
   const equity = mean((Array.isArray(rows) ? rows : []).filter(r => r.ac === 'index' && r.movedPct != null).map(r => r.movedPct));
@@ -138,6 +145,7 @@ export function riskRead(rows = []) {
     : 'no clear risk shape — the moves are too small to read one';
   return {
     equity: equity == null ? null : +equity.toFixed(2),
+    indexDetail: indexDetail(rows),
     haven: haven == null ? null : +haven.toFixed(2),
     gold, shape,
     agree: shape === 'risk-off' || shape === 'risk-on',
@@ -392,7 +400,7 @@ export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = 
   // it removed the evening entirely on half the days.
   const headline = !eod.marked
     ? (usd.n && usd.word && usd.dir !== 'flat'
-        ? `No call was made this morning, so this is the day as it happened — the dollar ${usd.word} across ${usd.n} legs${risk.equity != null ? `, equities ${pct2(risk.equity)}` : ''}.`
+        ? `No call was made this morning, so this is the day as it happened — the dollar ${usd.word} across ${usd.n} legs${risk.equity != null ? `, equities ${pct2(risk.equity)}${risk.indexDetail ? ` (${risk.indexDetail})` : ''}` : ''}.`
         : `No call was made this morning, so this is the day as it happened.`)
     : wide
     ? `A wider day than the page forecast — the median instrument used ${med}% of its expected range, and ${eod.range.over} of ${eod.range.n} ran clean past it${
@@ -410,7 +418,7 @@ export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = 
   // -- it moved to the end of the sentence, and only speaks up when the lag is material.
   paragraphs.push(`The tape: ${
     usd.n ? `the dollar ${usd.word} at ${pct2(usd.pct)} averaged across ${usd.n} pairs` : 'the FX block did not price'}${
-    risk.equity != null ? `, equities ${pct2(risk.equity)} on average` : ''}${
+    risk.equity != null ? `, equities ${pct2(risk.equity)} on average${risk.indexDetail ? ` (${risk.indexDetail})` : ''}` : ''}${
     risk.haven != null ? `, the yen and franc ${risk.haven > 0 ? 'bid' : 'offered'} at ${pct2(risk.haven)} against the dollar` : ''}${
     risk.gold != null ? `, gold ${pct2(risk.gold)}` : ''}. ${risk.shape.charAt(0).toUpperCase()}${risk.shape.slice(1)}.${
     fresh.material || fresh.lastDate == null ? ` Note that ${fresh.note}.` : ''}${
@@ -449,7 +457,7 @@ export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = 
       ? `${usd.word.charAt(0).toUpperCase()}${usd.word.slice(1)} at ${pct2(usd.pct)}, averaged across ${usd.n} priced legs rather than taken from the dollar index, which is a FRED series and settles days late.`
       : 'The FX block did not price today, so there is no dollar read.' },
     { k: 'risk mood', body: `${risk.shape.charAt(0).toUpperCase()}${risk.shape.slice(1)}.${
-        risk.equity != null ? ` Indices ${pct2(risk.equity)} on average` : ''}${risk.haven != null ? `, havens ${pct2(risk.haven)} against the dollar` : ''}${risk.gold != null ? `, gold ${pct2(risk.gold)}` : ''}.${
+        risk.equity != null ? ` Indices ${pct2(risk.equity)} on average${risk.indexDetail ? ` (${risk.indexDetail})` : ''}` : ''}${risk.haven != null ? `, havens ${pct2(risk.haven)} against the dollar` : ''}${risk.gold != null ? `, gold ${pct2(risk.gold)}` : ''}.${
         risk.agree ? ' The legs agree, which is what makes it readable.' : ' The legs disagree, so this is not a clean risk day.'}` },
     { k: 'expectation vs reality', body: `Median range used ${med ?? '—'}%: ${eod.range.over} over, ${eod.range.about} about right, ${eod.range.under} inside, of ${eod.range.n} scored.${
         eod.range.weak ? ` ${eod.range.weak} of those had no session high/low and are measured open-to-now, which understates them.` : ''} Direction ${eod.leans.n ? `${eod.leans.right} of ${eod.leans.n}` : 'not called'}.` },

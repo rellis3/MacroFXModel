@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { macroFreshness, sessionsBetween, recordLine, weekFrame, weekFrameLine, positionRead, positionLine, dollarRead, riskRead, standouts, boardTradeVerdict, tomorrow, endOfDayBrief,
+import { macroFreshness, sessionsBetween, recordLine, weekFrame, weekFrameLine, positionRead, positionLine, dollarRead, riskRead, indexDetail, standouts, boardTradeVerdict, tomorrow, endOfDayBrief,
          SPINE, activityWord, pathWord, PATH_BANDS, describe, spineRead, regimeTurns, printedRead } from './endOfDayBrief.js';
 import { endOfDay as _endOfDay } from './endOfDay.js';
 // Pin the clock: endOfDay() defaults nowMs to Date.now(), so these 2026-09-23 fixtures started failing once the
@@ -502,4 +502,8 @@ t('a moved volatility percentile says where it came from', () => {
   assert.doesNotMatch(quiet.vol, /this morning/);
 });
 
+t('equities names each index, biggest move first, and stays silent with fewer than two', () => {
+  assert.equal(indexDetail([row('NQ', { ac: 'index', movedPct: -0.9 }), row('SPX500', { ac: 'index', movedPct: -0.6 }), row('US30', { ac: 'index', movedPct: -0.3 })]), 'Nasdaq -0.90%, S&P 500 -0.60%, Dow -0.30%');
+  assert.equal(indexDetail([row('NQ', { ac: 'index', movedPct: -0.9 })]), '');
+});
 console.log(`endOfDayBrief: ${n} groups, all passed`);
