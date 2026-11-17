@@ -20,6 +20,7 @@ import { whatChanged } from './whatChanged.js';
 import * as PV from './pairView.js';
 import * as CSV from './chainStatsView.js';
 import { reactionsHtml } from './reactionPanel.js';
+import { surpriseRollup, rollupHtml } from './surpriseRollup.js';
 import { boardHtml as macroBoardHtml, pick as macroBoardPick } from './macroEngines.js';
 import { DESK_EVIDENCE, citable } from '../deskEvidence.js';
 import * as FVV from './fairValueView.js';
@@ -63,6 +64,8 @@ const el = id => document.getElementById(id);
 const h = CB.esc;
 // the Calendar tab (desk-terminal.html enrichCal) draws its "Expectations vs reality" panel through this
 globalThis.ttReactionsHtml = p => reactionsHtml(p, h);
+// the Calendar tab's "Live surprises" card opens with this per-currency strip of the last 24 h (js/terminal/surpriseRollup.js)
+globalThis.ttSurpriseStripHtml = log => rollupHtml(surpriseRollup(log, Date.now()));
 // the Macro tab (desk-terminal.html enrichMacro) draws its currency x indicator board through these (js/terminal/macroEngines.js)
 // the Overview map's layers (js/terminal/mapLayers.js): the pills, the legends, the ranking under the map and the country card. The country card
 // reuses the Central banks tile and the Macro engines cells, so nothing is drawn twice.
