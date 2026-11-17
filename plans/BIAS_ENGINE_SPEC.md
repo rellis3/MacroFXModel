@@ -113,7 +113,7 @@ The weights follow the banks' layering (synthesis §1): macro dominant, trend a 
 - **Logic:** `js/biasEngine.js`, pure: inputs → record. `js/biasEngine.test.mjs` covers: thresholds; renormalisation on
   missing drivers; the pair = (base − quote)/2 identity and its sign flip (NZDCHF = −CHFNZD); the Neutral rules; gold's
   sign conventions; determinism.
-- **Issue time:** compute once per London weekday after Asia (07:00–07:30). Store write-once in KV `bias_engine_<date>`
+- **Issue time:** compute once per London weekday, 05:30–06:00 (moved from 07:00–07:30 on 2026-11-17, owner: ready before the 06:45 run). Store write-once in KV `bias_engine_<date>`
   with an index `bias_engine_index`.
   - Register the key in `kv.js` _CF_EXACT, `_worker.js` and `js/storeRegistry.js`; `storeRegistry.test` fails otherwise.
   - Add a service flag in `js/serviceFlags.js` (the guard test).

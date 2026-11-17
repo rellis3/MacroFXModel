@@ -381,3 +381,18 @@ enabled `fundabias` from its first logged row. No back-issue for any of them.** 
   - It is a running table from day 1, read formally at 60 and 120 shared days, and it is never a Holm cell.
 - **Prior.** Null at 24 h for all three, as for `bias-engine` (A3). The process was built *because* every direction
   test came back near the base rate: it buys a repeatable, explained call and an honest record, not an expected edge.
+
+### A5 — 2026-11-17 — PRE-RESULTS (issue times only)
+
+**The bias engine and the Desk Bias Process issue earlier, from 2026-11-18.** Owner, 2026-11-17: the cards must be ready
+before the desk's 06:45 London run.
+- **New windows:**
+  - `bias_engine_<D>` is written 05:30–06:00 London (was 07:00–07:30);
+  - `desk_bias_process_<D>` is written 06:00–06:30 London (was 07:30–08:00), still only after the day's engine issue
+    exists.
+- **What does not change:**
+  - The mappings, the anchors and the scoring are unchanged.
+  - Anchor = max(07:00, knowable time), so every row is still anchored at 07:00 London. The calls are made with up to
+    90 minutes less information than before, never more.
+  - The `<D>_engine.json` and `<D>_process.json` rows are written on the first tick in [07:00, 10:00) London, as before.
+  - Engine rows from before 2026-11-18 stand as issued (07:00–07:30). No process row existed before this amendment.
