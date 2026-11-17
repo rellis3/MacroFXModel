@@ -14,3 +14,15 @@
 .rfs-mn { font: 600 10.5px var(--mono); color: var(--tx3); text-align: right; }
 .rfs-mn.on { color: var(--dn); }
 @media (max-width: 560px) { .rfs-mini { grid-template-columns: minmax(0, 1fr) 30px; } .rfs-mini .rfs-ml { grid-column: 1 / -1; } }
+/* a quiet record (nothing on): one line and the six lights as dots; only a flag that has been on gets a ribbon */
+.rfs-sum { margin: 2px 0 10px; font-size: 13.5px; color: var(--tx); overflow-wrap: anywhere; }
+.rfs-note { font-size: 12px; margin: 8px 0 4px; }
+.rfs-dots { display: flex; flex-wrap: wrap; gap: 8px 18px; min-width: 0; }
+.rfs-dotitem { display: inline-flex; align-items: center; gap: 7px; min-width: 0; font-size: 12px; color: var(--tx2); }
+.rfs-dl { overflow-wrap: anywhere; }
+.rfs-dst { font: 600 10px var(--mono); letter-spacing: .06em; color: var(--tx3); text-transform: uppercase; }
+.rfs-dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; display: inline-block; border: 1px solid var(--line2); background: var(--bg3); }
+.rfs-dot-on { background: var(--dn); border-color: var(--dn); }
+.rfs-dot-off { background: var(--bg3); }
+.rfs-dot-na { background: repeating-linear-gradient(45deg, var(--line2) 0 2px, var(--bg1) 2px 4px); }
+.rfs-chip { font-size: 10px; padding: 1px 6px; }

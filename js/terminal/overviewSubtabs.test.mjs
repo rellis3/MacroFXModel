@@ -3,13 +3,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { SURFACES, surfaceById } from './tabRegistry.js';
-import { OV_SUBS, OV_NOT_BLOCKS, ALL_BLOCKS, BLOCK_SUB, SUB_IDS, SURFACE, visibleSubs, parseHash, hashFor, pickSub, pillsHtml, stepSub, edgeSub, subOfBlock } from './overviewSubtabs.js';
+import { OV_SUBS, OV_NOT_BLOCKS, OV_PINNED, HERO_LS, heroFolded, heroGroup, TODAY_ONLY_EXTRAS, ALL_BLOCKS, BLOCK_SUB, SUB_IDS, SURFACE, visibleSubs, parseHash, hashFor, pickSub, pillsHtml, stepSub, edgeSub, subOfBlock } from './overviewSubtabs.js';
 
 test('every Overview surface is in exactly one section, or is one of the named non-blocks', () => {
   const ov = SURFACES.filter(s => s.id.startsWith('panel.ov.') || s.id === 'tab.overview').map(s => s.id);
   for (const id of ov) {
     const inSubs = OV_SUBS.filter(s => s.blocks.includes(id)).length;
-    if (OV_NOT_BLOCKS.includes(id)) assert.equal(inSubs, 0, `${id} is not a block, so it is in no section`);
+    if (OV_NOT_BLOCKS.includes(id) || OV_PINNED.includes(id)) assert.equal(inSubs, 0, `${id} is not a section block (named non-block, or pinned above the pills), so it is in no section`);
     else assert.equal(inSubs, 1, `${id} must be in exactly one section (overviewSubtabs.js); it is in ${inSubs}`);
   }
 });
@@ -34,7 +34,9 @@ test('trade, P&L and internal blocks are only ever shown by a section when the r
   const css = new URL('./overview-sections.css', import.meta.url);
   const text = (globalThis.process ? import('node:fs').then(m => m.readFileSync(css, 'utf8')) : Promise.resolve(''));
   return text.then(t => {
-    assert.ok(!/display\s*:\s*(block|flex|grid)/.test(t.replace(/\.ovs-pills[^}]*\}/g, '')), 'the section css never sets display to a visible value on a block');
+    const rest = t.replace(/\.ovs-pills[^}]*\}/g, '').replace(/\.ovs-herobar \{[^}]*\}/g, '').replace(/#overview\.ovs-on:not\(\[hidden\]\) \{[^}]*\}/g, '').replace(/\.rfs-[^{]*\{[^}]*\}/g, '');
+    assert.ok(!/display\s*:\s*(block|flex|grid)/.test(rest), 'the section css never sets display to a visible value on a block (only the flex column of #overview itself, not while it is hidden, and the pills and the fold bar)');
+    assert.ok(/#overview\.ovs-on:not\(\[hidden\]\)/.test(t), 'the flex column never overrides the hidden attribute that switches tabs');
     assert.ok(/#overview \.sfc\.ovs-off/.test(t), 'the hiding class is scoped to #overview');
   });
 });
@@ -86,5 +88,29 @@ test('subOfBlock accepts the full id or the short one', () => {
   assert.equal(subOfBlock('panel.ov.wire'), 'news');
   assert.equal(subOfBlock('wire'), 'news');
   assert.equal(subOfBlock('nope'), null);
-  assert.equal(BLOCK_SUB['panel.ov.hero'], 'today');
+  assert.equal(BLOCK_SUB['panel.ov.hero'], undefined, 'the map is pinned, not in a section'); assert.equal(BLOCK_SUB['panel.ov.book'], 'today');
+});
+
+test('the map is pinned: in no section, named once; the section lists do not carry it', () => {
+  assert.deepEqual(OV_PINNED, ['panel.ov.hero']);
+  assert.ok(!ALL_BLOCKS.includes('panel.ov.hero'));
+  assert.equal(surfaceById('panel.ov.hero')?.hidden ?? null, null, 'it keeps its own surface id and Access switch, shown by default');
+  assert.deepEqual(OV_SUBS.find(s => s.id === 'today').blocks, ['panel.ov.book', 'panel.ov.regime', 'panel.ov.week', 'panel.ov.riskwarn']);
+});
+test('the glance block and the flag-history card are Today-only: named, and hidden on the other four sections by css', async () => {
+  assert.deepEqual(TODAY_ONLY_EXTRAS, ['.fl-host', '.rfs-compact']);
+  const fs = await import('node:fs'), css = fs.readFileSync(new URL('./overview-sections.css', import.meta.url), 'utf8');
+  for (const sel of TODAY_ONLY_EXTRAS) assert.ok(css.includes(`> ${sel}`), `${sel} is placed by the flex order rules`);
+  assert.match(css, /:not\(\[data-ovs-sub="today"\]\) > \.fl-host/); assert.match(css, /:not\(\[data-ovs-sub="today"\]\) > \.rfs-compact/);
+  assert.match(css, /order: 1; \}\s*\n#overview\.ovs-on > \.ovs-pills \{ order: 2/, 'the map is above the pills');
+  assert.match(css, /\.fl-host \{ order: 3/); assert.match(css, /\.rfs-compact \{ order: 4/); assert.match(css, /#overview\.ovs-on > \*, #overview\.ovs-on > \.sfc > \* \{ order: 5/, "the registry wrappers are display: contents, so the order is set on their children");
+});
+test('heroFolded: open on Today, open on a laptop elsewhere, folded on a phone elsewhere unless the owner opened it; one choice for Today and one for the other four', () => {
+  assert.equal(heroFolded('today', {}, false), false); assert.equal(heroFolded('today', {}, true), false, 'Today is expanded even on a phone');
+  assert.equal(heroFolded('currencies', {}, false), false); assert.equal(heroFolded('desk', {}, true), true, 'a phone folds it on the other four');
+  assert.equal(heroFolded('risk', { other: 'open' }, true), false, 'unless the owner expanded it');
+  assert.equal(heroFolded('news', { other: 'folded' }, false), true, 'or folded it themselves');
+  assert.equal(heroFolded('today', { other: 'folded' }, true), false, 'the other four do not change Today'); assert.equal(heroFolded('today', { today: 'folded' }, false), true);
+  assert.equal(heroGroup('today'), 'today'); assert.equal(heroGroup('desk'), 'other'); assert.equal(HERO_LS, 'deskOverviewHero:v1');
+  assert.equal(heroFolded('today', null, false), false, 'a missing choice object is safe');
 });

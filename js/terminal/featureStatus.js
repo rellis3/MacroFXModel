@@ -69,7 +69,8 @@ export const FEATURES = {
   ovSections: {
     surface: 'widget.ov.sections', name: 'Overview sections (pill row)',
     where: [
-      'Overview > a pill row right under the "At a glance" block: Today, Currencies, Risk & markets, News & events, The desk. Each pill shows only the blocks of that section.',
+      'Overview > the map ("The desk\'s world") stays at the top on every section, with a Fold map button (remembered in this browser; on a phone it starts folded to a slim strip on the other four sections).',
+      'Under the map, a pill row: Today, Currencies, Risk & markets, News & events, The desk. Each pill shows only the blocks of that section. The At a glance block and the risk-flag history card are on Today only.',
       'A section with nothing switched on for the login is not offered; your choice is remembered in this browser.',
       'Share a section with an address like #overview/currencies, or type OVERVIEW CURRENCIES (or RISK, NEWS, DESK, TODAY) in the command line.',
     ],

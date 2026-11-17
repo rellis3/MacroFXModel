@@ -9,4 +9,28 @@
 #overview .sfc.ovs-off, #overview .grid.ovs-off, #overview .sec.ovs-off { display: none !important; }
 /* a two-column grid left with a single visible block takes the whole row */
 #overview .grid.ovs-solo { grid-template-columns: minmax(0, 1fr) !important; }
+
+/* ORDER with sections on: a flex column, so the order never depends on which module drew first.
+   top to bottom: the map (pinned for every section) > the pills > Today only: the At a glance block, then the risk-flag history card > the open section's blocks */
+#overview.ovs-on:not([hidden]) { display: flex; flex-direction: column; }
+/* the registry wrappers (.sfc) are display: contents, so the flex items are THEIR children: the order has to be set on those */
+#overview.ovs-on > *, #overview.ovs-on > .sfc > * { order: 5; min-width: 0; }
+#overview.ovs-on > .ovs-herobar { order: 0; }
+#overview.ovs-on > .sfc[data-surface="panel.ov.hero"] > * { order: 1; }
+#overview.ovs-on > .ovs-pills { order: 2; }
+#overview.ovs-on > .fl-host { order: 3; }
+#overview.ovs-on > .rfs-compact { order: 4; }
+/* the glance and the flag card are Today's: on the other four sections they are not shown (css, so they never flash while the page draws) */
+#overview.ovs-on:not([data-ovs-sub="today"]) > .fl-host,
+#overview.ovs-on:not([data-ovs-sub="today"]) > .rfs-compact { display: none !important; }
+
+/* the pinned map: a fold control above it; folded, only the slim strip stays */
+.ovs-herobar { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin: 0 0 6px; min-width: 0; }
+.ovs-herotxt { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--tx2); }
+.ovs-herotxt .lbl { font: 600 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--tx3); }
+.ovs-herotxt b { color: var(--tx); font-weight: 600; }
+.ovs-herobtn { flex: 0 0 auto; padding: 4px 10px; font: 600 10.5px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.ovs-herobtn:focus-visible { outline: 2px solid var(--pur2); outline-offset: 2px; }
+#overview .sfc.ovs-folded { display: none !important; }
+@media (max-width: 700px) { .ovs-herobar { margin-bottom: 4px; } }
 @media (prefers-reduced-motion: reduce) { .ovs-pills { scroll-behavior: auto; } }

@@ -8,10 +8,13 @@
 // re-drawn, so every block keeps its listeners, its surface id and its Access switch. A block that is hidden for the session (a trade, P&L or internal block for
 // a desk login) stays hidden: a section only decides which of the allowed blocks are on screen. The class is scoped to #overview in overview-sections.css, so
 // a block the Workspace tab has moved into a tile is never hidden there.
+// ORDER with sections on (a flex column in overview-sections.css, so the order does not depend on which module drew first): the map ("The desk's world", pinned for
+// EVERY section, with a fold control remembered per browser) > the pills > Today only: the At a glance block, then the risk-flag history card > the open section's blocks.
 // Pure rules: overviewSubtabs.js (tested by overviewSubtabs.test.mjs); the DOM part is tested over the stand-in DOM by overviewSections.test.mjs.
-import { OV_SUBS, ALL_BLOCKS, BLOCK_SUB, SURFACE, LS_KEY, visibleSubs, parseHash, hashFor, pickSub, pillsHtml, stepSub, edgeSub, subById, subOfBlock } from './overviewSubtabs.js';
+import { OV_SUBS, ALL_BLOCKS, BLOCK_SUB, SURFACE, LS_KEY, HERO_LS, OV_PINNED, visibleSubs, parseHash, hashFor, pickSub, pillsHtml, stepSub, edgeSub, subById, subOfBlock, heroFolded, heroGroup } from './overviewSubtabs.js';
 
-const OFF = 'ovs-off', SOLO = 'ovs-solo';
+const OFF = 'ovs-off', SOLO = 'ovs-solo', ON = 'ovs-on', FOLDED = 'ovs-folded';
+const HERO = OV_PINNED[0];
 const tokens = e => String(e.className ?? '').split(/\s+/).filter(Boolean);
 const hasCls = (e, c) => tokens(e).includes(c);
 /** Add or remove one class (className edits so it works the same on the real DOM and the stand-in). Returns true when something changed. */
@@ -23,6 +26,7 @@ function setCls(e, c, on) {
 }
 const kidsOf = n => (n.children ? [...n.children] : (n.kids ?? []).filter(k => k.tag !== '#text'));
 const surfaceOf = e => e.getAttribute?.('data-surface') ?? '';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const hasContent = e => !!(String(e.textContent ?? '').trim() || kidsOf(e).length);
 
 export function mountOverviewSections({ doc = document, win = window } = {}) {
@@ -31,7 +35,11 @@ export function mountOverviewSections({ doc = document, win = window } = {}) {
   sec.dataset.ovsMounted = '1';
   const isOn = id => win.deskSurfaceOn?.(id) ?? true;
   const store = () => { try { return win.localStorage ?? null; } catch { return null; } };
-  let current = null, sig = '', applying = false, timer = null, mo = null;
+  let current = null, sig = '', applying = false, timer = null, mo = null, barSig = '';
+  const phone = () => { try { return !!win.matchMedia?.('(max-width: 700px)')?.matches; } catch { return false; } };
+  const heroStored = () => { try { const j = JSON.parse(store()?.getItem(HERO_LS) ?? '{}'); return j && typeof j === 'object' ? j : {}; } catch { return {}; } };
+  const heroEl = () => sec.querySelector(`.sfc[data-surface="${HERO}"]`);
+  const topOf = e => { let n = e; while (n && n.parentNode && n.parentNode !== sec) n = n.parentNode; return n && n.parentNode === sec ? n : null; };
 
   const blocks = () => [...sec.querySelectorAll('.sfc')].filter(e => ALL_BLOCKS.includes(surfaceOf(e)));
   const saved = () => { try { return store()?.getItem(LS_KEY) ?? ''; } catch { return ''; } };
@@ -61,12 +69,16 @@ export function mountOverviewSections({ doc = document, win = window } = {}) {
           wrap.innerHTML = pillsHtml(active, visible);
           const row = wrap.firstChild;
           if (row) {
-            let anchor = sec.querySelector('.fl-glance');   // the glance (and the chips above) stay on top: the pills go right under it
-            while (anchor && anchor.parentNode && anchor.parentNode !== sec) anchor = anchor.parentNode;
+            // the pills go right under the map; with no map on the page, under the glance; else first (the css order puts them where they belong either way)
+            const anchor = (heroEl() && topOf(heroEl())) || topOf(sec.querySelector('.fl-glance'));
             sec.insertBefore(row, anchor ? anchor.nextSibling : sec.firstChild);
           }
         }
       }
+      // the flex column that fixes the order, and the open section for the css that shows the glance and the flag card on Today only
+      setCls(sec, ON, split);
+      if (split) { if (sec.dataset.ovsSub !== active) sec.dataset.ovsSub = active; } else if (sec.dataset.ovsSub !== undefined) sec.removeAttribute?.('data-ovs-sub');
+      pinHero(split, active);
       // blocks
       for (const b of bs) setCls(b, OFF, split && BLOCK_SUB[surfaceOf(b)] !== active);
       // the one heading Overview draws between blocks ("News, releases and risks"): the pills name the sections now
@@ -82,21 +94,48 @@ export function mountOverviewSections({ doc = document, win = window } = {}) {
       }
     } finally { applying = false; }
   }
+  /** The pinned map: never hidden by a section; the bar above it carries the Fold / Show control (and the title when folded). */
+  function pinHero(split, active) {
+    const hero = heroEl(); let bar = sec.querySelector('.ovs-herobar');
+    if (!hero || !split) { bar?.remove(); if (hero) setCls(hero, FOLDED, false); barSig = ''; return; }
+    const folded = heroFolded(active, heroStored(), phone());
+    const title = String(hero.querySelector('h2')?.textContent ?? '').trim(), lbl = String(hero.querySelector('.lbl')?.textContent ?? '').trim();
+    const next = `${folded}|${folded ? `${lbl}|${title}` : ''}`;
+    if (!bar) { bar = doc.createElement('div'); bar.className = 'ovs-herobar'; bar.setAttribute('data-surface', 'widget.ov.sections'); sec.insertBefore(bar, hero); barSig = ''; }
+    if (next !== barSig) {
+      barSig = next;
+      bar.innerHTML = `${folded ? `<span class="ovs-herotxt"><span class="lbl">${esc(lbl || "The desk's world")}</span>${title ? ` <b>${esc(title)}</b>` : ''}</span>` : '<span class="ovs-herotxt"></span>'}<button type="button" class="btn ovs-herobtn" data-ovs-hero aria-expanded="${!folded}" title="${folded ? 'Show the map and globe' : 'Fold the map and globe to a slim strip'}">${folded ? 'Show map ▼' : 'Fold map ▲'}</button>`;
+    }
+    setCls(hero, FOLDED, folded);
+  }
   const later = () => { if (timer) win.clearTimeout?.(timer); timer = win.setTimeout(() => { timer = null; apply(); }, 40); };
 
   function choose(id, o = {}) {
     if (!subById(id)) return false;
+    const wasFolded = heroFolded(current, heroStored(), phone());
     current = id;
     try { store()?.setItem(LS_KEY, id); } catch { /* private window */ }
     try { win.history?.replaceState?.(null, '', hashFor(id)); } catch { /* no history */ }
     apply();
+    if (wasFolded && !heroFolded(current, heroStored(), phone())) win.setTimeout(() => { try { win.redrawHero?.(); } catch { /* next refresh */ } }, 30);
     const row = sec.querySelector('.ovs-pills');
     if (o.focus) sec.querySelector(`[data-ovsub="${id}"]`)?.focus?.();
     if (row && row.getBoundingClientRect().top < 0) row.scrollIntoView?.({ block: 'start', behavior: 'smooth' });   // came from far down the page: bring the new section's pills into view
     return true;
   }
 
-  sec.addEventListener('click', e => { const b = e.target.closest?.('[data-ovsub]'); if (b) choose(b.dataset.ovsub, { focus: true }); });
+  sec.addEventListener('click', e => {
+    const f = e.target.closest?.('[data-ovs-hero]');
+    if (f) {
+      const group = heroGroup(current), now = heroFolded(current, heroStored(), phone()), st = heroStored();
+      st[group] = now ? 'open' : 'folded';
+      try { store()?.setItem(HERO_LS, JSON.stringify(st)); } catch { /* private window */ }
+      apply();
+      if (now) win.setTimeout(() => { try { win.redrawHero?.(); } catch { /* the map draws itself on the next refresh */ } }, 30);   // it was hidden: draw it again at its real width
+      return;
+    }
+    const b = e.target.closest?.('[data-ovsub]'); if (b) choose(b.dataset.ovsub, { focus: true });
+  });
   sec.addEventListener('keydown', e => {
     const b = e.target.closest?.('[data-ovsub]'); if (!b) return;
     const vis = visibleSubs(isOn, id => blocks().some(x => surfaceOf(x) === id && hasContent(x)));
@@ -133,8 +172,8 @@ export function mountOverviewSections({ doc = document, win = window } = {}) {
   return {
     destroy() {
       mo?.disconnect?.(); win.removeEventListener?.('hashchange', onHash); if (timer) win.clearTimeout?.(timer);
-      sec.querySelector('.ovs-pills')?.remove();
-      for (const e of [...blocks(), ...sec.querySelectorAll('.grid'), ...kidsOf(sec).filter(k => hasCls(k, 'sec'))]) { setCls(e, OFF, false); setCls(e, SOLO, false); }
+      sec.querySelector('.ovs-pills')?.remove(); sec.querySelector('.ovs-herobar')?.remove(); setCls(sec, ON, false); sec.removeAttribute?.('data-ovs-sub');
+      for (const e of [...blocks(), ...sec.querySelectorAll('.grid'), ...kidsOf(sec).filter(k => hasCls(k, 'sec')), ...(heroEl() ? [heroEl()] : [])]) { setCls(e, OFF, false); setCls(e, SOLO, false); setCls(e, FOLDED, false); }
       delete sec.dataset.ovsMounted; delete win.deskOverviewSections; delete win.openOverviewSection;
     },
   };

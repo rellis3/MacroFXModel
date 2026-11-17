@@ -5,8 +5,8 @@
 .fl-title { font: 600 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--tx3); }
 .fl-age { font: 500 11px var(--mono); color: var(--tx3); overflow-wrap: anywhere; }
 .fl-ruling { margin: 0 0 10px; font-size: 14.5px; line-height: 1.45; color: var(--tx); overflow-wrap: anywhere; }
-.fl-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 10px; }
-.fl-tile { all: unset; box-sizing: border-box; display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 10px 12px; border: 1px solid var(--line2); border-radius: 10px; background: var(--bg2); }
+.fl-tiles { display: flex; flex-wrap: wrap; gap: 10px; }   /* every row is filled: a short last row stretches (a lone 'Next release' tile no longer sits at half width); two a row on a phone */
+.fl-tile { all: unset; box-sizing: border-box; display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 150px; padding: 10px 12px; border: 1px solid var(--line2); border-radius: 10px; background: var(--bg2); }
 button.fl-tile { cursor: pointer; }
 button.fl-tile:hover { border-color: var(--pur2); }
 button.fl-tile:focus-visible { outline: 2px solid var(--pur2); outline-offset: 2px; }

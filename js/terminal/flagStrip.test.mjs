@@ -44,7 +44,7 @@ test('the picture: tokens only, one block per capture, the hatch for a gap, labe
   assert.equal((svg.match(/<rect x=/g) ?? []).length, 30); assert.match(svg, /role="img" aria-label="VIX term structure: on for 27%/); assert.doesNotMatch(svg, /#[0-9a-fA-F]{3,8}\b|rgb\(/); assert.match(svg, /var\(--dn\)/);
   const gap = ribbonSvg(m.rows[4], m, { id: 'y' }); assert.match(gap, /url\(#y-gap\)/); assert.doesNotMatch(gap, /var\(--dn\)/);
   const b = boardHtml(m); assert.match(b, /data-surface="panel.risk.strip"/); assert.match(b, /range finding: VALIDATED/); assert.match(b, /nearest test only/); assert.match(b, /a light, not a finding/); assert.match(b, /data-rfs-csv/); assert.match(b, /never which way/); assert.doesNotMatch(b, /undefined|NaN/);
-  const c = compactHtml(m); assert.match(c, /data-rfs-compact/); assert.equal((c.match(/class="rfs-mini"/g) ?? []).length, 6); assert.equal(compactHtml({ ok: false }), ''); assert.match(boardHtml({ ok: false, why: 'x <y>', depth: 'd' }), /x &lt;y&gt;/);
+  const c = compactHtml(m); assert.match(c, /data-rfs-compact/); assert.equal((c.match(/class="rfs-mini"/g) ?? []).length, 2, 'a ribbon only for the two flags that have been on'); assert.equal(compactHtml({ ok: false }), ''); assert.match(boardHtml({ ok: false, why: 'x <y>', depth: 'd' }), /x &lt;y&gt;/);
   const csv = C.csv(m).split('\n'); assert.equal(csv.length, 31); assert.match(csv[0], /^time_utc,vix_level,vix_term/); assert.match(csv[1], /^2026-11-14T18:00:00.000Z,0,0,0,0,,0$/);
 });
 
@@ -62,4 +62,21 @@ test('the FLAGHISTORY command and the wiring: preview surface, loader, flags boa
   const feel = fs.readFileSync(new URL('./terminalFeel.js', import.meta.url), 'utf8'); assert.match(feel, /riskStrip: on\('panel\.risk\.strip'\)/); assert.match(feel, /import\('\.\/flagStrip\.js'\)/);
   const fv = fs.readFileSync(new URL('./flagsView.js', import.meta.url), 'utf8'); assert.match(fv, /deskSurfaceOn\?\.\('panel\.risk\.strip'\)/); assert.match(fv, /import\('\.\/flagStrip\.js'\)/); assert.doesNotMatch(fv, /^import .*flagStrip/m, 'a desk login gets no strip code');
   assert.match(fs.readFileSync(new URL('./commandLine.js', import.meta.url), 'utf8'), /case 'flaghistory'/);
+});
+
+test('the Overview card: a quiet record is one line and six dots, with no ribbons; a flag that has been on gets a ribbon, the rest are dots; evidence chips and the hatched dot stay', () => {
+  // nothing on, one flag never readable: 30 hourly captures
+  const quiet = Array.from({ length: 30 }, (_, i) => ({ ts: T0 + i * H, d: { risk: { flags: { vix_level: [0, 18], vix_term: [0, 0.9], hy_speed: [0, -20], jpy_bid: [0, 0.4], evz_stress: [0, null], stock_bond_corr: [0, 0.02] } } } }));
+  const mq = C.model(quiet, { flagEvidence: FLAG_EVIDENCE, evidence }), cq = compactHtml(mq);
+  assert.equal((cq.match(/class="rfs-mini"/g) ?? []).length, 0, 'no ribbons when nothing has been on');
+  assert.equal((cq.match(/class="rfs-dotitem"/g) ?? []).length, 6, 'the six lights are dots');
+  assert.match(cq, /0 of 6 stress lights have been on since 14 Nov, 30 hourly captures/);
+  assert.equal((cq.match(/rfs-dot-off/g) ?? []).length, 5); assert.equal((cq.match(/rfs-dot-na/g) ?? []).length, 1, 'the unreadable flag is a hatched dot, not an off one');
+  assert.match(cq, /could not be read now/); assert.match(cq, /range finding/, 'the validated range finding keeps its chip');
+  assert.doesNotMatch(cq, /<svg/); assert.doesNotMatch(cq, /undefined|NaN/); assert.match(cq, /data-surface="panel.risk.strip"/);
+  // one flag on at the end: that flag gets a ribbon, the other five are dots under a "never on" line
+  const one = quiet.map((p, i) => i >= 25 ? { ...p, d: { risk: { flags: { ...p.d.risk.flags, hy_speed: [1, -20] } } } } : p);
+  const co = compactHtml(C.model(one, { flagEvidence: FLAG_EVIDENCE, evidence }));
+  assert.equal((co.match(/class="rfs-mini"/g) ?? []).length, 1); assert.equal((co.match(/class="rfs-dotitem"/g) ?? []).length, 5); assert.match(co, /1 of 6 stress lights has been on since 14 Nov/); assert.match(co, /Never on since 14 Nov/);
+  assert.doesNotMatch(cq + co, /\b(bullish|bearish|buy|sell|signal)\b/i);
 });

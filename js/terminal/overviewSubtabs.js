@@ -7,9 +7,10 @@
 
 /** The sections, in pill order, with their blocks in on-screen order. `alias` is the URL hash part: #overview/currencies. */
 export const OV_SUBS = [
-  // the picture of the day: the map, the headline, the regime, the week, the risks to the read (the globe and map stay with Today: it is the first thing the page has always shown)
+  // the picture of the day: the headline, the regime, the week, the risks to the read. (The globe and map are PINNED above the pills on every section, see OV_PINNED;
+  // the At a glance block and the risk-flag history card belong to Today only: overview-sections.css hides them on the other four.)
   { id: 'today', alias: 'today', label: 'Today',
-    blocks: ['panel.ov.hero', 'panel.ov.book', 'panel.ov.regime', 'panel.ov.week', 'panel.ov.riskwarn'] },
+    blocks: ['panel.ov.book', 'panel.ov.regime', 'panel.ov.week', 'panel.ov.riskwarn'] },
   // every currency read side by side: the desk ranking, the price read in sigma, analyst against price, exposure, the bias engine
   { id: 'currencies', alias: 'currencies', label: 'Currencies',
     blocks: ['panel.ov.strength', 'panel.ov.ccystrength', 'panel.ov.priceread', 'panel.ov.exposure', 'panel.ov.engine'] },
@@ -21,12 +22,27 @@ export const OV_SUBS = [
     blocks: ['panel.ov.bookintel', 'panel.ov.record', 'panel.ov.bestpairs', 'panel.ov.tradewatch', 'panel.ov.playbooks', 'panel.ov.alerts'] },
 ];
 
+/** The block that stays on screen above the pills for EVERY section: the globe and map ("The desk's world"). It keeps its surface id and its Access switch; a small
+ *  fold control (remembered per browser) shrinks it to a slim strip. It is in no section, so no section ever hides it. */
+export const OV_PINNED = ['panel.ov.hero'];
+export const HERO_LS = 'deskOverviewHero:v1';
+/** Is the pinned map folded? `stored` is { today?: 'open'|'folded', other?: 'open'|'folded' } (the owner's own choice, one for Today and one for the other four sections).
+ *  With no choice: open on Today; on a phone folded on the other four sections, open elsewhere. */
+export function heroFolded(sub, stored = {}, phone = false) {
+  const group = sub === 'today' ? 'today' : 'other', s = stored?.[group];
+  if (s === 'folded') return true;
+  if (s === 'open') return false;
+  return group === 'other' && !!phone;
+}
+export const heroGroup = sub => (sub === 'today' ? 'today' : 'other');
+
 /** Overview surfaces that are NOT blocks of a section: the tab itself, the block above the pills, the lean lists that live inside the regime card, and the switch. */
 export const OV_NOT_BLOCKS = ['tab.overview', 'panel.ov.glance', 'panel.ov.regime-lists', 'widget.ov.sections'];
 
 export const SURFACE = 'widget.ov.sections';
 export const SUB_IDS = OV_SUBS.map(s => s.id);
 export const ALL_BLOCKS = OV_SUBS.flatMap(s => s.blocks);
+export const TODAY_ONLY_EXTRAS = ['.fl-host', '.rfs-compact'];   // the glance wrapper and the risk-flag history card: Today only (overview-sections.css)
 export const BLOCK_SUB = Object.fromEntries(OV_SUBS.flatMap(s => s.blocks.map(b => [b, s.id])));
 export const LS_KEY = 'deskOverviewSub:v1';
 

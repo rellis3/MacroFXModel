@@ -45,11 +45,25 @@ export function boardHtml(m) {
   return `<div class="card rfs-card" data-surface="panel.risk.strip"><div class="ch"><span class="lbl">The lights over time</span><span class="r"><button type="button" class="btn" data-rfs-csv data-noexport title="Save the ribbons as a CSV file (made in this browser)">CSV</button></span></div><p class="rfs-head"><b>${esc(m.headline)}</b></p>${rows}${axis}<p class="rfs-depth muted">${esc(m.depth)}</p><p class="tt-note">Red is on, grey is off, hatched is a flag that could not be read. The lights describe where markets were. Only a flag with a validated range finding says anything about what follows, and then only that the days ahead run wider, never which way.</p></div>`;
 }
 
-/** The slim card for the top of the Overview: six thin ribbons with the labels and the headline. */
+/** One light as a dot: red = on now, quiet = off, hatched = could not be read now. The title carries the Evidence Book words. */
+export function dotHtml(r) {
+  const state = r.sum.now === 1 ? 'on' : r.sum.now === 0 ? 'off' : 'na';
+  const word = state === 'on' ? 'on now' : state === 'off' ? 'off now' : 'could not be read now';
+  return `<span class="rfs-dotitem" title="${esc(`${r.label}: ${word}. ${r.evidence.words}`)}"><i class="rfs-dot rfs-dot-${state}" aria-hidden="true"></i><span class="rfs-dl">${esc(r.label)} <span class="rfs-dst">${state === 'on' ? 'ON' : state === 'off' ? 'off' : 'n/a'}</span></span>${r.evidence.kind === 'range' ? '<span class="chip up rfs-chip" title="validated range finding: runs wider, never which way">range finding</span>' : ''}</span>`;
+}
+
+/** The slim card for the Today section of the Overview. Six empty ribbons say nothing, so: a flag that has been on at least once gets a ribbon; the quiet ones are dots in a
+ *  line. When none of the six has been on in the record, there are no ribbons at all: one summary line and the six lights as dots. The Evidence chips and the hatched
+ *  "could not be read" state stay (the chip next to the flag that has a validated range finding, the hatched dot for an unreadable one). */
 export function compactHtml(m) {
   if (!m.ok) return '';
-  const rows = m.rows.map(r => `<div class="rfs-mini"><span class="rfs-ml">${esc(r.label)}</span>${ribbonSvg(r, m, { h: 10, id: `rfsm${++uid}` })}<span class="rfs-mn ${r.sum.now === 1 ? 'on' : ''}">${r.sum.now === 1 ? 'ON' : r.sum.now === 0 ? 'off' : 'n/a'}</span></div>`).join('');
-  return `<div class="card rfs-compact" data-rfs-compact data-noexport data-surface="panel.risk.strip"><div class="ch"><span class="lbl">Risk flags, ${esc(m.depth.split(' saved captures')[0])} captures</span><span class="r muted">${esc(m.headline)}</span></div>${rows}</div>`;
+  const everOn = m.rows.filter(r => r.sum.on > 0), quiet = m.rows.filter(r => !(r.sum.on > 0)), n = m.rows[0]?.series?.length ?? 0;
+  const since = new Date(m.t0).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const summary = `${everOn.length} of ${m.rows.length} stress lights ${everOn.length === 1 ? 'has' : 'have'} been on since ${since}, ${n} hourly captures`;
+  const ribbons = everOn.map(r => `<div class="rfs-mini"><span class="rfs-ml">${esc(r.label)}</span>${ribbonSvg(r, m, { h: 10, id: `rfsm${++uid}` })}<span class="rfs-mn ${r.sum.now === 1 ? 'on' : ''}">${r.sum.now === 1 ? 'ON' : r.sum.now === 0 ? 'off' : 'n/a'}</span></div>`).join('');
+  const dots = `<div class="rfs-dots">${(everOn.length ? quiet : m.rows).map(dotHtml).join('')}</div>`;
+  const quietNote = everOn.length && quiet.length ? `<div class="rfs-note muted">Never on since ${esc(since)}:</div>` : '';
+  return `<div class="card rfs-compact" data-rfs-compact data-noexport data-surface="panel.risk.strip"><div class="ch"><span class="lbl">Risk flags over time</span><span class="r muted">${m.nowOn} of ${m.rows.filter(r => r.sum.now !== null).length} readable flags on now</span></div><p class="rfs-sum">${esc(summary)}.</p>${ribbons}${quietNote}${dots}</div>`;
 }
 
 function ensureCss(doc) {
