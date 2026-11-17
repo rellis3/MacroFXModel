@@ -258,6 +258,12 @@ export const SURFACES = [
   mk('panel.macro.gpr', 'panel', 'Macro: geopolitical risk index', 'Macro', null, 'the geopolitical risk level, trend and z-score'),
   mk('panel.macro.biasengine', 'panel', 'Macro: bias engine (currencies x drivers)', 'Macro', null, 'the bias engine\'s full grid of eight currencies by eight drivers as contribution heat, the assets by their drivers, the global risk score, the theory-v1 weights, coverage and the gaps list'),
   mk('panel.macro.carryside', 'panel', 'Macro: carry board "side" column', 'Macro', null, 'which side of a pair earns the carry'),
+  // ── the Bias process tab (plans/DESK_BIAS_PROCESS_SPEC.md "Desk Terminal"; js/terminal/deskBiasProcessView.js) ──
+  mk('tab.bprocess', 'tab', 'Bias process', 'Tabs', P, 'one card per market every weekday (FundaBias layout): the Desk Bias Process call and conviction, who made it (AI accept, AI override or the rules), the reason line and the six layers (event, regime, macro, structure, positioning, day range); a direction read with no forward record yet (owner rule 2026-11-16), so preview'),
+  mk('panel.bp.invalid', 'panel', 'Bias process: invalidation line on each card', 'Bias process', T, 'the level that would invalidate each card\'s call (a confirmed swing or 1.5 sigma_day): reads as a stop'),
+  mk('panel.bp.h2h', 'panel', 'Bias process: head to head', 'Bias process', M, 'every competitor (process AI, process rules, Max, FundaBias, desk, engine, H4 trend) scored the same way: hit rate against the base rate with intervals, R under one fixed trade rule, Neutral share, calibration by conviction and the AI override record; the track record'),
+  mk('panel.bp.review', 'panel', 'Bias process: weekly review of wrong calls', 'Bias process', M, 'the last seven days\' wrong calls: which layer pointed the wrong way, whether an AI override helped or hurt, whether an event landed after the call; the process\'s scored record'),
+  mk('panel.bp.fundabias', 'panel', 'Bias process: FundaBias log form', 'Bias process', I, 'the owner logs FundaBias\'s reading per market (direction and score out of 10), write-once per day; owner only on the server too'),
 ];
 
 export const KINDS = ['tab', 'nav', 'widget', 'strip', 'panel'];

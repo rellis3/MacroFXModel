@@ -53,6 +53,8 @@ const _CF_EXACT = new Set([
   'tg_config', 'ai_alert_cfg',
   'news_channel_v1',        // the shared news channel's OWN bot token + channel (js/newsChannel.js; Desk Terminal News tab). Owner-set: must survive redeploys. Also in _worker.js (both lists) and js/storeRegistry.js.
   'tg_master_all',          // the master kill switch for every Telegram message (js/telegramGuard.js; ⚙ Alerts). Owner-set: a reset would un-mute. Also in _worker.js (both lists).
+  'desk_bias_process_index', // the Desk Bias Process's issue index (one row per stored day; js/deskBiasProcess.js, plans/DESK_BIAS_PROCESS_SPEC.md). The dated issues desk_bias_process_<date> are kept by the prefix rule in isCfKey. Also in _worker.js (both lists) and js/storeRegistry.js.
+  'fundabias_log_index',    // the FundaBias log's index of logged dates (POST /api/fundabias-log; the day rows fundabias_log_<date> are kept by the prefix rule in isCfKey). Also in _worker.js (both lists) and js/storeRegistry.js.
   'bias_engine_index',      // the bias engine's issue index (one row per stored day; js/biasEngine.js, plans/BIAS_ENGINE_SPEC.md). The dated issues bias_engine_<date> are kept by the prefix rule in isCfKey. Also in _worker.js (both lists) and js/storeRegistry.js.
   'kv_write_times_v1',      // the write-time ledger the Data Map reads (js/storeRegistry.js); see _noteWrite above. Also in _worker.js PERMANENT_KEYS.
   'cog_legs_live_v1',      // chart page legs: the laptop's latest IBKR 5-minute bars per futures contract, pushed by scripts/rates_line/refresh_leg_bars.py
@@ -514,6 +516,9 @@ function isCfKey(key) {
   // bias_engine_<date> and bias_engine_index: the bias engine's write-once morning issue (js/biasEngine.js), scored forward on the
   // bias scoreboard; a missed or lost day is never back-issued, so it must survive redeploys.
   if (key.startsWith('bias_engine_')) return true;
+  // desk_bias_process_<date> / _index (js/deskBiasProcess.js) and fundabias_log_<date> / _index (the owner's FundaBias log): write-once
+  // forward records scored head to head (plans/DESK_BIAS_PROCESS_SPEC.md); never back-issued, so they must survive redeploys.
+  if (key.startsWith('desk_bias_process_') || key.startsWith('fundabias_log_')) return true;
   // vol_reference_* are user-pasted reference exports — cannot be auto-rebuilt
   if (key.startsWith('vol_reference_')) return true;
   // vmlog_* are the VuManChu forward-validation log (one key per UTC day) — the

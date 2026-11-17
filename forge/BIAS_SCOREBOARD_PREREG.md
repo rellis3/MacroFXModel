@@ -330,3 +330,54 @@ London weekday with a stored `bias_engine_<D>` (KV, written 07:00–07:30 London
   clock; the `-v1` rows are never re-scored under new weights.
 - **Prior:** Null at 24 h (synthesis §2: direction at 24 h from public data is close to a coin). The record exists to
   measure it, not because an edge is expected.
+
+### A4 — 2026-11-17 — PRE-RESULTS (for these forecasters)
+
+**Added forecasters `process-ai` and `process-system`, forward from the Desk Bias Process's first issue date; and
+enabled `fundabias` from its first logged row. No back-issue for any of them.** Written before any of them has a row.
+
+- **What they are.** `plans/DESK_BIAS_PROCESS_SPEC.md` (`js/deskBiasProcess.js`, version `desk-bias-process-v1`, AI
+  contract `process-ai-v1`). Six fixed layers per market; a deterministic system call; an AI analyst that accepts it
+  or overrides it with a reason tied to the pack; an invalid AI reply is retried once and then the system call stands.
+  - `process-system` is the rules alone.
+  - `process-ai` is the published call: the AI's, or the system's on a fallback (`call.by` records which).
+- **First issue date.** The first London weekday with a stored `desk_bias_process_<D>` (KV, written once 07:30–08:00
+  London, after the stored `bias_engine_<D>`; no earlier than 2026-11-18). Days before it have no rows, and none will
+  ever be written for them.
+- **Mapping (frozen).** Side = the card's direction (BULLISH +1, BEARISH −1); NEUTRAL or a missing market = no view.
+  p_up = clip(p0 ± 0.02 × conviction), so s runs 0.02 (conviction 1) to 0.10 (conviction 5). Conviction = the call's
+  1–5. Instruments: all scored instruments, by the desk's names (`DESK_NAME`). Code: `js/biasForecasters.js`
+  `processAi`, `processSystem`.
+- **Record.** A fifth source file `forward/direction_ledger/sameday/<D>_process.json`, written on the first tick after
+  the stored issue exists and before 10:00 London. Knowable time = the record's `issuedAt` (anchor = max(07:00,
+  issuedAt)). A live read from `/api/desk-bias-process` (system only, no AI) is never a row.
+- **`fundabias` enabled.** The owner asked for FundaBias readings to be logged (spec of 2026-11-17: "the owner (or
+  anyone) logs its score per market"). This is the PRE-RESULTS amendment §3.3 required.
+  - **Mapping:** the one frozen in §3.3: s = 0.01 × (score − 5), cap 0.06, sign from its direction. A score of 5 or less,
+    or NEUTRAL, = no view.
+  - **Input:** `POST /api/fundabias-log`. It is owner-only and accepts today's London date only. It is write-once per
+    market per day and stamped with the server time. The rows are stored in KV `fundabias_log_<D>`.
+  - **Record:** a sixth source file `<D>_fundabias.json`, written on the first tick in [16:05, 20:00) London. Each row
+    is knowable at its log timestamp, so a reading logged after 16:00 London is not a row for D (§3.1 cutoff).
+- **Scoring and multiplicity.** The statistics of §3.5 are computed for each of the three on its own clock: 60 and 120
+  shared days counted from its first row. They are **descriptive** (BH, §6) and do **not** join the Holm family. That
+  family stays at the six cells of A2, so no existing cell's test changes. Code: `score.mjs` `OWN_CLOCK`.
+  - A rule change to the process is a new version (`desk-bias-process-v2`, …) with its own clock. Per the spec, the old
+    version is scored beside the new one for 20 days. The `-v1` rows are never re-scored.
+- **Head to head (descriptive).** `scripts/bias-scoreboard/h2h.mjs` (logic `js/deskBiasH2H.js`) uses one fixed trade
+  rule for every competitor:
+  - enter at the call's knowable time;
+  - stop at the competitor's invalidation when it gave one on the losing side of entry, else 1 σ_day;
+  - exit on a flip or Neutral at the next call, at the stop, or at Friday 21:00 London;
+  - cost is half the bar's own bid/ask spread in and out.
+  - The competitors are process-ai, process-system, max-signals, fundabias, desk-rating, bias-engine and h4-trend. Each
+    is read from its stored record only.
+  - Reported:
+    - hit rate (to 21:00 and to the next 07:00) against B0 on the same rows;
+    - R per trade with day-cluster intervals;
+    - hit rate by conviction;
+    - Neutral share;
+    - for process-ai, the override record: on override days, the AI's signed d21 move (σ units) minus the system's.
+  - It is a running table from day 1, read formally at 60 and 120 shared days, and it is never a Holm cell.
+- **Prior.** Null at 24 h for all three, as for `bias-engine` (A3). The process was built *because* every direction
+  test came back near the base rate: it buys a repeatable, explained call and an honest record, not an expected edge.

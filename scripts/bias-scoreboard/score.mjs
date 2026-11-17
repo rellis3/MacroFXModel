@@ -4,7 +4,7 @@
 //   node scripts/bias-scoreboard/score.mjs --api <server base url> --look 60|120 [--write]
 //   node scripts/bias-scoreboard/score.mjs --positive-control          (§3.9; also run by score.test.mjs)
 //
-// Reads the same-day issue records (<D>_base|desk|max|engine.json) and outcomes (out/<D>_<target>.json) as written, never
+// Reads the same-day issue records (<D>_base|desk|max|engine|process|fundabias.json) and outcomes (out/<D>_<target>.json) as written, never
 // re-issues anything. --write puts RESULTS.md and results.json in analysis/output/bias-scoreboard/.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,6 +14,9 @@ import { SAMEDAY_CORE, SAMEDAY_EXTENDED, SAMEDAY_TARGETS, issueSameDay, outcomeS
 export const SEED = 20261114, B = 2000, BLOCK = { d21: 5, n07: 5, d5: 10 };
 export const SCORED = ['desk-rating', 'desk-ccy', 'max-signals', 'surprise-rule', 'h4-trend'];   // h4-trend: prereg Amendment A1 (Holm family of five)
 export const RANKABLE = ['desk-rating', 'desk-ccy', 'surprise-rule'];
+// Forecasters added forward by amendment (A3 bias-engine; A4 process-ai, process-system, fundabias): descriptive, BH, each on
+// its own clock (shared days counted from its first row), outside the Holm family. Head to head: scripts/bias-scoreboard/h2h.mjs.
+export const OWN_CLOCK = ['bias-engine', 'process-ai', 'process-system', 'fundabias'];
 export const OBF = { 1: { z: 2.797, alpha: 0.0052 }, 2: { z: 1.977, alpha: 0.048 } };
 export const PASS_BAR_PP = 0.06, UNRESOLVED_MAX = 0.10, COIN_PCT = 97.5;
 
@@ -144,9 +147,20 @@ export function judge(recs, outs, { look = 1, seed = SEED, coinB = B } = {}) {
     const pass = holm(q5.map(x => x.curve[0.5]?.p ?? 1), 0.05);
     q5.forEach((x, i) => { const c = x.curve[0.5]; x.verdict = !c ? 'UNDERPOWERED' : pass[i] && c.pct >= COIN_PCT ? 'VALIDATED' : c.hit_excess_upper95 < PASS_BAR_PP ? 'NULL' : 'UNDERPOWERED'; });
   }
+  // own-clock cells (A3, A4): the first nDays shared days from the forecaster's first row, d21, core six pooled
+  const allShared = [...new Set(recs.filter(r => r.source === 'base').map(r => r.issue_date))].filter(d => outs.some(o => o.issue_date === d && o.target === 'd21')).sort();
+  const own = OWN_CLOCK.map(m => {
+    const first = recs.filter(r => r.forecasts?.some(f => f.model_id === m)).map(r => r.issue_date).sort()[0];
+    if (!first) return { model_id: m, n: 0, first_day: null, shared_days: 0, complete: false };
+    const days = allShared.filter(d => d >= first).slice(0, nDays), ds = new Set(days);
+    const j = joinRows(recs.filter(r => ds.has(r.issue_date)), outs.filter(o => ds.has(o.issue_date)));
+    const st = cellStats(j.rows.filter(r => r.model === m && r.target === 'd21' && core.has(r.inst)), days, { block: BLOCK.d21, seed, coinB });
+    return { model_id: m, first_day: first, shared_days: days.length, complete: days.length >= nDays, ...st };
+  });
+  bh(own.map(c => (c.n ? c.p : 1))).forEach((p, i) => { own[i].bh_pass = p; });
   const coverage = Object.fromEntries(SCORED.map(m => { const all = primary.filter(r => r.model === 'B0').length; return [m, all ? primary.filter(r => r.model === m && r.speaks).length / all : null]; }));
   return { prereg: 'forge/BIAS_SCOREBOARD_PREREG.md', seed, look, shared_days: shared.length, first_day: shared[0] ?? null, last_day: shared.at(-1) ?? null,
-    complete: shared.length >= nDays, coverage, cells, descriptive: desc, q5 };
+    complete: shared.length >= nDays, coverage, cells, own_clock: own, descriptive: desc, q5 };
 }
 
 // ── §3.9 positive control: synthetic paths through the real issue / outcome / judge code ─────────────────────────
@@ -185,7 +199,7 @@ export async function coinUniformity({ reps = 200, seed = SEED } = {}) {
 // ── CLI ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 function readDir(dir) {
   const recs = [], outs = [];
-  for (const f of fs.readdirSync(dir)) if (/^\d{4}-\d{2}-\d{2}_(base|desk|max|engine)\.json$/.test(f)) recs.push(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')));
+  for (const f of fs.readdirSync(dir)) if (/^\d{4}-\d{2}-\d{2}_(base|desk|max|engine|process|fundabias)\.json$/.test(f)) recs.push(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')));
   const od = path.join(dir, 'out');
   if (fs.existsSync(od)) for (const f of fs.readdirSync(od)) if (/^\d{4}-\d{2}-\d{2}_(d21|n07|d5)\.json$/.test(f)) outs.push(JSON.parse(fs.readFileSync(path.join(od, f), 'utf8')));
   return { recs, outs };
@@ -198,6 +212,8 @@ function markdown(J) {
   for (const c of J.cells) lines.push(`| ${c.model_id} | ${c.n} | ${c.events ?? '—'} | ${f(J.coverage[c.model_id])} | ${f(c.logdiff)} | ${f(c.z)} | ${c.boundary_z} | ${c.holm_pass ? 'pass' : '—'} | ${f(c.coin_pct)} | ${f(c.hit_rate)} | ${f(c.hit_excess)} [${f(c.hit_excess_ci?.[0])}, ${f(c.hit_excess_ci?.[1])}] | ${f(c.mean_R)} | ${c.unresolved} | ${J.complete ? c.verdict : 'not judged'} |`);
   if (J.q5) { lines.push('', '## Q5 abstention (drop the weakest 50%)', '', '| forecaster | kept | mean R | random p97.5 | pct | verdict |', '|---|---|---|---|---|---|');
     for (const x of J.q5) { const c = x.curve[0.5]; lines.push(`| ${x.model_id} | ${c?.kept ?? 0} | ${f(c?.mean_R)} | ${f(c?.random_p975)} | ${f(c?.pct)} | ${x.verdict} |`); } }
+  if (J.own_clock?.length) { lines.push('', '## Own-clock forecasters (amendments A3, A4; descriptive, BH q = 0.10)', '', '| forecaster | first day | shared days | n | log diff vs B0 | z | hit | mean R | BH |', '|---|---|---|---|---|---|---|---|---|');
+    for (const c of J.own_clock) lines.push(`| ${c.model_id} | ${c.first_day ?? '—'} | ${c.shared_days} | ${c.n} | ${f(c.logdiff)} | ${f(c.z)} | ${f(c.hit_rate)} | ${f(c.mean_R)} | ${c.bh_pass ? 'pass' : '—'} |`); }
   lines.push('', `Descriptive cells: ${J.descriptive.length}; BH q = 0.10 survivors (candidates only): ${J.descriptive.filter(d => d.bh_pass).map(d => `${d.model_id}/${d.target}/${d.inst}`).join(', ') || 'none'}.`);
   return lines.join('\n') + '\n';
 }

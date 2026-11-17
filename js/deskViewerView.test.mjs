@@ -128,3 +128,13 @@ test('the bias engine for the desk login: every flip line goes unless panel.asse
   assert.equal(sanitizeBiasEngine(body, id => id === 'panel.asset.beflip'), body);
   assert.ok(sanitizerFor('/api/bias-engine?market=EURUSD'));
 });
+import { sanitizeBiasProcess } from './deskViewerView.js';
+test('the Desk Bias Process for the desk login: invalidation levels go unless panel.bp.invalid is on; the expression lists always go; the call stays', () => {
+  const body = { ok: true, cleanest: [{ pair: 'EURUSD' }], markets: { GOLD: { call: { dir: 'BEARISH', conviction: 3, invalidation: 4135.2 }, system: { dir: 'BEARISH', invalidation: 4135.2 }, invalidation: { level: 4135.2, basis: 'swing' }, expression: { clean: true }, layers: { structure: { swingHigh: { level: 4135.2 } } } } } };
+  const v = sanitizeBiasProcess(body, () => false);
+  assert.ok(!JSON.stringify(v).includes('"invalidation"') && !('cleanest' in v) && !('expression' in v.markets.GOLD));
+  assert.equal(v.markets.GOLD.call.dir, 'BEARISH'); assert.equal(v.markets.GOLD.call.conviction, 3); assert.equal(v.markets.GOLD.layers.structure.swingHigh.level, 4135.2);
+  const on = sanitizeBiasProcess(body, id => id === 'panel.bp.invalid');
+  assert.equal(on.markets.GOLD.call.invalidation, 4135.2); assert.ok(!('cleanest' in on));
+  assert.ok(sanitizerFor('/api/desk-bias-process?market=GOLD')); assert.equal(sanitizerFor('/api/desk-bias-process/h2h'), null);
+});

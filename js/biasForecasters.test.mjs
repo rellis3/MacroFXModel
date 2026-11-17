@@ -1,6 +1,6 @@
 // node js/biasForecasters.test.mjs   (forge/BIAS_SCOREBOARD_PREREG.md §3.3-3.4)
 import assert from 'node:assert/strict';
-import { h4Slope, h4Trend, deskRating, deskCcy, maxSignals, maxWindow, surpriseRule, releaseZ, tier1Of, fundabias, FUNDABIAS_ENABLED, maxInst, biasEngine } from './biasForecasters.js';
+import { h4Slope, h4Trend, deskRating, deskCcy, maxSignals, maxWindow, surpriseRule, releaseZ, tier1Of, fundabias, FUNDABIAS_ENABLED, maxInst, biasEngine, processAi, processSystem } from './biasForecasters.js';
 import { londonMs } from './directionLedger.js';
 
 let passed = 0;
@@ -111,8 +111,34 @@ ok('h4-trend: EMA20 slope of 4h closes from closed H1 bars only; +-0.04; silent 
   assert.equal(v.length, 13);
 });
 
-ok('fundabias: disabled, writes nothing', () => {
-  assert.equal(FUNDABIAS_ENABLED, false); assert.deepEqual(fundabias(), []);
+ok('fundabias (A4): s = 0.01 x (score - 5) capped 0.06, score <= 5 or Neutral = no view, knowable at the log time, aliases', () => {
+  assert.equal(FUNDABIAS_ENABLED, true);
+  assert.deepEqual(fundabias(), []);                                   // no log that day: no rows at all
+  const t = new Date(londonMs(D, 8, 12)).toISOString();
+  const v = fundabias([{ market: 'XAUUSD', dir: 'BEARISH', score10: 8, loggedAt: t }, { market: 'EURUSD', dir: 'BULLISH', score10: 10, loggedAt: t },
+    { market: 'GBPUSD', dir: 'BULLISH', score10: 5, loggedAt: t }, { market: 'USDJPY', dir: 'NEUTRAL', score10: 7, loggedAt: t }, { market: 'NAS100', dir: 'BULLISH', score10: 6, loggedAt: t }, { market: 'NQ', dir: 'BEARISH', score10: 9, loggedAt: t }, { market: 'SPX500', dir: 'BULLISH', score10: 7, loggedAt: t }], D);
+  assert.deepEqual([by(v, 'gold').side, by(v, 'gold').shift, by(v, 'gold').knowable_ms, by(v, 'gold').conviction], [-1, 0.03, londonMs(D, 8, 12), 8]);
+  assert.equal(by(v, 'eurusd').shift, 0.05);
+  assert.equal(by(v, 'nq').shift, 0.01); assert.equal(by(v, 'nq').side, 1);     // NAS100 logged first; the later NQ row is the same market
+  assert.equal(by(v, 'gbpusd').speaks, false); assert.equal(by(v, 'usdjpy').speaks, false);
+  assert.equal(by(v, 'es').shift, 0.02);                                       // the desk's own name SPX500
+  assert.equal(by(v, 'us30').speaks, false); assert.equal(by(v, 'us30').inputs.missing, true);
+  assert.ok(v.every(x => x.model_id === 'fundabias' && x.model_version === 'fundabias-v1'));
+  assert.equal(fundabias([{ market: 'EURUSD', dir: 'BULLISH', score10: 20, loggedAt: t }], D).find(x => x.inst === 'eurusd').shift, 0.06);
+});
+
+ok('process-ai / process-system: side = dir, shift 0.02 x conviction, Neutral / missing = no view, knowable at issuedAt', () => {
+  const rec = { version: 'desk-bias-process-v1', prompt: 'process-ai-v1', issuedAt: '2026-11-13T07:41:00.000Z', markets: {
+    GOLD: { call: { dir: 'BEARISH', conviction: 3, by: 'ai-accept', invalidation: 4100 }, system: { dir: 'BEARISH', conviction: 3, invalidation: 4100 } },
+    EURUSD: { call: { dir: 'NEUTRAL', conviction: null, by: 'ai-override' }, system: { dir: 'BULLISH', conviction: 5, invalidation: 1.15 } } } };
+  const a = processAi(rec), s = processSystem(rec);
+  assert.deepEqual([by(a, 'gold').side, by(a, 'gold').shift, by(a, 'gold').inputs.by], [-1, 0.06, 'ai-accept']);
+  assert.equal(by(a, 'eurusd').speaks, false); assert.equal(by(a, 'eurusd').inputs.by, 'ai-override');
+  assert.deepEqual([by(s, 'eurusd').side, by(s, 'eurusd').shift], [1, 0.1]);
+  assert.equal(by(s, 'nq').speaks, false); assert.equal(by(s, 'nq').inputs.missing, true);
+  assert.ok(a.every(x => x.model_id === 'process-ai' && x.model_version === 'process-ai-v1' && x.knowable_ms === Date.parse(rec.issuedAt)));
+  assert.ok(s.every(x => x.model_id === 'process-system'));
+  assert.deepEqual(processAi(null).filter(x => x.speaks), []);
 });
 
 ok('bias-engine: side = dir, Neutral / missing = no view, shift 0.01 x strength, knowable at the issue time', () => {

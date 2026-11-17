@@ -61,6 +61,8 @@ const MAX_ALIAS = { US500: 'SP500', SPX500: 'SP500', SPX: 'SP500', US500CASH: 'S
   USTEC: 'NAS100', US100: 'NAS100', USTECH100: 'NAS100', GOLD: 'XAUUSD', DJI30: 'US30', DJ30: 'US30', DJI: 'US30', DJIA: 'US30', DOW: 'US30', DOW30: 'US30',
   WALLST: 'US30', WS30: 'US30', US30CASH: 'US30' };
 export const maxInst = sym => { const s = String(sym ?? '').toUpperCase(); return MAX_SYMBOL[MAX_ALIAS[s] ?? s] ?? null; };
+/** Ledger instrument for a market name: the desk's names (NQ, SPX500, GOLD, ...) first, then any Signal Copier spelling. */
+export const instOfMarket = name => { const s = String(name ?? '').toUpperCase().replace(/[^A-Z0-9]/g, ''); return Object.keys(DESK_NAME).find(k => DESK_NAME[k] === s) ?? maxInst(s); };
 const tsMs = t => (Number.isFinite(t) ? (t > 1e12 ? t : t * 1000) : null);
 
 /** The window for D: [22:00 UK on the previous London weekday, 16:00 London on D]. */
@@ -159,9 +161,26 @@ export function h4Trend(h1ByInst, date, { insts = Object.keys(SAMEDAY_INSTRUMENT
   });
 }
 
-// ── fundabias: disabled until the owner confirms its terms allow storing readings (prereg §3.3). ──────────────────
-export const FUNDABIAS_ENABLED = false;
-export function fundabias() { return []; }
+// ── fundabias (prereg §3.3 mapping; enabled forward by amendment A4, 2026-11-17) ─────────────────────────────────
+// The owner (or anyone with the owner login) logs FundaBias's published reading per market on the day: direction and
+// score n/10 (POST /api/fundabias-log, write-once per market per day, server time-stamped, KV fundabias_log_<date>).
+// Mapping frozen in §3.3: s = 0.01 × (score − 5), cap 0.06, sign from its direction; s <= 0 (score 5 or less) or
+// NEUTRAL = no view. Knowable at the log's server timestamp, so a reading logged after 16:00 London is not a row for D.
+export const FUNDABIAS_ENABLED = true;
+export const FUNDABIAS_PER_POINT = 0.01, FUNDABIAS_CAP = 0.06;
+/** `logs` = the day's log rows [{ market, dir, score10, loggedAt }]. Markets by any name maxInst() knows (XAUUSD, GOLD, NAS100, ...). */
+export function fundabias(logs = [], date = null, { insts = Object.keys(SAMEDAY_INSTRUMENTS) } = {}) {
+  const by = {};
+  for (const r of logs || []) { const inst = instOfMarket(r?.market); if (inst && !by[inst]) by[inst] = r; }   // first log per market wins (write-once anyway)
+  if (!(logs || []).length) return [];
+  return insts.map(inst => {
+    const r = by[inst], side = ENGINE_SIDE[r?.dir] ?? 0, score = Number.isFinite(r?.score10) ? r.score10 : null;
+    const s = side && score != null ? Math.min(FUNDABIAS_CAP, +(FUNDABIAS_PER_POINT * (score - 5)).toFixed(4)) : 0, speaks = !!side && s > 0;
+    const ms = Date.parse(r?.loggedAt ?? '');
+    return { model_id: 'fundabias', model_version: V('fundabias'), inst, speaks, side: speaks ? side : 0, shift: speaks ? s : 0,
+      knowable_ms: Number.isFinite(ms) ? ms : (date ? londonMs(date, 7) : null), conviction: score, inputs: { dir: r?.dir ?? null, score10: score, logged_at: r?.loggedAt ?? null, missing: !r } };
+  });
+}
 
 // ── bias-engine (plans/BIAS_ENGINE_SPEC.md; prereg amendment A3: added forward from its first issue date, no back-issue) ──
 // The stored morning issue of js/biasEngine.js (KV bias_engine_<D>, written 07:00-07:30 London). Side = the market's
@@ -179,3 +198,23 @@ export function biasEngine(rec, { knowableMs = Date.parse(rec?.asOf ?? ''), inst
       inputs: { dir: m?.dir ?? null, strength: m ? strength : null, score: m?.score ?? null, coverage: m?.coverage ?? null, engine: rec?.version ?? null, weights: rec?.weights ?? null, missing: !m } };
   });
 }
+
+// ── process-ai / process-system (plans/DESK_BIAS_PROCESS_SPEC.md; prereg amendment A4: forward from the first issue) ──
+// The stored morning issue of the Desk Bias Process (KV desk_bias_process_<D>, written 07:30-08:00 London). process-ai
+// is the published call (the AI analyst's, or the system's when the AI failed); process-system is the rules alone.
+// Side = dir (BULLISH +1, BEARISH -1); NEUTRAL or a missing market = no view. p_up = clip(p0 ± 0.02 × conviction), so s
+// runs 0.02 (conviction 1) to 0.10 (conviction 5). Knowable at the record's issuedAt.
+export const PROCESS_SHIFT_PER_CONVICTION = 0.02;
+function processViews(rec, which, { knowableMs, insts }) {
+  const id = which === 'call' ? 'process-ai' : 'process-system';
+  return insts.map(inst => {
+    const card = rec?.markets?.[DESK_NAME[inst]], c = card?.[which], side = ENGINE_SIDE[c?.dir] ?? 0, conv = Number.isFinite(c?.conviction) ? c.conviction : null;
+    const speaks = !!side && conv != null && conv > 0;
+    return { model_id: id, model_version: V(id), inst, speaks, side: speaks ? side : 0, shift: speaks ? +(PROCESS_SHIFT_PER_CONVICTION * Math.min(5, conv)).toFixed(4) : 0,
+      knowable_ms: knowableMs, conviction: conv, inputs: { dir: c?.dir ?? null, conviction: conv, by: which === 'call' ? card?.call?.by ?? null : 'system', invalidation: c?.invalidation ?? null,
+        process: rec?.version ?? null, prompt: rec?.prompt ?? null, missing: !card } };
+  });
+}
+/** `rec` = a stored desk-bias-process record ({ issuedAt, version, prompt, markets: { NAME: { call, system } } }). */
+export function processAi(rec, { knowableMs = Date.parse(rec?.issuedAt ?? rec?.asOf ?? ''), insts = Object.keys(SAMEDAY_INSTRUMENTS) } = {}) { return processViews(rec, 'call', { knowableMs, insts }); }
+export function processSystem(rec, { knowableMs = Date.parse(rec?.issuedAt ?? rec?.asOf ?? ''), insts = Object.keys(SAMEDAY_INSTRUMENTS) } = {}) { return processViews(rec, 'system', { knowableMs, insts }); }

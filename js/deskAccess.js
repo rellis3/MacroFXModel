@@ -54,7 +54,7 @@ export const VIEWER_ALLOW_OVERRIDES = [
 export const VIEWER_ALLOW_EXACT = ['/api/desk-run', '/api/desk-run/index', '/api/desk-update', '/api/desk-weekly', '/api/desk-history', '/api/desk-risk', '/api/desk-watch'];
 
 /** Routes that back a SWITCHABLE surface (trade or P&L): denied by default, open when the owner switches any one of the listed surfaces on for the
- *  desk login (the server and the page pass an `on(id)` function). Prefix match on the path; ops paths still lose. */
+ *  desk login (the server and the page pass an `on(id)` function). Prefix match on the path, the longest matching prefix deciding; ops paths still lose. */
 export const VIEWER_SURFACE_ROUTES = [
   ['/api/desk-score', ['panel.ov.record', 'panel.ana.track', 'panel.ana.fall', 'panel.ana.days']],
   ['/api/thesis-reality', ['panel.charts.ranking', 'panel.changed.thesis']],
@@ -67,6 +67,8 @@ export const VIEWER_SURFACE_ROUTES = [
   ['/api/desk-monitors', ['tab.monitor']],   // the Monitor tab's saved market lists (preview feature, read only for the desk login; the owner always has it)
   ['/api/desk-workspaces', ['tab.workspace']],   // the Workspace tab's saved layouts (preview feature; the owner always has it)
   ['/api/desk-alert-rules', ['widget.alerts']],  // the list of alert rules, read only: only the owner may change them (js/deskAlertRules.js)
+  ['/api/desk-bias-process', ['tab.bprocess']],   // the Bias process cards (preview: a direction read with no forward record yet); the invalidation keys are removed unless panel.bp.invalid is on (js/deskViewerView.js)
+  ['/api/desk-bias-process/h2h', ['panel.bp.h2h', 'panel.bp.review']],   // its head to head and weekly review: the scored record (pnl). The LONGEST matching prefix decides, so the tab switch alone does not open this
 ];
 
 /** POSTs that back a SWITCHABLE preview surface: refused for the desk login unless the owner switched one of the listed surfaces on. The route itself checks again. */
@@ -99,7 +101,10 @@ export function viewerMayCall(method, url, on = () => false) {
   if (seg.slice(1).some(s => OPS_SEGMENTS.has(s) || /backfill|rebuild/.test(s) || /^\$\{/.test(s))) return false;
   if (path === '/api/desk-bars' && query.get('role')) return false;          // a role makes it a model call; plain bars are market data
   if (VIEWER_ALLOW_EXACT.includes(path)) return true;
-  if (typeof on === 'function' && VIEWER_SURFACE_ROUTES.some(([p, ids]) => under(path, p) && ids.some(id => on(id)))) return true;
+  if (typeof on === 'function') {   // the longest matching prefix decides (a nested route can back a different surface than its parent)
+    const hit = VIEWER_SURFACE_ROUTES.filter(([p]) => under(path, p)).sort((a, b) => b[0].length - a[0].length)[0];
+    if (hit && hit[1].some(id => on(id))) return true;
+  }
   const denied = VIEWER_DENY_PREFIXES.some(p => under(path, p));
   if (!denied) return true;
   return VIEWER_ALLOW_OVERRIDES.some(p => under(path, p));
