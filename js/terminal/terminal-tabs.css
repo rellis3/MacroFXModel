@@ -247,6 +247,10 @@
 .bv-big .mono:first-child{font-size:26px;font-weight:700}
 .bv-kv{font-size:19px;margin-top:2px}
 .bv-stamp{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);font-size:11.5px}
+/* sweep 2026-11-17: the Evidence Book verdict chip ("TESTED: NULL · unconfirmed · macro-confluence...") is nowrap by default and ran 420px wide on a 390px phone (Macro > Credit & liquidity, Markets & FX) */
+.bv-stamp .chip{white-space:normal;max-width:100%;overflow-wrap:anywhere}
+/* a bare table straight inside a board card scrolls inside itself instead of widening the page (Macro > Credit & liquidity at 390px: 393px in a 342px card) */
+.sfc .card>table{display:block;max-width:100%;overflow-x:auto}
 .bv-zrow{display:grid;grid-template-columns:minmax(110px,40%) minmax(0,1fr) 50px;gap:8px;align-items:center;margin:6px 0;font-size:12px}
 .bv-zl{color:var(--tx2);overflow-wrap:anywhere}
 .bv-zt{position:relative;height:10px;background:var(--bg3);border-radius:5px}

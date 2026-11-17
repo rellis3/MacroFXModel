@@ -1422,8 +1422,11 @@ ${drivers.map(d => { const [lo, hi, st] = BKR_SL[d.key], v0 = d.key === 'VIX' ? 
 <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap"><button class="btn" id="bkrgo">Run</button><button class="btn" id="bkrreset">Reset</button><label class="muted" style="font-size:12px"><input type="checkbox" id="bkriso"> only the factors I move</label><span class="muted" id="bkrst"></span></div><div id="bkrout" style="margin-top:10px"></div></div></div>
 <p class="muted">${esc(b.label ?? '')}. Linear, one-day: big shocks are where betas are least reliable.</p>`;
   el.querySelectorAll('input[data-k]').forEach(r => { const n = el.querySelector(`input[data-n="${r.dataset.k}"]`); r.oninput = () => { n.value = r.value; }; n.oninput = () => { r.value = n.value; }; });
-  $('bkrreset').onclick = () => { el.querySelectorAll('input[data-k]').forEach(r => { r.value = r.dataset.v0; el.querySelector(`input[data-n="${r.dataset.k}"]`).value = r.dataset.v0; }); $('bkrout').innerHTML = ''; };
-  $('bkrgo').onclick = async () => {
+  // sweep 2026-11-17: once seen as 'Cannot set properties of null (setting onclick)' (owner, Daylight, 390px, Analytics): a second render replaced `el` while this one was still going, so
+  // document.getElementById found nothing. Look the two buttons up inside this render's own element and stop if it has been replaced.
+  const bkrReset = el.querySelector('#bkrreset'), bkrGo = el.querySelector('#bkrgo'); if (!bkrReset || !bkrGo) return;
+  bkrReset.onclick = () => { el.querySelectorAll('input[data-k]').forEach(r => { r.value = r.dataset.v0; el.querySelector(`input[data-n="${r.dataset.k}"]`).value = r.dataset.v0; }); $('bkrout').innerHTML = ''; };
+  bkrGo.onclick = async () => {
     const shocks = {};
     el.querySelectorAll('input[data-k]').forEach(r => { const v = +el.querySelector(`input[data-n="${r.dataset.k}"]`).value; if (!Number.isFinite(v) || v === +r.dataset.v0) return; shocks[r.dataset.k] = r.dataset.k === 'VIX' ? { to: v } : v; });
     if (!Object.keys(shocks).length) { $('bkrst').textContent = 'move at least one driver'; return; }

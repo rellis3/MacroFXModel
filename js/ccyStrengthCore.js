@@ -15,7 +15,7 @@
  * This is PRICE-based and LIVE (it moves with every bar); the desk's own strength strip is the Currency Manager's analyst read, once a day. They
  * measure different things and may disagree. Ordering only: nothing here is a direction call or a trade.
  */
-import { fxWeekOpen, clockState, lastCloseTs } from './marketClock.js';
+import { fxWeekOpen, clockState, lastCloseTs, nextOpenTs } from './marketClock.js';
 export const CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'NZD'];
 // the 28 pairs in OANDA's own orientation (base_quote)
 export const PAIRS = ['EUR_USD', 'GBP_USD', 'AUD_USD', 'NZD_USD', 'USD_JPY', 'USD_CAD', 'USD_CHF', 'EUR_GBP', 'EUR_JPY', 'EUR_CHF', 'EUR_AUD', 'EUR_CAD', 'EUR_NZD',
@@ -102,7 +102,10 @@ export function buildStrength({ bars, now = Date.now() } = {}) {
     // price AT its start: nothing traded then. Where a pair has no price at the start, the price then is the last price before the close, so that window runs from the
     // Friday close and says so (the weekend gap is part of the move, as it is in the daily bars the normal move is measured on). Nothing newer than the window start
     // is ever used, and a window that starts while the market is open is untouched.
-    const t0 = anchor - hz.hours * HOUR, closeT = !fxWeekOpen(t0) ? lastCloseTs(t0) : null, obs = [];
+    // The first hours after the weekly reopen count as "no price yet" too: at Monday 22:48 UTC the 1D window starts on Sunday 22:48, 48 minutes after the reopen,
+    // before the first completed hourly bar of the week, so no pair has a price at its start (found 2026-11-17: 1D read "0 of 28 pairs" for that hour every week).
+    const t0 = anchor - hz.hours * HOUR, reopenAt = fxWeekOpen(t0) ? nextOpenTs(t0) : null, justReopened = reopenAt != null && t0 - reopenAt < 2 * HOUR;
+    const closeT = !fxWeekOpen(t0) || justReopened ? lastCloseTs(t0) : null, obs = [];
     let fellBack = 0;
     for (const p of Object.values(per)) {
       const sigma = p.sig[hz.key]; if (!fin(sigma) || sigma <= 0) continue;
