@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Futures Line Research</title>
+<style>
+/* Layout: one reading column (~960px), a sticky-free control panel, every table in its own scroll box */
+:root{
+  --bg:#f5f6f8; --panel:#ffffff; --fg:#17202b; --muted:#5b6675; --line:#dde1e7;
+  --accent:#2457a6; --back:#2f7d6d; --through:#c0702a; --chip:#eaeef4;
+  --display:-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;
+  --body:-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;
+  --mono:ui-monospace,Consolas,"SF Mono",monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f141b; --panel:#161d27; --fg:#e4e9f0; --muted:#97a3b3; --line:#2a3442;
+  --accent:#7aa7ec; --back:#5cc0aa; --through:#e59a55; --chip:#1f2935; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141b; --panel:#161d27; --fg:#e4e9f0; --muted:#97a3b3; --line:#2a3442;
+  --accent:#7aa7ec; --back:#5cc0aa; --through:#e59a55; --chip:#1f2935; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px;margin:0}
+html,body{overflow-x:hidden}
+.log{display:flex;flex-direction:column;gap:0;font-size:14px}
+.log div{display:grid;grid-template-columns:112px 1fr;gap:12px;padding:9px 0;border-top:1px solid var(--line)}
+.log time{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.log b{font-weight:600}
+.log span{color:var(--muted)}
+.verdict{display:inline-block;font:600 12px var(--mono);letter-spacing:.06em;padding:3px 9px;border-radius:5px;border:1px solid var(--through);color:var(--through)}
+.hm td{text-align:center;font-family:var(--mono);font-size:12.5px;padding:6px 4px}
+.hm td:first-child{text-align:left;font-family:var(--body)}
+@media (max-width:600px){.log div{grid-template-columns:1fr;gap:2px}}
+</style>
+</head>
+<body>
+<div id="commandHub"></div>
+<script src="js/commandHub.js"></script>
+<style>
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:36px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.2}
+h1{font-size:clamp(28px,5vw,40px);letter-spacing:-.01em}
+h2{font-size:22px} h3{font-size:16px}
+p{margin:0;max-width:70ch}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+header{display:flex;flex-direction:column;gap:14px}
+.lede{font-size:17px;max-width:64ch}
+.answer{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.answer div{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.answer b{font-family:var(--display);font-size:18px}
+.answer span{color:var(--muted);font-size:14px}
+section{display:flex;flex-direction:column;gap:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:flex-end}
+.ctl{display:flex;flex-direction:column;gap:6px}
+.seg{display:flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{font:500 13px var(--body);background:transparent;color:var(--fg);border:0;border-right:1px solid var(--line);padding:7px 11px;cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--panel)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.scroll{overflow-x:auto;min-width:0}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:13.5px}
+th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{font:500 12px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+thead tr.grp th{border-bottom:0;padding-bottom:0}
+.c-back{color:var(--back)} .c-through{color:var(--through)}
+td.num{font-family:var(--mono);font-size:13px}
+.split{display:inline-flex;align-items:center;gap:8px}
+.bar{width:90px;height:8px;border-radius:4px;background:linear-gradient(to right,var(--back) 0 var(--p),var(--through) var(--p) 100%);position:relative}
+.bar::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--fg);opacity:.55}
+.note{color:var(--muted);font-size:13.5px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+svg text{fill:var(--muted);font:11px var(--mono)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.grid2>*{min-width:0;display:flex;flex-direction:column;gap:10px}
+.method{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px 28px;font-size:14px}
+.method div{display:flex;flex-direction:column;gap:2px}
+.method b{font-weight:600}
+.method span{color:var(--muted)}
+.fam{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.fam div{border-top:1px solid var(--line);padding-top:8px;font-size:14px;display:flex;flex-direction:column;gap:2px}
+.fam span{color:var(--muted)}
+footer{color:var(--muted);font-size:13px}
+</style>
+
+<div class="wrap" style="margin-top:28px">
+<header>
+  <div class="eyebrow">Research · NQ · 6E · GC futures · 2016–2026 · 1-minute bars</div>
+  <h1>Futures Line Research</h1>
+  <p class="lede">Everything we have tested on CME futures at the daily volatility forecast lines: how far price travels after each touch (MAE / MFE), what happens where lines stack, whether a median stop or target is hit first, and whether the lines work as an exhaustion point with VWAP as the target.</p>
+  <div class="answer">
+    <div><b>Back ≈ through</b><span>After a touch, the move back toward the open and the move through the line are the same size.</span></div>
+    <div><b>About 50/50 on every touch</b><span>1st, 2nd, 3rd and 4th+ touches all split close to even, in every line family.</span></div>
+    <div><b>Hour changes size, not direction</b><span>13:00–15:00 London moves about twice as far as the morning.</span></div>
+    <div><b>Exhaustion + VWAP target: no edge</b><span>0 of 117 cells pass. Fading toward VWAP wins at random-walk odds before cost.</span></div>
+  </div>
+</header>
+
+<section>
+  <h2>Research log</h2>
+  <div class="log">
+    <div><time>2026-11-17</time><p><b>MAE / MFE at every touch, OH/OL lines.</b> <span>Futures NQ, 6E and GC, every touch of the p50/p75/p90 lines (touch 1, 2, 3, 4+), 30 min to 22:00, by weekday and London hour, against placebo lines. Back vs through splits 50/50 at every touch; the two moves are the same size; lines behave like placebo.</span></p></div>
+    <div><time>2026-11-17</time><p><b>All line families + stacked lines.</b> <span>Re-run on OC and HL too (18 lines a day) and recorded how close every other line was. Stacks are common (another line within 5 ticks: NQ 17%, GC 67%, 6E 81%). Every family still 50/50. Stacked touches move half as far because they happen on quiet days.</span></p></div>
+    <div><time>2026-11-17</time><p><b>Better level + stop/target race.</b> <span>In a stack, trade only the line furthest from price. Then stop at the median MAE, target at the median MFE, walked minute by minute: the target comes first 48–50% of the time on every market, family, touch number and window.</span></p></div>
+    <div><time>2026-11-17</time><p><b>Exhaustion test, VWAP target (pre-registered).</b> <span>Fade only when price looks spent at the touch (VWAP stretch, range used, approach speed, approach volume, repeat touch), target the session VWAP frozen at the touch, stop 0.25σ. 117 cells, fit 2016–22, holdout 2023–26. None passes; 115 of 117 lose after cost. Verdict UNDERPOWERED (p90 too thin to rule out); p50/p75 rule out a 0.10R edge.</span></p></div>
+  </div>
+</section>
+
+<section>
+  <h2>The lines</h2>
+  <div class="fam">
+    <div><b>OH / OL</b><span>Open-to-high and open-to-low. Fixed off the 00:00 London open.</span></div>
+    <div><b>OC</b><span>Open-to-close, up and down. Fixed off the open. OC p50 often sits on the same price as OH p50.</span></div>
+    <div><b>HL</b><span>Projected high and low. Trails the day's running low and high, so it moves during the day.</span></div>
+    <div><b>Stacks</b><span id="stackdef"></span></div>
+    <div><b>Better level</b><span id="betterdef"></span></div>
+  </div>
+</section>
+
+<section>
+  <h2>1 · MAE / MFE at every touch</h2>
+  <p>Each touch is measured on its own, from the line price at the minute it was touched. <b class="c-back">Back</b> is how far price came back toward the open (a fade's MFE). <b class="c-through">Through</b> is how far it pushed past the line (a fade's MAE). For a continuation trade the two swap.</p>
+  <div class="panel">
+    <div class="controls">
+      <div class="ctl"><span class="eyebrow">Market</span><div class="seg" id="seg-inst"></div></div>
+      <div class="ctl"><span class="eyebrow">Lines</span><div class="seg" id="seg-grp"></div></div>
+      <div class="ctl"><span class="eyebrow">Clusters</span><div class="seg" id="seg-cl"></div></div>
+      <div class="ctl"><span class="eyebrow">Watch for</span><div class="seg" id="seg-h"></div></div>
+    </div>
+    <div class="legend" id="units"></div>
+
+    <h3>Stop sizing in ticks: MAE after a touch</h3>
+    <div class="controls"><div class="ctl"><div class="seg" id="seg-tsel"></div></div></div>
+    <div class="scroll"><table id="t-stop"></table></div>
+    <h3>Target sizing in ticks: MFE after a touch</h3>
+    <div class="scroll"><table id="t-tgt"></table></div>
+    <p class="note">The stop and target tables show all three markets for the chosen lines, cluster setting and window. MAE is the fade's move against (price pushing through the line). MFE is the move back toward the open. The stop column is the 75th-percentile MAE, rounded: 75% of touches never went further against within the window. Ticks: NQ 0.25 pt, 6E 0.00005 (half a pip), GC $0.10. For a continuation trade, swap the two tables.</p>
+
+    <h3>By touch number</h3>
+    <div class="scroll"><table id="t-touch"></table></div>
+    <p class="note">Touch 2 counts only after price has pulled 0.1σ away from the line and come back. The bar shows back vs through, and the tick marks 50%.</p>
+
+    <h3>Forecast lines vs placebo lines (first touch)</h3>
+    <div class="scroll"><table id="t-placebo"></table></div>
+    <p class="note">Placebo = the same lines moved 15% nearer to or further from the open. If the forecast lines did something special, they'd stand apart from both.</p>
+
+    <div class="grid2">
+      <div><h3>By weekday</h3><div class="scroll"><table id="t-wd"></table></div></div>
+      <div><h3>By London hour of the touch</h3><div id="hourchart"></div>
+        <div class="legend"><span><i style="background:var(--back)"></i>median back</span><span><i style="background:var(--through)"></i>median through</span></div></div>
+    </div>
+    <div class="scroll"><table id="t-hour"></table></div>
+    <p class="note">Hours with fewer than 100 touches are hidden. With this many cells, a few will sit at 55–59% by chance.</p>
+
+    <h3>Stop at median MAE, target at median MFE: which is hit first?</h3>
+    <div class="controls">
+      <div class="ctl"><span class="eyebrow">Touches</span><div class="seg" id="seg-rset"></div></div>
+      <div class="ctl"><span class="eyebrow">Trade</span><div class="seg" id="seg-rmode"></div></div>
+    </div>
+    <div class="scroll"><table id="t-race"></table></div>
+    <p class="note" id="race-note"></p>
+
+    <h3>Most common stacks</h3>
+    <div class="scroll"><table id="t-pairs"></table></div>
+  </div>
+</section>
+
+<section>
+  <h2>2 · Exhaustion test: fade toward VWAP <span class="verdict" id="ex-verdict"></span></h2>
+  <p>The question: if the lines are an exhaustion point, does fading a touch toward the session VWAP pay when price arrives looking spent? Pre-registered before any result (<code>forge/FUTURES_EXHAUSTION_VWAP_PREREG.md</code>).</p>
+  <div class="panel">
+    <div class="method">
+      <div><b>Entry</b><span>Limit at the line on the touch minute. Where several lines are touched together, the outermost.</span></div>
+      <div><b>Target</b><span>Session VWAP (exchange volume, from 00:00 London) frozen at the minute before the touch. A VWAP that moves with price would fake wins.</span></div>
+      <div><b>Stop</b><span>0.25σ beyond the line. Out at 22:00 if neither is hit. Scored in R after 2.4–2.8 ticks round-trip cost.</span></div>
+      <div><b>Exhaustion signs</b><span>Measured before the touch: stretch from VWAP, range already used, 30-min approach speed, approach volume (rising or fading), repeat touch. Top/bottom third, cut on 2016–22 only.</span></div>
+    </div>
+    <div class="controls">
+      <div class="ctl"><span class="eyebrow">Show</span><div class="seg" id="seg-exs"></div></div>
+    </div>
+    <div class="scroll"><table class="hm" id="t-ex"></table></div>
+    <p class="note" id="ex-note"></p>
+    <h3>Every-touch baseline</h3>
+    <div class="scroll"><table id="t-exbase"></table></div>
+    <h3>Why it comes out at zero</h3>
+    <p class="note">VWAP sits about twice the stop distance away (NQ p50: target 142 ticks, stop 105). The fade reaches the target 28–31% of the time and the stop 54%; 15–19% are still open at 22:00. On a random walk the chance of reaching a target twice the stop first is one in three, and here target ÷ (target + stop) = 34–36%. So the bigger payoff is cancelled exactly by the lower hit rate: gross R is −0.004 to −0.013 on all three markets, and cost makes it negative. None of the exhaustion signs tilts the race; the placebo lines and the mirror (continuation) trade come out the same.</p>
+  </div>
+</section>
+
+<section>
+  <h3>How this was built</h3>
+  <div class="method">
+    <div><b>Lines</b><span>Production p50, p75 and p90 forecast lines for each day (OH/OL, OC, HL), point-in-time, applied to the futures' own 00:00 London open.</span></div>
+    <div><b>Data</b><span>NQ, 6E and GC continuous 1-minute futures, unadjusted prices, London 00:00–22:00, Mar 2016 to Aug 2026.</span></div>
+    <div><b>Coverage</b><span id="cov"></span></div>
+    <div><b>Costs</b><span>MAE/MFE tables: none, entry exactly at the line. Exhaustion test: 2 ticks + $4 commission per round trip.</span></div>
+    <div><b>Files</b><span><code>scripts/line-touch-mae-futures/</code>, <code>scripts/futures-exhaustion-vwap/</code>; results in <code>analysis/output/</code> under the same names.</span></div>
+  </div>
+</section>
+<footer>Section 1 is exploratory and descriptive. Section 2 is pre-registered and banked in the Evidence Book as <code>futures-exhaustion-vwap</code>. Nothing here is a trading recommendation.</footer>
+</div>
+
+<script>
+let D=null,X=null;
+const INST=[["NQ","NQ","pts"],["EURUSD","6E (EURUSD)","pips"],["GOLD","GC (Gold)","$"]];
+const GRP=[["ALL","All lines"],["OH/OL","OH / OL"],["OC","OC"],["HL","HL"]];
+const CL=[["all","All touches"],["lone","Lone lines"],["stack","Stacked lines"],["better","Better level only"]];
+const HS=[["30m","30 min"],["60m","1 hour"],["240m","4 hours"],["eod","to 22:00"]];
+const WD=["","Mon","Tue","Wed","Thu","Fri"];
+const S={inst:"NQ",grp:"ALL",cl:"all",h:"60m",tsel:"all",rset:"better",rmode:"fade",exs:"hold"};
+try{Object.assign(S,JSON.parse(localStorage.getItem("futres1")||"{}"))}catch(e){}
+const unitOf=i=>INST.find(x=>x[0]===i)[2];
+const fmt=(v,i=S.inst)=>{const u=unitOf(i);return (u==="$"?"$":"")+v.toFixed(i==="NQ"?0:1)};
+const pick=(arr,extra)=>arr.filter(r=>r.instrument===S.inst&&r.group===S.grp&&r.cl===S.cl&&Object.entries(extra||{}).every(([k,v])=>r[k]===v));
+function seg(id,opts,key){const el=document.getElementById(id);el.innerHTML="";
+  opts.forEach(([v,l])=>{const b=document.createElement("button");b.type="button";b.textContent=l;b.setAttribute("aria-pressed",S[key]===v);
+    b.onclick=()=>{S[key]=v;try{localStorage.setItem("futres1",JSON.stringify(S))}catch(e){}render()};el.appendChild(b)})}
+const bar=p=>`<span class="split"><span class="bar" style="--p:${p}%"></span><span class="num">${p.toFixed(1)}%</span></span>`;
+const head=`<thead><tr class="grp"><th></th><th></th><th colspan="3" class="c-back">Back (fade MFE)</th><th colspan="3" class="c-through">Through (fade MAE)</th><th></th></tr>
+<tr><th>%L%</th><th>n</th><th>median</th><th>75th</th><th>90th</th><th>median</th><th>75th</th><th>90th</th><th>back wins</th></tr></thead>`;
+function row(label,r,bold){const a=r[S.h];return `<tr${bold?' style="font-weight:600"':""}><td>${label}</td><td class="num">${r.n.toLocaleString()}</td>`+
+  a.slice(0,3).map(v=>`<td class="num c-back">${fmt(v)}</td>`).join("")+a.slice(3,6).map(v=>`<td class="num c-through">${fmt(v)}</td>`).join("")+`<td>${bar(a[6])}</td></tr>`}
+function tickTables(){
+  seg("seg-tsel",[["all","All touches"],["first","First touch only"]],"tsel");
+  const src=S.tsel==="first"?D.ticksFirst:D.ticks;const names={GOLD:"GOLD (GC)",NQ:"NQ",EURUSD:"EURUSD (6E)"};
+  const mk=(key,stop)=>`<thead><tr><th>Instrument</th><th>${stop?"Stop":"Target"} (ticks)</th><th>n</th><th>Mean</th><th>Median</th><th>P75</th><th>P90</th></tr></thead><tbody>`+
+    ["GOLD","NQ","EURUSD"].map(i=>{const r=src.find(x=>x.instrument===i&&x.group===S.grp&&x.cl===S.cl);if(!r)return "";const a=r[S.h][key];
+      return `<tr><td>${names[i]}</td><td class="num"><b>${Math.round(a[2])}</b></td><td class="num">${r.n.toLocaleString()}</td>${a.map(v=>`<td class="num">${v.toFixed(1)}</td>`).join("")}</tr>`}).join("")+"</tbody>";
+  document.getElementById("t-stop").innerHTML=mk("mae",true);document.getElementById("t-tgt").innerHTML=mk("mfe",false);
+}
+function render(){
+  seg("seg-inst",INST.map(x=>[x[0],x[1]]),"inst");seg("seg-grp",GRP,"grp");seg("seg-cl",CL,"cl");seg("seg-h",HS,"h");
+  const ss=D.stackShare.find(x=>x.instrument===S.inst&&x.group==="ALL");
+  document.getElementById("stackdef").textContent=`A touch is "stacked" when another line sits within ${D.clusterTicks} ticks at that minute. A move into a stack counts as a touch on each line. On ${S.inst==="EURUSD"?"6E":S.inst==="GOLD"?"GC":"NQ"}, ${ss.pct}% of touches are stacked (${ss.pct2}% within 2 ticks).`;
+  const bs=D.betterShare.find(x=>x.instrument===S.inst&&x.group==="ALL");
+  document.getElementById("betterdef").textContent=`When lines stack, take only the one furthest from price: a touch counts only if no other line sits within ${D.clusterTicks} ticks beyond it. If price never reaches the outer line, there is no trade. ${bs.pct}% of ${S.inst==="EURUSD"?"6E":S.inst==="GOLD"?"GC":"NQ"} touches pass.`;
+  const u=unitOf(S.inst);
+  document.getElementById("units").innerHTML=`<span>Units: <b>${u==="$"?"dollars":u}</b></span><span>Typical day σ: <b>${fmt(D.sigma[S.inst])}${u==="$"?"":" "+u}</b></span><span>Window: <b>${HS.find(x=>x[0]===S.h)[1]}</b> after each touch</span>`;
+  tickTables();
+  let h=head.replace("%L%","Rung · touch")+"<tbody>";
+  ["p50","p75","p90"].forEach(rg=>pick(D.touch,{rung:rg}).sort((a,b)=>a.touch-b.touch).forEach(r=>{h+=row(`${rg} · ${r.touch===4?"4th+":["1st","2nd","3rd"][r.touch-1]}`,r)}));
+  document.getElementById("t-touch").innerHTML=h+"</tbody>";
+  const KN={line:"Forecast line",placebo_085:"Placebo ×0.85",placebo_115:"Placebo ×1.15"};
+  h=head.replace("%L%","Rung · lines")+"<tbody>";
+  ["p50","p75","p90"].forEach(rg=>["placebo_085","line","placebo_115"].forEach(k=>{const r=pick(D.placebo,{kind:k,rung:rg})[0];if(r)h+=row(`${rg} · ${KN[k]}`,r,k==="line")}));
+  document.getElementById("t-placebo").innerHTML=h+"</tbody>";
+  const wd=pick(D.weekday).sort((a,b)=>a.weekday-b.weekday);
+  document.getElementById("t-wd").innerHTML=`<thead><tr><th>Day</th><th>n</th><th class="c-back">back med</th><th class="c-through">through med</th><th>back wins</th></tr></thead><tbody>`+
+    wd.map(r=>`<tr><td>${WD[r.weekday]}</td><td class="num">${r.n.toLocaleString()}</td><td class="num c-back">${fmt(r[S.h][0])}</td><td class="num c-through">${fmt(r[S.h][3])}</td><td>${bar(r[S.h][6])}</td></tr>`).join("")+"</tbody>";
+  const hr=pick(D.hour).filter(r=>r.n>=100).sort((a,b)=>a.lon_hour-b.lon_hour);
+  document.getElementById("t-hour").innerHTML=head.replace("%L%","London hour")+"<tbody>"+hr.map(r=>row(String(r.lon_hour).padStart(2,"0")+":00",r)).join("")+"</tbody>";
+  chart(hr);
+  raceTable();
+  exTable();
+  const tp=D.topPairs.find(x=>x.instrument===S.inst);
+  document.getElementById("t-pairs").innerHTML=`<thead><tr><th>Line touched + nearest line within ${D.clusterTicks} ticks</th><th>touches</th></tr></thead><tbody>`+
+    (tp?tp.pairs.map(([k,v])=>`<tr><td>${k.replaceAll("_"," ")}</td><td class="num">${v.toLocaleString()}</td></tr>`).join(""):"")+"</tbody>";
+  const m=D.meta.find(x=>x.instrument===S.inst);
+  document.getElementById("cov").textContent=`${m.root}: ${m.days_used.toLocaleString()} of ${m.days_archive.toLocaleString()} days used. Days with fewer than 90% of minute bars are skipped (gaps in the futures download).`;
+}
+const CONDN={baseline:"Every touch",F1hi:"Stretched from VWAP",F2hi:"Range mostly used",F3hi:"Fast approach",F3lo:"Slow approach",F4hi:"Approach volume rising",F4lo:"Approach volume fading",F5:"Repeat touch","F1hi&F2hi":"Stretched + range used","F1hi&F3hi":"Stretched + fast","F1hi&F5":"Stretched + repeat","F2hi&F3hi":"Range used + fast","F2hi&F5":"Range used + repeat"};
+function exTable(){
+  seg("seg-exs",[["hold","Holdout 2023–26 (net R)"],["disc","Fit 2016–22 (net R)"],["gross","Fit 2016–22 before cost"]],"exs");
+  const cols=[];["NQ","EURUSD","GOLD"].forEach(i=>["p50","p75","p90"].forEach(r=>cols.push([i,r])));
+  const nm={NQ:"NQ",EURUSD:"6E",GOLD:"GC"};
+  const val=c=>S.exs==="hold"?c.hold[0]:S.exs==="disc"?c.disc[0]:c.gross_disc;
+  const col=v=>{if(v==null||!isFinite(v))return "transparent";const a=Math.min(Math.abs(v)/0.3,1)*0.75;return v>=0?`color-mix(in srgb,var(--back) ${a*100}%,transparent)`:`color-mix(in srgb,var(--through) ${a*100}%,transparent)`};
+  let h=`<thead><tr><th>Condition</th>${cols.map(([i,r])=>`<th>${nm[i]} ${r}</th>`).join("")}</tr></thead><tbody>`;
+  Object.keys(CONDN).forEach(cd=>{h+=`<tr><td>${CONDN[cd]}</td>`+cols.map(([i,r])=>{const c=X.cells.find(x=>x.instrument===i&&x.rung===r&&x.cond===cd);if(!c)return "<td></td>";const v=val(c);const n=S.exs==="hold"?c.n_hold:c.n_disc;
+    return `<td style="background:${col(v)}" title="n ${n.toLocaleString()}">${isFinite(v)?(v>=0?"+":"")+v.toFixed(2):"–"}</td>`}).join("")+"</tr>"});
+  document.getElementById("t-ex").innerHTML=h+"</tbody>";
+  document.getElementById("ex-note").textContent=`Mean R per trade, each cell one market × rung × condition. Green = made money, orange = lost. ${X.n_bh} of ${X.cells.length} cells passed the multiple-testing screen on 2016–22 (BH q 0.10), so none went on to the holdout check. Hover a cell for its trade count; cells under ~300 trades are noise.`;
+  document.getElementById("ex-verdict").textContent=X.verdict.toUpperCase();
+  const b=X.cells.filter(c=>c.cond==="baseline");const f=v=>(v>=0?"+":"")+v.toFixed(3);
+  document.getElementById("t-exbase").innerHTML=`<thead><tr><th>Market · rung</th><th>trades fit / holdout</th><th>Fit 2016–22 [95% CI]</th><th>Holdout 2023–26 [95% CI]</th><th>Placebo lines (holdout)</th><th>Target / stop hit (fit)</th></tr></thead><tbody>`+
+    b.map(c=>`<tr><td>${nm[c.instrument]} ${c.rung}</td><td class="num">${c.n_disc.toLocaleString()} / ${c.n_hold.toLocaleString()}</td><td class="num">${f(c.disc[0])} [${f(c.disc[1])}, ${f(c.disc[2])}]</td><td class="num">${f(c.hold[0])} [${f(c.hold[1])}, ${f(c.hold[2])}]</td><td class="num">${f(c.placebo_hold)}</td><td class="num">${c.target_rate_disc.toFixed(0)}% / ${c.stop_rate_disc.toFixed(0)}%</td></tr>`).join("")+"</tbody>";
+}
+function raceTable(){
+  seg("seg-rset",[["all","All touches"],["better","Better level only"],["first","First touch"],["better_first","Better level, first touch"]],"rset");
+  seg("seg-rmode",[["fade","Fade"],["continue","Continue"]],"rmode");
+  const hz=S.h==="30m"?"60m":S.h;const names={GOLD:"GOLD (GC)",NQ:"NQ",EURUSD:"EURUSD (6E)"};
+  const pc=v=>`<td class="num">${v.toFixed(1)}%</td>`;
+  document.getElementById("t-race").innerHTML=`<thead><tr><th>Instrument</th><th>n</th><th>Stop (ticks)</th><th>Target (ticks)</th><th>Target first</th><th>Stop first</th><th>Same minute</th><th>Neither</th><th>Target hit if stop held</th></tr></thead><tbody>`+
+    ["GOLD","NQ","EURUSD"].map(i=>{const r=D.race.find(x=>x.instrument===i&&x.group===S.grp&&x.set===S.rset&&x.horizon===hz&&x.mode===S.rmode);if(!r)return "";
+      const res=r.target_first+r.stop_first+r.same_bar;const w=res?r.target_first/res*100:0;
+      return `<tr><td>${names[i]}</td><td class="num">${r.n.toLocaleString()}</td><td class="num">${Math.round(r.stop_ticks)}</td><td class="num">${Math.round(r.target_ticks)}</td><td>${bar(w)}</td>${pc(r.stop_first)}${pc(r.same_bar)}${pc(r.neither)}${pc(r.cond_mfe_given_mae_held)}</tr>`}).join("")+"</tbody>";
+  document.getElementById("race-note").textContent=`Stop = the median ${S.rmode==="fade"?"through (MAE)":"back (MAE for a continuation)"} and target = the median ${S.rmode==="fade"?"back (MFE)":"through (MFE for a continuation)"} of the same touches, chosen lines and window (${HS.find(x=>x[0]===hz)[1]}${S.h==="30m"?"; the race isn't run at 30 min":""}). Each touch is then walked minute by minute. The bar = target first, as a share of touches where something was hit (the 50% tick is a coin flip; same-minute counted as a stop). "Target hit if stop held" = of the touches whose MAE stayed under the stop for the whole window, the share that reached the target at any point, ignoring order.`;
+}
+function chart(hr){
+  const W=420,Hh=200,pl=40,pb=24,pt=8,pr=6;const n=hr.length;const el=document.getElementById("hourchart");if(!n){el.innerHTML="";return}
+  const mx=Math.max(...hr.map(r=>Math.max(r[S.h][0],r[S.h][3])))*1.08;
+  const step=(W-pl-pr)/n,bw=Math.max(2,step/2-1.5),y=v=>pt+(Hh-pt-pb)*(1-v/mx);
+  let g="";for(let i=0;i<=4;i++){const v=mx*i/4;g+=`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${pl-5}" y="${y(v)+3}" text-anchor="end">${v<10?v.toFixed(1):Math.round(v)}</text>`}
+  hr.forEach((r,i)=>{const x=pl+i*step+1;const a=r[S.h];
+    g+=`<rect x="${x}" y="${y(a[0])}" width="${bw}" height="${y(0)-y(a[0])}" fill="var(--back)"><title>${r.lon_hour}:00 back ${fmt(a[0])}</title></rect>`;
+    g+=`<rect x="${x+bw+1}" y="${y(a[3])}" width="${bw}" height="${y(0)-y(a[3])}" fill="var(--through)"><title>${r.lon_hour}:00 through ${fmt(a[3])}</title></rect>`;
+    if(n<=12||r.lon_hour%2===0)g+=`<text x="${x+bw}" y="${Hh-8}" text-anchor="middle">${String(r.lon_hour).padStart(2,"0")}</text>`});
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${Hh}" width="100%" role="img" aria-label="Median back and through by London hour">${g}</svg>`;
+}
+Promise.all(["analysis/output/line-touch-mae-futures/page.json","analysis/output/futures-exhaustion-vwap/results.json"].map(u=>fetch(u,{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error(u+" "+r.status);return r.json()})))
+  .then(([a,b])=>{D=a;X=b;render()})
+  .catch(e=>{document.querySelector(".wrap").insertAdjacentHTML("afterbegin",`<p class="note">Could not load the data: ${e.message}</p>`)});
+</script>
+</body>
+</html>
