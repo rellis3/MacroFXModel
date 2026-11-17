@@ -165,3 +165,60 @@ export function shiftPoints(times, vals, n, stepSec) {
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// Lead / lag finder. DESCRIPTION ONLY: it never feeds a drawn value or a trade, and the shift it suggests is a drawing offset.
+//
+// It correlates BAR-TO-BAR CHANGES (the line's change vs the price's log return), never levels: two trending levels always
+// "correlate at some lag". lag n pairs line[i] with price[i+n], so n > 0 = the line leads price by n bars (the same sign
+// as shiftPoints / the card's Shift). Picking the best of 2*maxLag+1 lags always finds a winner by luck, so the verdict is
+// tested against a PLACEBO: the price returns are rotated by random distances (>= 3*maxLag, which breaks any real timing and
+// keeps their own autocorrelation) and the largest |r| over all lags is recorded each time. A real lead must beat the 95th
+// percentile of that "best of the lags by luck" distribution.
+function mulberry32(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function pearsonAt(x, y, lag) {
+  let n = 0, sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
+  const L = x.length;
+  for (let i = Math.max(0, -lag); i < L && i + lag < L; i++) {
+    const a = x[i], b = y[i + lag];
+    if (a == null || b == null) continue;
+    n++; sx += a; sy += b; sxx += a * a; syy += b * b; sxy += a * b;
+  }
+  if (n < 30) return { r: null, n };
+  const cov = sxy - sx * sy / n, vx = sxx - sx * sx / n, vy = syy - sy * sy / n;
+  return { r: vx > 0 && vy > 0 ? cov / Math.sqrt(vx * vy) : null, n };
+}
+export function changesOf(line, closes) {
+  const dx = [null], ry = [null];
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i], b = line[i - 1], p = closes[i], q = closes[i - 1];
+    dx.push(a != null && b != null ? a - b : null);
+    ry.push(p > 0 && q > 0 ? Math.log(p / q) : null);
+  }
+  return { dx, ry };
+}
+export function lagProfile(line, closes, maxLag = 48, { perm = 200, seed = 7, quantile = 0.95 } = {}) {
+  const { dx, ry } = changesOf(line, closes);
+  const lags = [], profile = [];
+  for (let n = -maxLag; n <= maxLag; n++) { const p = pearsonAt(dx, ry, n); lags.push(n); profile.push(p.r); }
+  let best = null;
+  profile.forEach((r, i) => { if (r != null && (best == null || Math.abs(r) > Math.abs(profile[best]))) best = i; });
+  const same = profile[maxLag];
+  const L = ry.length, minRot = 3 * maxLag;
+  let thr = null;
+  if (best != null && L > 2 * minRot + 60) {
+    const rnd = mulberry32(seed), maxes = [];
+    for (let k = 0; k < perm; k++) {
+      const off = minRot + Math.floor(rnd() * (L - 2 * minRot)), rot = new Array(L);
+      for (let i = 0; i < L; i++) rot[i] = ry[(i + off) % L];
+      let m = 0;
+      for (let n = -maxLag; n <= maxLag; n++) { const r = pearsonAt(dx, rot, n).r; if (r != null && Math.abs(r) > m) m = Math.abs(r); }
+      maxes.push(m);
+    }
+    maxes.sort((a, b) => a - b);
+    thr = maxes[Math.min(maxes.length - 1, Math.floor(quantile * maxes.length))];
+  }
+  const bestLag = best == null ? null : lags[best], bestR = best == null ? null : profile[best];
+  return { lags, profile, bestLag, bestR, sameBarR: same, threshold: thr, significant: thr != null && bestR != null && Math.abs(bestR) > thr,
+    isLead: bestLag != null && bestLag > 0, n: L };
+}

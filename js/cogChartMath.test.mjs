@@ -1,6 +1,6 @@
 // node js/cogChartMath.test.mjs : the indicator's transform chain, step by step, and a cross-check of the default against the C.OG line we reconstructed and serve.
 import fs from 'node:fs';
-import { DEFAULTS, TF_SEC, pickSource, barsFromColumns, aggregateBars, legOnChart, carryForward, ema, legRaw, spreadRaw, mapSeries, shiftPoints } from './cogChartMath.js';
+import { DEFAULTS, TF_SEC, pickSource, barsFromColumns, aggregateBars, legOnChart, carryForward, ema, legRaw, spreadRaw, mapSeries, shiftPoints, lagProfile } from './cogChartMath.js';
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? 'ok  ' : 'FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) fails++; };
 const near = (a, b, t = 1e-9) => Math.abs(a - b) <= t;
@@ -60,5 +60,17 @@ if (fs.existsSync(new URL('cog_chart/leg_SR3U6.json', dir)) && fs.existsSync(new
   ok(`default series vs the served line on ${n} common bars: level correlation >= 0.995`, corr >= 0.995, `corr ${corr.toFixed(4)}`);
   ok('median absolute difference under 1 bp (the two differ only by the one-minute bar-label convention)', md < 1.0, `median ${md.toFixed(3)} bp`);
 } else console.log('  (cross-check skipped: leg or line file missing)');
+// ---- lag finder
+{
+  let s = 12345; const rnd = () => { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296 - 0.5; };
+  const N = 1500, LAG = 5, steps = Array.from({ length: N }, rnd);
+  const line = []; let a = 0; for (const d of steps) { a += d; line.push(a); }
+  const px = new Array(N).fill(100); for (let i = 1; i < N; i++) px[i] = px[i - 1] * Math.exp((i - LAG >= 1 ? steps[i - LAG] : 0) * 0.01 + rnd() * 0.004);
+  const r = lagProfile(line, px, 20, { perm: 60 });
+  ok(`lag finder recovers a planted ${LAG}-bar lead and calls it significant`, r.bestLag === LAG && r.isLead && r.significant, JSON.stringify({ l: r.bestLag, r: +r.bestR?.toFixed(3), t: +r.threshold?.toFixed(3) }));
+  const noise = Array.from({ length: N }, () => 100 + rnd());
+  const q = lagProfile(line, noise, 20, { perm: 60 });
+  ok('lag finder: an unrelated series is not called a lead', !q.significant, JSON.stringify({ l: q.bestLag, r: +q.bestR?.toFixed(3), t: +q.threshold?.toFixed(3) }));
+}
 console.log(fails ? `${fails} FAILED` : 'all passed');
 process.exit(fails ? 1 : 0);

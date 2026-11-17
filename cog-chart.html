@@ -101,7 +101,7 @@
   </div>
 </div>
 <script type="module">
-import { DEFAULTS, TF_SEC, barsFromColumns, legOnChart, carryForward, legRaw, spreadRaw, mapSeries, shiftPoints } from './js/cogChartMath.js';
+import { DEFAULTS, TF_SEC, barsFromColumns, legOnChart, carryForward, legRaw, spreadRaw, mapSeries, shiftPoints, lagProfile } from './js/cogChartMath.js';
 import { FINDINGS, BOTTOM_LINE, THEMES, VERDICTS } from './js/cogFindings.js';
 
 let LEGMETA = [], ARCHIVE = [];      // every contract the server holds: { name, label, group, side, kind ('rate' | 'price'), period, first, asOf }
@@ -280,7 +280,28 @@ function cardHtml(d) {
     <div class="row"><b style="font-size:11px">Shift</b>
       <button class="btn" data-act="shift" data-by="-1">&#9664; -1 bar</button><button class="btn" data-act="shift" data-by="1">+1 bar &#9654;</button>
       ${num('shift', 'bars', 1)}<button class="btn" data-act="shift0">0</button><span class="sm" data-role="shiftTxt"></span></div>
+    <div class="row"><button class="btn" data-act="lag" title="Correlates the line's bar-to-bar changes with price returns at every lag from -48 to +48 bars, and tests the best one against a placebo (price rotated by random distances)">Find best lag</button>
+      <span class="sm">line vs price, changes not levels, tested against luck</span></div>
+    <div data-role="lagOut">${lagHtml(d)}</div>
   </div>`;
+}
+const lagRes = {};      // card id -> { res, tf, asset }: the last lag search, shown under the Shift row
+function lagHtml(d) {
+  const r = lagRes[d.id]; if (!r) return '';
+  const { res, tf, asset } = r, hrs = n => (Math.abs(n) * TF_SEC[tf] / 3600).toFixed(2);
+  if (res.bestLag == null) return '<div class="note">Not enough overlapping bars to measure a lag.</div>';
+  const W = 280, H = 56, M = Math.max(0.02, ...res.profile.map(v => Math.abs(v ?? 0))), bw = W / res.lags.length;
+  const bars = res.lags.map((n, i) => { const v = res.profile[i]; if (v == null) return ''; const h = Math.abs(v) / M * (H / 2 - 2), best = n === res.bestLag;
+    return `<rect x="${(i * bw).toFixed(1)}" y="${(v >= 0 ? H / 2 - h : H / 2).toFixed(1)}" width="${Math.max(1, bw - 0.6).toFixed(1)}" height="${h.toFixed(1)}" fill="${best ? '#f97316' : n === 0 ? '#9da7b3' : '#4f7df0'}"/>`; }).join('');
+  const thr = res.threshold == null ? '' : [res.threshold, -res.threshold].map(t => `<line x1="0" x2="${W}" y1="${(H / 2 - t / M * (H / 2 - 2)).toFixed(1)}" y2="${(H / 2 - t / M * (H / 2 - 2)).toFixed(1)}" stroke="#f85149" stroke-dasharray="3 3" stroke-width="1"/>`).join('');
+  const dir = res.bestLag > 0 ? `the line LEADS ${asset} by ${res.bestLag} bars (${hrs(res.bestLag)} h)` : res.bestLag < 0 ? `${asset} LEADS the line by ${-res.bestLag} bars (${hrs(res.bestLag)} h)` : 'they move on the same bar (no lead either way)';
+  const verdict = res.significant
+    ? `Best lag <b>${res.bestLag > 0 ? '+' : ''}${res.bestLag}</b>: r ${res.bestR.toFixed(3)} beats the luck threshold ${res.threshold.toFixed(3)}: ${dir}.`
+    : `<b>Nothing beats luck.</b> The best lag (${res.bestLag > 0 ? '+' : ''}${res.bestLag}, r ${res.bestR.toFixed(3)}) is inside the ${res.threshold == null ? 'chance' : res.threshold.toFixed(3)} you get from picking the best of ${res.lags.length} lags on shuffled prices.`;
+  return `<div class="note" style="margin-top:6px"><svg width="${W}" height="${H}" style="display:block;max-width:100%"><line x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}" stroke="#30363d"/>${bars}${thr}</svg>
+    <span class="sm">-48 &#9664; price leads &nbsp;|&nbsp; 0 grey &nbsp;|&nbsp; line leads &#9654; +48 &nbsp; red dashes = 95% of luck</span><br>${verdict}<br>
+    Same-bar r ${res.sameBarR == null ? 'n/a' : res.sameBarR.toFixed(3)} (n ${res.n} bars, ${asset} ${tf}). Description only: the shift moves what is drawn, never a number.<br>
+    <button class="btn" data-act="applylag">${res.significant ? 'Draw the line at the best lag' : 'Draw it at the best lag anyway'}</button> <button class="btn" data-act="shift0">0</button></div>`;
 }
 function shiftTxt(d) { const s = (d.shift | 0) * TF_SEC[state.tf] / 3600; return `${d.shift > 0 ? '+' : ''}${d.shift | 0} bars = ${s >= 0 ? '+' : ''}${s.toFixed(2)} h (drawn only)`; }
 let _rcTimer = null;
@@ -296,6 +317,13 @@ $('cards').addEventListener('click', async e => {
   if (act === 'active') { state.active = id; renderCards(); }
   else if (act === 'del') { state.series = state.series.filter(x => x.id !== id); if (state.active === id) state.active = state.series[0]?.id ?? 0; rebuildLines(); renderCards(); redraw(); }
   else if (act === 'shift') { d.shift = (d.shift | 0) + +b.dataset.by; state.active = id; renderCards(); redraw(); }
+  else if (act === 'lag') {
+    const o = lineSeries[id]; if (!o?.calc) return;
+    b.disabled = true; b.textContent = 'Testing...'; await new Promise(r => setTimeout(r, 20));
+    lagRes[id] = { res: lagProfile(o.calc.raw, candles.map(c => c.c), 48), tf: state.tf, asset: state.asset };
+    state.active = id; renderCards(); return;
+  }
+  else if (act === 'applylag') { const r = lagRes[id]; if (r?.res.bestLag != null) { d.shift = r.res.bestLag; state.active = id; renderCards(); redraw(); } }
   else if (act === 'shift0') { d.shift = 0; renderCards(); redraw(); }
   else if (act === 'fit') {
     const o = lineSeries[id];
