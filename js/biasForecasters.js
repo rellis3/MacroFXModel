@@ -183,7 +183,7 @@ export function fundabias(logs = [], date = null, { insts = Object.keys(SAMEDAY_
 }
 
 // ── bias-engine (plans/BIAS_ENGINE_SPEC.md; prereg amendment A3: added forward from its first issue date, no back-issue) ──
-// The stored morning issue of js/biasEngine.js (KV bias_engine_<D>, written 07:00-07:30 London). Side = the market's
+// The stored morning issue of js/biasEngine.js (KV bias_engine_<D>, written 05:30-06:00 London; 07:00-07:30 before 2026-11-18). Side = the market's
 // direction (BULLISH +1, BEARISH -1); NEUTRAL or a missing market = no view. p_up = clip(p0 ± 0.01 × strength), so the
 // shift runs 0.03 (strength 3, the weakest that is not Neutral) to 0.10. Knowable at the record's issue time.
 export const ENGINE_SHIFT_PER_STRENGTH = 0.01;
@@ -200,7 +200,7 @@ export function biasEngine(rec, { knowableMs = Date.parse(rec?.asOf ?? ''), inst
 }
 
 // ── process-ai / process-system (plans/DESK_BIAS_PROCESS_SPEC.md; prereg amendment A4: forward from the first issue) ──
-// The stored morning issue of the Desk Bias Process (KV desk_bias_process_<D>, written 07:30-08:00 London). process-ai
+// The stored morning issue of the Desk Bias Process (KV desk_bias_process_<D>, written 06:00-06:30 London). process-ai
 // is the published call (the AI analyst's, or the system's when the AI failed); process-system is the rules alone.
 // Side = dir (BULLISH +1, BEARISH -1); NEUTRAL or a missing market = no view. p_up = clip(p0 ± 0.02 × conviction), so s
 // runs 0.02 (conviction 1) to 0.10 (conviction 5). Knowable at the record's issuedAt.

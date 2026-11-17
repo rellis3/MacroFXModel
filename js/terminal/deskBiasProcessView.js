@@ -130,12 +130,12 @@ export function headHtml(rec) {
 // ── head to head ─────────────────────────────────────────────────────────────────────────────────────────────────
 export const COMPETITORS = [['process-ai', 'Process (AI)'], ['process-system', 'Process (rules)'], ['max-signals', 'Max'], ['fundabias', 'FundaBias'], ['desk-rating', 'Desk'], ['bias-engine', 'Engine'], ['h4-trend', 'H4 trend']];
 export const JUDGE_AT = [60, 120];
-/** The next London weekday the process issues on (today when it is a weekday before 08:00 London). nowMs is passed in. */
+/** The next London weekday the process issues on (today when it is a weekday before 07:00 London). nowMs is passed in. */
 export function nextIssueDate(nowMs) {
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23', weekday: 'short' }).formatToParts(new Date(nowMs)).map(x => [x.type, x.value]));
   let d = `${p.year}-${p.month}-${p.day}`;
   const wk = s => { const g = new Date(`${s}T12:00:00Z`).getUTCDay(); return g >= 1 && g <= 5; };
-  if (wk(d) && +p.hour < 8) return d;
+  if (wk(d) && +p.hour < 7) return d;
   do d = new Date(Date.parse(`${d}T12:00:00Z`) + 864e5).toISOString().slice(0, 10); while (!wk(d));
   return d;
 }
@@ -165,7 +165,7 @@ export function h2hRows(H, which = 'all') {
 }
 export function h2hHtml(P, { which = 'all', nowMs = Date.now() } = {}) {
   if (!P || P.ok === false) return `<p class="muted">${esc(P?.error === 'owner only' ? 'The head to head is the process\'s scored record: owner only.' : `The head to head did not load${P?.error ? ` (${P.error})` : ''}.`)}</p>`;
-  if (P.empty || !P.h2h) return `<p class="muted bp-empty">No record yet: the head to head starts with the first stored issue, ${esc(nextIssueDate(nowMs))} at 07:30 London. Forward only; nothing is back-issued.</p>`;
+  if (P.empty || !P.h2h) return `<p class="muted bp-empty">No record yet: the head to head starts with the first stored issue, ${esc(nextIssueDate(nowMs))} at 06:00 London. Forward only; nothing is back-issued.</p>`;
   const H = P.h2h, J = judgement(H), rows = h2hRows(H, which);
   const o = H.override ?? {};
   const body = rows.map(r => `<tr${r.has ? '' : ' class="muted"'}><th>${esc(r.label)}</th><td class="n">${r.records}</td><td class="n">${r.calls}</td>
@@ -224,7 +224,7 @@ export function weeklyReview(records, outcomes, { endDate, days = 7 } = {}) {
 export function reviewHtml(P, { nowMs = Date.now() } = {}) {
   if (!P || P.ok === false) return `<p class="muted">${esc(P?.error === 'owner only' ? 'The weekly review is the process\'s scored record: owner only.' : `The review did not load${P?.error ? ` (${P.error})` : ''}.`)}</p>`;
   const R = P.review;
-  if (P.empty || !R || !R.to) return `<p class="muted bp-empty">No week to review yet: the first issue is ${esc(nextIssueDate(nowMs))} at 07:30 London.</p>`;
+  if (P.empty || !R || !R.to) return `<p class="muted bp-empty">No week to review yet: the first issue is ${esc(nextIssueDate(nowMs))} at 06:00 London.</p>`;
   const o = R.overrides ?? {};
   const head = `<p class="bp-judge">${esc(R.from)} to ${esc(R.to)}: ${R.calls} call${R.calls === 1 ? '' : 's'}, ${R.right} right, ${R.wrong} wrong${R.pending ? `, ${R.pending} not scored yet` : ''} (to 21:00 London). Overrides: ${o.n ? `${o.n}, helped ${o.helped}, hurt ${o.hurt}${o.same ? `, no difference ${o.same}` : ''}` : 'none scored'}.</p>`;
   if (!R.rows.length) return `${head}<p class="muted">No wrong calls this week.</p>`;

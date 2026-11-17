@@ -62,8 +62,8 @@ test('the cards block: only groups that have a market get a pill; the head says 
 test('head to head: the empty state names the first issue day; a table has every competitor in the fixed order and the judgement points', () => {
   assert.equal(V.nextIssueDate(Date.parse('2026-11-17T06:30:00Z')), '2026-11-17');
   assert.equal(V.nextIssueDate(Date.parse('2026-11-17T09:00:00Z')), '2026-11-18');
-  assert.equal(V.nextIssueDate(Date.parse('2026-11-20T09:00:00Z')), '2026-11-23', 'Friday after 08:00: Monday');
-  assert.match(V.h2hHtml({ ok: true, empty: true }, { nowMs: Date.parse('2026-11-17T09:00:00Z') }), /first stored issue, 2026-11-18 at 07:30 London/);
+  assert.equal(V.nextIssueDate(Date.parse('2026-11-20T09:00:00Z')), '2026-11-23', 'Friday after 07:00: Monday');
+  assert.match(V.h2hHtml({ ok: true, empty: true }, { nowMs: Date.parse('2026-11-17T09:00:00Z') }), /first stored issue, 2026-11-18 at 06:00 London/);
   assert.match(V.h2hHtml({ ok: false, error: 'owner only' }), /owner only/);
   const bars = [], t0 = Date.parse('2026-11-16T00:00:00Z');
   for (let i = 0; i < 4 * 288; i++) bars.push({ t: t0 + i * 3e5, o: 100 + i * 0.01, h: 100 + i * 0.01 + 0.02, l: 100 + i * 0.01 - 0.02, c: 100 + i * 0.01 + 0.01, sp: 0.01 });

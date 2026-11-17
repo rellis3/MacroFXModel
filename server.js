@@ -30236,7 +30236,7 @@ async function _bsIssueMax(date) {
   const views = records ? _bsMaxSignals(records, date, { insts }) : [];
   await _bsPutOnce(key, _bsIssue({ date, source: 'max', views, baselines: _bsBaselines, sigma, issuedAt: new Date().toISOString(), code: _bsCode(), externalStatus: status, insts }));
 }
-// <D>_engine.json (prereg amendment A3): the bias engine's stored morning issue (KV bias_engine_<D>, written 07:00-07:30
+// <D>_engine.json (prereg amendment A3): the bias engine's stored morning issue (KV bias_engine_<D>, written 05:30-06:00
 // London by _biasEngineTick), first tick after it exists and before 10:00. A live (unstored) read is never a row.
 async function _bsIssueEngine(date) {
   const key = `${_BS_PREFIX}${date}_engine.json`;
@@ -30250,7 +30250,7 @@ async function _bsIssueEngine(date) {
   await _bsPutOnce(key, _bsIssue({ date, source: 'engine', views: _bsBiasEngine(rec, { knowableMs: Date.parse(rec.asOf), insts }), baselines: _bsBaselines, sigma,
     issuedAt: new Date().toISOString(), code: _bsCode(), externalStatus: { engine: 'ok', engine_as_of: rec.asOf, engine_version: rec.version, weights: rec.weights }, insts }));
 }
-// <D>_process.json (prereg amendment A4): the Desk Bias Process's stored issue (KV desk_bias_process_<D>, written 07:30-08:00
+// <D>_process.json (prereg amendment A4): the Desk Bias Process's stored issue (KV desk_bias_process_<D>, written 06:00-06:30
 // London by _deskBiasProcessTick), first tick after it exists and before 10:00: process-ai (the published call) and
 // process-system (the rules alone), knowable at the record's issuedAt. A live read is never a row.
 async function _bsIssueProcess(date) {
@@ -30286,7 +30286,7 @@ async function _biasScoreboardTick() {
     if (now >= _bsLondonMs(date, 7) && now < _bsLondonMs(date, 10)) await _bsIssueDesk(date);
     if (now >= _bsLondonMs(date, 16, 5) && now < _bsLondonMs(date, 20)) await _bsIssueMax(date);
     if (now >= _bsLondonMs(date, 7) && now < _bsLondonMs(date, 10)) await _bsIssueEngine(date);
-    if (now >= _bsLondonMs(date, 7, 30) && now < _bsLondonMs(date, 10)) await _bsIssueProcess(date);
+    if (now >= _bsLondonMs(date, 7) && now < _bsLondonMs(date, 10)) await _bsIssueProcess(date);
     if (now >= _bsLondonMs(date, 16, 5) && now < _bsLondonMs(date, 20)) await _bsIssueFundabias(date);
   }
   // resolve: issue records from the last ~15 days with an unresolved target
@@ -30373,7 +30373,7 @@ app.get('/api/yield2y', async (req, res) => {
 
 // ── Bias engine (plans/BIAS_ENGINE_SPEC.md; logic in js/biasEngine.js, pure) ─────────────────────────────────────────
 // A rule-based macro checklist for every market: the eight currencies, the risk score, all 28 crosses and the assets.
-// Issued once per London weekday between 07:00 and 07:30 (after Asia), written once to KV bias_engine_<date> with an
+// Issued once per London weekday between 05:30 and 06:00 (late Asia, before the desk's 06:45 run; owner 2026-11-17), written once to KV bias_engine_<date> with an
 // index bias_engine_index; never overwritten, never back-issued (a missed window is a gap). Inputs are the stores the
 // routes already read, called in-process (no HTTP to itself): /api/cb-expectations (KV cb_rate_futures_v1 + policy
 // rates), /api/macro-scorecard (_buildMacroScorecard: factors and cbSentiment), /api/rate-diff (KV rate_diff_v1),
@@ -30498,12 +30498,12 @@ let _beIssuing = false;
 const _beDone = new Set();
 async function _biasEngineTick() {
   const now = Date.now(), date = _dpLondonDate(now);
-  if (!_bsIsWeekday(date) || now < _bsLondonMs(date, 7) || now >= _bsLondonMs(date, 7, 30) || _beDone.has(date) || _beIssuing) return;
+  if (!_bsIsWeekday(date) || now < _bsLondonMs(date, 5, 30) || now >= _bsLondonMs(date, 6) || _beDone.has(date) || _beIssuing) return;
   _beIssuing = true;
   try {
     if (await kv.get(_BE_KEY(date))) { _beDone.add(date); return; }   // write-once
     const rec = await _beCompute(now);
-    if (Date.now() >= _bsLondonMs(date, 7, 30)) { console.warn(`[bias-engine] ${date}: gather finished after 07:30, not stored`); return; }
+    if (Date.now() >= _bsLondonMs(date, 6)) { console.warn(`[bias-engine] ${date}: gather finished after 06:00, not stored`); return; }
     await kv.put(_BE_KEY(date), JSON.stringify(rec));
     const idx = (await _beLoadIndex()).filter(r => r.date !== date);
     idx.push({ date, asOf: rec.asOf, version: rec.version, weights: rec.weights, gaps: rec.gaps.length,
@@ -30531,13 +30531,13 @@ app.get('/api/bias-engine', async (req, res) => {
     // live, never stored and never scored (the stored issue stays the record).
     const raw = req.query.live === '1' && !qd ? null : await kv.get(_BE_KEY(qd || today)).catch(() => null);
     if (raw) rec = JSON.parse(raw);
-    else if (qd && qd !== today) return res.status(404).json({ ok: false, error: `no stored bias-engine issue for ${qd} (issues are written 07:00-07:30 London on weekdays and never back-issued)` });
+    else if (qd && qd !== today) return res.status(404).json({ ok: false, error: `no stored bias-engine issue for ${qd} (issues are written 05:30-06:00 London on weekdays and never back-issued)` });
     else {
       if (!_beLive.rec || Date.now() - _beLive.at > 10 * 60_000 || req.query.fresh === '1') _beLive = { at: Date.now(), rec: await _beCompute(Date.now()) };
       rec = _beLive.rec; live = true;
     }
     const head = { ok: true, live, date: rec.date, asOf: rec.asOf, version: rec.version, weights: rec.weights, footnote: rec.footnote,
-      ...(live ? { note: 'live read: computed now, not stored and not scored (the stored issue is written 07:00-07:30 London on weekdays)' } : {}) };
+      ...(live ? { note: 'live read: computed now, not stored and not scored (the stored issue is written 05:30-06:00 London on weekdays)' } : {}) };
     if (req.query.market) {
       const m = _beMarket(rec, req.query.market);
       return m ? res.json({ ...head, market: m }) : res.status(404).json({ ok: false, error: `unknown market ${req.query.market}: any cross of USD EUR GBP JPY AUD NZD CAD CHF, a currency, or one of ${Object.keys(rec.markets).filter(k => !/^[A-Z]{6}$/.test(k)).join(', ')}` });
@@ -30551,7 +30551,7 @@ app.get('/api/bias-engine', async (req, res) => {
 // (event state, regime, macro ex-trend, structure, positioning, day range), a deterministic system call, and an AI analyst
 // that accepts it or overrides it with a reason tied to the pack (prompt process-ai-v1, the desk's callModel on task
 // 'desk-analyst', lowest temperature the routed provider takes; an invalid reply is retried once, then the system call
-// stands). Issued once per London weekday between 07:30 and 08:00, after the bias engine's stored issue exists; written
+// stands). Issued once per London weekday between 06:00 and 06:30, after the bias engine's stored issue exists; written
 // once to KV desk_bias_process_<date> with an index desk_bias_process_index; never overwritten, never back-issued. Scored
 // forward as process-ai and process-system (forge/BIAS_SCOREBOARD_PREREG.md amendment A4) and head to head
 // (scripts/bias-scoreboard/h2h.mjs). Inputs: KV bias_engine_<date>, the ForexFactory week calendar (_fetchWeekEvents),
@@ -30618,7 +30618,7 @@ let _dbpIssuing = false;
 const _dbpDone = new Set();
 async function _deskBiasProcessTick() {
   const now = Date.now(), date = _dpLondonDate(now);
-  if (!_bsIsWeekday(date) || now < _bsLondonMs(date, 7, 30) || now >= _bsLondonMs(date, 8) || _dbpDone.has(date) || _dbpIssuing) return;
+  if (!_bsIsWeekday(date) || now < _bsLondonMs(date, 6) || now >= _bsLondonMs(date, 6, 30) || _dbpDone.has(date) || _dbpIssuing) return;
   _dbpIssuing = true;
   try {
     if (await kv.get(_DBP_KEY(date))) { _dbpDone.add(date); return; }   // write-once
@@ -30626,7 +30626,7 @@ async function _deskBiasProcessTick() {
     const engineRec = raw ? JSON.parse(raw) : null;
     if (!engineRec?.markets || engineRec.date !== date) return;          // the bias engine's issue first: try again next tick
     const rec = await _dbpCompute(now, { engineRec });
-    if (Date.now() >= _bsLondonMs(date, 8)) { console.warn(`[desk-bias-process] ${date}: finished after 08:00, not stored`); return; }
+    if (Date.now() >= _bsLondonMs(date, 6, 30)) { console.warn(`[desk-bias-process] ${date}: finished after 06:30, not stored`); return; }
     if (await kv.get(_DBP_KEY(date))) { _dbpDone.add(date); return; }
     await kv.put(_DBP_KEY(date), JSON.stringify(rec));
     const idx = (await _dbpLoadIndex()).filter(r => r.date !== date);
@@ -30660,7 +30660,7 @@ app.get('/api/desk-bias-process', async (req, res) => {
     let rec = null, live = false;
     const raw = req.query.live === '1' && !qd ? null : await kv.get(_DBP_KEY(qd || today)).catch(() => null);
     if (raw) rec = JSON.parse(raw);
-    else if (qd && qd !== today) return res.status(404).json({ ok: false, error: `no stored desk-bias-process issue for ${qd} (issues are written 07:30-08:00 London on weekdays and never back-issued)` });
+    else if (qd && qd !== today) return res.status(404).json({ ok: false, error: `no stored desk-bias-process issue for ${qd} (issues are written 06:00-06:30 London on weekdays and never back-issued)` });
     else {
       if (!_dbpLive.rec || Date.now() - _dbpLive.at > 10 * 60_000 || req.query.fresh === '1') {
         let engineRec = null;
@@ -30671,7 +30671,7 @@ app.get('/api/desk-bias-process', async (req, res) => {
       rec = _dbpLive.rec; live = true;
     }
     const head = { ok: true, live, date: rec.date, asOf: rec.asOf, issuedAt: rec.issuedAt, version: rec.version, prompt: rec.prompt, note: rec.note,
-      ...(live ? { liveNote: 'live read: the system call only (no AI step), computed now, not stored and not scored (the stored issue is written 07:30-08:00 London on weekdays)' } : {}) };
+      ...(live ? { liveNote: 'live read: the system call only (no AI step), computed now, not stored and not scored (the stored issue is written 06:00-06:30 London on weekdays)' } : {}) };
     if (req.query.market) {
       const q = String(req.query.market).toUpperCase().replace(/[^A-Z0-9]/g, ''), inst = _bsInstOf(q), name = rec.markets[q] ? q : inst ? _BS_DESK_NAME[inst] : null;
       const card = name ? rec.markets[name] : null;

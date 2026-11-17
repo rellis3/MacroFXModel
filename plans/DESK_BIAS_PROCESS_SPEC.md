@@ -73,7 +73,7 @@ The process improves only from that record (versioned rule changes), never from 
   - It may not invent levels.
 - **The published call** is the AI's. The system call is kept beside it, so both are scored.
 
-## Output (one card per market, every weekday, write-once at 07:30 London after the bias engine issue)
+## Output (one card per market, every weekday, write-once 06:00–06:30 London after the bias engine issue; moved from 07:30 on 2026-11-17 so it is ready before the desk's 06:45 run)
 
 ```json
 { "version": "desk-bias-process-v1", "date": "...", "market": "XAUUSD",
