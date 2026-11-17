@@ -53,9 +53,21 @@ test('high contrast is AAA (7:1) for body text', () => {
   for (const g of grounds) for (const k of text) assert.ok(contrast(tok(t, k), tok(t, g)) >= 7, `contrast: ${k} on ${g}`);
 });
 
-test('the default keeps the contrast it has today (recorded: it is the original palette and is not changed)', () => {
-  const t = themeById('default');
-  for (const g of grounds) { assert.ok(contrast(tok(t, 'tx'), tok(t, g)) >= 7); assert.ok(contrast(tok(t, 'tx2'), tok(t, g)) >= 4.5); assert.ok(contrast(tok(t, 'tx3'), tok(t, g)) >= 3, 'tx3 is the quiet label grey'); }
+test('Deep navy (the default) is AA too: tx, tx2 and tx3 are 4.5:1 or better on all four grounds (bg, bg1, bg2, bg3); tx3 stays visibly dimmer than tx2', () => {
+  // 2026-11-17: tx3 was #6d7599 (3.5 to 4.4:1: 21 to 24% of sampled text under AA in the verification sweep); lifted to #8088ae (the colour-blind theme's value).
+  const t = themeById('default'), all = ['bg', 'bg1', 'bg2', 'bg3'];
+  for (const g of all) {
+    assert.ok(contrast(tok(t, 'tx'), tok(t, g)) >= 7, 'tx on ' + g);
+    for (const k of ['tx2', 'tx3']) { const c = contrast(tok(t, k), tok(t, g)); assert.ok(c >= 4.5, `default: ${k} ${tok(t, k)} on ${g} ${tok(t, g)} is ${c.toFixed(2)}:1, needs 4.5`); }
+    assert.ok(contrast(tok(t, 'tx3'), tok(t, g)) < contrast(tok(t, 'tx2'), tok(t, g)) - 1.5, 'tx3 must stay visibly dimmer than tx2 on ' + g);
+  }
+});
+
+test('every theme: tx, tx2 and tx3 are 4.5:1 or better on bg3 as well (the raised chip/hover ground)', () => {
+  for (const t of THEMES) for (const k of text) {
+    const c = contrast(tok(t, k), tok(t, 'bg3'));
+    assert.ok(c >= 4.5, `${t.id}: ${k} ${tok(t, k)} on bg3 ${tok(t, 'bg3')} is ${c.toFixed(2)}:1, needs 4.5`);
+  }
 });
 
 test('colour-blind theme: up and down differ in brightness (not only hue) and from each other by at least 2:1', () => {

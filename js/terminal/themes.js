@@ -37,7 +37,7 @@ const SANS = 'Inter,ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif';
 // 'default' = today's palette, exactly. desk-terminal.html's :root is checked against this by the test.
 const DEFAULT = {
   bg: '#070a17', bg1: '#0c1124', bg2: '#111833', bg3: '#18203f', line: '#1f2950', line2: '#2c3866', line3: '#3a4677',
-  tx: '#eef0fb', tx2: '#a9b0d0', tx3: '#6d7599', flat: '#8a93b8',
+  tx: '#eef0fb', tx2: '#a9b0d0', tx3: '#8088ae', flat: '#8a93b8',
   pur: '#8b7cf6', pur2: '#b4a9ff', pur3: '#9b8cff', purdeep: '#3a2f8f', gold: '#e8b85a', gold2: '#f3e3bf',
   up: '#2fd39a', dn: '#ff5d78', blue: '#7aa2ff', blue2: '#4fb3ff', teal: '#5fd0c9',
   bgrgb: '7,10,23', txrgb: '238,240,251', purrgb: '139,124,246', pur2rgb: '180,169,255', goldrgb: '232,184,90',
