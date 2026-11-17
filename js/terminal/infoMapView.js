@@ -7,7 +7,7 @@
  * Pure HTML-string builders (no fetch, no clock) plus one mount(). Tested in js/terminal/infoMapView.test.mjs.
  * The name-match lines are a string match in the terminal / Today / Atlas / newsletter code, never a trace. Context, never a signal.
  */
-import { FAMILIES, GROUPS, STATUSES, USES, FLAG_KINDS, TAB_LABELS } from '../infoMap.js';
+import { FAMILIES, GROUPS, STATUSES, USES, FLAG_KINDS, TAB_LABELS, INFO_MAP_REVIEWED, NEW_SINCE } from '../infoMap.js';
 import { DERIVED } from '../infoMapDerived.js';
 import { ownerLink } from './links.js';
 
@@ -16,19 +16,23 @@ export const STATUS_ORDER = ['DRAWN', 'SUMMARY', 'PACK', 'STANDALONE'];
 const STATUS_CLS = { DRAWN: 'hold', SUMMARY: '', PACK: 'broke', STANDALONE: '' };
 const VERDICT_CLS = { validated: 'pur', null: '', underpowered: '', context: '' };
 
+/** is this family new since the review date (js/infoMap.js NEW_SINCE)? Hand-kept `added` date on the family. */
+export const isRecent = f => Boolean(f.added && f.added >= NEW_SINCE);
+
 /** count families by status, by use and the flagged ones */
 export function counts(fams = FAMILIES) {
   const by = k => fams.reduce((a, f) => ((a[f[k]] = (a[f[k]] ?? 0) + 1), a), {});
-  return { total: fams.length, status: by('status'), use: by('use'), flagged: fams.filter(f => f.flag).length };
+  return { total: fams.length, status: by('status'), use: by('use'), flagged: fams.filter(f => f.flag).length, recent: fams.filter(isRecent).length };
 }
 
-/** state = { status: '' | key, group: '' | id, flag: bool, q: string }. Every word of q must appear in the family's text. */
-export function filterFamilies(fams, { status = '', group = '', flag = false, q = '' } = {}) {
+/** state = { status: '' | key, group: '' | id, flag: bool, recent: bool, q: string }. Every word of q must appear in the family's text. */
+export function filterFamilies(fams, { status = '', group = '', flag = false, recent = false, q = '' } = {}) {
   const words = String(q ?? '').toLowerCase().split(/\s+/).filter(Boolean);
   return fams.filter(f => {
     if (status && f.status !== status) return false;
     if (group && f.group !== group) return false;
     if (flag && !f.flag) return false;
+    if (recent && !isRecent(f)) return false;
     if (!words.length) return true;
     const hay = [f.name, f.family, f.pages.join(' '), f.routes.join(' '), f.store, f.visual, f.evidence.join(' '), f.status, STATUSES[f.status]?.label].join(' ').toLowerCase();
     return words.every(w => hay.includes(w));
@@ -41,7 +45,7 @@ export function filtersHtml(st = {}, fams = FAMILIES) {
   const gb = g => `<button type="button" data-im-group="${esc(g.id)}" aria-pressed="${st.group === g.id}" title="${esc(g.blurb)}">${esc(g.label)}</button>`;
   return `<div class="filters nt-f"><span class="lbl">Terminal</span>${sb('', 'All')}${STATUS_ORDER.map(k => sb(k, STATUSES[k].label)).join('')}</div>
 <div class="filters nt-f"><span class="lbl">Group</span><button type="button" data-im-group="" aria-pressed="${!st.group}">All</button>${GROUPS.map(gb).join('')}</div>
-<div class="nt-f2"><label class="nt-book"><input type="checkbox" data-im-flag${st.flag ? ' checked' : ''}> Only stale, blocked or doubtful (${c.flagged})</label><input type="search" data-im-q placeholder="Search families, pages, routes" value="${esc(st.q ?? '')}" aria-label="Search the info map"></div>`;
+<div class="nt-f2"><label class="nt-book"><input type="checkbox" data-im-flag${st.flag ? ' checked' : ''}> Only stale, blocked or doubtful (${c.flagged})</label><label class="nt-book"><input type="checkbox" data-im-recent${st.recent ? ' checked' : ''}> Added since ${esc(NEW_SINCE)} (${c.recent})</label><input type="search" data-im-q placeholder="Search families, pages, routes" value="${esc(st.q ?? '')}" aria-label="Search the info map"></div>`;
 }
 
 /** the gold box: what not to trust yet */
@@ -91,7 +95,7 @@ export function listHtml(fams, state = {}) {
 
 export function headerHtml(fams = FAMILIES, derived = DERIVED) {
   const c = counts(fams);
-  return `<div class="tt-head"><span class="lbl">Info map</span><h2 style="flex-basis:100%">What the repo holds, and what the terminal draws</h2><span class="r"><span class="chip">${c.total} families</span><span class="chip" title="Derived from the repo by scripts/build_info_map.mjs">derived ${esc(derived?.generatedAt ?? 'never')}</span></span></div>
+  return `<div class="tt-head"><span class="lbl">Info map</span><h2 style="flex-basis:100%">What the repo holds, and what the terminal draws</h2><span class="r"><span class="chip">${c.total} families</span><span class="chip" title="Derived from the repo by scripts/build_info_map.mjs">derived ${esc(derived?.generatedAt ?? 'never')}</span><span class="chip" title="Last time every family was re-traced against the code (js/infoMap.js INFO_MAP_REVIEWED)">reviewed ${esc(INFO_MAP_REVIEWED)}</span></span></div>
 <div class="tt-counts">${STATUS_ORDER.map(k => `<span class="vchip ${STATUS_CLS[k]}" title="${esc(STATUSES[k].blurb)}">${esc(STATUSES[k].label)} ${c.status[k] ?? 0}</span>`).join('')}${c.flagged ? `<span class="chip gold">${c.flagged} stale or doubtful</span>` : ''}</div>`;
 }
 
@@ -100,7 +104,7 @@ const NOTE = 'Status was traced by reading the code, not by matching names; the 
 /** mount into the tab's section; state lives on the element's dataset-free closure */
 export function mount(root, { openTab = id => document.querySelector(`#tabs [data-t="${id}"]`)?.click() } = {}) {
   if (!root) return;
-  const st = { status: '', group: '', flag: false, q: '' };
+  const st = { status: '', group: '', flag: false, recent: false, q: '' };
   root.innerHTML = `<div id="im-sw"></div><div id="im-ver" class="muted" style="font-size:12px;margin:2px 2px 8px"></div><div id="im-ci" class="muted" style="font-size:12px;margin:2px 2px 8px"></div><div class="card glow">${headerHtml()}${staleHtml()}<div id="im-f"></div><div id="im-n" class="muted" style="margin-bottom:4px"></div><div id="im-list"></div><p class="tt-note">${esc(NOTE)}</p></div>`;
   import('./previewSwitches.js').then(m => m.mountSwitches(root.querySelector('#im-sw'))).catch(() => { /* a convenience: the Info map works without it */ });
   import('./buildVersion.js').then(m => m.mountVersion(root.querySelector('#im-ver'))).catch(() => { /* a convenience */ });
@@ -119,7 +123,7 @@ export function mount(root, { openTab = id => document.querySelector(`#tabs [dat
     else return;
     draw(true);
   });
-  f.addEventListener('change', e => { if (e.target.matches('[data-im-flag]')) { st.flag = e.target.checked; draw(); } });
+  f.addEventListener('change', e => { if (e.target.matches('[data-im-flag]')) { st.flag = e.target.checked; draw(); } else if (e.target.matches('[data-im-recent]')) { st.recent = e.target.checked; draw(); } });
   f.addEventListener('input', e => { if (e.target.matches('[data-im-q]')) { st.q = e.target.value; draw(); } });
   list.addEventListener('click', e => { const a = e.target.closest('[data-im-tab]'); if (!a) return; e.preventDefault(); openTab(a.dataset.imTab); window.scrollTo?.({ top: 0 }); });
   draw(true);

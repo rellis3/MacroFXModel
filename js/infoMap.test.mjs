@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FAMILIES, GROUPS, STATUSES, USES, FLAG_KINDS, TAB_LABELS, EXCLUDED_PAGES } from './infoMap.js';
+import { FAMILIES, GROUPS, STATUSES, USES, FLAG_KINDS, TAB_LABELS, EXCLUDED_PAGES, INFO_MAP_REVIEWED, NEW_SINCE } from './infoMap.js';
 import { DERIVED } from './infoMapDerived.js';
 import { computeDerived } from '../scripts/build_info_map.mjs';
 
@@ -24,6 +24,7 @@ const fresh = computeDerived();
 
 if (!Array.isArray(FAMILIES) || FAMILIES.length < 60 || FAMILIES.length > 110) bad(`FAMILIES has ${FAMILIES?.length} entries, expected 60 to 110`);
 
+for (const [k, v] of Object.entries({ INFO_MAP_REVIEWED, NEW_SINCE })) if (!/^\d{4}-\d{2}-\d{2}$/.test(v ?? '')) bad(`${k} must be a YYYY-MM-DD date`);
 const ids = new Set();
 for (const f of FAMILIES) {
   const w = `family ${f.id}`;
@@ -40,6 +41,7 @@ for (const f of FAMILIES) {
   if (!f.pages?.length && !f.routes?.length && !f.modules?.length) bad(`${w}: needs a page, a route or a module`);
   for (const r of f.routes ?? []) if (!/^\/api\/[A-Za-z0-9_\-/]+$/.test(r) || r.endsWith('-') || r.endsWith('/')) bad(`${w}: route ${r} is not a clean /api/... path`);
   if (f.flag && !(f.flag.kind in FLAG_KINDS)) bad(`${w}: flag kind ${f.flag.kind}`);
+  if (f.added != null && !/^\d{4}-\d{2}-\d{2}$/.test(f.added)) bad(`${w}: added must be a YYYY-MM-DD date`);
   if (f.flag && String(f.flag.text ?? '').length < 20) bad(`${w}: a flag needs its reason`);
   for (const e of f.evidence ?? []) if (!new RegExp(`id:\\s*'${e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`).test(ledger)) bad(`${w}: evidence id ${e} is not in js/deskEvidence.js`);
   if (/[—→]/.test(JSON.stringify(f))) bad(`${w}: no em-dashes or arrows in text`);

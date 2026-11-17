@@ -2912,6 +2912,11 @@ export const DERIVED = {
      "route": "/api/desk-cot-history",
      "exists": true,
      "pack": null
+    },
+    {
+     "route": "/api/cot-source",
+     "exists": true,
+     "pack": null
     }
    ],
    "modules": [],
@@ -3423,6 +3428,129 @@ export const DERIVED = {
    "packSkills": [
     "events_news"
    ],
+   "drift": []
+  },
+  "news-wire": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/desk-news",
+     "exists": true,
+     "pack": {
+      "skill": "events_news",
+      "maxAgeH": 24
+     }
+    },
+    {
+     "route": "/api/desk-news/record",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/news-outcome",
+     "exists": true,
+     "pack": {
+      "skill": "events_news",
+      "maxAgeH": 96
+     }
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/newsChannel.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/newsView.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/newsSearchView.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/newsChannelView.js",
+     "js/terminal/newsSearchCore.js",
+     "js/terminal/newsSearchView.js",
+     "js/terminal/newsView.js",
+     "js/terminal/terminalFeel.js",
+     "js/terminal/terminalTabs.js"
+    ],
+    "today": [
+     "today.html"
+    ],
+    "atlas": [
+     "atlas.html"
+    ],
+    "newsletter": []
+   },
+   "evidence": [
+    {
+     "id": "news-asymmetry",
+     "known": true,
+     "verdict": "null"
+    }
+   ],
+   "packSkills": [
+    "events_news"
+   ],
+   "drift": []
+  },
+  "evening-day-in-order": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/newsletter/archive",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/newsletter/issue",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/eveningTimeline.js",
+     "exists": true
+    },
+    {
+     "file": "js/eveningDay.js",
+     "exists": true
+    },
+    {
+     "file": "js/eveningPromptV2.js",
+     "exists": true
+    },
+    {
+     "file": "js/newsletterEvening.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [],
+    "today": [],
+    "atlas": [
+     "atlas.html"
+    ],
+    "newsletter": [
+     "js/newsletter.js",
+     "js/newsletterEvening.js",
+     "js/newsletterTermV2.js"
+    ]
+   },
+   "evidence": [
+    {
+     "id": "surprise-size",
+     "known": true,
+     "verdict": "validated"
+    }
+   ],
+   "packSkills": [],
    "drift": []
   },
   "fiscal-events": {
@@ -4884,6 +5012,161 @@ export const DERIVED = {
      "verdict": "null"
     }
    ],
+   "packSkills": [],
+   "drift": []
+  },
+  "desk-alerts": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/desk-alerts",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/desk-alert-rules",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/deskAlerts.js",
+     "exists": true
+    },
+    {
+     "file": "js/deskAlertRules.js",
+     "exists": true
+    },
+    {
+     "file": "js/deskAlertRulesCore.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/alertsView.js",
+     "js/terminal/commandCore.js",
+     "js/terminal/newsSearchCore.js",
+     "js/terminal/newsSearchView.js"
+    ],
+    "today": [],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [],
+   "packSkills": [],
+   "drift": []
+  },
+  "desk-saved-state": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/desk-workspaces",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/desk-monitors",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/desk-news-searches",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/desk-access",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/deskWorkspaces.js",
+     "exists": true
+    },
+    {
+     "file": "js/deskMonitors.js",
+     "exists": true
+    },
+    {
+     "file": "js/deskNewsSearches.js",
+     "exists": true
+    },
+    {
+     "file": "js/deskAccess.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "desk-terminal.html",
+     "js/terminal/access.js",
+     "js/terminal/asofBoot.js",
+     "js/terminal/monitorCore.js",
+     "js/terminal/monitorState.js",
+     "js/terminal/monitorView.js",
+     "js/terminal/newsSearchView.js",
+     "js/terminal/previewSwitches.js",
+     "js/terminal/tabRegistry.js",
+     "js/terminal/workspaceCore.js",
+     "js/terminal/workspaceState.js",
+     "js/terminal/workspaceView.js"
+    ],
+    "today": [],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [],
+   "packSkills": [],
+   "drift": []
+  },
+  "build-and-ci-status": {
+   "pages": [],
+   "routes": [
+    {
+     "route": "/api/version",
+     "exists": true,
+     "pack": null
+    },
+    {
+     "route": "/api/ci-status",
+     "exists": true,
+     "pack": null
+    }
+   ],
+   "modules": [
+    {
+     "file": "js/buildInfo.js",
+     "exists": true
+    },
+    {
+     "file": "js/ciStatusCore.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/buildVersion.js",
+     "exists": true
+    },
+    {
+     "file": "js/terminal/ciStatus.js",
+     "exists": true
+    }
+   ],
+   "names": {
+    "terminal": [
+     "js/terminal/buildVersion.js",
+     "js/terminal/ciStatus.js",
+     "js/terminal/infoMapView.js"
+    ],
+    "today": [],
+    "atlas": [],
+    "newsletter": []
+   },
+   "evidence": [],
    "packSkills": [],
    "drift": []
   },

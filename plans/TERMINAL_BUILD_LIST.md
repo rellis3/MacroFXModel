@@ -222,3 +222,12 @@ Owner-only preview, registry surface `widget.ov.sections`. With it off a desk lo
 | Day shape chart, session heat strip, morning against the day, into tomorrow | DONE | `js/eveningDay.js`, wired in `js/newsletterEvening.js` |
 | Durable news wire (a deploy emptied it: root cause of 'no headline captured') | DONE | `desk_news_day_<date>`, kv.js isCfKey, server.js `_nwDayPersist` |
 | Writer brief v2 (story in time order, cause only from the timeline) | DONE, ON (no env flag, owner 2026-11-17) | read the first live run; cost note in the plan |
+
+## Info map review (2026-11-17, owner: "Review info map then and update")
+Every family re-traced against the code on main; the corrections and additions are in `js/infoMap.js` (the generated `plans/INFO_MAP.md` and `js/infoMapDerived.js` follow it).
+| Item | Status | Notes |
+|---|---|---|
+| Wrong statements corrected | DONE | retail positioning (the OANDA book is still served: the "withdrew" flag was wrong), macro scorecard (4 to 6 of 6 factors now: the "1 of 6" flag no longer holds), Market Sense log (the route holds study results from 2026-09-19, not a live feed), laptop flags (the central-bank futures, basis and skew pulls share one never-scheduled task until 2026-11-16) |
+| Families re-traced to include what was built 13 to 17 Nov | DONE | risk flags (history strip), release surprises (history drawer), BIS bank credit (Insight strip), Fed path odds and the curve (replays), policy rates (ECB, BoE and BoJ futures paths), OI lab (replays, smile, drill), time machine (as-of clock, per-visual replays), currency strength (Monday 1D), COT (source note), central-bank statements (latest fix), terminal newsletter v2 |
+| New families | DONE | news-wire, evening-day-in-order, desk-alerts, desk-saved-state, build-and-ci-status |
+| Info map tab: reviewed date, "Added since" filter | DONE | `INFO_MAP_REVIEWED`, `NEW_SINCE` and an optional `added` date per family in `js/infoMap.js`; counts per status were already in the header |

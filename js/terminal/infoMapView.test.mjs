@@ -1,7 +1,7 @@
 // js/terminal/infoMapView.test.mjs - the Info map tab's pure builders. Run: node js/terminal/infoMapView.test.mjs
 import assert from 'node:assert/strict';
 import { counts, filterFamilies, filtersHtml, staleHtml, rowHtml, listHtml, headerHtml, STATUS_ORDER } from './infoMapView.js';
-import { FAMILIES, GROUPS } from '../infoMap.js';
+import { FAMILIES, GROUPS, INFO_MAP_REVIEWED, NEW_SINCE } from '../infoMap.js';
 globalThis.deskAccessState = { role: 'owner' };   // the owner sees the links to the main site (js/terminal/links.test.mjs covers the viewer)
 
 let n = 0;
@@ -34,10 +34,11 @@ t('filters mark the pressed button and show counts', () => {
   assert.match(html, /value="a &quot;quote&quot;"/);
 });
 
-t('the stale box names the RBNZ block and the OANDA books', () => {
+t('the stale box names the RBNZ block and the laptop-fed pulls, and no longer says the OANDA books were withdrawn (they are still served)', () => {
   const html = staleHtml();
   assert.match(html, /RBNZ/);
-  assert.match(html, /OANDA/);
+  assert.match(html, /laptop/i);
+  assert.doesNotMatch(html, /OANDA withdrew/);
   assert.match(html, /class="chip gold"/);
   assert.equal(staleHtml([]), '');
 });
