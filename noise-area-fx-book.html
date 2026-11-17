@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Noise-Area FX Book</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+        --blue:#3987e5;--orange:#d95926;--amber:#d29922;--red:#f85149;--green:#3fb950;--grid:#21262d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--blue);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700}
+  .chip{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .chip.ok{color:var(--green);border-color:var(--green)} .chip.warn{color:var(--amber);border-color:var(--amber)} .chip.bad{color:var(--red);border-color:var(--red)}
+  .wrap{max-width:1500px;margin:0 auto;padding:12px 16px 48px;display:flex;flex-direction:column;gap:14px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:0}
+  .box h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .note{font-size:12px;color:var(--text2);line-height:1.6;max-width:130ch} .note b{color:var(--text)}
+  .ctrl{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+  .ctrl label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+  select{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font:inherit;font-size:12.5px;max-width:100%}
+  .btn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;text-transform:none;letter-spacing:0}
+  .btn:hover{color:var(--text)} .btn.on{background:#22304d;color:#fff;border-color:var(--blue)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px}
+  .kpi{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+  .kpi .l{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+  .kpi .v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .kpi .s{font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px} @media (max-width:950px){.grid2{grid-template-columns:1fr}}
+  table{border-collapse:collapse;width:100%;font-size:11.5px;font-variant-numeric:tabular-nums}
+  th,td{padding:4px 7px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap}
+  th{color:var(--text3);font-weight:600;background:var(--card);position:sticky;top:0;z-index:1}
+  td:first-child,th:first-child{text-align:left}
+  tr.click{cursor:pointer} tr.click:hover td{background:#1b2230} tr.sel td{background:#1d2a40}
+  .xscroll{overflow-x:auto;max-width:100%}
+  .pos{color:#5fb4ff} .neg{color:#ff8a5c} .mut{color:var(--text3)}
+  .chart{height:360px} @media (max-width:700px){.chart{height:280px}}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--text2);margin:2px 0 6px}
+  .sw{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+  .vword{font-weight:800;letter-spacing:.04em} .vword.VALIDATED{color:var(--green)} .vword.NULL{color:var(--red)} .vword.UNDERPOWERED{color:var(--amber)}
+  .verdict{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
+  .vcard{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text2)} .vcard b{color:var(--text)}
+  .cm td{text-align:center;min-width:34px;padding:3px 2px;font-size:10.5px} .cm th{font-size:10px;padding:3px 2px;writing-mode:vertical-rl;transform:rotate(180deg);text-align:left;height:84px}
+  .tip{position:fixed;pointer-events:none;background:#0b0f14;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11.5px;color:var(--text);z-index:99;display:none;font-variant-numeric:tabular-nums}
+  svg text{fill:var(--text2);font-size:10.5px}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>Noise-Area · FX, gold and the 21-system book</h1>
+  <a class="chip" href="noise-area-momentum.html" target="_blank">US equity backtest →</a>
+  <a class="chip" href="noise-area-build.html" target="_blank">Strategy builder →</a>
+  <span id="vchips"></span>
+</div>
+<div class="tip" id="tip"></div>
+<div class="wrap">
+
+  <div class="box">
+    <h2>What this is</h2>
+    <div class="note" id="intro"></div>
+  </div>
+
+  <div class="box">
+    <h2>Scored verdicts</h2>
+    <div class="verdict" id="verdicts"></div>
+  </div>
+
+  <div class="box">
+    <h2>Backtest</h2>
+    <div class="ctrl" style="margin-bottom:10px">
+      <label>System or book<select id="selS"></select></label>
+      <label>Size<select id="selSize"><option value="1x">1x</option><option value="vt">vol target (2%/day, cap 4×)</option></select></label>
+      <label>Compare with<select id="selCmp"></select></label>
+      <label>Show<span><button class="btn on" id="bPct">% return</button> <button class="btn" id="bUsd">$ equity</button></span></label>
+      <label>Returns<span><button class="btn on" id="bComp">compounded</button> <button class="btn" id="bSimp">simple (not compounded)</button></span></label>
+      <label>Scale<span><button class="btn" id="bLog">log</button> <button class="btn on" id="bLin">linear</button></span></label>
+      <label>&nbsp;<button class="btn" id="csvEq">Download daily CSV</button></label>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <h2 style="margin-top:12px" id="eqTitle">Equity</h2>
+    <div class="legend" id="legend"></div>
+    <div class="chart" id="eq"></div>
+    <h2 style="margin-top:10px">Drawdown <span class="mut" id="ddNote" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h2>
+    <div id="dd" style="height:130px"></div>
+  </div>
+
+  <div class="box">
+    <h2>Monthly returns (%)</h2>
+    <div class="xscroll"><table id="mon"></table></div>
+  </div>
+
+  <div class="box">
+    <h2>All 21 systems, one line each (2016-11 → 2026-08, 1x, net of real costs)</h2>
+    <div class="note" style="margin-bottom:6px">Click a row to load it above. <b>Spread ÷ range</b> is the execution check: above 0.15 the spread is too big a share of a normal session to trade, whatever the backtest says.</div>
+    <div class="xscroll"><table id="cells"></table></div>
+  </div>
+
+  <div class="grid2">
+    <div class="box">
+      <h2>Running them together</h2>
+      <div class="xscroll"><table id="books"></table></div>
+      <div class="note" id="bookNote" style="margin-top:8px"></div>
+      <h2 style="margin-top:12px">Positions open per day (all 21)</h2>
+      <svg id="actSvg" width="100%" height="160"></svg>
+    </div>
+    <div class="box">
+      <h2>How the systems move together (daily correlation)</h2>
+      <div class="xscroll"><table class="cm" id="cm"></table></div>
+      <h2 style="margin-top:12px">Book Sharpe if one system is left out</h2>
+      <div class="xscroll"><table id="loo"></table></div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2 id="trTitle">Trade list</h2>
+    <div class="ctrl" style="margin-bottom:6px"><label>&nbsp;<button class="btn" id="csvTr">Download trades CSV</button></label><span class="note" id="trNote"></span></div>
+    <div style="overflow:auto;max-height:420px"><table id="tr"></table></div>
+    <div class="note" id="trPager" style="margin-top:6px"></div>
+  </div>
+
+  <div class="box">
+    <h2>Notes</h2>
+    <div class="note" id="notes"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const BASE = 'analysis/output/noise-area-fx-book/';
+let R, D, T, eqC, eqS, eqK, ddC, ddS, trPage = 0;
+const st = {s: 'All 21 systems', size: '1x', cmp: 'SPY buy & hold', pct: true, comp: true, log: false};
+const BOOKS = ['All 21 systems', 'FX + gold (16)', 'US equity (5)', 'SPY + book overlay', 'SPY + US equity book (post-hoc)', 'SPY buy & hold'];
+const fmtN = (v, d = 2) => v == null || !isFinite(v) ? '—' : v.toFixed(d);
+const fmtP = (v, d = 1) => v == null || !isFinite(v) ? '—' : (v * 100).toFixed(d) + '%';
+const cls = v => v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+const tile = (l, v, s, c = '') => `<div class="kpi"><div class="l">${l}</div><div class="v ${c}">${v}</div><div class="s">${s}</div></div>`;
+document.addEventListener('mousemove', e => { const t = e.target.closest('[data-t]'), tip = $('tip'); if (t) { tip.innerHTML = t.dataset.t; tip.style.display = 'block'; tip.style.left = Math.min(e.clientX + 12, innerWidth - 240) + 'px'; tip.style.top = (e.clientY + 12) + 'px'; } else tip.style.display = 'none'; });
+
+function seriesOf(name){
+  // returns {dates, r, units|null, bh|null}
+  const i0 = D.dates.indexOf(D.start);
+  const cut = a => a.slice(i0);
+  if (BOOKS.includes(name)) return {dates: cut(D.dates), r: cut(D.books[name]), units: null};
+  const lev = st.size === 'vt' ? D.lev[name] : null;
+  const r = D.streams[name].map((v, i) => lev ? v * lev[i] : v);
+  return {dates: cut(D.dates), r: cut(r), units: cut(D.units[name]), bh: cut(D.bh[name])};
+}
+function stats(r, units){
+  const n = r.length; let s = 0, w = Infinity, b = -Infinity, hit = 0, td = 0, tr = 0;
+  for (let i = 0; i < n; i++) { s += r[i]; w = Math.min(w, r[i]); b = Math.max(b, r[i]); if (units && units[i] > 0) { td++; tr += units[i]/2; if (r[i] > 0) hit++; } }
+  const mu = s/n; let s2 = 0, s3 = 0; for (const v of r) { s2 += (v-mu)**2; s3 += (v-mu)**3; }
+  const sd = Math.sqrt(s2/(n-1)); let e = 1, pk = 1, mdd = 0; for (const v of r) { e *= 1 + v; pk = Math.max(pk, e); mdd = Math.min(mdd, e/pk - 1); }
+  let c = 0, cp = 0, smdd = 0; for (const v of r) { c += v; cp = Math.max(cp, c); smdd = Math.max(smdd, cp - c); }
+  return {total: e - 1, stotal: c, cagr: Math.pow(e, 252/n) - 1, ann: mu*252, vol: sd*Math.sqrt(252), sharpe: sd ? mu/sd*Math.sqrt(252) : 0,
+    mdd: -mdd, smdd, skew: sd ? (s3/n)/sd**3 : 0, worst: w, best: b, hit: td ? hit/td : null, exposure: units ? td/n : null, trades: tr, avgTrade: tr ? s/tr*1e4 : null};
+}
+function pathOf(r){ const c = [], dd = []; let e = 1, pk = 1; for (const v of r) { e = st.comp ? e*(1+v) : e + v; pk = Math.max(pk, e); c.push(e); dd.push(st.comp ? e/pk - 1 : e - pk); } return {c, dd}; }
+const eqVal = v => st.pct ? (v - 1)*100 : 1e5*v;
+const eqFmt = v => v == null ? '—' : st.pct ? (v >= 0 ? '+' : '') + v.toFixed(1) + '%' : '$' + Math.round(v).toLocaleString();
+
+function render(){
+  const x = seriesOf(st.s), k = stats(x.r, x.units);
+  const isBook = BOOKS.includes(st.s), cell = R.cells[st.s];
+  const tiles = [
+    st.comp ? tile('Total return', fmtP(k.total, 0), 'compounded', cls(k.total)) : tile('Total return', fmtP(k.stotal, 0), 'simple sum', cls(k.stotal)),
+    st.comp ? tile('CAGR', fmtP(k.cagr), 'per year') : tile('Avg return / yr', fmtP(k.ann), 'simple'),
+    tile('Sharpe', fmtN(k.sharpe), cell ? `CI [${fmtN(cell.net_ci[0])}, ${fmtN(cell.net_ci[1])}] · gross ${fmtN(cell.gross_sharpe)}` : isBook && R.book[st.s] ? `CI [${fmtN(R.book[st.s].sharpe_ci[0])}, ${fmtN(R.book[st.s].sharpe_ci[1])}]` : 'annualised', cls(k.sharpe)),
+    tile('Max drawdown', st.comp ? fmtP(k.mdd, 0) : fmtP(k.smdd, 0), st.comp ? 'below peak' : 'points of capital'),
+    tile('Volatility', fmtP(k.vol), 'annualised'),
+    tile('Skew', fmtN(k.skew), `worst ${fmtP(k.worst)} · best ${fmtP(k.best)}`),
+  ];
+  if (x.units) tiles.push(tile('Hit ratio', fmtP(k.hit, 0), 'of days with a trade'), tile('Trades', Math.round(k.trades).toLocaleString(), fmtN(k.trades/x.r.length) + ' per day'),
+    tile('Avg trade', fmtN(k.avgTrade, 1) + ' bp', 'net', cls(k.avgTrade)), tile('In market', fmtP(k.exposure, 0), 'of days'));
+  if (cell) tiles.push(tile('Cost per day', fmtN(cell.cost_bp, 2) + ' bp', `gross ${fmtN(cell.gross_bp, 2)} bp · spread ${fmtN(cell.spread_bp, 1)} bp`));
+  if (isBook) tiles.push(tile('Positions / day', fmtN(R.positions_per_day.mean, 1), 'of 21 systems, average'));
+  $('kpis').innerHTML = tiles.join('');
+  if (!eqC) {
+    const opt = {layout:{background:{color:'#161b22'}, textColor:'#9da7b3'}, grid:{vertLines:{color:'#21262d'}, horzLines:{color:'#21262d'}}, rightPriceScale:{borderColor:'#30363d'}, timeScale:{borderColor:'#30363d', minBarSpacing:0.05}, crosshair:{mode:0}};
+    eqC = LightweightCharts.createChart($('eq'), opt);
+    eqK = eqC.addLineSeries({color:'#6e7681', lineWidth:2, priceLineVisible:false});
+    eqS = eqC.addLineSeries({color:'#3987e5', lineWidth:2, priceLineVisible:false});
+    ddC = LightweightCharts.createChart($('dd'), opt);
+    ddS = ddC.addAreaSeries({lineColor:'#d95926', topColor:'rgba(217,89,38,.05)', bottomColor:'rgba(217,89,38,.35)', lineWidth:1, priceLineVisible:false, priceFormat:{type:'percent'}});
+    eqC.timeScale().subscribeVisibleLogicalRangeChange(r => r && ddC.timeScale().setVisibleLogicalRange(r));
+    new ResizeObserver(() => { eqC.applyOptions({width:$('eq').clientWidth}); ddC.applyOptions({width:$('dd').clientWidth}); }).observe(document.body);
+  }
+  const pf = st.pct ? {type:'custom', formatter: v => v.toFixed(0) + '%', minMove: 0.1} : {type:'price', precision:0, minMove:1};
+  eqS.applyOptions({priceFormat: pf}); eqK.applyOptions({priceFormat: pf});
+  eqC.applyOptions({rightPriceScale:{mode: st.log && !st.pct ? 1 : 0}});
+  const P = pathOf(x.r);
+  eqS.setData(P.c.map((v, i) => ({time: x.dates[i], value: eqVal(v)})));
+  let cl = '';
+  if (st.cmp && st.cmp !== st.s) { const y = seriesOf(st.cmp), Q = pathOf(y.r); eqK.setData(Q.c.map((v, i) => ({time: y.dates[i], value: eqVal(v)}))); cl = `<span><i class="sw" style="background:#6e7681"></i>${st.cmp} <b>${eqFmt(eqVal(Q.c.at(-1)))}</b></span>`; }
+  else eqK.setData([]);
+  ddS.setData(P.dd.map((v, i) => ({time: x.dates[i], value: 100*v})));
+  eqC.timeScale().fitContent(); ddC.timeScale().fitContent();
+  $('eqTitle').textContent = (st.pct ? 'Cumulative return (%)' : 'Equity ($100,000 start)') + ' · ' + (st.comp ? 'compounded' : 'simple, not compounded');
+  $('ddNote').textContent = st.comp ? '· % below the running peak' : '· points of starting capital below the running peak';
+  $('legend').innerHTML = `<span><i class="sw" style="background:#3987e5"></i>${st.s}${isBook ? '' : ' · ' + st.size} <b>${eqFmt(eqVal(P.c.at(-1)))}</b></span>${cl}<span class="mut">net of costs${isBook && st.s !== 'SPY buy & hold' ? ' · book scaled to 10% vol' : ''}</span>`;
+  drawMonthly(x); drawTrades();
+  document.querySelectorAll('#cells tr.click').forEach(tr => tr.classList.toggle('sel', tr.dataset.k === st.s));
+}
+function drawMonthly(x){
+  const by = {}, M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  x.dates.forEach((d, i) => { const y = d.slice(0,4), m = +d.slice(5,7); (by[y] ??= {}); by[y][m] = (by[y][m] ?? 1) * (1 + x.r[i]); });
+  const hb = v => { const a = Math.min(Math.abs(v)/6, 1)*.55; return `background:${v >= 0 ? `rgba(57,135,229,${a})` : `rgba(217,89,38,${a})`}`; };
+  let h = '<tr><th>Year</th>' + M.map(m => `<th>${m}</th>`).join('') + '<th>Year</th></tr>';
+  for (const y of Object.keys(by).sort()) { let yr = 1;
+    h += `<tr><td><b>${y}</b></td>` + M.map((_, i) => { const v = by[y][i+1]; if (v == null) return '<td class="mut">·</td>'; yr *= v; const p = (v-1)*100; return `<td style="${hb(p)}" data-t="${M[i]} ${y}: ${p.toFixed(2)}%">${p.toFixed(1)}</td>`; }).join('')
+      + `<td style="${hb((yr-1)*100/3)}"><b>${((yr-1)*100).toFixed(1)}</b></td></tr>`; }
+  $('mon').innerHTML = h;
+}
+function drawCells(){
+  const vw = v => `<span class="vword ${v}">${v}</span>`;
+  let h = '<tr><th>System</th><th>Gross Sharpe</th><th>Gross bp/day</th><th>Cost bp/day</th><th>Net Sharpe</th><th>95% CI</th><th>Halves</th><th>Beats shuffled</th><th>Spread ÷ range</th><th>Trades/day</th><th>Verdict</th></tr>';
+  for (const [k, c] of Object.entries(R.cells)) h += `<tr class="click" data-k="${k}"><td><b>${k}</b></td><td class="${cls(c.gross_sharpe)}">${fmtN(c.gross_sharpe)}</td><td>${fmtN(c.gross_bp)}</td><td>${fmtN(c.cost_bp)}</td><td class="${cls(c.net_sharpe)}"><b>${fmtN(c.net_sharpe)}</b></td><td class="mut">[${fmtN(c.net_ci[0])}, ${fmtN(c.net_ci[1])}]</td><td>${fmtN(c.halves[0])} / ${fmtN(c.halves[1])}</td><td>${c.null_pct}%</td><td class="${c.gate > 0.15 ? 'neg' : ''}">${fmtN(c.gate, 3)}</td><td>${fmtN(c.trades_day)}</td><td>${vw(c.verdict)}</td></tr>`;
+  for (const [k, e] of Object.entries(R.equity)) h += `<tr class="click" data-k="${k}"><td><b>${k}</b> <span class="mut">US cash session</span></td><td class="${cls(e.gross_sharpe)}">${fmtN(e.gross_sharpe)}</td><td class="mut">—</td><td class="mut">—</td><td class="${cls(e.net_sharpe)}"><b>${fmtN(e.net_sharpe)}</b></td><td class="mut" colspan="6">scored in noise-area-momentum / -spy (same window here, realistic cost)</td></tr>`;
+  $('cells').innerHTML = h;
+  document.querySelectorAll('#cells tr.click').forEach(tr => tr.onclick = () => { st.s = tr.dataset.k; $('selS').value = st.s; trPage = 0; render(); window.scrollTo({top: $('kpis').offsetTop - 80, behavior: 'smooth'}); });
+}
+function drawBooks(){
+  let h = '<tr><th>Book (2016-12 → 2026-08)</th><th>Sharpe</th><th>95% CI</th><th>CAGR</th><th>Vol</th><th>Max DD</th><th>Worst year</th><th>Halves</th></tr>';
+  for (const [k, b] of Object.entries(R.book)) h += `<tr class="click" data-k="${k}"><td><b>${k}</b></td><td class="${cls(b.sharpe)}"><b>${fmtN(b.sharpe)}</b></td><td class="mut">[${fmtN(b.sharpe_ci[0])}, ${fmtN(b.sharpe_ci[1])}]</td><td>${b.cagr}%</td><td>${b.vol}%</td><td>${b.mdd}%</td><td>${b.worst_year}%</td><td>${fmtN(b.halves[0])} / ${fmtN(b.halves[1])}</td></tr>`;
+  $('books').innerHTML = h;
+  document.querySelectorAll('#books tr.click').forEach(tr => tr.onclick = () => { st.s = tr.dataset.k; $('selS').value = st.s; render(); window.scrollTo({top: $('kpis').offsetTop - 80, behavior: 'smooth'}); });
+  const u = R.usd_netting;
+  $('bookNote').innerHTML = `Each system is scaled to 10% annual volatility from its own last 60 days, the book is their average, then scaled to 10% again. On an average day <b>${fmtN(R.positions_per_day.mean, 1)}</b> of the 21 systems trade. Average correlation between two systems: <b>${fmtN(R.avg_pair_corr, 2)}</b>. <b>Natural hedge in the FX legs:</b> on the ${u.days_with_2plus_fx_legs.toLocaleString()} days with two or more USD pairs in a trade, <b>${fmtP(u.offset_share, 0)}</b> of the USD exposure cancelled out (long dollar in one pair, short in another); all legs pointed the same way on ${fmtP(u.all_same_direction_share, 0)} of those days. <b>SPY + book overlay</b> = hold SPY 1x and run the all-21 book on top at 10% vol. <b>SPY + US equity book (post-hoc)</b> = the same with only the five US equity systems; it was chosen after seeing the results, so it describes and is not scored.`;
+  const a = R.positions_per_day.dist, ks = Object.keys(a).map(Number), mx = Math.max(...Object.values(a)), svg = $('actSvg'), W = svg.clientWidth || 500, H = 160, bw = (W - 40)/ks.length;
+  svg.innerHTML = ks.map((k, j) => { const hgt = a[k]/mx*(H - 36); return `<rect x="${30 + j*bw + 1}" y="${H - 20 - hgt}" width="${Math.max(1, bw - 2)}" height="${hgt}" rx="2" fill="#3987e5" opacity=".6" data-t="${k} systems trading: ${a[k]} days"></rect>` + (j % 2 === 0 ? `<text x="${30 + j*bw + bw/2}" y="${H - 6}" text-anchor="middle">${k}</text>` : ''); }).join('');
+}
+function drawCorr(){
+  const n = R.corr.names, m = R.corr.m, sh = s => s.replace(' LDN', ' L').replace(' NY', ' N');
+  let h = '<tr><td></td>' + n.map(s => `<th>${sh(s)}</th>`).join('') + '</tr>';
+  n.forEach((a, i) => { h += `<tr><td style="font-size:10.5px">${sh(a)}</td>` + m[i].map((v, j) => { const al = i === j ? 0 : Math.min(Math.abs(v)/0.6, 1)*.75;
+    return `<td style="background:${v >= 0 ? `rgba(57,135,229,${al})` : `rgba(217,89,38,${al})`}" data-t="${a} vs ${n[j]}: ${fmtN(v)}">${i === j ? '' : (v*100).toFixed(0)}</td>`; }).join('') + '</tr>'; });
+  $('cm').innerHTML = h;
+  const base = R.book['All 21 systems'].sharpe;
+  $('loo').innerHTML = '<tr><th>Left out</th><th>Book Sharpe</th><th>Change</th></tr>' + Object.entries(R.leave_one_out).sort((a, b) => a[1] - b[1]).map(([k, v]) => `<tr><td>${k}</td><td>${fmtN(v)}</td><td class="${cls(v - base)}">${v - base > 0 ? '+' : ''}${fmtN(v - base)}</td></tr>`).join('');
+}
+function trRows(){ return (T.trades[st.s] || []); }
+function drawTrades(){
+  const rows = trRows().slice().reverse(), per = 200, pages = Math.max(1, Math.ceil(rows.length/per)); trPage = Math.min(trPage, pages - 1);
+  if (!rows.length) { $('trTitle').textContent = 'Trade list'; $('trNote').innerHTML = R.cells[st.s] ? '' : 'Pick a single FX or gold system to see its trades (books combine many; US equity trade lists are on the equity backtest page).'; $('tr').innerHTML = ''; $('trPager').innerHTML = ''; return; }
+  const net = rows.reduce((a, t) => a + t[5], 0), win = rows.filter(t => t[5] > 0).length;
+  $('trTitle').textContent = `Trade list · ${st.s} · ${rows.length.toLocaleString()} trades`;
+  $('trNote').innerHTML = `win rate <b>${(win/rows.length*100).toFixed(0)}%</b> · avg <b class="${cls(net)}">${(net/rows.length).toFixed(2)} bp</b> net (1x) · times are the session's local clock`;
+  $('tr').innerHTML = '<tr><th>Date</th><th>Side</th><th>Entry</th><th>Exit</th><th>Gross bp</th><th>Net bp (after spread)</th><th>Vol-target lev</th></tr>' +
+    rows.slice(trPage*per, (trPage+1)*per).map(t => `<tr><td>${t[0]}</td><td class="${t[3] > 0 ? 'pos' : 'neg'}">${t[3] > 0 ? 'long' : 'short'}</td><td>${t[1]}</td><td>${t[2]}</td><td class="${cls(t[4])}">${t[4].toFixed(1)}</td><td class="${cls(t[5])}"><b>${t[5].toFixed(1)}</b></td><td>${t[6].toFixed(2)}×</td></tr>`).join('');
+  $('trPager').innerHTML = pages > 1 ? `<button class="btn" id="tp">‹</button> page ${trPage+1} / ${pages} <button class="btn" id="tn">›</button>` : '';
+  if (pages > 1) { $('tp').onclick = () => { trPage = Math.max(0, trPage-1); drawTrades(); }; $('tn').onclick = () => { trPage = Math.min(pages-1, trPage+1); drawTrades(); }; }
+}
+function saveCsv(name, lines){ const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], {type: 'text/csv'})); a.download = name; a.click(); }
+function csvDaily(){
+  const x = seriesOf(st.s); let e = 1, c = 0, pk = 1;
+  const out = ['date,net_return,cum_return_pct_compounded,cum_return_pct_simple,drawdown_pct' + (x.units ? ',position_changes' : '')];
+  x.dates.forEach((d, i) => { e *= 1 + x.r[i]; c += x.r[i]; pk = Math.max(pk, e); out.push([d, x.r[i].toFixed(6), ((e-1)*100).toFixed(3), (c*100).toFixed(3), ((e/pk-1)*100).toFixed(3)].concat(x.units ? [x.units[i]] : []).join(',')); });
+  saveCsv(`noise-area-fx-book_daily_${st.s.replace(/[^A-Za-z0-9]+/g, '_')}_${st.size}.csv`, out);
+}
+function csvTrades(){
+  const rows = trRows(); if (!rows.length) { alert('Pick a single FX or gold system.'); return; }
+  saveCsv(`noise-area-fx-book_trades_${st.s.replace(/[^A-Za-z0-9]+/g, '_')}.csv`, ['date,side,entry,exit,gross_bp,net_bp,voltarget_lev'].concat(rows.map(t => [t[0], t[3] > 0 ? 'long' : 'short', t[1], t[2], t[4], t[5], t[6]].join(','))));
+}
+
+(async () => {
+  [R, D, T] = await Promise.all(['results.json', 'streams.json', 'trades_fx.json'].map(f => fetch(BASE + f, {cache: 'no-store'}).then(r => r.json())));
+  const singles = R.corr.names;
+  $('selS').innerHTML = '<optgroup label="Books">' + BOOKS.map(b => `<option>${b}</option>`).join('') + '</optgroup><optgroup label="FX and gold">' + Object.keys(R.cells).map(k => `<option>${k}</option>`).join('') + '</optgroup><optgroup label="US equity (cash session)">' + Object.keys(R.equity).map(k => `<option>${k}</option>`).join('') + '</optgroup>';
+  $('selCmp').innerHTML = '<option value="">— none —</option>' + BOOKS.map(b => `<option>${b}</option>`).join('');
+  $('selS').value = st.s; $('selCmp').value = st.cmp;
+  $('selS').onchange = e => { st.s = e.target.value; trPage = 0; render(); };
+  $('selSize').onchange = e => { st.size = e.target.value; render(); };
+  $('selCmp').onchange = e => { st.cmp = e.target.value; render(); };
+  const tog = (on, off, f) => { $(on).onclick = () => { f(); $(on).classList.add('on'); $(off).classList.remove('on'); render(); }; };
+  tog('bPct', 'bUsd', () => st.pct = true); tog('bUsd', 'bPct', () => st.pct = false);
+  tog('bComp', 'bSimp', () => st.comp = true); tog('bSimp', 'bComp', () => st.comp = false);
+  tog('bLog', 'bLin', () => st.log = true); tog('bLin', 'bLog', () => st.log = false);
+  $('csvEq').onclick = csvDaily; $('csvTr').onclick = csvTrades;
+  const P = R.book['All 21 systems'];
+  $('verdicts').innerHTML = `<div class="vcard"><b>F · the rule on FX and gold</b> (16 systems: 8 markets × London and New York sessions)<br>Headline <span class="vword ${R.F_headline}">${R.F_headline}</span> · ${Object.values(R.cells).filter(c => c.verdict === 'VALIDATED').length} validated, ${Object.values(R.cells).filter(c => c.verdict === 'UNDERPOWERED').length} underpowered, ${Object.values(R.cells).filter(c => c.verdict === 'NULL').length} null</div>
+    <div class="vcard"><b>P · all 21 systems run together</b> (16 FX/gold + SPY, ES, NQ, YM, RTY; equal risk)<br><span class="vword ${R.P_verdict}">${R.P_verdict}</span> · Sharpe ${fmtN(P.sharpe)} [${fmtN(P.sharpe_ci[0])}, ${fmtN(P.sharpe_ci[1])}], halves ${fmtN(P.halves[0])} / ${fmtN(P.halves[1])}, max drawdown ${P.mdd}%</div>`;
+  $('vchips').innerHTML = `<span class="chip ${R.F_headline === 'VALIDATED' ? 'ok' : R.F_headline === 'NULL' ? 'bad' : 'warn'}">FX/gold ${R.F_headline}</span> <span class="chip ${R.P_verdict === 'VALIDATED' ? 'ok' : R.P_verdict === 'NULL' ? 'bad' : 'warn'}">Book ${R.P_verdict}</span>`;
+  $('intro').innerHTML = INTRO;
+  $('notes').innerHTML = `Data: OANDA 1-minute bid/ask for FX and gold (Oct 2016 →); US equity streams from the SPY (IBKR) and NT8 futures backtests. Window ${R.book_window[0]} → ${R.book_window[1]}; nothing after 21 Aug 2026 (held-out lockbox). FX/gold costs: half the actual bid/ask spread at that minute on every entry, exit and reversal; no commission (OANDA is spread-only). US equity: SPY $0.019/share round trip, futures 1 tick each side + $4.50. Fills at the decision bar's close. Sharpe annualised √252; confidence intervals from a week-clustered bootstrap (2,000 draws, seed ${R.seed}); "beats shuffled" = share of 100 histories with each session's minutes shuffled that the real Sharpe beats (needs 97.5%). Rules fixed before the run: <a href="https://github.com/rellis3/MacroFXModel/blob/main/forge/NOISE_AREA_FX_BOOK_PREREG.md" target="_blank">prereg</a>.`;
+  drawCells(); drawBooks(); drawCorr(); render();
+})();
+const INTRO = `The paper's rule, unchanged, on <b>gold and the seven USD majors</b> (EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD, USDCHF, NZDUSD), run twice a day: from the <b>London open</b> (08:00 London, checks every 30 min to 15:30, flat at the 16:00 fix) and from the <b>New York open</b> (08:00 New York, checks to 16:30, flat at 17:00). <b>The rule:</b> the noise band for each minute is the average distance from the session open at that minute over the last 14 sessions (widened by any gap from the previous session's close). At each check, buy if price is above the upper band and above VWAP, sell short if below the lower band and below VWAP, otherwise be flat; always flat at the session end. Costs are the real bid/ask spread at that minute. <b>Then all 21 systems run together</b> (these 16 plus SPY, ES, NQ, YM and RTY from the US equity tests): every day each system takes whatever trade its rule gives, each sized to the same risk, as one portfolio.`;
+</script>
+</body>
+</html>

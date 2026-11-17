@@ -83,4 +83,10 @@ across N streams its Sharpe is roughly √(N / (1 + (N−1)ρ)) × the average s
 
 ## Amendments
 
+### A1 — 2026-11-17 — POST-HOC (results seen)
+Added after the run, describes only: (1) an engine check on OANDA S&P/Nasdaq CFDs over the US cash session (gross 1.07 / 1.35, matching ES/NQ futures), (2) a 'SPY + US equity book' overlay (the 5 equity streams only), chosen after the FX streams were seen to lose. Neither changes a verdict.
+
+
 ## RESULTS
+
+Run 2026-11-17 (`analysis/output/noise-area-fx-book/RESULTS.md`). F `noise-area-fx`: 15 of 16 cells NULL, USDJPY LDN UNDERPOWERED (net −0.05 [−0.67, 0.51], gross 1.06); headline UNDERPOWERED by the pre-registered rule, read as: the rule does not work on FX or gold. Gross negative on 10 of 14 FX cells; costs 1.3–3.8 bp/day. P `noise-area-book`: NULL, −2.63 [−3.29, −2.00]. Described: US equity book 0.65; SPY + equity book (A1, post-hoc) 1.04 vs SPY 0.76.
