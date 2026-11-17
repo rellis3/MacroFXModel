@@ -17,6 +17,7 @@ export function legChartHtml() {
 let st = { ...DEFAULT_STATE };
 try { st = { ...st, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch (e) { /* private window: defaults */ }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ asset: st.asset, tf: st.tf, preset: st.preset })); } catch (e) { /* ignore */ } };
+const tok = (n, fb) => { try { return getComputedStyle(document.documentElement).getPropertyValue('--' + n).trim() || fb; } catch (e) { return fb; } };   // the terminal's theme tokens, so every theme paints the chart
 const jget = async u => { const r = await fetch(u); if (!r.ok) throw new Error(`${u} HTTP ${r.status}`); return r.json(); };
 
 export async function mountLegChart(root = document) {
@@ -41,12 +42,12 @@ export async function mountLegChart(root = document) {
   <div id="${ID}-chart" style="height:340px"></div><div class="lbl" style="margin-top:6px">Rolling correlation of the line's changes with price returns (96 bars, at the line's current shift)</div><div id="${ID}-corr" style="height:110px"></div>
   <div id="${ID}-lag"></div><div id="${ID}-nq"></div><p class="muted" style="font-size:12px" id="${ID}-note"></p>`;
   const $ = s => host.querySelector(`#${ID}-${s}`);
-  const theme = () => { const c = getComputedStyle(document.documentElement); const v = n => c.getPropertyValue(n).trim(); return { bg: v('--bg2') || '#161b22', tx: v('--mut') || '#9da7b3', gr: v('--line') || '#30363d' }; };
+  const theme = () => { const c = getComputedStyle(document.documentElement); const v = n => c.getPropertyValue(n).trim(); return { bg: v('--bg2') || 'black', tx: v('--tx2') || 'gray', gr: v('--line') || 'dimgray' }; };
   const mk = el => { const t = theme(); return LightweightCharts.createChart(el, { layout: { background: { color: t.bg }, textColor: t.tx, fontSize: 11 }, grid: { vertLines: { color: t.gr }, horzLines: { color: t.gr } }, rightPriceScale: { borderColor: t.gr }, leftPriceScale: { visible: true, borderColor: t.gr }, timeScale: { borderColor: t.gr, timeVisible: true, secondsVisible: false }, crosshair: { mode: 0 } }); };
   const chart = mk($('chart')), cchart = mk($('corr'));
-  const candleS = chart.addCandlestickSeries({ upColor: '#10b981', downColor: '#f97316', borderVisible: false, wickUpColor: '#10b981', wickDownColor: '#f97316' });
-  const lineS = chart.addLineSeries({ color: '#4f7df0', lineWidth: 2, priceScaleId: 'left', priceLineVisible: false });
-  const corrS = cchart.addLineSeries({ color: '#a371f7', lineWidth: 2, priceLineVisible: false });
+  const candleS = chart.addCandlestickSeries({ upColor: tok('up', 'green'), downColor: tok('dn', 'orangered'), borderVisible: false, wickUpColor: tok('up', 'green'), wickDownColor: tok('dn', 'orangered') });
+  const lineS = chart.addLineSeries({ color: tok('blue2', 'royalblue'), lineWidth: 2, priceScaleId: 'left', priceLineVisible: false });
+  const corrS = cchart.addLineSeries({ color: tok('pur', 'mediumpurple'), lineWidth: 2, priceLineVisible: false });
   new ResizeObserver(() => { chart.applyOptions({ width: $('chart').clientWidth }); cchart.applyOptions({ width: $('corr').clientWidth }); }).observe(host);
   let syncing = false;
   chart.timeScale().subscribeVisibleLogicalRangeChange(r => { if (r && !syncing) { syncing = true; cchart.timeScale().setVisibleLogicalRange(r); syncing = false; } });
@@ -116,7 +117,7 @@ export async function mountLegChart(root = document) {
       const j = await jget('/api/cog-chart/nq-rates?w=120&days=750');
       if (!j.ok) return;
       box.innerHTML = `<div class="lbl" style="margin-top:10px">Nasdaq vs rates (daily): is the Nasdaq trading on rates right now?</div><div class="muted" style="font-size:13px;margin:4px 0">${esc(j.read ?? '')}</div><div id="${ID}-nqc" style="height:150px"></div><p class="muted" style="font-size:12px">${esc(j.note ?? '')}</p>`;
-      const c = mk(box.querySelector(`#${ID}-nqc`)), s = c.addLineSeries({ color: '#f97316', lineWidth: 2, priceLineVisible: false });
+      const c = mk(box.querySelector(`#${ID}-nqc`)), s = c.addLineSeries({ color: tok('gold', 'orange'), lineWidth: 2, priceLineVisible: false });
       s.setData((j.rows ?? []).filter(r => r.z20 != null).map(r => ({ time: r.date, value: r.z20 })));
       c.timeScale().fitContent();
     } catch (e) { /* the read is optional */ }
@@ -131,14 +132,14 @@ function lagHtml(res, s) {
   const bars = res.lags.map((n, i) => {
     const v = res.profile[i]; if (v == null) return '';
     const h = Math.abs(v) / M * (H / 2 - 2);
-    return `<rect x="${(i * bw).toFixed(1)}" y="${(v >= 0 ? H / 2 - h : H / 2).toFixed(1)}" width="${Math.max(1, bw - 0.6).toFixed(1)}" height="${h.toFixed(1)}" fill="${n === res.bestLag ? '#f97316' : n === 0 ? '#9da7b3' : '#4f7df0'}"/>`;
+    return `<rect x="${(i * bw).toFixed(1)}" y="${(v >= 0 ? H / 2 - h : H / 2).toFixed(1)}" width="${Math.max(1, bw - 0.6).toFixed(1)}" height="${h.toFixed(1)}" fill="${n === res.bestLag ? 'var(--gold)' : n === 0 ? 'var(--tx2)' : 'var(--blue2)'}"/>`;
   }).join('');
-  const thr = res.threshold == null ? '' : [res.threshold, -res.threshold].map(t => { const y = (H / 2 - t / M * (H / 2 - 2)).toFixed(1); return `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="#f85149" stroke-dasharray="3 3"/>`; }).join('');
+  const thr = res.threshold == null ? '' : [res.threshold, -res.threshold].map(t => { const y = (H / 2 - t / M * (H / 2 - 2)).toFixed(1); return `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="var(--dn)" stroke-dasharray="3 3"/>`; }).join('');
   const dir = res.bestLag > 0 ? `the line LEADS ${esc(s.asset)} by ${res.bestLag} bars (${hrs(res.bestLag)} h)` : res.bestLag < 0 ? `${esc(s.asset)} LEADS the line by ${-res.bestLag} bars (${hrs(res.bestLag)} h)` : 'they move on the same bar';
   const verdict = res.significant
     ? `Best lag <b>${res.bestLag > 0 ? '+' : ''}${res.bestLag}</b>: r ${res.bestR.toFixed(3)} beats the luck threshold ${res.threshold.toFixed(3)}: ${dir}.`
     : `<b>Nothing beats luck.</b> The best lag (${res.bestLag > 0 ? '+' : ''}${res.bestLag}, r ${res.bestR.toFixed(3)}) is inside the ${res.threshold == null ? 'chance' : res.threshold.toFixed(3)} you get from picking the best of ${res.lags.length} lags on shuffled prices.`;
-  return `<div style="margin-top:8px"><svg width="${W}" height="${H}" style="display:block;max-width:100%"><line x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}" stroke="#30363d"/>${bars}${thr}</svg>
+  return `<div style="margin-top:8px"><svg width="${W}" height="${H}" style="display:block;max-width:100%"><line x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}" stroke="var(--line)"/>${bars}${thr}</svg>
   <div class="muted" style="font-size:12px">-48 ◀ price leads | 0 grey | line leads ▶ +48 · red dashes = 95% of luck · tested on the ${res.n} bars on screen</div>
   <div style="margin:4px 0">${verdict}<br>Same-bar r ${res.sameBarR == null ? 'n/a' : res.sameBarR.toFixed(3)}. Description only: it moves what is drawn, never a number.</div>
   <button class="chip" data-apply="1">${res.significant ? 'Draw the line at the best lag' : 'Draw it at the best lag anyway'}</button></div>`;
