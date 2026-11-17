@@ -231,3 +231,11 @@ Every family re-traced against the code on main; the corrections and additions a
 | Families re-traced to include what was built 13 to 17 Nov | DONE | risk flags (history strip), release surprises (history drawer), BIS bank credit (Insight strip), Fed path odds and the curve (replays), policy rates (ECB, BoE and BoJ futures paths), OI lab (replays, smile, drill), time machine (as-of clock, per-visual replays), currency strength (Monday 1D), COT (source note), central-bank statements (latest fix), terminal newsletter v2 |
 | New families | DONE | news-wire, evening-day-in-order, desk-alerts, desk-saved-state, build-and-ci-status |
 | Info map tab: reviewed date, "Added since" filter | DONE | `INFO_MAP_REVIEWED`, `NEW_SINCE` and an optional `added` date per family in `js/infoMap.js`; counts per status were already in the header |
+## Verification sweep (2026-11-17, plans/VERIFICATION_SWEEP_2026-11-17.md)
+| Item | Status | Notes |
+|---|---|---|
+| Sweep of 838 page states: 3 roles x 6 themes x 1440/768/390 over every tab and sub-pill (`scripts/sweep-matrix.mjs`) | DONE | deploy = main; desk login renders nothing hidden; command list has no owner-only entries |
+| Fixes: 1D strength in the first two hours after the reopen; Macro Credit & liquidity overflow at 390; Options gauge and path-walk SVG; headwind column; Analytics book-risk null onclick | DONE | 6 guard tests, 2 strength tests |
+| Deep navy muted text `--tx3` under 4.5:1 (21% of sampled text) | OWNER DECISION | `#8088ae` (the Colour-blind theme's value) clears it |
+| Hidden is not absent: Playbooks text (entry, target, size) is in the DOM of a desk login; six trade-reason surfaces are switched on for the desk login; five bias-engine surfaces visible with no back-test label | OWNER DECISION | listed in the report |
+| `/api/leading-indicators` 502 (OECD source down); `/api/bias-engine?market=` 404 for markets with no engine | OPEN | |
