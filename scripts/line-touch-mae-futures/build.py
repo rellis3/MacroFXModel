@@ -3,7 +3,8 @@
 EXPLORATORY, descriptive (register row line-touch-mae-futures). Owner question 2026-11-17, from Jordan's ask
 "how do you set your SL/TP, share your MAE analysis (futures)". No outcome hypothesis, nothing scored.
 
-Lines: the production OH / OL p50 / p75 / p90 rungs (% of open) for each London day, point-in-time, from the
+Lines (v2, 2026-11-17): all four production families, p50 / p75 / p90 (% of open): OH / OL, OC (CloseUp / CloseDn,
+static off the open) and HL (ProjH / ProjL, trailing the running low / high through bar k-1, as linesAtBar). Rungs for each London day, point-in-time, from the
 day-reconstruction archive (analysis/output/day-reconstruction/archive/<NAME>_days.parquet), applied to the FUTURES
 contract's own first bar at or after 00:00 London. NQ <- NQ, EURUSD <- 6E, GOLD <- GC.
 Placebo: the same rungs scaled x0.85 and x1.15 (B2-style shifted ladder), so the line can be compared with an
@@ -23,6 +24,9 @@ Excursions from the line price (entry = the line, no spread, no slippage), over 
   through = furthest move beyond the line in the touch direction, bars k..k+H (bar k's extreme is after the touch)
   back    = furthest move back through the line toward the open, bars k+1..k+H (bar k's other extreme may precede it)
 Fade:     MFE = back,    MAE = through.      Continue: MFE = through, MAE = back.
+Clusters: at each touch bar, the distance in ticks (and sigma) to every OTHER line priced at that bar: nearest_ticks,
+nearest_line, and counts within 2 / 5 / 10 ticks and 0.05 sigma. A move into a stack of lines is a touch on EACH line,
+so split or de-duplicate on these fields before pooling.
 Units: points (NQ index points, 6E price x 10,000 = pips, GC dollars), ticks, and sigma (open x sigma_used).
 
     python -I scripts/line-touch-mae-futures/build.py
@@ -63,7 +67,7 @@ def load_futures(root: str) -> pd.DataFrame:
 
 
 def touches_for_line(hi, lo, level, up, r):
-    """Indices of touch bars for one line, with the re-arm rule."""
+    """Indices of touch bars for one line (level = array per bar), with the re-arm rule."""
     if up:
         hit = hi >= level
         rearm = lo <= level - r
@@ -79,6 +83,31 @@ def touches_for_line(hi, lo, level, up, r):
         elif not armed and rearm[i] and i > last_touch:
             armed = True  # a bar that re-arms AND hits is not counted as a touch: order inside the bar is unknown
     return out
+
+
+# family -> (side up?, width column pattern, kind)
+FAMILIES = {"OH": (True, "oh_{r}_pct", "static"), "OL": (False, "ol_{r}_pct", "static"),
+            "CloseUp": (True, "oc_{r}", "static"), "CloseDn": (False, "oc_{r}", "static"),
+            "ProjH": (True, "hl_{r}", "proj"), "ProjL": (False, "hl_{r}", "proj")}
+FAMILY_GROUP = {"OH": "OH/OL", "OL": "OH/OL", "CloseUp": "OC", "CloseDn": "OC", "ProjH": "HL", "ProjL": "HL"}
+
+
+def day_levels(o, hi, lo, d, sc):
+    """Every line priced at every bar: {name: array}. Proj lines trail the running extreme through bar k-1."""
+    n = len(hi)
+    lo_prev = np.minimum.accumulate(np.concatenate([[o], lo[:-1]]))
+    hi_prev = np.maximum.accumulate(np.concatenate([[o], hi[:-1]]))
+    lv = {}
+    for fam, (up, col, kind) in FAMILIES.items():
+        for rung in RUNGS:
+            pct = d[col.format(r=rung)] * sc
+            if not np.isfinite(pct):
+                continue
+            if kind == "static":
+                lv[f"{fam}_{rung}"] = np.full(n, o * (1 + pct / 100) if up else o * (1 - pct / 100))
+            else:
+                lv[f"{fam}_{rung}"] = lo_prev * (1 + pct / 100) if up else hi_prev * (1 - pct / 100)
+    return lv
 
 
 def build(name: str):
@@ -100,32 +129,45 @@ def build(name: str):
         sig = o * d["sigma_used_pct"] / 100.0
         n = len(g)
         for kind, sc in SCALES.items():
-            for side, up in (("OH", True), ("OL", False)):
-                for rung in RUNGS:
-                    pct = d[f"{side.lower()}_{rung}_pct"] * sc
-                    level = o * (1 + pct / 100) if up else o * (1 - pct / 100)
-                    for tn, k in enumerate(touches_for_line(hi, lo, level, up, REARM_SIG * sig), start=1):
-                        row = {
-                            "instrument": name, "root": root, "date": d["date"], "weekday": int(d["weekday"]),
-                            "era": d["era"], "kind": kind, "line": f"{side}_{rung}", "side": "up" if up else "dn",
-                            "rung": rung, "touch_n": tn, "lon_hour": int(mins[k] // 60), "min_since_open": int(mins[k]),
-                            "open": o, "level": level, "sigma_pts": sig * mult, "dist_from_open_sig": abs(level - o) / sig,
-                        }
-                        for H in HORIZONS:
-                            end = n if H is None else min(n, k + H + 1)
-                            tag = "eod" if H is None else f"{H}m"
-                            if up:
-                                through = hi[k:end].max() - level
-                                back = level - lo[k + 1:end].min() if end > k + 1 else 0.0
-                                fin = cl[end - 1] - level
-                            else:
-                                through = level - lo[k:end].min()
-                                back = hi[k + 1:end].max() - level if end > k + 1 else 0.0
-                                fin = level - cl[end - 1]
-                            row[f"through_{tag}"] = max(through, 0.0) * mult
-                            row[f"back_{tag}"] = max(back, 0.0) * mult
-                            row[f"final_{tag}"] = fin * mult  # signed in the touch (continue) direction
-                        rows.append(row)
+            lv = day_levels(o, hi, lo, d, sc)
+            names = list(lv)
+            mat = np.vstack([lv[x] for x in names])  # lines x bars, for the cluster read at the touch bar
+            for li, lname in enumerate(names):
+                fam, rung = lname.split("_")
+                up = FAMILIES[fam][0]
+                level_arr = lv[lname]
+                for tn, k in enumerate(touches_for_line(hi, lo, level_arr, up, REARM_SIG * sig), start=1):
+                    level = float(level_arr[k])
+                    dist = np.abs(np.delete(mat[:, k], li) - level) * mult / tick  # ticks to every other line
+                    others = [x for j, x in enumerate(names) if j != li]
+                    j = int(np.argmin(dist))
+                    row = {
+                        "instrument": name, "root": root, "date": d["date"], "weekday": int(d["weekday"]),
+                        "era": d["era"], "kind": kind, "family": fam, "group": FAMILY_GROUP[fam], "line": lname,
+                        "side": "up" if up else "dn", "rung": rung, "touch_n": tn, "lon_hour": int(mins[k] // 60),
+                        "min_since_open": int(mins[k]), "open": o, "level": level, "sigma_pts": sig * mult,
+                        "dist_from_open_sig": abs(level - o) / sig,
+                        "nearest_ticks": float(dist[j]), "nearest_line": others[j],
+                        "nearest_sig": float(dist[j]) * tick / (sig * mult),
+                        "n_within_2t": int((dist <= 2).sum()), "n_within_5t": int((dist <= 5).sum()),
+                        "n_within_10t": int((dist <= 10).sum()),
+                        "n_within_005sig": int((dist * tick / (sig * mult) <= 0.05).sum()),
+                    }
+                    for H in HORIZONS:
+                        end = n if H is None else min(n, k + H + 1)
+                        tag = "eod" if H is None else f"{H}m"
+                        if up:
+                            through = hi[k:end].max() - level
+                            back = level - lo[k + 1:end].min() if end > k + 1 else 0.0
+                            fin = cl[end - 1] - level
+                        else:
+                            through = level - lo[k:end].min()
+                            back = hi[k + 1:end].max() - level if end > k + 1 else 0.0
+                            fin = level - cl[end - 1]
+                        row[f"through_{tag}"] = max(through, 0.0) * mult
+                        row[f"back_{tag}"] = max(back, 0.0) * mult
+                        row[f"final_{tag}"] = fin * mult  # signed in the touch (continue) direction
+                    rows.append(row)
     t = pd.DataFrame(rows)
     meta = {"instrument": name, "root": root, "unit": unit, "tick": tick, "days_archive": len(days),
             "days_used": used, "days_skipped": len(skipped), "first": days["date"].min(), "last": days["date"].max()}

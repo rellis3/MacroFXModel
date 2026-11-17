@@ -77,3 +77,29 @@ within the hour, and the 75th pct MFE (52 pts) is about the same distance, so th
 equally often.
 
 Not done here: spread/commission, a stop-and-target race (which is hit first), touch-to-next-event horizons.
+
+## v2 (2026-11-17): all line families + clusters
+
+Owner asked: (a) is it only OH/OL? (b) what happens when two lines sit a few ticks apart? `build.py` now covers all
+four families, 18 lines a day: OH/OL, OC (CloseUp/Dn, fixed off the open) and HL (ProjH/L, trailing the running low/high
+through bar k−1, as the archive's linesAtBar). Each touch also records the distance in ticks and σ to every other line at
+that minute (`nearest_ticks`, `nearest_line`, `n_within_2t/5t/10t/005sig`). 302,022 rows (lines + placebo). The
+tables above are v1 (OH/OL only); `tables/*.csv` and the page are v2. `page_data.py` writes the page JSON.
+
+**Stacks are common.** "Stacked" = another line within 5 ticks at the touch minute: NQ 17%, GC 67%, 6E 81% of touches
+(5 ticks is 1.25 pts on NQ but 2.5 pips on 6E and $0.50 on GC, so the share depends on the market). OC p50 equals OH p50
+on 56% of NQ days. A move into a stack counts as a touch on each line, so pooled rows double-count.
+
+**60 min, median back / through, back-wins share:**
+
+| | OH/OL lone | OH/OL stacked | OC lone | OC stacked | HL lone | HL stacked |
+|---|---|---|---|---|---|---|
+| NQ (pts) | 25.6 / 27.7, 49.1% | 12.4 / 13.6, 49.2% | 25.8 / 28.8, 49.2% | 12.5 / 13.9, 49.0% | 28.4 / 31.0, 48.7% | 13.6 / 17.7, 44.5% (n 636) |
+| 6E (pips) | 12.8 / 14.5, 45.9% (n 418) | 8.1 / 8.5, 50.0% | 14.1 / 15.2, 48.2% (n 394) | 8.2 / 8.5, 49.7% | 9.2 / 9.3, 50.5% | 8.8 / 9.3, 49.7% |
+| GC ($) | 6.2 / 5.9, 50.7% | 2.2 / 2.3, 49.9% | 5.8 / 5.9, 48.9% | 2.2 / 2.3, 50.0% | 3.2 / 3.2, 50.6% | 2.1 / 2.9, 47.3% |
+
+- Every family splits close to 50/50. OC and HL behave like OH/OL.
+- Stacked touches travel about half as far both ways (smaller in both MFE and MAE), not more one way than the other.
+  Stacks sit mostly at the inner rungs, which are touched earlier on quieter paths.
+- Counting each stacked minute once (de-duplicated by date, minute and side): back wins NQ 49.4%, 6E 50.2%, GC 50.8%.
+- Thin cells drift (NQ HL stacked 44.5%, n 636; 6E OH/OL lone 45.9%, n 418): with 54 cells this is what chance gives.
