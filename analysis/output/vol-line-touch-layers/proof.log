@@ -1,0 +1,5 @@
+plant large {'injected': 0.3, 'B1': {'injected': 0.3, 'shift': 0.23185}, 'B2': {'injected': 0.3, 'shift': 0.16144}}
+plant min {'injected': 0.06, 'B1': {'injected': 0.06, 'shift': 0.00493}, 'B2': {'injected': 0.06, 'shift': -0.00915}}
+shuffle {'est': 0.00532, 'lo': -0.00907, 'hi': 0.01916, 'se': 0.00719, 'p_le0': 0.22439, 'mde80': 0.02012} {'est': 0.00386, 'lo': -0.00418, 'hi': 0.01196, 'se': 0.00414, 'p_le0': 0.18841, 'mde80': 0.0116}
+vol-line-touch-layers-meta INVALID ['a planted edge at the minimum size was not recovered'] power 0.7903557005328363
+vol-line-touch-layers-add INVALID ['a planted edge at the minimum size was not recovered'] power 0.9998903365504799

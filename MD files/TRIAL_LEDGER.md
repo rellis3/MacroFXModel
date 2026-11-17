@@ -4,21 +4,21 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-16.
+Generated 2026-11-17.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **410** |
+| claims tested (validated + null + underpowered) | **413** |
 | validated | 71 |
-| null | 203 |
-| underpowered | 136 |
+| null | 204 |
+| underpowered | 138 |
 | context (base rates, descriptions: not counted as tests) | 63 |
 | pre-registrations with no banked verdict (below) | 89 |
 
-**What the count says (Lesson 02 §05).** If none of the 410 claims were real, tests at the usual 5% size would still pass
-about **20.5** of them by luck. 71 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 413 claims were real, tests at the usual 5% size would still pass
+about **20.7** of them by luck. 71 passed, so most passes are unlikely to be luck alone, but
 **roughly 21 of the 71 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -500,6 +500,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-16 | vol-layer-stops-confirm-skill | execution | validated | forge/VOL_LAYER_STOPS_CONFIRM_PREREG.md |
 | 2026-11-16 | vol-layer-stops-confirm-steady | execution | validated | forge/VOL_LAYER_STOPS_CONFIRM_PREREG.md |
 | 2026-11-16 | vol-layer-stops-confirm-weekend | execution | context | forge/VOL_LAYER_STOPS_CONFIRM_PREREG.md |
+| 2026-11-17 | vol-line-touch-layers-add | execution | underpowered | forge/VOL_LINE_TOUCH_LAYERS_PREREG.md |
+| 2026-11-17 | vol-line-touch-layers-map | execution | null | forge/VOL_LINE_TOUCH_LAYERS_PREREG.md |
+| 2026-11-17 | vol-line-touch-layers-meta | execution | underpowered | forge/VOL_LINE_TOUCH_LAYERS_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
