@@ -67,9 +67,9 @@
   <div class="box">
     <h2>The honest backtest: walk-forward</h2>
     <div class="note" style="margin-bottom:8px">Each January the builder looks only at the years before, picks the design in the middle of the best region of the 1,440 (the <b>plateau</b>: the median of a design and its neighbours in band width, band days and check interval, so a lucky spike can't win), and trades it for that year. Chaining those years gives a record no design ever saw in advance. Orange is the paper's fixed rule on the same days and costs, grey is buy &amp; hold. Compare the Sharpe ratios, not the end balances: when the build picks the vol-targeted size it runs with more leverage than the 1x paper rule.</div>
-    <div class="ctrl" style="margin-bottom:8px"><label>Instrument<select id="wfInst"></select></label><label>Scale<span><button class="btn on" id="wfLog">log</button> <button class="btn" id="wfLin">linear</button></span></label></div>
+    <div class="ctrl" style="margin-bottom:8px"><label>Instrument<select id="wfInst"></select></label><label>Show<span><button class="btn on" id="eqPct">% return</button> <button class="btn" id="eqUsd">$ equity</button></span></label><label>Returns<span><button class="btn on" id="eqComp">compounded</button> <button class="btn" id="eqSimp">simple (not compounded)</button></span></label><label>Scale<span><button class="btn" id="wfLog">log</button> <button class="btn on" id="wfLin">linear</button></span></label></div>
     <div class="kpis" id="wfKpis"></div>
-    <h2 style="margin-top:12px">Equity curve ($100,000 start, net of costs)</h2>
+    <h2 style="margin-top:12px" id="wfEqTitle">Equity curve</h2>
     <div class="legend" id="wfLegend"></div>
     <div class="chart" id="wfChart"></div>
     <h2 style="margin-top:10px">Drawdown</h2>
@@ -152,7 +152,14 @@
 <script>
 const $ = id => document.getElementById(id);
 const BASE = 'analysis/output/noise-area-build/';
-let R, D = {}, wfChart, wfS, wfP, bChart, bS, bP, wfLog = true;
+let R, D = {}, wfChart, wfS, wfP, bChart, bS, bP, wfLog = false;
+const EQ = {pct: true, comp: true};  // % vs $, compounded vs simple (fixed capital)
+function pathOf(r){ const c = [], dd = []; let e = 1, pk = 1;
+  for (const v of r) { e = EQ.comp ? e*(1 + v) : e + v; pk = Math.max(pk, e); c.push(e); dd.push(EQ.comp ? e/pk - 1 : e - pk); } return {c, dd}; }
+const eqVal = v => EQ.pct ? (v - 1)*100 : 1e5*v;
+const eqFmt = v => EQ.pct ? (v >= 0 ? '+' : '') + v.toFixed(1) + '%' : '$' + Math.round(v).toLocaleString();
+const eqPf = () => EQ.pct ? {type:'custom', formatter: v => v.toFixed(0) + '%', minMove: 0.1} : {type:'price', precision:0, minMove:1};
+const eqHow = () => (EQ.comp ? 'compounded' : 'simple, not compounded') + ', net of costs';
 const st = {inst: 'SPY', k: {vm: 1, lb: 14, ck: 30, exit: 'vwap', filter: 'none', sizing: '1x'}};
 const NAMES = {SPY: 'SPY ETF (2007 →)', ES: 'S&P 500 futures', NQ: 'Nasdaq 100 futures', YM: 'Dow futures', RTY: 'Russell 2000 futures'};
 const KL = {
@@ -226,13 +233,16 @@ async function drawWF(){
     wfDD.s = wfDD.addAreaSeries({lineColor:'#d95926', topColor:'rgba(217,89,38,.05)', bottomColor:'rgba(217,89,38,.35)', lineWidth:1, priceLineVisible:false, priceFormat:{type:'percent'}});
     wfChart.timeScale().subscribeVisibleLogicalRangeChange(x => x && wfDD.timeScale().setVisibleLogicalRange(x));
   }
-  wfChart.applyOptions({rightPriceScale:{mode: wfLog ? 1 : 0}});
-  const pts = c => c.map((v, i) => ({time: d.dates[i], value: 1e5*v}));
-  wfS.setData(pts(k.curve)); wfP.setData(pts(p.curve)); wfB.setData(pts(b.curve));
-  wfDD.s.setData(k.dd.map((v, i) => ({time: d.dates[i], value: 100*v})));
+  wfChart.applyOptions({rightPriceScale:{mode: wfLog && !EQ.pct ? 1 : 0}});
+  for (const se of [wfS, wfP, wfB]) se.applyOptions({priceFormat: eqPf()});
+  const PK = pathOf(d.r), PP = pathOf(d.rp), PB = pathOf(d.rb);
+  const pts = c => c.map((v, i) => ({time: d.dates[i], value: eqVal(v)}));
+  wfS.setData(pts(PK.c)); wfP.setData(pts(PP.c)); wfB.setData(pts(PB.c));
+  wfDD.s.setData(PK.dd.map((v, i) => ({time: d.dates[i], value: 100*v})));
   wfChart.timeScale().fitContent(); wfDD.timeScale().fitContent();
-  const m = v => '$' + Math.round(1e5*v).toLocaleString();
-  $('wfLegend').innerHTML = `<span><i class="sw" style="background:#3987e5"></i>Walk-forward build <b>${m(k.curve.at(-1))}</b></span><span><i class="sw" style="background:#d95926"></i>Paper's fixed rule <b>${m(p.curve.at(-1))}</b></span><span><i class="sw" style="background:#6e7681"></i>Buy &amp; hold ${st.wfInst} (1x) <b>${m(b.curve.at(-1))}</b></span>`;
+  $('wfEqTitle').textContent = (EQ.pct ? 'Cumulative return (%)' : 'Equity ($100,000 start)') + ' · ' + (EQ.comp ? 'compounded' : 'simple, not compounded');
+  const m = v => eqFmt(eqVal(v));
+  $('wfLegend').innerHTML = `<span><i class="sw" style="background:#3987e5"></i>Walk-forward build <b>${m(PK.c.at(-1))}</b></span><span><i class="sw" style="background:#d95926"></i>Paper's fixed rule <b>${m(PP.c.at(-1))}</b></span><span><i class="sw" style="background:#6e7681"></i>Buy &amp; hold ${st.wfInst} (1x) <b>${m(PB.c.at(-1))}</b></span><span class="mut">${eqHow()}</span>`;
   const row = (l, x, sh) => `<tr><td>${l}</td><td class="${cls(x.total)}">${fmtP(x.total, 0)}</td><td>${fmtP(x.cagr)}</td><td>${fmtP(x.vol)}</td><td class="${cls(sh)}"><b>${fmtN(sh)}</b></td><td>${fmtP(x.mdd, 0)}</td><td>${fmtN(x.skew)}</td><td>${fmtP(x.worst)}</td></tr>`;
   $('wfCmp').innerHTML = '<tr><th>Same days, net of costs</th><th>Total</th><th>CAGR</th><th>Vol</th><th>Sharpe</th><th>Max DD</th><th>Skew</th><th>Worst day</th></tr>'
     + row('<b>Walk-forward build</b>', k, k.sharpe) + row("Paper's fixed rule (1.0× · 14d · 30m · VWAP · 1x)", p, p.sharpe) + row(`Buy &amp; hold ${st.wfInst}, close to close`, b, b.sharpe);
@@ -309,14 +319,16 @@ async function drawBuild(){
     bChart.timeScale().subscribeVisibleLogicalRangeChange(x => x && bChart.dd.timeScale().setVisibleLogicalRange(x));
     new ResizeObserver(() => { for (const [c, el] of [[bChart, 'bChart'], [bChart.dd, 'bDD'], [wfChart, 'wfChart'], [wfDD, 'wfDD']]) c && c.applyOptions({width: $(el).clientWidth}); }).observe(document.body);
   }
-  bChart.applyOptions({rightPriceScale:{mode: 1}});
+  bChart.applyOptions({rightPriceScale:{mode: wfLog && !EQ.pct ? 1 : 0}});
+  for (const se of [bS, bP]) se.applyOptions({priceFormat: eqPf()});
+  const PB2 = pathOf(r), PP2 = pathOf(rp);
   const t = m => m + '-28';
-  bS.setData(months.map((m, j) => ({time: t(m), value: 1e5*eq[j]})));
-  bP.setData(months.map((m, j) => ({time: t(m), value: 1e5*ep[j]})));
-  bChart.ddS.setData(months.map((m, j) => ({time: t(m), value: 100*dd[j]})));
+  bS.setData(months.map((m, j) => ({time: t(m), value: eqVal(PB2.c[j])})));
+  bP.setData(months.map((m, j) => ({time: t(m), value: eqVal(PP2.c[j])})));
+  bChart.ddS.setData(months.map((m, j) => ({time: t(m), value: 100*PB2.dd[j]})));
   bS.setMarkers(split > 0 ? [{time: t(months[split]), position: 'aboveBar', color: '#d29922', shape: 'arrowDown', text: 'paper published'}] : []);
   bChart.timeScale().fitContent(); bChart.dd.timeScale().fitContent();
-  $('bLegend').innerHTML = `<span><i class="sw" style="background:#3987e5"></i>${name(st.k)} <b>$${Math.round(1e5*eq.at(-1)).toLocaleString()}</b></span><span><i class="sw" style="background:#d95926"></i>Paper rule <b>$${Math.round(1e5*ep.at(-1)).toLocaleString()}</b></span><span class="mut">month-end, net of costs, log scale · tile stats are from daily returns</span>`;
+  $('bLegend').innerHTML = `<span><i class="sw" style="background:#3987e5"></i>${name(st.k)} <b>${eqFmt(eqVal(PB2.c.at(-1)))}</b></span><span><i class="sw" style="background:#d95926"></i>Paper rule <b>${eqFmt(eqVal(PP2.c.at(-1)))}</b></span><span class="mut">month-end, ${eqHow()} · uses the Show / Returns / Scale switches above · tile stats are from daily returns</span>`;
   $('bMon').innerHTML = monthTable(months, r, [{k: 'Paper rule', r: rp}]);
   drawHeat(d); drawDist(d, i, ip);
 }
@@ -372,11 +384,14 @@ function drawDist(d, i, ip){
   for (const n of ['vm','lb','ck','exit','filter','sizing']) $('k' + n).onchange = e => { st.k[n] = ['vm','lb','ck'].includes(n) ? +e.target.value : e.target.value; drawBuild(); };
   $('bInst').onchange = e => { st.inst = e.target.value; drawBuild(); };
   $('wfInst').onchange = e => { st.wfInst = e.target.value; drawWF(); };
-  $('wfLog').onclick = () => { wfLog = true; $('wfLog').classList.add('on'); $('wfLin').classList.remove('on'); drawWF(); };
+  const tog = (on, off, f) => { $(on).onclick = () => { f(); $(on).classList.add('on'); $(off).classList.remove('on'); drawWF(); drawBuild(); }; };
+  tog('eqPct', 'eqUsd', () => { EQ.pct = true; }); tog('eqUsd', 'eqPct', () => { EQ.pct = false; });
+  tog('eqComp', 'eqSimp', () => { EQ.comp = true; }); tog('eqSimp', 'eqComp', () => { EQ.comp = false; });
+  $('wfLog').onclick = () => { wfLog = true; $('wfLog').classList.add('on'); $('wfLin').classList.remove('on'); drawWF(); drawBuild(); };
   $('trYear').onchange = e => { trYear = e.target.value; trPage = 0; drawTrades(); };
   $('trSide').onchange = e => { trSide = e.target.value; trPage = 0; drawTrades(); };
   $('trCsv').onclick = tradesCsv;
-  $('wfLin').onclick = () => { wfLog = false; $('wfLin').classList.add('on'); $('wfLog').classList.remove('on'); drawWF(); };
+  $('wfLin').onclick = () => { wfLog = false; $('wfLin').classList.add('on'); $('wfLog').classList.remove('on'); drawWF(); drawBuild(); };
   $('ldPaper').onclick = () => setK(PAPER);
   $('ldPlat').onclick = () => setK(R.instruments[st.inst].map.plateau);
   $('ldBest').onclick = () => setK(R.instruments[st.inst].map.best);

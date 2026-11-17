@@ -92,7 +92,9 @@
         <option value="fut">Drop CFD-filled futures days</option>
       </select></label>
       <label>Compare with<select id="selCmp"><option value="">— none —</option></select></label>
-      <label>Scale<span><button class="btn on" id="bLog">log</button> <button class="btn" id="bLin">linear</button></span></label>
+      <label>Show<span><button class="btn on" id="bPct">% return</button> <button class="btn" id="bUsd">$ equity</button></span></label>
+      <label>Returns<span><button class="btn on" id="bComp">compounded</button> <button class="btn" id="bSimp">simple (not compounded)</button></span></label>
+      <label>Scale<span><button class="btn" id="bLog">log</button> <button class="btn on" id="bLin">linear</button></span></label>
     </div>
     <div class="note" id="costNote" style="margin-top:8px"></div>
   </div>
@@ -103,10 +105,10 @@
   </div>
 
   <div class="box">
-    <h2>Equity curve ($100,000 start) <button class="btn" id="csvEq" style="margin-left:10px;text-transform:none;letter-spacing:0">Download daily equity CSV</button></h2>
+    <h2><span id="eqTitle">Equity curve</span> <button class="btn" id="csvEq" style="margin-left:10px;text-transform:none;letter-spacing:0">Download daily equity CSV</button></h2>
     <div class="legend" id="eqLegend"></div>
     <div id="eq"></div>
-    <h2 style="margin-top:10px">Drawdown</h2>
+    <h2 style="margin-top:10px">Drawdown <span id="ddNote" class="mut" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h2>
     <div id="dd"></div>
   </div>
 
@@ -187,7 +189,7 @@ const COSTS = [
 ];
 const PAPER_STAT = {V1:{sharpe:.61,cagr:.062,mdd:.21}, V2:{sharpe:1.24,cagr:.097,mdd:.12}, V3:{sharpe:1.33,cagr:.196,mdd:.25}, V4:{sharpe:1.17,cagr:.183,mdd:.27}, V6:{sharpe:1.50,cagr:.217,mdd:.13}, V7:{sharpe:1.55}};
 const PAPER_MONTHLY_NOTE = 'Paper SPY table: FAQ Q24 (to Aug 2025).';
-let S = null, st = {inst:'ES', v:'V3', cost:'prereg', per:'all', cmp:'', log:true}, trades = {}, days = {};
+let S = null, st = {inst:'ES', v:'V3', cost:'prereg', per:'all', cmp:'', log:false, pct:true, comp:true}, trades = {}, days = {};
 let eqChart, eqS, eqB, eqC, ddChart, ddS, dayChart, dayS = {};
 const fmtP = (x, d=1) => x == null || !isFinite(x) ? '—' : (x*100).toFixed(d) + '%';
 const fmtN = (x, d=2) => x == null || !isFinite(x) ? '—' : x.toFixed(d);
@@ -247,10 +249,13 @@ function render(){
   $('kpiTitle').textContent = `Performance · ${ilab} · ${vlab} · ${x.dates[0]} → ${x.dates[x.dates.length-1]}`;
   const tile = (l, v, s, c='') => `<div class="kpi"><div class="l">${l}</div><div class="v ${c}">${v}</div><div class="s">${s}</div></div>`;
   $('kpis').innerHTML = [
-    tile('Total return', fmtP(k.total, 0), 'buy &amp; hold ' + fmtP(bh.total, 0), cls(k.total)),
-    tile('CAGR', fmtP(k.cagr), 'buy &amp; hold ' + fmtP(bh.cagr), cls(k.cagr)),
+    st.comp ? tile('Total return', fmtP(k.total, 0), 'compounded · buy &amp; hold ' + fmtP(bh.total, 0), cls(k.total))
+            : tile('Total return', fmtP(simpleOf(x.r).total, 0), 'simple sum · buy &amp; hold ' + fmtP(simpleOf(x.bh).total, 0), cls(simpleOf(x.r).total)),
+    st.comp ? tile('CAGR', fmtP(k.cagr), 'buy &amp; hold ' + fmtP(bh.cagr), cls(k.cagr))
+            : tile('Avg return / yr', fmtP(simpleOf(x.r).ann), 'simple · buy &amp; hold ' + fmtP(simpleOf(x.bh).ann), cls(simpleOf(x.r).ann)),
     tile('Sharpe', fmtN(k.sharpe), 'buy &amp; hold ' + fmtN(bh.sharpe) + (PAPER_STAT[st.v] ? ' · paper ' + PAPER_STAT[st.v].sharpe : ''), cls(k.sharpe)),
-    tile('Max drawdown', fmtP(k.mdd, 0), 'buy &amp; hold ' + fmtP(bh.mdd, 0)),
+    st.comp ? tile('Max drawdown', fmtP(k.mdd, 0), 'buy &amp; hold ' + fmtP(bh.mdd, 0))
+            : tile('Max drawdown', fmtP(simpleOf(x.r).mdd, 0), 'points of starting capital · B&amp;H ' + fmtP(simpleOf(x.bh).mdd, 0)),
     tile('Volatility', fmtP(k.vol), 'annualised'),
     tile('Hit ratio', fmtP(k.hit, 0), 'of days with a trade'),
     tile('Trades', Math.round(k.trades).toLocaleString(), fmtN(k.tpd) + ' round trips / day'),
@@ -269,16 +274,20 @@ function render(){
   $('costNote').innerHTML = s0 === 'SPY' ? `Cost per round trip on SPY: <b>$${rt.toFixed(3)}/share ≈ ${(rt/p*1e4).toFixed(2)} bp</b> at the latest price (several times more in bp in 2008–09, when SPY traded at $70–130), paid on every entry, exit and reversal, scaled by leverage. The paper's $0.009 = commission $0.0035 + slippage $0.001 per side. SPY's spread is one cent, so the steps above add ½, 1 and 2 cents each side on top of commission.` : `Cost per round trip on ${s0} now: <b>${rt.toFixed(3)} pts ≈ ${(rt/p*1e4).toFixed(2)} bp</b> of notional, paid on every entry, exit and reversal, scaled by leverage. The paper charged SPY about 0.4 bp. ES's spread is one tick (≈ 0.4 bp), so "½ tick each side" is a passive-ish fill and "1 tick each side" is a market order that pays the spread and a bit more.`;
 }
 
+// equity path: compounded (returns reinvested) or simple (fixed starting capital, returns added up)
+function simpleOf(r){ let c = 0, pk = 0, mdd = 0; for (const v of r) { c += v; pk = Math.max(pk, c); mdd = Math.max(mdd, pk - c); } return {total: c, ann: r.length ? c/r.length*252 : 0, mdd}; }
+function pathOf(r){ const c = [], dd = []; let e = 1, pk = 1;
+  for (const v of r) { e = st.comp ? e*(1 + v) : e + v; pk = Math.max(pk, e); c.push(e); dd.push(st.comp ? e/pk - 1 : e - pk); } return {c, dd}; }
+const eqVal = v => st.pct ? (v - 1)*100 : 1e5*v;
+const eqFmt = v => v == null ? '—' : st.pct ? (v >= 0 ? '+' : '') + v.toFixed(1) + '%' : '$' + Math.round(v).toLocaleString();
 function drawEquity(x, k, bh){
-  const toPts = (arr) => arr.map((v, i) => ({time: x.dates[i], value: 100000*v}));
   if (!eqChart) {
     const opt = {layout:{background:{color:'#161b22'}, textColor:'#9da7b3'}, grid:{vertLines:{color:'#21262d'}, horzLines:{color:'#21262d'}},
       rightPriceScale:{borderColor:'#30363d'}, timeScale:{borderColor:'#30363d', minBarSpacing:0.05}, crosshair:{mode:0}};
     eqChart = LightweightCharts.createChart($('eq'), opt);
-    const pf = {type:'price', precision:0, minMove:1};
-    eqB = eqChart.addLineSeries({color:'#6e7681', lineWidth:2, priceLineVisible:false, priceFormat:pf});
-    eqC = eqChart.addLineSeries({color:'#d95926', lineWidth:2, priceLineVisible:false, priceFormat:pf});
-    eqS = eqChart.addLineSeries({color:'#3987e5', lineWidth:2, priceLineVisible:false, priceFormat:pf});
+    eqB = eqChart.addLineSeries({color:'#6e7681', lineWidth:2, priceLineVisible:false});
+    eqC = eqChart.addLineSeries({color:'#d95926', lineWidth:2, priceLineVisible:false});
+    eqS = eqChart.addLineSeries({color:'#3987e5', lineWidth:2, priceLineVisible:false});
     ddChart = LightweightCharts.createChart($('dd'), opt);
     ddS = ddChart.addAreaSeries({lineColor:'#d95926', topColor:'rgba(217,89,38,.05)', bottomColor:'rgba(217,89,38,.35)', lineWidth:1, priceLineVisible:false, priceFormat:{type:'percent'}});
     new ResizeObserver(() => { eqChart.applyOptions({width:$('eq').clientWidth}); ddChart.applyOptions({width:$('dd').clientWidth}); dayChart && dayChart.applyOptions({width:$('day').clientWidth}); }).observe(document.body);
@@ -289,19 +298,29 @@ function drawEquity(x, k, bh){
       setLegend(p.time, a && a.value, b && b.value, c && c.value);
     });
   }
-  eqChart.applyOptions({rightPriceScale:{mode: st.log ? 1 : 0}});
-  eqS.setData(toPts(k.curve)); eqB.setData(toPts(bh.curve));
-  if (st.cmp) { const y = series(st.inst, st.cmp, st.cost, st.per), kc = stats(y); eqC.setData(kc.curve.map((v, i) => ({time:y.dates[i], value:100000*v}))); }
+  const pf = st.pct ? {type:'custom', formatter: v => v.toFixed(0) + '%', minMove: 0.1} : {type:'price', precision:0, minMove:1};
+  for (const se of [eqS, eqB, eqC]) se.applyOptions({priceFormat: pf});
+  const useLog = st.log && !st.pct;
+  eqChart.applyOptions({rightPriceScale:{mode: useLog ? 1 : 0}});
+  const P = pathOf(x.r), PB = pathOf(x.bh);
+  const toPts = (c, dates) => c.map((v, i) => ({time: dates[i], value: eqVal(v)}));
+  eqS.setData(toPts(P.c, x.dates)); eqB.setData(toPts(PB.c, x.dates));
+  let lastC = null;
+  if (st.cmp) { const y = series(st.inst, st.cmp, st.cost, st.per), PC = pathOf(y.r); eqC.setData(toPts(PC.c, y.dates)); lastC = eqVal(PC.c.at(-1)); }
   else eqC.setData([]);
-  ddS.setData(k.dd.map((v, i) => ({time:x.dates[i], value:100*v})));
+  ddS.setData(P.dd.map((v, i) => ({time:x.dates[i], value:100*v})));
   eqChart.timeScale().fitContent(); ddChart.timeScale().fitContent();
-  window._eqLast = {s: 100000*k.curve.at(-1), b: 100000*bh.curve.at(-1)};
+  window._eqLast = {s: eqVal(P.c.at(-1)), b: eqVal(PB.c.at(-1)), c: lastC};
+  $('eqTitle').textContent = (st.pct ? 'Cumulative return (%)' : 'Equity ($100,000 start)') + (st.comp ? ' · compounded' : ' · simple, not compounded')
+    + (st.pct ? '' : useLog ? ' · log scale' : '');
+  $('ddNote') && ($('ddNote').textContent = st.comp ? '· % below the running peak' : '· points of starting capital below the running peak');
   setLegend();
 }
 function setLegend(t, a, b, c){
-  const L = window._eqLast || {}, m = v => v == null ? '—' : '$' + Math.round(v).toLocaleString();
-  const cmp = st.cmp ? `<span><i class="sw" style="background:#d95926"></i>${S.meta.variants[st.cmp].label} ${t ? m(c) : ''}</span>` : '';
-  $('eqLegend').innerHTML = `<span><i class="sw" style="background:#3987e5"></i>${S.meta.variants[st.v].label} <b>${m(t ? a : L.s)}</b></span>${cmp}<span><i class="sw" style="background:#6e7681"></i>Buy &amp; hold (1x) <b>${m(t ? b : L.b)}</b></span>${t ? '<span class="mut">' + t + '</span>' : ''}`;
+  const L = window._eqLast || {};
+  const cmp = st.cmp ? `<span><i class="sw" style="background:#d95926"></i>${S.meta.variants[st.cmp].label} <b>${eqFmt(t ? c : L.c)}</b></span>` : '';
+  const how = st.comp ? 'compounded' : 'simple sum, fixed capital';
+  $('eqLegend').innerHTML = `<span><i class="sw" style="background:#3987e5"></i>${S.meta.variants[st.v].label} <b>${eqFmt(t ? a : L.s)}</b></span>${cmp}<span><i class="sw" style="background:#6e7681"></i>Buy &amp; hold (1x) <b>${eqFmt(t ? b : L.b)}</b></span><span class="mut">${t ? t : 'net of costs, ' + how}</span>`;
 }
 
 function drawVarTable(){
@@ -436,9 +455,11 @@ function tag(){ return `${st.inst}_${st.v}_${st.cost}_${st.per}`; }
 function csvEquity(){
   const x = series(st.inst, st.v, st.cost, st.per);
   let e = 1, pk = 1, b = 1;
-  const out = ['date,net_return,equity_usd,drawdown_pct,buy_hold_return,buy_hold_equity_usd,position_changes'];
+  let sc = 0, sb = 0;
+  const out = ['date,net_return,cum_return_pct_compounded,cum_return_pct_simple,equity_usd_compounded,drawdown_pct,buy_hold_return,buy_hold_cum_pct_compounded,buy_hold_cum_pct_simple,position_changes'];
   x.dates.forEach((d, i) => { e *= 1 + x.r[i]; pk = Math.max(pk, e); b *= 1 + x.bh[i];
-    out.push([d, x.r[i].toFixed(6), (1e5*e).toFixed(2), ((e/pk - 1)*100).toFixed(3), x.bh[i].toFixed(6), (1e5*b).toFixed(2), x.units[i]].join(',')); });
+    sc += x.r[i]; sb += x.bh[i];
+    out.push([d, x.r[i].toFixed(6), ((e-1)*100).toFixed(3), (sc*100).toFixed(3), (1e5*e).toFixed(2), ((e/pk - 1)*100).toFixed(3), x.bh[i].toFixed(6), ((b-1)*100).toFixed(3), (sb*100).toFixed(3), x.units[i]].join(',')); });
   saveCsv(`noise-area-momentum_daily_${tag()}.csv`, out);
 }
 function csvTrades(){
@@ -496,6 +517,9 @@ document.addEventListener('mousemove', e => { const t = e.target.closest('[data-
   $('selCost').onchange = e => { st.cost = e.target.value; render(); };
   $('selPer').onchange = e => { st.per = e.target.value; trPage = 0; render(); };
   $('selCmp').onchange = e => { st.cmp = e.target.value; render(); };
+  const tog = (on, off, f) => { $(on).onclick = () => { f(); $(on).classList.add('on'); $(off).classList.remove('on'); render(); }; };
+  tog('bPct', 'bUsd', () => { st.pct = true; }); tog('bUsd', 'bPct', () => { st.pct = false; });
+  tog('bComp', 'bSimp', () => { st.comp = true; }); tog('bSimp', 'bComp', () => { st.comp = false; });
   $('bLog').onclick = () => { st.log = true; $('bLog').classList.add('on'); $('bLin').classList.remove('on'); render(); };
   $('bLin').onclick = () => { st.log = false; $('bLin').classList.add('on'); $('bLog').classList.remove('on'); render(); };
   $('selDay').onchange = drawDay;
