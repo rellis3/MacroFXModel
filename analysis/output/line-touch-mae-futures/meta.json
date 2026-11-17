@@ -1,0 +1,35 @@
+[
+  {
+    "instrument": "NQ",
+    "root": "NQ",
+    "unit": "pts",
+    "tick": 0.25,
+    "days_archive": 2687,
+    "days_used": 2523,
+    "days_skipped": 164,
+    "first": "2016-03-29",
+    "last": "2026-08-20"
+  },
+  {
+    "instrument": "EURUSD",
+    "root": "6E",
+    "unit": "pips",
+    "tick": 0.5,
+    "days_archive": 2697,
+    "days_used": 2235,
+    "days_skipped": 462,
+    "first": "2016-03-28",
+    "last": "2026-08-20"
+  },
+  {
+    "instrument": "GOLD",
+    "root": "GC",
+    "unit": "$",
+    "tick": 0.1,
+    "days_archive": 2684,
+    "days_used": 1843,
+    "days_skipped": 841,
+    "first": "2016-03-29",
+    "last": "2026-08-20"
+  }
+]
