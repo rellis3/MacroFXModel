@@ -202,6 +202,7 @@ export function hubMap({ rooms = null, roe = null, agendas = null, register = nu
     ], latest },
     { id: 'shelf', n: 6, title: 'Shelf', sub: 'what everyone reads', tiles: [
       { label: 'Papers in the library', value: n(papers?.count ?? null), href: 'library.html', hint: papers ? `${papers.read ?? 0} with desk notes · password` : 'password', lock: true },
+      { label: 'Paper cross-analysis', value: null, link: true, href: 'paper-synthesis.html', hint: 'every paper vs every other: system blueprints, agreements, contradictions' },
       { label: 'Concept cards', value: n(concepts ?? null), href: 'roe.html#concepts', hint: 'ideas from the papers and courses' },
       { label: 'Method lessons', value: lessons ? lessons.total : null, href: '#shelf', hint: lessons?.proposed ? `${lessons.proposed} proposed edits wait on you` : 'how the teachers run research', warn: !!lessons?.proposed },
     ] },

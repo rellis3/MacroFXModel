@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paper Cross-Analysis</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+        --blue:#3987e5;--orange:#d95926;--amber:#d29922;--red:#f85149;--green:#3fb950;--grid:#21262d;--violet:#a371f7}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--blue);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700}
+  .chip{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2);white-space:nowrap;display:inline-block}
+  .wrap{max-width:1500px;margin:0 auto;padding:12px 16px 48px;display:flex;flex-direction:column;gap:14px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:0}
+  .box h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .note{font-size:12.5px;color:var(--text2);line-height:1.65;max-width:130ch} .note b{color:var(--text)} .note p+p{margin-top:6px}
+  .note ul{margin:4px 0 0 18px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;margin-top:10px}
+  .kpi{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+  .kpi .l{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+  .kpi .v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .kpi .s{font-size:11px;color:var(--text3)}
+  .ctrl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  .btn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+  .btn:hover{color:var(--text)} .btn.on{background:#22304d;color:#fff;border-color:var(--blue)}
+  select,input[type=search]{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font:inherit;font-size:12.5px;max-width:100%}
+  input[type=search]{width:280px}
+  .bps{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:12px} @media (max-width:520px){.bps{grid-template-columns:1fr}}
+  .bp{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:11px 13px;display:flex;flex-direction:column;gap:7px;font-size:12.3px;color:var(--text2)}
+  .bp h3{font-size:14px;color:var(--text);font-weight:700;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .bp .meta{display:flex;gap:6px;flex-wrap:wrap}
+  .grade{font-size:11px;font-weight:800;color:#fff;background:#22304d;border:1px solid var(--blue);border-radius:5px;padding:0 6px}
+  .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-weight:700;margin-bottom:1px}
+  .part{display:grid;grid-template-columns:76px 1fr;gap:8px;padding:4px 0;border-top:1px solid var(--grid)}
+  .slot{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;border-radius:4px;padding:1px 5px;text-align:center;align-self:start;border:1px solid var(--border);color:var(--text)}
+  .slot.direction{border-color:#3987e5} .slot.regime{border-color:#a371f7} .slot.timing{border-color:#2aa198} .slot.sizing{border-color:#d29922}
+  .slot.exit{border-color:#d95926} .slot.forecast{border-color:#5fb4ff} .slot.cost{border-color:#8b949e}
+  .ptitle{color:var(--text);cursor:pointer} .ptitle:hover{text-decoration:underline}
+  .str{font-size:10px;font-weight:800;border-radius:3px;padding:0 4px;margin-left:4px;border:1px solid var(--border)}
+  .str.A{color:var(--green);border-color:var(--green)} .str.B{color:#5fb4ff;border-color:#5fb4ff} .str.C{color:var(--text2)} .str.D{color:var(--text3)}
+  .ev{display:inline-block;font-size:10.5px;border-radius:4px;padding:1px 6px;margin:2px 4px 0 0;border:1px solid var(--border);color:var(--text2)}
+  .ev.validated{border-color:var(--green);color:var(--green)} .ev.null{border-color:var(--red);color:#ff8a80} .ev.underpowered{border-color:var(--amber);color:var(--amber)} .ev.context{border-color:var(--text3)}
+  .st{font-size:10.5px;font-weight:700;border-radius:999px;padding:1px 8px;border:1px solid var(--border)}
+  .st.new{color:var(--green);border-color:var(--green)} .st.partly-tested{color:var(--amber);border-color:var(--amber)} .st.tested-null-but-new-angle{color:#ff8a80;border-color:#ff8a80}
+  .first{background:#111a27;border:1px solid #22304d;border-radius:6px;padding:6px 8px;color:var(--text)}
+  table{border-collapse:collapse;width:100%;font-size:11.8px;font-variant-numeric:tabular-nums}
+  th,td{padding:4px 7px;border-bottom:1px solid var(--grid);text-align:left;vertical-align:top}
+  th{color:var(--text3);font-weight:600;background:var(--card);position:sticky;top:0;z-index:1}
+  td.n,th.n{text-align:right}
+  .xscroll{overflow-x:auto;max-width:100%}
+  .hm td{text-align:center;padding:4px 3px;min-width:46px;font-size:11px;cursor:pointer;border:2px solid var(--card)}
+  .hm th{font-size:10.5px;text-align:center} .hm td.rowh{text-align:left;cursor:default;color:var(--text2);white-space:nowrap;min-width:150px}
+  .hm td.sel{outline:2px solid #fff;outline-offset:-2px}
+  .tip{position:fixed;pointer-events:none;background:#0b0f14;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11.5px;color:var(--text);z-index:99;display:none;max-width:340px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px} @media (max-width:950px){.grid2{grid-template-columns:1fr}}
+  .find{display:flex;flex-direction:column;gap:8px}
+  .fcard{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 11px;font-size:12.2px;color:var(--text2)}
+  .fcard b{color:var(--text)}
+  .pl{max-height:520px;overflow:auto}
+  .pd{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12.3px;color:var(--text2);display:flex;flex-direction:column;gap:6px}
+  .pd h3{color:var(--text);font-size:14px}
+  .bar{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--text2);margin:2px 0}
+  .bar .bl{width:150px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar .bt{flex:1;background:var(--grid);border-radius:4px;height:12px;position:relative}
+  .bar .bf{position:absolute;left:0;top:0;bottom:0;background:var(--blue);border-radius:4px}
+  .bar .bn{width:36px;text-align:right;font-variant-numeric:tabular-nums}
+  .mut{color:var(--text3)}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>Paper Cross-Analysis · every paper against every other</h1>
+  <a class="chip" href="library.html" target="_blank">Library →</a>
+  <a class="chip" href="research.html" target="_blank">Research hub →</a>
+  <a class="chip" href="evidence.html" target="_blank">Evidence Book →</a>
+  <span class="chip" id="builtChip"></span>
+</div>
+<div class="tip" id="tip"></div>
+<div class="wrap">
+
+  <div class="box">
+    <h2>What this is</h2>
+    <div class="note" id="intro"></div>
+    <div class="kpis" id="kpis"></div>
+  </div>
+
+  <div class="box">
+    <h2>System blueprints · papers that fit together</h2>
+    <div class="note" style="margin-bottom:10px">Each card combines several papers into one system: one paper gives the direction (or a forecast), and the others add a regime filter, timing, sizing, an exit or a cost model on the <b>same market and horizon</b>. Every card was checked against the Evidence Book. A red chip means the desk already tested that part and found nothing; the card then says what the combination adds. These are <b>leads for a prereg, not results</b>. Click a paper title to open it below.</div>
+    <div class="ctrl" id="themeBtns"></div>
+    <div class="ctrl">
+      <label class="mut">Status <select id="fStatus"><option value="">all</option><option value="new">new</option><option value="partly-tested">partly tested</option><option value="tested-null-but-new-angle">tested null, new angle</option></select></label>
+      <label class="mut">Data <select id="fData"><option value="">all</option><option value="held">we hold it</option><option value="partial">partial</option><option value="missing">missing</option></select></label>
+      <label class="mut">Sort <select id="fSort"><option value="grade">strongest case first</option><option value="theme">by theme</option></select></label>
+      <span class="mut" id="bpCount"></span>
+    </div>
+    <div class="bps" id="bps"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="box">
+      <h2>Where papers agree</h2>
+      <div class="find" id="agree"></div>
+    </div>
+    <div class="box">
+      <h2>Where papers disagree</h2>
+      <div class="find" id="disagree"></div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>Complementarity map · what the library can bolt onto what</h2>
+    <div class="note" style="margin-bottom:8px">Rows: the family of the paper that gives the direction or forecast. Columns: the part another paper adds. A cell counts the paper pairs that fit (same market, same or next horizon). Darker means more pairs. Click a cell to list its strongest pairs.</div>
+    <div class="xscroll"><table class="hm" id="hm"></table></div>
+    <div id="cellPairs" style="margin-top:10px"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="box">
+      <h2>What the library holds · by role</h2>
+      <div id="roleBars"></div>
+      <div class="note" style="margin-top:8px">Strength: <b>A</b> = tested out of sample with costs and numbers, <b>B</b> = out of sample or numbers but no costs, <b>C</b> = in-sample or abstract only, <b>D</b> = theory only.</div>
+      <div id="strBars" style="margin-top:6px"></div>
+    </div>
+    <div class="box">
+      <h2>What the library holds · by mechanism family</h2>
+      <div id="famBars"></div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>Groups of papers on the same effect</h2>
+    <div class="note" style="margin-bottom:8px">Papers with the same family, role, market and horizon. The more strong (A/B) papers in a group, the better established the effect is in the literature, which is not the same as working on our data.</div>
+    <div class="xscroll" style="max-height:380px;overflow:auto"><table id="clTable"></table></div>
+  </div>
+
+  <div class="box" id="explorer">
+    <h2>Paper explorer</h2>
+    <div class="ctrl">
+      <input type="search" id="q" placeholder="Search title, summary, market…">
+      <select id="fRole"><option value="">any role</option></select>
+      <select id="fFam"><option value="">any family</option></select>
+      <select id="fStr"><option value="">any strength</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
+      <span class="mut" id="pCount"></span>
+    </div>
+    <div class="grid2">
+      <div class="pl xscroll"><table id="pTable"></table></div>
+      <div id="pDetail" class="pd"><span class="mut">Pick a paper to see its tags, the papers that could be bolted onto it, the systems it could feed, and the reader's cross-references.</span></div>
+    </div>
+  </div>
+
+</div>
+<script>
+const BASE = 'analysis/output/paper-cross-synthesis/';
+let S, PP, PK = {}, theme = 'all';
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = n => Number(n).toLocaleString('en-GB');
+const LBL = {direction:'direction', regime:'regime filter', timing:'timing', sizing:'sizing', exit:'exit', forecast:'vol/range forecast', cost:'cost', method:'method', theory:'theory'};
+const FAM = s => String(s).replace(/_/g, ' ');
+const tip = document.getElementById('tip');
+function showTip(e, h){ tip.innerHTML = h; tip.style.display = 'block'; const x = Math.min(e.clientX + 14, innerWidth - 350); tip.style.left = x + 'px'; tip.style.top = (e.clientY + 14) + 'px'; }
+function hideTip(){ tip.style.display = 'none'; }
+function pref(k){ const p = PK[k]; if (!p) return esc(k); return `<span class="ptitle" data-k="${k}">${esc(p.t)}</span>${p.y ? ` <span class="mut">(${p.y})</span>` : ''}<span class="str ${p.s}">${p.s}</span>`; }
+
+async function init(){
+  [S, PP] = await Promise.all(['synthesis.json', 'papers.json'].map(f => fetch(BASE + f, {cache:'no-store'}).then(r => r.json())));
+  PP.forEach(p => PK[p.k] = p);
+  const m = S.meta;
+  document.getElementById('builtChip').textContent = 'built ' + m.built + ' · exploratory';
+  const nbp = S.themes.reduce((a, t) => a + t.blueprints.length, 0);
+  document.getElementById('intro').innerHTML = `
+    <p>Rather than reading what each paper says on its own, this page sets <b>every paper in the library against every other paper</b> to find research that could be combined into one system, research that agrees, and research that disagrees.</p>
+    <p><b>How it was done.</b> (1) Each of the ${fmt(m.n_papers)} papers with desk notes was tagged by an AI reader: what role it can play in a system (direction, regime filter, timing, sizing, exit, vol/range forecast, cost, method or pure theory), its market, horizon, mechanism family and strength. (2) A script then scored all ${fmt(m.n_pairs_checked)} pairs: a pair fits when one paper gives a direction or forecast and the other adds a part it lacks, on the same market and a matching horizon, weighted by both papers' strength and by the readers' own cross-references. (3) Five theme readers took the strongest pairs and every paper in their area, built multi-paper system blueprints, checked each against the Evidence Book and the data we hold, and wrote up where papers agree and disagree.</p>
+    <p><b>Read it with care.</b> Most papers were read from the abstract, so only ${m.strength.A || 0} are strength A. Tags and blueprints are AI judgements from the notes, and the Evidence Book check is by keyword. Nothing here is a result: a blueprint becomes evidence only after its own prereg and test. Exploratory, not pre-registered (register row <code>paper-cross-synthesis</code>).</p>`;
+  const k = [['Papers cross-analysed', fmt(m.n_papers), `${fmt(m.n_full)} with full text`],
+             ['Pairs checked', fmt(m.n_pairs_checked), 'every paper × every other'],
+             ['Pairs that fit', fmt(m.n_complementary), 'one adds a missing part'],
+             ['Distinct systems', m.n_systems, `${nbp} blueprints · ${m.n_multi_theme} found by 2+ themes`],
+             ['Groups on one effect', m.n_clusters, '3+ papers each'],
+             ['Reader-flagged contradictions', m.n_contradictions, `${fmt(Object.values(m.edges).reduce((a,b)=>a+b,0))} cross-refs in all`]];
+  document.getElementById('kpis').innerHTML = k.map(([l, v, s]) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
+  buildThemeBtns(); renderBps(); renderFindings(); renderHm(); renderBars(); renderClusters(); initExplorer();
+  document.body.addEventListener('click', e => { const t = e.target.closest('.ptitle'); if (t) { openPaper(t.dataset.k); document.getElementById('explorer').scrollIntoView({behavior:'smooth'}); } });
+}
+
+function buildThemeBtns(){
+  const el = document.getElementById('themeBtns');
+  const opts = [['all', 'All themes']].concat(S.themes.map(t => [t.key, `${t.label} (${t.blueprints.length})`]));
+  el.innerHTML = opts.map(([k, l]) => `<button class="btn ${k === theme ? 'on' : ''}" data-t="${k}">${esc(l)}</button>`).join('');
+  el.onclick = e => { const b = e.target.closest('button'); if (!b) return; theme = b.dataset.t; buildThemeBtns(); renderBps(); renderFindings(); };
+  ['fStatus', 'fData', 'fSort'].forEach(id => document.getElementById(id).onchange = renderBps);
+}
+
+function renderBps(){
+  const fs = document.getElementById('fStatus').value, fd = document.getElementById('fData').value, so = document.getElementById('fSort').value;
+  let L = [];
+  S.themes.forEach(t => { if (theme !== 'all' && t.key !== theme) return; t.blueprints.forEach(b => L.push({...b, _t: t.label})); });
+  if (theme === 'all') L = L.filter(b => b.lead !== false);   // one card per system; the other themes' versions are named on it
+  L = L.filter(b => (!fs || b.status === fs) && (!fd || b.data === fd));
+  if (so === 'grade') L.sort((a, b) => (+b.grade) - (+a.grade) || (b.also || []).length - (a.also || []).length);
+  document.getElementById('bpCount').textContent = `${L.length} ${theme === 'all' ? 'distinct system' : 'blueprint'}${L.length === 1 ? '' : 's'}`;
+  const th = theme !== 'all' ? S.themes.find(t => t.key === theme) : null;
+  document.getElementById('bps').innerHTML = (th ? `<div class="note" style="grid-column:1/-1">${esc(th.summary)}</div>` : '') + L.map(b => `
+    <div class="bp">
+      <h3><span class="grade" title="strength of the case, 1-5">${esc(b.grade)}/5</span>${esc(b.name)}</h3>
+      <div class="meta"><span class="chip">${esc(b._t)}</span><span class="chip">${esc(b.market)}</span><span class="chip">${esc(b.horizon)}</span><span class="st ${esc(b.status)}">${esc(String(b.status).replace(/-/g, ' '))}</span><span class="chip" title="${esc(b.data_note)}">data: ${esc(b.data)}</span></div>
+      ${(b.also || []).length ? `<div class="first" style="border-color:var(--green);background:#0f1f17"><b style="color:var(--green)">Reached independently by ${b.also.length + 1} theme readers.</b> ${b.also.map(a => `${esc(a.theme)}: “${esc(a.name)}” (${esc(a.grade)}/5)`).join('; ')}</div>` : ''}
+      <div>${esc(b.idea)}</div>
+      ${(b.related || []).length ? `<div class="mut">Related: ${b.related.map(esc).join(' · ')}</div>` : ''}
+      <div><div class="lbl">Parts · ${b.parts.length} papers</div>${b.parts.map(p => `<div class="part"><span class="slot ${esc(p.slot)}">${esc(p.slot)}</span><div>${pref(p.k)}<div class="mut">${esc(p.why)}</div></div></div>`).join('')}</div>
+      <div><div class="lbl">Why they belong together</div>${esc(b.mechanism_fit)}</div>
+      <div><div class="lbl">Data</div>${esc(b.data_note)}</div>
+      <div><div class="lbl">Evidence Book</div>${b.evidence.length ? b.evidence.map(e => `<span class="ev ${esc(e.verdict)}" title="${esc(e.bearing)}">${esc(e.id)} · ${esc(e.verdict)}</span>`).join('') + `<div class="mut" style="margin-top:3px">${b.evidence.map(e => esc(e.bearing)).join(' ')}</div>` : '<span class="mut">no related entry found: untested here</span>'}</div>
+      <div><div class="lbl">Main risk</div>${esc(b.risk)}</div>
+      <div class="first"><div class="lbl">First test</div>${esc(b.first_test)}</div>
+    </div>`).join('');
+}
+
+function renderFindings(){
+  const T = S.themes.filter(t => theme === 'all' || t.key === theme);
+  document.getElementById('agree').innerHTML = T.flatMap(t => (t.corroborations || []).map(c => `
+    <div class="fcard"><b>${esc(c.title)}</b> <span class="chip">${esc(c.strength)}</span> <span class="chip">${esc(c.markets)}</span><div style="margin-top:3px">${esc(c.finding)}</div>
+    <div class="mut" style="margin-top:3px">${(c.papers || []).map(pref).join(' · ')}</div></div>`)).join('') || '<span class="mut">none</span>';
+  document.getElementById('disagree').innerHTML = T.flatMap(t => (t.contradictions || []).map(c => `
+    <div class="fcard"><b>${esc(c.title)}</b><div style="margin-top:3px">${esc(c.finding)}</div>
+    <div style="margin-top:3px"><span class="lbl">What would settle it</span> ${esc(c.settle)}</div>
+    <div style="margin-top:3px"><span class="lbl">Our evidence</span> ${esc(c.our_evidence)}</div>
+    <div class="mut" style="margin-top:3px">${(c.papers || []).map(pref).join(' · ')}</div></div>`)).join('') || '<span class="mut">none</span>';
+}
+
+function renderHm(){
+  const slots = ['direction', 'regime', 'timing', 'sizing', 'exit', 'forecast', 'cost'];
+  const M = {}; let mx = 0; const fams = {};
+  S.slot_mat.forEach(([f, s, v]) => { M[f + '|' + s] = v; mx = Math.max(mx, v); fams[f] = (fams[f] || 0) + v; });
+  const rows = Object.keys(fams).sort((a, b) => fams[b] - fams[a]);
+  const col = v => { if (!v) return 'transparent'; const t = Math.sqrt(v / mx); const l = 22 + t * 40; return `hsl(214 70% ${l}%)`; };
+  const tb = document.getElementById('hm');
+  tb.innerHTML = `<tr><th style="text-align:left">direction / forecast from…</th>${slots.map(s => `<th>+ ${LBL[s]}</th>`).join('')}</tr>` +
+    rows.map(f => `<tr><td class="rowh">${FAM(f)}</td>${slots.map(s => { const v = M[f + '|' + s] || 0; return `<td data-f="${f}" data-s="${s}" data-v="${v}" style="background:${col(v)};color:${v / mx > .35 ? '#fff' : 'var(--text2)'}">${v ? fmt(v) : ''}</td>`; }).join('')}</tr>`).join('');
+  tb.onmousemove = e => { const c = e.target.closest('td[data-f]'); if (!c) return hideTip(); showTip(e, `<b>${FAM(c.dataset.f)}</b> + ${LBL[c.dataset.s]}<br>${fmt(c.dataset.v)} paper pairs fit`); };
+  tb.onmouseleave = hideTip;
+  tb.onclick = e => { const c = e.target.closest('td[data-f]'); if (!c) return; tb.querySelectorAll('.sel').forEach(x => x.classList.remove('sel')); c.classList.add('sel'); cellPairs(c.dataset.f, c.dataset.s); };
+}
+function cellPairs(f, s){
+  const L = [];
+  PP.forEach(p => { if (p.fam !== f) return; p.adds.forEach(([k, sl, sc]) => { if (sl === s) L.push([p.k, k, sc]); }); });
+  L.sort((a, b) => b[2] - a[2]);
+  document.getElementById('cellPairs').innerHTML = `<div class="lbl">${FAM(f)} + ${LBL[s]}: strongest pairs (top ${Math.min(25, L.length)} of the per-paper top 10s)</div>` +
+    (L.length ? `<div class="xscroll"><table><tr><th>gives the ${f.includes('vol') ? 'direction/forecast' : 'direction'}</th><th>adds the ${LBL[s]}</th><th class="n">fit score</th></tr>${L.slice(0, 25).map(([a, b, sc]) => `<tr><td>${pref(a)}</td><td>${pref(b)}</td><td class="n">${sc.toFixed(1)}</td></tr>`).join('')}</table></div>` : '<span class="mut">no strong pairs in the per-paper lists</span>');
+}
+
+function bars(el, obj, labelFn){
+  const E = Object.entries(obj).sort((a, b) => b[1] - a[1]); const mx = Math.max(...E.map(e => e[1]));
+  document.getElementById(el).innerHTML = E.map(([k, v]) => `<div class="bar"><span class="bl" title="${esc(labelFn(k))}">${esc(labelFn(k))}</span><span class="bt"><span class="bf" style="width:${(v / mx * 100).toFixed(1)}%"></span></span><span class="bn">${v}</span></div>`).join('');
+}
+function renderBars(){
+  bars('roleBars', S.meta.roles, k => LBL[k] || k);
+  bars('strBars', S.meta.strength, k => 'strength ' + k);
+  bars('famBars', S.meta.families, FAM);
+}
+
+function renderClusters(){
+  document.getElementById('clTable').innerHTML = `<tr><th>family</th><th>role</th><th>market</th><th>horizon</th><th class="n">papers</th><th class="n">A/B</th><th>papers (strongest first)</th></tr>` +
+    S.clusters.map(c => `<tr><td>${FAM(c.family)}</td><td>${LBL[c.role] || c.role}</td><td>${FAM(c.asset)}</td><td>${FAM(c.horizon)}</td><td class="n">${c.n}</td><td class="n">${c.nAB}</td><td style="white-space:normal">${c.papers.slice().sort((a, b) => (PK[a]?.s || 'Z').localeCompare(PK[b]?.s || 'Z')).slice(0, 6).map(pref).join(' · ')}${c.n > 6 ? ` <span class="mut">+${c.n - 6} more</span>` : ''}</td></tr>`).join('');
+}
+
+function initExplorer(){
+  const roles = [...new Set(PP.map(p => p.role))].sort(), fams = [...new Set(PP.map(p => p.fam))].sort();
+  document.getElementById('fRole').innerHTML += roles.map(r => `<option value="${r}">${LBL[r] || r}</option>`).join('');
+  document.getElementById('fFam').innerHTML += fams.map(f => `<option value="${f}">${FAM(f)}</option>`).join('');
+  ['q', 'fRole', 'fFam', 'fStr'].forEach(id => document.getElementById(id).oninput = renderList);
+  renderList();
+  document.getElementById('pTable').onclick = e => { const r = e.target.closest('tr[data-k]'); if (r) openPaper(r.dataset.k); };
+}
+function renderList(){
+  const q = document.getElementById('q').value.toLowerCase(), r = document.getElementById('fRole').value, f = document.getElementById('fFam').value, s = document.getElementById('fStr').value;
+  const L = PP.filter(p => (!r || p.role === r) && (!f || p.fam === f) && (!s || p.s === s) && (!q || (p.t + ' ' + p.one + ' ' + p.pr + ' ' + p.asset.join(' ')).toLowerCase().includes(q)));
+  L.sort((a, b) => a.s.localeCompare(b.s) || (b.y || 0) - (a.y || 0));
+  document.getElementById('pCount').textContent = `${L.length} of ${PP.length}`;
+  document.getElementById('pTable').innerHTML = `<tr><th>paper</th><th>role</th><th>family</th><th>str</th></tr>` + L.slice(0, 400).map(p => `<tr data-k="${p.k}" style="cursor:pointer"><td style="white-space:normal">${esc(p.t)} <span class="mut">${p.y || ''}</span></td><td>${LBL[p.role] || p.role}</td><td>${FAM(p.fam)}</td><td><span class="str ${p.s}">${p.s}</span></td></tr>`).join('');
+}
+function openPaper(k){
+  const p = PK[k]; if (!p) return;
+  const used = [];
+  S.themes.forEach(t => t.blueprints.forEach(b => { if (b.parts.some(x => x.k === k)) used.push(b.name); }));
+  const lst = (L, h) => L.length ? `<div><div class="lbl">${h}</div>${L.map(([kk, sl, sc]) => `<div class="part"><span class="slot ${sl}">${sl}</span><div>${pref(kk)} <span class="mut">fit ${(+sc).toFixed(1)}</span></div></div>`).join('')}</div>` : '';
+  document.getElementById('pDetail').innerHTML = `
+    <h3>${esc(p.t)} ${p.y ? `<span class="mut">(${p.y})</span>` : ''}<span class="str ${p.s}">${p.s}</span></h3>
+    <div class="meta" style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip">${LBL[p.role] || p.role}</span><span class="chip">${FAM(p.fam)}</span><span class="chip">${p.asset.map(FAM).join(', ')}</span><span class="chip">${p.hor.map(FAM).join(', ')}</span><span class="chip">out of sample: ${esc(p.oos)}</span><span class="chip">${p.full ? 'full text held' : 'abstract only'}</span></div>
+    <div>${esc(p.one)}</div>
+    <div><span class="lbl">Gives a system</span> ${esc(p.pr)}</div>
+    ${used.length ? `<div><span class="lbl">In blueprints</span> ${used.map(esc).join(' · ')}</div>` : ''}
+    ${lst(p.adds, 'Papers that could be bolted onto this one')}
+    ${lst(p.feeds, 'Systems this paper could feed (it adds the part shown)')}
+    ${p.x.length ? `<div><div class="lbl">Reader's cross-references</div>${p.x.map(([kk, rel]) => `<div>${esc(rel)} → ${pref(kk)}</div>`).join('')}</div>` : ''}
+    <div><a href="library.html" target="_blank">Open the library to read it →</a>${p.u ? ` · <a href="${esc(p.u)}" target="_blank" rel="noopener">source</a>` : ''}</div>`;
+}
+init().catch(e => { document.getElementById('intro').innerHTML = '<span style="color:var(--red)">Could not load the data: ' + esc(e.message) + '</span>'; });
+</script>
+</body>
+</html>
