@@ -211,3 +211,20 @@ test('mid-week the windows are exactly as before (no anchor note)', () => {
   const p = buildStrength({ bars: barsFrom({ USD: 1, EUR: -1, GBP: 0, JPY: 0, CHF: 0, CAD: 0, AUD: 0, NZD: 0 }), now: NOW });
   for (const k of ['1H', '4H', '1D', '1W']) assert.equal(p.horizons[k].sinceClose, undefined);
 });
+
+// ── Monday 22:48 UTC (found live 2026-11-16 22:48Z: 1D "only 0 of 28 pairs"): the 1D window starts 48 minutes after the weekly reopen, before the first hourly bar finished ──
+test('1D window that starts in the first two hours after the reopen is anchored to the Friday close (every week at Monday 22:00-24:00 UTC)', () => {
+  const MONN = weeklyWindow(MON).open + 24 * H + 48 * 60e3, w = weeklyWindow(MONN);
+  assert.ok(new Date(MONN).toISOString().startsWith('2026-11-16T22:48'), 'the case is Monday 22:48 UTC');
+  const p = buildStrength({ bars: weekendBars(MONN), now: MONN });
+  assert.ok(p.ok);
+  const d = p.horizons['1D'];
+  assert.equal(d.available, true, '1D available at Monday 22:48 UTC');
+  assert.equal(d.sinceClose, true); assert.equal(d.from, new Date(w.close).toISOString());
+  assert.equal(p.horizons['1D'].pairs, 28);
+});
+test('a window that starts three hours after the reopen is untouched (no anchor note)', () => {
+  const T = weeklyWindow(MON).open + 3 * H + 24 * H, p = buildStrength({ bars: weekendBars(T), now: T });
+  assert.equal(p.horizons['1D'].available, true);
+  assert.equal(p.horizons['1D'].sinceClose, undefined, 'three hours after the reopen the 1D window has a price of its own');
+});

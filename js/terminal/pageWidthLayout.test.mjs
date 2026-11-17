@@ -53,3 +53,33 @@ test('the Overview Emerging-markets table sits in a scroll box', () => {
   assert.match(card, /<\/table><\/div><p class="muted"[^>]*>$/);
   assert.match(html, /\.scroll\{overflow-x:\s*auto\}/);
 });
+
+// Found 2026-11-17 (sweep): the Options positioning cards' calls-against-puts gauge was a fixed-width SVG wider than its card (3 cards spilled at 1440).
+test('the Options gauge SVG shrinks with its card (max-width:100%)', () => {
+  const src = rd('./optionsView.js'), i = src.indexOf('aria-label="calls against puts gauge"');
+  assert.ok(i > 0, 'the gauge exists');
+  const tag = src.slice(src.lastIndexOf('<svg', i), i);
+  assert.match(tag, /max-width:100%/);
+});
+
+// Found 2026-11-17 (sweep): at 390px the Macro Credit & liquidity board scrolled sideways: a nowrap Evidence Book chip (420px) and a bare table (393px) in a 342px card.
+test('the Evidence Book stamp chip wraps and a bare table in a board card scrolls inside itself', () => {
+  const css = rd('./terminal-tabs.css');
+  assert.match(css, /\.bv-stamp \.chip\{white-space:normal;max-width:100%/);
+  assert.match(css, /\.sfc \.card>table\{display:block;max-width:100%;overflow-x:auto\}/);
+});
+
+// Found 2026-11-17 (sweep): the Options path-walk SVG was fixed-width inside a plot box that shrinks (spilled at 390 and 768), and the 'What drives this' direction column was a fixed 92px
+// while "●●○ HEADWIND" needs about 100px (spilled at 768 and 1440).
+test('the Options walk SVG shrinks with its box, and the headwind column is as wide as its word', () => {
+  const src = rd('./optionsView.js'), i = src.indexOf('aria-label="price and the option walk by expiry"');
+  assert.ok(i > 0); assert.match(src.slice(src.lastIndexOf('<svg', i), i), /max-width:100%/);
+  assert.match(rd('./humanDrivers.css'), /\.hd-pt \{ display: grid; grid-template-columns: minmax\(92px, max-content\) 1fr;/);
+});
+
+// Found 2026-11-17 (sweep): "Cannot set properties of null (setting 'onclick')" once on the Analytics tab: the book-risk render looked its Run and Reset buttons up on the document, not in its own element.
+test('the book-risk scenario buttons are looked up inside their own render and guarded', () => {
+  const html = fs.readFileSync(new URL('../../desk-terminal.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  assert.match(html, /const bkrReset = el\.querySelector\('#bkrreset'\), bkrGo = el\.querySelector\('#bkrgo'\); if \(!bkrReset \|\| !bkrGo\) return;/);
+  assert.ok(!/\$\('bkrreset'\)\.onclick/.test(html) && !/\$\('bkrgo'\)\.onclick/.test(html));
+});
