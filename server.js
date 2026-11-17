@@ -449,7 +449,8 @@ import { RESEARCH as _DL_RESEARCH, volFlags as _dlVolFlags, FX_CARRY_EUR_OFFSET 
 import { SAMEDAY_INSTRUMENTS as _BS_INSTRUMENTS, SAMEDAY_TARGETS as _BS_TARGETS, issueSameDay as _bsIssue, outcomeSameDay as _bsOutcome, summariseSameDay as _bsSummarise, midAt as _bsMidAt, sigmaDay as _bsSigmaDay, londonMs as _bsLondonMs, targetEndMs as _bsEndMs, isWeekday as _bsIsWeekday, MID_LOOKBACK_MS as _BS_LOOKBACK } from './js/directionLedger.js';   // bias-scoreboard same-day rows (forge/BIAS_SCOREBOARD_PREREG.md)
 import { buildBiasRecord as _beBuild, marketView as _beMarket, fillPolicyFallback as _beFillPolicy } from './js/biasEngine.js';   // bias engine v1 (plans/BIAS_ENGINE_SPEC.md)
 import { YIELD2Y_KV as _Y2_KV, buildYield2yPayload as _y2Payload, yieldWeekChange as _y2Week } from './js/yield2y.js';   // 2y government yields: the bias engine's policy fallback
-import { biasEngine as _bsBiasEngine, h4Trend as _bsH4Trend, deskRating as _bsDeskRating, deskCcy as _bsDeskCcy, maxSignals as _bsMaxSignals, surpriseRule as _bsSurpriseRule, fundabias as _bsFundabias, FUNDABIAS_ENABLED as _BS_FUNDABIAS_ON } from './js/biasForecasters.js';
+import { biasEngine as _bsBiasEngine, h4Trend as _bsH4Trend, deskRating as _bsDeskRating, deskCcy as _bsDeskCcy, maxSignals as _bsMaxSignals, surpriseRule as _bsSurpriseRule, fundabias as _bsFundabias, FUNDABIAS_ENABLED as _BS_FUNDABIAS_ON, processAi as _bsProcessAi, processSystem as _bsProcessSystem, instOfMarket as _bsInstOf, DESK_NAME as _BS_DESK_NAME } from './js/biasForecasters.js';
+import { PROCESS_MARKETS as _DBP_MARKETS, OANDA as _DBP_OANDA, buildLayers as _dbpLayers, buildPack as _dbpPack, historyFor as _dbpHistory, runProcessAi as _dbpAi, finishCard as _dbpFinish, dayRecord as _dbpDay, PROCESS_VERSION as _DBP_VERSION, AI_PROMPT_VERSION as _DBP_PROMPT } from './js/deskBiasProcess.js';   // Desk Bias Process (plans/DESK_BIAS_PROCESS_SPEC.md)
 import { scoreTrack as _dlScoreTrack } from './js/directionScore.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
 import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
@@ -30203,7 +30204,6 @@ async function _bsIssueBase(date) {
     } catch (e) { status[`h1_${inst}`] = `error: ${e.message}`; }
   }));
   views.push(..._bsH4Trend(h1, date, { insts: insts.filter(i => h1[i]) }));
-  if (_BS_FUNDABIAS_ON) views.push(..._bsFundabias());
   const rec = _bsIssue({ date, source: 'base', views, baselines: _bsBaselines, sigma, anchors0700: anchors, issuedAt: new Date().toISOString(), code: _bsCode(), externalStatus: status, withB0: true, insts });
   await _bsPutOnce(key, rec);
 }
@@ -30248,6 +30248,34 @@ async function _bsIssueEngine(date) {
   await _bsPutOnce(key, _bsIssue({ date, source: 'engine', views: _bsBiasEngine(rec, { knowableMs: Date.parse(rec.asOf), insts }), baselines: _bsBaselines, sigma,
     issuedAt: new Date().toISOString(), code: _bsCode(), externalStatus: { engine: 'ok', engine_as_of: rec.asOf, engine_version: rec.version, weights: rec.weights }, insts }));
 }
+// <D>_process.json (prereg amendment A4): the Desk Bias Process's stored issue (KV desk_bias_process_<D>, written 07:30-08:00
+// London by _deskBiasProcessTick), first tick after it exists and before 10:00: process-ai (the published call) and
+// process-system (the rules alone), knowable at the record's issuedAt. A live read is never a row.
+async function _bsIssueProcess(date) {
+  const key = `${_BS_PREFIX}${date}_process.json`;
+  if (_bsDone.has(key)) return;
+  let rec = null;
+  try { const raw = await kv.get(_DBP_KEY(date)); rec = raw ? JSON.parse(raw) : null; } catch { rec = null; }
+  if (!rec?.markets || rec.date !== date) return;                 // no stored issue yet: try again until 10:00
+  const base = await _r2GetJSON(`${_BS_PREFIX}${date}_base.json`).catch(() => null);
+  const insts = base ? Object.keys(base.anchors_0700 ?? {}) : Object.keys(_BS_INSTRUMENTS);
+  const sigma = base ? Object.fromEntries(base.forecasts.filter(f => f.model_id === 'B0').map(f => [f.inst, f.sigma_day])) : await _bsSigma(date);
+  const knowableMs = Date.parse(rec.issuedAt ?? rec.asOf);
+  await _bsPutOnce(key, _bsIssue({ date, source: 'process', views: [..._bsProcessAi(rec, { knowableMs, insts }), ..._bsProcessSystem(rec, { knowableMs, insts })], baselines: _bsBaselines, sigma,
+    issuedAt: new Date().toISOString(), code: _bsCode(), externalStatus: { process: 'ok', process_issued_at: rec.issuedAt, process_version: rec.version, prompt: rec.prompt }, insts }));
+}
+// <D>_fundabias.json (prereg amendment A4): the day's FundaBias log (KV fundabias_log_<D>, POST /api/fundabias-log), first
+// tick in [16:05, 20:00) London; each row knowable at its server timestamp (a log after 16:00 is not a row for D).
+async function _bsIssueFundabias(date) {
+  const key = `${_BS_PREFIX}${date}_fundabias.json`;
+  if (_bsDone.has(key) || !_BS_FUNDABIAS_ON) return;
+  let log = null, status = {};
+  try { const raw = await kv.get(_FB_KEY(date)); log = raw ? JSON.parse(raw) : null; status.log = log ? `ok, ${log.rows?.length ?? 0} row(s)` : 'no log'; } catch (e) { status.log = `error: ${e.message}`; return; }
+  const base = await _r2GetJSON(`${_BS_PREFIX}${date}_base.json`).catch(() => null);
+  const insts = base ? Object.keys(base.anchors_0700 ?? {}) : Object.keys(_BS_INSTRUMENTS);
+  const sigma = base ? Object.fromEntries(base.forecasts.filter(f => f.model_id === 'B0').map(f => [f.inst, f.sigma_day])) : await _bsSigma(date);
+  await _bsPutOnce(key, _bsIssue({ date, source: 'fundabias', views: _bsFundabias(log?.rows ?? [], date, { insts }), baselines: _bsBaselines, sigma, issuedAt: new Date().toISOString(), code: _bsCode(), externalStatus: status, insts }));
+}
 async function _biasScoreboardTick() {
   if (!_r2Ok() || !process.env.OANDA_KEY) return;
   const now = Date.now(), date = _dpLondonDate(now);
@@ -30256,9 +30284,11 @@ async function _biasScoreboardTick() {
     if (now >= _bsLondonMs(date, 7) && now < _bsLondonMs(date, 10)) await _bsIssueDesk(date);
     if (now >= _bsLondonMs(date, 16, 5) && now < _bsLondonMs(date, 20)) await _bsIssueMax(date);
     if (now >= _bsLondonMs(date, 7) && now < _bsLondonMs(date, 10)) await _bsIssueEngine(date);
+    if (now >= _bsLondonMs(date, 7, 30) && now < _bsLondonMs(date, 10)) await _bsIssueProcess(date);
+    if (now >= _bsLondonMs(date, 16, 5) && now < _bsLondonMs(date, 20)) await _bsIssueFundabias(date);
   }
   // resolve: issue records from the last ~15 days with an unresolved target
-  const keys = (await _r2ListKeys(_BS_PREFIX)).filter(k => /sameday\/\d{4}-\d{2}-\d{2}_(base|desk|max|engine)\.json$/.test(k));
+  const keys = (await _r2ListKeys(_BS_PREFIX)).filter(k => /sameday\/\d{4}-\d{2}-\d{2}_(base|desk|max|engine|process|fundabias)\.json$/.test(k));
   const dates = [...new Set(keys.map(k => k.match(/(\d{4}-\d{2}-\d{2})_/)[1]))].sort().slice(-15);
   for (const d of dates) {
     for (const t of _BS_TARGETS) {
@@ -30267,7 +30297,7 @@ async function _biasScoreboardTick() {
       if (await _r2GetJSON(ok).catch(() => null)) { _bsDone.add(ok); continue; }
       // every source window for D must be closed before D is resolved, so no record can arrive after its outcome
       if (now < _bsLondonMs(d, 20)) continue;
-      const recs = (await Promise.all(['base', 'desk', 'max', 'engine'].map(s => _r2GetJSON(`${_BS_PREFIX}${d}_${s}.json`).catch(() => null)))).filter(Boolean);
+      const recs = (await Promise.all(['base', 'desk', 'max', 'engine', 'process', 'fundabias'].map(s => _r2GetJSON(`${_BS_PREFIX}${d}_${s}.json`).catch(() => null)))).filter(Boolean);
       if (!recs.length) continue;
       let fetchErr = false;                                       // a feed error is not a missing price: retry next tick
       const o = await _bsOutcome(recs, t, (inst, ms) => _bsMid(inst, ms).catch(() => { fetchErr = true; return null; }), { now, resolvedAt: new Date().toISOString() });
@@ -30278,11 +30308,11 @@ async function _biasScoreboardTick() {
 svcInterval('biasScoreboard', () => _biasScoreboardTick().catch(e => console.error('[bias-scoreboard]', e.message)), 5 * 60_000);
 async function _bsRoute(req, res) {
   const all = await _r2ListKeys(_BS_PREFIX);
-  const issues = all.filter(k => /sameday\/\d{4}-\d{2}-\d{2}_(base|desk|max|engine)\.json$/.test(k)).sort(), outKeys = all.filter(k => /sameday\/out\//.test(k)).sort();
+  const issues = all.filter(k => /sameday\/\d{4}-\d{2}-\d{2}_(base|desk|max|engine|process|fundabias)\.json$/.test(k)).sort(), outKeys = all.filter(k => /sameday\/out\//.test(k)).sort();
   const date = String(req.query.date || '');
   if (date) {
     const recs = {}, outs = {};
-    for (const s of ['base', 'desk', 'max', 'engine']) recs[s] = await _r2GetJSON(`${_BS_PREFIX}${date}_${s}.json`).catch(() => null);
+    for (const s of ['base', 'desk', 'max', 'engine', 'process', 'fundabias']) recs[s] = await _r2GetJSON(`${_BS_PREFIX}${date}_${s}.json`).catch(() => null);
     for (const t of _BS_TARGETS) outs[t] = await _r2GetJSON(`${_BS_PREFIX}out/${date}_${t}.json`).catch(() => null);
     return res.json({ ok: true, prereg: 'forge/BIAS_SCOREBOARD_PREREG.md', records: recs, outcomes: outs });
   }
@@ -30511,6 +30541,183 @@ app.get('/api/bias-engine', async (req, res) => {
       return m ? res.json({ ...head, market: m }) : res.status(404).json({ ok: false, error: `unknown market ${req.query.market}: any cross of USD EUR GBP JPY AUD NZD CAD CHF, a currency, or one of ${Object.keys(rec.markets).filter(k => !/^[A-Z]{6}$/.test(k)).join(', ')}` });
     }
     res.json({ ...rec, ...head });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Desk Bias Process (plans/DESK_BIAS_PROCESS_SPEC.md; logic in js/deskBiasProcess.js, pure) ─────────────────────────
+// One systematic-discretionary bias per market (PROCESS_MARKETS: the bias scoreboard's 13), the same six layers every day
+// (event state, regime, macro ex-trend, structure, positioning, day range), a deterministic system call, and an AI analyst
+// that accepts it or overrides it with a reason tied to the pack (prompt process-ai-v1, the desk's callModel on task
+// 'desk-analyst', lowest temperature the routed provider takes; an invalid reply is retried once, then the system call
+// stands). Issued once per London weekday between 07:30 and 08:00, after the bias engine's stored issue exists; written
+// once to KV desk_bias_process_<date> with an index desk_bias_process_index; never overwritten, never back-issued. Scored
+// forward as process-ai and process-system (forge/BIAS_SCOREBOARD_PREREG.md amendment A4) and head to head
+// (scripts/bias-scoreboard/h2h.mjs). Inputs: KV bias_engine_<date>, the ForexFactory week calendar (_fetchWeekEvents),
+// KV vol_forecast_<date> (the shipped vol lines), OANDA W/D/H4/H1 mid candles. NOT a validated trade signal.
+const _DBP_KEY = date => `desk_bias_process_${date}`, _DBP_INDEX_KV = 'desk_bias_process_index';
+const _FB_KEY = date => `fundabias_log_${date}`, _FB_INDEX_KV = 'fundabias_log_index';
+const _dbpBars = xs => xs.map(b => ({ t: Date.parse(b.time), o: b.open, h: b.high, l: b.low, c: b.close, complete: b.complete }));
+/** The Sunday the ForexFactory "this week" feed starts from (it cannot see the previous week's Friday). */
+const _dbpWeekStart = date => { const d = new Date(`${date}T12:00:00Z`); return new Date(d.getTime() - d.getUTCDay() * 864e5).toISOString().slice(0, 10); };
+async function _dbpLoadIndex() { try { const raw = await kv.get(_DBP_INDEX_KV); const p = raw ? JSON.parse(raw) : []; return Array.isArray(p) ? p : []; } catch { return []; } }
+/** Everything the layers read, as of `issueMs`. `engineRec` = the stored bias-engine issue (or a live one for a live read). */
+async function _dbpGather(issueMs, engineRec) {
+  const date = _dpLondonDate(issueMs), status = {}, prices = {}, vol = {};
+  let calendar = null;
+  try { const r = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY }); calendar = { ok: r.ok !== false, events: r.events ?? [], source: r.source ?? 'ForexFactory', error: r.error ?? null, coversFrom: _dbpWeekStart(date) }; status.calendar = calendar.ok ? `ok (${calendar.events.length} events)` : `error: ${calendar.error}`; }
+  catch (e) { calendar = { ok: false, error: e.message }; status.calendar = `error: ${e.message}`; }
+  try { const raw = await kv.get(`vol_forecast_${date}`); const fc = raw ? JSON.parse(raw).instruments ?? {} : {}; for (const m of _DBP_MARKETS) { const k = Object.keys(fc).find(x => x.toUpperCase() === m); if (k) vol[m] = fc[k]; } status.vol = raw ? `ok (${Object.keys(vol).length})` : `no vol_forecast_${date}`; }
+  catch (e) { status.vol = `error: ${e.message}`; }
+  const errs = [];
+  for (let i = 0; i < _DBP_MARKETS.length; i += 4) {   // four markets (16 pulls) at a time: polite to OANDA
+    await Promise.all(_DBP_MARKETS.slice(i, i + 4).map(async m => {
+      const p = prices[m] = {};
+      for (const [g, n, k] of [['W', 60, 'w1'], ['D', 300, 'd1'], ['H4', 120, 'h4'], ['H1', 30, 'h1']]) {
+        try { p[k] = _dbpBars(await _fetchOandaCandles(_DBP_OANDA[m], g, n)); } catch (e) { errs.push(`${m} ${g}: ${e.message}`); p[k] = []; }
+      }
+    }));
+  }
+  status.prices = errs.length ? `partial: ${errs.slice(0, 6).join('; ')}${errs.length > 6 ? ` (+${errs.length - 6})` : ''}` : 'ok';
+  status.engine = engineRec ? `ok, ${engineRec.version} as of ${engineRec.asOf}` : 'no bias-engine issue';
+  return { date, calendar, vol, prices, status };
+}
+// callModel for the AI step: the desk's router and spend cap; temperature 0 only where the routed provider accepts one
+// (Anthropic's current models refuse a temperature, so there the task's effort setting is the only lever).
+async function _dbpCallModel({ task, system, prompt, maxTokens, label, temperature }) {
+  let provider = null;
+  try { provider = aiResolveTask(task, _aiConfig()).provider; } catch { provider = null; }
+  const r = await callModel({ task, system, prompt, maxTokens, label, ...(provider && provider !== 'anthropic' && temperature != null ? { temperature } : {}) });
+  return { text: r.text ?? _antText(r), usage: r.usage ?? null, model: r.model ?? null, truncated: !!r.truncated };
+}
+/** The day's record. ai: false = the system call only (live reads: no model spend, never stored). */
+async function _dbpCompute(issueMs, { engineRec, ai = true } = {}) {
+  const asOf = new Date(issueMs).toISOString(), g = await _dbpGather(issueMs, engineRec);
+  const prev = [];
+  if (ai) for (const r of (await _dbpLoadIndex()).filter(r => r.date < g.date).slice(-6)) { try { const raw = await kv.get(_DBP_KEY(r.date)); if (raw) prev.push(JSON.parse(raw)); } catch { /* a missing day is a gap */ } }
+  const cards = [];
+  let next = 0;
+  const built = _DBP_MARKETS.map(m => {
+    const d1 = g.prices[m]?.d1 ?? [], today = d1.find(b => _dpLondonDate(b.t) === g.date && b.t <= issueMs);
+    return _dbpLayers({ date: g.date, asOf, market: m, engine: engineRec, prices: g.prices[m], calendar: g.calendar, vol: g.vol[m] ?? null,
+      todayRange: today ? { open: today.o, high: today.h, low: today.l } : null });
+  });
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    while (next < built.length) {
+      const i = next++, card = built[i];
+      if (!ai) { cards[i] = _dbpFinish(card, null); continue; }
+      const hist = _dbpHistory(prev.map(r => r.markets?.[card.market]).filter(Boolean), g.date, card.layers.structure.price);
+      const res = await _dbpAi({ pack: _dbpPack(card, hist), callModel: _dbpCallModel, parseJson: t => _parseModelJson(t, `bias-process:${card.market}`) });
+      cards[i] = _dbpFinish(card, res);
+    }
+  }));
+  return _dbpDay({ date: g.date, asOf, cards, engine: engineRec, issuedAt: new Date().toISOString(), inputsStatus: g.status, code: process.env.RAILWAY_GIT_COMMIT_SHA || null });
+}
+let _dbpIssuing = false;
+const _dbpDone = new Set();
+async function _deskBiasProcessTick() {
+  const now = Date.now(), date = _dpLondonDate(now);
+  if (!_bsIsWeekday(date) || now < _bsLondonMs(date, 7, 30) || now >= _bsLondonMs(date, 8) || _dbpDone.has(date) || _dbpIssuing) return;
+  _dbpIssuing = true;
+  try {
+    if (await kv.get(_DBP_KEY(date))) { _dbpDone.add(date); return; }   // write-once
+    const raw = await kv.get(_BE_KEY(date)).catch(() => null);
+    const engineRec = raw ? JSON.parse(raw) : null;
+    if (!engineRec?.markets || engineRec.date !== date) return;          // the bias engine's issue first: try again next tick
+    const rec = await _dbpCompute(now, { engineRec });
+    if (Date.now() >= _bsLondonMs(date, 8)) { console.warn(`[desk-bias-process] ${date}: finished after 08:00, not stored`); return; }
+    if (await kv.get(_DBP_KEY(date))) { _dbpDone.add(date); return; }
+    await kv.put(_DBP_KEY(date), JSON.stringify(rec));
+    const idx = (await _dbpLoadIndex()).filter(r => r.date !== date);
+    idx.push({ date, asOf: rec.asOf, issuedAt: rec.issuedAt, version: rec.version, prompt: rec.prompt,
+      markets: Object.fromEntries(Object.entries(rec.markets).map(([m, c]) => [m, { dir: c.call.dir, conviction: c.call.conviction, by: c.call.by, system: c.system.dir }])) });
+    idx.sort((a, b) => (a.date < b.date ? -1 : 1));
+    await kv.put(_DBP_INDEX_KV, JSON.stringify(idx.slice(-500)));
+    _dbpDone.add(date);
+    const by = Object.values(rec.markets).reduce((a, c) => ((a[c.call.by] = (a[c.call.by] ?? 0) + 1), a), {});
+    console.log(`[desk-bias-process] ${date} issued at ${rec.issuedAt}: ${Object.entries(rec.markets).map(([m, c]) => `${m} ${c.call.dir[0]}${c.call.conviction ?? ''}`).join(' ')}; ${JSON.stringify(by)}`);
+  } finally { _dbpIssuing = false; }
+}
+svcInterval('deskBiasProcess', () => _deskBiasProcessTick().catch(e => console.error('[desk-bias-process]', e.message)), 5 * 60_000);
+// GET /api/desk-bias-process            today's stored issue, or (none yet) a live system-only read marked live: true, not stored
+// GET /api/desk-bias-process?date=D     the stored issue for D (404 when none: nothing is back-issued)
+// GET /api/desk-bias-process?market=X   one market's card (and the cleanest FX expressions)
+// GET /api/desk-bias-process?live=1     a live system-only read even when today's issue is stored (no AI call, never scored)
+// GET /api/desk-bias-process?index=1    the issue index;  ?dump=1  every stored issue (for scripts/bias-scoreboard/h2h.mjs)
+let _dbpLive = { at: 0, rec: null };
+app.get('/api/desk-bias-process', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    if (req.query.index === '1') return res.json({ ok: true, index: await _dbpLoadIndex() });
+    if (req.query.dump === '1') {
+      const recs = [];
+      for (const r of await _dbpLoadIndex()) { try { const raw = await kv.get(_DBP_KEY(r.date)); if (raw) recs.push(JSON.parse(raw)); } catch { /* skipped */ } }
+      return res.json({ ok: true, version: _DBP_VERSION, records: recs });
+    }
+    const qd = String(req.query.date ?? ''), today = _dpLondonDate(Date.now());
+    if (qd && !/^\d{4}-\d{2}-\d{2}$/.test(qd)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+    let rec = null, live = false;
+    const raw = req.query.live === '1' && !qd ? null : await kv.get(_DBP_KEY(qd || today)).catch(() => null);
+    if (raw) rec = JSON.parse(raw);
+    else if (qd && qd !== today) return res.status(404).json({ ok: false, error: `no stored desk-bias-process issue for ${qd} (issues are written 07:30-08:00 London on weekdays and never back-issued)` });
+    else {
+      if (!_dbpLive.rec || Date.now() - _dbpLive.at > 10 * 60_000 || req.query.fresh === '1') {
+        let engineRec = null;
+        try { const e = await kv.get(_BE_KEY(today)); engineRec = e ? JSON.parse(e) : null; } catch { engineRec = null; }
+        if (!engineRec) { if (!_beLive.rec || Date.now() - _beLive.at > 10 * 60_000) _beLive = { at: Date.now(), rec: await _beCompute(Date.now()) }; engineRec = _beLive.rec; }
+        _dbpLive = { at: Date.now(), rec: await _dbpCompute(Date.now(), { engineRec, ai: false }) };
+      }
+      rec = _dbpLive.rec; live = true;
+    }
+    const head = { ok: true, live, date: rec.date, asOf: rec.asOf, issuedAt: rec.issuedAt, version: rec.version, prompt: rec.prompt, note: rec.note,
+      ...(live ? { liveNote: 'live read: the system call only (no AI step), computed now, not stored and not scored (the stored issue is written 07:30-08:00 London on weekdays)' } : {}) };
+    if (req.query.market) {
+      const q = String(req.query.market).toUpperCase().replace(/[^A-Z0-9]/g, ''), inst = _bsInstOf(q), name = rec.markets[q] ? q : inst ? _BS_DESK_NAME[inst] : null;
+      const card = name ? rec.markets[name] : null;
+      return card ? res.json({ ...head, market: card, cleanest: rec.cleanest }) : res.status(404).json({ ok: false, error: `unknown market ${req.query.market}: one of ${Object.keys(rec.markets).join(', ')}` });
+    }
+    res.json({ ...rec, ...head });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── FundaBias log (plans/DESK_BIAS_PROCESS_SPEC.md "Head to head"; prereg amendment A4) ──────────────────────────────────
+// The owner logs FundaBias's published reading per market: direction and score n/10. Owner-only, today's London date only
+// (no back-logging), write-once per market per day, stamped with the server's time (the scoreboard's knowable time). KV
+// fundabias_log_<date> = { date, rows: [{ market, dir, score10, loggedAt }] }, index fundabias_log_index (dates).
+let _fbChain = Promise.resolve();
+async function _fbRead(date) { try { const raw = await kv.get(_FB_KEY(date)); return raw ? JSON.parse(raw) : null; } catch { return null; } }
+app.post('/api/fundabias-log', (req, res, next) => (_srIsOwner(req) ? next() : res.status(403).json({ ok: false, error: 'Owner only: the FundaBias log is the owner\'s record.' })), async (req, res) => {
+  try {
+    const b = req.body ?? {}, today = _dpLondonDate(Date.now()), date = String(b.date ?? today);
+    if (date !== today) return res.status(400).json({ ok: false, error: `only today's London date (${today}) can be logged: the record is forward only` });
+    const inst = _bsInstOf(b.market), market = inst ? _BS_DESK_NAME[inst] : null;
+    if (!market) return res.status(400).json({ ok: false, error: `unknown market ${b.market}: one of ${Object.values(_BS_DESK_NAME).join(', ')} (XAUUSD, NAS100 and the like are accepted)` });
+    const dir = String(b.dir ?? '').toUpperCase();
+    if (!['BULLISH', 'BEARISH', 'NEUTRAL'].includes(dir)) return res.status(400).json({ ok: false, error: 'dir must be BULLISH, BEARISH or NEUTRAL' });
+    const score10 = Number(b.score10);
+    if (!Number.isInteger(score10) || score10 < 0 || score10 > 10) return res.status(400).json({ ok: false, error: 'score10 must be an integer 0-10' });
+    const out = await (_fbChain = _fbChain.catch(() => {}).then(async () => {
+      const log = (await _fbRead(date)) ?? { date, rows: [] };
+      if (log.rows.some(r => r.market === market)) return { status: 409, body: { ok: false, error: `${market} is already logged for ${date} (write-once)`, row: log.rows.find(r => r.market === market) } };
+      const row = { market, dir, score10, loggedAt: new Date().toISOString() };
+      log.rows.push(row);
+      await kv.put(_FB_KEY(date), JSON.stringify(log));
+      let idx = []; try { idx = JSON.parse((await kv.get(_FB_INDEX_KV)) || '[]'); } catch { idx = []; }
+      if (!idx.includes(date)) { idx.push(date); idx.sort(); await kv.put(_FB_INDEX_KV, JSON.stringify(idx.slice(-1000))); }
+      return { status: 200, body: { ok: true, row, rows: log.rows.length } };
+    }));
+    res.status(out.status).json(out.body);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/fundabias-log?date=D  that day's rows;  no date: today's rows and the index;  ?all=1 every logged day (for h2h.mjs)
+app.get('/api/fundabias-log', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    let idx = []; try { idx = JSON.parse((await kv.get(_FB_INDEX_KV)) || '[]'); } catch { idx = []; }
+    if (req.query.all === '1') { const logs = []; for (const d of idx) { const l = await _fbRead(d); if (l) logs.push(l); } return res.json({ ok: true, logs }); }
+    const qd = String(req.query.date ?? _dpLondonDate(Date.now()));
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(qd)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+    const log = await _fbRead(qd);
+    res.json({ ok: true, date: qd, rows: log?.rows ?? [], index: req.query.date ? undefined : idx, markets: Object.values(_BS_DESK_NAME) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
