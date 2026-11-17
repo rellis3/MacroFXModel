@@ -242,3 +242,12 @@ Every family re-traced against the code on main; the corrections and additions a
 | Deep navy muted text `--tx3` under 4.5:1 (21% of sampled text) | OWNER DECISION | `#8088ae` (the Colour-blind theme's value) clears it |
 | Hidden is not absent: Playbooks text (entry, target, size) is in the DOM of a desk login; six trade-reason surfaces are switched on for the desk login; five bias-engine surfaces visible with no back-test label | OWNER DECISION | listed in the report |
 | `/api/leading-indicators` 502 (OECD source down); `/api/bias-engine?market=` 404 for markets with no engine | OPEN | |
+
+## Spreads & ratios wave 3: display and explanation (2026-11-17)
+| Item | Status | Notes |
+|---|---|---|
+| Every ladder row: a plain meaning sentence, window and period labels ("22nd of 6y", "1m +5.5%"), no jumping rank column, graded evidence chips with a help line, a compare button, stacked on a phone | DONE | `js/terminal/spreadsTemplates.js` (kind and meaning per pair), `spreadsExplain.js`, `spreadsView.js`; the loop test covers all 55 pairs |
+| Kinds with their natural level (zero and zones, 1.0, trend averages, sigma): marker tick, hero lines | DONE | table in plans/SPREADS_AND_RATIOS.md |
+| Hero view: what this is, what moved it (the two legs and the sentence), where it has been before, educator lane, so-what | DONE | |
+| Compare two rows; the onboarding line | DONE | |
+| Not checked | OPEN | A real phone, Amber / Green console / Colour-blind themes, and the live site |

@@ -28,7 +28,7 @@ test('the ladder lists every ranked pair once, most stretched first, each with i
   assert.ok(r.rows.length >= 20, `${r.rows.length} pairs ranked`);
   for (const row of r.rows) assert.ok(h.includes(`data-id="${row.id}"`), row.id);
   const order = [...h.matchAll(/data-id="([a-z0-9-]+)" aria-expanded/g)].map(m => m[1]); assert.deepEqual(order, r.rows.map(x => x.id));
-  assert.match(h, /class="sp-track"/); assert.match(h, /sp-now/); assert.match(h, /tested · (NULL|VALIDATED|UNDERPOWERED|CONTEXT)/); assert.match(h, /not tested here/);
+  assert.match(h, /class="sp-track"/); assert.match(h, /sp-now/); assert.match(h, /Tested: (no forward edge found|underpowered)/); assert.match(h, /Not tested here/); assert.match(h, /class="sp-mean"/); assert.ok(!/class="in-rk"/.test(h), 'the jumping rank numbers are gone'); assert.match(h, /<i>of \d/); assert.match(h, /<i>1m<\/i>/);
   assert.ok(!/undefined|NaN|\[object/.test(h), 'no stray undefined or NaN in the markup');
 });
 test('group filter, the "most mentioned" order and the open row', () => {
@@ -40,7 +40,7 @@ test('group filter, the "most mentioned" order and the open row', () => {
 });
 test('the hero view: the caption, both charts, what they said next to what we found, the trust note, and a window choice', () => {
   const row = rank().rows.find(x => x.id === 'rsp-spy'), h = heroHtml(row, '3y');
-  assert.match(h, /class="sp-cap"/); assert.equal((h.match(/<svg class="sp-chart/g) ?? []).length, 2);
+  assert.match(h, /class="sp-cap"/); assert.equal((h.match(/<svg class="sp-chart/g) ?? []).length, 3, 'the line, what moved it, the ghosts'); assert.match(h, /What this is/); assert.match(h, /What moved it/); assert.match(h, /Where it has been before|has no earlier stretch/); assert.match(h, /class="sp-sowhat"/);
   assert.match(h, /What they said/); assert.match(h, /What we found/); assert.match(h, /sp-q/); assert.match(h, /breadth-narrowing|textbook rotation/i);
   for (const k of Object.keys(WINDOWS)) assert.match(h, new RegExp(`data-win="${k}" aria-pressed="${k === '3y'}"`));
   assert.match(h, /data-pick-pair="rsp-spy"/);

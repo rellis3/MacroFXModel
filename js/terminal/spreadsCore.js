@@ -9,6 +9,7 @@
 import { seriesMeta, zgapSeries } from './spreadsDerived.js';
 import { DESK_EVIDENCE } from '../deskEvidence.js';
 import { PAIRS, GENERAL_EV } from './spreadsLibrary.js';
+import { TEMPLATES, legsOf } from './spreadsTemplates.js';
 
 export const fin = v => typeof v === 'number' && Number.isFinite(v);
 export const SHORT_SESSIONS = 1000;         // under about four years of closes is a short record
@@ -83,7 +84,7 @@ export function describe(series, minN = 120) {
   const last = v[n - 1], at = k => (n - 1 - k >= 0 ? v[n - 1 - k] : null);
   return { n, last, lastDate: series.dates[n - 1], from: series.dates[0], mean: m, sd, z: (last - m) / sd,
     pct: percentileIn(sorted, last), pct1w: fin(at(5)) ? percentileIn(sorted, at(5)) : null, pct1m: fin(at(21)) ? percentileIn(sorted, at(21)) : null,
-    v1w: at(5), v1m: at(21), v3m: at(63), p: { p10: quantile(sorted, 0.1), p25: quantile(sorted, 0.25), p50: quantile(sorted, 0.5), p75: quantile(sorted, 0.75), p90: quantile(sorted, 0.9) }, min: sorted[0], max: sorted[n - 1] };
+    v1d: at(1), v1w: at(5), v1m: at(21), v3m: at(63), sorted, p: { p10: quantile(sorted, 0.1), p25: quantile(sorted, 0.25), p50: quantile(sorted, 0.5), p75: quantile(sorted, 0.75), p90: quantile(sorted, 0.9) }, min: sorted[0], max: sorted[n - 1] };
 }
 /** 0 in the middle of its history, 1 at either end: how extreme it is, not which end. */
 export const extremeness = pct => (fin(pct) ? Math.abs(pct - 0.5) * 2 : 0);
@@ -103,14 +104,22 @@ export function evidenceFor(refs, book = DESK_EVIDENCE) {
 /** Every library pair against its own history, most extreme first. Pairs whose legs are not in the bundle come back in `missing`. */
 export function rankPairs(bundle, pairs = PAIRS, book = DESK_EVIDENCE) {
   const rows = [], missing = [], allLast = [];
+  const dIdx = new Map((bundle?.dates ?? []).map((x, i) => [x, i]));
+  /** The two legs on the pair's own dates (for the "why it moved" view); null when a leg is not in the bundle or the pair is one series. */
+  const legsFor = (pair, series) => {
+    const lg = legsOf(pair), S = bundle?.series; if (!lg || !S?.[lg.x] || !S?.[lg.y]) return null;
+    const at = k => series.dates.map(dt => { const v = S[k][dIdx.get(dt)]; return fin(v) ? v : null; });
+    return { op: lg.op, xKey: lg.x, yKey: lg.y, x: at(lg.x), y: at(lg.y) };
+  };
   for (const pair of pairs) {
     const series = buildSeries(bundle, pair);
     if (!series) { missing.push({ pair, why: pair.needs === 'extras' && bundle?.extrasOk === false ? 'The extra FRED series (/api/spread-extras) did not answer, and this pair needs one.' : pair.op === 'zgap' ? `A leg is missing or there are under ${Z_MIN} common closes to measure a divergence.` : 'A leg of this pair is not in the daily bundle.' }); continue; }
     const d = describe(series); if (!d) { missing.push({ pair, why: `Under 120 common closes (${series.vals.length}).` }); continue; }
     allLast.push(d.lastDate);
     rows.push({ id: pair.id, pair, label: pair.label, group: pair.group, story: pair.story ?? 'Other', series, ...d, score: extremeness(d.pct), side: d.pct >= 0.9 ? 'high' : d.pct <= 0.1 ? 'low' : 'mid',
-      lastFmt: fmtValue(pair, d.last), c5: changeOf(pair, d.last, d.v1w), c21: changeOf(pair, d.last, d.v1m), c63: changeOf(pair, d.last, d.v3m),
-      short: d.n < SHORT_SESSIONS, ev: evidenceFor(pair.ev, book) });
+      lastFmt: fmtValue(pair, d.last), c1: changeOf(pair, d.last, d.v1d), c5: changeOf(pair, d.last, d.v1w), c21: changeOf(pair, d.last, d.v1m), c63: changeOf(pair, d.last, d.v3m),
+      short: d.n < SHORT_SESSIONS, ev: evidenceFor(pair.ev, book), tpl: TEMPLATES[pair.id] ?? null, kind: TEMPLATES[pair.id]?.kind ?? null, legs: legsFor(pair, series),
+      refPct: refPctOf(pair, d) });
   }
   const refDate = allLast.sort().at(-1) ?? null;
   const dates = bundle?.dates ?? [];
@@ -120,6 +129,12 @@ export function rankPairs(bundle, pairs = PAIRS, book = DESK_EVIDENCE) {
   return { rows, missing, refDate };
 }
 
+/** Where the pair's natural level (zero, or 1.0 for a vol ratio) sits in its own history, 0..1; null when it has none or the line never reaches it. */
+function refPctOf(pair, d) {
+  const r = TEMPLATES[pair.id]?.ref; if (!r) return null;
+  const v = r.one ? 1 : r.zero ? 0 : null; if (v == null || v < d.min || v > d.max) return null;
+  return percentileIn(d.sorted, v);
+}
 const mark = side => (side === 'high' ? 'near the top of its range' : side === 'low' ? 'near the bottom of its range' : 'inside its usual range');
 const years = n => (n >= 500 ? `${(n / 252).toFixed(n >= 1260 ? 0 : 1)} years` : `${n} sessions`);
 

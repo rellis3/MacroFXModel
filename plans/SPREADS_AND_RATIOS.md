@@ -418,3 +418,98 @@ Free sources named above are leads, not verified: the ECB data portal's yield cu
   for the eight extra series is not tested (the bundle already reads FRED from Railway, so it should be).
 - A weekly series (balance sheet, Treasury cash) is lagged by one extra day for point-in-time safety; the exact release time of each H.4.1 table was not checked.
 - The divergence z-scores use a trailing 504-session window; a different window would move the percentiles.
+
+## Wave 3 (2026-11-17): how every row and every hero view is displayed and explained
+
+The owner asked, of the whole board and not one row: is this the best way to show each X over Y or X minus Y, does it show enough, does it explain enough? The honest answer was no. Every change below applies to ALL 55 pairs, and `js/terminal/spreadsExplain.test.mjs` loops over every pair id and fails on a missing template, a blank sentence, an over-long label or the word "undefined".
+
+### What changed on a ladder row
+- **One plain sentence under the title** of what the number means right now, built from the pair's kind and the live state (`meaningOf` in `js/terminal/spreadsTemplates.js`): "At +27bp it is flat: the long end yields only a little more than the short end." Descriptive; it never says what happens next.
+- **The window and the period are named:** "22nd of 6y" (the percentile and the window it is measured against) and "1m +5.5%" (the change over 21 sessions).
+- **The rank number is gone** (it jumped when sorted by "most mentioned"); the mention count shows as "mentions: N" on that sort.
+- **A natural level on the marker** where the pair has one: a labelled tick for 0 or 1.0, the extreme tenths shaded, a tick at the median.
+- **Evidence chips in plain graded words, one per verdict with a count:** "Range validated", "Tested: no forward edge found", "Tested: underpowered", "Described only", "Not tested here". A help line explains each. Colours: validated teal, underpowered gold, null calm neutral, context purple, not tested dashed.
+- **A compare button on every row** (two rows on one chart: ratios rebased to 100 at the window start, anything else as standard scores of the window).
+- **A "how to read a row" line, a kind legend, and a dismissible onboarding line** (remembered in the browser).
+- **On a phone each row stacks:** title and sentence, then the marker, then percentile, value and change, then the chips.
+
+### What changed in the hero view
+- **What this is:** the pair's own definition, which was written but never shown.
+- **What moved it:** the two legs rebased on one chart (prices start at 100; yields as the change since the window start in bp) and one sentence: "Over the last month RSP moved +4.1% and SPY -1.0%: the ratio rose because RSP rose while SPY fell". A pair built from one series says so. Divergences state which leg moved more.
+- **The natural level on the chart,** by kind (table below).
+- **Where it has been before:** the earlier stretches when the line sat in the same zone of its own record (same percentile, give or take 7.5 points), with the count, the median stay and the dates. Descriptive, not a forecast; it reads only the closes it is given (a series cut at a date has no stretch past it).
+- **What they said:** the educator's name and lane (informational, C.OG, technical) beside the source; **so what:** one line that restates how educators read a rise and a fall, what our tests found, and that it is a description of state.
+
+### Kinds: what each pair's natural level is
+| Kind | Reference | Pairs |
+|---|---|---|
+| Spread | a zero line and named zones (inverted / flat / steep and the like), or the percentile bands | the curves, 10y minus Fed funds, 2y minus Fed funds, real minus breakeven, SOFR minus IORB, Brent minus WTI, HY minus IG, CCC minus HY |
+| Vol ratio | the 1.0 line where 1.0 means something (VIX / VIX3M, VIX9D / VIX, VXN / VIX, RVX / VIX); VVIX / VIX and MOVE / VIX have no natural 1.0 so they use their own bands | six |
+| Relative strength | its own 50-day and 200-day average, with the two legs beside it | the equity, sector, commodity and crypto ratios |
+| Risk currency | the same trend lines plus today's move | AUD/JPY, NZD/JPY, CHF/JPY |
+| Correlation | a zero line (stock-bond) or the usual range (implied correlation) | two |
+| Level | the percentile bands, and a zero line where the sign matters (VIX minus realised, term premium) | SKEW, reverse repo, net liquidity, VIX minus realised, term premium |
+| Divergence | zero is "in line"; 1 and 2 standard deviations are "stretched" and "far out of line" | the eight divergence pairs |
+
+The kind is part of the template table (`TEMPLATES` in `js/terminal/spreadsTemplates.js`): a pair added to the library without a template fails the test, so every new pair must say what its natural level is.
+
+### The full kind table (generated from the template table)
+| Pair id | Pair | Kind | Reference lines on the row marker and the hero chart |
+|---|---|---|---|
+| rsp-spy | RSP / SPY | Relative strength | 50- and 200-day average |
+| smh-spy | SMH / SPY | Relative strength | 50- and 200-day average |
+| nvda-smh | NVDA / SMH | Relative strength | 50- and 200-day average |
+| nvda-spy | NVDA / SPY | Relative strength | 50- and 200-day average |
+| r2k-spx | Russell / S&P | Relative strength | 50- and 200-day average |
+| nq-spx | Nasdaq / S&P | Relative strength | 50- and 200-day average |
+| xly-xlp | XLY / XLP | Relative strength | 50- and 200-day average |
+| xle-oil | XLE / WTI | Relative strength | 50- and 200-day average |
+| curve-2s10s | 10y minus 2y | Spread | zero line, zones: inverted / flat / steep |
+| curve-5s30s | 30y minus 5y | Spread | zero line, zones: inverted / flat / steep |
+| real-bei | Real minus breakeven | Spread | zero line, zones: inflation-led / real-yield-led |
+| hy-ig | HY minus IG | Spread | percentile bands only |
+| ccc-hy | CCC minus HY | Spread | percentile bands only |
+| vix-vix3m | VIX / VIX3M | Vol ratio | 1.0 line |
+| vix9d-vix | VIX9D / VIX | Vol ratio | 1.0 line |
+| move-vix | MOVE / VIX | Vol ratio | percentile bands only |
+| vvix-vix | VVIX / VIX | Vol ratio | percentile bands only |
+| copper-gold | Copper / gold | Relative strength | 50- and 200-day average |
+| gold-silver | Gold / silver | Relative strength | 50- and 200-day average |
+| gold-dxy | Gold / DXY | Relative strength | 50- and 200-day average |
+| btc-gold | BTC / gold | Relative strength | 50- and 200-day average |
+| audjpy | AUD/JPY | Risk currency | 50- and 200-day average + today's move |
+| xli-xlu | XLI / XLU | Relative strength | 50- and 200-day average |
+| xlk-xlu | XLK / XLU | Relative strength | 50- and 200-day average |
+| xlf-spy | XLF / SPY | Relative strength | 50- and 200-day average |
+| xlk-spy | XLK / SPY | Relative strength | 50- and 200-day average |
+| btc-nq | BTC / NQ | Relative strength | 50- and 200-day average |
+| skew | SKEW | Level | percentile bands only |
+| vrp | VIX minus realised | Level | zero line (sign says what it means) |
+| vxn-vix | VXN / VIX | Vol ratio | 1.0 line |
+| rvx-vix | RVX / VIX | Vol ratio | 1.0 line |
+| cor3m | Implied correlation | Correlation | percentile bands only |
+| nzdjpy | NZD/JPY | Risk currency | 50- and 200-day average + today's move |
+| chfjpy | CHF/JPY | Risk currency | 50- and 200-day average + today's move |
+| y3m10y | 10y minus 3m | Spread | zero line, zones: inverted / flat / steep |
+| y10-dff | 10y minus Fed funds | Spread | zero line, zones: inverted / flat / steep |
+| y2-dff | 2y minus Fed funds | Spread | zero line, zones: cuts priced / about neutral / hikes priced |
+| curve-10s5s | 10y minus 5y | Spread | zero line, zones: inverted / flat / steep |
+| curve-30s10s | 30y minus 10y | Spread | zero line, zones: inverted / flat / steep |
+| tp10 | Term premium | Level | zero line (sign says what it means) |
+| sofr-iorb | SOFR minus IORB | Spread | zero line, zones: below the floor / at the floor / above the floor |
+| rrp | Reverse repo | Level | percentile bands only |
+| netliq | Net liquidity | Level | percentile bands only |
+| brent-wti | Brent minus WTI | Spread | zero line, zones: Brent below WTI / Brent above WTI |
+| gold-oil | Gold / WTI | Relative strength | 50- and 200-day average |
+| plat-gold | Platinum / gold | Relative strength | 50- and 200-day average |
+| sbcorr | Stock-bond correlation | Correlation | zero line (sign says what it means) |
+| dx-dxy-tips | Dollar vs real yields | Divergence | zero = in line; 1σ stretched; 2σ far out |
+| dx-usdjpy-10y | USD/JPY vs the 10-year | Divergence | zero = in line; 1σ stretched; 2σ far out |
+| dx-gold-tips | Gold vs real yields | Divergence | zero = in line; 1σ stretched; 2σ far out |
+| dx-dxy-vix | Dollar vs the VIX | Divergence | zero = in line; 1σ stretched; 2σ far out |
+| dx-aud-copper | AUD vs copper | Divergence | zero = in line; 1σ stretched; 2σ far out |
+| dx-cad-oil | CAD vs oil | Divergence | zero = in line; 1σ stretched; 2σ far out |
+| dx-oil-bei | Oil vs breakevens | Divergence | zero = in line; 1σ stretched; 2σ far out |
+| dx-spx-vix | S&P 500 vs the VIX | Divergence | zero = in line; 1σ stretched; 2σ far out |
+
+
