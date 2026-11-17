@@ -1062,6 +1062,12 @@ export const DESK_EVIDENCE = [
     use: 'Say "following v3 p50 breaks on NQ does not replicate; the 2020-26 result was selection plus drift". Do not forward-test it or try other rungs.',
   },
   {
+    id: 'futures-exhaustion-vwap', domain: 'price', verdict: 'underpowered', date: '2026-11-17', doc: 'forge/FUTURES_EXHAUSTION_VWAP_PREREG.md', also: ['analysis/output/futures-exhaustion-vwap/RESULTS.md', 'analysis/output/line-touch-mae-futures/RESULTS.md'], instruments: ['NQ', 'EURUSD', 'GOLD'],
+    claim: 'At a vol-forecast line touch on CME futures (NQ, 6E, GC; OH/OL, OC, HL p50/p75/p90), fading toward the session VWAP frozen at the touch, with a 0.25 sigma stop, pays after cost when price shows exhaustion (VWAP stretch, range used, approach speed, approach volume, repeat touch), beyond unfiltered touches and placebo lines',
+    result: 'Underpowered by the frozen rule only because the thin p90 baselines cannot exclude +0.10R; 0 of 117 cells survived BH q 0.10 on 2016-22 (115/117 negative, best p 0.48), so none reached the 2023-26 holdout. p50/p75 baselines exclude a 0.10R edge: NQ p50 -0.038R [-0.081,+0.003] (n 10,847), 6E p50 -0.114 [-0.159,-0.067], GC p50 -0.112 [-0.159,-0.066]. Gross R -0.004 to -0.013: VWAP sits ~2x the stop away, target first 28-31% vs stop 54% = random-walk odds. No exhaustion feature beats the baseline; placebo ladders the same.',
+    use: 'Say "fading the vol lines toward VWAP on futures is a fair coin before cost, exhaustion filters or not; the lines are size rulers". Do not re-cut features, stops or rungs; reopen only with post-touch confirmation or order flow under a new prereg.',
+  },
+  {
     id: 'vwap-stretch-line-touch', domain: 'price', verdict: 'underpowered', date: '2026-11-02', doc: 'forge/VWAP_STRETCH_LINE_TOUCH_PREREG.md', also: ['analysis/output/vwap-stretch-line-touch/RESULTS.md'], instruments: ['NQ'],
     claim: 'At the first touch of a v3 p75/p90 line on NQ, fading when price is stretched from session VWAP (z >= 1.5; amended to the top tercile of z) pays, beyond unstretched touches, same-size ATR lines and a shuffled forecast',
     result: 'Underpowered by the frozen rule (p90 97 events; p75 bounds just above the null bars); not supported. z >= 1.5 holds at 95-98% of touches, so the literal rule is every touch: 60-min fade -0.038% (p75) / -0.046% (p90) in 2020-26, -0.032 / -0.004 in 2016-20. Top minus bottom tercile of z is negative in all 4 cells (2020-26 p90 -0.154 [-0.339, -0.020]); more stretch = worse fade. No reversion at 21:55 either. Placebo 32.6 / 1.3 / 9.1 / 14.8th percentile.',
@@ -3455,6 +3461,7 @@ const POWER = {
   'portfolio-book-validate': { n: '10 tests on 4,645 weekdays 2008-2026 + 3.7 years 2004-07 + 223 months vs PUT', note: 'robustness of one banked result; T1 exact, T9 corr >= 0.9975, T6 fails (corr 0.58, gap 0.51); T8 underpowered by design' },
   'gamma-regime-trades-fx':  { n: '1,963 trades on 4,632 sessions, EUR/GBP/AUD 2020-09 to 2026-08 (10-session block bootstrap over dates)', note: 'half-width 0.04R; interval [-0.12, -0.04] is wholly below zero -- a real null, not a power problem' },
   'v3-p50-follow-pre2020':   { n: '751 trades, NQ, 2017-03 to 2020-08 (21-session block bootstrap, 1,000 placebos)', note: 'profit MDE ~0.11% by design; placebo gate detects ~0.04-0.05%; placebo 37.5th = real null' },
+  'futures-exhaustion-vwap': { n: '70,260 fades 2016-26 (NQ 28,479, 6E 21,251, GC 20,530); 117 cells', note: 'p50 MDE 0.03-0.04R, CIs exclude +0.10R; p90 MDE 0.09-0.11R, holdout uppers to +0.21R (why underpowered)' },
   'vwap-stretch-line-touch': { n: '256 / 97 stretched touches 2020-26, 135 / 76 in 2016-20 (NQ, p75 / p90)', note: 'p90 below the 100-event floor; p75 MDE ~0.07-0.1%; effect in the wrong direction in 4/4 cells' },
   'nq-forecast-target-ev':   { n: '1,550 PIT sessions, NQ, 2020-08 to 2026-08 (21-session block bootstrap)', note: 'paired MDE vs trailing-quantile control 0.024%, vs ATR 0.018%, against a 0.020% bar: advantages above ~0.02%/trade excluded' },
   'nq-forecast-oc-hl-calibration': { n: '1,550 PIT sessions, NQ', note: 'descriptive calibration and pinball skill; no gate' },
