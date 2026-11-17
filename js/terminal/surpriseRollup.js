@@ -53,3 +53,11 @@ export function rollupHtml(r, windowH = 24) {
   return `<div class="drv" style="margin:6px 0 10px"><span class="muted" style="font-size:12px">Last ${windowH} h, summed z:</span> ${r.rows.map(chip).join(' ')}</div>
 <p class="muted" style="font-size:12px;margin:0 0 8px">Above consensus (gold) or below (purple), not good or bad: a higher jobless rate is above consensus. High-impact prints only, so a dash means no big print. Describes the release flow; not a signal.</p>`;
 }
+
+/** The Pair-tab card: only the pair's own currencies (an asset priced in dollars shows USD), same rules as the strip. */
+export function pairStripHtml(log, now, ccys, windowH = 24) {
+  const want = new Set((ccys ?? []).filter(Boolean));
+  if (!want.size) return '';
+  const r = surpriseRollup(log, now, windowH);
+  return rollupHtml({ ...r, rows: r.rows.filter(x => want.has(x.ccy)) }, windowH);
+}

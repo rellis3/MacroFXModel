@@ -20,7 +20,7 @@ import { whatChanged } from './whatChanged.js';
 import * as PV from './pairView.js';
 import * as CSV from './chainStatsView.js';
 import { reactionsHtml } from './reactionPanel.js';
-import { surpriseRollup, rollupHtml } from './surpriseRollup.js';
+import { surpriseRollup, rollupHtml, pairStripHtml } from './surpriseRollup.js';
 import { legChartHtml, mountLegChart } from './legChartView.js';
 import { boardHtml as macroBoardHtml, pick as macroBoardPick } from './macroEngines.js';
 import { DESK_EVIDENCE, citable } from '../deskEvidence.js';
@@ -476,6 +476,7 @@ ${c ? `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${ra
 ${c ? `${ladder(c)}<div class="sfc" data-surface="panel.asset.plan"><div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${h(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Lines</b><span class="mono">up ${c.levels.up.p50} / ${c.levels.up.p75} / ${c.levels.up.p90} · down ${c.levels.down.p50} / ${c.levels.down.p75} / ${c.levels.down.p90}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${h(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${h(c.plan.timing)}</span></div>` : ''}</div></div><details><summary>The whole thesis</summary><p>${h(c.why)}</p>${deskView(n)}</details>${whatDrivesHtml(n)}` : ''}
 <p class="tt-note">Chart: candles in the size you pick (5m to 4h; the choice is remembered), today's forecast lines (open, up and down p50 / p75 / p90), the entry zone and the invalidation where the plan names them.</p></div>
 ${AAV.boxHtml(n)}${globalThis.deskViewHtml?.(n) ?? ''}
+<div class="sfc" data-surface="panel.pair.surprises"><div class="card" id="tt-p-sp" style="margin-top:14px" hidden></div></div>
 <div class="sfc" data-surface="panel.pair.engine"><div class="card" id="tt-p-be" style="margin-top:14px" hidden></div></div>
 ${deep ? deepLinksHtml(n) : `<div class="tt-grid2" style="margin-top:14px">${deepCardsHtml(PAIR_ORDER)}</div>`}`;
   const wirePick = () => {
@@ -506,6 +507,12 @@ ${deep ? deepLinksHtml(n) : `<div class="tt-grid2" style="margin-top:14px">${dee
   pairChart(n, c);
   const mine = () => T.pair === n;
   if (!deep) loadCards(n, c, legs, PAIR_ORDER);
+  // the last 24 h of high-impact surprises for this market's own currencies (js/terminal/surpriseRollup.js); no print, no card
+  getJson('/api/release-surprises?n=300').then(r => {
+    const b = mine() && el('tt-p-sp'); if (!b || !r?.ok || !legs) return;
+    const html = pairStripHtml(r.log, Date.now(), legs);
+    if (html && !/No high-impact print/.test(html)) { b.innerHTML = `<div class="ch"><span class="lbl">Surprises since the last close</span><span class="r muted">${legs.filter(Boolean).join(' / ')} · high-impact prints only</span></div>${html}`; b.hidden = false; }
+  }).catch(() => {});
   // the bias engine for this market (any cross of the eight, a currency or an asset); fetched fresh, not cached for the page's life. No read: the card stays hidden.
   getJson(`/api/bias-engine?market=${encodeURIComponent(n)}`).then(r => {
     const b = mine() && el('tt-p-be'); if (!b || !r?.ok || !r.market) return;

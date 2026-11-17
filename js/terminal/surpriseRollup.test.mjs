@@ -32,3 +32,9 @@ test('html carries no good/bad wording and escapes event names', () => {
   const h = rollupHtml(surpriseRollup([p(1, 'EUR', 1.2, '<b>CPI</b>')], NOW));
   assert.ok(!h.includes('<b>CPI</b>')); assert.match(h, /not good or bad/); assert.match(h, /EUR \+1\.2σ/);
 });
+test('pair strip keeps only the pair currencies and shows nothing for none', async () => {
+  const { pairStripHtml } = await import('./surpriseRollup.js');
+  const h = pairStripHtml([p(1, 'EUR', 1.2), p(1, 'USD', -0.5), p(1, 'GBP', 2)], NOW, ['EUR', 'USD']);
+  assert.match(h, /EUR \+1\.2σ/); assert.match(h, /USD -0\.5σ/); assert.ok(!h.includes('GBP'));
+  assert.equal(pairStripHtml([], NOW, []), '');
+});
