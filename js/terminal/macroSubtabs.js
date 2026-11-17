@@ -9,7 +9,7 @@ export const MACRO_SUBS = [
   { id: 'policy', alias: 'policy', label: 'Policy',
     blocks: ['panel.macro.cbcards', 'panel.macro.cbboard', 'panel.macro.cbfutures', 'panel.macro.ratediff', 'panel.macro.speakers', 'panel.macro.speechdrift', 'panel.macro.ratecycle', 'panel.macro.fomcstrip', 'panel.macro.pathdiff'] },
   { id: 'rates', alias: 'rates', label: 'Rates & curve',
-    blocks: ['panel.macro.ratesboard', 'panel.macro.fedyields', 'panel.macro.boepath', 'panel.macro.curve', 'panel.macro.globalyields', 'panel.macro.termprem', 'panel.macro.jgb', 'panel.macro.inflation', 'panel.macro.fiscalauct'] },
+    blocks: ['panel.macro.legchart', 'panel.macro.ratesboard', 'panel.macro.fedyields', 'panel.macro.boepath', 'panel.macro.curve', 'panel.macro.globalyields', 'panel.macro.termprem', 'panel.macro.jgb', 'panel.macro.inflation', 'panel.macro.fiscalauct'] },
   { id: 'economy', alias: 'economy', label: 'Economy',
     blocks: ['panel.macro.engines', 'panel.macro.scorecard', 'panel.macro.nowcasts', 'panel.macro.cli', 'panel.macro.releases'] },
   { id: 'credit', alias: 'credit', label: 'Credit & liquidity',
