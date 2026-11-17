@@ -103,7 +103,7 @@
   </div>
 
   <div class="box">
-    <h2>Equity curve ($100,000 start)</h2>
+    <h2>Equity curve ($100,000 start) <button class="btn" id="csvEq" style="margin-left:10px;text-transform:none;letter-spacing:0">Download daily equity CSV</button></h2>
     <div class="legend" id="eqLegend"></div>
     <div id="eq"></div>
     <h2 style="margin-top:10px">Drawdown</h2>
@@ -160,7 +160,7 @@
   </div>
 
   <div class="box">
-    <h2 id="trTitle">Trade list</h2>
+    <h2><span id="trTitle">Trade list</span> <button class="btn" id="csvTr" style="margin-left:10px;text-transform:none;letter-spacing:0">Download trades CSV</button></h2>
     <div class="note" id="trNote"></div>
     <div class="tscroll"><table id="trTable"></table></div>
     <div class="pager" id="trPager"></div>
@@ -413,6 +413,7 @@ async function drawTrades(){
   const sampled = new Set((await loadDays(s)).map(d => d.date));
   let rows = T.rows.filter(r => m[r[0]]).map(r => { const u = I.daily.uopen[r[0]], netbp = r[4] - costRT(s, c, u)/u*1e4, L = st.v === 'V3' ? r[6] : 1;
     return {date: I.dates[r[0]], en: SLOT[r[1]], ex: SLOT[r[2]], side: r[3], gross: r[4], net: netbp, lev: L, eqbp: netbp*L}; });
+  window._trRows = rows.slice();
   rows.reverse();
   if (trSort === 'best') rows.sort((a,b) => b.eqbp - a.eqbp); if (trSort === 'worst') rows.sort((a,b) => a.eqbp - b.eqbp);
   const n = rows.length, win = rows.filter(r => r.net > 0).length, avg = rows.reduce((a,r) => a + r.net, 0)/(n||1);
@@ -427,6 +428,26 @@ async function drawTrades(){
   $('trTable').querySelectorAll('tr.click').forEach(tr => tr.onclick = () => { $('selDay').value = tr.dataset.d; drawDay(); $('day').scrollIntoView({behavior:'smooth', block:'center'}); });
   $('trPager').innerHTML = `<button class="btn" id="pp">‹</button> page ${trPage+1} / ${pages||1} <button class="btn" id="pn">›</button>`;
   $('pp').onclick = () => { trPage = Math.max(0, trPage-1); drawTrades(); }; $('pn').onclick = () => { trPage = Math.min(pages-1, trPage+1); drawTrades(); };
+}
+function saveCsv(name, lines){
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], {type: 'text/csv'})); a.download = name; a.click();
+}
+function tag(){ return `${st.inst}_${st.v}_${st.cost}_${st.per}`; }
+function csvEquity(){
+  const x = series(st.inst, st.v, st.cost, st.per);
+  let e = 1, pk = 1, b = 1;
+  const out = ['date,net_return,equity_usd,drawdown_pct,buy_hold_return,buy_hold_equity_usd,position_changes'];
+  x.dates.forEach((d, i) => { e *= 1 + x.r[i]; pk = Math.max(pk, e); b *= 1 + x.bh[i];
+    out.push([d, x.r[i].toFixed(6), (1e5*e).toFixed(2), ((e/pk - 1)*100).toFixed(3), x.bh[i].toFixed(6), (1e5*b).toFixed(2), x.units[i]].join(',')); });
+  saveCsv(`noise-area-momentum_daily_${tag()}.csv`, out);
+}
+function csvTrades(){
+  const rows = window._trRows;
+  if (!rows || !['V2','V3'].includes(st.v)) { alert('Pick V2 or V3: the trade list is stored for the paper\'s rule.'); return; }
+  const s = st.inst === 'BOOK' ? 'ES' : st.inst;
+  const out = ['date,instrument,side,entry_ny,exit_ny,gross_bp_1x,net_bp_1x,leverage,net_pct_on_equity'];
+  for (const r of rows) out.push([r.date, s, r.side > 0 ? 'long' : 'short', r.en, r.ex, r.gross.toFixed(2), r.net.toFixed(2), r.lev.toFixed(3), (r.eqbp/100).toFixed(4)].join(','));
+  saveCsv(`noise-area-momentum_trades_${tag()}.csv`, out);
 }
 async function fillDays(){
   const s = st.inst === 'BOOK' ? 'ES' : st.inst, D = await loadDays(s), sel = $('selDay'), cur = sel.value;
@@ -478,6 +499,7 @@ document.addEventListener('mousemove', e => { const t = e.target.closest('[data-
   $('bLog').onclick = () => { st.log = true; $('bLog').classList.add('on'); $('bLin').classList.remove('on'); render(); };
   $('bLin').onclick = () => { st.log = false; $('bLin').classList.add('on'); $('bLog').classList.remove('on'); render(); };
   $('selDay').onchange = drawDay;
+  $('csvEq').onclick = csvEquity; $('csvTr').onclick = csvTrades;
   const cd = Object.fromEntries(['ES','NQ','YM','RTY'].map(s => [s, S.instruments[s].cfd_days]));
   $('dataNote').innerHTML = `<b>SPY:</b> IBKR 1-minute TRADES bars (ARCA), regular hours, unadjusted; IB's extra 16:00–16:15 bars dropped, half-days exit at the 13:00 close; prior close not dividend-adjusted. Costs $0.009/share round trip (the paper's), fractional shares. <b>Futures:</b> NT8 1-minute bars, ratio-adjusted, cash session only. NT8's download had ~6-week holes (a 40-day request returned only its first hour); re-pulled week by week on 15 Nov 2026. The few days NT8 itself has no bars for are filled with OANDA CFD minutes scaled to the futures: ES ${cd.ES}, NQ ${cd.NQ}, YM ${cd.YM}, RTY ${cd.RTY} days (pick "Drop CFD-filled futures days" to exclude them). US-holiday Globex sessions dropped. Futures costs on every entry, exit and reversal; fills at the decision bar's close. <b>Not here:</b> the paper's RSI and NR4/NR7 conditioners, anything after 21 Aug 2026. Scored verdicts use the pre-registered cost and are fixed; the controls above re-cut the same daily P&amp;L at other costs and periods (described, not scored).`;
   render(); drawVerdicts(); drawNull(); drawMech(); drawTod(); fillDays();
