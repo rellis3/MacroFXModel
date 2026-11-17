@@ -1,0 +1,14 @@
+map: 984 cells, 0 BH, 0 candidates
+base_fade_S1 wf taken -0.08996 all -0.17211 conf take share 0.125
+layered_fade_S1 wf taken -0.0887 all -0.17211 conf take share 0.14
+base_fade_S2 wf taken -0.05948 all -0.09374 conf take share 0.208
+layered_fade_S2 wf taken -0.05738 all -0.09374 conf take share 0.245
+base_fade_S3 wf taken -0.1024 all -0.17941 conf take share 0.174
+layered_fade_S3 wf taken -0.09764 all -0.17941 conf take share 0.224
+base_follow_S1 wf taken -0.04395 all -0.17873 conf take share 0.294
+layered_follow_S1 wf taken -0.04723 all -0.17873 conf take share 0.325
+base_follow_S2 wf taken -0.02149 all -0.08288 conf take share 0.315
+layered_follow_S2 wf taken -0.02789 all -0.08288 conf take share 0.283
+base_follow_S3 wf taken -0.03156 all -0.16867 conf take share 0.301
+layered_follow_S3 wf taken -0.04129 all -0.16867 conf take share 0.294
+headline ('follow', 'S2')

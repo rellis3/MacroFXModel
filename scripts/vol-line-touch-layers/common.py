@@ -53,6 +53,8 @@ def model():
 
 
 def fit_predict(Etr, ytr, Ete, feats):
+    # an input with no values in this training set (cgap before 2020-08) is dropped for this fit only
+    feats = [f for f in feats if Etr[f].notna().any()]
     m = model().fit(Etr[feats].to_numpy(float), ytr)
     return m, m.predict(Ete[feats].to_numpy(float))
 
