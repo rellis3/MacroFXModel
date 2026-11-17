@@ -235,7 +235,23 @@ export function sanitizeBiasEngine(body, on) {
   };
   return walk(body);
 }
+/** The Desk Bias Process (/api/desk-bias-process) for the desk login: the invalidation levels (call.invalidation, system.invalidation, the card's
+ *  invalidation object and the AI's allowed levels) read as stop lines, so they are removed unless the owner switched panel.bp.invalid on; the
+ *  cleanest-expression lists ("how to trade the view") are never sent to the desk login (the terminal does not draw them). The rest is kept. */
+export function sanitizeBiasProcess(body, on) {
+  const inv = onFn(on)('panel.bp.invalid');
+  const drop = new Set(['cleanest', 'expression', ...(inv ? [] : ['invalidation', 'allowedInvalidations'])]);
+  const walk = (v, depth = 0) => {
+    if (Array.isArray(v)) return v.map(x => walk(x, depth + 1));
+    if (!v || typeof v !== 'object' || depth > 8) return v;
+    const out = {};
+    for (const [k, x] of Object.entries(v)) if (!drop.has(k)) out[k] = walk(x, depth + 1);
+    return out;
+  };
+  return walk(body);
+}
 export const VIEWER_SANITISERS = {
+  '/api/desk-bias-process': sanitizeBiasProcess,    // invalidation levels are a 'trade' surface (panel.bp.invalid)
   '/api/bias-engine': sanitizeBiasEngine,           // the engine's flip lines are a 'trade' surface (panel.asset.beflip)
   '/api/desk-run': sanitizeRun,
   '/api/desk-run/index': body => sanitizeRunIndex(body),

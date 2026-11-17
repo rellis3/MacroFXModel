@@ -668,6 +668,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/deskBiasProcessView.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/regimeBoardView.js",
@@ -4243,6 +4244,7 @@ export const DERIVED = {
      "js/terminal/calendarDrillsView.js",
      "js/terminal/chainBoard.js",
      "js/terminal/commandCore.js",
+     "js/terminal/deskBiasProcessView.js",
      "js/terminal/goldCore.js",
      "js/terminal/insightData.js",
      "js/terminal/insightSeries.js",
@@ -5400,5 +5402,5 @@ export const DERIVED = {
  "unclassified": [],
  "rootPageCount": 258,
  "packFeeds": 115,
- "generatedAt": "2026-11-16"
+ "generatedAt": "2026-11-17"
 };

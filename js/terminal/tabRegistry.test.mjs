@@ -64,14 +64,16 @@ test('the rule: a surface with a hide reason is OFF by default, a surface withou
 
 test('the owner\'s list: exactly these are hidden, each for its reason', () => {
   const want = {
-    trade: ['tab.read', 'strip.zone', 'panel.ov.tradewatch', 'panel.ov.playbooks', 'panel.ov.bestpairs', 'panel.ccy.expressions', 'panel.asset.plan', 'panel.asset.size', 'panel.corr.hedges', 'panel.asset.beflip'],
+    trade: ['tab.read', 'strip.zone', 'panel.ov.tradewatch', 'panel.ov.playbooks', 'panel.ov.bestpairs', 'panel.ccy.expressions', 'panel.asset.plan', 'panel.asset.size', 'panel.corr.hedges', 'panel.asset.beflip', 'panel.bp.invalid'],
     cost: ['widget.ask', 'nav.research', 'nav.research-tab'],
-    internal: ['tab.infomap', 'nav.deskoffice', 'nav.deskrun', 'nav.access', 'widget.dqchip', 'panel.ov.alerts'],
-    pnl: ['panel.ov.record', 'panel.ana.track', 'panel.ana.fall', 'panel.ana.days', 'panel.charts.ranking', 'panel.changed.thesis', 'panel.changed.paper'],
+    internal: ['tab.infomap', 'nav.deskoffice', 'nav.deskrun', 'nav.access', 'widget.dqchip', 'panel.ov.alerts', 'panel.bp.fundabias'],
+    pnl: ['panel.ov.record', 'panel.ana.track', 'panel.ana.fall', 'panel.ana.days', 'panel.charts.ranking', 'panel.changed.thesis', 'panel.changed.paper', 'panel.bp.h2h', 'panel.bp.review'],
     preview: ['tab.deep', 'widget.cmdline', 'widget.linked', 'panel.cal.drills', 'widget.export', 'panel.news.saved', 'tab.monitor', 'tab.workspace', 'tab.kchart', 'widget.alerts', 'tab.insight', 'widget.replayviz', 'widget.asof', 'widget.ghostwalk', 'widget.oitime', 'panel.ov.glance', 'panel.flow.promos', 'panel.pair.driveshort', 'widget.density', 'widget.eventreplay', 'panel.changed.since', 'panel.risk.strip', 'widget.oidrill', 'widget.smile', 'panel.insight.bis', 'widget.ov.sections',
       // 2026-11-16 owner: a coin-flip direction read is hidden; bias-engine-backtest found no skill at 1, 5 or 20 days (plans/ONE_DESK_BIAS.md).
       // The Macro section's driver grid (panel.macro.biasengine) stays shown as context.
-      'panel.ov.engine', 'panel.ccy.engine', 'panel.asset.engine', 'panel.pair.engine', 'panel.replay.engine', 'panel.insight.spreads', 'panel.insight.roc'],
+      'panel.ov.engine', 'panel.ccy.engine', 'panel.asset.engine', 'panel.pair.engine', 'panel.replay.engine', 'panel.insight.spreads', 'panel.insight.roc',
+      // 2026-11-17: the Desk Bias Process cards, a direction read with no forward record yet (plans/DESK_BIAS_PROCESS_SPEC.md "Desk Terminal")
+      'tab.bprocess'],
   };
   for (const [reason, ids] of Object.entries(want)) for (const id of ids) assert.equal(surfaceById(id)?.hidden, reason, `${id} is hidden as '${reason}'`);
   const listed = Object.values(want).flat();

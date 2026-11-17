@@ -451,6 +451,8 @@ import { buildBiasRecord as _beBuild, marketView as _beMarket, fillPolicyFallbac
 import { YIELD2Y_KV as _Y2_KV, buildYield2yPayload as _y2Payload, yieldWeekChange as _y2Week } from './js/yield2y.js';   // 2y government yields: the bias engine's policy fallback
 import { biasEngine as _bsBiasEngine, h4Trend as _bsH4Trend, deskRating as _bsDeskRating, deskCcy as _bsDeskCcy, maxSignals as _bsMaxSignals, surpriseRule as _bsSurpriseRule, fundabias as _bsFundabias, FUNDABIAS_ENABLED as _BS_FUNDABIAS_ON, processAi as _bsProcessAi, processSystem as _bsProcessSystem, instOfMarket as _bsInstOf, DESK_NAME as _BS_DESK_NAME } from './js/biasForecasters.js';
 import { PROCESS_MARKETS as _DBP_MARKETS, OANDA as _DBP_OANDA, buildLayers as _dbpLayers, buildPack as _dbpPack, historyFor as _dbpHistory, runProcessAi as _dbpAi, finishCard as _dbpFinish, dayRecord as _dbpDay, PROCESS_VERSION as _DBP_VERSION, AI_PROMPT_VERSION as _DBP_PROMPT } from './js/deskBiasProcess.js';   // Desk Bias Process (plans/DESK_BIAS_PROCESS_SPEC.md)
+import { headToHead as _h2hRun, processCalls as _h2hProcessCalls, ledgerCalls as _h2hLedgerCalls, callOutcome as _h2hOutcome, H2H_VERSION as _H2H_VERSION } from './js/deskBiasH2H.js';   // the Desk Bias Process head to head (GET /api/desk-bias-process/h2h)
+import { weeklyReview as _dbpWeeklyReview } from './js/terminal/deskBiasProcessView.js';   // its weekly review of wrong calls (pure)
 import { scoreTrack as _dlScoreTrack } from './js/directionScore.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
 import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
@@ -30706,6 +30708,63 @@ app.post('/api/fundabias-log', (req, res, next) => (_srIsOwner(req) ? next() : r
       return { status: 200, body: { ok: true, row, rows: log.rows.length } };
     }));
     res.status(out.status).json(out.body);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/desk-bias-process/h2h: the head to head (js/deskBiasH2H.js, the same scoring as scripts/bias-scoreboard/h2h.mjs) and the weekly
+// review of wrong calls (js/terminal/deskBiasProcessView.js weeklyReview), computed from stored records only: the process issues (KV
+// desk_bias_process_<date>), the bias scoreboard's same-day records (R2 forward/direction_ledger/sameday/) from the first issue on, and OANDA M5
+// bid/ask/mid bars for the outcomes and the fixed trade rule. Cached 30 minutes in memory; nothing is stored. Empty (empty: true) until the first
+// issue. The Desk Terminal's Bias process tab (panel.bp.h2h, panel.bp.review: the scored record, hidden from the desk login by default).
+let _dbpH2H = { at: 0, key: '', body: null, p: null };
+async function _dbpM5(inst, fromMs, toMs) {
+  const out = [];
+  for (let from = fromMs, k = 0; from < toMs && k < 60; k++) {
+    const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(inst)}/candles?granularity=M5&price=MBA&from=${new Date(from).toISOString()}&count=5000`,
+      { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
+    if (!r.ok) throw new Error(`OANDA ${inst} M5 ${r.status}`);
+    const cs = ((await r.json()).candles ?? []).filter(c => c.complete && c.mid);
+    if (!cs.length) break;
+    for (const c of cs) { const t = Date.parse(c.time); if (t >= toMs) break; out.push({ t, o: +c.mid.o, h: +c.mid.h, l: +c.mid.l, c: +c.mid.c, sp: c.ask && c.bid ? +c.ask.c - +c.bid.c : null }); }
+    const last = Date.parse(cs.at(-1).time) + 5 * 60_000;
+    if (last <= from) break;
+    from = last;
+  }
+  return out;
+}
+async function _dbpH2HCompute() {
+  const index = await _dbpLoadIndex(), records = [];
+  for (const r of index) { try { const raw = await kv.get(_DBP_KEY(r.date)); if (raw) records.push(JSON.parse(raw)); } catch { /* a missing day is a gap */ } }
+  if (!records.length) return { ok: true, empty: true, version: _H2H_VERSION, issuedDays: 0, note: 'No Desk Bias Process issue stored yet: the head to head starts with the first one (forward only, nothing is back-issued).' };
+  const first = records.map(r => r.date).sort()[0], last = records.map(r => r.date).sort().at(-1), status = {};
+  let ledger = [];
+  try {
+    const keys = (await _r2ListKeys(_BS_PREFIX)).filter(k => /sameday\/\d{4}-\d{2}-\d{2}_(base|desk|max|engine|fundabias)\.json$/.test(k) && k.match(/(\d{4}-\d{2}-\d{2})_/)[1] >= first);
+    ledger = (await Promise.all(keys.map(k => _r2GetJSON(k).catch(() => null)))).filter(Boolean);
+    status.ledger = `ok, ${ledger.length} record(s)`;
+  } catch (e) { status.ledger = `error: ${e.message}`; }
+  const calls = [..._h2hProcessCalls(records), ..._h2hLedgerCalls(ledger, _BS_DESK_NAME)].filter(c => c.date >= first);
+  const bars = {}, errs = [];
+  if (process.env.OANDA_KEY) {
+    const from = Date.parse(`${first}T00:00:00Z`) - 864e5, to = Math.min(Date.now(), Date.parse(`${last}T00:00:00Z`) + 4 * 864e5);
+    const ms = [...new Set(calls.map(c => c.market))].filter(m => _DBP_OANDA[m]);
+    for (let i = 0; i < ms.length; i += 4) await Promise.all(ms.slice(i, i + 4).map(async m => { try { bars[m] = await _dbpM5(_DBP_OANDA[m], from, to); } catch (e) { errs.push(`${m}: ${e.message}`); } }));
+    status.bars = errs.length ? `partial: ${errs.slice(0, 4).join('; ')}` : `ok, ${Object.keys(bars).length} market(s)`;
+  } else status.bars = 'OANDA_KEY not set: no outcomes, no R';
+  const b0 = Object.fromEntries(Object.entries(_BS_DESK_NAME).map(([inst, m]) => [m, { d21: _bsBaselines.instruments?.[inst]?.d21?.p0 ?? 0.5, n07: _bsBaselines.instruments?.[inst]?.n07?.p0 ?? 0.5 }]));
+  const H = _h2hRun({ calls, bars, b0, barMs: 5 * 60_000 });
+  // the weekly review: the published call's d21 outcome per market-day over the last 7 days of issues
+  const end = last, from7 = new Date(Date.parse(`${end}T12:00:00Z`) - 6 * 864e5).toISOString().slice(0, 10), outcomes = {};
+  for (const c of calls) if (c.competitor === 'process-ai' && c.date >= from7 && bars[c.market]?.length) outcomes[`${c.market}|${c.date}`] = _h2hOutcome(c, bars[c.market], { barMs: 5 * 60_000 });
+  const review = _dbpWeeklyReview(records, outcomes, { endDate: end, days: 7 });
+  return { ok: true, empty: false, version: _H2H_VERSION, baselines: _bsBaselines.version, issuedDays: records.length, first, last, h2h: H, review, inputs: status, computedAt: new Date().toISOString() };
+}
+app.get('/api/desk-bias-process/h2h', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const idx = await _dbpLoadIndex(), key = `${idx.length}|${idx.at(-1)?.date ?? ''}`;
+    if (_dbpH2H.body && _dbpH2H.key === key && Date.now() - _dbpH2H.at < 30 * 60_000) return res.json({ ..._dbpH2H.body, cached: true });
+    if (!_dbpH2H.p) _dbpH2H.p = _dbpH2HCompute().then(body => { _dbpH2H = { at: Date.now(), key, body, p: null }; return body; }).catch(e => { _dbpH2H.p = null; throw e; });
+    res.json(await _dbpH2H.p);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/fundabias-log?date=D  that day's rows;  no date: today's rows and the index;  ?all=1 every logged day (for h2h.mjs)

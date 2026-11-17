@@ -25,7 +25,7 @@ test('the review\'s moves: Changed beside Overview, Monitor beside Assets, Repla
   assert.ok(at('deep') === at('pair') + 1, 'the Deep dive sits right after Pair');
 });
 test('every tab keeps its id and surface id (Access switches and saved state are unchanged)', () => {
-  for (const [t, s] of [['overview', 'tab.overview'], ['ccy', 'tab.ccy'], ['assets', 'tab.assets'], ['macro', 'tab.macro'], ['pos', 'tab.pos'], ['cal', 'tab.cal'], ['ana', 'tab.ana'], ['charts', 'tab.charts'], ['today', 'tab.today'], ['read', 'tab.read'], ['pair', 'tab.pair'], ['changed', 'tab.changed'], ['replay', 'tab.replay'], ['monitor', 'tab.monitor'], ['workspace', 'tab.workspace'], ['kchart', 'tab.kchart'], ['insight', 'tab.insight'], ['options', 'tab.options'], ['news', 'tab.news'], ['corr', 'tab.corr'], ['infomap', 'tab.infomap']])
+  for (const [t, s] of [['overview', 'tab.overview'], ['ccy', 'tab.ccy'], ['assets', 'tab.assets'], ['macro', 'tab.macro'], ['pos', 'tab.pos'], ['cal', 'tab.cal'], ['ana', 'tab.ana'], ['charts', 'tab.charts'], ['today', 'tab.today'], ['read', 'tab.read'], ['pair', 'tab.pair'], ['changed', 'tab.changed'], ['replay', 'tab.replay'], ['monitor', 'tab.monitor'], ['workspace', 'tab.workspace'], ['kchart', 'tab.kchart'], ['insight', 'tab.insight'], ['bprocess', 'tab.bprocess'], ['options', 'tab.options'], ['news', 'tab.news'], ['corr', 'tab.corr'], ['infomap', 'tab.infomap']])
     assert.match(nav, new RegExp(`data-t="${t}" data-surface="${s.replace('.', '\\.')}"`));
 });
 test('a group with every tab switched off disappears, and the phone gets one scrolling row, not three', () => {

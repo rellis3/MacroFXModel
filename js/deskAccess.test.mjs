@@ -43,7 +43,7 @@ test('a route that backs a switchable surface opens when the owner switches that
   assert.equal(viewerMayCall('GET', '/api/pair-select?force=1', only('panel.ov.bestpairs')), false);
   assert.equal(viewerMayCall('POST', '/api/trade-watch', only('strip.zone')), false);
   // every surface named in the table exists in the registry
-  for (const [p, ids] of VIEWER_SURFACE_ROUTES) { assert.match(p, /^\/api\/[a-z0-9_-]+$/, p); for (const id of ids) assert.ok(surfaceById(id), `${p}: unknown surface ${id}`); }
+  for (const [p, ids] of VIEWER_SURFACE_ROUTES) { assert.match(p, /^\/api\/[a-z0-9_-]+(\/[a-z0-9_-]+)?$/, p); for (const id of ids) assert.ok(surfaceById(id), `${p}: unknown surface ${id}`); }
 });
 
 test('the lens: the desk\'s analysis is readable (as the allowlisted copy), the book and the signals are not', () => {
@@ -93,7 +93,7 @@ test('non-API paths are not this module\'s business', () => {
 });
 
 test('lists are well formed', () => {
-  for (const p of [...VIEWER_DENY_PREFIXES, ...VIEWER_ALLOW_OVERRIDES.filter(x => !x.includes('/history'))]) assert.match(p, /^\/api\/[a-z0-9_-]+$/, p);
+  for (const p of [...VIEWER_DENY_PREFIXES, ...VIEWER_ALLOW_OVERRIDES.filter(x => !x.includes('/history'))]) assert.match(p, /^\/api\/[a-z0-9_-]+(\/[a-z0-9_-]+)?$/, p);
   // an override must sit under a deny prefix, otherwise it is dead weight
   for (const o of VIEWER_ALLOW_OVERRIDES) assert.ok(VIEWER_DENY_PREFIXES.some(p => o.startsWith(p)), `override ${o} is not under a deny prefix`);
 });
@@ -118,4 +118,13 @@ test('the desk login with the desk zone disabled: only the owner path exists, an
 
 test('if the two passwords are the same string, the owner path wins (never a viewer by accident)', () => {
   assert.deepEqual(deskLoginDecision({ password: 'same', mainPassword: 'same', deskPassword: 'same', deskEnabled: true }), { zone: 'main', role: null });
+});
+
+test('the Bias process: the cards open with the tab switch, the head to head only with its own pnl switches (longest prefix decides)', () => {
+  const only = ids => id => ids.includes(id);
+  assert.equal(viewerMayCall('GET', '/api/desk-bias-process'), false, 'preview: off by default');
+  assert.equal(viewerMayCall('GET', '/api/desk-bias-process?date=2026-11-17', only(['tab.bprocess'])), true);
+  assert.equal(viewerMayCall('GET', '/api/desk-bias-process/h2h', only(['tab.bprocess'])), false, 'the tab switch does not open the scored record');
+  assert.equal(viewerMayCall('GET', '/api/desk-bias-process/h2h', only(['panel.bp.review'])), true);
+  assert.equal(viewerMayCall('POST', '/api/fundabias-log', only(['tab.bprocess', 'panel.bp.fundabias'])), false, 'the FundaBias log POST is never the desk login\'s');
 });

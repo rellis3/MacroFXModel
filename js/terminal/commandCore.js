@@ -80,6 +80,7 @@ const TAB_WORDS = {
   deep: ['DEEP', ['DEEPDIVE', 'DIVE'], 'The Deep dive tab (preview): the reference cards for one market (rates, positioning, behaviour, context). DEEP GOLD RATES opens it on that market and section.'],
   workspace: ['WORKSPACE', ['WS', 'LAYOUT', 'WORKSPACES'], 'The Workspace tab (preview): drag and resize the terminal panels into a screen of your own. Add a name to load a saved layout: WORKSPACE RATES.'],
   insight: ['INSIGHT', ['BOARDS'], 'The Insight tab (preview): boards that read what we already hold in a new way, starting with what is unusual right now.'],
+  bprocess: ['BIASPROCESS', ['BPROC', 'PROCESS', 'FUNDABIAS'], 'The Bias process tab (preview): one card per market from the Desk Bias Process (call, conviction, who made it, the six layers), its head to head and the weekly review.'],
   infomap: ['INFO', ['INFOMAP', 'SWITCHES'], 'The Info map tab (owner only): what data the repo holds, and the preview-feature switches.'],
 };
 export const TAB_WORD_IDS = Object.keys(TAB_WORDS);
