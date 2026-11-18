@@ -1,0 +1,20 @@
+
+== C (block 63)
+  C R1 3-month blocks          n= 2229  chosen E6  1.49 vs A0 2.40  CI [-1.52,-0.41]  halves [-1.53,-0.22] [-2.27,-0.92]  E6 1.49
+  C R2 without 2018Q4          n= 2164  chosen E6  1.43 vs A0 2.53  CI [-1.62,-0.53]  halves [-1.71,-0.28] [-2.17,-0.87]  E6 1.43
+  C R2 without covid           n= 2137  chosen E6  1.55 vs A0 2.56  CI [-1.55,-0.37]  halves [-1.57,-0.18] [-2.18,-0.87]  E6 1.55
+  C R2 without bear2022        n= 1971  chosen E6  1.79 vs A0 2.70  CI [-1.58,-0.31]  halves [-1.65,-0.08] [-2.18,-0.89]  E6 1.79
+  C R2 without tariff2025      n= 2165  chosen H8  1.56 vs A0 2.30  CI [-1.45,-0.30]  halves [-1.59,-0.17] [-2.63,-0.78]  E6 1.46
+  C R3 any flag out            n= 1653  chosen R15 1.54 vs A0 2.16  CI [-1.53,-0.14]  halves [-1.40,+0.00] [-2.36,-0.76]  E6 2.36
+  C R3b fault flags out        n= 2125  chosen E6  1.34 vs A0 2.59  CI [-1.69,-0.57]  halves [-1.74,-0.43] [-2.38,-0.91]  E6 1.34
+  dropped: R3 576 sessions, R3b 104  -> C verdict after A2: VALIDATED
+
+== F (block 63)
+  F R1 3-month blocks          n= 2196  chosen E6  1.82 vs A0 2.50  CI [-1.46,-0.24]  halves [-1.78,-0.15] [-2.39,-0.36]  E6 1.82
+  F R2 without 2018Q4          n= 2135  chosen E6  1.71 vs A0 2.49  CI [-1.51,-0.30]  halves [-1.68,-0.07] [-2.16,-0.49]  E6 1.71
+  F R2 without covid           n= 2103  chosen E6  1.75 vs A0 2.57  CI [-1.48,-0.21]  halves [-1.63,+0.00] [-2.23,-0.59]  E6 1.75
+  F R2 without bear2022        n= 1938  chosen E6  1.82 vs A0 2.80  CI [-1.72,-0.39]  halves [-2.16,-0.23] [-2.37,-0.69]  E6 1.82
+  F R2 without tariff2025      n= 2135  chosen E6  1.74 vs A0 2.43  CI [-1.47,-0.23]  halves [-1.70,-0.10] [-2.63,-0.60]  E6 1.74
+  F R3 any flag out            n= 1623  chosen R5  1.76 vs A0 2.58  CI [-1.39,-0.21]  halves [-1.44,+0.00] [-2.27,-0.55]  E6 2.92
+  F R3b fault flags out        n= 2093  chosen E6  1.75 vs A0 2.73  CI [-1.66,-0.44]  halves [-1.95,-0.31] [-2.42,-0.42]  E6 1.75
+  dropped: R3 573 sessions, R3b 103  -> F verdict after A2: VALIDATED

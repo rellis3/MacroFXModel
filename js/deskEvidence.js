@@ -3308,14 +3308,14 @@ export const DESK_EVIDENCE = [
   {
     id: 'ladder-v2-nq', domain: 'volatility', verdict: 'validated', date: '2026-11-18', doc: 'forge/LADDER_V2_NQ_PREREG.md', also: ['analysis/output/ladder-v2-nq/RESULTS.md'],
     claim: 'Among 12 sigma inputs, one keeps the NQ daily ladder (OH/OL/HL p75/p90) on target in every sigma quintile, walk-forward, on the NAS100 CFD',
-    result: 'Pre-registered, walk-forward 2018-01 to 2026-08-20, 2,229 sessions. Winner har_rv_log (forge) on NY-close bars: 30-cell regime miss 1.49pp vs live yz_10 2.40pp, difference 90% CI [-1.49, -0.32] with the winner re-selected in every bootstrap draw; both halves better (2018-22 [-1.68, -0.15], 2023-26 [-2.26, -0.76]). Within the noise floor (p90 1.64). Quietest-fifth HL>p75 35.7% -> 25.3%; loudest 21.3% -> 25.8%. HAR-800 production tied (1.60). Positive controls and mirror pass.',
+    result: 'Pre-registered, walk-forward 2018-01 to 2026-08-20, 2,229 sessions. Winner har_rv_log (forge) on NY-close bars: 30-cell regime miss 1.49pp vs live yz_10 2.40pp, difference 90% CI [-1.49, -0.32] with the winner re-selected in every bootstrap draw; both halves better (2018-22 [-1.68, -0.15], 2023-26 [-2.26, -0.76]). Within the noise floor (p90 1.64). Quietest-fifth HL>p75 35.7% -> 25.3%; loudest 21.3% -> 25.8%. HAR-800 production tied (1.60). Positive controls and mirror pass. A2 (post-hoc, demote-only): holds with 3-month blocks, with each stress episode left out, and with flagged days out.',
     use: 'NQ shadow sigma = har_rv_log with widths fitted on it; side-by-side only until owner sign-off. Calibration, not direction.',
     instruments: ['NQ'],
   },
   {
     id: 'ladder-v2-nq-fut', domain: 'volatility', verdict: 'validated', date: '2026-11-18', doc: 'forge/LADDER_V2_NQ_PREREG.md', also: ['analysis/output/ladder-v2-nq/RESULTS.md'],
     claim: 'The same sigma race on CME NQ futures (NT8 M1, ratio-adjusted sigma bars, front-contract London sessions)',
-    result: 'Pre-registered, walk-forward 2018-01 to 2026-08-21, 2,196 sessions. Winner har_rv_log again: 1.82pp vs yz_10 2.50pp, 90% CI [-1.46, -0.17]; halves [-1.86, -0.09] and [-2.39, -0.28]. 0.18pp above the noise floor p90. Quietest-fifth HL>p75 34.3% -> 24.8%.',
+    result: 'Pre-registered, walk-forward 2018-01 to 2026-08-21, 2,196 sessions. Winner har_rv_log again: 1.82pp vs yz_10 2.50pp, 90% CI [-1.46, -0.17]; halves [-1.86, -0.09] and [-2.39, -0.28]. 0.18pp above the noise floor p90. Quietest-fifth HL>p75 34.3% -> 24.8%. A2 (post-hoc, demote-only): holds with 3-month blocks, with each stress episode left out, and with flagged days out.',
     use: 'Futures ladder uses the same sigma spec as the CFD (see ladder-v2-nq-cvf). Shadow only.',
     instruments: ['NQ'],
   },
