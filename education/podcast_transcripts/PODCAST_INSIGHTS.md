@@ -24,6 +24,7 @@ Dated market calls go into **Calls to Score**, so we can see later whether their
 |---|---|---|
 | **BD** | Brent Donnelly, Spectra Markets; ex-bank FX market maker, PM, day trader; author of *Alpha Trader* and *The Art of Currency Trading* | Short-term FX, price action and positioning, journals every trade |
 | **AP** | Alfonso Peccarelli, founder of The Macro Compass; ex-head of investments at a large European bank | Long horizon, weekly charts only, macro-data driven, portfolio construction |
+| **JV** | Jordi Visser, ex-Morgan Stanley MD, ex-president of a $4bn hedge fund; guest on *Titans of Tomorrow* (T-series below) | Equity names and indices on a three-month clock; agents as a research team; the 50-day rate of change |
 
 Podcast: *The Macro Trading Floor*.
 
@@ -182,7 +183,7 @@ Things we could test: R13-R15, below.
 | Setup (conditions) is separate from trigger (liquidity gauges turning) | BD | E02 |
 | Trade both directions; write down your biases and fight them | BD, AP | E02 |
 | Crowded and overbought but logical trend → consolidation, then continuation | BD | E02 |
-| Watch the turn in the rate of change (peak capex, inflation acceleration), not the level | AP | E02, E03 |
+| Watch the turn in the rate of change (peak capex, inflation acceleration; JV: the 50-day ROC on price), not the level | AP, JV | E02, E03, T01 |
 | Yields vs nominal GDP as a long-run equilibrium | AP | E02, E03 |
 | Starting conditions / positioning decide the reaction to news | BD | E01, E03 |
 | Policy credibility: markets test low-credibility policymakers | BD, AP | E01, E02, E03 |
