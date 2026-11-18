@@ -165,3 +165,5 @@ p.in-cap { font-size: 11.5px; color: var(--tx2); }
 .bis-cap, .bis-depth { font-size: 12px; margin: 6px 0; overflow-wrap: anywhere; }
 .bis-c { white-space: nowrap; }
 .bis-what { margin: 0 0 10px; font-size: 13px; line-height: 1.5; }
+
+.be-fallback{white-space:normal;max-width:100%;line-height:1.35;text-align:left;display:inline-block}

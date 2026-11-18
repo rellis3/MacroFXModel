@@ -1,0 +1,68 @@
+{
+  "instruments": [
+    "NQ",
+    "EURUSD",
+    "GOLD"
+  ],
+  "select": {
+    "kinds": [
+      "line"
+    ],
+    "groups": null,
+    "rungs": null,
+    "sides": null,
+    "set": "better",
+    "stack": {
+      "unit": "ticks",
+      "width": 5
+    },
+    "query": null,
+    "dedupe_bar": false
+  },
+  "by": [
+    "instrument",
+    "group"
+  ],
+  "steps": [
+    "trade"
+  ],
+  "trade": {
+    "mode": "both",
+    "horizon": "60m",
+    "stop": {
+      "type": "median_mae",
+      "mult": 0.25,
+      "horizon": "60m",
+      "units": "price",
+      "fit": "all",
+      "fit_on": "selected",
+      "fit_by": [
+        "group"
+      ]
+    },
+    "target": {
+      "type": "median_mfe",
+      "mult": 1.0,
+      "horizon": "60m",
+      "units": "price",
+      "fit": "all",
+      "fit_on": "selected",
+      "fit_by": [
+        "group"
+      ]
+    },
+    "cost": {
+      "ticks": 0,
+      "commission_usd": 0
+    },
+    "min_k": 30
+  },
+  "splits": {
+    "discovery_end": "2023-01-01"
+  },
+  "boot": {
+    "B": 1000,
+    "seed": 20261118
+  },
+  "description": "Step 3 (v3): better level (outermost line of a 5-tick stack) and the race: stop = median 60m MAE, target = median 60m MFE of the same set, first passage over 60 one-minute bars, gross. Swap select.set to all / first / better_first."
+}

@@ -318,7 +318,6 @@ html[data-role="owner"] .disclaimer{display:none}
   <section id="bprocess" hidden data-surface="tab.bprocess"></section>
   <section id="options" hidden data-surface="tab.options"></section>
   <section id="news" hidden data-surface="tab.news"></section>
-  <section id="research" hidden></section>
   <section id="corr" hidden data-surface="tab.corr"></section>
   <section id="infomap" hidden data-surface="tab.infomap"></section>
 </main>
@@ -1165,6 +1164,7 @@ function overview() {
 const BEV = () => globalThis.biasEngineView ?? null;
 const beRec = () => (D.be?.currencies ? D.be : null);
 const beOf = n => { const V = BEV(), r = beRec(); if (!V || !r) return null; try { return V.marketView(r, n); } catch { return null; } };
+globalThis.deskBeFallback = (n, rating) => { try { const m = beOf(n), V = BEV(); return m && V ? V.fallbackChip(m, rating) : ''; } catch { return ''; } };      // the same engine-lean line for the Pair header
 const beTry = fn => { try { return fn() ?? ''; } catch (e) { console.warn('bias engine', e); return ''; } };
 function beOverview() {
   const box = $('beov'), V = BEV(), r = beRec(); if (!box) return;
@@ -1248,7 +1248,7 @@ function assetCard(n, c, full = false) {
   const s = assetScore(c), live = D.live?.[n], be = beOf(n);
   return `<div class="${full ? '' : 'card click'}" ${full ? '' : `tabindex="0" data-inst="${esc(n)}"`}><div class="ch"><span class="chip">${esc(GROUPS[groupOf(n)] ?? '')}</span><span class="chip">${esc(n)}</span><span class="r">${full ? '' : (globalThis.assetFav?.starHtml(n, nice(n)) ?? '')}${gradeChip(c)}${full ? '<button class="x" aria-label="Close">✕</button>' : ''}</span></div>
 <h3 style="margin:0 0 8px;font-size:${full ? 22 : 17}px">Analysis of ${esc(nice(n))}</h3>
-<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="lbl" title="The day's one lean: the morning desk run's call, fixed once issued. The bar beside it is the same call as a score (direction × the card's conviction), not a second view (plans/ONE_DESK_BIAS.md).">Desk call</span>${rateChipC(c)}${scoreBar(s, '220px', assetWordV(c))}${full && live && live.rating !== c.rating ? `<span class="chip gold" title="${esc(`An intraday desk note, not a change of call: the day's call stays ${ratingWord(c.rating)}. ${live.why ?? ''}`)}">intraday note → ${esc(live.rating)}</span>` : ''}</div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="lbl" title="The day's one lean: the morning desk run's call, fixed once issued. The bar beside it is the same call as a score (direction × the card's conviction), not a second view (plans/ONE_DESK_BIAS.md).">Desk call</span>${rateChipC(c)}${scoreBar(s, '220px', assetWordV(c))}${sf('panel.asset.enginefallback', beTry(() => (be ? BEV().fallbackChip(be, c.rating) : '')))}${full && live && live.rating !== c.rating ? `<span class="chip gold" title="${esc(`An intraday desk note, not a change of call: the day's call stays ${ratingWord(c.rating)}. ${live.why ?? ''}`)}">intraday note → ${esc(live.rating)}</span>` : ''}</div>
 ${globalThis.ttUnreviewedNote?.(c) || `<div class="thesis">“${esc(full ? firstSentence(c.why) : c.why)}”</div>`}
 <div class="drv">${sources(c.why).map(t => `<span>${t}</span>`).join('')}<span title="The card's own conviction (the Head's), not the global ruling's or a currency's">card conviction ${esc(c.conviction ?? '–')}</span><span class="sfc" data-surface="panel.asset.size"><span>size ${c.size ?? '–'}${c.sizeBeforeCap && c.sizeBeforeCap !== c.size ? ` (from ${c.sizeBeforeCap})` : ''}</span></span></div>
 ${full ? `${c.levels ? '' : noLevels()}<div class="tfp-host" id="achart-tf"></div><div class="achart" id="achart"></div>` : (c.levels ? ladder(c) : noLevels()) + (globalThis.newsLatestLine?.(D.news, n, c.rating) ?? '')}

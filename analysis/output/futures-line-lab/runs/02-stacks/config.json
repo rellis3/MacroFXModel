@@ -1,0 +1,54 @@
+{
+  "instruments": [
+    "NQ",
+    "EURUSD",
+    "GOLD"
+  ],
+  "select": {
+    "kinds": [
+      "line"
+    ],
+    "groups": null,
+    "rungs": null,
+    "sides": null,
+    "set": "all",
+    "stack": {
+      "unit": "ticks",
+      "width": 5
+    },
+    "query": null,
+    "dedupe_bar": false
+  },
+  "by": [
+    "instrument"
+  ],
+  "steps": [
+    "excursions",
+    "stacks"
+  ],
+  "trade": {
+    "mode": "fade",
+    "horizon": "60m",
+    "stop": {
+      "type": "sigma",
+      "mult": 0.25
+    },
+    "target": {
+      "type": "rr",
+      "mult": 1.0
+    },
+    "cost": {
+      "ticks": 0,
+      "commission_usd": 0
+    },
+    "min_k": 30
+  },
+  "splits": {
+    "discovery_end": "2023-01-01"
+  },
+  "boot": {
+    "B": 1000,
+    "seed": 20261118
+  },
+  "description": "Step 2: lines close together. A touch is stacked if another line sits within 5 ticks; lone vs stacked medians in sigma and back-wins. Try --set select.stack.unit=sigma --set select.stack.width=0.05."
+}

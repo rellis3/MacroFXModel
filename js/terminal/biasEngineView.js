@@ -92,6 +92,16 @@ ${m.why ? `<p class="be-why">${esc(m.why)}</p>` : ''}${driverTableHtml(m, { legs
 }
 
 /** The Assets card's compact line: the chip and the split chip beside the desk rating. */
+/** When the desk call is flat or missing, say what the bias engine leans instead of leaving a grey 0.0. Pure. '' when the desk has a long or short, or the engine has no read.
+ *  It never changes the desk call: the engine is the slower macro tilt (its back-test found no proven direction skill), so this is a labelled fallback, not a second call. */
+export function fallbackChip(m, rating) {
+  const desk = deskSign({ rating }), e = engineSign(m), l = engineLabel(m);
+  if (e == null || !l || (desk != null && desk !== 0)) return '';
+  const who = desk == null ? 'No desk view today' : 'Desk call neutral';
+  const txt = e === 0 ? `${who} · engine also neutral` : `${who} · engine leans ${l}`;
+  const t = `${who}. The bias engine (rule-based, slow macro tilt) reads ${l}, score ${sgn(m.score)} of ±2. It is shown so the card is not blank; it is context, not the desk's call, and its back-test found no proven direction skill. ${FOOTNOTE}`;
+  return `<span class="chip ${cls(e)} be-chip be-fallback" title="${esc(t)}">${esc(txt)}</span>`;
+}
 export function cardChipsHtml(m, desk) { return m ? `${engineChip(m)}${splitChip(m, desk)}` : ''; }
 
 /** Agreement between the engine and the desk: over the desk's cards the engine covers, and over the eight currencies. */
