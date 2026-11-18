@@ -1,0 +1,22 @@
+panel 54408 common 46167 2017-10-02 2022-12-30 majors 9527 5s
+neff majors 5.321216502637649 8.308657429078703 8.786838466116176 all 5.105749650846648 7.970709059988247
+alone {"lhl": {"S": 0.0241, "E": 0.0397, "R": 0.0021, "Jo": 0.0002, "Jm": 0.0013, "all5": 0.0693, "sum_alone": 0.0674, "M_D": -0.0034, "M_all6": 0.0566, "M_all5": 0.0549}, "hit": {"S": 0.0185, "E": 0.02, "R": 0.002, "Jo": 0.0002, "Jm": 0.0006, "all5": 0.0414, "sum_alone": 0.0414, "M_D": -0.0019, "M_all6": 0.0285, "M_all5": 0.0282}}
+pair S E 154s
+pair S R 253s
+pair S D 273s
+pair S Jo 358s
+pair S Jm 436s
+pair E R 505s
+pair E D 522s
+pair E Jo 600s
+pair E Jm 681s
+pair R D 699s
+pair R Jo 776s
+pair R Jm 851s
+pair D Jo 867s
+pair D Jm 883s
+pair Jo Jm 958s
+headline pair S Jm 0.00010616464506285617 6.2219206441072e-05
+lag1 {'gain0': np.float64(0.00010616464506285617), 'gain1': np.float64(-0.0007085539530646834), 'shuf95_1': 8.826514422892729e-05, 'ic0': np.float64(0.03158535173079019), 'ic1': np.float64(-0.024927915785135202), 'ic1_lo': np.float64(-0.05933208011608015), 'ic1_hi': np.float64(0.0075710258131617345), 'E_range0': np.float64(0.03972014740577323), 'E_range1': np.float64(0.021671253345518893), 'E_hit0': np.float64(0.020020022552608374), 'E_hit1': np.float64(0.011633944836891175)} 23s
+cells 174 BH pass 3 raw p<.05 10
+wrote C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\backtest-data\vol-layer\system-wide.json 1236s

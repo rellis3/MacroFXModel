@@ -51,11 +51,18 @@ async function askValidated({ callModel, parseJson, task, system, prompt, maxTok
       if (i === 0 && transient(e)) { await new Promise(r => setTimeout(r, retryDelayMs)); continue; }   // one more try after a short wait
       break;
     }
-    const parsed = parseJson(reply.text, label);
+    const text = String(reply.text ?? '');
+    const parsed = text.trim() ? parseJson(text, label) : null;
     // A reply cut off at the token cap (thinking counts against it) is retried with twice the room, not the same
     // cap: on 2026-11-03 every analyst hit a 3,000 cap twice and the run produced nothing.
-    const v = parsed ? validate(parsed) : { ok: false, errors: [reply.truncated ? `reply was cut off at the ${cap}-token cap before the JSON was complete` : 'reply was not parseable JSON'] };
-    attempts.push({ ok: v.ok, errors: v.ok ? undefined : v.errors, usage: reply.usage ?? null, model: reply.model ?? null, truncated: !!reply.truncated });
+    // 2026-11-16: the Head failed twice with only "not parseable JSON" and nothing kept to say why, so a failed parse
+    // now records the stop reason, the length and both ends of the reply.
+    const why = reply.truncated ? `reply was cut off at the ${cap}-token cap before the JSON was complete`
+      : !text.trim() ? `reply had no text (stop reason ${reply.stopReason ?? 'unknown'})`
+      : `reply was not parseable JSON (${text.length} chars, stop reason ${reply.stopReason ?? 'unknown'})`;
+    const v = parsed ? validate(parsed) : { ok: false, errors: [why] };
+    attempts.push({ ok: v.ok, errors: v.ok ? undefined : v.errors, usage: reply.usage ?? null, model: reply.model ?? null, truncated: !!reply.truncated,
+      stopReason: reply.stopReason ?? null, ...(parsed ? {} : { sample: { chars: text.length, start: text.slice(0, 400), end: text.slice(-400) } }) });
     if (v.ok) return { ok: true, value: v.value, notes: v.notes, attempts };
     if (reply.truncated) {
       // more room if there is any; at the ceiling (the Head and the control, 32k with thinking) the same prompt would

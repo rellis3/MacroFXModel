@@ -1,0 +1,664 @@
+part,cell,metric,comp,est,lo,hi,p,bh
+1 sizing,all,monthly risk deviation,F - U,-0.11063,-0.14552,-0.08255,0.0,True
+1 sizing,all,% days beyond 3 sd,F - U,-0.13227,-0.70968,0.30117,0.693,False
+1 sizing,all,monthly risk deviation,T20 - F,-0.00132,-0.00754,0.00493,0.675,False
+1 sizing,all,% days beyond 3 sd,T20 - F,0.08818,0.00367,0.17616,0.039,False
+1 sizing,all,monthly risk deviation,MM - F,0.11522,0.09147,0.14001,0.0,True
+1 sizing,all,% days beyond 3 sd,MM - F,0.48684,0.26833,0.71677,0.0,True
+1 sizing,all,monthly risk deviation,FJ - F,0.00279,0.00075,0.00494,0.007,True
+1 sizing,all,% days beyond 3 sd,FJ - F,0.00184,-0.0331,0.0349,0.955,False
+1 sizing,all,monthly risk deviation,FA - F,0.00239,-0.00083,0.00577,0.155,False
+1 sizing,all,% days beyond 3 sd,FA - F,-0.0496,-0.11013,0.0147,0.14,False
+1 sizing,all,"p99 loss (1st pct, sd)",F - U,-0.0194,-0.22381,0.23864,0.815,False
+1 sizing,all,"p99 loss (1st pct, sd)",T20 - F,-0.00797,-0.07326,0.03645,0.556,False
+1 sizing,all,"p99 loss (1st pct, sd)",MM - F,-0.18433,-0.31922,-0.0628,0.002,True
+1 sizing,all,"p99 loss (1st pct, sd)",FJ - F,0.01079,-0.02052,0.02605,0.86,False
+1 sizing,all,"p99 loss (1st pct, sd)",FA - F,0.02991,-0.00785,0.06943,0.142,False
+1 sizing,FX majors,monthly risk deviation,F - U,-0.10733,-0.15623,-0.0646,0.0,True
+1 sizing,FX majors,% days beyond 3 sd,F - U,-0.22264,-0.85448,0.30279,0.534,False
+1 sizing,FX majors,monthly risk deviation,T20 - F,-0.00926,-0.01904,0.00176,0.082,False
+1 sizing,FX majors,% days beyond 3 sd,T20 - F,0.14249,-0.07121,0.38274,0.226,False
+1 sizing,FX majors,monthly risk deviation,MM - F,0.11519,0.08014,0.153,0.0,True
+1 sizing,FX majors,% days beyond 3 sd,MM - F,0.56995,0.22264,0.97908,0.0,True
+1 sizing,FX majors,monthly risk deviation,FJ - F,0.00214,-0.00043,0.00485,0.116,False
+1 sizing,FX majors,% days beyond 3 sd,FJ - F,-0.02672,-0.08015,0.0267,0.379,False
+1 sizing,FX majors,monthly risk deviation,FA - F,0.00074,-0.00322,0.00504,0.732,False
+1 sizing,FX majors,% days beyond 3 sd,FA - F,-0.04453,-0.12461,0.0356,0.294,False
+1 sizing,FX majors,"p99 loss (1st pct, sd)",F - U,-0.0007,-0.259,0.31199,0.945,False
+1 sizing,FX majors,"p99 loss (1st pct, sd)",T20 - F,-0.03075,-0.13054,0.07877,0.66,False
+1 sizing,FX majors,"p99 loss (1st pct, sd)",MM - F,-0.27449,-0.45623,-0.12716,0.002,True
+1 sizing,FX majors,"p99 loss (1st pct, sd)",FJ - F,0.00776,-0.03788,0.04838,0.837,False
+1 sizing,FX majors,"p99 loss (1st pct, sd)",FA - F,0.06828,-0.02374,0.09605,0.194,False
+1 sizing,FX crosses,monthly risk deviation,F - U,-0.0813,-0.10709,-0.05787,0.0,True
+1 sizing,FX crosses,% days beyond 3 sd,F - U,-0.06546,-0.46765,0.28349,0.801,False
+1 sizing,FX crosses,monthly risk deviation,T20 - F,-0.00388,-0.00909,0.00142,0.143,False
+1 sizing,FX crosses,% days beyond 3 sd,T20 - F,0.08416,-0.01566,0.17485,0.109,False
+1 sizing,FX crosses,monthly risk deviation,MM - F,0.09897,0.07777,0.12087,0.0,True
+1 sizing,FX crosses,% days beyond 3 sd,MM - F,0.44576,0.22756,0.67299,0.0,True
+1 sizing,FX crosses,monthly risk deviation,FJ - F,0.00369,0.00114,0.00637,0.005,True
+1 sizing,FX crosses,% days beyond 3 sd,FJ - F,0.0,-0.04991,0.04676,1.0,False
+1 sizing,FX crosses,monthly risk deviation,FA - F,0.00159,-0.0016,0.00494,0.334,False
+1 sizing,FX crosses,% days beyond 3 sd,FA - F,-0.03741,-0.10287,0.02804,0.284,False
+1 sizing,FX crosses,"p99 loss (1st pct, sd)",F - U,0.03317,-0.16091,0.21923,0.872,False
+1 sizing,FX crosses,"p99 loss (1st pct, sd)",T20 - F,-0.01653,-0.0751,0.04396,0.587,False
+1 sizing,FX crosses,"p99 loss (1st pct, sd)",MM - F,-0.18391,-0.3248,-0.07242,0.002,True
+1 sizing,FX crosses,"p99 loss (1st pct, sd)",FJ - F,-0.00757,-0.03704,0.01792,0.547,False
+1 sizing,FX crosses,"p99 loss (1st pct, sd)",FA - F,0.01081,-0.0279,0.05629,0.513,False
+1 sizing,metals,monthly risk deviation,F - U,-0.13259,-0.19204,-0.07794,0.0,True
+1 sizing,metals,% days beyond 3 sd,F - U,-0.25047,-1.43665,0.68793,0.768,False
+1 sizing,metals,monthly risk deviation,T20 - F,0.00921,-0.0137,0.03357,0.458,False
+1 sizing,metals,% days beyond 3 sd,T20 - F,0.0,-0.3757,0.37594,1.0,False
+1 sizing,metals,monthly risk deviation,MM - F,0.12418,0.08259,0.16834,0.0,True
+1 sizing,metals,% days beyond 3 sd,MM - F,0.81403,0.18762,1.56448,0.009,True
+1 sizing,metals,monthly risk deviation,FJ - F,0.00148,-0.00267,0.00596,0.504,False
+1 sizing,metals,% days beyond 3 sd,FJ - F,0.0,0.0,0.0,1.0,False
+1 sizing,metals,monthly risk deviation,FA - F,0.00116,-0.00686,0.00921,0.808,False
+1 sizing,metals,% days beyond 3 sd,FA - F,-0.12523,-0.31348,0.0,0.273,False
+1 sizing,metals,"p99 loss (1st pct, sd)",F - U,0.3033,-0.39696,0.95495,0.674,False
+1 sizing,metals,"p99 loss (1st pct, sd)",T20 - F,-0.22106,-0.5443,0.20705,0.469,False
+1 sizing,metals,"p99 loss (1st pct, sd)",MM - F,-0.34776,-0.45557,0.19155,0.276,False
+1 sizing,metals,"p99 loss (1st pct, sd)",FJ - F,-0.03565,-0.06024,0.04962,0.729,False
+1 sizing,metals,"p99 loss (1st pct, sd)",FA - F,0.0083,-0.06717,0.1856,0.465,False
+1 sizing,indices,monthly risk deviation,F - U,-0.20857,-0.30198,-0.1325,0.0,True
+1 sizing,indices,% days beyond 3 sd,F - U,-0.23092,-1.58617,0.67986,0.802,False
+1 sizing,indices,monthly risk deviation,T20 - F,0.01473,-0.00851,0.03893,0.223,False
+1 sizing,indices,% days beyond 3 sd,T20 - F,0.05248,-0.23013,0.33568,0.716,False
+1 sizing,indices,monthly risk deviation,MM - F,0.16791,0.12002,0.21745,0.0,True
+1 sizing,indices,% days beyond 3 sd,MM - F,0.47234,-0.09431,1.08081,0.111,False
+1 sizing,indices,monthly risk deviation,FJ - F,0.00074,-0.00379,0.00534,0.766,False
+1 sizing,indices,% days beyond 3 sd,FJ - F,0.04199,-0.01052,0.09513,0.206,False
+1 sizing,indices,monthly risk deviation,FA - F,0.00716,-0.00247,0.01706,0.16,False
+1 sizing,indices,% days beyond 3 sd,FA - F,-0.08397,-0.2625,0.09461,0.379,False
+1 sizing,indices,"p99 loss (1st pct, sd)",F - U,-0.15079,-0.57229,0.27282,0.396,False
+1 sizing,indices,"p99 loss (1st pct, sd)",T20 - F,-0.07126,-0.21383,0.17165,0.718,False
+1 sizing,indices,"p99 loss (1st pct, sd)",MM - F,-0.04029,-0.45438,0.24654,0.608,False
+1 sizing,indices,"p99 loss (1st pct, sd)",FJ - F,-0.02919,-0.07286,0.04555,0.704,False
+1 sizing,indices,"p99 loss (1st pct, sd)",FA - F,0.03254,-0.13444,0.14482,0.896,False
+1 sizing,AUDCAD,monthly risk deviation,F - U,-0.07092,-0.11415,-0.02839,0.0,True
+1 sizing,AUDCAD,% days beyond 3 sd,F - U,-0.43641,-1.55958,0.43614,0.502,False
+1 sizing,AUDCAD,monthly risk deviation,T20 - F,0.00581,-0.01709,0.028,0.584,False
+1 sizing,AUDCAD,% days beyond 3 sd,T20 - F,0.18703,-0.3743,0.74813,0.605,False
+1 sizing,AUDCAD,monthly risk deviation,MM - F,0.0909,0.04967,0.13408,0.0,True
+1 sizing,AUDCAD,% days beyond 3 sd,MM - F,0.87282,0.31172,1.49533,0.001,True
+1 sizing,AUDCAD,monthly risk deviation,FJ - F,0.00737,-8e-05,0.01487,0.052,False
+1 sizing,AUDCAD,% days beyond 3 sd,FJ - F,0.18703,0.0,0.49844,0.182,False
+1 sizing,AUDCAD,monthly risk deviation,FA - F,-0.00153,-0.00945,0.00597,0.75,False
+1 sizing,AUDCAD,% days beyond 3 sd,FA - F,0.0,-0.18692,0.18692,1.0,False
+1 sizing,AUDCHF,monthly risk deviation,F - U,-0.10516,-0.16134,-0.05716,0.0,True
+1 sizing,AUDCHF,% days beyond 3 sd,F - U,-0.49875,-1.05985,0.0,0.06,False
+1 sizing,AUDCHF,monthly risk deviation,T20 - F,0.0225,0.00708,0.03931,0.002,True
+1 sizing,AUDCHF,% days beyond 3 sd,T20 - F,0.18703,-0.12469,0.49906,0.353,False
+1 sizing,AUDCHF,monthly risk deviation,MM - F,0.12596,0.08731,0.17067,0.0,True
+1 sizing,AUDCHF,% days beyond 3 sd,MM - F,0.62344,0.18692,1.12219,0.008,True
+1 sizing,AUDCHF,monthly risk deviation,FJ - F,0.00508,0.00149,0.00859,0.009,True
+1 sizing,AUDCHF,% days beyond 3 sd,FJ - F,-0.06234,-0.18715,0.0,0.732,False
+1 sizing,AUDCHF,monthly risk deviation,FA - F,0.0052,-0.00429,0.01463,0.251,False
+1 sizing,AUDCHF,% days beyond 3 sd,FA - F,0.0,-0.18692,0.18692,1.0,False
+1 sizing,AUDJPY,monthly risk deviation,F - U,-0.12628,-0.18166,-0.07614,0.0,True
+1 sizing,AUDJPY,% days beyond 3 sd,F - U,-0.37406,-1.24613,0.31192,0.416,False
+1 sizing,AUDJPY,monthly risk deviation,T20 - F,0.01554,0.00019,0.03039,0.047,False
+1 sizing,AUDJPY,% days beyond 3 sd,T20 - F,0.06234,-0.24922,0.37406,0.845,False
+1 sizing,AUDJPY,monthly risk deviation,MM - F,0.12802,0.08317,0.17765,0.0,True
+1 sizing,AUDJPY,% days beyond 3 sd,MM - F,0.81047,0.24969,1.43304,0.002,True
+1 sizing,AUDJPY,monthly risk deviation,FJ - F,0.00325,-0.00241,0.00998,0.301,False
+1 sizing,AUDJPY,% days beyond 3 sd,FJ - F,-0.06234,-0.18715,0.0,0.712,False
+1 sizing,AUDJPY,monthly risk deviation,FA - F,0.00999,0.00061,0.0196,0.035,False
+1 sizing,AUDJPY,% days beyond 3 sd,FA - F,-0.06234,-0.18715,0.0,0.712,False
+1 sizing,AUDNZD,monthly risk deviation,F - U,-0.03684,-0.06572,-0.0058,0.02,True
+1 sizing,AUDNZD,% days beyond 3 sd,F - U,0.06234,-0.24953,0.43614,0.865,False
+1 sizing,AUDNZD,monthly risk deviation,T20 - F,-0.00867,-0.03402,0.01628,0.528,False
+1 sizing,AUDNZD,% days beyond 3 sd,T20 - F,0.0,-0.24938,0.24938,1.0,False
+1 sizing,AUDNZD,monthly risk deviation,MM - F,0.04944,0.02252,0.07801,0.0,True
+1 sizing,AUDNZD,% days beyond 3 sd,MM - F,0.24938,-0.06235,0.56146,0.204,False
+1 sizing,AUDNZD,monthly risk deviation,FJ - F,0.00033,-0.00665,0.00777,0.931,False
+1 sizing,AUDNZD,% days beyond 3 sd,FJ - F,0.06234,0.0,0.18703,0.754,False
+1 sizing,AUDNZD,monthly risk deviation,FA - F,-0.00565,-0.01328,0.0014,0.126,False
+1 sizing,AUDNZD,% days beyond 3 sd,FA - F,0.0,0.0,0.0,1.0,False
+1 sizing,AUDUSD,monthly risk deviation,F - U,-0.12257,-0.19441,-0.05696,0.0,True
+1 sizing,AUDUSD,% days beyond 3 sd,F - U,-0.24938,-0.93633,0.43614,0.613,False
+1 sizing,AUDUSD,monthly risk deviation,T20 - F,-0.01641,-0.03862,0.0075,0.169,False
+1 sizing,AUDUSD,% days beyond 3 sd,T20 - F,0.37406,-0.06234,0.87227,0.139,False
+1 sizing,AUDUSD,monthly risk deviation,MM - F,0.13396,0.08664,0.18687,0.0,True
+1 sizing,AUDUSD,% days beyond 3 sd,MM - F,0.81047,0.12469,1.62095,0.023,True
+1 sizing,AUDUSD,monthly risk deviation,FJ - F,-0.00241,-0.00784,0.00277,0.379,False
+1 sizing,AUDUSD,% days beyond 3 sd,FJ - F,0.0,0.0,0.0,1.0,False
+1 sizing,AUDUSD,monthly risk deviation,FA - F,-0.00327,-0.01051,0.00398,0.365,False
+1 sizing,AUDUSD,% days beyond 3 sd,FA - F,0.0,-0.18703,0.18692,1.0,False
+1 sizing,CADCHF,monthly risk deviation,F - U,-0.04308,-0.09102,-0.00082,0.046,False
+1 sizing,CADCHF,% days beyond 3 sd,F - U,0.31172,-0.24922,0.87227,0.3,False
+1 sizing,CADCHF,monthly risk deviation,T20 - F,-0.02328,-0.04472,-0.00209,0.03,True
+1 sizing,CADCHF,% days beyond 3 sd,T20 - F,-0.06234,-0.43641,0.31153,0.84,False
+1 sizing,CADCHF,monthly risk deviation,MM - F,0.06957,0.03704,0.09869,0.0,True
+1 sizing,CADCHF,% days beyond 3 sd,MM - F,0.12469,-0.18692,0.43641,0.594,False
+1 sizing,CADCHF,monthly risk deviation,FJ - F,0.00237,-0.0031,0.00844,0.401,False
+1 sizing,CADCHF,% days beyond 3 sd,FJ - F,-0.06234,-0.18715,0.0,0.712,False
+1 sizing,CADCHF,monthly risk deviation,FA - F,0.00249,-0.00439,0.00953,0.498,False
+1 sizing,CADCHF,% days beyond 3 sd,FA - F,-0.06234,-0.31153,0.12477,0.729,False
+1 sizing,CADJPY,monthly risk deviation,F - U,-0.07399,-0.12107,-0.03115,0.0,True
+1 sizing,CADJPY,% days beyond 3 sd,F - U,0.24938,-0.49875,0.87282,0.504,False
+1 sizing,CADJPY,monthly risk deviation,T20 - F,-0.00083,-0.01726,0.01558,0.911,False
+1 sizing,CADJPY,% days beyond 3 sd,T20 - F,0.0,-0.37383,0.37383,1.0,False
+1 sizing,CADJPY,monthly risk deviation,MM - F,0.11315,0.07465,0.15434,0.0,True
+1 sizing,CADJPY,% days beyond 3 sd,MM - F,0.37406,0.0,0.80997,0.079,False
+1 sizing,CADJPY,monthly risk deviation,FJ - F,-0.00144,-0.00632,0.00397,0.578,False
+1 sizing,CADJPY,% days beyond 3 sd,FJ - F,-0.18703,-0.43614,0.0,0.098,False
+1 sizing,CADJPY,monthly risk deviation,FA - F,0.00162,-0.00753,0.01181,0.806,False
+1 sizing,CADJPY,% days beyond 3 sd,FA - F,-0.31172,-0.56145,-0.06234,0.015,True
+1 sizing,CHFJPY,monthly risk deviation,F - U,-0.12251,-0.17594,-0.07026,0.0,True
+1 sizing,CHFJPY,% days beyond 3 sd,F - U,0.12469,-0.5618,0.80997,0.774,False
+1 sizing,CHFJPY,monthly risk deviation,T20 - F,-0.01088,-0.0273,0.0044,0.198,False
+1 sizing,CHFJPY,% days beyond 3 sd,T20 - F,-0.31172,-0.68537,0.0,0.08,False
+1 sizing,CHFJPY,monthly risk deviation,MM - F,0.08912,0.04781,0.13149,0.0,True
+1 sizing,CHFJPY,% days beyond 3 sd,MM - F,0.18703,-0.24969,0.68536,0.532,False
+1 sizing,CHFJPY,monthly risk deviation,FJ - F,0.00336,-0.00012,0.00685,0.06,False
+1 sizing,CHFJPY,% days beyond 3 sd,FJ - F,-0.06234,-0.18715,0.0,0.712,False
+1 sizing,CHFJPY,monthly risk deviation,FA - F,0.00934,0.0008,0.01842,0.033,False
+1 sizing,CHFJPY,% days beyond 3 sd,FA - F,-0.06234,-0.43641,0.37383,0.814,False
+1 sizing,DE30,monthly risk deviation,F - U,-0.16051,-0.25546,-0.07471,0.0,True
+1 sizing,DE30,% days beyond 3 sd,F - U,-0.12723,-1.39338,0.76145,0.976,False
+1 sizing,DE30,monthly risk deviation,T20 - F,0.00914,-0.02479,0.04423,0.605,False
+1 sizing,DE30,% days beyond 3 sd,T20 - F,0.06361,-0.56784,0.63613,0.906,False
+1 sizing,DE30,monthly risk deviation,MM - F,0.10857,0.06408,0.15828,0.0,True
+1 sizing,DE30,% days beyond 3 sd,MM - F,0.57252,-0.06369,1.21021,0.105,False
+1 sizing,DE30,monthly risk deviation,FJ - F,-5e-05,-0.00432,0.00406,0.98,False
+1 sizing,DE30,% days beyond 3 sd,FJ - F,0.06361,0.0,0.19169,0.734,False
+1 sizing,DE30,monthly risk deviation,FA - F,0.00261,-0.01244,0.01621,0.736,False
+1 sizing,DE30,% days beyond 3 sd,FA - F,-0.19084,-0.447,0.06378,0.241,False
+1 sizing,DOW,monthly risk deviation,F - U,-0.23502,-0.35139,-0.13806,0.0,True
+1 sizing,DOW,% days beyond 3 sd,F - U,0.31289,-1.00125,1.31252,0.572,False
+1 sizing,DOW,monthly risk deviation,T20 - F,0.01832,-0.02047,0.05799,0.345,False
+1 sizing,DOW,% days beyond 3 sd,T20 - F,-0.31289,-0.81507,0.18785,0.295,False
+1 sizing,DOW,monthly risk deviation,MM - F,0.22321,0.14621,0.30082,0.0,True
+1 sizing,DOW,% days beyond 3 sd,MM - F,0.18773,-0.87666,1.44025,0.81,False
+1 sizing,DOW,monthly risk deviation,FJ - F,0.00106,-0.00797,0.01065,0.807,False
+1 sizing,DOW,% days beyond 3 sd,FJ - F,-0.06258,-0.18809,0.0,0.762,False
+1 sizing,DOW,monthly risk deviation,FA - F,0.00314,-0.01439,0.02097,0.756,False
+1 sizing,DOW,% days beyond 3 sd,FA - F,-0.37547,-0.81352,0.0,0.077,False
+1 sizing,EURAUD,monthly risk deviation,F - U,-0.11641,-0.17051,-0.06977,0.0,True
+1 sizing,EURAUD,% days beyond 3 sd,F - U,-0.49875,-1.24611,0.12469,0.179,False
+1 sizing,EURAUD,monthly risk deviation,T20 - F,-0.00528,-0.02141,0.00832,0.509,False
+1 sizing,EURAUD,% days beyond 3 sd,T20 - F,0.18703,-0.12469,0.49906,0.387,False
+1 sizing,EURAUD,monthly risk deviation,MM - F,0.12108,0.08008,0.16064,0.0,True
+1 sizing,EURAUD,% days beyond 3 sd,MM - F,0.81047,0.37406,1.30923,0.0,True
+1 sizing,EURAUD,monthly risk deviation,FJ - F,0.00412,-0.00073,0.00955,0.099,False
+1 sizing,EURAUD,% days beyond 3 sd,FJ - F,-0.06234,-0.18727,0.0,0.74,False
+1 sizing,EURAUD,monthly risk deviation,FA - F,0.00036,-0.0062,0.00761,0.914,False
+1 sizing,EURAUD,% days beyond 3 sd,FA - F,-0.12469,-0.37406,0.12461,0.423,False
+1 sizing,EURCAD,monthly risk deviation,F - U,-0.05113,-0.09833,-0.01104,0.011,True
+1 sizing,EURCAD,% days beyond 3 sd,F - U,0.0,-0.56145,0.5611,1.0,False
+1 sizing,EURCAD,monthly risk deviation,T20 - F,-0.01685,-0.03947,0.0054,0.159,False
+1 sizing,EURCAD,% days beyond 3 sd,T20 - F,0.06234,-0.37406,0.49844,0.897,False
+1 sizing,EURCAD,monthly risk deviation,MM - F,0.10233,0.06034,0.14357,0.0,True
+1 sizing,EURCAD,% days beyond 3 sd,MM - F,0.5611,0.12469,1.05919,0.016,True
+1 sizing,EURCAD,monthly risk deviation,FJ - F,-0.0028,-0.00922,0.00366,0.397,False
+1 sizing,EURCAD,% days beyond 3 sd,FJ - F,-0.12469,-0.31172,0.0,0.235,False
+1 sizing,EURCAD,monthly risk deviation,FA - F,-0.00032,-0.00845,0.00882,0.918,False
+1 sizing,EURCAD,% days beyond 3 sd,FA - F,-0.12469,-0.37406,0.12461,0.417,False
+1 sizing,EURCHF,monthly risk deviation,F - U,-0.11941,-0.18312,-0.06633,0.0,True
+1 sizing,EURCHF,% days beyond 3 sd,F - U,-0.68579,-1.68329,0.12469,0.141,False
+1 sizing,EURCHF,monthly risk deviation,T20 - F,-0.01688,-0.04087,0.00527,0.132,False
+1 sizing,EURCHF,% days beyond 3 sd,T20 - F,0.24938,0.0,0.49907,0.052,False
+1 sizing,EURCHF,monthly risk deviation,MM - F,0.13962,0.08936,0.19271,0.0,True
+1 sizing,EURCHF,% days beyond 3 sd,MM - F,0.24938,-0.12484,0.68579,0.315,False
+1 sizing,EURCHF,monthly risk deviation,FJ - F,-0.00206,-0.00651,0.00284,0.4,False
+1 sizing,EURCHF,% days beyond 3 sd,FJ - F,0.0,0.0,0.0,1.0,False
+1 sizing,EURCHF,monthly risk deviation,FA - F,-0.00192,-0.00944,0.00557,0.634,False
+1 sizing,EURCHF,% days beyond 3 sd,FA - F,-0.06234,-0.31153,0.12477,0.768,False
+1 sizing,EURGBP,monthly risk deviation,F - U,-0.06771,-0.10315,-0.03333,0.0,True
+1 sizing,EURGBP,% days beyond 3 sd,F - U,-0.06234,-0.62383,0.43641,0.95,False
+1 sizing,EURGBP,monthly risk deviation,T20 - F,-0.00906,-0.03024,0.01017,0.381,False
+1 sizing,EURGBP,% days beyond 3 sd,T20 - F,0.24938,0.0,0.5611,0.151,False
+1 sizing,EURGBP,monthly risk deviation,MM - F,0.10003,0.06213,0.14214,0.0,True
+1 sizing,EURGBP,% days beyond 3 sd,MM - F,0.43641,-0.06238,0.93458,0.094,False
+1 sizing,EURGBP,monthly risk deviation,FJ - F,0.0092,3e-05,0.02151,0.05,False
+1 sizing,EURGBP,% days beyond 3 sd,FJ - F,0.12469,-0.0625,0.37406,0.436,False
+1 sizing,EURGBP,monthly risk deviation,FA - F,0.00157,-0.00767,0.01011,0.739,False
+1 sizing,EURGBP,% days beyond 3 sd,FA - F,0.06234,-0.12477,0.24969,0.769,False
+1 sizing,EURJPY,monthly risk deviation,F - U,-0.12512,-0.18806,-0.06328,0.0,True
+1 sizing,EURJPY,% days beyond 3 sd,F - U,0.06234,-0.43641,0.5611,0.886,False
+1 sizing,EURJPY,monthly risk deviation,T20 - F,0.0023,-0.01431,0.01774,0.759,False
+1 sizing,EURJPY,% days beyond 3 sd,T20 - F,0.18703,-0.06234,0.43669,0.238,False
+1 sizing,EURJPY,monthly risk deviation,MM - F,0.11746,0.07182,0.16561,0.0,True
+1 sizing,EURJPY,% days beyond 3 sd,MM - F,0.37406,-0.12469,0.87336,0.166,False
+1 sizing,EURJPY,monthly risk deviation,FJ - F,0.00354,-0.00047,0.00786,0.091,False
+1 sizing,EURJPY,% days beyond 3 sd,FJ - F,0.06234,0.0,0.18703,0.748,False
+1 sizing,EURJPY,monthly risk deviation,FA - F,0.00542,-0.00325,0.01474,0.24,False
+1 sizing,EURJPY,% days beyond 3 sd,FA - F,0.06234,-0.12477,0.24969,0.833,False
+1 sizing,EURNZD,monthly risk deviation,F - U,-0.08388,-0.1223,-0.04781,0.0,True
+1 sizing,EURNZD,% days beyond 3 sd,F - U,0.62344,0.24922,1.05919,0.006,True
+1 sizing,EURNZD,monthly risk deviation,T20 - F,0.00429,-0.01086,0.01865,0.576,False
+1 sizing,EURNZD,% days beyond 3 sd,T20 - F,0.06234,-0.12484,0.24953,0.772,False
+1 sizing,EURNZD,monthly risk deviation,MM - F,0.09073,0.05744,0.12719,0.0,True
+1 sizing,EURNZD,% days beyond 3 sd,MM - F,0.37406,-0.12461,0.87336,0.15,False
+1 sizing,EURNZD,monthly risk deviation,FJ - F,0.00713,-0.00016,0.01497,0.062,False
+1 sizing,EURNZD,% days beyond 3 sd,FJ - F,-0.12469,-0.31173,0.0,0.251,False
+1 sizing,EURNZD,monthly risk deviation,FA - F,-0.0012,-0.00835,0.00583,0.747,False
+1 sizing,EURNZD,% days beyond 3 sd,FA - F,-0.12469,-0.31172,0.0,0.25,False
+1 sizing,EURUSD,monthly risk deviation,F - U,-0.10488,-0.17668,-0.04001,0.002,True
+1 sizing,EURUSD,% days beyond 3 sd,F - U,-0.31172,-1.05985,0.31192,0.464,False
+1 sizing,EURUSD,monthly risk deviation,T20 - F,-0.01898,-0.04145,0.00382,0.108,False
+1 sizing,EURUSD,% days beyond 3 sd,T20 - F,0.24938,-0.12469,0.62383,0.26,False
+1 sizing,EURUSD,monthly risk deviation,MM - F,0.15089,0.09488,0.21006,0.0,True
+1 sizing,EURUSD,% days beyond 3 sd,MM - F,0.93516,0.31153,1.68332,0.004,True
+1 sizing,EURUSD,monthly risk deviation,FJ - F,0.00031,-0.00426,0.00472,0.893,False
+1 sizing,EURUSD,% days beyond 3 sd,FJ - F,0.0,0.0,0.0,1.0,False
+1 sizing,EURUSD,monthly risk deviation,FA - F,-0.00572,-0.01604,0.0041,0.277,False
+1 sizing,EURUSD,% days beyond 3 sd,FA - F,0.0,0.0,0.0,1.0,False
+1 sizing,GBPAUD,monthly risk deviation,F - U,-0.04681,-0.0908,-0.00518,0.027,True
+1 sizing,GBPAUD,% days beyond 3 sd,F - U,-0.24938,-0.80998,0.24938,0.422,False
+1 sizing,GBPAUD,monthly risk deviation,T20 - F,-0.02079,-0.04859,0.00622,0.128,False
+1 sizing,GBPAUD,% days beyond 3 sd,T20 - F,0.0,-0.31192,0.37383,1.0,False
+1 sizing,GBPAUD,monthly risk deviation,MM - F,0.08177,0.0564,0.10808,0.0,True
+1 sizing,GBPAUD,% days beyond 3 sd,MM - F,0.49875,0.0,1.05919,0.052,False
+1 sizing,GBPAUD,monthly risk deviation,FJ - F,0.00222,-0.00453,0.00941,0.566,False
+1 sizing,GBPAUD,% days beyond 3 sd,FJ - F,0.12469,0.0,0.31172,0.256,False
+1 sizing,GBPAUD,monthly risk deviation,FA - F,-0.00593,-0.01544,0.00356,0.209,False
+1 sizing,GBPAUD,% days beyond 3 sd,FA - F,-0.06234,-0.18715,0.0,0.73,False
+1 sizing,GBPCAD,monthly risk deviation,F - U,-0.07547,-0.11428,-0.03891,0.0,True
+1 sizing,GBPCAD,% days beyond 3 sd,F - U,-0.18703,-0.68537,0.31153,0.553,False
+1 sizing,GBPCAD,monthly risk deviation,T20 - F,-8e-05,-0.02125,0.01896,0.996,False
+1 sizing,GBPCAD,% days beyond 3 sd,T20 - F,0.12469,-0.1264,0.43641,0.532,False
+1 sizing,GBPCAD,monthly risk deviation,MM - F,0.12704,0.09046,0.16859,0.0,True
+1 sizing,GBPCAD,% days beyond 3 sd,MM - F,0.18703,-0.3743,0.81047,0.637,False
+1 sizing,GBPCAD,monthly risk deviation,FJ - F,0.00355,-0.00176,0.00911,0.186,False
+1 sizing,GBPCAD,% days beyond 3 sd,FJ - F,0.06234,0.0,0.18715,0.718,False
+1 sizing,GBPCAD,monthly risk deviation,FA - F,-0.00443,-0.01328,0.00429,0.321,False
+1 sizing,GBPCAD,% days beyond 3 sd,FA - F,0.0,-0.18703,0.18692,1.0,False
+1 sizing,GBPCHF,monthly risk deviation,F - U,-0.08029,-0.11345,-0.0489,0.0,True
+1 sizing,GBPCHF,% days beyond 3 sd,F - U,0.0,-0.68537,0.62344,1.0,False
+1 sizing,GBPCHF,monthly risk deviation,T20 - F,0.00126,-0.02029,0.02116,0.865,False
+1 sizing,GBPCHF,% days beyond 3 sd,T20 - F,0.31172,0.0,0.6858,0.067,False
+1 sizing,GBPCHF,monthly risk deviation,MM - F,0.08275,0.04543,0.12005,0.0,True
+1 sizing,GBPCHF,% days beyond 3 sd,MM - F,0.62344,0.12477,1.1838,0.012,True
+1 sizing,GBPCHF,monthly risk deviation,FJ - F,0.00819,0.00081,0.01778,0.028,True
+1 sizing,GBPCHF,% days beyond 3 sd,FJ - F,0.18703,0.0,0.43614,0.078,False
+1 sizing,GBPCHF,monthly risk deviation,FA - F,0.00628,-0.00263,0.01514,0.175,False
+1 sizing,GBPCHF,% days beyond 3 sd,FA - F,0.06234,-0.12477,0.24969,0.741,False
+1 sizing,GBPJPY,monthly risk deviation,F - U,-0.09315,-0.13499,-0.0531,0.0,True
+1 sizing,GBPJPY,% days beyond 3 sd,F - U,0.06234,-0.56076,0.62345,0.94,False
+1 sizing,GBPJPY,monthly risk deviation,T20 - F,-0.00599,-0.02837,0.01777,0.596,False
+1 sizing,GBPJPY,% days beyond 3 sd,T20 - F,0.37406,0.06234,0.68859,0.016,True
+1 sizing,GBPJPY,monthly risk deviation,MM - F,0.08687,0.04752,0.12625,0.0,True
+1 sizing,GBPJPY,% days beyond 3 sd,MM - F,0.68579,0.06234,1.30923,0.031,True
+1 sizing,GBPJPY,monthly risk deviation,FJ - F,0.00472,-0.0015,0.01273,0.168,False
+1 sizing,GBPJPY,% days beyond 3 sd,FJ - F,0.06234,0.0,0.18727,0.73,False
+1 sizing,GBPJPY,monthly risk deviation,FA - F,0.00591,-0.00262,0.01498,0.178,False
+1 sizing,GBPJPY,% days beyond 3 sd,FA - F,0.24938,0.0,0.5611,0.131,False
+1 sizing,GBPNZD,monthly risk deviation,F - U,-0.07735,-0.12024,-0.03941,0.0,True
+1 sizing,GBPNZD,% days beyond 3 sd,F - U,0.0,-0.56145,0.56075,1.0,False
+1 sizing,GBPNZD,monthly risk deviation,T20 - F,-0.01508,-0.03094,0.00094,0.07,False
+1 sizing,GBPNZD,% days beyond 3 sd,T20 - F,-0.18703,-0.5618,0.18715,0.41,False
+1 sizing,GBPNZD,monthly risk deviation,MM - F,0.11408,0.07951,0.15176,0.0,True
+1 sizing,GBPNZD,% days beyond 3 sd,MM - F,0.37406,-0.24922,0.99688,0.267,False
+1 sizing,GBPNZD,monthly risk deviation,FJ - F,0.00759,-0.00082,0.01583,0.071,False
+1 sizing,GBPNZD,% days beyond 3 sd,FJ - F,0.0,0.0,0.0,1.0,False
+1 sizing,GBPNZD,monthly risk deviation,FA - F,0.00224,-0.0059,0.01032,0.585,False
+1 sizing,GBPNZD,% days beyond 3 sd,FA - F,-0.06234,-0.18715,0.0,0.712,False
+1 sizing,GBPUSD,monthly risk deviation,F - U,-0.10575,-0.16062,-0.05727,0.0,True
+1 sizing,GBPUSD,% days beyond 3 sd,F - U,-0.06234,-0.93458,0.68536,0.991,False
+1 sizing,GBPUSD,monthly risk deviation,T20 - F,-0.01122,-0.03189,0.00892,0.273,False
+1 sizing,GBPUSD,% days beyond 3 sd,T20 - F,-0.12469,-0.5611,0.24969,0.656,False
+1 sizing,GBPUSD,monthly risk deviation,MM - F,0.09363,0.04836,0.14299,0.0,True
+1 sizing,GBPUSD,% days beyond 3 sd,MM - F,0.06234,-0.43614,0.49906,0.93,False
+1 sizing,GBPUSD,monthly risk deviation,FJ - F,0.00905,0.00127,0.01982,0.013,True
+1 sizing,GBPUSD,% days beyond 3 sd,FJ - F,0.0,-0.18703,0.18692,1.0,False
+1 sizing,GBPUSD,monthly risk deviation,FA - F,0.00399,-0.00387,0.01247,0.331,False
+1 sizing,GBPUSD,% days beyond 3 sd,FA - F,0.0,-0.18703,0.18692,1.0,False
+1 sizing,GOLD,monthly risk deviation,F - U,-0.13259,-0.19204,-0.07794,0.0,True
+1 sizing,GOLD,% days beyond 3 sd,F - U,-0.25047,-1.43665,0.68793,0.768,False
+1 sizing,GOLD,monthly risk deviation,T20 - F,0.00921,-0.0137,0.03357,0.458,False
+1 sizing,GOLD,% days beyond 3 sd,T20 - F,0.0,-0.3757,0.37594,1.0,False
+1 sizing,GOLD,monthly risk deviation,MM - F,0.12418,0.08259,0.16834,0.0,True
+1 sizing,GOLD,% days beyond 3 sd,MM - F,0.81403,0.18762,1.56448,0.009,True
+1 sizing,GOLD,monthly risk deviation,FJ - F,0.00148,-0.00267,0.00596,0.504,False
+1 sizing,GOLD,% days beyond 3 sd,FJ - F,0.0,0.0,0.0,1.0,False
+1 sizing,GOLD,monthly risk deviation,FA - F,0.00116,-0.00686,0.00921,0.808,False
+1 sizing,GOLD,% days beyond 3 sd,FA - F,-0.12523,-0.31348,0.0,0.273,False
+1 sizing,NQ,monthly risk deviation,F - U,-0.22122,-0.29254,-0.15586,0.0,True
+1 sizing,NQ,% days beyond 3 sd,F - U,-0.25031,-1.37676,0.62579,0.717,False
+1 sizing,NQ,monthly risk deviation,T20 - F,0.02217,-0.01264,0.05576,0.213,False
+1 sizing,NQ,% days beyond 3 sd,T20 - F,0.43805,0.06246,0.87666,0.048,False
+1 sizing,NQ,monthly risk deviation,MM - F,0.20679,0.12717,0.28721,0.0,True
+1 sizing,NQ,% days beyond 3 sd,MM - F,0.25031,-0.43833,1.06252,0.579,False
+1 sizing,NQ,monthly risk deviation,FJ - F,0.00245,-0.00422,0.00955,0.493,False
+1 sizing,NQ,% days beyond 3 sd,FJ - F,-0.06258,-0.18809,0.0,0.758,False
+1 sizing,NQ,monthly risk deviation,FA - F,0.00851,-0.00514,0.02198,0.214,False
+1 sizing,NQ,% days beyond 3 sd,FA - F,0.0,-0.3125,0.31328,1.0,False
+1 sizing,NZDCAD,monthly risk deviation,F - U,-0.03806,-0.06956,-0.00764,0.017,True
+1 sizing,NZDCAD,% days beyond 3 sd,F - U,0.31172,-0.31192,0.87227,0.328,False
+1 sizing,NZDCAD,monthly risk deviation,T20 - F,-0.00519,-0.02974,0.01782,0.698,False
+1 sizing,NZDCAD,% days beyond 3 sd,T20 - F,0.06234,-0.3123,0.49844,0.904,False
+1 sizing,NZDCAD,monthly risk deviation,MM - F,0.0678,0.03708,0.09996,0.0,True
+1 sizing,NZDCAD,% days beyond 3 sd,MM - F,0.0,-0.43614,0.3743,1.0,False
+1 sizing,NZDCAD,monthly risk deviation,FJ - F,0.00403,-0.00217,0.01113,0.22,False
+1 sizing,NZDCAD,% days beyond 3 sd,FJ - F,0.0,-0.18692,0.18703,1.0,False
+1 sizing,NZDCAD,monthly risk deviation,FA - F,-0.00405,-0.01145,0.0031,0.252,False
+1 sizing,NZDCAD,% days beyond 3 sd,FA - F,0.0,-0.18692,0.18703,1.0,False
+1 sizing,NZDJPY,monthly risk deviation,F - U,-0.07252,-0.12549,-0.03011,0.0,True
+1 sizing,NZDJPY,% days beyond 3 sd,F - U,-0.12469,-0.87282,0.49875,0.857,False
+1 sizing,NZDJPY,monthly risk deviation,T20 - F,0.00951,-0.01197,0.03007,0.396,False
+1 sizing,NZDJPY,% days beyond 3 sd,T20 - F,-0.06234,-0.37383,0.18715,0.848,False
+1 sizing,NZDJPY,monthly risk deviation,MM - F,0.0817,0.0507,0.11684,0.0,True
+1 sizing,NZDJPY,% days beyond 3 sd,MM - F,0.49875,0.18692,0.87336,0.002,True
+1 sizing,NZDJPY,monthly risk deviation,FJ - F,0.00409,-0.00173,0.01,0.157,False
+1 sizing,NZDJPY,% days beyond 3 sd,FJ - F,-0.12469,-0.31172,0.0,0.274,False
+1 sizing,NZDJPY,monthly risk deviation,FA - F,0.00646,-0.00113,0.01526,0.106,False
+1 sizing,NZDJPY,% days beyond 3 sd,FA - F,-0.12469,-0.31192,0.0,0.236,False
+1 sizing,NZDUSD,monthly risk deviation,F - U,-0.09414,-0.1464,-0.04578,0.0,True
+1 sizing,NZDUSD,% days beyond 3 sd,F - U,-0.31153,-1.24611,0.49844,0.572,False
+1 sizing,NZDUSD,monthly risk deviation,T20 - F,-0.01254,-0.03361,0.00861,0.24,False
+1 sizing,NZDUSD,% days beyond 3 sd,T20 - F,0.18692,-0.12461,0.56075,0.417,False
+1 sizing,NZDUSD,monthly risk deviation,MM - F,0.10507,0.06216,0.14839,0.0,True
+1 sizing,NZDUSD,% days beyond 3 sd,MM - F,0.43614,0.12461,0.80997,0.005,True
+1 sizing,NZDUSD,monthly risk deviation,FJ - F,0.00096,-0.00547,0.00747,0.766,False
+1 sizing,NZDUSD,% days beyond 3 sd,FJ - F,0.0,-0.18692,0.18692,1.0,False
+1 sizing,NZDUSD,monthly risk deviation,FA - F,-0.00281,-0.01135,0.00538,0.472,False
+1 sizing,NZDUSD,% days beyond 3 sd,FA - F,-0.06231,-0.18692,0.0,0.717,False
+1 sizing,SPX500,monthly risk deviation,F - U,-0.2447,-0.35148,-0.15522,0.0,True
+1 sizing,SPX500,% days beyond 3 sd,F - U,0.0,-1.3776,1.00188,0.947,False
+1 sizing,SPX500,monthly risk deviation,T20 - F,0.01667,-0.02267,0.0547,0.419,False
+1 sizing,SPX500,% days beyond 3 sd,T20 - F,-0.31289,-0.75,0.06429,0.178,False
+1 sizing,SPX500,monthly risk deviation,MM - F,0.16912,0.10889,0.23128,0.0,True
+1 sizing,SPX500,% days beyond 3 sd,MM - F,0.50063,-0.37501,1.37845,0.301,False
+1 sizing,SPX500,monthly risk deviation,FJ - F,0.00245,-0.00543,0.01048,0.54,False
+1 sizing,SPX500,% days beyond 3 sd,FJ - F,0.0,0.0,0.0,1.0,False
+1 sizing,SPX500,monthly risk deviation,FA - F,0.00672,-0.00727,0.02033,0.358,False
+1 sizing,SPX500,% days beyond 3 sd,FA - F,0.0,-0.3757,0.375,1.0,False
+1 sizing,UK100,monthly risk deviation,F - U,-0.1789,-0.29586,-0.0931,0.0,True
+1 sizing,UK100,% days beyond 3 sd,F - U,-0.83173,-2.64123,0.44644,0.331,False
+1 sizing,UK100,monthly risk deviation,T20 - F,0.01967,-0.01597,0.053,0.256,False
+1 sizing,UK100,% days beyond 3 sd,T20 - F,0.44786,0.0,0.89977,0.068,False
+1 sizing,UK100,monthly risk deviation,MM - F,0.12742,0.07314,0.18171,0.0,True
+1 sizing,UK100,% days beyond 3 sd,MM - F,0.57582,0.0,1.22818,0.072,False
+1 sizing,UK100,monthly risk deviation,FJ - F,-0.0032,-0.01498,0.00517,0.633,False
+1 sizing,UK100,% days beyond 3 sd,FJ - F,0.25592,0.06373,0.51315,0.028,True
+1 sizing,UK100,monthly risk deviation,FA - F,0.01357,0.00295,0.02504,0.012,True
+1 sizing,UK100,% days beyond 3 sd,FA - F,0.12796,0.0,0.3201,0.271,False
+1 sizing,US2000,monthly risk deviation,F - U,-0.21108,-0.31639,-0.12744,0.0,True
+1 sizing,US2000,% days beyond 3 sd,F - U,-0.50063,-2.19302,0.6901,0.606,False
+1 sizing,US2000,monthly risk deviation,T20 - F,0.00239,-0.02381,0.03045,0.864,False
+1 sizing,US2000,% days beyond 3 sd,T20 - F,0.0,-0.37594,0.37618,1.0,False
+1 sizing,US2000,monthly risk deviation,MM - F,0.17237,0.11497,0.23099,0.0,True
+1 sizing,US2000,% days beyond 3 sd,MM - F,0.75094,0.06242,1.56252,0.049,False
+1 sizing,US2000,monthly risk deviation,FJ - F,0.00171,-0.00273,0.00657,0.469,False
+1 sizing,US2000,% days beyond 3 sd,FJ - F,0.06258,0.0,0.18809,0.749,False
+1 sizing,US2000,monthly risk deviation,FA - F,0.00842,-0.00156,0.01861,0.102,False
+1 sizing,US2000,% days beyond 3 sd,FA - F,-0.06258,-0.31212,0.12523,0.745,False
+1 sizing,USDCAD,monthly risk deviation,F - U,-0.08536,-0.14899,-0.03493,0.0,True
+1 sizing,USDCAD,% days beyond 3 sd,F - U,-0.18703,-1.05919,0.49875,0.76,False
+1 sizing,USDCAD,monthly risk deviation,T20 - F,-0.01196,-0.0335,0.01291,0.299,False
+1 sizing,USDCAD,% days beyond 3 sd,T20 - F,-0.06234,-0.62383,0.49875,0.899,False
+1 sizing,USDCAD,monthly risk deviation,MM - F,0.09106,0.05657,0.13217,0.0,True
+1 sizing,USDCAD,% days beyond 3 sd,MM - F,0.81047,0.12469,1.49626,0.015,True
+1 sizing,USDCAD,monthly risk deviation,FJ - F,0.00156,-0.00296,0.00611,0.502,False
+1 sizing,USDCAD,% days beyond 3 sd,FJ - F,-0.06234,-0.31153,0.12469,0.765,False
+1 sizing,USDCAD,monthly risk deviation,FA - F,0.00355,-0.00397,0.0119,0.395,False
+1 sizing,USDCAD,% days beyond 3 sd,FA - F,0.0,-0.24938,0.24938,1.0,False
+1 sizing,USDCHF,monthly risk deviation,F - U,-0.07888,-0.13205,-0.0278,0.001,True
+1 sizing,USDCHF,% days beyond 3 sd,F - U,-0.12469,-0.74813,0.43668,0.802,False
+1 sizing,USDCHF,monthly risk deviation,T20 - F,0.00745,-0.01776,0.03266,0.561,False
+1 sizing,USDCHF,% days beyond 3 sd,T20 - F,0.12469,-0.24938,0.49844,0.66,False
+1 sizing,USDCHF,monthly risk deviation,MM - F,0.08865,0.05113,0.12803,0.0,True
+1 sizing,USDCHF,% days beyond 3 sd,MM - F,0.5611,0.06231,1.18528,0.036,False
+1 sizing,USDCHF,monthly risk deviation,FJ - F,0.00401,-0.0002,0.00768,0.061,False
+1 sizing,USDCHF,% days beyond 3 sd,FJ - F,-0.06234,-0.18715,0.0,0.691,False
+1 sizing,USDCHF,monthly risk deviation,FA - F,0.00434,-0.00281,0.01156,0.262,False
+1 sizing,USDCHF,% days beyond 3 sd,FA - F,-0.06234,-0.24969,0.12477,0.765,False
+1 sizing,USDJPY,monthly risk deviation,F - U,-0.15976,-0.23677,-0.09476,0.0,True
+1 sizing,USDJPY,% days beyond 3 sd,F - U,-0.31172,-1.18528,0.49875,0.551,False
+1 sizing,USDJPY,monthly risk deviation,T20 - F,-0.00113,-0.02168,0.01882,0.927,False
+1 sizing,USDJPY,% days beyond 3 sd,T20 - F,0.24938,-0.12461,0.62344,0.218,False
+1 sizing,USDJPY,monthly risk deviation,MM - F,0.14303,0.09168,0.19999,0.0,True
+1 sizing,USDJPY,% days beyond 3 sd,MM - F,0.37406,-0.18703,0.93458,0.225,False
+1 sizing,USDJPY,monthly risk deviation,FJ - F,0.00149,-0.00339,0.00681,0.582,False
+1 sizing,USDJPY,% days beyond 3 sd,FJ - F,-0.06234,-0.18715,0.0,0.738,False
+1 sizing,USDJPY,monthly risk deviation,FA - F,0.00512,-0.003,0.0138,0.209,False
+1 sizing,USDJPY,% days beyond 3 sd,FA - F,-0.18703,-0.43668,0.06238,0.267,False
+1 sizing,turbulent,monthly risk deviation,F - U,-0.14789,-0.1881,-0.1009,0.0,True
+1 sizing,turbulent,% days beyond 3 sd,F - U,-1.69,-2.68246,-0.74304,0.001,True
+1 sizing,turbulent,monthly risk deviation,T20 - F,-0.00331,-0.01657,0.018,0.672,False
+1 sizing,turbulent,% days beyond 3 sd,T20 - F,0.14486,-0.02771,0.3767,0.126,False
+1 sizing,turbulent,monthly risk deviation,MM - F,0.23796,0.18235,0.26971,0.0,True
+1 sizing,turbulent,% days beyond 3 sd,MM - F,-0.28972,-0.46844,0.0,0.071,False
+1 sizing,turbulent,monthly risk deviation,FJ - F,0.00551,0.00069,0.01195,0.022,True
+1 sizing,turbulent,% days beyond 3 sd,FJ - F,-0.0161,-0.0891,0.05259,0.843,False
+1 sizing,turbulent,monthly risk deviation,FA - F,-0.00713,-0.0192,0.00719,0.243,False
+1 sizing,turbulent,% days beyond 3 sd,FA - F,0.24143,0.10641,0.44403,0.002,True
+1 sizing,turbulent,"p99 loss (1st pct, sd)",F - U,0.69545,0.27055,0.97621,0.007,True
+1 sizing,turbulent,"p99 loss (1st pct, sd)",T20 - F,0.05979,-0.10327,0.22742,0.436,False
+1 sizing,turbulent,"p99 loss (1st pct, sd)",MM - F,0.48347,0.29507,0.69808,0.0,True
+1 sizing,turbulent,"p99 loss (1st pct, sd)",FJ - F,0.06339,-0.01465,0.14623,0.108,False
+1 sizing,turbulent,"p99 loss (1st pct, sd)",FA - F,-0.05708,-0.15368,-0.00782,0.038,False
+1 sizing,calm,monthly risk deviation,F - U,-0.10589,-0.14488,-0.07665,0.0,True
+1 sizing,calm,% days beyond 3 sd,F - U,0.06844,-0.50838,0.48451,0.728,False
+1 sizing,calm,monthly risk deviation,T20 - F,-0.00107,-0.00756,0.00517,0.733,False
+1 sizing,calm,% days beyond 3 sd,T20 - F,0.08088,0.00411,0.16709,0.038,False
+1 sizing,calm,monthly risk deviation,MM - F,0.0996,0.08231,0.11796,0.0,True
+1 sizing,calm,% days beyond 3 sd,MM - F,0.58689,0.32215,0.85514,0.0,True
+1 sizing,calm,monthly risk deviation,FJ - F,0.00244,0.00032,0.00484,0.021,True
+1 sizing,calm,% days beyond 3 sd,FJ - F,0.00415,-0.03665,0.04561,0.852,False
+1 sizing,calm,monthly risk deviation,FA - F,0.0036,0.00036,0.00731,0.026,True
+1 sizing,calm,% days beyond 3 sd,FA - F,-0.0871,-0.14654,-0.01261,0.021,True
+1 sizing,calm,"p99 loss (1st pct, sd)",F - U,-0.12412,-0.34683,0.15602,0.306,False
+1 sizing,calm,"p99 loss (1st pct, sd)",T20 - F,-0.03169,-0.08299,0.03038,0.324,False
+1 sizing,calm,"p99 loss (1st pct, sd)",MM - F,-0.24987,-0.40089,-0.11737,0.001,True
+1 sizing,calm,"p99 loss (1st pct, sd)",FJ - F,-0.00712,-0.03012,0.02656,0.864,False
+1 sizing,calm,"p99 loss (1st pct, sd)",FA - F,0.0264,-0.00178,0.08168,0.07,False
+1 sizing,low sigma,monthly risk deviation,F - U,-0.16465,-0.19239,-0.13582,0.0,True
+1 sizing,low sigma,% days beyond 3 sd,F - U,1.27238,1.01788,1.54916,0.0,True
+1 sizing,low sigma,monthly risk deviation,T20 - F,-0.00571,-0.01298,0.00231,0.156,False
+1 sizing,low sigma,% days beyond 3 sd,T20 - F,-0.06059,-0.20728,0.08522,0.447,False
+1 sizing,low sigma,monthly risk deviation,MM - F,0.11545,0.08707,0.14389,0.0,True
+1 sizing,low sigma,% days beyond 3 sd,MM - F,2.23079,1.89475,2.54738,0.0,True
+1 sizing,low sigma,monthly risk deviation,FJ - F,0.00301,0.00023,0.00604,0.023,True
+1 sizing,low sigma,% days beyond 3 sd,FJ - F,0.0,-0.07038,0.07209,1.0,False
+1 sizing,low sigma,monthly risk deviation,FA - F,0.00362,-0.00065,0.00799,0.1,False
+1 sizing,low sigma,% days beyond 3 sd,FA - F,-0.28642,-0.38192,-0.19032,0.0,True
+1 sizing,low sigma,"p99 loss (1st pct, sd)",F - U,-0.84719,-0.9494,-0.7549,0.0,True
+1 sizing,low sigma,"p99 loss (1st pct, sd)",T20 - F,0.10543,0.00371,0.17134,0.038,False
+1 sizing,low sigma,"p99 loss (1st pct, sd)",MM - F,-0.66878,-0.78989,-0.56634,0.0,True
+1 sizing,low sigma,"p99 loss (1st pct, sd)",FJ - F,0.05485,-0.01041,0.09147,0.129,False
+1 sizing,low sigma,"p99 loss (1st pct, sd)",FA - F,0.12675,0.08794,0.17505,0.0,True
+1 sizing,mid sigma,monthly risk deviation,F - U,-0.03508,-0.04954,-0.02094,0.0,True
+1 sizing,mid sigma,% days beyond 3 sd,F - U,0.36968,0.24231,0.52013,0.0,True
+1 sizing,mid sigma,monthly risk deviation,T20 - F,-0.00278,-0.01486,0.00925,0.627,False
+1 sizing,mid sigma,% days beyond 3 sd,T20 - F,-0.00552,-0.15004,0.13754,0.977,False
+1 sizing,mid sigma,monthly risk deviation,MM - F,0.04153,0.03172,0.05091,0.0,True
+1 sizing,mid sigma,% days beyond 3 sd,MM - F,-0.38623,-0.52608,-0.26254,0.0,True
+1 sizing,mid sigma,monthly risk deviation,FJ - F,0.00162,-0.00022,0.00387,0.086,False
+1 sizing,mid sigma,% days beyond 3 sd,FJ - F,-0.01104,-0.05342,0.02603,0.681,False
+1 sizing,mid sigma,monthly risk deviation,FA - F,0.00173,-0.00113,0.00482,0.26,False
+1 sizing,mid sigma,% days beyond 3 sd,FA - F,-0.01104,-0.06437,0.04058,0.719,False
+1 sizing,high sigma,monthly risk deviation,F - U,-0.12884,-0.22385,-0.03752,0.0,True
+1 sizing,high sigma,% days beyond 3 sd,F - U,-2.03812,-3.33725,-1.01771,0.0,True
+1 sizing,high sigma,monthly risk deviation,T20 - F,0.00435,-0.00782,0.02183,0.608,False
+1 sizing,high sigma,% days beyond 3 sd,T20 - F,0.33051,0.1693,0.51312,0.0,True
+1 sizing,high sigma,monthly risk deviation,MM - F,0.18439,0.13858,0.21627,0.0,True
+1 sizing,high sigma,% days beyond 3 sd,MM - F,-0.38559,-0.55654,-0.23088,0.0,True
+1 sizing,high sigma,monthly risk deviation,FJ - F,0.00366,-0.00046,0.00794,0.086,False
+1 sizing,high sigma,% days beyond 3 sd,FJ - F,0.01653,-0.00924,0.04473,0.352,False
+1 sizing,high sigma,monthly risk deviation,FA - F,0.0018,-0.00502,0.01006,0.631,False
+1 sizing,high sigma,% days beyond 3 sd,FA - F,0.14873,0.06177,0.25642,0.0,True
+1 sizing,high sigma,"p99 loss (1st pct, sd)",F - U,0.90229,0.60007,1.26626,0.0,True
+1 sizing,high sigma,"p99 loss (1st pct, sd)",T20 - F,-0.18458,-0.30052,-0.08961,0.0,True
+1 sizing,high sigma,"p99 loss (1st pct, sd)",MM - F,0.7272,0.62442,0.83692,0.0,True
+1 sizing,high sigma,"p99 loss (1st pct, sd)",FJ - F,-0.0332,-0.06308,0.00241,0.064,False
+1 sizing,high sigma,"p99 loss (1st pct, sd)",FA - F,-0.10816,-0.15368,-0.06545,0.0,True
+1 sizing,2017,monthly risk deviation,F - U,-0.10604,-0.14094,-0.08244,0.0,True
+1 sizing,2017,% days beyond 3 sd,F - U,0.30843,0.06007,0.57418,0.023,True
+1 sizing,2017,monthly risk deviation,T20 - F,-0.01275,-0.02567,0.0002,0.05636638147961751,False
+1 sizing,2017,% days beyond 3 sd,T20 - F,0.07996,-0.10913,0.24877,0.457,False
+1 sizing,2017,monthly risk deviation,MM - F,0.08981,0.06196,0.11262,0.0,True
+1 sizing,2017,% days beyond 3 sd,MM - F,0.4912,0.20099,0.80899,0.001,True
+1 sizing,2017,monthly risk deviation,FJ - F,9e-05,-0.00269,0.00369,0.9431303472571716,False
+1 sizing,2017,% days beyond 3 sd,FJ - F,-0.02285,-0.07094,0.01408,0.442,False
+1 sizing,2017,monthly risk deviation,FA - F,0.00467,-0.00062,0.01195,0.10669350780070458,False
+1 sizing,2017,% days beyond 3 sd,FA - F,-0.15993,-0.29134,-0.05111,0.007,True
+1 sizing,2017,"p99 loss (1st pct, sd)",F - U,-0.23888,-0.45095,-0.08907,0.007,True
+1 sizing,2017,"p99 loss (1st pct, sd)",T20 - F,-0.0492,-0.13209,0.09375,0.542,False
+1 sizing,2017,"p99 loss (1st pct, sd)",MM - F,-0.26874,-0.37134,-0.10808,0.008,True
+1 sizing,2017,"p99 loss (1st pct, sd)",FJ - F,0.01434,-0.01892,0.07179,0.278,False
+1 sizing,2017,"p99 loss (1st pct, sd)",FA - F,0.0918,0.0246,0.16924,0.018,True
+1 sizing,2018,monthly risk deviation,F - U,-0.05644,-0.08777,-0.0208,0.006039255158530448,True
+1 sizing,2018,% days beyond 3 sd,F - U,0.5235,0.22415,0.86568,0.003,True
+1 sizing,2018,monthly risk deviation,T20 - F,-0.00258,-0.02194,0.0145,0.6814292903875189,False
+1 sizing,2018,% days beyond 3 sd,T20 - F,0.01138,-0.1548,0.17898,0.947,False
+1 sizing,2018,monthly risk deviation,MM - F,0.07295,0.05528,0.10037,0.0,True
+1 sizing,2018,% days beyond 3 sd,MM - F,0.51212,0.17051,0.88968,0.004,True
+1 sizing,2018,monthly risk deviation,FJ - F,-0.00069,-0.00408,0.00275,0.5737292400603925,False
+1 sizing,2018,% days beyond 3 sd,FJ - F,-0.02276,-0.08361,0.03484,0.515,False
+1 sizing,2018,monthly risk deviation,FA - F,0.00119,-0.00575,0.00859,0.642174131857071,False
+1 sizing,2018,% days beyond 3 sd,FA - F,-0.03414,-0.15689,0.09729,0.619,False
+1 sizing,2018,"p99 loss (1st pct, sd)",F - U,-0.31729,-0.45823,-0.17422,0.0,True
+1 sizing,2018,"p99 loss (1st pct, sd)",T20 - F,0.12687,0.01377,0.22883,0.025,True
+1 sizing,2018,"p99 loss (1st pct, sd)",MM - F,-0.15387,-0.32423,-0.02293,0.023,True
+1 sizing,2018,"p99 loss (1st pct, sd)",FJ - F,0.02226,-0.01731,0.07879,0.178,False
+1 sizing,2018,"p99 loss (1st pct, sd)",FA - F,0.02474,-0.04101,0.0841,0.49,False
+1 sizing,2019,monthly risk deviation,F - U,-0.12844,-0.17826,-0.0669,0.004028197381671702,True
+1 sizing,2019,% days beyond 3 sd,F - U,0.512,0.11253,0.97479,0.017,True
+1 sizing,2019,monthly risk deviation,T20 - F,0.00658,-0.00707,0.02008,0.25075528700906347,False
+1 sizing,2019,% days beyond 3 sd,T20 - F,0.06827,-0.12555,0.26651,0.503,False
+1 sizing,2019,monthly risk deviation,MM - F,0.08548,0.03779,0.14303,0.006042296072507553,True
+1 sizing,2019,% days beyond 3 sd,MM - F,1.20605,0.62226,1.8534,0.001,True
+1 sizing,2019,monthly risk deviation,FJ - F,0.00763,0.00093,0.01259,0.03625377643504532,False
+1 sizing,2019,% days beyond 3 sd,FJ - F,-0.09102,-0.23115,0.02186,0.17,False
+1 sizing,2019,monthly risk deviation,FA - F,0.00718,2e-05,0.01317,0.050352467270896276,False
+1 sizing,2019,% days beyond 3 sd,FA - F,-0.1024,-0.19769,0.0,0.077,False
+1 sizing,2019,"p99 loss (1st pct, sd)",F - U,-0.48669,-0.71776,-0.2292,0.002,True
+1 sizing,2019,"p99 loss (1st pct, sd)",T20 - F,-0.05001,-0.18809,0.06978,0.375,False
+1 sizing,2019,"p99 loss (1st pct, sd)",MM - F,-0.54974,-0.73633,-0.28557,0.002,True
+1 sizing,2019,"p99 loss (1st pct, sd)",FJ - F,0.04507,-0.0183,0.11155,0.125,False
+1 sizing,2019,"p99 loss (1st pct, sd)",FA - F,0.05474,-0.02279,0.14109,0.201,False
+1 sizing,2020,monthly risk deviation,F - U,-0.15966,-0.37844,-0.02453,0.010065425264217413,True
+1 sizing,2020,% days beyond 3 sd,F - U,-1.58658,-4.41066,0.35344,0.232,False
+1 sizing,2020,monthly risk deviation,T20 - F,0.0031,-0.02366,0.03452,0.8827377956718672,False
+1 sizing,2020,% days beyond 3 sd,T20 - F,0.22665,-0.07839,0.58609,0.17,False
+1 sizing,2020,monthly risk deviation,MM - F,0.14347,0.08485,0.20797,0.0,True
+1 sizing,2020,% days beyond 3 sd,MM - F,0.21532,-0.29569,0.84063,0.419,False
+1 sizing,2020,monthly risk deviation,FJ - F,0.00527,0.00014,0.01086,0.04730749874182184,False
+1 sizing,2020,% days beyond 3 sd,FJ - F,0.07933,0.01254,0.15209,0.041,False
+1 sizing,2020,monthly risk deviation,FA - F,0.00522,-0.008,0.02211,0.38349270256668344,False
+1 sizing,2020,% days beyond 3 sd,FA - F,0.10199,-0.10363,0.33383,0.428,False
+1 sizing,2020,"p99 loss (1st pct, sd)",F - U,0.53347,-0.19398,1.45715,0.247,False
+1 sizing,2020,"p99 loss (1st pct, sd)",T20 - F,-0.05956,-0.23486,0.1573,0.703,False
+1 sizing,2020,"p99 loss (1st pct, sd)",MM - F,0.00204,-0.25923,0.37955,0.873,False
+1 sizing,2020,"p99 loss (1st pct, sd)",FJ - F,-0.02631,-0.08776,0.02955,0.336,False
+1 sizing,2020,"p99 loss (1st pct, sd)",FA - F,-0.01119,-0.18637,0.05988,0.622,False
+1 sizing,2021,monthly risk deviation,F - U,-0.08242,-0.12161,-0.0302,0.012060301507537688,True
+1 sizing,2021,% days beyond 3 sd,F - U,0.74804,0.45638,1.00798,0.001,True
+1 sizing,2021,monthly risk deviation,T20 - F,0.00886,-0.00198,0.02207,0.08743718592964825,False
+1 sizing,2021,% days beyond 3 sd,T20 - F,-0.05667,-0.26006,0.15015,0.587,False
+1 sizing,2021,monthly risk deviation,MM - F,0.09645,0.07679,0.1169,0.0,True
+1 sizing,2021,% days beyond 3 sd,MM - F,0.82738,0.51826,1.07002,0.001,True
+1 sizing,2021,monthly risk deviation,FJ - F,-0.00056,-0.00641,0.00407,0.8190954773869347,False
+1 sizing,2021,% days beyond 3 sd,FJ - F,0.05667,0.0,0.11465,0.112,False
+1 sizing,2021,monthly risk deviation,FA - F,-0.00184,-0.01121,0.00543,0.542713567839196,False
+1 sizing,2021,% days beyond 3 sd,FA - F,-0.17001,-0.32585,-0.02373,0.028,True
+1 sizing,2021,"p99 loss (1st pct, sd)",F - U,-0.45591,-0.67166,-0.28247,0.0,True
+1 sizing,2021,"p99 loss (1st pct, sd)",T20 - F,-0.03321,-0.14304,0.10764,0.54,False
+1 sizing,2021,"p99 loss (1st pct, sd)",MM - F,-0.418,-0.5597,-0.16094,0.001,True
+1 sizing,2021,"p99 loss (1st pct, sd)",FJ - F,-0.01528,-0.0833,-0.00368,0.027,True
+1 sizing,2021,"p99 loss (1st pct, sd)",FA - F,0.08353,0.00197,0.16716,0.043,False
+1 sizing,2022,monthly risk deviation,F - U,-0.13557,-0.19082,-0.0869,0.0030181086519114686,True
+1 sizing,2022,% days beyond 3 sd,F - U,-1.22853,-2.02316,-0.49866,0.0,True
+1 sizing,2022,monthly risk deviation,T20 - F,-0.0112,-0.01862,-0.00135,0.04225352112676056,False
+1 sizing,2022,% days beyond 3 sd,T20 - F,0.20475,0.01599,0.37719,0.04,False
+1 sizing,2022,monthly risk deviation,MM - F,0.19419,0.13156,0.24738,0.0,True
+1 sizing,2022,% days beyond 3 sd,MM - F,-0.26163,-0.65017,0.20598,0.237,False
+1 sizing,2022,monthly risk deviation,FJ - F,0.00246,-0.00155,0.00611,0.14084507042253522,False
+1 sizing,2022,% days beyond 3 sd,FJ - F,0.02275,-0.06949,0.11099,0.682,False
+1 sizing,2022,monthly risk deviation,FA - F,-0.00202,-0.01421,0.00985,0.7052313883299799,False
+1 sizing,2022,% days beyond 3 sd,FA - F,0.07963,-0.03443,0.21085,0.253,False
+1 sizing,2022,"p99 loss (1st pct, sd)",F - U,0.60487,0.26657,0.92353,0.003,True
+1 sizing,2022,"p99 loss (1st pct, sd)",T20 - F,-0.08812,-0.22401,0.05081,0.227,False
+1 sizing,2022,"p99 loss (1st pct, sd)",MM - F,0.33256,-0.08171,0.60106,0.104,False
+1 sizing,2022,"p99 loss (1st pct, sd)",FJ - F,-0.01779,-0.07183,0.08861,0.947,False
+1 sizing,2022,"p99 loss (1st pct, sd)",FA - F,-0.09688,-0.16277,0.0056,0.066,False
+"1 sizing, 5-session hold",all,% holds beyond 3 sd,F - U,-0.08287,-0.65325,0.37856,0.824,False
+"1 sizing, 5-session hold",all,% holds beyond 3 sd,FJ - F,0.0,-0.05596,0.05607,1.0,False
+"1 sizing, 5-session hold",all,% holds beyond 3 sd,FA - F,-0.07366,-0.15149,0.0,0.071,False
+"1 sizing, 5-session hold",FX majors,% holds beyond 3 sd,F - U,0.0,-0.78095,0.66891,1.0,False
+"1 sizing, 5-session hold",FX majors,% holds beyond 3 sd,FJ - F,-0.08929,-0.22896,0.0,0.304,False
+"1 sizing, 5-session hold",FX majors,% holds beyond 3 sd,FA - F,-0.17857,-0.41345,0.0,0.133,False
+"1 sizing, 5-session hold",FX crosses,% holds beyond 3 sd,F - U,-0.07812,-0.65298,0.38345,0.88,False
+"1 sizing, 5-session hold",FX crosses,% holds beyond 3 sd,FJ - F,0.01562,-0.04747,0.08092,0.812,False
+"1 sizing, 5-session hold",FX crosses,% holds beyond 3 sd,FA - F,-0.03125,-0.11697,0.04688,0.59,False
+"1 sizing, 5-session hold",metals,% holds beyond 3 sd,F - U,0.31348,-0.65147,1.52905,0.785,False
+"1 sizing, 5-session hold",metals,% holds beyond 3 sd,FJ - F,0.0,-0.93458,0.94347,1.0,False
+"1 sizing, 5-session hold",metals,% holds beyond 3 sd,FA - F,0.0,-0.93458,0.94347,1.0,False
+"1 sizing, 5-session hold",indices,% holds beyond 3 sd,F - U,-0.26288,-1.52014,0.85237,0.681,False
+"1 sizing, 5-session hold",indices,% holds beyond 3 sd,FJ - F,0.05258,0.0,0.16579,0.712,False
+"1 sizing, 5-session hold",indices,% holds beyond 3 sd,FA - F,-0.10515,-0.32158,0.10477,0.46,False
+1 sizing +1 lag,all,monthly risk deviation,F - U (lagged),-0.1031,-0.13711,-0.0755,0.0,True
+1 sizing +1 lag,all,monthly risk deviation,F - T20 (lagged),-0.00194,-0.0093,0.005,0.573,False
+1 sizing +1 lag,all,% days beyond 3 sd,FJ - F (lagged),-0.00184,-0.0369,0.03488,0.997,False
+1 sizing +1 lag,low sigma,% days beyond 3 sd,FA - F (lagged),-0.30845,-0.42697,-0.20143,0.0,True
+2 dollar share,2017,R2 of book on dollar factor,year - all,-0.14494,-0.15583,-0.13443,0.0,True
+2 dollar share,2018,R2 of book on dollar factor,year - all,-0.02158,-0.08153,0.01532,0.28743718592964823,False
+2 dollar share,2019,R2 of book on dollar factor,year - all,-0.08162,-0.21599,0.01101,0.11239337681886603,False
+2 dollar share,2020,R2 of book on dollar factor,year - all,-0.06279,-0.3242,0.13625,0.6231811339688911,False
+2 dollar share,2021,R2 of book on dollar factor,year - all,0.12353,0.03874,0.16608,0.020050125313283207,True
+2 dollar share,2022,R2 of book on dollar factor,year - all,0.14631,0.03243,0.23716,0.01905717151454363,True
+2 dollar share,dollar regime,R2 of book on dollar factor,turbulent - calm,0.13021,-0.04232,0.26636,0.1398390342052314,False
+3 stress cap,cap L=1.5,book ES 1% (sd),capped - vol target,-0.00614,-0.30926,0.36396,0.896,False
+3 stress cap,cap L=2.0,book ES 1% (sd),capped - vol target,0.04042,-0.0863,0.25123,0.831,False
+3 stress cap,cap L=3.0,book ES 1% (sd),capped - vol target,-0.0,-0.0,0.0,0.316,False
+3 stress cap,all,99% VaR breach rate (model sd),rate - 1%,1.0712,0.2945,1.97735,0.006,True
+3 stress cap,all,99% VaR breach rate (stress sd),rate - 1%,-0.80583,-1.0,-0.54693,0.0,True
+3 stress cap,2017,99% VaR breach rate (model sd),rate - 1%,-0.19028,-1.0,1.46952,0.713,False
+3 stress cap,2017,99% VaR breach rate (stress sd),rate - 1%,-1.0,-1.0,-1.0,0.0,True
+3 stress cap,2018,99% VaR breach rate (model sd),rate - 1%,1.3166,-0.55962,3.4069,0.186,False
+3 stress cap,2018,99% VaR breach rate (stress sd),rate - 1%,-0.6139,-1.0,0.31579,0.14,False
+3 stress cap,2019,99% VaR breach rate (model sd),rate - 1%,-0.2278,-1.0,0.88103,0.58,False
+3 stress cap,2019,99% VaR breach rate (stress sd),rate - 1%,-1.0,-1.0,-1.0,0.0,True
+3 stress cap,2020,99% VaR breach rate (model sd),rate - 1%,2.46154,-0.09101,5.26968,0.067,False
+3 stress cap,2020,99% VaR breach rate (stress sd),rate - 1%,-0.61538,-1.0,0.27409,0.131,False
+3 stress cap,2021,99% VaR breach rate (model sd),rate - 1%,0.92308,-0.48986,2.4988,0.179,False
+3 stress cap,2021,99% VaR breach rate (stress sd),rate - 1%,-1.0,-1.0,-1.0,0.0,True
+3 stress cap,2022,99% VaR breach rate (model sd),rate - 1%,2.07692,-0.38673,4.72336,0.11,False
+3 stress cap,2022,99% VaR breach rate (stress sd),rate - 1%,-0.61538,-1.0,0.27437,0.121,False
+3 stress cap,turbulent,99% VaR breach rate (model sd),rate - 1%,1.04604,-0.57447,3.03507,0.294,False
+3 stress cap,turbulent,99% VaR breach rate (stress sd),rate - 1%,-0.74425,-1.0,-0.21718,0.009,True
+3 stress cap,calm,99% VaR breach rate (model sd),rate - 1%,1.24509,0.34093,2.29965,0.005,True
+3 stress cap,calm,99% VaR breach rate (stress sd),rate - 1%,-0.81291,-1.0,-0.51829,0.0,True
+4 ERC,book,ES 1% (sd),ERC - inverse vol,0.00044,-0.05919,0.07238,0.986,False
+4 ERC,book,monthly risk deviation,ERC - inverse vol,0.01127,0.00181,0.02087,0.023,True
+4 ERC,2017,ex-ante USD risk share,ERC - inverse vol,-0.01812,-0.03067,-0.00743,0.001,True
+4 ERC,2018,ex-ante USD risk share,ERC - inverse vol,0.00089,-0.00672,0.0072,0.77,False
+4 ERC,2019,ex-ante USD risk share,ERC - inverse vol,0.0189,0.0078,0.03073,0.001,True
+4 ERC,2020,ex-ante USD risk share,ERC - inverse vol,0.02786,0.00701,0.04895,0.004,True
+4 ERC,2021,ex-ante USD risk share,ERC - inverse vol,-0.00865,-0.01265,-0.0032,0.011,True
+4 ERC,2022,ex-ante USD risk share,ERC - inverse vol,0.00144,-0.00519,0.00672,0.619,False
+5 stops bid/ask,Asia 00-07,1-sigma_rem stop touch (net),rate - random walk,0.71704,-0.01797,1.48033,0.06,False
+5 stops bid/ask,FX majors / Asia 00-07,1-sigma_rem stop touch (net),rate - random walk,0.1792,-0.66456,1.02582,0.657,False
+5 stops bid/ask,FX crosses / Asia 00-07,1-sigma_rem stop touch (net),rate - random walk,1.51569,0.64767,2.41499,0.0,True
+5 stops bid/ask,metals / Asia 00-07,1-sigma_rem stop touch (net),rate - random walk,-0.6076,-2.01825,0.83804,0.437,False
+5 stops bid/ask,indices / Asia 00-07,1-sigma_rem stop touch (net),rate - random walk,-2.03816,-3.20857,-0.82194,0.001,True
+5 stops bid/ask,London open 07-10,1-sigma_rem stop touch (net),rate - random walk,0.83863,0.04264,1.63198,0.039,False
+5 stops bid/ask,FX majors / London open 07-10,1-sigma_rem stop touch (net),rate - random walk,0.49365,-0.31997,1.31107,0.229,False
+5 stops bid/ask,FX crosses / London open 07-10,1-sigma_rem stop touch (net),rate - random walk,1.93533,0.93848,2.91259,0.0,True
+5 stops bid/ask,metals / London open 07-10,1-sigma_rem stop touch (net),rate - random walk,0.50493,-0.85638,1.81987,0.431,False
+5 stops bid/ask,indices / London open 07-10,1-sigma_rem stop touch (net),rate - random walk,-2.42375,-3.52354,-1.31511,0.0,True
+5 stops bid/ask,London mid 10-13,1-sigma_rem stop touch (net),rate - random walk,0.41092,-0.34634,1.18217,0.274,False
+5 stops bid/ask,FX majors / London mid 10-13,1-sigma_rem stop touch (net),rate - random walk,0.06648,-0.80196,0.89459,0.843,False
+5 stops bid/ask,FX crosses / London mid 10-13,1-sigma_rem stop touch (net),rate - random walk,1.42992,0.53928,2.31739,0.003,True
+5 stops bid/ask,metals / London mid 10-13,1-sigma_rem stop touch (net),rate - random walk,-0.46069,-1.82877,0.92741,0.508,False
+5 stops bid/ask,indices / London mid 10-13,1-sigma_rem stop touch (net),rate - random walk,-2.49283,-3.63016,-1.35043,0.0,True
+5 stops bid/ask,Overlap 13-16,1-sigma_rem stop touch (net),rate - random walk,0.79966,-0.02782,1.61799,0.053,False
+5 stops bid/ask,FX majors / Overlap 13-16,1-sigma_rem stop touch (net),rate - random walk,-0.13405,-1.10969,0.81191,0.81,False
+5 stops bid/ask,FX crosses / Overlap 13-16,1-sigma_rem stop touch (net),rate - random walk,1.93243,0.96701,2.88587,0.0,True
+5 stops bid/ask,metals / Overlap 13-16,1-sigma_rem stop touch (net),rate - random walk,-0.3304,-1.75731,1.11423,0.699,False
+5 stops bid/ask,indices / Overlap 13-16,1-sigma_rem stop touch (net),rate - random walk,-1.74314,-2.92525,-0.50779,0.005,True
+5 stops bid/ask,NY afternoon 16-22,1-sigma_rem stop touch (net),rate - random walk,0.44275,-0.46748,1.42381,0.327,False
+5 stops bid/ask,FX majors / NY afternoon 16-22,1-sigma_rem stop touch (net),rate - random walk,-1.17035,-2.15424,-0.11601,0.033,False
+5 stops bid/ask,FX crosses / NY afternoon 16-22,1-sigma_rem stop touch (net),rate - random walk,2.30526,1.16346,3.44636,0.0,True
+5 stops bid/ask,metals / NY afternoon 16-22,1-sigma_rem stop touch (net),rate - random walk,-2.38252,-4.11259,-0.62356,0.001,True
+5 stops bid/ask,indices / NY afternoon 16-22,1-sigma_rem stop touch (net),rate - random walk,-3.47806,-4.84252,-2.00282,0.0,True
+5 stops bid/ask,2017,1-sigma stop touch from the open (net),rate - random walk,0.28995,-0.91219,1.30055,0.585,False
+5 stops bid/ask,2018,1-sigma stop touch from the open (net),rate - random walk,2.51385,1.42727,3.98219,0.001,True
+5 stops bid/ask,2019,1-sigma stop touch from the open (net),rate - random walk,0.23903,-1.80259,2.59491,0.854,False
+5 stops bid/ask,2020,1-sigma stop touch from the open (net),rate - random walk,0.73306,-1.84131,3.60802,0.564,False
+5 stops bid/ask,2021,1-sigma stop touch from the open (net),rate - random walk,0.43686,-1.34111,2.23373,0.612,False
+5 stops bid/ask,2022,1-sigma stop touch from the open (net),rate - random walk,0.08166,-2.0392,2.40237,0.921,False
+5 stops bid/ask,turbulent,1-sigma stop touch from the open (net),rate - random walk,-3.19412,-4.8675,-2.01009,0.0,True
+5 stops bid/ask,calm,1-sigma stop touch from the open (net),rate - random walk,1.21875,0.52634,1.9485,0.0,True

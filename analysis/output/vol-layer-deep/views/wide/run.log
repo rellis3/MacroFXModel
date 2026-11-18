@@ -1,0 +1,79 @@
+rates+surprises 5.2 s
+AUDCAD 1604
+AUDCHF 1604
+AUDJPY 1604
+AUDNZD 1604
+AUDUSD 1604
+CADCHF 1604
+CADJPY 1604
+CHFJPY 1604
+DE30 1571
+DOW 1598
+EURAUD 1604
+EURCAD 1604
+EURCHF 1604
+EURGBP 1604
+EURJPY 1604
+EURNZD 1604
+EURUSD 1604
+GBPAUD 1604
+GBPCAD 1604
+GBPCHF 1604
+GBPJPY 1604
+GBPNZD 1604
+GBPUSD 1604
+GOLD 1597
+NQ 1598
+NZDCAD 1604
+NZDJPY 1604
+NZDUSD 1604
+SPX500 1596
+UK100 1562
+US2000 1598
+USDCAD 1604
+USDCHF 1604
+USDJPY 1604
+built (54433, 55) 323 s
+ic sweep 783 390 s
+regime {'episodes': 113, 'median_len': 56.0, 'turb_share': 0.122, 'lens_p10_p90': [10.0, 108.0], 'market_episodes_25pct': 4}
+conditional 939 773 s
+placebo 939 s
+breadth {'view book': (163, 50.88, 82.17, 86, 27), 'view book shuffled': (163, 147.22, 154.45, 135, 1), 'combo, 34 instruments': (34, 17.82, 24.19, 23, 7), 'raw returns, 34 instruments': (34, 6.53, 8.94, 8, 8), 'view book, stage-2 10 instruments': (47, 21.71, 30.92, 31, 10)}
+rw draw 0
+rw draw 1
+rw draw 2
+rw draw 3
+rw draw 4
+rw draw 5
+rw draw 6
+rw draw 7
+rw draw 8
+rw draw 9
+rw draw 10
+rw draw 11
+rw draw 12
+rw draw 13
+rw draw 14
+rw draw 15
+rw draw 16
+rw draw 17
+rw draw 18
+rw draw 19
+rw draw 20
+rw draw 21
+rw draw 22
+rw draw 23
+rw draw 24
+rw draw 25
+rw draw 26
+rw draw 27
+rw draw 28
+rw draw 29
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1396: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\vol-layer-deep\views_wide.py:412: RuntimeWarning: Mean of empty slice
+  return {k: [R(np.nanpercentile(v, 5)), R(np.nanmean(v)), R(np.nanpercentile(v, 95))] for k, v in out.items()}
+bh against zero (raw) 11
+cells 993 bh pass 0 raw<0.05 75 expected 49.650000000000006
+written C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\backtest-data\vol-layer\views-wide.json 37407 in 1675 s
+exit 0

@@ -1,0 +1,51 @@
+{
+ "intro": [
+  "52,746 instrument-sessions, 34 instruments, 2017-2022 (log-HAR race 2018-2022; chosen σ only 2020-11 to 2022). 327 cells tested; 270 pass Benjamini-Hochberg at q 0.10; the same sweep with the fields shuffled passes 0.",
+  "Over-reaction holds across everything: lowest-σ fifth minus highest-σ fifth of range ÷ σ is +0.34σ pooled (shuffled −0.01), positive and BH-passing in all 34 instruments (+0.20 EURJPY to +0.51 GBPAUD), all 4 classes, all 5 London buckets (17-22% of each bucket's mean range), every horizon, both regimes and every year (+0.42 to +0.49).",
+  "It is a flaw of the live σ, not of ranking any noisy forecast: range ÷ forecast falls from 1.07 to 0.80 across σ deciles, but is near flat for log-HAR (0.95 to 0.94) and variance-targeted GARCH (0.94 to 0.95).",
+  "The forecast-error effect holds across classes, buckets, regimes and years (+0.14σ in 2017 to +0.39σ in 2020, shuffled −0.004), but is local in size: GBP and AUD crosses +0.40 to +0.48σ, the deep USD majors only +0.07 to +0.08σ (EURUSD, NZDUSD, USDCAD fail BH). Gold +0.12σ, barely.",
+  "The error effect is short-lived: strongest at 15 minutes (24% of mean range) and down to 13% over 5 sessions; with inputs one session older it keeps 69%, by +5 sessions it is 0. Shorter EWMA half-lives are stronger (+0.44σ at 3 sessions, +0.28 at 10, +0.13 at 45): a slope, not a tuned peak at 10.",
+  "Stop gap on the bid/ask path: a 1σ stop from the 00:00 entry is hit 35.3% after under-forecasts vs 29.7% after over-forecasts (+5.5 points, shuffled +0.1; mid path +5.4). It holds for entries at every London bucket (+5.3 to +5.8), every year (+3.0 to +7.2), both regimes, and at stop widths 0.5σ to 1.5σ (+3.9 to +5.8). Not in gold, AUDUSD, NZDUSD, USDCAD, EURUSD.",
+  "log-HAR beats the plain live σ almost everywhere (QLIKE 0.77 RV5, 0.89 range²; every class, regime, tercile and year), but against the chosen σ it is local to FX crosses (0.86 RV5, 0.95 range²); it loses on indices (1.07) and ties on majors and gold. Pooled vs chosen on range²: 0.97 [0.94, 1.00], short of stage 1's bar.",
+  "GARCH persistence as a half-life: median 11 sessions across instruments vs 7.5 for realised log RV5, but it ranges from 2 (GBPUSD) to 200 (AUDNZD) and jumps between quarterly refits (EURJPY 8 median, 90 last): the fitted half-life is not a stable property.",
+  "Regime caveat: 93 turbulent episodes per instrument but only 4 market-wide ones, so the regime split is close to 4 events. Descriptive only; no 2023+ data was loaded."
+ ],
+ "holds": [
+  {
+   "effect": "σ over-reaction (lowest σ fifth − highest, range ÷ σ)",
+   "where": "holds across all 34 instruments, 4 classes, 5 London buckets, 6 horizons, both regimes, 6 years; grows with horizon (21% of mean range at 15m, 31% over 5 sessions)",
+   "size": "+0.34σ [0.27, 0.42] pooled",
+   "benchmark": "shuffled σ rank −0.01σ; log-HAR and GARCH calibration lines flat"
+  },
+  {
+   "effect": "forecast-error effect (top F5 fifth − bottom, range ÷ σ)",
+   "where": "holds across classes, buckets, regimes, years; local in size to crosses (GBP/AUD up to +0.48σ); near 0 on EURUSD, NZDUSD, USDCAD; fades by +5 sessions",
+   "size": "+0.28σ [0.22, 0.34] pooled; +0.05σ [−0.03, +0.11] on range ÷ chosen σ (2020-11 to 2022)",
+   "benchmark": "shuffled F5 −0.004σ"
+  },
+  {
+   "effect": "1σ stop-hit gap, under- vs over-forecast, bid/ask path",
+   "where": "holds across entry buckets, years, regimes, stop widths 0.5-1.5σ; local to crosses and indices; not in gold or the USD majors AUD/NZD/CAD/EUR",
+   "size": "+5.5 points [4.6, 6.5] (35.3% vs 29.7%)",
+   "benchmark": "shuffled F5 +0.1 pts; mid path +5.4 pts; all sessions 32.5%"
+  },
+  {
+   "effect": "log-HAR vs plain live σ (QLIKE ratio)",
+   "where": "holds across classes, regimes, terciles, years and all 34 instruments (weakest EURUSD, NZDUSD, USDCAD at 0.96-0.97)",
+   "size": "0.77 RV5, 0.89 range²",
+   "benchmark": "1 = plain σ"
+  },
+  {
+   "effect": "log-HAR vs chosen σ (QLIKE ratio)",
+   "where": "local to FX crosses (0.86 RV5, 0.95 range²); reverses in indices (1.07 RV5); ties in majors, gold and turbulent spells",
+   "size": "0.94 [0.89, 1.00] RV5, 0.97 [0.94, 1.00] range², 2020-11 to 2022",
+   "benchmark": "1 = chosen σ"
+  },
+  {
+   "effect": "GARCH(1,1) half-life ln0.5/ln(α+β)",
+   "where": "too noisy to tell as a property: 2 to 200 sessions across instruments and unstable between quarterly refits",
+   "size": "median 11 sessions",
+   "benchmark": "realised log-RV5 ACF half-life, median 7.5 sessions"
+  }
+ ]
+}

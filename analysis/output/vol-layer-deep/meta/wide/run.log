@@ -1,0 +1,218 @@
+Q1 labels ready: 744 fits  615s
+Q1 fits done  836s
+Q1 cells 5450  1066s
+Q2 jobs 1404
+Q2 cells 3065  425s
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\vol-layer-deep\meta_wide.py:569: RuntimeWarning: All-NaN slice encountered
+  keep_d = msk_cond & (od >= np.nanmedian(od[msk_cond]))
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\vol-layer-deep\meta_wide.py:549: RuntimeWarning: invalid value encountered in divide
+  reps = (W @ a_) / (W @ c_)
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\vol-layer-deep\meta_wide.py:550: RuntimeWarning: invalid value encountered in scalar divide
+  return [r4(a_.sum() / c_.sum()), r4(np.nanpercentile(reps, 2.5)), r4(np.nanpercentile(reps, 97.5))], reps
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1396: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\vol-layer-deep\meta_wide.py:578: RuntimeWarning: Mean of empty slice
+  sh_d=sharpe(book(rr, keep_d)), r_d=mu_d, d_rd=float(np.nanmean(rr[keep_d]) - np.nanmean(rr[keep_g])),
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\vol-layer-deep\meta_wide.py:579: RuntimeWarning: Mean of empty slice
+  dd_ci=[r4(np.nanpercentile(dld, 2.5)), r4(np.nanpercentile(dld, 97.5))], p_d=p_d, g_d=float(gr[keep_d].mean()),
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\_core\_methods.py:142: RuntimeWarning: invalid value encountered in scalar divide
+  ret = ret.dtype.type(ret / rcount)
+Q3 cells 164  433s
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\vol-layer-deep\meta_wide.py:610: Pandas4Warning: Starting with pandas version 4.0 all arguments of sum will be keyword-only.
+  out[lab] = dict(n_pr=eff_bets(P), sharpe=sharpe(P.sum(1).to_numpy()), r=float(rr[mk].mean()), n=int(mk.sum()))
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\vol-layer-deep\meta_wide.py:610: Pandas4Warning: Starting with pandas version 4.0 all arguments of sum will be keyword-only.
+  out[lab] = dict(n_pr=eff_bets(P), sharpe=sharpe(P.sum(1).to_numpy()), r=float(rr[mk].mean()), n=int(mk.sum()))
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\vol-layer-deep\meta_wide.py:610: Pandas4Warning: Starting with pandas version 4.0 all arguments of sum will be keyword-only.
+  out[lab] = dict(n_pr=eff_bets(P), sharpe=sharpe(P.sum(1).to_numpy()), r=float(rr[mk].mean()), n=int(mk.sum()))
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\vol-layer-deep\meta_wide.py:610: Pandas4Warning: Starting with pandas version 4.0 all arguments of sum will be keyword-only.
+  out[lab] = dict(n_pr=eff_bets(P), sharpe=sharpe(P.sum(1).to_numpy()), r=float(rr[mk].mean()), n=int(mk.sum()))
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\vol-layer-deep\meta_wide.py:610: Pandas4Warning: Starting with pandas version 4.0 all arguments of sum will be keyword-only.
+  out[lab] = dict(n_pr=eff_bets(P), sharpe=sharpe(P.sum(1).to_numpy()), r=float(rr[mk].mean()), n=int(mk.sum()))
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\vol-layer-deep\meta_wide.py:610: Pandas4Warning: Starting with pandas version 4.0 all arguments of sum will be keyword-only.
+  out[lab] = dict(n_pr=eff_bets(P), sharpe=sharpe(P.sum(1).to_numpy()), r=float(rr[mk].mean()), n=int(mk.sum()))
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\vol-layer-deep\meta_wide.py:610: Pandas4Warning: Starting with pandas version 4.0 all arguments of sum will be keyword-only.
+  out[lab] = dict(n_pr=eff_bets(P), sharpe=sharpe(P.sum(1).to_numpy()), r=float(rr[mk].mean()), n=int(mk.sum()))
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\vol-layer-deep\meta_wide.py:610: Pandas4Warning: Starting with pandas version 4.0 all arguments of sum will be keyword-only.
+  out[lab] = dict(n_pr=eff_bets(P), sharpe=sharpe(P.sum(1).to_numpy()), r=float(rr[mk].mean()), n=int(mk.sum()))
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\vol-layer-deep\meta_wide.py:610: Pandas4Warning: Starting with pandas version 4.0 all arguments of sum will be keyword-only.
+  out[lab] = dict(n_pr=eff_bets(P), sharpe=sharpe(P.sum(1).to_numpy()), r=float(rr[mk].mean()), n=int(mk.sum()))
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\vol-layer-deep\meta_wide.py:610: Pandas4Warning: Starting with pandas version 4.0 all arguments of sum will be keyword-only.
+  out[lab] = dict(n_pr=eff_bets(P), sharpe=sharpe(P.sum(1).to_numpy()), r=float(rr[mk].mean()), n=int(mk.sum()))
+{
+ "n_touches": 60211,
+ "sessions": 1604,
+ "cells": 13857,
+ "pass_bh": 1289,
+ "pass_by_q": {
+  "Q1": 457,
+  "Q1r": 519,
+  "Q2": 258,
+  "Q3": 24,
+  "Q3d": 31,
+  "Q4": 0
+ },
+ "cells_by_q": {
+  "Q1": 5450,
+  "Q1r": 5012,
+  "Q2": 3065,
+  "Q3": 164,
+  "Q3d": 164,
+  "Q4": 2
+ },
+ "raw_p05": 2532,
+ "raw_p05_expected": 692.85,
+ "placebo_q1_pass": 42,
+ "placebo_raw05": 700,
+ "placebo_cells": 10462,
+ "q1_cells": 5450,
+ "q1r_cells": 5012,
+ "q1r_pos_pass": 471,
+ "q1r_neg_pass": 48,
+ "episodes": 103,
+ "episode_len": 55.349514563106794,
+ "regime_block": 55,
+ "regime_share": 0.11342677978605681,
+ "q1_pos_pass": 164,
+ "q1_neg_pass": 293,
+ "q2_pos_pass": 54,
+ "q2_neg_pass": 204,
+ "q3_pos_pass": 5,
+ "q3_neg_pass": 19,
+ "q3d_pos_pass": 25,
+ "q3d_neg_pass": 4,
+ "effb": {
+  "1:1 0.25\u03c3, 2h": {
+   "unfiltered": {
+    "n_pr": 29.825086226001442,
+    "sharpe": -12.151145734839105,
+    "r": -0.16499408175422892,
+    "n": 60211
+   },
+   "meta top half": {
+    "n_pr": 31.20387396279406,
+    "sharpe": -9.502074234507672,
+    "r": -0.18029586459585634,
+    "n": 30106
+   },
+   "direction top half": {
+    "n_pr": 30.39364567171277,
+    "sharpe": -8.201328884723242,
+    "r": -0.150601792538386,
+    "n": 30106
+   },
+   "geometry top half": {
+    "n_pr": 31.712441099999204,
+    "sharpe": -9.498592084735195,
+    "r": -0.16760890139704904,
+    "n": 30110
+   },
+   "random half": {
+    "n_pr": 32.317387868409234,
+    "sharpe": -9.910581442041606,
+    "r": -0.1639110714553484,
+    "n": 30078
+   }
+  },
+  "2:1 0.5/0.25\u03c3, to 21:00": {
+   "unfiltered": {
+    "n_pr": 29.803056978177544,
+    "sharpe": -8.713539924214068,
+    "r": -0.17104695715164672,
+    "n": 60211
+   },
+   "meta top half": {
+    "n_pr": 27.88526875594594,
+    "sharpe": -5.268464998657482,
+    "r": -0.16393757245707782,
+    "n": 30106
+   },
+   "direction top half": {
+    "n_pr": 28.569960708651216,
+    "sharpe": -5.052823981186282,
+    "r": -0.15244109131447972,
+    "n": 30106
+   },
+   "geometry top half": {
+    "n_pr": 27.44400242978048,
+    "sharpe": -5.1703556323905655,
+    "r": -0.16181138838493855,
+    "n": 30120
+   },
+   "random half": {
+    "n_pr": 32.36064538239181,
+    "sharpe": -7.316612527382251,
+    "r": -0.17423055636644902,
+    "n": 30078
+   }
+  }
+ },
+ "lag": {
+  "1:1 0.25\u03c3, 2h": {
+   "as built": {
+    "auc_real": 0.5727015586182205,
+    "auc_rw": 0.5643013226000684,
+    "gap": 0.008400236018152096,
+    "p": 0.032101773689059795,
+    "auc_res_real": 0.5180801201593612
+   },
+   "+1 session, session inputs": {
+    "auc_real": 0.5706393899891983,
+    "auc_rw": 0.5638629777750489,
+    "gap": 0.006776412214149374,
+    "p": 0.09213343001495232,
+    "auc_res_real": 0.5110958995440797
+   },
+   "+1 session, all inputs": {
+    "auc_real": 0.5137003625110759,
+    "auc_rw": 0.5146756337473763,
+    "gap": -0.000975271236300479,
+    "p": 0.8080339565070942,
+    "auc_res_real": 0.5032128951137788
+   }
+  },
+  "2:1 0.5/0.25\u03c3, to 21:00": {
+   "as built": {
+    "auc_real": 0.553718636846066,
+    "auc_rw": 0.5359236756045371,
+    "gap": 0.017794961241528906,
+    "p": 1.1695458169428141e-06,
+    "auc_res_real": 0.5273165276373051
+   },
+   "+1 session, session inputs": {
+    "auc_real": 0.5499546892036885,
+    "auc_rw": 0.5360440075632029,
+    "gap": 0.01391068164048559,
+    "p": 0.00020207276251892083,
+    "auc_res_real": 0.5207145478310217
+   },
+   "+1 session, all inputs": {
+    "auc_real": 0.5031749195960049,
+    "auc_rw": 0.5018743025011183,
+    "gap": 0.0013006170948866025,
+    "p": 0.7320412260175573,
+    "auc_res_real": 0.49888755012403574
+   }
+  }
+ },
+ "rule_a": {
+  "n": 922,
+  "days": 327,
+  "first": "2020-08-24",
+  "last": "2022-12-12",
+  "win": 0.28524945770065074,
+  "auc": 0.5076997640162246,
+  "auc_perm_mean": 0.491275783679616,
+  "auc_perm_95": 0.5382700485238032,
+  "p_auc": 0.31343283582089554,
+  "auc_time": 0.46047127517785325,
+  "sh_all": 1.543946336424041,
+  "sh_keep": 0.6079895136487997,
+  "sh_rand": 1.1257483658790186,
+  "p_sh": 0.099,
+  "net_all": 0.20104383858452096,
+  "net_keep": 0.09023864565609761,
+  "net_rand": 0.17669536796529967
+ },
+ "runtime_s": 1527
+}
+done in 1528s

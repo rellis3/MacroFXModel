@@ -1,0 +1,175 @@
+cell,p,bh
+gain SxE lhl all,0.847,False
+gain SxE lhl fx_majors,1.0,False
+gain SxE lhl fx_crosses,1.0,False
+gain SxE lhl gold,0.857,False
+gain SxE lhl indices,1.0,False
+gain SxE hit all,1.0,False
+gain SxE hit fx_majors,1.0,False
+gain SxE hit fx_crosses,1.0,False
+gain SxE hit gold,1.0,False
+gain SxE hit indices,1.0,False
+gain SxR lhl all,0.798,False
+gain SxR lhl fx_majors,1.0,False
+gain SxR lhl fx_crosses,1.0,False
+gain SxR lhl gold,1.0,False
+gain SxR lhl indices,0.287,False
+gain SxR hit all,1.0,False
+gain SxR hit fx_majors,1.0,False
+gain SxR hit fx_crosses,1.0,False
+gain SxR hit gold,0.911,False
+gain SxR hit indices,1.0,False
+gain SxD lhl majors,1.0,False
+gain SxD hit majors,1.0,False
+gain SxJo lhl all,0.795,False
+gain SxJo lhl fx_majors,1.0,False
+gain SxJo lhl fx_crosses,0.848,False
+gain SxJo lhl gold,1.0,False
+gain SxJo lhl indices,0.803,False
+gain SxJo hit all,0.568,False
+gain SxJo hit fx_majors,1.0,False
+gain SxJo hit fx_crosses,0.092,False
+gain SxJo hit gold,1.0,False
+gain SxJo hit indices,1.0,False
+gain SxJm lhl all,0.413,False
+gain SxJm lhl fx_majors,0.536,False
+gain SxJm lhl fx_crosses,0.465,False
+gain SxJm lhl gold,1.0,False
+gain SxJm lhl indices,1.0,False
+gain SxJm hit all,0.693,False
+gain SxJm hit fx_majors,0.52,False
+gain SxJm hit fx_crosses,0.98,False
+gain SxJm hit gold,1.0,False
+gain SxJm hit indices,0.979,False
+gain ExR lhl all,1.0,False
+gain ExR lhl fx_majors,1.0,False
+gain ExR lhl fx_crosses,1.0,False
+gain ExR lhl gold,1.0,False
+gain ExR lhl indices,1.0,False
+gain ExR hit all,1.0,False
+gain ExR hit fx_majors,1.0,False
+gain ExR hit fx_crosses,1.0,False
+gain ExR hit gold,1.0,False
+gain ExR hit indices,1.0,False
+gain ExD lhl majors,0.871,False
+gain ExD hit majors,1.0,False
+gain ExJo lhl all,1.0,False
+gain ExJo lhl fx_majors,1.0,False
+gain ExJo lhl fx_crosses,1.0,False
+gain ExJo lhl gold,1.0,False
+gain ExJo lhl indices,1.0,False
+gain ExJo hit all,1.0,False
+gain ExJo hit fx_majors,0.877,False
+gain ExJo hit fx_crosses,1.0,False
+gain ExJo hit gold,1.0,False
+gain ExJo hit indices,1.0,False
+gain ExJm lhl all,1.0,False
+gain ExJm lhl fx_majors,1.0,False
+gain ExJm lhl fx_crosses,1.0,False
+gain ExJm lhl gold,0.204,False
+gain ExJm lhl indices,1.0,False
+gain ExJm hit all,1.0,False
+gain ExJm hit fx_majors,1.0,False
+gain ExJm hit fx_crosses,1.0,False
+gain ExJm hit gold,1.0,False
+gain ExJm hit indices,1.0,False
+gain RxD lhl majors,1.0,False
+gain RxD hit majors,1.0,False
+gain RxJo lhl all,1.0,False
+gain RxJo lhl fx_majors,1.0,False
+gain RxJo lhl fx_crosses,1.0,False
+gain RxJo lhl gold,1.0,False
+gain RxJo lhl indices,0.379,False
+gain RxJo hit all,1.0,False
+gain RxJo hit fx_majors,0.918,False
+gain RxJo hit fx_crosses,1.0,False
+gain RxJo hit gold,1.0,False
+gain RxJo hit indices,1.0,False
+gain RxJm lhl all,1.0,False
+gain RxJm lhl fx_majors,1.0,False
+gain RxJm lhl fx_crosses,1.0,False
+gain RxJm lhl gold,1.0,False
+gain RxJm lhl indices,0.975,False
+gain RxJm hit all,1.0,False
+gain RxJm hit fx_majors,1.0,False
+gain RxJm hit fx_crosses,1.0,False
+gain RxJm hit gold,1.0,False
+gain RxJm hit indices,1.0,False
+gain DxJo lhl majors,1.0,False
+gain DxJo hit majors,1.0,False
+gain DxJm lhl majors,1.0,False
+gain DxJm hit majors,0.859,False
+gain JoxJm lhl all,1.0,False
+gain JoxJm lhl fx_majors,1.0,False
+gain JoxJm lhl fx_crosses,1.0,False
+gain JoxJm lhl gold,1.0,False
+gain JoxJm lhl indices,1.0,False
+gain JoxJm hit all,1.0,False
+gain JoxJm hit fx_majors,1.0,False
+gain JoxJm hit fx_crosses,1.0,False
+gain JoxJm hit gold,1.0,False
+gain JoxJm hit indices,1.0,False
+ic SxE hit,0.901,False
+ic SxR hit,0.947,False
+ic SxD hit,0.986,False
+ic SxJo hit,0.051,False
+ic SxJm hit,0.067,False
+ic ExR hit,0.703,False
+ic ExD hit,0.763,False
+ic ExJo hit,0.323,False
+ic ExJm hit,0.279,False
+ic RxD hit,0.16616616616616617,False
+ic RxJo hit,0.442,False
+ic RxJm hit,0.893,False
+ic DxJo hit,0.809,False
+ic DxJm hit,0.798,False
+ic head inst AUDCAD,0.596,False
+ic head inst AUDCHF,0.987,False
+ic head inst AUDJPY,0.458,False
+ic head inst AUDUSD,0.107,False
+ic head inst CADJPY,0.693,False
+ic head inst CHFJPY,0.607,False
+ic head inst DOW,0.143,False
+ic head inst EURAUD,0.665,False
+ic head inst EURCAD,0.184,False
+ic head inst EURNZD,0.727,False
+ic head inst EURUSD,0.83,False
+ic head inst GBPAUD,0.463,False
+ic head inst GBPCAD,0.858,False
+ic head inst GBPJPY,0.468,False
+ic head inst GBPNZD,0.576,False
+ic head inst GBPUSD,0.182,False
+ic head inst NQ,0.279,False
+ic head inst NZDCAD,0.164,False
+ic head inst NZDJPY,0.838,False
+ic head inst NZDUSD,0.93,False
+ic head inst SPX500,0.373,False
+ic head inst US2000,0.724,False
+ic head inst USDCAD,0.279,False
+ic head inst USDJPY,0.88,False
+ic head class fx_crosses,0.074,False
+ic head class fx_majors,0.039,False
+ic head class indices,0.744,False
+ic head year 2017,0.003,False
+ic head year 2018,0.785,False
+ic head year 2019,0.003,False
+ic head year 2020,0.772,False
+ic head year 2021,0.592,False
+ic head year 2022,0.079,False
+ic SxJm regime calm,0.024,False
+ic SxJm regime turbulent,0.556,False
+ic ExJm regime calm,0.27,False
+ic ExJm regime turbulent,0.793,False
+ic SxE regime calm,0.906,False
+ic SxE regime turbulent,0.712,False
+E alone regime calm,0.0,True
+E alone regime turbulent,0.0,True
+tod Asia 00-07,0.743,False
+tod London open 07-10,0.001,True
+tod London mid 10-13,0.041,False
+tod Overlap 13-16,0.007,False
+tod NY pm 16-22,0.307,False
+ic head horizon hitmid,0.119,False
+ic head horizon hit,0.067,False
+ic head horizon lhl,0.03,False
+ic head horizon hl5,0.722,False

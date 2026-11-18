@@ -1,0 +1,13 @@
+[    19s] rows 54177 insts 34
+[    19s] episodes {'instrument_spells': 103, 'median_spell_sessions': 69, 'onsets_in_window': 103, 'distinct_episodes': 16, 'episode_starts': ['2017-08-10', '2018-01-31', '2018-10-11', '2019-01-03', '2019-07-17', '2020-02-24', '2020-05-08', '2020-08-07', '2020-11-03', '2021-03-04', '2021-08-24', '2022-02-08', '2022-04-21', '2022-06-27', '2022-09-16', '2022-11-18'], 'turbulent_share': 0.162}
+[    30s] boots ready, regime block 69
+[    46s] persistence done
+[    50s] coverage done
+[    69s] time of day done
+[    90s] morning done
+[    91s] fb forecasts done
+[   111s] gain/plateau done
+[   133s] event study done
+[   139s] decay done
+[   139s] BH 488 387
+[   140s] written C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\backtest-data\vol-layer\feedback-wide.json 40 kB

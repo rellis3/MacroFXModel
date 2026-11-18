@@ -1,0 +1,45 @@
+rows 54433 inst 34 2016-10-24 2022-12-30
+regime {'episodes': 103, 'median_len': 57, 'turb_share': 0.114, 'unlabelled': 0.0}
+part1 done 314
+gpd {'U': [0.133, 0.022, 0.2], 'F': [0.093, 0.029, 0.14], 'MM': [0.141, 0.081, 0.19], 'FJ': [0.1, 0.033, 0.14], 'T20': [0.094, 0.033, 0.15], 'FA': [0.093, 0.029, 0.144]}
+lag {'U': {'dev': [0.263, 0.263], 'exc3': [1.06, 1.06], 'p1': [-2.587, -2.587]}, 'T20': {'dev': [0.151, 0.1618], 'exc3': [1.016, 1.051], 'p1': [-2.616, -2.615]}, 'F': {'dev': [0.1524, 0.1599], 'exc3': [0.928, 0.97], 'p1': [-2.608, -2.604]}, 'FJ': {'dev': [0.1551, 0.1623], 'exc3': [0.93, 0.968], 'p1': [-2.597, -2.601]}, 'MM': {'dev': [0.2676, 0.2751], 'exc3': [1.415, 1.455], 'p1': [-2.792, -2.804]}, 'FA': {'dev': [0.1547, 0.1606], 'exc3': [0.878, 0.931], 'p1': [-2.575, -2.574]}, 'F_minus_U_dev_lag': [-0.1031, -0.1371, -0.0755], 'F_minus_T20_dev_lag': [-0.0019, -0.0093, 0.005], 'FJ_minus_F_exc_lag': [-0.002, -0.037, 0.035], 'FA_minus_F_low_exc_asused': [-0.286, -0.382, -0.19], 'low_exc_asused': {'U': 0.204, 'F': 1.476, 'FA': 1.19}, 'FA_minus_F_low_exc_lag': [-0.308, -0.427, -0.201], 'low_exc_lag': {'U': 0.204, 'F': 1.399, 'FA': 1.091}}
+dollar {'overall': 0.62, 'shuffled': 0.489, 'episodes': 2, 'ep_len': 120, 'year': {'2017': [0.475, 0.464, 0.486, 0.511], '2018': [0.598, 0.539, 0.635, 0.499], '2019': [0.538, 0.404, 0.631, 0.481], '2020': [0.557, 0.296, 0.756, 0.472], '2021': [0.744, 0.659, 0.786, 0.509], '2022': [0.766, 0.652, 0.857, 0.499]}, 'regime': {'turbulent': [0.731, 0.553, 0.851, 240], 'calm': [0.601, 0.522, 0.683, 1220]}, 'terc': {'low': [0.499, 0.431, 0.567], 'mid': [0.649, 0.576, 0.714], 'high': [0.714, 0.597, 0.794]}, 'turb_minus_calm': [0.13, -0.042, 0.266], 'z_sd_hi_lo': [1.044, 1.202]}
+stress {"L": [{"worst": -4.06, "es1": -3.301, "p1": -2.744, "vov": 0.235, "dd_nodrift": -55.1, "kurt": 1.07, "L": 1.0, "binds": 1.0, "mean_mult": 1.0}, {"worst": -4.07, "es1": -3.307, "p1": -2.735, "vov": 0.233, "dd_nodrift": -55.1, "kurt": 1.04, "L": 1.25, "binds": 0.957, "mean_mult": 1.249}, {"worst": -4.16, "es1": -3.296, "p1": -2.744, "vov": 0.218, "dd_nodrift": -54.0, "kurt": 0.87, "L": 1.5, "binds": 0.797, "mean_mult": 1.476}, {"worst": -4.49, "es1": -3.251, "p1": -2.634, "vov": 0.194, "dd_nodrift": -59.0, "kurt": 0.93, "L": 2.0, "binds": 0.204, "mean_mult": 1.691}, {"worst": -4.8, "es1": -3.293, "p1": -2.578, "vov": 0.2, "dd_nodrift": -60.8, "kurt": 1.03, "L": 2.5, "binds": 0.037, "mean_mult": 1.743}, {"worst": -4.79, "es1": -3.294, "p1": -2.61, "vov": 0.202, "dd_nodrift": -60.8, "kurt": 1.03, "L": 3.0, "binds": 0.0, "mean_mult": 1.747}, {"worst": -4.79, "es1": -3.294, "p1": -2.61, "vov": 0.202, "dd_nodrift": -60.8, "kurt": 1.03, "L": 4.0, "binds": 0.0, "mean_mult": 1.747}, {"worst": -4.79, "es1": -3.294, "p1": -2.61, "vov": 0.202, "dd_nodrift": -60.8, "kurt": 1.03, "L": "none", "binds": 0.0, "mean_mult": 1.747}], "var": {"all": {"model": [2.07, 1.29, 2.98], "stress": [0.19, 0.0, 0.45], "n": 1545}, "2017": {"model": [0.81, 0.0, 2.47], "stress": [0.0, 0.0, 0.0], "n": 247}, "2018": {"model": [2.32, 0.44, 4.41], "stress": [0.39, 0.0, 1.32], "n": 259}, "2019": {"model": [0.77, 0.0, 1.88], "stress": [0.0, 0.0, 0.0], "n": 259}, "2020": {"model": [3.46, 0.91, 6.27], "stress": [0.38,
+erc {"inverse vol": {"worst": -4.06, "es1": -3.301, "p1": -2.744, "vov": 0.235, "dd_nodrift": -55.1, "kurt": 1.07, "year_vol": [[2017, 0.736], [2018, 0.998], [2019, 0.86], [2020, 1.044], [2021, 1.063], [2022, 1.199]]}, "inverse vol + target": {"worst": -4.79, "es1": -3.294, "p1": -2.61, "vov": 0.202, "dd_nodrift": -60.8, "kurt": 1.03}, "ERC": {"worst": -4.09, "es1": -3.3, "p1": -2.798, "vov": 0.246, "dd_nodrift": -57.3, "kurt": 1.18, "year_vol": [[2017, 0.749], [2018, 0.984], [2019, 0.845], [2020, 1.025], [2021, 1.079], [2022, 1.214]]}, "ERC + target": {"worst": -5.0, "es1": -3.298, "p1": -2.606, "vov": 0.203, "dd_nodrift": -63.4, "kurt": 1.11}, "expost": {"2017": {"iv_usd": 0.51, "erc_usd": 0.489, "iv_idx": 0.424, "erc_idx": 0.442, "iv_hhi": 0.0758, "erc_hhi": 0.0725, "iv_gold": 0.066, "erc_gold": 0.07}, "2018": {"iv_usd": 0.467, "erc_usd": 0.469, "iv_idx": 0.476, "erc_idx": 0.469, "iv_hhi": 0.0786, "erc_hhi": 0.0733, "iv_gold": 0.057, "erc_gold": 0.063}, "2019": {"iv_usd": 0.479, "erc_usd": 0.495, "iv_idx": 0.469, "erc_idx": 0.433, "iv_hhi": 0.0796, "erc_hhi": 0.0729, "iv_gold": 0.052, "erc_gold": 0.073}, "2020": {"iv_usd": 0.439, "erc_usd": 0.46, "iv_idx": 0.515, "erc_idx": 0.465, "iv_hhi": 0.0779, "erc_hhi": 0.0722, "iv_gold": 0.046, "erc_gold": 0.075}, "2021": {"iv_usd": 0.514, "erc_usd": 0.505, "iv_idx": 0.433, "erc_idx": 0.431, "iv_hhi": 0.0751, "erc_hhi": 0.0722, "iv_gold": 0.053, "erc_gold": 0.065}, "2022": {"iv_usd": 0.501, "erc_usd": 0.504, "iv_idx": 0.444, "erc_idx": 
+  AUDCAD: 30822 rows, 10s
+  AUDCHF: 30810 rows, 8s
+  AUDJPY: 30834 rows, 9s
+  AUDNZD: 30770 rows, 8s
+  AUDUSD: 30676 rows, 9s
+  CADCHF: 30802 rows, 10s
+  CADJPY: 30802 rows, 8s
+  CHFJPY: 30814 rows, 9s
+  DE30: 16922 rows, 7s
+  DOW: 30370 rows, 10s
+  EURAUD: 30802 rows, 9s
+  EURCAD: 30814 rows, 8s
+  EURCHF: 30834 rows, 9s
+  EURGBP: 30802 rows, 9s
+  EURJPY: 30788 rows, 9s
+  EURNZD: 30814 rows, 10s
+  EURUSD: 30814 rows, 9s
+  GBPAUD: 30822 rows, 8s
+  GBPCAD: 30834 rows, 8s
+  GBPCHF: 30834 rows, 7s
+  GBPJPY: 30814 rows, 7s
+  GBPNZD: 30822 rows, 8s
+  GBPUSD: 30834 rows, 6s
+  GOLD: 30650 rows, 7s
+  NQ: 30372 rows, 7s
+  NZDCAD: 30814 rows, 9s
+  NZDJPY: 30802 rows, 9s
+  NZDUSD: 30802 rows, 7s
+  SPX500: 29176 rows, 9s
+  UK100: 11930 rows, 8s
+  US2000: 27006 rows, 8s
+  USDCAD: 30834 rows, 9s
+  USDCHF: 30652 rows, 7s
+  USDJPY: 30834 rows, 8s
+stops {"rw": 31.73, "bucket": {"Asia 00-07": {"gross": [29.77, 29.04, 30.52], "net": [32.45, 31.71, 33.21], "n": 98354, "spreadR_med": 0.048, "frem": 1.0, "loss_net_mean": 1.0, "loss_net_p99": 1.004}, "London open 07-10": {"gross": [29.73, 28.99, 30.49], "net": [32.57, 31.77, 33.36], "n": 104410, "spreadR_med": 0.047, "frem": 0.817, "loss_net_mean": 1.0, "loss_net_p99": 1.005}, "London mid 10-13": {"gross": [29.03, 28.3, 29.77], "net": [32.14, 31.38, 32.91], "n": 104502, "spreadR_med": 0.048, "frem": 0.644, "loss_net_mean": 1.0, "loss_net_p99": 1.006}, "Overlap 13-16": {"gross": [28.96, 28.19, 29.73], "net": [32.53, 31.7, 33.35], "n": 104532, "spreadR_med": 0.052, "frem": 0.506, "loss_net_mean": 1.001, "loss_net_p99": 1.007}, "NY afternoon 16-22": {"gross": [26.45, 25.5, 27.45], "net": [32.17, 31.26, 33.15], "n": 104554, "spreadR_med": 0.077, "frem": 0.237, "loss_net_mean": 1.002, "loss_net_p99": 1.017}}, "class_bucket": {"FX majors|Asia 00-07": [31.91, 31.07, 32.76, 29.69], "FX crosses|Asia 00-07": [33.25, 32.38, 34.15, 30.04], "metals|Asia 00-07": [31.12, 29.71, 32.57, 29.03], "indices|Asia 00-07": [29.69, 28.52, 30.91, 28.72], "FX majors|London open 07-10": [32.22, 31.41, 33.04, 29.96], "FX crosses|London open 07-10": [33.67, 32.67, 34.64, 30.11], "metals|London open 07-10": [32.24, 30.87, 33.55, 29.4], "indices|London open 07-10": [29.31, 28.21, 30.42, 28.23], "FX majors|London mid 10-13": [31.8, 30.93, 32.63, 29.32], "FX crosses|London mid 10-13": [33.16, 32.27, 34.05, 29.2], "metals|London mid 10-13": [31.27, 29.9, 32.66, 28.76], "indices|London mid 10-13": [29.24, 28.1, 30.38, 28.19], "FX majors|Overlap 13-16": [31.6, 30.62, 32.54, 28.88], "FX crosses|Overlap 13-16": [33.66, 32.7, 34.62, 29.0], "metals|Overlap 13-16": [31.4, 29.97, 32.85, 28.7], "indices|Overlap 13-16": [29.99, 28.81, 31.22, 28.95], "FX majors|NY afternoon 16-22": [30.56, 29.58, 31.62, 25.96], "FX crosses|NY afternoon 16-22": [34.04, 32.89, 35.18, 26.52], "metals|NY afternoon 16-22": [29.35, 27.62,
+BH {'n': 663, 'pass': 213, 'by_chance': 21.3, 'raw_p05': 232, 'raw_p05_chance': 33.1, 'by_part': {'1 sizing': {'size': 575, 'sum': 181}, '1 sizing +1 lag': {'size': 4, 'sum': 2}, '1 sizing, 5-session hold': {'size': 15, 'sum': 0}, '2 dollar share': {'size': 7, 'sum': 3}, '3 stress cap': {'size': 21, 'sum': 8}, '4 ERC': {'size': 8, 'sum': 5}, '5 stops bid/ask': {'size': 33, 'sum': 14}}}
+wrote C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\backtest-data\vol-layer\sizing-wide.json 38 KB, 16 charts; total 1205 s

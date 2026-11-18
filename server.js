@@ -5017,7 +5017,7 @@ async function _deskRun(trigger, job, mode = 'full') {
       // the Head and the single-prompt control write a card for every market (51 since prereg A13): up to ~30k tokens
       // of output, which can run past the default 5-minute wait
       const r = await callModel({ task, system, prompt, maxTokens, label, ...(maxTokens >= 24_000 ? { timeoutMs: 600_000 } : {}) });
-      return { text: r.text ?? _antText(r), usage: r.usage ?? null, model: r.model ?? null, truncated: !!r.truncated };
+      return { text: r.text ?? _antText(r), usage: r.usage ?? null, model: r.model ?? null, truncated: !!r.truncated, stopReason: r.stopReason ?? r.stop_reason ?? null };
     },
     onProgress: p => {
       if (p.stage === 'analyst') { job.analystsDone = (job.analystsDone ?? 0) + 1; job.stage = `analysts (${job.analystsDone} of ${roles.filter(r => r.output === 'analyst_report').length})`; }

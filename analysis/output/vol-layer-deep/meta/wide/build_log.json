@@ -1,0 +1,206 @@
+{
+ "AUDCAD": {
+  "n": 1745,
+  "n_events": 1745,
+  "bidask_fallback_bars": 0,
+  "sec": 23
+ },
+ "AUDCHF": {
+  "n": 1810,
+  "n_events": 1810,
+  "bidask_fallback_bars": 0,
+  "sec": 20
+ },
+ "AUDJPY": {
+  "n": 1726,
+  "n_events": 1726,
+  "bidask_fallback_bars": 0,
+  "sec": 18
+ },
+ "AUDNZD": {
+  "n": 1598,
+  "n_events": 1598,
+  "bidask_fallback_bars": 0,
+  "sec": 23
+ },
+ "AUDUSD": {
+  "n": 1780,
+  "n_events": 1780,
+  "bidask_fallback_bars": 0,
+  "sec": 19
+ },
+ "CADCHF": {
+  "n": 1825,
+  "n_events": 1825,
+  "bidask_fallback_bars": 0,
+  "sec": 20
+ },
+ "CADJPY": {
+  "n": 1712,
+  "n_events": 1712,
+  "bidask_fallback_bars": 0,
+  "sec": 18
+ },
+ "CHFJPY": {
+  "n": 1813,
+  "n_events": 1813,
+  "bidask_fallback_bars": 0,
+  "sec": 20
+ },
+ "DE30": {
+  "n": 1680,
+  "n_events": 1680,
+  "bidask_fallback_bars": 0,
+  "sec": 17
+ },
+ "DOW": {
+  "n": 1672,
+  "n_events": 1672,
+  "bidask_fallback_bars": 0,
+  "sec": 19
+ },
+ "EURAUD": {
+  "n": 1763,
+  "n_events": 1763,
+  "bidask_fallback_bars": 0,
+  "sec": 23
+ },
+ "EURCAD": {
+  "n": 1809,
+  "n_events": 1809,
+  "bidask_fallback_bars": 0,
+  "sec": 19
+ },
+ "EURCHF": {
+  "n": 1903,
+  "n_events": 1903,
+  "bidask_fallback_bars": 0,
+  "sec": 20
+ },
+ "EURGBP": {
+  "n": 1853,
+  "n_events": 1853,
+  "bidask_fallback_bars": 0,
+  "sec": 19
+ },
+ "EURJPY": {
+  "n": 1777,
+  "n_events": 1777,
+  "bidask_fallback_bars": 0,
+  "sec": 19
+ },
+ "EURNZD": {
+  "n": 1808,
+  "n_events": 1808,
+  "bidask_fallback_bars": 0,
+  "sec": 20
+ },
+ "EURUSD": {
+  "n": 1865,
+  "n_events": 1865,
+  "bidask_fallback_bars": 0,
+  "sec": 21
+ },
+ "GBPAUD": {
+  "n": 1776,
+  "n_events": 1776,
+  "bidask_fallback_bars": 0,
+  "sec": 20
+ },
+ "GBPCAD": {
+  "n": 1886,
+  "n_events": 1886,
+  "bidask_fallback_bars": 0,
+  "sec": 20
+ },
+ "GBPCHF": {
+  "n": 1830,
+  "n_events": 1830,
+  "bidask_fallback_bars": 0,
+  "sec": 19
+ },
+ "GBPJPY": {
+  "n": 1811,
+  "n_events": 1811,
+  "bidask_fallback_bars": 0,
+  "sec": 21
+ },
+ "GBPNZD": {
+  "n": 1850,
+  "n_events": 1850,
+  "bidask_fallback_bars": 0,
+  "sec": 19
+ },
+ "GBPUSD": {
+  "n": 1852,
+  "n_events": 1852,
+  "bidask_fallback_bars": 0,
+  "sec": 21
+ },
+ "GOLD": {
+  "n": 1759,
+  "n_events": 1759,
+  "bidask_fallback_bars": 0,
+  "sec": 21
+ },
+ "NQ": {
+  "n": 1678,
+  "n_events": 1678,
+  "bidask_fallback_bars": 0,
+  "sec": 19
+ },
+ "NZDCAD": {
+  "n": 1746,
+  "n_events": 1746,
+  "bidask_fallback_bars": 0,
+  "sec": 19
+ },
+ "NZDJPY": {
+  "n": 1709,
+  "n_events": 1709,
+  "bidask_fallback_bars": 0,
+  "sec": 19
+ },
+ "NZDUSD": {
+  "n": 1777,
+  "n_events": 1777,
+  "bidask_fallback_bars": 0,
+  "sec": 19
+ },
+ "SPX500": {
+  "n": 1575,
+  "n_events": 1575,
+  "bidask_fallback_bars": 0,
+  "sec": 17
+ },
+ "UK100": {
+  "n": 1718,
+  "n_events": 1718,
+  "bidask_fallback_bars": 0,
+  "sec": 16
+ },
+ "US2000": {
+  "n": 1743,
+  "n_events": 1743,
+  "bidask_fallback_bars": 0,
+  "sec": 16
+ },
+ "USDCAD": {
+  "n": 1830,
+  "n_events": 1830,
+  "bidask_fallback_bars": 0,
+  "sec": 20
+ },
+ "USDCHF": {
+  "n": 1864,
+  "n_events": 1864,
+  "bidask_fallback_bars": 0,
+  "sec": 20
+ },
+ "USDJPY": {
+  "n": 1668,
+  "n_events": 1668,
+  "bidask_fallback_bars": 0,
+  "sec": 16
+ }
+}
