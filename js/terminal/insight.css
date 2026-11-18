@@ -164,3 +164,4 @@ p.in-cap { font-size: 11.5px; color: var(--tx2); }
 .bis-sw.fast { background: var(--gold); } .bis-sw.slow { background: var(--pur2); } .bis-sw.norm { background: var(--line2); } .bis-sw.gap { background: var(--bg2); border: 1px dashed var(--tx3); }
 .bis-cap, .bis-depth { font-size: 12px; margin: 6px 0; overflow-wrap: anywhere; }
 .bis-c { white-space: nowrap; }
+.bis-what { margin: 0 0 10px; font-size: 13px; line-height: 1.5; }
