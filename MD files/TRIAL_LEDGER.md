@@ -4,22 +4,22 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-17.
+Generated 2026-11-18.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **416** |
-| validated | 71 |
+| claims tested (validated + null + underpowered) | **418** |
+| validated | 73 |
 | null | 205 |
 | underpowered | 140 |
-| context (base rates, descriptions: not counted as tests) | 63 |
+| context (base rates, descriptions: not counted as tests) | 64 |
 | pre-registrations with no banked verdict (below) | 89 |
 
-**What the count says (Lesson 02 §05).** If none of the 416 claims were real, tests at the usual 5% size would still pass
-about **20.8** of them by luck. 71 passed, so most passes are unlikely to be luck alone, but
-**roughly 21 of the 71 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 418 claims were real, tests at the usual 5% size would still pass
+about **20.9** of them by luck. 73 passed, so most passes are unlikely to be luck alone, but
+**roughly 21 of the 73 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -506,6 +506,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-17 | vol-line-touch-layers-add | execution | underpowered | forge/VOL_LINE_TOUCH_LAYERS_PREREG.md |
 | 2026-11-17 | vol-line-touch-layers-map | execution | null | forge/VOL_LINE_TOUCH_LAYERS_PREREG.md |
 | 2026-11-17 | vol-line-touch-layers-meta | execution | underpowered | forge/VOL_LINE_TOUCH_LAYERS_PREREG.md |
+| 2026-11-18 | ladder-v2-nq | volatility | validated | forge/LADDER_V2_NQ_PREREG.md |
+| 2026-11-18 | ladder-v2-nq-cvf | volatility | context | forge/LADDER_V2_NQ_PREREG.md |
+| 2026-11-18 | ladder-v2-nq-fut | volatility | validated | forge/LADDER_V2_NQ_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 

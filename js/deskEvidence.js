@@ -3305,6 +3305,27 @@ export const DESK_EVIDENCE = [
     use: 'After a hard deceleration the next month runs about 7% more volatile than ordinary sessions (nominal, not validated). Describes a sell-off in progress, not a forward risk signal.',
     instruments: ['SPX', 'NDX', 'RUT', 'DJI', 'DAX', 'FTSE', 'N225', 'HSI', 'XLK', 'XLF', 'XLE', 'XLV', 'XLY', 'XLP', 'XLI', 'XLU', 'XLB', 'GOLD', 'SILVER', 'COPPER', 'WTI', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'TLT', 'BTC'],
   },
+  {
+    id: 'ladder-v2-nq', domain: 'volatility', verdict: 'validated', date: '2026-11-18', doc: 'forge/LADDER_V2_NQ_PREREG.md', also: ['analysis/output/ladder-v2-nq/RESULTS.md'],
+    claim: 'Among 12 sigma inputs, one keeps the NQ daily ladder (OH/OL/HL p75/p90) on target in every sigma quintile, walk-forward, on the NAS100 CFD',
+    result: 'Pre-registered, walk-forward 2018-01 to 2026-08-20, 2,229 sessions. Winner har_rv_log (forge) on NY-close bars: 30-cell regime miss 1.49pp vs live yz_10 2.40pp, difference 90% CI [-1.49, -0.32] with the winner re-selected in every bootstrap draw; both halves better (2018-22 [-1.68, -0.15], 2023-26 [-2.26, -0.76]). Within the noise floor (p90 1.64). Quietest-fifth HL>p75 35.7% -> 25.3%; loudest 21.3% -> 25.8%. HAR-800 production tied (1.60). Positive controls and mirror pass.',
+    use: 'NQ shadow sigma = har_rv_log with widths fitted on it; side-by-side only until owner sign-off. Calibration, not direction.',
+    instruments: ['NQ'],
+  },
+  {
+    id: 'ladder-v2-nq-fut', domain: 'volatility', verdict: 'validated', date: '2026-11-18', doc: 'forge/LADDER_V2_NQ_PREREG.md', also: ['analysis/output/ladder-v2-nq/RESULTS.md'],
+    claim: 'The same sigma race on CME NQ futures (NT8 M1, ratio-adjusted sigma bars, front-contract London sessions)',
+    result: 'Pre-registered, walk-forward 2018-01 to 2026-08-21, 2,196 sessions. Winner har_rv_log again: 1.82pp vs yz_10 2.50pp, 90% CI [-1.46, -0.17]; halves [-1.86, -0.09] and [-2.39, -0.28]. 0.18pp above the noise floor p90. Quietest-fifth HL>p75 34.3% -> 24.8%.',
+    use: 'Futures ladder uses the same sigma spec as the CFD (see ladder-v2-nq-cvf). Shadow only.',
+    instruments: ['NQ'],
+  },
+  {
+    id: 'ladder-v2-nq-cvf', domain: 'volatility', verdict: 'context', date: '2026-11-18', doc: 'forge/LADDER_V2_NQ_PREREG.md', also: ['analysis/output/ladder-v2-nq/RESULTS.md'],
+    claim: 'NQ futures and the NAS100 CFD have the same daily range distribution in percent of the London open',
+    result: '2,706 common London dates: F/C ratio of median and p75 for HL, OH, OL between 0.994 and 1.007, every 90% CI inside [0.988, 1.017] (registered band [0.95, 1.05]).',
+    use: 'One percent ladder serves both CFD and futures charts for NQ; no separate futures fit needed for range.',
+    instruments: ['NQ'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -3370,6 +3391,9 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'ladder-v2-nq': { n: '2,229 sessions in 112 20-session blocks (block bootstrap, winner re-selected per draw)', note: 'MDE ~0.5pp on the 30-cell miss; observed -0.91pp' },
+  'ladder-v2-nq-fut': { n: '2,196 sessions in 110 20-session blocks', note: 'MDE ~0.5pp; observed -0.68pp' },
+  'ladder-v2-nq-cvf': { n: '2,706 common London dates, 20-session blocks', note: 'registered band +/-5% on the ratio; CIs within +/-1.7%' },
   'bias-engine-backtest-sameday': { n: '98 21-session clusters 2016-10 to 2024-08 (16,826 called rows)', note: 'MDE 2.9 pp (FX), 6.7 (gold), 3.5 (idx) vs a 2 pp bar' },
   'bias-engine-backtest-5d': { n: '182 21-session clusters 2010-01 to 2024-08 (31,144 called rows)', note: 'MDE 3.6 / 8.5 / 6.3 pp vs a 3 pp bar' },
   'bias-engine-backtest-20d': { n: '182 21-session clusters 2010-01 to 2024-08 (31,155 called rows)', note: 'MDE 5.5 / 11.5 / 8.2 pp vs a 5 pp bar; FX CI upper +0.1 pp excludes the bar' },

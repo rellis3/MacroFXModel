@@ -118,10 +118,13 @@ Runner (in order): backfill missing/new contract files on all roots → gapfill 
 - [ ] **Selection score:** pinball loss + a regime-quintile calibration guard (HL>p75 / >p90 within ±3pp in every σ quintile). Pinball alone is what picked the regime-blind winners.
 - [ ] Per instrument, walk-forward. If the per-instrument winner isn't distinguishable from the class winner (block bootstrap), use the class winner.
 
-### 1.2 Run C  `[ ]`
-### 1.3 Run F  `[ ]`
+### 1.2 Run C  `[~]`
+- [x] NQ 2026-11-18 (`ladder-v2-nq`, VALIDATED): har_rv_log, regime miss 2.40 → 1.49pp, within the noise floor.
+### 1.3 Run F  `[~]`
+- [x] NQ 2026-11-18 (`ladder-v2-nq-fut`, VALIDATED): har_rv_log, 2.50 → 1.82pp.
 
-### 1.4 C vs F per underlying  `[ ]`
+### 1.4 C vs F per underlying  `[~]`
+- [x] NQ: same distribution (ratios 0.994–1.007), so F reuses the C spec (`ladder-v2-nq-cvf`).
 - [ ] Same London session: are OH/OL/HL/OC % distributions and σ the same within noise? If yes, F reuses the C spec. If no, F keeps its own spec.
 
 ### 1.5 Event multipliers  (C+F)  `[ ]`
