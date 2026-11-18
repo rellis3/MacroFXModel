@@ -818,14 +818,14 @@ async function renderOptions() {
     root.innerHTML = `<div class="card glow"><div class="tt-head"><span class="lbl">Options</span><h2 style="flex-basis:100%">What the options market is positioned for</h2></div>
 <p style="margin:4px 0 0">Price shows two dimensions: up and down. Options add a third, the <b>path</b>: every contract has a strike and an expiry, so the book shows at what price, by what date, the market is protected or speculating. Read it as positioning, one lens among several: every reading below carries what the Evidence Book found when it was tested.</p></div>
 <div class="card" id="opt-mkt-bar" style="position:sticky;top:0;z-index:5;padding:8px 12px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:10px"><label class="lbl" for="opt-mkt" style="margin:0">Market</label><select id="opt-mkt" style="background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:4px 6px;font-size:14px;font-weight:600"></select><span class="muted" style="font-size:12px">Every chart on this tab shows this market. A chart that does not cover it says so. Data-source choices (CME, Cboe) stay on their own chart.</span></div>
-${sec('The terrain', 'open interest, the IV smile or gamma by expiry, and the labelled levels on one price axis')}${terrainHtml()}
-${sec('The IV smile', 'implied vol against strike, one curve per expiry, with the IV and realised-vol reference lines')}<div id="opt-smile-none" class="card muted" hidden></div><div id="opt-smile">${smilePanelHtml()}</div>
-${sec('Option lines', 'walls, max pain and gamma lines around the price')}<div id="opt-lad">${loading('option lines')}</div>
-${sec('The path', 'open interest by expiry and strike, ahead of the price')}<div class="card" id="opt-path">${loading('the path')}</div>
-${sec('Calls against puts', 'the put/call open-interest ratio for every market, read against its own history')}<div id="opt-pos">${loading('open interest')}</div>
-${sec('Dealer hedging', 'which way the dealers who sold the options must trade as price moves, every market')}<div id="opt-dl">${loading('dealer hedging')}</div>
-<div id="opt-skew"></div>
-${sec('Fear gauge', 'the VIX and its term structure')}<div id="opt-vix">${loading('the VIX')}</div>`;
+<div class="sfc" data-surface="panel.opt.terrain">${sec('The terrain', 'open interest, the IV smile or gamma by expiry, and the labelled levels on one price axis')}${terrainHtml()}</div>
+<div class="sfc" data-surface="panel.opt.smile">${sec('The IV smile', 'implied vol against strike, one curve per expiry, with the IV and realised-vol reference lines')}<div id="opt-smile-none" class="card muted" hidden></div><div id="opt-smile">${smilePanelHtml()}</div></div>
+<div class="sfc" data-surface="panel.opt.lines">${sec('Option lines', 'walls, max pain and gamma lines around the price')}<div id="opt-lad">${loading('option lines')}</div></div>
+<div class="sfc" data-surface="panel.opt.path">${sec('The path', 'open interest by expiry and strike, ahead of the price')}<div class="card" id="opt-path">${loading('the path')}</div></div>
+<div class="sfc" data-surface="panel.opt.putcall">${sec('Calls against puts', 'the put/call open-interest ratio for every market, read against its own history')}<div id="opt-pos">${loading('open interest')}</div></div>
+<div class="sfc" data-surface="panel.opt.dealers">${sec('Dealer hedging', 'which way the dealers who sold the options must trade as price moves, every market')}<div id="opt-dl">${loading('dealer hedging')}</div></div>
+<div class="sfc" data-surface="panel.opt.skew"><div id="opt-skew"></div></div>
+<div class="sfc" data-surface="panel.opt.vix">${sec('Fear gauge', 'the VIX and its term structure')}<div id="opt-vix">${loading('the VIX')}</div></div>`;
   }
   const goPair = box => box?.querySelectorAll('[data-pair]').forEach(b => (b.onclick = () => openPair(b.dataset.pair)));
   const [oi, hist, hs, sk, tKeys] = await Promise.all([J('/api/oi-today'), J('/api/options-history'), J('/api/hedging-summary'), J('/api/options-skew'), terrainKeys(J)]);
