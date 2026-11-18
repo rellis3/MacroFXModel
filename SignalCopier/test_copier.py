@@ -422,8 +422,12 @@ class _Client:
     def __init__(self, msgs):
         self.msgs, self.calls = msgs, []
 
-    async def iter_messages(self, chat, reverse=True, offset_date=None, **kw):
+    async def iter_messages(self, chat, reverse=False, offset_date=None, limit=None, **kw):
         self.calls.append((offset_date, kw))
+        if limit:                                    # newest first, like Telethon
+            for m in sorted(self.msgs, key=lambda m: m.date, reverse=True)[:limit]:
+                yield m
+            return
         for m in sorted(self.msgs, key=lambda m: m.date):
             if m.date >= offset_date:
                 yield m
@@ -483,6 +487,28 @@ def test_set_and_forget_tp_is_an_option():
     cp2.on_message(501, msg, now)
     (p,) = [p for p in cp2.broker._pos.values() if p["pair"] == "GBPJPY"]
     assert abs(p["tp"] - 210.80) < 1e-9, p
+
+
+def test_poll_picks_up_messages_telegram_did_not_push():
+    """18 Nov 2026: Telethon's live push went quiet after ~2 days; the 07:00 message never arrived."""
+    import asyncio
+    cp, kv = make({"tg_topic": 6319})
+    cp.push_status = lambda: None
+    now = datetime.now(timezone.utc)
+    cp.on_message(600, "SELL USDJPY now at 157.70\nStop loss (SL) 157.96", now - timedelta(minutes=3))   # pushed live
+    msgs = [_Msg(600, "SELL USDJPY now at 157.70\nStop loss (SL) 157.96", now - timedelta(minutes=3)),
+            _Msg(601, "SELL GBPJPY now at 211.20\nStop loss (SL) 211.60", now - timedelta(seconds=40)),
+            _Msg(602, "SELL SP500 now at 7,661\nSL 7,700", now - timedelta(seconds=30))]
+    client = _Client(msgs)
+    asyncio.run(sc.catch_up(cp, client, 0, lambda m: True, None, "poll", limit=30))
+    st = statuses(cp)
+    assert st["601:0"] == "open" and st["602:0"] == "open", (st, cp.decisions)
+    assert cp.tg["poll_recovered"] == 2 and sum("didn't deliver live" in a[0] for a in cp.alerts) == 1
+    assert cp.catchup_last["why"] == "poll" and cp.catchup_last["new_messages"] == 2
+    # a quiet poll changes nothing and says nothing
+    n = len(cp.alerts)
+    asyncio.run(sc.catch_up(cp, client, 0, lambda m: True, None, "poll", limit=30))
+    assert len(cp.alerts) == n and cp.catchup_last["new_messages"] == 2 and cp.tg["last_poll_at"]
 
 
 if __name__ == "__main__":
