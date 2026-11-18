@@ -24,6 +24,7 @@ import { surpriseRollup, rollupHtml, pairStripHtml } from './surpriseRollup.js';
 import { legChartHtml, mountLegChart } from './legChartView.js';
 import { analogueHtml, mountAnalogue } from './analogueView.js';
 import { reportedHtml } from '../earningsReported.js';
+import './myPanelsView.js';   // the Panels button (widget.mypanels, preview): hide and bring back panels per tab
 import { boardHtml as macroBoardHtml, pick as macroBoardPick } from './macroEngines.js';
 import { DESK_EVIDENCE, citable } from '../deskEvidence.js';
 import * as FVV from './fairValueView.js';
