@@ -1,0 +1,42 @@
+[
+ {
+  "name": "01-mae-mfe-all-families",
+  "ranAt": "2026-11-18T16:28:11+00:00",
+  "status": "EXPLORATORY (not pre-registered)",
+  "description": "Step 1 (line-touch-mae-futures v2): MAE/MFE at every touch of OH/OL, OC and HL p50/p75/p90, by line group and rung, forecast lines vs the x0.85 / x1.15 placebo ladders.",
+  "lockbox_excluded_from": "2026-08-21",
+  "config_hash": "b8957c9d2a"
+ },
+ {
+  "name": "02-stacks",
+  "ranAt": "2026-11-18T16:28:27+00:00",
+  "status": "EXPLORATORY (not pre-registered)",
+  "description": "Step 2: lines close together. A touch is stacked if another line sits within 5 ticks; lone vs stacked medians in sigma and back-wins. Try --set select.stack.unit=sigma --set select.stack.width=0.05.",
+  "lockbox_excluded_from": "2026-08-21",
+  "config_hash": "acf7012e79"
+ },
+ {
+  "name": "03-better-level-race",
+  "ranAt": "2026-11-18T16:27:17+00:00",
+  "status": "EXPLORATORY (not pre-registered)",
+  "description": "Step 3 (v3): better level (outermost line of a 5-tick stack) and the race: stop = median 60m MAE, target = median 60m MFE of the same set, first passage over 60 one-minute bars, gross. Swap select.set to all / first / better_first.",
+  "lockbox_excluded_from": "2026-08-21",
+  "config_hash": "7fcc11870e"
+ },
+ {
+  "name": "04-vwap-fade",
+  "ranAt": "2026-11-18T16:26:06+00:00",
+  "status": "EXPLORATORY (not pre-registered)",
+  "description": "Step 4 (futures-exhaustion-vwap baseline): fade every touch (one per bar and side, the outermost line) to the session VWAP frozen at the bar before the touch, 0.25 sigma stop, held to 22:00 London, 2 ticks + $4 cost. Swap trade.target.anchor to globex or rth.",
+  "lockbox_excluded_from": "2026-08-21",
+  "config_hash": "42c0d4b67e"
+ },
+ {
+  "name": "05-vwap-fade-mae-stop",
+  "ranAt": "2026-11-18T16:27:43+00:00",
+  "status": "EXPLORATORY (not pre-registered)",
+  "description": "Step 5 (2026-11-18 check): the VWAP fade with test 3's median 60m MAE as the stop (fitted on all forecast-line touches) instead of 0.25 sigma. Try stop.horizon=eod or stop.units=sigma with fit=discovery.",
+  "lockbox_excluded_from": "2026-08-21",
+  "config_hash": "dac90ea827"
+ }
+]

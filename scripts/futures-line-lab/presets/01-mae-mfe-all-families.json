@@ -1,0 +1,6 @@
+{
+  "description": "Step 1 (line-touch-mae-futures v2): MAE/MFE at every touch of OH/OL, OC and HL p50/p75/p90, by line group and rung, forecast lines vs the x0.85 / x1.15 placebo ladders.",
+  "select": {"kinds": ["line", "placebo_085", "placebo_115"]},
+  "by": ["instrument", "kind", "group", "rung"],
+  "steps": ["excursions"]
+}

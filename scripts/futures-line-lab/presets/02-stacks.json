@@ -1,0 +1,6 @@
+{
+  "description": "Step 2: lines close together. A touch is stacked if another line sits within 5 ticks; lone vs stacked medians in sigma and back-wins. Try --set select.stack.unit=sigma --set select.stack.width=0.05.",
+  "select": {"stack": {"unit": "ticks", "width": 5}},
+  "by": ["instrument"],
+  "steps": ["excursions", "stacks"]
+}

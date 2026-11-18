@@ -1,0 +1,10 @@
+{
+  "description": "Step 4 (futures-exhaustion-vwap baseline): fade every touch (one per bar and side, the outermost line) to the session VWAP frozen at the bar before the touch, 0.25 sigma stop, held to 22:00 London, 2 ticks + $4 cost. Swap trade.target.anchor to globex or rth.",
+  "select": {"dedupe_bar": true},
+  "by": ["instrument", "rung"],
+  "steps": ["trade"],
+  "trade": {"mode": "fade", "horizon": "eod",
+            "stop": {"type": "sigma", "mult": 0.25},
+            "target": {"type": "vwap", "anchor": "london"},
+            "cost": {"ticks": 2, "commission_usd": 4}, "min_k": 30}
+}
