@@ -126,6 +126,17 @@ What the screens found on NQ: every `jump_day` flag is a real market day seen on
 Covid, 9 Apr 2025); the March 2020 `frozen` futures bars are CME limit-down halts; the futures miss 37 London sessions
 in 3–4-day clusters (e.g. 2024-04-23..26) that are absent on every NT8 root (DATA_SPEC #24 residual).
 
+## Mirror control re-run (2026-11-18, harness check)
+
+The registered mirror was a single random draw, and it drew test days from the real history while the lines were fitted
+on the partly mirrored history. Over six seeds that version ranged 1.25–2.29pp, so the 1.47 / 1.60 above was one draw,
+not a stable number. The per-instrument harness (`scripts/ladder-v2/ladder.py`) draws from exactly the rows the lines
+are fitted on, 20 times. On NQ it gives A0 a median miss of **1.31pp C / 1.39pp F** (floor median 1.37 / 1.38) and a
+quiet-minus-loud HL>p75 tilt of **−0.7 / +0.1pp** (real data: +14pp). The conclusion stands: the live tilt is in the
+data, not the scorer. The same harness reproduces every arm's PRIMARY and GUARD here to 0.0, and the halves exactly
+(`harness_check.json`, `harness_check.txt`); with the A2 checks plus NQ's four highest-range quarters left out, both
+tracks stay VALIDATED.
+
 ## Frozen inputs
 
 Byte-exact copies of every input (plus `NQ_rolls.csv`) are kept locally in `frozen/` (gitignored); `frozen/SHA256SUMS`

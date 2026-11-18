@@ -115,7 +115,9 @@ Lean version agreed with the owner: no separate site page; the signature plot wa
 - [ ] Input SHA-256 written into every study's `results.json` automatically.
 - [x] NQ robustness (prereg amendment A2, post-hoc, demote-only): 3-month blocks, leave-one-episode-out, flags out.
       **Held on C and F** (2026-11-18). Lesson: drop only data-fault flags, never price-move flags (selection on outcome).
-- [ ] Per-instrument template harness (config per symbol; screens, hashes, 3-month blocks, episode drops, class
+- [x] Per-instrument template harness `scripts/ladder-v2/ladder.py` (2026-11-18; reproduces NQ to 0.0). Gold prereg pushed;
+      GC futures needed a re-pull first (GC Oct not in NT8 → Dec lead-in 140 days, `PRE_DAYS_OVERRIDE`).
+      Was: per-instrument template harness (config per symbol; screens, hashes, 3-month blocks, episode drops, class
       fallback built in). Then gold, ES/YM/RTY, FX.
 - [ ] Phase 2 prerequisite: signature plot (vol at 1/2/5/10/15/30 min, 1h, 1d) per instrument.
 

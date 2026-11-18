@@ -40,7 +40,15 @@ ROOTS = {
     "PA": [3, 6, 9, 12], "BTC": ALL, "MBT": ALL,   # added 2026-11-18 (vol runbook 0.3); BTC listed 2017-12, MBT 2021-05
 }
 PRE_DAYS = 80      # days before the delivery month starts (covers the whole front-month life incl. the roll)
+# A contract whose predecessor month is listed but NT8 doesn't carry it needs a longer lead-in, or the stitch is left
+# on the expiring contract (2026-11-18: GC Oct "unknown instrument" -> GC Dec started mid-Sep, so late Jul..mid-Sep
+# had only the dying Aug contract: ~21 partial + ~16 missing London sessions a year).
+PRE_DAYS_OVERRIDE = {("GC", 12): 140}
 POST_DAYS = 28     # into the delivery month
+
+
+def pre_days(root, month):
+    return PRE_DAYS_OVERRIDE.get((root, month), PRE_DAYS)
 CHUNK_DAYS = 7     # was 40: NT8's BarsRequest sometimes returns only the first hour of a long chunk with NoError
                    # (DATA_SPEC #24, found 2026-11-15). One-week requests come back complete.
 
@@ -79,9 +87,9 @@ def pull(inst, start, end):
     return pd.DataFrame(rows, columns=cols)
 
 
-def contract_windows(year, month, today):
+def contract_windows(year, month, today, root=None):
     first = dt.date(year, month, 1)
-    start = first - dt.timedelta(days=PRE_DAYS)
+    start = first - dt.timedelta(days=pre_days(root, month))
     end = min(first + dt.timedelta(days=POST_DAYS), today + dt.timedelta(days=1))
     s = start
     while s < end:
@@ -123,7 +131,7 @@ def main():
         keep_awake()
         try:
             parts = []
-            for s, e in contract_windows(y, m, today):
+            for s, e in contract_windows(y, m, today, root):
                 for attempt in range(3):
                     try:
                         parts.append(pull(name, s, e))

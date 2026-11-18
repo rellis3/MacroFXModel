@@ -28,7 +28,7 @@ for root in roots:
         y, m = 2000 + int(yy), int(mm)
         name = f'{root} {mm}-{yy}'
         first = dt.date(y, m, 1)
-        start = first - dt.timedelta(days=nb.PRE_DAYS)
+        start = first - dt.timedelta(days=nb.pre_days(root, m))
         end = min(first + dt.timedelta(days=nb.POST_DAYS), today)
         df = pd.read_parquet(f)
         df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)

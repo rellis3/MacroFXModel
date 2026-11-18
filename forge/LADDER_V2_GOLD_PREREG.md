@@ -91,4 +91,11 @@ Exhaustion (Phase 2); event multipliers; silver/other metals; any trade; session
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-18, PRE-RESULTS (no gold outcome computed; harness checked on NQ only)
+
+- **Mirror:** 20 draws (not one), each drawing the test year's ratio vectors from exactly the rows the lines are fitted
+  on. Reported: median and range of A0's PRIMARY and of the HL>p75 Q1−Q5 tilt, against the floor. The single-draw NQ
+  version ranged 1.25–2.29pp across seeds (see NQ RESULTS, "Mirror control re-run").
+- **Halves** use the quintile edges from all test rows of the track (as NQ §3); the left-out windows and fault-flag
+  checks recut the edges on the rows kept (as NQ A2).
+- **Harness check passed:** on NQ it reproduces all 12 arms' PRIMARY and GUARD to 0.0 and both halves exactly.
