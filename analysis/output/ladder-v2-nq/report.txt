@@ -1,0 +1,59 @@
+  PC2: test rows 2080 (dropped 0 with a missing arm or regime); 2018-01-01 -> 2025-12-19
+positive control 2 (synthetic GARCH): TRUE primary 1.68pp vs floor p90 1.70 -> ok; rv10 HL>p75 Q1-Q5 +40.6pp (51.2 32.5 24.3 16.8 10.6) -> ok; SHR primary 3.84 (reported)
+  C: test rows 2229 (dropped 0 with a missing arm or regime); 2018-01-02 -> 2026-08-20
+
+== C: 2229 test sessions 2018-01-02 -> 2026-08-20   noise floor median 1.37pp, p90 1.64pp
+  arm  name                    PRIMARY          90% CI  GUARD  pinball  slope
+  E6   har_rv_log (forge)        1.49  [ 1.53, 2.58]   1.08   0.9614   0.96
+  H8   HAR-800 (production)      1.60  [ 1.70, 2.80]   1.61   0.9623   0.96
+  E2   ewma_090                  1.67  [ 1.68, 2.84]   1.06   1.0135   0.78
+  E3   yz_20                     1.84  [ 1.70, 3.24]   1.66   1.0295   0.81
+  R5   HAR-RV 5-min              1.93  [ 1.83, 3.07]   2.05   0.9347   0.96
+  R15  HAR-RV 15-min             2.14  [ 1.90, 3.19]   2.15   0.9409   0.96
+  E1   ewma_094                  2.33  [ 1.96, 3.60]   1.38   1.0292   0.82
+  A0   yz_10 (live)              2.40  [ 2.25, 3.43]   1.48   1.0000   0.81
+  E4   yz_30                     2.75  [ 2.12, 4.21]   1.96   1.0519   0.79
+  V3   IV-adjusted (VXN)         3.14  [ 2.67, 4.30]   2.61*   0.9679   1.20
+  V4   pure VXN                  5.33  [ 4.58, 6.42]   2.78*   0.9861   1.38
+  E5   naive                    10.66  [ 9.47,12.23]   3.87*   1.2195   0.42
+  (* = fails GUARD)  winner E6, runner-up H8, tie=True, chosen E6
+  chosen - A0 (re-selected in bootstrap) 90% CI [-1.49, -0.32]pp; halves: 2018-22 2.20 vs A0 2.96 CI [-1.68,-0.15]; 2023-26 2.42 vs A0 3.51 CI [-2.26,-0.76]
+  calibrated to noise: True   VERDICT VALIDATED
+  HL>p75/p90 by quintile A0  : Q1 35.7/12.6  Q2 26.9/10.1  Q3 27.4/ 8.8  Q4 26.2/10.1  Q5 21.3/ 7.4
+  HL>p75/p90 by quintile E6  : Q1 25.3/ 8.7  Q2 24.4/ 9.4  Q3 24.0/ 8.1  Q4 26.9/11.0  Q5 25.8/10.5
+  HL>p75/p90 by quintile H8  : Q1 26.2/ 9.4  Q2 26.0/ 9.9  Q3 25.6/ 8.1  Q4 28.9/11.7  Q5 26.7/10.8
+  C: test rows 2229 (dropped 0 with a missing arm or regime); 2018-01-02 -> 2026-08-20
+  MIRROR C: A0 primary 1.47pp vs floor p90 1.63pp; HL>p75 Q1..Q5 24.7 30.5 25.4 28.0 25.8
+  F: test rows 2196 (dropped 0 with a missing arm or regime); 2018-01-02 -> 2026-08-21
+
+== F: 2196 test sessions 2018-01-02 -> 2026-08-21   noise floor median 1.39pp, p90 1.64pp
+  arm  name                    PRIMARY          90% CI  GUARD  pinball  slope
+  E6   har_rv_log (forge)        1.82  [ 1.71, 2.81]   1.11   0.9631   0.95
+  E3   yz_20                     1.91  [ 1.68, 3.20]   1.54   1.0308   0.81
+  E2   ewma_090                  1.96  [ 1.79, 3.09]   1.11   1.0160   0.77
+  H8   HAR-800 (production)      2.08  [ 1.93, 3.14]   1.45   0.9664   0.95
+  E1   ewma_094                  2.13  [ 1.85, 3.36]   1.08   1.0294   0.82
+  R5   HAR-RV 5-min              2.23  [ 2.01, 3.24]   2.20   0.9371   0.95
+  A0   yz_10 (live)              2.50  [ 2.29, 3.50]   1.40   1.0000   0.81
+  R15  HAR-RV 15-min             2.55  [ 2.21, 3.51]   2.31   0.9432   0.95
+  E4   yz_30                     2.66  [ 2.21, 4.16]   1.92   1.0540   0.79
+  V3   IV-adjusted (VXN)         3.26  [ 2.82, 4.36]   2.37   0.9664   1.21
+  V4   pure VXN                  5.24  [ 4.59, 6.31]   2.74*   0.9839   1.38
+  E5   naive                    10.86  [ 9.62,12.44]   4.13*   1.2216   0.43
+  (* = fails GUARD)  winner E6, runner-up E3, tie=True, chosen E6
+  chosen - A0 (re-selected in bootstrap) 90% CI [-1.46, -0.17]pp; halves: 2018-22 1.97 vs A0 2.98 CI [-1.86,-0.09]; 2023-26 2.16 vs A0 3.66 CI [-2.39,-0.28]
+  calibrated to noise: False   VERDICT VALIDATED
+  HL>p75/p90 by quintile A0  : Q1 34.3/12.7  Q2 27.1/10.5  Q3 27.1/ 8.0  Q4 25.3/ 8.7  Q5 21.6/ 7.5
+  HL>p75/p90 by quintile E6  : Q1 24.8/ 8.9  Q2 22.8/ 9.3  Q3 23.0/ 7.3  Q4 26.2/10.5  Q5 25.5/10.5
+  HL>p75/p90 by quintile H8  : Q1 26.1/ 9.8  Q2 23.9/10.5  Q3 24.8/ 8.0  Q4 28.5/11.6  Q5 26.7/11.6
+  F: test rows 2196 (dropped 0 with a missing arm or regime); 2018-01-02 -> 2026-08-21
+  MIRROR F: A0 primary 1.60pp vs floor p90 1.65pp; HL>p75 Q1..Q5 23.4 26.7 24.4 28.7 27.1
+
+== H3 C vs F on 2706 common London dates: F/C ratio (90% CI)
+  hl_p50  1.0015 [0.9971, 1.0056] ok
+  hl_p75  1.0026 [0.9970, 1.0055] ok
+  oh_p50  0.9947 [0.9885, 1.0018] ok
+  oh_p75  0.9939 [0.9896, 1.0014] ok
+  ol_p50  1.0070 [1.0019, 1.0173] ok
+  ol_p75  1.0037 [0.9965, 1.0084] ok
+  -> SAME (F reuses the C spec)
