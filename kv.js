@@ -436,6 +436,7 @@ const _CF_EXACT = new Set([
   // COG shadow emitter's daily gate output — the forward record. Cannot be
   // recomputed after the fact: it is a stamped prediction, not a derivation.
   'cog_shadow_log',
+  'desk_layouts',           // Desk Terminal shared panel order per tab (owner-saved, seen by everyone) - a person's saved choice, must survive redeploys
   'nav_layout',             // index.html command-hub custom category/order — user drag-drop, must survive redeploys and sync across devices
   'scratchpad_notes',       // index.html scratchpad modal — free-text personal notes, must survive redeploys and sync across devices
   // Numeric-composition engines (CPI/GDP/ISM/labor market/retail sales/

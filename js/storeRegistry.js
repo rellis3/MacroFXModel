@@ -198,7 +198,7 @@ export const STORES = {
   oi_vol_bot_config: C('OI-Vol bot config'), oi_conf_bot_config: C('OI-Conf bot config'), volatility_bot_v2_config: C('Volatility v2 config'),
   volatility_bot_v3_config: C('Volatility v3 config'), fib_atlas_bot_config: C('Fib Atlas bot config'), fib_atlas_bot_v2_config: C('Fib Atlas v2 config'),
   signal_copier_config: C('Signal Copier config'),
-  motif_bot_config: C('Motif bot config'), nq_qmr_config: C('NQ QMR config'), nav_layout: C('Navigation layout'), scratchpad_notes: C('Scratchpad notes'),
+  motif_bot_config: C('Motif bot config'), nq_qmr_config: C('NQ QMR config'), nav_layout: C('Navigation layout'), desk_layouts: C('Desk Terminal shared layouts'), scratchpad_notes: C('Scratchpad notes'),
   // ── credentials (never read) ──────────────────────────────────────────────
   tg_config: X('Telegram credentials'), hedge_signal_tg: X('Hedge-signal Telegram credentials (sender retired 2026-11-06)'), regime_bot_credentials: X('Regime bot credentials'),
   regime_bot_v2_credentials: X('Regime bot v2 credentials'), regime_bot_v7_credentials: X('Regime bot v7 credentials'),

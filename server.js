@@ -31310,6 +31310,23 @@ app.post('/api/nav-layout', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// Desk Terminal shared panel layouts (js/terminal/layoutView.js): the owner saves a tab's panel order, everyone with the layout feature reads it. { [tab]: { groups, hidden, at } }.
+// GET is open to the desk login (data only); POST is owner-only. Same KV pattern as /api/nav-layout.
+app.get('/api/desk-layouts', async (_req, res) => {
+  try { const raw = await kv.get('desk_layouts'); res.set('Cache-Control', 'no-store'); res.json({ ok: true, tabs: raw ? JSON.parse(raw) : {} }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/desk-layouts', _ownerOnly, async (req, res) => {
+  try {
+    const { validateShared } = await import('./js/terminal/layoutCore.js'), v = validateShared(req.body);
+    if (!v.ok) return res.status(400).json({ ok: false, error: v.error });
+    const raw = await kv.get('desk_layouts'), tabs = raw ? JSON.parse(raw) : {};
+    if (v.layout) tabs[v.tab] = { ...v.layout, at: new Date().toISOString() }; else delete tabs[v.tab];
+    await kv.put('desk_layouts', JSON.stringify(tabs));
+    res.json({ ok: true, tabs });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // index.html scratchpad modal — free-text personal notes, synced via KV so they
 // follow the user across browsers/devices (same pattern as /api/nav-layout).
 app.get('/api/scratchpad', async (_req, res) => {
