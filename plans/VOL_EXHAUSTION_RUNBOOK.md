@@ -69,17 +69,28 @@ bars; "thin" means 60–999 bars.
 
 IBKR is **not** needed for M1. NT8 history already reaches 2015, while IBKR expired-contract history is short.
 
-### 0.2 Repair futures M1  (F)
-- [ ] Run `nt8_bridge/nt8_gapfill.py` on every non-index root (6A 6B 6C 6E 6J 6N 6S GC SI HG PL CL BZ NG ZS ZW ZC FDAX), then `nt8_stitch.py`. The gapfill has only been run on the index roots so far (DATA_SPEC #24).
+### 0.2 Repair futures M1  (F)  `[~]` started 2026-11-18
+Runner (in order): backfill missing/new contract files on all roots → gapfill liquid roots at MIN_BARS 5000 → PL/BZ/PA at
+2500 → grains/FDAX at 2000 (their exchange hours cap a normal week below 5000) → indices to today → stitch.
+- [~] Run `nt8_bridge/nt8_gapfill.py` on every non-index root (6A 6B 6C 6E 6J 6N 6S GC SI HG PL CL BZ NG ZS ZW ZC FDAX), then `nt8_stitch.py`. The gapfill has only been run on the index roots so far (DATA_SPEC #24).
 - [ ] Extend all roots to today (NT8 must be connected).
 - [ ] Re-run the 0.1 table. Acceptance: missing weekday sessions vs the CME calendar < 2% per root, outside known holidays.
 
 ### 0.3 Pull missing roots  (F)
-- [ ] PA, BTC/MBT via `nt8_backfill.py`. Optionally RP/RY/RF.
+- [~] PA (from 2015), BTC (from 2017), MBT (from 2021) added to `nt8_backfill.py` ROOTS 2026-11-18. A test week
+  (2026-11-09) returned 5,336 / 6,820 / 9,645 bars.
+- [x] RP/RY/RF: NT8 says "unknown instrument". **Not available.**
+- [x] SEK/NOK 12-26: 0 bars in a live-feed week. **No trading on CME, not tradeable.**
 
 ### 0.4 Owner decisions  (C+F)
-- [ ] ICE three (UK100, SUGAR, Brent): CFD-only, or buy history. **Paid: ask first, quote before any pull.**
-- [ ] FX crosses + Scandies: CFD-only, or a synthetic futures ladder from the legs.
+- [x] ICE three (UK100, SUGAR, Brent): **NEEDS PAID DATA, deferred** (owner 2026-11-18). CFD-only until bought.
+  Ask first and get a quote before any pull.
+- [x] FX crosses + Scandies: **CFD-only** (2026-11-18). These can't be traded as a future on NT8/Lucid:
+  - RP/RY/RF are unknown in NT8.
+  - SEK/NOK have no trades.
+  - The other crosses have no listed future.
+
+  The owner's rule was "if we can trade them, build the legs". They can't be traded, so no synthetic ladder.
 
 ### 0.5 Refresh the CFD M1  (C)
 - [ ] Extend the OANDA M1 research cache past 2026-08-20 (`--price M`, never BAM, read-only).
