@@ -7,6 +7,7 @@
  * It DESCRIBES what changed. It never says what the change means for direction (the Evidence Book has no validated direction rule for any of these), and every point is point in time:
  * each side is the saved record as it was published then, nothing is rebuilt. No model call.
  */
+import { zonedEpoch } from './yieldLegs.js';
 import { listReleases, unitFor, familyLabel, marketLabel, niceDay, hhmm, fin } from './eventReplayCore.js';
 
 /** The snapshot sections this comparison needs (the `fields` of /api/desk-snapshots). */
@@ -27,10 +28,20 @@ export function pickPoint(points, ts) {
   const before = ok.filter(p => p.ts <= ts); return before.length ? { point: before.at(-1), early: false } : { point: ok[0], early: true };
 }
 
+/** Today's issue of the desk's morning call, 06:45 London, in ms; null at the weekend, in the first 15 minutes after it, or when it is more than 20 hours old. The call itself never changes during the day (it is the scored record); this only lets the card list what moved AFTER it. */
+export function issueFrom(now) {
+  const day = new Date(now).toLocaleDateString('en-CA', { timeZone: 'Europe/London' }), dow = new Date(`${day}T12:00:00Z`).getUTCDay();
+  if (dow === 0 || dow === 6) return null;
+  const ms = zonedEpoch(day, 6, 45, 'Europe/London') * 1000, age = now - ms;
+  return age >= 15 * 60e3 && age < 20 * 3600e3 ? ms : null;
+}
+
 /** The ranges the card offers: label, and the start time for a given "now". `lastLook` is the stored time of the previous visit (ms) or null. */
 export function ranges(now, lastLook) {
   const out = [];
   if (fin(lastLook) && now - lastLook >= 10 * 60e3) out.push({ id: 'last', label: `Since your last visit (${ago(now - lastLook)} ago)`, from: lastLook });
+  const issue = issueFrom(now);
+  if (issue != null) out.push({ id: 'issue', label: `Since this morning's call (06:45 London, ${ago(now - issue)} ago)`, from: issue });
   out.push({ id: '1h', label: 'Last hour', from: now - 3600e3 }, { id: '4h', label: 'Last 4 hours', from: now - 4 * 3600e3 }, { id: '24h', label: 'Last 24 hours', from: now - 24 * 3600e3 });
   return out;
 }

@@ -290,7 +290,7 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   add({ id: 'eventreplay', group: 'Look and feel', name: 'EVENTREPLAY', aliases: ['EVENT', 'RELEASEREPLAY'], args: '[cpi|nfp|fomc|ecb|boe|boj|pce|retail|gdp] [market]',
     help: 'Event replay: a past release (US CPI, payrolls, a Fed, ECB, BoE or BoJ decision) played minute by minute from 30 minutes before to 4 hours after, in units of the typical 30-minute reaction of that market to that kind of release, over the faint paths of the last five releases of the same kind, with the share of the move done so far. It shows how big and how fast past releases moved markets; which way a release moves a market is not predictable from the release alone, so it never says where the next one will go.',
     example: 'eventreplay cpi nq', opens: 'A replay window over the page: a past release minute by minute against the last five of its kind', surface: 'widget.eventreplay', run: args => eventReplayRun(args) });
-  add({ id: 'since', group: 'Look and feel', name: 'SINCE', aliases: ['WHATMOVED', 'SINCELAST'], args: '[last|1h|4h|24h]',
+  add({ id: 'since', group: 'Look and feel', name: 'SINCE', aliases: ['WHATMOVED', 'SINCELAST'], args: '[last|issue|1h|4h|24h]',
     help: 'Open the Changed tab with the "Since you last looked" card: what moved in the terminal between the saved snapshot at your last visit (or one hour, four hours or a day ago) and the latest, ranked, in plain sentences: stress lights, risk flags, currency strength leaders, the Fed path, the regime, central-bank statements, the curve, vol gauges, feeds that went missing and the releases that printed in between. It describes changes and never says what they mean for direction. The record only begins on 14 Nov 2026.',
     example: 'since 4h', opens: 'The Changed tab, with the since-you-last-looked card at the top', surface: 'panel.changed.since', run: args => sinceRun(args) });
   add({ id: 'flaghistory', group: 'Look and feel', name: 'FLAGHISTORY', aliases: ['FLAGSOVERTIME', 'RISKHISTORY'], args: '',
@@ -414,9 +414,9 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     return { action: { kind: 'eventreplay', family: fam, market: mk }, summary: `Opens the event replay${fam ? ` on the latest ${fam} release` : ''}${mk ? `, ${mk}` : ''}.` };
   }
   function sinceRun(args) {
-    const t = String(args ?? '').trim().toLowerCase(), map = { '': null, last: 'last', visit: 'last', '1h': '1h', hour: '1h', '4h': '4h', '24h': '24h', day: '24h', today: '24h' };
-    if (!(t in map)) return { error: `"${t}" is not a span I know. Try SINCE LAST, SINCE 1H, SINCE 4H or SINCE 24H.` };
-    return { action: { kind: 'since', range: map[t] }, summary: `Opens the Changed tab with what moved ${map[t] === 'last' ? 'since your last visit' : map[t] ? `in the last ${map[t]}` : 'since your last visit (or the last hour)'}.` };
+    const t = String(args ?? '').trim().toLowerCase(), map = { '': null, last: 'last', visit: 'last', issue: 'issue', call: 'issue', morning: 'issue', '1h': '1h', hour: '1h', '4h': '4h', '24h': '24h', day: '24h', today: '24h' };
+    if (!(t in map)) return { error: `"${t}" is not a span I know. Try SINCE LAST, SINCE ISSUE, SINCE 1H, SINCE 4H or SINCE 24H.` };
+    return { action: { kind: 'since', range: map[t] }, summary: `Opens the Changed tab with what moved ${map[t] === 'last' ? 'since your last visit' : map[t] === 'issue' ? 'since this morning’s call (06:45 London)' : map[t] ? `in the last ${map[t]}` : 'since your last visit (or the last hour)'}.` };
   }
   function oidrillRun(args) {
     const toks = String(args ?? '').trim().split(/\s+/).filter(Boolean); let target = 'callwall', inst = 'NQ';

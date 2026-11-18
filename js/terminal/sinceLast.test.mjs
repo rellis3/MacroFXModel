@@ -56,8 +56,11 @@ test('pickPoint: the point in force at the time (never a later one), the earlies
 });
 
 test('ranges: your last visit only when it was at least 10 minutes ago, then 1h, 4h, 24h', () => {
-  const now = Date.parse('2026-11-16T16:00:00Z'), r = C.ranges(now, now - 3 * 3600e3); assert.deepEqual(r.map(x => x.id), ['last', '1h', '4h', '24h']); assert.match(r[0].label, /3 h ago/);
-  assert.deepEqual(C.ranges(now, now - 60e3).map(x => x.id), ['1h', '4h', '24h']); assert.deepEqual(C.ranges(now, null).map(x => x.id), ['1h', '4h', '24h']); assert.equal(C.ranges(now, null)[1].from, now - 4 * 3600e3);
+  const now = Date.parse('2026-11-16T16:00:00Z'), r = C.ranges(now, now - 3 * 3600e3); assert.deepEqual(r.map(x => x.id), ['last', 'issue', '1h', '4h', '24h']); assert.match(r[0].label, /3 h ago/); assert.equal(r[1].from, Date.parse('2026-11-16T06:45:00Z'));
+  assert.deepEqual(C.ranges(now, now - 60e3).map(x => x.id), ['issue', '1h', '4h', '24h']); assert.deepEqual(C.ranges(now, null).map(x => x.id), ['issue', '1h', '4h', '24h']); assert.equal(C.ranges(now, null)[2].from, now - 4 * 3600e3);
+  assert.deepEqual(C.ranges(Date.parse('2026-11-14T16:00:00Z'), null).map(x => x.id), ['1h', '4h', '24h'], 'no morning call at the weekend');
+  assert.deepEqual(C.ranges(Date.parse('2026-11-16T06:50:00Z'), null).map(x => x.id), ['1h', '4h', '24h'], 'not in the first 15 minutes');
+  assert.equal(C.issueFrom(Date.parse('2026-07-15T12:00:00Z')), Date.parse('2026-07-15T05:45:00Z'), 'summer time: 06:45 London is 05:45 UTC');
   assert.equal(C.ago(30 * 60e3), '30 min'); assert.equal(C.ago(5 * 3600e3), '5 h'); assert.equal(C.ago(3 * 86400e3), '3 days');
 });
 
