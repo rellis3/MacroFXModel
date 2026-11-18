@@ -1,0 +1,590 @@
+{
+ "seed": 20261118,
+ "placeboDraws": 200,
+ "series": 30,
+ "counts": {
+  "TOP": {
+   "disc": {
+    "UP": 447,
+    "DOWN": 35,
+    "MIXED": 66
+   },
+   "hold": {
+    "UP": 666,
+    "DOWN": 35,
+    "MIXED": 97
+   },
+   "holdBySeries": {
+    "SPX": {
+     "UP": 25,
+     "DOWN": 0,
+     "MIXED": 2
+    },
+    "NDX": {
+     "UP": 28,
+     "DOWN": 0,
+     "MIXED": 1
+    },
+    "RUT": {
+     "UP": 22,
+     "DOWN": 2,
+     "MIXED": 4
+    },
+    "DJI": {
+     "UP": 23,
+     "DOWN": 0,
+     "MIXED": 4
+    },
+    "DAX": {
+     "UP": 19,
+     "DOWN": 0,
+     "MIXED": 3
+    },
+    "FTSE": {
+     "UP": 30,
+     "DOWN": 3,
+     "MIXED": 2
+    },
+    "N225": {
+     "UP": 31,
+     "DOWN": 0,
+     "MIXED": 1
+    },
+    "HSI": {
+     "UP": 17,
+     "DOWN": 3,
+     "MIXED": 3
+    },
+    "XLK": {
+     "UP": 35,
+     "DOWN": 0,
+     "MIXED": 1
+    },
+    "XLF": {
+     "UP": 25,
+     "DOWN": 3,
+     "MIXED": 3
+    },
+    "XLE": {
+     "UP": 20,
+     "DOWN": 2,
+     "MIXED": 2
+    },
+    "XLV": {
+     "UP": 27,
+     "DOWN": 0,
+     "MIXED": 2
+    },
+    "XLY": {
+     "UP": 28,
+     "DOWN": 0,
+     "MIXED": 2
+    },
+    "XLP": {
+     "UP": 37,
+     "DOWN": 0,
+     "MIXED": 3
+    },
+    "XLI": {
+     "UP": 22,
+     "DOWN": 1,
+     "MIXED": 3
+    },
+    "XLU": {
+     "UP": 26,
+     "DOWN": 2,
+     "MIXED": 4
+    },
+    "XLB": {
+     "UP": 22,
+     "DOWN": 1,
+     "MIXED": 4
+    },
+    "GOLD": {
+     "UP": 22,
+     "DOWN": 1,
+     "MIXED": 1
+    },
+    "SILVER": {
+     "UP": 15,
+     "DOWN": 0,
+     "MIXED": 3
+    },
+    "COPPER": {
+     "UP": 14,
+     "DOWN": 0,
+     "MIXED": 2
+    },
+    "WTI": {
+     "UP": 17,
+     "DOWN": 4,
+     "MIXED": 3
+    },
+    "EURUSD": {
+     "UP": 16,
+     "DOWN": 2,
+     "MIXED": 2
+    },
+    "GBPUSD": {
+     "UP": 15,
+     "DOWN": 1,
+     "MIXED": 12
+    },
+    "USDJPY": {
+     "UP": 25,
+     "DOWN": 2,
+     "MIXED": 3
+    },
+    "AUDUSD": {
+     "UP": 10,
+     "DOWN": 1,
+     "MIXED": 3
+    },
+    "USDCAD": {
+     "UP": 29,
+     "DOWN": 1,
+     "MIXED": 3
+    },
+    "USDCHF": {
+     "UP": 15,
+     "DOWN": 1,
+     "MIXED": 6
+    },
+    "NZDUSD": {
+     "UP": 13,
+     "DOWN": 1,
+     "MIXED": 10
+    },
+    "TLT": {
+     "UP": 17,
+     "DOWN": 3,
+     "MIXED": 5
+    },
+    "BTC": {
+     "UP": 21,
+     "DOWN": 1,
+     "MIXED": 0
+    }
+   }
+  },
+  "BOT": {
+   "disc": {
+    "UP": 65,
+    "DOWN": 296,
+    "MIXED": 104
+   },
+   "hold": {
+    "UP": 74,
+    "DOWN": 390,
+    "MIXED": 127
+   },
+   "holdBySeries": {
+    "SPX": {
+     "UP": 2,
+     "DOWN": 6,
+     "MIXED": 3
+    },
+    "NDX": {
+     "UP": 0,
+     "DOWN": 8,
+     "MIXED": 3
+    },
+    "RUT": {
+     "UP": 1,
+     "DOWN": 15,
+     "MIXED": 3
+    },
+    "DJI": {
+     "UP": 2,
+     "DOWN": 7,
+     "MIXED": 3
+    },
+    "DAX": {
+     "UP": 2,
+     "DOWN": 10,
+     "MIXED": 2
+    },
+    "FTSE": {
+     "UP": 1,
+     "DOWN": 10,
+     "MIXED": 4
+    },
+    "N225": {
+     "UP": 1,
+     "DOWN": 8,
+     "MIXED": 2
+    },
+    "HSI": {
+     "UP": 1,
+     "DOWN": 22,
+     "MIXED": 5
+    },
+    "XLK": {
+     "UP": 3,
+     "DOWN": 6,
+     "MIXED": 0
+    },
+    "XLF": {
+     "UP": 1,
+     "DOWN": 10,
+     "MIXED": 4
+    },
+    "XLE": {
+     "UP": 2,
+     "DOWN": 15,
+     "MIXED": 5
+    },
+    "XLV": {
+     "UP": 7,
+     "DOWN": 6,
+     "MIXED": 7
+    },
+    "XLY": {
+     "UP": 5,
+     "DOWN": 6,
+     "MIXED": 2
+    },
+    "XLP": {
+     "UP": 5,
+     "DOWN": 4,
+     "MIXED": 8
+    },
+    "XLI": {
+     "UP": 4,
+     "DOWN": 6,
+     "MIXED": 4
+    },
+    "XLU": {
+     "UP": 9,
+     "DOWN": 12,
+     "MIXED": 8
+    },
+    "XLB": {
+     "UP": 3,
+     "DOWN": 6,
+     "MIXED": 4
+    },
+    "GOLD": {
+     "UP": 3,
+     "DOWN": 20,
+     "MIXED": 3
+    },
+    "SILVER": {
+     "UP": 4,
+     "DOWN": 22,
+     "MIXED": 4
+    },
+    "COPPER": {
+     "UP": 4,
+     "DOWN": 20,
+     "MIXED": 6
+    },
+    "WTI": {
+     "UP": 3,
+     "DOWN": 19,
+     "MIXED": 6
+    },
+    "EURUSD": {
+     "UP": 2,
+     "DOWN": 20,
+     "MIXED": 1
+    },
+    "GBPUSD": {
+     "UP": 0,
+     "DOWN": 18,
+     "MIXED": 5
+    },
+    "USDJPY": {
+     "UP": 2,
+     "DOWN": 8,
+     "MIXED": 4
+    },
+    "AUDUSD": {
+     "UP": 0,
+     "DOWN": 27,
+     "MIXED": 2
+    },
+    "USDCAD": {
+     "UP": 1,
+     "DOWN": 9,
+     "MIXED": 5
+    },
+    "USDCHF": {
+     "UP": 1,
+     "DOWN": 13,
+     "MIXED": 3
+    },
+    "NZDUSD": {
+     "UP": 0,
+     "DOWN": 19,
+     "MIXED": 5
+    },
+    "TLT": {
+     "UP": 4,
+     "DOWN": 21,
+     "MIXED": 6
+    },
+    "BTC": {
+     "UP": 1,
+     "DOWN": 17,
+     "MIXED": 10
+    }
+   }
+  }
+ },
+ "stateShareHoldout": {
+  "UP": 0.57,
+  "DOWN": 0.253,
+  "MIXED": 0.177,
+  "n": 104533
+ },
+ "power": {
+  "T1": {
+   "label": "TOP stall above a rising SMA200 -> 20-session return (z) vs same-state controls",
+   "nHold": 666,
+   "nDisc": 447,
+   "placeboMean": -0.0056,
+   "placeboSD": 0.0509,
+   "mde": 0.1426,
+   "bar": 0.15,
+   "verdict": "POWERED",
+   "draws": 200
+  },
+  "T2": {
+   "label": "TOP stall above a rising SMA200 -> 40-session return (z)",
+   "nHold": 666,
+   "nDisc": 447,
+   "placeboMean": -0.0059,
+   "placeboSD": 0.0568,
+   "mde": 0.1592,
+   "bar": 0.15,
+   "verdict": "UNDERPOWERED",
+   "draws": 200
+  },
+  "T3": {
+   "label": "TOP stall above a rising SMA200 -> 60-session return (z)",
+   "nHold": 666,
+   "nDisc": 447,
+   "placeboMean": -0.0044,
+   "placeboSD": 0.0583,
+   "mde": 0.1633,
+   "bar": 0.15,
+   "verdict": "UNDERPOWERED",
+   "draws": 200
+  },
+  "T4": {
+   "label": "TOP stall above a rising SMA200 -> next-20 realised vol vs trailing 60 (log ratio)",
+   "nHold": 666,
+   "nDisc": 447,
+   "placeboMean": -0.0016,
+   "placeboSD": 0.019,
+   "mde": 0.0533,
+   "bar": 0.1,
+   "verdict": "POWERED",
+   "draws": 200
+  },
+  "T5": {
+   "label": "TOP stall below a falling SMA200 -> 20-session return (z)",
+   "nHold": 35,
+   "nDisc": 35,
+   "placeboMean": -0.0115,
+   "placeboSD": 0.0848,
+   "mde": 0.2375,
+   "bar": 0.15,
+   "verdict": "UNDERPOWERED",
+   "draws": 200
+  },
+  "M1": {
+   "label": "MIRROR: BOTTOM stall below a falling SMA200 -> 20-session return (z) vs same-state controls",
+   "nHold": 390,
+   "nDisc": 296,
+   "placeboMean": 0.0017,
+   "placeboSD": 0.0932,
+   "mde": 0.261,
+   "bar": 0.15,
+   "verdict": "UNDERPOWERED",
+   "draws": 200
+  },
+  "M2": {
+   "label": "BOTTOM stall above a rising SMA200 -> 20-session return (z)",
+   "nHold": 74,
+   "nDisc": 65,
+   "placeboMean": 0.0117,
+   "placeboSD": 0.0571,
+   "mde": 0.1599,
+   "bar": 0.15,
+   "verdict": "UNDERPOWERED",
+   "draws": 200
+  }
+ },
+ "positiveControl": {
+  "T1": {
+   "zeroWorlds": [
+    0.0086,
+    -0.0231,
+    0.0134,
+    0.019,
+    0.0112,
+    0.0684,
+    0.0184,
+    0.0239,
+    0.0311,
+    -0.0277,
+    0.0502,
+    0.0023,
+    0.0338,
+    -0.0109,
+    -0.0412,
+    0.0387
+   ],
+   "plantedBar": 0.1586,
+   "plantedValue": 0.15,
+   "zeroMean": 0.0135,
+   "zeroSE": 0.0073
+  },
+  "T2": {
+   "zeroWorlds": [
+    -0.0029,
+    0.0236,
+    -0.0079,
+    0.0412,
+    -0.0317,
+    0.061,
+    0.0397,
+    0.0299,
+    0.0481,
+    -0.0101,
+    0.0445,
+    0.0397,
+    0.0389,
+    0.0472,
+    -0.013,
+    0.0485
+   ],
+   "plantedBar": 0.1471,
+   "plantedValue": 0.15,
+   "zeroMean": 0.0248,
+   "zeroSE": 0.007
+  },
+  "T3": {
+   "zeroWorlds": [
+    0.0425,
+    -0.0044,
+    -0.025,
+    0.0279,
+    -0.0473,
+    0.0479,
+    0.0481,
+    0.0338,
+    0.0313,
+    0.0352,
+    0.0364,
+    0.06,
+    0.0301,
+    0.0315,
+    0.027,
+    0.0511
+   ],
+   "plantedBar": 0.1925,
+   "plantedValue": 0.15,
+   "zeroMean": 0.0266,
+   "zeroSE": 0.0071
+  },
+  "T4": {
+   "zeroWorlds": [
+    -0.0091,
+    0.0044,
+    -0.0018,
+    -0.0132,
+    -0.0183,
+    -0.0088,
+    -0.015,
+    0,
+    -0.0037,
+    0.0026,
+    -0.0032,
+    -0.0076,
+    -0.0145,
+    -0.0081,
+    -0.0089,
+    -0.0127
+   ],
+   "plantedBar": -0.1091,
+   "plantedValue": -0.1,
+   "zeroMean": -0.0074,
+   "zeroSE": 0.0016
+  },
+  "T5": {
+   "zeroWorlds": [
+    -0.148,
+    0.0022,
+    -0.0366,
+    -0.098,
+    0.0098,
+    -0.0067,
+    -0.0239,
+    -0.2017,
+    0.3416,
+    0.1253,
+    0.0728,
+    0.1629,
+    -0.1022,
+    0.0232,
+    0.0162,
+    -0.0813
+   ],
+   "plantedBar": -0.298,
+   "plantedValue": -0.15,
+   "zeroMean": 0.0035,
+   "zeroSE": 0.0327
+  },
+  "M1": {
+   "zeroWorlds": [
+    0.0243,
+    0.0023,
+    -0.036,
+    -0.0472,
+    0.008,
+    -0.0369,
+    -0.065,
+    -0.0232,
+    -0.0853,
+    0.0502,
+    -0.0761,
+    -0.0072,
+    -0.03,
+    0.0378,
+    0.0395,
+    0.0217
+   ],
+   "plantedBar": -0.1257,
+   "plantedValue": -0.15,
+   "zeroMean": -0.0139,
+   "zeroSE": 0.0106
+  },
+  "M2": {
+   "zeroWorlds": [
+    0.0977,
+    0.0014,
+    -0.0222,
+    0.0544,
+    -0.0263,
+    -0.0216,
+    -0.0902,
+    0.182,
+    -0.0663,
+    0.0459,
+    0.0722,
+    0.0059,
+    0.0534,
+    -0.0043,
+    -0.004,
+    -0.0522
+   ],
+   "plantedBar": 0.2477,
+   "plantedValue": 0.15,
+   "zeroMean": 0.0141,
+   "zeroSE": 0.017
+  }
+ }
+}
