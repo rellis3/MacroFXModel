@@ -153,4 +153,13 @@ Tracks are reported separately, not pooled.
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-18, PRE-RESULTS (only positive control 1 and the session counts have been computed)
+
+Positive control 2 is mis-specified as written. A σ^0.5-shrunk σ makes lines too *wide* when it's quiet, which is the
+opposite sign to the Q1 > Q5 stated. The live tilt comes from a noisy short-window σ, with days bucketed by that same σ:
+low readings carry negative noise, so their lines are too tight. Replacement, same pass bar:
+- The synthetic GARCH(1,1) days are given the A0 role by a 10-day rolling realised σ of the synthetic daily returns.
+  Quintiles come from that arm's σ ÷ its trailing 250-day median, as in the real run.
+- "True σ", scored on those quintiles, must have a 30-cell miss within the floor's 90th percentile.
+- The 10-day realised arm must show HL > p75 Q1 − Q5 ≥ 5pp.
+- σ^0.5-shrunk is reported, with no rule.
