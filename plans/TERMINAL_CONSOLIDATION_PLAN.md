@@ -65,3 +65,9 @@ Each phase: registry updated, `commandHub.js` shortcuts, nav `resolveLayout` mig
 
 ## Not checked
 Overview pill code, map layers, whether `/api/releases-board` and `/api/drill-series` share numbers, whether Insight cross-asset and Corr matrix numbers agree, today.html Site Map, the Null and Retired menus of commandHub, the ~270 standalone pages (only the terminal's own overlap with economies, bank credit and ccy-strength was checked).
+
+## Status (2026-11-18)
+- Safety mark: tag `pre-terminal-consolidation-2026-11-18` and branch `backup/pre-terminal-consolidation` on origin, at c326221b (the terminal exactly as it was, 23 tabs). To go back: `git revert` the consolidation commits, or branch from the tag.
+- DONE, Phase 0: orphan Research section removed (Pair's research link now opens research.html).
+- DONE, navigation merge: 23 tab buttons now show as 9 nav buttons + Tools, with a pill row for merged tabs (js/terminal/tabGroups.js, tabGroupsCore.js, test guards that no tab is left out). It drives the original tab strip, so deep links, access rules, saved choices and every module that finds a tab by data-t are unchanged. Groups: Today [overview, changed], Markets [assets, pair, deep, monitor, kchart], Currencies, Macro, Options & positioning [options, pos], Events [cal, news], Chain & read [today, read], Correlations [corr, insight], Time & record [replay, charts, ana], Tools [bprocess, workspace, infomap].
+- NOT DONE yet (changes what is on screen, do with the owner looking): one renderer per card (Phase 1), moving individual panels between tabs (Phase 2), the Assets+Pair master-detail page, retiring Insight/K-chart/Deep shells (Phase 4).
