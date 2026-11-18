@@ -593,6 +593,7 @@ export const DERIVED = {
      "js/terminal/calendarDrillsView.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/regimeBoardView.js",
+     "js/terminal/surpriseRollup.js",
      "js/terminal/terminalTabs.js"
     ],
     "today": [
@@ -1455,6 +1456,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/analogueView.js",
      "js/terminal/biasEngineView.js",
      "js/terminal/deepDive.js",
      "js/terminal/fedPathYieldsView.js",
@@ -1571,6 +1573,7 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
+     "js/terminal/analogueView.js",
      "js/terminal/chainBoard.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
@@ -1804,7 +1807,7 @@ export const DERIVED = {
     {
      "file": "cog-chart.html",
      "exists": true,
-     "lastModified": "2026-11-11",
+     "lastModified": "2026-11-17",
      "hub": [
       "macro"
      ]
@@ -1819,7 +1822,10 @@ export const DERIVED = {
    ],
    "modules": [],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "js/terminal/legChartCore.js",
+     "js/terminal/legChartView.js"
+    ],
     "today": [
      "today.html"
     ],
@@ -1841,7 +1847,9 @@ export const DERIVED = {
     }
    ],
    "packSkills": [],
-   "drift": []
+   "drift": [
+    "The terminal code names every route of this feed but the traced status says it is not drawn: re-trace."
+   ]
   },
   "rate-differentials-and-carry": {
    "pages": [
@@ -3129,6 +3137,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/analogueView.js",
      "js/terminal/monitorView.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
@@ -3940,6 +3949,7 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
+     "js/terminal/analogueView.js",
      "js/terminal/chainBoard.js",
      "js/terminal/goldCore.js",
      "js/terminal/insightData.js",
@@ -4026,6 +4036,7 @@ export const DERIVED = {
    ],
    "names": {
     "terminal": [
+     "js/terminal/analogueView.js",
      "js/terminal/commandCore.js",
      "js/terminal/goldCore.js",
      "js/terminal/insightData.js",
@@ -4137,6 +4148,7 @@ export const DERIVED = {
    ],
    "names": {
     "terminal": [
+     "js/terminal/analogueView.js",
      "js/terminal/goldCore.js",
      "js/terminal/insightData.js",
      "js/terminal/insightSeries.js",
@@ -4247,6 +4259,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/analogueView.js",
      "js/terminal/analyticsSplit.js",
      "js/terminal/assetFavourites.js",
      "js/terminal/boePathView.js",
@@ -5410,8 +5423,12 @@ export const DERIVED = {
    "drift": []
   }
  },
- "unclassified": [],
- "rootPageCount": 258,
+ "unclassified": [
+  "futures-research.html",
+  "noise-area-fx-book.html",
+  "paper-synthesis.html"
+ ],
+ "rootPageCount": 261,
  "packFeeds": 115,
- "generatedAt": "2026-11-17"
+ "generatedAt": "2026-11-18"
 };
