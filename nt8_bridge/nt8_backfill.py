@@ -37,6 +37,7 @@ ROOTS = {
     "SI": [3, 5, 7, 9, 12], "HG": [3, 5, 7, 9, 12], "NG": ALL, "BZ": ALL, "PL": [1, 4, 7, 10],
     "ZC": [3, 5, 7, 9, 12], "ZS": [1, 3, 5, 7, 8, 9, 11], "ZW": [3, 5, 7, 9, 12],
     "ZQ": ALL,
+    "PA": [3, 6, 9, 12], "BTC": ALL, "MBT": ALL,   # added 2026-11-18 (vol runbook 0.3); BTC listed 2017-12, MBT 2021-05
 }
 PRE_DAYS = 80      # days before the delivery month starts (covers the whole front-month life incl. the roll)
 POST_DAYS = 28     # into the delivery month
