@@ -106,6 +106,20 @@ Runner (in order): backfill missing/new contract files on all roots → gapfill 
 
 ---
 
+### 0.8 Data-quality layer (Lesson 5 standards)  (C+F)  `[~]` agreed 2026-11-18
+Lean version agreed with the owner: no separate site page; the signature plot waits for Phase 2.
+- [x] Frozen copies of the exact inputs of every banked study, hashes tracked (`analysis/output/ladder-v2-nq/frozen/`).
+- [ ] `forge/data_screens.py`: flag-never-alter screens per instrument and track (jumps, stale/gaps, missing sessions,
+      timestamps, rolls + round trip, CFD vs futures per day). Flags go to `analysis/output/data_screens/<SYM>/`.
+      Flagged days stay in; every study reports with and without them.
+- [ ] Input SHA-256 written into every study's `results.json` automatically.
+- [ ] NQ robustness (prereg amendment A2, post-hoc, demote-only): 3-month blocks, leave-one-episode-out, flags out.
+- [ ] Per-instrument template harness (config per symbol; screens, hashes, 3-month blocks, episode drops, class
+      fallback built in). Then gold, ES/YM/RTY, FX.
+- [ ] Phase 2 prerequisite: signature plot (vol at 1/2/5/10/15/30 min, 1h, 1d) per instrument.
+
+---
+
 ## Phase 1: Reach ladder (vol forecast), per instrument
 
 ### 1.1 Register + prereg  (C+F)
