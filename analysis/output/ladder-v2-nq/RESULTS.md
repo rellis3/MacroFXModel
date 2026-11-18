@@ -99,6 +99,33 @@ distribution in % terms, so the futures track reuses the CFD spec. The same arm 
   is the same harness per instrument, then by class.
 - **What would reopen this:** the forward record showing a quintile spread above ~6pp at p75 over 250+ sessions.
 
+## Amendment A2 robustness (POST-HOC, demote-only): verdict stands on both tracks
+
+Run 2026-11-18 by `scripts/ladder-v2-nq/robust.py` (→ `robust.json`, `robust.txt`), same seed, 3-month (63-session)
+blocks, winner re-selected in every draw. Screens: `forge/data_screens.py` v1 → `analysis/output/data_screens/NQ/`.
+
+| Check | C: chosen vs A0, 90% CI | F: chosen vs A0, 90% CI |
+|---|---|---|
+| R1 3-month blocks | E6 1.49 vs 2.40, [−1.52, −0.41]; halves both < 0 | E6 1.82 vs 2.50, [−1.46, −0.24]; halves both < 0 |
+| R2 without 2018 Q4 | E6 1.43 vs 2.53, [−1.62, −0.53] | E6 1.71 vs 2.49, [−1.51, −0.30] |
+| R2 without Covid | E6 1.55 vs 2.56, [−1.55, −0.37] | E6 1.75 vs 2.57, [−1.48, −0.21] |
+| R2 without 2022 | E6 1.79 vs 2.70, [−1.58, −0.31] | E6 1.82 vs 2.80, [−1.72, −0.39] |
+| R2 without 2025 tariffs | H8 1.56 vs 2.30 (E6 1.46), [−1.45, −0.30] | E6 1.74 vs 2.43, [−1.47, −0.23] |
+| R3 any flag out (576 / 573 sessions dropped) | R15 1.54 vs 2.16 (E6 2.36), [−1.53, −0.14] | R5 1.76 vs 2.58 (E6 2.92), [−1.39, −0.21] |
+| R3b data-fault flags only out (descriptive; 104 / 103) | E6 1.34 vs 2.59, [−1.69, −0.57] | E6 1.75 vs 2.73, [−1.66, −0.44] |
+
+Every registered check holds, so **C and F stay VALIDATED**.
+
+**R3 is a selection-on-outcome artefact, not a finding.** About 85% of its dropped sessions carry only the
+`jump_1m` flag (a 1-minute move > 10 SD), which is mostly scheduled news: the big-range days. Removing them leaves a
+quieter test set than the widths were fitted on, so every well-calibrated arm now looks too wide (E6 1.49 → 2.36). With
+only genuine data-fault flags removed (R3b) E6 improves. Lesson: flags built from the day's own price moves (`jump_1m`,
+`jump_day`, `cvf_range`) describe the day; they must not be used to drop days from a calibration test.
+
+What the screens found on NQ: every `jump_day` flag is a real market day seen on both tracks (Brexit, Feb 2018,
+Covid, 9 Apr 2025); the March 2020 `frozen` futures bars are CME limit-down halts; the futures miss 37 London sessions
+in 3–4-day clusters (e.g. 2024-04-23..26) that are absent on every NT8 root (DATA_SPEC #24 residual).
+
 ## Frozen inputs
 
 Byte-exact copies of every input (plus `NQ_rolls.csv`) are kept locally in `frozen/` (gitignored); `frozen/SHA256SUMS`

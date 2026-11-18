@@ -1,0 +1,102 @@
+{
+ "symbol": "NQ",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "portfolioBacktest/cache/nq_m1.parquet": "5d28fd98cff179bc180491d11ef847944ca2d3b08eb6ee3450af906b76c4757d",
+  "analysis/output/nt8/continuous/NQ_1m_unadj.parquet": "b47348c3a367b45fe8cb61eeb1b566a18c22338909919e7c7fcbc9b857375466",
+  "analysis/output/nt8/continuous/NQ_1m_ratio.parquet": "41417f5505967b1eb6fd4904c0bce570f4955af948b757707bfc301b98ddd9a7",
+  "analysis/output/nt8/continuous/NQ_rolls.csv": "29a16fa47d2aa560d81cb51945556ae99e0f055f76bcd977520b96673a038d54"
+ },
+ "sessions": {
+  "C": [
+   "2016-01-04",
+   "2026-08-21",
+   2748
+  ],
+  "F": [
+   "2015-12-07",
+   "2026-11-13",
+   2788
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "gap",
+   "n": 10
+  },
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 592
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 9
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 4
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_open",
+   "n": 83
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_range",
+   "n": 47
+  },
+  {
+   "track": "F",
+   "screen": "frozen",
+   "n": 5
+  },
+  {
+   "track": "F",
+   "screen": "jump_1m",
+   "n": 602
+  },
+  {
+   "track": "F",
+   "screen": "jump_day",
+   "n": 11
+  },
+  {
+   "track": "F",
+   "screen": "missing",
+   "n": 37
+  },
+  {
+   "track": "F",
+   "screen": "partial",
+   "n": 3
+  },
+  {
+   "track": "F",
+   "screen": "roll_gap",
+   "n": 1
+  }
+ ]
+}

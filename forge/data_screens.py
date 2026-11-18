@@ -137,7 +137,7 @@ def screen_jump_day(m: pd.DataFrame, track: str) -> tuple[list[pd.DataFrame], pd
 def _liquid(m: pd.DataFrame) -> np.ndarray:
     lt = m.index.tz_convert("Europe/London")
     h0, h1 = T["liquid_hours"]
-    return ((lt.hour >= h0) & (lt.hour < h1) & (lt.dayofweek < 5)).to_numpy()
+    return np.asarray((lt.hour >= h0) & (lt.hour < h1) & (lt.dayofweek < 5))
 
 
 def screen_gap_frozen(m: pd.DataFrame, track: str) -> list[pd.DataFrame]:
@@ -145,12 +145,12 @@ def screen_gap_frozen(m: pd.DataFrame, track: str) -> list[pd.DataFrame]:
     lt = m.index.tz_convert("Europe/London")
     liq = _liquid(m)
     # gaps: bar i is in the liquid window and the previous bar was > gap_min earlier on the same London date
-    prev = m.index.to_series().shift(1)
-    dt = (m.index.to_series() - prev).dt.total_seconds().div(60).to_numpy()
-    same = (london_date(m.index) == london_date(pd.DatetimeIndex(prev.fillna(m.index[0])))).to_numpy()
-    prev_lt = pd.DatetimeIndex(prev.fillna(m.index[0])).tz_convert("Europe/London")
-    prev_liq = (prev_lt.hour >= T["liquid_hours"][0]) & (prev_lt.hour < T["liquid_hours"][1])
-    g = liq & same & np.asarray(prev_liq) & (dt > T["gap_min"])
+    ld = np.asarray(london_date(m.index))
+    hr = np.asarray(lt.hour)
+    dt = np.r_[np.inf, np.diff(m.index.asi8) / 6e10]                   # minutes since the previous bar
+    same = np.r_[False, ld[1:] == ld[:-1]]
+    prev_liq = np.r_[False, (hr[:-1] >= T["liquid_hours"][0]) & (hr[:-1] < T["liquid_hours"][1])]
+    g = liq & same & prev_liq & (dt > T["gap_min"])
     if g.any():
         h = pd.DataFrame({"d": london_date(m.index[g]), "dt": dt[g], "t": lt[g].strftime("%H:%M")})
         a = h.groupby("d").agg(n=("dt", "size"), mx=("dt", "max"), t=("t", "first"))
