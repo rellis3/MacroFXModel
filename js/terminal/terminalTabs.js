@@ -24,6 +24,7 @@ import { surpriseRollup, rollupHtml, pairStripHtml } from './surpriseRollup.js';
 import { legChartHtml, mountLegChart } from './legChartView.js';
 import { analogueHtml, mountAnalogue } from './analogueView.js';
 import { reportedHtml } from '../earningsReported.js';
+import { reviewState, stateChip, unreviewedNote } from './reviewState.js';
 import './myPanelsView.js';   // the Panels button (widget.mypanels, preview): hide and bring back panels per tab
 import { boardHtml as macroBoardHtml, pick as macroBoardPick } from './macroEngines.js';
 import { DESK_EVIDENCE, citable } from '../deskEvidence.js';
@@ -73,6 +74,7 @@ globalThis.ttReactionsHtml = p => reactionsHtml(p, h);
 globalThis.ttLegChartHtml = legChartHtml; globalThis.ttLegChartMount = mountLegChart;
 globalThis.ttAnalogueHtml = analogueHtml; globalThis.ttAnalogueMount = mountAnalogue;   // Macro > Markets & FX: "Has this happened before?"
 globalThis.ttEarningsReportedHtml = p => reportedHtml(p?.items, { note: p?.note });   // Calendar tab: big companies that have reported, EPS vs consensus
+globalThis.ttReviewState = reviewState; globalThis.ttStateChip = stateChip; globalThis.ttUnreviewedNote = unreviewedNote;   // card chip: Neutral reviewed vs Not reviewed
 globalThis.ttSurpriseStripHtml = log => rollupHtml(surpriseRollup(log, Date.now()));
 // the Macro tab (desk-terminal.html enrichMacro) draws its currency x indicator board through these (js/terminal/macroEngines.js)
 // the Overview map's layers (js/terminal/mapLayers.js): the pills, the legends, the ranking under the map and the country card. The country card
