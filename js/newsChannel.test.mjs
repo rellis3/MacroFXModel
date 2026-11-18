@@ -154,4 +154,16 @@ await (async () => {
   const f = fakeKv(); await persistConfig(f, cfg); assert.deepEqual(await removeConfig(f), { ok: true }); assert.equal(f.durable.size, 0); n++;
   const g = fakeKv({ delSilentFail: true }); await persistConfig(g, cfg); const rg = await removeConfig(g); assert.equal(rg.ok, false); assert.match(rg.error, /could not be deleted/); n++;
 })();
+// the equities line (js/equityExposure.js): which indices, not just "Equities"
+t('channelMessage lists the indices an earnings item touches instead of the bare word Equities', () => {
+  const m = channelMessage({ id: 'e1', title: 'NVIDIA beats: EPS 2.68 against 2.525 expected', ms: Date.UTC(2026, 10, 17, 21), source: 'Earnings', earn: { symbol: 'NVDA' }, read: { tier: 1, impact: { EQUITIES: 2 }, why: 'beat' } });
+  assert.match(m, /EQUITIES<\/b>\n🟢 Nasdaq 100 · S&amp;P 500 · Dow · Semiconductors \(SOX\)/);
+  assert.match(m, /one company inside each index/);
+  assert.ok(!/MARKETS/.test(m), 'the bare Equities line leaves the markets block');
+});
+t('a US macro headline names the four US indices; a headline with no equity link adds no equities block', () => {
+  const us = channelMessage({ id: 'e2', title: 'Fed holds rates', ms: Date.now(), touches: ['USD'], read: { tier: 1, impact: { USD: 1, EQUITIES: -1 } } });
+  assert.match(us, /🔴 Nasdaq 100 · S&amp;P 500 · Dow · Russell 2000/);
+  assert.ok(!/EQUITIES<\/b>/.test(channelMessage({ id: 'e3', title: 'Gold bid', ms: Date.now(), touches: ['GOLD'], read: { tier: 2, impact: { GOLD: 1 } } })));
+});
 console.log(`newsChannel: ${n} tests ok`);

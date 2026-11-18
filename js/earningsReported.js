@@ -41,7 +41,7 @@ export const verdictOf = pct => (!fin(pct) ? null : pct > IN_LINE_PCT ? 'beat' :
 
 /** One reported item: schedule row + result. */
 export function reportedItem(row, surprise) {
-  return { symbol: row.symbol, name: row.name, capB: row.capB ?? null, date: row.date, when: row.when, at: row.at ?? reportAtMs(row), eps: surprise.eps, consensus: surprise.consensus, pct: surprise.pct, verdict: verdictOf(surprise.pct) };
+  return { symbol: row.symbol, name: row.name, tracked: !!row.tracked, revenue: surprise.revenue ?? null, revenueEst: surprise.revenueEst ?? null, revPct: surprise.revPct ?? null, src: surprise.src ?? 'nasdaq', capB: row.capB ?? null, date: row.date, when: row.when, at: row.at ?? reportAtMs(row), eps: surprise.eps, consensus: surprise.consensus, pct: surprise.pct, verdict: verdictOf(surprise.pct) };
 }
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -54,4 +54,38 @@ export function reportedHtml(items, { note = '' } = {}) {
   const chip = x => `<span class="chip mono ${x.verdict === 'beat' ? 'gold' : x.verdict === 'miss' ? 'pur' : ''}" title="${esc(x.name)} (${x.capB ?? '?'}bn): EPS ${x.eps} against ${x.consensus} expected, ${esc(x.when)} on ${esc(x.date)}">${esc(x.symbol)} ${sgn(x.pct)}% <span class="muted" style="font-size:11px">${esc(x.verdict ?? '')}</span></span>`;
   return `<div class="drv" style="margin:6px 0 8px"><span class="muted" style="font-size:12px">Reported, EPS vs consensus:</span> ${l.map(chip).join(' ')}</div>
 <p class="muted" style="font-size:12px;margin:0 0 8px">${esc(note || 'EPS against the consensus only, within ±1% is in line. Not guidance, revenue or the share-price reaction, and no call on the index. Biggest companies first.')}</p>`;
+}
+
+// ── Finnhub: the faster source ───────────────────────────────────────────────────────────────────────────────────────────────
+// Nasdaq's earnings-surprise table posts a result up to a day late (checked 2026-11-18: HD/DIS/NVDA printed, the table had nothing). Finnhub's free
+// /calendar/earnings (the desk's existing FINNHUB_KEY) carries epsActual and revenueActual the same day. Finnhub is tried first, Nasdaq is the fallback.
+const pctOf = (a, e) => (fin(a) && fin(e) && +e !== 0 ? +(((+a - +e) / Math.abs(+e)) * 100).toFixed(2) : null);
+
+/** The Finnhub row for a schedule row, as a surprise { eps, consensus, pct, revenue, revenueEst, revPct, src }. null when it has no actual yet. */
+export function fromFinnhub(fhRows, row) {
+  const r = (fhRows ?? []).filter(x => x?.symbol === row?.symbol && fin(x.epsActual) && fin(x.epsEstimate) && Math.abs(Date.parse(x.date) - Date.parse(row.date)) <= 86400e3)
+    .sort((a, b) => Math.abs(Date.parse(a.date) - Date.parse(row.date)) - Math.abs(Date.parse(b.date) - Date.parse(row.date)))[0];
+  if (!r) return null;
+  const rev = fin(r.revenueActual) && fin(r.revenueEstimate);
+  return { eps: +r.epsActual, consensus: +r.epsEstimate, pct: pctOf(r.epsActual, r.epsEstimate), revenue: rev ? +r.revenueActual : null, revenueEst: rev ? +r.revenueEstimate : null, revPct: rev ? pctOf(r.revenueActual, r.revenueEstimate) : null, src: 'finnhub' };
+}
+
+export const TIER1_CAP_B = 500;   // the nine the Nasdaq leans on, or any company above this, is tier 1; the rest of the feed (above $150bn) is tier 2
+const money = v => (v >= 1e9 ? `$${(v / 1e9).toFixed(1)}bn` : `$${(v / 1e6).toFixed(0)}m`);
+
+/**
+ * A reported item as a wire headline for the News tab and the shared Telegram channel. No model call: the read is rule-built.
+ * Impact on EQUITIES only when the beat or miss is a real one (tier 1: outside +/-1%, a big one +/-5% pushes harder; tier 2: only outside +/-5%).
+ * Returns { title, link, ms, source, summary, earn } where earn = { symbol, verdict, pct, tier, read } (the server applies tier and read after the merge).
+ */
+export function earningsNewsItem(it, now = Date.now()) {
+  if (!it?.symbol || !it.verdict) return null;
+  const tier = it.tracked || (it.capB ?? 0) >= TIER1_CAP_B ? 1 : 2;
+  const big = Math.abs(it.pct ?? 0) >= 5, real = it.verdict !== 'in line' && (tier === 1 || big);
+  const sign = it.verdict === 'beat' ? 1 : -1, push = real ? sign * (tier === 1 && big ? 2 : 1) : 0;
+  const rev = it.revenue != null && it.revenueEst != null ? `, revenue ${money(it.revenue)} against ${money(it.revenueEst)} expected${it.revPct != null ? ` (${it.revPct > 0 ? '+' : ''}${it.revPct}%)` : ''}` : '';
+  const title = `${it.name} ${it.verdict === 'in line' ? 'in line' : it.verdict === 'beat' ? 'beats' : 'misses'}: EPS ${it.eps} against ${it.consensus} expected${it.pct != null ? ` (${it.pct > 0 ? '+' : ''}${it.pct}%)` : ''}`;
+  const summary = `${it.symbol} reported ${it.when} on ${it.date}: EPS ${it.eps} against ${it.consensus}${rev}. EPS and revenue against the consensus only, not guidance or the share-price reaction.`;
+  const why = `${it.symbol} ${it.verdict === 'in line' ? 'printed in line' : `${it.verdict === 'beat' ? 'beat' : 'missed'} the EPS consensus`}${it.capB ? ` (about ${it.capB >= 1000 ? `$${(it.capB / 1000).toFixed(1)}tn` : `$${it.capB}bn`} company)` : ''}; one company's result is a small part of an index.`;
+  return { title, link: null, ms: it.at, source: 'Earnings', summary, earn: { symbol: it.symbol, verdict: it.verdict, pct: it.pct, tier, read: { tier, impact: push ? { EQUITIES: push } : {}, why, by: 'earnings rule', at: now } } };
 }

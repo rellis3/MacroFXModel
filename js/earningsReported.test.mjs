@@ -37,3 +37,25 @@ test('html says beat or miss without a direction call, and escapes names', () =>
   assert.match(reportedHtml([]), /No big company has reported/);
   assert.ok(reportAtMs({ date: '2026-11-18', when: 'time not given' }) > 0);
 });
+
+// ── Finnhub (the faster source) and the news item. Rows are the real ones fetched 2026-11-18 from finnhub.io/api/v1/calendar/earnings.
+import { fromFinnhub, earningsNewsItem } from './earningsReported.js';
+const FH = [
+  { symbol: 'HD', date: '2026-11-17', hour: 'bmo', epsEstimate: 3.9542, epsActual: 3.86, revenueEstimate: 44075069385, revenueActual: 43398000000 },
+  { symbol: 'NVDA', date: '2026-11-17', hour: 'amc', epsEstimate: 2.525, epsActual: 2.68, revenueEstimate: 111282164311, revenueActual: 115844000000 },
+  { symbol: 'LOW', date: '2026-11-18', hour: 'bmo', epsEstimate: 2.9103, epsActual: null, revenueEstimate: 22631671212, revenueActual: null }];
+test('fromFinnhub: actual against estimate with revenue; null while the actual is not in', () => {
+  const n = fromFinnhub(FH, { symbol: 'NVDA', date: '2026-11-17' });
+  assert.equal(n.eps, 2.68); assert.equal(n.consensus, 2.525); assert.equal(n.pct, 6.14); assert.equal(n.src, 'finnhub'); assert.equal(n.revPct, 4.1);
+  assert.equal(fromFinnhub(FH, { symbol: 'LOW', date: '2026-11-18' }), null);
+  assert.equal(fromFinnhub(FH, { symbol: 'XYZ', date: '2026-11-17' }), null);
+  assert.equal(fromFinnhub(FH, { symbol: 'HD', date: '2026-11-17' }).pct, -2.38);
+});
+test('earningsNewsItem: tier 1 for the tracked nine, impact only on a real beat or miss, tier 2 needs +/-5%', () => {
+  const nv = earningsNewsItem(reportedItem({ symbol: 'NVDA', name: 'NVIDIA', capB: 4800, when: 'after the close', date: '2026-11-17', tracked: true, at: 1 }, fromFinnhub(FH, { symbol: 'NVDA', date: '2026-11-17' })), 5);
+  assert.equal(nv.earn.tier, 1); assert.deepEqual(nv.earn.read.impact, { EQUITIES: 2 }); assert.match(nv.title, /NVIDIA beats: EPS 2\.68 against 2\.525/); assert.match(nv.summary, /revenue \$115\.8bn/);
+  const hd = earningsNewsItem(reportedItem({ symbol: 'HD', name: 'Home Depot', capB: 330, when: 'before the open', date: '2026-11-17', at: 1 }, fromFinnhub(FH, { symbol: 'HD', date: '2026-11-17' })), 5);
+  assert.equal(hd.earn.tier, 2); assert.deepEqual(hd.earn.read.impact, {});          // -2.4% on a tier-2 name: shown in the News tab, no index push
+  assert.match(hd.title, /Home Depot misses/);
+  assert.equal(earningsNewsItem({ symbol: 'X' }), null);
+});

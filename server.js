@@ -8055,8 +8055,13 @@ async function _nwTick() {
     const sources = [..._NW_SOURCES, ...(process.env.FINNHUB_KEY ? ['forex', 'general'].map(cat => [`Finnhub ${cat}`, `https://finnhub.io/api/v1/news?category=${cat}&token=${process.env.FINNHUB_KEY}`]) : [])];
     const due = _nwDue(sources, _nwState.src, now);
     await Promise.all(due.map(([src, url]) => _nwFetchSource(src, url, incoming, health)));
+    try {   // reported earnings become wire headlines (tier 1 the nine + above $500bn, tier 2 the rest above $150bn); rule-built read, no model call
+      const { earningsNewsItem } = await import('./js/earningsReported.js'), er = await _loadEarningsReported();
+      for (const it of er?.items ?? []) { const n = earningsNewsItem(it, now); if (n) incoming.push(n); }
+    } catch (e) { console.warn('[news] earnings:', e.message); }
     for (const h of incoming) h.title = _redactFedChairName(h.title);   // the desk never names an official
     const { wire, added } = _nwMerge(store.wire, incoming, { now });
+    for (const h of wire) if (h.earn && !h.read) { h.tier = h.earn.tier; h.read = h.earn.read; h.touches = ['EQUITIES']; h.topic = 'earnings'; }   // the earnings read is set by rule, never sent to the model
     const { book, sized } = await _nwBook();
     // one model call at most: new tier-1/2 headlines not yet read (tier 1 first, newest first), up to 20; none → no call
     const toRead = wire.filter(h => h.tier <= 2 && !h.read && (h.readTries ?? 0) < 2 && now - (h.firstSeen ?? h.ms) < 3 * 3600e3)
@@ -38989,29 +38994,41 @@ app.get('/api/earnings-ahead', async (_req, res) => {
 // What the big companies that already reported actually printed: EPS against the consensus (api.nasdaq.com, free, no key). js/earningsReported.js decides who is due and
 // reads the result; one calendar call per ET day (yesterday and today) and one earnings-surprise call per due company, cached 30 minutes. A beat or miss is EPS only.
 const _earnRep = { at: 0, v: null };
+// Shared by the route and the news tick. Who is due comes from the Nasdaq calendar (market cap, time); the RESULT comes from Finnhub first (free, the desk's FINNHUB_KEY, same-day
+// epsActual + revenueActual) and from Nasdaq's earnings-surprise table second (it posts up to a day late). Cached 10 minutes; a pass with failures looks again in 5.
+async function _loadEarningsReported() {
+  if (!_earnRep.v || Date.now() - _earnRep.at > 10 * 60e3) {
+    const { parseEarnings } = await import('./js/marketCalendars.js'), { dueRows, parseSurprise, reportedItem, fromFinnhub } = await import('./js/earningsReported.js');
+    const H = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, etDay = ms => new Date(ms).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    const now = Date.now(), days = [...new Set([etDay(now - 86400e3), etDay(now)])], rows = []; let failed = 0;
+    for (const d of days) {
+      if ([0, 6].includes(new Date(d + 'T12:00:00Z').getUTCDay())) continue;
+      try { const r = await fetch(`https://api.nasdaq.com/api/calendar/earnings?date=${d}`, { headers: H, signal: AbortSignal.timeout(20_000) }); if (r.ok) rows.push(...parseEarnings(await r.json(), d)); else failed++; }
+      catch (e) { failed++; console.warn('[earnings-reported]', d, e.message); }
+      await new Promise(r => setTimeout(r, 250));
+    }
+    const due = dueRows(rows, now).slice(0, 25), items = []; let fh = [], viaFinnhub = 0;
+    if (process.env.FINNHUB_KEY && due.length) {
+      try { const r = await fetch(`https://finnhub.io/api/v1/calendar/earnings?from=${days[0]}&to=${days[days.length - 1]}&token=${process.env.FINNHUB_KEY}`, { signal: AbortSignal.timeout(20_000) }); if (r.ok) fh = (await r.json())?.earningsCalendar ?? []; else console.warn('[earnings-reported] finnhub', r.status); }
+      catch (e) { console.warn('[earnings-reported] finnhub', e.message); }
+    }
+    for (const row of due) {
+      const f = fromFinnhub(fh, row);
+      if (f) { items.push(reportedItem(row, f)); viaFinnhub++; continue; }
+      try { const r = await fetch(`https://api.nasdaq.com/api/company/${encodeURIComponent(row.symbol)}/earnings-surprise`, { headers: H, signal: AbortSignal.timeout(20_000) }); if (!r.ok) { failed++; continue; } const sp = parseSurprise(await r.json(), row.date); if (sp) items.push(reportedItem(row, sp)); }
+      catch (e) { failed++; console.warn('[earnings-reported]', row.symbol, e.message); }
+      await new Promise(r => setTimeout(r, 200));
+    }
+    if (items.length || failed === 0) { _earnRep.v = { ok: true, at: new Date().toISOString(), items, due: rows.length, failed, viaFinnhub }; _earnRep.at = Date.now() - (failed ? 5 * 60e3 : 0); }
+    else throw new Error('Nasdaq earnings pages unavailable');
+  }
+  return _earnRep.v;
+}
 app.get('/api/earnings-reported', async (_req, res) => {
   try {
-    if (!_earnRep.v || Date.now() - _earnRep.at > 30 * 60e3) {
-      const { parseEarnings } = await import('./js/marketCalendars.js'), { dueRows, parseSurprise, reportedItem } = await import('./js/earningsReported.js');
-      const H = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, etDay = ms => new Date(ms).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-      const now = Date.now(), days = [...new Set([etDay(now - 86400e3), etDay(now)])], rows = []; let failed = 0;
-      for (const d of days) {
-        if ([0, 6].includes(new Date(d + 'T12:00:00Z').getUTCDay())) continue;
-        try { const r = await fetch(`https://api.nasdaq.com/api/calendar/earnings?date=${d}`, { headers: H, signal: AbortSignal.timeout(20_000) }); if (r.ok) rows.push(...parseEarnings(await r.json(), d)); else failed++; }
-        catch (e) { failed++; console.warn('[earnings-reported]', d, e.message); }
-        await new Promise(r => setTimeout(r, 250));
-      }
-      const items = [];
-      for (const row of dueRows(rows, now).slice(0, 25)) {
-        try { const r = await fetch(`https://api.nasdaq.com/api/company/${encodeURIComponent(row.symbol)}/earnings-surprise`, { headers: H, signal: AbortSignal.timeout(20_000) }); if (!r.ok) { failed++; continue; } const s = parseSurprise(await r.json(), row.date); if (s) items.push(reportedItem(row, s)); }
-        catch (e) { failed++; console.warn('[earnings-reported]', row.symbol, e.message); }
-        await new Promise(r => setTimeout(r, 200));
-      }
-      if (items.length || failed === 0) { _earnRep.v = { ok: true, at: new Date().toISOString(), items, due: rows.length, failed }; _earnRep.at = Date.now() - (failed ? 25 * 60e3 : 0); }   // some failed: look again in 5 minutes
-      else throw new Error('Nasdaq earnings pages unavailable');
-    }
-    res.set('Cache-Control', 'public, max-age=900');
-    res.json({ ..._earnRep.v, note: 'EPS against the consensus for companies above $150bn plus the nine the Nasdaq leans on, last 40 hours. Source: api.nasdaq.com. Not guidance, revenue or the price reaction.' });
+    const v = await _loadEarningsReported();
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json({ ...v, note: 'EPS (and revenue where given) against the consensus for companies above $150bn plus the nine the Nasdaq leans on, last 40 hours. Sources: Finnhub (same day), api.nasdaq.com (up to a day late). Not guidance or the price reaction.' });
   } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
 });
 app.get('/api/treasury-auctions', async (_req, res) => {

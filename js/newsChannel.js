@@ -13,6 +13,7 @@
  * Context, not a signal.
  */
 import { allowAlert } from './newsOps.js';
+import { equityExposure, exposureLine } from './equityExposure.js';
 
 export const CHANNEL_KV_KEY = 'news_channel_v1';
 export const CAPS = { 1: 6, 2: 10 };          // notes an hour, by tier
@@ -81,6 +82,9 @@ export function channelMessage(h) {
   const srcs = srcList.slice(0, 3).join(', ');
   const time = ukTime(h?.ms);
   const cur = currencyGroups(h?.read?.impact), mk = marketGroups(h?.read?.impact);
+  // "Equities" alone says nothing: when the headline names an index or a company, or concerns a currency area, list WHICH indices (js/equityExposure.js) instead of the bare word.
+  const eq = equityExposure(h), eqLine = exposureLine(eq);
+  if (eqLine) { mk.long = mk.long.filter(r => r.name !== 'EQUITIES'); mk.short = mk.short.filter(r => r.name !== 'EQUITIES'); }
   const anyArrow = [...cur.stronger, ...cur.weaker, ...mk.long, ...mk.short].some(r => Math.abs(r.v) >= STRONG);
   const lines = [
     `${tier === 1 ? '🚨' : '📌'} <b>TIER ${tier}</b>${time ? ` · ${time} UK` : ''}`,
@@ -94,6 +98,7 @@ export function channelMessage(h) {
     mk.long.length || mk.short.length ? '\n📊 <b>MARKETS</b>' : null,
     mk.long.length ? `🟢 <b>LONG</b>    ${mk.long.map(r => esc(mktItem(r))).join(' · ')}` : null,
     mk.short.length ? `🔴 <b>SHORT</b>   ${mk.short.map(r => esc(mktItem(r))).join(' · ')}` : null,
+    eqLine ? `\n📈 <b>EQUITIES</b>${eq.dir ? '' : ' (touched, no direction read)'}\n${eq.dir > 0 ? '🟢 ' : eq.dir < 0 ? '🔴 ' : ''}${esc(eqLine)}${eq.basis ? `\n<i>${esc(eq.basis)}</i>` : ''}` : null,
     `\n<i>Context, not a signal${anyArrow ? ' · ▲▼ = stronger impact' : ''}${srcs ? ` · ${esc(srcs)}` : ''}</i>`,
   ];
   return lines.filter(x => x !== null).join('\n');
