@@ -14,8 +14,15 @@ export const PRESETS = [
   { id: 'cog', label: 'C.OG line (SOFR minus Euribor, bp)', kind: 'spread', eur: 'I2', usd: 'SR32', asRate: true, invert: true, inBps: true },
   { id: 'us2y', label: 'US 2y yield', kind: 'leg', leg: 'Y_US2', asRate: false, invert: false, inBps: false },
   { id: 'us10y', label: 'US 10y yield', kind: 'leg', leg: 'Y_US10', asRate: false, invert: false, inBps: false },
+  { id: 'us5y', label: 'US 5y yield', kind: 'leg', leg: 'Y_US5', asRate: false, invert: false, inBps: false },
+  { id: 'us30y', label: 'US 30y yield', kind: 'leg', leg: 'Y_US30', asRate: false, invert: false, inBps: false },
+  { id: 'curve', label: 'US curve 10y minus 2y (bp)', kind: 'spread', eur: 'Y_US10', usd: 'Y_US2', asRate: false, invert: false, inBps: true },
+  { id: 'real10', label: 'US 10y real yield (daily)', kind: 'leg', leg: 'Y_USR10', asRate: false, invert: false, inBps: false },
+  { id: 'be10', label: 'US 10y breakeven inflation (daily)', kind: 'leg', leg: 'Y_USBE10', asRate: false, invert: false, inBps: false },
+  { id: 'de10', label: 'German 10y Bund yield', kind: 'leg', leg: 'Y_DE10', asRate: false, invert: false, inBps: false },
+  { id: 'bundust', label: 'Bund minus UST 10y (bp)', kind: 'spread', eur: 'Y_DE10', usd: 'Y_US10', asRate: false, invert: false, inBps: true },
 ];
-export const DEFAULT_STATE = { asset: 'NAS100', tf: '15m', preset: 'cog', shift: 0, maxLag: 48, win: 96 };
+export const DEFAULT_STATE = { asset: 'NAS100', tf: '15m', overlays: ['us2y'], active: 'us2y', maxLag: 48, win: 96 };
 
 /** One leg's prices on the chart's times (5m/15m legs; 1h/4h use the h1 history when held). Gaps carried forward like the indicator's fixnan; the leg's data end is respected. */
 export function legPrices(L, times, step, { src = 'close', carry = true } = {}) {
