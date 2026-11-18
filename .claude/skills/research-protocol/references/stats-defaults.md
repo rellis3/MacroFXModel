@@ -74,3 +74,7 @@ These are the defaults a prereg uses unless it says otherwise and why. Helpers: 
   rolls); report price-move flags as descriptions. Also: 1-minute returns are so fat-tailed that a 10 SD screen
   catches scheduled news, not bad ticks; a bad-tick screen needs a second source (CFD vs futures same minute) or a
   reversal test.
+- 2026-11-18 (`ladder-v2-nq` harness check): **a placebo built from one random draw is not a number.** The NQ mirror
+  ranged 1.25–2.29pp over six seeds against a floor p90 of 1.64; the banked 1.47 was one draw. Repeat the placebo
+  (≥ 20 draws) and report the median and range. Also draw placebo outcomes from exactly the rows the model is fitted
+  on, or the placebo carries its own miscalibration.

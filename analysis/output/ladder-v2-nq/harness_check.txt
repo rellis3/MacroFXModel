@@ -1,0 +1,77 @@
+NQ: arms ['A0', 'E_ewma_094', 'E_ewma_090', 'E_yz_20', 'E_yz_30', 'E_naive', 'E_har_rv_log', 'H8', 'R5', 'R15', 'V3', 'V4']; flags from analysis\output\data_screens\NQ\flags.csv
+  PC2: test rows 2080 (dropped 0 with a missing arm or regime)
+positive control 2: TRUE 1.68pp vs floor p90 1.70; rv10 Q1-Q5 +40.6pp -> ok
+  C: test rows 2229 (dropped 0 with a missing arm or regime)
+== NQ C: 2229 test sessions 2018-01-02 -> 2026-08-20   noise floor median 1.37pp, p90 1.64pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  E_har_rv_log       1.49   1.08   0.9614   0.96
+  H8                 1.60   1.61   0.9623   0.96
+  E_ewma_090         1.67   1.06   1.0135   0.78
+  E_yz_20            1.84   1.66   1.0295   0.81
+  R5                 1.93   2.05   0.9347   0.96
+  R15                2.14   2.15   0.9409   0.96
+  E_ewma_094         2.33   1.38   1.0292   0.82
+  A0                 2.40   1.48   1.0000   0.81
+  E_yz_30            2.75   1.96   1.0519   0.79
+  V3                 3.14   2.61*   0.9679   1.20
+  V4                 5.33   2.78*   0.9861   1.38
+  E_naive           10.66   3.87*   1.2195   0.42
+  winner E_har_rv_log, runner-up H8, tie=True, chosen E_har_rv_log; chosen - A0 CI [-1.51, -0.41]pp; calibrated to noise True
+    half 2018-22                       n= 1290  chosen 2.20 vs A0 2.96  CI [-1.56,-0.19]
+    half 2023-26                       n=  939  chosen 2.42 vs A0 3.51  CI [-2.26,-0.89]
+    without 2018Q4                     n= 2164  chosen 1.43 vs A0 2.53  CI [-1.62,-0.52]
+    without covid                      n= 2137  chosen 1.55 vs A0 2.56  CI [-1.56,-0.38]
+    without bear2022                   n= 1971  chosen 1.79 vs A0 2.70  CI [-1.59,-0.27]
+    without tariff2025                 n= 2165  chosen 1.46 vs A0 2.30  CI [-1.45,-0.34]
+    without hi1_202002                 n= 2166  chosen 1.48 vs A0 2.47  CI [-1.58,-0.46]
+    without hi2_202202                 n= 2166  chosen 1.42 vs A0 2.47  CI [-1.59,-0.42]
+    without hi3_202208                 n= 2166  chosen 1.71 vs A0 2.57  CI [-1.48,-0.40]
+    without hi4_202502                 n= 2166  chosen 1.49 vs A0 2.32  CI [-1.42,-0.31]
+    fault flags out                    n= 2161  chosen 1.37 vs A0 2.48  CI [-1.59,-0.47]
+    any flag out (descriptive)         n= 1653  chosen 2.36 vs A0 2.16  CI [-1.50,-0.17]
+  HL>p75/p90 by quintile A0            : Q1 35.7/12.6  Q2 26.9/10.1  Q3 27.4/ 8.8  Q4 26.2/10.1  Q5 21.3/ 7.4
+  HL>p75/p90 by quintile E_har_rv_log  : Q1 25.3/ 8.7  Q2 24.4/ 9.4  Q3 24.0/ 8.1  Q4 26.9/11.0  Q5 25.8/10.5
+  HL>p75/p90 by quintile H8            : Q1 26.2/ 9.4  Q2 26.0/ 9.9  Q3 25.6/ 8.1  Q4 28.9/11.7  Q5 26.7/10.8
+  VERDICT NQ C: VALIDATED
+  MIRROR C (20 draws): A0 primary median 1.31pp [0.98, 2.27] vs floor median 1.37 / p90 1.64; HL>p75 Q1-Q5 median -0.7pp [-4.3, +4.5]
+  F: test rows 2196 (dropped 0 with a missing arm or regime)
+== NQ F: 2196 test sessions 2018-01-02 -> 2026-08-21   noise floor median 1.39pp, p90 1.66pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  E_har_rv_log       1.82   1.11   0.9631   0.95
+  E_yz_20            1.91   1.54   1.0308   0.81
+  E_ewma_090         1.96   1.11   1.0160   0.77
+  H8                 2.08   1.45   0.9664   0.95
+  E_ewma_094         2.13   1.08   1.0294   0.82
+  R5                 2.23   2.20   0.9371   0.95
+  A0                 2.50   1.40   1.0000   0.81
+  R15                2.55   2.31   0.9432   0.95
+  E_yz_30            2.66   1.92   1.0540   0.79
+  V3                 3.26   2.37   0.9664   1.21
+  V4                 5.24   2.74*   0.9839   1.38
+  E_naive           10.86   4.13*   1.2216   0.43
+  winner E_har_rv_log, runner-up E_yz_20, tie=True, chosen E_har_rv_log; chosen - A0 CI [-1.46, -0.25]pp; calibrated to noise False
+    half 2018-22                       n= 1280  chosen 1.97 vs A0 2.98  CI [-1.77,-0.17]
+    half 2023-26                       n=  916  chosen 2.16 vs A0 3.66  CI [-2.41,-0.39]
+    without 2018Q4                     n= 2135  chosen 1.71 vs A0 2.49  CI [-1.52,-0.34]
+    without covid                      n= 2103  chosen 1.75 vs A0 2.57  CI [-1.47,-0.21]
+    without bear2022                   n= 1938  chosen 1.82 vs A0 2.80  CI [-1.71,-0.37]
+    without tariff2025                 n= 2135  chosen 1.74 vs A0 2.43  CI [-1.51,-0.24]
+    without hi1_202002                 n= 2133  chosen 1.71 vs A0 2.54  CI [-1.53,-0.28]
+    without hi2_202202                 n= 2133  chosen 1.77 vs A0 2.53  CI [-1.47,-0.28]
+    without hi3_202208                 n= 2133  chosen 1.98 vs A0 2.49  CI [-1.38,-0.20]
+    without hi4_202502                 n= 2133  chosen 1.85 vs A0 2.49  CI [-1.43,-0.21]
+    fault flags out                    n= 2130  chosen 1.80 vs A0 2.63  CI [-1.49,-0.32]
+    any flag out (descriptive)         n= 1623  chosen 2.92 vs A0 2.58  CI [-1.36,-0.20]
+  HL>p75/p90 by quintile A0            : Q1 34.3/12.7  Q2 27.1/10.5  Q3 27.1/ 8.0  Q4 25.3/ 8.7  Q5 21.6/ 7.5
+  HL>p75/p90 by quintile E_har_rv_log  : Q1 24.8/ 8.9  Q2 22.8/ 9.3  Q3 23.0/ 7.3  Q4 26.2/10.5  Q5 25.5/10.5
+  HL>p75/p90 by quintile H8            : Q1 26.1/ 9.8  Q2 23.9/10.5  Q3 24.8/ 8.0  Q4 28.5/11.6  Q5 26.7/11.6
+  VERDICT NQ F: VALIDATED
+  MIRROR F (20 draws): A0 primary median 1.39pp [0.87, 1.94] vs floor median 1.38 / p90 1.66; HL>p75 Q1-Q5 median +0.1pp [-6.6, +3.8]
+== NQ C vs F on 2706 common London dates: F/C ratio (90% CI)
+  hl_p50  1.0015 [0.9968, 1.0057] ok
+  hl_p75  1.0026 [0.9963, 1.0055] ok
+  oh_p50  0.9947 [0.9881, 1.0031] ok
+  oh_p75  0.9939 [0.9894, 1.0023] ok
+  ol_p50  1.0070 [1.0020, 1.0176] ok
+  ol_p75  1.0037 [0.9965, 1.0085] ok
+  -> SAME (F reuses the C spec)

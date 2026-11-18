@@ -39,6 +39,10 @@ T = dict(jump_1m_sd=10.0, jump_1m_window=1440, jump_1m_maxgap_min=15, jump_day_s
 # CFD M1 path and NT8 futures root per symbol. Extend as instruments are onboarded.
 SOURCES = {
     "NQ": {"C": "portfolioBacktest/cache/nq_m1.parquet", "F": "NQ"},
+    "GOLD": {"C": "portfolioBacktest/cache/gold_m1.parquet", "F": "GC"},
+    "SPX500": {"C": "portfolioBacktest/cache/spx500_m1.parquet", "F": "ES"},
+    "US30": {"C": "portfolioBacktest/cache/us30_m1.parquet", "F": "YM"},
+    "US2000": {"C": "portfolioBacktest/cache/us2000_m1.parquet", "F": "RTY"},
 }
 
 
