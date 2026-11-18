@@ -7,7 +7,7 @@
 | ID / ledger id | `oi-touch-order` (H1, H2 scored); `oi-touch-order-h3` (descriptive, not scored) |
 | Branch | `claude/oi-touch-order` |
 | Register row | `plans/RESEARCH_REGISTER.md` → `oi-touch-order` |
-| Data | Arm A: 7 instruments (EURUSD, GBPUSD, AUDUSD, USDCAD, USDCHF, USDJPY, NAS100), Databento monthly/quarterly book walls (all-expiry, `daily_master_all*`), OANDA M1, **2020-09-08 → 2026-08-21**. Arm B: our own nightly QuikStrike archive (`oi_raw_<date>`, replayed through `buildOiProfile`), 2026-08-03 → latest, scored once the §5 gate says so. |
+| Data | Arm A: 7 instruments (EURUSD, GBPUSD, AUDUSD, USDCAD, USDCHF, USDJPY, NAS100), Databento monthly/quarterly book walls (all-expiry, `daily_master_all*`), OANDA M1, **2020-09-08 → 2026-09-04** (end of the Databento book; see Amendment A1 — the 2026-08-21 lockbox cut does not apply). Arm B: our own nightly QuikStrike archive (`oi_raw_<date>`, replayed through `buildOiProfile`), 2026-08-03 → latest, scored once the §5 gate says so. |
 | Seed | `20261118` |
 | Uncertainty | cluster bootstrap on (instrument, ISO week), B = 2000, as `WALL_PLACEBO_PREREG.md` |
 | Scripts / outputs | `oi_research_book/scripts/35_oi_touch_order.py` → `oi_research_book/data/results/oi_touch_order.json`, `oi_research_book/OI_TOUCH_ORDER_RESULTS.md` |
@@ -41,7 +41,7 @@ Stated as testable claims:
 - **H2 detector (D2):** per (instrument, level, London date), scanning M1 both ways. A **flip** = a close beyond the level (≥ 5 pips/points beyond) after approach from the wall's usual side; a **retest** = the first later touch (same buffer) of the level **from the broken side**. Outcome = the 60-minute **reject indicator** (close 60 bars later back on the broken side of the level, i.e. did not re-cross). Same definition applied to each grid strike on the same day.
 - **Sessions:** London calendar date (data-rules); window 00:00–22:00 London; weekends out; M1 from the existing `m1_*.parquet` caches (`BAM` never; `--price M` only).
 - **De-clustering:** inference is at the (instrument, ISO week) cluster; per level-day events are kept (not thinned) because the contrast is within-cluster.
-- **Sample:** Arm A as in the header; **no IS/OOS fit exists** (nothing is fitted). Stability = the gate must hold in both halves (2020-09 → 2023-06-30, 2023-07-01 → 2026-08-21) in sign.
+- **Sample:** Arm A as in the header; **no IS/OOS fit exists** (nothing is fitted). Stability = the gate must hold in both halves (2020-09 → 2023-06-30, 2023-07-01 → 2026-09-04) in sign.
 
 ## 4. Hypotheses, expectation first
 
@@ -94,4 +94,5 @@ Consequences, fixed now: (i) a result inside ±5 pp is **UNDERPOWERED, not NULL*
 
 ## Amendments
 
-_(none yet)_
+### A1 — 2026-11-18 — PRE-RESULTS
+Owner instruction: ignore the holdout days. Arm A's window now runs to the last date the Databento book and M1 cover (2026-09-04) instead of stopping at 2026-08-21; the §3 second half and the header row follow. Reason it is allowed: `forge/LOCKBOX_PROTOCOL.md` freezes and guards layers 3 (HAR-800 ladder), 5 (remaining travel) and 6 (confidence); this study scores none of them and fits nothing, so it cannot spend the holdout. No outcome had been computed: the only reads before this amendment were touch timestamps for the §5 counts. The 246 event rows dated after 2026-08-21 are now inside Arm A. Arm B is unchanged: its gate is statistical power (1,000 O2+ touches), not the lockbox. Arm A and Arm B overlap on calendar days 2026-08-03 → 2026-09-04 but use different level sources (monthly book vs nightly day book); they are reported separately and never pooled.
