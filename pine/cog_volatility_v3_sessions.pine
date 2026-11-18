@@ -158,6 +158,169 @@ f_normaliseTicker(t, goldT, nqT, spxT, de30T, uk100T, us30T, us2kT, silverT, cop
         r := "SUGAR"
     r
 
+// =====================================================
+// CFD + FUTURES SYMBOL RESOLUTION (2026-11-18)
+// =====================================================
+// The pasted levels are PERCENTAGES of price, so they apply unchanged to a
+// CFD or a futures contract on the same underlying. The only job here is to
+// work out which export block the chart belongs to:
+//   1. the ticker inputs + exact aliases above (f_normaliseTicker)
+//   2. futures: syminfo.root ("6E" for 6E1! / 6EZ2026, "MGC" for micro gold)
+//   3. CFDs: broker suffixes/prefixes stripped (EURUSD.a, EURUSDm, #XAUUSD,
+//      XAUUSD.pro, USDJPY+) then matched against the export's names.
+// INVERTED futures: 6J / 6S / 6C (and micros) are quoted USD-per-JPY/CHF/CAD,
+// the reciprocal of USDJPY / USDCHF / USDCAD. Range and O-C % carry over
+// (1/x moves the same % to well within a basis point at daily sizes), but up
+// and down swap: the export's Open-High becomes the chart's Open-Low, and the
+// drift / bias sign flips. The parsers below apply that swap.
+
+f_futuresMap(rt) =>
+    string s = ""
+    bool inv = false
+    // FX — direct quotes
+    if rt == "6E" or rt == "M6E" or rt == "E7"
+        s := "EURUSD"
+    else if rt == "6B" or rt == "M6B"
+        s := "GBPUSD"
+    else if rt == "6A" or rt == "M6A"
+        s := "AUDUSD"
+    else if rt == "6N"
+        s := "NZDUSD"
+    else if rt == "RP"
+        s := "EURGBP"
+    else if rt == "RY"
+        s := "EURJPY"
+    else if rt == "RF"
+        s := "EURCHF"
+    // FX — inverted (USD per foreign unit)
+    else if rt == "6J" or rt == "MJY" or rt == "J7"
+        s := "USDJPY"
+        inv := true
+    else if rt == "6S" or rt == "MSF"
+        s := "USDCHF"
+        inv := true
+    else if rt == "6C" or rt == "MCD"
+        s := "USDCAD"
+        inv := true
+    // Metals
+    else if rt == "GC" or rt == "MGC" or rt == "1OZ"
+        s := "GOLD"
+    else if rt == "SI" or rt == "SIL"
+        s := "SILVER"
+    else if rt == "HG" or rt == "MHG"
+        s := "COPPER"
+    else if rt == "PL"
+        s := "PLATINUM"
+    else if rt == "PA"
+        s := "PALLADIUM"
+    // Energy
+    else if rt == "CL" or rt == "MCL" or rt == "QM"
+        s := "WTI"
+    else if rt == "BZ" or rt == "BRN" or rt == "B"
+        s := "BRENT"
+    else if rt == "NG" or rt == "QG" or rt == "MNG"
+        s := "NATGAS"
+    // Grains / softs
+    else if rt == "ZS" or rt == "XK"
+        s := "SOYBEAN"
+    else if rt == "ZW" or rt == "XW"
+        s := "WHEAT"
+    else if rt == "ZC" or rt == "XC"
+        s := "CORN"
+    else if rt == "SB"
+        s := "SUGAR"
+    // Equity indices
+    else if rt == "NQ" or rt == "MNQ"
+        s := "NQ"
+    else if rt == "ES" or rt == "MES"
+        s := "SPX500"
+    else if rt == "YM" or rt == "MYM"
+        s := "US30"
+    else if rt == "RTY" or rt == "M2K"
+        s := "US2000"
+    else if rt == "FDAX" or rt == "FDXM" or rt == "FDXS"
+        s := "DE30"
+    else if rt == "Z" or rt == "FFI"
+        s := "UK100"
+    // Crypto
+    else if rt == "BTC" or rt == "MBT"
+        s := "BTCUSD"
+    [s, inv]
+
+f_cleanTicker(t) =>
+    u = str.upper(t)
+    u := str.replace_all(u, ".", "")
+    u := str.replace_all(u, "_", "")
+    u := str.replace_all(u, "/", "")
+    u := str.replace_all(u, "-", "")
+    u := str.replace_all(u, "+", "")
+    u := str.replace_all(u, "#", "")
+    u := str.replace_all(u, "$", "")
+    u
+
+f_cfdMap(u) =>
+    string s = ""
+    fx = array.from("EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "NZDUSD", "USDCAD", "USDCHF",
+         "GBPJPY", "EURGBP", "EURJPY", "EURCHF", "GBPCHF", "AUDJPY", "CADJPY", "EURAUD",
+         "EURCAD", "EURNZD", "GBPAUD", "GBPCAD", "AUDCAD", "NZDCAD", "NZDJPY", "BTCUSD")
+    for p in fx
+        if s == "" and str.contains(u, p)
+            s := p
+    if s == ""
+        if str.contains(u, "XAUUSD") or str.startswith(u, "GOLD")
+            s := "GOLD"
+        else if str.contains(u, "XAGUSD") or str.startswith(u, "SILVER")
+            s := "SILVER"
+        else if str.contains(u, "XPTUSD") or str.startswith(u, "PLATINUM")
+            s := "PLATINUM"
+        else if str.contains(u, "XPDUSD") or str.startswith(u, "PALLADIUM")
+            s := "PALLADIUM"
+        else if str.contains(u, "XCUUSD") or str.startswith(u, "COPPER")
+            s := "COPPER"
+        else if str.startswith(u, "WTI") or str.startswith(u, "USOIL") or str.startswith(u, "XTIUSD") or str.startswith(u, "CRUDE")
+            s := "WTI"
+        else if str.startswith(u, "BCO") or str.startswith(u, "UKOIL") or str.startswith(u, "XBRUSD") or str.startswith(u, "BRENT")
+            s := "BRENT"
+        else if str.startswith(u, "NATGAS") or str.startswith(u, "XNGUSD") or str.startswith(u, "NGAS")
+            s := "NATGAS"
+        else if str.startswith(u, "SOYB")
+            s := "SOYBEAN"
+        else if str.startswith(u, "WHEAT")
+            s := "WHEAT"
+        else if str.startswith(u, "CORN")
+            s := "CORN"
+        else if str.startswith(u, "SUGAR")
+            s := "SUGAR"
+        else if str.startswith(u, "NAS100") or str.startswith(u, "US100") or str.startswith(u, "USTEC") or str.startswith(u, "NDX") or str.startswith(u, "USNAS100") or str.startswith(u, "NASDAQ")
+            s := "NQ"
+        else if str.startswith(u, "SPX500") or str.startswith(u, "US500") or str.startswith(u, "SP500") or str.startswith(u, "SPXUSD")
+            s := "SPX500"
+        else if str.startswith(u, "GER40") or str.startswith(u, "GER30") or str.startswith(u, "DE40") or str.startswith(u, "DE30") or str.startswith(u, "DAX")
+            s := "DE30"
+        else if str.startswith(u, "UK100") or str.startswith(u, "FTSE")
+            s := "UK100"
+        else if str.startswith(u, "US2000") or str.startswith(u, "US2K") or str.startswith(u, "RUSSELL")
+            s := "US2000"
+        else if str.startswith(u, "US30") or str.startswith(u, "DJ30") or str.startswith(u, "WS30") or str.startswith(u, "DJIA")
+            s := "US30"
+    s
+
+// Returns [export symbol, inverted?]. Falls back to the raw ticker (old behaviour).
+f_resolveSymbol(mapped, rawTicker) =>
+    string s = mapped
+    bool inv = false
+    if mapped == rawTicker
+        string hit = ""
+        if syminfo.type == "futures"
+            [fs, fi] = f_futuresMap(str.upper(syminfo.root))
+            hit := fs
+            inv := fi
+        if hit == ""
+            hit := f_cfdMap(f_cleanTicker(rawTicker))
+        if hit != ""
+            s := hit
+    [s, inv]
+
 f_collapseSpaces(s) =>
     r = s
     r := str.replace_all(r, "  ", " ")
@@ -244,9 +407,15 @@ var float asia_oc_75_pct    = na
 var float london_oc_med_pct = na
 var float london_oc_75_pct  = na
 
+var bool   symInverted = false
+var string symResolved = ""
+
 if barstate.isfirst
-    sym   = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart,
-         silverChart, copperChart, platinumChart, palladiumChart, wtiChart, brentChart, natgasChart, soybeanChart, wheatChart, cornChart, sugarChart)
+    [symR, symInv] = f_resolveSymbol(f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart,
+         silverChart, copperChart, platinumChart, palladiumChart, wtiChart, brentChart, natgasChart, soybeanChart, wheatChart, cornChart, sugarChart), syminfo.ticker)
+    symInverted := symInv
+    symResolved := symR
+    sym   = symR
     symUp = str.upper(sym)
     rows  = str.split(volText, "\n")
     n     = array.size(rows)
@@ -408,6 +577,24 @@ if barstate.isfirst
                         drift_val := d
                     if str.contains(rowRaw, "→") and na(drift_text)
                         drift_text := str.trim(array.get(str.split(rowRaw, "→"), 1))
+
+// Inverted FX futures (6J/6S/6C): the export's up-side is this chart's down-side.
+// Swap the Open-High / Open-Low rungs and flip the drift sign. H-L and O-C are
+// symmetric bands, so they carry over untouched.
+if barstate.isfirst and symInverted
+    t1 = vol_oh_med
+    vol_oh_med := vol_ol_med
+    vol_ol_med := t1
+    t2 = vol_oh_75
+    vol_oh_75 := vol_ol_75
+    vol_ol_75 := t2
+    t3 = vol_oh_90
+    vol_oh_90 := vol_ol_90
+    vol_ol_90 := t3
+    if not na(drift_val)
+        drift_val := -drift_val
+    if not na(drift_text) and str.length(drift_text) > 0
+        drift_text := symResolved + " " + drift_text + " (inverse on this chart)"
 
 // =====================================================
 // DAILY TRACKING
