@@ -906,5 +906,12 @@
    "same": true
   },
   "same_winner_both_tracks": true
+ },
+ "input_sha256": {
+  "portfolioBacktest/cache/nq_m1.parquet": "5d28fd98cff179bc180491d11ef847944ca2d3b08eb6ee3450af906b76c4757d",
+  "analysis/output/nt8/continuous/NQ_1m_unadj.parquet": "b47348c3a367b45fe8cb61eeb1b566a18c22338909919e7c7fcbc9b857375466",
+  "analysis/output/nt8/continuous/NQ_1m_ratio.parquet": "41417f5505967b1eb6fd4904c0bce570f4955af948b757707bfc301b98ddd9a7",
+  "analysis/output/ladder-v2-nq/rows_C.parquet": "4df3d2e854571996d077efd30dce8b5b2c0f5b7dbc2ba0c87282f1be983b2c2f",
+  "analysis/output/ladder-v2-nq/rows_F.parquet": "90a0ef20364cc69794280261b68afbc00b77fa26c74eb155ba05607c3bfe8fc8"
  }
 }
