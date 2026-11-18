@@ -23,6 +23,7 @@ import { reactionsHtml } from './reactionPanel.js';
 import { surpriseRollup, rollupHtml, pairStripHtml } from './surpriseRollup.js';
 import { legChartHtml, mountLegChart } from './legChartView.js';
 import { analogueHtml, mountAnalogue } from './analogueView.js';
+import { reportedHtml } from '../earningsReported.js';
 import { boardHtml as macroBoardHtml, pick as macroBoardPick } from './macroEngines.js';
 import { DESK_EVIDENCE, citable } from '../deskEvidence.js';
 import * as FVV from './fairValueView.js';
@@ -70,6 +71,7 @@ globalThis.ttReactionsHtml = p => reactionsHtml(p, h);
 // the Macro tab's Rates section draws the rate-line-over-price chart (js/terminal/legChartView.js) and mounts it after the section paints
 globalThis.ttLegChartHtml = legChartHtml; globalThis.ttLegChartMount = mountLegChart;
 globalThis.ttAnalogueHtml = analogueHtml; globalThis.ttAnalogueMount = mountAnalogue;   // Macro > Markets & FX: "Has this happened before?"
+globalThis.ttEarningsReportedHtml = p => reportedHtml(p?.items, { note: p?.note });   // Calendar tab: big companies that have reported, EPS vs consensus
 globalThis.ttSurpriseStripHtml = log => rollupHtml(surpriseRollup(log, Date.now()));
 // the Macro tab (desk-terminal.html enrichMacro) draws its currency x indicator board through these (js/terminal/macroEngines.js)
 // the Overview map's layers (js/terminal/mapLayers.js): the pills, the legends, the ranking under the map and the country card. The country card
