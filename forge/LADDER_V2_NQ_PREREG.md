@@ -163,3 +163,19 @@ low readings carry negative noise, so their lines are too tight. Replacement, sa
 - "True σ", scored on those quintiles, must have a 30-cell miss within the floor's 90th percentile.
 - The 10-day realised arm must show HL > p75 Q1 − Q5 ≥ 5pp.
 - σ^0.5-shrunk is reported, with no rule.
+
+### A2 — 2026-11-18, POST-HOC (results seen): robustness checks, demote-only
+
+Added after the verdict, from the Lesson 5 data review (few regimes per record; screens). They can only demote
+VALIDATED to UNDERPOWERED, never promote anything. Same seed (20261118), B = 2000, the same `test_{C,F}.parquet`
+walk-forward rows, arms and GUARD; the winner is re-selected inside every draw as in §6. Quintile edges are recomputed
+on the rows kept. Per track:
+- **R1, 3-month blocks:** block = 63 sessions instead of 20. The registered rule must still hold: the 90% CI of
+  (re-selected winner − A0) is below 0 overall and in both halves.
+- **R2, leave one episode out:** drop the test sessions inside each stress episode in turn, block 63: 2018-10-01 →
+  2018-12-31 (Q4 sell-off), 2020-02-19 → 2020-06-30 (Covid), 2022-01-01 → 2022-12-31 (bear market), 2025-03-01 →
+  2025-05-31 (tariffs). The overall CI must stay below 0 with each episode out.
+- **R3, flagged days out:** drop the sessions flagged by any `forge/data_screens.py` v1 screen on that track
+  (thresholds fixed in the module before it is run on NQ), block 63. The overall CI must stay below 0.
+- Any failure demotes that track to UNDERPOWERED. All numbers are reported either way.
+
