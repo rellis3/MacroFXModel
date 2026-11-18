@@ -15,7 +15,7 @@ const cleanIds = (a, ok) => { const seen = new Set(), out = []; for (const id of
 
 /** One tab's layout from anything: { groups: [[id...]...], hidden: [id...] }. Unknown ids are dropped when `validIds` is given; groups of fewer than 2 are meaningless and dropped. */
 export function cleanLayout(raw, validIds = null) {
-  const ok = validIds ? new Set(validIds) : null;
+  const ok = validIds ? (typeof validIds === 'function' ? { has: validIds } : new Set(validIds)) : null;
   const groups = (Array.isArray(raw?.groups) ? raw.groups : []).map(g => cleanIds(g, ok)).filter(g => g.length >= 2).slice(0, MAX_GROUPS);
   return { groups, hidden: cleanIds(raw?.hidden, ok) };
 }

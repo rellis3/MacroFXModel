@@ -47,3 +47,7 @@ test('validateShared accepts a good layout, a clear, and refuses empty or badly 
   assert.equal(validateShared({ tab: 'overview', layout: { groups: [] } }).ok, false);
   assert.equal(validateShared({ tab: '../x', layout: { groups: [[A, B]] } }).ok, false);
 });
+test('a predicate can decide which ids are valid (registered panels plus auto-made ones)', () => {
+  const ok = id => id === A || id.startsWith('panel.auto.');
+  assert.deepEqual(cleanLayout({ groups: [[A, B, 'panel.auto.options.path']] }, ok).groups, [[A, 'panel.auto.options.path']]);
+});

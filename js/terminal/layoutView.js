@@ -5,7 +5,8 @@
 import { SURFACES } from './tabRegistry.js';
 import { KEY, sanitize, cleanLayout, arrange, recordMove, moveTo, effective, hideCss } from './layoutCore.js';
 
-const VALID = SURFACES.filter(s => s.kind === 'panel').map(s => s.id);
+const REG = new Set(SURFACES.filter(s => s.kind === 'panel').map(s => s.id));
+const VALID = id => REG.has(id) || /^panel\.auto\.[\w.-]+$/.test(id);      // registered panels, plus blocks this editor grouped itself on tabs that register none
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const on = id => (globalThis.deskSurfaceOn ? globalThis.deskSurfaceOn(id) === true : false);
 const isOwner = () => globalThis.deskAccessState?.role !== 'viewer';
@@ -20,6 +21,34 @@ function containers(sec) {
   const m = new Map();
   for (const w of sec.querySelectorAll(PANELS)) { const p = w.parentElement; if (!p) continue; if (!m.has(p)) m.set(p, []); m.get(p).push(w); }
   return [...m.entries()].filter(([, ws]) => ws.length >= 2).map(([parent, ws]) => ({ parent, ws }));
+}
+
+/** Tabs that draw one lump of cards register no panels. For those, group the tab's top-level blocks into movable units: a heading (.sec) with what follows it, or a lone card.
+ *  Each unit is wrapped in a display:contents div (no layout change) given a stable id panel.auto.<tab>.<slug>. Idempotent; run again after a tab repaints. */
+function autoWrap(sec, tab) {
+  const visible = el => el.nodeType === 1 && !el.hidden && !/^(SCRIPT|STYLE)$/.test(el.tagName);
+  let root = sec;
+  for (let d = 0; d < 2; d++) { const kids = [...root.children].filter(visible); if (kids.length === 1 && kids[0].children.length >= 2 && !kids[0].matches('.sfc')) root = kids[0]; else break; }
+  const kids = [...root.children].filter(visible), units = [];
+  for (const k of kids) {
+    if (k.matches('.sfc[data-surface^="panel."]')) { units.push({ els: [k], reg: true }); continue; }
+    const last = units.at(-1);
+    if (k.matches('.sec, .tt-sec')) units.push({ els: [k], head: k });
+    else if (last && last.head) last.els.push(k);
+    else units.push({ els: [k] });
+  }
+  if (units.length < 2) return false;
+  const used = new Set([...sec.querySelectorAll('[data-surface]')].map(e => e.getAttribute('data-surface')));
+  let n = 0;
+  for (const u of units) {
+    n++;
+    if (u.reg) continue;
+    const first = u.els[0], word = (u.head?.querySelector('h2,h3,.lbl')?.textContent ?? first.id ?? first.querySelector?.('h2,h3,.lbl')?.textContent ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24);
+    let id = `panel.auto.${tab}.${word || `b${n}`}`; while (used.has(id)) id += 'x'; used.add(id);
+    const w = document.createElement('div'); w.className = 'sfc'; w.setAttribute('data-surface', id);
+    root.insertBefore(w, first); for (const e of u.els) w.appendChild(e);
+  }
+  return true;
 }
 
 export function mountLayout() {
@@ -40,9 +69,12 @@ export function mountLayout() {
   /** Put every container of the current tab in the order its layout wants. Idempotent: nothing is touched when the order already matches. */
   function apply() {
     const tab = currentTab(), sec = tab ? document.getElementById(tab) : null; if (!sec) return;
-    const L = eff(tab); if (!L.groups.length) return;
+    const L = eff(tab);
+    if (!editing && !L.groups.some(g => g.some(id => id.startsWith('panel.auto.')))) return;
     applying = true;
     try {
+      autoWrap(sec, tab);
+      if (!L.groups.length) return;
       for (const { parent, ws } of containers(sec)) {
         const ids = ws.map(w => w.getAttribute('data-surface')), want = arrange(ids, L.groups);
         if (want.join() === ids.join()) continue;
@@ -85,7 +117,7 @@ ${isOwner() ? `<button type="button" class="btn" data-ly="share" ${eff(tab).grou
 <span class="muted" role="status" style="flex-basis:100%;font-size:12px">${esc(msg)}</span>`;
   }
 
-  const setEditing = on_ => { editing = on_; picked = null; document.body.classList.toggle('ly-edit', editing); btn.setAttribute('aria-pressed', String(editing)); btn.textContent = editing ? 'Lock layout' : 'Layout'; css(); mark(); msg = ''; render(); };
+  const setEditing = on_ => { editing = on_; picked = null; document.body.classList.toggle('ly-edit', editing); btn.setAttribute('aria-pressed', String(editing)); btn.textContent = editing ? 'Lock layout' : 'Layout'; css(); apply(); mark(); msg = ''; if (editing) { const s = document.getElementById(currentTab() ?? ''); if (!s || !containers(s).length) msg = 'Nothing on this tab can be moved (fewer than two blocks).'; } render(); };
   btn.onclick = () => setEditing(!editing);
   document.getElementById('tabs')?.addEventListener('click', () => { picked = null; setTimeout(() => { apply(); mark(); render(); }, 200); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && editing) setEditing(false); });
