@@ -111,3 +111,13 @@ test('text is escaped', () => {
   const h = V.keyDriversHtml({ drivers: [{ label: '<x>', reading: '"q"', contrib: 0.2 }] });
   assert.ok(h.includes('&lt;x&gt;') && h.includes('&quot;q&quot;') && !h.includes('<x>'));
 });
+
+test('fallbackChip: a flat or missing desk call shows the engine lean; a real call or no engine read shows nothing', () => {
+  const bear = { dir: 'BEARISH', strength: 3, score: -0.6 }, neut = { dir: 'NEUTRAL', score: 0.1 };
+  assert.match(V.fallbackChip(bear, 'FLAT'), /Desk call neutral . engine leans Bearish 3\/10/);
+  assert.match(V.fallbackChip(bear, undefined), /No desk view today . engine leans Bearish 3\/10/);
+  assert.match(V.fallbackChip(neut, 'FLAT'), /engine also neutral/);
+  assert.equal(V.fallbackChip(bear, 'LONG'), '');
+  assert.equal(V.fallbackChip(null, 'FLAT'), '');
+  assert.equal(V.fallbackChip({ dir: null }, 'FLAT'), '');
+});
