@@ -79,6 +79,12 @@ within Max signal age is entered. Older market signals are logged as "missed whi
 alert, and wait in Today's Signals for **Send to MT5**. Running it twice changes nothing. The request rides
 `signal_copier_manual_override` (`catchup: [{req, t, hours}]`).
 
+**Safety poll:** Telethon's live push can go quiet on a client left running for days (18 Nov 2026: nothing arrived
+after 17 Nov 16:16 UTC, so the 07:00 trades were never seen). Every `tg_poll_secs` (60 s) the bot also reads the
+topic's newest 30 messages and applies any the book hasn't seen, through the same path as catch-up. A signal found
+this way is usually under a minute old, so it is entered normally. Proof of Life shows the last poll and how many
+messages it had to recover.
+
 **Set-and-forget TP:** his newer posts offer "Hold option (recommended): no TP set" and "Set and forget option: TP …
 (1:1)". The bot follows the hold option by default, with no TP: the trade exits on his close or the SL. Tick
 **Set-and-forget TP** to send the 1:1 TP instead. Signal Outcomes always score the hold option.
