@@ -98,3 +98,8 @@ distribution in % terms, so the futures track reuses the CFD spec. The same arm 
 - **Not tested here:** event multipliers (runbook 1.5), the lockbox year (1.6), and other instruments. The next step
   is the same harness per instrument, then by class.
 - **What would reopen this:** the forward record showing a quintile spread above ~6pp at p75 over 250+ sessions.
+
+## Frozen inputs
+
+Byte-exact copies of every input (plus `NQ_rolls.csv`) are kept locally in `frozen/` (gitignored); `frozen/SHA256SUMS`
+is tracked and matches `results.json` `input_sha256`. Taken 2026-11-18 before the futures re-download.
