@@ -352,7 +352,7 @@
   <div id="amModal">
     <div id="amHeader">
       <h2>🔌 API Map</h2>
-      <span class="am-count">377 endpoints</span>
+      <span class="am-count" id="amCount"></span>
       <input id="amSearch" type="search" placeholder="Filter endpoints…" oninput="amFilter(this.value)" autocomplete="off">
       <button id="amClose" onclick="closeApiMap()">✕</button>
     </div>
@@ -1018,6 +1018,8 @@
   window.openApiMap=function(){
     document.getElementById('amOverlay').classList.add('open');
     document.getElementById('amSearch').value='';
+    var n=document.querySelectorAll('#amBody .am-row').length;
+    document.getElementById('amCount').textContent=n+' endpoints';
     amFilter('');
     setTimeout(function(){document.getElementById('amSearch').focus();},80);
   };
