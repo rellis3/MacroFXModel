@@ -667,8 +667,7 @@ function pairResearch(n, rp, pp) {
   box.innerHTML = `<div class="lbl">Research that names ${h(PV.pairLabel(n))}</div>
 ${r.proposals.length ? r.proposals.map(p => `<div class="tt-row"><span class="chip ${['passed', 'paper', 'live'].includes(p.lifecycle?.stage) ? 'up' : p.lifecycle?.stage === 'failed' ? 'dn' : 'pur'}">${h(p.lifecycle?.stage ?? 'proposed')}</span><b style="flex:1;min-width:0">${h(p.title)}</b><span class="w">${h(p.lens ?? '')}</span>${p.thesis ? `<span class="muted" style="flex-basis:100%">${h(String(p.thesis).slice(0, 200))}</span>` : ''}</div>`).join('') : '<div class="muted">No research pod proposal names it.</div>'}
 ${r.papers.length ? `<div class="lbl" style="margin-top:12px">Papers</div>${r.papers.map(p => `<div class="tt-row"><span class="w" style="margin-left:0">${h(p.year ?? '')}</span>${p.url ? `<a href="${h(p.url)}" target="_blank" rel="noopener" style="flex:1;min-width:0">${h(p.title)}</a>` : `<b style="flex:1;min-width:0">${h(p.title)}</b>`}${p.notes?.claim ? `<span class="muted" style="flex-basis:100%">${h(String(p.notes.claim).slice(0, 200))}</span>` : ''}</div>`).join('')}` : `<div class="muted" style="margin-top:8px">No paper in the library (${pp?.count ?? 0}) names it.</div>`}
-<p class="tt-note">Proposals and papers, not results. <a href="#" data-goto="research">The research pipeline →</a></p>`;
-  box.querySelector('[data-goto]')?.addEventListener('click', e => { e.preventDefault(); document.querySelector('#tabs [data-t="research"]')?.click(); });
+<p class="tt-note">Proposals and papers, not results. <a href="research.html" data-surface="nav.research">The research pipeline →</a></p>`;
 }
 
 // ═════════════════════════════════════════════ CHANGED TAB ═════════════════════════════════════════════
@@ -709,45 +708,6 @@ async function drawPaperLine(box) {
     : `<div class="muted">${h(r?.ok === false ? r.error ?? 'Could not load.' : 'No finished day yet: the first is saved after the evening score (21:10 London).')}</div>`}
 <div class="muted" style="font-size:12px;margin-top:4px">${h(note)} In at the entry zone, out at the first target, the invalidation or 21:00 London, one spread per trade. ${ownerOnly(`Each day: ${ownerLink('desk-run.html', 'Desk Run')}.`)}</div>`;
 }
-
-// ═════════════════════════════════════════════ RESEARCH TAB ═════════════════════════════════════════════
-const STAGE_ORDER = ['proposed', 'shortlisted', 'chosen', 'carded', 'preregistered', 'tested', 'forward-tested', 'passed', 'failed', 'paper', 'live', 'retired', 'parked', 'rejected'];
-async function renderResearch() {
-  const root = el('research'); if (!root) return;
-  if (!root.dataset.built) { root.dataset.built = '1'; root.innerHTML = `<div class="card glow">${loading('the research pod')}</div>`; }
-  const [rp, ds, so, bsm, shd] = await Promise.all([J('/api/research-pod'), J('/api/research-pod/dossiers'), J('/api/system-overview'), J('/api/bot-system-map'), J('/api/shadows')]);
-  const lib = rp?.library ?? [], cnt = Object.fromEntries(STAGE_ORDER.map(s => [s, 0])); for (const p of lib) cnt[p.lifecycle?.stage ?? 'proposed'] = (cnt[p.lifecycle?.stage ?? 'proposed'] ?? 0) + 1;
-  const active = lib.filter(p => ['build', 'shortlist'].includes(p.feedback?.status) || !['proposed', 'rejected', 'parked'].includes(p.lifecycle?.stage ?? 'proposed'))
-    .sort((a, b) => STAGE_ORDER.indexOf(b.lifecycle?.stage ?? 'proposed') - STAGE_ORDER.indexOf(a.lifecycle?.stage ?? 'proposed'));
-  const fresh = lib.filter(p => (p.lifecycle?.stage ?? 'proposed') === 'proposed' && !p.feedback).slice(0, 6);
-  const systems = so?.systems ?? [], map = bsm?.map ?? {}, liveIds = new Set(Object.values(map));
-  const paperLive = lib.filter(p => ['paper', 'live'].includes(p.lifecycle?.stage));
-  const sc = rp?.scorecard ?? {};
-  const propRow = p => `<div class="tt-row"><span class="chip ${['passed', 'paper', 'live'].includes(p.lifecycle?.stage) ? 'up' : p.lifecycle?.stage === 'failed' ? 'dn' : p.feedback?.status === 'build' ? 'gold' : 'pur'}">${h(p.lifecycle?.stage ?? 'proposed')}</span><b style="flex:1;min-width:0">${h(p.title)}</b><span class="w">${h(p.lens ?? '')}${p.priority ? ` · ${h(p.priority)}` : ''}${p.feedback?.status ? ` · marked ${h(p.feedback.status)}` : ''}</span>${p.thesis ? `<span class="muted" style="flex-basis:100%">${h(String(p.thesis).slice(0, 220))}</span>` : ''}${p.lifecycle?.outcome?.headline ? `<span class="muted" style="flex-basis:100%">${p.lifecycle.outcome.headline.trades} trades · Sharpe ${p.lifecycle.outcome.headline.sharpe ?? '?'}${p.lifecycle.outcome.verdict ? ` · Evidence Book ${h(p.lifecycle.outcome.verdict)}` : ''}</span>` : ''}</div>`;
-  root.innerHTML = `<div class="card glow"><div class="tt-head"><span class="lbl">Research pipeline</span><h2 style="flex-basis:100%">From papers to proposals to systems</h2><span class="r" style="margin-left:0">${ownerLink('research.html', 'Research rooms', { cls: 'btn', style: 'border-color:var(--pur);color:var(--pur2)', suffix: ' →', hide: true })} ${ownerLink('desk-office.html', 'Desk Office', { cls: 'btn', hide: true })}</span></div>
-<div class="tt-pipe">${['proposed', 'shortlisted', 'carded', 'preregistered', 'tested', 'passed', 'failed', 'paper', 'live'].map(s => `<div class="${cnt[s] ? 'on' : ''}"><b>${cnt[s] ?? 0}</b><span>${s}</span></div>`).join('')}</div>
-<div class="scroll" style="margin-top:12px"><table style="min-width:520px"><thead><tr><th>Researcher</th><th class="n">Proposed</th><th class="n">Accepted</th><th class="n">Carded</th><th class="n">Tested</th><th class="n">Passed</th><th class="n">Failed</th><th class="n">Paper/live</th></tr></thead><tbody>${Object.entries(sc).map(([k, v]) => `<tr><td><b>${h(rp?.researchers?.[k]?.label ?? k)}</b></td>${['proposed', 'accepted', 'carded', 'tested', 'passed', 'failed', 'paperOrLive'].map(f => `<td class="n">${v[f] ?? 0}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
-<p class="tt-note">${h(rp?.label ?? '')}${rp?.job ? ` · a session is running (${h(rp.job.status ?? '')})` : ''}. Stages are read from what exists (the owner's mark, the card, the register row, the harness output, the Evidence Book); paper and live are set by the owner.</p></div>
-<div class="card" id="tt-qt" style="margin-top:14px">${loading('the quick test')}</div>
-<div class="card" id="tt-fa" style="margin-top:14px">${loading('the forecast auditor')}</div>
-<div class="tt-grid2" style="margin-top:14px">
-<div class="card"><div class="ch"><span class="lbl">Shortlisted and building</span><span class="r muted">${active.length}</span></div>${active.map(propRow).join('') || '<div class="muted">Nothing shortlisted or in build yet.</div>'}${fresh.length ? `<details><summary>${fresh.length} new, unmarked</summary>${fresh.map(propRow).join('')}</details>` : ''}</div>
-<div class="card"><div class="ch"><span class="lbl">Latest dossiers</span><span class="r muted">${(ds?.dossiers ?? []).length}</span></div>${(ds?.dossiers ?? []).slice().sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 8).map(d => `<div class="tt-row"><span class="chip ${d.ok ? 'pur' : 'dn'}">${h(d.kind ?? 'dossier')}</span><b style="flex:1;min-width:0">${h(d.hypothesis ?? d.id)}</b><span class="w">${h(String(d.at ?? '').slice(0, 10))} · ${d.papers} papers · ${d.proposals} proposals</span>${d.headline ? `<span class="muted" style="flex-basis:100%">${h(d.headline)}</span>` : ''}${d.verdict ? `<span class="chip gold">${h(d.verdict)}</span>` : ''}</div>`).join('') || `<div class="muted">No dossier yet${ds?.job ? ` (one is being written: ${h(ds.job.status ?? '')})` : ''}. ${h(ds?.label ?? '')}</div>`}</div>
-<div class="card"><div class="ch"><span class="lbl">In paper or live</span></div>${paperLive.map(propRow).join('')}${Object.entries(map).map(([bot, id]) => `<div class="tt-row" data-live="${h(bot)}|${h(id)}"><span class="chip gold">live bot</span><b>${h(bot)}</b><span class="muted">trades ${h(id)}</span><span class="w" data-check>checking live vs backtest…</span></div>`).join('')}${(shd?.shadows ?? []).map(s => `<div class="tt-row"><span class="chip pur">shadow</span><b>${h(s.bot)}</b><span class="muted">${h(s.rule ?? '')}</span><span class="w">${h(s.verdict ?? '')}</span></div>`).join('')}${!paperLive.length && !Object.keys(map).length && !(shd?.shadows ?? []).length ? '<div class="muted">No proposal is in paper or live, no backtested system is linked to a live bot and no forward shadow is running. Link a bot to its system in the Desk Office to get the live-against-backtest check here.</div>' : ''}</div>
-<div class="card"><div class="ch"><span class="lbl">Systems on file</span><span class="r muted">${systems.length}</span></div><div class="scroll"><table style="min-width:520px"><thead><tr><th>System</th><th class="n">Trades</th><th class="n">Sharpe</th><th class="n">Max DD</th><th>Trend</th><th>Review</th></tr></thead><tbody>${systems.slice().sort((a, b) => (b.sharpe ?? -99) - (a.sharpe ?? -99)).map(s => `<tr${liveIds.has(s.id) ? ' style="background:var(--goldbg)"' : ''}><td>${ownerLink(`system-backtest.html?id=${encodeURIComponent(s.id)}`, h(s.model ?? s.id), { style: 'color:var(--tx)' })}</td><td class="n">${s.trades ?? '–'}</td><td class="n ${dirCls(s.sharpe)}">${s.sharpe ?? '–'}</td><td class="n">${s.maxDD != null ? `${s.maxDD}%` : '–'}</td><td class="muted" style="font-size:12px">${h(s.trend ?? '')}</td><td>${s.verdicts ? Object.entries(s.verdicts).map(([k, v]) => `<span class="chip ${v === 'dead' ? 'dn' : v === 'alive' || v === 'promising' ? 'up' : ''}" style="font-size:9px">${h(k)} ${h(v)}</span>`).join(' ') : '<span class="muted">–</span>'}${s.validation ? ` <span class="chip ${s.validation === 'pass' ? 'up' : 'gold'}" style="font-size:9px">validation ${h(s.validation)}</span>` : ''}</td></tr>`).join('')}</tbody></table></div><p class="tt-note">Backtests on file (net of costs); highlighted = traded by a live bot. Results, not proposals.</p></div></div>`;
-  // the research lab's quick test (js/quickTestView.js), the same panel as the Desk Office's Research tab
-  import('../quickTestView.js').then(Q => Q.mount(root.querySelector('#tt-qt'), { getJson: (u, o) => fetch(u, { cache: 'no-store', ...(o ?? {}) }).then(r => r.json()).catch(e => ({ ok: false, error: e.message })) })).catch(e => { const b = root.querySelector('#tt-qt'); if (b) b.innerHTML = `<p class="muted">Quick test did not load: ${h(e.message)}</p>`; });
-  // the forecast auditor (js/forecastAuditView.js), the same card as the Desk Office's Research tab
-  import('../forecastAuditView.js').then(V => V.mount(root.querySelector('#tt-fa'), { getJson: (u, o) => fetch(u, { cache: 'no-store', ...(o ?? {}) }).then(r => r.json()).catch(e => ({ ok: false, error: e.message })) })).catch(e => { const b = root.querySelector('#tt-fa'); if (b) b.innerHTML = `<p class="muted">Forecast auditor did not load: ${h(e.message)}</p>`; });
-  for (const row of root.querySelectorAll('[data-live]')) {
-    const [bot, id] = row.dataset.live.split('|');
-    J(`/api/system-live?bot=${encodeURIComponent(bot)}&id=${encodeURIComponent(id)}`).then(r => { const c = row.querySelector('[data-check]'); if (!c) return;
-      if (!r?.ok) { c.textContent = r?.error ?? 'no live check'; return; }
-      const m = r.check?.metrics ?? {}, pc = k => (m[k]?.percentile != null ? `${k} P${Math.round(m[k].percentile * 100)}` : null);
-      c.textContent = `${r.liveTrades} live trades · ${['expectancy', 'winRate', 'maxDD'].map(pc).filter(Boolean).join(' · ')} of the backtest's range`; });
-  }
-}
-
 
 // ═════════════════════════════════════════════ WHAT DRIVES THIS (each card's modal and the Pair page) ═════════════
 // From the stored run only (js/terminal/cardExplain.js): the analysts' points that moved the card, the data dates
@@ -960,7 +920,7 @@ function drawNews(filters = false) {
 
 // the Assets cards were drawn before this module loaded: draw them again once so each gets its "latest:" line
 const assetsNews = () => { if (typeof assets === 'function' && D?.cards && D.news?.length && !document.querySelector('#assets .nt-latest')) assets(); };
-const RENDER = { today: renderToday, pair: renderPair, deep: renderDeep, changed: renderChanged, research: renderResearch, options: renderOptions, news: renderNews, assets: assetsNews,
+const RENDER = { today: renderToday, pair: renderPair, deep: renderDeep, changed: renderChanged, options: renderOptions, news: renderNews, assets: assetsNews,
   // the Trader's Read: the podcast hosts' eight questions and checks on the desk's own chain (js/traderRead.js)
   read: () => import('./traderReadView.js').then(V => V.render(el('read'), { getJson, openModal })).catch(e => { el('read').innerHTML = `<div class="card"><p class="muted">The Trader's Read did not load: ${h(e.message)}</p></div>`; }),
   // the Info map: every information family the repo holds against what the terminal draws (js/infoMap.js, built by scripts/build_info_map.mjs)
