@@ -15,7 +15,7 @@ export const MACRO_SUBS = [
   { id: 'credit', alias: 'credit', label: 'Credit & liquidity',
     blocks: ['panel.macro.creditliq', 'panel.macro.creditspreads', 'panel.macro.fedliq', 'panel.macro.plumbing', 'panel.macro.xccy', 'panel.macro.bankcredit'] },
   { id: 'markets', alias: 'markets', label: 'Markets & FX',
-    blocks: ['panel.macro.regime', 'panel.macro.vol', 'panel.macro.livelayer', 'panel.macro.fairvalue', 'panel.macro.fxfv', 'panel.macro.carry', 'panel.macro.commodfx', 'panel.macro.copper', 'panel.macro.gpr', 'panel.macro.rangecoverage', 'panel.macro.connected', 'panel.macro.coupling', 'panel.macro.uncertainty', 'panel.macro.skewhist', 'panel.macro.trendbasket', 'panel.macro.walls'] },
+    blocks: ['panel.macro.analogues', 'panel.macro.regime', 'panel.macro.vol', 'panel.macro.livelayer', 'panel.macro.fairvalue', 'panel.macro.fxfv', 'panel.macro.carry', 'panel.macro.commodfx', 'panel.macro.copper', 'panel.macro.gpr', 'panel.macro.rangecoverage', 'panel.macro.connected', 'panel.macro.coupling', 'panel.macro.uncertainty', 'panel.macro.skewhist', 'panel.macro.trendbasket', 'panel.macro.walls'] },
   // the bias engine (js/biasEngine.js, plans/BIAS_ENGINE_SPEC.md): currencies x drivers, the weights, coverage and the gaps. Its data is loaded with the page (load()).
   { id: 'engine', alias: 'engine', label: 'Bias engine', blocks: ['panel.macro.biasengine'] },
 ];
