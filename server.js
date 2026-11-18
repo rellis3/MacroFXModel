@@ -9242,20 +9242,24 @@ async function _ylLeg(name) {
 }
 // Nasdaq vs rates monitor for the chart page (js/nqRatesResidual.js; analysis/output/nq-rates-residual-monitor/RESULTS.md, exploratory, CONTEXT):
 // daily FRED NASDAQ100 against the 2y and the 10y-2y slope (the 'rates' cache), past-only rolling OLS. Context, not a signal.
-let _nqr = { at: 0, nq: null, out: new Map() };
+const _NQR_SERIES = { NAS100: 'NASDAQ100', SPX500: 'SP500', US30: 'DJIA' };      // free FRED daily index closes; Russell / FTSE / DAX have no free FRED series
+const _nqrBy = new Map();      // asset -> { at, nq, out }
 app.get('/api/cog-chart/nq-rates', async (req, res) => {
   try {
     const W = [60, 120, 250].includes(+req.query.w) ? +req.query.w : 120, keep = Math.min(Math.max(parseInt(req.query.days, 10) || 1000, 100), 6000);
     if (Date.now() - _rates.at > 6 * 3600_000 || !_rates.series) await _refreshRates();
     const S = _rates.series; if (!S?.us2y?.length || !S?.us10y?.length) return res.status(503).json({ ok: false, error: _rates.error ?? 'FRED 2y/10y not loaded yet' });
-    if (Date.now() - _nqr.at > 6 * 3600_000 || !_nqr.nq) { _nqr = { at: Date.now(), nq: await _fredCsv('NASDAQ100'), out: new Map() }; }
+    const asset = String(req.query.asset || 'NAS100'), fid = _NQR_SERIES[asset];
+    if (!fid) return res.status(404).json({ ok: false, error: `no free daily series for ${asset}` });
+    let _nqr = _nqrBy.get(asset);
+    if (!_nqr || Date.now() - _nqr.at > 6 * 3600_000 || !_nqr.nq) { _nqr = { at: Date.now(), nq: await _fredCsv(fid), out: new Map() }; _nqrBy.set(asset, _nqr); }
     const key = `${W}|${keep}|${_rates.at}`;
     if (!_nqr.out.has(key)) {
       const rows = _nqrRolling(_nqrAlign(_nqr.nq, S.us2y, S.us10y), W);
       const r4 = x => (x == null || !Number.isFinite(x) ? null : +x.toFixed(4));
       const tail = rows.slice(-keep).map(o => ({ date: o.date, nq: o.nq, b2y: r4(10 * o.b2y), bslope: r4(10 * o.bslope), r2: r4(o.r2), z: r4(o.z), z20: r4(o.z20), implied20: r4(o.implied20), actual20: r4(o.actual20) }));
       _nqr.out.set(key, { ok: true, window: W, units: { b2y: '% NQ per +10 bp 2y', bslope: '% NQ per +10 bp steeper 10y-2y', implied20: '%', actual20: '%' }, latest: tail.at(-1), read: _nqrDescribe(rows.at(-1)), rows: tail,
-        source: 'FRED NASDAQ100, DGS2, DGS10 (yields ~15:30 ET, Nasdaq close 16:00 ET)', note: 'Exploratory context, not a signal: the residual does not persist and the catch-up trade is banked NULL (rates_residual S1).', at: new Date().toISOString() });
+        source: `FRED ${fid}, DGS2, DGS10 (yields ~15:30 ET, US close 16:00 ET)`, note: 'Exploratory context, not a signal: the residual does not persist and the catch-up trade is banked NULL (rates_residual S1).', at: new Date().toISOString() });
     }
     res.set('Cache-Control', 'public, max-age=900'); res.json(_nqr.out.get(key));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }

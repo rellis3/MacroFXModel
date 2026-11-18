@@ -112,11 +112,11 @@ export async function mountLegChart(root = document) {
   // Nasdaq mode: the daily Nasdaq-vs-rates regression read, only when the market is the Nasdaq
   async function updateNq() {
     const box = $('nq'); box.innerHTML = '';
-    if (st.asset !== 'NAS100') return;
+    if (!['NAS100', 'SPX500', 'US30'].includes(st.asset)) return;
     try {
-      const j = await jget('/api/cog-chart/nq-rates?w=120&days=750');
+      const j = await jget(`/api/cog-chart/nq-rates?asset=${st.asset}&w=120&days=750`);
       if (!j.ok) return;
-      box.innerHTML = `<div class="lbl" style="margin-top:10px">Nasdaq vs rates (daily): is the Nasdaq trading on rates right now?</div><div class="muted" style="font-size:13px;margin:4px 0">${esc(j.read ?? '')}</div><div id="${ID}-nqc" style="height:150px"></div><p class="muted" style="font-size:12px">${esc(j.note ?? '')}</p>`;
+      box.innerHTML = `<div class="lbl" style="margin-top:10px">${esc(st.asset)} vs rates (daily): is it trading on rates right now?</div><div class="muted" style="font-size:13px;margin:4px 0">${esc(j.read ?? '')}</div><div id="${ID}-nqc" style="height:150px"></div><p class="muted" style="font-size:12px">${esc(j.note ?? '')}</p>`;
       const c = mk(box.querySelector(`#${ID}-nqc`)), s = c.addLineSeries({ color: tok('gold', 'orange'), lineWidth: 2, priceLineVisible: false });
       s.setData((j.rows ?? []).filter(r => r.z20 != null).map(r => ({ time: r.date, value: r.z20 })));
       c.timeScale().fitContent();
