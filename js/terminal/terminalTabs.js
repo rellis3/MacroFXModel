@@ -26,7 +26,8 @@ import { analogueHtml, mountAnalogue } from './analogueView.js';
 import { reportedHtml } from '../earningsReported.js';
 import { reviewState, stateChip, unreviewedNote } from './reviewState.js';
 import './myPanelsView.js';   // the Panels button (widget.mypanels, preview): hide and bring back panels per tab
-import './layoutView.js';   // the Layout button (widget.layouteditor, preview): move panels within their block, lock, share (owner)
+import './layoutView.js';
+import './tabGroups.js';   // nine nav buttons with pills for the merged tabs; drives the original tab strip (tabGroupsCore.js)   // the Layout button (widget.layouteditor, preview): move panels within their block, lock, share (owner)
 import { boardHtml as macroBoardHtml, pick as macroBoardPick } from './macroEngines.js';
 import { DESK_EVIDENCE, citable } from '../deskEvidence.js';
 import * as FVV from './fairValueView.js';
