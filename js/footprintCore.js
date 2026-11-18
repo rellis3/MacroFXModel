@@ -95,4 +95,46 @@ export function profile(bars, { share = 0.7 } = {}) {
   return { rows: prices.map(p => ({ p, ...tot.get(p) })), poc: prices[pi], vah: prices[hi], val: prices[lo], vol };
 }
 
+// TPO (Market Profile, Steidlmayer): every `period`-minute slice of the session from `start` gets a letter (A, B, ... Z,
+// then a ... z), and each price row the slice traded at (every row from a stored bar's low to its high) gets that letter.
+// Counted in time, not volume. POC = the row with most letters (tie -> nearer the middle of the day's range); value area =
+// 70% of all letters grown from the POC toward the heavier neighbour, as for volume. Initial balance = the first `ib`
+// minutes (A and B on 30-minute letters). Singles = rows only one letter touched.
+export const tpoLetter = i => i < 26 ? String.fromCharCode(65 + i) : i < 52 ? String.fromCharCode(71 + i) : '·';
+export function tpo(bars, { start = 0, period = 30, step = 0.25, ib = 60, share = 0.7 } = {}) {
+  const rows = new Map(), periods = [];
+  let ibHi = -Infinity, ibLo = Infinity, open = null, close = null;
+  for (const b of bars) {
+    if (b.m < start) continue;
+    const i = Math.floor((b.m - start) / period);
+    const per = periods[i] || (periods[i] = { i, m: start + i * period, hi: -Infinity, lo: Infinity });
+    per.hi = Math.max(per.hi, b.h); per.lo = Math.min(per.lo, b.l);
+    if (open == null) open = b.o;
+    close = b.c;
+    if (b.m < start + ib) { ibHi = Math.max(ibHi, b.h); ibLo = Math.min(ibLo, b.l); }
+    for (let k = Math.floor(r9(b.l / step)), top = Math.floor(r9(b.h / step)); k <= top; k++) {
+      const p = r9(k * step);
+      let s = rows.get(p); if (!s) rows.set(p, s = new Set());
+      s.add(i);
+    }
+  }
+  const prices = [...rows.keys()].sort((a, b) => a - b);
+  const empty = { rows: [], periods: [], poc: null, vah: null, val: null, n: 0, ib: null, open, close, singles: 0 };
+  if (!prices.length) return empty;
+  const n = i => rows.get(prices[i]).size, total = prices.reduce((a, p) => a + rows.get(p).size, 0);
+  const mid = (prices[0] + prices.at(-1)) / 2;
+  let pi = 0;
+  for (let i = 1; i < prices.length; i++) if (n(i) > n(pi) || (n(i) === n(pi) && Math.abs(prices[i] - mid) < Math.abs(prices[pi] - mid))) pi = i;
+  let lo = pi, hi = pi, acc = n(pi);
+  while (acc < share * total && (lo > 0 || hi < prices.length - 1)) {
+    const up = hi < prices.length - 1 ? n(hi + 1) : -1, dn = lo > 0 ? n(lo - 1) : -1;
+    if (up >= dn) acc += n(++hi); else acc += n(--lo);
+  }
+  const out = prices.map(p => ({ p, letters: [...rows.get(p)].sort((a, b) => a - b) }));
+  const dayHi = Math.max(...periods.filter(Boolean).map(x => x.hi)), dayLo = Math.min(...periods.filter(Boolean).map(x => x.lo));
+  const ibInfo = isFinite(ibHi) ? { hi: ibHi, lo: ibLo, complete: periods.length * period >= ib, up: dayHi > ibHi, down: dayLo < ibLo } : null;
+  return { rows: out, periods: periods.filter(Boolean), poc: prices[pi], vah: prices[hi], val: prices[lo], n: total, ib: ibInfo,
+           open, close, singles: out.filter(r => r.letters.length === 1).length, maxN: Math.max(...out.map(r => r.letters.length)) };
+}
+
 export function hhmm(m) { return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }

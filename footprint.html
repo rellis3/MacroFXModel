@@ -78,7 +78,7 @@ dialog code{font:12px var(--mono);color:var(--text)}
 </header>
 <div class="bar">
   <div class="seg" id="views" role="group" aria-label="Chart type">
-    <button class="btn" data-v="candle">Candles</button><button class="btn" data-v="fp">Footprint</button>
+    <button class="btn" data-v="candle">Candles</button><button class="btn" data-v="fp">Footprint</button><button class="btn" data-v="tpo" title="Market Profile: 30-minute letters (T)">TPO</button>
   </div>
   <div class="seg" id="tfs" role="group" aria-label="Bar size"></div>
   <select id="sess" aria-label="Session">
@@ -107,6 +107,9 @@ dialog code{font:12px var(--mono);color:var(--text)}
     <label for="pDelta">Delta pane</label><input type="checkbox" id="pDelta">
     <label for="pCvd">CVD pane</label><input type="checkbox" id="pCvd">
     <label for="pProf">Session profile</label><input type="checkbox" id="pProf">
+    <label for="pKind">Profile counts</label>
+    <select id="pKind"><option value="vol">Volume</option><option value="tpo">Time (TPO letters)</option></select>
+    <label for="pIb">Initial balance</label><input type="checkbox" id="pIb">
   </div>
   <div class="rowend"><button class="btn" data-close>Close</button></div>
 </dialog>
@@ -121,21 +124,23 @@ dialog code{font:12px var(--mono);color:var(--text)}
     <li><b>Amber:</b> the bar’s busiest price (POC). The dashed amber line is the last price.</li>
     <li><b>Delta:</b> buy minus sell per bar, on one scale for the session. An amber dot means delta disagrees with the candle.</li>
     <li><b>CVD:</b> the running total of delta from the start of the chosen session. Change the session and it restarts.</li>
-    <li><b>Session profile:</b> volume at each price, with the 70% value area shaded on the chart.</li>
+    <li><b>Session profile:</b> volume at each price, with the 70% value area shaded on the chart. Under Display you can count time instead (TPO letters).</li>
+    <li><b>TPO view:</b> Market Profile. Each 30-minute slice of the session gets a letter (A from the session open, blue early, amber late) at every price it traded. The side column stacks the letters per price. The TPO POC is the price with most letters, and the value area is 70% of the letters. Outlined rows inside the range are single prints, where one slice went straight through. The triangle marks the open. Delta and CVD below are per 30-minute slice, so you read time and flow together.</li>
+    <li><b>Initial balance:</b> the blue lines are the high and low of the session’s first hour (TPO A and B), dashed while it is still forming. The fainter lines are one more IB width beyond each side. Whether a break beyond the IB that holds leads to a trend day is pre-registered and not yet tested (<code>tpo-initial-balance</code>). The London first-hour break on CFDs was a null (<code>opening-range-break</code>).</li>
   </ul>
   <h3>Moving around</h3>
   <ul>
     <li><b>Mouse:</b> wheel zooms time, drag pans, shift + wheel pans, double-click fits the session. Drag the price axis to stretch prices.</li>
     <li><b>Touch:</b> drag pans, pinch zooms, tap shows the crosshair and figures. Drag the price axis to stretch prices.</li>
-    <li><b>Keys:</b> ← → pan, + − zoom, F fit, L latest, C candles, P footprint.</li>
+    <li><b>Keys:</b> ← → pan, + − zoom, F fit, L latest, C candles, P footprint, T TPO.</li>
   </ul>
   <h3>The data</h3>
-  <p>From NinjaTrader. Recorded days sign each trade against the bid and ask stored with it; the readout shows the share, and the rest fall back to the tick rule. Days built from tick history use the tick rule. Its bar imbalance correlated +0.91 with the exchange’s flag on NQ, but only about 0.5 on 6E and 6J, so read tick-rule delta with care on those. Times are UTC, from the exchange stamp, and the Lucid feed arrives about 10 minutes late. Feed: <code>scripts/footprint/start_footprint_capture.bat</code>.</p>
+  <p>From NinjaTrader. Recorded days sign each trade against the bid and ask stored with it; the readout shows the share, and the rest fall back to the tick rule. Days built from tick history use the tick rule. Its bar imbalance correlated +0.91 with the exchange’s flag on NQ, but only about 0.5 on 6E and 6J, so read tick-rule delta with care on those. Times are UTC, from the exchange stamp. The recorder gets each trade about a tenth of a second after the exchange stamp (measured 2026-11-09), and the page refreshes every 30 seconds. Feed: <code>scripts/footprint/start_footprint_capture.bat</code>.</p>
   <div class="rowend"><button class="btn" data-close>Close</button></div>
 </dialog>
 
 <script type="module">
-import { decode, aggregate, imbalances, profile, hhmm, decimals, r9 } from '/js/footprintCore.js';
+import { decode, aggregate, imbalances, profile, tpo, tpoLetter, hhmm, decimals, r9 } from '/js/footprintCore.js';
 
 const $ = id => document.getElementById(id);
 const cv = $('cv'), ctx = cv.getContext('2d'), wrap = $('chart');
@@ -143,11 +148,13 @@ const token = n => getComputedStyle(document.documentElement).getPropertyValue(n
 const C = { bull: token('--bull'), bear: token('--bear'), amber: token('--amber'), cy: token('--cy'), text: token('--text'), text2: token('--text2'), text3: token('--text3'), border: token('--border'), grid: token('--grid'), bg: token('--bg') };
 const BULL = '16,185,129', BEAR = '249,115,22', MONO = 'ui-monospace,Menlo,Consolas,monospace';
 const TFS = [1, 5, 15, 30, 60], ROWS = [1, 2, 4, 5, 8, 10, 16, 20, 40, 80, 100, 200, 400, 800];
-const TIME_H = 22;
+const TIME_H = 22, TPO_MIN = 30;
+// TPO letter colours run blue (early) to amber (late), so the order of the day reads at a glance.
+const letterRGB = (i, n) => { const f = n > 1 ? i / (n - 1) : 0; return [Math.round(92 + 118 * f), Math.round(170 - 17 * f), Math.round(255 - 221 * f)].join(','); };
 
 // Remembered per browser only; the page works the same if storage is blocked.
 const PREF_KEY = 'footprint_prefs_v2';
-const P = { sym: null, tf: 5, view: 'candle', sess: 'rth', cells: 'ba', row: 0, ratio: 3, delta: true, cvd: true, profile: innerWidth >= 700 };
+const P = { sym: null, tf: 5, view: 'candle', sess: 'rth', cells: 'ba', row: 0, ratio: 3, delta: true, cvd: true, profile: innerWidth >= 700, pkind: 'vol', ib: true };
 try { Object.assign(P, JSON.parse(localStorage.getItem(PREF_KEY) || '{}')); } catch { /* defaults */ }
 const savePrefs = () => { try { localStorage.setItem(PREF_KEY, JSON.stringify(P)); } catch { /* not kept */ } };
 
@@ -221,11 +228,14 @@ function sessionRange() {
 function barsFor(rt) {
   if (S.memo.has(rt)) return S.memo.get(rt);
   const [a, b] = sessionRange(), step = S.doc.tick * rt;
-  const bars = aggregate(S.raw.filter(x => x.m >= a && x.m < b), { minutes: Math.max(P.tf, S.doc.base), rowTicks: rt, tick: S.doc.tick });
+  const inS = S.raw.filter(x => x.m >= a && x.m < b), tpoView = P.view === 'tpo';
+  const bars = aggregate(inS, { minutes: tpoView ? Math.max(TPO_MIN, S.doc.base) : Math.max(P.tf, S.doc.base), rowTicks: rt, tick: S.doc.tick });
   let cvd = 0; const stacks = P.ratio > 0;
   for (const x of bars) { cvd += x.delta; x.cvd = cvd; x.imb = stacks ? imbalances(x.cells, { ratio: P.ratio, minVol: 10, rowStep: step, stack: 3 }) : { mark: new Map(), stacks: [] }; }
   const set = { bars, prof: profile(bars), maxCell: Math.max(1, ...bars.map(x => x.maxCell)), maxVol: Math.max(1, ...bars.map(x => x.vol)), maxD: Math.max(1, ...bars.map(x => Math.abs(x.delta))) };
   set.maxProf = Math.max(1, ...set.prof.rows.map(r => r.s + r.b));
+  set.tpo = tpo(inS, { start: a, period: TPO_MIN, step, ib: 60 });
+  set.start = a;
   S.memo.set(rt, set);
   return set;
 }
@@ -258,7 +268,7 @@ function L() {
   return { axis, prof, pw, ph, dH, cH, dy: ph, cy: ph + dH, ty: ph + dH + cH };
 }
 const clampX = (l, x) => { const n = S.bars.length * S.colW; return Math.max(-(l.pw - S.colW * 3), Math.min(n - S.colW * 2, x)); };
-function fit() { const l = L(), n = Math.max(1, S.bars.length); S.colW = Math.max(3, Math.min(P.view === 'fp' ? 120 : 28, (l.pw - 8) / (n + 1))); S.x0 = clampX(l, 0); S.anchor = 'fit'; }
+function fit() { const l = L(), n = Math.max(1, S.bars.length); S.colW = Math.max(3, Math.min(P.view === 'fp' ? 120 : P.view === 'tpo' ? 64 : 28, (l.pw - 8) / (n + 1))); S.x0 = clampX(l, 0); S.anchor = 'fit'; }
 const fpWidth = () => (S.W < 700 ? 84 : 96);
 function latest() { const l = L(); if (P.view === 'fp' && S.colW < 40) S.colW = fpWidth(); S.x0 = clampX(l, S.bars.length * S.colW - l.pw + S.colW * .6); S.anchor = 'latest'; }
 const visible = l => [Math.max(0, Math.floor(S.x0 / S.colW)), Math.min(S.bars.length - 1, Math.ceil((S.x0 + l.pw) / S.colW) - 1)];
@@ -273,7 +283,7 @@ function priceRange(l) {
 // Rows follow the zoom: the finest grid that still leaves each row readable.
 function chooseRows(l, r) {
   if (P.row) return P.row;
-  const want = P.view === 'fp' ? 15 : 5, perPx = (r.hi - r.lo) / Math.max(1, l.ph) / S.doc.tick;
+  const want = P.view === 'fp' ? 15 : P.view === 'tpo' ? 11 : 5, perPx = (r.hi - r.lo) / Math.max(1, l.ph) / S.doc.tick;
   return ROWS.find(n => n / perPx >= want) || ROWS.at(-1);
 }
 function niceStep(span, n) { const raw = span / Math.max(1, n), m = 10 ** Math.floor(Math.log10(raw)); return [1, 2, 2.5, 5, 10].map(k => k * m).find(k => k >= raw); }
@@ -288,14 +298,15 @@ function draw() {
   const set = barsFor(S.rt), { pw, ph, axis, prof } = l, W = S.W, H = S.H, step = S.doc.tick * S.rt;
   S.step = step;
   const r = r0, Y = p => (r.hi - p) / (r.hi - r.lo) * ph, rh = step / (r.hi - r.lo) * ph, X = i => i * S.colW - S.x0;
-  const [i0, i1] = visible(l), fp = P.view === 'fp';
+  const [i0, i1] = visible(l), fp = P.view === 'fp', tv = P.view === 'tpo', T0 = set.tpo, sideTpo = tv || P.pkind === 'tpo';
   ctx.clearRect(0, 0, W, H);
   ctx.font = `11px ${MONO}`; ctx.textBaseline = 'middle';
 
   // price pane
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, pw, ph); ctx.clip();
   const P0 = set.prof;
-  if (P0.val != null) { ctx.fillStyle = 'rgba(92,200,255,.04)'; ctx.fillRect(0, Y(P0.vah + step), pw, Y(P0.val) - Y(P0.vah + step)); }
+  const VA = sideTpo ? T0 : P0;
+  if (VA.val != null) { ctx.fillStyle = 'rgba(92,200,255,.04)'; ctx.fillRect(0, Y(VA.vah + step), pw, Y(VA.val) - Y(VA.vah + step)); }
   const gs = niceStep(r.hi - r.lo, Math.max(3, ph / 54)), ticks = [];
   ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
   for (let p = Math.ceil(r.lo / gs) * gs; p <= r.hi; p += gs) { const y = Math.round(Y(p)) + .5; ticks.push([p, y]); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(pw, y); ctx.stroke(); }
@@ -304,6 +315,7 @@ function draw() {
   ctx.fillStyle = 'rgba(92,200,255,.16)';
   for (let i = i0; i <= i1; i++) { const h = volH * S.bars[i].vol / set.maxVol; ctx.fillRect(X(i) + bo, ph - h, bw, h); }
   if (fp) drawCells(set, i0, i1, X, Y, rh, ph, step);
+  else if (tv) drawTpo(set, i0, i1, X, Y, rh, ph, step);
   else for (let i = i0; i <= i1; i++) {
     const b = S.bars[i], x = X(i), up = b.c >= b.o, cx = Math.round(x + S.colW / 2) + .5;
     ctx.strokeStyle = ctx.fillStyle = up ? C.bull : C.bear;
@@ -311,6 +323,7 @@ function draw() {
     const t = Y(Math.max(b.o, b.c)); ctx.fillRect(x + bo, t, bw, Math.max(1, Y(Math.min(b.o, b.c)) - t));
     if (b.poc != null && S.colW >= 7) { ctx.fillStyle = C.amber; ctx.fillRect(x + bo, Y(b.poc + step / 2) - .5, bw, 1.5); }
   }
+  if (P.ib && T0.ib) drawIb(T0, pw, Y, X);
   const last = S.bars.at(-1), ly = Y(last.c);
   ctx.setLineDash([3, 4]); ctx.strokeStyle = C.amber; ctx.globalAlpha = .6; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, ly); ctx.lineTo(pw, ly); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
   ctx.restore();
@@ -347,12 +360,14 @@ function draw() {
   if (prof) {
     ctx.save(); ctx.beginPath(); ctx.rect(pfx, 0, prof, ph); ctx.clip();
     const full = prof - 8;
-    for (const row of P0.rows) {
+    if (sideTpo) drawTpoSide(T0, pfx, full, Y, rh, step);
+    else for (const row of P0.rows) {
       const y = Y(row.p + step), t = row.s + row.b, w = full * t / set.maxProf, ws = w * row.s / Math.max(1, t), va = row.p >= P0.val && row.p <= P0.vah, hh = Math.max(.8, rh - (rh > 3 ? 1 : 0));
       ctx.fillStyle = `rgba(${BEAR},${va ? .6 : .28})`; ctx.fillRect(pfx + 4, y, ws, hh);
       ctx.fillStyle = `rgba(${BULL},${va ? .6 : .28})`; ctx.fillRect(pfx + 4 + ws, y, w - ws, hh);
     }
-    if (P0.poc != null) { ctx.strokeStyle = C.amber; ctx.lineWidth = 1.5; ctx.strokeRect(pfx + 2.5, Y(P0.poc + step), prof - 5, Math.max(2, rh)); }
+    const POC = sideTpo ? T0.poc : P0.poc;
+    if (POC != null) { ctx.strokeStyle = C.amber; ctx.lineWidth = 1.5; ctx.strokeRect(pfx + 2.5, Y(POC + step), prof - 5, Math.max(2, rh)); }
     ctx.restore();
     ctx.strokeStyle = C.border; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pfx + .5, 0); ctx.lineTo(pfx + .5, ph); ctx.stroke();
   }
@@ -394,6 +409,54 @@ function draw() {
 function tag(pw, y, axis, text, bg, fg) {
   ctx.fillStyle = bg; ctx.fillRect(pw + 1, y - 8, axis - 2, 16);
   ctx.fillStyle = fg; ctx.textAlign = 'left'; ctx.font = `11px ${MONO}`; ctx.fillText(text, pw + 7, y);
+}
+// TPO, split by period: each 30-minute column shows its letter at every row it traded. Order flow (delta, CVD) stays in the panes below.
+function drawTpo(set, i0, i1, X, Y, rh, ph, step) {
+  const T = set.tpo, n = T.periods.length, bw = Math.max(3, Math.min(S.colW - 6, 26)), hh = Math.max(.8, rh - (rh > 3 ? 1 : 0));
+  const showText = rh >= 9 && bw >= 9, font = Math.max(8, Math.min(12, rh - 1, bw - 2));
+  const byM = new Map(T.periods.map(p => [p.m, p.i]));
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (let i = i0; i <= i1; i++) {
+    const b = S.bars[i], k = byM.get(b.m); if (k == null) continue;
+    const x = X(i) + (S.colW - bw) / 2, rgb = letterRGB(k, n), ch = tpoLetter(k);
+    for (let q = Math.floor(r9(b.l / step)), top = Math.floor(r9(b.h / step)); q <= top; q++) {
+      const p = r9(q * step), y = Y(p + step); if (y + rh < 0 || y > ph) continue;
+      const va = p >= T.val && p <= T.vah;
+      ctx.fillStyle = `rgba(${rgb},${va ? .55 : .28})`; ctx.fillRect(x, y, bw, hh);
+      if (showText) { ctx.font = `600 ${font}px ${MONO}`; ctx.fillStyle = va ? '#0d1117' : C.text; ctx.fillText(ch, x + bw / 2, y + hh / 2); }
+      if (p === T.poc) { ctx.strokeStyle = C.amber; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y + .5, bw - 1, Math.max(1, hh - 1)); }
+    }
+    if (k === 0 && T.open != null) { ctx.fillStyle = C.text; ctx.beginPath(); const y = Y(T.open); ctx.moveTo(x - 1, y); ctx.lineTo(x - 6, y - 4); ctx.lineTo(x - 6, y + 4); ctx.fill(); }
+  }
+}
+// The collapsed profile beside the price axis: letters stacked left to right per row, single prints outlined.
+function drawTpoSide(T, pfx, full, Y, rh, step) {
+  const n = T.periods.length, per = full / Math.max(1, T.maxN), hh = Math.max(.8, rh - (rh > 3 ? 1 : 0));
+  const showText = rh >= 9 && per >= 7, font = Math.max(8, Math.min(11, rh - 1, per));
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const row of T.rows) {
+    const y = Y(row.p + step), va = row.p >= T.val && row.p <= T.vah;
+    row.letters.forEach((k, j) => {
+      const x = pfx + 4 + j * per;
+      ctx.fillStyle = `rgba(${letterRGB(k, n)},${va ? .6 : .3})`; ctx.fillRect(x, y, Math.max(1, per - (per > 3 ? .5 : 0)), hh);
+      if (showText) { ctx.font = `600 ${font}px ${MONO}`; ctx.fillStyle = va ? '#0d1117' : C.text; ctx.fillText(tpoLetter(k), x + per / 2, y + hh / 2); }
+    });
+    if (row.letters.length === 1 && row.p > T.rows[0].p && row.p < T.rows.at(-1).p) { ctx.strokeStyle = C.cy; ctx.lineWidth = 1; ctx.strokeRect(pfx + 3.5, y + .5, Math.max(2, per), Math.max(1, hh - 1)); }
+  }
+}
+// Initial balance (first hour of the chosen session): the band across the chart, and one more IB width beyond each side.
+function drawIb(T, pw, Y, X) {
+  const { hi, lo, complete } = T.ib, yh = Y(hi), yl = Y(lo), w = hi - lo;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(79,125,240,.85)'; ctx.lineWidth = 1; ctx.setLineDash(complete ? [] : [5, 4]);
+  for (const y of [yh, yl]) { ctx.beginPath(); ctx.moveTo(0, Math.round(y) + .5); ctx.lineTo(pw, Math.round(y) + .5); ctx.stroke(); }
+  ctx.setLineDash([2, 5]); ctx.strokeStyle = 'rgba(79,125,240,.45)';
+  for (const p of [hi + w, lo - w]) { const y = Math.round(Y(p)) + .5; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(pw, y); ctx.stroke(); }
+  ctx.setLineDash([]); ctx.font = `10px ${MONO}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(140,170,255,.95)';
+  const lx = Math.max(4, Math.min(pw - 110, X(0) + 4));
+  ctx.fillText(complete ? 'IB high' : 'IB high (forming)', lx, yh - 7); ctx.fillText(complete ? 'IB low' : 'IB low (forming)', lx, yl + 8);
+  ctx.fillStyle = 'rgba(140,170,255,.6)'; ctx.fillText('IB ×2', lx, Y(hi + w) - 7); ctx.fillText('IB ×2', lx, Y(lo - w) + 8);
+  ctx.restore();
 }
 function drawCells(set, i0, i1, X, Y, rh, ph, step) {
   const cw = Math.max(2, Math.min(6, S.colW * .07)), cellX = cw + 4, cellW = S.colW - cellX - 3, half = cellW / 2, mc = set.maxCell;
@@ -449,32 +512,44 @@ function readout(l, r, step) {
   }
   const b = S.bars[i], dis = b.delta && b.c !== b.o && (b.delta > 0) !== (b.c > b.o);
   const c = S.doc.counts, sign = S.doc.rule === 'quote' && c ? `bid/ask ${Math.round(100 * c.quote / Math.max(1, c.quote + c.tick_fallback))}%` : 'tick rule';
+  const T0 = set.tpo, tv = P.view === 'tpo' || P.pkind === 'tpo';
+  if (P.view === 'tpo' && S.cross && l && S.cross.y <= l.ph) {
+    const price = r.hi - S.cross.y / l.ph * (r.hi - r.lo), p = r9(Math.floor(r9(price / step)) * step), row = T0.rows.find(x => x.p === p);
+    if (row) cell = ` · <b>${px(p)}</b> TPO <b>${row.letters.map(tpoLetter).join('')}</b> (${row.letters.length})${p === T0.poc ? ' · TPO POC' : ''}`;
+  }
+  const ibTxt = T0.ib ? `IB ${px(T0.ib.lo)}–${px(T0.ib.hi)}${T0.ib.complete ? '' : ' forming'}${T0.ib.up && T0.ib.down ? ' · extended both ways' : T0.ib.up ? ' · extended up' : T0.ib.down ? ' · extended down' : T0.ib.complete ? ' · inside' : ''}` : 'IB —';
+  const tpoTxt = `TPO POC ${T0.poc != null ? px(T0.poc) : '—'} · TPO VA ${T0.val != null ? px(T0.val) + '–' + px(T0.vah + S.step - S.doc.tick) : '—'} · ${ibTxt} · singles ${T0.singles}`;
+  const letter = P.view === 'tpo' && set.start != null ? tpoLetter(Math.floor((b.m - set.start) / TPO_MIN)) + ' ' : '';
   const narrow = S.W < 700, cvdVal = sgnFull(b.cvd), sess = `vol ${fmtK(P0.vol)} · Δ ${sgn(buy - sell)} · POC ${P0.poc != null ? px(P0.poc) : '—'}`;
   el.innerHTML = narrow
-    ? `<div><b>${hhmm(b.m)}</b> C <b>${px(b.c)}</b> · vol <b>${fmtK(b.vol)}</b> · Δ <b>${sgn(b.delta)}</b> · CVD <b>${sgn(b.cvd)}</b>${cell ? '' : dis ? ' · against candle' : ''}</div>` +
-      (cell ? `<div>${cell.replace(/^ · /, '')}</div>` : `<div class="l2">Day: ${sess} · ${sign} · descriptive</div>`)
-    : `<div><b>${hhmm(b.m)}</b> O <b>${px(b.o)}</b> H <b>${px(b.h)}</b> L <b>${px(b.l)}</b> C <b>${px(b.c)}</b> · vol <b>${b.vol.toLocaleString('en-US')}</b> · Δ <b>${sgnFull(b.delta)}</b> · CVD <b>${cvdVal}</b>${dis ? ' · delta against candle' : ''}${cell}</div>` +
-      `<div class="l2">${S.doc.sym} session: ${sess} · buy ${(100 * buy / Math.max(1, buy + sell)).toFixed(1)}% · VA ${P0.val != null ? px(P0.val) + '–' + px(P0.vah + S.step - S.doc.tick) : '—'} · row ${px(S.step)} · ${sign} · descriptive, not a signal</div>`;
+    ? `<div><b>${letter}${hhmm(b.m)}</b> C <b>${px(b.c)}</b> · vol <b>${fmtK(b.vol)}</b> · Δ <b>${sgn(b.delta)}</b> · CVD <b>${sgn(b.cvd)}</b>${cell ? '' : dis ? ' · against candle' : ''}</div>` +
+      (cell ? `<div>${cell.replace(/^ · /, '')}</div>` : `<div class="l2">${tv ? tpoTxt : `Day: ${sess} · ${sign} · descriptive`}</div>`)
+    : `<div><b>${letter}${hhmm(b.m)}</b> O <b>${px(b.o)}</b> H <b>${px(b.h)}</b> L <b>${px(b.l)}</b> C <b>${px(b.c)}</b> · vol <b>${b.vol.toLocaleString('en-US')}</b> · Δ <b>${sgnFull(b.delta)}</b> · CVD <b>${cvdVal}</b>${dis ? ' · delta against candle' : ''}${cell}</div>` +
+      (tv ? `<div class="l2">${S.doc.sym} ${tpoTxt} · ${sess} · descriptive, not a signal</div>` : '') +
+      `<div class="l2"${tv ? ' hidden' : ''}>${S.doc.sym} session: ${sess} · buy ${(100 * buy / Math.max(1, buy + sell)).toFixed(1)}% · VA ${P0.val != null ? px(P0.val) + '–' + px(P0.vah + S.step - S.doc.tick) : '—'} · row ${px(S.step)} · ${sign} · descriptive, not a signal</div>`;
 }
 
 // ── controls ──
 function drawTfs() {
   const base = S.doc?.base ?? 1;
   if (P.tf < base) P.tf = base;
-  $('tfs').innerHTML = TFS.map(t => `<button class="btn" data-tf="${t}" aria-pressed="${P.tf === t}" ${t < base ? 'disabled title="This day is stored at ' + base + '-minute bars"' : ''}>${t < 60 ? t + 'm' : '1h'}</button>`).join('');
+  const tv = P.view === 'tpo';
+  $('tfs').innerHTML = TFS.map(t => `<button class="btn" data-tf="${t}" aria-pressed="${tv ? t === TPO_MIN : P.tf === t}" ${tv ? 'disabled title="TPO letters are 30 minutes"' : t < base ? 'disabled title="This day is stored at ' + base + '-minute bars"' : ''}>${t < 60 ? t + 'm' : '1h'}</button>`).join('');
 }
 function sync() {
   document.querySelectorAll('#views .btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === P.view));
   $('sess').value = P.sess; $('cells').value = P.cells; $('row').value = String(P.row); $('ratio').value = String(P.ratio);
-  $('pDelta').checked = P.delta; $('pCvd').checked = P.cvd; $('pProf').checked = P.profile;
+  $('pDelta').checked = P.delta; $('pCvd').checked = P.cvd; $('pProf').checked = P.profile; $('pKind').value = P.pkind; $('pIb').checked = P.ib;
 }
 function setView(v) {
   if (v === P.view) return;
   const l = L();
   // keep the bar under the crosshair, or the middle of the screen, in the middle
   const centre = S.cross ? (S.cross.x + S.x0) / S.colW : (l.pw / 2 + S.x0) / S.colW;
+  const wasTpo = P.view === 'tpo';
   P.view = v; savePrefs();
-  if (v === 'candle') { fit(); }
+  if (wasTpo || v === 'tpo') { S.memo.clear(); S.bars = barsFor(S.rt).bars; drawTfs(); }
+  if (v === 'candle' || v === 'tpo') { fit(); }
   else {
     S.colW = fpWidth();
     if (S.anchor === 'fit' && !S.cross) latest(); else { S.x0 = clampX(l, centre * S.colW - l.pw / 2); S.anchor = 'free'; }
@@ -498,7 +573,8 @@ document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e =
 $('cells').onchange = () => { P.cells = $('cells').value; savePrefs(); request(); };
 $('row').onchange = () => { P.row = +$('row').value; savePrefs(); rebuildKeepView(); };
 $('ratio').onchange = () => { P.ratio = +$('ratio').value; savePrefs(); rebuildKeepView(); };
-for (const [id, k] of [['pDelta', 'delta'], ['pCvd', 'cvd'], ['pProf', 'profile']]) $(id).onchange = () => { P[k] = $(id).checked; savePrefs(); if (S.anchor === 'fit') fit(); else if (S.anchor === 'latest') latest(); request(); };
+$('pKind').onchange = () => { P.pkind = $('pKind').value; savePrefs(); request(); };
+for (const [id, k] of [['pDelta', 'delta'], ['pCvd', 'cvd'], ['pProf', 'profile'], ['pIb', 'ib']]) $(id).onchange = () => { P[k] = $(id).checked; savePrefs(); if (S.anchor === 'fit') fit(); else if (S.anchor === 'latest') latest(); request(); };
 function rebuildKeepView() { S.memo.clear(); S.rt = P.row || S.rt; S.bars = barsFor(S.rt).bars; request(); }
 
 // ── moving around ──
@@ -574,6 +650,7 @@ addEventListener('keydown', e => {
   else if (k === 'l' || k === 'L') $('end').click();
   else if (k === 'c' || k === 'C') setView('candle');
   else if (k === 'p' || k === 'P') setView('fp');
+  else if (k === 't' || k === 'T') setView('tpo');
 });
 new ResizeObserver(() => { size(); if (S.bars.length) { if (S.anchor === 'fit') fit(); else if (S.anchor === 'latest') latest(); request(); } }).observe(wrap);
 
