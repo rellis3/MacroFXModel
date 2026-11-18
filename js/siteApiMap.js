@@ -408,6 +408,49 @@
           <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/macro-regime-fx/refresh</span><span class="am-desc">Forces a rebuild of the 8y regime study (~11 sequential FRED calls; runs daily on a timer)</span><span class="am-consumers">manual / scheduler</span></div>
           <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/econ-surprise/refresh</span><span class="am-desc">Merges this week's printed releases into the rolling econ_surprise_v1 store (also runs hourly on a timer)</span><span class="am-consumers">manual / scheduler</span></div>
         </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Asia session range</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/asia-today</span><span class="am-desc">Today's Asia-session range per instrument versus its 14-day ATR, cached 5 minutes</span><span class="am-consumers">atlas.html, js/feedCoverage.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">CME futures data</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/futures-ohlc</span><span class="am-desc">CME futures OHLC candles for ?pair= via Yahoo Finance proxy</span><span class="am-consumers">oi-dashboard-v2.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Call ledger</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ledger</span><span class="am-desc">Call-ledger summary, or for ?pair= the scored citation and recent rows</span><span class="am-consumers">analysis/lean_trade_rule_study.py, js/deskAccess.js, today.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/ledger/record</span><span class="am-desc">Upserts the day's desk calls (up to 60) into the call ledger</span><span class="am-consumers">today.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/ledger/score</span><span class="am-desc">Scores unscored ledger calls against what price did</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Currency strength</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ccy-strength</span><span class="am-desc">Live currency-strength readings from the hourly candle feed</span><span class="am-consumers">js/ccyStrengthCore.js, js/infoMap.js, js/infoMapDerived.js, js/liveLayerCore.js +7 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Daily digest &amp; range calls</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/digest</span><span class="am-desc">Builds the daily digest; dry-run preview unless send=1.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/range-calls</span><span class="am-desc">Scorecard of past range calls: expected versus realised ATR per instrument over the last N days.</span><span class="am-consumers">js/serviceFlags.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">End-of-day activity</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/eod-activity</span><span class="am-desc">End-of-day OANDA tick-count activity per instrument versus its 20-day median; cached 30 minutes</span><span class="am-consumers">today.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Live layer</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/live-layer</span><span class="am-desc">Combined live-layer snapshot served uncached for the dashboard</span><span class="am-consumers">js/dataFeeds.js, js/deskAlertRules.js, js/deskAlertRulesCore.js, js/infoMap.js +2 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Live tape speed</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/tape-speed</span><span class="am-desc">Tape-speed reading for ?symbol= (required); returns a miss reason on failure</span><span class="am-consumers">today.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Signal journal</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/signal-journal</span><span class="am-desc">Signal journal: today's level touches with odds and outcomes, open positions, closed trades and calibration of stated odds</span><span class="am-consumers">daily-plan.html, js/serviceFlags.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Spread extras</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/spread-extras</span><span class="am-desc">Cached extra spread-board data (extras computed by the spread-extras module); 503 if unavailable</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, js/terminal/insightData.js, js/terminal/spreadsCore.js +1 more</span></div>
+        </div>
       </div>
       <div class="am-cat" data-cat="python bots — plans, state &amp; alerts">
         <div class="am-cat-hd" style="color:#22c55e">Python Bots — Plans, State &amp; Alerts</div>
@@ -479,6 +522,115 @@
           <div class="am-row"><span class="am-method am-put">PUT</span><span class="am-path">/api/bot/status</span><span class="am-desc">Python bot reports runtime status back to dashboard (5-min TTL)</span><span class="am-consumers">bot/utils/state_reader.py</span></div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-history</span><span class="am-desc">Closed trade history across all bots for a date range</span><span class="am-consumers">bot-config.html, analysis/trade_analyzer.py</span></div>
           <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/trade-history/backfill</span><span class="am-desc">One-off backfill of externally-supplied closed trades</span><span class="am-consumers">backtestSystem/backfill_trade_history.py</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">AnalogML motif bot</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/analogml/motif-alert-backtest</span><span class="am-desc">Stored results of the AnalogML Telegram alert-funnel backtest</span><span class="am-consumers">AnalogML/motif_alert_backtest.py, js/serviceFlags.js, motif-alert-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/analogml/motif-state</span><span class="am-desc">AnalogML motif-tracker state JSON written by motif_track.py</span><span class="am-consumers">indexv2.html, js/bot-config.js, js/dataFeeds.js, today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/analogml/motif-trades</span><span class="am-desc">AnalogML motif-bot trades JSON written by motif_track.py</span><span class="am-consumers">bot-config.html, js/dataFeeds.js, scripts/verify_motif_live_vs_backtest.py</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/motif-bot/live-vs-backtest</span><span class="am-desc">Reconciles Motif Bot live trades against backtest over the last N days (default 14, max 90)</span><span class="am-consumers">js/bot-config.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">AnalogML paper tracking</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/analogml/paper-trades</span><span class="am-desc">AnalogML paper-trade log JSON written by paper_track.py</span><span class="am-consumers">bot-config.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/analogml/shape-state</span><span class="am-desc">AnalogML shape-matching state JSON written by paper_track.py</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Asia Fib Atlas</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/asia-fib-atlas/diag-frozen-split</span><span class="am-desc">Starts async diagnostic comparing frozen vs live split for a pair's rung checks; poll the job status</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/asia-fib-atlas/plan/:instrument</span><span class="am-desc">Live Asia Fib Atlas trade plan zones for one instrument, computed on request; optional margin, cost-ratio and stop-tighten overrides</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Bot Telegram test alerts</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/fib-atlas-bot-v2/telegram-test</span><span class="am-desc">Sends a test Telegram alert using the Fib Atlas v2 config.</span><span class="am-consumers">js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/fib-atlas-bot/telegram-test</span><span class="am-desc">Sends a test Telegram alert using the Fib Atlas bot config.</span><span class="am-consumers">js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/signal-copier/telegram-test</span><span class="am-desc">Sends a test Telegram alert using the Signal Copier config.</span><span class="am-consumers">js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/volatility-v2/telegram-test</span><span class="am-desc">Sends a test Telegram alert using the Vote Atlas v2 config's saved token and chat id.</span><span class="am-consumers">js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/volatility-v3/telegram-test</span><span class="am-desc">Sends a test Telegram alert using the Vote Atlas v3 config.</span><span class="am-consumers">js/bot-config.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Bot audit</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/bot-audit/backtest-curve</span><span class="am-desc">Reference backtest of a bot as a daily R series for the audit page; only the Fib Atlas bot is wired</span><span class="am-consumers">bot-audit.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/bot-audit/daily-reconciliation</span><span class="am-desc">Daily bot-vs-market reconciliation audit; single date or days=N trend from cached results.</span><span class="am-consumers">bot-audit.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Fib Atlas bot</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fib-atlas-bot-v2/trade-log</span><span class="am-desc">Fib Atlas v2 durable closed-trade log for a from/to date range.</span><span class="am-consumers">js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fib-atlas-bot/all-lines</span><span class="am-desc">Unfiltered per-rung view of both Fib Atlas ladder engines for the requested pairs.</span><span class="am-consumers">js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/fib-atlas-bot/refresh-now</span><span class="am-desc">Manually starts Fib Atlas ladder rebuild jobs for the bot's enabled pairs.</span><span class="am-consumers">js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fib-atlas-bot/rung-diagnostic</span><span class="am-desc">Read-only aggregation of the Fib Atlas bot decision log by status, pair and rung cluster.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fib-atlas-bot/staleness</span><span class="am-desc">Staleness report of the Fib Atlas ladder plans.</span><span class="am-consumers">js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fib-atlas-bot/trade-log</span><span class="am-desc">Fib Atlas bot durable closed-trade log for a from/to date range.</span><span class="am-consumers">js/bot-config.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Forecast path alerts</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-path/alert/config</span><span class="am-desc">Forecast-path surprise-alert config with Telegram credentials masked</span><span class="am-consumers">forecast-path.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/forecast-path/alert/config</span><span class="am-desc">Saves forecast-path surprise-alert config (credentials, thresholds, pairs), keeping existing masked credentials</span><span class="am-consumers">forecast-path.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/forecast-path/alert/scan</span><span class="am-desc">Manually scans for stretched or quiet pairs and sends alerts; dry=1 previews without sending</span><span class="am-consumers">forecast-path.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/forecast-path/alert/test</span><span class="am-desc">Sends a test Telegram ping to verify forecast-path alert credentials</span><span class="am-consumers">forecast-path.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Hedge audit log</div>
+          <div class="am-row"><span class="am-method am-get">PATCH</span><span class="am-path">/api/hedge-audit/entries/:ticket</span><span class="am-desc">Records actual hedge close data (prices, closed_at) on an existing hedge-audit entry by ticket</span><span class="am-consumers">bot-config.html, bot/hedge_bot.py, bot/position_hedge_bot.py</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Level Atlas refresh</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/level-atlas/refresh-now</span><span class="am-desc">Manually triggers a Level Atlas rebuild for enabled pairs (bot=v3 uses v3 pairs).</span><span class="am-consumers">js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/level-atlas/staleness</span><span class="am-desc">Staleness report of the Level Atlas book rebuild.</span><span class="am-consumers">js/bot-config.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Monday Fib Atlas</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/monday-fib-atlas/book/:instrument</span><span class="am-desc">Full stored Monday Fib Atlas book (every dimension and bucket) for an instrument</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/monday-fib-atlas/diag-frozen-split</span><span class="am-desc">Starts async diagnostic comparing frozen vs live split for Monday Fib Atlas rung checks; poll the job status</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/monday-fib-atlas/plan/:instrument</span><span class="am-desc">Live Monday Fib Atlas trade plan zones for one instrument, computed on request; optional margin overrides</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">OI bots</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-bot/cboe-shadow</span><span class="am-desc">Shadow comparison of the Cboe-sourced OI plan against the live CME plan over the last N days.</span><span class="am-consumers">js/serviceFlags.js, oi-zones.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-bot/hold-calibration</span><span class="am-desc">OI bot hold-time calibration from KV, computed on demand if missing.</span><span class="am-consumers">oi-dashboard.html, oi-zones.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-bot/size-calibration</span><span class="am-desc">OI bot position-size calibration from KV, computed on demand if missing.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-bot/trades-export</span><span class="am-desc">OI bot trades as a plain-text export for Pine; bot=oi, vol or both, src=cboe for the Cboe plan.</span><span class="am-consumers">bot-config.html, js/bot-config.js, oi-zones.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-bots/review</span><span class="am-desc">Review of the three OI bots: executor health, config sanity, plan and forward trade record.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-conf-bot/audit</span><span class="am-desc">OI-Conf audit per instrument: forecast lines, OI levels, coincidences, armed zones and open positions.</span><span class="am-consumers">bot-config.html, js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-conf-bot/trades-export</span><span class="am-desc">OI-Conf bot plan as a plain-text trades export.</span><span class="am-consumers">js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-conf-bot/zones</span><span class="am-desc">OI-Conf bot's current zone plan from KV.</span><span class="am-consumers">bot-config.html, js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/oi-conf-bot/zones/refresh</span><span class="am-desc">Rebuilds the OI-Conf bot zone plan.</span><span class="am-consumers">bot-config.html, js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-ripple/log</span><span class="am-desc">OI Ripple forward log: dates accumulated and plan rows per date.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/oi-ripple/refresh</span><span class="am-desc">Rebuilds the OI Ripple shadow plan.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-ripple/zones</span><span class="am-desc">OI Ripple shadow plan (read-only, no bot trades it).</span><span class="am-consumers">js/feedCoverage.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-vol-bot/audit</span><span class="am-desc">Level audit comparing OI bot and OI-Vol bot plans: shared versus single-bot levels with reasons.</span><span class="am-consumers">bot-config.html, js/bot-config.js, oi_vol_bot/oi_vol_bot.py</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-vol-bot/trades-export</span><span class="am-desc">OI-Vol bot plan as a plain-text trades export.</span><span class="am-consumers">bot-config.html, js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-vol-bot/zones</span><span class="am-desc">OI-Vol bot's current zone plan from KV.</span><span class="am-consumers">bot-config.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/oi-vol-bot/zones/refresh</span><span class="am-desc">Rebuilds the OI-Vol bot zone plan.</span><span class="am-consumers">bot-config.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Signal Copier</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/signal-copier/trade-log</span><span class="am-desc">Signal Copier closed-trade log for a date range, each joined to the signal it copied.</span><span class="am-consumers">js/bot-config.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Support/resistance zones</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/sr-zones</span><span class="am-desc">JSON support and resistance zones with notes for one pair or all pairs</span><span class="am-consumers">js/bot-config.js, oi-dashboard-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/sr-zones/export</span><span class="am-desc">Plain-text S/R zones export for a pair, full or core mode, for pasting into other tools</span><span class="am-consumers">js/bot-config.js, oi-dashboard-v2.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Telegram alerts</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/telegram/master</span><span class="am-desc">Reads the master kill switch state for all Telegram messages</span><span class="am-consumers">js/alerts.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/telegram/master</span><span class="am-desc">Sets the master Telegram kill switch on or off, stored in KV; takes effect immediately</span><span class="am-consumers">js/alerts.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/telegram/senders</span><span class="am-desc">Registry of Telegram senders with on/off state and master switch, for the Alerts modal</span><span class="am-consumers">js/alerts.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Trade plan</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-plan</span><span class="am-desc">Today's display-only trade plan rows in R multiples (stored record or live preview) plus history; not a trading signal</span><span class="am-consumers">js/serviceFlags.js, trade-plan.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/trade-plan/tick</span><span class="am-desc">Manually triggers the trade-plan tick to build and store the plan</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Vol-forecast level alerts</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/level-alerts/preview</span><span class="am-desc">Previews the vol-forecast level-alert Telegram text without needing Telegram configured</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Vote Atlas bot</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/level-atlas/bot-enabled</span><span class="am-desc">Which of the given instruments are enabled in the Vote Atlas v2 bot config.</span><span class="am-consumers">vol-forecast-v2.html, vol-forecast-v3.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/level-atlas/vote-state/:instrument</span><span class="am-desc">Combined per-pair Vote Atlas state for today: config, status and decision log for the drawer Systems tab.</span><span class="am-consumers">today.html</span></div>
         </div>
       </div>
       <div class="am-cat" data-cat="vol-forecast platform — archive, alerts &amp; exports">
@@ -565,6 +717,59 @@
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/rv-har</span><span class="am-desc">Realized-vol HAR σ (5-min path) per index, cached daily</span><span class="am-consumers">none found</span></div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/cog-hv</span><span class="am-desc">Close-to-close HV σ reproducing COG’s method per index</span><span class="am-consumers">vol-forecast-v2.html</span></div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/cog-window-review</span><span class="am-desc">Compares cc-HV lookback windows vs stored COG vol</span><span class="am-consumers">vol-forecast-v2.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Daily regime history</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hmm-daily-history</span><span class="am-desc">Per-market daily model state history, one character per day for the last 30 days, from the snapshot store</span><span class="am-consumers">atlas.html, js/dataFeeds.js, js/infoMap.js, js/infoMapDerived.js +3 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Forecast ladder exports</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/iv-ladder/export</span><span class="am-desc">Plain-text IV ladder export built from the latest forecast.</span><span class="am-consumers">vol-forecast-v2.html, vol-forecast-v3.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/ivadj-ladder/export</span><span class="am-desc">Plain-text IV-adjusted daily ladder export built from the latest forecast.</span><span class="am-consumers">vol-forecast-v3.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/ivadj-ladder/json</span><span class="am-desc">IV-adjusted daily ladders as JSON for the v3 chart; instruments without usable IV are absent.</span><span class="am-consumers">vol-forecast-v3.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/ladder/export</span><span class="am-desc">Plain-text forecast ladder export for daily, weekly, monthly or weekly_rev horizon.</span><span class="am-consumers">js/bot-config.js, vol-forecast-v2.html, vol-forecast-v3.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/persist-ladder/export</span><span class="am-desc">Plain-text persistence-adjusted ladder export built from the latest forecast.</span><span class="am-consumers">vol-forecast-v3.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/persist-ladder/json</span><span class="am-desc">Persistence-adjusted forecast ladders as JSON.</span><span class="am-consumers">daily-plan.html, decision-lab.html, js/hedgingPlan.js, js/howMuch.js +3 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Forecast path cone</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-path/forward</span><span class="am-desc">Forward-tracking metadata and summary statistics for forecast cones</span><span class="am-consumers">forecast-path.html, js/deskApp.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/forecast-path/forward/refresh</span><span class="am-desc">Refreshes the forward-tracking log of forecast cones, for one pair or all</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-path/trend-dir</span><span class="am-desc">Trend direction for one pair (pair=) used by the forecast-path cone, cached</span><span class="am-consumers">today.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Forecast scorecard &amp; audit</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-audit</span><span class="am-desc">Latest forecast audit, built on first call if the scheduled tick has not run yet</span><span class="am-consumers">js/forecastAuditView.js, js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-audit/backtest</span><span class="am-desc">Status or result of a forecast-audit backtest by id; without id lists stored runs and options</span><span class="am-consumers">js/forecastAuditView.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/forecast-audit/backtest</span><span class="am-desc">Starts an async forecast-audit backtest replay over chosen sets and instruments using OANDA history; poll with GET</span><span class="am-consumers">js/forecastAuditView.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-audit/history</span><span class="am-desc">Rolling-60 audit snapshot per audited session plus the drift alarm log</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/forecast-audit/telegram</span><span class="am-desc">Sets the opt-in flag for Telegram forecast-drift messages (default off)</span><span class="am-consumers">js/forecastAuditView.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-scorecard</span><span class="am-desc">Rolled-up forward record of the vol forecast scorecard with verdicts; raw=1 adds per-day rows</span><span class="am-consumers">daily-plan.html, js/serviceFlags.js, live-range.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Forge vol-forecast comparison</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/compare-forge/:date</span><span class="am-desc">Forge walk-forward out-of-sample vol forecasts for one date, for comparison with the live engine</span><span class="am-consumers">forecast-range-timeline.html, forge/export_vol_compare.py, vol-forecast-v2.html, vol-forecast-v3.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/compare-forge/range</span><span class="am-desc">Forge comparison for one pair across a date range (pair, from, to), day by day</span><span class="am-consumers">forecast-range-timeline.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Shadow evaluations</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/har-shadow</span><span class="am-desc">HAR volatility-model shadow log with scorecard and travel score; indices=1 includes provisional index days</span><span class="am-consumers">forecaster.html, har-shadow.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ips-shadow</span><span class="am-desc">Logged intraday-probability shadow checkpoints and outcomes for a London date; interim, read-only</span><span class="am-consumers">ips-shadow.html, js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/stress-shadow</span><span class="am-desc">Stress-model shadow log and scorecard, cached and rebuilt periodically</span><span class="am-consumers">js/feedCoverage.js, js/serviceFlags.js, js/volStateVector.js, today.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Vol state</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-state</span><span class="am-desc">Current volatility-state vectors per symbol; optional sym narrows to one</span><span class="am-consumers">js/volLayerResearch.js, primary-signal.html, vol-layer-system.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Vol-forecast intelligence</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/intelligence</span><span class="am-desc">Cached per-instrument vol-forecast intelligence summary built from the latest forecast</span><span class="am-consumers">js/dataFeeds.js, js/infoMap.js, js/infoMapDerived.js, js/volStateEngine.js +3 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Vol-forecast ladder &amp; level exports</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/level-atlas/vote-ladder/export</span><span class="am-desc">Exports the Level Atlas vote-ladder levels per reference-engine instrument, separate from the vol-forecast ladder export</span><span class="am-consumers">js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/ladder</span><span class="am-desc">JSON view of the latest daily, weekly and monthly vol-forecast ladders per instrument</span><span class="am-consumers">js/bot-config.js, js/ladderPathStats.js, js/siteApiMap.js, vol-forecast-v2.html +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/ladder/frozen</span><span class="am-desc">Frozen period-start ladder for the chart's weekly or monthly modes (kind=weekly|monthly)</span><span class="am-consumers">js/ladderPathStats.js, vol-forecast-v2.html, vol-forecast-v3.html</span></div>
         </div>
       </div>
       <div class="am-cat" data-cat="vol-level research &amp; falsification harnesses">
@@ -1000,6 +1205,959 @@
           <div class="am-row"><span class="am-method am-put">PUT</span><span class="am-path">/api/telegram/config</span><span class="am-desc">Saves Telegram bot token + chat ID to KV</span><span class="am-consumers">js/alerts.js</span></div>
           <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/telegram</span><span class="am-desc">Sends a message via the configured Telegram bot</span><span class="am-consumers">js/alerts.js</span></div>
           <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/telegram/test-server</span><span class="am-desc">Sends a test Telegram message from the server</span><span class="am-consumers">js/alerts.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">AI config &amp; spend</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/ai-ab</span><span class="am-desc">Runs an A/B comparison of a task's last prompt against another provider</span><span class="am-consumers">atlas.html, bot-config.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ai-ab/ready</span><span class="am-desc">Per AI task, whether a last call is held and ready for an A/B run</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ai-config</span><span class="am-desc">Which model runs each AI task, provider settings and token usage; cost only where prices are configured</span><span class="am-consumers">atlas.html, bot-config.html, js/feedCoverage.js, today.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/ai-config</span><span class="am-desc">Changes which model and provider run each AI task; login and same-origin required</span><span class="am-consumers">atlas.html, bot-config.html, js/feedCoverage.js, today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ai-jobs</span><span class="am-desc">Lists switchable AI jobs with schedule, pause state and last run time</span><span class="am-consumers">bot-config.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/ai-jobs</span><span class="am-desc">Pauses or resumes one AI job by id</span><span class="am-consumers">bot-config.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ai-models</span><span class="am-desc">Lists available models for an AI provider; no key is returned</span><span class="am-consumers">bot-config.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ai-spend</span><span class="am-desc">Per-day model call spend summaries with daily cap, alert settings and list prices; days param</span><span class="am-consumers">bot-config.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/ai-spend/alert</span><span class="am-desc">Sets the Telegram spend-alert step in pounds (0 = no alerts)</span><span class="am-consumers">bot-config.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ai-spend/anthropic</span><span class="am-desc">Anthropic's own daily cost figures via Admin API key, cached; reports not-configured without a key</span><span class="am-consumers">bot-config.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/ai-spend/cap</span><span class="am-desc">Sets the daily Anthropic spend cap in USD (0 = off), stored in KV</span><span class="am-consumers">bot-config.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Agents</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/agents</span><span class="am-desc">Agents board: AI task and job status with model configuration for the agents page</span><span class="am-consumers">js/agentRegistry.js, js/agentsApi.js, js/agentsTab.js, js/deskAccess.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/agents/toggle</span><span class="am-desc">Toggles an agent or AI job on or off; login and same-origin required</span><span class="am-consumers">js/agentsTab.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Data archive</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/data-archive/run</span><span class="am-desc">Runs the daily data archive job now; auth required</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/data-archive/status</span><span class="am-desc">Status of the R2 data archive: archived days per source and stored series ids</span><span class="am-consumers">js/dataFeeds.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Data health &amp; catalogue</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/data-catalogue</span><span class="am-desc">Data Map catalogue of every feed, where it is used and how fresh; summary=1 returns only the count.</span><span class="am-consumers">js/commandHub.js, js/dataMap.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/data-health</span><span class="am-desc">Data-feed health report with freshness per feed, cached for five minutes.</span><span class="am-consumers">js/dataFeeds.js, js/dataMap.js, roe/cli.py, roe/inputs.py +1 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Egress meter &amp; audit</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/egress-audit</span><span class="am-desc">Ranked outbound bytes by destination since boot; limit param</span><span class="am-consumers">js/deskAccess.js, js/egressMeter.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/x/:pair</span><span class="am-desc">Not a real route: comment example of an Express route template used to label outbound-byte metering</span><span class="am-consumers">js/egressMeter.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Execution costs</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/spread-profile</span><span class="am-desc">Spread profile report from the built-in per-instrument spread table.</span><span class="am-consumers">analysis/features/build_features.py, daily-plan.html, js/dataFeeds.js, js/serviceFlags.js +1 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Footprint order flow</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/footprint/day</span><span class="am-desc">Returns one symbol's footprint data for a given day (sym, day=YYYY-MM-DD)</span><span class="am-consumers">footprint.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/footprint/days</span><span class="am-desc">Lists available footprint days per symbol from the committed index, R2 and live data</span><span class="am-consumers">footprint.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/footprint/push</span><span class="am-desc">Receives a footprint (order-flow) document pushed from the laptop; requires X-Auth-Token when a secret is set</span><span class="am-consumers">js/footprintCore.js, scripts/footprint/build_footprint.py, scripts/footprint/footprint_capture.py</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">OANDA history fetch</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oanda-fetch/instruments</span><span class="am-desc">Lists instruments available for OANDA history fetch</span><span class="am-consumers">bot-config.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/oanda-fetch/run</span><span class="am-desc">Starts an async OANDA history fetch job; one at a time, poll status by jobId</span><span class="am-consumers">bot-config.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oanda-fetch/status/:jobId</span><span class="am-desc">Status and log of an OANDA fetch job</span><span class="am-consumers">bot-config.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">OANDA order-book history</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oanda-book/history</span><span class="am-desc">Stored daily OANDA order-book history, optionally for one ?instrument</span><span class="am-consumers">desk-terminal.html, js/dataFeeds.js, js/deskAccess.js, js/feedCoverage.js +5 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/oanda-book/history/import</span><span class="am-desc">Backfills daily order-book rows for one instrument; requires X-Auth-Token when a write secret is set</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/oanda-book/history/record</span><span class="am-desc">Records today's OANDA order-book snapshot into the history store</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">VIX capture</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vix-capture/run</span><span class="am-desc">Manually triggers a VIX M1 capture tick, storing data to R2</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+      </div>
+      <div class="am-cat" data-cat="desk &amp; terminal">
+        <div class="am-cat-hd" style="color:#38bdf8">Desk &amp; Terminal</div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Analyst scorecard</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/analyst-scorecard</span><span class="am-desc">Running per-analyst scorecard (hit rate, calibration, edge); date returns one day in full</span><span class="am-consumers">desk-terminal.html, js/dataFeeds.js, js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/analyst-scorecard/backfill</span><span class="am-desc">Background backfill scoring every stored desk day with a closed window; force and refetch options</span><span class="am-consumers">js/dataFeeds.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Chain read</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/chain-live</span><span class="am-desc">Live OANDA-based chain read of the cross-asset chain, anchored to now or the session open</span><span class="am-consumers">js/feedCoverage.js, js/macroChain.js, js/terminal/chainBoard.js, js/terminal/terminalTabs.js +2 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/chain-read</span><span class="am-desc">Reads the stored shared chain read for a window without generating</span><span class="am-consumers">atlas.html, js/deskSharedReads.js, js/feedCoverage.js, js/terminal/chainBoard.js +2 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/chain-read</span><span class="am-desc">Generates the shared daily chain read per window (1, 5, 20, live); first press of the London day writes it</span><span class="am-consumers">atlas.html, js/deskSharedReads.js, js/feedCoverage.js, js/terminal/chainBoard.js +2 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Correlation terminal</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/corr-terminal</span><span class="am-desc">Correlation terminal panel, or a build-in-progress status if not yet computed</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, js/terminal/corrMath.js, js/terminal/corrView.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Daily snapshot</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/daily-snapshot</span><span class="am-desc">Daily snapshot store: last N days of recorded desk state</span><span class="am-consumers">js/dataFeeds.js, js/serviceFlags.js, today.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/daily-snapshot/plan</span><span class="am-desc">Stores the page's forward plan for the day in the daily snapshot; first post of the day wins</span><span class="am-consumers">today.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/daily-snapshot/tick</span><span class="am-desc">Manually triggers the daily snapshot tick</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk Office</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-journal</span><span class="am-desc">Desk Office You-tab journal of recent days, cached 10 minutes; days and refresh params</span><span class="am-consumers">desk-office.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk Pack</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-pack</span><span class="am-desc">Latest or dated Desk Pack of analyst evidence feeds; optional skill slice or summary-only</span><span class="am-consumers">desk-run.html, js/serviceFlags.js, roe/cli.py, roe/inputs.py +2 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-pack/build</span><span class="am-desc">Starts an async Desk Pack build (1-3 minutes); poll /api/desk-pack/status</span><span class="am-consumers">js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-pack/feeds</span><span class="am-desc">Desk Pack skills, universe and expanded feed definitions</span><span class="am-consumers">desk-run.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-pack/index</span><span class="am-desc">Index of saved Desk Pack days</span><span class="am-consumers">js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-pack/status</span><span class="am-desc">Desk Pack build job state and latest pack summary</span><span class="am-consumers">js/serviceFlags.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk Run</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-run</span><span class="am-desc">Today's or a saved day's desk run; summary=1 returns headlines and ratings only</span><span class="am-consumers">atlas.html, desk-office.html, desk-run.html, desk-terminal.html +10 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-run</span><span class="am-desc">Starts async desk run of model analysts and debate (quick or full mode); poll /api/desk-run/status</span><span class="am-consumers">atlas.html, desk-office.html, desk-run.html, desk-terminal.html +10 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-run/index</span><span class="am-desc">Index of saved desk run days</span><span class="am-consumers">desk-run.html, js/deskAccess.js, js/deskViewerView.js, js/serviceFlags.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-run/roles</span><span class="am-desc">Desk analyst roles with prompt sizes</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-run/status</span><span class="am-desc">Current desk run job status</span><span class="am-consumers">desk-run.html, js/serviceFlags.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk Score</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-memory</span><span class="am-desc">Last five days of desk reflections for the morning evidence clerk</span><span class="am-consumers">desk-office.html, js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-score</span><span class="am-desc">A day's scored desk row with every card; defaults to latest scored day</span><span class="am-consumers">atlas.html, desk-office.html, desk-terminal.html, js/deskAccess.js +4 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-score/record</span><span class="am-desc">Running interim record over all scored desk days with attribution</span><span class="am-consumers">atlas.html, desk-office.html, desk-terminal.html, js/newsletterDesk.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-score/run</span><span class="am-desc">Scores a desk day in the background once its 21:00 London window has closed</span><span class="am-consumers">atlas.html, js/serviceFlags.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk Snapshots</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-snapshots</span><span class="am-desc">Time series of desk snapshot points over a window, selectable fields, step and max points</span><span class="am-consumers">js/dataFeeds.js, js/deskAccess.js, js/deskViewerView.js, js/infoMap.js +8 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-snapshots/capture</span><span class="am-desc">Owner-only: captures a snapshot point now, or the day's full snapshot with full=1</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-snapshots/full</span><span class="am-desc">One London day's full desk snapshot, optionally with named feeds</span><span class="am-consumers">js/dataFeeds.js, js/deskViewerView.js, js/serviceFlags.js, js/terminal/asofClock.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-snapshots/index</span><span class="am-desc">Index of available desk snapshot days</span><span class="am-consumers">js/dataFeeds.js, js/terminal/asofClock.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-snapshots/status</span><span class="am-desc">Desk snapshot capture status</span><span class="am-consumers">js/dataFeeds.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk Terminal AI reads</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-ask</span><span class="am-desc">Owner-only: answers a question using only the desk's analyst reports, evening reviews and Evidence Book; capped at 60 a day</span><span class="am-consumers">desk-terminal.html, js/deskSharedReads.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-asset-analyse</span><span class="am-desc">Newest shared single-market analysis for an instrument (today's, else yesterday's) without generating a new one</span><span class="am-consumers">js/deskAccess.js, js/deskSharedReads.js, js/terminal/assetAnalysisView.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-asset-analyse</span><span class="am-desc">Runs an on-demand analysis of one market (inst) and stores it as the day's shared read; force and audience optional</span><span class="am-consumers">js/deskAccess.js, js/deskSharedReads.js, js/terminal/assetAnalysisView.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-shared-reads</span><span class="am-desc">Lists which shared reads exist, who may generate them and their current status</span><span class="am-consumers">js/deskAccess.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk Terminal access</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-access</span><span class="am-desc">Surface ids the current session may see; owners also get saved switches</span><span class="am-consumers">desk-admin.html, js/deskAccess.js, js/infoMap.js, js/infoMapDerived.js +4 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-access</span><span class="am-desc">Saves Desk Terminal visibility switches per surface; owner only</span><span class="am-consumers">desk-admin.html, js/deskAccess.js, js/infoMap.js, js/infoMapDerived.js +4 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-session</span><span class="am-desc">Current session role (owner, viewer or none) and whether desk login and auth are enabled</span><span class="am-consumers">desk-admin.html, js/deskAccess.js, js/terminal/access.js, js/terminal/asofBoot.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk Terminal alert rules</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-alert-rules</span><span class="am-desc">Reads Desk Terminal alert rules and how many were sent today</span><span class="am-consumers">js/deskAccess.js, js/infoMap.js, js/infoMapDerived.js, js/serviceFlags.js +2 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-alert-rules</span><span class="am-desc">Adds, deletes, mutes, unmutes or renames a Desk Terminal alert rule</span><span class="am-consumers">js/deskAccess.js, js/infoMap.js, js/infoMapDerived.js, js/serviceFlags.js +2 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk Terminal data</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-bars</span><span class="am-desc">OHLC bars for a desk instrument by timeframe and day span, cached</span><span class="am-consumers">desk-terminal.html, js/asofCore.js, js/deskAccess.js, js/newsletterTermV2.js +6 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/terminal/stress-snap</span><span class="am-desc">Records and returns the world-stress snapshot against the previous one for the terminal's what-changed view</span><span class="am-consumers">js/terminal/terminalTabs.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk Terminal history</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-history</span><span class="am-desc">One compact row per desk day (currency ranking, biases, tone, score) for the Desk Terminal analytics; days param</span><span class="am-consumers">desk-terminal.html, js/deskAccess.js, js/deskViewerView.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk Terminal layouts</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-layouts</span><span class="am-desc">Shared Desk Terminal panel layouts per tab, readable by desk login.</span><span class="am-consumers">js/terminal/layoutView.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-layouts</span><span class="am-desc">Owner-only: saves a validated shared Desk Terminal panel layout for a tab.</span><span class="am-consumers">js/terminal/layoutView.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk Terminal monitors</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-monitors</span><span class="am-desc">Reads the Desk Terminal monitor watch-lists</span><span class="am-consumers">js/deskAccess.js, js/infoMap.js, js/infoMapDerived.js, js/terminal/monitorState.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-monitors</span><span class="am-desc">Saves or deletes a monitor watch-list; owner only</span><span class="am-consumers">js/deskAccess.js, js/infoMap.js, js/infoMapDerived.js, js/terminal/monitorState.js +1 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk Terminal news searches</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-news-searches</span><span class="am-desc">Reads saved Desk Terminal news searches</span><span class="am-consumers">js/deskAccess.js, js/infoMap.js, js/infoMapDerived.js, js/terminal/newsSearchView.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-news-searches</span><span class="am-desc">Saves or deletes a saved news search; owner only</span><span class="am-consumers">js/deskAccess.js, js/infoMap.js, js/infoMapDerived.js, js/terminal/newsSearchView.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk Terminal quality</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-quality</span><span class="am-desc">Data quality officer's read of the day's desk data pack, plus post-run results</span><span class="am-consumers">desk-office.html, desk-terminal.html, js/deskAccess.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk Terminal workspaces</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-workspaces</span><span class="am-desc">Reads the Desk Terminal saved workspaces</span><span class="am-consumers">js/deskAccess.js, js/infoMap.js, js/infoMapDerived.js, js/terminal/workspaceState.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-workspaces</span><span class="am-desc">Saves or deletes Desk Terminal workspaces</span><span class="am-consumers">js/deskAccess.js, js/infoMap.js, js/infoMapDerived.js, js/terminal/workspaceState.js +1 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk alerts</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-alerts</span><span class="am-desc">Desk alert log (sent and held), watched states and last check; n limits rows</span><span class="am-consumers">js/deskAccess.js, js/infoMap.js, js/infoMapDerived.js, js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-alerts/run</span><span class="am-desc">Manually runs the desk-alerts check now; owner only</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk bias process</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/bias-engine</span><span class="am-desc">Bias-engine record for a date, or the index of stored days.</span><span class="am-consumers">desk-terminal.html, js/deskSnapshot.js, js/deskViewerView.js, js/serviceFlags.js +4 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-bias-process</span><span class="am-desc">Desk bias process records for a date, or the index of stored days (dump=1 for all).</span><span class="am-consumers">js/deskAccess.js, js/deskSnapshot.js, js/deskViewerView.js, js/serviceFlags.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-bias-process/h2h</span><span class="am-desc">Head-to-head comparison of desk bias process records, cached 30 minutes.</span><span class="am-consumers">js/deskAccess.js, js/serviceFlags.js, js/terminal/deskBiasProcessView.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/direction-ledger</span><span class="am-desc">Direction-ledger issues archive from R2; sameday=1 returns the same-day bias score route.</span><span class="am-consumers">atlas.html, js/deskEvidence.js, js/feedCoverage.js, js/serviceFlags.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fundabias-log</span><span class="am-desc">Fundamental-bias log rows for a date, today plus the index, or all days with all=1.</span><span class="am-consumers">js/biasForecasters.js, js/deskSnapshot.js, js/storeRegistry.js, js/terminal/deskBiasProcessView.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/fundabias-log</span><span class="am-desc">Owner-only: logs today's fundamental bias call for a market.</span><span class="am-consumers">js/biasForecasters.js, js/deskSnapshot.js, js/storeRegistry.js, js/terminal/deskBiasProcessView.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk daily editions</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-claims</span><span class="am-desc">The claims check of the desk edition for a date</span><span class="am-consumers">atlas.html, desk-office.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-claims/run</span><span class="am-desc">Starts the claims check of the day's desk edition (async, 202)</span><span class="am-consumers">desk-office.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-cos/send</span><span class="am-desc">Sends the morning or evening desk note now and returns its text</span><span class="am-consumers">js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-dayfc</span><span class="am-desc">The day's desk forecast and, once scored, how it did, with the running record</span><span class="am-consumers">desk-office.html, desk-terminal.html, js/deskAccess.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-dayfc/run</span><span class="am-desc">Runs the desk day forecast for today (London date) now</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-season</span><span class="am-desc">Seasonality stats for a desk instrument (inst)</span><span class="am-consumers">desk-terminal.html, js/deskAccess.js, js/terminal/terminalTabs.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-volcheck</span><span class="am-desc">Vol check of a desk instrument against its realised ranges (inst)</span><span class="am-consumers">desk-terminal.html, js/deskAccess.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-weekly</span><span class="am-desc">Latest weekly view from the desk strategist (also the Desk Pack feed)</span><span class="am-consumers">atlas.html, desk-terminal.html, js/deskAccess.js, js/deskViewerView.js +3 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-weekly/run</span><span class="am-desc">Starts the desk strategist writing the weekly view (async, 202)</span><span class="am-consumers">atlas.html, js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/pair-select</span><span class="am-desc">How the morning's currency view is best expressed as a pair, for a date</span><span class="am-consumers">desk-terminal.html, js/deskAccess.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-watch</span><span class="am-desc">Today's trade-watch plan, each card's status and the events so far</span><span class="am-consumers">desk-terminal.html, js/deskAccess.js, js/serviceFlags.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk news &amp; channel</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-news</span><span class="am-desc">The desk news wire, filtered by hours, tier and currency; pack=1 gives the Desk Pack feed</span><span class="am-consumers">atlas.html, desk-terminal.html, js/dataFeeds.js, js/deskAccess.js +7 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-news/record</span><span class="am-desc">Track record of tier-1/2 headlines followed by the move the read implied</span><span class="am-consumers">desk-terminal.html, js/dataFeeds.js, js/infoMap.js, js/infoMapDerived.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-news/run</span><span class="am-desc">Runs one desk-news ingest and read cycle now</span><span class="am-consumers">js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-delete">DELETE</span><span class="am-path">/api/news-channel</span><span class="am-desc">Disconnects and removes the news-channel configuration</span><span class="am-consumers">js/terminal/newsChannelView.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/news-channel</span><span class="am-desc">Returns the news-channel (Telegram) configuration, last send time, last error and master switch</span><span class="am-consumers">js/terminal/newsChannelView.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/news-channel</span><span class="am-desc">Validates and saves the news-channel configuration, read back from the store</span><span class="am-consumers">js/terminal/newsChannelView.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/news-channel/preview</span><span class="am-desc">Preview of the HTML message members would receive for a headline</span><span class="am-consumers">js/terminal/newsChannelView.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/news-channel/test</span><span class="am-desc">Sends a real note marked TEST to the news channel from the latest headline or a sample</span><span class="am-consumers">js/terminal/newsChannelView.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk paper trades</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-paper</span><span class="am-desc">A day's desk paper trades, stored after the day or live and cached before</span><span class="am-consumers">desk-run.html, js/deskAccess.js, js/terminal/terminalTabs.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-paper/backfill</span><span class="am-desc">Background backfill of paper trades for past days with a book; force or date options</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-paper/history</span><span class="am-desc">Per-day paper-trade summaries and running total</span><span class="am-consumers">desk-run.html, js/terminal/terminalTabs.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk risk</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/book-risk</span><span class="am-desc">Book factor exposure, VaR/ES, concentration, top contributors and standard-scenario P&amp;L; betas=1 adds betas</span><span class="am-consumers">desk-terminal.html, js/dataFeeds.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-risk</span><span class="am-desc">Risk readings for the day's desk book from OANDA daily bars, cached per book</span><span class="am-consumers">desk-office.html, desk-terminal.html, js/deskAccess.js, js/deskViewerView.js +3 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/scenario</span><span class="am-desc">Runs one custom shock scenario on the day's book or supplied cards</span><span class="am-consumers">desk-terminal.html, js/dataFeeds.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/scenarios</span><span class="am-desc">Standard and historical-replay scenarios applied to the day's book in full</span><span class="am-consumers">desk-terminal.html, js/dataFeeds.js, js/terminal/bookIntel.js, js/terminal/bookPanels.js +1 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk session updates</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-update</span><span class="am-desc">The day's session updates (London, NY) and the live view of the book with updates applied</span><span class="am-consumers">desk-office.html, desk-terminal.html, js/deskAccess.js, js/deskViewerView.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-update/run</span><span class="am-desc">Starts a London or NY session update now (slot param) once its slot has opened; returns 202 job</span><span class="am-consumers">desk-office.html, js/serviceFlags.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Desk watch</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/claim-watch</span><span class="am-desc">Setup Watch readings and forward record for the Crown claim register, cut from the desk watch store</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-watch</span><span class="am-desc">Desk early-warning states, gauges and recent log from the desk watch store</span><span class="am-consumers">atlas.html, evidence.html, js/atlasPosition.js, js/deskAccess.js +6 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-watch/tick</span><span class="am-desc">Manually runs the desk watch tick; silent=1 suppresses alerts</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">EOD review</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/eod-review</span><span class="am-desc">Last stored end-of-day review regardless of age, with staleness flag and earlier hooks</span><span class="am-consumers">atlas.html, js/dataFeeds.js, js/feedCoverage.js, today.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/eod-review</span><span class="am-desc">Generates and stores an AI end-of-day review from a posted market snapshot</span><span class="am-consumers">atlas.html, js/dataFeeds.js, js/feedCoverage.js, today.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Global read</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/global-read</span><span class="am-desc">Latest global market read, built if absent; refresh=1 forces a rebuild</span><span class="am-consumers">atlas.html, js/atlasPosition.js, js/directionRead.js, js/feedCoverage.js +7 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/global-read/record</span><span class="am-desc">Scored record of past global reads with summary; days param</span><span class="am-consumers">js/serviceFlags.js, js/terminal/terminalTabs.js, scripts/macro-h4-blend/blend.py, today.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Morning brief</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/morning-brief/status</span><span class="am-desc">Status of the async morning-brief job, including the finished brief payload</span><span class="am-consumers">atlas.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Release calls</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/release-call</span><span class="am-desc">Records a higher/lower-than-consensus call before a release print; changeable until release time</span><span class="am-consumers">today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/release-calls</span><span class="am-desc">Release calls and their scored results over the last N days with scorecard</span><span class="am-consumers">event-response.html, fiscal-events.html, js/infoMap.js, js/infoMapDerived.js +3 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/release-scorecard/tick</span><span class="am-desc">Manually runs the release scorecard tick to score calls</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Thesis vs reality</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/thesis-reality</span><span class="am-desc">A day's morning thesis against its evening outcome, with the running tally</span><span class="am-consumers">js/dataFeeds.js, js/deskAccess.js, js/terminal/bookPanels.js, js/terminal/rankReality.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/thesis-reality/backfill</span><span class="am-desc">Background backfill building thesis-vs-reality for every day with an evening score</span><span class="am-consumers">js/dataFeeds.js</span></div>
+        </div>
+      </div>
+      <div class="am-cat" data-cat="macro &amp; central banks">
+        <div class="am-cat-hd" style="color:#f59e0b">Macro &amp; Central Banks</div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Bank credit &amp; funding</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/bank-credit/tick</span><span class="am-desc">Runs the bank-credit data refresh tick now; silent=1 suppresses alerts</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/funding-read/tick</span><span class="am-desc">Runs the funding-read refresh tick now and returns its flags</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Beige Book engine</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/beigebook/calendar</span><span class="am-desc">Beige Book release calendar plus releases currently pending analysis</span><span class="am-consumers">beige-book.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/beigebook/clear-stale</span><span class="am-desc">Clears a stale Beige Book KV entry (idempotent, narrowly scoped); GET twin of the POST route</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/beigebook/clear-stale</span><span class="am-desc">Clears a stale Beige Book KV entry (idempotent, narrowly scoped)</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/beigebook/debug-fetch</span><span class="am-desc">Read-only diagnostic: fetches the Beige Book for ?date= (release date) and reports what came back</span><span class="am-consumers">js/beigeBookFetch.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/beigebook/fetch-now</span><span class="am-desc">Triggers a manual Beige Book check and analysis; reports started or already running</span><span class="am-consumers">beige-book.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/beigebook/fetch-status</span><span class="am-desc">Whether a Beige Book check is running, plus the last fetch log</span><span class="am-consumers">beige-book.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/beigebook/history</span><span class="am-desc">Recent Beige Book headline, hawkish score and regime per release; ?n sets count (1-24)</span><span class="am-consumers">beige-book.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/beigebook/latest</span><span class="am-desc">Latest Beige Book sentiment analysis from KV</span><span class="am-consumers">atlas.html, js/dataFeeds.js, js/feedCoverage.js, js/policyWeek.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/beigebook/release/:date</span><span class="am-desc">Stored Beige Book analysis for one release date</span><span class="am-consumers">beige-book.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Business activity engine</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ism</span><span class="am-desc">Latest business-activity (PMI/ISM) scores by currency from KV</span><span class="am-consumers">ism.html, js/dataFeeds.js, js/feedCoverage.js, js/infoMap.js +2 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/ism/refresh</span><span class="am-desc">Starts an async rebuild of the business-activity (PMI/ISM) scores by currency; poll refresh-status</span><span class="am-consumers">ism.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ism/refresh-status</span><span class="am-desc">Status of the in-progress or last business-activity (PMI/ISM) scores by currency refresh</span><span class="am-consumers">ism.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">COT freshness</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cot-source</span><span class="am-desc">Compares the CFTC's newest published COT report to the expected and served one, to tell whether staleness is ours</span><span class="am-consumers">atlas.html, js/cotSource.js, js/dataFeeds.js, js/dataFreshness.js +3 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">CPI engine</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cpi</span><span class="am-desc">Latest CPI inflation scores by currency from KV</span><span class="am-consumers">atlas.html, cpi.html, js/dataFeeds.js, js/feedCoverage.js +3 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/cpi/refresh</span><span class="am-desc">Starts an async rebuild of the CPI inflation scores by currency; poll refresh-status</span><span class="am-consumers">cpi.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cpi/refresh-status</span><span class="am-desc">Status of the in-progress or last CPI inflation scores by currency refresh</span><span class="am-consumers">cpi.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Central-bank board</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cb-board</span><span class="am-desc">Central-bank board: per-bank meetings, latest reads, rates and status, cached briefly</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, js/terminal/cbBoardCore.js, js/terminal/cbBoardView.js +1 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Central-bank rate paths</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cb-path/boe</span><span class="am-desc">Bank of England market-implied policy path and history from KV, cached, fetched on first demand.</span><span class="am-consumers">js/dataFeeds.js, js/infoMap.js, js/infoMapDerived.js, js/serviceFlags.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fed-path</span><span class="am-desc">Market-implied fed funds path odds from the stored Atlanta Fed Market Probability Tracker capture.</span><span class="am-consumers">atlas.html, fed-path.html, js/atlasPosition.js, js/deskAlertRules.js +12 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Central-bank sentiment engines</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/boc/calendar</span><span class="am-desc">BoC meeting calendar with pending meetings</span><span class="am-consumers">boc-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/boc/debug-fetch</span><span class="am-desc">Read-only diagnostic: runs each BoC fetcher for ?date= and reports status, errors and text snippets; no KV writes</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/boc/fetch-now</span><span class="am-desc">undefined</span><span class="am-consumers">boc-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/boc/fetch-status</span><span class="am-desc">Whether the BoC document check is running, plus the last fetch log from KV</span><span class="am-consumers">boc-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/boc/history</span><span class="am-desc">Recent BoC meetings' scores and headlines for the history strip</span><span class="am-consumers">atlas.html, boc-sentiment.html, js/feedCoverage.js, today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/boc/latest</span><span class="am-desc">Latest BoC policy analysis from KV</span><span class="am-consumers">atlas.html, js/feedCoverage.js, js/infoMap.js, js/infoMapDerived.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/boc/meeting/:date</span><span class="am-desc">BoC analyses for the meeting on the given date</span><span class="am-consumers">boc-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/boe/calendar</span><span class="am-desc">BoE meeting calendar with pending meetings</span><span class="am-consumers">boe-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/boe/fetch-now</span><span class="am-desc">Starts a background check for new BoE releases; returns whether it started</span><span class="am-consumers">boe-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/boe/fetch-status</span><span class="am-desc">Whether a BoE fetch is running and the last fetch log</span><span class="am-consumers">boe-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/boe/history</span><span class="am-desc">Recent BoE meetings' scores and headlines for the history strip</span><span class="am-consumers">atlas.html, boe-sentiment.html, js/feedCoverage.js, today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/boe/latest</span><span class="am-desc">Latest BoE analysis from KV</span><span class="am-consumers">atlas.html, js/cbLatestMeeting.js, js/dataFeeds.js, js/feedCoverage.js +2 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/boe/meeting/:date</span><span class="am-desc">BoE analyses for the meeting on the given date</span><span class="am-consumers">boe-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/boj/calendar</span><span class="am-desc">BoJ meeting calendar with pending meetings</span><span class="am-consumers">boj-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/boj/debug-fetch</span><span class="am-desc">Diagnostic: tries direct BoJ statement, outlook and opinions URLs for a date and reports what came back</span><span class="am-consumers">js/bojFetch.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/boj/fetch-now</span><span class="am-desc">Starts a background check for new BoJ releases; returns whether it started</span><span class="am-consumers">boj-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/boj/fetch-status</span><span class="am-desc">Whether a BoJ fetch is running and the last fetch log</span><span class="am-consumers">boj-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/boj/history</span><span class="am-desc">Recent BoJ meetings' scores and headlines for the history strip</span><span class="am-consumers">atlas.html, boj-sentiment.html, js/feedCoverage.js, today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/boj/latest</span><span class="am-desc">Latest BoJ analysis from KV</span><span class="am-consumers">atlas.html, js/cbLatestMeeting.js, js/dataFeeds.js, js/feedCoverage.js +2 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/boj/meeting/:date</span><span class="am-desc">BoJ analyses for the meeting on the given date</span><span class="am-consumers">boj-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ecb/calendar</span><span class="am-desc">ECB meeting calendar with pending meetings</span><span class="am-consumers">ecb-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ecb/debug-index</span><span class="am-desc">Diagnostic: shows how the ECB website index is parsed, kept from the scraping debug pass</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/ecb/fetch-now</span><span class="am-desc">Starts a background check for new ECB releases; returns whether it started</span><span class="am-consumers">ecb-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ecb/fetch-status</span><span class="am-desc">Whether an ECB fetch is running and the last fetch log</span><span class="am-consumers">ecb-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ecb/history</span><span class="am-desc">Recent ECB meetings' scores and headlines for the history strip</span><span class="am-consumers">atlas.html, ecb-sentiment.html, js/feedCoverage.js, today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ecb/latest</span><span class="am-desc">Latest ECB analysis from KV</span><span class="am-consumers">atlas.html, js/dataFeeds.js, js/feedCoverage.js, js/infoMap.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ecb/meeting/:date</span><span class="am-desc">ECB analyses for the meeting on the given date</span><span class="am-consumers">ecb-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fomc/calendar</span><span class="am-desc">FOMC meeting calendar with pending meetings</span><span class="am-consumers">atlas.html, fomc-sentiment.html, js/feedCoverage.js, today.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/fomc/fetch-now</span><span class="am-desc">Starts a background check for new FOMC releases; returns whether it started</span><span class="am-consumers">fomc-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fomc/fetch-status</span><span class="am-desc">Whether an FOMC fetch is running and the last fetch log</span><span class="am-consumers">fomc-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fomc/history</span><span class="am-desc">Last N FOMC meetings' statement scores for the timeline strip</span><span class="am-consumers">atlas.html, fomc-sentiment.html, js/dataFeeds.js, js/feedCoverage.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fomc/latest</span><span class="am-desc">Latest FOMC statement analysis (hawkish/dovish scoring) from KV</span><span class="am-consumers">atlas.html, js/cbLatestMeeting.js, js/dataFeeds.js, js/feedCoverage.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fomc/meeting/:date</span><span class="am-desc">FOMC analyses for the meeting on the given date</span><span class="am-consumers">fomc-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rba/calendar</span><span class="am-desc">RBA meeting calendar with pending meetings</span><span class="am-consumers">rba-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rba/debug-fetch</span><span class="am-desc">Read-only diagnostic: runs each RBA fetcher for ?date= and reports status, errors and text snippets; no KV writes</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/rba/fetch-now</span><span class="am-desc">undefined</span><span class="am-consumers">rba-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rba/fetch-status</span><span class="am-desc">Whether the RBA document check is running, plus the last fetch log from KV</span><span class="am-consumers">rba-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rba/history</span><span class="am-desc">Recent RBA meetings' scores and headlines for the history strip</span><span class="am-consumers">atlas.html, js/feedCoverage.js, rba-sentiment.html, today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rba/latest</span><span class="am-desc">Latest RBA policy analysis from KV</span><span class="am-consumers">atlas.html, js/feedCoverage.js, js/infoMap.js, js/infoMapDerived.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rba/meeting/:date</span><span class="am-desc">RBA analyses for the meeting on the given date</span><span class="am-consumers">rba-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rbnz/calendar</span><span class="am-desc">RBNZ meeting calendar with pending meetings</span><span class="am-consumers">rbnz-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rbnz/debug-fetch</span><span class="am-desc">Read-only diagnostic: runs each RBNZ fetcher for ?date= and reports status, errors and text snippets; no KV writes</span><span class="am-consumers">js/rbnzFetch.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rbnz/decisions</span><span class="am-desc">RBNZ OCR decisions (level, direction, size) parsed from RSS headlines, cached 6 hours; ?refresh=1 forces reload</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, rbnz-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/rbnz/fetch-now</span><span class="am-desc">undefined</span><span class="am-consumers">rbnz-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rbnz/fetch-status</span><span class="am-desc">Whether the RBNZ document check is running, plus the last fetch log from KV</span><span class="am-consumers">js/rbnzFetch.js, rbnz-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rbnz/history</span><span class="am-desc">Recent RBNZ meetings' scores and headlines for the history strip</span><span class="am-consumers">atlas.html, js/feedCoverage.js, rbnz-sentiment.html, today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rbnz/latest</span><span class="am-desc">Latest RBNZ policy analysis from KV</span><span class="am-consumers">atlas.html, js/feedCoverage.js, js/infoMap.js, js/infoMapDerived.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rbnz/meeting/:date</span><span class="am-desc">RBNZ analyses for the meeting on the given date</span><span class="am-consumers">rbnz-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/snb/calendar</span><span class="am-desc">SNB meeting calendar with pending meetings</span><span class="am-consumers">snb-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/snb/debug-fetch</span><span class="am-desc">Read-only diagnostic: runs each SNB fetcher for ?date= and reports status, errors and text snippets; no KV writes</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/snb/fetch-now</span><span class="am-desc">Triggers a manual check for new SNB policy documents and sentiment analysis; reports whether it started or is already running</span><span class="am-consumers">snb-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/snb/fetch-status</span><span class="am-desc">Whether the SNB document check is running, plus the last fetch log from KV</span><span class="am-consumers">snb-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/snb/history</span><span class="am-desc">Recent SNB meetings' scores and headlines for the history strip</span><span class="am-consumers">atlas.html, js/feedCoverage.js, snb-sentiment.html, today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/snb/latest</span><span class="am-desc">Latest SNB policy analysis from KV</span><span class="am-consumers">atlas.html, js/feedCoverage.js, js/infoMap.js, js/infoMapDerived.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/snb/meeting/:date</span><span class="am-desc">SNB analyses for the meeting on the given date</span><span class="am-consumers">snb-sentiment.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Central-bank speech reader</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cb-speeches</span><span class="am-desc">Central-bank speech log (scored, skipped, failed), newest first; bank and n filters</span><span class="am-consumers">js/dataFeeds.js, js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/cb-speeches/run</span><span class="am-desc">Manually triggers a central-bank speech reader run</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/speech-drift</span><span class="am-desc">Per bank, how its speakers sound against its last statement, plus scored speeches of the last 14 days</span><span class="am-consumers">js/dataFeeds.js, js/infoMap.js, js/infoMapDerived.js, js/serviceFlags.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Consumer confidence engine</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/consumer-confidence</span><span class="am-desc">Latest consumer-confidence scores by currency from KV</span><span class="am-consumers">atlas.html, consumer-confidence.html, js/dataFeeds.js, js/feedCoverage.js +3 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/consumer-confidence/refresh</span><span class="am-desc">Starts an async rebuild of the consumer-confidence scores by currency; poll refresh-status</span><span class="am-consumers">consumer-confidence.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/consumer-confidence/refresh-status</span><span class="am-desc">Status of the in-progress or last consumer-confidence scores by currency refresh</span><span class="am-consumers">consumer-confidence.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Credit quality engine</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/credit-quality</span><span class="am-desc">Latest Baa-Aaa credit quality spread z-score from FRED from KV</span><span class="am-consumers">js/dataFeeds.js, js/feedCoverage.js, js/infoMap.js, js/infoMapDerived.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/credit-quality/refresh</span><span class="am-desc">Starts an async rebuild of the Baa-Aaa credit quality spread z-score from FRED; poll refresh-status</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/credit-quality/refresh-status</span><span class="am-desc">Status of the in-progress or last Baa-Aaa credit quality spread z-score from FRED refresh</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Economic calendars</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/calendar-ahead</span><span class="am-desc">Upcoming economic calendar rows for the next nine days, cached six hours</span><span class="am-consumers">atlas.html, js/feedCoverage.js, js/infoMap.js, js/infoMapDerived.js +4 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/calendar-feed</span><span class="am-desc">Cached economic calendar feed, refreshed every 30 minutes</span><span class="am-consumers">atlas.html, js/dataFeeds.js, js/feedCoverage.js, js/infoMap.js +5 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Economic surprise store</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/econ-surprise/backfill</span><span class="am-desc">Merges the bundled economic-surprise backfill file into the store; force re-merges.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/econ-surprise/backfill-nasdaq</span><span class="am-desc">Status of the Nasdaq economic-surprise backfill job.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/econ-surprise/backfill-nasdaq</span><span class="am-desc">Starts a Nasdaq economic-surprise backfill job over the last N days.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/release-history</span><span class="am-desc">Past releases of one economic event for a country (country and event required), with surprise history.</span><span class="am-consumers">js/dataFeeds.js, js/infoMap.js, js/infoMapDerived.js, js/releaseHistory.js +1 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">FOMC lexicon backfill</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/fomc-backfill/run</span><span class="am-desc">Starts the FOMC historical lexicon-score backfill job; llm=1 adds model analysis</span><span class="am-consumers">fomc-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fomc-backfill/scores</span><span class="am-desc">Stored FOMC lexicon scores from the backfill, per meeting</span><span class="am-consumers">fomc-sentiment.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fomc-backfill/status</span><span class="am-desc">Running state and last log of the FOMC backfill job</span><span class="am-consumers">fomc-sentiment.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Fiscal events tracker</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fiscal/events</span><span class="am-desc">Fiscal events (budgets, statements) with fetch status, parsed rows and AI analysis</span><span class="am-consumers">atlas.html, fiscal-events.html, js/dataFeeds.js, js/feedCoverage.js +4 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/fiscal/fetch-now</span><span class="am-desc">Runs the fiscal-event document check now (optionally one ?id) and returns the result</span><span class="am-consumers">fiscal-events.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">GDP engine</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/gdp</span><span class="am-desc">Latest GDP growth scores by currency from KV</span><span class="am-consumers">atlas.html, gdp.html, js/dataFeeds.js, js/feedCoverage.js +3 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/gdp/refresh</span><span class="am-desc">Starts an async rebuild of the GDP growth scores by currency; poll refresh-status</span><span class="am-consumers">gdp.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/gdp/refresh-status</span><span class="am-desc">Status of the in-progress or last GDP growth scores by currency refresh</span><span class="am-consumers">gdp.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Geopolitical risk engine</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/gpr</span><span class="am-desc">Latest geopolitical-risk index score from KV</span><span class="am-consumers">desk-terminal.html, js/dataFeeds.js, js/feedCoverage.js, js/infoMap.js +2 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/gpr/refresh</span><span class="am-desc">Starts an async rebuild of the geopolitical-risk index score; poll refresh-status</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/gpr/refresh-status</span><span class="am-desc">Status of the in-progress or last geopolitical-risk index score refresh</span><span class="am-consumers">today.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Gold ETF flow</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/gold-etf-flow</span><span class="am-desc">Combined GLD and IAU gold ETF AUM flow series.</span><span class="am-consumers">js/dataFeeds.js, js/feedCoverage.js, js/goldEtfFlowCore.js, js/goldEtfSources.js +6 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">HMM hourly regimes</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hmm-hourly</span><span class="am-desc">Hourly HMM regime windows per pair over the last N days (default 2)</span><span class="am-consumers">atlas.html, js/dataFeeds.js, js/feedCoverage.js, js/serviceFlags.js +2 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Labor market engine</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/labor-market</span><span class="am-desc">Latest labor market strength composite (payrolls, wages, unemployment, participation) from KV</span><span class="am-consumers">atlas.html, js/dataFeeds.js, js/feedCoverage.js, js/infoMap.js +3 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/labor-market/refresh</span><span class="am-desc">Starts an async rebuild of the labor market strength composite (payrolls, wages, unemployment, participation); poll refresh-status</span><span class="am-consumers">labor-market.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/labor-market/refresh-status</span><span class="am-desc">Status of the in-progress or last labor market strength composite (payrolls, wages, unemployment, participation) refresh</span><span class="am-consumers">labor-market.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Macro chain</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/chain-extra</span><span class="am-desc">Extra chain-link series (SMH, XLE, XLRE, MOVE, CCC) from the drill bundle, cached six hours</span><span class="am-consumers">atlas.html, js/dataFeeds.js, js/feedCoverage.js, js/infoMap.js +6 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/chain-stats</span><span class="am-desc">Chain transmission statistics per link (correlation, lead/lag, divergence, trend); link= selects one</span><span class="am-consumers">js/dataFeeds.js, js/deskAlerts.js, js/serviceFlags.js, js/terminal/chainStatsView.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/chain-stats/run</span><span class="am-desc">Forces a rebuild of the chain transmission statistics</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Macro changes</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/macro-changes</span><span class="am-desc">Macro series change table: latest rows and change windows</span><span class="am-consumers">atlas.html, js/atlasPosition.js, js/dataFeeds.js, js/feedCoverage.js +1 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Macro engines board</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/macro-engines-board</span><span class="am-desc">Currency-by-indicator board: latest release vs consensus from the surprise store beside engine readings; cached 10 minutes</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, js/terminal/ccyMacroStrip.js, js/terminal/macroEngines.js +1 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Macro market boards</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cb-expectations</span><span class="am-desc">What short-rate futures price for each central bank versus its policy rate</span><span class="am-consumers">desk-terminal.html, js/biasEngine.js, js/cbMeetingPath.js, js/dataFeeds.js +7 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-cot-history</span><span class="am-desc">Speculators' net share of open interest by week per market from COT history (weeks param)</span><span class="am-consumers">desk-terminal.html, js/deskAccess.js, js/infoMap.js, js/infoMapDerived.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/em-gauges</span><span class="am-desc">Emerging-market gauges board, cached 2 hours</span><span class="am-consumers">js/dataFeeds.js, js/infoMap.js, js/infoMapDerived.js, js/liveLayerCore.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fx-fair-value/log</span><span class="am-desc">Log of the daily FX fair-value readings stored in KV</span><span class="am-consumers">js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/options-skew</span><span class="am-desc">Risk reversals, butterflies and ATM vol from the laptop's IBKR options pull</span><span class="am-consumers">js/dataFeeds.js, js/infoMap.js, js/infoMapDerived.js, js/terminal/terminalTabs.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/policy-rates</span><span class="am-desc">Current central-bank policy rates</span><span class="am-consumers">atlas.html, desk-terminal.html, js/dataFeeds.js, js/infoMap.js +3 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/world-rates</span><span class="am-desc">World policy and short-rate board built from FRED, cached 12 hours</span><span class="am-consumers">js/dataFeeds.js, js/infoMap.js, js/infoMapDerived.js, js/terminal/mapLayers.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/world-stress</span><span class="am-desc">One-line world-stress reading across all the macro boards</span><span class="am-consumers">atlas.html, js/dataFeeds.js, js/infoMap.js, js/infoMapDerived.js +4 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/xccy-basis</span><span class="am-desc">Cross-currency basis from the laptop's futures pull in KV</span><span class="am-consumers">js/dataFeeds.js, js/infoMap.js, js/infoMapDerived.js, scripts/rates_line/refresh_xccy_basis.py</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Macro regime &amp; rates</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/flow-chain</span><span class="am-desc">Cached flow-chain dataset linking macro flows across assets.</span><span class="am-consumers">flow-chain.html, js/infoMap.js, js/infoMapDerived.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/nowcast</span><span class="am-desc">Macro nowcast series with its test notes, refreshed daily.</span><span class="am-consumers">atlas.html, js/dataFeeds.js, js/feedCoverage.js, js/infoMap.js +4 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rates</span><span class="am-desc">Latest rates series with levels and changes over several horizons, refreshed every six hours.</span><span class="am-consumers">desk-terminal.html, js/dataCatalogueCore.js, js/dataFeeds.js, js/infoMap.js +4 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rates-board</span><span class="am-desc">Rates board payload built from the cached rates series.</span><span class="am-consumers">js/dataFeeds.js, js/fedPathYieldsCore.js, js/infoMap.js, js/infoMapDerived.js +4 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/regime</span><span class="am-desc">Macro regime history, regime shares and per-pair regime differential (aligned or diverging).</span><span class="am-consumers">atlas.html, desk-terminal.html, js/atlasPosition.js, js/dataFeeds.js +7 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/weekmap</span><span class="am-desc">Weekly week-map dataset, refreshed daily.</span><span class="am-consumers">js/dataFeeds.js, js/infoMap.js, js/infoMapDerived.js, today.html +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/yield2y</span><span class="am-desc">Stored 2-year yield series per currency with source status; refresh=1 refetches.</span><span class="am-consumers">js/serviceFlags.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Macro scorecard</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/macro-scorecard</span><span class="am-desc">Current composite macro scorecard built from the macro engines, rebuilt per request</span><span class="am-consumers">atlas.html, desk-terminal.html, indexv2.html, js/biasEngine.js +10 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/macro-scorecard/history</span><span class="am-desc">Daily macro scorecard history; with ?ccy and ?field returns that currency's series</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/macro-scorecard/history/record</span><span class="am-desc">Records the end-of-day macro scorecard state (idempotent per UTC day)</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Market calendars</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/earnings-ahead</span><span class="am-desc">Upcoming earnings releases over the next nine days</span><span class="am-consumers">atlas.html, js/dataFeeds.js, js/earningsReported.js, js/feedCoverage.js +4 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/earnings-reported</span><span class="am-desc">Reported EPS and revenue against consensus for mega-caps and key Nasdaq names</span><span class="am-consumers">js/dataFeeds.js, js/earningsReported.js, js/feedCoverage.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fed-speakers</span><span class="am-desc">Upcoming Fed speakers and events from the Federal Reserve calendar</span><span class="am-consumers">atlas.html, js/dataFeeds.js, js/feedCoverage.js, js/infoMap.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/treasury-auctions</span><span class="am-desc">Upcoming US Treasury auctions from TreasuryDirect</span><span class="am-consumers">atlas.html, js/dataFeeds.js, js/feedCoverage.js, js/infoMap.js +1 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Nasdaq macro lead</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/nasdaq-macro-lead/refresh</span><span class="am-desc">Manually runs the Nasdaq macro-lead refresh now instead of waiting for the 4-hour tick; synchronous</span><span class="am-consumers">nasdaq-macro-lead.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">PPI engine</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ppi</span><span class="am-desc">Latest PPI producer-price scores by currency from KV</span><span class="am-consumers">js/dataFeeds.js, js/feedCoverage.js, js/infoMap.js, js/infoMapDerived.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/ppi/refresh</span><span class="am-desc">Starts an async rebuild of the PPI producer-price scores by currency; poll refresh-status</span><span class="am-consumers">ppi.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ppi/refresh-status</span><span class="am-desc">Status of the in-progress or last PPI producer-price scores by currency refresh</span><span class="am-consumers">ppi.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Rate differential engine</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rate-diff</span><span class="am-desc">Latest interest-rate differential data from KV</span><span class="am-consumers">desk-terminal.html, js/biasEngine.js, js/dataFeeds.js, js/feedCoverage.js +5 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/rate-diff/refresh</span><span class="am-desc">Starts an async rebuild of the interest-rate differential data; poll refresh-status</span><span class="am-consumers">volatility-intelligence.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rate-diff/refresh-status</span><span class="am-desc">Status of the in-progress or last interest-rate differential data refresh</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Rates regime</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rates-regime</span><span class="am-desc">Latest rates-regime state and read, from durable storage</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, js/serviceFlags.js, rates.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/rates-regime/tick</span><span class="am-desc">Runs the rates-regime refresh tick now; silent=1 suppresses alerts</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Real yield engine</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/real-yield</span><span class="am-desc">Latest real-yield scores by currency from KV</span><span class="am-consumers">atlas.html, desk-terminal.html, js/biasEngine.js, js/dataFeeds.js +7 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/real-yield/refresh</span><span class="am-desc">Starts an async rebuild of the real-yield scores by currency; poll refresh-status</span><span class="am-consumers">real-yield.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/real-yield/refresh-status</span><span class="am-desc">Status of the in-progress or last real-yield scores by currency refresh</span><span class="am-consumers">real-yield.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Release surprises &amp; reactions</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/release-reactions</span><span class="am-desc">Live post-release moves, study backfill and summary by release family; n and pack options</span><span class="am-consumers">js/dataFeeds.js, js/infoMap.js, js/infoMapDerived.js, js/newsletterTermV2.js +4 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/release-reactions/run</span><span class="am-desc">Manually runs the release-reaction measurement tick</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/release-surprises</span><span class="am-desc">Last high-impact releases read live with surprise versus consensus and z-score; n limits rows</span><span class="am-consumers">js/dataFeeds.js, js/infoMap.js, js/infoMapDerived.js, js/serviceFlags.js +2 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Replay</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/replay/curve</span><span class="am-desc">Treasury yield-curve replay: one curve frame per day from the in-memory rates series; days param</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, js/newsletterTermV2.js, js/replayVizCore.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Retail sales engine</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/retail-sales</span><span class="am-desc">Latest retail sales scores by currency from KV</span><span class="am-consumers">atlas.html, js/dataFeeds.js, js/feedCoverage.js, js/infoMap.js +3 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/retail-sales/refresh</span><span class="am-desc">Starts an async rebuild of the retail sales scores by currency; poll refresh-status</span><span class="am-consumers">retail-sales.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/retail-sales/refresh-status</span><span class="am-desc">Status of the in-progress or last retail sales scores by currency refresh</span><span class="am-consumers">retail-sales.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Trade balance engine</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-balance</span><span class="am-desc">Latest trade balance scores by currency from KV</span><span class="am-consumers">atlas.html, js/dataFeeds.js, js/feedCoverage.js, js/infoMap.js +3 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/trade-balance/refresh</span><span class="am-desc">Starts an async rebuild of the trade balance scores by currency; poll refresh-status</span><span class="am-consumers">trade-balance.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-balance/refresh-status</span><span class="am-desc">Status of the in-progress or last trade balance scores by currency refresh</span><span class="am-consumers">trade-balance.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Yield curve engine</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/yield-curve</span><span class="am-desc">Latest yield-curve shape scores by currency from KV</span><span class="am-consumers">atlas.html, js/dataFeeds.js, js/feedCoverage.js, js/infoMap.js +3 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/yield-curve/refresh</span><span class="am-desc">Starts an async rebuild of the yield-curve shape scores by currency; poll refresh-status</span><span class="am-consumers">yield-curve.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/yield-curve/refresh-status</span><span class="am-desc">Status of the in-progress or last yield-curve shape scores by currency refresh</span><span class="am-consumers">yield-curve.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Yield-shape regime</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/yield-shape-regime</span><span class="am-desc">Yield-curve shape regime signals store with hit-rate stats per instrument and last tick</span><span class="am-consumers">js/dataFeeds.js, js/serviceFlags.js, yield-shape-regime.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/yield-shape-regime/tick</span><span class="am-desc">Manually triggers a yield-shape regime tick</span><span class="am-consumers">yield-shape-regime.html</span></div>
+        </div>
+      </div>
+      <div class="am-cat" data-cat="options, oi &amp; vol surface">
+        <div class="am-cat-hd" style="color:#a78bfa">Options, OI &amp; Vol Surface</div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Cboe options data</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cboe-chain</span><span class="am-desc">Cboe options chain-derived data for an FX pair's mapped index (pair required).</span><span class="am-consumers">js/feedCoverage.js, js/infoMap.js, js/infoMapDerived.js, js/serviceFlags.js +2 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cboe-intraday</span><span class="am-desc">Cboe intraday snapshots: index of stored days, or snapshots for a sym and date.</span><span class="am-consumers">js/serviceFlags.js, oi-dashboard-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/cboe-intraday/capture</span><span class="am-desc">Forces an immediate Cboe intraday snapshot capture.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cboe-raw</span><span class="am-desc">Archived raw Cboe chains: index of days, or one symbol's chain for a date.</span><span class="am-consumers">js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/cboe-raw/capture</span><span class="am-desc">Forces an immediate raw Cboe chain archive capture.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cboe-snapshots</span><span class="am-desc">Stored Cboe snapshots book, optionally for one pair.</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, js/serviceFlags.js, oi-dashboard-v2.html +1 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Dealer hedging</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cboe-contracts</span><span class="am-desc">Per-contract Cboe option book for the dealer-hedging map (pair, window, maxDte).</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, js/smileChart.js, js/terminal/terrainPanel.js +2 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hedging-forward</span><span class="am-desc">Hedging forward-test records from R2: counts per day, or one date's record.</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, js/serviceFlags.js, oi-dashboard-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hedging-plan</span><span class="am-desc">Today's dealer-hedging trade plan payload; fresh=1 rebuilds.</span><span class="am-consumers">js/hedgingPlanExport.js, oi-dashboard-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hedging-plan-oi</span><span class="am-desc">Today's OI-based dealer-hedging plan payload; fresh=1 rebuilds.</span><span class="am-consumers">js/serviceFlags.js, oi-dashboard-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hedging-plan-oi/export</span><span class="am-desc">OI-based hedging plan as a text block for the OI Bot Trades Pine script, with live order states.</span><span class="am-consumers">js/serviceFlags.js, oi-dashboard-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hedging-plan-oi/record</span><span class="am-desc">Counts and descriptive R of the OI and old hedging plans per asset class and regime.</span><span class="am-consumers">js/serviceFlags.js, oi-dashboard-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hedging-plan/export</span><span class="am-desc">Today's hedging plan as a text block for the Pine script, with live order states.</span><span class="am-consumers">oi-dashboard-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hedging-summary</span><span class="am-desc">Dealer-hedging summary across markets, cached 20 minutes; fresh=1 rebuilds.</span><span class="am-consumers">js/hedgingBooks.js, js/serviceFlags.js, js/terminal/optionsView.js, js/terminal/terminalTabs.js +1 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Expiry tracking</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/expiry-track</span><span class="am-desc">Expiry-tracking series of option OI per pair and expiry; needs R2</span><span class="am-consumers">swing-map.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/expiry-track/run</span><span class="am-desc">Runs the expiry-track fold, optionally rebuilding from scratch; auth required</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">OI history &amp; store</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-history-raw</span><span class="am-desc">Raw per-strike OI ladder archive: index without pair, a pair's day-by-day ladders with pair.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/oi-history/backfill</span><span class="am-desc">Rebuilds oi_history from the per-day raw archives; dry run unless commit=1.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-store</span><span class="am-desc">The stored OI data with each instrument's gamma profile self-healed; cmdty=1 adds commodities.</span><span class="am-consumers">cot-extremes.html, indexv2.html, js/dataFeeds.js, js/infoMap.js +7 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi/auto-target</span><span class="am-desc">Whether the OI feed target is live (oi_store) or the Python store (oi_store_py).</span><span class="am-consumers">js/oi.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/oi/auto-target</span><span class="am-desc">Switches the OI feed target live or back; only boolean true arms live.</span><span class="am-consumers">js/oi.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/oi/reanalyse</span><span class="am-desc">Re-analyses every stored pair from the OI data already in oi_store.</span><span class="am-consumers">js/oiLevelExport.js, oi-dashboard.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/oi/sweep-alert</span><span class="am-desc">Receives the nightly OI sweep heartbeat and sends a Telegram alert on failure.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/options-history</span><span class="am-desc">Options-tab history per market: put/call OI ratio and total call/put open interest over time, from oi_history.</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, js/terminal/optionsView.js, js/terminal/terminalTabs.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">OI levels</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-profile/export</span><span class="am-desc">Confluence-zones export: multi-layer technical levels (Fibonacci, OI and others) per instrument; pair= filters</span><span class="am-consumers">js/serviceFlags.js, oi-dashboard-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-reachability</span><span class="am-desc">Probability price touches each option-OI wall within 1h/4h, first-touch race and visit density for ?pair=</span><span class="am-consumers">oi-dashboard-v2.html, oi-dashboard.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-tiers/export</span><span class="am-desc">Text export of OI tiers per instrument, built from the latest vol forecast and stored OI</span><span class="am-consumers">oi-dashboard-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-today</span><span class="am-desc">Today's OI levels payload, optionally with price-reach statistics (reach=0 disables), cached.</span><span class="am-consumers">atlas.html, js/atlasPosition.js, js/dataFeeds.js, js/feedCoverage.js +10 more</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Replay</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/replay/ghosts</span><span class="am-desc">Ghost-walk replay for an option-OI market on a London date: past-day paths over n days; inst, date, n params</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, js/terminal/ghostWalk.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/replay/oi-days</span><span class="am-desc">Days with stored option-OI captures for an inst, from the oi_history store, for the replay picker</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, js/oiDrillCore.js, js/terminal/oiDrill.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/replay/path-days</span><span class="am-desc">Days available for the path replay of an instrument, built from stored walk history and price bars</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, js/terminal/oiTime.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/replay/smile</span><span class="am-desc">Option smile replay from the R2 chain archive: symbol's held dates, or one date's smile, daily or intraday</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, js/terminal/smileView.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Surface Lab</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/today-reads</span><span class="am-desc">Today's reads computed by Surface Lab; error if it has not built yet</span><span class="am-consumers">today.html</span></div>
+        </div>
+      </div>
+      <div class="am-cat" data-cat="research &amp; backtests">
+        <div class="am-cat-hd" style="color:#f472b6">Research &amp; Backtests</div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Bot &amp; signal backtests</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/backtest-exit-study</span><span class="am-desc">Exit-strategy study over the enriched backtest trades file, cached 30 minutes.</span><span class="am-consumers">backtest-exit-study.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/backtest-vmc</span><span class="am-desc">Backtest of the VMC oscillator exhaustion signal for a timeframe and band, cached 30 minutes.</span><span class="am-consumers">backtest-vmc.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/giveback</span><span class="am-desc">Profit giveback analysis across bots' trade logs, cached five minutes.</span><span class="am-consumers">giveback.html, js/deskApp.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">C.OG signal log</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-signals</span><span class="am-desc">Returns the full C.OG observed-signals log of daily entries.</span><span class="am-consumers">cog-signal-log.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/cog-signals</span><span class="am-desc">Upserts one day's C.OG signal entry into the log; date (YYYY-MM-DD) required.</span><span class="am-consumers">cog-signal-log.html</span></div>
+          <div class="am-row"><span class="am-method am-delete">DELETE</span><span class="am-path">/api/cog-signals/:date</span><span class="am-desc">Deletes the C.OG signal log entry for the given date.</span><span class="am-consumers">cog-signal-log.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/cog-signals/resolve</span><span class="am-desc">Resolves unresolved TRADE days in the C.OG log against OANDA bars; force re-resolves existing outcomes.</span><span class="am-consumers">cog-signal-log.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">COG chart page</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-chart/candles</span><span class="am-desc">OHLC candles for a chosen asset and timeframe from OANDA for the COG chart page</span><span class="am-consumers">cog-chart.html, js/terminal/legChartView.js, scratchpad/chart_stub.py, scripts/h4-trend-hold/backtest.py +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-chart/leg</span><span class="am-desc">Price series for one futures contract leg or yield leg by name for the COG chart</span><span class="am-consumers">cog-chart.html, js/feedCoverage.js, js/terminal/legChartView.js, scratchpad/chart_stub.py</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-chart/meta</span><span class="am-desc">Metadata for the chart page: available assets, timeframes, futures legs and archived contracts</span><span class="am-consumers">cog-chart.html, js/terminal/legChartView.js, scratchpad/chart_debug.py, scratchpad/chart_leglist_test.py +4 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-chart/nq-rates</span><span class="am-desc">Rolling past-only regression of daily Nasdaq (or SPX/US30) against the US 2y and 10y-2y slope; context only</span><span class="am-consumers">cog-chart.html, js/terminal/legChartView.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">COG rates line</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-line</span><span class="am-desc">Synthetic COG rates line series and bars over the last N days with formula and legs</span><span class="am-consumers">js/feedCoverage.js, js/infoMap.js, js/infoMapDerived.js, rates.html +2 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-line/chart</span><span class="am-desc">Chart feed for the Rates card: the COG line overlaid with Nasdaq M15 candles, cached 2 minutes</span><span class="am-consumers">rates.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-line/export</span><span class="am-desc">Plain-text export of the COG line series for the last N days</span><span class="am-consumers">rates.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-line/history</span><span class="am-desc">Historical COG line dataset from the committed JSON file, cached for an hour</span><span class="am-consumers">rates.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-line/indicator</span><span class="am-desc">Returns the pasted Pine Script indicator source for the COG line</span><span class="am-consumers">rates.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-line/read</span><span class="am-desc">Live read: COG line trend vs Nasdaq trend, whether they agree, and last-hour attribution; cached 5 minutes</span><span class="am-consumers">rates.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">COG reference research</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-dow</span><span class="am-desc">COG day-of-week weighting probe: reference forecast metrics versus realised, by weekday</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-overlay-test</span><span class="am-desc">Tests overlaying COG reference forecasts against realised OANDA ranges</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/reference-dump</span><span class="am-desc">Dumps all stored COG reference forecasts, keyed by date, as one JSON</span><span class="am-consumers">cog-replay.html, cog-standalone/cog-replay.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">COG replication</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-rep/oi-signal-check</span><span class="am-desc">Checks whether the archived OI history carries the COG signal for ?pair=</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-rep/shadow</span><span class="am-desc">Logged COG shadow-test entries (gates G1-G3)</span><span class="am-consumers">bot-config.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/cog-rep/shadow/run/:stage</span><span class="am-desc">Manually fires a COG shadow stage (g1, g2 or g3) and returns the latest entries</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">COG v3 backtest</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/cog-v3/run</span><span class="am-desc">Starts an async COG v3 backtest job using macro and H1 data; returns a jobId</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-v3/status/:jobId</span><span class="am-desc">Status and result of a COG v3 job</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">COT positioning factor test</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cot-backfill/probe</span><span class="am-desc">Diagnostic: probes COT datasets for contract names matching a query (q param)</span><span class="am-consumers">js/cotFactorCore.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cot-factor-test/run</span><span class="am-desc">Runs the COT positioning factor test over the stored backfilled COT history</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Daily-open Fib</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/daily-open-fib</span><span class="am-desc">Recent daily-open Fibonacci sessions (days param) with their rows and statistics</span><span class="am-consumers">daily-open-fib.html, js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/daily-open-fib/chart</span><span class="am-desc">One session's bid candles and ask close for the chart, through 90 minutes past the time exit</span><span class="am-consumers">daily-open-fib.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/daily-open-fib/tick</span><span class="am-desc">Runs one daily-open Fib refresh tick now and reports last tick time and row count</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/daily-open-fib/tune</span><span class="am-desc">On-demand parameter tuning of the daily-open Fib rule for one instrument, with bounded inputs and caching</span><span class="am-consumers">daily-open-fib.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Exhaustion ladder</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/exhaustion-ladder</span><span class="am-desc">Latest fitted exhaustion-ladder results, from disk or the KV fallback</span><span class="am-consumers">asia-npoc-confluence.html, forecast-reversion.html, js/feedCoverage.js, js/infoMap.js +3 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/exhaustion-ladder/run</span><span class="am-desc">Starts an async exhaustion-ladder fit for one pair or all; poll status</span><span class="am-consumers">asia-npoc-confluence.html, forecast-reversion.html, today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/exhaustion-ladder/status/:jobId</span><span class="am-desc">Status or result of an exhaustion-ladder job</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">FX factor &amp; OU pairs</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fx-factor-v2/status/:jobId</span><span class="am-desc">Status and result of an FX factor v2 test job</span><span class="am-consumers">fx-factor-v2.html, js/siteApiMap.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ou-pairs/status/:jobId</span><span class="am-desc">Status and result of an OU pairs backtest job</span><span class="am-consumers">fx-factor-v2.html, js/siteApiMap.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Factor &amp; vol research</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/combine/mom-rev</span><span class="am-desc">Momentum and reversal combined-factor blend for a horizon, cached six hours.</span><span class="am-consumers">trend.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/factor-blend/run</span><span class="am-desc">Starts an async factor-blend backtest job (vol target, cost params); poll the status route.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/factor-blend/status/:jobId</span><span class="am-desc">Poll status or result of a factor-blend backtest job.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/multi-factor/status/:jobId</span><span class="am-desc">Poll status or result of a multi-factor backtest job.</span><span class="am-consumers">multi-factor-book.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/mve-book/defaults</span><span class="am-desc">Default sleeve configuration for the MVE multi-sleeve book audit.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-reversion/:sym</span><span class="am-desc">Volatility mean-reversion study for one symbol from daily price history, cached six hours.</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Forecast coverage</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-coverage/status/:jobId</span><span class="am-desc">Status or result of a forecast-coverage async job</span><span class="am-consumers">forecast-coverage.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Hurst benchmark</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hurst-bench/status/:jobId</span><span class="am-desc">Status or result of a Hurst benchmark async job</span><span class="am-consumers">hurst-bench.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Jump-diffusion model</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/jump-diffusion/live</span><span class="am-desc">Live intraday jump-diffusion reading for ?pair= (default eurusd)</span><span class="am-consumers">js/feedCoverage.js, jump-diffusion.html, vol-forecast-v3.html, volatilityExhaustion/jump_momentum_ignition.py</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/jump-diffusion/state</span><span class="am-desc">Precomputed jump-diffusion state table, re-read from disk at most every 5 minutes</span><span class="am-consumers">jump-diffusion.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Level Atlas</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/level-atlas/fastlive/:instrument</span><span class="am-desc">Incrementally-updated live Level Atlas touches and pending levels for an instrument, with vote decision; warming flag when cold</span><span class="am-consumers">today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/level-atlas/hl-vote-portfolio</span><span class="am-desc">Backtest of the dynamic high/low early-reaction vote signal as a portfolio across pairs, checkpoint and bands</span><span class="am-consumers">js/hlSignalCore.js, level-atlas-hl-signal-portfolio.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/level-atlas/m1-tail/:instrument</span><span class="am-desc">Trimmed, guaranteed-fresh recent M1 bar slice for an instrument from the warm live cache; days and since params</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/level-atlas/spread-check</span><span class="am-desc">Measures real per-instrument OANDA spreads for ?instruments= to set Level Atlas max-spread overrides</span><span class="am-consumers">pylego/costs.py</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/level-atlas/vote-portfolio</span><span class="am-desc">Portfolio backtest of Level Atlas vote trades across pairs with margin, concurrency, weighting, sizing and target-vol options</span><span class="am-consumers">js/fibAtlasVotePortfolio.js, js/voteAtlasDriftAudit.js, level-atlas-vote-portfolio-v2.html, level-atlas-vote-portfolio.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/level-atlas/vote-preview</span><span class="am-desc">Batched unfiltered fade/follow vote preview for several instruments from live Level Atlas data</span><span class="am-consumers">js/bot-config.js, vol-forecast-v2.html, vol-forecast-v3.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/level-atlas/vote-trades/:instrument</span><span class="am-desc">Barrier-priced out-of-sample vote trade list for an instrument, optionally filtered by minMargin</span><span class="am-consumers">level-atlas-vote-backtest.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Liquidity analysis</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/global-liquidity/regression/run</span><span class="am-desc">Starts an async global-liquidity regression job (needs FRED key); returns a jobId</span><span class="am-consumers">global-liquidity.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/global-liquidity/regression/status/:jobId</span><span class="am-desc">Status and result of the global-liquidity regression job, falling back to cache</span><span class="am-consumers">global-liquidity.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/liquidity-analysis/net-liquidity-nq/run</span><span class="am-desc">Starts an async net-liquidity vs NQ analysis job (needs FRED key); returns a jobId</span><span class="am-consumers">js/dataFeeds.js, liquidity-net-regression.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/liquidity-analysis/net-liquidity-nq/status/:jobId</span><span class="am-desc">Status and result of the net-liquidity vs NQ job, falling back to cache</span><span class="am-consumers">liquidity-net-regression.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/liquidity-backtest/status/:id</span><span class="am-desc">Status, progress or result of a liquidity backtest job</span><span class="am-consumers">js/siteApiMap.js, liquidity-backtest.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Live validation</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/live-validation/run</span><span class="am-desc">Starts an async live-validation job for gold or nq using live OANDA data; poll status</span><span class="am-consumers">live-validation.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/live-validation/status/:jobId</span><span class="am-desc">Status, log and result of a live-validation job</span><span class="am-consumers">live-validation.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">MacroFX zone &amp; decision backtests</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/macrofx-decision/run</span><span class="am-desc">Starts an async MacroFX decision backtest on OANDA D1 data; poll status</span><span class="am-consumers">macrofx-decision-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/macrofx-decision/status/:jobId</span><span class="am-desc">Status or result of a MacroFX decision backtest job</span><span class="am-consumers">macrofx-decision-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/macrofx-zone/run</span><span class="am-desc">Starts an async MacroFX zone backtest on OANDA D1 data; poll status</span><span class="am-consumers">macrofx-zone-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/macrofx-zone/status/:jobId</span><span class="am-desc">Status or result of a MacroFX zone backtest job</span><span class="am-consumers">macrofx-zone-backtest.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Max-copier backtest</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/max-copier/run</span><span class="am-desc">Starts an async Max-copier backtest for one pair or all instruments; poll status</span><span class="am-consumers">max-copier-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/max-copier/status/:jobId</span><span class="am-desc">Status or result of a Max-copier backtest job</span><span class="am-consumers">max-copier-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/max-copier/trace</span><span class="am-desc">Chart-replay trace of Max-copier trades for one instrument over a window, shares the job status endpoint</span><span class="am-consumers">max-copier-backtest.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">News outcomes</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/news-outcome</span><span class="am-desc">News outcome scoring for a day (today or snapshot of a past day): how markets moved after headlines</span><span class="am-consumers">js/dataFeeds.js, js/feedCoverage.js, js/infoMap.js, js/infoMapDerived.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/news-outcome/backfill</span><span class="am-desc">Manually triggers backfill of news-outcome scoring for the week instead of waiting for the hourly kick</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Overnight-hold backtest</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/overnight-hold-v1/m1/:instrument</span><span class="am-desc">M1 bar slice (?from, ?to epoch, max 7 days) for gold, NQ, GBPUSD or USDJPY</span><span class="am-consumers">overnight-hold-backtest.html, overnight-hold-real-costs.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/overnight-hold-v1/run</span><span class="am-desc">Starts an async overnight-hold backtest job for gold and/or NQ; returns a jobId</span><span class="am-consumers">overnight-hold-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/overnight-hold-v1/status/:jobId</span><span class="am-desc">Status and result of an overnight-hold backtest job</span><span class="am-consumers">overnight-hold-backtest.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">POI reaction backtest</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/poi-reaction/run</span><span class="am-desc">Starts an async POI-reaction backtest (entry timeframe, tolerance, confluence settings); poll status</span><span class="am-consumers">poi-reaction-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/poi-reaction/status/:jobId</span><span class="am-desc">Status and progress (pairs done) or result of a POI-reaction job</span><span class="am-consumers">poi-reaction-backtest.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Pattern Lab</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/pattern-lab/candles/:pair</span><span class="am-desc">Aggregated M1 candles for a pair at a chosen timeframe and from/to range</span><span class="am-consumers">pattern-lab.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/pattern-lab/instruments</span><span class="am-desc">Lists Pattern Lab instruments and which have precomputed results</span><span class="am-consumers">pattern-lab.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/pattern-lab/live-candles/:pair</span><span class="am-desc">Live OANDA candles for a pair at a chosen timeframe</span><span class="am-consumers">asia-fib-atlas-live.html, levelEngine/live_watch.py</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/pattern-lab/scan/:pair</span><span class="am-desc">Pattern scan for a pair and timeframe, cached; refresh forces a rescan</span><span class="am-consumers">indexv2.html, pattern-lab.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">QMR backtests</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/nq-qmr/hold-to-target</span><span class="am-desc">QMR hold-to-target test: removes the time exit, holds to target with financing and a max-hold cap</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/nq-qmr/m1-validate</span><span class="am-desc">Starts an async M1-level QMR validation job (both-sides or directional); returns a jobId</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/nq-qmr/m1-validate/status/:jobId</span><span class="am-desc">Status and result of a QMR M1 validation job</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/nq-qmr/spread-check</span><span class="am-desc">Measures real OANDA spread as % of price at entry and exit hours to set the QMR cost floor</span><span class="am-consumers">js/qmrV2Engine.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/nq-qmr/tearsheet</span><span class="am-desc">Shareable QMR tearsheet with full results, equity and per-trade MAE for an instrument</span><span class="am-consumers">qmr-tearsheet.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/qmr-v2/run</span><span class="am-desc">Starts an async QMR v2 backtest on M1 data for an instrument; returns a jobId</span><span class="am-consumers">nq-qmr-backtest.html, qmr-tearsheet.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/qmr-v2/status/:jobId</span><span class="am-desc">Status and result of a QMR v2 job</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Range extension backtest</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/range-ext/run</span><span class="am-desc">Starts an async range-extension backtest (date range, direction, confidence settings); poll status</span><span class="am-consumers">range-ext-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/range-ext/status/:jobId</span><span class="am-desc">Status, progress or result of a range-extension backtest job</span><span class="am-consumers">range-ext-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/range-ext/trades</span><span class="am-desc">Trades from the most recent saved range-extension backtest result file</span><span class="am-consumers">range-ext-backtest.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Release layers</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/event-day</span><span class="am-desc">Event-day lines for upcoming and recent releases, optionally filtered by currency, with front-end rates context</span><span class="am-consumers">atlas.html, js/eventDayContext.js, js/feedCoverage.js, js/infoMap.js +4 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/release-layer1</span><span class="am-desc">Release layer 1 rows: price reactions around macro releases, merging the laptop's live rebuild over the committed base</span><span class="am-consumers">js/eventReplayCore.js, js/infoMap.js, js/infoMapDerived.js, js/terminal/eventReplay.js +4 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/release-layer1/checks</span><span class="am-desc">Plain-text layer 1 validation checks document</span><span class="am-consumers">release-reaction.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/release-layer1/paths</span><span class="am-desc">Price paths around one release by id from the live push or committed paths file</span><span class="am-consumers">js/eventReplayCore.js, js/terminal/eventReplay.js, release-reaction.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/release-layer2</span><span class="am-desc">Release layer 2 factor analysis, from KV push with committed factors.json as fallback</span><span class="am-consumers">release-why.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Replay</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/replay/day</span><span class="am-desc">Full replay of one market on a London date: M1 bars, option OI, forecast and dawn context</span><span class="am-consumers">js/deskAlertRules.js, js/deskAlertRulesCore.js, js/infoMap.js, js/infoMapDerived.js +5 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/replay/meta</span><span class="am-desc">Replay metadata for a market: earliest data, option-OI days, forecast days and desk-run and snapshot days available</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, js/replayCore.js, js/terminal/replayView.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/replay/notable</span><span class="am-desc">Notable replay days for a market from recent daily bars and OI, plus recent release events</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, js/terminal/replayView.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/replay/strength</span><span class="am-desc">Currency-strength replay for a London date from M5, hourly and daily bars across pairs</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, js/replayVizCore.js, js/terminal/replayView.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Research quick test</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/quick-test</span><span class="am-desc">Lists saved quick tests, or one by id</span><span class="am-consumers">desk-office.html, js/quickTestView.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/quick-test</span><span class="am-desc">Runs a quick test of whether X leads Y over a horizon (optionally conditional) on whitelisted series</span><span class="am-consumers">desk-office.html, js/quickTestView.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Session research</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/session-research/summary</span><span class="am-desc">Session-research dashboard summary JSON exported by SessionResearch</span><span class="am-consumers">js/serviceFlags.js, today.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Spread episodes</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/spread-episodes</span><span class="am-desc">Current spread-episode detector state with recent events and stored record</span><span class="am-consumers">js/feedCoverage.js, js/infoMap.js, js/infoMapDerived.js, js/serviceFlags.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/spread-episodes/history</span><span class="am-desc">Precomputed chart JSON for spread-episode case1 or case2 (case param)</span><span class="am-consumers">spread-episodes.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/spread-episodes/live</span><span class="am-desc">Chart feed for the live spread-episode window: spread and price series plus events</span><span class="am-consumers">js/infoMap.js, js/infoMapDerived.js, spread-episodes.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/spread-episodes/results</span><span class="am-desc">Backtest results summary for the spread-episode study, cached 15 minutes</span><span class="am-consumers">spread-episodes.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/spread-episodes/tick</span><span class="am-desc">Runs one spread-episode detection tick now; silent=1 suppresses alerts</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Swing map</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/swing-map</span><span class="am-desc">Swing map for an instrument (default GOLD) with live price attached outside the cache</span><span class="am-consumers">forecast-path.html, js/pathSources.js, js/terminal/optionsView.js, js/terminal/terminalTabs.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/swing-walk-track</span><span class="am-desc">Swing-walk tracking record for an instrument (default GOLD), cached 30 minutes</span><span class="am-consumers">swing-map.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">System backtests</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/residual-fx8-forward</span><span class="am-desc">Forward paper record of the FX8 residual book</span><span class="am-consumers">residual-fx8-forward.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/system-backtest</span><span class="am-desc">Returns one system's backtest in full with its validation gates</span><span class="am-consumers">forge/system_exports.py, system-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/system-backtest/csv</span><span class="am-desc">Downloads a system's trades as CSV (percent, R, cash or terminal format)</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/system-backtests</span><span class="am-desc">Lists every backtested system with its standard outputs</span><span class="am-consumers">system-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/systems/job</span><span class="am-desc">Status of the current systems backtest job plus whether results are stored in R2 or memory</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">System review &amp; live checks</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/allocation</span><span class="am-desc">Latest capital-allocation result across systems and the job state</span><span class="am-consumers">desk-office.html, js/deskAccess.js, js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/allocation/run</span><span class="am-desc">Starts an async rebuild of the allocation analysis (202)</span><span class="am-consumers">desk-office.html, js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/bot-system-map</span><span class="am-desc">Returns which backtested system each bot trades</span><span class="am-consumers">system-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/bot-system-map</span><span class="am-desc">Sets or clears the backtested system mapped to a bot</span><span class="am-consumers">system-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fleet-portfolio</span><span class="am-desc">Combined fleet portfolio of the bots' logs over a window (days, R or profit unit), cached 10 min</span><span class="am-consumers">desk-office.html, js/deskAccess.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rules-keeper</span><span class="am-desc">Rules keeper: every bot's mode and heartbeat against the research behind its idea, with flags</span><span class="am-consumers">desk-office.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/shadows</span><span class="am-desc">Lists active shadow rules (scored from start) per bot</span><span class="am-consumers">desk-office.html, js/deskAccess.js, system-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/shadows</span><span class="am-desc">Starts a shadow of a bot slice or rule, scored from now on</span><span class="am-consumers">desk-office.html, js/deskAccess.js, system-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/shadows/stop</span><span class="am-desc">Stops and deletes a shadow by id</span><span class="am-consumers">desk-office.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/system-live</span><span class="am-desc">Live check of a bot's trades against its mapped backtested system</span><span class="am-consumers">system-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/system-overview</span><span class="am-desc">Every system with its headline, decay trend and the review panel's verdicts</span><span class="am-consumers">system-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/system-review</span><span class="am-desc">Returns a system's diagnostics, the review panel's verdicts and the review job state</span><span class="am-consumers">system-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/system-review/run</span><span class="am-desc">Starts the AI review panel over one system or all systems (async)</span><span class="am-consumers">system-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/validation/harness</span><span class="am-desc">Validation desk's automatic gates on every harness output in the deployed repo</span><span class="am-consumers">desk-office.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Systems store</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/systems/rebuild</span><span class="am-desc">Starts background rebuild of backfilled trading systems from stored study outputs; optional ids</span><span class="am-consumers">system-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/systems/upload</span><span class="am-desc">Uploads a study's trades into the systems store and starts a build</span><span class="am-consumers">forge/system_exports.py</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Trade Lab</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-lab/candles</span><span class="am-desc">Candles for a gold or NQ time window for the Trade Lab research page</span><span class="am-consumers">trade-lab.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-lab/geometry</span><span class="am-desc">Cached precomputed trade-geometry data for gold or NQ</span><span class="am-consumers">trade-lab.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/trade-lab/geometry-window</span><span class="am-desc">Runs impulse/retracement geometry detection on a posted instrument and time window</span><span class="am-consumers">trade-lab.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-lab/similar-trades</span><span class="am-desc">Historical archive trades similar to a given gold/NQ setup, filtered by direction and outcome</span><span class="am-consumers">trade-lab.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-lab/strategy-trades</span><span class="am-desc">Paged strategy trade list for gold or NQ, filterable by outcome and sort</span><span class="am-consumers">trade-lab.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">VuManChu analysis</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vumanchu/health</span><span class="am-desc">Health check: fails unless the VuManChu logger has written recently</span><span class="am-consumers">js/serviceFlags.js, vumanchu-state.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vumanchu/transitions</span><span class="am-desc">VuManChu multi-timeframe alignment transition probabilities for ?symbol=</span><span class="am-consumers">vumanchu-chart.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Yield-spread backtest</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/yield-spread/defaults</span><span class="am-desc">Default yield-spread backtest parameters and available pair labels</span><span class="am-consumers">yield-spread.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/yield-spread/run</span><span class="am-desc">Starts an async yield-spread z-score backtest using FRED data; poll status</span><span class="am-consumers">yield-spread.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/yield-spread/status/:jobId</span><span class="am-desc">Status or result of a yield-spread backtest job</span><span class="am-consumers">yield-spread.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/yield-spread/sweep</span><span class="am-desc">Starts an async robustness sweep across entry threshold and z-window for the yield-spread strategy</span><span class="am-consumers">yield-spread.html</span></div>
+        </div>
+      </div>
+      <div class="am-cat" data-cat="education, research pod &amp; newsletter">
+        <div class="am-cat-hd" style="color:#2dd4bf">Education, Research Pod &amp; Newsletter</div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Market-reading drill</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/chapters</span><span class="am-desc">Chapter data for the learning/market-reading pages, cached for twelve hours.</span><span class="am-consumers">chapters.html, js/chapterSpec.js, js/dataFeeds.js, js/infoMap.js +2 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/drill-question</span><span class="am-desc">One reading-drill question generated from today's real data board; optional topic, seeded by the day.</span><span class="am-consumers">js/dataFeeds.js, js/drillChart.js, today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/drill-series/stamp</span><span class="am-desc">Date stamp and size of the drill series bundle, for cache checks.</span><span class="am-consumers">theory-lab/market-reading.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/wider-market</span><span class="am-desc">Wider-market computation from the drill data bundle, cached hourly.</span><span class="am-consumers">js/dataFeeds.js, js/infoMap.js, js/infoMapDerived.js, today.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Newsletter</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/newsletter/archive</span><span class="am-desc">Lists archived newsletter issues with their scores, scoring any that are due</span><span class="am-consumers">atlas.html, js/feedCoverage.js, js/infoMap.js, js/infoMapDerived.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/newsletter/archive</span><span class="am-desc">Saves a newsletter issue (html plus snapshot) to the archive; terminal v2 is owner-only</span><span class="am-consumers">atlas.html, js/feedCoverage.js, js/infoMap.js, js/infoMapDerived.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/newsletter/issue</span><span class="am-desc">Serves one archived newsletter issue's static HTML by id in a sandbox</span><span class="am-consumers">atlas.html, desk-office.html, desk-run.html, js/infoMap.js +1 more</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/newsletter/telegram</span><span class="am-desc">Owner-only: sends an archived newsletter issue to the configured Telegram chat</span><span class="am-consumers">atlas.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/newsletter/telegram-file</span><span class="am-desc">Owner-only: sends a PNG or PDF of the terminal newsletter to Telegram on an explicit click</span><span class="am-consumers">atlas.html, js/infoMap.js, js/infoMapDerived.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Plain-English explainers</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/explain</span><span class="am-desc">Owner-only: AI explanation of a read in plain words, with a glossary of terms for beginners</span><span class="am-consumers">js/deskSharedReads.js, today.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/oi-explain</span><span class="am-desc">Owner-only: AI plain-English explanation of an open-interest panel from its title and evidence; cached, capped at 80 a day</span><span class="am-consumers">js/deskSharedReads.js, oi-dashboard-v2.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Research Ops Engine</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-ops</span><span class="am-desc">Research housekeeping: stale register rows, preregs without verdict, results ready to bank</span><span class="am-consumers">desk-office.html, js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/roe/push</span><span class="am-desc">Token-authenticated push endpoint recording a research-engine run into the registry and R2; recording only</span><span class="am-consumers">roe/push.py, roe/tests/test_push.py</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/roe/questions</span><span class="am-desc">Research question board grouped by topic with related papers from the library</span><span class="am-consumers">js/roeBoard.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/roe/runs</span><span class="am-desc">List of recorded research-engine runs</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/roe/status</span><span class="am-desc">Research-engine board status from the run registry</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Research hub intake</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-hub</span><span class="am-desc">Research hub overview: intake queue, library, backlog, concepts, rules registry and evidence state</span><span class="am-consumers">js/research/app.js, js/research/hubView.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-hub/drop</span><span class="am-desc">Adds a dropped text or link item to the research intake queue</span><span class="am-consumers">js/research/app.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-hub/drop/image</span><span class="am-desc">Uploads a dropped screenshot to R2 for the research intake queue</span><span class="am-consumers">js/research/app.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-shared/image</span><span class="am-desc">Serves an intake-queue picture by id from R2 for the shared reader</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-shared/paper</span><span class="am-desc">Returns one library paper's notes, optionally with its full extracted text</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-shared/papers</span><span class="am-desc">Searches the paper library for the shared reader and returns matching papers</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-shared/queue</span><span class="am-desc">Lists research intake queue items for the shared reader, filtered by status (default queued)</span><span class="am-consumers">js/storeRegistry.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-shared/queue/done</span><span class="am-desc">Marks an intake queue item done or otherwise updated, with a note</span><span class="am-consumers">js/storeRegistry.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-shared/rooms</span><span class="am-desc">Lists research rooms with status, question and round counts for the shared reader</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Research pod cases</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod</span><span class="am-desc">Overview of the research pod: cases, latest sessions, the proposal library with owner marks</span><span class="am-consumers">desk-office.html, js/dataFeeds.js, js/deskSharedReads.js, js/library/api.js +13 more</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/card</span><span class="am-desc">Returns a proposal's build card, its review and the prereg draft (format=md for the draft)</span><span class="am-consumers">desk-office.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/card</span><span class="am-desc">Starts the architect writing a build card for a proposal (async, 202); poll the job</span><span class="am-consumers">desk-office.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/case</span><span class="am-desc">Returns one research case in full with its job and the Head's plan as a quick-test proposal</span><span class="am-consumers">desk-office.html, js/research/app.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/case/from-dossier</span><span class="am-desc">Opens a research case from a literature dossier (an idea or paper review)</span><span class="am-consumers">desk-office.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/case/library-preview</span><span class="am-desc">Preview of which library papers would be fed to a case's researchers</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/case/library-preview</span><span class="am-desc">Preview of which library papers would be fed to a case's researchers (POST variant)</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/case/reply</span><span class="am-desc">Posts the owner's reply to a case, starting the next round of researcher answers</span><span class="am-consumers">desk-office.html, js/research/app.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/case/review</span><span class="am-desc">Sends a case to the Head of Research for review</span><span class="am-consumers">desk-office.html, js/research/app.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/case/status</span><span class="am-desc">Sets a case's status to open, parked or closed</span><span class="am-consumers">desk-office.html, js/research/app.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/cases</span><span class="am-desc">Lists every research case (summary rows, newest first) and the running jobs</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/feedback</span><span class="am-desc">Records the owner's verdict on a proposal: shortlist, build, park or reject, with a note</span><span class="am-consumers">desk-office.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/image</span><span class="am-desc">Serves a stored research-pod image by id, for thumbnails and full view</span><span class="am-consumers">desk-office.html, js/research/app.js, js/researchImages.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/image</span><span class="am-desc">Uploads a pasted chart image (PNG, JPEG or WebP, size-limited) for a research case and returns its image id</span><span class="am-consumers">desk-office.html, js/research/app.js, js/researchImages.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/link</span><span class="am-desc">Links a pod proposal to a register entry and sets its stage (paper, live, retired)</span><span class="am-consumers">desk-office.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/run</span><span class="am-desc">Starts a new research case now from an optional brief and chosen lenses (quant, macro, flow)</span><span class="am-consumers">desk-office.html, js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/thread</span><span class="am-desc">Returns the follow-up conversation thread for a research item and whether the researcher is answering</span><span class="am-consumers">desk-office.html, js/deskSharedReads.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/thread</span><span class="am-desc">Owner posts a message in a research thread, triggering the researcher's answer</span><span class="am-consumers">desk-office.html, js/deskSharedReads.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Research pod literature library</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/backlog</span><span class="am-desc">Returns the reading backlog (seeded from repo files on first call) and the reading job's state</span><span class="am-consumers">desk-office.html, js/dataFeeds.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/backlog</span><span class="am-desc">Starts the literature desk reading the next backlog items (1-12 model calls)</span><span class="am-consumers">desk-office.html, js/dataFeeds.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/concepts</span><span class="am-desc">Status of the concept-extraction job for a library slice (default candles-sessions)</span><span class="am-consumers">js/libraryApi.js, roe/concepts.py, roe/tests/test_concepts.py</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/concepts</span><span class="am-desc">Starts the concept-extraction job for a library slice (calls budget, gated)</span><span class="am-consumers">js/libraryApi.js, roe/concepts.py, roe/tests/test_concepts.py</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/concepts/cards</span><span class="am-desc">Returns the generated concept cards from the library</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/dossier</span><span class="am-desc">Returns one literature dossier in full by id</span><span class="am-consumers">desk-office.html, js/researchCase.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/dossier/adopt</span><span class="am-desc">Puts a dossier's proposal into the research pod's proposal library</span><span class="am-consumers">desk-office.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/dossiers</span><span class="am-desc">Lists every literature dossier (newest first, summaries) and the job status</span><span class="am-consumers">desk-office.html, js/dataFeeds.js, js/literature.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/figs</span><span class="am-desc">Status of the figure and table notes job: papers done and model calls used</span><span class="am-consumers">js/libraryApi.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/figs</span><span class="am-desc">Starts the figure and table notes job over library papers (calls budget)</span><span class="am-consumers">js/libraryApi.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/investigate</span><span class="am-desc">Starts async research on an idea: librarian, search, reading, then a dossier</span><span class="am-consumers">desk-office.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/librarian</span><span class="am-desc">Returns the usage and hard-cap status of the library librarian's model calls</span><span class="am-consumers">js/library/api.js, js/library/librarianView.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/librarian</span><span class="am-desc">Runs just the librarian on a free-text question and returns the best-matching library papers (q, n)</span><span class="am-consumers">js/library/api.js, js/library/librarianView.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/math</span><span class="am-desc">Status of the equations-extraction job: papers done and model calls used against the cap</span><span class="am-consumers">js/libraryApi.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/math</span><span class="am-desc">Starts the equations-extraction job over library papers (calls budget)</span><span class="am-consumers">js/libraryApi.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/paper</span><span class="am-desc">Starts async review of one paper (arXiv id, URL, DOI, SSRN, PDF or page)</span><span class="am-consumers">desk-office.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/papers</span><span class="am-desc">Returns the paper library with notes, cross-references and linked dossiers and proposals</span><span class="am-consumers">desk-office.html, js/dataFeeds.js, js/terminal/terminalTabs.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/upload</span><span class="am-desc">Uploads a PDF from the laptop (raw body) into the paper library</span><span class="am-consumers">desk-office.html, js/dataFeeds.js, js/research/app.js, scripts/research/push_papers.py</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/upload/dedupe</span><span class="am-desc">De-duplicates uploaded papers against the library and the reading backlog</span><span class="am-consumers">no page caller — bot / cron / manual</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/upload/have</span><span class="am-desc">Lists the paper ids and file names the server already holds, so the laptop uploader can skip them</span><span class="am-consumers">js/dataFeeds.js, scripts/research/push_papers.py</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Research room</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-pod/brief</span><span class="am-desc">Status of the research brief translator service</span><span class="am-consumers">js/research/app.js, js/roeIdea.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-pod/brief</span><span class="am-desc">Translates a plain-text research request into a structured research brief</span><span class="am-consumers">js/research/app.js, js/roeIdea.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-room</span><span class="am-desc">Returns one research room: conversation, table, stage line and who it waits on</span><span class="am-consumers">js/research/app.js, js/roeIdea.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-room/list</span><span class="am-desc">Lists every case as a research room row, sorted by who it is waiting on</span><span class="am-consumers">js/research/app.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/research-room/onfile</span><span class="am-desc">Finds Evidence Book entries most related to some text (code only, no model cost)</span><span class="am-consumers">js/research/app.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-room/open</span><span class="am-desc">Opens a new research room from a translated brief</span><span class="am-consumers">js/research/app.js, js/roeIdea.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-room/seat</span><span class="am-desc">Changes who sits at a room's table: accept, remove, dismiss, bench or unbench a seat</span><span class="am-consumers">js/research/app.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/research-room/talk</span><span class="am-desc">Sends a message to a research room and starts the chosen seat's reply</span><span class="am-consumers">js/research/app.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Theory desk</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/desk-theory</span><span class="am-desc">Latest week's theory-desk research proposals and job state</span><span class="am-consumers">desk-office.html, js/serviceFlags.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/desk-theory/run</span><span class="am-desc">Starts async writing of the theory desk's weekly proposals</span><span class="am-consumers">desk-office.html, js/serviceFlags.js</span></div>
         </div>
       </div>
     </div>
