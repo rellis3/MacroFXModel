@@ -11,7 +11,7 @@ import { TF_SEC, legOnChart, carryForward, legRaw, spreadRaw, changesOf } from '
 export const TFS = ['5m', '15m', '1h', '4h'];
 /** Lines on offer. kind 'spread' = EUR leg - USD leg (rates, bp, the C.OG indicator's logic); 'leg' = one leg. rolling names follow cog-chart.html. */
 export const PRESETS = [
-  { id: 'cog', label: 'C.OG line (SOFR minus Euribor, bp)', kind: 'spread', eur: 'I2', usd: 'SR32', asRate: true, invert: true, inBps: true },
+  { id: 'cog', label: 'C.OG line (SOFR minus Euribor, bp)', kind: 'spread', eur: 'I2', usd: 'SR3U6', asRate: true, invert: true, inBps: true },
   { id: 'us2y', label: 'US 2y yield', kind: 'leg', leg: 'Y_US2', asRate: false, invert: false, inBps: false },
   { id: 'us10y', label: 'US 10y yield', kind: 'leg', leg: 'Y_US10', asRate: false, invert: false, inBps: false },
   { id: 'us5y', label: 'US 5y yield', kind: 'leg', leg: 'Y_US5', asRate: false, invert: false, inBps: false },

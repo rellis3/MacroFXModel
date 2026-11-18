@@ -23,8 +23,8 @@ test('legPrices: nothing without a leg, and never carries past the end of the le
   assert.equal(out[1], 96); assert.equal(out[3], null);
 });
 test('lineRaw: the C.OG spread is the SOFR rate minus the Euribor rate in bp (Euribor 3.95, SOFR 4.20 -> +25)', () => {
-  const legs = { I2: { m15: [{ t: 0, o: 96.05, h: 96.05, l: 96.05, c: 96.05 }] }, SR32: { m15: [{ t: 0, o: 95.8, h: 95.8, l: 95.8, c: 95.8 }] } };
+  const legs = { I2: { m15: [{ t: 0, o: 96.05, h: 96.05, l: 96.05, c: 96.05 }] }, SR3U6: { m15: [{ t: 0, o: 95.8, h: 95.8, l: 95.8, c: 95.8 }] } };
   const r = lineRaw(PRESETS[0], legs, [0], 900);
   assert.ok(Math.abs(r[0] - 25) < 1e-9, String(r[0]));
-  assert.deepEqual(neededLegs(PRESETS[0]), ['I2', 'SR32']);
+  assert.deepEqual(neededLegs(PRESETS[0]), ['I2', 'SR3U6']);
 });

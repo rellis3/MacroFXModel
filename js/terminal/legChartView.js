@@ -10,10 +10,11 @@ const KEY = 'ttLegChart_v1', ID = 'ttlc';
 
 let st = { ...DEFAULT_STATE };
 try { st = { ...st, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch (e) { /* private window: defaults */ }
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ asset: st.asset, tf: st.tf, overlays: st.overlays, active: st.active })); } catch (e) { /* ignore */ } };
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ asset: st.asset, tf: st.tf, overlays: st.overlays, active: st.active, custom: st.custom })); } catch (e) { /* ignore */ } };
 const tok = (n, fb) => { try { return getComputedStyle(document.documentElement).getPropertyValue('--' + n).trim() || fb; } catch (e) { return fb; } };   // the terminal's theme tokens, so every theme paints the chart
 const jget = async u => { const r = await fetch(u); if (!r.ok) throw new Error(`${u} HTTP ${r.status}`); return r.json(); };
 const COLS = [['blue2', 'royalblue'], ['gold', 'orange'], ['pur', 'mediumpurple'], ['up', 'mediumseagreen'], ['dn', 'tomato'], ['tx', 'white']];
+const CUSTOM0 = { a: 'I2', b: 'SR3U6', asRate: true, invert: true, inBps: true };
 const nqRead = r => (r && typeof r === 'object' ? [r.regime, r.sign, r.gap].filter(Boolean).join('. ') : String(r ?? ''));
 
 const CSS = '#ttlc .lc-row{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-bottom:10px}#ttlc .lc-row label{display:flex;gap:6px;align-items:center}#ttlc .lc-row select{max-width:100%}'
@@ -35,11 +36,20 @@ export async function mountLegChart(root = document) {
   try { meta = await jget('/api/cog-chart/meta'); } catch (e) { host.innerHTML = `<p class="muted">Chart data is not available: ${esc(e.message)}</p>`; return; }
   const assets = (meta.assets ?? []).map(a => a.key);
   if (!assets.includes(st.asset)) st.asset = assets.includes('NAS100') ? 'NAS100' : assets[0];
-  st.overlays = (Array.isArray(st.overlays) ? st.overlays : []).filter(id => PRESETS.some(p => p.id === id));
+  st.custom = { ...CUSTOM0, ...(st.custom ?? {}) };
+  const legs = meta.legs ?? [], legKind = n => legs.find(l => l.name === n)?.kind ?? 'rate', legLabel = n => legs.find(l => l.name === n)?.label ?? n;
+  const customPreset = () => { const c = st.custom, o = { id: 'custom', asRate: c.asRate, invert: c.invert, inBps: c.inBps }; return c.b ? { ...o, label: `My line: ${c.a} − ${c.b}${c.invert ? ' (inverted)' : ''}`, kind: 'spread', eur: c.a, usd: c.b } : { ...o, label: `My line: ${c.a}${c.invert ? ' (inverted)' : ''}`, kind: 'leg', leg: c.a }; };
+  const P = id => (id === 'custom' ? customPreset() : PRESETS.find(p => p.id === id));
+  st.overlays = (Array.isArray(st.overlays) ? st.overlays : []).filter(id => id === 'custom' || PRESETS.some(p => p.id === id));
   if (!st.overlays.length) st.overlays = [...DEFAULT_STATE.overlays];
   if (!st.overlays.includes(st.active)) st.active = st.overlays[0];
-  const colour = id => { const c = COLS[Math.max(0, PRESETS.findIndex(p => p.id === id)) % COLS.length]; return tok(c[0], c[1]); };
-  const P = id => PRESETS.find(p => p.id === id);
+  const colour = id => { if (id === 'custom') return tok('cy', 'cyan'); const c = COLS[Math.max(0, PRESETS.findIndex(p => p.id === id)) % COLS.length]; return tok(c[0], c[1]); };
+  const mon = iso => String(iso ?? '').slice(0, 7);
+  function legOpts(sel) {
+    const groups = {};
+    legs.forEach(l => (groups[`${l.side === 'US' ? 'US' : 'Euro'} / ${l.group}`] ??= []).push(l));
+    return Object.entries(groups).sort().map(([g, ls]) => `<optgroup label="${esc(g)}">${ls.map(l => `<option value="${esc(l.name)}" ${l.name === sel ? 'selected' : ''}>${esc(l.label)} [${mon(l.first)} to ${mon(l.asOf)}]</option>`).join('')}</optgroup>`).join('');
+  }
   host.innerHTML = `<style>${CSS}</style>
   <div class="lc-row">
     <label class="lbl">Market <select id="${ID}-asset">${assets.map(a => `<option ${a === st.asset ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select></label>
@@ -47,6 +57,19 @@ export async function mountLegChart(root = document) {
   </div>
   <div class="lbl" style="margin-bottom:4px">Draw over the candles (click to add or remove)</div>
   <div class="lc-chips" id="${ID}-chips"></div>
+  <details class="lc-build" id="${ID}-build" style="margin-top:10px"><summary class="lbl" style="cursor:pointer">Build your own line: leg 1 minus leg 2, with invert (like the C.OG chart)</summary>
+    <div class="lc-row" style="margin-top:8px">
+      <label class="lbl">Leg 1 <select id="${ID}-la">${legOpts(st.custom.a)}</select></label>
+      <label class="lbl">Leg 2 <select id="${ID}-lb"><option value="">(none: draw leg 1 alone)</option>${legOpts(st.custom.b)}</select></label>
+    </div>
+    <div class="lc-row">
+      <label class="lbl"><input type="checkbox" id="${ID}-ci" ${st.custom.invert ? 'checked' : ''}> invert sign</label>
+      <label class="lbl"><input type="checkbox" id="${ID}-cr" ${st.custom.asRate ? 'checked' : ''}> price → rate (100 − price)</label>
+      <label class="lbl"><input type="checkbox" id="${ID}-cb" ${st.custom.inBps ? 'checked' : ''}> in bp</label>
+      <button class="chip" type="button" id="${ID}-cswap">⇄ swap legs</button>
+    </div>
+    <p class="muted" style="font-size:12px;margin:0">The line is leg 1 minus leg 2. Rate futures are prices: tick “price → rate” for SOFR and Euribor, leave it off for bond futures and yields (it turns itself off when you pick one).</p>
+  </details>
   <div class="lc-row" style="margin-top:12px">
     <span class="lbl">Move</span><select id="${ID}-act" aria-label="Which line to move"></select>
     <button class="chip" id="${ID}-m10">◀ 10</button><button class="chip" id="${ID}-m1">◀ 1</button>
@@ -74,7 +97,7 @@ export async function mountLegChart(root = document) {
   const seriesFor = id => series[id] ??= chart.addLineSeries({ color: colour(id), lineWidth: 2, priceScaleId: Object.keys(series).length === 0 ? 'left' : `ov-${id}`, priceLineVisible: false, lastValueVisible: false });
 
   function chips() {
-    $('chips').innerHTML = PRESETS.map(p => `<button type="button" class="chip" data-id="${p.id}" aria-pressed="${st.overlays.includes(p.id)}"><span class="lc-dot" style="background:${colour(p.id)}"></span>${esc(p.label)}</button>`).join('');
+    $('chips').innerHTML = [...PRESETS, customPreset()].map(p => `<button type="button" class="chip" data-id="${p.id}" aria-pressed="${st.overlays.includes(p.id)}"><span class="lc-dot" style="background:${colour(p.id)}"></span>${esc(p.label)}</button>`).join('');
     $('act').innerHTML = st.overlays.map(id => `<option value="${id}" ${id === st.active ? 'selected' : ''}>${esc(P(id).label)}</option>`).join('');
   }
   async function load() {
@@ -136,6 +159,18 @@ export async function mountLegChart(root = document) {
     if (!on) st.active = id; else if (st.active === id) st.active = st.overlays[0];
     save(); chips(); load();
   };
+
+  const customChanged = async () => {
+    const c = st.custom;
+    c.invert = $('ci').checked; c.asRate = $('cr').checked; c.inBps = $('cb').checked;
+    if ([c.a, c.b].some(n => n && legKind(n) !== 'rate')) c.asRate = false, $('cr').checked = false;
+    if (!st.overlays.includes('custom')) st.overlays = [...st.overlays, 'custom'];
+    st.active = 'custom'; shifts.custom = 0; save(); chips(); await load();
+  };
+  $('la').onchange = e => { st.custom.a = e.target.value; customChanged(); };
+  $('lb').onchange = e => { st.custom.b = e.target.value; customChanged(); };
+  for (const k of ['ci', 'cr', 'cb']) $(k).onchange = customChanged;
+  $('cswap').onclick = () => { const c = st.custom; if (!c.b) return; [c.a, c.b] = [c.b, c.a]; $('la').value = c.a; $('lb').value = c.b; customChanged(); };
 
   $('find').onclick = () => {
     const span = visibleSpan(chart.timeScale().getVisibleLogicalRange(), candles.length);
