@@ -112,4 +112,4 @@ Design numbers only (`scripts/roc-stall-trend-filter/power.mjs`, `analysis/outpu
 
 ## RESULTS
 
-(not run)
+See `analysis/output/roc-stall-trend-filter/RESULTS.md` (run 2026-11-18). T1 **NULL**: +0.040 [-0.063, +0.140] against same-state controls, 666 events, placebo 81st percentile; the interval's upper edge is below the +0.15 bar, so a rise of the size the claim needs is ruled out. Reported: T4 (a calmer month after a reset inside an uptrend, -0.057 [-0.089, -0.024]) survives BH as a candidate only. Banked as `roc-stall-trend-filter`.
