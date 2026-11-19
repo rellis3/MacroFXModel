@@ -40,12 +40,4 @@ shaped differently.
 
 ## Amendments
 
-### A1 — 2026-11-19, PRE-RESULTS (gold touches extracted; no forecast scored against a real outcome)
-
-The positive control failed on the first run (X2 2.15pp against a floor p90 of 2.01), so nothing was scored. A
-diagnostic (600 synthetic sessions, gold's clock and line multipliers) found the control's own paths at fault, not the
-scorer. Monitoring the synthetic path 8 times a minute misses some intraminute extremes, so the continuous-time
-reflection formula over-predicts: X2 bias +0.9pp (next rung) and +1.5pp (0.25σ) at 8 substeps, +0.3pp / +0.3pp at
-60. NQ at 8 substeps showed +1.0 / −0.6pp (mixed sign), which is why its control passed. Change: the synthetic paths
-use 60 substeps per minute (`SUBSTEPS` in `scripts/exhaustion-v2/score.py`), for gold and every later instrument. The
-pass rule is unchanged. Real gold touches are untouched: their M1 highs and lows are the exchange's.
+(none)
