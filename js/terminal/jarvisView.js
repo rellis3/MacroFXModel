@@ -63,7 +63,7 @@ export async function openJarvis(win = window) {
 <span id="${ID}-mods"></span><span id="${ID}-win"></span><span id="${ID}-view"></span>
 <button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Jarvis, ..." (microphone, this tab only)'>HEY JARVIS</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Jarvis keeps watching">DOCK ▾</button><button type="button" id="${ID}-off" title="Switch Jarvis off">OFF ✕</button></div>
 <div class="jv-reg" id="${ID}-reg"></div><div class="jv-hud" id="${ID}-hud"></div><div class="jv-pane" id="${ID}-pane" hidden></div><div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div>
-<div class="jv-scrub" id="${ID}-scrub"><button type="button" id="${ID}-play" title="Replay the last 60 sessions">▶ PLAY</button><input type="range" id="${ID}-sl" min="0" max="0" value="0" aria-label="Session to show"><span id="${ID}-sd" class="jv-sub" style="min-width:150px;text-align:right">LATEST</span><button type="button" id="${ID}-now">LATEST</button></div>
+<div class="jv-scrub" id="${ID}-scrub"><button type="button" id="${ID}-play" title="Replay the last 60 sessions">▶ PLAY</button><input type="range" id="${ID}-sl" min="0" max="0" value="0" aria-label="Session to show"><span id="${ID}-sd" class="jv-sub" style="min-width:150px;text-align:right">LATEST</span><button type="button" id="${ID}-now">LATEST</button><button type="button" id="${ID}-expl" title="Describe what was going on around this day (one model call)">EXPLAIN THIS DAY</button></div>
 <div class="jv-foot">drag to turn · wheel to zoom · click a market · Esc docks · none of this is a forecast</div>`;
   doc.body.appendChild(root);
   const dock = doc.createElement('div'); dock.id = `${ID}-dock`; dock.hidden = true; doc.body.appendChild(dock);
@@ -178,6 +178,12 @@ export async function openJarvis(win = window) {
       p.innerHTML = `<h3>ALERTS</h3><p>Jarvis checks the live chain every two minutes while this tab is open, and the server's memory every ten. He tells you when a textbook link breaks or heals, when a market goes well beyond its normal noise, and when memory crosses your limit. It is awareness, never a trade.</p>
 <div class="jv-row"><button type="button" id="${ID}-wt" aria-pressed="${st.watch}">WATCHING ${st.watch ? 'ON' : 'OFF'}</button><button type="button" id="${ID}-nt">DESKTOP NOTIFICATIONS</button></div>`
         + (st.alerts.length ? st.alerts.map(a => `<p><span class="jv-k ${a.level === 'warn' ? 'jv-broke' : 'jv-hold'}">${esc(a.time)}</span>${esc(a.text)}</p>`).join('') : '<p>Nothing yet this session.</p>');
+      jf('/api/jarvis/watch').then(w => {   // the server watcher (Telegram, tab closed); fails soft if the route is missing
+        if (!w?.ok || st.mod !== 'alerts' || !p.isConnected) return;
+        const hm = w.lastCheck ? new Date(w.lastCheck).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }) : 'not yet';
+        const rows = (w.lastAlerts ?? []).map(a => `<p><span class="jv-k ${a.level === 'warn' ? 'jv-broke' : 'jv-hold'}">${esc(new Date(a.at).toLocaleString('en-GB', { timeZone: 'Europe/London', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }))}</span>${esc(a.text)}</p>`).join('');
+        p.insertAdjacentHTML('beforeend', `<h3 style="margin-top:12px">SENT TO YOUR PHONE</h3><p class="jv-sub">Server watcher: last check ${esc(hm)}${w.enabled ? '' : ' (switched off)'}</p>${rows || '<p>Nothing sent yet.</p>'}`);
+      }).catch(() => {});
       p.querySelector(`#${ID}-wt`).onclick = () => { setWatch(!st.watch); R.alerts(); };
       p.querySelector(`#${ID}-nt`).onclick = async () => { try { const r = await win.Notification?.requestPermission?.(); say(r === 'granted' ? 'Desktop notifications are on.' : 'Notifications were not allowed.', true); } catch (e) { /* unsupported */ } };
     },
@@ -200,7 +206,7 @@ export async function openJarvis(win = window) {
     if (m === 'chain') showCard(); else { $('card').hidden = true; R[m]?.(); }
   }
   $('mods').onclick = e => { const b = e.target.closest('button[data-m]'); if (b) setMod(b.dataset.m); };
-  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setMod: m => setMod(m), ask: q => { setMod('ask'); R.ask(q, true); }, tcol: t => tcol(t), colours: () => C };
+  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), setMod: m => setMod(m), ask: q => { setMod('ask'); R.ask(q, true); }, tcol: t => tcol(t), colours: () => C };
   loadModules().then(list => {
     for (const m of list) { R[m.id] = () => m.render($('pane'), xapi); if (!$('mods').querySelector(`[data-m="${m.id}"]`)) $('mods').insertAdjacentHTML('beforeend', ` <button type="button" data-m="${esc(m.id)}" aria-pressed="false">${esc(m.label)}</button>`); }
   });
@@ -239,6 +245,7 @@ export async function openJarvis(win = window) {
   }
   $('sl').oninput = e => { stopPlay(); scrubTo(+e.target.value); };
   $('now').onclick = () => { stopPlay(); scrubTo(st.dates.length - 1); };
+  $('expl').onclick = () => { stopPlay(); setMod('explain'); };
   const stopPlay = () => { if (st.play) { win.clearInterval(st.play); st.play = 0; $('play').textContent = '▶ PLAY'; } };
   $('play').onclick = () => {
     if (st.play) return stopPlay(); if (st.dates.length < 3) return;
