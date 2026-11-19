@@ -6,7 +6,7 @@
 // Inputs: NAS100 NY-close daily bars from 2016 (har_rv_log), XAU / EUR 5-minute mid candles for the last 45 days
 // (HAR-CJ). Cached 10 minutes.
 import { oandaCandles } from './volStateRoutes.js';
-import { PARAMS, nqSigma, harcjSigma, buildText, sessionDate, nyKey } from './ladderV2Shadow.js';
+import { PARAMS, nqSigma, harcjSigma, buildText, sessionDate, nyKey, nqSigmaSeries, harcjSigmaSeries, sigmaForSession, dayLevels } from './ladderV2Shadow.js';
 
 const TTL_MS = 10 * 60e3;
 let cache = null, cacheAt = 0, building = null;
@@ -43,7 +43,70 @@ async function inputs() {
 
 export { build as buildLadderV2Inputs };   // diagnostics / live check
 
+// ── per-day levels for the forecast-reversion page ─────────────────────────────────────────────────
+//   GET /api/vol-forecast/ladder-v2/levels?pair=gold|eurusd|nq&from=YYYY-MM-DD&to=YYYY-MM-DD[&track=fut]
+// -> { ok, pair, track, days: { date: { sigma, asof, oh_p50..ol_p90, oc_*, hl_*, zone50_pct, zone75_pct, odds } } }
+const PAIR_SYM = { gold: 'GOLD', eurusd: 'EURUSD', nq: 'NQ' };
+const MAX_DAYS = 370;
+const seriesCache = new Map();   // `${sym}|${fromKey}|${toKey}` -> { at, series }
+async function m5Window(instrument, fromSec, toSec) {
+  const out = [];
+  let cur = fromSec;
+  for (let guard = 0; guard < 40 && cur < toSec; guard++) {
+    const iso = new Date(cur * 1000).toISOString().replace(/\.\d{3}Z$/, '.000000000Z');
+    const c = await oandaCandles(instrument, `granularity=M5&count=5000&from=${encodeURIComponent(iso)}`);
+    for (const x of c) if (x.complete && x.t <= toSec && (!out.length || x.t > out[out.length - 1][0])) out.push([x.t, x.c]);
+    if (c.length < 5000) break;
+    cur = c[c.length - 1].t + 1;
+  }
+  return out;
+}
+async function seriesFor(sym, from, to) {
+  const ck = `${sym}|${from}|${to}`;
+  const hit = seriesCache.get(ck);
+  if (hit && Date.now() - hit.at < TTL_MS) return hit.series;
+  let series;
+  if (sym === 'NQ') {
+    const d = await oandaCandles(PARAMS.instruments.NQ.oanda,
+      `granularity=D&dailyAlignment=17&alignmentTimezone=${encodeURIComponent('America/New_York')}&count=5000&from=${encodeURIComponent('2015-12-01T00:00:00.000000000Z')}`);
+    series = nqSigmaSeries(d.filter(x => x.complete).map(x => ({ key: nyKey(x.t), open: x.o, high: x.h, low: x.l, close: x.c })));
+  } else {
+    const fromSec = Math.floor(Date.parse(from + 'T00:00:00Z') / 1000) - 50 * 86400;
+    const toSec = Math.floor(Date.parse(to + 'T23:59:59Z') / 1000);
+    series = harcjSigmaSeries(sym, await m5Window(PARAMS.instruments[sym].oanda, fromSec, toSec));
+  }
+  seriesCache.set(ck, { at: Date.now(), series });
+  if (seriesCache.size > 24) seriesCache.delete(seriesCache.keys().next().value);
+  return series;
+}
+export async function levelsRange(pair, from, to, track = 'cfd') {
+  const sym = PAIR_SYM[String(pair).toLowerCase()];
+  if (!sym) return { ok: false, error: 'v2 levels exist for gold, eurusd and nq only' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return { ok: false, error: 'from/to as YYYY-MM-DD' };
+  const span = (Date.parse(to) - Date.parse(from)) / 86400e3;
+  if (!(span >= 0) || span > MAX_DAYS) return { ok: false, error: `range must be 0-${MAX_DAYS} days` };
+  const series = await seriesFor(sym, from, to);
+  const days = {};
+  for (let t = Date.parse(from + 'T12:00:00Z'); t <= Date.parse(to + 'T12:00:00Z'); t += 86400e3) {
+    const date = new Date(t).toISOString().slice(0, 10);
+    const dow = new Date(t).getUTCDay();
+    if (dow === 0 || dow === 6) continue;
+    const s = sigmaForSession(series, date);
+    if (s) days[date] = { ...dayLevels(sym, track, s.sigma), asof: s.asof };
+  }
+  return { ok: true, pair: String(pair).toLowerCase(), symbol: sym, track, version: PARAMS.version,
+           note: 'shadow ladder-v2; widths fitted on sessions to 2026-08-21, so earlier dates are partly in-sample', days };
+}
+
 export function mountLadderV2Shadow(app) {
+  app.get('/api/vol-forecast/ladder-v2/levels', async (req, res) => {
+    try {
+      const r = await levelsRange(req.query.pair, String(req.query.from ?? ''), String(req.query.to ?? ''), req.query.track === 'fut' ? 'fut' : 'cfd');
+      res.status(r.ok ? 200 : 400).json(r);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
   app.get('/api/vol-forecast/ladder-v2/export', async (req, res) => {
     const kind = req.query.kind === 'exhaustion' ? 'exhaustion' : 'forecast';
     const track = req.query.track === 'fut' ? 'fut' : 'cfd';

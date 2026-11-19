@@ -138,6 +138,7 @@
       <button data-c="ladder" class="on" title="The fitted ladder — p50/p75/p90 on O-H, O-L and O-C, with widths fit to realized range walk-forward (forge/vol.py) rather than a textbook constant times a hand-tuned correction. Each rung means what it says: p50 is reached on ~50% of sessions, p75 on ~25%, p90 on ~10%. O-H and O-L are fit SEPARATELY, so each instrument's structural asymmetry is kept.">Ladder</button>
       <button data-c="cog">COG</button>
       <button data-c="bot" title="The Volatility Bot's actual lines: COG geometry × the bot's σ (volSigmaSeries — the backtest math the bot uses, not the vol-forecast σ the COG calc uses; NQ swaps to cc-HV like the bot). Works on both Backtest and Archive source.">Bot</button>
+      <button data-c="v2" title="Shadow ladder-v2 (not live): each instrument&#39;s winning σ from the 2026-11-19 races (NQ har_rv_log on daily ranges; gold and EURUSD HAR-CJ on 5-minute RV) × widths fitted on real ranges, calibrated in every vol regime. Shaded bands past each line = how far price typically runs past ANY level before its first 0.25σ pullback (darker = median, lighter = 75th). Touch markers show the chance that line goes on to the next one at that time of day. GOLD, EURUSD, NQ only; widths fitted to 2026-08-21, so earlier days are partly in-sample.">v2</button>
       <button data-c="exh" title="The EXHAUSTION ladder — a different quantity from the bands. Each rung is the distance from the open at which that share of the day's actual REVERSALS had already happened (p50 = half of all turns were inside it), fitted over ~10 years of London days by js/exhaustionLadderEngine.js. The range bands say how far price travels; these say where it turns. Needs a cached fit — POST /api/exhaustion-ladder/run.">Exh</button>
     </div>
     <label title="Overlay OTHER calcs' lines on top of the active Calc above, view-only (no touch markers, no trades) — so you can see how far apart Original/COG/Bot place their levels for the same day.">Compare</label>
@@ -145,6 +146,7 @@
       <button data-cc="ladder" title="Overlay the fitted ladder's lines">+Ladder</button>
       <button data-cc="cog" title="Overlay COG's lines">+COG</button>
       <button data-cc="bot" title="Overlay Bot's lines">+Bot</button>
+      <button data-cc="v2" title="Overlay the shadow ladder-v2 lines (GOLD, EURUSD, NQ)">+v2</button>
       <button data-cc="exh" title="Overlay the EXHAUSTION turn rungs on top of the active calc. This is the comparison worth looking at: the turn rungs should sit visibly INSIDE the range bands.">+Exh</button>
     </span>
     <div class="seg" id="touch">
@@ -155,6 +157,11 @@
     <div class="seg" id="src">
       <button data-s="backtest" class="on">Backtest</button>
       <button data-s="archive">Archive</button>
+    </div>
+    <label title="Futures: GOLD / EURUSD / NQ only — the chart switches to CME futures (GC / 6E / NQ) from the NT8 footprint feed (days the capture recorded; today is live while the capture is pushing), and the v2 calc uses the futures ladder. Other calcs keep their CFD percentages on the futures open. The TF buttons don't apply in Futures mode (1-minute or 5-minute bars as captured).">Price</label>
+    <div class="seg" id="pxsrc">
+      <button data-p="cfd" class="on">CFD</button>
+      <button data-p="fut">Futures</button>
     </div>
     <label title="Fade all: revert every touched line one band inward. Cont med · fade 75th: ride the median (break through → target the band out) and fade the 75th back inward.">Style</label>
     <div class="seg" id="style">
@@ -317,7 +324,7 @@ function calcLabel() { return CALC_TAG[calcMode()] ?? 'Ladder'; }
 // a side on the excursion, two on the close), COG/Bot geometry has the legacy eight.
 function activeLines() {
   const m = calcMode();
-  return m === 'exh' ? EXHAUSTION_LINES : m === 'ladder' ? FITTED_LINES : LADDER_LINES;
+  return m === 'exh' ? EXHAUSTION_LINES : (m === 'ladder' || m === 'v2') ? FITTED_LINES : LADDER_LINES;
 }
 function srcMode()  { return $('src').querySelector('button.on')?.dataset.s || 'backtest'; }
 function tfGran()   { return $('tf').querySelector('button.on')?.dataset.g || 'M15'; }
@@ -367,6 +374,12 @@ function bandsFor(f, mode) {
       hl_median: f.hl_median, hl_75: f.hl_75,          // carried for the Budget style's denominator
     };
   }
+  // v2: the shadow ladder-v2 rungs (same names as the fitted ladder), from /api/vol-forecast/ladder-v2/levels.
+  if (mode === 'v2') {
+    const v = f.ladder_v2;
+    if (!v || v.oh_p50 == null) return null;
+    return { ...v, hl_median: f.hl_median ?? v.hl_p50, hl_75: f.hl_75 ?? v.hl_p75 };
+  }
   // Ladder: the per-day fitted rungs, served by /api/vol-forecast/backtest-range.
   // hl_* are carried alongside so anything still keyed on the old names (the Budget
   // style's expected-range denominator) keeps working on the same day object.
@@ -379,7 +392,10 @@ function bandsFor(f, mode) {
 
 // ── State ────────────────────────────────────────────────────────────────────
 const state = { showVwap: false, armed: new Set(FITTED_LINES.map(l => l.key)), showStats: false, style: 'fade_all', sltpMode: 'level', eod: 'kill', showOsc: false, compareCalcs: new Set() };
-const CALC_TAG = { ladder: 'Ladder', cog: 'COG', bot: 'Bot', exh: 'Exh' };
+const CALC_TAG = { ladder: 'Ladder', cog: 'COG', bot: 'Bot', exh: 'Exh', v2: 'v2' };
+const V2_PAIRS = new Set(['gold', 'eurusd', 'nq']);
+const _lonHourFmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hourCycle: 'h23' });
+const lonBucket = t => { const h = +_lonHourFmt.format(new Date(t * 1000)); return h < 7 ? 0 : h < 12 ? 1 : h < 16 ? 2 : 3; };
 const HOLD_SESSIONS = 5;   // 'let run' holds a trade at most this many sessions past EOD
 function styleMode() { return $('style').querySelector('button.on')?.dataset.y || 'fade_all'; }
 function eodModeSel() { return $('eod').querySelector('button.on')?.dataset.e || 'kill'; }
@@ -481,6 +497,12 @@ function buildChips() {
     drawOverlay();
   });
   // Source toggle changes the underlying forecast → refetch if already loaded.
+  $('pxsrc').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || b.classList.contains('on')) return;
+    $('pxsrc').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    state.v2Track = b.dataset.p === 'fut' ? 'fut' : 'cfd';
+    if (_meta) loadData();
+  });
   $('src').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b || b.classList.contains('on')) return;
     $('src').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
@@ -617,6 +639,28 @@ let _drawPending = false;
 function scheduleDraw() { if (!_drawPending) { _drawPending = true; requestAnimationFrame(() => { _drawPending = false; _lastSig = ''; drawOverlay(); }); } }
 
 // ── Data load ────────────────────────────────────────────────────────────────
+// CME futures 1m / 5m bars for GOLD / EURUSD / NQ from the NT8 footprint feed (UTC minute-of-day bars), in the
+// /api/ohlc-range shape. Days the capture didn't record are simply absent.
+const FUT_ROOT = { gold: 'GC', eurusd: '6E', nq: 'NQ' };
+async function futuresCandles(name, from, to) {
+  const root = FUT_ROOT[name.toLowerCase()];
+  if (!root) return { error: 'Futures price exists for GOLD, EURUSD and NQ only' };
+  const out = [];
+  for (let t = Date.parse(from + 'T12:00:00Z'); t <= Date.parse(to + 'T12:00:00Z'); t += 86400e3) {
+    const day = new Date(t).toISOString().slice(0, 10);
+    const dow = new Date(t).getUTCDay(); if (dow === 0 || dow === 6) continue;
+    try {
+      const r = await fetch(`/api/footprint/day?sym=${root}&day=${day}`).then(x => x.json());
+      if (!r?.ok || !Array.isArray(r.bars)) continue;
+      for (const [m, o, h, l, c] of r.bars) {
+        const hh = String(Math.floor(m / 60)).padStart(2, '0'), mm = String(m % 60).padStart(2, '0');
+        out.push({ datetime: `${day} ${hh}:${mm}:00`, open: o, high: h, low: l, close: c });
+      }
+    } catch { /* day not captured */ }
+  }
+  return out.length ? { values: out } : { error: `no ${root} futures days captured in ${from} → ${to} (footprint feed)` };
+}
+
 async function loadData() {
   const name = $('pair').value;
   const sym  = OANDA_SYM[name];
@@ -629,14 +673,20 @@ async function loadData() {
     : `/api/vol-forecast/archive/range?from=${from}&to=${to}&pair=${encodeURIComponent(name)}`;
   $('go').disabled = true; setStatus(src === 'backtest' ? 'generating forecasts…' : 'loading…'); $('hint').style.display = 'none';
   try {
-    const [candlesRes, fcRes, exhRes] = await Promise.all([
-      fetch(`/api/ohlc-range?symbol=${encodeURIComponent(sym)}&from=${from}&to=${to}&granularity=${gran}`).then(r => r.json()),
+    const v2Url = V2_PAIRS.has(name.toLowerCase())
+      ? `/api/vol-forecast/ladder-v2/levels?pair=${encodeURIComponent(name.toLowerCase())}&from=${from}&to=${to}&track=${state.v2Track || 'cfd'}` : null;
+    const [candlesRes, fcRes, exhRes, v2Res] = await Promise.all([
+      state.v2Track === 'fut' ? futuresCandles(name, from, to)
+        : fetch(`/api/ohlc-range?symbol=${encodeURIComponent(sym)}&from=${from}&to=${to}&granularity=${gran}`).then(r => r.json()),
       fetch(fcUrl).then(r => r.json()),
       fetch('/api/exhaustion-ladder').then(r => r.json()).catch(() => null),
+      v2Url ? fetch(v2Url).then(r => r.json()).catch(() => null) : Promise.resolve(null),
     ]);
     exhFit = exhRes?.ok ? (exhRes.perPair?.[name.toUpperCase()] ?? null) : null;
     if (candlesRes.error || !candlesRes.values?.length) { setStatus(candlesRes.error || 'no candles for that range'); $('go').disabled = false; return; }
     const fcDays = fcRes?.ok ? (fcRes.days || {}) : {};
+    // shadow ladder-v2 rungs ride on the same per-day object, so touches / trades / tallies work unchanged
+    for (const [dt, lv] of Object.entries(v2Res?.ok ? (v2Res.days || {}) : {})) fcDays[dt] = { ...(fcDays[dt] || {}), ladder_v2: lv };
     buildDays(candlesRes.values, fcDays);
     prepIndicators();
     ensureChart(name);
@@ -988,6 +1038,21 @@ function drawOverlay() {
         const tag = compareMode ? `${CALC_TAG[mode]} ` : '';
         const text = wide ? `${tag}${L.label} ${fmtPct(L.side * pct)} ${price.toFixed(pf.precision)}` : '';
         line(price, L.color, L.dash, text, false, compareMode ? 0.32 : 0.55);
+        // v2: the run-past zone beyond the line (darker to the median run-past, lighter to the 75th)
+        if (mode === 'v2' && bands.zone50_pct > 0) {
+          const yL = series.priceToCoordinate(price);
+          const y50 = series.priceToCoordinate(d.open * (1 + L.side * (pct + bands.zone50_pct) / 100));
+          const y75 = series.priceToCoordinate(d.open * (1 + L.side * (pct + bands.zone75_pct) / 100));
+          if (yL != null && y50 != null && y75 != null) {
+            octx.save();
+            octx.fillStyle = L.color;
+            octx.globalAlpha = compareMode ? 0.05 : 0.12;
+            octx.fillRect(xa, Math.min(yL, y50), xb - xa, Math.abs(y50 - yL));
+            octx.globalAlpha = compareMode ? 0.025 : 0.06;
+            octx.fillRect(xa, Math.min(y50, y75), xb - xa, Math.abs(y75 - y50));
+            octx.restore();
+          }
+        }
         if (!compareMode && touchMarkers && touched) {       // dot where price first reached the level
           const mx = ts.timeToCoordinate(tp.t), my = series.priceToCoordinate(price);
           if (mx != null && my != null) {
@@ -995,6 +1060,15 @@ function drawOverlay() {
             octx.beginPath(); octx.arc(mx, my, 5, 0, 2 * Math.PI);
             octx.fillStyle = L.color; octx.globalAlpha = 0.95; octx.fill();
             octx.globalAlpha = 1; octx.lineWidth = 1.5; octx.strokeStyle = 'rgba(11,13,20,0.9)'; octx.stroke();
+            // v2: the chance this line goes on to the next one, for the London time bucket of the touch
+            if (mode === 'v2' && bands.odds) {
+              const rung = L.key.split('_p')[1];
+              const od = bands.odds[rung]?.[lonBucket(tp.t)];
+              if (od != null) {
+                octx.font = "11px 'DM Mono', monospace"; octx.fillStyle = L.color; octx.textAlign = 'left';
+                octx.fillText(`${rung === '90' ? '+0.25σ' : 'next'} ${Math.round(od)}%`, mx + 8, my + (L.side > 0 ? -10 : 10));
+              }
+            }
             octx.restore();
           }
         }
