@@ -323,7 +323,7 @@ proxy (level and change together, never mixed within a currency), with the faile
 |---|---|---|
 | C1 | `rate` and `rate4wAgo` both present | a change needs both prices |
 | C2 | 20 ≤ (date − date4wAgo) ≤ 35 calendar days | the "4 weeks ago" bar really is about 20 bd back (thin trading or a missing bar can make it older) |
-| C3 | the rung's `date` ≤ 3 bd before the issue | the level is current |
+| C3 | the rung's last close is within 3 bd before the issue; its trading-day label may be the issue date or the next weekday (Osaka's evening session is labelled the next day). Knowability is the laptop pull's own time: a pull stamped after the issue is removed whole (fixed 2026-11-19 after the first live read dropped JPY) | the level is current |
 | C4 | the contract's reference month ≥ issue month + 3 | not in or near delivery, where the price converges on the realised rate |
 | C5 | the contract existed 4 weeks ago: `date4wAgo` ≥ the contract's first trading date when known; else C1–C2 are the guard | no change against a price that did not exist |
 | C6 | \|ΔP\| ≤ 150 bp | a 6-bank-move repricing in 4 weeks is treated as a data error (stated), not a reading |
