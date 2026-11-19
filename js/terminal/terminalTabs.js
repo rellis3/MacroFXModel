@@ -22,6 +22,7 @@ import * as CSV from './chainStatsView.js';
 import { reactionsHtml } from './reactionPanel.js';
 import { surpriseRollup, rollupHtml, pairStripHtml } from './surpriseRollup.js';
 import { legChartHtml, mountLegChart } from './legChartView.js';
+import { trimInputs } from './jarvisCore.js';
 import { analogueHtml, mountAnalogue } from './analogueView.js';
 import { reportedHtml } from '../earningsReported.js';
 import { reviewState, stateChip, unreviewedNote } from './reviewState.js';
@@ -74,7 +75,12 @@ globalThis.ttReactionsHtml = p => reactionsHtml(p, h);
 // the Calendar tab's "Live surprises" card opens with this per-currency strip of the last 24 h (js/terminal/surpriseRollup.js)
 // the Macro tab's Rates section draws the rate-line-over-price chart (js/terminal/legChartView.js) and mounts it after the section paints
 // Jarvis (owner-only easter egg, js/terminal/jarvisView.js) draws the chain from the Chain tab's own loaders: nothing extra is requested
-globalThis.deskChainData = async w => { await loadChain(); const inputs = { ...T.chain.inputs, live: null }; return { links: CB.chainLinks(inputs, w), vals: CB.chainVals(inputs, w) }; };
+globalThis.deskChainData = async (w, asOf) => {      // w = 1 | 5 | 20 | 'live'; asOf = a past date (trimInputs: nothing after it is used)
+  await loadChain(); let inputs = { ...T.chain.inputs, live: null };
+  if (w === 'live') { try { await loadLive(); } catch (e) { /* the last live read stands */ } inputs = { ...T.chain.inputs, live: T.chain.live }; } else if (asOf) inputs = trimInputs(inputs, asOf);
+  return { links: CB.chainLinks(inputs, w), vals: CB.chainVals(inputs, w) };
+};
+globalThis.deskChainDates = async () => { await loadChain(); return (T.chain.inputs?.ohlc?.nq ?? []).map(p => p.date).slice(-61); };
 globalThis.deskChainSummary = (links, w) => CB.summariseChain(links, w);
 globalThis.ttLegChartHtml = legChartHtml; globalThis.ttLegChartMount = mountLegChart;
 globalThis.ttAnalogueHtml = analogueHtml; globalThis.ttAnalogueMount = mountAnalogue;   // Macro > Markets & FX: "Has this happened before?"

@@ -74,3 +74,36 @@ test('systemSummary: memory, uptime and the busiest services today; copes with a
   assert.equal(s.rssMB, 812.3); assert.equal(s.uptimeH, 2); assert.deepEqual(s.top.map(t => t.id), ['c', 'a']);
   assert.equal(systemSummary(null).ok, false);
 });
+
+import { skyline, towerBox, trimInputs, pickVoice, wakeParse, watchSnapshot, watchDiff, memoryState } from './jarvisCore.js';
+test('skyline: a tower per node, taller for bigger moves, a quiet market is a low block', () => {
+  const g = buildGraph(evaluateChain({ oil: { delta: -9, last: 70 }, bei: { delta: 0.5, last: 230 } }));
+  const s = skyline(g); assert.equal(Object.keys(s).length, Object.keys(CHAIN_LAYOUT).length);
+  assert.ok(s.oil.h > s.bei.h && s.bei.h < 0.3);
+  const b = towerBox(s.oil); assert.equal(b.pts.length, 8); assert.equal(b.faces.sides.length, 4);
+  assert.ok(b.topCentre[1] > -0.55);
+});
+test('trimInputs: nothing after the date survives (no lookahead); undated parts and the live block are handled', () => {
+  const t = trimInputs({ fred: { us10y: [{ date: '2026-11-01', value: 1 }, { date: '2026-11-10', value: 2 }] }, ohlc: { nq: [{ date: '2026-11-12', value: 3 }] }, live: { x: 1 }, crack: null }, '2026-11-05');
+  assert.deepEqual(t.fred.us10y.map(p => p.date), ['2026-11-01']); assert.deepEqual(t.ohlc.nq, []); assert.ok(!('live' in t)); assert.equal(t.crack, null);
+});
+test('pickVoice: a British male beats a female or a non-English voice; no voices gives null', () => {
+  const v = [{ name: 'Samantha', lang: 'en-US' }, { name: 'Google UK English Male', lang: 'en-GB' }, { name: 'Amelie', lang: 'fr-FR' }];
+  assert.equal(pickVoice(v).name, 'Google UK English Male'); assert.equal(pickVoice([]), null);
+});
+test('wakeParse: finds the wake word anywhere and returns what follows', () => {
+  assert.deepEqual(wakeParse('hey Jarvis, what is oil doing?'), { woke: true, query: 'what is oil doing?' });
+  assert.deepEqual(wakeParse('Jarvis'), { woke: true, query: '' });
+  assert.equal(wakeParse('what is oil doing').woke, false);
+});
+test('watchDiff: a link breaking or healing and a market newly well past its noise are events; no change is none', () => {
+  const mk = (link, ratio) => ({ links: { a: { verdict: link, short: 'oil to inflation' } }, nodes: { oil: { label: 'Oil', text: '-4%', ratio, moved: true } } });
+  const p = mk('holding', 1.2), n = mk('broken', 2.6), ev = watchDiff(p, n);
+  assert.deepEqual(ev.map(e => e.kind).sort(), ['big', 'broke']);
+  assert.deepEqual(watchDiff(n, p).map(e => e.kind), ['healed']);
+  assert.deepEqual(watchDiff(p, p), []); assert.deepEqual(watchDiff(null, p), []);
+  const g = buildGraph(evaluateChain({ oil: { delta: -9, last: 70 } })); assert.ok(watchSnapshot(g).nodes.oil.ratio > 1);
+});
+test('memoryState: no limit is ok; 80 percent is high; 95 percent is critical', () => {
+  assert.equal(memoryState(900, 0), 'ok'); assert.equal(memoryState(800, 1000), 'high'); assert.equal(memoryState(960, 1000), 'critical'); assert.equal(memoryState(500, 1000), 'ok');
+});
