@@ -147,7 +147,7 @@ ok('A13 V1 untouched: js/biasEngine.js matches its pinned hash', () => {
 
 ok('A14 no production reads: only V2\'s own files, its server section, its panel and the scoreboard mention V2', () => {
   const allowed = new Set(['js/biasEngineV2.js', 'js/biasEngineV2.test.mjs', 'js/biasEngineV2.econ.test.mjs', 'js/biasEngineV2.fixture.mjs', 'server.js', 'js/biasForecasters.js',
-    'js/terminal/biasEngineV2View.js', 'js/terminal/biasEngineV2View.test.mjs', 'js/terminal/tabRegistry.js', 'js/deskAccess.js', 'js/serviceFlags.js', 'js/storeRegistry.js', 'js/deskSnapshot.js', 'kv.js', '_worker.js', 'desk-terminal.html', 'js/biasForecasters.test.mjs']);
+    'js/terminal/biasEngineV2View.js', 'js/terminal/biasEngineV2View.test.mjs', 'js/terminal/terminalTabs.js', 'js/terminal/tabRegistry.js', 'js/deskAccess.js', 'js/serviceFlags.js', 'js/storeRegistry.js', 'js/deskSnapshot.js', 'kv.js', '_worker.js', 'desk-terminal.html', 'js/biasForecasters.test.mjs']);
   const hits = [];
   const walkDir = d => { for (const e of fs.readdirSync(path.join(ROOT, d), { withFileTypes: true })) {
     const rel = path.join(d, e.name);

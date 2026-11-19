@@ -971,6 +971,7 @@ globalThis.ratesBoardHtml = (rb, fp, gy) => { try { return RBV.boardHtml(rb, fp,
 globalThis.macroMoreHtml = (E, extra) => macroMoreHtml(E, extra);
 globalThis.macroMoreBoard = (key, E, extra) => macroMoreBoard(key, E, extra);
 globalThis.macroSubs = MacroSubs;
+globalThis.bev2Mount = el => import('./biasEngineV2View.js').then(V => V.mount(el, { getJson })).catch(e => { el.innerHTML = `<p class="muted">The V2 shadow panel did not load: ${h(e.message)}</p>`; });   // owner-only Bias Engine V2 shadow (panel.macro.bev2)
 globalThis.biasEngineView = BEV;                                   // the bias engine on the Assets, Currencies, Overview and Macro cards (desk-terminal.html beOf / beOverview)
 globalThis.paperBoardById = (surface, E) => paperBoardById(surface, E);                // the paper-ideas boards (js/terminal/paperBoardsView.js): FOMC day, path gap, JGB, inflation, auctions, coverage, connectedness ...
 globalThis.volClockHtml = VCV.boardHtml;                           // the Assets tab's vol clock board (js/terminal/volClockView.js)

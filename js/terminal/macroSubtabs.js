@@ -17,7 +17,7 @@ export const MACRO_SUBS = [
   { id: 'markets', alias: 'markets', label: 'Markets & FX',
     blocks: ['panel.macro.analogues', 'panel.macro.regime', 'panel.macro.vol', 'panel.macro.livelayer', 'panel.macro.fairvalue', 'panel.macro.fxfv', 'panel.macro.carry', 'panel.macro.commodfx', 'panel.macro.copper', 'panel.macro.gpr', 'panel.macro.rangecoverage', 'panel.macro.connected', 'panel.macro.coupling', 'panel.macro.uncertainty', 'panel.macro.skewhist', 'panel.macro.trendbasket', 'panel.macro.walls'] },
   // the bias engine (js/biasEngine.js, plans/BIAS_ENGINE_SPEC.md): currencies x drivers, the weights, coverage and the gaps. Its data is loaded with the page (load()).
-  { id: 'engine', alias: 'engine', label: 'Bias engine', blocks: ['panel.macro.biasengine'] },
+  { id: 'engine', alias: 'engine', label: 'Bias engine', blocks: ['panel.macro.biasengine', 'panel.macro.bev2'] },
 ];
 
 /** panel.macro.carryside is a column inside the carry block, not a block of its own. */
