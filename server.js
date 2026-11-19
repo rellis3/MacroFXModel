@@ -30606,7 +30606,11 @@ async function _bev2LoadIndex() { try { const raw = await kv.get(_BEV2_INDEX_KV)
 /** The V2 snapshot at `issueMs`: { v1: V1's inputs exactly as V1 gathers them, extra: what V2 adds }, and each source's status. */
 async function _bev2Snapshot(issueMs) {
   const issueDate = _dpLondonDate(issueMs), status = {}, extra = {};
-  const { inputs, status: v1Status } = await _beGather(issueMs);
+  // V1's own gather, unchanged. One retry when a source came back partial or failed (2026-11-19 02:06: OANDA 504s and an empty rate_diff
+  // read blanked trend and rates), so a transient feed error does not decide a day's comparison.
+  let { inputs, status: v1Status } = await _beGather(issueMs);
+  const flaky = st => Object.values(st ?? {}).some(v => /^(partial|error)/.test(String(v)));
+  if (flaky(v1Status)) { await new Promise(r => setTimeout(r, 20_000)); const again = await _beGather(issueMs); if (!flaky(again.status) || Object.values(again.status).filter(v => /^(partial|error)/.test(String(v))).length < Object.values(v1Status).filter(v => /^(partial|error)/.test(String(v))).length) ({ inputs, status: v1Status } = again); v1Status = { ...v1Status, retried: true }; }
   const step = async (name, fn) => { try { await fn(); status[name] = status[name] ?? 'ok'; } catch (e) { status[name] = `error: ${e.message}`; } };
   const tail = (xs, n = 320) => (xs ?? []).filter(p => p && p.date < issueDate && Number.isFinite(p.value)).sort((a, b) => (a.date < b.date ? -1 : 1)).slice(-n);
   await Promise.all([

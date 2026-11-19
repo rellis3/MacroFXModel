@@ -252,6 +252,13 @@ ok('A21 freeze: after the freeze the spec, the config and the engine match the m
   assert.equal(CONFIG.FORWARD_START, m.forwardStart);
 });
 
+ok('the policy-rate table fetched during the issue\'s own gather (just after the issue time) is current; one fetched days later is not', () => {
+  const s = snapshot(); s.extra.policyRates.fetchedAt = new Date(Date.parse(s.v1.asOf) + 60_000).toISOString();
+  assert.equal(buildVariant(s, ON(['F2'])).markets.AUDJPY.drivers.find(x => x.key === 'carry').d, 2);
+  s.extra.policyRates.fetchedAt = new Date(Date.parse(s.v1.asOf) + 3 * DAY).toISOString();
+  assert.equal(buildVariant(s, ON(['F2'])).markets.AUDJPY.drivers.find(x => x.key === 'carry'), undefined);
+});
+
 ok('the risk gate: F4 is off in every variant until the gate has passed', () => {
   const s = snapshot(); s.extra.riskGate = { pass: false };
   const v = buildVariant(s, VARIANTS.v2);
