@@ -21,9 +21,9 @@
  },
  "inputs": {
   "portfolioBacktest/cache/gold_m1.parquet": "13072eba275f973fb02ae6a108b34f1a9e8a6b68d6f03e814e31c034fc9aefec",
-  "analysis/output/nt8/continuous/GC_1m_unadj.parquet": "b790628d0b5002bbc96a46b515109a54a7f383240dbae1b58fc3772178873892",
-  "analysis/output/nt8/continuous/GC_1m_ratio.parquet": "7bba95d5395386a5fcdce6aee1f26433fe2b828a56d0a02d28b82813ec358060",
-  "analysis/output/nt8/continuous/GC_rolls.csv": "d2f3ff7e8e956bada580c76ec90e71d727705dfd3e02c49285201deed8e72bda"
+  "analysis/output/nt8/continuous/GC_1m_unadj.parquet": "4f4f370cd44c4d5b27b8e730a3b08327b06f4c15ee1335224f5c7648670e505f",
+  "analysis/output/nt8/continuous/GC_1m_ratio.parquet": "08237c15657ed9fdbc652ea58831cd76909bf99298cfbf1f65b38df24f45c84f",
+  "analysis/output/nt8/continuous/GC_rolls.csv": "bd9d36c3d2f82c71f27e1d6b9130cab18cd4bc0a28b835e49b6161d83e5ac198"
  },
  "sessions": {
   "C": [
@@ -33,8 +33,8 @@
   ],
   "F": [
    "2014-11-10",
-   "2026-11-18",
-   2902
+   "2026-11-19",
+   3018
   ]
  },
  "flag_counts": [
@@ -61,32 +61,37 @@
   {
    "track": "CF",
    "screen": "cvf_open",
-   "n": 53
+   "n": 105
   },
   {
    "track": "CF",
    "screen": "cvf_range",
-   "n": 55
+   "n": 61
   },
   {
    "track": "F",
    "screen": "jump_1m",
-   "n": 775
+   "n": 865
   },
   {
    "track": "F",
    "screen": "jump_day",
-   "n": 7
+   "n": 5
   },
   {
    "track": "F",
    "screen": "missing",
-   "n": 175
+   "n": 75
   },
   {
    "track": "F",
    "screen": "partial",
-   "n": 234
+   "n": 14
+  },
+  {
+   "track": "F",
+   "screen": "roll_gap",
+   "n": 3
   }
  ]
 }

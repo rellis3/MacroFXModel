@@ -6,7 +6,7 @@ hashes in `manifest.json`, every flag in `flags.csv`.
 | Track | Sessions | First | Last |
 |---|---|---|---|
 | C | 2,745 | 2016-01-04 | 2026-08-21 |
-| F | 2,902 | 2014-11-10 | 2026-11-18 |
+| F | 3,018 | 2014-11-10 | 2026-11-19 |
 
 | Track | Screen | Sessions flagged |
 |---|---|---|
@@ -14,14 +14,15 @@ hashes in `manifest.json`, every flag in `flags.csv`.
 | C | jump_1m | 730 |
 | C | jump_day | 5 |
 | C | partial | 1 |
-| CF | cvf_open | 53 |
-| CF | cvf_range | 55 |
-| F | jump_1m | 775 |
-| F | jump_day | 7 |
-| F | missing | 175 |
-| F | partial | 234 |
+| CF | cvf_open | 105 |
+| CF | cvf_range | 61 |
+| F | jump_1m | 865 |
+| F | jump_day | 5 |
+| F | missing | 75 |
+| F | partial | 14 |
+| F | roll_gap | 3 |
 
-Any flag on track C (incl. C-vs-F): 801 sessions (29.2%).
+Any flag on track C (incl. C-vs-F): 834 sessions (30.4%).
 
 
-Any flag on track F (incl. C-vs-F): 1232 sessions (42.5%).
+Any flag on track F (incl. C-vs-F): 1058 sessions (35.1%).

@@ -256,7 +256,7 @@ def walk_forward(S, sym, track, arms, years=YEARS, quiet=False):
         for name in [a for a in REG if a in arms]:
             f = pd.read_parquet(out_dir(sym) / f"rvfeat_{track}_{name}.parquet")
             cols = list(f.columns[:-2])
-            f = f[np.isfinite(f[cols + ["y_next"]]).all(1) & (f["next_date"] < start)]
+            f = f[np.isfinite(f[cols + ["y_next"]]).all(axis=1) & (f["next_date"] < start)]
             X = np.column_stack([np.ones(len(f))] + [f[c] for c in cols])
             coef, *_ = np.linalg.lstsq(X, f["y_next"].to_numpy(), rcond=None)
             s2 = float(np.var(f["y_next"].to_numpy() - X @ coef))
