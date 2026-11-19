@@ -66,10 +66,21 @@ def out_dir(sym):
     return ROOT / os.environ.get("LADDER_OUT", f"analysis/output/ladder-v2-{sym.lower()}")
 
 
+GARCH = {"G_garch": dict(vol="GARCH", o=0, dist="normal"), "G_garch_t": dict(vol="GARCH", o=0, dist="t"),
+         "G_gjr": dict(vol="GARCH", o=1, dist="normal"), "G_egarch": dict(vol="EGARCH", o=1, dist="normal")}
+REG = ("R5", "R15", "SHAR", "HARCJ")          # log-RV regressions on 5/15-min data, OLS refit each walk-forward year
+
+
+def har_col(sym):
+    return "A0" if SYMS[sym]["live"] == "har_rv_log" else "E_har_rv_log"
+
+
 def arms_for(sym):
+    """Gold prereg A2 (pre-results) added the GARCH family, SHAR, HAR-CJ and two 50/50 blends."""
     cfg = SYMS[sym]
-    a = ["A0"] + [f"E_{e}" for e in EST if e != cfg["live"]] + ["H8", "R5", "R15"]
-    return a + (["V3", "V4"] if cfg["iv"] else [])
+    a = ["A0"] + [f"E_{e}" for e in EST if e != cfg["live"]] + ["H8", "R5", "R15", "SHAR", "HARCJ"]
+    a += list(GARCH) + ["B_har_garcht"]
+    return a + (["V3", "V4", "B_har_iv"] if cfg["iv"] else [])
 
 
 # ================================================================ build
@@ -113,14 +124,38 @@ def ny_bars(m):
     b = pd.DataFrame({"open": g["open"].first(), "high": g["high"].max(), "low": g["low"].min(),
                       "close": g["close"].last(), "n": g.size()})
     b = b[(b["n"] >= 60) & (b.index.dayofweek < 5)]
-    rv = {}
+    rv, ext = {}, {}
     for k in (5, 15):
         c = x["close"].resample(f"{k}min", label="left", closed="left").last().dropna()
         dk = (c.index.tz_convert("America/New_York").tz_localize(None) + pd.Timedelta(hours=7)).normalize()
         r = np.log(c).groupby(dk).diff()
         rv[k] = (r ** 2).groupby(dk).sum()
         rv[k] = rv[k][rv[k] > 0].reindex(b.index)
-    return b, rv[5], rv[15]
+        if k == 5:                                   # semivariances and bipower variation from the same 5-min returns
+            ext["rsp"] = (r.clip(lower=0) ** 2).groupby(dk).sum().reindex(b.index)
+            ext["rsn"] = (r.clip(upper=0) ** 2).groupby(dk).sum().reindex(b.index)
+            ar = r.abs()
+            ext["bv"] = (np.pi / 2 * ar * ar.groupby(dk).shift(1)).groupby(dk).sum().reindex(b.index)
+    return b, rv[5], rv[15], ext
+
+
+def garch_sigmas(b):
+    """Per walk-forward year Y: fit each GARCH model on NY-close daily % returns of bars before 1 Jan Y, then filter
+    the whole series with those fixed parameters. Value at bar t = one-step forecast for bar t+1 made at t (daily %)."""
+    from arch import arch_model
+    r = (np.log(b["close"]).diff() * 100).dropna()
+    out = {}
+    for Y in YEARS:
+        tr = r[r.index < pd.Timestamp(f"{Y}-01-01")]
+        for g, spec in GARCH.items():
+            mdl = arch_model(tr, mean="Constant", vol=spec["vol"], p=1, o=spec["o"], q=1, dist=spec["dist"])
+            fit = mdl.fit(disp="off", show_warning=False)
+            full = arch_model(r, mean="Constant", vol=spec["vol"], p=1, o=spec["o"], q=1, dist=spec["dist"])
+            v = full.fix(fit.params).forecast(horizon=1, start=0, reindex=True).variance["h.1"]
+            out[f"{g}@{Y}"] = np.sqrt(v)
+            out.setdefault("_params", {})[f"{g}@{Y}"] = {k: float(x) for k, x in fit.params.items()}
+    params = out.pop("_params")
+    return pd.DataFrame(out), params
 
 
 def har800(sym, name, b):
@@ -135,7 +170,7 @@ def har800(sym, name, b):
 def build(sym, track):
     cfg, OUT = SYMS[sym], out_dir(sym)
     S = london_sessions(load_m1(sym, track, "unadj"))
-    b, rv5, rv15 = ny_bars(load_m1(sym, track, "ratio"))
+    b, rv5, rv15, ext = ny_bars(load_m1(sym, track, "ratio"))
     pc1 = None
     if track == "C":
         ref = pd.DataFrame(json.loads((ROOT / f"analysis/output/ladder_candidates/d1/{cfg['ref']}.json").read_text()))
@@ -155,15 +190,37 @@ def build(sym, track):
     S["iv"] = asof_before(D, cboe(cfg["iv"])) if cfg["iv"] else np.nan
     if cfg["iv"]:
         S["V4"] = S["iv"] / V.SQRT252
+    def lg(x, base):                                   # log with a floor at 1% of RV (a one-sided quiet day)
+        return np.log(np.maximum(x, 0.01 * base))
+    feats = {}
     for k, rv in ((5, rv5), (15, rv15)):
         lr = np.log(rv)
-        f = pd.DataFrame({"d1": lr, "d5": np.log(rv.rolling(5, min_periods=5).mean()),
-                          "d22": np.log(rv.rolling(22, min_periods=22).mean())})
-        f["y_next"] = lr.shift(-1)
+        feats[f"R{k}"] = (pd.DataFrame({"d1": lr, "d5": np.log(rv.rolling(5, min_periods=5).mean()),
+                                        "d22": np.log(rv.rolling(22, min_periods=22).mean())}), lr)
+    lr5 = np.log(rv5)
+    feats["SHAR"] = (pd.DataFrame({"pos": lg(ext["rsp"], rv5), "neg": lg(ext["rsn"], rv5),
+                                   "d5": np.log(rv5.rolling(5, min_periods=5).mean()),
+                                   "d22": np.log(rv5.rolling(22, min_periods=22).mean())}), lr5)
+    C = np.minimum(rv5, ext["bv"]).where(ext["bv"] > 0, rv5)
+    J = (rv5 - C).clip(lower=0)
+    feats["HARCJ"] = (pd.DataFrame({"c1": np.log(C), "c5": np.log(C.rolling(5, min_periods=5).mean()),
+                                    "c22": np.log(C.rolling(22, min_periods=22).mean()), "j1": np.log1p(J / C)}), lr5)
+    for name, (f, y) in feats.items():
+        f = f.copy()
+        f["y_next"] = y.shift(-1)
         f["next_date"] = pd.Series(b.index, index=b.index).shift(-1)
-        f.to_parquet(OUT / f"rvfeat_{track}_{k}.parquet")
-        for c in ("d1", "d5", "d22"):
-            S[f"R{k}_{c}"] = asof_before(D, f[c].dropna())
+        f.to_parquet(OUT / f"rvfeat_{track}_{name}.parquet")
+        for c in f.columns[:-2]:
+            S[f"{name}_{c}"] = asof_before(D, f[c].dropna())
+    # reported-only comparison targets: the NY-close day that contains session D (squared % return, GK variance in %^2)
+    ret = np.log(b["close"]).diff() * 100
+    gk = (0.5 * np.log(b["high"] / b["low"]) ** 2 - (2 * np.log(2) - 1) * np.log(b["close"] / b["open"]) ** 2) * 1e4
+    S["r2_d"] = (ret ** 2).reindex(D).to_numpy()
+    S["gk_d"] = gk.reindex(D).to_numpy()
+    G, gparams = garch_sigmas(b)
+    for c in G.columns:
+        S[c] = asof_before(D, G[c].dropna())
+    (OUT / f"garch_params_{track}.json").write_text(json.dumps(gparams, indent=1))
     S["date"] = S.index
     S = S.reset_index(drop=True)
     say(f"{sym} {track}: {len(S)} sessions {S['date'].min().date()} -> {S['date'].max().date()}")
@@ -186,19 +243,25 @@ def walk_forward(S, sym, track, arms, years=YEARS, quiet=False):
     for Y in years:
         start, end = pd.Timestamp(f"{Y}-01-01"), pd.Timestamp(f"{Y + 1}-01-01")
         W = S.copy()
-        if "R5" in arms:
-            for k in (5, 15):
-                f = pd.read_parquet(out_dir(sym) / f"rvfeat_{track}_{k}.parquet").dropna()
-                f = f[f["next_date"] < start]
-                X = np.column_stack([np.ones(len(f)), f["d1"], f["d5"], f["d22"]])
-                coef, *_ = np.linalg.lstsq(X, f["y_next"].to_numpy(), rcond=None)
-                s2 = float(np.var(f["y_next"].to_numpy() - X @ coef))
-                Xw = np.column_stack([np.ones(len(W)), W[f"R{k}_d1"], W[f"R{k}_d5"], W[f"R{k}_d22"]])
-                W[f"R{k}"] = np.sqrt(np.exp(Xw @ coef + s2 / 2)) * 100
+        for name in [a for a in REG if a in arms]:
+            f = pd.read_parquet(out_dir(sym) / f"rvfeat_{track}_{name}.parquet")
+            cols = list(f.columns[:-2])
+            f = f[np.isfinite(f[cols + ["y_next"]]).all(1) & (f["next_date"] < start)]
+            X = np.column_stack([np.ones(len(f))] + [f[c] for c in cols])
+            coef, *_ = np.linalg.lstsq(X, f["y_next"].to_numpy(), rcond=None)
+            s2 = float(np.var(f["y_next"].to_numpy() - X @ coef))
+            Xw = np.column_stack([np.ones(len(W))] + [W[f"{name}_{c}"] for c in cols])
+            W[name] = np.sqrt(np.exp(Xw @ coef + s2 / 2)) * 100
+        for g in [a for a in GARCH if a in arms]:
+            W[g] = W[f"{g}@{Y}"]
+        if "B_har_garcht" in arms:
+            W["B_har_garcht"] = 0.5 * (W[har_col(sym)] + W["G_garch_t"])
         if "V3" in arms:
             ok = (W["date"] < start) & np.isfinite(W["x"]) & np.isfinite(W["A0"])
             kk, mu = fit_k(W[ok])
             W["V3"] = W["A0"] * np.exp(kk * (W["x"] - mu))
+        if "B_har_iv" in arms:
+            W["B_har_iv"] = 0.5 * (W[har_col(sym)] + W["V4"])
         tr = W[W["date"] < start]
         te = W[(W["date"] >= start) & (W["date"] < end)].copy()
         te["year"] = Y
@@ -333,6 +396,20 @@ def score_track(sym, T, track, arms, rng, flags):
         x = np.log(T[a]) - np.log(T[a]).mean(); y = np.log(T["hl"]) - np.log(T["hl"]).mean()
         sl[a] = float((x * y).sum() / (x * x).sum())
     res["slope"] = sl
+    if "r2_d" in T:                                   # reported, no rule (gold A2): her race's yardsticks
+        ok = np.isfinite(T["r2_d"]) & np.isfinite(T["gk_d"])
+        qm = {}
+        for a in arms:
+            h = T.loc[ok, a].to_numpy() ** 2
+            ql = float(np.mean(np.log(h) + T.loc[ok, "r2_d"].to_numpy() / h))
+            y = T.loc[ok, "gk_d"].to_numpy(); X = np.column_stack([np.ones(len(h)), h])
+            c, *_ = np.linalg.lstsq(X, y, rcond=None)
+            r2 = float(1 - np.var(y - X @ c) / np.var(y))
+            qm[a] = {"qlike": ql, "mz_r2_gk": r2}
+        res["qlike_mz"] = qm
+        say("  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)")
+        for a in sorted(qm, key=lambda k: qm[k]["qlike"]):
+            say(f"    {a:14} {qm[a]['qlike']:.4f}  {qm[a]['mz_r2_gk']:.3f}")
     say(f"\n== {sym} {track}: {n} test sessions {res['dates'][0]} -> {res['dates'][1]}   noise floor median "
         f"{res['floor_median']:.2f}pp, p90 {res['floor_p90']:.2f}pp   (block {BLOCK})")
     say(f"  {'arm':14} {'PRIMARY':>8} {'GUARD':>7} {'pinball':>8} {'slope':>6}")
