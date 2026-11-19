@@ -449,7 +449,7 @@ import { RESEARCH as _DL_RESEARCH, volFlags as _dlVolFlags, FX_CARRY_EUR_OFFSET 
 import { SAMEDAY_INSTRUMENTS as _BS_INSTRUMENTS, SAMEDAY_TARGETS as _BS_TARGETS, issueSameDay as _bsIssue, outcomeSameDay as _bsOutcome, summariseSameDay as _bsSummarise, midAt as _bsMidAt, sigmaDay as _bsSigmaDay, londonMs as _bsLondonMs, targetEndMs as _bsEndMs, isWeekday as _bsIsWeekday, MID_LOOKBACK_MS as _BS_LOOKBACK } from './js/directionLedger.js';   // bias-scoreboard same-day rows (forge/BIAS_SCOREBOARD_PREREG.md)
 import { buildBiasRecord as _beBuild, marketView as _beMarket, fillPolicyFallback as _beFillPolicy } from './js/biasEngine.js';   // bias engine v1 (plans/BIAS_ENGINE_SPEC.md)
 import { YIELD2Y_KV as _Y2_KV, buildYield2yPayload as _y2Payload, yieldWeekChange as _y2Week } from './js/yield2y.js';   // 2y government yields: the bias engine's policy fallback
-import { biasEngine as _bsBiasEngine, h4Trend as _bsH4Trend, deskRating as _bsDeskRating, deskCcy as _bsDeskCcy, maxSignals as _bsMaxSignals, surpriseRule as _bsSurpriseRule, fundabias as _bsFundabias, FUNDABIAS_ENABLED as _BS_FUNDABIAS_ON, processAi as _bsProcessAi, processSystem as _bsProcessSystem, instOfMarket as _bsInstOf, DESK_NAME as _BS_DESK_NAME } from './js/biasForecasters.js';
+import { biasEngine as _bsBiasEngine, biasEngineV2 as _bsBiasEngineV2, h4Trend as _bsH4Trend, deskRating as _bsDeskRating, deskCcy as _bsDeskCcy, maxSignals as _bsMaxSignals, surpriseRule as _bsSurpriseRule, fundabias as _bsFundabias, FUNDABIAS_ENABLED as _BS_FUNDABIAS_ON, processAi as _bsProcessAi, processSystem as _bsProcessSystem, instOfMarket as _bsInstOf, DESK_NAME as _BS_DESK_NAME } from './js/biasForecasters.js';
 import { PROCESS_MARKETS as _DBP_MARKETS, OANDA as _DBP_OANDA, buildLayers as _dbpLayers, buildPack as _dbpPack, historyFor as _dbpHistory, runProcessAi as _dbpAi, finishCard as _dbpFinish, dayRecord as _dbpDay, PROCESS_VERSION as _DBP_VERSION, AI_PROMPT_VERSION as _DBP_PROMPT } from './js/deskBiasProcess.js';   // Desk Bias Process (plans/DESK_BIAS_PROCESS_SPEC.md)
 import { buildV2Record as _bev2Build, CONFIG as _BEV2_CONFIG, CONFIG_HASH as _BEV2_CONFIG_HASH, V2_VERSION as _BEV2_VERSION, SPEC_VERSION as _BEV2_SPEC, VARIANTS as _BEV2_VARIANTS, canonicalJson as _bev2Canon, sha256 as _bev2Sha } from './js/biasEngineV2.js';   // Bias Engine V2, shadow only (plans/BIAS_ENGINE_V2_SPEC.md); no production consumer reads it
 import { slotsFor as _rcSlots, dueSlot as _rcDue, stateFor as _rcState, invalidationHit as _rcInvalid, reactionOf as _rcReaction, systemUpdate as _rcUpdate, needsAi as _rcNeedsAi, buildRecheckPack as _rcPack, RECHECK_SYSTEM_PROMPT as _RC_SYSTEM, recheckPromptOf as _rcPrompt, slotRow as _rcRow, slotRecord as _rcRecord, recheckCalls as _rcCalls, timeline as _rcTimeline, RECHECK_VERSION as _RC_VERSION, RECHECK_PROMPT_VERSION as _RC_PROMPT, SLOT_WINDOW_MS as _RC_WINDOW } from './js/deskBiasRecheck.js';   // Desk Bias Process intraday rechecks
@@ -30280,6 +30280,28 @@ async function _bsIssueProcess(date) {
 }
 // <D>_fundabias.json (prereg amendment A4): the day's FundaBias log (KV fundabias_log_<D>, POST /api/fundabias-log), first
 // tick in [16:05, 20:00) London; each row knowable at its server timestamp (a log after 16:00 is not a row for D).
+// <D>_engine_v2.json (prereg amendment A7, at the freeze; plans/BIAS_ENGINE_V2_SPEC.md §8): OFFICIAL days only (phase 'forward' on the stored V2
+// record; trial days get no file). Rows: the production V1 issue, V1 replay, V2 and the switch variants, under V1's frozen engine mapping, with each
+// driver's contribution in `inputs`. Horizons d21, n07, d5 and d20 (B0 d20 from js/biasScoreboardBaselinesD20.json, built on the laptop by
+// scripts/bias-scoreboard/b0.py --d20; without it d20 rows are not written and the status says so).
+const _bsBaselinesD20 = (() => { try { return JSON.parse(fs.readFileSync(new URL('./js/biasScoreboardBaselinesD20.json', import.meta.url), 'utf8')); } catch { return null; } })();
+async function _bsIssueEngineV2(date) {
+  const key = `${_BS_PREFIX}${date}_engine_v2.json`;
+  if (_bsDone.has(key)) return;
+  let rec = null, v1 = null;
+  try { const raw = await kv.get(_BEV2_KEY(date)); rec = raw ? JSON.parse(raw) : null; } catch { rec = null; }
+  if (!rec?.variants || rec.date !== date) return;                       // no stored V2 record yet: try again until 10:00
+  if (rec.phase !== 'forward') { _bsDone.add(key); return; }              // the technical trial never reaches the scoreboard (spec §6.3)
+  try { const raw = await kv.get(_BE_KEY(date)); v1 = raw ? JSON.parse(raw) : null; } catch { v1 = null; }
+  const base = await _r2GetJSON(`${_BS_PREFIX}${date}_base.json`).catch(() => null);
+  const insts = base ? Object.keys(base.anchors_0700 ?? {}) : Object.keys(_BS_INSTRUMENTS);
+  const sigma = base ? Object.fromEntries(base.forecasts.filter(f => f.model_id === 'B0').map(f => [f.inst, f.sigma_day])) : await _bsSigma(date);
+  const baselines = { ..._bsBaselines, version: `${_bsBaselines.version}+${_bsBaselinesD20?.version ?? 'no-d20'}`,
+    instruments: Object.fromEntries(Object.entries(_bsBaselines.instruments).map(([i, v]) => [i, { ...v, ...(_bsBaselinesD20?.instruments?.[i]?.d20 ? { d20: _bsBaselinesD20.instruments[i].d20 } : {}) }])) };
+  await _bsPutOnce(key, _bsIssue({ date, source: 'engine_v2', views: _bsBiasEngineV2(rec, v1, { knowableMs: Date.parse(rec.issuedAt ?? rec.asOf), insts }), baselines, sigma, insts, targets: [..._BS_TARGETS, 'd20'],
+    issuedAt: new Date().toISOString(), code: _bsCode(), externalStatus: { engine_v2: 'ok', phase: rec.phase, spec: rec.specVersion, config_hash: rec.configHash, snapshot_sha: rec.snapshot?.sha256 ?? null,
+      v1_issue: v1 ? 'ok' : 'missing', d20_baselines: _bsBaselinesD20?.version ?? 'missing: d20 rows not written' } }));
+}
 async function _bsIssueFundabias(date) {
   const key = `${_BS_PREFIX}${date}_fundabias.json`;
   if (_bsDone.has(key) || !_BS_FUNDABIAS_ON) return;
@@ -30299,10 +30321,11 @@ async function _biasScoreboardTick() {
     if (now >= _bsLondonMs(date, 16, 5) && now < _bsLondonMs(date, 20)) await _bsIssueMax(date);
     if (now >= _bsLondonMs(date, 7) && now < _bsLondonMs(date, 10)) await _bsIssueEngine(date);
     if (now >= _bsLondonMs(date, 7) && now < _bsLondonMs(date, 10)) await _bsIssueProcess(date);
+    if (now >= _bsLondonMs(date, 7) && now < _bsLondonMs(date, 10)) await _bsIssueEngineV2(date);
     if (now >= _bsLondonMs(date, 16, 5) && now < _bsLondonMs(date, 20)) await _bsIssueFundabias(date);
   }
   // resolve: issue records from the last ~15 days with an unresolved target
-  const keys = (await _r2ListKeys(_BS_PREFIX)).filter(k => /sameday\/\d{4}-\d{2}-\d{2}_(base|desk|max|engine|process|fundabias)\.json$/.test(k));
+  const keys = (await _r2ListKeys(_BS_PREFIX)).filter(k => /sameday\/\d{4}-\d{2}-\d{2}_(base|desk|max|engine|engine_v2|process|fundabias)\.json$/.test(k));
   const dates = [...new Set(keys.map(k => k.match(/(\d{4}-\d{2}-\d{2})_/)[1]))].sort().slice(-15);
   for (const d of dates) {
     for (const t of _BS_TARGETS) {
@@ -30311,23 +30334,35 @@ async function _biasScoreboardTick() {
       if (await _r2GetJSON(ok).catch(() => null)) { _bsDone.add(ok); continue; }
       // every source window for D must be closed before D is resolved, so no record can arrive after its outcome
       if (now < _bsLondonMs(d, 20)) continue;
-      const recs = (await Promise.all(['base', 'desk', 'max', 'engine', 'process', 'fundabias'].map(s => _r2GetJSON(`${_BS_PREFIX}${d}_${s}.json`).catch(() => null)))).filter(Boolean);
+      const recs = (await Promise.all(['base', 'desk', 'max', 'engine', 'engine_v2', 'process', 'fundabias'].map(s => _r2GetJSON(`${_BS_PREFIX}${d}_${s}.json`).catch(() => null)))).filter(Boolean);
       if (!recs.length) continue;
       let fetchErr = false;                                       // a feed error is not a missing price: retry next tick
       const o = await _bsOutcome(recs, t, (inst, ms) => _bsMid(inst, ms).catch(() => { fetchErr = true; return null; }), { now, resolvedAt: new Date().toISOString() });
       if (o && !fetchErr) await _bsPutOnce(ok, o);
     }
   }
+  // d20 (Bias Engine V2 files only): 20 weekdays out, so it looks back further than the 15 dates above
+  const v2dates = [...new Set(keys.filter(k => /_engine_v2\.json$/.test(k)).map(k => k.match(/(\d{4}-\d{2}-\d{2})_/)[1]))].sort().slice(-45);
+  for (const d of v2dates) {
+    const ok = `${_BS_PREFIX}out/${d}_d20.json`;
+    if (_bsDone.has(ok) || now < _bsEndMs(d, 'd20') + _BS_LOOKBACK) continue;
+    if (await _r2GetJSON(ok).catch(() => null)) { _bsDone.add(ok); continue; }
+    const rec = await _r2GetJSON(`${_BS_PREFIX}${d}_engine_v2.json`).catch(() => null);
+    if (!rec) continue;
+    let fetchErr = false;
+    const o = await _bsOutcome([rec], 'd20', (inst, ms) => _bsMid(inst, ms).catch(() => { fetchErr = true; return null; }), { now, resolvedAt: new Date().toISOString() });
+    if (o && !fetchErr) await _bsPutOnce(ok, o);
+  }
 }
 svcInterval('biasScoreboard', () => _biasScoreboardTick().catch(e => console.error('[bias-scoreboard]', e.message)), 5 * 60_000);
 async function _bsRoute(req, res) {
   const all = await _r2ListKeys(_BS_PREFIX);
-  const issues = all.filter(k => /sameday\/\d{4}-\d{2}-\d{2}_(base|desk|max|engine|process|fundabias)\.json$/.test(k)).sort(), outKeys = all.filter(k => /sameday\/out\//.test(k)).sort();
+  const issues = all.filter(k => /sameday\/\d{4}-\d{2}-\d{2}_(base|desk|max|engine|engine_v2|process|fundabias)\.json$/.test(k)).sort(), outKeys = all.filter(k => /sameday\/out\//.test(k)).sort();
   const date = String(req.query.date || '');
   if (date) {
     const recs = {}, outs = {};
-    for (const s of ['base', 'desk', 'max', 'engine', 'process', 'fundabias']) recs[s] = await _r2GetJSON(`${_BS_PREFIX}${date}_${s}.json`).catch(() => null);
-    for (const t of _BS_TARGETS) outs[t] = await _r2GetJSON(`${_BS_PREFIX}out/${date}_${t}.json`).catch(() => null);
+    for (const s of ['base', 'desk', 'max', 'engine', 'engine_v2', 'process', 'fundabias']) recs[s] = await _r2GetJSON(`${_BS_PREFIX}${date}_${s}.json`).catch(() => null);
+    for (const t of [..._BS_TARGETS, 'd20']) outs[t] = await _r2GetJSON(`${_BS_PREFIX}out/${date}_${t}.json`).catch(() => null);
     return res.json({ ok: true, prereg: 'forge/BIAS_SCOREBOARD_PREREG.md', records: recs, outcomes: outs });
   }
   const load = async ks => (await Promise.all(ks.map(k => _r2GetJSON(k).catch(() => null)))).filter(Boolean);

@@ -9,6 +9,7 @@ import {
   riskFactorAt, futuresReading, pickRung, y2Reading, dataF1, removeLookahead, cadenceOfDim,
 } from './biasEngineV2.js';
 import { snapshot, strip, riskSeries, ISSUE_DATE, DAY } from './biasEngineV2.fixture.mjs';
+import { biasEngineV2 as biasEngineV2Views } from './biasForecasters.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let passed = 0;
@@ -223,7 +224,18 @@ ok('A19 roll and continuity: C2, C4, C6 fail to the proxy; the chosen rung chang
   assert.equal(y2Reading([{ date: '2026-11-12', value: 3 }], 2.5, ISSUE_DATE).ok, false);
 });
 
-ok('A20 the trial is excluded: no forward start (or before it) is trial; on and after it is forward', () => {
+ok('A20 the trial is excluded: a trial record gives no scoreboard views; an official one gives every variant with its drivers', () => {
+  const rec = buildV2Record(snapshot()), v1 = buildBiasRecord(snapshot().v1);
+  assert.deepEqual(biasEngineV2Views(rec, v1), []);
+  const fwd = buildV2Record(snapshot(), { forwardStart: '2026-11-13' }), views = biasEngineV2Views(fwd, v1);
+  assert.equal(fwd.phase, 'forward');
+  assert.equal(views.length, 13 * 13);   // 13 instruments × (V1 + 12 variants)
+  const eu = views.find(x => x.model_id === 'bias-engine-v2' && x.inst === 'eurusd');
+  assert.ok(eu.inputs.drivers.length > 0 && eu.inputs.drivers.every(d => 'contrib' in d && d.family));
+  assert.ok(eu.inputs.support && 'dataQuality' in eu.inputs);
+  assert.ok(views.some(x => x.model_id === 'bias-engine-v1' && x.inst === 'gold'));
+});
+ok('A20b phases: no forward start (or before it) is trial; on and after it is forward', () => {
   assert.equal(CONFIG.FORWARD_START, null, 'the forward start is set only by the freeze commit (spec §6.4)');
   assert.equal(phaseOf('2026-11-20'), 'trial');
   assert.equal(phaseOf('2026-11-20', '2026-11-27'), 'trial'); assert.equal(phaseOf('2026-11-27', '2026-11-27'), 'forward');

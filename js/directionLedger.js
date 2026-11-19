@@ -121,6 +121,9 @@ export function summarise(records, outcomesList) {
 export const SAMEDAY_VERSION = 1;
 export const SAMEDAY_PREREG = 'forge/BIAS_SCOREBOARD_PREREG.md';
 export const SAMEDAY_TARGETS = ['d21', 'n07', 'd5'];
+/** Extra horizons a source may ask for through issueSameDay({ targets }): d20 = 07:00 London 20 weekdays later (Bias Engine V2 file, prereg A7). */
+export const EXTRA_TARGETS = ['d20'];
+const R_SCALE = { d5: Math.sqrt(5), d20: Math.sqrt(20) };
 export const SAMEDAY_CORE = { nq: 'NAS100_USD', es: 'SPX500_USD', gold: 'XAU_USD', eurusd: 'EUR_USD', gbpusd: 'GBP_USD', usdjpy: 'USD_JPY' };
 export const SAMEDAY_EXTENDED = { us30: 'US30_USD', audusd: 'AUD_USD', nzdusd: 'NZD_USD', usdcad: 'USD_CAD', usdchf: 'USD_CHF', gbpjpy: 'GBP_JPY', eurjpy: 'EUR_JPY' };
 export const SAMEDAY_INSTRUMENTS = { ...SAMEDAY_CORE, ...SAMEDAY_EXTENDED };
@@ -148,6 +151,7 @@ export function targetEndMs(date, target) {
   if (target === 'd21') return londonMs(date, 21);
   if (target === 'n07') return londonMs(addWeekdays(date, 1), 7);
   if (target === 'd5') return londonMs(addWeekdays(date, 5), 7);
+  if (target === 'd20') return londonMs(addWeekdays(date, 20), 7);
   throw new Error(`unknown same-day target ${target}`);
 }
 /** Anchor = max(07:00 London on D, knowable time rounded up to the next whole minute). */
@@ -181,7 +185,7 @@ const clipP = p => Math.min(0.99, Math.max(0.01, p));
  *   { model_id, model_version, prereg?, inst, speaks, side (+1/-1/0), shift, knowable_ms, conviction?, inputs?, flags?, event_key? }
  * B0 rows are added when `withB0` (the base source). Every row is expanded over SAMEDAY_TARGETS with p_up = clip(p0 + side*shift).
  */
-export function issueSameDay({ date, source, views = [], baselines, sigma = {}, anchors0700 = null, issuedAt, code = null, externalStatus = null, withB0 = false, insts = Object.keys(SAMEDAY_INSTRUMENTS) }) {
+export function issueSameDay({ date, source, views = [], baselines, sigma = {}, anchors0700 = null, issuedAt, code = null, externalStatus = null, withB0 = false, insts = Object.keys(SAMEDAY_INSTRUMENTS), targets = SAMEDAY_TARGETS }) {
   const cutoff = londonMs(date, ...SAMEDAY_LATE_CUTOFF), forecasts = [], late = [];
   const p0Of = (inst, t) => baselines?.instruments?.[inst]?.[t]?.p0;
   const push = (v, t) => {
@@ -200,7 +204,7 @@ export function issueSameDay({ date, source, views = [], baselines, sigma = {}, 
   for (const v of all) {
     if (!(v.inst in SAMEDAY_INSTRUMENTS)) continue;
     if (Number.isFinite(v.knowable_ms) && v.knowable_ms > cutoff) { late.push({ inst: v.inst, model_id: v.model_id, knowable_ts: new Date(v.knowable_ms).toISOString() }); continue; }
-    for (const t of SAMEDAY_TARGETS) push(v, t);
+    for (const t of targets) push(v, t);
   }
   return { v: SAMEDAY_VERSION, ledger: 'direction-ledger', row_type: 'sameday', prereg: SAMEDAY_PREREG, issue_date: date, source, issued_at: issuedAt, code,
     baselines_version: baselines.version, ...(anchors0700 ? { anchors_0700: anchors0700 } : {}), ...(externalStatus ? { external_status: externalStatus } : {}),
@@ -222,7 +226,7 @@ export async function outcomeSameDay(recs, target, mid, { now, resolvedAt }) {
   for (const f of rows) {
     const aMs = Date.parse(f.anchor_ts), a = await get(f.inst, aMs), e = await get(f.inst, endMs);
     if (!Number.isFinite(a) || !Number.isFinite(e)) { unresolved[f.id] = !Number.isFinite(a) ? 'no anchor price' : 'no end price'; continue; }
-    const y = e > a ? 1 : 0, r = Math.log(e / a), sh = target === 'd5' ? Math.sqrt(5) : 1;
+    const y = e > a ? 1 : 0, r = Math.log(e / a), sh = R_SCALE[target] ?? 1;
     scores[f.id] = { y, brier: brier(f.p_up, y), log: logScore(f.p_up, y), b0_brier: brier(f.b0_p, y), b0_log: logScore(f.b0_p, y),
       hit: f.speaks ? (f.side > 0 ? y : 1 - y) : null, r_log: r,
       R: f.speaks && f.sigma_day > 0 ? f.side * r / (f.sigma_day * sh) : null };
