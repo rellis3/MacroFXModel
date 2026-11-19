@@ -44,7 +44,7 @@ test('sessionScript: measured facts only, the open / range / now / times usual; 
   const st = sessionStats(mk(1, 10), { forecast: { oc_median: 0.5 } }), t = sessionScript('NQ', st);
   assert.match(t, /Nasdaq's session\. It opened at 100, has traded between 99 and 111, and is now 110/); assert.match(t, /up .* percent from the open, which is more than nine times its usual move/);
   assert.equal(sessionScript('NQ', null), null); assert.doesNotMatch(t, /will|expect|forecast|likely|buy|sell/i);
-  assert.match(sessionScript('GOLD', st, 'daily'), /last sixty days/); assert.match(titleOf('NQ', 'intraday'), /NQ · today's session, 15 minute candles/); assert.match(titleOf('NQ', 'daily'), /daily/);
+  assert.match(t, /Here is the chart of Nasdaq/); assert.match(sessionScript('GOLD', st, 'daily'), /last sixty days/); assert.match(titleOf('NQ', 'intraday'), /NQ · today's session, 15 minute candles/); assert.match(titleOf('NQ', 'daily'), /daily/);
 });
 test('routes: desk keys map to the intraday asset and the daily symbol', () => {
   assert.equal(intradayAsset('NQ'), 'NAS100'); assert.equal(intradayAsset('EURUSD'), 'EURUSD'); assert.equal(intradayAsset('WTI'), null); assert.equal(dailySymbol('EURUSD'), 'EUR_USD'); assert.equal(dailySymbol('GOLD'), 'XAU_USD'); assert.equal(dailySymbol('NQ'), 'NAS100_USD');

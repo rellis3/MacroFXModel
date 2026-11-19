@@ -70,7 +70,7 @@ export const titleOf = (key, mode) => `${key} · ${mode === 'daily' ? 'the last 
 export function sessionScript(key, st, mode = 'intraday') {
   if (!st) return null;
   const nm = spoken(key), dir = st.movePct >= 0 ? 'up' : 'down', span = mode === 'daily' ? 'the last sixty days' : 'the session so far';
-  const a = `Here is ${nm}'s ${mode === 'daily' ? 'last sixty days' : 'session'}. It ${mode === 'daily' ? 'started at' : 'opened at'} ${said(st.open)}, has traded between ${said(st.lo)} and ${said(st.hi)}, and is now ${said(st.last)}.`;
+  const a = `Here is the chart of ${nm}'s ${mode === 'daily' ? 'last sixty days' : 'session'}. It ${mode === 'daily' ? 'started at' : 'opened at'} ${said(st.open)}, has traded between ${said(st.lo)} and ${said(st.hi)}, and is now ${said(st.last)}.`;
   const b = mode === 'daily' ? `Over ${span} it is ${dir} ${pctWord(st.movePct)}.` : `That is ${dir} ${pctWord(st.movePct)} from the open${st.times != null ? `, which is ${timesWord(st.times)} its usual move` : ''}.`;
   return `${a} ${b}`;
 }
