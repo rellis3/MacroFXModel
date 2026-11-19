@@ -123,4 +123,11 @@ within the touch bar beyond "touch first"; sessions after 2026-08-21.
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-19, PRE-RESULTS (touches extracted; no forecast scored against an outcome)
+
+Real counts replace the §7 estimate: test years 2019 → 2026-08-21 hold **8,475 first touches on 1,730 sessions (C)**
+and **8,307 on 1,703 (F)**; 7,584 / 7,434 of them have a next rung (p50, p75). About 260 sessions per track have no
+touch at all (quiet days: HL ≈ 1.2× OC p50 against 2.3× typical); they carry no touch and are not scored. Per PRIMARY
+cell about 420 touches per target: per-cell SE ≈ 2.1pp, 20-cell mean ≈ 0.5pp before session clustering, so the 1pp
+NULL bar stays. The extraction check passed: 95/95 (C) and 96/96 (F) touches recomputed exactly by an independent
+loop on 20 random sessions. 177 (C) / 161 (F) dynamic touches sit on the wrong side of the open (reported subset).

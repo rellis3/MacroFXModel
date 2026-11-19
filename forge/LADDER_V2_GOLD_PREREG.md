@@ -120,3 +120,13 @@ like for like.
 
 Tested for code faults on NQ only (descriptive, not banked) before gold was built.
 
+### A3 — 2026-11-19, PRE-RESULTS (no gold outcome computed): GARCH fits on a long history
+
+The NQ code test showed that fitting the GARCH family on 2016–17 alone (the first walk-forward year) gives degenerate
+parameters (EGARCH shock response α = −0.09 on the CFD; the fitted forecast barely moved with the realised range,
+slope 0.03). From 2019 on the fits were sensible. GARCH needs a long sample. Change: for each test year Y the GARCH
+parameters are fitted on OANDA's NY-close daily bars (`granularity=D`, mid, `dailyAlignment=17`, America/New_York;
+`scripts/ladder-v2/fetch_d1_long.py`, gold from 2006-03, NQ from 2004-01) before this series starts, joined to this
+series' own bars, all before 1 Jan Y. Those OANDA bars equal the M1-built NY-close bars where they overlap (773 dates,
+daily-return correlation 1.0, median close difference 2e-8). The forecasts scored are still filtered only on this
+series. For the futures track the pre-series history is the same OANDA (spot/CFD) history. No other arm changes.

@@ -139,14 +139,24 @@ def ny_bars(m):
     return b, rv[5], rv[15], ext
 
 
-def garch_sigmas(b):
+def garch_sigmas(b, sym=None):
     """Per walk-forward year Y: fit each GARCH model on NY-close daily % returns of bars before 1 Jan Y, then filter
-    the whole series with those fixed parameters. Value at bar t = one-step forecast for bar t+1 made at t (daily %)."""
+    the whole series with those fixed parameters. Value at bar t = one-step forecast for bar t+1 made at t (daily %).
+    Gold prereg A3: the fit also uses OANDA's long NY-close daily history before this series starts
+    (analysis/output/ladder-v2-data/<SYM>_d1_long.parquet, identical bars where they overlap), because two years
+    (2016-17) gave degenerate fits for 2018. Filtering stays on this series only."""
     from arch import arch_model
     r = (np.log(b["close"]).diff() * 100).dropna()
+    lp = ROOT / f"analysis/output/ladder-v2-data/{sym}_d1_long.parquet"
+    r_fit = r
+    if sym and lp.exists():
+        Ld = pd.read_parquet(lp)
+        rl = (np.log(Ld["close"]).diff() * 100).dropna()
+        rl = rl[(rl.index < b.index.min()) & (rl.index.dayofweek < 5)]
+        r_fit = pd.concat([rl, r]).sort_index()
     out = {}
     for Y in YEARS:
-        tr = r[r.index < pd.Timestamp(f"{Y}-01-01")]
+        tr = r_fit[r_fit.index < pd.Timestamp(f"{Y}-01-01")]
         for g, spec in GARCH.items():
             mdl = arch_model(tr, mean="Constant", vol=spec["vol"], p=1, o=spec["o"], q=1, dist=spec["dist"])
             fit = mdl.fit(disp="off", show_warning=False)
@@ -217,7 +227,7 @@ def build(sym, track):
     gk = (0.5 * np.log(b["high"] / b["low"]) ** 2 - (2 * np.log(2) - 1) * np.log(b["close"] / b["open"]) ** 2) * 1e4
     S["r2_d"] = (ret ** 2).reindex(D).to_numpy()
     S["gk_d"] = gk.reindex(D).to_numpy()
-    G, gparams = garch_sigmas(b)
+    G, gparams = garch_sigmas(b, sym)
     for c in G.columns:
         S[c] = asof_before(D, G[c].dropna())
     (OUT / f"garch_params_{track}.json").write_text(json.dumps(gparams, indent=1))
