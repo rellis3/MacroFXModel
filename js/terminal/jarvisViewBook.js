@@ -2,6 +2,7 @@
 // a flat card is a low plinth drawn in the card's own wording ("Not reviewed" dashed, "Neutral - reviewed" solid). Height = the card's conviction. Beside each tower, a thin cyan bar is what the market actually did today
 // (open-to-close against its usual move, the same ratio CANDLES uses), so "the call" and "what happened" sit side by side without either implying the other is right.
 // DESCRIPTION ONLY: these are the desk's own written calls, not ours and not a forecast. The bias engine's lean (no proven direction skill) is deliberately NOT drawn here.
+import { marketName } from './jarvisNames.js';
 import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { candleRows, candleLayout, ROWS } from './jarvisCandles.js';
@@ -54,7 +55,7 @@ function draw(ctx, g, api) {
     if (call) { const gr = ctx.createRadialGradient(o.tip.x, o.tip.y, 1, o.tip.x, o.tip.y, 30 * o.tip.s); gr.addColorStop(0, c); gr.addColorStop(1, 'transparent'); ctx.globalAlpha = (0.4 + 0.12 * Math.sin(t * 3 + o.pos.z * 7)) * fa; ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(o.tip.x, o.tip.y, 30 * o.tip.s, 0, 6.2832); ctx.fill(); }
     if (call || selK === r.key || g.zoom > 1.5) {
       ctx.globalAlpha = fa * (call ? 1 : 0.6); ctx.fillStyle = C.tx; ctx.font = `${Math.round(9 + 3 * Math.min(1.6, o.tip.s))}px ui-monospace,monospace`; ctx.textAlign = 'center';
-      ctx.fillText(r.key, o.tip.x, o.tip.y + (r.call < 0 ? 14 * o.tip.s + 8 : -16 * o.tip.s));
+      ctx.fillText(marketName(r.key, { short: true }), o.tip.x, o.tip.y + (r.call < 0 ? 14 * o.tip.s + 8 : -16 * o.tip.s));
     }
     g.hit(r.key, o.tip.x, o.tip.y);
   }
@@ -65,7 +66,7 @@ function draw(ctx, g, api) {
   L.forEach((s, i) => ctx.fillText(s, W - 24, H - 205 + i * 16));
   if (sel) {
     const x = W - 380, y = 130; ctx.font = '12px ui-monospace,monospace'; ctx.globalAlpha = 0.95 * fade; ctx.fillStyle = C.tx; ctx.textAlign = 'left';
-    ctx.fillText(`${sel.key}  ·  the desk's call: ${word(sel)}${sel.strong ? ' (strong)' : ''}`, x, y); ctx.fillStyle = C.tx2; ctx.font = '11px ui-monospace,monospace';
+    ctx.fillText(`${marketName(sel.key)}  ·  the desk's call: ${word(sel)}${sel.strong ? ' (strong)' : ''}`, x, y); ctx.fillStyle = C.tx2; ctx.font = '11px ui-monospace,monospace';
     ctx.fillText(`conviction ${convWord({ conviction: sel.conv }) ?? 'n/a'}${sel.size != null ? `  ·  size ${sel.size}` : ''}  ·  today ${sel.move == null ? 'no read' : `${sel.move >= 0 ? '+' : ''}${sel.move.toFixed(1)}x usual move`}`, x, y + 16);
     wrap(ctx, sel.why || 'The card carries no written thesis.', 340).slice(0, 5).forEach((s, i) => ctx.fillText(s, x, y + 36 + i * 14));
   }
@@ -91,7 +92,7 @@ registerJarvisModule({
       const calls = rows.filter(r => r.call !== 0);
       pane.innerHTML = `<h3>THE DESK'S BOOK${B.date ? ` · ${esc(B.date)}` : ''}</h3><p>The desk's own written calls, not a forecast and not the bias engine. ${s.calls} calls (${s.long} long, ${s.short} short); ${s.neutral} reviewed and neutral; ${s.unreviewed + s.unknown} ${B.partial ? 'flat' : 'not reviewed'}.</p>
 <div class="jv-row"><button type="button" data-b="go">SHOW THE TOWERS</button></div>
-<table class="jv-tab"><thead><tr><th>market</th><th>the desk's call</th><th>conviction</th></tr></thead><tbody>${calls.map(r => `<tr><td>${esc(r.key)}</td><td>${esc(word(r))}${r.strong ? ' (strong)' : ''}</td><td>${esc(r.conv ?? 'n/a')}</td></tr>`).join('') || '<tr><td colspan="3">No long or short calls today.</td></tr>'}</tbody></table>`;
+<table class="jv-tab"><thead><tr><th>market</th><th>the desk's call</th><th>conviction</th></tr></thead><tbody>${calls.map(r => `<tr><td>${esc(marketName(r.key))}</td><td>${esc(word(r))}${r.strong ? ' (strong)' : ''}</td><td>${esc(r.conv ?? 'n/a')}</td></tr>`).join('') || '<tr><td colspan="3">No long or short calls today.</td></tr>'}</tbody></table>`;
       pane.querySelector('[data-b="go"]').onclick = () => api.setView('book');
     });
   },

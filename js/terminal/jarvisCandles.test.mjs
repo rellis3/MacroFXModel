@@ -40,7 +40,7 @@ test('buildScenes: a full morning has the wake, movers, candles, lean, chain, ah
   const thin = buildScenes({}); assert.deepEqual(thin.map(s => s.id), ['wake', 'close']);
 });
 test('spoken and readSeconds: plain words for markets; reading time scales with length', () => {
-  assert.equal(spoken('NQ'), 'Nasdaq'); assert.equal(spoken('EURUSD'), 'EUR USD');
+  assert.equal(spoken('NQ'), 'Nasdaq'); assert.equal(spoken('EURUSD'), 'Euro Dollar');
   assert.ok(readSeconds('one two three four five six seven eight nine ten') > readSeconds('hi')); assert.ok(readSeconds('') >= 2);
 });
 

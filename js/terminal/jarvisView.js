@@ -7,6 +7,7 @@
 // from the Chain tab's loaders (globalThis.deskChainData), the voice is the browser's own (free).
 import { buildGraph, project, arcPoint, bootLines, VERDICT_WORD, radarRank, systemSummary, skyline, towerBox, pickVoice, wakeParse, watchSnapshot, watchDiff, memoryState, GEO, REGIONS, llToVec, globeProject, greatArc, bubbleLayout, THEME, THEME_ORDER } from './jarvisCore.js';
 import { CHAIN_NODES } from '../macroChain.js';
+import { marketName, getNameStyle, setNameStyle } from './jarvisNames.js';
 import { candleRows, candleLayout, candleBox, boardSummary, ROWS as CD_ROWS } from './jarvisCandles.js';
 import { EXTRA, loadModules, viewsOf } from './jarvisModules.js';
 import { shortLabel } from './chainBoard.js';
@@ -84,7 +85,7 @@ export async function openJarvis(win = window) {
   root.innerHTML = `<style>${CSS}</style><canvas id="${ID}-cv"></canvas><div class="jv-bs" id="${ID}-bs"><div class="jv-bs-t"><h1 id="${ID}-bst">J.A.R.V.I.S.</h1><div class="jv-bs-sub blink" id="${ID}-bss">&nbsp;</div></div><div class="jv-bs-b"><div class="jv-bs-log" id="${ID}-bslog"></div><div class="jv-bar"><i id="${ID}-bsbar"></i></div></div></div><div class="jv-scan"></div><div class="jv-vig"></div><i class="jv-br tl"></i><i class="jv-br tr"></i><i class="jv-br bl"></i><i class="jv-br brr"></i>
 <div class="jv-top"><span class="jv-title" data-surface="widget.jarvis">J.A.R.V.I.S.</span><span class="jv-sub">desk intelligence · description only</span><span class="jv-sp"></span>
 <span id="${ID}-mods"></span><span id="${ID}-win"></span><span id="${ID}-view"></span>
-<button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Jarvis, ..." (microphone, this tab only)'>HEY JARVIS</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Jarvis keeps watching">DOCK ▾</button><button type="button" id="${ID}-off" title="Switch Jarvis off">OFF ✕</button></div>
+<button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-nms" aria-pressed="${getNameStyle() === 'names'}" title="Show market names or codes">${getNameStyle() === 'names' ? 'NAMES' : 'CODES'}</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Jarvis, ..." (microphone, this tab only)'>HEY JARVIS</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Jarvis keeps watching">DOCK ▾</button><button type="button" id="${ID}-off" title="Switch Jarvis off">OFF ✕</button></div>
 <div class="jv-cap" id="${ID}-cap" hidden><div class="t" id="${ID}-capt"></div><div class="x" id="${ID}-capx"></div></div><button type="button" class="jv-cinexit" id="${ID}-stop">■ END SHOW  ·  Esc</button><div class="jv-cine" id="${ID}-cine"><button type="button" data-c="prev" title="Back one scene (left arrow)">⏮ BACK</button><button type="button" data-c="pause" id="${ID}-cpause" title="Pause or resume (space)">⏸ PAUSE</button><button type="button" data-c="next" title="Skip this scene (right arrow)">SKIP ⏭</button><button type="button" data-c="slow" title="Slower (minus)">−</button><span id="${ID}-crate">1.0×</span><button type="button" data-c="fast" title="Faster (plus)">+</button></div><div class="jv-reg" id="${ID}-reg"></div><div class="jv-hud" id="${ID}-hud"></div><div class="jv-pane" id="${ID}-pane" hidden></div><div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div>
 <div class="jv-scrub" id="${ID}-scrub"><button type="button" id="${ID}-play" title="Replay the last 60 sessions">▶ PLAY</button><input type="range" id="${ID}-sl" min="0" max="0" value="0" aria-label="Session to show"><span id="${ID}-sd" class="jv-sub" style="min-width:150px;text-align:right">LATEST</span><button type="button" id="${ID}-now">LATEST</button><button type="button" id="${ID}-expl" title="Describe what was going on around this day (one model call)">EXPLAIN THIS DAY</button></div>
 <div class="jv-foot">drag to turn · wheel to zoom · click a market · Esc docks · none of this is a forecast</div>`;
@@ -239,6 +240,7 @@ export async function openJarvis(win = window) {
   $('win').onclick = e => { const b = e.target.closest('button[data-w]'); if (b) { blip(520, 0.05); load(+b.dataset.w, st.idx >= 0 ? st.dates[st.idx] : null); } };
   const switchView = v => { st.view = v; lsPut({ view: v }); setCamAll(); for (const x of $('view').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.v === v)); blip(720, 0.06); };
   $('view').onclick = e => { const b = e.target.closest('button[data-v]'); if (b) switchView(b.dataset.v); };
+  $('nms').onclick = e => { const n = getNameStyle() === 'names' ? 'codes' : 'names'; setNameStyle(n); e.currentTarget.setAttribute('aria-pressed', String(n === 'names')); e.currentTarget.textContent = n === 'names' ? 'NAMES' : 'CODES'; blip(600); };
   $('snd').onclick = e => { st.sound = !st.sound; lsPut({ sound: st.sound }); e.currentTarget.setAttribute('aria-pressed', String(st.sound)); blip(600); };
 
   const REGLAB = { world: 'WORLD', americas: 'AMERICAS', europe: 'EUROPE', asia: 'ASIA-PACIFIC', 'mideast-africa': 'MIDDLE EAST & AFRICA' };
@@ -514,7 +516,7 @@ export async function openJarvis(win = window) {
         const sz = (4 + Math.min(3, o.r.strength) * 2.2) * o.tip.s, x0 = o.tip.x, y0 = o.tip.y - 8 * o.tip.s; ctx.globalAlpha = 0.9 * fa; ctx.strokeStyle = C.blue; ctx.fillStyle = C.blue; ctx.lineWidth = 1.6;
         if (o.r.lean === 0) { ctx.beginPath(); ctx.arc(x0, y0, 2 * o.tip.s, 0, 6.2832); ctx.fill(); } else { const d = o.r.lean > 0 ? -1 : 1; ctx.beginPath(); ctx.moveTo(x0 - sz, y0 - d * sz * 0.5); ctx.lineTo(x0, y0 + d * sz * 0.5); ctx.lineTo(x0 + sz, y0 - d * sz * 0.5); ctx.stroke(); }
       }
-      if (selK === o.r.key || (live && loud.has(o.r.key) && Math.abs(o.r.ratio) > 1)) { ctx.globalAlpha = fa * (live ? 1 : 0.6); ctx.fillStyle = C.tx; ctx.font = `${Math.round(9 + 3 * Math.min(1.6, o.tip.s))}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(o.r.key, o.tip.x, o.tip.y - 16 * o.tip.s - 4); }
+      if (selK === o.r.key || (live && loud.has(o.r.key) && Math.abs(o.r.ratio) > 1)) { ctx.globalAlpha = fa * (live ? 1 : 0.6); ctx.fillStyle = C.tx; ctx.font = `${Math.round(9 + 3 * Math.min(1.6, o.tip.s))}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(marketName(o.r.key, { short: true }), o.tip.x, o.tip.y - 16 * o.tip.s - 4); }
       st.proj.push({ key: o.r.key, sx: o.tip.x, sy: o.tip.y });
     }
     ctx.globalAlpha = 0.7 * fade; ctx.fillStyle = C.tx2; ctx.font = '11px ui-monospace,monospace'; ctx.textAlign = 'left';
@@ -541,7 +543,7 @@ export async function openJarvis(win = window) {
       const gg = ctx.createRadialGradient(p.x - R2 * 0.35, p.y - R2 * 0.4, R2 * 0.1, p.x, p.y, R2); gg.addColorStop(0, C.tx); gg.addColorStop(0.25, c); gg.addColorStop(1, 'transparent');
       ctx.globalAlpha = (live ? 0.55 : 0.22) * fade; ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(p.x, p.y, R2, 0, 6.2832); ctx.fill();
       ctx.globalAlpha = (live ? 0.95 : 0.4) * fade; ctx.strokeStyle = c; ctx.lineWidth = selK === k ? 3 : 1.4; ctx.beginPath(); ctx.arc(p.x, p.y, R2, 0, 6.2832); ctx.stroke();
-      ctx.globalAlpha = (live ? 1 : 0.6) * fade; ctx.fillStyle = C.tx; ctx.font = `${live ? 11 : 10}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(CHAIN_NODES[k] ? shortLabel(CHAIN_NODES[k]) : k, p.x, p.y + (live ? -1 : 3));
+      ctx.globalAlpha = (live ? 1 : 0.6) * fade; ctx.fillStyle = C.tx; ctx.font = `${live ? 11 : 10}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(CHAIN_NODES[k] ? shortLabel(CHAIN_NODES[k]) : marketName(k, { short: true }), p.x, p.y + (live ? -1 : 3));
       if (live && n.end?.text) { ctx.globalAlpha = 0.8 * fade; ctx.font = '10px ui-monospace,monospace'; ctx.fillText(n.end.text, p.x, p.y + 12); }
       st.proj.push({ key: k, sx: p.x, sy: p.y });
     }

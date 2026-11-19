@@ -2,7 +2,8 @@
 // Feed: /api/vol-forecast/live (fails soft). DESCRIPTION ONLY: no forecast, no trade.
 import { registerJarvisModule } from './jarvisModules.js';
 import { llToVec } from './jarvisCore.js';
-import { MARKET_GEO, marketSizes, rankMarkets, marketLabel, moveText } from './jarvisMarkets.js';
+import { MARKET_GEO, marketSizes, rankMarkets, moveText } from './jarvisMarkets.js';
+import { marketName } from './jarvisNames.js';
 
 const FEED = '/api/vol-forecast/live', LS = 'jarvis.markets.layer', REFRESH_MS = 120_000;
 const S = { sizes: null, at: 0, loading: false, failed: false, sel: null, on: true };
@@ -32,7 +33,7 @@ function drawGlobe(ctx, g, api) {
     ctx.globalAlpha = a; ctx.strokeStyle = c; ctx.fillStyle = c; ctx.lineWidth = sel ? 2 : 1;
     ctx.beginPath(); ctx.arc(p.x, p.y, r + 2, 0, 6.2832); ctx.stroke();
     ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1.2, r * 0.45), 0, 6.2832); ctx.fill();
-    if (sel || top.has(k) || g.zoom > 1.7) { ctx.fillStyle = C.tx; ctx.globalAlpha = a; ctx.fillText(`${marketLabel(k)} ${s.move >= 0 ? '+' : ''}${s.move.toFixed(1)}%`, p.x + r + 5, p.y); }
+    if (sel || top.has(k) || g.zoom > 1.7) { ctx.fillStyle = C.tx; ctx.globalAlpha = a; ctx.fillText(`${marketName(k, { short: true })} ${s.move >= 0 ? '+' : ''}${s.move.toFixed(1)}%`, p.x + r + 5, p.y); }
   }
   ctx.restore();
 }
@@ -47,7 +48,7 @@ function render(pane, api) {
       if (!S.sizes) { list.innerHTML = S.failed ? '<p>The market moves are not available right now (the live session feed did not answer).</p>' : '<p>Reading the markets...</p>'; return; }
       const rows = rankMarkets(S.sizes);
       st.textContent = `${rows.length} markets`;
-      list.innerHTML = rows.map(r => `<button type="button" class="jv-item" data-k="${esc(r.key)}" aria-pressed="${S.sel === r.key}"><b class="${r.tone === 'up' ? 'jv-up' : r.tone === 'dn' ? 'jv-dn' : ''}">${esc(marketLabel(r.key))}</b> <span class="jv-sub">${esc(moveText(r))} · ${esc(MARKET_GEO[r.key]?.[2] ?? '')}</span></button>`).join('');
+      list.innerHTML = rows.map(r => `<button type="button" class="jv-item" data-k="${esc(r.key)}" aria-pressed="${S.sel === r.key}"><b class="${r.tone === 'up' ? 'jv-up' : r.tone === 'dn' ? 'jv-dn' : ''}">${esc(marketName(r.key))}</b> <span class="jv-sub">${esc(moveText(r))} · ${esc(MARKET_GEO[r.key]?.[2] ?? '')}</span></button>`).join('');
     };
     draw();
     if (!S.sizes) load(api).then(() => { if (pane.isConnected) draw(); });

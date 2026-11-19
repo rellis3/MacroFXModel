@@ -1,6 +1,7 @@
 // js/terminal/netCore.js: the maths behind Jarvis's NETWORK view (jarvisViewNet.js). Pure: no DOM, no fetch.
 // Input is the daily-close panel /api/corr-terminal serves. Everything here DESCRIBES how markets moved together over a trailing window of daily returns;
 // a correlation is a description of the past window, not a relationship that persists, and nothing here forecasts anything.
+import { spokenName } from './jarvisNames.js';
 import { series, matrix, changes, labelOf } from './corrMath.js';
 
 export const WINDOW = 60, DEFAULT_THR = 0.5, MAX_LINKS = 260;
@@ -104,7 +105,7 @@ export function buildNet(resp, { w = WINDOW, seed = 7 } = {}) {
 }
 
 const f2 = v => (v >= 0 ? '' : 'minus ') + Math.abs(v).toFixed(2);
-const pairName = (net, a, b) => `${net.labels[a] ?? a} and ${net.labels[b] ?? b}`;
+const pairName = (net, a, b) => `${spokenName(a)} and ${spokenName(b)}`;
 /** The spoken script for the SHOW scene, from the real numbers. Short: the director waits for the narration. */
 export function netScript(net) {
   if (!net?.hi || !net?.lo) return null;
