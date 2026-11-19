@@ -16,33 +16,33 @@ const ID = 'jarvis', LS = 'jarvisPrefs:v1';
 const lsGet = () => { try { return JSON.parse(localStorage.getItem(LS) || '{}') || {}; } catch (e) { return {}; } };
 const lsPut = o => { try { localStorage.setItem(LS, JSON.stringify({ ...lsGet(), ...o })); } catch (e) { /* private window */ } };
 
-const CSS = `#${ID}{--jvtop:62px;position:fixed;inset:0;z-index:300;color:var(--tx);font-family:var(--mono,monospace);background:radial-gradient(ellipse at 50% 55%,color-mix(in srgb,var(--blue2) 20%,var(--bg)) 0%,var(--bg) 72%);overflow:hidden;animation:jv-in .7s ease-out}
+const CSS = `#${ID}{--jva:var(--blue2);--jvtop:62px;position:fixed;inset:0;z-index:300;color:var(--tx);font-family:var(--mono,monospace);background:radial-gradient(ellipse at 50% 55%,color-mix(in srgb,var(--jva) 20%,var(--bg)) 0%,var(--bg) 72%);overflow:hidden;animation:jv-in .7s ease-out}
 @keyframes jv-in{from{opacity:0;filter:blur(8px) brightness(2)}to{opacity:1;filter:none}}
 #${ID}[hidden]{display:none}
 #${ID} canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}#${ID} canvas:active{cursor:grabbing}
-#${ID} .jv-scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 2px,color-mix(in srgb,var(--blue2) 7%,transparent) 2px 3px);mix-blend-mode:screen;animation:jv-scan 9s linear infinite}
+#${ID} .jv-scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 2px,color-mix(in srgb,var(--jva) 7%,transparent) 2px 3px);mix-blend-mode:screen;animation:jv-scan 9s linear infinite}
 @keyframes jv-scan{from{background-position:0 0}to{background-position:0 60px}}
 #${ID} .jv-vig{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 160px 40px color-mix(in srgb,var(--bg) 92%,transparent)}
-#${ID} .jv-br{position:absolute;width:34px;height:34px;border:2px solid var(--blue2);opacity:.8;pointer-events:none;filter:drop-shadow(0 0 6px var(--blue2))}
+#${ID} .jv-br{position:absolute;width:34px;height:34px;border:2px solid var(--jva);opacity:.8;pointer-events:none;filter:drop-shadow(0 0 6px var(--jva))}
 #${ID} .jv-br.tl{left:10px;top:10px;border-right:0;border-bottom:0}#${ID} .jv-br.tr{right:10px;top:10px;border-left:0;border-bottom:0}#${ID} .jv-br.bl{left:10px;bottom:10px;border-right:0;border-top:0}#${ID} .jv-br.brr{right:10px;bottom:10px;border-left:0;border-top:0}
 #${ID} .jv-top{position:absolute;left:0;right:0;top:0;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:16px 24px;pointer-events:none}
-#${ID} .jv-top>*{pointer-events:auto}#${ID} .jv-title{font-size:19px;letter-spacing:.46em;color:var(--blue2);text-shadow:0 0 14px var(--blue2);animation:jv-glitch 7s infinite}
-@keyframes jv-glitch{0%,93%,100%{transform:none;text-shadow:0 0 14px var(--blue2)}94%{transform:translateX(2px);text-shadow:-3px 0 var(--dn),3px 0 var(--blue2)}96%{transform:translateX(-2px);text-shadow:3px 0 var(--dn),-3px 0 var(--blue2)}}
+#${ID} .jv-top>*{pointer-events:auto}#${ID} .jv-title{font-size:19px;letter-spacing:.46em;color:var(--jva);text-shadow:0 0 14px var(--jva);animation:jv-glitch 7s infinite}
+@keyframes jv-glitch{0%,93%,100%{transform:none;text-shadow:0 0 14px var(--jva)}94%{transform:translateX(2px);text-shadow:-3px 0 var(--dn),3px 0 var(--jva)}96%{transform:translateX(-2px);text-shadow:3px 0 var(--dn),-3px 0 var(--jva)}}
 #${ID} .jv-sub{font-size:11px;color:var(--tx2);letter-spacing:.08em}#${ID} .jv-sp{flex:1}
 #${ID} button{font:inherit;font-size:11px;letter-spacing:.08em;color:var(--tx);background:color-mix(in srgb,var(--bg1) 70%,transparent);border:1px solid var(--line);border-radius:999px;padding:5px 12px;cursor:pointer}
-#${ID} button:hover{border-color:var(--blue2)}#${ID} button[aria-pressed="true"]{border-color:var(--blue2);color:var(--blue2);box-shadow:0 0 10px color-mix(in srgb,var(--blue2) 50%,transparent)}
+#${ID} button:hover{border-color:var(--jva)}#${ID} button[aria-pressed="true"]{border-color:var(--jva);color:var(--jva);box-shadow:0 0 10px color-mix(in srgb,var(--jva) 50%,transparent)}
 #${ID} .jv-hud{position:absolute;left:24px;top:calc(var(--jvtop,62px) + 14px);font-size:11px;line-height:1.7;color:var(--tx2);pointer-events:none;letter-spacing:.06em}#${ID} .jv-hud b{color:var(--tx);font-size:22px;letter-spacing:.1em;font-weight:400;display:block}#${ID} .jv-hud .am{color:var(--gold)}#${ID} .jv-hud .ok{color:var(--up)}
 #${ID} .jv-reg{position:absolute;left:50%;transform:translateX(-50%);top:calc(var(--jvtop,62px) + 4px);display:flex;gap:6px;flex-wrap:wrap;justify-content:center}#${ID} .jv-reg[hidden]{display:none}
 #${ID} .jv-boot{position:absolute;left:24px;bottom:84px;max-width:min(460px,calc(100vw - 48px));font-size:12px;line-height:1.6;color:var(--tx2);pointer-events:none}
 #${ID} .jv-boot b{color:var(--tx)}#${ID} .jv-boot .jv-hl{color:var(--gold)}
-#${ID} .jv-card,#${ID} .jv-pane{position:absolute;right:24px;width:min(440px,calc(100vw - 48px));overflow:auto;padding:14px;border:1px solid var(--blue2);border-radius:12px;background:color-mix(in srgb,var(--bg1) 84%,transparent);backdrop-filter:blur(7px);font-size:12px;line-height:1.55;box-shadow:0 0 28px color-mix(in srgb,var(--blue2) 35%,transparent)}
+#${ID} .jv-card,#${ID} .jv-pane{position:absolute;right:24px;width:min(440px,calc(100vw - 48px));overflow:auto;padding:14px;border:1px solid var(--jva);border-radius:12px;background:color-mix(in srgb,var(--bg1) 84%,transparent);backdrop-filter:blur(7px);font-size:12px;line-height:1.55;box-shadow:0 0 28px color-mix(in srgb,var(--jva) 35%,transparent)}
 #${ID} .jv-card{bottom:84px;max-height:46vh}#${ID} .jv-pane{top:calc(var(--jvtop,62px) + 6px);bottom:84px}
-#${ID} h3{margin:0 0 6px;font-size:13px;letter-spacing:.14em;color:var(--blue2)}#${ID} .jv-pane p,#${ID} .jv-card p{margin:6px 0;color:var(--tx2)}#${ID} textarea,#${ID} input[type=number]{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;box-sizing:border-box}#${ID} textarea{width:100%;min-height:74px}
+#${ID} h3{margin:0 0 6px;font-size:13px;letter-spacing:.14em;color:var(--jva)}#${ID} .jv-pane p,#${ID} .jv-card p{margin:6px 0;color:var(--tx2)}#${ID} textarea,#${ID} input[type=number]{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;box-sizing:border-box}#${ID} textarea{width:100%;min-height:74px}
 #${ID} .jv-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}#${ID} .jv-ans{white-space:pre-wrap;color:var(--tx);margin:8px 0}#${ID} .jv-src,#${ID} .jv-k{display:inline-block;font-size:10px;letter-spacing:.1em;border:1px solid var(--line);border-radius:4px;padding:0 5px;margin:2px 4px 2px 0;color:var(--tx2)}
-#${ID} .jv-hold{color:var(--blue2);border-color:var(--blue2)}#${ID} .jv-broke{color:var(--gold);border-color:var(--gold)}
+#${ID} .jv-hold{color:var(--jva);border-color:var(--jva)}#${ID} .jv-broke{color:var(--gold);border-color:var(--gold)}
 #${ID} .jv-item{display:block;width:100%;text-align:left;border-radius:8px;margin:4px 0;padding:6px 10px}#${ID} .jv-up{color:var(--up)}#${ID} .jv-dn{color:var(--dn)}#${ID} .jv-am{color:var(--gold)}#${ID} table{width:100%;border-collapse:collapse}#${ID} td{padding:2px 4px;border-bottom:1px solid var(--line)}#${ID} td:last-child{text-align:right}
 #${ID} .jv-scrub{position:absolute;left:24px;right:24px;bottom:30px;display:flex;gap:10px;align-items:center;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:color-mix(in srgb,var(--bg1) 78%,transparent);backdrop-filter:blur(6px)}
-#${ID} .jv-scrub input[type=range]{flex:1;accent-color:var(--blue2)}#${ID} .jv-foot{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:10px;color:var(--tx2);opacity:.7;pointer-events:none}
+#${ID} .jv-scrub input[type=range]{flex:1;accent-color:var(--jva)}#${ID} .jv-foot{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:10px;color:var(--tx2);opacity:.7;pointer-events:none}
 #${ID}-dock{position:fixed;left:0;right:0;bottom:0;z-index:290;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:7px 16px;font:11px/1.4 var(--mono,monospace);letter-spacing:.06em;color:var(--tx);background:color-mix(in srgb,var(--bg1) 92%,transparent);border-top:1px solid var(--blue2);box-shadow:0 -4px 24px color-mix(in srgb,var(--blue2) 30%,transparent);backdrop-filter:blur(8px)}
 #${ID}-dock[hidden]{display:none}#${ID}-dock .t{color:var(--blue2);letter-spacing:.3em;text-shadow:0 0 10px var(--blue2)}#${ID}-dock .dot{width:8px;height:8px;border-radius:50%;background:var(--up);box-shadow:0 0 8px var(--up);display:inline-block;animation:jv-pulse 2s infinite}
 @keyframes jv-pulse{50%{opacity:.35}}#${ID}-dock.al{border-top-color:var(--gold);animation:jv-flash 1s 3}@keyframes jv-flash{50%{background:color-mix(in srgb,var(--gold) 30%,var(--bg1))}}
@@ -52,20 +52,24 @@ const CSS = `#${ID}{--jvtop:62px;position:fixed;inset:0;z-index:300;color:var(--
 #${ID}.jv-booting .jv-br{opacity:.15}
 #${ID} .jv-bs{position:absolute;inset:0;z-index:5;pointer-events:none;transition:opacity .9s ease}#${ID} .jv-bs.gone{opacity:0}
 #${ID} .jv-bs-t{position:absolute;left:0;right:0;top:12%;text-align:center}
-#${ID} .jv-bs h1{margin:0;font-size:clamp(22px,4vw,46px);font-weight:400;letter-spacing:.5em;color:var(--blue2);text-shadow:0 0 22px var(--blue2);opacity:0;transition:opacity 1.4s ease;animation:jv-glitch 3s infinite}#${ID} .jv-bs h1.on{opacity:1}
+#${ID} .jv-bs h1{margin:0;font-size:clamp(22px,4vw,46px);font-weight:400;letter-spacing:.5em;color:var(--jva);text-shadow:0 0 22px var(--jva);opacity:0;transition:opacity 1.4s ease;animation:jv-glitch 3s infinite}#${ID} .jv-bs h1.on{opacity:1}
 #${ID} .jv-bs-sub{margin-top:12px;font-size:13px;letter-spacing:.42em;color:var(--tx2);min-height:18px}#${ID} .jv-bs-sub.blink{animation:jv-blink 1s steps(2) infinite}
 @keyframes jv-blink{50%{opacity:.3}}
 #${ID} .jv-bs-b{position:absolute;left:50%;transform:translateX(-50%);bottom:9%;width:min(440px,80vw)}
 #${ID} .jv-bs-log{font-size:12px;line-height:1.75;color:var(--tx2);min-height:136px;letter-spacing:.04em}#${ID} .jv-bs-log .ok{color:var(--up);float:right}#${ID} .jv-bs-log div{overflow:hidden}#${ID} .jv-bs-log b{font-weight:400;color:var(--tx)}
-#${ID} .jv-bar{height:3px;background:color-mix(in srgb,var(--blue2) 20%,transparent);border-radius:2px;margin-top:8px;overflow:hidden}#${ID} .jv-bar i{display:block;height:100%;width:0;background:var(--blue2);box-shadow:0 0 10px var(--blue2);transition:width .5s ease}
+#${ID} .jv-bar{height:3px;background:color-mix(in srgb,var(--jva) 20%,transparent);border-radius:2px;margin-top:8px;overflow:hidden}#${ID} .jv-bar i{display:block;height:100%;width:0;background:var(--jva);box-shadow:0 0 10px var(--jva);transition:width .5s ease}
 #${ID} .jv-cap{position:absolute;left:0;right:0;bottom:0;padding:110px 6vw 70px;box-sizing:border-box;text-align:center;pointer-events:none;z-index:4;transition:opacity .5s ease;background:linear-gradient(to top,color-mix(in srgb,var(--bg) 88%,transparent) 45%,transparent)}#${ID} .jv-cap[hidden]{display:none}
-#${ID} .jv-cap .t{font-size:12px;letter-spacing:.42em;color:var(--blue2);text-shadow:0 0 12px var(--blue2);margin-bottom:10px}#${ID} .jv-cap .x{font-size:clamp(16px,2.1vw,25px);line-height:1.55;color:var(--tx);text-shadow:0 0 18px var(--bg),0 0 6px var(--bg)}
+#${ID} .jv-cap .t{font-size:12px;letter-spacing:.42em;color:var(--jva);text-shadow:0 0 12px var(--jva);margin-bottom:10px}#${ID} .jv-cap .x{font-size:clamp(16px,2.1vw,25px);line-height:1.55;color:var(--tx);text-shadow:0 0 18px var(--bg),0 0 6px var(--bg)}
 #${ID} .jv-cinexit{position:absolute;right:24px;top:20px;z-index:6;display:none}
 #${ID}.jv-cinema .jv-top,#${ID}.jv-cinema .jv-hud,#${ID}.jv-cinema .jv-reg,#${ID}.jv-cinema .jv-scrub,#${ID}.jv-cinema .jv-foot,#${ID}.jv-cinema .jv-boot,#${ID}.jv-cinema .jv-pane,#${ID}.jv-cinema .jv-card{opacity:0;pointer-events:none}
 #${ID}.jv-cinema .jv-cinexit{display:block}
 @media (max-width:1560px){#${ID} .jv-top .jv-sub{display:none}}
 @media (max-width:640px){#${ID} .jv-boot,#${ID} .jv-hud{display:none}#${ID} .jv-title{font-size:14px}#${ID} .jv-scrub{bottom:34px}}
-@media (prefers-reduced-motion:reduce){#${ID},#${ID} .jv-scan,#${ID} .jv-title{animation:none}}`;
+@media (prefers-reduced-motion:reduce){#${ID},#${ID} .jv-scan,#${ID} .jv-title{animation:none}}
+#${ID}.jv-clean .jv-hud,#${ID}.jv-clean .jv-reg,#${ID}.jv-clean .jv-boot{opacity:0;pointer-events:none}
+#${ID}.jv-noscan .jv-scan{display:none}
+#${ID} canvas.jv-sw{animation:jv-sw .55s ease-out}@keyframes jv-sw{0%{filter:brightness(2.4) blur(5px) saturate(1.6)}100%{filter:none}}
+@media (prefers-reduced-motion:reduce){#${ID} canvas.jv-sw{animation:none}}`;
 
 let open = null;
 
@@ -97,7 +101,15 @@ export async function openJarvis(win = window) {
   const st = { cd: null, cdBusy: null, cdCam: { x: 0, z: 0 }, cdTarget: { x: 0, z: 0 }, cinemaStop: null, speakStop: null, mod: 'chain', view: prefs.view ?? 'globe', gl: { lat: 20, lon: 15, zoom: 1, tlat: 20, tlon: 15, tzoom: 1 }, land: null, bl: null, region: 'world', voice: false, sound: prefs.sound !== false, wake: false, watch: prefs.watch !== false, win: 5, graph: null, sum: null, sel: null, yaw: 0.55, pitch: -0.7, zoom: 1, spin: true, t0: performance.now() - (win.__jarvisNoBoot ? 5000 : 0), drag: null, w: 0, h: 0, proj: [], disp: {}, dates: [], idx: -1, play: 0, docked: false, alerts: [], snap: null, lastCheck: null, memLimit: prefs.memLimit ?? 0, mem: null };
   const setCam = () => { if (st.view === 'globe') { st.gl.zoom = st.gl.tzoom = 1; $('reg').hidden = false; } else $('reg').hidden = true; if (st.view === 'bubbles') st.bl = null; if (st.view === 'skyline') Object.assign(st, { yaw: 0.55, pitch: -0.7, zoom: 1 }); else Object.assign(st, { yaw: 0.6, pitch: 0.28, zoom: 1 }); };
   const extraViews = {};
-  const setCamAll = () => { setCam(); $('reg').hidden = st.view !== 'globe'; if (extraViews[st.view]) { Object.assign(st, { yaw: 0.35, pitch: -0.45, zoom: 1 }); try { extraViews[st.view].onEnter?.(xapi); } catch (e) { /* a view must never break the HUD */ } } if (st.view === 'candles') { Object.assign(st, { yaw: 0.3, pitch: -0.5, zoom: 1 }); st.cdTarget = { x: 0, z: 0 }; st.cdCam = { x: 0, z: 0 }; ensureCandles(); } };
+  // every view has its own world: an accent that re-themes the glow, borders, buttons and canvas colours, and a chrome style
+  const CORE_ENV = { globe: { accent: 'blue2' }, candles: { accent: 'up' }, bubbles: { accent: 'pur' }, skyline: { accent: 'blue2' }, orbit: { accent: 'pur' } };
+  function applyEnv() {
+    const e = { ...(CORE_ENV[st.view] ?? {}), ...(extraViews[st.view]?.env ?? {}) }, acc = e.accent ?? 'blue2';
+    root.style.setProperty('--jva', 'var' + '(--' + acc + ')');   // built in two pieces so the theme-token guard sees only real tokens C.blue = tok(acc, C.blue);
+    root.classList.toggle('jv-clean', e.chrome === 'clean'); root.classList.toggle('jv-noscan', e.scan === false);
+    cv.classList.remove('jv-sw'); void cv.offsetWidth; cv.classList.add('jv-sw');
+  }
+  const setCamAll = () => { applyEnv(); setCam(); $('reg').hidden = st.view !== 'globe'; if (extraViews[st.view]) { Object.assign(st, { yaw: 0.35, pitch: -0.45, zoom: 1 }); try { extraViews[st.view].onEnter?.(xapi); } catch (e) { /* a view must never break the HUD */ } } if (st.view === 'candles') { Object.assign(st, { yaw: 0.3, pitch: -0.5, zoom: 1 }); st.cdTarget = { x: 0, z: 0 }; st.cdCam = { x: 0, z: 0 }; ensureCandles(); } };
   async function ensureCandles(force = false) {
     if (!force && st.cd && Date.now() - st.cd.at < 60_000) return st.cd;
     if (st.cdBusy) return st.cdBusy;
@@ -216,7 +228,7 @@ export async function openJarvis(win = window) {
 
   // ── controls ──
   $('win').innerHTML = [1, 5, 20].map(w => `<button type="button" data-w="${w}" aria-pressed="${w === st.win}">${w}D</button>`).join(' ');
-  $('view').innerHTML = [['globe', 'GLOBE'], ['candles', 'CANDLES'], ['bubbles', 'BUBBLES'], ['skyline', 'SKYLINE'], ['orbit', 'ORBIT']].map(([id, l]) => `<button type="button" data-v="${id}" aria-pressed="${id === st.view}">${l}</button>`).join(' ');
+  $('view').innerHTML = [['globe', 'GLOBE'], ['candles', 'BOARD'], ['bubbles', 'BUBBLES'], ['skyline', 'SKYLINE'], ['orbit', 'ORBIT']].map(([id, l]) => `<button type="button" data-v="${id}" aria-pressed="${id === st.view}">${l}</button>`).join(' ');
   $('win').onclick = e => { const b = e.target.closest('button[data-w]'); if (b) { blip(520, 0.05); load(+b.dataset.w, st.idx >= 0 ? st.dates[st.idx] : null); } };
   const switchView = v => { st.view = v; lsPut({ view: v }); setCamAll(); for (const x of $('view').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.v === v)); blip(720, 0.06); };
   $('view').onclick = e => { const b = e.target.closest('button[data-v]'); if (b) switchView(b.dataset.v); };
