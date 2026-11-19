@@ -4,7 +4,8 @@
 // GET /api/desk-bias-process/h2h.
 //
 // Data: GET /api/desk-bias-process (?date, ?live=1) for the cards; GET /api/desk-bias-process/h2h for the head to head and the weekly review;
-// GET/POST /api/fundabias-log for the owner's FundaBias log.
+// GET/POST /api/fundabias-log for the owner's FundaBias log; GET /api/desk-bias-process/rechecks for the day's intraday rechecks (each
+// card's "now" line and timeline, the schedule strip).
 //
 // Surfaces (js/terminal/tabRegistry.js):
 //   tab.bprocess       the tab and its cards: a direction read with no forward record yet, so 'preview' (owner sees it, desk login opt-in)
@@ -94,8 +95,45 @@ export function regimeSide(card) {
   if (!rg?.risk || !fin(role) || role === 0 || rg.risk === 'neutral') return null;
   return rg.risk === 'on' ? Math.sign(role) : -Math.sign(role);
 }
-/** One market card in the FundaBias layout. The invalidation line is its own 'trade' surface. */
-export function cardHtml(card) {
+// ── intraday rechecks ────────────────────────────────────────────────────────────────────────────────────────────
+export const STATUS_WORD = { ISSUED: 'Issued', ACTIVE: 'Now active', CONFIRMED: 'Confirmed', WEAKENED: 'Weakened', FLIPPED: 'Flipped', STAND_ASIDE: 'Stand aside',
+  INVALIDATED: 'Invalidated', HOLD: 'Hold overnight', CLOSE: 'Flat overnight' };
+/** "WEAKENED→OVERRIDDEN" -> "Weakened, AI overrode". */
+export const statusText = st => { const [a, b] = String(st ?? '').split('→'); return `${STATUS_WORD[a] ?? a}${b ? ', AI overrode' : ''}`; };
+/** London clock time of an ISO time, e.g. "08:05". */
+export const londonHm = iso => { const t = Date.parse(iso ?? ''); return Number.isFinite(t) ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(t)) : ''; };
+export function slotLabel(id, events = null) {
+  if (id === 'morning') return 'Morning call';
+  if (id === 'london-open') return 'London open';
+  if (id === 'ny-open') return 'New York open';
+  if (id === 'review') return '21:00 review';
+  if (String(id).startsWith('post-event')) return events?.length ? `After ${events.map(e => `${e.country ?? ''} ${e.event}`.trim()).slice(0, 2).join(', ')}` : 'After the release';
+  return String(id ?? '');
+}
+/** The card's "now" line: shown only when a recheck has changed the morning call. */
+export function nowHtml(rc) {
+  const tl = rc?.timeline ?? [];
+  if (tl.length < 2) return '';
+  const last = tl.at(-1), first = tl[0];
+  const changed = last.dir !== first.dir || last.conviction !== first.conviction;
+  return `<div class="bp-now"><span class="muted">Now</span> ${dirChip(last.dir, last.conviction)} <span class="muted">${esc(statusText(last.status))} · ${esc(slotLabel(last.slot, last.events))} ${esc(londonHm(last.at))}${changed ? '' : ' · unchanged since the morning'}</span></div>`;
+}
+/** The day's timeline on the AI track (the published call), oldest first. */
+export function timelineHtml(rc) {
+  const tl = rc?.timeline ?? [];
+  if (tl.length < 2) return '';
+  const li = tl.map(x => `<li><span class="mono muted">${esc(londonHm(x.at))}</span> <b>${esc(slotLabel(x.slot, x.events))}</b> <span class="${cls(sideOf(x.dir))}">${esc(statusText(x.status))}${x.status === 'ISSUED' || x.dir !== 'NEUTRAL' ? ` · ${esc(WORD[x.dir] ?? x.dir)}${fin(x.conviction) ? ` ${x.conviction}/5` : ''}` : ''}</span>${x.systemDir && x.systemDir !== x.dir ? ` <span class="muted">(rules: ${esc(WORD[x.systemDir] ?? x.systemDir)})</span>` : ''}${fin(x.reaction?.moveSigma) ? ` <span class="muted">reaction ${esc(sgn(x.reaction.moveSigma))}σ</span>` : ''}${x.reason ? `<div class="muted bp-tlr">${esc(x.reason)}</div>` : ''}</li>`).join('');
+  return `<details class="bp-tl"><summary>Today: ${tl.length - 1} recheck${tl.length > 2 ? 's' : ''}</summary><ol>${li}</ol></details>`;
+}
+/** The schedule strip: each slot with its time and state (done, due, missed, later). */
+export function scheduleHtml(rc) {
+  if (!rc || rc.ok === false || rc.empty || !rc.schedule?.length) return '';
+  const chip = s => `<span class="chip${s.state === 'done' ? ' pur' : s.state === 'missed' ? ' gold' : ''}" title="${esc(s.state)}${s.markets ? ` · ${s.markets} market${s.markets === 1 ? '' : 's'}` : ''}">${esc(londonHm(s.at))} ${esc(slotLabel(s.id, s.events))} · ${esc(s.state)}</span>`;
+  return `<div class="bp-sched"><span class="muted">Rechecks</span> ${rc.schedule.map(chip).join(' ')}</div>`;
+}
+
+/** One market card in the FundaBias layout. The invalidation line is its own 'trade' surface. rc = this market's rechecks (optional). */
+export function cardHtml(card, rc = null) {
   const c = card?.call ?? {}, sys = card?.system ?? {}, ai = card?.ai ?? null;
   const reason = ai?.reason ?? (ai?.error ? `AI step failed (${ai.error}); the system call stands.` : sys.rule ? `Rules: ${sys.rule}` : '');
   const overrode = c.by === 'ai-override' && sys.dir;
@@ -104,20 +142,23 @@ export function cardHtml(card) {
   return `<div class="card bp-card" data-market="${esc(card?.market)}" data-group="${groupOf(card?.market)}">
 <div class="ch"><span class="lbl bp-mkt">${esc(card?.market)}</span><span class="r">${dirChip(c.dir, c.conviction)}</span></div>
 <div class="bp-by"><span class="chip ${c.by === 'ai-override' ? 'gold' : c.by?.startsWith('ai') ? 'pur' : ''}">by ${esc(byLabel(c.by))}</span>${overrode ? `<span class="muted bp-sys" title="${esc(sys.rule ?? '')}">system said ${esc(WORD[sys.dir] ?? sys.dir)}${fin(sys.conviction) ? ` ${sys.conviction}/5` : ''}</span>` : ''}</div>
+${nowHtml(rc)}
 ${reason ? `<p class="bp-reason">${esc(reason)}</p>` : ''}
 <ul class="bp-layers">${rows}</ul>
+${timelineHtml(rc)}
 ${inv != null ? `<div class="bp-inv" data-surface="panel.bp.invalid">Invalidation <b class="mono">${esc(px(inv))}</b>${card?.invalidation?.basis ? ` <span class="muted">${esc(card.invalidation.basis)}</span>` : ''}</div>` : ''}
 </div>`;
 }
 /** The cards block: the filter pills, the sort, the grid. */
-export function cardsHtml(rec, { group = 'all', sort = 'conviction' } = {}) {
+export function cardsHtml(rec, { group = 'all', sort = 'conviction' } = {}, rcRec = null) {
   const cards = Object.values(rec?.markets ?? {});
   if (!cards.length) return '<p class="muted">No cards: the process has not issued yet.</p>';
   const shown = filterSort(cards, { group, sort });
   const pills = GROUPS.filter(([g]) => g === 'all' || cards.some(c => groupOf(c.market) === g))
     .map(([g, l]) => `<button type="button" class="bp-pill" data-group="${g}" aria-pressed="${g === group}">${l}</button>`).join('');
   return `<div class="bp-tools"><div class="bp-pills" role="group" aria-label="Filter markets">${pills}</div><label class="muted bp-sort">Sort <select data-bp="sort"><option value="conviction"${sort === 'conviction' ? ' selected' : ''}>by conviction</option><option value="market"${sort !== 'conviction' ? ' selected' : ''}>market order</option></select></label></div>
-<div class="bp-grid">${shown.map(cardHtml).join('') || '<p class="muted">No market in this group.</p>'}</div>`;
+${scheduleHtml(rcRec)}
+<div class="bp-grid">${shown.map(c => cardHtml(c, rcRec?.markets?.[c.market] ?? null)).join('') || '<p class="muted">No market in this group.</p>'}</div>`;
 }
 export function headHtml(rec) {
   if (!rec) return '';
@@ -128,7 +169,7 @@ export function headHtml(rec) {
 }
 
 // ── head to head ─────────────────────────────────────────────────────────────────────────────────────────────────
-export const COMPETITORS = [['process-ai', 'Process (AI)'], ['process-system', 'Process (rules)'], ['max-signals', 'Max'], ['fundabias', 'FundaBias'], ['desk-rating', 'Desk'], ['bias-engine', 'Engine'], ['h4-trend', 'H4 trend']];
+export const COMPETITORS = [['process-ai', 'Process (AI)'], ['process-system', 'Process (rules)'], ['process-ai+rc', 'Process (AI) + rechecks'], ['process-system+rc', 'Process (rules) + rechecks'], ['max-signals', 'Max'], ['fundabias', 'FundaBias'], ['desk-rating', 'Desk'], ['bias-engine', 'Engine'], ['h4-trend', 'H4 trend']];
 export const JUDGE_AT = [60, 120];
 /** The next London weekday the process issues on (today when it is a weekday before 07:00 London). nowMs is passed in. */
 export function nextIssueDate(nowMs) {
@@ -263,6 +304,9 @@ export function fbHtml(markets, rows, { msg = null } = {}) {
 }
 
 export const CSS = `
+.bp-now{margin:.25rem 0;font-size:.85rem}
+.bp-tl{margin-top:.4rem;font-size:.8rem}.bp-tl ol{margin:.3rem 0 0;padding-left:1.1rem}.bp-tl li{margin:.15rem 0}.bp-tlr{margin-left:.2rem}
+.bp-sched{display:flex;flex-wrap:wrap;gap:.3rem;align-items:center;margin:.4rem 0;font-size:.8rem}
 .bp-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin:8px 0 12px}
 .bp-pills{display:flex;flex-wrap:wrap;gap:6px}
 .bp-pill{font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px;border:1px solid var(--line2);background:var(--bg2);color:var(--tx2);cursor:pointer}
@@ -311,7 +355,7 @@ export function mount(root, { getJson, win = globalThis, doc = globalThis.docume
   if (root.dataset.bpMounted) { root.__bpRefresh?.(); return root.__bp; }
   root.dataset.bpMounted = '1';
   if (!doc.getElementById('bp-css')) { const st = doc.createElement('style'); st.id = 'bp-css'; st.textContent = CSS; doc.head.appendChild(st); }
-  const S = { group: 'all', sort: 'conviction', which: 'all', rec: null, h2h: null, date: '', live: false, fb: null, fbMsg: null };
+  const S = { group: 'all', sort: 'conviction', which: 'all', rec: null, rc: null, h2h: null, date: '', live: false, fb: null, fbMsg: null };
   try { const v = win.localStorage?.getItem('deskBp:v1'); if (v) { const p = JSON.parse(v); if (GROUPS.some(([g]) => g === p.group)) S.group = p.group; if (p.sort === 'market') S.sort = 'market'; } } catch { /* private window */ }
   root.innerHTML = `<div class="card"><div data-bp="head"><div class="ch"><span class="lbl">Bias process</span></div></div>
 <div class="bp-tools"><span class="muted">Issue <input type="date" data-bp="date" aria-label="Issue date"> <button type="button" class="bp-pill" data-bp="today">Today</button> <button type="button" class="bp-pill" data-bp="live" aria-pressed="false" title="the system call computed now (no AI step, not stored, not scored)">Live rules</button></span></div>
@@ -321,7 +365,7 @@ export function mount(root, { getJson, win = globalThis, doc = globalThis.docume
 <div class="card bp-sec" data-surface="panel.bp.fundabias"><div class="ch"><span class="lbl">FundaBias log</span><span class="r muted">owner only</span></div><div data-bp="fb"><p class="muted">Loading…</p></div></div>`;
   const q = k => root.querySelector(`[data-bp="${k}"]`);
   const save = () => { try { win.localStorage?.setItem('deskBp:v1', JSON.stringify({ group: S.group, sort: S.sort })); } catch { /* private window */ } };
-  const drawCards = () => { q('cards').innerHTML = S.rec?.ok === false ? `<p class="muted">${esc(S.rec.error === 'owner only' ? 'The bias process is a preview: switched off for this login.' : S.rec.error ?? 'Did not load.')}</p>` : cardsHtml(S.rec, S); q('head').innerHTML = S.rec?.ok === false ? '<div class="ch"><span class="lbl">Bias process</span></div>' : headHtml(S.rec); };
+  const drawCards = () => { q('cards').innerHTML = S.rec?.ok === false ? `<p class="muted">${esc(S.rec.error === 'owner only' ? 'The bias process is a preview: switched off for this login.' : S.rec.error ?? 'Did not load.')}</p>` : cardsHtml(S.rec, S, S.live ? null : S.rc); q('head').innerHTML = S.rec?.ok === false ? '<div class="ch"><span class="lbl">Bias process</span></div>' : headHtml(S.rec); };
   const drawH2h = () => { q('h2h').innerHTML = h2hHtml(S.h2h, { which: S.which }); q('review').innerHTML = reviewHtml(S.h2h); };
   const drawFb = () => { if (S.fb) q('fb').innerHTML = S.fb.ok === false ? `<p class="muted">${esc(S.fb.error ?? 'Did not load.')}</p>` : fbHtml(S.fb.markets, S.fb.rows, { msg: S.fbMsg }); };
   async function loadCards() {
@@ -329,6 +373,8 @@ export function mount(root, { getJson, win = globalThis, doc = globalThis.docume
     q('cards').innerHTML = '<p class="muted">Loading the cards…</p>';
     try { S.rec = await getJson(u); } catch (e) { S.rec = { ok: false, error: e.message }; }
     if (S.rec && S.rec.ok !== false && S.rec.date && !S.date && q('date')) q('date').value = S.rec.date;
+    S.rc = null;
+    if (!S.live && S.rec && S.rec.ok !== false && !S.rec.live) { try { S.rc = await getJson(`/api/desk-bias-process/rechecks?date=${encodeURIComponent(S.rec.date)}`); } catch { S.rc = null; } }
     drawCards();
   }
   async function loadH2h() {
@@ -366,6 +412,8 @@ export function mount(root, { getJson, win = globalThis, doc = globalThis.docume
     if (m.ok) { S.fbMsg = m; await loadFb(); } else say(m);   // a refusal keeps what was typed
   });
   root.__bpRefresh = () => { loadCards(); };
+  // today's cards pick up new rechecks every 5 minutes while the tab is open (a past date never changes)
+  if (typeof win.setInterval === 'function') win.setInterval(() => { if (!S.date && !S.live && doc?.visibilityState !== 'hidden' && root.isConnected !== false) loadCards(); }, 5 * 60_000);
   loadCards(); loadH2h(); loadFb();
   root.__bp = { refresh: root.__bpRefresh, state: S };
   return root.__bp;

@@ -517,6 +517,7 @@ function isCfKey(key) {
   // bias_engine_<date> and bias_engine_index: the bias engine's write-once morning issue (js/biasEngine.js), scored forward on the
   // bias scoreboard; a missed or lost day is never back-issued, so it must survive redeploys.
   if (key.startsWith('bias_engine_')) return true;
+  // desk_bias_process_rc_<date> (the intraday rechecks, js/deskBiasRecheck.js) falls under the same prefix.
   // desk_bias_process_<date> / _index (js/deskBiasProcess.js) and fundabias_log_<date> / _index (the owner's FundaBias log): write-once
   // forward records scored head to head (plans/DESK_BIAS_PROCESS_SPEC.md); never back-issued, so they must survive redeploys.
   if (key.startsWith('desk_bias_process_') || key.startsWith('fundabias_log_')) return true;

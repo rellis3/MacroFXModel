@@ -68,6 +68,7 @@ export const VIEWER_SURFACE_ROUTES = [
   ['/api/desk-workspaces', ['tab.workspace']],   // the Workspace tab's saved layouts (preview feature; the owner always has it)
   ['/api/desk-alert-rules', ['widget.alerts']],  // the list of alert rules, read only: only the owner may change them (js/deskAlertRules.js)
   ['/api/desk-bias-process', ['tab.bprocess']],   // the Bias process cards (preview: a direction read with no forward record yet); the invalidation keys are removed unless panel.bp.invalid is on (js/deskViewerView.js)
+  ['/api/desk-bias-process/rechecks', ['tab.bprocess']],   // the day's intraday rechecks of the cards (same surface as the cards; invalidation keys removed by js/deskViewerView.js)
   ['/api/desk-bias-process/h2h', ['panel.bp.h2h', 'panel.bp.review']],   // its head to head and weekly review: the scored record (pnl). The LONGEST matching prefix decides, so the tab switch alone does not open this
 ];
 
