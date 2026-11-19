@@ -59,7 +59,7 @@ const rr = (ctx, x, y, w, h) => { ctx.beginPath(); ctx.rect(x, y, w, h); };
 
 /** The in-canvas toolbar: buttons that are drawn, highlighted under the pointer, and registered with g.hit so a click reaches chartCommand through st.sel. */
 function toolbar(ctx, g, key) {
-  const C = g.C; let x = 24; const y = S.top + 12, h = 26;
+  const C = g.C, cp = g.compact; let x = cp ? 12 : 24; let y = S.top + (cp ? 6 : 12); const h = cp ? 28 : 26, gap = cp ? 8 : 12;
   const btn = (w, label, cmd, on) => {
     const hov = S.mx != null && S.mx >= x && S.mx <= x + w && S.my >= y && S.my <= y + h;
     rr(ctx, x, y, w, h); ctx.globalAlpha = (on ? 0.28 : hov ? 0.2 : 0.1) * g.fade; ctx.fillStyle = C.blue; ctx.fill(); ctx.globalAlpha = (on ? 0.95 : 0.45) * g.fade; ctx.strokeStyle = C.blue; ctx.lineWidth = on ? 1.5 : 1; ctx.stroke();
@@ -67,9 +67,10 @@ function toolbar(ctx, g, key) {
     g.hit(`cx:${cmd}`, x + w / 2, y + h / 2); x += w + 6;
   };
   ctx.save(); ctx.font = '11px ui-monospace,monospace';
-  btn(26, '‹', 'mkp', false); btn(118, key ? marketName(key, { short: true }) : '...', 'mkn', true); btn(26, '›', 'mkn', false); x += 12;
-  for (const t of TFS) btn(t === '1d' ? 30 : 38, TF_LABEL[t], `tf:${t}`, S.tf === t); x += 12;
-  btn(66, S.replay ? '■ REPLAY' : '▶ REPLAY', 'replay', S.replay); btn(60, S.auto ? '■ AUTO' : '▶ AUTO', 'auto', S.auto); x += 12;
+  btn(26, '‹', 'mkp', false); btn(118, key ? marketName(key, { short: true }) : '...', 'mkn', true); btn(26, '›', 'mkn', false); x += gap;
+  for (const t of TFS) btn(t === '1d' ? 30 : 38, TF_LABEL[t], `tf:${t}`, S.tf === t); x += gap;
+  if (cp) { x = 12; y += h + 6; }                                                  // phone: a second row
+  btn(66, S.replay ? '■ REPLAY' : '▶ REPLAY', 'replay', S.replay); btn(60, S.auto ? '■ AUTO' : '▶ AUTO', 'auto', S.auto); x += gap;
   btn(26, '◀', 'back', false); btn(54, 'DAYS', 'back', false); btn(26, '▶', 'fwd', false);
   ctx.restore();
 }
@@ -116,8 +117,8 @@ function draw(ctx, g, api) {
     ctx.globalAlpha = 0.5 * al * g.fade; ctx.strokeStyle = C.blue; ctx.lineWidth = 1.2; ctx.stroke();
     seg(-Wc / 2, yOp, z, Wc / 2, yOp, z, C.gold, 0.65 * al, 1.3);
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.globalAlpha = 0.8 * al * g.fade;
-    PJ(Wc / 2, yHi, z, q); ctx.fillStyle = C.blue; ctx.fillText(`usual high ${fmtPrice(bd.hi)}`, q.x + 6, q.y); PJ(Wc / 2, yLo, z, q); ctx.fillText(`usual low ${fmtPrice(bd.lo)}`, q.x + 6, q.y);
-    PJ(Wc / 2, yOp, z, q); ctx.fillStyle = C.gold; ctx.fillText(`open ${fmtPrice(bd.open)}`, q.x + 6, q.y);
+    PJ(Wc / 2, yHi, z, q); ctx.fillStyle = C.blue; ctx.fillText(g.compact ? 'usual hi' : `usual high ${fmtPrice(bd.hi)}`, q.x + 6, q.y); PJ(Wc / 2, yLo, z, q); ctx.fillText(g.compact ? 'usual lo' : `usual low ${fmtPrice(bd.lo)}`, q.x + 6, q.y);
+    if (!g.compact) { PJ(Wc / 2, yOp, z, q); ctx.fillStyle = C.gold; ctx.fillText(`open ${fmtPrice(bd.open)}`, q.x + 6, q.y); }
   }
   // the day planes, farthest first
   const w = dx * 0.36, d = Math.min(0.05, dx * 0.4), order = syw > 0 ? 1 : -1; let nowPt = null, hov = null;
@@ -127,7 +128,7 @@ function draw(ctx, g, api) {
     const pl = planes[k], bars = pl.bars, nb = bars.length, z = (k - S.dolly) * PZ, near = Math.abs(k - S.dolly) < 0.6, act = k === ka;
     // frame, the age label, and a soft sheet of glass
     seg(xl, 0, z, xr, 0, z, C.blue, 0.3 * al, 1); seg(xr, 0, z, xr, H, z, C.blue, 0.1 * al, 1); seg(xl, 0, z, xl, H, z, C.blue, 0.1 * al, 1);
-    PJ(xl - 0.03, 0.02, z, q); ctx.globalAlpha = 0.9 * al; ctx.fillStyle = act ? C.tx : C.tx2; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; { const lt = `${pl.label}${k === 0 ? ' · now' : ''}`; ctx.fillText(lt, Math.max(q.x, ctx.measureText(lt).width + 10), q.y); }
+    if (!g.compact || act) { PJ(xl - 0.03, 0.02, z, q); ctx.globalAlpha = 0.9 * al; ctx.fillStyle = act ? C.tx : C.tx2; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; { const lt = `${pl.label}${k === 0 ? ' · now' : ''}`; ctx.fillText(lt, Math.max(q.x, ctx.measureText(lt).width + 10), q.y); } }
     // area under the closes, then the close line
     ctx.beginPath(); for (let i = 0; i < nb; i++) { const b = bars[i]; PJ(X(b.s), yOf(b.c), z, q); i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y); }
     const l0 = bars[nb - 1], f0 = bars[0]; ctx.globalAlpha = 0.5 * al; ctx.strokeStyle = act ? C.tx : C.tx2; ctx.lineWidth = act ? 1.2 : 1; ctx.stroke();
@@ -207,7 +208,7 @@ function draw(ctx, g, api) {
         const tt = fullTime(b.t, tf), tw = ctx.measureText(tt).width + 14; PJ(bx, 0, zA, q); ctx.fillStyle = C.blue; ctx.fillRect(S.xs[idx] - tw / 2, q.y + 30, tw, 18); ctx.fillStyle = C.tx; ctx.textAlign = 'center'; ctx.fillText(tt, S.xs[idx], q.y + 40);
         // the floating OHLC readout
         const lines = [[fullTime(b.t, tf), C.tx], [`O ${b.o.toFixed(dp)}   H ${b.h.toFixed(dp)}`, C.tx2], [`L ${b.l.toFixed(dp)}   C ${b.c.toFixed(dp)}`, C.tx2], [`${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%  (close vs open)`, col]];
-        const e20 = e.e20[b.gi], e50 = e.e50[b.gi]; if (e20 != null) lines.push([`EMA 20 ${e20.toFixed(dp)}`, C.cy]); if (e50 != null) lines.push([`EMA 50 ${e50.toFixed(dp)}`, C.gold]);
+        const e20 = g.compact ? null : e.e20[b.gi], e50 = g.compact ? null : e.e50[b.gi]; if (e20 != null) lines.push([`EMA 20 ${e20.toFixed(dp)}`, C.cy]); if (e50 != null) lines.push([`EMA 50 ${e50.toFixed(dp)}`, C.gold]);
         ctx.font = '11px ui-monospace,monospace'; let bw = 0; for (const [t] of lines) bw = Math.max(bw, ctx.measureText(t).width); bw += 22; const bh = lines.length * 16 + 12;
         let bx2 = S.mx + 18, by2 = S.my + 16; if (bx2 + bw > g.W - 10) bx2 = S.mx - bw - 18; if (by2 + bh > g.H - 10) by2 = g.H - bh - 10;
         ctx.globalAlpha = 0.9 * g.fade; ctx.fillStyle = C.blue; ctx.fillRect(bx2, by2, 2, bh); rr(ctx, bx2 + 2, by2, bw, bh); ctx.fillStyle = 'black'; ctx.globalAlpha = 0.62 * g.fade; ctx.fill(); ctx.globalAlpha = 0.5 * g.fade; ctx.strokeStyle = C.blue; ctx.stroke();
@@ -222,6 +223,7 @@ function draw(ctx, g, api) {
 }
 
 function hud(ctx, g, e, key, tf, ka, np, printed, nf) {
+  if (g.compact) return hudCompact(ctx, g, e, key, tf, ka, np);
   const C = g.C, st = e.st, y0 = S.top + 62; ctx.save(); ctx.globalAlpha = g.fade; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
   ctx.fillStyle = C.tx; ctx.font = '600 16px ui-monospace,monospace'; ctx.fillText(`${marketName(key)} · ${TF_WORD[tf]} candles`, 28, y0);
   ctx.fillStyle = C.tx2; ctx.font = '11px ui-monospace,monospace';
@@ -273,3 +275,16 @@ registerJarvisModule({
     for (const c of ['replay', 'auto', 'back', 'fwd']) pane.querySelector(`[data-s="${c}"]`).onclick = () => { chartCommand(c, api); if (st.view !== 'session') api.setView('session'); };
   },
 });
+
+/** Phone: one title line, one stats line, a one-line legend above the transport bar, and the not-a-forecast caveat. */
+function hudCompact(ctx, g, e, key, tf, ka, np) {
+  const C = g.C, st = e.st, y0 = S.top + 84; ctx.save(); ctx.globalAlpha = g.fade; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  ctx.fillStyle = C.tx; ctx.font = '600 14px ui-monospace,monospace'; ctx.fillText(`${marketName(key, { short: true })} · ${TF_WORD[tf]} candles`, 14, y0);
+  ctx.fillStyle = C.tx2; ctx.font = '10px ui-monospace,monospace';
+  ctx.fillText(`last ${fmtPrice(st.last)} (${st.movePct >= 0 ? '+' : ''}${st.movePct.toFixed(2)}%${st.times != null && tf !== '1d' ? `, ${st.times.toFixed(1)}x usual` : ''}) · plane ${ka + 1}/${np}`, 14, y0 + 16);
+  if (e.note) { ctx.fillStyle = C.gold; ctx.fillText('Daily bars shown: no intraday data.', 14, y0 + 32); }
+  const y = g.H - 98; ctx.font = '10px ui-monospace,monospace';
+  [[C.up, 'up', 14], [C.dn, 'down', 56], [C.cy, 'EMA20', 116], [C.gold, 'EMA50', 186]].forEach(([c, t, x]) => { ctx.globalAlpha = 0.9 * g.fade; ctx.fillStyle = c; ctx.fillRect(x, y - 8, 9, 9); ctx.fillStyle = C.tx2; ctx.fillText(t, x + 14, y); });
+  ctx.globalAlpha = 0.7 * g.fade; ctx.fillText('Past closes, not a forecast. Drag to orbit.', 14, y + 16);
+  ctx.restore();
+}
