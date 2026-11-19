@@ -1,0 +1,9 @@
+USD Major release times: 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+  placebo (lines from a random same-year session): 10753 first touches
+NQ C: 1969 sessions, 9793 first touches; extraction check 95/95 match on 20 sessions
+  touches per family x rung: OCd50 1069, OCd75 566, OCd90 251, OCu50 1143, OCu75 524, OCu90 145, OH50 1110, OH75 568, OH90 212, OL50 1153, OL75 608, OL90 224, PH50 712, PH75 284, PH90 76, PL50 669, PL75 330, PL90 149
+  wrong-side dynamic touches: 177; release still to come: 1329
+  placebo (lines from a random same-year session): 10584 first touches
+NQ F: 1930 sessions, 9556 first touches; extraction check 103/103 match on 20 sessions
+  touches per family x rung: OCd50 1065, OCd75 552, OCd90 240, OCu50 1126, OCu75 501, OCu90 147, OH50 1079, OH75 540, OH90 210, OL50 1136, OL75 594, OL90 212, PH50 695, PH75 263, PH90 76, PL50 656, PL75 324, PL90 140
+  wrong-side dynamic touches: 161; release still to come: 1339

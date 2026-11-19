@@ -173,6 +173,19 @@ def main(sym):
             allrows += rows
         X = pd.DataFrame(allrows)
         X.to_parquet(out / f"touches_{track}.parquet")
+        # placebo (prereg section 6): each session's lines borrowed from a random other session of the same year,
+        # so distances follow the real line distribution but carry no information about that day
+        lcols = [c for c in T.columns if c.startswith(f"{LINE_ARM}_")] + [LINE_ARM]
+        P = T.copy()
+        for y, idx in T.groupby("year").groups.items():
+            idx = np.asarray(list(idx)); P.loc[idx, lcols] = T.loc[rng.permutation(idx), lcols].to_numpy()
+        prow = []
+        for _, row in P.iterrows():
+            g = S.get(row["date"])
+            if g is not None:
+                prow += touches_for_session(g, row, track, events, vol_med)
+        pd.DataFrame(prow).to_parquet(out / f"touches_{track}_placebo.parquet")
+        log.append(f"  placebo (lines from a random same-year session): {len(prow)} first touches")
         log.append(f"{sym} {track}: {X['date'].nunique()} sessions, {len(X)} first touches; extraction check "
                    f"{n_chk - bad}/{n_chk} match on 20 sessions")
         log.append("  touches per family x rung: " + ", ".join(f"{k[0]}{k[1]} {v}" for k, v in X.groupby(["fam", "rung"]).size().items()))
