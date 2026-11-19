@@ -32,6 +32,7 @@ QUARTERLY = {"NQ", "MNQ", "ES", "MES", "YM", "MYM", "RTY", "M2K", "ZN", "ZB", "Z
 GOLD_MONTHS = (2, 4, 6, 8, 12)    # October trades but is not the volume leader
 LIVE_MAX = 900_000                # bytes; a bigger live push goes as 5-minute bars (the browser downloads this every refresh)
 FINAL_MAX = 8_000_000
+STALL_MIN = 15   # minutes with no new trade on any market (CME open) before the log shouts
 
 
 def third_friday(y, m):
@@ -254,6 +255,7 @@ class Capture:
         except (OSError, ValueError, KeyError):
             self.done = set()
         self.last_log = 0.0
+        self.ticks_seen, self.ticks_since, self.stalled = None, time.time(), False
 
     def log(self, msg):
         print(f"{datetime.now(timezone.utc):%Y-%m-%d %H:%M:%S}Z {msg}", flush=True)
@@ -373,11 +375,30 @@ class Capture:
                 bridge(dict(op="record_stop"))
         return free
 
+    def stall(self, status, now):
+        """Warn when NT8 is up but no market gets a new trade while CME trades. On 2026-11-17 the internet dropped at 17:23 UTC,
+        NT8 lost its data connection and stayed off for 24 h; the bridge kept answering, so the status line showed the same frozen
+        counts all night and nothing warned. Quiet times are skipped: Fri 21:00 UTC to Sun 23:15 UTC and the daily 21:00-23:15 break."""
+        total = sum(v.get("ticks", 0) for v in (status or {}).values())
+        if total != self.ticks_seen:
+            if self.stalled:
+                self.log(f"trades flowing again after {(time.time() - self.ticks_since) / 60:.0f} min")
+            self.ticks_seen, self.ticks_since, self.stalled = total, time.time(), False
+            return
+        quiet = (now.weekday() == 5 or (now.weekday() == 4 and now.hour >= 21) or (now.weekday() == 6 and (now.hour, now.minute) < (23, 15))
+                 or 21 <= now.hour < 23 or (now.hour == 23 and now.minute < 15))
+        mins = (time.time() - self.ticks_since) / 60
+        if status and not quiet and mins >= STALL_MIN and not self.stalled:
+            self.stalled = True
+            self.log(f"STALLED: no new trade on any market for {mins:.0f} min while CME is open. NT8's data connection is probably down "
+                     "(NT8 Control Center > Connections; reconnect Lucid/Rithmic). Recording resumes by itself once trades arrive.")
+
     def cycle(self):
         now = datetime.now(timezone.utc)
         today = now.date()
         status = self.recorder(today)
         free = self.disk(status)
+        self.stall(status, now)
         self.read(today)
         self.push_live(today)
         self.finish_days(now)

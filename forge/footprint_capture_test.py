@@ -158,3 +158,34 @@ def test_recorder_never_stops_and_one_bad_market_cannot_block_the_rest():
     assert "record_stop" not in calls
     assert set(st) == {"NQ 12-26", "NQ 03-27", "GC 02-27"}
     assert any("ES 03-27 IS NOT RECORDING" in x for x in seen) and not any("GC 02-27 IS NOT" in x for x in seen)
+
+def test_stall_warns_once_while_cme_trades_and_stays_quiet_in_the_breaks():
+    """2026-11-17: NT8 lost its data feed for 24 h while the bridge answered; the counts froze and nothing warned."""
+    import time
+    from datetime import datetime, timezone
+    fc = _load("footprint_capture")
+    c = fc.Capture.__new__(fc.Capture)
+    c.ticks_seen, c.ticks_since, c.stalled = None, time.time(), False
+    seen = []
+    c.log = seen.append
+    tue = datetime(2026, 11, 17, 18, 0, tzinfo=timezone.utc)
+    c.stall({"NQ 12-26": {"ticks": 5}}, tue)
+    c.ticks_since -= 20 * 60
+    c.stall({"NQ 12-26": {"ticks": 5}}, tue)
+    assert c.stalled and "STALLED" in seen[-1]
+    c.stall({"NQ 12-26": {"ticks": 5}}, tue)
+    assert sum("STALLED" in x for x in seen) == 1                      # once, not every cycle
+    c.stall({"NQ 12-26": {"ticks": 6}}, tue)
+    assert not c.stalled and "flowing again" in seen[-1]
+    c.ticks_since -= 60 * 60
+    for quiet in (datetime(2026, 11, 21, 18, 0, tzinfo=timezone.utc), datetime(2026, 11, 17, 22, 30, tzinfo=timezone.utc),
+                  datetime(2026, 11, 22, 20, 0, tzinfo=timezone.utc)):
+        c.stall({"NQ 12-26": {"ticks": 6}}, quiet)
+        assert not c.stalled
+
+
+if __name__ == "__main__":
+    for k, v in list(globals().items()):
+        if k.startswith("test_"):
+            v()
+            print("ok", k)

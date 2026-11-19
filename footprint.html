@@ -150,7 +150,7 @@ const BULL = '16,185,129', BEAR = '249,115,22', MONO = 'ui-monospace,Menlo,Conso
 const TFS = [1, 5, 15, 30, 60], ROWS = [1, 2, 4, 5, 8, 10, 16, 20, 40, 80, 100, 200, 400, 800];
 const TIME_H = 22, TPO_MIN = 30;
 // TPO letter colours run blue (early) to amber (late), so the order of the day reads at a glance.
-const letterRGB = (i, n) => { const f = n > 1 ? i / (n - 1) : 0; return [Math.round(92 + 118 * f), Math.round(170 - 17 * f), Math.round(255 - 221 * f)].join(','); };
+const letterRGB = (i, n) => { const f = n > 1 ? Math.min(1, Math.max(0, i / (n - 1))) : 0; return [Math.round(92 + 118 * f), Math.round(170 - 17 * f), Math.round(255 - 221 * f)].join(','); };
 
 // Remembered per browser only; the page works the same if storage is blocked.
 const PREF_KEY = 'footprint_prefs_v2';
@@ -190,9 +190,11 @@ function showEmpty(msg, action) {
 function chip() {
   const lv = $('live'), doc = S.doc; if (!doc) return;
   if (!doc.live) { lv.className = 'chip'; lv.textContent = doc.rule === 'quote' ? 'recorded' : 'history · tick rule'; return; }
-  const age = Math.round((Date.now() - Date.parse(doc.built)) / 1000);
-  // Silence must not look live: the laptop or NT8 may have stopped.
+  const age = Math.round((Date.now() - Date.parse(doc.built)) / 1000), quiet = Math.round((Date.now() - Date.parse(doc.last_trade || doc.built)) / 1000);
+  // Silence must not look live: the laptop or NT8 may have stopped. The build time alone is not enough: on 2026-11-17 NT8 lost its
+  // data connection for 24 h while the capture kept rebuilding, so the last trade's age decides too.
   if (age > 300) { lv.className = 'chip stale'; lv.textContent = `feed stopped? ${Math.round(age / 60)} min ago`; }
+  else if (quiet > 600) { lv.className = 'chip stale'; lv.textContent = `no trades for ${quiet >= 5400 ? Math.round(quiet / 3600) + ' h' : Math.round(quiet / 60) + ' min'}`; }
   else { lv.className = 'chip on'; lv.textContent = `live · ${age}s ago`; }
 }
 async function loadDay() {
@@ -235,7 +237,7 @@ function barsFor(rt) {
   const set = { bars, prof: profile(bars), maxCell: Math.max(1, ...bars.map(x => x.maxCell)), maxVol: Math.max(1, ...bars.map(x => x.vol)), maxD: Math.max(1, ...bars.map(x => Math.abs(x.delta))) };
   set.maxProf = Math.max(1, ...set.prof.rows.map(r => r.s + r.b));
   set.tpo = tpo(inS, { start: a, period: TPO_MIN, step, ib: 60 });
-  set.start = a;
+  set.start = a; set.nPer = Math.ceil((b - a) / TPO_MIN);
   S.memo.set(rt, set);
   return set;
 }
@@ -360,7 +362,7 @@ function draw() {
   if (prof) {
     ctx.save(); ctx.beginPath(); ctx.rect(pfx, 0, prof, ph); ctx.clip();
     const full = prof - 8;
-    if (sideTpo) drawTpoSide(T0, pfx, full, Y, rh, step);
+    if (sideTpo) drawTpoSide(T0, set.nPer, pfx, full, Y, rh, step);
     else for (const row of P0.rows) {
       const y = Y(row.p + step), t = row.s + row.b, w = full * t / set.maxProf, ws = w * row.s / Math.max(1, t), va = row.p >= P0.val && row.p <= P0.vah, hh = Math.max(.8, rh - (rh > 3 ? 1 : 0));
       ctx.fillStyle = `rgba(${BEAR},${va ? .6 : .28})`; ctx.fillRect(pfx + 4, y, ws, hh);
@@ -412,7 +414,7 @@ function tag(pw, y, axis, text, bg, fg) {
 }
 // TPO, split by period: each 30-minute column shows its letter at every row it traded. Order flow (delta, CVD) stays in the panes below.
 function drawTpo(set, i0, i1, X, Y, rh, ph, step) {
-  const T = set.tpo, n = T.periods.length, bw = Math.max(3, Math.min(S.colW - 6, 26)), hh = Math.max(.8, rh - (rh > 3 ? 1 : 0));
+  const T = set.tpo, n = set.nPer, bw = Math.max(3, Math.min(S.colW - 6, 26)), hh = Math.max(.8, rh - (rh > 3 ? 1 : 0));
   const showText = rh >= 9 && bw >= 9, font = Math.max(8, Math.min(12, rh - 1, bw - 2));
   const byM = new Map(T.periods.map(p => [p.m, p.i]));
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -430,8 +432,8 @@ function drawTpo(set, i0, i1, X, Y, rh, ph, step) {
   }
 }
 // The collapsed profile beside the price axis: letters stacked left to right per row, single prints outlined.
-function drawTpoSide(T, pfx, full, Y, rh, step) {
-  const n = T.periods.length, per = full / Math.max(1, T.maxN), hh = Math.max(.8, rh - (rh > 3 ? 1 : 0));
+function drawTpoSide(T, n, pfx, full, Y, rh, step) {
+  const per = full / Math.max(1, T.maxN), hh = Math.max(.8, rh - (rh > 3 ? 1 : 0));
   const showText = rh >= 9 && per >= 7, font = Math.max(8, Math.min(11, rh - 1, per));
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for (const row of T.rows) {
@@ -446,15 +448,15 @@ function drawTpoSide(T, pfx, full, Y, rh, step) {
 }
 // Initial balance (first hour of the chosen session): the band across the chart, and one more IB width beyond each side.
 function drawIb(T, pw, Y, X) {
-  const { hi, lo, complete } = T.ib, yh = Y(hi), yl = Y(lo), w = hi - lo;
+  const { hi, lo, complete, partial } = T.ib, yh = Y(hi), yl = Y(lo), w = hi - lo, tagTxt = partial ? ' (A not recorded)' : complete ? '' : ' (forming)';
   ctx.save();
-  ctx.strokeStyle = 'rgba(79,125,240,.85)'; ctx.lineWidth = 1; ctx.setLineDash(complete ? [] : [5, 4]);
+  ctx.strokeStyle = 'rgba(79,125,240,.85)'; ctx.lineWidth = 1; ctx.setLineDash(complete && !partial ? [] : [5, 4]);
   for (const y of [yh, yl]) { ctx.beginPath(); ctx.moveTo(0, Math.round(y) + .5); ctx.lineTo(pw, Math.round(y) + .5); ctx.stroke(); }
   ctx.setLineDash([2, 5]); ctx.strokeStyle = 'rgba(79,125,240,.45)';
   for (const p of [hi + w, lo - w]) { const y = Math.round(Y(p)) + .5; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(pw, y); ctx.stroke(); }
   ctx.setLineDash([]); ctx.font = `10px ${MONO}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(140,170,255,.95)';
   const lx = Math.max(4, Math.min(pw - 110, X(0) + 4));
-  ctx.fillText(complete ? 'IB high' : 'IB high (forming)', lx, yh - 7); ctx.fillText(complete ? 'IB low' : 'IB low (forming)', lx, yl + 8);
+  ctx.fillText('IB high' + tagTxt, lx, yh - 7); ctx.fillText('IB low' + tagTxt, lx, yl + 8);
   ctx.fillStyle = 'rgba(140,170,255,.6)'; ctx.fillText('IB ×2', lx, Y(hi + w) - 7); ctx.fillText('IB ×2', lx, Y(lo - w) + 8);
   ctx.restore();
 }
@@ -517,7 +519,7 @@ function readout(l, r, step) {
     const price = r.hi - S.cross.y / l.ph * (r.hi - r.lo), p = r9(Math.floor(r9(price / step)) * step), row = T0.rows.find(x => x.p === p);
     if (row) cell = ` · <b>${px(p)}</b> TPO <b>${row.letters.map(tpoLetter).join('')}</b> (${row.letters.length})${p === T0.poc ? ' · TPO POC' : ''}`;
   }
-  const ibTxt = T0.ib ? `IB ${px(T0.ib.lo)}–${px(T0.ib.hi)}${T0.ib.complete ? '' : ' forming'}${T0.ib.up && T0.ib.down ? ' · extended both ways' : T0.ib.up ? ' · extended up' : T0.ib.down ? ' · extended down' : T0.ib.complete ? ' · inside' : ''}` : 'IB —';
+  const ibTxt = T0.ib ? `IB ${px(T0.ib.lo)}–${px(T0.ib.hi)}${T0.ib.partial ? ' (A not recorded)' : T0.ib.complete ? '' : ' forming'}${T0.ib.up && T0.ib.down ? ' · extended both ways' : T0.ib.up ? ' · extended up' : T0.ib.down ? ' · extended down' : T0.ib.complete ? ' · inside' : ''}` : 'IB —';
   const tpoTxt = `TPO POC ${T0.poc != null ? px(T0.poc) : '—'} · TPO VA ${T0.val != null ? px(T0.val) + '–' + px(T0.vah + S.step - S.doc.tick) : '—'} · ${ibTxt} · singles ${T0.singles}`;
   const letter = P.view === 'tpo' && set.start != null ? tpoLetter(Math.floor((b.m - set.start) / TPO_MIN)) + ' ' : '';
   const narrow = S.W < 700, cvdVal = sgnFull(b.cvd), sess = `vol ${fmtK(P0.vol)} · Δ ${sgn(buy - sell)} · POC ${P0.poc != null ? px(P0.poc) : '—'}`;

@@ -99,7 +99,8 @@ export function profile(bars, { share = 0.7 } = {}) {
 // then a ... z), and each price row the slice traded at (every row from a stored bar's low to its high) gets that letter.
 // Counted in time, not volume. POC = the row with most letters (tie -> nearer the middle of the day's range); value area =
 // 70% of all letters grown from the POC toward the heavier neighbour, as for volume. Initial balance = the first `ib`
-// minutes (A and B on 30-minute letters). Singles = rows only one letter touched.
+// minutes (A and B on 30-minute letters); `partial` = no trades in A (recording started late), so it is not a real IB.
+// Singles = rows only one letter touched.
 export const tpoLetter = i => i < 26 ? String.fromCharCode(65 + i) : i < 52 ? String.fromCharCode(71 + i) : '·';
 export function tpo(bars, { start = 0, period = 30, step = 0.25, ib = 60, share = 0.7 } = {}) {
   const rows = new Map(), periods = [];
@@ -132,7 +133,7 @@ export function tpo(bars, { start = 0, period = 30, step = 0.25, ib = 60, share 
   }
   const out = prices.map(p => ({ p, letters: [...rows.get(p)].sort((a, b) => a - b) }));
   const dayHi = Math.max(...periods.filter(Boolean).map(x => x.hi)), dayLo = Math.min(...periods.filter(Boolean).map(x => x.lo));
-  const ibInfo = isFinite(ibHi) ? { hi: ibHi, lo: ibLo, complete: periods.length * period >= ib, up: dayHi > ibHi, down: dayLo < ibLo } : null;
+  const ibInfo = isFinite(ibHi) ? { hi: ibHi, lo: ibLo, complete: periods.length * period >= ib, partial: !periods[0], up: dayHi > ibHi, down: dayLo < ibLo } : null;
   return { rows: out, periods: periods.filter(Boolean), poc: prices[pi], vah: prices[hi], val: prices[lo], n: total, ib: ibInfo,
            open, close, singles: out.filter(r => r.letters.length === 1).length, maxN: Math.max(...out.map(r => r.letters.length)) };
 }

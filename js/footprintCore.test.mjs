@@ -48,7 +48,8 @@ assert.equal(tpoLetter(0), 'A'); assert.equal(tpoLetter(2), 'C'); assert.equal(t
 assert.deepEqual(tp.rows.map(r => [r.p, r.letters.join('')]), [[100, '0'], [100.5, '01'], [101, '01'], [101.5, '12'], [102, '2']]);
 assert.equal(tp.n, 8);
 assert.equal(tp.poc, 101);                                   // three rows hold 2 letters; 101 is nearest the middle (101)
-assert.deepEqual(tp.ib, { hi: 101.5, lo: 100, complete: true, up: true, down: false });
+assert.deepEqual(tp.ib, { hi: 101.5, lo: 100, complete: true, partial: false, up: true, down: false });
+assert.equal(tpo([T(840, 100, 101)], { start: 810 }).ib.partial, true);   // A missing
 assert.equal(tp.singles, 2);
 assert.equal(tp.periods.length, 3); assert.equal(tp.periods[2].m, 870);
 assert.ok(tp.val <= tp.poc && tp.vah >= tp.poc);
