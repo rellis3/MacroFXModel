@@ -31,6 +31,7 @@ LOG: list[str] = []
 
 
 def say(s=""):
+    sys.stdout.reconfigure(encoding="utf-8")
     print(s, flush=True)
     LOG.append(s)
 
@@ -109,7 +110,7 @@ def session_rows(sym, date, year, row, arm, o, hi, lo, cl, mins, positions=POS, 
             t, res, ci, rc = w
             rec = {"sym": sym, "date": date, "year": year, "kind": kind, "fam": fam, "rung": rung, "side": side,
                    "pos": pos, "bucket": bucket_of(mins[t]), "close_inside": ci, "recross": rc}
-            for R, (race, over, cens) in res.items():
+            for R, (race, over, cens) in zip(RS, res.values()):     # res is keyed by the absolute size
                 rec[f"race_{R}"] = race
                 rec[f"over_sig_{R}"] = over / sp
                 rec[f"over_pct_{R}"] = over / o * 100
@@ -241,14 +242,20 @@ def zone_table(Xr, Xw):
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(SEED)
-    R_all, W_all = [], []
-    for sym in SYMS:
-        X, T, arm = real_rows(sym)
-        W = rw_rows(sym, T, arm, rng)
-        say(f"{sym}: arm {arm}; real touches {int((X['pos'] == 0).sum())}, placebo {int((X['pos'] != 0).sum())}, random-walk {len(W)}")
-        R_all.append(X); W_all.append(W)
-    X = pd.concat(R_all, ignore_index=True); W = pd.concat(W_all, ignore_index=True)
-    X.to_parquet(OUT / "touch_walks.parquet"); W.to_parquet(OUT / "rw_walks.parquet")
+    import os
+    if os.environ.get("REUSE_WALKS") and (OUT / "touch_walks.parquet").exists():
+        # statistics-only re-run on the walks saved by a full run (same code, same seed for the bootstrap)
+        X = pd.read_parquet(OUT / "touch_walks.parquet"); W = pd.read_parquet(OUT / "rw_walks.parquet")
+        say(f"walks reused from the saved full run: real+placebo {len(X)}, random-walk {len(W)}")
+    else:
+        R_all, W_all = [], []
+        for sym in SYMS:
+            X, T, arm = real_rows(sym)
+            W = rw_rows(sym, T, arm, rng)
+            say(f"{sym}: arm {arm}; real touches {int((X['pos'] == 0).sum())}, placebo {int((X['pos'] != 0).sum())}, random-walk {len(W)}")
+            R_all.append(X); W_all.append(W)
+        X = pd.concat(R_all, ignore_index=True); W = pd.concat(W_all, ignore_index=True)
+        X.to_parquet(OUT / "touch_walks.parquet"); W.to_parquet(OUT / "rw_walks.parquet")
     for R in RS:
         say(f"  ambiguous same-bar races R={R}: {(X[f'race_{R}'] == 'amb').mean() * 100:.1f}% of touches")
     res = {"seed": SEED, "B": B, "tests": {}}
