@@ -1,0 +1,764 @@
+{
+ "issue": "2026-11-18T05:32:08.966Z",
+ "drivers": [
+  {
+   "ccy": "USD",
+   "driver": "policy",
+   "d": 0,
+   "asOf": "2026-11-17T17:30:13Z",
+   "budgetDays": 10,
+   "reading": "6m priced \u22122bp over the week; stance neutral (+0.35, 2026-10-28)",
+   "ageDays": 0.5
+  },
+  {
+   "ccy": "USD",
+   "driver": "rates",
+   "d": 2,
+   "asOf": "2026-10-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "short rate 4.74% (+1.91pp vs the 8 average), z +2.70 vs its own history",
+   "ageDays": 47.2,
+   "earliestKnown_if_monthly_avg": "2026-11-01",
+   "ageFromMonthEnd": 16.2
+  },
+  {
+   "ccy": "USD",
+   "driver": "data",
+   "d": 1,
+   "asOf": "2026-11-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "USD growth/inflation/labour/demand +0.34",
+   "ageDays": 16.2,
+   "earliestKnown_if_monthly_avg": "2026-12-01",
+   "ageFromMonthEnd": -13.8
+  },
+  {
+   "ccy": "USD",
+   "driver": "realYield",
+   "d": 0,
+   "asOf": "2026-10-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "10y real 1.05%, z \u22120.53",
+   "ageDays": 47.2,
+   "earliestKnown_if_monthly_avg": "2026-11-01",
+   "ageFromMonthEnd": 16.2
+  },
+  {
+   "ccy": "USD",
+   "driver": "risk",
+   "d": 1,
+   "asOf": "2026-11-18T05:32:08.966Z",
+   "budgetDays": 7,
+   "reading": "role \u22120.50 \u00d7 R \u22121.50 = +0.75",
+   "ageDays": 0.0,
+   "note": "asOf is the ISSUE time (R inherits it), not the VIX/HY/SPX observation dates"
+  },
+  {
+   "ccy": "USD",
+   "driver": "trend",
+   "d": 1,
+   "asOf": "2026-11-18T00:00:00.000Z",
+   "budgetDays": 7,
+   "reading": "D1 up (1.10), H4 up (0.47)",
+   "ageDays": 0.2
+  },
+  {
+   "ccy": "EUR",
+   "driver": "policy",
+   "d": 0,
+   "asOf": "2026-11-17T17:30:13Z",
+   "budgetDays": 10,
+   "reading": "6m priced \u00b10bp over the week; stance neutral (+0.20, 2026-10-29)",
+   "ageDays": 0.5
+  },
+  {
+   "ccy": "EUR",
+   "driver": "rates",
+   "d": 0,
+   "asOf": "2026-10-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "short rate 2.44% (\u22120.39pp vs the 8 average), z +0.40 vs its own history",
+   "ageDays": 47.2,
+   "earliestKnown_if_monthly_avg": "2026-11-01",
+   "ageFromMonthEnd": 16.2
+  },
+  {
+   "ccy": "EUR",
+   "driver": "data",
+   "d": 1,
+   "asOf": "2026-10-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "EUR growth/inflation/labour/demand +0.20",
+   "ageDays": 47.2,
+   "earliestKnown_if_monthly_avg": "2026-11-01",
+   "ageFromMonthEnd": 16.2
+  },
+  {
+   "ccy": "EUR",
+   "driver": "realYield",
+   "d": -1,
+   "asOf": "2026-10-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "10y real -0.33%, z \u22121.86",
+   "ageDays": 47.2,
+   "earliestKnown_if_monthly_avg": "2026-11-01",
+   "ageFromMonthEnd": 16.2
+  },
+  {
+   "ccy": "EUR",
+   "driver": "risk",
+   "d": 0,
+   "asOf": "2026-11-18T05:32:08.966Z",
+   "budgetDays": 7,
+   "reading": "role \u00b10.00 \u00d7 R \u22121.50 = \u00b10.00",
+   "ageDays": 0.0,
+   "note": "asOf is the ISSUE time (R inherits it), not the VIX/HY/SPX observation dates"
+  },
+  {
+   "ccy": "EUR",
+   "driver": "trend",
+   "d": 0,
+   "asOf": "2026-11-18T00:00:00.000Z",
+   "budgetDays": 7,
+   "reading": "D1 flat (-0.15), H4 down (-0.29)",
+   "ageDays": 0.2
+  },
+  {
+   "ccy": "EUR",
+   "driver": "positioning",
+   "d": null,
+   "missing": "no COT row"
+  },
+  {
+   "ccy": "GBP",
+   "driver": "policy",
+   "d": 1,
+   "asOf": "2026-11-17T17:30:13Z",
+   "budgetDays": 10,
+   "reading": "6m priced +4bp over the week; stance hawkish (+0.70, 2026-11-05)",
+   "ageDays": 0.5
+  },
+  {
+   "ccy": "GBP",
+   "driver": "rates",
+   "d": 0,
+   "asOf": "2026-11-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "short rate 3.93% (+1.10pp vs the 8 average), z \u22120.42 vs its own history",
+   "ageDays": 16.2,
+   "earliestKnown_if_monthly_avg": "2026-12-01",
+   "ageFromMonthEnd": -13.8
+  },
+  {
+   "ccy": "GBP",
+   "driver": "data",
+   "d": 1,
+   "asOf": "2026-10-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "GBP growth/inflation/labour/demand +0.19",
+   "ageDays": 47.2,
+   "earliestKnown_if_monthly_avg": "2026-11-01",
+   "ageFromMonthEnd": 16.2
+  },
+  {
+   "ccy": "GBP",
+   "driver": "risk",
+   "d": -1,
+   "asOf": "2026-11-18T05:32:08.966Z",
+   "budgetDays": 7,
+   "reading": "role +0.25 \u00d7 R \u22121.50 = \u22120.38",
+   "ageDays": 0.0,
+   "note": "asOf is the ISSUE time (R inherits it), not the VIX/HY/SPX observation dates"
+  },
+  {
+   "ccy": "GBP",
+   "driver": "positioning",
+   "d": 0,
+   "asOf": "2026-11-13T20:30:00.000Z",
+   "budgetDays": 14,
+   "reading": "speculators at the 54th percentile, net long 15.7% of OI",
+   "ageDays": 4.4
+  },
+  {
+   "ccy": "GBP",
+   "driver": "trend",
+   "d": 1,
+   "asOf": "2026-11-18T00:00:00.000Z",
+   "budgetDays": 7,
+   "reading": "D1 up (0.31), H4 up (0.39)",
+   "ageDays": 0.2
+  },
+  {
+   "ccy": "JPY",
+   "driver": "policy",
+   "d": 0,
+   "asOf": "2026-11-17T17:30:13Z",
+   "budgetDays": 10,
+   "reading": "6m priced \u22121bp over the week; stance neutral (+0.25, 2026-10-30)",
+   "ageDays": 0.5
+  },
+  {
+   "ccy": "JPY",
+   "driver": "rates",
+   "d": 1,
+   "asOf": "2026-10-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "short rate 1.23% (\u22121.60pp vs the 8 average), z +2.84 vs its own history",
+   "ageDays": 47.2,
+   "earliestKnown_if_monthly_avg": "2026-11-01",
+   "ageFromMonthEnd": 16.2
+  },
+  {
+   "ccy": "JPY",
+   "driver": "data",
+   "d": 1,
+   "asOf": "2026-10-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "JPY growth/inflation/labour/demand +0.35",
+   "ageDays": 47.2,
+   "earliestKnown_if_monthly_avg": "2026-11-01",
+   "ageFromMonthEnd": 16.2
+  },
+  {
+   "ccy": "JPY",
+   "driver": "risk",
+   "d": 2,
+   "asOf": "2026-11-18T05:32:08.966Z",
+   "budgetDays": 7,
+   "reading": "role \u22121.00 \u00d7 R \u22121.50 = +1.50",
+   "ageDays": 0.0,
+   "note": "asOf is the ISSUE time (R inherits it), not the VIX/HY/SPX observation dates"
+  },
+  {
+   "ccy": "JPY",
+   "driver": "trend",
+   "d": 1,
+   "asOf": "2026-11-18T00:00:00.000Z",
+   "budgetDays": 7,
+   "reading": "D1 up (0.33), H4 up (0.60)",
+   "ageDays": 0.2
+  },
+  {
+   "ccy": "JPY",
+   "driver": "positioning",
+   "d": null,
+   "missing": "no COT row"
+  },
+  {
+   "ccy": "AUD",
+   "driver": "policy",
+   "d": 1,
+   "asOf": "2026-11-17T17:30:13Z",
+   "budgetDays": 10,
+   "reading": "6m priced +2bp over the week; stance hawkish (+0.62, 2026-11-03)",
+   "ageDays": 0.5
+  },
+  {
+   "ccy": "AUD",
+   "driver": "rates",
+   "d": 2,
+   "asOf": "2026-10-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "short rate 4.80% (+1.97pp vs the 8 average), z +2.01 vs its own history",
+   "ageDays": 47.2,
+   "earliestKnown_if_monthly_avg": "2026-11-01",
+   "ageFromMonthEnd": 16.2
+  },
+  {
+   "ccy": "AUD",
+   "driver": "data",
+   "d": -1,
+   "asOf": "2026-10-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "AUD growth/inflation/labour/demand \u22120.49",
+   "ageDays": 47.2,
+   "earliestKnown_if_monthly_avg": "2026-11-01",
+   "ageFromMonthEnd": 16.2
+  },
+  {
+   "ccy": "AUD",
+   "driver": "risk",
+   "d": -2,
+   "asOf": "2026-11-18T05:32:08.966Z",
+   "budgetDays": 7,
+   "reading": "role +1.00 \u00d7 R \u22121.50 = \u22121.50",
+   "ageDays": 0.0,
+   "note": "asOf is the ISSUE time (R inherits it), not the VIX/HY/SPX observation dates"
+  },
+  {
+   "ccy": "AUD",
+   "driver": "commodity",
+   "d": -2,
+   "asOf": "2026-11-18T00:00:00.000Z",
+   "budgetDays": 7,
+   "reading": "copper \u22127.1% in 20 sessions",
+   "ageDays": 0.2
+  },
+  {
+   "ccy": "AUD",
+   "driver": "positioning",
+   "d": -1,
+   "asOf": "2026-11-13T20:30:00.000Z",
+   "budgetDays": 14,
+   "reading": "speculators at the 77th percentile, net long 14.4% of OI",
+   "ageDays": 4.4
+  },
+  {
+   "ccy": "AUD",
+   "driver": "trend",
+   "d": -1,
+   "asOf": "2026-11-18T00:00:00.000Z",
+   "budgetDays": 7,
+   "reading": "D1 down (-0.83), H4 down (-0.48)",
+   "ageDays": 0.2
+  },
+  {
+   "ccy": "NZD",
+   "driver": "rates",
+   "d": 0,
+   "asOf": "2026-10-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "short rate 3.25% (+0.42pp vs the 8 average), z +0.12 vs its own history",
+   "ageDays": 47.2,
+   "earliestKnown_if_monthly_avg": "2026-11-01",
+   "ageFromMonthEnd": 16.2
+  },
+  {
+   "ccy": "NZD",
+   "driver": "risk",
+   "d": -2,
+   "asOf": "2026-11-18T05:32:08.966Z",
+   "budgetDays": 7,
+   "reading": "role +1.00 \u00d7 R \u22121.50 = \u22121.50",
+   "ageDays": 0.0,
+   "note": "asOf is the ISSUE time (R inherits it), not the VIX/HY/SPX observation dates"
+  },
+  {
+   "ccy": "NZD",
+   "driver": "positioning",
+   "d": 1,
+   "asOf": "2026-11-13T20:30:00.000Z",
+   "budgetDays": 14,
+   "reading": "speculators at the 17th percentile, net short 18.8% of OI",
+   "ageDays": 4.4
+  },
+  {
+   "ccy": "NZD",
+   "driver": "trend",
+   "d": -1,
+   "asOf": "2026-11-18T00:00:00.000Z",
+   "budgetDays": 7,
+   "reading": "D1 down (-0.26), H4 down (-0.41)",
+   "ageDays": 0.2
+  },
+  {
+   "ccy": "NZD",
+   "driver": "policy",
+   "d": null,
+   "missing": "no policy expectations (futures: none; 2y proxy: no 2y series (HTTP 403 (RBNZ firewall block page)))"
+  },
+  {
+   "ccy": "NZD",
+   "driver": "data",
+   "d": null,
+   "missing": "stale (139 days old)"
+  },
+  {
+   "ccy": "NZD",
+   "driver": "commodity",
+   "d": null,
+   "missing": "no dairy price feed"
+  },
+  {
+   "ccy": "CAD",
+   "driver": "policy",
+   "d": 1,
+   "asOf": "2026-11-17T17:30:13Z",
+   "budgetDays": 10,
+   "reading": "6m priced +2bp over the week; stance hawkish (+0.72, 2026-10-28)",
+   "ageDays": 0.5
+  },
+  {
+   "ccy": "CAD",
+   "driver": "rates",
+   "d": -1,
+   "asOf": "2026-10-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "short rate 2.27% (\u22120.56pp vs the 8 average), z \u22120.79 vs its own history",
+   "ageDays": 47.2,
+   "earliestKnown_if_monthly_avg": "2026-11-01",
+   "ageFromMonthEnd": 16.2
+  },
+  {
+   "ccy": "CAD",
+   "driver": "data",
+   "d": 0,
+   "asOf": "2026-10-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "CAD growth/inflation/labour/demand +0.08",
+   "ageDays": 47.2,
+   "earliestKnown_if_monthly_avg": "2026-11-01",
+   "ageFromMonthEnd": 16.2
+  },
+  {
+   "ccy": "CAD",
+   "driver": "risk",
+   "d": -1,
+   "asOf": "2026-11-18T05:32:08.966Z",
+   "budgetDays": 7,
+   "reading": "role +0.50 \u00d7 R \u22121.50 = \u22120.75",
+   "ageDays": 0.0,
+   "note": "asOf is the ISSUE time (R inherits it), not the VIX/HY/SPX observation dates"
+  },
+  {
+   "ccy": "CAD",
+   "driver": "commodity",
+   "d": -2,
+   "asOf": "2026-11-18T00:00:00.000Z",
+   "budgetDays": 7,
+   "reading": "WTI \u221217.0% in 20 sessions",
+   "ageDays": 0.2
+  },
+  {
+   "ccy": "CAD",
+   "driver": "trend",
+   "d": 0,
+   "asOf": "2026-11-18T00:00:00.000Z",
+   "budgetDays": 7,
+   "reading": "D1 flat (0.08), H4 up (0.22)",
+   "ageDays": 0.2
+  },
+  {
+   "ccy": "CAD",
+   "driver": "positioning",
+   "d": null,
+   "missing": "no COT row"
+  },
+  {
+   "ccy": "CHF",
+   "driver": "policy",
+   "d": 0,
+   "asOf": "2026-11-17T17:30:13Z",
+   "budgetDays": 10,
+   "reading": "6m priced +3bp over the week; stance neutral (+0.30, 2026-09-24)",
+   "ageDays": 0.5
+  },
+  {
+   "ccy": "CHF",
+   "driver": "rates",
+   "d": -2,
+   "asOf": "2026-10-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "short rate -0.04% (\u22122.87pp vs the 8 average), z \u22120.59 vs its own history",
+   "ageDays": 47.2,
+   "earliestKnown_if_monthly_avg": "2026-11-01",
+   "ageFromMonthEnd": 16.2
+  },
+  {
+   "ccy": "CHF",
+   "driver": "data",
+   "d": 1,
+   "asOf": "2026-09-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "CHF growth/inflation/labour/demand +0.32",
+   "ageDays": 77.2,
+   "earliestKnown_if_monthly_avg": "2026-10-01",
+   "ageFromMonthEnd": 47.2
+  },
+  {
+   "ccy": "CHF",
+   "driver": "realYield",
+   "d": -1,
+   "asOf": "2026-10-01T23:59:00.000Z",
+   "budgetDays": 120,
+   "reading": "10y real -0.68%, z \u22122.23",
+   "ageDays": 47.2,
+   "earliestKnown_if_monthly_avg": "2026-11-01",
+   "ageFromMonthEnd": 16.2
+  },
+  {
+   "ccy": "CHF",
+   "driver": "risk",
+   "d": 2,
+   "asOf": "2026-11-18T05:32:08.966Z",
+   "budgetDays": 7,
+   "reading": "role \u22121.00 \u00d7 R \u22121.50 = +1.50",
+   "ageDays": 0.0,
+   "note": "asOf is the ISSUE time (R inherits it), not the VIX/HY/SPX observation dates"
+  },
+  {
+   "ccy": "CHF",
+   "driver": "positioning",
+   "d": 1,
+   "asOf": "2026-11-13T20:30:00.000Z",
+   "budgetDays": 14,
+   "reading": "speculators at the 19th percentile, net short 12.7% of OI",
+   "ageDays": 4.4
+  },
+  {
+   "ccy": "CHF",
+   "driver": "trend",
+   "d": 0,
+   "asOf": "2026-11-18T00:00:00.000Z",
+   "budgetDays": 7,
+   "reading": "D1 down (-0.33), H4 flat (-0.15)",
+   "ageDays": 0.2
+  }
+ ],
+ "data_driver_dims": {
+  "JPY": {
+   "dims": {
+    "gdp": {
+     "asOf": "2026-07-01",
+     "ageDays_vs_scorecard_build": 140
+    },
+    "ism": {
+     "asOf": "2026-07-01",
+     "ageDays_vs_scorecard_build": 140
+    },
+    "laborMarket": {
+     "asOf": "2026-09-01",
+     "ageDays_vs_scorecard_build": 78
+    },
+    "retailSales": {
+     "asOf": "2026-04-01",
+     "ageDays_vs_scorecard_build": 231
+    },
+    "consumerConfidence": {
+     "asOf": "2026-10-01",
+     "ageDays_vs_scorecard_build": 48
+    }
+   },
+   "engine_asOf_uses": "2026-10-01",
+   "oldest_dim": "2026-04-01",
+   "factors_present": [
+    "growth",
+    "labour",
+    "demand"
+   ]
+  },
+  "USD": {
+   "dims": {
+    "gdp": {
+     "asOf": "2026-07-01",
+     "ageDays_vs_scorecard_build": 140
+    },
+    "ism": {
+     "asOf": "2026-11-01",
+     "ageDays_vs_scorecard_build": 17
+    },
+    "cpi": {
+     "asOf": "2026-10-01",
+     "ageDays_vs_scorecard_build": 48
+    },
+    "ppi": {
+     "asOf": "2026-10-01",
+     "ageDays_vs_scorecard_build": 48
+    },
+    "laborMarket": {
+     "asOf": "2026-10-01",
+     "ageDays_vs_scorecard_build": 48
+    },
+    "retailSales": {
+     "asOf": "2026-10-01",
+     "ageDays_vs_scorecard_build": 48
+    },
+    "consumerConfidence": {
+     "asOf": "2026-09-01",
+     "ageDays_vs_scorecard_build": 78
+    }
+   },
+   "engine_asOf_uses": "2026-11-01",
+   "oldest_dim": "2026-07-01",
+   "factors_present": [
+    "growth",
+    "inflation",
+    "labour",
+    "demand"
+   ]
+  },
+  "CAD": {
+   "dims": {
+    "gdp": {
+     "asOf": "2026-07-01",
+     "ageDays_vs_scorecard_build": 140
+    },
+    "ism": {
+     "asOf": "2026-07-01",
+     "ageDays_vs_scorecard_build": 140
+    },
+    "laborMarket": {
+     "asOf": "2026-10-01",
+     "ageDays_vs_scorecard_build": 48
+    }
+   },
+   "engine_asOf_uses": "2026-10-01",
+   "oldest_dim": "2026-07-01",
+   "factors_present": [
+    "growth",
+    "labour"
+   ]
+  },
+  "EUR": {
+   "dims": {
+    "gdp": {
+     "asOf": "2026-07-01",
+     "ageDays_vs_scorecard_build": 140
+    },
+    "ism": {
+     "asOf": "2026-10-01",
+     "ageDays_vs_scorecard_build": 48
+    },
+    "cpi": {
+     "asOf": "2026-10-01",
+     "ageDays_vs_scorecard_build": 48
+    },
+    "laborMarket": {
+     "asOf": "2026-09-01",
+     "ageDays_vs_scorecard_build": 78
+    },
+    "retailSales": {
+     "asOf": "2026-07-01",
+     "ageDays_vs_scorecard_build": 140
+    },
+    "consumerConfidence": {
+     "asOf": "2026-10-01",
+     "ageDays_vs_scorecard_build": 48
+    }
+   },
+   "engine_asOf_uses": "2026-10-01",
+   "oldest_dim": "2026-07-01",
+   "factors_present": [
+    "growth",
+    "inflation",
+    "labour",
+    "demand"
+   ]
+  },
+  "NZD": {
+   "dims": {
+    "gdp": {
+     "asOf": "2026-04-01",
+     "ageDays_vs_scorecard_build": 231
+    },
+    "ism": {
+     "asOf": "2026-07-01",
+     "ageDays_vs_scorecard_build": 140
+    },
+    "laborMarket": {
+     "asOf": "2026-07-01",
+     "ageDays_vs_scorecard_build": 140
+    },
+    "retailSales": {
+     "asOf": "2026-04-01",
+     "ageDays_vs_scorecard_build": 231
+    },
+    "consumerConfidence": {
+     "asOf": "2026-07-01",
+     "ageDays_vs_scorecard_build": 140
+    }
+   },
+   "engine_asOf_uses": "2026-07-01",
+   "oldest_dim": "2026-04-01",
+   "factors_present": [
+    "growth",
+    "labour",
+    "demand"
+   ]
+  },
+  "GBP": {
+   "dims": {
+    "gdp": {
+     "asOf": "2026-07-01",
+     "ageDays_vs_scorecard_build": 140
+    },
+    "ism": {
+     "asOf": "2026-10-01",
+     "ageDays_vs_scorecard_build": 48
+    },
+    "laborMarket": {
+     "asOf": "2026-07-01",
+     "ageDays_vs_scorecard_build": 140
+    },
+    "retailSales": {
+     "asOf": "2026-07-01",
+     "ageDays_vs_scorecard_build": 140
+    },
+    "consumerConfidence": {
+     "asOf": "2026-10-01",
+     "ageDays_vs_scorecard_build": 48
+    }
+   },
+   "engine_asOf_uses": "2026-10-01",
+   "oldest_dim": "2026-07-01",
+   "factors_present": [
+    "growth",
+    "labour",
+    "demand"
+   ]
+  },
+  "CHF": {
+   "dims": {
+    "gdp": {
+     "asOf": "2026-04-01",
+     "ageDays_vs_scorecard_build": 231
+    },
+    "ism": {
+     "asOf": "2026-09-01",
+     "ageDays_vs_scorecard_build": 78
+    },
+    "cpi": {
+     "asOf": "2026-10-01",
+     "ageDays_vs_scorecard_build": 48
+    },
+    "laborMarket": {
+     "asOf": "2026-04-01",
+     "ageDays_vs_scorecard_build": 231
+    },
+    "retailSales": {
+     "asOf": "2026-07-01",
+     "ageDays_vs_scorecard_build": 140
+    },
+    "consumerConfidence": {
+     "asOf": "2026-07-01",
+     "ageDays_vs_scorecard_build": 140
+    }
+   },
+   "engine_asOf_uses": "2026-10-01",
+   "oldest_dim": "2026-04-01",
+   "factors_present": [
+    "growth",
+    "inflation",
+    "labour",
+    "demand"
+   ]
+  },
+  "AUD": {
+   "dims": {
+    "gdp": {
+     "asOf": "2026-04-01",
+     "ageDays_vs_scorecard_build": 231
+    },
+    "ism": {
+     "asOf": "2026-07-01",
+     "ageDays_vs_scorecard_build": 140
+    },
+    "laborMarket": {
+     "asOf": "2026-09-01",
+     "ageDays_vs_scorecard_build": 78
+    },
+    "consumerConfidence": {
+     "asOf": "2026-10-01",
+     "ageDays_vs_scorecard_build": 48
+    }
+   },
+   "engine_asOf_uses": "2026-10-01",
+   "oldest_dim": "2026-04-01",
+   "factors_present": [
+    "growth",
+    "labour",
+    "demand"
+   ]
+  }
+ }
+}

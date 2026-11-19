@@ -126,3 +126,24 @@ test('surfaces: the tab is preview, the invalidation line trade, the head to hea
   assert.equal(surfaceById('panel.bp.fundabias')?.hidden, 'internal');
   assert.doesNotMatch(V.CSS, /#[0-9a-fA-F]{3,6}\b|rgb\(\d/, 'theme tokens only');
 });
+
+test('intraday rechecks: the now line, the timeline and the schedule strip; nothing shown before the first recheck', () => {
+  const tl = [
+    { slot: 'morning', at: '2026-11-18T06:03:06Z', status: 'ISSUED', dir: 'NEUTRAL', conviction: null, by: 'ai-accept', reason: 'tier-1 release pending' },
+    { slot: 'post-event-0700', at: '2026-11-18T07:31:00Z', status: 'ACTIVE', dir: 'BULLISH', conviction: 2, by: 'ai-accept', reason: 'rules agree', events: [{ country: 'GB', event: 'CPI y/y' }], reaction: { moveSigma: 0.42 } },
+    { slot: 'london-open', at: '2026-11-18T08:06:00Z', status: 'WEAKENED→OVERRIDDEN', dir: 'NEUTRAL', conviction: null, by: 'ai-override', reason: 'range used', systemDir: 'BULLISH' },
+  ];
+  assert.equal(V.nowHtml({ timeline: tl.slice(0, 1) }), '');
+  assert.equal(V.timelineHtml({ timeline: tl.slice(0, 1) }), '');
+  const now = V.nowHtml({ timeline: tl.slice(0, 2) });
+  assert.match(now, /Now active · After GB CPI y\/y 07:31/);
+  const t = V.timelineHtml({ timeline: tl });
+  assert.match(t, /2 rechecks/); assert.match(t, /Weakened, AI overrode/); assert.match(t, /rules: Bullish/); assert.match(t, /reaction \+0\.42σ/);
+  assert.doesNotMatch(t, /4135|invalid/i, 'the timeline carries no stop level (that is the trade surface)');
+  const h = V.cardHtml(card('GBPUSD', 'NEUTRAL', null), { timeline: tl });
+  assert.match(h, /bp-now/); assert.match(h, /bp-tl/);
+  const s = V.scheduleHtml({ ok: true, schedule: [{ id: 'post-event-0700', at: '2026-11-18T07:30:00Z', state: 'done', markets: 2, events: [{ country: 'GB', event: 'CPI y/y' }] }, { id: 'ny-open', at: '2026-11-18T14:35:00Z', state: 'later', markets: 13 }] });
+  assert.match(s, /07:30 After GB CPI y\/y · done/); assert.match(s, /14:35 New York open · later/);
+  assert.equal(V.scheduleHtml({ ok: true, empty: true }), '');
+  assert.equal(V.statusText('HOLD'), 'Hold overnight');
+});

@@ -218,3 +218,31 @@ function processViews(rec, which, { knowableMs, insts }) {
 /** `rec` = a stored desk-bias-process record ({ issuedAt, version, prompt, markets: { NAME: { call, system } } }). */
 export function processAi(rec, { knowableMs = Date.parse(rec?.issuedAt ?? rec?.asOf ?? ''), insts = Object.keys(SAMEDAY_INSTRUMENTS) } = {}) { return processViews(rec, 'call', { knowableMs, insts }); }
 export function processSystem(rec, { knowableMs = Date.parse(rec?.issuedAt ?? rec?.asOf ?? ''), insts = Object.keys(SAMEDAY_INSTRUMENTS) } = {}) { return processViews(rec, 'system', { knowableMs, insts }); }
+
+// ── Bias Engine V2, shadow (plans/BIAS_ENGINE_V2_SPEC.md §8; prereg amendment A7, committed at the freeze) ─────────────
+// One source file per OFFICIAL day (<D>_engine_v2.json): the production V1 issue ('bias-engine-v1'), V1 on the V2 snapshot
+// ('bias-engine-v1r'), V2 ('bias-engine-v2') and the ten switch-attribution variants. All under V1's frozen engine mapping
+// (side = dir, Neutral = no view, shift 0.01 × strength), so only the engine's content differs. Every row carries each
+// driver's contribution, its evidence family, the support summary, data quality, agreement and coverage in `inputs`.
+// A trial-phase record (spec §6.3) gives NO views: trial days never reach the scoreboard (test A20).
+export const ENGINE_V2_MODEL = { v1r: 'bias-engine-v1r', v2: 'bias-engine-v2' };
+const v2ModelId = variant => ENGINE_V2_MODEL[variant] ?? `bias-engine-${variant}`;
+const driverRow = x => ({ key: x.key, family: x.family ?? null, leg: x.leg ?? null, d: x.d ?? null, w: x.w ?? null, contrib: x.contrib ?? null, ...(x.components ? { components: x.components } : {}), ...(x.proxy ? { proxy: true } : {}) });
+/** `rec` = a stored V2 record; `v1Issue` = the day's production V1 record. Returns [] unless rec.phase is 'forward'. */
+export function biasEngineV2(rec, v1Issue, { knowableMs = Date.parse(rec?.asOf ?? ''), insts = Object.keys(SAMEDAY_INSTRUMENTS) } = {}) {
+  if (rec?.phase !== 'forward') return [];
+  const view = (modelId, m, extra = {}) => (inst) => {
+    const side = ENGINE_SIDE[m?.dir] ?? 0, strength = Number.isFinite(m?.strength) ? m.strength : 0, speaks = !!side && strength > 0;
+    return { model_id: modelId, model_version: modelId === 'bias-engine-v1' ? 'bias-engine-v1' : `${modelId}@${rec.specVersion}/${String(rec.configHash ?? '').slice(0, 12)}`, inst, speaks, side: speaks ? side : 0,
+      shift: speaks ? +(ENGINE_SHIFT_PER_STRENGTH * strength).toFixed(4) : 0, knowable_ms: knowableMs, conviction: m ? strength : null,
+      inputs: { dir: m?.dir ?? null, strength: m ? strength : null, score: m?.score ?? null, coverage: m?.coverage ?? null, dataQuality: m?.dataQuality ?? null, agreement: m?.agreement ?? null,
+        support: m?.support ?? null, drivers: (m?.drivers ?? []).map(driverRow), missing: (m?.missing ?? []).map(x => ({ key: x.key, leg: x.leg ?? null, why: x.why })), missingMarket: !m, ...extra } };
+  };
+  const out = [];
+  for (const inst of insts) {
+    const name = DESK_NAME[inst];
+    out.push(view('bias-engine-v1', v1Issue?.markets?.[name], { source: 'production V1 issue' })(inst));
+    for (const [variant, v] of Object.entries(rec.variants ?? {})) out.push(view(v2ModelId(variant), v.markets?.[name], { variant, primary: variant === 'v2' || variant === 'v1r', switches: v.switches ?? null })(inst));
+  }
+  return out;
+}

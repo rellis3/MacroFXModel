@@ -274,6 +274,7 @@ export const SURFACES = [
   mk('panel.macro.copper', 'panel', 'Macro: growth against fear', 'Macro', null, 'the copper-gold ratio and the Brent-WTI spread'),
   mk('panel.macro.gpr', 'panel', 'Macro: geopolitical risk index', 'Macro', null, 'the geopolitical risk level, trend and z-score'),
   mk('panel.macro.biasengine', 'panel', 'Macro: bias engine (currencies x drivers)', 'Macro', null, 'the bias engine\'s full grid of eight currencies by eight drivers as contribution heat, the assets by their drivers, the global risk score, the theory-v1 weights, coverage and the gaps list'),
+  mk('panel.macro.bev2', 'panel', 'Macro: Bias Engine V2 (shadow): V1, the V1 replay and V2 side by side, each driver\'s contribution, evidence families, switch attribution', 'Macro', I, 'owner-only shadow research (plans/BIAS_ENGINE_V2_SPEC.md): not a production signal, read by nothing in production'),
   mk('panel.macro.carryside', 'panel', 'Macro: carry board "side" column', 'Macro', null, 'which side of a pair earns the carry'),
   // ── the Bias process tab (plans/DESK_BIAS_PROCESS_SPEC.md "Desk Terminal"; js/terminal/deskBiasProcessView.js) ──
   mk('tab.bprocess', 'tab', 'Bias process', 'Tabs', P, 'one card per market every weekday (FundaBias layout): the Desk Bias Process call and conviction, who made it (AI accept, AI override or the rules), the reason line and the six layers (event, regime, macro, structure, positioning, day range); a direction read with no forward record yet (owner rule 2026-11-16), so preview'),

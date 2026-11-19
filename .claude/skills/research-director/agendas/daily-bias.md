@@ -355,6 +355,36 @@ What exists:
 Forward twin: the bias-scoreboard (Q4) is already the learner's live training set. After 120 days, an online Hedge
 weighting over its forecasters is scored against the equal-weight blend (forward only; a future amendment).
 
+## Part 4 — from intake (added 2026-11-18)
+
+### Q12. Does the 50-day rate-of-change reset pay only above a rising 200-day? — score 8/15
+
+> Take the banked ROC_50 stall (no forward return on 30 markets) and split it by the filter Jordi Visser actually
+> trades: price above a 200-day average that is itself rising, against the same stall below it. Sweep 20, 40 and 60
+> sessions. Read whether the above-trend arm beats its own above-trend control, never zero, and whether the
+> below-trend arm is the mirror.
+
+| | |
+|---|---|
+| Construct | ROC_50 stall flags as in `forge/ROC_STALL_50D_PREREG.md` (top-quintile run 50 sessions earlier, ROC_50 now within 0.25 sd of zero); SMA200 and its 20-session slope at the flag |
+| Knowable when | the close of the flag session |
+| Condition | above a rising SMA200 vs below a falling SMA200 (the two clean arms); the mixed cases reported, not scored |
+| Horizons | 20, 40, 60 sessions |
+| Noise threshold | the rotated-flag placebo the banked study already runs |
+| Outcome distribution | return in units of a typical h-session move (z), next-20 realised vol ratio |
+| Benchmark / control / mirror | control = non-flag sessions in the same trend state (so trend drift is netted); mirror = the below-falling arm |
+| Mechanism | a pullback inside a trend resumes (continuation), the same shape as `cot-crowding-p5` state D without the positioning leg; "frustrated holders sell" cannot be seen in prices |
+| Builds on | `roc-stall-50d-top20` UNDERPOWERED +0.05 [−0.05, +0.15] (MDE 0.12, bar 0.15); `roc-stall-50d-top60` NULL; `roc-accel-down-20` UNDERPOWERED; `trend-following-fx` NULL; `direction-bar` B2 |
+| Data & power | `scripts/roc-stall/` and its 30-series manifest exist (2000 → 2026-08-21, holdout 2013+); the filter keeps perhaps 60% of 792 events, MDE about 0.16 z: powered for a large effect only |
+| If yes → | a "consolidating in trend" context line on the instrument card, range-and-drift wording only |
+| If no → | the 200-day filter adds nothing; the agenda stops carrying the stall in any form |
+| Falsifier | the above-trend arm inside the placebo band at every horizon, and no different from the below-trend arm |
+
+Score: value 1 (a card wording), answerable 2, mechanism 1, novelty 1 (variant of a banked underpowered cell), cost 3
+(a re-score of existing outputs). Source: PODCAST_INSIGHTS T01, R16.
+
+**Answered 2026-11-18 → NULL** (`roc-stall-trend-filter`, `forge/ROC_STALL_TREND_FILTER_PREREG.md`): +0.040 z [−0.063, +0.140] against same-state uptrend controls, 666 events, placebo 81st percentile; a rise of the 0.15 bar is ruled out. 83% of the parent's stall events were already above a rising SMA200, so the filter is nearly implied by the stall. Per the card's "if no": **the agenda stops carrying the ROC stall in any form.** Candidate only (not carded): the month after a reset inside an uptrend runs ~5.5% calmer (BH, both halves), agreeing with `roc-stall-50d` C3.
+
 ## Parked
 
 - **Slow priors as daily direction** (carry, time-series momentum, 1–12 months: Moskowitz, Ooi & Pedersen 2012;

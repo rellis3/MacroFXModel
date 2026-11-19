@@ -202,6 +202,8 @@ export const FULL_EXCLUDED = [
   { path: 'state', why: 'about 350 KB market-state document; its history is archived by the state engine (archive/oi_summary, archive/series) and it is rebuilt from them' },
   { path: 'bias-engine', why: 'the bias engine issue is already kept for good, one write-once KV key a day (bias_engine_<date>, served by /api/bias-engine?date=), and scored forward on the bias scoreboard; an unstored live read is not a record' },
   { path: 'desk-bias-process', why: 'the Desk Bias Process issue is already kept for good, one write-once KV key a day (desk_bias_process_<date>, served by /api/desk-bias-process?date=), and scored forward head to head; a live read is not a record' },
+  { path: 'bias-engine-v2/compare', why: 'the V2 shadow comparison is computed from the write-once KV records bias_engine_v2_<date> (kept for good) and the V1 issue; owner-only research, not desk state' },
+  { path: 'desk-bias-process/rechecks', why: 'the intraday rechecks are already kept for good, write-once per slot in one KV key a day (desk_bias_process_rc_<date>, served by /api/desk-bias-process/rechecks?date=)' },
   { path: 'desk-bias-process/h2h', why: 'the head to head and the weekly review are computed on demand from the stored process issues (desk_bias_process_<date>), the bias scoreboard\'s same-day records in R2 and OANDA bars; a copy would only repeat what those records already rebuild' },
   { path: 'fundabias-log', why: 'the owner\'s FundaBias log is itself a write-once KV record per day (fundabias_log_<date>, served by /api/fundabias-log?date=)' },
   { path: 'desk-run', why: 'about 275 KB; the morning book is already kept for good, one key a day (desk_run_<date>); CORE carries its ratings, convictions and exposure' },

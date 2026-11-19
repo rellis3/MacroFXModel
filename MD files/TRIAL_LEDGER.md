@@ -4,21 +4,21 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-18.
+Generated 2026-11-19.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **418** |
+| claims tested (validated + null + underpowered) | **419** |
 | validated | 73 |
-| null | 205 |
+| null | 206 |
 | underpowered | 140 |
 | context (base rates, descriptions: not counted as tests) | 64 |
-| pre-registrations with no banked verdict (below) | 89 |
+| pre-registrations with no banked verdict (below) | 90 |
 
-**What the count says (Lesson 02 §05).** If none of the 418 claims were real, tests at the usual 5% size would still pass
-about **20.9** of them by luck. 73 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 419 claims were real, tests at the usual 5% size would still pass
+about **21** of them by luck. 73 passed, so most passes are unlikely to be luck alone, but
 **roughly 21 of the 73 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -509,6 +509,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-18 | ladder-v2-nq | volatility | validated | forge/LADDER_V2_NQ_PREREG.md |
 | 2026-11-18 | ladder-v2-nq-cvf | volatility | context | forge/LADDER_V2_NQ_PREREG.md |
 | 2026-11-18 | ladder-v2-nq-fut | volatility | validated | forge/LADDER_V2_NQ_PREREG.md |
+| 2026-11-18 | roc-stall-trend-filter | price | null | forge/ROC_STALL_TREND_FILTER_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -562,6 +563,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/IEP_TIME_PREREG.md`: IEP-TIME: time of day, trading session and day of week in band attainment, first touch and consolidation
 - `forge/INTRADAY_EXTREME_PATHS_PREREG.md`: INTRADAY-EXTREME-PATHS: after a dynamic intraday extreme, what is the probability of continuation, meaningful 
 - `forge/IVRV_COT_PREREG.md`: IV ÷ RV in the book, the rich-IV break rule on the indices, and COT positioning at the lines — pre-registratio
+- `forge/LADDER_V2_GOLD_PREREG.md`: ladder-v2-gold — which σ makes gold's daily reach ladder right in every vol regime, CFD and futures?
 - `forge/LEVEL_P2_PREREG.md`: Level engine, Phase 2: reach, which-first, time-to-reach (registered 2026-10-10, before any Phase 2 outcome is
 - `forge/LEVEL_SCENARIO_SHADOW_PREREG.md`: S3 shadow: level scenarios, live reach / which-first / time (registered 2026-10-11, before any live session is
 - `forge/LINE_CLUSTER_MFE_PREREG.md`: Clusters of the forecast lines, and fade MFE / MAE at every touch — pre-registration

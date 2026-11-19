@@ -24,6 +24,7 @@ Dated market calls go into **Calls to Score**, so we can see later whether their
 |---|---|---|
 | **BD** | Brent Donnelly, Spectra Markets; ex-bank FX market maker, PM, day trader; author of *Alpha Trader* and *The Art of Currency Trading* | Short-term FX, price action and positioning, journals every trade |
 | **AP** | Alfonso Peccarelli, founder of The Macro Compass; ex-head of investments at a large European bank | Long horizon, weekly charts only, macro-data driven, portfolio construction |
+| **JV** | Jordi Visser, ex-Morgan Stanley MD, ex-president of a $4bn hedge fund; guest on *Titans of Tomorrow* (T-series below) | Equity names and indices on a three-month clock; agents as a research team; the 50-day rate of change |
 
 Podcast: *The Macro Trading Floor*.
 
@@ -166,6 +167,33 @@ Things we could test: R13-R15, below.
 
 ---
 
+## Other podcasts
+
+### T01: Titans of Tomorrow x Jordi Visser: a research team of agents; the 50-day rate of change (two shorts, pasted 2026-11-18)
+Note: `education/intake/informational/titans-of-tomorrow/2026-11-18-visser-agents-and-roc.md`. Recording date unknown.
+
+**PROCESS**
+- **JV: five agents, paper-traded for a period, then a process.** Fundamentals and earnings, company news and X
+  sentiment, a technical agent, catalysts. "Ask AI how to build a good process based on those things." The gatherers
+  never decide. ON FILE as a build: `desk-analyst-pipeline` (11 analysts, forward record from 2026-11-04, LLM layers
+  add context and never a signal).
+- **JV: horizon first.** "I want to be riding a trend that lasts for three months", then the filter, then the trigger.
+
+**TESTABLE**
+- **JV: ROC_50 reset above a rising 200-day = "consolidating and wants to go higher".** The 200-day filter is the one
+  piece the desk has not conditioned on. Backlog R16; carded as daily-bias Q12.
+
+**ON FILE**
+- **JV: "when that second derivative changes... people are getting frustrated" (the warning reading).** Tested 2026-11-16
+  as a price signature on 30 markets, 2013 to 2026 (`roc-stall-50d`): a 50-session stall after a strong run is followed by
+  +0.05 z [−0.05, +0.15] at 20 sessions (UNDERPOWERED, nowhere near a fall) and −0.004 at 60 (NULL); the next month is a
+  little calmer, not riskier. A hard deceleration of ROC_50 shows a small vol footprint (+7%, underpowered) and a
+  60-session bounce lead. The frustration mechanism itself is positions and psychology and cannot be seen in prices.
+- **JV: 200-day with an upward slope as the universe filter.** The trend family here: `trend-following-fx` NULL,
+  `direction-bar` B2 momentum negative Brier skill in 23 of 24 cells, the desk trend system Sharpe 0.10 since 2017.
+
+**Calls to score:** none dated.
+
 ## Theme Index
 
 | Theme | Speaker | Episodes |
@@ -182,7 +210,7 @@ Things we could test: R13-R15, below.
 | Setup (conditions) is separate from trigger (liquidity gauges turning) | BD | E02 |
 | Trade both directions; write down your biases and fight them | BD, AP | E02 |
 | Crowded and overbought but logical trend → consolidation, then continuation | BD | E02 |
-| Watch the turn in the rate of change (peak capex, inflation acceleration), not the level | AP | E02, E03 |
+| Watch the turn in the rate of change (peak capex, inflation acceleration; JV: the 50-day ROC on price), not the level | AP, JV | E02, E03, T01 |
 | Yields vs nominal GDP as a long-run equilibrium | AP | E02, E03 |
 | Starting conditions / positioning decide the reaction to news | BD | E01, E03 |
 | Policy credibility: markets test low-credibility policymakers | BD, AP | E01, E02, E03 |
@@ -309,6 +337,12 @@ fails. Few episodes; a chart for the Atlas, not a test.
 raised: how often is the middle (0 to +15%) the outcome? A distribution card, never a forecast.
 
 ---
+
+**R16. ROC_50 reset above a rising 200-day (JV, T01).** PARTLY ON FILE: `roc-stall-50d` tested the unfiltered
+stall (no forward return at 20 or 60 sessions; 792 events, 30 markets). JV trades it only above a rising 200-day and
+reads it as continuation. Spec: the banked TOP-stall events split by C > SMA200 with SMA200 rising over 20 sessions;
+above-trend arm against its own above-trend control, 20/40/60 sessions; mirror = the same stall below a falling
+200-day. Powered for a large effect only (~480 events). Carded: daily-bias Q12.
 
 ## Calls to Score
 
