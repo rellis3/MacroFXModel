@@ -63,6 +63,7 @@ export function perform(a, doc = document, win = window) {
     case 'alerts': return win.deskAlerts?.open ? (win.deskAlerts.open(), true) : false;
     case 'alert-add': return win.deskAlerts?.add ? (win.deskAlerts.add(a.body), true) : false;
     case 'workspace-save': return win.deskWorkspace?.saveAs ? (win.deskWorkspace.saveAs(a.name), true) : false;
+    case 'jarvis': import('./jarvisView.js').then(m => m.openJarvis(win)).catch(e => console.warn('jarvis', e)); return true;
     case 'theme': import('./themePicker.js').then(m => m.applyTheme(a.id)).catch(() => {}); return true;
     case 'tf': return win.deskSelection ? (win.deskSelection.set({ tf: a.tf }, 'command'), true) : false;
     case 'link': return win.deskSelection ? (win.deskSelection.setLinked(a.on, 'command'), true) : false;

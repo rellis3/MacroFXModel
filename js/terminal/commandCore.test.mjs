@@ -118,7 +118,7 @@ test('ranking: exact beats prefix beats word-start beats contains; help text is 
 });
 
 test('grouped() lists every command once, under its group', () => {
-  const g = grouped(all); assert.equal(g.reduce((n, x) => n + x.items.length, 0), all.length);
+  const g = grouped(all); assert.equal(g.reduce((n, x) => n + x.items.length, 0), all.filter(c => !c.secret).length);   // an easter egg is never listed
   assert.equal(g[0].group, 'Go to a tab');
 });
 

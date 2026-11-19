@@ -99,3 +99,34 @@ Exhaustion (Phase 2); event multipliers; silver/other metals; any trade; session
 - **Halves** use the quintile edges from all test rows of the track (as NQ §3); the left-out windows and fault-flag
   checks recut the edges on the rows kept (as NQ A2).
 - **Harness check passed:** on NQ it reproduces all 12 arms' PRIMARY and GUARD to 0.0 and both halves exactly.
+
+### A2 — 2026-11-19, PRE-RESULTS (no gold outcome computed): more arms
+
+Prompted by an outside gold race (QLIKE on daily squared returns; GARCH-t ranked first, with GJR/EGARCH showing gold's
+inverse leverage) and the standard literature. Added arms, every one walk-forward with no full-sample fit:
+
+| Arm | σ |
+|---|---|
+| G_garch, G_garch_t, G_gjr, G_egarch | GARCH(1,1) normal, GARCH(1,1) Student-t, GJR-GARCH(1,1,1), EGARCH(1,1,1) on NY-close daily % returns (ratio series for F), constant mean (`arch` 9.0). For test year Y the parameters are fitted on bars before 1 Jan Y, then the whole series is filtered with them fixed; the value used for a session is the one-step forecast made at the prior NY close |
+| SHAR | log RV(5-min) next day on log positive and negative 5-min semivariance of the day plus log 5- and 22-day mean RV (Patton–Sheppard), OLS refit each year |
+| HARCJ | log RV next day on log continuous part C = min(RV, bipower variation) at 1/5/22 days and log(1 + J/C) with J = RV − C (Andersen–Bollerslev–Diebold), OLS refit each year |
+| B_har_garcht | 0.5 × (har_rv_log + G_garch_t) |
+| B_har_iv | 0.5 × (har_rv_log + pure GVZ) |
+
+Arms are now 20 (from 12). The winner is still re-selected inside every bootstrap draw, so the larger search is
+priced in. Rules unchanged. Realized GARCH (Hansen) is deferred to a later round. QLIKE against the next NY-close
+day's squared return and MZ R² on daily GK variance are reported per arm, no rule, so the outside race can be compared
+like for like.
+
+Tested for code faults on NQ only (descriptive, not banked) before gold was built.
+
+### A3 — 2026-11-19, PRE-RESULTS (no gold outcome computed): GARCH fits on a long history
+
+The NQ code test showed that fitting the GARCH family on 2016–17 alone (the first walk-forward year) gives degenerate
+parameters (EGARCH shock response α = −0.09 on the CFD; the fitted forecast barely moved with the realised range,
+slope 0.03). From 2019 on the fits were sensible. GARCH needs a long sample. Change: for each test year Y the GARCH
+parameters are fitted on OANDA's NY-close daily bars (`granularity=D`, mid, `dailyAlignment=17`, America/New_York;
+`scripts/ladder-v2/fetch_d1_long.py`, gold from 2006-03, NQ from 2004-01) before this series starts, joined to this
+series' own bars, all before 1 Jan Y. Those OANDA bars equal the M1-built NY-close bars where they overlap (773 dates,
+daily-return correlation 1.0, median close difference 2e-8). The forecasts scored are still filtered only on this
+series. For the futures track the pre-series history is the same OANDA (spot/CFD) history. No other arm changes.
