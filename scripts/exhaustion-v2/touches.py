@@ -21,7 +21,16 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts/ladder-v2"))
 import ladder as L  # noqa: E402
 
-LINE_ARM = "E6"
+LINE_ARM = "E6"          # set per (symbol, track) by line_arm(); NQ's banked winner was arm E6 (har_rv_log)
+
+
+def line_arm(sym, track):
+    """The ladder arm whose lines are traded: the banked sigma-race winner for that instrument and track."""
+    if sym == "NQ":
+        return "E6"
+    import json
+    r = json.loads((ROOT / f"analysis/output/ladder-v2-{sym.lower()}/results.json").read_text())
+    return r[track]["chosen"]
 FAMS = ("OH", "OL", "OCu", "OCd", "PH", "PL")
 RUNGS = (50, 75, 90)
 NEXT = {50: 75, 75: 90}
@@ -146,7 +155,10 @@ def main(sym):
     events = usd_major_times()
     log = [f"USD Major release times: {len(events)} ({events.min()} -> {events.max()})"]
     rng = np.random.default_rng(20261119)
+    global LINE_ARM
     for track in ("C", "F"):
+        LINE_ARM = line_arm(sym, track)
+        log.append(f"{sym} {track}: lines from ladder arm {LINE_ARM}")
         T = pd.read_parquet(ROOT / f"analysis/output/ladder-v2-{sym.lower()}/test_{track}.parquet")
         m = L.load_m1(sym, track, "unadj")
         if track == "F":
