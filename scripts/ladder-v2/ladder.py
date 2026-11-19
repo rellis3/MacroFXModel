@@ -258,8 +258,10 @@ def fit_k(tr):
     return float((zs @ y) / (zs @ zs + 1.0)) / sd, mu
 
 
-def walk_forward(S, sym, track, arms, years=None, quiet=False):
+def walk_forward(S, sym, track, arms, years=None, quiet=False, train_from=None):
+    """train_from: optional first date of the training window (ladder-mix-2020s); default = all history."""
     years = YEARS if years is None else years
+    t0 = pd.Timestamp(train_from) if train_from else pd.Timestamp("1900-01-01")
     S = S.copy()
     if "V3" in arms:
         S["x"] = np.log(S["iv"] / V.SQRT252 / S["A0"])
@@ -270,7 +272,7 @@ def walk_forward(S, sym, track, arms, years=None, quiet=False):
         for name in [a for a in REG if a in arms]:
             f = pd.read_parquet(out_dir(sym) / f"rvfeat_{track}_{name}.parquet")
             cols = list(f.columns[:-2])
-            f = f[np.isfinite(f[cols + ["y_next"]]).all(axis=1) & (f["next_date"] < start)]
+            f = f[np.isfinite(f[cols + ["y_next"]]).all(axis=1) & (f["next_date"] < start) & (f["next_date"] >= t0)]
             X = np.column_stack([np.ones(len(f))] + [f[c] for c in cols])
             coef, *_ = np.linalg.lstsq(X, f["y_next"].to_numpy(), rcond=None)
             s2 = float(np.var(f["y_next"].to_numpy() - X @ coef))
@@ -281,12 +283,12 @@ def walk_forward(S, sym, track, arms, years=None, quiet=False):
         if "B_har_garcht" in arms:
             W["B_har_garcht"] = 0.5 * (W[har_col(sym)] + W["G_garch_t"])
         if "V3" in arms:
-            ok = (W["date"] < start) & np.isfinite(W["x"]) & np.isfinite(W["A0"])
+            ok = (W["date"] < start) & (W["date"] >= t0) & np.isfinite(W["x"]) & np.isfinite(W["A0"])
             kk, mu = fit_k(W[ok])
             W["V3"] = W["A0"] * np.exp(kk * (W["x"] - mu))
         if "B_har_iv" in arms:
             W["B_har_iv"] = 0.5 * (W[har_col(sym)] + W["V4"])
-        tr = W[W["date"] < start]
+        tr = W[(W["date"] < start) & (W["date"] >= t0)]
         te = W[(W["date"] >= start) & (W["date"] < end)].copy()
         te["year"] = Y
         for a in arms:
