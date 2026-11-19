@@ -15,7 +15,7 @@ const ID = 'jarvis', LS = 'jarvisPrefs:v1';
 const lsGet = () => { try { return JSON.parse(localStorage.getItem(LS) || '{}') || {}; } catch (e) { return {}; } };
 const lsPut = o => { try { localStorage.setItem(LS, JSON.stringify({ ...lsGet(), ...o })); } catch (e) { /* private window */ } };
 
-const CSS = `#${ID}{position:fixed;inset:0;z-index:300;color:var(--tx);font-family:var(--mono,monospace);background:radial-gradient(ellipse at 50% 55%,color-mix(in srgb,var(--blue2) 20%,var(--bg)) 0%,var(--bg) 72%);overflow:hidden;animation:jv-in .7s ease-out}
+const CSS = `#${ID}{--jvtop:62px;position:fixed;inset:0;z-index:300;color:var(--tx);font-family:var(--mono,monospace);background:radial-gradient(ellipse at 50% 55%,color-mix(in srgb,var(--blue2) 20%,var(--bg)) 0%,var(--bg) 72%);overflow:hidden;animation:jv-in .7s ease-out}
 @keyframes jv-in{from{opacity:0;filter:blur(8px) brightness(2)}to{opacity:1;filter:none}}
 #${ID}[hidden]{display:none}
 #${ID} canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}#${ID} canvas:active{cursor:grabbing}
@@ -30,12 +30,12 @@ const CSS = `#${ID}{position:fixed;inset:0;z-index:300;color:var(--tx);font-fami
 #${ID} .jv-sub{font-size:11px;color:var(--tx2);letter-spacing:.08em}#${ID} .jv-sp{flex:1}
 #${ID} button{font:inherit;font-size:11px;letter-spacing:.08em;color:var(--tx);background:color-mix(in srgb,var(--bg1) 70%,transparent);border:1px solid var(--line);border-radius:999px;padding:5px 12px;cursor:pointer}
 #${ID} button:hover{border-color:var(--blue2)}#${ID} button[aria-pressed="true"]{border-color:var(--blue2);color:var(--blue2);box-shadow:0 0 10px color-mix(in srgb,var(--blue2) 50%,transparent)}
-#${ID} .jv-hud{position:absolute;left:24px;top:70px;font-size:11px;line-height:1.7;color:var(--tx2);pointer-events:none;letter-spacing:.06em}#${ID} .jv-hud b{color:var(--tx);font-size:22px;letter-spacing:.1em;font-weight:400;display:block}#${ID} .jv-hud .am{color:var(--gold)}#${ID} .jv-hud .ok{color:var(--up)}
-#${ID} .jv-reg{position:absolute;left:50%;transform:translateX(-50%);top:62px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center}#${ID} .jv-reg[hidden]{display:none}
+#${ID} .jv-hud{position:absolute;left:24px;top:calc(var(--jvtop,62px) + 14px);font-size:11px;line-height:1.7;color:var(--tx2);pointer-events:none;letter-spacing:.06em}#${ID} .jv-hud b{color:var(--tx);font-size:22px;letter-spacing:.1em;font-weight:400;display:block}#${ID} .jv-hud .am{color:var(--gold)}#${ID} .jv-hud .ok{color:var(--up)}
+#${ID} .jv-reg{position:absolute;left:50%;transform:translateX(-50%);top:calc(var(--jvtop,62px) + 4px);display:flex;gap:6px;flex-wrap:wrap;justify-content:center}#${ID} .jv-reg[hidden]{display:none}
 #${ID} .jv-boot{position:absolute;left:24px;bottom:84px;max-width:min(460px,calc(100vw - 48px));font-size:12px;line-height:1.6;color:var(--tx2);pointer-events:none}
 #${ID} .jv-boot b{color:var(--tx)}#${ID} .jv-boot .jv-hl{color:var(--gold)}
 #${ID} .jv-card,#${ID} .jv-pane{position:absolute;right:24px;width:min(440px,calc(100vw - 48px));overflow:auto;padding:14px;border:1px solid var(--blue2);border-radius:12px;background:color-mix(in srgb,var(--bg1) 84%,transparent);backdrop-filter:blur(7px);font-size:12px;line-height:1.55;box-shadow:0 0 28px color-mix(in srgb,var(--blue2) 35%,transparent)}
-#${ID} .jv-card{bottom:84px;max-height:46vh}#${ID} .jv-pane{top:68px;bottom:84px}
+#${ID} .jv-card{bottom:84px;max-height:46vh}#${ID} .jv-pane{top:calc(var(--jvtop,62px) + 6px);bottom:84px}
 #${ID} h3{margin:0 0 6px;font-size:13px;letter-spacing:.14em;color:var(--blue2)}#${ID} .jv-pane p,#${ID} .jv-card p{margin:6px 0;color:var(--tx2)}#${ID} textarea,#${ID} input[type=number]{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;box-sizing:border-box}#${ID} textarea{width:100%;min-height:74px}
 #${ID} .jv-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}#${ID} .jv-ans{white-space:pre-wrap;color:var(--tx);margin:8px 0}#${ID} .jv-src,#${ID} .jv-k{display:inline-block;font-size:10px;letter-spacing:.1em;border:1px solid var(--line);border-radius:4px;padding:0 5px;margin:2px 4px 2px 0;color:var(--tx2)}
 #${ID} .jv-hold{color:var(--blue2);border-color:var(--blue2)}#${ID} .jv-broke{color:var(--gold);border-color:var(--gold)}
@@ -46,6 +46,17 @@ const CSS = `#${ID}{position:fixed;inset:0;z-index:300;color:var(--tx);font-fami
 #${ID}-dock[hidden]{display:none}#${ID}-dock .t{color:var(--blue2);letter-spacing:.3em;text-shadow:0 0 10px var(--blue2)}#${ID}-dock .dot{width:8px;height:8px;border-radius:50%;background:var(--up);box-shadow:0 0 8px var(--up);display:inline-block;animation:jv-pulse 2s infinite}
 @keyframes jv-pulse{50%{opacity:.35}}#${ID}-dock.al{border-top-color:var(--gold);animation:jv-flash 1s 3}@keyframes jv-flash{50%{background:color-mix(in srgb,var(--gold) 30%,var(--bg1))}}
 #${ID}-dock button{font:inherit;font-size:10px;color:var(--tx);background:transparent;border:1px solid var(--line);border-radius:999px;padding:3px 10px;cursor:pointer}#${ID}-dock .sp{flex:1}#${ID}-dock .am{color:var(--gold)}
+#${ID} .jv-top,#${ID} .jv-hud,#${ID} .jv-reg,#${ID} .jv-scrub,#${ID} .jv-foot,#${ID} .jv-br,#${ID} .jv-boot{transition:opacity 1s ease}
+#${ID}.jv-booting .jv-top,#${ID}.jv-booting .jv-hud,#${ID}.jv-booting .jv-reg,#${ID}.jv-booting .jv-scrub,#${ID}.jv-booting .jv-foot,#${ID}.jv-booting .jv-boot,#${ID}.jv-booting .jv-pane,#${ID}.jv-booting .jv-card{opacity:0;pointer-events:none}
+#${ID}.jv-booting .jv-br{opacity:.15}
+#${ID} .jv-bs{position:absolute;inset:0;z-index:5;pointer-events:none;transition:opacity .9s ease}#${ID} .jv-bs.gone{opacity:0}
+#${ID} .jv-bs-t{position:absolute;left:0;right:0;top:12%;text-align:center}
+#${ID} .jv-bs h1{margin:0;font-size:clamp(22px,4vw,46px);font-weight:400;letter-spacing:.5em;color:var(--blue2);text-shadow:0 0 22px var(--blue2);opacity:0;transition:opacity 1.4s ease;animation:jv-glitch 3s infinite}#${ID} .jv-bs h1.on{opacity:1}
+#${ID} .jv-bs-sub{margin-top:12px;font-size:13px;letter-spacing:.42em;color:var(--tx2);min-height:18px}#${ID} .jv-bs-sub.blink{animation:jv-blink 1s steps(2) infinite}
+@keyframes jv-blink{50%{opacity:.3}}
+#${ID} .jv-bs-b{position:absolute;left:50%;transform:translateX(-50%);bottom:9%;width:min(440px,80vw)}
+#${ID} .jv-bs-log{font-size:12px;line-height:1.75;color:var(--tx2);min-height:136px;letter-spacing:.04em}#${ID} .jv-bs-log .ok{color:var(--up);float:right}#${ID} .jv-bs-log div{overflow:hidden}#${ID} .jv-bs-log b{font-weight:400;color:var(--tx)}
+#${ID} .jv-bar{height:3px;background:color-mix(in srgb,var(--blue2) 20%,transparent);border-radius:2px;margin-top:8px;overflow:hidden}#${ID} .jv-bar i{display:block;height:100%;width:0;background:var(--blue2);box-shadow:0 0 10px var(--blue2);transition:width .5s ease}
 @media (max-width:1560px){#${ID} .jv-top .jv-sub{display:none}}
 @media (max-width:640px){#${ID} .jv-boot,#${ID} .jv-hud{display:none}#${ID} .jv-title{font-size:14px}#${ID} .jv-scrub{bottom:34px}}
 @media (prefers-reduced-motion:reduce){#${ID},#${ID} .jv-scan,#${ID} .jv-title{animation:none}}`;
@@ -58,7 +69,7 @@ export async function openJarvis(win = window) {
   if (doc.getElementById(ID)) return true;
   const prefs = lsGet();
   const root = doc.createElement('div'); root.id = ID; root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', 'Jarvis: the macro chain');
-  root.innerHTML = `<style>${CSS}</style><canvas id="${ID}-cv"></canvas><div class="jv-scan"></div><div class="jv-vig"></div><i class="jv-br tl"></i><i class="jv-br tr"></i><i class="jv-br bl"></i><i class="jv-br brr"></i>
+  root.innerHTML = `<style>${CSS}</style><canvas id="${ID}-cv"></canvas><div class="jv-bs" id="${ID}-bs"><div class="jv-bs-t"><h1 id="${ID}-bst">J.A.R.V.I.S.</h1><div class="jv-bs-sub blink" id="${ID}-bss">&nbsp;</div></div><div class="jv-bs-b"><div class="jv-bs-log" id="${ID}-bslog"></div><div class="jv-bar"><i id="${ID}-bsbar"></i></div></div></div><div class="jv-scan"></div><div class="jv-vig"></div><i class="jv-br tl"></i><i class="jv-br tr"></i><i class="jv-br bl"></i><i class="jv-br brr"></i>
 <div class="jv-top"><span class="jv-title" data-surface="widget.jarvis">J.A.R.V.I.S.</span><span class="jv-sub">desk intelligence · description only</span><span class="jv-sp"></span>
 <span id="${ID}-mods"></span><span id="${ID}-win"></span><span id="${ID}-view"></span>
 <button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Jarvis, ..." (microphone, this tab only)'>HEY JARVIS</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Jarvis keeps watching">DOCK ▾</button><button type="button" id="${ID}-off" title="Switch Jarvis off">OFF ✕</button></div>
@@ -74,10 +85,34 @@ export async function openJarvis(win = window) {
   readTheme();
 
   const names = Object.fromEntries(Object.entries(CHAIN_NODES).map(([k, n]) => [k, n.label]));
+  const fitTop = () => { try { const tp = root.querySelector('.jv-top'); if (tp) root.style.setProperty('--jvtop', `${tp.offsetHeight}px`); } catch (e) { /* layout only */ } };
+  const noBoot = !!win.__jarvisNoBoot, calm = !!win.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches, BOOT = noBoot ? 0 : calm ? 0.8 : 4.2;
+  if (BOOT) root.classList.add('jv-booting'); else $('bs').remove();
   const st = { mod: 'chain', view: prefs.view ?? 'globe', gl: { lat: 20, lon: 15, zoom: 1, tlat: 20, tlon: 15, tzoom: 1 }, land: null, bl: null, region: 'world', voice: false, sound: prefs.sound !== false, wake: false, watch: prefs.watch !== false, win: 5, graph: null, sum: null, sel: null, yaw: 0.55, pitch: -0.7, zoom: 1, spin: true, t0: performance.now() - (win.__jarvisNoBoot ? 5000 : 0), drag: null, w: 0, h: 0, proj: [], disp: {}, dates: [], idx: -1, play: 0, docked: false, alerts: [], snap: null, lastCheck: null, memLimit: prefs.memLimit ?? 0, mem: null };
   const setCam = () => { if (st.view === 'globe') { st.gl.zoom = st.gl.tzoom = 1; $('reg').hidden = false; } else $('reg').hidden = true; if (st.view === 'bubbles') st.bl = null; if (st.view === 'skyline') Object.assign(st, { yaw: 0.55, pitch: -0.7, zoom: 1 }); else Object.assign(st, { yaw: 0.6, pitch: 0.28, zoom: 1 }); };
   const resize = () => { const d = Math.min(2, win.devicePixelRatio || 1); st.w = root.clientWidth; st.h = root.clientHeight; cv.width = st.w * d; cv.height = st.h * d; ctx.setTransform(d, 0, 0, d, 0, 0); };
-  resize(); win.addEventListener('resize', resize);
+  resize(); win.addEventListener('resize', () => { resize(); fitTop(); }); fitTop();
+
+  // ── the awakening: a heartbeat in the dark, the core ignites, status lines tick through, a greeting, then the HUD fades in ──
+  const bootTimers = [];
+  const later2 = (fn, ms) => bootTimers.push(win.setTimeout(() => { if (open) fn(); }, ms));
+  function runBoot() {
+    if (!BOOT) return;
+    const bs = $('bs'), log = $('bslog'), bar = $('bsbar'), sub = $('bss'), h = $('bst');
+    const hr = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }).format(new Date()), greet = hr < 12 ? 'GOOD MORNING' : hr < 18 ? 'GOOD AFTERNOON' : 'GOOD EVENING';
+    const lines = ['waking core', 'remembering the desk', 'opening the markets', 'reading the chain', 'warming the globe', 'listening'], k = BOOT / 4.2;
+    if (calm) { sub.textContent = `${greet} · ALL SYSTEMS NOMINAL`; h.classList.add('on'); log.innerHTML = ''; }
+    else {
+      later2(() => blip(62, 0.16, 'sine', 0.07), 150); later2(() => blip(55, 0.2, 'sine', 0.07), 420); later2(() => blip(62, 0.16, 'sine', 0.06), 1050); later2(() => blip(55, 0.2, 'sine', 0.06), 1320);   // lub-dub, lub-dub
+      later2(() => { h.classList.add('on'); sub.textContent = 'W A K I N G'; }, 1000 * k);
+      later2(() => { sub.textContent = 'C O M I N G   O N L I N E'; blip(330, 0.12, 'triangle'); }, 1700 * k);
+      lines.forEach((l, i) => later2(() => { const d = doc.createElement('div'); d.innerHTML = `<b>${esc(l)}</b> …<span class="ok">OK</span>`; log.appendChild(d); bar.style.width = `${Math.round((i + 1) / (lines.length + 1) * 100)}%`; blip(420 + i * 70, 0.05, 'square', 0.015); }, (1900 + i * 340) * k));
+      later2(() => { bar.style.width = '100%'; sub.classList.remove('blink'); sub.textContent = `${greet}  ·  ALL SYSTEMS NOMINAL`; bootChime(); }, 3950 * k);
+    }
+    later2(() => { bs.classList.add('gone'); }, (BOOT - 0.5) * 1000);
+    later2(() => { root.classList.remove('jv-booting'); fitTop(); }, (BOOT - 0.9) * 1000);
+    later2(() => { bs.remove(); }, BOOT * 1000 + 400);
+  }
 
   // ── sound: tiny WebAudio blips (free, no files) ──
   let ac = null;
@@ -107,7 +142,7 @@ export async function openJarvis(win = window) {
     const r = await loadAt(w, date);
     if (!r) { st.graph = null; $('boot').innerHTML = '<b>The chain feeds are not available right now.</b> Open the Chain tab once and try again.'; return; }
     setGraph(r.graph, r.sum);
-    if (first || date == null) typeBoot(bootLines(r.sum, w));
+    if (first || date == null) { const wait = Math.max(0, BOOT * 1000 - (performance.now() - st.t0)); if (wait > 50) later2(() => typeBoot(bootLines(r.sum, w)), wait); else typeBoot(bootLines(r.sum, w)); }
     if (st.mod !== 'chain' && st.mod !== 'ask' && st.mod !== 'alerts') R[st.mod]?.();
   }
   let typing = 0;
@@ -208,7 +243,9 @@ export async function openJarvis(win = window) {
   $('mods').onclick = e => { const b = e.target.closest('button[data-m]'); if (b) setMod(b.dataset.m); };
   const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), setMod: m => setMod(m), ask: q => { setMod('ask'); R.ask(q, true); }, tcol: t => tcol(t), colours: () => C };
   loadModules().then(list => {
+    win.setTimeout(fitTop, 0);
     for (const m of list) { R[m.id] = () => m.render($('pane'), xapi); if (!$('mods').querySelector(`[data-m="${m.id}"]`)) $('mods').insertAdjacentHTML('beforeend', ` <button type="button" data-m="${esc(m.id)}" aria-pressed="false">${esc(m.label)}</button>`); }
+    fitTop();
   });
 
   // ── interaction ──
@@ -263,12 +300,17 @@ export async function openJarvis(win = window) {
   const ringAt = (y, rad, alpha) => { ctx.beginPath(); for (let i = 0; i <= 72; i++) { const a = i / 72 * Math.PI * 2, p = sp([Math.cos(a) * rad, y, Math.sin(a) * rad]); i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); } ctx.globalAlpha = alpha; ctx.strokeStyle = C.blue; ctx.lineWidth = 1; ctx.stroke(); };
   const rail = (a, b, t, lift) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t + lift * Math.sin(Math.PI * t), a[2] + (b[2] - a[2]) * t];
 
-  function drawBoot(t) {         // the arc reactor: rings spin up before the chain fades in
-    const k = Math.min(1, t / 1.6), x = st.w / 2, y = st.h / 2, R0 = Math.min(st.w, st.h) * 0.18;
-    ctx.save(); ctx.translate(x, y); ctx.globalAlpha = 1 - k * 0.2; ctx.strokeStyle = C.blue; ctx.lineWidth = 2;
-    for (let i = 0; i < 4; i++) { ctx.save(); ctx.rotate(t * (1.2 + i * 0.5) * (i % 2 ? -1 : 1)); ctx.beginPath(); ctx.arc(0, 0, R0 * (0.5 + i * 0.28), 0, Math.PI * (1.2 + i * 0.25)); ctx.stroke(); ctx.restore(); }
-    ctx.fillStyle = C.blue; ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t * 8); ctx.beginPath(); ctx.arc(0, 0, R0 * 0.18, 0, 6.2832); ctx.fill();
-    ctx.restore(); ctx.globalAlpha = 1; ctx.fillStyle = C.blue; ctx.font = '12px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText(`INITIALISING  ${Math.round(k * 100)}%`, x, y + R0 * 1.9);
+  function drawBoot(t) {         // the core waking: a heartbeat in the dark, ignition, rings spinning up, a flash as it comes online
+    const x = st.w / 2, y = st.h / 2, R0 = Math.min(st.w, st.h) * 0.2, B = BOOT || 1, u = t / B;
+    const beat = tt => { if (tt < 0) return 0; const p = tt % 0.9; return Math.exp(-p * 9) * (p < 0.7 ? 1 : 0); };            // lub-dub
+    const hb = t < 0.9 * B / 4.2 + 1.4 ? Math.max(beat(t * 4.2 / B - 0.15), 0.6 * beat(t * 4.2 / B - 0.42)) : 0;
+    const wake = Math.min(1, Math.max(0, (u - 0.25) / 0.45)), settle = Math.min(1, Math.max(0, (u - 0.7) / 0.3)), flash = Math.exp(-Math.pow((u - 0.78) * 9, 2));
+    ctx.save(); ctx.translate(x, y);
+    const gl = ctx.createRadialGradient(0, 0, 1, 0, 0, R0 * (0.5 + wake * 1.4 + hb * 0.4)); gl.addColorStop(0, C.blue); gl.addColorStop(1, 'transparent'); ctx.globalAlpha = 0.10 + 0.45 * wake * (1 - settle * 0.5) + 0.25 * hb + 0.5 * flash; ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(0, 0, R0 * 2, 0, 6.2832); ctx.fill();
+    ctx.strokeStyle = C.blue; ctx.lineWidth = 2;
+    for (let i = 0; i < 4; i++) { ctx.save(); ctx.rotate(t * (0.6 + i * 0.5) * wake * (i % 2 ? -1 : 1)); ctx.beginPath(); ctx.arc(0, 0, R0 * (0.45 + i * 0.28) * (1 + 0.08 * hb), 0, Math.PI * (1.1 + i * 0.28)); ctx.globalAlpha = wake * (1 - settle * 0.85); ctx.stroke(); ctx.restore(); }
+    ctx.globalAlpha = 1; ctx.fillStyle = C.tx; ctx.beginPath(); ctx.arc(0, 0, R0 * (0.05 + 0.04 * hb + 0.06 * wake + 0.1 * flash), 0, 6.2832); ctx.fill();
+    ctx.restore(); ctx.globalAlpha = 1;
   }
   function drawOrbit(t, fade) {
     ctx.lineWidth = 1; for (const [y, r, a] of [[-1.05, 1.35, 0.5], [-1.05, 1.15, 0.25], [1.05, 1.35, 0.5], [1.05, 1.15, 0.25], [0, 1.45, 0.12]]) ringAt(y, r, a * fade * (0.8 + 0.2 * Math.sin(t * 1.4)));
@@ -394,10 +436,10 @@ export async function openJarvis(win = window) {
     if (!open || st.docked) return; raf = win.requestAnimationFrame(frame);
     if (doc.hidden) return;
     const dt = Math.min(0.05, (now - last) / 1000); last = now; if (st.spin && !st.drag && st.view !== 'globe') st.yaw += dt * (st.view === 'skyline' ? 0.07 : 0.12);
-    const t = (now - st.t0) / 1000, bootT = t, fade = Math.min(1, Math.max(0, (bootT - 1.1) / 0.8));
+    const t = (now - st.t0) / 1000, bootT = t, fade = Math.min(1, Math.max(0, (bootT - (BOOT - 1.0)) / 0.9));
     for (const k of Object.keys(st.disp)) { const tgt = st.graph?.nodes.find(n => n.key === k)?.style.size; if (tgt != null) st.disp[k] += (tgt - st.disp[k]) * Math.min(1, dt * 5); }
     ctx.clearRect(0, 0, st.w, st.h); st.proj = [];
-    if (bootT < 2) drawBoot(bootT);
+    if (BOOT && bootT < BOOT + 0.3) drawBoot(bootT);
     if (st.graph && fade > 0) { if (st.view === 'globe') drawGlobe(t, fade, dt); else if (st.view === 'bubbles') drawBubbles(t, fade); else if (st.view === 'skyline') drawSkyline(t, fade); else drawOrbit(t, fade); }
     ctx.globalAlpha = 1; hudT += dt; if (hudT > 20) { hudT = 0; renderHud(); }
   }
@@ -464,14 +506,14 @@ export async function openJarvis(win = window) {
     dock() { if (st.docked) return; st.docked = true; root.hidden = true; dock.hidden = false; dockRender(); win.cancelAnimationFrame(raf); win.speechSynthesis?.cancel(); blip(500, 0.06); },
     undock() { if (!st.docked) return; st.docked = false; root.hidden = false; dock.hidden = true; last = performance.now(); resize(); raf = win.requestAnimationFrame(frame); blip(760, 0.06); },
     off() {
-      if (!open) return; open = null; stopPlay(); win.cancelAnimationFrame(raf); win.clearInterval(wTimer); win.clearInterval(mTimer); setWake(false);
+      if (!open) return; open = null; stopPlay(); win.cancelAnimationFrame(raf); win.clearInterval(wTimer); win.clearInterval(mTimer); bootTimers.forEach(t => win.clearTimeout(t)); setWake(false);
       win.removeEventListener('resize', resize); doc.removeEventListener('keydown', onKey, true); win.speechSynthesis?.cancel(); root.remove(); dock.remove();
     },
   };
   const onKey = e => { if (e.key === 'Escape' && !st.docked) { e.preventDefault(); e.stopPropagation(); api.dock(); } };
   doc.addEventListener('keydown', onKey, true);
   open = api;
-  setCam(); $('reg').hidden = st.view !== 'globe'; bootChime(); raf = win.requestAnimationFrame(frame);
+  setCam(); $('reg').hidden = st.view !== 'globe'; runBoot(); raf = win.requestAnimationFrame(frame);
   await load(st.win);
   setWatch(st.watch);
   return true;
