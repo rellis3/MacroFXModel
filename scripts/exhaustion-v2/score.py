@@ -343,17 +343,23 @@ def sub_check(R, cands, keep, elig, i0, chosen, rng):
 
 
 # ---------------------------------------------------------------- controls
-def positive_control(clock, mult, rng):
-    """Synthetic Brownian sessions (vol clock with the real intraday shape), lines = known sigma x the real line
-    multipliers. X2 on the true sigma must be within the floor p90; X0 must miss by time bucket by >= 5pp."""
+PC_REPS = 20   # gold exhaustion A2: the floor must include within-session clustering of touch outcomes
+
+
+def synth_rep(args):
+    """One synthetic history (2018 -> 2026-08 Brownian sessions on the real vol clock, lines = known sigma x the real
+    line multipliers). Returns X0/X2 PRIMARY, the pooled X2 bias per target, X0's worst time-bucket miss and the
+    independent-Bernoulli floor p90 of this history."""
+    clock, mult, seed, arm = args
+    TT.LINE_ARM = arm
+    rng = np.random.default_rng(seed)
     dates = pd.bdate_range("2018-01-02", "2026-08-20")
     lsig = np.empty(len(dates)); lsig[0] = 0.0
     for i in range(1, len(dates)):
         lsig[i] = 0.97 * lsig[i - 1] + 0.25 * np.sqrt(1 - 0.97 ** 2) * rng.standard_normal()
     sig = 1.2 * np.exp(lsig)                                           # daily %
     rel = pd.Series(sig).div(pd.Series(sig).rolling(250, min_periods=60).median().shift(1)).to_numpy()
-    w = clock.to_numpy()[:264]                                         # 5-min shares 00:00-22:00 London
-    per_min = np.repeat(w / 5, 5)                                      # 1320 minutes
+    per_min = np.repeat(clock.to_numpy()[:264] / 5, 5)                 # 1320 London minutes
     rows = []
     for i, D in enumerate(dates):
         if not np.isfinite(rel[i]):
@@ -361,33 +367,49 @@ def positive_control(clock, mult, rng):
         sub = rng.standard_normal((1320, SUBSTEPS)) * np.sqrt(per_min[:, None] / SUBSTEPS) * sig[i] / 100
         path = np.cumsum(sub.ravel()).reshape(1320, SUBSTEPS)
         start = np.r_[0.0, path[:-1, -1]]
-        hi = np.maximum(start, path.max(1)); lo = np.minimum(start, path.min(1)); cl = path[:, -1]
-        o = 100.0
         idx = pd.date_range(pd.Timestamp(D).tz_localize("Europe/London"), periods=1320, freq="1min").tz_convert("UTC")
-        g = pd.DataFrame({"open": o * np.exp(start), "high": o * np.exp(hi), "low": o * np.exp(lo),
-                          "close": o * np.exp(cl)}, index=idx)
-        row = {"date": pd.Timestamp(D), "year": D.year, TT.LINE_ARM: sig[i], "rel": rel[i]}
-        for k, v in mult.items():
-            row[k] = v * sig[i]
+        g = pd.DataFrame({"open": 100 * np.exp(start), "high": 100 * np.exp(np.maximum(start, path.max(1))),
+                          "low": 100 * np.exp(np.minimum(start, path.min(1))), "close": 100 * np.exp(path[:, -1])}, index=idx)
+        row = {"date": pd.Timestamp(D), "year": D.year, arm: sig[i], "rel": rel[i]}
+        row.update({k: v * sig[i] for k, v in mult.items()})
         rows += TT.touches_for_session(g, pd.Series(row), "C", pd.DatetimeIndex([], tz="UTC"))
     X = pd.DataFrame(rows)
-    clocks = {Y: clock for Y in TEST_YEARS}
-    R, _ = walk(X, clocks, "C", ["X0", "X2"])
+    R, _ = walk(X, {Y: clock for Y in TEST_YEARS}, "C", ["X0", "X2"])
     sessions = sorted(set(R["next"]["date"]) | set(R["sig"]["date"]))
     srel = pd.concat([R[t][["date", "rel"]] for t in TARGETS]).drop_duplicates("date").set_index("date")["rel"]
     qe = np.quantile(srel.reindex(sessions).to_numpy(), [.2, .4, .6, .8])
-    sc = Scorer(R, ["X0", "X2"], sessions, qe)
-    prim, _, lls = sc.stats(np.arange(len(sessions)))
-    fl = floor_dist(R, "X2", qe, rng, draws=300)
-    tb = []
-    for tg in TARGETS:
-        g = R[tg].groupby("b4").apply(lambda x: abs(x["y"].mean() - x["X0"].mean()))
-        tb.append(float(g.max() * 100))
-    ok = prim[1] <= np.quantile(fl, .9) and max(tb) >= 5
-    say(f"positive control (synthetic Brownian, {len(sessions)} sessions, {len(X)} touches): X2 {prim[1]:.2f}pp vs floor "
-        f"p90 {np.quantile(fl, .9):.2f}; X0 {prim[0]:.2f}pp, worst time-bucket miss {max(tb):.1f}pp -> {'ok' if ok else 'FAIL'}")
-    return {"X2_primary": float(prim[1]), "floor_p90": float(np.quantile(fl, .9)), "X0_primary": float(prim[0]),
-            "X0_worst_bucket_miss": max(tb), "pass": bool(ok)}
+    prim, _, _ = Scorer(R, ["X0", "X2"], sessions, qe).stats(np.arange(len(sessions)))
+    bias = {tg: float((R[tg]["X2"].mean() - R[tg]["y"].mean()) * 100) for tg in TARGETS}
+    tb = max(float(R[tg].groupby("b4").apply(lambda x: abs(x["y"].mean() - x["X0"].mean())).max() * 100) for tg in TARGETS)
+    fl = floor_dist(R, "X2", qe, rng, draws=200)
+    return {"X0": float(prim[0]), "X2": float(prim[1]), "bias": bias, "x0_bucket": tb,
+            "bern_p90": float(np.quantile(fl, .9)), "n_touches": int(len(X))}
+
+
+def positive_control(clock, mult, arm):
+    """Gold exhaustion A2. PC_REPS independent synthetic histories the size of the real one. Pass: (1) X2's pooled bias
+    averaged over the histories within +/-1pp on both targets (the formula and scorer are right); (2) X0's worst
+    time-bucket miss >= 5pp in the median history (the clock effect is recoverable). The spread of X2's PRIMARY across
+    histories is the noise floor of a perfect forecaster with the real clustering of touches; it replaces the
+    independent-Bernoulli floor for 'calibrated to noise'."""
+    from concurrent.futures import ProcessPoolExecutor
+    seeds = np.random.SeedSequence(SEED).spawn(PC_REPS)
+    jobs = [(clock, mult, int(sq.generate_state(1)[0]), arm) for sq in seeds]
+    with ProcessPoolExecutor(max_workers=6) as ex:
+        reps = list(ex.map(synth_rep, jobs))
+    x2 = np.array([r["X2"] for r in reps])
+    bias = {tg: float(np.mean([r["bias"][tg] for r in reps])) for tg in TARGETS}
+    tb = float(np.median([r["x0_bucket"] for r in reps]))
+    bern = float(np.median([r["bern_p90"] for r in reps]))
+    ok = all(abs(v) <= 1.0 for v in bias.values()) and tb >= 5
+    say(f"positive control ({PC_REPS} synthetic histories, ~{int(np.mean([r['n_touches'] for r in reps]))} touches each): "
+        f"X2 pooled bias next {bias['next']:+.2f}pp / sig {bias['sig']:+.2f}pp; X0 worst time-bucket miss (median) {tb:.1f}pp "
+        f"-> {'ok' if ok else 'FAIL'}")
+    say(f"  noise floor of a perfect forecaster WITH touch clustering: X2 PRIMARY median {np.median(x2):.2f}pp, p90 "
+        f"{np.quantile(x2, .9):.2f}pp (independent-Bernoulli floor p90 {bern:.2f}pp)")
+    return {"reps": PC_REPS, "X2_bias": bias, "X0_worst_bucket_median": tb, "X2_primary_reps": x2.tolist(),
+            "clustered_floor_median": float(np.median(x2)), "clustered_floor_p90": float(np.quantile(x2, .9)),
+            "bernoulli_floor_p90_median": bern, "pass": bool(ok)}
 
 
 def main(sym):
@@ -397,7 +419,7 @@ def main(sym):
     TT.LINE_ARM = TT.line_arm(sym, "C")
     mult = {c: float((T[c] / T[TT.LINE_ARM]).median()) for c in T.columns if c.startswith(f"{TT.LINE_ARM}_")}
     clockC = pd.read_parquet(out / "clock_C.parquet")
-    pc = positive_control(clockC[2019] if 2019 in clockC.columns else clockC["2019"], mult, rng)
+    pc = positive_control(clockC[2019] if 2019 in clockC.columns else clockC["2019"], mult, TT.LINE_ARM)
     if not pc["pass"]:
         (out / "report.txt").write_text("\n".join(LOG) + "\n")
         raise SystemExit("positive control FAILED: nothing scored")
@@ -417,6 +439,11 @@ def main(sym):
             R[tg].to_parquet(out / f"pred_{track}_{tg}.parquet")
         sess_hl = pd.read_parquet(ROOT / f"analysis/output/ladder-v2-{sym.lower()}/test_{track}.parquet").set_index("date")["hl"]
         res[track] = score_track(R, track, cands, rng, flags, sess_hl)
+        c = res[track]["chosen"]
+        res[track]["clustered_floor_p90"] = pc["clustered_floor_p90"]
+        res[track]["chosen_calibrated_to_clustered_floor"] = bool(res[track]["cands"][c]["primary"] <= pc["clustered_floor_p90"])
+        say(f"  {track}: chosen {c} {res[track]['cands'][c]['primary']:.2f}pp vs clustered floor p90 {pc['clustered_floor_p90']:.2f}"
+            f" -> calibrated to noise (clustered): {res[track]['chosen_calibrated_to_clustered_floor']}")
         res[track]["fitted"] = fits
         # placebo levels: same fitted models applied to touches of borrowed lines (reported)
         Xp = pd.read_parquet(out / f"touches_{track}_placebo.parquet")
