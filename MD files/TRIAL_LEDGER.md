@@ -10,16 +10,16 @@ Generated 2026-11-19.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **419** |
-| validated | 73 |
+| claims tested (validated + null + underpowered) | **421** |
+| validated | 75 |
 | null | 206 |
 | underpowered | 140 |
 | context (base rates, descriptions: not counted as tests) | 64 |
-| pre-registrations with no banked verdict (below) | 90 |
+| pre-registrations with no banked verdict (below) | 91 |
 
-**What the count says (Lesson 02 §05).** If none of the 419 claims were real, tests at the usual 5% size would still pass
-about **21** of them by luck. 73 passed, so most passes are unlikely to be luck alone, but
-**roughly 21 of the 73 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 421 claims were real, tests at the usual 5% size would still pass
+about **21.1** of them by luck. 75 passed, so most passes are unlikely to be luck alone, but
+**roughly 21 of the 75 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -510,6 +510,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-18 | ladder-v2-nq-cvf | volatility | context | forge/LADDER_V2_NQ_PREREG.md |
 | 2026-11-18 | ladder-v2-nq-fut | volatility | validated | forge/LADDER_V2_NQ_PREREG.md |
 | 2026-11-18 | roc-stall-trend-filter | price | null | forge/ROC_STALL_TREND_FILTER_PREREG.md |
+| 2026-11-19 | exhaustion-v2-nq | volatility | validated | forge/EXHAUSTION_V2_NQ_PREREG.md |
+| 2026-11-19 | exhaustion-v2-nq-fut | volatility | validated | forge/EXHAUSTION_V2_NQ_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -593,6 +595,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/THEORY_FEATURES_LEVELS_PREREG.md`: Theory-lab features at the levels — pre-registration (EURUSD)
 - `forge/THREE_FADE_SETUPS_PREREG.md`: Three fade setups from an outside framework — pre-registration
 - `forge/TOUCH_BOOK_EURUSD_PREREG.md`: EURUSD Touch Book — pre-registration (continue vs fade at the lines, with excursions)
+- `forge/TPO_INITIAL_BALANCE_PREREG.md`: tpo-initial-balance — On NQ and ES, does a break of the US-cash initial balance that holds for an hour lead to
 - `forge/TRADE_PLAN_SHADOW_PREREG.md`: trade-plan-shadow — does joining the tested direction score (which way) to the vol forecast (stop, target, siz
 - `forge/TRENDDAY_RETEST_PREREG.md`: Trend-day filter and acceptance-retest entry for the rich-IV break rule — pre-registration
 - `forge/VF3_SHADOW_P1_PREREG.md`: VF3 shadow S1: time-aware intraday probabilities, prospective evaluation (registered 2026-10-10)
