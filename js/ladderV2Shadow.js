@@ -138,3 +138,69 @@ export function buildText(kind, track, sigmas, session) {
   }
   return lines.join('\n');
 }
+
+// ── per-day series (forecast-reversion page: v2 lines for any date) ────────────────────────────────
+/** NQ: Map NY-close key -> sigma (daily %) forecast for the NEXT weekday session after that bar. */
+export function nqSigmaSeries(d1) {
+  const bars = d1.filter(b => b.key >= PARAMS.instruments.NQ.har_start && weekday(b.key));
+  if (bars.length < 300) return new Map();
+  const last = bars[bars.length - 1];
+  const s = harRvLogSigma([...bars, { open: last.close, high: last.close, low: last.close, close: last.close }]);
+  const out = new Map();
+  for (let i = 0; i < bars.length; i++) if (Number.isFinite(s[i])) out.set(bars[i].key, s[i] / SQRT252);
+  return out;
+}
+
+/** GOLD / EURUSD: Map NY-close key -> HAR-CJ sigma (daily %) forecast for the next session, from 5-min closes. */
+export function harcjSigmaSeries(sym, m5) {
+  const P = PARAMS.instruments[sym];
+  const days = new Map();
+  let prevKey = null, prevC = null;
+  for (const [t, c] of m5) {
+    const k = nyKey(t);
+    if (k !== prevKey) { prevKey = k; prevC = c; if (!days.has(k)) days.set(k, { rv: 0, bv: 0, lastAbs: null }); continue; }
+    const r = Math.log(c / prevC); prevC = c;
+    const d = days.get(k);
+    d.rv += r * r;
+    if (d.lastAbs !== null) d.bv += (Math.PI / 2) * Math.abs(r) * d.lastAbs;
+    d.lastAbs = Math.abs(r);
+  }
+  const keys = [...days.keys()].filter(k => weekday(k) && days.get(k).rv > 0).sort();
+  const C = [], J = [];
+  for (const k of keys) {
+    const { rv, bv } = days.get(k);
+    const c = bv > 0 ? Math.min(rv, bv) : rv;
+    C.push(c); J.push(Math.max(rv - c, 0));
+  }
+  const out = new Map();
+  let s5 = 0, s22 = 0;
+  for (let i = 0; i < keys.length; i++) {
+    s5 += C[i]; s22 += C[i];
+    if (i >= 5) s5 -= C[i - 5];
+    if (i >= 22) s22 -= C[i - 22];
+    if (i < 21) continue;
+    const x = [1, Math.log(C[i]), Math.log(s5 / 5), Math.log(s22 / 22), Math.log1p(J[i] / C[i])];
+    const z = x.reduce((s, v, j) => s + v * P.coef[j], 0);
+    out.set(keys[i], Math.sqrt(Math.exp(z + P.s2 / 2)) * 100);
+  }
+  return out;
+}
+
+/** sigma for a London session date from a key -> sigma Map: the last key strictly before the session. */
+export function sigmaForSession(series, session) {
+  let best = null, bestKey = '';
+  for (const [k, v] of series) if (k < session && k > bestKey) { bestKey = k; best = v; }
+  return best == null ? null : { sigma: best, asof: bestKey };
+}
+
+/** The page's per-day level object: rungs (% of open) named like the fitted ladder, plus zones and odds. */
+export function dayLevels(sym, track, sigma) {
+  const L = ladderFor(sym, track, sigma);
+  const P = PARAMS.instruments[sym];
+  const o = { sigma };
+  for (const q of QS) for (const t of TAUS) o[`${q}_p${t}`] = L[q][t];
+  o.zone50_pct = P.zone_sigma[0] * sigma;
+  o.zone75_pct = P.zone_sigma[1] * sigma;
+  o.odds = P.odds;                     // { '50': [4 buckets], '75': [...], '90': [...] }, % ; buckets 00-07/07-12/12-16/16-22 London
+  return o;
+}
