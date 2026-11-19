@@ -27,6 +27,7 @@ import touches as TT  # noqa: E402
 from forge.data_screens import input_hashes  # noqa: E402
 
 SEED, B, BLOCK = 20261119, 2000, 63
+SUBSTEPS = 60   # positive-control path monitoring per minute (gold exhaustion A1: 8 biased X2 by +0.9..1.5pp)
 TEST_YEARS = range(2019, 2027)
 TARGETS = ("next", "sig")
 FAMS, RUNGS = TT.FAMS, TT.RUNGS
@@ -357,8 +358,8 @@ def positive_control(clock, mult, rng):
     for i, D in enumerate(dates):
         if not np.isfinite(rel[i]):
             continue
-        sub = rng.standard_normal((1320, 8)) * np.sqrt(per_min[:, None] / 8) * sig[i] / 100
-        path = np.cumsum(sub.ravel()).reshape(1320, 8)
+        sub = rng.standard_normal((1320, SUBSTEPS)) * np.sqrt(per_min[:, None] / SUBSTEPS) * sig[i] / 100
+        path = np.cumsum(sub.ravel()).reshape(1320, SUBSTEPS)
         start = np.r_[0.0, path[:-1, -1]]
         hi = np.maximum(start, path.max(1)); lo = np.minimum(start, path.min(1)); cl = path[:, -1]
         o = 100.0
