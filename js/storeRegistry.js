@@ -54,6 +54,7 @@ export const STORES = {
   release_layer1_v1: R('Release Reaction live record', 1),
   release_layer2_v1: R('Release Reaction Layer 2 factor sheet', 1),
   spread_episodes_v1: L('Spread-turn episodes forward record', 5),
+  jarvis_watch_v1: L('Jarvis watcher snapshot + phone-alert log', 2),
   bank_credit_v1: L('BIS bank-credit snapshot + release dates', 5),
   hmm_hourly_v1: R('Hourly market-state log (quiet/active per pair)', 2),
   newsletter_archive_v1: L('Newsletter archive (issues + range-calibration score)', 3, { market: false }),
