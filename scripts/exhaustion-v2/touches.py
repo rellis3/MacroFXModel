@@ -30,16 +30,22 @@ def line_arm(sym, track):
         return "E6"
     import json
     r = json.loads((ROOT / f"analysis/output/ladder-v2-{sym.lower()}/results.json").read_text())
+    if track == "F" and r.get("c_vs_f", {}).get("same"):
+        return r["C"]["chosen"]          # H3 'same': the futures reuse the CFD spec (EURUSD); 'different' keeps its own (gold)
     return r[track]["chosen"]
 FAMS = ("OH", "OL", "OCu", "OCd", "PH", "PL")
 RUNGS = (50, 75, 90)
 NEXT = {50: 75, 75: 90}
 
 
-def usd_major_times() -> pd.DatetimeIndex:
+EVENT_COUNTRIES = {"EURUSD": ("United States", "Euro Area")}   # default: United States only
+
+
+def usd_major_times(sym: str = "NQ") -> pd.DatetimeIndex:
+    """Major-impact release times (UTC) for the countries that move this instrument."""
     sys.path.insert(0, str(ROOT / "scripts/calendar"))
     from fetch_nasdaq_calendar import load_calendar
-    c = load_calendar(countries=("United States",))
+    c = load_calendar(countries=EVENT_COUNTRIES.get(sym, ("United States",)))
     c = c[c["impact"].astype(str).str.lower().isin(["major", "high"])]
     t = pd.to_datetime(c["datetime_raw"], errors="coerce").dropna()
     t = t[(t.dt.hour != 0) | (t.dt.minute != 0)]              # all-day rows have no time
@@ -152,8 +158,9 @@ def slow_check(g, row, rows):
 def main(sym):
     out = ROOT / f"analysis/output/exhaustion-v2-{sym.lower()}"
     out.mkdir(parents=True, exist_ok=True)
-    events = usd_major_times()
-    log = [f"USD Major release times: {len(events)} ({events.min()} -> {events.max()})"]
+    events = usd_major_times(sym)
+    log = [f"Major release times ({', '.join(EVENT_COUNTRIES.get(sym, ('United States',)))}): {len(events)} "
+           f"({events.min()} -> {events.max()})"]
     rng = np.random.default_rng(20261119)
     global LINE_ARM
     for track in ("C", "F"):
