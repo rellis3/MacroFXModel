@@ -200,7 +200,7 @@ export async function openJarvis(win = window) {
     if (m === 'chain') showCard(); else { $('card').hidden = true; R[m]?.(); }
   }
   $('mods').onclick = e => { const b = e.target.closest('button[data-m]'); if (b) setMod(b.dataset.m); };
-  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setMod: m => setMod(m), ask: q => { setMod('ask'); R.ask(q, true); }, tcol: t => tcol(t), colours: () => C };
+  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), setMod: m => setMod(m), ask: q => { setMod('ask'); R.ask(q, true); }, tcol: t => tcol(t), colours: () => C };
   loadModules().then(list => {
     for (const m of list) { R[m.id] = () => m.render($('pane'), xapi); if (!$('mods').querySelector(`[data-m="${m.id}"]`)) $('mods').insertAdjacentHTML('beforeend', ` <button type="button" data-m="${esc(m.id)}" aria-pressed="false">${esc(m.label)}</button>`); }
   });
