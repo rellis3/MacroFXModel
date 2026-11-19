@@ -61,6 +61,8 @@ const CSS = `#${ID}{--jva:var(--blue2);--jvtop:62px;position:fixed;inset:0;z-ind
 #${ID} .jv-cap{position:absolute;left:0;right:0;bottom:0;padding:110px 6vw 70px;box-sizing:border-box;text-align:center;pointer-events:none;z-index:4;transition:opacity .5s ease;background:linear-gradient(to top,color-mix(in srgb,var(--bg) 88%,transparent) 45%,transparent)}#${ID} .jv-cap[hidden]{display:none}
 #${ID} .jv-cap .t{font-size:12px;letter-spacing:.42em;color:var(--jva);text-shadow:0 0 12px var(--jva);margin-bottom:10px}#${ID} .jv-cap .x{font-size:clamp(16px,2.1vw,25px);line-height:1.55;color:var(--tx);text-shadow:0 0 18px var(--bg),0 0 6px var(--bg)}
 #${ID} .jv-cinexit{position:absolute;right:24px;top:20px;z-index:6;display:none}
+#${ID} .jv-cine{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:none;gap:8px;align-items:center;z-index:6;font-size:11px;color:var(--tx2)}#${ID}.jv-cinema .jv-cine{display:flex}
+#${ID} .jv-cine span{min-width:44px;text-align:center;color:var(--tx)}
 #${ID}.jv-cinema .jv-top,#${ID}.jv-cinema .jv-hud,#${ID}.jv-cinema .jv-reg,#${ID}.jv-cinema .jv-scrub,#${ID}.jv-cinema .jv-foot,#${ID}.jv-cinema .jv-boot,#${ID}.jv-cinema .jv-pane,#${ID}.jv-cinema .jv-card{opacity:0;pointer-events:none}
 #${ID}.jv-cinema .jv-cinexit{display:block}
 @media (max-width:1560px){#${ID} .jv-top .jv-sub{display:none}}
@@ -83,7 +85,7 @@ export async function openJarvis(win = window) {
 <div class="jv-top"><span class="jv-title" data-surface="widget.jarvis">J.A.R.V.I.S.</span><span class="jv-sub">desk intelligence · description only</span><span class="jv-sp"></span>
 <span id="${ID}-mods"></span><span id="${ID}-win"></span><span id="${ID}-view"></span>
 <button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Jarvis, ..." (microphone, this tab only)'>HEY JARVIS</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Jarvis keeps watching">DOCK ▾</button><button type="button" id="${ID}-off" title="Switch Jarvis off">OFF ✕</button></div>
-<div class="jv-cap" id="${ID}-cap" hidden><div class="t" id="${ID}-capt"></div><div class="x" id="${ID}-capx"></div></div><button type="button" class="jv-cinexit" id="${ID}-stop">■ END SHOW  ·  Esc</button><div class="jv-reg" id="${ID}-reg"></div><div class="jv-hud" id="${ID}-hud"></div><div class="jv-pane" id="${ID}-pane" hidden></div><div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div>
+<div class="jv-cap" id="${ID}-cap" hidden><div class="t" id="${ID}-capt"></div><div class="x" id="${ID}-capx"></div></div><button type="button" class="jv-cinexit" id="${ID}-stop">■ END SHOW  ·  Esc</button><div class="jv-cine" id="${ID}-cine"><button type="button" data-c="prev" title="Back one scene (left arrow)">⏮ BACK</button><button type="button" data-c="pause" id="${ID}-cpause" title="Pause or resume (space)">⏸ PAUSE</button><button type="button" data-c="next" title="Skip this scene (right arrow)">SKIP ⏭</button><button type="button" data-c="slow" title="Slower (minus)">−</button><span id="${ID}-crate">1.0×</span><button type="button" data-c="fast" title="Faster (plus)">+</button></div><div class="jv-reg" id="${ID}-reg"></div><div class="jv-hud" id="${ID}-hud"></div><div class="jv-pane" id="${ID}-pane" hidden></div><div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div>
 <div class="jv-scrub" id="${ID}-scrub"><button type="button" id="${ID}-play" title="Replay the last 60 sessions">▶ PLAY</button><input type="range" id="${ID}-sl" min="0" max="0" value="0" aria-label="Session to show"><span id="${ID}-sd" class="jv-sub" style="min-width:150px;text-align:right">LATEST</span><button type="button" id="${ID}-now">LATEST</button><button type="button" id="${ID}-expl" title="Describe what was going on around this day (one model call)">EXPLAIN THIS DAY</button></div>
 <div class="jv-foot">drag to turn · wheel to zoom · click a market · Esc docks · none of this is a forecast</div>`;
   doc.body.appendChild(root);
@@ -183,17 +185,22 @@ export async function openJarvis(win = window) {
   // the voice LEADS: speakAsync resolves when the narration has finished (or, with the voice off, after a reading-speed pause), so a director moves the picture on only then
   function speakAsync(text, rate = 1) {
     return new Promise(res => {
-      const t = String(text ?? ''), est = Math.max(2, t.split(/\s+/).filter(Boolean).length / 2.6) * 1000 / rate; let done = false;
-      const fin = () => { if (!done) { done = true; st.speakStop = null; res(); } };
-      if (!st.voice || !win.speechSynthesis) { const id = win.setTimeout(fin, est); st.speakStop = () => { win.clearTimeout(id); fin(); }; return; }
-      try {
-        win.speechSynthesis.cancel(); const u = new win.SpeechSynthesisUtterance(t.slice(0, 1200)); if (voice) u.voice = voice; u.lang = voice?.lang ?? 'en-GB'; u.rate = 1.02 * rate; u.pitch = 0.82; u.onend = fin; u.onerror = fin; win.speechSynthesis.speak(u);
-        const id = win.setTimeout(fin, est * 2.5 + 4000); st.speakStop = () => { win.clearTimeout(id); try { win.speechSynthesis.cancel(); } catch (e) { /* idle */ } fin(); };
-      } catch (e) { win.setTimeout(fin, est); }
+      const t = String(text ?? ''), est = Math.max(2, t.split(/\s+/).filter(Boolean).length / 2.6) * 1000 / rate; let done = false, tid = 0, left = est, since = 0, paused = false;
+      const fin = () => { if (!done) { done = true; win.clearTimeout(tid); st.speakStop = null; st.speakCtl = null; res(); } };
+      const aloud = st.voice && win.speechSynthesis;
+      const arm = ms => { win.clearTimeout(tid); since = performance.now(); left = ms; tid = win.setTimeout(fin, ms); };
+      st.speakStop = () => { try { if (aloud) win.speechSynthesis.cancel(); } catch (e) { /* idle */ } fin(); };
+      st.speakCtl = { stop: st.speakStop, pause: on => { if (done || paused === on) return; paused = on;
+        if (aloud) { try { on ? win.speechSynthesis.pause() : win.speechSynthesis.resume(); } catch (e) { /* idle */ } if (on) win.clearTimeout(tid); else arm(est * 2.5 + 4000); }
+        else if (on) { win.clearTimeout(tid); left -= performance.now() - since; } else arm(Math.max(200, left)); } };
+      if (!aloud) { arm(est); return; }
+      try { win.speechSynthesis.cancel(); const u = new win.SpeechSynthesisUtterance(t.slice(0, 1200)); if (voice) u.voice = voice; u.lang = voice?.lang ?? 'en-GB'; u.rate = 1.02 * rate; u.pitch = 0.82; u.onend = fin; u.onerror = fin; win.speechSynthesis.speak(u); arm(est * 2.5 + 4000); }
+      catch (e) { arm(est); }
     });
   }
   const setCaption = (text, title = '') => { const c = $('cap'); if (!text) { c.hidden = true; return; } $('capt').textContent = title; $('capx').textContent = text; c.hidden = false; };
-  const setCinema = (on, stop = null) => { root.classList.toggle('jv-cinema', !!on); st.cinemaStop = on ? stop : null; if (!on) setCaption(null); };
+  const setCinema = (on, stop = null, ctl = null) => { root.classList.toggle('jv-cinema', !!on); st.cinemaStop = on ? stop : null; st.cinemaCtl = on ? ctl : null; if (!on) { setCaption(null); $('cpause').textContent = '⏸ PAUSE'; } };
+  const cineAct = a => { const c = st.cinemaCtl; if (!c) return; try { c[a]?.(); } catch (e) { /* the director must never break the HUD */ } };
 
   // ── data ──
   const jf = (u, o) => win.fetch(u, o).then(r => r.json());
@@ -311,7 +318,7 @@ export async function openJarvis(win = window) {
     if (m === 'chain') showCard(); else { $('card').hidden = true; R[m]?.(); }
   }
   $('mods').onclick = e => { const b = e.target.closest('button[data-m]'); if (b) setMod(b.dataset.m); };
-  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), sfx, setView: v => switchView(v), candles: () => ensureCandles(), speak: (t, rate) => speakAsync(t, rate), caption: (t, title) => setCaption(t, title), cinema: (on, stop) => setCinema(on, stop),
+  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), sfx, setView: v => switchView(v), candles: () => ensureCandles(), speak: (t, rate) => speakAsync(t, rate), caption: (t, title) => setCaption(t, title), cinema: (on, stop, ctl) => setCinema(on, stop, ctl), cineLabel: (rate, paused) => { $('crate').textContent = `${rate.toFixed(2).replace(/0$/, '')}×`; $('cpause').textContent = paused ? '▶ RESUME' : '⏸ PAUSE'; },
     globeTo: (lat, lon, zoom = 1) => { Object.assign(st.gl, { tlat: lat, tlon: lon, tzoom: zoom }); st.spin = false; }, flyTo: (x, z) => { st.cdTarget = { x, z }; }, setMod: m => setMod(m), ask: q => { setMod('ask'); R.ask(q, true); }, tcol: t => tcol(t), colours: () => C };
   loadModules().then(list => {
     win.setTimeout(fitTop, 0);
@@ -587,6 +594,7 @@ export async function openJarvis(win = window) {
   }
   dock.onclick = e => { const b = e.target.closest('button[data-d]'); if (!b) return; const d = b.dataset.d; if (d === 'open') api.undock(); else if (d === 'alerts') { api.undock(); setMod('alerts'); } else if (d === 'mic') setWake(!st.wake); else if (d === 'off') api.off(); };
   $('dockb').onclick = () => api.dock(); $('stop').onclick = () => st.cinemaStop?.();
+  $('cine').onclick = e => { const b = e.target.closest('button[data-c]'); if (b) cineAct(b.dataset.c); };
   $('off').onclick = () => api.off();
 
   // ── voice in: "Jarvis, ..." hands-free (Chrome's recognition; this tab only; stops when you switch it off) ──
@@ -619,7 +627,9 @@ export async function openJarvis(win = window) {
       win.removeEventListener('resize', resize); doc.removeEventListener('keydown', onKey, true); win.speechSynthesis?.cancel(); root.remove(); dock.remove();
     },
   };
-  const onKey = e => { if (e.key === 'Escape' && st.cinemaStop) { e.preventDefault(); e.stopPropagation(); st.cinemaStop(); return; } if (e.key === 'Escape' && !st.docked) { e.preventDefault(); e.stopPropagation(); api.dock(); } };
+  const CINE_KEYS = { ' ': 'pause', ArrowRight: 'next', ArrowLeft: 'prev', '+': 'fast', '=': 'fast', '-': 'slow', n: 'next', p: 'prev' };
+  const onKey = e => { if (st.cinemaCtl && CINE_KEYS[e.key] && !/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName ?? '')) { e.preventDefault(); e.stopPropagation(); cineAct(CINE_KEYS[e.key]); return; }
+    if (e.key === 'Escape' && st.cinemaStop) { e.preventDefault(); e.stopPropagation(); st.cinemaStop(); return; } if (e.key === 'Escape' && !st.docked) { e.preventDefault(); e.stopPropagation(); api.dock(); } };
   doc.addEventListener('keydown', onKey, true);
   open = api;
   setCamAll(); $('reg').hidden = st.view !== 'globe'; runBoot(); raf = win.requestAnimationFrame(frame);

@@ -25,7 +25,7 @@ test('the SHOW scene: null without a graph, otherwise a spoken script on the cha
   assert.equal(h.prepare({ st: { graph: null }, names }), null);
   const data = h.prepare({ st: { graph }, names }), sc = h.build({}, data);
   assert.equal(sc.view, 'chainfly'); assert.match(sc.text, /not a signal/); assert.equal(typeof sc.motion, 'function');
-  const all = buildScenes({ now: new Date(), chain: { holding: 1, broken: 1, quiet: 1, headline: 'x' }, extra: { chainfly: data } }), ids = all.map(s => s.id);
+  const all = buildScenes({ now: new Date(), mode: 'full', chain: { holding: 1, broken: 1, quiet: 1, headline: 'x' }, extra: { chainfly: data } }), ids = all.map(s => s.id);
   assert.equal(ids[ids.indexOf('chain') + 1], 'chainfly');
   const api = { st: { yaw: 1, pitch: 1 } }; sc.enter(api); sc.motion(api, 0.5); assert.equal(api.st.yaw, 0);
   assert.equal(buildScenes({ now: new Date(), extra: {} }).some(s => s.id === 'chainfly'), false);

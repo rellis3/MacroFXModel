@@ -43,3 +43,13 @@ test('spoken and readSeconds: plain words for markets; reading time scales with 
   assert.equal(spoken('NQ'), 'Nasdaq'); assert.equal(spoken('EURUSD'), 'EUR USD');
   assert.ok(readSeconds('one two three four five six seven eight nine ten') > readSeconds('hi')); assert.ok(readSeconds('') >= 2);
 });
+
+test('buildScenes: the default is the short morning brief; the full tour keeps every scene; the brief only holds the quick ids', async () => {
+  const { QUICK_IDS, registerShowScene } = await import('./showCore.js');
+  registerShowScene({ id: 'zz-long', after: 'candles', build: () => ({ title: 'Long', view: 'globe', text: 'a long scene that only the full tour plays' }) });
+  const r = candleRows(vol, bias), inp = { now: new Date('2026-11-19T07:30:00Z'), movers: topMovers(r), board: boardSummary(r), chain: { holding: 1, broken: 1, quiet: 1, headline: 'x' }, events: ['CPI'] };
+  const quick = buildScenes(inp), full = buildScenes({ ...inp, mode: 'full' });
+  assert.ok(quick.every(s => QUICK_IDS.has(s.id)) && !quick.some(s => s.id === 'zz-long'));
+  assert.ok(full.some(s => s.id === 'zz-long') && full.length > quick.length);
+  assert.ok(quick.reduce((n, s) => n + s.text.split(/\s+/).length, 0) < 220, 'the morning brief should stay short');
+});

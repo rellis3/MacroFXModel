@@ -53,7 +53,7 @@ test('the SHOW scene registers after candles and builds from data, null when mis
   await import('./jarvisViewSession.js');
   const base = { now: new Date(), movers: [{ key: 'NQ', ratio: 2, oc: 1 }], board: { up: 1, dn: 0, quiet: 0 } };
   const st = sessionStats(mk(1, 10), { forecast: { oc_median: 0.5 } });
-  const sc = buildScenes({ ...base, extra: { session: { key: 'NQ', mode: 'intraday', st } } }), ids = sc.map(s => s.id);
+  const sc = buildScenes({ ...base, mode: 'full', extra: { session: { key: 'NQ', mode: 'intraday', st } } }), ids = sc.map(s => s.id);
   assert.equal(ids[ids.indexOf('candles') + 1], 'session'); const s = sc.find(x => x.id === 'session'); assert.equal(s.view, 'session'); assert.equal(typeof s.enter, 'function'); assert.equal(typeof s.motion, 'function');
   assert.ok(!buildScenes({ ...base, extra: {} }).some(x => x.id === 'session'));
 });

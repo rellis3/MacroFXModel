@@ -12,6 +12,8 @@ const list = a => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} an
 // Extra scenes: a module registers { id, after, prepare?(api) -> data, build(inp, data) -> scene | null }. `after` is the id of the scene it follows ('candles', 'lean', 'chain' ...). The scene may carry
 // enter?(api) and motion?(api, p) (p runs 0..1 over the line's estimated length) so it can steer its own view. buildScenes() never throws because of a hook.
 export const SHOW_HOOKS = [];
+/** The scenes of the quick MORNING BRIEF (about two minutes). Everything else is in the FULL TOUR. */
+export const QUICK_IDS = new Set(['wake', 'movers', 'candles', 'lean', 'book', 'weather', 'chain', 'ahead', 'close']);
 export const registerShowScene = h => { if (h?.id && typeof h.build === 'function' && !SHOW_HOOKS.some(x => x.id === h.id)) SHOW_HOOKS.push(h); return h; };
 
 /** Reading time in seconds for a line when nobody is speaking it (about 2.6 words a second, never under 2 seconds). */
@@ -24,18 +26,18 @@ export const readSeconds = text => Math.max(2, String(text ?? '').split(/\s+/).f
  */
 export function buildScenes(inp = {}) {
   const now = inp.now ?? new Date(), mv = inp.movers ?? [], bd = inp.board ?? null, ch = inp.chain ?? null, ev = inp.events ?? [], sc = [];
-  sc.push({ id: 'wake', title: 'Good morning', view: 'globe', cam: { region: 'world' }, text: `${greeting(now)}. It is ${dayWord(now)}. Let me show you where the world stands.` });
+  sc.push({ id: 'wake', title: 'Good morning', view: 'globe', cam: { region: 'world' }, text: `${greeting(now)}. It is ${dayWord(now)}. Here is where things stand.` });
   if (mv.length) {
     const top = mv.slice(0, 3).map(m => `${spoken(m.key)} ${m.ratio > 0 ? 'up' : 'down'} ${pct(m.oc)}`);
-    sc.push({ id: 'movers', title: 'The biggest moves', view: 'globe', cam: { focus: mv[0].key }, text: `The biggest moves against their own normal are ${list(top)}. Each one is measured against how far that market usually travels, so a big move in a sleepy market counts for more.` });
-    sc.push({ id: 'candles', title: 'Today as candles', view: 'candles', cam: { fly: true }, text: `Here is the whole board as candles. Green stands above the floor, red hangs below it, and the height is how far each market has moved against its usual move. ${bd ? `${bd.up} markets are up, ${bd.dn} are down, and ${bd.quiet} are barely moving.` : ''}` });
+    sc.push({ id: 'movers', title: 'The biggest moves', view: 'globe', cam: { focus: mv[0].key }, text: `The biggest moves against their own normal: ${list(top)}.` });
+    sc.push({ id: 'candles', title: 'Today as candles', view: 'candles', cam: { fly: true }, text: `Today as candles: green above the floor, red below, sized against each market's usual move. ${bd ? `${bd.up} up, ${bd.dn} down, ${bd.quiet} barely moving.` : ''}` });
   }
   if (bd && bd.haveLean) {
-    sc.push({ id: 'lean', title: 'The lean', view: 'candles', cam: { fly: true, lean: true }, text: `The chevrons are the bias engine's lean. It reads ${bd.bull} markets bullish, ${bd.bear} bearish and ${bd.flat} neutral. Treat that as context only: its back-test found no proven skill at calling direction.` });
+    sc.push({ id: 'lean', title: 'The lean', view: 'candles', cam: { fly: true, lean: true }, text: `The engine leans bullish on ${bd.bull}, bearish on ${bd.bear}, neutral on ${bd.flat}. Context only: its back-test found no proven skill at direction.` });
   }
   if (ch) {
     const head = ch.headline ? ch.headline.replace(/\s+/g, ' ') : `${ch.holding} links are holding and ${ch.broken} are broken.`;
-    sc.push({ id: 'chain', title: 'The chain', view: 'skyline', cam: { drift: true }, text: `Now the chain, the story of how one market feeds the next. ${head}` });
+    sc.push({ id: 'chain', title: 'The chain', view: 'skyline', cam: { drift: true }, text: `Now the chain. ${head}` });
   }
   if (ev.length) sc.push({ id: 'ahead', title: 'The day ahead', view: 'globe', cam: { region: 'world' }, text: `Looking ahead today: ${list(ev.slice(0, 4))}.` });
   for (const h of SHOW_HOOKS) {
@@ -44,6 +46,6 @@ export function buildScenes(inp = {}) {
       let at = sc.findIndex(y => y.id === h.after); at = at < 0 ? sc.length : at + 1; sc.splice(at, 0, { id: h.id, title: x.title ?? h.id, view: x.view ?? 'globe', cam: x.cam ?? null, text: x.text, enter: x.enter, motion: x.motion });
     } catch (e) { /* a scene must never stop the show */ }
   }
-  sc.push({ id: 'close', title: 'Standing by', view: 'globe', cam: { region: 'world' }, text: 'That is the picture. This is description, not advice, and none of it is a forecast. I am watching, and I will tell you if anything breaks.' });
-  return sc;
+  sc.push({ id: 'close', title: 'Standing by', view: 'globe', cam: { region: 'world' }, text: 'That is the picture. Description, not advice. I am watching.' });
+  return inp.mode === 'full' ? sc : sc.filter(x => QUICK_IDS.has(x.id));
 }

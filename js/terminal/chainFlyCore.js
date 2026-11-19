@@ -43,7 +43,7 @@ export function spokenMove(end) {
  * A stop is a node on a judged link (holding or broken) or a node that moved beyond its noise; broken ends come first when the list must be trimmed.
  * cam = where the camera passes: beside the node so the node ring frames it.
  */
-export function flyRoute(graph, layout, names = {}, max = 12) {
+export function flyRoute(graph, layout, names = {}, max = 5) {
   const nodes = graph?.nodes ?? [], edges = graph?.edges ?? [], by = Object.fromEntries(nodes.map(n => [n.key, n])), kind = {};
   for (const e of edges) {
     if (e.verdict !== 'broken' && e.verdict !== 'holding') continue;
