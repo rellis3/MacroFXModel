@@ -170,7 +170,10 @@ P(extreme ≥ X+δ) ÷ P(extreme ≥ X). Prior evidence:
 - Time of day does (15% before 11:00 London, 64% after 20:00).
 - The Asia range already used cuts the remaining travel (T7).
 
-### 2.1 Prereg  (C+F)  `[ ]`
+### 2.1 Prereg  (C+F)  `[~]`
+- [x] NQ: `forge/EXHAUSTION_V2_NQ_PREREG.md` (2026-11-19). Lines = OH/OL/OC/projected H/L p50/75/90 (as the export);
+      targets next rung and 0.25σ; 9 candidates X0–X8 (plain odds, random walk clock/vol-clock, hour table, hot/cold day,
+      release to come, range used, logistic blend, futures VWAP/volume).
 - [ ] P(further ≥ δ | touched rung, London time bucket, range used so far) per instrument.
 - [ ] Baselines: the unconditional ladder ratio, plus a placebo ladder with matched distances.
 
