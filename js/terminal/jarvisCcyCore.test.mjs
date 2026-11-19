@@ -20,5 +20,5 @@ test('orbit helpers: radius grows with the ring, size and speed are bounded', ()
 });
 test('ccyScript: names strongest, weakest and the biggest pair; says it is not a forecast', () => {
   const t = ccyScript(ccyStrength(mk({ USD: 3, EUR: 2, GBP: 1, JPY: -3, AUD: 0, NZD: -1, CAD: 0.5, CHF: -0.5 })));
-  assert.match(t, /The dollar is the strongest/); assert.match(t, /the yen the weakest/); assert.match(t, /USD JPY, up/); assert.match(t, /not a forecast/); assert.equal(ccyScript(null), null);
+  assert.match(t, /The dollar is the strongest/); assert.match(t, /the yen the weakest/); assert.match(t, /Dollar Yen, up/); assert.match(t, /not a forecast/); assert.equal(ccyScript(null), null);
 });

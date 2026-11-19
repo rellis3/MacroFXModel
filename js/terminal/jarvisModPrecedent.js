@@ -3,7 +3,7 @@
 import { registerJarvisModule } from './jarvisModules.js';
 
 export const FAMILIES = [['CPI', 'US CPI'], ['NFP', 'US payrolls'], ['FOMC', 'Fed decision'], ['ECB', 'ECB decision'], ['BOE', 'BoE decision'], ['BOJ', 'BoJ decision'], ['PCE', 'US PCE'], ['RETAIL', 'US retail sales'], ['GDP', 'US GDP'], ['REFUNDING', 'Treasury refunding'], ['UKFISCAL', 'UK budget']];
-export const MARKETS = [['nq', 'Nasdaq'], ['es', 'S&P 500'], ['eurusd', 'EURUSD'], ['gbpusd', 'GBPUSD'], ['usdjpy', 'USDJPY'], ['gold', 'Gold'], ['dx', 'Dollar index'], ['vix', 'VIX'], ['gilt', 'Gilt future'], ['bund', 'Bund future']];
+export const MARKETS = [['nq', 'Nasdaq'], ['es', 'S&P 500'], ['eurusd', 'Euro / Dollar'], ['gbpusd', 'Pound / Dollar'], ['usdjpy', 'Dollar / Yen'], ['gold', 'Gold'], ['dx', 'Dollar index'], ['vix', 'VIX'], ['gilt', 'Gilt future'], ['bund', 'Bund future']];
 const KEY = 'jarvis.precedent.pick';
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 const escT = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

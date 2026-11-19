@@ -1,6 +1,7 @@
 // js/terminal/jarvisViewVol.js: Jarvis's VOL view: a molten wireframe terrain you fly over. Across = the desk's markets grouped by asset class, along = time (the last ~60 completed sessions, oldest first, flying towards the newest),
 // height and colour = how stretched that day's high-low range was against that market's own normal (the median of its previous 20 sessions' ranges; 1.0 = a normal day, clipped at 3). A white contour marks the 1.0 level.
 // Canvas 2D with its own perspective; every typed array is allocated once and reused. DESCRIPTION ONLY: it shows what already happened, never a forecast. The maths lives in jarvisVolCore.js.
+import { marketName } from './jarvisNames.js';
 import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { VOL_GROUPS, VOL_MARKETS, CLIP, buildTerrain, dailyRanges, vixCurve, volScript } from './jarvisVolCore.js';
@@ -127,7 +128,7 @@ function draw(ctx, g, api) {
     shown++; const x = PX[k], y = PY[k], tx = x + 14, ty = y - 26 - shown * 2;
     ctx.strokeStyle = C.tx; ctx.globalAlpha = fade * 0.6; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tx - 3, ty + 3); ctx.stroke();
     ctx.fillStyle = C.tx; ctx.globalAlpha = fade; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, tau); ctx.fill();
-    ctx.fillText(`${p.key}  ${fmtD(p.date)}  ${p.v >= CLIP - 0.005 ? '3.0x+' : p.v.toFixed(1) + 'x'}`, tx, ty);
+    ctx.fillText(`${marketName(p.key, { short: true })}  ${fmtD(p.date)}  ${p.v >= CLIP - 0.005 ? '3.0x+' : p.v.toFixed(1) + 'x'}`, tx, ty);
   }
   drawLegend(ctx, g, T, D.V, sj);
   ctx.restore();
@@ -153,9 +154,9 @@ function drawLegend(ctx, g, T, V, sj) {
   // right: the latest session, the swept session and the VIX curve
   const xr = Math.max(18, W - 300); let y = 150; ctx.fillStyle = C.blue; ctx.globalAlpha = fade * 0.95; ctx.fillText(`LATEST SESSION  ${fmtD(T.dates[T.ns - 1])}`, xr, y);
   ctx.fillStyle = C.tx; ctx.globalAlpha = fade * 0.9; ctx.fillText(`${T.stretched} of ${T.nm} markets at 1.5x their normal or more`, xr, y + 16);
-  T.latest.slice(0, 4).forEach((m, i) => { ctx.fillStyle = m.v >= 1.5 ? C.gold : C.tx2; ctx.fillText(`${m.key}  ${m.v.toFixed(2)}x`, xr + (i % 2) * 130, y + 32 + Math.floor(i / 2) * 14); });
+  T.latest.slice(0, 4).forEach((m, i) => { ctx.fillStyle = m.v >= 1.5 ? C.gold : C.tx2; ctx.fillText(`${marketName(m.key, { short: true })}  ${m.v.toFixed(2)}x`, xr + (i % 2) * 130, y + 32 + Math.floor(i / 2) * 14); });
   const sw = sj >= 0 && sj < T.ns ? T.dates[sj] : null;
-  if (sw) { let bi = 0; for (let i = 1; i < T.nm; i++) if (T.Z[sj * T.nm + i] > T.Z[sj * T.nm + bi]) bi = i; ctx.fillStyle = C.gold; ctx.fillText(`SWEEP  ${fmtD(sw)}  top: ${T.markets[bi].key} ${T.Z[sj * T.nm + bi].toFixed(2)}x`, xr, y + 66); }
+  if (sw) { let bi = 0; for (let i = 1; i < T.nm; i++) if (T.Z[sj * T.nm + i] > T.Z[sj * T.nm + bi]) bi = i; ctx.fillStyle = C.gold; ctx.fillText(`SWEEP  ${fmtD(sw)}  top: ${marketName(T.markets[bi].key, { short: true })} ${T.Z[sj * T.nm + bi].toFixed(2)}x`, xr, y + 66); }
   ctx.fillStyle = C.tx2; ctx.fillText(V ? `VIX ${V.vix.toFixed(1)}${V.vix3m != null ? `  ·  VIX3M ${V.vix3m.toFixed(1)}  ·  curve ${V.inverted ? 'INVERTED' : 'upward'}` : ''}` : 'VIX curve: no feed', xr, y + 84);
 }
 

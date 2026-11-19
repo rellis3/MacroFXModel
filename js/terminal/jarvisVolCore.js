@@ -1,6 +1,7 @@
 // js/terminal/jarvisVolCore.js: the pure half of Jarvis's VOL view, a landscape of "range used". For each desk market and each of the last ~60 completed sessions: the day's high-low range
 // (as a percent of price) divided by that market's OWN normal range, the median of its previous 20 sessions' ranges (point-in-time, so a day never sets its own yardstick). 1.0 = a normal day for that market.
 // Source: /api/ohlc-range daily bars (OANDA), the VIX curve from /api/fredhistory. DESCRIPTION ONLY: how stretched each day was; never a forecast, never a trade.
+import { spokenName } from './jarvisNames.js';
 const num = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const CLIP = 3, LOOKBACK = 20, MIN_PRIOR = 10, SESSIONS = 60;
@@ -62,8 +63,7 @@ export function vixCurve(h) {
   const v = last(h?.vix); if (!v) return null; const m = last(h?.vix3m), ratio = m && m.v > 0 ? v.v / m.v : null;
   return { vix: v.v, vix3m: m?.v ?? null, ratio, inverted: ratio != null && ratio > 1, date: v.date };
 }
-const SAY = { NQ: 'Nasdaq', SPX500: 'the S and P', US30: 'the Dow', US2000: 'the Russell', DE30: 'the DAX', UK100: 'the FTSE', GOLD: 'gold', SILVER: 'silver', COPPER: 'copper', PLATINUM: 'platinum', WTI: 'W T I crude', BRENT: 'Brent', NATGAS: 'natural gas' };
-const say = k => SAY[k] ?? (k.length === 6 ? `${k.slice(0, 3)} ${k.slice(3)}` : k);
+const say = spokenName;
 const dayWord = iso => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(iso + 'T00:00:00Z'));
 /** The spoken script: from the real numbers only. null when there is no terrain. */
 export function volScript(T, V) {

@@ -1,5 +1,6 @@
 // js/terminal/jarvisCcyCore.js: the pure half of Jarvis's CURRENCIES view. A currency's strength today is the AVERAGE of its pair moves, each pair's open-to-now move divided by that pair's own usual
 // open-to-close move (forecast.oc_median), counted +move for the base currency and -move for the quote currency. No model, no forecast: it describes how far each currency has travelled so far today.
+import { spokenName } from './jarvisNames.js';
 export const CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
 export const CCY_NAMES = { USD: 'the dollar', EUR: 'the euro', GBP: 'the pound', JPY: 'the yen', AUD: 'the Australian dollar', NZD: 'the kiwi', CAD: 'the Canadian dollar', CHF: 'the Swiss franc' };
 export const CAP = 3;            // a pair's move is clipped at three times its usual move, as in CANDLES
@@ -40,7 +41,7 @@ const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 export function ccyScript(R) {
   if (!R?.list?.length) return null;
   const hi = R.list[0], lo = R.list[R.list.length - 1], p = R.pairs[0];
-  const spoke = k => `${k.slice(0, 3)} ${k.slice(3)}`;
+  const spoke = spokenName;
   const dirWord = p.ratio >= 0 ? 'up' : 'down';
   return `${cap(CCY_NAMES[hi.ccy])} is the strongest of the eight majors so far today, and ${CCY_NAMES[lo.ccy]} the weakest. Each currency is scored as the average of its pair moves against their usual size. The biggest single pair move is ${spoke(p.key)}, ${dirWord} ${Math.abs(p.ratio).toFixed(1)} times its usual move. This describes the day so far; it is not a forecast.`;
 }

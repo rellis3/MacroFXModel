@@ -2,6 +2,7 @@
 // live last-price tag, a time axis along the bottom, a crosshair with a floating OHLC readout, timeframe buttons (5m 15m 1h daily), a market picker, EMA 20 / EMA 50 ribbons (averages of PAST closes, labelled), the market's own usual
 // high / low reach for the day as a translucent band, and DEPTH: each earlier UTC day stacked behind as a translucent parallel plane, dated and faded by age, that the camera can fly back through (buttons, or a slow auto-dolly).
 // Bars come from /api/cog-chart/candles (5m / 15m / 1h) and /api/ohlc (daily). DESCRIPTION ONLY: every element is something that has happened; nothing here is a forecast. Pure maths lives in jarvisChartCore.js / jarvisSessionCore.js.
+import { marketName } from './jarvisNames.js';
 import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { MARKET_KEYS } from './jarvisMarkets.js';
@@ -66,7 +67,7 @@ function toolbar(ctx, g, key) {
     g.hit(`cx:${cmd}`, x + w / 2, y + h / 2); x += w + 6;
   };
   ctx.save(); ctx.font = '11px ui-monospace,monospace';
-  btn(26, '‹', 'mkp', false); btn(86, key ?? '...', 'mkn', true); btn(26, '›', 'mkn', false); x += 12;
+  btn(26, '‹', 'mkp', false); btn(118, key ? marketName(key, { short: true }) : '...', 'mkn', true); btn(26, '›', 'mkn', false); x += 12;
   for (const t of TFS) btn(t === '1d' ? 30 : 38, TF_LABEL[t], `tf:${t}`, S.tf === t); x += 12;
   btn(66, S.replay ? '■ REPLAY' : '▶ REPLAY', 'replay', S.replay); btn(60, S.auto ? '■ AUTO' : '▶ AUTO', 'auto', S.auto); x += 12;
   btn(26, '◀', 'back', false); btn(54, 'DAYS', 'back', false); btn(26, '▶', 'fwd', false);
@@ -83,8 +84,8 @@ function draw(ctx, g, api) {
   if (key !== S.key) { S.key = key; S.t0 = null; S.dolly = S.dollyT = 0; }
   toolbar(ctx, g, key);
   const e = (loadChart(key, S.tf, api), entryOf(key, S.tf));
-  if (!e || e.status === 'loading') return msg(ctx, g, `Reading ${key} bars...`);
-  if (e.status !== 'ok') return msg(ctx, g, `No price bars could be loaded for ${key} right now.`);
+  if (!e || e.status === 'loading') return msg(ctx, g, `Reading ${marketName(key)} bars...`);
+  if (e.status !== 'ok') return msg(ctx, g, `No price bars could be loaded for ${marketName(key)} right now.`);
   if (S.t0 == null) S.t0 = g.t;
   const planes = e.planes, np = planes.length, tf = e.tf, slots = planes[0].slots, dx = Math.min(0.09, 3.0 / slots), Wc = slots * dx, X = s => (s - (slots - 1) / 2) * dx;
   // camera: the dolly eases toward its target plane; auto-dolly ping-pongs through the days; the SHOW scene sweeps the pan
@@ -222,7 +223,7 @@ function draw(ctx, g, api) {
 
 function hud(ctx, g, e, key, tf, ka, np, printed, nf) {
   const C = g.C, st = e.st, y0 = S.top + 62; ctx.save(); ctx.globalAlpha = g.fade; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
-  ctx.fillStyle = C.tx; ctx.font = '600 16px ui-monospace,monospace'; ctx.fillText(`${key} · ${TF_WORD[tf]} candles`, 28, y0);
+  ctx.fillStyle = C.tx; ctx.font = '600 16px ui-monospace,monospace'; ctx.fillText(`${marketName(key)} · ${TF_WORD[tf]} candles`, 28, y0);
   ctx.fillStyle = C.tx2; ctx.font = '11px ui-monospace,monospace';
   const span = tf === '1d' ? `the last ${e.planes[0].bars.length} daily bars` : "today's session so far";
   ctx.fillText(`${span} · open ${fmtPrice(st.open)} · high ${fmtPrice(st.hi)} · low ${fmtPrice(st.lo)} · last ${fmtPrice(st.last)} (${st.movePct >= 0 ? '+' : ''}${st.movePct.toFixed(2)}%${st.times != null && tf !== '1d' ? `, ${st.times.toFixed(1)}x its usual move` : ''})`, 28, y0 + 18);
@@ -263,7 +264,7 @@ registerJarvisModule({
   render(pane, api) {
     const { esc, st } = api, cur = MARKET_KEYS.includes(st.sel) ? st.sel : 'NQ';
     pane.innerHTML = `<h3>CANDLES</h3><p>A 3D candlestick chart: a price scale with a live last-price tag, a time axis, a crosshair, EMA 20 and EMA 50 ribbons (averages of past closes), the market's usual range behind, and every earlier day stacked behind as its own plane that you can fly back through.</p>
-<div class="jv-row"><label class="jv-sub">market <select data-s="mk">${MARKET_KEYS.map(k => `<option value="${esc(k)}"${k === cur ? ' selected' : ''}>${esc(k)}</option>`).join('')}</select></label>${TFS.map(t => `<button type="button" data-s="tf" data-t="${esc(t)}" aria-pressed="${t === S.tf}">${esc(TF_LABEL[t])}</button>`).join(' ')}</div>
+<div class="jv-row"><label class="jv-sub">market <select data-s="mk">${MARKET_KEYS.map(k => `<option value="${esc(k)}"${k === cur ? ' selected' : ''}>${esc(marketName(k))}</option>`).join('')}</select></label>${TFS.map(t => `<button type="button" data-s="tf" data-t="${esc(t)}" aria-pressed="${t === S.tf}">${esc(TF_LABEL[t])}</button>`).join(' ')}</div>
 <div class="jv-row"><button type="button" data-s="go">▶ OPEN THE CHART</button> <button type="button" data-s="replay">REPLAY</button> <button type="button" data-s="auto">AUTO DOLLY</button> <button type="button" data-s="back">◀ BACK A DAY</button> <button type="button" data-s="fwd">FORWARD ▶</button></div>
 <p class="jv-sub">5 minute, 15 minute and hourly bars where the server can reach them, otherwise daily bars. Description only, never a forecast.</p>`;
     const go = () => { chartCommand(`mk:${pane.querySelector('[data-s="mk"]').value}`, api); api.setView('session'); };

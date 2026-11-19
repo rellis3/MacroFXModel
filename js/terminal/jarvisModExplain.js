@@ -1,6 +1,7 @@
 // js/terminal/jarvisModExplain.js: the EXPLAIN panel. Point at a day (default: the HUD's scrub date), pick a window, press EXPLAIN: ONE model call
 // (owner-only, 40 a day, cached per day) describes what surrounded that stretch from the news, releases, desk book and the chain read.
 // Description only: never a forecast, never a trade.
+import { marketName } from './jarvisNames.js';
 import { registerJarvisModule } from './jarvisModules.js';
 
 const MARKETS = ['', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'GOLD', 'NQ', 'ES'];
@@ -22,7 +23,7 @@ registerJarvisModule({
     pane.innerHTML = `<div class="jv-sub">EXPLAIN A STRETCH OF TIME</div>
 <p style="margin:6px 0"><label>Date <input type="date" data-x="date" value="${esc(date)}" style="background:var(--bg);color:var(--tx);border:1px solid var(--line)"></label>
 <label style="margin-left:8px">Window <select data-x="days" style="background:var(--bg);color:var(--tx);border:1px solid var(--line)"><option value="1">1 day</option><option value="3">3 days</option><option value="5">5 days</option></select></label>
-<label style="margin-left:8px">Market <select data-x="market" style="background:var(--bg);color:var(--tx);border:1px solid var(--line)">${MARKETS.map(m => `<option value="${m}">${m || 'any'}</option>`).join('')}</select></label></p>
+<label style="margin-left:8px">Market <select data-x="market" style="background:var(--bg);color:var(--tx);border:1px solid var(--line)">${MARKETS.map(m => `<option value="${m}">${m ? marketName(m) : 'any'}</option>`).join('')}</select></label></p>
 <p style="margin:6px 0"><button type="button" data-x="go">EXPLAIN (1 model call)</button> <button type="button" data-x="say" hidden>READ IT TO ME</button></p>
 <div data-x="out" style="color:var(--tx2)">Description only: what moved and what surrounded it. It never forecasts and never suggests a trade. One day's answer is kept, so asking again is free.</div>`;
     const q = s => pane.querySelector(`[data-x="${s}"]`), out = q('out'); let spoken = '';

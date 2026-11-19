@@ -2,6 +2,8 @@
 // 60-day correlation matrix (correlated markets pulled together, opposed ones pushed apart: netCore.js, pure and tested). Node size = today's move against its usual, colour = its direction. Links only where |r| is
 // above the threshold (green = moved together, red = moved opposite, thickness = |r|) with signal pulses running along them and flashing the node they reach. Clusters are soft halos with their names.
 // Click a node: its links light, the rest dim, and a card lists its strongest partners. DESCRIPTION ONLY: how these markets moved together over a past window, which does not persist reliably. Never a forecast.
+import { marketName } from './jarvisNames.js';
+const nameOf = (net, id) => { const n = marketName(id, { short: true }); return n === id ? (net.labels[id] ?? id) : n; };
 import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { marketSizes } from './jarvisMarkets.js';
@@ -142,7 +144,7 @@ function draw(ctx, g, api) {
     ctx.globalAlpha = fade * a * 0.85; ctx.fillStyle = C.tx; ctx.beginPath(); ctx.arc(x - rad * 0.25, y - rad * 0.25, rad * 0.38, 0, 6.2832); ctx.fill();
     if (S.sel === i) { ctx.globalAlpha = fade; ctx.strokeStyle = C.tx; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(x, y, rad * 1.9 + Math.sin(t * 5) * 1.2, 0, 6.2832); ctx.stroke(); }
     g.hit('net:' + id, x, y);
-    ctx.globalAlpha = fade * a * (S.hl.has(i) ? 1 : 0.92); ctx.fillStyle = S.hl.has(i) ? C.tx : C.tx2; ctx.font = (S.hl.has(i) ? '13px' : '11px') + ' ui-monospace,monospace'; ctx.fillText(net.labels[id] ?? id, x, y + rad + 13);
+    ctx.globalAlpha = fade * a * (S.hl.has(i) ? 1 : 0.92); ctx.fillStyle = S.hl.has(i) ? C.tx : C.tx2; ctx.font = (S.hl.has(i) ? '13px' : '11px') + ' ui-monospace,monospace'; ctx.fillText(nameOf(net, id), x, y + rad + 13);
   }
 
   // ── the card for the clicked node ──
@@ -150,13 +152,13 @@ function draw(ctx, g, api) {
   if (S.sel >= 0) {
     const id = net.ids[S.sel], sz = S.sizes[id], pt = partners(net.ids, net.m, S.sel, 3), x0 = 24, y0 = 150, w = 262, lines = 6 + pt.pos.length + pt.neg.length;
     ctx.fillStyle = C.up; ctx.globalAlpha = fade * 0.07; ctx.fillRect(x0 - 10, y0 - 22, w, lines * 16 + 22); ctx.globalAlpha = fade * 0.5; ctx.strokeStyle = C.up; ctx.lineWidth = 1; ctx.strokeRect(x0 - 10, y0 - 22, w, lines * 16 + 22);
-    ctx.globalAlpha = fade; ctx.fillStyle = C.tx; ctx.font = '14px ui-monospace,monospace'; ctx.fillText(net.labels[id] ?? id, x0, y0 - 2); ctx.font = '11px ui-monospace,monospace';
+    ctx.globalAlpha = fade; ctx.fillStyle = C.tx; ctx.font = '14px ui-monospace,monospace'; ctx.fillText(nameOf(net, id), x0, y0 - 2); ctx.font = '11px ui-monospace,monospace';
     let y = y0 + 18; ctx.fillStyle = C.tx2; ctx.fillText(sz ? `today ${sz.move >= 0 ? '+' : ''}${sz.move.toFixed(2)}%, ${sz.ratio.toFixed(1)}x its usual move` : 'no move reading today', x0, y); y += 20;
     ctx.fillStyle = C.up; ctx.fillText('MOVED TOGETHER WITH', x0, y); y += 16;
-    for (const p of pt.pos) { ctx.fillStyle = C.tx; ctx.fillText((net.labels[p.k] ?? p.k), x0 + 6, y); ctx.fillStyle = C.up; ctx.fillText(fmt(p.r), x0 + 170, y); y += 16; }
+    for (const p of pt.pos) { ctx.fillStyle = C.tx; ctx.fillText(nameOf(net, p.k), x0 + 6, y); ctx.fillStyle = C.up; ctx.fillText(fmt(p.r), x0 + 170, y); y += 16; }
     if (!pt.pos.length) { ctx.fillStyle = C.tx2; ctx.fillText('none positive', x0 + 6, y); y += 16; }
     y += 4; ctx.fillStyle = C.dn; ctx.fillText('MOVED OPPOSITE TO', x0, y); y += 16;
-    for (const p of pt.neg) { ctx.fillStyle = C.tx; ctx.fillText((net.labels[p.k] ?? p.k), x0 + 6, y); ctx.fillStyle = C.dn; ctx.fillText(fmt(p.r), x0 + 170, y); y += 16; }
+    for (const p of pt.neg) { ctx.fillStyle = C.tx; ctx.fillText(nameOf(net, p.k), x0 + 6, y); ctx.fillStyle = C.dn; ctx.fillText(fmt(p.r), x0 + 170, y); y += 16; }
     if (!pt.neg.length) { ctx.fillStyle = C.tx2; ctx.fillText('none negative', x0 + 6, y); y += 16; }
   }
 

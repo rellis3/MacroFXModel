@@ -1,9 +1,9 @@
 // js/terminal/showCore.js: the pure half of Jarvis's SHOW: a narrated, directed tour of the morning. It turns today's data into a list of scenes; each scene says which view to show, where the camera goes
 // and what Jarvis says. The director (jarvisModShow.js) moves on when the narration FINISHES, never on a timer, so the voice always leads the picture. No model call: the words are templates over numbers.
 // DESCRIPTION ONLY. The bias lean is said with its caveat every time: the engine's back-test found no proven direction skill.
-const NAMES = { NQ: 'Nasdaq', SPX500: 'the S and P', US30: 'the Dow', US2000: 'the Russell', DE30: 'the DAX', UK100: 'the FTSE', GOLD: 'gold', SILVER: 'silver', COPPER: 'copper', PLATINUM: 'platinum', PALLADIUM: 'palladium', WTI: 'W T I crude', BRENT: 'Brent', NATGAS: 'natural gas', SOYBEAN: 'soybeans', WHEAT: 'wheat', CORN: 'corn', SUGAR: 'sugar', BTCUSD: 'Bitcoin' };
-/** A market in spoken words: Nasdaq, gold, euro dollar. */
-export const spoken = k => NAMES[k] ?? (k.length === 6 ? `${k.slice(0, 3)} ${k.slice(3)}` : k);
+import { spokenName } from './jarvisNames.js';
+/** A market in spoken words: Nasdaq, gold, Euro Dollar. */
+export const spoken = k => spokenName(k);
 const pct = v => `${Math.abs(v) < 10 ? Math.abs(v).toFixed(1) : Math.round(Math.abs(v))} percent`;
 const dayWord = d => new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'long', day: 'numeric', month: 'long' }).format(d);
 const greeting = d => { const h = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }).format(d); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; };

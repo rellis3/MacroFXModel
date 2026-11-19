@@ -2,6 +2,7 @@
 // ENCODING (also drawn on screen): ring order and sphere size = today's strength (the average of its pair moves against their usual size; strongest = inner ring and biggest); colour = green up / red down;
 // orbit speed is tied loosely to the size of the move, beyond that it is decoration; each luminous arc is one of the pairs that moved most today, its thickness = that pair's move against its usual,
 // the pulse runs toward the stronger side. DESCRIPTION ONLY: how far each currency has travelled so far today, never a forecast. Canvas 2D with the HUD's own camera; arrays are allocated once.
+import { marketName, currencyName, getNameStyle } from './jarvisNames.js';
 import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { CAP, ccyStrength, ccyScript, orbitPos, sizeOf, speedOf, signed } from './jarvisCcyCore.js';
@@ -76,7 +77,7 @@ function draw(ctx, g, api) {
   });
   ctx.globalCompositeOperation = 'source-over';
   ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'center';
-  top.forEach((pr, n) => { if (n >= 5) return; ctx.globalAlpha = fade * 0.95; ctx.fillStyle = C.gold; ctx.fillText(`${pr.key}  ${pr.ratio >= 0 ? '+' : '-'}${Math.abs(pr.ratio).toFixed(1)}x`, S.ax[n], S.ay[n] - 8); });
+  top.forEach((pr, n) => { if (n >= 5) return; ctx.globalAlpha = fade * 0.95; ctx.fillStyle = C.gold; ctx.fillText(`${marketName(pr.key, { short: true })}  ${pr.ratio >= 0 ? '+' : '-'}${Math.abs(pr.ratio).toFixed(1)}x`, S.ax[n], S.ay[n] - 8); });
   // spheres far to near
   const order = [0, 1, 2, 3, 4, 5, 6, 7].sort((a, b) => S.pz[b] - S.pz[a]);
   for (const i of order) {
@@ -85,7 +86,7 @@ function draw(ctx, g, api) {
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = fade * 0.88; ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.fill();
     const hl = ctx.createRadialGradient(x - rad * 0.35, y - rad * 0.4, 1, x - rad * 0.2, y - rad * 0.25, rad * 1.05); hl.addColorStop(0, C.tx); hl.addColorStop(1, 'transparent'); ctx.globalAlpha = fade * 0.62; ctx.fillStyle = hl; ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.fill();
     ctx.globalAlpha = fade * (hot ? 1 : 0.7); ctx.strokeStyle = hot ? C.tx : C.gold; ctx.lineWidth = hot ? 2 : 1; ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.stroke();
-    ctx.globalAlpha = fade; ctx.fillStyle = C.tx; ctx.font = `${Math.round(10 + 5 * Math.min(1.4, S.ps[i]))}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(r.ccy, x, y - rad - 7);
+    ctx.globalAlpha = fade; ctx.fillStyle = C.tx; ctx.font = `${Math.round(10 + 5 * Math.min(1.4, S.ps[i]))}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(currencyName(r.ccy, { short: true }), x, y - rad - 7); if (getNameStyle() === 'names') { ctx.font = '9px ui-monospace,monospace'; ctx.globalAlpha = fade * 0.6; ctx.fillText(r.ccy, x, y - rad + 3); }
     ctx.globalAlpha = fade * 0.8; ctx.fillStyle = c; ctx.font = '10px ui-monospace,monospace'; ctx.fillText(signed(r.s), x, y + rad + 13);
     g.hit(r.ccy, x, y);
   }
@@ -99,7 +100,7 @@ function draw(ctx, g, api) {
     const y = py + 50 + i * rh, c = col(r.s), hot = sel === r.ccy;
     if (hot) { ctx.globalAlpha = fade * 0.18; ctx.fillStyle = C.gold; ctx.fillRect(px + 4, y - 4, pw - 8, rh - 2); }
     ctx.globalAlpha = fade; ctx.fillStyle = C.tx2; ctx.font = '10px ui-monospace,monospace'; ctx.fillText(String(i + 1), px + 12, y + 12);
-    ctx.fillStyle = C.tx; ctx.font = '13px ui-monospace,monospace'; ctx.fillText(r.ccy, px + 28, y + 13);
+    ctx.fillStyle = C.tx; ctx.font = '13px ui-monospace,monospace'; ctx.fillText(currencyName(r.ccy, { short: true }), px + 28, y + 13); if (getNameStyle() === 'names') { const nw = ctx.measureText(currencyName(r.ccy, { short: true })).width; ctx.font = '9px ui-monospace,monospace'; ctx.fillStyle = C.tx2; ctx.fillText(r.ccy, px + 28 + nw + 6, y + 13); }
     const w = half * Math.min(1, Math.abs(r.s) / (maxAbs || 1)); ctx.globalAlpha = fade * 0.8; ctx.fillStyle = c; ctx.fillRect(r.s >= 0 ? mid : mid - w, y + 3, w, 11);
     ctx.globalAlpha = fade * 0.4; ctx.fillStyle = C.tx2; ctx.fillRect(mid, y, 1, 17);
     ctx.globalAlpha = fade; ctx.fillStyle = c; ctx.font = '11px ui-monospace,monospace'; ctx.textAlign = 'right'; ctx.fillText(signed(r.s), px + pw - 10, y + 13); ctx.textAlign = 'left';
@@ -107,8 +108,8 @@ function draw(ctx, g, api) {
   });
   if (sel) {
     const mine = R.pairs.filter(p => p.base === sel || p.quote === sel).slice(0, 5), y0 = py + ph + 18;
-    ctx.globalAlpha = fade * 0.9; ctx.fillStyle = C.tx; ctx.font = '11px ui-monospace,monospace'; ctx.fillText(`${sel}: its biggest pair moves`, px, y0); ctx.fillStyle = C.tx2; ctx.font = '10px ui-monospace,monospace';
-    mine.forEach((p, i) => ctx.fillText(`${p.key}  ${p.ratio >= 0 ? '+' : '-'}${Math.abs(p.ratio).toFixed(2)}x usual`, px, y0 + 16 + i * 14));
+    ctx.globalAlpha = fade * 0.9; ctx.fillStyle = C.tx; ctx.font = '11px ui-monospace,monospace'; ctx.fillText(`${currencyName(sel, { short: true })}: its biggest pair moves`, px, y0); ctx.fillStyle = C.tx2; ctx.font = '10px ui-monospace,monospace';
+    mine.forEach((p, i) => ctx.fillText(`${marketName(p.key)}  ${p.ratio >= 0 ? '+' : '-'}${Math.abs(p.ratio).toFixed(2)}x usual`, px, y0 + 16 + i * 14));
   }
   // legend
   ctx.textAlign = 'right'; ctx.fillStyle = C.tx2; ctx.font = '11px ui-monospace,monospace'; ctx.globalAlpha = fade * 0.85;
@@ -136,7 +137,7 @@ registerJarvisModule({
       if (!R) { pane.innerHTML = '<h3>CURRENCIES</h3><p>No currency strength for today yet.</p>'; return; }
       pane.innerHTML = `<h3>THE EIGHT MAJORS</h3><p>Each currency scored as the average of its pair moves against their usual size, so far today. A description, not a forecast.</p>
 <div class="jv-row"><button type="button" data-c="go">SHOW THE ORRERY</button></div>
-<table class="jv-tab"><thead><tr><th>#</th><th>currency</th><th>strength</th></tr></thead><tbody>${R.list.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.ccy)}</td><td>${esc(signed(r.s))}</td></tr>`).join('')}</tbody></table>`;
+<table class="jv-tab"><thead><tr><th>#</th><th>currency</th><th>strength</th></tr></thead><tbody>${R.list.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(currencyName(r.ccy))}${getNameStyle() === 'names' ? ` <span class="jv-sub">${esc(r.ccy)}</span>` : ''}</td><td>${esc(signed(r.s))}</td></tr>`).join('')}</tbody></table>`;
       pane.querySelector('[data-c="go"]').onclick = () => api.setView('ccy');
     });
   },
